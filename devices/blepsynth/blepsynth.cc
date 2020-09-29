@@ -398,7 +398,7 @@ class BlepSynth : public AudioSignal::Processor {
     remove_all_buses();
     prepare_event_input();
     stereout_ = add_output_bus ("Stereo Out", SpeakerArrangement::STEREO);
-    assert_return (bus_info (stereout_).ident == "stereo-out");
+    assert_return (bus_info (stereout_).ident == "stereo_out");
   }
   void
   reset () override
