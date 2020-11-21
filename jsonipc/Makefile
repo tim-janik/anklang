@@ -1,5 +1,6 @@
 all: testjsonipc
 
+builddir ?= out
 CXX	 = ccache clang++
 #CXX	 = ccache g++ -Wno-nonnull-compare -Wno-address
 CXXFLAGS = -std=gnu++14 -Wall -O0 -g
@@ -7,7 +8,7 @@ OBJECTS  = testjsonipc.o
 DEFS     = -DSTANDALONE
 DEPS     = jsonipc.hh Makefile
 
-INCLUDES = -I../external/
+INCLUDES = -I../$(builddir)/external/
 
 $(OBJECTS): %.o: %.cc $(DEPS)
 	$(CXX) $(DEFS) $(CXXFLAGS) $(INCLUDES) -c $<
