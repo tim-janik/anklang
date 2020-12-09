@@ -1,0 +1,249 @@
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+@import './b/mixins.scss';
+
+// == Full viewport Sizing ==
+html, body { margin: 0; padding: 0;
+	     max-width: 100vw;
+	     max-height: 100vh;
+	     overflow: hidden;
+	   }
+body       { width: 100vw; height: 100vh; }
+*          { box-sizing: border-box; text-overflow: ellipsis; }
+
+// == Main colors ==
+body {
+  color: $b-main-foreground;
+  background: $b-main-background;
+  &.window-inactive {
+    color: fade($b-main-foreground, 80%);
+  }
+}
+
+// == Font-family "Inter" ==
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 500;
+	     src: url("/fonts/Inter-Medium.woff2") format("woff2");
+	     font-display: swap; }
+html {
+  font-family: 'Inter', BlinkMacSystemFont, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  font-variation-settings: "wght" 450; // "slnt" 0deg
+  letter-spacing: 0.011em;
+  font-feature-settings:
+  "dlig" 1,     // Discretionary ligatures, e.g. !? -> interrobang
+  // "tnum",    // Tabular numbers (fixed width); use `font-variant-numeric: tabular-nums;`
+  "salt" 0,     // Stylistic Alternates
+  "ss01" 0,     // Stylistic set 1 "Open Digits"
+  "ss02" 0,     // Stylistic set 2 "Disambiguation"
+  "ss03" 0,     // Stylistic set 3 "Lower case r curves into round neighbors"
+  // "zero",    // Slashed zero; use `font-variant-numeric: slashed-zero;`
+  "numr" 0,     // Numerators
+  "dnom" 0,     // Denominators
+  "case" 1,     // Case alternates
+  "frac" 0,     // Contextual automatic fractions
+  "sups" 0,     // Superscript
+  "subs" 0,     // Subscript
+  "cpsp" 0,     // Capital spacing (adds 16 UPM to each sidebearing)
+  "cv01" 1,     // Alternate one
+  "cv02" 1,     // Open four
+  "cv03" 1,     // Open six
+  "cv04" 1,     // Open nine
+  "cv05" 1,     // Lower case L with tail
+  "cv06" 1,     // Lower case r with curved tail
+  "cv07" 0,     // Alternate German double-s
+  "cv08" 1,     // Upper-case i with serif
+  "cv09" 0,     // Flat top three
+  "cv10" 1,     // Capital G with spur
+  "cv11" 0,     // Single-storey a
+  "calt",       // Contextual alternates (default)
+  "liga",       // Common ligatures (default, none in Inter)
+  "kern";       // Kerning (default)
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+// == Resets & Font Basics ==
+input, textarea, keygen, select,
+button					{ font: inherit; }
+button					{ -webkit-appearance: normal; }
+.italic, i, cite, em, var, address, dfn { font-style: italic; }
+strong, b, h1, h2, h3, h4, h5, h6, th, ::-webkit-validation-bubble-heading,
+.bold					{ letter-spacing: 0.031em; font-weight: bold; }
+.bolder, optgroup			{ letter-spacing: 0.031em; font-weight: bolder; }
+plaintext, listing, xmp, input:-webkit-autofill-strong-password,
+.tnum, .code, tt, pre, code, kbd, samp	{ font-variant-numeric: tabular-nums slashed-zero; }
+.slashed-zero				{ font-variant-numeric: slashed-zero; }
+.tabular-nums				{ font-variant-numeric: tabular-nums; }
+.tabular-nums.slashed-zero		{ font-variant-numeric: tabular-nums slashed-zero; }
+
+// == push-button ==
+button, push-button {
+  // button shading
+  background-image: $b-button-lg;
+  border-top: 1px solid $b-button-light; border-left: 1px solid $b-button-light;
+  border-bottom: 1px solid $b-button-dark; border-right: 1px solid $b-button-dark;
+  // layout
+  text-align: center; margin: 0; padding: 3px 1em;
+  display: flex; align-items: center;
+  color: $b-button-foreground;
+  &:focus {
+    outline: $b-focus-outline;
+  }
+  &:hover {
+    box-shadow: inset 500px 500px $b-button-hover;
+  }
+  &.active, &:active, &[data-contextmenu=true] {
+    box-shadow: inset 500px 500px $b-button-active;
+    background-image: $b-button-active-lg;
+    border-color: $b-button-active-border;
+    color: $b-button-active-fg;
+  }
+  &[disabled] {
+    filter: saturate(80%) brightness(80%);
+    pointer-events: none;
+  }
+  // A <button/> can focus, a <push-button/> cannot focus
+}
+
+ // == Glossy Buttons ==
+@mixin b-buttonframe() 	{ border: 1px solid $b-button-border; }
+@mixin b-buttonshade() 	{ background-image: $b-button-lg;
+				  border-top: 1px solid $b-button-light; border-left: 1px solid $b-button-light;
+				  border-bottom: 1px solid $b-button-dark; border-right: 1px solid $b-button-dark; }
+
+// == h-flex, v-flex ==
+h-flex, v-flex {
+  // Container for horizontal/vertical layouting, see: https://www.w3.org/TR/css-flexbox-1/#flex-containers
+  display: flex; flex-basis: auto;
+  flex-wrap: nowrap;
+  align-items: stretch;               // distribute extra cross-axis space
+  align-content: stretch;             // distribute extra cross-axis space for multi-line layouts
+  &[inline]		{ display: inline-flex; }	// integrate container into text flow
+  &[start]		{ justify-content: flex-start; }	// pack children from start of flex direction
+  &[end]		{ justify-content: flex-end; }		// pack children at end of flex direction
+  &[center]		{ justify-content: center; }		// pack children towards center of flex direction
+  &[space-between]	{ justify-content: space-between; }	// distribute spacing between the children
+  &[space-around]	{ justify-content: space-around; }	// distribute spacing between the children and half at the edges
+  &[space-evenly]	{ justify-content: space-evenly; }	// distribute spacing between the children and edges
+  &[wrap]		{ flex-wrap: wrap; }			// layout children may wrap if the elements use more than 100%
+  &[wrap-reverse]	{ flex-wrap: wrap-reverse; }		// wrap children in reverse order
+  &[grow1]		{ flex-grow: 1; }			// Grow space for this element if additional space is available with the given strength (0 = none)
+  &[grow2]		{ flex-grow: 2; }
+  &[grow3]		{ flex-grow: 3; }
+  &[grow4]		{ flex-grow: 4; }
+  &[grow5]		{ flex-grow: 5; }
+  &[grow6]		{ flex-grow: 6; }
+  &[grow7]		{ flex-grow: 7; }
+  &[grow8]		{ flex-grow: 8; }
+  &[grow9]		{ flex-grow: 9; }
+  &[grow0]		{ flex-grow: 0; }
+  &[shrink1]		{ flex-shrink: 1; }			// Shrink space for this element if space is too tight with the given strength (0 = none)
+  &[shrink2]		{ flex-shrink: 2; }
+  &[shrink3]		{ flex-shrink: 3; }
+  &[shrink4]		{ flex-shrink: 4; }
+  &[shrink5]		{ flex-shrink: 5; }
+  &[shrink6]		{ flex-shrink: 6; }
+  &[shrink7]		{ flex-shrink: 7; }
+  &[shrink8]		{ flex-shrink: 8; }
+  &[shrink9]		{ flex-shrink: 9; }
+  &[shrink0]		{ flex-shrink: 0; }
+}
+h-flex { flex-direction: row; }
+v-flex { flex-direction: column; }
+
+// == c-grid ==
+c-grid {
+  // Container for grid layouting, see: https://www.w3.org/TR/css-grid-1/#grid-containers
+  // visual cheatsheet: http://grid.malven.co/
+  display: grid;
+  &[inline] { display: inline-grid; }
+  // Alignment: https://www.w3.org/TR/css-align-3/#overview
+  // - grid within parent, vertically:   align-content:   start end center stretch space-around space-between space-evenly;
+  // - grid within parent, horizontally: justify-content: start end center stretch space-around space-between space-evenly;
+  // - items within grid, vertically:    align-items:     baseline start end center stretch;
+  // - items within grid, horizontally:  justify-items:   baseline start end center stretch space-around space-between space-evenly;
+  // - per-element: align-self justify-self
+}
+
+/* == NoteBoard == */
+div.note-board {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column; flex-wrap: wrap-reverse;
+  align-items: flex-end; align-content: end;
+  pointer-events: none; user-select: none;
+  --note-board-padding: 12px;
+  padding: var(--note-board-padding) var(--note-board-padding) 0 0;
+  transition: all 0.2s ease;
+  .note-board-note {
+    position: relative; width: 25em; min-height: 5em;
+    color: #111; background: #eef; opacity: 0.95;
+    pointer-events: all;
+    padding: var(--note-board-padding); margin: 0 0 var(--note-board-padding) var(--note-board-padding);
+    border-radius: calc(var(--note-board-padding) / 2);
+    transition: all 0.233s ease-in-out; // see Util.NoteBoard.FADING
+    overflow: hidden; max-height: 100vh;
+    &.note-board-fadein {
+      transform: translateY(100vh);
+    }
+    &.note-board-fadeout {
+      /* CSS cannot fade from height:auto -> height:0...
+       * But we can animate absolute dimensions of max-height and somewhat
+       * cover up artefacts with transition and color fading.
+       */
+      padding-top: 0; padding-bottom: 0; margin-top: 0;
+      max-height: 0; min-height: 0; // vertical shrinking, to allow siblings to flow up
+      color: transparent;           // hide text reflow artefacts
+      z-index: -1;                  // transition *behind* siblings
+      transform: translateY(-33vh); // visual slide-up effect
+      transition: all 0.283s ease-out 0.05s, transform 0.233s ease-in; // see Util.NoteBoard.FADING
+    }
+    // style close button
+    .note-board-note-close {
+      position: absolute; top: var(--note-board-padding); right: var(--note-board-padding);
+      display: flex; margin-top: -0.2em;
+      &:hover { color: #f88; }
+    }
+    // make room for .note-board-note-close
+    &:before { float: right; content: ' '; padding: 1px; }
+  }
+  // markdown styling for notes
+  .note-board-markdown {
+    @include b-markdown-it-inlined;
+    h1 { color: #09b; }
+    h2 { color: #090; }
+    h3 { color: #a00; }
+    h4 { color: #a40; }
+    p { margin-top: 0.5em; }
+  }
+}
+
+// == Scrollbars ==
+#b-app {
+  // Chrome
+  html[chrome] & {
+    ::-webkit-scrollbar	{ width: $b-scrollbar-size; height: $b-scrollbar-size; }
+    ::-webkit-scrollbar-button { display: none; }
+    ::-webkit-scrollbar-track, &::-webkit-scrollbar-track-piece,
+    ::-webkit-scrollbar	{
+      background: $b-scrollbar-bg;
+      border: none; box-shadow: none;
+    }
+    ::-webkit-scrollbar-thumb	{
+      border-radius: 999px;
+      transition: background 0.4s ease;
+      background: $b-scrollbar-dd;
+    }
+    &:hover ::-webkit-scrollbar-thumb {
+      transition: background 0.4s ease;
+      background: linear-gradient(lighter($b-scrollbar-fg), darker($b-scrollbar-fg));
+    }
+  }
+  // Firefox
+  html[gecko] & {
+    scrollbar-width: thin;
+    transition: scrollbar-color 0.4s ease;
+    scrollbar-color: $b-scrollbar-dd $b-scrollbar-bg;
+    &:hover {
+      scrollbar-color: $b-scrollbar-fg $b-scrollbar-bg;
+    }
+  }
+  // keep in sync with @mixin scrollbar-hover-area
+}

@@ -1,0 +1,339 @@
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+
+// == Import helpers ==
+@import 'cssaux.scss';
+@import 'fonts/AnklangCursors.scss';
+
+// == Color Theme ==
+$b-main-foreground: 	#f3f1f5;
+$b-main-background: 	lgrey(13%);
+$b-color-active:	#00e5ea; // #ff8811;
+$b-panel-foreground:	$b-main-foreground;
+$b-panel-background:	lgrey(36%); // also panel border
+$b-panel-focus:		lgrey(50%); // focused panel border
+$b-panel-borderwidth:	2px;
+$b-panel-border:	$b-panel-borderwidth solid $b-panel-background;
+$b-panel-radius:	3px;
+$b-panel-spacing:	$b-panel-borderwidth;
+$b-devicepanel-bg:	lgrey(3%);
+$b-device-radius:	3px;
+$b-device-bg:		$b-panel-background;
+$b-device-handle:	lgrey(26%); // or, device-handle
+$b-device-area1:	lgrey(24%);
+$b-device-area2:	lgrey(28%);
+$b-choice-0-bg:		lgrey(50%);
+$b-choice-0-bh:		contrast-lighten($b-choice-0-bg, 1.5); // highlight
+$b-choice-0-bl:		contrast-lighten($b-choice-0-bg, 1.3); // light
+$b-choice-0-bd:		contrast-darken($b-choice-0-bg, 1.3);  // dark
+$b-toggle-0-bg:		$b-choice-0-bg;
+$b-toggle-0-bh:		$b-choice-0-bh;
+$b-toggle-0-bl:		$b-choice-0-bl;
+$b-toggle-0-bd:		$b-choice-0-bd;
+$b-toggle-1-bg:		lcolor($b-color-active, 63%);
+$b-toggle-1-bh:		contrast-lighten($b-toggle-1-bg, 1.5); // highlight
+$b-toggle-1-bl:		contrast-lighten($b-toggle-1-bg, 1.3); // light
+$b-toggle-1-bd:		contrast-darken($b-toggle-1-bg, 1.3);  // dark
+$b-trackrow-height:	3em;
+$b-track-list-bg:	$b-device-area1;
+$b-track-list-parts-bg:	$b-device-area2;
+$b-scroll-shadow-blur:  3px;
+$b-clipthumb-width:	6em;
+$b-modal-foreground:	lgrey(98.7%);
+$b-modal-background:	lgrey(18%);
+$b-modal-bordercol:	lgrey(36%);
+$b-scrollbar-size:      13px; // tweaked to match supported Firefox scrollbar size
+$b-scrollbar-bg:	#111; // track
+$b-scrollbar-dd:	#222; // inactive slider
+$b-scrollbar-fg:	#777; // hovered slider
+
+@mixin b-panel-box {
+  color: $b-panel-foreground;
+  background: $b-panel-background; //* $b-panel-focus */
+  border: $b-panel-border; border-radius: $b-panel-radius;
+  overflow: hidden;
+  margin-left: $b-panel-spacing;
+  &:not(:first-of-type) { margin-top: $b-panel-spacing / 2; }
+  &:not(:last-of-type)  { margin-bottom: $b-panel-spacing / 2; }
+}
+
+// == Hotkey ==
+@mixin b-kbd-hotkey($border: true) {
+  font-family: mono;
+  font-weight: 600;
+  font-size: calc(1em - 2px);
+  letter-spacing: 1px;
+  //* text-transform: uppercase; text-transform: lowercase; font-variant: small-caps; */
+  border-radius: 0.5em;
+  @if not $border {}
+  @else {
+    background: lgrey(30%); border: 1px outset lgrey(50%); color: lgrey(95%); // #3 #5 #e
+  }
+}
+
+// == Status Bar ==
+$b-statusbar-bg: $b-main-background;
+$b-statusbar-field-spacing: 0.5em;
+$b-statusbar-text-color: $b-main-foreground;
+$b-statusbar-text-shade: darker($b-statusbar-text-color, 35%);
+$b-statusbar-separator-shade: darker($b-statusbar-text-color, 50%);
+$b-statusbar-icon-brightness: 0.9; // dim non-active
+$b-statusbar-icon-scaleup: 1.1;    // enlarge active
+@mixin b-statusbar-vseparator {
+  $groove-tint:  contrast-lighten($b-statusbar-bg, 7.5);
+  $groove-shade: contrast-darken($groove-tint, 3);
+  border-left:  1px solid $groove-shade;
+  border-right: 1px solid $groove-tint;
+}
+
+// == Font Basics ==
+$b-main-font-family: 'Inter';
+
+// == Basic Colors ==
+$b-base-foreground: 		#f0f0f0 !default;
+$b-base-background: 		#202020 !default;
+$b-menu-foreground: 		#fcfcfc !default;
+$b-menu-fill:	 		darken($b-menu-foreground, 15%) !default;
+$b-menu-background: 		#333333 !default;
+$b-menu-disabled: 		#808080 !default;
+$b-menu-disabled-fill: 		darken($b-menu-disabled, 10%) !default;
+$b-menu-separator: 		#909090 !default;
+$b-menu-focus-bg: 		#dddddd !default;
+$b-menu-focus-fg: 		$b-menu-background !default;
+$b-menu-active-bg: 		$b-menu-foreground !default;
+$b-menu-active-fg: 		$b-menu-background !default;
+$b-menu-padding: 		0.3em;
+$b-menu-spacing: 		0.75em;	// icon spacing
+$b-menu-tightspace: 		0.3em;	// icon spacing when packed
+$b-menu-box-shadow: 		0 0 13px 1px #0005;
+$b-menu-vpad:			5px;	// vertical border/margin around a menuitem
+$b-menu-hpad:			1em;	// horizontal border/margin around a menuitem
+$b-style-focus-color:		#0080ff !default;
+$b-style-border-radius:         3px !default;
+$b-style-light-foreground:	$b-main-foreground !default;
+$b-style-dark-outline:		#181818 !default;
+$b-style-modal-overlay:		#222b !default;
+
+$b-style-fg-secondary: #ccc !default;			// secondary foreground, for details / fineprint
+$b-style-fg-warning:   #f80 !default;
+$b-style-fg-notice:    #fc0 !default;
+$b-style-fg-filter:    brightness(66%) !default;	// adjust style-fg in inverted focus/active contexts
+
+// == BrowserWindow Defaults ==
+$b-default-background-color:	$b-main-background;	// #rrggbb needed
+$b-default-font-size:		12px;          		// int px needed
+$b-default-monospace-font-size: 13px;			// int px needed
+
+// == Animations ==
+$b-transition-fast-slide: 0.15s !default;
+
+// == Handles ==
+$b-resize-handle-thickness: 5px !default;
+$b-resize-handle-bgcolor:   #555 !default;
+$b-resize-handle-hvcolor:   #bbb !default;
+$b-resize-handle-border:    1.5px solid #111 !default;
+
+// == Outset / Inset ==
+$b-style-inset-background-1:  #1b1b1b !default;
+$b-style-inset-background-2:  #202020 !default;
+$b-style-inset-background-0:  mix($b-style-inset-background-1, $b-style-inset-background-2) !default;
+$b-style-inset-background:    linear-gradient(to bottom, $b-style-inset-background-1, $b-style-inset-background-2);
+$b-style-inset-glint-1:       $b-style-inset-background-1 !default;
+$b-style-inset-glint-2:       #383838 !default;
+@mixin b-style-inset {
+  //* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
+  border-color: $b-style-inset-background-1 $b-style-inset-background-0 $b-style-inset-background-2 $b-style-inset-background-0;
+  border-left: 0px !important; border-right: 0px !important; border-radius: $b-style-border-radius;
+  color: $b-style-light-foreground; outline: none; //* focus is handled via box-shadow */
+  background-color: $b-style-inset-background-0; background: $b-style-inset-background;
+  //* The inset is implemented similarly to b-style-outset */
+  box-shadow: 0px -1px 0 0px $b-style-inset-glint-1, 0px -1px 0 1px $b-style-dark-outline, 0 0px 0 1px $b-style-dark-outline, 0px 2px 0px 0px $b-style-inset-glint-2;
+  &:focus { box-shadow: 0px -1px 0 0px $b-style-inset-glint-1, 0px -1px 0 1px $b-style-focus-color, 0 0px 0 1px $b-style-focus-color, 0px 2px 0px 0px $b-style-inset-glint-2; }
+}
+$b-style-outset-glint-1:        #777 !default;
+$b-style-outset-glint-2:        #444 !default;
+$b-style-outset-background-1:   #606060 !default;
+$b-style-outset-background-2:   #505050 !default;
+$b-style-outset-background-0:   mix($b-style-outset-background-1, $b-style-outset-background-2) !default;
+$b-style-outset-background:     linear-gradient(to bottom, $b-style-outset-background-1, $b-style-outset-background-2);
+$b-style-outset-activebg-1:     #404040 !default;
+$b-style-outset-activebg-2:     #303030 !default;
+$b-style-outset-activebg-0:     mix($b-style-outset-activebg-1, $b-style-outset-activebg-2) !default;
+$b-style-outset-activebg:       linear-gradient(to bottom, $b-style-outset-activebg-1, $b-style-outset-activebg-2);
+$b-style-outset-activebg-glint: $b-style-outset-activebg-2 !default;
+@mixin b-style-outset {
+  //* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
+  border-color: $b-style-outset-background-1 $b-style-outset-background-0 $b-style-outset-background-2 $b-style-outset-background-0;
+  border-left: 0px !important; border-right: 0px !important; border-radius: $b-style-border-radius;
+  color: $b-style-light-foreground; outline: none; //* focus is handled via box-shadow */
+  background-color: $b-style-outset-background-0; background: $b-style-outset-background;
+  //* The outset is implemented by adding a dark shadow around, and light shadows above and below */
+  box-shadow: 0px -1px 0 0px $b-style-outset-glint-1, 0px -1px 0 1px $b-style-dark-outline, 0 0px 0 1px $b-style-dark-outline, 0px 2px 0px 0px $b-style-outset-glint-2;
+  &:focus { box-shadow: 0px -1px 0 0px $b-style-outset-glint-1, 0px -1px 0 1px $b-style-focus-color, 0 0px 0 1px $b-style-focus-color, 0px 2px 0px 0px $b-style-outset-glint-2; }
+  &.active, &:active, &[data-contextmenu=true] {
+	background-color: $b-style-outset-activebg-0; background: $b-style-outset-activebg;
+	box-shadow: 0px -1px 0 0px $b-style-outset-activebg-glint, 0px -1px 0 1px $b-style-dark-outline, 0 0px 0 1px $b-style-dark-outline, 0px 2px 0px 0px $b-style-outset-glint-2;
+	&:focus { box-shadow: 0px -1px 0 0px $b-style-outset-activebg-glint, 0px -1px 0 1px $b-style-focus-color, 0 0px 0 1px $b-style-focus-color, 0px 2px 0px 0px $b-style-outset-glint-2; }
+  }
+}
+
+// == Buttons ==
+$b-buttonbar-height: 1em;
+// softbutton is an almost flat button with subtle outlines
+$b-softbutton-bg: #585858;
+$b-softbutton-border-color: contrast-lighten($b-softbutton-bg, 1.6);
+$b-softbutton-bgl: contrast-lighten($b-softbutton-bg, 1.05);
+$b-softbutton-bgd: contrast-darken($b-softbutton-bg, 1.05);
+$b-softbutton-lg-up: linear-gradient(to bottom, $b-softbutton-bgd, $b-softbutton-bgl);
+$b-softbutton-lg-down: linear-gradient(to top, $b-softbutton-bgd, $b-softbutton-bgl);
+@mixin b-softbutton() {
+  background: $b-softbutton-lg-down;
+  border: 1px outset $b-softbutton-border-color;
+  border-top-color: transparent; border-bottom-color: transparent;
+  &:focus { outline: $b-focus-outline; }
+  &.hover, &:hover   { box-shadow: inset 500px 500px rgba(255, 255, 255, 0.035); }
+  &.active, &:active, &[data-contextmenu=true] {
+    background: $b-softbutton-lg-up;
+    border-color: $b-softbutton-bg; border-style: solid;
+    box-shadow: inset 500px 500px rgba(0, 0, 0, 0.05);
+  }
+  &[disabled] {
+    filter: saturate(80%) brightness(80%);
+    pointer-events: none;
+  }
+}
+@mixin b-softbuttonbar() {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  justify-items: stretch; align-items: stretch;
+  justify-content: stretch; align-content: stretch;
+  user-select: none; text-align: center;
+  align-items: center; justify-content: center;
+  border: 1px inset $b-softbutton-border-color;
+}
+// singlebutton is a seperately standing button wich clearly looks clickable
+$b-singlebutton-fg:   $b-modal-foreground;
+$b-singlebutton-fgd:  contrast-darken($b-singlebutton-fg, 1.1);
+$b-singlebutton-bg:   lgrey(42.6%);
+$b-singlebutton-bgl:  contrast-lighten($b-singlebutton-bg, 1.28);
+$b-singlebutton-bgd:  contrast-darken($b-singlebutton-bg, 1.28);
+$b-singlebutton-lg:   linear-gradient(to top, $b-singlebutton-bgd, $b-singlebutton-bgl);
+$b-singlebutton-dark: linear-gradient(to bottom, contrast-darken($b-singlebutton-bgd, 1.05), $b-singlebutton-bgd);
+$b-singlebutton-border-color: contrast-darken($b-singlebutton-bg, 3);
+@mixin b-singlebutton ($vpad: 5px, $hpad: 5px) {
+  background: $b-singlebutton-lg;
+  color: $b-singlebutton-fg;
+  text-align: center;
+  justify-content: center;
+  border: 1px outset $b-singlebutton-border-color;
+  padding: $vpad $hpad $vpad $hpad;
+  &.hover, &:hover   { box-shadow: inset 500px 500px rgba(255, 255, 255, 0.035); }
+  &.active, &:active, &[data-contextmenu=true] {
+    background: $b-singlebutton-dark;
+    color: $b-singlebutton-fgd;
+    border-color: contrast-lighten($b-singlebutton-border-color, 1.1); border-style: solid;
+    box-shadow: inset 500px 500px rgba(0, 0, 0, 0.05);
+  }
+  &:focus {
+    $focus-outline-col: $b-glow-control;
+    outline: none;
+    box-shadow: 0 0 0 1px $focus-outline-col;
+    &.active, &:active, &[data-contextmenu=true] {
+      outline: none;
+      box-shadow: 0 0 0 1px contrast-darken($focus-outline-col, 1.1);
+    }
+  }
+  &[disabled] {
+    filter: saturate(80%) brightness(80%);
+    pointer-events: none;
+  }
+}
+
+// == Timeline ==
+$b-timeline-outer-height: 3em;
+
+// == piano roll ==
+$b-scrollboundary-color: #111;	// dark boundary next to scrollable areas, should be (nearly) black
+$b-piano-roll-num-color:	#eeeeee !default;
+$b-piano-roll-white-base:   	#bbbbbb;			// base color for white piano key
+$b-piano-roll-black-base:   	#181818;			// base color for black piano key
+$b-piano-roll-dark-row:     	lgrey(16%);   			// background row color for notes
+$b-piano-roll-light-row:    	lgrey(20%);   			// background row color for notes
+$b-piano-roll-note-color:	#88cc88b0;			// color(15,65%,25%);
+$b-piano-roll-note-focus-color:	 #aaf8;
+$b-piano-roll-note-focus-border: #f0f0f0;
+$b-piano-roll-font:     	normal 9px $b-main-font-family; // the '9px' part is dynamically resized
+// font format: italic small-caps bold 12px serif
+
+// == input[type='number'] ==
+@mixin b-style-number-input () {
+  @include b-style-inset();
+  // Assign webkit spinners that fit the theme
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none; // allow customizations
+    display: none;
+  }
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none; // allow customizations
+    width: 0.75em; margin-left: 0.25em; margin-right: $b-style-border-radius;
+    background: transparent url(../assets/spinners.svg) no-repeat center center !important;
+    background-size: 100% 100% !important;
+    opacity: .5;
+    &:hover { opacity: .99; }
+  }
+  // Mozilla spin buttons are ugly in dark themes, so hide them unless hovering
+  html[gecko] & {
+    -moz-appearance: textfield; padding-right: 14px + 1px;
+    &:hover  { -moz-appearance: unset; padding-right: 1px; }
+  }
+}
+
+// == input[type=range] ==
+@mixin b-style-hrange-track() {
+  -webkit-appearance: none;
+  width: 100%; height: 7px; cursor: pointer;
+  border-radius: $b-style-border-radius/2;
+  box-shadow: inset 0 1px 0 0px $b-style-dark-outline, inset 0px -1px 0px 0px $b-style-inset-glint-2;
+  background-color: $b-style-inset-background-0; background: $b-style-inset-background;
+}
+@mixin b-style-hrange-thumb-bg($center: $b-style-outset-glint-1) {
+  background: radial-gradient(
+    $center 10%, $b-style-outset-glint-1 20%,
+    $b-style-inset-background-2 25%, $b-style-inset-background-2 35%,
+    mix($b-style-inset-background-2, $b-style-outset-glint-2) 40%, $b-style-outset-glint-2 50%);
+}
+@mixin b-style-hrange-thumb {
+  width: 15px; height: 15px; cursor: pointer;
+  border-radius: 50%; border: none;
+  box-shadow:
+	0px 0px 0 1px $b-style-dark-outline, inset 0 3px 2px -2px $b-style-outset-glint-1,
+	inset 0 -3px 2px -2px $b-style-inset-background-2;
+  @include b-style-hrange-thumb-bg;
+}
+@mixin b-style-hrange-input {
+  -webkit-appearance: none;
+  background-color: transparent;
+  &::-moz-range-track              { @include b-style-hrange-track(); }
+  &::-moz-range-thumb		   { @include b-style-hrange-thumb(); }
+  &:hover::-moz-range-thumb	   { @include b-style-hrange-thumb-bg(#ffc); }
+  &::-webkit-slider-runnable-track { @include b-style-hrange-track(); }
+  &::-webkit-slider-thumb          { @include b-style-hrange-thumb();
+				     margin-top: -4px; -webkit-appearance: none; }
+  &:hover::-webkit-slider-thumb    { @include b-style-hrange-thumb-bg(#ffc); }
+}
+
+// == Scrollbars (see styles.scss) ==
+/// Style container to constrain area within which its scrollbars highlight on hover.
+@mixin scrollbar-hover-area() {
+  #b-app & {
+    html[chrome] & {
+      & ::-webkit-scrollbar-thumb { background: $b-scrollbar-dd; }
+      &:hover ::-webkit-scrollbar-thumb { background: linear-gradient(lighter($b-scrollbar-fg), darker($b-scrollbar-fg)); }
+    }
+    html[gecko] & {
+      scrollbar-color: $b-scrollbar-dd $b-scrollbar-bg;
+      &:hover {
+	scrollbar-color: $b-scrollbar-fg $b-scrollbar-bg;
+      }
+    }
+  }
+  // sync with styles.scss
+}
