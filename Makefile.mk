@@ -91,6 +91,7 @@ uninstall: FORCE
 installcheck: FORCE
 
 # == subdirs ==
+include ase/Makefile.mk
 include misc/Makefile.mk
 
 # == FORCE rules ==
