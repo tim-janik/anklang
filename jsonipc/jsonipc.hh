@@ -574,12 +574,11 @@ CallbackInfo::find_closure (const char *methodname)
 struct ClassPrinter {
   static bool recording ()              { return recording_(); }
   static void recording (bool toggle)   { recording_ (toggle); }
-  enum Tag { ENUMS = 1, CLASSES, SERIALIZABLE };
-  ClassPrinter (Tag tag) :
-    tag_ (tag)
+  enum Entity { ENUMS = 1, CLASSES, SERIALIZABLE };
+  template<class T> static ClassPrinter*
+  create (Entity entity)
   {
-    auto &printers = printers_();
-    printers.push_back (this);
+    return new ClassPrinter (rtti_typename<T>(), entity);
   }
   static std::string
   to_string()
@@ -618,9 +617,9 @@ struct ClassPrinter {
   void
   print (const std::string &classname, const std::string &what, const std::string &name, int64_t count)
   {
+    JSONIPC_ASSERT_RETURN (classname_ == classname);
     if (what == "new")
       {
-        JSONIPC_ASSERT_RETURN (classname_.empty() && !classname.empty());
         classname_ = classname;
         jsclass_ = canonify (classname);
         jsalias_ = name.empty() ? "" : canonify (name);
@@ -678,6 +677,12 @@ struct ClassPrinter {
       advance_state (0);                // force close
   }
 private:
+  ClassPrinter (const std::string &classname, Entity entity) :
+    classname_ (classname), entity_ (entity)
+  {
+    auto &printers = printers_();
+    printers.push_back (this);
+  }
   /// Enforce a canonical charset for a string.
   static std::string
   canonify (const std::string &string)
@@ -723,11 +728,11 @@ private:
       }
     if (state_ == 1 && state_ < next)   // class started
       {
-        if (tag_ == SERIALIZABLE)
+        if (entity_ == SERIALIZABLE)
           {
             out_ += "{\n";
           }
-        else if (tag_ == CLASSES)
+        else if (entity_ == CLASSES)
           {
             out_ += "{\n  constructor ($id) { ";
             if (jsprinter_extends)
@@ -737,13 +742,13 @@ private:
             out_ += "if (new.target === " + jsclass_ + ") Object.freeze (this); ";
             out_ += "}\n";
           }
-        else if (tag_ == ENUMS)
+        else if (entity_ == ENUMS)
           out_ += "{";
         state_++;                       // class open
       }
     if (state_ == 2 && state_ < next)   // class open
       {
-        if (tag_ == SERIALIZABLE)       // close serializable_
+        if (entity_ == SERIALIZABLE)       // close serializable_
           {
             out_ += "  constructor (";
             uint n = 0;
@@ -757,8 +762,8 @@ private:
             out_ += "  }\n";
           }
         out_ += "}\n";
-        if (tag_ == CLASSES ||          // support '$class' lookups
-            tag_ == SERIALIZABLE)
+        if (entity_ == CLASSES ||          // support '$class' lookups
+            entity_ == SERIALIZABLE)
           out_ += "$jsonipc.classes['" + classname_ + "'] = " + jsclass_ + ";\n";
         if (!jsalias_.empty())
           out_ += "export const " + jsalias_ + " = " + jsclass_ + ";\n";
@@ -771,7 +776,7 @@ private:
   std::vector<std::string> serializable_attributes;
   std::string classname_, jsclass_, jsalias_, out_;
   int state_ = 0;
-  Tag tag_ = Tag (0);
+  Entity entity_ = Entity (0);
   bool jsprinter_extends = false;
   static bool recording_ (int v = -1)   { static bool r = false; if (v >= 0) r = v; return r; }
 };
@@ -797,7 +802,7 @@ protected:
 template<typename T>
 struct Enum : TypeInfo {
   static_assert (std::is_enum<T>::value, "");
-  virtual ClassPrinter* create_printer () override { return new ClassPrinter (ClassPrinter::ENUMS); }
+  virtual ClassPrinter* create_printer () override { return ClassPrinter::create<T> (ClassPrinter::ENUMS); }
   using UnderlyingType = typename std::underlying_type<T>::type;
   Enum (const std::string &altname = "")
   {
@@ -888,7 +893,7 @@ struct Convert<T, REQUIRESv< std::is_enum<T>::value > > {
 /// Jsonipc wrapper type for objects that support field-wise serialization to/from JSON.
 template<typename T>
 struct Serializable : TypeInfo {
-  virtual ClassPrinter* create_printer () override { return new ClassPrinter (ClassPrinter::SERIALIZABLE); }
+  virtual ClassPrinter* create_printer () override { return ClassPrinter::create<T> (ClassPrinter::SERIALIZABLE); }
   /// Allow object handles to be streamed to/from Javascript, needs a Scope for temporaries.
   Serializable (const std::string &altname = "")
   {
@@ -986,7 +991,7 @@ can_wrap_object_from_base (const std::string &rttiname, WrapObjectFromBase *hand
 // == Class ==
 template<typename T>
 struct Class : TypeInfo {
-  virtual ClassPrinter* create_printer () override { return new ClassPrinter (ClassPrinter::CLASSES); }
+  virtual ClassPrinter* create_printer () override { return ClassPrinter::create<T> (ClassPrinter::CLASSES); }
   Class (const std::string &altname = "")
   {
     const std::string class_name = classname();
