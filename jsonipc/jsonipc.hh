@@ -574,6 +574,7 @@ CallbackInfo::find_closure (const char *methodname)
 struct ClassPrinter {
   static bool recording ()              { return recording_(); }
   static void recording (bool toggle)   { recording_ (toggle); }
+  enum Op { NEW = 1, INHERIT, ENUMVALUE, ATTRIBUTE, METHOD, GET, SET };
   enum Entity { ENUMS = 1, CLASSES, SERIALIZABLE };
   template<class T> static ClassPrinter*
   create (Entity entity)
@@ -615,13 +616,11 @@ struct ClassPrinter {
     advance_state (0);                  // force close
   }
   void
-  print (const std::string &classname, const std::string &what, const std::string &name, int64_t count)
+  print (const Op op, const std::string &name, int64_t count)
   {
-    JSONIPC_ASSERT_RETURN (classname_ == classname);
-    if (what == "new")
+    if (op == NEW)
       {
-        classname_ = classname;
-        jsclass_ = canonify (classname);
+        jsclass_ = canonify (classname_);
         jsalias_ = name.empty() ? "" : canonify (name);
         out_ += "\nexport class " + jsclass_;
         if (jsclass_ != classname_)
@@ -629,7 +628,7 @@ struct ClassPrinter {
         out_ += "\n";
         state_++;                       // start class
       }
-    if (what == "inherit")
+    if (op == INHERIT)
       {
         advance_state (1);              // start class
         if (jsprinter_extends)
@@ -638,7 +637,7 @@ struct ClassPrinter {
           out_ += "  extends " + canonify (name) + "\n";
         jsprinter_extends = true;
       }
-    if (what == "method")
+    if (op == METHOD)
       {
         advance_state (2);              // force class open
         std::string args;
@@ -647,7 +646,7 @@ struct ClassPrinter {
         out_ += string_format ("  %s (%s) { return $jsonipc.send ('%s', [this%s%s]); }\n",
                                name.c_str(), args.c_str(), name.c_str(), args.empty() ? "" : ", ", args.c_str());
       }
-    if (what == "get")
+    if (op == GET)
       {
         advance_state (2);              // force class open
         out_ += string_format ("  async %s (v) { return await (arguments.length > 0 ? $jsonipc.send ('set/%s', [this, await v]) : $jsonipc.send ('get/%s', [this])); }\n",
@@ -657,7 +656,7 @@ struct ClassPrinter {
                                name.c_str(), name.c_str());
 #endif
       }
-    if (what == "set")
+    if (op == SET)
       {
         advance_state (2);              // force class open
 #if 0   // async property set
@@ -665,16 +664,14 @@ struct ClassPrinter {
                                name.c_str(), name.c_str());
 #endif
       }
-    if (what == "attribute")
+    if (op == ATTRIBUTE)
       serializable_attributes.push_back (name);
-    if (what == "enumvalue")
+    if (op == ENUMVALUE)
       {
         done();                         // enum values are defined *after* the class
         std::string jsname = normalize_typename (classname_ + "." + name);
         out_ += string_format ("%s.%s = \"%s\"; // %d\n", jsclass_.c_str(), name.c_str(), jsname.c_str(), count);
       }
-    if (what == "done")
-      advance_state (0);                // force close
   }
 private:
   ClassPrinter (const std::string &classname, Entity entity) :
@@ -788,13 +785,13 @@ protected:
   virtual ~TypeInfo() {}
   virtual ClassPrinter* create_printer () = 0;
   void
-  print (const std::string &classname, const std::string &what, const std::string &name, int64_t count = 0)
+  print (ClassPrinter::Op op, const std::string &name, int64_t count = 0)
   {
     if (!ClassPrinter::recording())
       return;
     if (!printer_)
       printer_ = create_printer();
-    printer_->print (classname, what, name, count);
+    printer_->print (op, name, count);
   }
 };
 
@@ -807,7 +804,7 @@ struct Enum : TypeInfo {
   Enum (const std::string &altname = "")
   {
     const std::string class_name = rtti_typename<T>();
-    print (class_name, "new", altname);
+    print (ClassPrinter::NEW, altname);
   }
   Enum&
   set (T v, const char *valuename)
@@ -816,7 +813,7 @@ struct Enum : TypeInfo {
     auto &entries_ = entries();
     Entry e { ClassPrinter::normalize_typename (class_name + "." + valuename), v };
     entries_.push_back (e);
-    print (class_name, "enumvalue", valuename, UnderlyingType (v));
+    print (ClassPrinter::ENUMVALUE, valuename, UnderlyingType (v));
     return *this;
   }
   static bool
@@ -898,7 +895,7 @@ struct Serializable : TypeInfo {
   Serializable (const std::string &altname = "")
   {
     const std::string class_name = rtti_typename<T>();
-    print (class_name, "new", altname);
+    print (ClassPrinter::NEW, altname);
     make_serializable<T>();
   }
   /// Add a member object pointer
@@ -915,7 +912,7 @@ struct Serializable : TypeInfo {
       throw std::runtime_error ("duplicate attribute registration: " + std::string (name));
     amap.insert (std::make_pair<std::string, Accessors> (name, std::move (accessors)));
     const std::string class_name = rtti_typename<T>();
-    print (class_name, "attribute", name, 0);
+    print (ClassPrinter::ATTRIBUTE, name, 0);
     return *this;
   }
   static bool               is_serializable     ()                             { return serialize_from_json_() && serialize_to_json_(); }
@@ -995,14 +992,14 @@ struct Class : TypeInfo {
   Class (const std::string &altname = "")
   {
     const std::string class_name = classname();
-    print (class_name, "new", altname);
+    print (ClassPrinter::NEW, altname);
   }
   // Inherit base class `B`
   template<typename B> Class&
   inherit()
   {
     add_base<B>();
-    print (classname(), "inherit", rtti_typename<B>(), 0);
+    print (ClassPrinter::INHERIT, rtti_typename<B>(), 0);
     return *this;
   }
   /// Add a member function pointer
@@ -1010,7 +1007,7 @@ struct Class : TypeInfo {
   set (const char *name, const F &method)
   {
     add_member_function_closure (name, make_closure (method));
-    print (classname(), "method", name, CallTraits<F>::N_ARGS);
+    print (ClassPrinter::METHOD, name, CallTraits<F>::N_ARGS);
     return *this;
   }
   /// Add a member object accessors
@@ -1020,12 +1017,12 @@ struct Class : TypeInfo {
     if (get)
       {
         add_member_function_closure (std::string ("get/") + name, make_closure (get));
-        print (classname(), "get", name, 0);
+        print (ClassPrinter::GET, name, 0);
       }
     if (set)
       {
         add_member_function_closure (std::string ("set/") + name, make_closure (set));
-        print (classname(), "set", name, 0);
+        print (ClassPrinter::SET, name, 0);
       }
     return *this;
   }
