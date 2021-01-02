@@ -1310,6 +1310,7 @@ struct Convert<T*, REQUIRESv< IsWrappableClass<T>::value >> {
       return obj ? Serializable<ClassType>::serialize_to_json (*obj, allocator) : JsonValue (rapidjson::kObjectType);
     if (obj)
       {
+        // Caveat: Jsonipc will only auto-convert to most-derived-type iff it is registered and when looking at a shared_ptr<BaseType>
         if (Class<ClassType>::is_eternal())
           {
             auto nodeleter = [] (void*) {};
