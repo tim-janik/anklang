@@ -572,25 +572,16 @@ CallbackInfo::find_closure (const char *methodname)
 
 // == ClassPrinter ==
 struct ClassPrinter {
-  static bool recording ()              { return recording_(); }
-  static void recording (bool toggle)   { recording_ (toggle); }
-  enum Op { NEW = 1, INHERIT, ENUMVALUE, ATTRIBUTE, METHOD, GET, SET };
+  enum Op { NEW = 1, INHERIT, BODY, ATTRIBUTE, METHOD, GETSET, ENUMVALUE, DONE };
   enum Entity { ENUMS = 1, CLASSES, SERIALIZABLE };
   template<class T> static ClassPrinter*
   create (Entity entity)
   {
-    return new ClassPrinter (rtti_typename<T>(), entity);
-  }
-  static std::string
-  to_string()
-  {
-    std::string all;
+    const std::string classname = rtti_typename<T>();
     for (auto &p : printers_())
-      {
-        p->done();
-        all += p->out_;
-      }
-    return all;
+      if (entity == p->entity_ && classname == p->classname_)
+        return p;
+    return new ClassPrinter (classname, entity);
   }
   /// Yield the Javascript identifier name by substituting ':+' with '.'
   static std::string
@@ -611,74 +602,135 @@ struct ClassPrinter {
     return normalized;
   }
   void
-  done()
+  print (const Op op, const std::string &name, int32_t count)
   {
-    advance_state (0);                  // force close
+    auto &operations = operations_;
+    operations.push_back ({ name, op, count });
   }
   void
-  print (const Op op, const std::string &name, int64_t count)
-  {
-    if (op == NEW)
-      {
-        jsclass_ = canonify (classname_);
-        jsalias_ = name.empty() ? "" : canonify (name);
-        out_ += "\nexport class " + jsclass_;
-        if (jsclass_ != classname_)
-          out_ += " // " + classname_;
-        out_ += "\n";
-        state_++;                       // start class
-      }
-    if (op == INHERIT)
-      {
-        advance_state (1);              // start class
-        if (jsprinter_extends)
-          out_ += " /* extends " + name + " */\n";
-        else
-          out_ += "  extends " + canonify (name) + "\n";
-        jsprinter_extends = true;
-      }
-    if (op == METHOD)
-      {
-        advance_state (2);              // force class open
-        std::string args;
-        for (int i = 0; i < count; i++)
-          args += (i ? ", " : "") + string_format ("a%d", i + 1);
-        out_ += string_format ("  %s (%s) { return $jsonipc.send ('%s', [this%s%s]); }\n",
-                               name.c_str(), args.c_str(), name.c_str(), args.empty() ? "" : ", ", args.c_str());
-      }
-    if (op == GET)
-      {
-        advance_state (2);              // force class open
-        out_ += string_format ("  async %s (v) { return await (arguments.length > 0 ? $jsonipc.send ('set/%s', [this, await v]) : $jsonipc.send ('get/%s', [this])); }\n",
-                               name.c_str(), name.c_str(), name.c_str());
-#if 0   // async property get
-        out_ += string_format ("  get %s ()  { return $jsonipc.send ('get/%s', [this]); }\n",
-                               name.c_str(), name.c_str());
-#endif
-      }
-    if (op == SET)
-      {
-        advance_state (2);              // force class open
-#if 0   // async property set
-        out_ += string_format ("  set %s (v) { (async () => $jsonipc.send ('set/%s', [this, await v])) (); }\n",
-                               name.c_str(), name.c_str());
-#endif
-      }
-    if (op == ATTRIBUTE)
-      serializable_attributes.push_back (name);
-    if (op == ENUMVALUE)
-      {
-        done();                         // enum values are defined *after* the class
-        std::string jsname = normalize_typename (classname_ + "." + name);
-        out_ += string_format ("%s.%s = \"%s\"; // %d\n", jsclass_.c_str(), name.c_str(), jsname.c_str(), count);
-      }
-  }
-private:
-  ClassPrinter (const std::string &classname, Entity entity) :
-    classname_ (classname), entity_ (entity)
+  force_before (ClassPrinter &other)
   {
     auto &printers = printers_();
-    printers.push_back (this);
+    if (&other == printers.back())
+      return; // likely fast path
+    ssize_t ipos = -1, opos = -1;
+    for (size_t i = 0; i < printers.size() && (ipos < 0 || opos < 0); i++)
+      if (printers[i] == this)
+        ipos = i;
+      else if (printers[i] == &other)
+        opos = i;
+    JSONIPC_ASSERT_RETURN (ipos >= 0 && opos >= 0);
+    if (opos < ipos)
+      {
+        auto b = printers.begin();
+        std::move_backward (b + opos, b + ipos, b + ipos + 1); // beware, ugly API!
+        *(b + opos) = this;
+      }
+  }
+  static std::string
+  to_string()
+  {
+    std::string all;
+    for (auto &pr : printers_())
+      all += pr->ops_to_string();
+    return all;
+  }
+private:
+  struct Operation { std::string name; Op op = DONE; int32_t count = 0; };
+  std::string
+  ops_to_string()
+  {
+    auto &operations = operations_;
+    // ensure NEW, BODY, DONE
+    if (operations.empty() || operations[0].op != NEW)
+      operations.insert (operations.begin(), { "", NEW, 0 });
+    auto it = operations.begin();
+    while (it != operations.end() && (it->op == NEW || it->op == INHERIT))
+      it++;
+    if (it == operations.end() || it->op != BODY)
+      operations.insert (it, { "", BODY, 0 });
+    if (operations.back().op != DONE)
+      operations.insert (operations.end(), { "", DONE, 0 });
+    // context
+    const char *lastcolon = strrchr (classname_.c_str(), ':');
+    const std::string jsclass = canonify (lastcolon ? lastcolon + 1 : classname_);
+    std::vector<std::string> serializable_attributes;
+    bool inherits = false;
+    std::string out;
+    // process OPS
+    for (const auto &p : operations)
+      switch (p.op)
+        {
+        case NEW:
+          if (entity_ == ENUMS)
+            out += "\nexport const " + jsclass + " = ";
+          else
+            out += "\nexport class " + jsclass;
+          if (jsclass != classname_)
+            out += " // " + classname_;
+          out += "\n";
+          break;
+        case INHERIT:
+          if (inherits)
+            out += " /* extends " + p.name + " */\n";
+          else
+            out += "  extends $jsonipc.classes['" + p.name + "']\n";
+          inherits = true;
+          break;
+        case BODY:
+          if (entity_ == CLASSES)
+            {
+              out += "{\n  constructor ($id) { ";
+              if (inherits)
+                out += "super ($id); ";
+              else
+                out += "Object.defineProperty (this, '$id', { value: $id }); ";
+              out += "if (new.target === " + jsclass + ") Object.freeze (this); ";
+              out += "}\n";
+            }
+          else
+            out += "{\n";
+          break;
+        case METHOD: {
+          std::string args;
+          for (int i = 0; i < p.count; i++)
+            args += (i ? ", " : "") + string_format ("a%d", i + 1);
+          out += string_format ("  %s (%s) { return $jsonipc.send ('%s', [this%s%s]); }\n",
+                                p.name.c_str(), args.c_str(), p.name.c_str(), args.empty() ? "" : ", ", args.c_str());
+          break; }
+        case GETSET:
+          out += string_format ("  async %s (v) { return arguments.length > 0 ? "
+                                "$jsonipc.send ('set/%s', [this, await v]) : "
+                                "$jsonipc.send ('get/%s', [this]); }\n",
+                                p.name.c_str(), p.name.c_str(), p.name.c_str());
+          break;
+        case ATTRIBUTE:
+          serializable_attributes.push_back (p.name);
+          break;
+        case ENUMVALUE: {
+          std::string jsname = normalize_typename (classname_ + "." + p.name);
+          out += string_format ("  %s: \"%s\", // %d\n", p.name.c_str(), jsname.c_str(), p.count);
+          break; }
+        case DONE:
+          if (entity_ == SERIALIZABLE)       // close serializable_
+            {
+              out += "  constructor (";
+              uint n = 0;
+              for (auto &prop : serializable_attributes)
+                out += (n++ ? ", " : "") + prop;
+              out += ") {\n";
+              if (inherits)
+                out += "    super ();\n";
+              for (auto &prop : serializable_attributes)  // attributes are defined *inside* the constructor
+                out += string_format ("    this.%s = %s;\n", prop.c_str(), prop.c_str());
+              out += "  }\n";
+            }
+          out += "}\n";
+          // support '$class' lookups
+          out += "$jsonipc.classes['" + classname_ + "'] = " + jsclass + ";\n";
+          break;
+        }
+    return out;
   }
   /// Enforce a canonical charset for a string.
   static std::string
@@ -711,71 +763,16 @@ private:
     // else, pass through
     return string;
   }
-  void
-  advance_state (int next)
+  ClassPrinter (const std::string &classname, Entity entity) :
+    classname_ (classname), entity_ (entity)
   {
-    if (state_ == next)
-      return;
-    if (next == 0)
-      next = 999;
-    if (state_ == 0 && state_ < next)   // no class yet
-      {
-        JSONIPC_ASSERT_RETURN (!"mixed Class<> setters");
-        state_++;                       // class started
-      }
-    if (state_ == 1 && state_ < next)   // class started
-      {
-        if (entity_ == SERIALIZABLE)
-          {
-            out_ += "{\n";
-          }
-        else if (entity_ == CLASSES)
-          {
-            out_ += "{\n  constructor ($id) { ";
-            if (jsprinter_extends)
-              out_ += "super ($id); ";
-            else
-              out_ += "Object.defineProperty (this, '$id', { value: $id }); ";
-            out_ += "if (new.target === " + jsclass_ + ") Object.freeze (this); ";
-            out_ += "}\n";
-          }
-        else if (entity_ == ENUMS)
-          out_ += "{";
-        state_++;                       // class open
-      }
-    if (state_ == 2 && state_ < next)   // class open
-      {
-        if (entity_ == SERIALIZABLE)       // close serializable_
-          {
-            out_ += "  constructor (";
-            uint n = 0;
-            for (auto &prop : serializable_attributes)
-              out_ += (n++ ? ", " : "") + prop;
-            out_ += ") {\n";
-            if (jsprinter_extends)
-              out_ += "    super ();\n";
-            for (auto &prop : serializable_attributes)  // attributes are defined *inside* the constructor
-              out_ += string_format ("    this.%s = %s;\n", prop.c_str(), prop.c_str());
-            out_ += "  }\n";
-          }
-        out_ += "}\n";
-        if (entity_ == CLASSES ||          // support '$class' lookups
-            entity_ == SERIALIZABLE)
-          out_ += "$jsonipc.classes['" + classname_ + "'] = " + jsclass_ + ";\n";
-        if (!jsalias_.empty())
-          out_ += "export const " + jsalias_ + " = " + jsclass_ + ";\n";
-        state_++;                       // class closed
-      }
-    if (state_ < next)
-      state_ = 0;                       // close state
+    auto &printers = printers_();
+    printers.push_back (this);
   }
-  static std::vector<ClassPrinter*>& printers_() { static std::vector<ClassPrinter*> printers; return printers; }
-  std::vector<std::string> serializable_attributes;
-  std::string classname_, jsclass_, jsalias_, out_;
-  int state_ = 0;
+  std::vector<Operation> operations_;
+  std::string classname_;
   Entity entity_ = Entity (0);
-  bool jsprinter_extends = false;
-  static bool recording_ (int v = -1)   { static bool r = false; if (v >= 0) r = v; return r; }
+  static std::vector<ClassPrinter*>& printers_()   { static std::vector<ClassPrinter*> printers; return printers; }
 };
 
 // == TypeInfo ==
@@ -785,10 +782,8 @@ protected:
   virtual ~TypeInfo() {}
   virtual ClassPrinter* create_printer () = 0;
   void
-  print (ClassPrinter::Op op, const std::string &name, int64_t count = 0)
+  print (ClassPrinter::Op op, const std::string &name, int32_t count = 0)
   {
-    if (!ClassPrinter::recording())
-      return;
     if (!printer_)
       printer_ = create_printer();
     printer_->print (op, name, count);
@@ -801,11 +796,6 @@ struct Enum : TypeInfo {
   static_assert (std::is_enum<T>::value, "");
   virtual ClassPrinter* create_printer () override { return ClassPrinter::create<T> (ClassPrinter::ENUMS); }
   using UnderlyingType = typename std::underlying_type<T>::type;
-  Enum (const std::string &altname = "")
-  {
-    const std::string class_name = rtti_typename<T>();
-    print (ClassPrinter::NEW, altname);
-  }
   Enum&
   set (T v, const char *valuename)
   {
@@ -892,10 +882,8 @@ template<typename T>
 struct Serializable : TypeInfo {
   virtual ClassPrinter* create_printer () override { return ClassPrinter::create<T> (ClassPrinter::SERIALIZABLE); }
   /// Allow object handles to be streamed to/from Javascript, needs a Scope for temporaries.
-  Serializable (const std::string &altname = "")
+  Serializable()
   {
-    const std::string class_name = rtti_typename<T>();
-    print (ClassPrinter::NEW, altname);
     make_serializable<T>();
   }
   /// Add a member object pointer
@@ -989,11 +977,6 @@ can_wrap_object_from_base (const std::string &rttiname, WrapObjectFromBase *hand
 template<typename T>
 struct Class : TypeInfo {
   virtual ClassPrinter* create_printer () override { return ClassPrinter::create<T> (ClassPrinter::CLASSES); }
-  Class (const std::string &altname = "")
-  {
-    const std::string class_name = classname();
-    print (ClassPrinter::NEW, altname);
-  }
   // Inherit base class `B`
   template<typename B> Class&
   inherit()
@@ -1014,16 +997,10 @@ struct Class : TypeInfo {
   template<typename R, typename A, typename C> Class&
   set (const char *name, R (C::*get) () const, void (C::*set) (A))
   {
-    if (get)
-      {
-        add_member_function_closure (std::string ("get/") + name, make_closure (get));
-        print (ClassPrinter::GET, name, 0);
-      }
-    if (set)
-      {
-        add_member_function_closure (std::string ("set/") + name, make_closure (set));
-        print (ClassPrinter::SET, name, 0);
-      }
+    JSONIPC_ASSERT_RETURN (get && set, *this);
+    add_member_function_closure (std::string ("get/") + name, make_closure (get));
+    add_member_function_closure (std::string ("set/") + name, make_closure (set));
+    print (ClassPrinter::GETSET, name, 0);
     return *this;
   }
   /// Allow object handles without reference counting via shared_ptr
@@ -1159,6 +1136,10 @@ private:
     if (bvec.empty())
       can_wrap_object_from_base (classname(), wrap_object_from_base);
     bvec.push_back (binfo);
+    Class<B> bclass;
+    ClassPrinter *bprinter = bclass.create_printer();
+    ClassPrinter *dprinter = this->create_printer();
+    bprinter->force_before (*dprinter); // base before derived
   }
   static BaseVec&   basevec  () { static BaseVec basevec_;     return basevec_; }
   static size_t
