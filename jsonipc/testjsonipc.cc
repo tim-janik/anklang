@@ -96,7 +96,7 @@ test_jsonipc (bool dispatcher_shell = false)
   JSONIPC_ASSERT_RETURN (strcmp ("HUM", from_json<const char*> (to_json ((const char*) "HUM", a))) == 0);
 
   // register test classes and methods
-  Jsonipc::Enum<ErrorType> enum_ErrorType ("Error");
+  Jsonipc::Enum<ErrorType> enum_ErrorType;
   enum_ErrorType
     .set (ErrorType::NONE, "NONE")
     .set (ErrorType::INVALID, "INVALID")
