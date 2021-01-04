@@ -2,6 +2,9 @@
 
 /// WebSocket handling coded needed for the Jsonipc wire marshalling
 export const Jsonipc = {
+  pdefine: globalThis.Object.defineProperty,
+  ofreeze: globalThis.Object.freeze,
+  okeys: globalThis.Object.keys,
   classes: {},
   observations: {},
   authresult: undefined,
@@ -40,7 +43,7 @@ export const Jsonipc = {
 	  if (e.$id > 0)
 	    a[i] = { '$id': e.$id }; // unwrap object
 	  else
-	    for (let key of Object.keys (e))
+	    for (let key of Jsonipc.okeys (e))
 	      unwrap_args (e[key], key, e);
 	}
     };
@@ -60,7 +63,7 @@ export const Jsonipc = {
 	  if (e.$class)
 	    a[i] = wrap_arg (e);
 	  else
-	    for (let key of Object.keys (e))
+	    for (let key of Jsonipc.okeys (e))
 	      wrap_args (e[key], key, e);
 	}
     };

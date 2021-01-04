@@ -684,14 +684,14 @@ private:
               if (inherits)
                 out += "super ($id); ";
               else
-                out += "Object.defineProperty (this, '$id', { value: $id }); ";
-              out += "if (new.target === " + jsclass + ") Object.freeze (this); ";
+                out += "Jsonipc.pdefine (this, '$id', { value: $id }); ";
+              out += "if (new.target === " + jsclass + ") Jsonipc.ofreeze (this); ";
               out += "}\n";
             }
           else
             {
               if (entity_ == ENUMS)
-                out += "Object.freeze (";
+                out += "Jsonipc.ofreeze (";
               out += "{\n";
             }
           break;
