@@ -1,7 +1,7 @@
 // Licensed CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1.0
 
 /// WebSocket handling coded needed for the Jsonipc wire marshalling
-export const $jsonipc = {
+export const Jsonipc = {
   classes: {},
   observations: {},
   authresult: undefined,
@@ -12,7 +12,7 @@ export const $jsonipc = {
   /// Open the Jsonipc websocket
   open (url, protocols) {
     if (this.web_socket)
-      throw "$jsonipc: connection open";
+      throw "Jsonipc: connection open";
     this.counter = 1000000 * Math.floor (100 + 899 * Math.random());
     this.idmap = {};
     this.web_socket = new WebSocket (url, protocols);
@@ -21,7 +21,7 @@ export const $jsonipc = {
     this.web_socket.onmessage = this.socket_message.bind (this);
     const promise = new Promise (resolve => {
       this.web_socket.onopen = (event) => {
-	const psend = this.send ('$jsonipc.initialize', []);
+	const psend = this.send ('Jsonipc.initialize', []);
 	psend.then (result => { this.authresult = result; resolve (this.authresult); });
       };
     });
@@ -31,7 +31,7 @@ export const $jsonipc = {
   /// Send a Jsonipc request
   send (methodname, args) {
     if (!this.web_socket)
-      throw "$jsonipc: connection closed";
+      throw "Jsonipc: connection closed";
     const unwrap_args = (e, i, a) => {
       if (Array.isArray (e))
 	e.forEach (unwrap_args);
@@ -151,4 +151,4 @@ export const $jsonipc = {
   },
 };
 
-// ----- End of jsonipc/head.js -----
+// ----- End of jsonipc/jsonipc.js -----

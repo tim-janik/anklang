@@ -674,7 +674,7 @@ private:
           if (inherits)
             out += " /* extends " + p.name + " */\n";
           else
-            out += "  extends $jsonipc.classes['" + p.name + "']\n";
+            out += "  extends Jsonipc.classes['" + p.name + "']\n";
           inherits = true;
           break;
         case BODY:
@@ -695,13 +695,13 @@ private:
           std::string args;
           for (int i = 0; i < p.count; i++)
             args += (i ? ", " : "") + string_format ("a%d", i + 1);
-          out += string_format ("  %s (%s) { return $jsonipc.send ('%s', [this%s%s]); }\n",
+          out += string_format ("  %s (%s) { return Jsonipc.send ('%s', [this%s%s]); }\n",
                                 p.name.c_str(), args.c_str(), p.name.c_str(), args.empty() ? "" : ", ", args.c_str());
           break; }
         case GETSET:
           out += string_format ("  async %s (v) { return arguments.length > 0 ? "
-                                "$jsonipc.send ('set/%s', [this, await v]) : "
-                                "$jsonipc.send ('get/%s', [this]); }\n",
+                                "Jsonipc.send ('set/%s', [this, await v]) : "
+                                "Jsonipc.send ('get/%s', [this]); }\n",
                                 p.name.c_str(), p.name.c_str(), p.name.c_str());
           break;
         case ATTRIBUTE:
@@ -727,7 +727,7 @@ private:
             }
           out += "}\n";
           // support '$class' lookups
-          out += "$jsonipc.classes['" + classname_ + "'] = " + jsclass + ";\n";
+          out += "Jsonipc.classes['" + classname_ + "'] = " + jsclass + ";\n";
           break;
         }
     return out;
@@ -1358,7 +1358,7 @@ struct IpcDispatcher {
         const auto it = extra_methods.find (methodname);
         if (it != extra_methods.end())
           closure = &it->second;
-        else if (strcmp (methodname, "$jsonipc.initialize") == 0)
+        else if (strcmp (methodname, "Jsonipc.initialize") == 0)
           {
             static Closure initialize = [] (CallbackInfo &cbi) { return jsonipc_initialize (cbi); };
             closure = &initialize;
