@@ -180,12 +180,14 @@ def generate_jsonipc (cctree, namespaces):
       struct = 'Serializable' if fields and not methods else 'Class'
       ident = struct.lower() + '_%d' % counter ; counter += 1
       p ('::Jsonipc::%s<' % struct, fqclname, '> ' + ident + ';')
-      if fields or methods:
+      bases = cl.attrib.get ('bases', '')
+      details = (fields or methods or bases) and True
+      if details:
         p (ident);
       indent += 1
       # assign bases
       if struct == 'Class':
-        for cid in cl.attrib.get ('bases', '').split (' '):
+        for cid in bases.split (' '):
           bc = cctree.find_class (cid)
           if bc != None:
             basefqname = cctree.fqname (bc)
@@ -203,7 +205,7 @@ def generate_jsonipc (cctree, namespaces):
           p ('.set', '("%s", &%s::%s, &%s::%s)' % (mname, fqclname, mname, fqclname, mname))
         elif kind in ('f', 's', 'g'):
           p ('.set', '("%s", &%s::%s)' % (mname, fqclname, mname))
-      if fields or methods:
+      if details:
         p (';')
       indent -= 1
 
