@@ -689,7 +689,11 @@ private:
               out += "}\n";
             }
           else
-            out += "{\n";
+            {
+              if (entity_ == ENUMS)
+                out += "Object.freeze (";
+              out += "{\n";
+            }
           break;
         case METHOD: {
           std::string args;
@@ -725,7 +729,10 @@ private:
                 out += string_format ("    this.%s = %s;\n", prop.c_str(), prop.c_str());
               out += "  }\n";
             }
-          out += "}\n";
+          if (entity_ == ENUMS)
+            out += "});\n";
+          else
+            out += "}\n";
           // support '$class' lookups
           out += "Jsonipc.classes['" + classname_ + "'] = " + jsclass + ";\n";
           break;
