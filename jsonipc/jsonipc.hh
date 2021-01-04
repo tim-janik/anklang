@@ -774,7 +774,15 @@ private:
     classname_ (classname), entity_ (entity)
   {
     auto &printers = printers_();
-    printers.push_back (this);
+    if (entity == ENUMS)
+      {
+        auto it = printers.begin();
+        while (it != printers.end() && (*it)->entity_ == ENUMS)
+          it++;
+        printers.insert (it, this);
+      }
+    else
+      printers.push_back (this);
   }
   std::vector<Operation> operations_;
   std::string classname_;
