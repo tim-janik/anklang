@@ -116,7 +116,7 @@ class CCTree:
         return 'f' # function
 
 def parse_file (ifile):
-  args = [ 'castxml', '-o', '/dev/stdout', '--castxml-output=1' ]
+  args = [ 'castxml', '-std=gnu++17', '-o', '/dev/stdout', '--castxml-output=1' ]
   for inc in includes:
     args += [ '-I', inc ]
   args.append (ifile)
