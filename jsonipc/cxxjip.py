@@ -122,6 +122,8 @@ def parse_file (ifile):
   args.append (ifile)
   process = subprocess.Popen (args, stdout = subprocess.PIPE)
   out, err = process.communicate()
+  if process.returncode:
+    raise Exception ('%s: failed with status (%d), full command:\n  %s' % (args[0], process.returncode, ' '.join (args)))
   return out
 
 def skip_identifier (ident):
