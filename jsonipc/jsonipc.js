@@ -13,14 +13,16 @@ export const Jsonipc = {
   idmap: {},
 
   /// Open the Jsonipc websocket
-  open (url, protocols) {
+  open (url, protocols, onclose = undefined) {
     if (this.web_socket)
       throw "Jsonipc: connection open";
     this.counter = 1000000 * Math.floor (100 + 899 * Math.random());
     this.idmap = {};
     this.web_socket = new WebSocket (url, protocols);
     this.web_socket.binaryType = 'arraybuffer';
-    this.web_socket.onerror = (event) => { throw event; };
+    // this.web_socket.onerror = (event) => { throw event; };
+    if (onclose)
+      this.web_socket.onclose = onclose;
     this.web_socket.onmessage = this.socket_message.bind (this);
     const promise = new Promise (resolve => {
       this.web_socket.onopen = (event) => {
