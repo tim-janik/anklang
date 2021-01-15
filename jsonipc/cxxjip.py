@@ -154,6 +154,8 @@ def generate_jsonipc (cctree, namespaces):
     # classes
     for cl in cctree.list_classes (ns):
       clname = cl.attrib.get ('name')
+      if skip_identifier (clname):
+        continue
       fqclname = cctree.fqname (cl)
       # classify methods and fields
       fields = {}
