@@ -18,10 +18,27 @@ class CCTree:
   def __init__ (self, xmltext):
     self.xmltext = xmltext
     self.root = ET.fromstring (self.xmltext)
+    self.idcache = None
   def by_id (self, nodeid):
-    for child in self.root:     # <Method id="_23" name="foo" returns="_46" context="_14" access="private" location="f1:10" file="f1" line="10" mangled="_ZN5Outer2C13fooEv"/>
-      if child.attrib.get ('id') == nodeid:
-        return child
+    if not self.idcache:
+      self.idcache = {}
+      for child in self.root:   # <File id="f21" .../>
+        cid = child.attrib.get ('id')
+        if cid:
+          self.idcache[cid] = child
+    return self.idcache.get (nodeid, None)
+  def from_file (self, node):
+    fileid = node.attrib.get ('file', '')
+    if fileid:                  # <File id="f21" name="/usr/include/stdint.h"/>
+      cfile = self.by_id (fileid)
+      if cfile != None and cfile.tag == 'File':
+        name = cfile.attrib.get ('name', '')
+        if name:
+          return name
+    return None
+  def from_absfile (self, node):
+    filename = self.from_file (node)
+    return os.path.abspath (filename) if filename else None
   def fqns (self, node):
     context = self.by_id (node.attrib.get ('context', ''))
     if context != None:
@@ -131,7 +148,7 @@ def skip_identifier (ident):
     return True
   return False
 
-def generate_jsonipc (cctree, namespaces):
+def generate_jsonipc (cctree, namespaces, absfile = None):
   global indent, counter
   # namespaces
   for ns in cctree.list_namespaces():
@@ -156,6 +173,10 @@ def generate_jsonipc (cctree, namespaces):
       clname = cl.attrib.get ('name')
       if skip_identifier (clname):
         continue
+      if absfile:
+        if absfile != cctree.from_absfile (cl):
+          print (clname, absfile, cctree.from_absfile (cl), file = sys.stderr)
+          continue
       fqclname = cctree.fqname (cl)
       # classify methods and fields
       fields = {}
@@ -244,6 +265,7 @@ if len (files) == 0:
   sys.exit (7)
 
 for f in files:
+  absfile = os.path.abspath (f)
   xmlout = parse_file (f)
   xmlout = xmlout.decode ('utf8')
   #open ("xmlcxx", "w").write (xmlout)
@@ -252,6 +274,6 @@ for f in files:
   p ('jsonipc_4_%s()' % file_identifier (f))
   p ('{')
   indent += 1
-  generate_jsonipc (cctree, namespaces)
+  generate_jsonipc (cctree, namespaces, absfile)
   indent -= 1
   p ('}')
