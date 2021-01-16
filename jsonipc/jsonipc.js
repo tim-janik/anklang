@@ -40,6 +40,8 @@ export const Jsonipc = {
     const unwrap_args = (e, i, a) => {
       if (Array.isArray (e))
 	e.forEach (unwrap_args);
+      else if (null === e)
+	;
       else if ('object' === typeof e)
 	{
 	  if (e.$id > 0)
