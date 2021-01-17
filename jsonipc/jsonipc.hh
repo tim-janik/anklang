@@ -1254,6 +1254,8 @@ struct Convert<std::shared_ptr<T>, REQUIRESv< IsWrappableClass<T>::value >> {
   static JsonValue
   to_json (const std::shared_ptr<T> &sptr, JsonAllocator &allocator)
   {
+    if (Serializable<ClassType>::is_serializable())
+      return sptr ? Serializable<ClassType>::serialize_to_json (*sptr, allocator) : JsonValue (rapidjson::kObjectType);
     if (sptr)
       {
         size_t thisid = 0;
