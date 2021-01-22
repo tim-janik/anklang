@@ -1,0 +1,9 @@
+--- template.orig	2021-01-22 14:58:50.360691470 +0100
++++ template.html	2021-01-22 14:59:16.632563545 +0100
+@@ -54,2 +54,6 @@
+ <p class="date">$date$</p>
+ $endif$
++$if(abstract)$
++<p class="abstract"><b style="margin: 5em 0 1em; text-align: center; display: block;">Abstract<br /></b>
++$abstract$</p>
++$endif$
