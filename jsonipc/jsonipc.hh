@@ -375,18 +375,6 @@ struct CallbackInfo final {
   static constexpr const char *internal_error    = "Internal error";    // -32603
   static constexpr const char *application_error = "Application error"; // -32500
 private:
-  size_t
-  thisid () const
-  {
-    const JsonValue &value = ntharg (0);
-    if (value.IsObject())
-      {
-        auto it = value.FindMember ("$id");
-        if (it != value.MemberEnd())
-          return Convert<size_t>::from_json (it->value);
-      }
-    return 0;
-  }
   const JsonValue &args_;
   JsonValue    result_;
   bool         have_result_ = false;
@@ -576,8 +564,22 @@ public:
 inline Closure*
 CallbackInfo::find_closure (const char *methodname)
 {
-  InstanceMap::Wrapper *wrapper = InstanceMap::lookup_wrapper (thisid());
-  return wrapper ? wrapper->lookup_closure (methodname) : NULL;
+  const JsonValue &value = ntharg (0);
+  if (value.IsObject())
+    {
+      auto it = value.FindMember ("$id");
+      if (it != value.MemberEnd())
+        {
+          const size_t thisid = Convert<size_t>::from_json (it->value);
+          if (thisid)
+            {
+              InstanceMap::Wrapper *wrapper = InstanceMap::lookup_wrapper (thisid);
+              if (wrapper)
+                return wrapper->lookup_closure (methodname);
+            }
+        }
+    }
+  return nullptr;
 }
 
 // == ClassPrinter ==
@@ -1033,34 +1035,28 @@ struct Class : TypeInfo {
     return typename_of<T>();
   }
   static std::shared_ptr<T>
-  find_object (size_t thisid)
-  {
-    if (thisid)
-      {
-        InstanceMap::Wrapper *iw = InstanceMap::lookup_wrapper (thisid);
-        if (iw)
-          {
-            std::shared_ptr<T> base_sptr = nullptr;
-            iw->try_upcast (classname(), &base_sptr);
-            if (base_sptr)
-              return base_sptr;
-          }
-      }
-    return nullptr;
-  }
-  static std::shared_ptr<T>
-  convert_from_json (const JsonValue &value)
+  object_from_json (const JsonValue &value)
   {
     if (value.IsObject())
       {
         auto it = value.FindMember ("$id");
         if (it != value.MemberEnd())
           {
-            std::shared_ptr<T> sptr = find_object (Convert<size_t>::from_json (it->value));
-            return sptr;
+            const size_t thisid = Convert<size_t>::from_json (it->value);
+            if (thisid)
+              {
+                InstanceMap::Wrapper *iw = InstanceMap::lookup_wrapper (thisid);
+                if (iw)
+                  {
+                    std::shared_ptr<T> base_sptr = nullptr;
+                    iw->try_upcast (classname(), &base_sptr);
+                    if (base_sptr)
+                      return base_sptr;
+                  }
+              }
           }
       }
-    return NULL;
+    return nullptr;
   }
 private:
   template<typename U> static std::string
@@ -1078,7 +1074,7 @@ private:
       const bool HAS_THIS = true;
       if (HAS_THIS + CallTraits<F>::N_ARGS != cbi.n_args())
         return new std::string (std::string (CallbackInfo::invalid_params) + ": wrong number of arguments");
-      std::shared_ptr<T> instance = convert_from_json (cbi.ntharg (0));
+      std::shared_ptr<T> instance = object_from_json (cbi.ntharg (0));
       if (!instance)
         return new std::string (CallbackInfo::internal_error); // closure lookup without this?
       call_from_json (*instance, method, cbi);
@@ -1092,7 +1088,7 @@ private:
       const bool HAS_THIS = true;
       if (HAS_THIS + CallTraits<F>::N_ARGS != cbi.n_args())
         return new std::string (std::string (CallbackInfo::invalid_params) + ": wrong number of arguments");
-      std::shared_ptr<T> instance = convert_from_json (cbi.ntharg (0));
+      std::shared_ptr<T> instance = object_from_json (cbi.ntharg (0));
       if (!instance)
         return new std::string (CallbackInfo::internal_error); // closure lookup without this?
       JsonValue rv = to_json (call_from_json (*instance, method, cbi), cbi.allocator());
@@ -1230,7 +1226,7 @@ struct Convert<std::shared_ptr<T>, REQUIRESv< IsWrappableClass<T>::value >> {
     if (Serializable<ClassType>::is_serializable() && value.IsObject())
       return Serializable<ClassType>::serialize_from_json (value);
     else
-      return Class<ClassType>::convert_from_json (value);
+      return Class<ClassType>::object_from_json (value);
   }
   static JsonValue
   to_json (const std::shared_ptr<T> &sptr, JsonAllocator &allocator)
