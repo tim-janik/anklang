@@ -1024,21 +1024,6 @@ struct Class : TypeInfo {
     is_eternal_() = true;
     return *this;
   }
-  using CopyCtor = std::function<std::shared_ptr<T> (const T&)>;
-  /// Create reference counted object copies
-  Class&
-  copy (const CopyCtor &copyctor)
-  {
-    JSONIPC_ASSERT_RETURN (copyctor != nullptr, *this);
-    copy_ctor_() = copyctor;
-    return *this;
-  }
-  /// Create reference counted object copies via std::make_shared<>() (deprecated, leaky)
-  Class&
-  copyable()
-  {
-    return this->copy ([] (const T &o) { return std::make_shared<T> (o); });
-  }
   static std::string
   classname ()
   {
@@ -1079,11 +1064,9 @@ struct Class : TypeInfo {
       }
     return NULL;
   }
-  static bool               is_eternal ()                { return is_eternal_(); }
-  static std::shared_ptr<T> make_copy  (const T &object) { return copy_ctor_() ? copy_ctor_() (object) : NULL; }
+  static bool      is_eternal ()  { return is_eternal_(); }
 private:
   static bool&     is_eternal_ () { static bool flag = false; return flag; }
-  static CopyCtor& copy_ctor_  () { static CopyCtor func; return func; }
   template<typename U> static std::string
   typename_of()
   {
@@ -1307,16 +1290,11 @@ struct Convert<T*, REQUIRESv< IsWrappableClass<T>::value >> {
     std::shared_ptr<T> sptr;
     if (Serializable<ClassType>::is_serializable())
       return obj ? Serializable<ClassType>::serialize_to_json (*obj, allocator) : JsonValue (rapidjson::kObjectType);
-    if (obj)
+    // Caveat: Jsonipc will only auto-convert to most-derived-type iff it is registered and when looking at a shared_ptr<BaseType>
+    if (obj && Class<ClassType>::is_eternal())
       {
-        // Caveat: Jsonipc will only auto-convert to most-derived-type iff it is registered and when looking at a shared_ptr<BaseType>
-        if (Class<ClassType>::is_eternal())
-          {
-            auto nodeleter = [] (void*) {};
-            sptr = std::shared_ptr<T> (const_cast<T*> (obj), nodeleter);
-          }
-        else
-          sptr = Class<ClassType>::make_copy (*obj);
+        auto nodeleter = [] (void*) {};
+        sptr = std::shared_ptr<T> (const_cast<T*> (obj), nodeleter);
       }
     return Convert<std::shared_ptr<T>>::to_json (sptr, allocator);
   }
