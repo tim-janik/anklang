@@ -527,8 +527,33 @@ public:
      * times through different base classes.
      */
   }
+  virtual Wrapper*
+  lookup_wrapper (const JsonValue &value)
+  {
+    if (value.IsObject())
+      {
+        auto it = value.FindMember ("$id");
+        if (it != value.MemberEnd())
+          {
+            const size_t thisid = Convert<size_t>::from_json (it->value);
+            if (thisid)
+              {
+                auto it = wmap_.find (thisid);
+                if (it != wmap_.end())
+                  return it->second;
+              }
+          }
+      }
+    return nullptr;
+  }
+  static Wrapper*
+  scope_lookup_wrapper (const JsonValue &value)
+  {
+    InstanceMap *imap = Scope::instance_map();
+    return imap ? imap->lookup_wrapper (value) : nullptr;
+  }
   static bool
-  forget_id (size_t thisid)
+  scope_forget_id (size_t thisid)
   {
     InstanceMap *imap = Scope::instance_map();
     auto &wmap_ = imap->wmap_;
@@ -546,40 +571,14 @@ public:
       }
     return false;
   }
-  static Wrapper*
-  lookup_wrapper (size_t thisid)
-  {
-    InstanceMap *imap = Scope::instance_map();
-    if (imap)
-      {
-        auto &wmap_ = imap->wmap_;
-        auto it = wmap_.find (thisid);
-        if (it != wmap_.end())
-          return it->second;
-      }
-    return nullptr;
-  }
 };
 
 inline Closure*
 CallbackInfo::find_closure (const char *methodname)
 {
   const JsonValue &value = ntharg (0);
-  if (value.IsObject())
-    {
-      auto it = value.FindMember ("$id");
-      if (it != value.MemberEnd())
-        {
-          const size_t thisid = Convert<size_t>::from_json (it->value);
-          if (thisid)
-            {
-              InstanceMap::Wrapper *wrapper = InstanceMap::lookup_wrapper (thisid);
-              if (wrapper)
-                return wrapper->lookup_closure (methodname);
-            }
-        }
-    }
-  return nullptr;
+  InstanceMap::Wrapper *iw = InstanceMap::scope_lookup_wrapper (value);
+  return iw ? iw->lookup_closure (methodname) : nullptr;
 }
 
 // == ClassPrinter ==
@@ -1037,24 +1036,13 @@ struct Class : TypeInfo {
   static std::shared_ptr<T>
   object_from_json (const JsonValue &value)
   {
-    if (value.IsObject())
+    InstanceMap::Wrapper *iw = InstanceMap::scope_lookup_wrapper (value);
+    if (iw)
       {
-        auto it = value.FindMember ("$id");
-        if (it != value.MemberEnd())
-          {
-            const size_t thisid = Convert<size_t>::from_json (it->value);
-            if (thisid)
-              {
-                InstanceMap::Wrapper *iw = InstanceMap::lookup_wrapper (thisid);
-                if (iw)
-                  {
-                    std::shared_ptr<T> base_sptr = nullptr;
-                    iw->try_upcast (classname(), &base_sptr);
-                    if (base_sptr)
-                      return base_sptr;
-                  }
-              }
-          }
+        std::shared_ptr<T> base_sptr = nullptr;
+        iw->try_upcast (classname(), &base_sptr);
+        if (base_sptr)
+          return base_sptr;
       }
     return nullptr;
   }
@@ -1261,7 +1249,7 @@ struct Convert<std::shared_ptr<T>, REQUIRESv< IsWrappableClass<T>::value >> {
 static inline void
 forget_json_id (size_t id)
 {
-  InstanceMap::forget_id (id);
+  InstanceMap::scope_forget_id (id);
 }
 
 /// Convert wrapped Class pointer
