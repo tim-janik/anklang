@@ -293,11 +293,11 @@ struct Convert<T, REQUIRESv< DerivesVector<T>::value >> {
   }
 };
 
-// const reference types
+// reference types
 template<typename T>
 struct Convert<T&> : Convert<T> {};
 
-// reference types
+// const reference types
 template<typename T>
 struct Convert<T const&> : Convert<T> {};
 
@@ -1231,7 +1231,10 @@ struct Convert<std::shared_ptr<T>, REQUIRESv< IsWrappableClass<T>::value >> {
   static std::shared_ptr<T>
   from_json (const JsonValue &value)
   {
-    return Class<ClassType>::convert_from_json (value);
+    if (Serializable<ClassType>::is_serializable() && value.IsObject())
+      return Serializable<ClassType>::serialize_from_json (value);
+    else
+      return Class<ClassType>::convert_from_json (value);
   }
   static JsonValue
   to_json (const std::shared_ptr<T> &sptr, JsonAllocator &allocator)
