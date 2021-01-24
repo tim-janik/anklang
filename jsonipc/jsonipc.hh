@@ -1422,17 +1422,6 @@ private:
     std::string output { buffer.GetString(), buffer.GetSize() };
     return output;
   }
-  static size_t
-  get_objectid (const Jsonipc::JsonValue &value)
-  {
-    if (value.IsObject())
-      {
-        auto it = value.FindMember ("$id");
-        if (it != value.MemberEnd())
-          return Jsonipc::from_json<size_t> (it->value);
-      }
-    return 0;
-  }
   static std::string*
   jsonipc_initialize (CallbackInfo &cbi)
   {
