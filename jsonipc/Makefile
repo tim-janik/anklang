@@ -3,7 +3,7 @@ all: testjsonipc
 builddir ?= out
 CXX	 = ccache clang++
 #CXX	 = ccache g++ -Wno-nonnull-compare -Wno-address
-CXXFLAGS = -std=gnu++14 -Wall -O0 -g
+CXXFLAGS = -std=gnu++17 -Wall -O0 -g
 OBJECTS  = testjsonipc.o
 DEFS     = -DSTANDALONE
 DEPS     = jsonipc.hh Makefile
