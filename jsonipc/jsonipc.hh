@@ -494,6 +494,7 @@ private:
   TypeidMap          typeid_map_;
   static size_t      next_counter() { static size_t counter_ = 0; return ++counter_; }
 public:
+  virtual
   ~InstanceMap()
   {
     WrapperMap old;
@@ -507,25 +508,47 @@ public:
     JSONIPC_ASSERT_RETURN (wmap_.size() == 0); // deleters shouldn't re-add
     JSONIPC_ASSERT_RETURN (typeid_map_.size() == 0); // deleters shouldn't re-add
   }
-  template<typename T> static size_t
-  wrap_object (const std::shared_ptr<T> &sptr)
+  virtual JsonValue
+  wrapper_to_json (Wrapper *wrapper, const size_t thisid, const std::string &wraptype, JsonAllocator &allocator)
   {
-    JSONIPC_ASSERT_RETURN (sptr.get() != nullptr, 0);
-    const TypeidKey tkey = InstanceWrapper<T>::create_typeid_key (sptr);
+    if (!wrapper)
+      return JsonValue(); // null
+    JsonValue jobject (rapidjson::kObjectType);
+    jobject.AddMember ("$id", thisid, allocator);
+    jobject.AddMember ("$class", JsonValue (wraptype.c_str(), allocator), allocator);
+    return jobject;
+  }
+  template<typename T> static JsonValue
+  scope_wrap_object (const std::shared_ptr<T> &sptr, JsonAllocator &allocator)
+  {
     InstanceMap *imap = Scope::instance_map();
-    auto it = imap->typeid_map_.find (tkey);
-    if (it != imap->typeid_map_.end())
-      return it->second;
-    const size_t id = next_counter();
-    imap->wmap_[id] = new InstanceWrapper<T> (sptr);
-    imap->typeid_map_[tkey] = id;
-    return id;
+    size_t thisid = 0;
+    Wrapper *wrapper = nullptr;
+    if (sptr.get())
+      {
+        const TypeidKey tkey = InstanceWrapper<T>::create_typeid_key (sptr);
+        auto it = imap->typeid_map_.find (tkey);
+        if (it == imap->typeid_map_.end())
+          {
+            thisid = next_counter();
+            wrapper = new InstanceWrapper<T> (sptr);
+            imap->wmap_[thisid] = wrapper;
+            imap->typeid_map_[tkey] = thisid;
+          }
+        else
+          {
+            thisid = it->second;
+            auto wt = imap->wmap_.find (thisid);
+            wrapper = wt != imap->wmap_.end() ? wt->second : nullptr;
+          }
+      }
     /* A note about TypeidKey:
      * Two tuples (TypeX,ptr0x123) and (TypeY,ptr0x123) holding the same pointer address can
      * occur if the RTII lookup to determine the actual Wrapper class fails, e.g. when
      * Class<MostDerived> is unregisterd. In this case, ptr0x123 can be wrapped multiple
      * times through different base classes.
      */
+    return imap->wrapper_to_json (wrapper, thisid, rtti_typename<T>(), allocator);
   }
   virtual Wrapper*
   lookup_wrapper (const JsonValue &value)
@@ -982,7 +1005,7 @@ private:
 };
 
 // == Helper for known derived classes by RTTI typename ==
-using WrapObjectFromBase = size_t (const std::string&, void*);
+using WrapObjectFromBase = JsonValue (const std::string&, void*, JsonAllocator&);
 
 // This *MUST* use `extern inline` for the ODR to apply to its `static` variable
 extern inline WrapObjectFromBase*
@@ -1119,17 +1142,17 @@ private:
     bprinter->force_before (*dprinter); // base before derived
   }
   static BaseVec&   basevec  () { static BaseVec basevec_;     return basevec_; }
-  static size_t
-  wrap_object_from_base (const std::string &baseclass, void *sptrB)
+  static JsonValue
+  wrap_object_from_base (const std::string &baseclass, void *sptrB, JsonAllocator &allocator)
   {
     std::shared_ptr<T> sptr;
     downcast_impl<T> (baseclass, sptrB, &sptr);
     if (sptr)
       {
-        JSONIPC_ASSERT_RETURN (rtti_typename (*sptr) == rtti_typename<T>(), 0);
-        return InstanceMap::wrap_object<T> (sptr);
+        JSONIPC_ASSERT_RETURN (rtti_typename (*sptr) == rtti_typename<T>(), JsonValue()); // null
+        return InstanceMap::scope_wrap_object<T> (sptr, allocator);
       }
-    return 0;
+    return JsonValue(); // null
   }
   template<typename B> static bool
   upcast_impl (const std::shared_ptr<T> &sptr, const std::string &baseclass, void *sptrB)
@@ -1223,23 +1246,16 @@ struct Convert<std::shared_ptr<T>, REQUIRESv< IsWrappableClass<T>::value >> {
       return sptr ? Serializable<ClassType>::serialize_to_json (*sptr, allocator) : JsonValue (rapidjson::kObjectType);
     if (sptr)
       {
-        size_t thisid = 0;
         // try to call the most derived wrapper Class from the RTTI type of sptr
-        std::string wraptype = rtti_typename (*sptr);
-        WrapObjectFromBase *wrap_object_from_base = can_wrap_object_from_base (wraptype);
-        std::string basetype = rtti_typename<T>();
+        const std::string impltype = rtti_typename (*sptr);
+        WrapObjectFromBase *wrap_object_from_base = can_wrap_object_from_base (impltype);
+        JsonValue result;
         if (wrap_object_from_base)
-          thisid = wrap_object_from_base (basetype, const_cast<std::shared_ptr<T>*> (&sptr));
+          result = wrap_object_from_base (rtti_typename<ClassType>(), const_cast<std::shared_ptr<ClassType>*> (&sptr), allocator);
         // fallback to wrap sptr as baseclass T
-        if (!thisid)
-          {
-            wraptype = basetype;
-            thisid = InstanceMap::wrap_object<ClassType> (sptr);
-          }
-        JsonValue jobject (rapidjson::kObjectType);
-        jobject.AddMember ("$id", thisid, allocator);
-        jobject.AddMember ("$class", JsonValue (wraptype.c_str(), allocator), allocator);
-        return jobject;
+        if (result.IsNull())
+          result = InstanceMap::scope_wrap_object<ClassType> (sptr, allocator);
+        return result;
       }
     return JsonValue(); // null
   }
