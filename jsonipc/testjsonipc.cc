@@ -2,6 +2,8 @@
 #include "jsonipc.hh"
 #include <iostream>
 
+#define MCHECK(MSG, ...) do { if (!strstr (MSG.c_str(), "\"error\":")) break; fprintf (stderr, "%s:%d: ERROR: %s\n", __FILE__, __LINE__, MSG.c_str()); return __VA_ARGS__; } while (0)
+
 // == Testing ==
 enum ErrorType {
   NONE,
@@ -18,6 +20,7 @@ struct Copyable {
 struct Base {
   Base() = default;
   Base(const Base&) = default;
+  void need_copyablep (std::shared_ptr<Copyable> cp) { JSONIPC_ASSERT_RETURN (cp); }
   virtual ~Base() {}
 };
 struct Base2 {
@@ -104,6 +107,9 @@ test_jsonipc (bool dispatcher_shell = false)
     ;
 
   Jsonipc::Class<Base> class_Base;
+  class_Base
+    .set ("need_copyablep", &Base::need_copyablep)
+    ;
   Jsonipc::Class<Base2> class_Base2;
   Jsonipc::Serializable<Copyable> class_Copyable;
   class_Copyable
@@ -179,13 +185,18 @@ test_jsonipc (bool dispatcher_shell = false)
   const size_t d1id = json_objectid (jvd1);
   JSONIPC_ASSERT_RETURN (d1id == 4); // used in the next few lines
   result = dispatcher.dispatch_message (R"( {"id":123,"method":"randomize","params":[{"$id":4}]} )");
+  MCHECK (result);
   const Copyable c0;
   const Copyable *c3 = parse_result<Copyable*> (123, result);
   JSONIPC_ASSERT_RETURN (c3 && (c3->i != c0.i || c3->f != c0.f));
+  result = dispatcher.dispatch_message (R"( {"id":123,"method":"need_copyablep","params":[{"$id":4},{}]} )");
+  MCHECK (result);
   result = dispatcher.dispatch_message (R"( {"id":444,"method":"randomize","params":[{"$id":4}]} )");
+  MCHECK (result);
   const Copyable *c4 = parse_result<Copyable*> (444, result);
   JSONIPC_ASSERT_RETURN (c4 && (c4->i != c3->i || c4->f != c3->f));
   result = dispatcher.dispatch_message (R"( {"id":111,"method":"randomize","params":[{"$id":4}]} )");
+  MCHECK (result);
   const Copyable *c5 = parse_result<Copyable*> (111, result);
   JSONIPC_ASSERT_RETURN (c5 && (c5->i != c4->i || c5->f != c4->f));
 
