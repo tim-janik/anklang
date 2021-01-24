@@ -29,7 +29,7 @@ struct Base2 {
   virtual ~Base2() {}
   Copyable randomize()  { Copyable c; c.i = rand(); c.f = rand() / 10.0; return c; }
 };
-struct Derived : Base, Base2 {
+struct Derived : Base, Base2, std::enable_shared_from_this<Derived> {
   const std::string name_;
   Derived (const std::string &name) : name_ (name) {}
   void   dummy0 ()                                { printf ("dummy0: NOP\n"); }
@@ -122,7 +122,6 @@ test_jsonipc (bool dispatcher_shell = false)
   class_Derived
     .inherit<Base>()
     .inherit<Base2>()
-    .eternal()  // MUST unregister thisid before objects go out of scope
     .set ("dummy0", &Derived::dummy0)
     .set ("dummy1", &Derived::dummy1)
     .set ("dummy2", &Derived::dummy2)
@@ -141,7 +140,8 @@ test_jsonipc (bool dispatcher_shell = false)
   Scope temporary_scope (imap); // needed by to_/from_json and dispatcher
 
   // test bindings
-  Derived obja ("obja");
+  auto objap = std::make_shared<Derived> ("obja");
+  Derived &obja = *objap;
   JSONIPC_ASSERT_RETURN (to_json (obja, a) == to_json (obja, a));
   JSONIPC_ASSERT_RETURN (&obja == from_json<Derived*> (to_json (obja, a)));
   JSONIPC_ASSERT_RETURN (ptrdiff_t (&static_cast<Base&> (obja)) == ptrdiff_t (&obja));
@@ -149,7 +149,8 @@ test_jsonipc (bool dispatcher_shell = false)
   // given the same id, Base and Base2 need to unwrap to different addresses due to multiple inheritance
   JSONIPC_ASSERT_RETURN (&obja == from_json<Base*> (to_json (obja, a)));
   JSONIPC_ASSERT_RETURN (from_json<Base2*> (to_json (obja, a)) == &static_cast<Base2&> (obja));
-  Derived objb ("objb");
+  auto objbp = std::make_shared<Derived> ("objb");
+  Derived &objb = *objbp;
   JSONIPC_ASSERT_RETURN (&obja != &objb);
   // const size_t idb = class_Derived.wrap_object (objb);
   JSONIPC_ASSERT_RETURN (from_json<std::shared_ptr<Derived>> (to_json (objb, a)).get() == &objb);
@@ -158,7 +159,8 @@ test_jsonipc (bool dispatcher_shell = false)
   JSONIPC_ASSERT_RETURN (from_json<std::shared_ptr<Base>> (to_json (objb, a)).get() == &static_cast<Base&> (objb));
   JSONIPC_ASSERT_RETURN (from_json<std::shared_ptr<Base2>> (to_json (objb, a)).get() == &static_cast<Base2&> (objb));
   JSONIPC_ASSERT_RETURN (to_json (obja, a) != to_json (objb, a));
-  Derived objc ("objc");
+  auto objcp = std::make_shared<Derived> ("objc");
+  Derived &objc = *objcp;
   JSONIPC_ASSERT_RETURN (&objc == &from_json<Derived&> (to_json (objc, a)));
   JSONIPC_ASSERT_RETURN (&objc == &from_json<Base&> (to_json (objc, a)));
   JSONIPC_ASSERT_RETURN (&objc == &from_json<Base2&> (to_json (objc, a)));
@@ -180,7 +182,8 @@ test_jsonipc (bool dispatcher_shell = false)
 
   // dispatcher tests
   IpcDispatcher dispatcher;
-  Derived d1 ("dood");
+  auto d1p = std::make_shared<Derived> ("dood");
+  Derived &d1 = *d1p;
   JsonValue jvd1 = to_json (d1, a);
   const size_t d1id = json_objectid (jvd1);
   JSONIPC_ASSERT_RETURN (d1id == 4); // used in the next few lines
@@ -216,6 +219,8 @@ test_jsonipc (bool dispatcher_shell = false)
   JSONIPC_ASSERT_RETURN (from_json<Derived*> (jvb) == (Derived*) nullptr);
   forget_json_id (json_objectid (jvc));
   JSONIPC_ASSERT_RETURN (from_json<Derived*> (jvc) == (Derived*) nullptr);
+
+  printf ("  OK       %s\n", __func__);
 }
 
 #ifdef STANDALONE
@@ -224,7 +229,6 @@ main (int argc, char *argv[])
 {
   const bool dispatcher_shell = argc > 1 && 0 == strcmp (argv[1], "--shell");
   test_jsonipc (dispatcher_shell);
-  printf ("  OK       %s\n", argv[0]);
   return 0;
 }
 #endif
