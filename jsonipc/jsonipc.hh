@@ -91,6 +91,16 @@ rtti_typename (T &o)
   return string_demangle_cxx (typeid (o).name());
 }
 
+/// DerivesSharedPtr<T> - Check if `T` derives from `std::shared_ptr<>`.
+template<class T, typename = void> struct DerivesSharedPtr : std::false_type {};
+template<class T> struct DerivesSharedPtr<T, std::void_t< typename T::element_type > > :
+    std::is_base_of< std::shared_ptr<typename T::element_type>, T > {};
+
+/// Has_shared_from_this<T> - Check if `t.shared_from_this()` yields a `std::shared_ptr<>`.
+template<class, class = void> struct Has_shared_from_this : std::false_type {};
+template<typename T> struct Has_shared_from_this<T, std::void_t< decltype (std::declval<T&>().shared_from_this()) > > :
+    DerivesSharedPtr< decltype (std::declval<T&>().shared_from_this()) > {};
+
 /// Has___typename__<T> - Check if @a T provides a @a __typename__() method.
 template<class, class = void> struct Has___typename__ : std::false_type {};
 template<typename T>          struct Has___typename__<T, std::void_t< decltype (std::declval<const T&>().__typename__()) > > : std::true_type {};
@@ -1017,13 +1027,6 @@ struct Class : TypeInfo {
     print (ClassPrinter::GETSET, name, 0);
     return *this;
   }
-  /// Allow object handles without reference counting via shared_ptr
-  Class&
-  eternal ()
-  {
-    is_eternal_() = true;
-    return *this;
-  }
   static std::string
   classname ()
   {
@@ -1064,9 +1067,7 @@ struct Class : TypeInfo {
       }
     return NULL;
   }
-  static bool      is_eternal ()  { return is_eternal_(); }
 private:
-  static bool&     is_eternal_ () { static bool flag = false; return flag; }
   template<typename U> static std::string
   typename_of()
   {
@@ -1287,13 +1288,14 @@ struct Convert<T*, REQUIRESv< IsWrappableClass<T>::value >> {
   {
     if (Serializable<ClassType>::is_serializable())
       return obj ? Serializable<ClassType>::serialize_to_json (*obj, allocator) : JsonValue (rapidjson::kObjectType);
-    std::shared_ptr<T> sptr;
     // Caveat: Jsonipc will only auto-convert to most-derived-type iff it is registered and when looking at a shared_ptr<BaseType>
-    if (obj && Class<ClassType>::is_eternal())
+    std::shared_ptr<T> sptr;
+    if constexpr (Has_shared_from_this<T>::value)
       {
-        auto nodeleter = [] (void*) {};
-        sptr = std::shared_ptr<T> (const_cast<T*> (obj), nodeleter);
+        if (obj)
+          sptr = std::dynamic_pointer_cast<T> (const_cast<T&> (*obj).shared_from_this());
       }
+    // dprintf (2, "shared_from_this: type<%d>=%s ptr=%p\n", Has_shared_from_this<T>::value, rtti_typename<T>().c_str(), sptr.get());
     return Convert<std::shared_ptr<T>>::to_json (sptr, allocator);
   }
 };
