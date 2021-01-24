@@ -952,7 +952,6 @@ private:
     // implement serialize_to_json by calling all getters
     SerializeToJson stj = [] (const T &object, JsonAllocator &allocator) -> JsonValue {
       JsonValue jobject (rapidjson::kObjectType);               // serialized result
-      jobject.AddMember ("__typename__", JsonValue (get___typename__ (object).c_str(), allocator), allocator);
       AccessorMap &amap = accessormap();
       for (auto &it : amap)
         {
