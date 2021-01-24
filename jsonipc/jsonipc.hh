@@ -1270,8 +1270,7 @@ struct Convert<std::shared_ptr<T>, REQUIRESv< IsWrappableClass<T>::value >> {
 static inline void
 forget_json_id (size_t id)
 {
-  InstanceMap *imap = Scope::instance_map();
-  imap->forget_id (id);
+  InstanceMap::forget_id (id);
 }
 
 /// Convert wrapped Class pointer
