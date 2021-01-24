@@ -1280,19 +1280,14 @@ struct Convert<T*, REQUIRESv< IsWrappableClass<T>::value >> {
   static T*
   from_json (const JsonValue &value)
   {
-    std::shared_ptr<T> sptr;
-    if (Serializable<ClassType>::is_serializable() && value.IsObject())
-      sptr = Serializable<ClassType>::serialize_from_json (value);
-    else
-      sptr = Convert<std::shared_ptr<T>>::from_json (value);
-    return sptr.get();
+    return &*Convert<std::shared_ptr<T>>::from_json (value);
   }
   static JsonValue
   to_json (const T *obj, JsonAllocator &allocator)
   {
-    std::shared_ptr<T> sptr;
     if (Serializable<ClassType>::is_serializable())
       return obj ? Serializable<ClassType>::serialize_to_json (*obj, allocator) : JsonValue (rapidjson::kObjectType);
+    std::shared_ptr<T> sptr;
     // Caveat: Jsonipc will only auto-convert to most-derived-type iff it is registered and when looking at a shared_ptr<BaseType>
     if (obj && Class<ClassType>::is_eternal())
       {
