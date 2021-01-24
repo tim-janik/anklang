@@ -520,7 +520,7 @@ public:
     JSONIPC_ASSERT_RETURN (typeid_map_.size() == 0); // deleters shouldn't re-add
   }
   template<typename T> static size_t
-  make_wrapper_id (const std::shared_ptr<T> &sptr)
+  wrap_object (const std::shared_ptr<T> &sptr)
   {
     JSONIPC_ASSERT_RETURN (sptr.get() != nullptr, 0);
     const TypeidKey tkey = InstanceWrapper<T>::create_typeid_key (sptr);
@@ -1048,11 +1048,6 @@ struct Class : TypeInfo {
       }
     return nullptr;
   }
-  static size_t
-  wrap_object (const std::shared_ptr<T> &sptr)
-  {
-    return InstanceMap::make_wrapper_id<T> (sptr);
-  }
   static std::shared_ptr<T>
   convert_from_json (const JsonValue &value)
   {
@@ -1148,7 +1143,7 @@ private:
     if (sptr)
       {
         JSONIPC_ASSERT_RETURN (rtti_typename (*sptr) == rtti_typename<T>(), 0);
-        return wrap_object (sptr);
+        return InstanceMap::wrap_object<T> (sptr);
       }
     return 0;
   }
@@ -1255,7 +1250,7 @@ struct Convert<std::shared_ptr<T>, REQUIRESv< IsWrappableClass<T>::value >> {
         if (!thisid)
           {
             wraptype = basetype;
-            thisid = Class<ClassType>::wrap_object (sptr);
+            thisid = InstanceMap::wrap_object<ClassType> (sptr);
           }
         JsonValue jobject (rapidjson::kObjectType);
         jobject.AddMember ("$id", thisid, allocator);
