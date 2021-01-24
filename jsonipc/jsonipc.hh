@@ -551,7 +551,7 @@ public:
     return imap->wrapper_to_json (wrapper, thisid, rtti_typename<T>(), allocator);
   }
   virtual Wrapper*
-  lookup_wrapper (const JsonValue &value)
+  wrapper_from_json (const JsonValue &value)
   {
     if (value.IsObject())
       {
@@ -573,7 +573,7 @@ public:
   scope_lookup_wrapper (const JsonValue &value)
   {
     InstanceMap *imap = Scope::instance_map();
-    return imap ? imap->lookup_wrapper (value) : nullptr;
+    return imap ? imap->wrapper_from_json (value) : nullptr;
   }
   static bool
   scope_forget_id (size_t thisid)
