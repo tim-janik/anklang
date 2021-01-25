@@ -353,6 +353,17 @@ to_json (const char (&c)[N], size_t l, JsonAllocator &allocator)
   return Convert<const char*>::to_json (c, l, allocator);
 }
 
+/// Simple way to generate a string from a JsonValue
+static inline std::string
+jsonvalue_to_string (const JsonValue &value)
+{
+  rapidjson::StringBuffer buffer;
+  rapidjson::Writer<rapidjson::StringBuffer> writer (buffer);
+  value.Accept (writer);
+  const std::string output { buffer.GetString(), buffer.GetSize() };
+  return output;
+}
+
 // == CallbackInfo ==
 struct CallbackInfo;
 using Closure = std::function<std::string* (CallbackInfo&)>;
