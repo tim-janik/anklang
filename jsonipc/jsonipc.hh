@@ -124,8 +124,8 @@ template<typename> struct Class;
 // == Scope ==
 /// Keep track of temporary instances during IpcDispatcher::dispatch_message().
 class Scope {
-  std::vector<std::shared_ptr<void>> locals_;
-  InstanceMap                       &instance_map_;
+  InstanceMap                        &instance_map_;
+  std::vector<std::shared_ptr<void>> &locals_, scope_locals_;
   static std::vector<Scope*>&
   stack()
   {
@@ -161,12 +161,8 @@ public:
       throw std::logic_error ("Jsonipc::Scope::instance_map(): invalid Scope: nullptr");
     return scope ? &scope->instance_map_ : nullptr;
   }
-  Scope (InstanceMap &instance_map) :
-    instance_map_ (instance_map)
-  {
-    auto &stack_ = stack();
-    stack_.push_back (this);
-  }
+  enum ConstructorFlags { KEEP_TEMPORARIES, PURGE_TEMPORARIES };
+  Scope (InstanceMap &instance_map, ConstructorFlags cf = KEEP_TEMPORARIES);
   ~Scope()
   {
     auto &stack_ = stack();
@@ -461,6 +457,8 @@ call_from_json (T &obj, const F &func, const CallbackInfo &args)
 
 // == InstanceMap ==
 class InstanceMap {
+  std::vector<std::shared_ptr<void>> locals_;
+  friend class Scope;
   struct TypeidKey {
     const std::type_index tindex; void *ptr;
     bool
@@ -613,6 +611,14 @@ CallbackInfo::find_closure (const char *methodname)
   const JsonValue &value = ntharg (0);
   InstanceMap::Wrapper *iw = InstanceMap::scope_lookup_wrapper (value);
   return iw ? iw->lookup_closure (methodname) : nullptr;
+}
+
+inline
+Scope::Scope (InstanceMap &instance_map, ConstructorFlags cf) :
+  instance_map_ (instance_map), locals_ (cf == KEEP_TEMPORARIES ? instance_map_.locals_ : scope_locals_)
+{
+  auto &stack_ = stack();
+  stack_.push_back (this);
 }
 
 // == ClassPrinter ==
