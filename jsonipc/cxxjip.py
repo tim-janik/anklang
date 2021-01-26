@@ -175,7 +175,7 @@ def generate_jsonipc (cctree, namespaces, absfile = None):
         continue
       if absfile:
         if absfile != cctree.from_absfile (cl):
-          print (clname, absfile, cctree.from_absfile (cl), file = sys.stderr)
+          # print ('SKIP:', clname, absfile, cctree.from_absfile (cl), file = sys.stderr)
           continue
       fqclname = cctree.fqname (cl)
       # classify methods and fields
@@ -205,17 +205,25 @@ def generate_jsonipc (cctree, namespaces, absfile = None):
       struct = 'Serializable' if fields and not methods else 'Class'
       ident = struct.lower() + '_%d' % counter ; counter += 1
       p ('::Jsonipc::%s<' % struct, fqclname, '> ' + ident + ';')
-      bases = cl.attrib.get ('bases', '')
-      details = (fields or methods or bases) and True
+      bases = []
+      for cid in cl.attrib.get ('bases', '').split (' '):
+        bclass = cctree.find_class (cid)
+        bname = bclass.attrib.get ('name', '') if bclass else ''
+        if not bname or skip_identifier (bname):
+          continue
+        if absfile and absfile != cctree.from_absfile (bclass):
+          continue
+        bases += [ bclass ]
+      details = fields or methods or bases
       if details:
-        p (ident);
+        p (ident)
       indent += 1
       # assign bases
       if struct == 'Class':
-        for cid in bases.split (' '):
-          bc = cctree.find_class (cid)
-          if bc != None:
-            basefqname = cctree.fqname (bc)
+        for bclass in bases:
+          bclass = cctree.find_class (cid)
+          if bclass != None:
+            basefqname = cctree.fqname (bclass)
             base_nslist = basefqname.split ('::')
             if len (base_nslist) >= 2 and base_nslist[0] == '' and base_nslist[1] in namespaces:
               p ('.inherit<', basefqname, '>()')
