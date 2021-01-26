@@ -622,7 +622,10 @@ Scope::Scope (InstanceMap &instance_map, ConstructorFlags cf) :
 }
 
 // == ClassPrinter ==
-struct ClassPrinter {
+class ClassPrinter {
+  using DepthFunc = size_t (*) ();
+  DepthFunc depth_func_ = nullptr;
+public:
   enum Op { NEW = 1, INHERIT, BODY, ATTRIBUTE, METHOD, GETSET, ENUMVALUE, DONE };
   enum Entity { ENUMS = 1, CLASSES, SERIALIZABLE };
   template<class T> static ClassPrinter*
@@ -659,34 +662,32 @@ struct ClassPrinter {
     operations.push_back ({ name, op, count });
   }
   void
-  force_before (ClassPrinter &other)
+  set_depth_func (DepthFunc depth_func)
   {
-    auto &printers = printers_();
-    if (&other == printers.back())
-      return; // likely fast path
-    ssize_t ipos = -1, opos = -1;
-    for (size_t i = 0; i < printers.size() && (ipos < 0 || opos < 0); i++)
-      if (printers[i] == this)
-        ipos = i;
-      else if (printers[i] == &other)
-        opos = i;
-    JSONIPC_ASSERT_RETURN (ipos >= 0 && opos >= 0);
-    if (opos < ipos)
-      {
-        auto b = printers.begin();
-        std::move_backward (b + opos, b + ipos, b + ipos + 1); // beware, ugly API!
-        *(b + opos) = this;
-      }
+    depth_func_ = depth_func;
   }
   static std::string
   to_string()
   {
     std::string all;
+    sort_printers();
     for (auto &pr : printers_())
       all += pr->ops_to_string();
     return all;
   }
 private:
+  static void
+  sort_printers()
+  {
+    auto &printers = printers_();
+    auto printers_cmp = [] (const ClassPrinter *a, const ClassPrinter *b) {
+      const size_t adepth = a->depth_func_ ? a->depth_func_() : 1;
+      const size_t bdepth = b->depth_func_ ? b->depth_func_() : 1;
+      return adepth < bdepth;
+    };
+    std::stable_sort (printers.begin(), printers.end(), printers_cmp);
+    // for (const auto &p : printers) dprintf (2, "%s < ", p->classname_.c_str()); dprintf (2, "∞\n");
+  }
   struct Operation { std::string name; Op op = DONE; int32_t count = 0; };
   std::string
   ops_to_string()
@@ -843,24 +844,22 @@ private:
 
 // == TypeInfo ==
 class TypeInfo {
-  ClassPrinter *printer_ = NULL;
 protected:
+  ClassPrinter *printer_ = nullptr;
   virtual ~TypeInfo() {}
-  virtual ClassPrinter* create_printer () = 0;
+  TypeInfo (ClassPrinter *printer) : printer_ (printer) {}
   void
   print (ClassPrinter::Op op, const std::string &name, int32_t count = 0)
   {
-    if (!printer_)
-      printer_ = create_printer();
     printer_->print (op, name, count);
   }
 };
 
 // == Enum ==
 template<typename T>
-struct Enum : TypeInfo {
+struct Enum final : TypeInfo {
   static_assert (std::is_enum<T>::value, "");
-  virtual ClassPrinter* create_printer () override { return ClassPrinter::create<T> (ClassPrinter::ENUMS); }
+  Enum () : TypeInfo (ClassPrinter::create<T> (ClassPrinter::ENUMS)) {}
   using UnderlyingType = typename std::underlying_type<T>::type;
   Enum&
   set (T v, const char *valuename)
@@ -945,10 +944,10 @@ struct Convert<T, REQUIRESv< std::is_enum<T>::value > > {
 // == Serializable ==
 /// Jsonipc wrapper type for objects that support field-wise serialization to/from JSON.
 template<typename T>
-struct Serializable : TypeInfo {
-  virtual ClassPrinter* create_printer () override { return ClassPrinter::create<T> (ClassPrinter::SERIALIZABLE); }
+struct Serializable final : TypeInfo {
   /// Allow object handles to be streamed to/from Javascript, needs a Scope for temporaries.
-  Serializable()
+  Serializable() :
+    TypeInfo (ClassPrinter::create<T> (ClassPrinter::SERIALIZABLE))
   {
     make_serializable<T>();
   }
@@ -1040,8 +1039,8 @@ can_wrap_object_from_base (const std::string &rttiname, WrapObjectFromBase *hand
 
 // == Class ==
 template<typename T>
-struct Class : TypeInfo {
-  virtual ClassPrinter* create_printer () override { return ClassPrinter::create<T> (ClassPrinter::CLASSES); }
+struct Class final : TypeInfo {
+  Class () : TypeInfo (ClassPrinter::create<T> (ClassPrinter::CLASSES)) {}
   // Inherit base class `B`
   template<typename B> Class&
   inherit()
@@ -1137,6 +1136,7 @@ private:
   static MethodMap& methodmap() { static MethodMap methodmap_; return methodmap_; }
   struct BaseInfo {
     std::string basetypename;
+    size_t    (*base_depth)     ();
     bool      (*upcast_impl)    (const std::shared_ptr<T>&, const std::string&, void*) = NULL;
     bool      (*downcast_impl)  (const std::string&, void*, std::shared_ptr<T>*) = NULL;
     Closure*  (*lookup_closure) (const char*) = NULL;
@@ -1146,7 +1146,7 @@ private:
   add_base ()
   {
     BaseVec &bvec = basevec();
-    BaseInfo binfo { typename_of<B>(), &upcast_impl<B>, &Class<B>::template downcast_impl<T>, &Class<B>::lookup_closure, };
+    BaseInfo binfo { typename_of<B>(), Class<B>::base_depth, &upcast_impl<B>, &Class<B>::template downcast_impl<T>, &Class<B>::lookup_closure, };
     for (const auto &it : bvec)
       if (it.basetypename == binfo.basetypename)
         throw std::runtime_error ("duplicate base registration: " + binfo.basetypename);
@@ -1154,9 +1154,7 @@ private:
       can_wrap_object_from_base (classname(), wrap_object_from_base);
     bvec.push_back (binfo);
     Class<B> bclass;
-    ClassPrinter *bprinter = bclass.create_printer();
-    ClassPrinter *dprinter = this->create_printer();
-    bprinter->force_before (*dprinter); // base before derived
+    printer_->set_depth_func (this->base_depth);
   }
   static BaseVec&   basevec  () { static BaseVec basevec_;     return basevec_; }
   static JsonValue
@@ -1178,6 +1176,19 @@ private:
     return Class<B>::try_upcast (bptr, baseclass, sptrB);
   }
 public:
+  static size_t
+  base_depth ()
+  {
+    BaseVec &bvec = basevec();
+    size_t d = 0;
+    for (const auto &binfo : bvec)
+      {
+        const size_t b = binfo.base_depth();
+        if (b > d)
+          d = b;
+      }
+    return d + 1;
+  }
   static Closure*
   lookup_closure (const char *methodname)
   {
