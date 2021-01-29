@@ -83,7 +83,8 @@ class CCTree:
     retlist = []
     for child in self.root:     # <Class id="_14" name="CC" context="_7" bases="_14 private:_15"  location="f1:9" file="f1" line="9" members="_22 _23 _24 _25 _26" size="8" align="8"/>
       if child.tag in self.classes and child.attrib.get ('context') == nsid:
-        retlist.append (child)
+        if not self.is_incomplete (child):
+          retlist.append (child)
     return retlist
   def find_class (self, cid):
     classnode = self.by_id (cid)
@@ -100,6 +101,9 @@ class CCTree:
     if (methodnode != None and  # <Method id="_23" name="foo" returns="_46" context="_14" access="private" location="f1:10" file="f1" line="10" mangled="_ZN5Outer2C13fooEv"/>
         methodnode.tag == 'Method'):
       return methodnode
+  def is_incomplete (self, node):
+    incomplete = node.attrib.get ('incomplete', '0')
+    return incomplete == "1"
   def access_public (self, node):
     access = node.attrib.get ('access', '')
     return access != 'protected' and access != 'private'
@@ -208,7 +212,7 @@ def generate_jsonipc (cctree, namespaces, absfile = None):
       bases = []
       for cid in cl.attrib.get ('bases', '').split (' '):
         bclass = cctree.find_class (cid)
-        bname = bclass.attrib.get ('name', '') if bclass else ''
+        bname = '' if bclass is None else bclass.attrib.get ('name', '')
         if not bname or skip_identifier (bname):
           continue
         if absfile and absfile != cctree.from_absfile (bclass):
