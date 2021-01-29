@@ -1325,13 +1325,28 @@ struct Convert<T*, REQUIRESv< IsWrappableClass<T>::value >> {
 /// Convert wrapped Class
 template<typename T>
 struct Convert<T, REQUIRESv< IsWrappableClass<T>::value >> {
-  static T&
+  using ClassType = typename std::remove_cv<T>::type;
+#ifdef  __JSONIPC_NULL_REFERENCE_THROWS__
+  static        // mutable, nullptr throws
+#else
+  static const  // const, requires is_default_constructible dummy
+#endif
+  T&
   from_json (const JsonValue &value)
   {
     T *object = Convert<T*>::from_json (value);
     if (object)
       return *object;
-    throw std::bad_cast ();
+#ifndef __JSONIPC_NULL_REFERENCE_THROWS__
+    if constexpr (std::is_default_constructible <const ClassType>::value)
+      {
+        static const T dummy {};
+        return dummy;
+      }
+    else
+      static_assert (sizeof (T) < 0, "Class needs to be default constructible");
+#endif
+    throw std::bad_cast (); // might be rarely triggered
   }
   static JsonValue
   to_json (const T &object, JsonAllocator &allocator)
