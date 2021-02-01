@@ -360,6 +360,20 @@ jsonvalue_to_string (const JsonValue &value)
   return output;
 }
 
+/// Generate a string from a simple JsonValue object with up to 4 members.
+template<class T1, class T2 = bool, class T3 = bool, class T4 = bool> static inline std::string
+jsonobject_to_string (const char *m1, T1 &&v1, const char *m2 = 0, T2 &&v2 = {},
+                      const char *m3 = 0, T3 &&v3 = {}, const char *m4 = 0, T4 &&v4 = {})
+{
+  rapidjson::Document doc (rapidjson::kObjectType);
+  auto &a = doc.GetAllocator();
+  if (m1 && m1[0]) doc.AddMember (JsonValue (m1, a), to_json (v1, a), a);
+  if (m2 && m2[0]) doc.AddMember (JsonValue (m2, a), to_json (v2, a), a);
+  if (m3 && m3[0]) doc.AddMember (JsonValue (m3, a), to_json (v3, a), a);
+  if (m4 && m4[0]) doc.AddMember (JsonValue (m4, a), to_json (v4, a), a);
+  return jsonvalue_to_string (doc);
+}
+
 // == CallbackInfo ==
 struct CallbackInfo;
 using Closure = std::function<std::string* (CallbackInfo&)>;
