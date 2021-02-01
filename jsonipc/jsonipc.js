@@ -6,7 +6,7 @@ export const Jsonipc = {
   ofreeze: globalThis.Object.freeze,
   okeys: globalThis.Object.keys,
   classes: {},
-  observations: {},
+  receivers: {},
   authresult: undefined,
   web_socket: null,
   counter: null,
@@ -98,6 +98,14 @@ export const Jsonipc = {
     return promise;
   },
 
+  /// Observe Jsonipc notifications
+  receive (methodname, handler) {
+    if (handler)
+      this.receivers[methodname] = handler;
+    else
+      delete this.receivers[methodname];
+  },
+
   /// Handle a Jsonipc message
   socket_message (event) {
     // Binary message
@@ -121,40 +129,12 @@ export const Jsonipc = {
       }
     else if ("string" === typeof msg.method && Array.isArray (msg.params)) // notification
       {
-	function array_flat_match (short, long) {
-	  for (let i = 0; i < short.length; ++i)
-	    if (short[i] != long[i])
-	      return false;
-	  return true;
-	}
-	const observers = this.observations[msg.method];
-	if (observers)
-	  for (let i = 0; i < observers.length; ++i)
-	    if (array_flat_match (observers[i][0], msg.params))
-	      observers[i][1].apply (null, msg.params.slice (observers[i][0].length));
+	const receiver = this.receivers[msg.method];
+	if (receiver)
+	  receiver.apply (null, msg.params);
 	return;
       }
     console.error ("Unhandled message:", event.data);
-  },
-
-  /// Observe Jsonipc notifications
-  observe (methodname, args, callback) {
-    if (!this.observations[methodname])
-      this.observations[methodname] = [];
-    this.observations[methodname].push ([args, callback]);
-  },
-
-  /// Clear a previous `observe` handler
-  unobserve (methodname, args) {
-    const jsonargs = JSON.stringify (args);
-    if (this.observations[methodname])
-      for (const [i, pair] of this.observations[methodname].entries())
-	if (JSON.stringify (pair[0]) == jsonargs)
-	  {
-	    this.observations[methodname].splice (i, 1); // erase at i
-	    return true;
-	  }
-    return false;
   },
 };
 
