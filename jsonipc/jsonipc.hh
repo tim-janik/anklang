@@ -982,9 +982,10 @@ struct Serializable final : TypeInfo {
     print (ClassPrinter::ATTRIBUTE, name, 0);
     return *this;
   }
-  static bool               is_serializable     ()                             { return serialize_from_json_() && serialize_to_json_(); }
-  static JsonValue          serialize_to_json   (const T &o, JsonAllocator &a) { return serialize_to_json_() (o, a); }
-  static std::shared_ptr<T> serialize_from_json (const JsonValue &value)       { return serialize_from_json_() (value); }
+  static bool               is_serializable     ()                              { return serialize_from_json_() && serialize_to_json_(); }
+  static JsonValue          serialize_to_json   (const T &o, JsonAllocator &a)  { return serialize_to_json_() (o, a); }
+  static std::shared_ptr<T> serialize_from_json (const JsonValue &value,
+                                                 const std::shared_ptr<T> &p = 0) { return serialize_from_json_() (value, p); }
 private:
   struct Accessors {
     std::function<void      (T&,const JsonValue&)>      setter;
@@ -996,8 +997,8 @@ private:
   make_serializable()
   {
     // implement serialize_from_json by calling all setters
-    SerializeFromJson sfj = [] (const JsonValue &value) -> std::shared_ptr<T>  {
-      std::shared_ptr<T> obj = Scope::make_shared<T>();
+    SerializeFromJson sfj = [] (const JsonValue &value, const std::shared_ptr<T> &p) -> std::shared_ptr<T>  {
+      std::shared_ptr<T> obj = p ? p : Scope::make_shared<T>();
       if (!obj)
         return obj;
       AccessorMap &amap = accessormap();
@@ -1028,7 +1029,7 @@ private:
     };
     serialize_to_json_() = stj;
   }
-  using SerializeFromJson = std::function<std::shared_ptr<T> (const JsonValue&)>;
+  using SerializeFromJson = std::function<std::shared_ptr<T> (const JsonValue&, const std::shared_ptr<T>&)>;
   using SerializeToJson = std::function<JsonValue (const T&, JsonAllocator&)>;
   static SerializeFromJson& serialize_from_json_ () { static SerializeFromJson impl; return impl; }
   static SerializeToJson&   serialize_to_json_   () { static SerializeToJson impl; return impl; }
