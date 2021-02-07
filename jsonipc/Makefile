@@ -12,9 +12,11 @@ INCLUDES = -I../$(builddir)/external/
 
 $(OBJECTS): %.o: %.cc $(DEPS)
 	$(CXX) $(DEFS) $(CXXFLAGS) $(INCLUDES) -c $<
+.INTERMEDIATE: $(OBJECTS)
 
 testjsonipc: $(OBJECTS) Makefile
 	$(CXX) $(CXXFLAGS) -o $@ $(OBJECTS) -lboost_system
+.INTERMEDIATE: testjsonipc
 
 check: testjsonipc
 	./testjsonipc
