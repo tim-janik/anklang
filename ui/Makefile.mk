@@ -60,7 +60,7 @@ $>/ui/index.html: ui/index.html ui/assets/eknob.svg ui/Makefile.mk	| $>/ui/
 		-i $@.tmp
 	$Q mv $@.tmp $@
 $>/ui/.all-stamp: $>/ui/index.html
-# $>/ui/.all-stamp: $>/doc/anklang-manual.html # used by Vue components
+$>/ui/.all-stamp: $>/doc/anklang-manual.html # used by Vue components
 
 # == ui/nodemon.json ==
 $>/ui/nodemon.json: ui/Makefile.mk				| $>/ui/
@@ -234,6 +234,22 @@ $>/ui/.eslint.done: $>/ui/eslint.files $>/node_modules/.npm.done
 	$Q cd $>/ui/ && npm run eslint
 	$Q touch $@
 $>/ui/.all-stamp: $>/ui/.eslint.done
+
+# == ui/vue-doc ==
+$>/ui/vue-docs.md: ui/b/ch-vue.md $(ui/vue.wildcards) ui/Makefile.mk doc/filt-docs2.py	| $>/ui/
+	$(QGEN)
+	$Q echo -e "<!-- Vue Components -->\n\n"					>  $@.tmp
+	@: # extract <docs/> blocks from vue files and filter headings through pandoc
+	$Q for f in $(sort $(ui/vue.wildcards)) ; do \
+		echo ""									>> $@.tmp ; \
+		sed -n '/^<docs>\s*$$/{ :loop n; /^<\/docs>/q; p;  b loop }' <"$$f"	>> $@.tmp \
+		|| exit $$? ; \
+	done
+	$Q sed -r 's/^  // ; s/^#/\n#/; ' -i $@.tmp # unindent, spread heading_without_preceding_blankline
+	$Q $(PANDOC) -t markdown -F doc/filt-docs2.py -f markdown+compact_definition_lists $@.tmp -o $@.tmp2
+	$Q cat $< $@.tmp2 > $@.tmp && rm -f $@.tmp2
+	$Q mv $@.tmp $@
+$>/ui/.all-stamp: $>/ui/vue-docs.md
 
 # == .all-stamp ==
 $>/ui/.all-stamp: ui/.
