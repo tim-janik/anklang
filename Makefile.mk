@@ -156,6 +156,42 @@ default: FORCE
 	  fi )
 	$Q mv $@.tmp config-defaults.mk
 
+# == PACKAGE_CONFIG ==
+define PACKAGE_CONFIG
+  "config": {
+    "version": "$(VERSION_M.M.M)",
+    "revdate": "$(shell ./version.sh -d)",
+    "revision": "$(shell ./version.sh -l)",
+    "srcdir": "$(abspath .)",
+    "outdir": "$(abspath $>)",
+    "mode": "$(MODE)" }
+endef
+
+# == package.json ==
+$>/package.json: misc/package.json.in					| $>/
+	$(QGEN)
+	$Q : $(file > $@.config,$(PACKAGE_CONFIG),)
+	$Q sed -e '1r '$@.config $< > $@.tmp
+	$Q rm $@.config
+	$Q mv $@.tmp $@
+CLEANFILES += $>/.eslintcache $>/package.json $>/package-lock.json
+CLEANDIRS += $>/node_modules/
+
+# == npm.done ==
+$>/node_modules/.npm.done: $(if $(NPMBLOCK),, $>/package.json)	| $>/
+	$(QGEN)
+	$Q rm -f -r $>/node_modules/
+	@: # Install all node_modules and anonymize build path
+	$Q cd $>/ \
+	  && $(NPM_INSTALL) \
+	  && find . -name package.json -print0 | xargs -0 sed -r "\|$$PWD|s|^(\s*(\"_where\":\s*)?)\"$$PWD|\1\"/...|" -i
+	$Q: # add newer nodejs API to browserify-url.js, needed for e.g. postcss error messages
+	$Q grep pathToFileURL $>/node_modules/url/url.js || \
+	   echo 'exports.pathToFileURL = _ => _;' >> $>/node_modules/url/url.js
+	$Q touch $@
+NODE_PATH ::= $(abspath $>/node_modules/)
+export NODE_PATH
+
 # == check rules ==
 # Macro to generate test runs as 'check' dependencies
 define CHECK_ALL_TESTS_TEST

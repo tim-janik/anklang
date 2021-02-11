@@ -1,0 +1,32 @@
+{
+  "name": "Anklang",
+  "private": true,
+  "scripts": {
+    "serve": "run-p sound-engine eslint monitor",
+    "sound-engine": "lib/AnklangSynthEngine-$npm_package_config_version",
+    "eslint": "eslint --no-eslintrc -c ui/.eslintrc.js -f unix --cache $(cat ui/eslint.files)",
+    "ui/rebuild": "make ui/rebuild -C $npm_package_config_srcdir -j",
+    "monitor": "nodemon --ext '*' --watch $npm_package_config_srcdir/ui/ --watch $npm_package_config_outdir/lib/ --delay 250ms --on-change-only --exec 'npm run -s ui/rebuild'"
+  },
+  "dependencies": {
+    "vue": "^3.0.5"
+  },
+  "devDependencies": {
+    "@fontsource/charis-sil": "^4.2.1",
+    "@fontsource/inconsolata": "^4.2.1",
+    "babel-eslint": "^10.1.0",
+    "browserify": "^17.0.0",
+    "chroma-js": "^2.1.0",
+    "css-color-converter": "^2.0.0",
+    "electron": "^11.2.3",
+    "eslint": "^7.16.0",
+    "eslint-plugin-html": "^6.1.1",
+    "eslint-plugin-vue": "^7.5.0",
+    "markdown-it": "^12.0.4",
+    "mathjax": "^3.1.2",
+    "nodemon": "^2.0.7",
+    "npm-run-all": "^4.1.5",
+    "sass": "^1.32.7",
+    "tinyify": "^3.0.0"
+  }
+}
