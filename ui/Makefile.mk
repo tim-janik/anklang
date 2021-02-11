@@ -213,6 +213,13 @@ $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/ $>/ui/t
 	$Q mv $>/ui/tmp/out.browserified.js $@ && rm -f $>/ui/tmp/out.browserified.*
 $>/ui/.all-stamp: $>/ui/browserified.js
 
+# == $>/ui/favicon.ico ==
+$>/ui/favicon.ico: ui/assets/favicon.svg $>/node_modules/.npm.done ui/Makefile.mk	| $>/ui/tmp/icon-gen/
+	$(QGEN)
+	$Q $>/node_modules/.bin/icon-gen -i $< -o $>/ui/tmp/icon-gen/ # -r
+	$Q mv $>/ui/tmp/icon-gen/favicon.ico $>/ui/ && rm -r $>/ui/tmp/icon-gen/
+$>/ui/.all-stamp: $>/ui/favicon.ico
+
 # == $>/ui/eslint.files ==
 ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue)
 $>/ui/eslint.files: ui/.eslintrc.js $(ui/eslint.files)			| $>/ui/
