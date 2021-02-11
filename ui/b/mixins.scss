@@ -1,0 +1,67 @@
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+
+// == Scss Theme Basics ==
+@import '../theme.scss';
+
+// == Variables ==
+// Only put *!default* definitions here, so `theme.scss` takes precedence.
+
+// theme basics
+$b-theme-font-family:		$b-main-font-family;
+$b-theme-foreground: 		$b-main-foreground;
+$b-theme-background: 		$b-main-background;
+$b-theme-border-radius:		$b-style-border-radius !default;
+$b-main-border-light:		lighten($b-base-background, 9%) !default;	// used for modal border
+$b-main-border-dark:		darken($b-base-background, 9%) !default;
+$b-toolbar-background:		#606060 !default;
+$b-toolbar-background-lg:	linear-gradient(to bottom, #666666 0%, #5a5a5a 100%) !default;
+$b-button-foreground:   	#dddddd !default;
+$b-button-light:   		#999999 !default;
+$b-button-lg:      		linear-gradient(to bottom, #777777 0%, #707070 45%, #606060 55%, #555555 100%) !default;
+$b-button-dark:    		#444444 !default;
+$b-button-radius:		$b-theme-border-radius !default;
+$b-button-border:   		#333333 !default;
+$b-button-hover:		fade(#ffffff, 10%) !default;
+$b-button-active:		fade(#000000, 20%) !default;
+$b-button-active-fg:		#bbbbbb !default;
+$b-button-active-lg:     	linear-gradient(to bottom, #606060 0%, #707070 50%, #606060 100%) !default;
+$b-button-active-border:	#555555 !default;
+$b-glow-control:		$b-style-focus-color;
+$b-switch-inactive:		#999999 !default;
+$b-switch-active:		#2080f0 !default;
+$b-switch-knob:		$b-button-foreground !default;
+$b-focus-outline-width:		1px !default;
+$b-focus-outline:		$b-focus-outline-width solid $b-glow-control !default;	// suitable for rectangular outlines
+$b-focus-box-shadow:		0 0 0 1px $b-glow-control !default;	// suitable for rounded outlines
+$b-boxshadow-color:		fade(#000000, 30%) !default;
+$b-scrollbar-thickness:	7px !default;
+
+// format: font: italic small-caps bold 12px serif;
+
+// b-part-thumb
+$b-part-thumb-font: normal 9px $b-theme-font-family !default;	// the '9px' part is dynamically resized
+$b-part-thumb-font-color: rgba(255, 255, 255, 0.7) !default;
+$b-part-thumb-note-color: rgba(255, 255, 255, 0.7) !default;
+$b-part-thumb-colors: #ff7b50a7, #f68403a7, #d6960ea7, #92ad19a7, #67b518a7, #22bb27a7, #21b873a7, #24b3b3a7, #11adeba7, #799fffa7, #a094ffa7, #c287ffa7, #e473ffa7, #ff5ff5a7, #ff70b0a7 !default;
+
+@mixin b-popup-box-shadow()	{ box-shadow: 0 2px 8px $b-boxshadow-color; }
+
+// == Markdown Styling ==
+@mixin b-markdown-it-inlined($maywrap: true)	{
+  // avoid all margins and padding, make elements suitable for 'inline' layouts
+  h1,h2,h3,h4,h5,h6 { font-size: inherit; padding: 0; margin: 0; }
+  p { margin: 0; }
+  ul { padding-left: 1em; }
+}
+
+// == Flex Box ==
+@mixin hflex() {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+@mixin vflex() {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
