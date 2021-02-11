@@ -92,6 +92,7 @@ installcheck: FORCE
 
 # == subdirs ==
 include ase/Makefile.mk
+include ui/Makefile.mk
 include electron/Makefile.mk
 include misc/Makefile.mk
 
@@ -131,6 +132,8 @@ help: FORCE
 	@echo '  check-bench     - Run the benchmark tests'
 	@echo '  check-loading   - Check all distributed Anklang files load properly'
 	@echo '  check-suite     - Run the unit test suite'
+	@echo '  serve           - Start SoundEngine, serve and auto-rebuild ui/ sources'
+	@echo '  run             - Start Anklang as Electron App'
 	@echo 'Invocation:'
 	@echo '  make V=1        - Enable verbose output from MAKE and subcommands'
 	@echo '  make O=DIR      - Create all output files in DIR, see also config-defaults.mk'
