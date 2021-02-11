@@ -91,6 +91,7 @@ uninstall: FORCE
 installcheck: FORCE
 
 # == subdirs ==
+include misc/Makefile.mk
 
 # == FORCE rules ==
 # Use FORCE to mark phony targets via a dependency
