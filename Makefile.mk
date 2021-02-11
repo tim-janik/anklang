@@ -92,6 +92,7 @@ installcheck: FORCE
 
 # == subdirs ==
 include ase/Makefile.mk
+include electron/Makefile.mk
 include misc/Makefile.mk
 
 # == FORCE rules ==
