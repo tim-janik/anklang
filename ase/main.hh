@@ -7,6 +7,7 @@
 #include <ase/regex.hh>
 #include <ase/websocket.hh>
 #include <ase/loop.hh>
+#include <ase/utils.hh>
 
 namespace Ase {
 
@@ -31,28 +32,8 @@ bool   feature_check       (const char *feature);
 // == Jobs & main loop ==
 extern MainLoopP main_loop;
 
-class JobQueue {
-  static void call_remote (const std::function<void()>&);
-public:
-  template<typename F> std::invoke_result_t<F>
-  operator+= (const F &job)
-  {
-    using R = std::invoke_result_t<F>;
-    if constexpr (std::is_same<R, void>::value)
-      call_remote (job);
-    else // R != void
-      {
-        R result;
-        call_remote ([&job, &result] () {
-          result = job();
-        });
-        return result;
-      }
-  }
-};
-
 /// Execute a lambda job in the Ase main loop and wait for its result.
-extern JobQueue main_loop_jobs;
+extern JobQueue main_jobs;
 
 } // Ase
 

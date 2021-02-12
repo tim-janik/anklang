@@ -56,7 +56,34 @@ public:
   /*Des*/ ~EventFd   ();
 };
 
-// == Impolementation Details ==
+// == JobQueue for cross-thread invocations ==
+struct JobQueue {
+  enum Policy { SYNC, };
+  using Caller = std::function<void (Policy, const std::function<void()>&)>;
+  explicit             JobQueue    (const Caller &caller);
+  template<typename F> std::invoke_result_t<F>
+  inline               operator+=  (const F &job);
+private:
+  const Caller caller_;
+};
+
+// == Implementation Details ==
+template<typename F> std::invoke_result_t<F>
+JobQueue::operator+= (const F &job)
+{
+  using R = std::invoke_result_t<F>;
+  if constexpr (std::is_same<R, void>::value)
+    caller_ (SYNC, job);
+  else // R != void
+    {
+      R result;
+      call_remote ([&job, &result] () {
+        result = job();
+      });
+      return result;
+    }
+}
+
 void debug_message (const char *cond, const std::string &message);
 void diag_message  (uint8 code, const std::string &message);
 

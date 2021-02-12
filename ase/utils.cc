@@ -256,6 +256,11 @@ EventFd::~EventFd ()
   fds[1] = -1;
 }
 
+// == JobQueue ==
+JobQueue::JobQueue (const Caller &caller) :
+  caller_ (caller)
+{}
+
 } // Ase
 
 // == __abort_msg ==

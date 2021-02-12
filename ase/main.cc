@@ -18,23 +18,28 @@
 namespace Ase {
 
 MainLoopP          main_loop;
-JobQueue           main_loop_jobs;
 MainConfig         main_config_;
 const MainConfig  &main_config = main_config_;
 static int         embedding_fd = -1;
 
 // == JobQueue ==
-void
-JobQueue::call_remote (const std::function<void()> &job)
+static void
+call_main_loop (JobQueue::Policy policy, const std::function<void()> &fun)
 {
-  ScopedSemaphore sem;
-  std::function<void()> wrapper = [&sem, &job] () {
-    job();
-    sem.post();
-  };
-  main_loop->exec_callback (wrapper);
-  sem.wait();
+  if (policy == JobQueue::SYNC)
+    {
+      ScopedSemaphore sem;
+      std::function<void()> wrapper = [&sem, &fun] () {
+        fun();
+        sem.post();
+      };
+      main_loop->exec_callback (wrapper);
+      sem.wait();
+    }
+  else
+    main_loop->exec_callback (fun);
 }
+JobQueue main_jobs (call_main_loop);
 
 // == Feature Toggles ==
 /// Find @a feature in @a config, return its value or @a fallback.

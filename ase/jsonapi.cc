@@ -62,8 +62,8 @@ class JsonapiConnection : public WebSocketConnection {
     JsonapiConnectionP conp = std::dynamic_pointer_cast<JsonapiConnection> (shared_from_this());
     assert_return (conp);
     String reply;
-    // main_loop_jobs.operator+=() works synchronously
-    main_loop_jobs += [&message, &reply, conp, this] () {
+    // operator+=() works synchronously
+    main_jobs += [&message, &reply, conp, this] () {
       current_message_conection = conp;
       reply = handle_jsonipc (message);
       current_message_conection = nullptr;
