@@ -16,9 +16,6 @@ doc/manual-chapters ::= $(strip		\
 # == pandoc ==
 doc/pandoc-nosmart	::= $(if $(HAVE_PANDOC1),,-smart)
 doc/markdown-flavour	::= -f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline$(doc/pandoc-nosmart)
-doc/version_month	::= ./version.sh -d | sed -r -e 's/^([2-9][0-9][0-9][0-9])-([0-9][0-9])-.*/m\2 \1/' \
-			-e 's/m01/January/ ; s/m02/February/ ; s/m03/March/ ; s/m04/April/ ; s/m05/May/ ; s/m06/June/' \
-			-e 's/m07/July/ ; s/m08/August/ ; s/m09/September/ ; s/m10/October/ ; s/m11/November/ ; s/m12/December/'
 
 # == template.html ==
 $>/doc/template.html: doc/template.diff					| $>/doc/
@@ -29,11 +26,10 @@ $>/doc/template.html: doc/template.diff					| $>/doc/
 # == anklang-manual.html ==
 $>/doc/anklang-manual.html: $>/doc/template.html $(doc/manual-chapters) $(doc/style/install.files)	| $>/doc/
 	$(QGEN)
-	$Q DATE=$$( $(doc/version_month) ) \
-	  && $(PANDOC) $(doc/markdown-flavour) \
+	$Q $(PANDOC) $(doc/markdown-flavour) \
 		--toc --number-sections \
 		--variable=subparagraph \
-		--variable date="$$DATE" \
+		--variable date="$(version_to_month)" \
 		--template=$< \
 		-s -c style/$(notdir $(doc/style/faketex.css)) \
 		--mathjax='style/mathjax-tex-svg.js' \
@@ -46,11 +42,10 @@ $>/doc/anklang-manual.pdf: doc/pandoc-pdf.tex $(doc/manual-chapters)					| $>/do
 	$(QGEN)
 	$Q xelatex --version 2>&1 | grep -q '^XeTeX 3.14159265' \
 	   || { echo '$@: missing xelatex, required version: XeTeX >= 3.14159265' >&2 ; false ; }
-	$Q DATE=$$( $(doc/version_month) ) \
-	  && $(PANDOC) $(doc/markdown-flavour) \
+	$Q $(PANDOC) $(doc/markdown-flavour) \
 		--toc --number-sections \
 		--variable=subparagraph \
-		-V date="$$DATE" \
+		-V date="$(version_to_month)" \
 		--variable=lot \
 		-H $< \
 		--pdf-engine=xelatex -V mainfont='Charis SIL' -V mathfont=Asana-Math -V monofont=inconsolata \

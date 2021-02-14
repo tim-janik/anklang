@@ -13,7 +13,7 @@ NPM_INSTALL		?= npm --prefer-offline install $(if $(PARALLEL_MAKE), --progress=f
 HAVE_PANDOC1		 = $(shell $(PANDOC) --version | grep -q '^pandoc 1\.' && echo 1)
 
 HOME			?= $(shell echo ~)
-XDG_CACHE_HOME		?= $(HOME)/.cache
+XDG_CACHE_HOME		?= ${HOME}/.cache
 ANKLANG_CACHEDIR	?= $(XDG_CACHE_HOME)/anklang/
 .config.defaults	+= XDG_CACHE_HOME
 
@@ -104,7 +104,7 @@ ifeq ('','$(wildcard $>/config-cache.mk)')
 endif
 include $>/config-cache.mk
 # Rule for the actual checks:
-$>/config-cache.mk: misc/config-checks.mk version.sh $(GITCOMMITDEPS) | $>/./
+$>/config-cache.mk: misc/config-checks.mk misc/version.sh $(GITCOMMITDEPS) | $>/./
 	$(QECHO) CHECK    Configuration dependencies...
 	$Q $(PKG_CONFIG) --exists --print-errors '$(config-checks.require.pkgconfig)'
 	$Q $(IMAGEMAGICK_CONVERT) --version 2>&1 | grep -q 'Version:.*\bImageMagick\b' \
@@ -113,17 +113,8 @@ $>/config-cache.mk: misc/config-checks.mk version.sh $(GITCOMMITDEPS) | $>/./
 	  || { echo "$@: failed to detect pandoc: $(PANDOC)" >&2 ; false ; }
 	$(QGEN)
 	$Q echo '# make $@'					> $@.tmp
-	$Q VERSION_SHORT=$$(./version.sh -s) \
-	  && echo "VERSION_SHORT ::= $$VERSION_SHORT"		>>$@.tmp \
-	  && echo "$$VERSION_SHORT" | sed 's/[^0-9]/ /g'	> $@.tmpv \
-	  && read MAJOR MINOR MICRO REST			< $@.tmpv \
-	  && rm -f						  $@.tmpv \
-	  && echo "VERSION_MAJOR ::= $$MAJOR"			>>$@.tmp \
-	  && echo "VERSION_MINOR ::= $$MINOR"			>>$@.tmp \
-	  && echo "VERSION_MICRO ::= $$MICRO"			>>$@.tmp \
-	  && echo "ANKLANG_GETTEXT_DOMAIN ::=" \
-		"anklang-$$MAJOR.$$MINOR.$$MICRO"			>>$@.tmp \
-	  || { echo '$<: *** Failed to determine version through ./version.sh' ; false ; }
+	$Q echo "ANKLANG_GETTEXT_DOMAIN ::=" \
+		'anklang-$$(version_m.m.m)'			>>$@.tmp
 	$Q GLIB_CFLAGS=$$($(PKG_CONFIG) --cflags $(GLIB_PACKAGES)) \
 	  && echo "GLIB_CFLAGS ::= $$GLIB_CFLAGS"		>>$@.tmp
 	$Q GLIB_LIBS=$$($(PKG_CONFIG) --libs $(GLIB_PACKAGES)) \
@@ -166,7 +157,7 @@ CLEANFILES += $>/config-stamps.sha256 $>/config-cache.mk $>/config-cache.old
 # often regenerated. To efficiently detect changes in the build configuration,
 # use $(config-stamps) as dependency.
 # Note, consider variables defined in config-cache.mk as stale within the recipe
-# for config-cache.mk. I.e. use "$$MAJOR" instead of "$(VERSION_MINOR)" to avoid
+# for config-cache.mk. I.e. use "$$ALSA_LIBS" instead of "$(ALSA_LIBS)" to avoid
 # 2-phase regeneration of config-cache.mk that trips up config-stamps.sha256.
 config-calc-hash = $(firstword $(shell echo ' $(foreach V, $(.config.defaults) $(config-hash-vars), $($V)) ' | sha256sum))
 # About config-calc-hash: though a bit costly, comparing the config-calc-hash
@@ -175,5 +166,3 @@ config-calc-hash = $(firstword $(shell echo ' $(foreach V, $(.config.defaults) $
 config-calc-hash.dep = $$(if $$(filter $$(config-calc-hash), $(config-calc-hash)), , FORCE)
 # About config-calc-hash.dep: storing $(config-calc-hash.dep) in a .d file will
 # evaluate to 'FORCE' whenever $(config-calc-hash) changes.
-
-VERSION_M.M.M = $(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_MICRO)

@@ -29,9 +29,9 @@ ui/public.wildcards ::= $(wildcard	\
 # == UI Config ==
 define UI_CONFIG
   "config": {
-    "version": "$(VERSION_M.M.M)",
-    "revdate": "$(shell ./version.sh -d)",
-    "revision": "$(shell ./version.sh -l)",
+    "version": "$(version_m.m.m)",
+    "revdate": "$(version_date)",
+    "revision": "$(version_long)",
     "mode": "$(MODE)" }
 endef
 

@@ -11,7 +11,7 @@ ase/nonlib.cc			::= $(ase/AnklangSynthEngine.main.cc)
 ase/libsources.cc		::= $(filter-out $(ase/nonlib.cc), $(wildcard ase/*.cc))
 
 # == AnklangSynthEngine definitions ==
-lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine-$(VERSION_M.M.M)
+lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine-$(version_m.m.m)
 ase/AnklangSynthEngine.sources	::= $(ase/AnklangSynthEngine.main.cc) $(ase/libsources.cc)
 ase/AnklangSynthEngine.gensrc	::= $>/ase/api.jsonipc.cc
 ase/AnklangSynthEngine.deps	::= $>/ase/sysconfig.h
@@ -36,10 +36,10 @@ $>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/AnklangSynthEngine.dep
 $>/ase/sysconfig.h: $(config-stamps) $>/ase/sysconfig1.h $>/ase/sysconfig2.h $>/ase/sysconfig3.h | $>/ase/ # ase/Makefile.mk
 	$(QGEN)
 	$Q echo '// make $@'							> $@.tmp
-	$Q echo '#define ASE_MAJOR_VERSION		($(VERSION_MAJOR))'	>>$@.tmp
-	$Q echo '#define ASE_MINOR_VERSION		($(VERSION_MINOR))'	>>$@.tmp
-	$Q echo '#define ASE_MICRO_VERSION		($(VERSION_MICRO))'	>>$@.tmp
-	$Q echo '#define ASE_VERSION_STRING		"$(VERSION_SHORT)"'	>>$@.tmp
+	$Q echo '#define ASE_MAJOR_VERSION		($(version_major))'	>>$@.tmp
+	$Q echo '#define ASE_MINOR_VERSION		($(version_minor))'	>>$@.tmp
+	$Q echo '#define ASE_MICRO_VERSION		($(version_micro))'	>>$@.tmp
+	$Q echo '#define ASE_VERSION_STRING		"$(version_short)"'	>>$@.tmp
 	$Q echo '#define ASE_GETTEXT_DOMAIN		"$(ASE_GETTEXT_DOMAIN)"'>>$@.tmp
 	$Q echo '#define ASE_VORBISFILE_BAD_SEEK 	$(VORBISFILE_BAD_SEEK)'	>>$@.tmp
 	$Q cat $>/ase/sysconfig1.h $>/ase/sysconfig2.h $>/ase/sysconfig3.h	>>$@.tmp
@@ -116,7 +116,7 @@ $(call BUILD_PROGRAM, \
 	$(lib/libase.so), \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS), \
 	../lib)
-#	-lase-$(VERSION_MAJOR)
+#	-lase-$(version_major)
 $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkglibdir)/lib, $(lib/AnklangSynthEngine))
 
 # == Check Integrity Tests ==
