@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Usage: version.sh [-s]		# print project version
+# Usage: version.sh [--last]		# print project version
 SHORT=false LONG=false RDATE=false
 while test $# -ne 0 ; do
   case "$1" in
     -s)			SHORT=true ;;
     -l)			LONG=true ;;
     -d)			RDATE=true ;;
-    --last)		exec git describe --match '[0-9]*.[0-9]*.*[0-9a]' --abbrev=0 --first-parent HEAD ;;
+    --last)		exec git describe --match 'v[0-9]*.[0-9]*.*[0-9a]' --abbrev=0 --first-parent HEAD ;;
     *)                  : ;;
   esac
   shift

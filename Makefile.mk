@@ -8,6 +8,27 @@ PARALLEL_MAKE   = $(filter JOBSERVER, $(subst -j, JOBSERVER , $(MFLAGS)))
 S ::= # Variable containing 1 space
 S +=
 
+# == Version ==
+version_full    != misc/version.sh
+version_short  ::= $(word 1, $(version_full))
+version_long   ::= $(word 2, $(version_full))
+version_date   ::= $(wordlist 3, 999, $(version_full))
+version_bits   ::= $(subst _, , $(subst -, , $(subst ., , $(version_short))))
+version_major  ::= $(word 1, $(version_bits))
+version_minor  ::= $(word 2, $(version_bits))
+version_micro  ::= $(word 3, $(version_bits))
+version_m.m.m  ::= $(version_major).$(version_minor).$(version_micro)
+version_to_month = $(shell echo "$(version_date)" | sed -r -e 's/^([2-9][0-9][0-9][0-9])-([0-9][0-9])-.*/m\2 \1/' \
+			-e 's/m01/January/ ; s/m02/February/ ; s/m03/March/ ; s/m04/April/ ; s/m05/May/ ; s/m06/June/' \
+			-e 's/m07/July/ ; s/m08/August/ ; s/m09/September/ ; s/m10/October/ ; s/m11/November/ ; s/m12/December/')
+version-info:
+	@echo version_full: $(version_full)
+	@echo version_short: $(version_short)
+	@echo version_long: $(version_long)
+	@echo version_date: $(version_date)
+	@echo version_m.m.m: $(version_m.m.m)
+	@echo version_to_month: "$(version_to_month)"
+
 # == User Defaults ==
 # see also 'make default' rule
 -include config-defaults.mk
@@ -53,7 +74,7 @@ datadir 	 ?= $(prefix)/share
 mandir		 ?= $(datadir)/man
 libdir		 ?= $(prefix)/lib
 pkgrootdir	 ?= $(libdir)
-pkglibdir	 ?= $(pkgrootdir)/anklang-$(VERSION_MAJOR)-$(VERSION_MINOR)
+pkglibdir	 ?= $(pkgrootdir)/anklang-$(version_major)-$(version_minor)
 pkgsharedir	 ?= $(pkglibdir)/share
 .config.defaults += prefix bindir datadir mandir libdir pkgrootdir pkglibdir
 
@@ -166,9 +187,9 @@ default: FORCE
 # == PACKAGE_CONFIG ==
 define PACKAGE_CONFIG
   "config": {
-    "version": "$(VERSION_M.M.M)",
-    "revdate": "$(shell ./version.sh -d)",
-    "revision": "$(shell ./version.sh -l)",
+    "version": "$(version_m.m.m)",
+    "revdate": "$(version_date)",
+    "revision": "$(version_long)",
     "srcdir": "$(abspath .)",
     "outdir": "$(abspath $>)",
     "mode": "$(MODE)" }
@@ -254,12 +275,10 @@ int main (int argc, char *argv[])
 endef
 
 # == dist ==
-# eval: distversion != ./version.sh -l
-distname     = anklang-$(distversion)
-disttarball  = $>/$(distname).tar.xz
+distname    ::= anklang-$(version_short)
+disttarball ::= $>/$(distname).tar.xz
 dist_xz_opt  ?= -9e
 dist: $>/doc/README $>/ChangeLog FORCE
-	@$(eval distversion != ./version.sh -l)
 	$(QECHO) MAKE $(disttarball)
 	$Q DIFFLINES=`git diff HEAD | wc -l` \
 	  && { test 0 = $$DIFFLINES || echo -e "#\n# $@: WARNING: working tree unclean\n#" >&2 ; }
@@ -283,7 +302,6 @@ CLEANFILES += $(wildcard $>/anklang-*.tar $>/anklang-*.tar.xz)
 distcheck_uniqdir_py3 ::= "import os, hashlib; print ('%u-%s' % (os.getuid(), hashlib.md5 (os.getcwd().encode()).hexdigest()[:5]))"
 distcheck: dist
 	$(QGEN)
-	@$(eval distversion != ./version.sh -l)
 	@$(eval distcheck_uniqdir ::= distcheck-anklang-$(shell python3 -c $(distcheck_uniqdir_py3)) )
 	$Q TMPDIR="$${TMPDIR-$${TEMP-$${TMP-/tmp}}}" \
 	&& DCDIR="$$TMPDIR/$(distcheck_uniqdir)" \
