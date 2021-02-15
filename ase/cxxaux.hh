@@ -35,6 +35,7 @@ using   std::void_t;
 typedef std::string String;             ///< Convenience alias for std::string.
 typedef vector<String> StringVector;    ///< Convenience alias for a std::vector<std::string>.
 using StringPair = std::pair<std::string, std::string>;
+using VoidF = std::function<void()>;
 
 // == Utility Macros ==
 #define ASE_CPP_STRINGIFY(s)    ASE_CPP_STRINGIFY_ (s)                  ///< Convert macro argument into a C const char*.
