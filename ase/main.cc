@@ -4,6 +4,7 @@
 #include "path.hh"
 #include "utils.hh"
 #include "jsonapi.hh"
+#include "engine.hh"
 #include "internal.hh"
 #include "testing.hh"
 
@@ -182,6 +183,14 @@ make_auth_string()
   return auth;
 }
 
+static void
+run_tests_and_quit ()
+{
+  printerr ("CHECK_INTEGRITY_TESTS…\n");
+  Test::run();
+  main_loop->quit (0);
+}
+
 } // Ase
 
 int
@@ -204,12 +213,12 @@ main (int argc, char *argv[])
       return 0;
     }
 
-  // run test suite
-  if (main_config.mode == MainConfig::CHECK_INTEGRITY_TESTS)
-    {
-      printerr ("CHECK_INTEGRITY_TESTS…\n");
-      return Test::run();
-    }
+  // prepare main event loop
+  main_loop = MainLoop::create();
+
+  // start audio engine
+  AudioEngine &se = make_audio_engine (48000);
+  se.start_thread ([] () { main_loop->wakeup(); });
 
   // open Jsonapi socket
   auto wss = WebSocketServer::create (jsonapi_make_connection);
@@ -217,9 +226,10 @@ main (int argc, char *argv[])
   const int xport = embedding_fd >= 0 ? 0 : 1777;
   const String subprotocol = xport ? "" : make_auth_string();
   jsonapi_require_auth (subprotocol);
-  wss->listen ("127.0.0.1", xport, [] () { main_loop->quit (-1); });
+  if (main_config.mode == MainConfig::SYNTHENGINE)
+    wss->listen ("127.0.0.1", xport, [] () { main_loop->quit (-1); });
   const String url = wss->url() + (subprotocol.empty() ? "" : "?subprotocol=" + subprotocol);
-  if (embedding_fd < 0)
+  if (embedding_fd < 0 && !url.empty())
     printout ("%sLISTEN:%s %s\n", B1, B0, url);
 
   // catch SIGUSR2 to close sockets
@@ -230,9 +240,6 @@ main (int argc, char *argv[])
     action.sa_flags = SA_NOMASK;
     sigaction (SIGUSR2, &action, nullptr);
   }
-
-  // prepare main event loop and catch SIGUSR2
-  main_loop = MainLoop::create();
   main_loop->exec_usignal (SIGUSR2, [wss] (int8) { wss->reset(); return true; });
 
   // monitor and allow auth over keep-alive-fd
@@ -260,12 +267,20 @@ main (int argc, char *argv[])
       while (n < 0 && errno == EINTR);
     }
 
+  // run test suite
+  if (main_config.mode == MainConfig::CHECK_INTEGRITY_TESTS)
+    main_loop->exec_now (run_tests_and_quit);
+
   // run main event loop and catch SIGUSR2
   const int exitcode = main_loop->run();
 
   // loop ended, close socket and shutdown
   wss->shutdown();
   wss = nullptr;
+
+  // halt audio engine, join its threads
+  se.stop_thread();
+  assert_return (main_loop, -1); // used by AudioEngine
 
   return exitcode;
 }
