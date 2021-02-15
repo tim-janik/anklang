@@ -160,10 +160,8 @@ ServerImpl::list_midi_drivers ()
 ServerImplP
 ServerImpl::instancep ()
 {
-  static ServerImplP instance_ = nullptr;
-  return_unless (!instance_, instance_);
-  instance_ = std::make_shared<ServerImpl>();
-  return instance_;
+  static ServerImplP *sptr = new ServerImplP (std::make_shared<ServerImpl>());
+  return *sptr;
 }
 
 // == Server ==
