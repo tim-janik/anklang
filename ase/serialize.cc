@@ -418,7 +418,7 @@ struct SBase : Serializable {
 
 template<typename T> static T via_json (const T &v) { return json_parse<T> (json_stringify (v)); }
 
-ASE_INTEGRITY_TEST (ase_serialize);
+TEST_INTEGRITY (ase_serialize);
 static void
 ase_serialize()
 {
@@ -624,7 +624,7 @@ protected:
   }
 };
 
-ASE_INTEGRITY_TEST (test_serializable_hierarchy);
+TEST_INTEGRITY (test_serializable_hierarchy);
 static void
 test_serializable_hierarchy()
 {

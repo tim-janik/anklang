@@ -1101,7 +1101,7 @@ static EarlyStartup _early_startup __attribute__ ((init_priority (101)));
 namespace { // Anon
 using namespace Ase;
 
-ASE_INTEGRITY_TEST (ase_test_timestamps);
+TEST_INTEGRITY (ase_test_timestamps);
 static void
 ase_test_timestamps()
 {

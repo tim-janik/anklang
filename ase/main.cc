@@ -273,7 +273,7 @@ main (int argc, char *argv[])
 namespace { // Anon
 using namespace Ase;
 
-ASE_INTEGRITY_TEST (test_feature_toggles);
+TEST_INTEGRITY (test_feature_toggles);
 static void
 test_feature_toggles()
 {

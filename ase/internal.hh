@@ -66,7 +66,7 @@ using Ase::String;
     ( Jsonipc::Class< IMPL >().inherit< INTERFACE >() , 0 )
 
 /// Register `func` as integrity test to run when libbse is started with internal integrity checks.
-#define ASE_INTEGRITY_TEST(FUNC)        static void FUNC() __attribute__ ((__cold__, __unused__)); \
+#define TEST_INTEGRITY(FUNC)        static void FUNC() __attribute__ ((__cold__, __unused__)); \
   static ::Ase::Test::IntegrityCheck ASE_CPP_PASTE2 (__Ase__Test__IntegrityCheck__line, __LINE__) { #FUNC, FUNC }
 
 namespace Ase {

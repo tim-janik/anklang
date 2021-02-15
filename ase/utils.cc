@@ -270,7 +270,7 @@ extern "C" ::Ase::AbortMsg *__abort_msg __attribute__ ((weak, alias ("ase_abort_
 namespace { // Anon
 using namespace Ase;
 
-ASE_INTEGRITY_TEST (utils_tests);
+TEST_INTEGRITY (utils_tests);
 static void
 utils_tests()
 {

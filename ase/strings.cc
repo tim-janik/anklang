@@ -1458,7 +1458,7 @@ strerror()
 namespace { // Anon
 using namespace Ase;
 
-ASE_INTEGRITY_TEST (string_tests);
+TEST_INTEGRITY (string_tests);
 static void
 string_tests()
 {
