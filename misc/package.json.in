@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "serve": "run-p sound-engine eslint monitor",
-    "sound-engine": "lib/AnklangSynthEngine-$npm_package_config_version",
+    "sound-engine": "lib/AnklangSynthEngine-$npm_package_config_version && false",
     "eslint": "eslint --no-eslintrc -c ui/.eslintrc.js -f unix --cache $(cat ui/eslint.files)",
     "ui/rebuild": "make ui/rebuild -C $npm_package_config_srcdir -j",
     "monitor": "nodemon --ext '*' --watch $npm_package_config_srcdir/ui/ --watch $npm_package_config_outdir/lib/ --delay 250ms --on-change-only --exec 'npm run -s ui/rebuild'"
