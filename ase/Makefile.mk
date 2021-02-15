@@ -5,6 +5,8 @@ CLEANDIRS      += $(ase/cleandirs)
 ALL_TARGETS    += ase/all
 CHECK_TARGETS  += ase/check
 
+include ase/tests/Makefile.mk
+
 # == ase/ *.cc file sets ==
 ase/AnklangSynthEngine.main.cc	::= ase/main.cc
 ase/nonlib.cc			::= $(ase/AnklangSynthEngine.main.cc)
@@ -16,7 +18,7 @@ ase/AnklangSynthEngine.sources	::= $(ase/AnklangSynthEngine.main.cc) $(ase/libso
 ase/AnklangSynthEngine.gensrc	::= $>/ase/api.jsonipc.cc
 ase/AnklangSynthEngine.deps	::= $>/ase/sysconfig.h
 ase/AnklangSynthEngine.deps	 += $>/external/websocketpp/server.hpp $>/external/rapidjson/rapidjson.h
-ase/AnklangSynthEngine.objects	::= $(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources)) $(ase/AnklangSynthEngine.gensrc:.cc=.o)
+ase/AnklangSynthEngine.objects	::= $(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources)) $(ase/AnklangSynthEngine.gensrc:.cc=.o) $(ase/tests/objects)
 ase/all: $(lib/AnklangSynthEngine)
 # $(wildcard $>/ase/*.d): $>/external/rapidjson/rapidjson.h # fix deps on rapidjson/ internal headers
 
