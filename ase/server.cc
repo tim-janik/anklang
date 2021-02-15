@@ -4,6 +4,7 @@
 #include "platform.hh"
 #include "properties.hh"
 #include "serialize.hh"
+#include "main.hh"
 #include "utils.hh"
 #include "path.hh"
 #include "internal.hh"
@@ -99,7 +100,7 @@ ServerImpl::ServerImpl ()
 
 ServerImpl::~ServerImpl ()
 {
-  assert_return (!"TODO: ServerImpl shutdown not implemented");
+  fatal_error ("ServerImpl references must persist");
 }
 
 String
@@ -122,7 +123,10 @@ ServerImpl::get_mp3_version ()
 
 void
 ServerImpl::shutdown ()
-{}
+{
+  // defer quit() slightly, so remote calls are still completed
+  main_loop->exec_timer ([] () { main_loop->quit (0); }, 5, -1, EventLoop::PRIORITY_NORMAL);
+}
 
 ProjectP
 ServerImpl::last_project ()
