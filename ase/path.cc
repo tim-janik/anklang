@@ -753,7 +753,7 @@ CxxPasswd::CxxPasswd (std::string username) :
 namespace { // Anon
 using namespace Ase;
 
-ASE_INTEGRITY_TEST (ase_test_paths);
+TEST_INTEGRITY (ase_test_paths);
 static void
 ase_test_paths()
 {

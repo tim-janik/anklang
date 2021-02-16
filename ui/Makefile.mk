@@ -270,6 +270,6 @@ eslint: $>/ui/.all-stamp
 ui/rebuild:
 	@: # incremental rebuild of source files without npm.done
 	$(MAKE) $>/ui/.all-stamp NPMBLOCK=y -j
-	@: # reload servedui/ files
+	@: # close open sockets, only works if *same* executable still runs
 	killall -s USR2 -u $(USER) -- $(abspath $(lib/AnklangSynthEngine))
 .PHONY: ui/rebuild

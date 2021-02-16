@@ -3,7 +3,9 @@
 #define __ASE_PLATFORM_HH__
 
 #include <ase/cxxaux.hh>
+#include <condition_variable>
 #include <thread>
+#include <list>
 
 namespace Ase {
 
@@ -85,6 +87,20 @@ public:
   /*dtor*/ ~ScopedSemaphore () noexcept;
 };
 
+// == AsyncBlockingQueue ==
+/// This is a thread-safe asyncronous queue which blocks in pop() until data is provided through push().
+template<class Value>
+class AsyncBlockingQueue {
+  std::mutex              mutex_;
+  std::condition_variable cond_;
+  std::list<Value>        list_;
+public:
+  void  push    (const Value &v);
+  Value pop     ();
+  bool  pending ();
+  void  swap    (std::list<Value> &list);
+};
+
 // == Thread Status ==
 /// Acquire information about a task (process or thread) at runtime.
 struct TaskStatus {
@@ -155,6 +171,44 @@ inline void breakpoint() { __asm__ __volatile__ ("bpt"); }
 #else   // !__i386__ && !__alpha__
 inline void breakpoint() { __builtin_trap(); }
 #endif
+
+template<class Value> void
+AsyncBlockingQueue<Value>::push (const Value &v)
+{
+  std::lock_guard<std::mutex> locker (mutex_);
+  const bool notify = list_.empty();
+  list_.push_back (v);
+  if (ASE_UNLIKELY (notify))
+    cond_.notify_all();
+}
+
+template<class Value> Value
+AsyncBlockingQueue<Value>::pop ()
+{
+  std::unique_lock<std::mutex> locker (mutex_);
+  while (list_.empty())
+    cond_.wait (locker);
+  Value v = list_.front();
+  list_.pop_front();
+  return v;
+}
+
+template<class Value> bool
+AsyncBlockingQueue<Value>::pending()
+{
+  std::lock_guard<std::mutex> locker (mutex_);
+  return !list_.empty();
+}
+
+template<class Value> void
+AsyncBlockingQueue<Value>::swap (std::list<Value> &list)
+{
+  std::lock_guard<std::mutex> locker (mutex_);
+  const bool notify = list_.empty();
+  list_.swap (list);
+  if (notify && !list_.empty())
+    cond_.notify_all();
+}
 
 } // Ase
 

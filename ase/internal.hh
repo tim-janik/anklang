@@ -65,9 +65,13 @@ using Ase::String;
   [[maybe_unused]] static bool ASE_CPP_PASTE2 (ase_inherit__, __COUNTER__) =   \
     ( Jsonipc::Class< IMPL >().inherit< INTERFACE >() , 0 )
 
-/// Register `func` as integrity test to run when libbse is started with internal integrity checks.
-#define ASE_INTEGRITY_TEST(FUNC)        static void FUNC() __attribute__ ((__cold__, __unused__)); \
-  static ::Ase::Test::IntegrityCheck ASE_CPP_PASTE2 (__Ase__Test__IntegrityCheck__line, __LINE__) { #FUNC, FUNC }
+/// Register `func` as an integrity test.
+#define TEST_INTEGRITY(FUNC)        static void FUNC() __attribute__ ((__cold__, __unused__)); \
+  static ::Ase::Test::IntegrityCheck ASE_CPP_PASTE2 (__Ase__Test__IntegrityCheck__line, __LINE__) { #FUNC, FUNC, 'I' }
+
+/// Register `func` as a benchmark test.
+#define TEST_BENCHMARK(FUNC)        static void FUNC() __attribute__ ((__cold__, __unused__)); \
+  static ::Ase::Test::IntegrityCheck ASE_CPP_PASTE2 (__Ase__Test__IntegrityCheck__line, __LINE__) { #FUNC, FUNC, 'B' }
 
 namespace Ase {
 
@@ -82,7 +86,7 @@ namespace Test {
 // == IntegrityCheck ==
 struct IntegrityCheck {
   using TestFunc = void (*) ();
-  IntegrityCheck (const char *name, TestFunc func)
+  IntegrityCheck (const char *name, TestFunc func, char hint)
   {
     func_ = func;
     name_ = name;

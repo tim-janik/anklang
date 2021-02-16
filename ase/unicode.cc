@@ -185,7 +185,7 @@ string_from_unicode (const std::vector<uint32_t> &codepoints)
 namespace { // Anon
 using namespace Ase;
 
-ASE_INTEGRITY_TEST (ase_test_utf8_funcs);
+TEST_INTEGRITY (ase_test_utf8_funcs);
 
 static void
 ase_test_utf8_funcs()

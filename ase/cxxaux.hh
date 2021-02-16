@@ -35,6 +35,7 @@ using   std::void_t;
 typedef std::string String;             ///< Convenience alias for std::string.
 typedef vector<String> StringVector;    ///< Convenience alias for a std::vector<std::string>.
 using StringPair = std::pair<std::string, std::string>;
+using VoidF = std::function<void()>;
 
 // == Utility Macros ==
 #define ASE_CPP_STRINGIFY(s)    ASE_CPP_STRINGIFY_ (s)                  ///< Convert macro argument into a C const char*.
@@ -296,6 +297,39 @@ weak_ptr_fetch_or_create (std::weak_ptr<C> &wptr, const std::function<std::share
   }
   return cptr;
 }
+
+/// Create an instance of `Class` on demand that is constructed and never destructed.
+/// Due to its constexpr ctor and on-demand creation of `Class`, a Persistent<>
+/// can be accessed at any time during the static ctor (or dtor) phases and will always yield
+/// a properly initialized `Class`.
+template<class Class>
+class Persistent final {
+  static_assert (std::is_class<Class>::value, "Persistent<Class> requires class template argument");
+  uint64 mem_[(sizeof (Class) + sizeof (uint64) - 1) / sizeof (uint64)] = { 0, };
+  Class *ptr_ = nullptr;
+  void
+  initialize() ASE_NOINLINE
+  {
+    static std::mutex mtx;
+    std::unique_lock<std::mutex> lock (mtx);
+    if (ptr_ == nullptr)
+      ptr_ = new (mem_) Class(); // exclusive construction
+  }
+public:
+  /// A constexpr constructor avoids the static initialization order fiasco
+  constexpr Persistent    () noexcept {}
+  /// Check if `this` stores a `Class` instance yet.
+  explicit  operator bool () const ASE_PURE  { return ptr_ != nullptr; }
+  /// Retrieve reference to `Class` instance, always returns the same reference.
+  Class&    operator*     () ASE_PURE        { return *operator->(); }
+  /// Retrieve pointer to `Class` instance, always returns the same pointer.
+  Class*    operator->    () ASE_PURE
+  {
+    if (ASE_UNLIKELY (ptr_ == nullptr))
+      initialize();
+    return ptr_;
+  }
+};
 
 } // Ase
 

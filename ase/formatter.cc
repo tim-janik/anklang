@@ -521,7 +521,7 @@ struct UncopyablePoint {
   ASE_CLASS_NON_COPYABLE (UncopyablePoint);
 };
 
-ASE_INTEGRITY_TEST (ase_string_format);
+TEST_INTEGRITY (ase_string_format);
 static void
 ase_string_format()
 {
