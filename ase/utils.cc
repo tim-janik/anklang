@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "utils.hh"
 #include "platform.hh"
+#include "memory.hh"
 #include "internal.hh"
 #include <signal.h>
 #include <sys/time.h>
@@ -145,6 +146,14 @@ diag_message (uint8 code, const std::string &message)
       ::abort();                // default action for SIGABRT is core dump
       ::_exit (-1);             // ensure noreturn
     }
+}
+
+// == i18n & gettext ==
+const char*
+ase_gettext (const String &untranslated)
+{
+  CString translated = untranslated;
+  return translated.c_str(); // relies on global CString storage
 }
 
 // == EventFd ==

@@ -15,7 +15,7 @@ using Ase::unichar;
 using Ase::String;
 
 /// Retrieve the translation of a C or C++ string.
-#define _(...)          ::Ase::_ (__VA_ARGS__)
+#define _(...)          ::Ase::ase_gettext (__VA_ARGS__)
 /// Mark a string for translation, passed through verbatim by the preprocessor.
 #define N_(str)         (str)
 
