@@ -1,18 +1,20 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "driver.hh"
-#include "bseengine.hh"
+#include "aseengine.hh"
 #include "internal.hh"
 #include "gsldatautils.hh"
-#include "bseblockutils.hh"
+#include "aseblockutils.hh"
 
 #include <unistd.h>
 
-#define JDEBUG(...)     Bse::debug ("jack", __VA_ARGS__)
+#define JDEBUG(...)     Ase::debug ("jack", __VA_ARGS__)
 
 #if __has_include(<jack/jack.h>)
 #include <jack/jack.h>
 
-using namespace Bse;
+#define MAX_JACK_STRING_SIZE    1024
+
+using namespace Ase;
 
 namespace { // Anon
 
@@ -22,15 +24,15 @@ things that could be improved, here is a short list.
 
 Audio Engine start/stop
 -----------------------
-Currently the JACK driver registers a new BEAST client every time the device
-is opened. This is problematic because connections between the BEAST jack
+Currently the JACK driver registers a new ANKLANG client every time the device
+is opened. This is problematic because connections between the ANKLANG jack
 client and other applications will be disconnected on every close. So
 redirecting output song playback through some other application would have
-to be reconnected the next time the song plays. Also connecting BEAST to
+to be reconnected the next time the song plays. Also connecting ANKLANG to
 other JACK clients while the device is closed - before actual playback -
 would be impossible.
 
-To fix this, there should be an explicit audio engine start/stop in BEAST.
+To fix this, there should be an explicit audio engine start/stop in ANKLANG.
 Once the audio engine is started, the JACK client should remain registered
 with JACK, even if no song is playing. This should fix the problems this
 driver has due to JACK disconnect on device close.
@@ -46,7 +48,7 @@ Currently, the JACK driver has a ring buffer that holds some audio data.  This
 introduces latency. This is not what JACK applications typically do.  So here
 are some thoughts of how to avoid buffering completely.
 
-To do so, we make the JACK callback block until BEAST has processed the audio
+To do so, we make the JACK callback block until ANKLANG has processed the audio
 data.
 
 (1) [JACK Thread] jack_process_callback gets called with N input samples
@@ -66,14 +68,14 @@ block size and the jack block size are equal. It also works well if the jack
 block size is an integer multiple fo the engine block size.
 
 This avoids latency and buffering. However this may pose stricter RT
-requirements onto BEAST. So whether it runs as dropout-free as the current
+requirements onto ANKLANG. So whether it runs as dropout-free as the current
 version would remain to be seen. A not so realtime version would buffer
 M complete blocks of N samples, still avoiding partially filled buffers.
 ------------------------------------------------------------------------*/
 
 /**
  * This function uses std::copy to copy the n_values of data from ivalues
- * to ovalues. If a specialized version is available in bseblockutils,
+ * to ovalues. If a specialized version is available in aseblockutils,
  * then this - usually faster - version will be used.
  *
  * The data in ivalues and ovalues may not overlap.
@@ -94,7 +96,7 @@ fast_copy (uint         n_values,
   Block::copy (n_values, ovalues, ivalues);
 }
 
-template<> BSE_UNUSED void
+template<> ASE_UNUSED void
 fast_copy (uint	         n_values,
            uint32       *ovalues,
            const uint32 *ivalues)
@@ -295,13 +297,13 @@ public:
 static void
 error_callback_silent (const char *msg)
 {
-  JDEBUG ("JACK: %s\n", msg);
+  JDEBUG ("%s\n", msg);
 }
 
 static void
 error_callback_show (const char *msg)
 {
-  Bse::printerr ("JACK: %s\n", msg);
+  Ase::printerr ("JACK: %s\n", msg);
 }
 
 static jack_client_t *
@@ -311,11 +313,11 @@ connect_jack()
   jack_set_error_function (error_callback_silent);
 
   jack_status_t status;
-  jack_client_t *jack_client = jack_client_open ("beast", JackNoStartServer, &status);
+  jack_client_t *jack_client = jack_client_open ("Anklang", JackNoStartServer, &status);
 
   jack_set_error_function (error_callback_show);
 
-  JDEBUG ("JACK: attaching to server returned status: %d\n", status);
+  JDEBUG ("attaching to server returned status: %d\n", status);
   return jack_client;
 }
 
@@ -338,6 +340,7 @@ struct DeviceDetails {
 
   std::vector<std::string> input_port_names;
   std::vector<std::string> output_port_names;
+  std::string input_port_alias;
 };
 
 static std::map<std::string, DeviceDetails>
@@ -346,6 +349,7 @@ query_jack_devices (jack_client_t *jack_client)
   std::map<std::string, DeviceDetails> devices;
 
   assert_return (jack_client, devices);
+  assert_return (MAX_JACK_STRING_SIZE >= jack_port_name_size(), devices);
 
   const char **jack_ports = jack_get_ports (jack_client, NULL, NULL, 0);
   if (jack_ports)
@@ -354,46 +358,50 @@ query_jack_devices (jack_client_t *jack_client)
 
       for (uint i = 0; jack_ports[i]; i++)
 	{
+          jack_port_t *jack_port = jack_port_by_name (jack_client, jack_ports[i]);
 	  const char *end = strchr (jack_ports[i], ':');
-	  if (end)
-	    {
-              std::string device_name (jack_ports[i], end);
+	  if (!jack_port || !end)
+            continue;
+          std::string device_name (jack_ports[i], end);
 
-	      jack_port_t *jack_port = jack_port_by_name (jack_client, jack_ports[i]);
-	      if (jack_port)
-		{
-                  const char *port_type = jack_port_type (jack_port);
-                  if (strcmp (port_type, JACK_DEFAULT_AUDIO_TYPE) == 0)
+          const char *port_type = jack_port_type (jack_port);
+          if (strcmp (port_type, JACK_DEFAULT_AUDIO_TYPE) == 0)
+            {
+              DeviceDetails &details = devices[device_name];
+              details.ports++;
+
+              const int flags = jack_port_flags (jack_port);
+              if (flags & JackPortIsInput)
+                {
+                  details.input_ports++;
+                  details.input_port_names.push_back (jack_ports[i]);
+                }
+              if (flags & JackPortIsOutput)
+                {
+                  details.output_ports++;
+                  details.output_port_names.push_back (jack_ports[i]);
+                }
+              if (flags & JackPortIsTerminal)
+                details.terminal_ports++;
+              if (flags & JackPortIsPhysical)
+                {
+                  details.physical_ports++;
+
+                  if (!have_default_device && (flags & JackPortIsInput))
                     {
-	              DeviceDetails &details = devices[device_name];
-	              details.ports++;
-
-                      int flags = jack_port_flags (jack_port);
-                      if (flags & JackPortIsInput)
+                      /* the first device that has physical ports is the default device */
+                      details.default_device = true;
+                      have_default_device = true;
+                      char alias1[MAX_JACK_STRING_SIZE] = "", alias2[MAX_JACK_STRING_SIZE] = "";
+                      char *aliases[2] = { alias1, alias2, };
+                      const int cnt = jack_port_get_aliases (jack_port, aliases);
+                      if (cnt >= 1 && alias1[0])
                         {
-                          details.input_ports++;
-                          details.input_port_names.push_back (jack_ports[i]);
+                          const char *acolon = strrchr (alias1, ':');
+                          details.input_port_alias = acolon ? std::string (alias1, acolon - alias1) : alias1;
                         }
-                      if (flags & JackPortIsOutput)
-                        {
-                          details.output_ports++;
-                          details.output_port_names.push_back (jack_ports[i]);
-                        }
-                      if (flags & JackPortIsPhysical)
-                        {
-                          details.physical_ports++;
-
-                          if (!have_default_device)
-                            {
-                              /* the first device that has physical ports is the default device */
-                              details.default_device = true;
-                              have_default_device = true;
-                            }
-                        }
-                      if (flags & JackPortIsTerminal)
-                        details.terminal_ports++;
                     }
-		}
+                }
 	    }
 	}
       free (jack_ports);
@@ -415,33 +423,37 @@ list_jack_drivers (Driver::EntryVec &entries)
 
   for (std::map<std::string, DeviceDetails>::iterator di = devices.begin(); di != devices.end(); di++)
     {
-      const std::string &device_name = di->first;
+      const std::string &devid = di->first;
       DeviceDetails &details = di->second;
 
       /* the default device is usually the hardware device, so things should work as expected
        * we could show try to show non-default devices as well, but this could be confusing
        */
-      if (details.default_device)
+      if (details.default_device && (details.input_ports || details.output_ports))
         {
           Driver::Entry entry;
-          entry.devid = device_name;
+          entry.devid = devid;
+          entry.device_name = string_format ("JACK \"%s\" Audio Device", devid);
+          const std::string phprefix = details.physical_ports == details.ports ? "Physical: " : "";
+          if (!details.input_port_alias.empty())
+            entry.device_name += " [" + phprefix + details.input_port_alias + "]";
+          entry.capabilities = details.output_ports && details.input_ports ? "Full-Duplex Audio" : details.output_ports ? "Audio Input" : "Audio Output";
+          entry.capabilities += string_format (", channels: %d*playback + %d*capture", details.input_ports, details.output_ports);
+          entry.device_info = "Routing via the JACK Audio Connection Kit";
           if (details.physical_ports == details.ports)
-            entry.name = "Hardware Device: " + device_name;
-          else
-            entry.name = device_name;
-          entry.blurb = string_format ("%d Inputs / %d Outputs", details.input_ports, details.output_ports);
+            entry.notice = "Note: JACK adds latency compared to direct hardware access";
           entry.priority = Driver::JACK;
           entries.push_back (entry);
         }
     }
 }
 
-/* macro for jack dropout tests - see below */
-#define TEST_DROPOUT() if (unlink ("/tmp/bse-dropout") == 0) usleep (1.5 * 1000000. * buffer_frames_ / mix_freq_); /* sleep 1.5 * buffer size */
-
 } // Anon
 
-namespace Bse {
+namespace Ase {
+
+/* macro for jack dropout tests - see below */
+#define TEST_DROPOUT() if (unlink ("/tmp/ase-dropout") == 0) usleep (1.5 * 1000000. * buffer_frames_ / mix_freq_); /* sleep 1.5 * buffer size */
 
 // == JackPcmDriver ==
 class JackPcmDriver : public PcmDriver {
@@ -576,6 +588,11 @@ public:
   {
     return mix_freq_;
   }
+  virtual uint
+  block_length () const override
+  {
+    return block_length_;
+  }
   virtual void
   close () override
   {
@@ -592,14 +609,14 @@ public:
 
     jack_client_ = connect_jack();
     if (!jack_client_)
-      return Bse::Error::FILE_OPEN_FAILED;
+      return Ase::Error::FILE_OPEN_FAILED;
 
     // always use duplex mode for this device
     flags_ |= Flags::READABLE | Flags::WRITABLE;
     n_channels_ = config.n_channels;
 
     /* try setup */
-    Bse::Error error = Bse::Error::NONE;
+    Ase::Error error = Ase::Error::NONE;
 
     mix_freq_ = jack_get_sample_rate (jack_client_);
     block_length_ = config.block_length;
@@ -615,14 +632,14 @@ public:
         if (port)
           input_ports_.push_back (port);
         else
-          error = Bse::Error::FILE_OPEN_FAILED;
+          error = Ase::Error::FILE_OPEN_FAILED;
 
         snprintf (port_name, port_name_size, "out_%u", i);
         port = jack_port_register (jack_client_, port_name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
         if (port)
           output_ports_.push_back (port);
         else
-          error = Bse::Error::FILE_OPEN_FAILED;
+          error = Ase::Error::FILE_OPEN_FAILED;
       }
 
     /* initialize ring buffers */
@@ -639,7 +656,7 @@ public:
         // honor the user defined latency specification
         //
         // the user defined latency is only used to adjust our local buffering
-        // -> it doesn't take into account latencies outside beast, such as the buffering
+        // -> it doesn't take into account latencies outside anklang, such as the buffering
         //    jack does, or latencies added by other clients)
         uint user_buffer_frames = config.latency_ms * config.mix_freq / 1000;
         uint buffer_frames = std::max (min_buffer_frames, user_buffer_frames);
@@ -651,11 +668,11 @@ public:
         // the ringbuffer should be exactly as big as requested
         if (buffer_frames_ != buffer_frames)
           {
-            Bse::warning ("JACK driver: ring buffer size not correct: (buffer_frames_ != buffer_frames); (%u != %u)\n",
+            Ase::warning ("JACK driver: ring buffer size not correct: (buffer_frames_ != buffer_frames); (%u != %u)\n",
                           buffer_frames_, buffer_frames);
-            error = Bse::Error::INTERNAL;
+            error = Ase::Error::INTERNAL;
           }
-        JDEBUG ("JACK: %s: ringbuffer size = %.3fms", devid_, buffer_frames_ / double (mix_freq_) * 1000);
+        JDEBUG ("%s: ringbuffer size = %.3fms", devid_, buffer_frames_ / double (mix_freq_) * 1000);
 
         /* initialize output ringbuffer with silence
          * this will prevent dropouts at initialization, when no data is there at all
@@ -667,7 +684,7 @@ public:
 
         uint frames_written = output_ringbuffer_.write (buffer_frames, &silence_buffers[0]);
         if (frames_written != buffer_frames)
-          Bse::warning ("JACK driver: output silence init failed: (frames_written != jack->buffer_frames)\n");
+          Ase::warning ("JACK driver: output silence init failed: (frames_written != jack->buffer_frames)\n");
 
       }
 
@@ -684,7 +701,7 @@ public:
           [] (void *p) { static_cast<JackPcmDriver *> (p)->shutdown_callback(); }, this);
 
         if (jack_activate (jack_client_) != 0)
-          error = Bse::Error::FILE_OPEN_FAILED;
+          error = Ase::Error::FILE_OPEN_FAILED;
       }
 
     /* connect ports */
@@ -723,7 +740,7 @@ public:
         disconnect_jack (jack_client_);
         jack_client_ = nullptr;
       }
-    JDEBUG ("JACK: %s: opening PCM: readable=%d writable=%d: %s", devid_, readable(), writable(), bse_error_blurb (error));
+    JDEBUG ("%s: opening PCM: readable=%d writable=%d: %s", devid_, readable(), writable(), ase_error_blurb (error));
     return error;
   }
   virtual bool
@@ -738,7 +755,7 @@ public:
          *
          * Since dropouts occur rarely, we can use the TEST_DROPOUT macro. This
          * will check if /tmp/drop exists, and if so, sleep for some time to
-         * ensure BSE can't write to/read from the ring buffer in time. Such an
+         * ensure ASE can't write to/read from the ring buffer in time. Such an
          * artificial dropout can be created using
          *
          * $ touch /tmp/drop
@@ -759,14 +776,14 @@ public:
     if (atomic_xruns_ != printed_xruns_)
       {
         printed_xruns_ = atomic_xruns_;
-        Bse::printerr ("JACK: %s: %d beast driver xruns\n", devid_, printed_xruns_);
+        Ase::printerr ("JACK: %s: %d anklang driver xruns\n", devid_, printed_xruns_);
       }
     /* report jack shutdown */
     if (is_down_ && !printed_is_down_)
       {
         printed_is_down_ = true;
-        Bse::printerr ("JACK: %s: connection to jack server lost\n", devid_);
-        Bse::printerr ("JACK: %s:  -> to continue, manually stop playback and restart\n", devid_);
+        Ase::printerr ("JACK: %s: connection to jack server lost\n", devid_);
+        Ase::printerr ("JACK: %s:  -> to continue, manually stop playback and restart\n", devid_);
       }
 
     uint n_frames_avail = std::min (output_ringbuffer_.get_writable_frames(), input_ringbuffer_.get_readable_frames());
@@ -807,7 +824,7 @@ public:
       }
 
     uint total_latency = buffer_frames_ + jack_rlatency + jack_wlatency;
-    JDEBUG ("JACK: %s: jack_rlatency=%.3f ms jack_wlatency=%.3f ms ringbuffer=%.3f ms total_latency=%.3f ms",
+    JDEBUG ("%s: jack_rlatency=%.3f ms jack_wlatency=%.3f ms ringbuffer=%.3f ms total_latency=%.3f ms",
             devid_,
             jack_rlatency / double (mix_freq_) * 1000,
             jack_wlatency / double (mix_freq_) * 1000,
@@ -858,10 +875,10 @@ public:
     assert_return (n == block_length_ * n_channels_);
 
     /* our buffer management is based on the assumption that jack_device_read()
-     * will always be performed before jack_device_write() - BEAST doesn't
+     * will always be performed before jack_device_write() - ANKLANG doesn't
      * always guarantee this (for instance when removing the pcm input module
      * from the snet while audio is playing), so we read and discard input
-     * if BEAST didn't call jack_device_read() already
+     * if ANKLANG didn't call jack_device_read() already
      */
     device_write_counter_++;
     if (device_read_counter_ < device_write_counter_)
@@ -890,6 +907,6 @@ public:
 };
 
 static const String jack_pcm_driverid = PcmDriver::register_driver ("jack", JackPcmDriver::create, list_jack_drivers);
-} // Bse
+} // Ase
 
 #endif  // __has_include(<jack/jack.h>)

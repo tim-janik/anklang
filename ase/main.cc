@@ -233,7 +233,7 @@ init_sigpipe()
 
   int rc = pthread_sigmask (SIG_BLOCK, &signal_mask, NULL);
   if (rc != 0)
-    Bse::warning ("BSE: pthread_sigmask for SIGPIPE failed: %s\n", strerror (errno));
+    Ase::warning ("Ase: pthread_sigmask for SIGPIPE failed: %s\n", strerror (errno));
 }
 
 int
