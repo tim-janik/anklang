@@ -89,11 +89,6 @@ using VoidF = std::function<void()>;
 #define ASE_CLASS_NON_COPYABLE(ClassName)  \
   /*copy-ctor*/ ClassName  (const ClassName&) = delete; \
   ClassName&    operator=  (const ClassName&) = delete
-#ifdef __clang__ // clang++-3.8.0: work around 'variable length array of non-POD element type'
-#define ASE_DECLARE_VLA(Type, var, count)          std::vector<Type> var (count)
-#else // sane c++
-#define ASE_DECLARE_VLA(Type, var, count)          Type var[count] ///< Declare a variable length array (clang++ uses std::vector<>).
-#endif
 
 // == Operations on flags enum classes ==
 #define ASE_DEFINE_ENUM_EQUALITY(Enum)         \
