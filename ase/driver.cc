@@ -2,6 +2,7 @@
 #include "driver.hh"
 #include "path.hh"
 #include "platform.hh"
+#include "datautils.hh"
 #include "internal.hh"
 
 #define DDEBUG(...)     Ase::debug ("driver", __VA_ARGS__)
@@ -239,11 +240,10 @@ MidiDriver::list_drivers ()
 
 // == NullPcmDriver ==
 class NullPcmDriver : public PcmDriver {
-  uint          n_channels_ = 0;
-  uint          mix_freq_ = 0;
-  uint          block_size_ = 0;
-  uint          busy_us_ = 0;
-  uint          sleep_us_ = 0;
+  uint   n_channels_ = 0;
+  uint   mix_freq_ = 0;
+  uint   block_size_ = 0;
+  uint64 resumetime_ = 0;
 public:
   explicit      NullPcmDriver (const String &devid) : PcmDriver (devid) {}
   static PcmDriverP
@@ -273,7 +273,6 @@ public:
   {
     assert_return (!opened(), Error::INTERNAL);
     // setup request
-    const bool nosleep = true;
     const bool require_readable = iodir == READONLY || iodir == READWRITE;
     const bool require_writable = iodir == WRITEONLY || iodir == READWRITE;
     flags_ |= Flags::READABLE * require_readable;
@@ -281,18 +280,9 @@ public:
     n_channels_ = config.n_channels;
     mix_freq_ = config.mix_freq;
     block_size_ = config.block_length;
-    busy_us_ = 0;
-    sleep_us_ = nosleep ? 0 : 10 * 1000;
     flags_ |= Flags::OPENED;
     DDEBUG ("NULL-PCM: opening with freq=%f channels=%d: %s", mix_freq_, n_channels_, ase_error_blurb (Error::NONE));
     return Error::NONE;
-  }
-  virtual bool
-  pcm_check_io (long *timeoutp) override
-  {
-    // TODO: synchronize with event loop?
-    *timeoutp = 1;
-    return true;
   }
   virtual void
   pcm_latency (uint *rlatency, uint *wlatency) const override
@@ -300,23 +290,29 @@ public:
     *rlatency = mix_freq_ / 10;
     *wlatency = mix_freq_ / 10;
   }
-  virtual size_t
-  pcm_read (size_t n, float *values) override
+  virtual bool
+  pcm_check_io (int64 *timeout_usecs) override
   {
-    memset (values, 0, sizeof (values[0]) * n);
-    return n;
+    int64 current_usecs = timestamp_realtime();
+    if (resumetime_ > current_usecs)
+      {
+        *timeout_usecs = resumetime_ - current_usecs;
+        return false;
+      }
+    resumetime_ = current_usecs;
+    return true;
   }
   virtual void
   pcm_write (size_t n, const float *values) override
   {
-    busy_us_ += n * 1000000 / mix_freq_;
-    if (busy_us_ >= 100 * 1000)
-      {
-        busy_us_ = 0;
-        // give cpu to other applications (we might run at nice level -20)
-        if (sleep_us_)
-          usleep (sleep_us_);
-      }
+    const int64 busy_usecs = n * 1000000 / mix_freq_;
+    resumetime_ += busy_usecs;
+  }
+  virtual size_t
+  pcm_read (size_t n, float *values) override
+  {
+    floatfill (values, 0.0, n);
+    return n;
   }
   static void
   list_drivers (Driver::EntryVec &entries)
