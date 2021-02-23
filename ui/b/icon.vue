@@ -15,7 +15,7 @@
   *bc*
   : The name of an "AnklangIcons Font" icon.
   *uc*
-  : A unicode character literal, see the [Unicode symbols block list](https://en.wikipedia.org/wiki/Unicode_symbols#Symbol_block_list).
+  : A unicode character literal, see the Unicode [Lists](https://en.wikipedia.org/wiki/List_of_Unicode_characters) and [Symbols](https://en.wikipedia.org/wiki/Unicode_symbols#Symbol_block_list).
   *ic*
   : A prefixed variant of `fa`, `bc`, `mi`, `uc`.
   *nosize*
