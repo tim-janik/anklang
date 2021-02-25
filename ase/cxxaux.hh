@@ -8,6 +8,7 @@
 #include <functional>
 #include <vector>
 #include <memory>
+#include <cmath>
 #include <mutex>
 #include <map>
 
@@ -322,6 +323,22 @@ public:
       initialize();
     return ptr_;
   }
+};
+
+/// Helper class for integer IDs up to 32 Bit, possibly of enum type.
+struct Id32 {
+  template<typename T,
+           REQUIRES< (sizeof (T) <= 4 && (std::is_integral<T>::value || std::is_enum<T>::value)) > = true>
+  constexpr
+  Id32 (T eid) :
+    id (uint32_t (eid))
+  {}
+  operator    uint32_t   () const noexcept              { return id; }
+  bool        operator== (int64_t i) const noexcept     { return id == i; }
+  bool        operator!= (int64_t i) const noexcept     { return id != i; }
+  friend bool operator== (int64_t i, const Id32 &id)    { return id.operator== (i); }
+  friend bool operator!= (int64_t i, const Id32 &id)    { return id.operator!= (i); }
+  uint32_t    id;
 };
 
 } // Ase
