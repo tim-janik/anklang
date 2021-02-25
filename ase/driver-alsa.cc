@@ -448,7 +448,7 @@ public:
     if (write_handle_)
       {
         const size_t needed_zeros = period_size_ / 2; // sizeof (int16) / sizeof (float)
-        assert_return (needed_zeros <= MAX_CONST_FLOAT_ZEROS);
+        assert_return (needed_zeros <= AUDIO_BLOCK_FLOAT_ZEROS_SIZE);
         const float *zeros = const_float_zeros;
         for (size_t i = 0; i < n_periods_; i++)
           {
