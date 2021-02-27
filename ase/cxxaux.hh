@@ -132,6 +132,22 @@ using VoidF = std::function<void()>;
   constexpr Enum&   operator%= (Enum &e, int64_t n) { e = Enum (e % n); return e; } \
   ASE_DEFINE_ENUM_EQUALITY (Enum)
 
+/// Bitwise rotate-right pattern recognized by gcc & clang at -O1 iff sizeof (bits) == {8,16,32,64}
+template<typename UInt> static inline constexpr UInt
+rotr (UInt bits, uint32_t offset)
+{
+  const uint32_t wrapped_bits = sizeof (bits) * 8 - offset;
+  return (bits >> offset) | (bits << wrapped_bits);
+}
+
+/// Bitwise rotate-left pattern recognized by gcc & clang at -O1 iff sizeof (bits) == {8,16,32,64}
+template<typename UInt> static inline constexpr UInt
+rotl (UInt bits, uint32_t offset)
+{
+  const uint32_t wrapped_bits = sizeof (bits) * 8 - offset;
+  return (bits << offset) | (bits >> wrapped_bits);
+}
+
 /// Demangle identifier via libcc.
 std::string string_demangle_cxx (const char *mangled_identifier);
 
