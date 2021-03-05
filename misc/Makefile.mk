@@ -49,14 +49,16 @@ ifeq (clang-tidy,$(filter clang-tidy, $(MAKECMDGOALS)))
 endif
 
 # == clang-tidy logs ==
-# Note, 'make clang-tidy' requires a successfuly built source tree to access generated sources.
 $>/misc/clang-tidy/%.log: % $(GITCOMMITDEPS) # misc/Makefile.mk
 	$(QECHO) TIDYING $@
 	$Q mkdir -p $(dir $@)
-	$Q set +o pipefail ; clang-tidy $< -- $(misc/clang-tidy/DEFS) 2>&1 | tee $@-
-	$Q mv $@- $@
-misc/clang-tidy/DEFS ::= -std=gnu++17 -I. -I$> -Iexternal/ -I$>/external/ -DASE_COMPILATION `$(PKG_CONFIG) --cflags glib-2.0`
+	$Q set +o pipefail ; clang-tidy $< $($<.LINT_FLAGS) -- $(misc/clang-tidy/DEFS) 2>&1 | tee $@~
+	$Q mv $@~ $@
+misc/clang-tidy/DEFS := -std=gnu++17 -I. -I$> -isystem external/ -isystem $>/external/ -DASE_COMPILATION `$(PKG_CONFIG) --cflags glib-2.0`
 .PHONY: clang-tidy
+# Note, 'make clang-tidy' requires a successfuly built source tree to access generated sources.
+# Example for file specific LINT_FLAGS:
+# ase/jsonapi.cc.LINT_FLAGS ::= --checks=-clang-analyzer-core.NullDereference
 
 # == scan-build ==
 scan-build:								| $>/misc/scan-build/
