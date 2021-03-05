@@ -1,9 +1,14 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 include $(wildcard $>/misc/*.d)
-misc/cleandirs ::= $(wildcard $>/misc/ $>/dist/)
+misc/cleandirs ::= $(wildcard $>/misc/)
 CLEANDIRS       += $(misc/cleandirs)
 ALL_TARGETS     += misc/all
 misc/all:
+
+# == clean-misc ==
+clean-misc:
+	rm -rf $(misc/cleandirs)
+.PHONY: clean-misc
 
 # == cppcheck ==
 cppcheck:								| $>/misc/cppcheck/
@@ -25,21 +30,33 @@ listunused:								| $>/misc/unused/
 .PHONY: listunused
 # Note, 'listunused' requires generated sources to be present.
 
-# == clang-tidy ==
-CLANG_TIDY_GLOB := "^(ase|devices|jsonipc|ui)/.*\.(cc|hh)$$"
-clang-tidy:								| $>/misc/clang-tidy/
-	$(QGEN)
-	$Q git ls-tree -r --name-only HEAD				> $>/misc/tmpls.all
-	$Q egrep $(CLANG_TIDY_GLOB) < $>/misc/tmpls.all			> $>/misc/tmpls.cchh
-	$Q egrep -vf misc/clang-tidy.ignore  $>/misc/tmpls.cchh		> $>/misc/tmpls.clangtidy
-	clang-tidy `cat $>/misc/tmpls.clangtidy` -- \
-	  -std=gnu++17 -I. -I$> -Iexternal/ -I$>/external/ -DASE_COMPILATION \
-	  `$(PKG_CONFIG) --cflags glib-2.0`				> $>/misc/clang-tidy/clang-tidy.raw
-	$Q sed "s,^`pwd`/,," $>/misc/clang-tidy/clang-tidy.raw		> $>/misc/clang-tidy/clang-tidy.log
-	$Q rm -f $>/misc/clang-tidy/clang-tidy.raw $>/misc/tmpls.all $>/misc/tmpls.cchh $>/misc/tmpls.clangtidy
-	misc/blame-lines -b $>/misc/clang-tidy/clang-tidy.log
+# == git-ls-tree.lst ==
+$>/misc/git-ls-tree.lst: $(GITCOMMITDEPS)					| $>/misc/
+	$Q git ls-tree -r --name-only HEAD					> $@
+
+# == clang-tidy.d ==
+CLANG_TIDY_GLOB   := "^(ase|devices|jsonipc|ui)/.*\.(cc)$$"
+CLANG_TIDY_IGNORE := "^(ase)/.*\.(cpp)$$"
+$>/misc/clang-tidy.d: $>/misc/git-ls-tree.lst misc/Makefile.mk
+	$Q egrep $(CLANG_TIDY_GLOB) < $< | egrep -v $(CLANG_TIDY_IGNORE)	> $@1
+	$Q rm -f $@2
+	$Q while read L ; do \
+		echo "clang-tidy: $>/misc/clang-tidy/$$L.log"			>>$@2 ; \
+	   done < $@1
+	$Q mv $@2 $@ # && rm $@1
+ifeq (clang-tidy,$(filter clang-tidy, $(MAKECMDGOALS)))
+-include $>/misc/clang-tidy.d
+endif
+
+# == clang-tidy logs ==
+# Note, 'make clang-tidy' requires a successfuly built source tree to access generated sources.
+$>/misc/clang-tidy/%.log: % $(GITCOMMITDEPS) # misc/Makefile.mk
+	$(QECHO) TIDYING $@
+	$Q mkdir -p $(dir $@)
+	$Q set +o pipefail ; clang-tidy $< -- $(misc/clang-tidy/DEFS) 2>&1 | tee $@-
+	$Q mv $@- $@
+misc/clang-tidy/DEFS ::= -std=gnu++17 -I. -I$> -Iexternal/ -I$>/external/ -DASE_COMPILATION `$(PKG_CONFIG) --cflags glib-2.0`
 .PHONY: clang-tidy
-# Note, 'make clang-tidy' requires a successfuly built source tree.
 
 # == scan-build ==
 scan-build:								| $>/misc/scan-build/
