@@ -34,6 +34,16 @@ listunused:								| $>/misc/unused/
 $>/misc/git-ls-tree.lst: $(GITCOMMITDEPS)					| $>/misc/
 	$Q git ls-tree -r --name-only HEAD	> $@ || touch $@
 
+# == lint-cppcheck ==
+CPPCHECK ?= cppcheck
+CPPCHECK_CCENABLE := warning,style,performance,portability
+lint-cppcheck: $>/misc/git-ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
+	$Q egrep $(CLANGTIDY_GLOB) < $<		> $>/misc/cppcheck/sources.lst
+	$Q $(CPPCHECK) --enable=$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) \
+		$$(cat $>/misc/cppcheck/sources.lst)
+CPPCHECK_DEFS := -D__SIZEOF_LONG__=8 -D__SIZEOF_WCHAR_T__=4 -D__linux__ -U_SC_NPROCESSORS_ONLN -U_WIN32 -U__clang__
+.PHONY: lint-cppcheck
+
 # == ls-lint.d ==
 CLANGTIDY_GLOB	:= "^(ase|devices|jsonipc|ui)/.*\.(cc)$$"
 CLANGTIDY_IGNORE	:= "^(ase)/.*\.(cpp)$$"
