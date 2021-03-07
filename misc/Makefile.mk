@@ -32,21 +32,30 @@ listunused:								| $>/misc/unused/
 
 # == git-ls-tree.lst ==
 $>/misc/git-ls-tree.lst: $(GITCOMMITDEPS)					| $>/misc/
-	$Q git ls-tree -r --name-only HEAD					> $@
+	$Q git ls-tree -r --name-only HEAD	> $@ || touch $@
 
-# == clang-tidy.d ==
-CLANG_TIDY_GLOB   := "^(ase|devices|jsonipc|ui)/.*\.(cc)$$"
-CLANG_TIDY_IGNORE := "^(ase)/.*\.(cpp)$$"
-$>/misc/clang-tidy.d: $>/misc/git-ls-tree.lst misc/Makefile.mk
-	$Q egrep $(CLANG_TIDY_GLOB) < $< | egrep -v $(CLANG_TIDY_IGNORE)	> $@1
-	$Q rm -f $@2
-	$Q while read L ; do \
-		echo "clang-tidy: $>/misc/clang-tidy/$$L.log"			>>$@2 ; \
-	   done < $@1
-	$Q mv $@2 $@ # && rm $@1
-ifeq (clang-tidy,$(filter clang-tidy, $(MAKECMDGOALS)))
--include $>/misc/clang-tidy.d
-endif
+# == ls-lint.d ==
+CLANGTIDY_GLOB	:= "^(ase|devices|jsonipc|ui)/.*\.(cc)$$"
+CLANGTIDY_IGNORE	:= "^(ase)/.*\.(cpp)$$"
+CLANGTIDY_SRC	:= # added to by ls-lint.d
+$>/misc/ls-lint.d: $>/misc/git-ls-tree.lst misc/Makefile.mk
+	$Q egrep $(CLANGTIDY_GLOB) < $< | egrep -v $(CLANGTIDY_IGNORE)	> $@1
+	$Q while read L ; do			\
+		echo "CLANGTIDY_SRC += $$L" ;	\
+	   done							< $@1	> $@2
+	$Q mv $@2 $@ && rm $@1
+-include $>/misc/ls-lint.d
+CLANGTIDY_LOGS = $(CLANGTIDY_SRC:%=$>/misc/clang-tidy/%.log)
+
+# == lint ==
+lint: $(CLANGTIDY_LOGS)
+	$Q for F in $(CLANGTIDY_LOGS) ; do \
+		test -s "$$F" || continue ; \
+		echo "$$F:" && cat "$$F" || exit -1 ; done
+lint-clean:
+	rm -f $(CLANGTIDY_LOGS)
+.PHONY: lint lint-clean
+# Note, 'make lint' requires a successfuly built source tree to access generated sources.
 
 # == clang-tidy logs ==
 $>/misc/clang-tidy/%.log: % $(GITCOMMITDEPS) # misc/Makefile.mk
@@ -58,14 +67,6 @@ misc/clang-tidy/DEFS := -std=gnu++17 -I. -I$> -isystem external/ -isystem $>/ext
 # Example for file specific LINT_FLAGS:
 # ase/jsonapi.cc.LINT_FLAGS ::= --checks=-clang-analyzer-core.NullDereference
 jsonipc/testjsonipc.cc.LINT_CCFLAGS ::= -D__JSONIPC_NULL_REFERENCE_THROWS__
-
-# == clang-tidy ==
-clang-tidy:
-	$Q for F in $>/misc/clang-tidy/**/*.log ; do \
-		test -s "$$F" || continue ; \
-		echo "$$F:" && cat "$$F" || exit -1 ; done
-.PHONY: clang-tidy
-# Note, 'make clang-tidy' requires a successfuly built source tree to access generated sources.
 
 # == scan-build ==
 scan-build:								| $>/misc/scan-build/
