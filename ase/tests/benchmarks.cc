@@ -269,7 +269,7 @@ quick_rand32 ()
 template<AllocatorType AT> static void
 ase_aligned_allocator_benchloop (uint32 seed)
 {
-  constexpr const size_t RUNS = 3;
+  constexpr const size_t ARUNS = 3;
   constexpr const int64 MAX_CHUNK_SIZE = 8192;
   constexpr const int64 N_ALLOCS = 2048;
   constexpr const int64 RESIDENT = N_ALLOCS / 3;
@@ -278,7 +278,7 @@ ase_aligned_allocator_benchloop (uint32 seed)
   static FastMemory::Block blocks[N_ALLOCS];
   auto loop_aa = [&] () {
     quick_rand32_seed = seed;
-    for (size_t j = 0; j < RUNS; j++)
+    for (size_t r = 0; r < ARUNS; r++)
       {
         // allocate random sizes
         for (size_t i = 0; i < N_ALLOCS; i++)
@@ -339,7 +339,7 @@ ase_aligned_allocator_benchloop (uint32 seed)
   };
   Ase::Test::Timer timer (0.1);
   const double bench_aa = timer.benchmark (loop_aa);
-  const size_t n_allocations = RUNS * N_ALLOCS * (1 + 3.0 / 2);
+  const size_t n_allocations = ARUNS * N_ALLOCS * (1 + 3.0 / 2);
   const double ns_p_a = 1000000000.0 * bench_aa / n_allocations;
   Ase::printerr ("  BENCH    %-23s %u allocations in %.1f msecs, %.1fnsecs/allocation\n",
                  TestAllocator<AT>::name() + ":", n_allocations, 1000 * bench_aa, ns_p_a);
