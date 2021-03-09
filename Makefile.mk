@@ -114,6 +114,7 @@ installcheck: FORCE
 # == subdirs ==
 include doc/style/Makefile.mk
 include doc/Makefile.mk
+include devices/Makefile.mk
 include ase/Makefile.mk
 include ui/Makefile.mk
 include electron/Makefile.mk
