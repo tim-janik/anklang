@@ -595,7 +595,7 @@ file_memread (FILE *stream, size_t *lengthp, ssize_t maxlength)
   errno = 0;
   while (!feof (stream))
     {
-      size_t bytes = fread (current, 1, sz - (current - buffer), stream);
+      ssize_t bytes = fread (current, 1, sz - (current - buffer), stream);
       if (bytes <= 0 && ferror (stream) && errno != EAGAIN)
         {
           current = buffer; // error/0-data
