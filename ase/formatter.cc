@@ -263,7 +263,7 @@ StringFormatter::arg_as_precision (size_t nth)
 template<class Arg> std::string
 StringFormatter::render_arg (const Directive &dir, const char *modifier, Arg arg)
 {
-  std::string result, format;
+  std::string format;
   const int field_width = !dir.use_width || !dir.width_index ? dir.field_width : arg_as_width (dir.width_index);
   const int field_precision = !dir.use_precision || !dir.precision_index ? std::max (uint32_t (0), dir.precision) : arg_as_precision (dir.precision_index);
   // format directive
@@ -487,7 +487,7 @@ locale_t
 ScopedPosixLocale::posix_locale ()
 {
   static locale_t cached_posix_locale = [] () {
-    locale_t posix_locale = NULL;
+    locale_t posix_locale = nullptr;
     if (!posix_locale)
       posix_locale = newlocale (LC_ALL_MASK, "POSIX.UTF-8", NULL);
     if (!posix_locale)
