@@ -1,9 +1,6 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 include $(wildcard $>/ase/*.d)
-ase/cleandirs ::= $(wildcard $>/ase/ $>/lib/)
-CLEANDIRS      += $(ase/cleandirs)
-ALL_TARGETS    += ase/all
-CHECK_TARGETS  += ase/check
+CLEANDIRS     += $(wildcard $>/ase/ $>/lib/)
 
 include ase/tests/Makefile.mk
 
@@ -19,7 +16,8 @@ ase/AnklangSynthEngine.gensrc	::= $>/ase/api.jsonipc.cc
 ase/AnklangSynthEngine.deps	::= $>/ase/sysconfig.h
 ase/AnklangSynthEngine.deps	 += $>/external/websocketpp/server.hpp $>/external/rapidjson/rapidjson.h
 ase/AnklangSynthEngine.objects	::= $(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources)) $(ase/AnklangSynthEngine.gensrc:.cc=.o) $(ase/tests/objects)
-ase/all: $(lib/AnklangSynthEngine)
+ase/AnklangSynthEngine.objects	 += $(devices/4ase.objects)
+ALL_TARGETS += $(lib/AnklangSynthEngine)
 # $(wildcard $>/ase/*.d): $>/external/rapidjson/rapidjson.h # fix deps on rapidjson/ internal headers
 
 # Work around legacy code in external/websocketpp/*.hpp
@@ -122,7 +120,7 @@ $(call BUILD_PROGRAM, \
 $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkglibdir)/lib, $(lib/AnklangSynthEngine))
 
 # == Check Integrity Tests ==
-ase/check-integrity-tests: $(lib/AnklangSynthEngine)
+check-ase-tests: $(lib/AnklangSynthEngine)
 	$(QGEN)
 	$Q $(lib/AnklangSynthEngine) --check-integrity-tests
-CHECK_TARGETS += ase/check-integrity-tests
+CHECK_TARGETS += check-ase-tests
