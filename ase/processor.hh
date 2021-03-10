@@ -236,7 +236,7 @@ protected:
   ParamId       add_param         (Id32 id, const std::string &clabel, const std::string &nickname,
                                    bool boolvalue, std::string hints = "",
                                    const std::string &blurb = "", const std::string &description = "");
-  void          start_param_group (const std::string &groupname) const;
+  void          start_group       (const std::string &groupname) const;
   ParamId       add_param         (const std::string &clabel, const std::string &nickname,
                                    double pmin, double pmax, double value,
                                    const std::string &unit = "", std::string hints = "",

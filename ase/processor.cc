@@ -431,7 +431,7 @@ static __thread CString tls_param_group;
 
 /// Introduce a `ParamInfo.group` to be used for the following add_param() calls.
 void
-AudioProcessor::start_param_group (const std::string &groupname) const
+AudioProcessor::start_group (const std::string &groupname) const
 {
   tls_param_group = groupname;
 }
