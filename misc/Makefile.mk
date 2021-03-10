@@ -10,26 +10,6 @@ clean-misc:
 	rm -rf $(misc/cleandirs)
 .PHONY: clean-misc
 
-# == cppcheck ==
-cppcheck:								| $>/misc/cppcheck/
-	$(QGEN)
-	$Q export OUTDIR=$>/misc/ && set -x && misc/run-cppcheck.sh
-	$Q mv $>/misc/cppcheck.err $>/misc/cppcheck/cppcheck.log
-	misc/blame-lines -b $>/misc/cppcheck/cppcheck.log
-.PHONY: cppcheck
-# Note, 'cppcheck' can be carried out before the sources are built
-
-# == unused ==
-listunused:								| $>/misc/unused/
-	$(QGEN)
-	$Q export OUTDIR=$>/misc/ && set -x && misc/run-cppcheck.sh -u
-	$Q grep -E '\b(un)?(use|reach)' $>/misc/cppcheck.err > $>/misc/unused/unused.unsorted
-	$Q sort $>/misc/unused/unused.unsorted > $>/misc/unused/unused.log
-	$Q rm -f $>/misc/cppcheck.err
-	misc/blame-lines -b $>/misc/unused/unused.log
-.PHONY: listunused
-# Note, 'listunused' requires generated sources to be present.
-
 # == git-ls-tree.lst ==
 $>/misc/git-ls-tree.lst: $(GITCOMMITDEPS)					| $>/misc/
 	$Q git ls-tree -r --name-only HEAD	> $@ || touch $@
