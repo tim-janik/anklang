@@ -108,15 +108,25 @@ utf8_strlen_bench (const std::string &str, const std::string &what)
   bench_time = timer.benchmark (glib_utf8len_loop);
   Ase::printerr ("  BENCH    g_utf8_strlen:                %11.1f MChar/s %s\n", str.size() * RUNS / bench_time / M, what);
 
-  auto ase_utf8len_loop = [&] () {
+  auto ase_utf8len_s_loop = [&] () {
     for (size_t j = 0; j < RUNS; j++)
       {
-        size_t result = Ase::utf8len (str.c_str());
+        size_t result = Ase::utf8len (str);             // pick utf8len (std::string&)
         TCMP (expected, ==, result);
       }
   };
-  bench_time = timer.benchmark (ase_utf8len_loop);
-  Ase::printerr ("  BENCH    Ase::utf8len:                 %11.1f MChar/s %s\n", str.size() * RUNS / bench_time / M, what);
+  bench_time = timer.benchmark (ase_utf8len_s_loop);
+  Ase::printerr ("  BENCH    Ase::utf8len(string&):        %11.1f MChar/s %s\n", str.size() * RUNS / bench_time / M, what);
+
+  auto ase_utf8len_c_loop = [&] () {
+    for (size_t j = 0; j < RUNS; j++)
+      {
+        size_t result = Ase::utf8len (str.c_str());     // pick utf8len(const char*)
+        TCMP (expected, ==, result);
+      }
+  };
+  bench_time = timer.benchmark (ase_utf8len_c_loop);
+  Ase::printerr ("  BENCH    Ase::utf8len(char*):          %11.1f MChar/s %s\n", str.size() * RUNS / bench_time / M, what);
 
   auto simple_utf8len_loop = [&] () {
     for (size_t j = 0; j < RUNS; j++)
