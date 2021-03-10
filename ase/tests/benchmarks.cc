@@ -144,7 +144,7 @@ utf8_strlen_bench_ascii()
   std::string big;
   big.resize (Ase::unicode_last_codepoint * 1.07); // roughly equivalent length to the high_planes test
   for (size_t i = 0; i < big.size(); i++)
-    big[i] = (i + 1) % 0x80; // fill string with 0x01..0xf7 characters
+    big[i] = 1 + i % 0x7F; // fill string with 0x01..0xf7 characters
   utf8_strlen_bench (big, "(ascii)");
 }
 
