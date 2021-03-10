@@ -634,10 +634,10 @@ string_from_long_double (long double value)
 }
 
 /// Parse a string into a list of doubles, expects ';' as delimiter.
-vector<double>
+std::vector<double>
 string_to_double_vector (const String &string)
 {
-  vector<double> dvec;
+  std::vector<double> dvec;
   const char *spaces = " \t\n";
   const char *obrace = "{([";
   const char *delims = ";";
@@ -673,7 +673,7 @@ string_to_double_vector (const String &string)
 
 /// Construct a string out of all double values passed in @a dvec, separated by @a delim.
 String
-string_from_double_vector (const vector<double> &dvec, const String &delim)
+string_from_double_vector (const std::vector<double> &dvec, const String &delim)
 {
   String s;
   for (uint i = 0; i < dvec.size(); i++)
@@ -1122,8 +1122,8 @@ kvpair_value (const String &key_value_pair)
 
 static void
 string_option_add (const String   &assignment,
-                   vector<String> *option_namesp,
-                   vector<String> &option_values,
+                   std::vector<String> *option_namesp,
+                   std::vector<String> &option_values,
                    const String   &empty_default,
                    const String   *filter)
 {
@@ -1150,8 +1150,8 @@ string_option_add (const String   &assignment,
 
 static void
 string_options_split_filtered (const String   &option_string,
-                               vector<String> *option_namesp,
-                               vector<String> &option_values,
+                               std::vector<String> *option_namesp,
+                               std::vector<String> &option_values,
                                const String   &empty_default,
                                const String   *filter)
 {
@@ -1168,8 +1168,8 @@ string_options_split_filtered (const String   &option_string,
 /// Split an option list string into name/value pairs.
 void
 string_options_split (const String   &option_string,
-                      vector<String> &option_names,
-                      vector<String> &option_values,
+                      std::vector<String> &option_names,
+                      std::vector<String> &option_values,
                       const String   &empty_default)
 {
   string_options_split_filtered (option_string, &option_names, option_values, empty_default, NULL);
@@ -1179,7 +1179,7 @@ static String
 string_option_find_value (const String &option_string,
                           const String &option)
 {
-  vector<String> option_names, option_values;
+  std::vector<String> option_names, option_values;
   string_options_split_filtered (option_string, NULL, option_values, "1", &option);
   return option_values.empty() ? "0" : option_values[option_values.size() - 1];
 }

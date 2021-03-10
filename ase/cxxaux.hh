@@ -29,11 +29,9 @@ typedef uint32_t        unichar;        ///< A 32-bit unsigned integer used for 
 static_assert (sizeof (uint8) == 1 && sizeof (uint16) == 2 && sizeof (uint32) == 4 && sizeof (uint64) == 8, "");
 static_assert (sizeof (int8)  == 1 && sizeof (int16)  == 2 && sizeof (int32)  == 4 && sizeof (int64)  == 8, "");
 static_assert (sizeof (int) == 4 && sizeof (uint) == 4 && sizeof (unichar) == 4, "");
-using   std::map;
-using   std::vector;
 using   std::void_t;
-typedef std::string String;             ///< Convenience alias for std::string.
-typedef vector<String> StringVector;    ///< Convenience alias for a std::vector<std::string>.
+typedef std::string String;               ///< Convenience alias for std::string.
+typedef std::vector<String> StringVector; ///< Convenience alias for a std::vector<std::string>.
 using StringPair = std::pair<std::string, std::string>;
 using VoidF = std::function<void()>;
 
@@ -91,11 +89,6 @@ using VoidF = std::function<void()>;
 #define ASE_CLASS_NON_COPYABLE(ClassName)  \
   /*copy-ctor*/ ClassName  (const ClassName&) = delete; \
   ClassName&    operator=  (const ClassName&) = delete
-#ifdef __clang__ // clang++-3.8.0: work around 'variable length array of non-POD element type'
-#define ASE_DECLARE_VLA(Type, var, count)          std::vector<Type> var (count)
-#else // sane c++
-#define ASE_DECLARE_VLA(Type, var, count)          Type var[count] ///< Declare a variable length array (clang++ uses std::vector<>).
-#endif
 
 // == Operations on flags enum classes ==
 #define ASE_DEFINE_ENUM_EQUALITY(Enum)         \

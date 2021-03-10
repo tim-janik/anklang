@@ -49,8 +49,8 @@ double  			string_to_double         (const char *dblstring, const char **endptr)
 String                          string_from_double       (double value);
 inline String                   string_from_float        (double value)         { return string_from_double (value); }
 inline double                   string_to_float          (const String &string) { return string_to_double (string); }
-vector<double>                  string_to_double_vector  (const String         &string);
-String                          string_from_double_vector(const vector<double> &dvec,
+std::vector<double>             string_to_double_vector  (const String         &string);
+String                          string_from_double_vector(const std::vector<double> &dvec,
                                                           const String         &delim = " ");
 String  			string_from_errno        (int         errno_val);
 bool                            string_is_uuid           (const String &uuid_string); /* check uuid formatting */
@@ -131,8 +131,8 @@ bool    string_option_check     (const String   &option_string,
 String  string_option_get       (const String   &option_string,
                                  const String   &option);
 void    string_options_split    (const String   &option_string,
-                                 vector<String> &option_names,
-                                 vector<String> &option_values,
+                                 std::vector<String> &option_names,
+                                 std::vector<String> &option_values,
                                  const String   &empty_default = "");
 String  string_option_find      (const String &config, const String &feature, const String &fallback = "0");
 

@@ -21,15 +21,60 @@ struct SharedBase : public virtual VirtualBase,
 using SharedBaseP = std::shared_ptr<SharedBase>;
 
 // Error enum
-enum class Error {
-  NONE                      = 0, // Enum (0, "", _("OK")),
-  INTERNAL                  ,//= Enum (11, "", _("Internal error (please report)")),
-  UNKNOWN                   ,//= Enum (12, "", _("Unknown error")),
-  IO                        ,//= Enum (13, "", _("Input/output error")),
-  PERMS                     ,//= Enum (14, "", _("Insufficient permissions")),
+enum class Error : int32_t {
+  NONE,
+  INTERNAL,
+  UNKNOWN,
+  IO,
+  PERMS,
   // out of resource conditions
-  NO_MEMORY                 ,//= Enum (101, "", _("Out of memory")),
+  NO_MEMORY,
+  MANY_FILES,
+  NO_FILES,
+  NO_SPACE,
+  // file errors
+  FILE_BUSY,
+  FILE_EXISTS,
+  FILE_EOF,
+  FILE_EMPTY,
+  FILE_NOT_FOUND,
+  FILE_IS_DIR,
+  FILE_OPEN_FAILED,
+  FILE_SEEK_FAILED,
+  FILE_READ_FAILED,
+  FILE_WRITE_FAILED,
+  // content errors
+  NO_HEADER,
+  NO_SEEK_INFO,
+  NO_DATA_AVAILABLE,
+  DATA_CORRUPT,
+  WRONG_N_CHANNELS,
+  FORMAT_INVALID,
+  FORMAT_UNKNOWN,
+  DATA_UNMATCHED,
+  // Device errors
+  DEVICE_NOT_AVAILABLE,
+  DEVICE_ASYNC,
+  DEVICE_BUSY,
+  DEVICE_FORMAT,
+  DEVICE_BUFFER,
+  DEVICE_LATENCY,
+  DEVICE_CHANNELS,
+  DEVICE_FREQUENCY,
+  DEVICES_MISMATCH,
+  // miscellaneous errors
+  TEMP,
+  WAVE_NOT_FOUND,
+  CODEC_FAILURE,
+  UNIMPLEMENTED,
+  INVALID_PROPERTY,
+  INVALID_MIDI_CONTROL,
+  PARSE_ERROR,
+  SPAWN,
 };
+ASE_DEFINE_ENUM_EQUALITY (Error);
+const char* ase_error_blurb      (Error error);
+Error       ase_error_from_errno (int sys_errno, Error fallback = Error::IO);
 
 /// Details about property choice values.
 struct Choice {

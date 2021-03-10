@@ -18,6 +18,9 @@ template<class ...A> void warning           (const char *format, const A &...arg
 template<class... A> void printout          (const char *format, const A &...args) ASE_PRINTF (1, 0);
 template<class... A> void printerr          (const char *format, const A &...args) ASE_PRINTF (1, 0);
 
+const char*                      ase_gettext (const String &untranslated);
+template<class... A> const char* ase_gettext (const char *format, const A &...args) ASE_PRINTF (1, 0);
+
 // == Jump Tables ==
 /// Create a `std::array<F,N>`, where `F` is returned from `mkjump (INDICES...)`.
 template<typename J, size_t ...INDICES> static auto
@@ -138,6 +141,13 @@ template<class... Args> void
 printerr (const char *format, const Args &...args)
 {
   diag_message ('e', string_format (format, args...));
+}
+
+/// Translate a string, using the ASE locale.
+template<class... Args> const char*
+ase_gettext (const char *format, const Args &...args)
+{
+  return ase_gettext (string_format (format, args...));
 }
 
 /// Auxillary algorithms brodly useful

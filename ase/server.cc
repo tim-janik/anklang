@@ -196,4 +196,102 @@ Server::get_session_data (const String &key) const
   return session_data[key];
 }
 
+// == Error ==
+/// Describe Error condition.
+const char*
+ase_error_blurb (Error error)
+{
+  switch (error)
+    {
+    case Error::NONE:			return _("OK");
+    case Error::INTERNAL:		return _("Internal error (please report)");
+    case Error::UNKNOWN:		return _("Unknown error");
+    case Error::IO:			return _("Input/output error");
+    case Error::PERMS:			return _("Insufficient permissions");
+      // out of resource conditions
+    case Error::NO_MEMORY:		return _("Out of memory");
+    case Error::MANY_FILES:		return _("Too many open files");
+    case Error::NO_FILES:		return _("Too many open files in system");
+    case Error::NO_SPACE:		return _("No space left on device");
+      // file errors
+    case Error::FILE_BUSY:		return _("Device or resource busy");
+    case Error::FILE_EXISTS:		return _("File exists already");
+    case Error::FILE_EOF:		return _("End of file");
+    case Error::FILE_EMPTY:		return _("File empty");
+    case Error::FILE_NOT_FOUND:		return _("No such file, device or directory");
+    case Error::FILE_IS_DIR:		return _("Is a directory");
+    case Error::FILE_OPEN_FAILED:	return _("Open failed");
+    case Error::FILE_SEEK_FAILED:	return _("Seek failed");
+    case Error::FILE_READ_FAILED:	return _("Read failed");
+    case Error::FILE_WRITE_FAILED:	return _("Write failed");
+      // content errors
+    case Error::NO_HEADER:		return _("Failed to detect header");
+    case Error::NO_SEEK_INFO:		return _("Failed to retrieve seek information");
+    case Error::NO_DATA_AVAILABLE:	return _("No data available");
+    case Error::DATA_CORRUPT:		return _("Data corrupt");
+    case Error::WRONG_N_CHANNELS:	return _("Wrong number of channels");
+    case Error::FORMAT_INVALID:		return _("Invalid format");
+    case Error::FORMAT_UNKNOWN:		return _("Unknown format");
+    case Error::DATA_UNMATCHED:		return _("Requested data values unmatched");
+      // Device errors
+    case Error::DEVICE_NOT_AVAILABLE:   return _("No device (driver) available");
+    case Error::DEVICE_ASYNC:		return _("Device not async capable");
+    case Error::DEVICE_BUSY:		return _("Device busy");
+    case Error::DEVICE_FORMAT:		return _("Failed to configure device format");
+    case Error::DEVICE_BUFFER:		return _("Failed to configure device buffer");
+    case Error::DEVICE_LATENCY:		return _("Failed to configure device latency");
+    case Error::DEVICE_CHANNELS:	return _("Failed to configure number of device channels");
+    case Error::DEVICE_FREQUENCY:	return _("Failed to configure device frequency");
+    case Error::DEVICES_MISMATCH:	return _("Device configurations mismatch");
+      // miscellaneous errors
+    case Error::TEMP:			return _("Temporary error");
+    case Error::WAVE_NOT_FOUND:		return _("No such wave");
+    case Error::CODEC_FAILURE:		return _("Codec failure");
+    case Error::UNIMPLEMENTED:		return _("Functionality not implemented");
+    case Error::INVALID_PROPERTY:	return _("Invalid object property");
+    case Error::INVALID_MIDI_CONTROL:	return _("Invalid MIDI control type");
+    case Error::PARSE_ERROR:		return _("Parsing error");
+    case Error::SPAWN:			return _("Failed to spawn child process");
+    }
+}
+
+// Map errno onto Ase::Error.
+Error
+ase_error_from_errno (int sys_errno, Error fallback)
+{
+  switch (sys_errno)
+    {
+    case 0:             return Error::NONE;
+    case ELOOP:
+    case ENAMETOOLONG:
+    case ENOENT:        return Error::FILE_NOT_FOUND;
+    case EISDIR:        return Error::FILE_IS_DIR;
+    case EROFS:
+    case EPERM:
+    case EACCES:        return Error::PERMS;
+#ifdef ENODATA  /* GNU/kFreeBSD lacks this */
+    case ENODATA:
+#endif
+    case ENOMSG:        return Error::FILE_EOF;
+    case ENOMEM:        return Error::NO_MEMORY;
+    case ENOSPC:        return Error::NO_SPACE;
+    case ENFILE:        return Error::NO_FILES;
+    case EMFILE:        return Error::MANY_FILES;
+    case EFBIG:
+    case ESPIPE:
+    case EIO:           return Error::IO;
+    case EEXIST:        return Error::FILE_EXISTS;
+    case ETXTBSY:
+    case EBUSY:         return Error::FILE_BUSY;
+    case EAGAIN:
+    case EINTR:         return Error::TEMP;
+    case EFAULT:        return Error::INTERNAL;
+    case EBADF:
+    case ENOTDIR:
+    case ENODEV:
+    case EINVAL:
+    default:            return fallback;
+    }
+}
+
 } // Ase

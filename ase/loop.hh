@@ -60,7 +60,7 @@ protected:
   typedef std::vector<EventSourceP> SourceList;
   MainLoop     *main_loop_;
   SourceList    sources_;
-  vector<EventSourceP> poll_sources_;
+  std::vector<EventSourceP> poll_sources_;
   int16         dispatch_priority_;
   bool          primary_;
   explicit      EventLoop           (MainLoop&);
@@ -72,7 +72,7 @@ protected:
   void          kill_sources_Lm     (void);
   void          unpoll_sources_U    ();
   void          collect_sources_Lm  (LoopState&);
-  bool          prepare_sources_Lm  (LoopState&, int64*, QuickPfdArray&);
+  bool          prepare_sources_Lm  (LoopState&, QuickPfdArray&);
   bool          check_sources_Lm    (LoopState&, const QuickPfdArray&);
   void          dispatch_source_Lm  (LoopState&);
 public:
@@ -129,7 +129,7 @@ class MainLoop : public EventLoop
   friend                class SubLoop;
   std::mutex            mutex_;
   uint                  rr_index_;
-  vector<EventLoopP>    loops_;
+  std::vector<EventLoopP> loops_;
   EventFd               eventfd_;
   int8                  running_;
   int8                  has_quit_;
@@ -160,10 +160,10 @@ public:
 // === LoopState ===
 struct LoopState {
   enum     Phase { NONE, COLLECT, PREPARE, CHECK, DISPATCH, DESTROY };
-  uint64   current_time_usecs;
-  Phase    phase;
-  bool     seen_primary; ///< Useful as hint for primary source presence, MainLoop::finishable() checks exhaustively
-  explicit LoopState ();
+  Phase    phase = NONE;
+  bool     seen_primary = false;   ///< Useful as hint for primary source presence, MainLoop::finishable() checks exhaustively
+  uint64   current_time_usecs = 0; ///< Equals timestamp_realtime() as of prepare() and check().
+  int64    timeout_usecs = 0;      ///< Maximum timeout for poll, queried during prepare().
 };
 
 // === EventSource ===

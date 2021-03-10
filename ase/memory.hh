@@ -42,7 +42,7 @@ public:
   {
     std::fill (begin(), end(), T());
   }
-  FastMemArray (const vector<T>& elements) :
+  FastMemArray (const std::vector<T>& elements) :
     n_elements_ (elements.size()),
     data_ ((T*) fast_mem_alloc (sizeof (T) * n_elements_))
   {

@@ -32,7 +32,7 @@ namespace Test {
  */
 class Timer {
   const double   deadline_;
-  vector<double> samples_;
+  std::vector<double> samples_;
   double         test_duration_;
   int64          n_reps_;
   int64          loops_needed ();

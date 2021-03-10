@@ -15,7 +15,7 @@ using Ase::unichar;
 using Ase::String;
 
 /// Retrieve the translation of a C or C++ string.
-#define _(...)          ::Ase::_ (__VA_ARGS__)
+#define _(...)          ::Ase::ase_gettext (__VA_ARGS__)
 /// Mark a string for translation, passed through verbatim by the preprocessor.
 #define N_(str)         (str)
 
@@ -41,6 +41,7 @@ using Ase::String;
 #ifdef __G_MACROS_H__
 #undef MAX
 #undef MIN
+#undef CLAMP
 #endif
 
 /// Yield maximum of `a` and `b`.
@@ -48,6 +49,9 @@ using Ase::String;
 
 /// Yield minimum of `a` and `b`.
 #define MIN(a,b)        ((a) <= (b) ? (a) : (b))
+
+/// Yield `v` clamped to `[mi … ma]`.
+#define CLAMP(v,mi,ma)  ((v) < (mi) ? (mi) : ((v) > (ma) ? (ma) : (v)))
 
 /// Hint to the compiler to optimize for @a cond == TRUE.
 #define ISLIKELY(cond)  ASE_ISLIKELY (cond)

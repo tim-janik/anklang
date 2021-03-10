@@ -40,9 +40,9 @@ override MODE !=  case "$(MODE)" in \
 		    p*|pr*|pro*|prod*|produ*|produc*|product*)		MODE=production ;; \
 		    producti*|productio*|production)			MODE=production ;; \
 		    r*|re*|rel*|rele*|relea*|releas*|release)		MODE=production ;; \
+		    dev*|deve*|devel*|develo*|develop*|developm*)	MODE=devel ;; \
+		    developme*|developmen*|development)			MODE=devel ;; \
 		    d*|de*|deb*|debu*|debug|dbg)			MODE=debug ;; \
-		    dev*|deve*|devel*|develo*|develop*|developm*)	MODE=debug ;; \
-		    developme*|developmen*|development)			MODE=debug ;; \
 		    u*|ub*|ubs*|ubsa*|ubsan)				MODE=ubsan ;; \
 		    a*|as*|asa*|asan)					MODE=asan ;; \
 		    t*|ts*|tsa*|tsan)					MODE=tsan ;; \
@@ -163,8 +163,8 @@ help: FORCE
 	@echo '  make O=DIR      - Create all output files in DIR, see also config-defaults.mk'
 	@echo '                    for related variables like CXXFLAGS'
 	@echo '  make DESTDIR=/  - Absolute path prepended to all install/uninstall locations'
-	@echo "  make MODE=...   - Optimize build to be 'quick' or for 'production' mode binaries."
-	@echo '                    Posible modes for debugging: debug, asan, lsan, tsan, ubsan'
+	@echo "  make MODE=...   - Run 'quick' build or make 'production' mode binaries."
+	@echo '                    Other modes: debug, devel, asan, lsan, tsan, ubsan'
 
 # == all rules ==
 all: $(ALL_TARGETS) $(ALL_TESTS)

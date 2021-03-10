@@ -361,8 +361,8 @@ MainLoop::kill_loop_Lm (EventLoop &loop)
   if (loop.main_loop_) // guard against nested kill_loop_Lm (same) calls
     {
       loop.main_loop_ = NULL;
-      vector<EventLoopP>::iterator it = std::find_if (loops_.begin(), loops_.end(),
-                                                      [&loop] (EventLoopP &lp) { return lp.get() == &loop; });
+      std::vector<EventLoopP>::iterator it = std::find_if (loops_.begin(), loops_.end(),
+                                                           [&loop] (EventLoopP &lp) { return lp.get() == &loop; });
       if (this == &loop) // MainLoop->destroy_loop()
         {
           if (loops_.size()) // MainLoop must be the last loop to be destroyed
@@ -591,7 +591,7 @@ EventLoop::collect_sources_Lm (LoopState &state)
 }
 
 bool
-EventLoop::prepare_sources_Lm (LoopState &state, int64 *timeout_usecs, QuickPfdArray &pfda)
+EventLoop::prepare_sources_Lm (LoopState &state, QuickPfdArray &pfda)
 {
   std::mutex &LOCK = main_loop_->mutex();
   // prepare sources, up to NEEDS_DISPATCH priority
@@ -614,7 +614,7 @@ EventLoop::prepare_sources_Lm (LoopState &state, int64 *timeout_usecs, QuickPfdA
         }
       source.loop_state_ = PREPARED;
       if (timeout >= 0)
-        *timeout_usecs = std::min (*timeout_usecs, timeout);
+        state.timeout_usecs = std::min (state.timeout_usecs, timeout);
       uint npfds = source.n_pfds();
       for (uint i = 0; i < npfds; i++)
         if (source.pfds_[i].pfd->fd >= 0)
@@ -707,7 +707,6 @@ MainLoop::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
 {
   assert_return (state.phase == state.NONE, false);
   std::mutex &LOCK = main_loop_->mutex();
-  int64 timeout_usecs = INT64_MAX;
   PollFD reserved_pfd_mem[7];   // store PollFD array in stack memory, to reduce malloc overhead
   QuickPfdArray pfda (ARRAY_SIZE (reserved_pfd_mem), reserved_pfd_mem); // pfda.size() == 0
   // allow poll wakeups
@@ -716,7 +715,7 @@ MainLoop::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
   pfda.push (wakeup);
   // create pollable loop list
   const size_t nrloops = loops_.size(); // number of Ase loops, *without* gcontext_
-  ASE_DECLARE_VLA (EventLoopP, loops, nrloops); // EventLoopP loops[nrloops];
+  EventLoopP loops[nrloops];
   for (size_t i = 0; i < nrloops; i++)
     loops[i] = loops_[i];
   // collect
@@ -727,11 +726,12 @@ MainLoop::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
   // prepare
   bool any_dispatchable = false;
   state.phase = state.PREPARE;
+  state.timeout_usecs = INT64_MAX;
   state.current_time_usecs = timestamp_realtime();
   bool dispatchable[nrloops + 1];        // +1 for gcontext_
   for (size_t i = 0; i < nrloops; i++)
     {
-      dispatchable[i] = loops[i]->prepare_sources_Lm (state, &timeout_usecs, pfda);
+      dispatchable[i] = loops[i]->prepare_sources_Lm (state, pfda);
       any_dispatchable |= dispatchable[i];
     }
   // prepare GLib
@@ -752,17 +752,18 @@ MainLoop::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
           gnfds = g_main_context_query (gcontext_, gpriority, &gtimeout, mk_gpollfd (&pfda[gfirstfd]), pfda.size() - gfirstfd);
         }
       if (gtimeout >= 0)
-        timeout_usecs = MIN (timeout_usecs, gtimeout * int64 (1000));
+        state.timeout_usecs = MIN (state.timeout_usecs, gtimeout * int64 (1000));
 #endif
     }
   else
     dispatchable[nrloops] = false;
   // poll file descriptors
-  int64 timeout_msecs = timeout_usecs / 1000;
-  if (timeout_usecs > 0 && timeout_msecs <= 0)
+  int64 timeout_msecs = state.timeout_usecs / 1000;
+  if (state.timeout_usecs > 0 && timeout_msecs <= 0)
     timeout_msecs = 1;
   if (!may_block || any_dispatchable)
     timeout_msecs = 0;
+  state.timeout_usecs = 0;
   LOCK.unlock();
   int presult;
   do
@@ -855,11 +856,6 @@ MainLoop::create_sub_loop()
   this->add_loop_L (*sub_loop);
   return sub_loop;
 }
-
-// === EventLoop::LoopState ===
-LoopState::LoopState() :
-  current_time_usecs (0), phase (NONE), seen_primary (false)
-{}
 
 // === EventSource ===
 EventSource::EventSource () :

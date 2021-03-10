@@ -38,6 +38,8 @@ __DEV__		::=
 else ifeq ($(MODE),production)
 MODEFLAGS	::= -O3 -DNDEBUG
 __DEV__		::=
+else ifeq ($(MODE),devel)
+MODEFLAGS	::= -g -O2
 else ifeq ($(MODE),debug)
 MODEFLAGS	::= -gdwarf-4 -O0 -fno-omit-frame-pointer -fno-inline -fstack-protector-all -fverbose-asm
 else ifeq ($(MODE),ubsan)
