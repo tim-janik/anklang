@@ -22,23 +22,24 @@ const char*                      ase_gettext (const String &untranslated);
 template<class... A> const char* ase_gettext (const char *format, const A &...args) ASE_PRINTF (1, 0);
 
 // == Jump Tables ==
-/// Create a `std::array<F,N>`, where `F` is returned from `mkjump (INDICES...)`.
-template<typename J, size_t ...INDICES> static auto
-make_jump_table_indexed (const J &mkjump, std::index_sequence<INDICES...>)
+/// Create a `std::array<Fun,N>`, where `Fun` is returned from `mkjump (INDICES…)`.
+template<typename MkFun, size_t ...INDICES> static auto
+make_indexed_table (const MkFun &mkjump, std::index_sequence<INDICES...>)
 {
   constexpr size_t N = sizeof... (INDICES);
-  using F = decltype (mkjump (std::integral_constant<std::size_t, N-1>()));
-  std::array<F, N> jumptable = {
+  using Fun = decltype (mkjump (std::integral_constant<std::size_t, N - 1>()));
+  const std::array<Fun, N> jumptable = {
     mkjump (std::integral_constant<std::size_t, INDICES>{})...
   };
   return jumptable;
 }
 
-/// Create a `std::array<F,N>`, where `F` is returned from `mkjump (0 .. N-1)`.
-template<std::size_t N, typename J> static auto
-make_jump_table (const J &mkjump)
+/// Create a jump table `std::array<Fun,LAST>`, where `Fun` is returned from `mkjump (0 … LAST)`.
+/// Note, `mkjump(auto)` is a lambda template, invoked with `std::integral_constant<unsigned long, 0…LAST>`.
+template<std::size_t LAST, typename MkFun> static auto
+make_case_table (const MkFun &mkjump)
 {
-  return make_jump_table_indexed (mkjump, std::make_index_sequence<N>());
+  return make_indexed_table (mkjump, std::make_index_sequence<LAST + 1>());
 }
 
 // == EventFd ==
