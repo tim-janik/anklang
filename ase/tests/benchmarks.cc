@@ -131,7 +131,7 @@ utf8_strlen_bench (const std::string &str, const std::string &what)
   auto simple_utf8len_loop = [&] () {
     for (size_t j = 0; j < RUNS; j++)
       {
-        size_t result = not_0x80_strlen_utf8 (str.c_str());
+        size_t result = not_0x80_strlen_utf8 (str);
         TCMP (expected, ==, result);
       }
   };
