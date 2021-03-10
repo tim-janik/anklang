@@ -162,7 +162,7 @@ public:
     return scope ? &scope->instance_map_ : nullptr;
   }
   enum ConstructorFlags { KEEP_TEMPORARIES, PURGE_TEMPORARIES };
-  Scope (InstanceMap &instance_map, ConstructorFlags cf = KEEP_TEMPORARIES);
+  explicit Scope (InstanceMap &instance_map, ConstructorFlags cf = KEEP_TEMPORARIES);
   ~Scope()
   {
     auto &stack_ = stack();
@@ -380,7 +380,7 @@ using Closure = std::function<std::string* (CallbackInfo&)>;
 
 /// Context for calling C++ functions from Json
 struct CallbackInfo final {
-  CallbackInfo (const JsonValue &args, JsonAllocator *allocator = nullptr) :
+  explicit CallbackInfo (const JsonValue &args, JsonAllocator *allocator = nullptr) :
     args_ (args), doc_ (allocator)
   {}
   const JsonValue& ntharg       (size_t index) const { static JsonValue j0; return index < args_.Size() ? args_[index] : j0; }
@@ -584,9 +584,9 @@ public:
             const size_t thisid = Convert<size_t>::from_json (it->value);
             if (thisid)
               {
-                auto it = wmap_.find (thisid);
-                if (it != wmap_.end())
-                  return it->second;
+                auto tit = wmap_.find (thisid);
+                if (tit != wmap_.end())
+                  return tit->second;
               }
           }
       }
@@ -861,7 +861,7 @@ class TypeInfo {
 protected:
   ClassPrinter *printer_ = nullptr;
   virtual ~TypeInfo() {}
-  TypeInfo (ClassPrinter *printer) : printer_ (printer) {}
+  explicit TypeInfo (ClassPrinter *printer) : printer_ (printer) {}
   void
   print (ClassPrinter::Op op, const std::string &name, int32_t count = 0)
   {
@@ -893,7 +893,7 @@ struct Enum final : TypeInfo {
   static const std::string&
   get_name (T v)
   {
-    auto &entries_ = entries();
+    const auto &entries_ = entries();
     for (const auto &e : entries_)
       if (v == e.value)
         return e.name;
@@ -906,7 +906,7 @@ struct Enum final : TypeInfo {
     auto c_isalnum = [] (char c) {
       return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
     };
-    auto &entries_ = entries();
+    const auto &entries_ = entries();
     for (const auto &e : entries_)
       if (name == e.name ||                                             // exact match, or
           (name.size() < e.name.size() &&                               // name starts at e.name word boundary
@@ -1194,7 +1194,7 @@ public:
   static size_t
   base_depth ()
   {
-    BaseVec &bvec = basevec();
+    const BaseVec &bvec = basevec();
     size_t d = 0;
     for (const auto &binfo : bvec)
       {
@@ -1211,7 +1211,7 @@ public:
     auto it = mmap.find (methodname);
     if (it != mmap.end())
       return &it->second;
-    BaseVec &bvec = basevec();
+    const BaseVec &bvec = basevec();
     for (const auto &base : bvec)
       {
         Closure *closure = base.lookup_closure (methodname);
@@ -1229,7 +1229,7 @@ public:
         *baseptrp = sptr;
         return true;
       }
-    BaseVec &bvec = basevec();
+    const BaseVec &bvec = basevec();
     for (const auto &it : bvec)
       if (it.upcast_impl (sptr, baseclass, sptrB))
         return true;

@@ -146,7 +146,7 @@ public:
   /*ctor*/           CString     (const std::string &s)          { assign (s); }
   /*ctor*/ constexpr CString     () noexcept                     = default;
   /*copy*/ constexpr CString     (const CString&) noexcept       = default;
-  /*move*/ constexpr CString     (CString &&c) noexcept          { quark_ = c.quark_; }
+  /*move*/ constexpr CString     (CString &&c) noexcept : quark_ (c.quark_) {}
   constexpr CString& operator=   (const CString&) noexcept       = default;
   constexpr CString& operator=   (CString &&c) noexcept          { return assign (c); }
   CString&           operator=   (const std::string &s)          { return assign (s); }

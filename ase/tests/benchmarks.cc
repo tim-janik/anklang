@@ -108,20 +108,30 @@ utf8_strlen_bench (const std::string &str, const std::string &what)
   bench_time = timer.benchmark (glib_utf8len_loop);
   Ase::printerr ("  BENCH    g_utf8_strlen:                %11.1f MChar/s %s\n", str.size() * RUNS / bench_time / M, what);
 
-  auto ase_utf8len_loop = [&] () {
+  auto ase_utf8len_s_loop = [&] () {
     for (size_t j = 0; j < RUNS; j++)
       {
-        size_t result = Ase::utf8len (str.c_str());
+        size_t result = Ase::utf8len (str);             // pick utf8len (std::string&)
         TCMP (expected, ==, result);
       }
   };
-  bench_time = timer.benchmark (ase_utf8len_loop);
-  Ase::printerr ("  BENCH    Ase::utf8len:                 %11.1f MChar/s %s\n", str.size() * RUNS / bench_time / M, what);
+  bench_time = timer.benchmark (ase_utf8len_s_loop);
+  Ase::printerr ("  BENCH    Ase::utf8len(string&):        %11.1f MChar/s %s\n", str.size() * RUNS / bench_time / M, what);
+
+  auto ase_utf8len_c_loop = [&] () {
+    for (size_t j = 0; j < RUNS; j++)
+      {
+        size_t result = Ase::utf8len (str.c_str());     // pick utf8len(const char*)
+        TCMP (expected, ==, result);
+      }
+  };
+  bench_time = timer.benchmark (ase_utf8len_c_loop);
+  Ase::printerr ("  BENCH    Ase::utf8len(char*):          %11.1f MChar/s %s\n", str.size() * RUNS / bench_time / M, what);
 
   auto simple_utf8len_loop = [&] () {
     for (size_t j = 0; j < RUNS; j++)
       {
-        size_t result = not_0x80_strlen_utf8 (str.c_str());
+        size_t result = not_0x80_strlen_utf8 (str);
         TCMP (expected, ==, result);
       }
   };
@@ -144,7 +154,7 @@ utf8_strlen_bench_ascii()
   std::string big;
   big.resize (Ase::unicode_last_codepoint * 1.07); // roughly equivalent length to the high_planes test
   for (size_t i = 0; i < big.size(); i++)
-    big[i] = (i + 1) % 0x80; // fill string with 0x01..0xf7 characters
+    big[i] = 1 + i % 0x7F; // fill string with 0x01..0xf7 characters
   utf8_strlen_bench (big, "(ascii)");
 }
 
@@ -259,7 +269,7 @@ quick_rand32 ()
 template<AllocatorType AT> static void
 ase_aligned_allocator_benchloop (uint32 seed)
 {
-  constexpr const size_t RUNS = 3;
+  constexpr const size_t ARUNS = 3;
   constexpr const int64 MAX_CHUNK_SIZE = 8192;
   constexpr const int64 N_ALLOCS = 2048;
   constexpr const int64 RESIDENT = N_ALLOCS / 3;
@@ -268,7 +278,7 @@ ase_aligned_allocator_benchloop (uint32 seed)
   static FastMemory::Block blocks[N_ALLOCS];
   auto loop_aa = [&] () {
     quick_rand32_seed = seed;
-    for (size_t j = 0; j < RUNS; j++)
+    for (size_t r = 0; r < ARUNS; r++)
       {
         // allocate random sizes
         for (size_t i = 0; i < N_ALLOCS; i++)
@@ -329,7 +339,7 @@ ase_aligned_allocator_benchloop (uint32 seed)
   };
   Ase::Test::Timer timer (0.1);
   const double bench_aa = timer.benchmark (loop_aa);
-  const size_t n_allocations = RUNS * N_ALLOCS * (1 + 3.0 / 2);
+  const size_t n_allocations = ARUNS * N_ALLOCS * (1 + 3.0 / 2);
   const double ns_p_a = 1000000000.0 * bench_aa / n_allocations;
   Ase::printerr ("  BENCH    %-23s %u allocations in %.1f msecs, %.1fnsecs/allocation\n",
                  TestAllocator<AT>::name() + ":", n_allocations, 1000 * bench_aa, ns_p_a);

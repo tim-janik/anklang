@@ -67,7 +67,7 @@ enum Kind {
 struct TestEntry {
   std::string ident;
   int64       flags = 0;
-  TestEntry (const std::string identi = "", int64 flagsi = 0) :
+  TestEntry (const std::string &identi = "", int64 flagsi = 0) :
     ident (identi), flags (flagsi)
   {}
 };
