@@ -4,6 +4,7 @@
 #include "path.hh"
 #include "utils.hh"
 #include "jsonapi.hh"
+#include "driver.hh"
 #include "engine.hh"
 #include "internal.hh"
 #include "testing.hh"
@@ -220,6 +221,31 @@ main (int argc, char *argv[])
 
   // prepare main event loop
   main_loop = MainLoop::create();
+
+  // load drivers and dump device list
+  load_registered_drivers();
+  if (true)
+    {
+      Ase::Driver::EntryVec entries;
+      printerr ("%s", _("Available PCM drivers:\n"));
+      entries = Ase::PcmDriver::list_drivers();
+      for (const auto &entry : entries)
+        printerr ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
+                  entry.readonly ? "Input" : entry.writeonly ? "Output" : "Duplex",
+                  entry.priority, entry.device_name,
+                  entry.capabilities.empty() ? "" : "\t" + entry.capabilities + "\n",
+                  entry.device_info.empty() ? "" : "\t" + entry.device_info + "\n",
+                  entry.notice.empty() ? "" : "\t" + entry.notice + "\n");
+      printerr ("%s", _("\nAvailable MIDI drivers:\n"));
+      entries = Ase::MidiDriver::list_drivers();
+      for (const auto &entry : entries)
+        printerr ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
+                  entry.readonly ? "Input" : entry.writeonly ? "Output" : "Duplex",
+                  entry.priority, entry.device_name,
+                  entry.capabilities.empty() ? "" : "\t" + entry.capabilities + "\n",
+                  entry.device_info.empty() ? "" : "\t" + entry.device_info + "\n",
+                  entry.notice.empty() ? "" : "\t" + entry.notice + "\n");
+    }
 
   // start audio engine
   AudioEngine &se = make_audio_engine (48000);

@@ -114,7 +114,7 @@ $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
 	$(ase/AnklangSynthEngine.objects), \
 	$(lib/libase.so), \
-	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS), \
+	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS), \
 	../lib)
 #	-lase-$(version_major)
 $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkglibdir)/lib, $(lib/AnklangSynthEngine))

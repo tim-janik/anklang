@@ -3,11 +3,20 @@
 #define __ASE_PROPERTIES_HH__
 
 #include <ase/object.hh>
+#include <ase/memory.hh>
 
 namespace Ase {
 
 using ValueGetter = std::function<void (Value&)>;
 using ValueSetter = std::function<bool (const Value&)>;
+
+/// A named ID used to group parameters.
+struct GroupId : CString {
+  using CString::CString;
+  using CString::operator=;
+  using CString::operator==;
+  using CString::operator!=;
+};
 
 /// Implementation namespace for Property helpers
 namespace Properties {
@@ -35,7 +44,7 @@ class Bag {
 public:
   explicit  Bag   (const EventHandler &eventhandler = {});
   PropertyS props;
-  String    group;
+  GroupId   group;
   Bag&      operator+= (PropertyP p);
 };
 

@@ -185,6 +185,25 @@ public:
 };
 using GadgetP = std::shared_ptr<Gadget>;
 
+/// Info for device types.
+struct DeviceInfo {
+  String uri;          ///< Unique identifier for de-/serialization.
+  String name;         ///< Preferred user interface name.
+  String category;     ///< Category to allow grouping for processors of similar function.
+  String description;  ///< Elaborate description for help dialogs.
+  String website_url;  ///< Website of/about this Processor.
+  String creator_name; ///< Name of the creator.
+  String creator_url;  ///< Internet contact of the creator.
+};
+using DeviceInfoS = std::vector<DeviceInfo>;
+
+/// Interface to access Device instances.
+class Device : public virtual Gadget {
+  virtual DeviceInfo device_info () = 0;             ///< Describe this Device type.
+};
+using DeviceP = std::shared_ptr<Device>;
+using DeviceS = std::vector<Device>;
+
 /// Container for MIDI note and control events.
 class Clip : public virtual Object {
 public:
