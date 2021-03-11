@@ -84,8 +84,8 @@
 import * as Ase from '../aseapi.js';
 
 async function list_audio_device_types () {
-  if (list_audio_device_types.return_entries)
-    return list_audio_device_types.return_entries;
+  if (list_audio_device_types.result)
+    return list_audio_device_types.result;
   const crawler = await Ase.server.resource_crawler();
   const entries = await crawler.list_devices (Ase.ResourceType.AUDIO_DEVICE);
   const cats = {};
@@ -98,8 +98,8 @@ async function list_audio_device_types () {
   const list = [];
   for (const c of Object.keys (cats).sort())
     list.push (cats[c]);
-  list_audio_device_types.return_entries = Object.freeze ({ entries: list });
-  return list_audio_device_types.return_entries;
+  list_audio_device_types.result = Object.freeze ({ entries: list });
+  return list_audio_device_types.result;
 }
 
 function observable_device_data () {
