@@ -87,7 +87,7 @@ function create_window (onclose)
       sandbox:				true,
       contextIsolation:			true,
       nodeIntegration:                  false,
-      enableRemoteModule:               true,
+      enableRemoteModule:               false,
       devTools:                         __DEV__,
       defaultEncoding:                  'UTF-8',
       defaultFontSize:                  parseInt (defaults.defaultFontSize),
