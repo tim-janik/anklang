@@ -4,6 +4,7 @@ const package_json = require ('./package.json');
 Object.defineProperty (globalThis, '__DEV__', { value: package_json.mode !== 'production' });
 const Electron = require ('electron');
 const Eapp = Electron.app;
+const os = require ('os');
 
 // CSS Defaults
 const defaults = {
@@ -173,14 +174,19 @@ function start_sound_engine (config, datacb, errorcb)
 }
 
 // == IPC Messages ==
+// IPC calls available to the Renderer
 const ipc_handler = {
-  have_electron (browserwindow, ...args)	{ return 'HaveElectron!'; },
+  electron_versions (browserwindow, ...args)	{ return { platform: process.platform,
+							   arch: process.arch,
+							   os_release: os.release(),
+							   versions: process.versions, }; },
   toggle_dev_tools (browserwindow, ...args)	{ browserwindow.toggleDevTools(); },
 };
+// Dispatch Renderer->Main message events
 Electron.ipcMain.on ('ElectronIpcR2M', (event, data) => {
   if (typeof (ipc_handler[data?.cmd]) !== 'function') return;
   const result = ipc_handler[data.cmd] (event.sender, ...(Array.isArray (data?.args) ? data.args : []));
-  if (data?.ElectronIpcID)
+  if (data?.ElectronIpcID) // Send Main->Renderer replies
     event.reply ('ElectronIpcM2R', { ElectronIpcID: data.ElectronIpcID, ret: result });
 });
 
