@@ -5,7 +5,7 @@ CXX	 = ccache clang++
 #CXX	 = ccache g++ -Wno-nonnull-compare -Wno-address
 CXXFLAGS = -std=gnu++17 -Wall -O0 -g
 OBJECTS  = testjsonipc.o
-DEFS     = -DSTANDALONE -D__JSONIPC_NULL_REFERENCE_THROWS__
+DEFS     = -DSTANDALONE
 DEPS     = jsonipc.hh Makefile
 
 INCLUDES = -I../$(builddir)/external/
