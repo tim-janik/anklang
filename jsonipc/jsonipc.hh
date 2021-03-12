@@ -117,6 +117,9 @@ get___typename__ (const T &o)
   return rtti_typename (o);
 }
 
+/// Exception thrown during invalid argument conversions.
+struct bad_cast_from_null : std::bad_cast {};
+
 // == Forward Decls ==
 class InstanceMap;
 template<typename> struct Class;
@@ -1119,7 +1122,11 @@ private:
       std::shared_ptr<T> instance = object_from_json (cbi.ntharg (0));
       if (!instance)
         return new std::string (CallbackInfo::internal_error); // closure lookup without this?
-      call_from_json (*instance, method, cbi);
+      try {
+        call_from_json (*instance, method, cbi);
+      } catch (const Jsonipc::bad_cast_from_null &exc) {
+        return new std::string (CallbackInfo::invalid_params); // attempt to cast null into reference type
+      }
       return NULL;
     };
   }
@@ -1133,7 +1140,12 @@ private:
       std::shared_ptr<T> instance = object_from_json (cbi.ntharg (0));
       if (!instance)
         return new std::string (CallbackInfo::internal_error); // closure lookup without this?
-      JsonValue rv = to_json (call_from_json (*instance, method, cbi), cbi.allocator());
+      JsonValue rv;
+      try {
+        rv = to_json (call_from_json (*instance, method, cbi), cbi.allocator());
+      } catch (const Jsonipc::bad_cast_from_null &exc) {
+        return new std::string (CallbackInfo::invalid_params); // attempt to cast null into reference type
+      }
       cbi.set_result (rv);
       return NULL;
     };
@@ -1341,27 +1353,13 @@ struct Convert<T*, REQUIRESv< IsWrappableClass<T>::value >> {
 template<typename T>
 struct Convert<T, REQUIRESv< IsWrappableClass<T>::value >> {
   using ClassType = typename std::remove_cv<T>::type;
-#ifdef  __JSONIPC_NULL_REFERENCE_THROWS__
-  static        // mutable, nullptr throws
-#else
-  static const  // const, requires is_default_constructible dummy
-#endif
-  T&
+  static T&
   from_json (const JsonValue &value)
   {
     T *object = Convert<T*>::from_json (value);
     if (object)
       return *object;
-#ifndef __JSONIPC_NULL_REFERENCE_THROWS__
-    if constexpr (std::is_default_constructible <const ClassType>::value)
-      {
-        static const T dummy {};
-        return dummy;
-      }
-    else
-      static_assert (sizeof (T) < 0, "Class needs to be default constructible");
-#endif
-    throw std::bad_cast (); // might be rarely triggered
+    throw Jsonipc::bad_cast_from_null();
   }
   static JsonValue
   to_json (const T &object, JsonAllocator &allocator)
