@@ -57,21 +57,14 @@ async function about_pairs() {
   ];
   if (window.Electron)
     {
-      const Eapp = window.Electron.app;
-      const os = require ('os');
+      const operating_system = window.Electron.platform + ' ' + window.Electron.arch + ' (' + window.Electron.os_release + ')';
       const parray = [
-	[ 'OS:',		process.platform + ' ' + process.arch + ' (' + os.release() + ')' ],
-	[ 'Executable:',	Eapp.getPath ('exe') ],
-	[ 'Application:',	Eapp.getName() + ' ' + Eapp.getVersion() ],
-	[ 'Electron:',		process.versions.electron ],
-	[ 'Chrome:',		process.versions.chrome ],
-	[ 'Node.js:',		process.versions.node ],
-	[ 'Libuv:',		process.versions.uv ],
-	[ 'V8:',		process.versions.v8 ],
-	[ 'Working Dir:',	process.cwd() ],
-	[ 'Desktop Dir:',	Eapp.getPath ('desktop') ],
-	[ 'Config Path:',	Eapp.getPath ('userData') ],
-	[ 'Music Path:',	Eapp.getPath ('music') ],
+	[ 'Electron:',          window.Electron.versions.electron ],
+	[ 'Chrome:',            window.Electron.versions.chrome ],
+	[ 'Node.js:',           window.Electron.versions.node ],
+	[ 'Libuv:',             window.Electron.versions.uv ],
+	[ 'V8:',                window.Electron.versions.v8 ],
+	[ 'OS:',		operating_system ],
       ];
       array = Array.prototype.concat (array, parray);
     }
