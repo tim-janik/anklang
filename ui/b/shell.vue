@@ -49,13 +49,13 @@
 <template>
   <v-flex class="b-shell">
 
-    <b-menubar :project="Data.project" :song="Data.song" />
+    <b-menubar :project="Data.project" />
 
     <h-flex style="overflow: hidden; flex: 1 1 auto">
       <v-flex grow1 shrink1>
 	<!-- upper main area -->
 	<h-flex class="b-shell-panel1" >
-	  <b-track-list class="grow1" :song="Data.song"></b-track-list>
+	  <b-track-list class="grow1" :project="Data.project"></b-track-list>
 	</h-flex>
 	<!-- lower main area -->
 	<h-flex class="b-shell-panel2" :style="panel2_style()" >
@@ -119,8 +119,6 @@ function observable_project_data () { // yields reactive Proxy object
   const data = {
     filetree:	     { default: {}, getter: c => list_sample_files(), },
     usermessagehook: { notify: n => Ase.server.on ("usermessage", this.usermessage), },
-    // TODO: tracks: { getter: c => list_tracks.call (this), notify: n => song.on ("treechange", n), },
-    // update Data.current_track if tracks change
     __update__: Util.observable_force_update,
   };
   return this.observable_from_getters (data, () => Data.project);
