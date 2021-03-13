@@ -214,7 +214,7 @@ public:
 using ClipP = std::shared_ptr<Clip>;
 
 /// Container for Clip objects and sequencing information.
-class Track : public virtual Object {
+class Track : public virtual Gadget {
 public:
   virtual int32 midi_channel () const = 0;      ///< Midi channel assigned to this track, 0 uses internal per-track channel.
   virtual void  midi_channel (int32 midichannel) = 0;
@@ -227,11 +227,15 @@ using TrackS = std::vector<TrackP>;
 class Project : public virtual Gadget {
 public:
   using ProjectP = std::shared_ptr<Project>;
-  virtual void destroy        () = 0;   ///< Release project and associated resources.
-  virtual void start_playback () = 0;   ///< Start playback of a project, requires active sound engine.
-  virtual void stop_playback  () = 0;   ///< Stop project playback.
-  virtual bool is_playing     () = 0;   ///< Check whether a project is currently playing (song sequencing).
-  static ProjectP create       (const String &projectname);
+  virtual void    destroy        () = 0;        ///< Release project and associated resources.
+  virtual void    start_playback () = 0;        ///< Start playback of a project, requires active sound engine.
+  virtual void    stop_playback  () = 0;        ///< Stop project playback.
+  virtual bool    is_playing     () = 0;        ///< Check whether a project is currently playing (song sequencing).
+  virtual TrackP  create_track   () = 0;        ///< Create and append a new Track.
+  virtual bool    remove_track   (Track&) = 0;  ///< Remove a track owned by this Project.
+  virtual TrackS  list_tracks    () = 0;        ///< Retrieve a list of all tracks.
+  virtual TrackP  master_track   () = 0;        ///< Retrieve the master track.
+  static ProjectP create         (const String &projectname);
   static ProjectP last_project ();
 };
 using ProjectP = Project::ProjectP;

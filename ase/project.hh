@@ -2,17 +2,23 @@
 #ifndef __ASE_PROJECT_HH__
 #define __ASE_PROJECT_HH__
 
-#include <ase/gadget.hh>
+#include <ase/track.hh>
 
 namespace Ase {
 
-struct ProjectImpl : public virtual Project, public virtual GadgetImpl {
+class ProjectImpl : public virtual Project, public virtual GadgetImpl {
+  std::vector<TrackImplP> tracks_;
+public:
   explicit ProjectImpl    (const String &projectname);
   virtual ~ProjectImpl    ();
   void     destroy        () override;
   void     start_playback () override;
   void     stop_playback  () override;
   bool     is_playing     () override;
+  TrackP   create_track   () override;
+  bool     remove_track   (Track &child) override;
+  TrackS   list_tracks    () override;
+  TrackP   master_track   () override;
 };
 using ProjectImplP = std::shared_ptr<ProjectImpl>;
 
