@@ -3,20 +3,22 @@
 #define __ASE_GADGET_HH__
 
 #include <ase/object.hh>
+#include <ase/utils.hh>
 
 namespace Ase {
 
 /// Base type for classes that have a Property.
-class GadgetImpl : public virtual Gadget, public virtual ObjectImpl {
+class GadgetImpl : public virtual Gadget, public virtual ObjectImpl, public CustomDataContainer {
 protected:
-  virtual    ~GadgetImpl        ();
+  virtual        ~GadgetImpl     ();
+  virtual String fallback_name   ();
 public:
-  std::string type_nick         () const override;
-  std::string name              () const override;
-  void        name              (std::string newname) override;
-  StringS     list_properties   () override;
-  PropertyP   access_property   (String ident) override;
-  PropertyS   access_properties () override;
+  String         type_nick       () const override;
+  String         name            () const override;
+  void           name            (String newname) override;
+  StringS        list_properties () override;
+  PropertyP      access_property (String ident) override;
+  PropertyS      access_properties () override;
 };
 
 } // Ase
