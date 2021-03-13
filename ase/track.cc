@@ -8,6 +8,10 @@ namespace Ase {
 // == TrackImpl ==
 JSONIPC_INHERIT (TrackImpl, Track);
 
+TrackImpl::TrackImpl (bool masterflag) :
+  masterflag_ (masterflag)
+{}
+
 TrackImpl::~TrackImpl()
 {}
 

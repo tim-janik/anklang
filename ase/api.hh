@@ -218,8 +218,10 @@ class Track : public virtual Object {
 public:
   virtual int32 midi_channel () const = 0;      ///< Midi channel assigned to this track, 0 uses internal per-track channel.
   virtual void  midi_channel (int32 midichannel) = 0;
+  virtual bool  is_master    () const = 0;
 };
 using TrackP = std::shared_ptr<Track>;
+using TrackS = std::vector<TrackP>;
 
 /// Projects support loading, saving, playback and act as containers for all other sound objects.
 class Project : public virtual Gadget {
