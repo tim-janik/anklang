@@ -236,6 +236,24 @@ public:
   }
 };
 
+/// Define a member function `static shared_ptr<CLASS> make_shared(ctorargs...);`.
+/// As member function, access to a private dtor and ctors is granted, so no
+/// std::allocator friend declaration is needed to
+/// define `make_shared()` for its own class.
+#define ASE_DEFINE_MAKE_SHARED(CLASS)                             \
+  template<typename ...Args> static std::shared_ptr<CLASS>        \
+  make_shared (Args &&...args)                                    \
+  {                                                               \
+    struct Allocator : public std::allocator<CLASS> {             \
+      static void construct (CLASS *p, Args &&...args)            \
+      { ::new (p) CLASS (std::forward<Args> (args)...); }         \
+      static void destroy (CLASS *p)                              \
+      { p->~CLASS (); }                                           \
+    };                                                            \
+    return std::allocate_shared<CLASS>                            \
+             (Allocator(), std::forward<Args> (args)...);         \
+  }
+
 /** Shorthand for std::dynamic_pointer_cast<>(shared_from_this()).
  * A shared_ptr_cast() takes a std::shared_ptr or a pointer to an @a object that
  * supports std::enable_shared_from_this::shared_from_this().
