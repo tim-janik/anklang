@@ -46,7 +46,7 @@ export class AppClass {
     this.data_bubble = new DataBubbleIface();
     const data = {
       project: null,
-      song: null,
+      mtrack: null, // master track
       panel3: 'i',
       panel2: 'p',
       piano_roll_source: undefined,
@@ -119,33 +119,8 @@ export class AppClass {
 	    await newproject.set_name (basename);
 	  }
       }
-    // ensure project has a song
-    if (0) // FIXME: need tracks
-      {
-	let song, supers = await newproject.get_supers();
-	for (let s of supers)
-	  if (s instanceof Ase.Song)
-	    {
-	      song = s;
-	      break;
-	    }
-	if (!song)
-	  song = await newproject.create_song ("Unnamed");
-	song.ensure_master_bus();
-	newproject.auto_stop (false);
-	let track;
-	for (let t of await song.list_children())
-	  if (t instanceof Ase.Track)
-	    {
-	      track = t;
-	      break;
-	    }
-	if (!track)
-	  {
-	    track = await song.create_track ('Master');
-	    track.ensure_output();
-	  }
-      }
+    const mtrack = await newproject.master_track();
+    const tracks = await newproject.list_tracks();
     // shut down old project
     if (this.data.project)
       {
@@ -154,10 +129,10 @@ export class AppClass {
 	this.data.project.stop();
 	this.data.project = null; // TODO: should trigger FinalizationGroup
       }
-    // replace project & song without await, to synchronously trigger Vue updates for both
+    // replace project & master track without await, to synchronously trigger Vue updates for both
     this.data.project = newproject;
-    // FIXME: this.data.song = song;
-    // FIXME: Data.current_track = track;
+    this.data.mtrack = mtrack;
+    this.data.current_track = tracks[0];
     const update_title = async () => {
       const name = this.data.project ? await this.data.project.name() : undefined;
       document.title = Util.format_title ('Anklang', name);
