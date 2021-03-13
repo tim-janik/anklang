@@ -36,7 +36,7 @@ const tick_quant = 384; // TODO: query ASE
 
 function observable_part_data () {
   const data = {
-    partname: { getter: c => this.part.get_name(),      notify: n => this.part.on ("notify:uname", n), },
+    partname: { getter: c => this.part.get_name(),      notify: n => this.part.on ("notify:name", n), },
     lasttick: { getter: c => this.part.get_last_tick(), notify: n => this.part.on ("notify:last_tick", n), },
     allnotes: { default: [],                            notify: n => this.part.on ("noteschanged", n),
 		getter: async c => Object.freeze (await this.part.list_notes_crossing (0, CONFIG.MAXINT)), },

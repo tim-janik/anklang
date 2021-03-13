@@ -137,7 +137,7 @@ export class AppClass {
       const name = this.data.project ? await this.data.project.name() : undefined;
       document.title = Util.format_title ('Anklang', name);
     };
-    this.notifynameclear = this.data.project.on ("notify:uname", update_title);
+    this.notifynameclear = this.data.project.on ("notify:name", update_title);
     update_title();
     this.shell.update();
     return Ase.Error.NONE;

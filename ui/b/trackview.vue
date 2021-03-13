@@ -78,7 +78,7 @@
 	    @dblclick="nameedit_++" >
 	<span class="b-trackview-label-el">{{ tdata.name }}</span>
 	<input v-if="nameedit_" v-inlineblur="() => nameedit_ = 0" :value="tdata.name"
-	       type="text" @change="$event.target.cancelled || track.set_name ($event.target.value.trim())" />
+	       type="text" @change="$event.target.cancelled || track.name ($event.target.value.trim())" />
       </span>
       <div class="b-trackview-meter">
 	<div class="b-trackview-lbg" ref="levelbg"></div>
@@ -176,7 +176,7 @@ async function channel_moniotr (ch, addcleanup) {
 
 function track_data () {
   const tdata = {
-    name: { getter: c => this.track.get_name(),     notify: n => this.track.on ("notify:uname", n), },
+    name: { getter: c => this.track.name(),	    notify: n => this.track.on ("notify:name", n), },
     mc:   { getter: c => this.track.midi_channel(), notify: n => this.track.on ("notify:midi_channel", n), },
     lmon: { getter: c => channel_moniotr.call (this, 0, c), },
     rmon: { getter: c => channel_moniotr.call (this, 1, c), },
