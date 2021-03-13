@@ -116,9 +116,9 @@
     <div class="b-track-list-tracks" style="grid-column-start: 1; grid-row-start: 3" ref="tracks"
 	 @wheel.stop="Util.wheel2scrollbars ($event, $refs, 'vscrollbar')" >
       <v-flex class="b-track-list-trackswrapper" ref="trackswrapper" >
-	<b-track-view class="b-trackrow-cell"
-		      v-for="(pair, tindex) in sdata.tracks" :key="pair[1]"
-		      :track="pair[0]" :trackindex="tindex"></b-track-view>
+	<b-trackview class="b-trackrow-cell"
+		     v-for="(pair, tindex) in tdata.tracks" :key="pair[1]"
+		     :track="pair[0]" :trackindex="tindex"></b-trackview>
       </v-flex>
       <div class="b-track-list-tracks-shadow" ref="tracksshadow" ></div>
     </div>
