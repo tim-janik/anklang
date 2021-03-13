@@ -13,8 +13,8 @@
 <template>
 
   <div class="b-partlist" >
-    <b-part-thumb v-for="(tp, pindex) in parts" :key="tp.unique_id + '-' + tp.tick"
-		  :part="tp.part" :tick="tp.tick" :trackindex="trackindex" :index="pindex" ></b-part-thumb>
+    <b-partthumb v-for="(tp, pindex) in parts" :key="tp.unique_id + '-' + tp.tick"
+		 :part="tp.part" :tick="tp.tick" :trackindex="trackindex" :index="pindex" ></b-partthumb>
   </div>
 
 </template>
