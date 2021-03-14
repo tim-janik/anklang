@@ -22,6 +22,8 @@ public:
   bool     is_master      () const override       { return masterflag_; }
   int32    midi_channel   () const override;
   void     midi_channel   (int32 midichannel) override;
+  ClipS    list_clips     () override;
+  MonitorP create_monitor (int32 ochannel) override;
 };
 using TrackImplP = std::shared_ptr<TrackImpl>;
 

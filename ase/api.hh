@@ -212,7 +212,7 @@ class Device : public virtual Gadget {
 };
 
 /// Container for MIDI note and control events.
-class Clip : public virtual Object {
+class Clip : public virtual Gadget {
 public:
   virtual int32 start_tick () = 0; ///< Get the first tick intended for playback (this is >= 0), changes on `notify:start_tick`.
   virtual int32 stop_tick  () = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
@@ -225,6 +225,8 @@ public:
   virtual int32    midi_channel   () const = 0;          ///< Midi channel assigned to this track, 0 uses internal per-track channel.
   virtual void     midi_channel   (int32 midichannel) = 0;
   virtual bool     is_master      () const = 0;          ///< Flag set on the main output track.
+  virtual ClipS    list_clips     () = 0;                ///< Retrieve a list of the clips within this track.
+  virtual MonitorP create_monitor (int32 ochannel) = 0;  /// Create signal monitor for an output channel.
 };
 
 /// Bits representing a selection of probe sample data features.

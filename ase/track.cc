@@ -50,4 +50,16 @@ void
 TrackImpl::midi_channel (int32 midichannel) // TODO: implement
 {}
 
+ClipS
+TrackImpl::list_clips () // TODO: implement
+{
+  return {};
+}
+
+MonitorP
+TrackImpl::create_monitor (int32 ochannel) // TODO: implement
+{
+  return nullptr;
+}
+
 } // Ase

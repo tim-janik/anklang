@@ -2,11 +2,11 @@
 #ifndef __ASE_CLIP_HH__
 #define __ASE_CLIP_HH__
 
-#include <ase/object.hh>
+#include <ase/gadget.hh>
 
 namespace Ase {
 
-class ClipImpl : public virtual Clip, public virtual ObjectImpl {
+class ClipImpl : public virtual Clip, public virtual GadgetImpl {
 protected:
   virtual ~ClipImpl   ();
 public:
