@@ -222,9 +222,29 @@ public:
 /// Container for Clip objects and sequencing information.
 class Track : public virtual Gadget {
 public:
-  virtual int32 midi_channel () const = 0;      ///< Midi channel assigned to this track, 0 uses internal per-track channel.
-  virtual void  midi_channel (int32 midichannel) = 0;
-  virtual bool  is_master    () const = 0;
+  virtual int32    midi_channel   () const = 0;          ///< Midi channel assigned to this track, 0 uses internal per-track channel.
+  virtual void     midi_channel   (int32 midichannel) = 0;
+  virtual bool     is_master      () const = 0;          ///< Flag set on the main output track.
+};
+
+/// Bits representing a selection of probe sample data features.
+struct ProbeFeatures {
+  bool probe_range;     ///< Provide sample range probes.
+  bool probe_energy;    ///< Provide sample energy measurement.
+  bool probe_samples;   ///< Provide probe with bare sample values.
+  bool probe_fft;       ///< Provide FFT analysis probe.
+};
+
+/// Interface for monitoring output signals.
+class Monitor : public virtual Gadget {
+public:
+  virtual DeviceP get_output         () = 0;            ///< Retrieve output module the Monitor is connected to.
+  virtual int32   get_ochannel       () = 0;            ///< Retrieve output channel the Monitor is connected to.
+  virtual int64   get_mix_freq       () = 0;            ///< Mix frequency at which monitor values are calculated.
+  virtual int64   get_frame_duration () = 0;            ///< Frame duration in µseconds for the calculation of monitor values.
+  //int64         get_shm_offset     (MonitorField fld);  ///< Offset into shared memory for MonitorField values of `ochannel`.
+  //void          set_probe_features (ProbeFeatures pf);  ///< Configure probe features.
+  //ProbeFeatures get_probe_features ();                  ///< Get configured probe features.
 };
 
 /// Projects support loading, saving, playback and act as containers for all other sound objects.
