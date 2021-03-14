@@ -600,24 +600,6 @@ function autodataattrs_apply () {
       this.$el.setAttribute (datakey, this.$attrs[datakey]);
 }
 
-/** Vue mixin to create a kebab-case ('two-words') getter proxy for camelCase ('twoWords') props */
-vue_mixins.hyphen_props = {
-  beforeCreate: function () {
-    for (let cc in this.$options.props) {
-      const hyphenated = hyphenate (cc);
-      if (hyphenated === cc || (this.$options.computed && hyphenated in this.$options.computed))
-	continue;
-      if (!this.$options.computed)
-	this.$options.computed = {};
-      Object.defineProperty (this, hyphenated, {
-	get() { return this[cc]; },
-	enumerable: false,
-	configurable: false
-      });
-    }
-  },
-};
-
 function call_unwatch (unwatch_cb) {
   // Work around: https://github.com/vuejs/vue-next/issues/2381
   try {
