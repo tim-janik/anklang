@@ -112,12 +112,15 @@ export function capture_event (eventname, callback) {
 }
 
 /** Get `__vue__` from element or its ancestors */
-function vue_ancestor (element) {
-  while (element)
+export function vue_component (element) {
+  let el = element;
+  while (el)
     {
-      if (element.__vue__)
-	return element.__vue__;
-      element = element.parentNode;
+      if (el.__vueParentComponent?.proxy)
+	return el.__vueParentComponent.proxy; // Vue3
+      if (el.__vue__)
+	return el.__vue__;                    // Vue2
+      el = el.parentNode;
     }
   return undefined;
 }
@@ -214,7 +217,7 @@ class PointerDrag {
 /** Start `drag_event (event)` handling on a Vue component's element, use `@pointerdown="Util.drag_event"` */
 export function drag_event (event) {
   console.assert (event.type == "pointerdown" && event.pointerId);
-  const vuecomponent = vue_ancestor (event.target);
+  const vuecomponent = vue_component (event.target);
   if (vuecomponent && vuecomponent.$el &&
       vuecomponent.drag_event)			// ignore request if we got wrong vue component (child)
   {
