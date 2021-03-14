@@ -91,6 +91,18 @@ using VoidF = std::function<void()>;
   /*copy-ctor*/ ClassName  (const ClassName&) = delete; \
   ClassName&    operator=  (const ClassName&) = delete
 
+/// Forward declare `struct Klass;` as well as shared_ptr `KlassP` and vector `KlassS`.
+#define ASE_STRUCT_DECLS(Klass)                                  \
+  struct Klass;                                                  \
+  using ASE_CPP_PASTE2 (Klass, P) = ::std::shared_ptr<Klass>;   \
+  using ASE_CPP_PASTE2 (Klass, S) = ::std::vector<Klass>;
+
+/// Forward declare `class Klass;` as well as `KlassP` and `KlassS` as `vector<KlassP>`.
+#define ASE_CLASS_DECLS(Klass)                                  \
+  class Klass;                                                  \
+  using ASE_CPP_PASTE2 (Klass, P) = ::std::shared_ptr<Klass>;   \
+  using ASE_CPP_PASTE2 (Klass, S) = ::std::vector<ASE_CPP_PASTE2 (Klass, P)>;
+
 // == Operations on flags enum classes ==
 #define ASE_DEFINE_ENUM_EQUALITY(Enum)         \
   constexpr bool    operator== (Enum v, int64_t n) { return int64_t (v) == n; } \
