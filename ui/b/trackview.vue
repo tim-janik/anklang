@@ -2,7 +2,7 @@
 
 <docs>
   # B-TRACKVIEW
-  A Vue template to display a song's Ase.Track.
+  A Vue template to display a project's Ase.Track.
   ## Props:
   *project*
   : The *Ase.project* containing playback tracks.
@@ -146,9 +146,11 @@ const mindb = -48.0; // -96.0;
 const maxdb =  +6.0; // +12.0;
 
 async function channel_moniotr (ch, addcleanup) {
+  return null; // TODO: implement channel_moniotr handling
+
   const mon = {};
   // create signal monitor, needs await like all other calls
-  mon.signmon = this.track.create_signal_monitor (ch);
+  mon.signmon = this.track.create_monitor (ch);
   // request dB SPL updates
   const pf = new Ase.ProbeFeatures();
   pf.probe_energy = true;
@@ -226,12 +228,12 @@ export default {
       this.$refs.cmenu.close();
       if (uri == 'add-track')
 	{
-	  const track = await Data.song.create_track ('Track');
+	  const track = await Data.project.create_track ('Track');
 	  if (track)
 	    Data.current_track = track;
 	}
       if (uri == 'delete-track')
-	Data.song.remove_track (this.track);
+	Data.project.remove_track (this.track);
       if (uri == 'rename-track')
 	this.nameedit_ = 1;
       if (uri.startsWith ('mc-'))
