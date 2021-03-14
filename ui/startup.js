@@ -50,28 +50,6 @@ class CGrid extends HTMLElement {
 }
 customElements.define ('c-grid', CGrid);
 
-/// Provide `$children` (and `$vue_parent`) on every component.
-const mixin_$children = {
-  provide() { return { '$vue_parent': this }; },
-  inject: { '$vue_parent': { from: '$vue_parent', default: null, }, },
-  beforeCreate () {
-    console.assert (this.$children === undefined);
-    this.$children = [];
-  },
-  created() {
-    if (this.$vue_parent)       // using $parent breaks for transitions
-      this.$vue_parent.$children.push (this);
-  },
-  unmounted() {
-    if (!this.$vue_parent)
-      return;
-    const pos = this.$vue_parent.$children.indexOf (this);
-    if (pos < 0)
-      throw Error ("failed to locate this in $vue_parent.$children:", this);
-    this.$vue_parent.$children.splice (pos, 1);
-  },
-};
-
 const Jsonapi = {
   jstrigger_counter: 100000 * (10 + (0 | 89 * Math.random())),
   jstrigger_map: {},
@@ -161,9 +139,8 @@ async function bootup () {
   // register directives and mixins
   for (let directivename in Util.vue_directives) // register all utility directives
     VueApp.directive (directivename, Util.vue_directives[directivename]);
-  VueApp.mixin (Util.vue_mixins.dom_updates);    // Support `dom_update()` and similar hooks
-  VueApp.mixin (Util.vue_mixins.autodataattrs);  // Auto apply data-* props to this.$el
-  VueApp.mixin (mixin_$children);
+  for (let mixinname in Util.vue_mixins)         // register all utility mixins
+    VueApp.mixin (Util.vue_mixins[mixinname]);
   // register all Vue components
   for (const [name, component] of Object.entries (VueComponents))
     {

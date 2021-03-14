@@ -585,6 +585,33 @@ vue_directives['inlineblur'] = {
   }
 };
 
+/** Provide `$children` (and `$vue_parent`) on every component. */
+vue_mixins.vuechildren = {
+  provide() {
+    return { '$vue_parent': this };
+  },
+  inject: {
+    '$vue_parent': { from: '$vue_parent', default: null, },
+  },
+  beforeCreate () {
+    console.assert (this.$children === undefined);
+    this.$children = [];
+  },
+  created() {
+    // using $parent breaks for transitions, https://github.com/vuejs/docs-next/issues/454
+    if (this.$vue_parent)
+      this.$vue_parent.$children.push (this);
+  },
+  unmounted() {
+    if (!this.$vue_parent)
+      return;
+    const pos = this.$vue_parent.$children.indexOf (this);
+    if (pos < 0)
+      throw Error ("failed to locate this in $vue_parent.$children:", this);
+    this.$vue_parent.$children.splice (pos, 1);
+  },
+};
+
 /** Automatically add `$attrs['data-*']` to `$el`. */
 vue_mixins.autodataattrs = {
   mounted: function () {
