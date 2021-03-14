@@ -75,8 +75,8 @@
        data-tip="**CLICK** Select Track **RIGHTCLICK** Track Menu" >
     <div class="b-trackview-control">
       <span class="b-trackview-label"
-	    @dblclick="nameedit_++" >
-	<span class="b-trackview-label-el">{{ tdata.name }}</span>
+	    @dblclick.stop="nameedit_++" >
+	<span class="b-trackview-label-el">{{ tdata.name || '&nbsp;' }}</span>
 	<input v-if="nameedit_" v-inlineblur="() => nameedit_ = 0" :value="tdata.name"
 	       type="text" @change="$event.target.cancelled || track.name ($event.target.value.trim())" />
       </span>
@@ -223,25 +223,6 @@ export default {
       else
 	return ' ';
     },
-    async menuactivation (uri) {
-      // close popup to remove focus guards
-      this.$refs.cmenu.close();
-      if (uri == 'add-track')
-	{
-	  const track = await Data.project.create_track ('Track');
-	  if (track)
-	    Data.current_track = track;
-	}
-      if (uri == 'delete-track')
-	Data.project.remove_track (this.track);
-      if (uri == 'rename-track')
-	this.nameedit_ = 1;
-      if (uri.startsWith ('mc-'))
-	{
-	  const ch = parseInt (uri.substr (3));
-	  this.track.midi_channel (ch);
-	}
-    },
     menuedit (uri) {
       debug ("menuedit", uri, "(preventDefault)");
     },
@@ -263,6 +244,25 @@ export default {
       if (uri.startsWith ('mc-'))
 	return true;
       return false;
+    },
+    async menuactivation (uri) {
+      // close popup to remove focus guards
+      this.$refs.cmenu.close();
+      if (uri == 'add-track')
+	{
+	  const track = await Data.project.create_track ('Track');
+	  if (track)
+	    Data.current_track = track;
+	}
+      if (uri == 'delete-track')
+	Data.project.remove_track (this.track);
+      if (uri == 'rename-track')
+	this.nameedit_ = 1;
+      if (uri.startsWith ('mc-'))
+	{
+	  const ch = parseInt (uri.substr (3));
+	  this.track.midi_channel (ch);
+	}
     },
   },
 };
