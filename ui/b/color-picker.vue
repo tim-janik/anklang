@@ -4,7 +4,7 @@
   # B-COLOR-PICKER
   Vue template to display a color picker popup.
   ## Props:
-  *initial-color*
+  *initialcolor*
   : The initial color to display.
   ## data:
   *color*
@@ -72,9 +72,8 @@ const initial_color = '#808080';
 
 export default {
   sfc_template,
-  mixins: [ Util.vue_mixins.hyphen_props ],
   props: {
-    'initial-color': { type: String, default: initial_color },
+    initialcolor: { type: String, default: initial_color },
   },
   emits: { input: null, },
   data: function() {

@@ -206,7 +206,6 @@ function observable_msrc_data () {
 
 export default {
   sfc_template,
-  mixins: [ Util.vue_mixins.hyphen_props ],
   props: {
     msrc: { required: true },
   },

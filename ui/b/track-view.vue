@@ -186,7 +186,6 @@ function track_data () {
 
 export default {
   sfc_template,
-  mixins: [ Util.vue_mixins.hyphen_props ],
   props: {
     'track': { type: Ase.Track, },
     'trackindex': { type: Number, },

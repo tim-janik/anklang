@@ -46,7 +46,6 @@ function observable_part_data () {
 
 export default {
   sfc_template,
-  mixins: [ Util.vue_mixins.hyphen_props ],
   props: {
     part: { type: Ase.Part, },
     tick: { type: Number, },
