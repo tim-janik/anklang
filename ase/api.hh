@@ -6,19 +6,35 @@
 
 namespace Ase {
 
+// == Property hint constants ==
 extern const String STORAGE; // ":r:w:S:";
 extern const String STANDARD; // ":r:w:S:G:";
 
+// == Class Forward Declarations ==
+ASE_STRUCT_DECLS (Choice);
+ASE_STRUCT_DECLS (DeviceInfo);
+ASE_STRUCT_DECLS (DriverEntry);
 using StringS = std::vector<std::string>;
+
+ASE_CLASS_DECLS (Clip);
+ASE_CLASS_DECLS (Device);
+ASE_CLASS_DECLS (Gadget);
+ASE_CLASS_DECLS (Monitor);
+ASE_CLASS_DECLS (Object);
+ASE_CLASS_DECLS (Project);
+ASE_CLASS_DECLS (Property);
+ASE_CLASS_DECLS (Server);
+ASE_CLASS_DECLS (SharedBase);
+ASE_CLASS_DECLS (Track);
+
 struct Event;
 class EventConnection;
 using EventHandler = std::function<void (const Event&)>;
 
 /// Common base type for polymorphic classes managed by `std::shared_ptr<>`.
-struct SharedBase : public virtual VirtualBase,
-                    public virtual std::enable_shared_from_this<SharedBase> {
-};
-using SharedBaseP = std::shared_ptr<SharedBase>;
+class SharedBase : public virtual VirtualBase,
+                   public virtual std::enable_shared_from_this<SharedBase>
+{};
 
 // Error enum
 enum class Error : int32_t {
@@ -83,7 +99,6 @@ struct Choice {
   String subject;       ///< Subject line, a brief one liner or elaborate title.
   String icon;          ///< Stringified icon, SVG and PNG should be supported (64x64 pixels recommended).
 };
-using ChoiceS = std::vector<Choice>;
 
 /// Base type for classes with Event subscription.
 class Emittable : public virtual SharedBase {
@@ -124,8 +139,6 @@ public:
   virtual bool     is_numeric     () = 0;          ///< Whether the property settings can be represented as a floating point number.
   virtual ChoiceS  choices        () = 0;          ///< Enumerate choices for choosable properties.
 };
-using PropertyP = std::shared_ptr<Property>;
-using PropertyS = std::vector<PropertyP>;
 
 // Preferences
 struct Preferences {
@@ -162,7 +175,6 @@ struct DriverEntry {
   bool   writeonly = false;
   bool   modem = false;
 };
-using DriverEntryS = std::vector<DriverEntry>;
 
 /// Base type for classes with Property interfaces.
 class Object : public virtual Emittable {
@@ -170,7 +182,6 @@ protected:
   virtual      ~Object () = 0;
 public:
 };
-using ObjectP = std::shared_ptr<Object>;
 
 /// Base type for classes that have a Property.
 class Gadget : public virtual Object {
@@ -183,7 +194,6 @@ public:
   virtual PropertyP   access_property   (String ident) = 0; ///< Retrieve handle for a Property.
   virtual PropertyS   access_properties () = 0;             ///< Retrieve handles for all properties.
 };
-using GadgetP = std::shared_ptr<Gadget>;
 
 /// Info for device types.
 struct DeviceInfo {
@@ -195,14 +205,11 @@ struct DeviceInfo {
   String creator_name; ///< Name of the creator.
   String creator_url;  ///< Internet contact of the creator.
 };
-using DeviceInfoS = std::vector<DeviceInfo>;
 
 /// Interface to access Device instances.
 class Device : public virtual Gadget {
   virtual DeviceInfo device_info () = 0;             ///< Describe this Device type.
 };
-using DeviceP = std::shared_ptr<Device>;
-using DeviceS = std::vector<Device>;
 
 /// Container for MIDI note and control events.
 class Clip : public virtual Object {
@@ -211,7 +218,6 @@ public:
   virtual int32 stop_tick  () = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
   virtual int32 end_tick   () = 0; ///< Get the end tick, this tick is past any event ticks, changes on `notify:end_tick`.
 };
-using ClipP = std::shared_ptr<Clip>;
 
 /// Container for Clip objects and sequencing information.
 class Track : public virtual Gadget {
@@ -220,13 +226,10 @@ public:
   virtual void  midi_channel (int32 midichannel) = 0;
   virtual bool  is_master    () const = 0;
 };
-using TrackP = std::shared_ptr<Track>;
-using TrackS = std::vector<TrackP>;
 
 /// Projects support loading, saving, playback and act as containers for all other sound objects.
 class Project : public virtual Gadget {
 public:
-  using ProjectP = std::shared_ptr<Project>;
   virtual void    destroy        () = 0;        ///< Release project and associated resources.
   virtual void    start_playback () = 0;        ///< Start playback of a project, requires active sound engine.
   virtual void    stop_playback  () = 0;        ///< Stop project playback.
@@ -238,7 +241,6 @@ public:
   static ProjectP create         (const String &projectname);
   static ProjectP last_project ();
 };
-using ProjectP = Project::ProjectP;
 
 /// Central singleton, serves as API entry point.
 class Server : public virtual Gadget {
@@ -263,7 +265,6 @@ public:
   void         set_session_data (const String &key, const Value &v); ///< Assign session data.
   const Value& get_session_data (const String &key) const;           ///< Retrieve session data.
 };
-using ServerP = Server::ServerP;
 #define ASE_SERVER      (::Ase::Server::instance())
 
 } // Ase
