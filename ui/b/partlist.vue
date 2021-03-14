@@ -40,14 +40,14 @@ export default {
   },
   watch: {
     track: { immediate: true, async handler (n, o) {
-      let parts = await this.track.list_parts();
-      parts = parts.map (async tpd => { tpd.unique_id = await tpd.part.unique_id(); return tpd; });
-      parts = await Promise.all (parts);
-      this.parts = parts;
+      let clips = await this.track.list_clips();
+      clips = clips.map (async tpd => { tpd.unique_id = await tpd.clip.unique_id(); return tpd; });
+      clips = await Promise.all (clips);
+      this.parts = clips;
     } },
   },
   data() { return {
-    parts: [],  // [{tick,part,duration,unique_id}, ...]
+    parts: [],  // [{tick,clip,duration,unique_id}, ...]
   }; },
 };
 
