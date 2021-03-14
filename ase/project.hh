@@ -19,6 +19,7 @@ public:
   bool     remove_track   (Track &child) override;
   TrackS   list_tracks    () override;
   TrackP   master_track   () override;
+  ssize_t  track_index    (const Track &child) const;
 };
 using ProjectImplP = std::shared_ptr<ProjectImpl>;
 

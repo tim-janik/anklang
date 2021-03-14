@@ -10,8 +10,8 @@ namespace Ase {
 /// Base type for classes that have a Property.
 class GadgetImpl : public virtual Gadget, public virtual ObjectImpl, public CustomDataContainer {
 protected:
-  virtual        ~GadgetImpl     ();
-  virtual String fallback_name   ();
+  virtual       ~GadgetImpl      ();
+  virtual String fallback_name   () const;
 public:
   String         type_nick       () const override;
   String         name            () const override;

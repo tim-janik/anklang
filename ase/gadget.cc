@@ -13,7 +13,7 @@ GadgetImpl::~GadgetImpl()
 {}
 
 String
-GadgetImpl::fallback_name ()
+GadgetImpl::fallback_name () const
 {
   return type_nick();
 }
@@ -36,7 +36,7 @@ String
 GadgetImpl::name () const
 {
   if (!has_custom_data (&gadget_name_key))
-    return type_nick();
+    return fallback_name();
   return get_custom_data (&gadget_name_key);
 }
 

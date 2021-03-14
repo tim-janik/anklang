@@ -6,16 +6,22 @@
 
 namespace Ase {
 
+class ProjectImpl;
+
 class TrackImpl : public virtual Track, public virtual GadgetImpl {
   const bool masterflag_ = false;
+  ProjectImpl *project_ = nullptr;
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
   virtual ~TrackImpl    ();
+  void     set_project    (ProjectImpl *project);
+protected:
+  String   fallback_name  () const override;
 public:
-  explicit TrackImpl    (bool masterflag);
-  bool     is_master    () const override       { return masterflag_; }
-  int32    midi_channel () const override;
-  void     midi_channel (int32 midichannel) override;
+  explicit TrackImpl      (bool masterflag);
+  bool     is_master      () const override       { return masterflag_; }
+  int32    midi_channel   () const override;
+  void     midi_channel   (int32 midichannel) override;
 };
 using TrackImplP = std::shared_ptr<TrackImpl>;
 
