@@ -43,7 +43,11 @@ GadgetImpl::name () const
 void
 GadgetImpl::name (String newname)
 {
-  set_custom_data (&gadget_name_key, newname);
+  newname = string_strip (newname);
+  if (newname.empty())
+    del_custom_data (&gadget_name_key);
+  else
+    set_custom_data (&gadget_name_key, newname);
   emit_event ("notify", "name");
 }
 
