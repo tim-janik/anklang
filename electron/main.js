@@ -125,11 +125,17 @@ async function load_and_show (w, winurl) {
       ev.preventDefault();
   });
   // handle subwindow creation (via target=_blank or window.open)
-  w.webContents.addListener ('new-window', (ev, url, w) => {  // deprecated in Electron-12
-    if (url.startsWith (origin))
-      ; // we *could* allow subwindows with Anklang content
-    ev.preventDefault();
+  w.webContents.setWindowOpenHandler (({ url }) => {                    // Electron-12
+    if (url.startsWith (origin))        // Anklang content
+      ; // return { action: 'allow' };
     Eshell.openExternal (url);          // use xdg-open or similar
+    return { action: 'deny' };
+  });
+  // customize child windows
+  w.webContents.on ('did-create-window', (childwin) => {                // Electron-12
+    childwin.webContents.on ('will-navigate', (ev, navurl) => {
+      console.log ('SUBWINDOW: will-navigate', navurl);
+    })
   });
   // load URL, show *afterwards*
   await w.loadURL (winurl);
