@@ -4,6 +4,7 @@ const package_json = require ('./package.json');
 Object.defineProperty (globalThis, '__DEV__', { value: package_json.mode !== 'production' });
 const Electron = require ('electron');
 const Eapp = Electron.app;
+const Eshell = Electron.shell;
 const os = require ('os');
 
 // CSS Defaults
@@ -108,21 +109,30 @@ function create_window (onclose)
   const w = new Electron.BrowserWindow (options);
   w.setMenu (Electron.Menu.buildFromTemplate ([]));
   w.webContents.once ('crashed', crashed_handler);
-  w.webContents.addListener ('new-window', ev => ev.preventDefault()); // target='_blank' click
   if (onclose)
     w.on ('closed', onclose);
   return w;
 }
 
 // asynchronously load URL into window `w`
-async function load_and_show (w, url) {
+async function load_and_show (w, winurl) {
   w = await w;
   const win_ready = new Promise (resolve => w.once ('ready-to-show', () => resolve ()));
+  const origin = winurl.replace (/(\w\/).*/g, '$1');
+  // allow reloads, disallow navigation
   w.webContents.addListener ('will-navigate', (ev, navurl) => {
-    if (navurl !== url) // disallow navigating away
+    if (navurl !== winurl)              // not a reload
       ev.preventDefault();
   });
-  await w.loadURL (url);
+  // handle subwindow creation (via target=_blank or window.open)
+  w.webContents.addListener ('new-window', (ev, url, w) => {  // deprecated in Electron-12
+    if (url.startsWith (origin))
+      ; // we *could* allow subwindows with Anklang content
+    ev.preventDefault();
+    Eshell.openExternal (url);          // use xdg-open or similar
+  });
+  // load URL, show *afterwards*
+  await w.loadURL (winurl);
   await win_ready;
   return w.show();
 }
