@@ -1432,7 +1432,7 @@ struct IpcDispatcher {
           return create_error (id, -32602, error);
         if (0 == strncmp (error.c_str(), CallbackInfo::internal_error, strlen (CallbackInfo::internal_error)))
           return create_error (id, -32603, error);
-        if (0 == strncmp (error.c_str(), CallbackInfo::application_error, strlen (CallbackInfo::internal_error)))
+        if (0 == strncmp (error.c_str(), CallbackInfo::application_error, strlen (CallbackInfo::application_error)))
           return create_error (id, -32500, error);
         return create_error (id, -32000, error);        // "Server error"
       }
