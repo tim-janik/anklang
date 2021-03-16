@@ -147,41 +147,45 @@ jsonapi_make_connection (WebSocketConnection::Internals &internals)
   return std::make_shared<JsonapiConnection> (internals);
 }
 
+#define ERROR500(WHAT)                                          \
+  Jsonipc::bad_invocation (-32500,                              \
+                           __FILE__ ":"                         \
+                           ASE_CPP_STRINGIFY (__LINE__) ": "    \
+                           "Internal Server Error: "            \
+                           WHAT)
+#define assert_500(c) (__builtin_expect (static_cast<bool> (c), 1) ? (void) 0 : throw ERROR500 (#c) )
+
 static Jsonipc::IpcDispatcher*
 make_dispatcher()
 {
   using namespace Jsonipc;
   static IpcDispatcher *dispatcher = [] () {
     dispatcher = new IpcDispatcher();
-    if (0) // relaying exceptions to Javascript is almost always an error
-      dispatcher->set_exception_handler ([] (const std::exception &exc) { return exc.what(); });
     dispatcher->add_method ("Jsonipc.initialize",
-                            [] (CallbackInfo &cbi) -> std::string*
+                            [] (CallbackInfo &cbi)
                             {
+                              assert_500 (current_message_conection);
                               Server &server = ASE_SERVER;
                               std::shared_ptr<Server> serverp = shared_ptr_cast<Server> (&server);
                               cbi.set_result (to_json (serverp, cbi.allocator()).Move());
-                              return nullptr;
                             });
     dispatcher->add_method ("JsonapiTrigger/create",
-                            [] (CallbackInfo &cbi) -> std::string*
+                            [] (CallbackInfo &cbi)
                             {
-                              return_unless (current_message_conection, new String (CallbackInfo::application_error));
+                              assert_500 (current_message_conection);
                               const String triggerid = cbi.n_args() == 1 ? from_json<String> (cbi.ntharg (0)) : "";
-                              return_unless (triggerid.compare (0, 16, "JsonapiTrigger/_") == 0,
-                                             new String (CallbackInfo::invalid_params));
+                              if (triggerid.compare (0, 16, "JsonapiTrigger/_") != 0)
+                                throw Jsonipc::bad_invocation (-32602, "Invalid params");
                               current_message_conection->trigger_create (triggerid);
-                              return nullptr; // success
                             });
     dispatcher->add_method ("JsonapiTrigger/remove",
-                            [] (CallbackInfo &cbi) -> std::string*
+                            [] (CallbackInfo &cbi)
                             {
-                              return_unless (current_message_conection, new String (CallbackInfo::application_error));
+                              assert_500 (current_message_conection);
                               const String triggerid = cbi.n_args() == 1 ? from_json<String> (cbi.ntharg (0)) : "";
-                              return_unless (triggerid.compare (0, 16, "JsonapiTrigger/_") == 0,
-                                             new String (CallbackInfo::invalid_params));
+                              if (triggerid.compare (0, 16, "JsonapiTrigger/_") != 0)
+                                throw Jsonipc::bad_invocation (-32602, "Invalid params");
                               current_message_conection->trigger_remove (triggerid);
-                              return nullptr; // success
                             });
     return dispatcher;
   } ();
