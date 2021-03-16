@@ -28,6 +28,9 @@ enum class OBusId : uint16 {};
 /// ID type for the AudioProcessor registry.
 struct RegistryId { struct Entry; const Entry &entry; };
 
+/// Add an AudioProcessor derived type to the audio processor registry.
+template<typename T> RegistryId register_audio_processor (const char *bfile = __builtin_FILE(), int bline = __builtin_LINE());
+
 /// Flags to indicate channel arrangements of a bus.
 /// See also: https://en.wikipedia.org/wiki/Surround_sound
 enum class SpeakerArrangement : uint64_t {
@@ -319,10 +322,11 @@ public:
   static double          param_peek_mt   (const AudioProcessorP proc, Id32 paramid);
   // Registration and factory
   static RegistryList    registry_list   ();
-  static RegistryId      registry_enroll (MakeProcessor create, const char *bfile = __builtin_FILE(), int bline = __builtin_LINE());
-  static AudioProcessorP registry_create (AudioEngine &engine, RegistryId rid, const std::any &any);
   static AudioProcessorP registry_create (AudioEngine &engine, const String &uuiduri);
+  static AudioProcessorP registry_create (AudioEngine &engine, RegistryId rid, const std::any &any);
 private:
+  static RegistryId      registry_enroll (MakeProcessor, const char*, int);
+  template<class> friend RegistryId register_audio_processor (const char*, int);
   static bool   has_notifies_e    ();
   static void   call_notifies_e   ();
   std::atomic<AudioProcessor*> nqueue_next_ { nullptr }; ///< No notifications queued while == nullptr
@@ -607,22 +611,25 @@ AudioProcessor::FloatBuffer::speaker_arrangement () const
   return speaker_arrangement_;
 }
 
-template<typename Class> extern inline RegistryId
-enroll_asp (const char *bfile = __builtin_FILE(), int bline = __builtin_LINE())
+/// Add an AudioProcessor derived type to the audio processor registry.
+template<typename T> extern inline RegistryId
+register_audio_processor (const char *bfile, int bline)
 {
   AudioProcessor::MakeProcessor makeasp = nullptr;
-  if constexpr (std::is_constructible<Class>::value)
+  if constexpr (std::is_constructible<T, const std::any&>::value)
+    {
+      makeasp = [] (const std::any *any) -> AudioProcessorP {
+        return any ? std::make_shared<T> (*any) : nullptr;
+      };
+    }
+  else if constexpr (std::is_constructible<T>::value)
     {
       makeasp = [] (const std::any*) -> AudioProcessorP {
-        return std::make_shared<Class>();
+        return std::make_shared<T>();
       };
     }
   else
-    {
-      makeasp = [] (const std::any *any) -> AudioProcessorP {
-        return any ? std::make_shared<Class> (*any) : nullptr;
-      };
-    }
+    static_assert (sizeof (T) < 0, "type `T` must be constructible from void or any");
   return AudioProcessor::registry_enroll (makeasp, bfile, bline);
 }
 
