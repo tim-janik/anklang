@@ -132,7 +132,8 @@ public:
   template<Cases> void render_cases (float *out0, float *out1, uint n_frames, const float gain);
   using RenderF = void (ColoredNoise::*) (float*, float*, uint, float);
 };
-static auto noise_module = enroll_asp<ColoredNoise>();
+
+static auto noise_module = register_audio_processor<ColoredNoise>();
 
 template<ColoredNoise::Cases CASES> void
 ColoredNoise::render_cases (float *out0, float *out1, uint n_frames, const float gain)
