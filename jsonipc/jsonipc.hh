@@ -119,11 +119,13 @@ get___typename__ (const T &o)
 
 /// Jsonipc exception that is relayed to caller when thrown during invocations.
 struct bad_invocation : std::exception {
-  explicit    bad_invocation ()                         noexcept : reason_ ("Bad invocation") {}
-  explicit    bad_invocation (const char *staticreason) noexcept : reason_ (staticreason) {}
-  const char* what           () const                   noexcept override { return reason_; }
+  const char* what           () const noexcept override { return reason_; }
+  int         code           () const noexcept          { return code_; }
+  explicit    bad_invocation (int code, const char *staticreason) noexcept :
+    reason_ (staticreason), code_ (code) {}
 private:
   const char *const reason_;
+  const int   code_;
 };
 
 // == Forward Decls ==
@@ -385,7 +387,7 @@ jsonobject_to_string (const char *m1, T1 &&v1, const char *m2 = 0, T2 &&v2 = {},
 
 // == CallbackInfo ==
 struct CallbackInfo;
-using Closure = std::function<std::string* (CallbackInfo&)>;
+using Closure = std::function<void (CallbackInfo&)>;
 
 /// Context for calling C++ functions from Json
 struct CallbackInfo final {
@@ -400,10 +402,6 @@ struct CallbackInfo final {
   JsonValue&       get_result   ()                      { return result_; }
   bool             have_result  () const                { return have_result_; }
   rapidjson::Document& document ()                      { return doc_; }
-  static constexpr const char *method_not_found  = "Method not found";  // -32601
-  static constexpr const char *invalid_params    = "Invalid params";    // -32602
-  static constexpr const char *internal_error    = "Internal error";    // -32603
-  static constexpr const char *application_error = "Application error"; // -32500
 private:
   const JsonValue &args_;
   JsonValue    result_;
@@ -1121,39 +1119,29 @@ private:
   template<typename F, REQUIRES< HasVoidReturn<F>::value > = true> Closure
   make_closure (const F &method)
   {
-    return [method] (const CallbackInfo &cbi) -> std::string* {
+    return [method] (const CallbackInfo &cbi) {
       const bool HAS_THIS = true;
       if (HAS_THIS + CallTraits<F>::N_ARGS != cbi.n_args())
-        return new std::string (std::string (CallbackInfo::invalid_params) + ": wrong number of arguments");
+        throw Jsonipc::bad_invocation (-32602, "Invalid params: wrong number of arguments");
       std::shared_ptr<T> instance = object_from_json (cbi.ntharg (0));
       if (!instance)
-        return new std::string (CallbackInfo::internal_error); // closure lookup without this?
-      try {
-        call_from_json (*instance, method, cbi);
-      } catch (const Jsonipc::bad_invocation &exc) {
-        return new std::string (std::string (CallbackInfo::invalid_params) + ": " + exc.what());
-      }
-      return NULL;
+        throw Jsonipc::bad_invocation (-32603, "Internal error: closure without this");
+      call_from_json (*instance, method, cbi);
     };
   }
   template<typename F, REQUIRES< !HasVoidReturn<F>::value > = true> Closure
   make_closure (const F &method)
   {
-    return [method] (CallbackInfo &cbi) -> std::string* {
+    return [method] (CallbackInfo &cbi) {
       const bool HAS_THIS = true;
       if (HAS_THIS + CallTraits<F>::N_ARGS != cbi.n_args())
-        return new std::string (std::string (CallbackInfo::invalid_params) + ": wrong number of arguments");
+        throw Jsonipc::bad_invocation (-32602, "Invalid params: wrong number of arguments");
       std::shared_ptr<T> instance = object_from_json (cbi.ntharg (0));
       if (!instance)
-        return new std::string (CallbackInfo::internal_error); // closure lookup without this?
+        throw Jsonipc::bad_invocation (-32603, "Internal error: closure without this");
       JsonValue rv;
-      try {
-        rv = to_json (call_from_json (*instance, method, cbi), cbi.allocator());
-      } catch (const Jsonipc::bad_invocation &exc) {
-        return new std::string (std::string (CallbackInfo::invalid_params) + ": " + exc.what());
-      }
+      rv = to_json (call_from_json (*instance, method, cbi), cbi.allocator());
       cbi.set_result (rv);
-      return NULL;
     };
   }
   void
@@ -1236,7 +1224,7 @@ public:
         if (closure)
           return closure;
       }
-    return NULL;
+    return nullptr;
   }
   static bool
   try_upcast (std::shared_ptr<T> &sptr, const std::string &baseclass, void *sptrB)
@@ -1365,7 +1353,7 @@ struct Convert<T, REQUIRESv< IsWrappableClass<T>::value >> {
     T *object = Convert<T*>::from_json (value);
     if (object)
       return *object;
-    throw Jsonipc::bad_invocation ("attempt to cast null to reference type");
+    throw Jsonipc::bad_invocation (-32602, "Invalid params: attempt to cast null to reference type");
   }
   static JsonValue
   to_json (const T &object, JsonAllocator &allocator)
@@ -1388,73 +1376,43 @@ struct IpcDispatcher {
     rapidjson::Document document;
     document.Parse (message.data(), message.size());
     size_t id = 0;
-    if (document.HasParseError())
-      return create_error (id, -32700, "Parse error");
-    const char *methodname = NULL;
-    const JsonValue *args = NULL;
-    for (const auto &m : document.GetObject())
-      if (m.name == "id")
-        id = from_json<size_t> (m.value, 0);
-      else if (m.name == "method")
-        methodname = from_json<const char*> (m.value);
-      else if (m.name == "params" && m.value.IsArray())
-        args = &m.value;
-    if (!id || !methodname || !args || !args->IsArray())
-      return create_error (id, -32600, "Invalid Request");
-    CallbackInfo cbi (*args);
-    Closure *closure = cbi.find_closure (methodname);
-    if (!closure)
-      {
-        const auto it = extra_methods.find (methodname);
-        if (it != extra_methods.end())
-          closure = &it->second;
-        else if (strcmp (methodname, "Jsonipc.initialize") == 0)
-          {
-            static Closure initialize = [] (CallbackInfo &cbi) { return jsonipc_initialize (cbi); };
-            closure = &initialize;
-          }
-      }
-    if (!closure)
-      return create_error (id, -32601, std::string (CallbackInfo::method_not_found) + ": unknown '" + methodname + "'");
-    std::string *errorp = NULL;
-    if (!exception_handler_)
-      errorp = (*closure) (cbi);
-    else // have exception_handler_
-      try {
-        errorp = (*closure) (cbi);
-      } catch (const std::exception &exc) {
-        const std::string excstr = exception_handler_ (exc);
-        errorp = new std::string (CallbackInfo::application_error + std::string (": ") + excstr);
-      }
-    if (errorp)
-      {
-        const std::string error = *errorp;
-        delete errorp;
-        if (0 == strncmp (error.c_str(), CallbackInfo::method_not_found, strlen (CallbackInfo::method_not_found)))
-          return create_error (id, -32601, error);
-        if (0 == strncmp (error.c_str(), CallbackInfo::invalid_params, strlen (CallbackInfo::invalid_params)))
-          return create_error (id, -32602, error);
-        if (0 == strncmp (error.c_str(), CallbackInfo::internal_error, strlen (CallbackInfo::internal_error)))
-          return create_error (id, -32603, error);
-        if (0 == strncmp (error.c_str(), CallbackInfo::application_error, strlen (CallbackInfo::application_error)))
-          return create_error (id, -32500, error);
-        return create_error (id, -32000, error);        // "Server error"
-      }
-    return create_reply (id, cbi.get_result(), !cbi.have_result(), cbi.document());
-  }
-  using ExceptionHandler = std::function<std::string (const std::exception&)>;
-  /// Swap out a previously set exception handler.
-  /// Setting an exception handler allows turning user code exceptions into `error -32500` replies.
-  ExceptionHandler
-  set_exception_handler (const ExceptionHandler &handler)
-  {
-    ExceptionHandler old = exception_handler_;
-    exception_handler_ = handler;
-    return old;
+    try {
+      if (document.HasParseError())
+        return create_error (id, -32700, "Parse error");
+      const char *methodname = nullptr;
+      const JsonValue *args = nullptr;
+      for (const auto &m : document.GetObject())
+        if (m.name == "id")
+          id = from_json<size_t> (m.value, 0);
+        else if (m.name == "method")
+          methodname = from_json<const char*> (m.value);
+        else if (m.name == "params" && m.value.IsArray())
+          args = &m.value;
+      if (!id || !methodname || !args || !args->IsArray())
+        return create_error (id, -32600, "Invalid Request");
+      CallbackInfo cbi (*args);
+      Closure *closure = cbi.find_closure (methodname);
+      if (!closure)
+        {
+          const auto it = extra_methods.find (methodname);
+          if (it != extra_methods.end())
+            closure = &it->second;
+          else if (strcmp (methodname, "Jsonipc.initialize") == 0)
+            {
+              static Closure initialize = [] (CallbackInfo &cbi) { return jsonipc_initialize (cbi); };
+              closure = &initialize;
+            }
+        }
+      if (!closure)
+        return create_error (id, -32601, std::string ("Method not found: unknown '") + methodname + "'");
+      (*closure) (cbi);
+      return create_reply (id, cbi.get_result(), !cbi.have_result(), cbi.document());
+    } catch (const Jsonipc::bad_invocation &exc) {
+      return create_error (id, exc.code(), exc.what());
+    }
   }
 private:
   std::map<std::string, Closure> extra_methods;
-  ExceptionHandler exception_handler_;
   std::string
   create_reply (size_t id, JsonValue &result, bool skip_result, rapidjson::Document &d)
   {
