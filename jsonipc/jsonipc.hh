@@ -117,8 +117,14 @@ get___typename__ (const T &o)
   return rtti_typename (o);
 }
 
-/// Exception thrown during invalid argument conversions.
-struct bad_cast_from_null : std::bad_cast {};
+/// Jsonipc exception that is relayed to caller when thrown during invocations.
+struct bad_invocation : std::exception {
+  explicit    bad_invocation ()                         noexcept : reason_ ("Bad invocation") {}
+  explicit    bad_invocation (const char *staticreason) noexcept : reason_ (staticreason) {}
+  const char* what           () const                   noexcept override { return reason_; }
+private:
+  const char *const reason_;
+};
 
 // == Forward Decls ==
 class InstanceMap;
@@ -1124,8 +1130,8 @@ private:
         return new std::string (CallbackInfo::internal_error); // closure lookup without this?
       try {
         call_from_json (*instance, method, cbi);
-      } catch (const Jsonipc::bad_cast_from_null &exc) {
-        return new std::string (CallbackInfo::invalid_params); // attempt to cast null into reference type
+      } catch (const Jsonipc::bad_invocation &exc) {
+        return new std::string (std::string (CallbackInfo::invalid_params) + ": " + exc.what());
       }
       return NULL;
     };
@@ -1143,8 +1149,8 @@ private:
       JsonValue rv;
       try {
         rv = to_json (call_from_json (*instance, method, cbi), cbi.allocator());
-      } catch (const Jsonipc::bad_cast_from_null &exc) {
-        return new std::string (CallbackInfo::invalid_params); // attempt to cast null into reference type
+      } catch (const Jsonipc::bad_invocation &exc) {
+        return new std::string (std::string (CallbackInfo::invalid_params) + ": " + exc.what());
       }
       cbi.set_result (rv);
       return NULL;
@@ -1359,7 +1365,7 @@ struct Convert<T, REQUIRESv< IsWrappableClass<T>::value >> {
     T *object = Convert<T*>::from_json (value);
     if (object)
       return *object;
-    throw Jsonipc::bad_cast_from_null();
+    throw Jsonipc::bad_invocation ("attempt to cast null to reference type");
   }
   static JsonValue
   to_json (const T &object, JsonAllocator &allocator)
