@@ -124,7 +124,9 @@ async function bootup () {
   let error;
   try {
     const cururl = new URL (window.location);
-    const result = await Ase.Jsonipc.open (url, cururl.searchParams.get ('subprotocol') || undefined, want_reconnect);
+    const result = await Ase.Jsonipc.open (url,
+					   cururl.searchParams.get ('subprotocol') || undefined,
+					   { onclose: want_reconnect });
     if (result instanceof Ase.Server)
       {
 	Ase.server (result);
