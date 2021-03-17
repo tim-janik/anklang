@@ -140,6 +140,7 @@ async function load_and_show (w, winurl) {
   // load URL, show *afterwards*
   await w.loadURL (winurl);
   await win_ready;
+  // w.toggleDevTools(); // start with DevTools enabled
   return w.show();
 }
 
@@ -192,19 +193,15 @@ function start_sound_engine (config, datacb, errorcb)
 // == IPC Messages ==
 // IPC calls available to the Renderer
 const ipc_handler = {
-  electron_versions (browserwindow, ...args)	{ return { platform: process.platform,
-							   arch: process.arch,
-							   os_release: os.release(),
-							   versions: process.versions, }; },
+  electron_versions (browserwindow, ...args)   { return { platform: process.platform,
+	                                                  arch: process.arch,
+                                                          os_release: os.release(),
+	                                                  versions: process.versions, }; },
   toggle_dev_tools (browserwindow, ...args)	{ browserwindow.toggleDevTools(); },
 };
 // Dispatch Renderer->Main message events
-Electron.ipcMain.on ('ElectronIpcR2M', (event, data) => {
-  if (typeof (ipc_handler[data?.cmd]) !== 'function') return;
-  const result = ipc_handler[data.cmd] (event.sender, ...(Array.isArray (data?.args) ? data.args : []));
-  if (data?.ElectronIpcID) // Send Main->Renderer replies
-    event.reply ('ElectronIpcM2R', { ElectronIpcID: data.ElectronIpcID, ret: result });
-});
+for (const func in ipc_handler)
+  Electron.ipcMain.handle (func, async (event, args) => await ipc_handler[func] (event.sender, ...args));
 
 // == Usage ==
 let cmdname = Eapp.getName();
