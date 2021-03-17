@@ -73,25 +73,22 @@ export class AppClass {
     this.notifynameclear?.();
   }
   switch_panel3 (n) {
-    const data = this.data;
     const a = this.panel3_types;
     if ('string' == typeof n)
-      data.panel3 = n;
+      Data.panel3 = n;
     else
-      data.panel3 = a[(a.indexOf (data.panel3) + 1) % a.length];
+      Data.panel3 = a[(a.indexOf (Data.panel3) + 1) % a.length];
   }
   switch_panel2 (n) {
-    const data = this.data;
     const a = this.panel2_types;
     if ('string' == typeof n)
-      data.panel2 = n;
+      Data.panel2 = n;
     else
-      data.panel2 = a[(a.indexOf (data.panel2) + 1) % a.length];
+      Data.panel2 = a[(a.indexOf (Data.panel2) + 1) % a.length];
   }
   open_piano_roll (midi_source) {
-    const data = this.data;
-    data.piano_roll_source = midi_source;
-    if (data.piano_roll_source)
+    Data.piano_roll_source = midi_source;
+    if (Data.piano_roll_source)
       this.switch_panel2 ('p');
   }
   async load_project (project_or_path) {
@@ -122,30 +119,30 @@ export class AppClass {
     const mtrack = await newproject.master_track();
     const tracks = await newproject.list_tracks();
     // shut down old project
-    if (this.data.project)
+    if (Data.project)
       {
 	this.notifynameclear();
 	App.open_piano_roll (undefined);
-	this.data.project.stop();
-	this.data.project = null; // TODO: should trigger FinalizationGroup
+	Data.project.stop();
+	Data.project = null; // TODO: should trigger FinalizationGroup
       }
     // replace project & master track without await, to synchronously trigger Vue updates for both
-    this.data.project = newproject;
-    this.data.mtrack = mtrack;
-    this.data.current_track = tracks[0];
+    Data.project = newproject;
+    Data.mtrack = mtrack;
+    Data.current_track = tracks[0];
     const update_title = async () => {
-      const name = this.data.project ? await this.data.project.name() : undefined;
+      const name = Data.project ? await Data.project.name() : undefined;
       document.title = Util.format_title ('Anklang', name);
     };
-    this.notifynameclear = this.data.project.on ("notify:name", update_title);
+    this.notifynameclear = Data.project.on ("notify:name", update_title);
     update_title();
     this.shell.update();
     return Ase.Error.NONE;
   }
   async save_project (projectpath) {
     const self_contained = true;
-    return !this.data.project ? Ase.Error.INTERNAL :
-	   this.data.project.store (projectpath, self_contained);
+    return !Data.project ? Ase.Error.INTERNAL :
+	   Data.project.store (projectpath, self_contained);
   }
   status (...args) {
     console.log (...args);
