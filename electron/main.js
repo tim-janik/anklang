@@ -198,6 +198,7 @@ const ipc_handler = {
                                                           os_release: os.release(),
 	                                                  versions: process.versions, }; },
   toggle_dev_tools (browserwindow, ...args)	{ browserwindow.toggleDevTools(); },
+  exit (browserwindow, status)			{ Electron.app.exit (0 | status); },
 };
 // Dispatch Renderer->Main message events
 for (const func in ipc_handler)
