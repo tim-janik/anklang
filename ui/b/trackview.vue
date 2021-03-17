@@ -238,7 +238,7 @@ export default {
       switch (uri)
       {
 	case 'add-track':    return true;
-	case 'delete-track': return true;
+	case 'delete-track': return Data.current_track && !await Data.current_track.is_master();
 	case 'rename-track': return true;
       }
       if (uri.startsWith ('mc-'))
@@ -255,7 +255,16 @@ export default {
 	    Data.current_track = track;
 	}
       if (uri == 'delete-track')
-	Data.project.remove_track (this.track);
+	{
+	  const del_track = this.track;
+	  let tracks = Data.project.list_tracks();
+	  Data.project.remove_track (del_track);
+	  tracks = await tracks;
+	  const index = Util.array_index_equals (tracks, del_track);
+	  tracks.splice (index, 1);
+	  if (index < tracks.length) // false if deleting Master
+	    Data.current_track = tracks[index];
+	}
       if (uri == 'rename-track')
 	this.nameedit_ = 1;
       if (uri.startsWith ('mc-'))
