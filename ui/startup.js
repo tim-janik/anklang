@@ -116,7 +116,15 @@ async function bootup () {
   window.addEventListener ('message', init_electron);
   // Reload page on Websocket connection loss
   const url = window.location.href.replace ('http', 'ws');
-  const reconnect = () => setTimeout (() => fetch ('/').then (() => location.reload()).catch (reconnect), 1777);
+  const reconnect = async () => {
+    const timeout = ms => new Promise (resolve => setTimeout (resolve, ms));
+    let polltime = 150;
+    while (1) {
+      fetch ('/').then (() => location.reload()).catch (() => 0);
+      await timeout (polltime);
+      polltime += 150; // backoff
+    }
+  };
   const want_reconnect = __DEV__ ? reconnect : undefined;
   if (want_reconnect)
     console.log ("__DEV__: watching:", url);
