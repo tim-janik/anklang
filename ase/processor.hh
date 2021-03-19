@@ -317,7 +317,7 @@ public:
   bool          has_event_output  ();
   void          connect_event_input    (AudioProcessor &oproc);
   void          disconnect_event_input ();
-  DeviceImplP   access_processor () const;
+  DeviceImplP   get_device        (bool create = true) const;
   // MT-Safe accessors
   static double          param_peek_mt   (const AudioProcessorP proc, Id32 paramid);
   // Registration and factory

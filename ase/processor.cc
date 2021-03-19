@@ -338,21 +338,21 @@ AudioProcessor::device_impl () const
 
 /// Gain access to `this` through the `Ase::ProcessorIface` interface.
 DeviceImplP
-AudioProcessor::access_processor () const
+AudioProcessor::get_device (bool create) const
 {
   std::weak_ptr<DeviceImpl> &wptr = const_cast<AudioProcessor*> (this)->device_;
-  DeviceImplP bprocp = wptr.lock();
-  return_unless (!bprocp, bprocp);
+  DeviceImplP devicep = wptr.lock();
+  return_unless (!devicep && create, devicep);
   DeviceImplP nprocp = device_impl();
   assert_return (nprocp != nullptr, nullptr);
   { // TODO: C++20 has: std::atomic<std::weak_ptr<C>>::compare_exchange
     static std::mutex mutex;
     std::lock_guard<std::mutex> locker (mutex);
-    bprocp = wptr.lock();
-    if (!bprocp)
-      wptr = bprocp = nprocp;
+    devicep = wptr.lock();
+    if (!devicep)
+      wptr = devicep = nprocp;
   }
-  return bprocp;
+  return devicep;
 }
 
 const AudioProcessor::FloatBuffer&
@@ -1267,17 +1267,17 @@ AudioProcessor::call_notifies_e ()
       assert_warn (old_nqueue_next != nullptr);
       const uint32 nflags = NOTIFYMASK & current->flags_.fetch_and (~NOTIFYMASK);
       assert_warn (procp != nullptr);
-      DeviceImplP bprocp = current->device_.lock();
-      if (bprocp)
+      DeviceImplP devicep = current->get_device (false);
+      if (devicep)
         {
           if (nflags & BUSCONNECT)
-            bprocp->emit_event ("bus", "connect");
+            devicep->emit_event ("bus", "connect");
           if (nflags & BUSDISCONNECT)
-            bprocp->emit_event ("bus", "disconnect");
+            devicep->emit_event ("bus", "disconnect");
           if (nflags & INSERTION)
-            bprocp->emit_event ("sub", "insert");
+            devicep->emit_event ("sub", "insert");
           if (nflags & REMOVAL)
-            bprocp->emit_event ("sub", "remove");
+            devicep->emit_event ("sub", "remove");
           if (nflags & PARAMCHANGE)
             for (const PParam &p : current->params_)
               if (ASE_UNLIKELY (p.changed()) && const_cast<PParam&> (p).changed (false))
@@ -1643,7 +1643,7 @@ AudioProcessor::access_property (ParamId id) const
 {
   const PParam *param = find_pparam (id);
   assert_return (param, {});
-  DeviceImplP devp = access_processor();
+  DeviceImplP devp = get_device();
   assert_return (devp, {});
   PropertyP newptr;
   PropertyP prop = weak_ptr_fetch_or_create<Property> (param->info->bprop_, [&] () {
