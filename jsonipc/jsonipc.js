@@ -13,18 +13,18 @@ export const Jsonipc = {
   idmap: {},
 
   /// Open the Jsonipc websocket
-  open (url, protocols, onclose = undefined) {
+  open (url, protocols, options = {}) {
     if (this.web_socket)
       throw "Jsonipc: connection open";
-    this.counter = 1000000 * Math.floor (100 + 899 * Math.random());
+    this.counter = 1000000 * globalThis.Math.floor (100 + 899 * globalThis.Math.random());
     this.idmap = {};
-    this.web_socket = new WebSocket (url, protocols);
+    this.web_socket = new globalThis.WebSocket (url, protocols);
     this.web_socket.binaryType = 'arraybuffer';
     // this.web_socket.onerror = (event) => { throw event; };
-    if (onclose)
-      this.web_socket.onclose = onclose;
+    if (options.onclose)
+      this.web_socket.onclose = options.onclose;
     this.web_socket.onmessage = this.socket_message.bind (this);
-    const promise = new Promise (resolve => {
+    const promise = new globalThis.Promise (resolve => {
       this.web_socket.onopen = (event) => {
 	const psend = this.send ('Jsonipc.initialize', []);
 	psend.then (result => { this.authresult = result; resolve (this.authresult); });
@@ -34,11 +34,11 @@ export const Jsonipc = {
   },
 
   /// Send a Jsonipc request
-  send (methodname, args) {
+  async send (methodname, args) {
     if (!this.web_socket)
       throw "Jsonipc: connection closed";
     const unwrap_args = (e, i, a) => {
-      if (Array.isArray (e))
+      if (globalThis.Array.isArray (e))
 	e.forEach (unwrap_args);
       else if (null === e)
 	;
@@ -51,16 +51,8 @@ export const Jsonipc = {
 	      unwrap_args (e[key], key, e);
 	}
     };
-    args.forEach (unwrap_args);
-    const request_id = ++this.counter;
-    const jsondata = JSON.stringify ({
-      id: request_id,
-      method: methodname,
-      params: args,
-    });
-    this.web_socket.send (jsondata);
     const wrap_args = (e, i, a) => {
-      if (Array.isArray (e))
+      if (globalThis.Array.isArray (e))
 	e.forEach (wrap_args);
       else if (e && 'object' === typeof e)
 	{
@@ -80,22 +72,23 @@ export const Jsonipc = {
 	}
       return e;
     };
-    const promise = new Promise ((resolve, reject) => {
-      this.idmap[request_id] = (msg) => {
-	if (msg.error)
-	  reject (msg.error);
-	else
-	  {
-	    let r = msg.result;
-	    if (Array.isArray (r))
-	      r.forEach (wrap_args);
-	    else
-	      r = wrap_arg (r);
-	    resolve (r);
-	  }
-      };
-    });
-    return promise;
+    args.forEach (unwrap_args);
+    const request_id = ++this.counter;
+    this.web_socket.send (globalThis.JSON.stringify ({ id: request_id, method: methodname, params: args }));
+    const reply_promise = new globalThis.Promise (resolve => { this.idmap[request_id] = resolve; });
+    const msg = await reply_promise;
+    if (msg.error)
+      throw globalThis.Error (
+	`${msg.error.code}: ${msg.error.message}\n` +
+	`Request: {"id":${request_id},"method":"${methodname}",…}\n` +
+	"Reply: " + globalThis.JSON.stringify (msg)
+      );
+    let r = msg.result;
+    if (globalThis.Array.isArray (r))
+      r.forEach (wrap_args);
+    else
+      r = wrap_arg (r);
+    return r;
   },
 
   /// Observe Jsonipc notifications
@@ -109,7 +102,7 @@ export const Jsonipc = {
   /// Handle a Jsonipc message
   socket_message (event) {
     // Binary message
-    if (event.data instanceof ArrayBuffer)
+    if (event.data instanceof globalThis.ArrayBuffer)
       {
 	const handler = this.onbinary;
 	if (handler)
@@ -119,7 +112,7 @@ export const Jsonipc = {
 	return;
       }
     // Text message
-    const msg = JSON.parse (event.data);
+    const msg = globalThis.JSON.parse (event.data);
     if (msg.id)
       {
 	const handler = this.idmap[msg.id];
@@ -127,7 +120,7 @@ export const Jsonipc = {
 	if (handler)
 	  return handler (msg);
       }
-    else if ("string" === typeof msg.method && Array.isArray (msg.params)) // notification
+    else if ("string" === typeof msg.method && globalThis.Array.isArray (msg.params)) // notification
       {
 	const receiver = this.receivers[msg.method];
 	if (receiver)
