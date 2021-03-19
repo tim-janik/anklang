@@ -343,6 +343,14 @@ export function array_remove (array, item) {
   return array;
 }
 
+/** Find `array` index of element that equals `item` */
+export function array_index_equals (array, item) {
+  for (let i = 0; i < array.length; i++)
+    if (equals_recursively (item, array[i]))
+      return i;
+  return -1;
+}
+
 /// Generate map by splitting the key=value pairs in `kvarray`
 export function map_from_kvpairs (kvarray) {
   let o = {};

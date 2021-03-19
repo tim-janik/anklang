@@ -1,7 +1,7 @@
 <!-- This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 -->
 
 <docs>
-  # B-PART-THUMB
+  # B-PARTTHUMB
   A Vue template to display a thumbnail for a Ase.Part.
   ## Props:
   *part*
@@ -12,19 +12,19 @@
 
 <style lang="scss">
   @import 'mixins.scss';
-  .b-part-thumb {
+  .b-partthumb {
     display: inline-block; position: absolute; top: 0px; bottom: 0px;
     height: $b-trackrow-height;
     border-radius: $b-theme-border-radius * 0.66;
-    --part-thumb-font-color: #{$b-part-thumb-font-color}; --part-thumb-font: #{$b-part-thumb-font};
-    --part-thumb-note-color: #{$b-part-thumb-note-color}; --part-thumb-colors: #{$b-part-thumb-colors};
+    --partthumb-font-color: #{$b-partthumb-font-color}; --partthumb-font: #{$b-partthumb-font};
+    --partthumb-note-color: #{$b-partthumb-note-color}; --partthumb-colors: #{$b-partthumb-colors};
     background-color: #222;
     box-shadow: inset 0px 0 1px #fff9, inset -1px 0 1px #000;
   }
 </style>
 
 <template>
-  <canvas ref="canvas" class="b-part-thumb" @click="App.open_piano_roll (part)"
+  <canvas ref="canvas" class="b-partthumb" @click="App.open_piano_roll (part)"
 	  :style="{ left: pxoffset + 'px', width: canvas_width + 'px', }" ></canvas>
 </template>
 
@@ -32,11 +32,11 @@
 import * as Util from '../util.js';
 import * as Ase from '../aseapi.js';
 
-const tick_quant = 384; // FIXME
+const tick_quant = 384; // TODO: query ASE
 
 function observable_part_data () {
   const data = {
-    partname: { getter: c => this.part.get_name(),      notify: n => this.part.on ("notify:uname", n), },
+    partname: { getter: c => this.part.get_name(),      notify: n => this.part.on ("notify:name", n), },
     lasttick: { getter: c => this.part.get_last_tick(), notify: n => this.part.on ("notify:last_tick", n), },
     allnotes: { default: [],                            notify: n => this.part.on ("noteschanged", n),
 		getter: async c => Object.freeze (await this.part.list_notes_crossing (0, CONFIG.MAXINT)), },
@@ -54,8 +54,8 @@ export default {
   },
   data() { return observable_part_data.call (this); },
   computed: {
-    tickscale:    function() { return 10 / 384.0; }, // FIXME
-    pxoffset:     function() { return this.tick * this.tickscale; }, // FIXME
+    tickscale:    function() { return 10 / 384.0; }, // TODO: query ASE
+    pxoffset:     function() { return this.tick * this.tickscale; }, // TODO: adjust for tick_quant?
     canvas_width: function() {
       return this.tickscale * Math.floor ((this.lasttick + tick_quant - 1) / tick_quant) * tick_quant;
     },
@@ -79,7 +79,7 @@ function render_canvas () {
   //canvas.width = width; canvas.height = height;
   ctx.clearRect (0, 0, width, height);
   // color setup
-  const colors = Util.split_comma (csp ('--part-thumb-colors'));
+  const colors = Util.split_comma (csp ('--partthumb-colors'));
   let cindex;
   cindex = this.trackindex;			// - color per track
   cindex = (cindex + 1013904223) * 1664557;	//   LCG randomization step
@@ -91,15 +91,15 @@ function render_canvas () {
   ctx.fillRect (0, 0, width, height);
   // draw name
   const fpx = height / 3;
-  const note_font = csp ('--part-thumb-font');
+  const note_font = csp ('--partthumb-font');
   const fpx_parts = note_font.split (/\s*\d+px\s*/i); // 'bold 10px sans' -> [ ['bold', 'sans']
   ctx.font = fpx_parts[0] + ' ' + fpx + 'px ' + (fpx_parts[1] || '');
-  ctx.fillStyle = csp ('--part-thumb-font-color');
+  ctx.fillStyle = csp ('--partthumb-font-color');
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillText (this.partname, 1.5, .5);
   // paint notes
-  ctx.fillStyle = csp ('--part-thumb-note-color');
+  ctx.fillStyle = csp ('--partthumb-note-color');
   const pnotes = this.allnotes; // await part.list_notes_crossing (0, MAXINT);
   const noteoffset = 12;
   const notescale = height / (123.0 - 2 * noteoffset); // MAX_NOTE

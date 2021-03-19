@@ -1,8 +1,8 @@
 <!-- This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 -->
 
 <docs>
-  # B-TRACK-VIEW
-  A Vue template to display a song's Ase.Track.
+  # B-TRACKVIEW
+  A Vue template to display a project's Ase.Track.
   ## Props:
   *project*
   : The *Ase.project* containing playback tracks.
@@ -12,50 +12,50 @@
 
 <style lang="scss">
   @import 'mixins.scss';
-  $b-track-view-level-height: 3px;
-  $b-track-view-level-space: 1px;
-  .b-track-view-lbg {
-    height: $b-track-view-level-height + $b-track-view-level-space + $b-track-view-level-height;
+  $b-trackview-level-height: 3px;
+  $b-trackview-level-space: 1px;
+  .b-trackview-lbg {
+    height: $b-trackview-level-height + $b-trackview-level-space + $b-trackview-level-height;
     --db-zpc: 66.66%;
     background: linear-gradient(to right, #0b0, #bb0 var(--db-zpc), #b00);
   }
-  .b-track-view-ct0, .b-track-view-cm0, .b-track-view-ct1, .b-track-view-cm1,
-  .b-track-view-lbg, .b-track-view-lsp	{ position: absolute; width: 100%; }
-  .b-track-view-ct0, .b-track-view-cm0	{ top: 0px; }
-  .b-track-view-lsp				{ top: $b-track-view-level-height; height: $b-track-view-level-space; }
-  .b-track-view-ct1, .b-track-view-cm1	{ top: $b-track-view-level-height + $b-track-view-level-space; }
-  .b-track-view-lsp {
+  .b-trackview-ct0, .b-trackview-cm0, .b-trackview-ct1, .b-trackview-cm1,
+  .b-trackview-lbg, .b-trackview-lsp	{ position: absolute; width: 100%; }
+  .b-trackview-ct0, .b-trackview-cm0	{ top: 0px; }
+  .b-trackview-lsp				{ top: $b-trackview-level-height; height: $b-trackview-level-space; }
+  .b-trackview-ct1, .b-trackview-cm1	{ top: $b-trackview-level-height + $b-trackview-level-space; }
+  .b-trackview-lsp {
     background-color: rgba( 0, 0, 0, .80);
   }
-  .b-track-view-ct0, .b-track-view-cm0, .b-track-view-ct1, .b-track-view-cm1 {
-    height: $b-track-view-level-height;
+  .b-trackview-ct0, .b-trackview-cm0, .b-trackview-ct1, .b-trackview-cm1 {
+    height: $b-trackview-level-height;
     background-color: rgba( 0, 0, 0, .75);
     transform-origin: center right;
     will-change: transform;
     transform: scaleX(1);
   }
-  .b-track-view-cm0, .b-track-view-cm1	{ width: 100%; }
-  .b-track-view-meter {
-    height: $b-track-view-level-height + $b-track-view-level-space + $b-track-view-level-height;
+  .b-trackview-cm0, .b-trackview-cm1	{ width: 100%; }
+  .b-trackview-meter {
+    height: $b-trackview-level-height + $b-trackview-level-space + $b-trackview-level-height;
     position: relative;
     /* Pushing this element onto its own compositing layer helps to reduce
      * the compositing overhead for the layers contained within.
      */
     will-change: auto;
   }
-  .b-track-view-control {
+  .b-trackview-control {
     margin-right: 5px;
   }
-  .b-track-view {
+  .b-trackview {
     display: flex; align-items: center; /* vertical centering */
     background-color: $b-button-border;
     border: 1px solid $b-button-border;
     border-top-left-radius: $b-button-radius;
     border-bottom-left-radius: $b-button-radius; }
-  .b-track-view-current { background-color: lighten($b-button-border, 15%); }
-  .b-track-view-label {
+  .b-trackview-current { background-color: lighten($b-button-border, 15%); }
+  .b-trackview-label {
     display: inline-flex; position: relative; width: 7em; overflow: hidden;
-    .b-track-view-label-el {
+    .b-trackview-label-el {
       display: inline-block; width: 7em; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; user-select: none;
     }
     input {
@@ -70,23 +70,23 @@
 </style>
 
 <template>
-  <div class="b-track-view" @contextmenu.prevent="menuopen" @click.prevent="click0"
-       :class="Util.equals_recursively (Data.current_track, track) ? 'b-track-view-current' : ''"
+  <div class="b-trackview" @contextmenu.prevent="menuopen" @click.prevent="click0"
+       :class="Util.equals_recursively (Data.current_track, track) ? 'b-trackview-current' : ''"
        data-tip="**CLICK** Select Track **RIGHTCLICK** Track Menu" >
-    <div class="b-track-view-control">
-      <span class="b-track-view-label"
-	    @dblclick="nameedit_++" >
-	<span class="b-track-view-label-el">{{ tdata.name }}</span>
+    <div class="b-trackview-control">
+      <span class="b-trackview-label"
+	    @dblclick.stop="nameedit_++" >
+	<span class="b-trackview-label-el">{{ tdata.name || '&nbsp;' }}</span>
 	<input v-if="nameedit_" v-inlineblur="() => nameedit_ = 0" :value="tdata.name"
-	       type="text" @change="$event.target.cancelled || track.set_name ($event.target.value.trim())" />
+	       type="text" @change="$event.target.cancelled || track.name ($event.target.value.trim())" />
       </span>
-      <div class="b-track-view-meter">
-	<div class="b-track-view-lbg" ref="levelbg"></div>
-	<div class="b-track-view-cm0" ref="covermid0"></div>
-	<div class="b-track-view-ct0" ref="covertip0"></div>
-	<div class="b-track-view-lsp"></div>
-	<div class="b-track-view-cm1" ref="covermid1"></div>
-	<div class="b-track-view-ct1" ref="covertip1"></div>
+      <div class="b-trackview-meter">
+	<div class="b-trackview-lbg" ref="levelbg"></div>
+	<div class="b-trackview-cm0" ref="covermid0"></div>
+	<div class="b-trackview-ct0" ref="covertip0"></div>
+	<div class="b-trackview-lsp"></div>
+	<div class="b-trackview-cm1" ref="covermid1"></div>
+	<div class="b-trackview-ct1" ref="covertip1"></div>
       </div>
     </div>
 
@@ -146,9 +146,11 @@ const mindb = -48.0; // -96.0;
 const maxdb =  +6.0; // +12.0;
 
 async function channel_moniotr (ch, addcleanup) {
+  return null; // TODO: implement channel_moniotr handling
+
   const mon = {};
   // create signal monitor, needs await like all other calls
-  mon.signmon = this.track.create_signal_monitor (ch);
+  mon.signmon = this.track.create_monitor (ch);
   // request dB SPL updates
   const pf = new Ase.ProbeFeatures();
   pf.probe_energy = true;
@@ -176,7 +178,7 @@ async function channel_moniotr (ch, addcleanup) {
 
 function track_data () {
   const tdata = {
-    name: { getter: c => this.track.get_name(),     notify: n => this.track.on ("notify:uname", n), },
+    name: { getter: c => this.track.name(),	    notify: n => this.track.on ("notify:name", n), },
     mc:   { getter: c => this.track.midi_channel(), notify: n => this.track.on ("notify:midi_channel", n), },
     lmon: { getter: c => channel_moniotr.call (this, 0, c), },
     rmon: { getter: c => channel_moniotr.call (this, 1, c), },
@@ -221,25 +223,6 @@ export default {
       else
 	return ' ';
     },
-    async menuactivation (uri) {
-      // close popup to remove focus guards
-      this.$refs.cmenu.close();
-      if (uri == 'add-track')
-	{
-	  const track = await Data.song.create_track ('Track');
-	  if (track)
-	    Data.current_track = track;
-	}
-      if (uri == 'delete-track')
-	Data.song.remove_track (this.track);
-      if (uri == 'rename-track')
-	this.nameedit_ = 1;
-      if (uri.startsWith ('mc-'))
-	{
-	  const ch = parseInt (uri.substr (3));
-	  this.track.midi_channel (ch);
-	}
-    },
     menuedit (uri) {
       debug ("menuedit", uri, "(preventDefault)");
     },
@@ -255,12 +238,40 @@ export default {
       switch (uri)
       {
 	case 'add-track':    return true;
-	case 'delete-track': return true;
+	case 'delete-track': return Data.current_track && !await Data.current_track.is_master();
 	case 'rename-track': return true;
       }
       if (uri.startsWith ('mc-'))
 	return true;
       return false;
+    },
+    async menuactivation (uri) {
+      // close popup to remove focus guards
+      this.$refs.cmenu.close();
+      if (uri == 'add-track')
+	{
+	  const track = await Data.project.create_track ('Track');
+	  if (track)
+	    Data.current_track = track;
+	}
+      if (uri == 'delete-track')
+	{
+	  const del_track = this.track;
+	  let tracks = Data.project.list_tracks();
+	  Data.project.remove_track (del_track);
+	  tracks = await tracks;
+	  const index = Util.array_index_equals (tracks, del_track);
+	  tracks.splice (index, 1);
+	  if (index < tracks.length) // false if deleting Master
+	    Data.current_track = tracks[index];
+	}
+      if (uri == 'rename-track')
+	this.nameedit_ = 1;
+      if (uri.startsWith ('mc-'))
+	{
+	  const ch = parseInt (uri.substr (3));
+	  this.track.midi_channel (ch);
+	}
     },
   },
 };

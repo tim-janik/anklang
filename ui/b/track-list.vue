@@ -4,8 +4,8 @@
   # B-TRACK-LIST
   A container for vertical display of Ase.Track instances.
   ## Props:
-  *song*
-  : The *Ase.Song* containing playback tracks.
+  *project*
+  : The *Ase.Project* containing playback tracks.
 </docs>
 
 <style lang="scss">
@@ -116,9 +116,9 @@
     <div class="b-track-list-tracks" style="grid-column-start: 1; grid-row-start: 3" ref="tracks"
 	 @wheel.stop="Util.wheel2scrollbars ($event, $refs, 'vscrollbar')" >
       <v-flex class="b-track-list-trackswrapper" ref="trackswrapper" >
-	<b-track-view class="b-trackrow-cell"
-		      v-for="(pair, tindex) in sdata.tracks" :key="pair[1]"
-		      :track="pair[0]" :trackindex="tindex"></b-track-view>
+	<b-trackview class="b-trackrow-cell"
+		     v-for="(pair, tindex) in tdata.tracks" :key="pair[1]"
+		     :track="pair[0]" :trackindex="tindex"></b-trackview>
       </v-flex>
       <div class="b-track-list-tracks-shadow" ref="tracksshadow" ></div>
     </div>
@@ -128,7 +128,7 @@
     <div class="b-track-list-clips" ref="clips"
 	 @wheel.stop="Util.wheel2scrollbars ($event, $refs, 'hscrollbar1', 'vscrollbar')" >
       <v-flex class="b-track-list-clipswrapper" ref="clipswrapper" >
-	<b-cliplist class="b-trackrow-cell" v-for="pair in sdata.tracks" :key="pair[1]"
+	<b-cliplist class="b-trackrow-cell" v-for="pair in tdata.tracks" :key="pair[1]"
 		    :track="pair[0]"
 		    style="background: #252525" />
       </v-flex>
@@ -141,7 +141,7 @@
 	 @wheel.stop="Util.wheel2scrollbars ($event, $refs, 'hscrollbar2', 'vscrollbar')" >
       <v-flex class="b-track-list-partswrapper" ref="partswrapper" >
 	<b-partlist class="b-trackrow-cell"
-		    v-for="(pair, tindex) in sdata.tracks" :key="pair[1]"
+		    v-for="(pair, tindex) in tdata.tracks" :key="pair[1]"
 		    :track="pair[0]" :trackindex="tindex"></b-partlist>
 	<span class="b-track-list-tickpointer" ref="tickpointer"></span>
       </v-flex>
@@ -177,16 +177,16 @@
 import * as Ase from '../aseapi.js';
 
 async function list_tracks () {
-  const items = await this.song.list_children();
-  let tracks = items.filter (item => item instanceof Ase.Track);
-  tracks = tracks.map (item => [item, item.$id]);
+  let tracks = await this.project.list_tracks();
+  tracks = tracks.map (trk => [trk, trk.$id]);
   return tracks; // [ [track,uniqnum], ...]
 }
 
 async function tick_moniotr (addcleanup) {
+  return null; // TODO: implement ProjectTelemetry
   const mon = {};
   // retrieve SHM locations
-  let tickpos_offset = this.song.get_shm_offset (Ase.SongTelemetry.I32_TICK_POINTER);
+  let tickpos_offset = this.project.get_shm_offset (Ase.ProjectTelemetry.I32_TICK_POINTER);
   // subscribe to SHM updates
   tickpos_offset = await tickpos_offset;
   mon.sub_i32tickpos = Util.shm_subscribe (tickpos_offset, 4);
@@ -199,21 +199,21 @@ async function tick_moniotr (addcleanup) {
   return mon;
 }
 
-function song_data () {
-  const sdata = {
-    tracks: { getter: c => list_tracks.call (this), notify: n => this.song.on ("treechange", n), },
+function tracklist_data () {
+  const tdata = {
+    tracks: { getter: c => list_tracks.call (this), notify: n => this.project.on ("track", n), },
     tmon:   { getter: c => tick_moniotr.call (this, c), },
   };
-  return this.observable_from_getters (sdata, () => this.song);
+  return this.observable_from_getters (tdata, () => this.project);
 }
 
 export default {
   sfc_template,
   props: {
-    song: { type: Ase.Song }
+    project: { type: Ase.Project }
   },
   data() { return {
-    sdata: song_data.call (this),
+    tdata: tracklist_data.call (this),
   }; },
   mounted() {
     // vscrollbar
@@ -281,14 +281,14 @@ export default {
   },
   methods:  {
     list_dblclick (event) {
-      Data.song?.create_track();
+      Data.project?.create_track();
     },
     dom_update() {
       this.last_tickpos = -1;
       this.dom_trigger_animate_playback (false);
-      if (this.song && this.sdata.tmon)
+      if (this.project && this.tdata.tmon)
 	{
-	  this.i32tickpos = this.sdata.tmon.sub_i32tickpos[0] / 4;
+	  this.i32tickpos = this.tdata.tmon.sub_i32tickpos[0] / 4;
 	  this.dom_trigger_animate_playback (true);
 	}
     },
@@ -299,7 +299,7 @@ export default {
 	  const tickpos = Util.shm_array_int32[this.i32tickpos];
 	  if (this.last_tickpos != tickpos)
 	    {
-	      const tickscale = 10 / 384.0; // FIXME
+	      const tickscale = 10 / 384.0; // TODO: query ASE
 	      const transform = 'translateX(+' + Math.round (tickpos * tickscale) + 'px)';
 	      if (transform != tickpointer.style.getPropertyValue ('transform')) // reduce style recalculations
 		tickpointer.style.setProperty ('transform', transform);
