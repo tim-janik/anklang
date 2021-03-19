@@ -1501,13 +1501,13 @@ public:
   Value
   get_value () override
   {
-    const AudioProcessorP proc = device_->audio_signal_processor();
+    const AudioProcessorP proc = device_->audio_processor();
     return AudioProcessor::param_peek_mt (proc, id_);
   }
   bool
   set_value (const Value &value) override
   {
-    const AudioProcessorP proc = device_->audio_signal_processor();
+    const AudioProcessorP proc = device_->audio_processor();
     const ParamId pid = id_;
     const double v = value.as_double();
     auto lambda = [proc, pid, v] () {
@@ -1519,13 +1519,13 @@ public:
   double
   get_normalized () override
   {
-    const AudioProcessorP proc = device_->audio_signal_processor();
+    const AudioProcessorP proc = device_->audio_processor();
     return proc->value_to_normalized (id_, AudioProcessor::param_peek_mt (proc, id_));
   }
   bool
   set_normalized (double v) override
   {
-    const AudioProcessorP proc = device_->audio_signal_processor();
+    const AudioProcessorP proc = device_->audio_processor();
     const ParamId pid = id_;
     auto lambda = [proc, pid, v] () {
       proc->set_normalized (pid, v);
@@ -1536,14 +1536,14 @@ public:
   String
   get_text () override
   {
-    const AudioProcessorP proc = device_->audio_signal_processor();
+    const AudioProcessorP proc = device_->audio_processor();
     const double value = AudioProcessor::param_peek_mt (proc, id_);
     return proc->param_value_to_text (id_, value);
   }
   bool
   set_text (String vstr) override
   {
-    const AudioProcessorP proc = device_->audio_signal_processor();
+    const AudioProcessorP proc = device_->audio_processor();
     const double v = proc->param_value_from_text (id_, vstr);
     const ParamId pid = id_;
     auto lambda = [proc, pid, v] () {

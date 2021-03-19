@@ -641,7 +641,7 @@ public:
   StringS         list_properties        () override;
   PropertyP       access_property        (String ident) override;
   PropertyS       access_properties      () override;
-  AudioProcessorP audio_signal_processor () const       { return proc_; }
+  AudioProcessorP audio_processor        () const       { return proc_; }
 };
 
 } // Ase
