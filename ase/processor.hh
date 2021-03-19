@@ -12,9 +12,10 @@
 
 namespace Ase {
 
-class DeviceImpl;
-using DeviceImplP = std::shared_ptr<DeviceImpl>;
-class ComboImpl;
+ASE_CLASS_DECLS (AudioCombo);
+ASE_CLASS_DECLS (AudioProcessor);
+ASE_CLASS_DECLS (DeviceImpl);
+ASE_STRUCT_DECLS (ParamInfo);
 
 /// ID type for AudioProcessor parameters, the ID numbers are user assignable.
 enum class ParamId : uint32 {};
@@ -149,7 +150,6 @@ private:
   std::weak_ptr<Property> bprop_;
   friend class AudioProcessor;
 };
-using ParamInfoP = std::shared_ptr<ParamInfo>;
 
 /// Structure providing supplementary information about input/output buses.
 struct BusInfo {
@@ -634,7 +634,7 @@ register_audio_processor (const char *bfile, int bline)
 }
 
 class DeviceImpl : public GadgetImpl, public virtual Device {
-  std::shared_ptr<AudioProcessor> proc_;
+  AudioProcessorP proc_;
 public:
   explicit        DeviceImpl             (AudioProcessor &proc);
   DeviceInfo      device_info            () override;
