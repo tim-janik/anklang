@@ -11,7 +11,7 @@ console.bootlog = console.log;
 
 // Global CONFIG
 const fallback_config = {
-  // defaults for non-Electron runtimes
+  // runtime defaults and constants
   MAXINT: 2147483647, MAXUINT: 4294967295, mainjs: false,
   dpr_movement: false, // Chrome bug, movementX *should* match screenX units
   files: [], p: '', m: '', norc: false, uiscript: '',
@@ -98,22 +98,19 @@ const Jsonapi = {
   },
 };
 
-// Setup application for Electron if present
-function init_electron (event) {
-  if (!(event.data?.ElectronIpcID === 11011 && event.data?.ret === 'HaveElectron!'))
-    return; // must detect IPC endpoint first
-  window.removeEventListener ('message', init_electron);
-  // Shift+Ctrl+I for devTools
-  document.addEventListener ("keydown", (event) => {
-    if (event.shiftKey && event.ctrlKey && event.keyCode == 73)
-      window.postMessage ({ ElectronIpcID: -1, cmd: 'toggle_dev_tools' });
-  });
-}
-
 // Bootup, called onload
 async function bootup () {
-  window.postMessage ({ ElectronIpcID: 11011, cmd: 'have_electron' });
-  window.addEventListener ('message', init_electron);
+  if (window.__Electron__)
+    {
+      window.Electron = Object.assign ({}, // setup extensible window.Electron context
+				       await window.__Electron__.call ("electron_versions"),
+				       { call: window.__Electron__.call });
+      // Shift+Ctrl+I for devTools
+      document.addEventListener ("keydown", (event) => {
+	if (event.shiftKey && event.ctrlKey && event.keyCode == 73)
+	  window.Electron.call ('toggle_dev_tools');
+      });
+    }
   // Reload page on Websocket connection loss
   const url = window.location.href.replace ('http', 'ws');
   const reconnect = async () => {
@@ -208,7 +205,7 @@ async function bootup () {
       } catch (e) {
         console.error (e.stack ? e.stack : e.message ? e.message : e, '\n',
                        'UIScript failed, aborting...');
-        window.Electron.app.exit (123);
+	window.Electron.call ('exit', 123);
       }
     }
   // Load command line files

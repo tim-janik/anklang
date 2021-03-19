@@ -4,6 +4,8 @@ const package_json = require ('./package.json');
 Object.defineProperty (globalThis, '__DEV__', { value: package_json.mode !== 'production' });
 const Electron = require ('electron');
 const Eapp = Electron.app;
+const Eshell = Electron.shell;
+const os = require ('os');
 
 // CSS Defaults
 const defaults = {
@@ -87,7 +89,7 @@ function create_window (onclose)
       sandbox:				true,
       contextIsolation:			true,
       nodeIntegration:                  false,
-      enableRemoteModule:               true,
+      enableRemoteModule:               false,
       devTools:                         __DEV__,
       defaultEncoding:                  'UTF-8',
       defaultFontSize:                  parseInt (defaults.defaultFontSize),
@@ -107,22 +109,38 @@ function create_window (onclose)
   const w = new Electron.BrowserWindow (options);
   w.setMenu (Electron.Menu.buildFromTemplate ([]));
   w.webContents.once ('crashed', crashed_handler);
-  w.webContents.addListener ('new-window', ev => ev.preventDefault()); // target='_blank' click
   if (onclose)
     w.on ('closed', onclose);
   return w;
 }
 
 // asynchronously load URL into window `w`
-async function load_and_show (w, url) {
+async function load_and_show (w, winurl) {
   w = await w;
   const win_ready = new Promise (resolve => w.once ('ready-to-show', () => resolve ()));
+  const origin = winurl.replace (/(\w\/).*/g, '$1');
+  // allow reloads, disallow navigation
   w.webContents.addListener ('will-navigate', (ev, navurl) => {
-    if (navurl !== url) // disallow navigating away
+    if (navurl !== winurl)              // not a reload
       ev.preventDefault();
   });
-  await w.loadURL (url);
+  // handle subwindow creation (via target=_blank or window.open)
+  w.webContents.setWindowOpenHandler (({ url }) => {                    // Electron-12
+    if (url.startsWith (origin))        // Anklang content
+      ; // return { action: 'allow' };
+    Eshell.openExternal (url);          // use xdg-open or similar
+    return { action: 'deny' };
+  });
+  // customize child windows
+  w.webContents.on ('did-create-window', (childwin) => {                // Electron-12
+    childwin.webContents.on ('will-navigate', (ev, navurl) => {
+      console.log ('SUBWINDOW: will-navigate', navurl);
+    })
+  });
+  // load URL, show *afterwards*
+  await w.loadURL (winurl);
   await win_ready;
+  // w.toggleDevTools(); // start with DevTools enabled
   return w.show();
 }
 
@@ -173,16 +191,18 @@ function start_sound_engine (config, datacb, errorcb)
 }
 
 // == IPC Messages ==
+// IPC calls available to the Renderer
 const ipc_handler = {
-  have_electron (browserwindow, ...args)	{ return 'HaveElectron!'; },
+  electron_versions (browserwindow, ...args)   { return { platform: process.platform,
+	                                                  arch: process.arch,
+                                                          os_release: os.release(),
+	                                                  versions: process.versions, }; },
   toggle_dev_tools (browserwindow, ...args)	{ browserwindow.toggleDevTools(); },
+  exit (browserwindow, status)			{ Electron.app.exit (0 | status); },
 };
-Electron.ipcMain.on ('ElectronIpcR2M', (event, data) => {
-  if (typeof (ipc_handler[data?.cmd]) !== 'function') return;
-  const result = ipc_handler[data.cmd] (event.sender, ...(Array.isArray (data?.args) ? data.args : []));
-  if (data?.ElectronIpcID)
-    event.reply ('ElectronIpcM2R', { ElectronIpcID: data.ElectronIpcID, ret: result });
-});
+// Dispatch Renderer->Main message events
+for (const func in ipc_handler)
+  Electron.ipcMain.handle (func, async (event, args) => await ipc_handler[func] (event.sender, ...args));
 
 // == Usage ==
 let cmdname = Eapp.getName();
