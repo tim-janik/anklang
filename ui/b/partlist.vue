@@ -49,7 +49,6 @@ export default {
   data() { return {
     parts: [],  // [{tick,part,duration,unique_id}, ...]
   }; },
-  mixins: [ Util.vue_mixins.hyphen_props ],
 };
 
 </script>

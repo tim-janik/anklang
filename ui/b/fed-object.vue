@@ -195,7 +195,6 @@ function component_data () {
 
 export default {
   sfc_template,
-  mixins: [ Util.vue_mixins.hyphen_props ],
   data() { return component_data.call (this); },
   props: {
     readonly:	{ default: false, },

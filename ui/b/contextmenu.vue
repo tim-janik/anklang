@@ -212,19 +212,17 @@ export default {
       if (!this.popup_options.checker)
 	return;
       const checkrecursive = component => {
-	if (component instanceof Element &&
-	    component.__vue__)
-	  component = component.__vue__;
-	if (component.$options && component.$options.propsData && component.$options.propsData.uri)
+	component = Util.vue_component (component) || component;
+	if (component.uri)
 	  {
 	    let async_check = async () => {
-	      let result = this.popup_options.checker.call (null, component.$options.propsData.uri, component);
+	      let result = this.popup_options.checker.call (null, component.uri, component);
 	      result = await result;
 	      if ('boolean' !== typeof result)
 		result = undefined;
-	      if (result != this.checkeduris[component.$options.propsData.uri])
+	      if (result != this.checkeduris[component.uri])
 		{
-		  this.$set (this.checkeduris, component.$options.propsData.uri, result); // Vue reactivity
+		  this.checkeduris[component.uri] = result; // Vue reactivity
 		  component.$forceUpdate();
 		}
 	    };

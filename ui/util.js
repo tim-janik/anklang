@@ -112,12 +112,15 @@ export function capture_event (eventname, callback) {
 }
 
 /** Get `__vue__` from element or its ancestors */
-function vue_ancestor (element) {
-  while (element)
+export function vue_component (element) {
+  let el = element;
+  while (el)
     {
-      if (element.__vue__)
-	return element.__vue__;
-      element = element.parentNode;
+      if (el.__vueParentComponent?.proxy)
+	return el.__vueParentComponent.proxy; // Vue3
+      if (el.__vue__)
+	return el.__vue__;                    // Vue2
+      el = el.parentNode;
     }
   return undefined;
 }
@@ -214,7 +217,7 @@ class PointerDrag {
 /** Start `drag_event (event)` handling on a Vue component's element, use `@pointerdown="Util.drag_event"` */
 export function drag_event (event) {
   console.assert (event.type == "pointerdown" && event.pointerId);
-  const vuecomponent = vue_ancestor (event.target);
+  const vuecomponent = vue_component (event.target);
   if (vuecomponent && vuecomponent.$el &&
       vuecomponent.drag_event)			// ignore request if we got wrong vue component (child)
   {
@@ -516,12 +519,18 @@ export function fwdprovide (injectname, keys) {
  * discarded if the `cancelled` property is true.
  */
 vue_directives['inlineblur'] = {
-  bind (el, binding, vnode) {
+  created (el, binding, vnode) {
+    //debug ("inlineblur", "created", el, binding, vnode);
+  },
+  beforeMount (el, binding, vnode) {
+    //debug ("inlineblur", "beforeMount");
     if (binding.value && typeof binding.value !== 'function')
       console.warn ('[Vue-v-inlineblur:] wrong type argument, function required:', binding.expression);
     el.cancelled = false;
   },
-  inserted (el, binding, vnode) {
+  mounted (el, binding, vnode) {
+    const vm = binding.instance;
+    //debug ("inlineblur", "mounted");
     console.assert (document.body.contains (el));
     el.focus();
     if (el == document.activeElement)
@@ -552,13 +561,17 @@ vue_directives['inlineblur'] = {
 	binding.value.call (this, new CustomEvent ('cancel', { detail: 'blur' }));
       }
   },
-  update (el, binding, vnode, componentUpdated) {
-    // console.log ("inlineblur", "update");
+  beforeUpdate (el, binding, vnode, prevVnode) {
+    //debug ("inlineblur", "beforeUpdate");
   },
-  componentUpdated (el, binding, vnode, componentUpdated) {
-    // console.log ("inlineblur", "componentUpdated");
+  updated (el, binding, vnode, prevVnode) {
+    //debug ("inlineblur", "updated");
   },
-  unbind (el, binding, vnode) {
+  beforeUnmount (el, binding, vnode) {
+    //debug ("inlineblur", "beforeUnmount");
+  },
+  unmounted (el, binding, vnode) {
+    //debug ("inlineblur", "unmounted");
     if (el._v_inlineblur_watch_blur)
       {
 	el.removeEventListener ('blur', el._v_inlineblur_watch_blur, true);
@@ -570,6 +583,33 @@ vue_directives['inlineblur'] = {
 	el._v_inlineblur_watch_keydown = undefined;
       }
   }
+};
+
+/** Provide `$children` (and `$vue_parent`) on every component. */
+vue_mixins.vuechildren = {
+  provide() {
+    return { '$vue_parent': this };
+  },
+  inject: {
+    '$vue_parent': { from: '$vue_parent', default: null, },
+  },
+  beforeCreate () {
+    console.assert (this.$children === undefined);
+    this.$children = [];
+  },
+  created() {
+    // using $parent breaks for transitions, https://github.com/vuejs/docs-next/issues/454
+    if (this.$vue_parent)
+      this.$vue_parent.$children.push (this);
+  },
+  unmounted() {
+    if (!this.$vue_parent)
+      return;
+    const pos = this.$vue_parent.$children.indexOf (this);
+    if (pos < 0)
+      throw Error ("failed to locate this in $vue_parent.$children:", this);
+    this.$vue_parent.$children.splice (pos, 1);
+  },
 };
 
 /** Automatically add `$attrs['data-*']` to `$el`. */
@@ -586,24 +626,6 @@ function autodataattrs_apply () {
     if (datakey.startsWith ('data-'))
       this.$el.setAttribute (datakey, this.$attrs[datakey]);
 }
-
-/** Vue mixin to create a kebab-case ('two-words') getter proxy for camelCase ('twoWords') props */
-vue_mixins.hyphen_props = {
-  beforeCreate: function () {
-    for (let cc in this.$options.props) {
-      const hyphenated = hyphenate (cc);
-      if (hyphenated === cc || (this.$options.computed && hyphenated in this.$options.computed))
-	continue;
-      if (!this.$options.computed)
-	this.$options.computed = {};
-      Object.defineProperty (this, hyphenated, {
-	get() { return this[cc]; },
-	enumerable: false,
-	configurable: false
-      });
-    }
-  },
-};
 
 function call_unwatch (unwatch_cb) {
   // Work around: https://github.com/vuejs/vue-next/issues/2381
@@ -1724,7 +1746,7 @@ export function add_frame_handler (handlerfunc) {
 }
 
 export function discard_remote (aseobject) {
-  console.log ("FIXME: Ase/discard:", aseobject);
+  console.log ("TODO: Ase: implement discard:", aseobject);
 }
 
 let shm_array_active = false;
@@ -1963,7 +1985,7 @@ export const KeyCode = {
   INSERT: 45, DELETE: 46, SELECT: 93,
   F1: 112, F2: 113, F3: 114, F4: 115, F5: 116, F6: 117, F7: 118, F8: 119, F9: 120, F10: 121, F11: 122, F12: 123,
   F13: 124, F14: 125, F15: 126, F16: 127, F17: 128, F18: 129, F19: 130, F20: 131, F21: 132, F22: 133, F23: 134, F24: 135,
-  BROWSERBACK: 166, BROWSERFORWARD: 167, PLUS: 187/*FIXME*/, MINUS: 189/*FIXME*/, PAUSE: 230, ALTGR: 255,
+  BROWSERBACK: 166, BROWSERFORWARD: 167, PLUS: 187/*?*/, MINUS: 189/*?*/, PAUSE: 230, ALTGR: 255,
   VOLUMEMUTE: 173, VOLUMEDOWN: 174, VOLUMEUP: 175, MEDIANEXTTRACK: 176, MEDIAPREVIOUSTRACK: 177, MEDIASTOP: 178, MEDIAPLAYPAUSE: 179,
 };
 
@@ -2334,7 +2356,7 @@ export function vue_observable_from_getters (tmpl, predicate) { // `this` is Vue
     for (const key in getter_cleanups)
       assign_async_cleanup (getter_cleanups, key, undefined);
   };
-  Vue.onUnmounted (run_cleanups); // FIXME: check invocation
+  Vue.onUnmounted (run_cleanups); // TODO: check invocation
   // create trigger for forced updates
   const ucount = Vue.reactive ({ c: 1 }); // reactive update counter
   const updater = function () { ucount.c += 1; }; // forces observable update
