@@ -12,7 +12,13 @@ JSONIPC_INHERIT (GadgetImpl, Gadget);
 GadgetImpl::~GadgetImpl()
 {}
 
-std::string
+String
+GadgetImpl::fallback_name () const
+{
+  return type_nick();
+}
+
+String
 GadgetImpl::type_nick () const
 {
   String tname = Jsonipc::rtti_typename (*this);
@@ -24,15 +30,26 @@ GadgetImpl::type_nick () const
   return tname;
 }
 
-std::string
+static CustomDataKey<String> gadget_name_key;
+
+String
 GadgetImpl::name () const
 {
-  return type_nick();
+  if (!has_custom_data (&gadget_name_key))
+    return fallback_name();
+  return get_custom_data (&gadget_name_key);
 }
 
 void
-GadgetImpl::name (std::string newname)
-{}
+GadgetImpl::name (String newname)
+{
+  newname = string_strip (newname);
+  if (newname.empty())
+    del_custom_data (&gadget_name_key);
+  else
+    set_custom_data (&gadget_name_key, newname);
+  emit_event ("notify", "name");
+}
 
 StringS
 GadgetImpl::list_properties ()

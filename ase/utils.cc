@@ -270,6 +270,40 @@ JobQueue::JobQueue (const Caller &caller) :
   caller_ (caller)
 {}
 
+// == CustomDataContainer ==
+CustomDataContainer::CustomDataEntry&
+CustomDataContainer::custom_data_entry (VirtualBase *key)
+{
+  if (!custom_data_)
+    custom_data_ = std::make_unique<CustomDataS> (1);
+  assert_return (key != nullptr, *custom_data_->end());
+  for (auto &e : *custom_data_)
+    if (e.key == key)
+      return e;
+  custom_data_->push_back ({ key, });
+  return custom_data_->back();
+}
+
+std::any&
+CustomDataContainer::custom_data_get (VirtualBase *key) const
+{
+  if (custom_data_)
+    for (auto &e : *custom_data_)
+      if (e.key == key)
+        return e.any;
+  static std::any dummy;
+  return dummy;
+}
+
+bool
+CustomDataContainer::custom_data_del (VirtualBase *key)
+{
+  if (custom_data_)
+    return Aux::erase_first (*custom_data_, [key] (auto &e) { return key == e.key; });
+  return 0;
+  static_assert (sizeof (CustomDataContainer) == sizeof (void*));
+}
+
 } // Ase
 
 // == __abort_msg ==

@@ -7,7 +7,7 @@
 
 namespace Ase {
 
-struct SharedBase;
+class SharedBase;
 using InstanceP = std::shared_ptr<SharedBase>;
 struct Value;
 using ValueP = std::shared_ptr<Value>;

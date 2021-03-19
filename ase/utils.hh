@@ -4,6 +4,7 @@
 
 #include <ase/cxxaux.hh>
 #include <ase/strings.hh>
+#include <any>
 
 namespace Ase {
 
@@ -69,6 +70,50 @@ struct JobQueue {
   inline               operator+=  (const F &job);
 private:
   const Caller caller_;
+};
+
+// == CustomData ==
+/// CustomDataKey objects are used to identify and manage custom data members of CustomDataContainer objects.
+template<typename T>
+class CustomDataKey : public VirtualBase {
+  /*Copy*/              CustomDataKey (const CustomDataKey&) = delete;
+  CustomDataKey&        operator=     (const CustomDataKey&) = delete;
+public:
+  explicit              CustomDataKey () = default;
+  virtual T             fallback  ()                { return {}; }          ///< Return default T instance.
+  const std::type_info& type      () const noexcept { return typeid (T); }  ///< Return the typeid of T.
+  bool                  has_value (const std::any &any)
+  { return any.has_value() && any.type() == type(); }
+  T                     extract   (const std::any &any)
+  { return has_value (any) ? std::any_cast<T> (any) : fallback(); }
+};
+
+/** DataListContainer - typesafe storage and retrieval of arbitrary members.
+ * By using a DataKey, DataListContainer objects allow storage and retrieval of custom data members in a typesafe fashion.
+ * The custom data members will initially default to DataKey::fallback and are deleted by the DataListContainer destructor.
+ * Example: @snippet tests/t201/rcore-basics-datalist.cc DataListContainer-EXAMPLE
+ */
+class CustomDataContainer {
+  struct CustomDataEntry { VirtualBase *key = nullptr; std::any any; };
+  using CustomDataS = std::vector<CustomDataEntry>;
+  std::unique_ptr<CustomDataS> custom_data_;
+  static_assert (sizeof (custom_data_) == sizeof (void*));
+  CustomDataEntry& custom_data_entry (VirtualBase *key);
+  std::any&        custom_data_get   (VirtualBase *key) const;
+  bool             custom_data_del   (VirtualBase *key);
+public:
+  /// Assign data to the custom keyed data member, deletes any previously set data.
+  template<class T> void set_custom_data  (CustomDataKey<T> *key, T data)
+  { std::any a (data); custom_data_entry (key).any.swap (a); }
+  /// Retrieve contents of the custom keyed data member, returns DataKey::fallback if nothing was set.
+  template<class T> T    get_custom_data  (CustomDataKey<T> *key) const
+  { return key->extract (custom_data_get (key)); }
+  /// Retrieve wether contents of the custom keyed data member exists.
+  template<class T> bool has_custom_data  (CustomDataKey<T> *key) const
+  { return key->has_value (custom_data_get (key)); }
+  /// Delete the current contents of the custom keyed data member, invokes DataKey::destroy.
+  template<class T> bool del_custom_data  (CustomDataKey<T> *key)
+  { return custom_data_del (key); }
 };
 
 // == Implementation Details ==

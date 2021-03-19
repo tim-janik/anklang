@@ -91,6 +91,18 @@ using VoidF = std::function<void()>;
   /*copy-ctor*/ ClassName  (const ClassName&) = delete; \
   ClassName&    operator=  (const ClassName&) = delete
 
+/// Forward declare `struct Klass;` as well as shared_ptr `KlassP` and vector `KlassS`.
+#define ASE_STRUCT_DECLS(Klass)                                  \
+  struct Klass;                                                  \
+  using ASE_CPP_PASTE2 (Klass, P) = ::std::shared_ptr<Klass>;   \
+  using ASE_CPP_PASTE2 (Klass, S) = ::std::vector<Klass>;
+
+/// Forward declare `class Klass;` as well as `KlassP` and `KlassS` as `vector<KlassP>`.
+#define ASE_CLASS_DECLS(Klass)                                  \
+  class Klass;                                                  \
+  using ASE_CPP_PASTE2 (Klass, P) = ::std::shared_ptr<Klass>;   \
+  using ASE_CPP_PASTE2 (Klass, S) = ::std::vector<ASE_CPP_PASTE2 (Klass, P)>;
+
 // == Operations on flags enum classes ==
 #define ASE_DEFINE_ENUM_EQUALITY(Enum)         \
   constexpr bool    operator== (Enum v, int64_t n) { return int64_t (v) == n; } \
@@ -235,6 +247,24 @@ public:
     return std::allocate_shared<T> (FriendAllocator(), std::forward<Args> (args)...);
   }
 };
+
+/// Define a member function `static shared_ptr<CLASS> make_shared(ctorargs...);`.
+/// As member function, access to a private dtor and ctors is granted, so no
+/// std::allocator friend declaration is needed to
+/// define `make_shared()` for its own class.
+#define ASE_DEFINE_MAKE_SHARED(CLASS)                             \
+  template<typename ...Args> static std::shared_ptr<CLASS>        \
+  make_shared (Args &&...args)                                    \
+  {                                                               \
+    struct Allocator : public std::allocator<CLASS> {             \
+      static void construct (CLASS *p, Args &&...args)            \
+      { ::new (p) CLASS (std::forward<Args> (args)...); }         \
+      static void destroy (CLASS *p)                              \
+      { p->~CLASS (); }                                           \
+    };                                                            \
+    return std::allocate_shared<CLASS>                            \
+             (Allocator(), std::forward<Args> (args)...);         \
+  }
 
 /** Shorthand for std::dynamic_pointer_cast<>(shared_from_this()).
  * A shared_ptr_cast() takes a std::shared_ptr or a pointer to an @a object that
