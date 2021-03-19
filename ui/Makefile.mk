@@ -2,8 +2,9 @@
 include $(wildcard $>/ui/*.d)
 ui/cleandirs ::= $(wildcard $>/ui/ $>/dist/)
 CLEANDIRS         += $(ui/cleandirs)
-ALL_TARGETS       += ui/all
-ui/all:
+ALL_TARGETS       += $>/ui/.build1-stamp $>/ui/.build2-stamp
+$>/ui/.build1-stamp:	# essential build targets for the UI
+$>/ui/.build2-stamp:	# extra targets, deferred during incremental rebuilds
 
 # This Makefile creates the web UI in $>/ui/.
 # * make run - Build UI, start electron app
@@ -43,7 +44,7 @@ $>/ui/vue.js:	$>/node_modules/.npm.done				| $>/ui/
 	$Q sed -i $>/ui/vue.js \
 		-e 's/^\s*\(console\.info(.You are running a development build of Vue\)/if(0) \1/' \
 		-e 's/\b\(warn(`[^`]* was accessed during render\)/if(0) \1/'
-$>/ui/.all-stamp: $>/ui/vue.js
+$>/ui/.build1-stamp: $>/ui/vue.js
 
 # == ui/index.html ==
 $>/ui/index.html: ui/index.html ui/assets/eknob.svg ui/Makefile.mk	| $>/ui/
@@ -59,15 +60,14 @@ $>/ui/index.html: ui/index.html ui/assets/eknob.svg ui/Makefile.mk	| $>/ui/
 		-e "/^<\?xml .*\?>\s*$$/d" \
 		-i $@.tmp
 	$Q mv $@.tmp $@
-$>/ui/.all-stamp: $>/ui/index.html
-$>/ui/.all-stamp: $>/doc/anklang-manual.html # used by Vue components
+$>/ui/.build1-stamp: $>/ui/index.html
 
 # == ui/nodemon.json ==
 $>/ui/nodemon.json: ui/Makefile.mk				| $>/ui/
 	$(QGEN)
 	$Q echo '{ "events": { "crash": "kill -2 $$PPID" } }'	>  $@.tmp
 	$Q mv $@.tmp $@
-$>/ui/.all-stamp: $>/ui/nodemon.json
+$>/ui/.build1-stamp: $>/ui/nodemon.json
 
 # == ui/.aseignore ==
 $>/ui/.aseignore:					| $>/ui/
@@ -77,7 +77,7 @@ $>/ui/.aseignore:					| $>/ui/
 	$Q echo '^/tmp/'			>> $@.tmp
 	$Q echo '.*/[.].*'			>> $@.tmp
 	$Q mv $@.tmp $@
-$>/ui/.all-stamp: $>/ui/.aseignore
+$>/ui/.build1-stamp: $>/ui/.aseignore
 
 # == ui/aseapi.js ==
 $>/ui/aseapi.js: jsonipc/jsonipc.js ase/api.hh $(lib/AnklangSynthEngine) ui/Makefile.mk	| $>/ui/
@@ -86,7 +86,7 @@ $>/ui/aseapi.js: jsonipc/jsonipc.js ase/api.hh $(lib/AnklangSynthEngine) ui/Make
 	$Q $(lib/AnklangSynthEngine) --js-api		>> $@.tmp
 	$Q echo 'export let server = s => { if (s instanceof Server) server = s; };'	>> $@.tmp
 	$Q mv $@.tmp $@
-$>/ui/.all-stamp: $>/ui/aseapi.js
+$>/ui/.build1-stamp: $>/ui/aseapi.js
 
 # == css-imports.js ==
 $>/ui/css-imports.js: ui/theme.scss ui/Makefile.mk	| $>/ui/
@@ -99,7 +99,7 @@ $>/ui/css-imports.js: ui/theme.scss ui/Makefile.mk	| $>/ui/
 	$Q cd $(@D) && nodejs $(@F)-gen.js		>> $(@F).tmp
 	$Q echo "};"					>> $@.tmp
 	$Q mv $@.tmp $@ && rm $@-gen.js
-$>/ui/.all-stamp: $>/ui/css-imports.js
+$>/ui/.build1-stamp: $>/ui/css-imports.js
 
 # == ui/b/vue.targets ==
 ui/b/vue.targets ::= $(ui/vue.wildcards:%.vue=$>/%.js)
@@ -107,7 +107,7 @@ $(ui/b/vue.targets): ui/sfc-compile.js						| $>/ui/fonts/AnklangIcons.css
 $(ui/b/vue.targets): $>/%.js: %.vue						| $>/ui/b/ $>/node_modules/.npm.done
 	$(QGEN)
 	$Q node ui/sfc-compile.js --debug -I $>/ui/ $< -O $(@D)
-$>/ui/.all-stamp: $(ui/b/vue.targets)
+$>/ui/.build1-stamp: $(ui/b/vue.targets)
 
 # == all-styles.css ==
 $>/ui/all-styles.css: ui/Makefile.mk $(ui/b/vue.targets)
@@ -117,7 +117,7 @@ $>/ui/all-styles.css: ui/Makefile.mk $(ui/b/vue.targets)
 		echo "@import './b/$${f}';"		>> $@.tmp		\
 		|| exit 1 ; done
 	$Q mv $@.tmp $@
-$>/ui/.all-stamp: $>/ui/all-styles.css
+$>/ui/.build1-stamp: $>/ui/all-styles.css
 
 # == all-components.js ==
 $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vue.targets) $(wildcard ui/b/*)		| $>/ui/
@@ -131,21 +131,21 @@ $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vue.targets) $(wildcard ui/b/*)		
 	   && echo "export default {"			>> $@.tmp		\
 	   && echo "$$EX};"				>> $@.tmp
 	$Q mv $@.tmp $@
-$>/ui/.all-stamp: $>/ui/all-components.js
+$>/ui/.build1-stamp: $>/ui/all-components.js
 
 # == File Copies ==
 ui/copy.targets ::= $(ui/copy.wildcards:%=$>/%)
 $(ui/copy.targets): $>/ui/%: ui/%
 	$(QECHO) COPY $<
 	$Q cp -a $< --parents $>/
-$>/ui/.all-stamp: $(ui/copy.targets)
+$>/ui/.build1-stamp: $(ui/copy.targets)
 
 # == Copies to ui/ ==
 ui/public.targets ::= $(ui/public.wildcards:ui/%=$>/ui/%)
 $(ui/public.targets): $>/ui/%: ui/%			| $>/ui/
 	$(QECHO) COPY $<
 	$Q cd ui/ && cp -a $(<:ui/%=%) --parents $(abspath $>/)/ui/
-$>/ui/.all-stamp: $(ui/public.targets)
+$>/ui/.build1-stamp: $(ui/public.targets)
 
 # == Inter Typeface ==
 $>/ui/fonts/Inter-Medium.woff2: ui/Makefile.mk		| $>/ui/fonts/
@@ -153,7 +153,7 @@ $>/ui/fonts/Inter-Medium.woff2: ui/Makefile.mk		| $>/ui/fonts/
 	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
 		9cd56084faa8cc5ee75bf6f3d01446892df88928731ee9321e544a682aec55ef https://github.com/rsms/inter/raw/v3.10/docs/font-files/Inter-Medium.woff2 )
 	$Q touch $@
-$>/ui/.all-stamp: $>/ui/fonts/Inter-Medium.woff2
+$>/ui/.build1-stamp: $>/ui/fonts/Inter-Medium.woff2
 
 # == AnklangIcons ==
 $>/ui/fonts/AnklangIcons.css: ui/Makefile.mk		| $>/ui/fonts/
@@ -169,7 +169,7 @@ $>/ui/fonts/AnklangIcons.css: ui/Makefile.mk		| $>/ui/fonts/
 	$Q cd $>/ui/anklangicons/ && cp AnklangCursors.scss AnklangIcons.woff2 ../fonts/
 	$Q cd $>/ui/anklangicons/ && cp AnklangIcons.css ../fonts/AnklangIcons.css.tmp
 	$Q rm -r $>/ui/anklangicons/ && mv $@.tmp $@
-$>/ui/.all-stamp: $>/ui/fonts/AnklangIcons.css
+$>/ui/.build1-stamp: $>/ui/fonts/AnklangIcons.css
 
 # == Material-Icons ==
 $>/ui/fonts/material-icons.css: ui/Makefile.mk		| $>/ui/fonts/
@@ -184,7 +184,7 @@ $>/ui/fonts/material-icons.css: ui/Makefile.mk		| $>/ui/fonts/
 		&& cp material-icons/material-icons.css material-icons.css.tmp \
 		&& rm -fr material-icons/ $T
 	$Q mv $@.tmp $@ && touch $@
-$>/ui/.all-stamp: $>/ui/fonts/material-icons.css
+$>/ui/.build1-stamp: $>/ui/fonts/material-icons.css
 
 # == Fork-Awesome ==
 $>/ui/fonts/forkawesome-webfont.css: ui/Makefile.mk	| $>/ui/fonts/
@@ -197,7 +197,7 @@ ui/fork-awesome-downloads ::= \
     https://raw.githubusercontent.com/ForkAwesome/Fork-Awesome/b0605a81632452818bf19c8fa97469da1206b52b/fonts/forkawesome-webfont.woff2 \
   630b0e84fa43579f7e97a26fd47d4b70cb5516ca7e6e73393597d12ca249a8ee \
     https://raw.githubusercontent.com/ForkAwesome/Fork-Awesome/b0605a81632452818bf19c8fa97469da1206b52b/css/fork-awesome.css
-$>/ui/.all-stamp: $>/ui/fonts/forkawesome-webfont.css
+$>/ui/.build1-stamp: $>/ui/fonts/forkawesome-webfont.css
 
 # == $>/ui/browserified.js ==
 $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/ $>/ui/tmp/
@@ -211,14 +211,14 @@ $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/ $>/ui/t
 	$Q echo "if (__DEV__) window.require.module_list = module_list;"			>> $>/ui/tmp/browserified.js
 	$Q $>/node_modules/.bin/browserify -o $>/ui/tmp/out.browserified.js $>/ui/tmp/browserified.js
 	$Q mv $>/ui/tmp/out.browserified.js $@ && rm -f $>/ui/tmp/out.browserified.*
-$>/ui/.all-stamp: $>/ui/browserified.js
+$>/ui/.build1-stamp: $>/ui/browserified.js
 
 # == $>/ui/favicon.ico ==
 $>/ui/favicon.ico: ui/assets/favicon.svg $>/node_modules/.npm.done ui/Makefile.mk	| $>/ui/tmp/icon-gen/
 	$(QGEN)
 	$Q $>/node_modules/.bin/icon-gen -i $< -o $>/ui/tmp/icon-gen/ # -r
 	$Q mv $>/ui/tmp/icon-gen/favicon.ico $>/ui/ && rm -r $>/ui/tmp/icon-gen/
-$>/ui/.all-stamp: $>/ui/favicon.ico
+$>/ui/.build1-stamp: $>/ui/favicon.ico
 
 # == $>/ui/eslint.files ==
 ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue)
@@ -226,14 +226,17 @@ $>/ui/eslint.files: ui/.eslintrc.js $(ui/eslint.files)			| $>/ui/
 	$(QGEN)
 	$Q cp $< $(@D)/.eslintrc.js
 	$Q echo '$(abspath $(ui/eslint.files))' | tr ' ' '\n' > $@
-$>/ui/.all-stamp: $>/ui/eslint.files
+$>/ui/.build1-stamp: $>/ui/eslint.files
 
 # == eslint.done ==
 $>/ui/.eslint.done: $>/ui/eslint.files $>/node_modules/.npm.done
 	$(QGEN)
-	$Q cd $>/ui/ && npm run eslint
+	$Q cd $>/ui/ && npm run eslint |& ../../misc/colorize.sh
 	$Q touch $@
-$>/ui/.all-stamp: $>/ui/.eslint.done
+$>/ui/.build2-stamp: $>/ui/.eslint.done	# deferred during rebuilds
+eslint: $>/ui/eslint.files $>/node_modules/.npm.done
+	$Q cd $>/ui/ && npm run $@
+.PHONY: eslint
 
 # == ui/vue-doc ==
 $>/ui/vue-docs.md: ui/b/ch-vue.md $(ui/vue.wildcards) ui/Makefile.mk doc/filt-docs2.py	| $>/ui/
@@ -249,27 +252,20 @@ $>/ui/vue-docs.md: ui/b/ch-vue.md $(ui/vue.wildcards) ui/Makefile.mk doc/filt-do
 	$Q $(PANDOC) -t markdown -F doc/filt-docs2.py -f markdown+compact_definition_lists $@.tmp -o $@.tmp2
 	$Q cat $< $@.tmp2 > $@.tmp && rm -f $@.tmp2
 	$Q mv $@.tmp $@
-$>/ui/.all-stamp: $>/ui/vue-docs.md
-
-# == .all-stamp ==
-$>/ui/.all-stamp: ui/.
-	$Q touch $@
-ui/all: $>/ui/.all-stamp
+$>/ui/.build1-stamp: $>/ui/vue-docs.md
+$>/ui/.build2-stamp: $>/doc/anklang-manual.html # deferred during rebuilds
 
 # == serve ==
-serve: all $>/ui/.all-stamp
+serve: all $>/ui/.build1-stamp
 	$Q cd $>/ui/ && npm run serve
 .PHONY: serve
 
-# == eslint ==
-eslint: $>/ui/.all-stamp
-	$Q cd $>/ui/ && npm run $@
-.PHONY: eslint
-
-# == ui/incbuild ==
+# == ui/rebuild ==
 ui/rebuild:
 	@: # incremental rebuild of source files without npm.done
-	$(MAKE) $>/ui/.all-stamp NPMBLOCK=y -j
+	$(MAKE) $>/ui/.build1-stamp NPMBLOCK=y -j
 	@: # close open sockets, only works if *same* executable still runs
 	killall -s USR2 -u $(USER) -- $(abspath $(lib/AnklangSynthEngine))
+	@: # perform non-essential rebuilds that may fail
+	$(MAKE) $>/ui/.build2-stamp NPMBLOCK=y -j --no-print-directory &
 .PHONY: ui/rebuild
