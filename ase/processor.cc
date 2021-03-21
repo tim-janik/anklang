@@ -956,7 +956,7 @@ AudioProcessor::float_buffer (IBusId busid, uint channelindex) const
       const AudioProcessor &oproc = *ibus.proc;
       const OBus &obus = oproc.iobus (ibus.obusid);
       if (ASE_UNLIKELY (channelindex >= obus.fbuffer_count))
-        channelindex = obus.fbuffer_count;
+        channelindex = obus.fbuffer_count - 1;
       return oproc.fbuffers_[obus.fbuffer_index + channelindex];
     }
   return zero_buffer();
