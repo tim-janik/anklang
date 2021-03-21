@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "processor.hh"
+#include "combo.hh"
 #include "main.hh"      // feature_toggle_find
 #include "utils.hh"
 #include "engine.hh"
@@ -1579,7 +1580,7 @@ public:
 
 // == DeviceImpl ==
 DeviceImpl::DeviceImpl (AudioProcessor &proc) :
-  proc_ (proc.shared_from_this())
+  proc_ (proc.shared_from_this()), combo_ (std::dynamic_pointer_cast<AudioCombo> (proc_))
 {}
 
 DeviceInfo

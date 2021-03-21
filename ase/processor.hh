@@ -635,6 +635,7 @@ register_audio_processor (const char *bfile, int bline)
 
 class DeviceImpl : public GadgetImpl, public virtual Device {
   AudioProcessorP proc_;
+  AudioComboP     combo_; // maybe NULL
 public:
   explicit        DeviceImpl             (AudioProcessor &proc);
   DeviceInfo      device_info            () override;
@@ -642,6 +643,7 @@ public:
   PropertyP       access_property        (String ident) override;
   PropertyS       access_properties      () override;
   AudioProcessorP audio_processor        () const       { return proc_; }
+  AudioComboP     audio_combo            () const       { return combo_; }
 };
 
 } // Ase
