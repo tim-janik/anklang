@@ -20,10 +20,13 @@ ASE_CLASS_DECLS (Gadget);
 ASE_CLASS_DECLS (Monitor);
 ASE_CLASS_DECLS (Object);
 ASE_CLASS_DECLS (Project);
+ASE_CLASS_DECLS (ProjectImpl);
 ASE_CLASS_DECLS (Property);
 ASE_CLASS_DECLS (Server);
+ASE_CLASS_DECLS (ServerImpl);
 ASE_CLASS_DECLS (SharedBase);
 ASE_CLASS_DECLS (Track);
+ASE_CLASS_DECLS (TrackImpl);
 
 struct Event;
 class EventConnection;

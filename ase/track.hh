@@ -6,8 +6,6 @@
 
 namespace Ase {
 
-class ProjectImpl;
-
 class TrackImpl : public virtual Track, public virtual GadgetImpl {
   const bool masterflag_ = false;
   ProjectImpl *project_ = nullptr;
@@ -25,7 +23,6 @@ public:
   ClipS    list_clips     () override;
   MonitorP create_monitor (int32 ochannel) override;
 };
-using TrackImplP = std::shared_ptr<TrackImpl>;
 
 } // Ase
 
