@@ -35,10 +35,10 @@ Value::has (const String &key) const
 }
 
 /// List the field names of a RECORD Value.
-StringVector
+StringS
 Value::keys () const
 {
-  StringVector kk;
+  StringS kk;
   if (index() == RECORD)
     for (const auto &field : std::get<ValueR> (*this))
       if (field.value)

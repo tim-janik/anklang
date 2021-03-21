@@ -32,7 +32,7 @@ static_assert (sizeof (int8)  == 1 && sizeof (int16)  == 2 && sizeof (int32)  ==
 static_assert (sizeof (int) == 4 && sizeof (uint) == 4 && sizeof (unichar) == 4, "");
 using std::void_t;
 using String = std::string;               ///< Convenience alias for std::string.
-typedef std::vector<String> StringVector; ///< Convenience alias for a std::vector<std::string>.
+using StringS = std::vector<String>;      ///< Convenience alias for a std::vector<std::string>.
 using StringPair = std::pair<std::string, std::string>;
 using VoidF = std::function<void()>;
 

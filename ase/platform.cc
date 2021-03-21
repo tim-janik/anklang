@@ -57,7 +57,7 @@ runpath (RPath rpath)
 static std::string
 construct_ladspa_path()
 {
-  StringVector sp;
+  StringS sp;
   // gather search path candidates from $LADSPA_PATH
   const char *ladspa_path = getenv ("LADSPA_PATH");
   if (ladspa_path)
@@ -70,7 +70,7 @@ construct_ladspa_path()
   sp.push_back ("/usr/local/lib/ladspa");
   sp.push_back ("/opt/lib/ladspa");
   // convert candidates to realpath and deduplicate
-  StringVector sv;
+  StringS sv;
   for (const std::string &candidate : sp)
     {
       const std::string dir = Path::realpath (candidate);

@@ -113,7 +113,7 @@ Writ::not_serializable (const String &classname)
 
 /// Check for the writable and storage flags in the hints field of typedata.
 bool
-Writ::typedata_is_loadable (const StringVector &typedata, const std::string &fieldname)
+Writ::typedata_is_loadable (const StringS &typedata, const std::string &fieldname)
 {
   return_unless (!typedata.empty() && !fieldname.empty(), true); // avoid constraining unknown fields
   return true; // TODO: check Property hints here
@@ -121,7 +121,7 @@ Writ::typedata_is_loadable (const StringVector &typedata, const std::string &fie
 
 /// Check for the readable and storage flags in the hints field of typedata.
 bool
-Writ::typedata_is_storable  (const StringVector &typedata, const std::string &fieldname)
+Writ::typedata_is_storable  (const StringS &typedata, const std::string &fieldname)
 {
   return_unless (!typedata.empty() && !fieldname.empty(), true); // avoid constraining unknown fields
   return true; // TODO: check Property hints here
@@ -129,7 +129,7 @@ Writ::typedata_is_storable  (const StringVector &typedata, const std::string &fi
 
 /// Find the minimum value for field of typedata.
 bool
-Writ::typedata_find_minimum (const StringVector &typedata, const std::string &fieldname, long double *limit)
+Writ::typedata_find_minimum (const StringS &typedata, const std::string &fieldname, long double *limit)
 {
   return_unless (!typedata.empty() && !fieldname.empty(), false); // avoid constraining unknown fields
   return false; // TODO: check Property hints here
@@ -137,7 +137,7 @@ Writ::typedata_find_minimum (const StringVector &typedata, const std::string &fi
 
 /// Find the maximum value for field of typedata.
 bool
-Writ::typedata_find_maximum (const StringVector &typedata, const std::string &fieldname, long double *limit)
+Writ::typedata_find_maximum (const StringS &typedata, const std::string &fieldname, long double *limit)
 {
   return_unless (!typedata.empty() && !fieldname.empty(), false); // avoid constraining unknown fields
   return false; // TODO: check Property hints here

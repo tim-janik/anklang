@@ -266,11 +266,11 @@ string_locale_vprintf (const char *format, va_list vargs)
   return current_locale_vprintf (format, vargs);
 }
 
-static StringVector
+static StringS
 string_whitesplit (const String &string, size_t maxn)
 {
   static const char whitespaces[] = " \t\n\r\f\v";
-  StringVector sv;
+  StringS sv;
   size_t i, l = 0;
   for (i = 0; i < string.size() && sv.size() < maxn; i++)
     if (strchr (whitespaces, string[i]))
@@ -287,12 +287,12 @@ string_whitesplit (const String &string, size_t maxn)
 
 /// Split a string, using @a splitter as delimiter.
 /// Passing "" as @a splitter will split the string at whitespace positions.
-StringVector
+StringS
 string_split (const String &string, const String &splitter, size_t maxn)
 {
   if (splitter == "")
     return string_whitesplit (string, maxn);
-  StringVector sv;
+  StringS sv;
   size_t i, l = 0, k = splitter.size();
   for (i = 0; i < string.size() && sv.size() < maxn; i++)
     if (string.substr (i, k) == splitter)
@@ -309,10 +309,10 @@ string_split (const String &string, const String &splitter, size_t maxn)
 
 /// Split a string, using any of the @a splitchars as delimiter.
 /// Passing "" as @a splitter will split the string between all position.
-StringVector
+StringS
 string_split_any (const String &string, const String &splitchars, size_t maxn)
 {
-  StringVector sv;
+  StringS sv;
   size_t i, l = 0;
   if (splitchars.empty())
     {
@@ -341,7 +341,7 @@ string_split_any (const String &string, const String &splitchars, size_t maxn)
 
 /// Remove empty elements from a string vector.
 void
-string_vector_erase_empty (StringVector &svector)
+string_vector_erase_empty (StringS &svector)
 {
   for (size_t i = svector.size(); i; i--)
     {
@@ -353,7 +353,7 @@ string_vector_erase_empty (StringVector &svector)
 
 /// Left-strip all elements of a string vector, see string_lstrip().
 void
-string_vector_lstrip (StringVector &svector)
+string_vector_lstrip (StringS &svector)
 {
   for (auto &s : svector)
     s = string_lstrip (s);
@@ -361,7 +361,7 @@ string_vector_lstrip (StringVector &svector)
 
 /// Right-strip all elements of a string vector, see string_rstrip().
 void
-string_vector_rstrip (StringVector &svector)
+string_vector_rstrip (StringS &svector)
 {
   for (auto &s : svector)
     s = string_rstrip (s);
@@ -369,7 +369,7 @@ string_vector_rstrip (StringVector &svector)
 
 /// Strip all elements of a string vector, see string_strip().
 void
-string_vector_strip (StringVector &svector)
+string_vector_strip (StringS &svector)
 {
   for (auto &s : svector)
     s = string_strip (s);
@@ -379,7 +379,7 @@ string_vector_strip (StringVector &svector)
  * Join a string vector into a single string, using @a junctor inbetween each pair of strings.
  */
 String
-string_join (const String &junctor, const StringVector &strvec)
+string_join (const String &junctor, const StringS &strvec)
 {
   String s;
   if (strvec.size())
@@ -1051,7 +1051,7 @@ memset4 (uint32 *mem, uint32 filler, uint length)
  * @returns @a fallback if no match was found.
  */
 String
-string_vector_find (const StringVector &svector, const String &prefix, const String &fallback)
+string_vector_find (const StringS &svector, const String &prefix, const String &fallback)
 {
   for (size_t i = svector.size(); i > 0; i--)
     {
@@ -1068,7 +1068,7 @@ string_vector_find (const StringVector &svector, const String &prefix, const Str
  * @returns @a fallback if no match was found.
  */
 String
-string_vector_find_value (const StringVector &svector, const String &prefix, const String &fallback)
+string_vector_find_value (const StringS &svector, const String &prefix, const String &fallback)
 {
   for (size_t i = svector.size(); i > 0; i--)
     {
@@ -1079,11 +1079,11 @@ string_vector_find_value (const StringVector &svector, const String &prefix, con
   return fallback;
 }
 
-/// Construct a StringVector from a NULL terminated list of string arguments.
-StringVector
+/// Construct a StringS from a NULL terminated list of string arguments.
+StringS
 cstrings_to_vector (const char *s, ...)
 {
-  StringVector sv;
+  StringS sv;
   if (s)
     {
       sv.push_back (s);
@@ -1466,7 +1466,7 @@ string_tests()
   s = "abcabc"; TASSERT (strrstr (s, "bc") == s + 4);
   TASSERT (Ase::kvpair_key ("foo=bar=baz") == "foo");
   TASSERT (Ase::kvpair_value ("foo=bar=baz") == "bar=baz");
-  StringVector sv;
+  StringS sv;
   sv = string_split_any ("a, b, c", ", ");
   TCMP (string_join (";", sv), ==, "a;;b;;c");
   sv = string_split_any ("a, b, c", ", ", 1);

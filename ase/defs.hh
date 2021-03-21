@@ -25,8 +25,6 @@ ASE_CLASS_DECLS (Server);
 ASE_CLASS_DECLS (SharedBase);
 ASE_CLASS_DECLS (Track);
 
-using StringS = std::vector<std::string>;
-
 struct Event;
 class EventConnection;
 using EventHandler = std::function<void (const Event&)>;

@@ -77,7 +77,7 @@ int         run_test   (const std::string &test_identifier);
 
 // === test maintenance ===
 int     run             ();     ///< Run all registered tests.
-int     run             (const StringVector &test_names);     ///< Run named tests.
+int     run             (const StringS &test_names);     ///< Run named tests.
 bool    verbose         ();     ///< Indicates whether tests should run verbosely.
 bool    slow            ();     ///< Indicates whether slow tests should be run.
 void    test_output     (int kind, const String &string);
@@ -145,7 +145,7 @@ Timer::benchmark (Callee callee)
 class TestChain {
 public:
   explicit         TestChain (std::function<void()> tfunc, const std::string &tname, Kind kind);
-  static void      run       (ptrdiff_t internal_token, const StringVector *test_names);
+  static void      run       (ptrdiff_t internal_token, const StringS *test_names);
   const TestChain* next      () const { return next_; }
   std::string      name      () const { return name_; }
   int64            flags     () const { return kind_; }

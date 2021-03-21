@@ -62,7 +62,7 @@ struct Value : ValueVariant {
   const ValueS&  as_array  () const;
   const ValueR&  as_record () const;
   String         repr      () const;
-  StringVector   keys      () const;
+  StringS        keys      () const;
   bool           has       (const String &key) const;
   void           purge_r   (const std::function<bool (const ValueField&)> &pred);
   void operator= (bool v)               { ValueVariant::operator= (v); }
