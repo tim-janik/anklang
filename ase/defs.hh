@@ -12,6 +12,8 @@ ASE_STRUCT_DECLS (DeviceInfo);
 ASE_STRUCT_DECLS (DriverEntry);
 
 // == Class Forward Declarations ==
+ASE_CLASS_DECLS (AudioChain);
+ASE_CLASS_DECLS (AudioCombo);
 ASE_CLASS_DECLS (AudioEngineThread);
 ASE_CLASS_DECLS (AudioProcessor);
 ASE_CLASS_DECLS (Clip);
@@ -27,6 +29,8 @@ ASE_CLASS_DECLS (ServerImpl);
 ASE_CLASS_DECLS (SharedBase);
 ASE_CLASS_DECLS (Track);
 ASE_CLASS_DECLS (TrackImpl);
+
+class AudioEngine;
 
 struct Event;
 class EventConnection;

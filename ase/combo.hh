@@ -3,7 +3,6 @@
 #define __ASE_COMBO_HH__
 
 #include <ase/processor.hh>
-#include <ase/engine.hh>
 
 namespace Ase {
 
