@@ -30,8 +30,8 @@ typedef uint32_t        unichar;        ///< A 32-bit unsigned integer used for 
 static_assert (sizeof (uint8) == 1 && sizeof (uint16) == 2 && sizeof (uint32) == 4 && sizeof (uint64) == 8, "");
 static_assert (sizeof (int8)  == 1 && sizeof (int16)  == 2 && sizeof (int32)  == 4 && sizeof (int64)  == 8, "");
 static_assert (sizeof (int) == 4 && sizeof (uint) == 4 && sizeof (unichar) == 4, "");
-using   std::void_t;
-typedef std::string String;               ///< Convenience alias for std::string.
+using std::void_t;
+using String = std::string;               ///< Convenience alias for std::string.
 typedef std::vector<String> StringVector; ///< Convenience alias for a std::vector<std::string>.
 using StringPair = std::pair<std::string, std::string>;
 using VoidF = std::function<void()>;

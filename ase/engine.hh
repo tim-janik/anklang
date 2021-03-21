@@ -6,10 +6,6 @@
 
 namespace Ase {
 
-class AudioEngineThread;
-class AudioProcessor;
-using AudioProcessorP = std::shared_ptr<AudioProcessor>;
-
 /// Main handle for AudioProcessor administration and audio rendering.
 class AudioEngine : VirtualBase {
   const double nyquist_;          ///< Half the `sample_rate`.

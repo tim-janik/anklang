@@ -2,7 +2,7 @@
 #ifndef __ASE_PLATFORM_HH__
 #define __ASE_PLATFORM_HH__
 
-#include <ase/cxxaux.hh>
+#include <ase/defs.hh>
 #include <condition_variable>
 #include <thread>
 #include <list>

@@ -2,15 +2,10 @@
 #ifndef __ASE_VALUE_HH__
 #define __ASE_VALUE_HH__
 
-#include <ase/cxxaux.hh>
+#include <ase/defs.hh>
 #include <variant>
 
 namespace Ase {
-
-class SharedBase;
-using InstanceP = std::shared_ptr<SharedBase>;
-struct Value;
-using ValueP = std::shared_ptr<Value>;
 
 struct ValueS : std::vector<ValueP> {
   using ValuePVector = std::vector<ValueP>;

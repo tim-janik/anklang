@@ -10,27 +10,6 @@ namespace Ase {
 extern const String STORAGE; // ":r:w:S:";
 extern const String STANDARD; // ":r:w:S:G:";
 
-// == Class Forward Declarations ==
-ASE_STRUCT_DECLS (Choice);
-ASE_STRUCT_DECLS (DeviceInfo);
-ASE_STRUCT_DECLS (DriverEntry);
-using StringS = std::vector<std::string>;
-
-ASE_CLASS_DECLS (Clip);
-ASE_CLASS_DECLS (Device);
-ASE_CLASS_DECLS (Gadget);
-ASE_CLASS_DECLS (Monitor);
-ASE_CLASS_DECLS (Object);
-ASE_CLASS_DECLS (Project);
-ASE_CLASS_DECLS (Property);
-ASE_CLASS_DECLS (Server);
-ASE_CLASS_DECLS (SharedBase);
-ASE_CLASS_DECLS (Track);
-
-struct Event;
-class EventConnection;
-using EventHandler = std::function<void (const Event&)>;
-
 /// Common base type for polymorphic classes managed by `std::shared_ptr<>`.
 class SharedBase : public virtual VirtualBase,
                    public virtual std::enable_shared_from_this<SharedBase>
