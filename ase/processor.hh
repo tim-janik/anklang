@@ -12,11 +12,6 @@
 
 namespace Ase {
 
-ASE_CLASS_DECLS (AudioCombo);
-ASE_CLASS_DECLS (AudioProcessor);
-ASE_CLASS_DECLS (DeviceImpl);
-ASE_STRUCT_DECLS (ParamInfo);
-
 /// ID type for AudioProcessor parameters, the ID numbers are user assignable.
 enum class ParamId : uint32 {};
 

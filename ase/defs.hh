@@ -10,14 +10,18 @@ namespace Ase {
 ASE_STRUCT_DECLS (Choice);
 ASE_STRUCT_DECLS (DeviceInfo);
 ASE_STRUCT_DECLS (DriverEntry);
+ASE_STRUCT_DECLS (ParamInfo);
 
 // == Class Forward Declarations ==
 ASE_CLASS_DECLS (AudioChain);
 ASE_CLASS_DECLS (AudioCombo);
+ASE_CLASS_DECLS (AudioCombo);
 ASE_CLASS_DECLS (AudioEngineThread);
+ASE_CLASS_DECLS (AudioProcessor);
 ASE_CLASS_DECLS (AudioProcessor);
 ASE_CLASS_DECLS (Clip);
 ASE_CLASS_DECLS (Device);
+ASE_CLASS_DECLS (DeviceImpl);
 ASE_CLASS_DECLS (Gadget);
 ASE_CLASS_DECLS (Monitor);
 ASE_CLASS_DECLS (Object);
