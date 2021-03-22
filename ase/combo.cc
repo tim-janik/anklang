@@ -8,22 +8,22 @@
 namespace Ase {
 
 // == Inlet ==
-class AudioCombo::Inlet : public AudioProcessor {
-  AudioCombo &audio_combo_;
+class AudioChain::Inlet : public AudioProcessor {
+  AudioChain &audio_chain_;
 public:
   Inlet (const std::any &any) :
-    audio_combo_ (*std::any_cast<AudioCombo*> (any))
+    audio_chain_ (*std::any_cast<AudioChain*> (any))
   {
-    assert_return (nullptr != std::any_cast<AudioCombo*> (any));
+    assert_return (nullptr != std::any_cast<AudioChain*> (any));
   }
-  void query_info (AudioProcessorInfo &info) const override { info.label = "Anklang.Devices.AudioCombo.Inlet"; }
+  void query_info (AudioProcessorInfo &info) const override { info.label = "Anklang.Devices.AudioChain.Inlet"; }
   void reset      () override                               {}
   void initialize () override                               {}
   void
   configure (uint n_ibusses, const SpeakerArrangement *ibusses, uint n_obusses, const SpeakerArrangement *obusses) override
   {
     remove_all_buses();
-    auto output = add_output_bus ("Output", audio_combo_.ispeakers_);
+    auto output = add_output_bus ("Output", audio_chain_.ispeakers_);
     (void) output;
   }
   void
@@ -31,30 +31,20 @@ public:
   {
     const IBusId i1 = IBusId (1);
     const OBusId o1 = OBusId (1);
-    const uint ni = audio_combo_.n_ichannels (i1);
+    const uint ni = audio_chain_.n_ichannels (i1);
     const uint no = this->n_ochannels (o1);
     assert_return (ni == no);
     for (size_t i = 0; i < ni; i++)
-      redirect_oblock (o1, i, audio_combo_.ifloats (i1, i));
+      redirect_oblock (o1, i, audio_chain_.ifloats (i1, i));
   }
 };
 
 // == AudioCombo ==
-AudioCombo::AudioCombo (SpeakerArrangement iobuses) :
-  ispeakers_ (iobuses), ospeakers_ (iobuses)
-{
-  static const auto reg_id = register_audio_processor<AudioCombo::Inlet>();
-  assert_return (speaker_arrangement_count_channels (iobuses) > 0);
-  AudioProcessorP inlet = AudioProcessor::registry_create (engine_, reg_id, this);
-  assert_return (inlet != nullptr);
-  inlet_ = std::dynamic_pointer_cast<Inlet> (inlet);
-  assert_return (inlet_ != nullptr);
-}
+AudioCombo::AudioCombo()
+{}
 
 AudioCombo::~AudioCombo ()
 {
-  pm_remove_all_buses (*inlet_);
-  inlet_ = nullptr;
   eproc_ = nullptr;
 }
 
@@ -64,14 +54,10 @@ void
 AudioCombo::insert (AudioProcessorP proc, size_t pos)
 {
   assert_return (proc != nullptr);
-  const AudioProcessorS &cprocessors = processors_mt_;
-  const size_t index = CLAMP (pos, 0, cprocessors.size());
-  {
-    std::lock_guard<std::mutex> locker (mt_mutex_);
-    processors_mt_.insert (processors_mt_.begin() + index, proc);
-  }
+  const size_t index = CLAMP (pos, 0, processors_.size());
+  processors_.insert (processors_.begin() + index, proc);
   // fixup following connections
-  reconnect (index);
+  reconnect (index, true);
   engine_.reschedule();
   enqueue_notify_mt (INSERTION);
 }
@@ -80,16 +66,14 @@ AudioCombo::insert (AudioProcessorP proc, size_t pos)
 bool
 AudioCombo::remove (AudioProcessor &proc)
 {
-  const AudioProcessorS &cprocessors = processors_mt_;
   std::vector<AudioProcessor*> unconnected;
   AudioProcessorP processorp;
   size_t pos; // find proc
-  for (pos = 0; pos < cprocessors.size(); pos++)
-    if (cprocessors[pos].get() == &proc)
+  for (pos = 0; pos < processors_.size(); pos++)
+    if (processors_[pos].get() == &proc)
       {
-        processorp = cprocessors[pos]; // and remove...
-        std::lock_guard<std::mutex> locker (mt_mutex_);
-        processors_mt_.erase (processors_mt_.begin() + pos);
+        processorp = processors_[pos]; // and remove...
+        processors_.erase (processors_.begin() + pos);
         break;
       }
   if (!processorp)
@@ -98,7 +82,7 @@ AudioCombo::remove (AudioProcessor &proc)
   pm_disconnect_ibuses (*processorp);
   pm_disconnect_obuses (*processorp);
   // fixup following connections
-  reconnect (pos);
+  reconnect (pos, false);
   enqueue_notify_mt (REMOVAL);
   return true;
 }
@@ -108,17 +92,15 @@ AudioProcessorP
 AudioCombo::at (uint nth)
 {
   return_unless (nth < size(), {});
-  const AudioProcessorS &cprocessors = processors_mt_;
-  return cprocessors[nth];
+  return processors_[nth];
 }
 
 /// Return the index of AudioProcessor `proc` in the AudioCombo.
 ssize_t
 AudioCombo::find_pos (AudioProcessor &proc)
 {
-  const AudioProcessorS &cprocessors = processors_mt_;
-  for (size_t i = 0; i < cprocessors.size(); i++)
-    if (cprocessors[i].get() == &proc)
+  for (size_t i = 0; i < processors_.size(); i++)
+    if (processors_[i].get() == &proc)
       return i;
   return  ~size_t (0);
 }
@@ -127,16 +109,14 @@ AudioCombo::find_pos (AudioProcessor &proc)
 size_t
 AudioCombo::size ()
 {
-  const AudioProcessorS &cprocessors = processors_mt_;
-  return cprocessors.size();
+  return processors_.size();
 }
 
 /// Retrieve list of AudioProcessorS contained in `this` AudioCombo.
 AudioProcessorS
-AudioCombo::list_processors_mt () const
+AudioCombo::list_processors () const
 {
-  std::lock_guard<std::mutex> locker (const_cast<std::mutex&> (mt_mutex_));
-  return processors_mt_; // copy with guard
+  return processors_; // copy
 }
 
 /// Assign event source for future auto-connections of chld processors.
@@ -148,22 +128,94 @@ AudioCombo::set_event_source (AudioProcessorP eproc)
   eproc_ = eproc;
 }
 
-/// Reconnect AudioCombo child processors at start and after.
-void
-AudioCombo::reconnect (size_t start)
+// == AudioChain ==
+AudioChain::AudioChain (SpeakerArrangement iobuses) :
+  ispeakers_ (iobuses), ospeakers_ (iobuses)
 {
-  const AudioProcessorS &cprocessors = processors_mt_;
+  static const auto inlet_id = register_audio_processor<AudioChain::Inlet>();
+  assert_return (speaker_arrangement_count_channels (iobuses) > 0);
+  AudioProcessorP inlet = AudioProcessor::registry_create (engine_, inlet_id, this);
+  assert_return (inlet != nullptr);
+  inlet_ = std::dynamic_pointer_cast<Inlet> (inlet);
+  assert_return (inlet_ != nullptr);
+}
+
+AudioChain::~AudioChain()
+{
+  pm_remove_all_buses (*inlet_);
+  inlet_ = nullptr;
+}
+
+void
+AudioChain::query_info (AudioProcessorInfo &info) const
+{
+  info.uri          = "Anklang.Devices.AudioChain";
+  info.version      = "1";
+  info.label        = "Ase.AudioChain";
+  info.category     = "Routing";
+  info.creator_name = "Anklang Authors";
+  info.website_url  = "https://anklang.testbit.eu";
+}
+
+void
+AudioChain::initialize ()
+{
+  auto ibus = add_input_bus ("Input", ispeakers_);
+  auto obus = add_output_bus ("Output", ospeakers_);
+  (void) ibus;
+  (void) obus;
+}
+
+void
+AudioChain::reset ()
+{}
+
+void
+AudioChain::enqueue_children ()
+{
+  last_output_ = nullptr;
+  engine_.enqueue (*inlet_);
+  for (auto procp : processors_)
+    {
+      engine_.enqueue (*procp);
+      if (procp->n_obuses())
+        last_output_ = procp.get();
+    }
+  // last_output_ is only valid during render()
+}
+
+void
+AudioChain::render (uint n_frames)
+{
+  // make the last processor output the chain output
+  constexpr OBusId OUT1 = OBusId (1);
+  const size_t nlastchannels = last_output_ ? last_output_->n_ochannels (OUT1) : 0;
+  const size_t n_och = n_ochannels (OUT1);
+  for (size_t c = 0; c < n_och; c++)
+    {
+      // an enqueue_children() call is guranteed *before* render(), so last_output_ is valid
+      if (last_output_)
+        redirect_oblock (OUT1, c, last_output_->ofloats (OUT1, std::min (c, nlastchannels - 1)));
+      else
+        assign_oblock (OUT1, c, 0);
+    }
+}
+
+/// Reconnect AudioChain child processors at start and after.
+void
+AudioChain::reconnect (size_t index, bool insertion)
+{
   // clear stale inputs
-  for (size_t i = start; i < cprocessors.size(); i++)
-    pm_disconnect_ibuses (*cprocessors[i]);
+  for (size_t i = index; i < processors_.size(); i++)
+    pm_disconnect_ibuses (*processors_[i]);
   // reconnect pairwise
-  for (size_t i = start; i < cprocessors.size(); i++)
-    chain_up (*(i ? cprocessors[i - 1] : inlet_), *cprocessors[i]);
+  for (size_t i = index; i < processors_.size(); i++)
+    chain_up (*(i ? processors_[i - 1] : inlet_), *processors_[i]);
 }
 
 /// Connect the main audio input of `next` to audio output of `prev`.
 uint
-AudioCombo::chain_up (AudioProcessor &prev, AudioProcessor &next)
+AudioChain::chain_up (AudioProcessor &prev, AudioProcessor &next)
 {
   assert_return (this != &prev, 0);
   assert_return (this != &next, 0);
@@ -196,24 +248,6 @@ AudioCombo::chain_up (AudioProcessor &prev, AudioProcessor &next)
   return n_connected;
 }
 
-
-// == AudioChain ==
-AudioChain::AudioChain (SpeakerArrangement iobuses) :
-  AudioCombo (iobuses)
-{}
-
-AudioChain::~AudioChain()
-{}
-
-void
-AudioChain::query_info (AudioProcessorInfo &info) const
-{
-  info.uri          = "Anklang.Devices.AudioChain";
-  info.version      = "1";
-  info.label        = "Ase.AudioChain";
-  info.category     = "Routing";
-  info.creator_name = "Anklang Authors";
-  info.website_url  = "https://anklang.testbit.eu";
-}
+static const auto audio_chain_id = register_audio_processor<AudioChain>();
 
 } // Ase

@@ -6,30 +6,37 @@
 
 namespace Ase {
 
-class AudioCombo : public AudioProcessor, ProcessorManager {
-  ASE_CLASS_DECLS (Inlet);
-  const SpeakerArrangement ispeakers_ = SpeakerArrangement (0);
-  const SpeakerArrangement ospeakers_ = SpeakerArrangement (0);
-  AudioProcessorS  processors_mt_;
-  std::mutex       mt_mutex_; // FIXME: should *NOT* be needed all mods need to be engine jobs
-  InletP           inlet_;
-  AudioProcessorP  eproc_;
+class AudioCombo : public AudioProcessor, protected ProcessorManager {
 protected:
-  uint            chain_up           (AudioProcessor &pfirst, AudioProcessor &psecond);
-  void            reconnect          (size_t start);
-public:
-  explicit        AudioCombo         (SpeakerArrangement iobuses = SpeakerArrangement::STEREO);
+  AudioProcessorS  processors_;
+  AudioProcessorP  eproc_;
+  virtual void    enqueue_children   () = 0;
+  virtual void    reconnect          (size_t index, bool insertion) = 0;
+  explicit        AudioCombo         ();
   virtual        ~AudioCombo         ();
+public:
   void            insert             (AudioProcessorP proc, size_t pos = ~size_t (0));
   bool            remove             (AudioProcessor &proc);
   AudioProcessorP at                 (uint nth);
   ssize_t         find_pos           (AudioProcessor &proc);
   size_t          size               ();
   void            set_event_source   (AudioProcessorP eproc);
-  AudioProcessorS list_processors_mt () const;
+  AudioProcessorS list_processors    () const;
 };
 
 class AudioChain : public AudioCombo {
+  ASE_CLASS_DECLS (Inlet);
+  const SpeakerArrangement ispeakers_ = SpeakerArrangement (0);
+  const SpeakerArrangement ospeakers_ = SpeakerArrangement (0);
+  InletP           inlet_;
+  AudioProcessor  *last_output_ = nullptr;
+protected:
+  void            initialize       () override;
+  void            reset            () override;
+  void            render           (uint n_frames) override;
+  void            enqueue_children () override;
+  void            reconnect        (size_t index, bool insertion) override;
+  uint            chain_up         (AudioProcessor &pfirst, AudioProcessor &psecond);
 public:
   explicit        AudioChain       (SpeakerArrangement iobuses = SpeakerArrangement::STEREO);
   virtual        ~AudioChain       ();
