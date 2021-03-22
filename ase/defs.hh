@@ -7,6 +7,7 @@
 namespace Ase {
 
 // == Struct Forward Declarations ==
+ASE_STRUCT_DECLS (AudioProcessorInfo);
 ASE_STRUCT_DECLS (Choice);
 ASE_STRUCT_DECLS (DeviceInfo);
 ASE_STRUCT_DECLS (DriverEntry);

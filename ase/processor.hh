@@ -269,9 +269,8 @@ protected:
   void             prepare_event_output ();
   MidiEventStream& get_event_output     ();
 public:
-  using RegistryList = std::vector<AudioProcessorInfo>;
+  using RegistryList = AudioProcessorInfoS;
   using MakeProcessor = AudioProcessorP (*) (const std::any*);
-  using ParamInfoPVec = std::vector<ParamInfoP>;
   using MaybeParamId = std::pair<ParamId,bool>;
   static const std::string STANDARD; ///< ":G:S:r:w:" - GUI STORAGE READABLE WRITABLE
   AudioEngine&  engine            () const;

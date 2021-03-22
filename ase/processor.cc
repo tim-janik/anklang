@@ -1418,7 +1418,7 @@ AudioProcessor::registry_create (AudioEngine &engine, RegistryId regitry_id, con
 }
 
 /// List the registry entries of all known AudioProcessor types.
-AudioProcessor::RegistryList
+AudioProcessorInfoS
 AudioProcessor::registry_list()
 {
   registry_init();
