@@ -21,6 +21,7 @@ struct MainConfig {
   bool   jsipc = false;
   enum ModeT { SYNTHENGINE, CHECK_INTEGRITY_TESTS };
   ModeT  mode = SYNTHENGINE;
+  AudioEngine *engine = nullptr;
 };
 extern const MainConfig &main_config;
 

@@ -248,8 +248,9 @@ main (int argc, char *argv[])
     }
 
   // start audio engine
-  AudioEngine &se = make_audio_engine (48000);
-  se.start_thread ([] () { main_loop->wakeup(); });
+  AudioEngine &ae = make_audio_engine (48000);
+  ae.start_thread ([] () { main_loop->wakeup(); });
+  main_config_.engine = &ae;
 
   // open Jsonapi socket
   auto wss = WebSocketServer::create (jsonapi_make_connection);
@@ -310,7 +311,8 @@ main (int argc, char *argv[])
   wss = nullptr;
 
   // halt audio engine, join its threads
-  se.stop_thread();
+  ae.stop_thread();
+  main_config_.engine = nullptr;
   assert_return (main_loop, -1); // used by AudioEngine
 
   return exitcode;
