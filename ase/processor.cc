@@ -802,7 +802,7 @@ AudioProcessor::initialize ()
 /// Depending on the host, this method may be called multiple times with different arrangements.
 void
 AudioProcessor::configure (uint n_ibuses, const SpeakerArrangement *ibuses,
-                      uint n_obuses, const SpeakerArrangement *obuses)
+                           uint n_obuses, const SpeakerArrangement *obuses)
 {}
 
 /// Prepare the AudioProcessor to receive Event objects during render() via get_event_input().
@@ -1114,6 +1114,7 @@ AudioProcessor::ensure_initialized()
 {
   if (!is_initialized())
     {
+      assert_return (n_ibuses() + n_obuses() == 0);
       tls_param_group = "";
       initialize();
       tls_param_group = "";
@@ -1127,6 +1128,7 @@ AudioProcessor::ensure_initialized()
       assign_iobufs();
       reset_state();
     }
+  assert_return (n_ibuses() + n_obuses() != 0);
 }
 
 /// Reset all voices, buffers and other internal state

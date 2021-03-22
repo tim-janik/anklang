@@ -219,9 +219,9 @@ protected:
   AudioEngine  &engine_;
   explicit      AudioProcessor    ();
   virtual      ~AudioProcessor    ();
-  virtual void  initialize        ();
+  virtual void  initialize        () = 0;
   virtual void  configure         (uint n_ibuses, const SpeakerArrangement *ibuses,
-                                   uint n_obuses, const SpeakerArrangement *obuses) = 0;
+                                   uint n_obuses, const SpeakerArrangement *obuses);
   void          enqueue_notify_mt (uint32 pushmask);
   virtual DeviceImplP device_impl () const;
   // Parameters
