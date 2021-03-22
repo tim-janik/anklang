@@ -18,20 +18,23 @@ protected:
   static void  render_block          (AudioProcessorP ap);
   explicit     AudioEngine           (uint sample_rate);
 public:
+  virtual void assign_root           (AudioProcessorP aproc) = 0;
+  virtual void enqueue               (AudioProcessor &aproc) = 0;
+  void         reschedule            ();
+  void         add_pcm_output        (AudioProcessorP proc);
+  // Owner-Thread API
+  void         start_thread          (const VoidF &owner_wakeup);
+  void         stop_thread           ();
+  bool         ipc_pending           ();
+  void         ipc_dispatch          ();
+  // MT-Safe API
+  void         ipc_wakeup_mt         ();
+  void         operator+=            (const std::function< void()> &job);
   uint         sample_rate           () const ASE_CONST     { return sample_rate_; }
   double       nyquist               () const ASE_CONST     { return nyquist_; }
   double       inyquist              () const ASE_CONST     { return inyquist_; }
   uint64_t     frame_counter         () const               { return frame_counter_; }
   ThreadId     thread_id             () const               { return thread_id_; }
-  void         start_thread          (const VoidF &owner_wakeup);
-  void         stop_thread           ();
-  virtual void assign_root           (AudioProcessorP aproc) = 0;
-  virtual void enqueue               (AudioProcessor &aproc) = 0;
-  void         reschedule            ();
-  bool         ipc_pending           ();
-  void         ipc_dispatch          ();
-  void         ipc_wakeup_mt         ();
-  void         operator+=            (const std::function< void()> &job);
 };
 
 AudioEngine&    make_audio_engine    (uint sample_rate);
