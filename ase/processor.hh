@@ -628,19 +628,6 @@ register_audio_processor (const char *bfile, int bline)
   return AudioProcessor::registry_enroll (makeasp, bfile, bline);
 }
 
-class DeviceImpl : public GadgetImpl, public virtual Device {
-  AudioProcessorP proc_;
-  AudioComboP     combo_; // maybe NULL
-public:
-  explicit        DeviceImpl             (AudioProcessor &proc);
-  DeviceInfo      device_info            () override;
-  StringS         list_properties        () override;
-  PropertyP       access_property        (String ident) override;
-  PropertyS       access_properties      () override;
-  AudioProcessorP audio_processor        () const       { return proc_; }
-  AudioComboP     audio_combo            () const       { return combo_; }
-};
-
 } // Ase
 
 namespace std {
