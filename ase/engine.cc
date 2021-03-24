@@ -28,6 +28,7 @@ public:
   bool     driver_dispatcher (const LoopState &state);
   void     ensure_driver     ();
   void     add_output        (AudioProcessorP aproc) override;
+  bool     remove_output     (AudioProcessorP aproc) override;
   void     enqueue           (AudioProcessor &aproc) override;
 };
 
@@ -46,12 +47,23 @@ void
 AudioEngineThread::enqueue (AudioProcessor &aproc)
 {
   // TODO: impl missing
+  reschedule();
 }
 
 void
 AudioEngineThread::add_output (AudioProcessorP aproc)
 {
   oprocs_.push_back (aproc);
+  reschedule();
+}
+
+bool
+AudioEngineThread::remove_output (AudioProcessorP aproc)
+{
+  const bool count = Aux::erase_first (oprocs_, [aproc] (AudioProcessorP c) { return c == aproc; });
+  if (count)
+    reschedule();
+  return count;
 }
 
 void
@@ -69,6 +81,7 @@ AudioEngineThread::ensure_driver()
     pcm_driver_ = PcmDriver::open ("auto", Driver::WRITEONLY, Driver::WRITEONLY, pconfig, &er);
   if (!pcm_driver_)
     pcm_driver_ = null_pcm_driver_;
+  reschedule();
 }
 
 void
@@ -256,6 +269,7 @@ AudioEngine::start_thread (const VoidF &owner_wakeup)
   AudioEngineThread &engine = *dynamic_cast<AudioEngineThread*> (this);
   engine.ensure_driver();
   assert_return (engine.thread_ == nullptr);
+  reschedule();
   StartQueue start_queue;
   engine.thread_ = new std::thread (&AudioEngineThread::run, &engine, owner_wakeup, &start_queue);
   const char reply = start_queue.pop(); // synchronize with thread start

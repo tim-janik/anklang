@@ -70,6 +70,7 @@ protected:
   explicit     AudioEngine           (uint sample_rate, SpeakerArrangement speakerarrangement);
 public:
   virtual void add_output            (AudioProcessorP aproc) = 0;
+  virtual bool remove_output         (AudioProcessorP aproc) = 0;
   virtual void enqueue               (AudioProcessor &aproc) = 0;
   void         reschedule            ();
   // Owner-Thread API
