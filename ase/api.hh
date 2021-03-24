@@ -165,9 +165,9 @@ public:
 /// Base type for classes that have a Property.
 class Gadget : public virtual Object {
 public:
-  virtual std::string type_nick         () const = 0;
-  virtual std::string name              () const = 0;
-  virtual void        name              (std::string newname) = 0;
+  virtual String      type_nick         () const = 0;
+  virtual String      name              () const = 0;
+  virtual void        name              (String newname) = 0;
   // Parameters
   virtual StringS     list_properties   () = 0;             ///< List all property identifiers.
   virtual PropertyP   access_property   (String ident) = 0; ///< Retrieve handle for a Property.
@@ -187,7 +187,17 @@ struct DeviceInfo {
 
 /// Interface to access Device instances.
 class Device : public virtual Gadget {
-  virtual DeviceInfo device_info () = 0;             ///< Describe this Device type.
+public:
+  virtual DeviceInfo  device_info        () = 0;                      ///< Describe this Device type.
+  // Combo
+  virtual bool        is_combo_device    () = 0;                      ///< Retrieve wether this Device handles sub devices.
+  virtual DeviceS     list_devices       () = 0;                      ///< List devices in order of processing, notified via "devices".
+  // Create sub Device
+  virtual DeviceInfoS list_device_types  () = 0;                      ///< List registered Device types with their unique uri.
+  virtual void        remove_device      (Device &sub) = 0;           ///< Remove a directly contained device.
+  virtual DeviceP     create_device      (const String &uuiduri) = 0; ///< Create a new device, see list_device_types().
+  virtual DeviceP     create_device_before (const String &uuiduri,
+                                            Device &sibling) = 0;      ///< Create device, before sibling.
 };
 
 /// Container for MIDI note and control events.
@@ -205,6 +215,7 @@ public:
   virtual void     midi_channel   (int32 midichannel) = 0;
   virtual bool     is_master      () const = 0;          ///< Flag set on the main output track.
   virtual ClipS    list_clips     () = 0;                ///< Retrieve a list of the clips within this track.
+  virtual DeviceP  access_device  () = 0;                ///< Retrieve Device handle for this track.
   virtual MonitorP create_monitor (int32 ochannel) = 0;  /// Create signal monitor for an output channel.
 };
 

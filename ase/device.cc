@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "device.hh"
 #include "combo.hh"
+#include "main.hh"
 #include "jsonipc/jsonipc.hh"
 #include "internal.hh"
 
@@ -69,6 +70,103 @@ DeviceImpl::access_property (String ident)
     if (p.info->ident == ident)
       return proc_->access_property (p.id);
   return {};
+}
+
+DeviceS
+DeviceImpl::list_devices ()
+{
+  DeviceS devs;
+  AudioComboP combo = combo_;
+  auto job = [&devs, combo] () {
+    for (auto &proc : combo->list_processors())
+      devs.push_back (proc->device_impl());
+  };
+  proc_->engine_.const_jobs += job;
+  return devs;
+}
+
+DeviceInfoS
+DeviceImpl::list_device_types ()
+{
+  DeviceInfoS iseq;
+  const auto rlist = AudioProcessor::registry_list();
+  iseq.reserve (rlist.size());
+  for (const AudioProcessorInfo &entry : rlist)
+    {
+      DeviceInfo info;
+      info.uri          = entry.uri;
+      info.name         = entry.label;
+      info.category     = entry.category;
+      info.description  = entry.description;
+      info.website_url  = entry.website_url;
+      info.creator_name = entry.creator_name;
+      info.creator_url  = entry.creator_url;
+      iseq.push_back (info);
+    }
+  return iseq;
+}
+
+void
+DeviceImpl::remove_device (Device &sub)
+{
+  DeviceImpl *subi = dynamic_cast<DeviceImpl*> (&sub);
+  AudioProcessorP subp = subi ? subi->proc_ : nullptr;
+  if (subp && combo_)
+    {
+      AudioComboP combo = combo_;
+      auto j = [combo, subp] () {
+        combo->remove (*subp);
+      };
+      proc_->engine().async_jobs += j;
+    }
+  // blocking on an async_job for returning `true` would take fairly long
+}
+
+DeviceP
+DeviceImpl::create_device_before (const String &uuiduri, Device *sibling)
+{
+  DeviceP devicep;
+  DeviceImpl *siblingi = dynamic_cast<DeviceImpl*> (sibling);
+  AudioProcessorP siblingp = siblingi ? siblingi->proc_ : nullptr;
+  if (combo_)
+    {
+      AudioProcessorP subp = make_audio_processor (proc_->engine(), uuiduri);
+      return_unless (subp, nullptr);
+      devicep = subp->get_device();
+      AudioComboP combo = combo_;
+      auto j = [combo, subp, siblingp] () {
+        const size_t pos = siblingp ? combo->find_pos (*siblingp) : ~size_t (0);
+        combo->insert (subp, pos);
+      };
+      proc_->engine().async_jobs += j;
+    }
+  return devicep;
+}
+
+DeviceP
+DeviceImpl::create_device (const String &uuiduri)
+{
+  return create_device_before (uuiduri, nullptr);
+}
+
+DeviceP
+DeviceImpl::create_device_before (const String &uuiduri, Device &sibling)
+{
+  return create_device_before (uuiduri, &sibling);
+}
+
+DeviceP
+DeviceImpl::create_output (const String &uuiduri)
+{
+  AudioEngine *engine = main_config.engine;
+  AudioProcessorP procp = make_audio_processor (*engine, uuiduri);
+  return_unless (procp, nullptr);
+  DeviceP devicep = procp->get_device();
+  auto j = [engine, procp] () {
+    engine->add_output (procp);
+  };
+  engine->async_jobs += j;
+  return devicep;
 }
 
 } // Ase
