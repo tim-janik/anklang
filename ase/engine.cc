@@ -20,14 +20,14 @@ class AudioEngineThread : public AudioEngine {
   constexpr static size_t buffer_size_ = AUDIO_BLOCK_MAX_RENDER_SIZE * fixed_n_channels;
   float buffer_data_[buffer_size_] = { 0, };
 public:
-  std::thread *thread_ = nullptr;
-  MainLoopP    event_loop_ = MainLoop::create();
-  AudioProcessorP aproc_;
-  explicit AudioEngineThread (uint sample_rate);
+  std::thread    *thread_ = nullptr;
+  MainLoopP       event_loop_ = MainLoop::create();
+  AudioProcessorS oprocs_;
+  explicit AudioEngineThread (uint sample_rate, SpeakerArrangement speakerarrangement);
   void     run               (const VoidF &owner_wakeup, StartQueue *sq);
   bool     driver_dispatcher (const LoopState &state);
   void     ensure_driver     ();
-  void     assign_root       (AudioProcessorP aproc) override;
+  void     add_output        (AudioProcessorP aproc) override;
   void     enqueue           (AudioProcessor &aproc) override;
 };
 
@@ -36,9 +36,11 @@ AudioEngineThread::~AudioEngineThread ()
   fatal_error ("AudioEngine references must persist");
 }
 
-AudioEngineThread::AudioEngineThread (uint sample_rate) :
-  AudioEngine (sample_rate)
-{}
+AudioEngineThread::AudioEngineThread (uint sample_rate, SpeakerArrangement speakerarrangement) :
+  AudioEngine (sample_rate, speakerarrangement)
+{
+  oprocs_.reserve (64);
+}
 
 void
 AudioEngineThread::enqueue (AudioProcessor &aproc)
@@ -47,12 +49,9 @@ AudioEngineThread::enqueue (AudioProcessor &aproc)
 }
 
 void
-AudioEngineThread::assign_root (AudioProcessorP aproc)
+AudioEngineThread::add_output (AudioProcessorP aproc)
 {
-  AudioProcessorP oldp;
-  std::swap (oldp, aproc_);
-  aproc_ = aproc;
-  // TODO: move oldp into main thread
+  oprocs_.push_back (aproc);
 }
 
 void
@@ -86,6 +85,46 @@ AudioEngineThread::run (const VoidF &owner_wakeup, StartQueue *sq)
   printerr ("AudioEngineThread.run: exiting\n");
 }
 
+template<int ADDING> static void
+interleaved_stereo (const size_t frames, float *buffer, AudioProcessor &proc, OBusId obus)
+{
+  if (proc.n_ochannels (obus) >= 2)
+    {
+      const float *src0 = proc.ofloats (obus, 0);
+      const float *src1 = proc.ofloats (obus, 1);
+      float *d = buffer, *const b = d + 2 * frames;
+      do {
+        if_constexpr (ADDING == 0)
+          {
+            *d++ = *src0++;
+            *d++ = *src1++;
+          }
+        else
+          {
+            *d++ += *src0++;
+            *d++ += *src1++;
+          }
+      } while (d < b);
+    }
+  else if (proc.n_ochannels (obus) >= 1)
+    {
+      const float *src = proc.ofloats (obus, 0);
+      float *d = buffer, *const b = d + 2 * frames;
+      do {
+        if_constexpr (ADDING == 0)
+          {
+            *d++ = *src;
+            *d++ = *src++;
+          }
+        else
+          {
+            *d++ += *src;
+            *d++ += *src++;
+          }
+      } while (d < b);
+    }
+}
+
 bool
 AudioEngineThread::driver_dispatcher (const LoopState &state)
 {
@@ -103,46 +142,110 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
       }
     case LoopState::DISPATCH: {
       pcm_driver_->pcm_write (buffer_size_, buffer_data_);
+      constexpr auto MAIN_OBUS = OBusId (1);
       // render
       frame_counter_ += AUDIO_BLOCK_MAX_RENDER_SIZE;
-      if (aproc_ && aproc_->n_obuses())
+      if (oprocs_.size() == 0)
+        floatfill (buffer_data_, 0.0, buffer_size_);
+      else
         { // render_block
           // TODO: assert_return (!(eflags_ & RESCHEDULE));
           // TODO: for (auto procp : schedule_) procp->render_block();
-          render_block (aproc_);
-          constexpr auto MAIN_OBUS = OBusId (1);
-          if (aproc_->n_ochannels (MAIN_OBUS) >= 2)
-            {
-              const float *src0 = aproc_->ofloats (MAIN_OBUS, 0);
-              const float *src1 = aproc_->ofloats (MAIN_OBUS, 1);
-              float *d = buffer_data_, *b = d + 2 * AUDIO_BLOCK_MAX_RENDER_SIZE;
-              do {
-                *d++ = *src0++;
-                *d++ = *src1++;
-              } while (d < b);
-            }
-          else if (aproc_->n_ochannels (MAIN_OBUS) >= 1)
-            {
-              const float *src = aproc_->ofloats (MAIN_OBUS, 0);
-              float *d = buffer_data_, *b = d + 2 * AUDIO_BLOCK_MAX_RENDER_SIZE;
-              do {
-                *d++ = *src;
-                *d++ = *src++;
-              } while (d < b);
-            }
+          for (auto op : oprocs_)
+            render_block (op);
+          interleaved_stereo<0> (AUDIO_BLOCK_MAX_RENDER_SIZE, buffer_data_, *oprocs_[0], MAIN_OBUS);
+          for (size_t i = 1; i < oprocs_.size(); i++)
+            interleaved_stereo<1> (AUDIO_BLOCK_MAX_RENDER_SIZE, buffer_data_, *oprocs_[i], MAIN_OBUS);
         }
-      else
-        floatfill (buffer_data_, 0.0, buffer_size_);
       return true; } // keep alive
     default: ;
     }
   return false;
 }
 
+// == SpeakerArrangement ==
+// Count the number of channels described by the SpeakerArrangement.
+uint8
+speaker_arrangement_count_channels (SpeakerArrangement spa)
+{
+  const uint64_t bits = uint64_t (speaker_arrangement_channels (spa));
+  if_constexpr (sizeof (bits) == sizeof (long))
+    return __builtin_popcountl (bits);
+  return __builtin_popcountll (bits);
+}
+
+// Check if the SpeakerArrangement describes auxillary channels.
+bool
+speaker_arrangement_is_aux (SpeakerArrangement spa)
+{
+  return uint64_t (spa) & uint64_t (SpeakerArrangement::AUX);
+}
+
+// Retrieve the bitmask describing the SpeakerArrangement channels.
+SpeakerArrangement
+speaker_arrangement_channels (SpeakerArrangement spa)
+{
+  const uint64_t bits = uint64_t (spa) & uint64_t (speaker_arrangement_channels_mask);
+  return SpeakerArrangement (bits);
+}
+
+const char*
+speaker_arrangement_bit_name (SpeakerArrangement spa)
+{
+  switch (spa)
+    { // https://wikipedia.org/wiki/Surround_sound
+    case SpeakerArrangement::NONE:              	return "-";
+      // case SpeakerArrangement::MONO:                 return "Mono";
+    case SpeakerArrangement::FRONT_LEFT:        	return "FL";
+    case SpeakerArrangement::FRONT_RIGHT:       	return "FR";
+    case SpeakerArrangement::FRONT_CENTER:      	return "FC";
+    case SpeakerArrangement::LOW_FREQUENCY:     	return "LFE";
+    case SpeakerArrangement::BACK_LEFT:         	return "BL";
+    case SpeakerArrangement::BACK_RIGHT:                return "BR";
+    case SpeakerArrangement::AUX:                       return "AUX";
+    case SpeakerArrangement::STEREO:                    return "Stereo";
+    case SpeakerArrangement::STEREO_21:                 return "Stereo-2.1";
+    case SpeakerArrangement::STEREO_30:	                return "Stereo-3.0";
+    case SpeakerArrangement::STEREO_31:	                return "Stereo-3.1";
+    case SpeakerArrangement::SURROUND_50:	        return "Surround-5.0";
+    case SpeakerArrangement::SURROUND_51:	        return "Surround-5.1";
+#if 0 // TODO: dynamic multichannel support
+    case SpeakerArrangement::FRONT_LEFT_OF_CENTER:      return "FLC";
+    case SpeakerArrangement::FRONT_RIGHT_OF_CENTER:     return "FRC";
+    case SpeakerArrangement::BACK_CENTER:               return "BC";
+    case SpeakerArrangement::SIDE_LEFT:	                return "SL";
+    case SpeakerArrangement::SIDE_RIGHT:	        return "SR";
+    case SpeakerArrangement::TOP_CENTER:	        return "TC";
+    case SpeakerArrangement::TOP_FRONT_LEFT:	        return "TFL";
+    case SpeakerArrangement::TOP_FRONT_CENTER:	        return "TFC";
+    case SpeakerArrangement::TOP_FRONT_RIGHT:	        return "TFR";
+    case SpeakerArrangement::TOP_BACK_LEFT:	        return "TBL";
+    case SpeakerArrangement::TOP_BACK_CENTER:	        return "TBC";
+    case SpeakerArrangement::TOP_BACK_RIGHT:	        return "TBR";
+    case SpeakerArrangement::SIDE_SURROUND_50:	        return "Side-Surround-5.0";
+    case SpeakerArrangement::SIDE_SURROUND_51:	        return "Side-Surround-5.1";
+#endif
+    }
+  return nullptr;
+}
+
+std::string
+speaker_arrangement_desc (SpeakerArrangement spa)
+{
+  const bool isaux = speaker_arrangement_is_aux (spa);
+  const SpeakerArrangement chan = speaker_arrangement_channels (spa);
+  const char *chname = SpeakerArrangement::MONO == chan ? "Mono" : speaker_arrangement_bit_name (chan);
+  std::string s (chname ? chname : "<INVALID>");
+  if (isaux)
+    s = std::string (speaker_arrangement_bit_name (SpeakerArrangement::AUX)) + "(" + s + ")";
+  return s;
+}
+
 // == AudioEngine ==
-AudioEngine::AudioEngine (uint sample_rate) :
+AudioEngine::AudioEngine (uint sample_rate, SpeakerArrangement speakerarrangement) :
   nyquist_ (0.5 * sample_rate), inyquist_ (1.0 / nyquist_), sample_rate_ (sample_rate),
-  frame_counter_ (1024 * 1024 * 1024)
+  speaker_arrangement_ (speakerarrangement), frame_counter_ (1024 * 1024 * 1024),
+  const_jobs (*this, 0), async_jobs (*this, 1)
 {
   assert_return (sample_rate == 48000);
 }
@@ -173,8 +276,11 @@ AudioEngine::stop_thread ()
 }
 
 void
-AudioEngine::operator+= (const std::function<void()> &job)
-{}  // TODO: implement, also need trash queue
+AudioEngine::add_job (const std::function<void()> &job, int flags)
+{
+  assert_return (!"CALLED");
+  // TODO: implement, also need trash queue
+}
 
 void
 AudioEngine::reschedule ()
@@ -200,10 +306,16 @@ AudioEngine::render_block (AudioProcessorP ap)
   ap->render_block();
 }
 
-AudioEngine&
-make_audio_engine (uint sample_rate)
+SpeakerArrangement
+AudioEngine::speaker_arrangement () const
 {
-  return *new AudioEngineThread (sample_rate);
+  return speaker_arrangement_;
+}
+
+AudioEngine&
+make_audio_engine (uint sample_rate, SpeakerArrangement speakerarrangement)
+{
+  return *new AudioEngineThread (sample_rate, speakerarrangement);
 }
 
 AudioProcessorP

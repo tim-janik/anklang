@@ -248,7 +248,7 @@ main (int argc, char *argv[])
     }
 
   // start audio engine
-  AudioEngine &ae = make_audio_engine (48000);
+  AudioEngine &ae = make_audio_engine (48000, SpeakerArrangement::STEREO);
   ae.start_thread ([] () { main_loop->wakeup(); });
   main_config_.engine = &ae;
 
