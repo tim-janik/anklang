@@ -145,7 +145,7 @@ private:
   uint32                   output_offset_ = 0;
   FloatBuffer             *fbuffers_ = nullptr;
   std::vector<PBus>        iobuses_;
-  std::vector<PParam>      params_;
+  std::vector<PParam>      params_; // const once is_initialized()
   std::vector<OConnection> outputs_;
   EventStreams            *estreams_ = nullptr;
   uint64_t                 done_frames_ = 0;
@@ -154,7 +154,6 @@ private:
   const PParam*      find_pparam_       (ParamId paramid) const;
   void               assign_iobufs      ();
   void               release_iobufs     ();
-  void               reconfigure        (IBusId ibus, SpeakerArrangement ipatch, OBusId obus, SpeakerArrangement opatch);
   void               ensure_initialized ();
   const FloatBuffer& float_buffer       (IBusId busid, uint channelindex) const;
   FloatBuffer&       float_buffer       (OBusId busid, uint channelindex, bool resetptr = false);
@@ -171,9 +170,7 @@ protected:
   AudioEngine  &engine_;
   explicit      AudioProcessor    ();
   virtual      ~AudioProcessor    ();
-  virtual void  initialize        () = 0;
-  virtual void  configure         (uint n_ibuses, const SpeakerArrangement *ibuses,
-                                   uint n_obuses, const SpeakerArrangement *obuses);
+  virtual void  initialize        (SpeakerArrangement busses) = 0;
   void          enqueue_notify_mt (uint32 pushmask);
   virtual DeviceImplP device_impl () const;
   // Parameters
@@ -250,7 +247,7 @@ public:
   virtual double      value_from_normalized (Id32 paramid, double normalized) const;
   double              get_normalized        (Id32 paramid);
   void                set_normalized        (Id32 paramid, double normalized);
-  bool                is_initialized    () const;
+  bool                is_initialized        () const;
   // Buses
   IBusId        find_ibus         (const std::string &name) const;
   OBusId        find_obus         (const std::string &name) const;
@@ -264,11 +261,11 @@ public:
   const float*  ifloats           (IBusId b, uint c) const;
   const float*  ofloats           (OBusId b, uint c) const;
   static uint64 timestamp         ();
+  DeviceImplP   get_device        (bool create = true) const;
   bool          has_event_input   ();
   bool          has_event_output  ();
   void          connect_event_input    (AudioProcessor &oproc);
   void          disconnect_event_input ();
-  DeviceImplP   get_device        (bool create = true) const;
   // MT-Safe accessors
   static double          param_peek_mt   (const AudioProcessorP proc, Id32 paramid);
   // Registration and factory
@@ -322,8 +319,6 @@ protected:
                                    { return p.connect (i, d, o); }
   static auto pm_connect_events    (AudioProcessor &oproc, AudioProcessor &iproc)
                                    { return iproc.connect_event_input (oproc); }
-  static auto pm_reconfigure       (AudioProcessor &p, IBusId i, SpeakerArrangement ip, OBusId o, SpeakerArrangement op)
-                                   { return p.reconfigure (i, ip, o, op); }
 };
 
 // == Inlined Internals ==

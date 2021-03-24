@@ -682,7 +682,7 @@ AudioProcessor::param_value_from_text (Id32 paramid, const std::string &text) co
   return string_to_double (text);
 }
 
-/// Check if AudioProcessor has been properly intiialized (so the set parameters is fixed).
+/// Check if AudioProcessor has been properly intiialized (so the parameter set is fixed).
 bool
 AudioProcessor::is_initialized () const
 {
@@ -713,20 +713,14 @@ void
 AudioProcessor::query_info (AudioProcessorInfo &info) const
 {}
 
-/// Mandatory method to setup parameters (see add_param()) and initialize internal structures.
+/// Mandatory method to setup parameters and I/O busses.
+/// See add_param(), add_input_bus() / add_output_bus().
 /// This method will be called once per instance after construction.
 void
-AudioProcessor::initialize ()
+AudioProcessor::initialize (SpeakerArrangement busses)
 {
   assert_return (n_ibuses() + n_obuses() == 0);
 }
-
-/// Mandatory method to setup IO buses (see add_input_bus() / add_output_bus()).
-/// Depending on the host, this method may be called multiple times with different arrangements.
-void
-AudioProcessor::configure (uint n_ibuses, const SpeakerArrangement *ibuses,
-                           uint n_obuses, const SpeakerArrangement *obuses)
-{}
 
 /// Prepare the AudioProcessor to receive Event objects during render() via get_event_input().
 /// Note, remove_all_buses() will remove the Event input created by this function.
@@ -808,12 +802,12 @@ IBusId
 AudioProcessor::add_input_bus (CString uilabel, SpeakerArrangement speakerarrangement,
                                const std::string &hints, const std::string &blurb)
 {
-  const IBusId zero {0};
-  assert_return (uilabel != "", zero);
-  assert_return (uint64_t (speaker_arrangement_channels (speakerarrangement)) > 0, zero);
-  assert_return (iobuses_.size() < 65535, zero);
+  assert_return (!is_initialized(), {});
+  assert_return (uilabel != "", {});
+  assert_return (uint64_t (speaker_arrangement_channels (speakerarrangement)) > 0, {});
+  assert_return (iobuses_.size() < 65535, {});
   if (n_ibuses())
-    assert_return (uilabel != iobus (IBusId (n_ibuses())).label, zero); // easy CnP error
+    assert_return (uilabel != iobus (IBusId (n_ibuses())).label, {}); // easy CnP error
   PBus pbus { canonify_identifier (uilabel), uilabel, speakerarrangement };
   pbus.pbus.hints = hints;
   pbus.pbus.blurb = blurb;
@@ -828,12 +822,12 @@ OBusId
 AudioProcessor::add_output_bus (CString uilabel, SpeakerArrangement speakerarrangement,
                                 const std::string &hints, const std::string &blurb)
 {
-  const OBusId zero {0};
-  assert_return (uilabel != "", zero);
-  assert_return (uint64_t (speaker_arrangement_channels (speakerarrangement)) > 0, zero);
-  assert_return (iobuses_.size() < 65535, zero);
+  assert_return (!is_initialized(), {});
+  assert_return (uilabel != "", {});
+  assert_return (uint64_t (speaker_arrangement_channels (speakerarrangement)) > 0, {});
+  assert_return (iobuses_.size() < 65535, {});
   if (n_obuses())
-    assert_return (uilabel != iobus (OBusId (n_obuses())).label, zero); // easy CnP error
+    assert_return (uilabel != iobus (OBusId (n_obuses())).label, {}); // easy CnP error
   PBus pbus { canonify_identifier (uilabel), uilabel, speakerarrangement };
   pbus.pbus.hints = hints;
   pbus.pbus.blurb = blurb;
@@ -1039,15 +1033,12 @@ AudioProcessor::ensure_initialized()
     {
       assert_return (n_ibuses() + n_obuses() == 0);
       tls_param_group = "";
-      initialize();
+      initialize (engine_.speaker_arrangement());
       tls_param_group = "";
       flags_ |= INITIALIZED;
-      const SpeakerArrangement ibuses = SpeakerArrangement::STEREO;
-      const SpeakerArrangement obuses = SpeakerArrangement::STEREO;
-      configure (1, &ibuses, 1, &obuses);
       if (n_ibuses() + n_obuses() == 0 &&
           (!estreams_ || (!estreams_->has_event_input && !estreams_->has_event_output)))
-        warning ("AudioProcessor::%s: failed to setup any input/output facilities for: %s", __func__, debug_name());
+        warning ("AudioProcessor::%s: initialize() failed to add input/output busses for: %s", __func__, debug_name());
       assign_iobufs();
       reset_state();
     }
@@ -1109,52 +1100,6 @@ AudioProcessor::render_block ()
     estreams_->estream.clear();
   render (AUDIO_BLOCK_MAX_RENDER_SIZE);
   done_frames_ = engine_frame_counter;
-}
-
-/// Invoke AudioProcessor::configure() with `ipatch`/`opatch` applied to the current configuration.
-void
-AudioProcessor::reconfigure (IBusId ibusid, SpeakerArrangement ipatch, OBusId obusid, SpeakerArrangement opatch)
-{
-  const size_t ibus = size_t (ibusid) - 1;
-  const size_t obus = size_t (obusid) - 1;
-  if (uint64_t (ipatch))
-    assert_return (ibus <= n_ibuses());
-  if (uint64_t (opatch))
-    assert_return (obus <= n_obuses());
-  assert_return (n_ibuses() + n_obuses() == iobuses_.size());
-  const uint sacount = iobuses_.size() + 1 + 1;
-  SpeakerArrangement *sai = new SpeakerArrangement[sacount];
-  SpeakerArrangement *sao = sai + n_ibuses() + 1;
-  size_t i;
-  for (i = 0; i < n_ibuses(); i++)
-    sai[i] = iobuses_[i].ibus.speakers;
-  sai[i] = SpeakerArrangement (0);
-  for (i = 0; i < n_obuses(); i++)
-    sao[i] = iobuses_[output_offset_ + i].obus.speakers;
-  sao[i] = SpeakerArrangement (0);
-  bool need_configure = false;
-  if (size_t (ibus) && uint64_t (ipatch) &&
-      sai[size_t (ibus) - 1] != ipatch)
-    {
-      sai[size_t (ibus) - 1] = ipatch;
-      need_configure = true;
-    }
-  if (size_t (obus) && uint64_t (opatch) &&
-      sao[size_t (obus) - 1] != opatch)
-    {
-      sao[size_t (obus) - 1] = opatch;
-      need_configure = true;
-    }
-  if (!need_configure)
-    {
-      delete[] sai;
-      return;
-    }
-  release_iobufs();
-  configure (n_ibuses(), sai, n_obuses(), sao);
-  delete[] sai;
-  assign_iobufs();
-  reset_state();
 }
 
 static AudioProcessor        *const notifies_tail = (AudioProcessor*) ptrdiff_t (-1);
@@ -1260,7 +1205,7 @@ AudioProcessor::registry_enroll (MakeProcessor create, const char *bfile, int bl
 void
 AudioProcessor::registry_init()
 {
-  static AudioEngine &regengine = make_audio_engine (48000);
+  static AudioEngine &regengine = make_audio_engine (48000, SpeakerArrangement::STEREO);
   while (processor_registry_entries)
     {
       std::lock_guard<std::recursive_mutex> rlocker (processor_registry_mutex);
@@ -1439,7 +1384,7 @@ public:
     auto lambda = [proc, pid, v] () {
       proc->set_param (pid, v);
     };
-    proc->engine() += lambda;
+    proc->engine().async_jobs += lambda;
     return true;
   }
   double
@@ -1456,7 +1401,7 @@ public:
     auto lambda = [proc, pid, v] () {
       proc->set_normalized (pid, v);
     };
-    proc->engine() += lambda;
+    proc->engine().async_jobs += lambda;
     return true;
   }
   String
@@ -1475,7 +1420,7 @@ public:
     auto lambda = [proc, pid, v] () {
       proc->set_param (pid, v);
     };
-    proc->engine() += lambda;
+    proc->engine().async_jobs += lambda;
     return true;
   }
   bool
@@ -1504,9 +1449,12 @@ public:
 };
 
 // == AudioProcessor::access_properties ==
+/// Retrieve/create Property handle from `id`.
+/// This function is MT-Safe after proper AudioProcessor initialization.
 PropertyP
 AudioProcessor::access_property (ParamId id) const
 {
+  assert_return (is_initialized(), {});
   const PParam *param = find_pparam (id);
   assert_return (param, {});
   DeviceImplP devp = get_device();

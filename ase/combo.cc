@@ -18,9 +18,8 @@ public:
   }
   void query_info (AudioProcessorInfo &info) const override { info.label = "Anklang.Devices.AudioChain.Inlet"; }
   void reset      () override                               {}
-  void initialize () override                               {}
   void
-  configure (uint n_ibusses, const SpeakerArrangement *ibusses, uint n_obusses, const SpeakerArrangement *obusses) override
+  initialize (SpeakerArrangement busses) override
   {
     remove_all_buses();
     auto output = add_output_bus ("Output", audio_chain_.ispeakers_);
@@ -102,7 +101,7 @@ AudioCombo::find_pos (AudioProcessor &proc)
   for (size_t i = 0; i < processors_.size(); i++)
     if (processors_[i].get() == &proc)
       return i;
-  return  ~size_t (0);
+  return ~size_t (0);
 }
 
 /// Return the number of AudioProcessor instances in the AudioCombo.
@@ -158,7 +157,7 @@ AudioChain::query_info (AudioProcessorInfo &info) const
 }
 
 void
-AudioChain::initialize ()
+AudioChain::initialize (SpeakerArrangement busses)
 {
   auto ibus = add_input_bus ("Input", ispeakers_);
   auto obus = add_output_bus ("Output", ospeakers_);
