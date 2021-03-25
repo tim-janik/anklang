@@ -57,7 +57,7 @@ AudioCombo::insert (AudioProcessorP proc, size_t pos)
   processors_.insert (processors_.begin() + index, proc);
   // fixup following connections
   reconnect (index, true);
-  engine_.reschedule();
+  reschedule();
   enqueue_notify_mt (INSERTION);
 }
 
@@ -170,13 +170,13 @@ AudioChain::reset ()
 {}
 
 void
-AudioChain::enqueue_children ()
+AudioChain::schedule_children()
 {
   last_output_ = nullptr;
-  engine_.enqueue (*inlet_);
+  schedule_processor (*inlet_);
   for (auto procp : processors_)
     {
-      engine_.enqueue (*procp);
+      schedule_processor (*procp);
       if (procp->n_obuses())
         last_output_ = procp.get();
     }
@@ -198,6 +198,7 @@ AudioChain::render (uint n_frames)
       else
         assign_oblock (OUT1, c, 0);
     }
+  // FIXME: assign obus if no children are present
 }
 
 /// Reconnect AudioChain child processors at start and after.

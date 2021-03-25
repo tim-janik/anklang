@@ -10,7 +10,6 @@ class AudioCombo : public AudioProcessor, protected ProcessorManager {
 protected:
   AudioProcessorS  processors_;
   AudioProcessorP  eproc_;
-  virtual void    enqueue_children   () = 0;
   virtual void    reconnect          (size_t index, bool insertion) = 0;
   explicit        AudioCombo         ();
   virtual        ~AudioCombo         ();
@@ -31,16 +30,16 @@ class AudioChain : public AudioCombo {
   InletP           inlet_;
   AudioProcessor  *last_output_ = nullptr;
 protected:
-  void            initialize       (SpeakerArrangement busses) override;
-  void            reset            () override;
-  void            render           (uint n_frames) override;
-  void            enqueue_children () override;
-  void            reconnect        (size_t index, bool insertion) override;
-  uint            chain_up         (AudioProcessor &pfirst, AudioProcessor &psecond);
+  void     initialize        (SpeakerArrangement busses) override;
+  void     reset             () override;
+  void     render            (uint n_frames) override;
+  void     schedule_children () override;
+  void     reconnect         (size_t index, bool insertion) override;
+  uint     chain_up          (AudioProcessor &pfirst, AudioProcessor &psecond);
 public:
-  explicit        AudioChain       (SpeakerArrangement iobuses = SpeakerArrangement::STEREO);
-  virtual        ~AudioChain       ();
-  void            query_info       (AudioProcessorInfo &info) const override;
+  explicit AudioChain        (SpeakerArrangement iobuses = SpeakerArrangement::STEREO);
+  virtual ~AudioChain        ();
+  void     query_info        (AudioProcessorInfo &info) const override;
 };
 
 } // Ase
