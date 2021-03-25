@@ -249,8 +249,22 @@ main (int argc, char *argv[])
 
   // start audio engine
   AudioEngine &ae = make_audio_engine (48000, SpeakerArrangement::STEREO);
-  ae.start_thread ([] () { main_loop->wakeup(); });
   main_config_.engine = &ae;
+  ae.start_thread ([] () { main_loop->wakeup(); });
+  const uint loopdispatcherid = main_loop->exec_dispatcher ([&ae] (const LoopState &state) -> bool {
+    switch (state.phase)
+      {
+      case LoopState::PREPARE:
+        return ae.ipc_pending();
+      case LoopState::CHECK:
+        return ae.ipc_pending();
+      case LoopState::DISPATCH:
+        ae.ipc_dispatch();
+        return true;
+      default:
+        return false;
+      }
+  });
 
   // open Jsonapi socket
   auto wss = WebSocketServer::create (jsonapi_make_connection);
@@ -303,17 +317,32 @@ main (int argc, char *argv[])
   if (main_config.mode == MainConfig::CHECK_INTEGRITY_TESTS)
     main_loop->exec_now (run_tests_and_quit);
 
+  // Debugging test
+  if (0)
+    {
+      AudioEngine *e = main_config_.engine;
+      std::shared_ptr<void> vp = { nullptr, [e] (void*) {
+        printerr ("JOBTEST: Run Deleter (in_engine=%d)\n", e->thread_id() == std::this_thread::get_id());
+      } };
+      e->async_jobs += [e,vp] () {
+        printerr ("JOBTEST: Run Handler (in_engine=%d)\n", e->thread_id() == std::this_thread::get_id());
+      };
+    }
+
   // run main event loop and catch SIGUSR2
   const int exitcode = main_loop->run();
+  assert_return (main_loop, -1); // ptr must be kept around
 
   // loop ended, close socket and shutdown
   wss->shutdown();
   wss = nullptr;
 
-  // halt audio engine, join its threads
+  // halt audio engine, join its threads, dispatch cleanups
   ae.stop_thread();
+  main_loop->remove (loopdispatcherid);
+  while (ae.ipc_pending())
+    ae.ipc_dispatch();
   main_config_.engine = nullptr;
-  assert_return (main_loop, -1); // used by AudioEngine
 
   return exitcode;
 }
