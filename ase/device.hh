@@ -30,6 +30,7 @@ public:
   DeviceP         create_device        (const String &uuiduri) override;
   DeviceP         create_device_before (const String &uuiduri, Device &sibling) override;
   static DeviceP  create_output        (const String &uuiduri);
+  void            disconnect_remove    ();
 };
 
 } // Ase

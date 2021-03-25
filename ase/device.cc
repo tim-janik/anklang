@@ -155,6 +155,21 @@ DeviceImpl::create_device_before (const String &uuiduri, Device &sibling)
   return create_device_before (uuiduri, &sibling);
 }
 
+void
+DeviceImpl::disconnect_remove ()
+{
+  AudioProcessorP proc = proc_;
+  AudioEngine *engine = &proc->engine();
+  auto j = [proc] () {
+    proc->enable_engine_output (false);
+    proc->disconnect_ibuses();
+    proc->disconnect_obuses();
+    proc->disconnect_event_input();
+    // FIXME: remove from combo container if child
+  };
+  engine->async_jobs += j;
+}
+
 DeviceP
 DeviceImpl::create_output (const String &uuiduri)
 {
@@ -162,8 +177,8 @@ DeviceImpl::create_output (const String &uuiduri)
   AudioProcessorP procp = make_audio_processor (*engine, uuiduri);
   return_unless (procp, nullptr);
   DeviceP devicep = procp->get_device();
-  auto j = [engine, procp] () {
-    engine->add_output (procp);
+  auto j = [procp] () {
+    procp->enable_engine_output (true);
   };
   engine->async_jobs += j;
   return devicep;
