@@ -96,16 +96,12 @@ public:
     info.website_url  = "https://anklang.testbit.eu";
   }
   void
-  initialize () override
+  initialize (SpeakerArrangement busses) override
   {
     start_group ("Noise Settings");
     add_param (GAIN, "Gain",  "Gain", -96, 24, 0, "dB");
     add_param (MONO, "Mono",  "Monophonic", true);
     add_param (PINK, "Pink", "Pink Noise", false);
-  }
-  void
-  configure (uint n_ibusses, const SpeakerArrangement *ibusses, uint n_obusses, const SpeakerArrangement *obusses) override
-  {
     remove_all_buses();
     stereout_ = add_output_bus ("Stereo Out", SpeakerArrangement::STEREO);
   }
