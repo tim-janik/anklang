@@ -1,6 +1,8 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "track.hh"
+#include "combo.hh"
 #include "project.hh"
+#include "device.hh"
 #include "jsonipc/jsonipc.hh"
 #include "internal.hh"
 
@@ -34,9 +36,24 @@ TrackImpl::fallback_name () const
 void
 TrackImpl::set_project (ProjectImpl *project)
 {
-  ProjectImpl *old = project;
-  project_ = project;
+  if (project)
+    assert_return (!project_);
+  ProjectImpl *old = project_;
   (void) old;
+  project_ = project;
+  if (project_)
+    {
+      assert_return (!chain_);
+      DeviceP device = DeviceImpl::create_output ("Anklang.Devices.AudioChain");
+      assert_return (device);
+      chain_ = std::dynamic_pointer_cast<DeviceImpl> (device);
+      assert_return (chain_);
+    }
+  else if (chain_)
+    {
+      chain_->disconnect_remove();
+      chain_ = nullptr;
+    }
   emit_event ("notify", "project");
 }
 
@@ -54,6 +71,12 @@ ClipS
 TrackImpl::list_clips () // TODO: implement
 {
   return {};
+}
+
+DeviceP
+TrackImpl::access_device ()
+{
+  return chain_;
 }
 
 MonitorP
