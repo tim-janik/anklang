@@ -124,6 +124,7 @@ class AudioProcessor : public std::enable_shared_from_this<AudioProcessor>, publ
   friend class ProcessorManager;
   friend class DeviceImpl;
   friend class AudioEngine;
+  friend class AudioEngineThread;
   struct OConnection {
     AudioProcessor *proc = nullptr; IBusId ibusid = {};
     bool operator== (const OConnection &o) const { return proc == o.proc && ibusid == o.ibusid; }
@@ -139,7 +140,9 @@ protected:
          BUSCONNECT    = 1 << 4,
          BUSDISCONNECT = 1 << 5,
          INSERTION     = 1 << 6,
-         REMOVAL       = 1 << 7, };
+         REMOVAL       = 1 << 7,
+         ENGINE_OUTPUT = 1 << 8,
+  };
   std::atomic<uint32>      flags_ = 0;
 private:
   uint32                   output_offset_ = 0;
@@ -161,7 +164,6 @@ private:
   const FloatBuffer& zero_buffer        ();
   void               render_block       ();
   void               reset_state        ();
-  void               enqueue_deps       ();
   /*copy*/           AudioProcessor     (const AudioProcessor&) = delete;
   virtual void       render             (uint n_frames) = 0;
   virtual void       reset              () = 0;
@@ -172,10 +174,13 @@ protected:
   virtual      ~AudioProcessor    ();
   virtual void  initialize        (SpeakerArrangement busses) = 0;
   void          enqueue_notify_mt (uint32 pushmask);
+  void          schedule_processor ();
+  void          reschedule        ();
   virtual DeviceImplP device_impl () const;
+  virtual void  schedule_children () {}
+  static void   schedule_processor (AudioProcessor &p)  { p.schedule_processor(); }
   // Parameters
   virtual void  adjust_param      (Id32 tag) {}
-  virtual void  enqueue_children  () {}
   ParamId       nextid            () const;
   ParamId       add_param         (Id32 id, const ParamInfo &infotmpl, double value);
   ParamId       add_param         (Id32 id, const std::string &clabel, const std::string &nickname,
@@ -262,10 +267,11 @@ public:
   const float*  ofloats           (OBusId b, uint c) const;
   static uint64 timestamp         ();
   DeviceImplP   get_device        (bool create = true) const;
-  bool          has_event_input   ();
-  bool          has_event_output  ();
+  bool          has_event_input   () const;
+  bool          has_event_output  () const;
   void          connect_event_input    (AudioProcessor &oproc);
   void          disconnect_event_input ();
+  void          enable_engine_output   (bool onoff);
   // MT-Safe accessors
   static double          param_peek_mt   (const AudioProcessorP proc, Id32 paramid);
   // Registration and factory
@@ -428,14 +434,14 @@ AudioProcessor::inyquist () const
 
 /// Returns `true` if this AudioProcessor has an event input stream.
 inline bool
-AudioProcessor::has_event_input()
+AudioProcessor::has_event_input () const
 {
   return estreams_ && estreams_->has_event_input;
 }
 
 /// Returns `true` if this AudioProcessor has an event output stream.
 inline bool
-AudioProcessor::has_event_output()
+AudioProcessor::has_event_output () const
 {
   return estreams_ && estreams_->has_event_output;
 }

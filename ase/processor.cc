@@ -722,6 +722,22 @@ AudioProcessor::initialize (SpeakerArrangement busses)
   assert_return (n_ibuses() + n_obuses() == 0);
 }
 
+/// Request recreation of the audio engine rendering schedule.
+void
+AudioProcessor::reschedule ()
+{
+  engine_.invalidate_schedule();
+}
+
+/// Configure if the main output of this module is mixed into the engine output.
+void
+AudioProcessor::enable_engine_output (bool onoff)
+{
+  if (onoff)
+    assert_return (n_obuses() >= 1);
+  engine_.enable_output (*this, onoff);
+}
+
 /// Prepare the AudioProcessor to receive Event objects during render() via get_event_input().
 /// Note, remove_all_buses() will remove the Event input created by this function.
 void
@@ -774,7 +790,7 @@ AudioProcessor::disconnect_event_input()
       assert_return (oproc.estreams_);
       const bool backlink = Aux::erase_first (oproc.outputs_, [&] (auto &e) { return e.proc == this && e.ibusid == EventStreams::EVENT_ISTREAM; });
       estreams_->oproc = nullptr;
-      engine_.reschedule();
+      reschedule();
       assert_return (backlink == true);
       enqueue_notify_mt (BUSDISCONNECT);
       oproc.enqueue_notify_mt (BUSDISCONNECT);
@@ -792,7 +808,7 @@ AudioProcessor::connect_event_input (AudioProcessor &oproc)
   estreams_->oproc = &oproc;
   // register backlink
   oproc.outputs_.push_back ({ this, EventStreams::EVENT_ISTREAM });
-  engine_.reschedule();
+  reschedule();
   enqueue_notify_mt (BUSCONNECT);
   oproc.enqueue_notify_mt (BUSCONNECT);
 }
@@ -942,7 +958,7 @@ AudioProcessor::remove_all_buses ()
       assert_return (!estreams_->oproc && outputs_.empty());
       delete estreams_; // must be disconnected beforehand
       estreams_ = nullptr;
-      engine_.reschedule();
+      reschedule();
     }
 }
 
@@ -952,7 +968,7 @@ AudioProcessor::disconnect_ibuses()
 {
   disconnect (EventStreams::EVENT_ISTREAM);
   if (n_ibuses())
-    engine_.reschedule();
+    reschedule();
   for (size_t i = 0; i < n_ibuses(); i++)
     disconnect (IBusId (1 + i));
 }
@@ -963,7 +979,7 @@ AudioProcessor::disconnect_obuses()
 {
   return_unless (fbuffers_);
   if (outputs_.size())
-    engine_.reschedule();
+    reschedule();
   while (outputs_.size())
     {
       const auto o = outputs_.back();
@@ -991,7 +1007,7 @@ AudioProcessor::disconnect (IBusId ibusid)
   const bool backlink = Aux::erase_first (oproc.outputs_, [&] (auto &e) { return e.proc == this && e.ibusid == ibusid; });
   ibus.proc = nullptr;
   ibus.obusid = {};
-  engine_.reschedule();
+  reschedule();
   assert_return (backlink == true);
   enqueue_notify_mt (BUSDISCONNECT);
   oproc.enqueue_notify_mt (BUSDISCONNECT);
@@ -1020,7 +1036,7 @@ AudioProcessor::connect (IBusId ibusid, AudioProcessor &oproc, OBusId obusid)
   // register backlink
   obus.fbuffer_concounter += 1; // conection counter
   oproc.outputs_.push_back ({ this, ibusid });
-  engine_.reschedule();
+  reschedule();
   enqueue_notify_mt (BUSCONNECT);
   oproc.enqueue_notify_mt (BUSCONNECT);
 }
@@ -1063,19 +1079,22 @@ void
 AudioProcessor::reset()
 {}
 
-/// Enqueue all rendering dependencies in the engine schedule.
+/// Schedule this node and its dependencies for engine rendering.
 void
-AudioProcessor::enqueue_deps()
+AudioProcessor::schedule_processor()
 {
+  engine_.schedule_level++;
   if (estreams_ && estreams_->oproc)
-    engine_.enqueue (*estreams_->oproc);
+    schedule_processor (*estreams_->oproc);
   for (size_t i = 0; i < n_ibuses(); i++)
     {
       IBus &ibus = iobus (IBusId (1 + i));
       if (ibus.proc)
-        engine_.enqueue (*ibus.proc);
+        schedule_processor (*ibus.proc);
     }
-  enqueue_children();
+  schedule_children();
+  engine_.schedule_level--;
+  engine_.schedule_add (*this);
 }
 
 /** Method called for every audio buffer to be processed.
