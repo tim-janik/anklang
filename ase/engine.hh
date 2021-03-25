@@ -57,29 +57,30 @@ class AudioEngine : VirtualBase {
   const SpeakerArrangement speaker_arrangement_;
   uint64_t     frame_counter_;
   ThreadId     thread_id_ = {};
+  ssize_t      schedule_level = 0;
   friend class AudioEngineThread;
+  friend class AudioProcessor;
   class JobQueue {
     AudioEngine &engine_; const int flags_;
   public:
     explicit JobQueue   (AudioEngine &e, int f) : engine_ (e), flags_ (f) {}
-    void     operator+= (const std::function<void()> &job) { return engine_.add_job (job, flags_); }
+    void     operator+= (const std::function<void()> &job) { return engine_.add_job_mt (job, flags_); }
   };
-  void         add_job               (const std::function<void()> &job, int flags);
+  void         add_job_mt            (const std::function<void()> &job, int flags);
 protected:
   static void  render_block          (AudioProcessorP ap);
   explicit     AudioEngine           (uint sample_rate, SpeakerArrangement speakerarrangement);
+  virtual void enable_output         (AudioProcessor &aproc, bool onoff) = 0;
+  virtual void invalidate_schedule   () = 0;
+  virtual void schedule_add          (AudioProcessor &aproc) = 0;
 public:
-  virtual void add_output            (AudioProcessorP aproc) = 0;
-  virtual bool remove_output         (AudioProcessorP aproc) = 0;
-  virtual void enqueue               (AudioProcessor &aproc) = 0;
-  void         reschedule            ();
   // Owner-Thread API
   void         start_thread          (const VoidF &owner_wakeup);
   void         stop_thread           ();
-  bool         ipc_pending           ();
-  void         ipc_dispatch          ();
+  virtual void wakeup_thread_mt      () = 0;
+  virtual bool ipc_pending           () = 0;
+  virtual void ipc_dispatch          () = 0;
   // MT-Safe API
-  void         ipc_wakeup_mt         ();
   uint         sample_rate           () const ASE_CONST     { return sample_rate_; }
   double       nyquist               () const ASE_CONST     { return nyquist_; }
   double       inyquist              () const ASE_CONST     { return inyquist_; }

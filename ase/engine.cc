@@ -5,10 +5,12 @@
 #include "loop.hh"
 #include "driver.hh"
 #include "datautils.hh"
+#include "atomics.hh"
 #include "internal.hh"
 
 namespace Ase {
 
+using VoidFunc = std::function<void()>;
 using StartQueue = AsyncBlockingQueue<char>;
 constexpr uint fixed_sample_rate = 48000;
 constexpr uint fixed_n_channels = 2;
@@ -20,17 +22,33 @@ class AudioEngineThread : public AudioEngine {
   constexpr static size_t buffer_size_ = AUDIO_BLOCK_MAX_RENDER_SIZE * fixed_n_channels;
   float buffer_data_[buffer_size_] = { 0, };
 public:
-  std::thread    *thread_ = nullptr;
-  MainLoopP       event_loop_ = MainLoop::create();
-  AudioProcessorS oprocs_;
+  struct Job {
+    std::atomic<Job*> next = nullptr;
+    VoidFunc func;
+  };
+  AtomicIntrusiveStack<Job> async_jobs_, const_jobs_, trash_jobs_;
+  VoidF                     owner_wakeup_;
+  std::thread              *thread_ = nullptr;
+  MainLoopP                 event_loop_ = MainLoop::create();
+  AudioProcessorS           oprocs_;
   explicit AudioEngineThread (uint sample_rate, SpeakerArrangement speakerarrangement);
   void     run               (const VoidF &owner_wakeup, StartQueue *sq);
+  bool     process_jobs      (AtomicIntrusiveStack<Job> &joblist);
   bool     driver_dispatcher (const LoopState &state);
   void     ensure_driver     ();
-  void     add_output        (AudioProcessorP aproc) override;
-  bool     remove_output     (AudioProcessorP aproc) override;
-  void     enqueue           (AudioProcessor &aproc) override;
+  void     schedule_add      (AudioProcessor &aproc) override;
+  void     enable_output     (AudioProcessor &aproc, bool onoff) override;
+  void     invalidate_schedule () override;
+  void     wakeup_thread_mt    () override;
+  bool     ipc_pending         () override;
+  void     ipc_dispatch        () override;
 };
+
+static inline std::atomic<AudioEngineThread::Job*>&
+atomic_next_ptrref (AudioEngineThread::Job *j)
+{
+  return j->next;
+}
 
 AudioEngineThread::~AudioEngineThread ()
 {
@@ -44,26 +62,29 @@ AudioEngineThread::AudioEngineThread (uint sample_rate, SpeakerArrangement speak
 }
 
 void
-AudioEngineThread::enqueue (AudioProcessor &aproc)
+AudioEngineThread::schedule_add (AudioProcessor &aproc)
 {
   // TODO: impl missing
-  reschedule();
 }
 
 void
-AudioEngineThread::add_output (AudioProcessorP aproc)
+AudioEngineThread::enable_output (AudioProcessor &aproc, bool onoff)
 {
-  oprocs_.push_back (aproc);
-  reschedule();
-}
-
-bool
-AudioEngineThread::remove_output (AudioProcessorP aproc)
-{
-  const bool count = Aux::erase_first (oprocs_, [aproc] (AudioProcessorP c) { return c == aproc; });
-  if (count)
-    reschedule();
-  return count;
+  AudioProcessorP procp = shared_ptr_cast<AudioProcessor> (&aproc);
+  assert_return (procp != nullptr);
+  if (onoff && !(aproc.flags_ & AudioProcessor::ENGINE_OUTPUT))
+    {
+      oprocs_.push_back (procp);
+      aproc.flags_ |= AudioProcessor::ENGINE_OUTPUT;
+      invalidate_schedule();
+    }
+  else if (!onoff && (aproc.flags_ & AudioProcessor::ENGINE_OUTPUT))
+    {
+      const bool foundproc = Aux::erase_first (oprocs_, [procp] (AudioProcessorP c) { return c == procp; });
+      aproc.flags_ &= ~AudioProcessor::ENGINE_OUTPUT;
+      invalidate_schedule();
+      assert_return (foundproc);
+    }
 }
 
 void
@@ -81,21 +102,28 @@ AudioEngineThread::ensure_driver()
     pcm_driver_ = PcmDriver::open ("auto", Driver::WRITEONLY, Driver::WRITEONLY, pconfig, &er);
   if (!pcm_driver_)
     pcm_driver_ = null_pcm_driver_;
-  reschedule();
+  invalidate_schedule();
 }
 
 void
 AudioEngineThread::run (const VoidF &owner_wakeup, StartQueue *sq)
 {
   assert_return (pcm_driver_);
+  // FIXME: assert owner_wakeup and free trash
   this_thread_set_name ("AudioEngine-0"); // max 16 chars
   thread_id_ = std::this_thread::get_id();
-  printerr ("AudioEngineThread.run: running\n");
+  owner_wakeup_ = owner_wakeup;
   event_loop_->exec_dispatcher (std::bind (&AudioEngineThread::driver_dispatcher, this, std::placeholders::_1));
   sq->push ('R'); // StartQueue becomes invalid after this call
   sq = nullptr;
   event_loop_->run();
-  printerr ("AudioEngineThread.run: exiting\n");
+  owner_wakeup_ = nullptr;
+}
+
+void
+AudioEngineThread::invalidate_schedule()
+{
+  // FIXME
 }
 
 template<int ADDING> static void
@@ -139,6 +167,20 @@ interleaved_stereo (const size_t frames, float *buffer, AudioProcessor &proc, OB
 }
 
 bool
+AudioEngineThread::process_jobs (AtomicIntrusiveStack<Job> &joblist)
+{
+  Job *const jobs = joblist.pop_reversed(), *last = nullptr;
+  for (Job *job = jobs; job; last = job, job = job->next)
+    job->func();
+  if (last)
+    {
+      if (trash_jobs_.push_chain (jobs, last))
+        owner_wakeup_();
+    }
+  return last != nullptr;
+}
+
+bool
 AudioEngineThread::driver_dispatcher (const LoopState &state)
 {
   switch (state.phase)
@@ -146,14 +188,19 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
     case LoopState::PREPARE:
       {
         int64 *timeout_usecs = const_cast<int64*> (&state.timeout_usecs);
-        return pcm_driver_->pcm_check_io (timeout_usecs);
+        const bool jobs = !const_jobs_.empty() || !async_jobs_.empty();
+        return jobs || pcm_driver_->pcm_check_io (timeout_usecs);
       }
     case LoopState::CHECK:
       {
+        // FIXME: add pcm driver pollfd with 1-block threshold
         int64 timeout_usecs = INT64_MAX;
-        return pcm_driver_->pcm_check_io (&timeout_usecs) || timeout_usecs == 0;
+        const bool jobs = !const_jobs_.empty() || !async_jobs_.empty();
+        return jobs || pcm_driver_->pcm_check_io (&timeout_usecs) || timeout_usecs == 0;
       }
     case LoopState::DISPATCH: {
+      process_jobs (const_jobs_);
+      process_jobs (async_jobs_);
       pcm_driver_->pcm_write (buffer_size_, buffer_data_);
       constexpr auto MAIN_OBUS = OBusId (1);
       // render
@@ -174,6 +221,31 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
     default: ;
     }
   return false;
+}
+
+bool
+AudioEngineThread::ipc_pending ()
+{
+  const bool have_jobs = !trash_jobs_.empty();
+  return have_jobs;
+}
+
+void
+AudioEngineThread::ipc_dispatch ()
+{
+  Job *job = trash_jobs_.pop_all();
+  while (job)
+    {
+      Job *old = job;
+      job = job->next;
+      delete old;
+    }
+}
+
+void
+AudioEngineThread::wakeup_thread_mt()
+{
+  // FIXME
 }
 
 // == SpeakerArrangement ==
@@ -269,7 +341,7 @@ AudioEngine::start_thread (const VoidF &owner_wakeup)
   AudioEngineThread &engine = *dynamic_cast<AudioEngineThread*> (this);
   engine.ensure_driver();
   assert_return (engine.thread_ == nullptr);
-  reschedule();
+  invalidate_schedule();
   StartQueue start_queue;
   engine.thread_ = new std::thread (&AudioEngineThread::run, &engine, owner_wakeup, &start_queue);
   const char reply = start_queue.pop(); // synchronize with thread start
@@ -290,29 +362,28 @@ AudioEngine::stop_thread ()
 }
 
 void
-AudioEngine::add_job (const std::function<void()> &job, int flags)
+AudioEngine::add_job_mt (const std::function<void()> &jobfunc, int flags)
 {
-  assert_return (!"CALLED");
-  // TODO: implement, also need trash queue
+  AudioEngineThread &engine = *dynamic_cast<AudioEngineThread*> (this);
+  assert_return (engine.thread_ != nullptr);
+  if (flags) // async_jobs flag
+    {
+      AudioEngineThread::Job *job = new AudioEngineThread::Job { nullptr, jobfunc };
+      const bool was_empty = engine.async_jobs_.push (job);
+      if (was_empty)
+        wakeup_thread_mt();
+      return;
+    }
+  ScopedSemaphore sem;
+  std::function<void()> wrapper = [&sem, &jobfunc] () {
+    jobfunc();
+    sem.post();
+  };
+  AudioEngineThread::Job *job = new AudioEngineThread::Job { nullptr, wrapper };
+  if (engine.const_jobs_.push (job))
+    wakeup_thread_mt();
+  sem.wait();
 }
-
-void
-AudioEngine::reschedule ()
-{}
-
-bool
-AudioEngine::ipc_pending ()
-{
-  return false;
-}
-
-void
-AudioEngine::ipc_dispatch ()
-{}
-
-void
-AudioEngine::ipc_wakeup_mt ()
-{}
 
 void
 AudioEngine::render_block (AudioProcessorP ap)
