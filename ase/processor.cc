@@ -1127,7 +1127,7 @@ static std::atomic<AudioProcessor*> notifies_head { notifies_tail };
 void
 AudioProcessor::enqueue_notify_mt (uint32 pushmask)
 {
-  return_unless (!device_.expired());            // need a means to report notifications
+  return_unless (!device_.expired());           // need a means to report notifications
   assert_return (notifies_head != nullptr);     // paranoid
   const uint32 prev = flags_.fetch_or (pushmask & NOTIFYMASK);
   return_unless (prev != (prev | pushmask));    // nothing new
