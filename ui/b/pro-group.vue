@@ -26,6 +26,7 @@
     .b-pro-group-title {
       display: flex;
       justify-content: center;
+      text-align: center;
       flex-grow: 1;
     }
     .b-pro-group-row {
