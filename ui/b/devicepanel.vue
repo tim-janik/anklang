@@ -62,7 +62,7 @@
   <h-flex class="b-devicepanel" >
     <span class="b-devicepanel-before-scroller"> Device Panel </span>
     <h-flex class="b-devicepanel-scroller" >
-      <template v-for="proc in procs" :key="proc.$id" >
+      <template v-for="proc in devs" :key="proc.$id" >
 	<b-more @click.native.stop="menuopen" :sibling="proc"
 		data-tip="**CLICK** Add New Elements" />
 	<b-deviceeditor :device="proc" center />
@@ -83,40 +83,37 @@
 <script>
 import * as Ase from '../aseapi.js';
 
-async function list_audio_device_types () {
-  if (list_audio_device_types.result)
-    return list_audio_device_types.result;
-  const crawler = await Ase.server.resource_crawler();
-  const entries = await crawler.list_devices (Ase.ResourceType.AUDIO_DEVICE);
+async function list_device_types () {
+  const deviceinfos = await this.chain_.list_device_types();
   const cats = {};
-  for (const e of entries)
+  for (const e of deviceinfos)
     {
       const category = e.category || 'Other';
       cats[category] = cats[category] || { label: category, type: 'resource-type-folder', entries: [] };
+      e.label = e.label || e.name;
       cats[category].entries.push (e);
     }
   const list = [];
   for (const c of Object.keys (cats).sort())
     list.push (cats[c]);
-  list_audio_device_types.result = Object.freeze ({ entries: list });
-  return list_audio_device_types.result;
+  return Object.freeze ({ entries: list });
 }
 
 function observable_device_data () {
   const data = {
-    procs:	  { default: [],	 notify: n => this.combo_.on ("sub", n), // sub:insert sub:remove
-		    getter: async c => Object.freeze (await this.combo_.list_processors()), },
-    devicetypes:  { getter: c => list_audio_device_types(), },
+    devs:	  { default: [],	 notify: n => this.chain_.on ("sub", n), // sub:insert sub:remove
+		    getter: async c => Object.freeze (await this.chain_.list_devices()), },
+    devicetypes:  { getter: async c => await list_device_types.call (this), },
   };
-  const fetch_combo = async () => {
+  const fetch_chain = async () => {
     if (this.last_track_ != this.track)
       {
-	this.combo_ = this.track ? await this.track.access_combo() : null;
+	this.chain_ = this.track ? await this.track.access_device() : null;
 	this.last_track_ = this.track;
       }
-    return this.combo_;
+    return this.chain_;
   };
-  return this.observable_from_getters (data, fetch_combo);
+  return this.observable_from_getters (data, fetch_chain);
 }
 
 export default {
@@ -132,12 +129,12 @@ export default {
       this.$refs.cmenu.close();
       if (uri == 'DevicePanel:add-device' || uri == 'DevicePanel:delete-device')
 	debug ("devicepanel.vue:", uri);
-      if (this.combo_ && !uri.startsWith ('DevicePanel:')) // assuming b-treeselector.devicetypes
+      if (this.chain_ && !uri.startsWith ('DevicePanel:')) // assuming b-treeselector.devicetypes
 	{
 	  if (popup_options.device_sibling)
-	    this.combo_.create_processor_before (uri, popup_options.device_sibling);
+	    this.chain_.create_device_before (uri, popup_options.device_sibling);
 	  else
-	    this.combo_.create_processor (uri);
+	    this.chain_.create_device (uri);
 	}
     },
     menucheck (uri, component) {
