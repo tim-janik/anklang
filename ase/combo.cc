@@ -58,7 +58,7 @@ AudioCombo::insert (AudioProcessorP proc, size_t pos)
   // fixup following connections
   reconnect (index, true);
   reschedule();
-  enqueue_notify_mt (INSERTION);
+  enotify_enqueue_mt (INSERTION);
 }
 
 /// Remove a previously added AudioProcessor `proc` from the AudioCombo.
@@ -82,7 +82,7 @@ AudioCombo::remove (AudioProcessor &proc)
   pm_disconnect_obuses (*processorp);
   // fixup following connections
   reconnect (pos, false);
-  enqueue_notify_mt (REMOVAL);
+  enotify_enqueue_mt (REMOVAL);
   return true;
 }
 

@@ -562,8 +562,8 @@ AudioProcessor::set_param (Id32 paramid, const double value)
         }
     }
   if (const_cast<PParam*> (pparam)->assign (v) &&
-      !pparam->info->bprop_.expired())
-    enqueue_notify_mt (PARAMCHANGE);
+      !pparam->info->aprop_.expired())
+    enotify_enqueue_mt (PARAMCHANGE);
 }
 
 /// Retrieve supplemental information for parameters, usually to enhance the user interface.
@@ -792,8 +792,8 @@ AudioProcessor::disconnect_event_input()
       estreams_->oproc = nullptr;
       reschedule();
       assert_return (backlink == true);
-      enqueue_notify_mt (BUSDISCONNECT);
-      oproc.enqueue_notify_mt (BUSDISCONNECT);
+      enotify_enqueue_mt (BUSDISCONNECT);
+      oproc.enotify_enqueue_mt (BUSDISCONNECT);
     }
 }
 
@@ -809,8 +809,8 @@ AudioProcessor::connect_event_input (AudioProcessor &oproc)
   // register backlink
   oproc.outputs_.push_back ({ this, EventStreams::EVENT_ISTREAM });
   reschedule();
-  enqueue_notify_mt (BUSCONNECT);
-  oproc.enqueue_notify_mt (BUSCONNECT);
+  enotify_enqueue_mt (BUSCONNECT);
+  oproc.enotify_enqueue_mt (BUSCONNECT);
 }
 
 /// Add an input bus with `uilabel` and channels configured via `speakerarrangement`.
@@ -1009,8 +1009,8 @@ AudioProcessor::disconnect (IBusId ibusid)
   ibus.obusid = {};
   reschedule();
   assert_return (backlink == true);
-  enqueue_notify_mt (BUSDISCONNECT);
-  oproc.enqueue_notify_mt (BUSDISCONNECT);
+  enotify_enqueue_mt (BUSDISCONNECT);
+  oproc.enotify_enqueue_mt (BUSDISCONNECT);
 }
 
 /// Connect input `ibusid` to output `obusid` of AudioProcessor `prev`.
@@ -1037,8 +1037,8 @@ AudioProcessor::connect (IBusId ibusid, AudioProcessor &oproc, OBusId obusid)
   obus.fbuffer_concounter += 1; // conection counter
   oproc.outputs_.push_back ({ this, ibusid });
   reschedule();
-  enqueue_notify_mt (BUSCONNECT);
-  oproc.enqueue_notify_mt (BUSCONNECT);
+  enotify_enqueue_mt (BUSCONNECT);
+  oproc.enotify_enqueue_mt (BUSCONNECT);
 }
 
 /// Ensure `AudioProcessor::initialize()` has been called, so the parameters are fixed.
@@ -1119,72 +1119,6 @@ AudioProcessor::render_block ()
     estreams_->estream.clear();
   render (AUDIO_BLOCK_MAX_RENDER_SIZE);
   done_frames_ = engine_frame_counter;
-}
-
-static AudioProcessor        *const notifies_tail = (AudioProcessor*) ptrdiff_t (-1);
-static std::atomic<AudioProcessor*> notifies_head { notifies_tail };
-
-void
-AudioProcessor::enqueue_notify_mt (uint32 pushmask)
-{
-  return_unless (!device_.expired());           // need a means to report notifications
-  assert_return (notifies_head != nullptr);     // paranoid
-  const uint32 prev = flags_.fetch_or (pushmask & NOTIFYMASK);
-  return_unless (prev != (prev | pushmask));    // nothing new
-  AudioProcessor *expected = nullptr;
-  if (nqueue_next_.compare_exchange_strong (expected, notifies_tail))
-    {
-      // nqueue_next_ was nullptr, need to insert into queue now
-      assert_warn (nqueue_guard_ == nullptr);
-      nqueue_guard_ = shared_from_this();
-      expected = notifies_head.load(); // must never be nullptr
-      do
-        nqueue_next_.store (expected);
-      while (!notifies_head.compare_exchange_strong (expected, this));
-    }
-}
-
-void
-AudioProcessor::call_notifies_e ()
-{
-  assert_return (this_thread_is_ase());
-  AudioProcessor *head = notifies_head.exchange (notifies_tail);
-  while (head != notifies_tail)
-    {
-      AudioProcessor *current = std::exchange (head, head->nqueue_next_);
-      AudioProcessorP procp = std::exchange (current->nqueue_guard_, nullptr);
-      AudioProcessor *old_nqueue_next = current->nqueue_next_.exchange (nullptr);
-      assert_warn (old_nqueue_next != nullptr);
-      const uint32 nflags = NOTIFYMASK & current->flags_.fetch_and (~NOTIFYMASK);
-      assert_warn (procp != nullptr);
-      DeviceImplP devicep = current->get_device (false);
-      if (devicep)
-        {
-          if (nflags & BUSCONNECT)
-            devicep->emit_event ("bus", "connect");
-          if (nflags & BUSDISCONNECT)
-            devicep->emit_event ("bus", "disconnect");
-          if (nflags & INSERTION)
-            devicep->emit_event ("sub", "insert");
-          if (nflags & REMOVAL)
-            devicep->emit_event ("sub", "remove");
-          if (nflags & PARAMCHANGE)
-            for (const PParam &p : current->params_)
-              if (ASE_UNLIKELY (p.changed()) && const_cast<PParam&> (p).changed (false))
-                {
-                  PropertyP propi = p.info->bprop_.lock();
-                  Properties::PropertyImpl *bprop = dynamic_cast<Properties::PropertyImpl*> (propi.get());
-                  if (bprop)
-                    bprop->emit_event ("notify", p.info->ident);
-                }
-        }
-    }
-}
-
-bool
-AudioProcessor::has_notifies_e ()
-{
-  return notifies_head != notifies_tail;
 }
 
 // == RegistryEntry ==
@@ -1479,13 +1413,84 @@ AudioProcessor::access_property (ParamId id) const
   DeviceImplP devp = get_device();
   assert_return (devp, {});
   PropertyP newptr;
-  PropertyP prop = weak_ptr_fetch_or_create<Property> (param->info->bprop_, [&] () {
+  PropertyP prop = weak_ptr_fetch_or_create<Property> (param->info->aprop_, [&] () {
       newptr = std::make_shared<AudioPropertyImpl> (devp, param->id, param->info);
       return newptr;
     });
   if (newptr.get() == prop.get())
     const_cast<AudioProcessor::PParam*> (param)->changed (false); // skip initial change notification
   return prop;
+}
+
+// == enotify_queue ==
+static AudioProcessor        *const enotify_queue_tail = (AudioProcessor*) ptrdiff_t (-1);
+static std::atomic<AudioProcessor*> enotify_queue_head { enotify_queue_tail };
+
+/// Queue an AudioProcessor notification
+/// This function is MT-Safe after proper AudioProcessor initialization.
+void
+AudioProcessor::enotify_enqueue_mt (uint32 pushmask)
+{
+  return_unless (!device_.expired());           // need a means to report notifications
+  assert_return (enotify_queue_head != nullptr);     // paranoid
+  const uint32 prev = flags_.fetch_or (pushmask & NOTIFYMASK);
+  return_unless (prev != (prev | pushmask));    // nothing new
+  AudioProcessor *expected = nullptr;
+  if (nqueue_next_.compare_exchange_strong (expected, enotify_queue_tail))
+    {
+      // nqueue_next_ was nullptr, need to insert into queue now
+      assert_warn (nqueue_guard_ == nullptr);
+      nqueue_guard_ = shared_from_this();
+      expected = enotify_queue_head.load(); // must never be nullptr
+      do
+        nqueue_next_.store (expected);
+      while (!enotify_queue_head.compare_exchange_strong (expected, this));
+    }
+}
+
+/// Dispatch all AudioProcessor notifications (Engine internal)
+void
+AudioProcessor::enotify_dispatch ()
+{
+  assert_return (this_thread_is_ase());
+  AudioProcessor *head = enotify_queue_head.exchange (enotify_queue_tail);
+  while (head != enotify_queue_tail)
+    {
+      AudioProcessor *current = std::exchange (head, head->nqueue_next_);
+      AudioProcessorP procp = std::exchange (current->nqueue_guard_, nullptr);
+      AudioProcessor *old_nqueue_next = current->nqueue_next_.exchange (nullptr);
+      assert_warn (old_nqueue_next != nullptr);
+      const uint32 nflags = NOTIFYMASK & current->flags_.fetch_and (~NOTIFYMASK);
+      assert_warn (procp != nullptr);
+      DeviceImplP devicep = current->get_device (false);
+      if (devicep)
+        {
+          if (nflags & BUSCONNECT)
+            devicep->emit_event ("bus", "connect");
+          if (nflags & BUSDISCONNECT)
+            devicep->emit_event ("bus", "disconnect");
+          if (nflags & INSERTION)
+            devicep->emit_event ("sub", "insert");
+          if (nflags & REMOVAL)
+            devicep->emit_event ("sub", "remove");
+          if (nflags & PARAMCHANGE)
+            for (const PParam &p : current->params_)
+              if (ASE_UNLIKELY (p.changed()) && const_cast<PParam&> (p).changed (false))
+                {
+                  PropertyP propi = p.info->aprop_.lock();
+                  AudioPropertyImpl *aprop = dynamic_cast<AudioPropertyImpl*> (propi.get());
+                  if (aprop)
+                    aprop->emit_event ("notify", p.info->ident);
+                }
+        }
+    }
+}
+
+/// Check for AudioProcessor notifications (Engine internal)
+bool
+AudioProcessor::enotify_pending ()
+{
+  return enotify_queue_head != enotify_queue_tail;
 }
 
 } // Ase

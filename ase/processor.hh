@@ -99,7 +99,7 @@ private:
   double     initial_ = 0;
   /*copy*/   ParamInfo   (const ParamInfo&) = delete;
   void       release     ();
-  std::weak_ptr<Property> bprop_;
+  std::weak_ptr<Property> aprop_;
   friend class AudioProcessor;
 };
 
@@ -136,6 +136,8 @@ protected:
   using MinMax = std::pair<double,double>;
 #endif
   enum { INITIALIZED   = 1 << 0,
+         //            = 1 << 1,
+         //            = 1 << 2,
          PARAMCHANGE   = 1 << 3,
          BUSCONNECT    = 1 << 4,
          BUSDISCONNECT = 1 << 5,
@@ -173,7 +175,7 @@ protected:
   explicit      AudioProcessor    ();
   virtual      ~AudioProcessor    ();
   virtual void  initialize        (SpeakerArrangement busses) = 0;
-  void          enqueue_notify_mt (uint32 pushmask);
+  void          enotify_enqueue_mt (uint32 pushmask);
   void          schedule_processor ();
   void          reschedule        ();
   virtual DeviceImplP device_impl () const;
@@ -281,8 +283,8 @@ public:
 private:
   static RegistryId      registry_enroll (MakeProcessor, const char*, int);
   template<class> friend RegistryId register_audio_processor (const char*, int);
-  static bool   has_notifies_e    ();
-  static void   call_notifies_e   ();
+  static bool   enotify_pending   ();
+  static void   enotify_dispatch  ();
   std::atomic<AudioProcessor*> nqueue_next_ { nullptr }; ///< No notifications queued while == nullptr
   AudioProcessorP              nqueue_guard_;            ///< Only used while nqueue_next_ != nullptr
   std::weak_ptr<DeviceImpl> device_;

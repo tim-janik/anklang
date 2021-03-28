@@ -227,14 +227,14 @@ bool
 AudioEngineThread::ipc_pending ()
 {
   const bool have_jobs = !trash_jobs_.empty();
-  return have_jobs || AudioProcessor::has_notifies_e();
+  return have_jobs || AudioProcessor::enotify_pending();
 }
 
 void
 AudioEngineThread::ipc_dispatch ()
 {
-  if (AudioProcessor::has_notifies_e())
-    AudioProcessor::call_notifies_e();
+  if (AudioProcessor::enotify_pending())
+    AudioProcessor::enotify_dispatch();
   Job *job = trash_jobs_.pop_all();
   while (job)
     {
