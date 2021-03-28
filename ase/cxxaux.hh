@@ -163,11 +163,18 @@ rotl (UInt bits, uint32_t offset)
 /// Demangle identifier via libcc.
 std::string string_demangle_cxx (const char *mangled_identifier);
 
-/// Provide demangled stringified name for a @a Type.
+/// Provide demangled stringified name for type `T`.
 template<class T> ASE_PURE static inline String
 typeid_name()
 {
   return string_demangle_cxx (typeid (T).name());
+}
+
+/// Provide demangled stringified name for object `obj`.
+template<class T> ASE_PURE static inline String
+typeid_name (T &obj)
+{
+  return string_demangle_cxx (typeid (obj).name());
 }
 
 /// Common base type to allow casting between polymorphic classes.
