@@ -68,7 +68,6 @@ class AudioEngine : VirtualBase {
   };
   void         add_job_mt            (const std::function<void()> &job, int flags);
 protected:
-  static void  render_block          (AudioProcessorP ap);
   explicit     AudioEngine           (uint sample_rate, SpeakerArrangement speakerarrangement);
   virtual void enable_output         (AudioProcessor &aproc, bool onoff) = 0;
   virtual void invalidate_schedule   () = 0;

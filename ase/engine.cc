@@ -42,6 +42,7 @@ public:
   void     wakeup_thread_mt    () override;
   bool     ipc_pending         () override;
   void     ipc_dispatch        () override;
+  static void render_block     (AudioProcessor *ap);
 };
 
 static inline std::atomic<AudioEngineThread::Job*>&
@@ -59,6 +60,12 @@ AudioEngineThread::AudioEngineThread (uint sample_rate, SpeakerArrangement speak
   AudioEngine (sample_rate, speakerarrangement)
 {
   oprocs_.reserve (64);
+}
+
+void
+AudioEngineThread::render_block (AudioProcessor *ap)
+{
+  ap->render_block();
 }
 
 void
@@ -201,21 +208,25 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
     case LoopState::DISPATCH: {
       process_jobs (const_jobs_);
       process_jobs (async_jobs_);
-      pcm_driver_->pcm_write (buffer_size_, buffer_data_);
-      constexpr auto MAIN_OBUS = OBusId (1);
-      // render
-      frame_counter_ += AUDIO_BLOCK_MAX_RENDER_SIZE;
-      if (oprocs_.size() == 0)
-        floatfill (buffer_data_, 0.0, buffer_size_);
-      else
-        { // render_block
-          // TODO: assert_return (!(eflags_ & RESCHEDULE));
-          // TODO: for (auto procp : schedule_) procp->render_block();
-          for (auto op : oprocs_)
-            render_block (op);
-          interleaved_stereo<0> (AUDIO_BLOCK_MAX_RENDER_SIZE, buffer_data_, *oprocs_[0], MAIN_OBUS);
-          for (size_t i = 1; i < oprocs_.size(); i++)
-            interleaved_stereo<1> (AUDIO_BLOCK_MAX_RENDER_SIZE, buffer_data_, *oprocs_[i], MAIN_OBUS);
+      int64 timeout_usecs = INT64_MAX;
+      if (pcm_driver_->pcm_check_io (&timeout_usecs))
+        {
+          pcm_driver_->pcm_write (buffer_size_, buffer_data_);
+          constexpr auto MAIN_OBUS = OBusId (1);
+          // render
+          frame_counter_ += AUDIO_BLOCK_MAX_RENDER_SIZE;
+          if (oprocs_.size() == 0)
+            floatfill (buffer_data_, 0.0, buffer_size_);
+          else
+            { // render_block
+              // TODO: assert_return (!(eflags_ & RESCHEDULE));
+              // TODO: for (auto procp : schedule_) procp->render_block();
+              for (auto op : oprocs_)
+                render_block (op.get());
+              interleaved_stereo<0> (AUDIO_BLOCK_MAX_RENDER_SIZE, buffer_data_, *oprocs_[0], MAIN_OBUS);
+              for (size_t i = 1; i < oprocs_.size(); i++)
+                interleaved_stereo<1> (AUDIO_BLOCK_MAX_RENDER_SIZE, buffer_data_, *oprocs_[i], MAIN_OBUS);
+            }
         }
       return true; } // keep alive
     default: ;
@@ -385,12 +396,6 @@ AudioEngine::add_job_mt (const std::function<void()> &jobfunc, int flags)
   if (engine.const_jobs_.push (job))
     wakeup_thread_mt();
   sem.wait();
-}
-
-void
-AudioEngine::render_block (AudioProcessorP ap)
-{
-  ap->render_block();
 }
 
 SpeakerArrangement
