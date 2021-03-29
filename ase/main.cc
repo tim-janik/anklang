@@ -229,6 +229,7 @@ main (int argc, char *argv[])
       Ase::Driver::EntryVec entries;
       printerr ("%s", _("Available PCM drivers:\n"));
       entries = Ase::PcmDriver::list_drivers();
+      std::sort (entries.begin(), entries.end(), [] (auto &a, auto &b) { return a.priority < b.priority; });
       for (const auto &entry : entries)
         printerr ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
                   entry.readonly ? "Input" : entry.writeonly ? "Output" : "Duplex",
@@ -238,6 +239,7 @@ main (int argc, char *argv[])
                   entry.notice.empty() ? "" : "\t" + entry.notice + "\n");
       printerr ("%s", _("\nAvailable MIDI drivers:\n"));
       entries = Ase::MidiDriver::list_drivers();
+      std::sort (entries.begin(), entries.end(), [] (auto &a, auto &b) { return a.priority < b.priority; });
       for (const auto &entry : entries)
         printerr ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
                   entry.readonly ? "Input" : entry.writeonly ? "Output" : "Duplex",
