@@ -123,7 +123,6 @@ class AudioProcessor : public std::enable_shared_from_this<AudioProcessor>, publ
   class FloatBuffer;
   friend class ProcessorManager;
   friend class DeviceImpl;
-  friend class AudioEngine;
   friend class AudioEngineThread;
   struct OConnection {
     AudioProcessor *proc = nullptr; IBusId ibusid = {};
