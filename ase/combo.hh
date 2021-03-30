@@ -33,7 +33,7 @@ protected:
   void     initialize        (SpeakerArrangement busses) override;
   void     reset             () override;
   void     render            (uint n_frames) override;
-  void     schedule_children () override;
+  uint     schedule_children () override;
   void     reconnect         (size_t index, bool insertion) override;
   uint     chain_up          (AudioProcessor &pfirst, AudioProcessor &psecond);
 public:

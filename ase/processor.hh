@@ -129,6 +129,7 @@ class AudioProcessor : public std::enable_shared_from_this<AudioProcessor>, publ
     bool operator== (const OConnection &o) const { return proc == o.proc && ibusid == o.ibusid; }
   };
   using OBRange = std::pair<FloatBuffer*,FloatBuffer*>;
+  AudioProcessor          *sched_ring_ = nullptr;
 protected:
 #ifndef DOXYGEN
   // Inherit `AudioSignal` concepts in derived classes from other namespaces
@@ -136,7 +137,7 @@ protected:
 #endif
   enum { INITIALIZED   = 1 << 0,
          //            = 1 << 1,
-         //            = 1 << 2,
+         SCHED_TAG     = 1 << 2,
          PARAMCHANGE   = 1 << 3,
          BUSCONNECT    = 1 << 4,
          BUSDISCONNECT = 1 << 5,
@@ -175,11 +176,11 @@ protected:
   virtual      ~AudioProcessor    ();
   virtual void  initialize        (SpeakerArrangement busses) = 0;
   void          enotify_enqueue_mt (uint32 pushmask);
-  void          schedule_processor ();
+  uint          schedule_processor ();
   void          reschedule        ();
   virtual DeviceImplP device_impl () const;
-  virtual void  schedule_children () {}
-  static void   schedule_processor (AudioProcessor &p)  { p.schedule_processor(); }
+  virtual uint  schedule_children () { return 0; }
+  static uint   schedule_processor (AudioProcessor &p)  { return p.schedule_processor(); }
   // Parameters
   virtual void  adjust_param      (Id32 tag) {}
   ParamId       nextid            () const;

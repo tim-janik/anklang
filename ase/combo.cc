@@ -169,18 +169,20 @@ void
 AudioChain::reset ()
 {}
 
-void
+uint
 AudioChain::schedule_children()
 {
   last_output_ = nullptr;
-  schedule_processor (*inlet_);
+  uint level = schedule_processor (*inlet_);
   for (auto procp : processors_)
     {
-      schedule_processor (*procp);
+      const uint l = schedule_processor (*procp);
+      level = std::max (level, l);
       if (procp->n_obuses())
         last_output_ = procp.get();
     }
   // last_output_ is only valid during render()
+  return level;
 }
 
 void

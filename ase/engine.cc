@@ -36,7 +36,7 @@ public:
   bool     process_jobs      (AtomicIntrusiveStack<Job> &joblist);
   bool     driver_dispatcher (const LoopState &state);
   void     ensure_driver     ();
-  void     schedule_add      (AudioProcessor &aproc) override;
+  void     schedule_add      (AudioProcessor &aproc, uint level) override;
   void     enable_output     (AudioProcessor &aproc, bool onoff) override;
   void     invalidate_schedule () override;
   void     wakeup_thread_mt    () override;
@@ -69,7 +69,7 @@ AudioEngineThread::render_block (AudioProcessor *ap)
 }
 
 void
-AudioEngineThread::schedule_add (AudioProcessor &aproc)
+AudioEngineThread::schedule_add (AudioProcessor &aproc, uint level)
 {
   // TODO: impl missing
 }
@@ -206,6 +206,7 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
         return jobs || pcm_driver_->pcm_check_io (&timeout_usecs) || timeout_usecs == 0;
       }
     case LoopState::DISPATCH: {
+      // FIXME: reschedule if needed
       process_jobs (const_jobs_);
       process_jobs (async_jobs_);
       int64 timeout_usecs = INT64_MAX;

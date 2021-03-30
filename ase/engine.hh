@@ -57,7 +57,6 @@ class AudioEngine : VirtualBase {
   const SpeakerArrangement speaker_arrangement_;
   uint64_t     frame_counter_;
   ThreadId     thread_id_ = {};
-  ssize_t      schedule_level = 0;
   friend class AudioEngineThread;
   friend class AudioProcessor;
   class JobQueue {
@@ -71,7 +70,7 @@ protected:
   explicit     AudioEngine           (uint sample_rate, SpeakerArrangement speakerarrangement);
   virtual void enable_output         (AudioProcessor &aproc, bool onoff) = 0;
   virtual void invalidate_schedule   () = 0;
-  virtual void schedule_add          (AudioProcessor &aproc) = 0;
+  virtual void schedule_add          (AudioProcessor &aproc, uint level) = 0;
 public:
   // Owner-Thread API
   void         start_thread          (const VoidF &owner_wakeup);

@@ -1080,21 +1080,28 @@ AudioProcessor::reset()
 {}
 
 /// Schedule this node and its dependencies for engine rendering.
-void
+uint
 AudioProcessor::schedule_processor()
 {
-  engine_.schedule_level++;
+  uint level = 0;
   if (estreams_ && estreams_->oproc)
-    schedule_processor (*estreams_->oproc);
+    {
+      const uint l = schedule_processor (*estreams_->oproc);
+      level = std::max (level, l);
+    }
   for (size_t i = 0; i < n_ibuses(); i++)
     {
       IBus &ibus = iobus (IBusId (1 + i));
       if (ibus.proc)
-        schedule_processor (*ibus.proc);
+        {
+          const uint l = schedule_processor (*ibus.proc);
+          level = std::max (level, l);
+        }
     }
-  schedule_children();
-  engine_.schedule_level--;
-  engine_.schedule_add (*this);
+  const uint l = schedule_children();
+  level = std::max (level, l);
+  engine_.schedule_add (*this, level);
+  return level + 1;
 }
 
 /** Method called for every audio buffer to be processed.
