@@ -81,8 +81,8 @@ class ColoredNoise : public AudioProcessor {
   WhiteRand white_rand_;
   Pink      pink0, pink1;
   float     gain_factor_ = 1.0;
-  bool      mono_ = true;
-  bool      pink_ = false;
+  bool      mono_ = false;
+  bool      pink_ = true;
   enum Params { GAIN = 1, MONO, PINK };
 public:
   void
@@ -100,8 +100,8 @@ public:
   {
     start_group ("Noise Settings");
     add_param (GAIN, "Gain",  "Gain", -96, 24, 0, "dB");
-    add_param (MONO, "Mono",  "Monophonic", true);
-    add_param (PINK, "Pink", "Pink Noise", false);
+    add_param (MONO, "Mono",  "Monophonic", false);
+    add_param (PINK, "Pink", "Pink Noise", true);
     remove_all_buses();
     stereout_ = add_output_bus ("Stereo Out", SpeakerArrangement::STEREO);
   }
@@ -116,7 +116,7 @@ public:
       }
   }
   void
-  reset() override
+  reset (uint64 target_stamp) override
   {
     pink0.reset();
     pink1.reset();
