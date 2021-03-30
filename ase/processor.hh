@@ -7,7 +7,6 @@
 #include <ase/datautils.hh>
 #include <ase/properties.hh>
 #include <ase/engine.hh>
-#include <atomic>
 #include <any>
 
 namespace Ase {

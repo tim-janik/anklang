@@ -3,6 +3,7 @@
 #define __ASE_ENGINE_HH__
 
 #include <ase/platform.hh>
+#include <atomic>
 
 namespace Ase {
 
@@ -57,6 +58,7 @@ class AudioEngine : VirtualBase {
   const SpeakerArrangement speaker_arrangement_;
   uint64_t     frame_counter_;
   ThreadId     thread_id_ = {};
+  std::atomic<size_t> processor_count_ = 0;
   friend class AudioEngineThread;
   friend class AudioProcessor;
   class JobQueue {

@@ -244,12 +244,14 @@ AudioProcessor::AudioProcessor() :
 {
   assert_return (processor_ctor_registry_context->engine != nullptr);
   processor_ctor_registry_context->engine = nullptr; // consumed
+  engine_.processor_count_ += 1;
 }
 
 /// The destructor is called when the last std::shared_ptr<> reference drops.
 AudioProcessor::~AudioProcessor ()
 {
   remove_all_buses();
+  engine_.processor_count_ -= 1;
 }
 
 /// Create the `Ase::ProcessorIface` for `this`.
