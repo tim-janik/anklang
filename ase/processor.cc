@@ -728,7 +728,7 @@ AudioProcessor::initialize (SpeakerArrangement busses)
 void
 AudioProcessor::reschedule ()
 {
-  engine_.invalidate_schedule();
+  engine_.schedule_queue_update();
 }
 
 /// Configure if the main output of this module is mixed into the engine output.

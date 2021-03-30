@@ -38,7 +38,7 @@ public:
   void     ensure_driver     ();
   void     schedule_add      (AudioProcessor &aproc, uint level) override;
   void     enable_output     (AudioProcessor &aproc, bool onoff) override;
-  void     invalidate_schedule () override;
+  void     schedule_queue_update () override;
   void     wakeup_thread_mt    () override;
   bool     ipc_pending         () override;
   void     ipc_dispatch        () override;
@@ -83,13 +83,13 @@ AudioEngineThread::enable_output (AudioProcessor &aproc, bool onoff)
     {
       oprocs_.push_back (procp);
       aproc.flags_ |= AudioProcessor::ENGINE_OUTPUT;
-      invalidate_schedule();
+      schedule_queue_update();
     }
   else if (!onoff && (aproc.flags_ & AudioProcessor::ENGINE_OUTPUT))
     {
       const bool foundproc = Aux::erase_first (oprocs_, [procp] (AudioProcessorP c) { return c == procp; });
       aproc.flags_ &= ~AudioProcessor::ENGINE_OUTPUT;
-      invalidate_schedule();
+      schedule_queue_update();
       assert_return (foundproc);
     }
 }
@@ -109,7 +109,7 @@ AudioEngineThread::ensure_driver()
     pcm_driver_ = PcmDriver::open ("auto", Driver::WRITEONLY, Driver::WRITEONLY, pconfig, &er);
   if (!pcm_driver_)
     pcm_driver_ = null_pcm_driver_;
-  invalidate_schedule();
+  schedule_queue_update();
 }
 
 void
@@ -128,7 +128,7 @@ AudioEngineThread::run (const VoidF &owner_wakeup, StartQueue *sq)
 }
 
 void
-AudioEngineThread::invalidate_schedule()
+AudioEngineThread::schedule_queue_update()
 {
   // FIXME
 }
@@ -355,7 +355,7 @@ AudioEngine::start_thread (const VoidF &owner_wakeup)
   AudioEngineThread &engine = *dynamic_cast<AudioEngineThread*> (this);
   engine.ensure_driver();
   assert_return (engine.thread_ == nullptr);
-  invalidate_schedule();
+  schedule_queue_update();
   StartQueue start_queue;
   engine.thread_ = new std::thread (&AudioEngineThread::run, &engine, owner_wakeup, &start_queue);
   const char reply = start_queue.pop(); // synchronize with thread start
