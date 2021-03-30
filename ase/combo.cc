@@ -17,7 +17,7 @@ public:
     assert_return (nullptr != std::any_cast<AudioChain*> (any));
   }
   void query_info (AudioProcessorInfo &info) const override { info.label = "Anklang.Devices.AudioChain.Inlet"; }
-  void reset      () override                               {}
+  void reset      (uint64 target_stamp) override            {}
   void
   initialize (SpeakerArrangement busses) override
   {
@@ -83,6 +83,7 @@ AudioCombo::remove (AudioProcessor &proc)
   // fixup following connections
   reconnect (pos, false);
   enotify_enqueue_mt (REMOVAL);
+  reschedule();
   return true;
 }
 
@@ -166,7 +167,7 @@ AudioChain::initialize (SpeakerArrangement busses)
 }
 
 void
-AudioChain::reset ()
+AudioChain::reset (uint64 target_stamp)
 {}
 
 uint

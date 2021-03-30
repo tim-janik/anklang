@@ -1058,27 +1058,27 @@ AudioProcessor::ensure_initialized()
           (!estreams_ || (!estreams_->has_event_input && !estreams_->has_event_output)))
         warning ("AudioProcessor::%s: initialize() failed to add input/output busses for: %s", __func__, debug_name());
       assign_iobufs();
-      reset_state();
+      reset_state (engine_.frame_counter());
     }
   assert_return (n_ibuses() + n_obuses() != 0);
 }
 
 /// Reset all voices, buffers and other internal state
 void
-AudioProcessor::reset_state()
+AudioProcessor::reset_state (uint64 target_stamp)
 {
-  if (done_frames_ != engine_.frame_counter())
+  if (render_stamp_ != target_stamp)
     {
       if (estreams_)
         estreams_->estream.clear();
-      reset();
-      done_frames_ = engine_.frame_counter();
+      reset (target_stamp);
+      render_stamp_ = target_stamp;
     }
 }
 
 /// Reset all state variables.
 void
-AudioProcessor::reset()
+AudioProcessor::reset (uint64 target_stamp)
 {}
 
 /// Schedule this node and its dependencies for engine rendering.
@@ -1120,14 +1120,13 @@ AudioProcessor::render (uint32 n_frames)
 {}
 
 void
-AudioProcessor::render_block ()
+AudioProcessor::render_block (uint64 target_stamp)
 {
-  const uint64_t engine_frame_counter = engine_.frame_counter();
-  return_unless (done_frames_ < engine_frame_counter);
+  return_unless (render_stamp_ < target_stamp);
   if (ASE_UNLIKELY (estreams_) && !ASE_ISLIKELY (estreams_->estream.empty()))
     estreams_->estream.clear();
-  render (AUDIO_BLOCK_MAX_RENDER_SIZE);
-  done_frames_ = engine_frame_counter;
+  render (target_stamp - render_stamp_);
+  render_stamp_ = target_stamp;
 }
 
 // == RegistryEntry ==

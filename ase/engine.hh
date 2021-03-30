@@ -52,13 +52,12 @@ std::string        speaker_arrangement_desc           (SpeakerArrangement spa);
 
 /// Main handle for AudioProcessor administration and audio rendering.
 class AudioEngine : VirtualBase {
-  const double nyquist_;          ///< Half the `sample_rate`.
-  const double inyquist_;         ///< Inverse Nyquist frequency, i.e. `1.0 / nyquist_`
-  const uint   sample_rate_;      ///< Sample rate (mixing frequency) in Hz used for rendering.
-  const SpeakerArrangement speaker_arrangement_;
-  uint64_t     frame_counter_;
-  ThreadId     thread_id_ = {};
-  std::atomic<size_t> processor_count_ = 0;
+  const double                 nyquist_;     // Half the `sample_rate`.
+  const double                 inyquist_;    // Inverse Nyquist frequency, i.e. `1.0 / nyquist_`
+  const uint                   sample_rate_; // Sample rate (mixing frequency) in Hz used for rendering.
+  const SpeakerArrangement     speaker_arrangement_;
+  std::atomic<size_t>          processor_count_ = 0;
+  ThreadId                     thread_id_ = {};
   friend class AudioEngineThread;
   friend class AudioProcessor;
   class JobQueue {
@@ -75,17 +74,17 @@ protected:
   virtual void schedule_add          (AudioProcessor &aproc, uint level) = 0;
 public:
   // Owner-Thread API
-  void         start_thread          (const VoidF &owner_wakeup);
-  void         stop_thread           ();
+  virtual void start_thread          (const VoidF &owner_wakeup) = 0;
+  virtual void stop_thread           () = 0;
   virtual void wakeup_thread_mt      () = 0;
   virtual bool ipc_pending           () = 0;
   virtual void ipc_dispatch          () = 0;
   // MT-Safe API
-  uint         sample_rate           () const ASE_CONST     { return sample_rate_; }
-  double       nyquist               () const ASE_CONST     { return nyquist_; }
-  double       inyquist              () const ASE_CONST     { return inyquist_; }
-  uint64_t     frame_counter         () const               { return frame_counter_; }
-  ThreadId     thread_id             () const               { return thread_id_; }
+  virtual uint64_t   frame_counter       () const = 0;
+  uint               sample_rate         () const ASE_CONST { return sample_rate_; }
+  double             nyquist             () const ASE_CONST { return nyquist_; }
+  double             inyquist            () const ASE_CONST { return inyquist_; }
+  ThreadId           thread_id           () const           { return thread_id_; }
   SpeakerArrangement speaker_arrangement () const;
   JobQueue     const_jobs;
   JobQueue     async_jobs;

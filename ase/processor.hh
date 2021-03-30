@@ -128,7 +128,7 @@ class AudioProcessor : public std::enable_shared_from_this<AudioProcessor>, publ
     bool operator== (const OConnection &o) const { return proc == o.proc && ibusid == o.ibusid; }
   };
   using OBRange = std::pair<FloatBuffer*,FloatBuffer*>;
-  AudioProcessor          *sched_ring_ = nullptr;
+  AudioProcessor          *sched_next_ = nullptr;
 protected:
 #ifndef DOXYGEN
   // Inherit `AudioSignal` concepts in derived classes from other namespaces
@@ -136,7 +136,7 @@ protected:
 #endif
   enum { INITIALIZED   = 1 << 0,
          //            = 1 << 1,
-         SCHED_TAG     = 1 << 2,
+         SCHEDULED     = 1 << 2,
          PARAMCHANGE   = 1 << 3,
          BUSCONNECT    = 1 << 4,
          BUSDISCONNECT = 1 << 5,
@@ -152,7 +152,7 @@ private:
   std::vector<PParam>      params_; // const once is_initialized()
   std::vector<OConnection> outputs_;
   EventStreams            *estreams_ = nullptr;
-  uint64_t                 done_frames_ = 0;
+  uint64_t                 render_stamp_ = 0;
   static void        registry_init      ();
   const PParam*      find_pparam        (Id32 paramid) const;
   const PParam*      find_pparam_       (ParamId paramid) const;
@@ -163,11 +163,11 @@ private:
   FloatBuffer&       float_buffer       (OBusId busid, uint channelindex, bool resetptr = false);
   static
   const FloatBuffer& zero_buffer        ();
-  void               render_block       ();
-  void               reset_state        ();
+  void               render_block       (uint64 target_stamp);
+  void               reset_state        (uint64 target_stamp);
   /*copy*/           AudioProcessor     (const AudioProcessor&) = delete;
   virtual void       render             (uint n_frames) = 0;
-  virtual void       reset              () = 0;
+  virtual void       reset              (uint64 target_stamp) = 0;
   PropertyP          access_property    (ParamId id) const;
 protected:
   AudioEngine  &engine_;

@@ -31,7 +31,7 @@ class AudioChain : public AudioCombo {
   AudioProcessor  *last_output_ = nullptr;
 protected:
   void     initialize        (SpeakerArrangement busses) override;
-  void     reset             () override;
+  void     reset             (uint64 target_stamp) override;
   void     render            (uint n_frames) override;
   uint     schedule_children () override;
   void     reconnect         (size_t index, bool insertion) override;
