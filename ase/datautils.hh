@@ -2,12 +2,9 @@
 #ifndef __ASE_DATAUTILS_HH__
 #define __ASE_DATAUTILS_HH__
 
-#include <ase/cxxaux.hh>
+#include <ase/mathutils.hh>
 
 namespace Ase {
-
-/// Double round-off error at 1.0, equals 2^-53
-constexpr const double DOUBLE_EPSILON = 1.1102230246251565404236316680908203125e-16;
 
 /// Maximum number of sample frames to calculate in Processor::render().
 constexpr const uint AUDIO_BLOCK_MAX_RENDER_SIZE = 128;
