@@ -228,7 +228,13 @@ void
 TestChain::run (ptrdiff_t internal_token, const StringS *test_names)
 {
   assert_return (internal_token == ptrdiff_t (global_test_chain));
+  std::vector<const TestChain*> tests;
   for (const TestChain *t = global_test_chain; t; t = t->next_)
+    tests.push_back (t);
+  std::sort (tests.begin(), tests.end(), [] (const TestChain *a, const TestChain *b) {
+    return std::string (a->name_) < b->name_;
+  });
+  for (const TestChain *t : tests)
     {
       if (test_names && !match_testname (t->name_, *test_names))
         continue;
