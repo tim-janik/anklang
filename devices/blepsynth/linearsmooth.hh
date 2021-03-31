@@ -1,6 +1,6 @@
 // Licensed GNU LGPL v2.1 or later: http://www.gnu.org/licenses/lgpl.html
-#ifndef __BSE_DEVICES_LINEAR_SMOOTH_HH__
-#define __BSE_DEVICES_LINEAR_SMOOTH_HH__
+#ifndef __ASE_DEVICES_LINEAR_SMOOTH_HH__
+#define __ASE_DEVICES_LINEAR_SMOOTH_HH__
 
 /* from liquidsfz utils */
 
@@ -8,7 +8,7 @@
 
 #include <string>
 
-namespace Bse {
+namespace Ase {
 
 class LinearSmooth
 {
@@ -57,4 +57,4 @@ public:
 
 }
 
-#endif /* __BSE_DEVICES_LINEAR_SMOOTH_HH__ */
+#endif /* __ASE_DEVICES_LINEAR_SMOOTH_HH__ */

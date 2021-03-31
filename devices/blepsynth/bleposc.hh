@@ -1,14 +1,14 @@
 // Licensed GNU LGPL v2.1 or later: http://www.gnu.org/licenses/lgpl.html
-#ifndef __BSE_DEVICES_BLEPOSC_HH__
-#define __BSE_DEVICES_BLEPOSC_HH__
+#ifndef __ASE_DEVICES_BLEPOSC_HH__
+#define __ASE_DEVICES_BLEPOSC_HH__
 
-#include <bse/bseblockutils.hh>
-#include <bse/bsemathsignal.hh>
+#include <ase/aseblockutils.hh>
+#include <ase/asemathsignal.hh>
 
-namespace Bse {
+namespace Ase {
 namespace BlepUtils {
 
-using Bse::Block;
+using Ase::Block;
 using std::max;
 
 class OscImpl
@@ -483,7 +483,7 @@ public:
     double sync_factor = fast_exp2 (clamp (sync_base, 0.0, 60.0) / 12);
 
     /* dc substampling according to control frequency (cpu/quality trade off) */
-    const int dc_steps = max (bse_ftoi (rate_ / 4000), 1);
+    const int dc_steps = max (ase_ftoi (rate_ / 4000), 1);
 
     for (auto& voice : unison_voices)
       {
@@ -492,7 +492,7 @@ public:
         for (unsigned int n = 0; n < n_values; n++)
           {
             if (freq_in)
-              master_freq = frequency_factor * BSE_SIGNAL_TO_FREQ (freq_in[n]);
+              master_freq = frequency_factor * ASE_SIGNAL_TO_FREQ (freq_in[n]);
 
             double master_inc = master_freq * master_freq2inc;
             if (freq_mod_in)
@@ -677,7 +677,7 @@ public:
   double
   test_seek_to (double phase)
   {
-    BSE_ASSERT_RETURN (osc_impl.unison_voices.size() > 0, 0);
+    ASE_ASSERT_RETURN (osc_impl.unison_voices.size() > 0, 0);
     osc_impl.reset();
     osc_impl.reset_master (osc_impl.unison_voices[0], phase);  // jump to phase
 
@@ -709,6 +709,6 @@ public:
 };
 
 } // BlepUtils
-} // Bse
+} // Ase
 
-#endif // __BSE_DEVICES_BLEPOSC_HH__
+#endif // __ASE_DEVICES_BLEPOSC_HH__

@@ -1,11 +1,11 @@
 // Licensed GNU LGPL v2.1 or later: http://www.gnu.org/licenses/lgpl.html
 
-#ifndef __BSE_BLEPUTILS_HH__
-#define __BSE_BLEPUTILS_HH__
+#ifndef __ASE_BLEPUTILS_HH__
+#define __ASE_BLEPUTILS_HH__
 
 #include <assert.h>
 
-namespace Bse {
+namespace Ase {
 namespace BlepUtils {
 
 inline double

@@ -1,13 +1,13 @@
 // Licensed GNU LGPL v2.1 or later: http://www.gnu.org/licenses/lgpl.html
-#include "bse/processor.hh"
-#include "bse/signalmath.hh"
-#include "bse/bsenote.hh"
+#include "ase/processor.hh"
+#include "ase/signalmath.hh"
+#include "ase/asenote.hh"
 #include "devices/blepsynth/bleposc.hh"
 #include "devices/blepsynth/laddervcf.hh"
 #include "devices/blepsynth/linearsmooth.hh"
-#include "bse/internal.hh"
+#include "ase/internal.hh"
 
-namespace Bse {
+namespace Ase {
 
 using namespace AudioSignal;
 
@@ -271,7 +271,7 @@ class BlepSynth : public AudioSignal::Processor {
   void
   query_info (ProcessorInfo &info) const override
   {
-    info.uri = "Bse.BlepSynth";
+    info.uri = "Ase.BlepSynth";
     // info.version = "0";
     info.label = "BlepSynth";
     info.category = "Synth";
@@ -424,11 +424,11 @@ class BlepSynth : public AudioSignal::Processor {
     osc.sub_width_base      = get_param (params.sub_width) * 0.01;
     osc.sync_base           = get_param (params.sync);
 
-    int octave = bse_ftoi (get_param (params.octave));
+    int octave = ase_ftoi (get_param (params.octave));
     octave = CLAMP (octave, -2, 3);
     osc.frequency_factor = fast_exp2 (octave + get_param (params.pitch) / 12.);
 
-    int unison_voices = bse_ftoi (get_param (params.unison_voices));
+    int unison_voices = ase_ftoi (get_param (params.unison_voices));
     unison_voices = CLAMP (unison_voices, 1, 16);
     osc.set_unison (unison_voices, get_param (params.unison_detune), get_param (params.unison_stereo) * 0.01);
   }
@@ -438,7 +438,7 @@ class BlepSynth : public AudioSignal::Processor {
     Voice *voice = alloc_voice();
     if (voice)
       {
-        voice->freq_ = bse_note_to_freq (Bse::MusicalTuning::OD_12_TET, midi_note);
+        voice->freq_ = ase_note_to_freq (Ase::MusicalTuning::OD_12_TET, midi_note);
         voice->state_ = Voice::ON;
         voice->channel_ = channel;
         voice->midi_note_ = midi_note;
@@ -565,7 +565,7 @@ class BlepSynth : public AudioSignal::Processor {
             mix_right_out[i] = osc1_right_out[i] * v1 + osc2_right_out[i] * v2;
           }
         bool run_filter = true;
-        switch (bse_ftoi (get_param (pid_mode_)))
+        switch (ase_ftoi (get_param (pid_mode_)))
           {
           case 4: voice->vcf_.set_mode (LadderVCFMode::LP4);
             break;
@@ -648,9 +648,9 @@ class BlepSynth : public AudioSignal::Processor {
     for (int o = 0; o < 2; o++)
       {
         if (paramid == osc_params[o].unison_voices)
-          return string_format ("%d voices", bse_ftoi (value));
+          return string_format ("%d voices", ase_ftoi (value));
         if (paramid == osc_params[o].octave)
-          return string_format ("%d octaves", bse_ftoi (value));
+          return string_format ("%d octaves", ase_ftoi (value));
       }
 
     return Processor::param_value_to_text (paramid, value);
@@ -670,6 +670,6 @@ class BlepSynth : public AudioSignal::Processor {
     return Processor::value_from_normalized (paramid, normalized);
   }
 };
-static auto blepsynth = Bse::enroll_asp<BlepSynth>();
+static auto blepsynth = Ase::enroll_asp<BlepSynth>();
 
-} // Bse
+} // Ase

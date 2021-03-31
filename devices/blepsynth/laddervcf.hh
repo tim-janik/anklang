@@ -1,10 +1,10 @@
 // Licensed GNU LGPL v2.1 or later: http://www.gnu.org/licenses/lgpl.html
-#ifndef __BSE_DEVICES_LADDER_VCF_HH__
-#define __BSE_DEVICES_LADDER_VCF_HH__
+#ifndef __ASE_DEVICES_LADDER_VCF_HH__
+#define __ASE_DEVICES_LADDER_VCF_HH__
 
-#include <bse/bseresampler.hh>
+#include <ase/aseresampler.hh>
 
-namespace Bse {
+namespace Ase {
 
 enum class LadderVCFMode { LP1, LP2, LP3, LP4 };
 
@@ -15,7 +15,7 @@ class LadderVCF
     double x1, x2, x3, x4;
     double y1, y2, y3, y4;
 
-    // NOTE: Bse currently doesn't enforce SSE alignment so we force FPU resampling
+    // NOTE: Ase currently doesn't enforce SSE alignment so we force FPU resampling
     Resampler2 res_up   { Resampler2::UP,   Resampler2::PREC_48DB, false };
     Resampler2 res_down { Resampler2::DOWN, Resampler2::PREC_48DB, false };
   };
@@ -51,7 +51,7 @@ public:
   {
     const double drive_delta_db = 36;
 
-    pre_scale = bse_db_to_factor (drive_db - drive_delta_db);
+    pre_scale = ase_db_to_factor (drive_db - drive_delta_db);
     post_scale = std::max (1 / pre_scale, 1.0);
   }
   void
@@ -168,7 +168,7 @@ private:
                       values[i] = c.y4 * post_scale;
                       break;
                     default:
-                      BSE_ASSERT_RETURN_UNREACHED();
+                      ASE_ASSERT_RETURN_UNREACHED();
                   }
               }
           }
@@ -205,20 +205,20 @@ private:
         double mod_res = res;
 
         if (freq_in)
-          mod_fc = BSE_SIGNAL_TO_FREQ (freq_in[i]) * freq_scale / nyquist;
+          mod_fc = ASE_SIGNAL_TO_FREQ (freq_in[i]) * freq_scale / nyquist;
 
         if (freq_mod_in)
           mod_fc *= fast_exp2 (freq_mod_in[i] * freq_mod_octaves);
 
         if (key_freq_in)
           {
-            if (BSE_UNLIKELY (BSE_SIGNAL_FREQ_CHANGED (key_freq_in[i], last_key_freq)))
+            if (ASE_UNLIKELY (ASE_SIGNAL_FREQ_CHANGED (key_freq_in[i], last_key_freq)))
               {
                 /* key tracking from frequency is expensive to compute; with this optimization
                  * it should be fast, because the key frequency usually doesn't change
                  */
                 last_key_freq = key_freq_in[i];
-                last_key_tracking_factor = exp (key_tracking * log (BSE_SIGNAL_TO_FREQ (key_freq_in[i]) / 261.63));
+                last_key_tracking_factor = exp (key_tracking * log (ASE_SIGNAL_TO_FREQ (key_freq_in[i]) / 261.63));
               }
             mod_fc *= last_key_tracking_factor;
           }
@@ -283,7 +283,7 @@ private:
                 break;
         case 3: do_run_block<MODE, 3> (n_samples, fc, res, inputs, outputs, freq_in, freq_mod_in, key_freq_in, reso_mod_in);
                 break;
-        default: BSE_ASSERT_RETURN_UNREACHED();
+        default: ASE_ASSERT_RETURN_UNREACHED();
       }
   }
 public:
@@ -332,6 +332,6 @@ typedef LadderVCF<true,  true>  LadderVCFNonLinear;
 // fast non-linear version (no oversampling), may have aliasing
 typedef LadderVCF<false, true>  LadderVCFNonLinearCheap;
 
-} // Bse
+} // Ase
 
-#endif // __BSE_DEVICES_LADDER_VCF_HH__
+#endif // __ASE_DEVICES_LADDER_VCF_HH__

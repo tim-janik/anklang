@@ -4,14 +4,14 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <sys/time.h>
-#include <bse/gslfft.hh>
-#include <bse/bsemathsignal.hh>
+#include <ase/gslfft.hh>
+#include <ase/asemathsignal.hh>
 #include <vector>
 #include <complex>
 #include "bleputils.hh"
 #include "bleposc.hh"
 
-using namespace Bse::BlepUtils;
+using namespace Ase::BlepUtils;
 
 using std::vector;
 using std::string;
@@ -146,7 +146,7 @@ fft_snr (Osc& o, DCTest dc_test)
   get_sig_noise_max (mag, o, sig_max, noise_max, freq_max);
 
   SNR snr;
-  snr.snr = bse_db_from_factor (sig_max / noise_max, -200);
+  snr.snr = ase_db_from_factor (sig_max / noise_max, -200);
   snr.freq = freq_max;
 
   return snr;
@@ -201,7 +201,7 @@ snr_high_fft (Osc& o, Osc& o_high, int over)
   double sig_max = max (sig_max_low, sig_max_high);
 
   SNR snr;
-  snr.snr = bse_db_from_factor (sig_max / noise_max_low, -200);
+  snr.snr = ase_db_from_factor (sig_max / noise_max_low, -200);
   snr.freq = freq_max_low;
   return snr;
 }
@@ -297,7 +297,7 @@ speed2_test()
 
       float freq_buffer[len];
       for (int n = 0; n < len; n++)
-        freq_buffer[n] = BSE_SIGNAL_FROM_FREQ (o.frequency_base);
+        freq_buffer[n] = ASE_SIGNAL_FROM_FREQ (o.frequency_base);
 
       float *freq_in = nullptr;
       float *freq_mod = nullptr;
@@ -391,7 +391,7 @@ dc_reduce (const vector<float>& signal,
       double sum = 0;
       for (size_t i = 0; i < len; i++)
         {
-          double win = bse_window_cos ((i * 2.0) / len - 1.0);
+          double win = ase_window_cos ((i * 2.0) / len - 1.0);
           win_sum += win;
           sum += signal[start + i] * win;
           //printf ("%zd %f\n", i, signal[i] * win);
@@ -416,7 +416,7 @@ dc_report (vector<float>& dcs)
       dmax = max<double> (d, dmax);
       davg += d / dcs.size();
     }
-  return Bse::string_format ("avg %f range [%f, %f]", bse_db_from_factor (fabs (davg), -200), bse_db_from_factor (fabs (dmin), -200), bse_db_from_factor (fabs (dmax), -200));
+  return Ase::string_format ("avg %f range [%f, %f]", ase_db_from_factor (fabs (davg), -200), ase_db_from_factor (fabs (dmin), -200), ase_db_from_factor (fabs (dmax), -200));
 }
 
 static void
@@ -508,14 +508,14 @@ exp2_func (double d)
   {
     case 0: return pow (2, d);
     case 1: return exp (d * 0.693147180559945);
-    case 2: return bse_approx2_exp2 (d);
-    case 3: return bse_approx3_exp2 (d);
-    case 4: return bse_approx4_exp2 (d);
-    case 5: return bse_approx5_exp2 (d);
-    case 6: return bse_approx6_exp2 (d);
-    case 7: return bse_approx7_exp2 (d);
-    case 8: return bse_approx8_exp2 (d);
-    case 9: return bse_approx9_exp2 (d);
+    case 2: return ase_approx2_exp2 (d);
+    case 3: return ase_approx3_exp2 (d);
+    case 4: return ase_approx4_exp2 (d);
+    case 5: return ase_approx5_exp2 (d);
+    case 6: return ase_approx6_exp2 (d);
+    case 7: return ase_approx7_exp2 (d);
+    case 8: return ase_approx8_exp2 (d);
+    case 9: return ase_approx9_exp2 (d);
   }
 }
 template<int FN> std::string
@@ -525,7 +525,7 @@ exp2_label()
   {
     case 0: return "pow";
     case 1: return "exp";
-    default: return Bse::string_format ("approx%d_exp2", FN);
+    default: return Ase::string_format ("approx%d_exp2", FN);
   }
 }
 
@@ -648,7 +648,7 @@ dc_test (Osc& o)
       for (int i = 0; i < o.rate; i++)
         dc += o.process_sample();
       dc /= o.rate;
-      printf ("%d %.6f %.17g #dB\n", sec, dc, bse_db_from_factor (fabs (dc), -200));
+      printf ("%d %.6f %.17g #dB\n", sec, dc, ase_db_from_factor (fabs (dc), -200));
     }
 }
 
@@ -694,7 +694,7 @@ main (int argc, char **argv)
 #if 0
   // to get better speed test results:
   //
-  // g++ -O2 -o tb testblep.cc bleposcdata.cc $(pkg-config --cflags --libs bse) -std=c++11
+  // g++ -O2 -o tb testblep.cc bleposcdata.cc $(pkg-config --cflags --libs ase) -std=c++11
   //
   // and: run only speed test
   speed_test (o);
@@ -741,7 +741,7 @@ main (int argc, char **argv)
         lfo_test ();
       else
         {
-          Bse::printerr ("%s: unsupported test type '%s', try vnorm, fft, speed, speed2, reset, exp2 or snr\n", argv[0], test_name.c_str());
+          Ase::printerr ("%s: unsupported test type '%s', try vnorm, fft, speed, speed2, reset, exp2 or snr\n", argv[0], test_name.c_str());
           return 1;
         }
       return 0;
