@@ -39,6 +39,33 @@ float fast_db2voltage (float x);
 /// Determine a significant synthesizer value (Voltage) change.
 template<typename Float> Float voltage_changed (Float a, Float b);
 
+/// Logarithmically map (and invert) a range onto 0…+1.
+struct Logscale {
+  double b2 = 0;         // log2 (begin)
+  double r2 = 1, ir = 1; // range
+  /// Provide minimum and maximum values to be mapped.
+  void
+  setup (double min, double max)
+  {
+    b2 = ::log2l (min);
+    auto range = ::log2l (max) - b2;
+    ir = 1.0 / range;
+    r2 = range;
+  }
+  /// Calculate scale value within `[min … max]` from normalized `x`.
+  double
+  scale (double normalized) const
+  {
+    return ::exp2 (b2 + normalized * r2);
+  }
+  /// Calculate `normalized` from a `scale()` result within `[min … max]`.
+  double
+  iscale (double mmvalue) const
+  {
+    return (::log2 (mmvalue) - b2) * ir;
+  }
+};
+
 // == Implementations ==
 static constexpr const long double c3_hertz = 261.6255653005986346778499935233; // 440 * 2^(-9/12)
 static constexpr const long double c3_hertz_inv = 0.0038222564329714297410505703465146; // 1 / c3_hertz
