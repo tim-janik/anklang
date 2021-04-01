@@ -295,6 +295,12 @@ ase_error_from_errno (int sys_errno, Error fallback)
     }
 }
 
+String
+ServerImpl::error_blurb (Error error) const
+{
+  return ase_error_blurb (error);
+}
+
 // == MusicalTuning ==
 using BlurbDesc = std::pair<const char*, const char*>;
 
@@ -399,13 +405,13 @@ musical_tuning_blurb_desc (MusicalTuning musicaltuning)
 }
 
 String
-ServerImpl::musical_tuning_blurb (MusicalTuning musicaltuning)
+ServerImpl::musical_tuning_blurb (MusicalTuning musicaltuning) const
 {
   return musical_tuning_blurb_desc (musicaltuning).first;
 }
 
 String
-ServerImpl::musical_tuning_desc (MusicalTuning musicaltuning)
+ServerImpl::musical_tuning_desc (MusicalTuning musicaltuning) const
 {
   return musical_tuning_blurb_desc (musicaltuning).second;
 }

@@ -15,8 +15,9 @@ public:
   String       get_version          () override;
   String       get_vorbis_version   () override;
   String       get_mp3_version      () override;
-  String       musical_tuning_blurb (MusicalTuning musicaltuning) override;
-  String       musical_tuning_desc  (MusicalTuning musicaltuning) override;
+  String       error_blurb          (Error error) const override;
+  String       musical_tuning_blurb (MusicalTuning musicaltuning) const override;
+  String       musical_tuning_desc  (MusicalTuning musicaltuning) const override;
   void         shutdown             () override;
   ProjectP     last_project         () override;
   ProjectP     create_project       (String projectname) override;
