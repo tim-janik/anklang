@@ -2,8 +2,7 @@
 #ifndef __ASE_RESAMPLER_HH__
 #define __ASE_RESAMPLER_HH__
 
-#include <ase/asecxxutils.hh>
-#include <vector>
+#include <ase/cxxaux.hh>
 
 namespace Ase {
 
@@ -144,6 +143,6 @@ protected:
 	       Precision precision);
 };
 
-} /* namespace Ase */
+} // Ase
 
 #endif /* __ASE_RESAMPLER_HH__ */

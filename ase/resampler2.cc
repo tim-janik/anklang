@@ -1,11 +1,12 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#include "aseresampler.hh"
-#include "aseblockutils.hh"
+#include "resampler2.hh"
+#include "datautils.hh"
+#include "memory.hh"
 #ifdef __SSE__
 #include <xmmintrin.h>
 #endif
 
-using namespace Ase;
+namespace Ase {
 
 /* see: http://ds9a.nl/gcc-simd/ */
 union F4Vector
@@ -414,11 +415,11 @@ fir_process_4samples_sse (const float *input,
  * so that we can compute out0, out1, out2 and out3 simultaneously
  * from input[0]..input[2]
  */
-static inline vector<float>
-fir_compute_sse_taps (const vector<float>& taps)
+static inline std::vector<float>
+fir_compute_sse_taps (const std::vector<float>& taps)
 {
   const int order = taps.size();
-  vector<float> sse_taps ((order + 6) / 4 * 16);
+  std::vector<float> sse_taps ((order + 6) / 4 * 16);
 
   for (int j = 0; j < 4; j++)
     for (int i = 0; i < order; i++)
@@ -445,11 +446,11 @@ fir_test_filter_sse (bool       verbose,
 {
   int errors = 0;
   if (verbose)
-    printf ("testing SSE filter implementation:\n\n");
+    printout ("testing SSE filter implementation:\n\n");
 
   for (uint order = 0; order < max_order; order++)
     {
-      vector<float> taps (order);
+      std::vector<float> taps (order);
       for (uint i = 0; i < order; i++)
 	taps[i] = i + 1;
 
@@ -458,13 +459,13 @@ fir_test_filter_sse (bool       verbose,
 	{
 	  for (uint i = 0; i < sse_taps.size(); i++)
 	    {
-	      printf ("%3d", (int) (sse_taps[i] + 0.5));
+	      printout ("%3d", (int) (sse_taps[i] + 0.5));
 	      if (i % 4 == 3)
-		printf ("  |");
+		printout ("  |");
 	      if (i % 16 == 15)
-		printf ("   ||| upper bound = %d\n", (order + 6) / 4);
+		printout ("   ||| upper bound = %d\n", (order + 6) / 4);
 	    }
-	  printf ("\n\n");
+	  printout ("\n\n");
 	}
 
       FastMemArray<float> random_mem (order + 6);
@@ -487,12 +488,12 @@ fir_test_filter_sse (bool       verbose,
       avg_diff /= (order + 1);
       bool is_error = (avg_diff > 0.00001);
       if (is_error || verbose)
-	printf ("*** order = %d, avg_diff = %g\n", order, avg_diff);
+	printout ("*** order = %d, avg_diff = %g\n", order, avg_diff);
       if (is_error)
 	errors++;
     }
   if (errors)
-    printf ("*** %d errors detected\n", errors);
+    printout ("*** %d errors detected\n", errors);
 
   return (errors == 0);
 }
@@ -508,7 +509,7 @@ fir_test_filter_sse (bool       verbose,
  */
 template<uint ORDER, bool USE_SSE>
 class Resampler2::Upsampler2 final : public Resampler2::Impl {
-  vector<float>          taps;
+  std::vector<float>  taps;
   FastMemArray<float> history;
   FastMemArray<float> sse_taps;
 protected:
@@ -627,7 +628,7 @@ public:
   void
   reset() override
   {
-    Ase::Block::fill (history.size(), &history[0], 0.0);
+    floatfill (&history[0], 0.0, history.size());
   }
   bool
   sse_enabled() const override
@@ -645,7 +646,7 @@ public:
  */
 template<uint ORDER, bool USE_SSE>
 class Resampler2::Downsampler2 final : public Resampler2::Impl {
-  vector<float>        taps;
+  std::vector<float>  taps;
   FastMemArray<float> history_even;
   FastMemArray<float> history_odd;
   FastMemArray<float> sse_taps;
@@ -814,8 +815,8 @@ public:
   void
   reset() override
   {
-    Ase::Block::fill (history_even.size(), &history_even[0], 0.0);
-    Ase::Block::fill (history_odd.size(), &history_odd[0], 0.0);
+    floatfill (&history_even[0], 0.0, history_even.size());
+    floatfill (&history_odd[0], 0.0, history_odd.size());
   }
   bool
   sse_enabled() const override
@@ -865,7 +866,9 @@ Resampler2::test_filter_impl (bool verbose)
   else
     {
       if (verbose)
-        Ase::printout ("SSE filter implementation not tested: no SSE support available\n");
+        printout ("SSE filter implementation not tested: no SSE support available\n");
       return true;
     }
 }
+
+} // Ase
