@@ -2,6 +2,7 @@
 #include "resampler2.hh"
 #include "datautils.hh"
 #include "memory.hh"
+#include "internal.hh"
 #ifdef __SSE__
 #include <xmmintrin.h>
 #endif
@@ -865,10 +866,25 @@ Resampler2::test_filter_impl (bool verbose)
     }
   else
     {
-      if (verbose)
-        printout ("SSE filter implementation not tested: no SSE support available\n");
+      printerr ("SSE filter implementation not tested: no SSE support available\n");
       return true;
     }
 }
 
 } // Ase
+
+#include "testing.hh"
+
+namespace { // Anon
+using namespace Ase;
+
+TEST_INTEGRITY (resampler2_tests);
+static void
+resampler2_tests()
+{
+  const bool verbose = false;
+  const bool filter_ok = Resampler2::test_filter_impl (verbose);
+  TASSERT (filter_ok);
+}
+
+} // Anon
