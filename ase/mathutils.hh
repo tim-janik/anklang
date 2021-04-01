@@ -71,6 +71,12 @@ extern inline float value2hz    (float x) ASE_CONST;
 /// Convert Hertz to synthesizer value (Voltage).
 extern inline float hz2value    (float x) ASE_CONST;
 
+/// Finetune factor table with 201 entries for `-100…0…+100` cent.
+extern const float *const cent_table;
+
+/// Musical Tuning Tables, to be indexed by `MusicalTuning`
+extern const float *const semitone_tables_265[17];
+
 // == Implementations ==
 extern inline ASE_CONST float
 fast_exp2 (float ex)
