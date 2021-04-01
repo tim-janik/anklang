@@ -15,7 +15,7 @@ class SharedBase : public virtual VirtualBase,
                    public virtual std::enable_shared_from_this<SharedBase>
 {};
 
-// Error enum
+/// Enum representing Error states.
 enum class Error : int32_t {
   NONE,
   INTERNAL,
@@ -70,6 +70,19 @@ enum class Error : int32_t {
 ASE_DEFINE_ENUM_EQUALITY (Error);
 const char* ase_error_blurb      (Error error);
 Error       ase_error_from_errno (int sys_errno, Error fallback = Error::IO);
+
+/// Musical tunings, see: http://en.wikipedia.org/wiki/Musical_tuning
+enum class MusicalTuning : uint8 {
+  // Equal Temperament: http://en.wikipedia.org/wiki/Equal_temperament
+  OD_12_TET, OD_7_TET, OD_5_TET,
+  // Rational Intonation: http://en.wikipedia.org/wiki/Just_intonation
+  DIATONIC_SCALE, INDIAN_SCALE, PYTHAGOREAN_TUNING, PENTATONIC_5_LIMIT, PENTATONIC_BLUES, PENTATONIC_GOGO,
+  // Meantone Temperament: http://en.wikipedia.org/wiki/Meantone_temperament
+  QUARTER_COMMA_MEANTONE, SILBERMANN_SORGE,
+  // Well Temperament: http://en.wikipedia.org/wiki/Well_temperament
+  WERCKMEISTER_3, WERCKMEISTER_4, WERCKMEISTER_5, WERCKMEISTER_6, KIRNBERGER_3, YOUNG,
+};
+ASE_DEFINE_ENUM_EQUALITY (MusicalTuning);
 
 /// Details about property choice values.
 struct Choice {
@@ -265,6 +278,8 @@ public:
   virtual String get_version        () = 0;     ///< Retrieve ASE version.
   virtual String get_vorbis_version () = 0;     ///< Retrieve Vorbis handler version.
   virtual String get_mp3_version    () = 0;     ///< Retrieve MP3 handler version.
+  virtual String musical_tuning_blurb (MusicalTuning musicaltuning) = 0;
+  virtual String musical_tuning_desc  (MusicalTuning musicaltuning) = 0;
   // preferences
   virtual PropertyS   access_prefs  () = 0;     ///< Retrieve property handles for Preferences fields.
   // projects

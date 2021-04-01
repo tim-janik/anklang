@@ -295,4 +295,119 @@ ase_error_from_errno (int sys_errno, Error fallback)
     }
 }
 
+// == MusicalTuning ==
+using BlurbDesc = std::pair<const char*, const char*>;
+
+static BlurbDesc
+musical_tuning_blurb_desc (MusicalTuning musicaltuning)
+{
+  switch (musicaltuning)
+    {
+      // Equal Temperament: http://en.wikipedia.org/wiki/Equal_temperament
+    case MusicalTuning::OD_12_TET:
+      return { _("12 Tone Equal Temperament"),  // http://en.wikipedia.org/wiki/Equal_temperament
+               _("The most common tuning system for modern Western music, "
+                 "is the twelve-tone equal temperament, abbreviated as 12-TET, "
+                 "which divides the octave into 12 equal parts.") };
+    case MusicalTuning::OD_7_TET:
+      return { _("7 Tone Equal Temperament"),      // http://en.wikipedia.org/wiki/Equal_temperament
+               _("A fairly common tuning system is the seven-tone equal temperament tuning system, "
+                 "abbreviated as 7-TET. It divides the octave into 7 equal parts using 171 cent steps.") };
+    case MusicalTuning::OD_5_TET:
+      return { _("5 Tone Equal Temperament"),      // http://en.wikipedia.org/wiki/Equal_temperament
+               _("A fairly common tuning system is the five-tone equal temperament tuning system, "
+                 "abbreviated as 5-TET. It divides the octave into 5 equal parts using 240 cent steps.") };
+      // Rational Intonation: http://en.wikipedia.org/wiki/Just_intonation
+    case MusicalTuning::DIATONIC_SCALE:
+      return { _("Diatonic Scale"),                 // http://en.wikipedia.org/wiki/Diatonic_scale
+               _("In music theory, a diatonic scale (also: heptatonia prima) is a seven-note "
+                 "musical scale comprising five whole-tone and two half-tone steps. "
+                 "The half tones are maximally separated, so between two half-tone steps "
+                 "there are either two or three whole tones, repeating per octave.") }; // Werckmeister I
+    case MusicalTuning::INDIAN_SCALE:
+      return { _("Indian Scale"),                   // http://en.wikipedia.org/wiki/Just_intonation#Indian_scales
+               _("Diatonic scale used in Indian music with wolf interval at Dha, close to 3/2") };
+    case MusicalTuning::PYTHAGOREAN_TUNING:
+      return { _("Pythagorean Tuning"),             // http://en.wikipedia.org/wiki/Pythagorean_tuning
+               _("Pythagorean tuning is the oldest way of tuning the 12-note chromatic scale, "
+                 "in which the frequency relationships of all intervals are based on the ratio 3:2. "
+                 "Its discovery is generally credited to Pythagoras.") };
+    case MusicalTuning::PENTATONIC_5_LIMIT:
+      return { _("Pentatonic 5-limit"),             // http://en.wikipedia.org/wiki/Pentatonic_scale
+               _("Pentatonic scales are used in modern jazz and pop/rock contexts "
+                 "because they work exceedingly well over several chords diatonic "
+                 "to the same key, often better than the parent scale.") };
+    case MusicalTuning::PENTATONIC_BLUES:
+      return { _("Pentatonic Blues"),               // http://en.wikipedia.org/wiki/Pentatonic_scale
+               _("The blues scale is the minor pentatonic with an additional augmented fourth, "
+                 "which is referred to as the \"blues note\".") };
+    case MusicalTuning::PENTATONIC_GOGO:
+      return { _("Pentatonic Gogo"),                // http://en.wikipedia.org/wiki/Pentatonic_scale
+               _("The Pentatonic Gogo scale is an anhemitonic pentatonic scale used to tune the "
+                 "instruments of the Gogo people of Tanzania.") };
+      // Meantone Temperament: http://en.wikipedia.org/wiki/Meantone_temperament
+    case MusicalTuning::QUARTER_COMMA_MEANTONE:
+      return { _("Quarter-Comma Meantone"),         // http://en.wikipedia.org/wiki/Quarter-comma_meantone
+               _("Quarter-comma meantone was the most common meantone temperament in the "
+                 "sixteenth and seventeenth centuries and sometimes used later.") };    // Werckmeister II
+    case MusicalTuning::SILBERMANN_SORGE:
+      return { _("Silbermann-Sorge Temperament"),   // http://de.wikipedia.org/wiki/Silbermann-Sorge-Temperatur
+               _("The Silbermann-Sorge temperament is a meantone temperament used for "
+                 "Baroque era organs by Gottfried Silbermann.") };
+      // Well Temperament: http://en.wikipedia.org/wiki/Well_temperament
+    case MusicalTuning::WERCKMEISTER_3:
+      return { _("Werckmeister III"),               // http://en.wikipedia.org/wiki/Werckmeister_temperament
+               _("This tuning uses mostly pure (perfect) fifths, as in Pythagorean tuning, but each "
+                 "of the fifths C-G, G-D, D-A and B-F# is made smaller, i.e. tempered by 1/4 comma. "
+                 "Werckmeister designated this tuning as particularly suited for playing chromatic music.") };
+    case MusicalTuning::WERCKMEISTER_4:
+      return { _("Werckmeister IV"),                // http://en.wikipedia.org/wiki/Werckmeister_temperament
+               _("In this tuning the fifths C-G, D-A, E-B, F#-C#, and Bb-F are tempered narrow by 1/3 comma, "
+                 "and the fifths G#-D# and Eb-Bb are widened by 1/3 comma. The other fifths are pure. "
+                 "Most of its intervals are close to sixth-comma meantone. "
+                 "Werckmeister designed this tuning for playing mainly diatonic music.") };
+    case MusicalTuning::WERCKMEISTER_5:
+      return { _("Werckmeister V"),                 // http://en.wikipedia.org/wiki/Werckmeister_temperament
+               _("In this tuning the fifths D-A, A-E, F#-C#, C#-G#, and F-C are narrowed by 1/4 comma, "
+                 "and the fifth G#-D# is widened by 1/4 comma. The other fifths are pure. "
+                 "This temperament is closer to equal temperament than Werckmeister III or IV.") };
+    case MusicalTuning::WERCKMEISTER_6:
+      return { _("Werckmeister VI"),                // http://en.wikipedia.org/wiki/Werckmeister_temperament
+               _("This tuning is also known as Septenarius tuning is based on a division of the monochord "
+                 "length into 196 = 7 * 7 * 4 parts. "
+                 "The resulting scale has rational frequency relationships, but in practice involves pure "
+                 "and impure sounding fifths. "
+                 "Werckmeister described the Septenarius as a \"temperament which has nothing at all to do "
+                 "with the divisions of the comma, nevertheless in practice so correct that one can be really "
+                 "satisfied with it\".") };
+    case MusicalTuning::KIRNBERGER_3:
+      return { _("Kirnberger III"),                 // http://en.wikipedia.org/wiki/Johann_Philipp_Kirnberger_temperament
+               _("Kirnberger's method of compensating for and closing the circle of fifths is to split the \"wolf\" "
+                 "interval known to those who have used meantone temperaments between four fifths instead, "
+                 "allowing for four 1/4-comma wolves to take their place. "
+                 "1/4-comma wolves are used extensively in meantone and are much easier to tune and to listen to. "
+                 "Therefore, only one third remains pure (between C and E).") };
+    case MusicalTuning::YOUNG:
+      return { _("Young Temperament"),              // http://en.wikipedia.org/wiki/Young_temperament
+               _("Thomas Young devised a form of musical tuning to make the harmony most perfect in those keys which "
+                 "are the most frequently used (give better major thirds in those keys), but to not have any unplayable keys. "
+                 "This is attempted by tuning upwards from C a sequence of six pure fourths, "
+                 "as well as six equally imperfect fifths.") };
+    default:
+      return { "", "" };
+    }
+}
+
+String
+ServerImpl::musical_tuning_blurb (MusicalTuning musicaltuning)
+{
+  return musical_tuning_blurb_desc (musicaltuning).first;
+}
+
+String
+ServerImpl::musical_tuning_desc (MusicalTuning musicaltuning)
+{
+  return musical_tuning_blurb_desc (musicaltuning).second;
+}
+
 } // Ase

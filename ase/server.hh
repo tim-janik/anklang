@@ -10,17 +10,19 @@ class ServerImpl : public virtual Server, public virtual GadgetImpl {
   Preferences  prefs_;
 public:
   static ServerImplP instancep ();
-  explicit     ServerImpl         ();
-  virtual     ~ServerImpl         ();
-  String       get_version        () override;
-  String       get_vorbis_version () override;
-  String       get_mp3_version    () override;
-  void         shutdown           () override;
-  ProjectP     last_project       () override;
-  ProjectP     create_project     (String projectname) override;
-  PropertyS    access_prefs       () override;
-  DriverEntryS list_pcm_drivers   () override;
-  DriverEntryS list_midi_drivers  () override;
+  explicit     ServerImpl           ();
+  virtual     ~ServerImpl           ();
+  String       get_version          () override;
+  String       get_vorbis_version   () override;
+  String       get_mp3_version      () override;
+  String       musical_tuning_blurb (MusicalTuning musicaltuning) override;
+  String       musical_tuning_desc  (MusicalTuning musicaltuning) override;
+  void         shutdown             () override;
+  ProjectP     last_project         () override;
+  ProjectP     create_project       (String projectname) override;
+  PropertyS    access_prefs         () override;
+  DriverEntryS list_pcm_drivers     () override;
+  DriverEntryS list_midi_drivers    () override;
 };
 
 } // Ase
