@@ -2,7 +2,7 @@
 #ifndef __ASE_DATAUTILS_HH__
 #define __ASE_DATAUTILS_HH__
 
-#include <ase/mathutils.hh>
+#include <ase/signalmath.hh>
 
 namespace Ase {
 
