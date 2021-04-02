@@ -233,6 +233,7 @@ public:
   using MakeProcessor = AudioProcessorP (*) (const std::any*);
   using MaybeParamId = std::pair<ParamId,bool>;
   static const std::string STANDARD; ///< ":G:S:r:w:" - GUI STORAGE READABLE WRITABLE
+  float         note_to_freq      (int note) const;
   AudioEngine&  engine            () const;
   uint          sample_rate       () const ASE_CONST;
   double        nyquist           () const ASE_CONST;
