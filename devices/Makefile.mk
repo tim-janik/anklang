@@ -7,6 +7,9 @@ CLEANDIRS += $(wildcard $>/devices/)
 devices/4ase.ccfiles ::= $(wildcard devices/*.cc)
 devices/4ase.objects ::= $(call BUILDDIR_O, $(devices/4ase.ccfiles))
 
+# == Sub Directories ==
+include devices/blepsynth/Makefile.mk
+
 # == devices/ dependencies ==
 # create object directories via explicit object dependency
 $(devices/4ase.objects): | $(sort $(dir $(devices/4ase.objects)))
