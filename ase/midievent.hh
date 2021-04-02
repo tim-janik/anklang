@@ -3,8 +3,12 @@
 #define __ASE_MIDI_EVENT_HH__
 
 #include <ase/memory.hh>
+#include <ase/mathutils.hh>
 
 namespace Ase {
+
+// == Forward Declarations ==
+enum class MusicalTuning : uint8;
 
 /// Type of MIDI Events.
 enum class MidiEventType : uint8_t {};
@@ -106,6 +110,25 @@ public:
   size_t           events_pending () const  { return estream_.size(); }
   explicit         MidiEventRange (const MidiEventStream &estream);
 };
+
+/// Components of a MIDI note.
+struct MidiNote {
+  static constexpr const int NMIN = 0;
+  static constexpr const int NMAX = 131;
+  static constexpr const int NVOID = NMAX + 1;
+  static constexpr const int KAMMER_NOTE = 69; // A' - Kammer Frequency
+  static constexpr const int KAMMER_OCTAVE = +1;
+  static float note_to_freq (MusicalTuning tuning, int note, float kammer_freq);
+};
+
+/// Convert MIDI note to Hertz for a MusicalTuning and `kammer_freq`.
+extern inline float
+MidiNote::note_to_freq (MusicalTuning tuning, int note, float kammer_freq)
+{
+  if (ASE_ISLIKELY (note >= -131) && ASE_ISLIKELY (note <= 131))
+    return semitone_tables_265[uint (tuning)][note - KAMMER_NOTE] * kammer_freq;
+  return 0;
+}
 
 } // Ase
 
