@@ -2,13 +2,12 @@
 #ifndef __ASE_DEVICES_BLEPOSC_HH__
 #define __ASE_DEVICES_BLEPOSC_HH__
 
-#include <ase/aseblockutils.hh>
-#include <ase/asemathsignal.hh>
+#include <ase/randomhash.hh>
+#include <ase/datautils.hh>
 
 namespace Ase {
 namespace BlepUtils {
 
-using Ase::Block;
 using std::max;
 
 class OscImpl
@@ -119,7 +118,7 @@ public:
 
         if (randomize_phase) // randomize start phase for true unison
           {
-            reset_master (voice, g_random_double_range (0, 1));
+            reset_master (voice, random_frange (0, 1));
           }
         else
           {
@@ -437,7 +436,7 @@ public:
   double
   clamp (double d, double min, double max)
   {
-    return CLAMP (d, min, max);
+    return ASE_CLAMP (d, min, max);
   }
 
   /* check if slave oscillator has reached target_phase
@@ -472,8 +471,8 @@ public:
                          const float *pulse_mod_in = nullptr,
                          const float *sub_width_mod_in = nullptr)
   {
-    Block::fill (n_values, left_out, 0.0);
-    Block::fill (n_values, right_out, 0.0);
+    floatfill (left_out, 0.0, n_values);
+    floatfill (right_out, 0.0, n_values);
 
     double master_freq = frequency_factor * frequency_base;
     double pulse_width = clamp (pulse_width_base, 0.01, 0.99);
@@ -483,7 +482,7 @@ public:
     double sync_factor = fast_exp2 (clamp (sync_base, 0.0, 60.0) / 12);
 
     /* dc substampling according to control frequency (cpu/quality trade off) */
-    const int dc_steps = max (ase_ftoi (rate_ / 4000), 1);
+    const int dc_steps = max (irintf (rate_ / 4000), 1);
 
     for (auto& voice : unison_voices)
       {
@@ -492,7 +491,7 @@ public:
         for (unsigned int n = 0; n < n_values; n++)
           {
             if (freq_in)
-              master_freq = frequency_factor * ASE_SIGNAL_TO_FREQ (freq_in[n]);
+              master_freq = frequency_factor * fast_voltage2hz (freq_in[n]);
 
             double master_inc = master_freq * master_freq2inc;
             if (freq_mod_in)

@@ -2,7 +2,7 @@
 #ifndef __ASE_DEVICES_LADDER_VCF_HH__
 #define __ASE_DEVICES_LADDER_VCF_HH__
 
-#include <ase/aseresampler.hh>
+#include <ase/resampler2.hh>
 
 namespace Ase {
 
@@ -27,8 +27,8 @@ class LadderVCF
   double key_tracking;
   double resonance_mod;
 
-  double last_key_freq;
   double last_key_tracking_factor;
+  float  last_key_freq;
 
 public:
   LadderVCF()
@@ -51,7 +51,7 @@ public:
   {
     const double drive_delta_db = 36;
 
-    pre_scale = ase_db_to_factor (drive_db - drive_delta_db);
+    pre_scale = db2voltage (drive_db - drive_delta_db);
     post_scale = std::max (1 / pre_scale, 1.0);
   }
   void
@@ -205,20 +205,20 @@ private:
         double mod_res = res;
 
         if (freq_in)
-          mod_fc = ASE_SIGNAL_TO_FREQ (freq_in[i]) * freq_scale / nyquist;
+          mod_fc = fast_voltage2hz (freq_in[i]) * freq_scale / nyquist;
 
         if (freq_mod_in)
           mod_fc *= fast_exp2 (freq_mod_in[i] * freq_mod_octaves);
 
         if (key_freq_in)
           {
-            if (ASE_UNLIKELY (ASE_SIGNAL_FREQ_CHANGED (key_freq_in[i], last_key_freq)))
+            if (ASE_UNLIKELY (voltage_changed (key_freq_in[i], last_key_freq)))
               {
                 /* key tracking from frequency is expensive to compute; with this optimization
                  * it should be fast, because the key frequency usually doesn't change
                  */
                 last_key_freq = key_freq_in[i];
-                last_key_tracking_factor = exp (key_tracking * log (ASE_SIGNAL_TO_FREQ (key_freq_in[i]) / 261.63));
+                last_key_tracking_factor = std::exp (key_tracking * std::log (voltage2hz (key_freq_in[i]) / c3_hertz));
               }
             mod_fc *= last_key_tracking_factor;
           }
