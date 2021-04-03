@@ -81,8 +81,8 @@ class ColoredNoise : public AudioProcessor {
   WhiteRand white_rand_;
   Pink      pink0, pink1;
   float     gain_factor_ = 1.0;
-  bool      mono_ = true;
-  bool      pink_ = false;
+  bool      mono_ = false;
+  bool      pink_ = true;
   enum Params { GAIN = 1, MONO, PINK };
 public:
   void
@@ -96,16 +96,12 @@ public:
     info.website_url  = "https://anklang.testbit.eu";
   }
   void
-  initialize () override
+  initialize (SpeakerArrangement busses) override
   {
     start_group ("Noise Settings");
     add_param (GAIN, "Gain",  "Gain", -96, 24, 0, "dB");
-    add_param (MONO, "Mono",  "Monophonic", true);
-    add_param (PINK, "Pink", "Pink Noise", false);
-  }
-  void
-  configure (uint n_ibusses, const SpeakerArrangement *ibusses, uint n_obusses, const SpeakerArrangement *obusses) override
-  {
+    add_param (MONO, "Mono",  "Monophonic", false);
+    add_param (PINK, "Pink", "Pink Noise", true);
     remove_all_buses();
     stereout_ = add_output_bus ("Stereo Out", SpeakerArrangement::STEREO);
   }
@@ -120,7 +116,7 @@ public:
       }
   }
   void
-  reset() override
+  reset (uint64 target_stamp) override
   {
     pink0.reset();
     pink1.reset();
@@ -132,7 +128,8 @@ public:
   template<Cases> void render_cases (float *out0, float *out1, uint n_frames, const float gain);
   using RenderF = void (ColoredNoise::*) (float*, float*, uint, float);
 };
-static auto noise_module = enroll_asp<ColoredNoise>();
+
+static auto noise_module = register_audio_processor<ColoredNoise>();
 
 template<ColoredNoise::Cases CASES> void
 ColoredNoise::render_cases (float *out0, float *out1, uint n_frames, const float gain)

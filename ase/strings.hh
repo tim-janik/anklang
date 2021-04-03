@@ -30,9 +30,9 @@ String  			string_tolower           (const String &str);
 String  			string_toupper           (const String &str);
 String  			string_totitle           (const String &str);
 String                          string_capitalize        (const String &str, size_t maxn = size_t (-1), bool rest_tolower = true);
-StringVector 			string_split             (const String &string, const String &splitter = "", size_t maxn = size_t (-1));
-StringVector 			string_split_any         (const String &string, const String &splitchars = "", size_t maxn = size_t (-1));
-String  			string_join              (const String &junctor, const StringVector &strvec);
+StringS         		string_split             (const String &string, const String &splitter = "", size_t maxn = size_t (-1));
+StringS       			string_split_any         (const String &string, const String &splitchars = "", size_t maxn = size_t (-1));
+String  			string_join              (const String &junctor, const StringS &strvec);
 bool    			string_to_bool           (const String &string, bool fallback = false);
 String  			string_from_bool         (bool value);
 uint64  			string_to_uint           (const String &string, size_t *consumed = NULL, uint base = 10);
@@ -70,13 +70,13 @@ String  string_rstrip                                    (const String &input);
 String  string_strip                                     (const String &input);
 String  string_replace                                   (const String &input, const String &marker, const String &replacement, size_t maxn = ~size_t (0));
 String  string_substitute_char                           (const String &input, const char match, const char subst);
-void    string_vector_lstrip       (StringVector &svector);
-void    string_vector_rstrip       (StringVector &svector);
-void    string_vector_strip        (StringVector &svector);
-void    string_vector_erase_empty  (StringVector &svector);
-String  string_vector_find         (const StringVector &svector, const String &prefix, const String &fallback = "");
-String  string_vector_find_value   (const StringVector &svector, const String &prefix, const String &fallback = "");
-StringVector cstrings_to_vector    (const char*, ...) ASE_SENTINEL;
+void    string_vector_lstrip       (StringS &svector);
+void    string_vector_rstrip       (StringS &svector);
+void    string_vector_strip        (StringS &svector);
+void    string_vector_erase_empty  (StringS &svector);
+String  string_vector_find         (const StringS &svector, const String &prefix, const String &fallback = "");
+String  string_vector_find_value   (const StringS &svector, const String &prefix, const String &fallback = "");
+StringS      cstrings_to_vector    (const char*, ...) ASE_SENTINEL;
 void         memset4		   (uint32 *mem, uint32 filler, uint length);
 long double posix_locale_strtold   (const char *nptr, char **endptr);
 long double current_locale_strtold (const char *nptr, char **endptr);
@@ -174,7 +174,7 @@ const char*     strerror ();    // simple wrapper for strerror (errno)
 
 // == Implementations ==
 #define ASE_STRING_VECTOR_FROM_ARRAY(ConstCharArray)               ({ \
-  Ase::StringVector __a;                                           \
+  Ase::StringS __a;                                           \
   const Ase::uint64 __l = ASE_ARRAY_SIZE (ConstCharArray);    \
   for (Ase::uint64 __ai = 0; __ai < __l; __ai++)                   \
     __a.push_back (ConstCharArray[__ai]);                               \

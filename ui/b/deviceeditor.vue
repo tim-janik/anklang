@@ -2,10 +2,10 @@
 
 <docs>
   # B-DEVICEEDITOR
-  Editor for audio signal processor devices.
+  Editor for audio signal devices.
   ## Props:
   *device*
-  : Audio signal processor device.
+  : Audio signal processing device.
 </docs>
 
 <style lang="scss">
@@ -223,7 +223,7 @@ function observable_device_data () {
   const data = {
     gprops:     { default: [], getter: async c => property_groups (this.device.access_properties ()), },
     device_info: { default: "",		notify: n => this.device.on ("notify:device_info", n),
-		  getter: async c => Object.freeze (await this.device.processor_info()), },
+		   getter: async c => Object.freeze (await this.device.device_info()), },
   };
   return this.observable_from_getters (data, () => this.device);
 }
@@ -231,7 +231,7 @@ function observable_device_data () {
 export default {
   sfc_template,
   props: {
-    device: { type: Ase.ProcessorIface, },
+    device: { type: Ase.Device, },
   },
   data() { return observable_device_data.call (this); },
   methods: {

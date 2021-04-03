@@ -34,7 +34,8 @@
 <template>
   <v-flex class="b-pro-input tabular-nums" :data-bubble="bubble()" >
     <b-knob class="b-pro-input-knob" v-if="type() == 'knob'" :hscroll="false"
-	    :value="get_num()" :label="vtext" :bidir="is_bidir()" @update:value="set_num ($event)" />
+	    :value="get_num()" :label="vtext" :bidir="is_bidir()"
+	    @update:value="set_num ($event)" @reset:value="reset_num()"/>
     <b-toggle class="b-pro-input-toggle" v-if="type() == 'toggle'" label=""
 	      :value="get_num()" @update:value="set_num ($event)" />
     <b-choice class="b-pro-input-choice" v-if="type() == 'choice'" :choices="choices"
@@ -110,6 +111,12 @@ export default {
 	  return 'knob';
 	}
       return '';
+    },
+    reset_num () {
+      if (this.readonly)
+	return;
+      this.update_hints();
+      this.prop.reset();
     },
     set_num (nv) {
       if (this.readonly)

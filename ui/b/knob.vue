@@ -24,6 +24,8 @@
   ## Events:
   *update:value (value)*
   : Value change notification event, the first argument is the new value.
+  *reset:value ()*
+  : Request to reset the value.
   ## Implementation Notes
   The knob is rendered based on an SVG drawing, which is arranged in such a
   way that adding rotational transforms to the SVG elements is sufficient to
@@ -55,7 +57,7 @@
 
 <template>
   <div    class="b-knob" :class="width4height ? 'b-knob-w4h' : 'b-knob-h4w'" ref="bknob"
-	  @pointerdown="drag_start" @dblclick="dblclick"
+	  @pointerdown="drag_start" @dblclick.stop="dblclick"
 	  data-tip="**DRAG** Adjust Value **DBLCLICK** Reset Value" >
     <svg  class="b-knob-sizer" :viewBox="viewbox()" />
     <svg  class="b-knob-base"               :style="style()" :viewBox="viewbox()" >
@@ -106,7 +108,7 @@ export default {
 	   hscroll: { type: Boolean, default: true },
 	   vscroll: { type: Boolean, default: true },
 	   width4height: { type: Boolean, default: true }, },
-  emits: { 'update:value': null, },
+  emits: { 'update:value': null, 'reset:value': null, },
   data: () => ({
     scalar_: 0,
   }),
@@ -177,7 +179,7 @@ export default {
        * happen on touchpads with sometimes bouncing clicks.
        */
       if (this.allow_dblclick)
-	this.emit_value (0);
+	this.$emit ('reset:value');
     },
     drag_start (ev) {
       // allow only primary button press

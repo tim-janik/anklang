@@ -6,9 +6,6 @@
 
 namespace Ase {
 
-class ServerImpl;
-using ServerImplP = std::shared_ptr<ServerImpl>;
-
 class ServerImpl : public virtual Server, public virtual GadgetImpl {
   Preferences  prefs_;
 public:

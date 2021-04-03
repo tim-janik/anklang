@@ -455,10 +455,10 @@ cwd ()
   return "./";
 }
 
-StringVector
+StringS
 searchpath_split (const String &searchpath)
 {
-  StringVector sv;
+  StringS sv;
   uint i, l = 0;
   for (i = 0; i < searchpath.size(); i++)
     if (IS_SEARCHPATH_SEPARATOR (searchpath[i]))
@@ -500,7 +500,7 @@ searchpath_find (const String &searchpath, const String &file, const String &mod
 {
   if (isabs (file))
     return check (file, mode) ? file : "";
-  StringVector sv = searchpath_split (searchpath);
+  StringS sv = searchpath_split (searchpath);
   for (size_t i = 0; i < sv.size(); i++)
     if (check (join (sv[i], file), mode))
       return join (sv[i], file);
@@ -508,10 +508,10 @@ searchpath_find (const String &searchpath, const String &file, const String &mod
 }
 
 /// Find all @a searchpath entries matching @a mode (see check()).
-StringVector
+StringS
 searchpath_list (const String &searchpath, const String &mode)
 {
-  StringVector v;
+  StringS v;
   for (const auto &file : searchpath_split (searchpath))
     if (check (file, mode))
       v.push_back (file);
@@ -545,7 +545,7 @@ searchpath_multiply (const String &searchpath, const String &postfixes)
 }
 
 String
-searchpath_join (const StringVector &string_vector)
+searchpath_join (const StringS &string_vector)
 {
   const char searchsep[2] = { ASE_SEARCHPATH_SEPARATOR, 0 };
   return string_join (searchsep, string_vector);
@@ -819,7 +819,7 @@ ase_test_paths()
     TCMP (Path::expand_tilde ("~" + String (env_logname)), ==, env_home);
   TCMP (Path::searchpath_multiply ("/:/tmp", "foo:bar"), ==, "/foo:/bar:/tmp/foo:/tmp/bar");
   const String abs_basedir = Path::abspath (Ase::runpath (Ase::RPath::PREFIXDIR));
-  TCMP (Path::searchpath_list ("/:" + abs_basedir, "e"), ==, StringVector ({ "/", abs_basedir }));
+  TCMP (Path::searchpath_list ("/:" + abs_basedir, "e"), ==, StringS ({ "/", abs_basedir }));
   TCMP (Path::searchpath_contains ("/foo/:/bar", "/"), ==, false);
   TCMP (Path::searchpath_contains ("/foo/:/bar", "/foo"), ==, false); // false because "/foo" is file search
   TCMP (Path::searchpath_contains ("/foo/:/bar", "/foo/"), ==, true); // true because "/foo/" is dir search

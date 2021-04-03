@@ -55,18 +55,18 @@ public:
   WritNodeS    to_nodes         ();
   WritNode     push             ();
   String       repr             () const                   { return value_.repr(); }
-  StringVector keys             () const                   { return value_.keys(); }
+  StringS      keys             () const                   { return value_.keys(); }
   bool         has              (const String &key) const  { return value_.has (key); }
   bool         loadable         (const String &key) const;  ///< True if `in_load() && has (key)`.
   template<typename T>
   bool                   operator& (T &v);
   bool                   operator& (const WritLink &l);
   template<class T, class E = void>
-  bool                   serialize (T&, const String& = "", const StringVector& = StringVector());
-  template<class T> bool serialize (std::vector<T> &vec, const String& = "", const StringVector& = StringVector());
-  bool                   serialize (ValueS &vec, const String& = "", const StringVector& = StringVector());
-  bool                   serialize (ValueR &rec, const String& = "", const StringVector& = StringVector());
-  bool                   serialize (Value &val, const String& = "", const StringVector& = StringVector());
+  bool                   serialize (T&, const String& = "", const StringS& = StringS());
+  template<class T> bool serialize (std::vector<T> &vec, const String& = "", const StringS& = StringS());
+  bool                   serialize (ValueS &vec, const String& = "", const StringS& = StringS());
+  bool                   serialize (ValueR &rec, const String& = "", const StringS& = StringS());
+  bool                   serialize (Value &val, const String& = "", const StringS& = StringS());
   bool                   serialize (Serializable &sobj);
 };
 
@@ -106,10 +106,10 @@ public:
   bool                   in_save      () const { return in_save_; } ///< Return `true` during serialization
   static void blank_enum            (const String &enumname);
   static void not_serializable      (const String &classname);
-  static bool typedata_is_loadable  (const StringVector &typedata, const String &fieldname);
-  static bool typedata_is_storable  (const StringVector &typedata, const String &fieldname);
-  static bool typedata_find_minimum (const StringVector &typedata, const std::string &fieldname, long double *limit);
-  static bool typedata_find_maximum (const StringVector &typedata, const std::string &fieldname, long double *limit);
+  static bool typedata_is_loadable  (const StringS &typedata, const String &fieldname);
+  static bool typedata_is_storable  (const StringS &typedata, const String &fieldname);
+  static bool typedata_find_minimum (const StringS &typedata, const std::string &fieldname, long double *limit);
+  static bool typedata_find_maximum (const StringS &typedata, const std::string &fieldname, long double *limit);
 };
 
 // == JSON API ==
@@ -127,8 +127,8 @@ template<class T> T      json_parse     (const String &jsonstring);
 template<typename T, typename = void>
 struct WritConverter {
   static_assert (!sizeof (T), "ENOIMPL: type serialization unimplemented");
-  // bool save_value (WritNode node, const T&, const StringVector&, const String&);
-  // bool load_value (WritNode node, T&, const StringVector&, const String&);
+  // bool save_value (WritNode node, const T&, const StringS&, const String&);
+  // bool load_value (WritNode node, T&, const StringS&, const String&);
 };
 
 // == Implementations ==
@@ -219,7 +219,7 @@ WritNode::operator& (T &v)
 }
 
 template<typename T, typename> inline bool
-WritNode::serialize (T &typval, const String &fieldname, const StringVector &typedata)
+WritNode::serialize (T &typval, const String &fieldname, const StringS &typedata)
 {
   if (in_save())
     return WritConverter<T>::save_value (*this, typval, typedata, fieldname);
@@ -229,7 +229,7 @@ WritNode::serialize (T &typval, const String &fieldname, const StringVector &typ
 }
 
 template<> inline bool
-WritNode::serialize (String &string, const String &fieldname, const StringVector &typedata)
+WritNode::serialize (String &string, const String &fieldname, const StringS &typedata)
 {
   if (in_save() && Writ::typedata_is_storable (typedata, fieldname))
     {
@@ -245,7 +245,7 @@ WritNode::serialize (String &string, const String &fieldname, const StringVector
 }
 
 template<class T> inline bool
-WritNode::serialize (std::vector<T> &vec, const String &fieldname, const StringVector &typedata)
+WritNode::serialize (std::vector<T> &vec, const String &fieldname, const StringS &typedata)
 {
   if (in_save() && Writ::typedata_is_storable (typedata, fieldname))
     {
@@ -277,7 +277,7 @@ WritNode::serialize (std::vector<T> &vec, const String &fieldname, const StringV
 }
 
 inline bool
-WritNode::serialize (Value &val, const String &fieldname, const StringVector &typedata)
+WritNode::serialize (Value &val, const String &fieldname, const StringS &typedata)
 {
   if (in_save() && Writ::typedata_is_storable (typedata, fieldname))
     {
@@ -293,7 +293,7 @@ WritNode::serialize (Value &val, const String &fieldname, const StringVector &ty
 }
 
 inline bool
-WritNode::serialize (ValueS &vec, const String &fieldname, const StringVector &typedata)
+WritNode::serialize (ValueS &vec, const String &fieldname, const StringS &typedata)
 {
   if (in_save() && Writ::typedata_is_storable (typedata, fieldname))
     {
@@ -310,7 +310,7 @@ WritNode::serialize (ValueS &vec, const String &fieldname, const StringVector &t
 }
 
 inline bool
-WritNode::serialize (ValueR &rec, const String &fieldname, const StringVector &typedata)
+WritNode::serialize (ValueR &rec, const String &fieldname, const StringS &typedata)
 {
   if (in_save() && Writ::typedata_is_storable (typedata, fieldname))
     {
@@ -331,13 +331,13 @@ template<typename T>
 struct WritConverter<T, REQUIRESv< std::is_integral<T>::value || std::is_floating_point<T>::value > >
 {
   static bool
-  save_value (WritNode node, T i, const StringVector &typedata, const String &fieldname)
+  save_value (WritNode node, T i, const StringS &typedata, const String &fieldname)
   {
     node.value() = i;
     return true;
   }
   static bool
-  load_value (WritNode node, T &v, const StringVector &typedata, const String &fieldname)
+  load_value (WritNode node, T &v, const StringS &typedata, const String &fieldname)
   {
     T tmp = {};
     if constexpr (std::is_integral<T>::value)
@@ -370,7 +370,7 @@ struct WritConverter<T, REQUIRESv< std::is_enum<T>::value > >
       Writ::blank_enum (typeid_name<T>());
   }
   static bool
-  save_value (WritNode node, T i, const StringVector &typedata, const String &fieldname)
+  save_value (WritNode node, T i, const StringS &typedata, const String &fieldname)
   {
     check();
     // node.value() = int64 (i);
@@ -378,7 +378,7 @@ struct WritConverter<T, REQUIRESv< std::is_enum<T>::value > >
     return true;
   }
   static bool
-  load_value (WritNode node, T &v, const StringVector &typedata, const String &fieldname)
+  load_value (WritNode node, T &v, const StringS &typedata, const String &fieldname)
   {
     check();
     // v = T (node.value().as_int());
@@ -407,7 +407,7 @@ struct WritConverter<T, REQUIRESv< !std::is_base_of<Serializable,T>::value &&
     return false;
   }
   static bool
-  save_value (WritNode node, T &obj, const StringVector &typedata, const String &fieldname)
+  save_value (WritNode node, T &obj, const StringS &typedata, const String &fieldname)
   {
     if (!check())
       return false;
@@ -419,7 +419,7 @@ struct WritConverter<T, REQUIRESv< !std::is_base_of<Serializable,T>::value &&
     return true;
   }
   static bool
-  load_value (WritNode node, T &obj, const StringVector &typedata, const String &fieldname)
+  load_value (WritNode node, T &obj, const StringS &typedata, const String &fieldname)
   {
     if (!check())
       return false;
@@ -438,12 +438,12 @@ template<typename T>
 struct WritConverter<T, REQUIRESv< std::is_base_of<Serializable,T>::value > >
 {
   static bool
-  save_value (WritNode node, Serializable &serializable, const StringVector &typedata, const String &fieldname)
+  save_value (WritNode node, Serializable &serializable, const StringS &typedata, const String &fieldname)
   {
     return node.serialize (serializable);
   }
   static bool
-  load_value (WritNode node, Serializable &serializable, const StringVector &typedata, const String &fieldname)
+  load_value (WritNode node, Serializable &serializable, const StringS &typedata, const String &fieldname)
   {
     if (node.value().index() == Value::RECORD)
       {

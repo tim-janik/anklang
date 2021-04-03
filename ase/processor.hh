@@ -7,14 +7,9 @@
 #include <ase/datautils.hh>
 #include <ase/properties.hh>
 #include <ase/engine.hh>
-#include <atomic>
 #include <any>
 
 namespace Ase {
-
-class DeviceImpl;
-using DeviceImplP = std::shared_ptr<DeviceImpl>;
-class ComboImpl;
 
 /// ID type for AudioProcessor parameters, the ID numbers are user assignable.
 enum class ParamId : uint32 {};
@@ -28,48 +23,8 @@ enum class OBusId : uint16 {};
 /// ID type for the AudioProcessor registry.
 struct RegistryId { struct Entry; const Entry &entry; };
 
-/// Flags to indicate channel arrangements of a bus.
-/// See also: https://en.wikipedia.org/wiki/Surround_sound
-enum class SpeakerArrangement : uint64_t {
-  NONE                  = 0,
-  FRONT_LEFT            =         0x1,  ///< Stereo Left (FL)
-  FRONT_RIGHT           =         0x2,  ///< Stereo Right (FR)
-  FRONT_CENTER          =         0x4,  ///< (FC)
-  LOW_FREQUENCY         =         0x8,  ///< Low Frequency Effects (LFE)
-  BACK_LEFT             =        0x10,  ///< (BL)
-  BACK_RIGHT            =        0x20,  ///< (BR)
-  // WAV reserved       =  0xyyy00000,
-  AUX                   = uint64_t (1) << 63,   ///< Flag for side chain uses
-  MONO                  = FRONT_LEFT,   ///< Single Channel (M)
-  STEREO                = FRONT_LEFT | FRONT_RIGHT,
-  STEREO_21             = STEREO | LOW_FREQUENCY,
-  STEREO_30             = STEREO | FRONT_CENTER,
-  STEREO_31             = STEREO_30 | LOW_FREQUENCY,
-  SURROUND_50           = STEREO_30 | BACK_LEFT | BACK_RIGHT,
-  SURROUND_51           = SURROUND_50 | LOW_FREQUENCY,
-#if 0 // TODO: dynamic multichannel support
-  FRONT_LEFT_OF_CENTER  =        0x40,  ///< (FLC)
-  FRONT_RIGHT_OF_CENTER =        0x80,  ///< (FRC)
-  BACK_CENTER           =       0x100,  ///< (BC)
-  SIDE_LEFT             =       0x200,  ///< (SL)
-  SIDE_RIGHT            =       0x400,  ///< (SR)
-  TOP_CENTER            =       0x800,  ///< (TC)
-  TOP_FRONT_LEFT        =      0x1000,  ///< (TFL)
-  TOP_FRONT_CENTER      =      0x2000,  ///< (TFC)
-  TOP_FRONT_RIGHT       =      0x4000,  ///< (TFR)
-  TOP_BACK_LEFT         =      0x8000,  ///< (TBL)
-  TOP_BACK_CENTER       =     0x10000,  ///< (TBC)
-  TOP_BACK_RIGHT        =     0x20000,  ///< (TBR)
-  SIDE_SURROUND_50      = STEREO_30 | SIDE_LEFT | SIDE_RIGHT,
-  SIDE_SURROUND_51      = SIDE_SURROUND_50 | LOW_FREQUENCY,
-#endif
-};
-constexpr SpeakerArrangement speaker_arrangement_channels_mask { ~size_t (SpeakerArrangement::AUX) };
-uint8              speaker_arrangement_count_channels (SpeakerArrangement spa);
-SpeakerArrangement speaker_arrangement_channels       (SpeakerArrangement spa);
-bool               speaker_arrangement_is_aux         (SpeakerArrangement spa);
-const char*        speaker_arrangement_bit_name       (SpeakerArrangement spa);
-std::string        speaker_arrangement_desc           (SpeakerArrangement spa);
+/// Add an AudioProcessor derived type to the audio processor registry.
+template<typename T> RegistryId register_audio_processor (const char *bfile = __builtin_FILE(), int bline = __builtin_LINE());
 
 /// Detailed information and common properties of AudioProcessor subclasses.
 struct AudioProcessorInfo {
@@ -143,10 +98,9 @@ private:
   double     initial_ = 0;
   /*copy*/   ParamInfo   (const ParamInfo&) = delete;
   void       release     ();
-  std::weak_ptr<Property> bprop_;
+  std::weak_ptr<Property> aprop_;
   friend class AudioProcessor;
 };
-using ParamInfoP = std::shared_ptr<ParamInfo>;
 
 /// Structure providing supplementary information about input/output buses.
 struct BusInfo {
@@ -168,62 +122,66 @@ class AudioProcessor : public std::enable_shared_from_this<AudioProcessor>, publ
   class FloatBuffer;
   friend class ProcessorManager;
   friend class DeviceImpl;
-  friend class AudioEngine;
+  friend class AudioEngineThread;
   struct OConnection {
     AudioProcessor *proc = nullptr; IBusId ibusid = {};
     bool operator== (const OConnection &o) const { return proc == o.proc && ibusid == o.ibusid; }
   };
   using OBRange = std::pair<FloatBuffer*,FloatBuffer*>;
+  AudioProcessor          *sched_next_ = nullptr;
 protected:
 #ifndef DOXYGEN
   // Inherit `AudioSignal` concepts in derived classes from other namespaces
   using MinMax = std::pair<double,double>;
 #endif
   enum { INITIALIZED   = 1 << 0,
+         //            = 1 << 1,
+         SCHEDULED     = 1 << 2,
          PARAMCHANGE   = 1 << 3,
          BUSCONNECT    = 1 << 4,
          BUSDISCONNECT = 1 << 5,
          INSERTION     = 1 << 6,
-         REMOVAL       = 1 << 7, };
+         REMOVAL       = 1 << 7,
+         ENGINE_OUTPUT = 1 << 8,
+  };
   std::atomic<uint32>      flags_ = 0;
 private:
   uint32                   output_offset_ = 0;
   FloatBuffer             *fbuffers_ = nullptr;
   std::vector<PBus>        iobuses_;
-  std::vector<PParam>      params_;
+  std::vector<PParam>      params_; // const once is_initialized()
   std::vector<OConnection> outputs_;
   EventStreams            *estreams_ = nullptr;
-  uint64_t                 done_frames_ = 0;
+  uint64_t                 render_stamp_ = 0;
   static void        registry_init      ();
   const PParam*      find_pparam        (Id32 paramid) const;
   const PParam*      find_pparam_       (ParamId paramid) const;
   void               assign_iobufs      ();
   void               release_iobufs     ();
-  void               reconfigure        (IBusId ibus, SpeakerArrangement ipatch, OBusId obus, SpeakerArrangement opatch);
   void               ensure_initialized ();
   const FloatBuffer& float_buffer       (IBusId busid, uint channelindex) const;
   FloatBuffer&       float_buffer       (OBusId busid, uint channelindex, bool resetptr = false);
   static
   const FloatBuffer& zero_buffer        ();
-  void               render_block       ();
-  void               reset_state        ();
-  void               enqueue_deps       ();
+  void               render_block       (uint64 target_stamp);
+  void               reset_state        (uint64 target_stamp);
   /*copy*/           AudioProcessor     (const AudioProcessor&) = delete;
   virtual void       render             (uint n_frames) = 0;
-  virtual void       reset              () = 0;
+  virtual void       reset              (uint64 target_stamp) = 0;
   PropertyP          access_property    (ParamId id) const;
 protected:
   AudioEngine  &engine_;
   explicit      AudioProcessor    ();
   virtual      ~AudioProcessor    ();
-  virtual void  initialize        ();
-  virtual void  configure         (uint n_ibuses, const SpeakerArrangement *ibuses,
-                                   uint n_obuses, const SpeakerArrangement *obuses) = 0;
-  void          enqueue_notify_mt (uint32 pushmask);
+  virtual void  initialize        (SpeakerArrangement busses) = 0;
+  void          enotify_enqueue_mt (uint32 pushmask);
+  uint          schedule_processor ();
+  void          reschedule        ();
   virtual DeviceImplP device_impl () const;
+  virtual uint  schedule_children () { return 0; }
+  static uint   schedule_processor (AudioProcessor &p)  { return p.schedule_processor(); }
   // Parameters
   virtual void  adjust_param      (Id32 tag) {}
-  virtual void  enqueue_children  () {}
   ParamId       nextid            () const;
   ParamId       add_param         (Id32 id, const ParamInfo &infotmpl, double value);
   ParamId       add_param         (Id32 id, const std::string &clabel, const std::string &nickname,
@@ -271,9 +229,8 @@ protected:
   void             prepare_event_output ();
   MidiEventStream& get_event_output     ();
 public:
-  using RegistryList = std::vector<AudioProcessorInfo>;
+  using RegistryList = AudioProcessorInfoS;
   using MakeProcessor = AudioProcessorP (*) (const std::any*);
-  using ParamInfoPVec = std::vector<ParamInfoP>;
   using MaybeParamId = std::pair<ParamId,bool>;
   static const std::string STANDARD; ///< ":G:S:r:w:" - GUI STORAGE READABLE WRITABLE
   AudioEngine&  engine            () const;
@@ -296,7 +253,7 @@ public:
   virtual double      value_from_normalized (Id32 paramid, double normalized) const;
   double              get_normalized        (Id32 paramid);
   void                set_normalized        (Id32 paramid, double normalized);
-  bool                is_initialized    () const;
+  bool                is_initialized        () const;
   // Buses
   IBusId        find_ibus         (const std::string &name) const;
   OBusId        find_obus         (const std::string &name) const;
@@ -310,21 +267,23 @@ public:
   const float*  ifloats           (IBusId b, uint c) const;
   const float*  ofloats           (OBusId b, uint c) const;
   static uint64 timestamp         ();
-  bool          has_event_input   ();
-  bool          has_event_output  ();
+  DeviceImplP   get_device        (bool create = true) const;
+  bool          has_event_input   () const;
+  bool          has_event_output  () const;
   void          connect_event_input    (AudioProcessor &oproc);
   void          disconnect_event_input ();
-  DeviceImplP   access_processor () const;
+  void          enable_engine_output   (bool onoff);
   // MT-Safe accessors
   static double          param_peek_mt   (const AudioProcessorP proc, Id32 paramid);
   // Registration and factory
   static RegistryList    registry_list   ();
-  static RegistryId      registry_enroll (MakeProcessor create, const char *bfile = __builtin_FILE(), int bline = __builtin_LINE());
-  static AudioProcessorP registry_create (AudioEngine &engine, RegistryId rid, const std::any &any);
   static AudioProcessorP registry_create (AudioEngine &engine, const String &uuiduri);
+  static AudioProcessorP registry_create (AudioEngine &engine, RegistryId rid, const std::any &any);
 private:
-  static bool   has_notifies_e    ();
-  static void   call_notifies_e   ();
+  static RegistryId      registry_enroll (MakeProcessor, const char*, int);
+  template<class> friend RegistryId register_audio_processor (const char*, int);
+  static bool   enotify_pending   ();
+  static void   enotify_dispatch  ();
   std::atomic<AudioProcessor*> nqueue_next_ { nullptr }; ///< No notifications queued while == nullptr
   AudioProcessorP              nqueue_guard_;            ///< Only used while nqueue_next_ != nullptr
   std::weak_ptr<DeviceImpl> device_;
@@ -367,8 +326,6 @@ protected:
                                    { return p.connect (i, d, o); }
   static auto pm_connect_events    (AudioProcessor &oproc, AudioProcessor &iproc)
                                    { return iproc.connect_event_input (oproc); }
-  static auto pm_reconfigure       (AudioProcessor &p, IBusId i, SpeakerArrangement ip, OBusId o, SpeakerArrangement op)
-                                   { return p.reconfigure (i, ip, o, op); }
 };
 
 // == Inlined Internals ==
@@ -478,14 +435,14 @@ AudioProcessor::inyquist () const
 
 /// Returns `true` if this AudioProcessor has an event input stream.
 inline bool
-AudioProcessor::has_event_input()
+AudioProcessor::has_event_input () const
 {
   return estreams_ && estreams_->has_event_input;
 }
 
 /// Returns `true` if this AudioProcessor has an event output stream.
 inline bool
-AudioProcessor::has_event_output()
+AudioProcessor::has_event_output () const
 {
   return estreams_ && estreams_->has_event_output;
 }
@@ -607,35 +564,27 @@ AudioProcessor::FloatBuffer::speaker_arrangement () const
   return speaker_arrangement_;
 }
 
-template<typename Class> extern inline RegistryId
-enroll_asp (const char *bfile = __builtin_FILE(), int bline = __builtin_LINE())
+/// Add an AudioProcessor derived type to the audio processor registry.
+template<typename T> extern inline RegistryId
+register_audio_processor (const char *bfile, int bline)
 {
   AudioProcessor::MakeProcessor makeasp = nullptr;
-  if constexpr (std::is_constructible<Class>::value)
+  if constexpr (std::is_constructible<T, const std::any&>::value)
+    {
+      makeasp = [] (const std::any *any) -> AudioProcessorP {
+        return any ? std::make_shared<T> (*any) : nullptr;
+      };
+    }
+  else if constexpr (std::is_constructible<T>::value)
     {
       makeasp = [] (const std::any*) -> AudioProcessorP {
-        return std::make_shared<Class>();
+        return std::make_shared<T>();
       };
     }
   else
-    {
-      makeasp = [] (const std::any *any) -> AudioProcessorP {
-        return any ? std::make_shared<Class> (*any) : nullptr;
-      };
-    }
+    static_assert (sizeof (T) < 0, "type `T` must be constructible from void or any");
   return AudioProcessor::registry_enroll (makeasp, bfile, bline);
 }
-
-class DeviceImpl : public GadgetImpl, public virtual Device {
-  std::shared_ptr<AudioProcessor> proc_;
-public:
-  explicit        DeviceImpl             (AudioProcessor &proc);
-  DeviceInfo      device_info            () override;
-  StringS         list_properties        () override;
-  PropertyP       access_property        (String ident) override;
-  PropertyS       access_properties      () override;
-  AudioProcessorP audio_signal_processor () const       { return proc_; }
-};
 
 } // Ase
 

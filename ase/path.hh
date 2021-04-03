@@ -60,10 +60,10 @@ String       vpath_find          (const String &file, const String &mode = "e");
 String       simplify_abspath    (const std::string &abspath_expression);
 bool         searchpath_contains (const String &searchpath, const String &element);
 String       searchpath_find     (const String &searchpath, const String &file, const String &mode = "e");
-StringVector searchpath_list     (const String &searchpath, const String &mode = "e");
+StringS      searchpath_list     (const String &searchpath, const String &mode = "e");
 String       searchpath_multiply (const String &searchpath, const String &postfixes);
-StringVector searchpath_split    (const String &searchpath);
-String       searchpath_join     (const StringVector &string_vector);
+StringS      searchpath_split    (const String &searchpath);
+String       searchpath_join     (const StringS &string_vector);
 template<class ...S>
 String       searchpath_join     (String path, const S &...more);
 

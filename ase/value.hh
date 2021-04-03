@@ -2,15 +2,10 @@
 #ifndef __ASE_VALUE_HH__
 #define __ASE_VALUE_HH__
 
-#include <ase/cxxaux.hh>
+#include <ase/defs.hh>
 #include <variant>
 
 namespace Ase {
-
-class SharedBase;
-using InstanceP = std::shared_ptr<SharedBase>;
-struct Value;
-using ValueP = std::shared_ptr<Value>;
 
 struct ValueS : std::vector<ValueP> {
   using ValuePVector = std::vector<ValueP>;
@@ -67,7 +62,7 @@ struct Value : ValueVariant {
   const ValueS&  as_array  () const;
   const ValueR&  as_record () const;
   String         repr      () const;
-  StringVector   keys      () const;
+  StringS        keys      () const;
   bool           has       (const String &key) const;
   void           purge_r   (const std::function<bool (const ValueField&)> &pred);
   void operator= (bool v)               { ValueVariant::operator= (v); }

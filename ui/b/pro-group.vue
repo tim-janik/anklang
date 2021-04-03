@@ -26,6 +26,7 @@
     .b-pro-group-title {
       display: flex;
       justify-content: center;
+      text-align: center;
       flex-grow: 1;
     }
     .b-pro-group-row {
@@ -94,11 +95,6 @@ export default {
     readonly:	{ type: Boolean, default: false, },
   },
   data() { return pro_group_data.call (this); },
-  computed: {
-    type () {
-      return this.is_numeric ? 'knob' : '';
-    },
-  },
   methods: {
     prop_class (prop) {
       const hints = ':' + prop.hints_ + ':';

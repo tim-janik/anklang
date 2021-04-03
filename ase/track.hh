@@ -6,11 +6,10 @@
 
 namespace Ase {
 
-class ProjectImpl;
-
 class TrackImpl : public virtual Track, public virtual GadgetImpl {
   const bool masterflag_ = false;
   ProjectImpl *project_ = nullptr;
+  DeviceImplP  chain_;
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
   virtual ~TrackImpl    ();
@@ -23,9 +22,9 @@ public:
   int32    midi_channel   () const override;
   void     midi_channel   (int32 midichannel) override;
   ClipS    list_clips     () override;
+  DeviceP  access_device  () override;
   MonitorP create_monitor (int32 ochannel) override;
 };
-using TrackImplP = std::shared_ptr<TrackImpl>;
 
 } // Ase
 

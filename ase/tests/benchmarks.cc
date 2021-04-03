@@ -84,10 +84,8 @@ static size_t
 not_0x80_strlen_utf8 (const std::string &str)
 {
   size_t length = 0;
-  for (char c : str) {
-    if ((c & 0xC0) != 0x80)
-      ++length;
-  }
+  for (char c : str)
+    length += (c & 0xC0) != 0x80;
   return length;
 }
 

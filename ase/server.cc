@@ -252,6 +252,7 @@ ase_error_blurb (Error error)
     case Error::INVALID_MIDI_CONTROL:	return _("Invalid MIDI control type");
     case Error::PARSE_ERROR:		return _("Parsing error");
     case Error::SPAWN:			return _("Failed to spawn child process");
+    default:                            return "";
     }
 }
 

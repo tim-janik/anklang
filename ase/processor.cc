@@ -1,5 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "processor.hh"
+#include "combo.hh"
+#include "device.hh"
 #include "main.hh"      // feature_toggle_find
 #include "utils.hh"
 #include "engine.hh"
@@ -18,84 +20,6 @@ canonify_identifier (const std::string &input)
 }
 
 namespace Ase {
-
-// == SpeakerArrangement ==
-// Count the number of channels described by the SpeakerArrangement.
-uint8
-speaker_arrangement_count_channels (SpeakerArrangement spa)
-{
-  const uint64_t bits = uint64_t (speaker_arrangement_channels (spa));
-  if_constexpr (sizeof (bits) == sizeof (long))
-    return __builtin_popcountl (bits);
-  return __builtin_popcountll (bits);
-}
-
-// Check if the SpeakerArrangement describes auxillary channels.
-bool
-speaker_arrangement_is_aux (SpeakerArrangement spa)
-{
-  return uint64_t (spa) & uint64_t (SpeakerArrangement::AUX);
-}
-
-// Retrieve the bitmask describing the SpeakerArrangement channels.
-SpeakerArrangement
-speaker_arrangement_channels (SpeakerArrangement spa)
-{
-  const uint64_t bits = uint64_t (spa) & uint64_t (speaker_arrangement_channels_mask);
-  return SpeakerArrangement (bits);
-}
-
-const char*
-speaker_arrangement_bit_name (SpeakerArrangement spa)
-{
-  switch (spa)
-    { // https://wikipedia.org/wiki/Surround_sound
-    case SpeakerArrangement::NONE:              	return "-";
-      // case SpeakerArrangement::MONO:                 return "Mono";
-    case SpeakerArrangement::FRONT_LEFT:        	return "FL";
-    case SpeakerArrangement::FRONT_RIGHT:       	return "FR";
-    case SpeakerArrangement::FRONT_CENTER:      	return "FC";
-    case SpeakerArrangement::LOW_FREQUENCY:     	return "LFE";
-    case SpeakerArrangement::BACK_LEFT:         	return "BL";
-    case SpeakerArrangement::BACK_RIGHT:                return "BR";
-    case SpeakerArrangement::AUX:                       return "AUX";
-    case SpeakerArrangement::STEREO:                    return "Stereo";
-    case SpeakerArrangement::STEREO_21:                 return "Stereo-2.1";
-    case SpeakerArrangement::STEREO_30:	                return "Stereo-3.0";
-    case SpeakerArrangement::STEREO_31:	                return "Stereo-3.1";
-    case SpeakerArrangement::SURROUND_50:	        return "Surround-5.0";
-    case SpeakerArrangement::SURROUND_51:	        return "Surround-5.1";
-#if 0 // TODO: dynamic multichannel support
-    case SpeakerArrangement::FRONT_LEFT_OF_CENTER:      return "FLC";
-    case SpeakerArrangement::FRONT_RIGHT_OF_CENTER:     return "FRC";
-    case SpeakerArrangement::BACK_CENTER:               return "BC";
-    case SpeakerArrangement::SIDE_LEFT:	                return "SL";
-    case SpeakerArrangement::SIDE_RIGHT:	        return "SR";
-    case SpeakerArrangement::TOP_CENTER:	        return "TC";
-    case SpeakerArrangement::TOP_FRONT_LEFT:	        return "TFL";
-    case SpeakerArrangement::TOP_FRONT_CENTER:	        return "TFC";
-    case SpeakerArrangement::TOP_FRONT_RIGHT:	        return "TFR";
-    case SpeakerArrangement::TOP_BACK_LEFT:	        return "TBL";
-    case SpeakerArrangement::TOP_BACK_CENTER:	        return "TBC";
-    case SpeakerArrangement::TOP_BACK_RIGHT:	        return "TBR";
-    case SpeakerArrangement::SIDE_SURROUND_50:	        return "Side-Surround-5.0";
-    case SpeakerArrangement::SIDE_SURROUND_51:	        return "Side-Surround-5.1";
-#endif
-    }
-  return nullptr;
-}
-
-std::string
-speaker_arrangement_desc (SpeakerArrangement spa)
-{
-  const bool isaux = speaker_arrangement_is_aux (spa);
-  const SpeakerArrangement chan = speaker_arrangement_channels (spa);
-  const char *chname = SpeakerArrangement::MONO == chan ? "Mono" : speaker_arrangement_bit_name (chan);
-  std::string s (chname ? chname : "<INVALID>");
-  if (isaux)
-    s = std::string (speaker_arrangement_bit_name (SpeakerArrangement::AUX)) + "(" + s + ")";
-  return s;
-}
 
 // == ChoiceDetails ==
 ChoiceDetails::ChoiceDetails (CString label_, CString subject_) :
@@ -320,12 +244,14 @@ AudioProcessor::AudioProcessor() :
 {
   assert_return (processor_ctor_registry_context->engine != nullptr);
   processor_ctor_registry_context->engine = nullptr; // consumed
+  engine_.processor_count_ += 1;
 }
 
 /// The destructor is called when the last std::shared_ptr<> reference drops.
 AudioProcessor::~AudioProcessor ()
 {
   remove_all_buses();
+  engine_.processor_count_ -= 1;
 }
 
 /// Create the `Ase::ProcessorIface` for `this`.
@@ -333,26 +259,26 @@ DeviceImplP
 AudioProcessor::device_impl () const
 {
   assert_return (is_initialized(), {});
-  return std::make_shared<DeviceImpl> (*const_cast<AudioProcessor*> (this));
+  return DeviceImpl::make_shared (*const_cast<AudioProcessor*> (this));
 }
 
 /// Gain access to `this` through the `Ase::ProcessorIface` interface.
 DeviceImplP
-AudioProcessor::access_processor () const
+AudioProcessor::get_device (bool create) const
 {
   std::weak_ptr<DeviceImpl> &wptr = const_cast<AudioProcessor*> (this)->device_;
-  DeviceImplP bprocp = wptr.lock();
-  return_unless (!bprocp, bprocp);
+  DeviceImplP devicep = wptr.lock();
+  return_unless (!devicep && create, devicep);
   DeviceImplP nprocp = device_impl();
   assert_return (nprocp != nullptr, nullptr);
   { // TODO: C++20 has: std::atomic<std::weak_ptr<C>>::compare_exchange
     static std::mutex mutex;
     std::lock_guard<std::mutex> locker (mutex);
-    bprocp = wptr.lock();
-    if (!bprocp)
-      wptr = bprocp = nprocp;
+    devicep = wptr.lock();
+    if (!devicep)
+      wptr = devicep = nprocp;
   }
-  return bprocp;
+  return devicep;
 }
 
 const AudioProcessor::FloatBuffer&
@@ -638,8 +564,8 @@ AudioProcessor::set_param (Id32 paramid, const double value)
         }
     }
   if (const_cast<PParam*> (pparam)->assign (v) &&
-      !pparam->info->bprop_.expired())
-    enqueue_notify_mt (PARAMCHANGE);
+      !pparam->info->aprop_.expired())
+    enotify_enqueue_mt (PARAMCHANGE);
 }
 
 /// Retrieve supplemental information for parameters, usually to enhance the user interface.
@@ -758,7 +684,7 @@ AudioProcessor::param_value_from_text (Id32 paramid, const std::string &text) co
   return string_to_double (text);
 }
 
-/// Check if AudioProcessor has been properly intiialized (so the set parameters is fixed).
+/// Check if AudioProcessor has been properly intiialized (so the parameter set is fixed).
 bool
 AudioProcessor::is_initialized () const
 {
@@ -789,20 +715,30 @@ void
 AudioProcessor::query_info (AudioProcessorInfo &info) const
 {}
 
-/// Mandatory method to setup parameters (see add_param()) and initialize internal structures.
+/// Mandatory method to setup parameters and I/O busses.
+/// See add_param(), add_input_bus() / add_output_bus().
 /// This method will be called once per instance after construction.
 void
-AudioProcessor::initialize ()
+AudioProcessor::initialize (SpeakerArrangement busses)
 {
   assert_return (n_ibuses() + n_obuses() == 0);
 }
 
-/// Mandatory method to setup IO buses (see add_input_bus() / add_output_bus()).
-/// Depending on the host, this method may be called multiple times with different arrangements.
+/// Request recreation of the audio engine rendering schedule.
 void
-AudioProcessor::configure (uint n_ibuses, const SpeakerArrangement *ibuses,
-                      uint n_obuses, const SpeakerArrangement *obuses)
-{}
+AudioProcessor::reschedule ()
+{
+  engine_.schedule_queue_update();
+}
+
+/// Configure if the main output of this module is mixed into the engine output.
+void
+AudioProcessor::enable_engine_output (bool onoff)
+{
+  if (onoff)
+    assert_return (n_obuses() >= 1);
+  engine_.enable_output (*this, onoff);
+}
 
 /// Prepare the AudioProcessor to receive Event objects during render() via get_event_input().
 /// Note, remove_all_buses() will remove the Event input created by this function.
@@ -856,10 +792,10 @@ AudioProcessor::disconnect_event_input()
       assert_return (oproc.estreams_);
       const bool backlink = Aux::erase_first (oproc.outputs_, [&] (auto &e) { return e.proc == this && e.ibusid == EventStreams::EVENT_ISTREAM; });
       estreams_->oproc = nullptr;
-      engine_.reschedule();
+      reschedule();
       assert_return (backlink == true);
-      enqueue_notify_mt (BUSDISCONNECT);
-      oproc.enqueue_notify_mt (BUSDISCONNECT);
+      enotify_enqueue_mt (BUSDISCONNECT);
+      oproc.enotify_enqueue_mt (BUSDISCONNECT);
     }
 }
 
@@ -874,9 +810,9 @@ AudioProcessor::connect_event_input (AudioProcessor &oproc)
   estreams_->oproc = &oproc;
   // register backlink
   oproc.outputs_.push_back ({ this, EventStreams::EVENT_ISTREAM });
-  engine_.reschedule();
-  enqueue_notify_mt (BUSCONNECT);
-  oproc.enqueue_notify_mt (BUSCONNECT);
+  reschedule();
+  enotify_enqueue_mt (BUSCONNECT);
+  oproc.enotify_enqueue_mt (BUSCONNECT);
 }
 
 /// Add an input bus with `uilabel` and channels configured via `speakerarrangement`.
@@ -884,12 +820,12 @@ IBusId
 AudioProcessor::add_input_bus (CString uilabel, SpeakerArrangement speakerarrangement,
                                const std::string &hints, const std::string &blurb)
 {
-  const IBusId zero {0};
-  assert_return (uilabel != "", zero);
-  assert_return (uint64_t (speaker_arrangement_channels (speakerarrangement)) > 0, zero);
-  assert_return (iobuses_.size() < 65535, zero);
+  assert_return (!is_initialized(), {});
+  assert_return (uilabel != "", {});
+  assert_return (uint64_t (speaker_arrangement_channels (speakerarrangement)) > 0, {});
+  assert_return (iobuses_.size() < 65535, {});
   if (n_ibuses())
-    assert_return (uilabel != iobus (IBusId (n_ibuses())).label, zero); // easy CnP error
+    assert_return (uilabel != iobus (IBusId (n_ibuses())).label, {}); // easy CnP error
   PBus pbus { canonify_identifier (uilabel), uilabel, speakerarrangement };
   pbus.pbus.hints = hints;
   pbus.pbus.blurb = blurb;
@@ -904,12 +840,12 @@ OBusId
 AudioProcessor::add_output_bus (CString uilabel, SpeakerArrangement speakerarrangement,
                                 const std::string &hints, const std::string &blurb)
 {
-  const OBusId zero {0};
-  assert_return (uilabel != "", zero);
-  assert_return (uint64_t (speaker_arrangement_channels (speakerarrangement)) > 0, zero);
-  assert_return (iobuses_.size() < 65535, zero);
+  assert_return (!is_initialized(), {});
+  assert_return (uilabel != "", {});
+  assert_return (uint64_t (speaker_arrangement_channels (speakerarrangement)) > 0, {});
+  assert_return (iobuses_.size() < 65535, {});
   if (n_obuses())
-    assert_return (uilabel != iobus (OBusId (n_obuses())).label, zero); // easy CnP error
+    assert_return (uilabel != iobus (OBusId (n_obuses())).label, {}); // easy CnP error
   PBus pbus { canonify_identifier (uilabel), uilabel, speakerarrangement };
   pbus.pbus.hints = hints;
   pbus.pbus.blurb = blurb;
@@ -956,7 +892,7 @@ AudioProcessor::float_buffer (IBusId busid, uint channelindex) const
       const AudioProcessor &oproc = *ibus.proc;
       const OBus &obus = oproc.iobus (ibus.obusid);
       if (ASE_UNLIKELY (channelindex >= obus.fbuffer_count))
-        channelindex = obus.fbuffer_count;
+        channelindex = obus.fbuffer_count - 1;
       return oproc.fbuffers_[obus.fbuffer_index + channelindex];
     }
   return zero_buffer();
@@ -1024,7 +960,7 @@ AudioProcessor::remove_all_buses ()
       assert_return (!estreams_->oproc && outputs_.empty());
       delete estreams_; // must be disconnected beforehand
       estreams_ = nullptr;
-      engine_.reschedule();
+      reschedule();
     }
 }
 
@@ -1034,7 +970,7 @@ AudioProcessor::disconnect_ibuses()
 {
   disconnect (EventStreams::EVENT_ISTREAM);
   if (n_ibuses())
-    engine_.reschedule();
+    reschedule();
   for (size_t i = 0; i < n_ibuses(); i++)
     disconnect (IBusId (1 + i));
 }
@@ -1045,7 +981,7 @@ AudioProcessor::disconnect_obuses()
 {
   return_unless (fbuffers_);
   if (outputs_.size())
-    engine_.reschedule();
+    reschedule();
   while (outputs_.size())
     {
       const auto o = outputs_.back();
@@ -1073,10 +1009,10 @@ AudioProcessor::disconnect (IBusId ibusid)
   const bool backlink = Aux::erase_first (oproc.outputs_, [&] (auto &e) { return e.proc == this && e.ibusid == ibusid; });
   ibus.proc = nullptr;
   ibus.obusid = {};
-  engine_.reschedule();
+  reschedule();
   assert_return (backlink == true);
-  enqueue_notify_mt (BUSDISCONNECT);
-  oproc.enqueue_notify_mt (BUSDISCONNECT);
+  enotify_enqueue_mt (BUSDISCONNECT);
+  oproc.enotify_enqueue_mt (BUSDISCONNECT);
 }
 
 /// Connect input `ibusid` to output `obusid` of AudioProcessor `prev`.
@@ -1102,9 +1038,9 @@ AudioProcessor::connect (IBusId ibusid, AudioProcessor &oproc, OBusId obusid)
   // register backlink
   obus.fbuffer_concounter += 1; // conection counter
   oproc.outputs_.push_back ({ this, ibusid });
-  engine_.reschedule();
-  enqueue_notify_mt (BUSCONNECT);
-  oproc.enqueue_notify_mt (BUSCONNECT);
+  reschedule();
+  enotify_enqueue_mt (BUSCONNECT);
+  oproc.enotify_enqueue_mt (BUSCONNECT);
 }
 
 /// Ensure `AudioProcessor::initialize()` has been called, so the parameters are fixed.
@@ -1113,52 +1049,61 @@ AudioProcessor::ensure_initialized()
 {
   if (!is_initialized())
     {
+      assert_return (n_ibuses() + n_obuses() == 0);
       tls_param_group = "";
-      initialize();
+      initialize (engine_.speaker_arrangement());
       tls_param_group = "";
       flags_ |= INITIALIZED;
-      const SpeakerArrangement ibuses = SpeakerArrangement::STEREO;
-      const SpeakerArrangement obuses = SpeakerArrangement::STEREO;
-      configure (1, &ibuses, 1, &obuses);
       if (n_ibuses() + n_obuses() == 0 &&
           (!estreams_ || (!estreams_->has_event_input && !estreams_->has_event_output)))
-        warning ("AudioProcessor::%s: failed to setup any input/output facilities for: %s", __func__, debug_name());
+        warning ("AudioProcessor::%s: initialize() failed to add input/output busses for: %s", __func__, debug_name());
       assign_iobufs();
-      reset_state();
+      reset_state (engine_.frame_counter());
     }
+  assert_return (n_ibuses() + n_obuses() != 0);
 }
 
 /// Reset all voices, buffers and other internal state
 void
-AudioProcessor::reset_state()
+AudioProcessor::reset_state (uint64 target_stamp)
 {
-  if (done_frames_ != engine_.frame_counter())
+  if (render_stamp_ != target_stamp)
     {
       if (estreams_)
         estreams_->estream.clear();
-      reset();
-      done_frames_ = engine_.frame_counter();
+      reset (target_stamp);
+      render_stamp_ = target_stamp;
     }
 }
 
 /// Reset all state variables.
 void
-AudioProcessor::reset()
+AudioProcessor::reset (uint64 target_stamp)
 {}
 
-/// Enqueue all rendering dependencies in the engine schedule.
-void
-AudioProcessor::enqueue_deps()
+/// Schedule this node and its dependencies for engine rendering.
+uint
+AudioProcessor::schedule_processor()
 {
+  uint level = 0;
   if (estreams_ && estreams_->oproc)
-    engine_.enqueue (*estreams_->oproc);
+    {
+      const uint l = schedule_processor (*estreams_->oproc);
+      level = std::max (level, l);
+    }
   for (size_t i = 0; i < n_ibuses(); i++)
     {
       IBus &ibus = iobus (IBusId (1 + i));
       if (ibus.proc)
-        engine_.enqueue (*ibus.proc);
+        {
+          const uint l = schedule_processor (*ibus.proc);
+          level = std::max (level, l);
+        }
     }
-  enqueue_children();
+  const uint l = schedule_children();
+  level = std::max (level, l);
+  engine_.schedule_add (*this, level);
+  return level + 1;
 }
 
 /** Method called for every audio buffer to be processed.
@@ -1175,126 +1120,13 @@ AudioProcessor::render (uint32 n_frames)
 {}
 
 void
-AudioProcessor::render_block ()
+AudioProcessor::render_block (uint64 target_stamp)
 {
-  const uint64_t engine_frame_counter = engine_.frame_counter();
-  return_unless (done_frames_ < engine_frame_counter);
+  return_unless (render_stamp_ < target_stamp);
   if (ASE_UNLIKELY (estreams_) && !ASE_ISLIKELY (estreams_->estream.empty()))
     estreams_->estream.clear();
-  render (AUDIO_BLOCK_MAX_RENDER_SIZE);
-  done_frames_ = engine_frame_counter;
-}
-
-/// Invoke AudioProcessor::configure() with `ipatch`/`opatch` applied to the current configuration.
-void
-AudioProcessor::reconfigure (IBusId ibusid, SpeakerArrangement ipatch, OBusId obusid, SpeakerArrangement opatch)
-{
-  const size_t ibus = size_t (ibusid) - 1;
-  const size_t obus = size_t (obusid) - 1;
-  if (uint64_t (ipatch))
-    assert_return (ibus <= n_ibuses());
-  if (uint64_t (opatch))
-    assert_return (obus <= n_obuses());
-  assert_return (n_ibuses() + n_obuses() == iobuses_.size());
-  const uint sacount = iobuses_.size() + 1 + 1;
-  SpeakerArrangement *sai = new SpeakerArrangement[sacount];
-  SpeakerArrangement *sao = sai + n_ibuses() + 1;
-  size_t i;
-  for (i = 0; i < n_ibuses(); i++)
-    sai[i] = iobuses_[i].ibus.speakers;
-  sai[i] = SpeakerArrangement (0);
-  for (i = 0; i < n_obuses(); i++)
-    sao[i] = iobuses_[output_offset_ + i].obus.speakers;
-  sao[i] = SpeakerArrangement (0);
-  bool need_configure = false;
-  if (size_t (ibus) && uint64_t (ipatch) &&
-      sai[size_t (ibus) - 1] != ipatch)
-    {
-      sai[size_t (ibus) - 1] = ipatch;
-      need_configure = true;
-    }
-  if (size_t (obus) && uint64_t (opatch) &&
-      sao[size_t (obus) - 1] != opatch)
-    {
-      sao[size_t (obus) - 1] = opatch;
-      need_configure = true;
-    }
-  if (!need_configure)
-    {
-      delete[] sai;
-      return;
-    }
-  release_iobufs();
-  configure (n_ibuses(), sai, n_obuses(), sao);
-  delete[] sai;
-  assign_iobufs();
-  reset_state();
-}
-
-static AudioProcessor        *const notifies_tail = (AudioProcessor*) ptrdiff_t (-1);
-static std::atomic<AudioProcessor*> notifies_head { notifies_tail };
-
-void
-AudioProcessor::enqueue_notify_mt (uint32 pushmask)
-{
-  return_unless (!device_.expired());            // need a means to report notifications
-  assert_return (notifies_head != nullptr);     // paranoid
-  const uint32 prev = flags_.fetch_or (pushmask & NOTIFYMASK);
-  return_unless (prev != (prev | pushmask));    // nothing new
-  AudioProcessor *expected = nullptr;
-  if (nqueue_next_.compare_exchange_strong (expected, notifies_tail))
-    {
-      // nqueue_next_ was nullptr, need to insert into queue now
-      assert_warn (nqueue_guard_ == nullptr);
-      nqueue_guard_ = shared_from_this();
-      expected = notifies_head.load(); // must never be nullptr
-      do
-        nqueue_next_.store (expected);
-      while (!notifies_head.compare_exchange_strong (expected, this));
-    }
-}
-
-void
-AudioProcessor::call_notifies_e ()
-{
-  assert_return (this_thread_is_ase());
-  AudioProcessor *head = notifies_head.exchange (notifies_tail);
-  while (head != notifies_tail)
-    {
-      AudioProcessor *current = std::exchange (head, head->nqueue_next_);
-      AudioProcessorP procp = std::exchange (current->nqueue_guard_, nullptr);
-      AudioProcessor *old_nqueue_next = current->nqueue_next_.exchange (nullptr);
-      assert_warn (old_nqueue_next != nullptr);
-      const uint32 nflags = NOTIFYMASK & current->flags_.fetch_and (~NOTIFYMASK);
-      assert_warn (procp != nullptr);
-      DeviceImplP bprocp = current->device_.lock();
-      if (bprocp)
-        {
-          if (nflags & BUSCONNECT)
-            bprocp->emit_event ("bus", "connect");
-          if (nflags & BUSDISCONNECT)
-            bprocp->emit_event ("bus", "disconnect");
-          if (nflags & INSERTION)
-            bprocp->emit_event ("sub", "insert");
-          if (nflags & REMOVAL)
-            bprocp->emit_event ("sub", "remove");
-          if (nflags & PARAMCHANGE)
-            for (const PParam &p : current->params_)
-              if (ASE_UNLIKELY (p.changed()) && const_cast<PParam&> (p).changed (false))
-                {
-                  PropertyP propi = p.info->bprop_.lock();
-                  Properties::PropertyImpl *bprop = dynamic_cast<Properties::PropertyImpl*> (propi.get());
-                  if (bprop)
-                    bprop->emit_event ("notify", p.info->ident);
-                }
-        }
-    }
-}
-
-bool
-AudioProcessor::has_notifies_e ()
-{
-  return notifies_head != notifies_tail;
+  render (target_stamp - render_stamp_);
+  render_stamp_ = target_stamp;
 }
 
 // == RegistryEntry ==
@@ -1334,7 +1166,7 @@ AudioProcessor::registry_enroll (MakeProcessor create, const char *bfile, int bl
 void
 AudioProcessor::registry_init()
 {
-  static AudioEngine &regengine = make_audio_engine (48000);
+  static AudioEngine &regengine = make_audio_engine (48000, SpeakerArrangement::STEREO);
   while (processor_registry_entries)
     {
       std::lock_guard<std::recursive_mutex> rlocker (processor_registry_mutex);
@@ -1414,7 +1246,7 @@ AudioProcessor::registry_create (AudioEngine &engine, RegistryId regitry_id, con
 }
 
 /// List the registry entries of all known AudioProcessor types.
-AudioProcessor::RegistryList
+AudioProcessorInfoS
 AudioProcessor::registry_list()
 {
   registry_init();
@@ -1501,55 +1333,55 @@ public:
   Value
   get_value () override
   {
-    const AudioProcessorP proc = device_->audio_signal_processor();
+    const AudioProcessorP proc = device_->audio_processor();
     return AudioProcessor::param_peek_mt (proc, id_);
   }
   bool
   set_value (const Value &value) override
   {
-    const AudioProcessorP proc = device_->audio_signal_processor();
+    const AudioProcessorP proc = device_->audio_processor();
     const ParamId pid = id_;
     const double v = value.as_double();
     auto lambda = [proc, pid, v] () {
       proc->set_param (pid, v);
     };
-    proc->engine() += lambda;
+    proc->engine().async_jobs += lambda;
     return true;
   }
   double
   get_normalized () override
   {
-    const AudioProcessorP proc = device_->audio_signal_processor();
+    const AudioProcessorP proc = device_->audio_processor();
     return proc->value_to_normalized (id_, AudioProcessor::param_peek_mt (proc, id_));
   }
   bool
   set_normalized (double v) override
   {
-    const AudioProcessorP proc = device_->audio_signal_processor();
+    const AudioProcessorP proc = device_->audio_processor();
     const ParamId pid = id_;
     auto lambda = [proc, pid, v] () {
       proc->set_normalized (pid, v);
     };
-    proc->engine() += lambda;
+    proc->engine().async_jobs += lambda;
     return true;
   }
   String
   get_text () override
   {
-    const AudioProcessorP proc = device_->audio_signal_processor();
+    const AudioProcessorP proc = device_->audio_processor();
     const double value = AudioProcessor::param_peek_mt (proc, id_);
     return proc->param_value_to_text (id_, value);
   }
   bool
   set_text (String vstr) override
   {
-    const AudioProcessorP proc = device_->audio_signal_processor();
+    const AudioProcessorP proc = device_->audio_processor();
     const double v = proc->param_value_from_text (id_, vstr);
     const ParamId pid = id_;
     auto lambda = [proc, pid, v] () {
       proc->set_param (pid, v);
     };
-    proc->engine() += lambda;
+    proc->engine().async_jobs += lambda;
     return true;
   }
   bool
@@ -1577,82 +1409,96 @@ public:
   }
 };
 
-// == DeviceImpl ==
-DeviceImpl::DeviceImpl (AudioProcessor &proc) :
-  proc_ (proc.shared_from_this())
-{}
-
-DeviceInfo
-DeviceImpl::device_info ()
-{
-  AudioProcessorInfo pinf;
-  proc_->query_info (pinf);
-  DeviceInfo info;
-  info.uri          = pinf.uri;
-  info.name         = pinf.label;
-  info.category     = pinf.category;
-  info.description  = pinf.description;
-  info.website_url  = pinf.website_url;
-  info.creator_name = pinf.creator_name;
-  info.creator_url  = pinf.creator_url;
-  return info;
-}
-
-StringS
-DeviceImpl::list_properties ()
-{
-  std::vector<const AudioProcessor::PParam*> pparams;
-  pparams.reserve (proc_->params_.size());
-  for (const AudioProcessor::PParam &p : proc_->params_)
-    pparams.push_back (&p);
-  std::sort (pparams.begin(), pparams.end(), [] (auto a, auto b) { return a->info->order < b->info->order; });
-  StringS names;
-  names.reserve (pparams.size());
-  for (const AudioProcessor::PParam *p : pparams)
-    names.push_back (p->info->ident);
-  return names;
-}
-
-PropertyS
-DeviceImpl::access_properties ()
-{
-  std::vector<const AudioProcessor::PParam*> pparams;
-  pparams.reserve (proc_->params_.size());
-  for (const AudioProcessor::PParam &p : proc_->params_)
-    pparams.push_back (&p);
-  std::sort (pparams.begin(), pparams.end(), [] (auto a, auto b) { return a->info->order < b->info->order; });
-  PropertyS pseq;
-  pseq.reserve (pparams.size());
-  for (const AudioProcessor::PParam *p : pparams)
-    pseq.push_back (proc_->access_property (p->id));
-  return pseq;
-}
-
-PropertyP
-DeviceImpl::access_property (String ident)
-{
-  for (const AudioProcessor::PParam &p : proc_->params_)
-    if (p.info->ident == ident)
-      return proc_->access_property (p.id);
-  return {};
-}
-
 // == AudioProcessor::access_properties ==
+/// Retrieve/create Property handle from `id`.
+/// This function is MT-Safe after proper AudioProcessor initialization.
 PropertyP
 AudioProcessor::access_property (ParamId id) const
 {
+  assert_return (is_initialized(), {});
   const PParam *param = find_pparam (id);
   assert_return (param, {});
-  DeviceImplP devp = access_processor();
+  DeviceImplP devp = get_device();
   assert_return (devp, {});
   PropertyP newptr;
-  PropertyP prop = weak_ptr_fetch_or_create<Property> (param->info->bprop_, [&] () {
+  PropertyP prop = weak_ptr_fetch_or_create<Property> (param->info->aprop_, [&] () {
       newptr = std::make_shared<AudioPropertyImpl> (devp, param->id, param->info);
       return newptr;
     });
   if (newptr.get() == prop.get())
     const_cast<AudioProcessor::PParam*> (param)->changed (false); // skip initial change notification
   return prop;
+}
+
+// == enotify_queue ==
+static AudioProcessor        *const enotify_queue_tail = (AudioProcessor*) ptrdiff_t (-1);
+static std::atomic<AudioProcessor*> enotify_queue_head { enotify_queue_tail };
+
+/// Queue an AudioProcessor notification
+/// This function is MT-Safe after proper AudioProcessor initialization.
+void
+AudioProcessor::enotify_enqueue_mt (uint32 pushmask)
+{
+  return_unless (!device_.expired());           // need a means to report notifications
+  assert_return (enotify_queue_head != nullptr);     // paranoid
+  const uint32 prev = flags_.fetch_or (pushmask & NOTIFYMASK);
+  return_unless (prev != (prev | pushmask));    // nothing new
+  AudioProcessor *expected = nullptr;
+  if (nqueue_next_.compare_exchange_strong (expected, enotify_queue_tail))
+    {
+      // nqueue_next_ was nullptr, need to insert into queue now
+      assert_warn (nqueue_guard_ == nullptr);
+      nqueue_guard_ = shared_from_this();
+      expected = enotify_queue_head.load(); // must never be nullptr
+      do
+        nqueue_next_.store (expected);
+      while (!enotify_queue_head.compare_exchange_strong (expected, this));
+    }
+}
+
+/// Dispatch all AudioProcessor notifications (Engine internal)
+void
+AudioProcessor::enotify_dispatch ()
+{
+  assert_return (this_thread_is_ase());
+  AudioProcessor *head = enotify_queue_head.exchange (enotify_queue_tail);
+  while (head != enotify_queue_tail)
+    {
+      AudioProcessor *current = std::exchange (head, head->nqueue_next_);
+      AudioProcessorP procp = std::exchange (current->nqueue_guard_, nullptr);
+      AudioProcessor *old_nqueue_next = current->nqueue_next_.exchange (nullptr);
+      assert_warn (old_nqueue_next != nullptr);
+      const uint32 nflags = NOTIFYMASK & current->flags_.fetch_and (~NOTIFYMASK);
+      assert_warn (procp != nullptr);
+      DeviceImplP devicep = current->get_device (false);
+      if (devicep)
+        {
+          if (nflags & BUSCONNECT)
+            devicep->emit_event ("bus", "connect");
+          if (nflags & BUSDISCONNECT)
+            devicep->emit_event ("bus", "disconnect");
+          if (nflags & INSERTION)
+            devicep->emit_event ("sub", "insert");
+          if (nflags & REMOVAL)
+            devicep->emit_event ("sub", "remove");
+          if (nflags & PARAMCHANGE)
+            for (const PParam &p : current->params_)
+              if (ASE_UNLIKELY (p.changed()) && const_cast<PParam&> (p).changed (false))
+                {
+                  PropertyP propi = p.info->aprop_.lock();
+                  AudioPropertyImpl *aprop = dynamic_cast<AudioPropertyImpl*> (propi.get());
+                  if (aprop)
+                    aprop->emit_event ("notify", p.info->ident);
+                }
+        }
+    }
+}
+
+/// Check for AudioProcessor notifications (Engine internal)
+bool
+AudioProcessor::enotify_pending ()
+{
+  return enotify_queue_head != enotify_queue_tail;
 }
 
 } // Ase

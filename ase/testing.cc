@@ -216,7 +216,7 @@ TestChain::TestChain (std::function<void()> tfunc, const std::string &tname, Kin
 }
 
 static bool
-match_testname (const std::string &name, const StringVector &test_names)
+match_testname (const std::string &name, const StringS &test_names)
 {
   for (const auto &tname : test_names)
     if (name == tname)
@@ -225,7 +225,7 @@ match_testname (const std::string &name, const StringVector &test_names)
 }
 
 void
-TestChain::run (ptrdiff_t internal_token, const StringVector *test_names)
+TestChain::run (ptrdiff_t internal_token, const StringS *test_names)
 {
   assert_return (internal_token == ptrdiff_t (global_test_chain));
   for (const TestChain *t = global_test_chain; t; t = t->next_)
@@ -247,7 +247,7 @@ TestChain::run (ptrdiff_t internal_token, const StringVector *test_names)
 }
 
 int
-run (const StringVector &test_names)
+run (const StringS &test_names)
 {
   IntegrityCheck::deferred_init(); // register INTEGRITY tests
   TestChain::run (ptrdiff_t (global_test_chain), &test_names);

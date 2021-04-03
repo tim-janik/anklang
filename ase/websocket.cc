@@ -434,7 +434,7 @@ WebSocketServer::mime_type (const String &ext, bool utf8)
     // mime_types, list of "mime/type ext ext2\n" lines
     for (const String &line : string_split (mime_types, "\n"))
       {
-        const StringVector w = string_split (line, " ");
+        const StringS w = string_split (line, " ");
         for (size_t i = 1; i < w.size(); i++)
           if (!w[i].empty())
             {
