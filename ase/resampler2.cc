@@ -1,11 +1,11 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#include "bseresampler.hh"
-#include "bseblockutils.hh"
+#include "aseresampler.hh"
+#include "aseblockutils.hh"
 #ifdef __SSE__
 #include <xmmintrin.h>
 #endif
 
-using namespace Bse;
+using namespace Ase;
 
 /* see: http://ds9a.nl/gcc-simd/ */
 union F4Vector
@@ -391,7 +391,7 @@ fir_process_4samples_sse (const float *input,
   *out2 = out2_v.f[0] + out2_v.f[1] + out2_v.f[2] + out2_v.f[3];
   *out3 = out3_v.f[0] + out3_v.f[1] + out3_v.f[2] + out3_v.f[3];
 #else
-  BSE_ASSERT_RETURN_UNREACHED();
+  ASE_ASSERT_RETURN_UNREACHED();
 #endif
 }
 
@@ -582,7 +582,7 @@ public:
     history (2 * ORDER),
     sse_taps (fir_compute_sse_taps (taps))
   {
-    BSE_ASSERT_RETURN ((ORDER & 1) == 0);    /* even order filter */
+    ASE_ASSERT_RETURN ((ORDER & 1) == 0);    /* even order filter */
   }
   /*
    * The function process_block() takes a block of input samples and produces a
@@ -627,7 +627,7 @@ public:
   void
   reset() override
   {
-    Bse::Block::fill (history.size(), &history[0], 0.0);
+    Ase::Block::fill (history.size(), &history[0], 0.0);
   }
   bool
   sse_enabled() const override
@@ -731,7 +731,7 @@ public:
     history_odd (2 * ORDER),
     sse_taps (fir_compute_sse_taps (taps))
   {
-    BSE_ASSERT_RETURN ((ORDER & 1) == 0);    /* even order filter */
+    ASE_ASSERT_RETURN ((ORDER & 1) == 0);    /* even order filter */
   }
   /*
    * The function process_block() takes a block of input samples and produces
@@ -742,7 +742,7 @@ public:
                  uint         n_input_samples,
 		 float       *output) override
   {
-    BSE_ASSERT_RETURN ((n_input_samples & 1) == 0);
+    ASE_ASSERT_RETURN ((n_input_samples & 1) == 0);
 
     const uint BLOCKSIZE = 1024;
 
@@ -814,8 +814,8 @@ public:
   void
   reset() override
   {
-    Bse::Block::fill (history_even.size(), &history_even[0], 0.0);
-    Bse::Block::fill (history_odd.size(), &history_odd[0], 0.0);
+    Ase::Block::fill (history_even.size(), &history_even[0], 0.0);
+    Ase::Block::fill (history_odd.size(), &history_odd[0], 0.0);
   }
   bool
   sse_enabled() const override
@@ -865,7 +865,7 @@ Resampler2::test_filter_impl (bool verbose)
   else
     {
       if (verbose)
-        Bse::printout ("SSE filter implementation not tested: no SSE support available\n");
+        Ase::printout ("SSE filter implementation not tested: no SSE support available\n");
       return true;
     }
 }

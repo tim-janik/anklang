@@ -1,11 +1,11 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __BSE_RESAMPLER_HH__
-#define __BSE_RESAMPLER_HH__
+#ifndef __ASE_RESAMPLER_HH__
+#define __ASE_RESAMPLER_HH__
 
-#include <bse/bsecxxutils.hh>
+#include <ase/asecxxutils.hh>
 #include <vector>
 
-namespace Bse {
+namespace Ase {
 
 /**
  * Interface for factor 2 resampling classes
@@ -130,20 +130,20 @@ protected:
       taps[i] = d[i] * scaling;
 
     Resampler2::Impl *filter = new Filter (taps);
-    BSE_ASSERT_RETURN (order == filter->order(), NULL);
+    ASE_ASSERT_RETURN (order == filter->order(), NULL);
     return filter;
   }
   /* creates the actual implementation; specifying USE_SSE=true will use
    * SSE instructions, USE_SSE=false will use FPU instructions
    *
    * Don't use this directly - it's only to be used by
-   * bseblockutils.cc's anonymous Impl classes.
+   * aseblockutils.cc's anonymous Impl classes.
    */
   template<bool USE_SSE> static inline Impl*
   create_impl (Mode      mode,
 	       Precision precision);
 };
 
-} /* namespace Bse */
+} /* namespace Ase */
 
-#endif /* __BSE_RESAMPLER_HH__ */
+#endif /* __ASE_RESAMPLER_HH__ */
