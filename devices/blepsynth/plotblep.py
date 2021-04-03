@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Licensed GNU LGPL v3 or later: http://www.gnu.org/licenses/lgpl.html
+# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 # coding=utf-8
 

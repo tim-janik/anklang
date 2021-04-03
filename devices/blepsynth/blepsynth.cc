@@ -1,4 +1,4 @@
-// Licensed GNU LGPL v2.1 or later: http://www.gnu.org/licenses/lgpl.html
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "ase/processor.hh"
 #include "ase/signalmath.hh"
 #include "ase/asenote.hh"
