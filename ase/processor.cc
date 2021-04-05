@@ -254,6 +254,13 @@ AudioProcessor::~AudioProcessor ()
   engine_.processor_count_ -= 1;
 }
 
+/// Convert MIDI note to Hertz according to the current MusicalTuning.
+float
+AudioProcessor::note_to_freq (int note) const
+{
+  return MidiNote::note_to_freq (MusicalTuning::OD_12_TET, note, 440);
+}
+
 /// Create the `Ase::ProcessorIface` for `this`.
 DeviceImplP
 AudioProcessor::device_impl () const

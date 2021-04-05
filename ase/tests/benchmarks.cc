@@ -344,17 +344,17 @@ ase_aligned_allocator_benchloop (uint32 seed)
   TASSERT (!std::isnan (accu));
 }
 
-TEST_BENCHMARK (aligned_allocator_bench31_aligned_block);
+TEST_BENCHMARK (zbench_aligned_allocator_aligned_block);
 static void
-aligned_allocator_bench31_aligned_block()
+zbench_aligned_allocator_aligned_block()
 {
   ensure_block_allocator_initialization();
   ase_aligned_allocator_benchloop<AllocatorType::FastMemoryArea> (2654435769);
 }
 
-TEST_BENCHMARK (aligned_allocator_bench31_memalign);
+TEST_BENCHMARK (zbench_aligned_allocator_memalign);
 static void
-aligned_allocator_bench31_memalign()
+zbench_aligned_allocator_memalign()
 {
   ensure_block_allocator_initialization();
   ase_aligned_allocator_benchloop<AllocatorType::PosixMemalign> (2654435769);
@@ -363,17 +363,17 @@ aligned_allocator_bench31_memalign()
   // 2^32 / phi = 2654435769.49723029647758477079
 }
 
-TEST_BENCHMARK (aligned_allocator_bench31_calloc);
+TEST_BENCHMARK (zbench_aligned_allocator_calloc);
 static void
-aligned_allocator_bench31_calloc()
+zbench_aligned_allocator_calloc()
 {
   ensure_block_allocator_initialization();
   ase_aligned_allocator_benchloop<AllocatorType::LibcCalloc> (2654435769);
 }
 
-TEST_BENCHMARK (aligned_allocator_bench31_fast_mem_alloc);
+TEST_BENCHMARK (zbench_aligned_allocator_fast_mem_alloc);
 static void
-aligned_allocator_bench31_fast_mem_alloc()
+zbench_aligned_allocator_fast_mem_alloc()
 {
   ensure_block_allocator_initialization();
   ase_aligned_allocator_benchloop<AllocatorType::FastMemAlloc> (2654435769);
