@@ -266,10 +266,13 @@ class BlepSynth : public AudioProcessor {
   void
   query_info (AudioProcessorInfo &info) const override
   {
-    info.uri = "Ase.BlepSynth";
-    // info.version = "0";
-    info.label = "BlepSynth";
-    info.category = "Synth";
+    info.uri          = "Anklang.Devices.BlepSynth";
+    info.version      = "1";
+    info.label        = "BlepSynth";
+    info.category     = "Generators";
+    info.category     = "Synth";
+    info.creator_name = "Stefan Westerfeld";
+    info.website_url  = "https://anklang.testbit.eu";
   }
   void
   initialize (SpeakerArrangement busses) override
