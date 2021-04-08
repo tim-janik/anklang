@@ -96,19 +96,6 @@ async function editable_object () {
   return o;
 }
 
-/// Assign `obj[k] = v` for all `k of keys, v of values`.
-function zip_object (obj, keys, values) {
-  const kl = keys.length, vl = values.length;
-  for (let i = 0; i < kl; i++)
-    obj[keys[i]] = i < vl ? values[i] : undefined;
-  return obj;
-}
-
-/// Await and reassign all object fields.
-async function object_await_flat (obj) {
-  return zip_object (obj, Object.keys (obj), await Promise.all (Object.values (obj)));
-}
-
 async function list_fields (proplist) {
   const groups = {}, attrs = {
     min: 0, max: 0, step: 0,
@@ -151,7 +138,7 @@ async function list_fields (proplist) {
 		    __proto__: prop,
       };
       awaits.push (xprop.update_());
-      xprop = await object_await_flat (xprop);
+      xprop = await Util.object_await_values (xprop);
       if (!groups[xprop.group_])
 	groups[xprop.group_] = [];
       groups[xprop.group_].push (xprop);
