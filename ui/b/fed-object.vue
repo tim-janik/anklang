@@ -122,12 +122,12 @@ async function list_fields (proplist) {
 		    step_: prop.get_step(),
 		    ctype_: undefined,
 		    attrs_: attrs,
-		    value_: Vue.reactive ({ val: undefined, num: 0, text: '' }),
 		    apply_: (...a) => {
 		      xprop.set_value (a[0]);
 		      debug ('APPLY', a[0]);
 		      xprop.update_(); // FIXME
 		    },
+		    value_: Vue.reactive ({ val: undefined, num: 0, text: '' }),
 		    update_: async () => {
 		      const v = xprop.get_value(), n = xprop.get_normalized(), t = xprop.get_text();
 		      xprop.value_.val = await v;
@@ -144,7 +144,10 @@ async function list_fields (proplist) {
       groups[xprop.group_].push (xprop);
       const discon_ = xprop.on ('change', _ => xprop.update_());
       this.dom_ondestroy (discon_);
+      if (this.augment)
+	awaits.push (this.augment (xprop));
     }
+  await Promise.all (awaits);
   const grouplist = []; // [ { name, props: [richprop, ...] }, ... ]
   for (const k of Object.keys (groups))
     {
@@ -169,7 +172,6 @@ async function list_fields (proplist) {
 	}
       Object.freeze (groups[k]);
     }
-  await Promise.all (awaits);
   return Object.freeze (grouplist);
 }
 
@@ -185,6 +187,7 @@ export default {
   data() { return component_data.call (this); },
   props: {
     readonly:	{ default: false, },
+    augment:    { type: Function, },
     debounce:	{ default: 0, },
     value:	{ required: true, },
     default:	{},
