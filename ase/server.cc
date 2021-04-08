@@ -5,6 +5,7 @@
 #include "properties.hh"
 #include "serialize.hh"
 #include "main.hh"
+#include "driver.hh"
 #include "utils.hh"
 #include "path.hh"
 #include "internal.hh"
@@ -152,13 +153,13 @@ ServerImpl::access_prefs()
 DriverEntryS
 ServerImpl::list_pcm_drivers ()
 {
-  return {};
+  return PcmDriver::list_drivers();
 }
 
 DriverEntryS
 ServerImpl::list_midi_drivers ()
 {
-  return {};
+  return MidiDriver::list_drivers();
 }
 
 ServerImplP
