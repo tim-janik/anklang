@@ -743,7 +743,7 @@ void
 AudioProcessor::enable_engine_output (bool onoff)
 {
   if (onoff)
-    assert_return (n_obuses() >= 1);
+    assert_return (n_obuses() || has_event_output());
   engine_.enable_output (*this, onoff);
 }
 
@@ -1067,7 +1067,9 @@ AudioProcessor::ensure_initialized()
       assign_iobufs();
       reset_state (engine_.frame_counter());
     }
-  assert_return (n_ibuses() + n_obuses() != 0);
+  const bool has_event_input = estreams_ && estreams_->has_event_input;
+  const bool has_event_output = estreams_ && estreams_->has_event_output;
+  assert_return (n_ibuses() || n_obuses() || has_event_input || has_event_output);
 }
 
 /// Reset all voices, buffers and other internal state
