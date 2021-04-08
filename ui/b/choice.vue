@@ -81,16 +81,6 @@ export default {
       if (!this.$el) // we need a second Vue.render() call for DOM alterations
 	return this.$forceUpdate();
       this.value_ = this.value;
-      if (this.value_)
-	{
-	  this.$el.classList.add ('b-choice-on');
-	  this.$el.classList.remove ('b-choice-off');
-	}
-      else
-	{
-	  this.$el.classList.remove ('b-choice-on');
-	  this.$el.classList.add ('b-choice-off');
-	}
     },
     bubbletip() {
       App.zmove(); // force changes to be picked up
@@ -137,6 +127,7 @@ export default {
       this.buttondown_ = false;
     },
     keydown (ev) {
+      // allow selection changes with UP/DOWN while menu is closed
       if (event.keyCode == Util.KeyCode.DOWN || event.keyCode == Util.KeyCode.UP)
 	{
 	  ev.preventDefault();
