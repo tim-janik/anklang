@@ -172,7 +172,7 @@ MidiEventStream::append (int8_t frame, const MidiEvent &event)
   assert_return (!out_of_order_event);
 }
 
-/// Dangerous! Append an MidiEvent with enforcing sort order, violates constraints.
+/// Dangerous! Append a MidiEvent while ignoring sort order, violates constraints.
 /// Returns if ensure_order() must be called due to adding an out-of-order event.
 bool
 MidiEventStream::append_unsorted (int8_t frame, const MidiEvent &event)
