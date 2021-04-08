@@ -79,6 +79,7 @@ public:
   virtual void wakeup_thread_mt      () = 0;
   virtual bool ipc_pending           () = 0;
   virtual void ipc_dispatch          () = 0;
+  virtual AudioProcessorP get_event_source () = 0;
   // MT-Safe API
   virtual uint64_t   frame_counter       () const = 0;
   uint               sample_rate         () const ASE_CONST { return sample_rate_; }

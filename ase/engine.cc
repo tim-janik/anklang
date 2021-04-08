@@ -12,6 +12,7 @@ namespace Ase {
 
 using VoidFunc = std::function<void()>;
 using StartQueue = AsyncBlockingQueue<char>;
+ASE_CLASS_DECLS (EngineMidiInput);
 constexpr uint fixed_sample_rate = 48000;
 
 // == AudioEngineThread ==
@@ -23,6 +24,7 @@ class AudioEngineThread : public AudioEngine {
   uint64                       write_stamp_ = 0, render_stamp_ = AUDIO_BLOCK_MAX_RENDER_SIZE;
   std::vector<AudioProcessor*> schedule_;
   bool                         schedule_invalid_ = true;
+  EngineMidiInputP             midi_proc_;
 public:
   struct Job {
     std::atomic<Job*> next = nullptr;
@@ -33,24 +35,26 @@ public:
   std::thread              *thread_ = nullptr;
   MainLoopP                 event_loop_ = MainLoop::create();
   AudioProcessorS           oprocs_;
-  virtual ~AudioEngineThread     ();
-  explicit AudioEngineThread     (uint sample_rate, SpeakerArrangement speakerarrangement);
-  uint64   frame_counter         () const override      { return render_stamp_; }
-  void     enable_output         (AudioProcessor &aproc, bool onoff) override;
-  void     start_thread          (const VoidF &owner_wakeup) override;
-  void     stop_thread           () override;
-  void     wakeup_thread_mt      () override;
-  bool     ipc_pending           () override;
-  void     ipc_dispatch          () override;
-  void     schedule_queue_update () override;
-  void     schedule_add          (AudioProcessor &aproc, uint level) override;
-  void     schedule_render       (uint64 frames);
-  void     schedule_clear        ();
-  bool     pcm_check_write       (bool write_buffer, int64 *timeout_usecs_p = nullptr);
-  bool     driver_dispatcher     (const LoopState &state);
-  bool     process_jobs          (AtomicIntrusiveStack<Job> &joblist);
-  void     ensure_driver         ();
-  void     run                   (const VoidF &owner_wakeup, StartQueue *sq);
+  virtual        ~AudioEngineThread     ();
+  explicit        AudioEngineThread     (uint sample_rate, SpeakerArrangement speakerarrangement);
+  uint64          frame_counter         () const override      { return render_stamp_; }
+  void            enable_output         (AudioProcessor &aproc, bool onoff) override;
+  void            start_thread          (const VoidF &owner_wakeup) override;
+  void            stop_thread           () override;
+  void            wakeup_thread_mt      () override;
+  bool            ipc_pending           () override;
+  void            ipc_dispatch          () override;
+  AudioProcessorP get_event_source      () override;
+  void            schedule_queue_update () override;
+  void            schedule_add          (AudioProcessor &aproc, uint level) override;
+  void            schedule_render       (uint64 frames);
+  void            schedule_clear        ();
+  bool            pcm_check_write       (bool write_buffer, int64 *timeout_usecs_p = nullptr);
+  bool            driver_dispatcher     (const LoopState &state);
+  bool            process_jobs          (AtomicIntrusiveStack<Job> &joblist);
+  void            ensure_drivers        ();
+  void            run                   (const VoidF &owner_wakeup, StartQueue *sq);
+  void            set_midi_input        (MidiDriverP midi_driver);
 };
 
 static inline std::atomic<AudioEngineThread::Job*>&
@@ -164,15 +168,18 @@ AudioEngineThread::schedule_render (uint64 frames)
         }
     }
   // render output buffer interleaved
-  if (oprocs_.size() == 0)
+  constexpr auto MAIN_OBUS = OBusId (1);
+  size_t n = 0;
+  for (size_t i = 0; i < oprocs_.size(); i++)
+    if (oprocs_[i]->n_obuses())
+      {
+        if (n++ == 0)
+          interleaved_stereo<0> (AUDIO_BLOCK_MAX_RENDER_SIZE, buffer_data_, *oprocs_[i], MAIN_OBUS);
+        else
+          interleaved_stereo<1> (AUDIO_BLOCK_MAX_RENDER_SIZE, buffer_data_, *oprocs_[i], MAIN_OBUS);
+      }
+  if (n == 0)
     floatfill (buffer_data_, 0.0, buffer_size_);
-  else
-    {
-      constexpr auto MAIN_OBUS = OBusId (1);
-      interleaved_stereo<0> (AUDIO_BLOCK_MAX_RENDER_SIZE, buffer_data_, *oprocs_[0], MAIN_OBUS);
-      for (size_t i = 1; i < oprocs_.size(); i++)
-        interleaved_stereo<1> (AUDIO_BLOCK_MAX_RENDER_SIZE, buffer_data_, *oprocs_[i], MAIN_OBUS);
-    }
   render_stamp_ = target_stamp;
 }
 
@@ -197,7 +204,7 @@ AudioEngineThread::enable_output (AudioProcessor &aproc, bool onoff)
 }
 
 void
-AudioEngineThread::ensure_driver()
+AudioEngineThread::ensure_drivers()
 {
   return_unless (!null_pcm_driver_);
   PcmDriverConfig pconfig { .n_channels = fixed_n_channels, .mix_freq = fixed_sample_rate,
@@ -211,6 +218,14 @@ AudioEngineThread::ensure_driver()
     pcm_driver_ = PcmDriver::open ("auto", Driver::WRITEONLY, Driver::WRITEONLY, pconfig, &er);
   if (!pcm_driver_)
     pcm_driver_ = null_pcm_driver_;
+  if (!midi_proc_)
+    {
+      const String midi_driver_name = "auto";
+      MidiDriverP midi_driver = MidiDriver::open (midi_driver_name, Driver::READONLY, &er);
+      if (!midi_driver)
+        printerr ("failed to open MIDI driver ('%s'): %s", midi_driver_name, ase_error_blurb (er));
+      set_midi_input (midi_driver);
+    }
   schedule_queue_update();
 }
 
@@ -329,7 +344,7 @@ void
 AudioEngineThread::start_thread (const VoidF &owner_wakeup)
 {
   schedule_.reserve (8192);
-  ensure_driver();
+  ensure_drivers();
   assert_return (thread_ == nullptr);
   schedule_queue_update();
   StartQueue start_queue;
@@ -442,7 +457,11 @@ void
 AudioEngine::add_job_mt (const std::function<void()> &jobfunc, int flags)
 {
   AudioEngineThread &engine = *dynamic_cast<AudioEngineThread*> (this);
-  assert_return (engine.thread_ != nullptr);
+  if (!engine.thread_)
+    {
+      jobfunc();
+      return;
+    }
   if (flags) // async_jobs flag
     {
       AudioEngineThread::Job *job = new AudioEngineThread::Job { nullptr, jobfunc };
@@ -478,6 +497,72 @@ AudioProcessorP
 make_audio_processor (AudioEngine &engine, const String &uuiduri)
 {
   return AudioProcessor::registry_create (engine, uuiduri);
+}
+
+// == MidiInput ==
+// Processor providing MIDI device events
+class EngineMidiInput : public AudioProcessor {
+  void
+  query_info (AudioProcessorInfo &info) const override
+  {
+    info.uri          = "Anklang.Devices.EngineMidiInput";
+    info.version      = "1";
+    info.label        = "MIDI Input";
+    info.category     = "Routing";
+    info.creator_name = "Tim Janik";
+    info.website_url  = "https://anklang.testbit.eu";
+  }
+  void
+  initialize (SpeakerArrangement busses) override
+  {
+    prepare_event_output();
+  }
+  void reset (uint64 target_stamp) override {}
+  void
+  render (uint n_frames) override
+  {
+    MidiEventStream &estream = get_event_output();
+    estream.clear();
+    if (midi_driver_)
+      midi_driver_->fetch_events (estream, sample_rate());
+  }
+public:
+  MidiDriverP midi_driver_;
+};
+static auto engine_midi_input = register_audio_processor<EngineMidiInput>();
+
+template<class T> struct Mutable {
+  mutable T value;
+  Mutable (T &v) : value (v) {}
+  operator T& () { return value; }
+};
+
+void
+AudioEngineThread::set_midi_input (MidiDriverP midi_driver)
+{
+  if (!midi_proc_)
+    {
+      AudioProcessorP aprocp = make_audio_processor (*this, "Anklang.Devices.EngineMidiInput");
+      assert_return (aprocp);
+      midi_proc_ = std::dynamic_pointer_cast<EngineMidiInput> (aprocp);
+      assert_return (midi_proc_);
+      EngineMidiInputP midi_proc = midi_proc_;
+      async_jobs += [midi_proc] () {
+        midi_proc->enable_engine_output (true);
+      };
+    }
+  EngineMidiInputP midi_proc = midi_proc_;
+  Mutable<MidiDriverP> midi_driver_p = midi_driver;
+  async_jobs += [midi_proc, midi_driver_p] () {
+    midi_proc->midi_driver_.swap (midi_driver_p.value);
+    // use Mutable<>.value.swap to defer dtor to user thread
+  };
+}
+
+AudioProcessorP
+AudioEngineThread::get_event_source ()
+{
+  return midi_proc_;
 }
 
 } // Ase
