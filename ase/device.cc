@@ -77,12 +77,23 @@ DeviceImpl::list_devices ()
 {
   DeviceS devs;
   AudioComboP combo = combo_;
-  auto job = [&devs, combo] () {
+  auto j = [&devs, combo] () {
     for (auto &proc : combo->list_processors())
       devs.push_back (proc->device_impl());
   };
-  proc_->engine_.const_jobs += job;
+  proc_->engine_.const_jobs += j;
   return devs;
+}
+
+void
+DeviceImpl::set_event_source (AudioProcessorP esource)
+{
+  AudioComboP combo = combo_;
+  return_unless (combo);
+  auto j = [combo, esource] () {
+    combo->set_event_source (esource);
+  };
+  proc_->engine_.async_jobs += j;
 }
 
 DeviceInfoS
@@ -170,13 +181,13 @@ DeviceImpl::disconnect_remove ()
   engine->async_jobs += j;
 }
 
-DeviceP
+DeviceImplP
 DeviceImpl::create_output (const String &uuiduri)
 {
   AudioEngine *engine = main_config.engine;
   AudioProcessorP procp = make_audio_processor (*engine, uuiduri);
   return_unless (procp, nullptr);
-  DeviceP devicep = procp->get_device();
+  DeviceImplP devicep = procp->get_device();
   auto j = [procp] () {
     procp->enable_engine_output (true);
   };
