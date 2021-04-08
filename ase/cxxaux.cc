@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "cxxaux.hh"
 #include "main.hh"              // main_config
+#include "backtrace.hh"
 #include <cxxabi.h>             // abi::__cxa_demangle
 #include <signal.h>
 
@@ -38,6 +39,8 @@ assertion_failed (const std::string &msg, const char *file, int line, const char
       fputs (msg.c_str(), stderr);
       if (msg.size() && msg[msg.size() - 1] != '\n')
         fputc ('\n', stderr);
+      if (debug_key_enabled ("backtrace"))
+        ASE_PRINT_BACKTRACE (__FILE__, __LINE__, __func__);
     }
   fflush (stderr);
   if (main_config.fatal_warnings)
