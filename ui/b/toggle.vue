@@ -45,8 +45,6 @@
   }
 </style>
 
-<!-- NOTE: This implementation assumes the HTML embeds etoggle.svg -->
-
 <template>
   <div    class="b-toggle" ref="btoggle" :style="style (1)"
 	  data-tip="**CLICK** Toggle Value" >
