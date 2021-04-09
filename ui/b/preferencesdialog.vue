@@ -26,7 +26,7 @@
     <template v-slot:header>
       <div>Anklang Preferences</div>
     </template>
-    <b-fed-object class="b-preferencesdialog-fed" ref="fedobject" :value="proplist" @input="value_changed" debounce=75 />
+    <b-fed-object class="b-preferencesdialog-fed" ref="fedobject" :value="proplist" :augment="augment" @input="value_changed" debounce=75 />
     <template v-slot:footer>
       <div><button autofocus @click="$emit ('update:shown', false)" > Close </button></div>
     </template>
@@ -51,34 +51,28 @@ function drivers2picklist (hint, e) {
   };
   return item;
 }
-async function fetch_current_config (addcleanup) { // FIXME
-  const d = await Ase.server.get_prefs();
-  if (d.__typename__)
-    {
-      d.__typedata__ = []; // TODO: await Ase.server.find_typedata (d.__typename__);
-      d.__fieldhooks__ = {
-	'pcm_driver.picklistitems': () => {
-	  if (this.pcmrefresh)  // Ase provides no notification for list_pcm_drivers
-	    this.pcmrefresh();  // so we poll it when necessary
-	  return this.pcmlist.map (drivers2picklist.bind (this, 'pcm'));
-	},
-	'midi_driver.picklistitems': () => {
-	  if (this.midirefresh) // Ase provides no notification for list_midi_drivers
-	    this.midirefresh(); // so we poll it when necessary
-	  return this.midilist.map (drivers2picklist.bind (this, 'midi'));
-	},
-      };
-    }
-  return Object.freeze (d);
+
+async function list_properties (addcleanup) {
+  let d = { prefs: Ase.server.access_prefs(),
+	    pcmlist: Ase.server.list_pcm_drivers(),
+	    midilist: Ase.server.list_midi_drivers(),
+  };
+  await Util.object_await_values (d);
+  this.pcmlist = d.pcmlist;
+  this.midilist = d.midilist;
+  return d.prefs;
+}
+
+async function augment_property (xprop) {
+  if (xprop.hints_.search (/:choice:/) >= 0) {
+    xprop.attrs_ = Object.assign ({}, xprop.attrs_, { title: xprop.label_ + " Selection" });
+  }
 }
 
 function component_data () {
   const data = {
-    proplist: { default: [], getter: async c => await Ase.server.access_prefs(), },
-    pcmlist:  { getter: async c => Object.freeze (await Ase.server.list_pcm_drivers()),
-		notify: n => { this.pcmrefresh = n; return () => this.pcmrefresh = null; }, },
-    midilist: { getter: async c => Object.freeze (await Ase.server.list_midi_drivers()),
-		notify: n => { this.midirefresh = n; return () => this.midirefresh = null; }, },
+    proplist: { default: [], getter: c => list_properties.call (this, c),
+		notify: n => { this.proprefresh = n; return () => this.proprefresh = null; }, },
   };
   return this.observable_from_getters (data, () => true);
 }
@@ -94,6 +88,7 @@ export default {
     shown (vnew, vold) { if (vnew && this.prefrefresh) this.prefrefresh(); },
   },
   methods: {
+    augment (p) { return augment_property.call (this, p); },
     driver_icon (entry, hint) {
       const is_midi = hint == 'midi';
       const is_pcm = hint == 'pcm';
