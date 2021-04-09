@@ -29,6 +29,9 @@
       text-align: center;
       flex-grow: 1;
     }
+    .b-pro-group-input {
+      flex-grow: 1;
+    }
     .b-pro-group-row {
       justify-content: space-evenly;
       .b-pro-group-vprop {
