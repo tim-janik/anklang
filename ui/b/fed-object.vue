@@ -55,7 +55,11 @@
 	>{{ prop.label_ }}</span>
 	<span style="text-align: right" :data-bubble="prop.blurb_" >
 	  <component :is="prop.ctype_" v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
-		     :value="prop.fetch_()" @input="prop.apply_" ></component></span>
+				       :value="prop.fetch_()" @input="prop.apply_" v-if="prop.ctype_ != 'b-choice'" ></component>
+	  <b-choice v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
+		    :value="prop.fetch_()" @update:value="prop.apply_ ($event)" :choices="prop.choices_"
+		    v-if="prop.ctype_ == 'b-choice'" ></b-choice>
+	</span>
 	<span>
 	  <button class="b-fed-object-clear" tabindex="-1" @click="prop.reset()" > ⊗  </button></span>
       </template>
@@ -101,8 +105,6 @@ async function list_fields (proplist) {
     min: 0, max: 0, step: 0,
     readonly: false,
     allowfloat: true,
-    picklistitems: [],
-    title: 'LABEL' + " " + "Selection",
   };
   const awaits = [];
   Object.freeze (attrs);
@@ -152,23 +154,26 @@ async function list_fields (proplist) {
   for (const k of Object.keys (groups))
     {
       grouplist.push ({ name: k, props: groups[k] });
-      for (const prop of groups[k])
+      for (const xprop of groups[k])
 	{
 	  let ctype = '';	// component type
-	  if (prop.hints_.search (/:range:/) >= 0)
+	  if (xprop.hints_.search (/:range:/) >= 0)
 	    {
 	      ctype = 'b-fed-number';
-	      if ((prop.min_ | prop.max_) != 0)
-		prop.attrs_ = Object.freeze (Object.assign ({}, prop.attrs_, { min: prop.min_, max: prop.max_ }));
+	      if ((xprop.min_ | xprop.max_) != 0)
+		xprop.attrs_ = Object.assign ({}, xprop.attrs_, { min: xprop.min_, max: xprop.max_ });
 	    }
-	  else if (prop.hints_.search (/:bool:/) >= 0)
+	  else if (xprop.hints_.search (/:bool:/) >= 0)
 	    ctype = 'b-fed-switch';
-	  else if (0 == 'string' && 0)
-	    ctype = 'b-fed-picklist';
+	  else if (xprop.hints_.search (/:choice:/) >= 0)
+	    {
+	      ctype = 'b-choice';
+	      xprop.choices_ = await xprop.choices();
+	    }
 	  else
 	    ctype = 'b-fed-text';
-	  prop.ctype_ = ctype;
-	  Object.freeze (prop);
+	  xprop.ctype_ = ctype;
+	  Object.freeze (xprop);
 	}
       Object.freeze (groups[k]);
     }
