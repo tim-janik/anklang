@@ -39,20 +39,16 @@ struct AudioProcessorInfo {
   CString creator_url;  ///< Internet contact of the creator.
 };
 
-/// An in-memory icon representation.
-struct IconStr : std::string {
-};
-
 /// One possible choice for selection parameters.
 struct ChoiceDetails {
-  const CString ident;          ///< Identifier used for serialization (can be derived from label).
-  const CString label;          ///< Preferred user interface name.
-  const CString subject;        ///< Subject line, a brief one liner or elaborate title.
-  const IconStr icon;           ///< Stringified icon, SVG and PNG should be supported (64x64 pixels recommended).
+  const CString ident;   ///< Identifier used for serialization (can be derived from label).
+  const CString label;   ///< Preferred user interface name.
+  const CString subject; ///< Subject line, a brief one liner or elaborate title.
+  const CString icon;    ///< Stringified icon, symbolic, SVG and PNG should be supported (64x64 pixels recommended).
   bool    operator== (const ChoiceDetails &o) const     { return ident == o.ident; }
   bool    operator!= (const ChoiceDetails &o) const     { return !operator== (o); }
   ChoiceDetails (CString label, CString subject = "");
-  ChoiceDetails (IconStr icon, CString label, CString subject = "");
+  ChoiceDetails (CString icon, CString label, CString subject = "");
 };
 
 /// List of choices for ParamInfo.set_choices().

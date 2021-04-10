@@ -28,7 +28,7 @@ ChoiceDetails::ChoiceDetails (CString label_, CString subject_) :
   assert_return (ident.empty() == false);
 }
 
-ChoiceDetails::ChoiceDetails (IconStr icon_, CString label_, CString subject_) :
+ChoiceDetails::ChoiceDetails (CString icon_, CString label_, CString subject_) :
   ident (canonify_identifier (label_)), label (label_), subject (subject_), icon (icon_)
 {
   assert_return (ident.empty() == false);
