@@ -173,7 +173,6 @@ struct DriverEntry {
   int32  priority = 0;
   bool   readonly = false;
   bool   writeonly = false;
-  bool   modem = false;
 };
 
 /// Base type for classes with Property interfaces.

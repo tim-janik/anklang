@@ -399,7 +399,7 @@ struct SBase : Serializable {
     chars.push_back ('C');
     r = { .devid = "RS232", .device_name = "Serial", .capabilities = "IO++",
           .device_info = "DEVinfo", .notice = "Handle with care", .priority = 17,
-          .readonly = false, .writeonly = false, .modem = true };
+          .readonly = false, .writeonly = false };
   }
   void
   serialize (WritNode &xs) override

@@ -201,7 +201,7 @@ list_alsa_drivers (Driver::EntryVec &entries)
             entry.device_info = card_longname;
           entry.readonly = !writable;
           entry.writeonly = !readable;
-          entry.modem = pcmclass == SND_PCM_CLASS_MODEM;
+          // entry.modem = pcmclass == SND_PCM_CLASS_MODEM;
           entry.priority = (is_usb ? Driver::ALSA_USB : Driver::ALSA_KERN) + Driver::WCARD * cindex + Driver::WDEV * dindex;
           entries.push_back (entry);
           ADEBUG ("DISCOVER: PCM: %s - %s", entry.devid, entry.device_name);
