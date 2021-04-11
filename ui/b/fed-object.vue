@@ -57,7 +57,7 @@
 	  <component :is="prop.ctype_" v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
 				       :value="prop.fetch_()" @input="prop.apply_" v-if="prop.ctype_ != 'b-choice'" ></component>
 	  <b-choice v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
-		    :value="prop.fetch_()" @update:value="prop.apply_ ($event)" :choices="prop.choices_"
+		    :value="prop.fetch_()" @update:value="prop.apply_ ($event)" :choices="prop.value_.choices"
 		    v-if="prop.ctype_ == 'b-choice'" ></b-choice>
 	</span>
 	<span>
@@ -70,6 +70,7 @@
 
 <script>
 import * as Util from '../util.js';
+const empty_list = Object.freeze ([]);
 
 async function editable_object () {
   // provide an editable and reactive clone of this.value
@@ -107,47 +108,48 @@ async function list_fields (proplist) {
     allowfloat: true,
   };
   const awaits = [];
-  Object.freeze (attrs);
   for (const prop of proplist)
     {
       let xprop = { ident_: prop.identifier(),
-		    numeric_: prop.is_numeric(),
+		    hints_: prop.hints(),
+		    is_numeric_: prop.is_numeric(),
 		    label_: prop.label(),
 		    nick_: prop.nick(),
 		    unit_: prop.unit(),
-		    hints_: prop.hints(),
 		    group_: prop.group(),
 		    blurb_: prop.blurb(),
 		    description_: prop.description(),
 		    min_: prop.get_min(),
 		    max_: prop.get_max(),
 		    step_: prop.get_step(),
+		    has_choices_: false,
 		    ctype_: undefined,
 		    attrs_: attrs,
 		    apply_: (...a) => {
 		      xprop.set_value (a[0]);
-		      debug ('APPLY', a[0]);
-		      xprop.update_(); // FIXME
 		    },
-		    value_: Vue.reactive ({ val: undefined, num: 0, text: '' }),
+		    value_: Vue.reactive ({ val: undefined, num: 0, text: '', choices: empty_list }),
 		    update_: async () => {
-		      const v = xprop.get_value(), n = xprop.get_normalized(), t = xprop.get_text();
-		      xprop.value_.val = await v;
-		      xprop.value_.num = await n;
-		      xprop.value_.text = await t;
+		      const value_ = { val: xprop.get_value(),
+				       num: xprop.get_normalized(),
+				       text: xprop.get_text(),
+				       choices: xprop.has_choices_ ? xprop.choices() : empty_list,
+		      };
+		      Object.assign (xprop.value_, await Util.object_await_values (value_));
+		      if (this.augment)
+			await this.augment (xprop);
 		    },
-		    fetch_: () => xprop.numeric_ ? xprop.value_.num : xprop.value_.text,
+		    fetch_: () => xprop.is_numeric_ ? xprop.value_.num : xprop.value_.text,
 		    __proto__: prop,
       };
-      awaits.push (xprop.update_());
+      const discon_ = xprop.on ('change', _ => xprop.update_());
+      this.dom_ondestroy (discon_);
       xprop = await Util.object_await_values (xprop);
+      xprop.has_choices_ = xprop.hints_.search (/:choice:/) >= 0;
+      awaits.push (xprop.update_()); // relies on xprop.has_choices_
       if (!groups[xprop.group_])
 	groups[xprop.group_] = [];
       groups[xprop.group_].push (xprop);
-      const discon_ = xprop.on ('change', _ => xprop.update_());
-      this.dom_ondestroy (discon_);
-      if (this.augment)
-	awaits.push (this.augment (xprop));
     }
   await Promise.all (awaits);
   const grouplist = []; // [ { name, props: [richprop, ...] }, ... ]
@@ -165,11 +167,8 @@ async function list_fields (proplist) {
 	    }
 	  else if (xprop.hints_.search (/:bool:/) >= 0)
 	    ctype = 'b-fed-switch';
-	  else if (xprop.hints_.search (/:choice:/) >= 0)
-	    {
-	      ctype = 'b-choice';
-	      xprop.choices_ = await xprop.choices();
-	    }
+	  else if (xprop.has_choices_)
+	    ctype = 'b-choice';
 	  else
 	    ctype = 'b-fed-text';
 	  xprop.ctype_ = ctype;
