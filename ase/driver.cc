@@ -176,7 +176,7 @@ PcmDriver::list_drivers ()
   Driver::Entry entry;
   entry.devid = "auto";
   entry.device_name = _("Automatic driver selection");
-  entry.device_info = _("Select the first available PCM card or server");
+  entry.device_info = _("Selects the first available PCM card or sound server");
   entry.readonly = false;
   entry.writeonly = false;
   entry.priority = Driver::PAUTO;
@@ -229,7 +229,7 @@ MidiDriver::list_drivers ()
   Driver::Entry entry;
   entry.devid = "auto";
   entry.device_name = _("Automatic MIDI driver selection");
-  entry.device_info = _("Select the first available MIDI device");
+  entry.device_info = _("Selects the first available MIDI device");
   entry.readonly = false;
   entry.writeonly = false;
   entry.priority = Driver::PAUTO;
