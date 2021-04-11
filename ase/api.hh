@@ -84,13 +84,21 @@ enum class MusicalTuning : uint8 {
 };
 ASE_DEFINE_ENUM_EQUALITY (MusicalTuning);
 
-/// Details about property choice values.
+/// Representation of one possible choice for selection properties.
 struct Choice {
-  String ident;         ///< Identifier used for serialization.
-  String label;         ///< Preferred user interface name.
-  String subject;       ///< Subject line, a brief one liner or elaborate title.
-  String icon;          ///< Stringified icon, SVG and PNG should be supported (64x64 pixels recommended).
+  String ident;   ///< Identifier used for serialization (may be derived from untranslated label).
+  String icon;    ///< Icon (64x64 pixels) or unicode symbol (possibly wide).
+  String label;   ///< Preferred user interface name.
+  String blurb;   ///< Short description for overviews.
+  String notice;  ///< Additional information of interest.
+  String warning; ///< Potential problem indicator.
+  Choice () = default;
+  Choice (String icon, String label = "", String blurb = "");
+  Choice (String ident, String icon, String label, String blurb, String notice = "", String warning = "");
 };
+
+/// Convenience ChoiceS construciton helper.
+ChoiceS& operator+= (ChoiceS &choices, Choice &&newchoice);
 
 /// Base type for classes with Event subscription.
 class Emittable : public virtual SharedBase {

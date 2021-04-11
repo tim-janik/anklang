@@ -197,6 +197,25 @@ Server::get_session_data (const String &key) const
   return session_data[key];
 }
 
+// == Choice ==
+Choice::Choice (String ident_, String icon_, String label_, String blurb_, String notice_, String warning_) :
+  ident (ident_.empty() ? string_to_identifier (label_) : ident_),
+  icon (icon_), label (label_), blurb (blurb_), notice (notice_), warning (warning_)
+{
+  assert_return (ident.empty() == false);
+}
+
+Choice::Choice (String icon_, String label_, String blurb_) :
+  Choice ("", icon_, label_, blurb_)
+{}
+
+ChoiceS&
+operator+= (ChoiceS &choices, Choice &&newchoice)
+{
+  choices.push_back (std::move (newchoice));
+  return choices;
+}
+
 // == Error ==
 /// Describe Error condition.
 const char*

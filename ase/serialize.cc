@@ -435,9 +435,9 @@ ase_serialize()
     TASSERT (floats == via_json (floats2));
   }
   { // RECORD
-    Choice choice = { "grump", "Grump", "A flashy Grump", "64x64.png" }, choice2 = via_json (choice);
-    TASSERT (choice.ident == choice2.ident && choice.label == choice2.label &&
-             choice.subject == choice2.subject && choice.icon == choice2.icon);
+    Choice choice = { "grump", "¿", "Grump", "A flashy Grump", "Notice", "Warn" }, choice2 = via_json (choice);
+    TASSERT (choice.ident == choice2.ident && choice.icon == choice2.icon && choice.label == choice2.label &&
+             choice.blurb == choice2.blurb && choice.notice == choice2.notice && choice.warning == choice2.warning);
   }
   { // Json types
     std::string s;
