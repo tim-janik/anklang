@@ -294,9 +294,6 @@ public:
   // projects
   virtual ProjectP last_project   () = 0;       ///< Retrieve the last created project.
   virtual ProjectP create_project (String projectname) = 0; ///< Create a new project (name is modified to be unique if necessary.
-  // drivers
-  virtual DriverEntryS list_pcm_drivers  () = 0; ///< List available drivers for PCM input/output handling.
-  virtual DriverEntryS list_midi_drivers () = 0; ///< List available drivers for MIDI input/output handling.
   // testing
   void         set_session_data (const String &key, const Value &v); ///< Assign session data.
   const Value& get_session_data (const String &key) const;           ///< Retrieve session data.

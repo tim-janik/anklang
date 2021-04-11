@@ -13,6 +13,46 @@
 namespace Ase {
 
 // == Preferences ==
+static Choice
+choice_from_driver_entry (const DriverEntry &e)
+{
+  String blurb;
+  if (!e.device_info.empty() && !e.capabilities.empty())
+    blurb = e.capabilities + "\n" + e.device_info;
+  else if (!e.capabilities.empty())
+    blurb = e.capabilities;
+  else
+    blurb = e.device_info;
+  Choice c (e.devid, "", e.device_name, blurb);
+  if (string_startswith (string_tolower (e.notice), "warn"))
+    c.warning = e.notice;
+  else
+    c.notice = e.notice;
+  // e.priority
+  // e.readonly
+  // e.writeonly
+  // e.modem
+  return c;
+}
+
+static ChoiceS
+pcm_driver_choices (Properties::PropertyImpl&)
+{
+  ChoiceS choices;
+  for (const DriverEntry &e : PcmDriver::list_drivers())
+    choices.push_back (choice_from_driver_entry (e));
+  return choices;
+}
+
+static ChoiceS
+midi_driver_choices (Properties::PropertyImpl&)
+{
+  ChoiceS choices;
+  for (const DriverEntry &e : MidiDriver::list_drivers())
+    choices.push_back (choice_from_driver_entry (e));
+  return choices;
+}
+
 PropertyS
 Preferences::access_properties (const EventHandler &eventhandler)
 {
@@ -20,7 +60,7 @@ Preferences::access_properties (const EventHandler &eventhandler)
   static PropertyBag bag (eventhandler);
   return_unless (bag.props.empty(), bag.props);
   bag.group = _("Synthesis Settings");
-  bag += Text (&pcm_driver, _("PCM Driver"), "", "auto", STANDARD, _("Driver and device to be used for PCM input and output"));
+  bag += Text (&pcm_driver, _("PCM Driver"), "", pcm_driver_choices, STANDARD, _("Driver and device to be used for PCM input and output"));
   bag += Range (&synth_latency, _("Latency"), "", 0, 3000, 5, "ms", STANDARD + "step=5",
                 _("Processing duration between input and output of a single sample, smaller values increase CPU load"));
   bag += Range (&synth_mixing_freq, _("Synth Mixing Frequency"), "", 48000, 48000, 48000, "Hz", STANDARD,
@@ -28,7 +68,7 @@ Preferences::access_properties (const EventHandler &eventhandler)
   bag += Range (&synth_control_freq, _("Synth Control Frequency"), "", 1500, 1500, 1500, "Hz", STANDARD,
                 _("Unused frequency setting"));
   bag.group = _("MIDI");
-  bag += Text (&midi_driver, _("MIDI Driver"), "", STANDARD, _("Driver and device to be used for MIDI input and output"));
+  bag += Text (&midi_driver, _("MIDI Controller"), "", midi_driver_choices, STANDARD, _("MIDI controller device to be used for MIDI input"));
   bag += Bool (&invert_sustain, _("Invert Sustain"), "", false, STANDARD,
                _("Invert the state of sustain (damper) pedal so on/off meanings are reversed"));
   bag.group = _("Default Values");
@@ -148,18 +188,6 @@ ServerImpl::access_prefs()
     ValueR args { { "prefs", json_parse<ValueR> (json_stringify (prefs_)) } };
     emit_event ("change", "prefs", args);
   });
-}
-
-DriverEntryS
-ServerImpl::list_pcm_drivers ()
-{
-  return PcmDriver::list_drivers();
-}
-
-DriverEntryS
-ServerImpl::list_midi_drivers ()
-{
-  return MidiDriver::list_drivers();
 }
 
 ServerImplP
