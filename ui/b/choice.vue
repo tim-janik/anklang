@@ -10,7 +10,7 @@
   *value*
   : Integer, the index of the choice value to be displayed.
   *choices*
-  : List of choices: `[ { icon, label, subject }... ]`
+  : List of choices: `[ { icon, label, blurb }... ]`
   ## Events:
   *update:value (value)*
   : Value change notification event, the first argument is the new value.
@@ -33,7 +33,7 @@
       padding: 0;
     }
   }
-  .b-choice-label {
+  .b-choice-current {
     align-self: center;
     min-width: 0; //* allow ellipsized text in flex child */
     margin: 0;
@@ -62,21 +62,37 @@
       display: none;
     }
   }
+  .b-choice-contextmenu {
+    .b-choice-label { display: block; white-space: pre-line; }
+    .b-choice-line1,
+    .b-choice-line2 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-secondary; }
+    .b-choice-line3 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-notice; }
+    .b-choice-line4 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-warning; }
+    .b-menuitem {
+      &:focus, &.active, &:active {
+	.b-choice-line1, .b-choice-line2, .b-choice-line3,
+	.b-choice-line4 { filter: $b-style-fg-filter; } //* adjust to inverted menuitem */
+      } }
+  }
 </style>
 
 <template>
   <h-flex class="b-choice" ref="bchoice" :class="classlist" :data-tip="bubbletip()"
 	  @pointerdown="pointerdown" @keydown="keydown" >
-    <h-flex class="b-choice-label" ref="pophere" tabindex="0" >
+    <h-flex class="b-choice-current" ref="pophere" tabindex="0" >
       <span class="b-choice-nick">{{ nick() }}</span>
       <span class="b-choice-arrow" > ⬍ <!-- ▼ ▽ ▾ ▿ ⇕ ⬍ ⇳ --> </span>
     </h-flex>
-    <b-contextmenu ref="cmenu" @click="menuactivation" @close="menugone" >
+    <b-contextmenu class="b-choice-contextmenu" ref="cmenu" @click="menuactivation" @close="menugone" >
       <b-menutitle v-if="title" > {{ title }} </b-menutitle>
 
-      <b-menuitem v-for="e in mchoices" :uri="e.uri" :key="e.uri" >
-	<b>{{ e.label }}</b>
-	<span v-if="e.subject" >{{ e.subject }}</span>
+      <b-menuitem v-for="e in mchoices" :uri="e.uri" :key="e.uri" :ic="e.icon" >
+	<span class="b-choice-label" :class='e.labelclass' v-if="e.label"   > {{ e.label }}
+	  <!--span >{{ '[' + e.ident + ']' }}</span--> </span>
+	<span class="b-choice-line1" :class='e.line1class' v-if="e.blurb"   > {{ e.blurb }} </span>
+	<span class="b-choice-line2" :class='e.line2class' v-if="e.line2"   > {{ e.line2 }} </span>
+	<span class="b-choice-line3" :class='e.line3class' v-if="e.notice"  > {{ e.notice }} </span>
+	<span class="b-choice-line4" :class='e.line4class' v-if="e.warning" > {{ e.warning }} </span>
       </b-menuitem>
     </b-contextmenu>
   </h-flex>
