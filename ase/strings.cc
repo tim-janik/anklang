@@ -42,8 +42,20 @@ string_multiply (const String &s,
     return "";
 }
 
+/// Force lower case, alphanumerics + underscore and non-digit start.
+String
+string_to_identifier (const String &input)
+{
+  static const String validset = string_set_a2z() + "_0123456789";
+  String ident = string_tolower (input);
+  ident = string_canonify (ident, validset, "_");
+  if (!ident.empty() && ident[0] <= '9')
+    ident = "_" + ident;
+  return ident;
+}
+
 /** Enforce a canonical charset for a string.
- * Convert all chars in @a string that are not listed as @a valid_chars with @a substitute.
+ * Convert all chars in `string` that are not listed as `valid_chars` with @a substitute.
  */
 String
 string_canonify (const String &string, const String &valid_chars, const String &substitute)
