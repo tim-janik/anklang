@@ -10,37 +10,7 @@
 
 #define PDEBUG(...)     Ase::debug ("processor", __VA_ARGS__)
 
-// == Helpers ==
-static std::string
-canonify_identifier (const std::string &input)
-{
-  static const std::string validset = Ase::string_set_a2z() + "0123456789" + "_";
-  const std::string lowered = Ase::string_tolower (input);
-  return Ase::string_canonify (lowered, validset, "_");
-}
-
 namespace Ase {
-
-// == ChoiceDetails ==
-ChoiceDetails::ChoiceDetails (CString label_, CString subject_) :
-  ident (canonify_identifier (label_)), label (label_), subject (subject_)
-{
-  assert_return (ident.empty() == false);
-}
-
-ChoiceDetails::ChoiceDetails (CString icon_, CString label_, CString subject_) :
-  ident (canonify_identifier (label_)), label (label_), subject (subject_), icon (icon_)
-{
-  assert_return (ident.empty() == false);
-}
-
-// == ChoiceEntries ==
-ChoiceEntries&
-ChoiceEntries::operator+= (const ChoiceDetails &ce)
-{
-  push_back (ce);
-  return *this;
-}
 
 // == ParamInfo ==
 static constexpr uint PTAG_FLOATS = 1;
@@ -85,7 +55,7 @@ ParamInfo::release()
   const bool destroy = union_tag == PTAG_CENTRIES;
   union_tag = 0;
   if (destroy)
-    u.centries()->~ChoiceEntries();
+    u.centries()->~ChoiceS();
 }
 
 /// Clear all ParamInfo fields.
@@ -179,29 +149,29 @@ ParamInfo::set_range (double fmin, double fmax, double fstep)
 }
 
 /// Get parameter choice list.
-const ChoiceEntries&
+const ChoiceS&
 ParamInfo::get_choices () const
 {
   if (union_tag == PTAG_CENTRIES)
     return *u.centries();
-  static const ChoiceEntries empty;
+  static const ChoiceS empty;
   return empty;
 }
 
 /// Assign choice list to parameter via vector move.
 void
-ParamInfo::set_choices (ChoiceEntries &&centries)
+ParamInfo::set_choices (ChoiceS &&centries)
 {
   release();
   union_tag = PTAG_CENTRIES;
-  new (u.centries()) ChoiceEntries (std::move (centries));
+  new (u.centries()) ChoiceS (std::move (centries));
 }
 
 /// Assign choice list to parameter via deep copy.
 void
-ParamInfo::set_choices (const ChoiceEntries &centries)
+ParamInfo::set_choices (const ChoiceS &centries)
 {
-  set_choices (ChoiceEntries (centries));
+  set_choices (ChoiceS (centries));
 }
 
 // == PBus ==
@@ -407,7 +377,7 @@ AudioProcessor::add_param (Id32 id, const ParamInfo &infotmpl, double value)
     assert_return (infotmpl.label != params_.back().info->label, {}); // easy CnP error
   PParam param { ParamId (id.id), uint (1 + params_.size()), infotmpl };
   if (param.info->ident == "")
-    param.info->ident = canonify_identifier (param.info->label);
+    param.info->ident = string_to_identifier (param.info->label);
   if (params_.size())
     assert_return (param.info->ident != params_.back().info->ident, {}); // easy CnP error
   if (param.info->group.empty())
@@ -434,7 +404,7 @@ AudioProcessor::add_param (Id32 id, const std::string &clabel, const std::string
 {
   assert_return (uint (id) > 0, ParamId (0));
   ParamInfo info;
-  info.ident = canonify_identifier (clabel);
+  info.ident = string_to_identifier (clabel);
   info.label = clabel;
   info.nick = nickname;
   info.hints = construct_hints (hints, pmin, pmax);
@@ -461,12 +431,12 @@ AudioProcessor::add_param (const std::string &clabel, const std::string &nicknam
 /// hyphenated lower case version is used for serialization.
 ParamId
 AudioProcessor::add_param (Id32 id, const std::string &clabel, const std::string &nickname,
-                           ChoiceEntries &&centries, double value, std::string hints,
+                           ChoiceS &&centries, double value, std::string hints,
                            const std::string &blurb, const std::string &description)
 {
   assert_return (uint (id) > 0, ParamId (0));
   ParamInfo info;
-  info.ident = canonify_identifier (clabel);
+  info.ident = string_to_identifier (clabel);
   info.label = clabel;
   info.nick = nickname;
   info.blurb = blurb;
@@ -480,10 +450,10 @@ AudioProcessor::add_param (Id32 id, const std::string &clabel, const std::string
 /// Variant of AudioProcessor::add_param() with sequential `id` generation.
 ParamId
 AudioProcessor::add_param (const std::string &clabel, const std::string &nickname,
-                           ChoiceEntries &&centries, double value, std::string hints,
+                           ChoiceS &&centries, double value, std::string hints,
                            const std::string &blurb, const std::string &description)
 {
-  return add_param (nextid(), clabel, nickname, std::forward<ChoiceEntries> (centries), value, hints, blurb, description);
+  return add_param (nextid(), clabel, nickname, std::forward<ChoiceS> (centries), value, hints, blurb, description);
 }
 
 /// Add new toggle parameter with most `ParamInfo` fields as inlined arguments.
@@ -497,12 +467,12 @@ AudioProcessor::add_param (Id32 id, const std::string &clabel, const std::string
 {
   assert_return (uint (id) > 0, ParamId (0));
   ParamInfo info;
-  info.ident = canonify_identifier (clabel);
+  info.ident = string_to_identifier (clabel);
   info.label = clabel;
   info.nick = nickname;
   info.blurb = blurb;
   info.description = description;
-  static const ChoiceEntries centries { { "Off" }, { "On" } };
+  static const ChoiceS centries { { "", "Off" }, { "", "On" } };
   info.set_choices (centries);
   info.hints = construct_hints (hints, false, true, "toggle");
   const auto rid = add_param (id, info, boolvalue);
@@ -833,7 +803,7 @@ AudioProcessor::add_input_bus (CString uilabel, SpeakerArrangement speakerarrang
   assert_return (iobuses_.size() < 65535, {});
   if (n_ibuses())
     assert_return (uilabel != iobus (IBusId (n_ibuses())).label, {}); // easy CnP error
-  PBus pbus { canonify_identifier (uilabel), uilabel, speakerarrangement };
+  PBus pbus { string_to_identifier (uilabel), uilabel, speakerarrangement };
   pbus.pbus.hints = hints;
   pbus.pbus.blurb = blurb;
   iobuses_.insert (iobuses_.begin() + output_offset_, pbus);
@@ -853,7 +823,7 @@ AudioProcessor::add_output_bus (CString uilabel, SpeakerArrangement speakerarran
   assert_return (iobuses_.size() < 65535, {});
   if (n_obuses())
     assert_return (uilabel != iobus (OBusId (n_obuses())).label, {}); // easy CnP error
-  PBus pbus { canonify_identifier (uilabel), uilabel, speakerarrangement };
+  PBus pbus { string_to_identifier (uilabel), uilabel, speakerarrangement };
   pbus.pbus.hints = hints;
   pbus.pbus.blurb = blurb;
   iobuses_.push_back (pbus);
@@ -1402,19 +1372,7 @@ public:
   ChoiceS
   choices () override
   {
-    ChoiceS cs;
-    const auto ce = info_->get_choices();
-    cs.reserve (ce.size());
-    for (const auto &e : ce)
-      {
-        Choice c;
-        c.ident = e.ident;
-        c.label = e.label;
-        c.subject = e.subject;
-        c.icon = e.icon;
-        cs.push_back (c);
-      }
-    return cs;
+    return info_->get_choices();
   }
 };
 
