@@ -54,7 +54,7 @@
     <i  v-else-if="fa_" :class="iconclasses" role="icon" aria-hidden="true"></i>
     <i  v-else-if="bc_" :class="iconclasses" role="icon" aria-hidden="true"></i>
     <i  v-else-if="mi_" :class="iconclasses" role="icon" aria-hidden="true">{{ mi_ }}</i>
-    <span v-else-if="1" :class="iconclasses" role="icon" aria-hidden="true"><slot /></span>
+    <span v-else-if="1" :class="iconclasses" role="icon" aria-hidden="true">{{ ic }}</span>
   </span>
 </template>
 <!-- SVG-1.1 notation: <use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="...svg"></use> -->
