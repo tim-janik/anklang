@@ -68,9 +68,12 @@ Preferences::access_properties (const EventHandler &eventhandler)
   bag += Range (&synth_control_freq, _("Synth Control Frequency"), "", 1500, 1500, 1500, "Hz", STANDARD,
                 _("Unused frequency setting"));
   bag.group = _("MIDI");
-  bag += Text (&midi_driver, _("MIDI Controller"), "", midi_driver_choices, STANDARD, _("MIDI controller device to be used for MIDI input"));
   bag += Bool (&invert_sustain, _("Invert Sustain"), "", false, STANDARD,
                _("Invert the state of sustain (damper) pedal so on/off meanings are reversed"));
+  bag += Text (&midi_driver_1, _("MIDI Controller"), "", midi_driver_choices, STANDARD, _("MIDI controller device to be used for MIDI input"));
+  bag += Text (&midi_driver_2, _("MIDI Controller"), "", midi_driver_choices, STANDARD, _("MIDI controller device to be used for MIDI input"));
+  bag += Text (&midi_driver_3, _("MIDI Controller"), "", midi_driver_choices, STANDARD, _("MIDI controller device to be used for MIDI input"));
+  bag += Text (&midi_driver_4, _("MIDI Controller"), "", midi_driver_choices, STANDARD, _("MIDI controller device to be used for MIDI input"));
   bag.group = _("Default Values");
   bag += Text (&author_default, _("Default Author"), "", STANDARD, _("Default value for 'Author' fields"));
   bag += Text (&license_default, _("Default License"), "", STANDARD, _("Default value for 'License' fields"));
@@ -97,7 +100,10 @@ preferences_defaults()
   prefs.synth_latency = 22;
   prefs.synth_mixing_freq = 48000;
   prefs.synth_control_freq = 1500;
-  prefs.midi_driver = "auto";
+  prefs.midi_driver_1 = "null";
+  prefs.midi_driver_2 = "null";
+  prefs.midi_driver_3 = "null";
+  prefs.midi_driver_4 = "null";
   prefs.invert_sustain = false;
   prefs.license_default = "Creative Commons Attribution-ShareAlike 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)";
   // dynamic defaults
