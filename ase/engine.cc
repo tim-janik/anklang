@@ -4,6 +4,7 @@
 #include "utils.hh"
 #include "loop.hh"
 #include "driver.hh"
+#include "server.hh"
 #include "datautils.hh"
 #include "atomics.hh"
 #include "internal.hh"
@@ -18,6 +19,7 @@ constexpr uint fixed_sample_rate = 48000;
 // == AudioEngineThread ==
 class AudioEngineThread : public AudioEngine {
   PcmDriverP                   null_pcm_driver_, pcm_driver_;
+  MidiDriverS                  midi_drivers_;
   static constexpr uint        fixed_n_channels = 2;
   constexpr static size_t      buffer_size_ = AUDIO_BLOCK_MAX_RENDER_SIZE * fixed_n_channels;
   float                        buffer_data_[buffer_size_] = { 0, };
@@ -25,6 +27,7 @@ class AudioEngineThread : public AudioEngine {
   std::vector<AudioProcessor*> schedule_;
   bool                         schedule_invalid_ = true;
   EngineMidiInputP             midi_proc_;
+  JobQueue                     synchronized_jobs;
 public:
   struct Job {
     std::atomic<Job*> next = nullptr;
@@ -52,9 +55,9 @@ public:
   bool            pcm_check_write       (bool write_buffer, int64 *timeout_usecs_p = nullptr);
   bool            driver_dispatcher     (const LoopState &state);
   bool            process_jobs          (AtomicIntrusiveStack<Job> &joblist);
-  void            ensure_drivers        ();
+  void            update_drivers        (bool fullio);
   void            run                   (const VoidF &owner_wakeup, StartQueue *sq);
-  void            set_midi_input        (MidiDriverP midi_driver);
+  void            swap_midi_drivers_sync (const MidiDriverS &midi_drivers);
 };
 
 static inline std::atomic<AudioEngineThread::Job*>&
@@ -69,7 +72,8 @@ AudioEngineThread::~AudioEngineThread ()
 }
 
 AudioEngineThread::AudioEngineThread (uint sample_rate, SpeakerArrangement speakerarrangement) :
-  AudioEngine (sample_rate, speakerarrangement)
+  AudioEngine (sample_rate, speakerarrangement),
+  synchronized_jobs (*this, 2)
 {
   oprocs_.reserve (16);
 }
@@ -204,29 +208,83 @@ AudioEngineThread::enable_output (AudioProcessor &aproc, bool onoff)
 }
 
 void
-AudioEngineThread::ensure_drivers()
+AudioEngineThread::update_drivers (bool fullio)
 {
-  return_unless (!null_pcm_driver_);
+  Error er = {};
+  // PCM fallback
   PcmDriverConfig pconfig { .n_channels = fixed_n_channels, .mix_freq = fixed_sample_rate,
                             .latency_ms = 8, .block_length = AUDIO_BLOCK_MAX_RENDER_SIZE };
   const String null_driver = "null";
-  Ase::Error er = {};
-  null_pcm_driver_ = PcmDriver::open (null_driver, Driver::WRITEONLY, Driver::WRITEONLY, pconfig, &er);
-  if (!null_pcm_driver_ || er != 0)
-    fatal_error ("failed to open internal PCM driver ('%s'): %s", null_driver, ase_error_blurb (er));
-  if (!pcm_driver_)
-    pcm_driver_ = PcmDriver::open ("auto", Driver::WRITEONLY, Driver::WRITEONLY, pconfig, &er);
+  if (!null_pcm_driver_)
+    {
+      null_pcm_driver_ = PcmDriver::open (null_driver, Driver::WRITEONLY, Driver::WRITEONLY, pconfig, &er);
+      if (!null_pcm_driver_ || er != 0)
+        fatal_error ("failed to open internal PCM driver ('%s'): %s", null_driver, ase_error_blurb (er));
+    }
   if (!pcm_driver_)
     pcm_driver_ = null_pcm_driver_;
+  // MIDI Processor
   if (!midi_proc_)
+    swap_midi_drivers_sync ({});
+  if (!fullio)
+    return;
+  // PCM Output
+  if (pcm_driver_ == null_pcm_driver_)
     {
-      const String midi_driver_name = "auto";
-      MidiDriverP midi_driver = MidiDriver::open (midi_driver_name, Driver::READONLY, &er);
-      if (!midi_driver)
-        printerr ("failed to open MIDI driver ('%s'): %s", midi_driver_name, ase_error_blurb (er));
-      set_midi_input (midi_driver);
+      const String pcm_driver_name = ServerImpl::instancep()->preferences().pcm_driver;
+      er = {};
+      if (pcm_driver_name != null_driver)
+        pcm_driver_ = PcmDriver::open (pcm_driver_name, Driver::WRITEONLY, Driver::WRITEONLY, pconfig, &er);
+      if (!pcm_driver_)
+        {
+          printerr ("failed to open PCM driver ('%s'): %s\n", pcm_driver_name, ase_error_blurb (er));
+          pcm_driver_ = null_pcm_driver_;
+        }
     }
-  schedule_queue_update();
+  // MIDI Driver List
+  MidiDriverS old_drivers = midi_drivers_, new_drivers;
+  const auto midi_driver_names = {
+    ServerImpl::instancep()->preferences().midi_driver_1,
+    ServerImpl::instancep()->preferences().midi_driver_2,
+    ServerImpl::instancep()->preferences().midi_driver_3,
+    ServerImpl::instancep()->preferences().midi_driver_4,
+  };
+  for (const auto &devid : midi_driver_names)
+    {
+      if (devid == null_driver)
+        continue;
+      if (Aux::contains (new_drivers, [&] (auto &d) {
+        return d->devid() == devid; }))
+        {
+          er = Error::DEVICE_BUSY;
+          printerr ("failed to open MIDI driver ('%s'): %s\n", devid, ase_error_blurb (er));
+          continue;
+        }
+      MidiDriverP d;
+      for (MidiDriverP o : old_drivers)
+        if (o->devid() == devid)
+          d = o;
+      if (d)
+        {
+          Aux::erase_first (old_drivers, [&] (auto &o) { return o == d; });
+          new_drivers.push_back (d);    // keep opened driver
+          continue;
+        }
+      er = {};
+      d = MidiDriver::open (devid, Driver::READONLY, &er);
+      if (d)
+        new_drivers.push_back (d);      // add new driver
+      else
+        printerr ("failed to open MIDI driver ('%s'): %s\n", devid, ase_error_blurb (er));
+    }
+  midi_drivers_ = new_drivers;
+  swap_midi_drivers_sync (midi_drivers_);
+  while (!old_drivers.empty())
+    {
+      MidiDriverP old = old_drivers.back();
+      old_drivers.pop_back();
+      old->close();                     // close old driver *after* sync
+    }
 }
 
 void
@@ -344,13 +402,18 @@ void
 AudioEngineThread::start_thread (const VoidF &owner_wakeup)
 {
   schedule_.reserve (8192);
-  ensure_drivers();
   assert_return (thread_ == nullptr);
+  update_drivers (false);
   schedule_queue_update();
   StartQueue start_queue;
   thread_ = new std::thread (&AudioEngineThread::run, this, owner_wakeup, &start_queue);
   const char reply = start_queue.pop(); // synchronize with thread start
   assert_return (reply == 'R');
+  Emittable::Connection onprefs_;
+  onprefs_ = ASE_SERVER.on_event ("change:prefs", [this] (auto...) {
+    update_drivers (true);
+  });
+  update_drivers (true);
 }
 
 void
@@ -448,7 +511,7 @@ speaker_arrangement_desc (SpeakerArrangement spa)
 AudioEngine::AudioEngine (uint sample_rate, SpeakerArrangement speakerarrangement) :
   nyquist_ (0.5 * sample_rate), inyquist_ (1.0 / nyquist_), sample_rate_ (sample_rate),
   speaker_arrangement_ (speakerarrangement),
-  const_jobs (*this, 0), async_jobs (*this, 1)
+  const_jobs (*this, 1), async_jobs (*this, 0)
 {
   assert_return (sample_rate == 48000);
 }
@@ -462,7 +525,7 @@ AudioEngine::add_job_mt (const std::function<void()> &jobfunc, int flags)
       jobfunc();
       return;
     }
-  if (flags) // async_jobs flag
+  if (flags == 0) // async_jobs flag
     {
       AudioEngineThread::Job *job = new AudioEngineThread::Job { nullptr, jobfunc };
       const bool was_empty = engine.async_jobs_.push (job);
@@ -476,7 +539,14 @@ AudioEngine::add_job_mt (const std::function<void()> &jobfunc, int flags)
     sem.post();
   };
   AudioEngineThread::Job *job = new AudioEngineThread::Job { nullptr, wrapper };
-  if (engine.const_jobs_.push (job))
+  bool need_wakeup;
+  if (flags == 1)
+    need_wakeup = engine.const_jobs_.push (job);
+  else if (flags == 2)
+    need_wakeup = engine.async_jobs_.push (job);
+  else
+    assert_return_unreached();
+  if (need_wakeup)
     wakeup_thread_mt();
   sem.wait();
 }
@@ -517,28 +587,34 @@ class EngineMidiInput : public AudioProcessor {
   {
     prepare_event_output();
   }
-  void reset (uint64 target_stamp) override {}
+  void
+  reset (uint64 target_stamp) override
+  {
+    MidiEventStream &estream = get_event_output();
+    estream.clear();
+    estream.reserve (256);
+  }
   void
   render (uint n_frames) override
   {
     MidiEventStream &estream = get_event_output();
     estream.clear();
-    if (midi_driver_)
-      midi_driver_->fetch_events (estream, sample_rate());
+    for (size_t i = 0; i < midi_drivers_.size(); i++)
+      midi_drivers_[i]->fetch_events (estream, sample_rate());
   }
 public:
-  MidiDriverP midi_driver_;
+  MidiDriverS midi_drivers_;
 };
 static auto engine_midi_input = register_audio_processor<EngineMidiInput>();
 
 template<class T> struct Mutable {
   mutable T value;
-  Mutable (T &v) : value (v) {}
+  Mutable (const T &v) : value (v) {}
   operator T& () { return value; }
 };
 
 void
-AudioEngineThread::set_midi_input (MidiDriverP midi_driver)
+AudioEngineThread::swap_midi_drivers_sync (const MidiDriverS &midi_drivers)
 {
   if (!midi_proc_)
     {
@@ -552,10 +628,10 @@ AudioEngineThread::set_midi_input (MidiDriverP midi_driver)
       };
     }
   EngineMidiInputP midi_proc = midi_proc_;
-  Mutable<MidiDriverP> midi_driver_p = midi_driver;
-  async_jobs += [midi_proc, midi_driver_p] () {
-    midi_proc->midi_driver_.swap (midi_driver_p.value);
-    // use Mutable<>.value.swap to defer dtor to user thread
+  Mutable<MidiDriverS> new_drivers { midi_drivers };
+  synchronized_jobs += [midi_proc, new_drivers] () {
+    midi_proc->midi_drivers_.swap (new_drivers.value);
+    // use swap() to defer dtor to user thread
   };
 }
 
