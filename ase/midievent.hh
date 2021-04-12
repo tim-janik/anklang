@@ -99,6 +99,8 @@ public:
   bool             append_unsorted (int8_t frame, const MidiEvent &event);
   void             ensure_order    ();
   int64_t          last_frame      () const ASE_PURE;
+  size_t           capacity        () const noexcept    { return events_.capacity(); }
+  void             reserve         (size_t n)           { events_.reserve (n); }
 };
 
 /// A readonly view and iterator into an MidiEventStream.

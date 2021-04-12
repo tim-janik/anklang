@@ -160,9 +160,7 @@ make_pitch_bend (uint16 chnl, float val)
 
 // == MidiEventStream ==
 MidiEventStream::MidiEventStream ()
-{
-  events_.reserve (16);
-}
+{}
 
 /// Append an MidiEvent with conscutive `frame` time stamp.
 void
