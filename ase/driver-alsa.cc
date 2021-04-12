@@ -223,11 +223,11 @@ class AlsaPcmDriver : public PcmDriver {
   uint          read_write_count_ = 0;
   String        alsadev_;
 public:
-  explicit      AlsaPcmDriver (const String &devid) : PcmDriver (devid) {}
+  explicit      AlsaPcmDriver (const String &driver, const String &devid) : PcmDriver (driver, devid) {}
   static PcmDriverP
   create (const String &devid)
   {
-    auto pdriverp = std::make_shared<AlsaPcmDriver> (devid);
+    auto pdriverp = std::make_shared<AlsaPcmDriver> (kvpair_key (devid), kvpair_value (devid));
     return pdriverp;
   }
   ~AlsaPcmDriver()
@@ -614,12 +614,12 @@ public:
   static MidiDriverP
   create (const String &devid)
   {
-    auto mdriverp = std::make_shared<AlsaSeqMidiDriver> (devid);
+    auto mdriverp = std::make_shared<AlsaSeqMidiDriver> (kvpair_key (devid), kvpair_value (devid));
     return mdriverp;
   }
   explicit
-  AlsaSeqMidiDriver (const String &devid) :
-    MidiDriver (devid), subs_ { nullptr, nullptr }
+  AlsaSeqMidiDriver (const String &driver, const String &devid) :
+    MidiDriver (driver, devid), subs_ { nullptr, nullptr }
   {}
   ~AlsaSeqMidiDriver()
   {
@@ -811,7 +811,7 @@ public:
   static void
   list_drivers (Driver::EntryVec &entries)
   {
-    AlsaSeqMidiDriver smd ("?");
+    AlsaSeqMidiDriver smd ("?", "");
     smd.initialize (program_alias() + " Probing");
     smd.enumerate (&entries);
   }
