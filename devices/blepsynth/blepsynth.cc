@@ -266,10 +266,13 @@ class BlepSynth : public AudioProcessor {
   void
   query_info (AudioProcessorInfo &info) const override
   {
-    info.uri = "Ase.BlepSynth";
-    // info.version = "0";
-    info.label = "BlepSynth";
-    info.category = "Synth";
+    info.uri          = "Anklang.Devices.BlepSynth";
+    info.version      = "1";
+    info.label        = "BlepSynth";
+    info.category     = "Generators";
+    info.category     = "Synth";
+    info.creator_name = "Stefan Westerfeld";
+    info.website_url  = "https://anklang.testbit.eu";
   }
   void
   initialize (SpeakerArrangement busses) override
@@ -305,13 +308,13 @@ class BlepSynth : public AudioProcessor {
     pid_resonance_ = add_param ("Resonance", "Reso", 0, 100, 25.0, "%");
     pid_drive_ = add_param ("Drive", "Drive", -24, 36, 0, "dB");
     pid_key_track_ = add_param ("Key Tracking", "KeyTr", 0, 100, 50, "%");
-    ChoiceEntries centries;
-    centries += { "None", "disable filter" };
-    centries += { "L1", "1 pole lowpass, 6db/octave" };
-    centries += { "L2", "2 pole lowpass, 12db/octave" };
-    centries += { "L3", "3 pole lowpass, 18db/octave" };
-    centries += { "L4", "4 pole lowpass, 24db/octave" };
-    pid_mode_ = add_param ("Filter Mode", "Mode", std::move (centries), 2, "", "Ladder Filter Mode to be used");
+    ChoiceS choices;
+    choices += { "—" , "Bypass Filter" };
+    choices += { "L1", "1 Pole Lowpass, 6dB/Octave" };
+    choices += { "L2", "2 Pole Lowpass, 12dB/Octave" };
+    choices += { "L3", "3 Pole Lowpass, 18dB/Octave" };
+    choices += { "L4", "4 Pole Lowpass, 24dB/Octave" };
+    pid_mode_ = add_param ("Filter Mode", "Mode", std::move (choices), 2, "", "Ladder Filter Mode to be used");
 
     oscparams (1);
 

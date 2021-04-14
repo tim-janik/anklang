@@ -201,7 +201,7 @@ list_alsa_drivers (Driver::EntryVec &entries)
             entry.device_info = card_longname;
           entry.readonly = !writable;
           entry.writeonly = !readable;
-          entry.modem = pcmclass == SND_PCM_CLASS_MODEM;
+          // entry.modem = pcmclass == SND_PCM_CLASS_MODEM;
           entry.priority = (is_usb ? Driver::ALSA_USB : Driver::ALSA_KERN) + Driver::WCARD * cindex + Driver::WDEV * dindex;
           entries.push_back (entry);
           ADEBUG ("DISCOVER: PCM: %s - %s", entry.devid, entry.device_name);
@@ -223,11 +223,11 @@ class AlsaPcmDriver : public PcmDriver {
   uint          read_write_count_ = 0;
   String        alsadev_;
 public:
-  explicit      AlsaPcmDriver (const String &devid) : PcmDriver (devid) {}
+  explicit      AlsaPcmDriver (const String &driver, const String &devid) : PcmDriver (driver, devid) {}
   static PcmDriverP
   create (const String &devid)
   {
-    auto pdriverp = std::make_shared<AlsaPcmDriver> (devid);
+    auto pdriverp = std::make_shared<AlsaPcmDriver> (kvpair_key (devid), kvpair_value (devid));
     return pdriverp;
   }
   ~AlsaPcmDriver()
@@ -614,12 +614,12 @@ public:
   static MidiDriverP
   create (const String &devid)
   {
-    auto mdriverp = std::make_shared<AlsaSeqMidiDriver> (devid);
+    auto mdriverp = std::make_shared<AlsaSeqMidiDriver> (kvpair_key (devid), kvpair_value (devid));
     return mdriverp;
   }
   explicit
-  AlsaSeqMidiDriver (const String &devid) :
-    MidiDriver (devid), subs_ { nullptr, nullptr }
+  AlsaSeqMidiDriver (const String &driver, const String &devid) :
+    MidiDriver (driver, devid), subs_ { nullptr, nullptr }
   {}
   ~AlsaSeqMidiDriver()
   {
@@ -647,7 +647,7 @@ public:
       snd_seq_start_queue (seq_, queue_, nullptr);
     if (!aerror)
       aerror = snd_seq_drain_output (seq_);
-    ADEBUG ("SeqMIDI: %s: queue started: %.5f", myname, queue_now());
+    ADEBUG ("SeqMIDI: %s: queue started: %.5f (%s)", myname, queue_now(), snd_strerror (aerror));
     return Error::NONE;
   }
   static std::string
@@ -667,7 +667,7 @@ public:
         normalized += '-';
     return normalized;
   }
-  std::string
+  static std::string
   make_devid (int card, uint type, const std::string &clientname, int client, uint caps)
   {
     if (0 == (type & SND_SEQ_PORT_TYPE_MIDI_GENERIC))
@@ -811,7 +811,7 @@ public:
   static void
   list_drivers (Driver::EntryVec &entries)
   {
-    AlsaSeqMidiDriver smd ("?");
+    AlsaSeqMidiDriver smd ("?", "");
     smd.initialize (program_alias() + " Probing");
     smd.enumerate (&entries);
   }
@@ -1006,7 +1006,7 @@ public:
       return (channel + 1) * 128 + note;
     };
     bool must_sort = false;
-    const auto add = [&] (MidiEventStream &estream, const MidiEvent &event) {
+    const auto add = [&] (MidiEventStream &estream, const snd_seq_event_t *ev, const MidiEvent &event) {
       const double t = ev->time.time.tv_sec + 1e-9 * ev->time.time.tv_nsec;
       const double diff = t - now;
       int64_t frames = diff * samplerate;
@@ -1023,38 +1023,38 @@ public:
       switch (ev->type)
         {
         case SND_SEQ_EVENT_NOTEON:
-          add (estream,
+          add (estream, ev,
                make_note_on (ev->data.note.channel, ev->data.note.note,
                              ev->data.note.velocity * (1.0 / 127.0), 0,
                              mkid (ev->data.note.note, ev->data.note.channel)));
           break;
         case SND_SEQ_EVENT_NOTEOFF:
-          add (estream,
+          add (estream, ev,
                make_note_off (ev->data.note.channel, ev->data.note.note,
                               ev->data.note.velocity * (1.0 / 127.0), 0,
                               mkid (ev->data.note.note, ev->data.note.channel)));
           break;
         case SND_SEQ_EVENT_KEYPRESS:
-          add (estream,
+          add (estream, ev,
                make_aftertouch (ev->data.note.channel, ev->data.note.note,
                                 ev->data.note.velocity * (1.0 / 127.0), 0,
                                 mkid (ev->data.note.note, ev->data.note.channel)));
           break;
         case SND_SEQ_EVENT_CONTROLLER:
-          add (estream,
+          add (estream, ev,
                make_control8 (ev->data.control.channel, ev->data.control.param,
                               ev->data.control.value));
           break;
         case SND_SEQ_EVENT_PGMCHANGE:
-          add (estream,
+          add (estream, ev,
                make_program (ev->data.control.channel, ev->data.control.value));
           break;
         case SND_SEQ_EVENT_CHANPRESS:
-          add (estream,
+          add (estream, ev,
                make_pressure (ev->data.control.channel, ev->data.control.value * (1.0 / 127.0)));
           break;
         case SND_SEQ_EVENT_PITCHBEND:
-          add (estream,
+          add (estream, ev,
                make_pitch_bend (ev->data.control.channel,
                                 ev->data.control.value *
                                 (ev->data.control.value < 0 ? 1.0 / 8192.0 : 1.0 / 8191.0)));
@@ -1063,6 +1063,9 @@ public:
           MDEBUG ("%+4d ch=%-2u SYSEX: %s",
                   int (samplerate * (ev->time.time.tv_sec + 1e-9 * ev->time.time.tv_nsec - now)),
                   ev->data.control.channel, hex_str (ev->data.ext.len, (const uint8*) ev->data.ext.ptr));
+          break;
+        case SND_SEQ_EVENT_CLOCK:
+          // skip debug message
           break;
         case SND_SEQ_EVENT_CONTROL14:
         case SND_SEQ_EVENT_NONREGPARAM:

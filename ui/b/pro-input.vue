@@ -13,11 +13,11 @@
 <style lang="scss">
   @import 'mixins.scss';
   .b-pro-input        {
-    display: flex; justify-content: flex-end;
+    display: flex; justify-content: center;
     .b-pro-input-ldiv[class]:before { content: "\200b"; /* zero width character to force line height */ }
     .b-pro-input-knob { height: 2em; }
     .b-pro-input-toggle { height: 2em; }
-    .b-pro-input-choice { height: 2em; }
+    .b-pro-input-choice { height: 2em; width: 2.3em; }
     .b-pro-input-span {
       pointer-events: none; user-select: none;
       max-width: 100%;
@@ -38,7 +38,7 @@
 	    @update:value="set_num ($event)" @reset:value="reset_num()"/>
     <b-toggle class="b-pro-input-toggle" v-if="type() == 'toggle'" label=""
 	      :value="get_num()" @update:value="set_num ($event)" />
-    <b-choice class="b-pro-input-choice" v-if="type() == 'choice'" :choices="choices"
+    <b-choice class="b-pro-input-choice" v-if="type() == 'choice'" small="1" indexed="1" :choices="choices"
 	      :value="get_index()" @update:value="set_index ($event)" />
     <span   class="b-pro-input-span" v-if="labeled && !!nick">{{ nick }}</span>
   </v-flex>

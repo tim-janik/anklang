@@ -53,6 +53,7 @@ struct LambdaPropertyImpl : public virtual PropertyImpl {
   Initializer d;
   const ValueGetter getter_;
   const ValueSetter setter_;
+  const ValueLister lister_;
   void    notify         ();
   String  identifier     () override		{ return d.ident; }
   String  label          () override		{ return d.label; }
@@ -62,7 +63,7 @@ struct LambdaPropertyImpl : public virtual PropertyImpl {
   String  group          () override		{ return d.groupname; }
   String  blurb          () override		{ return d.blurb; }
   String  description    () override		{ return d.description; }
-  ChoiceS choices        () override		{ return {}; }
+  ChoiceS choices        () override		{ return lister_ ? lister_ (*static_cast<PropertyImpl*> (this)) : ChoiceS{}; }
   double  get_min        () override		{ return d.pmin; }
   double  get_max        () override		{ return d.pmax; }
   double  get_step       () override		{ return 0.0; }
@@ -74,8 +75,8 @@ struct LambdaPropertyImpl : public virtual PropertyImpl {
   bool    set_normalized (double v) override;
   String  get_text       () override;
   bool    set_text       (String v) override;
-  LambdaPropertyImpl (const Properties::Initializer &initializer, const ValueGetter &g, const ValueSetter &s) :
-    d (initializer), getter_ (g), setter_ (s)
+  LambdaPropertyImpl (const Properties::Initializer &initializer, const ValueGetter &g, const ValueSetter &s, const ValueLister &l) :
+    d (initializer), getter_ (g), setter_ (s), lister_ (l)
   {
     if (d.ident.empty())
       d.ident = canonify_identifier (d.label);
@@ -229,9 +230,9 @@ LambdaPropertyImpl::reset ()
 }
 
 PropertyImplP
-mkprop (const Initializer &initializer, const ValueGetter &getter, const ValueSetter &setter)
+mkprop (const Initializer &initializer, const ValueGetter &getter, const ValueSetter &setter, const ValueLister &lister)
 {
-  return std::make_shared<Properties::LambdaPropertyImpl> (initializer, getter, setter);
+  return std::make_shared<Properties::LambdaPropertyImpl> (initializer, getter, setter, lister);
 }
 
 // == Bag ==
@@ -257,7 +258,7 @@ Bag::operator+= (PropertyP p)
 } // Properties
 
 template<class V> static PropertyP
-ptrprop (const Properties::Initializer &initializer, V *p)
+ptrprop (const Properties::Initializer &initializer, V *p, const Properties::ValueLister &lister = {})
 {
   assert_return (p, nullptr);
   auto setter = [p] (const Value &val) {
@@ -275,7 +276,7 @@ ptrprop (const Properties::Initializer &initializer, V *p)
     return true;
   };
   auto getter = [p] (Value &val) { val = *p; };
-  return mkprop (initializer, getter, setter);
+  return mkprop (initializer, getter, setter, lister);
 }
 
 // == Property constructors ==
@@ -315,6 +316,15 @@ Properties::Text (String *v, const String &label, const String &nickname, const 
 {
   return ptrprop ({ .label = label, .nickname = nickname, .blurb = blurb, .description = description,
                     .hints = construct_hints (hints, "text") }, v);
+}
+
+PropertyP
+Properties::Text (String *v, const String &label, const String &nickname, const ValueLister &vl, const String &hints, const String &blurb, const String &description)
+{
+  PropertyP propp;
+  propp = ptrprop ({ .label = label, .nickname = nickname, .blurb = blurb, .description = description,
+                     .hints = construct_hints (hints, "text:choice") }, v, vl);
+  return propp;
 }
 
 } // Ase

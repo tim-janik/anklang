@@ -22,8 +22,7 @@ public:
   ProjectP     last_project         () override;
   ProjectP     create_project       (String projectname) override;
   PropertyS    access_prefs         () override;
-  DriverEntryS list_pcm_drivers     () override;
-  DriverEntryS list_midi_drivers    () override;
+  const Preferences& preferences    () const    { return prefs_; }
 };
 
 } // Ase

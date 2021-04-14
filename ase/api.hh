@@ -84,13 +84,21 @@ enum class MusicalTuning : uint8 {
 };
 ASE_DEFINE_ENUM_EQUALITY (MusicalTuning);
 
-/// Details about property choice values.
+/// Representation of one possible choice for selection properties.
 struct Choice {
-  String ident;         ///< Identifier used for serialization.
-  String label;         ///< Preferred user interface name.
-  String subject;       ///< Subject line, a brief one liner or elaborate title.
-  String icon;          ///< Stringified icon, SVG and PNG should be supported (64x64 pixels recommended).
+  String ident;   ///< Identifier used for serialization (may be derived from untranslated label).
+  String icon;    ///< Icon (64x64 pixels) or unicode symbol (possibly wide).
+  String label;   ///< Preferred user interface name.
+  String blurb;   ///< Short description for overviews.
+  String notice;  ///< Additional information of interest.
+  String warning; ///< Potential problem indicator.
+  Choice () = default;
+  Choice (String icon, String label = "", String blurb = "");
+  Choice (String ident, String icon, String label, String blurb, String notice = "", String warning = "");
 };
+
+/// Convenience ChoiceS construciton helper.
+ChoiceS& operator+= (ChoiceS &choices, Choice &&newchoice);
 
 /// Base type for classes with Event subscription.
 class Emittable : public virtual SharedBase {
@@ -140,7 +148,10 @@ struct Preferences {
   int32  synth_mixing_freq = 48000;     ///< Unused, synthesis mixing frequency is always 48000 Hz.
   int32  synth_control_freq = 1500;     ///< Unused frequency setting.
   // MIDI
-  String midi_driver;                   ///< Driver and device to be used for MIDI input and output.
+  String midi_driver_1;                 ///< Driver and device to be used for MIDI input and output.
+  String midi_driver_2;
+  String midi_driver_3;
+  String midi_driver_4;
   bool   invert_sustain = false;
   // Default Values
   String author_default;                ///< Default value for 'Author' fields.
@@ -165,7 +176,6 @@ struct DriverEntry {
   int32  priority = 0;
   bool   readonly = false;
   bool   writeonly = false;
-  bool   modem = false;
 };
 
 /// Base type for classes with Property interfaces.
@@ -286,9 +296,6 @@ public:
   // projects
   virtual ProjectP last_project   () = 0;       ///< Retrieve the last created project.
   virtual ProjectP create_project (String projectname) = 0; ///< Create a new project (name is modified to be unique if necessary.
-  // drivers
-  virtual DriverEntryS list_pcm_drivers  () = 0; ///< List available drivers for PCM input/output handling.
-  virtual DriverEntryS list_midi_drivers () = 0; ///< List available drivers for MIDI input/output handling.
   // testing
   void         set_session_data (const String &key, const Value &v); ///< Assign session data.
   const Value& get_session_data (const String &key) const;           ///< Retrieve session data.

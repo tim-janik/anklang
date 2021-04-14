@@ -55,7 +55,11 @@
 	>{{ prop.label_ }}</span>
 	<span style="text-align: right" :data-bubble="prop.blurb_" >
 	  <component :is="prop.ctype_" v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
-		     :value="prop.fetch_()" @input="prop.apply_" ></component></span>
+				       :value="prop.fetch_()" @input="prop.apply_" v-if="prop.ctype_ != 'b-choice'" ></component>
+	  <b-choice v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
+		    :value="prop.fetch_()" @update:value="prop.apply_ ($event)" :choices="prop.value_.choices"
+		    v-if="prop.ctype_ == 'b-choice'" ></b-choice>
+	</span>
 	<span>
 	  <button class="b-fed-object-clear" tabindex="-1" @click="prop.reset()" > ⊗  </button></span>
       </template>
@@ -66,6 +70,7 @@
 
 <script>
 import * as Util from '../util.js';
+const empty_list = Object.freeze ([]);
 
 async function editable_object () {
   // provide an editable and reactive clone of this.value
@@ -96,93 +101,81 @@ async function editable_object () {
   return o;
 }
 
-/// Assign `obj[k] = v` for all `k of keys, v of values`.
-function zip_object (obj, keys, values) {
-  const kl = keys.length, vl = values.length;
-  for (let i = 0; i < kl; i++)
-    obj[keys[i]] = i < vl ? values[i] : undefined;
-  return obj;
-}
-
-/// Await and reassign all object fields.
-async function object_await_flat (obj) {
-  return zip_object (obj, Object.keys (obj), await Promise.all (Object.values (obj)));
-}
-
 async function list_fields (proplist) {
   const groups = {}, attrs = {
     min: 0, max: 0, step: 0,
     readonly: false,
     allowfloat: true,
-    picklistitems: [],
-    title: 'LABEL' + " " + "Selection",
   };
   const awaits = [];
-  Object.freeze (attrs);
   for (const prop of proplist)
     {
       let xprop = { ident_: prop.identifier(),
-		    numeric_: prop.is_numeric(),
+		    hints_: prop.hints(),
+		    is_numeric_: prop.is_numeric(),
 		    label_: prop.label(),
 		    nick_: prop.nick(),
 		    unit_: prop.unit(),
-		    hints_: prop.hints(),
 		    group_: prop.group(),
 		    blurb_: prop.blurb(),
 		    description_: prop.description(),
 		    min_: prop.get_min(),
 		    max_: prop.get_max(),
 		    step_: prop.get_step(),
+		    has_choices_: false,
 		    ctype_: undefined,
 		    attrs_: attrs,
-		    value_: Vue.reactive ({ val: undefined, num: 0, text: '' }),
 		    apply_: (...a) => {
 		      xprop.set_value (a[0]);
-		      debug ('APPLY', a[0]);
-		      xprop.update_(); // FIXME
 		    },
+		    value_: Vue.reactive ({ val: undefined, num: 0, text: '', choices: empty_list }),
 		    update_: async () => {
-		      const v = xprop.get_value(), n = xprop.get_normalized(), t = xprop.get_text();
-		      xprop.value_.val = await v;
-		      xprop.value_.num = await n;
-		      xprop.value_.text = await t;
+		      const value_ = { val: xprop.get_value(),
+				       num: xprop.get_normalized(),
+				       text: xprop.get_text(),
+				       choices: xprop.has_choices_ ? xprop.choices() : empty_list,
+		      };
+		      Object.assign (xprop.value_, await Util.object_await_values (value_));
+		      if (this.augment)
+			await this.augment (xprop);
 		    },
-		    fetch_: () => xprop.numeric_ ? xprop.value_.num : xprop.value_.text,
+		    fetch_: () => xprop.is_numeric_ ? xprop.value_.num : xprop.value_.text,
 		    __proto__: prop,
       };
-      awaits.push (xprop.update_());
-      xprop = await object_await_flat (xprop);
+      const discon_ = xprop.on ('change', _ => xprop.update_());
+      this.dom_ondestroy (discon_);
+      xprop = await Util.object_await_values (xprop);
+      xprop.has_choices_ = xprop.hints_.search (/:choice:/) >= 0;
+      awaits.push (xprop.update_()); // relies on xprop.has_choices_
       if (!groups[xprop.group_])
 	groups[xprop.group_] = [];
       groups[xprop.group_].push (xprop);
-      const discon_ = xprop.on ('change', _ => xprop.update_());
-      this.dom_ondestroy (discon_);
     }
+  await Promise.all (awaits);
   const grouplist = []; // [ { name, props: [richprop, ...] }, ... ]
   for (const k of Object.keys (groups))
     {
       grouplist.push ({ name: k, props: groups[k] });
-      for (const prop of groups[k])
+      for (const xprop of groups[k])
 	{
 	  let ctype = '';	// component type
-	  if (prop.hints_.search (/:range:/) >= 0)
+	  if (xprop.hints_.search (/:range:/) >= 0)
 	    {
 	      ctype = 'b-fed-number';
-	      if ((prop.min_ | prop.max_) != 0)
-		prop.attrs_ = Object.freeze (Object.assign ({}, prop.attrs_, { min: prop.min_, max: prop.max_ }));
+	      if ((xprop.min_ | xprop.max_) != 0)
+		xprop.attrs_ = Object.assign ({}, xprop.attrs_, { min: xprop.min_, max: xprop.max_ });
 	    }
-	  else if (prop.hints_.search (/:bool:/) >= 0)
+	  else if (xprop.hints_.search (/:bool:/) >= 0)
 	    ctype = 'b-fed-switch';
-	  else if (0 == 'string' && 0)
-	    ctype = 'b-fed-picklist';
+	  else if (xprop.has_choices_)
+	    ctype = 'b-choice';
 	  else
 	    ctype = 'b-fed-text';
-	  prop.ctype_ = ctype;
-	  Object.freeze (prop);
+	  xprop.ctype_ = ctype;
+	  Object.freeze (xprop);
 	}
       Object.freeze (groups[k]);
     }
-  await Promise.all (awaits);
   return Object.freeze (grouplist);
 }
 
@@ -198,6 +191,7 @@ export default {
   data() { return component_data.call (this); },
   props: {
     readonly:	{ default: false, },
+    augment:    { type: Function, },
     debounce:	{ default: 0, },
     value:	{ required: true, },
     default:	{},

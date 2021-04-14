@@ -10,12 +10,18 @@
 namespace Ase {
 
 // == Driver ==
-Driver::Driver (const String &devid) :
-  devid_ (devid)
+Driver::Driver (const String &driver, const String &devid) :
+  driver_ (driver), devid_ (devid)
 {}
 
 Driver::~Driver ()
 {}
+
+String
+Driver::devid () const
+{
+  return devid_.empty() ? driver_ : driver_ + "=" + devid_;
+}
 
 // == loaders ==
 using RegisteredLoaderFunc = Error (*) ();
@@ -77,7 +83,7 @@ struct RegisteredDriver {
           break;
         }
     Error error = Error::DEVICE_NOT_AVAILABLE;
-    DriverP driver = create ? create (kvpair_value (devid)) : NULL;
+    DriverP driver = create ? create (devid) : NULL;
     if (driver)
       {
         error = opener (driver, iodir);
@@ -128,8 +134,8 @@ struct RegisteredDriver {
 };
 
 // == PcmDriver ==
-PcmDriver::PcmDriver (const String &devid) :
-  Driver (devid)
+PcmDriver::PcmDriver (const String &driver, const String &devid) :
+  Driver (driver, devid)
 {}
 
 PcmDriverP
@@ -176,7 +182,7 @@ PcmDriver::list_drivers ()
   Driver::Entry entry;
   entry.devid = "auto";
   entry.device_name = _("Automatic driver selection");
-  entry.device_info = _("Select the first available PCM card or server");
+  entry.device_info = _("Selects the first available PCM card or sound server");
   entry.readonly = false;
   entry.writeonly = false;
   entry.priority = Driver::PAUTO;
@@ -186,8 +192,8 @@ PcmDriver::list_drivers ()
 }
 
 // == MidiDriver ==
-MidiDriver::MidiDriver (const String &devid) :
-  Driver (devid)
+MidiDriver::MidiDriver (const String &driver, const String &devid) :
+  Driver (driver, devid)
 {}
 
 MidiDriverP
@@ -229,7 +235,7 @@ MidiDriver::list_drivers ()
   Driver::Entry entry;
   entry.devid = "auto";
   entry.device_name = _("Automatic MIDI driver selection");
-  entry.device_info = _("Select the first available MIDI device");
+  entry.device_info = _("Selects the first available MIDI device");
   entry.readonly = false;
   entry.writeonly = false;
   entry.priority = Driver::PAUTO;
@@ -245,11 +251,11 @@ class NullPcmDriver : public PcmDriver {
   uint   block_size_ = 0;
   uint64 resumetime_ = 0;
 public:
-  explicit      NullPcmDriver (const String &devid) : PcmDriver (devid) {}
+  explicit      NullPcmDriver (const String &driver, const String &devid) : PcmDriver (driver, devid) {}
   static PcmDriverP
   create (const String &devid)
   {
-    auto pdriverp = std::make_shared<NullPcmDriver> (devid);
+    auto pdriverp = std::make_shared<NullPcmDriver> (kvpair_key (devid), kvpair_value (devid));
     return pdriverp;
   }
   virtual float
@@ -334,11 +340,11 @@ static const String null_pcm_driverid = PcmDriver::register_driver ("null", Null
 // == NullMidiDriver ==
 class NullMidiDriver : public MidiDriver {
 public:
-  explicit      NullMidiDriver (const String &devid) : MidiDriver (devid) {}
+  explicit      NullMidiDriver (const String &driver, const String &devid) : MidiDriver (driver, devid) {}
   static MidiDriverP
   create (const String &devid)
   {
-    auto pdriverp = std::make_shared<NullMidiDriver> (devid);
+    auto pdriverp = std::make_shared<NullMidiDriver> (kvpair_key (devid), kvpair_value (devid));
     return pdriverp;
   }
   virtual void

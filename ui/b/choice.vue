@@ -10,7 +10,7 @@
   *value*
   : Integer, the index of the choice value to be displayed.
   *choices*
-  : List of choices: `[ { icon, label, subject }... ]`
+  : List of choices: `[ { icon, label, blurb }... ]`
   ## Events:
   *update:value (value)*
   : Value change notification event, the first argument is the new value.
@@ -20,140 +20,183 @@
   @import 'mixins.scss';
   .b-choice {
     display: flex; position: relative;
-    margin: 0; padding: 0; text-align: center;
+    margin: 0;
+    white-space: nowrap;
     user-select: none;
-  }
-  .b-choice-label {
-    //* flex-grow: 1; */
-    white-space: nowrap; overflow: hidden;
-    height: 1.33em;
-    width: 2.2em;
-    padding: 0 2px;
-    align-self: center;
-    border-radius: 3px;
-    box-shadow: 0 0 3px #00000077;
-    background-color: $b-choice-0-bg;
-    background: linear-gradient(177deg, $b-choice-0-bh, $b-choice-0-bl 20%, $b-choice-0-bd);
-    .b-choice-press &  	{
-      filter: brightness(90%);
-      background: linear-gradient(-3deg, $b-choice-0-bh, $b-choice-0-bl 20%, $b-choice-0-bd);
+    &.b-choice-big {
+      justify-content: left; text-align: left;
+      padding: .1em 0;
+      width: 16em;
+    }
+    &.b-choice-small {
+      justify-content: center; text-align: center;
+      padding: 0;
     }
   }
-  .b-choice-label:focus { outline: 0.5px dashed #00adb3; }
+  .b-choice-current {
+    align-self: center;
+    min-width: 0; //* allow ellipsized text in flex child */
+    margin: 0;
+    white-space: nowrap; overflow: hidden;
+    .b-choice-big & {
+      flex-grow: 1;
+      justify-content: space-between;
+      padding: $b-button-radius 0 $b-button-radius .5em;
+    }
+    .b-choice-small & {
+      width: 100%; height: 1.33em;
+      justify-content: center;
+      padding: 2px;
+    }
+    @include b-style-outset();
+  }
+  .b-choice-nick {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .b-choice-arrow {
+    flex: 0 0 auto; width: 1em;
+    margin: 0 0 0 .5em;
+    .b-choice-small & {
+      display: none;
+    }
+  }
+  .b-choice-contextmenu {
+    .b-choice-label { display: block; white-space: pre-line; }
+    .b-choice-line1,
+    .b-choice-line2 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-secondary; }
+    .b-choice-line3 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-notice; }
+    .b-choice-line4 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-warning; }
+    .b-menuitem {
+      &:focus, &.active, &:active {
+	.b-choice-line1, .b-choice-line2, .b-choice-line3,
+	.b-choice-line4 { filter: $b-style-fg-filter; } //* adjust to inverted menuitem */
+      } }
+  }
 </style>
 
-<!-- NOTE: This implementation assumes the HTML embeds echoice.svg -->
-
 <template>
-  <div    class="b-choice" ref="bchoice" :style="style (1)"
-	  data-tip="**CLICK** Choice Value" >
-    <div  class="b-choice-label" :data-tip="bubbletip()" ref="label" @pointerdown="pointerdown"
-	  @keydown="keydown" tabindex="0" >
-      {{ nick() }}
-      <b-contextmenu ref="cmenu" @click="menuactivation" @close="menugone" >
-	<b-menuitem v-for="(e, i) in choices" :uri="i" :key="i" >
-	  <b>{{ e.label }}</b>
-	  <span v-if="e.subject" >{{ e.subject }}</span>
-	</b-menuitem>
-      </b-contextmenu>
-    </div>
-  </div>
+  <h-flex class="b-choice" ref="bchoice" :class="classlist" :data-tip="bubbletip()"
+	  @pointerdown="pointerdown" @keydown="keydown" >
+    <h-flex class="b-choice-current" ref="pophere" tabindex="0" >
+      <span class="b-choice-nick">{{ nick() }}</span>
+      <span class="b-choice-arrow" > ⬍ <!-- ▼ ▽ ▾ ▿ ⇕ ⬍ ⇳ --> </span>
+    </h-flex>
+    <b-contextmenu class="b-choice-contextmenu" ref="cmenu" @click="menuactivation" @close="menugone" >
+      <b-menutitle v-if="title" > {{ title }} </b-menutitle>
+
+      <b-menuitem v-for="e in mchoices" :uri="e.uri" :key="e.uri" :ic="e.icon" >
+	<span class="b-choice-label" :class='e.labelclass' v-if="e.label"   > {{ e.label }}
+	  <!--span >{{ '[' + e.ident + ']' }}</span--> </span>
+	<span class="b-choice-line1" :class='e.line1class' v-if="e.blurb"   > {{ e.blurb }} </span>
+	<span class="b-choice-line2" :class='e.line2class' v-if="e.line2"   > {{ e.line2 }} </span>
+	<span class="b-choice-line3" :class='e.line3class' v-if="e.notice"  > {{ e.notice }} </span>
+	<span class="b-choice-line4" :class='e.line4class' v-if="e.warning" > {{ e.warning }} </span>
+      </b-menuitem>
+    </b-contextmenu>
+  </h-flex>
 </template>
 
 <script>
 export default {
   sfc_template,
   props: { value:   { default: false },
+	   title:   { type: String, },
+	   small:   { default: false },
+	   indexed: { default: false },
 	   choices: { default: [] }, },
   emits: { 'update:value': null, },
   data: () => ({
     value_: 0,
     buttondown_: false,
   }),
+  computed: {
+    classlist() {
+      return this.small ? 'b-choice-small' : 'b-choice-big';
+    },
+    ivalue() {
+      if (this.indexed)
+	return this.value >>> 0;
+      for (let i = 0; i < this.mchoices.length; i++)
+	if (this.mchoices[i].uri == this.value)
+	  return i;
+      return 999e99;
+    },
+    mchoices() {
+      const mchoices = [];
+      for (let i = 0; i < this.choices.length; i++) {
+	const c = Object.assign ({}, this.choices[i]);
+	c.uri = this.indexed ? i : c.uri || c.ident;
+	mchoices.push (c);
+      }
+      return mchoices;
+    }, },
   beforeUnmount () {
     window.removeEventListener ('pointerup', this.pointerup);
   },
   methods: {
-    style (div = 0) {
-      return ""; // FIXME
-    },
     dom_update() {
       if (!this.$el) // we need a second Vue.render() call for DOM alterations
 	return this.$forceUpdate();
       this.value_ = this.value;
-      if (this.value_)
-	{
-	  this.$el.classList.add ('b-choice-on');
-	  this.$el.classList.remove ('b-choice-off');
-	}
-      else
-	{
-	  this.$el.classList.remove ('b-choice-on');
-	  this.$el.classList.add ('b-choice-off');
-	}
     },
     bubbletip() {
       App.zmove(); // force changes to be picked up
-      const n = this.value >>> 0;
-      if (!this.choices || n >= this.choices.length)
+      const n = this.ivalue;
+      if (!this.mchoices || n >= this.mchoices.length)
 	return "";
-      const c = this.choices[n];
+      const c = this.mchoices[n];
       let tip = "**" + c.label + "**";
       if (c.subject)
 	tip += " " + c.subject;
       return tip;
     },
     nick() {
-      const n = this.value >>> 0;
-      if (!this.choices || n >= this.choices.length)
+      const n = this.ivalue;
+      if (!this.mchoices || n >= this.mchoices.length)
 	return "";
-      const c = this.choices[n];
-      if (!c.label)
-	return '';
-      let nick = c.label;
-      if (nick.length > 4)
-	nick = nick.substr (0, 4) + '…';
-      return nick;
+      const c = this.mchoices[n];
+      return c.label ? c.label : '';
     },
     menuactivation (uri) {
       // close popup to remove focus guards
       this.$refs.cmenu.close();
-      this.$emit ('update:value', uri >>> 0);
+      this.$emit ('update:value', uri);
     },
     pointerdown (ev) {
-      this.$refs.label.focus();
+      this.$refs.pophere.focus();
       // trigger only on primary button press
       if (!this.buttondown_ && ev.buttons == 1)
 	{
 	  this.buttondown_ = true;
-	  this.$el.classList.add ('b-choice-press');
 	  ev.preventDefault();
 	  ev.stopPropagation();
-	  this.$refs.cmenu.popup (event, { origin: event.target });
+	  this.$refs.cmenu.popup (event, { origin: this.$refs.pophere });
 	}
     },
     menugone () {
-      this.$el.classList.remove ('b-choice-press');
       this.buttondown_ = false;
     },
     keydown (ev) {
+      // allow selection changes with UP/DOWN while menu is closed
       if (event.keyCode == Util.KeyCode.DOWN || event.keyCode == Util.KeyCode.UP)
 	{
 	  ev.preventDefault();
 	  ev.stopPropagation();
-	  const n = this.value >>> 0;
-	  if (this.choices)
+	  let n = this.ivalue;
+	  if (this.mchoices)
 	    {
-	      const v = n + (event.keyCode == Util.KeyCode.DOWN ? +1 : -1);
-	      if (v >= 0 && v < this.choices.length)
-		this.$emit ('update:value', v);
+	      n += event.keyCode == Util.KeyCode.DOWN ? +1 : -1;
+	      if (n >= 0 && n < this.mchoices.length)
+		this.$emit ('update:value', this.mchoices[n].uri);
 	    }
 	}
       else if (event.keyCode == Util.KeyCode.ENTER)
 	{
 	  ev.preventDefault();
 	  ev.stopPropagation();
-	  this.$refs.cmenu.popup (event, { origin: event.target });
+	  this.$refs.cmenu.popup (event, { origin: this.$refs.pophere });
 	}
     },
   },

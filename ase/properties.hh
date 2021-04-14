@@ -7,9 +7,6 @@
 
 namespace Ase {
 
-using ValueGetter = std::function<void (Value&)>;
-using ValueSetter = std::function<bool (const Value&)>;
-
 /// A named ID used to group parameters.
 struct GroupId : CString {
   using CString::CString;
@@ -20,6 +17,11 @@ struct GroupId : CString {
 
 /// Implementation namespace for Property helpers
 namespace Properties {
+
+struct PropertyImpl;
+using ValueGetter = std::function<void (Value&)>;
+using ValueSetter = std::function<bool (const Value&)>;
+using ValueLister = std::function<ChoiceS (PropertyImpl&)>;
 
 /// Construct Bool property.
 PropertyP Bool   (bool   *v, const String &label, const String &nickname, bool dflt, const String &hints = "", const String &blurb = "", const String &description = "");
@@ -37,6 +39,9 @@ PropertyP Range  (double *v, const String &label, const String &nickname, double
 
 /// Construct Text string property.
 PropertyP Text   (String *v, const String &label, const String &nickname, const String &hints = "", const String &blurb = "", const String &description = "");
+
+/// Construct Choice property.
+PropertyP Text   (String *v, const String &label, const String &nickname, const ValueLister &vl, const String &hints = "", const String &blurb = "", const String &description = "");
 
 /// Helper for construction of Property lists.
 class Bag {
@@ -69,7 +74,7 @@ struct PropertyImpl : public virtual Property, public virtual EmittableImpl {
 using PropertyImplP = std::shared_ptr<PropertyImpl>;
 
 /// Construct Property with handlers, emits `Event { .type = "change", .detail = identifier() }`.
-PropertyImplP mkprop (const Initializer &initializer, const ValueGetter&, const ValueSetter&);
+PropertyImplP mkprop (const Initializer &initializer, const ValueGetter&, const ValueSetter&, const ValueLister&);
 
 } // Properties
 

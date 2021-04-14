@@ -5,6 +5,7 @@
 #include "properties.hh"
 #include "serialize.hh"
 #include "main.hh"
+#include "driver.hh"
 #include "utils.hh"
 #include "path.hh"
 #include "internal.hh"
@@ -12,6 +13,46 @@
 namespace Ase {
 
 // == Preferences ==
+static Choice
+choice_from_driver_entry (const DriverEntry &e)
+{
+  String blurb;
+  if (!e.device_info.empty() && !e.capabilities.empty())
+    blurb = e.capabilities + "\n" + e.device_info;
+  else if (!e.capabilities.empty())
+    blurb = e.capabilities;
+  else
+    blurb = e.device_info;
+  Choice c (e.devid, "", e.device_name, blurb);
+  if (string_startswith (string_tolower (e.notice), "warn"))
+    c.warning = e.notice;
+  else
+    c.notice = e.notice;
+  // e.priority
+  // e.readonly
+  // e.writeonly
+  // e.modem
+  return c;
+}
+
+static ChoiceS
+pcm_driver_choices (Properties::PropertyImpl&)
+{
+  ChoiceS choices;
+  for (const DriverEntry &e : PcmDriver::list_drivers())
+    choices.push_back (choice_from_driver_entry (e));
+  return choices;
+}
+
+static ChoiceS
+midi_driver_choices (Properties::PropertyImpl&)
+{
+  ChoiceS choices;
+  for (const DriverEntry &e : MidiDriver::list_drivers())
+    choices.push_back (choice_from_driver_entry (e));
+  return choices;
+}
+
 PropertyS
 Preferences::access_properties (const EventHandler &eventhandler)
 {
@@ -19,7 +60,7 @@ Preferences::access_properties (const EventHandler &eventhandler)
   static PropertyBag bag (eventhandler);
   return_unless (bag.props.empty(), bag.props);
   bag.group = _("Synthesis Settings");
-  bag += Text (&pcm_driver, _("PCM Driver"), "", "auto", STANDARD, _("Driver and device to be used for PCM input and output"));
+  bag += Text (&pcm_driver, _("PCM Driver"), "", pcm_driver_choices, STANDARD, _("Driver and device to be used for PCM input and output"));
   bag += Range (&synth_latency, _("Latency"), "", 0, 3000, 5, "ms", STANDARD + "step=5",
                 _("Processing duration between input and output of a single sample, smaller values increase CPU load"));
   bag += Range (&synth_mixing_freq, _("Synth Mixing Frequency"), "", 48000, 48000, 48000, "Hz", STANDARD,
@@ -27,9 +68,12 @@ Preferences::access_properties (const EventHandler &eventhandler)
   bag += Range (&synth_control_freq, _("Synth Control Frequency"), "", 1500, 1500, 1500, "Hz", STANDARD,
                 _("Unused frequency setting"));
   bag.group = _("MIDI");
-  bag += Text (&midi_driver, _("MIDI Driver"), "", STANDARD, _("Driver and device to be used for MIDI input and output"));
   bag += Bool (&invert_sustain, _("Invert Sustain"), "", false, STANDARD,
                _("Invert the state of sustain (damper) pedal so on/off meanings are reversed"));
+  bag += Text (&midi_driver_1, _("MIDI Controller"), "", midi_driver_choices, STANDARD, _("MIDI controller device to be used for MIDI input"));
+  bag += Text (&midi_driver_2, _("MIDI Controller"), "", midi_driver_choices, STANDARD, _("MIDI controller device to be used for MIDI input"));
+  bag += Text (&midi_driver_3, _("MIDI Controller"), "", midi_driver_choices, STANDARD, _("MIDI controller device to be used for MIDI input"));
+  bag += Text (&midi_driver_4, _("MIDI Controller"), "", midi_driver_choices, STANDARD, _("MIDI controller device to be used for MIDI input"));
   bag.group = _("Default Values");
   bag += Text (&author_default, _("Default Author"), "", STANDARD, _("Default value for 'Author' fields"));
   bag += Text (&license_default, _("Default License"), "", STANDARD, _("Default value for 'License' fields"));
@@ -56,7 +100,10 @@ preferences_defaults()
   prefs.synth_latency = 22;
   prefs.synth_mixing_freq = 48000;
   prefs.synth_control_freq = 1500;
-  prefs.midi_driver = "auto";
+  prefs.midi_driver_1 = "null";
+  prefs.midi_driver_2 = "null";
+  prefs.midi_driver_3 = "null";
+  prefs.midi_driver_4 = "null";
   prefs.invert_sustain = false;
   prefs.license_default = "Creative Commons Attribution-ShareAlike 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)";
   // dynamic defaults
@@ -149,18 +196,6 @@ ServerImpl::access_prefs()
   });
 }
 
-DriverEntryS
-ServerImpl::list_pcm_drivers ()
-{
-  return {};
-}
-
-DriverEntryS
-ServerImpl::list_midi_drivers ()
-{
-  return {};
-}
-
 ServerImplP
 ServerImpl::instancep ()
 {
@@ -194,6 +229,25 @@ const Value&
 Server::get_session_data (const String &key) const
 {
   return session_data[key];
+}
+
+// == Choice ==
+Choice::Choice (String ident_, String icon_, String label_, String blurb_, String notice_, String warning_) :
+  ident (ident_.empty() ? string_to_identifier (label_) : ident_),
+  icon (icon_), label (label_), blurb (blurb_), notice (notice_), warning (warning_)
+{
+  assert_return (ident.empty() == false);
+}
+
+Choice::Choice (String icon_, String label_, String blurb_) :
+  Choice ("", icon_, label_, blurb_)
+{}
+
+ChoiceS&
+operator+= (ChoiceS &choices, Choice &&newchoice)
+{
+  choices.push_back (std::move (newchoice));
+  return choices;
 }
 
 // == Error ==

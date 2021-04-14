@@ -39,30 +39,6 @@ struct AudioProcessorInfo {
   CString creator_url;  ///< Internet contact of the creator.
 };
 
-/// An in-memory icon representation.
-struct IconStr : std::string {
-};
-
-/// One possible choice for selection parameters.
-struct ChoiceDetails {
-  const CString ident;          ///< Identifier used for serialization (can be derived from label).
-  const CString label;          ///< Preferred user interface name.
-  const CString subject;        ///< Subject line, a brief one liner or elaborate title.
-  const IconStr icon;           ///< Stringified icon, SVG and PNG should be supported (64x64 pixels recommended).
-  bool    operator== (const ChoiceDetails &o) const     { return ident == o.ident; }
-  bool    operator!= (const ChoiceDetails &o) const     { return !operator== (o); }
-  ChoiceDetails (CString label, CString subject = "");
-  ChoiceDetails (IconStr icon, CString label, CString subject = "");
-};
-
-/// List of choices for ParamInfo.set_choices().
-struct ChoiceEntries : std::vector<ChoiceDetails> {
-  ChoiceEntries& operator+= (const ChoiceDetails &ce);
-  using base_t = std::vector<ChoiceDetails>;
-  ChoiceEntries (std::initializer_list<base_t::value_type> __l) : base_t (__l) {}
-  ChoiceEntries () {}
-};
-
 /// Detailed information and common properties of parameters.
 struct ParamInfo {
   CString    ident;        ///< Identifier used for serialization.
@@ -80,10 +56,10 @@ struct ParamInfo {
   double     get_initial () const;
   void       get_range   (double &fmin, double &fmax, double &fstep) const;
   void       set_range   (double fmin, double fmax, double fstep = 0);
-  void       set_choices (const ChoiceEntries &centries);
-  void       set_choices (ChoiceEntries &&centries);
-  ChoiceEntries
-  const&     get_choices () const;
+  void       set_choices (const ChoiceS &centries);
+  void       set_choices (ChoiceS &&centries);
+  const
+  ChoiceS&   get_choices () const;
   void       copy_fields (const ParamInfo &src);
   /*ctor*/   ParamInfo   (ParamId pid = ParamId (0), uint porder = 0);
   virtual   ~ParamInfo   ();
@@ -92,8 +68,8 @@ private:
   uint       union_tag = 0;
   union {
     struct { double fmin, fmax, fstep; };
-    uint64_t mem[sizeof (ChoiceEntries) / sizeof (uint64_t)];
-    ChoiceEntries* centries() const { return (ChoiceEntries*) mem; }
+    uint64_t mem[sizeof (ChoiceS) / sizeof (uint64_t)];
+    ChoiceS* centries() const { return (ChoiceS*) mem; }
   } u;
   double     initial_ = 0;
   /*copy*/   ParamInfo   (const ParamInfo&) = delete;
@@ -189,7 +165,7 @@ protected:
                                    const std::string &unit = "", std::string hints = "",
                                    const std::string &blurb = "", const std::string &description = "");
   ParamId       add_param         (Id32 id, const std::string &clabel, const std::string &nickname,
-                                   ChoiceEntries &&centries, double value, std::string hints = "",
+                                   ChoiceS &&centries, double value, std::string hints = "",
                                    const std::string &blurb = "", const std::string &description = "");
   ParamId       add_param         (Id32 id, const std::string &clabel, const std::string &nickname,
                                    bool boolvalue, std::string hints = "",
@@ -200,7 +176,7 @@ protected:
                                    const std::string &unit = "", std::string hints = "",
                                    const std::string &blurb = "", const std::string &description = "");
   ParamId       add_param         (const std::string &clabel, const std::string &nickname,
-                                   ChoiceEntries &&centries, double value, std::string hints = "",
+                                   ChoiceS &&centries, double value, std::string hints = "",
                                    const std::string &blurb = "", const std::string &description = "");
   ParamId       add_param         (const std::string &clabel, const std::string &nickname,
                                    bool boolvalue, std::string hints = "",

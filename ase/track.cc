@@ -44,10 +44,10 @@ TrackImpl::set_project (ProjectImpl *project)
   if (project_)
     {
       assert_return (!chain_);
-      DeviceP device = DeviceImpl::create_output ("Anklang.Devices.AudioChain");
-      assert_return (device);
-      chain_ = std::dynamic_pointer_cast<DeviceImpl> (device);
+      chain_ = DeviceImpl::create_output ("Anklang.Devices.AudioChain");
       assert_return (chain_);
+      AudioProcessorP esource = chain_->audio_processor()->engine().get_event_source();
+      chain_->set_event_source (esource);
     }
   else if (chain_)
     {

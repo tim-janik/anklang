@@ -399,7 +399,7 @@ struct SBase : Serializable {
     chars.push_back ('C');
     r = { .devid = "RS232", .device_name = "Serial", .capabilities = "IO++",
           .device_info = "DEVinfo", .notice = "Handle with care", .priority = 17,
-          .readonly = false, .writeonly = false, .modem = true };
+          .readonly = false, .writeonly = false };
   }
   void
   serialize (WritNode &xs) override
@@ -435,9 +435,9 @@ ase_serialize()
     TASSERT (floats == via_json (floats2));
   }
   { // RECORD
-    Choice choice = { "grump", "Grump", "A flashy Grump", "64x64.png" }, choice2 = via_json (choice);
-    TASSERT (choice.ident == choice2.ident && choice.label == choice2.label &&
-             choice.subject == choice2.subject && choice.icon == choice2.icon);
+    Choice choice = { "grump", "¿", "Grump", "A flashy Grump", "Notice", "Warn" }, choice2 = via_json (choice);
+    TASSERT (choice.ident == choice2.ident && choice.icon == choice2.icon && choice.label == choice2.label &&
+             choice.blurb == choice2.blurb && choice.notice == choice2.notice && choice.warning == choice2.warning);
   }
   { // Json types
     std::string s;

@@ -823,6 +823,19 @@ export function join_classes (...args) {
   return cs.size ? Array.from (cs).join (' ') : undefined;
 }
 
+/// Assign `obj[k] = v` for all `k of keys, v of values`.
+export function object_zip (obj, keys, values) {
+  const kl = keys.length, vl = values.length;
+  for (let i = 0; i < kl; i++)
+    obj[keys[i]] = i < vl ? values[i] : undefined;
+  return obj;
+}
+
+/// Await and reassign all object fields.
+export async function object_await_values (obj) {
+  return object_zip (obj, Object.keys (obj), await Promise.all (Object.values (obj)));
+}
+
 /// Extract the promise `p` state as one of: 'pending', 'fulfilled', 'rejected'
 export function promise_state (p) {
   const t = {}; // dummy, acting as fulfilled

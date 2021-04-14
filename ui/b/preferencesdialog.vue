@@ -26,7 +26,7 @@
     <template v-slot:header>
       <div>Anklang Preferences</div>
     </template>
-    <b-fed-object class="b-preferencesdialog-fed" ref="fedobject" :value="proplist" @input="value_changed" debounce=75 />
+    <b-fed-object class="b-preferencesdialog-fed" ref="fedobject" :value="proplist" :augment="augment" @input="value_changed" debounce=75 />
     <template v-slot:footer>
       <div><button autofocus @click="$emit ('update:shown', false)" > Close </button></div>
     </template>
@@ -51,34 +51,68 @@ function drivers2picklist (hint, e) {
   };
   return item;
 }
-async function fetch_current_config (addcleanup) { // FIXME
-  const d = await Ase.server.get_prefs();
-  if (d.__typename__)
+
+async function augment_property (xprop) {
+  if (xprop.has_choices_)
     {
-      d.__typedata__ = []; // TODO: await Ase.server.find_typedata (d.__typename__);
-      d.__fieldhooks__ = {
-	'pcm_driver.picklistitems': () => {
-	  if (this.pcmrefresh)  // Ase provides no notification for list_pcm_drivers
-	    this.pcmrefresh();  // so we poll it when necessary
-	  return this.pcmlist.map (drivers2picklist.bind (this, 'pcm'));
-	},
-	'midi_driver.picklistitems': () => {
-	  if (this.midirefresh) // Ase provides no notification for list_midi_drivers
-	    this.midirefresh(); // so we poll it when necessary
-	  return this.midilist.map (drivers2picklist.bind (this, 'midi'));
-	},
-      };
+      Object.assign (xprop.attrs_, { title: xprop.label_ + " Selection" });
+      for (let i = 0; i < xprop.value_.choices.length; i++)
+	{
+	  const c = xprop.value_.choices[i];
+	  if (!c.icon && xprop.ident_ == 'pcm_driver')
+	    c.icon = adjust_icon (c, 'pcm');
+	  else if (!c.icon && xprop.ident_.match (/midi/i))
+	    c.icon = adjust_icon (c, 'midi');
+	}
     }
-  return Object.freeze (d);
+}
+
+function adjust_icon (entry, hint) {
+  debug (entry);
+  const is_midi = hint == 'midi';
+  const is_pcm = hint == 'pcm';
+  const is_usb = entry.label.match (/^USB /) || entry.blurb.match (/ at usb-/);
+  const is_rec  = entry.blurb.match (/\d\*captur/i);
+  const is_play = entry.blurb.match (/\d\*play/i);
+  if (is_usb)
+    entry.blurb = entry.blurb.replace (/ at usb-[0-9].*/, ' (USB)');
+  if (is_midi && !(is_rec || is_play))
+    entry.blurb = entry.blurb.replace (/\n/, ', ');
+  if (entry.ident.startsWith ("jack="))
+    return "mi-graphic_eq";
+  if (entry.ident.startsWith ("alsa=pulse"))
+    return "mi-speaker_group";
+  if (entry.ident.startsWith ("null"))
+    return "mi-not_interested"; // "fa-deaf";
+  if (entry.ident.startsWith ("auto"))
+    return "fa-cog";
+  if (entry.label.startsWith ("HDMI"))
+    return "fa-tv";
+  if (entry.label.match (/\bMIDI\W*$/))
+    return 'fa-music';
+  if (is_usb && is_midi)
+    return 'uc-🎘';
+  if (is_usb)
+    return "fa-usb";
+  if (is_midi)
+    return 'fa-music';
+  if (is_pcm)
+    {
+      if (entry.blurb.match (/\bModem\b/))
+	return "uc-☎ ";
+      if (is_rec && !is_play)
+	return "mi-mic";
+      if (is_play && !is_rec)
+	return "fa-volume-up";
+      return "mi-headset_mic";
+    }
+  return "mi-not_interested";
 }
 
 function component_data () {
   const data = {
-    proplist: { default: [], getter: async c => await Ase.server.access_prefs(), },
-    pcmlist:  { getter: async c => Object.freeze (await Ase.server.list_pcm_drivers()),
-		notify: n => { this.pcmrefresh = n; return () => this.pcmrefresh = null; }, },
-    midilist: { getter: async c => Object.freeze (await Ase.server.list_midi_drivers()),
-		notify: n => { this.midirefresh = n; return () => this.midirefresh = null; }, },
+    proplist: { default: [], getter: c => Ase.server.access_prefs(),
+		notify: n => { this.proprefresh = n; return () => this.proprefresh = null; }, },
   };
   return this.observable_from_getters (data, () => true);
 }
@@ -94,40 +128,7 @@ export default {
     shown (vnew, vold) { if (vnew && this.prefrefresh) this.prefrefresh(); },
   },
   methods: {
-    driver_icon (entry, hint) {
-      const is_midi = hint == 'midi';
-      const is_pcm = hint == 'pcm';
-      const is_usb = entry.device_name.match (/^USB /) || entry.device_info.match (/ at usb-/);
-      if (entry.devid.startsWith ("jack="))
-	return "mi-graphic_eq";
-      if (entry.devid.startsWith ("alsa=pulse"))
-	return "mi-speaker_group";
-      if (entry.devid.startsWith ("null"))
-	return "mi-not_interested"; // "fa-deaf";
-      if (entry.devid.startsWith ("auto"))
-	return "fa-cog";
-      if (entry.device_name.startsWith ("HDMI"))
-	return "fa-tv";
-      if (entry.device_name.match (/\bMIDI\W*$/))
-	return 'fa-music';
-      if (is_usb && is_midi)
-	return 'uc-🎘';
-      if (is_usb)
-	return "fa-usb";
-      if (is_midi)
-	return 'fa-music';
-      if (is_pcm)
-	{
-	  if (entry.modem)
-	    return "uc-☎ ";
-	  if (entry.readonly)
-	    return "mi-mic";
-	  if (entry.writeonly)
-	    return "fa-volume-up";
-	  return "mi-headset_mic";
-	}
-      return "mi-not_interested";
-    },
+    augment (p) { return augment_property.call (this, p); },
     async value_changed (po) {
       const prefs = await Ase.server.get_prefs();
       Util.assign_forin (prefs, po);

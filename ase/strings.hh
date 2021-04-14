@@ -22,6 +22,7 @@ String                         string_locale_vprintf (const char *format, va_lis
 // == String ==
 String                          string_multiply          (const String &s, uint64 count);
 String                          string_canonify          (const String &s, const String &valid_chars, const String &substitute);
+String                          string_to_identifier     (const String &input);
 bool                            string_is_canonified     (const String &s, const String &valid_chars);
 String                          string_set_a2z           ();
 String                          string_set_A2Z           ();

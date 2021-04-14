@@ -8,12 +8,16 @@
 
 namespace Ase {
 
+ASE_CLASS_DECLS (Driver);
+ASE_CLASS_DECLS (MidiDriver);
+ASE_CLASS_DECLS (PcmDriver);
+
 class Driver : public std::enable_shared_from_this<Driver> {
 protected:
   struct Flags { enum { OPENED = 1, READABLE = 2, WRITABLE = 4, }; };
-  const String       devid_;
+  const String       driver_, devid_;
   size_t             flags_ = 0;
-  explicit           Driver     (const String &devid);
+  explicit           Driver     (const String &driver, const String &devid);
   virtual           ~Driver     ();
   template<class Derived> std::shared_ptr<Derived>
   /**/               shared_from_base () { return std::static_pointer_cast<Derived> (shared_from_this()); }
@@ -38,7 +42,7 @@ public:
   bool           opened        () const        { return flags_ & Flags::OPENED; }
   bool           readable      () const        { return flags_ & Flags::READABLE; }
   bool           writable      () const        { return flags_ & Flags::WRITABLE; }
-  virtual String devid         () const        { return devid_; }
+  String         devid         () const;
   virtual void   close         () = 0;
   // registry
   using Entry = DriverEntry;
@@ -48,7 +52,7 @@ using DriverP = Driver::DriverP;
 
 class MidiDriver : public Driver {
 protected:
-  explicit           MidiDriver      (const String &devid);
+  explicit           MidiDriver      (const String &driver, const String &devid);
   virtual Ase::Error open            (IODir iodir) = 0;
 public:
   typedef std::shared_ptr<MidiDriver> MidiDriverP;
@@ -71,7 +75,7 @@ struct PcmDriverConfig {
 
 class PcmDriver : public Driver {
 protected:
-  explicit           PcmDriver       (const String &devid);
+  explicit           PcmDriver       (const String &driver, const String &devid);
   virtual Ase::Error open            (IODir iodir, const PcmDriverConfig &config) = 0;
 public:
   typedef std::shared_ptr<PcmDriver> PcmDriverP;
