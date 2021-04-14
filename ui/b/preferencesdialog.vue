@@ -52,26 +52,66 @@ function drivers2picklist (hint, e) {
   return item;
 }
 
-async function list_properties (addcleanup) {
-  let d = { prefs: Ase.server.access_prefs(),
-	    pcmlist: Ase.server.list_pcm_drivers(),
-	    midilist: Ase.server.list_midi_drivers(),
-  };
-  await Util.object_await_values (d);
-  this.pcmlist = d.pcmlist;
-  this.midilist = d.midilist;
-  return d.prefs;
+async function augment_property (xprop) {
+  if (xprop.has_choices_)
+    {
+      Object.assign (xprop.attrs_, { title: xprop.label_ + " Selection" });
+      for (let i = 0; i < xprop.value_.choices.length; i++)
+	{
+	  const c = xprop.value_.choices[i];
+	  if (!c.icon && xprop.ident_ == 'pcm_driver')
+	    c.icon = adjust_icon (c, 'pcm');
+	  else if (!c.icon && xprop.ident_.match (/midi/i))
+	    c.icon = adjust_icon (c, 'midi');
+	}
+    }
 }
 
-async function augment_property (xprop) {
-  if (xprop.hints_.search (/:choice:/) >= 0) {
-    xprop.attrs_ = Object.assign ({}, xprop.attrs_, { title: xprop.label_ + " Selection" });
-  }
+function adjust_icon (entry, hint) {
+  debug (entry);
+  const is_midi = hint == 'midi';
+  const is_pcm = hint == 'pcm';
+  const is_usb = entry.label.match (/^USB /) || entry.blurb.match (/ at usb-/);
+  const is_rec  = entry.blurb.match (/\d\*captur/i);
+  const is_play = entry.blurb.match (/\d\*play/i);
+  if (is_usb)
+    entry.blurb = entry.blurb.replace (/ at usb-[0-9].*/, ' (USB)');
+  if (is_midi && !(is_rec || is_play))
+    entry.blurb = entry.blurb.replace (/\n/, ', ');
+  if (entry.ident.startsWith ("jack="))
+    return "mi-graphic_eq";
+  if (entry.ident.startsWith ("alsa=pulse"))
+    return "mi-speaker_group";
+  if (entry.ident.startsWith ("null"))
+    return "mi-not_interested"; // "fa-deaf";
+  if (entry.ident.startsWith ("auto"))
+    return "fa-cog";
+  if (entry.label.startsWith ("HDMI"))
+    return "fa-tv";
+  if (entry.label.match (/\bMIDI\W*$/))
+    return 'fa-music';
+  if (is_usb && is_midi)
+    return 'uc-🎘';
+  if (is_usb)
+    return "fa-usb";
+  if (is_midi)
+    return 'fa-music';
+  if (is_pcm)
+    {
+      if (entry.blurb.match (/\bModem\b/))
+	return "uc-☎ ";
+      if (is_rec && !is_play)
+	return "mi-mic";
+      if (is_play && !is_rec)
+	return "fa-volume-up";
+      return "mi-headset_mic";
+    }
+  return "mi-not_interested";
 }
 
 function component_data () {
   const data = {
-    proplist: { default: [], getter: c => list_properties.call (this, c),
+    proplist: { default: [], getter: c => Ase.server.access_prefs(),
 		notify: n => { this.proprefresh = n; return () => this.proprefresh = null; }, },
   };
   return this.observable_from_getters (data, () => true);
@@ -89,40 +129,6 @@ export default {
   },
   methods: {
     augment (p) { return augment_property.call (this, p); },
-    driver_icon (entry, hint) {
-      const is_midi = hint == 'midi';
-      const is_pcm = hint == 'pcm';
-      const is_usb = entry.device_name.match (/^USB /) || entry.device_info.match (/ at usb-/);
-      if (entry.devid.startsWith ("jack="))
-	return "mi-graphic_eq";
-      if (entry.devid.startsWith ("alsa=pulse"))
-	return "mi-speaker_group";
-      if (entry.devid.startsWith ("null"))
-	return "mi-not_interested"; // "fa-deaf";
-      if (entry.devid.startsWith ("auto"))
-	return "fa-cog";
-      if (entry.device_name.startsWith ("HDMI"))
-	return "fa-tv";
-      if (entry.device_name.match (/\bMIDI\W*$/))
-	return 'fa-music';
-      if (is_usb && is_midi)
-	return 'uc-🎘';
-      if (is_usb)
-	return "fa-usb";
-      if (is_midi)
-	return 'fa-music';
-      if (is_pcm)
-	{
-	  if (entry.modem)
-	    return "uc-☎ ";
-	  if (entry.readonly)
-	    return "mi-mic";
-	  if (entry.writeonly)
-	    return "fa-volume-up";
-	  return "mi-headset_mic";
-	}
-      return "mi-not_interested";
-    },
     async value_changed (po) {
       const prefs = await Ase.server.get_prefs();
       Util.assign_forin (prefs, po);
