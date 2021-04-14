@@ -116,7 +116,47 @@ public:
   { return custom_data_del (key); }
 };
 
+// == Bit Manipulations ==
+/// Swap 16-Bit integers between __BIG_ENDIAN and __LITTLE_ENDIAN systems.
+constexpr uint16_t uint16_swap_le_be (uint16_t v);
+
+/// Swap 32-Bit integers between __BIG_ENDIAN and __LITTLE_ENDIAN systems.
+constexpr uint32_t uint32_swap_le_be (uint32_t v);
+
+/// Swap 64-Bit integers between __BIG_ENDIAN and __LITTLE_ENDIAN systems.
+constexpr uint64_t uint64_swap_le_be (uint64_t v);
+
 // == Implementation Details ==
+extern inline constexpr uint16_t
+uint16_swap_le_be (uint16_t v)
+{
+  return (v >> 8) | (v << 8);
+}
+
+extern inline constexpr uint32_t
+uint32_swap_le_be (uint32_t v)
+{
+  return __builtin_bswap32 (v);
+  return ( ((v & 0x000000ffU) << 24) |
+           ((v & 0x0000ff00U) <<  8) |
+           ((v & 0x00ff0000U) >>  8) |
+           ((v & 0xff000000U) >> 24) );
+}
+
+extern inline constexpr uint64_t
+uint64_swap_le_be (uint64_t v)
+{
+  return __builtin_bswap64 (v);
+  return ( ((v & 0x00000000000000ffUL) << 56) |
+           ((v & 0x000000000000ff00UL) << 40) |
+           ((v & 0x0000000000ff0000UL) << 24) |
+           ((v & 0x00000000ff000000UL) <<  8) |
+           ((v & 0x000000ff00000000UL) >>  8) |
+           ((v & 0x0000ff0000000000UL) >> 24) |
+           ((v & 0x00ff000000000000UL) >> 40) |
+           ((v & 0xff00000000000000UL) >> 56) );
+}
+
 template<typename F> std::invoke_result_t<F>
 JobQueue::operator+= (const F &job)
 {

@@ -316,12 +316,15 @@ extern "C" ::Ase::AbortMsg *__abort_msg __attribute__ ((weak, alias ("ase_abort_
 #include "testing.hh"
 
 namespace { // Anon
-using namespace Ase;
 
 TEST_INTEGRITY (utils_tests);
 static void
 utils_tests()
 {
+  using namespace Ase;
+  TASSERT (uint16_swap_le_be (0x1234) == 0x3412);
+  TASSERT (uint32_swap_le_be (0xe23456f8) == 0xf85634e2);
+  TASSERT (uint64_swap_le_be (0xf2345678a1b2c3d4) == 0xd4c3b2a1785634f2);
   std::vector<float> fv { 1, -2, 0, -0.5, 2, -1 };
   bool b;
   b = Aux::contains (fv, [] (auto v) { return v == 9; }); TASSERT (b == false);
