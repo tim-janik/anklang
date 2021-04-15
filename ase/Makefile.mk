@@ -8,10 +8,11 @@ include ase/tests/Makefile.mk
 ase/AnklangSynthEngine.main.cc	::= ase/main.cc
 ase/nonlib.cc			::= $(ase/AnklangSynthEngine.main.cc)
 ase/libsources.cc		::= $(filter-out $(ase/nonlib.cc), $(wildcard ase/*.cc))
+ase/libsources.c		::= $(wildcard ase/*.c)
 
 # == AnklangSynthEngine definitions ==
 lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine-$(version_m.m.m)
-ase/AnklangSynthEngine.sources	::= $(ase/AnklangSynthEngine.main.cc) $(ase/libsources.cc)
+ase/AnklangSynthEngine.sources	::= $(ase/AnklangSynthEngine.main.cc) $(ase/libsources.cc) $(ase/libsources.c)
 ase/AnklangSynthEngine.gensrc	::= $>/ase/api.jsonipc.cc
 ase/AnklangSynthEngine.deps	::= $>/ase/sysconfig.h
 ase/AnklangSynthEngine.deps	 += $>/external/websocketpp/server.hpp $>/external/rapidjson/rapidjson.h
