@@ -277,6 +277,26 @@ public:
   static ProjectP last_project ();
 };
 
+enum class ResourceType {
+  FOLDER = 1,
+  FILE,
+};
+
+/// Description of a resource, possibly nested.
+struct Resource {
+  ResourceType type;            ///< Resource classification.
+  String       name;            ///< Path component name.
+  int64        size;            ///< Resource size.
+  int64        mtime;           ///< Modification time in milliseconds.
+};
+
+/// Helper to crawl hierarchical resources.
+class ResourceCrawler : Object {
+public:
+  virtual ResourceS list_entries   () = 0;      ///< List entries of a folder.
+  virtual Resource  current_folder () = 0;      ///< Describe current folder.
+};
+
 /// Central singleton, serves as API entry point.
 class Server : public virtual Gadget {
 public:
@@ -296,6 +316,8 @@ public:
   // projects
   virtual ProjectP last_project   () = 0;       ///< Retrieve the last created project.
   virtual ProjectP create_project (String projectname) = 0; ///< Create a new project (name is modified to be unique if necessary.
+  // Browsing
+  ResourceCrawlerP cwd_crawler    ();
   // testing
   void         set_session_data (const String &key, const Value &v); ///< Assign session data.
   const Value& get_session_data (const String &key) const;           ///< Retrieve session data.
