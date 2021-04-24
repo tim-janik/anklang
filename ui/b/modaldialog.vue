@@ -104,7 +104,7 @@
 <template>
   <transition @after-leave="end_transitions"
 	      @before-leave="intransition = shield && shield.toggle ('b-modaldialog-shield-leave')" >
-    <div class="b-modaldialog" @click.stop ref='modaldialog' v-if='shown' >
+    <v-flex class="b-modaldialog" @click.stop ref='modaldialog' v-if='shown' >
 
       <h-flex class="-header">
 	<slot name="header">
@@ -120,7 +120,7 @@
 	<slot name="footer"/>
       </h-flex>
 
-    </div>
+    </v-flex>
   </transition>
 </template>
 
