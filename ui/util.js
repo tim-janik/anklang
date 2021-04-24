@@ -537,8 +537,7 @@ vue_directives['inlineblur'] = {
     el.cancelled = false;
   },
   mounted (el, binding, vnode) {
-    const vm = binding.instance;
-    //debug ("inlineblur", "mounted");
+    // const vm = binding.instance;
     console.assert (document.body.contains (el));
     el.focus();
     if (el == document.activeElement)
@@ -734,7 +733,7 @@ vue_mixins.dom_updates = {
     if (this.$dom_updates.pending || (!has_dom_hidden && !has_dom_update))
       return;
     const dom_tick_update = _ => {
-      const haselement = this.$el instanceof Element;
+      const haselement = this.$el instanceof Element || this.$el instanceof Text;
       const needhidden = has_dom_hidden && (!haselement || this.$dom_updates.destroying);
       const needupdate = has_dom_update && haselement && !this.$dom_updates.destroying;
       /* Note, if vm._watcher is triggered before the $watch from below, it'll re-render
