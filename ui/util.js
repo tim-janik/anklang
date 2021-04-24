@@ -1274,11 +1274,11 @@ export function keydown_move_focus (event) {
     dir = -99999;
   else if (event.keyCode == KeyCode.END)
     dir = +99999;
-  return move_focus (dir);
+  return move_focus (dir, true);
 }
 
 /** Move focus to prev or next focus widget */
-export function move_focus (dir = 0) {
+export function move_focus (dir = 0, subfocus = false) {
   const home = dir < -1;
   const up = dir == -1;
   const down = dir == +1;
@@ -1295,7 +1295,18 @@ export function move_focus (dir = 0) {
       (document.activeElement.tagName == "INPUT" &&
        !is_button_input (document.activeElement)))
     return false; // not interfering
-  const root = the_focus_guard.focus_root_list[0][0];
+  let root = the_focus_guard.focus_root_list[0][0];
+  let subroot = null;
+  if (subfocus) // constrain focus movements within data-subfocus=1 container
+    for (let element = document.activeElement; element; element = element.parentElement) {
+      if (element === root && subroot)
+	{
+	  root = subroot;
+	  break;
+	}
+      if (!subroot && element.getAttribute ('data-subfocus'))
+	subroot = element;
+    }
   const focuslist = list_focusables (root);
   if (!focuslist)
     return false; // not interfering
