@@ -72,35 +72,6 @@
 import * as Util from '../util.js';
 const empty_list = Object.freeze ([]);
 
-async function editable_object () {
-  // provide an editable and reactive clone of this.value
-  let o = { __typedata__: undefined, __fieldhooks__: undefined, }, td;
-  for (const p in this.value)
-    if (p[0] != '_' && typeof (this.value[p]) != "function")
-      o[p] = this.value[p];
-  // determine __typedata__
-  if (Array.isArray (this.value.__typedata__))
-    td = Util.map_from_kvpairs (this.value.__typedata__);
-  else if (typeof (this.value.__typedata__) == "function")
-    td = Util.map_from_kvpairs (this.value.__typedata__());
-  else if (typeof (this.value.__typedata__) == "object")
-    {
-      td = {};
-      Util.assign_forin (td, this.value.__typedata__);
-    }
-  else
-    {
-      const fields = [];
-      for (let p in o)
-	fields.push (p);
-      td = { fields: fields.join (';'), };
-    }
-  o.__typedata__ = td;
-  // transport __fieldhooks__
-  o.__fieldhooks__ = Object.freeze (Object.assign ({}, this.value.__fieldhooks__ || {}));
-  return o;
-}
-
 async function list_fields (proplist) {
   const groups = {}, attrs = {
     min: 0, max: 0, step: 0,
@@ -200,72 +171,6 @@ export default {
   methods: {
     list_fields() {
       return this.gprops;
-      // FIXME
-      if (!this.object)
-	return [];
-      const o = this.object, td = o.__typedata__, fieldhooks = o.__fieldhooks__ || {};
-      const field_typedata = unfold_properties (td); // { foo: { label: 'Foo' }, bar: { step: '5' }, etc }
-      const fields = td.fields ? td.fields.split (';') : [];
-      const groupmap = {};
-      const grouplist = [];
-      for (let fieldname of fields)
-	{
-	  const field_data = field_typedata[fieldname];
-	  const attrs = {};
-	  for (let p of ['min', 'max', 'step'])
-	    if (field_data[p] != undefined)
-	      attrs[p] = field_data[p];
-	  if (this.readonly || (':' + field_data.hints + ':').indexOf ('ro') >= 0)
-	    attrs.readonly = true;
-	  const handler = (v) => this.apply_field (fieldname, v);
-	  let label = td[fieldname + '.label'] || fieldname;
-	  let ct = '';			// component type
-	  const ft = typeof (o[fieldname]); // FIXME: use td
-	  if (ft == "number")
-	    {
-	      ct = 'b-fed-number';
-	      if (o[fieldname] != 0 | o[fieldname]) // not int // FIXME: use td
-		attrs.allowfloat = true;
-	      // min max
-	    }
-	  else if (ft == "boolean")
-	    ct = 'b-fed-switch';
-	  else if (ft == "string")
-	    {
-	      const picklistitems = fieldhooks[fieldname + '.picklistitems'];
-	      if (picklistitems)
-		{
-		  attrs.picklistitems = picklistitems;
-		  attrs.title = label + " " + "Selection";
-		  ct = 'b-fed-picklist';
-		}
-	      else
-		ct = 'b-fed-text';
-	    }
-	  if (ct)
-	    {
-	      const group = field_data.group || "Settings";
-	      let groupfields;
-	      if (groupmap[group] == undefined)
-		{
-		  groupfields = [];
-		  const newgroup = [ group, groupfields ];
-		  groupmap[group] = newgroup;
-		  grouplist.push (newgroup);
-		}
-	      else
-		groupfields = groupmap[group][1];
-	      const blurb = td[fieldname + '.blurb'] || undefined;
-	      groupfields.push ({ ident: fieldname,
-				  ctype: ct,
-				  label: label,
-				  attrs: attrs,
-				  odata: o,
-				  blurb: blurb,
-				  apply: handler });
-	    }
-	}
-      return grouplist; // [ [ 'Group', [ field1, field2 ], [ 'Other', [ field3, field4 ] ] ]
     },
     apply_field (fieldname, value) {
       const o = this.object;
@@ -279,21 +184,4 @@ export default {
     },
   },
 };
-
-function unfold_properties (nestedpropobject) {
-  // turn { a.a: 1, a.b.c: 2, d.e: 3 } into: { a: { a: 1, b.c: 2 }, d: { e: 3 } }
-  let oo = {};
-  window.nestedpropobject=nestedpropobject;
-  for (let p in nestedpropobject) {
-    const parts = p.split ('.');
-    if (parts.length > 1) {
-      const stem = parts[0];
-      parts.shift(); // pop stem
-      if (oo[stem] == undefined)
-	oo[stem] = {};
-      oo[stem][parts.join ('.')] = nestedpropobject[p];
-    }
-  }
-  return oo;
-}
 </script>
