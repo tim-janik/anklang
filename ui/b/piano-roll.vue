@@ -533,7 +533,7 @@ function render_piano()
   fpx = Util.clamp (fpx / layout.DPR, 7, 12) * layout.DPR;
   if (fpx >= 6) {
     ctx.fillStyle = csp ('--piano-roll-key-color');
-    const key_font = csp ('--piano-roll-font');
+    // const key_font = csp ('--piano-roll-font');
     ctx.font = canvas_font.call (this, fpx + 'px');
     // measure Midi labels, faster if batched into an array
     const midi_labels = Util.midi_label ([...Util.range (0, layout.octaves * (layout.wkeys.length + layout.bkeys.length))]);
@@ -707,8 +707,8 @@ function render_timegrid (canvas, with_labels)
 
   // step through all denominators and draw labels
   ctx.fillStyle = csp ('--piano-roll-num-color');
-  const num_font = csp ('--piano-roll-font');
-  const fpx_parts = num_font.split (/\s*\d+px\s*/i); // 'bold 10px sans' -> [ ['bold', 'sans']
+  // const num_font = csp ('--piano-roll-font');
+  // const fpx_parts = num_font.split (/\s*\d+px\s*/i); // 'bold 10px sans' -> [ ['bold', 'sans']
   ctx.font = canvas_font.call (this, layout.DPR + 'em');
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
