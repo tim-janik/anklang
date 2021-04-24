@@ -2450,6 +2450,21 @@ export function strpad (string, len, fill = ' ') {
   return string;
 }
 
+export function zero_pad (string, n = 2) {
+  string = String (string);
+  while (string.length < n)
+    string = '0' + string;
+  return string;
+}
+
+export function fmt_date (datelike) {
+  const a = new Date (datelike);
+  const y = zero_pad (a.getFullYear(), 4);
+  const m = zero_pad (a.getMonth(), 2);
+  const d = zero_pad (a.getDay(), 2);
+  return d + '-' + m + '-' + y;
+}
+
 const default_seed = Math.random() * 4294967295 >>> 0;
 
 /// Generate 53-Bit hash from `key`.
