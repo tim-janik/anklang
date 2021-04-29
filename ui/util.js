@@ -2147,7 +2147,13 @@ export function match_key_event (event, keyname)
 const hotkey_list = [];
 
 function hotkey_handler (event) {
-  const kdebug = () => undefined; // debug;
+  let kdebug = () => undefined; // kdebug = debug;
+  // avoid composition events, https://developer.cdn.mozilla.net/en-US/docs/Web/API/Element/keydown_event
+  if (event.isComposing || event.keyCode === 229)
+    {
+      kdebug ("hotkey_handler: ignore-composition: " + event.code + ' (' + document.activeElement.tagName + ')');
+      return false;
+    }
   // give precedence to navigatable element with focus
   if (is_nav_input (document.activeElement) ||
       (document.activeElement.tagName == "INPUT" && !is_button_input (document.activeElement)))
