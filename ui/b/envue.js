@@ -17,6 +17,8 @@ export class Component {
   update() {
     this.$vm?.$forceUpdate();
   }
+  $watch (...a) { return this.$vm.$watch (...a); }
+  observable_from_getters (...a) { return this.$vm.observable_from_getters (...a); }
   /// Create a Vue options API object for SFC exports.
   static vue_export (vue_object = {})
   {
