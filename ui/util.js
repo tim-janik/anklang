@@ -1182,11 +1182,18 @@ export function is_button_input (element) {
   return false;
 }
 
+/** Compute global midpoint position of element, e.g. for focus movement */
+export function element_midpoint (element) {
+  const r = element.getBoundingClientRect();
+  return { y: 0.5 * (r.top + r.bottom),
+	   x: 0.5 * (r.left + r.right) };
+}
+
 /** Install a FocusGuard to allow only a restricted set of elements to get focus. */
 class FocusGuard {
   defaults() { return {
     updown_focus: true,
-    updown_cycling: true,
+    updown_cycling: false,
     focus_root_list: [],
     last_focus: undefined,
   }; }
@@ -1265,48 +1272,53 @@ export function remove_focus_root (element) {
 
 /** Move focus on UP/DOWN/HOME/END `keydown` events */
 export function keydown_move_focus (event) {
+  const root = the_focus_guard?.focus_root_list?.[0]?.[0] || document.body;
+  let subfocus = null, left_right = false;
+  // constrain focus movements within data-subfocus=1 container
+  for (let element = document.activeElement; element; element = element.parentElement) {
+    if (element === root)
+      break;
+    const d = element.getAttribute ('data-subfocus');
+    if (d)
+      {
+	subfocus = element;
+	if (d === "*")
+	  left_right = true;
+	break;
+      }
+  }
   let dir;
-  if (event.keyCode == KeyCode.UP)
+  if (event.keyCode == KeyCode.HOME)
+    dir = 'HOME';
+  else if (event.keyCode == KeyCode.END)
+    dir = 'END';
+  else if (event.keyCode == KeyCode.UP)
     dir = -1;
   else if (event.keyCode == KeyCode.DOWN)
     dir = +1;
-  else if (event.keyCode == KeyCode.HOME)
-    dir = -99999;
-  else if (event.keyCode == KeyCode.END)
-    dir = +99999;
-  return move_focus (dir, true);
+  else if (left_right && event.keyCode == KeyCode.LEFT)
+    dir = 'LEFT';
+  else if (left_right && event.keyCode == KeyCode.RIGHT)
+    dir = 'RIGHT';
+  return move_focus (dir, subfocus);
 }
 
 /** Move focus to prev or next focus widget */
 export function move_focus (dir = 0, subfocus = false) {
-  const home = dir < -1;
-  const up = dir == -1;
-  const down = dir == +1;
-  const end = dir > +1;
+  const home = dir == 'HOME', end = dir == 'END';
+  const up = dir == -1, down = dir == +1;
+  const left = dir == 'LEFT', right = dir == 'RIGHT';
   const updown_focus = the_focus_guard.updown_focus;
   const updown_cycling = the_focus_guard.updown_cycling;
   const last_focus = the_focus_guard.last_focus;
-  if (!(home || up || down || end))
+  if (!(home || up || down || end || left || right))
     return false; // nothing to move
 
   if (the_focus_guard.focus_root_list.length == 0 || !updown_focus ||
-      !(up || down || home || end) ||
-      is_nav_input (document.activeElement) ||
-      (document.activeElement.tagName == "INPUT" &&
-       !is_button_input (document.activeElement)))
+      // is_nav_input (document.activeElement) || (document.activeElement.tagName == "INPUT" && !is_button_input (document.activeElement)) ||
+      !(up || down || home || end || left || right))
     return false; // not interfering
-  let root = the_focus_guard.focus_root_list[0][0];
-  let subroot = null;
-  if (subfocus) // constrain focus movements within data-subfocus=1 container
-    for (let element = document.activeElement; element; element = element.parentElement) {
-      if (element === root && subroot)
-	{
-	  root = subroot;
-	  break;
-	}
-      if (!subroot && element.getAttribute ('data-subfocus'))
-	subroot = element;
-    }
+  const root = subfocus || the_focus_guard.focus_root_list[0][0];
   const focuslist = list_focusables (root);
   if (!focuslist)
     return false; // not interfering
@@ -1326,6 +1338,27 @@ export function move_focus (dir = 0, subfocus = false) {
     next = (down || home) ? 0 : focuslist.length - 1;
   else if (home || end)
     next = home ? 0 : focuslist.length - 1;
+  else if (left || right)
+    {
+      const idx_pos = element_midpoint (focuslist[idx]);
+      let dist = { x: 9e99, y: 9e99 };
+      for (let i = 0; i < focuslist.length; i++)
+	if (i != idx)
+	  {
+	    const pos = element_midpoint (focuslist[i]);
+	    const d = { x: pos.x - idx_pos.x, y: pos.y - idx_pos.y };
+	    if ((right && d.x > 0) || (left && d.x < 0))
+	      {
+		d.x = Math.abs (d.x);
+		d.y = Math.abs (d.y);
+		if (d.x < dist.x || (d.x == dist.x && d.y < dist.y))
+		  {
+		    dist = d;
+		    next = i;
+		  }
+	      }
+	  }
+    }
   else // up || down
     {
       next = idx + (up ? -1 : +1);
@@ -1336,6 +1369,8 @@ export function move_focus (dir = 0, subfocus = false) {
 	  else if (next >= focuslist.length)
 	    next -= focuslist.length;
 	}
+      else if (next < 0 || next >= focuslist.length)
+	next = undefined;
     }
   if (next >= 0 && next < focuslist.length)
     {
