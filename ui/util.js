@@ -2377,7 +2377,7 @@ export function vue_observable_from_getters (tmpl, predicate) { // `this` is Vue
   const getter_cleanups = {};
   const notify_cleanups = {};
   let add_functions = false;
-  let odata; // Vue.reactive
+  let rdata; // Vue.reactive
   for (const key in tmpl)
     {
       if (tmpl[key] instanceof Function)
@@ -2397,9 +2397,9 @@ export function vue_observable_from_getters (tmpl, predicate) { // `this` is Vue
 	const result = !async_getter ? default_value :
 		       await async_getter (assign_getter_cleanup);
 	if (had_cleanup || getter_cleanups[key])
-	  odata[key] = result; // always reassign if cleanups are involved
-	else if (!equals_recursively (odata[key], result))
-	  odata[key] = result; // compare to reduce Vue updates
+	  rdata[key] = result; // always reassign if cleanups are involved
+	else if (!equals_recursively (rdata[key], result))
+	  rdata[key] = result; // compare to reduce Vue updates
       };
       const getter_and_listen = (reset) => {
 	if (reset) // if reset==true, getter() might not be callable
@@ -2408,7 +2408,7 @@ export function vue_observable_from_getters (tmpl, predicate) { // `this` is Vue
 	      assign_async_cleanup (notify_cleanups, key, undefined);
 	    if (getter_cleanups[key])
 	      assign_async_cleanup (getter_cleanups, key, undefined);
-	    odata[key] = default_value;
+	    rdata[key] = default_value;
 	  }
 	else
 	  {
@@ -2420,7 +2420,7 @@ export function vue_observable_from_getters (tmpl, predicate) { // `this` is Vue
       monitoring_getters.push (getter_and_listen);
     }
   // make all fields observable
-  odata = Vue.reactive (tmpl);
+  rdata = Vue.reactive (tmpl);
   // cleanup notifiers and getter results on `unmounted`
   const run_cleanups = () => {
     for (const key in notify_cleanups)
@@ -2430,46 +2430,34 @@ export function vue_observable_from_getters (tmpl, predicate) { // `this` is Vue
   };
   Vue.onUnmounted (run_cleanups); // TODO: check invocation
   // create trigger for forced updates
-  const ucount = Vue.reactive ({ c: 1 }); // reactive update counter
-  const updater = function () { ucount.c += 1; }; // forces observable update
-  // the $watch callback updates monitoring getters once `predicate` or `ucount`
-  // changes, but `predicate` needs wrapping to allow Promise returns
-  const watch_predicate = function () {
-    // all reactive accesses are tracked from within a $watch predicate, so:
-    // *always* invoke the reactive `ucount.c` getter and…
-    const p = ucount.c && predicate.call (this); // …the custom `predicate`
-    // Promises need to re-trigger the $watch once resolved
-    if (p instanceof Promise)
-      (async () => {
-	const value = await p;
-	if (value !== watch_predicate.last)
-	  {
-	    watch_predicate.last = value;
-	    updater();
-	  }
-      }) ();
-    else
-      watch_predicate.last = p;
-    return watch_predicate.last;
-  };
-  watch_predicate.last = undefined; // initial value for async `predicate`
+  let ucount;
   // install tmpl functions
   if (add_functions)
-    for (const key in tmpl)
-      {
-	if (tmpl[key] == observable_force_update)
-	  odata[key] = updater;      // add method to force updates
-	else if (tmpl[key] instanceof Function)
-	  odata[key] = tmpl[key];
-      }
+    {
+      let updater;
+      for (const key in tmpl)
+	{
+	  if (tmpl[key] == observable_force_update)
+	    {
+	      if (!updater)
+		{
+		  ucount = Vue.reactive ({ c: 1 }); // reactive update counter
+		  updater = function () { ucount.c += 1; }; // forces observable update
+		}
+	      rdata[key] = updater;      // add method to force updates
+	    }
+	  else if (tmpl[key] instanceof Function)
+	    rdata[key] = tmpl[key];
+	}
+    }
   // create watch, triggering the getters if predicate turns true
-  this.$watch (watch_predicate,
-	       (newval /*, oldval*/) => {
-		 const reset = !newval;
-		 monitoring_getters.forEach (getter_and_listen => getter_and_listen (reset));
-	       },
-	       { immediate: true });
-  return odata;
+  //const dummy = [undefined];
+  Vue.watchEffect (async () => {
+    const r = (ucount ? ucount.c : 1) && await predicate.call (this);
+    const reset = !r;
+    monitoring_getters.forEach (getter_and_listen => getter_and_listen (reset));
+  });
+  return rdata;
 }
 
 /** Join template literal arguments into a String */
