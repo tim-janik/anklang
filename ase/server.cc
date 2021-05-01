@@ -49,7 +49,8 @@ midi_driver_choices (Properties::PropertyImpl&)
 {
   ChoiceS choices;
   for (const DriverEntry &e : MidiDriver::list_drivers())
-    choices.push_back (choice_from_driver_entry (e));
+    if (!e.writeonly)
+      choices.push_back (choice_from_driver_entry (e));
   return choices;
 }
 

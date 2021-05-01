@@ -21,6 +21,8 @@ enum class RPath {
   INSTALLDIR,
   LOCALEDIR,
   LIBDIR,
+  DEMODIR,
+  HOMEDIR,
   LADSPADIRS,
 };
 std::string runpath (RPath rpath);      ///< Retrieve various resource paths at runtime.
