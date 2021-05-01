@@ -130,7 +130,7 @@ export default {
   props:     { shown: { type: Boolean },
 	       exclusive: { type: Boolean },
 	       bwidth: { default: '9em' }, },
-  emits: { 'update:shown': null, },
+  emits: { 'update:shown': null, 'close': null },
   data() { return {
     intransition: 0,
     footerclass: '',
@@ -183,6 +183,8 @@ export default {
     },
     close (event) {
       this.$emit ('update:shown', false); // shown = false
+      if (this.shown)
+	this.$emit ('close');
     },
   },
 };
