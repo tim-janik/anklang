@@ -101,6 +101,8 @@
     <!-- Modal Components -->
     <b-aboutdialog v-model:shown="Data.show_about_dialog" />
     <b-preferencesdialog v-model:shown="Data.show_preferences_dialog" />
+    <b-filedialog v-if="fs.resolve" :title="fs.title" :filters="fs.filters" :button="fs.button"
+		  :cwd="fs.cwd" @close="fs.resolve()" @select="fs.resolve($event)" />
 
   </v-flex>
 </template>
@@ -127,12 +129,13 @@ function observable_project_data () { // yields reactive Proxy object
 class Shell extends Envue.Component {
   constructor (vm) {
     super (vm);
+    this.fs = Vue.reactive ({ title: 'File Selector', button: 'Select', cwd: '.', filters: [], resolve: null });
     this.m = observable_project_data.call (vm);
     this.m.modal_dialogs = [];
   }
   created() {
     // provide default project
-    App.load_project (Ase.server.last_project());
+    App.load_project_checked (Ase.server.last_project());
     // load_project() also forces an update with new Shell properties in place
   }
   mounted() {
@@ -205,6 +208,17 @@ class Shell extends Envue.Component {
       sidebar.style.flex = flexwidth;
     // Resize via: https://www.w3.org/TR/css-flexbox-1/#flex-common
     e.preventDefault();
+  }
+  async select_file (opt = {}) {
+    if (this.fs.resolve)
+      return undefined;
+    Object.assign (this.fs, opt);
+    const p = new Promise (r =>
+      this.fs.resolve = r	// shows file selector
+    );
+    const result = await p;
+    this.fs.resolve = null;
+    return result;
   }
   async_modal_dialog = async_modal_dialog;
 }
