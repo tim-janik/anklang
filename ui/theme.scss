@@ -132,6 +132,26 @@ $b-resize-handle-bgcolor:   #555 !default;
 $b-resize-handle-hvcolor:   #bbb !default;
 $b-resize-handle-border:    1.5px solid #111 !default;
 
+// == focus ==
+$b-focus-outline-width: 1px !default;
+$b-focus-outline:       $b-focus-outline-width solid $b-style-focus-color !default;
+$b-focus-box-shadow:    0 0 0 1px $b-style-focus-color !default; // suitable for rounded outlines
+@mixin b-focus-outline($asborder: false)  {
+  outline: 0 none;
+  margin: 1px;
+  border-radius: $b-style-border-radius;
+  @if $asborder {
+    border: 1px solid transparent;
+  }
+  &:focus {
+    @if $asborder {
+      border: 1px solid $b-style-focus-color;
+    } @else {
+      box-shadow: $b-focus-box-shadow;
+    }
+  }
+}
+
 // == Outset / Inset ==
 $b-style-inset-background-1:  #1b1b1b !default;
 $b-style-inset-background-2:  #202020 !default;
@@ -334,6 +354,7 @@ $b-piano-roll-font:     	normal 9px $b-main-font-family; // the '9px' part is dy
 // == Scrollbars (see styles.scss) ==
 /// Style container to constrain area within which its scrollbars highlight on hover.
 @mixin scrollbar-hover-area() {
+  div.b-modaldialog-shield &,
   #b-app & {
     html[chrome] & {
       & ::-webkit-scrollbar-thumb { background: $b-scrollbar-dd; }
@@ -348,3 +369,4 @@ $b-piano-roll-font:     	normal 9px $b-main-font-family; // the '9px' part is dy
   }
   // sync with styles.scss
 }
+$b-scrollbar-thickness: 15px; // ← only size that works with Chrome and FF
