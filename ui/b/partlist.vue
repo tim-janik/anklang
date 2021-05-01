@@ -29,7 +29,6 @@
 </style>
 
 <script>
-import * as Util from '../util.js';
 import * as Ase from '../aseapi.js';
 
 export default {

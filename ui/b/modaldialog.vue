@@ -104,7 +104,7 @@
 <template>
   <transition @after-leave="end_transitions"
 	      @before-leave="intransition = shield && shield.toggle ('b-modaldialog-shield-leave')" >
-    <div class="b-modaldialog" @click.stop ref='modaldialog' v-if='shown' >
+    <v-flex class="b-modaldialog" @click.stop ref='modaldialog' v-if='shown' >
 
       <h-flex class="-header">
 	<slot name="header">
@@ -120,7 +120,7 @@
 	<slot name="footer"/>
       </h-flex>
 
-    </div>
+    </v-flex>
   </transition>
 </template>
 
@@ -130,7 +130,7 @@ export default {
   props:     { shown: { type: Boolean },
 	       exclusive: { type: Boolean },
 	       bwidth: { default: '9em' }, },
-  emits: { 'update:shown': null, },
+  emits: { 'update:shown': null, 'close': null },
   data() { return {
     intransition: 0,
     footerclass: '',
@@ -183,6 +183,8 @@ export default {
     },
     close (event) {
       this.$emit ('update:shown', false); // shown = false
+      if (this.shown)
+	this.$emit ('close');
     },
   },
 };

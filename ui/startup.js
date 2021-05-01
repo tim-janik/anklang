@@ -94,7 +94,7 @@ async function bootup () {
   const reconnect = async () => {
     const timeout = ms => new Promise (resolve => setTimeout (resolve, ms));
     let polltime = 150;
-    while (1) {
+    while (polltime) {
       fetch ('/').then (() => location.reload()).catch (() => 0);
       await timeout (polltime);
       polltime += 150; // backoff
@@ -119,6 +119,7 @@ async function bootup () {
 	  const triggerid = Jsonapi.jstrigger_create (fun);
 	  const discon = () => Jsonapi.jstrigger_remove (triggerid);
 	  const prom = this.js_trigger (eventselector, triggerid);
+	  void (prom);
 	  return discon;
 	};
       }
@@ -225,7 +226,7 @@ function browser_config() {
   // Chrome Bug: https://bugs.chromium.org/p/chromium/issues/detail?id=1092358 https://github.com/w3c/pointerlock/issues/42
   // TEST: let l={}; document.body.onpointermove = e=>{ console.log("screenX:",e.screenX-l.screenX,"movementX:",e.movementX); l=e; }
   const chrome_major = parseInt (( /\bChrome\/([0-9]+)\./.exec (navigator.userAgent) || [0,0] )[1]);
-  const chrome_major_last_buggy = 89;
+  const chrome_major_last_buggy = 90;
   const dpr_movement = chrome_major >= 37 && chrome_major <= chrome_major_last_buggy;
   console.assert (chrome_major <= chrome_major_last_buggy, `WARNING: Chrome/${chrome_major} has not been tested for the movementX devicePixelRatio bug`);
   if (dpr_movement)

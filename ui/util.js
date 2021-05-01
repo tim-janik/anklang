@@ -537,8 +537,7 @@ vue_directives['inlineblur'] = {
     el.cancelled = false;
   },
   mounted (el, binding, vnode) {
-    const vm = binding.instance;
-    //debug ("inlineblur", "mounted");
+    // const vm = binding.instance;
     console.assert (document.body.contains (el));
     el.focus();
     if (el == document.activeElement)
@@ -734,7 +733,7 @@ vue_mixins.dom_updates = {
     if (this.$dom_updates.pending || (!has_dom_hidden && !has_dom_update))
       return;
     const dom_tick_update = _ => {
-      const haselement = this.$el instanceof Element;
+      const haselement = this.$el instanceof Element || this.$el instanceof Text;
       const needhidden = has_dom_hidden && (!haselement || this.$dom_updates.destroying);
       const needupdate = has_dom_update && haselement && !this.$dom_updates.destroying;
       /* Note, if vm._watcher is triggered before the $watch from below, it'll re-render
@@ -1183,11 +1182,18 @@ export function is_button_input (element) {
   return false;
 }
 
+/** Compute global midpoint position of element, e.g. for focus movement */
+export function element_midpoint (element) {
+  const r = element.getBoundingClientRect();
+  return { y: 0.5 * (r.top + r.bottom),
+	   x: 0.5 * (r.left + r.right) };
+}
+
 /** Install a FocusGuard to allow only a restricted set of elements to get focus. */
 class FocusGuard {
   defaults() { return {
     updown_focus: true,
-    updown_cycling: true,
+    updown_cycling: false,
     focus_root_list: [],
     last_focus: undefined,
   }; }
@@ -1266,37 +1272,53 @@ export function remove_focus_root (element) {
 
 /** Move focus on UP/DOWN/HOME/END `keydown` events */
 export function keydown_move_focus (event) {
+  const root = the_focus_guard?.focus_root_list?.[0]?.[0] || document.body;
+  let subfocus = null, left_right = false;
+  // constrain focus movements within data-subfocus=1 container
+  for (let element = document.activeElement; element; element = element.parentElement) {
+    if (element === root)
+      break;
+    const d = element.getAttribute ('data-subfocus');
+    if (d)
+      {
+	subfocus = element;
+	if (d === "*")
+	  left_right = true;
+	break;
+      }
+  }
   let dir;
-  if (event.keyCode == KeyCode.UP)
+  if (event.keyCode == KeyCode.HOME)
+    dir = 'HOME';
+  else if (event.keyCode == KeyCode.END)
+    dir = 'END';
+  else if (event.keyCode == KeyCode.UP)
     dir = -1;
   else if (event.keyCode == KeyCode.DOWN)
     dir = +1;
-  else if (event.keyCode == KeyCode.HOME)
-    dir = -99999;
-  else if (event.keyCode == KeyCode.END)
-    dir = +99999;
-  return move_focus (dir);
+  else if (left_right && event.keyCode == KeyCode.LEFT)
+    dir = 'LEFT';
+  else if (left_right && event.keyCode == KeyCode.RIGHT)
+    dir = 'RIGHT';
+  return move_focus (dir, subfocus);
 }
 
 /** Move focus to prev or next focus widget */
-export function move_focus (dir = 0) {
-  const home = dir < -1;
-  const up = dir == -1;
-  const down = dir == +1;
-  const end = dir > +1;
+export function move_focus (dir = 0, subfocus = false) {
+  const home = dir == 'HOME', end = dir == 'END';
+  const up = dir == -1, down = dir == +1;
+  const left = dir == 'LEFT', right = dir == 'RIGHT';
   const updown_focus = the_focus_guard.updown_focus;
   const updown_cycling = the_focus_guard.updown_cycling;
   const last_focus = the_focus_guard.last_focus;
-  if (!(home || up || down || end))
+  if (!(home || up || down || end || left || right))
     return false; // nothing to move
 
   if (the_focus_guard.focus_root_list.length == 0 || !updown_focus ||
-      !(up || down || home || end) ||
-      is_nav_input (document.activeElement) ||
-      (document.activeElement.tagName == "INPUT" &&
-       !is_button_input (document.activeElement)))
+      // is_nav_input (document.activeElement) || (document.activeElement.tagName == "INPUT" && !is_button_input (document.activeElement)) ||
+      !(up || down || home || end || left || right))
     return false; // not interfering
-  const root = the_focus_guard.focus_root_list[0][0];
+  const root = subfocus || the_focus_guard.focus_root_list[0][0];
   const focuslist = list_focusables (root);
   if (!focuslist)
     return false; // not interfering
@@ -1316,6 +1338,27 @@ export function move_focus (dir = 0) {
     next = (down || home) ? 0 : focuslist.length - 1;
   else if (home || end)
     next = home ? 0 : focuslist.length - 1;
+  else if (left || right)
+    {
+      const idx_pos = element_midpoint (focuslist[idx]);
+      let dist = { x: 9e99, y: 9e99 };
+      for (let i = 0; i < focuslist.length; i++)
+	if (i != idx)
+	  {
+	    const pos = element_midpoint (focuslist[i]);
+	    const d = { x: pos.x - idx_pos.x, y: pos.y - idx_pos.y };
+	    if ((right && d.x > 0) || (left && d.x < 0))
+	      {
+		d.x = Math.abs (d.x);
+		d.y = Math.abs (d.y);
+		if (d.x < dist.x || (d.x == dist.x && d.y < dist.y))
+		  {
+		    dist = d;
+		    next = i;
+		  }
+	      }
+	  }
+    }
   else // up || down
     {
       next = idx + (up ? -1 : +1);
@@ -1326,6 +1369,8 @@ export function move_focus (dir = 0) {
 	  else if (next >= focuslist.length)
 	    next -= focuslist.length;
 	}
+      else if (next < 0 || next >= focuslist.length)
+	next = undefined;
     }
   if (next >= 0 && next < focuslist.length)
     {
@@ -2102,7 +2147,13 @@ export function match_key_event (event, keyname)
 const hotkey_list = [];
 
 function hotkey_handler (event) {
-  const kdebug = () => undefined; // debug;
+  let kdebug = () => undefined; // kdebug = debug;
+  // avoid composition events, https://developer.cdn.mozilla.net/en-US/docs/Web/API/Element/keydown_event
+  if (event.isComposing || event.keyCode === 229)
+    {
+      kdebug ("hotkey_handler: ignore-composition: " + event.code + ' (' + document.activeElement.tagName + ')');
+      return false;
+    }
   // give precedence to navigatable element with focus
   if (is_nav_input (document.activeElement) ||
       (document.activeElement.tagName == "INPUT" && !is_button_input (document.activeElement)))
@@ -2326,7 +2377,7 @@ export function vue_observable_from_getters (tmpl, predicate) { // `this` is Vue
   const getter_cleanups = {};
   const notify_cleanups = {};
   let add_functions = false;
-  let odata; // Vue.reactive
+  let rdata; // Vue.reactive
   for (const key in tmpl)
     {
       if (tmpl[key] instanceof Function)
@@ -2346,9 +2397,9 @@ export function vue_observable_from_getters (tmpl, predicate) { // `this` is Vue
 	const result = !async_getter ? default_value :
 		       await async_getter (assign_getter_cleanup);
 	if (had_cleanup || getter_cleanups[key])
-	  odata[key] = result; // always reassign if cleanups are involved
-	else if (!equals_recursively (odata[key], result))
-	  odata[key] = result; // compare to reduce Vue updates
+	  rdata[key] = result; // always reassign if cleanups are involved
+	else if (!equals_recursively (rdata[key], result))
+	  rdata[key] = result; // compare to reduce Vue updates
       };
       const getter_and_listen = (reset) => {
 	if (reset) // if reset==true, getter() might not be callable
@@ -2357,7 +2408,7 @@ export function vue_observable_from_getters (tmpl, predicate) { // `this` is Vue
 	      assign_async_cleanup (notify_cleanups, key, undefined);
 	    if (getter_cleanups[key])
 	      assign_async_cleanup (getter_cleanups, key, undefined);
-	    odata[key] = default_value;
+	    rdata[key] = default_value;
 	  }
 	else
 	  {
@@ -2369,7 +2420,7 @@ export function vue_observable_from_getters (tmpl, predicate) { // `this` is Vue
       monitoring_getters.push (getter_and_listen);
     }
   // make all fields observable
-  odata = Vue.reactive (tmpl);
+  rdata = Vue.reactive (tmpl);
   // cleanup notifiers and getter results on `unmounted`
   const run_cleanups = () => {
     for (const key in notify_cleanups)
@@ -2379,46 +2430,34 @@ export function vue_observable_from_getters (tmpl, predicate) { // `this` is Vue
   };
   Vue.onUnmounted (run_cleanups); // TODO: check invocation
   // create trigger for forced updates
-  const ucount = Vue.reactive ({ c: 1 }); // reactive update counter
-  const updater = function () { ucount.c += 1; }; // forces observable update
-  // the $watch callback updates monitoring getters once `predicate` or `ucount`
-  // changes, but `predicate` needs wrapping to allow Promise returns
-  const watch_predicate = function () {
-    // all reactive accesses are tracked from within a $watch predicate, so:
-    // *always* invoke the reactive `ucount.c` getter and…
-    const p = ucount.c && predicate.call (this); // …the custom `predicate`
-    // Promises need to re-trigger the $watch once resolved
-    if (p instanceof Promise)
-      (async () => {
-	const value = await p;
-	if (value !== watch_predicate.last)
-	  {
-	    watch_predicate.last = value;
-	    updater();
-	  }
-      }) ();
-    else
-      watch_predicate.last = p;
-    return watch_predicate.last;
-  };
-  watch_predicate.last = undefined; // initial value for async `predicate`
+  let ucount;
   // install tmpl functions
   if (add_functions)
-    for (const key in tmpl)
-      {
-	if (tmpl[key] == observable_force_update)
-	  odata[key] = updater;      // add method to force updates
-	else if (tmpl[key] instanceof Function)
-	  odata[key] = tmpl[key];
-      }
+    {
+      let updater;
+      for (const key in tmpl)
+	{
+	  if (tmpl[key] == observable_force_update)
+	    {
+	      if (!updater)
+		{
+		  ucount = Vue.reactive ({ c: 1 }); // reactive update counter
+		  updater = function () { ucount.c += 1; }; // forces observable update
+		}
+	      rdata[key] = updater;      // add method to force updates
+	    }
+	  else if (tmpl[key] instanceof Function)
+	    rdata[key] = tmpl[key];
+	}
+    }
   // create watch, triggering the getters if predicate turns true
-  this.$watch (watch_predicate,
-	       (newval /*, oldval*/) => {
-		 const reset = !newval;
-		 monitoring_getters.forEach (getter_and_listen => getter_and_listen (reset));
-	       },
-	       { immediate: true });
-  return odata;
+  //const dummy = [undefined];
+  Vue.watchEffect (async () => {
+    const r = (ucount ? ucount.c : 1) && await predicate.call (this);
+    const reset = !r;
+    monitoring_getters.forEach (getter_and_listen => getter_and_listen (reset));
+  });
+  return rdata;
 }
 
 /** Join template literal arguments into a String */
@@ -2438,6 +2477,21 @@ export function strpad (string, len, fill = ' ') {
       string = fill.substr (0, d) + string;
     }
   return string;
+}
+
+export function zero_pad (string, n = 2) {
+  string = String (string);
+  while (string.length < n)
+    string = '0' + string;
+  return string;
+}
+
+export function fmt_date (datelike) {
+  const a = new Date (datelike);
+  const y = zero_pad (a.getFullYear(), 4);
+  const m = zero_pad (a.getMonth(), 2);
+  const d = zero_pad (a.getDay(), 2);
+  return d + '-' + m + '-' + y;
 }
 
 const default_seed = Math.random() * 4294967295 >>> 0;

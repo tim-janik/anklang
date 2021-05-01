@@ -69,6 +69,7 @@ function process_file (filename, config) {
 	    {
 	      bits[3] = '\n';
 	      write_style (filename, ofile, config, '\n'.repeat (newlines) + bits.join (''));
+	      bits[2] = bits[2].replace (/([`\\])/g, '\\$1');
 	    }
 	  else
 	    {

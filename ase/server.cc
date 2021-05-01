@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "server.hh"
 #include "jsonipc/jsonipc.hh"
+#include "crawler.hh"
 #include "platform.hh"
 #include "properties.hh"
 #include "serialize.hh"
@@ -230,6 +231,13 @@ const Value&
 Server::get_session_data (const String &key) const
 {
   return session_data[key];
+}
+
+// == FileCrawler ==
+ResourceCrawlerP
+Server::cwd_crawler ()
+{
+  return FileCrawler::make_shared (Path::cwd());
 }
 
 // == Choice ==

@@ -34,24 +34,6 @@
 </template>
 
 <script>
-function drivers2picklist (hint, e) {
-  let noticeclass = '';
-  if (e.notice.startsWith ("Warning:"))
-    noticeclass = "b-preferencesdialog-warning";
-  if (e.notice.startsWith ("Note:") || e.notice.startsWith ("Notice:"))
-    noticeclass = "b-preferencesdialog-notice";
-  const item = {
-    uri:  e.devid,
-    icon:  this.driver_icon (e, hint),
-    label: e.device_name,
-    line1: e.capabilities,
-    line2: e.device_info,
-    // line8: 'Priority: ' + e.priority.toString (16),
-    line9: e.notice, line9class: noticeclass,
-  };
-  return item;
-}
-
 async function augment_property (xprop) {
   if (xprop.has_choices_)
     {

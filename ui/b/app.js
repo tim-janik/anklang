@@ -91,6 +91,18 @@ export class AppClass {
     if (Data.piano_roll_source)
       this.switch_panel2 ('p');
   }
+  async load_project_checked (project_or_path) {
+    project_or_path = await project_or_path;
+    const err = await this.load_project (project_or_path);
+    if (err !== Ase.Error.NONE)
+      App.async_modal_dialog ("File Open Error",
+			      "Failed to open project.\n" +
+			      project_or_path + ": " +
+			      await Ase.server.error_blurb (err), [
+				{ label: 'Dismiss', autofocus: true },
+			      ], 'ERROR');
+    return err;
+  }
   async load_project (project_or_path) {
     project_or_path = await project_or_path;
     // always replace the existing project with a new one
@@ -101,17 +113,9 @@ export class AppClass {
 	// load from disk if possible
 	if (project_or_path)
 	  {
-	    const ret = await newproject.restore_from_file (project_or_path);
+	    const ret = Ase.Error.FORMAT_UNKNOWN || await newproject.restore_from_file (project_or_path);
 	    if (ret != Ase.Error.NONE)
-	      {
-		await App.async_modal_dialog ("File Open Error",
-					      "Failed to open project.\n" +
-					      project_or_path + ": " +
-					      await Ase.server.describe_error (ret),
-					      [ 'Dismiss', 0 ],
-					      'ERROR');
-		return ret;
-	      }
+	      return ret;
 	    const basename = project_or_path.replace (/.*\//, '');
 	    await newproject.set_name (basename);
 	  }
@@ -140,6 +144,7 @@ export class AppClass {
     return Ase.Error.NONE;
   }
   async save_project (projectpath) {
+    return Ase.Error.UNIMPLEMENTED; // TODO: save_project
     const self_contained = true;
     return !Data.project ? Ase.Error.INTERNAL :
 	   Data.project.store (projectpath, self_contained);
