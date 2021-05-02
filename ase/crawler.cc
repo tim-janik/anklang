@@ -19,9 +19,11 @@ namespace Ase {
 // == FileCrawler ==
 JSONIPC_INHERIT (FileCrawler, ResourceCrawler);
 
-FileCrawler::FileCrawler (const String &cwd)
+FileCrawler::FileCrawler (const String &cwd) :
+  cwd_ ("/")
 {
-  cwd_ = Path::abspath (cwd);
+  if (!cwd.empty())
+    assign (cwd);
 }
 
 ResourceS
@@ -112,7 +114,14 @@ FileCrawler::go_up ()
 void
 FileCrawler::assign (const String &path)
 {
-  cwd_ = canonify (path, "e");
+  String dir = path.empty() ? "." : path;
+  if (!path.empty() && path.find ("/") == path.npos)
+    {
+      dir = get_dir (path);
+      if (dir == "/") // failed to expand special word
+        dir = path;
+    }
+  cwd_ = canonify (dir, "e");
   while (cwd_.size() > 1 && cwd_.back() == '/')
     cwd_.resize (cwd_.size() - 1);
   emit_event ("notify", "current");

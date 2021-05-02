@@ -324,7 +324,7 @@ public:
   virtual ProjectP last_project   () = 0;       ///< Retrieve the last created project.
   virtual ProjectP create_project (String projectname) = 0; ///< Create a new project (name is modified to be unique if necessary.
   // Browsing
-  ResourceCrawlerP cwd_crawler    ();
+  ResourceCrawlerP dir_crawler    (const String &cwd = ""); ///< Create crawler to navigate directories.
   // testing
   void         set_session_data (const String &key, const Value &v); ///< Assign session data.
   const Value& get_session_data (const String &key) const;           ///< Retrieve session data.

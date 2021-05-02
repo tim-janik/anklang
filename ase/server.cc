@@ -235,9 +235,9 @@ Server::get_session_data (const String &key) const
 
 // == FileCrawler ==
 ResourceCrawlerP
-Server::cwd_crawler ()
+Server::dir_crawler (const String &cwd)
 {
-  return FileCrawler::make_shared (Path::cwd());
+  return FileCrawler::make_shared (cwd);
 }
 
 // == Choice ==
