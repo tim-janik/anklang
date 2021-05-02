@@ -2,6 +2,7 @@
 #include "path.hh"
 #include "platform.hh"
 #include "utils.hh"
+#include "inifile.hh"
 #include "internal.hh"
 #include <unistd.h>     // getuid
 #include <sys/stat.h>   // lstat
@@ -194,6 +195,63 @@ runtime_dir ()
   if (var && isabs (var))
     return var;
   return string_format ("/run/user/%u", getuid());
+}
+
+using StringStringM = std::map<String,String>;
+
+static StringStringM
+xdg_user_dirs()
+{
+  StringStringM defs = {
+    { "XDG_DESKTOP_DIR",        "$HOME/Desktop" },
+    { "XDG_DOWNLOAD_DIR",       "$HOME/Downloads" },
+    { "XDG_TEMPLATES_DIR",      "$HOME/Templates" },
+    { "XDG_PUBLICSHARE_DIR",    "$HOME/Public" },
+    { "XDG_DOCUMENTS_DIR",      "$HOME/Documents" },
+    { "XDG_MUSIC_DIR",          "$HOME/Music" },
+    { "XDG_PICTURES_DIR",       "$HOME/Pictures" },
+    { "XDG_VIDEOS_DIR",         "$HOME/Videos" },
+  };
+  String udirs = join (config_home(), "user-dirs.dirs"); // https://wiki.archlinux.org/title/XDG_user_directories
+  String data = stringread (udirs);
+  if (!data.empty())
+    {
+      IniFile ff { udirs, data };
+      const String global = "";
+      for (String key : ff.attributes (global))
+        {
+          const String v = ff.value_as_string (global + "." + key);
+          if (!key.empty() && !v.empty())
+            defs[key] = v;
+        }
+    }
+  const String uhome = user_home();
+  for (auto &it : defs)
+    if (string_startswith (it.second, "$HOME/"))
+      it.second = uhome + it.second.substr (5);
+  if (0)
+    for (const auto &pair : defs)
+      printerr ("XDG: %s = %s\n", pair.first, pair.second);
+  return defs;
+}
+
+String
+xdg_dir (const String &xdgdir)
+{
+  const String udir = string_toupper (xdgdir);
+  if (udir == "HOME")
+    return user_home();
+  if (udir == "DATA")
+    return data_home();
+  if (udir == "CONFIG")
+    return config_home();
+  if (udir == "CACHE")
+    return cache_home();
+  if (udir == "RUNTIME")
+    return runtime_dir();
+  static const StringStringM defs = xdg_user_dirs();
+  const auto it = defs.find ("XDG_" + string_toupper (xdgdir) + "_DIR");
+  return it != defs.end() ? it->second : "";
 }
 
 /// Get the $XDG_CONFIG_DIRS directory list, see: https://specifications.freedesktop.org/basedir-spec/latest

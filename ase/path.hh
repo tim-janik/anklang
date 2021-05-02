@@ -37,6 +37,7 @@ bool         mkdirs              (const String &dirpath, uint mode = 0750);
 StringPair   split_extension     (const std::string &filepath, bool lastdot = false);
 String       expand_tilde        (const String &path);
 String       user_home           (const String &username = "");
+String       xdg_dir             (const String &xdgdir = "");
 String       data_home           ();
 String       config_home         ();
 String       config_names        ();
