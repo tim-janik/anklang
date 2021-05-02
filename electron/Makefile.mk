@@ -16,7 +16,7 @@ $>/electron/anklang: $(electron/js.sources) electron/Makefile.mk $>/node_modules
 	$Q mkdir -p $(@D)/resources/app
 	$Q $(CP) $(electron/js.sources) $(@D)/resources/app/
 	$Q echo '{ "private": true,'					>  $(@D)/resources/app/package.json
-	$Q echo '  "name": "Anklang",'					>> $(@D)/resources/app/package.json
+	$Q echo '  "name": "anklang/electron",'				>> $(@D)/resources/app/package.json
 	$Q echo '  "version": "$(version_m.m.m)",'			>> $(@D)/resources/app/package.json
 	$Q echo '  "main": "main.js",'					>> $(@D)/resources/app/package.json
 	$Q echo '  "mode": "$(MODE)" }'					>> $(@D)/resources/app/package.json
