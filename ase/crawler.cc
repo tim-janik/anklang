@@ -67,9 +67,8 @@ FileCrawler::get_dir (const String &which)
     return cwd_;
   if (string_tolower (which) == "demo")
     return Ase::runpath (RPath::DEMODIR);
-  if (string_tolower (which) == "home")
-    return Ase::runpath (RPath::HOMEDIR);
-  return "/";
+  String dir = Path::xdg_dir (which);
+  return dir.empty() ? "/" : dir;
 }
 
 Resource
