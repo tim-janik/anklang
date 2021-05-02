@@ -50,7 +50,6 @@ runpath (RPath rpath)
     case RPath::LOCALEDIR:      return libexec_installdir + "/locale";
     case RPath::LIBDIR:         return libexec_installdir + "/lib" + objdir;
     case RPath::DEMODIR:        return libexec_installdir + "/media/Demos";
-    case RPath::HOMEDIR:        return Path::user_home();
     case RPath::LADSPADIRS:     return construct_ladspa_path();
     }
   return "";
