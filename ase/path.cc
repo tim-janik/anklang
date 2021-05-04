@@ -8,10 +8,10 @@
 #include <sys/stat.h>   // lstat
 #include <cstring>      // strchr
 #include <mutex>
+#include <filesystem>
+namespace Fs = std::filesystem;
 
-#include <glib.h>
-
-#define IS_DIRCHAR(c)                   ((c) == ASE_DIRCHAR || (c) == ASE_DIRCHAR2)
+#define IS_DIRSEP(c)                    ((c) == ASE_DIRSEP || (c) == ASE_DIRSEP2)
 #define IS_SEARCHPATH_SEPARATOR(c)      ((c) == ASE_SEARCHPATH_SEPARATOR || (c) == ';') // make ';' work under Windows and Unix
 #define UPPER_ALPHA(L)                  (L >= 'A' && L <= 'Z')
 #define LOWER_ALPHA(L)                  (L >= 'a' && L <= 'z')
@@ -43,24 +43,22 @@ startswith_dosdrive (const String &s)
   return ASE_DOS_PATHS && s.size() >= 2 && ISALPHA (s[0]) && s[1] == ':';
 }
 
-/// Retrieve the directory part of the filename @ path.
+/// Retrieve the directory part of the filename `path`.
 String
 dirname (const String &path)
 {
-  char *gdir = g_path_get_dirname (path.c_str());
-  String dname = gdir;
-  g_free (gdir);
-  return dname;
+  const String dir = Fs::path (path).parent_path();
+  return dir.empty() ? "." : dir;
 }
 
 /// Strips all directory components from @a path and returns the resulting file name.
 String
 basename (const String &path)
 {
-  const char *base = strrchr (path.c_str(), ASE_DIRCHAR);
-  if (ASE_DIRCHAR2 != ASE_DIRCHAR)
+  const char *base = strrchr (path.c_str(), ASE_DIRSEP);
+  if (ASE_DIRSEP2 != ASE_DIRSEP)
     {
-      const char *base2 = strrchr (path.c_str(), ASE_DIRCHAR2);
+      const char *base2 = strrchr (path.c_str(), ASE_DIRSEP2);
       if (base2 > base || !base)
         base = base2;
     }
@@ -112,9 +110,9 @@ bool
 isabs (const String &path)
 {
   return_unless (path.size(), false);
-  if (IS_DIRCHAR (path[0]))
+  if (IS_DIRSEP (path[0]))
     return true;
-  if (startswith_dosdrive (path) && IS_DIRCHAR (path[2]))
+  if (startswith_dosdrive (path) && IS_DIRSEP (path[2]))
     return true;
   return false;
 }
@@ -126,11 +124,11 @@ isdirname (const String &path)
   uint l = path.size();
   if (path == "." || path == "..")
     return true;
-  if (l >= 1 && IS_DIRCHAR (path[l-1]))
+  if (l >= 1 && IS_DIRSEP (path[l-1]))
     return true;
-  if (l >= 2 && IS_DIRCHAR (path[l-2]) && path[l-1] == '.')
+  if (l >= 2 && IS_DIRSEP (path[l-2]) && path[l-1] == '.')
     return true;
-  if (l >= 3 && IS_DIRCHAR (path[l-3]) && path[l-2] == '.' && path[l-1] == '.')
+  if (l >= 3 && IS_DIRSEP (path[l-3]) && path[l-2] == '.' && path[l-1] == '.')
     return true;
   return false;
 }
@@ -139,7 +137,19 @@ isdirname (const String &path)
 bool
 mkdirs (const String &dirpath, uint mode)
 {
-  return g_mkdir_with_parents (dirpath.c_str(), mode) == 0;
+  std::vector<Fs::path> dirs;
+  Fs::path target = dirpath;
+  if (check (target, "d"))
+    return true;                // IS_DIR
+  if (check (target, "e"))
+    return false;               // !IS_DIR
+  if (target.has_relative_path() &&
+      !mkdirs (target.parent_path(), mode))
+    return false;               // !IS_DIR
+  if (mkdir (target.native().c_str(), mode) == 0 ||
+      check (target, "d"))
+    return true;                // IS_DIR
+  return false;                 // !IS_DIR
 }
 
 /// Get a @a user's home directory, uses $HOME if no @a username is given.
@@ -327,8 +337,8 @@ expand_tilde (const String &path)
 {
   if (path[0] != '~')
     return path;
-  const size_t dir1 = path.find (ASE_DIRCHAR);
-  const size_t dir2 = ASE_DIRCHAR == ASE_DIRCHAR2 ? String::npos : path.find (ASE_DIRCHAR2);
+  const size_t dir1 = path.find (ASE_DIRSEP);
+  const size_t dir2 = ASE_DIRSEP == ASE_DIRSEP2 ? String::npos : path.find (ASE_DIRSEP2);
   const size_t dir = std::min (dir1, dir2);
   String username;
   if (dir != String::npos)
@@ -344,8 +354,27 @@ expand_tilde (const String &path)
 String
 skip_root (const String &path)
 {
-  const char *frag = g_path_skip_root (path.c_str());
-  return frag;
+  return_unless (!path.empty(), path);
+#ifdef  _WIN32          // strip C:/
+  if (path.size() >= 3 &&
+      ( (path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z') ) &&
+      path[1] == ':' && IS_DIRSEP (path[2]))
+    return path.substr (3);
+#endif
+#ifdef  _WIN32          // strip //server/
+  if (path.size() >= 3 && IS_DIRSEP (path[0]) && IS_DIRSEP (path[1]) && !IS_DIRSEP (path[2]))
+    {
+      const char *p = &path[3];
+      while (*p && !IS_DIRSEP (*p))
+        p++;
+      if (IS_DIRSEP (*p))
+        return path.substr (++p - &path[0]);
+    }
+#endif
+  const char *p = &path[0];
+  while (*p && IS_DIRSEP (*p))
+    p++;
+  return path.substr (p - &path[0]);
 }
 
 static int
@@ -536,7 +565,7 @@ searchpath_split (const String &searchpath)
 bool
 searchpath_contains (const String &searchpath, const String &element)
 {
-  const bool dirsearch = element.size() > 0 && IS_DIRCHAR (element[element.size() - 1]);
+  const bool dirsearch = element.size() > 0 && IS_DIRSEP (element[element.size() - 1]);
   const String needle = dirsearch && element.size() > 1 ? element.substr (0, element.size() - 1) : element; // strip trailing slash
   size_t pos = searchpath.find (needle);
   while (pos != String::npos)
@@ -544,7 +573,7 @@ searchpath_contains (const String &searchpath, const String &element)
       size_t end = pos + needle.size();
       if (pos == 0 || IS_SEARCHPATH_SEPARATOR (searchpath[pos - 1]))
         {
-          if (dirsearch && IS_DIRCHAR (searchpath[end]))
+          if (dirsearch && IS_DIRSEP (searchpath[end]))
             end++; // skip trailing slash in searchpath segment
           if (searchpath[end] == 0 || IS_SEARCHPATH_SEPARATOR (searchpath[end]))
             return true;
@@ -813,14 +842,14 @@ CxxPasswd::CxxPasswd (std::string username) :
 namespace { // Anon
 using namespace Ase;
 
-TEST_INTEGRITY (ase_test_paths);
+TEST_INTEGRITY (path_tests);
 static void
-ase_test_paths()
+path_tests()
 {
   String p, s;
   // Path::join
   s = Path::join ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f");
-#if ASE_DIRCHAR == '/'
+#if ASE_DIRSEP == '/'
   p = "0/1/2/3/4/5/6/7/8/9/a/b/c/d/e/f";
 #else
   p = "0\\1\\2\\3\\4\\5\\6\\7\\8\\9\\a\\b\\c\\d\\e\\f";
@@ -837,8 +866,8 @@ ase_test_paths()
   // Path
   bool b = Path::isabs (p);
   TCMP (b, ==, false);
-  const char dirsep[2] = { ASE_DIRCHAR, 0 };
-#if ASE_DIRCHAR == '/'
+  const char dirsep[2] = { ASE_DIRSEP, 0 };
+#if ASE_DIRSEP == '/'
   s = Path::join (dirsep, s);
 #else
   s = Path::join ("C:\\", s);
@@ -886,6 +915,18 @@ ase_test_paths()
   TCMP (Path::searchpath_contains ("/foo/:/bar", "/foo/"), ==, true); // true because "/foo/" is dir search
   TCMP (Path::searchpath_contains ("/foo/:/bar", "/bar"), ==, true); // file search matches /bar
   TCMP (Path::searchpath_contains ("/foo/:/bar", "/bar/"), ==, true); // dir search matches /bar
+  TCMP (Path::skip_root ("foo/"), ==, "foo/");
+  TCMP (Path::skip_root ("/foo/"), ==, "foo/");
+  TCMP (Path::skip_root ("///foo/"), ==, "foo/");
+#ifdef  _WIN32
+  TCMP (Path::skip_root ("//foo/."), ==, ".");
+  TCMP (Path::skip_root ("C:/foo/."), ==, "foo/.");
+  TCMP (Path::skip_root ("\\\\foo\\."), ==, ".");
+  TCMP (Path::skip_root ("C:\\foo\\."), ==, "foo\\.");
+#else
+  TCMP (Path::skip_root ("//foo/."), ==, "foo/.");
+  TCMP (Path::skip_root ("C:/foo/."), ==, "C:/foo/.");
+#endif
 }
 
 } // Anon
