@@ -20,9 +20,9 @@
 // == CxxPasswd =
 namespace { // Anon
 struct CxxPasswd {
-  std::string pw_name, pw_passwd, pw_gecos, pw_dir, pw_shell;
-  uid_t pw_uid;
-  gid_t pw_gid;
+  String pw_name, pw_passwd, pw_gecos, pw_dir, pw_shell;
+  uid_t pw_uid = -1;
+  gid_t pw_gid = -1;
   CxxPasswd (std::string username = "");
 };
 } // Anon
@@ -336,6 +336,8 @@ expand_tilde (const String &path)
   else
     username = path.substr (1);
   const String userhome = user_home (username);
+  if (userhome.empty())
+    return path;
   return join (userhome, dir == String::npos ? "" : path.substr (dir));
 }
 
@@ -875,6 +877,7 @@ ase_test_paths()
   const char *env_logname = getenv ("LOGNAME");
   if (env_home && env_logname)
     TCMP (Path::expand_tilde ("~" + String (env_logname)), ==, env_home);
+  TCMP (Path::expand_tilde ("~:unknown/"), ==, "~:unknown/");
   TCMP (Path::searchpath_multiply ("/:/tmp", "foo:bar"), ==, "/foo:/bar:/tmp/foo:/tmp/bar");
   const String abs_basedir = Path::abspath (Ase::runpath (Ase::RPath::PREFIXDIR));
   TCMP (Path::searchpath_list ("/:" + abs_basedir, "e"), ==, StringS ({ "/", abs_basedir }));
