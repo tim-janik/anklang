@@ -69,6 +69,13 @@ basename (const String &path)
   return path;
 }
 
+/// Convert `path` to normal form.
+String
+normalize (const String &path)
+{
+  return Fs::path (path).lexically_normal();
+}
+
 /// Resolve links and directory references in @a path and provide a canonicalized absolute pathname.
 String
 realpath (const String &path)
@@ -146,9 +153,12 @@ mkdirs (const String &dirpath, uint mode)
   if (target.has_relative_path() &&
       !mkdirs (target.parent_path(), mode))
     return false;               // !IS_DIR
-  if (mkdir (target.native().c_str(), mode) == 0 ||
-      check (target, "d"))
+  if (mkdir (target.native().c_str(), mode) == 0)
     return true;                // IS_DIR
+  const int saved_errno = errno;
+  if (check (target, "d"))
+    return true;                // IS_DIR
+  errno = saved_errno;
   return false;                 // !IS_DIR
 }
 

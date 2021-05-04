@@ -29,6 +29,7 @@ namespace Path {
 
 String       dirname             (const String &path);
 String       basename            (const String &path);
+String       normalize           (const String &path);
 String       realpath            (const String &path);
 String       abspath             (const String &path, const String &incwd = "");
 bool         isabs               (const String &path);
