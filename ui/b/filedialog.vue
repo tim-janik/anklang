@@ -111,6 +111,7 @@ class FileDialog extends Envue.Component {
     super (vm);
     this.last_cwd = this.$vm.cwd;
     this.focus_after_refill = true;
+    this.select_dir = false;
     // template for reactive Proxy object
     const r = {
       __update__: Util.observable_force_update,
@@ -125,9 +126,8 @@ class FileDialog extends Envue.Component {
     this.r = this.observable_from_getters (r, () => this.crawler);
     this.crawler = null;
     (async () => {
-      this.crawler = await Ase.server.cwd_crawler(); // non-reactive assignment
-      if (this.last_cwd)
-	this.crawler.assign (this.last_cwd);
+      const cwd = this.last_cwd || this.$vm.cwd;
+      this.crawler = await Ase.server.dir_crawler (cwd); // non-reactive assignment
       this.r.__update__(); // so force update
     }) ();
     this.focus_fileentry = () => {
@@ -137,82 +137,84 @@ class FileDialog extends Envue.Component {
   }
   ctrl_l = "Ctrl+KeyL";
   directory() {
-    let path = "" + this.r?.folder?.uri;
+    let path = this.r?.folder?.uri || '/';
     path = path.replace (/^file:\/+/, '/');
     return path;
   }
+  async canonify_input (pathfragment, constraindirs = true) {
+    // strip file:/// prefix if any
+    let path = pathfragment.replace (/^file:\/+/, '/'); // strip protocol
+    // canonify and make absolute
+    const root = (this.r.folder?.uri || "/").replace (/^file:\/+/, '/'); // strip protocol
+    if (this.select_dir && path && !path.endsWith ("/"))
+      path += "/";
+    path = await this.crawler.canonify (root, path, constraindirs, false);
+    // handle directory vs file path
+    if (!path.endsWith ('/') && // path is file (maybe notexisting)
+	this.$vm.ext)           // ensure extension
+      {
+	path = path.replace (/[.]+$/, ''); // strip trailing dots
+	if (path && !path.endsWith (this.$vm.ext))
+	  path += this.$vm.ext;
+      }
+    return path;
+  }
   async assign_path (filepath) {
-    // file:-URI to abspath
-    filepath = filepath.replace (/^file:\/+/, '/'); // strip protocol
-    // special expansions
-    if (filepath.startsWith ('~/') || filepath == '~') {
-      filepath = (await this.crawler.get_dir ("home")) + filepath.substr (1);
-    }
-    // make absolute
-    if (!filepath.startsWith ('/'))
+    let path = await this.canonify_input (filepath);
+    // apply directory / file path
+    if (path.endsWith ('/')) // filepath is a directory
+      this.r.filename = '';
+    else // handle filename (maybe notexisting)
       {
-	filepath = this.r.folder.uri + '/' + filepath;
-	filepath = filepath.replace (/^file:\/+/, '/'); // strip protocol
+	this.r.filename = path.replace (/^.*\//, ''); // basename
+	path = path.replace (/[^\/]*$/, ''); // dirname
       }
-    // handle directory selection
-    const asdir = await this.crawler.asdir (filepath);
-    if (asdir) // filepath is a directory
-      {
-	filepath = asdir;
-	this.r.filename = '';
-      }
-    else // dealing with a (maybe notexisting) filename
-      {
-	this.r.filename = filepath.replace (/^.*\//, ''); // basename
-	if (this.$vm.ext) {
-	  this.r.filename = filepath.replace (/[.]+$/, ''); // strip trailing dots
-	  if (this.r.filename && !this.r.filename.endsWith (this.$vm.ext))
-	    this.r.filename += this.$vm.ext;
-	}
-	filepath = filepath.replace (/[^\/]*$/, ''); // dirname
-      }
-    // canonify dirname, ensure directory exists
-    filepath = await this.crawler.canonify (filepath, "e");
-    if (!filepath.endsWith ('/'))
-      filepath += '/';
-    await this.crawler.assign (filepath);
-    return !asdir; // true if assignment is a file, not dir
+    // crawler ensures existing directories
+    await this.crawler.assign (path);
   }
-  fileentry_enter (event) {
-    this.fileentry_enter_pressed = document.activeElement === this.$vm.$refs.fileentry;
-    // <input/> emits @keydown.enter *before* @change, so set a flag
-  }
-  async fileentry_change() {
-    await this.file_navigate (this.$vm.$refs.fileentry.value);
-    const submit = this.fileentry_enter_pressed && document.activeElement === this.$vm.$refs.fileentry;
-    this.fileentry_enter_pressed = false;
-    if (submit)
-      this.emit_select();
-  }
-  async file_navigate (newpath) {
+  file_navigate (newpath) {
     // force Vue to update <input/> even if r.folder.uri stays the same
     if (this.$vm.$refs?.folderview)
       this.$vm.$refs?.folderview.clear_entries(); // performance hack
     this.r.entries = []; // this.r.folder.uri = '⥁';
     // update paths
-    return await this.assign_path (newpath);
+    return this.assign_path (newpath); // async
+  }
+  fileentry_enter (event) {
+    // <input/> emits @keydown.enter *before* @change, in_async_select handles synchronization
+    this.emit_select (async () => {
+      // Submit the *unconstrained* input value, it is possible the current value is entered on purpose
+      const path = this.$vm.$refs.fileentry.value;
+      return await this.canonify_input (path, false);
+    });
+  }
+  async fileentry_change() {
+    await this.in_async_select; // synchronize with concurrent emit_select() handling
+    if (this.$vm.$refs.fileentry) // $refs.fileentry might be gone after await
+      await this.file_navigate (this.$vm.$refs.fileentry.value);
   }
   async entry_select (entry) {
     if (entry.type == Ase.ResourceType.FILE && entry?.uri)
       this.r.filename = entry?.uri.replace (/^.*\//, ''); // basename
   }
   async entry_click (entry) {
-    let has_file = false;
     if (entry?.uri)
-      has_file = await this.file_navigate (entry.uri);
-    if (has_file)
-      await this.emit_select();
+      await this.emit_select (() => this.canonify_input (entry.uri), true);
   }
-  async emit_select (allow_dir = false) {
-    const dir = await this.crawler.get_dir (".");
-    const path = (dir.endsWith ('/') ? dir : dir + '/') + this.r.filename;
-    if (allow_dir || this.r.filename)
-      this.$vm.$emit ('select', path);
+  emit_select (pathfunc = undefined, navigate_to_dir = false) {
+    if (this.in_async_select)
+      return this.in_async_select;
+    // allow other parts to synchronize with concurent emit_select() handling
+    this.in_async_select = (async () => {
+      let path = pathfunc ? pathfunc() : this.canonify_input (this.r.filename);
+      path = await path;
+      if (this.select_dir || !path.endsWith ('/'))
+	await this.$vm.$emit ('select', path);
+      else if (navigate_to_dir)
+	await this.file_navigate (path);
+      this.in_async_select = null;
+    }) ();
+    return this.in_async_select;
   }
   emit_close (event) {
     event && event.preventDefault();
