@@ -296,12 +296,9 @@ class ResourceCrawler : public virtual Object {
 public:
   virtual ResourceS list_entries   () = 0;                      ///< List entries of a folder.
   virtual Resource  current_folder () = 0;                      ///< Describe current folder.
-  virtual void      go_up          () = 0;                      ///< Move up by one level.
-  virtual void      go_down        (const String &name) = 0;    ///< Move down into an entry.
   virtual void      assign         (const String &path) = 0;    ///< Move to a different path.
-  virtual String    asdir          (const String &dirname) = 0; ///< Canonify directory if it exists.
-  virtual String    canonify       (const String &path, const String &checks) = 0; ///< Canonify path.
-  virtual String    get_dir        (const String &which) = 0;   ///< Get directory for file crawlers.
+  /// Return absolute path, slash-terminated if directory, constrain to existing paths.
+  virtual String    canonify       (const String &cwd, const String &fragment, bool constraindir, bool constrainfile) = 0;
 };
 
 /// Central singleton, serves as API entry point.
