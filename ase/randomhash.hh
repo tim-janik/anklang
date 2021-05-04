@@ -43,6 +43,7 @@ struct SHA3_224 {
   void      reset       ();         ///< Reset state to feed and retrieve a new hash value.
   void      update      (const uint8_t *data, size_t length);   ///< Feed data to be hashed.
   void      digest      (uint8_t hashvalue[28]);                ///< Retrieve the resulting hash value.
+  void      update      (const String &s) { update ((const uint8_t*) &s[0], s.size()); }
 private:
   AlignedPOD<232> mem_;
   struct    State;
@@ -60,6 +61,7 @@ struct SHA3_256 {
   void      reset       ();         ///< Reset state to feed and retrieve a new hash value.
   void      update      (const uint8_t *data, size_t length);   ///< Feed data to be hashed.
   void      digest      (uint8_t hashvalue[32]);                ///< Retrieve the resulting hash value.
+  void      update      (const String &s) { update ((const uint8_t*) &s[0], s.size()); }
 private:
   AlignedPOD<232> mem_;
   struct    State;
@@ -77,6 +79,7 @@ struct SHA3_384 {
   void      reset       ();         ///< Reset state to feed and retrieve a new hash value.
   void      update      (const uint8_t *data, size_t length);   ///< Feed data to be hashed.
   void      digest      (uint8_t hashvalue[48]);                ///< Retrieve the resulting hash value.
+  void      update      (const String &s) { update ((const uint8_t*) &s[0], s.size()); }
 private:
   AlignedPOD<232> mem_;
   struct    State;
@@ -94,6 +97,7 @@ struct SHA3_512 {
   void      reset       ();         ///< Reset state to feed and retrieve a new hash value.
   void      update      (const uint8_t *data, size_t length);   ///< Feed data to be hashed.
   void      digest      (uint8_t hashvalue[64]);                ///< Retrieve the resulting hash value.
+  void      update      (const String &s) { update ((const uint8_t*) &s[0], s.size()); }
 private:
   AlignedPOD<232> mem_;
   struct    State;
@@ -111,6 +115,7 @@ struct SHAKE128 {
   void      reset           ();         ///< Reset state to feed and retrieve a new hash value.
   void      update          (const uint8_t *data, size_t length);   ///< Feed data to be hashed.
   void      squeeze_digest  (uint8_t *hashvalues, size_t n);        ///< Retrieve an arbitrary number of hash value bytes.
+  void      update          (const String &s) { update ((const uint8_t*) &s[0], s.size()); }
 private:
   AlignedPOD<232> mem_;
   struct    State;
@@ -128,6 +133,7 @@ struct SHAKE256 {
   void      reset           ();         ///< Reset state to feed and retrieve a new hash value.
   void      update          (const uint8_t *data, size_t length);   ///< Feed data to be hashed.
   void      squeeze_digest  (uint8_t *hashvalues, size_t n);        ///< Retrieve an arbitrary number of hash value bytes.
+  void      update          (const String &s) { update ((const uint8_t*) &s[0], s.size()); }
 private:
   AlignedPOD<232> mem_;
   struct    State;
