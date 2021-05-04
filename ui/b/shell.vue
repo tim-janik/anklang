@@ -213,12 +213,13 @@ class Shell extends Envue.Component {
     if (this.fs.resolve)
       return undefined;
     Object.assign (this.fs, opt);
-    const p = new Promise (r =>
-      this.fs.resolve = r	// shows file selector
-    );
-    const result = await p;
-    this.fs.resolve = null;
-    return result;
+    let resolve;
+    const fileselector_promise = new Promise (r => resolve = r);
+    this.fs.resolve = path => { // assignment shows file selector
+      this.fs.resolve = null;   // assignment hides file selector
+      resolve (path);
+    };
+    return await fileselector_promise;
   }
   async_modal_dialog = async_modal_dialog;
 }
