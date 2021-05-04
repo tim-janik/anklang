@@ -183,7 +183,7 @@ async function list_tracks () {
 }
 
 async function tick_moniotr (addcleanup) {
-  return null; // TODO: implement ProjectTelemetry
+  if (1) return null; // TODO: implement ProjectTelemetry
   const mon = {};
   // retrieve SHM locations
   let tickpos_offset = this.project.get_shm_offset (Ase.ProjectTelemetry.I32_TICK_POINTER);

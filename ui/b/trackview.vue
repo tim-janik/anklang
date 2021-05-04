@@ -146,8 +146,7 @@ const mindb = -48.0; // -96.0;
 const maxdb =  +6.0; // +12.0;
 
 async function channel_moniotr (ch, addcleanup) {
-  return null; // TODO: implement channel_moniotr handling
-
+  if (1) return null; // TODO: implement channel_moniotr handling
   const mon = {};
   // create signal monitor, needs await like all other calls
   mon.signmon = this.track.create_monitor (ch);
