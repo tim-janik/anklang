@@ -92,6 +92,15 @@ realpath (const String &path)
   return path;
 }
 
+/// Append trailing slash to `path`, unless it's present.
+String
+dir_terminate (const String &path)
+{
+  if (path.empty() || !IS_DIRSEP (path.back()))
+    return path + ASE_DIRSEP;
+  return path;
+}
+
 /**
  * @param path  a filename path
  * @param incwd optional current working directory

@@ -16,12 +16,6 @@ namespace Fs = std::filesystem;
 
 namespace Ase {
 
-static String
-slash_termination (String s)
-{
-  return !s.size() || s.back() != '/' ? s + '/' : s;
-}
-
 // == FileCrawler ==
 JSONIPC_INHERIT (FileCrawler, ResourceCrawler);
 
@@ -72,12 +66,12 @@ String
 FileCrawler::expand_dir (const String &which)
 {
   if (which == ".")
-    return slash_termination (cwd_);
+    return Path::dir_terminate (cwd_);
   if (string_toupper (which) == "DEMO")
-    return slash_termination (Ase::runpath (RPath::DEMODIR));
+    return Path::dir_terminate (Ase::runpath (RPath::DEMODIR));
   String dir = Path::xdg_dir (which);
   if (!dir.empty())
-    return slash_termination (dir);
+    return Path::dir_terminate (dir);
   return "/";
 }
 
@@ -85,7 +79,7 @@ Resource
 FileCrawler::current_folder ()
 {
   Resource r { .type = ResourceType::FOLDER, .label = Path::basename (cwd_),
-               .uri = slash_termination (cwd_), };
+               .uri = Path::dir_terminate (cwd_), };
   struct stat statbuf = { 0, };
   if (lstat (cwd_.c_str(), &statbuf) == 0)
     {
@@ -129,7 +123,7 @@ FileCrawler::canonify (const String &cwd, const String &fragment, bool constrain
   p = p.lexically_normal();
   // return existing file or dir with slash
   if (Path::check (p, "d"))     // isdir?
-    return slash_termination (p);
+    return Path::dir_terminate (p);
   if (Path::check (p, "e"))     // exists?
     return p;
   // force existing directory
@@ -143,7 +137,7 @@ FileCrawler::canonify (const String &cwd, const String &fragment, bool constrain
     p = d;
   // return dirs with slash
   if (Path::check (p, "d"))
-    return slash_termination (p);
+    return Path::dir_terminate (p);
   return p;
 }
 
