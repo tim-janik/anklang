@@ -12,6 +12,7 @@ public:
   explicit ProjectImpl    (const String &projectname);
   virtual ~ProjectImpl    ();
   void     destroy        () override;
+  Error    save_dir       (const String &dir, bool selfcontained) override;
   void     start_playback () override;
   void     stop_playback  () override;
   bool     is_playing     () override;

@@ -274,6 +274,7 @@ public:
   virtual bool    remove_track   (Track&) = 0;  ///< Remove a track owned by this Project.
   virtual TrackS  list_tracks    () = 0;        ///< Retrieve a list of all tracks.
   virtual TrackP  master_track   () = 0;        ///< Retrieve the master track.
+  virtual Error   save_dir       (const String &dir, bool selfcontained) = 0; ///< Store Project data in `dir`.
   static ProjectP create         (const String &projectname);
   static ProjectP last_project ();
 };
