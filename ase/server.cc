@@ -287,6 +287,7 @@ ase_error_blurb (Error error)
     case Error::FILE_SEEK_FAILED:	return _("Seek failed");
     case Error::FILE_READ_FAILED:	return _("Read failed");
     case Error::FILE_WRITE_FAILED:	return _("Write failed");
+    case Error::NOT_DIRECTORY:  	return _("Not a directory");
       // content errors
     case Error::NO_HEADER:		return _("Failed to detect header");
     case Error::NO_SEEK_INFO:		return _("Failed to retrieve seek information");
@@ -330,6 +331,7 @@ ase_error_from_errno (int sys_errno, Error fallback)
     case ENAMETOOLONG:
     case ENOENT:        return Error::FILE_NOT_FOUND;
     case EISDIR:        return Error::FILE_IS_DIR;
+    case ENOTDIR:       return Error::NOT_DIRECTORY;
     case EROFS:
     case EPERM:
     case EACCES:        return Error::PERMS;
@@ -351,7 +353,6 @@ ase_error_from_errno (int sys_errno, Error fallback)
     case EINTR:         return Error::TEMP;
     case EFAULT:        return Error::INTERNAL;
     case EBADF:
-    case ENOTDIR:
     case ENODEV:
     case EINVAL:
     default:            return fallback;

@@ -38,6 +38,7 @@ enum class Error : int32_t {
   FILE_SEEK_FAILED,
   FILE_READ_FAILED,
   FILE_WRITE_FAILED,
+  NOT_DIRECTORY,
   // content errors
   NO_HEADER,
   NO_SEEK_INFO,
