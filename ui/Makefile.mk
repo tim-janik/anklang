@@ -88,25 +88,13 @@ $>/ui/aseapi.js: jsonipc/jsonipc.js ase/api.hh $(lib/AnklangSynthEngine) ui/Make
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/aseapi.js
 
-# == css-imports.js ==
-$>/ui/css-imports.js: ui/theme.scss ui/Makefile.mk	| $>/ui/
-	$(QGEN)
-	$Q echo "export default {"			>  $@.tmp
-	$Q echo "fs = require ('fs'); "						\
-		"s = String (fs.readFileSync ('$(abspath ui/theme.scss)')); "	\
-		"console.log (\"  'theme.css': \", "				\
-		"JSON.stringify (String (s)) + ',');"	>  $@-gen.js
-	$Q cd $(@D) && nodejs $(@F)-gen.js		>> $(@F).tmp
-	$Q echo "};"					>> $@.tmp
-	$Q mv $@.tmp $@ && rm $@-gen.js
-$>/ui/.build1-stamp: $>/ui/css-imports.js
-
 # == ui/b/vue.targets ==
 ui/b/vue.targets ::= $(ui/vue.wildcards:%.vue=$>/%.js)
-$(ui/b/vue.targets): ui/sfc-compile.js						| $>/ui/fonts/AnklangIcons.css
-$(ui/b/vue.targets): $>/%.js: %.vue						| $>/ui/b/ $>/node_modules/.npm.done
+$(ui/b/vue.targets): ui/sfc-compile.js 			| $>/ui/fonts/AnklangIcons.css
+$(ui/b/vue.targets): $>/%.js: %.vue			| $>/ui/b/ $>/node_modules/.npm.done
 	$(QGEN)
 	$Q node ui/sfc-compile.js --debug -I $>/ui/ $< -O $(@D)
+$(ui/b/vue.targets): $(wildcard ui/*.scss ui/b/*.scss)	# includes of the sfc generated CSS outputs
 $>/ui/.build1-stamp: $(ui/b/vue.targets)
 
 # == all-styles.css ==
