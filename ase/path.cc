@@ -158,7 +158,10 @@ mkdirs (const String &dirpath, uint mode)
   if (check (target, "d"))
     return true;                // IS_DIR
   if (check (target, "e"))
-    return false;               // !IS_DIR
+    {
+      errno = ENOTDIR;
+      return false;             // !IS_DIR
+    }
   if (target.has_relative_path() &&
       !mkdirs (target.parent_path(), mode))
     return false;               // !IS_DIR
