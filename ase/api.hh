@@ -17,28 +17,28 @@ class SharedBase : public virtual VirtualBase,
 
 /// Enum representing Error states.
 enum class Error : int32_t {
-  NONE,
-  INTERNAL,
-  UNKNOWN,
-  IO,
-  PERMS,
-  // out of resource conditions
-  NO_MEMORY,
-  MANY_FILES,
-  NO_FILES,
-  NO_SPACE,
+  NONE                          = 0,
+  PERMS                         = EPERM,
+  IO                            = EIO,
+  // resource exhaustion
+  NO_MEMORY                     = ENOMEM,
+  NO_SPACE                      = ENOSPC,
+  NO_FILES                      = ENFILE,
+  MANY_FILES                    = EMFILE,
   // file errors
-  FILE_BUSY,
-  FILE_EXISTS,
+  NOT_DIRECTORY                 = ENOTDIR,
+  FILE_NOT_FOUND                = ENOENT,
+  FILE_IS_DIR                   = EISDIR,
+  FILE_EXISTS                   = EEXIST,
+  FILE_BUSY                     = EBUSY,
+  // Ase specific errors
+  INTERNAL                      = 0x30000000,
+  UNIMPLEMENTED,
   FILE_EOF,
-  FILE_EMPTY,
-  FILE_NOT_FOUND,
-  FILE_IS_DIR,
   FILE_OPEN_FAILED,
   FILE_SEEK_FAILED,
   FILE_READ_FAILED,
   FILE_WRITE_FAILED,
-  NOT_DIRECTORY,
   // content errors
   NO_HEADER,
   NO_SEEK_INFO,
@@ -59,14 +59,11 @@ enum class Error : int32_t {
   DEVICE_FREQUENCY,
   DEVICES_MISMATCH,
   // miscellaneous errors
-  TEMP,
   WAVE_NOT_FOUND,
   CODEC_FAILURE,
-  UNIMPLEMENTED,
   INVALID_PROPERTY,
   INVALID_MIDI_CONTROL,
   PARSE_ERROR,
-  SPAWN,
 };
 ASE_DEFINE_ENUM_EQUALITY (Error);
 const char* ase_error_blurb      (Error error);
