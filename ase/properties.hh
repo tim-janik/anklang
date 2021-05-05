@@ -68,7 +68,7 @@ struct Initializer {
   double pdef = 0;
 };
 
-struct PropertyImpl : public virtual Property, public virtual EmittableImpl {
+struct PropertyImpl : public EmittableImpl, public virtual Property {
   virtual ~PropertyImpl ();
 };
 using PropertyImplP = std::shared_ptr<PropertyImpl>;

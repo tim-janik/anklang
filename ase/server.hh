@@ -6,7 +6,7 @@
 
 namespace Ase {
 
-class ServerImpl : public virtual Server, public virtual GadgetImpl {
+class ServerImpl : public GadgetImpl, public virtual Server {
   Preferences  prefs_;
 public:
   static ServerImplP instancep ();

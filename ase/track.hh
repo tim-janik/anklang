@@ -6,7 +6,7 @@
 
 namespace Ase {
 
-class TrackImpl : public virtual Track, public virtual GadgetImpl {
+class TrackImpl : public GadgetImpl, public virtual Track {
   const bool masterflag_ = false;
   ProjectImpl *project_ = nullptr;
   DeviceImplP  chain_;

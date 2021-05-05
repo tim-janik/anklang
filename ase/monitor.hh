@@ -6,7 +6,7 @@
 
 namespace Ase {
 
-class MonitorImpl : public virtual Monitor, public virtual GadgetImpl {
+class MonitorImpl : public GadgetImpl, public virtual Monitor {
   ASE_DEFINE_MAKE_SHARED (MonitorImpl);
   friend class TrackImpl;
   virtual ~MonitorImpl        ();

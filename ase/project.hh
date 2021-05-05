@@ -6,7 +6,7 @@
 
 namespace Ase {
 
-class ProjectImpl : public virtual Project, public virtual GadgetImpl {
+class ProjectImpl : public GadgetImpl, public virtual Project {
   std::vector<TrackImplP> tracks_;
 public:
   explicit ProjectImpl    (const String &projectname);

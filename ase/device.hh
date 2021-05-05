@@ -6,7 +6,7 @@
 
 namespace Ase {
 
-class DeviceImpl : public virtual GadgetImpl, public virtual Device {
+class DeviceImpl : public GadgetImpl, public virtual Device {
   AudioProcessorP proc_;
   AudioComboP     combo_; // maybe null
   ASE_DEFINE_MAKE_SHARED (DeviceImpl);
