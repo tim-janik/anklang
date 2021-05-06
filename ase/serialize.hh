@@ -320,31 +320,34 @@ WritNode::serialize (ValueR &rec, const String &fieldname, const StringS &typeda
 template<typename T>
 struct WritConverter<T, REQUIRESv< std::is_integral<T>::value || std::is_floating_point<T>::value > >
 {
-  static bool
+  static bool ASE_NOINLINE
   save_value (WritNode node, T i, const StringS &typedata, const String &fieldname)
   {
     node.value() = i;
     return true;
   }
-  static bool
+  static bool ASE_NOINLINE
   load_value (WritNode node, T &v, const StringS &typedata, const String &fieldname)
   {
-    T tmp = {};
-    if constexpr (std::is_integral<T>::value)
-      tmp = node.value().as_int();
-    else
-      tmp = node.value().as_double();
-    bool valid = true;
-    long double limit = 0;
-    if (Writ::typedata_find_minimum (typedata, fieldname, &limit))
-      valid = valid && tmp >= limit;
-    if (Writ::typedata_find_maximum (typedata, fieldname, &limit))
-      valid = valid && tmp <= limit;
-    if (valid)
-      {
-        v = tmp;
-        return true;
-      }
+    if constexpr (!std::is_const<T>::value) // ignore loading of const types
+     {
+       T tmp = {};
+       if constexpr (std::is_integral<T>::value)
+                      tmp = node.value().as_int();
+       else
+         tmp = node.value().as_double();
+       bool valid = true;
+       long double limit = 0;
+       if (Writ::typedata_find_minimum (typedata, fieldname, &limit))
+         valid = valid && tmp >= limit;
+       if (Writ::typedata_find_maximum (typedata, fieldname, &limit))
+         valid = valid && tmp <= limit;
+       if (valid)
+         {
+           v = tmp;
+           return true;
+         }
+     }
     return false;
   }
 };
