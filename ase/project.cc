@@ -3,6 +3,7 @@
 #include "jsonipc/jsonipc.hh"
 #include "utils.hh"
 #include "path.hh"
+#include "serialize.hh"
 #include "internal.hh"
 
 namespace Ase {
@@ -72,7 +73,39 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
   if (!make_anklang_dir (path))
     return ase_error_from_errno (errno);
   // here, path is_anklang_dir
+  // serialize Project
+  String jsd = json_stringify (*this, Writ::INDENT);
+  jsd += '\n';
+  if (!Path::stringwrite (Path::join (path, "project.anklang"), jsd))
+    return ase_error_from_errno (errno);
+  jsd.clear();
+  // cleanup
   return Ase::Error::UNIMPLEMENTED; // return Ase::Error::NONE;
+}
+
+void
+ProjectImpl::serialize (WritNode &xs)
+{
+  GadgetImpl::serialize (xs);
+  // save tracks
+  if (xs.in_save())
+    for (auto &trackp : tracks_)
+      {
+        const bool True = true;
+        WritNode xc = xs["tracks"].push();
+        xc & *trackp;
+        if (trackp == tracks_.back())           // master_track
+          xc["mastertrack"] & True;
+      }
+  // load tracks
+  if (xs.in_load())
+    for (auto &xc : xs["tracks"].to_nodes())
+      {
+        TrackImplP trackp = tracks_.back();     // master_track
+        if (!xc["mastertrack"].as_int())
+          trackp = shared_ptr_cast<TrackImpl> (create_track());
+        xc & *trackp;
+      }
 }
 
 void

@@ -8,6 +8,8 @@ namespace Ase {
 
 class ProjectImpl : public GadgetImpl, public virtual Project {
   std::vector<TrackImplP> tracks_;
+protected:
+  void     serialize      (WritNode &xs) override;
 public:
   explicit ProjectImpl    (const String &projectname);
   virtual ~ProjectImpl    ();
