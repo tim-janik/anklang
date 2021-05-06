@@ -367,6 +367,13 @@ WritLink::WritLink (Serializable **spp) :
   assert_return (spp != nullptr);
 }
 
+// == Serializable ==
+void
+Serializable::serialize (WritNode &xs)
+{
+  // present, so it can be chained to
+}
+
 } // Ase
 
 #include "api.hh"
