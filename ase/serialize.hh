@@ -10,16 +10,6 @@ namespace Ase {
 
 class Writ;
 using WritP = std::shared_ptr<Writ>;
-class WritNode;
-using WritNodeS = std::vector<WritNode>;
-
-// == Serializable ==
-/// Interface for serializable objects with Reflink support.
-class Serializable : public virtual VirtualBase {
-  friend WritNode;
-protected:
-  virtual void serialize (WritNode &xs) = 0; ///< Serialize members and childern
-};
 
 // == WritLink ==
 class WritLink {
