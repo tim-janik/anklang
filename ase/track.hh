@@ -16,6 +16,7 @@ class TrackImpl : public GadgetImpl, public virtual Track {
   void     set_project    (ProjectImpl *project);
 protected:
   String   fallback_name  () const override;
+  void     serialize      (WritNode &xs) override;
 public:
   explicit TrackImpl      (bool masterflag);
   bool     is_master      () const override       { return masterflag_; }
