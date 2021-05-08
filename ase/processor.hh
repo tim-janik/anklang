@@ -160,33 +160,33 @@ protected:
   virtual void  adjust_param      (Id32 tag) {}
   ParamId       nextid            () const;
   ParamId       add_param         (Id32 id, const ParamInfo &infotmpl, double value);
-  ParamId       add_param         (Id32 id, const std::string &clabel, const std::string &nickname,
+  ParamId       add_param         (Id32 id, const String &clabel, const String &nickname,
                                    double pmin, double pmax, double value,
-                                   const std::string &unit = "", std::string hints = "",
-                                   const std::string &blurb = "", const std::string &description = "");
-  ParamId       add_param         (Id32 id, const std::string &clabel, const std::string &nickname,
-                                   ChoiceS &&centries, double value, std::string hints = "",
-                                   const std::string &blurb = "", const std::string &description = "");
-  ParamId       add_param         (Id32 id, const std::string &clabel, const std::string &nickname,
-                                   bool boolvalue, std::string hints = "",
-                                   const std::string &blurb = "", const std::string &description = "");
-  void          start_group       (const std::string &groupname) const;
-  ParamId       add_param         (const std::string &clabel, const std::string &nickname,
+                                   const String &unit = "", String hints = "",
+                                   const String &blurb = "", const String &description = "");
+  ParamId       add_param         (Id32 id, const String &clabel, const String &nickname,
+                                   ChoiceS &&centries, double value, String hints = "",
+                                   const String &blurb = "", const String &description = "");
+  ParamId       add_param         (Id32 id, const String &clabel, const String &nickname,
+                                   bool boolvalue, String hints = "",
+                                   const String &blurb = "", const String &description = "");
+  void          start_group       (const String &groupname) const;
+  ParamId       add_param         (const String &clabel, const String &nickname,
                                    double pmin, double pmax, double value,
-                                   const std::string &unit = "", std::string hints = "",
-                                   const std::string &blurb = "", const std::string &description = "");
-  ParamId       add_param         (const std::string &clabel, const std::string &nickname,
-                                   ChoiceS &&centries, double value, std::string hints = "",
-                                   const std::string &blurb = "", const std::string &description = "");
-  ParamId       add_param         (const std::string &clabel, const std::string &nickname,
-                                   bool boolvalue, std::string hints = "",
-                                   const std::string &blurb = "", const std::string &description = "");
+                                   const String &unit = "", String hints = "",
+                                   const String &blurb = "", const String &description = "");
+  ParamId       add_param         (const String &clabel, const String &nickname,
+                                   ChoiceS &&centries, double value, String hints = "",
+                                   const String &blurb = "", const String &description = "");
+  ParamId       add_param         (const String &clabel, const String &nickname,
+                                   bool boolvalue, String hints = "",
+                                   const String &blurb = "", const String &description = "");
   double        peek_param_mt     (Id32 paramid) const;
   // Buses
   IBusId        add_input_bus     (CString uilabel, SpeakerArrangement speakerarrangement,
-                                   const std::string &hints = "", const std::string &blurb = "");
+                                   const String &hints = "", const String &blurb = "");
   OBusId        add_output_bus    (CString uilabel, SpeakerArrangement speakerarrangement,
-                                   const std::string &hints = "", const std::string &blurb = "");
+                                   const String &hints = "", const String &blurb = "");
   void          remove_all_buses  ();
   OBus&         iobus             (OBusId busid);
   IBus&         iobus             (IBusId busid);
@@ -208,7 +208,9 @@ public:
   using RegistryList = AudioProcessorInfoS;
   using MakeProcessor = AudioProcessorP (*) (const std::any*);
   using MaybeParamId = std::pair<ParamId,bool>;
-  static const std::string STANDARD; ///< ":G:S:r:w:" - GUI STORAGE READABLE WRITABLE
+  static const String GUIONLY;     ///< ":G:r:w:" - GUI READABLE WRITABLE
+  static const String STANDARD;    ///< ":G:S:r:w:" - GUI STORAGE READABLE WRITABLE
+  static const String STORAGEONLY; ///< ":S:r:w:" - STORAGE READABLE WRITABLE
   float         note_to_freq      (int note) const;
   AudioEngine&  engine            () const;
   uint          sample_rate       () const ASE_CONST;
@@ -224,16 +226,16 @@ public:
   MinMax              param_range           (Id32 paramid) const;
   bool                check_dirty           (Id32 paramid) const;
   void                adjust_params         (bool include_nondirty = false);
-  virtual std::string param_value_to_text   (Id32 paramid, double value) const;
-  virtual double      param_value_from_text (Id32 paramid, const std::string &text) const;
+  virtual String      param_value_to_text   (Id32 paramid, double value) const;
+  virtual double      param_value_from_text (Id32 paramid, const String &text) const;
   virtual double      value_to_normalized   (Id32 paramid, double value) const;
   virtual double      value_from_normalized (Id32 paramid, double normalized) const;
   double              get_normalized        (Id32 paramid);
   void                set_normalized        (Id32 paramid, double normalized);
   bool                is_initialized        () const;
   // Buses
-  IBusId        find_ibus         (const std::string &name) const;
-  OBusId        find_obus         (const std::string &name) const;
+  IBusId        find_ibus         (const String &name) const;
+  OBusId        find_obus         (const String &name) const;
   uint          n_ibuses          () const;
   uint          n_obuses          () const;
   uint          n_ichannels       (IBusId busid) const;
@@ -309,20 +311,20 @@ protected:
 struct AudioProcessor::IBus : BusInfo {
   AudioProcessor *proc = {};
   OBusId     obusid = {};
-  explicit IBus (const std::string &ident, const std::string &label, SpeakerArrangement sa);
+  explicit IBus (const String &ident, const String &label, SpeakerArrangement sa);
 };
 struct AudioProcessor::OBus : BusInfo {
   uint fbuffer_concounter = 0;
   uint fbuffer_count = 0;
   uint fbuffer_index = ~0;
-  explicit OBus (const std::string &ident, const std::string &label, SpeakerArrangement sa);
+  explicit OBus (const String &ident, const String &label, SpeakerArrangement sa);
 };
 // AudioProcessor internal input/output bus book keeping
 union AudioProcessor::PBus {
   IBus    ibus;
   OBus    obus;
   BusInfo pbus;
-  explicit PBus (const std::string &ident, const std::string &label, SpeakerArrangement sa);
+  explicit PBus (const String &ident, const String &label, SpeakerArrangement sa);
 };
 
 // AudioProcessor internal input/output event stream book keeping

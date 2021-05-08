@@ -175,11 +175,11 @@ ParamInfo::set_choices (const ChoiceS &centries)
 }
 
 // == PBus ==
-AudioProcessor::PBus::PBus (const std::string &ident, const std::string &uilabel, SpeakerArrangement sa) :
+AudioProcessor::PBus::PBus (const String &ident, const String &uilabel, SpeakerArrangement sa) :
   ibus (ident, uilabel, sa)
 {}
 
-AudioProcessor::IBus::IBus (const std::string &identifier, const std::string &uilabel, SpeakerArrangement sa)
+AudioProcessor::IBus::IBus (const String &identifier, const String &uilabel, SpeakerArrangement sa)
 {
   ident = identifier;
   label = uilabel;
@@ -189,7 +189,7 @@ AudioProcessor::IBus::IBus (const std::string &identifier, const std::string &ui
   assert_return (ident != "");
 }
 
-AudioProcessor::OBus::OBus (const std::string &identifier, const std::string &uilabel, SpeakerArrangement sa)
+AudioProcessor::OBus::OBus (const String &identifier, const String &uilabel, SpeakerArrangement sa)
 {
   ident = identifier;
   label = uilabel;
@@ -201,7 +201,9 @@ AudioProcessor::OBus::OBus (const std::string &identifier, const std::string &ui
 }
 
 // == AudioProcessor ==
-const std::string AudioProcessor::STANDARD = ":G:S:r:w:"; ///< GUI STORAGE READABLE WRITABLE
+const String AudioProcessor::GUIONLY = ":G:r:w:";     ///< GUI READABLE WRITABLE
+const String AudioProcessor::STANDARD = ":G:S:r:w:";  ///< GUI STORAGE READABLE WRITABLE
+const String AudioProcessor::STORAGEONLY = ":S:r:w:"; ///< STORAGE READABLE WRITABLE
 uint64 __thread AudioProcessor::tls_timestamp = 0;
 struct ProcessorRegistryContext {
   AudioEngine *engine = nullptr;
@@ -334,13 +336,13 @@ static __thread CString tls_param_group;
 
 /// Introduce a `ParamInfo.group` to be used for the following add_param() calls.
 void
-AudioProcessor::start_group (const std::string &groupname) const
+AudioProcessor::start_group (const String &groupname) const
 {
   tls_param_group = groupname;
 }
 
 static CString
-construct_hints (std::string hints, double pmin, double pmax, const std::string &more = "")
+construct_hints (String hints, double pmin, double pmax, const String &more = "")
 {
   if (hints.empty())
     hints = AudioProcessor::STANDARD;
@@ -397,10 +399,10 @@ AudioProcessor::add_param (Id32 id, const ParamInfo &infotmpl, double value)
 /// The `clabel` is the canonical, non-translated name for this parameter, its
 /// hyphenated lower case version is used for serialization.
 ParamId
-AudioProcessor::add_param (Id32 id, const std::string &clabel, const std::string &nickname,
+AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname,
                            double pmin, double pmax, double value,
-                           const std::string &unit, std::string hints,
-                           const std::string &blurb, const std::string &description)
+                           const String &unit, String hints,
+                           const String &blurb, const String &description)
 {
   assert_return (uint (id) > 0, ParamId (0));
   ParamInfo info;
@@ -417,10 +419,10 @@ AudioProcessor::add_param (Id32 id, const std::string &clabel, const std::string
 
 /// Variant of AudioProcessor::add_param() with sequential `id` generation.
 ParamId
-AudioProcessor::add_param (const std::string &clabel, const std::string &nickname,
+AudioProcessor::add_param (const String &clabel, const String &nickname,
                            double pmin, double pmax, double value,
-                           const std::string &unit, std::string hints,
-                           const std::string &blurb, const std::string &description)
+                           const String &unit, String hints,
+                           const String &blurb, const String &description)
 {
   return add_param (nextid(), clabel, nickname, pmin, pmax, value, unit, hints, blurb, description);
 }
@@ -430,9 +432,9 @@ AudioProcessor::add_param (const std::string &clabel, const std::string &nicknam
 /// The `clabel` is the canonical, non-translated name for this parameter, its
 /// hyphenated lower case version is used for serialization.
 ParamId
-AudioProcessor::add_param (Id32 id, const std::string &clabel, const std::string &nickname,
-                           ChoiceS &&centries, double value, std::string hints,
-                           const std::string &blurb, const std::string &description)
+AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname,
+                           ChoiceS &&centries, double value, String hints,
+                           const String &blurb, const String &description)
 {
   assert_return (uint (id) > 0, ParamId (0));
   ParamInfo info;
@@ -449,9 +451,9 @@ AudioProcessor::add_param (Id32 id, const std::string &clabel, const std::string
 
 /// Variant of AudioProcessor::add_param() with sequential `id` generation.
 ParamId
-AudioProcessor::add_param (const std::string &clabel, const std::string &nickname,
-                           ChoiceS &&centries, double value, std::string hints,
-                           const std::string &blurb, const std::string &description)
+AudioProcessor::add_param (const String &clabel, const String &nickname,
+                           ChoiceS &&centries, double value, String hints,
+                           const String &blurb, const String &description)
 {
   return add_param (nextid(), clabel, nickname, std::forward<ChoiceS> (centries), value, hints, blurb, description);
 }
@@ -461,9 +463,9 @@ AudioProcessor::add_param (const std::string &clabel, const std::string &nicknam
 /// The `clabel` is the canonical, non-translated name for this parameter, its
 /// hyphenated lower case version is used for serialization.
 ParamId
-AudioProcessor::add_param (Id32 id, const std::string &clabel, const std::string &nickname,
-                           bool boolvalue, std::string hints,
-                           const std::string &blurb, const std::string &description)
+AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname,
+                           bool boolvalue, String hints,
+                           const String &blurb, const String &description)
 {
   assert_return (uint (id) > 0, ParamId (0));
   ParamInfo info;
@@ -484,9 +486,9 @@ AudioProcessor::add_param (Id32 id, const std::string &clabel, const std::string
 
 /// Variant of AudioProcessor::add_param() with sequential `id` generation.
 ParamId
-AudioProcessor::add_param (const std::string &clabel, const std::string &nickname,
-                           bool boolvalue, std::string hints,
-                           const std::string &blurb, const std::string &description)
+AudioProcessor::add_param (const String &clabel, const String &nickname,
+                           bool boolvalue, String hints,
+                           const String &blurb, const String &description)
 {
   return add_param (nextid(), clabel, nickname, boolvalue, hints, blurb, description);
 }
@@ -618,14 +620,14 @@ AudioProcessor::set_normalized (Id32 paramid, double normalized)
  * so `this` must be treated as `const` (it might be used
  * concurrently by a different thread).
  */
-std::string
+String
 AudioProcessor::param_value_to_text (Id32 paramid, double value) const
 {
   const PParam *pparam = find_pparam (ParamId (paramid.id));
   if (!pparam || !pparam->info)
     return "";
   const ParamInfo &info = *pparam->info;
-  std::string unit = pparam->info->unit;
+  String unit = pparam->info->unit;
   int fdigits = 2;
   if (unit == "Hz" && fabs (value) >= 1000)
     {
@@ -641,7 +643,7 @@ AudioProcessor::param_value_to_text (Id32 paramid, double value) const
   else
     fdigits = 0;
   const bool need_sign = info.get_minmax().first < 0;
-  std::string s = need_sign ? string_format ("%+.*f", fdigits, value) : string_format ("%.*f", fdigits, value);
+  String s = need_sign ? string_format ("%+.*f", fdigits, value) : string_format ("%.*f", fdigits, value);
   if (!unit.empty())
     s += " " + unit;
   return s;
@@ -656,7 +658,7 @@ AudioProcessor::param_value_to_text (Id32 paramid, double value) const
  * concurrently by a different thread).
  */
 double
-AudioProcessor::param_value_from_text (Id32 paramid, const std::string &text) const
+AudioProcessor::param_value_from_text (Id32 paramid, const String &text) const
 {
   return string_to_double (text);
 }
@@ -795,7 +797,7 @@ AudioProcessor::connect_event_input (AudioProcessor &oproc)
 /// Add an input bus with `uilabel` and channels configured via `speakerarrangement`.
 IBusId
 AudioProcessor::add_input_bus (CString uilabel, SpeakerArrangement speakerarrangement,
-                               const std::string &hints, const std::string &blurb)
+                               const String &hints, const String &blurb)
 {
   assert_return (!is_initialized(), {});
   assert_return (uilabel != "", {});
@@ -815,7 +817,7 @@ AudioProcessor::add_input_bus (CString uilabel, SpeakerArrangement speakerarrang
 /// Add an output bus with `uilabel` and channels configured via `speakerarrangement`.
 OBusId
 AudioProcessor::add_output_bus (CString uilabel, SpeakerArrangement speakerarrangement,
-                                const std::string &hints, const std::string &blurb)
+                                const String &hints, const String &blurb)
 {
   assert_return (!is_initialized(), {});
   assert_return (uilabel != "", {});
@@ -833,7 +835,7 @@ AudioProcessor::add_output_bus (CString uilabel, SpeakerArrangement speakerarran
 
 /// Return the IBusId for input bus `uilabel` or else 0.
 IBusId
-AudioProcessor::find_ibus (const std::string &uilabel) const
+AudioProcessor::find_ibus (const String &uilabel) const
 {
   auto ident = CString::lookup (uilabel);
   if (!ident.empty())
@@ -845,7 +847,7 @@ AudioProcessor::find_ibus (const std::string &uilabel) const
 
 /// Return the OBusId for output bus `uilabel` or else 0.
 OBusId
-AudioProcessor::find_obus (const std::string &uilabel) const
+AudioProcessor::find_obus (const String &uilabel) const
 {
   auto ident = CString::lookup (uilabel);
   if (!ident.empty())
@@ -1186,7 +1188,7 @@ AudioProcessor::registry_init()
 
 /// Create a new AudioProcessor object of the type specified by `uuiduri`.
 AudioProcessorP
-AudioProcessor::registry_create (AudioEngine &engine, const std::string &uuiduri)
+AudioProcessor::registry_create (AudioEngine &engine, const String &uuiduri)
 {
   registry_init();
   RegistryId::Entry *entry = nullptr;
