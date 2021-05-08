@@ -335,11 +335,11 @@ class BlepSynth : public AudioProcessor {
     pid_mix_ = add_param ("Mix", "Mix", 0, 100, 0, "%");
 
     start_group ("Keyboard Input");
-    pid_c_ = add_param ("Main Input  1",  "C", false);
-    pid_d_ = add_param ("Main Input  2",  "D", false);
-    pid_e_ = add_param ("Main Input  3",  "E", false);
-    pid_f_ = add_param ("Main Input  4",  "F", false);
-    pid_g_ = add_param ("Main Input  5",  "G", false);
+    pid_c_ = add_param ("Main Input  1",  "C", false, GUIONLY);
+    pid_d_ = add_param ("Main Input  2",  "D", false, GUIONLY);
+    pid_e_ = add_param ("Main Input  3",  "E", false, GUIONLY);
+    pid_f_ = add_param ("Main Input  4",  "F", false, GUIONLY);
+    pid_g_ = add_param ("Main Input  5",  "G", false, GUIONLY);
     old_c_ = old_d_ = old_e_ = old_f_ = old_g_ = false;
 
     prepare_event_input();
