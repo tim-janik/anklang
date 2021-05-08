@@ -134,9 +134,7 @@ class Shell extends Envue.Component {
     this.m.modal_dialogs = [];
   }
   created() {
-    // provide default project
-    App.load_project_checked (Ase.server.last_project());
-    // load_project() also forces an update with new Shell properties in place
+    this.update();
   }
   mounted() {
     this.switch_panel2 = App.switch_panel2.bind (App);
