@@ -26,10 +26,12 @@ class WritNode {
   ValueP valuep_;
   Value &value_;
   friend class Writ;
-  ValueP    dummy       ();
+  ValueP       dummy            ();
+  WritNode     recfield         (const String &fieldname, bool front);
 public:
   /*ctor*/     WritNode         (Writ &writ, ValueP vp = std::make_shared<Value> (Value::empty_value));
-  WritNode     operator[]       (const String &fieldname);
+  WritNode     operator[]       (const String &fieldname)  { return recfield (fieldname, false); }
+  WritNode     front            (const String &fieldname)  { return recfield (fieldname, true); }
   bool         in_load          () const;           ///< Return `true` during deserialization
   bool         in_save          () const;           ///< Return `true` during serialization
   bool         skip_emptystring () const;           ///< Omit empty strings during in_save()
