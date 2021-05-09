@@ -30,7 +30,7 @@ DeviceImpl::serialize (WritNode &xs)
         DeviceInfo info = subdevicep->device_info();
         WritNode xc = xs["devices"].push();
         xc & *subdevicep;
-        xc["Device.URI"] & info.uri;
+        xc.front ("Device.URI") & info.uri;
       }
   // load subdevices
   if (combo_ && xs.in_load())
