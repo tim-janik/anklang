@@ -627,13 +627,21 @@ AudioProcessor::param_value_to_text (Id32 paramid, double value) const
   if (!pparam || !pparam->info)
     return "";
   const ParamInfo &info = *pparam->info;
+  const bool ischoice = strstr (info.hints.c_str(), ":choice:") != nullptr;
+  if (ischoice)
+    {
+      const ChoiceS &choices = info.get_choices();
+      const size_t idx = value;
+      if (idx < choices.size())
+        return choices[idx].ident;
+    }
   String unit = pparam->info->unit;
-  int fdigits = 2;
   if (unit == "Hz" && fabs (value) >= 1000)
     {
       unit = "kHz";
       value /= 1000;
     }
+  int fdigits = 2;
   if (fabs (value) < 10)
     fdigits = 2;
   else if (fabs (value) < 100)
@@ -660,6 +668,18 @@ AudioProcessor::param_value_to_text (Id32 paramid, double value) const
 double
 AudioProcessor::param_value_from_text (Id32 paramid, const String &text) const
 {
+  const PParam *pparam = find_pparam (ParamId (paramid.id));
+  if (!pparam || !pparam->info)
+    return 0.0;
+  const ParamInfo &info = *pparam->info;
+  const bool ischoice = strstr (info.hints.c_str(), ":choice:") != nullptr;
+  if (ischoice)
+    {
+      ChoiceS choices = info.get_choices();
+      for (size_t i = 0; i < choices.size(); i++)
+        if (text == choices[i].ident)
+          return i;
+    }
   return string_to_double (text);
 }
 
@@ -1315,14 +1335,24 @@ public:
   get_value () override
   {
     const AudioProcessorP proc = device_->audio_processor();
-    return AudioProcessor::param_peek_mt (proc, id_);
+    const double v = AudioProcessor::param_peek_mt (proc, id_);
+    const bool ischoice = strstr (info_->hints.c_str(), ":choice:") != nullptr;
+    if (ischoice)
+      return proc->param_value_to_text (id_, v);
+    else
+      return v;
   }
   bool
   set_value (const Value &value) override
   {
     const AudioProcessorP proc = device_->audio_processor();
+    const bool ischoice = strstr (info_->hints.c_str(), ":choice:") != nullptr;
+    double v;
+    if (ischoice && value.index() == Value::STRING)
+      v = proc->param_value_from_text (id_, value.as_string());
+    else
+      v = value.as_double();
     const ParamId pid = id_;
-    const double v = value.as_double();
     auto lambda = [proc, pid, v] () {
       proc->set_param (pid, v);
     };
