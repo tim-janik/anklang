@@ -118,7 +118,7 @@ ProjectImpl::serialize (WritNode &xs)
         WritNode xc = xs["tracks"].push();
         xc & *trackp;
         if (trackp == tracks_.back())           // master_track
-          xc["mastertrack"] & True;
+          xc.front ("mastertrack") & True;
       }
   // load tracks
   if (xs.in_load())
