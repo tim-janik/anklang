@@ -329,7 +329,7 @@ ValueR::peek (const String &name) const
 }
 
 ValueP
-ValueR::valuep (const String &name)
+ValueR::valuep (const String &name, bool front)
 {
   for (size_t i = 0; i < size(); i++)
     if (name == (*this)[i].name)
@@ -338,14 +338,22 @@ ValueR::valuep (const String &name)
           (*this)[i].value = std::make_shared<Value>();
         return (*this)[i].value;
       }
-  push_back ({ name, Value() });
-  return back().value;
+  if (front)
+    {
+      insert (begin(), { name, Value() });
+      return begin()->value;
+    }
+  else
+    {
+      push_back ({ name, Value() });
+      return back().value;
+    }
 }
 
 Value&
 ValueR::operator[] (const String &name)
 {
-  return *valuep (name);
+  return *valuep (name, false);
 }
 
 const Value&
