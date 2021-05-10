@@ -110,15 +110,13 @@ export class AppClass {
 	// Create afresh
 	newproject = await Ase.server.create_project ('Untitled');
 	// Loads from disk
-	const error = await newproject.load_project (project_or_path);
-	debug ("LOAD:",project_or_path, ":", newproject, error);
-	if (error != Ase.Error.NONE)
-	  return error;
-	let newname = 'Untitled';
 	if (project_or_path)
-	  newname = project_or_path.replace (/.*\//, '');
-	await newproject.name (newname);
-	debug ("NAME", newname);
+	  {
+	    const error = await newproject.load_project (project_or_path);
+	    if (error != Ase.Error.NONE)
+	      return error;
+	    await newproject.name (project_or_path.replace (/.*\//, ''));
+	  }
       }
     const mtrack = await newproject.master_track();
     const tracks = await newproject.list_tracks();
