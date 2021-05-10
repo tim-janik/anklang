@@ -34,7 +34,7 @@ $>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/AnklangSynthEngine.dep
 	$Q mv $@.tmp $@
 
 # == ase/sysconfig.h ==
-$>/ase/sysconfig.h: $(config-stamps) $>/ase/sysconfig1.h $>/ase/sysconfig2.h $>/ase/sysconfig3.h | $>/ase/ # ase/Makefile.mk
+$>/ase/sysconfig.h: $(config-stamps) $>/ase/sysconfig2.h $>/ase/sysconfig3.h | $>/ase/ # ase/Makefile.mk
 	$(QGEN)
 	$Q echo '// make $@'							> $@.tmp
 	$Q echo '#define ASE_MAJOR_VERSION		($(version_major))'	>>$@.tmp
@@ -43,18 +43,8 @@ $>/ase/sysconfig.h: $(config-stamps) $>/ase/sysconfig1.h $>/ase/sysconfig2.h $>/
 	$Q echo '#define ASE_VERSION_STRING		"$(version_short)"'	>>$@.tmp
 	$Q echo '#define ASE_GETTEXT_DOMAIN		"$(ASE_GETTEXT_DOMAIN)"'>>$@.tmp
 	$Q echo '#define ASE_VORBISFILE_BAD_SEEK 	$(VORBISFILE_BAD_SEEK)'	>>$@.tmp
-	$Q cat $>/ase/sysconfig1.h $>/ase/sysconfig2.h $>/ase/sysconfig3.h	>>$@.tmp
+	$Q cat $>/ase/sysconfig2.h $>/ase/sysconfig3.h	>>$@.tmp
 	$Q mv $@.tmp $@
-
-# == ase/sysconfig1 ==
-$>/ase/sysconfig1.h: $(config-stamps) ase/Makefile.mk	| $>/ase/
-	$(QGEN)
-	$Q echo '#include <time.h>'				> $@-timegm.c \
-	&& echo 'void main() { struct tm t; timegm (&t); }'	>>$@-timegm.c \
-	&& $(CC) $@-timegm.c -o $@-timegm 2>/dev/null \
-	&& echo -e '#define ASE_HAVE_TIMEGM \t\t 1'		> $@ \
-	|| echo '// #undef ASE_HAVE_TIMEGM'			> $@ \
-	&& rm -f $@-timegm.c $@-timegm
 
 # == ase/sysconfig2 ==
 $>/ase/sysconfig2.h: $(config-stamps) ase/Makefile.mk	| $>/ase/
