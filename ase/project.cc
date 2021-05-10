@@ -13,7 +13,7 @@ JSONIPC_INHERIT (ProjectImpl, Project);
 
 static std::vector<ProjectImplP> all_projects;
 
-ProjectImpl::ProjectImpl (const String &projectname)
+ProjectImpl::ProjectImpl()
 {
   if (tracks_.empty())
     create_track (); // ensure Master track
@@ -25,8 +25,9 @@ ProjectImpl::~ProjectImpl()
 ProjectImplP
 ProjectImpl::create (const String &projectname)
 {
-  ProjectImplP project = ProjectImpl::make_shared (projectname);
+  ProjectImplP project = ProjectImpl::make_shared();
   all_projects.push_back (project);
+  project->name (projectname);
   return project;
 }
 

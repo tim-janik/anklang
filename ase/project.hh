@@ -10,7 +10,7 @@ class ProjectImpl : public GadgetImpl, public virtual Project {
   std::vector<TrackImplP> tracks_;
   ASE_DEFINE_MAKE_SHARED (ProjectImpl);
 protected:
-  explicit            ProjectImpl    (const String &projectname);
+  explicit            ProjectImpl    ();
   virtual            ~ProjectImpl    ();
   void                serialize      (WritNode &xs) override;
 public:
