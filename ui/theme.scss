@@ -249,7 +249,8 @@ $b-singlebutton-border-color: contrast-darken($b-singlebutton-bg, 3);
   &.active, &:active, &[data-contextmenu=true] {
     background: $b-singlebutton-dark;
     color: $b-singlebutton-fgd;
-    border-color: contrast-lighten($b-singlebutton-border-color, 1.1); border-style: solid;
+    border-color: contrast-lighten($b-singlebutton-border-color, 1.1);
+    /*border-style: solid;*/
     box-shadow: inset 500px 500px rgba(0, 0, 0, 0.05);
   }
   &:focus {
