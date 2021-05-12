@@ -2,16 +2,52 @@
 <svg
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns="http://www.w3.org/2000/svg"
-   viewBox="0 0 48 48"
-   version="1.1"
-   id="svg4">
-  <path
-     style="fill:#ffff00;fill-opacity:1"
-     d="M 21.7,6.8 V 8.1 C 11.8,9.1 10.6,17 9.6,24 8.9,28.7 8.3,33.6 5.1,36.9 4.5,37.6 4.3,38.5 4.6,39.4 5,40.2 5.8,40.8 6.7,40.8 H 21 c 0.1,1.6 1.3,2.8 2.9,2.8 1.5,0 2.8,-1.3 2.9,-2.8 h 14.4 c 0.9,0 1.8,-0.6 2.1,-1.4 0.4,-0.8 0.2,-1.8 -0.5,-2.5 C 39.6,33.6 38.9,28.7 38.3,24 37.3,17 36.2,9.1 26.3,8.1 V 6.8 c 0,-1.3 -1,-2.3 -2.3,-2.3 -1.3,0 -2.3,1 -2.3,2.3 z"
-     id="path2-3" />
-  <path
-     fill="#555"
-     d="m21.7 6.8v1.3c-9.9 1-11.1 8.9-12.1 15.9-0.7 4.7-1.3 9.6-4.5 12.9-0.6 0.7-0.8 1.6-0.5 2.5 0.4 0.8 1.2 1.4 2.1 1.4h14.3c0.1 1.6 1.3 2.8 2.9 2.8 1.5 0 2.8-1.3 2.9-2.8h14.4c0.9 0 1.8-0.6 2.1-1.4 0.4-0.8 0.2-1.8-0.5-2.5-3.2-3.3-3.9-8.2-4.5-12.9-1-7-2.1-14.9-12-15.9v-1.3c0-1.3-1-2.3-2.3-2.3s-2.3 1-2.3 2.3zm2.2 5.8c7.8 0 8.7 3.9 9.8 12 0.5 3.8 1.1 7.9 3 11.6h-25.5c1.9-3.7 2.5-7.8 3-11.6 1.1-8.1 2-12 9.7-12z"
-     id="path2"
-     style="fill:#9b9b00;fill-opacity:1" />
+   viewBox="0 0 64 64"
+   width="32"
+   height="32"
+   version="1.1">
+  <g>
+    <rect
+       ry="1"
+       rx="1"
+       y="2"
+       x="2"
+       height="60"
+       width="60"
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:4;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
+    <g>
+      <path
+         style="fill:#000000;fill-opacity:1"
+         d="M 19.078125,2 V 2.5 H 14 V 40.972656 C 13.97726,42.63277 15.372472,44 17,44 h 2.023438 L 19,61.994141 22.921875,62 22.945312,44 H 25 c 1.627528,0 3.02274,-1.36723 3,-3.027344 V 2.5 H 23 V 2.0058594 Z"
+         />
+      <path
+         style="fill:#000000;fill-opacity:1"
+         d="m 41.078399,1.9999594 v 0.5 H 36.000274 V 40.972615 c -0.02274,1.660114 1.372472,3.027344 3,3.027344 h 2.023438 L 41.000272,61.9941 44.922147,62 44.945587,44 h 2.054688 c 1.627528,0 3.02274,-1.36723 3,-3.027344 V 2.4999594 h -5 V 2.0058188 Z"
+         />
+    </g>
+    <rect
+       y="2"
+       x="2"
+       height="21"
+       width="60"
+       style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:4;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       />
+    <g>
+      <circle
+         style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:4.00000095;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         cx="11.5"
+         cy="11"
+         r="5.5" />
+      <circle
+         style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:4.00000095;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         cx="32"
+         cy="11"
+         r="5.5" />
+      <circle
+         style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:4.00000095;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+         cx="52.5"
+         cy="11"
+         r="5.5" />
+    </g>
+  </g>
 </svg>
