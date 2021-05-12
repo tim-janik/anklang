@@ -17,23 +17,24 @@ class SharedBase : public virtual VirtualBase,
 
 /// Enum representing Error states.
 enum class Error : int32_t {
-  NONE,
-  INTERNAL,
-  UNKNOWN,
-  IO,
-  PERMS,
-  // out of resource conditions
-  NO_MEMORY,
-  MANY_FILES,
-  NO_FILES,
-  NO_SPACE,
+  NONE                          = 0,
+  PERMS                         = EPERM,
+  IO                            = EIO,
+  // resource exhaustion
+  NO_MEMORY                     = ENOMEM,
+  NO_SPACE                      = ENOSPC,
+  NO_FILES                      = ENFILE,
+  MANY_FILES                    = EMFILE,
   // file errors
-  FILE_BUSY,
-  FILE_EXISTS,
+  NOT_DIRECTORY                 = ENOTDIR,
+  FILE_NOT_FOUND                = ENOENT,
+  FILE_IS_DIR                   = EISDIR,
+  FILE_EXISTS                   = EEXIST,
+  FILE_BUSY                     = EBUSY,
+  // Ase specific errors
+  INTERNAL                      = 0x30000000,
+  UNIMPLEMENTED,
   FILE_EOF,
-  FILE_EMPTY,
-  FILE_NOT_FOUND,
-  FILE_IS_DIR,
   FILE_OPEN_FAILED,
   FILE_SEEK_FAILED,
   FILE_READ_FAILED,
@@ -58,14 +59,11 @@ enum class Error : int32_t {
   DEVICE_FREQUENCY,
   DEVICES_MISMATCH,
   // miscellaneous errors
-  TEMP,
   WAVE_NOT_FOUND,
   CODEC_FAILURE,
-  UNIMPLEMENTED,
   INVALID_PROPERTY,
   INVALID_MIDI_CONTROL,
   PARSE_ERROR,
-  SPAWN,
 };
 ASE_DEFINE_ENUM_EQUALITY (Error);
 const char* ase_error_blurb      (Error error);
@@ -273,6 +271,7 @@ public:
   virtual bool    remove_track   (Track&) = 0;  ///< Remove a track owned by this Project.
   virtual TrackS  list_tracks    () = 0;        ///< Retrieve a list of all tracks.
   virtual TrackP  master_track   () = 0;        ///< Retrieve the master track.
+  virtual Error   save_dir       (const String &dir, bool selfcontained) = 0; ///< Store Project data in `dir`.
   static ProjectP create         (const String &projectname);
   static ProjectP last_project ();
 };
@@ -296,12 +295,9 @@ class ResourceCrawler : public virtual Object {
 public:
   virtual ResourceS list_entries   () = 0;                      ///< List entries of a folder.
   virtual Resource  current_folder () = 0;                      ///< Describe current folder.
-  virtual void      go_up          () = 0;                      ///< Move up by one level.
-  virtual void      go_down        (const String &name) = 0;    ///< Move down into an entry.
   virtual void      assign         (const String &path) = 0;    ///< Move to a different path.
-  virtual String    asdir          (const String &dirname) = 0; ///< Canonify directory if it exists.
-  virtual String    canonify       (const String &path, const String &checks) = 0; ///< Canonify path.
-  virtual String    get_dir        (const String &which) = 0;   ///< Get directory for file crawlers.
+  /// Return absolute path, slash-terminated if directory, constrain to existing paths.
+  virtual String    canonify       (const String &cwd, const String &fragment, bool constraindir, bool constrainfile) = 0;
 };
 
 /// Central singleton, serves as API entry point.
@@ -324,7 +320,7 @@ public:
   virtual ProjectP last_project   () = 0;       ///< Retrieve the last created project.
   virtual ProjectP create_project (String projectname) = 0; ///< Create a new project (name is modified to be unique if necessary.
   // Browsing
-  ResourceCrawlerP cwd_crawler    ();
+  ResourceCrawlerP dir_crawler    (const String &cwd = ""); ///< Create crawler to navigate directories.
   // testing
   void         set_session_data (const String &key, const Value &v); ///< Assign session data.
   const Value& get_session_data (const String &key) const;           ///< Retrieve session data.

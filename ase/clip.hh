@@ -6,7 +6,7 @@
 
 namespace Ase {
 
-class ClipImpl : public virtual Clip, public virtual GadgetImpl {
+class ClipImpl : public GadgetImpl, public virtual Clip {
 protected:
   virtual ~ClipImpl   ();
 public:

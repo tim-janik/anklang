@@ -2,6 +2,7 @@
 #include "project.hh"
 #include "jsonipc/jsonipc.hh"
 #include "utils.hh"
+#include "path.hh"
 #include "internal.hh"
 
 namespace Ase {
@@ -27,6 +28,51 @@ ProjectImpl::destroy ()
   const size_t nerased = Aux::erase_first (projects, [this] (auto ptr) { return ptr.get() == this; });
   if (nerased)
     ; // resource cleanups...
+}
+
+static bool
+is_anklang_dir (const String path)
+{
+  String mime = Path::stringread (Path::join (path, "mimetype"));
+  return mime == "application/x-ase";
+}
+
+static bool
+make_anklang_dir (const String path)
+{
+  String mime = Path::join (path, "mimetype");
+  return Path::stringwrite (mime, "application/x-ase");
+}
+
+Error
+ProjectImpl::save_dir (const String &pdir, bool selfcontained)
+{
+  const String postfix = ".anklang";
+  String path = Path::normalize (Path::abspath (pdir));
+  // check path
+  if (Path::check (path, "d"))                  // existing directory
+    path = Path::dir_terminate (path);
+  else if (Path::check (path, "e"))             // file name
+    {
+      String dir = Path::dirname (path);
+      if (!is_anklang_dir (dir))
+        return ase_error_from_errno (ENOTDIR);
+      path = dir;                               // file inside project dir
+    }
+  else                                          // new name
+    {
+      if (path.back() == '/')                   // strip trailing slashes
+        path = Path::dirname (path);
+      if (string_endswith (path, postfix))      // strip .anklang
+        path.resize (path.size() - postfix.size());
+      if (!is_anklang_dir (path) &&
+          !Path::mkdirs (path))                 // create new project dir
+        return ase_error_from_errno (errno);
+    }
+  if (!make_anklang_dir (path))
+    return ase_error_from_errno (errno);
+  // here, path is_anklang_dir
+  return Ase::Error::UNIMPLEMENTED; // return Ase::Error::NONE;
 }
 
 void

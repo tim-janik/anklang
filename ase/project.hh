@@ -6,12 +6,13 @@
 
 namespace Ase {
 
-class ProjectImpl : public virtual Project, public virtual GadgetImpl {
+class ProjectImpl : public GadgetImpl, public virtual Project {
   std::vector<TrackImplP> tracks_;
 public:
   explicit ProjectImpl    (const String &projectname);
   virtual ~ProjectImpl    ();
   void     destroy        () override;
+  Error    save_dir       (const String &dir, bool selfcontained) override;
   void     start_playback () override;
   void     stop_playback  () override;
   bool     is_playing     () override;

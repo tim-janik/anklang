@@ -19,7 +19,7 @@ public:
 };
 
 /// Implementation type for classes with Property interfaces.
-class ObjectImpl : public virtual Object, public virtual EmittableImpl {
+class ObjectImpl : public EmittableImpl, public virtual Object {
 protected:
   virtual      ~ObjectImpl () = 0;
 public:

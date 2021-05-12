@@ -128,7 +128,10 @@ parse_args (int *argcp, char **argv)
       else if (strcmp ("--disable-randomization", argv[i]) == 0)
         config.allow_randomization = false;
       else if (strcmp ("--check-integrity-tests", argv[i]) == 0)
-        config.mode = MainConfig::CHECK_INTEGRITY_TESTS;
+        {
+          config.mode = MainConfig::CHECK_INTEGRITY_TESTS;
+          config.fatal_warnings = true;
+        }
       else if (strcmp ("--js-api", argv[i]) == 0)
         config.print_js_api = true;
       else if (strcmp ("--jsipc", argv[i]) == 0)

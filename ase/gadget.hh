@@ -8,7 +8,7 @@
 namespace Ase {
 
 /// Base type for classes that have a Property.
-class GadgetImpl : public virtual Gadget, public virtual ObjectImpl, public CustomDataContainer {
+class GadgetImpl : public ObjectImpl, public virtual Gadget, public CustomDataContainer {
 protected:
   virtual       ~GadgetImpl      ();
   virtual String fallback_name   () const;

@@ -19,9 +19,11 @@ namespace Ase {
 // == FileCrawler ==
 JSONIPC_INHERIT (FileCrawler, ResourceCrawler);
 
-FileCrawler::FileCrawler (const String &cwd)
+FileCrawler::FileCrawler (const String &cwd) :
+  cwd_ ("/")
 {
-  cwd_ = Path::abspath (cwd);
+  if (!cwd.empty())
+    assign (cwd);
 }
 
 ResourceS
@@ -61,22 +63,23 @@ FileCrawler::list_entries ()
 }
 
 String
-FileCrawler::get_dir (const String &which)
+FileCrawler::expand_dir (const String &which)
 {
   if (which == ".")
-    return cwd_;
-  if (string_tolower (which) == "demo")
-    return Ase::runpath (RPath::DEMODIR);
-  if (string_tolower (which) == "home")
-    return Ase::runpath (RPath::HOMEDIR);
+    return Path::dir_terminate (cwd_);
+  if (string_toupper (which) == "DEMO")
+    return Path::dir_terminate (Ase::runpath (RPath::DEMODIR));
+  String dir = Path::xdg_dir (which);
+  if (!dir.empty())
+    return Path::dir_terminate (dir);
   return "/";
 }
 
 Resource
 FileCrawler::current_folder ()
 {
-  const String cwdir = string_endswith (cwd_, "/") ? cwd_ : cwd_ + '/';
-  Resource r { .type = ResourceType::FOLDER, .label = Path::basename (cwd_), .uri = cwdir, };
+  Resource r { .type = ResourceType::FOLDER, .label = Path::basename (cwd_),
+               .uri = Path::dir_terminate (cwd_), };
   struct stat statbuf = { 0, };
   if (lstat (cwd_.c_str(), &statbuf) == 0)
     {
@@ -87,33 +90,16 @@ FileCrawler::current_folder ()
 }
 
 void
-FileCrawler::go_down (const String &name)
-{
-  if (!name.empty())
-    {
-      cwd_ = Path::abspath (Path::join (cwd_, name));
-      emit_event ("notify", "current");
-      emit_event ("notify", "entries");
-    }
-}
-
-void
-FileCrawler::go_up ()
-{
-  const char *path = cwd_.c_str();
-  const char *slash = strrchr (path, ASE_DIRCHAR);
-  if (slash > path)
-    {
-      cwd_ = cwd_.substr (0, slash - path);
-      emit_event ("notify", "current");
-      emit_event ("notify", "entries");
-    }
-}
-
-void
 FileCrawler::assign (const String &path)
 {
-  cwd_ = canonify (path, "e");
+  String dir = path;
+  if (dir.find ("/") == dir.npos) // relative navigation features special expansions
+    {
+      dir = expand_dir (dir);
+      if (dir.empty() || dir == "/") // failed to expand special word
+        dir = path;
+    }
+  cwd_ = canonify (cwd_, dir.empty() ? "." : dir + "/", true, false);
   while (cwd_.size() > 1 && cwd_.back() == '/')
     cwd_.resize (cwd_.size() - 1);
   emit_event ("notify", "current");
@@ -121,33 +107,58 @@ FileCrawler::assign (const String &path)
 }
 
 String
-FileCrawler::asdir (const String &dirname)
+FileCrawler::canonify (const String &cwd, const String &fragment, bool constraindir, bool constrainfile)
 {
-  String p = Fs::path (dirname).lexically_normal(); // remove .. and /./ etc
-  if (Path::check (p, "d"))
-    return p;
-  return ""; // not an existing directory
-}
-
-String
-FileCrawler::canonify (const String &path, const String &checks)
-{
-  String p = path; // string_startswith (path, "file://") ? path.substr (6) : path;
-  if (!Path::isabs (p))
-    p = Path::abspath (p, cwd_);
-  p = Fs::path (p).lexically_normal(); // remove .. and /./ etc
-  if (Path::check (p, "d")) // canonify directory with trailing slash
-    return Fs::path (p + "/").lexically_normal();
-  if (Path::check (p, "e")) // exists?
-    return p;
-  String d = Path::dirname (p); // dir component MUST exist
-  while (d != "/" && !Path::check (d, "e"))
+  // expansions
+  Fs::path p = Path::expand_tilde (fragment);
+  // make absolute
+  if (!p.is_absolute())
     {
-      p = d;
-      d = Path::dirname (p);
+      Fs::path root = cwd;
+      if (!root.is_absolute())
+        root = cwd_ / root;
+      p = root / p;
     }
-  const bool must_exist = checks.find ('e') != String::npos;
-  return must_exist ? d : p;
+  // normalize, remove /// /./ ..
+  p = p.lexically_normal();
+  // return existing file or dir with slash
+  if (Path::check (p, "d"))     // isdir?
+    return Path::dir_terminate (p);
+  if (Path::check (p, "e"))     // exists?
+    return p;
+  // force existing directory
+  Fs::path d = p.parent_path(), f = p.filename();
+  if (constraindir)
+    while (d.relative_path() != "" && !Path::check (d, "d"))
+      d = d.parent_path();
+  p = d / f;
+  // force existing or empty file
+  if (constrainfile && !Path::check (p, "e"))
+    p = d;
+  // return dirs with slash
+  if (Path::check (p, "d"))
+    return Path::dir_terminate (p);
+  return p;
 }
 
 } // Ase
+
+#include "testing.hh"
+
+TEST_INTEGRITY (crawler_tests);
+static void
+crawler_tests()
+{
+  using namespace Ase;
+  FileCrawlerP cp = FileCrawler::make_shared ("/dev");
+  FileCrawler &c = *cp;
+  String r, e;
+  r = c.canonify ("", "/dev/N°…Diŕ/N°…Fílė", 1, 1); e = "/dev/";        TCMP (r, ==, e);
+  r = c.canonify (".", ".", 1, 1); e = "/dev/";                         TCMP (r, ==, e);
+  r = c.canonify ("", "/dev/N°…Diŕ/null", 1, 1); e = "/dev/null";       TCMP (r, ==, e);
+  r = c.canonify ("", "/tmp/N°…Diŕ/N°…Fílė", 1, 0); e = "/tmp/N°…Fílė"; TCMP (r, ==, e);
+  r = c.canonify ("", "/tmp/N°…Diŕ//.//", 0, 0); e = "/tmp/N°…Diŕ/";    TCMP (r, ==, e);
+  r = c.canonify ("", "/tmp/N°…Diŕ//..//", 0, 0); e = "/tmp/";          TCMP (r, ==, e);
+  r = c.canonify ("N°…Diŕ", "N°…Fílė", 1, 1); e = "/dev/";              TCMP (r, ==, e);
+  r = c.canonify ("/N°…Diŕ", "N°…Fílė", 1, 1); e = "/";                 TCMP (r, ==, e);
+}

@@ -154,12 +154,10 @@ export default {
 };
 
 async function open_file() {
-  //if (!open_file.last_dir)
-  //  open_file.last_dir = await (await Ase.server.cwd_crawler()).get_dir ('home');
   const opt = {
     title:  Util.format_title ('Anklang', 'Select File To Open'),
     button: 'Open File',
-    cwd:    open_file.last_dir,
+    cwd:    open_file.last_dir || "MUSIC",
     filters: [ { name: 'Projects', extensions: ['anklang'] }, // TODO: filters
 	       { name: 'Audio Files', extensions: [ 'anklang', 'mid', 'wav', 'mp3', 'ogg' ] },
 	       { name: 'All Files', extensions: [ '*' ] }, ],
@@ -182,7 +180,7 @@ async function save_project (asnew = false) {
   const opt = {
     title:  Util.format_title ('Anklang', 'Save Project'),
     button: 'Save As',
-    cwd:    save_project.last_dir,
+    cwd:    save_project.last_dir || "MUSIC",
     filters: [ { name: 'Projects', extensions: ['anklang'] }, ],
   };
   let filename = ''; // TODO: await Data.project.get_custom ('filename');
@@ -192,9 +190,9 @@ async function save_project (asnew = false) {
   if (!filename)
     return false;
   save_project.last_dir = filename.replace (/[^\/]*$/, ''); // dirname
-  if (!filename.endsWith ('.anklang'))
-    filename += '.anklang';
-  if (!replace) // TODO: if file_exists (filename)
+  //if (!filename.endsWith ('.anklang'))
+  //  filename += '.anklang';
+  if (0 && !replace) // TODO: if file_exists (filename)
     {
       replace = await App.async_modal_dialog ("Replace Project?",
 					      "Replace existing project file?\n" +

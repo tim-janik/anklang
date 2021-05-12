@@ -7,16 +7,16 @@
 #ifdef  _WIN32 // includes _WIN64
 #define ASE_UNIX_PATHS                  0       ///< Equals 1 _WIN32 and _WIN64 and 0 on Unix.
 #define ASE_DOS_PATHS                   1       ///< Equals 0 _WIN32 and _WIN64 and 1 on Unix.
-#define ASE_DIRCHAR                     '/'
-#define ASE_DIRCHAR2                    '\\'
+#define ASE_DIRSEP                     '/'
+#define ASE_DIRSEP2                    '\\'
 #define ASE_DIRSEPARATORS               "/\\"
 #define ASE_SEARCHPATH_SEPARATOR        ';'
 #define ASE_LIBEXT                      ".dll"
 #else   // !_WIN32
 #define ASE_UNIX_PATHS                  1       ///< Equals 0 _WIN32 and _WIN64 and 1 on Unix.
 #define ASE_DOS_PATHS                   0       ///< Equals 1 _WIN32 and _WIN64 and 0 on Unix.
-#define ASE_DIRCHAR                     '/'     ///< Platform directory separator character, '/' on Unix-like systems, a '\\' on _WIN32.
-#define ASE_DIRCHAR2                    '/'     ///< Secondary directory separator character, '/' on Unix-like systems.
+#define ASE_DIRSEP                     '/'     ///< Platform directory separator character, '/' on Unix-like systems, a '\\' on _WIN32.
+#define ASE_DIRSEP2                    '/'     ///< Secondary directory separator character, '/' on Unix-like systems.
 #define ASE_DIRSEPARATORS               "/"     ///< List of platform directory separator characters, "/" on Unix-like systems, "/\\" on _WIN32.
 #define ASE_SEARCHPATH_SEPARATOR        ':'     ///< Platform searchpath separator, ':' on Unix-like systems, ';' on _WIN32.
 #define ASE_LIBEXT                      ".so"   ///< Dynamic library filename extension on this platform.
@@ -29,7 +29,9 @@ namespace Path {
 
 String       dirname             (const String &path);
 String       basename            (const String &path);
+String       normalize           (const String &path);
 String       realpath            (const String &path);
+String       dir_terminate       (const String &path);
 String       abspath             (const String &path, const String &incwd = "");
 bool         isabs               (const String &path);
 bool         isdirname           (const String &path);
@@ -37,6 +39,7 @@ bool         mkdirs              (const String &dirpath, uint mode = 0750);
 StringPair   split_extension     (const std::string &filepath, bool lastdot = false);
 String       expand_tilde        (const String &path);
 String       user_home           (const String &username = "");
+String       xdg_dir             (const String &xdgdir = "");
 String       data_home           ();
 String       config_home         ();
 String       config_names        ();
@@ -73,7 +76,7 @@ String join_with (const String &head, char joiner, const String &tail);
 template<class ...S> inline String
 join (String path, const S &...more)
 {
-  ((path = join_with (path, ASE_DIRCHAR, more)), ...); // C++17 fold expression
+  ((path = join_with (path, ASE_DIRSEP, more)), ...); // C++17 fold expression
   return path;
 }
 
