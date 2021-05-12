@@ -92,7 +92,6 @@ export class AppClass {
       this.switch_panel2 ('p');
   }
   async load_project_checked (project_or_path) {
-    project_or_path = await project_or_path;
     const err = await this.load_project (project_or_path);
     if (err !== Ase.Error.NONE)
       App.async_modal_dialog ("File Open Error",
@@ -104,21 +103,22 @@ export class AppClass {
     return err;
   }
   async load_project (project_or_path) {
-    project_or_path = await project_or_path;
     // always replace the existing project with a new one
     let newproject = project_or_path instanceof Ase.Project ? project_or_path : null;
     if (!newproject)
       {
+	// Create afresh
 	newproject = await Ase.server.create_project ('Untitled');
-	// load from disk if possible
+	// Loads from disk
+	const error = await newproject.load_project (project_or_path);
+	debug ("LOAD:",project_or_path, ":", newproject, error);
+	if (error != Ase.Error.NONE)
+	  return error;
+	let newname = 'Untitled';
 	if (project_or_path)
-	  {
-	    const ret = Ase.Error.FORMAT_UNKNOWN || await newproject.restore_from_file (project_or_path);
-	    if (ret != Ase.Error.NONE)
-	      return ret;
-	    const basename = project_or_path.replace (/.*\//, '');
-	    await newproject.set_name (basename);
-	  }
+	  newname = project_or_path.replace (/.*\//, '');
+	await newproject.name (newname);
+	debug ("NAME", newname);
       }
     const mtrack = await newproject.master_track();
     const tracks = await newproject.list_tracks();
@@ -127,7 +127,7 @@ export class AppClass {
       {
 	this.notifynameclear();
 	App.open_piano_roll (undefined);
-	Data.project.stop();
+	Data.project.stop_playback();
 	Data.project = null; // TODO: should trigger FinalizationGroup
       }
     // replace project & master track without await, to synchronously trigger Vue updates for both
@@ -140,14 +140,15 @@ export class AppClass {
     };
     this.notifynameclear = Data.project.on ("notify:name", update_title);
     update_title();
-    this.shell.update();
+    if (this.shell)
+      this.shell.update();
     return Ase.Error.NONE;
   }
   async save_project (projectpath) {
-    return Ase.Error.UNIMPLEMENTED; // TODO: save_project
-    const self_contained = true;
+    const self_contained = false;
+    debug("projectpath",projectpath);
     return !Data.project ? Ase.Error.INTERNAL :
-	   Data.project.store (projectpath, self_contained);
+	   Data.project.save_dir (projectpath, self_contained);
   }
   status (...args) {
     console.log (...args);
