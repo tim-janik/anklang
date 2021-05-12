@@ -35,6 +35,24 @@ GadgetImpl::serialize (WritNode &xs)
     }
   // Serializable
   Serializable::serialize (xs);
+  // properties
+  for (PropertyP p : access_properties())
+    {
+      const String hints = p->hints();
+      if (!string_option_check (hints, "S"))
+        continue;
+      if (xs.in_save() && string_option_check (hints, "r"))
+        {
+          Value v = p->get_value();
+          xs[p->identifier()] & v;
+        }
+      if (xs.in_load() && string_option_check (hints, "w") && xs.has (p->identifier()))
+        {
+          Value v;
+          xs[p->identifier()] & v;
+          p->set_value (v);
+        }
+    }
 }
 
 String
