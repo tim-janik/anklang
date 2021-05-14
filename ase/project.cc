@@ -90,6 +90,8 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
   String jsd = json_stringify (*this, Writ::INDENT);
   jsd += '\n';
   jsd = compress (jsd);
+  if (jsd.empty())
+    return Error::NO_MEMORY;
   if (projectfile.empty())
     projectfile = "project";
   if (!string_endswith (projectfile, dotanklang))
