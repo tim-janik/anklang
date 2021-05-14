@@ -43,21 +43,22 @@ ProjectImpl::destroy ()
 static bool
 is_anklang_dir (const String path)
 {
-  String mime = Path::stringread (Path::join (path, "mimetype"));
-  return mime == "application/x-ase";
+  String mime = Path::stringread (Path::join (path, ".anklang.project"));
+  return mime == "#application/x-anklang";
 }
 
 static bool
 make_anklang_dir (const String path)
 {
-  String mime = Path::join (path, "mimetype");
-  return Path::stringwrite (mime, "application/x-ase");
+  String mime = Path::join (path, ".anklang.project");
+  return Path::stringwrite (mime, "#application/x-anklang");
 }
 
 Error
 ProjectImpl::save_dir (const String &pdir, bool selfcontained)
 {
-  const String postfix = ".anklang";
+  const String dotanklang = ".anklang";
+  String projectfile;
   String path = Path::normalize (Path::abspath (pdir));
   // check path
   if (Path::check (path, "d"))                  // existing directory
@@ -67,14 +68,16 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
       String dir = Path::dirname (path);
       if (!is_anklang_dir (dir))
         return ase_error_from_errno (ENOTDIR);
+      projectfile = Path::basename (path);
       path = dir;                               // file inside project dir
     }
   else                                          // new name
     {
-      if (path.back() == '/')                   // strip trailing slashes
+      while (path.back() == '/')                // strip trailing slashes
         path = Path::dirname (path);
-      if (string_endswith (path, postfix))      // strip .anklang
-        path.resize (path.size() - postfix.size());
+      if (string_endswith (path, dotanklang))  // strip .anklang
+        path.resize (path.size() - dotanklang.size());
+      projectfile = Path::basename (path);
       if (!is_anklang_dir (path) &&
           !Path::mkdirs (path))                 // create new project dir
         return ase_error_from_errno (errno);
@@ -85,7 +88,11 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
   // serialize Project
   String jsd = json_stringify (*this, Writ::INDENT);
   jsd += '\n';
-  if (!Path::stringwrite (Path::join (path, "project.anklang"), jsd))
+  if (projectfile.empty())
+    projectfile = "project";
+  if (!string_endswith (projectfile, dotanklang))
+    projectfile += dotanklang;
+  if (!Path::stringwrite (Path::join (path, projectfile), jsd))
     return ase_error_from_errno (errno);
   jsd.clear();
   // cleanup
@@ -95,11 +102,18 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
 Error
 ProjectImpl::load_project (const String &filename)
 {
-  if (!Path::check (filename, "e"))
+  String fname = filename;
+  // turn /foo/.anklang.project -> /foo/
+  if (Path::basename (fname) == ".anklang.project" && is_anklang_dir (Path::dirname (fname)))
+    fname = Path::dirname (fname);
+  // try /foo/ -> /foo/foo.anklang
+  if (Path::check (fname, "d"))
+    fname = Path::join (fname, Path::basename (Path::strip_slashes (Path::normalize (fname)))) + ".anklang";
+  if (!Path::check (fname, "e"))
     return ase_error_from_errno (errno);
-  String basedir = Path::check (filename, "d") ? filename : Path::dirname (filename);
-  return_unless (is_anklang_dir (basedir), ase_error_from_errno (errno));
-  String jsd = Path::stringread (Path::join (basedir, "project.anklang"));
+  String basedir = Path::dirname (fname);
+  // return_unless (is_anklang_dir (basedir), ase_error_from_errno (errno));
+  String jsd = Path::stringread (fname);
   if (jsd.empty() && errno)
     return ase_error_from_errno (errno);
   if (!json_parse (jsd, *this))
