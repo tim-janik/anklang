@@ -4,6 +4,7 @@
 #include "utils.hh"
 #include "path.hh"
 #include "serialize.hh"
+#include "compress.hh"
 #include "internal.hh"
 
 namespace Ase {
@@ -88,6 +89,7 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
   // serialize Project
   String jsd = json_stringify (*this, Writ::INDENT);
   jsd += '\n';
+  jsd = compress (jsd);
   if (projectfile.empty())
     projectfile = "project";
   if (!string_endswith (projectfile, dotanklang))
@@ -114,6 +116,8 @@ ProjectImpl::load_project (const String &filename)
   String basedir = Path::dirname (fname);
   // return_unless (is_anklang_dir (basedir), ase_error_from_errno (errno));
   String jsd = Path::stringread (fname);
+  if (is_compressed (jsd))
+    jsd = uncompress (jsd);
   if (jsd.empty() && errno)
     return ase_error_from_errno (errno);
   if (!json_parse (jsd, *this))
