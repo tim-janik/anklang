@@ -10,6 +10,30 @@
 
 namespace Ase {
 
+bool
+is_aiff (const String &input)
+{
+  return input.substr (0, 4) == "FORM" && input.substr (8, 4) == "AIFF";
+}
+
+bool
+is_wav (const String &input)
+{
+  return input.substr (0, 4) == "RIFF" && input.substr (8, 4) == "WAVE";
+}
+
+bool
+is_midi (const String &input)
+{
+  return input.substr (0, 4) == "MThd";
+}
+
+bool
+is_pdf (const String &input)
+{
+  return input.substr (0, 5) == "%PDF-";
+}
+
 static int
 guess_zstd_level (size_t input_size)
 {
@@ -22,7 +46,7 @@ guess_zstd_level (size_t input_size)
 }
 
 String
-compress (const String &input)
+zstd_compress (const String &input)
 {
   const size_t maxosize = ZSTD_compressBound (input.size());
   String data;
@@ -39,7 +63,7 @@ compress (const String &input)
 }
 
 String
-uncompress (const String &input)
+zstd_uncompress (const String &input)
 {
   const size_t maxosize = ZSTD_getFrameContentSize (&input[0], input.size());
   if (maxosize > 8 * 1024 * 1024 * 1024ull)
@@ -69,13 +93,115 @@ uncompress (const String &input)
 }
 
 bool
-is_compressed (const String &input)
+is_zstd (const String &input)
 {
   return (input.size() >= 4 &&
           input[0] == char (0x28) &&
           input[1] == char (0xb5) &&
           input[2] == char (0x2f) &&
           input[3] == char (0xfd));
+}
+
+bool
+is_lz4 (const String &input)
+{
+  return (input.size() >= 4 &&
+          input[0] == char (0x04) &&
+          input[1] == char (0x22) &&
+          input[2] == char (0x4d) &&
+          input[3] == char (0x18));
+}
+
+bool
+is_zip (const String &input)
+{
+  return (input.size() >= 4 &&
+          input[0] == 'P' && input[1] == 'K' &&
+          ((input[2] == 0x03 && input[3] == 0x04) ||
+           (input[2] == 0x05 && input[3] == 0x06) ||
+           (input[2] == 0x07 && input[3] == 0x08)));
+}
+
+bool
+is_arj (const String &input)
+{
+  return input.size() >= 2 && input[0] == char (0x60) && input[1] == char (0xea);
+}
+
+bool
+is_isz (const String &input)
+{
+  return input.substr (0, 4) == "IsZ!";
+}
+
+bool
+is_ogg (const String &input)
+{
+  return input.substr (0, 4) == "OggS";
+}
+
+bool
+is_avi (const String &input)
+{
+  return input.substr (0, 4) == "RIFF" && input.substr (8, 4) == "AVI ";
+}
+
+bool
+is_gz (const String &input)
+{
+  return input.size() >= 2 && input[0] == char (0x1f) && input[1] == char (0x8B);
+}
+
+bool
+is_xz (const String &input)
+{
+  return (input.size() >= 6 &&
+          input[0] == char (0xfd) &&
+          input[1] == char (0x37) &&
+          input[2] == char (0x7a) &&
+          input[3] == char (0x58) &&
+          input[4] == char (0x5a) &&
+          input[5] == char (0x00));
+}
+
+bool
+is_png (const String &input)
+{
+  return (input.size() >= 8 &&
+          input[0] == char (0x89) &&
+          input.substr (1, 3) == "PNG" &&
+          input[4] == char (0x0d) &&
+          input[5] == char (0x0a) &&
+          input[6] == char (0x1a) &&
+          input[7] == char (0x0a));
+}
+
+bool
+is_jpg (const String &input)
+{
+  return (input.size() >= 4 &&
+          input[0] == char (0xff) &&
+          input[1] == char (0xd8) &&
+          input[2] == char (0xff) &&
+          (input[3] == char (0xdb) || input[3] == char (0xe0) ||
+           input[3] == char (0xee) || input[3] == char (0xe1)));
+}
+
+bool
+is_compressed (const String &input)
+{
+  return (is_zstd (input) ||
+          is_lz4 (input) ||
+          is_zip (input) ||
+          is_arj (input) ||
+          is_isz (input) ||
+          is_ogg (input) ||
+          is_avi (input) ||
+          is_gz (input) ||
+          is_xz (input) ||
+          is_png (input) ||
+          is_jpg (input));
+
 }
 
 } // Ase
