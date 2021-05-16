@@ -2,29 +2,37 @@
 #ifndef __ASE_STORAGE_HH__
 #define __ASE_STORAGE_HH__
 
-#include <ase/cxxaux.hh>
+#include <ase/defs.hh>
 
 namespace Ase {
 
-class Storage {
+class StorageWriter {
   class Impl;
-  std::shared_ptr<Storage::Impl> impl_;
+  std::shared_ptr<StorageWriter::Impl> impl_;
 public:
-  explicit Storage           ();
-  virtual ~Storage           ();
+  explicit StorageWriter      ();
+  virtual ~StorageWriter      ();
   // Writer API
-  int      store_file_fd     (const String &filename);
-  bool     store_file_buffer (const String &filename, const String &buffer, int64_t epoch_seconds = 0);
-  bool     rm_file           (const String &filename);
-  bool     set_mimetype_ase  ();
-  bool     export_as         (const String &filename);
+  Error    open_for_writing   (const String &filename);
+  Error    open_with_mimetype (const String &filename, const String &mimetype);
+  Error    store_file_data    (const String &filename, const String &buffer);
+  Error    close              ();
+  Error    remove_opened      ();
+};
+
+class StorageReader {
+  class Impl;
+  std::shared_ptr<StorageReader::Impl> impl_;
+public:
+  explicit StorageReader      ();
+  virtual ~StorageReader      ();
   // Reader API
-  bool     import_from       (const String &filename);
-  bool     has_file          (const String &filename);
-  String   move_to_temporary (const String &filename);
-  String   fetch_file_buffer (const String &filename, ssize_t maxlength = -1);
-  String   fetch_file        (const String &filename); // yields abspath
-  static bool match_ase_header (const String &data);
+  Error    open_for_reading   (const String &filename);
+  void     search_dir         (const String &dirname);
+  bool     has_file           (const String &filename);
+  StringS  list_files         ();
+  String   stringread         (const String &filename, ssize_t maxlength = -1);
+  Error    close              ();
 };
 
 String anklang_cachedir_create  ();
