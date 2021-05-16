@@ -76,7 +76,7 @@ config-checks.require.pkgconfig ::= $(strip	\
 	ogg			>= 1.2.2	\
 	vorbis			>= 1.3.2	\
 	vorbisenc		>= 1.3.2	\
-	vorbisfile		>= 1.3.2	\
+	vorbisfile		>= 1.3.5	\
 	glib-2.0        	>= 2.32.3	\
 	gmodule-no-export-2.0	>= 2.32.3	\
 	gthread-2.0		>= 2.32.3	\
@@ -84,7 +84,7 @@ config-checks.require.pkgconfig ::= $(strip	\
 )
 # mad.pc exists in Debian only:	mad >= 0.14.2
 # boost libraries have no .pc files
-# VORBISFILE_BAD_SEEK indicates pcm_seek bug near EOF for small files in vorbisfile <= 1.3.4
+# Note, vorbisfile <= 1.3.4 had a pcm_seek bug near EOF for small files
 
 # == pkg-config variables ==
 # used for GLIB_CFLAGS and GLIB_LIBS
@@ -136,8 +136,6 @@ $>/config-cache.mk: misc/config-checks.mk misc/version.sh $(GITCOMMITDEPS) | $>/
 	$Q BOOST_SYSTEM_LIBS='-lboost_system' \
 	  && echo "BOOST_SYSTEM_LIBS ::= $$BOOST_SYSTEM_LIBS"	>>$@.tmp \
 	  && $(call conftest_require_lib, boost/system/error_code.hpp, boost::system::system_category, $$BOOST_SYSTEM_LIBS)
-	$Q $(PKG_CONFIG) --exists 'vorbisfile <= 1.3.4' && BAD_SEEK=1 || BAD_SEEK=0 \
-	  && echo "VORBISFILE_BAD_SEEK ::= $$BAD_SEEK"		>>$@.tmp
 	$Q echo 'config-stamps ::= $$>/config-stamps.sha256'	>>$@.tmp \
 	  && OLDSUM=$$(cat "$>/config-stamps.sha256" 2>/dev/null || :) \
 	  && TMPSUM=$$(sha256sum < $@.tmp) && CFGSUM="$${TMPSUM%-}$(@F)" \
