@@ -79,7 +79,10 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
       if (string_endswith (path, dotanklang))   // strip .anklang
         path.resize (path.size() - dotanklang.size());
       projectfile = Path::basename (path);
-      if (!is_anklang_dir (path) &&
+      const String parentdir = Path::dirname (path);
+      if (is_anklang_dir (parentdir))
+        path = parentdir;
+      else if (!is_anklang_dir (path) &&
           !Path::mkdirs (path))                 // create new project dir
         return ase_error_from_errno (errno);
     }
