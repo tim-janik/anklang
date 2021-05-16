@@ -4,7 +4,7 @@
 #include "utils.hh"
 #include "path.hh"
 #include "serialize.hh"
-#include "compress.hh"
+#include "storage.hh"
 #include "internal.hh"
 
 namespace Ase {
@@ -44,15 +44,14 @@ ProjectImpl::destroy ()
 static bool
 is_anklang_dir (const String path)
 {
-  String mime = Path::stringread (Path::join (path, ".anklang.project"));
-  return mime == "#application/x-anklang";
+  return Path::check (Path::join (path, ".anklang.project"), "r");
 }
 
 static bool
 make_anklang_dir (const String path)
 {
   String mime = Path::join (path, ".anklang.project");
-  return Path::stringwrite (mime, "#application/x-anklang");
+  return Path::stringwrite (mime, "# ANKLANG(1) project directory\n");
 }
 
 Error
@@ -89,42 +88,56 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
   if (!make_anklang_dir (path))
     return ase_error_from_errno (errno);
   // here, path is_anklang_dir
-  // serialize Project
-  String jsd = json_stringify (*this, Writ::INDENT);
-  jsd += '\n';
-  jsd = compress (jsd);
-  if (jsd.empty())
-    return Error::NO_MEMORY;
   if (projectfile.empty())
     projectfile = "project";
   if (!string_endswith (projectfile, dotanklang))
     projectfile += dotanklang;
-  if (!Path::stringwrite (Path::join (path, projectfile), jsd))
-    return ase_error_from_errno (errno);
-  jsd.clear();
-  // cleanup
-  return Ase::Error::NONE;
+  StorageWriter ws;
+  Error error = ws.open_with_mimetype (Path::join (path, projectfile), "application/x-anklang");
+  if (!error)
+    {
+      // serialize Project
+      String jsd = json_stringify (*this, Writ::INDENT);
+      jsd += '\n';
+      error = ws.store_file_data ("project.json", jsd);
+    }
+  if (!error)
+    error = ws.close();
+  if (!!error)
+    ws.remove_opened();
+  return error;
 }
 
 Error
 ProjectImpl::load_project (const String &filename)
 {
   String fname = filename;
-  // turn /foo/.anklang.project -> /foo/
+  // turn /dir/.anklang.project -> /dir/
   if (Path::basename (fname) == ".anklang.project" && is_anklang_dir (Path::dirname (fname)))
     fname = Path::dirname (fname);
-  // try /foo/ -> /foo/foo.anklang
+  // turn /dir/ -> /dir/dir.anklang
   if (Path::check (fname, "d"))
     fname = Path::join (fname, Path::basename (Path::strip_slashes (Path::normalize (fname)))) + ".anklang";
+  // try /dir/file
   if (!Path::check (fname, "e"))
-    return ase_error_from_errno (errno);
-  String basedir = Path::dirname (fname);
-  // return_unless (is_anklang_dir (basedir), ase_error_from_errno (errno));
-  String jsd = Path::stringread (fname);
-  if (is_compressed (jsd))
-    jsd = uncompress (jsd);
+    {
+      // try /dir/file.anklang
+      fname += ".anklang";
+      if (!Path::check (fname, "e"))
+        return ase_error_from_errno (errno);
+    }
+  const String dirname = Path::dirname (fname);
+  StorageReader rs;
+  Error error = rs.open_for_reading (fname);
+  if (!!error)
+    return error;
+  if (rs.stringread ("mimetype") != "application/x-anklang")
+    return Error::FORMAT_INVALID;
+  String jsd = rs.stringread ("project.json");
   if (jsd.empty() && errno)
     return ase_error_from_errno (errno);
+  if (is_anklang_dir (dirname))
+    rs.search_dir (dirname);
   if (!json_parse (jsd, *this))
     return Error::PARSE_ERROR;
   return Error::NONE;
