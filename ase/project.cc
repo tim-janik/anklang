@@ -64,7 +64,7 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
   // check path
   if (Path::check (path, "d"))                  // existing directory
     path = Path::dir_terminate (path);
-  else if (Path::check (path, "e"))             // file name
+  else if (Path::check (path, "e"))             // existing file
     {
       String dir = Path::dirname (path);
       if (!is_anklang_dir (dir))
@@ -72,11 +72,11 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
       projectfile = Path::basename (path);
       path = dir;                               // file inside project dir
     }
-  else                                          // new name
+  else                                          // new file name
     {
       while (path.back() == '/')                // strip trailing slashes
         path = Path::dirname (path);
-      if (string_endswith (path, dotanklang))  // strip .anklang
+      if (string_endswith (path, dotanklang))   // strip .anklang
         path.resize (path.size() - dotanklang.size());
       projectfile = Path::basename (path);
       if (!is_anklang_dir (path) &&
