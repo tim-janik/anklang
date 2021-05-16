@@ -92,7 +92,7 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
     projectfile = "project";
   if (!string_endswith (projectfile, dotanklang))
     projectfile += dotanklang;
-  StorageWriter ws;
+  StorageWriter ws (Storage::AUTO_ZSTD);
   Error error = ws.open_with_mimetype (Path::join (path, projectfile), "application/x-anklang");
   if (!error)
     {
@@ -127,7 +127,7 @@ ProjectImpl::load_project (const String &filename)
         return ase_error_from_errno (errno);
     }
   String dirname = Path::dirname (fname);
-  StorageReader rs;
+  StorageReader rs (Storage::AUTO_ZSTD);
   // try reading .anklang container
   Error error = rs.open_for_reading (fname);
   if (!!error)
