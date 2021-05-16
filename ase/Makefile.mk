@@ -33,6 +33,22 @@ $>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/AnklangSynthEngine.dep
 	$Q echo '[[maybe_unused]] static bool init_jsonipc = (jsonipc_4_api_hh(), 0);'		>> $@.tmp
 	$Q mv $@.tmp $@
 
+# == ase/buildversion.cc ==
+$>/ase/buildversion.cc: ase/Makefile.mk					| $>/ase/
+	$(QGEN)
+	$Q echo '// make $@'							> $@.tmp
+	$Q echo '#include <ase/platform.hh>'					>>$@.tmp
+	$Q echo 'namespace Ase {'						>>$@.tmp
+	$Q echo 'const int         ase_major_version = $(version_major);'	>>$@.tmp
+	$Q echo 'const int         ase_minor_version = $(version_minor);'	>>$@.tmp
+	$Q echo 'const int         ase_micro_version = $(version_micro);'	>>$@.tmp
+	$Q echo 'const char *const ase_short_version = "$(version_short)";'	>>$@.tmp
+	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_m.m.m)";'	>>$@.tmp
+	$Q echo '} // Ase'							>>$@.tmp
+	$Q mv $@.tmp $@
+ase/AnklangSynthEngine.objects += $>/ase/buildversion.o
+# $>/ase/buildversion.o: $>/ase/buildversion.cc
+
 # == ase/sysconfig.h ==
 $>/ase/sysconfig.h: $(config-stamps) $>/ase/sysconfig2.h $>/ase/sysconfig3.h | $>/ase/ # ase/Makefile.mk
 	$(QGEN)
