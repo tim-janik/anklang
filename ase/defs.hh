@@ -6,6 +6,8 @@
 
 namespace Ase {
 
+enum class Error;
+
 // == Struct Forward Declarations ==
 ASE_STRUCT_DECLS (AudioProcessorInfo);
 ASE_STRUCT_DECLS (Choice);
