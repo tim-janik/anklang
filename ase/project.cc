@@ -126,18 +126,28 @@ ProjectImpl::load_project (const String &filename)
       if (!Path::check (fname, "e"))
         return ase_error_from_errno (errno);
     }
-  const String dirname = Path::dirname (fname);
+  String dirname = Path::dirname (fname);
   StorageReader rs;
+  // try reading .anklang container
   Error error = rs.open_for_reading (fname);
   if (!!error)
     return error;
   if (rs.stringread ("mimetype") != "application/x-anklang")
     return Error::FORMAT_INVALID;
+  // find project.json *inside* container
   String jsd = rs.stringread ("project.json");
   if (jsd.empty() && errno)
-    return ase_error_from_errno (errno);
+    return Error::FORMAT_INVALID;
+  // search in dirname or dirname/..
   if (is_anklang_dir (dirname))
     rs.search_dir (dirname);
+  else
+    {
+      dirname = Path::dirname (dirname);
+      if (is_anklang_dir (dirname))
+        rs.search_dir (dirname);
+    }
+  // parse project
   if (!json_parse (jsd, *this))
     return Error::PARSE_ERROR;
   return Error::NONE;
