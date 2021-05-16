@@ -87,7 +87,7 @@ static const char*
 initialized_ase_gettext_domain()
 {
   static const char *const gettexttextdomain = [] () {
-    const char *const gtdomain = ASE_GETTEXT_DOMAIN;
+    const char *const gtdomain = ase_gettext_domain;
     bindtextdomain (gtdomain, Ase::runpath (Ase::RPath::LOCALEDIR).c_str());
     bind_textdomain_codeset (gtdomain, "UTF-8");
     return gtdomain;
@@ -722,9 +722,9 @@ determine_anklangsynthengine_installdir (bool *using_objdir)
   if (maps.fail())
     fatal_system_error ("AnklangSynthEngine", 0, "failed to open \"%s\": %s", self_maps, strerror (errno));
   char exename[256] = { 0, };
-  snprintf (exename, sizeof (exename), "/lib/AnklangSynthEngine-%u", ASE_MAJOR_VERSION);
+  snprintf (exename, sizeof (exename), "/lib/AnklangSynthEngine-%u", ase_major_version);
   char lbtname[256] = { 0, };
-  snprintf (lbtname, sizeof (lbtname), "/lib/%s/lt-AnklangSynthEngine-%u", LIBTOOL_OBJDIR, ASE_MAJOR_VERSION);
+  snprintf (lbtname, sizeof (lbtname), "/lib/%s/lt-AnklangSynthEngine-%u", LIBTOOL_OBJDIR, ase_major_version);
   std::string cxxline;
   while (std::getline (maps, cxxline))
     {
@@ -754,7 +754,7 @@ determine_anklangsynthengine_installdir (bool *using_objdir)
 std::string
 ase_version ()
 {
-  return ASE_VERSION_STRING;
+  return ase_short_version;
 }
 
 static String cached_program_alias;
