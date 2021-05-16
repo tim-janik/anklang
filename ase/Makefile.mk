@@ -50,57 +50,36 @@ ase/AnklangSynthEngine.objects += $>/ase/buildversion.o
 # $>/ase/buildversion.o: $>/ase/buildversion.cc
 
 # == ase/sysconfig.h ==
-$>/ase/sysconfig.h: $(config-stamps) $>/ase/sysconfig2.h $>/ase/sysconfig3.h | $>/ase/ # ase/Makefile.mk
+$>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk
 	$(QGEN)
-	$Q echo '// make $@'							> $@.tmp
-	$Q cat $>/ase/sysconfig2.h $>/ase/sysconfig3.h	>>$@.tmp
+	$Q : $(file > $>/ase/conftest_sysconfigh.cc, $(ase/conftest_sysconfigh.cc)) \
+	&& $(CXX) -Wall $>/ase/conftest_sysconfigh.cc -pthread -o $>/ase/conftest_sysconfigh \
+	&& (cd $> && ./ase/conftest_sysconfigh)
+	$Q echo '// make $@'				> $@.tmp
+	$Q cat $>/ase/conftest_sysconfigh.txt		>>$@.tmp
 	$Q mv $@.tmp $@
-
-# == ase/sysconfig2 ==
-$>/ase/sysconfig2.h: $(config-stamps) ase/Makefile.mk	| $>/ase/
-	$(QGEN)
-	$Q : $(file > $>/ase/conftest_spinlock.c, $(ase/conftest_spinlock.c)) \
-	&& $(CC) -Wall $>/ase/conftest_spinlock.c -pthread -o $>/ase/conftest_spinlock \
-	&& (cd $> && ./ase/conftest_spinlock) \
-	&& echo '#define ASE_SPINLOCK_INITIALIZER' "	$$(cat $>/ase/conftest_spinlock.txt)" > $@ \
-	&& rm $>/ase/conftest_spinlock.c $>/ase/conftest_spinlock $>/ase/conftest_spinlock.txt
-# ase/conftest_spinlock.c
-define ase/conftest_spinlock.c
+# ase/conftest_sysconfigh.cc
+define ase/conftest_sysconfigh.cc
+// #define _GNU_SOURCE
+#include <sys/types.h>
 #include <stdio.h>
+#include <poll.h>
 #include <string.h>
 #include <pthread.h>
+#include <assert.h>
 struct Spin { pthread_spinlock_t dummy1, s1, dummy2, s2, dummy3; };
-int main (int argc, char *argv[]) {
+int main (int argc, const char *argv[]) {
+  FILE *f = fopen ("ase/conftest_sysconfigh.txt", "w");
+  assert (f);
   struct Spin spin;
   memset (&spin, 0xffffffff, sizeof (spin));
   if (pthread_spin_init (&spin.s1, 0) == 0 && pthread_spin_init (&spin.s2, 0) == 0 &&
       sizeof (pthread_spinlock_t) == 4 && spin.s1 == spin.s2)
     { // # sizeof==4 and location-independence are current implementation assumption
-      FILE *f = fopen ("ase/conftest_spinlock.txt", "w");
-      fprintf (f, "/*{*/ 0x%04x, /*}*/\n", *(int*) &spin.s1);
-      fclose (f);
+      fprintf (f, "#define ASE_SPINLOCK_INITIALIZER  0x%04x \n", *(int*) &spin.s1);
     }
-  return 0;
-}
-endef
-
-# == ase/sysconfig3 ==
-$>/ase/sysconfig3.h: $(config-stamps) ase/Makefile.mk	| $>/ase/
-	$(QGEN)
-	$Q : $(file > $>/ase/conftest_pollval.c, $(ase/conftest_pollval.c)) \
-	&& $(CC) -Wall $>/ase/conftest_pollval.c -pthread -o $>/ase/conftest_pollval \
-	&& (cd $> && ./ase/conftest_pollval) \
-	&& echo -e '#define ASE_SYSVAL_POLLINIT\t\t((const uint32_t[])' "$$(cat $>/ase/conftest_pollval.txt))" > $@ \
-	&& rm $>/ase/conftest_pollval.c $>/ase/conftest_pollval $>/ase/conftest_pollval.txt
-# ase/conftest_pollval.c
-define ase/conftest_pollval.c
-#define _GNU_SOURCE
-#include <sys/types.h>
-#include <stdio.h>
-#include <poll.h>
-int main (int argc, char *argv[]) {
-  FILE *f = fopen ("ase/conftest_pollval.txt", "w");
-  fprintf (f, "{ 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x }\n",
+  fprintf (f, "#define ASE_SYSVAL_POLLINIT  ((const uint32_t[]) ");
+  fprintf (f, "{ 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x } )\n",
            POLLIN, POLLPRI, POLLOUT, POLLRDNORM, POLLRDBAND, POLLWRNORM, POLLWRBAND, POLLERR, POLLHUP, POLLNVAL);
   return ferror (f) || fclose (f) != 0;
 }
