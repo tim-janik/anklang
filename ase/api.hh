@@ -272,8 +272,8 @@ public:
   virtual TrackS  list_tracks    () = 0;        ///< Retrieve a list of all tracks.
   virtual TrackP  master_track   () = 0;        ///< Retrieve the master track.
   virtual Error   save_dir       (const String &dir, bool selfcontained) = 0; ///< Store Project data in `dir`.
-  static ProjectP create         (const String &projectname);
-  static ProjectP last_project ();
+  virtual Error   load_project   (const String &filename) = 0; ///< Load project from file `filename`.
+  static ProjectP last_project   ();
 };
 
 enum class ResourceType {
@@ -315,7 +315,7 @@ public:
   virtual String musical_tuning_blurb (MusicalTuning musicaltuning) const = 0;
   virtual String musical_tuning_desc  (MusicalTuning musicaltuning) const = 0;
   // preferences
-  virtual PropertyS   access_prefs  () = 0;     ///< Retrieve property handles for Preferences fields.
+  virtual PropertyS access_prefs  () = 0;       ///< Retrieve property handles for Preferences fields.
   // projects
   virtual ProjectP last_project   () = 0;       ///< Retrieve the last created project.
   virtual ProjectP create_project (String projectname) = 0; ///< Create a new project (name is modified to be unique if necessary.

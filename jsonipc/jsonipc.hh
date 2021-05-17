@@ -278,11 +278,17 @@ struct Convert<std::string> {
   }
 };
 
-/// DerivesVector<T> - Check if @a T derives from std::vector<>.
+/// DerivesVector<T> - Check if `T` derives from std::vector<>.
 template<class T, typename = void> struct DerivesVector : std::false_type {};
 // Use void_t to prevent errors for T without vector's typedefs
 template<class T> struct DerivesVector<T, std::void_t< typename T::value_type, typename T::allocator_type >> :
   std::is_base_of< std::vector<typename T::value_type, typename T::allocator_type>, T > {};
+
+/// DerivesPair<T> - Check if `T` derives from std::pair<>.
+template<class T, typename = void> struct DerivesPair : std::false_type {};
+// Use void_t to prevent errors for T without pair's typedefs
+template<class T> struct DerivesPair<T, std::void_t< typename T::first_type, typename T::second_type >> :
+  std::is_base_of< std::pair<typename T::first_type, typename T::second_type>, T > {};
 
 // std::vector
 template<typename T>
@@ -306,6 +312,31 @@ struct Convert<T, REQUIRESv< DerivesVector<T>::value >> {
     jarray.Reserve (vec.size(), allocator);
     for (size_t i = 0; i < vec.size(); ++i)
       jarray.PushBack (Convert<typename T::value_type>::to_json (vec[i], allocator).Move(), allocator);
+    return jarray;
+  }
+};
+
+// std::pair
+template<typename T>
+struct Convert<T, REQUIRESv< DerivesPair<T>::value >> {
+  static T
+  from_json (const JsonValue &jarray)
+  {
+    T pair = {};
+    if (jarray.IsArray() && jarray.Size() >= 2)
+      {
+        pair.first  = Convert<typename T::first_type >::from_json (jarray[0]);
+        pair.second = Convert<typename T::second_type>::from_json (jarray[1]);
+      }
+    return pair;
+  }
+  static JsonValue
+  to_json (const T &pair, JsonAllocator &allocator)
+  {
+    JsonValue jarray (rapidjson::kArrayType);
+    jarray.Reserve (2, allocator);
+    jarray.PushBack (Convert<typename T::first_type >::to_json (pair.first,  allocator).Move(), allocator);
+    jarray.PushBack (Convert<typename T::second_type>::to_json (pair.second, allocator).Move(), allocator);
     return jarray;
   }
 };
@@ -1270,11 +1301,14 @@ struct IsWrappableClass;
 template<typename T>
 struct IsWrappableClass<T, REQUIRESv< std::is_class<T>::value &&
                                       !IsSharedPtr<T>::value &&
+                                      !DerivesPair<T>::value &&
                                       !DerivesVector<T>::value >> : std::true_type {};
 template<>
 struct IsWrappableClass<std::string> : std::false_type {};
 template<typename T>
 struct IsWrappableClass<T, REQUIRESv< DerivesVector<T>::value >> : std::false_type {};
+template<typename T>
+struct IsWrappableClass<T, REQUIRESv< DerivesPair<T>::value >> : std::false_type {};
 
 /// Convert wrapped Class shared pointer
 template<typename T>

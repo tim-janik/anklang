@@ -36,7 +36,7 @@ struct ValueR : std::vector<ValueField> {
   using ValueFieldVector::operator[];
   Value&       operator[] (const String &name);
   const Value& operator[] (const String &name) const;
-  ValueP       valuep     (const String &name);
+  ValueP       valuep     (const String &name, bool front);
   ValueP       peek       (const String &name) const;
   String       repr       () const;
   ValueR ();

@@ -3,6 +3,7 @@
 #include "jsonipc/jsonipc.hh"
 #include "utils.hh"
 #include "path.hh"
+#include "serialize.hh"
 #include "internal.hh"
 
 namespace Ase {
@@ -10,9 +11,9 @@ namespace Ase {
 // == ProjectImpl ==
 JSONIPC_INHERIT (ProjectImpl, Project);
 
-static std::vector<ProjectImplP> projects;
+static std::vector<ProjectImplP> all_projects;
 
-ProjectImpl::ProjectImpl (const String &projectname)
+ProjectImpl::ProjectImpl()
 {
   if (tracks_.empty())
     create_track (); // ensure Master track
@@ -21,11 +22,20 @@ ProjectImpl::ProjectImpl (const String &projectname)
 ProjectImpl::~ProjectImpl()
 {}
 
+ProjectImplP
+ProjectImpl::create (const String &projectname)
+{
+  ProjectImplP project = ProjectImpl::make_shared();
+  all_projects.push_back (project);
+  project->name (projectname);
+  return project;
+}
+
 void
 ProjectImpl::destroy ()
 {
   stop_playback();
-  const size_t nerased = Aux::erase_first (projects, [this] (auto ptr) { return ptr.get() == this; });
+  const size_t nerased = Aux::erase_first (all_projects, [this] (auto ptr) { return ptr.get() == this; });
   if (nerased)
     ; // resource cleanups...
 }
@@ -72,7 +82,54 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
   if (!make_anklang_dir (path))
     return ase_error_from_errno (errno);
   // here, path is_anklang_dir
-  return Ase::Error::UNIMPLEMENTED; // return Ase::Error::NONE;
+  // serialize Project
+  String jsd = json_stringify (*this, Writ::INDENT);
+  jsd += '\n';
+  if (!Path::stringwrite (Path::join (path, "project.anklang"), jsd))
+    return ase_error_from_errno (errno);
+  jsd.clear();
+  // cleanup
+  return Ase::Error::NONE;
+}
+
+Error
+ProjectImpl::load_project (const String &filename)
+{
+  if (!Path::check (filename, "e"))
+    return ase_error_from_errno (errno);
+  String basedir = Path::check (filename, "d") ? filename : Path::dirname (filename);
+  return_unless (is_anklang_dir (basedir), ase_error_from_errno (errno));
+  String jsd = Path::stringread (Path::join (basedir, "project.anklang"));
+  if (jsd.empty() && errno)
+    return ase_error_from_errno (errno);
+  if (!json_parse (jsd, *this))
+    return Error::PARSE_ERROR;
+  return Error::NONE;
+}
+
+void
+ProjectImpl::serialize (WritNode &xs)
+{
+  GadgetImpl::serialize (xs);
+  // save tracks
+  if (xs.in_save())
+    for (auto &trackp : tracks_)
+      {
+        const bool True = true;
+        WritNode xc = xs["tracks"].push();
+        xc & *trackp;
+        if (trackp == tracks_.back())           // master_track
+          xc.front ("mastertrack") & True;
+      }
+  // load tracks
+  if (xs.in_load())
+    for (auto &xc : xs["tracks"].to_nodes())
+      {
+        TrackImplP trackp = tracks_.back();     // master_track
+        if (!xc["mastertrack"].as_int())
+          trackp = shared_ptr_cast<TrackImpl> (create_track());
+        xc & *trackp;
+      }
 }
 
 void
@@ -145,15 +202,7 @@ ProjectImpl::master_track ()
 ProjectP
 Project::last_project()
 {
-  return projects.empty() ? nullptr : projects.back();
-}
-
-ProjectP
-Project::create (const String &projectname)
-{
-  ProjectImplP project = std::make_shared<ProjectImpl> (projectname);
-  projects.push_back (project);
-  return project;
+  return all_projects.empty() ? nullptr : all_projects.back();
 }
 
 } // Ase

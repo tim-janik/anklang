@@ -23,6 +23,7 @@ struct Base {
   void need_copyablep (std::shared_ptr<Copyable> cp) { JSONIPC_ASSERT_RETURN (cp); }
   virtual ~Base() {}
 };
+using BaseP = std::shared_ptr<Base>;
 struct Base2 {
   Base2() = default;
   Base2(const Base2&) = default;
@@ -31,13 +32,14 @@ struct Base2 {
 };
 struct Derived : Base, Base2, std::enable_shared_from_this<Derived> {
   const std::string name_;
+  using Pair = std::pair<int, BaseP>;
   Derived (const std::string &name) : name_ (name) {}
   void   dummy0 ()                                { printf ("dummy0: NOP\n"); }
   bool   dummy1 (bool b)                          { printf ("dummy1: b=%s\n", b ? "true" : "false"); return b; }
-  void   dummy2 (std::string s, int i)            { printf ("dummy2: s=\"%s\" i=%d\n", s.c_str(), i); }
+  Pair   dummy2 (std::string s, int i)            { printf ("dummy2: s=\"%s\" i=%d\n", s.c_str(), i); return {}; }
   size_t dummy3 (Derived &d) const                { printf ("dummy3: Derived=%p this=%p\n", &d, this); return size_t (&d); }
   bool   dummy4 (float f, std::string s, long l)  { printf ("dummy4: this=%s %f '%s' %ld\n", name_.c_str(), f, s.c_str(), l); return 1; }
-  void   dummy5 (long l, const char *c, double d) { printf ("dummy5: this=%s %ld '%s' %f\n", name_.c_str(), l, c, d); }
+  void   dummy5 (const char *c, double d, Pair p) { printf ("dummy5: this=%s %d '%s' %f\n", name_.c_str(), p.first, c, d); }
   std::string dummy6 (int, const std::string &)   { return ""; }
   Derived* dummy7 () { return NULL; }
   Derived& dummy8 () { return *dummy7(); }

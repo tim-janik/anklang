@@ -51,6 +51,18 @@ struct Value;
 using ValueP = std::shared_ptr<Value>;
 // ValueS derives std::vector<ValueP>
 
+class WritNode;
+using WritNodeS = std::vector<WritNode>;
+
+// == Serializable ==
+/// Interface for serializable objects with Reflink support.
+class Serializable : public virtual VirtualBase {
+  friend WritNode;
+protected:
+  virtual void serialize (WritNode &xs) = 0; ///< Serialize members and childern
+  // see serialize.cc
+};
+
 } // Ase
 
 #endif // __ASE_DEFS_HH__

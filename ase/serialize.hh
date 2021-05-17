@@ -10,16 +10,6 @@ namespace Ase {
 
 class Writ;
 using WritP = std::shared_ptr<Writ>;
-class WritNode;
-using WritNodeS = std::vector<WritNode>;
-
-// == Serializable ==
-/// Interface for serializable objects with Reflink support.
-class Serializable : public virtual VirtualBase {
-  friend WritNode;
-protected:
-  virtual void serialize (WritNode &xs) = 0; ///< Serialize members and childern
-};
 
 // == WritLink ==
 class WritLink {
@@ -36,10 +26,12 @@ class WritNode {
   ValueP valuep_;
   Value &value_;
   friend class Writ;
-  ValueP    dummy       ();
+  ValueP       dummy            ();
+  WritNode     recfield         (const String &fieldname, bool front);
 public:
   /*ctor*/     WritNode         (Writ &writ, ValueP vp = std::make_shared<Value> (Value::empty_value));
-  WritNode     operator[]       (const String &fieldname);
+  WritNode     operator[]       (const String &fieldname)  { return recfield (fieldname, false); }
+  WritNode     front            (const String &fieldname)  { return recfield (fieldname, true); }
   bool         in_load          () const;           ///< Return `true` during deserialization
   bool         in_save          () const;           ///< Return `true` during serialization
   bool         skip_emptystring () const;           ///< Omit empty strings during in_save()
@@ -330,31 +322,34 @@ WritNode::serialize (ValueR &rec, const String &fieldname, const StringS &typeda
 template<typename T>
 struct WritConverter<T, REQUIRESv< std::is_integral<T>::value || std::is_floating_point<T>::value > >
 {
-  static bool
+  static bool ASE_NOINLINE
   save_value (WritNode node, T i, const StringS &typedata, const String &fieldname)
   {
     node.value() = i;
     return true;
   }
-  static bool
+  static bool ASE_NOINLINE
   load_value (WritNode node, T &v, const StringS &typedata, const String &fieldname)
   {
-    T tmp = {};
-    if constexpr (std::is_integral<T>::value)
-      tmp = node.value().as_int();
-    else
-      tmp = node.value().as_double();
-    bool valid = true;
-    long double limit = 0;
-    if (Writ::typedata_find_minimum (typedata, fieldname, &limit))
-      valid = valid && tmp >= limit;
-    if (Writ::typedata_find_maximum (typedata, fieldname, &limit))
-      valid = valid && tmp <= limit;
-    if (valid)
-      {
-        v = tmp;
-        return true;
-      }
+    if constexpr (!std::is_const<T>::value) // ignore loading of const types
+     {
+       T tmp = {};
+       if constexpr (std::is_integral<T>::value)
+                      tmp = node.value().as_int();
+       else
+         tmp = node.value().as_double();
+       bool valid = true;
+       long double limit = 0;
+       if (Writ::typedata_find_minimum (typedata, fieldname, &limit))
+         valid = valid && tmp >= limit;
+       if (Writ::typedata_find_maximum (typedata, fieldname, &limit))
+         valid = valid && tmp <= limit;
+       if (valid)
+         {
+           v = tmp;
+           return true;
+         }
+     }
     return false;
   }
 };

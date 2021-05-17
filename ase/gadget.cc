@@ -2,6 +2,7 @@
 #include "gadget.hh"
 #include "jsonipc/jsonipc.hh"
 #include "utils.hh"
+#include "serialize.hh"
 #include "internal.hh"
 
 namespace Ase {
@@ -16,6 +17,42 @@ String
 GadgetImpl::fallback_name () const
 {
   return type_nick();
+}
+
+void
+GadgetImpl::serialize (WritNode &xs)
+{
+  // name
+  String current_name = name();
+  if (xs.in_save() && current_name != fallback_name())
+    xs["name"] & current_name;
+  if (xs.in_load() && xs.has ("name"))
+    {
+      String new_name;
+      xs["name"] & new_name;
+      if (current_name != new_name)     // avoid fixating a fallback
+        name (new_name);
+    }
+  // Serializable
+  Serializable::serialize (xs);
+  // properties
+  for (PropertyP p : access_properties())
+    {
+      const String hints = p->hints();
+      if (!string_option_check (hints, "S"))
+        continue;
+      if (xs.in_save() && string_option_check (hints, "r"))
+        {
+          Value v = p->get_value();
+          xs[p->identifier()] & v;
+        }
+      if (xs.in_load() && string_option_check (hints, "w") && xs.has (p->identifier()))
+        {
+          Value v;
+          xs[p->identifier()] & v;
+          p->set_value (v);
+        }
+    }
 }
 
 String

@@ -137,6 +137,8 @@ async function bootup () {
   VueApp.config.isCustomElement = tag => !!window.customElements.get (tag);
   const app = new AppClass (VueApp);
   console.assert (app == App);
+  // ensure App has an AseProject
+  await App.load_project_checked ((await Ase.server.last_project()) || '');
   // register directives and mixins
   for (let directivename in Util.vue_directives) // register all utility directives
     VueApp.directive (directivename, Util.vue_directives[directivename]);

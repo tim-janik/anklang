@@ -3,6 +3,7 @@
 #include "combo.hh"
 #include "project.hh"
 #include "device.hh"
+#include "serialize.hh"
 #include "jsonipc/jsonipc.hh"
 #include "internal.hh"
 
@@ -31,6 +32,14 @@ TrackImpl::fallback_name () const
       return string_format ("Track %u", i >= 0 ? i + 1 : i);
     }
   return GadgetImpl::fallback_name();
+}
+
+void
+TrackImpl::serialize (WritNode &xs)
+{
+  GadgetImpl::serialize (xs);
+  // device chain
+  xs["chain"] & *chain_; // always one present
 }
 
 void

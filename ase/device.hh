@@ -14,6 +14,7 @@ class DeviceImpl : public GadgetImpl, public virtual Device {
   DeviceP         create_device_before (const String &uuiduri, Device *sibling);
 protected:
   virtual        ~DeviceImpl           ();
+  void            serialize            (WritNode &xs) override;
 public:
   AudioProcessorP audio_processor      () const         { return proc_; }
   AudioComboP     audio_combo          () const         { return combo_; }

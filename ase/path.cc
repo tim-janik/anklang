@@ -497,7 +497,7 @@ errno_check_file (const char *file_name, const char *mode)
 bool
 check (const String &file, const String &mode)
 {
-  int err = file.size() && mode.size() ? errno_check_file (file.c_str(), mode.c_str()) : -EFAULT;
+  const int err = file.size() && mode.size() ? errno_check_file (file.c_str(), mode.c_str()) : -ENOENT;
   errno = err < 0 ? -err : 0;
   return errno == 0;
 }

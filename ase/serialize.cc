@@ -238,15 +238,15 @@ WritNode::WritNode (Writ &writ, ValueP vp) :
   assert_return (valuep_ != nullptr);
 }
 
-/// Refer to a RECORD serialization field by name
+/// Refer to a RECORD serialization field by name, insert if needed.
 WritNode
-WritNode::operator[] (const String &fieldname)
+WritNode::recfield (const String &fieldname, bool front)
 {
   if (in_save())
     {
       assert_return (value_.index() == Value::RECORD, { writ_, dummy() });
       ValueR &rec = std::get<ValueR> (value_);
-      return WritNode { writ_, rec.valuep (fieldname) };
+      return WritNode { writ_, rec.valuep (fieldname, front) };
     }
   if (in_load() && value_.index() == Value::RECORD)
     {
@@ -365,6 +365,13 @@ WritLink::WritLink (Serializable **spp) :
   spp_(spp)
 {
   assert_return (spp != nullptr);
+}
+
+// == Serializable ==
+void
+Serializable::serialize (WritNode &xs)
+{
+  // present, so it can be chained to
 }
 
 } // Ase

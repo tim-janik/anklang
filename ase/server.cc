@@ -8,6 +8,7 @@
 #include "main.hh"
 #include "driver.hh"
 #include "utils.hh"
+#include "project.hh"
 #include "path.hh"
 #include "internal.hh"
 
@@ -186,7 +187,7 @@ ServerImpl::last_project ()
 ProjectP
 ServerImpl::create_project (String projectname)
 {
-  return Project::create (projectname);
+  return ProjectImpl::create (projectname);
 }
 
 PropertyS

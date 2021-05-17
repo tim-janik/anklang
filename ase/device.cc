@@ -3,6 +3,7 @@
 #include "combo.hh"
 #include "main.hh"
 #include "jsonipc/jsonipc.hh"
+#include "serialize.hh"
 #include "internal.hh"
 
 namespace Ase {
@@ -16,6 +17,32 @@ DeviceImpl::DeviceImpl (AudioProcessor &proc) :
 
 DeviceImpl::~DeviceImpl()
 {}
+
+void
+DeviceImpl::serialize (WritNode &xs)
+{
+  GadgetImpl::serialize (xs);
+  // save subdevices
+  if (combo_ && xs.in_save())
+    for (auto &subdev : list_devices())
+      {
+        DeviceImplP subdevicep = shared_ptr_cast<DeviceImpl> (subdev);
+        DeviceInfo info = subdevicep->device_info();
+        WritNode xc = xs["devices"].push();
+        xc & *subdevicep;
+        xc.front ("Device.URI") & info.uri;
+      }
+  // load subdevices
+  if (combo_ && xs.in_load())
+    for (auto &xc : xs["devices"].to_nodes())
+      {
+        String uuiduri = xc["Device.URI"].as_string();
+        if (uuiduri.empty())
+          continue;
+        DeviceImplP subdevicep = shared_ptr_cast<DeviceImpl> (create_device (uuiduri));
+        xc & *subdevicep;
+      }
+}
 
 DeviceInfo
 DeviceImpl::device_info ()
