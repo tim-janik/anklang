@@ -6,11 +6,21 @@
 
 namespace Ase {
 
-class StorageWriter {
+class Storage {
+protected:
+  virtual ~Storage () = 0;
+public:
+  enum StorageFlags {
+    NONE      = 0,
+    AUTO_ZSTD = 1,
+  };
+};
+
+class StorageWriter : public Storage {
   class Impl;
   std::shared_ptr<StorageWriter::Impl> impl_;
 public:
-  explicit StorageWriter      ();
+  explicit StorageWriter      (StorageFlags = StorageFlags::NONE);
   virtual ~StorageWriter      ();
   // Writer API
   Error    open_for_writing   (const String &filename);
@@ -20,11 +30,11 @@ public:
   Error    remove_opened      ();
 };
 
-class StorageReader {
+class StorageReader : public Storage {
   class Impl;
   std::shared_ptr<StorageReader::Impl> impl_;
 public:
-  explicit StorageReader      ();
+  explicit StorageReader      (StorageFlags = StorageFlags::NONE);
   virtual ~StorageReader      ();
   // Reader API
   Error    open_for_reading   (const String &filename);
