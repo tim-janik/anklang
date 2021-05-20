@@ -19,7 +19,7 @@
   <br />
   <br />
 
-  <a href="https://webchat.freenode.net/#Anklang">
+  <a href="https://kiwiirc.com/nextclient/irc.libera.chat/#Anklang">
 					Chat
   </a>					·
   <a href="https://github.com/tim-janik/anklang/issues">
