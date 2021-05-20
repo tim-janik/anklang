@@ -33,74 +33,53 @@ $>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/AnklangSynthEngine.dep
 	$Q echo '[[maybe_unused]] static bool init_jsonipc = (jsonipc_4_api_hh(), 0);'		>> $@.tmp
 	$Q mv $@.tmp $@
 
-# == ase/sysconfig.h ==
-$>/ase/sysconfig.h: $(config-stamps) $>/ase/sysconfig1.h $>/ase/sysconfig2.h $>/ase/sysconfig3.h | $>/ase/ # ase/Makefile.mk
+# == ase/buildversion.cc ==
+$>/ase/buildversion.cc: ase/Makefile.mk					| $>/ase/
 	$(QGEN)
 	$Q echo '// make $@'							> $@.tmp
-	$Q echo '#define ASE_MAJOR_VERSION		($(version_major))'	>>$@.tmp
-	$Q echo '#define ASE_MINOR_VERSION		($(version_minor))'	>>$@.tmp
-	$Q echo '#define ASE_MICRO_VERSION		($(version_micro))'	>>$@.tmp
-	$Q echo '#define ASE_VERSION_STRING		"$(version_short)"'	>>$@.tmp
-	$Q echo '#define ASE_GETTEXT_DOMAIN		"$(ASE_GETTEXT_DOMAIN)"'>>$@.tmp
-	$Q echo '#define ASE_VORBISFILE_BAD_SEEK 	$(VORBISFILE_BAD_SEEK)'	>>$@.tmp
-	$Q cat $>/ase/sysconfig1.h $>/ase/sysconfig2.h $>/ase/sysconfig3.h	>>$@.tmp
+	$Q echo '#include <ase/platform.hh>'					>>$@.tmp
+	$Q echo 'namespace Ase {'						>>$@.tmp
+	$Q echo 'const int         ase_major_version = $(version_major);'	>>$@.tmp
+	$Q echo 'const int         ase_minor_version = $(version_minor);'	>>$@.tmp
+	$Q echo 'const int         ase_micro_version = $(version_micro);'	>>$@.tmp
+	$Q echo 'const char *const ase_short_version = "$(version_short)";'	>>$@.tmp
+	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_m.m.m)";'	>>$@.tmp
+	$Q echo '} // Ase'							>>$@.tmp
 	$Q mv $@.tmp $@
+ase/AnklangSynthEngine.objects += $>/ase/buildversion.o
+# $>/ase/buildversion.o: $>/ase/buildversion.cc
 
-# == ase/sysconfig1 ==
-$>/ase/sysconfig1.h: $(config-stamps) ase/Makefile.mk	| $>/ase/
+# == ase/sysconfig.h ==
+$>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk
 	$(QGEN)
-	$Q echo '#include <time.h>'				> $@-timegm.c \
-	&& echo 'void main() { struct tm t; timegm (&t); }'	>>$@-timegm.c \
-	&& $(CC) $@-timegm.c -o $@-timegm 2>/dev/null \
-	&& echo -e '#define ASE_HAVE_TIMEGM \t\t 1'		> $@ \
-	|| echo '// #undef ASE_HAVE_TIMEGM'			> $@ \
-	&& rm -f $@-timegm.c $@-timegm
-
-# == ase/sysconfig2 ==
-$>/ase/sysconfig2.h: $(config-stamps) ase/Makefile.mk	| $>/ase/
-	$(QGEN)
-	$Q : $(file > $>/ase/conftest_spinlock.c, $(ase/conftest_spinlock.c)) \
-	&& $(CC) -Wall $>/ase/conftest_spinlock.c -pthread -o $>/ase/conftest_spinlock \
-	&& (cd $> && ./ase/conftest_spinlock) \
-	&& echo '#define ASE_SPINLOCK_INITIALIZER' "	$$(cat $>/ase/conftest_spinlock.txt)" > $@ \
-	&& rm $>/ase/conftest_spinlock.c $>/ase/conftest_spinlock $>/ase/conftest_spinlock.txt
-# ase/conftest_spinlock.c
-define ase/conftest_spinlock.c
+	$Q : $(file > $>/ase/conftest_sysconfigh.cc, $(ase/conftest_sysconfigh.cc)) \
+	&& $(CXX) -Wall $>/ase/conftest_sysconfigh.cc -pthread -o $>/ase/conftest_sysconfigh \
+	&& (cd $> && ./ase/conftest_sysconfigh)
+	$Q echo '// make $@'				> $@.tmp
+	$Q cat $>/ase/conftest_sysconfigh.txt		>>$@.tmp
+	$Q mv $@.tmp $@
+# ase/conftest_sysconfigh.cc
+define ase/conftest_sysconfigh.cc
+// #define _GNU_SOURCE
+#include <sys/types.h>
 #include <stdio.h>
+#include <poll.h>
 #include <string.h>
 #include <pthread.h>
+#include <assert.h>
 struct Spin { pthread_spinlock_t dummy1, s1, dummy2, s2, dummy3; };
-int main (int argc, char *argv[]) {
+int main (int argc, const char *argv[]) {
+  FILE *f = fopen ("ase/conftest_sysconfigh.txt", "w");
+  assert (f);
   struct Spin spin;
   memset (&spin, 0xffffffff, sizeof (spin));
   if (pthread_spin_init (&spin.s1, 0) == 0 && pthread_spin_init (&spin.s2, 0) == 0 &&
       sizeof (pthread_spinlock_t) == 4 && spin.s1 == spin.s2)
     { // # sizeof==4 and location-independence are current implementation assumption
-      FILE *f = fopen ("ase/conftest_spinlock.txt", "w");
-      fprintf (f, "/*{*/ 0x%04x, /*}*/\n", *(int*) &spin.s1);
-      fclose (f);
+      fprintf (f, "#define ASE_SPINLOCK_INITIALIZER  0x%04x \n", *(int*) &spin.s1);
     }
-  return 0;
-}
-endef
-
-# == ase/sysconfig3 ==
-$>/ase/sysconfig3.h: $(config-stamps) ase/Makefile.mk	| $>/ase/
-	$(QGEN)
-	$Q : $(file > $>/ase/conftest_pollval.c, $(ase/conftest_pollval.c)) \
-	&& $(CC) -Wall $>/ase/conftest_pollval.c -pthread -o $>/ase/conftest_pollval \
-	&& (cd $> && ./ase/conftest_pollval) \
-	&& echo -e '#define ASE_SYSVAL_POLLINIT\t\t((const uint32_t[])' "$$(cat $>/ase/conftest_pollval.txt))" > $@ \
-	&& rm $>/ase/conftest_pollval.c $>/ase/conftest_pollval $>/ase/conftest_pollval.txt
-# ase/conftest_pollval.c
-define ase/conftest_pollval.c
-#define _GNU_SOURCE
-#include <sys/types.h>
-#include <stdio.h>
-#include <poll.h>
-int main (int argc, char *argv[]) {
-  FILE *f = fopen ("ase/conftest_pollval.txt", "w");
-  fprintf (f, "{ 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x }\n",
+  fprintf (f, "#define ASE_SYSVAL_POLLINIT  ((const uint32_t[]) ");
+  fprintf (f, "{ 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x } )\n",
            POLLIN, POLLPRI, POLLOUT, POLLRDNORM, POLLRDBAND, POLLWRNORM, POLLWRBAND, POLLERR, POLLHUP, POLLNVAL);
   return ferror (f) || fclose (f) != 0;
 }

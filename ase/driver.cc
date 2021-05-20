@@ -402,7 +402,7 @@ try_load_libasejack ()
 {
   using namespace Ase;
   const std::string libasejack = string_format ("%s/lib/libase-jack-%u.%u.%u.so", runpath (RPath::INSTALLDIR),
-                                                ASE_MAJOR_VERSION, ASE_MINOR_VERSION, ASE_MICRO_VERSION);
+                                                ase_major_version, ase_minor_version, ase_micro_version);
   if (Path::check (libasejack, "fr"))
     {
       GModule *gmodule = g_module_open (libasejack.c_str(), G_MODULE_BIND_LOCAL); // no API import
