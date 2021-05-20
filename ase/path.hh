@@ -32,6 +32,7 @@ String       basename            (const String &path);
 String       normalize           (const String &path);
 String       realpath            (const String &path);
 String       dir_terminate       (const String &path);
+String       strip_slashes       (const String &path);
 String       abspath             (const String &path, const String &incwd = "");
 bool         isabs               (const String &path);
 bool         isdirname           (const String &path);

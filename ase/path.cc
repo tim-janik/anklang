@@ -101,6 +101,16 @@ dir_terminate (const String &path)
   return path;
 }
 
+/// Strip trailing directory terminators.
+String
+strip_slashes (const String &path)
+{
+  String s = path;
+  while (s.size() > 1 && IS_DIRSEP (s.back()))
+    s.resize (s.size() - 1);
+  return s;
+}
+
 /**
  * @param path  a filename path
  * @param incwd optional current working directory
