@@ -2,6 +2,8 @@
 #include "storage.hh"
 #include "path.hh"
 #include "utils.hh"
+#include "api.hh"
+#include "compress.hh"
 #include "minizip.h"
 #include "internal.hh"
 #include <stdlib.h>     // mkdtemp
@@ -178,281 +180,290 @@ anklang_cachedir_cleanup()
         }
 }
 
-Storage::Storage () :
-  impl_ (std::make_shared<Storage::Impl>())
+// == StorageWriter ==
+StorageWriter::StorageWriter () :
+  impl_ (std::make_shared<StorageWriter::Impl>())
 {}
 
-Storage::~Storage ()
+StorageWriter::~StorageWriter ()
 {}
 
-class Storage::Impl {
-  String tmpdir_;
-  std::vector<String> members_;
-  String
-  tmpdir ()
-  {
-    if (tmpdir_.empty())
-      tmpdir_ = anklang_cachedir_create();
-    return tmpdir_;
-  }
+class StorageWriter::Impl {
 public:
+  void *writer = nullptr;
+  String zipname;
   ~Impl()
   {
-    if (!tmpdir_.empty())
+    if (writer)
+      warning ("Ase::StorageWriter: ZIP file left open: %s", zipname);
+    close();
+  }
+  Error
+  close()
+  {
+    return_unless (writer != nullptr, Error::NONE);
+    int mzerr = mz_zip_writer_close (writer);
+    const int saved_errno = errno;
+    if (mzerr != MZ_OK && !zipname.empty())
+      unlink (zipname.c_str());
+    mz_zip_writer_delete (&writer);
+    writer = nullptr;
+    errno = saved_errno;
+    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
+  }
+  Error
+  remove_opened()
+  {
+    if (writer)
       {
-        rmrf_dir (tmpdir_);
-        std::lock_guard<std::mutex> locker (cachedirs_mutex);
-        auto it = std::find (cachedirs_list.begin(), cachedirs_list.end(), tmpdir_);
-        if (it != cachedirs_list.end())
-          cachedirs_list.erase (it);
+        close();
+        if (!zipname.empty())
+          unlink (zipname.c_str());
       }
+    return Error::NONE;
   }
-  bool
-  rm_file (const String &filename)
+  Error
+  open_for_writing (const String &filename)
   {
-    errno = ENOENT;
-    assert_return (!Path::isabs (filename), -1);
-    SDEBUG ("%s: rm=%s first=%s\n", __func__, filename, members_.size() ? members_[0] : "");
-    if (!tmpdir_.empty())
-      {
-        std::error_code ec;
-        std::filesystem::remove (tmpdir_ + "/" + filename, ec);
-        auto it = std::find (members_.begin(), members_.end(), filename);
-        if (it != members_.end())
-          members_.erase (it);
-        return !ec;
-      }
-    return false;
-  }
-  int
-  store_file_fd (const String &filename)
-  {
-    errno = EINVAL;
-    assert_return (!Path::isabs (filename), -1);
-    rm_file (filename);
-    const int fd = open ((tmpdir() + "/" + filename).c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600);
-    if (fd >= 0)
-      {
-        // keep mimetype as first member for 'file(1)'
-        if ("mimetype" == filename)
-          members_.insert (members_.begin(), filename);
-        else
-          members_.push_back (filename);
-      }
-    return fd;
-  }
-  bool
-  store_file_buffer (const String &filename, const String &data, int64_t epoch_seconds)
-  {
-    const int fd = store_file_fd (filename);
-    if (fd >= 0)
-      {
-        long l;
-        do
-          l = write (fd, data.data(), data.size());
-        while (l < 0 && errno == EINTR);
-        if (l >= 0)
-          {
-            struct timespec times[2] = { { 0, 0, }, { 0, 0, }, };
-            times[0].tv_sec = epoch_seconds ? epoch_seconds : time (NULL);
-            times[1].tv_sec = times[0].tv_sec;
-            if (futimens (fd, times) < 0)
-              SDEBUG ("Ase::Storage::%s: %s: futimens: %s\n", __func__, filename, strerror (errno));
-            if (close (fd) >= 0)
-              return true;
-          }
-      }
-    const int saved = errno;
-    close (fd);
-    rm_file (filename);
-    errno = saved;
-    return false;
-  }
-  bool
-  set_mimetype_ase ()
-  {
-    const int64_t ase_project_start = 844503962;
-    return store_file_buffer ("mimetype", "application/x-ase", ase_project_start);
-  }
-  bool
-  export_as (const String &filename)
-  {
-    void *writer = NULL;
+    assert_return (writer == nullptr, Error::INTERNAL);
+    zipname = filename;
     mz_zip_writer_create (&writer);
     mz_zip_writer_set_zip_cd (writer, false);
-    mz_zip_writer_set_password (writer, NULL);
+    mz_zip_writer_set_password (writer, nullptr);
     mz_zip_writer_set_store_links (writer, false);
     mz_zip_writer_set_follow_links (writer, true);
     mz_zip_writer_set_compress_level (writer, MZ_COMPRESS_LEVEL_BEST);
     mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_DEFLATE);
-    //mz_zip_file file_info = { 0, };
-    //file_info.version_madeby = ASE_MZ_VERSION_MADEBY; // MZ_VERSION_MADEBY_ZIP_VERSION;
-    //file_info.zip64 = MZ_ZIP64_DISABLE;  // match libmagic's ZIP-with-mimetype
-    //file_info.flag = 0; // MZ_ZIP_FLAG_UTF8;
-    //file_info.compression_method = MZ_COMPRESS_METHOD_DEFLATE;
-    int err = mz_zip_writer_open_file (writer, filename.c_str(), 0, false);
-    for (auto it = members_.begin(); err == MZ_OK && it != members_.end(); ++it)
+    int mzerr = mz_zip_writer_open_file (writer, zipname.c_str(), 0, false);
+    if (mzerr != MZ_OK)
       {
-        const String fname = *it;
-        const bool plain = it == members_.begin() && fname == "mimetype";
-        if (plain)
-          mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_STORE);
-        err = mz_zip_writer_add_file (writer, (tmpdir() + "/" + fname).c_str(), fname.c_str());
-        if (plain)
-          mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_DEFLATE);
+        const int saved_errno = errno;
+        mz_zip_writer_delete (&writer);
+        writer = nullptr;
+        unlink (filename.c_str());
+        return ase_error_from_errno (saved_errno);
       }
-    if (err == MZ_OK)
-      err = mz_zip_writer_close (writer);
+    return Error::NONE;
+  }
+  Error
+  store_file_data (const String &filename, const String &buffer, uint16 compress_method, int64_t epoch_seconds)
+  {
+    assert_return (mz_zip_writer_is_open (writer) == MZ_OK, Error::INTERNAL);
+    const uint32 attrib = S_IFREG | 0664;
+    const time_t fdate = epoch_seconds;
+    mz_zip_file file_info = {
+      .version_madeby = MZ_VERSION_MADEBY,
+      .flag = MZ_ZIP_FLAG_UTF8,
+      .compression_method = compress_method,
+      .modified_date = fdate,
+      .accessed_date = fdate,
+      .creation_date = 0,
+      .uncompressed_size = ssize_t (buffer.size()),
+      .external_fa = attrib,
+      .filename = filename.c_str(),
+      .zip64 = buffer.size() > 4294967295, // match libmagic's ZIP-with-mimetype
+    };
+    int32_t mzerr = MZ_OK;
+    if (MZ_HOST_SYSTEM (file_info.version_madeby) != MZ_HOST_SYSTEM_MSDOS &&
+        MZ_HOST_SYSTEM (file_info.version_madeby) != MZ_HOST_SYSTEM_WINDOWS_NTFS)
+      {
+        uint32 target_attrib = 0;
+        mzerr = mz_zip_attrib_convert (MZ_HOST_SYSTEM (file_info.version_madeby), attrib, MZ_HOST_SYSTEM_MSDOS, &target_attrib);
+        file_info.external_fa = target_attrib; // MSDOS attrib
+        file_info.external_fa |= attrib << 16; // OS attrib
+      }
+    if (mzerr == MZ_OK)
+      mzerr = mz_zip_writer_add_buffer (writer, (void*) buffer.data(), buffer.size(), &file_info);
+    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
+  }
+};
+
+Error
+StorageWriter::open_for_writing (const String &filename)
+{
+  assert_return (impl_, Error::INTERNAL);
+  return impl_->open_for_writing (filename);
+}
+
+Error
+StorageWriter::open_with_mimetype (const String &filename, const String &mimetype)
+{
+  Error err = open_for_writing (filename);
+  if (err == Error::NONE)
+    {
+      const int64_t ase_project_start = 844503962;
+      err = impl_->store_file_data ("mimetype", mimetype, MZ_COMPRESS_METHOD_STORE, ase_project_start);
+      if (err != Error::NONE && impl_)
+        impl_->remove_opened();
+    }
+  return err;
+}
+
+Error
+StorageWriter::store_file_data (const String &filename, const String &buffer)
+{
+  assert_return (impl_, Error::INTERNAL);
+  const bool compressed = is_compressed (buffer);
+  return impl_->store_file_data (filename, buffer,
+                                 compressed ? MZ_COMPRESS_METHOD_STORE : MZ_COMPRESS_METHOD_DEFLATE,
+                                 time (nullptr));
+}
+
+Error
+StorageWriter::close ()
+{
+  assert_return (impl_, Error::INTERNAL);
+  return impl_->close();
+}
+
+Error
+StorageWriter::remove_opened ()
+{
+  assert_return (impl_, Error::INTERNAL);
+  return impl_->remove_opened();
+}
+
+// == StorageReader ==
+StorageReader::StorageReader () :
+  impl_ (std::make_shared<StorageReader::Impl>())
+{}
+
+StorageReader::~StorageReader ()
+{}
+
+class StorageReader::Impl {
+public:
+  void *reader = nullptr;
+  String zipname;
+  ~Impl()
+  {
+    close();
+  }
+  Error
+  close()
+  {
+    return_unless (reader != nullptr, Error::NONE);
+    int mzerr = mz_zip_reader_close (reader);
     const int saved_errno = errno;
-    if (err != MZ_OK)
-      unlink (filename.c_str());
-    mz_zip_writer_delete (&writer);
+    mz_zip_reader_delete (&reader);
+    reader = nullptr;
     errno = saved_errno;
-    return err == MZ_OK;
+    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
   }
-  String
-  fetch_file (const String &filename)
+  Error
+  open_for_reading (const String &filename)
   {
-    errno = ENOENT;
-    if (tmpdir_.empty())
-      return "";
-    return tmpdir_ + "/" + filename;
-  }
-  String
-  fetch_file_buffer (const String &filename, ssize_t maxlength)
-  {
-    errno = ENOENT;
-    assert_return (!Path::isabs (filename), "");
-    if (tmpdir_.empty())
-      return "";
-    return Path::stringread (fetch_file (filename), maxlength);
-  }
-  String
-  move_to_temporary (const String &filename)
-  {
-    const String fullname = fetch_file (filename);
-    if (Path::check (fullname, "e"))
-      {
-        auto [ base, ext ] = Path::split_extension (fullname);
-        String next;
-        for (size_t i = 1; i < size_t (-1); i++)
-          {
-            next = string_format ("%s-%u%s", base, i, ext);
-            if (!Path::check (next, "e"))
-              break;
-          }
-        assert_return (next.empty() == false, "");
-        if (rename (fullname.c_str(), next.c_str()) == 0)
-          return next.substr (fullname.size() - filename.size());
-      }
-    return ""; // error or missing file
-  }
-  bool
-  has_file (const String &filename)
-  {
-    const String fullname = fetch_file (filename);
-    return Path::check (fullname, "e");
-  }
-  bool
-  import_from (const String &filename)
-  {
-    if (!match_ase_header (Path::stringread (filename, 1024)))
-      return false;
+    assert_return (reader == nullptr, Error::INTERNAL);
+    zipname = filename;
     // setup reader and open file
-    void *reader = NULL;
     mz_zip_reader_create (&reader);
     // mz_zip_reader_set_pattern (reader, pattern, 1);
-    mz_zip_reader_set_password (reader, NULL);
+    mz_zip_reader_set_password (reader, nullptr);
     mz_zip_reader_set_encoding (reader, MZ_ENCODING_UTF8);
-    int err = mz_zip_reader_open_file (reader, filename.c_str());
     errno = ELIBBAD;
+    int err = mz_zip_reader_open_file (reader, zipname.c_str());
     if (err != MZ_OK)
-      return false;
+      {
+        const int saved_errno = errno;
+        mz_zip_reader_delete (&reader);
+        reader = nullptr;
+        return ase_error_from_errno (saved_errno);
+      }
+    return Error::NONE;
+  }
+  StringS
+  list_files()
+  {
+    errno = EINVAL;
+    StringS list;
+    assert_return (reader != nullptr, list);
     // check and extract file entries
-    err = mz_zip_reader_goto_first_entry (reader);
+    int err = mz_zip_reader_goto_first_entry (reader);
     while (err == MZ_OK)
       {
-        mz_zip_file *file_info = NULL;
+        mz_zip_file *file_info = nullptr;
         if (MZ_OK == mz_zip_reader_entry_get_info (reader, &file_info) && file_info->filename && file_info->filename[0])
           {
             if (!strchr (file_info->filename, '/') && // see: https://github.com/nmoinvaz/minizip/issues/433
                 !strchr (file_info->filename, '\\'))
-              {
-                String dest = tmpdir() + "/" + file_info->filename;
-                err = mz_zip_reader_entry_save_file (reader, dest.c_str());
-                SDEBUG ("%s: extract '%s': %s", filename, dest, MZ_OK == err ? "ok" : "I/O Error");
-              }
-            else
-              SDEBUG ("%s: ignore: %s", filename, file_info->filename);
+              list.push_back (file_info->filename);
           }
         err = mz_zip_reader_goto_next_entry (reader); // yields MZ_END_OF_LIST
       }
-    errno = EIO;
-    err = mz_zip_reader_close (reader);
-    if (err != MZ_OK)
-      return false;
-    mz_zip_reader_delete(&reader);
-    return true;
+    return list;
+  }
+  bool
+  has_file (const String &filename)
+  {
+    return reader && MZ_OK == mz_zip_reader_locate_entry (reader, filename.c_str(), false);
+  }
+  String
+  stringread (const String &filename)
+  {
+    errno = EINVAL;
+    assert_return (mz_zip_reader_is_open (reader) == MZ_OK, {});
+    String buffer;
+    if (MZ_OK == mz_zip_reader_locate_entry (reader, Path::normalize (filename).c_str(), false))
+      {
+        ssize_t len = mz_zip_reader_entry_save_buffer_length (reader);
+        if (len >= 0)
+          {
+            buffer.resize (len);
+            if (MZ_OK == mz_zip_reader_entry_save_buffer (reader, &buffer[0], buffer.size()))
+              {
+                errno = 0;
+                return buffer;
+              }
+          }
+      }
+    errno = ENOENT;
+    return {};
   }
 };
 
-int      Storage::store_file_fd     (const String &filename)    { return impl_->store_file_fd (filename); }
-bool     Storage::store_file_buffer (const String &filename, const String &buffer, int64_t epoch_seconds)
-{ return impl_->store_file_buffer (filename, buffer, epoch_seconds); }
-bool     Storage::rm_file           (const String &filename)    { return impl_->rm_file (filename); }
-bool     Storage::set_mimetype_ase  ()                          { return impl_->set_mimetype_ase(); }
-bool     Storage::export_as         (const String &filename)    { return impl_->export_as (filename); }
-bool     Storage::import_from       (const String &filename)    { return impl_->import_from (filename); }
-bool     Storage::has_file          (const String &filename)    { return impl_->has_file (filename); }
-String   Storage::move_to_temporary (const String &filename)    { return impl_->move_to_temporary (filename); }
-String   Storage::fetch_file_buffer (const String &filename, ssize_t maxlength)
-{ return impl_->fetch_file_buffer (filename, maxlength); }
-String   Storage::fetch_file        (const String &filename)    { return impl_->fetch_file (filename); }
-
-static constexpr uint16_t
-read_le16 (const char *c)
+Error
+StorageReader::open_for_reading (const String &filename)
 {
-  uint16_t v = *(const uint16_t*) c;
-  if (__BYTE_ORDER == __BIG_ENDIAN)
-    v = uint16_swap_le_be (v);
-  return v;
+  assert_return (impl_, Error::INTERNAL);
+  return impl_->open_for_reading (filename);
+}
+
+StringS
+StorageReader::list_files ()
+{
+  assert_return (impl_, {});
+  return impl_->list_files();
+}
+
+Error
+StorageReader::close ()
+{
+  assert_return (impl_, Error::INTERNAL);
+  return impl_->close();
 }
 
 bool
-Storage::match_ase_header (const String &data)
+StorageReader::has_file (const String &filename)
 {
-  return
-    data.substr (0, 4) == "PK\003\004" &&                       // ZIP Header
-    read_le16 (&data[8]) == 0x0000 &&                           // Uncompressed first entry
-    read_le16 (&data[26]) == 0x0008 &&                          // File name length
-    read_le16 (&data[28]) == 0x0000 &&                          // No extra field
-    data.substr (30, 27) == "mimetypeapplication/x-asePK" &&    // mimetype: application/x-ase
-    1;          // Ase Project File
+  assert_return (impl_, false);
+  return impl_->has_file (filename);
+}
+
+String
+StorageReader::stringread (const String &filename, ssize_t maxlength)
+{
+  errno = EINVAL;
+  assert_return (impl_, {});
+  String data = impl_->stringread (filename);
+  if (maxlength >= 0 && maxlength < data.size())
+    data.resize (maxlength);
+  return data;
+}
+
+void
+StorageReader::search_dir (const String &dirname)
+{
+  // TODO: implement directory search for fallbacks
 }
 
 } // Ase
-
-#include "testing.hh"
-
-namespace { // Anon
-
-TEST_INTEGRITY (storage_tests);
-static void
-storage_tests()
-{
-  using namespace Ase;
-
-  static const char ase_header[] =
-    "PK\3\4\24\0\10\10\0\0ASE!\0\0\0\0\0\0\0\0\21\0\0\0\10\0\0\0mimetypeapplication/x-ase"
-    "PK\7\10\276\337\261\305\21\0\0\0\21\0\0\0PK\1\2-\3\24\0\10\10\0\0ASE!\276\337\261\305"
-    "\21\0\0\0\21\0\0\0\10\0\0\0\0\0\0\0\0\0\200\0\200\201\0\0\0\0mimetype"
-    "PK\5\6\0\0\0\0\1\0\1\06\0\0\0G\0\0\0\0\0";
-  String ase_header_str (ase_header, sizeof (ase_header));
-  TASSERT (Storage::match_ase_header (ase_header_str));
-  TASSERT (!Storage::match_ase_header (ase_header_str.substr (1)));
-  //Storage st;
-  //st.set_mimetype_ase();
-  //st.export_as ("/tmp/x.ase");
-}
-
-} // Anon

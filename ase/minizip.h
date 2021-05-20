@@ -7,10 +7,6 @@
 // Configuration
 #define MZ_ZIP_NO_ENCRYPTION
 
-// Mimick PKZIP 2.04 which introduced data descriptors (which
-// are mandatory in MZ) and only supported Deflate compression.
-#define ASE_MZ_VERSION_MADEBY   24
-
 // Minizip API
 #include "external/minizip/mz.h"
 #include "external/minizip/mz_os.h"

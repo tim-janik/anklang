@@ -6,9 +6,27 @@
 
 namespace Ase {
 
-String compress      (const String &input);
-String uncompress    (const String &input);
-bool   is_compressed (const String &input);
+bool   is_aiff         (const String &input);
+bool   is_midi         (const String &input);
+bool   is_pdf          (const String &input);
+bool   is_wav          (const String &input);
+
+bool   is_compressed   (const String &input);
+
+bool   is_arj          (const String &input);
+bool   is_avi          (const String &input);
+bool   is_gz           (const String &input);
+bool   is_isz          (const String &input);
+bool   is_jpg          (const String &input);
+bool   is_lz4          (const String &input);
+bool   is_ogg          (const String &input);
+bool   is_png          (const String &input);
+bool   is_xz           (const String &input);
+bool   is_zip          (const String &input);
+
+bool   is_zstd         (const String &input);
+String zstd_compress   (const String &input);
+String zstd_uncompress (const String &input);
 
 } // Ase
 

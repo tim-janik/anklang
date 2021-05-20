@@ -66,6 +66,7 @@ enum class Error : int32_t {
   PARSE_ERROR,
 };
 ASE_DEFINE_ENUM_EQUALITY (Error);
+constexpr bool operator! (Error error)  { return !std::underlying_type_t<Error> (error); }
 const char* ase_error_blurb      (Error error);
 Error       ase_error_from_errno (int sys_errno, Error fallback = Error::IO);
 
