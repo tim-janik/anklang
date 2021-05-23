@@ -237,6 +237,12 @@ class DataBubbleIface {
     this.data_bubble.stack.unshift (element);
     this.data_bubble.debounced_check();
   }
+  /// Cancel forced `data-bubble` for `element`
+  unforce (element) {
+    if (this.data_bubble.stack.length)
+      Util.array_remove (this.data_bubble.stack, element);
+    this.data_bubble.debounced_check();
+  }
   /// Reset the `data-bubble` attribute, its callback and cancel a forced bubble
   clear (element) {
     if (this.data_bubble.stack.length)
