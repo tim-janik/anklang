@@ -65,6 +65,9 @@ protected:
   // see serialize.cc
 };
 
+// == IconString ==
+struct IconString : String {};
+
 } // Ase
 
 #endif // __ASE_DEFS_HH__
