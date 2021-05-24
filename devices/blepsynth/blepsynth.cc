@@ -277,6 +277,7 @@ class BlepSynth : public AudioProcessor {
   void
   initialize (SpeakerArrangement busses) override
   {
+    using namespace MakeIcon;
     set_max_voices (32);
 
     auto oscparams = [&] (int o) {
@@ -309,11 +310,11 @@ class BlepSynth : public AudioProcessor {
     pid_drive_ = add_param ("Drive", "Drive", -24, 36, 0, "dB");
     pid_key_track_ = add_param ("Key Tracking", "KeyTr", 0, 100, 50, "%");
     ChoiceS choices;
-    choices += { "—" , "Bypass Filter" };
-    choices += { "L1", "1 Pole Lowpass, 6dB/Octave" };
-    choices += { "L2", "2 Pole Lowpass, 12dB/Octave" };
-    choices += { "L3", "3 Pole Lowpass, 18dB/Octave" };
-    choices += { "L4", "4 Pole Lowpass, 24dB/Octave" };
+    choices += {  "—"_uc, "Bypass Filter" };
+    choices += { "L1"_uc, "1 Pole Lowpass, 6dB/Octave" };
+    choices += { "L2"_uc, "2 Pole Lowpass, 12dB/Octave" };
+    choices += { "L3"_uc, "3 Pole Lowpass, 18dB/Octave" };
+    choices += { "L4"_uc, "4 Pole Lowpass, 24dB/Octave" };
     pid_mode_ = add_param ("Filter Mode", "Mode", std::move (choices), 2, "", "Ladder Filter Mode to be used");
 
     oscparams (1);
