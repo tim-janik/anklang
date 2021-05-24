@@ -2,6 +2,7 @@
 #include "utils.hh"
 #include "platform.hh"
 #include "memory.hh"
+#include "unicode.hh"
 #include "internal.hh"
 #include <signal.h>
 #include <sys/time.h>
@@ -155,6 +156,72 @@ ase_gettext (const String &untranslated)
   CString translated = untranslated;
   return translated.c_str(); // relies on global CString storage
 }
+
+// == MakeIcon ==
+namespace MakeIcon {
+
+/// Create an IconString consisting of keywords
+IconString
+KwIcon (const String &keywords)
+{
+  String s = keywords;
+  return_unless (!s.empty(), {});
+  StringS words = string_split_any (keywords, " ,");
+  Aux::erase_all (words, [] (const String &word) {
+    if (word.empty()) return true;
+    if (!string_is_ascii_alnum (word))
+      {
+        warning ("%s: invalid icon keyword: '%s'", __func__, word);
+        return true;
+      }
+    return false;
+  });
+  IconString is;
+  is.assign (string_join (", ", words));
+  return is;
+}
+
+/// Create an IconString consisting of keywords
+IconString
+operator""_icon (const char *key, size_t)
+{
+  return KwIcon (key);
+}
+
+/// Create an IconString consisting of a single/double unicode character
+IconString
+UcIcon (const String &unicode)
+{
+  std::vector<uint32_t> codepoints;
+  if (utf8_to_unicode (unicode, codepoints) > 2 ||
+      (codepoints.size() >= 1 && !unicode_is_character (codepoints[0])) ||
+      (codepoints.size() >= 2 && !unicode_is_character (codepoints[1])))
+    warning ("%s: invalid icon unicode: '%s'", __func__, unicode);
+  IconString is;
+  is.assign (unicode);
+  return is;
+}
+
+/// Create an IconString consisting of a single/double unicode character
+IconString
+operator""_uc (const char *key, size_t)
+{
+  return UcIcon (key);
+}
+
+/// Create an IconString consisting of an SVG string
+IconString
+SvgIcon (const String &svgdata)
+{
+  return_unless (!svgdata.empty(), {});
+  if (!string_startswith (svgdata, "<svg") || !string_startswith (svgdata, "<SVG"))
+    warning ("%s: invalid svg icon: %s…", __func__, svgdata.substr (0, 40));
+  IconString is;
+  is.assign (svgdata);
+  return is;
+}
+
+} // MakeIcon
 
 // == EventFd ==
 EventFd::EventFd () :

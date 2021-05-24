@@ -2,7 +2,7 @@
 #ifndef __ASE_UTILS_HH__
 #define __ASE_UTILS_HH__
 
-#include <ase/cxxaux.hh>
+#include <ase/defs.hh>
 #include <ase/strings.hh>
 #include <any>
 
@@ -21,6 +21,15 @@ template<class... A> void printerr          (const char *format, const A &...arg
 
 const char*                      ase_gettext (const String &untranslated);
 template<class... A> const char* ase_gettext (const char *format, const A &...args) ASE_PRINTF (1, 0);
+
+// == MakeIcon ==
+namespace MakeIcon {
+IconString KwIcon  (const String &keywords);
+IconString UcIcon  (const String &unicode);
+IconString SvgIcon (const String &svgdata);
+IconString operator""_uc (const char *key, size_t);
+IconString operator""_icon (const char *key, size_t);
+} // MakeIcon
 
 // == Jump Tables ==
 /// Create a `std::array<Fun,N>`, where `Fun` is returned from `mkjump (INDICES…)`.
