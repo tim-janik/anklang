@@ -92,8 +92,9 @@ struct Choice {
   String notice;  ///< Additional information of interest.
   String warning; ///< Potential problem indicator.
   Choice () = default;
-  Choice (String icon, String label = "", String blurb = "");
-  Choice (String ident, String icon, String label, String blurb, String notice = "", String warning = "");
+  Choice (IconString icon, String label, String blurb = "");
+  Choice (String ident, IconString icon, String label, String blurb = "", String notice = "", String warning = "");
+  Choice (String ident, String label, String blurb = "", String notice = "", String warning = "");
 };
 
 /// Convenience ChoiceS construciton helper.

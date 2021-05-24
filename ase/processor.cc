@@ -474,7 +474,8 @@ AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname
   info.nick = nickname;
   info.blurb = blurb;
   info.description = description;
-  static const ChoiceS centries { { "", "Off" }, { "", "On" } };
+  using namespace MakeIcon;
+  static const ChoiceS centries { { "on"_icon, "Off" }, { "off"_icon, "On" } };
   info.set_choices (centries);
   info.hints = construct_hints (hints, false, true, "toggle");
   const auto rid = add_param (id, info, boolvalue);

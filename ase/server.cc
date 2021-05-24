@@ -25,7 +25,7 @@ choice_from_driver_entry (const DriverEntry &e)
     blurb = e.capabilities;
   else
     blurb = e.device_info;
-  Choice c (e.devid, "", e.device_name, blurb);
+  Choice c (e.devid, e.device_name, blurb);
   if (string_startswith (string_tolower (e.notice), "warn"))
     c.warning = e.notice;
   else
@@ -242,14 +242,21 @@ Server::dir_crawler (const String &cwd)
 }
 
 // == Choice ==
-Choice::Choice (String ident_, String icon_, String label_, String blurb_, String notice_, String warning_) :
+Choice::Choice (String ident_, String label_, String blurb_, String notice_, String warning_) :
+  ident (ident_.empty() ? string_to_identifier (label_) : ident_),
+  label (label_), blurb (blurb_), notice (notice_), warning (warning_)
+{
+  assert_return (ident.empty() == false);
+}
+
+Choice::Choice (String ident_, IconString icon_, String label_, String blurb_, String notice_, String warning_) :
   ident (ident_.empty() ? string_to_identifier (label_) : ident_),
   icon (icon_), label (label_), blurb (blurb_), notice (notice_), warning (warning_)
 {
   assert_return (ident.empty() == false);
 }
 
-Choice::Choice (String icon_, String label_, String blurb_) :
+Choice::Choice (IconString icon_, String label_, String blurb_) :
   Choice ("", icon_, label_, blurb_)
 {}
 
