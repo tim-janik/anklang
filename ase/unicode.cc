@@ -122,7 +122,9 @@ size_t
 utf8_to_unicode (const std::string &str, std::vector<uint32_t> &codepoints)
 {
   const size_t l = codepoints.size();
-  const char *c = str.data(), *e = c + str.size();
+  if (l >= 8)
+    codepoints.reserve (codepoints.size() + l / 4);
+  const char *c = str.data(), *const e = c + str.size();
   while (c < e)
     {
       uint32_t codepoint;
@@ -137,6 +139,7 @@ std::string
 string_from_unicode (const uint32_t *codepoints, size_t n_codepoints)
 {
   std::string str;
+  str.reserve (n_codepoints);
   for (size_t i = 0; i < n_codepoints; i++)
     {
       const uint32_t u = codepoints[i];
