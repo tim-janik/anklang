@@ -100,6 +100,7 @@ class DataBubbleImpl {
 			       ev => (ev.target === this.current) && this.debounced_check(),
 			       { capture: true, passive: true });
     this.resizeob = new ResizeObserver (() => !!this.current && this.debounced_check());
+    this.zmove_del = null;
   }
   check_showtime (showtime = false) {
     if (this.last_event)
@@ -146,6 +147,11 @@ class DataBubbleImpl {
   hide() {
     // ignore the next 0-distance move
     this.coords = null;
+    if (this.zmove_del)
+      {
+	this.zmove_del();
+	this.zmove_del = null;
+      }
     // hide bubble if any
     if (this.current)
       {
@@ -172,6 +178,8 @@ class DataBubbleImpl {
 	  {
 	    this.lasttext = newtext;
 	    Util.markdown_to_html (this.bubblediv, this.lasttext);
+	    if (!this.zmove_del)
+	      this.zmove_del = App.zmoves_add (() => { debug ("bubble zmove"); this.queue_update(); });
 	  }
       }
   }
