@@ -58,7 +58,7 @@
 <template>
   <div    class="b-knob" :class="width4height ? 'b-knob-w4h' : 'b-knob-h4w'" ref="bknob"
 	  @pointerdown="drag_start" @dblclick.stop="dblclick"
-	  :data-tip="data_tip()" >
+	  :data-tip="data_tip()" :data-bubble="bubble_tip()" >
     <svg  class="b-knob-sizer" :viewBox="viewbox()" />
     <svg  class="b-knob-base"               :style="style()" :viewBox="viewbox()" >
       <use href="#eknob-base" />
@@ -96,8 +96,6 @@ const eknob_origin = { x: 32, y: 32 };
  * "Your Pointer Is Grabbed!" warning popup by the browser.
  */
 const USE_PTRLOCK = !!window.Electron;
-// Show data-bubble on hover, not just on drag.
-const HOVER_BUBBLE = true;
 
 export default {
   sfc_template,
@@ -120,8 +118,6 @@ export default {
   },
   mounted() {
     this.$el.onwheel = this.wheel_event;
-    if (HOVER_BUBBLE)
-      App.data_bubble.callback (this.$el, this.bubble);
   },
   beforeUnmount () {
     this.unlock_pointer = this.unlock_pointer?. ();
@@ -132,6 +128,24 @@ export default {
   methods: {
     data_tip() {
       let tip = "**DRAG** Adjust Value **DBLCLICK** Reset Value";
+      if (this.prop?.label_ && this.scalar_)
+	{
+	  let num = (this.scalar_ * this.value_).toFixed (this.digits_);
+	  num = this.parts_[0] + num + this.parts_[1];
+	  tip = '**' + this.prop?.label_ + '** ' + num + ' ' + tip;
+	}
+      return tip;
+    },
+    bubble_tip() {
+      if (false && this.scalar_)
+	{
+	  let num = (this.scalar_ * this.value_).toFixed (this.digits_);
+	  num = this.parts_[0] + num + this.parts_[1];
+	  return num;
+	}
+      if (this.label)
+	return this.label;
+      let tip = '';
       if (this.prop?.label_ && this.prop?.nick_ && this.prop.label_ !== this.prop.nick_)
 	tip = "**" + this.prop.nick_ + "** " + this.prop.label_ + " " + tip;
       else if (this.prop?.label_ || this.prop?.nick_)
@@ -214,8 +228,6 @@ export default {
 	this.unlock_pointer = Util.request_pointer_lock (this.$el);
       this.uncapture_wheel = Util.capture_event ('wheel', this.wheel_event);
       // display data-bubble during drag and monitor movement distance
-      if (!HOVER_BUBBLE)
-	App.data_bubble.callback (this.$el, this.bubble);
       App.data_bubble.force (this.$el);
       const DPR = Math.max (window.devicePixelRatio || 1, 1);
       this.last = { x: ev.pageX * DPR, y: ev.pageY * DPR };
@@ -237,10 +249,7 @@ export default {
       this.captureid_ = undefined;
       this.last = null;
       this.drag = null;
-      if (HOVER_BUBBLE)
-	App.data_bubble.unforce (this.$el);
-      else // !HOVER_BUBBLE
-	App.data_bubble.clear (this.$el);
+      App.data_bubble.unforce (this.$el);
       if (!ev)
 	return;
       ev.preventDefault();
@@ -296,14 +305,6 @@ export default {
       ev.preventDefault();
       ev.stopPropagation();
       this.allow_dblclick = false;
-    },
-    bubble() {
-      if (this.label)
-	return this.label;
-      if (!this.scalar_)
-	return "?";
-      const num = (this.scalar_ * this.value_).toFixed (this.digits_);
-      return this.parts_[0] + num + this.parts_[1];
     },
     update_format() {
       if (this.format_ === this.format)
@@ -365,7 +366,7 @@ export default {
 	}
       // to reduce CPU load, update data-bubble on demand only
       if (this.$el.data_bubble_active)
-	App.data_bubble.update (this.$el);
+	; // App.data_bubble.update (this.$el);
     },
   },
 };
