@@ -77,7 +77,7 @@
 </style>
 
 <template>
-  <h-flex class="b-choice" ref="bchoice" :class="classlist" :data-tip="bubbletip()"
+  <h-flex class="b-choice" ref="bchoice" :class="classlist" :data-tip="data_tip()"
 	  @pointerdown="pointerdown" @keydown="keydown" >
     <h-flex class="b-choice-current" ref="pophere" tabindex="0" >
       <span class="b-choice-nick">{{ nick() }}</span>
@@ -105,6 +105,7 @@ export default {
 	   title:   { type: String, },
 	   small:   { default: false },
 	   indexed: { default: false },
+	   prop:    { default: null, },
 	   choices: { default: [] }, },
   emits: { 'update:value': null, },
   data: () => ({
@@ -141,16 +142,15 @@ export default {
 	return this.$forceUpdate();
       this.value_ = this.value;
     },
-    bubbletip() {
-      App.zmove(); // force changes to be picked up
+    data_tip() {
       const n = this.ivalue;
-      if (!this.mchoices || n >= this.mchoices.length)
-	return "";
+      let tip = "**CLICK** Select Choice";
+      if (!this.prop?.label_ || !this.mchoices || n >= this.mchoices.length)
+	return tip;
       const c = this.mchoices[n];
-      let tip = "**" + c.label + "**";
-      if (c.subject)
-	tip += " " + c.subject;
-      return tip;
+      let val = "**" + this.prop.label_ + "** ";
+      val += c.label;
+      return val + " " + tip;
     },
     nick() {
       const n = this.ivalue;
