@@ -70,7 +70,7 @@ $media-width-pxlist: (
 @mixin media-width-max-em($font-size: 16px, $max-em: 99) {
   width: $max-em * 1em;
   @each $i in $media-width-pxlist {
-    $target-em: $i * 1px / $font-size * 1em - 1em;
+    $target-em: $i * math.div( 1px, $font-size) * 1em - 1em;
     @if $target-em < $max-em {
       @media only screen and (max-width: #{$i}px) { width: $target-em; }
     }
