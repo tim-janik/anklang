@@ -41,54 +41,61 @@ async function augment_property (xprop) {
       for (let i = 0; i < xprop.value_.choices.length; i++)
 	{
 	  const c = xprop.value_.choices[i];
-	  if (!c.icon && xprop.ident_ == 'pcm_driver')
-	    c.icon = adjust_choice_icon (c, 'pcm');
-	  else if (!c.icon && xprop.ident_.match (/midi/i))
-	    c.icon = adjust_choice_icon (c, 'midi');
+	  if (xprop.ident_ == 'pcm_driver')
+	    augment_choice_entry (c, 'pcm');
+	  else if (xprop.ident_.match (/midi/i))
+	    augment_choice_entry (c, 'midi');
 	}
     }
 }
 
-function adjust_choice_icon (entry, hint) {
-  debug (entry);
+function augment_choice_entry (c, hint) {
   const is_midi = hint == 'midi';
-  const is_pcm = hint == 'pcm';
-  const is_usb = entry.label.match (/^USB /) || entry.blurb.match (/ at usb-/);
-  const is_rec  = entry.blurb.match (/\d\*captur/i);
-  const is_play = entry.blurb.match (/\d\*play/i);
+  const is_usb = c.label.match (/^USB /) || c.blurb.match (/ at usb-/);
   if (is_usb)
-    entry.blurb = entry.blurb.replace (/ at usb-[0-9].*/, ' (USB)');
-  if (is_midi && !(is_rec || is_play))
-    entry.blurb = entry.blurb.replace (/\n/, ', ');
-  if (entry.ident.startsWith ("jack="))
-    return "mi-graphic_eq";
-  if (entry.ident.startsWith ("alsa=pulse"))
-    return "mi-speaker_group";
-  if (entry.ident.startsWith ("null"))
-    return "mi-not_interested"; // "fa-deaf";
-  if (entry.ident.startsWith ("auto"))
-    return "fa-cog";
-  if (entry.label.startsWith ("HDMI"))
-    return "fa-tv";
-  if (entry.label.match (/\bMIDI\W*$/))
-    return 'fa-music';
-  if (is_usb && is_midi)
-    return 'uc-🎘';
-  if (is_usb)
-    return "fa-usb";
+    c.blurb = c.blurb.replace (/ at usb-[0-9].*/, ' (USB)');
   if (is_midi)
-    return 'fa-music';
-  if (is_pcm)
+    c.blurb = c.blurb.replace (/\n/, ', ');
+  const standard_icons = ['pcm', 'midi'];
+  if (c.icon && !standard_icons.includes (c.icon.replace (/\W/, '')))
+    return;
+  const is_pcm = hint == 'pcm';
+  if (c.ident.startsWith ("null"))
+    c.icon = "mi-not_interested"; // "fa-deaf";
+  else if (c.ident.startsWith ("auto"))
+    c.icon = "fa-cog";
+  else if (is_midi)
     {
-      if (entry.blurb.match (/\bModem\b/))
-	return "uc-☎ ";
-      if (is_rec && !is_play)
-	return "mi-mic";
-      if (is_play && !is_rec)
-	return "fa-volume-up";
-      return "mi-headset_mic";
+      if (c.label.match (/\bMIDI\W*$/))
+	c.icon = 'fa-music';
+      else if (is_usb)
+	c.icon = 'uc-🎘';
+      else
+	c.icon = 'fa-music';
     }
-  return "mi-not_interested";
+  else if (is_pcm)
+    {
+      const is_rec  = c.blurb.match (/\d\*captur/i);
+      const is_play = c.blurb.match (/\d\*play/i);
+      if (c.ident.startsWith ("jack="))
+	c.icon = "mi-graphic_eq";
+      else if (c.ident.startsWith ("alsa=pulse"))
+	c.icon = "mi-speaker_group";
+      else if (c.label.startsWith ("HDMI"))
+	c.icon = "fa-tv";
+      else if (is_usb)
+	c.icon = "fa-usb";
+      else if (c.blurb.match (/\bModem\b/))
+	c.icon = "uc-☎ ";
+      else if (is_rec && !is_play)
+	c.icon = "mi-mic";
+      else if (is_play && !is_rec)
+	c.icon = "fa-volume-up";
+      else
+	c.icon = "mi-headset_mic";
+    }
+  else
+    c.icon = "mi-not_interested";
 }
 
 function component_data () {
