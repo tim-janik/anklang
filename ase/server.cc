@@ -16,7 +16,7 @@ namespace Ase {
 
 // == Preferences ==
 static Choice
-choice_from_driver_entry (const DriverEntry &e)
+choice_from_driver_entry (const DriverEntry &e, const String &icon_keywords)
 {
   String blurb;
   if (!e.device_info.empty() && !e.capabilities.empty())
@@ -34,6 +34,7 @@ choice_from_driver_entry (const DriverEntry &e)
   // e.readonly
   // e.writeonly
   // e.modem
+  c.icon = MakeIcon::KwIcon (icon_keywords);
   return c;
 }
 
@@ -42,7 +43,7 @@ pcm_driver_choices (Properties::PropertyImpl&)
 {
   ChoiceS choices;
   for (const DriverEntry &e : PcmDriver::list_drivers())
-    choices.push_back (choice_from_driver_entry (e));
+    choices.push_back (choice_from_driver_entry (e, "pcm"));
   return choices;
 }
 
@@ -52,7 +53,7 @@ midi_driver_choices (Properties::PropertyImpl&)
   ChoiceS choices;
   for (const DriverEntry &e : MidiDriver::list_drivers())
     if (!e.writeonly)
-      choices.push_back (choice_from_driver_entry (e));
+      choices.push_back (choice_from_driver_entry (e, "midi"));
   return choices;
 }
 
