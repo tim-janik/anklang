@@ -57,6 +57,11 @@ $device-pixel-ratio: var(--device-pixel-ratio);
   @return $f;
 }
 
+/// Convert a percentage number to 1.0/asfactor(`$f`)
+@function divfactor($f) {
+  @return math.div( 1.0, asfactor($f));
+}
+
 /// Construct color from hue and relative luminance
 /// [WCAG relative luminance](https://www.w3.org/TR/WCAG20/#relativeluminancedef)
 @function color($h, $l: 50%, $s: 100%) {
