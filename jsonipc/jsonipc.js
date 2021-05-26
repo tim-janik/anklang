@@ -108,7 +108,7 @@ export const Jsonipc = {
 	if (handler)
 	  handler (event.data);
 	else
-	  console.error ("Unhandled message event:", event);
+	  globalThis.console.error ("Unhandled message event:", event);
 	return;
       }
     // Text message
@@ -127,7 +127,7 @@ export const Jsonipc = {
 	  receiver.apply (null, msg.params);
 	return;
       }
-    console.error ("Unhandled message:", event.data);
+    globalThis.console.error ("Unhandled message:", event.data);
   },
 };
 

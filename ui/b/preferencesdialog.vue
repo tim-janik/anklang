@@ -42,14 +42,14 @@ async function augment_property (xprop) {
 	{
 	  const c = xprop.value_.choices[i];
 	  if (!c.icon && xprop.ident_ == 'pcm_driver')
-	    c.icon = adjust_icon (c, 'pcm');
+	    c.icon = adjust_choice_icon (c, 'pcm');
 	  else if (!c.icon && xprop.ident_.match (/midi/i))
-	    c.icon = adjust_icon (c, 'midi');
+	    c.icon = adjust_choice_icon (c, 'midi');
 	}
     }
 }
 
-function adjust_icon (entry, hint) {
+function adjust_choice_icon (entry, hint) {
   debug (entry);
   const is_midi = hint == 'midi';
   const is_pcm = hint == 'pcm';

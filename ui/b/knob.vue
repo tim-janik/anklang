@@ -58,7 +58,7 @@
 <template>
   <div    class="b-knob" :class="width4height ? 'b-knob-w4h' : 'b-knob-h4w'" ref="bknob"
 	  @pointerdown="drag_start" @dblclick.stop="dblclick"
-	  data-tip="**DRAG** Adjust Value **DBLCLICK** Reset Value" >
+	  :data-tip="data_tip()" :data-bubble="bubble_tip()" >
     <svg  class="b-knob-sizer" :viewBox="viewbox()" />
     <svg  class="b-knob-base"               :style="style()" :viewBox="viewbox()" >
       <use href="#eknob-base" />
@@ -96,8 +96,6 @@ const eknob_origin = { x: 32, y: 32 };
  * "Your Pointer Is Grabbed!" warning popup by the browser.
  */
 const USE_PTRLOCK = !!window.Electron;
-// Show data-bubble on hover, not just on drag.
-const HOVER_BUBBLE = false;
 
 export default {
   sfc_template,
@@ -107,18 +105,19 @@ export default {
 	   label:   { type: String },
 	   hscroll: { type: Boolean, default: true },
 	   vscroll: { type: Boolean, default: true },
+	   prop:    { default: null, },
 	   width4height: { type: Boolean, default: true }, },
   emits: { 'update:value': null, 'reset:value': null, },
   data: () => ({
     scalar_: 0,
   }),
   watch: {
-    label (vnew, vold) { if (this.$el?.data_bubble_active) App.data_bubble.update (this.$el); },
+    label (vnew, vold) {
+      if (this.$el?.data_bubble_active) App.data_bubble.update (this.$el);
+    },
   },
   mounted() {
     this.$el.onwheel = this.wheel_event;
-    if (HOVER_BUBBLE)
-      App.data_bubble.callback (this.$el, this.bubble);
   },
   beforeUnmount () {
     this.unlock_pointer = this.unlock_pointer?. ();
@@ -127,6 +126,32 @@ export default {
       this.pending_change = cancelAnimationFrame (this.pending_change);
   },
   methods: {
+    data_tip() {
+      let tip = "**DRAG** Adjust Value **DBLCLICK** Reset Value";
+      if (this.prop?.label_ && this.scalar_)
+	{
+	  let num = (this.scalar_ * this.value_).toFixed (this.digits_);
+	  num = this.parts_[0] + num + this.parts_[1];
+	  tip = '**' + this.prop?.label_ + '** ' + num + ' ' + tip;
+	}
+      return tip;
+    },
+    bubble_tip() {
+      if (false && this.scalar_)
+	{
+	  let num = (this.scalar_ * this.value_).toFixed (this.digits_);
+	  num = this.parts_[0] + num + this.parts_[1];
+	  return num;
+	}
+      if (this.label)
+	return this.label;
+      let tip = '';
+      if (this.prop?.label_ && this.prop?.nick_ && this.prop.label_ !== this.prop.nick_)
+	tip = "**" + this.prop.nick_ + "** " + this.prop.label_ + " " + tip;
+      else if (this.prop?.label_ || this.prop?.nick_)
+	tip = "**" + (this.prop.label_ || this.prop.nick_) + "** · " + tip;
+      return tip;
+    },
     style (div = 0) {
       const sz = { w: eknob.viewBox.baseVal.width, h: eknob.viewBox.baseVal.height };
       const origin = eknob_origin.x / sz.w * 100 + '% ' + eknob_origin.y / sz.h * 100 + '%';
@@ -203,7 +228,6 @@ export default {
 	this.unlock_pointer = Util.request_pointer_lock (this.$el);
       this.uncapture_wheel = Util.capture_event ('wheel', this.wheel_event);
       // display data-bubble during drag and monitor movement distance
-      App.data_bubble.callback (this.$el, this.bubble);
       App.data_bubble.force (this.$el);
       const DPR = Math.max (window.devicePixelRatio || 1, 1);
       this.last = { x: ev.pageX * DPR, y: ev.pageY * DPR };
@@ -223,11 +247,9 @@ export default {
       this.$el.onpointermove = null;
       this.$el.onpointerup = null;
       this.captureid_ = undefined;
-      App.data_bubble.clear (this.$el);
       this.last = null;
       this.drag = null;
-      if (HOVER_BUBBLE)
-	App.data_bubble.callback (this.$el, this.bubble);
+      App.data_bubble.unforce (this.$el);
       if (!ev)
 	return;
       ev.preventDefault();
@@ -283,14 +305,6 @@ export default {
       ev.preventDefault();
       ev.stopPropagation();
       this.allow_dblclick = false;
-    },
-    bubble() {
-      if (this.label)
-	return this.label;
-      if (!this.scalar_)
-	return "?";
-      const num = (this.scalar_ * this.value_).toFixed (this.digits_);
-      return this.parts_[0] + num + this.parts_[1];
     },
     update_format() {
       if (this.format_ === this.format)
@@ -352,7 +366,7 @@ export default {
 	}
       // to reduce CPU load, update data-bubble on demand only
       if (this.$el.data_bubble_active)
-	App.data_bubble.update (this.$el);
+	; // App.data_bubble.update (this.$el);
     },
   },
 };

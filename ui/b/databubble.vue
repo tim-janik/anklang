@@ -100,6 +100,7 @@ class DataBubbleImpl {
 			       ev => (ev.target === this.current) && this.debounced_check(),
 			       { capture: true, passive: true });
     this.resizeob = new ResizeObserver (() => !!this.current && this.debounced_check());
+    this.zmove_del = null;
   }
   check_showtime (showtime = false) {
     if (this.last_event)
@@ -146,6 +147,11 @@ class DataBubbleImpl {
   hide() {
     // ignore the next 0-distance move
     this.coords = null;
+    if (this.zmove_del)
+      {
+	this.zmove_del();
+	this.zmove_del = null;
+      }
     // hide bubble if any
     if (this.current)
       {
@@ -172,6 +178,8 @@ class DataBubbleImpl {
 	  {
 	    this.lasttext = newtext;
 	    Util.markdown_to_html (this.bubblediv, this.lasttext);
+	    if (!this.zmove_del)
+	      this.zmove_del = App.zmoves_add (() => { debug ("bubble zmove"); this.queue_update(); });
 	  }
       }
   }
@@ -235,6 +243,12 @@ class DataBubbleIface {
   /// Force `data-bubble` to be shown for `element`
   force (element) {
     this.data_bubble.stack.unshift (element);
+    this.data_bubble.debounced_check();
+  }
+  /// Cancel forced `data-bubble` for `element`
+  unforce (element) {
+    if (this.data_bubble.stack.length)
+      Util.array_remove (this.data_bubble.stack, element);
     this.data_bubble.debounced_check();
   }
   /// Reset the `data-bubble` attribute, its callback and cancel a forced bubble

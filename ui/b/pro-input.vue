@@ -33,12 +33,13 @@
 
 <template>
   <v-flex class="b-pro-input tabular-nums" :data-bubble="bubble()" >
-    <b-knob class="b-pro-input-knob" v-if="type() == 'knob'" :hscroll="false"
-	    :value="get_num()" :label="vtext" :bidir="is_bidir()"
+    <b-knob class="b-pro-input-knob" v-if="type() == 'knob'" :prop="prop" :hscroll="false"
+	    :value="get_num()" :bidir="is_bidir()"
 	    @update:value="set_num ($event)" @reset:value="reset_num()"/>
     <b-toggle class="b-pro-input-toggle" v-if="type() == 'toggle'" label=""
 	      :value="get_num()" @update:value="set_num ($event)" />
-    <b-choice class="b-pro-input-choice" v-if="type() == 'choice'" small="1" indexed="1" :choices="choices"
+    <b-choice class="b-pro-input-choice" v-if="type() == 'choice'" small="1" indexed="1"
+	      :prop="prop" :choices="choices"
 	      :value="get_index()" @update:value="set_index ($event)" />
     <span   class="b-pro-input-span" v-if="labeled && !!nick">{{ nick }}</span>
   </v-flex>
