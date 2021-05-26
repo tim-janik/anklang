@@ -3,19 +3,35 @@
 #include <regex>
 
 namespace Ase {
-namespace Re {
 
-MatchObject
-search (const std::string &regex, const std::string &input)
+static inline constexpr std::regex_constants::syntax_option_type
+regex_flags (Re::Flags flags, bool d = false)
 {
-  return MatchObject::create (std::regex_search (input, std::regex (regex)));
+  const bool ere = (flags & Re::ERE) == Re::ERE;
+  auto o = ere ? std::regex::extended : std::regex::ECMAScript;
+  if (!d)
+    o |= std::regex::nosubs;
+  if (Re::I & flags)    o |= std::regex::icase;
+  // if (Re::M & flags) o |= std::regex::multiline;
+  // if (Re::S & flags) o |= std::regex::dotall;
+  return o;
 }
 
-std::string
-sub (const std::string &regex, const std::string &subst, const std::string &input)
+ssize_t
+Re::search (const String &regex, const String &input, Flags flags)
 {
-  return std::regex_replace (input, std::regex (regex), subst);
+  std::regex rex (regex, regex_flags (flags));
+  std::smatch m;
+  if (std::regex_search (input, m, rex))
+    return m.position();
+  return -1;
 }
 
-} // Re
+String
+Re::sub (const String &regex, const String &subst, const String &input, Flags flags)
+{
+  std::regex rex (regex, regex_flags (flags));
+  return std::regex_replace (input, rex, subst);
+}
+
 } // Ase
