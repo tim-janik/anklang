@@ -23,26 +23,26 @@
   .b-trackrow-cell {
     flex-shrink: 0;
     height: $b-trackrow-height;
-    margin: $b-panel-spacing / 2 0;
+    margin: $b-panel-spacing * 0.5 0;
   }
   .b-track-list-trackswrapper {
-    padding-top: $b-panel-spacing / 2; padding-bottom: $b-panel-spacing / 2;
-    padding-left: $b-panel-spacing / 2;
+    padding-top: $b-panel-spacing * 0.5; padding-bottom: $b-panel-spacing * 0.5;
+    padding-left: $b-panel-spacing * 0.5;
   }
   .b-track-list-theader, .b-track-list-tfooter, .b-track-list-trackswrapper {
-    margin-left: $b-panel-spacing / 2;
+    margin-left: $b-panel-spacing * 0.5;
   }
   .b-track-list-clipswrapper {
     display: inline-flex;
-    padding-top: $b-panel-spacing / 2; padding-bottom: $b-panel-spacing / 2;
+    padding-top: $b-panel-spacing * 0.5; padding-bottom: $b-panel-spacing * 0.5;
   }
   .b-track-list-cheader, .b-track-list-hscrollbar1, .b-track-list-clipswrapper {
     margin: 0 $b-panel-spacing;
   }
   .b-track-list-partswrapper {
     display: inline-flex;
-    padding-top: $b-panel-spacing / 2; padding-bottom: $b-panel-spacing / 2;
-    padding-right: $b-panel-spacing / 2;
+    padding-top: $b-panel-spacing * 0.5; padding-bottom: $b-panel-spacing * 0.5;
+    padding-right: $b-panel-spacing * 0.5;
   }
   .b-track-list-vscrollbar {
     display: flex;
