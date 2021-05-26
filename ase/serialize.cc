@@ -442,7 +442,8 @@ ase_serialize()
     TASSERT (floats == via_json (floats2));
   }
   { // RECORD
-    Choice choice = { "grump", "¿", "Grump", "A flashy Grump", "Notice", "Warn" }, choice2 = via_json (choice);
+    using namespace MakeIcon;
+    Choice choice = { "grump", "¿"_uc, "Grump", "A flashy Grump", "Notice", "Warn" }, choice2 = via_json (choice);
     TASSERT (choice.ident == choice2.ident && choice.icon == choice2.icon && choice.label == choice2.label &&
              choice.blurb == choice2.blurb && choice.notice == choice2.notice && choice.warning == choice2.warning);
   }

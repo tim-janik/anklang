@@ -24,9 +24,10 @@ String                          string_multiply          (const String &s, uint6
 String                          string_canonify          (const String &s, const String &valid_chars, const String &substitute);
 String                          string_to_identifier     (const String &input);
 bool                            string_is_canonified     (const String &s, const String &valid_chars);
-String                          string_set_a2z           ();
-String                          string_set_A2Z           ();
-String                          string_set_ascii_alnum   ();
+const String&                   string_set_a2z           ();
+const String&                   string_set_A2Z           ();
+const String&                   string_set_ascii_alnum   ();
+bool                            string_is_ascii_alnum    (const String &str);
 String  			string_tolower           (const String &str);
 String  			string_toupper           (const String &str);
 String  			string_totitle           (const String &str);

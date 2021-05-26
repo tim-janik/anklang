@@ -91,24 +91,37 @@ string_is_canonified (const String &string, const String &valid_chars)
 }
 
 /// Returns a string containing all of a-z.
-String
+const String&
 string_set_a2z ()
 {
-  return "abcdefghijklmnopqrstuvwxyz";
+  static const String cached_a2z = "abcdefghijklmnopqrstuvwxyz";
+  return cached_a2z;
 }
 
 /// Returns a string containing all of A-Z.
-String
+const String&
 string_set_A2Z ()
 {
-  return "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  static const String cached_A2Z = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  return cached_A2Z;
 }
 
 /// Returns a string containing all of 0-9, A-Z and a-z.
-String
+const String&
 string_set_ascii_alnum ()
 {
-  return "0123456789" + string_set_A2Z() + string_set_a2z();
+  static const String cached_alnum = "0123456789" + string_set_A2Z() + string_set_a2z();
+  return cached_alnum;
+}
+
+bool
+string_is_ascii_alnum (const String &str)
+{
+  const String &alnum = string_set_ascii_alnum();
+  for (size_t i = 0; i < str.size(); i++)
+    if (!strchr (alnum.c_str(), str[i]))
+      return false;
+  return true;
 }
 
 /// Convert all string characters into Unicode lower case characters.

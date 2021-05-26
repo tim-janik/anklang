@@ -6,21 +6,23 @@
 
 namespace Ase {
 
-/// Some std::regex wrappers to simplify usage and reduce compilation time
-namespace Re {
-
-struct MatchObject {
-  explicit  operator bool() const       { return have_match_; }
-  static MatchObject create (bool b)    { return MatchObject (b); }
-private:
-  explicit MatchObject (bool b) : have_match_ (b) {}
-  const bool have_match_;
+/// Wrapper for std::regex to simplify usage and reduce compilation time
+class Re final {
+public:
+  enum Flags : int32_t {
+    DEFAULT     = 0,
+    ERE         = 0x01, // Posix Extended
+    I           = 0x10, // IGNORECASE
+    // M        = 0x20, // MULTILINE
+    // S        = 0, DOTALL not supported, use [\s\S] or [^\x0]
+  };
+  static ssize_t search (const String &regex, const String &input, Flags = DEFAULT);
+  static String  sub    (const String &regex, const String &subst, const String &input, Flags = DEFAULT);
 };
+extern constexpr inline Re::Flags operator| (Re::Flags a, Re::Flags b) { return Re::Flags (int32_t (a) | int32_t (b)); }
 
-MatchObject search (const std::string &regex, const std::string &input);
-std::string sub    (const std::string &regex, const std::string &subst, const std::string &input);
+extern constexpr inline class Re Re = {};
 
-} // Re
 } // Ase
 
 #endif // __ASE_REGEX_HH__

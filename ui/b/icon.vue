@@ -67,10 +67,10 @@ export default {
 	   nosize: undefined, fw: undefined, lg: undefined,
 	   hflip: undefined, vflip: undefined },
   computed: {
-    mi_() { return this.ic.startsWith ('mi-') ? this.ic.substr (3) : this.mi; },
-    uc_() { return this.ic.startsWith ('uc-') ? this.ic.substr (3) : this.uc; },
-    fa_() { return this.ic.startsWith ('fa-') ? this.ic.substr (3) : this.fa; },
-    bc_() { return this.ic.startsWith ('bc-') ? this.ic.substr (3) : this.bc; },
+    mi_() { return this.icon_from ('mi'); },
+    uc_() { return this.icon_from ('uc'); },
+    fa_() { return this.icon_from ('fa'); },
+    bc_() { return this.icon_from ('bc'); },
     outerclasses() {
       let classes = [];
       if (this.fw || this.fw === '')
@@ -126,9 +126,23 @@ export default {
     },
   },
   methods: {
+    icon_from (prefix) {
+      let icon = '';
+      if (this.ic.startsWith ('mi-') ||
+	  this.ic.startsWith ('uc-') ||
+	  this.ic.startsWith ('fa-') ||
+	  this.ic.startsWith ('bc-'))
+	icon = this.ic;
+      else if (this.ic.length)
+	icon = this.ic;
+      if (prefix.length == 2 && icon.startsWith (prefix + '-'))
+	return icon.substr (3);		// strip 'mi-'
+      return this[prefix];		// get this.mi
+    },
     emit (what, ev) {
       this.$emit (what, ev);
     },
   },
 };
+
 </script>

@@ -16,7 +16,7 @@ namespace Ase {
 
 // == Preferences ==
 static Choice
-choice_from_driver_entry (const DriverEntry &e)
+choice_from_driver_entry (const DriverEntry &e, const String &icon_keywords)
 {
   String blurb;
   if (!e.device_info.empty() && !e.capabilities.empty())
@@ -25,7 +25,7 @@ choice_from_driver_entry (const DriverEntry &e)
     blurb = e.capabilities;
   else
     blurb = e.device_info;
-  Choice c (e.devid, "", e.device_name, blurb);
+  Choice c (e.devid, e.device_name, blurb);
   if (string_startswith (string_tolower (e.notice), "warn"))
     c.warning = e.notice;
   else
@@ -34,6 +34,7 @@ choice_from_driver_entry (const DriverEntry &e)
   // e.readonly
   // e.writeonly
   // e.modem
+  c.icon = MakeIcon::KwIcon (icon_keywords);
   return c;
 }
 
@@ -42,7 +43,7 @@ pcm_driver_choices (Properties::PropertyImpl&)
 {
   ChoiceS choices;
   for (const DriverEntry &e : PcmDriver::list_drivers())
-    choices.push_back (choice_from_driver_entry (e));
+    choices.push_back (choice_from_driver_entry (e, "pcm"));
   return choices;
 }
 
@@ -52,7 +53,7 @@ midi_driver_choices (Properties::PropertyImpl&)
   ChoiceS choices;
   for (const DriverEntry &e : MidiDriver::list_drivers())
     if (!e.writeonly)
-      choices.push_back (choice_from_driver_entry (e));
+      choices.push_back (choice_from_driver_entry (e, "midi"));
   return choices;
 }
 
@@ -242,14 +243,21 @@ Server::dir_crawler (const String &cwd)
 }
 
 // == Choice ==
-Choice::Choice (String ident_, String icon_, String label_, String blurb_, String notice_, String warning_) :
+Choice::Choice (String ident_, String label_, String blurb_, String notice_, String warning_) :
+  ident (ident_.empty() ? string_to_identifier (label_) : ident_),
+  label (label_), blurb (blurb_), notice (notice_), warning (warning_)
+{
+  assert_return (ident.empty() == false);
+}
+
+Choice::Choice (String ident_, IconString icon_, String label_, String blurb_, String notice_, String warning_) :
   ident (ident_.empty() ? string_to_identifier (label_) : ident_),
   icon (icon_), label (label_), blurb (blurb_), notice (notice_), warning (warning_)
 {
   assert_return (ident.empty() == false);
 }
 
-Choice::Choice (String icon_, String label_, String blurb_) :
+Choice::Choice (IconString icon_, String label_, String blurb_) :
   Choice ("", icon_, label_, blurb_)
 {}
 
