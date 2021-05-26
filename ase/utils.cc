@@ -178,6 +178,8 @@ KwIcon (const String &keywords)
   });
   IconString is;
   is.assign (string_join (", ", words));
+  if (!is.empty() && is.find (',') == is.npos)
+    is += ",";  // ensure comma in keyword list
   return is;
 }
 
