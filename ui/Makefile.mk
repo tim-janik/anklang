@@ -19,6 +19,10 @@ ui/copy.wildcards ::= $(wildcard	\
 	ui/b/*.js			\
 	ui/b/*.scss			\
 )
+ui/nocopy.wildcards ::= $(wildcard	\
+	ui/sfc-compile.js		\
+)
+ui/copy.files ::= $(filter-out $(ui/nocopy.wildcards), $(ui/copy.wildcards))
 ui/vue.wildcards ::= $(wildcard		\
 	ui/b/*.vue			\
 )
@@ -121,7 +125,7 @@ $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vue.targets) $(wildcard ui/b/*)		
 $>/ui/.build1-stamp: $>/ui/all-components.js
 
 # == File Copies ==
-ui/copy.targets ::= $(ui/copy.wildcards:%=$>/%)
+ui/copy.targets ::= $(ui/copy.files:%=$>/%)
 $(ui/copy.targets): $>/ui/%: ui/%
 	$(QECHO) COPY $<
 	$Q cp -a $< --parents $>/
