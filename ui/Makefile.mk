@@ -70,7 +70,6 @@ $>/ui/.build1-stamp: $>/ui/index.html
 $>/ui/.aseignore:					| $>/ui/
 	$(QGEN)
 	$Q rm -f $@.tmp
-	$Q echo '^/node_modules/'		>> $@.tmp
 	$Q echo '.*/[.].*'			>> $@.tmp
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/.aseignore
