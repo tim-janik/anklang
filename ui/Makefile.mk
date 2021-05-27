@@ -252,3 +252,28 @@ ui/rebuild:
 	@: # perform non-essential rebuilds that may fail
 	$(MAKE) $>/ui/.build2-stamp NPMBLOCK=y -j --no-print-directory &
 .PHONY: ui/rebuild
+
+# == installation ==
+ui/installdir ::= $(DESTDIR)$(pkglibdir)/ui
+ui/install.pattern ::= $(strip	\
+	$>/ui/.aseignore	\
+	$>/ui/*.css		\
+	$>/ui/*.html		\
+	$>/ui/*.ico		\
+	$>/ui/*.js		\
+)
+ui/install: $>/ui/.build1-stamp $>/ui/.build2-stamp
+	@$(QECHO) INSTALL '$(ui/installdir)/...'
+	$Q rm -f -r '$(ui/installdir)'
+	$Q $(INSTALL)      -d $(ui/installdir)/ $(ui/installdir)/assets/ $(ui/installdir)/b/ $(ui/installdir)/fonts/
+	$Q $(INSTALL_DATA) -p $(ui/install.pattern) $(ui/installdir)/
+	$Q $(INSTALL_DATA) -p $>/ui/assets/* $(ui/installdir)/assets/
+	$Q $(INSTALL_DATA) -p $>/ui/b/* $(ui/installdir)/b/
+	$Q $(INSTALL_DATA) -p $>/ui/fonts/* $(ui/installdir)/fonts/
+.PHONY: ui/install
+install: ui/install
+ui/uninstall: FORCE
+	@$(QECHO) REMOVE '$(ui/installdir)/...'
+	$Q rm -f -r '$(ui/installdir)'
+.PHONY: ui/uninstall
+uninstall: ui/uninstall
