@@ -15,9 +15,7 @@ $>/ui/.build2-stamp:	# extra targets, deferred during incremental rebuilds
 # == Copies ==
 ui/copy.wildcards ::= $(wildcard	\
 	ui/*.js				\
-	ui/*.scss			\
 	ui/b/*.js			\
-	ui/b/*.scss			\
 )
 ui/nocopy.wildcards ::= $(wildcard	\
 	ui/sfc-compile.js		\
