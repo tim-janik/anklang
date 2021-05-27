@@ -207,19 +207,19 @@ $>/ui/.build1-stamp: $>/ui/favicon.ico
 
 # == $>/ui/eslint.files ==
 ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue)
-$>/ui/eslint.files: ui/.eslintrc.js $(ui/eslint.files)			| $>/ui/
+$>/ui/.eslint.files: ui/.eslintrc.js $(ui/eslint.files)			| $>/ui/
 	$(QGEN)
 	$Q cp $< $(@D)/.eslintrc.js
 	$Q echo '$(abspath $(ui/eslint.files))' | tr ' ' '\n' > $@
-$>/ui/.build1-stamp: $>/ui/eslint.files
+$>/ui/.build1-stamp: $>/ui/.eslint.files
 
 # == eslint.done ==
-$>/ui/.eslint.done: $>/ui/eslint.files $>/node_modules/.npm.done
+$>/ui/.eslint.done: $>/ui/.eslint.files $>/node_modules/.npm.done
 	$(QGEN)
 	$Q cd $>/ui/ && npm run eslint |& ../../misc/colorize.sh
 	$Q touch $@
 $>/ui/.build2-stamp: $>/ui/.eslint.done	# deferred during rebuilds
-eslint: $>/ui/eslint.files $>/node_modules/.npm.done
+eslint: $>/ui/.eslint.files $>/node_modules/.npm.done
 	$Q cd $>/ui/ && npm run $@
 .PHONY: eslint
 
