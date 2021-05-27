@@ -4,18 +4,15 @@ module.exports = {
   "env": {
     "browser": true,
     "es6": true,
-    "node": true
-  },
+    "node": true },
 
-  // babel-eslint is needed for stage-3 syntax, see:
-  // https://stackoverflow.com/questions/60046847/eslint-does-not-allow-static-class-properties/60464446#60464446
-  "parserOptions": {
-    "parser": "babel-eslint",
-    "sourceType": "module"
-  },
   // babel-eslint needs special setup for vue: https://eslint.vuejs.org/user-guide/#usage
   "parser": "vue-eslint-parser",
   // "parser": "babel-eslint", // <- moved to parserOptions under vue-eslint-parser
+  // babel-eslint is needed for stage-3 syntax, see: https://stackoverflow.com/questions/60046847/eslint-does-not-allow-static-class-properties/60464446#60464446
+  "parserOptions": {
+    "parser": "babel-eslint",
+    "sourceType": "module" },
 
   "globals": {
     "App": false,
@@ -27,8 +24,8 @@ module.exports = {
     "__DEV__": false,
     "debug": false,
     "sfc_template": false,
-    "globalThis": false,
-  },
+    "globalThis": false },
+
   "rules": {
     "no-unused-vars": [ "warn", { "args": "none", "argsIgnorePattern": "^__.*", "varsIgnorePattern": "^__.*" } ],
     "no-unreachable": [ "warn" ],
