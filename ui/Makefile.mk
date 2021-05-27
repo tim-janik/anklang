@@ -74,7 +74,6 @@ $>/ui/.aseignore:					| $>/ui/
 	$(QGEN)
 	$Q rm -f $@.tmp
 	$Q echo '^/node_modules/'		>> $@.tmp
-	$Q echo '^/tmp/'			>> $@.tmp
 	$Q echo '.*/[.].*'			>> $@.tmp
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/.aseignore
@@ -188,24 +187,26 @@ ui/fork-awesome-downloads ::= \
 $>/ui/.build1-stamp: $>/ui/fonts/forkawesome-webfont.css
 
 # == $>/ui/browserified.js ==
-$>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/ $>/ui/tmp/
+$>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 	$(QGEN)
 	$Q: # re-export and bundle postcss modules
-	$Q echo "const module_list = {"								>  $>/ui/tmp/browserified.js
+	$Q mkdir -p $>/ui/tmp-browserify/
+	$Q echo "const module_list = {"								>  $>/ui/tmp-browserify/browserified.js
 	$Q for mod in markdown-it chroma-js ; do \
-		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp/browserified.js
-	$Q echo "};"										>> $>/ui/tmp/browserified.js
-	$Q echo "Object.defineProperty (window, 'require', { value: m => module_list[m] });"	>> $>/ui/tmp/browserified.js
-	$Q echo "if (__DEV__) window.require.module_list = module_list;"			>> $>/ui/tmp/browserified.js
-	$Q $>/node_modules/.bin/browserify -o $>/ui/tmp/out.browserified.js $>/ui/tmp/browserified.js
-	$Q mv $>/ui/tmp/out.browserified.js $@ && rm -f $>/ui/tmp/out.browserified.*
+		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp-browserify/browserified.js
+	$Q echo "};"										>> $>/ui/tmp-browserify/browserified.js
+	$Q echo "Object.defineProperty (window, 'require', { value: m => module_list[m] });"	>> $>/ui/tmp-browserify/browserified.js
+	$Q echo "if (__DEV__) window.require.module_list = module_list;"			>> $>/ui/tmp-browserify/browserified.js
+	$Q $>/node_modules/.bin/browserify -o $>/ui/tmp-browserify/out.browserified.js $>/ui/tmp-browserify/browserified.js
+	$Q mv $>/ui/tmp-browserify/out.browserified.js $@ && rm -r $>/ui/tmp-browserify/
 $>/ui/.build1-stamp: $>/ui/browserified.js
 
 # == $>/ui/favicon.ico ==
-$>/ui/favicon.ico: ui/assets/favicon.svg $>/node_modules/.npm.done ui/Makefile.mk	| $>/ui/tmp/icon-gen/
+$>/ui/favicon.ico: ui/assets/favicon.svg $>/node_modules/.npm.done ui/Makefile.mk	| $>/ui/
 	$(QGEN)
-	$Q $>/node_modules/.bin/icon-gen -i $< -o $>/ui/tmp/icon-gen/ # -r
-	$Q mv $>/ui/tmp/icon-gen/favicon.ico $>/ui/ && rm -r $>/ui/tmp/icon-gen/
+	$Q mkdir -p $>/ui/tmp-icongen/
+	$Q $>/node_modules/.bin/icon-gen -i $< -o $>/ui/tmp-icongen/ # -r
+	$Q mv $>/ui/tmp-icongen/favicon.ico $>/ui/ && rm -r $>/ui/tmp-icongen/
 $>/ui/.build1-stamp: $>/ui/favicon.ico
 
 # == $>/ui/eslint.files ==
