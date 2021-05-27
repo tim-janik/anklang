@@ -221,6 +221,10 @@ $>/node_modules/.npm.done: $(if $(NPMBLOCK),, $>/package.json)	| $>/
 NODE_PATH ::= $(abspath $>/node_modules/)
 export NODE_PATH
 
+# == uninstall ==
+uninstall:
+	$Q $(RMDIR_P) '$(DESTDIR)$(pkglibdir)/' ; true
+
 # == check rules ==
 # Macro to generate test runs as 'check' dependencies
 define CHECK_ALL_TESTS_TEST
