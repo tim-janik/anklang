@@ -66,13 +66,6 @@ $>/ui/index.html: ui/index.html ui/assets/eknob.svg ui/Makefile.mk	| $>/ui/
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/index.html
 
-# == ui/nodemon.json ==
-$>/ui/nodemon.json: ui/Makefile.mk				| $>/ui/
-	$(QGEN)
-	$Q echo '{ "events": { "crash": "kill -2 $$PPID" } }'	>  $@.tmp
-	$Q mv $@.tmp $@
-$>/ui/.build1-stamp: $>/ui/nodemon.json
-
 # == ui/.aseignore ==
 $>/ui/.aseignore:					| $>/ui/
 	$(QGEN)
