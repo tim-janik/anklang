@@ -42,4 +42,5 @@ doc/style/install.files += $>/doc/style/inconsolata.css
 
 # == doc/style/ installation ==
 doc/style/all: $(doc/style/install.files)
-$(call INSTALL_DIR_RULE, doc/style/install.files, $(DESTDIR)$(doc/doc.dir)/style/, $(doc/style/install.files))
+doc/style/installdir ::= $(DESTDIR)$(pkglibdir)/doc/style
+$(call INSTALL_DIR_RULE, doc/style/install.files, $(doc/style/installdir), $(doc/style/install.files))
