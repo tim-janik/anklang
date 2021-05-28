@@ -106,9 +106,9 @@ appimage: all $>/misc/appaux/appimagetool/AppRun				| $>/misc/bin/
 	@: # Installation Step
 	@echo '  INSTALL ' AppImage files
 	$Q rm -fr $(APPINST) $(APPBASE) && make install DESTDIR=$(APPINST)
-	@: # Populate Appinst, linuxdeploy expects libraries under usr/lib, binaries under usr/bin, etc
-	@: # We achieve that by treating the anklang-$MAJOR-$MINOR installation prefix as /usr/.
-	@: # Also, we hand-pick extra libs for anklang to keep the AppImage small.
+	@: # Populate appinst/, linuxdeploy expects libraries under usr/lib, binaries under usr/bin, etc
+	@: # We achieve that by treating the anklang-$MAJOR-$MINOR/ installation directory as /usr/.
+	@: # Also, we hand-pick extra libs for Anklang to keep the AppImage small.
 	$Q mkdir $(APPBASE)
 	$Q cp -a $(APPINST)/usr/lib/anklang-* $(APPBASE)/usr
 	$Q rm -f Anklang-x86_64.AppImage
@@ -116,21 +116,22 @@ appimage: all $>/misc/appaux/appimagetool/AppRun				| $>/misc/bin/
 	$Q if test -e /usr/lib64/libc_nonshared.a ; \
 	   then LIB64=/usr/lib64/ ; \
 	   else LIB64=/usr/lib/x86_64-linux-gnu/ ; fi \
-	   && LD_LIBRARY_PATH=$(APPBASE)/usr/lib/:$(APPBASE)/usr/bundle/ $>/misc/appaux/linuxdeploy/AppRun \
+	   && LD_LIBRARY_PATH=$(APPBASE)/usr/lib/ \
+	     $>/misc/appaux/linuxdeploy/AppRun \
 		$(if $(findstring 1, $(V)), -v1, -v2) \
 		--appdir=$(APPBASE) \
 		-l $$LIB64/libXss.so.1 \
 		-l $$LIB64/libXtst.so.6 \
 		-i $(APPBASE)/usr/ui/anklang.png \
-		-e $(APPBASE)/usr/electron/anklang \
+		-e $(APPBASE)/usr/bin/anklang \
 		--custom-apprun=misc/AppRun
-	@: # 'linuxdeploy -e usr/electron/anklang' copies it to usr/bin/anklang
-	$Q rm -f $(APPBASE)/usr/lib/libffmpeg.so \
-	         $(APPBASE)/usr/bin/anklang	# remove bogus leftovers from linuxdeploy -e
+	@: # 'linuxdeploy -e usr/bin/anklang' turns this symlink into an executable copy, which electron does not support
+	$Q rm $(APPBASE)/usr/bin/anklang && cp -auv $(APPINST)/usr/lib/anklang-*/bin/* $(APPBASE)/usr/bin/	# restore bin/* links
+	@: # linuxdeploy collects too many libs for electron/anklang, remove duplictaes of electron/lib*.so
+	$Q cd $(APPBASE)/usr/lib/ && rm -f $(notdir $(wildcard $(APPBASE)/usr/electron/lib*.so*))
 	@: # Create AppImage executable
 	@echo '  RUN     ' appimagetool ...
-	$Q cp -auv $(APPINST)/usr/lib/anklang-*/* $(APPBASE)/usr # restore bin/* links
-	$Q ARCH=x86_64 $>/misc/appaux/appimagetool/AppRun -n $(if $(findstring 1, $(V)), -v) $(APPBASE) # --comp=xz
+	$Q ARCH=x86_64 $>/misc/appaux/appimagetool/AppRun -n $(if $(findstring 1, $(V)), -v) $(APPBASE) # XZ_OPT=-9e --comp=xz
 	$Q mv Anklang-x86_64.AppImage $>/anklang-$(version_short)-x64.AppImage
 	$Q ls -l -h --color=auto $>/anklang-*-x64.AppImage
 .PHONY: appimage
