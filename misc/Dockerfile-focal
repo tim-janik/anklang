@@ -48,7 +48,7 @@ RUN retry apt-get install -y \
 	libasound2-dev libflac-dev libvorbis-dev libmad0-dev libjack-dev \
 	gettext imagemagick graphviz libgconf-2-4 unzip \
 	libzstd-dev python3-lxml castxml \
-	libxss1 libgbm1
+	libxss1 libgbm1 libnss3 libgtk-3-0
 
 # Provide a recent nodejs
 RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
