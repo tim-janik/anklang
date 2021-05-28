@@ -83,3 +83,18 @@ scan-build:								| $>/misc/scan-build/
 	misc/blame-lines -b $>/misc/scan-build/scan-build.log
 .PHONY: scan-build
 # Note, 'make scan-build' requires 'make default CC=clang CXX=clang++' to generate any reports.
+
+# == installation ==
+misc/desktop/installdir ::= $(DESTDIR)$(pkgsharedir)/applications
+misc/install: misc/anklang.desktop
+	@$(QECHO) INSTALL '$(misc/desktop/installdir)/...'
+	$Q rm -f -r '$(misc/desktop/installdir)'
+	$Q $(INSTALL)      -d $(misc/desktop/installdir)/
+	$Q $(INSTALL_DATA) -p misc/anklang.desktop $(misc/desktop/installdir)/
+.PHONY: misc/install
+install: misc/install
+misc/uninstall: FORCE
+	@$(QECHO) REMOVE '$(misc/desktop/installdir)/...'
+	$Q rm -f -r '$(misc/desktop/installdir)'
+.PHONY: misc/uninstall
+uninstall: misc/uninstall
