@@ -1,0 +1,10 @@
+#!/bin/sh
+
+SCRIPTNAME="$(readlink -f "$0")"
+APPROOT="${SCRIPTNAME%/*}"
+
+export PATH="$APPROOT/usr/bin/:$PATH"
+export LD_LIBRARY_PATH="$APPROOT/usr/lib/:$LD_LIBRARY_PATH"
+export XDG_DATA_DIRS="$APPROOT/usr/share/:$XDG_DATA_DIRS"
+
+exec "$APPROOT/usr/bin/anklang" "$@"
