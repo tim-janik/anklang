@@ -95,6 +95,45 @@ $>/misc/appaux/appimagetool/AppRun:					| $>/misc/appaux/
 		./linuxdeploy-x86_64.AppImage  --appimage-extract && mv -v squashfs-root/ ./linuxdeploy && \
 		./appimagetool-x86_64.AppImage --appimage-extract && mv -v squashfs-root/ ./appimagetool && \
 		rm linuxdeploy-x86_64.AppImage appimagetool-x86_64.AppImage
+
+# == appimage ==
+APPINST = $>/appinst/
+APPBASE = $>/appbase/
+appimage: all $>/misc/appaux/appimagetool/AppRun				| $>/misc/bin/
+	$(QGEN)
+	$Q echo "  CHECK   " "for AppImage build with prefix=/usr"
+	$Q test '$(prefix)' = '/usr' || { echo "$@: assertion failed: prefix=$(prefix)" >&2 ; false ; }
+	@: # Installation Step
+	@echo '  INSTALL ' AppImage files
+	$Q rm -fr $(APPINST) $(APPBASE) && make install DESTDIR=$(APPINST)
+	@: # Populate Appinst, linuxdeploy expects libraries under usr/lib, binaries under usr/bin, etc
+	@: # We achieve that by treating the anklang-$MAJOR-$MINOR installation prefix as /usr/.
+	@: # Also, we hand-pick extra libs for anklang to keep the AppImage small.
+	$Q mkdir $(APPBASE)
+	$Q cp -a $(APPINST)/usr/lib/anklang-* $(APPBASE)/usr
+	$Q rm -f Anklang-x86_64.AppImage
+	@echo '  RUN     ' linuxdeploy ...
+	$Q if test -e /usr/lib64/libc_nonshared.a ; \
+	   then LIB64=/usr/lib64/ ; \
+	   else LIB64=/usr/lib/x86_64-linux-gnu/ ; fi \
+	   && LD_LIBRARY_PATH=$(APPBASE)/usr/lib/:$(APPBASE)/usr/bundle/ $>/misc/appaux/linuxdeploy/AppRun \
+		$(if $(findstring 1, $(V)), -v1, -v2) \
+		--appdir=$(APPBASE) \
+		-l $$LIB64/libXss.so.1 \
+		-l $$LIB64/libXtst.so.6 \
+		-i $(APPBASE)/usr/ui/anklang.png \
+		-e $(APPBASE)/usr/electron/anklang \
+		--custom-apprun=misc/AppRun
+	@: # 'linuxdeploy -e usr/electron/anklang' copies it to usr/bin/anklang
+	$Q rm -f $(APPBASE)/usr/lib/libffmpeg.so \
+	         $(APPBASE)/usr/bin/anklang	# remove bogus leftovers from linuxdeploy -e
+	@: # Create AppImage executable
+	@echo '  RUN     ' appimagetool ...
+	$Q ARCH=x86_64 $>/misc/appaux/appimagetool/AppRun -n $(if $(findstring 1, $(V)), -v) $(APPBASE) # --comp=xz
+	$Q mv Anklang-x86_64.AppImage $>/anklang-$(version_short)-x64.AppImage
+	$Q ls -l -h --color=auto $>/anklang-*-x64.AppImage
+.PHONY: appimage
+
 # == installation ==
 misc/desktop/installdir ::= $(DESTDIR)$(pkgsharedir)/applications
 misc/install: misc/anklang.desktop
