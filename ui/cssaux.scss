@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+@use 'sass:math';
 
 /** HSV (HSB) to RGBA */
 @function hsv($hue, $satb, $value, $a: 1) {
@@ -7,7 +8,7 @@
   } @else if $value == 0 {
     @return hsla($hue, 0, 0, $a)
   } @else {
-    $lumi: $value * (1 - ($satb / 100) / 2);
+    $lumi: $value * (1 - math.div($satb, 200));
     $satl: $satb * $value / if($lumi < 50, $lumi * 2, 200 - $lumi * 2);
     @return hsla($hue, $satl, $lumi, $a);
   }
@@ -51,9 +52,14 @@ $device-pixel-ratio: var(--device-pixel-ratio);
 /// Convert a percentage number to a factor within 0…1
 @function asfactor($f) {
   @if (unit($f) == "%") {
-    $f: $f / 100%;
+    $f: math.div($f, 100%);
   }
   @return $f;
+}
+
+/// Convert a percentage number to 1.0/asfactor(`$f`)
+@function divfactor($f) {
+  @return math.div( 1.0, asfactor($f));
 }
 
 /// Construct color from hue and relative luminance
@@ -101,7 +107,7 @@ $device-pixel-ratio: var(--device-pixel-ratio);
   $new: $color;
   $currentratio: chromatic-contrast($pivot, $new);
   @while $currentratio < $targetratio and $lnext < 1 {
-    $delta: max(0.000379, ($targetratio - $currentratio) / 21 / 2);
+    $delta: max(0.000379, math.div($targetratio - $currentratio, 42));
     $lnext: $lnext + $delta;
     $new: chromatic-color-luminance($color, max(0.0001, $lnext));
     $currentratio: chromatic-contrast($pivot, $new);
@@ -131,7 +137,7 @@ $device-pixel-ratio: var(--device-pixel-ratio);
   $new: $color;
   $currentratio: chromatic-contrast($pivot, $new);
   @while $currentratio < $targetratio and $lnext > 0.00015 {
-    $delta: clamp2(($targetratio - $currentratio) / 21 / 2, 0.00045, $lnext * 0.7);
+    $delta: clamp2(math.div($targetratio - $currentratio, 42), 0.00045, $lnext * 0.7);
     $lnext: $lnext - $delta;
     $new: chromatic-color-luminance($color, max(0.0001, $lnext));
     $currentratio: chromatic-contrast($pivot, $new);

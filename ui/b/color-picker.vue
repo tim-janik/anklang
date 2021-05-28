@@ -12,6 +12,7 @@
 </docs>
 
 <style lang="scss">
+  @use 'sass:math';
   @import 'mixins.scss';
 
   .b-color-picker {
@@ -31,7 +32,7 @@
     background-color: #4e4e4e; color: #f1f1f1;
 
     $timing: 0.2s;
-    &.v-enter-active 		{ transition: opacity $timing ease-out, transform $timing/2 linear; }
+    &.v-enter-active 		{ transition: opacity $timing ease-out, transform math.div( $timing, 2) linear; }
     &.v-leave-active		{ transition: opacity $timing ease-in,  transform $timing linear; }
     &.v-enter	 		{ opacity: 0; transform: translateX(-5vw) translateY(-10vh) scale(1); }
     &.v-leave-to	 	{ opacity: 0.5; transform: translateX(-50%) translateY(-50%) scale(0); }

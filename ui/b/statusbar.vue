@@ -32,7 +32,7 @@
       padding: 0 $b-statusbar-field-spacing;
       filter: brightness(asfactor($b-statusbar-icon-brightness));
       &:hover:not(.b-active) {
-	filter: brightness(1 / asfactor($b-statusbar-icon-brightness));
+	filter: brightness(divfactor($b-statusbar-icon-brightness));
 	transform: scale($b-statusbar-icon-scaleup);
       }
       &.b-active {
