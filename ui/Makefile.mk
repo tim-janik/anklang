@@ -261,7 +261,6 @@ ui/install.pattern ::= $(strip	\
 	$>/ui/*.css		\
 	$>/ui/*.html		\
 	$>/ui/*.ico		\
-	$>/ui/*.png		\
 	$>/ui/*.js		\
 	$>/ui/*.png		\
 )
