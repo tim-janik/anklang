@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Anklang
+GenericName=Music Composer
+Comment=MIDI Tracker, Music Composition and Modular Synthesis Application
+Icon=anklang
+TryExec=anklang
+Exec=anklang %F
+Terminal=false
+Categories=AudioVideoEditing;AudioVideo;Audio;Midi;Sequencer;Mixer;Music;Player;GNOME;
+MimeType=application/x-anklang;
