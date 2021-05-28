@@ -12,6 +12,9 @@ doc/manual-chapters ::= $(strip		\
 	$>/ui/vue-docs.md		\
 	doc/ch-appendix.md		\
 )
+doc/install.files ::= $(strip		\
+	$>/doc/anklang-manual.html	\
+)
 
 # == pandoc ==
 doc/pandoc-nosmart	::= $(if $(HAVE_PANDOC1),,-smart)
@@ -57,3 +60,18 @@ viewdocs: $>/doc/anklang-manual.html $>/doc/anklang-manual.pdf
 	$Q for B in firefox google-chrome ; do \
 	     command -v $$B && exec $$B $^ ; done ; \
 	   for U in $^ ; do xdg-open "$$U" & done
+
+# == installation ==
+doc/installdir ::= $(DESTDIR)$(pkglibdir)/doc
+doc/install: $(doc/install.files)
+	@$(QECHO) INSTALL '$(doc/installdir)/...'
+	$Q rm -f '$(doc/installdir)'/* 2>/dev/null ; true
+	$Q $(INSTALL)      -d $(doc/installdir)/
+	$Q $(INSTALL_DATA) -p $(doc/install.files) $(doc/installdir)/
+.PHONY: doc/install
+install: doc/install
+doc/uninstall: FORCE
+	@$(QECHO) REMOVE '$(doc/installdir)/...'
+	$Q rm -f -r '$(doc/installdir)'
+.PHONY: doc/uninstall
+uninstall: doc/uninstall
