@@ -129,6 +129,7 @@ appimage: all $>/misc/appaux/appimagetool/AppRun				| $>/misc/bin/
 	         $(APPBASE)/usr/bin/anklang	# remove bogus leftovers from linuxdeploy -e
 	@: # Create AppImage executable
 	@echo '  RUN     ' appimagetool ...
+	$Q cp -auv $(APPINST)/usr/lib/anklang-*/* $(APPBASE)/usr # restore bin/* links
 	$Q ARCH=x86_64 $>/misc/appaux/appimagetool/AppRun -n $(if $(findstring 1, $(V)), -v) $(APPBASE) # --comp=xz
 	$Q mv Anklang-x86_64.AppImage $>/anklang-$(version_short)-x64.AppImage
 	$Q ls -l -h --color=auto $>/anklang-*-x64.AppImage
