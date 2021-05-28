@@ -84,6 +84,17 @@ scan-build:								| $>/misc/scan-build/
 .PHONY: scan-build
 # Note, 'make scan-build' requires 'make default CC=clang CXX=clang++' to generate any reports.
 
+# == appimage tools ==
+$>/misc/appaux/appimagetool/AppRun:					| $>/misc/appaux/
+	$(QGEN) # Fetch and extract AppImage tools
+	$Q cd $>/misc/appaux/ && \
+		curl -sfSOL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
+		curl -sfSOL https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage && \
+		chmod +x linuxdeploy-x86_64.AppImage appimagetool-x86_64.AppImage && \
+		rm -rf squashfs-root linuxdeploy appimagetool && \
+		./linuxdeploy-x86_64.AppImage  --appimage-extract && mv -v squashfs-root/ ./linuxdeploy && \
+		./appimagetool-x86_64.AppImage --appimage-extract && mv -v squashfs-root/ ./appimagetool && \
+		rm linuxdeploy-x86_64.AppImage appimagetool-x86_64.AppImage
 # == installation ==
 misc/desktop/installdir ::= $(DESTDIR)$(pkgsharedir)/applications
 misc/install: misc/anklang.desktop
