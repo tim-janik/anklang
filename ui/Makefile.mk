@@ -261,6 +261,7 @@ ui/install.pattern ::= $(strip	\
 	$>/ui/*.html		\
 	$>/ui/*.ico		\
 	$>/ui/*.js		\
+	$>/ui/*.png		\
 )
 ui/install: $>/ui/.build1-stamp $>/ui/.build2-stamp
 	@$(QECHO) INSTALL '$(ui/installdir)/...'
@@ -270,6 +271,7 @@ ui/install: $>/ui/.build1-stamp $>/ui/.build2-stamp
 	$Q $(INSTALL_DATA) -p $>/ui/assets/* $(ui/installdir)/assets/
 	$Q $(INSTALL_DATA) -p $>/ui/b/* $(ui/installdir)/b/
 	$Q $(INSTALL_DATA) -p $>/ui/fonts/* $(ui/installdir)/fonts/
+	$Q ln -s ../doc $(ui/installdir)/doc
 .PHONY: ui/install
 install: ui/install
 ui/uninstall: FORCE
