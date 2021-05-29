@@ -12,6 +12,7 @@ $>/electron/anklang: $(electron/js.sources) electron/Makefile.mk $>/node_modules
 	$(QGEN)
 	$Q rm -f -r $(@D)
 	$Q $(CP) -r $>/node_modules/electron/dist/ $(@D)
+	$Q chmod -x $>/electron/lib*.so* $>/electron/*/lib*.so*
 	$Q rm $(@D)/resources/default_app.asar
 	$Q mkdir -p $(@D)/resources/app
 	$Q $(CP) $(electron/js.sources) $(@D)/resources/app/
@@ -20,6 +21,7 @@ $>/electron/anklang: $(electron/js.sources) electron/Makefile.mk $>/node_modules
 	$Q echo '  "version": "$(version_m.m.m)",'			>> $(@D)/resources/app/package.json
 	$Q echo '  "main": "main.js",'					>> $(@D)/resources/app/package.json
 	$Q echo '  "mode": "$(MODE)" }'					>> $(@D)/resources/app/package.json
+	$Q chmod g-w -R $>/electron/
 	$Q mv $(@D)/electron $@
 electron/all: $>/electron/anklang
 
