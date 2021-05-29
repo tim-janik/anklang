@@ -24,20 +24,22 @@ $>/electron/anklang: $(electron/js.sources) electron/Makefile.mk $>/node_modules
 electron/all: $>/electron/anklang
 
 # == installation ==
-electron/installdir ::= $(DESTDIR)$(pkgdir)/electron
+electron/installdir ::= $(pkgdir)/electron
 .PHONY: electron/install
 electron/install: $>/electron/anklang
-	@$(QECHO) INSTALL '$(electron/installdir)/...'
-	$Q rm -f -r '$(electron/installdir)'
-	$Q $(INSTALL) -d $(electron/installdir)/
-	$Q $(CP) -Rp $>/electron/* $(electron/installdir)
+	@$(QECHO) INSTALL '$(DESTDIR)$(electron/installdir)/...'
+	$Q rm -f -r '$(DESTDIR)$(electron/installdir)'
+	$Q $(INSTALL) -d $(DESTDIR)$(electron/installdir)/
+	$Q $(CP) -Rp $>/electron/* $(DESTDIR)$(electron/installdir)
 	$Q $(call INSTALL_SYMLINK, '../electron/anklang', '$(DESTDIR)$(pkgdir)/bin/anklang')
-	$Q cd '$(DESTDIR)' && ln -s -r '$(pkgdir)/bin/anklang' '$(bindir)/anklang'
+	$Q $(INSTALL) -d '$(DESTDIR)$(bindir)/'
+	$Q rm -f '$(DESTDIR)$(bindir)/anklang'
+	$Q ln -s -r '$(DESTDIR)$(pkgdir)/bin/anklang' '$(DESTDIR)$(bindir)/anklang'
 install: electron/install
 .PHONY: electron/uninstall
 electron/uninstall:
-	@$(QECHO) REMOVE '$(electron/installdir)/...'
-	$Q rm -f -r '$(electron/installdir)'
+	@$(QECHO) REMOVE '$(DESTDIR)$(electron/installdir)/...'
+	$Q rm -f -r '$(DESTDIR)$(electron/installdir)'
 	$Q rm -f '$(DESTDIR)$(pkgdir)/bin/anklang'
 	$Q $(RMDIR_P) '$(DESTDIR)$(pkgdir)/bin' ; :
 	$Q rm -f '$(DESTDIR)$(bindir)/anklang'
