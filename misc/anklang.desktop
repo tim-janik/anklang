@@ -1,11 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=Anklang
-GenericName=Music Composer
-Comment=MIDI Tracker, Music Composition and Modular Synthesis Application
-Icon=anklang
-TryExec=anklang
-Exec=anklang %F
+Exec=$(pkgdir)/bin/anklang
 Terminal=false
-Categories=AudioVideoEditing;AudioVideo;Audio;Midi;Sequencer;Mixer;Music;Player;GNOME;
+Icon=anklang.svg
 MimeType=application/x-anklang;
+StartupWMClass="anklang/electron"
+Categories=Audio;Midi;Mixer;Music;Sequencer;AudioVideoEditing;Player;Music;AudioVideo;
+Keywords=MIDI;Sequencer;Synthesizer;Mixing;Effects;Notation;Composition;Live;DAW;Studio;ALSA;JACK;Pulse;LADSPA;LV2;SF2;SFZ;WAV;SoundFont;FluidSynth;Synth;Sound;Tracker;Audio;Editor;Electron;
+Comment=MIDI Sequencer and Synthesizer for Editing Drums, Melodic Notes and Live Audio Sessions
