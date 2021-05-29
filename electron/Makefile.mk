@@ -32,6 +32,7 @@ electron/install: $>/electron/anklang
 	$Q $(INSTALL) -d $(electron/installdir)/
 	$Q $(CP) -Rp $>/electron/* $(electron/installdir)
 	$Q $(call INSTALL_SYMLINK, '../electron/anklang', '$(DESTDIR)$(pkgdir)/bin/anklang')
+	$Q cd '$(DESTDIR)' && ln -s -r '$(pkgdir)/bin/anklang' '$(bindir)/anklang'
 install: electron/install
 .PHONY: electron/uninstall
 electron/uninstall:
@@ -39,4 +40,5 @@ electron/uninstall:
 	$Q rm -f -r '$(electron/installdir)'
 	$Q rm -f '$(DESTDIR)$(pkgdir)/bin/anklang'
 	$Q $(RMDIR_P) '$(DESTDIR)$(pkgdir)/bin' ; :
+	$Q rm -f '$(DESTDIR)$(bindir)/anklang'
 uninstall: electron/uninstall
