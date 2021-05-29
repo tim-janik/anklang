@@ -224,6 +224,7 @@ uninstall--$(strip $1): # delete target T and possible link aliases L
 	      rm -f	$$(foreach T, $(notdir $3), $$T $$T.debug .debug/$$T.debug \
 			   $$(foreach L, $$(call BUILD_SHARED_LIB_SOLINKS, $$T), $$L) ) ; \
 	    fi
+	$$Q rmdir -p '$(strip $2)' >/dev/null 2>&1 ; :
 uninstall: uninstall--$(strip $1)
 endef
 # $(call INSTALL_RULE, rulename, directory, files)
@@ -248,6 +249,7 @@ uninstall--$(strip $1): # delete target T
 	$$Q if cd '$(strip $2)' 2>/dev/null ; then \
 	      rm -f -r	$$(foreach T, $(notdir $3), $$T) ; \
 	    fi
+	$$Q rmdir -p '$(strip $2)' >/dev/null 2>&1 ; :
 uninstall: uninstall--$(strip $1)
 endef
 # $(call INSTALL_DIR_RULE, rulename, installdirectory, DIRNAMES) - install directories via recursive copy

@@ -22,3 +22,21 @@ $>/electron/anklang: $(electron/js.sources) electron/Makefile.mk $>/node_modules
 	$Q echo '  "mode": "$(MODE)" }'					>> $(@D)/resources/app/package.json
 	$Q mv $(@D)/electron $@
 electron/all: $>/electron/anklang
+
+# == installation ==
+electron/installdir ::= $(DESTDIR)$(pkglibdir)/electron
+.PHONY: electron/install
+electron/install: $>/electron/anklang
+	@$(QECHO) INSTALL '$(electron/installdir)/...'
+	$Q rm -f -r '$(electron/installdir)'
+	$Q $(INSTALL) -d $(electron/installdir)/
+	$Q $(CP) -Rp $>/electron/* $(electron/installdir)
+	$Q $(call INSTALL_SYMLINK, '../electron/anklang', '$(DESTDIR)$(pkglibdir)/bin/anklang')
+install: electron/install
+.PHONY: electron/uninstall
+electron/uninstall:
+	@$(QECHO) REMOVE '$(electron/installdir)/...'
+	$Q rm -f -r '$(electron/installdir)'
+	$Q rm -f '$(DESTDIR)$(pkglibdir)/bin/anklang'
+	$Q $(RMDIR_P) '$(DESTDIR)$(pkglibdir)/bin' ; :
+uninstall: electron/uninstall

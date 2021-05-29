@@ -18,7 +18,7 @@ doc/style/install.files += $>/doc/style/mathjax-tex-svg.js
 # == doc/style/faketex.css ==
 $(doc/style/faketex.css): doc/style/faketex.scss doc/style/features.scss $>/node_modules/.npm.done  | $>/doc/style/
 	$(QGEN)
-	$Q $>/node_modules/.bin/sass $< $@.tmp
+	$Q $>/node_modules/.bin/sass --embed-source-map $< $@.tmp
 	$Q mv $@.tmp $@
 doc/style/install.files += $(doc/style/faketex.css)
 
@@ -42,4 +42,5 @@ doc/style/install.files += $>/doc/style/inconsolata.css
 
 # == doc/style/ installation ==
 doc/style/all: $(doc/style/install.files)
-$(call INSTALL_DIR_RULE, doc/style/install.files, $(DESTDIR)$(doc/doc.dir)/style/, $(doc/style/install.files))
+doc/style/installdir ::= $(DESTDIR)$(pkglibdir)/doc/style
+$(call INSTALL_DIR_RULE, doc/style/install.files, $(doc/style/installdir), $(wildcard $>/doc/style/*))

@@ -15,10 +15,12 @@ $>/ui/.build2-stamp:	# extra targets, deferred during incremental rebuilds
 # == Copies ==
 ui/copy.wildcards ::= $(wildcard	\
 	ui/*.js				\
-	ui/*.scss			\
 	ui/b/*.js			\
-	ui/b/*.scss			\
 )
+ui/nocopy.wildcards ::= $(wildcard	\
+	ui/sfc-compile.js		\
+)
+ui/copy.files ::= $(filter-out $(ui/nocopy.wildcards), $(ui/copy.wildcards))
 ui/vue.wildcards ::= $(wildcard		\
 	ui/b/*.vue			\
 )
@@ -62,19 +64,10 @@ $>/ui/index.html: ui/index.html ui/assets/eknob.svg ui/Makefile.mk	| $>/ui/
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/index.html
 
-# == ui/nodemon.json ==
-$>/ui/nodemon.json: ui/Makefile.mk				| $>/ui/
-	$(QGEN)
-	$Q echo '{ "events": { "crash": "kill -2 $$PPID" } }'	>  $@.tmp
-	$Q mv $@.tmp $@
-$>/ui/.build1-stamp: $>/ui/nodemon.json
-
 # == ui/.aseignore ==
 $>/ui/.aseignore:					| $>/ui/
 	$(QGEN)
 	$Q rm -f $@.tmp
-	$Q echo '^/node_modules/'		>> $@.tmp
-	$Q echo '^/tmp/'			>> $@.tmp
 	$Q echo '.*/[.].*'			>> $@.tmp
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/.aseignore
@@ -122,7 +115,7 @@ $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vue.targets) $(wildcard ui/b/*)		
 $>/ui/.build1-stamp: $>/ui/all-components.js
 
 # == File Copies ==
-ui/copy.targets ::= $(ui/copy.wildcards:%=$>/%)
+ui/copy.targets ::= $(ui/copy.files:%=$>/%)
 $(ui/copy.targets): $>/ui/%: ui/%
 	$(QECHO) COPY $<
 	$Q cp -a $< --parents $>/
@@ -188,41 +181,43 @@ ui/fork-awesome-downloads ::= \
 $>/ui/.build1-stamp: $>/ui/fonts/forkawesome-webfont.css
 
 # == $>/ui/browserified.js ==
-$>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/ $>/ui/tmp/
+$>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 	$(QGEN)
 	$Q: # re-export and bundle postcss modules
-	$Q echo "const module_list = {"								>  $>/ui/tmp/browserified.js
+	$Q mkdir -p $>/ui/tmp-browserify/
+	$Q echo "const module_list = {"								>  $>/ui/tmp-browserify/browserified.js
 	$Q for mod in markdown-it chroma-js ; do \
-		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp/browserified.js
-	$Q echo "};"										>> $>/ui/tmp/browserified.js
-	$Q echo "Object.defineProperty (window, 'require', { value: m => module_list[m] });"	>> $>/ui/tmp/browserified.js
-	$Q echo "if (__DEV__) window.require.module_list = module_list;"			>> $>/ui/tmp/browserified.js
-	$Q $>/node_modules/.bin/browserify -o $>/ui/tmp/out.browserified.js $>/ui/tmp/browserified.js
-	$Q mv $>/ui/tmp/out.browserified.js $@ && rm -f $>/ui/tmp/out.browserified.*
+		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp-browserify/browserified.js
+	$Q echo "};"										>> $>/ui/tmp-browserify/browserified.js
+	$Q echo "Object.defineProperty (window, 'require', { value: m => module_list[m] });"	>> $>/ui/tmp-browserify/browserified.js
+	$Q echo "if (__DEV__) window.require.module_list = module_list;"			>> $>/ui/tmp-browserify/browserified.js
+	$Q $>/node_modules/.bin/browserify -o $>/ui/tmp-browserify/out.browserified.js $>/ui/tmp-browserify/browserified.js
+	$Q mv $>/ui/tmp-browserify/out.browserified.js $@ && rm -r $>/ui/tmp-browserify/
 $>/ui/.build1-stamp: $>/ui/browserified.js
 
 # == $>/ui/favicon.ico ==
-$>/ui/favicon.ico: ui/assets/favicon.svg $>/node_modules/.npm.done ui/Makefile.mk	| $>/ui/tmp/icon-gen/
+$>/ui/favicon.ico: ui/assets/favicon.svg $>/node_modules/.npm.done ui/Makefile.mk	| $>/ui/
 	$(QGEN)
-	$Q $>/node_modules/.bin/icon-gen -i $< -o $>/ui/tmp/icon-gen/ # -r
-	$Q mv $>/ui/tmp/icon-gen/favicon.ico $>/ui/ && rm -r $>/ui/tmp/icon-gen/
+	$Q mkdir -p $>/ui/tmp-icongen/
+	$Q $>/node_modules/.bin/icon-gen -i $< -o $>/ui/tmp-icongen/ # -r
+	$Q mv $>/ui/tmp-icongen/favicon.ico $>/ui/ && rm -r $>/ui/tmp-icongen/
 $>/ui/.build1-stamp: $>/ui/favicon.ico
 
 # == $>/ui/eslint.files ==
 ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue)
-$>/ui/eslint.files: ui/.eslintrc.js $(ui/eslint.files)			| $>/ui/
+$>/ui/.eslint.files: ui/.eslintrc.js $(ui/eslint.files)			| $>/ui/
 	$(QGEN)
 	$Q cp $< $(@D)/.eslintrc.js
 	$Q echo '$(abspath $(ui/eslint.files))' | tr ' ' '\n' > $@
-$>/ui/.build1-stamp: $>/ui/eslint.files
+$>/ui/.build1-stamp: $>/ui/.eslint.files
 
 # == eslint.done ==
-$>/ui/.eslint.done: $>/ui/eslint.files $>/node_modules/.npm.done
+$>/ui/.eslint.done: $>/ui/.eslint.files $>/node_modules/.npm.done
 	$(QGEN)
 	$Q cd $>/ui/ && npm run eslint |& ../../misc/colorize.sh
 	$Q touch $@
 $>/ui/.build2-stamp: $>/ui/.eslint.done	# deferred during rebuilds
-eslint: $>/ui/eslint.files $>/node_modules/.npm.done
+eslint: $>/ui/.eslint.files $>/node_modules/.npm.done
 	$Q cd $>/ui/ && npm run $@
 .PHONY: eslint
 
@@ -257,3 +252,30 @@ ui/rebuild:
 	@: # perform non-essential rebuilds that may fail
 	$(MAKE) $>/ui/.build2-stamp NPMBLOCK=y -j --no-print-directory &
 .PHONY: ui/rebuild
+
+# == installation ==
+ui/installdir ::= $(DESTDIR)$(pkglibdir)/ui
+ui/install.pattern ::= $(strip	\
+	$>/ui/.aseignore	\
+	$>/ui/*.css		\
+	$>/ui/*.html		\
+	$>/ui/*.ico		\
+	$>/ui/*.js		\
+	$>/ui/*.png		\
+)
+ui/install: $>/ui/.build1-stamp $>/ui/.build2-stamp
+	@$(QECHO) INSTALL '$(ui/installdir)/...'
+	$Q rm -f -r '$(ui/installdir)'
+	$Q $(INSTALL)      -d $(ui/installdir)/ $(ui/installdir)/assets/ $(ui/installdir)/b/ $(ui/installdir)/fonts/
+	$Q $(INSTALL_DATA) -p $(ui/install.pattern) $(ui/installdir)/
+	$Q $(INSTALL_DATA) -p $>/ui/assets/* $(ui/installdir)/assets/
+	$Q $(INSTALL_DATA) -p $>/ui/b/* $(ui/installdir)/b/
+	$Q $(INSTALL_DATA) -p $>/ui/fonts/* $(ui/installdir)/fonts/
+	$Q ln -s ../doc $(ui/installdir)/doc
+.PHONY: ui/install
+install: ui/install
+ui/uninstall: FORCE
+	@$(QECHO) REMOVE '$(ui/installdir)/...'
+	$Q rm -f -r '$(ui/installdir)'
+.PHONY: ui/uninstall
+uninstall: ui/uninstall

@@ -19,6 +19,7 @@ ANKLANG_CACHEDIR	?= $(XDG_CACHE_HOME)/anklang/
 
 INSTALL 		:= /usr/bin/install -c
 INSTALL_DATA 		:= $(INSTALL) -m 644
+RMDIR_P			:= rmdir -p >/dev/null 2>&1
 MSGFMT			:= /usr/bin/msgfmt
 MSGMERGE		:= /usr/bin/msgmerge
 XGETTEXT		:= /usr/bin/xgettext
