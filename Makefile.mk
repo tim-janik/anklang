@@ -70,13 +70,13 @@ build2srcdir	 != realpath --relative-to $(builddir) .
 # == Dirctories ==
 prefix		 ?= /usr/local
 bindir		 ?= $(prefix)/bin
-datadir 	 ?= $(prefix)/share
-mandir		 ?= $(datadir)/man
+sharedir 	 ?= $(prefix)/share
+mandir		 ?= $(sharedir)/man
 libdir		 ?= $(prefix)/lib
 pkgprefix	 ?= $(libdir)
 pkgdir		 ?= $(pkgprefix)/anklang-$(version_major)-$(version_minor)
 pkgsharedir	 ?= $(pkgdir)/share
-.config.defaults += prefix bindir datadir mandir libdir pkgprefix pkgdir
+.config.defaults += prefix bindir sharedir mandir libdir pkgprefix pkgdir
 
 # == Target Collections ==
 ALL_TARGETS	::=
