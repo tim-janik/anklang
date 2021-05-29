@@ -14,6 +14,7 @@ doc/manual-chapters ::= $(strip		\
 )
 doc/install.files ::= $(strip		\
 	$>/doc/anklang-manual.html	\
+	$>/doc/anklang.1		\
 	$>/doc/NEWS.md			\
 	$>/doc/NEWS.html		\
 	$>/doc/README.md		\
@@ -30,6 +31,15 @@ $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/d
 doc/markdown-flavour	::= -f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart
 doc/html_flags		::= --html-q-tags --section-divs --email-obfuscation=references # --toc --toc-depth=6
 doc/html-style		::= 'body { max-width: 52em; margin: auto; }'
+
+# == man build rules ==
+$>/doc/%.1: doc/%.1.md doc/Makefile.mk					| $>/doc/
+	$(QECHO) MD2MAN $@
+	$Q $(PANDOC) $(doc/markdown-flavour) -s -p \
+		-M date="$(version_date)" \
+		-M footer="anklang-$(version_short)" \
+		-t man $< -o $@.tmp
+	$Q mv $@.tmp $@
 
 # == html from markdown ==
 $>/doc/%.html: %.md doc/Makefile.mk					| $>/doc/
