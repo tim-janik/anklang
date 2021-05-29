@@ -8,6 +8,7 @@ doc/all:
 # == doc/ files ==
 doc/manual-chapters ::= $(strip		\
 	doc/ch-intro.md			\
+	$>/doc/ch-man-pages.md		\
 	doc/ch-development.md		\
 	$>/ui/vue-docs.md		\
 	doc/ch-appendix.md		\
@@ -39,6 +40,19 @@ $>/doc/%.1: doc/%.1.md doc/Makefile.mk					| $>/doc/
 		-M date="$(version_date)" \
 		-M footer="anklang-$(version_short)" \
 		-t man $< -o $@.tmp
+	$Q mv $@.tmp $@
+
+# == ch-man-pages.md ==
+doc/manual-man-pages ::= doc/anklang.1.md
+$>/doc/ch-man-pages.md: $(doc/manual-man-pages) doc/filt-man.py doc/Makefile.mk	| $>/doc/
+	$(QGEN)
+	$Q echo '# Manual Pages'			>  $@.tmp
+	$Q echo ''					>> $@.tmp
+	$Q for m in $(doc/manual-man-pages) ; do		\
+		n="$${m%%.md}" ; u="$${n^^}" ; n="$${u##*/}" ;	\
+		echo "## $${n/\./(})" ; echo ;			\
+		$(PANDOC) -t markdown -F doc/filt-man.py "$$m"	\
+		|| exit $$? ; echo ; done		>> $@.tmp
 	$Q mv $@.tmp $@
 
 # == html from markdown ==
