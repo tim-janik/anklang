@@ -74,9 +74,9 @@ datadir 	 ?= $(prefix)/share
 mandir		 ?= $(datadir)/man
 libdir		 ?= $(prefix)/lib
 pkgprefix	 ?= $(libdir)
-pkglibdir	 ?= $(pkgprefix)/anklang-$(version_major)-$(version_minor)
-pkgsharedir	 ?= $(pkglibdir)/share
-.config.defaults += prefix bindir datadir mandir libdir pkgprefix pkglibdir
+pkgdir		 ?= $(pkgprefix)/anklang-$(version_major)-$(version_minor)
+pkgsharedir	 ?= $(pkgdir)/share
+.config.defaults += prefix bindir datadir mandir libdir pkgprefix pkgdir
 
 # == Target Collections ==
 ALL_TARGETS	::=
@@ -193,6 +193,7 @@ define PACKAGE_CONFIG
     "revision": "$(version_long)",
     "srcdir": "$(abspath .)",
     "outdir": "$(abspath $>)",
+    "pkgdir": "$(abspath $(pkgdir))",
     "mode": "$(MODE)" }
 endef
 
@@ -223,7 +224,7 @@ export NODE_PATH
 
 # == uninstall ==
 uninstall:
-	$Q $(RMDIR_P) '$(DESTDIR)$(pkglibdir)/' ; true
+	$Q $(RMDIR_P) '$(DESTDIR)$(pkgdir)/' ; true
 
 # == check rules ==
 # Macro to generate test runs as 'check' dependencies
@@ -254,15 +255,15 @@ installcheck-buildtest:
 		; X=$$? ; echo -n "Create  Anklang sample program: " ; test 0 == $$X && echo OK || { echo FAIL; exit $$X ; }
 	$Q cd $> \
 	&& $(CCACHE) $(CXX) $(CXXSTD) -Werror \
-		`PKG_CONFIG_PATH="$(DESTDIR)$(pkglibdir)/lib/pkgconfig:$(libdir)/pkgconfig:$$PKG_CONFIG_PATH" $(PKG_CONFIG) --cflags anklang` \
+		`PKG_CONFIG_PATH="$(DESTDIR)$(pkgdir)/lib/pkgconfig:$(libdir)/pkgconfig:$$PKG_CONFIG_PATH" $(PKG_CONFIG) --cflags anklang` \
 		-c conftest_buildtest.cc \
 		; X=$$? ; echo -n "Compile Anklang sample program: " ; test 0 == $$X && echo OK || { echo FAIL; exit $$X ; }
 	$Q cd $> \
 	&& $(CCACHE) $(CXX) $(CXXSTD) -Werror conftest_buildtest.o -o conftest_buildtest $(LDMODEFLAGS) \
-		`PKG_CONFIG_PATH="$(DESTDIR)$(pkglibdir)/lib/pkgconfig:$(libdir)/pkgconfig:$$PKG_CONFIG_PATH" $(PKG_CONFIG) --libs anklang` \
+		`PKG_CONFIG_PATH="$(DESTDIR)$(pkgdir)/lib/pkgconfig:$(libdir)/pkgconfig:$$PKG_CONFIG_PATH" $(PKG_CONFIG) --libs anklang` \
 		; X=$$? ; echo -n "Link    Anklang sample program: " ; test 0 == $$X && echo OK || { echo FAIL; exit $$X ; }
 	$Q cd $> \
-	&& LD_LIBRARY_PATH="$(DESTDIR)$(pkglibdir)/lib:$$LD_LIBRARY_PATH" ./conftest_buildtest \
+	&& LD_LIBRARY_PATH="$(DESTDIR)$(pkgdir)/lib:$$LD_LIBRARY_PATH" ./conftest_buildtest \
 		; X=$$? ; echo -n "Execute Anklang sample program: " ; test 0 == $$X && echo OK || { echo FAIL; exit $$X ; }
 	$Q cd $> \
 	&& rm -f conftest_buildtest.cc conftest_buildtest.o conftest_buildtest

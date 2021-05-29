@@ -97,7 +97,7 @@ $(call BUILD_PROGRAM, \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd, \
 	../lib)
 #	-lase-$(version_major)
-$(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkglibdir)/lib, $(lib/AnklangSynthEngine))
+$(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(lib/AnklangSynthEngine))
 
 # == Check Integrity Tests ==
 check-ase-tests: $(lib/AnklangSynthEngine)
