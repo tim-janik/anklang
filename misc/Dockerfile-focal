@@ -1,0 +1,75 @@
+# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+
+# == Distribution preparation ==
+FROM ubuntu:focal
+ENV DEBIAN_FRONTEND noninteractive
+
+# Use BASH(1) as shell, affects the RUN commands below
+RUN ln -sf bash /bin/sh && ls -al /bin/sh
+
+# Provide /bin/retry to overcome short network outages
+RUN echo -e '#!/bin/bash\n"$@" || { sleep 15 ; "$@" ; } || { sleep 90 ; "$@" ; }' > /bin/retry && chmod +x /bin/retry
+
+# Exclude documentation files during package installations
+RUN mkdir /etc/dpkg/dpkg.conf.d && \
+  echo -e > /etc/dpkg/dpkg.conf.d/01_nodoc \
+       'path-exclude=/usr/share/locale/*\npath-exclude=/usr/share/man/*\npath-exclude=/usr/share/info/*\npath-exclude=/usr/share/groff/*\n' \
+       'path-exclude=/usr/share/lintian/*\npath-exclude=/usr/share/doc/*\npath-include=/usr/share/doc/*/copyright\n'
+
+# Upgrade packages
+RUN retry apt-get update && retry apt-get -y upgrade
+
+# Build stripped down fluidsynth version without drivers
+RUN retry apt-get install -y build-essential curl cmake libglib2.0-dev && \
+  mkdir -p /tmp/fluid/build && cd /tmp/fluid/ && \
+  curl -sfSOL https://github.com/FluidSynth/fluidsynth/archive/v2.2.1.tar.gz && \
+  tar xf v2.2.1.tar.gz && rm v2.2.1.tar.gz && cd build && \
+  cmake ../fluidsynth-2.2.1 \
+	-DCMAKE_INSTALL_PREFIX=/usr/ \
+	-DLIB_SUFFIX="/`dpkg-architecture -qDEB_HOST_MULTIARCH`" \
+	-Denable-libsndfile=1 \
+	-Denable-dbus=0 \
+	-Denable-ipv6=0 \
+	-Denable-jack=0 \
+	-Denable-midishare=0 \
+	-Denable-network=0 \
+	-Denable-oss=0 \
+	-Denable-pulseaudio=0 \
+	-Denable-readline=0 \
+	-Denable-alsa=0 \
+	-Denable-lash=0 && \
+  make && make install
+
+# Provide Anklang dependencies, add libXss.so for electron
+RUN retry apt-get install -y \
+	build-essential curl texlive-binaries git libxml2-utils g++ \
+	libxml2-dev gawk python3 python3-pandocfilters pandoc \
+	libboost-system-dev cppcheck clang clang-tidy clang-tools \
+	libasound2-dev libflac-dev libvorbis-dev libmad0-dev libjack-dev \
+	gettext imagemagick graphviz libgconf-2-4 unzip \
+	libzstd-dev python3-lxml castxml \
+	libxss1 libgbm1 libnss3 libgtk-3-0
+
+# Provide a recent nodejs
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
+	apt-get install -y nodejs
+
+# Cleanup
+RUN apt-get clean
+
+# make sure getpwuid() works, and ~/ is writable, otherwise many tools break
+ARG USERGROUP
+RUN : && \
+	mkdir -m 0755 -p /cbuild/.electron/ && \
+	groupadd --gid ${USERGROUP#*:} cbuild && \
+	useradd --uid ${USERGROUP%:*} --gid ${USERGROUP#*:} --home-dir /cbuild cbuild && \
+	{ ! compgen -G "/root/.electron/*.zip" >/dev/null || \
+	    cp --reflink=auto --preserve=timestamps /root/.electron/*.zip /cbuild/.electron/ ; } && \
+	cp /root/.bashrc /cbuild/ && \
+	chown -R ${USERGROUP} /cbuild
+
+# Copy pre-fetched electron downloads
+COPY .cicache/electron/ /cbuild/.electron/
+
+# Work here...
+WORKDIR /usr/src/anklang

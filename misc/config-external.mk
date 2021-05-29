@@ -11,7 +11,7 @@ $>/external/minizip/mz_zip.h: misc/config-external.mk		| $>/external/
 	   $(call AND_DOWNLOAD_SHAURL, $H, $U) && tar xf $T && rm $T
 	$Q ln -s minizip-ng-$(T:.tar.gz=) $>/external/minizip
 	$Q test -e $@ && touch $@
-ase/storage.cc: $>/external/minizip/mz_zip.h
+ase/minizip.c: $>/external/minizip/mz_zip.h
 
 # == external/rapidjson ==
 $>/external/rapidjson/rapidjson.h: misc/config-external.mk		| $>/external/
