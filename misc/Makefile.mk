@@ -136,17 +136,23 @@ appimage: all $>/misc/appaux/appimagetool/AppRun				| $>/misc/bin/
 	$Q ls -l -h --color=auto $>/anklang-*-x64.AppImage
 .PHONY: appimage
 
+# == misc/anklang.desktop ==
+$>/misc/anklang.desktop: misc/anklang.desktop
+	@$(QGEN)
+	$Q sed 's|\$$(pkgdir)|$(pkgdir)|g' $< > $@.tmp
+	$Q mv $@.tmp $@
+# https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html
+
 # == installation ==
-misc/desktop/installdir ::= $(DESTDIR)$(pkgsharedir)/applications
-misc/install: misc/anklang.desktop
-	@$(QECHO) INSTALL '$(misc/desktop/installdir)/...'
-	$Q rm -f -r '$(misc/desktop/installdir)'
-	$Q $(INSTALL)      -d $(misc/desktop/installdir)/
-	$Q $(INSTALL_DATA) -p misc/anklang.desktop $(misc/desktop/installdir)/
+misc/install: $>/misc/anklang.desktop
+	@$(QECHO) INSTALL '$(DESTDIR)$(pkgsharedir)/...'
+	$Q rm -f -r $(DESTDIR)$(pkgsharedir)/applications/ $(DESTDIR)$(pkgsharedir)/mime/packages/
+	$Q $(INSTALL) -d $(DESTDIR)$(pkgsharedir)/mime/packages/ && $(INSTALL_DATA) -p misc/anklang-mime.xml $(DESTDIR)$(pkgsharedir)/mime/packages/anklang.xml
+	$Q $(INSTALL) -d $(DESTDIR)$(pkgsharedir)/applications/ && $(INSTALL_DATA) -p $>/misc/anklang.desktop $(DESTDIR)$(pkgsharedir)/applications/
 .PHONY: misc/install
 install: misc/install
 misc/uninstall: FORCE
-	@$(QECHO) REMOVE '$(misc/desktop/installdir)/...'
-	$Q rm -f -r '$(misc/desktop/installdir)'
+	@$(QECHO) REMOVE '$(DESTDIR)$(pkgsharedir)/...'
+	$Q rm -f -r $(DESTDIR)$(pkgsharedir)/applications/ $(DESTDIR)$(pkgsharedir)/mime/packages/
 .PHONY: misc/uninstall
 uninstall: misc/uninstall
