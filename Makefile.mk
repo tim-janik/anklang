@@ -73,10 +73,10 @@ bindir		 ?= $(prefix)/bin
 datadir 	 ?= $(prefix)/share
 mandir		 ?= $(datadir)/man
 libdir		 ?= $(prefix)/lib
-pkgrootdir	 ?= $(libdir)
-pkglibdir	 ?= $(pkgrootdir)/anklang-$(version_major)-$(version_minor)
+pkgprefix	 ?= $(libdir)
+pkglibdir	 ?= $(pkgprefix)/anklang-$(version_major)-$(version_minor)
 pkgsharedir	 ?= $(pkglibdir)/share
-.config.defaults += prefix bindir datadir mandir libdir pkgrootdir pkglibdir
+.config.defaults += prefix bindir datadir mandir libdir pkgprefix pkglibdir
 
 # == Target Collections ==
 ALL_TARGETS	::=
