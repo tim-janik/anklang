@@ -14,11 +14,31 @@ doc/manual-chapters ::= $(strip		\
 )
 doc/install.files ::= $(strip		\
 	$>/doc/anklang-manual.html	\
+	$>/doc/NEWS.md			\
+	$>/doc/NEWS.html		\
+	$>/doc/README.md		\
+	$>/doc/README.html		\
 )
+doc/all: $(doc/install.files)
+
+# == Copy *.md ==
+$(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/doc/
+	$(QECHO) COPY $<
+	$Q cp $< $@
 
 # == pandoc ==
-doc/pandoc-nosmart	::= $(if $(HAVE_PANDOC1),,-smart)
-doc/markdown-flavour	::= -f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline$(doc/pandoc-nosmart)
+doc/markdown-flavour	::= -f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart
+doc/html_flags		::= --html-q-tags --section-divs --email-obfuscation=references # --toc --toc-depth=6
+doc/html-style		::= 'body { max-width: 52em; margin: auto; }'
+
+# == html from markdown ==
+$>/doc/%.html: %.md doc/Makefile.mk					| $>/doc/
+	$(QECHO) MD2HTML $@
+	$Q $(PANDOC) $(doc/markdown-flavour) -s -p $(doc/html_flags) -t html5 \
+		--metadata pagetitle="$(notdir $(@:%.md=%))" \
+		$< -o $@.tmp
+	$Q sed -re '0,/<\/style>/s|(\s*</style>)|'$(doc/html-style)'\n\1|' -i $@.tmp
+	$Q mv $@.tmp $@
 
 # == template.html ==
 $>/doc/template.html: doc/template.diff					| $>/doc/
@@ -37,7 +57,6 @@ $>/doc/anklang-manual.html: $>/doc/template.html $(doc/manual-chapters) $(doc/st
 		-s -c style/$(notdir $(doc/style/faketex.css)) \
 		--mathjax='style/mathjax-tex-svg.js' \
 		$(doc/manual-chapters) -o $@
-doc/all: $>/doc/anklang-manual.html
 
 # == anklang-manual.pdf ==
 # REQUIRES: python3-pandocfilters texlive-xetex pandoc2
