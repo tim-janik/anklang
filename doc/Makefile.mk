@@ -105,16 +105,18 @@ viewdocs: $>/doc/anklang-manual.html $>/doc/anklang-manual.pdf
 	   for U in $^ ; do xdg-open "$$U" & done
 
 # == installation ==
-doc/installdir ::= $(DESTDIR)$(pkglibdir)/doc
+doc/installdir ::= $(pkglibdir)/doc
 doc/install: $(doc/install.files)
-	@$(QECHO) INSTALL '$(doc/installdir)/...'
-	$Q rm -f '$(doc/installdir)'/* 2>/dev/null ; true
-	$Q $(INSTALL)      -d $(doc/installdir)/
-	$Q $(INSTALL_DATA) -p $(doc/install.files) $(doc/installdir)/
+	@$(QECHO) INSTALL '$(DESTDIR)$(doc/installdir)/...'
+	$Q rm -f '$(DESTDIR)$(doc/installdir)'/* 2>/dev/null ; true
+	$Q $(INSTALL)      -d $(DESTDIR)$(doc/installdir)/ $(DESTDIR)$(mandir)/man1/
+	$Q $(INSTALL_DATA) -p $(doc/install.files) $(DESTDIR)$(doc/installdir)/
+	$Q $(call INSTALL_SYMLINK, '$(pkglibdir)/doc/anklang.1', '$(DESTDIR)$(mandir)/man1/anklang.1')
 .PHONY: doc/install
 install: doc/install
 doc/uninstall: FORCE
-	@$(QECHO) REMOVE '$(doc/installdir)/...'
-	$Q rm -f -r '$(doc/installdir)'
+	@$(QECHO) REMOVE '$(DESTDIR)$(doc/installdir)/...'
+	$Q rm -f -r '$(DESTDIR)$(doc/installdir)'
+	$Q rm -f '$(DESTDIR)$(mandir)/man1/anklang.1'
 .PHONY: doc/uninstall
 uninstall: doc/uninstall
