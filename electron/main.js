@@ -1,4 +1,4 @@
-// Licensed GNU LGPL v2.1 or later: http://www.gnu.org/licenses/lgpl.html
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 'use strict';
 const package_json = require ('./package.json');
 Object.defineProperty (globalThis, '__DEV__', { value: package_json.mode !== 'production' });
