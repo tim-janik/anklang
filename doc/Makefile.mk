@@ -20,13 +20,15 @@ doc/install.files ::= $(strip		\
 	$>/doc/NEWS.html		\
 	$>/doc/README.md		\
 	$>/doc/README.html		\
+	$>/doc/copyright		\
 )
 doc/all: $(doc/install.files)
 
-# == Copy *.md ==
+# == Copy files ==
 $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/doc/
 	$(QECHO) COPY $<
 	$Q cp $< $@
+$>/doc/copyright: doc/copyright ;	$Q cp $< $@
 
 # == pandoc ==
 doc/markdown-flavour	::= -f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart
