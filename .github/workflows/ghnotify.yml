@@ -1,0 +1,19 @@
+name: GitHub Notify IRC
+on: [push]
+jobs:
+  GitHub-Notify-IRC:
+    runs-on: ubuntu-latest
+    steps:
+      - name: git checkout
+        uses: actions/checkout@v2
+      - name: Version
+        run: |
+          ${{ github.workspace }}/misc/version.sh
+      - name: Install Dependencies
+        run: sudo apt-get install python3-pip && pip install pydle pure-sasl
+      - name: Ping IRC
+        env:
+          WORKFLOWS: ${{ github.workspace }}/.github/workflows
+        run: |
+          MSG=$(git log -1 --format="%cn $(git branch --show-current) %h %s ${{ github.event.head_commit.url }}")
+          python3 $WORKFLOWS/notify_irc.py --channel '#anklang' --server irc.libera.chat --nickname Anklang-ghnotify --message "$MSG"
