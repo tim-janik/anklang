@@ -20,13 +20,15 @@ doc/install.files ::= $(strip		\
 	$>/doc/NEWS.html		\
 	$>/doc/README.md		\
 	$>/doc/README.html		\
+	$>/doc/copyright		\
 )
 doc/all: $(doc/install.files)
 
-# == Copy *.md ==
+# == Copy files ==
 $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/doc/
 	$(QECHO) COPY $<
 	$Q cp $< $@
+$>/doc/copyright: doc/copyright ;	$Q cp $< $@
 
 # == pandoc ==
 doc/markdown-flavour	::= -f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart
@@ -105,18 +107,18 @@ viewdocs: $>/doc/anklang-manual.html $>/doc/anklang-manual.pdf
 	   for U in $^ ; do xdg-open "$$U" & done
 
 # == installation ==
-doc/installdir ::= $(pkgdir)/doc
+pkgdocdir ::= $(pkgdir)/doc
 doc/install: $(doc/install.files)
-	@$(QECHO) INSTALL '$(DESTDIR)$(doc/installdir)/...'
-	$Q rm -f '$(DESTDIR)$(doc/installdir)'/* 2>/dev/null ; true
-	$Q $(INSTALL)      -d $(DESTDIR)$(doc/installdir)/ $(DESTDIR)$(mandir)/man1/
-	$Q $(INSTALL_DATA) -p $(doc/install.files) $(DESTDIR)$(doc/installdir)/
+	@$(QECHO) INSTALL '$(DESTDIR)$(pkgdocdir)/...'
+	$Q rm -f '$(DESTDIR)$(pkgdocdir)'/* 2>/dev/null ; true
+	$Q $(INSTALL)      -d $(DESTDIR)$(pkgdocdir)/ $(DESTDIR)$(mandir)/man1/
+	$Q cp -p $(doc/install.files) $(DESTDIR)$(pkgdocdir)/
 	$Q $(INSTALL) -d $(DESTDIR)$(mandir)/man1/ && ln -s -r $(DESTDIR)$(pkgdir)/doc/anklang.1 $(DESTDIR)$(mandir)/man1/anklang.1
 .PHONY: doc/install
 install: doc/install
 doc/uninstall: FORCE
-	@$(QECHO) REMOVE '$(DESTDIR)$(doc/installdir)/...'
-	$Q rm -f -r '$(DESTDIR)$(doc/installdir)'
+	@$(QECHO) REMOVE '$(DESTDIR)$(pkgdocdir)/...'
+	$Q rm -f -r '$(DESTDIR)$(pkgdocdir)'
 	$Q rm -f '$(DESTDIR)$(mandir)/man1/anklang.1'
 .PHONY: doc/uninstall
 uninstall: doc/uninstall
