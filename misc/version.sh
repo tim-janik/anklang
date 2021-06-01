@@ -46,7 +46,7 @@ peek_news_version() {
 
 # Determine version from ./.git if present
 if COMMIT_DATE=$(git log -1 --format='%ci' 2>/dev/null) &&
-    LAST_TAG=$(git describe --match v'[0-9]*.[0-9]*.*[0-9a]' --abbrev=0 --first-parent) &&
+    LAST_TAG=$(git describe --match v'[0-9]*.[0-9]*.*[0-9a]' --abbrev=0 --first-parent 2>/dev/null) &&
     BUILD_ID=$(git describe --match "$LAST_TAG" --abbrev=8 --long --dirty) &&
     test -n "$BUILD_ID"
 then
