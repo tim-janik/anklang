@@ -4,6 +4,7 @@
 import sys
 import argparse
 import logging
+import re
 
 import pydle
 
@@ -11,13 +12,15 @@ log = logging.getLogger(__name__)
 
 
 class NotifyIRC(pydle.Client):
-    def __init__(self, channel, channel_key, notification, use_notice=False, **kwargs):
+    def __init__(self, channel, channel_key, notification, use_notice=False, brief=False, **kwargs):
         super().__init__(**kwargs)
         self.channel = channel if channel.startswith("#") else f"#{channel}"
         self.channel_key = channel_key
         self.notification = notification
         self.use_notice = use_notice
         self.future = None
+        if brief:
+            self.notification = re.sub (r'\n.*', '', notification).strip()
 
     async def on_connect(self):
         await super().on_connect()
@@ -66,6 +69,9 @@ def get_args():
     )
     parser.add_argument("--message", required=True)
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--brief", action="store_true",
+                        help="Abbreviate Message"
+    )
     return parser.parse_args()
 
 
@@ -81,6 +87,7 @@ def main():
         nickname=args.nickname,
         sasl_username=args.nickname,
         sasl_password=args.sasl_password or None,
+        brief=args.brief or False,
     )
     client.run(
         hostname=args.server,
