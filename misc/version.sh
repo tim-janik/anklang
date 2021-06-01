@@ -2,12 +2,8 @@
 set -Eeuo pipefail
 
 # Usage: version.sh [--last]		# print project version
-SHORT=false LONG=false RDATE=false
 while test $# -ne 0 ; do
   case "$1" in
-    -s)			SHORT=true ;;
-    -l)			LONG=true ;;
-    -d)			RDATE=true ;;
     --last)		exec git describe --match 'v[0-9]*.[0-9]*.*[0-9a]' --abbrev=0 --first-parent HEAD ;;
     *)                  : ;;
   esac
@@ -33,19 +29,9 @@ UNOFFICIAL=snapshot
 # The second term is the build ID and may actually contain any kind of string.
 # The third term is the last commit date in ISO 8601-like format.
 exit_with_version() { # exit_with_version <version> <buildid> <releasedate>
-  if $LONG ; then
-    echo "$2"
-  elif $RDATE ; then
-    echo "$3"
-  else
-    V="${1#v}"	# strip 'v' prefix if any
-    if $SHORT ; then
-      echo "$V"
-    else
-      shift
-      echo "$V" "$@"
-    fi
-  fi
+  V="${1#v}"	# strip 'v' prefix if any
+  shift
+  echo "$V" "$@"
   exit 0
 }
 
@@ -60,7 +46,7 @@ peek_news_version() {
 
 # Determine version from ./.git if present
 if COMMIT_DATE=$(git log -1 --format='%ci' 2>/dev/null) &&
-    LAST_TAG=$(git describe --match v'[0-9]*.[0-9]*.*[0-9a]' --abbrev=0 --first-parent) &&
+    LAST_TAG=$(git describe --match v'[0-9]*.[0-9]*.*[0-9a]' --abbrev=0 --first-parent 2>/dev/null) &&
     BUILD_ID=$(git describe --match "$LAST_TAG" --abbrev=8 --long --dirty) &&
     test -n "$BUILD_ID"
 then
@@ -91,9 +77,12 @@ test -n "$LAST_TAG" && {
 }
 
 # Use NEWS_VERSION as last resort
-NEWS_VERSION="$(peek_news_version)" &&
-  NEWS_DATE="$(stat -c %y NEWS.md | sed 's/\.[0-9]\+//')" ||
-    NEWS_VERSION=
+if NEWS_VERSION="$(peek_news_version)" ; then
+  test -n "$COMMIT_DATE" &&
+    NEWS_DATE="$COMMIT_DATE" ||
+      NEWS_DATE="$(stat -c %y NEWS.md | sed 's/\.[0-9]\+//')" ||
+      NEWS_VERSION=
+fi
 test -n "$NEWS_VERSION" &&
   exit_with_version "$NEWS_VERSION-$UNOFFICIAL" "$NEWS_VERSION-$UNOFFICIAL$(date +-%y%m%d)" "$NEWS_DATE"
 
