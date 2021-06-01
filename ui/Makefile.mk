@@ -200,7 +200,8 @@ $>/ui/favicon.ico: ui/assets/favicon.svg $>/node_modules/.npm.done ui/Makefile.m
 	$(QGEN)
 	$Q mkdir -p $>/ui/tmp-icongen/
 	$Q $>/node_modules/.bin/icon-gen -i $< -o $>/ui/tmp-icongen/ # -r
-	$Q mv $>/ui/tmp-icongen/favicon.ico $>/ui/ && rm -r $>/ui/tmp-icongen/
+	$Q cd $>/ui/tmp-icongen/ && mv favicon.ico .. && mv favicon-128.png ../anklang.png
+	$Q rm -r $>/ui/tmp-icongen/
 $>/ui/.build1-stamp: $>/ui/favicon.ico
 
 # == $>/ui/eslint.files ==

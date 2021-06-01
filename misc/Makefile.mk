@@ -83,3 +83,70 @@ scan-build:								| $>/misc/scan-build/
 	misc/blame-lines -b $>/misc/scan-build/scan-build.log
 .PHONY: scan-build
 # Note, 'make scan-build' requires 'make default CC=clang CXX=clang++' to generate any reports.
+
+# == appimage tools ==
+$>/misc/appaux/appimagetool/AppRun:					| $>/misc/appaux/
+	$(QGEN) # Fetch and extract AppImage tools
+	$Q cd $>/misc/appaux/ && \
+		curl -sfSOL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
+		curl -sfSOL https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage && \
+		chmod +x linuxdeploy-x86_64.AppImage appimagetool-x86_64.AppImage && \
+		rm -rf squashfs-root linuxdeploy appimagetool && \
+		./linuxdeploy-x86_64.AppImage  --appimage-extract && mv -v squashfs-root/ ./linuxdeploy && \
+		./appimagetool-x86_64.AppImage --appimage-extract && mv -v squashfs-root/ ./appimagetool && \
+		rm linuxdeploy-x86_64.AppImage appimagetool-x86_64.AppImage
+
+# == appimage ==
+APPINST = $>/appinst/
+APPBASE = $>/appbase/
+appimage: all $>/misc/appaux/appimagetool/AppRun				| $>/misc/bin/
+	$(QGEN)
+	$Q echo "  CHECK   " "for AppImage build with prefix=/usr"
+	$Q test '$(prefix)' = '/usr' || { echo "$@: assertion failed: prefix=$(prefix)" >&2 ; false ; }
+	@: # Installation Step
+	@echo '  INSTALL ' AppImage files
+	$Q rm -fr $(APPINST) $(APPBASE) && make install DESTDIR=$(APPINST)
+	@: # Populate appinst/, linuxdeploy expects libraries under usr/lib, binaries under usr/bin, etc
+	@: # We achieve that by treating the anklang-$MAJOR-$MINOR/ installation directory as /usr/.
+	@: # Also, we hand-pick extra libs for Anklang to keep the AppImage small.
+	$Q mkdir $(APPBASE)
+	$Q cp -a $(APPINST)/usr/lib/anklang-* $(APPBASE)/usr
+	$Q rm -f Anklang-x86_64.AppImage
+	@echo '  RUN     ' linuxdeploy ...
+	$Q if test -e /usr/lib64/libc_nonshared.a ; \
+	   then LIB64=/usr/lib64/ ; \
+	   else LIB64=/usr/lib/x86_64-linux-gnu/ ; fi \
+	   && LD_LIBRARY_PATH=$(APPBASE)/usr/lib/ \
+	     $>/misc/appaux/linuxdeploy/AppRun \
+		$(if $(findstring 1, $(V)), -v1, -v2) \
+		--appdir=$(APPBASE) \
+		-l $$LIB64/libXss.so.1 \
+		-l $$LIB64/libXtst.so.6 \
+		-i $(APPBASE)/usr/ui/anklang.png \
+		-e $(APPBASE)/usr/bin/anklang \
+		--custom-apprun=misc/AppRun
+	@: # 'linuxdeploy -e usr/bin/anklang' turns this symlink into an executable copy, which electron does not support
+	$Q rm $(APPBASE)/usr/bin/anklang && cp -auv $(APPINST)/usr/lib/anklang-*/bin/* $(APPBASE)/usr/bin/	# restore bin/* links
+	@: # linuxdeploy collects too many libs for electron/anklang, remove duplictaes of electron/lib*.so
+	$Q cd $(APPBASE)/usr/lib/ && rm -f $(notdir $(wildcard $(APPBASE)/usr/electron/lib*.so*))
+	@: # Create AppImage executable
+	@echo '  RUN     ' appimagetool ...
+	$Q ARCH=x86_64 $>/misc/appaux/appimagetool/AppRun -n $(if $(findstring 1, $(V)), -v) $(APPBASE) # XZ_OPT=-9e --comp=xz
+	$Q mv Anklang-x86_64.AppImage $>/anklang-$(version_short)-x64.AppImage
+	$Q ls -l -h --color=auto $>/anklang-*-x64.AppImage
+.PHONY: appimage
+
+# == installation ==
+misc/desktop/installdir ::= $(DESTDIR)$(pkgsharedir)/applications
+misc/install: misc/anklang.desktop
+	@$(QECHO) INSTALL '$(misc/desktop/installdir)/...'
+	$Q rm -f -r '$(misc/desktop/installdir)'
+	$Q $(INSTALL)      -d $(misc/desktop/installdir)/
+	$Q $(INSTALL_DATA) -p misc/anklang.desktop $(misc/desktop/installdir)/
+.PHONY: misc/install
+install: misc/install
+misc/uninstall: FORCE
+	@$(QECHO) REMOVE '$(misc/desktop/installdir)/...'
+	$Q rm -f -r '$(misc/desktop/installdir)'
+.PHONY: misc/uninstall
+uninstall: misc/uninstall
