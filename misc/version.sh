@@ -77,9 +77,12 @@ test -n "$LAST_TAG" && {
 }
 
 # Use NEWS_VERSION as last resort
-NEWS_VERSION="$(peek_news_version)" &&
-  NEWS_DATE="$(stat -c %y NEWS.md | sed 's/\.[0-9]\+//')" ||
-    NEWS_VERSION=
+if NEWS_VERSION="$(peek_news_version)" ; then
+  test -n "$COMMIT_DATE" &&
+    NEWS_DATE="$COMMIT_DATE" ||
+      NEWS_DATE="$(stat -c %y NEWS.md | sed 's/\.[0-9]\+//')" ||
+      NEWS_VERSION=
+fi
 test -n "$NEWS_VERSION" &&
   exit_with_version "$NEWS_VERSION-$UNOFFICIAL" "$NEWS_VERSION-$UNOFFICIAL$(date +-%y%m%d)" "$NEWS_DATE"
 
