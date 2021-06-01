@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+# MIT License, Copyright (c) 2019 Andrew Wason
 
 import sys
 import argparse
