@@ -2,12 +2,8 @@
 set -Eeuo pipefail
 
 # Usage: version.sh [--last]		# print project version
-SHORT=false LONG=false RDATE=false
 while test $# -ne 0 ; do
   case "$1" in
-    -s)			SHORT=true ;;
-    -l)			LONG=true ;;
-    -d)			RDATE=true ;;
     --last)		exec git describe --match 'v[0-9]*.[0-9]*.*[0-9a]' --abbrev=0 --first-parent HEAD ;;
     *)                  : ;;
   esac
@@ -33,19 +29,9 @@ UNOFFICIAL=snapshot
 # The second term is the build ID and may actually contain any kind of string.
 # The third term is the last commit date in ISO 8601-like format.
 exit_with_version() { # exit_with_version <version> <buildid> <releasedate>
-  if $LONG ; then
-    echo "$2"
-  elif $RDATE ; then
-    echo "$3"
-  else
-    V="${1#v}"	# strip 'v' prefix if any
-    if $SHORT ; then
-      echo "$V"
-    else
-      shift
-      echo "$V" "$@"
-    fi
-  fi
+  V="${1#v}"	# strip 'v' prefix if any
+  shift
+  echo "$V" "$@"
   exit 0
 }
 
