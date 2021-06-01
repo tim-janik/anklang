@@ -255,7 +255,7 @@ ui/rebuild:
 .PHONY: ui/rebuild
 
 # == installation ==
-ui/installdir ::= $(DESTDIR)$(pkglibdir)/ui
+ui/installdir ::= $(DESTDIR)$(pkgdir)/ui
 ui/install.pattern ::= $(strip	\
 	$>/ui/.aseignore	\
 	$>/ui/*.css		\

@@ -84,6 +84,7 @@ function create_window (onclose)
     height:                             1365, // using a big initial size avoids flickering
     backgroundColor:                    defaults.backgroundColor,
     autoHideMenuBar:                    false,
+    icon:				__dirname + '/anklang.png',
     webPreferences: {
       preload:				__dirname + '/preload.js',
       sandbox:				true,

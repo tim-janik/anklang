@@ -136,17 +136,32 @@ appimage: all $>/misc/appaux/appimagetool/AppRun				| $>/misc/bin/
 	$Q ls -l -h --color=auto $>/anklang-*-x64.AppImage
 .PHONY: appimage
 
+# == misc/anklang.desktop ==
+# https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html
+$>/misc/anklang.desktop: misc/anklang.desktop
+	@$(QGEN)
+	$Q sed 's|\$$(pkgdir)|$(pkgdir)|g' $< > $@.tmp
+	$Q mv $@.tmp $@
+misc/all: $>/misc/anklang.desktop
+
 # == installation ==
-misc/desktop/installdir ::= $(DESTDIR)$(pkgsharedir)/applications
-misc/install: misc/anklang.desktop
-	@$(QECHO) INSTALL '$(misc/desktop/installdir)/...'
-	$Q rm -f -r '$(misc/desktop/installdir)'
-	$Q $(INSTALL)      -d $(misc/desktop/installdir)/
-	$Q $(INSTALL_DATA) -p misc/anklang.desktop $(misc/desktop/installdir)/
+misc/svgdir ::= $(sharedir)/icons/hicolor/scalable/apps
+misc/install:
+	@$(QECHO) INSTALL '$(DESTDIR)$(pkgsharedir)/...'
+	$Q rm -f -r $(DESTDIR)$(pkgsharedir)/applications/ $(DESTDIR)$(pkgsharedir)/mime/packages/
+	$Q $(INSTALL) -d $(DESTDIR)$(pkgsharedir)/mime/packages/ && cp -p misc/anklang-mime.xml $(DESTDIR)$(pkgsharedir)/mime/packages/anklang.xml
+	$Q $(INSTALL) -d $(DESTDIR)$(sharedir)/mime/packages/ && ln -s -r $(DESTDIR)$(pkgsharedir)/mime/packages/anklang.xml $(DESTDIR)$(sharedir)/mime/packages/anklang.xml
+	$Q $(INSTALL) -d $(DESTDIR)$(pkgsharedir)/applications/ && cp -p $>/misc/anklang.desktop $(DESTDIR)$(pkgsharedir)/applications/
+	$Q $(INSTALL) -d $(DESTDIR)$(sharedir)/applications/ && ln -s -r $(DESTDIR)$(pkgsharedir)/applications/anklang.desktop $(DESTDIR)$(sharedir)/applications/anklang.desktop
+	$Q $(INSTALL) -d $(DESTDIR)$(misc/svgdir)/ && ln -s -r $(DESTDIR)$(pkgdir)/ui/assets/favicon.svg $(DESTDIR)$(misc/svgdir)/anklang.svg
+
 .PHONY: misc/install
 install: misc/install
 misc/uninstall: FORCE
-	@$(QECHO) REMOVE '$(misc/desktop/installdir)/...'
-	$Q rm -f -r '$(misc/desktop/installdir)'
+	@$(QECHO) REMOVE '$(DESTDIR)$(pkgsharedir)/...'
+	$Q rm -f -r $(DESTDIR)$(pkgsharedir)/applications/ $(DESTDIR)$(pkgsharedir)/mime/packages/
+	$Q rm -f $(DESTDIR)$(sharedir)/mime/packages/anklang.xml
+	$Q rm -f $(DESTDIR)$(sharedir)/applications/anklang.desktop
+	$Q rm -f $(DESTDIR)$(misc/svgdir)/anklang.svg
 .PHONY: misc/uninstall
 uninstall: misc/uninstall
