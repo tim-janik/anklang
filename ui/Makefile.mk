@@ -191,9 +191,10 @@ $>/ui/favicon.ico: ui/assets/favicon.svg $>/node_modules/.npm.done ui/Makefile.m
 	$(QGEN)
 	$Q mkdir -p $>/ui/tmp-icongen/
 	$Q $>/node_modules/.bin/icon-gen -i $< -o $>/ui/tmp-icongen/ # -r
-	$Q cd $>/ui/tmp-icongen/ && mv favicon.ico .. && mv favicon-128.png ../anklang.png
-	$Q rm -r $>/ui/tmp-icongen/
-$>/ui/.build1-stamp: $>/ui/favicon.ico
+	$Q cd $>/ui/tmp-icongen/ && mv favicon-128.png ../anklang.png && mv favicon.ico ../favicon.ico.tmp
+	$Q rm -r $>/ui/tmp-icongen/ && mv $@.tmp $@
+$>/ui/anklang.png: $>/ui/favicon.ico
+$>/ui/.build1-stamp: $>/ui/favicon.ico $>/ui/anklang.png
 
 # == $>/ui/eslint.files ==
 ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue)
