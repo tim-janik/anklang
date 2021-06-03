@@ -2242,74 +2242,9 @@ export function has_ancestor (element, ancestor) {
   return false;
 }
 
-/** Show temporary notifications */
-class NoteBoard {
-  TIMEOUT = 15 * 1000;	// time for note to last
-  FADING = 233;		// fade in/out in milliseconds, see app.scss
-  constructor() {
-    // create one toplevel div.note-board element to deal with all popups
-    this.noteboard = document.createElement ('div');
-    this.noteboard.classList.add ('note-board');
-    document.body.appendChild (this.noteboard);
-  }
-  create_note (text, timeout) {
-    const h53 = hash53 (text);
-    const dupselector = ".note-board-note[data-hash53='" + h53 + "']";
-    for (const dup of this.noteboard.querySelectorAll (dupselector))
-      if (dup && dup.__popdown) // deduplicate existing messages
-	dup.__popdown();
-    // create note with FADEIN
-    const note = document.createElement ('div');
-    note.setAttribute ('data-hash53', h53);
-    note.classList.add ('note-board-note');
-    note.classList.add ('note-board-fadein');
-    // setup content
-    const have_markdownit = true;
-    if (have_markdownit)
-      {
-	note.classList.add ('note-board-markdown');
-	markdown_to_html (note, text);
-      }
-    else
-      {
-	note.classList.add ('note-board-plaintext');
-	note.innerText = text;
-      }
-    // setup close button
-    const close = document.createElement ('span');
-    close.classList.add ('note-board-note-close');
-    close.innerText = "✖";
-    note.insertBefore (close, note.firstChild);
-    const popdown = () => {
-      if (!note.parentNode)
-	return;
-      note.classList.add ('note-board-fadeout');
-      setTimeout (() => {
-	if (note.parentNode)
-	  note.parentNode.removeChild (note);
-      }, this.FADING + 1);
-    };
-    note.__popdown = popdown;
-    close.onclick = popdown;
-    // show note with delay and throttling
-    const popup = () => {
-      note.setAttribute ('data-timestamp', now());
-      this.noteboard.appendChild (note);
-      setTimeout (() => {
-	note.classList.remove ('note-board-fadein');
-	if (!(timeout < 0))
-	  setTimeout (popdown, timeout ? timeout : this.TIMEOUT);
-      }, this.FADING);
-    };
-    popup();
-    return popdown;
-  }
-}
-const global_note_board = new NoteBoard();
-
 /** Show a notification popup, with adequate default timeout */
-export function show_note (text, timeout = undefined) {
-  return global_note_board.create_note (text, timeout);
+export function create_note (text, timeout = undefined) {
+  return App.shell.create_note (text, timeout);
 }
 
 /** Generate `element.innerHTML` from `markdown_text` */

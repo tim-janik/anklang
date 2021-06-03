@@ -104,6 +104,7 @@
     <b-filedialog v-if="fs.resolve" :title="fs.title" :filters="fs.filters" :button="fs.button"
 		  :cwd="fs.cwd" @close="fs.resolve()" @select="fs.resolve($event)" />
 
+    <b-noteboard ref="noteboard" />
   </v-flex>
 </template>
 
@@ -168,7 +169,11 @@ class Shell extends Envue.Component {
     msg += e.text2 + '\n';
     if (e.text3)
       msg += '  \n  \n**' + e.text3 + '**\n';
-    Util.show_note (msg);
+    this.create_note (msg);
+  }
+  create_note (...args) {
+    const noteboard = Util.envue_object (this.$vm.$refs.noteboard);
+    return noteboard?.create_note (...args);
   }
   sidebar_mouse (e) {
     const sidebar = this.$refs.sidebarcontainer;
