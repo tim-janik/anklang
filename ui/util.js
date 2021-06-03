@@ -111,7 +111,7 @@ export function capture_event (eventname, callback) {
   return uncapture;
 }
 
-/** Get `__vue__` from element or its ancestors */
+/** Get Vue component handle from element or its ancestors */
 export function vue_component (element) {
   let el = element;
   while (el)
@@ -123,6 +123,14 @@ export function vue_component (element) {
       el = el.parentNode;
     }
   return undefined;
+}
+
+/** Get Envue `$object` from element or its ancestors */
+export function envue_object (element) {
+  if (element?.$el && element?.$object)
+    return element.$object;	// element is Vue component already
+  const vm = vue_component (element);
+  return vm?.$object;
 }
 
 export const START = "START";
