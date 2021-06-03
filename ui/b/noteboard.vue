@@ -123,7 +123,8 @@ class Noteboard extends Envue.Component {
       }, this.FADING);
     };
     popup();
-    // FIXME: raise noteboard
+    if (this.$vm.$el.nextSibling) // raise noteboard
+      this.$vm.$el.parentNode.insertBefore (this.$vm.$el, null);
     return popdown;
   }
 }
