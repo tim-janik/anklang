@@ -2,6 +2,7 @@
 #include "serialize.hh"
 #include "jsonapi.hh"
 #include "utils.hh"
+#include "driver.hh"
 #include "internal.hh"
 #include <rapidjson/prettywriter.h>
 

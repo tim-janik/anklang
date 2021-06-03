@@ -166,18 +166,6 @@ private:
   friend class ServerImpl;
 };
 
-/// Driver information for PCM and MIDI handling.
-struct DriverEntry {
-  String devid;
-  String device_name;
-  String capabilities;
-  String device_info;
-  String notice;
-  int32  priority = 0;
-  bool   readonly = false;
-  bool   writeonly = false;
-};
-
 /// Base type for classes with Property interfaces.
 class Object : public virtual Emittable {
 protected:

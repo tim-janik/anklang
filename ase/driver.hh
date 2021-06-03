@@ -12,6 +12,18 @@ ASE_CLASS_DECLS (Driver);
 ASE_CLASS_DECLS (MidiDriver);
 ASE_CLASS_DECLS (PcmDriver);
 
+/// Driver information for PCM and MIDI handling.
+struct DriverEntry {
+  String devid;
+  String device_name;
+  String capabilities;
+  String device_info;
+  String notice;
+  int32  priority = 0;
+  bool   readonly = false;
+  bool   writeonly = false;
+};
+
 class Driver : public std::enable_shared_from_this<Driver> {
 protected:
   struct Flags { enum { OPENED = 1, READABLE = 2, WRITABLE = 4, }; };
