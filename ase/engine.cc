@@ -364,6 +364,8 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
           schedule_render (AUDIO_BLOCK_MAX_RENDER_SIZE);
           pcm_check_write (true); // minimize drop outs
         }
+      if (ipc_pending())
+        owner_wakeup_(); // owner needs to ipc_dispatch()
       return true; // keep alive
     default: ;
     }
