@@ -71,6 +71,3 @@ RUN : && \
 
 # Copy pre-fetched electron downloads
 COPY .cache.dbuild/electron/ /cbuild/.electron/
-
-# Work here...
-WORKDIR /usr/src/anklang
