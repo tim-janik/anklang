@@ -6,6 +6,7 @@ const Electron = require ('electron');
 const Eapp = Electron.app;
 const Eshell = Electron.shell;
 const os = require ('os');
+const ELECTRON_CONFIG = { quitstartup: false };
 
 // CSS Defaults
 const defaults = {
@@ -195,6 +196,7 @@ function start_sound_engine (config, datacb, errorcb)
 // IPC calls available to the Renderer
 const ipc_handler = {
   electron_versions (browserwindow, ...args)   { return { platform: process.platform,
+							  config: ELECTRON_CONFIG,
 	                                                  arch: process.arch,
                                                           os_release: os.release(),
 	                                                  versions: process.versions, }; },
@@ -255,6 +257,9 @@ function parse_args (argv)
 	  usage ('version', 0);
 	case '--verbose': case '-v':
 	  c.verbose = true;
+	  break;
+	case '--quitstartup':
+	  ELECTRON_CONFIG.quitstartup = true;
 	  break;
 	case '--binary':
 	  c.binary = true;
