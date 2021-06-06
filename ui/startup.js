@@ -83,6 +83,8 @@ async function bootup () {
       window.Electron = Object.assign ({}, // setup extensible window.Electron context
 				       await window.__Electron__.call ("electron_versions"),
 				       { call: window.__Electron__.call });
+      if (window.Electron.config.quitstartup)
+	window.addEventListener ("deviceorientation", event => { window.Electron.call ('exit', 123); });
       // Shift+Ctrl+I for devTools
       document.addEventListener ("keydown", (event) => {
 	if (event.shiftKey && event.ctrlKey && event.keyCode == 73)
