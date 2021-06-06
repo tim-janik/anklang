@@ -37,13 +37,12 @@ RUN retry apt-get install -y build-essential curl cmake libglib2.0-dev && \
 
 # Provide Anklang dependencies, add libXss.so for electron
 RUN retry apt-get install -y \
-	build-essential curl texlive-binaries git libxml2-utils g++ \
-	libxml2-dev gawk python3 python3-pandocfilters pandoc \
-	libboost-system-dev cppcheck clang clang-tidy clang-tools \
-	libasound2-dev libflac-dev libvorbis-dev libmad0-dev libjack-dev \
-	gettext imagemagick graphviz libgconf-2-4 unzip \
-	libzstd-dev python3-lxml castxml \
-	libxss1 libgbm1 libnss3 libgtk-3-0
+    build-essential pkg-config git curl ccache curl unzip gawk g++ \
+    clang clang-tidy clang-tools castxml cppcheck libboost-system-dev \
+    imagemagick libxml2-utils libxml2-dev python3 python3-lxml \
+    python3-pandocfilters pandoc graphviz texlive-binaries \
+    libasound2-dev libflac-dev libvorbis-dev libmad0-dev libjack-dev libzstd-dev \
+    gettext libgconf-2-4 libxss1 libgbm1 libnss3 libgtk-3-0
 
 # Provide a recent nodejs
 RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
