@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN ln -sf bash /bin/sh && ls -al /bin/sh
 
 # Provide /bin/retry to overcome short network outages
-RUN echo -e '#!/bin/bash\n"$@" || { sleep 15 ; "$@" ; } || { sleep 90 ; "$@" ; }' > /bin/retry && chmod +x /bin/retry
+RUN echo -e '#!/bin/bash\n"$@" || { sleep 5 ; "$@" ; } || { sleep 15 ; "$@" ; }' > /bin/retry && chmod +x /bin/retry
 
 # Exclude documentation files during package installations
 RUN mkdir /etc/dpkg/dpkg.conf.d && \
