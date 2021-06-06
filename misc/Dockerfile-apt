@@ -42,7 +42,7 @@ RUN retry apt-get install -y \
     imagemagick libxml2-utils libxml2-dev python3 python3-lxml \
     python3-pandocfilters pandoc graphviz texlive-binaries \
     libasound2-dev libflac-dev libvorbis-dev libmad0-dev libjack-dev libzstd-dev \
-    gettext libgconf-2-4 libxss1 libgbm1 libnss3 libgtk-3-0
+    gettext libgconf-2-4 libxss1 libgbm1 libnss3 libgtk-3-0 squashfs-tools
 
 # Provide a recent nodejs
 RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
