@@ -49,8 +49,9 @@ PROJECT_VOLUME="--user $TUID:$TGID -v `pwd`:/$PROJECT/"
 
 # == Initialize Build Environment ==
 $INITIALIZE && {
-  mkdir -p misc/.dbuild/.cache/
+  mkdir -p misc/.dbuild/.cache/anklang/
   test ! -d ~/.cache/electron/. || cp --reflink=auto --preserve=timestamps ~/.cache/electron -r misc/.dbuild/.cache/
+  test ! -d ~/.cache/anklang/downloads/. || cp --reflink=auto --preserve=timestamps ~/.cache/anklang/downloads -r misc/.dbuild/.cache/anklang/
   ( set -x
     docker build -f "$DOCKERFILE" --build-arg DIST="$DIST" --build-arg USERGROUP="$TUID:$TGID" -t $IMGTAG misc/
   )
