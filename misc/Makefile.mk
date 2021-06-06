@@ -86,15 +86,12 @@ scan-build:								| $>/misc/scan-build/
 
 # == appimage tools ==
 $>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
-	$(QGEN) # Fetch and extract AppImage tools
+	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
 	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
 		0c4c18bb44e011e8416fc74fb067fe37a7de97a8548ee8e5350985ddee1c0164 https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd )
 	$Q cd $>/misc/appaux/ && \
 		curl -sfSOL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
-		chmod +x linuxdeploy-x86_64.AppImage && \
-		rm -rf squashfs-root linuxdeploy && \
-		./linuxdeploy-x86_64.AppImage  --appimage-extract && mv -v squashfs-root/ ./linuxdeploy && \
-		rm linuxdeploy-x86_64.AppImage
+		chmod +x linuxdeploy-x86_64.AppImage
 
 # == appimage ==
 APPINST = $>/appinst/
@@ -110,12 +107,12 @@ appimage: $>/misc/appaux/appimage-runtime-zstd all		| $>/misc/bin/
 	$Q $(eval APPIMAGEPKGDIR ::= $(APPBASE)/anklang-$(version_major)-$(version_minor))
 	$Q mkdir $(APPBASE) && cp -a $(APPINST)$(pkgdir) $(APPIMAGEPKGDIR)
 	$Q rm -f Anklang-x86_64.AppImage
-	@echo '  RUN     ' linuxdeploy ...
+	@echo '  RUN     ' linuxdeploy...
 	$Q if test -e /usr/lib64/libc_nonshared.a ; \
 	   then LIB64=/usr/lib64/ ; \
 	   else LIB64=/usr/lib/x86_64-linux-gnu/ ; fi \
 	   && LD_LIBRARY_PATH=$(APPIMAGEPKGDIR)/lib DISABLE_COPYRIGHT_FILES_DEPLOYMENT=1 \
-	     $>/misc/appaux/linuxdeploy/AppRun \
+	     $>/misc/appaux/linuxdeploy-x86_64.AppImage --appimage-extract-and-run \
 		$(if $(findstring 1, $(V)), -v1, -v2) \
 		--appdir=$(APPBASE) \
 		-e $(APPIMAGEPKGDIR)/bin/anklang \
