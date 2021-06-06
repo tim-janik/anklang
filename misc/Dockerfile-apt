@@ -70,7 +70,7 @@ RUN : && \
 	chown -R ${USERGROUP} /cbuild
 
 # Copy pre-fetched electron downloads
-COPY .cicache/electron/ /cbuild/.electron/
+COPY .cache.dbuild/electron/ /cbuild/.electron/
 
 # Work here...
 WORKDIR /usr/src/anklang
