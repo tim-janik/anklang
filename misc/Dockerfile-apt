@@ -11,12 +11,6 @@ RUN ln -sf bash /bin/sh && ls -al /bin/sh
 # Provide /bin/retry to overcome short network outages
 RUN echo -e '#!/bin/bash\n"$@" || { sleep 5 ; "$@" ; } || { sleep 15 ; "$@" ; }' > /bin/retry && chmod +x /bin/retry
 
-# Exclude documentation files during package installations
-RUN mkdir /etc/dpkg/dpkg.conf.d && \
-  echo -e > /etc/dpkg/dpkg.conf.d/01_nodoc \
-       'path-exclude=/usr/share/locale/*\npath-exclude=/usr/share/man/*\npath-exclude=/usr/share/info/*\npath-exclude=/usr/share/groff/*\n' \
-       'path-exclude=/usr/share/lintian/*\npath-exclude=/usr/share/doc/*\npath-include=/usr/share/doc/*/copyright\n'
-
 # Upgrade packages
 RUN retry apt-get update && retry apt-get -y upgrade
 
