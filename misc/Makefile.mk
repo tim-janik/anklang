@@ -99,7 +99,7 @@ $>/misc/appaux/appimagetool/AppRun:					| $>/misc/appaux/
 # == appimage ==
 APPINST = $>/appinst/
 APPBASE = $>/appbase/
-appimage: all $>/misc/appaux/appimagetool/AppRun		| $>/misc/bin/ $>/dummy/
+appimage: all $>/misc/appaux/appimagetool/AppRun		| $>/misc/bin/
 	$(QGEN)
 	@: # Installation Step
 	@echo '  INSTALL ' AppImage files
@@ -111,11 +111,10 @@ appimage: all $>/misc/appaux/appimagetool/AppRun		| $>/misc/bin/ $>/dummy/
 	$Q mkdir $(APPBASE) && cp -a $(APPINST)$(pkgdir) $(APPIMAGEPKGDIR)
 	$Q rm -f Anklang-x86_64.AppImage
 	@echo '  RUN     ' linuxdeploy ...
-	$Q rm -f $>/dummy/dpkg-query && ln -s /bin/false $>/dummy/dpkg-query # linuxdeploy workaround
 	$Q if test -e /usr/lib64/libc_nonshared.a ; \
 	   then LIB64=/usr/lib64/ ; \
 	   else LIB64=/usr/lib/x86_64-linux-gnu/ ; fi \
-	   && PATH="$>/dummy/:$$PATH" LD_LIBRARY_PATH=$(APPIMAGEPKGDIR)/lib \
+	   && LD_LIBRARY_PATH=$(APPIMAGEPKGDIR)/lib DISABLE_COPYRIGHT_FILES_DEPLOYMENT=1 \
 	     $>/misc/appaux/linuxdeploy/AppRun \
 		$(if $(findstring 1, $(V)), -v1, -v2) \
 		--appdir=$(APPBASE) \
