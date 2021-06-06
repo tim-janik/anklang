@@ -52,16 +52,9 @@ RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
 # Cleanup
 RUN apt-get clean
 
-# make sure getpwuid() works, and ~/ is writable, otherwise many tools break
+# make sure getpwuid() works, prepare writable ~/
 ARG USERGROUP
-RUN : && \
-	mkdir -m 0755 -p /cbuild/.electron/ && \
-	groupadd --gid ${USERGROUP#*:} cbuild && \
-	useradd --uid ${USERGROUP%:*} --gid ${USERGROUP#*:} --home-dir /cbuild cbuild && \
-	{ ! compgen -G "/root/.electron/*.zip" >/dev/null || \
-	    cp --reflink=auto --preserve=timestamps /root/.electron/*.zip /cbuild/.electron/ ; } && \
-	cp /root/.bashrc /cbuild/ && \
-	chown -R ${USERGROUP} /cbuild
-
-# Copy pre-fetched electron downloads
-COPY .cache.dbuild/electron/ /cbuild/.electron/
+RUN mkdir -m 0755 -p /dbuild/ && cp /root/.bashrc /dbuild/ && \
+  groupadd --gid ${USERGROUP#*:} dbuild && useradd --uid ${USERGROUP%:*} --gid ${USERGROUP#*:} --home-dir /dbuild dbuild
+COPY .dbuild/ /dbuild/
+RUN chown -R ${USERGROUP} /dbuild
