@@ -38,6 +38,11 @@ public:
   std::thread              *thread_ = nullptr;
   MainLoopP                 event_loop_ = MainLoop::create();
   AudioProcessorS           oprocs_;
+  struct UserNoteJob {
+    std::atomic<UserNoteJob*> next = nullptr;
+    UserNote note;
+  };
+  AtomicIntrusiveStack<UserNoteJob> user_notes_;
   virtual        ~AudioEngineThread     ();
   explicit        AudioEngineThread     (uint sample_rate, SpeakerArrangement speakerarrangement);
   uint64          frame_counter         () const override      { return render_stamp_; }
@@ -58,10 +63,17 @@ public:
   void            update_drivers        (bool fullio);
   void            run                   (const VoidF &owner_wakeup, StartQueue *sq);
   void            swap_midi_drivers_sync (const MidiDriverS &midi_drivers);
+  void            queue_user_note        (const String &channel, UserNote::Flags flags, const String &text);
 };
 
 static inline std::atomic<AudioEngineThread::Job*>&
 atomic_next_ptrref (AudioEngineThread::Job *j)
+{
+  return j->next;
+}
+
+static inline std::atomic<AudioEngineThread::UserNoteJob*>&
+atomic_next_ptrref (AudioEngineThread::UserNoteJob *j)
 {
   return j->next;
 }
@@ -234,11 +246,20 @@ AudioEngineThread::update_drivers (bool fullio)
       const String pcm_driver_name = ServerImpl::instancep()->preferences().pcm_driver;
       er = {};
       if (pcm_driver_name != null_driver)
-        pcm_driver_ = PcmDriver::open (pcm_driver_name, Driver::WRITEONLY, Driver::WRITEONLY, pconfig, &er);
-      if (!pcm_driver_)
         {
-          printerr ("failed to open PCM driver ('%s'): %s\n", pcm_driver_name, ase_error_blurb (er));
-          pcm_driver_ = null_pcm_driver_;
+          PcmDriverP new_pcm_driver = PcmDriver::open (pcm_driver_name, Driver::WRITEONLY, Driver::WRITEONLY, pconfig, &er);
+          if (new_pcm_driver)
+            pcm_driver_ = new_pcm_driver;
+          else
+            {
+              auto s = string_format ("# Audio I/O Error\n"
+                                      "Failed to open audio device:\n"
+                                      "%s:\n"
+                                      "%s",
+                                      pcm_driver_name, ase_error_blurb (er));
+              queue_user_note ("pcm-driver", UserNote::CLEAR, s);
+              printerr ("%s\n", string_replace (s, "\n", " "));
+            }
         }
     }
   // MIDI Driver List
@@ -249,15 +270,26 @@ AudioEngineThread::update_drivers (bool fullio)
     ServerImpl::instancep()->preferences().midi_driver_3,
     ServerImpl::instancep()->preferences().midi_driver_4,
   };
+  int midi_errors = 0;
+  auto midi_err = [&] (const String &devid, int nth, Error er) {
+    auto s = string_format ("## MIDI I/O Failure\n"
+                            "Failed to open MIDI device #%u:\n"
+                            "%s:\n"
+                            "%s",
+                            nth, devid, ase_error_blurb (er));
+    queue_user_note ("midi-driver", midi_errors++ == 0 ? UserNote::CLEAR : UserNote::APPEND, s);
+    printerr ("%s\n", string_replace (s, "\n", " "));
+  };
+  int midi_dev = 0;
   for (const auto &devid : midi_driver_names)
     {
+      midi_dev += 1;
       if (devid == null_driver)
         continue;
       if (Aux::contains (new_drivers, [&] (auto &d) {
         return d->devid() == devid; }))
         {
-          er = Error::DEVICE_BUSY;
-          printerr ("failed to open MIDI driver ('%s'): %s\n", devid, ase_error_blurb (er));
+          midi_err (devid, midi_dev, Error::DEVICE_BUSY);
           continue;
         }
       MidiDriverP d;
@@ -275,7 +307,7 @@ AudioEngineThread::update_drivers (bool fullio)
       if (d)
         new_drivers.push_back (d);      // add new driver
       else
-        printerr ("failed to open MIDI driver ('%s'): %s\n", devid, ase_error_blurb (er));
+        midi_err (devid, midi_dev, er);
     }
   midi_drivers_ = new_drivers;
   swap_midi_drivers_sync (midi_drivers_);
@@ -372,16 +404,32 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
   return false;
 }
 
+void
+AudioEngineThread::queue_user_note (const String &channel, UserNote::Flags flags, const String &text)
+{
+  UserNoteJob *uj = new UserNoteJob { nullptr, { 0, flags, channel, text } };
+  if (user_notes_.push (uj))
+    owner_wakeup_();
+}
+
 bool
 AudioEngineThread::ipc_pending ()
 {
-  const bool have_jobs = !trash_jobs_.empty();
+  const bool have_jobs = !trash_jobs_.empty() || !user_notes_.empty();
   return have_jobs || AudioProcessor::enotify_pending();
 }
 
 void
 AudioEngineThread::ipc_dispatch ()
 {
+  UserNoteJob *uj = user_notes_.pop_reversed();
+  while (uj)
+    {
+      ASE_SERVER.user_note (uj->note.text, uj->note.channel, uj->note.flags);
+      UserNoteJob *const old = uj;
+      uj = old->next;
+      delete old;
+    }
   if (AudioProcessor::enotify_pending())
     AudioProcessor::enotify_dispatch();
   Job *job = trash_jobs_.pop_all();
