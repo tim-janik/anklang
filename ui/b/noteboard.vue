@@ -51,10 +51,10 @@
   // markdown styling for notes
   .note-board-markdown {
     @include b-markdown-it-inlined;
-    h1 { color: #09b; }
-    h2 { color: #090; }
-    h3 { color: #a00; }
-    h4 { color: #a40; }
+    h1 { color: #a00; } //* Error */
+    h2 { color: #a80; } //* Warning */
+    h3 { color: #090; } //* Info */
+    h4 { color: #09b; } //* Debug */
     p { margin-top: 0.5em; }
   }
 }
