@@ -121,7 +121,7 @@ async function list_sample_files() {
 function observable_project_data () { // yields reactive Proxy object
   const data = {
     filetree:	     { default: {}, getter: c => list_sample_files(), },
-    usermessagehook: { notify: n => Ase.server.on ("usermessage", this.usermessage), },
+    usernotehook:    { notify: n => Ase.server.on ("usernote", this.usernote), },
     __update__: Util.observable_force_update,
   };
   return this.observable_from_getters (data, () => Data.project);
@@ -155,21 +155,8 @@ class Shell extends Envue.Component {
   panel2_style() {
     return Data.panel2 == 'p' ? 'flex-grow: 5' : '';
   }
-  usermessage (e) {
-    let msg = '';
-    switch (e.umtype)
-    {
-      case Ase.UserMessageType.ERROR:		msg += '### '; break;
-      case Ase.UserMessageType.WARNING:	msg += '### '; break;
-      case Ase.UserMessageType.INFO:		msg += '# '; break;
-      case Ase.UserMessageType.DEBUG:		msg += '##### '; break;
-    }
-    msg += e.title + '\n';
-    msg += e.text1 + '\n';
-    msg += e.text2 + '\n';
-    if (e.text3)
-      msg += '  \n  \n**' + e.text3 + '**\n';
-    this.create_note (msg);
+  usernote (user_note_event) {
+    this.create_note (user_note_event.text);
   }
   create_note (...args) {
     const noteboard = Util.envue_object (this.$vm.$refs.noteboard);
