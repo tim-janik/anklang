@@ -18,16 +18,13 @@ const defaults = {
 // Processes
 let win, ase_proc;
 
-// == Exit handling ==
-let seen_crashed = false, seen_will_quit = false;
-
 // End process and main_exit all dependent processes
 function main_exit (exitcode, ...errmsgs) {
+  if (main_exit.exit_code !== undefined)
+    return; // recursion, might be in late destruction where await + setTimeout does *NOT* work anymore
+  main_exit.exit_code = 0 | exitcode;
   if (errmsgs.length)
     console.error (...errmsgs);
-  if (main_exit.shuttingdown)
-    return;
-  main_exit.shuttingdown = true;
   if (win)
     {
       win.destroy();
@@ -35,16 +32,9 @@ function main_exit (exitcode, ...errmsgs) {
     }
   if (ase_proc)
     ase_proc.kill();
-  if (exitcode < 0)
+  if (main_exit.exit_code < 0)
     process.abort();
-  Eapp.exit (exitcode ? exitcode : 0);
-}
-
-// Handle BrowserWindow 'crashed' event
-function crashed_handler (event) {
-  seen_crashed = true;
-  if (seen_will_quit && seen_crashed)
-    Eapp.exit (143); // will-quit + crashed is caused by SIGHUP or SIGTERM
+  Eapp.exit (main_exit.exit_code);
 }
 
 // Handle Electron application 'quit()' method
@@ -52,13 +42,11 @@ Eapp.once ('will-quit', e => {
   /* Note, Electron hijacks SIGINT, SIGHUP, SIGTERM to trigger app.quit()
    * which has a 0 exit status. We simply don't use quit() and force a
    * non-0 status if it's used. See also:
-   * https://github.com/electron/electron/issues/19650
    * https://github.com/electron/electron/issues/5273
+   * https://github.com/electron/electron/issues/19650
+   * https://github.com/electron/electron/issues/29559
    */
-  seen_will_quit = true;
-  if (seen_will_quit && seen_crashed)
-    Eapp.exit (143);    // will-quit + crashed is caused by SIGHUP or SIGTERM
-  Eapp.exit (130);      // assume SIGINT
+  main_exit (130);	// assume SIGINT
 });
 
 // Terminate on Promise rejection
@@ -110,7 +98,7 @@ function create_window (onclose)
   };
   const w = new Electron.BrowserWindow (options);
   w.setMenu (Electron.Menu.buildFromTemplate ([]));
-  w.webContents.once ('crashed', crashed_handler);
+  w.webContents.once ('crashed', () => main_exit (129)); // crashed is SIGHUP or SIGTERM
   if (onclose)
     w.on ('closed', onclose);
   return w;
@@ -147,7 +135,7 @@ async function load_and_show (w, winurl) {
 }
 
 // == Sound Engine ==
-function start_sound_engine (config, datacb, errorcb)
+function start_sound_engine (config, datacb)
 {
   const { spawn, spawnSync } = require ('child_process');
   const sound_engine = __dirname + '/../../../lib/AnklangSynthEngine-' + package_json.version;
@@ -164,31 +152,30 @@ function start_sound_engine (config, datacb, errorcb)
       console.log ('DEBUGGING:\n  gdb --pid', subproc.pid, '#', sound_engine);
       spawnSync ('/usr/bin/sleep', [ 5 ]);
     }
-  // subproc.stdio[3].write ("QUIT");
   subproc.stdio[3].once ('data', (bytes) => datacb (bytes.toString()));
-  if (errorcb)
-    {
-      const prefix = sound_engine.split ('/').pop() + ':';
-      subproc.on ('exit', async (code, sig) => {
-	const reason = sig || subproc.signalCode || code || subproc.exitCode;
-	await new Promise (r => setTimeout (() => r(), 17)); // first allow normal Exit e.g. due to X11 SIGTERM
-	console.error (prefix, 'exited:', reason);
-	errorcb();
-      });
-      subproc.stdio[3].once ('end', async () => {
-	await new Promise (r => setTimeout (() => r(), 35)); // allow 'exit' handler to run first
-	console.error (prefix, 'connection closed');
-	errorcb();
-      });
-      subproc.stdio[3].once ('error', (err) => {
-	console.error (prefix + ' ' + err);
-	errorcb();
-      });
-      subproc.once ('error', (err) => {
-	console.error (prefix + ' ' + err);
-	errorcb();
-      });
-    }
+  // handle errors and exit
+  const prefix = sound_engine.split ('/').pop() + ':';
+  const slog = (...args) => console.error (prefix, ...args);
+  subproc.on ('exit', async (code, sig) => {
+    // NOTE: await + setTimeout might *NOT* work at this point
+    const reason = sig || subproc.signalCode || code || subproc.exitCode;
+    if (reason)
+      main_exit (143, prefix, 'exit:', reason);
+    else
+      main_exit (0);
+  });
+  subproc.stdio[3].once ('end', async (x) => {
+    setTimeout (() => { // fallback, other handlers should exit earlier
+      console.error (prefix, 'connection closed');
+      main_exit (-1);
+    }, 444);
+  });
+  subproc.stdio[3].once ('error', (err) => {
+    main_exit (-1, prefix, 'io-error:', err);
+  });
+  subproc.once ('error', (err) => {
+    main_exit (-1, prefix, 'error:', err);
+  });
   return subproc;
 }
 
@@ -296,7 +283,7 @@ async function startup_components (config) {
   let winurl = config.xurl; // external URL?
   if (!winurl)
     {
-      const sndmsg = new Promise (resolve => ase_proc = start_sound_engine (config, msg => resolve (msg), () => main_exit (-1)));
+      const sndmsg = new Promise (resolve => ase_proc = start_sound_engine (config, msg => resolve (msg)));
       // retrieve sound engine URL
       const auth = JSON.parse (await sndmsg); // yields { "url": "http://127.0.0.1:<PORT>/?subprotocol=<STRING>" }
       if (!auth.url)
