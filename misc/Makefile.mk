@@ -99,36 +99,36 @@ $>/misc/appaux/appimagetool/AppRun:					| $>/misc/appaux/
 # == appimage ==
 APPINST = $>/appinst/
 APPBASE = $>/appbase/
-appimage: all $>/misc/appaux/appimagetool/AppRun				| $>/misc/bin/
+appimage: all $>/misc/appaux/appimagetool/AppRun		| $>/misc/bin/ $>/dummy/
 	$(QGEN)
-	$Q echo "  CHECK   " "for AppImage build with prefix=/usr"
-	$Q test '$(prefix)' = '/usr' || { echo "$@: assertion failed: prefix=$(prefix)" >&2 ; false ; }
 	@: # Installation Step
 	@echo '  INSTALL ' AppImage files
 	$Q rm -fr $(APPINST) $(APPBASE) && make install DESTDIR=$(APPINST)
 	@: # Populate appinst/, linuxdeploy expects libraries under usr/lib, binaries under usr/bin, etc
 	@: # We achieve that by treating the anklang-$MAJOR-$MINOR/ installation directory as /usr/.
 	@: # Also, we hand-pick extra libs for Anklang to keep the AppImage small.
-	$Q mkdir $(APPBASE)
-	$Q cp -a $(APPINST)/usr/lib/anklang-* $(APPBASE)/usr
+	$Q $(eval APPIMAGEPKGDIR ::= $(APPBASE)/anklang-$(version_major)-$(version_minor))
+	$Q mkdir $(APPBASE) && cp -a $(APPINST)$(pkgdir) $(APPIMAGEPKGDIR)
 	$Q rm -f Anklang-x86_64.AppImage
 	@echo '  RUN     ' linuxdeploy ...
+	$Q rm -f $>/dummy/dpkg-query && ln -s /bin/false $>/dummy/dpkg-query # linuxdeploy workaround
 	$Q if test -e /usr/lib64/libc_nonshared.a ; \
 	   then LIB64=/usr/lib64/ ; \
 	   else LIB64=/usr/lib/x86_64-linux-gnu/ ; fi \
-	   && LD_LIBRARY_PATH=$(APPBASE)/usr/lib/ \
+	   && PATH="$>/dummy/:$$PATH" LD_LIBRARY_PATH=$(APPIMAGEPKGDIR)/lib \
 	     $>/misc/appaux/linuxdeploy/AppRun \
 		$(if $(findstring 1, $(V)), -v1, -v2) \
 		--appdir=$(APPBASE) \
+		-e $(APPIMAGEPKGDIR)/bin/anklang \
+		-i $(APPIMAGEPKGDIR)/ui/anklang.png \
+		-d $(APPIMAGEPKGDIR)/share/applications/anklang.desktop \
 		-l $$LIB64/libXss.so.1 \
 		-l $$LIB64/libXtst.so.6 \
-		-i $(APPBASE)/usr/ui/anklang.png \
-		-e $(APPBASE)/usr/bin/anklang \
 		--custom-apprun=misc/AppRun
-	@: # 'linuxdeploy -e usr/bin/anklang' turns this symlink into an executable copy, which electron does not support
-	$Q rm $(APPBASE)/usr/bin/anklang && cp -auv $(APPINST)/usr/lib/anklang-*/bin/* $(APPBASE)/usr/bin/	# restore bin/* links
-	@: # linuxdeploy collects too many libs for electron/anklang, remove duplictaes of electron/lib*.so
-	$Q cd $(APPBASE)/usr/lib/ && rm -f $(notdir $(wildcard $(APPBASE)/usr/electron/lib*.so*))
+	@: # 'linuxdeploy -e bin/anklang' creates an executable copy in usr/bin/, which electron does not support
+	$Q rm $(APPBASE)/usr/bin/anklang && ln -s -r $(APPIMAGEPKGDIR)/bin/anklang $(APPBASE)/usr/bin/ # enforce bin/* as link
+	@: # linuxdeploy collects too many libs for electron/anklang, remove duplictaes present in electron/
+	$Q cd $(APPBASE)/usr/lib/ && rm -vf $(notdir $(wildcard $(APPIMAGEPKGDIR)/electron/lib*.so*))
 	@: # Create AppImage executable
 	@echo '  RUN     ' appimagetool ...
 	$Q ARCH=x86_64 $>/misc/appaux/appimagetool/AppRun -n $(if $(findstring 1, $(V)), -v) $(APPBASE) # XZ_OPT=-9e --comp=xz

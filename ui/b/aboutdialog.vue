@@ -49,7 +49,7 @@
 async function about_pairs() {
   const user_agent = navigator.userAgent.replace (/([)0-9]) ([A-Z])/gi, '$1\n$2');
   let array = [
-    [ 'Anklang:',		CONFIG.revision + ' (' + CONFIG.revdate.split (' ')[0] + ')' ],
+    [ 'Anklang:',		CONFIG.buildid + ' (' + CONFIG.revdate.split (' ')[0] + ')' ],
     [ 'SoundEngine:',		await Ase.server.get_version() ],
     [ 'Vorbis:',		await Ase.server.get_vorbis_version() ],
     [ 'Vuejs:',			Vue.version ],

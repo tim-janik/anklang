@@ -11,7 +11,7 @@ S +=
 # == Version ==
 version_full    != misc/version.sh
 version_short  ::= $(word 1, $(version_full))
-version_long   ::= $(word 2, $(version_full))
+version_buildid::= $(word 2, $(version_full))
 version_date   ::= $(wordlist 3, 999, $(version_full))
 version_bits   ::= $(subst _, , $(subst -, , $(subst ., , $(version_short))))
 version_major  ::= $(word 1, $(version_bits))
@@ -24,7 +24,7 @@ version_to_month = $(shell echo "$(version_date)" | sed -r -e 's/^([2-9][0-9][0-
 version-info:
 	@echo version_full: $(version_full)
 	@echo version_short: $(version_short)
-	@echo version_long: $(version_long)
+	@echo version_buildid: $(version_buildid)
 	@echo version_date: $(version_date)
 	@echo version_m.m.m: $(version_m.m.m)
 	@echo version_to_month: "$(version_to_month)"
@@ -187,15 +187,19 @@ default: FORCE
 	$Q mv $@.tmp config-defaults.mk
 
 # == PACKAGE_CONFIG ==
+define PACKAGE_VERSIONS
+  "version": "$(version_m.m.m)",
+  "revdate": "$(version_date)",
+  "buildid": "$(version_buildid)",
+  "mode": "$(MODE)"
+endef
+
 define PACKAGE_CONFIG
   "config": {
-    "version": "$(version_m.m.m)",
-    "revdate": "$(version_date)",
-    "revision": "$(version_long)",
     "srcdir": "$(abspath .)",
     "outdir": "$(abspath $>)",
     "pkgdir": "$(abspath $(pkgdir))",
-    "mode": "$(MODE)" }
+    $(strip $(PACKAGE_VERSIONS)) }
 endef
 
 # == package.json ==

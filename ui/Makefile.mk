@@ -29,15 +29,6 @@ ui/public.wildcards ::= $(wildcard	\
 	ui/favicon.ico			\
 )
 
-# == UI Config ==
-define UI_CONFIG
-  "config": {
-    "version": "$(version_m.m.m)",
-    "revdate": "$(version_date)",
-    "revision": "$(version_long)",
-    "mode": "$(MODE)" }
-endef
-
 # == ui/vue.js ==
 $>/ui/vue.js:	$>/node_modules/.npm.done				| $>/ui/
 	$(QGEN)
@@ -52,7 +43,7 @@ $>/ui/.build1-stamp: $>/ui/vue.js
 $>/ui/index.html: ui/index.html ui/assets/eknob.svg ui/Makefile.mk	| $>/ui/
 	$(QGEN)
 	$Q rm -f $>/ui/doc && ln -s ../doc $>/ui/doc # MAKE is flaky in tracking symlink timestamps
-	$Q : $(file > $>/ui/config.json, { $(UI_CONFIG) })
+	$Q : $(file > $>/ui/config.json,  { "config": { $(strip $(PACKAGE_VERSIONS)) } })
 	$Q sed -r \
 		-e "/<script type='application\/json' id='--EMBEDD-config_json'>/ r $>/ui/config.json" \
 		-e "/<!--EMBEDD='eknob\.svg'-->/r ui/assets/eknob.svg" \
@@ -200,9 +191,10 @@ $>/ui/favicon.ico: ui/assets/favicon.svg $>/node_modules/.npm.done ui/Makefile.m
 	$(QGEN)
 	$Q mkdir -p $>/ui/tmp-icongen/
 	$Q $>/node_modules/.bin/icon-gen -i $< -o $>/ui/tmp-icongen/ # -r
-	$Q cd $>/ui/tmp-icongen/ && mv favicon.ico .. && mv favicon-128.png ../anklang.png
-	$Q rm -r $>/ui/tmp-icongen/
-$>/ui/.build1-stamp: $>/ui/favicon.ico
+	$Q cd $>/ui/tmp-icongen/ && mv favicon-128.png ../anklang.png && mv favicon.ico ../favicon.ico.tmp
+	$Q rm -r $>/ui/tmp-icongen/ && mv $@.tmp $@
+$>/ui/anklang.png: $>/ui/favicon.ico
+$>/ui/.build1-stamp: $>/ui/favicon.ico $>/ui/anklang.png
 
 # == $>/ui/eslint.files ==
 ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue)
