@@ -134,6 +134,6 @@ find $DEBIAN/../ -name '*.la' -delete
 find $DEBIAN/../ -name '*.py[co]' -delete
 
 # create binary deb
-fakeroot dpkg-deb -b $DROOT $DROOT/.. # -Zgzip
+fakeroot dpkg-deb -z9 -b $DROOT $DROOT/..
 ls -al $BUILDDIR/$NAME''_$VERSION''_$ARCH.deb
 echo lintian -i --no-tag-display-limit $BUILDDIR/$NAME''_$VERSION''_$ARCH.deb
