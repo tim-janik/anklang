@@ -11,6 +11,7 @@
 #include "project.hh"
 #include "path.hh"
 #include "internal.hh"
+#include <atomic>
 
 namespace Ase {
 
@@ -452,6 +453,24 @@ String
 ServerImpl::musical_tuning_desc (MusicalTuning musicaltuning) const
 {
   return musical_tuning_blurb_desc (musicaltuning).second;
+}
+
+static std::atomic<uint> user_note_id = 1;
+
+uint64
+ServerImpl::user_note (const String &text, const String &channel, UserNote::Flags flags, const String &r)
+{
+  UserNote unote { user_note_id++, flags, channel, text };
+  ValueR vrec;
+  json_parse (json_stringify (unote, Writ::SKIP_EMPTYSTRING), vrec);
+  this->emit_event ("usernote", "", vrec);
+  return unote.noteid;
+}
+
+bool
+ServerImpl::user_reply (uint64 noteid, uint r)
+{
+  return false; // unhandled
 }
 
 } // Ase

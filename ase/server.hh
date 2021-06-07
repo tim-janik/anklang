@@ -18,6 +18,8 @@ public:
   String       error_blurb          (Error error) const override;
   String       musical_tuning_blurb (MusicalTuning musicaltuning) const override;
   String       musical_tuning_desc  (MusicalTuning musicaltuning) const override;
+  uint64       user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &r = "") override;
+  bool         user_reply           (uint64 noteid, uint r) override;
   void         shutdown             () override;
   ProjectP     last_project         () override;
   ProjectP     create_project       (String projectname) override;

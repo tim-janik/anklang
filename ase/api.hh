@@ -290,6 +290,14 @@ public:
   virtual String    canonify       (const String &cwd, const String &fragment, bool constraindir, bool constrainfile) = 0;
 };
 
+/// Contents of user interface notifications.
+struct UserNote {
+  enum Flags { APPEND, CLEAR, TRANSIENT };
+  uint   noteid = 0;
+  Flags  flags = APPEND;
+  String channel, text;
+};
+
 /// Central singleton, serves as API entry point.
 class Server : public virtual Gadget {
 public:
@@ -304,6 +312,8 @@ public:
   virtual String error_blurb          (Error error) const = 0;
   virtual String musical_tuning_blurb (MusicalTuning musicaltuning) const = 0;
   virtual String musical_tuning_desc  (MusicalTuning musicaltuning) const = 0;
+  virtual uint64 user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &r = "") = 0;
+  virtual bool   user_reply           (uint64 noteid, uint r) = 0;
   // preferences
   virtual PropertyS access_prefs  () = 0;       ///< Retrieve property handles for Preferences fields.
   // projects
