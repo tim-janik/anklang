@@ -2182,7 +2182,7 @@ function hotkey_handler (event) {
       return true;
     }
   // restrict global hotkeys during modal dialogs
-  const modal_element = document._b_modal_shields?.[0]?.root;
+  const modal_element = document._b_modal_shields?.[0]?.root || the_focus_guard?.focus_root_list?.[0];
   // activate global hotkeys
   const array = hotkey_list;
   for (let i = 0; i < array.length; i++)
