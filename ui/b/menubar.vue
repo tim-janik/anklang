@@ -99,6 +99,13 @@ export default {
     this.$refs.viewmenu.map_kbd_hotkeys (true);
   },
   methods: {
+    window_close() {
+      window.close();
+      // when we're running in the browser, window.close() might not work, so...
+      setTimeout (() => {
+	window.location.href = 'about:blank';
+      }, 0);
+    },
     async activation (uri, event) {
       let u, v;
       switch (uri) {
@@ -116,9 +123,9 @@ export default {
 				      'QUESTION');
 	  v = await v;
 	  if (v == 0)
-	    return window.close();
+	    return this.window_close();
 	  if (v == 2 && await save_project())
-	    return window.close();
+	    return this.window_close();
 	  break;
 	case 'about':
 	  Data.show_about_dialog = !Data.show_about_dialog;
