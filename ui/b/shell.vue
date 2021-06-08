@@ -71,7 +71,7 @@
 	<div     style="flex-grow: 0; flex-shrink: 0" class="b-shell-resizer" @mousedown="sidebar_mouse" ></div>
 	<v-flex class="b-shell-sidebar" start shrink1 grow1 >
 	  <b-treeselector :tree="m.filetree" v-show="Data.panel3 == 'b'" ></b-treeselector>
-	  <span v-show="Data.panel3 == 'i'" >Info Panel</span>
+	  <span v-show="Data.panel3 == 'i'" ><a href="">Info Panel</a></span>
 	</v-flex>
       </h-flex>
     </h-flex>
