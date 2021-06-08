@@ -1142,7 +1142,7 @@ export function is_nav_input (element) {
     "EMBED",
     "IFRAME",
     "OBJECT",
-    "applet",
+    "APPLET",
   ];
   if (in_array (element.tagName, nav_elements))
     return true;
