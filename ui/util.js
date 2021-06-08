@@ -306,14 +306,14 @@ export function request_pointer_lock (element) {
 export const vue_mixins = {};
 export const vue_directives = {};
 
-/// Retrieve CSS scope selector for vm_attach_style()
+/// Retrieve CSS scope selector for vm_scope_style()
 export function vm_scope_selector (vm) {
   console.assert (vm.$);
   return vm.$el.nodeName + `[b-scope${vm.$.uid}]`;
 }
 
 /// Attach `css` to Vue instance `vm`, use vm_scope_selector() for the `vm` CSS scope
-export function vm_attach_style (vm, css) {
+export function vm_scope_style (vm, css) {
   if (!vm.$el._vm_style)
     {
       vm.$el.setAttribute ('b-scope' + vm.$.uid, '');

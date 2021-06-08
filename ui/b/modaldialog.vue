@@ -159,10 +159,10 @@ export default {
 	  const css = [];
 	  if (this.bwidth)
 	    {
-	      css.push (`${sel}.b-modaldialog .-footer button { min-width: ${this.bwidth}; }\n`);
-	      css.push (`${sel}.b-modaldialog .-footer push-button { min-width: ${this.bwidth}; }\n`);
+	      css.push (`${sel}.b-modaldialog .-footer button { min-width: ${this.bwidth}; }`);
+	      css.push (`${sel}.b-modaldialog .-footer push-button { min-width: ${this.bwidth}; }`);
 	    }
-	  Util.vm_attach_style (this, css.join ('\n'));
+	  Util.vm_scope_style (this, css.join ('\n'));
 	}
     },
     update_shield() {
