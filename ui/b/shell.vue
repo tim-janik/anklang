@@ -94,28 +94,28 @@
       <b-preferencesdialog v-model:shown="Data.show_preferences_dialog" />
       <b-filedialog :shown="!!fs.resolve" :title="fs.title" :filters="fs.filters" :button="fs.button"
 		    :cwd="fs.cwd" @close="fs.resolve()" @select="fs.resolve($event)" />
-    </div>
 
-    <!-- Modal Message Popups -->
-    <b-modaldialog v-for="d in m.modal_dialogs" :key="d.uid"
-		   :shown="d.visible.value" @update:shown="d.input ($event)"
-		   :exclusive="true" bwidth="9em" style="z-index: 93" >
-      <template v-slot:header>
-	<div>{{ d.header }}</div>
-      </template>
-      <template v-slot:default>
-	<h-flex style="justify-content: flex-start; align-items: center;">
-	  <b-icon v-bind="d.icon" />
-	  <div style="flex-grow: 1; white-space: pre-line;" >{{ d.body }}</div>
-	</h-flex>
-      </template>
-      <template v-slot:footer>
-	<h-flex :style="d.footerstyle" style="justify-content: space-between" >
-	  <component v-for="(b, i) in d.buttons" :key="i" @click="d.click (i)" :disabled="b.disabled"
-		     :is="b.canfocus ? 'button' : 'push-button'" :autofocus="b.autofocus" >{{ b.label }}</component>
-	</h-flex>
-      </template>
-    </b-modaldialog>
+      <!-- Modal Message Popups -->
+      <b-dialog v-for="d in m.modal_dialogs" :key="d.uid"
+		:shown="d.visible.value" @update:shown="d.input ($event)"
+		:exclusive="true" bwidth="9em" style="z-index: 93" >
+	<template v-slot:header>
+	  <div>{{ d.header }}</div>
+	</template>
+	<template v-slot:default>
+	  <h-flex style="justify-content: flex-start; align-items: center;">
+	    <b-icon v-bind="d.icon" />
+	    <div style="flex-grow: 1; white-space: pre-line;" >{{ d.body }}</div>
+	  </h-flex>
+	</template>
+	<template v-slot:footer>
+	  <h-flex :style="d.footerstyle" style="justify-content: space-between" >
+	    <component v-for="(b, i) in d.buttons" :key="i" @click="d.click (i)" :disabled="b.disabled"
+		       :is="b.canfocus ? 'button' : 'push-button'" :autofocus="b.autofocus" >{{ b.label }}</component>
+	  </h-flex>
+	</template>
+      </b-dialog>
+    </div>
 
     <!-- Noteboard -->
     <b-noteboard ref="noteboard" style="z-index: 95" />
