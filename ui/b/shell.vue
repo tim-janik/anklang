@@ -90,8 +90,8 @@
 
     <!-- Modal Dialogs -->
     <div class="-modaldialogs" style="z-index: 90" >
+      <b-aboutdialog v-model:shown="Data.show_about_dialog" />
     </div>
-    <b-aboutdialog v-model:shown="Data.show_about_dialog" />
     <b-preferencesdialog v-model:shown="Data.show_preferences_dialog" />
     <b-filedialog v-if="fs.resolve" :title="fs.title" :filters="fs.filters" :button="fs.button"
 		  :cwd="fs.cwd" @close="fs.resolve()" @select="fs.resolve($event)" />
