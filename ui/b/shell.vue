@@ -12,12 +12,14 @@
   @import '../styles.scss';
 
   .b-shell {
+    position: relative;
     --b-resize-handle-thickness: #{$b-resize-handle-thickness};
     --b-transition-fast-slide: #{$b-transition-fast-slide};
     width: 100%;
     height: 100%;
     justify-content: space-between;
     align-items: stretch;
+    user-select: none;
   }
   .b-shell-panel1 {
     @include b-panel-box;
