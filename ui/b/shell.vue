@@ -46,6 +46,15 @@
     .b-shell-resizer { background: $b-resize-handle-hvcolor; }
     * { cursor: col-resize !important; user-select: none !important; }
   }
+
+.b-shell {
+  .-modaldialogs {
+    position: fixed; top: 0; left: 0; bottom: 0; right: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    pointer-events: none;
+  }
+}
 </style>
 
 <template>
@@ -79,10 +88,18 @@
     <!-- status bar -->
     <b-statusbar />
 
-    <!-- Generic modal dialogs -->
+    <!-- Modal Dialogs -->
+    <div class="-modaldialogs" style="z-index: 90" >
+    </div>
+    <b-aboutdialog v-model:shown="Data.show_about_dialog" />
+    <b-preferencesdialog v-model:shown="Data.show_preferences_dialog" />
+    <b-filedialog v-if="fs.resolve" :title="fs.title" :filters="fs.filters" :button="fs.button"
+		  :cwd="fs.cwd" @close="fs.resolve()" @select="fs.resolve($event)" />
+
+    <!-- Modal Message Popups -->
     <b-modaldialog v-for="d in m.modal_dialogs" :key="d.uid"
 		   :shown="d.visible.value" @update:shown="d.input ($event)"
-		   :exclusive="true" bwidth="9em" >
+		   :exclusive="true" bwidth="9em" style="z-index: 93" >
       <template v-slot:header>
 	<div>{{ d.header }}</div>
       </template>
@@ -100,13 +117,13 @@
       </template>
     </b-modaldialog>
 
-    <!-- Modal Components -->
-    <b-aboutdialog v-model:shown="Data.show_about_dialog" />
-    <b-preferencesdialog v-model:shown="Data.show_preferences_dialog" />
-    <b-filedialog v-if="fs.resolve" :title="fs.title" :filters="fs.filters" :button="fs.button"
-		  :cwd="fs.cwd" @close="fs.resolve()" @select="fs.resolve($event)" />
+    <!-- Noteboard -->
+    <b-noteboard ref="noteboard" style="z-index: 95" />
 
-    <b-noteboard ref="noteboard" />
+    <!-- Menus -->
+
+    <!-- Bubbles -->
+
   </v-flex>
 </template>
 
