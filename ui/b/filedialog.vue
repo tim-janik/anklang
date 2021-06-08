@@ -2,7 +2,7 @@
 
 <docs>
   # B-FILEDIALOG
-  A [b-modaldialog] that allows file and directory selections.
+  A modal [b-dialog] that allows file and directory selections.
   ## Properties:
   *title*
   : The dialog title.
@@ -74,7 +74,7 @@
 </style>
 
 <template>
-  <b-modaldialog class="b-filedialog" :shown="true" @close="emit_close()" >
+  <b-dialog class="b-filedialog" :shown="true" @close="emit_close()" >
     <template v-slot:header>
       <div>File Selector</div>
     </template>
@@ -86,7 +86,7 @@
       <span  class="-col1 -row2 -file" > File: </span>
       <input class="-col2 -row2 -file" ref="fileentry" type="text" :value="r.filename"
 	     @keydown.enter="fileentry_enter ($event)" @change="fileentry_change()"
-	     @keydown.down="Util.keydown_move_focus ($event)" >
+	     @keydown.down="Util.keydown_move_focus ($event)" autofocus >
 
       <span class="-col1 -row3 -places" > Places </span>
       <b-folderview class="-col2 -row3" ref="folderview" :entries="r.entries"
@@ -100,7 +100,7 @@
 	<button @click="emit_close()" > Close </button>
       </h-flex>
     </template>
-  </b-modaldialog>
+  </b-dialog>
 </template>
 
 <script>
