@@ -355,7 +355,6 @@ $b-piano-roll-font:     	normal 9px $b-main-font-family; // the '9px' part is dy
 // == Scrollbars (see styles.scss) ==
 /// Style container to constrain area within which its scrollbars highlight on hover.
 @mixin scrollbar-hover-area() {
-  div.b-modaldialog-shield &,
   #b-app & {
     html[chrome] & {
       & ::-webkit-scrollbar-thumb { background: $b-scrollbar-dd; }
