@@ -22,8 +22,9 @@
 <style lang="scss">
   @import 'mixins.scss';
   .b-filedialog {
-    &.b-modaldialog {
-      width: 60em; max-width: 95%;
+    .b-dialog {
+      width: unset; //* <- leave width to INPUT.-file, see below */
+      max-width: 95%;
       height: 45em; max-height: 95%;
       overflow-y: hidden;
     }
@@ -59,16 +60,16 @@
 
       &::selection { background: #2d53c4; }
     }
-    html[chrome] & input.-file {
-      /* Unfortunately chrome <input/> causes re-layout on every value change, which
+    & input.-file {
+      /* Unfortunately chrome <INPUT/> causes re-layout on every value change, which
        * can badly affect editing performance for complex/large document setups:
        *   https://bugs.chromium.org/p/chromium/issues/detail?id=1116001
        * As workaround, push the element onto its own layer and use fixed sizes.
        */
-      height: 1.34em; 	//* fixed size */
-      width: 40em;	//* fixed size */
-      max-width: 50vw;	//* avoid h-scrolling if 40emis too large */
-      transform: translate(0px, 0px); //* push onto its own layer */
+      z-index: 1;	//* push onto its own layer */
+      height: 1.4em; 	//* fixed size */
+      width: 55em;      //* fixed size */
+      max-width: 80vw;  //* avoid h-scrolling if fixed width is too large */
     }
   }
 </style>
