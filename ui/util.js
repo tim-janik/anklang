@@ -1548,6 +1548,45 @@ export function modal_shield (modal_element, opts = {}) {
   return new ModalShield (modal_element, opts);
 }
 
+/** Setup Element shield for a modal containee.
+ * Capture focus movements inside `containee`, call `closer(event)` for
+ * pointer clicks on `shield` or when `ESCAPE` is pressed.
+ */
+export function setup_shield_element (shield, containee, closer)
+{
+  const modal_keyboard_guard = event => {
+    if (event.keyCode == Util.KeyCode.ESCAPE && !event.cancelBubble) {
+      event.preventDefault();
+      event.stopPropagation();
+      closer (event);
+    }
+  };
+  const modal_mouse_guard = event => {
+    if (!event.cancelBubble && !containee.contains (event.target)) {
+      event.preventDefault();
+      event.stopPropagation();
+      closer (event);
+      /* Browsers may emit two events 'mousedown' and 'contextmenu' for button3 clicks.
+       * This may cause the shield's owning widget (e.g. a menu) to reappear, because
+       * in this mousedown handler we can only prevent further mousedown handling.
+       * So we set up a timer that swallows the next 'contextmenu' event.
+       */
+      Util.swallow_event ('contextmenu', 0);
+    }
+  };
+  document.addEventListener ('keydown', modal_keyboard_guard);
+  shield.addEventListener ('mousedown', modal_mouse_guard);
+  Util.push_focus_root (containee);
+  let undo_shield = () => {
+    if (!undo_shield) return;
+    undo_shield = null;
+    document.removeEventListener ('keydown', modal_keyboard_guard);
+    shield.removeEventListener ('mousedown', modal_mouse_guard);
+    Util.remove_focus_root (containee);
+  };
+  return undo_shield;
+}
+
 /** Use capturing to swallow any `type` events until `timeout` has passed */
 export function swallow_event (type, timeout = 0) {
   const preventandstop = function (event) {
