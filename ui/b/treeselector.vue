@@ -2,7 +2,7 @@
 
 <docs>
   # B-TREESELECTOR
-  A [b-modaldialog] that displays a tree and allows selections.
+  A container that displays a tree and allows selections.
   ## Events:
   *close*
   : A *close* event is emitted once the "Close" button activated.
@@ -12,8 +12,6 @@
   @import 'mixins.scss';
   .b-treeselector {
     margin: 0 $b-menu-hpad;
-    .b-modaldialog-container	{ max-width: 70em; height: 90vh; align-items: stretch; }
-    .b-modaldialog-body	{ flex-grow: 1; }
   }
 </style>
 
