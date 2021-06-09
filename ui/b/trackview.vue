@@ -213,7 +213,7 @@ export default {
 	  this.rdbtip = this.tdata.rmon.sub_tip[0] / 4;
 	  this.dom_trigger_animate_playback (true);
 	}
-      console.assert (!this.$dom_updates.destroying);
+      console.assert (!this.$dom_data.destroying);
     },
     dom_animate_playback: update_levels,
     mcc: function (n) { // midi_channel character

@@ -670,6 +670,46 @@ export function hyphenate (string) {
   return string.replace (uppercase_boundary, '-$1').toLowerCase();
 }
 
+const nop = (() => undefined).bind (undefined);
+
+// Call dom_create, dom_destroy, watch dom_update, then forceUpdate on changes.
+function dom_dispatch() {
+  const el_valid = this.$el instanceof Element || this.$el instanceof Text;
+  const destroying = this.$dom_data.destroying;
+  // dom_create
+  if (el_valid && this.$dom_data.state == 0 && !destroying) {
+    this.$dom_data.state = 1;
+    this.dom_create?.call (this);
+  }
+  /* A note on $watch. Its `expOrFn` is called immediately, the dependencies and return value
+   * are recorded. Later, once a dependency changes, its `expOrFn` is called again, also
+   * recording the dependencies and return value. If the return value changes, `callback`
+   * is invoked. What we need for updating DOM elements, is:
+   * a: the initial call with dependency recording which we use for (expensive) updating,
+   * b: trigger $forceUpdate() once a dependency changes, without intermediate updating.
+   */
+  // dom_update
+  if (el_valid && this.$dom_data.state == 1 && !destroying) {
+    this.$dom_data.unwatch1 = call_unwatch (this.$dom_data.unwatch1); // clear old $watch
+    if (this.dom_update) {
+      let domupdate_watcher = () => {
+	const r = this.dom_update(); // capture dependencies
+	if (r instanceof Promise)
+	  console.warn ('The this.dom_update() method returned a Promise, async functions are not reactive', this);
+	return r;
+      };
+      this.$dom_data.unwatch1 = this.$watch (() => domupdate_watcher(), nop);
+      domupdate_watcher = this.$forceUpdate.bind (this); // dependencies changed
+    }
+  }
+  // dom_destroy
+  if (this.$dom_data.state == 1 && !el_valid) {
+    this.$dom_data.unwatch1 = call_unwatch (this.$dom_data.unwatch1);
+    this.$dom_data.state = 0;
+    this.dom_destroy?.call (this);
+  }
+}
+
 /** Vue mixin to provide DOM handling hooks.
  * This mixin adds instance method callbacks to handle dynamic DOM changes
  * such as drawing into a `<canvas/>`.
@@ -677,126 +717,93 @@ export function hyphenate (string) {
  * changes to data dependencies of reactive methods will queue future updates.
  * However reactive dependency tracking only works for non-async methods.
  *
+ * - dom_create() - Reactive callback method, called after `this.$el` has been created
  * - dom_update() - Reactive callback method, called after `this.$el` has been created
  *   and after Vue component updates. Dependency changes result in `this.$forceUpdate()`.
- *   Note, this is also called for `v-if="false"` cases, where `updated()` is not called.
+ *   Note, this is also called for `v-if="false"` cases, where `Vue.updated()` is not called.
  * - dom_draw() - Reactive callback method, called during an animation frame, requested
  *   via `dom_queue_draw()`. Dependency changes result in `this.dom_queue_draw()`.
  * - dom_queue_draw() - Cause `this.dom_draw()` to be called during the next animation frame.
- * - dom_destroy() - Callback method, called once the Vue component is unmounted.
+ * - dom_destroy() - Callback method, called once `this.$el` was removed.
  * - dom_ondestroy(cb) - Register callback, called once the Vue component is unmounted.
  */
 vue_mixins.dom_updates = {
   beforeCreate: function () {
-    console.assert (this.$dom_updates == undefined);
-    // install $dom_updates helper on Vue instance
-    this.$dom_updates = {
+    console.assert (this.$dom_data == undefined);
+    // install $dom_data helper on Vue instance
+    this.$dom_data = {
+      state: 0,
       destroying: false,
       // animateplaybackclear: undefined,
-      pending: false,	// dom_update pending
       unwatch1: null,
       unwatch2: null,
       rafid: undefined,
       dstroyhooks: [],
     };
     function dom_ondestroy (cb) {
-      this.$dom_updates.dstroyhooks.push (cb);
+      this.$dom_data.dstroyhooks.push (cb);
     }
     this.dom_ondestroy = dom_ondestroy;
     function dom_queue_draw () {
-      if (this.$dom_updates.rafid !== undefined)
+      if (this.$dom_data.rafid !== undefined)
 	return;
       function dom_draw_frame () {
-	this.$dom_updates.rafid = undefined;
-	if (!this.$dom_updates.destroying && this.$el instanceof Element)
+	this.$dom_data.rafid = undefined;
+	if (!this.$dom_data.destroying && this.$el instanceof Element)
 	  {
-	    this.$dom_updates.unwatch2 = call_unwatch (this.$dom_updates.unwatch2);
+	    this.$dom_data.unwatch2 = call_unwatch (this.$dom_data.unwatch2);
 	    let once = 0;
 	    const dom_draw_reactive = vm => {
 	      if (once++ == 0 && this.dom_draw() instanceof Promise)
 		console.warn ('dom_draw() returned Promise, async functions are not reactive', this);
 	      return once;  // always change return value and guard against subsequent calls
 	    };
-	    this.$dom_updates.unwatch2 = this.$watch (dom_draw_reactive, this.dom_queue_draw);
+	    this.$dom_data.unwatch2 = this.$watch (dom_draw_reactive, this.dom_queue_draw);
 	  }
       }
-      this.$dom_updates.rafid = requestAnimationFrame (dom_draw_frame.bind (this));
+      this.$dom_data.rafid = requestAnimationFrame (dom_draw_frame.bind (this));
     }
     this.dom_queue_draw = dom_queue_draw;
   }, // beforeCreate
   mounted: function () {
-    console.assert (this.$dom_updates);
-    const has_dom_update = Object.hasOwnProperty.call (this, 'dom_update');
-    if (has_dom_update)
-      this.$forceUpdate();  // always trigger dom_update() after mounted()
+    if (this.$dom_data)
+      this.$forceUpdate();	// ensure updated()
   },
   updated: function () {
-    console.assert (this.$dom_updates);
-    const has_dom_update = Object.hasOwnProperty.call (this, 'dom_update');
-    if (this.$dom_updates.pending || !has_dom_update)
-      return;
-    const dom_tick_update = _ => {
-      const haselement = this.$el instanceof Element || this.$el instanceof Text;
-      const needupdate = has_dom_update && haselement && !this.$dom_updates.destroying;
-      /* Note, if vm._watcher is triggered before the $watch from below, it'll re-render
-       * the VNodes and then our watcher is triggered, which causes $forceUpdate() and the
-       * VNode tree is rendered *again*. This causes multiple calles to updated(), too.
-       */
-      let once = 0;
-      const dom_update_reactive = vm => {
-        if (once++ != 0)
-	  return once;	// always change return value and guard against subsequent calls
-	if (needupdate && !this.$dom_updates.destroying && this.dom_update (this) instanceof Promise)
-	  console.warn ('dom_update() returned Promise, async functions are not reactive', this);
-        return once;
-      };
-      /* clean up any old $watch */
-      this.$dom_updates.unwatch1 = call_unwatch (this.$dom_updates.unwatch1);
-      this.$dom_updates.pending = false;
-      /* A note on $watch. Its `expOrFn` is called immediately, the return value and dependencies are
-       * recorded. Later, once a dependency changes, its `expOrFn` is called again, also recording
-       * return value and new dependencies. If the return value changes, `callback` is invoked.
-       * What we need for updating DOM elements, is:
-       * a: the initial call with dependency recording which we use for (expensive) updating,
-       * b: trigger $forceUpdate() once a dependency changes, without intermediate expensive updating.
-       */
-      this.$dom_updates.unwatch1 = this.$watch (dom_update_reactive, this.$forceUpdate);
-    };
-    this.$nextTick (dom_tick_update);
-    this.$dom_updates.pending = true;
+    if (this.$dom_data)
+      dom_dispatch.call (this);
   },
   beforeUnmount: function () {
-    console.assert (this.$dom_updates);
-    this.$dom_updates.destroying = true;
-    this.$dom_updates.unwatch1 = call_unwatch (this.$dom_updates.unwatch1);
-    this.$dom_updates.unwatch2 = call_unwatch (this.$dom_updates.unwatch2);
+    if (!this.$dom_data)
+      return;
+    this.$dom_data.destroying = true;
+    this.$dom_data.unwatch1 = call_unwatch (this.$dom_data.unwatch1);
+    this.$dom_data.unwatch2 = call_unwatch (this.$dom_data.unwatch2);
     this.dom_trigger_animate_playback (false);
+    dom_dispatch.call (this);
   },
   unmounted: function () {
-    const has_dom_destroy = Object.hasOwnProperty.call (this, 'dom_destroy');
-    if (has_dom_destroy)
-      this.dom_destroy (this);
-    while (this.$dom_updates.dstroyhooks.length)
-      this.$dom_updates.dstroyhooks.pop().call (this);
-    if (this.$dom_updates.rafid !== undefined)
+    while (this.$dom_data.dstroyhooks.length)
+      this.$dom_data.dstroyhooks.pop().call (this);
+    if (this.$dom_data.rafid !== undefined)
       {
-	cancelAnimationFrame (this.$dom_updates.rafid);
-	this.$dom_updates.rafid = undefined;
+	cancelAnimationFrame (this.$dom_data.rafid);
+	this.$dom_data.rafid = undefined;
       }
   },
   methods: {
     dom_trigger_animate_playback (flag) {
       if (flag === undefined)
-	return !!this.$dom_updates.animateplaybackclear;
-      if (flag && !this.$dom_updates.animateplaybackclear)
+	return !!this.$dom_data.animateplaybackclear;
+      if (flag && !this.$dom_data.animateplaybackclear)
 	{
 	  console.assert (this.dom_animate_playback);
-	  this.$dom_updates.animateplaybackclear = Util.add_frame_handler (this.dom_animate_playback.bind (this));
+	  this.$dom_data.animateplaybackclear = Util.add_frame_handler (this.dom_animate_playback.bind (this));
 	}
-      else if (!flag && this.$dom_updates.animateplaybackclear)
+      else if (!flag && this.$dom_data.animateplaybackclear)
 	{
-	  this.$dom_updates.animateplaybackclear();
-	  this.$dom_updates.animateplaybackclear = undefined;
+	  this.$dom_data.animateplaybackclear();
+	  this.$dom_data.animateplaybackclear = undefined;
 	}
     },
   },
