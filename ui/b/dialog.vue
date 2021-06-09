@@ -85,10 +85,11 @@
 /* fading frames: [0] "v-{enter|leave}-from v-{enter|leave}-active" [1] "v-{enter|leave}-to v-{enter|leave}-active" [N] ""
  * https://v3.vuejs.org/guide/transitions-enterleave.html#transition-classes
  */
+$duration: 0.3s;
 .b-dialog-modalshield {
   &.-fade-enter-active, &.-fade-leave-active {
     &, .b-dialog {
-      transition: all 0.3s ease;
+      transition: all $duration ease, opacity $duration linear;
     }
   }
   &.-fade-enter-from, &.-fade-leave-to {
