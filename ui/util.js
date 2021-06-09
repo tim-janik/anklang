@@ -679,8 +679,7 @@ export function hyphenate (string) {
  *
  * - dom_update() - Reactive callback method, called after `this.$el` has been created
  *   and after Vue component updates. Dependency changes result in `this.$forceUpdate()`.
- * - dom_hidden() - Reactive callback method, called instead of `dom_update()` when
- *   `this.$el` is not fully setup.
+ *   Note, this is also called for `v-if="false"` cases, where `updated()` is not called.
  * - dom_draw() - Reactive callback method, called during an animation frame, requested
  *   via `dom_queue_draw()`. Dependency changes result in `this.dom_queue_draw()`.
  * - dom_queue_draw() - Cause `this.dom_draw()` to be called during the next animation frame.
@@ -727,22 +726,17 @@ vue_mixins.dom_updates = {
   }, // beforeCreate
   mounted: function () {
     console.assert (this.$dom_updates);
-    const has_dom_hidden = Object.hasOwnProperty.call (this, 'dom_hidden');
     const has_dom_update = Object.hasOwnProperty.call (this, 'dom_update');
-    if (has_dom_hidden)
-      this.dom_hidden (this);
-    if (has_dom_hidden || has_dom_update)
+    if (has_dom_update)
       this.$forceUpdate();  // always trigger dom_update() after mounted()
   },
   updated: function () {
     console.assert (this.$dom_updates);
-    const has_dom_hidden = Object.hasOwnProperty.call (this, 'dom_hidden');
     const has_dom_update = Object.hasOwnProperty.call (this, 'dom_update');
-    if (this.$dom_updates.pending || (!has_dom_hidden && !has_dom_update))
+    if (this.$dom_updates.pending || !has_dom_update)
       return;
     const dom_tick_update = _ => {
       const haselement = this.$el instanceof Element || this.$el instanceof Text;
-      const needhidden = has_dom_hidden && (!haselement || this.$dom_updates.destroying);
       const needupdate = has_dom_update && haselement && !this.$dom_updates.destroying;
       /* Note, if vm._watcher is triggered before the $watch from below, it'll re-render
        * the VNodes and then our watcher is triggered, which causes $forceUpdate() and the
@@ -752,8 +746,6 @@ vue_mixins.dom_updates = {
       const dom_update_reactive = vm => {
         if (once++ != 0)
 	  return once;	// always change return value and guard against subsequent calls
-	if (needhidden && this.dom_hidden (this) instanceof Promise)
-	  console.warn ('dom_hidden() returned Promise, async functions are not reactive', this);
 	if (needupdate && !this.$dom_updates.destroying && this.dom_update (this) instanceof Promise)
 	  console.warn ('dom_update() returned Promise, async functions are not reactive', this);
         return once;
