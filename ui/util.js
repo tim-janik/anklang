@@ -725,7 +725,6 @@ function dom_dispatch() {
  *   via `dom_queue_draw()`. Dependency changes result in `this.dom_queue_draw()`.
  * - dom_queue_draw() - Cause `this.dom_draw()` to be called during the next animation frame.
  * - dom_destroy() - Callback method, called once `this.$el` was removed.
- * - dom_ondestroy(cb) - Register callback, called once the Vue component is unmounted.
  */
 vue_mixins.dom_updates = {
   beforeCreate: function () {
@@ -738,12 +737,7 @@ vue_mixins.dom_updates = {
       unwatch1: null,
       unwatch2: null,
       rafid: undefined,
-      dstroyhooks: [],
     };
-    function dom_ondestroy (cb) {
-      this.$dom_data.dstroyhooks.push (cb);
-    }
-    this.dom_ondestroy = dom_ondestroy;
     function dom_queue_draw () {
       if (this.$dom_data.rafid !== undefined)
 	return;
@@ -783,8 +777,6 @@ vue_mixins.dom_updates = {
     dom_dispatch.call (this);
   },
   unmounted: function () {
-    while (this.$dom_data.dstroyhooks.length)
-      this.$dom_data.dstroyhooks.pop().call (this);
     if (this.$dom_data.rafid !== undefined)
       {
 	cancelAnimationFrame (this.$dom_data.rafid);
