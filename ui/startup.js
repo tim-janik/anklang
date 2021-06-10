@@ -239,6 +239,8 @@ function browser_config() {
   console.assert (chrome_major <= chrome_major_last_buggy, `WARNING: Chrome/${chrome_major} has not been tested for the movementX devicePixelRatio bug`);
   if (dpr_movement)
     console.bootlog ("Detected Chrome bug #1092358...");
+  // Prevent Web Browser menus interfering with the UI
+  window.addEventListener ("contextmenu", e => e.preventDefault());
   return {
     dpr_movement,
     slidertabindex,
