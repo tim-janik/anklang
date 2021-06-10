@@ -47,22 +47,21 @@
 </style>
 
 <template>
-  <div class="b-color-picker" style="position: relative; display: flex;"
-       @mouseenter="mouseenter" @mouseleave="mouseleave" >
-    <div ref="button" class="-button" :style="style()" @click="visible_dropdown++" >
-      <slot> </slot></div>
-    <transition @before-leave="intransition++" @after-leave="end_transitions" >
-      <div v-if="visible_dropdown" ref="dropdown" class="b-color-picker-dropdown" >
+  <div class="b-color-picker" style="position: relative; display: flex;" @mouseenter="mouseenter" @mouseleave="mouseleave" >
+    <div ref="button" class="-button" :style="style()" @click="Util.dropdown ($refs.contextmenu, $event)" >
+      <slot/>
+      <b-contextmenu popupclass="b-color-picker-dropdown" ref="contextmenu">
 	<div style="display: flex; flex-direction: row;"
 	     v-for="(row, row_index) in color_rows" :key="'row-' + row_index" >
 	  <div class="b-color-picker-entry"
 	       v-for="(item, index) in row"
 	       @click="select (item[0])"
 	       :data-bubble=" item[1] + '   ' + item[0] + '' "
-	       :key="row_index + '.' + index" :style="{ 'background-color': item[0] }" ></div>
+	       :key="row_index + '.' + index" :style="{ 'background-color': item[0] }" >
+	  </div>
 	</div>
-      </div>
-    </transition>
+      </b-contextmenu>
+    </div>
   </div>
 </template>
 
@@ -82,7 +81,6 @@ export default {
       value: initial_color,
       entered: false,
       intransition: 0,
-      visible_dropdown: 0,
   }; },
   computed: {
     color: {
@@ -97,14 +95,6 @@ export default {
   created () {
     this.color_rows = smooth_colors;
   },
-  mounted () {
-    // sample usage:
-    // this.$on ('input', hex => console.log (hex));
-  },
-  beforeUnmount () {
-    if (this.shield)
-      this.shield.destroy (false);
-  },
   methods: {
     mouseenter() { this.entered = true; },
     mouseleave() { this.entered = false; },
@@ -117,17 +107,7 @@ export default {
 	style['color'] = contrast;
       return style;
     },
-    update_shield() {
-      if (this.visible_dropdown && !this.shield)
-	this.shield = Util.modal_shield (this.$refs.dropdown, { close: this.hide });
-      else if (!this.visible_dropdown && this.shield && !this.intransition)
-	{
-	  this.shield.destroy();
-	  this.shield = null;
-	}
-    },
     dom_update() {
-      this.update_shield();
       if (this.$refs.dropdown)
 	{
 	  const p = Util.popup_position (this.$refs.dropdown, { origin: this.$refs.button });
@@ -135,22 +115,16 @@ export default {
 	  this.$refs.dropdown.style.top = p.y + "px";
 	}
     },
-    end_transitions() {
-      this.intransition = 0;
-      this.update_shield();
-    },
-    hide() {
-      this.visible_dropdown = 0;
-      if (this.shield)
-	{
-	  this.shield.destroy (false); // false prevents recursion
-	  this.shield = undefined;
-	}
-    },
     select (hex) {
       if (hex.match (/#[a-f0-9]{6}/i))
 	this.color = hex;
-      this.hide();
+      this.close();
+    },
+    close () {
+      return this.$refs.contextmenu?.close?.();
+    },
+    popup (event, options) {
+      return this.$refs.contextmenu?.popup?. (event, options);
     },
   },
 };
