@@ -48,7 +48,7 @@
   }
 
 .b-shell {
-  .-modaldialogs {
+  .-modaldialogs, .-modalmenus {
     position: fixed; top: 0; left: 0; bottom: 0; right: 0;
     width: 100%; height: 100%;
     display: flex;
@@ -121,6 +121,7 @@
     <b-noteboard ref="noteboard" style="z-index: 95" />
 
     <!-- Menus -->
+    <div id="b-app-shell-modalmenus-layer" class="-modalmenus" style="z-index: 98" ></div>
 
     <!-- Bubbles -->
 
