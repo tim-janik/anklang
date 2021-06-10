@@ -39,8 +39,7 @@
   display: flex;
   margin: auto;
   max-height: 100%; max-width: 100%;
-
-  min-width: 16em; padding: 0;
+  min-width: 16em; min-width: min(100%,20em);
   border: 2px solid $b-modal-bordercol; border-radius: 5px;
   color: $b-modal-foreground; background: $b-modal-background;
   padding: 1em;
