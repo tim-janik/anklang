@@ -9,43 +9,43 @@
 </docs>
 
 <style lang="scss">
-  @import '../styles.scss';
+@import '../styles.scss'; //* shell.vue only, everything else must: @import 'mixins.scss'; */
 
-  .b-shell {
-    position: relative;
-    --b-resize-handle-thickness: #{$b-resize-handle-thickness};
-    --b-transition-fast-slide: #{$b-transition-fast-slide};
-    width: 100%;
-    height: 100%;
-    justify-content: space-between;
-    align-items: stretch;
-    user-select: none;
-  }
-  .b-shell-panel1 {
-    @include b-panel-box;
-    flex-grow: 1;
-  }
-  .b-shell-panel2 {
-    @include b-panel-box;
-    height: 19em;
-    flex-shrink: 0;
-  }
-  .b-shell-sidebar {
-    padding: 3px;
-    overflow: hidden scroll;
-    &, * { text-overflow: ellipsis; white-space: nowrap; }
-  }
-  .b-shell-resizer {
-    width: var(--b-resize-handle-thickness);
-    background: $b-resize-handle-bgcolor;
-    border-left: $b-resize-handle-border;
-    border-right: $b-resize-handle-border;
-    cursor: col-resize;
-  }
-  html.b-shell-during-drag .b-app {
-    .b-shell-resizer { background: $b-resize-handle-hvcolor; }
-    * { cursor: col-resize !important; user-select: none !important; }
-  }
+.b-shell {
+  position: relative;
+  --b-resize-handle-thickness: #{$b-resize-handle-thickness};
+  --b-transition-fast-slide: #{$b-transition-fast-slide};
+  width: 100%;
+  height: 100%;
+  justify-content: space-between;
+  align-items: stretch;
+  user-select: none;
+}
+.b-shell-panel1 {
+  @include b-panel-box;
+  flex-grow: 1;
+}
+.b-shell-panel2 {
+  @include b-panel-box;
+  height: 19em;
+  flex-shrink: 0;
+}
+.b-shell-sidebar {
+  padding: 3px;
+  overflow: hidden scroll;
+  &, * { text-overflow: ellipsis; white-space: nowrap; }
+}
+.b-shell-resizer {
+  width: var(--b-resize-handle-thickness);
+  background: $b-resize-handle-bgcolor;
+  border-left: $b-resize-handle-border;
+  border-right: $b-resize-handle-border;
+  cursor: col-resize;
+}
+html.b-shell-during-drag .b-app {
+  .b-shell-resizer { background: $b-resize-handle-hvcolor; }
+  * { cursor: col-resize !important; user-select: none !important; }
+}
 
 .b-shell {
   .-modaldialogs, .-modalmenus {
