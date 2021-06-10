@@ -47,6 +47,23 @@ html.b-shell-during-drag .b-app {
   * { cursor: col-resize !important; user-select: none !important; }
 }
 
+.b-shell .-modal-message {
+  .-hfooter {
+    justify-content: space-between;
+    button, push-button {
+      white-space: nowrap;
+      $hpadding: 0.75em;
+      padding-left: $hpadding; padding-right: $hpadding;
+    }
+    &.-manybuttons {
+      width: 100%;
+      button, push-button {
+	width: 100%;
+      }
+    }
+  }
+}
+
 .b-shell {
   .-modaldialogs, .-modalmenus {
     position: fixed; top: 0; left: 0; bottom: 0; right: 0;
@@ -96,11 +113,12 @@ html.b-shell-during-drag .b-app {
 		    :cwd="fs.cwd" @close="fs.resolve()" @select="fs.resolve($event)" />
 
       <!-- Modal Message Popups -->
-      <b-dialog v-for="d in m.modal_dialogs" :key="d.uid"
+      <b-dialog class="-modal-message"
+		v-for="d in m.modal_dialogs" :key="d.uid"
 		:shown="d.visible.value" @update:shown="d.input ($event)"
 		:exclusive="true" bwidth="9em" style="z-index: 93" >
 	<template v-slot:header>
-	  <div>{{ d.header }}</div>
+	  {{ d.header }}
 	</template>
 	<template v-slot:default>
 	  <h-flex style="justify-content: flex-start; align-items: center;">
@@ -109,7 +127,7 @@ html.b-shell-during-drag .b-app {
 	  </h-flex>
 	</template>
 	<template v-slot:footer>
-	  <h-flex :style="d.footerstyle" style="justify-content: space-between" >
+	  <h-flex class="-hfooter" :class="d.footerclass">
 	    <component v-for="(b, i) in d.buttons" :key="i" @click="d.click (i)" :disabled="b.disabled"
 		       :is="b.canfocus ? 'button' : 'push-button'" :autofocus="b.autofocus" >{{ b.label }}</component>
 	  </h-flex>
@@ -262,7 +280,7 @@ function async_modal_dialog (title, btext, buttons = [], icon) {
     header: title,
     body: btext,
     icon: modal_icons[icon] || {},
-    footerstyle: '',
+    footerclass: '',
     buttons: []
   };
   const is_string = s => typeof s === 'string' || s instanceof String;
@@ -277,7 +295,7 @@ function async_modal_dialog (title, btext, buttons = [], icon) {
       m.buttons.push (button);
     }
   if (m.buttons.length >= 2)
-    m.footerstyle = 'width: 100%;';
+    m.footerclass = '-manybuttons';
   shell.m.modal_dialogs.push (m);
   setTimeout (_ => m.visible.value = true, 0); // changing value triggers animation
   return promise;
