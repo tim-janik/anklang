@@ -85,7 +85,7 @@ $duration: 0.25s;
     <transition name="-slide">
       <div class="b-contextmenu-modalshield" ref="shield" v-show='visible' v-if='visible || keepmounted' >
 	<div class='b-contextmenu-area' :class='cmenu_class' ref='contextmenuarea' >
-	  <v-flex class='b-contextmenu' ref='cmenu' start >
+	  <v-flex class='b-contextmenu' :class="popupclass" ref='cmenu' start >
 	    <slot />
 	  </v-flex>
 	</div>
@@ -126,6 +126,7 @@ export default {
   props: { notransitions: { default: false },
 	   keepmounted: { type: Boolean, },
 	   startfocus: { type: Boolean, },
+	   popupclass: { default:'', },
 	   xscale: { default: 1, },
 	   yscale: { default: 1, }, },
   computed: {
