@@ -1212,9 +1212,9 @@ class FocusGuard {
       this.last_focus = document.activeElement;
     // Related: https://developer.mozilla.org/en-US/docs/Web/Accessibility/Keyboard-navigable_JavaScript_widgets
   }
-  push_focus_root (element) {
+  push_focus_root (element, escapecb) {
     const current_focus = document.activeElement && document.activeElement != document.body ? document.activeElement : undefined;
-    this.focus_root_list.unshift ([ element, current_focus]);
+    this.focus_root_list.unshift ([ element, current_focus, escapecb ]);
     if (current_focus)
       this.focus_changed (current_focus, false);
   }
@@ -1268,8 +1268,8 @@ class FocusGuard {
 const the_focus_guard = new FocusGuard();
 
 /** Constrain focus to `element` and its descendants */
-export function push_focus_root (element) {
-  the_focus_guard.push_focus_root (element);
+export function push_focus_root (element, escapecb) {
+  the_focus_guard.push_focus_root (element, escapecb);
 }
 
 /** Remove an `element` previously installed via push_focus_root() */
@@ -1553,13 +1553,6 @@ export function modal_shield (modal_element, opts = {}) {
  */
 export function setup_shield_element (shield, containee, closer)
 {
-  const modal_keyboard_guard = event => {
-    if (event.keyCode == Util.KeyCode.ESCAPE && !event.cancelBubble) {
-      event.preventDefault();
-      event.stopPropagation();
-      closer (event);
-    }
-  };
   const modal_mouse_guard = event => {
     if (!event.cancelBubble && !containee.contains (event.target)) {
       event.preventDefault();
@@ -1573,13 +1566,11 @@ export function setup_shield_element (shield, containee, closer)
       Util.swallow_event ('contextmenu', 0);
     }
   };
-  document.addEventListener ('keydown', modal_keyboard_guard);
   shield.addEventListener ('mousedown', modal_mouse_guard);
-  Util.push_focus_root (containee);
+  Util.push_focus_root (containee, closer);
   let undo_shield = () => {
     if (!undo_shield) return;
     undo_shield = null;
-    document.removeEventListener ('keydown', modal_keyboard_guard);
     shield.removeEventListener ('mousedown', modal_mouse_guard);
     Util.remove_focus_root (containee);
   };
@@ -2194,11 +2185,20 @@ const hotkey_list = [];
 
 function hotkey_handler (event) {
   let kdebug = () => undefined; // kdebug = debug;
+  const focus_root = the_focus_guard?.focus_root_list?.[0];
   // avoid composition events, https://developer.cdn.mozilla.net/en-US/docs/Web/API/Element/keydown_event
   if (event.isComposing || event.keyCode === 229)
     {
       kdebug ("hotkey_handler: ignore-composition: " + event.code + ' (' + document.activeElement.tagName + ')');
       return false;
+    }
+  // allow ESCAPE callback for focus_root
+  if (focus_root && focus_root[2] && Util.match_key_event (event, 'Escape'))
+    {
+      const escapecb = focus_root[2];
+      if (false === escapecb (event))
+	event.preventDefault();
+      return true;
     }
   // give precedence to navigatable element with focus
   if (is_nav_input (document.activeElement) ||
@@ -2220,7 +2220,7 @@ function hotkey_handler (event) {
       return true;
     }
   // restrict global hotkeys during modal dialogs
-  const modal_element = document._b_modal_shields?.[0]?.root || the_focus_guard?.focus_root_list?.[0];
+  const modal_element = !!(document._b_modal_shields?.[0]?.root || focus_root);
   // activate global hotkeys
   const array = hotkey_list;
   for (let i = 0; i < array.length; i++)
