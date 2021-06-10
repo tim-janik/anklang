@@ -38,41 +38,60 @@
 
 <style lang="scss">
   @import 'mixins.scss';
-  body div.b-contextmenu-area {				    //* constraint area for context menu placement */
+  body div.b-contextmenu-modalshield div.b-contextmenu-area { //* constraint area for context menu placement */
     position: fixed; right: 0; bottom: 0;		    //* fixed bottom right */
     display: flex; flex-direction: column; align-items: flex-start;
-    //* transition */
-    $timing: 0.1s;
-    &.v-enter-active	{ transition: opacity $timing ease-out, transform $timing linear; }
-    &.v-leave-active	{ transition: opacity $timing ease-in,  transform $timing linear; }
-    &.v-enter	 	{ opacity: 0.3; transform: translateX(0%) translateY(0%); }
-    &.v-leave-to	{ opacity: 0; transform: translateX(-0%) translateY(-0%) scale(1); }
-    &.b-contextmenu-notransitions { transition: none !important; }
+    pointer-events: none;
+    .b-contextmenu {	//* since menus are often embedded, this needs high specificity */
+      //* The template uses flex+start for layouting to scroll without vertical shrinking */
+      position: relative; max-width: 100%; max-height: 100%;  //* constrain to .b-contextmenu-area */
+      overflow-y: auto; overflow-x: hidden;		    //* scroll if necessary */
+      padding: $b-menu-padding 0;
+      background-color: $b-menu-background; border: 1px outset darken($b-menu-background, 20%);
+      color: $b-menu-foreground;
+      box-shadow: $b-menu-box-shadow;
+      pointer-events: initial;
+      [disabled], [disabled] * { pointer-events: none; }
+    }
   }
-  body .b-contextmenu-shield {
-    background: #0001;
-    transition: background 0.1s;
+.b-contextmenu-placeholder { width: 0; height: 0; pointer-events: none; visibility: hidden; }
+.b-contextmenu-modalshield {
+  position: fixed; top: 0; left: 0; bottom: 0; right: 0;
+  width: 100%; height: 100%;
+  display: flex;
+  background: $b-style-modal-overlay;
+  background: #00000033;
+  pointer-events: all;
+}
+
+//* transition */
+$duration: 0.25s;
+.b-contextmenu-modalshield, .b-contextmenu {
+  transition: opacity $duration linear, transform $duration ease;
+  transform-origin: bottom;
+}
+.b-contextmenu-modalshield {
+  &.-slide-enter-from, &.-slide-leave-to {
+    & { opacity: 0; }
+    .b-contextmenu {
+      transform: translateY(-100% +100% * 0.17) scaleY(0.17);
+    }
   }
-  body .b-contextmenu-area .b-contextmenu {	//* since menus are often embedded, this needs high specificity */
-    //* The template uses flex+start for layouting to scroll without vertical shrinking */
-    position: relative; max-width: 100%; max-height: 100%;  //* constrain to .b-contextmenu-area */
-    overflow-y: auto; overflow-x: hidden;		    //* scroll if necessary */
-    padding: $b-menu-padding 0;
-    background-color: $b-menu-background; border: 1px outset darken($b-menu-background, 20%);
-    color: $b-menu-foreground;
-    box-shadow: $b-menu-box-shadow;
-    [disabled], [disabled] * { pointer-events: none; }
-  }
+}
 </style>
 
 <template>
-  <transition>
-    <div class='b-contextmenu-area' :class='cmenu_class' ref='contextmenuarea' v-show='visible' >
-      <v-flex class='b-contextmenu' ref='cmenu' start v-if='visible || keepmounted' >
-	<slot />
-      </v-flex>
-    </div>
-  </transition>
+  <div class="b-contextmenu-placeholder" >
+    <transition name="-slide">
+      <div class="b-contextmenu-modalshield" ref="shield" v-show='visible' v-if='visible || keepmounted' >
+	<div class='b-contextmenu-area' :class='cmenu_class' ref='contextmenuarea' >
+	  <v-flex class='b-contextmenu' ref='cmenu' start >
+	    <slot />
+	  </v-flex>
+	</div>
+      </div>
+    </transition>
+  </div>
 </template>
 
 <script>
@@ -118,15 +137,21 @@ export default {
 		    onclick: menuitem_onclick, isdisabled: menuitem_isdisabled, }; },
   provide: Util.fwdprovide ('b-contextmenu.menudata',	// context for menuitem descendants
 			    [ 'checkeduris', 'showicons', 'keepmounted', 'clicked', 'close', 'onclick', 'isdisabled' ]),
-  beforeUnmount() {
-    this.map_kbd_hotkeys (false);
-  },
-  unmounted () {
-    this.map_kbd_hotkeys (false);
-  },
   methods: {
     dom_update () {
-      if (!this.resize_observer)
+      const shield = this.$refs.shield; // capture shield for callbacks
+      if (shield?.parentNode == this.$el)
+	{
+	  this.remove_reparentation?.();
+	  document.body.querySelector ('#b-app-shell-modalmenus-layer').insertBefore (shield, null);
+	  this.remove_reparentation = () => shield.parentNode?.removeChild?. (shield);
+	}
+      if (this.resize_timer) {
+	clearTimeout (this.resize_timer);
+	this.resize_timer = 0;
+      }
+      this.resize_observer?.disconnect?.();
+      if (this.visible && !this.resize_observer)
 	{
 	  this.resize_observer = new Util.ResizeObserver ((e, ro) => {
 	    if (this.resize_timer)
@@ -137,21 +162,20 @@ export default {
 	    }, 1);
 	  });
 	}
-      else if (this.resize_timer)
-	{
-	  clearTimeout (this.resize_timer);
-	  this.resize_timer = 0;
-	}
-      this.resize_observer.disconnect();
-      this.update_shield();
-      if (this.$refs.cmenu)
-	{
-	  this.checkitems();
-	  this.position_popup();
-	  this.resize_observer.observe (document.body);
-	  if (this.popup_options?.origin)
-	    this.resize_observer.observe (this.popup_options.origin.$el || this.popup_options.origin);
-	}
+      if (!this.$refs.cmenu) {
+	this.undo_shield_setup?.();
+	this.undo_shield_setup = null;
+      }
+      if (this.$refs.cmenu) // hotkeys are active if !visible
+	this.checkitems();
+      if (this.$refs.cmenu && this.visible) {
+	if (!this.undo_shield_setup)
+	  this.undo_shield_setup = Util.setup_shield_element (this.$refs.shield, this.$refs.contextmenuarea, this.close.bind (this));
+	this.position_popup();
+	this.resize_observer.observe (document.body);
+	if (this.popup_options?.origin)
+	  this.resize_observer.observe (this.popup_options.origin.$el || this.popup_options.origin);
+      }
       if (!this.$refs.cmenu || !this.visible)
 	this.clear_data_contextmenu();
       if (this.visible && !this.was_visible && this.startfocus)
@@ -159,6 +183,20 @@ export default {
       else if (!this.visible && this.was_visible)
 	Util.forget_focus (this.$el);
       this.was_visible = this.visible;
+    },
+    dom_destroy () {
+      this.clear_dragging();
+      this.undo_shield_setup?.();
+      this.undo_shield_setup = null;
+      this.remove_reparentation?.();
+      this.remove_reparentation = null;
+      this.clear_data_contextmenu();
+      this.resize_observer?.disconnect?.();
+      this.resize_observer = null;
+      if (this.resize_timer)
+	clearTimeout (this.resize_timer);
+      this.resize_timer = 0;
+      this.map_kbd_hotkeys (false);
     },
     clear_data_contextmenu ()
     {
@@ -173,18 +211,6 @@ export default {
       this.clear_data_contextmenu();
       this._data_contextmenu_element = element;
       this._data_contextmenu_element.setAttribute ('data-contextmenu', 'true');
-    },
-    dom_destroy () {
-      this.clear_dragging();
-      this.clear_data_contextmenu();
-      this.resize_observer.disconnect();
-      this.resize_observer = undefined;
-      if (this.resize_timer)
-	clearTimeout (this.resize_timer);
-      this.resize_timer = 0;
-      if (this.shield)
-	this.shield.destroy (false);
-      this.shield = undefined;
     },
     position_popup() {
       const area_el = this.$refs.contextmenuarea;
@@ -237,18 +263,6 @@ export default {
       };
       if (this.$refs.cmenu)
 	checkrecursive (this.$refs.cmenu);
-    },
-    update_shield() {
-      const contextmenu = this.$refs.cmenu;
-      if (!contextmenu && this.shield)
-	{
-	  this.shield.destroy (false);
-	  this.shield = undefined;
-	}
-      if (contextmenu && this.visible && !this.shield)
-	this.shield = Util.modal_shield (contextmenu, { class: 'b-contextmenu-shield',
-							root: this.$refs.contextmenuarea,
-							close: this.close });
     },
     popup (event, options) {
       this.popup_options = Object.assign ({}, options || {});
@@ -317,9 +331,8 @@ export default {
 	return;
       this.visible = false;
       // take down shield immediately, to remove focus guards
-      if (this.shield)
-	this.shield.destroy (false);
-      this.shield = undefined;
+      this.undo_shield_setup?.();
+      this.undo_shield_setup = undefined;
       this.$emit ('close');
       App.zmove(); // force changes to be picked up
     },
