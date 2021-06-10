@@ -63,11 +63,11 @@
     <span class="b-devicepanel-before-scroller"> Device Panel </span>
     <h-flex class="b-devicepanel-scroller" >
       <template v-for="proc in devs" :key="proc.$id" >
-	<b-more @click.native.stop="menuopen" :sibling="proc"
+	<b-more @click.stop="menuopen" :sibling="proc"
 		data-tip="**CLICK** Add New Elements" />
 	<b-deviceeditor :device="proc" center />
       </template>
-      <b-more @click.native.stop="menuopen" :sibling="null"
+      <b-more @click.stop="menuopen" :sibling="null"
 	      data-tip="**CLICK** Add New Elements" />
       <b-contextmenu ref="cmenu" @click="menuactivation" yscale="1.6" >
 	<b-menutitle> Device </b-menutitle>
