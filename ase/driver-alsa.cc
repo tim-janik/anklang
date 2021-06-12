@@ -662,8 +662,11 @@ public:
       snd_seq_start_queue (seq_, queue_, nullptr);
     if (!aerror)
       aerror = snd_seq_drain_output (seq_);
-    ADEBUG ("SeqMIDI: %s: queue started: %.5f (%s)", myname, aerror ? NAN : queue_now(), snd_strerror (aerror));
-    return Error::NONE;
+    if (aerror)
+      ADEBUG ("SeqMIDI: %s: initialization failed: %s", myname, snd_strerror (aerror));
+    else
+      ADEBUG ("SeqMIDI: %s: queue started: %.5f", myname, queue_now());
+    return ase_error_from_errno (-aerror, Error::FILE_OPEN_FAILED);
   }
   static std::string
   normalize (const std::string &string)
@@ -827,8 +830,8 @@ public:
   list_drivers (Driver::EntryVec &entries)
   {
     AlsaSeqMidiDriver smd ("?", "");
-    smd.initialize (program_alias() + " Probing");
-    smd.enumerate (&entries);
+    if (smd.initialize (program_alias() + " Probing") == Error::NONE)
+      smd.enumerate (&entries);
   }
   virtual Error // setup iport_ subs_ evparser_ total_fds_
   open (IODir iodir) override
