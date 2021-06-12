@@ -6,7 +6,7 @@
 </docs>
 
 <style lang="scss">
-@import '../styles.scss';
+@import 'mixins.scss';
 
 .b-noteboard {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;

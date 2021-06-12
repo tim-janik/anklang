@@ -306,14 +306,14 @@ export function request_pointer_lock (element) {
 export const vue_mixins = {};
 export const vue_directives = {};
 
-/// Retrieve CSS scope selector for vm_attach_style()
+/// Retrieve CSS scope selector for vm_scope_style()
 export function vm_scope_selector (vm) {
   console.assert (vm.$);
   return vm.$el.nodeName + `[b-scope${vm.$.uid}]`;
 }
 
 /// Attach `css` to Vue instance `vm`, use vm_scope_selector() for the `vm` CSS scope
-export function vm_attach_style (vm, css) {
+export function vm_scope_style (vm, css) {
   if (!vm.$el._vm_style)
     {
       vm.$el.setAttribute ('b-scope' + vm.$.uid, '');
@@ -670,6 +670,46 @@ export function hyphenate (string) {
   return string.replace (uppercase_boundary, '-$1').toLowerCase();
 }
 
+const nop = (() => undefined).bind (undefined);
+
+// Call dom_create, dom_destroy, watch dom_update, then forceUpdate on changes.
+function dom_dispatch() {
+  const el_valid = this.$el instanceof Element || this.$el instanceof Text;
+  const destroying = this.$dom_data.destroying;
+  // dom_create
+  if (el_valid && this.$dom_data.state == 0 && !destroying) {
+    this.$dom_data.state = 1;
+    this.dom_create?.call (this);
+  }
+  /* A note on $watch. Its `expOrFn` is called immediately, the dependencies and return value
+   * are recorded. Later, once a dependency changes, its `expOrFn` is called again, also
+   * recording the dependencies and return value. If the return value changes, `callback`
+   * is invoked. What we need for updating DOM elements, is:
+   * a: the initial call with dependency recording which we use for (expensive) updating,
+   * b: trigger $forceUpdate() once a dependency changes, without intermediate updating.
+   */
+  // dom_update
+  if (el_valid && this.$dom_data.state == 1 && !destroying) {
+    this.$dom_data.unwatch1 = call_unwatch (this.$dom_data.unwatch1); // clear old $watch
+    if (this.dom_update) {
+      let domupdate_watcher = () => {
+	const r = this.dom_update(); // capture dependencies
+	if (r instanceof Promise)
+	  console.warn ('The this.dom_update() method returned a Promise, async functions are not reactive', this);
+	return r;
+      };
+      this.$dom_data.unwatch1 = this.$watch (() => domupdate_watcher(), nop);
+      domupdate_watcher = this.$forceUpdate.bind (this); // dependencies changed
+    }
+  }
+  // dom_destroy
+  if (this.$dom_data.state == 1 && !el_valid) {
+    this.$dom_data.unwatch1 = call_unwatch (this.$dom_data.unwatch1);
+    this.$dom_data.state = 0;
+    this.dom_destroy?.call (this);
+  }
+}
+
 /** Vue mixin to provide DOM handling hooks.
  * This mixin adds instance method callbacks to handle dynamic DOM changes
  * such as drawing into a `<canvas/>`.
@@ -677,134 +717,85 @@ export function hyphenate (string) {
  * changes to data dependencies of reactive methods will queue future updates.
  * However reactive dependency tracking only works for non-async methods.
  *
+ * - dom_create() - Reactive callback method, called after `this.$el` has been created
  * - dom_update() - Reactive callback method, called after `this.$el` has been created
  *   and after Vue component updates. Dependency changes result in `this.$forceUpdate()`.
- * - dom_hidden() - Reactive callback method, called instead of `dom_update()` when
- *   `this.$el` is not fully setup.
+ *   Note, this is also called for `v-if="false"` cases, where `Vue.updated()` is not called.
  * - dom_draw() - Reactive callback method, called during an animation frame, requested
  *   via `dom_queue_draw()`. Dependency changes result in `this.dom_queue_draw()`.
  * - dom_queue_draw() - Cause `this.dom_draw()` to be called during the next animation frame.
- * - dom_destroy() - Callback method, called once the Vue component is unmounted.
- * - dom_ondestroy(cb) - Register callback, called once the Vue component is unmounted.
+ * - dom_destroy() - Callback method, called once `this.$el` was removed.
  */
 vue_mixins.dom_updates = {
   beforeCreate: function () {
-    console.assert (this.$dom_updates == undefined);
-    // install $dom_updates helper on Vue instance
-    this.$dom_updates = {
+    console.assert (this.$dom_data == undefined);
+    // install $dom_data helper on Vue instance
+    this.$dom_data = {
+      state: 0,
       destroying: false,
       // animateplaybackclear: undefined,
-      pending: false,	// dom_update pending
       unwatch1: null,
       unwatch2: null,
       rafid: undefined,
-      dstroyhooks: [],
     };
-    function dom_ondestroy (cb) {
-      this.$dom_updates.dstroyhooks.push (cb);
-    }
-    this.dom_ondestroy = dom_ondestroy;
     function dom_queue_draw () {
-      if (this.$dom_updates.rafid !== undefined)
+      if (this.$dom_data.rafid !== undefined)
 	return;
       function dom_draw_frame () {
-	this.$dom_updates.rafid = undefined;
-	if (!this.$dom_updates.destroying && this.$el instanceof Element)
+	this.$dom_data.rafid = undefined;
+	if (!this.$dom_data.destroying && this.$el instanceof Element)
 	  {
-	    this.$dom_updates.unwatch2 = call_unwatch (this.$dom_updates.unwatch2);
+	    this.$dom_data.unwatch2 = call_unwatch (this.$dom_data.unwatch2);
 	    let once = 0;
 	    const dom_draw_reactive = vm => {
 	      if (once++ == 0 && this.dom_draw() instanceof Promise)
 		console.warn ('dom_draw() returned Promise, async functions are not reactive', this);
 	      return once;  // always change return value and guard against subsequent calls
 	    };
-	    this.$dom_updates.unwatch2 = this.$watch (dom_draw_reactive, this.dom_queue_draw);
+	    this.$dom_data.unwatch2 = this.$watch (dom_draw_reactive, this.dom_queue_draw);
 	  }
       }
-      this.$dom_updates.rafid = requestAnimationFrame (dom_draw_frame.bind (this));
+      this.$dom_data.rafid = requestAnimationFrame (dom_draw_frame.bind (this));
     }
     this.dom_queue_draw = dom_queue_draw;
   }, // beforeCreate
   mounted: function () {
-    console.assert (this.$dom_updates);
-    const has_dom_hidden = Object.hasOwnProperty.call (this, 'dom_hidden');
-    const has_dom_update = Object.hasOwnProperty.call (this, 'dom_update');
-    if (has_dom_hidden)
-      this.dom_hidden (this);
-    if (has_dom_hidden || has_dom_update)
-      this.$forceUpdate();  // always trigger dom_update() after mounted()
+    if (this.$dom_data)
+      this.$forceUpdate();	// ensure updated()
   },
   updated: function () {
-    console.assert (this.$dom_updates);
-    const has_dom_hidden = Object.hasOwnProperty.call (this, 'dom_hidden');
-    const has_dom_update = Object.hasOwnProperty.call (this, 'dom_update');
-    if (this.$dom_updates.pending || (!has_dom_hidden && !has_dom_update))
-      return;
-    const dom_tick_update = _ => {
-      const haselement = this.$el instanceof Element || this.$el instanceof Text;
-      const needhidden = has_dom_hidden && (!haselement || this.$dom_updates.destroying);
-      const needupdate = has_dom_update && haselement && !this.$dom_updates.destroying;
-      /* Note, if vm._watcher is triggered before the $watch from below, it'll re-render
-       * the VNodes and then our watcher is triggered, which causes $forceUpdate() and the
-       * VNode tree is rendered *again*. This causes multiple calles to updated(), too.
-       */
-      let once = 0;
-      const dom_update_reactive = vm => {
-        if (once++ != 0)
-	  return once;	// always change return value and guard against subsequent calls
-	if (needhidden && this.dom_hidden (this) instanceof Promise)
-	  console.warn ('dom_hidden() returned Promise, async functions are not reactive', this);
-	if (needupdate && !this.$dom_updates.destroying && this.dom_update (this) instanceof Promise)
-	  console.warn ('dom_update() returned Promise, async functions are not reactive', this);
-        return once;
-      };
-      /* clean up any old $watch */
-      this.$dom_updates.unwatch1 = call_unwatch (this.$dom_updates.unwatch1);
-      this.$dom_updates.pending = false;
-      /* A note on $watch. Its `expOrFn` is called immediately, the return value and dependencies are
-       * recorded. Later, once a dependency changes, its `expOrFn` is called again, also recording
-       * return value and new dependencies. If the return value changes, `callback` is invoked.
-       * What we need for updating DOM elements, is:
-       * a: the initial call with dependency recording which we use for (expensive) updating,
-       * b: trigger $forceUpdate() once a dependency changes, without intermediate expensive updating.
-       */
-      this.$dom_updates.unwatch1 = this.$watch (dom_update_reactive, this.$forceUpdate);
-    };
-    this.$nextTick (dom_tick_update);
-    this.$dom_updates.pending = true;
+    if (this.$dom_data)
+      dom_dispatch.call (this);
   },
   beforeUnmount: function () {
-    console.assert (this.$dom_updates);
-    this.$dom_updates.destroying = true;
-    this.$dom_updates.unwatch1 = call_unwatch (this.$dom_updates.unwatch1);
-    this.$dom_updates.unwatch2 = call_unwatch (this.$dom_updates.unwatch2);
+    if (!this.$dom_data)
+      return;
+    this.$dom_data.destroying = true;
+    this.$dom_data.unwatch1 = call_unwatch (this.$dom_data.unwatch1);
+    this.$dom_data.unwatch2 = call_unwatch (this.$dom_data.unwatch2);
     this.dom_trigger_animate_playback (false);
+    dom_dispatch.call (this);
   },
   unmounted: function () {
-    const has_dom_destroy = Object.hasOwnProperty.call (this, 'dom_destroy');
-    if (has_dom_destroy)
-      this.dom_destroy (this);
-    while (this.$dom_updates.dstroyhooks.length)
-      this.$dom_updates.dstroyhooks.pop().call (this);
-    if (this.$dom_updates.rafid !== undefined)
+    if (this.$dom_data.rafid !== undefined)
       {
-	cancelAnimationFrame (this.$dom_updates.rafid);
-	this.$dom_updates.rafid = undefined;
+	cancelAnimationFrame (this.$dom_data.rafid);
+	this.$dom_data.rafid = undefined;
       }
   },
   methods: {
     dom_trigger_animate_playback (flag) {
       if (flag === undefined)
-	return !!this.$dom_updates.animateplaybackclear;
-      if (flag && !this.$dom_updates.animateplaybackclear)
+	return !!this.$dom_data.animateplaybackclear;
+      if (flag && !this.$dom_data.animateplaybackclear)
 	{
 	  console.assert (this.dom_animate_playback);
-	  this.$dom_updates.animateplaybackclear = Util.add_frame_handler (this.dom_animate_playback.bind (this));
+	  this.$dom_data.animateplaybackclear = Util.add_frame_handler (this.dom_animate_playback.bind (this));
 	}
-      else if (!flag && this.$dom_updates.animateplaybackclear)
+      else if (!flag && this.$dom_data.animateplaybackclear)
 	{
-	  this.$dom_updates.animateplaybackclear();
-	  this.$dom_updates.animateplaybackclear = undefined;
+	  this.$dom_data.animateplaybackclear();
+	  this.$dom_data.animateplaybackclear = undefined;
 	}
     },
   },
@@ -1142,7 +1133,7 @@ export function is_nav_input (element) {
     "EMBED",
     "IFRAME",
     "OBJECT",
-    "applet",
+    "APPLET",
   ];
   if (in_array (element.tagName, nav_elements))
     return true;
@@ -1213,9 +1204,9 @@ class FocusGuard {
       this.last_focus = document.activeElement;
     // Related: https://developer.mozilla.org/en-US/docs/Web/Accessibility/Keyboard-navigable_JavaScript_widgets
   }
-  push_focus_root (element) {
+  push_focus_root (element, escapecb) {
     const current_focus = document.activeElement && document.activeElement != document.body ? document.activeElement : undefined;
-    this.focus_root_list.unshift ([ element, current_focus]);
+    this.focus_root_list.unshift ([ element, current_focus, escapecb ]);
     if (current_focus)
       this.focus_changed (current_focus, false);
   }
@@ -1269,8 +1260,8 @@ class FocusGuard {
 const the_focus_guard = new FocusGuard();
 
 /** Constrain focus to `element` and its descendants */
-export function push_focus_root (element) {
-  the_focus_guard.push_focus_root (element);
+export function push_focus_root (element, escapecb) {
+  the_focus_guard.push_focus_root (element, escapecb);
 }
 
 /** Remove an `element` previously installed via push_focus_root() */
@@ -1405,147 +1396,34 @@ export function forget_focus (element) {
     }
 }
 
-/** Installing a modal shield prevents mouse and key events for all elements */
-class ModalShield {
-  defaults() { return {
-    close_handler: undefined,
-    remove_focus_root: undefined,
-    placeholder: undefined, root: undefined,
-    modal: undefined, overlay: undefined,
-  }; }
-  constructor (modal_element, opts) {
-    Object.assign (this, this.defaults());
-    this.exclusive = opts.exclusive || opts.exclusive === undefined;
-    this.close_handler = opts.close;
-    this.modal = modal_element;
-    this.root = opts.root || this.modal;
-    // prevent focus during modal shield
-    push_focus_root (modal_element);
-    this.remove_focus_root = () => remove_focus_root (modal_element);
-    if (this.root.parentElement)
-      this.root.parentElement.replaceChild (this.placeholder = document.createComment (''), this.root);
-    // install shield overlay on <body/>
-    this.overlay = document.createElement ("DIV");
-    this.overlay.appendChild (opts.root || this.root);
-    Object.assign (this.overlay.style, {
-      position: 'fixed', top: 0, right: 0, bottom: 0, left: 0,
-      'z-index': 9999,  // stay atop any siblings
-      display: 'flex', 'justify-content': 'center', 'align-items': 'center',
-    });
-    document.body.appendChild (this.overlay);
-    // support custom css class
-    if (opts.class)
-      this.toggle (opts.class);
-    // keep a shield list and handle keyboard / mouse events on the shield
-    if (!(document._b_modal_shields instanceof Array)) {
-      document._b_modal_shields = [];
-      document.addEventListener ('keydown', ModalShield.modal_keyboard_guard);
-      document.addEventListener ('mousedown', ModalShield.modal_mouse_guard);
+/** Setup Element shield for a modal containee.
+ * Capture focus movements inside `containee`, call `closer(event)` for
+ * pointer clicks on `shield` or when `ESCAPE` is pressed.
+ */
+export function setup_shield_element (shield, containee, closer)
+{
+  const modal_mouse_guard = event => {
+    if (!event.cancelBubble && !containee.contains (event.target)) {
+      event.preventDefault();
+      event.stopPropagation();
+      closer (event);
+      /* Browsers may emit two events 'mousedown' and 'contextmenu' for button3 clicks.
+       * This may cause the shield's owning widget (e.g. a menu) to reappear, because
+       * in this mousedown handler we can only prevent further mousedown handling.
+       * So we set up a timer that swallows the next 'contextmenu' event.
+       */
+      Util.swallow_event ('contextmenu', 0);
     }
-    document._b_modal_shields.unshift (this);
-  }
-  toggle (cssclass) {
-    if (this.overlay)
-      {
-	const overlay = this.overlay;
-	window.requestAnimationFrame (() => overlay.classList.toggle (cssclass));
-	// use animation-frame to allow cssclass to start transitions
-	return !overlay.classList.contains (cssclass);
-      }
-    return false;
-  }
-  destroy (call_handler = false) {
-    if (!this.overlay)
-      return false;	// this has been detroyed already
-    if (this.placeholder && this.placeholder.parentElement)
-      {
-	if (this.root.parentElement)
-	  this.placeholder.parentElement.replaceChild (this.root, this.placeholder);
-	else
-	  this.placeholder.parentElement.removeChild (this.placeholder);
-      }
-    this.placeholder = undefined;
-    if (this.overlay.parentNode)
-      this.overlay.parentNode.removeChild (this.overlay);
-    while (this.overlay.children.length)
-      this.overlay.removeChild (this.overlay.children[0]);
-    this.overlay = undefined;
-    array_remove (document._b_modal_shields, this);
-    if (document._b_modal_shields.length == 0)
-      {
-	document._b_modal_shields = undefined;
-	document.removeEventListener ('keydown', ModalShield.modal_keyboard_guard);
-	document.removeEventListener ('mousedown', ModalShield.modal_mouse_guard);
-      }
-    if (this.remove_focus_root)
-      this.remove_focus_root();
-    this.remove_focus_root = undefined;
-    const close_handler = this.close_handler;
-    this.close_handler = undefined;
-    if (call_handler && close_handler)
-      close_handler();
-    return true;
-  }
-  close() {
-    if (this.close_handler)
-      this.close_handler();
-  }
-  static modal_keyboard_guard (event) {
-    if (document._b_modal_shields.length > 0)
-      {
-	const shield = document._b_modal_shields[0];
-	if (event.keyCode == KeyCode.ESCAPE &&
-	    !event.cancelBubble)
-	  {
-	    event.preventDefault();
-	    event.stopPropagation();
-	    shield.close();
-	  }
-      }
-  }
-  static modal_mouse_guard (event) {
-    if (document._b_modal_shields.length > 0)
-      {
-	const shield = document._b_modal_shields[0];
-	if (!event.cancelBubble && !shield.modal.contains (event.target))
-	  {
-	    event.preventDefault();
-	    event.stopPropagation();
-	    shield.close();
-	    /* Browsers may emit two events 'mousedown' and 'contextmenu' for button3 clicks.
-	     * This may cause the shield's owning widget (e.g. a menu) to reappear, because
-	     * in this mousedown handler we can only prevent further mousedown handling.
-	     * So we set up a timer that swallows the next 'contextmenu' event.
-	     */
-	    swallow_event ('contextmenu', 0);
-	  }
-      }
-  }
-  static modal_close_exclusives () {
-    const tried_close = [];
-    const last_exclusive = () => {
-      if (document._b_modal_shields)
-	for (const shield of document._b_modal_shields)
-	  if (shield.exclusive && !in_array (shield, tried_close))
-	    return shield;
-    };
-    let shield = last_exclusive();
-    while (shield)
-      {
-	tried_close.push (shield);
-	shield.close();
-	shield = last_exclusive();
-      }
-  }
-}
-
-/** Create a modal overlay under `body` and reparent `modal_element` to guard against outside DOM events */
-export function modal_shield (modal_element, opts = {}) {
-  console.assert (modal_element instanceof Element);
-  if (opts.root)
-    console.assert (opts.root.contains (modal_element));
-  ModalShield.modal_close_exclusives();
-  return new ModalShield (modal_element, opts);
+  };
+  shield.addEventListener ('mousedown', modal_mouse_guard);
+  Util.push_focus_root (containee, closer);
+  let undo_shield = () => {
+    if (!undo_shield) return;
+    undo_shield = null;
+    shield.removeEventListener ('mousedown', modal_mouse_guard);
+    Util.remove_focus_root (containee);
+  };
+  return undo_shield;
 }
 
 /** Use capturing to swallow any `type` events until `timeout` has passed */
@@ -2156,11 +2034,20 @@ const hotkey_list = [];
 
 function hotkey_handler (event) {
   let kdebug = () => undefined; // kdebug = debug;
+  const focus_root = the_focus_guard?.focus_root_list?.[0];
   // avoid composition events, https://developer.cdn.mozilla.net/en-US/docs/Web/API/Element/keydown_event
   if (event.isComposing || event.keyCode === 229)
     {
       kdebug ("hotkey_handler: ignore-composition: " + event.code + ' (' + document.activeElement.tagName + ')');
       return false;
+    }
+  // allow ESCAPE callback for focus_root
+  if (focus_root && focus_root[2] && Util.match_key_event (event, 'Escape'))
+    {
+      const escapecb = focus_root[2];
+      if (false === escapecb (event))
+	event.preventDefault();
+      return true;
     }
   // give precedence to navigatable element with focus
   if (is_nav_input (document.activeElement) ||
@@ -2182,7 +2069,7 @@ function hotkey_handler (event) {
       return true;
     }
   // restrict global hotkeys during modal dialogs
-  const modal_element = document._b_modal_shields?.[0]?.root;
+  const modal_element = !!(document._b_modal_shields?.[0]?.root || focus_root);
   // activate global hotkeys
   const array = hotkey_list;
   for (let i = 0; i < array.length; i++)

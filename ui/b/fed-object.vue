@@ -73,6 +73,7 @@ import * as Util from '../util.js';
 const empty_list = Object.freeze ([]);
 
 async function list_fields (proplist) {
+  const disconnectors = [];
   const groups = {}, attrs = {
     min: 0, max: 0, step: 0,
     readonly: false,
@@ -113,8 +114,8 @@ async function list_fields (proplist) {
 		    fetch_: () => xprop.is_numeric_ ? xprop.value_.num : xprop.value_.text,
 		    __proto__: prop,
       };
-      const discon_ = xprop.on ('change', _ => xprop.update_());
-      this.dom_ondestroy (discon_);
+      const disconnect = xprop.on ('change', _ => xprop.update_());
+      disconnectors.push (disconnect);
       xprop = await Util.object_await_values (xprop);
       xprop.has_choices_ = xprop.hints_.search (/:choice:/) >= 0;
       awaits.push (xprop.update_()); // relies on xprop.has_choices_
@@ -147,19 +148,20 @@ async function list_fields (proplist) {
 	}
       Object.freeze (groups[k]);
     }
+  this.replace_disconnectors (disconnectors);
   return Object.freeze (grouplist);
 }
 
-function component_data () {
+function data () {
   const data = {
-    gprops: { default: [], getter: c => list_fields.call (this, this.value), },
+    gprops: { default: [], getter: c => this.list_fields (this.value), },
   };
   return this.observable_from_getters (data, () => this.value);
 }
 
 export default {
   sfc_template,
-  data() { return component_data.call (this); },
+  data,
   props: {
     readonly:	{ default: false, },
     augment:    { type: Function, },
@@ -168,9 +170,16 @@ export default {
     default:	{},
   },
   emits: { input: null, },
+  unmounted() {
+    this.replace_disconnectors();
+  },
   methods: {
-    list_fields() {
-      return this.gprops;
+    list_fields,
+    replace_disconnectors (new_disconnectors) {
+      if (this.disconnectors)
+	while (this.disconnectors.length)
+	  this.disconnectors.pop().call();
+      this.disconnectors = new_disconnectors;
     },
     apply_field (fieldname, value) {
       const o = this.object;

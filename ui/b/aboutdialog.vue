@@ -2,7 +2,7 @@
 
 <docs>
   # B-ABOUTDIALOG
-  A [b-modaldialog] that displays version information about Anklang.
+  A modal [b-dialog] that displays version information about Anklang.
   ## Events:
   *close*
   : A *close* event is emitted once the "Close" button activated.
@@ -27,8 +27,7 @@
 </style>
 
 <template>
-  <b-modaldialog class="b-aboutdialog"
-		 :shown="shown" @update:shown="$emit ('update:shown', $event)" >
+  <b-dialog class="b-aboutdialog" :shown="shown" @update:shown="$emit ('update:shown', $event)" >
     <template v-slot:header>
       <div>About ANKLANG</div>
     </template>
@@ -42,7 +41,7 @@
     <template v-slot:footer>
       <div><button autofocus @click="$emit ('update:shown', false)" > Close </button></div>
     </template>
-  </b-modaldialog>
+  </b-dialog>
 </template>
 
 <script>

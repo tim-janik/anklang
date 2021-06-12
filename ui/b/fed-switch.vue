@@ -47,7 +47,7 @@
 export default {
   sfc_template,
   props: {
-    value:	{ type: [ String, Boolean ], },
+    value:	{ type: [ String, Number, Boolean ], },
     readonly:	{ type: Boolean, default: false, },
   },
   emits: { input: null, },

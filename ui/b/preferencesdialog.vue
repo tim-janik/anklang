@@ -2,7 +2,7 @@
 
 <docs>
   # B-PREFERENCESDIALOG
-  A [b-modaldialog] to edit preferences.
+  A modal [b-dialog] to edit preferences.
   ## Events:
   *close*
   : A *close* event is emitted once the "Close" button activated.
@@ -21,8 +21,7 @@
 </style>
 
 <template>
-  <b-modaldialog class="b-preferencesdialog"
-		 :shown="shown" @update:shown="$emit ('update:shown', $event)" >
+  <b-dialog class="b-preferencesdialog" :shown="shown" @update:shown="$emit ('update:shown', $event)" >
     <template v-slot:header>
       <div>Anklang Preferences</div>
     </template>
@@ -30,7 +29,7 @@
     <template v-slot:footer>
       <div><button autofocus @click="$emit ('update:shown', false)" > Close </button></div>
     </template>
-  </b-modaldialog>
+  </b-dialog>
 </template>
 
 <script>

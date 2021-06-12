@@ -2,7 +2,7 @@
 
 <docs>
   # B-FILEDIALOG
-  A [b-modaldialog] that allows file and directory selections.
+  A modal [b-dialog] that allows file and directory selections.
   ## Properties:
   *title*
   : The dialog title.
@@ -22,8 +22,9 @@
 <style lang="scss">
   @import 'mixins.scss';
   .b-filedialog {
-    &.b-modaldialog {
-      width: 60em; max-width: 95%;
+    .b-dialog {
+      width: unset; //* <- leave width to INPUT.-file, see below */
+      max-width: 95%;
       height: 45em; max-height: 95%;
       overflow-y: hidden;
     }
@@ -59,22 +60,22 @@
 
       &::selection { background: #2d53c4; }
     }
-    html[chrome] & input.-file {
-      /* Unfortunately chrome <input/> causes re-layout on every value change, which
+    & input.-file {
+      /* Unfortunately chrome <INPUT/> causes re-layout on every value change, which
        * can badly affect editing performance for complex/large document setups:
        *   https://bugs.chromium.org/p/chromium/issues/detail?id=1116001
        * As workaround, push the element onto its own layer and use fixed sizes.
        */
-      height: 1.34em; 	//* fixed size */
-      width: 40em;	//* fixed size */
-      max-width: 50vw;	//* avoid h-scrolling if 40emis too large */
-      transform: translate(0px, 0px); //* push onto its own layer */
+      z-index: 1;	//* push onto its own layer */
+      height: 1.4em; 	//* fixed size */
+      width: 55em;      //* fixed size */
+      max-width: 80vw;  //* avoid h-scrolling if fixed width is too large */
     }
   }
 </style>
 
 <template>
-  <b-modaldialog class="b-filedialog" :shown="true" @close="emit_close()" >
+  <b-dialog class="b-filedialog" :shown="true" @close="emit_close()" >
     <template v-slot:header>
       <div>File Selector</div>
     </template>
@@ -86,7 +87,7 @@
       <span  class="-col1 -row2 -file" > File: </span>
       <input class="-col2 -row2 -file" ref="fileentry" type="text" :value="r.filename"
 	     @keydown.enter="fileentry_enter ($event)" @change="fileentry_change()"
-	     @keydown.down="Util.keydown_move_focus ($event)" >
+	     @keydown.down="Util.keydown_move_focus ($event)" autofocus >
 
       <span class="-col1 -row3 -places" > Places </span>
       <b-folderview class="-col2 -row3" ref="folderview" :entries="r.entries"
@@ -100,7 +101,7 @@
 	<button @click="emit_close()" > Close </button>
       </h-flex>
     </template>
-  </b-modaldialog>
+  </b-dialog>
 </template>
 
 <script>
