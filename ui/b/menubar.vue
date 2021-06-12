@@ -209,7 +209,7 @@ async function save_project (asnew = false) {
       Data.project.set_custom ('filename', filename);
       let msg = '# Project Saved\n';
       msg += '  \n  \nProject saved to: ``' + filename + '``\n';
-      Util.show_note (msg);
+      Util.create_note (msg);
       return true;
     }
   App.async_modal_dialog ("File IO Error",

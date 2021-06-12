@@ -15,6 +15,7 @@ ASE_STRUCT_DECLS (DeviceInfo);
 ASE_STRUCT_DECLS (DriverEntry);
 ASE_STRUCT_DECLS (ParamInfo);
 ASE_STRUCT_DECLS (Resource);
+ASE_STRUCT_DECLS (UserNote);
 
 // == Class Forward Declarations ==
 ASE_CLASS_DECLS (AudioChain);
