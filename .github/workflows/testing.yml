@@ -1,0 +1,22 @@
+name: Testing
+on: [push]
+jobs:
+  Testing:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: satackey/action-docker-layer-caching@v0.0.11
+      continue-on-error: true
+    - name: Show Version
+      run: misc/version.sh
+    - name: Build Project
+      run: misc/dbuild.sh -i make -j `nproc`
+    - name: Run Tests
+      run: misc/dbuild.sh make check
+    - name: Ping IRC
+      if: always()
+      run: |
+        sudo apt-get install python3-pip && pip install pydle pure-sasl
+        STATUS="${{ job.status }}" && STATUS="${STATUS^^}"
+        MSG=$(git log -1 --format="%cn $(git branch --show-current) [$STATUS] %s ${{ github.event.head_commit.url }}")
+        python3 .github/workflows/notify_irc.py --channel '#anklang' --server irc.libera.chat --nickname Anklang-ghnotify --message "$MSG"
