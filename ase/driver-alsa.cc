@@ -4,6 +4,7 @@
 #include "platform.hh"
 #include "internal.hh"
 #include <limits.h> // LONG_MAX
+#include <atomic>
 #include <cmath>
 
 #define ADEBUG(...)             Ase::debug ("alsa", __VA_ARGS__)
@@ -88,9 +89,22 @@ substitute_string (const std::string &from, const std::string &to, const std::st
   return target;
 }
 
+static std::atomic<int> silence_error_handler = { 0 };
+
 static void
-silent_error_handler (const char *file, int line, const char *function, int err, const char *fmt, ...)
-{}
+ase_handle_alsa_error (const char *file, int line, const char *function, int err, const char *fmt, ...)
+{
+  if (silence_error_handler != 0)
+    return;
+  constexpr const int MAXBUFFER = 8 * 1024;
+  char buffer[MAXBUFFER + 2] = { 0, }, *b = buffer, *e = b + MAXBUFFER;
+  va_list argv;
+  va_start (argv, fmt);
+  const int plen = vsnprintf (b, e - b, fmt, argv);
+  (void) plen;
+  va_end (argv);
+  ADEBUG ("ALSA-Error: %s", b);
+}
 
 static snd_output_t *snd_output = nullptr; // used for debugging
 
@@ -98,6 +112,7 @@ static void
 init_lib_alsa()
 {
   static const bool ASE_USED initialized = [] {
+    snd_lib_error_set_handler (ase_handle_alsa_error);
     return snd_output_stdio_attach (&snd_output, stderr, 0);
   } ();
 }
@@ -218,7 +233,7 @@ class AlsaPcmDriver : public PcmDriver {
   uint          block_size_ = 0;
   uint          n_channels_ = 0;
   uint          n_periods_ = 0;
-  uint          period_size_ = 0;       // count in frames
+  int           period_size_ = 0;       // count in frames
   int16        *period_buffer_ = nullptr;
   uint          read_write_count_ = 0;
   String        alsadev_;
@@ -292,12 +307,12 @@ public:
     flags_ |= Flags::WRITABLE * require_writable;
     n_channels_ = config.n_channels;
     // try open
-    snd_lib_error_set_handler (silent_error_handler);
+    silence_error_handler++;
     if (!aerror && require_readable)
       aerror = snd_pcm_open (&read_handle_, alsadev_.c_str(), SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK);
     if (!aerror && require_writable)
       aerror = snd_pcm_open (&write_handle_, alsadev_.c_str(), SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
-    snd_lib_error_set_handler (NULL);
+    silence_error_handler--;
     // try setup
     const uint period_size = config.block_length;
     Error error = !aerror ? Error::NONE : ase_error_from_errno (-aerror, Error::FILE_OPEN_FAILED);
@@ -430,7 +445,7 @@ public:
   void
   pcm_retrigger ()
   {
-    snd_lib_error_set_handler (silent_error_handler);
+    silence_error_handler++;
     ADEBUG ("PCM: %s: retriggering device (r=%s w=%s)...",
             alsadev_, !read_handle_ ? "<CLOSED>" : snd_pcm_state_name (snd_pcm_state (read_handle_)),
             !write_handle_ ? "<CLOSED>" : snd_pcm_state_name (snd_pcm_state (write_handle_)));
@@ -459,7 +474,7 @@ public:
             // printerr ("%s: written=%d, left: %d / %d\n", __func__, n, snd_pcm_avail (write_handle_), n_periods_ * period_size_);
           }
       }
-    snd_lib_error_set_handler (NULL);
+    silence_error_handler--;
   }
   virtual bool
   pcm_check_io (int64 *timeoutp) override
@@ -473,13 +488,13 @@ public:
             snd_pcm_status (read_handle_, stat);
             rs = snd_pcm_state (read_handle_);
           }
-        uint rn = snd_pcm_status_get_avail (stat);
+        int rn = snd_pcm_status_get_avail (stat);
         if (write_handle_)
           {
             snd_pcm_status (write_handle_, stat);
             ws = snd_pcm_state (write_handle_);
           }
-        uint wn = snd_pcm_status_get_avail (stat);
+        int wn = snd_pcm_status_get_avail (stat);
         printerr ("ALSA: check_io: read=%4u/%4u (%s) write=%4u/%4u (%s) block=%u: %s\n",
                   rn, period_size_ * n_periods_, snd_pcm_state_name (rs),
                   wn, period_size_ * n_periods_, snd_pcm_state_name (ws),
@@ -534,9 +549,9 @@ public:
         if (n_frames < 0) // errors during read, could be underrun (-EPIPE)
           {
             ADEBUG ("PCM: %s: read() error: %s", alsadev_, snd_strerror (n_frames));
-            snd_lib_error_set_handler (silent_error_handler);
+            silence_error_handler++;
             snd_pcm_prepare (read_handle_);     // force retrigger
-            snd_lib_error_set_handler (NULL);
+            silence_error_handler--;
             n_frames = n_left;
             const size_t frame_size = n_channels_ * sizeof (period_buffer_[0]);
             memset (period_buffer_, 0, n_frames * frame_size);
@@ -558,9 +573,9 @@ public:
     assert_return (n == period_size_ * n_channels_);
     if (read_handle_ && read_write_count_ < 1)
       {
-        snd_lib_error_set_handler (silent_error_handler); // silence ALSA about -EPIPE
+        silence_error_handler++; // silence ALSA about -EPIPE
         snd_pcm_forward (read_handle_, period_size_);
-        snd_lib_error_set_handler (NULL);
+        silence_error_handler--;
         read_write_count_ += 1;
       }
     read_write_count_ -= 1;
@@ -575,9 +590,9 @@ public:
         if (n < 0)                      // errors during write, could be overrun (-EPIPE)
           {
             ADEBUG ("PCM: %s: write() error: %s", alsadev_, snd_strerror (n));
-            snd_lib_error_set_handler (silent_error_handler);
+            silence_error_handler++;
             snd_pcm_prepare (write_handle_);    // force retrigger
-            snd_lib_error_set_handler (NULL);
+            silence_error_handler--;
             return;
           }
         n_left -= n;
@@ -647,7 +662,7 @@ public:
       snd_seq_start_queue (seq_, queue_, nullptr);
     if (!aerror)
       aerror = snd_seq_drain_output (seq_);
-    ADEBUG ("SeqMIDI: %s: queue started: %.5f (%s)", myname, queue_now(), snd_strerror (aerror));
+    ADEBUG ("SeqMIDI: %s: queue started: %.5f (%s)", myname, aerror ? NAN : queue_now(), snd_strerror (aerror));
     return Error::NONE;
   }
   static std::string
