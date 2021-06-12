@@ -29,4 +29,20 @@ ClipImpl::end_tick ()
   return 0;
 }
 
+void
+ClipImpl::assign_range (int32 starttick, int32 stoptick)
+{}
+
+ClipNoteS
+ClipImpl::list_all_notes ()
+{
+  return {};
+}
+
+int32
+ClipImpl::change_note (int32 id, int32 tick, int32 duration, int32 key, int32 fine_tune, double velocity)
+{
+  return {};
+}
+
 } // Ase
