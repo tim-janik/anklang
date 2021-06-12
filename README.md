@@ -1,10 +1,10 @@
 <!-- BADGES -->
-[![Issues][issues-badge]][issues-url]
 [![License][mpl2-badge]][mpl2-url]
 [![Plugins][lgpl-plugins-badge]][lgpl21-url]
-[![Stargazers][stars-badge]][stars-url]
-[![Forks][forks-badge]][forks-url]
+[![Issues][issues-badge]][issues-url]
 [![Contributors][contributors-badge]][contributors-url]
+[![Test Build][testing-badge]][testing-url]
+<!-- [![Stargazers][stars-badge]][stars-url] [![Forks][forks-badge]][forks-url] -->
 
 <!-- HEADING -->
 ANKLANG
@@ -72,4 +72,6 @@ Plugins are often licensed under
 [lgpl21-url]: https://github.com/tim-janik/anklang/blob/trunk/misc/LGPL-2.1.txt
 [stars-badge]: https://img.shields.io/github/stars/tim-janik/anklang.svg?style=for-the-badge
 [stars-url]: https://github.com/tim-janik/anklang/stargazers
+[testing-url]: https://github.com/tim-janik/anklang/actions/workflows/testing.yml
+[testing-badge]: https://img.shields.io/github/workflow/status/tim-janik/anklang/Testing?style=for-the-badge
 <!-- https://github.com/othneildrew/Best-README-Template -->
