@@ -1,9 +1,14 @@
 <!-- BADGES -->
 [![License][mpl2-badge]][mpl2-url]
 [![Plugins][lgpl-plugins-badge]][lgpl21-url]
-[![Issues][issues-badge]][issues-url]
 [![Contributors][contributors-badge]][contributors-url]
-[![Test Build][testing-badge]][testing-url]
+[![Commits][commits-badge]][commits-url]
+[![Test Build][testing-badge]][testing-url] \
+[![Version][version-badge]][version-url]
+[![Downloads][downloads-badge]][downloads-url]
+[![Watchers][watchers-badge]][watchers-url]
+[![Issues][issues-badge]][issues-url]
+[![Live Chat][irc-badge]][irc-url]
 <!-- [![Stargazers][stars-badge]][stars-url] [![Forks][forks-badge]][forks-url] -->
 
 <!-- HEADING -->
@@ -60,18 +65,32 @@ Plugins are often licensed under
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-badge]: https://img.shields.io/github/contributors/tim-janik/anklang.svg?style=for-the-badge
+[commits-badge]: https://img.shields.io/github/commit-activity/w/tim-janik/anklang?label=Commits&style=for-the-badge&color=green
+[commits-url]: https://github.com/tim-janik/anklang/commits
+[contributors-badge]: https://img.shields.io/github/contributors/tim-janik/anklang.svg?style=for-the-badge&color=green
 [contributors-url]: https://github.com/tim-janik/anklang/graphs/contributors
+[coverity-badge]: https://img.shields.io/coverity/scan/23262.svg?style=for-the-badge
+[downloads-badge]: https://img.shields.io/github/downloads/tim-janik/anklang/total?style=for-the-badge&color=blue
+[downloads-url]: https://github.com/tim-janik/anklang/releases
+[drivers-badge]: https://img.shields.io/badge/Drivers-MIDI%20|%20ALSA%20|%20%20Pulse%20|%20Jack-999?style=for-the-badge
+[fixme-badge]: https://img.shields.io/github/search/tim-janik/anklang/fixme?label=FIXME&style=for-the-badge
 [forks-badge]: https://img.shields.io/github/forks/tim-janik/anklang.svg?style=for-the-badge
 [forks-url]: https://github.com/tim-janik/anklang/network/members
-[issues-badge]: https://img.shields.io/github/issues/tim-janik/anklang.svg?style=for-the-badge
+[irc-badge]: https://img.shields.io/badge/Live%20Chat-Libera%20IRC-blueviolet?style=for-the-badge
+[irc-url]: https://web.libera.chat/#Anklang
+[issues-badge]: https://img.shields.io/github/issues-raw/tim-janik/anklang.svg?style=for-the-badge
 [issues-url]: https://github.com/tim-janik/anklang/issues
-[mpl2-badge]: https://img.shields.io/static/v1?label=License&message=MPL-2&color=9c0&style=for-the-badge
-[mpl2-url]: https://github.com/tim-janik/anklang/blob/trunk/misc/MPL-2.0.txt
 [lgpl-plugins-badge]: https://img.shields.io/static/v1?label=Plugins&message=LGPL-2.1%2B&color=9c0&style=for-the-badge
 [lgpl21-url]: https://github.com/tim-janik/anklang/blob/trunk/misc/LGPL-2.1.txt
+[mpl2-badge]: https://img.shields.io/static/v1?label=License&message=MPL-2&color=9c0&style=for-the-badge
+[mpl2-url]: https://github.com/tim-janik/anklang/blob/trunk/misc/MPL-2.0.txt
+[packages-badge]: https://img.shields.io/badge/Packages-AppImage%20|%20deb-999?style=for-the-badge
 [stars-badge]: https://img.shields.io/github/stars/tim-janik/anklang.svg?style=for-the-badge
 [stars-url]: https://github.com/tim-janik/anklang/stargazers
-[testing-url]: https://github.com/tim-janik/anklang/actions/workflows/testing.yml
 [testing-badge]: https://img.shields.io/github/workflow/status/tim-janik/anklang/Testing?style=for-the-badge
+[testing-url]: https://github.com/tim-janik/anklang/actions
+[version-badge]: https://img.shields.io/github/v/release/tim-janik/anklang?label=version&style=for-the-badge
+[version-url]: https://github.com/tim-janik/anklang/tags
+[watchers-badge]: https://img.shields.io/github/watchers/tim-janik/anklang?style=for-the-badge
+[watchers-url]: https://github.com/tim-janik/anklang/graphs/traffic
 <!-- https://github.com/othneildrew/Best-README-Template -->
