@@ -46,6 +46,7 @@ class AudioEngine;
 
 struct Event;
 class EventConnection;
+using EventConnectionW = std::weak_ptr<EventConnection>;
 using EventHandler = std::function<void (const Event&)>;
 
 class SharedBase;

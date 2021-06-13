@@ -107,7 +107,7 @@ EmittableImpl::on_event (const String &eventselector, const EventHandler &eventh
   if (!ed_)
     ed_ = new EventDispatcher();
   ed_->connections.push_back (std::make_shared<EventConnection> (*ed_, eventselector, eventhandler));
-  std::weak_ptr<EventConnection> wptr = ed_->connections.back();
+  EventConnectionW wptr = ed_->connections.back();
   return *static_cast<Connection*> (&wptr);
 }
 

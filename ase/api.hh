@@ -103,7 +103,7 @@ ChoiceS& operator+= (ChoiceS &choices, Choice &&newchoice);
 /// Base type for classes with Event subscription.
 class Emittable : public virtual SharedBase {
 public:
-  struct Connection : std::weak_ptr<EventConnection> {
+  struct Connection : EventConnectionW {
     friend class Emittable;
     bool             connected  () const;
     void             disconnect () const;
