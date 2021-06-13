@@ -103,12 +103,12 @@ ChoiceS& operator+= (ChoiceS &choices, Choice &&newchoice);
 /// Base type for classes with Event subscription.
 class Emittable : public virtual SharedBase {
 public:
-  struct Connection : EventConnectionW {
-    friend class Emittable;
+  struct Connection : EventConnectionP {
     bool             connected  () const;
     void             disconnect () const;
   };
   virtual void       emit_event  (const String &type, const String &detail, ValueR fields) = 0;
+  ASE_USE_RESULT
   virtual Connection on_event    (const String &eventselector, const EventHandler &eventhandler) = 0;
   void               js_trigger  (const String &eventselector, JsTrigger callback);
 };

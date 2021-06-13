@@ -236,10 +236,6 @@ mkprop (const Initializer &initializer, const ValueGetter &getter, const ValueSe
 }
 
 // == Bag ==
-Bag::Bag (const EventHandler &eventhandler) :
-  notify_ (eventhandler)
-{}
-
 Bag&
 Bag::operator+= (PropertyP p)
 {
@@ -249,10 +245,17 @@ Bag::operator+= (PropertyP p)
       if (simple)
         simple->d.groupname = group;
     }
-  if (notify_)
-    p->on_event ("change", notify_);
   props.push_back (p);
   return *this;
+}
+
+Bag::ConnectionS
+Bag::on_event (const String &eventselector, const EventHandler &eventhandler)
+{
+  ConnectionS cons;
+  for (auto p : props)
+    cons.push_back (p->on_event ("change", eventhandler));
+  return cons;
 }
 
 } // Properties

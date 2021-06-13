@@ -45,12 +45,13 @@ PropertyP Text   (String *v, const String &label, const String &nickname, const 
 
 /// Helper for construction of Property lists.
 class Bag {
-  EventHandler notify_;
 public:
-  explicit  Bag   (const EventHandler &eventhandler = {});
   PropertyS props;
   GroupId   group;
   Bag&      operator+= (PropertyP p);
+  using ConnectionS = std::vector<EventConnectionP>;
+  ASE_USE_RESULT
+  ConnectionS on_event (const String &eventselector, const EventHandler &eventhandler);
 };
 
 // == Implementation Helpers ==

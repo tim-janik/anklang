@@ -62,7 +62,7 @@ PropertyS
 Preferences::access_properties (const EventHandler &eventhandler)
 {
   using namespace Properties;
-  static PropertyBag bag (eventhandler);
+  static PropertyBag bag;
   return_unless (bag.props.empty(), bag.props);
   bag.group = _("Synthesis Settings");
   bag += Text (&pcm_driver, _("PCM Driver"), "", pcm_driver_choices, STANDARD, _("Driver and device to be used for PCM input and output"));
@@ -92,6 +92,7 @@ Preferences::access_properties (const EventHandler &eventhandler)
   bag += Text (&plugin_path, _("Plugin Path"), "", STANDARD + "searchpath",
                _("Search path of directories, seperated by \";\", used to find plugins. This path "
                  "is searched for in addition to the standard plugin location on this system."));
+  static auto pchange_connections = bag.on_event ("change", eventhandler);
   return bag.props;
 }
 
@@ -145,9 +146,10 @@ ServerImpl::ServerImpl ()
   const String jsontext = Path::stringread (pathname_anklangrc());
   if (!jsontext.empty())
     json_parse (jsontext, prefs_);
-  on_event ("change:prefs", [this] (auto...) {
-    Path::stringwrite (pathname_anklangrc(), json_stringify (prefs_, Writ::INDENT | Writ::SKIP_EMPTYSTRING), true);
-  });
+  pchange_ =
+    on_event ("change:prefs", [this] (auto...) {
+      Path::stringwrite (pathname_anklangrc(), json_stringify (prefs_, Writ::INDENT | Writ::SKIP_EMPTYSTRING), true);
+    });
 }
 
 ServerImpl::~ServerImpl ()

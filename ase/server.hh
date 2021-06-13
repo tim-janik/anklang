@@ -8,6 +8,7 @@ namespace Ase {
 
 class ServerImpl : public GadgetImpl, public virtual Server {
   Preferences  prefs_;
+  Connection pchange_;
 public:
   static ServerImplP instancep ();
   explicit     ServerImpl           ();
