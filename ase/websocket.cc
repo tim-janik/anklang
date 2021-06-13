@@ -248,15 +248,15 @@ WebSocketConnection::nickname ()
                  info.gpc + "\n";
       String hh;
       uint64_t hash = string_hash64 (s);
-      if      (Re::search (R"(\bFirefox/)", info.ua))
+      if      (Re::search (R"(\bFirefox/)", info.ua) >= 0)
         hh = "FF";
-      else if (Re::search (R"(\bElectron/)", info.ua))
+      else if (Re::search (R"(\bElectron/)", info.ua) >= 0)
         hh = "El";
-      else if (Re::search (R"(\bChrome-Lighthouse\b)", info.ua))
+      else if (Re::search (R"(\bChrome-Lighthouse\b)", info.ua) >= 0)
         hh = "Lh";
-      else if (Re::search (R"(\bChrome/)", info.ua))
+      else if (Re::search (R"(\bChrome/)", info.ua) >= 0)
         hh = "Ch";
-      else if (Re::search (R"(\bSafari/)", info.ua))
+      else if (Re::search (R"(\bSafari/)", info.ua) >= 0)
         hh = "Sa";
       else
         hh = "Uk";
