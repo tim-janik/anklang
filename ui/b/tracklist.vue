@@ -1,7 +1,7 @@
 <!-- This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 -->
 
 <docs>
-  # B-TRACK-LIST
+  # B-TRACKLIST
   A container for vertical display of Ase.Track instances.
   ## Props:
   *project*
@@ -10,11 +10,11 @@
 
 <style lang="scss">
   @import 'mixins.scss';
-  $b-track-list-arranger-lpad: 3px;
+  $b-tracklist-arranger-lpad: 3px;
   $b-track-scrollelement-bg: transparent;
   $scrollbar-area-size: 12px;
-  .b-track-list {
-    background-color: $b-track-list-bg;
+  .b-tracklist {
+    background-color: $b-tracklist-bg;
     //* Layout: Tracks Spacer Clips Spacer Parts Scrollbar */
     grid-template-columns: min-content 3px 1fr 3px 1fr 20px;
     //* Layout: Header Spacer Main Spacer Footer */
@@ -25,26 +25,26 @@
     height: $b-trackrow-height;
     margin: $b-panel-spacing * 0.5 0;
   }
-  .b-track-list-trackswrapper {
+  .b-tracklist-trackswrapper {
     padding-top: $b-panel-spacing * 0.5; padding-bottom: $b-panel-spacing * 0.5;
     padding-left: $b-panel-spacing * 0.5;
   }
-  .b-track-list-theader, .b-track-list-tfooter, .b-track-list-trackswrapper {
+  .b-tracklist-theader, .b-tracklist-tfooter, .b-tracklist-trackswrapper {
     margin-left: $b-panel-spacing * 0.5;
   }
-  .b-track-list-clipswrapper {
+  .b-tracklist-clipswrapper {
     display: inline-flex;
     padding-top: $b-panel-spacing * 0.5; padding-bottom: $b-panel-spacing * 0.5;
   }
-  .b-track-list-cheader, .b-track-list-hscrollbar1, .b-track-list-clipswrapper {
+  .b-tracklist-cheader, .b-tracklist-hscrollbar1, .b-tracklist-clipswrapper {
     margin: 0 $b-panel-spacing;
   }
-  .b-track-list-partswrapper {
+  .b-tracklist-partswrapper {
     display: inline-flex;
     padding-top: $b-panel-spacing * 0.5; padding-bottom: $b-panel-spacing * 0.5;
     padding-right: $b-panel-spacing * 0.5;
   }
-  .b-track-list-vscrollbar {
+  .b-tracklist-vscrollbar {
     display: flex;
     justify-self: center;
     width: $scrollbar-area-size;
@@ -52,13 +52,13 @@
     background: $b-track-scrollelement-bg;
     overflow-y: scroll;
     overflow-x: hidden;
-    .b-track-list-vscrollbar-elemnt {
+    .b-tracklist-vscrollbar-elemnt {
       width: 1px;
       height: 0;
     }
   }
-  .b-track-list-hscrollbar1,
-  .b-track-list-hscrollbar2 {
+  .b-tracklist-hscrollbar1,
+  .b-tracklist-hscrollbar2 {
     display: flex; flex-direction: column;
     align-self: center;
     height: $scrollbar-area-size;
@@ -66,22 +66,22 @@
     background: $b-track-scrollelement-bg;
     overflow-x: scroll;
     overflow-y: hidden;
-    .b-track-list-hscrollbar-elemnt {
+    .b-tracklist-hscrollbar-elemnt {
       height: 1px;
       width: 0;
     }
   }
-  .b-track-list-tracks,
-  .b-track-list-clips,
-  .b-track-list-parts {
+  .b-tracklist-tracks,
+  .b-tracklist-clips,
+  .b-tracklist-parts {
     position: relative;
     white-space: nowrap;
     overflow: hidden;
-    background: $b-track-list-parts-bg;
+    background: $b-tracklist-parts-bg;
   }
-  .b-track-list-tracks-shadow,
-  .b-track-list-clips-shadow,
-  .b-track-list-parts-shadow {
+  .b-tracklist-tracks-shadow,
+  .b-tracklist-clips-shadow,
+  .b-tracklist-parts-shadow {
     position: absolute; //* Note, 'position:sticky' increases parent layout */
     left: 0; top: 0; will-change: left, top;
     width: 100%; height: 100%;
@@ -89,10 +89,10 @@
     pointer-events: none;
     box-shadow: 0px 0px $b-scroll-shadow-blur 0px inset #000;
   }
-  .b-track-list-tickpointer {
+  .b-tracklist-tickpointer {
     position: absolute; height: 100%; display: flex;
     transform: translateX(0px);
-    left: $b-track-list-arranger-lpad - 3px;
+    left: $b-tracklist-arranger-lpad - 3px;
     /* width: 1px; background: #fff8; border: 1px solid #0008; box-sizing: content-box; */
     width: 3px; background: linear-gradient(to right, #0f00, #0f08 80%, #0f0f);
   }
@@ -100,72 +100,72 @@
 
 <template>
 
-  <c-grid class="b-track-list" @dblclick.stop="list_dblclick" >
+  <c-grid class="b-tracklist" @dblclick.stop="list_dblclick" >
     <!-- Headers, ROW-1 -->
-    <span class="b-track-list-theader" > Tracks </span>
+    <span class="b-tracklist-theader" > Tracks </span>
     <!-- Gap -->
-    <span class="b-track-list-vgap1" />
-    <span class="b-track-list-cheader" > Clips </span>
+    <span class="b-tracklist-vgap1" />
+    <span class="b-tracklist-cheader" > Clips </span>
     <!-- Gap -->
-    <span class="b-track-list-vgap2" />
-    <span class="b-track-list-pheader" > Timeline... </span>
+    <span class="b-tracklist-vgap2" />
+    <span class="b-tracklist-pheader" > Timeline... </span>
     <span > s </span>
     <!-- Gap, ROW-2 -->
-    <span class="b-track-list-hgap1" style="grid-row-start: 2; grid-column: 1/-1" />
+    <span class="b-tracklist-hgap1" style="grid-row-start: 2; grid-column: 1/-1" />
     <!-- Tracks, ROW-3 -->
-    <div class="b-track-list-tracks" style="grid-column-start: 1; grid-row-start: 3" ref="tracks"
+    <div class="b-tracklist-tracks" style="grid-column-start: 1; grid-row-start: 3" ref="tracks"
 	 @wheel.stop="Util.wheel2scrollbars ($event, $refs, 'vscrollbar')" >
-      <v-flex class="b-track-list-trackswrapper" ref="trackswrapper" >
+      <v-flex class="b-tracklist-trackswrapper" ref="trackswrapper" >
 	<b-trackview class="b-trackrow-cell"
 		     v-for="(pair, tindex) in tdata.tracks" :key="pair[1]"
 		     :track="pair[0]" :trackindex="tindex"></b-trackview>
       </v-flex>
-      <div class="b-track-list-tracks-shadow" ref="tracksshadow" ></div>
+      <div class="b-tracklist-tracks-shadow" ref="tracksshadow" ></div>
     </div>
     <!-- Gap -->
-    <span class="b-track-list-vgap1" />
+    <span class="b-tracklist-vgap1" />
     <!-- Clips -->
-    <div class="b-track-list-clips" ref="clips"
+    <div class="b-tracklist-clips" ref="clips"
 	 @wheel.stop="Util.wheel2scrollbars ($event, $refs, 'hscrollbar1', 'vscrollbar')" >
-      <v-flex class="b-track-list-clipswrapper" ref="clipswrapper" >
+      <v-flex class="b-tracklist-clipswrapper" ref="clipswrapper" >
 	<b-cliplist class="b-trackrow-cell" v-for="pair in tdata.tracks" :key="pair[1]"
 		    :track="pair[0]"
 		    style="background: #252525" />
       </v-flex>
-      <div class="b-track-list-clips-shadow" ref="clipsshadow" ></div>
+      <div class="b-tracklist-clips-shadow" ref="clipsshadow" ></div>
     </div>
     <!-- Gap -->
-    <span class="b-track-list-vgap2" />
+    <span class="b-tracklist-vgap2" />
     <!-- Parts -->
-    <div class="b-track-list-parts" ref="parts"
+    <div class="b-tracklist-parts" ref="parts"
 	 @wheel.stop="Util.wheel2scrollbars ($event, $refs, 'hscrollbar2', 'vscrollbar')" >
-      <v-flex class="b-track-list-partswrapper" ref="partswrapper" >
+      <v-flex class="b-tracklist-partswrapper" ref="partswrapper" >
 	<b-partlist class="b-trackrow-cell"
 		    v-for="(pair, tindex) in tdata.tracks" :key="pair[1]"
 		    :track="pair[0]" :trackindex="tindex"></b-partlist>
-	<span class="b-track-list-tickpointer" ref="tickpointer"></span>
+	<span class="b-tracklist-tickpointer" ref="tickpointer"></span>
       </v-flex>
-      <div class="b-track-list-parts-shadow" ref="partsshadow" ></div>
+      <div class="b-tracklist-parts-shadow" ref="partsshadow" ></div>
     </div>
     <!-- VScrollbar -->
-    <div class="b-track-list-vscrollbar" ref="vscrollbar" >
-      <div class="b-track-list-vscrollbar-elemnt" ref="vscrollbar_element" ></div>
+    <div class="b-tracklist-vscrollbar" ref="vscrollbar" >
+      <div class="b-tracklist-vscrollbar-elemnt" ref="vscrollbar_element" ></div>
     </div>
     <!-- Gap, ROW-4 -->
-    <span class="b-track-list-hgap2" style="grid-row-start: 4; grid-column: 1/-1" />
+    <span class="b-tracklist-hgap2" style="grid-row-start: 4; grid-column: 1/-1" />
     <!-- Footer, ROW-5 -->
-    <span class="b-track-list-tfooter" style="grid-row-start: 5" > Footer </span>
+    <span class="b-tracklist-tfooter" style="grid-row-start: 5" > Footer </span>
     <!-- Gap -->
-    <span class="b-track-list-vgap1" />
+    <span class="b-tracklist-vgap1" />
     <!-- HScrollbar1 -->
-    <div class="b-track-list-hscrollbar1" ref="hscrollbar1" >
-      <div class="b-track-list-hscrollbar-elemnt" ref="hscrollbar1_element" ></div>
+    <div class="b-tracklist-hscrollbar1" ref="hscrollbar1" >
+      <div class="b-tracklist-hscrollbar-elemnt" ref="hscrollbar1_element" ></div>
     </div>
     <!-- Gap -->
-    <span class="b-track-list-vgap2" />
+    <span class="b-tracklist-vgap2" />
     <!-- HScrollbar2 -->
-    <div class="b-track-list-hscrollbar2" ref="hscrollbar2" >
-      <div class="b-track-list-hscrollbar-elemnt" ref="hscrollbar2_element" ></div>
+    <div class="b-tracklist-hscrollbar2" ref="hscrollbar2" >
+      <div class="b-tracklist-hscrollbar-elemnt" ref="hscrollbar2_element" ></div>
     </div>
     <!-- Corner -->
     <span > c </span>
