@@ -1,48 +1,108 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "clip.hh"
+#include "track.hh"
 #include "jsonipc/jsonipc.hh"
 #include "internal.hh"
+#include <atomic>
 
 namespace Ase {
 
 // == ClipImpl ==
 JSONIPC_INHERIT (ClipImpl, Clip);
 
+ClipImpl::ClipImpl (TrackImpl &parent)
+{
+  track_ = &parent;
+}
+
 ClipImpl::~ClipImpl()
 {}
 
-int32
-ClipImpl::start_tick ()
+ssize_t
+ClipImpl::clip_index () const
 {
-  return ~0;
-}
-
-int32
-ClipImpl::stop_tick ()
-{
-  return 0;
-}
-
-int32
-ClipImpl::end_tick ()
-{
-  return 0;
+  return track_ ? track_->clip_index (*this) : -1;
 }
 
 void
 ClipImpl::assign_range (int32 starttick, int32 stoptick)
-{}
+{
+  assert_return (starttick >= 0);
+  assert_return (stoptick >= starttick);
+  const auto last_starttick_ = starttick_;
+  const auto last_stoptick_ = stoptick_;
+  const auto last_endtick_ = endtick_;
+  starttick_ = starttick;
+  stoptick_ = stoptick;
+  endtick_ = std::max (starttick_, stoptick_);
+  if (last_endtick_ != endtick_)
+    emit_event ("notify", "end_tick");
+  if (last_stoptick_ != stoptick_)
+    emit_event ("notify", "stop_tick");
+  if (last_starttick_ != starttick_)
+    emit_event ("notify", "start_tick");
+}
 
 ClipNoteS
 ClipImpl::list_all_notes ()
 {
-  return {};
+  ClipNoteS cnotes;
+  auto events = tick_events();
+  cnotes.assign (events->begin(), events->end());
+  return cnotes;
 }
 
+/// Retrieve const vector with all notes ordered by tick.
+ClipImpl::OrderedEventsP
+ClipImpl::tick_events ()
+{
+  return notes_.ordered_events<OrderedEventsV> ();
+}
+
+static std::atomic<uint> next_noteid { MIDI_NOTE_ID_FIRST };
+
+/// Change note `id`, or delete (`duration=0`) or create (`id=-1`) it.
 int32
 ClipImpl::change_note (int32 id, int32 tick, int32 duration, int32 key, int32 fine_tune, double velocity)
 {
-  return {};
+  if (id < 0 && duration > 0)
+    id = next_noteid++; // automatic id allocation for new notes
+  const uint uid = id;
+  assert_return (uid >= MIDI_NOTE_ID_FIRST && uid <= MIDI_NOTE_ID_LAST, 0);
+  assert_return (duration >= 0, 0);
+  if (tick < 0)
+    return -1;
+  ClipNote ev;
+  ev.tick = tick;
+  ev.key = key;
+  ev.id = 0;
+  if (find_key_at_tick (ev) && ev.id != id)
+    notes_.remove (ev);
+  ev.id = id;
+  ev.channel = 0;
+  ev.duration = duration;
+  ev.fine_tune = fine_tune;
+  ev.velocity = velocity;
+  ev.selected = false;
+  int ret = ev.id;
+  if (duration > 0)
+    notes_.insert (ev);
+  else
+    ret = notes_.remove (ev) ? 0 : -1;
+  // TODO: emit_event ("notify", "notes");
+  return ret;
+}
+
+bool
+ClipImpl::find_key_at_tick (ClipNote &ev)
+{
+  for (const auto &e : notes_)
+    if (e.key == ev.key && e.tick == ev.tick)
+      {
+        ev = e;
+        return true;
+      }
+  return false;
 }
 
 } // Ase
