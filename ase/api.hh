@@ -226,9 +226,9 @@ struct ClipNote {
 /// Container for MIDI note and control events.
 class Clip : public virtual Gadget {
 public:
-  virtual int32     start_tick     () = 0; ///< Get the first tick intended for playback (this is >= 0), changes on `notify:start_tick`.
-  virtual int32     stop_tick      () = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
-  virtual int32     end_tick       () = 0; ///< Get the end tick, this tick is past any event ticks, changes on `notify:end_tick`.
+  virtual int32     start_tick     () const = 0; ///< Get the first tick intended for playback (this is >= 0), changes on `notify:start_tick`.
+  virtual int32     stop_tick      () const = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
+  virtual int32     end_tick       () const = 0; ///< Get the end tick, this tick is past any event ticks, changes on `notify:end_tick`.
   virtual void      assign_range   (int32 starttick, int32 stoptick) = 0; ///< Change start_tick() and stop_tick(); emits `notify:start_tick`, `notify:stop_tick`.
   virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
   /// Change note `id` according to the arguments or add a new note if `id` < 0; emits `notify:notes`.
