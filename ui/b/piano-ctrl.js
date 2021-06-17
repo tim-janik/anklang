@@ -3,7 +3,7 @@
 
 export const PIANO_OCTAVES = 11;
 export const PIANO_KEYS = PIANO_OCTAVES * 12;
-export const PPQN = 384;			// ticks per quarter note
+export const PPQN = 1920;			// ticks per quarter note
 const MINDURATION = PPQN / 64;
 const MINTICKS = MINDURATION / 6;
 
