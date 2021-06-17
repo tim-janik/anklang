@@ -3,6 +3,7 @@
 #include "combo.hh"
 #include "project.hh"
 #include "device.hh"
+#include "clip.hh"
 #include "serialize.hh"
 #include "jsonipc/jsonipc.hh"
 #include "internal.hh"
@@ -76,10 +77,28 @@ void
 TrackImpl::midi_channel (int32 midichannel) // TODO: implement
 {}
 
+static constexpr const uint MAX_CLIPS = 8;
+
 ClipS
 TrackImpl::list_clips () // TODO: implement
 {
-  return {};
+  const uint max_clips = MAX_CLIPS;
+  if (clips_.size() < max_clips)
+    {
+      clips_.reserve (max_clips);
+      while (clips_.size() < max_clips)
+        clips_.push_back (ClipImpl::make_shared (*this));
+    }
+  return clips_;
+}
+
+ssize_t
+TrackImpl::clip_index (const ClipImpl &clip) const
+{
+  for (size_t i = 0; i < clips_.size(); i++)
+    if (clips_[i].get() == &clip)
+      return i;
+  return -1;
 }
 
 DeviceP
@@ -93,5 +112,9 @@ TrackImpl::create_monitor (int32 ochannel) // TODO: implement
 {
   return nullptr;
 }
+
+void
+TrackImpl::update_clip () // TODO: implement
+{}
 
 } // Ase
