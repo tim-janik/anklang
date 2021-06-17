@@ -39,8 +39,16 @@ ClipImpl::serialize (WritNode &xs)
     {
       xs["ppq"] & PPQ;
       OrderedEventsP event_vector = notes_.ordered_events<OrderedEventsV>();
-      std::vector<ClipNote> &cnotes = const_cast<OrderedEventsV&> (*event_vector);
-      xs["notes"] & cnotes;
+      for (ClipNote cnote : *event_vector)
+        {
+          WritNode xn = xs["notes"].push();
+          xn & cnote;
+          xn.value().purge_r ([] (const ValueField &field) {
+            if (field.name == "id" || field.name == "selected")
+              return true;
+            return false;
+          });
+        }
     }
   // load notes, re-quantize, re-assign ids
   if (xs.in_load())
