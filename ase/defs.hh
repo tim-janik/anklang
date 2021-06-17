@@ -26,6 +26,7 @@ ASE_CLASS_DECLS (AudioEngineThread);
 ASE_CLASS_DECLS (AudioProcessor);
 ASE_CLASS_DECLS (AudioProcessor);
 ASE_CLASS_DECLS (Clip);
+ASE_CLASS_DECLS (ClipImpl);
 ASE_CLASS_DECLS (Device);
 ASE_CLASS_DECLS (DeviceImpl);
 ASE_CLASS_DECLS (FileCrawler);
