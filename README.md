@@ -19,7 +19,7 @@ ANKLANG
 
 [Explore the manual](https://anklang.testbit.eu/pub/anklang/anklang-manual.html)
 	·
-[Join Chat](https://kiwiirc.com/nextclient/irc.libera.chat/#Anklang)
+[Join Chat](https://web.libera.chat/#Anklang)
 	·
 [Bugs & Features](https://github.com/tim-janik/anklang/issues)
 
