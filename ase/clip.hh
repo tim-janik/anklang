@@ -23,6 +23,7 @@ protected:
   Connection ontrackchange_;
   explicit ClipImpl         (TrackImpl &parent);
   virtual ~ClipImpl         ();
+  void     serialize        (WritNode &xs) override;
   ssize_t  clip_index       () const;
   bool     find_key_at_tick (ClipNote &ev);
 public:
@@ -33,6 +34,7 @@ public:
   int32          end_tick       () const override { return endtick_; }
   void           assign_range   (int32 starttick, int32 stoptick) override;
   ClipNoteS      list_all_notes () override;
+  bool           needs_serialize() const;
   int32          change_note    (int32 id, int32 tick, int32 duration, int32 key, int32 fine_tune, double velocity) override;
   ASE_DEFINE_MAKE_SHARED (ClipImpl);
 };

@@ -2,6 +2,7 @@
 #include "clip.hh"
 #include "track.hh"
 #include "jsonipc/jsonipc.hh"
+#include "serialize.hh"
 #include "internal.hh"
 #include <atomic>
 
@@ -17,6 +18,48 @@ ClipImpl::ClipImpl (TrackImpl &parent)
 
 ClipImpl::~ClipImpl()
 {}
+
+bool
+ClipImpl::needs_serialize() const
+{
+  return notes_.size() > 0;
+}
+
+static constexpr const uint PPQ = 1920;
+
+static std::atomic<uint> next_noteid { MIDI_NOTE_ID_FIRST };
+
+void
+ClipImpl::serialize (WritNode &xs)
+{
+  GadgetImpl::serialize (xs);
+
+  // save notes, along with their quantization
+  if (xs.in_save())
+    {
+      xs["ppq"] & PPQ;
+      OrderedEventsP event_vector = notes_.ordered_events<OrderedEventsV>();
+      std::vector<ClipNote> &cnotes = const_cast<OrderedEventsV&> (*event_vector);
+      xs["notes"] & cnotes;
+    }
+  // load notes, re-quantize, re-assign ids
+  if (xs.in_load())
+    {
+      int64 ppq = PPQ;
+      xs["ppq"] & ppq;
+      std::vector<ClipNote> cnotes;
+      xs["notes"] & cnotes;
+      for (const auto &cnote : cnotes)
+        {
+          ClipNote note = cnote;
+          note.id = next_noteid++; // automatic id allocation for new notes
+          note.tick = note.tick * PPQ / ppq;
+          note.duration = note.duration * PPQ / ppq;
+          note.selected = false;
+          notes_.insert (note);
+        }
+    }
+}
 
 ssize_t
 ClipImpl::clip_index () const
@@ -58,8 +101,6 @@ ClipImpl::tick_events ()
 {
   return notes_.ordered_events<OrderedEventsV> ();
 }
-
-static std::atomic<uint> next_noteid { MIDI_NOTE_ID_FIRST };
 
 /// Change note `id`, or delete (`duration=0`) or create (`id=-1`) it.
 int32
