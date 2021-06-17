@@ -39,6 +39,31 @@ void
 TrackImpl::serialize (WritNode &xs)
 {
   GadgetImpl::serialize (xs);
+  // save clips
+  if (xs.in_save())
+    for (auto &bclip : clips_)
+      {
+        ClipImplP clip = shared_ptr_cast<ClipImpl> (bclip);
+        if (!clip->needs_serialize())
+          continue;
+        WritNode xc = xs["clips"].push();
+        xc & *clip;
+        const int64 index = clip_index (*clip);
+        xc.front ("clip-index") & index;
+      }
+  // load clips
+  if (xs.in_load())
+    {
+      ClipS clips = list_clips(); // forces creation
+      for (auto &xc : xs["clips"].to_nodes())
+        {
+          int64 index = xc["clip-index"].as_int();
+          if (index < 0 || size_t (index) >= clips.size())
+            continue;
+          ClipImplP clip = shared_ptr_cast<ClipImpl> (clips[index]);
+          xc & *clip;
+        }
+    }
   // device chain
   xs["chain"] & *chain_; // always one present
 }
