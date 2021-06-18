@@ -16,7 +16,7 @@ jobs:
     - name: Ping IRC
       if: always()
       run: |
-        sudo apt-get install python3-pip && pip install pydle pure-sasl
-        STATUS="${{ job.status }}" && STATUS="${STATUS^^}"
-        MSG=$(git log -1 --format="%cn $(git branch --show-current) [$STATUS] %s ${{ github.event.head_commit.url }}")
-        python3 .github/workflows/notify_irc.py --channel '#anklang' --server irc.libera.chat --nickname Anklang-ghnotify --message "$MSG"
+        STATUS="${{ job.status }}" && URL="${{ github.event.head_commit.url }}"
+        COMMITTER="$(git log -1 --format="%cn")" && BRANCH="$(git branch --show-current)"
+        MSG=$(git log -1 --format="%s")
+        .github/workflows/notifico.py -n "$COMMITTER" -b "$BRANCH" -s "$STATUS" -u "$URL" "$MSG"
