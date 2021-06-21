@@ -88,7 +88,6 @@ endef
 # == AnklangSynthEngine ==
 $(ase/AnklangSynthEngine.objects): $(ase/AnklangSynthEngine.deps) $(ase/libase.deps)
 $(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= -Iexternal/ -I$> -I$>/external/ $(GLIB_CFLAGS)
-$(ase/AnklangSynthEngine.objects): EXTRA_FLAGS ::= -Wno-sign-promo
 $(lib/AnklangSynthEngine):						| $>/lib/
 $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
@@ -98,6 +97,8 @@ $(call BUILD_PROGRAM, \
 	../lib)
 #	-lase-$(version_major)
 $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(lib/AnklangSynthEngine))
+# silence some websocketpp warnings
+$(ase/AnklangSynthEngine.objects): EXTRA_CXXFLAGS ::= -Wno-sign-promo
 
 # == Check Integrity Tests ==
 check-ase-tests: $(lib/AnklangSynthEngine)
