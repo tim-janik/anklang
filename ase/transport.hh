@@ -49,6 +49,9 @@ bool               speaker_arrangement_is_aux         (SpeakerArrangement spa);
 const char*        speaker_arrangement_bit_name       (SpeakerArrangement spa);
 std::string        speaker_arrangement_desc           (SpeakerArrangement spa);
 
+/// Maximum number of sample frames to calculate in Processor::render().
+constexpr const uint AUDIO_BLOCK_MAX_RENDER_SIZE = 128;
+
 } // Ase
 
 #endif // __ASE_TRANSPORT_HH__
