@@ -52,6 +52,20 @@ std::string        speaker_arrangement_desc           (SpeakerArrangement spa);
 /// Maximum number of sample frames to calculate in Processor::render().
 constexpr const uint AUDIO_BLOCK_MAX_RENDER_SIZE = 128;
 
+/// Transport information for AudioSignal processing.
+struct AudioTransport {
+  static_assert (AUDIO_BLOCK_MAX_RENDER_SIZE == 128);
+  const uint     samplerate;    ///< Sample rate (mixing frequency) in Hz used for rendering.
+  const uint     nyquist;       ///< Half the `samplerate`.
+  const double   isamplerate;   ///< Precalculated `1.0 / samplerate`.
+  const double   inyquist;      ///< Precalculated `1.0 / nyquist`.
+  const int64    ppqn;
+  const SpeakerArrangement speaker_arrangement; ///< Audio output configuration.
+  const uint32_t dummy;
+  float          current_bpm;   ///< Current tempo in beats per minute.
+  uint64         frame_stamp;   ///< Number of sample frames processed since playback start.
+};
+
 } // Ase
 
 #endif // __ASE_TRANSPORT_HH__

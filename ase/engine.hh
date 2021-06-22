@@ -10,10 +10,7 @@ namespace Ase {
 
 /// Main handle for AudioProcessor administration and audio rendering.
 class AudioEngine : VirtualBase {
-  const double                 nyquist_;     // Half the `sample_rate`.
-  const double                 inyquist_;    // Inverse Nyquist frequency, i.e. `1.0 / nyquist_`
-  const uint                   sample_rate_; // Sample rate (mixing frequency) in Hz used for rendering.
-  const SpeakerArrangement     speaker_arrangement_;
+  AudioTransport               transport_;
   std::atomic<size_t>          processor_count_ = 0;
   ThreadId                     thread_id_ = {};
   friend class AudioEngineThread;
@@ -39,14 +36,15 @@ public:
   virtual void ipc_dispatch          () = 0;
   virtual AudioProcessorP get_event_source () = 0;
   // MT-Safe API
-  virtual uint64_t   frame_counter       () const = 0;
-  uint               sample_rate         () const ASE_CONST { return sample_rate_; }
-  double             nyquist             () const ASE_CONST { return nyquist_; }
-  double             inyquist            () const ASE_CONST { return inyquist_; }
-  ThreadId           thread_id           () const           { return thread_id_; }
-  SpeakerArrangement speaker_arrangement () const;
-  JobQueue     const_jobs;
-  JobQueue     async_jobs;
+  virtual uint64_t      frame_counter       () const = 0;
+  const AudioTransport& transport           () const           { return transport_; }
+  uint                  sample_rate         () const ASE_CONST { return transport().samplerate; }
+  uint                  nyquist             () const ASE_CONST { return transport().nyquist; }
+  double                inyquist            () const ASE_CONST { return transport().inyquist; }
+  SpeakerArrangement    speaker_arrangement () const           { return transport().speaker_arrangement; }
+  ThreadId              thread_id           () const           { return thread_id_; }
+  JobQueue              const_jobs;
+  JobQueue              async_jobs;
 };
 
 AudioEngine&    make_audio_engine    (uint sample_rate, SpeakerArrangement speakerarrangement);

@@ -481,8 +481,8 @@ AudioEngineThread::stop_thread ()
 
 // == AudioEngine ==
 AudioEngine::AudioEngine (uint sample_rate, SpeakerArrangement speakerarrangement) :
-  nyquist_ (0.5 * sample_rate), inyquist_ (1.0 / nyquist_), sample_rate_ (sample_rate),
-  speaker_arrangement_ (speakerarrangement),
+  transport_ { sample_rate, sample_rate / 2, 1.0 / sample_rate, 2.0 / sample_rate,
+               1920, speakerarrangement, 0, 60, 0, },
   const_jobs (*this, 1), async_jobs (*this, 0)
 {
   assert_return (sample_rate == 48000);
@@ -521,12 +521,6 @@ AudioEngine::add_job_mt (const std::function<void()> &jobfunc, int flags)
   if (need_wakeup)
     wakeup_thread_mt();
   sem.wait();
-}
-
-SpeakerArrangement
-AudioEngine::speaker_arrangement () const
-{
-  return speaker_arrangement_;
 }
 
 AudioEngine&
