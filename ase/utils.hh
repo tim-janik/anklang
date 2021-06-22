@@ -4,6 +4,7 @@
 
 #include <ase/defs.hh>
 #include <ase/strings.hh>
+#include <experimental/type_traits>
 #include <any>
 
 namespace Ase {
@@ -247,6 +248,25 @@ ase_gettext (const char *format, const Args &...args)
 
 /// Auxillary algorithms brodly useful
 namespace Aux {
+
+template<typename T>
+using callable_reserve_int = decltype (std::declval<T&>().reserve (int (0)));
+template<typename T>
+using callable_minus = decltype (std::declval<T>() - std::declval<T>());
+
+/// Create a `Container` with copies of the elements of `source`.
+template<class Container, class Iteratable> Container
+container_copy (const Iteratable &source)
+{
+  Container c;
+  const auto b = std::begin (source), e = std::end (source);
+  if constexpr (std::experimental::is_detected<callable_reserve_int, Container>::value &&
+                std::experimental::is_detected<callable_minus, decltype (b)>::value) {
+      c.reserve (e - b);
+    }
+  std::copy (b, e, std::back_inserter (c));
+  return c;
+}
 
 // == Binary Lookups ==
 template<typename RandIter, class Cmp, typename Arg, int case_lookup_or_sibling_or_insertion>
