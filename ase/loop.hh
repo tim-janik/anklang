@@ -114,7 +114,7 @@ public:
                         = PRIORITY_NORMAL);     /// Execute a signal callback for prepare, check, dispatch.
   /// Execute a callback after a specified timeout with adjustable initial timeout, returning true repeats callback.
   template<class BoolVoidFunctor>
-  uint exec_timer      (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms = -1, int priority = PRIORITY_HIGH);
+  uint exec_timer      (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms = -1, int priority = PRIORITY_NORMAL);
   /// Execute a callback after polling for mode on fd, returning true repeats callback.
   template<class BoolVoidPollFunctor>
   uint exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, int priority = PRIORITY_NORMAL);
