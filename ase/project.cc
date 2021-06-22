@@ -2,6 +2,8 @@
 #include "project.hh"
 #include "jsonipc/jsonipc.hh"
 #include "utils.hh"
+#include "device.hh"
+#include "processor.hh"
 #include "path.hh"
 #include "serialize.hh"
 #include "storage.hh"
@@ -178,22 +180,50 @@ ProjectImpl::serialize (WritNode &xs)
       }
 }
 
+AudioProcessorP
+ProjectImpl::master_processor () const
+{
+  return_unless (!tracks_.empty(), nullptr);
+  TrackP master = const_cast<ProjectImpl*> (this)->master_track();
+  return_unless (master, nullptr);
+  DeviceP device = master->access_device();
+  return_unless (device, nullptr);
+  AudioProcessorP proc = dynamic_cast<DeviceImpl*> (device.get())->audio_processor();
+  return_unless (proc, nullptr);
+  return proc;
+}
+
 void
 ProjectImpl::start_playback ()
 {
-  // TODO: implement playback
+  AudioProcessorP proc = master_processor();
+  return_unless (proc);
+  const double bpm = 90;
+  auto job = [proc, bpm] () {
+    AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
+    transport.current_bpm = bpm;
+  };
+  proc->engine().async_jobs += job;
 }
 
 void
 ProjectImpl::stop_playback ()
 {
-  // TODO: implement playback
+  AudioProcessorP proc = master_processor();
+  return_unless (proc);
+  auto job = [proc] () {
+    AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
+    transport.current_bpm = 0;
+  };
+  proc->engine().async_jobs += job;
 }
 
 bool
 ProjectImpl::is_playing ()
 {
-  return false;
+  AudioProcessorP proc = master_processor();
+  return_unless (proc, false);
+  return proc->engine().transport().current_bpm > 0.0;
 }
 
 TrackP
