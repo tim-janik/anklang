@@ -270,12 +270,6 @@ private:
   static __thread uint64  tls_timestamp;
 };
 
-/// Timing information around AudioSignal processing.
-struct AudioTiming {
-  double bpm = 0;                       ///< Current tempo in beats per minute.
-  uint64 frame_stamp = ~uint64 (0);     ///< Number of sample frames processed since playback start.
-};
-
 /// Aggregate structure for input/output buffer state and values in AudioProcessor::render().
 /// The floating point #buffer array is cache-line aligned (to 64 byte) to optimize
 /// SIMD access and avoid false sharing.
