@@ -482,7 +482,7 @@ AudioEngineThread::stop_thread ()
 // == AudioEngine ==
 AudioEngine::AudioEngine (uint sample_rate, SpeakerArrangement speakerarrangement) :
   transport_ { sample_rate, sample_rate / 2, 1.0 / sample_rate, 2.0 / sample_rate,
-               1920, speakerarrangement, 0, 60, 0, },
+               1920, speakerarrangement, 0, 0.0, 0, },
   const_jobs (*this, 1), async_jobs (*this, 0)
 {
   assert_return (sample_rate == 48000);
