@@ -349,7 +349,7 @@ CustomDataContainer::custom_data_entry (VirtualBase *key)
   for (auto &e : *custom_data_)
     if (e.key == key)
       return e;
-  custom_data_->push_back ({ key, });
+  custom_data_->push_back ({ .key = key, });
   return custom_data_->back();
 }
 
@@ -359,7 +359,7 @@ CustomDataContainer::custom_data_get (VirtualBase *key) const
   if (custom_data_)
     for (auto &e : *custom_data_)
       if (e.key == key)
-        return e.any;
+        return e;
   static std::any dummy;
   return dummy;
 }
@@ -371,6 +371,24 @@ CustomDataContainer::custom_data_del (VirtualBase *key)
     return Aux::erase_first (*custom_data_, [key] (auto &e) { return key == e.key; });
   return 0;
   static_assert (sizeof (CustomDataContainer) == sizeof (void*));
+}
+
+void
+CustomDataContainer::custom_data_destroy()
+{
+  return_unless (custom_data_);
+  while (!custom_data_->empty())
+    {
+      std::any old;
+      std::swap (old, custom_data_->back());
+      custom_data_->pop_back();
+      // destroy old *after* removal from vector
+    }
+}
+
+CustomDataContainer::~CustomDataContainer()
+{
+  custom_data_destroy();
 }
 
 } // Ase
