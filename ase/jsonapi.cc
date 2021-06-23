@@ -19,7 +19,7 @@ class JsonapiConnection;
 using JsonapiConnectionP = std::shared_ptr<JsonapiConnection>;
 static JsonapiConnectionP current_message_conection;
 
-class JsonapiConnection : public WebSocketConnection {
+class JsonapiConnection : public WebSocketConnection, public CustomDataContainer {
   Jsonipc::InstanceMap imap_;
   void
   log (const String &message) override
@@ -54,7 +54,7 @@ class JsonapiConnection : public WebSocketConnection {
     using namespace AnsiColors;
     const auto C1 = color (BOLD), C0 = color (BOLD_OFF);
     log (string_format ("%sCLOSED%s", C1, C0));
-    trigger_destroy();
+    trigger_destroy_hooks();
   }
   void
   message (const String &message) override
@@ -73,14 +73,14 @@ class JsonapiConnection : public WebSocketConnection {
       send_text (reply);
   }
   String handle_jsonipc (const std::string &message);
-  std::vector<JsTrigger> triggers_; // TODO: use unordered_map if this becomes slow
+  std::vector<JsTrigger> triggers_; // HINT: use unordered_map if this becomes slow
 public:
   explicit JsonapiConnection (WebSocketConnection::Internals &internals) :
     WebSocketConnection (internals)
   {}
   ~JsonapiConnection()
   {
-    trigger_destroy();
+    trigger_destroy_hooks();
   }
   JsTrigger
   trigger_lookup (const String &id)
@@ -94,14 +94,6 @@ public:
   trigger_remove (const String &id)
   {
     trigger_lookup (id).destroy();
-  }
-  void
-  trigger_destroy()
-  {
-    std::vector<JsTrigger> old;
-    old.swap (triggers_); // speed up erase_trigger() searches
-    for (auto &trigger : old)
-      trigger.destroy();
   }
   void
   trigger_create (const String &id)
@@ -138,6 +130,15 @@ public:
       Aux::erase_first (selfp->triggers_, [id] (auto &t) { return id == t.id(); });
     };
     trigger.ondestroy (erase_trigger);
+  }
+  void
+  trigger_destroy_hooks()
+  {
+    std::vector<JsTrigger> old;
+    old.swap (triggers_); // speed up erase_trigger() searches
+    for (auto &trigger : old)
+      trigger.destroy();
+    custom_data_destroy();
   }
 };
 
@@ -248,7 +249,7 @@ public:
 };
 
 void
-JsTrigger::ondestroy (const JsTrigger::Impl::VoidFunc &vf)
+JsTrigger::ondestroy (const VoidFunc &vf)
 {
   assert_return (p_);
   if (vf)
@@ -297,6 +298,14 @@ ConvertJsTrigger::lookup (const String &triggerid)
     return current_message_conection->trigger_lookup (triggerid);
   assert_return (current_message_conection, {});
   return {};
+}
+
+CustomDataContainer*
+jsonapi_connection_data ()
+{
+  if (current_message_conection)
+    return current_message_conection.get();
+  return nullptr;
 }
 
 } // Ase

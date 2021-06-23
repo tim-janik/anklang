@@ -10,6 +10,7 @@ namespace Ase {
 
 void                 jsonapi_require_auth    (const String &subprotocol);
 WebSocketConnectionP jsonapi_make_connection (WebSocketConnection::Internals&);
+CustomDataContainer* jsonapi_connection_data ();
 
 /// Convert between Value and Jsonipc::JsonValue
 struct ConvertValue {
