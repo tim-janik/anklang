@@ -8,9 +8,12 @@
 
 namespace Ase {
 
-void                 jsonapi_require_auth    (const String &subprotocol);
-WebSocketConnectionP jsonapi_make_connection (WebSocketConnection::Internals&);
-CustomDataContainer* jsonapi_connection_data ();
+using JsonapiBinarySender = std::function<bool(const String&)>;
+
+void                 jsonapi_require_auth      (const String &subprotocol);
+WebSocketConnectionP jsonapi_make_connection   (WebSocketConnection::Internals&);
+CustomDataContainer* jsonapi_connection_data   ();
+JsonapiBinarySender  jsonapi_connection_sender ();
 
 /// Convert between Value and Jsonipc::JsonValue
 struct ConvertValue {

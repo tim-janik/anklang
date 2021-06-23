@@ -17,6 +17,7 @@ jsonapi_require_auth (const String &subprotocol)
 // == JsonapiConnection ==
 class JsonapiConnection;
 using JsonapiConnectionP = std::shared_ptr<JsonapiConnection>;
+using JsonapiConnectionW = std::weak_ptr<JsonapiConnection>;
 static JsonapiConnectionP current_message_conection;
 
 class JsonapiConnection : public WebSocketConnection, public CustomDataContainer {
@@ -306,6 +307,17 @@ jsonapi_connection_data ()
   if (current_message_conection)
     return current_message_conection.get();
   return nullptr;
+}
+
+JsonapiBinarySender
+jsonapi_connection_sender ()
+{
+  return_unless (current_message_conection, {});
+  JsonapiConnectionW conw = current_message_conection;
+  return [conw] (const String &blob) {
+    JsonapiConnectionP conp = conw.lock();
+    return conp ? conp->send_binary (blob) : false;
+  };
 }
 
 } // Ase
