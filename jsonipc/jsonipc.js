@@ -7,6 +7,7 @@ export const Jsonipc = {
   okeys: globalThis.Object.keys,
   classes: {},
   receivers: {},
+  onbinary: null,
   authresult: undefined,
   web_socket: null,
   counter: null,
@@ -97,6 +98,11 @@ export const Jsonipc = {
       this.receivers[methodname] = handler;
     else
       delete this.receivers[methodname];
+  },
+
+  /// Handle binary messages
+  handle_binary (handler) {
+    this.onbinary = handler ? handler : null;
   },
 
   /// Handle a Jsonipc message
