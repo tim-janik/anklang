@@ -25,7 +25,8 @@ public:
   virtual void   message       (const String &message);         ///< Only if opened.
   virtual void   closed        ();                              ///< Pairs with opened().
   virtual void   log           (const String &message);
-  bool           send_text     (const String &message);         ///< Returns true if message was sent.
+  bool           send_text     (const String &message);         ///< Returns true if text message was sent.
+  bool           send_binary   (const String &blob);            ///< Returns true if binary blob was sent.
   struct Internals;
 protected:
   explicit WebSocketConnection (Internals &internals);

@@ -192,12 +192,43 @@ WebSocketConnection::send_text (const String &message)
   internals_.wppserver.send (internals_.hdl, message, websocketpp::frame::opcode::text, ec);
   if (ec)
     {
-      log (string_format ("Error: send_text: %s", ec.message()));
+      log (string_format ("Error: %s: %s", __func__, ec.message()));
       websocketpp::lib::error_code ec2;
       cp->close (websocketpp::close::status::going_away, "", ec2);
       return false;
     }
   return true;
+}
+
+bool
+WebSocketConnection::send_binary (const String &blob)
+{
+  WppConnectionP cp = internals_.wppconp();
+  return_unless (cp, false);
+  websocketpp::lib::error_code ec;
+  // See "Sending Messages" about `endpoint::send` in utility_client.md
+  internals_.wppserver.send (internals_.hdl, blob, websocketpp::frame::opcode::binary, ec); // MT-Safe, locks mutex
+  if (ec)
+    {
+      log (string_format ("Error: %s: %s", __func__, ec.message()));
+      websocketpp::lib::error_code ec2;
+      cp->close (websocketpp::close::status::going_away, "", ec2);
+      return false;   // invalid connection or send failed
+    }
+  if (1)
+    {
+      String hex;
+      for (size_t i = 0; i < blob.size(); i++)
+        {
+          if (i && 0 == i % 16)
+            hex += "\n ";
+          else if (0 == i % 8)
+            hex += " ";
+          hex += string_format (" %02x", blob[i]);
+        }
+      log (string_format ("⇜ Blob: len=%d hash=%016x: %s", blob.size(), fnv1a_consthash64 (blob.data(), blob.size()), hex));
+    }
+  return true; // connection alive and message queued
 }
 
 WebSocketConnection::Info
