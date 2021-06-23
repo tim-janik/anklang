@@ -44,6 +44,7 @@ ASE_CLASS_DECLS (Track);
 ASE_CLASS_DECLS (TrackImpl);
 
 class AudioEngine;
+class CustomDataContainer;
 
 struct Event;
 class EventConnection;
