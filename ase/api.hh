@@ -314,6 +314,12 @@ struct UserNote {
   String channel, text;
 };
 
+/// Telemetry segment location.
+struct TelemetrySegment {
+  int32 offset = 0;     ///< Position in bytes.
+  int32 length = 0;     ///< Length in bytes.
+};
+
 /// Central singleton, serves as API entry point.
 class Server : public virtual Gadget {
 public:
@@ -330,6 +336,8 @@ public:
   virtual String musical_tuning_desc  (MusicalTuning musicaltuning) const = 0;
   virtual uint64 user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &r = "") = 0;
   virtual bool   user_reply           (uint64 noteid, uint r) = 0;
+  virtual bool   broadcast_telemetry  (const TelemetrySegmentS &segments,
+                                       int32 interval_ms) = 0;  ///< Broadcast telemetry memory segments to the current Jsonipc connection.
   // preferences
   virtual PropertyS access_prefs  () = 0;       ///< Retrieve property handles for Preferences fields.
   // projects

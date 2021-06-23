@@ -23,6 +23,7 @@ public:
   String       musical_tuning_desc  (MusicalTuning musicaltuning) const override;
   uint64       user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &r = "") override;
   bool         user_reply           (uint64 noteid, uint r) override;
+  bool         broadcast_telemetry  (const TelemetrySegmentS &plan, int32 interval_ms) override;
   void         shutdown             () override;
   ProjectP     last_project         () override;
   ProjectP     create_project       (String projectname) override;
@@ -31,6 +32,7 @@ public:
   using Block = FastMemory::Block;
   Block        telemem_allocate     (uint32 length) const;
   void         telemem_release      (Block telememblock) const;
+  ptrdiff_t    telemem_start        () const;
 };
 
 } // Ase
