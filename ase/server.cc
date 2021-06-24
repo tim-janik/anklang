@@ -140,7 +140,10 @@ pathname_anklangrc()
 // == ServerImpl ==
 JSONIPC_INHERIT (ServerImpl, Server);
 
-ServerImpl::ServerImpl ()
+static constexpr size_t telemetry_size = 4 * 1024 * 1024;
+
+ServerImpl::ServerImpl () :
+  telemetry_arena (telemetry_size)
 {
   prefs_ = preferences_defaults();
   const String jsontext = Path::stringread (pathname_anklangrc());
@@ -473,6 +476,18 @@ bool
 ServerImpl::user_reply (uint64 noteid, uint r)
 {
   return false; // unhandled
+}
+
+ServerImpl::Block
+ServerImpl::telemem_allocate (uint32 length) const
+{
+  return telemetry_arena.allocate (length);
+}
+
+void
+ServerImpl::telemem_release (Block telememblock) const
+{
+  telemetry_arena.release (telememblock);
 }
 
 } // Ase

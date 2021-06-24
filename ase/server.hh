@@ -3,12 +3,14 @@
 #define __ASE_SERVER_HH__
 
 #include <ase/gadget.hh>
+#include <ase/memory.hh>
 
 namespace Ase {
 
 class ServerImpl : public GadgetImpl, public virtual Server {
-  Preferences  prefs_;
-  Connection pchange_;
+  Preferences       prefs_;
+  Connection        pchange_;
+  FastMemory::Arena telemetry_arena;
 public:
   static ServerImplP instancep ();
   explicit     ServerImpl           ();
@@ -26,6 +28,9 @@ public:
   ProjectP     create_project       (String projectname) override;
   PropertyS    access_prefs         () override;
   const Preferences& preferences    () const    { return prefs_; }
+  using Block = FastMemory::Block;
+  Block        telemem_allocate     (uint32 length) const;
+  void         telemem_release      (Block telememblock) const;
 };
 
 } // Ase
