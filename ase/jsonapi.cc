@@ -25,8 +25,7 @@ class JsonapiConnection : public WebSocketConnection, public CustomDataContainer
   void
   log (const String &message) override
   {
-    if (main_config.jsipc)
-      printerr ("%s: %s\n", nickname(), message);
+    printerr ("%s: %s\n", nickname(), message);
   }
   int
   validate() override
@@ -38,7 +37,8 @@ class JsonapiConnection : public WebSocketConnection, public CustomDataContainer
       return 0; // OK
     else if (info.subs.size() == 1 && subprotocol_authentication == info.subs[0])
       return 0; // pick first and only
-    log (string_format ("%sREJECT:%s  %s:%d/ %s", C1, C0, info.remote, info.rport, info.ua));
+    if (loglevel_ >= 1)
+      log (string_format ("%sREJECT:%s  %s:%d/ %s", C1, C0, info.remote, info.rport, info.ua));
     return -1; // reject
   }
   void
@@ -47,14 +47,16 @@ class JsonapiConnection : public WebSocketConnection, public CustomDataContainer
     using namespace AnsiColors;
     const auto C1 = color (BOLD), C0 = color (BOLD_OFF);
     const Info info = get_info();
-    log (string_format ("%sACCEPT:%s  %s:%d/ %s", C1, C0, info.remote, info.rport, info.ua));
+    if (loglevel_ >= 1)
+      log (string_format ("%sACCEPT:%s  %s:%d/ %s", C1, C0, info.remote, info.rport, info.ua));
   }
   void
   closed() override
   {
     using namespace AnsiColors;
     const auto C1 = color (BOLD), C0 = color (BOLD_OFF);
-    log (string_format ("%sCLOSED%s", C1, C0));
+    if (loglevel_ >= 1)
+      log (string_format ("%sCLOSED%s", C1, C0));
     trigger_destroy_hooks();
   }
   void
@@ -76,8 +78,8 @@ class JsonapiConnection : public WebSocketConnection, public CustomDataContainer
   String handle_jsonipc (const std::string &message);
   std::vector<JsTrigger> triggers_; // HINT: use unordered_map if this becomes slow
 public:
-  explicit JsonapiConnection (WebSocketConnection::Internals &internals) :
-    WebSocketConnection (internals)
+  explicit JsonapiConnection (WebSocketConnection::Internals &internals, int loglevel) :
+    WebSocketConnection (internals, loglevel)
   {}
   ~JsonapiConnection()
   {
@@ -103,20 +105,21 @@ public:
     JsonapiConnectionP jsonapi_connection_p = std::dynamic_pointer_cast<JsonapiConnection> (shared_from_this());
     assert_return (jsonapi_connection_p);
     std::weak_ptr<JsonapiConnection> selfw = jsonapi_connection_p;
+    const int loglevel = loglevel_;
     // marshal remote trigger
-    auto trigger_remote = [selfw,id] (ValueS &&args)    // weak_ref avoids cycles
+    auto trigger_remote = [selfw, id, loglevel] (ValueS &&args)    // weak_ref avoids cycles
     {
       JsonapiConnectionP selfp = selfw.lock();
       return_unless (selfp);
       const String msg = jsonobject_to_string ("method", id /*"JsonapiTrigger/_%%%"*/, "params", args);
-      if (main_config.jsipc)
+      if (loglevel >= 1)
         selfp->log (string_format ("⬰ %s", msg));
       selfp->send_text (msg);
     };
     JsTrigger trigger = JsTrigger::create (id, trigger_remote);
     triggers_.push_back (trigger);
     // marshall remote destroy notification and erase triggers_ entry
-    auto erase_trigger = [selfw, id] ()               // weak_ref avoids cycles
+    auto erase_trigger = [selfw, id, loglevel] ()               // weak_ref avoids cycles
     {
       std::shared_ptr<JsonapiConnection> selfp = selfw.lock();
       return_unless (selfp);
@@ -124,7 +127,7 @@ public:
         {
           ValueS args { id };
           const String msg = jsonobject_to_string ("method", "JsonapiTrigger/killed", "params", args);
-          if (main_config.jsipc)
+          if (loglevel >= 1)
             selfp->log (string_format ("↚ %s", msg));
           selfp->send_text (msg);
         }
@@ -144,9 +147,9 @@ public:
 };
 
 WebSocketConnectionP
-jsonapi_make_connection (WebSocketConnection::Internals &internals)
+jsonapi_make_connection (WebSocketConnection::Internals &internals, int loglevel)
 {
-  return std::make_shared<JsonapiConnection> (internals);
+  return std::make_shared<JsonapiConnection> (internals, loglevel);
 }
 
 #define ERROR500(WHAT)                                          \
@@ -197,12 +200,11 @@ make_dispatcher()
 String
 JsonapiConnection::handle_jsonipc (const std::string &message)
 {
-  const bool clog = main_config.jsipc;
-  if (clog)
+  if (loglevel_ >= 1)
     log (string_format ("→ %s", message));
   Jsonipc::Scope message_scope (imap_, Jsonipc::Scope::PURGE_TEMPORARIES);
   const std::string reply = make_dispatcher()->dispatch_message (message);
-  if (clog)
+  if (loglevel_ >= 1)
     {
       const char *errorat = strstr (reply.c_str(), "\"error\":{");
       if (errorat && errorat > reply.c_str() && (errorat[-1] == ',' || errorat[-1] == '{'))
