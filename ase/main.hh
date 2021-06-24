@@ -19,6 +19,7 @@ struct MainConfig {
   bool   allow_randomization = true;
   bool   print_js_api = false;
   bool   jsipc = false;
+  bool   jsbin = false;
   enum ModeT { SYNTHENGINE, CHECK_INTEGRITY_TESTS };
   ModeT  mode = SYNTHENGINE;
   AudioEngine *engine = nullptr;
