@@ -10,7 +10,6 @@ namespace Ase {
 
 /// Main handle for AudioProcessor administration and audio rendering.
 class AudioEngine : VirtualBase {
-  AudioTransport               transport_;
   std::atomic<size_t>          processor_count_ = 0;
   ThreadId                     thread_id_ = {};
   friend class AudioEngineThread;
@@ -23,7 +22,8 @@ class AudioEngine : VirtualBase {
   };
   void         add_job_mt            (const std::function<void()> &job, int flags);
 protected:
-  explicit     AudioEngine           (uint sample_rate, SpeakerArrangement speakerarrangement);
+  AudioTransport                    *transport_ = nullptr;
+  explicit     AudioEngine           ();
   virtual void enable_output         (AudioProcessor &aproc, bool onoff) = 0;
   virtual void schedule_queue_update () = 0;
   virtual void schedule_add          (AudioProcessor &aproc, uint level) = 0;
@@ -37,7 +37,7 @@ public:
   virtual AudioProcessorP get_event_source () = 0;
   // MT-Safe API
   virtual uint64_t      frame_counter       () const = 0;
-  const AudioTransport& transport           () const           { return transport_; }
+  const AudioTransport& transport           () const           { return *transport_; }
   uint                  sample_rate         () const ASE_CONST { return transport().samplerate; }
   uint                  nyquist             () const ASE_CONST { return transport().nyquist; }
   double                inyquist            () const ASE_CONST { return transport().inyquist; }

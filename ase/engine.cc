@@ -7,6 +7,7 @@
 #include "server.hh"
 #include "datautils.hh"
 #include "atomics.hh"
+#include "memory.hh"
 #include "internal.hh"
 
 namespace Ase {
@@ -28,6 +29,7 @@ class AudioEngineThread : public AudioEngine {
   bool                         schedule_invalid_ = true;
   EngineMidiInputP             midi_proc_;
   JobQueue                     synchronized_jobs;
+  FastMemory::Block            transport_block;
 public:
   struct Job {
     std::atomic<Job*> next = nullptr;
@@ -81,13 +83,19 @@ atomic_next_ptrref (AudioEngineThread::UserNoteJob *j)
 AudioEngineThread::~AudioEngineThread ()
 {
   fatal_error ("AudioEngine references must persist");
+  transport_ = nullptr;
+  ServerImpl::instancep()->telemem_release (transport_block);
 }
 
 AudioEngineThread::AudioEngineThread (uint sample_rate, SpeakerArrangement speakerarrangement) :
-  AudioEngine (sample_rate, speakerarrangement),
   synchronized_jobs (*this, 2)
 {
+  transport_block = ServerImpl::instancep()->telemem_allocate (sizeof (*transport_));
+  transport_ = new (transport_block.block_start) AudioTransport {
+    sample_rate, sample_rate / 2, 1.0 / sample_rate, 2.0 / sample_rate,
+    1920, speakerarrangement, 0, 0.0, 0, };
   oprocs_.reserve (16);
+  assert_return (sample_rate == 48000);
 }
 
 template<int ADDING> static void
@@ -480,13 +488,9 @@ AudioEngineThread::stop_thread ()
 }
 
 // == AudioEngine ==
-AudioEngine::AudioEngine (uint sample_rate, SpeakerArrangement speakerarrangement) :
-  transport_ { sample_rate, sample_rate / 2, 1.0 / sample_rate, 2.0 / sample_rate,
-               1920, speakerarrangement, 0, 0.0, 0, },
+AudioEngine::AudioEngine() :
   const_jobs (*this, 1), async_jobs (*this, 0)
-{
-  assert_return (sample_rate == 48000);
-}
+{}
 
 void
 AudioEngine::add_job_mt (const std::function<void()> &jobfunc, int flags)
