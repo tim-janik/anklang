@@ -696,3 +696,20 @@ random_secret (uint64_t *secret_var)
 uint64_t cached_hash_secret = 0;
 
 } // Ase
+
+#include "testing.hh"
+
+namespace { // Anon
+using namespace Ase;
+
+TEST_INTEGRITY (randomhash_tests);
+static void
+randomhash_tests()
+{
+  String s;
+  uint64 w, v;
+  s = "HUHUhaha";
+  w = fnv1a_consthash64 (s.c_str()); v = fnv1a_consthash64 (s.data(), s.size());        TASSERT (w == v);
+}
+
+} // Anon
