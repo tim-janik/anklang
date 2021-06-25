@@ -35,6 +35,21 @@ public:
   ptrdiff_t    telemem_start        () const;
 };
 
+static constexpr const char* telemetry_type (const int32  &field) { return "i32"; }
+static constexpr const char* telemetry_type (const uint32 &field) { return "u32"; }
+static constexpr const char* telemetry_type (const float  &field) { return "f32"; }
+static constexpr const char* telemetry_type (const double &field) { return "f64"; }
+
+template<class T> inline TelemetryField
+telemetry_field (const String &name, const T *field)
+{
+  auto start = ServerImpl::instancep()->telemem_start();
+  const ptrdiff_t offset = ptrdiff_t (field) - start;
+  ASE_ASSERT_RETURN (offset >= 0 && offset < 2147483647, {}); // INT_MAX
+  TelemetryField tfield { name, telemetry_type (*field), int32 (offset), sizeof (*field) };
+  return tfield;
+}
+
 } // Ase
 
 #endif // __ASE_SERVER_HH__
