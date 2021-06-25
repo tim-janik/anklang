@@ -1,7 +1,7 @@
 <!-- This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 -->
 
 <docs>
-  ## b-positionview - Display of the song positoin pointer and related information
+  ## b-positionview - Display of the project transport position pointer and related information
   ### Props:
   - **project** - The object providing playback API.
 </docs>
@@ -45,7 +45,7 @@
 import * as Ase from '../aseapi.js';
 
 async function tick_moniotr (addcleanup) {
-  const tickpos_offset = await this.song.get_shm_offset (Ase.SongTelemetry.I32_TICK_POINTER);
+  const tickpos_offset = await this.project.get_shm_offset (Ase.SongTelemetry.I32_TICK_POINTER);
   const mon = {
     sub_i32tickpos: Util.shm_subscribe (tickpos_offset, 4),
   };
@@ -56,33 +56,47 @@ async function tick_moniotr (addcleanup) {
   return mon;
 }
 
-function observable_song_data () {
+function data () {
   const data = {
-    numerator:   { getter: c => this.song.get_prop ("numerator"),   notify: n => this.song.on ("notify:numerator", n), },
-    denominator: { getter: c => this.song.get_prop ("denominator"), notify: n => this.song.on ("notify:denominator", n), },
-    bpm:         { getter: c => this.song.get_prop ("bpm"),         notify: n => this.song.on ("notify:bpm", n), },
-    tpqn:        { getter: c => this.song.get_prop ("tpqn"),        notify: n => this.song.on ("notify:tpqn", n), },
-    tmon:        { getter: c => tick_moniotr.call (this, c), },
+    //numerator:   { getter: c => this.project.get_prop ("numerator"),   notify: n => this.project.on ("notify:numerator", n), },
+    //denominator: { getter: c => this.project.get_prop ("denominator"), notify: n => this.project.on ("notify:denominator", n), },
+    //bpm:         { getter: c => this.project.get_prop ("bpm"),         notify: n => this.project.on ("notify:bpm", n), },
+    //tpqn:        { getter: c => this.project.get_prop ("tpqn"),        notify: n => this.project.on ("notify:tpqn", n), },
+    telemetry:	{ getter: c => this.project.telemetry(), },
+    //tmon:        { getter: c => tick_moniotr.call (this, c), },
     fps:         { default: 0, },
   };
-  return this.observable_from_getters (data, () => this.song);
+  return this.observable_from_getters (data, () => this.project);
 }
 
 export default {
   sfc_template,
   props: {
-    song: { type: Ase.Song, },
+    project: { type: Ase.Project, },
   },
-  data() { return observable_song_data.call (this); },
+  data,
   methods:  {
+    dom_create() {
+    },
+    recv_telemetry (teleobj, arrays) {
+      const bpm = arrays[teleobj.bpm.type][teleobj.bpm.index];
+      const tick_pos = arrays[teleobj.tick_pos.type][teleobj.tick_pos.index];
+      console.log ("positionview.vue: telemetry:", bpm, tick_pos);
+    },
     dom_update() {
+      if (!this.teleobj && this.telemetry)
+	this.teleobj = Util.telemetry_subscribe (this.recv_telemetry.bind (this), this.telemetry);
       this.last_tickpos = -1;
       this.dom_trigger_animate_playback (false);
-      if (this.song && this.tmon)
+      if (this.project && this.tmon)
 	{
 	  this.i32tickpos = this.tmon.sub_i32tickpos[0] / 4;
 	  this.dom_trigger_animate_playback (true);
 	}
+    },
+    dom_destroy() {
+      Util.telemetry_unsubscribe (this.teleobj);
+      this.teleobj = null;
     },
     dom_animate_playback (active) {
       const counter = this.$refs.counter, timer = this.$refs.timer;
@@ -92,7 +106,7 @@ export default {
 	  const strpad = Util.strpad;
 	  // provide zero width space and u2007 (tabular space)
 	  const ts1 = ' '; // zs = '​';
-	  // calculate song position in bars, beats, steps
+	  // calculate transport position in bars, beats, steps
 	  const denominator = Util.clamp (this.denominator, 1, 16), stepsperbeat = 16 / denominator;
 	  const beatsperbar = Util.clamp (this.numerator, 1, 64), stepsperbar = beatsperbar * stepsperbeat;
 	  const ppsn = this.tpqn / 4; // (sequencer ticks) pulses per sixteenth note (steps)
@@ -107,7 +121,7 @@ export default {
 	  const pos = strpad (1 + bar, 3, ts1) + '.' + beatstr + '.' + stepstr;
 	  if (counter.innerText != pos)
 	    counter.innerText = pos;
-	  // calculate song position into hh:mm:ss.frames
+	  // calculate transport position into hh:mm:ss.frames
 	  const tpm = this.tpqn * this.bpm, fps = this.fps;
 	  const tph = tpm * 60, tps = Math.round (tpm / 60);
 	  const hr = tickpos % tph, h = (tickpos - hr) / tph;
