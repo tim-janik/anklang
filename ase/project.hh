@@ -24,6 +24,7 @@ public:
   TrackS              list_tracks    () override;
   TrackP              master_track   () override;
   Error               load_project   (const String &filename) override;
+  TelemetryFieldS     telemetry      () const override;
   AudioProcessorP     master_processor () const;
   ssize_t             track_index    (const Track &child) const;
   static ProjectImplP create         (const String &projectname);
