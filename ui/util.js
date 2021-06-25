@@ -346,9 +346,9 @@ export function array_remove (array, item) {
   for (let i = 0; i < array.length; i++)
     if (item === array[i]) {
       array.splice (i, 1);
-      break;
+      return true;
     }
-  return array;
+  return false;
 }
 
 /** Find `array` index of element that equals `item` */
@@ -1808,6 +1808,124 @@ function shm_reschedule() {
   });
 }
 let pending_shm_reschedule_promise = null;
+
+/// Align integer value to 8.
+function align8 (int) {
+  return (int / 8 |0) * 8;
+}
+
+// Handle incoming binary data, setup by startup.js
+export function jsonipc_binary_handler_ (arraybuffer) {
+  if (telemetry_blocked)
+    return;
+  const arrays = {
+    i32:	new Int32Array   (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
+    u32:	new Uint32Array  (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
+    f32:	new Float32Array (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
+    f64:	new Float64Array (arraybuffer, 0, arraybuffer.byteLength / 8 |0),
+  };
+  for (const object of telemetry_objects) {
+    const callback = object[".telemetry_callback"];
+    callback (object, arrays);
+  }
+}
+let telemetry_blocked = 0;
+
+const telemetry_objects = []; // pointers into telemetry buffer
+let telemetry_segments = [];  // sorted, non-overlapping request list
+
+// re-request telemetry segments
+function telemetry_reschedule() {
+  const fragments = [], segments = [];
+  // collect and sort fragments
+  for (const object of telemetry_objects)
+    for (const fragment in object)
+      if (object[fragment].byteoffset >= 0)
+	fragments.push (object[fragment]);
+  fragments.sort (function (a, b) {
+    if (a.byteoffset != b.byteoffset)
+      return a.byteoffset > b.byteoffset ? +1 : -1;
+    if (a.bytelength != b.bytelength)
+      return a.bytelength > b.bytelength ? -1 : +1;
+    return 0;
+  });
+  // add or extend segments
+  let byteindex = 0; // number of bytes in telemetry_segments before last
+  for (const f of fragments) {
+    let last = segments[segments.length - 1];
+    if (!segments.length || f.byteoffset >= last.offset + last.length + 8) {
+      byteindex += last ? last.length : 0;
+      segments.push ({ offset: align8 (f.byteoffset), length: align8 (f.bytelength + 7) });
+      last = segments[segments.length - 1];
+    } // due to alignment possible: offset+length < f.byteoffset+f.bytelength
+    if (f.byteoffset + f.bytelength > last.offset + last.length)
+      last.length = align8 (f.byteoffset + f.bytelength - last.offset + 7);
+    // translate byteoffset into telemetry delivery
+    f.index = (byteindex + (f.byteoffset - last.offset)) * f.factor |0;
+  }
+  if (!equals_recursively (telemetry_segments, segments)) {
+    telemetry_segments = segments;
+    (async () => {
+      telemetry_blocked++;
+      const result = await Ase.server.broadcast_telemetry (telemetry_segments, 32);
+      telemetry_blocked--;
+      if (!result)
+	throw Error ("telemetry_reschedule: invalid segments: " + JSON.stringify (telemetry_segments));
+    }) ();
+  }
+}
+
+function telemetry_field_width (telemetryfieldtype) {
+  switch (telemetryfieldtype) {
+    case 'f32':	return 4;
+    case 'f64':	return 8;
+    case 'u32':	return 4;
+    case 'i32':	return 4;
+    default:    return 0;
+  }
+}
+
+/// Call `fun` for telemtry updates, returns unsubscribe handler.
+export function telemetry_subscribe (fun, telemetryfields) {
+  if (telemetryfields.length < 1)
+    return null;
+  const telemetryobject = {};
+  for (const field of telemetryfields)
+    {
+      if (!field.name)
+	throw Error ("telemetry_subscribe: missing field name: " + field);
+      const width = telemetry_field_width (field.type);
+      if (!width)
+	throw Error ("telemetry_subscribe: invalid type: " + field.type);
+      const factor = 1.0 / width;
+      const fragment = {
+	index: -1,
+	type: field.type,
+	factor,
+	length: field.length * factor |0,
+	byteoffset: field.offset,
+	bytelength: field.length,
+      };
+      if ((fragment.byteoffset / width |0) != fragment.byteoffset / width)
+	throw Error ("telemetry_subscribe: invalid alignment: " + field.offset + "/" + width);
+      if ((fragment.bytelength / width |0) != fragment.bytelength / width)
+	throw Error ("telemetry_subscribe: invalid alignment: " + field.length + "/" + width);
+      telemetryobject[field.name] = fragment;
+    }
+  Object.defineProperty (telemetryobject, ".telemetry_callback", { value: fun });
+  telemetry_objects.push (telemetryobject);
+  telemetry_reschedule();
+  return telemetryobject;
+}
+
+/// Call `fun` for telemtry updates, returns unsubscribe handler.
+export function telemetry_unsubscribe (telemetryobject) {
+  if (array_remove (telemetry_objects, telemetryobject)) {
+    telemetry_reschedule();
+    return true;
+  }
+  return false;
+}
 
 /// Create a promise that resolves after the given `timeout` with `value`.
 function delay (timeout, value) {
