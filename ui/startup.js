@@ -72,6 +72,7 @@ const Jsonapi = {
     console.assert (AseJsonipc == Ase.Jsonipc);
     Ase.Jsonipc.Jsonapi = Jsonapi;
     Ase.Jsonipc.receive ('JsonapiTrigger/killed', this.jstrigger_remove.bind (this));
+    Ase.Jsonipc.handle_binary (Util.jsonipc_binary_handler_);
     this._init = undefined;
   },
 };
