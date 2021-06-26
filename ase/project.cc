@@ -189,7 +189,7 @@ ProjectImpl::telemetry () const
   assert_return (proc, v);
   const AudioTransport &transport = proc->transport();
   v.push_back (telemetry_field ("bpm", &transport.current_bpm));
-  v.push_back (telemetry_field ("tick_pos", &transport.tick_pos));
+  v.push_back (telemetry_field ("tick_pos", &transport.current_tick));
   // v.push_back (telemetry_field ("sample_frames", &transport.sample_frames));
   return v;
 }
@@ -215,7 +215,7 @@ ProjectImpl::start_playback ()
   const double bpm = 90;
   auto job = [proc, bpm] () {
     AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
-    transport.current_bpm = bpm;
+    transport.tempo (bpm);
   };
   proc->engine().async_jobs += job;
 }
@@ -227,7 +227,10 @@ ProjectImpl::stop_playback ()
   return_unless (proc);
   auto job = [proc] () {
     AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
-    transport.current_bpm = 0;
+    if (transport.current_bpm == 0)
+      transport.tickto (0);
+    else
+      transport.tempo (0);
   };
   proc->engine().async_jobs += job;
 }
