@@ -11,9 +11,10 @@ class EventConnection final {
 public:
   const String     selector_;
   EventHandler     handler_;
-  EventDispatcher &o_;
+  EventDispatcher *dispatcher_ = nullptr;
+  ~EventConnection();
   EventConnection (EventDispatcher &edispatcher, const String &eventselector, EventHandler handler) :
-    selector_ (eventselector), handler_ (handler), o_ (edispatcher)
+    selector_ (eventselector), handler_ (handler), dispatcher_ (&edispatcher)
   {}
   void disconnect ();
   bool connected  () const      { return nullptr != handler_; }
@@ -28,7 +29,7 @@ public:
 // == EventDispatcher ==
 struct EmittableImpl::EventDispatcher {
   using EventConnectionP = std::shared_ptr<EventConnection>;
-  std::vector<EventConnectionP> connections;
+  std::vector<EventConnectionW> connections;
   uint                          in_emission = 0;
   bool                          needs_purging = false;
   void
@@ -41,8 +42,11 @@ struct EmittableImpl::EventDispatcher {
       }
     needs_purging = false;
     for (size_t i = connections.size() - 1; i < connections.size(); i--)
-      if (!connections[i]->connected())
-        connections.erase (connections.begin() + i);
+      {
+        EventConnectionP conp = connections[i].lock();
+        if (!conp || !conp->connected())
+          connections.erase (connections.begin() + i);
+      }
   }
   void
   emit (const Event &event)
@@ -53,7 +57,11 @@ struct EmittableImpl::EventDispatcher {
     const String detailedevent = event_detail.empty() ? event_type : event_type + ":" + event_detail;
     in_emission++;
     for (size_t i = 0; i < connections.size(); i++)
-      connections[i]->emit (event, event_type, detailedevent);
+      {
+        EventConnectionP conp = connections[i].lock();
+        if (conp)
+          conp->emit (event, event_type, detailedevent);
+      }
     in_emission--;
     if (in_emission == 0 && needs_purging)
       purge_connections();
@@ -62,8 +70,14 @@ struct EmittableImpl::EventDispatcher {
   {
     assert_return (in_emission == 0);
     in_emission++; // block purge_connections() calls
-    for (auto &conp : connections)
-      conp->disconnect();
+    std::vector<EventConnectionW> old_connections;
+    std::swap (old_connections, connections);
+    for (auto &conw : old_connections)
+      {
+        EventConnectionP conp = conw.lock();
+        if (conp)
+          conp->disconnect();
+      }
     in_emission--;
   }
 };
@@ -72,24 +86,32 @@ void
 EventConnection::disconnect ()
 {
   const bool was_connected = connected();
-  handler_ = nullptr;
   if (was_connected)
-    o_.purge_connections();
+    {
+      handler_ = nullptr;
+      dispatcher_->purge_connections();
+      dispatcher_ = nullptr;
+    }
 }
 
 bool
 Emittable::Connection::connected () const
 {
-  std::shared_ptr<EventConnection> con = this->lock();
-  return con && con->connected();
+  const EventConnectionP &econp = *this;
+  return econp->connected();
 }
 
 void
 Emittable::Connection::disconnect () const
 {
-  std::shared_ptr<EventConnection> con = this->lock();
-  if (con)
-    con->disconnect();
+  const EventConnectionP &econp = *this;
+  econp->disconnect();
+}
+
+EventConnection::~EventConnection()
+{
+  handler_ = nullptr;
+  dispatcher_ = nullptr;
 }
 
 // == EmittableImpl ==
@@ -106,9 +128,9 @@ EmittableImpl::on_event (const String &eventselector, const EventHandler &eventh
   return_unless (!eventselector.empty() && eventhandler, {});
   if (!ed_)
     ed_ = new EventDispatcher();
-  ed_->connections.push_back (std::make_shared<EventConnection> (*ed_, eventselector, eventhandler));
-  std::weak_ptr<EventConnection> wptr = ed_->connections.back();
-  return *static_cast<Connection*> (&wptr);
+  EventConnectionP cptr = std::make_shared<EventConnection> (*ed_, eventselector, eventhandler);
+  ed_->connections.push_back (cptr);
+  return *static_cast<Connection*> (&cptr);
 }
 
 void

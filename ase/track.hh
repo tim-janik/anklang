@@ -10,6 +10,7 @@ class TrackImpl : public GadgetImpl, public virtual Track {
   const bool masterflag_ = false;
   ProjectImpl *project_ = nullptr;
   DeviceImplP  chain_;
+  ClipS        clips_;
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
   virtual ~TrackImpl    ();
@@ -17,14 +18,16 @@ class TrackImpl : public GadgetImpl, public virtual Track {
 protected:
   String   fallback_name  () const override;
   void     serialize      (WritNode &xs) override;
-public:
   explicit TrackImpl      (bool masterflag);
+public:
   bool     is_master      () const override       { return masterflag_; }
   int32    midi_channel   () const override;
   void     midi_channel   (int32 midichannel) override;
   ClipS    list_clips     () override;
   DeviceP  access_device  () override;
   MonitorP create_monitor (int32 ochannel) override;
+  void     update_clip    ();
+  ssize_t  clip_index     (const ClipImpl &clip) const;
 };
 
 } // Ase

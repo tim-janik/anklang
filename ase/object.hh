@@ -14,6 +14,7 @@ class EmittableImpl : public virtual Emittable {
 protected:
   virtual ~EmittableImpl ();
 public:
+  ASE_USE_RESULT
   Connection on_event   (const String &eventselector, const EventHandler &eventhandler) override;
   void       emit_event (const String &type, const String &detail, ValueR fields = {}) override;
 };

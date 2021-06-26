@@ -246,10 +246,10 @@ MidiDriver::list_drivers ()
 
 // == NullPcmDriver ==
 class NullPcmDriver : public PcmDriver {
-  uint   n_channels_ = 0;
-  uint   mix_freq_ = 0;
-  uint   block_size_ = 0;
-  uint64 resumetime_ = 0;
+  uint  n_channels_ = 0;
+  uint  mix_freq_ = 0;
+  uint  block_size_ = 0;
+  int64 resumetime_ = 0;
 public:
   explicit      NullPcmDriver (const String &driver, const String &devid) : PcmDriver (driver, devid) {}
   static PcmDriverP

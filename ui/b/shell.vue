@@ -83,7 +83,7 @@ html.b-shell-during-drag .b-app {
       <v-flex grow1 shrink1>
 	<!-- upper main area -->
 	<h-flex class="b-shell-panel1" >
-	  <b-track-list class="grow1" :project="Data.project"></b-track-list>
+	  <b-tracklist class="grow1" :project="Data.project"></b-tracklist>
 	</h-flex>
 	<!-- lower main area -->
 	<h-flex class="b-shell-panel2" :style="panel2_style()" >

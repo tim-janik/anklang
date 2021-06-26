@@ -17,6 +17,7 @@ regex_flags (Re::Flags flags, bool d = false)
   return o;
 }
 
+/// Find `regex` in `input` and return match position >= 0 or return < 0 otherwise.
 ssize_t
 Re::search (const String &regex, const String &input, Flags flags)
 {
@@ -27,6 +28,7 @@ Re::search (const String &regex, const String &input, Flags flags)
   return -1;
 }
 
+/// Substitute `regex` in `input` with `subst`.
 String
 Re::sub (const String &regex, const String &subst, const String &input, Flags flags)
 {

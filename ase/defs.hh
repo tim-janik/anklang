@@ -11,6 +11,7 @@ enum class Error;
 // == Struct Forward Declarations ==
 ASE_STRUCT_DECLS (AudioProcessorInfo);
 ASE_STRUCT_DECLS (Choice);
+ASE_STRUCT_DECLS (ClipNote);
 ASE_STRUCT_DECLS (DeviceInfo);
 ASE_STRUCT_DECLS (DriverEntry);
 ASE_STRUCT_DECLS (ParamInfo);
@@ -25,6 +26,7 @@ ASE_CLASS_DECLS (AudioEngineThread);
 ASE_CLASS_DECLS (AudioProcessor);
 ASE_CLASS_DECLS (AudioProcessor);
 ASE_CLASS_DECLS (Clip);
+ASE_CLASS_DECLS (ClipImpl);
 ASE_CLASS_DECLS (Device);
 ASE_CLASS_DECLS (DeviceImpl);
 ASE_CLASS_DECLS (FileCrawler);
@@ -45,6 +47,8 @@ class AudioEngine;
 
 struct Event;
 class EventConnection;
+using EventConnectionW = std::weak_ptr<EventConnection>;
+using EventConnectionP = std::shared_ptr<EventConnection>;
 using EventHandler = std::function<void (const Event&)>;
 
 class SharedBase;

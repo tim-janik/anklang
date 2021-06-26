@@ -103,12 +103,12 @@ ChoiceS& operator+= (ChoiceS &choices, Choice &&newchoice);
 /// Base type for classes with Event subscription.
 class Emittable : public virtual SharedBase {
 public:
-  struct Connection : std::weak_ptr<EventConnection> {
-    friend class Emittable;
+  struct Connection : EventConnectionP {
     bool             connected  () const;
     void             disconnect () const;
   };
   virtual void       emit_event  (const String &type, const String &detail, ValueR fields) = 0;
+  ASE_USE_RESULT
   virtual Connection on_event    (const String &eventselector, const EventHandler &eventhandler) = 0;
   void               js_trigger  (const String &eventselector, JsTrigger callback);
 };
@@ -211,12 +211,28 @@ public:
                                             Device &sibling) = 0;      ///< Create device, before sibling.
 };
 
+/// Part specific note event representation.
+struct ClipNote {
+  int32 id;             /// ID, > 0
+  int32 channel;        /// MIDI Channel
+  int32 tick;           /// Position in ticks
+  int32 duration;       /// Duration in number of ticks
+  int32 key;            /// Musical note as MIDI key, 0 .. 127
+  int32 fine_tune;      /// Fine Tune, -100 .. +100
+  float velocity;       /// Velocity, 0 .. +1
+  bool  selected;       /// UI selection flag
+};
+
 /// Container for MIDI note and control events.
 class Clip : public virtual Gadget {
 public:
-  virtual int32 start_tick () = 0; ///< Get the first tick intended for playback (this is >= 0), changes on `notify:start_tick`.
-  virtual int32 stop_tick  () = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
-  virtual int32 end_tick   () = 0; ///< Get the end tick, this tick is past any event ticks, changes on `notify:end_tick`.
+  virtual int32     start_tick     () const = 0; ///< Get the first tick intended for playback (this is >= 0), changes on `notify:start_tick`.
+  virtual int32     stop_tick      () const = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
+  virtual int32     end_tick       () const = 0; ///< Get the end tick, this tick is past any event ticks, changes on `notify:end_tick`.
+  virtual void      assign_range   (int32 starttick, int32 stoptick) = 0; ///< Change start_tick() and stop_tick(); emits `notify:start_tick`, `notify:stop_tick`.
+  virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
+  /// Change note `id` according to the arguments or add a new note if `id` < 0; emits `notify:notes`.
+  virtual int32     change_note    (int32 id, int32 tick, int32 duration, int32 key, int32 fine_tune, double velocity) = 0;
 };
 
 /// Container for Clip objects and sequencing information.

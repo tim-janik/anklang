@@ -100,6 +100,7 @@ using VoidF = std::function<void()>;
 /// Forward declare `class Klass;` as well as `KlassP` and `KlassS` as `vector<KlassP>`.
 #define ASE_CLASS_DECLS(Klass)                                  \
   class Klass;                                                  \
+  using ASE_CPP_PASTE2 (Klass, W) = ::std::weak_ptr<Klass>;     \
   using ASE_CPP_PASTE2 (Klass, P) = ::std::shared_ptr<Klass>;   \
   using ASE_CPP_PASTE2 (Klass, S) = ::std::vector<ASE_CPP_PASTE2 (Klass, P)>;
 

@@ -491,7 +491,7 @@ StorageReader::stringread (const String &filename, ssize_t maxlength)
   errno = EINVAL;
   assert_return (impl_, {});
   String data = impl_->stringread (filename);
-  if (maxlength >= 0 && maxlength < data.size())
+  if (maxlength >= 0 && maxlength < int64_t (data.size()))
     data.resize (maxlength);
   return data;
 }
