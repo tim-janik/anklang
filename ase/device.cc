@@ -108,19 +108,21 @@ DeviceImpl::list_devices ()
     for (auto &proc : combo->list_processors())
       devs.push_back (proc->device_impl());
   };
-  proc_->engine_.const_jobs += j;
+  proc_->engine().const_jobs += j;
   return devs;
 }
 
 void
 DeviceImpl::set_event_source (AudioProcessorP esource)
 {
+  if (esource)
+    assert_return (esource->has_event_output());
   AudioComboP combo = combo_;
   return_unless (combo);
   auto j = [combo, esource] () {
     combo->set_event_source (esource);
   };
-  proc_->engine_.async_jobs += j;
+  proc_->engine().async_jobs += j;
 }
 
 DeviceInfoS

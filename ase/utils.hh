@@ -4,6 +4,7 @@
 
 #include <ase/defs.hh>
 #include <ase/strings.hh>
+#include <experimental/type_traits>
 #include <any>
 
 namespace Ase {
@@ -248,43 +249,23 @@ ase_gettext (const char *format, const Args &...args)
 /// Auxillary algorithms brodly useful
 namespace Aux {
 
-/// Erase first element for which `pred()` is true in vector or list.
-template<class C> inline size_t
-erase_first (C &container, const std::function<bool (typename C::value_type const &value)> &pred)
-{
-  for (auto iter = container.begin(); iter != container.end(); iter++)
-    if (pred (*iter))
-      {
-        container.erase (iter);
-        return 1;
-      }
-  return 0;
-}
+template<typename T>
+using callable_reserve_int = decltype (std::declval<T&>().reserve (int (0)));
+template<typename T>
+using callable_minus = decltype (std::declval<T>() - std::declval<T>());
 
-/// Erase all elements for which `pred()` is true in vector or list.
-template<class C> inline size_t
-erase_all (C &container, const std::function<bool (typename C::value_type const &value)> &pred)
+/// Create a `Container` with copies of the elements of `source`.
+template<class Container, class Iteratable> Container
+container_copy (const Iteratable &source)
 {
-  size_t c = 0;
-  for (auto iter = container.begin(); iter != container.end(); /**/)
-    if (pred (*iter))
-      {
-        iter = container.erase (iter);
-        c++;
-      }
-    else
-      iter++;
+  Container c;
+  const auto b = std::begin (source), e = std::end (source);
+  if constexpr (std::experimental::is_detected<callable_reserve_int, Container>::value &&
+                std::experimental::is_detected<callable_minus, decltype (b)>::value) {
+      c.reserve (e - b);
+    }
+  std::copy (b, e, std::back_inserter (c));
   return c;
-}
-
-/// Returns `true` if container element for which `pred()` is true.
-template<typename C> inline bool
-contains (const C &container, const std::function<bool (typename C::value_type const &value)> &pred)
-{
-  for (auto iter = container.begin(); iter != container.end(); iter++)
-    if (pred (*iter))
-      return true;
-  return false;
 }
 
 // == Binary Lookups ==
@@ -367,6 +348,57 @@ template<typename Value> static inline int
 compare_greater (const Value &v1, const Value &v2)
 {
   return (v1 < v2) | -(v2 < v1);
+}
+
+// == Vector Utils ==
+
+/// Erase first element for which `pred()` is true in vector or list.
+template<class C> inline size_t
+erase_first (C &container, const std::function<bool (typename C::value_type const &value)> &pred)
+{
+  for (auto iter = container.begin(); iter != container.end(); iter++)
+    if (pred (*iter))
+      {
+        container.erase (iter);
+        return 1;
+      }
+  return 0;
+}
+
+/// Erase all elements for which `pred()` is true in vector or list.
+template<class C> inline size_t
+erase_all (C &container, const std::function<bool (typename C::value_type const &value)> &pred)
+{
+  size_t c = 0;
+  for (auto iter = container.begin(); iter != container.end(); /**/)
+    if (pred (*iter))
+      {
+        iter = container.erase (iter);
+        c++;
+      }
+    else
+      iter++;
+  return c;
+}
+
+/// Returns `true` if container element for which `pred()` is true.
+template<typename C> inline bool
+contains (const C &container, const std::function<bool (typename C::value_type const &value)> &pred)
+{
+  for (auto iter = container.begin(); iter != container.end(); iter++)
+    if (pred (*iter))
+      return true;
+  return false;
+}
+
+/// Insert `value` into sorted `vec` using binary_lookup_insertion_pos() with `compare`.
+template<class T, class Compare> inline typename std::vector<T>::iterator
+insert_sorted (std::vector<T> &vec, const T &value, Compare compare)
+{
+  static_assert (std::is_signed<decltype (std::declval<Compare>() (std::declval<T>(), std::declval<T>()))>::value, "REQUIRE: int Compare (const&, const&);");
+  auto insmatch = binary_lookup_insertion_pos (vec.begin(), vec.end(), compare, value);
+  auto it = insmatch.first;
+  return vec.insert (it, value);
 }
 
 } // Aux

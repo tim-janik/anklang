@@ -114,7 +114,7 @@ TrackImpl::list_clips () // TODO: implement
       while (clips_.size() < max_clips)
         clips_.push_back (ClipImpl::make_shared (*this));
     }
-  return clips_;
+  return Aux::container_copy<ClipS> (clips_);
 }
 
 ssize_t

@@ -6,9 +6,6 @@
 
 namespace Ase {
 
-/// Maximum number of sample frames to calculate in Processor::render().
-constexpr const uint AUDIO_BLOCK_MAX_RENDER_SIZE = 128;
-
 /// Maximum number of values in the const_float_zeros block.
 constexpr const uint AUDIO_BLOCK_FLOAT_ZEROS_SIZE = 16384;
 

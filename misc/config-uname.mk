@@ -106,8 +106,8 @@ pkgldflags	::= $(strip $(LDOPTIMIZE) $(LDMODEFLAGS)) -Wl,-export-dynamic -Wl,--a
 
 # == implicit rules ==
 compiledefs     = $(DEFS) $(EXTRA_DEFS) $($<.DEFS) $($@.DEFS) $(INCLUDES) $(EXTRA_INCLUDES) $($<.INCLUDES) $($@.INCLUDES)
-compilecflags   = $(pkgcflags) $(EXTRA_FLAGS) $($<.FLAGS) $($@.FLAGS) -MQ '$@' -MMD -MF '$@'.d
-compilecxxflags = $(pkgcxxflags) $(EXTRA_FLAGS) $($<.FLAGS) $($@.FLAGS) -MQ '$@' -MMD -MF '$@'.d
+compilecflags   = $(pkgcflags) $(EXTRA_FLAGS) $(EXTRA_CFLAGS) $($<.FLAGS) $($@.FLAGS) -MQ '$@' -MMD -MF '$@'.d
+compilecxxflags = $(pkgcxxflags) $(EXTRA_FLAGS) $(EXTRA_CXXFLAGS) $($<.FLAGS) $($@.FLAGS) -MQ '$@' -MMD -MF '$@'.d
 $>/%.o: %.c
 	$(QECHO) CC $@
 	$(Q) $(CCACHE) $(CC) $(CSTD) -fPIC $(compiledefs) $(compilecflags) -o $@ -c $<

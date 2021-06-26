@@ -39,10 +39,12 @@ assertion_failed (const std::string &msg, const char *file, int line, const char
       fputs (msg.c_str(), stderr);
       if (msg.size() && msg[msg.size() - 1] != '\n')
         fputc ('\n', stderr);
-      if (debug_key_enabled ("backtrace"))
-        ASE_PRINT_BACKTRACE (__FILE__, __LINE__, __func__);
     }
   fflush (stderr);
+  if (debug_key_enabled ("backtrace"))
+    ASE_PRINT_BACKTRACE (__FILE__, __LINE__, __func__);
+  else if (debug_key_enabled ("break"))
+    breakpoint();
   if (main_config.fatal_warnings)
     raise (SIGQUIT);
 }

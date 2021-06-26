@@ -10,7 +10,7 @@ class TrackImpl : public GadgetImpl, public virtual Track {
   const bool masterflag_ = false;
   ProjectImpl *project_ = nullptr;
   DeviceImplP  chain_;
-  ClipS        clips_;
+  ClipImplS    clips_;
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
   virtual ~TrackImpl    ();
