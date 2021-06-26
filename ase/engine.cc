@@ -91,9 +91,7 @@ AudioEngineThread::AudioEngineThread (uint sample_rate, SpeakerArrangement speak
   synchronized_jobs (*this, 2)
 {
   transport_block = ServerImpl::instancep()->telemem_allocate (sizeof (*transport_));
-  transport_ = new (transport_block.block_start) AudioTransport {
-    sample_rate, sample_rate / 2, 1.0 / sample_rate, 2.0 / sample_rate,
-    1920, speakerarrangement, };
+  transport_ = new (transport_block.block_start) AudioTransport (speakerarrangement, sample_rate);
   oprocs_.reserve (16);
   assert_return (sample_rate == 48000);
 }
