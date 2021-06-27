@@ -76,7 +76,7 @@ ClipImpl::clip_index () const
 }
 
 void
-ClipImpl::assign_range (int32 starttick, int32 stoptick)
+ClipImpl::assign_range (int64 starttick, int64 stoptick)
 {
   assert_return (starttick >= 0);
   assert_return (stoptick >= starttick);
@@ -112,7 +112,7 @@ ClipImpl::tick_events ()
 
 /// Change note `id`, or delete (`duration=0`) or create (`id=-1`) it.
 int32
-ClipImpl::change_note (int32 id, int32 tick, int32 duration, int32 key, int32 fine_tune, double velocity)
+ClipImpl::change_note (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity)
 {
   if (id < 0 && duration > 0)
     id = next_noteid++; // automatic id allocation for new notes
