@@ -188,8 +188,8 @@ ProjectImpl::telemetry () const
   AudioProcessorP proc = master_processor ();
   assert_return (proc, v);
   const AudioTransport &transport = proc->transport();
-  v.push_back (telemetry_field ("bpm", &transport.current_bpm));
-  v.push_back (telemetry_field ("tick_pos", &transport.current_tick));
+  v.push_back (telemetry_field ("current_bpm", &transport.current_bpm));
+  v.push_back (telemetry_field ("current_tick", &transport.current_tick_d));
   // v.push_back (telemetry_field ("sample_frames", &transport.sample_frames));
   return v;
 }
