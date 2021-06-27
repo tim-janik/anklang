@@ -79,9 +79,9 @@ export default {
     dom_create() {
     },
     recv_telemetry (teleobj, arrays) {
-      const bpm = arrays[teleobj.bpm.type][teleobj.bpm.index];
-      const tick_pos = arrays[teleobj.tick_pos.type][teleobj.tick_pos.index];
-      console.log ("positionview.vue: telemetry:", bpm, tick_pos);
+      const bpm = arrays[teleobj.current_bpm.type][teleobj.current_bpm.index];
+      const tick = arrays[teleobj.current_tick.type][teleobj.current_tick.index];
+      console.log ("positionview.vue: telemetry:", bpm, tick);
     },
     dom_update() {
       if (!this.teleobj && this.telemetry)
