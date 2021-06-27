@@ -1816,15 +1816,25 @@ function align8 (int) {
   return (int / 8 |0) * 8;
 }
 
+function telemetry_field_width (telemetryfieldtype) {
+  switch (telemetryfieldtype) {
+    // case 'i64': return 8;
+    case 'i32':	return 4;
+    case 'f32':	return 4;
+    case 'f64':	return 8;
+    default:    return 0;
+  }
+}
+
 // Handle incoming binary data, setup by startup.js
 export function jsonipc_binary_handler_ (arraybuffer) {
   if (telemetry_blocked)
     return;
   const arrays = {
-    i32:	new Int32Array   (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
-    u32:	new Uint32Array  (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
-    f32:	new Float32Array (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
-    f64:	new Float64Array (arraybuffer, 0, arraybuffer.byteLength / 8 |0),
+    // i64:	new BigInt64Array (arraybuffer, 0, arraybuffer.byteLength / 8 |0),
+    i32:	new Int32Array    (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
+    f32:	new Float32Array  (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
+    f64:	new Float64Array  (arraybuffer, 0, arraybuffer.byteLength / 8 |0),
   };
   for (const object of telemetry_objects) {
     const callback = object[".telemetry_callback"];
@@ -1874,16 +1884,6 @@ function telemetry_reschedule() {
       if (!result)
 	throw Error ("telemetry_reschedule: invalid segments: " + JSON.stringify (telemetry_segments));
     }) ();
-  }
-}
-
-function telemetry_field_width (telemetryfieldtype) {
-  switch (telemetryfieldtype) {
-    case 'f32':	return 4;
-    case 'f64':	return 8;
-    case 'u32':	return 4;
-    case 'i32':	return 4;
-    default:    return 0;
   }
 }
 
