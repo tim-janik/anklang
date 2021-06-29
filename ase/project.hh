@@ -9,11 +9,17 @@ namespace Ase {
 class ProjectImpl : public GadgetImpl, public virtual Project {
   std::vector<TrackImplP> tracks_;
   ASE_DEFINE_MAKE_SHARED (ProjectImpl);
+  MusicalTuning musical_tuning_ = MusicalTuning::OD_12_TET;
+  bool dirty_ = false;
+  float bpm_ = 90;
+  int32 numerator_ = 4;
+  int32 denominator_ = 4;
 protected:
   explicit            ProjectImpl    ();
   virtual            ~ProjectImpl    ();
   void                serialize      (WritNode &xs) override;
 public:
+  PropertyS           access_properties () override;
   void                destroy        () override;
   Error               save_dir       (const String &dir, bool selfcontained) override;
   void                start_playback () override;

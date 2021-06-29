@@ -291,6 +291,29 @@ ProjectImpl::master_track ()
   return tracks_.back();
 }
 
+PropertyS
+ProjectImpl::access_properties ()
+{
+  using namespace Properties;
+  PropertyBag bag;
+  bag.group = _("State");
+  bag += Bool ("dirty", &dirty_, _("Modification Flag"), _("Dirty"), false, ":r:G:", _("Flag indicating modified project state"));
+  bag.group = _("Timing");
+  bag += Range ("numerator", &numerator_, _("Signature Numerator"), _("Numerator"), 1, 63, 4, STANDARD);
+  bag += Range ("denominator", &denominator_, _("Signature Denominator"), _("Denominator"), 1, 16, 4, STANDARD);
+  bag += Range ("bpm", &bpm_, _("Beats Per Minute"), _("BPM"), 10., 999., 90., STANDARD);
+  bag.group = _("Tuning");
+  bag += Enum ("musical_tuning", &musical_tuning_, _("Musical Tuning"), _("Tuning"), STANDARD, "",
+               _("The tuning system which specifies the tones or pitches to be used. "
+                 "Due to the psychoacoustic properties of tones, various pitch combinations can "
+                 "sound \"natural\" or \"pleasing\" when used in combination, the musical "
+                 "tuning system defines the number and spacing of frequency values applied."));
+  bag.on_events ("change", [this] (const Event &e) {
+    emit_event (e.type(), e.detail());
+  });
+  return bag.props;
+}
+
 // == Project ==
 ProjectP
 Project::last_project()
