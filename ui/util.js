@@ -834,6 +834,52 @@ export async function object_await_values (obj) {
   return object_zip (obj, Object.keys (obj), await Promise.all (Object.values (obj)));
 }
 
+const empty_list = Object.freeze ([]);
+
+/** Extend Ase.Property objects with cached attributs.
+ * Note, for automatic `.value_` updates, a `disconnector` function must be provided
+ * as second argument, to handle disconnection of property change notifications once
+ * the property is not needed anymore.
+ */
+export async function extend_property (prop, disconnector = undefined) {
+  prop = await prop;
+  const xprop = {
+    hints_: prop.hints(),
+    ident_: prop.identifier(),
+    is_numeric_: prop.is_numeric(),
+    label_: prop.label(),
+    nick_: prop.nick(),
+    unit_: prop.unit(),
+    group_: prop.group(),
+    blurb_: prop.blurb(),
+    description_: prop.description(),
+    min_: prop.get_min(),
+    max_: prop.get_max(),
+    step_: prop.get_step(),
+    has_choices_: false,
+    value_: Vue.reactive ({ val: undefined, num: 0, text: '', choices: empty_list }),
+    apply_: prop.set_value.bind (prop),
+    fetch_: () => xprop.is_numeric_ ? xprop.value_.num : xprop.value_.text,
+    update_: async () => {
+      const value_ = { val: xprop.get_value(),
+		       num: xprop.get_normalized(),
+		       text: xprop.get_text(),
+		       choices: xprop.has_choices_ ? xprop.choices() : empty_list,
+      };
+      Object.assign (xprop.value_, await Util.object_await_values (value_));
+    },
+    __proto__: prop,
+  };
+  if (disconnector)
+    disconnector (xprop.on ('change', _ => xprop.update_()));
+  xprop.hints_ = await xprop.hints_;
+  xprop.has_choices_ = xprop.hints_.search (/:choice:/) >= 0;
+  const update_promise = xprop.update_(); // needs xprop.has_choices_
+  await Util.object_await_values (xprop);
+  await update_promise; // assigns xprop.value_
+  return xprop;
+}
+
 /// Extract the promise `p` state as one of: 'pending', 'fulfilled', 'rejected'
 export function promise_state (p) {
   const t = {}; // dummy, acting as fulfilled
