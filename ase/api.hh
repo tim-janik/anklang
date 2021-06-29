@@ -341,8 +341,8 @@ public:
   virtual String get_vorbis_version () = 0;     ///< Retrieve Vorbis handler version.
   virtual String get_mp3_version    () = 0;     ///< Retrieve MP3 handler version.
   virtual String error_blurb          (Error error) const = 0;
+  virtual String musical_tuning_label (MusicalTuning musicaltuning) const = 0;
   virtual String musical_tuning_blurb (MusicalTuning musicaltuning) const = 0;
-  virtual String musical_tuning_desc  (MusicalTuning musicaltuning) const = 0;
   virtual uint64 user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &r = "") = 0;
   virtual bool   user_reply           (uint64 noteid, uint r) = 0;
   virtual bool   broadcast_telemetry  (const TelemetrySegmentS &segments,
