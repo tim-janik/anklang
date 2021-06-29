@@ -21,8 +21,13 @@ canonify_identifier (const std::string &input)
   return str;
 }
 
-static String
-construct_hints (const String &hints, const String &more, double pmin = 0, double pmax = 0)
+Property::~Property()
+{}
+
+namespace Properties {
+
+String
+construct_hints (const String &hints, const String &more, double pmin, double pmax)
 {
   String h = hints;
   if (h.empty())
@@ -38,11 +43,6 @@ construct_hints (const String &hints, const String &more, double pmin = 0, doubl
     h += "bidir:";
   return h;
 }
-
-Property::~Property()
-{}
-
-namespace Properties {
 
 PropertyImpl::~PropertyImpl()
 {}
@@ -78,9 +78,8 @@ struct LambdaPropertyImpl : public virtual PropertyImpl {
   LambdaPropertyImpl (const Properties::Initializer &initializer, const ValueGetter &g, const ValueSetter &s, const ValueLister &l) :
     d (initializer), getter_ (g), setter_ (s), lister_ (l)
   {
-    if (d.ident.empty())
-      d.ident = canonify_identifier (d.label);
-    assert_return (initializer.label.size() || initializer.ident.size());
+    d.ident = canonify_identifier (d.ident.empty() ? d.label : d.ident);
+    assert_return (initializer.ident.size());
   }
 };
 using LambdaPropertyImplP = std::shared_ptr<LambdaPropertyImpl>;
@@ -249,13 +248,11 @@ Bag::operator+= (PropertyP p)
   return *this;
 }
 
-Bag::ConnectionS
-Bag::on_event (const String &eventselector, const EventHandler &eventhandler)
+void
+Bag::on_events (const String &eventselector, const EventHandler &eventhandler)
 {
-  ConnectionS cons;
   for (auto p : props)
-    cons.push_back (p->on_event ("change", eventhandler));
-  return cons;
+    connections.push_back (p->on_event ("change", eventhandler));
 }
 
 } // Properties
@@ -284,48 +281,49 @@ ptrprop (const Properties::Initializer &initializer, V *p, const Properties::Val
 
 // == Property constructors ==
 PropertyP
-Properties::Bool (bool *v, const String &label, const String &nickname, bool dflt, const String &hints, const String &blurb, const String &description)
+Properties::Bool (const String &ident, bool *v, const String &label, const String &nickname, bool dflt, const String &hints, const String &blurb, const String &description)
 {
-  return ptrprop ({ .label = label, .nickname = nickname, .blurb = blurb, .description = description,
+  return ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
                     .hints = construct_hints (hints, "bool"), .pdef = double (dflt) }, v);
 }
 
 PropertyP
-Properties::Enum (String *v, const String &label, const String &nickname, int64 dflt, const String &hints, const String &blurb, const String &description)
-{
-  return ptrprop ({ .label = label, .nickname = nickname, .blurb = blurb, .description = description,
-                    .hints = construct_hints (hints, "enum"), .pdef = double (dflt) }, v);
-}
-
-PropertyP
-Properties::Range (double *v, const String &label, const String &nickname, double pmin, double pmax, double dflt,
+Properties::Range (const String &ident, int32 *v, const String &label, const String &nickname, int32 pmin, int32 pmax, int32 dflt,
                    const String &unit, const String &hints, const String &blurb, const String &description)
 {
-  return ptrprop ({ .label = label, .nickname = nickname, .blurb = blurb, .description = description,
-                    .hints = construct_hints (hints, "range"), .pmin = pmin, .pmax = pmax, .pdef = dflt }, v);
-}
-
-PropertyP
-Properties::Range (int32 *v, const String &label, const String &nickname, int32 pmin, int32 pmax, int32 dflt,
-                   const String &unit, const String &hints, const String &blurb, const String &description)
-{
-  return ptrprop ({ .label = label, .nickname = nickname, .blurb = blurb, .description = description,
+  return ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
                     .hints = construct_hints (hints, "range"),
                     .pmin = double (pmin), .pmax = double (pmax), .pdef = double (dflt) }, v);
 }
 
 PropertyP
-Properties::Text (String *v, const String &label, const String &nickname, const String &hints, const String &blurb, const String &description)
+Properties::Range (const String &ident, float *v, const String &label, const String &nickname, double pmin, double pmax, double dflt,
+                   const String &unit, const String &hints, const String &blurb, const String &description)
 {
-  return ptrprop ({ .label = label, .nickname = nickname, .blurb = blurb, .description = description,
+  return ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
+                    .hints = construct_hints (hints, "range"), .pmin = pmin, .pmax = pmax, .pdef = dflt }, v);
+}
+
+PropertyP
+Properties::Range (const String &ident, double *v, const String &label, const String &nickname, double pmin, double pmax, double dflt,
+                   const String &unit, const String &hints, const String &blurb, const String &description)
+{
+  return ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
+                    .hints = construct_hints (hints, "range"), .pmin = pmin, .pmax = pmax, .pdef = dflt }, v);
+}
+
+PropertyP
+Properties::Text (const String &ident, String *v, const String &label, const String &nickname, const String &hints, const String &blurb, const String &description)
+{
+  return ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
                     .hints = construct_hints (hints, "text") }, v);
 }
 
 PropertyP
-Properties::Text (String *v, const String &label, const String &nickname, const ValueLister &vl, const String &hints, const String &blurb, const String &description)
+Properties::Text (const String &ident, String *v, const String &label, const String &nickname, const ValueLister &vl, const String &hints, const String &blurb, const String &description)
 {
   PropertyP propp;
-  propp = ptrprop ({ .label = label, .nickname = nickname, .blurb = blurb, .description = description,
+  propp = ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
                      .hints = construct_hints (hints, "text:choice") }, v, vl);
   return propp;
 }
