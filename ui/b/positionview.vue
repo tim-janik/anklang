@@ -34,8 +34,8 @@
 
   <h-flex class="b-positionview inter tabular-nums" >
     <span class="b-positionview-counter" ref="counter" />
-    <span class="b-positionview-bpm">{{ bpm }}</span>
-    <span class="b-positionview-sig">{{ numerator + '/' + denominator }}</span>
+    <span class="b-positionview-bpm">{{ bpm?.value_.val }}</span>
+    <span class="b-positionview-sig">{{ numerator?.value_.val + '/' + denominator?.value_.val }}</span>
     <span class="b-positionview-timer" ref="timer" />
   </h-flex>
 
@@ -58,10 +58,10 @@ async function tick_moniotr (addcleanup) {
 
 function data () {
   const data = {
-    //numerator:   { getter: c => this.project.get_prop ("numerator"),   notify: n => this.project.on ("notify:numerator", n), },
-    //denominator: { getter: c => this.project.get_prop ("denominator"), notify: n => this.project.on ("notify:denominator", n), },
-    //bpm:         { getter: c => this.project.get_prop ("bpm"),         notify: n => this.project.on ("notify:bpm", n), },
     //tpqn:        { getter: c => this.project.get_prop ("tpqn"),        notify: n => this.project.on ("notify:tpqn", n), },
+    bpm:	{ getter: c => Util.extend_property (this.project.access_property ("bpm"), c), },
+    numerator:	{ getter: c => Util.extend_property (this.project.access_property ("numerator"), c), },
+    denominator:{ getter: c => Util.extend_property (this.project.access_property ("denominator"), c), },
     telemetry:	{ getter: c => this.project.telemetry(), },
     //tmon:        { getter: c => tick_moniotr.call (this, c), },
     fps:         { default: 0, },
@@ -81,9 +81,12 @@ export default {
     recv_telemetry (teleobj, arrays) {
       const bpm = arrays[teleobj.current_bpm.type][teleobj.current_bpm.index];
       const tick = arrays[teleobj.current_tick.type][teleobj.current_tick.index];
-      console.log ("positionview.vue: telemetry:", bpm, tick);
+      if (this.$refs.timer && this.numerator && this.denominator && this.bpm)
+	this.update_timer (tick, this.numerator.value_.val, this.denominator.value_.val, 1920, this.bpm.value_.val);
     },
     dom_update() {
+      if (this.telemetry)
+	console.log ("positionview.vue:", window.p=this);
       if (!this.teleobj && this.telemetry)
 	this.teleobj = Util.telemetry_subscribe (this.recv_telemetry.bind (this), this.telemetry);
       this.last_tickpos = -1;
@@ -98,18 +101,18 @@ export default {
       Util.telemetry_unsubscribe (this.teleobj);
       this.teleobj = null;
     },
-    dom_animate_playback (active) {
-      const counter = this.$refs.counter, timer = this.$refs.timer;
-      const tickpos = this.i32tickpos ? Util.shm_array_int32[this.i32tickpos] : 0;
+    update_timer (tickpos, numerator, denominator, ppqn, bpm) {
+      const counter = this.$refs.counter, timer = this.$refs.timer, fps = 0;
       if (counter && this.last_tickpos != tickpos)
 	{
 	  const strpad = Util.strpad;
 	  // provide zero width space and u2007 (tabular space)
 	  const ts1 = ' '; // zs = '​';
 	  // calculate transport position in bars, beats, steps
-	  const denominator = Util.clamp (this.denominator, 1, 16), stepsperbeat = 16 / denominator;
-	  const beatsperbar = Util.clamp (this.numerator, 1, 64), stepsperbar = beatsperbar * stepsperbeat;
-	  const ppsn = this.tpqn / 4; // (sequencer ticks) pulses per sixteenth note (steps)
+	  denominator = Util.clamp (denominator, 1, 16);
+	  const stepsperbeat = 16 / denominator;
+	  const beatsperbar = Util.clamp (numerator, 1, 64), stepsperbar = beatsperbar * stepsperbeat;
+	  const ppsn = ppqn / 4; // (sequencer ticks) pulses per sixteenth note (steps)
 	  //const sixsr = tickpos % ppsn, sixs = (tickpos - sixsr) / ppsn; // number of sixteenths in tickpos
 	  const sixs = Math.trunc (tickpos / ppsn); // number of sixteenths in tickpos
 	  const step = sixs % stepsperbeat;
@@ -117,12 +120,12 @@ export default {
 	  const beat = (bar_r - step) / stepsperbeat;
 	  const beatstr = beatsperbar <= 9 ? 1 + beat + '' : strpad (1 + beat, 2, '0');
 	  const stepstr = stepsperbeat <= 9 ? 1 + step + '' : strpad (1 + step, 2, '0');
-	  // const pos = strpad (1 + bar, 3, ts1) + '.' + beatstr + '.' + strpad (tickpos % this.tpqn, 3, '0');
+	  // const pos = strpad (1 + bar, 3, ts1) + '.' + beatstr + '.' + strpad (tickpos % ppqn, 3, '0');
 	  const pos = strpad (1 + bar, 3, ts1) + '.' + beatstr + '.' + stepstr;
 	  if (counter.innerText != pos)
 	    counter.innerText = pos;
 	  // calculate transport position into hh:mm:ss.frames
-	  const tpm = this.tpqn * this.bpm, fps = this.fps;
+	  const tpm = ppqn * bpm;
 	  const tph = tpm * 60, tps = Math.round (tpm / 60);
 	  const hr = tickpos % tph, h = (tickpos - hr) / tph;
 	  const mr = hr % tpm, m = (hr - mr) / tpm;
@@ -134,7 +137,7 @@ export default {
 	    time += '.' + strpad (Math.trunc (fps * sr / tps), fps < 10 ? 1 : fps < 100 ? 2 : 3, '0');
 	  if (timer.innerText != time)
 	    timer.innerText = time;
-	  // console.log (this.bpm, beatsperbar, denominator, bars, beats, steps, fracs, this.last_tickpos);
+	  // console.log (bpm, beatsperbar, denominator, bars, beats, steps, fracs, this.last_tickpos);
 	  this.last_tickpos = tickpos;
 	}
     },
