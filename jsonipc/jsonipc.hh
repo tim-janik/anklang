@@ -953,6 +953,16 @@ struct Enum final : TypeInfo {
         return e.value;
     return fallback;
   }
+  using EnumValueS = std::vector<std::pair<int64_t,std::string>>;
+  static EnumValueS
+  list_values ()
+  {
+    EnumValueS enumvalues;
+    const auto &entries_ = entries();
+    for (const auto &e : entries_)
+      enumvalues.push_back ({ int64_t (e.value), e.name });
+    return enumvalues;
+  }
 private:
   struct Entry { const std::string name; T value; };
   static std::vector<Entry>& entries() { static std::vector<Entry> entries_; return entries_; }
