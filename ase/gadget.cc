@@ -97,7 +97,11 @@ GadgetImpl::list_properties ()
 PropertyP
 GadgetImpl::access_property (String ident)
 {
-  return {}; // TODO: implement access_property
+  PropertyS props = access_properties();
+  for (const auto &p : props)
+    if (ident == p->identifier())
+      return p;
+  return {};
 }
 
 PropertyS
