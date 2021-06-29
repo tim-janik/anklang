@@ -138,7 +138,7 @@ ClipImpl::change_note (int32 id, int64 tick, int64 duration, int32 key, int32 fi
     notes_.insert (ev);
   else
     ret = notes_.remove (ev) ? 0 : -1;
-  // TODO: emit_event ("notify", "notes");
+  emit_event ("notify", "notes");
   return ret;
 }
 
