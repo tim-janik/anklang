@@ -36,6 +36,7 @@ public:
 };
 
 // static constexpr const char* telemetry_type (const int64  &field) { return "i64"; }
+static constexpr const char* telemetry_type (const int8   &field) { return "i8"; }
 static constexpr const char* telemetry_type (const int32  &field) { return "i32"; }
 static constexpr const char* telemetry_type (const float  &field) { return "f32"; }
 static constexpr const char* telemetry_type (const double &field) { return "f64"; }
