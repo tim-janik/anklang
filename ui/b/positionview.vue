@@ -7,27 +7,27 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
-  $b-positionview-fg: #71cff2; $b-positionview-b0: #011214; $b-positionview-b1: #00171a;
-  $b-positionview-bg: mix($b-positionview-b0, $b-positionview-b1);
+@import 'mixins.scss';
+$b-positionview-fg: #71cff2; $b-positionview-b0: #011214; $b-positionview-b1: #00171a;
+$b-positionview-bg: mix($b-positionview-b0, $b-positionview-b1);
 
-  .b-positionview {
-    margin: 0; padding: 5px 1em;
-    letter-spacing: 0.05em;
-    border-radius: $b-theme-border-radius; align-items: baseline;
-    border-top:    1px solid  darken($b-positionview-bg, 3%);
-    border-left:   1px solid  darken($b-positionview-bg, 3%);
-    border-right:  1px solid lighten($b-positionview-bg, 3%);
-    border-bottom: 1px solid lighten($b-positionview-bg, 3%);
-    background-color: $b-positionview-bg;
-    background: linear-gradient(to bottom, $b-positionview-b0 0%, $b-positionview-b1 100%);
-    color: $b-positionview-fg;
-    white-space: pre;
-    .b-positionview-counter,
-    .b-positionview-timer	{ font-size: 110%; padding-right: .5em; }
-    .b-positionview-bpm,
-    .b-positionview-sig		{ font-size: 90%; padding: 0 0.5em; }
-  }
+.b-positionview {
+  margin: 0; padding: 5px 1em;
+  letter-spacing: 0.05em;
+  border-radius: $b-theme-border-radius; align-items: baseline;
+  border-top:    1px solid  darken($b-positionview-bg, 3%);
+  border-left:   1px solid  darken($b-positionview-bg, 3%);
+  border-right:  1px solid lighten($b-positionview-bg, 3%);
+  border-bottom: 1px solid lighten($b-positionview-bg, 3%);
+  background-color: $b-positionview-bg;
+  background: linear-gradient(to bottom, $b-positionview-b0 0%, $b-positionview-b1 100%);
+  color: $b-positionview-fg;
+  white-space: pre;
+  .b-positionview-counter,
+  .b-positionview-timer	{ font-size: 110%; margin-right: .5em; }
+  .b-positionview-bpm,
+  .b-positionview-sig		{ font-size: 90%; padding: 0 0.5em; }
+}
 </style>
 
 <template>
@@ -36,7 +36,8 @@
     <span class="b-positionview-sig">{{ numerator?.value_.val + '/' + denominator?.value_.val }}</span>
     <span class="b-positionview-counter" ref="counter" />
     <span class="b-positionview-bpm">{{ bpm?.value_.val }}</span>
-    <span class="b-positionview-timer" ref="timer" />
+    <span class="b-positionview-timer" ref="timer" >
+    </span>
   </h-flex>
 
 </template>
@@ -83,10 +84,13 @@ export default {
   data,
   methods:  {
     dom_create() {
+      this.counter_text = document.createTextNode ("");
+      this.$refs.counter.appendChild (this.counter_text);
+      this.timer_text = document.createTextNode ("");
+      this.$refs.timer.appendChild (this.timer_text);
     },
     recv_telemetry (teleobj, arrays) {
-      const counter = this.$refs.counter, timer = this.$refs.timer;
-      if (!timer) return;
+      if (!this.timer_text) return;
       const tick = arrays[teleobj.current_tick.type][teleobj.current_tick.index];
       const bpm = arrays[teleobj.current_bpm.type][teleobj.current_bpm.index];
       const bar = arrays[teleobj.current_bar.type][teleobj.current_bar.index];
@@ -97,14 +101,12 @@ export default {
       const seconds = arrays[teleobj.current_seconds.type][teleobj.current_seconds.index];
       const barpos = s3 (1 + bar) + "." + s2 (1 + beat) + "." + (1 + sixteenth) + "." + z2 (100 * fraction |0);
       const timepos = z2 (minutes) + ":" + z2 (ff (seconds, 3));
-      if (counter.innerText != barpos)
-	counter.innerText = barpos;
-      if (timer.innerText != timepos)
-	timer.innerText = timepos;
+      if (this.counter_text.nodeValue != barpos)
+	this.counter_text.nodeValue = barpos;
+      if (this.timer_text.nodeValue != timepos)
+	this.timer_text.nodeValue = timepos;
     },
     dom_update() {
-      if (this.telemetry)
-	console.log ("positionview.vue:", window.p=this);
       if (!this.teleobj && this.telemetry)
 	this.teleobj = Util.telemetry_subscribe (this.recv_telemetry.bind (this), this.telemetry);
       this.last_tickpos = -1;
@@ -118,6 +120,8 @@ export default {
     dom_destroy() {
       Util.telemetry_unsubscribe (this.teleobj);
       this.teleobj = null;
+      this.counter_text = null;
+      this.timer_text = null;
     },
     update_timer (tickpos, numerator, denominator, ppqn, bpm) {
       const counter = this.$refs.counter, timer = this.$refs.timer, fps = 0;
