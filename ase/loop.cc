@@ -242,6 +242,15 @@ EventLoop::try_remove (uint id)
   return true;
 }
 
+bool
+EventLoop::clear_source (uint *id_pointer)
+{
+  return_unless (id_pointer, false);
+  const bool removal = try_remove (*id_pointer);
+  *id_pointer = 0;
+  return removal;
+}
+
 void
 EventLoop::remove (uint id)
 {
