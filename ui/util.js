@@ -1865,6 +1865,7 @@ function align8 (int) {
 function telemetry_field_width (telemetryfieldtype) {
   switch (telemetryfieldtype) {
     // case 'i64': return 8;
+    case 'i8':	return 1;
     case 'i32':	return 4;
     case 'f32':	return 4;
     case 'f64':	return 8;
@@ -1878,6 +1879,7 @@ export function jsonipc_binary_handler_ (arraybuffer) {
     return;
   const arrays = {
     // i64:	new BigInt64Array (arraybuffer, 0, arraybuffer.byteLength / 8 |0),
+    i8:		new Int8Array     (arraybuffer, 0, arraybuffer.byteLength),
     i32:	new Int32Array    (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
     f32:	new Float32Array  (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
     f64:	new Float64Array  (arraybuffer, 0, arraybuffer.byteLength / 8 |0),
