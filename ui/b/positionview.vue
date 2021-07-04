@@ -27,6 +27,36 @@ $b-positionview-bg: mix($b-positionview-b0, $b-positionview-b1);
   .b-positionview-timer	{ font-size: 110%; margin-right: .5em; }
   .b-positionview-bpm,
   .b-positionview-sig		{ font-size: 90%; padding: 0 0.5em; }
+  .b-positionview-sig, .b-positionview-counter, .b-positionview-bpm, .b-positionview-timer {
+    position: relative;
+    text-align: right;
+  }
+
+  .b-input-overlay {
+    position: absolute;
+    display: none;
+    display: inline-block;
+    top: 0px;
+    left: 0;
+    right: 1.5px;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    text-align: inherit;
+    background: #344;
+    color: inherit;
+    font: inherit;
+    z-index: 2;
+    outline: 0;
+    box-sizing: content-box;
+    vertical-align: middle;
+    line-height: 1;
+    white-space: nowrap;
+    letter-spacing: inherit;
+  }
 }
 </style>
 
@@ -36,7 +66,11 @@ $b-positionview-bg: mix($b-positionview-b0, $b-positionview-b1);
     <span class="b-positionview-sig">{{ numerator?.value_.val + '/' + denominator?.value_.val }}</span>
     <span class="b-positionview-counter" ref="counter" />
     <span class="b-positionview-bpm">{{ bpm?.value_.val }}</span>
-    <span class="b-positionview-timer" ref="timer" >
+    <span class="b-positionview-timer" ref="timer" @click="timer_click">
+      <input class="b-input-overlay"
+	     v-if="edit_timer" v-inlineblur="_=> edit_timer = 0"
+	     @contextmenu.stop="0"
+	     :value="this.timer_text.nodeValue"/>
     </span>
   </h-flex>
 
@@ -66,6 +100,7 @@ function data () {
     telemetry:	{ getter: c => this.project.telemetry(), },
     //tmon:        { getter: c => tick_moniotr.call (this, c), },
     fps:         { default: 0, },
+    edit_timer: false,
   };
   return this.observable_from_getters (data, () => this.project);
 }
@@ -83,6 +118,9 @@ export default {
   },
   data,
   methods:  {
+    timer_click() {
+      this.edit_timer = true;
+    },
     dom_create() {
       this.counter_text = document.createTextNode ("");
       this.$refs.counter.appendChild (this.counter_text);
