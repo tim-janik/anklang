@@ -200,9 +200,14 @@ ProjectImpl::telemetry () const
   AudioProcessorP proc = master_processor ();
   assert_return (proc, v);
   const AudioTransport &transport = proc->transport();
-  v.push_back (telemetry_field ("current_bpm", &transport.current_bpm));
   v.push_back (telemetry_field ("current_tick", &transport.current_tick_d));
-  // v.push_back (telemetry_field ("sample_frames", &transport.sample_frames));
+  v.push_back (telemetry_field ("current_bpm", &transport.current_bpm));
+  v.push_back (telemetry_field ("current_bar", &transport.current_bar));
+  v.push_back (telemetry_field ("current_beat", &transport.current_beat));
+  v.push_back (telemetry_field ("current_sixteenth", &transport.current_sixteenth));
+  v.push_back (telemetry_field ("current_fraction", &transport.current_fraction));
+  v.push_back (telemetry_field ("current_minutes", &transport.current_minutes));
+  v.push_back (telemetry_field ("current_seconds", &transport.current_seconds));
   return v;
 }
 
@@ -225,10 +230,11 @@ ProjectImpl::start_playback ()
   main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
-  const double bpm = 90;
-  auto job = [proc, bpm] () {
+  const double bpm = bpm_;
+  const int32 numerator = numerator_, denominator = denominator_;
+  auto job = [proc, bpm, numerator, denominator] () {
     AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
-    transport.tempo (bpm);
+    transport.tempo (bpm, numerator, denominator);
   };
   proc->engine().async_jobs += job;
 }
@@ -239,12 +245,14 @@ ProjectImpl::stop_playback ()
   main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
-  auto job = [proc] () {
+  const double bpm = bpm_;
+  const int32 numerator = numerator_, denominator = denominator_;
+  auto job = [proc, bpm, numerator, denominator] () {
     AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
     if (transport.current_bpm == 0)
-      transport.tickto (0);
+      transport.tickto (0, bpm);
     else
-      transport.tempo (0);
+      transport.tempo (0, numerator, denominator);
   };
   proc->engine().async_jobs += job;
 }
