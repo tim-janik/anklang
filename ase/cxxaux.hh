@@ -161,6 +161,14 @@ rotl (UInt bits, uint32_t offset)
   return (bits << offset) | (bits >> wrapped_bits);
 }
 
+/// Compute integers division and modulo with one X86 asm instruction.
+template<typename T> static inline constexpr T
+divmod (T dividend, T divisor, T *reminderp)
+{
+  *reminderp = dividend % divisor; // uses single DIV or IDIV for %
+  return dividend / divisor;       // and / in gcc and clang with -O1
+}
+
 /// Demangle identifier via libcc.
 std::string string_demangle_cxx (const char *mangled_identifier);
 
