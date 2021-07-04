@@ -1,7 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "project.hh"
 #include "jsonipc/jsonipc.hh"
-#include "utils.hh"
+#include "main.hh"
 #include "device.hh"
 #include "processor.hh"
 #include "path.hh"
@@ -21,10 +21,22 @@ ProjectImpl::ProjectImpl()
 {
   if (tracks_.empty())
     create_track (); // ensure Master track
+
+  if (0)
+    autoplay_timer_ = main_loop->exec_timer ([this] () {
+      return_unless (autoplay_timer_, false);
+      autoplay_timer_ = 0;
+      if (!is_playing())
+        start_playback();
+      return false;
+    }, 500);
 }
 
 ProjectImpl::~ProjectImpl()
-{}
+{
+  main_loop->clear_source (&autoplay_timer_);
+}
+
 
 ProjectImplP
 ProjectImpl::create (const String &projectname)
@@ -210,6 +222,7 @@ ProjectImpl::master_processor () const
 void
 ProjectImpl::start_playback ()
 {
+  main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
   const double bpm = 90;
@@ -223,6 +236,7 @@ ProjectImpl::start_playback ()
 void
 ProjectImpl::stop_playback ()
 {
+  main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
   auto job = [proc] () {

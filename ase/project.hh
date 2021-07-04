@@ -14,6 +14,7 @@ class ProjectImpl : public GadgetImpl, public virtual Project {
   float bpm_ = 90;
   int32 numerator_ = 4;
   int32 denominator_ = 4;
+  uint autoplay_timer_ = 0;
 protected:
   explicit            ProjectImpl    ();
   virtual            ~ProjectImpl    ();
