@@ -78,6 +78,7 @@
 	    @dblclick.stop="nameedit_++" >
 	<span class="b-trackview-label-el">{{ tdata.name || '&nbsp;' }}</span>
 	<input v-if="nameedit_" v-inlineblur="() => nameedit_ = 0" :value="tdata.name"
+	       @contextmenu.stop="0"
 	       type="text" @change="$event.target.cancelled || track.name ($event.target.value.trim())" />
       </span>
       <div class="b-trackview-meter">
