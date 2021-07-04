@@ -24,7 +24,7 @@
     color: $b-positionview-fg;
     white-space: pre;
     .b-positionview-counter,
-    .b-positionview-timer	{ font-size: 150%; padding-right: .5em; }
+    .b-positionview-timer	{ font-size: 110%; padding-right: .5em; }
     .b-positionview-bpm,
     .b-positionview-sig		{ font-size: 90%; padding: 0 0.5em; }
   }
@@ -33,9 +33,9 @@
 <template>
 
   <h-flex class="b-positionview inter tabular-nums" >
+    <span class="b-positionview-sig">{{ numerator?.value_.val + '/' + denominator?.value_.val }}</span>
     <span class="b-positionview-counter" ref="counter" />
     <span class="b-positionview-bpm">{{ bpm?.value_.val }}</span>
-    <span class="b-positionview-sig">{{ numerator?.value_.val + '/' + denominator?.value_.val }}</span>
     <span class="b-positionview-timer" ref="timer" />
   </h-flex>
 
@@ -69,6 +69,12 @@ function data () {
   return this.observable_from_getters (data, () => this.project);
 }
 
+const ds = "\u2007"; // FIGURE SPACE - "Tabular width", the width of digits
+const s3 = n => (n >= 100 ? "" : n >= 10 ? ds : ds + ds) + n;
+const s2 = n => (n >= 10 ? "" : ds) + n;
+const z2 = n => (n >= 10 ? "" : "0") + n;
+const ff = (n, d = 2) => Number.parseFloat (n).toFixed (d);
+
 export default {
   sfc_template,
   props: {
@@ -79,10 +85,22 @@ export default {
     dom_create() {
     },
     recv_telemetry (teleobj, arrays) {
-      const bpm = arrays[teleobj.current_bpm.type][teleobj.current_bpm.index];
+      const counter = this.$refs.counter, timer = this.$refs.timer;
+      if (!timer) return;
       const tick = arrays[teleobj.current_tick.type][teleobj.current_tick.index];
-      if (this.$refs.timer && this.numerator && this.denominator && this.bpm)
-	this.update_timer (tick, this.numerator.value_.val, this.denominator.value_.val, 1920, this.bpm.value_.val);
+      const bpm = arrays[teleobj.current_bpm.type][teleobj.current_bpm.index];
+      const bar = arrays[teleobj.current_bar.type][teleobj.current_bar.index];
+      const beat = arrays[teleobj.current_beat.type][teleobj.current_beat.index];
+      const sixteenth = arrays[teleobj.current_sixteenth.type][teleobj.current_sixteenth.index];
+      const fraction = arrays[teleobj.current_fraction.type][teleobj.current_fraction.index];
+      const minutes = arrays[teleobj.current_minutes.type][teleobj.current_minutes.index];
+      const seconds = arrays[teleobj.current_seconds.type][teleobj.current_seconds.index];
+      const barpos = s3 (1 + bar) + "." + s2 (1 + beat) + "." + (1 + sixteenth) + "." + z2 (100 * fraction |0);
+      const timepos = z2 (minutes) + ":" + z2 (ff (seconds, 3));
+      if (counter.innerText != barpos)
+	counter.innerText = barpos;
+      if (timer.innerText != timepos)
+	timer.innerText = timepos;
     },
     dom_update() {
       if (this.telemetry)
