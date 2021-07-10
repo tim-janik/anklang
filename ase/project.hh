@@ -25,6 +25,7 @@ public:
   Error               save_dir       (const String &dir, bool selfcontained) override;
   void                start_playback () override;
   void                stop_playback  () override;
+  bool                set_bpm        (float bpm);
   bool                is_playing     () override;
   TrackP              create_track   () override;
   bool                remove_track   (Track &child) override;

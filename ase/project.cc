@@ -224,13 +224,30 @@ ProjectImpl::master_processor () const
   return proc;
 }
 
+bool
+ProjectImpl::set_bpm (float bpm)
+{
+  bpm = CLAMP (bpm, 10, 999);
+  return_unless (bpm_ != bpm, false);
+  AudioProcessorP proc = master_processor();
+  return_unless (proc, false);
+  bpm_ = bpm;
+  const int32 numerator = numerator_, denominator = denominator_;
+  auto job = [proc, bpm, numerator, denominator] () {
+    AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
+    transport.tempo (transport.current_bpm == 0 ? 0 : bpm, numerator, denominator);
+  };
+  proc->engine().async_jobs += job;
+  return true;
+}
+
 void
 ProjectImpl::start_playback ()
 {
   main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
-  const double bpm = bpm_;
+  const auto bpm = bpm_;
   const int32 numerator = numerator_, denominator = denominator_;
   auto job = [proc, bpm, numerator, denominator] () {
     AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
@@ -245,7 +262,7 @@ ProjectImpl::stop_playback ()
   main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
-  const double bpm = bpm_;
+  const auto bpm = bpm_;
   const int32 numerator = numerator_, denominator = denominator_;
   auto job = [proc, bpm, numerator, denominator] () {
     AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
@@ -316,6 +333,7 @@ ProjectImpl::master_track ()
 PropertyS
 ProjectImpl::access_properties ()
 {
+  auto setbpm = [this] (const Value &val) { return set_bpm (val.as_double()); };
   using namespace Properties;
   PropertyBag bag;
   bag.group = _("State");
@@ -323,7 +341,7 @@ ProjectImpl::access_properties ()
   bag.group = _("Timing");
   bag += Range ("numerator", &numerator_, _("Signature Numerator"), _("Numerator"), 1, 63, 4, STANDARD);
   bag += Range ("denominator", &denominator_, _("Signature Denominator"), _("Denominator"), 1, 16, 4, STANDARD);
-  bag += Range ("bpm", &bpm_, _("Beats Per Minute"), _("BPM"), 10., 999., 90., STANDARD);
+  bag += Range ("bpm", Getter (&bpm_), setbpm, _("Beats Per Minute"), _("BPM"), 10., 999., 90., STANDARD);
   bag.group = _("Tuning");
   bag += Enum ("musical_tuning", &musical_tuning_, _("Musical Tuning"), _("Tuning"), STANDARD, "",
                _("The tuning system which specifies the tones or pitches to be used. "
