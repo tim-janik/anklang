@@ -88,12 +88,6 @@ GadgetImpl::name (String newname)
   emit_event ("notify", "name");
 }
 
-StringS
-GadgetImpl::list_properties ()
-{
-  return {}; // TODO: implement list_properties
-}
-
 PropertyP
 GadgetImpl::access_property (String ident)
 {
@@ -108,6 +102,32 @@ PropertyS
 GadgetImpl::access_properties ()
 {
   return {}; // TODO: implement access_properties
+}
+
+// == Gadget ==
+StringS
+Gadget::list_properties ()
+{
+  PropertyS props = access_properties();
+  StringS names;
+  names.reserve (props.size());
+  for (const PropertyP &prop : props)
+    names.push_back (prop->identifier());
+  return names;
+}
+
+Value
+Gadget::get_value (String ident)
+{
+  PropertyP prop = access_property (ident);
+  return prop ? prop->get_value() : Value {};
+}
+
+bool
+Gadget::set_value (String ident, const Value &v)
+{
+  PropertyP prop = access_property (ident);
+  return prop && prop->set_value (v);
 }
 
 } // Ase

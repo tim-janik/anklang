@@ -20,7 +20,6 @@ public:
   AudioComboP     audio_combo          () const         { return combo_; }
   explicit        DeviceImpl           (AudioProcessor &proc);
   DeviceInfo      device_info          () override;
-  StringS         list_properties      () override;
   PropertyP       access_property      (String ident) override;
   PropertyS       access_properties    () override;
   bool            is_combo_device      () override      { return combo_ != nullptr; }

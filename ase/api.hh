@@ -188,9 +188,11 @@ public:
   virtual String      name              () const = 0;
   virtual void        name              (String newname) = 0;
   // Parameters
-  virtual StringS     list_properties   () = 0;             ///< List all property identifiers.
   virtual PropertyP   access_property   (String ident) = 0; ///< Retrieve handle for a Property.
   virtual PropertyS   access_properties () = 0;             ///< Retrieve handles for all properties.
+  StringS             list_properties   ();                 ///< List all property identifiers.
+  Value               get_value         (String ident);     ///< Get native property value.
+  bool                set_value         (String ident, const Value &v); ///< Set native property value.
 };
 
 /// Info for device types.

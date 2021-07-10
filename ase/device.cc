@@ -60,21 +60,6 @@ DeviceImpl::device_info ()
   return info;
 }
 
-StringS
-DeviceImpl::list_properties ()
-{
-  std::vector<const AudioProcessor::PParam*> pparams;
-  pparams.reserve (proc_->params_.size());
-  for (const AudioProcessor::PParam &p : proc_->params_)
-    pparams.push_back (&p);
-  std::sort (pparams.begin(), pparams.end(), [] (auto a, auto b) { return a->info->order < b->info->order; });
-  StringS names;
-  names.reserve (pparams.size());
-  for (const AudioProcessor::PParam *p : pparams)
-    names.push_back (p->info->ident);
-  return names;
-}
-
 PropertyS
 DeviceImpl::access_properties ()
 {
