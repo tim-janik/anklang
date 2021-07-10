@@ -13,7 +13,7 @@ class WebSocketConnection : public virtual std::enable_shared_from_this<WebSocke
   friend class WebSocketServer;
 protected:
   virtual ~WebSocketConnection () = 0;
-  struct Info { StringS subs; String ua, acl, ace, chints, mhints, gpc, local, remote; int lport = 0, rport = 0; };
+  struct Info { std::function<String (String)> header; StringS subs; String local, remote; int lport = 0, rport = 0; };
   Info           get_info      ();
 public:
   bool           is_open       () const;
