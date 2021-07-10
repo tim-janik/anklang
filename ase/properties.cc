@@ -260,23 +260,9 @@ Bag::on_events (const String &eventselector, const EventHandler &eventhandler)
 template<class V> static PropertyP
 ptrprop (const Properties::Initializer &initializer, V *p, const Properties::ValueLister &lister = {})
 {
+  using namespace Properties;
   assert_return (p, nullptr);
-  auto setter = [p] (const Value &val) {
-    V v = {};
-    if_constexpr (std::is_floating_point<V>::value)
-      v = val.as_double();
-    else if_constexpr (std::is_integral<V>::value)
-      v = val.as_int();
-    else if_constexpr (std::is_base_of<::std::string, V>::value)
-      v = val.as_string();
-    else
-      static_assert (sizeof (V) < 0, "Property type unimplemented");
-    return_unless (v != *p, false);
-    *p = v;
-    return true;
-  };
-  auto getter = [p] (Value &val) { val = *p; };
-  return mkprop (initializer, getter, setter, lister);
+  return mkprop (initializer, Getter (p), Setter (p), lister);
 }
 
 // == Property constructors ==
@@ -294,6 +280,17 @@ Properties::Range (const String &ident, int32 *v, const String &label, const Str
   return ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
                     .hints = construct_hints (hints, "range"),
                     .pmin = double (pmin), .pmax = double (pmax), .pdef = double (dflt) }, v);
+}
+
+PropertyP
+Properties::Range (const String &ident, const ValueGetter &getter, const ValueSetter &setter, const String &label, const String &nickname, double pmin, double pmax, double dflt,
+                   const String &unit, const String &hints, const String &blurb, const String &description)
+{
+  const Initializer initializer = {
+    .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
+    .hints = construct_hints (hints, "range"), .pmin = pmin, .pmax = pmax, .pdef = dflt,
+  };
+  return mkprop (initializer, getter, setter, {});
 }
 
 PropertyP

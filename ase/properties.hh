@@ -24,6 +24,9 @@ using ValueGetter = std::function<void (Value&)>;
 using ValueSetter = std::function<bool (const Value&)>;
 using ValueLister = std::function<ChoiceS (PropertyImpl&)>;
 
+template<class V> inline ValueGetter Getter (const float *v);
+template<class V> inline ValueSetter Setter (const float *v);
+
 /// Helper for property hint construction.
 String construct_hints (const String &hints, const String &more, double pmin = 0, double pmax = 0);
 
@@ -31,6 +34,10 @@ String construct_hints (const String &hints, const String &more, double pmin = 0
 PropertyP        Bool   (const String &ident, bool *v, const String &label, const String &nickname, bool dflt, const String &hints = "", const String &blurb = "", const String &description = "");
 inline PropertyP Bool   (bool *v, const String &label, const String &nickname, bool dflt, const String &hints = "", const String &blurb = "", const String &description = "")
 { return Bool (label, v, label, nickname, dflt, hints, blurb, description); }
+
+/// Construct Range property.
+PropertyP Range (const String &ident, const ValueGetter &getter, const ValueSetter &setter, const String &label, const String &nickname, double pmin, double pmax, double dflt,
+                 const String &unit = "", const String &hints = "", const String &blurb = "", const String &description = "");
 
 /// Construct integer Range property.
 PropertyP        Range  (const String &ident, int32  *v, const String &label, const String &nickname, int32 pmin, int32 pmax, int32 dflt,
@@ -117,14 +124,14 @@ public:
 
 // == Implementation Helpers ==
 struct Initializer {
-  std::string ident;
-  std::string label;
-  std::string nickname;
-  std::string unit;
-  std::string blurb;
-  std::string description;
-  std::string groupname;
-  std::string hints;
+  String ident;
+  String label;
+  String nickname;
+  String unit;
+  String blurb;
+  String description;
+  String groupname;
+  String hints;
   double pmin = -1.7976931348623157e+308;
   double pmax = +1.7976931348623157e+308;
   double pdef = 0;
@@ -137,6 +144,30 @@ using PropertyImplP = std::shared_ptr<PropertyImpl>;
 
 /// Construct Property with handlers, emits `Event { .type = "change", .detail = identifier() }`.
 PropertyImplP mkprop (const Initializer &initializer, const ValueGetter&, const ValueSetter&, const ValueLister&);
+
+/// == Implementations ==
+template<class V> inline ValueGetter
+Getter (const V *p)
+{
+  return [p] (Value &val) { val = *p; };
+}
+
+template<class V> inline ValueSetter
+Setter (V *p)
+{
+  return [p] (const Value &val) {
+    V v = {};
+    if constexpr (std::is_floating_point<V>::value)
+      v = val.as_double();
+    else if constexpr (std::is_integral<V>::value)
+      v = val.as_int();
+    else if constexpr (std::is_base_of<::std::string, V>::value)
+      v = val.as_string();
+    else
+      static_assert (sizeof (V) < 0, "Setter for type `V` unimplemented");
+    return v == *p ? false : (*p = v, true);
+  };
+}
 
 } // Properties
 
