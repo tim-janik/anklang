@@ -85,7 +85,8 @@ $duration: 0.25s;
     <transition name="-slide">
       <div class="b-contextmenu-modalshield" ref="shield" v-show='visible' v-if='visible || keepmounted' >
 	<div class='b-contextmenu-area' :class='cmenu_class' ref='contextmenuarea' >
-	  <v-flex class='b-contextmenu' :class="popupclass" ref='cmenu' start >
+	  <v-flex class='b-contextmenu' :class="popupclass" ref='cmenu' start
+		  :style="cmenu_style()">
 	    <slot />
 	  </v-flex>
 	</div>
@@ -132,10 +133,12 @@ export default {
   computed: {
     cmenu_class() { return this.notransitions !== false ? 'b-contextmenu-notransitions' : ''; },
   },
-  data() { return { visible: false, doc_x: undefined, doc_y: undefined,
-		    resize_observer: undefined, checkeduris: {},
-		    showicons: true, popup_options: {},
-		    onclick: menuitem_onclick, isdisabled: menuitem_isdisabled, }; },
+  data() { return {
+    visible: false, doc_x: undefined, doc_y: undefined,
+    resize_observer: undefined, checkeduris: {},
+    showicons: true, popup_options: {},
+    onclick: menuitem_onclick, isdisabled: menuitem_isdisabled,
+  }; },
   provide: Util.fwdprovide ('b-contextmenu.menudata',	// context for menuitem descendants
 			    [ 'checkeduris', 'showicons', 'keepmounted', 'clicked', 'close', 'onclick', 'isdisabled' ]),
   methods: {
@@ -326,6 +329,10 @@ export default {
       if (clickit)
 	Util.keyboard_click (clickit);
     },
+    cmenu_style() {
+      // avoid spurious enter/leave etc events during transitions that could steal focus, etc
+      return this.visible ? "" : "pointer-events: none";
+    },
     close () {
       this.clear_dragging();
       if (!this.visible)
@@ -336,6 +343,13 @@ export default {
       this.undo_shield_setup = undefined;
       this.$emit ('close');
       App.zmove(); // force changes to be picked up
+      if (this.$refs.cmenu) {
+	/* here, v-if=visible evaluates to false, so Vue3 ignores any further
+	 * update requests (including $forceUpdate). so we have to force a
+	 * cmenu.style update to prevent spurious events past menu activation.
+	 */
+	this.$refs.cmenu.style = this.cmenu_style();
+      }
     },
     clicked (uri) {
       this.$emit ('click', uri);
