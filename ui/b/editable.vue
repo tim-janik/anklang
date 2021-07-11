@@ -2,8 +2,11 @@
 
 <docs>
   ## b-editable - Display an editable span.
+  ### Methods:
+  - **activate()** - Show input field and start editing.
   ### Props:
   - **selectall** - Set to `true` to automatically select all editable text.
+  - **clicks** - Set to 1 or 2 to activate for single or double click.
   ### Events:
   - **change** - Emitted when an edit ends successfully.
 </docs>
@@ -45,7 +48,6 @@
 <template>
 
   <span class="b-editable"
-	@click="editable = true"
   ><input
       class="b-editable-overlay" v-if="!!editable"
       ref="input"
@@ -67,13 +69,23 @@ function data () {
 export default {
   sfc_template,
   props: {
+    clicks:    { default: 1, type: Number, },
     selectall: { default: false, type: Boolean, },
   },
   data,
   methods:  {
+    dom_create() {
+      const activate = ev => { this.activate(); ev.stopPropagation(); };
+      if (this.clicks == 1)
+	this.$el.addEventListener ("click", activate);
+      else if (this.clicks == 2)
+	this.$el.addEventListener ("dblclick", activate);
+    },
+    activate() {
+      this.editable = true;
+    },
     dom_update() {
       const input = this.$refs.input;
-      debug ("dom_update", input);
       if (input && input.valid_change === undefined)
 	{
 	  input.value = this.$el.innerText;
