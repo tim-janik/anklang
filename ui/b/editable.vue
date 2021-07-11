@@ -31,7 +31,7 @@
     padding: 0;
     margin: 0;
     text-align: inherit;
-    background: #122;
+    background: #000;
     color: inherit;
     font: inherit;
     z-index: 2;
@@ -69,16 +69,17 @@ function data () {
 export default {
   sfc_template,
   props: {
-    clicks:    { default: 1, type: Number, },
+    clicks:    { default: 1, },
     selectall: { default: false, type: Boolean, },
   },
   data,
   methods:  {
     dom_create() {
       const activate = ev => { this.activate(); ev.stopPropagation(); };
-      if (this.clicks == 1)
+      const clicks = this.clicks |0;
+      if (clicks == 1)
 	this.$el.addEventListener ("click", activate);
-      else if (this.clicks == 2)
+      else if (clicks == 2)
 	this.$el.addEventListener ("dblclick", activate);
     },
     activate() {
