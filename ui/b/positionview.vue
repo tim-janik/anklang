@@ -161,46 +161,6 @@ export default {
       this.counter_text = null;
       this.timer_text = null;
     },
-    update_timer (tickpos, numerator, denominator, ppqn, bpm) {
-      const counter = this.$refs.counter, timer = this.$refs.timer, fps = 0;
-      if (counter && this.last_tickpos != tickpos)
-	{
-	  const strpad = Util.strpad;
-	  // provide zero width space and u2007 (tabular space)
-	  const ts1 = ' '; // zs = '​';
-	  // calculate transport position in bars, beats, steps
-	  denominator = Util.clamp (denominator, 1, 16);
-	  const stepsperbeat = 16 / denominator;
-	  const beatsperbar = Util.clamp (numerator, 1, 64), stepsperbar = beatsperbar * stepsperbeat;
-	  const ppsn = ppqn / 4; // (sequencer ticks) pulses per sixteenth note (steps)
-	  //const sixsr = tickpos % ppsn, sixs = (tickpos - sixsr) / ppsn; // number of sixteenths in tickpos
-	  const sixs = Math.trunc (tickpos / ppsn); // number of sixteenths in tickpos
-	  const step = sixs % stepsperbeat;
-	  const bar_r = sixs % stepsperbar, bar = (sixs - bar_r) / stepsperbar;
-	  const beat = (bar_r - step) / stepsperbeat;
-	  const beatstr = beatsperbar <= 9 ? 1 + beat + '' : strpad (1 + beat, 2, '0');
-	  const stepstr = stepsperbeat <= 9 ? 1 + step + '' : strpad (1 + step, 2, '0');
-	  // const pos = strpad (1 + bar, 3, ts1) + '.' + beatstr + '.' + strpad (tickpos % ppqn, 3, '0');
-	  const pos = strpad (1 + bar, 3, ts1) + '.' + beatstr + '.' + stepstr;
-	  if (counter.innerText != pos)
-	    counter.innerText = pos;
-	  // calculate transport position into hh:mm:ss.frames
-	  const tpm = ppqn * bpm;
-	  const tph = tpm * 60, tps = Math.round (tpm / 60);
-	  const hr = tickpos % tph, h = (tickpos - hr) / tph;
-	  const mr = hr % tpm, m = (hr - mr) / tpm;
-	  const sr = mr % tps, s = (mr - sr) / tps;
-	  let time = strpad (strpad (h, 2, '0'), 3, ts1) + ':' +
-		     strpad (m, 2, '0') + ':' +
-		     strpad (s, 2, '0');
-	  if (fps >= 1)
-	    time += '.' + strpad (Math.trunc (fps * sr / tps), fps < 10 ? 1 : fps < 100 ? 2 : 3, '0');
-	  if (timer.innerText != time)
-	    timer.innerText = time;
-	  // console.log (bpm, beatsperbar, denominator, bars, beats, steps, fracs, this.last_tickpos);
-	  this.last_tickpos = tickpos;
-	}
-    },
   },
 };
 </script>
