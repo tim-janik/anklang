@@ -13,8 +13,8 @@
 <template>
 
   <div class="b-partlist" >
-    <b-partthumb v-for="(tp, pindex) in parts" :key="tp.unique_id + '-' + tp.tick"
-		 :part="tp.part" :tick="tp.tick" :trackindex="trackindex" :index="pindex" ></b-partthumb>
+    <b-partthumb v-for="(cliptick, pindex) in parts" :key="cliptick.clip.$id + ' @' + cliptick.tick"
+		 :part="cliptick.clip" :tick="cliptick.tick" :trackindex="trackindex" :index="pindex" ></b-partthumb>
   </div>
 
 </template>
@@ -40,9 +40,9 @@ export default {
   watch: {
     track: { immediate: true, async handler (n, o) {
       let clips = await this.track.list_clips();
-      clips = clips.map (async tpd => { tpd.unique_id = await tpd.clip.unique_id(); return tpd; });
+      clips = clips.map (async clip => ({ clip: clip, tick: 0 }) );
       clips = await Promise.all (clips);
-      this.parts = clips;
+      this.parts = []; // not yet implemented
     } },
   },
   data() { return {
