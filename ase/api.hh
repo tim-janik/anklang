@@ -223,14 +223,14 @@ public:
 
 /// Part specific note event representation.
 struct ClipNote {
-  int32  id;            /// ID, > 0
-  int32  key;           /// Musical note as MIDI key, 0 .. 127
   int64  tick;          /// Position in ticks
-  int64  duration;      /// Duration in number of ticks
-  int32  channel;       /// MIDI Channel
-  int32  fine_tune;     /// Fine Tune, -100 .. +100
-  float  velocity;      /// Velocity, 0 .. +1
+  int32  id;            /// ID, > 0
+  int8   channel;       /// MIDI Channel
+  int8   key;           /// Musical note as MIDI key, 0 .. 127
   bool   selected;      /// UI selection flag
+  int64  duration;      /// Duration in number of ticks
+  float  velocity;      /// Velocity, 0 .. +1
+  float  fine_tune;     /// Fine Tune, -100 .. +100
 };
 
 /// Container for MIDI note and control events.
