@@ -226,9 +226,9 @@ AudioChain::chain_up (AudioProcessor &prev, AudioProcessor &next)
   if (eproc_)
     {
       if (prev.has_event_input())
-        pm_connect_events (*eproc_, prev);
+        pm_connect_event_input (*eproc_, prev);
       if (next.has_event_input())
-        pm_connect_events (*eproc_, next);
+        pm_connect_event_input (*eproc_, next);
     }
   // check need for audio connections
   if (ni == 0 || no == 0)
