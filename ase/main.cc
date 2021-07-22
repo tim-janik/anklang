@@ -6,6 +6,7 @@
 #include "jsonapi.hh"
 #include "driver.hh"
 #include "engine.hh"
+#include "project.hh"
 #include "internal.hh"
 #include "testing.hh"
 
@@ -99,15 +100,16 @@ print_usage (bool help)
       return;
     }
   printout ("Usage: AnklangSynthEngine [OPTIONS]\n");
-  printout ("  --help           Print program usage and options\n");
-  printout ("  --fatal-warnings Abort on warnings and failing assertions\n");
-  printout ("  --jsipc          Print Javascript IPC messages\n");
-  printout ("  --jsbin          Print Javascript IPC & binary messages\n");
-  printout ("  --version        Print program version\n");
-  printout ("  --disable-randomization Test mode for deterministic tests\n");
   printout ("  --check-integrity-tests Run integrity tests\n");
-  printout ("  --js-api                Print Javascript bindings\n");
+  printout ("  --disable-randomization Test mode for deterministic tests\n");
   printout ("  --embed <fd>     Parent process socket for embedding\n");
+  printout ("  --fatal-warnings Abort on warnings and failing assertions\n");
+  printout ("  --help           Print program usage and options\n");
+  printout ("  --js-api                Print Javascript bindings\n");
+  printout ("  --jsbin          Print Javascript IPC & binary messages\n");
+  printout ("  --jsipc          Print Javascript IPC messages\n");
+  printout ("  --preload <prj>  Preload project as current\n");
+  printout ("  --version        Print program version\n");
 }
 
 static MainConfig
@@ -158,6 +160,11 @@ parse_args (int *argcp, char **argv)
         {
           argv[i++] = nullptr;
           embedding_fd = string_to_int (argv[i]);
+        }
+      else if (argv[i] == String ("--preload") && i + 1 < size_t (argc))
+        {
+          argv[i++] = nullptr;
+          config.preload = argv[i];
         }
       else if (argv[i] == String ("--") && !sep)
         sep = true;
@@ -277,6 +284,18 @@ main (int argc, char *argv[])
         return false;
       }
   });
+
+  // preload project
+  ProjectP preload_project;
+  if (config.preload)
+    {
+      preload_project = ProjectImpl::create (config.preload);
+      Error error = Error::NO_MEMORY;
+      if (preload_project)
+        error = preload_project->load_project (config.preload);
+      if (!!error)
+        warning ("%s: failed to load project: %s", config.preload, ase_error_blurb (error));
+    }
 
   // open Jsonapi socket
   auto wss = WebSocketServer::create (jsonapi_make_connection, main_config.jsbin ? 2 : main_config.jsipc);
