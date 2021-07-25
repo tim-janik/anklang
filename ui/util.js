@@ -1618,6 +1618,8 @@ export function canvas_ink_vspan (font_style, textish = 'gM') {
 }
 canvas_ink_vspan.cache = [];
 
+export const PPQN = 4838400;	// ticks per quarter note
+
 /** Retrieve the 'C-1' .. 'G8' label for midi note numbers */
 export function midi_label (numish) {
   function one_label (num) {
