@@ -31,9 +31,8 @@
 <script>
 import * as Util from '../util.js';
 import * as Ase from '../aseapi.js';
-export const PPQN = 1920;			// ticks per quarter note
 
-const tick_quant = PPQN;
+const tick_quant = Util.PPQN;
 
 function observable_part_data () {
   const data = {
@@ -55,7 +54,7 @@ export default {
   },
   data() { return observable_part_data.call (this); },
   computed: {
-    tickscale:    function() { return 10.0 / PPQN; }, // TODO: query ASE
+    tickscale:    function() { return 10.0 / Util.PPQN; },
     pxoffset:     function() { return this.tick * this.tickscale; }, // TODO: adjust for tick_quant?
     canvas_width: function() {
       return this.tickscale * Math.floor ((this.lasttick + tick_quant - 1) / tick_quant) * tick_quant;
