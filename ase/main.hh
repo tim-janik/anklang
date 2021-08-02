@@ -22,6 +22,7 @@ struct MainConfig {
   bool   print_js_api = false;
   bool   jsipc = false;
   bool   jsbin = false;
+  bool   list_drivers = false;
   enum ModeT { SYNTHENGINE, CHECK_INTEGRITY_TESTS };
   ModeT  mode = SYNTHENGINE;
 };

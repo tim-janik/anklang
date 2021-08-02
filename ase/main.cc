@@ -108,6 +108,7 @@ print_usage (bool help)
   printout ("  --js-api                Print Javascript bindings\n");
   printout ("  --jsbin          Print Javascript IPC & binary messages\n");
   printout ("  --jsipc          Print Javascript IPC messages\n");
+  printout ("  --list-drivers   Print PCM and MIDI drivers\n");
   printout ("  --preload <prj>  Preload project as current\n");
   printout ("  --version        Print program version\n");
 }
@@ -145,6 +146,8 @@ parse_args (int *argcp, char **argv)
           config.jsbin = true;
           config.jsipc |= config.jsbin;
         }
+      else if (strcmp ("--list-drivers", argv[i]) == 0)
+        config.list_drivers = true;
       else if (strcmp ("-h", argv[i]) == 0 ||
                strcmp ("--help", argv[i]) == 0)
         {
@@ -241,29 +244,30 @@ main (int argc, char *argv[])
 
   // load drivers and dump device list
   load_registered_drivers();
-  if (true)
+  if (config.list_drivers)
     {
       Ase::Driver::EntryVec entries;
-      printerr ("%s", _("Available PCM drivers:\n"));
+      printout ("%s", _("Available PCM drivers:\n"));
       entries = Ase::PcmDriver::list_drivers();
       std::sort (entries.begin(), entries.end(), [] (auto &a, auto &b) { return a.priority < b.priority; });
       for (const auto &entry : entries)
-        printerr ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
+        printout ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
                   entry.readonly ? "Input" : entry.writeonly ? "Output" : "Duplex",
                   entry.priority, entry.device_name,
                   entry.capabilities.empty() ? "" : "\t" + entry.capabilities + "\n",
                   entry.device_info.empty() ? "" : "\t" + entry.device_info + "\n",
                   entry.notice.empty() ? "" : "\t" + entry.notice + "\n");
-      printerr ("%s", _("\nAvailable MIDI drivers:\n"));
+      printout ("%s", _("Available MIDI drivers:\n"));
       entries = Ase::MidiDriver::list_drivers();
       std::sort (entries.begin(), entries.end(), [] (auto &a, auto &b) { return a.priority < b.priority; });
       for (const auto &entry : entries)
-        printerr ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
+        printout ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
                   entry.readonly ? "Input" : entry.writeonly ? "Output" : "Duplex",
                   entry.priority, entry.device_name,
                   entry.capabilities.empty() ? "" : "\t" + entry.capabilities + "\n",
                   entry.device_info.empty() ? "" : "\t" + entry.device_info + "\n",
                   entry.notice.empty() ? "" : "\t" + entry.notice + "\n");
+      return 0;
     }
 
   // start audio engine
