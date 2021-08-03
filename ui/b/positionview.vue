@@ -99,10 +99,9 @@ export default {
       const bar = arrays[teleobj.current_bar.type][teleobj.current_bar.index];
       const beat = arrays[teleobj.current_beat.type][teleobj.current_beat.index];
       const sixteenth = arrays[teleobj.current_sixteenth.type][teleobj.current_sixteenth.index];
-      const fraction = arrays[teleobj.current_fraction.type][teleobj.current_fraction.index];
       const minutes = arrays[teleobj.current_minutes.type][teleobj.current_minutes.index];
       const seconds = arrays[teleobj.current_seconds.type][teleobj.current_seconds.index];
-      const barpos = s3 (1 + bar) + "." + s2 (1 + beat) + "." + (1 + sixteenth) + "." + z2 (100 * fraction |0);
+      const barpos = s3 (1 + bar) + "." + s2 (1 + beat) + "." + (1 + sixteenth).toFixed (2);
       const timepos = z2 (minutes) + ":" + z2 (ff (seconds, 3));
       if (this.counter_text.nodeValue != barpos)
 	this.counter_text.nodeValue = barpos;
