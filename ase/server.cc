@@ -142,6 +142,8 @@ JSONIPC_INHERIT (ServerImpl, Server);
 
 static constexpr size_t telemetry_size = 4 * 1024 * 1024;
 
+ServerImpl *SERVER = nullptr;
+
 ServerImpl::ServerImpl () :
   telemetry_arena (telemetry_size)
 {
@@ -164,11 +166,15 @@ ServerImpl::ServerImpl () :
   };
   assert_return (telemetry_header.block_length == sizeof (header_sentinel));
   memcpy (telemetry_header.block_start, header_sentinel, telemetry_header.block_length);
+  if (!SERVER)
+    SERVER = this;
 }
 
 ServerImpl::~ServerImpl ()
 {
   fatal_error ("ServerImpl references must persist");
+  if (SERVER == this)
+    SERVER = nullptr;
 }
 
 String
@@ -525,7 +531,8 @@ validate_telemetry_segments (const TelemetrySegmentS &segments, size_t *payloadl
 }
 
 ASE_CLASS_DECLS (TelemetryPlan);
-struct TelemetryPlan {
+class TelemetryPlan {
+public:
   int32               interval_ms_ = -1;
   uint                timerid_ = 0;
   JsonapiBinarySender send_blob_;

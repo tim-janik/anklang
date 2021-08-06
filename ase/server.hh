@@ -34,6 +34,7 @@ public:
   void         telemem_release      (Block telememblock) const;
   ptrdiff_t    telemem_start        () const;
 };
+extern ServerImpl *SERVER;
 
 // static constexpr const char* telemetry_type (const int64  &field) { return "i64"; }
 static constexpr const char* telemetry_type (const int8   &field) { return "i8"; }
