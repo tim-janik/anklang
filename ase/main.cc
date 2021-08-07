@@ -113,13 +113,17 @@ print_usage (bool help)
   printout ("  --version        Print program version\n");
 }
 
+// 1:ERROR 2:FAILED+REJECT 4:IO 8:MESSAGE 16:GET 256:BINARY
+static constexpr int jsipc_logflags = 1 | 2 | 4 | 16;
+static constexpr int jsbin_logflags = 1 | 256;
+
 static MainConfig
 parse_args (int *argcp, char **argv)
 {
   MainConfig config;
 
-  config.jsbin = debug_key_enabled ("jsbin");
-  config.jsipc = config.jsbin || debug_key_enabled ("jsipc");
+  config.jsonapi_logflags |= debug_key_enabled ("jsbin") ? jsbin_logflags : 0;
+  config.jsonapi_logflags |= debug_key_enabled ("jsipc") ? jsipc_logflags : 0;
   config.fatal_warnings = feature_check ("fatal-warnings");
 
   bool sep = false; // -- separator
@@ -140,12 +144,9 @@ parse_args (int *argcp, char **argv)
       else if (strcmp ("--js-api", argv[i]) == 0)
         config.print_js_api = true;
       else if (strcmp ("--jsipc", argv[i]) == 0)
-        config.jsipc = true;
+        config.jsonapi_logflags |= jsipc_logflags;
       else if (strcmp ("--jsbin", argv[i]) == 0)
-        {
-          config.jsbin = true;
-          config.jsipc |= config.jsbin;
-        }
+        config.jsonapi_logflags |= jsbin_logflags;
       else if (strcmp ("--list-drivers", argv[i]) == 0)
         config.list_drivers = true;
       else if (strcmp ("-h", argv[i]) == 0 ||
@@ -302,7 +303,7 @@ main (int argc, char *argv[])
     }
 
   // open Jsonapi socket
-  auto wss = WebSocketServer::create (jsonapi_make_connection, main_config.jsbin ? 2 : main_config.jsipc);
+  auto wss = WebSocketServer::create (jsonapi_make_connection, config.jsonapi_logflags);
   wss->http_dir (runpath (RPath::INSTALLDIR) + "/ui/");
   const int xport = embedding_fd >= 0 ? 0 : 1777;
   const String subprotocol = xport ? "" : make_auth_string();
