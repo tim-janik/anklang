@@ -63,7 +63,7 @@ class JsonapiConnection : public WebSocketConnection, public CustomDataContainer
     if (!localhost_origin)      why = "Bad Origin";
     else if (!subproto_ok)      why = "Bad Subprotocol";
     const String ua = info.header ("User-Agent");
-    if (loglevel_ >= 0)
+    if (logflags_ & 2)
       log (string_format ("%sREJECT:%s  %s:%d/ (%s) - %s", C1, C0, info.remote, info.rport, why, ua));
     return -1; // reject
   }
@@ -74,7 +74,7 @@ class JsonapiConnection : public WebSocketConnection, public CustomDataContainer
     const auto C1 = color (BOLD), C0 = color (BOLD_OFF);
     const Info info = get_info();
     const String ua = info.header ("User-Agent");
-    if (loglevel_ >= 1)
+    if (logflags_ & 4)
       log (string_format ("%sACCEPT:%s  %s:%d/ - %s", C1, C0, info.remote, info.rport, ua));
   }
   void
@@ -82,7 +82,7 @@ class JsonapiConnection : public WebSocketConnection, public CustomDataContainer
   {
     using namespace AnsiColors;
     const auto C1 = color (BOLD), C0 = color (BOLD_OFF);
-    if (loglevel_ >= 1)
+    if (logflags_ & 4)
       log (string_format ("%sCLOSED%s", C1, C0));
     trigger_destroy_hooks();
   }
@@ -105,8 +105,8 @@ class JsonapiConnection : public WebSocketConnection, public CustomDataContainer
   String handle_jsonipc (const std::string &message);
   std::vector<JsTrigger> triggers_; // HINT: use unordered_map if this becomes slow
 public:
-  explicit JsonapiConnection (WebSocketConnection::Internals &internals, int loglevel) :
-    WebSocketConnection (internals, loglevel)
+  explicit JsonapiConnection (WebSocketConnection::Internals &internals, int logflags) :
+    WebSocketConnection (internals, logflags)
   {}
   ~JsonapiConnection()
   {
@@ -132,21 +132,21 @@ public:
     JsonapiConnectionP jsonapi_connection_p = std::dynamic_pointer_cast<JsonapiConnection> (shared_from_this());
     assert_return (jsonapi_connection_p);
     std::weak_ptr<JsonapiConnection> selfw = jsonapi_connection_p;
-    const int loglevel = loglevel_;
+    const int logflags = logflags_;
     // marshal remote trigger
-    auto trigger_remote = [selfw, id, loglevel] (ValueS &&args)    // weak_ref avoids cycles
+    auto trigger_remote = [selfw, id, logflags] (ValueS &&args)    // weak_ref avoids cycles
     {
       JsonapiConnectionP selfp = selfw.lock();
       return_unless (selfp);
       const String msg = jsonobject_to_string ("method", id /*"JsonapiTrigger/_%%%"*/, "params", args);
-      if (loglevel >= 1)
+      if (logflags & 8)
         selfp->log (string_format ("⬰ %s", msg));
       selfp->send_text (msg);
     };
     JsTrigger trigger = JsTrigger::create (id, trigger_remote);
     triggers_.push_back (trigger);
     // marshall remote destroy notification and erase triggers_ entry
-    auto erase_trigger = [selfw, id, loglevel] ()               // weak_ref avoids cycles
+    auto erase_trigger = [selfw, id, logflags] ()               // weak_ref avoids cycles
     {
       std::shared_ptr<JsonapiConnection> selfp = selfw.lock();
       return_unless (selfp);
@@ -154,7 +154,7 @@ public:
         {
           ValueS args { id };
           const String msg = jsonobject_to_string ("method", "JsonapiTrigger/killed", "params", args);
-          if (loglevel >= 1)
+          if (logflags & 8)
             selfp->log (string_format ("↚ %s", msg));
           selfp->send_text (msg);
         }
@@ -174,9 +174,9 @@ public:
 };
 
 WebSocketConnectionP
-jsonapi_make_connection (WebSocketConnection::Internals &internals, int loglevel)
+jsonapi_make_connection (WebSocketConnection::Internals &internals, int logflags)
 {
-  return std::make_shared<JsonapiConnection> (internals, loglevel);
+  return std::make_shared<JsonapiConnection> (internals, logflags);
 }
 
 #define ERROR500(WHAT)                                          \
@@ -227,11 +227,11 @@ make_dispatcher()
 String
 JsonapiConnection::handle_jsonipc (const std::string &message)
 {
-  if (loglevel_ >= 1)
+  if (logflags_ & 8)
     log (string_format ("→ %s", message));
   Jsonipc::Scope message_scope (imap_, Jsonipc::Scope::PURGE_TEMPORARIES);
   const std::string reply = make_dispatcher()->dispatch_message (message);
-  if (loglevel_ >= 1)
+  if (logflags_ & 8)
     {
       const char *errorat = strstr (reply.c_str(), "\"error\":{");
       if (errorat && errorat > reply.c_str() && (errorat[-1] == ',' || errorat[-1] == '{'))
