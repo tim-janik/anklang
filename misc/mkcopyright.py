@@ -87,9 +87,15 @@ def parse_years (yearstring):
 year_digits = re.compile (r'([1-9][0-9][0-9][0-9]\b|[0-9][0-9]\b)')
 year_range = re.compile (r'([1-9][0-9][0-9][0-9]|[0-9][0-9])\b\s*[—-]\s*([1-9][0-9][0-9][0-9]|[0-9][0-9])\b')
 
+def open_as_utf8 (filename):
+  for line in open (filename, 'rb'):
+    try:        string = line.decode ('utf-8')
+    except:     string = None
+    if string != None: yield string
+
 def find_copyrights (filename):
   copyrights = {}
-  for line in open (filename):
+  for line in open_as_utf8 (filename):
     for crpattern in copyright_patterns():
       m = crpattern.match (line.strip())
       if m:
@@ -117,7 +123,7 @@ license_patterns_dict = None
 
 def find_license (filename, config):
   n = config.max_header_lines
-  for line in open (filename):
+  for line in open_as_utf8 (filename):
     for license, patterns in license_patterns().items():
       for pattern in patterns:
         if pattern.match (line.strip()):
