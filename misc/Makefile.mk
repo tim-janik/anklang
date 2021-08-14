@@ -163,3 +163,9 @@ misc/uninstall: FORCE
 	$Q rm -f $(DESTDIR)$(misc/svgdir)/anklang.svg
 .PHONY: misc/uninstall
 uninstall: misc/uninstall
+
+# == Check Copyright Notices ==
+check-copyright: misc/mkcopyright.py $>/misc/git-ls-tree.lst
+	$(QGEN)
+	$Q misc/mkcopyright.py -b -u -e $$(cat $>/misc/git-ls-tree.lst)
+CHECK_TARGETS += $(WITHGIT) check-copyright
