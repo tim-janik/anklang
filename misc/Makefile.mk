@@ -165,7 +165,7 @@ misc/uninstall: FORCE
 uninstall: misc/uninstall
 
 # == Check Copyright Notices ==
-check-copyright: misc/mkcopyright.py $>/misc/git-ls-tree.lst
+check-copyright: misc/mkcopyright.py doc/copyright.ini $>/misc/git-ls-tree.lst
 	$(QGEN)
-	$Q misc/mkcopyright.py -b -u -e $$(cat $>/misc/git-ls-tree.lst)
+	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini $$(cat $>/misc/git-ls-tree.lst)
 CHECK_TARGETS += $(WITHGIT) check-copyright
