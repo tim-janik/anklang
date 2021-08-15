@@ -133,8 +133,12 @@ def find_license (filename, config):
 
 def match_license (filename, config):
   for identifier in spdx_licenses:
-    license_section = config.sections.get (identifier, None)
-    if not license_section: continue
+    if match_section (filename, config, identifier):
+      return identifier
+
+def match_section (filename, config, identifier):
+  license_section = config.sections.get (identifier, None)
+  if license_section:
     if filename in license_section.get ('files', '').strip().splitlines():
       return identifier
     for p in license_section.get ('patterns', '').strip().splitlines():
@@ -227,23 +231,26 @@ def mkcopyright (sysargv):
   # gather copyrights and licenses
   count_unlicensed = 0
   used_licenses = set()
-  for f in config.argv:
+  for filename in config.argv:
+    # ignore files
+    if match_section (filename, config, 'ignore'):
+      continue
     # detect license
-    license = find_license (f, config)
+    license = find_license (filename, config)
     count_unlicensed += not license
     if ((license and not config.with_license) or
         (not license and not config.without_license)):
       continue
     if config.brief:
-      print ('%-16s %s' % (license or '?', f))
+      print ('%-16s %s' % (license or '?', filename))
       continue
     aname, atime = '', ''
     # extract copyright notices
-    copyrights = find_copyrights (f)
+    copyrights = find_copyrights (filename)
     # gather copyright history
     for l in shcmd ('git', 'log', '--follow',
                     '--dense', '-b', '-w', '--ignore-blank-lines',
-                    '--pretty=%as %an', '--', f).split ('\n'):
+                    '--pretty=%as %an', '--', filename).split ('\n'):
       if len (l) > 10 and l[10] == ' ':
         year = int (l[0:4])
         name = l[11:].strip()
@@ -264,7 +271,7 @@ def mkcopyright (sysargv):
     clist.sort (reverse = True, key = lambda yd: yd[1][1] - yd[1][0]) # secondary, sort by largest range
     clist.sort (reverse = True, key = lambda yd: yd[1][1])            # primary, sort by latest year
     # print copyright entries
-    print ('\nFiles:', f)
+    print ('\nFiles:', filename)
     clines = []
     for n, y in clist:
       years = '%u' % y[0] if y[0] == y[1] else '%u-%u' % (y[0], y[1])
