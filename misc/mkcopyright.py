@@ -5,7 +5,6 @@ import sys, os, re, subprocess, getopt
 from datetime import datetime
 
 # TODO:
-# - Read header files from INI
 # - Parse .po file Copyright statements
 
 # Licenses as found in source code comments
@@ -46,10 +45,10 @@ copyrights = (
 
 def load_config_sections (filename, config):
   import configparser
-  cparser = configparser.RawConfigParser (empty_lines_in_values = False)
+  cparser = configparser.ConfigParser (empty_lines_in_values = False)
   cparser.optionxform = lambda option: option # avoid lowercasing option names
   cparser.read (filename)
-  config.sections = { sectionname: dict (cparser.items (sectionname)) for sectionname in cparser.sections() }
+  config.sections.update ({ sectionname: dict (cparser.items (sectionname)) for sectionname in cparser.sections() })
   #for k, v in config.sections.items(): print (k + ':', v)
 
 def copyright_patterns():
@@ -173,9 +172,8 @@ def print_help (arg0, exit = None):
 default_config = {
   'brief': False,
   'error_unlicensed': False,
-  'header': '',
   'max_header_lines': 10,
-  'sections': {},
+  'sections': { 'debian/copyright': {}, },
   'with_license': True,
   'without_license': True,
 }
@@ -184,6 +182,7 @@ def parse_options (sysargv, dfltconfig = default_config):
   config = Config()
   config.__dict__.update (dfltconfig)
   opts, argv = getopt.getopt (sysargv[1:], 'blueh' + 'c:C:N:S:', [ 'help', 'spdx-licenses' ])
+  upstream_headers = {}
   for k, v in opts:
     if k == '-b':
       config.brief = True
@@ -203,12 +202,13 @@ def parse_options (sysargv, dfltconfig = default_config):
       config.with_license = False
       config.without_license = True
     elif k == '-C':
-      config.header += 'Upstream-Contact: ' + v + '\n'
+      upstream_headers['Upstream-Contact'] = v
     elif k == '-N':
-      config.header += 'Upstream-Name: ' + v + '\n'
+      upstream_headers['Upstream-Name'] = v
     elif k == '-S':
-      config.header += 'Source: ' + v + '\n'
+      upstream_headers['Source'] = v
   config.argv = argv
+  config.sections['debian/copyright'].update (upstream_headers)
   return config
 
 def mkcopyright (sysargv):
@@ -216,11 +216,14 @@ def mkcopyright (sysargv):
   config = parse_options (sysargv)
   if len (config.argv) == 0:
     print_help (sysargv[0], 7)
-  # print copyright header
-  if config.header:
-    if not config.brief:
-      print ('Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/')
-    print (config.header.rstrip())
+  # print debian/copyright header
+  if not config.brief and config.sections['debian/copyright']:
+    print ('Format:', config.sections['debian/copyright'].get ('Format', 'https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/'))
+    if 'Upstream-Name' in config.sections['debian/copyright']:
+      print ('Upstream-Name:', config.sections['debian/copyright']['Upstream-Name'])
+    for k, v in config.sections['debian/copyright'].items():
+      if k in ('Format', 'Upstream-Name'): continue # initial fields
+      print (k + ':', v)
   # gather copyrights and licenses
   count_unlicensed = 0
   used_licenses = set()
