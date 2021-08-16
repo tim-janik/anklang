@@ -43,6 +43,13 @@ copyrights = (
   r'Copyright\s*\([cC]\)\s*([0-9, \t-]+)\s+(.+)',
 )
 
+re_MSI = re.M | re.S | re.I
+
+# Match <cc:license resource=""/> from ccREL specification
+rdf_xmlnscc_license = re.compile (r'<rdf:RDF\b.*\bxmlns:cc="https?://.*<cc:license\b[^>]*\bresource="([^"]+)"', re_MSI)
+# SVG metadata for cc:license
+xmlnscc_worklicense = re.compile (r'\bxmlns:cc="https?://.*<(?:rdf:RDF|cc:Work)\b.*<cc:license\b[^>]*\bresource="([^"]+)"', re_MSI)
+
 def load_config_sections (filename, config):
   import configparser
   cparser = configparser.ConfigParser (empty_lines_in_values = False)
@@ -120,15 +127,31 @@ def license_patterns():
   return license_patterns_dict
 license_patterns_dict = None
 
+def xml_license (xmlstring, config):
+  m = xmlnscc_worklicense.search (xmlstring)
+  if m: return m.group (1)
+  m = rdf_xmlnscc_license.search (xmlstring)
+  if m: return m.group (1)
+
 def find_license (filename, config):
-  n = config.max_header_lines
-  for line in open_as_utf8 (filename):
+  utf8file = open_as_utf8 (filename)
+  lines = []
+  # find known license comment patterns
+  for line in utf8file:
     for license, patterns in license_patterns().items():
       for pattern in patterns:
         if pattern.match (line.strip()):
           return license
-    n -= 1
-    if not n: break
+    lines.append (line)
+    if len (lines) >= config.max_header_lines: break
+  # search xml-like files
+  if re.search (r'<\?xml|<x?html|<svg|<rdf:RDF', ''.join (lines), re.I):
+    for line in utf8file:
+      lines.append (line)
+      if len (lines) >= config.max_xml_lines: break
+    license = xml_license (''.join (lines), config)
+    if license: return license
+  # match license to pathname
   return match_license (filename, config)
 
 def match_license (filename, config):
@@ -177,6 +200,7 @@ default_config = {
   'brief': False,
   'error_unlicensed': False,
   'max_header_lines': 10,
+  'max_xml_lines': 999,
   'sections': { 'debian/copyright': {}, },
   'with_license': True,
   'without_license': True,
