@@ -68,6 +68,7 @@
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
         <dc:title></dc:title>
+	<cc:license rdf:resource="MPL-2.0" />
       </cc:Work>
     </rdf:RDF>
   </metadata>
