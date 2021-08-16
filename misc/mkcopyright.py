@@ -278,7 +278,7 @@ def mkcopyright (sysargv):
       clines.append ('Copyright (C) ' + years + ' ' + n)
     if len (clines) == 1:
       print ('Copyright:', clines[0])
-    else:
+    elif clines:
       print ('Copyright:')
       for l in clines:
         print ('  ' + l)
@@ -287,8 +287,9 @@ def mkcopyright (sysargv):
       used_licenses.add (license)
   # Print license identifiers
   for l in sorted (used_licenses):
-    print ('\nLicense:', l)
     name, links = spdx_licenses.get (l, ('',''))
+    if name or links:
+      print ('\nLicense:', l)
     if name:
       print (' %s' % name)
     for l in links.split():
