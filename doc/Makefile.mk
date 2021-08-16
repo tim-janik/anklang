@@ -28,7 +28,12 @@ doc/all: $(doc/install.files)
 $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/doc/
 	$(QECHO) COPY $<
 	$Q cp $< $@
-$>/doc/copyright: doc/copyright ;	$Q cp $< $@
+
+# == doc/copyright ==
+$>/doc/copyright: misc/mkcopyright.py doc/copyright.ini $>/misc/git-ls-tree.lst		| $>/doc/
+	$(QGEN)
+	$Q misc/mkcopyright.py -c doc/copyright.ini $$(cat $>/misc/git-ls-tree.lst) > $@.tmp
+	$Q mv $@.tmp $@
 
 # == pandoc ==
 doc/markdown-flavour	::= -f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart

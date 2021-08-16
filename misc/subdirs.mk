@@ -1,4 +1,5 @@
 # Forward make $(MAKECMDGOALS) to the project root, add subdir prefix
+# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 # Figure topdir from ../misc/subdirs.mk/..
 misc/subdirs_mk/topdir ::= $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
