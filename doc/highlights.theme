@@ -12,7 +12,7 @@
             "underline": false
         },
         "Attribute": {
-            "text-color": "#7d9029",
+            "text-color": "#4c77cc",
             "background-color": null,
             "bold": false,
             "italic": false,
@@ -26,7 +26,7 @@
             "underline": false
         },
         "Annotation": {
-            "text-color": "#60a0b0",
+            "text-color": "#a73613",
             "background-color": null,
             "bold": true,
             "italic": true,
@@ -82,7 +82,7 @@
             "underline": false
         },
         "Variable": {
-            "text-color": "#19177c",
+            "text-color": "#4c77cc",
             "background-color": null,
             "bold": false,
             "italic": false,
@@ -110,7 +110,7 @@
             "underline": false
         },
         "Information": {
-            "text-color": "#60a0b0",
+            "text-color": "#a73613",
             "background-color": null,
             "bold": true,
             "italic": true,
@@ -124,7 +124,7 @@
             "underline": false
         },
         "Warning": {
-            "text-color": "#60a0b0",
+            "text-color": "#a73613",
             "background-color": null,
             "bold": true,
             "italic": true,
@@ -152,7 +152,7 @@
             "underline": false
         },
         "DataType": {
-            "text-color": "#902000",
+            "text-color": "#60a0b0",
             "background-color": null,
             "bold": false,
             "italic": false,
@@ -166,14 +166,14 @@
             "underline": false
         },
         "Comment": {
-            "text-color": "#60a0b0",
+            "text-color": "#a73613",
             "background-color": null,
             "bold": false,
             "italic": true,
             "underline": false
         },
         "CommentVar": {
-            "text-color": "#60a0b0",
+            "text-color": "#a73613",
             "background-color": null,
             "bold": true,
             "italic": true,
