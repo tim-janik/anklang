@@ -1,0 +1,10 @@
+
+<script type="text/javascript">
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+window.addEventListener ("load", function() {
+  // substitute dl:has(dl, ol, ul) selector
+  for (const dl of document.body.querySelectorAll ('dl'))
+    if (dl.querySelector ('dl, ol, ul') !== null)
+      dl.setAttribute ('data-has-nestedlayout', 1);
+});
+</script>
