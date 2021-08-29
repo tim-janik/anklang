@@ -72,9 +72,10 @@ $>/doc/%.html: %.md doc/Makefile.mk					| $>/doc/
 	$Q mv $@.tmp $@
 
 # == template.html ==
-$>/doc/template.html: doc/template.diff					| $>/doc/
+$>/doc/template.html: doc/template.diff doc/style/onload.html doc/Makefile.mk		| $>/doc/
 	$(QGEN)
 	$Q $(PANDOC) -D html > $>/doc/template.html \
+	  && sed $$'/^<\/body>/{r doc/style/onload.html\nN}' -i $>/doc/template.html \
 	  && cd $>/doc/ && patch < $(abspath doc/template.diff)
 
 # == anklang-manual.html ==
