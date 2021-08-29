@@ -127,6 +127,9 @@ ol > li { padding-left: 0.3em; }
 // == Definition Lists ==
 dt	{ font-weight: bold; }
 dd	{ margin-inline-start: 3em; }
+dl[data-has-nestedlayout="1"] {
+  dd ~ dt { margin-top: 1em; }
+}
 
 // == Title & Abstract ==
 header, div#header {		/// Pandoc1 uses div#header
