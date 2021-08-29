@@ -3,11 +3,27 @@
 
 const fs = require ('fs');
 
+function usage (full = false) {
+  const prog = process.argv[1].replace (/.*\//, '');
+  console.log ("Usage:", prog, "[OPTIONS] [jsdoc-data.json...]");
+  if (!full) return;
+  //            12345678911234567892123456789312345678941234567895123456789612345678971234567898
+  console.log ("Generate API documentation in Markdown format from jsdoc-data.json.");
+  console.log ("  -h, --help        Display command line help");
+  console.log ("  -d <DEPTH>        Set Markdown section level");
+  console.log ("  -e <EXPORTNAME>   Use EXPORTNAME as API prefix");
+}
+
 // Config and arguments
 function parse_args (config, args, start = 2) {
   for (let i = start; i < args.length; i++)
     {
-      if (args[i] == '--debug')
+      if (args[i] == '-h' || args[i] == '--help')
+	{
+	  usage (true);
+	  process.exit (0);
+	}
+      else if (args[i] == '--debug')
 	config.debug = true;
       else if (args[i] == '-d' && i + 1 < args.length)
 	config.depth = args[++i] | 0;
@@ -36,7 +52,7 @@ function add_class (classname, classdesc = '', exports = false) {
     cl.exports = true;
   return cl;
 }
-const global_classes = {};
+let global_classes;
 
 // collect class methods
 function add_method (doclet) {
@@ -64,7 +80,7 @@ function add_function (name, params, description = '', exports = false) {
     fun.exports = true;
   return fun;
 }
-const global_functions = {};
+let global_functions;
 
 /// Strip left side / head
 function lstrip (s) { return s.replace (/^\s+/, ''); }
@@ -168,8 +184,11 @@ arg_config.h1 = '#'.repeat (arg_config.depth | 0) + ' ';
 arg_config.h2 = '#' + arg_config.h1;
 arg_config.h3 = '#' + arg_config.h2;
 // Generate docs from json files
-for (let filename of arg_config.files) {
-  const string = String (fs.readFileSync (filename));
-  const jsdocast = JSON.parse (string);
-  console.log (generate_md (arg_config, jsdocast));
-}
+for (let filename of arg_config.files)
+  {
+    global_functions = {};
+    global_classes = {};
+    const string = String (fs.readFileSync (filename));
+    const jsdocast = JSON.parse (string);
+    console.log (generate_md (arg_config, jsdocast));
+  }
