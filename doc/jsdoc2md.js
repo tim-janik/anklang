@@ -82,6 +82,19 @@ function add_function (name, params, description = '', exports = false) {
 }
 let global_functions;
 
+// collect global variables
+function add_var (name, description = '', exports = false) {
+  let gvar = global_vars[name];
+  if (!gvar)
+    global_vars[name] = gvar = { name, description: '', exports: false, };
+  if (description)
+    gvar.description = description;
+  if (exports)
+    gvar.exports = true;
+  return gvar;
+}
+let global_vars;
+
 /// Strip left side / head
 function lstrip (s) { return s.replace (/^\s+/, ''); }
 /// Strip right side / tail
@@ -102,10 +115,20 @@ function dpara (s, prefix = '', c1 = '') {
 }
 
 /// Generate function markdown
-function gen_function_head (cfg) {
+function gen_section_head (cfg, what) {
   const xprefix = cfg.exports ? cfg.exports + ' ' : '';
   let s = '\n';
-  s += cfg.h2 + xprefix + 'Functions\n';
+  s += cfg.h2 + xprefix + what + '\n';
+  s += '\n';
+  return s;
+}
+
+/// Generate variable markdown
+function gen_global_var (cfg, gvar) {
+  const exports = cfg.exports && gvar.exports ? '<small>`' + cfg.exports + '.`</small>' : '';
+  let s = exports + '**`' + gvar.name + '`**' + '\n';
+  if (gvar.description)
+    s += dpara (gvar.description, '    ', ':') + '\n';
   s += '\n';
   return s;
 }
@@ -155,9 +178,10 @@ function generate_md (cfg, ast) {
   // build dicts from doclets
   for (const doclet of ast) {
     if (!doclet.meta) continue;
-    const exports = doclet.meta.code.name.search ('exports.') == 0;
+    // https://github.com/jsdoc/jsdoc/blob/master/packages/jsdoc/lib/jsdoc/schema.js
+    const exports = doclet.meta.code.name && doclet.meta.code.name.search ('exports.') == 0;
     // collect classes
-    if (doclet.scope == 'global' && doclet.kind == 'class' && doclet.meta.code.type == "ClassDeclaration")
+    if (doclet.scope == 'global' && doclet.kind == 'class' && doclet.classdesc && doclet.meta.code.type == "ClassDeclaration")
       add_class (doclet.name, doclet.classdesc, exports);
     // collect methods
     if (doclet.memberof && doclet.meta.code.paramnames && doclet.description &&
@@ -166,13 +190,21 @@ function generate_md (cfg, ast) {
     // collect functions
     if (doclet.scope == 'global' && doclet.meta.code.paramnames && doclet.description)
       add_function (doclet.name, doclet.meta.code.paramnames, doclet.description, exports);
+    // collect variables
+    if (doclet.scope == 'global' && doclet.kind == 'constant' && doclet.description)
+      add_var (doclet.name, doclet.description, exports);
   }
   // generate classes
   for (let [name, cl] of Object.entries (global_classes))
     s += gen_global_class (cfg, cl);
+  // generate variables
+  if (Object.getOwnPropertyNames (global_vars).length > 0)
+    s += gen_section_head (cfg, 'Constants');
+  for (let [name, gvar] of Object.entries (global_vars))
+    s += gen_global_var (cfg, gvar);
   // generate functions
   if (Object.getOwnPropertyNames (global_functions).length > 0)
-    s += gen_function_head (cfg);
+    s += gen_section_head (cfg, 'Functions');
   for (let [name, fun] of Object.entries (global_functions))
     s += gen_global_function (cfg, fun);
   return s;
@@ -188,6 +220,7 @@ for (let filename of arg_config.files)
   {
     global_functions = {};
     global_classes = {};
+    global_vars = {};
     const string = String (fs.readFileSync (filename));
     const jsdocast = JSON.parse (string);
     console.log (generate_md (arg_config, jsdocast));
