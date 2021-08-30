@@ -19,6 +19,7 @@ ui/copy.wildcards ::= $(wildcard	\
 )
 ui/nocopy.wildcards ::= $(wildcard	\
 	ui/sfc-compile.js		\
+	ui/slashcomment.js		\
 )
 ui/copy.files ::= $(filter-out $(ui/nocopy.wildcards), $(ui/copy.wildcards))
 ui/vue.wildcards ::= $(wildcard		\
