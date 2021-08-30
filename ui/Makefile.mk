@@ -217,6 +217,12 @@ eslint: $>/ui/.eslint.files $>/node_modules/.npm.done
 
 # == ui/*js.md ==
 ui/jsdoc.deps     ::= ui/jsdocrc.json ui/slashcomment.js doc/jsdoc2md.js
+$>/ui/envuejs.md: ui/b/envue.js $(ui/jsdoc.deps) ui/Makefile.mk $>/node_modules/.npm.done	| $>/ui/
+	$(QGEN)
+	$Q $>/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X ui/b/envue.js	>  $(@:.md=.jsdoc)
+	$Q echo -e '\n## Reference for envue.js'				>  $@.tmp
+	$Q node doc/jsdoc2md.js -d 2 -e 'Envue' $(@:.md=.jsdoc)			>> $@.tmp
+	$Q mv $@.tmp $@
 $>/ui/utiljs.md: ui/util.js $(ui/jsdoc.deps) ui/Makefile.mk $>/node_modules/.npm.done	| $>/ui/
 	$(QGEN)
 	$Q $>/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X ui/util.js		>  $(@:.md=.jsdoc)
@@ -225,7 +231,7 @@ $>/ui/utiljs.md: ui/util.js $(ui/jsdoc.deps) ui/Makefile.mk $>/node_modules/.npm
 	$Q mv $@.tmp $@
 
 # == ui/vue-doc ==
-$>/ui/vue-docs.md: ui/b/ch-vue.md $>/ui/utiljs.md $(ui/vue.wildcards) ui/Makefile.mk doc/filt-docs2.py		| $>/ui/
+$>/ui/vue-docs.md: ui/b/ch-vue.md $>/ui/envuejs.md $>/ui/utiljs.md $(ui/vue.wildcards) ui/Makefile.mk doc/filt-docs2.py		| $>/ui/
 	$(QGEN)
 	$Q echo -e "<!-- Vue Components -->\n\n"					>  $@.tmp
 	@: # extract <docs/> blocks from vue files and filter headings through pandoc
@@ -236,7 +242,7 @@ $>/ui/vue-docs.md: ui/b/ch-vue.md $>/ui/utiljs.md $(ui/vue.wildcards) ui/Makefil
 	done
 	$Q sed -r 's/^  // ; s/^#/\n#/; ' -i $@.tmp # unindent, spread heading_without_preceding_blankline
 	$Q $(PANDOC) -t markdown -F doc/filt-docs2.py -f markdown+compact_definition_lists $@.tmp -o $@.tmp2
-	$Q cat $< $@.tmp2 $>/ui/utiljs.md > $@.tmp && rm -f $@.tmp2
+	$Q cat $< $@.tmp2 $>/ui/envuejs.md $>/ui/utiljs.md > $@.tmp && rm -f $@.tmp2
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/vue-docs.md
 $>/ui/.build2-stamp: $>/doc/anklang-manual.html # deferred during rebuilds
