@@ -215,20 +215,17 @@ eslint: $>/ui/.eslint.files $>/node_modules/.npm.done
 	$Q cd $>/ui/ && npm run $@
 .PHONY: eslint
 
-# == ui/js-docs.md ==
-ui/jsdoc.files ::= ui/util.js
-$>/ui/js-docs.md: $(ui/jsdoc.files) doc/jsdoc2md.js ui/Makefile.mk $>/node_modules/.npm.done		| $>/ui/
+# == ui/*js.md ==
+ui/jsdoc.deps     ::= ui/jsdocrc.json ui/slashcomment.js doc/jsdoc2md.js
+$>/ui/utiljs.md: ui/util.js $(ui/jsdoc.deps) ui/Makefile.mk $>/node_modules/.npm.done	| $>/ui/
 	$(QGEN)
-	@: # extract .js docs with jsdoc
-	$Q $>/node_modules/.bin/jsdoc -X $(ui/jsdoc.files)	>  $@.json
-	@: # extract .js docs with jsdoc
-	$Q echo							>  $@.tmp
-	$Q echo '## Reference for util.js'			>> $@.tmp
-	$Q node doc/jsdoc2md.js -d 2 -e 'Util' $@.json		>> $@.tmp
-	$Q rm -f $@.json && mv $@.tmp $@
+	$Q $>/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X ui/util.js		>  $(@:.md=.jsdoc)
+	$Q echo -e '\n## Reference for util.js'					>  $@.tmp
+	$Q node doc/jsdoc2md.js -d 2 -e 'Util' $(@:.md=.jsdoc)			>> $@.tmp
+	$Q mv $@.tmp $@
 
 # == ui/vue-doc ==
-$>/ui/vue-docs.md: ui/b/ch-vue.md $(ui/vue.wildcards) ui/Makefile.mk doc/filt-docs2.py $>/ui/js-docs.md	| $>/ui/
+$>/ui/vue-docs.md: ui/b/ch-vue.md $>/ui/utiljs.md $(ui/vue.wildcards) ui/Makefile.mk doc/filt-docs2.py		| $>/ui/
 	$(QGEN)
 	$Q echo -e "<!-- Vue Components -->\n\n"					>  $@.tmp
 	@: # extract <docs/> blocks from vue files and filter headings through pandoc
@@ -239,7 +236,7 @@ $>/ui/vue-docs.md: ui/b/ch-vue.md $(ui/vue.wildcards) ui/Makefile.mk doc/filt-do
 	done
 	$Q sed -r 's/^  // ; s/^#/\n#/; ' -i $@.tmp # unindent, spread heading_without_preceding_blankline
 	$Q $(PANDOC) -t markdown -F doc/filt-docs2.py -f markdown+compact_definition_lists $@.tmp -o $@.tmp2
-	$Q cat $< $@.tmp2 $>/ui/js-docs.md > $@.tmp && rm -f $@.tmp2
+	$Q cat $< $@.tmp2 $>/ui/utiljs.md > $@.tmp && rm -f $@.tmp2
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/vue-docs.md
 $>/ui/.build2-stamp: $>/doc/anklang-manual.html # deferred during rebuilds
