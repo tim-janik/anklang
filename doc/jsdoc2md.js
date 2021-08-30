@@ -94,6 +94,7 @@ function add_var (name, description = '', exports = false) {
   return gvar;
 }
 let global_vars;
+let global_overview;
 
 /// Strip left side / head
 function lstrip (s) { return s.replace (/^\s+/, ''); }
@@ -162,7 +163,7 @@ function gen_global_class (cfg, cl) {
   let s = '';
   s += '\n' + cfg.h2 + hprefix + cl.name + ' class\n';
   s += '*class* ' + xprefix + '**' + cl.name + '**\n';
-  s += dpara (cl.classdesc, '    ', ':') + '\n';
+  s += dpara (cl.classdesc || ' … \n', '    ', ':') + '\n';
   s += '\n';
   for (const mt of cl.methods) {
     let t = gen_function (cfg, mt);
@@ -193,7 +194,13 @@ function generate_md (cfg, ast) {
     // collect variables
     if (doclet.scope == 'global' && doclet.kind == 'constant' && doclet.description)
       add_var (doclet.name, doclet.description, exports);
+    // collect overview
+    if (doclet.scope == 'global' && doclet.kind == 'file' && doclet.description)
+      global_overview = doclet.description;
   }
+  // produce overview
+  if (global_overview)
+    s += global_overview + '\n';
   // generate classes
   for (let [name, cl] of Object.entries (global_classes))
     s += gen_global_class (cfg, cl);
@@ -221,6 +228,7 @@ for (let filename of arg_config.files)
     global_functions = {};
     global_classes = {};
     global_vars = {};
+    global_overview = '';
     const string = String (fs.readFileSync (filename));
     const jsdocast = JSON.parse (string);
     console.log (generate_md (arg_config, jsdocast));
