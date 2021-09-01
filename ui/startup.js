@@ -141,7 +141,9 @@ async function bootup () {
 
   // create and configure Vue App
   const VueApp = Vue.createApp (Shell);
-  VueApp.config.isCustomElement = tag => !!window.customElements.get (tag);
+  VueApp.config.compilerOptions.isCustomElement = tag => !!window.customElements.get (tag);
+  VueApp.config.compilerOptions.whitespace = 'preserve';
+  // VueApp.config.compilerOptions.comments = true;
   const app = new AppClass (VueApp);
   console.assert (app == App);
   // ensure App has an AseProject
