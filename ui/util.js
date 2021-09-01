@@ -733,6 +733,17 @@ vue_mixins.dom_updates = {
   },
 };
 
+/// Fetch a unique object id.
+export function weakoid (object) {
+  if (!weakoid.weakmap) {
+    weakoid.weakmap = new WeakMap;
+    weakoid.counter = 1001;
+  }
+  if (!weakoid.weakmap.has (object))
+    weakoid.weakmap.set (object, weakoid.counter++);
+  return weakoid.weakmap.get (object);
+}
+
 /// Join strings and arrays of class lists from `args`.
 export function join_classes (...args) {
   const cs = new Set();
