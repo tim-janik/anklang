@@ -135,16 +135,33 @@ function gen_global_var (cfg, gvar) {
   return s;
 }
 
+/// Substitute chars to yield a valid HTML anchor
+function make_anchor (input) {
+  let string = input.replace (re_charn, '_');
+  if (string.length && string[0].search (re_char1) == 0)
+    string = '_' + string;
+  return string;
+}
+const char1 = '_:A-Za-z\xC0-\xD6\xD8-\xF6\xF8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD';
+const charn = '0-9\xB7\u0300-\u036F\u203F-\u2040.-';
+const re_char1 = new RegExp ('[^' + char1 + ']', 'gu');
+const re_charn = new RegExp ('[^' + char1 + charn + ']+', 'gu');
+
+
 /// Generate function markdown
 function gen_function (cfg, fun, exports = '') {
-  let prefix = '', postfix = '';
+  let prefix = '', postfix = '', anchor = make_anchor (exports + (exports && '.') + fun.name);
+  const pexports = exports ? '<small>`' + exports + '`</small>.' : '';
   if (fun['static'])
     postfix += '   `[static]`';
   if (fun.ctor)
     prefix += '*new* ';
   let params = fun.params.join (', ');
   params = params ? ' `(`*' + params + '*`)`' : '`()`';
-  let s = prefix + exports + '**`' + fun.name + '`**' + params + postfix + '\n';
+  let s = '';
+  if (anchor)
+    s += '<span id="' + anchor + '"></span> ';
+  s += prefix + pexports + '**`' + fun.name + '`**' + params + postfix + '\n';
   if (fun.description)
     s += dpara (fun.description, '    ', ':') + '\n';
   s += '\n';
@@ -153,14 +170,14 @@ function gen_function (cfg, fun, exports = '') {
 
 /// Generate function markdown
 function gen_global_function (cfg, fun) {
-  const xprefix = cfg.exports && fun.exports ? '<small>`' + cfg.exports + '.`</small>' : '';
+  const xprefix = cfg.exports && fun.exports ? cfg.exports : '';
   return gen_function (cfg, fun, xprefix);
 }
 
 /// Generate class markdown
 function gen_global_class (cfg, cl) {
   const hprefix = ''; // cfg.exports && cl.exports ? cfg.exports + '.' : '';
-  const xprefix = cfg.exports && cl.exports ? '<small>`' + cfg.exports + '.`</small>' : '';
+  const xprefix = cfg.exports && cl.exports ? cfg.exports : '';
   let s = '';
   s += '\n' + cfg.h2 + hprefix + cl.name + ' class\n';
   s += '*class* ' + xprefix + '**' + cl.name + '**\n';
