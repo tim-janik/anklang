@@ -108,7 +108,8 @@ function strip_whitelines (s) { return s.replace (/\n\s*\n/g, '\n'); }
 function indent_lines (s, prefix) { return s.replace (/(^|\n)/g, '$1' + prefix); }
 /// Make indented description paragraph with lead character
 function dpara (s, prefix = '', c1 = '') {
-  s = strip_whitelines (strip (s));
+  s = strip (s);
+  // s = strip_whitelines (s); // empty lines are needed as block seperators
   s = indent_lines (s, prefix);
   if (c1)
     s = s.replace (/^./, c1);
