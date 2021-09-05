@@ -600,41 +600,56 @@ export function hyphenate (string) {
 
 const nop = (() => undefined).bind (undefined);
 
-// Call dom_create, dom_destroy, watch dom_update, then forceUpdate on changes.
-function dom_dispatch() {
-  const el_valid = this.$el instanceof Element || this.$el instanceof Text;
-  const destroying = this.$dom_data.destroying;
+// Call dom_create, dom_change, dom_destroy, watch dom_update and forceUpdate on changes
+function dom_dispatch (before_unmount) {
+  const destroying = !!before_unmount;
   // dom_create
-  if (el_valid && this.$dom_data.state == 0 && !destroying) {
-    this.$dom_data.state = 1;
-    this.dom_create?.call (this);
-  }
-  /* A note on $watch. Its `expOrFn` is called immediately, the dependencies and return value
-   * are recorded. Later, once a dependency changes, its `expOrFn` is called again, also
-   * recording the dependencies and return value. If the return value changes, `callback`
-   * is invoked. What we need for updating DOM elements, is:
-   * a: the initial call with dependency recording which we use for (expensive) updating,
-   * b: trigger $forceUpdate() once a dependency changes, without intermediate updating.
-   */
+  if (!destroying &&
+      this.$dom_data.state == 0)        // before-create
+    {
+      this.$dom_data.state = 1;		// created
+      this.dom_create?.call (this);
+    }
+  // dom_change
+  if (!destroying &&
+      this.$dom_data.state == 1)        // created
+    this.dom_change?.call (this);
   // dom_update
-  if (el_valid && this.$dom_data.state == 1 && !destroying) {
-    this.$dom_data.unwatch1 = call_unwatch (this.$dom_data.unwatch1); // clear old $watch
-    if (this.dom_update) {
-      let domupdate_watcher = () => {
-	const r = this.dom_update(); // capture dependencies
+  const valid_el = this.$el instanceof Element || this.$el instanceof Text;
+  if (!destroying &&
+      this.$dom_data.state == 1 &&	// created
+      this.dom_update && valid_el)
+    {
+      this.$dom_data.unwatch1 = call_unwatch (this.$dom_data.unwatch1); // clear old $watch
+      // call dom_update() and capture dependencies (upon changes $forceUpdate)
+      let dom_update_watcher = () => {
+	const r = this.dom_update();
 	if (r instanceof Promise)
 	  console.warn ('The this.dom_update() method returned a Promise, async functions are not reactive', this);
 	return r;
       };
-      this.$dom_data.unwatch1 = this.$watch (() => domupdate_watcher(), nop);
-      domupdate_watcher = this.$forceUpdate.bind (this); // dependencies changed
+      /* The $watch *expOrFn* is called immediately, the dependencies and return value are recorded.
+       * Once one of the data dependencies change, the *expOrFn* is called again, also recording the
+       * dependencies and return value. If the return value changed, *callback* is invoked.
+       * What we need for updating DOM elements, is:
+       * A) the initial call with dependency recording which we use for (expensive) updating,
+       * B) trigger $forceUpdate() once a dependency changes, without intermediate updating.
+       */
+      // A) first immediate dom_update() call with dependencies captured
+      this.$dom_data.unwatch1 = this.$watch (() => dom_update_watcher(), nop);
+      // B) later, once dependencies changed, $forceUpdate
+      dom_update_watcher = this.$forceUpdate.bind (this);
     }
-  }
   // dom_destroy
-  if (this.$dom_data.state == 1 && !el_valid) {
-    this.$dom_data.unwatch1 = call_unwatch (this.$dom_data.unwatch1);
-    this.$dom_data.state = 0;
+  if (destroying &&
+      this.$dom_data.state == 1)	// created
+  {
+    this.$dom_data.state = 2;		// destroyed
+    this.$dom_data.destroying = true;
+    this.dom_trigger_animate_playback (false);
     this.dom_destroy?.call (this);
+    this.$dom_data.unwatch1 = call_unwatch (this.$dom_data.unwatch1);
+    this.$dom_data.unwatch2 = call_unwatch (this.$dom_data.unwatch2);
   }
 }
 
@@ -645,14 +660,15 @@ function dom_dispatch() {
  * changes to data dependencies of reactive methods will queue future updates.
  * However reactive dependency tracking only works for non-async methods.
  *
- * - dom_create() - Reactive callback method, called after `this.$el` has been created
- * - dom_update() - Reactive callback method, called after `this.$el` has been created
- *   and after Vue component updates. Dependency changes result in `this.$forceUpdate()`.
- *   Note, this is also called for `v-if="false"` cases, where `Vue.updated()` is not called.
+ * - dom_create() - Called after `this.$el` has been created
+ * - dom_change() - Called after `this.$el` has been reassigned or changed.
+ *   Note, may also be called for `v-if="false"` cases.
+ * - dom_update() - Reactive callback method, called with a valid `this.$el` and
+ *   after Vue component updates. Dependency changes result in `this.$forceUpdate()`.
  * - dom_draw() - Reactive callback method, called during an animation frame, requested
  *   via `dom_queue_draw()`. Dependency changes result in `this.dom_queue_draw()`.
  * - dom_queue_draw() - Cause `this.dom_draw()` to be called during the next animation frame.
- * - dom_destroy() - Callback method, called once `this.$el` was removed.
+ * - dom_destroy() - Callback method, called once `this.$el` is removed.
  */
 vue_mixins.dom_updates = {
   beforeCreate: function () {
@@ -666,6 +682,11 @@ vue_mixins.dom_updates = {
       unwatch2: null,
       rafid: undefined,
     };
+    // Vue3 mixins are fragile, so that mixin.beforeUnmount() is *only* called if the instance
+    // does not define beforeUnmount() itself. onBeforeUnmount() seems more reliable
+    Vue.onMounted (() => this.$forceUpdate()); // ensure updated()
+    Vue.onUpdated (() => dom_dispatch.call (this, false));
+    Vue.onBeforeUnmount (() => dom_dispatch.call (this, true));
     function dom_queue_draw () {
       if (this.$dom_data.rafid !== undefined)
 	return;
@@ -687,23 +708,6 @@ vue_mixins.dom_updates = {
     }
     this.dom_queue_draw = dom_queue_draw;
   }, // beforeCreate
-  mounted: function () {
-    if (this.$dom_data)
-      this.$forceUpdate();	// ensure updated()
-  },
-  updated: function () {
-    if (this.$dom_data)
-      dom_dispatch.call (this);
-  },
-  beforeUnmount: function () {
-    if (!this.$dom_data)
-      return;
-    this.$dom_data.destroying = true;
-    this.$dom_data.unwatch1 = call_unwatch (this.$dom_data.unwatch1);
-    this.$dom_data.unwatch2 = call_unwatch (this.$dom_data.unwatch2);
-    this.dom_trigger_animate_playback (false);
-    dom_dispatch.call (this);
-  },
   unmounted: function () {
     if (this.$dom_data.rafid !== undefined)
       {
