@@ -168,7 +168,7 @@ function observable_project_data () { // yields reactive Proxy object
 class Shell extends Envue.Component {
   constructor (vm) {
     super (vm);
-    this.fs = Vue.reactive ({ title: 'File Selector', button: 'Select', cwd: '.', filters: [], resolve: null });
+    this.fs = Vue.reactive ({ title: 'File Selector', button: 'Select', cwd: 'MUSIC', filters: [], resolve: null });
     this.m = observable_project_data.call (vm);
     this.m.modal_dialogs = [];
   }
@@ -251,10 +251,7 @@ class Shell extends Envue.Component {
   }
   async_modal_dialog = async_modal_dialog;
 }
-
-export default Shell.vue_export ({
-  sfc_template,
-});
+export default Shell.vue_export ({ sfc_template });
 
 // == modal dialog creation ==
 let modal_dialog_counter = 1;
