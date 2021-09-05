@@ -77,6 +77,9 @@ export function vue_export_from_class (Class, vue_object = {}) {
     if (Class.prototype.beforeUnmount)   Vue.onBeforeUnmount   (_ => Vue.getCurrentInstance().ctx.$object.beforeUnmount());
     if (Class.prototype.unmounted)       Vue.onUnmounted       (_ => Vue.getCurrentInstance().ctx.$object.unmounted());
     if (Class.prototype.errorCaptured)   Vue.onErrorCaptured   (_ => Vue.getCurrentInstance().ctx.$object.errorCaptured());
+    if (Class.prototype.activated)       Vue.onActivated       (_ => Vue.getCurrentInstance().ctx.$object.activated());
+    if (Class.prototype.deactivated)     Vue.onDeactivated     (_ => Vue.getCurrentInstance().ctx.$object.deactivated());
+    if (Class.prototype.serverPrefetch)  Vue.onServerPrefetch  (_ => Vue.getCurrentInstance().ctx.$object.serverPrefetch());
     if (Class.prototype.renderTracked)   Vue.onRenderTracked   (_ => Vue.getCurrentInstance().ctx.$object.renderTracked());
     if (Class.prototype.renderTriggered) Vue.onRenderTriggered (_ => Vue.getCurrentInstance().ctx.$object.renderTriggered());
     return setup ? setup.call (this, props, context) : undefined;
