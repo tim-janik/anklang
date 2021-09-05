@@ -108,5 +108,19 @@ export function vue_export_from_class (Class, vue_object = {}) {
       created?.call (this);
     };
   }
+  // copy static members
+  window.c = window.c || [];
+  window.c.push(Class);
+  const statics = [ 'emits', 'data', 'props', 'computed', 'watch', 'provide', 'inject', 'components', 'directives', 'methods', ];
+  for (const name of statics)
+    if (Class[name] !== undefined &&
+	!Object.prototype.hasOwnProperty.call (vue_object, name))
+      {
+	const pd = Object.getOwnPropertyDescriptor (Class, name);
+	Object.defineProperty (vue_object, name, {
+	  enumerable: pd.enumerable,
+	  get: () => Class[name],
+	});
+      }
   return vue_object;
 }
