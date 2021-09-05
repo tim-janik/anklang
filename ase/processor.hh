@@ -212,12 +212,13 @@ public:
   static const String STANDARD;    ///< ":G:S:r:w:" - GUI STORAGE READABLE WRITABLE
   static const String STORAGEONLY; ///< ":S:r:w:" - STORAGE READABLE WRITABLE
   float         note_to_freq      (int note) const;
-  AudioEngine&  engine            () const;
-  uint          sample_rate       () const ASE_CONST;
-  double        nyquist           () const ASE_CONST;
-  double        inyquist          () const ASE_CONST;
   virtual void  query_info        (AudioProcessorInfo &info) const = 0;
   String        debug_name        () const;
+  AudioEngine&          engine      () const ASE_CONST;
+  const AudioTransport& transport   () const ASE_CONST;
+  uint                  sample_rate () const ASE_CONST;
+  double                nyquist     () const ASE_CONST;
+  double                inyquist    () const ASE_CONST;
   // Parameters
   double              get_param             (Id32 paramid);
   void                set_param             (Id32 paramid, double value);
@@ -386,6 +387,12 @@ AudioProcessor::engine () const
 }
 
 /// Sample rate mixing frequency in Hz as unsigned, used for render().
+inline const AudioTransport&
+AudioProcessor::transport () const
+{
+  return engine_.transport();
+}
+
 inline uint
 AudioProcessor::sample_rate () const
 {

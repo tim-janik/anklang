@@ -196,10 +196,8 @@ AudioChain::render (uint n_frames)
   for (size_t c = 0; c < n_och; c++)
     {
       // an enqueue_children() call is guranteed *before* render(), so last_output_ is valid
-      if (last_output_)
-        redirect_oblock (OUT1, c, last_output_->ofloats (OUT1, std::min (c, nlastchannels - 1)));
-      else
-        assign_oblock (OUT1, c, 0);
+      redirect_oblock (OUT1, c, !last_output_ ? nullptr :
+                       last_output_->ofloats (OUT1, std::min (c, nlastchannels - 1)));
     }
   // FIXME: assign obus if no children are present
 }

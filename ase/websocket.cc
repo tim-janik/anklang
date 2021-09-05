@@ -43,6 +43,7 @@ struct WebSocketServerImpl : public WebSocketServer {
   ConVec         opencons_;
   RegexVector    ignores_;
   MakeConnection make_con_;
+  int            loglevel_ = 0;
   void   setup        (const String &host, int port);
   void   run          ();
   WebSocketConnectionP make_connection (WppHdl hdl);
@@ -92,8 +93,8 @@ public:
   void ws_opened (WebSocketConnectionP);
   void ws_closed (WebSocketConnectionP);
   void reset         () override;
-  WebSocketServerImpl (const MakeConnection &make_con) :
-    make_con_ (make_con)
+  WebSocketServerImpl (const MakeConnection &make_con, int loglevel) :
+    make_con_ (make_con), loglevel_ (loglevel)
   {}
 };
 
@@ -164,8 +165,8 @@ struct WebSocketConnection::Internals {
   friend struct WebSocketServerImpl;
 };
 
-WebSocketConnection::WebSocketConnection (Internals &internals) :
-  internals_ (*new (internals_mem_) Internals (internals))
+WebSocketConnection::WebSocketConnection (Internals &internals, int loglevel) :
+  internals_ (*new (internals_mem_) Internals (internals)), loglevel_ (loglevel)
 {
   static_assert (sizeof (Internals) <= sizeof (internals_mem_));
   assert_return (internals_.server != nullptr);
@@ -192,12 +193,45 @@ WebSocketConnection::send_text (const String &message)
   internals_.wppserver.send (internals_.hdl, message, websocketpp::frame::opcode::text, ec);
   if (ec)
     {
-      log (string_format ("Error: send_text: %s", ec.message()));
+      if (loglevel_ >= 0)
+        log (string_format ("Error: %s: %s", __func__, ec.message()));
       websocketpp::lib::error_code ec2;
       cp->close (websocketpp::close::status::going_away, "", ec2);
       return false;
     }
   return true;
+}
+
+bool
+WebSocketConnection::send_binary (const String &blob)
+{
+  WppConnectionP cp = internals_.wppconp();
+  return_unless (cp, false);
+  websocketpp::lib::error_code ec;
+  // See "Sending Messages" about `endpoint::send` in utility_client.md
+  internals_.wppserver.send (internals_.hdl, blob, websocketpp::frame::opcode::binary, ec); // MT-Safe, locks mutex
+  if (ec)
+    {
+      if (loglevel_ >= 0)
+        log (string_format ("Error: %s: %s", __func__, ec.message()));
+      websocketpp::lib::error_code ec2;
+      cp->close (websocketpp::close::status::going_away, "", ec2);
+      return false;   // invalid connection or send failed
+    }
+  if (ASE_UNLIKELY (loglevel_ >= 2))
+    {
+      String hex;
+      for (size_t i = 0; i < blob.size(); i++)
+        {
+          if (i && 0 == i % 16)
+            hex += "\n ";
+          else if (0 == i % 8)
+            hex += " ";
+          hex += string_format (" %02x", blob[i]);
+        }
+      log (string_format ("⇜ Blob: len=%d hash=%016x\n%s", blob.size(), fnv1a_consthash64 (blob.data(), blob.size()), hex));
+    }
+  return true; // connection alive and message queued
 }
 
 WebSocketConnection::Info
@@ -266,10 +300,10 @@ WebSocketConnection::nickname ()
 }
 
 int  WebSocketConnection::validate ()                           { return -1; }
-void WebSocketConnection::failed ()                             { log (__func__); }
-void WebSocketConnection::opened ()                             { log (__func__); }
-void WebSocketConnection::message (const String &message)       { log (__func__); }
-void WebSocketConnection::closed ()                             { log (__func__); }
+void WebSocketConnection::failed ()                             { if (loglevel_ >= 1) log (__func__); }
+void WebSocketConnection::opened ()                             { if (loglevel_ >= 1) log (__func__); }
+void WebSocketConnection::message (const String &message)       { if (loglevel_ >= 1) log (__func__); }
+void WebSocketConnection::closed ()                             { if (loglevel_ >= 1) log (__func__); }
 void WebSocketConnection::log (const String &message)           { printerr ("%s\n", message);}
 
 void
@@ -316,7 +350,7 @@ WebSocketConnection::http_request ()
       status = websocketpp::http::status_code::not_found;
     }
   cp->set_status (status);
-  if (true) // logging
+  if (loglevel_ >= 1)
     {
       using namespace AnsiColors;
       String C1 = status >= 400 && status <= 499 ? color (FG_RED) : "";
@@ -338,7 +372,7 @@ WebSocketServerImpl::make_connection (WppHdl hdl)
     std::dynamic_pointer_cast<WebSocketServerImpl> (shared_from_this()),
     wppserver_, hdl,
   };
-  WebSocketConnectionP conp = make_con_ (internals);
+  WebSocketConnectionP conp = make_con_ (internals, loglevel_);
   // capturing conp in handler contexts keeps it alive long enough for calls
   cp->set_http_handler ([conp] (WppHdl hdl) {
     WebSocketConnection::Internals &internals_ = WebSocketServer::internals (*conp);
@@ -412,9 +446,9 @@ WebSocketServer::~WebSocketServer()
 {}
 
 WebSocketServerP
-WebSocketServer::create (const MakeConnection &make)
+WebSocketServer::create (const MakeConnection &make, int loglevel)
 {
-  return std::make_shared<WebSocketServerImpl> (make);
+  return std::make_shared<WebSocketServerImpl> (make, loglevel);
 }
 
 String

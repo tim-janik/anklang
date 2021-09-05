@@ -102,6 +102,7 @@ print_usage (bool help)
   printout ("  --help           Print program usage and options\n");
   printout ("  --fatal-warnings Abort on warnings and failing assertions\n");
   printout ("  --jsipc          Print Javascript IPC messages\n");
+  printout ("  --jsbin          Print Javascript IPC & binary messages\n");
   printout ("  --version        Print program version\n");
   printout ("  --disable-randomization Test mode for deterministic tests\n");
   printout ("  --check-integrity-tests Run integrity tests\n");
@@ -114,7 +115,8 @@ parse_args (int *argcp, char **argv)
 {
   MainConfig config;
 
-  config.jsipc = debug_key_enabled ("jsipc");
+  config.jsbin = debug_key_enabled ("jsbin");
+  config.jsipc = config.jsbin || debug_key_enabled ("jsipc");
   config.fatal_warnings = feature_check ("fatal-warnings");
 
   bool sep = false; // -- separator
@@ -136,6 +138,11 @@ parse_args (int *argcp, char **argv)
         config.print_js_api = true;
       else if (strcmp ("--jsipc", argv[i]) == 0)
         config.jsipc = true;
+      else if (strcmp ("--jsbin", argv[i]) == 0)
+        {
+          config.jsbin = true;
+          config.jsipc |= config.jsbin;
+        }
       else if (strcmp ("-h", argv[i]) == 0 ||
                strcmp ("--help", argv[i]) == 0)
         {
@@ -272,7 +279,7 @@ main (int argc, char *argv[])
   });
 
   // open Jsonapi socket
-  auto wss = WebSocketServer::create (jsonapi_make_connection);
+  auto wss = WebSocketServer::create (jsonapi_make_connection, main_config.jsbin ? 2 : main_config.jsipc);
   wss->http_dir (runpath (RPath::INSTALLDIR) + "/ui/");
   const int xport = embedding_fd >= 0 ? 0 : 1777;
   const String subprotocol = xport ? "" : make_auth_string();

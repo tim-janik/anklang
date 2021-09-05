@@ -61,7 +61,7 @@
     <!-- playcontrols -->
     <h-flex>
       <b-playcontrols :project="project"> </b-playcontrols>
-      <b-positionview :song="song"> </b-positionview>
+      <b-positionview :project="project"> </b-positionview>
     </h-flex>
 
     <!-- menubar right -->

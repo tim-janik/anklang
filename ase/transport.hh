@@ -62,8 +62,9 @@ struct AudioTransport {
   const int64    ppqn;
   const SpeakerArrangement speaker_arrangement; ///< Audio output configuration.
   const uint32_t dummy;
-  float          current_bpm;   ///< Current tempo in beats per minute.
   uint64         frame_stamp;   ///< Number of sample frames processed since playback start.
+  double         tick_pos;      ///< Number ticks processed since playback start.
+  float          current_bpm;   ///< Current tempo in beats per minute.
 };
 
 } // Ase

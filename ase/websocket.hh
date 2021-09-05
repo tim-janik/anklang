@@ -25,13 +25,15 @@ public:
   virtual void   message       (const String &message);         ///< Only if opened.
   virtual void   closed        ();                              ///< Pairs with opened().
   virtual void   log           (const String &message);
-  bool           send_text     (const String &message);         ///< Returns true if message was sent.
+  bool           send_text     (const String &message);         ///< Returns true if text message was sent.
+  bool           send_binary   (const String &blob);            ///< Returns true if binary blob was sent.
   struct Internals;
-protected:
-  explicit WebSocketConnection (Internals &internals);
 private:
   Internals &internals_;
   uint64_t internals_mem_[17];
+protected:
+  explicit WebSocketConnection (Internals &internals, int loglevel);
+  const int loglevel_ = 0;
 };
 using WebSocketConnectionP = std::shared_ptr<WebSocketConnection>;
 
@@ -40,14 +42,14 @@ protected:
   static WebSocketConnection::Internals& internals (WebSocketConnection &c) { return c.internals_; }
   virtual ~WebSocketServer();
 public:
-  using MakeConnection = std::function<WebSocketConnectionP (WebSocketConnection::Internals&)>;
+  using MakeConnection = std::function<WebSocketConnectionP (WebSocketConnection::Internals&, int)>;
   using UnlistenCB = std::function<void ()>;
   virtual void            http_dir      (const String &path) = 0;
   virtual std::string     url           () const = 0;
   virtual void            listen        (const String &host = "", int port = 0, const UnlistenCB& = {}) = 0;
   virtual void            reset         () = 0;
   virtual void            shutdown      () = 0;
-  static WebSocketServerP create        (const MakeConnection &make);
+  static WebSocketServerP create        (const MakeConnection &make, int loglevel = 0);
   static String           user_agent    ();
   static String           mime_type     (const String &ext, bool utf8);
 };

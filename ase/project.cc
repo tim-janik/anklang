@@ -7,6 +7,7 @@
 #include "path.hh"
 #include "serialize.hh"
 #include "storage.hh"
+#include "server.hh"
 #include "internal.hh"
 
 namespace Ase {
@@ -178,6 +179,19 @@ ProjectImpl::serialize (WritNode &xs)
           trackp = shared_ptr_cast<TrackImpl> (create_track());
         xc & *trackp;
       }
+}
+
+TelemetryFieldS
+ProjectImpl::telemetry () const
+{
+  TelemetryFieldS v;
+  AudioProcessorP proc = master_processor ();
+  assert_return (proc, v);
+  const AudioTransport &transport = proc->transport();
+  v.push_back (telemetry_field ("bpm", &transport.current_bpm));
+  v.push_back (telemetry_field ("tick_pos", &transport.tick_pos));
+  // v.push_back (telemetry_field ("sample_frames", &transport.sample_frames));
+  return v;
 }
 
 AudioProcessorP

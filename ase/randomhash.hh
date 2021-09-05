@@ -443,19 +443,24 @@ public:
  * strings, so the hashes can be used e.g. as case labels in switch statements.
  */
 template<class Num> static inline constexpr uint64_t
-fnv1a_consthash64 (const Num *const ztdata, uint64_t hash = 0xcbf29ce484222325)
+fnv1a_consthash64 (const Num *ztdata)
 {
   static_assert (sizeof (Num) <= 1, "");
-  return ASE_ISLIKELY (ztdata[0] != 0) ? fnv1a_consthash64 (ztdata + 1, 0x100000001b3 * (hash ^ uint8_t (ztdata[0]))) : hash;
+  uint64_t hash = 0xcbf29ce484222325;
+  while (ASE_ISLIKELY (*ztdata != 0))
+    hash = 0x100000001b3 * (uint8_t (*ztdata++) ^ hash);
+  return hash;
 }
 
 /// Variant of fnv1a_consthash64() for memory blocks of arbitrary size.
 template<class Num> static inline constexpr uint64_t
-fnv1a_consthash64 (const Num *const data, size_t length, uint64_t hash)
+fnv1a_consthash64 (const Num *const data, size_t length)
 {
   static_assert (sizeof (Num) <= 1, "");
-
-  return length ? fnv1a_consthash64 (data + 1, length - 1, 0x100000001b3 * (hash ^ uint8_t (data[0]))) : hash;
+  uint64_t hash = 0xcbf29ce484222325;
+  for (size_t j = 0; j < length; j++)
+    hash = 0x100000001b3 * (uint8_t (data[j]) ^ hash);
+  return hash;
 }
 
 /** Hash function based on the PCG family of random number generators (RNG).

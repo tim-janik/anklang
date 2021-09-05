@@ -16,6 +16,8 @@ ASE_STRUCT_DECLS (DeviceInfo);
 ASE_STRUCT_DECLS (DriverEntry);
 ASE_STRUCT_DECLS (ParamInfo);
 ASE_STRUCT_DECLS (Resource);
+ASE_STRUCT_DECLS (TelemetryField);
+ASE_STRUCT_DECLS (TelemetrySegment);
 ASE_STRUCT_DECLS (UserNote);
 
 // == Class Forward Declarations ==
@@ -44,6 +46,7 @@ ASE_CLASS_DECLS (Track);
 ASE_CLASS_DECLS (TrackImpl);
 
 class AudioEngine;
+class CustomDataContainer;
 
 struct Event;
 class EventConnection;

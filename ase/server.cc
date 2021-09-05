@@ -140,7 +140,10 @@ pathname_anklangrc()
 // == ServerImpl ==
 JSONIPC_INHERIT (ServerImpl, Server);
 
-ServerImpl::ServerImpl ()
+static constexpr size_t telemetry_size = 4 * 1024 * 1024;
+
+ServerImpl::ServerImpl () :
+  telemetry_arena (telemetry_size)
 {
   prefs_ = preferences_defaults();
   const String jsontext = Path::stringread (pathname_anklangrc());
@@ -150,6 +153,17 @@ ServerImpl::ServerImpl ()
     on_event ("change:prefs", [this] (auto...) {
       Path::stringwrite (pathname_anklangrc(), json_stringify (prefs_, Writ::INDENT | Writ::SKIP_EMPTYSTRING), true);
     });
+  assert_return (telemetry_arena.reserved() >= telemetry_size);
+  Block telemetry_header = telemetry_arena.allocate (64);
+  assert_return (telemetry_arena.location() == uint64 (telemetry_header.block_start));
+  const uint8_t header_sentinel[64] = {
+    0xff, 0xff, 0xff, 0xff, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03,
+    0x04, 0x04, 0x04, 0x04, 0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06, 0x07, 0x07, 0x07, 0x07,
+    0x08, 0x08, 0x08, 0x08, 0x09, 0x09, 0x09, 0x09, 0x0a, 0x0a, 0x0a, 0x0a, 0x0b, 0x0b, 0x0b, 0x0b,
+    0x0c, 0x0c, 0x0c, 0x0c, 0x0d, 0x0d, 0x0d, 0x0d, 0x0e, 0x0e, 0x0e, 0x0e, 0x0f, 0x0f, 0x0f, 0x0f,
+  };
+  assert_return (telemetry_header.block_length == sizeof (header_sentinel));
+  memcpy (telemetry_header.block_start, header_sentinel, telemetry_header.block_length);
 }
 
 ServerImpl::~ServerImpl ()
@@ -473,6 +487,129 @@ bool
 ServerImpl::user_reply (uint64 noteid, uint r)
 {
   return false; // unhandled
+}
+
+ServerImpl::Block
+ServerImpl::telemem_allocate (uint32 length) const
+{
+  return telemetry_arena.allocate (length);
+}
+
+void
+ServerImpl::telemem_release (Block telememblock) const
+{
+  telemetry_arena.release (telememblock);
+}
+
+ptrdiff_t
+ServerImpl::telemem_start () const
+{
+  return telemetry_arena.location();
+}
+
+static bool
+validate_telemetry_segments (const TelemetrySegmentS &segments, size_t *payloadlength)
+{
+  *payloadlength = 0;
+  const TelemetrySegment *last = nullptr;
+  for (const auto &seg : segments)
+    {
+      if (last && seg.offset < last->offset + last->length)
+        return false;   // check sorting and non-overlapping
+      if (seg.offset < 0 || (seg.offset & 3) || seg.length <= 0 || (seg.length & 3) ||
+          size_t (seg.offset + seg.length) > telemetry_size)
+        return false;
+      *payloadlength += seg.length;
+      last = &seg;
+    }
+  return true;
+}
+
+ASE_CLASS_DECLS (TelemetryPlan);
+struct TelemetryPlan {
+  int32               interval_ms_ = -1;
+  uint                timerid_ = 0;
+  JsonapiBinarySender send_blob_;
+  TelemetrySegmentS   segments_;
+  const char         *telemem_ = nullptr;
+  String              payload_;
+  void send_telemetry();
+  void setup (const char *start, size_t payloadlength, const TelemetrySegmentS &plan, int32 interval_ms);
+  ~TelemetryPlan();
+};
+static CustomDataKey<TelemetryPlanP> telemetry_key;
+
+bool
+ServerImpl::broadcast_telemetry (const TelemetrySegmentS &segments, int32 interval_ms)
+{
+  size_t payloadlength = 0;
+  if (!validate_telemetry_segments (segments, &payloadlength))
+    {
+      warning ("%s: invalid segment list", "Ase::ServerImpl::broadcast_telemetry");
+      return false;
+    }
+  CustomDataContainer *cdata = jsonapi_connection_data();
+  if (!cdata)
+    {
+      warning ("%s: cannot broadcast telemetry without jsonapi connection", "Ase::ServerImpl::broadcast_telemetry");
+      return false;
+    }
+  TelemetryPlanP tplan = cdata->get_custom_data (&telemetry_key);
+  if (!tplan)
+    {
+      tplan = std::make_shared<TelemetryPlan> ();
+      cdata->set_custom_data (&telemetry_key, tplan);
+      tplan->send_blob_ = jsonapi_connection_sender();
+    }
+  tplan->setup ((const char*) telemetry_arena.location(), payloadlength, segments, interval_ms);
+  return true;
+}
+
+void
+TelemetryPlan::setup (const char *start, size_t payloadlength, const TelemetrySegmentS &segments, int32 interval_ms)
+{
+  if (timerid_ == 0 || interval_ms_ != interval_ms)
+    {
+      if (timerid_)
+        main_loop->remove (timerid_);
+      auto send_telemetry = [this] () { this->send_telemetry(); return true; };
+      interval_ms_ = interval_ms;
+      timerid_ = interval_ms <= 0 || segments.empty() ? 0 : main_loop->exec_timer (send_telemetry, interval_ms, interval_ms);
+    }
+  if (timerid_)
+    {
+      telemem_ = start;
+      segments_ = segments;
+      payload_.resize (payloadlength);
+    }
+  else
+    {
+      telemem_ = nullptr;
+      segments_ = {};
+      payload_.clear();
+    }
+}
+
+void
+TelemetryPlan::send_telemetry ()
+{
+  char *data = &payload_[0];
+  size_t datapos = 0;
+  for (const auto &seg : segments_)     // offsets and lengths were validated earlier
+    {
+      memcpy (data + datapos, telemem_ + seg.offset, seg.length);
+      datapos += seg.length;
+    }
+  send_blob_ (payload_);
+}
+
+TelemetryPlan::~TelemetryPlan()
+{
+  if (timerid_)
+    {
+      main_loop->remove (timerid_);
+      timerid_ = 0;
+    }
 }
 
 } // Ase

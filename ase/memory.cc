@@ -30,9 +30,14 @@ struct LinuxHugePage : public HugePage {
   ReleaseF  release_ = nullptr;
   LinuxHugePage (void *m, size_t s, ReleaseF r) : HugePage (m, s), release_ (r) {}
   void free_start            () { free (start_); }
-  void munmap_start          () { munmap (start_, size_); }
   void unadvise_free_start   () { madvise (start_, size_, MADV_NOHUGEPAGE); free_start(); }
   void unadvise_munmap_start () { madvise (start_, size_, MADV_NOHUGEPAGE); munmap_start(); }
+  void
+  munmap_start ()
+  {
+    munlock (start_, size_);
+    munmap (start_, size_);
+  }
   ~LinuxHugePage()
   {
     auto release = release_;
@@ -55,6 +60,10 @@ HugePage::allocate (size_t minimum_alignment, size_t bytelength)
       if (memory != MAP_FAILED)
         {
           assert_return ((size_t (memory) & (minimum_alignment - 1)) == 0, {}); // ensure alignment
+          // try mlock
+          const int mlret = mlock (memory, bytelength);
+          if (mlret < 0)
+            printerr ("%s: mlock(%p,%u) failed: %s\n", __func__, memory, bytelength, strerror (errno));
           return std::make_shared<LinuxHugePage> (memory, bytelength, &LinuxHugePage::munmap_start);
         }
     }
@@ -82,6 +91,10 @@ HugePage::allocate (size_t minimum_alignment, size_t bytelength)
           // double check, use THP
           assert_return (areasize == bytelength, {});
           assert_return ((size_t (memory) & (minimum_alignment - 1)) == 0, {}); // ensure alignment
+          // try mlock
+          const int mlret = mlock (memory, bytelength);
+          if (mlret < 0)
+            printerr ("%s: mlock(%p,%u) failed: %s\n", __func__, memory, bytelength, strerror (errno));
           LinuxHugePage::ReleaseF release;
           // linux/Documentation/admin-guide/mm/transhuge.rst
           if (madvise (memory, areasize, MADV_HUGEPAGE) >= 0)

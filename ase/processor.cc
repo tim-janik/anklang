@@ -916,7 +916,7 @@ AudioProcessor::float_buffer (OBusId busid, uint channelindex, bool resetptr)
   return fbuffer;
 }
 
-/// Redirect output buffer of bus `b`, channel `c` to point to `block`.
+/// Redirect output buffer of bus `b`, channel `c` to point to `block`, or zeros if `block==nullptr`.
 void
 AudioProcessor::redirect_oblock (OBusId busid, uint channelindex, const float *block)
 {
@@ -925,8 +925,11 @@ AudioProcessor::redirect_oblock (OBusId busid, uint channelindex, const float *b
   const OBus &obus = iobus (busid);
   assert_return (channelindex < obus.fbuffer_count);
   FloatBuffer &fbuffer = fbuffers_[obus.fbuffer_index + channelindex];
-  assert_return (block != nullptr);
-  fbuffer.buffer = const_cast<float*> (block);
+  if (block != nullptr)
+    fbuffer.buffer = const_cast<float*> (block);
+  else
+    fbuffer.buffer = const_float_zeros;
+  static_assert (sizeof (const_float_zeros) / sizeof (const_float_zeros[0]) >= AUDIO_BLOCK_MAX_RENDER_SIZE);
 }
 
 /// Fill the output buffer of bus `b`, channel `c` with `v`.
