@@ -118,9 +118,9 @@ function dpara (s, prefix = '', c1 = '') {
 
 /// Generate function markdown
 function gen_section_head (cfg, what) {
-  const xprefix = cfg.exports ? cfg.exports + ' ' : '';
+  const exports = cfg.exports ? cfg.exports + ' ' : '';
   let s = '\n';
-  s += cfg.h2 + xprefix + what + '\n';
+  s += cfg.h2 + exports + what + '\n';
   s += '\n';
   return s;
 }
@@ -170,17 +170,18 @@ function gen_function (cfg, fun, exports = '') {
 
 /// Generate function markdown
 function gen_global_function (cfg, fun) {
-  const xprefix = cfg.exports && fun.exports ? cfg.exports : '';
-  return gen_function (cfg, fun, xprefix);
+  const exports = cfg.exports && fun.exports ? cfg.exports : '';
+  return gen_function (cfg, fun, exports);
 }
 
 /// Generate class markdown
 function gen_global_class (cfg, cl) {
   const hprefix = ''; // cfg.exports && cl.exports ? cfg.exports + '.' : '';
-  const xprefix = cfg.exports && cl.exports ? cfg.exports : '';
+  const exports = cfg.exports && cl.exports ? cfg.exports : '';
+  const pexports = exports ? '<small>`' + exports + '`</small>.' : '';
   let s = '';
   s += '\n' + cfg.h2 + hprefix + cl.name + ' class\n';
-  s += '*class* ' + xprefix + '**' + cl.name + '**\n';
+  s += '*class* ' + pexports + '**' + cl.name + '**\n';
   s += dpara (cl.classdesc || ' … \n', '    ', ':') + '\n';
   s += '\n';
   for (const mt of cl.methods) {
