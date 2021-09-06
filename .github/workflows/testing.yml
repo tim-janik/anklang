@@ -17,10 +17,8 @@ jobs:
       run: misc/dbuild.sh make check
     - name: Ping IRC
       if: always()
-      env:
-        NOTIFICO_PHOOK: https://n.tkte.ch/h/6538/wii6Vwx5rkUwvfDEfUQBcrTU
       run: |
-        STATUS="${{ job.status }}" && URL="${{ github.event.head_commit.url }}"
-        COMMITTER="$(git log -1 --format="%cn")" && BRANCH="$(git branch --show-current)"
+        S="${{ job.status }}" && URL="${{ github.event.head_commit.url }}"
+        N="$(git log -1 --format="%cL")" && B="$(git branch --show-current)"
         MSG=$(git log -1 --format="%s")
-        .github/workflows/notifico.py -n "$COMMITTER" -b "$BRANCH" -s "$STATUS" -u "$URL" "$MSG"
+        .github/workflows/ircbot.py -q -j "#Anklang" -n AnklangGH -U "$N" -D "$B" -S "$S" "$MSG" "$URL"
