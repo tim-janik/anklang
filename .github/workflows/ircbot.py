@@ -12,6 +12,40 @@ ircsock = None
 timeout = 150
 wait_timeout = 15000
 
+def colors (how):
+  E = '\u001b['
+  C = '\u0003'
+  if how == 0:          # NONE
+    d = { 'YELLOW': '', 'ORANGE': '', 'RED': '', 'GREEN': '', 'CYAN': '', 'BLUE': '', 'MAGENTA': '', 'RESET': '' }
+  elif how == 1:        # ANSI
+    d = { 'YELLOW': E+'93m', 'ORANGE': E+'33m', 'RED': E+'31m', 'GREEN': E+'32m', 'CYAN': E+'36m', 'BLUE': E+'34m', 'MAGENTA': E+'35m', 'RESET': E+'m' }
+  elif how == 2:        # mIRC
+    d = { 'YELLOW': C+'08,99', 'ORANGE': C+'07,99', 'RED': C+'04,99', 'GREEN': C+'03,99', 'CYAN': C+'10,99', 'BLUE': C+'12,99', 'MAGENTA': C+'06,99', 'RESET': C+'99,99' }
+  from collections import namedtuple
+  colors = namedtuple ("Colors", d.keys()) (*d.values())
+  return colors
+
+def status_color (txt, c):
+  ER = r'false|\bno\b|\bnot|\bfail|fatal|error|\bwarn|\bbug|\bbad|\bred|broken'
+  OK = r'true|\byes|\bok\b|success|\bpass|good|\bgreen'
+  if re.search (ER, txt, flags = re.IGNORECASE):
+    return c.RED
+  if re.search (OK, txt, flags = re.IGNORECASE):
+    return c.GREEN
+  return c.YELLOW
+
+def format_msg (args, how = 2):
+  msg = ' '.join (args.message)
+  c = colors (how)
+  if args.S:
+    msg = '[' + status_color (args.S, c) + args.S.upper() + c.RESET + '] ' + msg
+  if args.D:
+    msg = c.CYAN + args.D + c.RESET + ' ' + msg
+  if args.U:
+    msg = c.ORANGE + args.U + c.RESET + ' ' + msg
+
+  return msg
+
 def sendline (text):
   global args
   if not args.quiet:
@@ -105,6 +139,12 @@ def parse_args (sysargs):
                        help = 'Port to connect to [' + str (port) + ']')
   parser.add_argument ('-l', action = "store_true",
                        help = 'List channels')
+  parser.add_argument ('-U', metavar = 'NAME', default = '',
+                       help = 'Initiating user name')
+  parser.add_argument ('-D', metavar = 'DEPARTMENT', default = '',
+                       help = 'Initiating department')
+  parser.add_argument ('-S', metavar = 'STATUS', default = '',
+                       help = 'Initiating status code')
   parser.add_argument ('--ping', action = "store_true",
                        help = 'Require PING/PONG after connecting')
   parser.add_argument ('--quiet', '-q', action = "store_true",
@@ -114,6 +154,8 @@ def parse_args (sysargs):
   return args
 
 args = parse_args (sys.argv[1:])
+if args.message and not args.quiet:
+  print (format_msg (args, 1))
 connect (args.s, args.p)
 readall (500)
 
@@ -135,7 +177,7 @@ if args.j:
   sendline ("JOIN " + args.j)
   expect ('JOIN')
 
-msg = ' '.join (args.message)
+msg = format_msg (args)
 for line in re.split ('\n ?', msg):
   channel = args.j or args.J or args.n
   if line:
