@@ -20,6 +20,25 @@ using JsonapiConnectionP = std::shared_ptr<JsonapiConnection>;
 using JsonapiConnectionW = std::weak_ptr<JsonapiConnection>;
 static JsonapiConnectionP current_message_conection;
 
+static bool
+is_localhost (const String &url, int port)
+{
+  const char *p = url.c_str();
+  if (strncmp (p, "http://", 7) == 0)
+    p += 7;
+  else if (strncmp (p, "https://", 8) == 0)
+    p += 8;
+  else
+    return false;
+  const String localhost = port > 0 ? string_format ("localhost:%u/", port) : "localhost/";
+  const String local_127 = port > 0 ? string_format ("127.0.0.1:%u/", port) : "127.0.0.1/";
+  if (strncmp (p, localhost.c_str(), localhost.size()) == 0)
+    return true;
+  if (strncmp (p, local_127.c_str(), local_127.size()) == 0)
+    return true;
+  return false;
+}
+
 class JsonapiConnection : public WebSocketConnection, public CustomDataContainer {
   Jsonipc::InstanceMap imap_;
   void
@@ -33,12 +52,19 @@ class JsonapiConnection : public WebSocketConnection, public CustomDataContainer
     using namespace AnsiColors;
     const auto C1 = color (BOLD), C0 = color (BOLD_OFF);
     const Info info = get_info();
-    if (info.subs.size() == 0 && subprotocol_authentication.empty())
+    const String origin = info.header ("Origin") + "/";
+    const bool localhost_origin = is_localhost (origin, info.lport);
+    const bool subproto_ok = (info.subs.size() == 0 && subprotocol_authentication.empty()) ||
+                             (info.subs.size() == 1 && subprotocol_authentication == info.subs[0]);
+    if (localhost_origin && subproto_ok)
       return 0; // OK
-    else if (info.subs.size() == 1 && subprotocol_authentication == info.subs[0])
-      return 0; // pick first and only
-    if (loglevel_ >= 1)
-      log (string_format ("%sREJECT:%s  %s:%d/ %s", C1, C0, info.remote, info.rport, info.ua));
+    // log rejection
+    String why;
+    if (!localhost_origin)      why = "Bad Origin";
+    else if (!subproto_ok)      why = "Bad Subprotocol";
+    const String ua = info.header ("User-Agent");
+    if (loglevel_ >= 0)
+      log (string_format ("%sREJECT:%s  %s:%d/ (%s) - %s", C1, C0, info.remote, info.rport, why, ua));
     return -1; // reject
   }
   void
@@ -47,8 +73,9 @@ class JsonapiConnection : public WebSocketConnection, public CustomDataContainer
     using namespace AnsiColors;
     const auto C1 = color (BOLD), C0 = color (BOLD_OFF);
     const Info info = get_info();
+    const String ua = info.header ("User-Agent");
     if (loglevel_ >= 1)
-      log (string_format ("%sACCEPT:%s  %s:%d/ %s", C1, C0, info.remote, info.rport, info.ua));
+      log (string_format ("%sACCEPT:%s  %s:%d/ - %s", C1, C0, info.remote, info.rport, ua));
   }
   void
   closed() override

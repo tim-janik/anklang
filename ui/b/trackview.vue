@@ -74,11 +74,10 @@
        :class="Util.equals_recursively (Data.current_track, track) ? 'b-trackview-current' : ''"
        data-tip="**CLICK** Select Track **RIGHTCLICK** Track Menu" >
     <div class="b-trackview-control">
-      <span class="b-trackview-label"
-	    @dblclick.stop="nameedit_++" >
-	<span class="b-trackview-label-el">{{ tdata.name || '&nbsp;' }}</span>
-	<input v-if="nameedit_" v-inlineblur="() => nameedit_ = 0" :value="tdata.name"
-	       type="text" @change="$event.target.cancelled || track.name ($event.target.value.trim())" />
+      <span class="b-trackview-label" >
+	<b-editable class="b-trackview-label-el" ref="trackname" clicks="2"
+		    @change="v => track.name (v.trim())"
+	>{{ tdata.name || '&nbsp;' }}</b-editable>
       </span>
       <div class="b-trackview-meter">
 	<div class="b-trackview-lbg" ref="levelbg"></div>
@@ -192,7 +191,6 @@ export default {
     'trackindex': { type: Number, },
   },
   data() { return {
-    nameedit_: 0,
     tdata: track_data.call (this),
   }; },
   methods: {
@@ -265,7 +263,7 @@ export default {
 	    Data.current_track = tracks[index];
 	}
       if (uri == 'rename-track')
-	this.nameedit_ = 1;
+	this.$refs.trackname.activate();
       if (uri.startsWith ('mc-'))
 	{
 	  const ch = parseInt (uri.substr (3));

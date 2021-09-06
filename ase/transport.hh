@@ -50,22 +50,105 @@ const char*        speaker_arrangement_bit_name       (SpeakerArrangement spa);
 std::string        speaker_arrangement_desc           (SpeakerArrangement spa);
 
 /// Maximum number of sample frames to calculate in Processor::render().
-constexpr const uint AUDIO_BLOCK_MAX_RENDER_SIZE = 128;
+constexpr const int64 AUDIO_BLOCK_MAX_RENDER_SIZE = 128;
+constexpr const int64 TRANSPORT_PPQN = 4838400;                 // Ticks per quarter note
+constexpr const int64 SEMIQUAVER_TICKS = TRANSPORT_PPQN / 4;    // 1209600 = PPQN * 4 / 16;
+
+/// Musical time signature and tick conversions.
+struct TickSignature {
+protected:
+  int64  offset_ = 0;
+  uint8  beats_per_bar_ = 4;    ///< Upper numeral (numerator), how many beats constitute a bar.
+  uint8  beat_unit_ = 4;        ///< Lower numeral (denominator in [1 2 4 8 16]), note value that represents one beat.
+  int32  beat_ticks_ = 0;
+  int32  bar_ticks_ = 0;
+  int32  samplerate_ = 0;       ///< Sample rate (mixing frequency) in Hz.
+  double bpm_ = 0;              ///< Current tempo in beats per minute.
+  int64  ticks_per_minute_ = 0;
+  double ticks_per_second_ = 0;
+  double inv_ticks_per_second_ = 0;
+  double ticks_per_sample_ = 0;
+  double sample_per_ticks_ = 0;
+  double inv_samplerate_;       ///< Precalculated `1.0 / samplerate`.
+public:
+  struct Beat {
+    int32  bar = 0;             ///< Bar of tick position.
+    int8   beat = 0;            ///< Beat within bar of tick position.
+    double semiquaver = 0;      ///< The sixteenth with fraction within beat.
+  };
+  struct Time {
+    int32  minutes = 0;         ///< Tick position in minutes.
+    double seconds = 0;         ///< Seconds with fraction after the minute.
+  };
+  double samplerate       () const      { return samplerate_; }
+  double inv_samplerate   () const      { return inv_samplerate_; }
+  double ticks_per_sample () const      { return ticks_per_sample_; }
+  int64  sample_to_tick   (int64 sample) const;
+  int64  sample_from_tick (int64 tick) const;
+  double bpm              () const      { return bpm_; }
+  int32  bar_ticks        () const      { return bar_ticks_; }
+  int32  beat_ticks       () const      { return beat_ticks_; }
+  int64  start_offset     () const      { return offset_; }
+  void   set_samplerate   (uint samplerate);
+  void   set_bpm          (double bpm, int64 start_offset = 0);
+  Time   time_from_tick   (int64 tick) const;
+  int64  time_to_tick     (const Time &time) const;
+  bool   set_signature    (uint8 beats_per_bar, uint8 beat_unit, int64 tick_offset = 0);
+  const uint8& beats_per_bar () const   { return beats_per_bar_; }
+  const uint8& beat_unit     () const   { return beat_unit_; }
+  int32  bar_from_tick    (int64 tick) const;
+  int64  bar_to_tick      (int32 bar) const;
+  Beat   beat_from_tick   (int64 tick) const;
+  int64  beat_to_tick     (const Beat &beat) const;
+  /*D*/  TickSignature    ();
+  /*C*/  TickSignature    (double bpm, uint8 beats_per_bar, uint8 beat_unit, int64 tick_offset = 0);
+};
 
 /// Transport information for AudioSignal processing.
 struct AudioTransport {
-  static_assert (AUDIO_BLOCK_MAX_RENDER_SIZE == 128);
+  static_assert           (AUDIO_BLOCK_MAX_RENDER_SIZE == 128);
+  static constexpr int64 ppqn = TRANSPORT_PPQN;
   const uint     samplerate;    ///< Sample rate (mixing frequency) in Hz used for rendering.
   const uint     nyquist;       ///< Half the `samplerate`.
   const double   isamplerate;   ///< Precalculated `1.0 / samplerate`.
   const double   inyquist;      ///< Precalculated `1.0 / nyquist`.
-  const int64    ppqn;
   const SpeakerArrangement speaker_arrangement; ///< Audio output configuration.
-  const uint32_t dummy;
-  uint64         frame_stamp;   ///< Number of sample frames processed since playback start.
-  double         tick_pos;      ///< Number ticks processed since playback start.
-  float          current_bpm;   ///< Current tempo in beats per minute.
+  // uint32 gap
+  TickSignature  tick_sig;
+  int64          current_frame = 0; ///< Number of sample frames processed since playback start.
+  double         current_tick_d = 0;
+  int64          current_tick = 0;  ///< Number ticks processed since playback start.
+  int64          current_bar_tick = 0;
+  int64          next_bar_tick = 0;
+  float          current_bpm = 0;   ///< Current tempo in beats per minute.
+  int32          current_bar = 0;
+  int8           current_beat = 0;
+  double         current_semiquaver = 0; ///< The sixteenth with fraction within beat.
+  int32          current_minutes = 0;
+  double         current_seconds = 0;
+  bool     running        () const      { return current_bpm != 0; }
+  void     running        (bool r);
+  void     tempo          (double newbpm, uint8 newnumerator, uint8 newdenominator);
+  void     tickto         (int64 newtick);
+  void     advance        (uint nsamples);
+  void     update_current ();
+  explicit AudioTransport (SpeakerArrangement speakerarrangement, uint samplerate);
+  int64    sample_to_tick  (int64 sample) const { return tick_sig.sample_to_tick (sample); }
+  int64    sample_from_tick (int64 tick) const  { return tick_sig.sample_from_tick (tick); }
 };
+
+// == implementations ==
+inline int64
+TickSignature::sample_to_tick (int64 sample) const
+{
+  return ticks_per_sample_ * sample;
+}
+
+inline int64
+TickSignature::sample_from_tick (int64 tick) const
+{
+  return sample_per_ticks_ * tick;
+}
 
 } // Ase
 

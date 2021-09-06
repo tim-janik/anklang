@@ -1,10 +1,11 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 //import * as PianoRoll from "./piano-roll.mjs";
 
+import * as Util from '../util.js';
+
 export const PIANO_OCTAVES = 11;
 export const PIANO_KEYS = PIANO_OCTAVES * 12;
-export const PPQN = 1920;			// ticks per quarter note
-const MINDURATION = PPQN / 64;
+const MINDURATION = Util.PPQN / 64;
 const MINTICKS = MINDURATION / 6;
 
 export class PianoCtrl {
@@ -17,8 +18,8 @@ export class PianoCtrl {
   }
   quantization ()
   {
-    const roll = this.piano_roll, stepping = roll.stepping ? roll.stepping[0] : PPQN;
-    return Math.min (stepping, PPQN);
+    const roll = this.piano_roll, stepping = roll.stepping ? roll.stepping[0] : Util.PPQN;
+    return Math.min (stepping, Util.PPQN);
   }
   quantize (tick, nearest = false)
   {
@@ -136,7 +137,7 @@ export class PianoCtrl {
     else if (roll.pianotool == 'P')
       {
 	roll.adata.focus_noteid = undefined;
-	const note_id = await msrc.change_note (-1, this.quantize (tick), PPQN * 0.25, midinote, 0, 1);
+	const note_id = await msrc.change_note (-1, this.quantize (tick), Util.PPQN / 4, midinote, 0, 1);
 	if (roll.adata.focus_noteid === undefined)
 	  roll.adata.focus_noteid = note_id;
       }

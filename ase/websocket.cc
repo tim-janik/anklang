@@ -119,6 +119,7 @@ WebSocketServerImpl::setup (const String &host, int port)
         else if (subprotocols.size() == 0 && index == 0)
           return true;
       }
+    cp->set_status (websocketpp::http::status_code::forbidden);
     return false;
   });
   wppserver_.set_http_handler ([this] (WppHdl hdl) {
@@ -238,7 +239,16 @@ WebSocketConnection::Info
 WebSocketConnection::get_info ()
 {
   WppConnectionP cp = internals_.wppconp();
+  const websocketpp::http::parser::request &rq = cp->get_request();
+  auto headers = std::make_shared<websocketpp::http::parser::header_list> (rq.get_headers());
   Info info;
+  info.header = [headers] (const String &header) {
+    const auto it = headers->find (header);
+    return it == headers->end() ? "" : it->second;
+  };
+  if (0)
+    for (auto it : *headers)
+      printerr ("%s: %s\n", it.first, it.second);
   // https://github.com/zaphoyd/websocketpp/issues/694#issuecomment-454623641
   const auto &socket = cp->get_raw_socket();
   const auto &laddress = socket.local_endpoint().address();
@@ -247,22 +257,7 @@ WebSocketConnection::get_info ()
   const auto &raddress = socket.remote_endpoint().address();
   info.remote = raddress.to_string();
   info.rport = socket.remote_endpoint().port();
-  const websocketpp::http::parser::request &rq = cp->get_request();
-  const websocketpp::http::parser::header_list &headermap = rq.get_headers();
   info.subs = cp->get_requested_subprotocols();
-  for (auto it : headermap) // request headers
-    if (it.first == "User-Agent")
-      info.ua = it.second;
-    else if (it.first == "Accept-Encoding")
-      info.ace = it.second;
-    else if (it.first == "Accept-Language")
-      info.acl = it.second;
-    else if (string_tolower (it.first) == "sec-ch-ua")
-      info.chints = it.second;
-    else if (string_tolower (it.first) == "sec-ch-ua-mobile")
-      info.mhints = it.second;
-    else if (string_tolower (it.first) == "sec-gpc")
-      info.gpc = it.second;
   return info;
 }
 
@@ -272,25 +267,26 @@ WebSocketConnection::nickname ()
   if (internals_.nickname_.empty())
     {
       Info info = get_info();
+      const String ua = info.header ("User-Agent");
       String s = info.local + ":" + string_from_int (info.lport) + "\n" +
                  info.remote + ":" + string_from_int (info.rport * 0) + "\n" +
-                 info.ua + "\n" +
-                 info.ace + "\n" +
-                 info.acl + "\n" +
-                 info.chints + "\n" +
-                 info.mhints + "\n" +
-                 info.gpc + "\n";
+                 ua + "\n" +
+                 info.header ("Accept-Encoding") + "\n" +
+                 info.header ("Accept-Language") + "\n" +
+                 info.header ("sec-ch-ua") + "\n" +
+                 info.header ("sec-ch-ua-mobile") + "\n" +
+                 info.header ("sec-gpc") + "\n";
       String hh;
       uint64_t hash = string_hash64 (s);
-      if      (Re::search (R"(\bFirefox/)", info.ua) >= 0)
+      if      (Re::search (R"(\bFirefox/)", ua) >= 0)
         hh = "FF";
-      else if (Re::search (R"(\bElectron/)", info.ua) >= 0)
+      else if (Re::search (R"(\bElectron/)", ua) >= 0)
         hh = "El";
-      else if (Re::search (R"(\bChrome-Lighthouse\b)", info.ua) >= 0)
+      else if (Re::search (R"(\bChrome-Lighthouse\b)", ua) >= 0)
         hh = "Lh";
-      else if (Re::search (R"(\bChrome/)", info.ua) >= 0)
+      else if (Re::search (R"(\bChrome/)", ua) >= 0)
         hh = "Ch";
-      else if (Re::search (R"(\bSafari/)", info.ua) >= 0)
+      else if (Re::search (R"(\bSafari/)", ua) >= 0)
         hh = "Sa";
       else
         hh = "Uk";

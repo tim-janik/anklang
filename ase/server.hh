@@ -19,8 +19,8 @@ public:
   String       get_vorbis_version   () override;
   String       get_mp3_version      () override;
   String       error_blurb          (Error error) const override;
+  String       musical_tuning_label (MusicalTuning musicaltuning) const override;
   String       musical_tuning_blurb (MusicalTuning musicaltuning) const override;
-  String       musical_tuning_desc  (MusicalTuning musicaltuning) const override;
   uint64       user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &r = "") override;
   bool         user_reply           (uint64 noteid, uint r) override;
   bool         broadcast_telemetry  (const TelemetrySegmentS &plan, int32 interval_ms) override;
@@ -35,8 +35,9 @@ public:
   ptrdiff_t    telemem_start        () const;
 };
 
+// static constexpr const char* telemetry_type (const int64  &field) { return "i64"; }
+static constexpr const char* telemetry_type (const int8   &field) { return "i8"; }
 static constexpr const char* telemetry_type (const int32  &field) { return "i32"; }
-static constexpr const char* telemetry_type (const uint32 &field) { return "u32"; }
 static constexpr const char* telemetry_type (const float  &field) { return "f32"; }
 static constexpr const char* telemetry_type (const double &field) { return "f64"; }
 

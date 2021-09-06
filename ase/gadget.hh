@@ -17,7 +17,6 @@ public:
   String         type_nick         () const override;
   String         name              () const override;
   void           name              (String newname) override;
-  StringS        list_properties   () override;
   PropertyP      access_property   (String ident) override;
   PropertyS      access_properties () override;
 };

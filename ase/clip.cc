@@ -2,6 +2,7 @@
 #include "clip.hh"
 #include "track.hh"
 #include "jsonipc/jsonipc.hh"
+#include "transport.hh"
 #include "serialize.hh"
 #include "internal.hh"
 #include <atomic>
@@ -25,8 +26,6 @@ ClipImpl::needs_serialize() const
   return notes_.size() > 0;
 }
 
-static constexpr const uint PPQ = 1920;
-
 static std::atomic<uint> next_noteid { MIDI_NOTE_ID_FIRST };
 
 void
@@ -37,7 +36,7 @@ ClipImpl::serialize (WritNode &xs)
   // save notes, along with their quantization
   if (xs.in_save())
     {
-      xs["ppq"] & PPQ;
+      xs["ppq"] & TRANSPORT_PPQN;
       OrderedEventsP event_vector = notes_.ordered_events<OrderedEventsV>();
       for (ClipNote cnote : *event_vector)
         {
@@ -53,16 +52,17 @@ ClipImpl::serialize (WritNode &xs)
   // load notes, re-quantize, re-assign ids
   if (xs.in_load())
     {
-      int64 ppq = PPQ;
+      int64 ppq = TRANSPORT_PPQN;
       xs["ppq"] & ppq;
       std::vector<ClipNote> cnotes;
       xs["notes"] & cnotes;
+      long double ppqfactor = TRANSPORT_PPQN / (long double) ppq;
       for (const auto &cnote : cnotes)
         {
           ClipNote note = cnote;
           note.id = next_noteid++; // automatic id allocation for new notes
-          note.tick = note.tick * PPQ / ppq;
-          note.duration = note.duration * PPQ / ppq;
+          note.tick = llrintl (note.tick * ppqfactor);
+          note.duration = llrintl (note.duration * ppqfactor);
           note.selected = false;
           notes_.insert (note);
         }
@@ -76,7 +76,7 @@ ClipImpl::clip_index () const
 }
 
 void
-ClipImpl::assign_range (int32 starttick, int32 stoptick)
+ClipImpl::assign_range (int64 starttick, int64 stoptick)
 {
   assert_return (starttick >= 0);
   assert_return (stoptick >= starttick);
@@ -112,7 +112,7 @@ ClipImpl::tick_events ()
 
 /// Change note `id`, or delete (`duration=0`) or create (`id=-1`) it.
 int32
-ClipImpl::change_note (int32 id, int32 tick, int32 duration, int32 key, int32 fine_tune, double velocity)
+ClipImpl::change_note (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity)
 {
   if (id < 0 && duration > 0)
     id = next_noteid++; // automatic id allocation for new notes
@@ -138,7 +138,7 @@ ClipImpl::change_note (int32 id, int32 tick, int32 duration, int32 key, int32 fi
     notes_.insert (ev);
   else
     ret = notes_.remove (ev) ? 0 : -1;
-  // TODO: emit_event ("notify", "notes");
+  emit_event ("notify", "notes");
   return ret;
 }
 

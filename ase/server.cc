@@ -92,7 +92,7 @@ Preferences::access_properties (const EventHandler &eventhandler)
   bag += Text (&plugin_path, _("Plugin Path"), "", STANDARD + "searchpath",
                _("Search path of directories, seperated by \";\", used to find plugins. This path "
                  "is searched for in addition to the standard plugin location on this system."));
-  static auto pchange_connections = bag.on_event ("change", eventhandler);
+  bag.on_events ("change", eventhandler);
   return bag.props;
 }
 
@@ -357,10 +357,8 @@ ServerImpl::error_blurb (Error error) const
 }
 
 // == MusicalTuning ==
-using BlurbDesc = std::pair<const char*, const char*>;
-
-static BlurbDesc
-musical_tuning_blurb_desc (MusicalTuning musicaltuning)
+static EnumInfo
+musical_tuning_info (MusicalTuning musicaltuning)
 {
   switch (musicaltuning)
     {
@@ -458,17 +456,18 @@ musical_tuning_blurb_desc (MusicalTuning musicaltuning)
       return { "", "" };
     }
 }
+static bool musical_tuning_info__ = EnumInfo::impl (musical_tuning_info);
 
 String
 ServerImpl::musical_tuning_blurb (MusicalTuning musicaltuning) const
 {
-  return musical_tuning_blurb_desc (musicaltuning).first;
+  return EnumInfo::value_info (musicaltuning).blurb;
 }
 
 String
-ServerImpl::musical_tuning_desc (MusicalTuning musicaltuning) const
+ServerImpl::musical_tuning_label (MusicalTuning musicaltuning) const
 {
-  return musical_tuning_blurb_desc (musicaltuning).second;
+  return EnumInfo::value_info (musicaltuning).label;
 }
 
 static std::atomic<uint> user_note_id = 1;

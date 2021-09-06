@@ -243,7 +243,10 @@ function browser_config() {
   if (dpr_movement)
     console.bootlog ("Detected Chrome bug #1092358...");
   // Prevent Web Browser menus interfering with the UI
-  window.addEventListener ("contextmenu", e => e.preventDefault());
+  window.addEventListener ("contextmenu", e => {
+    if (!(e.target.tagName == "INPUT" || e.target.tagName == "TEXTAREA"))
+      e.preventDefault();
+  });
   return {
     dpr_movement,
     slidertabindex,

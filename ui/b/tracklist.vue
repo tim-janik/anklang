@@ -299,7 +299,7 @@ export default {
 	  const tickpos = Util.shm_array_int32[this.i32tickpos];
 	  if (this.last_tickpos != tickpos)
 	    {
-	      const tickscale = 10.0 / PPQN;
+	      const tickscale = 10.0 / Util.PPQN;
 	      const transform = 'translateX(+' + Math.round (tickpos * tickscale) + 'px)';
 	      if (transform != tickpointer.style.getPropertyValue ('transform')) // reduce style recalculations
 		tickpointer.style.setProperty ('transform', transform);
@@ -309,6 +309,4 @@ export default {
     },
   },
 };
-
-export const PPQN = 1920;			// ticks per quarter note
 </script>

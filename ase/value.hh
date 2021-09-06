@@ -94,6 +94,18 @@ struct Value : ValueVariant {
   static const Value empty_value;
 };
 
+// == EnumInfo ==
+/// Get auxiallary enum information.
+struct EnumInfo {
+  String label;
+  String blurb;
+  template<class E> static EnumInfo value_info (E value);
+  static                   EnumInfo value_info (const std::type_info &enumtype, int64 value);
+  template<class E> static bool     impl       (EnumInfo (*enuminfo) (E));
+private:
+  static void impl (const std::type_info&, const std::function<EnumInfo(int64)>&);
+};
+
 // == Event ==
 /// Structure for callback based notifications.
 struct Event : ValueR {
@@ -163,6 +175,20 @@ ValueField::operator== (const ValueField &other) const
     return *value == *other.value;
   else
     return value == other.value;
+}
+
+template<class E> inline EnumInfo
+EnumInfo::value_info (E value)
+{
+  return value_info (typeid (E), int64 (value));
+}
+
+template<class E> inline bool
+EnumInfo::impl (EnumInfo (*enuminfo) (E))
+{
+  ASE_ASSERT_RETURN (enuminfo != nullptr, true);
+  impl (typeid (E), [enuminfo] (int64 v) { return enuminfo (E (v)); });
+  return false;
 }
 
 } // Ase

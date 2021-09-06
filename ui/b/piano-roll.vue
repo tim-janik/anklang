@@ -181,13 +181,10 @@
 </template>
 
 <script>
-import * as Util from '../util.js';
-
 import {
   PianoCtrl,
   PIANO_OCTAVES,	// 11
   PIANO_KEYS,		// 132
-  PPQN,
 } from "./piano-ctrl.js";
 
 const floor = Math.floor, round = Math.round;
@@ -220,14 +217,14 @@ export default {
       this.adata.vzoom = this.auto_scrollto.vzoom;
       // reset other state
       this.adata.focus_noteid = -1;
-      this.stepping = [ PPQN, 0, 0 ];
+      this.stepping = [ Util.PPQN, 0, 0 ];
       // re-layout, even if just this.auto_scrollto changed
       this.$forceUpdate();
     },
   },
   created () {
     this.piano_ctrl = new PianoCtrl (this);
-    this.stepping = [ PPQN, 0, 0 ];
+    this.stepping = [ Util.PPQN, 0, 0 ];
   },
   mounted () {
     // forward ctrl events
@@ -374,7 +371,7 @@ function piano_layout () {
   const black_keyspans = [  [7,7], [21,7],     [43,7], [56.5,7], [70,7]   ]; 	// for 84px octave
   const white_offsets  = [ 0,    12,     24, 36,     48,       60,     72 ]; 	// for 84px octave
   const key_length = parseFloat (piano_style.getPropertyValue ('--piano-roll-key-length'));
-  const min_end_tick = 16 * (4 * PPQN);
+  const min_end_tick = 16 * (4 * Util.PPQN);
   const end_tick = Math.max (this.adata.end_tick || 0, min_end_tick);
   // scale layout
   layout.dpr_height = round (layout.DPR * layout.cssheight);
@@ -382,7 +379,7 @@ function piano_layout () {
   layout.piano_csswidth = layout.white_width;
   layout.notes_csswidth = this.hscrollbar_width;
   layout.beat_pixels = round (layout.beat_pixels * DPR * this.adata.hzoom);
-  layout.tickscale = layout.beat_pixels / PPQN;
+  layout.tickscale = layout.beat_pixels / Util.PPQN;
   layout.hpad = 10 * DPR;
   layout.virt_width = Math.ceil (layout.tickscale * end_tick);
   layout.row = Math.floor (layout.dpr_height / PIANO_KEYS);
@@ -659,7 +656,7 @@ function render_timegrid (canvas, with_labels)
   const ctx = canvas.getContext ('2d'), csp = cstyle.getPropertyValue.bind (cstyle);
   const layout = this.layout, lsx = layout.xscroll(), th = layout.thickness;
   const grid_main = csp ('--piano-roll-grid-main'), grid_sub = csp ('--piano-roll-grid-sub');
-  const TPN64 = PPQN / 16;			// Ticks per 64th note
+  const TPN64 = Util.PPQN / 16;			// Ticks per 64th note
   const TPD = TPN64 * 64 / signature[1];	// Ticks per denominator fraction
   const bar_ticks = signature[0] * TPD;		// Ticks per bar
   const bar_pixels = bar_ticks * layout.tickscale;

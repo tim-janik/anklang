@@ -382,4 +382,33 @@ ValueField::ValueField (const String &nam, ValueP val) :
   name (nam), value (val ? val : std::make_shared<Value>())
 {}
 
+// == EnumInfo ==
+static std::mutex enuminfo_mutex;
+static std::vector<std::pair<const std::type_info*, std::function<EnumInfo(int64)>>> enuminfo_funcs;
+
+/// Find enum info for `value`, MT-Safe.
+EnumInfo
+EnumInfo::value_info (const std::type_info &enumtype, int64 value)
+{
+  std::function<EnumInfo(int64)> f;
+  {
+    std::lock_guard<std::mutex> locker (enuminfo_mutex);
+    for (const auto &pair : enuminfo_funcs)
+      if (enumtype == *pair.first)
+        f = pair.second;
+  }
+  EnumInfo info;
+  if (f)
+    info = f (value);
+  return info;
+}
+
+/// Find enum info for `value`, MT-Safe.
+void
+EnumInfo::impl (const std::type_info &enumtype, const std::function<EnumInfo(int64)> &fun)
+{
+  std::lock_guard<std::mutex> locker (enuminfo_mutex);
+  enuminfo_funcs.push_back ({ &enumtype, fun });
+}
+
 } // Ase

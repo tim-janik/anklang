@@ -188,9 +188,11 @@ public:
   virtual String      name              () const = 0;
   virtual void        name              (String newname) = 0;
   // Parameters
-  virtual StringS     list_properties   () = 0;             ///< List all property identifiers.
   virtual PropertyP   access_property   (String ident) = 0; ///< Retrieve handle for a Property.
   virtual PropertyS   access_properties () = 0;             ///< Retrieve handles for all properties.
+  StringS             list_properties   ();                 ///< List all property identifiers.
+  Value               get_value         (String ident);     ///< Get native property value.
+  bool                set_value         (String ident, const Value &v); ///< Set native property value.
 };
 
 /// Info for device types.
@@ -221,26 +223,26 @@ public:
 
 /// Part specific note event representation.
 struct ClipNote {
-  int32 id;             /// ID, > 0
-  int32 channel;        /// MIDI Channel
-  int32 tick;           /// Position in ticks
-  int32 duration;       /// Duration in number of ticks
-  int32 key;            /// Musical note as MIDI key, 0 .. 127
-  int32 fine_tune;      /// Fine Tune, -100 .. +100
-  float velocity;       /// Velocity, 0 .. +1
-  bool  selected;       /// UI selection flag
+  int32  id;            /// ID, > 0
+  int32  key;           /// Musical note as MIDI key, 0 .. 127
+  int64  tick;          /// Position in ticks
+  int64  duration;      /// Duration in number of ticks
+  int32  channel;       /// MIDI Channel
+  int32  fine_tune;     /// Fine Tune, -100 .. +100
+  float  velocity;      /// Velocity, 0 .. +1
+  bool   selected;      /// UI selection flag
 };
 
 /// Container for MIDI note and control events.
 class Clip : public virtual Gadget {
 public:
-  virtual int32     start_tick     () const = 0; ///< Get the first tick intended for playback (this is >= 0), changes on `notify:start_tick`.
-  virtual int32     stop_tick      () const = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
-  virtual int32     end_tick       () const = 0; ///< Get the end tick, this tick is past any event ticks, changes on `notify:end_tick`.
-  virtual void      assign_range   (int32 starttick, int32 stoptick) = 0; ///< Change start_tick() and stop_tick(); emits `notify:start_tick`, `notify:stop_tick`.
+  virtual int64     start_tick     () const = 0; ///< Get the first tick intended for playback (this is >= 0), changes on `notify:start_tick`.
+  virtual int64     stop_tick      () const = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
+  virtual int64     end_tick       () const = 0; ///< Get the end tick, this tick is past any event ticks, changes on `notify:end_tick`.
+  virtual void      assign_range   (int64 starttick, int64 stoptick) = 0; ///< Change start_tick() and stop_tick(); emits `notify:start_tick`, `notify:stop_tick`.
   virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
   /// Change note `id` according to the arguments or add a new note if `id` < 0; emits `notify:notes`.
-  virtual int32     change_note    (int32 id, int32 tick, int32 duration, int32 key, int32 fine_tune, double velocity) = 0;
+  virtual int32     change_note    (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity) = 0;
 };
 
 /// Container for Clip objects and sequencing information.
@@ -341,8 +343,8 @@ public:
   virtual String get_vorbis_version () = 0;     ///< Retrieve Vorbis handler version.
   virtual String get_mp3_version    () = 0;     ///< Retrieve MP3 handler version.
   virtual String error_blurb          (Error error) const = 0;
+  virtual String musical_tuning_label (MusicalTuning musicaltuning) const = 0;
   virtual String musical_tuning_blurb (MusicalTuning musicaltuning) const = 0;
-  virtual String musical_tuning_desc  (MusicalTuning musicaltuning) const = 0;
   virtual uint64 user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &r = "") = 0;
   virtual bool   user_reply           (uint64 noteid, uint r) = 0;
   virtual bool   broadcast_telemetry  (const TelemetrySegmentS &segments,

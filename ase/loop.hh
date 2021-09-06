@@ -97,6 +97,7 @@ public:
                         = PRIORITY_NORMAL);     ///< Adds a new source to the loop with custom priority.
   void remove          (uint            id);    ///< Removes a source from loop, the source must be present.
   bool try_remove      (uint            id);    ///< Tries to remove a source, returns if successfull.
+  bool clear_source    (uint *id_pointer);      ///< Remove source if `id_pointer` and `*id_pointer` are valid.
   void destroy_loop    (void);
   bool has_primary     (void);                  ///< Indicates whether loop contains primary sources.
   bool flag_primary    (bool            on);

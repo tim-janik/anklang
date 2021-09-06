@@ -1,7 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "project.hh"
 #include "jsonipc/jsonipc.hh"
-#include "utils.hh"
+#include "main.hh"
 #include "device.hh"
 #include "processor.hh"
 #include "path.hh"
@@ -21,10 +21,22 @@ ProjectImpl::ProjectImpl()
 {
   if (tracks_.empty())
     create_track (); // ensure Master track
+
+  if (0)
+    autoplay_timer_ = main_loop->exec_timer ([this] () {
+      return_unless (autoplay_timer_, false);
+      autoplay_timer_ = 0;
+      if (!is_playing())
+        start_playback();
+      return false;
+    }, 500);
 }
 
 ProjectImpl::~ProjectImpl()
-{}
+{
+  main_loop->clear_source (&autoplay_timer_);
+}
+
 
 ProjectImplP
 ProjectImpl::create (const String &projectname)
@@ -188,9 +200,13 @@ ProjectImpl::telemetry () const
   AudioProcessorP proc = master_processor ();
   assert_return (proc, v);
   const AudioTransport &transport = proc->transport();
-  v.push_back (telemetry_field ("bpm", &transport.current_bpm));
-  v.push_back (telemetry_field ("tick_pos", &transport.tick_pos));
-  // v.push_back (telemetry_field ("sample_frames", &transport.sample_frames));
+  v.push_back (telemetry_field ("current_tick", &transport.current_tick_d));
+  v.push_back (telemetry_field ("current_bpm", &transport.current_bpm));
+  v.push_back (telemetry_field ("current_bar", &transport.current_bar));
+  v.push_back (telemetry_field ("current_beat", &transport.current_beat));
+  v.push_back (telemetry_field ("current_sixteenth", &transport.current_semiquaver));
+  v.push_back (telemetry_field ("current_minutes", &transport.current_minutes));
+  v.push_back (telemetry_field ("current_seconds", &transport.current_seconds));
   return v;
 }
 
@@ -207,15 +223,35 @@ ProjectImpl::master_processor () const
   return proc;
 }
 
+bool
+ProjectImpl::set_bpm (float bpm)
+{
+  bpm = CLAMP (bpm, 10, 999);
+  return_unless (bpm_ != bpm, false);
+  AudioProcessorP proc = master_processor();
+  return_unless (proc, false);
+  bpm_ = bpm;
+  const int32 numerator = numerator_, denominator = denominator_;
+  auto job = [proc, bpm, numerator, denominator] () {
+    AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
+    transport.tempo (transport.current_bpm == 0 ? 0 : bpm, numerator, denominator);
+  };
+  proc->engine().async_jobs += job;
+  return true;
+}
+
 void
 ProjectImpl::start_playback ()
 {
+  main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
-  const double bpm = 90;
-  auto job = [proc, bpm] () {
+  const auto bpm = bpm_;
+  const int32 numerator = numerator_, denominator = denominator_;
+  auto job = [proc, bpm, numerator, denominator] () {
     AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
-    transport.current_bpm = bpm;
+    transport.tempo (bpm, numerator, denominator);
+    transport.running (true);
   };
   proc->engine().async_jobs += job;
 }
@@ -223,11 +259,15 @@ ProjectImpl::start_playback ()
 void
 ProjectImpl::stop_playback ()
 {
+  main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
   auto job = [proc] () {
     AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
-    transport.current_bpm = 0;
+    const bool wasrunning = transport.running();
+    transport.running (false);
+    if (!wasrunning)
+      transport.tickto (0);
   };
   proc->engine().async_jobs += job;
 }
@@ -286,6 +326,30 @@ ProjectImpl::master_track ()
 {
   assert_return (!tracks_.empty(), nullptr);
   return tracks_.back();
+}
+
+PropertyS
+ProjectImpl::access_properties ()
+{
+  auto setbpm = [this] (const Value &val) { return set_bpm (val.as_double()); };
+  using namespace Properties;
+  PropertyBag bag;
+  bag.group = _("State");
+  bag += Bool ("dirty", &dirty_, _("Modification Flag"), _("Dirty"), false, ":r:G:", _("Flag indicating modified project state"));
+  bag.group = _("Timing");
+  bag += Range ("numerator", &numerator_, _("Signature Numerator"), _("Numerator"), 1, 63, 4, STANDARD);
+  bag += Range ("denominator", &denominator_, _("Signature Denominator"), _("Denominator"), 1, 16, 4, STANDARD);
+  bag += Range ("bpm", Getter (&bpm_), setbpm, _("Beats Per Minute"), _("BPM"), 10., 999., 90., STANDARD);
+  bag.group = _("Tuning");
+  bag += Enum ("musical_tuning", &musical_tuning_, _("Musical Tuning"), _("Tuning"), STANDARD, "",
+               _("The tuning system which specifies the tones or pitches to be used. "
+                 "Due to the psychoacoustic properties of tones, various pitch combinations can "
+                 "sound \"natural\" or \"pleasing\" when used in combination, the musical "
+                 "tuning system defines the number and spacing of frequency values applied."));
+  bag.on_events ("change", [this] (const Event &e) {
+    emit_event (e.type(), e.detail());
+  });
+  return bag.props;
 }
 
 // == Project ==

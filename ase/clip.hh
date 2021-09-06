@@ -13,7 +13,7 @@ constexpr const uint MIDI_NOTE_ID_FIRST = 0x10000001;
 constexpr const uint MIDI_NOTE_ID_LAST = 0xfffffffe;
 
 class ClipImpl : public GadgetImpl, public virtual Clip {
-  int32 starttick_ = 0, stoptick_ = 0, endtick_ = 0;
+  int64 starttick_ = 0, stoptick_ = 0, endtick_ = 0;
   struct CmpNoteTicks { int operator() (const ClipNote &a, const ClipNote &b) const; };
   struct CmpNoteIds   { int operator() (const ClipNote &a, const ClipNote &b) const; };
   EventList<ClipNote,CmpNoteIds> notes_;
@@ -29,13 +29,13 @@ protected:
 public:
   using OrderedEventsP = OrderedEventsV::ConstP;
   OrderedEventsP tick_events    ();
-  int32          start_tick     () const override { return starttick_; }
-  int32          stop_tick      () const override { return stoptick_; }
-  int32          end_tick       () const override { return endtick_; }
-  void           assign_range   (int32 starttick, int32 stoptick) override;
+  int64          start_tick     () const override { return starttick_; }
+  int64          stop_tick      () const override { return stoptick_; }
+  int64          end_tick       () const override { return endtick_; }
+  void           assign_range   (int64 starttick, int64 stoptick) override;
   ClipNoteS      list_all_notes () override;
   bool           needs_serialize() const;
-  int32          change_note    (int32 id, int32 tick, int32 duration, int32 key, int32 fine_tune, double velocity) override;
+  int32          change_note    (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity) override;
   ASE_DEFINE_MAKE_SHARED (ClipImpl);
 };
 

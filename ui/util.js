@@ -528,78 +528,6 @@ export function fwdprovide (injectname, keys) {
   };
 }
 
-/** The V-INLINEBLUR directive guides focus for inline editing.
- * A Vue directive to notify and force blur on Enter or Escape.
- * The directive value must evaluate to a callable function for notifications.
- * For inputs that use `onchange` handlers, the edited value should be
- * discarded if the `cancelled` property is true.
- */
-vue_directives['inlineblur'] = {
-  created (el, binding, vnode) {
-    //debug ("inlineblur", "created", el, binding, vnode);
-  },
-  beforeMount (el, binding, vnode) {
-    //debug ("inlineblur", "beforeMount");
-    if (binding.value && typeof binding.value !== 'function')
-      console.warn ('[Vue-v-inlineblur:] wrong type argument, function required:', binding.expression);
-    el.cancelled = false;
-  },
-  mounted (el, binding, vnode) {
-    // const vm = binding.instance;
-    console.assert (document.body.contains (el));
-    el.focus();
-    if (el == document.activeElement)
-      {
-	if (binding.value)
-	  {
-	    el._v_inlineblur_watch_blur = function (event) {
-	      binding.value.call (this, event);
-	    };
-	    el.addEventListener ('blur', el._v_inlineblur_watch_blur, true);
-	  }
-	const ignorekeys = 'ignorekeys' in binding.modifiers;
-	if (!ignorekeys)
-	  {
-	    el._v_inlineblur_watch_keydown = function (event) {
-	      const esc = Util.match_key_event (event, 'Escape');
-	      if (esc)
-		el.cancelled = true;
-	      if (esc || Util.match_key_event (event, 'Enter'))
-		el.blur();
-	    };
-	    el.addEventListener ('keydown', el._v_inlineblur_watch_keydown);
-	  }
-      }
-    else if (binding.value)
-      {
-	el.cancelled = true;
-	binding.value.call (this, new CustomEvent ('cancel', { detail: 'blur' }));
-      }
-  },
-  beforeUpdate (el, binding, vnode, prevVnode) {
-    //debug ("inlineblur", "beforeUpdate");
-  },
-  updated (el, binding, vnode, prevVnode) {
-    //debug ("inlineblur", "updated");
-  },
-  beforeUnmount (el, binding, vnode) {
-    //debug ("inlineblur", "beforeUnmount");
-  },
-  unmounted (el, binding, vnode) {
-    //debug ("inlineblur", "unmounted");
-    if (el._v_inlineblur_watch_blur)
-      {
-	el.removeEventListener ('blur', el._v_inlineblur_watch_blur, true);
-	el._v_inlineblur_watch_blur = undefined;
-      }
-    if (el._v_inlineblur_watch_keydown)
-      {
-	el.removeEventListener ('keydown', el._v_inlineblur_watch_keydown);
-	el._v_inlineblur_watch_keydown = undefined;
-      }
-  }
-};
-
 /** Provide `$children` (and `$vue_parent`) on every component. */
 vue_mixins.vuechildren = {
   provide() {
@@ -832,6 +760,52 @@ export function object_zip (obj, keys, values) {
 /// Await and reassign all object fields.
 export async function object_await_values (obj) {
   return object_zip (obj, Object.keys (obj), await Promise.all (Object.values (obj)));
+}
+
+const empty_list = Object.freeze ([]);
+
+/** Extend Ase.Property objects with cached attributs.
+ * Note, for automatic `.value_` updates, a `disconnector` function must be provided
+ * as second argument, to handle disconnection of property change notifications once
+ * the property is not needed anymore.
+ */
+export async function extend_property (prop, disconnector = undefined) {
+  prop = await prop;
+  const xprop = {
+    hints_: prop.hints(),
+    ident_: prop.identifier(),
+    is_numeric_: prop.is_numeric(),
+    label_: prop.label(),
+    nick_: prop.nick(),
+    unit_: prop.unit(),
+    group_: prop.group(),
+    blurb_: prop.blurb(),
+    description_: prop.description(),
+    min_: prop.get_min(),
+    max_: prop.get_max(),
+    step_: prop.get_step(),
+    has_choices_: false,
+    value_: Vue.reactive ({ val: undefined, num: 0, text: '', choices: empty_list }),
+    apply_: prop.set_value.bind (prop),
+    fetch_: () => xprop.is_numeric_ ? xprop.value_.num : xprop.value_.text,
+    update_: async () => {
+      const value_ = { val: xprop.get_value(),
+		       num: xprop.get_normalized(),
+		       text: xprop.get_text(),
+		       choices: xprop.has_choices_ ? xprop.choices() : empty_list,
+      };
+      Object.assign (xprop.value_, await Util.object_await_values (value_));
+    },
+    __proto__: prop,
+  };
+  if (disconnector)
+    disconnector (xprop.on ('change', _ => xprop.update_()));
+  xprop.hints_ = await xprop.hints_;
+  xprop.has_choices_ = xprop.hints_.search (/:choice:/) >= 0;
+  const update_promise = xprop.update_(); // needs xprop.has_choices_
+  await Util.object_await_values (xprop);
+  await update_promise; // assigns xprop.value_
+  return xprop;
 }
 
 /// Extract the promise `p` state as one of: 'pending', 'fulfilled', 'rejected'
@@ -1618,6 +1592,8 @@ export function canvas_ink_vspan (font_style, textish = 'gM') {
 }
 canvas_ink_vspan.cache = [];
 
+export const PPQN = 4838400;	// ticks per quarter note
+
 /** Retrieve the 'C-1' .. 'G8' label for midi note numbers */
 export function midi_label (numish) {
   function one_label (num) {
@@ -1814,15 +1790,27 @@ function align8 (int) {
   return (int / 8 |0) * 8;
 }
 
+function telemetry_field_width (telemetryfieldtype) {
+  switch (telemetryfieldtype) {
+    // case 'i64': return 8;
+    case 'i8':	return 1;
+    case 'i32':	return 4;
+    case 'f32':	return 4;
+    case 'f64':	return 8;
+    default:    return 0;
+  }
+}
+
 // Handle incoming binary data, setup by startup.js
 export function jsonipc_binary_handler_ (arraybuffer) {
   if (telemetry_blocked)
     return;
   const arrays = {
-    i32:	new Int32Array   (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
-    u32:	new Uint32Array  (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
-    f32:	new Float32Array (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
-    f64:	new Float64Array (arraybuffer, 0, arraybuffer.byteLength / 8 |0),
+    // i64:	new BigInt64Array (arraybuffer, 0, arraybuffer.byteLength / 8 |0),
+    i8:		new Int8Array     (arraybuffer, 0, arraybuffer.byteLength),
+    i32:	new Int32Array    (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
+    f32:	new Float32Array  (arraybuffer, 0, arraybuffer.byteLength / 4 |0),
+    f64:	new Float64Array  (arraybuffer, 0, arraybuffer.byteLength / 8 |0),
   };
   for (const object of telemetry_objects) {
     const callback = object[".telemetry_callback"];
@@ -1872,16 +1860,6 @@ function telemetry_reschedule() {
       if (!result)
 	throw Error ("telemetry_reschedule: invalid segments: " + JSON.stringify (telemetry_segments));
     }) ();
-  }
-}
-
-function telemetry_field_width (telemetryfieldtype) {
-  switch (telemetryfieldtype) {
-    case 'f32':	return 4;
-    case 'f64':	return 8;
-    case 'u32':	return 4;
-    case 'i32':	return 4;
-    default:    return 0;
   }
 }
 
