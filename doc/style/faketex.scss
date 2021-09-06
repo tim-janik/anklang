@@ -127,6 +127,9 @@ ol > li { padding-left: 0.3em; }
 // == Definition Lists ==
 dt	{ font-weight: bold; }
 dd	{ margin-inline-start: 3em; }
+dl[data-has-nestedlayout="1"] {
+  dd ~ dt { margin-top: 1em; }
+}
 
 // == Title & Abstract ==
 header, div#header {		/// Pandoc1 uses div#header
@@ -150,7 +153,13 @@ nav#TOC, div#TOC {		/// Pandoc1 uses div#TOC
   .contentstitle	{ -x-margin-top: 5em;
 			  font-weight: bold; font-size: 1.4em; margin-bottom: 1.4em;
 			  padding-top: 1.3em; }
+
   .toc-section-number	{ padding-right: 1em; }
+  & >ul>li                      >a .toc-section-number	{ display: inline-flex; min-width: 1em; padding-right: 0.5em; }
+  & >ul>li >ul>li               >a .toc-section-number	{ display: inline-flex; min-width: 2em; padding-right: 0.5em; }
+  & >ul>li >ul>li >ul>li        >a .toc-section-number	{ display: inline-flex; min-width: 3em; padding-right: 0.5em; }
+  & >ul>li >ul>li >ul>li >ul>li >a .toc-section-number	{ display: inline-flex; min-width: 4em; padding-right: 0.5em; }
+
   ul	{ padding-left: 0; list-style-type: none;
 	  font-weight: bold;
 	  li:before { display: none; }

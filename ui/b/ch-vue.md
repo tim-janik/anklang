@@ -30,4 +30,12 @@ Notes:
 - The Envue component can be accessed as `$vm.$object`.
 - Accesses to `$vm.*` fields e.g. from within a `<template/>` definition are forwarded to access `$object.*` fields.
 - Vue3 components are Proxy objects, *but* assignments to these Proxy objects is *not* reactive.
-- We need a way to construct reactive instance data via async functions, `observable_from_getters()` allows this.
+- To construct reactive instance data with async functions, use `observable_from_getters()`.
+
+Vue uses a template compiler to construct a [render()](https://v3.vuejs.org/guide/render-function.html#complete-example)
+function from [HTML](https://v3.vuejs.org/guide/template-syntax.html#raw-html) `<template/>` strings.
+The [Javascript expressions](https://v3.vuejs.org/guide/template-syntax.html#javascript-expressions)
+in templates are sandboxed and limited in scope, but may refer to Vue component properties
+that are exposed through `hasOwnProperty()`.
+In order to support Envue instance methods and fields in template expressions,
+all members present after Envue construction are forwarded into the Vue component.

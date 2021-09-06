@@ -2307,7 +2307,8 @@ export function observable_force_update () {
   // This method works as a tag for vue_observable_from_getters()
 }
 
-/** Create an observable binding for the fields in `tmpl` with async callbacks.
+/** Create a reactive dict from the fields in `tmpl` with async callbacks.
+ *
  * Once the resolved result from `predicate()` changes and becomes true-ish, the
  * `getter()` of each field in `tmpl` is called, resolved and assigned to the
  * corresponding field in the observable binding returned from this function.
@@ -2319,8 +2320,20 @@ export function observable_force_update () {
  * `getter` is called the first time and in case `predicate()` becomes false-ish.
  * The first argument to `getter()` is a function that can be used to register
  * cleanup code for the getter result.
+ *
+ * ```js
+ * const data = {
+ *   val: { getter: c => async_fetch(), notify: n => add_listener (n), },
+ * };
+ * dict = this.observable_from_getters (data, () => this.predicate());
+ * // use dict.val
+ * ```
+ *
+ * When the `n()` callback is called, a new *getter* call is scheduled.
+ * A handler can be registered with `c (cleanup);` to cleanup resources
+ * left over from an `async_fetch()` call.
  */
-export function vue_observable_from_getters (tmpl, predicate) { // `this` is Vue instance
+export function vue_observable_from_getters (tmpl, predicate) {
   const monitoring_getters = [];
   const getter_cleanups = {};
   const notify_cleanups = {};

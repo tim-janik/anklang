@@ -37,7 +37,8 @@ $>/doc/copyright: misc/mkcopyright.py doc/copyright.ini $>/misc/git-ls-tree.lst	
 
 # == pandoc ==
 doc/markdown-flavour	::= -f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart
-doc/html_flags		::= --html-q-tags --section-divs --email-obfuscation=references # --toc --toc-depth=6
+doc/pdf_flags		::= --highlight-style doc/highlights.theme
+doc/html_flags		::= --highlight-style doc/highlights.theme --html-q-tags --section-divs --email-obfuscation=references
 doc/html-style		::= 'body { max-width: 52em; margin: auto; }'
 
 # == man build rules ==
@@ -72,20 +73,22 @@ $>/doc/%.html: %.md doc/Makefile.mk					| $>/doc/
 	$Q mv $@.tmp $@
 
 # == template.html ==
-$>/doc/template.html: doc/template.diff					| $>/doc/
+$>/doc/template.html: doc/template.diff doc/style/onload.html doc/Makefile.mk		| $>/doc/
 	$(QGEN)
 	$Q $(PANDOC) -D html > $>/doc/template.html \
+	  && sed $$'/^<\/body>/{r doc/style/onload.html\nN}' -i $>/doc/template.html \
 	  && cd $>/doc/ && patch < $(abspath doc/template.diff)
 
 # == anklang-manual.html ==
 $>/doc/anklang-manual.html: $>/doc/template.html $(doc/manual-chapters) $(doc/style/install.files)	| $>/doc/
 	$(QGEN)
 	$Q $(PANDOC) $(doc/markdown-flavour) \
+		-s $(doc/html_flags) \
 		--toc --number-sections \
 		--variable=subparagraph \
 		--variable date="$(version_to_month)" \
 		--template=$< \
-		-s -c style/$(notdir $(doc/style/faketex.css)) \
+		-c style/$(notdir $(doc/style/faketex.css)) \
 		--mathjax='style/mathjax-tex-svg.js' \
 		$(doc/manual-chapters) -o $@
 
@@ -96,6 +99,7 @@ $>/doc/anklang-manual.pdf: doc/pandoc-pdf.tex $(doc/manual-chapters)					| $>/do
 	$Q xelatex --version 2>&1 | grep -q '^XeTeX 3.14159265' \
 	   || { echo '$@: missing xelatex, required version: XeTeX >= 3.14159265' >&2 ; false ; }
 	$Q $(PANDOC) $(doc/markdown-flavour) \
+		$(doc/pdf_flags) \
 		--toc --number-sections \
 		--variable=subparagraph \
 		-V date="$(version_to_month)" \

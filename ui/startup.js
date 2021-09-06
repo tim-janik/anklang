@@ -141,7 +141,9 @@ async function bootup () {
 
   // create and configure Vue App
   const VueApp = Vue.createApp (Shell);
-  VueApp.config.isCustomElement = tag => !!window.customElements.get (tag);
+  VueApp.config.compilerOptions.isCustomElement = tag => !!window.customElements.get (tag);
+  VueApp.config.compilerOptions.whitespace = 'preserve';
+  // VueApp.config.compilerOptions.comments = true;
   const app = new AppClass (VueApp);
   console.assert (app == App);
   // ensure App has an AseProject
@@ -235,7 +237,7 @@ function browser_config() {
   // Chrome Bug: https://bugs.chromium.org/p/chromium/issues/detail?id=1092358 https://github.com/w3c/pointerlock/issues/42
   // TEST: let l={}; document.body.onpointermove = e=>{ console.log("screenX:",e.screenX-l.screenX,"movementX:",e.movementX); l=e; }
   const chrome_major = parseInt (( /\bChrome\/([0-9]+)\./.exec (navigator.userAgent) || [0,0] )[1]);
-  const chrome_major_last_buggy = 91;
+  const chrome_major_last_buggy = 92;
   const dpr_movement = chrome_major >= 37 && chrome_major <= chrome_major_last_buggy;
   console.assert (chrome_major <= chrome_major_last_buggy, `WARNING: Chrome/${chrome_major} has not been tested for the movementX devicePixelRatio bug`);
   if (dpr_movement)
