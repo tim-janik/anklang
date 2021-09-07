@@ -16,8 +16,8 @@ export class Component {
   update() {
     this.$vm?.$forceUpdate();
   }
-  /// Wrapper for [Util.vue_observable_from_getters()](#Util.vue_observable_from_getters).
-  observable_from_getters (...tmpl) { return Util.vue_observable_from_getters.call (this, ...tmpl); }
+  /// Wrapper for [Util.observable_from_getters()](#Util.observable_from_getters).
+  observable_from_getters (...tmpl) { return Util.observable_from_getters.call (this, ...tmpl); }
   /// Wrapper for [Vue.$watch](https://v3.vuejs.org/api/instance-methods.html#watch)
   $watch (...args) { return this.$vm.$watch (...args); }
   /// Create a Vue options API object from *vue_object* for SFC exports.

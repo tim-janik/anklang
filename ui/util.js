@@ -2295,9 +2295,9 @@ export function assign_async_cleanup (map, key, cleaner) {
     oldcleaner();
 }
 
-/** Method to be added to a `vue_observable_from_getters()` result to force updates. */
+/** Method to be added to a `observable_from_getters()` result to force updates. */
 export function observable_force_update () {
-  // This method works as a tag for vue_observable_from_getters()
+  // This method works as a tag for observable_from_getters()
 }
 
 /** Create a reactive dict from the fields in `tmpl` with async callbacks.
@@ -2326,7 +2326,7 @@ export function observable_force_update () {
  * A handler can be registered with `c (cleanup);` to cleanup resources
  * left over from an `async_fetch()` call.
  */
-export function vue_observable_from_getters (tmpl, predicate) {
+export function observable_from_getters (tmpl, predicate) {
   const monitoring_getters = [];
   const getter_cleanups = {};
   const notify_cleanups = {};

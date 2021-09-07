@@ -169,7 +169,7 @@ async function bootup () {
     Ase: globalThis.Ase,
     window: globalThis.window,
     document: globalThis.document,
-    observable_from_getters: Util.vue_observable_from_getters,
+    observable_from_getters: Util.observable_from_getters,
   });
   // mount in DOM and create component hierarchy
   await document.fonts.ready; // Fonts - wait for fonts before Vue components are mounted and compute sizes
