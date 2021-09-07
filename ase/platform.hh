@@ -13,7 +13,8 @@ namespace Ase {
 extern const int         ase_major_version;
 extern const int         ase_minor_version;
 extern const int         ase_micro_version;
-extern const char *const ase_short_version;
+extern const char *const ase_version_long;
+extern const char *const ase_version_short;
 extern const char *const ase_gettext_domain;
 
 // == Translate i18n strings ==
