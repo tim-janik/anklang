@@ -754,7 +754,7 @@ determine_anklangsynthengine_installdir (bool *using_objdir)
 std::string
 ase_version ()
 {
-  return ase_short_version;
+  return ase_version_long;
 }
 
 static String cached_program_alias;

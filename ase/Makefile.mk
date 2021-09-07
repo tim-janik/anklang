@@ -42,8 +42,9 @@ $>/ase/buildversion.cc: ase/Makefile.mk					| $>/ase/
 	$Q echo 'const int         ase_major_version = $(version_major);'	>>$@.tmp
 	$Q echo 'const int         ase_minor_version = $(version_minor);'	>>$@.tmp
 	$Q echo 'const int         ase_micro_version = $(version_micro);'	>>$@.tmp
-	$Q echo 'const char *const ase_short_version = "$(version_short)";'	>>$@.tmp
-	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_m.m.m)";'	>>$@.tmp
+	$Q echo 'const char *const ase_version_long = "$(version_buildid)";'	>>$@.tmp
+	$Q echo 'const char *const ase_version_short = "$(version_short)";'	>>$@.tmp
+	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_m.m.m)";' >>$@.tmp
 	$Q echo '} // Ase'							>>$@.tmp
 	$Q mv $@.tmp $@
 ase/AnklangSynthEngine.objects += $>/ase/buildversion.o
