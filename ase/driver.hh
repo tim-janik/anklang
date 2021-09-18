@@ -19,6 +19,7 @@ struct DriverEntry {
   String capabilities;
   String device_info;
   String notice;
+  String hints;
   int32  priority = 0;
   bool   readonly = false;
   bool   writeonly = false;
