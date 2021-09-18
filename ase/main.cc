@@ -252,21 +252,23 @@ main (int argc, char *argv[])
       entries = Ase::PcmDriver::list_drivers();
       std::sort (entries.begin(), entries.end(), [] (auto &a, auto &b) { return a.priority < b.priority; });
       for (const auto &entry : entries)
-        printout ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
+        printout ("  %-30s (%s, %08x)\n\t%s\n%s%s%s%s", entry.devid + ":",
                   entry.readonly ? "Input" : entry.writeonly ? "Output" : "Duplex",
                   entry.priority, entry.device_name,
                   entry.capabilities.empty() ? "" : "\t" + entry.capabilities + "\n",
                   entry.device_info.empty() ? "" : "\t" + entry.device_info + "\n",
+                  entry.hints.empty() ? "" : "\t(" + entry.hints + ")\n",
                   entry.notice.empty() ? "" : "\t" + entry.notice + "\n");
       printout ("%s", _("Available MIDI drivers:\n"));
       entries = Ase::MidiDriver::list_drivers();
       std::sort (entries.begin(), entries.end(), [] (auto &a, auto &b) { return a.priority < b.priority; });
       for (const auto &entry : entries)
-        printout ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
+        printout ("  %-30s (%s, %08x)\n\t%s\n%s%s%s%s", entry.devid + ":",
                   entry.readonly ? "Input" : entry.writeonly ? "Output" : "Duplex",
                   entry.priority, entry.device_name,
                   entry.capabilities.empty() ? "" : "\t" + entry.capabilities + "\n",
                   entry.device_info.empty() ? "" : "\t" + entry.device_info + "\n",
+                  entry.hints.empty() ? "" : "\t(" + entry.hints + ")\n",
                   entry.notice.empty() ? "" : "\t" + entry.notice + "\n");
       return 0;
     }
