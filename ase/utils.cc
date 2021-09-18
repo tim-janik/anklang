@@ -164,12 +164,13 @@ namespace MakeIcon {
 IconString
 KwIcon (const String &keywords)
 {
+  static const String keyword_charset = string_set_ascii_alnum() + "_-";
   String s = keywords;
   return_unless (!s.empty(), {});
   StringS words = string_split_any (keywords, " ,");
   Aux::erase_all (words, [] (const String &word) {
     if (word.empty()) return true;
-    if (!string_is_ascii_alnum (word))
+    if (!string_is_canonified (word, keyword_charset))
       {
         warning ("%s: invalid icon keyword: '%s'", __func__, word);
         return true;
