@@ -8,7 +8,7 @@
 #include <cmath>
 
 #define ADEBUG(...)             Ase::debug ("alsa", __VA_ARGS__)
-#define MDEBUG(...)             Ase::debug ("midievent", __VA_ARGS__)
+#define EDEBUG(...)             Ase::debug ("midievent", __VA_ARGS__)
 
 #define WITH_MIDI_POLL  0
 
@@ -1078,7 +1078,7 @@ public:
                                 (ev->data.control.value < 0 ? 1.0 / 8192.0 : 1.0 / 8191.0)));
           break;
         case SND_SEQ_EVENT_SYSEX:
-          MDEBUG ("%+4d ch=%-2u SYSEX: %s",
+          EDEBUG ("%+4d ch=%-2u SYSEX: %s",
                   int (samplerate * (ev->time.time.tv_sec + 1e-9 * ev->time.time.tv_nsec - now)),
                   ev->data.control.channel, hex_str (ev->data.ext.len, (const uint8*) ev->data.ext.ptr));
           break;
@@ -1090,7 +1090,7 @@ public:
         case SND_SEQ_EVENT_REGPARAM:
         case SND_SEQ_EVENT_NOTE:  // unhandled, duration usually too long for MidiEvent.frame
         default:
-          MDEBUG ("%+4d ch=%-2u SND_SEQ_EVENT_... %u",
+          EDEBUG ("%+4d ch=%-2u SND_SEQ_EVENT_... %u",
                   int (samplerate * (ev->time.time.tv_sec + 1e-9 * ev->time.time.tv_nsec - now)),
                   ev->data.control.channel, ev->type);
           break;
@@ -1100,7 +1100,7 @@ public:
       ADEBUG ("SeqMIDI: %s: snd_seq_event_input: %s", devid_, snd_strerror (r));
     if (ASE_UNLIKELY (mdebug_))
       for (size_t i = old_size; i < estream.size(); i++)
-        MDEBUG ("%s", (estream.begin() + i)->to_string());
+        EDEBUG ("%s", (estream.begin() + i)->to_string());
     if (must_sort)              // guard against devices with out-of-order events
       estream.ensure_order();
     return estream.size() - old_size;
