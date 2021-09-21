@@ -323,6 +323,9 @@ list_alsa_drivers (Driver::EntryVec &entries)
           entry.writeonly = !readable;
           // entry.modem = pcmclass == SND_PCM_CLASS_MODEM;
           entry.priority = (is_usb ? Driver::ALSA_USB : Driver::ALSA_KERN) + Driver::WCARD * cindex + Driver::WDEV * dindex;
+          entry.priority &= string_option_check (mixer_options, "surround") ? ~Driver::SURROUND : ~0; // bonus
+          entry.priority &= string_option_check (mixer_options, "headset")  ? ~Driver::HEADSET  : ~0; // bonus
+          entry.priority &= string_option_check (mixer_options, "recorder") ? ~Driver::RECORDER : ~0; // bonus
           entries.push_back (entry);
           ADEBUG ("DISCOVER: PCM: %s - %s", entry.devid, entry.device_name);
         }
@@ -911,7 +914,7 @@ public:
                   entry.notice = "Note: MIDI device is provided by an application";
                 entry.readonly = (caps & SND_SEQ_PORT_CAP_READ) && !(caps & SND_SEQ_PORT_CAP_WRITE);
                 entry.writeonly = (caps & SND_SEQ_PORT_CAP_WRITE) && !(caps & SND_SEQ_PORT_CAP_READ);
-                entry.priority = is_thru ? Driver::ALSA_THRU :
+                entry.priority = is_thru ? Driver::MIDI_THRU :
                                  is_usb ? Driver::ALSA_USB :
                                  is_kern ? Driver::ALSA_KERN :
                                  Driver::ALSA_USER;
