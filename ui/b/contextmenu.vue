@@ -127,11 +127,15 @@ export default {
   props: { notransitions: { default: false },
 	   keepmounted: { type: Boolean, },
 	   startfocus: { type: Boolean, },
-	   popupclass: { default:'', },
 	   xscale: { default: 1, },
 	   yscale: { default: 1, }, },
   computed: {
     cmenu_class() { return this.notransitions !== false ? 'b-contextmenu-notransitions' : ''; },
+    popupclass() {
+      const pclasses = Array.from (this.$el?.classList || []);
+      const cclasses = pclasses.filter (e => e !== 'b-contextmenu-placeholder');
+      return cclasses;
+    },
   },
   data() { return {
     visible: false, doc_x: undefined, doc_y: undefined,
