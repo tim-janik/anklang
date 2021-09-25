@@ -73,6 +73,9 @@
 	.b-choice-line1, .b-choice-line2, .b-choice-line3,
 	.b-choice-line4 { filter: $b-style-fg-filter; } //* adjust to inverted menuitem */
       } }
+    .b-menuitem {
+      white-space: pre-line;
+    }
   }
 </style>
 
