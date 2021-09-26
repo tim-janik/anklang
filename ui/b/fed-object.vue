@@ -37,6 +37,14 @@
       margin-top: 0.5em;
       &:first-child { margin-top: 0; }
     }
+    .-label {
+      width: 19em;
+      max-width: 30vw;
+    }
+    .-value {
+      width: 30em;
+      max-width: 50vw;
+    }
   }
 </style>
 
@@ -51,9 +59,9 @@
       </h-flex>
 
       <template v-for="prop in group.props" :key="'fed-' + prop.ident_" >
-	<span style="grid-column: 1; padding: 0 1em 0; text-align: left" :data-bubble="prop.blurb_"
+	<span class="-label" style="grid-column: 1; padding: 0 1em 0; text-align: left" :data-bubble="prop.blurb_"
 	>{{ prop.label_ }}</span>
-	<span style="text-align: right" :data-bubble="prop.blurb_" >
+	<span class="-value" style="text-align: right" :data-bubble="prop.blurb_" >
 	  <component :is="prop.ctype_" v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
 				       :value="prop.fetch_()" @input="prop.apply_" v-if="prop.ctype_ != 'b-choice'" ></component>
 	  <b-choice v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
