@@ -26,7 +26,6 @@
     &.b-choice-big {
       justify-content: left; text-align: left;
       padding: .1em 0;
-      width: 16em;
     }
     &.b-choice-small {
       justify-content: center; text-align: center;
