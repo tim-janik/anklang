@@ -1429,7 +1429,8 @@ export function swallow_event (type, timeout = 0) {
 
 /** Determine position for a popup */
 export function popup_position (element, opts = { origin: undefined, x: undefined, y: undefined,
-						  xscale: 0, yscale: 0, }) {
+						  xscale: 0, yscale: 0, })
+{
   const p = 1; // padding;
   // Ignore window.innerWidth & window.innerHeight, these include space for scrollbars
   // Viewport size, https://developer.mozilla.org/en-US/docs/Web/CSS/Viewport_concepts
