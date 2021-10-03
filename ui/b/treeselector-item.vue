@@ -49,7 +49,7 @@
 <template>
   <component
       :is="li_or_div()"
-      :disabled="isdisabled()"
+      :disabled="isdisabled() ? 1 : null"
       class="b-treeselector-item"
       :class="{ 'b-treeselector-active': is_active }" >
     <span class="b-treeselector-leaf"
@@ -67,7 +67,7 @@
           :entries="entry.entries"
           :label="entry.label"
           :uri="entry.uri"
-          :disabled="entry.disabled"
+          :disabled="entry.disabled ? 1 : null"
 	  :key="entry.label + ';' + entry.uri"
       ></b-treeselector-item>
     </ul>

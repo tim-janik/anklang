@@ -27,7 +27,7 @@
 			   :entries="entry.entries"
 			   :label="entry.label"
 			   :uri="entry.uri"
-			   :disabled="entry.disabled"
+			   :disabled="entry.disabled ? 1 : null"
 			   :key="entry.label + ';' + entry.uri" >
       </b-treeselector-item>
     </ul>
