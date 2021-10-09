@@ -48,6 +48,8 @@ ASE_CLASS_DECLS (TrackImpl);
 class AudioEngine;
 class CustomDataContainer;
 
+using CallbackS = std::vector<std::function<void()>>;
+
 struct Event;
 class EventConnection;
 using EventConnectionW = std::weak_ptr<EventConnection>;
