@@ -6,6 +6,17 @@
 
 namespace Ase {
 
+// = Constants ==
+static constexpr uint64_t U64MAX = +18446744073709551615ull;  // 2^64-1
+static constexpr int64_t  I63MAX = +9223372036854775807;      // 2^63-1
+static constexpr int64_t  I63MIN = -9223372036854775807 - 1;  // -2^63
+static constexpr uint32_t U32MAX = +4294967295u;              // 2^32-1
+static constexpr int32_t  I31MAX = +2147483647;               // 2^31-1
+static constexpr int32_t  I31MIN = -2147483648;               // -2^31
+static constexpr float    M23MAX = 16777216;                  // 2^(1+23); IEEE-754 Float Mantissa maximum
+static constexpr double   M52MAX = 9007199254740992;          // 2^(1+52); IEEE-754 Double Mantissa maximum
+
+// == Forward Declarations ==
 enum class Error;
 
 // == Struct Forward Declarations ==
