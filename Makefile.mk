@@ -169,9 +169,6 @@ help: FORCE
 	@echo "  make MODE=...   - Run 'quick' build or make 'production' mode binaries."
 	@echo '                    Other modes: debug, devel, asan, lsan, tsan, ubsan'
 
-# == all rules ==
-all: $(ALL_TARGETS) $(ALL_TESTS)
-
 # == 'default' settings ==
 # Allow value defaults to be adjusted via: make default builddir=... CXX=...
 default: FORCE
@@ -380,11 +377,16 @@ $>/ChangeLog: $(GITCOMMITDEPS)					| $>/
 CLEANFILES += $>/ChangeLog
 
 # == TAGS ==
-TAGS:
+# ctags-universal --print-language ` git ls-tree -r --name-only HEAD`
+$>/TAGS: $(wildcard */*[hcsl])
 	$(QGEN)
-	$Q git ls-tree -r --name-only HEAD	> .TAGS.tmp
-	$Q grep -E '\.(cc|hh)$$' .TAGS.tmp	> .TAGS.tmp2
-	$Q etags --no-members $$(cat .TAGS.tmp2)
-	$Q rm .TAGS.tmp .TAGS.tmp2
-.PHONY: TAGS
-CLEANFILES += TAGS
+	$Q git ls-tree -r --name-only HEAD	> $@.lst
+	$Q if ctags-universal --version 2>&1 | grep -q Ctags ; \
+	   then ctags-universal -e -o $@ -L $@.lst ; \
+	   else touch $@ ; \
+	   fi
+	$Q rm -f $@.lst
+ALL_TARGETS += $>/TAGS
+
+# == all rules ==
+all: $(ALL_TARGETS) $(ALL_TESTS)
