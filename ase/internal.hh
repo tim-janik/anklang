@@ -31,6 +31,8 @@ using Ase::String;
 #define assert_return_unreached(...)    ASE_ASSERT_RETURN_UNREACHED (__VA_ARGS__)
 /// Issue an assertion warning if `expr` evaluates to false.
 #define assert_warn(expr)               ASE_ASSERT_WARN (expr)
+/// Issue an assertion warning if `expr` evaluates to false, check might be disabled in production.
+#define assert_paranoid(expr)           ASE_ASSERT_PARANOID (expr)
 
 /// Indentation helper for editors that cannot (yet) decipher `if constexpr`
 #define	if_constexpr	if constexpr
