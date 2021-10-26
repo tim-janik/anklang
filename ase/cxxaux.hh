@@ -86,6 +86,9 @@ using VoidF = std::function<void()>;
 /// Issue an assertion warning if `expr` evaluates to false.
 #define ASE_ASSERT_WARN(expr)            do { if (ASE_ISLIKELY (expr)) break; ::Ase::assertion_failed (#expr); } while (0)
 
+/// Like ASE_ASSERT_WARN(), enabled if expensive `expr` are allowed.
+#define ASE_ASSERT_PARANOID(expr)        do { if (ASE_ISLIKELY (expr)) break; ::Ase::assertion_failed (#expr); } while (0)
+
 /// Delete copy ctor and assignment operator.
 #define ASE_CLASS_NON_COPYABLE(ClassName)  \
   /*copy-ctor*/ ClassName  (const ClassName&) = delete; \
