@@ -60,6 +60,7 @@ class AudioEngine;
 class CustomDataContainer;
 
 using CallbackS = std::vector<std::function<void()>>;
+using DCallbackS = std::vector<std::function<void(double)>>;
 
 struct Event;
 class EventConnection;
