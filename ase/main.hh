@@ -13,16 +13,17 @@ namespace Ase {
 
 // == MainConfig ==
 struct MainConfig {
+  AudioEngine *engine = nullptr;
+  const char *preload = nullptr;
   std::vector<String> args;
   uint16 websocket_port = 0;
+  int    jsonapi_logflags = 1;
   bool   fatal_warnings = false;
   bool   allow_randomization = true;
   bool   print_js_api = false;
-  bool   jsipc = false;
-  bool   jsbin = false;
+  bool   list_drivers = false;
   enum ModeT { SYNTHENGINE, CHECK_INTEGRITY_TESTS };
   ModeT  mode = SYNTHENGINE;
-  AudioEngine *engine = nullptr;
 };
 extern const MainConfig &main_config;
 

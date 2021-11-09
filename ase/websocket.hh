@@ -32,8 +32,8 @@ private:
   Internals &internals_;
   uint64_t internals_mem_[17];
 protected:
-  explicit WebSocketConnection (Internals &internals, int loglevel);
-  const int loglevel_ = 0;
+  explicit WebSocketConnection (Internals &internals, int logflags);
+  const int logflags_ = 0;
 };
 using WebSocketConnectionP = std::shared_ptr<WebSocketConnection>;
 
@@ -49,7 +49,7 @@ public:
   virtual void            listen        (const String &host = "", int port = 0, const UnlistenCB& = {}) = 0;
   virtual void            reset         () = 0;
   virtual void            shutdown      () = 0;
-  static WebSocketServerP create        (const MakeConnection &make, int loglevel = 0);
+  static WebSocketServerP create        (const MakeConnection &make, int logflags = 0);
   static String           user_agent    ();
   static String           mime_type     (const String &ext, bool utf8);
 };

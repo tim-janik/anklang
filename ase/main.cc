@@ -6,6 +6,7 @@
 #include "jsonapi.hh"
 #include "driver.hh"
 #include "engine.hh"
+#include "project.hh"
 #include "internal.hh"
 #include "testing.hh"
 
@@ -99,24 +100,30 @@ print_usage (bool help)
       return;
     }
   printout ("Usage: AnklangSynthEngine [OPTIONS]\n");
-  printout ("  --help           Print program usage and options\n");
-  printout ("  --fatal-warnings Abort on warnings and failing assertions\n");
-  printout ("  --jsipc          Print Javascript IPC messages\n");
-  printout ("  --jsbin          Print Javascript IPC & binary messages\n");
-  printout ("  --version        Print program version\n");
-  printout ("  --disable-randomization Test mode for deterministic tests\n");
   printout ("  --check-integrity-tests Run integrity tests\n");
-  printout ("  --js-api                Print Javascript bindings\n");
+  printout ("  --disable-randomization Test mode for deterministic tests\n");
   printout ("  --embed <fd>     Parent process socket for embedding\n");
+  printout ("  --fatal-warnings Abort on warnings and failing assertions\n");
+  printout ("  --help           Print program usage and options\n");
+  printout ("  --js-api                Print Javascript bindings\n");
+  printout ("  --jsbin          Print Javascript IPC & binary messages\n");
+  printout ("  --jsipc          Print Javascript IPC messages\n");
+  printout ("  --list-drivers   Print PCM and MIDI drivers\n");
+  printout ("  --preload <prj>  Preload project as current\n");
+  printout ("  --version        Print program version\n");
 }
+
+// 1:ERROR 2:FAILED+REJECT 4:IO 8:MESSAGE 16:GET 256:BINARY
+static constexpr int jsipc_logflags = 1 | 2 | 4 | 16;
+static constexpr int jsbin_logflags = 1 | 256;
 
 static MainConfig
 parse_args (int *argcp, char **argv)
 {
   MainConfig config;
 
-  config.jsbin = debug_key_enabled ("jsbin");
-  config.jsipc = config.jsbin || debug_key_enabled ("jsipc");
+  config.jsonapi_logflags |= debug_key_enabled ("jsbin") ? jsbin_logflags : 0;
+  config.jsonapi_logflags |= debug_key_enabled ("jsipc") ? jsipc_logflags : 0;
   config.fatal_warnings = feature_check ("fatal-warnings");
 
   bool sep = false; // -- separator
@@ -137,12 +144,11 @@ parse_args (int *argcp, char **argv)
       else if (strcmp ("--js-api", argv[i]) == 0)
         config.print_js_api = true;
       else if (strcmp ("--jsipc", argv[i]) == 0)
-        config.jsipc = true;
+        config.jsonapi_logflags |= jsipc_logflags;
       else if (strcmp ("--jsbin", argv[i]) == 0)
-        {
-          config.jsbin = true;
-          config.jsipc |= config.jsbin;
-        }
+        config.jsonapi_logflags |= jsbin_logflags;
+      else if (strcmp ("--list-drivers", argv[i]) == 0)
+        config.list_drivers = true;
       else if (strcmp ("-h", argv[i]) == 0 ||
                strcmp ("--help", argv[i]) == 0)
         {
@@ -158,6 +164,11 @@ parse_args (int *argcp, char **argv)
         {
           argv[i++] = nullptr;
           embedding_fd = string_to_int (argv[i]);
+        }
+      else if (argv[i] == String ("--preload") && i + 1 < size_t (argc))
+        {
+          argv[i++] = nullptr;
+          config.preload = argv[i];
         }
       else if (argv[i] == String ("--") && !sep)
         sep = true;
@@ -234,29 +245,30 @@ main (int argc, char *argv[])
 
   // load drivers and dump device list
   load_registered_drivers();
-  if (true)
+  if (config.list_drivers)
     {
       Ase::Driver::EntryVec entries;
-      printerr ("%s", _("Available PCM drivers:\n"));
+      printout ("%s", _("Available PCM drivers:\n"));
       entries = Ase::PcmDriver::list_drivers();
       std::sort (entries.begin(), entries.end(), [] (auto &a, auto &b) { return a.priority < b.priority; });
       for (const auto &entry : entries)
-        printerr ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
+        printout ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
                   entry.readonly ? "Input" : entry.writeonly ? "Output" : "Duplex",
                   entry.priority, entry.device_name,
                   entry.capabilities.empty() ? "" : "\t" + entry.capabilities + "\n",
                   entry.device_info.empty() ? "" : "\t" + entry.device_info + "\n",
                   entry.notice.empty() ? "" : "\t" + entry.notice + "\n");
-      printerr ("%s", _("\nAvailable MIDI drivers:\n"));
+      printout ("%s", _("Available MIDI drivers:\n"));
       entries = Ase::MidiDriver::list_drivers();
       std::sort (entries.begin(), entries.end(), [] (auto &a, auto &b) { return a.priority < b.priority; });
       for (const auto &entry : entries)
-        printerr ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
+        printout ("  %-30s (%s, %08x)\n\t%s\n%s%s%s", entry.devid + ":",
                   entry.readonly ? "Input" : entry.writeonly ? "Output" : "Duplex",
                   entry.priority, entry.device_name,
                   entry.capabilities.empty() ? "" : "\t" + entry.capabilities + "\n",
                   entry.device_info.empty() ? "" : "\t" + entry.device_info + "\n",
                   entry.notice.empty() ? "" : "\t" + entry.notice + "\n");
+      return 0;
     }
 
   // start audio engine
@@ -278,8 +290,20 @@ main (int argc, char *argv[])
       }
   });
 
+  // preload project
+  ProjectP preload_project;
+  if (config.preload)
+    {
+      preload_project = ProjectImpl::create (config.preload);
+      Error error = Error::NO_MEMORY;
+      if (preload_project)
+        error = preload_project->load_project (config.preload);
+      if (!!error)
+        warning ("%s: failed to load project: %s", config.preload, ase_error_blurb (error));
+    }
+
   // open Jsonapi socket
-  auto wss = WebSocketServer::create (jsonapi_make_connection, main_config.jsbin ? 2 : main_config.jsipc);
+  auto wss = WebSocketServer::create (jsonapi_make_connection, config.jsonapi_logflags);
   wss->http_dir (runpath (RPath::INSTALLDIR) + "/ui/");
   const int xport = embedding_fd >= 0 ? 0 : 1777;
   const String subprotocol = xport ? "" : make_auth_string();

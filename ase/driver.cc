@@ -311,7 +311,7 @@ public:
   virtual void
   pcm_write (size_t n, const float *values) override
   {
-    const int64 busy_usecs = n * 1000000 / mix_freq_;
+    const int64 busy_usecs = n * 1000000 / (mix_freq_ * n_channels_);
     resumetime_ += busy_usecs;
   }
   virtual size_t
