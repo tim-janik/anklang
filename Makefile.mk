@@ -132,7 +132,8 @@ $>/%/:
 .PRECIOUS: $>/%/ # prevent MAKE's 'rm ...' for automatically created dirs
 
 # == run ==
-run: FORCE ui/run
+run: FORCE all
+	$>/electron/anklang
 
 # == clean rules ==
 clean: FORCE
@@ -159,7 +160,7 @@ help: FORCE
 	@echo '  check-suite     - Run the unit test suite'
 	@echo '  serve           - Start SoundEngine, serve and auto-rebuild ui/ sources'
 	@echo '  viewdocs        - Build and browser the manual'
-	@echo '  run             - Start Anklang as Electron App'
+	@echo '  run             - Start Anklang without installation'
 	@echo 'Invocation:'
 	@echo '  make V=1        - Enable verbose output from MAKE and subcommands'
 	@echo '  make O=DIR      - Create all output files in DIR, see also config-defaults.mk'

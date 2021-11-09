@@ -7,7 +7,7 @@
 
 namespace Ase {
 
-/// Container for a sorted array of `Event` structures with binary lookup.
+/// Container for a sorted array of opaque `Event` structures with binary lookup.
 template<class Event, class CompareOrder>
 struct OrderedEventList : std::vector<Event> {
   using Base = std::vector<Event>;
