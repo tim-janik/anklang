@@ -73,7 +73,7 @@
 	<b-menutitle> Device </b-menutitle>
 	<b-menuitem fa="plus-circle"      uri="DevicePanel:add-device" >      Add Device		</b-menuitem>
 	<b-menuitem fa="times-circle"     uri="DevicePanel:delete-device" >   Delete Device		</b-menuitem>
-	<b-treeselector :tree="devicetypes"> </b-treeselector>
+	<b-treeselector :tree="devicetypes" :defaultcollapse="false"> </b-treeselector>
       </b-contextmenu>
     </h-flex>
     <span class="b-devicepanel-after-scroller"></span>
