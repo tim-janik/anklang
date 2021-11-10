@@ -11,6 +11,7 @@ DIST=ubuntu:focal
 DOCKEROPTIONS="--cap-add SYS_PTRACE"
 EXEC_CMD=
 INITIALIZE=false
+NOCACHE=
 IMGTAG=$PROJECT-dbuild
 docker images | grep -q "^$IMGTAG " || INITIALIZE=true
 
@@ -33,7 +34,7 @@ while test $# -ne 0 ; do
     -d)		shift; DIST="$1" ;;
     -f)		shift; DOCKERFILE="$1" ;;
     -h)		usage ; exit 0 ;;
-    -i)		INITIALIZE=true ;;
+    -i)		INITIALIZE=true ; NOCACHE=--no-cache ;;
     --)		shift ; break ;;
     *)		break ;;
   esac
@@ -53,7 +54,7 @@ $INITIALIZE && {
   test ! -d ~/.cache/electron/. || cp --reflink=auto --preserve=timestamps ~/.cache/electron -r misc/.dbuild/.cache/
   test ! -d ~/.cache/anklang/downloads/. || cp --reflink=auto --preserve=timestamps ~/.cache/anklang/downloads -r misc/.dbuild/.cache/anklang/
   ( set -x
-    docker build -f "$DOCKERFILE" --build-arg DIST="$DIST" --build-arg USERGROUP="$TUID:$TGID" -t $IMGTAG misc/
+    docker build -f "$DOCKERFILE" --build-arg DIST="$DIST" --build-arg USERGROUP="$TUID:$TGID" -t $IMGTAG $NOCACHE misc/
   )
   rm -f -r misc/.dbuild/
 }

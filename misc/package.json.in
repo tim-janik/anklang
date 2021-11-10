@@ -9,7 +9,7 @@
     "monitor": "nodemon --ext '*' --watch $npm_package_config_srcdir/ui/ --delay 99ms --on-change-only --exec 'npm run -s ui/rebuild || false' --exitcrash"
   },
   "dependencies": {
-    "vue": "^3.2.19"
+    "vue": "^3.2.21"
   },
   "devDependencies": {
     "@fontsource/charis-sil": "^4.3.0",
@@ -21,12 +21,13 @@
     "electron": "^15.1.0",
     "eslint": "^7.32.0",
     "eslint-plugin-html": "^6.2.0",
-    "eslint-plugin-vue": "^7.18.0",
+    "eslint-plugin-vue": "^7.20.0",
     "icon-gen": "^1.2.3",
     "jsdoc": "^3.6.7",
     "markdown-it": "^12.2.0",
     "mathjax": "^3.2.0",
-    "nodemon": "^2.0.13",
+    "nodemon": "^2.0.15",
+    "undefsafe": "^2.0.5",
     "npm-run-all": "^4.1.5",
     "sass": "^1.42.1",
     "tinyify": "^3.0.0"

@@ -47,7 +47,7 @@
 </style>
 
 <template>
-  <li
+  <component
       :is="li_or_div()"
       :disabled="isdisabled()"
       class="b-treeselector-item"
@@ -71,7 +71,7 @@
 	  :key="entry.label + ';' + entry.uri"
       ></b-treeselector-item>
     </ul>
-  </li>
+  </component>
 </template>
 
 <script>
