@@ -8,12 +8,10 @@ module.exports = {
     "es6": true,
     "node": true },
 
-  // babel-eslint needs special setup for vue: https://eslint.vuejs.org/user-guide/#usage
-  "parser": "vue-eslint-parser",
-  // "parser": "babel-eslint", // <- moved to parserOptions under vue-eslint-parser
-  // babel-eslint is needed for stage-3 syntax, see: https://stackoverflow.com/questions/60046847/eslint-does-not-allow-static-class-properties/60464446#60464446
+  // babel-eslint as parser is needed for stage-3 syntax, see: https://stackoverflow.com/questions/60046847/eslint-does-not-allow-static-class-properties/60464446#60464446
+  // "parser": "babel-eslint",	// <- moved to parserOptions under vue-eslint-parser
   "parserOptions": {
-    "parser": "babel-eslint",
+    "parser": "babel-eslint",	// <- moved to parserOptions under vue-eslint-parser
     "sourceType": "module" },
 
   "globals": {
@@ -67,6 +65,11 @@ module.exports = {
     'vue/v-slot-style': OFF,
     "quotes": [ "off", "single" ]
   },
+
   "plugins": [ "html" ],
-  "extends": [ "eslint:recommended", "plugin:vue/recommended" ]
+
+  "extends": [
+    "eslint:recommended",
+    'plugin:vue/vue3-recommended'
+  ]
 };
