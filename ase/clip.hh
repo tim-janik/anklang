@@ -4,6 +4,7 @@
 
 #include <ase/gadget.hh>
 #include <ase/eventlist.hh>
+#include <ase/midievent.hh>
 
 namespace Ase {
 
@@ -17,7 +18,10 @@ class ClipImpl : public GadgetImpl, public virtual Clip {
   struct CmpNoteTicks { int operator() (const ClipNote &a, const ClipNote &b) const; };
   struct CmpNoteIds   { int operator() (const ClipNote &a, const ClipNote &b) const; };
   EventList<ClipNote,CmpNoteIds> notes_;
+  Connection notifytrack_;
   using OrderedEventsV = OrderedEventList<ClipNote,CmpNoteTicks>;
+public:
+  class Generator;
 protected:
   TrackImpl *track_ = nullptr;
   Connection ontrackchange_;
@@ -28,7 +32,8 @@ protected:
   bool     find_key_at_tick (ClipNote &ev);
 public:
   using OrderedEventsP = OrderedEventsV::ConstP;
-  OrderedEventsP tick_events    ();
+  OrderedEventsP tick_events    () const;
+  ProjectImpl*   project        () const;
   int64          start_tick     () const override { return starttick_; }
   int64          stop_tick      () const override { return stoptick_; }
   int64          end_tick       () const override { return endtick_; }
@@ -39,9 +44,50 @@ public:
   ASE_DEFINE_MAKE_SHARED (ClipImpl);
 };
 
+/// Generator for MIDI events.
+class ClipImpl::Generator {
+  using EventS = ClipImpl::OrderedEventsP;
+  int64  last_ = I63MAX;
+  int64  xtick_ = 0; // external tick (API)
+  int64  itick_ = 0; // internal tick (clip position)
+  int64  start_offset_ = 0;
+  int64  loop_start_ = 0;
+  int64  loop_end_ = I63MAX;
+  EventS events_;
+  bool   muted_ = false;
+  friend class ClipImpl;
+public:
+  /// Handler for generated MIDI events.
+  using Receiver = std::function<void (int64 tick, MidiEvent &event)>;
+  explicit Generator  () = default;
+  void  setup         (const ClipImpl &clip);
+  void  jumpto        (int64 target_tick);
+  int64 generate      (int64 target_tick, const Receiver &receiver);
+  /// Mute MIDI note generation.
+  bool  muted         () const { return muted_; }
+  /// Assign muted state.
+  void  muted         (bool b) { muted_ = b; }
+  /// Initial offset in ticks.
+  int64 start_offset  () const { return start_offset_; }
+  /// Loop start in ticks.
+  int64 loop_start    () const { return loop_start_; }
+  /// Loop end in ticks.
+  int64 loop_end      () const { return loop_end_; }
+  /// Maximum amount of ticks during playback
+  int64 play_length   () const { return last_; }
+  /// Current playback position in ticks.
+  int64 play_position () const { return xtick_; }
+  /// Check if playback is done.
+  bool  done          () const { return play_position() >= play_length(); }
+  /// Position within clip as tick.
+  int64 clip_position () const { return itick_; }
+};
+using ClipImplGeneratorS = std::vector<ClipImpl::Generator>;
+
+
 // == Implementation Details ==
 inline int
-ClipImpl::CmpNoteIds::operator() (const ClipNote &a, const ClipNote &b) const
+ClipImpl::CmpNoteIds::operator () (const ClipNote &a, const ClipNote &b) const
 {
   return Aux::compare_lesser (a.id, b.id);
 }
