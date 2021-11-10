@@ -254,6 +254,7 @@ public:
   virtual ClipS    list_clips     () = 0;                ///< Retrieve a list of the clips within this track.
   virtual DeviceP  access_device  () = 0;                ///< Retrieve Device handle for this track.
   virtual MonitorP create_monitor (int32 ochannel) = 0;  /// Create signal monitor for an output channel.
+  virtual TelemetryFieldS telemetry () const = 0;        ///< Retrieve track telemetry locations.
 };
 
 /// Bits representing a selection of probe sample data features.
