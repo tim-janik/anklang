@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "ase/midievent.hh"
 #include "internal.hh"
+#include "sortnet.hh"
 
 #define EDEBUG(...)     Ase::debug ("event", __VA_ARGS__)
 
@@ -28,9 +29,6 @@ MidiEvent::operator= (const MidiEvent &other)
     memcpy ((void*) this, &other, sizeof (*this));
   return *this;
 }
-
-MidiEvent::~MidiEvent ()
-{}
 
 /// Determine extended message type an MidiEvent.
 MidiMessage
@@ -185,7 +183,7 @@ MidiEventStream::append_unsorted (int8_t frame, const MidiEvent &event)
 void
 MidiEventStream::ensure_order ()
 {
-  std::stable_sort (events_.begin(), events_.end(), [] (const MidiEvent &a, const MidiEvent &b) -> bool {
+  fixed_sort (events_.begin(), events_.end(), [] (const MidiEvent &a, const MidiEvent &b) -> bool {
     return a.frame < b.frame;
   });
 }

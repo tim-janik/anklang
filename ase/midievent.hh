@@ -70,7 +70,7 @@ struct MidiEvent {
   explicit    MidiEvent (MidiEventType etype = MidiEventType (0));
   /*copy*/    MidiEvent (const MidiEvent &other);
   MidiEvent&  operator= (const MidiEvent &other);
-  /*des*/    ~MidiEvent ();
+  /*des*/    ~MidiEvent ()      {}
   MidiMessage message   () const;
   std::string to_string () const;
 };
