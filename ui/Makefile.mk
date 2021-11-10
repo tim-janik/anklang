@@ -199,7 +199,7 @@ $>/ui/.build1-stamp: $>/ui/favicon.ico $>/ui/anklang.png
 
 # == $>/ui/eslint.files ==
 ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue)
-$>/ui/.eslint.files: ui/.eslintrc.js $(ui/eslint.files)			| $>/ui/
+$>/ui/.eslint.files: ui/eslintrc.js $(ui/eslint.files)			| $>/ui/
 	$(QGEN)
 	$Q cp $< $(@D)/.eslintrc.js
 	$Q echo '$(abspath $(ui/eslint.files))' | tr ' ' '\n' > $@
