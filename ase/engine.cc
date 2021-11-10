@@ -203,6 +203,7 @@ AudioEngineThread::schedule_render (uint64 frames)
   if (n == 0)
     floatfill (buffer_data_, 0.0, buffer_size_);
   render_stamp_ = target_stamp;
+  transport_->advance (frames);
 }
 
 void
@@ -368,7 +369,6 @@ AudioEngineThread::pcm_check_write (bool write_buffer, int64 *timeout_usecs_p)
   pcm_driver_->pcm_write (buffer_size_, buffer_data_);
   write_stamp_ += buffer_size_ / fixed_n_channels;
   assert_warn (write_stamp_ == render_stamp_);
-  transport_->advance (buffer_size_ / fixed_n_channels);
   return false;
 }
 
