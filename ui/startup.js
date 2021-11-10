@@ -237,7 +237,7 @@ function browser_config() {
   // Chrome Bug: https://bugs.chromium.org/p/chromium/issues/detail?id=1092358 https://github.com/w3c/pointerlock/issues/42
   // TEST: let l={}; document.body.onpointermove = e=>{ console.log("screenX:",e.screenX-l.screenX,"movementX:",e.movementX); l=e; }
   const chrome_major = parseInt (( /\bChrome\/([0-9]+)\./.exec (navigator.userAgent) || [0,0] )[1]);
-  const chrome_major_last_buggy = 92;
+  const chrome_major_last_buggy = 95;
   const dpr_movement = chrome_major >= 37 && chrome_major <= chrome_major_last_buggy;
   console.assert (chrome_major <= chrome_major_last_buggy, `WARNING: Chrome/${chrome_major} has not been tested for the movementX devicePixelRatio bug`);
   if (dpr_movement)
