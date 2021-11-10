@@ -3,6 +3,9 @@
 <docs>
   # B-TREESELECTOR
   A container that displays a tree and allows selections.
+  ## Props:
+  *defaultcollapse*
+  : Set default for collapsible entries.
   ## Events:
   *close*
   : A *close* event is emitted once the "Close" button activated.
@@ -35,6 +38,8 @@
 </template>
 
 <script>
+import * as Util from '../util.js';
+
 // Example data
 const tree_data = {
   label: 'ROOT ENTRY',
@@ -71,11 +76,14 @@ export default {
   sfc_template,
   props: {
     tree: { default: () => Object.freeze (tree_data) },
+    defaultcollapse: { default: true, },
   },
   data: function() {
     // create_data().then (r => this.tree = r);
     return {};
   },
+  provide: Util.fwdprovide ('b-treeselector.treedata',  // context for treeselector descendants
+			    [ 'defaultcollapse', ]),
   methods: {
     dummy (method, e) {
     },
