@@ -26,7 +26,6 @@
     &.b-choice-big {
       justify-content: left; text-align: left;
       padding: .1em 0;
-      width: 16em;
     }
     &.b-choice-small {
       justify-content: center; text-align: center;
@@ -73,6 +72,9 @@
 	.b-choice-line1, .b-choice-line2, .b-choice-line3,
 	.b-choice-line4 { filter: $b-style-fg-filter; } //* adjust to inverted menuitem */
       } }
+    .b-menuitem {
+      white-space: pre-line;
+    }
   }
 </style>
 

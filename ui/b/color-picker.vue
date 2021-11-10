@@ -50,7 +50,7 @@
   <div class="b-color-picker" style="position: relative; display: flex;" @mouseenter="mouseenter" @mouseleave="mouseleave" >
     <div ref="button" class="-button" :style="style()" @click="Util.dropdown ($refs.contextmenu, $event)" >
       <slot/>
-      <b-contextmenu popupclass="b-color-picker-dropdown" ref="contextmenu">
+      <b-contextmenu class="b-color-picker-dropdown" ref="contextmenu">
 	<div style="display: flex; flex-direction: row;"
 	     v-for="(row, row_index) in color_rows" :key="'row-' + row_index" >
 	  <div class="b-color-picker-entry"

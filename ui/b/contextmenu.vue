@@ -65,7 +65,7 @@
 }
 
 //* transition */
-$duration: 0.25s;
+$duration: 0.097s;
 .b-contextmenu-modalshield, .b-contextmenu {
   transition: opacity $duration linear, transform $duration ease;
   transform-origin: bottom;
@@ -74,7 +74,7 @@ $duration: 0.25s;
   &.-slide-enter-from, &.-slide-leave-to {
     & { opacity: 0; }
     .b-contextmenu {
-      transform: translateY(-100% +100% * 0.17) scaleY(0.17);
+      //* scaling messes up positioning: transform: translateY(-100% +100% * 0.17) scaleY(0.17); */
     }
   }
 }
@@ -114,8 +114,10 @@ const menuitem_onclick = function (event) {
 const menuitem_isdisabled = function () {
   if (this.uri && undefined !== this.menudata.checkeduris[this.uri])
     return !this.menudata.checkeduris[this.uri];
-  if (this.disabled === "" || !!this.disabled ||
-      (this.$attrs && (this.$attrs['disabled'] === "" || !!this.$attrs['disabled'])))
+  if (Object.hasOwnProperty.call (this, 'disabled') &&
+      (this.disabled === "" || !!this.disabled))
+    return true;
+  if (this.$attrs && (this.$attrs['disabled'] === "" || !!this.$attrs['disabled']))
     return true;
   return false;
 };
@@ -127,11 +129,15 @@ export default {
   props: { notransitions: { default: false },
 	   keepmounted: { type: Boolean, },
 	   startfocus: { type: Boolean, },
-	   popupclass: { default:'', },
 	   xscale: { default: 1, },
 	   yscale: { default: 1, }, },
   computed: {
     cmenu_class() { return this.notransitions !== false ? 'b-contextmenu-notransitions' : ''; },
+    popupclass() {
+      const pclasses = Array.from (this.$el?.classList || []);
+      const cclasses = pclasses.filter (e => e !== 'b-contextmenu-placeholder');
+      return cclasses;
+    },
   },
   data() { return {
     visible: false, doc_x: undefined, doc_y: undefined,
@@ -150,22 +156,9 @@ export default {
 	  document.body.querySelector ('#b-app-shell-modalmenus-layer').insertBefore (shield, null);
 	  this.remove_reparentation = () => shield.parentNode?.removeChild?. (shield);
 	}
-      if (this.resize_timer) {
-	clearTimeout (this.resize_timer);
-	this.resize_timer = 0;
-      }
       this.resize_observer?.disconnect?.();
       if (this.visible && !this.resize_observer)
-	{
-	  this.resize_observer = new Util.ResizeObserver ((e, ro) => {
-	    if (this.resize_timer)
-	      return;
-	    this.resize_timer = setTimeout (() => {
-	      this.resize_timer = 0;
-	      this.position_popup();
-	    }, 1);
-	  });
-	}
+	this.resize_observer = new Util.ResizeObserver (() => this.position_popup());
       if (!this.$refs.cmenu) {
 	this.undo_shield_setup?.();
 	this.undo_shield_setup = null;
@@ -197,9 +190,6 @@ export default {
       this.clear_data_contextmenu();
       this.resize_observer?.disconnect?.();
       this.resize_observer = null;
-      if (this.resize_timer)
-	clearTimeout (this.resize_timer);
-      this.resize_timer = 0;
       this.map_kbd_hotkeys (false);
     },
     clear_data_contextmenu ()
@@ -216,7 +206,17 @@ export default {
       this._data_contextmenu_element = element;
       this._data_contextmenu_element.setAttribute ('data-contextmenu', 'true');
     },
-    position_popup() {
+    position_popup()
+    {
+      if (this.position_popup_queued)
+	return;
+      this.position_popup_queued = 1;
+      Vue.nextTick (() => {
+	this.position_popup_queued = undefined;
+	this.position_popup_at_vuetick();
+      });
+    },
+    position_popup_at_vuetick() {
       const area_el = this.$refs.contextmenuarea;
       if (area_el && area_el.getBoundingClientRect) // ignore Vue placeholder (html comment)
 	{

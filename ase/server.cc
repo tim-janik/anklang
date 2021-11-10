@@ -35,7 +35,7 @@ choice_from_driver_entry (const DriverEntry &e, const String &icon_keywords)
   // e.readonly
   // e.writeonly
   // e.modem
-  c.icon = MakeIcon::KwIcon (icon_keywords);
+  c.icon = MakeIcon::KwIcon (icon_keywords + "," + e.hints);
   return c;
 }
 

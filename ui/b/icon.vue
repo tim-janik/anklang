@@ -43,8 +43,8 @@
     .b-icon-hflip { transform: scaleX(-1); }
     .b-icon-vflip { transform: scaleY(-1); }
     .b-icon-hflip.b-icon-vflip { transform: scaleX(-1) scaleY(-1); }
-    &.-mi { align-self: center; line-height: 1; }
-    &.-bc { align-self: center; line-height: 1; }
+    &.-mi { /*align-self: center;*/ line-height: 1; }
+    &.-bc { /*align-self: center;*/ line-height: 1; }
   }
 </style>
 

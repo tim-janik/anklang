@@ -19,6 +19,7 @@ struct DriverEntry {
   String capabilities;
   String device_info;
   String notice;
+  String hints;
   int32  priority = 0;
   bool   readonly = false;
   bool   writeonly = false;
@@ -35,16 +36,21 @@ protected:
   /**/               shared_from_base () { return std::static_pointer_cast<Derived> (shared_from_this()); }
 public:
   enum {
-    JACK      = 0x01 << 24,
-    ALSA_THRU = 0x10 << 24,
-    ALSA_USB  = 0x16 << 24,
-    ALSA_KERN = 0x17 << 24,
-    OSS       = 0x20 << 24,
-    PULSE     = 0x40 << 24,
-    ALSA_USER = 0x50 << 24,
-    PSEUDO    = 0x70 << 24,
-    PAUTO     = 0x74 << 24,
-    PNULL     = 0x77 << 24,
+    // bonus bits
+    SURROUND  = 0x08 << 24,
+    HEADSET   = 0x04 << 24,
+    RECORDER  = 0x02 << 24,
+    MIDI_THRU = 0x01 << 24,
+    // penalty bits
+    JACK      = 0x1f << 24,
+    ALSA_USB  = 0x2f << 24,
+    ALSA_KERN = 0x3f << 24,
+    OSS       = 0x4f << 24,
+    PULSE     = 0x5f << 24,
+    ALSA_USER = 0x6f << 24,
+    PSEUDO    = 0x76 << 24,
+    PAUTO     = 0x79 << 24,
+    PNULL     = 0x7c << 24,
     WCARD     = 0x01 << 16,
     WDEV      = 0x01 <<  8,
     WSUB      = 0x01 <<  0,

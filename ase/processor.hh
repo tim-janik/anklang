@@ -293,13 +293,13 @@ class AudioProcessor::FloatBuffer {
 /// Interface for management, connecting and processing of AudioProcessor instances.
 class ProcessorManager {
 protected:
-  static auto pm_remove_all_buses  (AudioProcessor &p)       { return p.remove_all_buses(); }
-  static auto pm_disconnect_ibuses (AudioProcessor &p)       { return p.disconnect_ibuses(); }
-  static auto pm_disconnect_obuses (AudioProcessor &p)       { return p.disconnect_obuses(); }
-  static auto pm_connect           (AudioProcessor &p, IBusId i, AudioProcessor &d, OBusId o)
-                                   { return p.connect (i, d, o); }
-  static auto pm_connect_events    (AudioProcessor &oproc, AudioProcessor &iproc)
-                                   { return iproc.connect_event_input (oproc); }
+  static auto pm_remove_all_buses    (AudioProcessor &p)       { return p.remove_all_buses(); }
+  static auto pm_disconnect_ibuses   (AudioProcessor &p)       { return p.disconnect_ibuses(); }
+  static auto pm_disconnect_obuses   (AudioProcessor &p)       { return p.disconnect_obuses(); }
+  static auto pm_connect             (AudioProcessor &p, IBusId i, AudioProcessor &d, OBusId o)
+                                     { return p.connect (i, d, o); }
+  static auto pm_connect_event_input (AudioProcessor &oproc, AudioProcessor &iproc)
+                                     { return iproc.connect_event_input (oproc); }
 };
 
 // == Inlined Internals ==

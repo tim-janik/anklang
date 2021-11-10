@@ -84,7 +84,7 @@
 import * as Ase from '../aseapi.js';
 
 async function list_device_types () {
-  const deviceinfos = await this.chain_.list_device_types();
+  const deviceinfos = await this.chain_.list_device_types(); // [{ uri, name, category, },...]
   const cats = {};
   for (const e of deviceinfos)
     {

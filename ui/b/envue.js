@@ -6,20 +6,21 @@ export * from '/vue.js';
 
 /// Component base class for wrapping Vue components.
 export class Component {
-  /// Setup `this.$vm` and initialize a `Vue.reactive` member `this.m`.
+  /// Let `this.$vm` point to the Vue component, and `$vm.$object` point to `this`.
   constructor (vm) {
-    if (vm)
-      this.$vm = vm;
-    if (!this.m)
-      this.m = Vue.reactive ({});
+    console.assert (vm);
+    Object.defineProperty (this, '$vm', { value: vm });
+    Object.defineProperty (vm, '$object', { value: this });
   }
   /// Force a Vue component update.
   update() {
     this.$vm?.$forceUpdate();
   }
-  $watch (...a) { return this.$vm.$watch (...a); }
-  observable_from_getters (...a) { return this.$vm.observable_from_getters (...a); }
-  /// Create a Vue options API object for SFC exports.
+  /// Wrapper for [Util.observable_from_getters()](#Util.observable_from_getters).
+  observable_from_getters (...tmpl) { return Util.observable_from_getters.call (this, ...tmpl); }
+  /// Wrapper for [Vue.$watch](https://v3.vuejs.org/api/instance-methods.html#watch)
+  $watch (...args) { return this.$vm.$watch (...args); }
+  /// Create a Vue options API object from *vue_object* for SFC exports.
   static vue_export (vue_object = {})
   {
     const Class = this;
@@ -45,7 +46,7 @@ export function forward_access (vm, classinstance, ignores = []) {
       Object.defineProperty (vm, name, {
 	enumerable: pd.enumerable,
 	set: vv => { classinstance[name] = vv; },
-	get: () => classinstance[name],
+	get: () => get_bindthis (classinstance, name),
       });
     }
   // forward inherited members of the whole prototype chain
@@ -77,6 +78,9 @@ export function vue_export_from_class (Class, vue_object = {}) {
     if (Class.prototype.beforeUnmount)   Vue.onBeforeUnmount   (_ => Vue.getCurrentInstance().ctx.$object.beforeUnmount());
     if (Class.prototype.unmounted)       Vue.onUnmounted       (_ => Vue.getCurrentInstance().ctx.$object.unmounted());
     if (Class.prototype.errorCaptured)   Vue.onErrorCaptured   (_ => Vue.getCurrentInstance().ctx.$object.errorCaptured());
+    if (Class.prototype.activated)       Vue.onActivated       (_ => Vue.getCurrentInstance().ctx.$object.activated());
+    if (Class.prototype.deactivated)     Vue.onDeactivated     (_ => Vue.getCurrentInstance().ctx.$object.deactivated());
+    if (Class.prototype.serverPrefetch)  Vue.onServerPrefetch  (_ => Vue.getCurrentInstance().ctx.$object.serverPrefetch());
     if (Class.prototype.renderTracked)   Vue.onRenderTracked   (_ => Vue.getCurrentInstance().ctx.$object.renderTracked());
     if (Class.prototype.renderTriggered) Vue.onRenderTriggered (_ => Vue.getCurrentInstance().ctx.$object.renderTriggered());
     return setup ? setup.call (this, props, context) : undefined;
@@ -84,28 +88,39 @@ export function vue_export_from_class (Class, vue_object = {}) {
   // hook into beforeCreate()
   const beforeCreate = vue_object.beforeCreate;
   vue_object.beforeCreate = function () {
-    const ctx = this._.ctx;
+    const ctx = this._.ctx; // `this` is the Vue Proxy for ctx
     console.assert (ctx);
     const classinstance = new Class (this);
-    Object.defineProperty (classinstance, '$vm', { value: this });
-    Object.defineProperty (ctx, '$object', { value: classinstance });
+    console.assert (classinstance.$vm === this);
+    console.assert (ctx.$object === classinstance);
+    console.assert (this.$object === classinstance);
     forward_access (ctx, classinstance, ignores);
-    if (Class.prototype.beforeCreate)
-      Class.prototype.beforeCreate.call (classinstance);
-    if (beforeCreate)
-      beforeCreate.call (this);
+    // ^^^ Vue template compiler only checks hasOwnProperty accesses,
+    // so all base class functions and fields have to be forwarded
+    Class.prototype.beforeCreate?.call (classinstance);
+    beforeCreate?.call (this);
   };
   // hook into created()
   if (Class.prototype.created || vue_object.created) {
     const created = vue_object.created;
     vue_object.created = function () {
-      const ctx = this._.ctx;
-      console.assert (ctx && ctx.$object);
-      if (Class.prototype.created)
-	Class.prototype.created.call (ctx.$object);
-      if (created)
-	created.call (this);
+      this.$object.created?.();
+      created?.call (this);
     };
   }
+  // copy static members
+  window.c = window.c || [];
+  window.c.push(Class);
+  const statics = [ 'emits', 'data', 'props', 'computed', 'watch', 'provide', 'inject', 'components', 'directives', 'methods', ];
+  for (const name of statics)
+    if (Class[name] !== undefined &&
+	!Object.prototype.hasOwnProperty.call (vue_object, name))
+      {
+	const pd = Object.getOwnPropertyDescriptor (Class, name);
+	Object.defineProperty (vue_object, name, {
+	  enumerable: pd.enumerable,
+	  get: () => Class[name],
+	});
+      }
   return vue_object;
 }

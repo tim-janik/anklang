@@ -8,7 +8,8 @@
 #include <cmath>
 
 #define ADEBUG(...)             Ase::debug ("alsa", __VA_ARGS__)
-#define MDEBUG(...)             Ase::debug ("midievent", __VA_ARGS__)
+#define MDEBUG(...)             Ase::debug ("alsamixer", __VA_ARGS__)
+#define EDEBUG(...)             Ase::debug ("midievent", __VA_ARGS__)
 
 #define WITH_MIDI_POLL  0
 
@@ -117,6 +118,106 @@ init_lib_alsa()
   } ();
 }
 
+static std::vector<snd_mixer_selem_channel_id_t>
+mixer_elem_get_channels (snd_mixer_elem_t *const mel,
+                         const std::function<int (snd_mixer_elem_t*, snd_mixer_selem_channel_id_t)> &mixer_has_channel,
+                         bool eligible)
+{
+  std::vector<snd_mixer_selem_channel_id_t> channels;
+  if (eligible)
+    for (snd_mixer_selem_channel_id_t i = SND_MIXER_SCHN_MONO; i <= SND_MIXER_SCHN_LAST;
+         i = snd_mixer_selem_channel_id_t (i + 1))
+      if (mixer_has_channel (mel, i))
+        channels.push_back (i);
+  return channels;
+}
+
+static String
+mixer_info (const String &card_hw, const String &mixer_name, const String &long_name)
+{
+  snd_mixer_t *mixer = nullptr;
+  snd_mixer_selem_regopt regopt = { .ver = 1, .abstract = SND_MIXER_SABSTRACT_NONE, .device = card_hw.c_str() };
+  snd_mixer_selem_id_t *selem_id = nullptr;
+  String hints;
+  int bseen = 0, iseen = 0, oseen = 0, maxin = 0, maxout = 0;
+  int err = snd_mixer_open (&mixer, 0);
+  if (err < 0) goto error_out;
+  err = snd_mixer_selem_register (mixer, &regopt, nullptr);
+  if (err < 0) goto error_out;
+  err = snd_mixer_load (mixer);
+  if (err < 0) goto error_out;
+  err = snd_mixer_selem_id_malloc (&selem_id);
+  if (err < 0) goto error_out;
+  MDEBUG ("CARD(%s): %s [%s]", card_hw, long_name, mixer_name);
+  MDEBUG ("M-------- %-6s %2u %s %s - %s", "MIXER", snd_mixer_get_count (mixer), card_hw, mixer_name, long_name);
+  for (snd_mixer_elem_t *mel = snd_mixer_first_elem (mixer); mel; mel = snd_mixer_elem_next (mel))
+    {
+      if (snd_mixer_elem_get_type (mel) != SND_MIXER_ELEM_SIMPLE)
+        continue;
+      int v = 0;
+      const snd_mixer_selem_channel_id_t c0 = SND_MIXER_SCHN_MONO;
+      const bool cv = snd_mixer_selem_has_capture_volume (mel);
+      const bool pv = snd_mixer_selem_has_playback_volume (mel);
+      const bool S = snd_mixer_selem_has_common_switch (mel) || snd_mixer_selem_has_playback_switch (mel) || snd_mixer_selem_has_capture_switch (mel);
+      const bool e = snd_mixer_selem_is_enumerated (mel); // snd_mixer_selem_is_enum_playback snd_mixer_selem_is_enum_capture
+      const char *tname = pv ? cv ? "INOUT" : "OUT" : cv ? "IN" : S ? "SWITCH" : e ? "ENUM" : "-";
+      const bool a = snd_mixer_selem_is_active (mel);
+      const bool j = snd_mixer_selem_has_playback_volume_joined (mel) || snd_mixer_selem_has_capture_volume_joined (mel);
+      const bool m = snd_mixer_selem_has_playback_switch (mel) && snd_mixer_selem_get_playback_switch (mel, c0, &v) == 0 && !v;
+      const bool M = m && snd_mixer_selem_has_playback_switch_joined (mel);
+      const bool c = snd_mixer_selem_has_capture_switch (mel) && snd_mixer_selem_get_capture_switch (mel, c0, &v) == 0 && v;
+      const bool C = c && snd_mixer_selem_has_capture_switch_joined (mel);
+      const bool x = snd_mixer_selem_has_capture_switch_exclusive (mel);
+      const auto p = mixer_elem_get_channels (mel, snd_mixer_selem_has_playback_channel, pv);
+      const auto d = mixer_elem_get_channels (mel, snd_mixer_selem_has_capture_channel, cv);
+      maxout = std::max (maxout, int (p.size()));
+      maxin = std::max (maxin, int (d.size()));
+      if (cv && pv)
+        bseen++;
+      else if (pv)
+        oseen++;
+      else if (cv)
+        iseen++;
+      long l = 0;
+      String val;
+      for (const auto ch : p)
+        if ((ch == 0 || !snd_mixer_selem_has_playback_volume_joined (mel)) &&
+            0 == snd_mixer_selem_get_playback_volume (mel, ch, &l))
+          val += (val.empty() ? "" : ",") + string_from_type (l);
+      for (const auto ch : d)
+        if ((ch == 0 || !snd_mixer_selem_has_capture_volume_joined (mel)) &&
+            0 == snd_mixer_selem_get_capture_volume (mel, ch, &l))
+          val += (val.empty() ? "" : ",") + string_from_type (l);
+      val = val.empty() ? "" : ": " + val;
+      MDEBUG ("-%c%c%c%c%c%c%c%c %-6s %2u %s%s",
+              cv ? 'r' : '-', pv ? 'w' : '-', a ? '-' : 'i',
+              j ? 'j' : '-',
+              M ? 'M' : m ? 'm' : '-',
+              e ? 'e' : '-',
+              C ? 'C' : c ? 'c' : '-',
+              x ? 'x' : '-',
+              tname, p.size() + d.size(),
+              snd_mixer_selem_get_name (mel),
+              val);
+    }
+  if (maxout > 2)
+    hints += (hints.empty() ? "" : ", ") + String ("surround");
+  if (oseen == 1 && bseen + iseen == 1)
+    hints += (hints.empty() ? "" : ", ") + String ("headset");
+  if (oseen + bseen == 0 && iseen >= 1)
+    hints += (hints.empty() ? "" : ", ") + String ("recorder");
+  if (maxin > 2)
+    hints += (hints.empty() ? "" : ", ") + String ("multi-track");
+  if (!hints.empty())
+    MDEBUG ("(%s)", hints);
+ error_out:
+  if (mixer)
+    snd_mixer_close (mixer);
+  if (selem_id)
+    snd_mixer_selem_id_free (selem_id);
+  return hints;
+}
+
 static void
 list_alsa_drivers (Driver::EntryVec &entries)
 {
@@ -156,7 +257,8 @@ list_alsa_drivers (Driver::EntryVec &entries)
     {
       snd_ctl_card_info_clear (cinfo);
       snd_ctl_t *chandle = nullptr;
-      if (snd_ctl_open (&chandle, string_format ("hw:CARD=%u", cindex).c_str(), SND_CTL_NONBLOCK) < 0 || !chandle)
+      const String card_hw = string_format ("hw:CARD=%u", cindex);
+      if (snd_ctl_open (&chandle, card_hw.c_str(), SND_CTL_NONBLOCK) < 0 || !chandle)
         continue;
       if (snd_ctl_card_info (chandle, cinfo) < 0)
         {
@@ -169,6 +271,8 @@ list_alsa_drivers (Driver::EntryVec &entries)
       const String card_longname = chars2string (snd_ctl_card_info_get_longname (cinfo));
       const String card_mixername = chars2string (snd_ctl_card_info_get_mixername (cinfo));
       // ADEBUG ("DISCOVER: CARD: %s - %s - %s [%s] - %s", card_id, card_driver, card_name, card_mixername, card_longname);
+      const String mixer_keywords = mixer_info (card_hw, card_mixername, card_longname);
+      const String mixer_options = ":" + string_join (":", string_split_any (mixer_keywords, " ,")) + ":";
       // discover PCM hardware
       snd_pcm_info_t *wpi = alsa_alloca0 (snd_pcm_info);
       snd_pcm_info_t *rpi = alsa_alloca0 (snd_pcm_info);
@@ -205,6 +309,7 @@ list_alsa_drivers (Driver::EntryVec &entries)
           const bool is_usb = string_startswith (chars2string (snd_pcm_info_get_id (writable ? wpi : rpi)), "USB Audio");
           entry.device_name = chars2string (snd_pcm_info_get_name (writable ? wpi : rpi));
           entry.device_name += " - " + card_name;
+          entry.hints = mixer_keywords;
           if (card_name != card_mixername && !card_mixername.empty())
             entry.device_name += " [" + card_mixername + "]";
           if (pcmclass == SND_PCM_CLASS_GENERIC)
@@ -218,6 +323,9 @@ list_alsa_drivers (Driver::EntryVec &entries)
           entry.writeonly = !readable;
           // entry.modem = pcmclass == SND_PCM_CLASS_MODEM;
           entry.priority = (is_usb ? Driver::ALSA_USB : Driver::ALSA_KERN) + Driver::WCARD * cindex + Driver::WDEV * dindex;
+          entry.priority &= string_option_check (mixer_options, "surround") ? ~Driver::SURROUND : ~0; // bonus
+          entry.priority &= string_option_check (mixer_options, "headset")  ? ~Driver::HEADSET  : ~0; // bonus
+          entry.priority &= string_option_check (mixer_options, "recorder") ? ~Driver::RECORDER : ~0; // bonus
           entries.push_back (entry);
           ADEBUG ("DISCOVER: PCM: %s - %s", entry.devid, entry.device_name);
         }
@@ -806,7 +914,7 @@ public:
                   entry.notice = "Note: MIDI device is provided by an application";
                 entry.readonly = (caps & SND_SEQ_PORT_CAP_READ) && !(caps & SND_SEQ_PORT_CAP_WRITE);
                 entry.writeonly = (caps & SND_SEQ_PORT_CAP_WRITE) && !(caps & SND_SEQ_PORT_CAP_READ);
-                entry.priority = is_thru ? Driver::ALSA_THRU :
+                entry.priority = is_thru ? Driver::MIDI_THRU :
                                  is_usb ? Driver::ALSA_USB :
                                  is_kern ? Driver::ALSA_KERN :
                                  Driver::ALSA_USER;
@@ -1078,7 +1186,7 @@ public:
                                 (ev->data.control.value < 0 ? 1.0 / 8192.0 : 1.0 / 8191.0)));
           break;
         case SND_SEQ_EVENT_SYSEX:
-          MDEBUG ("%+4d ch=%-2u SYSEX: %s",
+          EDEBUG ("%+4d ch=%-2u SYSEX: %s",
                   int (samplerate * (ev->time.time.tv_sec + 1e-9 * ev->time.time.tv_nsec - now)),
                   ev->data.control.channel, hex_str (ev->data.ext.len, (const uint8*) ev->data.ext.ptr));
           break;
@@ -1090,7 +1198,7 @@ public:
         case SND_SEQ_EVENT_REGPARAM:
         case SND_SEQ_EVENT_NOTE:  // unhandled, duration usually too long for MidiEvent.frame
         default:
-          MDEBUG ("%+4d ch=%-2u SND_SEQ_EVENT_... %u",
+          EDEBUG ("%+4d ch=%-2u SND_SEQ_EVENT_... %u",
                   int (samplerate * (ev->time.time.tv_sec + 1e-9 * ev->time.time.tv_nsec - now)),
                   ev->data.control.channel, ev->type);
           break;
@@ -1100,7 +1208,7 @@ public:
       ADEBUG ("SeqMIDI: %s: snd_seq_event_input: %s", devid_, snd_strerror (r));
     if (ASE_UNLIKELY (mdebug_))
       for (size_t i = old_size; i < estream.size(); i++)
-        MDEBUG ("%s", (estream.begin() + i)->to_string());
+        EDEBUG ("%s", (estream.begin() + i)->to_string());
     if (must_sort)              // guard against devices with out-of-order events
       estream.ensure_order();
     return estream.size() - old_size;

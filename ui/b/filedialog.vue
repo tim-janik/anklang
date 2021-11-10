@@ -127,7 +127,7 @@ class FileDialog extends Envue.Component {
     this.r = this.observable_from_getters (r, () => this.crawler);
     this.crawler = null;
     (async () => {
-      const cwd = this.last_cwd || this.$vm.cwd;
+      const cwd = this.$vm.cwd || this.last_cwd;
       this.crawler = await Ase.server.dir_crawler (cwd); // non-reactive assignment
       this.r.__update__(); // so force update
     }) ();
@@ -239,14 +239,11 @@ class FileDialog extends Envue.Component {
 	this.$vm.$refs.fileentry.focus();
       }
   }
+  static emits = { select: null, close: null, };
+  static props = { title:	{ type: String, default: "File Dialog" },
+		   button:	{ type: String, default: "Select" },
+		   cwd:		{ type: String, default: "MUSIC" },
+		   filters:	{ type: Array, default: [] }, };
 }
-
-export default FileDialog.vue_export ({
-  sfc_template,
-  props: { title:	{ type: String, default: "File Dialog" },
-	   button:	{ type: String, default: "Select" },
-	   cwd:		{ type: String, default: "" },
-	   filters:	{ type: Array, default: [] }, },
-  emits: { select: null, close: null, },
-});
+export default FileDialog.vue_export ({ sfc_template });
 </script>

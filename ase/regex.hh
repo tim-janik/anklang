@@ -17,7 +17,7 @@ public:
     // S        = 0, DOTALL not supported, use [\s\S] or [^\x0]
   };
   static ssize_t search (const String &regex, const String &input, Flags = DEFAULT);
-  static String  sub    (const String &regex, const String &subst, const String &input, Flags = DEFAULT);
+  static String  sub    (const String &regex, const String &subst, const String &input, uint count = 0, Flags = DEFAULT);
 };
 extern constexpr inline Re::Flags operator| (Re::Flags a, Re::Flags b) { return Re::Flags (int32_t (a) | int32_t (b)); }
 
