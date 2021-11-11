@@ -51,7 +51,7 @@
       :is="li_or_div()"
       :disabled="isdisabled() ? 1 : null"
       class="b-treeselector-item"
-      :class="{ 'b-treeselector-active': is_active }" >
+      :class="{ 'b-treeselector-active': css_active() }" >
     <span class="b-treeselector-leaf"
 	  v-if="!(entries && entries.length)">
       <div tabindex="0" @click="leaf_click1" @dblclick="leaf_click2" @keydown="leaf_keydown"
@@ -82,12 +82,21 @@ export default {
 	   entries:	{ default: _ => [] },
   },
   emits: { click: uri => !!uri, },
-  data: function() { return { is_active: false, }; },
+  data: function() { return { is_active: undefined, }; },
   inject: { menudata: { from: 'b-contextmenu.menudata',
 			default: { showicons: true, keepmounted: false, checkeduris: {},
 				   isdisabled: () => false, onclick: undefined, }, },
+	    treedata: { from: 'b-treeselector.treedata',
+			default: { defaultcollapse: true }, },
   },
   methods: {
+    css_active() {
+      if (this.entries && this.entries.length && // non-leaf
+	  // this.entries.length < 2 &&
+	  this.is_active === undefined)
+	return true; // this.treedata.defaultcollapse;
+      return !!this.is_active;
+    },
     caret_keydown: function (event) {
       if (Util.match_key_event (event, 'ArrowRight'))
 	{
@@ -128,7 +137,7 @@ export default {
 	}
     },
     caret_click: function() {
-      this.is_active = !this.is_active;
+      this.is_active = !this.css_active();
       event.preventDefault();
       event.stopPropagation();
     },

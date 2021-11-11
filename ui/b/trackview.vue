@@ -201,7 +201,6 @@ export default {
       // cache level width in pixels to avoid expensive recalculations in fps handler
       this.level_width = levelbg.getBoundingClientRect().width;
       // update async data, fetched from track
-      this.dom_trigger_animate_playback (false);
       if (this.track && this.tdata.lmon && this.tdata.rmon)
 	{
 	  // trigger frequent screen updates
@@ -209,11 +208,10 @@ export default {
 	  this.ldbtip = this.tdata.lmon.sub_tip[0] / 4;
 	  this.rdbspl = this.tdata.rmon.sub_spl[0] / 4;
 	  this.rdbtip = this.tdata.rmon.sub_tip[0] / 4;
-	  this.dom_trigger_animate_playback (true);
+	  // this.dom_trigger_animate_playback (true); used to trigger update_levels()
 	}
       console.assert (!this.$dom_data.destroying);
     },
-    dom_animate_playback: update_levels,
     mcc: function (n) { // midi_channel character
       if (n == this.tdata.mc)
 	return '√';

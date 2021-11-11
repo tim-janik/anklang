@@ -21,6 +21,7 @@ ProjectImpl::ProjectImpl()
 {
   if (tracks_.empty())
     create_track (); // ensure Master track
+  tick_sig_.set_bpm (90);
 
   if (0)
     autoplay_timer_ = main_loop->exec_timer ([this] () {
@@ -201,10 +202,10 @@ ProjectImpl::telemetry () const
   assert_return (proc, v);
   const AudioTransport &transport = proc->transport();
   v.push_back (telemetry_field ("current_tick", &transport.current_tick_d));
-  v.push_back (telemetry_field ("current_bpm", &transport.current_bpm));
   v.push_back (telemetry_field ("current_bar", &transport.current_bar));
   v.push_back (telemetry_field ("current_beat", &transport.current_beat));
   v.push_back (telemetry_field ("current_sixteenth", &transport.current_semiquaver));
+  v.push_back (telemetry_field ("current_bpm", &transport.current_bpm));
   v.push_back (telemetry_field ("current_minutes", &transport.current_minutes));
   v.push_back (telemetry_field ("current_seconds", &transport.current_seconds));
   return v;
@@ -224,20 +225,48 @@ ProjectImpl::master_processor () const
 }
 
 bool
-ProjectImpl::set_bpm (float bpm)
+ProjectImpl::set_bpm (double bpm)
 {
-  bpm = CLAMP (bpm, 10, 999);
-  return_unless (bpm_ != bpm, false);
+  bpm = CLAMP (bpm, MIN_BPM, MAX_BPM);
+  return_unless (tick_sig_.bpm() != bpm, false);
+  tick_sig_.set_bpm (bpm);
+  update_tempo();
+  return true;
+}
+
+bool
+ProjectImpl::set_numerator (uint8 numerator)
+{
+  if (tick_sig_.set_signature (numerator, tick_sig_.beat_unit()))
+    {
+      update_tempo();
+      return true;
+    }
+  return false;
+}
+
+bool
+ProjectImpl::set_denominator (uint8 denominator)
+{
+  if (tick_sig_.set_signature (tick_sig_.beats_per_bar(), denominator))
+    {
+      update_tempo();
+      return true;
+    }
+  return false;
+}
+
+void
+ProjectImpl::update_tempo ()
+{
   AudioProcessorP proc = master_processor();
-  return_unless (proc, false);
-  bpm_ = bpm;
-  const int32 numerator = numerator_, denominator = denominator_;
-  auto job = [proc, bpm, numerator, denominator] () {
+  return_unless (proc);
+  const TickSignature tsig (tick_sig_);
+  auto job = [proc, tsig] () {
     AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
-    transport.tempo (transport.current_bpm == 0 ? 0 : bpm, numerator, denominator);
+    transport.tempo (tsig);
   };
   proc->engine().async_jobs += job;
-  return true;
 }
 
 void
@@ -246,12 +275,14 @@ ProjectImpl::start_playback ()
   main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
-  const auto bpm = bpm_;
-  const int32 numerator = numerator_, denominator = denominator_;
-  auto job = [proc, bpm, numerator, denominator] () {
+  std::shared_ptr<CallbackS> queuep = std::make_shared<CallbackS>();
+  for (auto track : tracks_)
+    track->queue_cmd (*queuep, track->START);
+  auto job = [proc, queuep] () {
     AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
-    transport.tempo (bpm, numerator, denominator);
     transport.running (true);
+    for (const auto &cmd : *queuep)
+      cmd();
   };
   proc->engine().async_jobs += job;
 }
@@ -262,12 +293,19 @@ ProjectImpl::stop_playback ()
   main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
-  auto job = [proc] () {
+  auto stop_queuep = std::make_shared<DCallbackS>();
+  for (auto track : tracks_)
+    track->queue_cmd (*stop_queuep, track->STOP);
+  auto job = [proc, stop_queuep] () {
     AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
     const bool wasrunning = transport.running();
     transport.running (false);
     if (!wasrunning)
-      transport.tickto (0);
+      transport.set_tick (-AUDIO_BLOCK_MAX_RENDER_SIZE / 2 * transport.tick_sig.ticks_per_sample());
+    for (const auto &stop : *stop_queuep)
+      stop (!wasrunning); // restart = !wasrunning
+    if (!wasrunning)
+      transport.set_tick (0); // adjust transport and track positions
   };
   proc->engine().async_jobs += job;
 }
@@ -331,15 +369,20 @@ ProjectImpl::master_track ()
 PropertyS
 ProjectImpl::access_properties ()
 {
+  auto getbpm = [this] (Value &val) { val = tick_sig_.bpm(); };
   auto setbpm = [this] (const Value &val) { return set_bpm (val.as_double()); };
+  auto getbpb = [this] (Value &val) { val = tick_sig_.beats_per_bar(); };
+  auto setbpb = [this] (const Value &val) { return set_numerator (val.as_int()); };
+  auto getunt = [this] (Value &val) { val = tick_sig_.beat_unit(); };
+  auto setunt = [this] (const Value &val) { return set_denominator (val.as_int()); };
   using namespace Properties;
   PropertyBag bag;
   bag.group = _("State");
   bag += Bool ("dirty", &dirty_, _("Modification Flag"), _("Dirty"), false, ":r:G:", _("Flag indicating modified project state"));
   bag.group = _("Timing");
-  bag += Range ("numerator", &numerator_, _("Signature Numerator"), _("Numerator"), 1, 63, 4, STANDARD);
-  bag += Range ("denominator", &denominator_, _("Signature Denominator"), _("Denominator"), 1, 16, 4, STANDARD);
-  bag += Range ("bpm", Getter (&bpm_), setbpm, _("Beats Per Minute"), _("BPM"), 10., 999., 90., STANDARD);
+  bag += Range ("numerator", getbpb, setbpb, _("Signature Numerator"), _("Numerator"), 1., 63., 4., STANDARD);
+  bag += Range ("denominator", getunt, setunt, _("Signature Denominator"), _("Denominator"), 1, 16, 4, STANDARD);
+  bag += Range ("bpm", getbpm, setbpm, _("Beats Per Minute"), _("BPM"), 10., 1776., 90., STANDARD);
   bag.group = _("Tuning");
   bag += Enum ("musical_tuning", &musical_tuning_, _("Musical Tuning"), _("Tuning"), STANDARD, "",
                _("The tuning system which specifies the tones or pitches to be used. "

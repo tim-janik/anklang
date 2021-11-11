@@ -128,9 +128,8 @@
     <div class="b-tracklist-clips" ref="clips"
 	 @wheel.stop="Util.wheel2scrollbars ($event, $refs, 'hscrollbar1', 'vscrollbar')" >
       <v-flex class="b-tracklist-clipswrapper" ref="clipswrapper" >
-	<b-cliplist class="b-trackrow-cell" v-for="pair in tdata.tracks" :key="pair[1]"
-		    :track="pair[0]"
-		    style="background: #252525" />
+	<b-cliplist class="b-trackrow-cell" v-for="(pair, tindex) in tdata.tracks" :key="pair[1]"
+		    :track="pair[0]" :trackindex="tindex" />
       </v-flex>
       <div class="b-tracklist-clips-shadow" ref="clipsshadow" ></div>
     </div>
@@ -285,11 +284,11 @@ export default {
     },
     dom_update() {
       this.last_tickpos = -1;
-      this.dom_trigger_animate_playback (false);
+      // this.dom_trigger_animate_playback (false);
       if (this.project && this.tdata.tmon)
 	{
 	  this.i32tickpos = this.tdata.tmon.sub_i32tickpos[0] / 4;
-	  this.dom_trigger_animate_playback (true);
+	  // this.dom_trigger_animate_playback (true);
 	}
     },
     dom_animate_playback (active) {

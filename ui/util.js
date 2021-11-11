@@ -646,7 +646,6 @@ function dom_dispatch (before_unmount) {
   {
     this.$dom_data.state = 2;		// destroyed
     this.$dom_data.destroying = true;
-    this.dom_trigger_animate_playback (false);
     this.dom_destroy?.call (this);
     this.$dom_data.unwatch1 = call_unwatch (this.$dom_data.unwatch1);
     this.$dom_data.unwatch2 = call_unwatch (this.$dom_data.unwatch2);
@@ -677,7 +676,6 @@ vue_mixins.dom_updates = {
     this.$dom_data = {
       state: 0,
       destroying: false,
-      // animateplaybackclear: undefined,
       unwatch1: null,
       unwatch2: null,
       rafid: undefined,
@@ -714,22 +712,6 @@ vue_mixins.dom_updates = {
 	cancelAnimationFrame (this.$dom_data.rafid);
 	this.$dom_data.rafid = undefined;
       }
-  },
-  methods: {
-    dom_trigger_animate_playback (flag) {
-      if (flag === undefined)
-	return !!this.$dom_data.animateplaybackclear;
-      if (flag && !this.$dom_data.animateplaybackclear)
-	{
-	  console.assert (this.dom_animate_playback);
-	  this.$dom_data.animateplaybackclear = Util.add_frame_handler (this.dom_animate_playback.bind (this));
-	}
-      else if (!flag && this.$dom_data.animateplaybackclear)
-	{
-	  this.$dom_data.animateplaybackclear();
-	  this.$dom_data.animateplaybackclear = undefined;
-	}
-    },
   },
 };
 
@@ -1621,185 +1603,9 @@ export function midi_label (numish) {
   return Array.isArray (numish) ? numish.map (n => one_label (n)) : one_label (numish);
 }
 
-let frame_handler_id = 0x200000,
-    frame_handler_active = false,
-    frame_handler_callback_id = undefined,
-    frame_handler_cur = 0,
-    frame_handler_max = 0,
-    frame_handler_array = undefined;
-
-function call_frame_handlers () {
-  frame_handler_callback_id = undefined;
-  const active = frame_handler_active && shm_array_active;
-  frame_handler_max = frame_handler_array.length;
-  for (frame_handler_cur = 0; frame_handler_cur < frame_handler_max; frame_handler_cur++) {
-    const handler_id = frame_handler_array[frame_handler_cur][1];
-    const handler_result = frame_handler_array[frame_handler_cur][0] (active);
-    if (handler_result !== undefined && !handler_result)
-      remove_frame_handler (handler_id);
-  }
-  if (frame_handler_active)
-    frame_handler_callback_id = window.requestAnimationFrame (call_frame_handlers);
-}
-
-function reinstall_frame_handler() {
-  if (frame_handler_callback_id !== undefined) {
-    window.cancelAnimationFrame (frame_handler_callback_id);
-    frame_handler_callback_id = undefined;
-  }
-  if (frame_handler_active)
-    frame_handler_callback_id = window.requestAnimationFrame (call_frame_handlers);
-  else
-    call_frame_handlers(); // call one time for cleanups with frame_handler_active == false
-}
-
-function remove_frame_handler (handler_id) {
-  for (let i = frame_handler_array.length - 1; i >= 0; i--)
-    if (frame_handler_array[i][1] == handler_id) {
-      frame_handler_array.splice (i, 1);
-      if (i < frame_handler_cur)
-	frame_handler_cur--;
-      frame_handler_max--;
-      return;
-    }
-  console.error ("remove_frame_handler(" + handler_id + "): invalid id");
-}
-
-/// Install a permanent redraw handler, to run as long as the DSP engine is active.
-export function add_frame_handler (handlerfunc) {
-  if (frame_handler_array === undefined) { // must initialize
-    frame_handler_array = [];
-    (async function() {
-      const check_active_promise = Ase.server.engine_active();
-      const onenginechange_promise = Ase.server.on ('enginechange', (ev) => {
-	frame_handler_active = Boolean (ev.active);
-	shm_reschedule();
-	reinstall_frame_handler();
-      } );
-      frame_handler_active = Boolean (await check_active_promise);
-      shm_reschedule();
-      reinstall_frame_handler();
-      await onenginechange_promise;
-    }) ();
-  }
-  const handler_id = frame_handler_id++;
-  frame_handler_array.push ([handlerfunc, handler_id]);
-  if (!frame_handler_callback_id) // ensure handlerfunc is called at least once
-    frame_handler_callback_id = window.requestAnimationFrame (call_frame_handlers);
-  return function() { remove_frame_handler (handler_id); };
-}
-
 export function discard_remote (aseobject) {
   console.log ("TODO: Ase: implement discard:", aseobject);
 }
-
-let shm_array_active = false;
-let shm_array_entries = []; // { bpos, blength, shmoffset, usecount, }
-let shm_array_binary_size = 8;
-let shm_array_buffer = new ArrayBuffer (0);
-export let shm_array_int32   = undefined;	// assigned by shm_receive
-export let shm_array_float32 = undefined;	// assigned by shm_receive
-export let shm_array_float64 = undefined;	// assigned by shm_receive
-shm_receive (null);
-
-export function shm_receive (arraybuffer) {
-  shm_array_active = frame_handler_active && arraybuffer && shm_array_binary_size <= arraybuffer.byteLength;
-  if (shm_array_active)
-    shm_array_buffer = arraybuffer;
-  else
-    shm_array_buffer = new ArrayBuffer (shm_array_binary_size);
-  shm_array_int32   = new Int32Array (shm_array_buffer, 0, shm_array_buffer.byteLength / 4 ^0);
-  shm_array_float32 = new Float32Array (shm_array_buffer, 0, shm_array_buffer.byteLength / 4 ^0);
-  shm_array_float64 = new Float64Array (shm_array_buffer, 0, shm_array_buffer.byteLength / 8 ^0);
-}
-
-export function shm_subscribe (byteoffset, bytelength) {
-  const lalignment = 4;
-  bytelength = (((bytelength + lalignment-1) / lalignment) ^0) * lalignment;
-  // reuse existing region
-  for (let i = 0; i < shm_array_entries.length; ++i)
-    {
-      const e = shm_array_entries[i];
-      if (e.shmoffset <= byteoffset && e.shmoffset + e.blength >= byteoffset + bytelength)
-	{
-	  const pos = e.bpos + byteoffset - e.shmoffset;
-	  e.usecount += 1;
-	  return [ pos, i ];
-	}
-    }
-  // reallocate freed region
-  for (let i = 0; i < shm_array_entries.length; ++i)
-    {
-      const e = shm_array_entries[i];
-      if (e.usecount == 0 && e.blength == bytelength)
-	{
-	  e.shmoffset = byteoffset;
-	  e.usecount = 1;
-	  shm_reschedule();
-	  return [ e.bpos, i ];
-	}
-    }
-  // allocate new pos, if length exceeds 4, pos needs larger alignment (e.g. for double)
-  let nextpos = shm_array_binary_size;
-  if (bytelength > 4)
-    nextpos = (((nextpos + 8-1) / 8) ^0) * 8;
-  // allocate new region
-  let e = {
-    bpos: nextpos,
-    blength: bytelength,
-    shmoffset: byteoffset,
-    usecount: 1,
-  };
-  shm_array_binary_size = nextpos + bytelength;
-  shm_array_entries.push (e);
-  shm_reschedule();
-  return [ e.bpos, shm_array_entries.length - 1 ];
-}
-
-export function shm_unsubscribe (subscription_tuple) {
-  const e = shm_array_entries[subscription_tuple[1]];
-  console.assert (e.usecount > 0);
-  if (e.usecount)
-    {
-      e.usecount--;
-      if (e.usecount == 0)
-	{
-	  e.shmoffset = -1;
-	  // entry is disabled but stays around for future allocations and stable indexing
-	  shm_reschedule();
-	}
-      return true;
-    }
-  return false;
-}
-
-function shm_reschedule() {
-  if (pending_shm_reschedule_promise)
-    return;
-  pending_shm_reschedule_promise = delay (-1); // Vue.nextTick();
-  pending_shm_reschedule_promise.then (async () => {
-    pending_shm_reschedule_promise = null; // allow new shm_reschedule() calls
-    if (frame_handler_active)
-      {
-	const entries = copy_recursively (shm_array_entries);
-	for (let i = entries.length - 1; i >= 0; i--)
-	  {
-	    if (entries[i].usecount == 0)
-	      entries.splice (i, 1);
-	    else
-	      delete entries[i].usecount;
-	  }
-	await Ase.server.broadcast_shm_fragments (entries, 33);
-      }
-    else
-      {
-	const promise = Ase.server.broadcast_shm_fragments ([], 0);
-	shm_receive (null);
-	await promise;
-      }
-  });
-}
-let pending_shm_reschedule_promise = null;
 
 /// Align integer value to 8.
 function align8 (int) {
@@ -1919,18 +1725,6 @@ export function telemetry_unsubscribe (telemetryobject) {
     return true;
   }
   return false;
-}
-
-/// Create a promise that resolves after the given `timeout` with `value`.
-function delay (timeout, value) {
-  return new Promise (resolve => {
-    if (timeout >= 0)
-      setTimeout (resolve.bind (null, value), timeout);
-    else if (window.setImmediate)
-      setImmediate (resolve.bind (null, value));
-    else
-      setTimeout (resolve.bind (null, value), 0);
-  });
 }
 
 // Format window titles

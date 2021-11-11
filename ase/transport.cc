@@ -5,24 +5,48 @@
 
 namespace Ase {
 
+// == TransportLimits ==
+struct TransportLimits final {
+  static_assert (TRANSPORT_PPQN == 4 * SEMIQUAVER_TICKS);
+  // resolution must be sample accurate @ MINBPM and MAXRATE
+  static_assert (MIN_BPM * TRANSPORT_PPQN / (60.0 * MAX_SAMPLERATE) > 1.0);
+  // double precision tick (2^52) should cover ca 1 year
+  static_assert (4503599627370496.0 / (MAX_BPM * TRANSPORT_PPQN) / (60 * 24) > 363.95);
+};
+
 // == TickSignature ==
 constexpr double INVERSE_SEMIQUAVER = 1.0 / SEMIQUAVER_TICKS;
 
 TickSignature::TickSignature() :
-  TickSignature (60, 4, 4, 0)
+  TickSignature (60, 4, 4)
 {}
 
-TickSignature::TickSignature (double bpm, uint8 beats_per_bar, uint8 beat_unit, int64 tick_offset)
+TickSignature::TickSignature (const TickSignature &other) :
+  TickSignature (other.bpm(), other.beats_per_bar(), other.beat_unit()) // other.offset_
+{}
+
+TickSignature::TickSignature (double bpm, uint8 beats_per_bar, uint8 beat_unit)
 {
-  set_signature (beats_per_bar, beat_unit, tick_offset);
+  set_signature (beats_per_bar, beat_unit);
   set_bpm (bpm);
+}
+
+TickSignature&
+TickSignature::operator= (const TickSignature &src)
+{
+  const double bpm = src.bpm();
+  const uint8 beats_per_bar = src.beats_per_bar();
+  const uint8 beat_unit = src.beat_unit();
+  set_signature (beats_per_bar, beat_unit);
+  set_bpm (bpm);
+  return *this;
 }
 
 /// Assign sample rate.
 void
 TickSignature::set_samplerate (uint samplerate)
 {
-  assert_return (samplerate > 0);
+  assert_return (samplerate >= MIN_SAMPLERATE && samplerate <= MAX_SAMPLERATE);
   samplerate_ = samplerate;
   inv_samplerate_ = 1.0 / samplerate_;
   const double ticks_per_minute_d = TRANSPORT_PPQN * bpm_;
@@ -32,10 +56,10 @@ TickSignature::set_samplerate (uint samplerate)
 
 /// Assign tempo in beats per minute.
 void
-TickSignature::set_bpm (double bpm, int64 start_offset)
+TickSignature::set_bpm (double bpm)
 {
   assert_return (bpm >= 0);
-  offset_ = start_offset;
+  // offset_ = start_offset;
   bpm_ = bpm;
   const double ticks_per_minute_d = TRANSPORT_PPQN * bpm_;
   ticks_per_minute_ = ticks_per_minute_d;
@@ -68,12 +92,12 @@ TickSignature::time_to_tick (const Time &time) const
 
 /// Assign time signature and offset for the signature to take effect.
 bool
-TickSignature::set_signature (uint8 beats_per_bar, uint8 beat_unit, int64 start_offset)
+TickSignature::set_signature (uint8 beats_per_bar, uint8 beat_unit)
 {
   const auto old_beats_per_bar_ = beats_per_bar_;
   const auto old_beat_unit_ = beat_unit_;
   const auto old_offset_ = offset_;
-  offset_ = start_offset;
+  // offset_ = start_offset;
   beats_per_bar_ = CLAMP (beats_per_bar, 1, 64);
   if (beat_unit == 1 || beat_unit == 2 || beat_unit == 4 || beat_unit == 8 || beat_unit == 16)
     beat_unit_ = beat_unit;
@@ -208,6 +232,8 @@ AudioTransport::AudioTransport (SpeakerArrangement speakerarrangement, uint samp
   speaker_arrangement (speakerarrangement)
 {
   tick_sig.set_samplerate (sample_rate);
+  assert_return (sample_rate >= MIN_SAMPLERATE && sample_rate <= MAX_SAMPLERATE);
+  update_current();
 }
 
 void
@@ -217,7 +243,15 @@ AudioTransport::running (bool r)
 }
 
 void
-AudioTransport::tickto (int64 newtick)
+AudioTransport::set_beat (TickSignature::Beat b)
+{
+  const int64 newtick = tick_sig.beat_to_tick (b);
+  return_unless (newtick != current_tick);
+  set_tick (newtick);
+}
+
+void
+AudioTransport::set_tick (int64 newtick)
 {
   current_tick = newtick;
   current_tick_d = current_tick;
@@ -227,10 +261,16 @@ AudioTransport::tickto (int64 newtick)
 void
 AudioTransport::tempo (double newbpm, uint8 numerator, uint8 denominator)
 {
-  tick_sig.set_bpm (CLAMP (newbpm, 10, 999.9999), tick_sig.start_offset());
-  tick_sig.set_signature (numerator, denominator, tick_sig.start_offset());
+  tick_sig.set_bpm (CLAMP (newbpm, MIN_BPM, MAX_BPM));
+  tick_sig.set_signature (numerator, denominator);
   current_bpm = current_bpm ? newbpm : 0;
   update_current();
+}
+
+void
+AudioTransport::tempo (const TickSignature &ticksignature)
+{
+  tempo (ticksignature.bpm(), ticksignature.beats_per_bar(), ticksignature.beat_unit());
 }
 
 void
@@ -248,7 +288,7 @@ AudioTransport::advance (uint nsamples)
 void
 AudioTransport::update_current ()
 {
-  TickSignature::Beat beat = tick_sig.beat_from_tick (current_tick);
+  TickSignature::Beat beat = tick_sig.beat_from_tick (std::max (current_tick, 0l));
   current_bar = beat.bar;
   current_beat = beat.beat;
   current_semiquaver = beat.semiquaver;
@@ -292,7 +332,7 @@ transport_tests()
   TASSERT (max_bar_ticks < 2147483648); // 2^31
   static_assert (TRANSPORT_PPQN < 8388608); // 8388608 = 2^31 / (4*64)
   int64 testtick = 170000000000077;
-  TickSignature ts { 60, 4, 4, 0 };
+  TickSignature ts { 60, 4, 4 };
   const TickSignature::Time tt = ts.time_from_tick (testtick);
   int32 hminutes, hours = divmod (tt.minutes, 60, &hminutes);
   TickSignature::Beat tb = ts.beat_from_tick (testtick);
