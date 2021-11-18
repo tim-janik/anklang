@@ -24,6 +24,11 @@ doc/install.files ::= $(strip		\
 )
 doc/all: $(doc/install.files)
 
+# == PDF with Latex dependency ==
+ifneq ($(WITH_LATEX),)
+doc/install.files += $>/doc/anklang-manual.pdf
+endif
+
 # == Copy files ==
 $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/doc/
 	$(QECHO) COPY $<
