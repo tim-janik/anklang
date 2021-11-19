@@ -24,6 +24,11 @@ doc/install.files ::= $(strip		\
 )
 doc/all: $(doc/install.files)
 
+# == PDF with Latex dependency ==
+ifneq ($(WITH_LATEX),)
+doc/install.files += $>/doc/anklang-manual.pdf
+endif
+
 # == Copy files ==
 $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/doc/
 	$(QECHO) COPY $<
@@ -117,15 +122,15 @@ viewdocs: $>/doc/anklang-manual.html $>/doc/anklang-manual.pdf
 
 # == installation ==
 pkgdocdir ::= $(pkgdir)/doc
-doc/install: $(doc/install.files)
+doc/install: $(doc/install.files) install--doc/style/install.files
 	@$(QECHO) INSTALL '$(DESTDIR)$(pkgdocdir)/...'
 	$Q rm -f '$(DESTDIR)$(pkgdocdir)'/* 2>/dev/null ; true
 	$Q $(INSTALL)      -d $(DESTDIR)$(pkgdocdir)/ $(DESTDIR)$(mandir)/man1/
 	$Q cp -p $(doc/install.files) $(DESTDIR)$(pkgdocdir)/
-	$Q $(INSTALL) -d $(DESTDIR)$(mandir)/man1/ && ln -s -r $(DESTDIR)$(pkgdir)/doc/anklang.1 $(DESTDIR)$(mandir)/man1/anklang.1
+	$Q $(INSTALL) -d $(DESTDIR)$(mandir)/man1/ && ln -fs -r $(DESTDIR)$(pkgdir)/doc/anklang.1 $(DESTDIR)$(mandir)/man1/anklang.1
 .PHONY: doc/install
 install: doc/install
-doc/uninstall: FORCE
+doc/uninstall: FORCE uninstall--doc/style/install.files
 	@$(QECHO) REMOVE '$(DESTDIR)$(pkgdocdir)/...'
 	$Q rm -f -r '$(DESTDIR)$(pkgdocdir)'
 	$Q rm -f '$(DESTDIR)$(mandir)/man1/anklang.1'

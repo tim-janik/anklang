@@ -1,5 +1,5 @@
 ## Anklang 0.0.1-alpha0:
 
-*Note: This is the master branch of Anklang, which contains alpha version software.
-Beware of file format instabilities and report any bugs you may find.*
+*Note: This is an alpha version of the Anklang source code. Beware of
+file format instabilities and please report any bugs you may find.*
 
