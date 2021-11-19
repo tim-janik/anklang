@@ -62,6 +62,7 @@ public:
   bool           writable      () const        { return flags_ & Flags::WRITABLE; }
   String         devid         () const;
   virtual void   close         () = 0;
+  static String  priority_string (uint priority);
   // registry
   using Entry = DriverEntry;
   using EntryVec = DriverEntryS;
