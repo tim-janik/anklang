@@ -23,6 +23,29 @@ Driver::devid () const
   return devid_.empty() ? driver_ : driver_ + "=" + devid_;
 }
 
+String
+Driver::priority_string (uint priority)
+{
+  StringS b;
+  if (priority & SURROUND)      b.push_back ("SURROUND");
+  if (priority & HEADSET)       b.push_back ("HEADSET");
+  if (priority & RECORDER)      b.push_back ("RECORDER");
+  if (priority & MIDI_THRU)     b.push_back ("MIDI_THRU");
+  if (priority & JACK)          b.push_back ("JACK");
+  if (priority & ALSA_USB)      b.push_back ("ALSA_USB");
+  if (priority & ALSA_KERN)     b.push_back ("ALSA_KERN");
+  if (priority & OSS)           b.push_back ("OSS");
+  if (priority & PULSE)         b.push_back ("PULSE");
+  if (priority & ALSA_USER)     b.push_back ("ALSA_USER");
+  if (priority & PSEUDO)        b.push_back ("PSEUDO");
+  if (priority & PAUTO)         b.push_back ("PAUTO");
+  if (priority & PNULL)         b.push_back ("PNULL");
+  if (priority & WCARD)         b.push_back ("WCARD");
+  if (priority & WDEV)          b.push_back ("WDEV");
+  if (priority & WSUB)          b.push_back ("WSUB");
+  return string_join ("|", b);
+}
+
 // == loaders ==
 using RegisteredLoaderFunc = Error (*) ();
 struct RegisteredLoader {

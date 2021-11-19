@@ -31,12 +31,12 @@ module.exports = {
     "no-unreachable": [ "warn" ],
     "semi": [ "error", "always" ],
     "no-extra-semi": [ "warn" ],
-    "no-console": [ "off" ],
-    "no-constant-condition": [ "off" ],
+    "no-console": [ OFF ],
+    "no-constant-condition": [ OFF ],
     "no-debugger": [ "warn" ],
-    "indent": [ "off", 2 ],
+    "indent": [ OFF, 2 ],
     "linebreak-style": [ "error", "unix" ],
-    "no-mixed-spaces-and-tabs": [ "off" ],
+    "no-mixed-spaces-and-tabs": [ OFF ],
     'no-irregular-whitespace': OFF, /* ["error", { 'skipStrings': true, 'skipComments': true, 'skipTemplates': true, 'skipRegExps':true } ], */
     'no-useless-escape': OFF,
     'no-inner-declarations': OFF,
@@ -63,7 +63,7 @@ module.exports = {
     'vue/no-multiple-template-root': OFF,
     'vue/no-v-model-argument': OFF,
     'vue/v-slot-style': OFF,
-    "quotes": [ "off", "single" ]
+    "quotes": [ OFF, "single" ]
   },
 
   "plugins": [ "html" ],
