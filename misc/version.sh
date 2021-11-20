@@ -5,15 +5,6 @@ set -Eeuo pipefail
 SCRIPTNAME=${0##*/} ; die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 9 ; }
 L=17
 
-# Usage: version.sh [--last]		# print project version
-while test $# -ne 0 ; do
-  case "$1" in
-    --last)		exec git describe --match 'v[0-9]*.[0-9]*.*[0-9a]' --abbrev=0 --first-parent HEAD ;;
-    *)                  : ;;
-  esac
-  shift
-done
-
 # Notes on scenario variants.
 # 1) git-archive snapshots, version info is embedded via $Format$ strings
 # 2) Full git repo, use git describe
@@ -37,10 +28,39 @@ exit_with_version() {
 }
 
 # Determine version from NEWS.md file
-peek_news_version() {
-  test -r NEWS.md || die "ERROR: failed to find NEWS.md"
-  sed -nr '/^##\s.*[0-9]+\.[0-9]+/ { s/.*\s([0-9]+\.[0-9]+[.a-z0-9A-Z-]*)\b.*/\1/; p; q }' NEWS.md
+fetch_news_version() { # fetch_news_version {1|2}
+  if	test "${1:-1}" == 1; then
+    IGNORE1='!'		# NOT ignore first
+  elif	test "$1" == 2; then
+    IGNORE1=		# ignore first
+  fi
+  SEDSCRIPT="
+    0,/^##\s.*\s[0-9]+\.[0-9]+[.a-z0-9A-Z-]*\b(:|$)/ $IGNORE1 D;	# Match start until first version tag and Delete
+    /^##\s.*\s[0-9]+\.[0-9]+[.a-z0-9A-Z-]*\b(:|$)/ {			# Match version tag
+      s/.*\s([0-9]+\.[0-9]+[.a-z0-9A-Z-]*)\b(:.*|$)/\1/;		# Extract version tag
+      p; q; }								# Print, Quit
+  "
+  if test -r NEWS.md ; then
+    sed -nre "$SEDSCRIPT" NEWS.md
+  fi
 }
+
+# Usage: version.sh [--news-tag|--last-tag]	# print project versions
+while test $# -ne 0 ; do
+  case "$1" in
+    --news-tag1)
+      NEWS_VERSION="$(fetch_news_version 1)"
+      test -n "$NEWS_VERSION" || die "ERROR: failed to extract release tag from NEWS.md"
+      echo "v${NEWS_VERSION#v}" && exit ;;
+    --news-tag2)
+      NEWS_VERSION="$(fetch_news_version 2)"
+      test -n "$NEWS_VERSION" || die "ERROR: failed to extract release tag from NEWS.md"
+      echo "v${NEWS_VERSION#v}" && exit ;;
+    *)
+      true ;;
+  esac
+  shift
+done
 
 # Yield abbreviated commit hash for version string
 shorthash() {
@@ -52,7 +72,7 @@ GITARCHIVE_HASH='$Format:%H$' && GITARCHIVE_DATE='$Format:%ci$' && GITARCHIVE_RE
 if test "$GITARCHIVE_HASH" = "${GITARCHIVE_HASH/:/}" ; then
   GITARCHIVE_TAG=$(echo " $GITARCHIVE_REFS" | tr , '\n' |
 		     sed -nr '/\btag: v?[0-9]+\.[0-9]+/ { s/^[^0-9]*\b(v?[0-9]+\.[0-9]+[.a-z0-9A-Z-]*).*/\1/; p; q }')
-  NEWS_VERSION="$(peek_news_version)"
+  NEWS_VERSION="$(fetch_news_version 1)"
   if test -n "$GITARCHIVE_TAG" -a "${GITARCHIVE_TAG#v}" = "$NEWS_VERSION" ; then
     # release version (from tarball)
     exit_with_version "$NEWS_VERSION" "v$NEWS_VERSION-git${GITARCHIVE_HASH:0:$L}" "$GITARCHIVE_DATE"
@@ -68,7 +88,7 @@ if COMMIT_DATE=$(git log -1 --format='%ci' 2>/dev/null) &&
     BUILD_ID=$(git describe --match "$LAST_TAG" --abbrev=$L --long --dirty)
 then
   [[ "$BUILD_ID" =~ ^v?[0-9]+\.[0-9].*-0-g[a-z0-9]+$ ]] &&
-    NEWS_VERSION="$(peek_news_version)" &&
+    NEWS_VERSION="$(fetch_news_version 1)" &&
     test "${LAST_TAG#v}" = "$NEWS_VERSION" && {
       # release version
       exit_with_version "$NEWS_VERSION" "v$NEWS_VERSION-git`shorthash`" "$COMMIT_DATE"
@@ -79,7 +99,7 @@ fi
 
 # Shallow git repo, resorts to NEWS.md
 test -n "$COMMIT_DATE" && {
-  NEWS_VERSION="$(peek_news_version)"
+  NEWS_VERSION="$(fetch_news_version 1)"
   BUILD_ID="v$NEWS_VERSION-g`shorthash`-dirty"
   # not a release (shallow git repo)
   exit_with_version "$NEWS_VERSION-dirty" "$BUILD_ID" "$COMMIT_DATE"
