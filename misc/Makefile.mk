@@ -96,7 +96,7 @@ $>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
 # == appimage ==
 APPINST = $>/appinst/
 APPBASE = $>/appbase/
-appimage: $>/misc/appaux/appimage-runtime-zstd all		| $>/misc/bin/
+$>/anklang-$(version_short)-x64.AppImage: $>/misc/appaux/appimage-runtime-zstd $>/TAGS $(GITCOMMITDEPS) | $>/misc/bin/
 	$(QGEN)
 	@: # Installation Step
 	@echo '  INSTALL ' AppImage files
@@ -128,11 +128,12 @@ appimage: $>/misc/appaux/appimage-runtime-zstd all		| $>/misc/bin/
 	@: # Create AppImage executable
 	@echo '  BUILD   ' appimage-runtime...
 	$Q mksquashfs $(APPBASE) $>/Anklang-x86_64.AppImage $(misc/squashfsopts)
-	$Q cat $>/misc/appaux/appimage-runtime-zstd $>/Anklang-x86_64.AppImage > $>/anklang-$(version_short)-x64.AppImage && rm -f $>/Anklang-x86_64.AppImage
-	$Q chmod +x $>/anklang-$(version_short)-x64.AppImage
-	$Q ls -l -h --color=auto $>/anklang-*-x64.AppImage
-.PHONY: appimage
+	$Q cat $>/misc/appaux/appimage-runtime-zstd $>/Anklang-x86_64.AppImage > $@.tmp && rm -f $>/Anklang-x86_64.AppImage
+	$Q chmod +x $@.tmp
+	$Q mv $@.tmp $@ && ls -l -h --color=auto $@
 misc/squashfsopts ::= -root-owned -noappend -mkfs-time 0 -no-exports -no-recovery -noI -always-use-fragments -b 1048576 -comp zstd -Xcompression-level 22
+appimage: $>/anklang-$(version_short)-x64.AppImage
+.PHONY: appimage
 
 # == misc/anklang.desktop ==
 # https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html
