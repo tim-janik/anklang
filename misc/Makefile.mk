@@ -84,6 +84,13 @@ scan-build:								| $>/misc/scan-build/
 .PHONY: scan-build
 # Note, 'make scan-build' requires 'make default CC=clang CXX=clang++' to generate any reports.
 
+# == anklang-deb ==
+$>/anklang_$(version_short)_amd64.deb: $>/TAGS $(GITCOMMITDEPS)
+	$(QGEN)
+	$Q misc/mkdeb.sh
+anklang-deb: $>/anklang_$(version_short)_amd64.deb
+.PHONY: anklang-deb
+
 # == appimage ==
 APPINST = $>/appinst/
 APPBASE = $>/appbase/
