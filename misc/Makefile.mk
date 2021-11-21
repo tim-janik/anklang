@@ -231,7 +231,7 @@ release-upload: NEWS.md
 		cd $(RELEASE_TMPDIR) &&						\
 		git checkout '$(RELEASE_TAG)' ;					\
 	   else									\
-		git worktree remove $(RELEASE_TMPDIR) 2>/dev/null ;		\
+		git worktree remove --force $(RELEASE_TMPDIR) 2>/dev/null ;	\
 		git worktree add $(RELEASE_TMPDIR) '$(RELEASE_TAG)' ;		\
 	   fi
 	@: # Make release-build, delete tag on error
