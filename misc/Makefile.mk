@@ -207,6 +207,10 @@ release-build: # build release artefacts with default MODE
 	misc/dbuild.sh make V=$V anklang-deb
 	misc/dbuild.sh make V=$V appimage
 	time $>/anklang-$(version_short:v%=%)-x64.AppImage --quitstartup
+	$Q cd $> && ls -l					\
+		'ChangeLog-$(version_short:v%=%).txt'		\
+		'anklang_$(version_short:v%=%)_amd64.deb'	\
+		'anklang-$(version_short:v%=%)-x64.AppImage'
 .PHONY: release-build
 
 # == release-upload ==
@@ -232,7 +236,6 @@ release-upload: NEWS.md
 	   fi
 	@: # Make release-build, delete tag on error
 	$Q $(MAKE) -C $(RELEASE_TMPDIR) release-build				\
-	&& ls -l '$(RELEASE_APPIMAGE)' '$(RELEASE_DEB)'				\
 	&& : read -p 'Upload tagged release: $(RELEASE_TAG): (y/n) ' A		\
 	&& : test y == "$$A"							\
 	|| { git tag -d '$(RELEASE_TAG)' ; exit -1 ; }
