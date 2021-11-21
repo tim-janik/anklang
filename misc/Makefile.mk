@@ -84,15 +84,6 @@ scan-build:								| $>/misc/scan-build/
 .PHONY: scan-build
 # Note, 'make scan-build' requires 'make default CC=clang CXX=clang++' to generate any reports.
 
-# == appimage tools ==
-$>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
-	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
-	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
-		0c4c18bb44e011e8416fc74fb067fe37a7de97a8548ee8e5350985ddee1c0164 https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd )
-	$Q cd $>/misc/appaux/ && \
-		curl -sfSOL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
-		chmod +x linuxdeploy-x86_64.AppImage
-
 # == appimage ==
 APPINST = $>/appinst/
 APPBASE = $>/appbase/
@@ -132,6 +123,13 @@ $>/anklang-$(version_short)-x64.AppImage: $>/misc/appaux/appimage-runtime-zstd $
 	$Q chmod +x $@.tmp
 	$Q mv $@.tmp $@ && ls -l -h --color=auto $@
 misc/squashfsopts ::= -root-owned -noappend -mkfs-time 0 -no-exports -no-recovery -noI -always-use-fragments -b 1048576 -comp zstd -Xcompression-level 22
+$>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
+	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
+	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
+		0c4c18bb44e011e8416fc74fb067fe37a7de97a8548ee8e5350985ddee1c0164 https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd )
+	$Q cd $>/misc/appaux/ && \
+		curl -sfSOL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
+		chmod +x linuxdeploy-x86_64.AppImage
 appimage: $>/anklang-$(version_short)-x64.AppImage
 .PHONY: appimage
 
