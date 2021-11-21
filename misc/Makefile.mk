@@ -199,10 +199,10 @@ release-news:
 
 # == release-build ==
 release-build: # build release artefacts with default MODE
-	misc/dbuild.sh nice make all -j`nproc`
-	misc/dbuild.sh make check
-	misc/dbuild.sh misc/mkdeb.sh
-	misc/dbuild.sh make appimage
+	misc/dbuild.sh nice make V=$V all -j`nproc`
+	misc/dbuild.sh make V=$V check
+	misc/dbuild.sh make V=$V anklang-deb
+	misc/dbuild.sh make V=$V appimage
 	time $>/anklang-$(version_short:v%=%)-x64.AppImage --quitstartup
 .PHONY: release-build
 
