@@ -176,3 +176,10 @@ release-news:
 	$Q LAST_TAG=`./misc/version.sh --last-tag` && ( set -x && \
 	  git log --first-parent --date=short --pretty='%s    # %cd %an %h%d%n%w(0,4,4)%b' --reverse HEAD "$$LAST_TAG^!" ) | \
 		sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' -e '/^\s*$$/d'
+
+# == release-build ==
+release-build: # build release artefacts with default MODE
+	misc/dbuild.sh nice make all -j`nproc`
+	misc/dbuild.sh make check
+	misc/dbuild.sh make appimage
+	time $>/anklang-$(version_short:v%=%)-x64.AppImage --quitstartup
