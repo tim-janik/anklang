@@ -192,9 +192,10 @@ CLEANFILES += $>/ChangeLog-$(version_short).txt
 
 # == release-news ==
 release-news:
-	$Q LAST_TAG=`./misc/version.sh --last-tag` && ( set -x && \
+	$Q LAST_TAG=`./misc/version.sh --news-tag2` && ( set -x && \
 	  git log --first-parent --date=short --pretty='%s    # %cd %an %h%d%n%w(0,4,4)%b' --reverse HEAD "$$LAST_TAG^!" ) | \
 		sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' -e '/^\s*$$/d'
+.PHONY: release-news
 
 # == release-build ==
 release-build: # build release artefacts with default MODE
@@ -203,3 +204,48 @@ release-build: # build release artefacts with default MODE
 	misc/dbuild.sh misc/mkdeb.sh
 	misc/dbuild.sh make appimage
 	time $>/anklang-$(version_short:v%=%)-x64.AppImage --quitstartup
+.PHONY: release-build
+
+# == release-upload ==
+RELEASE_CONTINUATION ::= false
+release-upload: NEWS.md
+	$(QGEN)
+	@: # Setup release variables (note, eval preceeds all shell commands)
+	@ $(eval RELEASE_TAG       != ./misc/version.sh --news-tag1)
+	@ $(eval RELEASE_DEB      ::= $(RELEASE_TMPDIR)/out/anklang_$(RELEASE_TAG:v%=%)_amd64.deb)
+	@ $(eval RELEASE_APPIMAGE ::= $(RELEASE_TMPDIR)/out/anklang-$(RELEASE_TAG:v%=%)-x64.AppImage)
+	@: # Check release tag
+	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
+	$Q test -z "`git tag -l '$(RELEASE_TAG)'`" || \
+		{ echo '$@: error: release tag from NEWS.md already exists: $(RELEASE_TAG)' >&2 ; false ; }
+	@: # Tag release, create temporary build directory
+	$Q git tag -a '$(RELEASE_TAG)' -m "`git log -1 --pretty=%s`"
+	$Q if $(RELEASE_CONTINUATION) && test -d $(RELEASE_TMPDIR) ; then	\
+		cd $(RELEASE_TMPDIR) &&						\
+		git checkout '$(RELEASE_TAG)' ;					\
+	   else									\
+		git worktree remove $(RELEASE_TMPDIR) 2>/dev/null ;		\
+		git worktree add $(RELEASE_TMPDIR) '$(RELEASE_TAG)' ;		\
+	   fi
+	@: # Make release-build, delete tag on error
+	$Q $(MAKE) -C $(RELEASE_TMPDIR) release-build				\
+	&& ls -l '$(RELEASE_APPIMAGE)' '$(RELEASE_DEB)'				\
+	&& : read -p 'Upload tagged release: $(RELEASE_TAG): (y/n) ' A		\
+	&& : test y == "$$A"							\
+	|| { git tag -d '$(RELEASE_TAG)' ; exit -1 ; }
+	@: # Create Github release and upload assets
+	$Q echo 'Anklang $(RELEASE_TAG)'		>  $(RELEASE_TMPDIR)/out/release-message
+	$Q echo						>> $(RELEASE_TMPDIR)/out/release-message
+	$Q sed '0,/^## /b; /^## /Q; ' NEWS.md		>> $(RELEASE_TMPDIR)/out/release-message
+	$Q hub release create --draft --prerelease		\
+		-F $(RELEASE_TMPDIR)/out/release-message	\
+		-a '$(RELEASE_DEB)'				\
+		-a '$(RELEASE_APPIMAGE)'			\
+		'$(RELEASE_TAG)'				\
+	|| { git tag -d '$(RELEASE_TAG)' ;			\
+	     hub release delete '$(RELEASE_TAG)' ;		\
+	     exit -1 ; }
+	@: # Clean temporary build directory
+	$Q ! $(RELEASE_CONTINUATION) || git worktree remove $(RELEASE_TMPDIR) 2>/dev/null ; true
+RELEASE_TMPDIR ::= /tmp/$(USER)-anklang-release
+.PHONY: release-upload
