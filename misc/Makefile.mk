@@ -189,6 +189,8 @@ $>/ChangeLog-$(version_short).txt: $(GITCOMMITDEPS) misc/Makefile.mk		| $>/
 	$Q sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i $@.tmp	# Compress multiple newlines
 	$Q mv $@.tmp $@
 CLEANFILES += $>/ChangeLog-$(version_short).txt
+release-changelog: $>/ChangeLog-$(version_short).txt
+.PHONY: release-changelog
 
 # == release-news ==
 release-news:
@@ -201,6 +203,7 @@ release-news:
 release-build: # build release artefacts with default MODE
 	misc/dbuild.sh nice make V=$V all -j`nproc`
 	misc/dbuild.sh make V=$V check
+	misc/dbuild.sh make V=$V release-changelog
 	misc/dbuild.sh make V=$V anklang-deb
 	misc/dbuild.sh make V=$V appimage
 	time $>/anklang-$(version_short:v%=%)-x64.AppImage --quitstartup
