@@ -219,8 +219,9 @@ release-upload: NEWS.md
 	$(QGEN)
 	@: # Setup release variables (note, eval preceeds all shell commands)
 	@ $(eval RELEASE_TAG       != ./misc/version.sh --news-tag1)
-	@ $(eval RELEASE_DEB      ::= $(RELEASE_TMPDIR)/out/anklang_$(RELEASE_TAG:v%=%)_amd64.deb)
-	@ $(eval RELEASE_APPIMAGE ::= $(RELEASE_TMPDIR)/out/anklang-$(RELEASE_TAG:v%=%)-x64.AppImage)
+	@ $(eval RELEASE_CHANGELOG ::= $(RELEASE_TMPDIR)/out/ChangeLog-$(RELEASE_TAG:v%=%).txt)
+	@ $(eval RELEASE_DEB       ::= $(RELEASE_TMPDIR)/out/anklang_$(RELEASE_TAG:v%=%)_amd64.deb)
+	@ $(eval RELEASE_APPIMAGE  ::= $(RELEASE_TMPDIR)/out/anklang-$(RELEASE_TAG:v%=%)-x64.AppImage)
 	@: # Check release tag
 	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
 	$Q test -z "`git tag -l '$(RELEASE_TAG)'`" || \
@@ -245,8 +246,9 @@ release-upload: NEWS.md
 	$Q sed '0,/^## /b; /^## /Q; ' NEWS.md		>> $(RELEASE_TMPDIR)/out/release-message
 	$Q hub release create --draft --prerelease		\
 		-F $(RELEASE_TMPDIR)/out/release-message	\
-		-a '$(RELEASE_DEB)'				\
 		-a '$(RELEASE_APPIMAGE)'			\
+		-a '$(RELEASE_DEB)'				\
+		-a '$(RELEASE_CHANGELOG)'			\
 		'$(RELEASE_TAG)'				\
 	|| { git tag -d '$(RELEASE_TAG)' ;			\
 	     hub release delete '$(RELEASE_TAG)' ;		\
