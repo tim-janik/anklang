@@ -170,3 +170,9 @@ check-copyright: misc/mkcopyright.py doc/copyright.ini $>/misc/git-ls-tree.lst
 	$(QGEN)
 	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini $$(cat $>/misc/git-ls-tree.lst)
 CHECK_TARGETS += $(WITHGIT) check-copyright
+
+# == release-news ==
+release-news:
+	$Q LAST_TAG=`./misc/version.sh --last-tag` && ( set -x && \
+	  git log --first-parent --date=short --pretty='%s    # %cd %an %h%d%n%w(0,4,4)%b' --reverse HEAD "$$LAST_TAG^!" ) | \
+		sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' -e '/^\s*$$/d'
