@@ -181,5 +181,6 @@ release-news:
 release-build: # build release artefacts with default MODE
 	misc/dbuild.sh nice make all -j`nproc`
 	misc/dbuild.sh make check
+	misc/dbuild.sh misc/mkdeb.sh
 	misc/dbuild.sh make appimage
 	time $>/anklang-$(version_short:v%=%)-x64.AppImage --quitstartup
