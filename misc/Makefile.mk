@@ -237,8 +237,6 @@ release-upload: NEWS.md
 	   fi
 	@: # Make release-build, delete tag on error
 	$Q $(MAKE) -C $(RELEASE_TMPDIR) release-build				\
-	&& : read -p 'Upload tagged release: $(RELEASE_TAG): (y/n) ' A		\
-	&& : test y == "$$A"							\
 	|| { git tag -d '$(RELEASE_TAG)' ; exit -1 ; }
 	@: # Create Github release and upload assets
 	$Q echo 'Anklang $(RELEASE_TAG)'		>  $(RELEASE_TMPDIR)/out/release-message
@@ -253,6 +251,11 @@ release-upload: NEWS.md
 	|| { git tag -d '$(RELEASE_TAG)' ;			\
 	     hub release delete '$(RELEASE_TAG)' ;		\
 	     exit -1 ; }
+	@: # Publish tag
+	$Q true									\
+	&& read -p 'Publish release tag: $(RELEASE_TAG): (y/n) ' ANSWER		\
+	&& test y == "$$ANSWER"							\
+	&& git push origin '$(RELEASE_TAG)'
 	@: # Clean temporary build directory
 	$Q ! $(RELEASE_CONTINUATION) || git worktree remove $(RELEASE_TMPDIR) 2>/dev/null ; true
 RELEASE_TMPDIR ::= /tmp/$(USER)-anklang-release
