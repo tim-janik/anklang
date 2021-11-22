@@ -234,26 +234,25 @@ INSTALL_BIN_RULE_XDBG = $(eval $(call INSTALL_FILE_RULE.impl,$(strip $1),$2, $3,
 
 define INSTALL_DIR_RULE.impl
 .PHONY: install--$(strip $1) uninstall--$(strip $1)
-install--$(strip $1): $3 # mkdir $2, avoid EBUSY by deleting first, install target T
-	$$(QECHO) INSTALL '$(strip $2)/...'
+install--$(strip $1): $3 $4 # mkdir $2, avoid EBUSY by first deleting target files, then install target T
+	$$(QECHO) INSTALL '$(strip $2)/$(notdir $(abspath $(word 1,$3)))...'
 	$$(call INSTALL_RULE.pre-hook,$@)
 	$$Q $$(INSTALL) -d '$(strip $2)'
-	$$Q cd '$(strip $2)' \
-	  $$(foreach T, $(notdir $3), \
-	    && rm -f -r $$T)
-	$$Q $(CP) -dR $$^ '$(strip $2)'
+	$$Q cd '$(strip $2)' && \
+	      rm -f -r	$$(foreach T, $(notdir $(abspath $3)), $$T)
+	$$Q $(CP) -dR $3 '$(strip $2)'
 	$$(call INSTALL_RULE.post-hook,$@)
 install: install--$(strip $1)
 uninstall--$(strip $1): # delete target T
-	$$(QECHO) REMOVE '$(strip $2)/...'
+	$$(QECHO) REMOVE '$(strip $2)/$(notdir $(abspath $(word 1,$3)))...'
 	$$Q if cd '$(strip $2)' 2>/dev/null ; then \
-	      rm -f -r	$$(foreach T, $(notdir $3), $$T) ; \
+	      rm -f -r	$$(foreach T, $(notdir $(abspath $3)), $$T) ; \
 	    fi
 	$$Q rmdir -p '$(strip $2)' >/dev/null 2>&1 ; :
 uninstall: uninstall--$(strip $1)
 endef
-# $(call INSTALL_DIR_RULE, rulename, installdirectory, DIRNAMES) - install directories via recursive copy
-INSTALL_DIR_RULE = $(eval $(call INSTALL_DIR_RULE.impl,$(strip $1),$2, $3))
+# $(call INSTALL_DIR_RULE, rulename, installdirectory, DIRNAMES, dependencies) - install directories via recursive copy
+INSTALL_DIR_RULE = $(eval $(call INSTALL_DIR_RULE.impl,$(strip $1),$2, $3, $4))
 
 # $(call INSTALL_SYMLINK, TARGET, LINKNAME) - install symbolic link to target file
 INSTALL_SYMLINK = rm -f $2 && mkdir -p "$$(dirname $2)" && ln -s $1 $2

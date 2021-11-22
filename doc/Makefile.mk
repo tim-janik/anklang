@@ -32,7 +32,7 @@ endif
 # == Copy files ==
 $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/doc/
 	$(QECHO) COPY $<
-	$Q cp $< $@
+	$Q $(CP) $< $@
 
 # == doc/copyright ==
 $>/doc/copyright: misc/mkcopyright.py doc/copyright.ini $>/misc/git-ls-tree.lst		| $>/doc/
@@ -126,13 +126,17 @@ doc/install: $(doc/install.files) install--doc/style/install.files
 	@$(QECHO) INSTALL '$(DESTDIR)$(pkgdocdir)/...'
 	$Q rm -f '$(DESTDIR)$(pkgdocdir)'/* 2>/dev/null ; true
 	$Q $(INSTALL)      -d $(DESTDIR)$(pkgdocdir)/ $(DESTDIR)$(mandir)/man1/
-	$Q cp -p $(doc/install.files) $(DESTDIR)$(pkgdocdir)/
+	$Q $(CP) $(doc/install.files) $(DESTDIR)$(pkgdocdir)/
 	$Q $(INSTALL) -d $(DESTDIR)$(mandir)/man1/ && ln -fs -r $(DESTDIR)$(pkgdir)/doc/anklang.1 $(DESTDIR)$(mandir)/man1/anklang.1
+	$Q $(INSTALL) -d '$(DESTDIR)$(docdir)/'
+	$Q rm -f '$(DESTDIR)$(docdir)/anklang'
+	$Q ln -s -r '$(DESTDIR)$(pkgdir)/doc' '$(DESTDIR)$(docdir)/anklang'
 .PHONY: doc/install
 install: doc/install
 doc/uninstall: FORCE uninstall--doc/style/install.files
 	@$(QECHO) REMOVE '$(DESTDIR)$(pkgdocdir)/...'
 	$Q rm -f -r '$(DESTDIR)$(pkgdocdir)'
 	$Q rm -f '$(DESTDIR)$(mandir)/man1/anklang.1'
+	$Q rm -f '$(DESTDIR)$(docdir)/anklang'
 .PHONY: doc/uninstall
 uninstall: doc/uninstall

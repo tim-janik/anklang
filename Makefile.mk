@@ -72,11 +72,12 @@ prefix		 ?= /usr/local
 bindir		 ?= $(prefix)/bin
 sharedir 	 ?= $(prefix)/share
 mandir		 ?= $(sharedir)/man
+docdir		 ?= $(sharedir)/doc
 libdir		 ?= $(prefix)/lib
 pkgprefix	 ?= $(libdir)
 pkgdir		 ?= $(pkgprefix)/anklang-$(version_major)-$(version_minor)
 pkgsharedir	 ?= $(pkgdir)/share
-.config.defaults += prefix bindir sharedir mandir libdir pkgprefix pkgdir
+.config.defaults += prefix bindir sharedir mandir docdir libdir pkgprefix pkgdir
 pkgdocdir	 ?= $(pkgdir)/doc
 
 # == Target Collections ==

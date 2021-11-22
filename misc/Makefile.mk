@@ -84,19 +84,17 @@ scan-build:								| $>/misc/scan-build/
 .PHONY: scan-build
 # Note, 'make scan-build' requires 'make default CC=clang CXX=clang++' to generate any reports.
 
-# == appimage tools ==
-$>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
-	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
-	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
-		0c4c18bb44e011e8416fc74fb067fe37a7de97a8548ee8e5350985ddee1c0164 https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd )
-	$Q cd $>/misc/appaux/ && \
-		curl -sfSOL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
-		chmod +x linuxdeploy-x86_64.AppImage
+# == anklang-deb ==
+$>/anklang_$(version_short)_amd64.deb: $>/TAGS $(GITCOMMITDEPS)
+	$(QGEN)
+	$Q misc/mkdeb.sh
+anklang-deb: $>/anklang_$(version_short)_amd64.deb
+.PHONY: anklang-deb
 
 # == appimage ==
 APPINST = $>/appinst/
 APPBASE = $>/appbase/
-appimage: $>/misc/appaux/appimage-runtime-zstd all		| $>/misc/bin/
+$>/anklang-$(version_short)-x64.AppImage: $>/misc/appaux/appimage-runtime-zstd $>/TAGS $(GITCOMMITDEPS) | $>/misc/bin/
 	$(QGEN)
 	@: # Installation Step
 	@echo '  INSTALL ' AppImage files
@@ -128,11 +126,19 @@ appimage: $>/misc/appaux/appimage-runtime-zstd all		| $>/misc/bin/
 	@: # Create AppImage executable
 	@echo '  BUILD   ' appimage-runtime...
 	$Q mksquashfs $(APPBASE) $>/Anklang-x86_64.AppImage $(misc/squashfsopts)
-	$Q cat $>/misc/appaux/appimage-runtime-zstd $>/Anklang-x86_64.AppImage > $>/anklang-$(version_short)-x64.AppImage && rm -f $>/Anklang-x86_64.AppImage
-	$Q chmod +x $>/anklang-$(version_short)-x64.AppImage
-	$Q ls -l -h --color=auto $>/anklang-*-x64.AppImage
-.PHONY: appimage
+	$Q cat $>/misc/appaux/appimage-runtime-zstd $>/Anklang-x86_64.AppImage > $@.tmp && rm -f $>/Anklang-x86_64.AppImage
+	$Q chmod +x $@.tmp
+	$Q mv $@.tmp $@ && ls -l -h --color=auto $@
 misc/squashfsopts ::= -root-owned -noappend -mkfs-time 0 -no-exports -no-recovery -noI -always-use-fragments -b 1048576 -comp zstd -Xcompression-level 22
+$>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
+	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
+	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
+		0c4c18bb44e011e8416fc74fb067fe37a7de97a8548ee8e5350985ddee1c0164 https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd )
+	$Q cd $>/misc/appaux/ && \
+		curl -sfSOL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
+		chmod +x linuxdeploy-x86_64.AppImage
+appimage: $>/anklang-$(version_short)-x64.AppImage
+.PHONY: appimage
 
 # == misc/anklang.desktop ==
 # https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html
@@ -169,3 +175,85 @@ check-copyright: misc/mkcopyright.py doc/copyright.ini $>/misc/git-ls-tree.lst
 	$(QGEN)
 	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini $$(cat $>/misc/git-ls-tree.lst)
 CHECK_TARGETS += $(WITHGIT) check-copyright
+
+# == ChangeLog ==
+$>/ChangeLog-$(version_short).txt: $(GITCOMMITDEPS) misc/Makefile.mk		| $>/
+	$(QGEN)
+	$Q LAST_TAG=`misc/version.sh --news-tag2`				\
+	&& { LAST_COMMIT=`git log -1 --pretty=%H "$$LAST_TAG" 2>/dev/null`	\
+	  || LAST_COMMIT=96e7881fac0a2cd7f4d20a3f0666f1295ff4ee77 ; }		\
+	&& git log --pretty='^^%ad  %an 	# %h%n%n%B%n'			\
+		--topo-order --full-history \
+		--abbrev=13 --date=short $$LAST_COMMIT..HEAD	 > $@.tmp	# Generate ChangeLog with ^^-prefixed records
+	$Q sed 's/^/	/; s/^	^^// ; s/[[:space:]]\+$$// '    -i $@.tmp	# Tab-indent commit bodies, kill trailing whitespaces
+	$Q sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i $@.tmp	# Compress multiple newlines
+	$Q mv $@.tmp $@
+CLEANFILES += $>/ChangeLog-$(version_short).txt
+release-changelog: $>/ChangeLog-$(version_short).txt
+.PHONY: release-changelog
+
+# == release-news ==
+release-news:
+	$Q LAST_TAG=`./misc/version.sh --news-tag2` && ( set -x && \
+	  git log --first-parent --date=short --pretty='%s    # %cd %an %h%d%n%w(0,4,4)%b' --reverse HEAD "$$LAST_TAG^!" ) | \
+		sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' -e '/^\s*$$/d'
+.PHONY: release-news
+
+# == release-build ==
+release-build: # build release artefacts with default MODE
+	misc/dbuild.sh nice make V=$V all -j`nproc`
+	misc/dbuild.sh make V=$V check
+	misc/dbuild.sh make V=$V release-changelog
+	misc/dbuild.sh make V=$V anklang-deb
+	misc/dbuild.sh make V=$V appimage
+	time $>/anklang-$(version_short:v%=%)-x64.AppImage --quitstartup
+	$Q cd $> && ls -l					\
+		'ChangeLog-$(version_short:v%=%).txt'		\
+		'anklang_$(version_short:v%=%)_amd64.deb'	\
+		'anklang-$(version_short:v%=%)-x64.AppImage'
+.PHONY: release-build
+
+# == release-upload ==
+RELEASE_CONTINUATION ::= false
+release-upload: NEWS.md
+	$(QGEN)
+	@: # Setup release variables (note, eval preceeds all shell commands)
+	@ $(eval RELEASE_TAG       != ./misc/version.sh --news-tag1)
+	@ $(eval RELEASE_CHANGELOG ::= $(RELEASE_TMPDIR)/out/ChangeLog-$(RELEASE_TAG:v%=%).txt)
+	@ $(eval RELEASE_DEB       ::= $(RELEASE_TMPDIR)/out/anklang_$(RELEASE_TAG:v%=%)_amd64.deb)
+	@ $(eval RELEASE_APPIMAGE  ::= $(RELEASE_TMPDIR)/out/anklang-$(RELEASE_TAG:v%=%)-x64.AppImage)
+	@: # Check release tag
+	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
+	$Q test -z "`git tag -l '$(RELEASE_TAG)'`" || \
+		{ echo '$@: error: release tag from NEWS.md already exists: $(RELEASE_TAG)' >&2 ; false ; }
+	@: # Tag release, create temporary build directory
+	$Q git tag -a '$(RELEASE_TAG)' -m "`git log -1 --pretty=%s`"
+	$Q if $(RELEASE_CONTINUATION) && test -d $(RELEASE_TMPDIR) ; then	\
+		cd $(RELEASE_TMPDIR) &&						\
+		git checkout '$(RELEASE_TAG)' ;					\
+	   else									\
+		git worktree remove --force $(RELEASE_TMPDIR) 2>/dev/null ;	\
+		git worktree add $(RELEASE_TMPDIR) '$(RELEASE_TAG)' ;		\
+	   fi
+	@: # Make release-build, delete tag on error
+	$Q $(MAKE) -C $(RELEASE_TMPDIR) release-build				\
+	&& : read -p 'Upload tagged release: $(RELEASE_TAG): (y/n) ' A		\
+	&& : test y == "$$A"							\
+	|| { git tag -d '$(RELEASE_TAG)' ; exit -1 ; }
+	@: # Create Github release and upload assets
+	$Q echo 'Anklang $(RELEASE_TAG)'		>  $(RELEASE_TMPDIR)/out/release-message
+	$Q echo						>> $(RELEASE_TMPDIR)/out/release-message
+	$Q sed '0,/^## /b; /^## /Q; ' NEWS.md		>> $(RELEASE_TMPDIR)/out/release-message
+	$Q hub release create --draft --prerelease		\
+		-F $(RELEASE_TMPDIR)/out/release-message	\
+		-a '$(RELEASE_APPIMAGE)'			\
+		-a '$(RELEASE_DEB)'				\
+		-a '$(RELEASE_CHANGELOG)'			\
+		'$(RELEASE_TAG)'				\
+	|| { git tag -d '$(RELEASE_TAG)' ;			\
+	     hub release delete '$(RELEASE_TAG)' ;		\
+	     exit -1 ; }
+	@: # Clean temporary build directory
+	$Q ! $(RELEASE_CONTINUATION) || git worktree remove $(RELEASE_TMPDIR) 2>/dev/null ; true
+RELEASE_TMPDIR ::= /tmp/$(USER)-anklang-release
+.PHONY: release-upload

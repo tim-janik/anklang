@@ -91,9 +91,6 @@ dch_msg "$NAME" "$VERSION" unstable medium \
 	> $DEBCHANGELOG
 gzip -9 $DEBCHANGELOG
 
-# /usr/share/doc/PACKAGE/ -> ..PACKAGE/doc/ - provide mandatory Debian package docs
-(cd $DROOT && mkdir -p usr/share/doc/ && ln -s ../../..$PKGDIR/doc usr/share/doc/$NAME)
-
 # postinst, postrm - generate header
 write_pkgscript_header()
 {

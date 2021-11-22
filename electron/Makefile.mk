@@ -43,6 +43,6 @@ electron/uninstall:
 	@$(QECHO) REMOVE '$(DESTDIR)$(electron/installdir)/...'
 	$Q rm -f -r '$(DESTDIR)$(electron/installdir)'
 	$Q rm -f '$(DESTDIR)$(pkgdir)/bin/anklang'
-	$Q $(RMDIR_P) '$(DESTDIR)$(pkgdir)/bin' ; :
+	$Q $(RMDIR_P) '$(DESTDIR)$(pkgdir)/bin' || true
 	$Q rm -f '$(DESTDIR)$(bindir)/anklang'
 uninstall: electron/uninstall
