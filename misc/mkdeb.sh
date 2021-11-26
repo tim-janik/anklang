@@ -9,9 +9,9 @@ function die  { [ -n "$*" ] && echo "$SCRIPTNAME: $*" >&2; exit 127 ; }
 : make default prefix=/opt pkgprefix=/opt sharedir=/usr/share bindir=/usr/bin
 
 # paths
-BUILDDIR=out
+BUILDDIR="${BUILDDIR:-out}"
 DROOT=$BUILDDIR/mkdeb/
-PKGDIR=$(sed -rn '/^ *"pkgdir":/{ s/.*:.*"([^"]+)", *$/\1/; p; q; }' out/package.json)
+PKGDIR=$(sed -rn '/^ *"pkgdir":/{ s/.*:.*"([^"]+)", *$/\1/; p; q; }' $BUILDDIR/package.json)
 DEBIAN=$DROOT/DEBIAN
 DEBDOCDIR=$DROOT/$PKGDIR/doc
 ANKLANGLAUNCHER=$PKGDIR/bin/anklang
