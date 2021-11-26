@@ -87,7 +87,7 @@ scan-build:								| $>/misc/scan-build/
 # == anklang-deb ==
 $>/anklang_$(version_short)_amd64.deb: $>/TAGS $(GITCOMMITDEPS)
 	$(QGEN)
-	$Q misc/mkdeb.sh
+	$Q BUILDDIR=$> misc/mkdeb.sh
 anklang-deb: $>/anklang_$(version_short)_amd64.deb
 .PHONY: anklang-deb
 
