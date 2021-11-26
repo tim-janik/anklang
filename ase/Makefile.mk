@@ -24,6 +24,13 @@ ALL_TARGETS += $(lib/AnklangSynthEngine)
 # Work around legacy code in external/websocketpp/*.hpp
 ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec
 
+# == insn-targets ==
+insn-targets: $(lib/AnklangSynthEngine)
+	@test -n "$(INSN)"
+	$Q $(CP) -v $(lib/AnklangSynthEngine) $(INSNDEST)/lib/AnklangSynthEngine-$(version_m.m.m)-$(INSN)
+	$Q $(CP) -v $(lib/AnklangSynthEngine).map $(INSNDEST)/lib/AnklangSynthEngine-$(version_m.m.m)-$(INSN).map
+.PHONY: insn-targets
+
 # == ase/api.jsonipc.cc ==
 $>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/AnklangSynthEngine.deps) ase/Makefile.mk	| $>/ase/
 	$(QGEN)
