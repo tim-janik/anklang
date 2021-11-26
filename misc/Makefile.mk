@@ -199,19 +199,14 @@ release-news:
 		sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' -e '/^\s*$$/d'
 .PHONY: release-news
 
-# == release-build ==
-release-build: # build release artefacts with default MODE
-	misc/dbuild.sh nice make V=$V all -j`nproc`
-	misc/dbuild.sh make V=$V check
-	misc/dbuild.sh make V=$V release-changelog
-	misc/dbuild.sh make V=$V anklang-deb
-	misc/dbuild.sh make V=$V appimage
-	time $>/anklang-$(version_short:v%=%)-x64.AppImage --quitstartup
-	$Q cd $> && ls -l					\
-		'ChangeLog-$(version_short:v%=%).txt'		\
-		'anklang_$(version_short:v%=%)_amd64.deb'	\
-		'anklang-$(version_short:v%=%)-x64.AppImage'
-.PHONY: release-build
+# == insn-build ==
+# Build binary variants with INSN=sse and build 'all'
+insn-build-sse:
+	$Q $(MAKE) INSN=sse builddir=out-sse all release-changelog
+	$Q $(MAKE) INSN=sse builddir=out-sse check
+# Build binary variants with INSN=fma
+insn-build-fma:
+	$Q $(MAKE) INSN=fma builddir=out-fma insn-targets INSNDEST=out-sse/
 
 # == release-upload ==
 RELEASE_CONTINUATION ::= false
@@ -219,9 +214,11 @@ release-upload: NEWS.md
 	$(QGEN)
 	@: # Setup release variables (note, eval preceeds all shell commands)
 	@ $(eval RELEASE_TAG       != ./misc/version.sh --news-tag1)
-	@ $(eval RELEASE_CHANGELOG ::= $(RELEASE_TMPDIR)/out/ChangeLog-$(RELEASE_TAG:v%=%).txt)
-	@ $(eval RELEASE_DEB       ::= $(RELEASE_TMPDIR)/out/anklang_$(RELEASE_TAG:v%=%)_amd64.deb)
-	@ $(eval RELEASE_APPIMAGE  ::= $(RELEASE_TMPDIR)/out/anklang-$(RELEASE_TAG:v%=%)-x64.AppImage)
+	@ $(eval RELEASE_TMPDIR    ::= /tmp/$(USER)-anklang-release)
+	@ $(eval RELEASE_SSEDIR    ::= $(RELEASE_TMPDIR)/out-sse)
+	@ $(eval RELEASE_CHANGELOG ::= $(RELEASE_SSEDIR)/ChangeLog-$(RELEASE_TAG:v%=%).txt)
+	@ $(eval RELEASE_DEB       ::= $(RELEASE_SSEDIR)/anklang_$(RELEASE_TAG:v%=%)_amd64.deb)
+	@ $(eval RELEASE_APPIMAGE  ::= $(RELEASE_SSEDIR)/anklang-$(RELEASE_TAG:v%=%)-x64.AppImage)
 	@: # Check release tag
 	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
 	$Q test -z "`git tag -l '$(RELEASE_TAG)'`" || \
@@ -235,15 +232,24 @@ release-upload: NEWS.md
 		git worktree remove --force $(RELEASE_TMPDIR) 2>/dev/null ;	\
 		git worktree add $(RELEASE_TMPDIR) '$(RELEASE_TAG)' ;		\
 	   fi
-	@: # Make release-build, delete tag on error
-	$Q $(MAKE) -C $(RELEASE_TMPDIR) release-build				\
+	@: # Build binaries with different INSNs in parallel, delete tag on error
+	$Q nice $(MAKE) -C $(RELEASE_TMPDIR) -j`nproc` -l`nproc`	\
+		insn-build-sse						\
+		insn-build-fma						\
+	|| { git tag -d '$(RELEASE_TAG)' ; exit -1 ; }
+	@: # Build release packages, INSN=sse is full build, delete tag on error
+	$Q nice $(MAKE) -C $(RELEASE_TMPDIR) -j`nproc` -l`nproc`	\
+		INSN=sse builddir=out-sse				\
+		anklang-deb						\
+		appimage						\
+	&& time $(RELEASE_APPIMAGE) --quitstartup			\
 	|| { git tag -d '$(RELEASE_TAG)' ; exit -1 ; }
 	@: # Create Github release and upload assets
-	$Q echo 'Anklang $(RELEASE_TAG)'		>  $(RELEASE_TMPDIR)/out/release-message
-	$Q echo						>> $(RELEASE_TMPDIR)/out/release-message
-	$Q sed '0,/^## /b; /^## /Q; ' NEWS.md		>> $(RELEASE_TMPDIR)/out/release-message
+	$Q echo 'Anklang $(RELEASE_TAG)'		>  $(RELEASE_SSEDIR)/release-message
+	$Q echo						>> $(RELEASE_SSEDIR)/release-message
+	$Q sed '0,/^## /b; /^## /Q; ' NEWS.md		>> $(RELEASE_SSEDIR)/release-message
 	$Q hub release create --draft --prerelease		\
-		-F $(RELEASE_TMPDIR)/out/release-message	\
+		-F '$(RELEASE_SSEDIR)/release-message'		\
 		-a '$(RELEASE_APPIMAGE)'			\
 		-a '$(RELEASE_DEB)'				\
 		-a '$(RELEASE_CHANGELOG)'			\
@@ -257,6 +263,5 @@ release-upload: NEWS.md
 	&& test y == "$$ANSWER"							\
 	&& git push origin '$(RELEASE_TAG)'
 	@: # Clean temporary build directory
-	$Q ! $(RELEASE_CONTINUATION) || git worktree remove $(RELEASE_TMPDIR) 2>/dev/null ; true
-RELEASE_TMPDIR ::= /tmp/$(USER)-anklang-release
+	$Q ! $(RELEASE_CONTINUATION) || git worktree remove $(RELEASE_TMPDIR) 2>/dev/null
 .PHONY: release-upload
