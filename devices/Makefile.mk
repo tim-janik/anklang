@@ -12,7 +12,7 @@ include devices/blepsynth/Makefile.mk
 
 # == devices/ dependencies ==
 # create object directories via explicit object dependency
-$(devices/4ase.objects): | $(sort $(dir $(devices/4ase.objects)))
+$>/devices/.nostray $(devices/4ase.objects): | $(sort $(dir $(devices/4ase.objects)))
 
 # == .nostray - catch non-git files ==
 $(devices/4ase.objects): | $>/devices/.nostray
