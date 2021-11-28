@@ -104,7 +104,10 @@ $(call BUILD_PROGRAM, \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd, \
 	../lib)
 #	-lase-$(version_major)
-$(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(lib/AnklangSynthEngine))
+$(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
+	$(lib/AnklangSynthEngine)	\
+	$(lib/AnklangSynthEngine)-fma	\
+  ))
 # silence some websocketpp warnings
 $(ase/AnklangSynthEngine.objects): EXTRA_CXXFLAGS ::= -Wno-sign-promo
 
