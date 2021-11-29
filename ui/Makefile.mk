@@ -108,7 +108,7 @@ $>/ui/.build1-stamp: $>/ui/all-components.js
 
 # == File Copies ==
 ui/copy.targets ::= $(ui/copy.files:%=$>/%)
-$(ui/copy.targets): $>/ui/%: ui/%
+$(ui/copy.targets): $>/ui/%: ui/%	| $>/ui/b/
 	$(QECHO) COPY $<
 	$Q cp -a $< --parents $>/
 $>/ui/.build1-stamp: $(ui/copy.targets)
