@@ -214,7 +214,7 @@ release-upload: NEWS.md
 	$(QGEN)
 	@: # Setup release variables (note, eval preceeds all shell commands)
 	@ $(eval RELEASE_TAG       != ./misc/version.sh --news-tag1)
-	@ $(eval RELEASE_TMPDIR    ::= /tmp/$(USER)-anklang-release)
+	@ $(eval RELEASE_TMPDIR    ::= /tmp/anklang-release$(UID))
 	@ $(eval RELEASE_SSEDIR    ::= $(RELEASE_TMPDIR)/out-sse)
 	@ $(eval RELEASE_CHANGELOG ::= $(RELEASE_SSEDIR)/ChangeLog-$(RELEASE_TAG:v%=%).txt)
 	@ $(eval RELEASE_DEB       ::= $(RELEASE_SSEDIR)/anklang_$(RELEASE_TAG:v%=%)_amd64.deb)
