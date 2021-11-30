@@ -712,43 +712,57 @@ fatal_system_error (const char *file, uint line, const char *format, ...)
   abort();
 }
 
-// finding the right path is a *fundamental* requirement for AnklangSynthEngine
+/// Find the binary file containing the runtime symbol at `symbol_address`.
+static std::string
+find_text_file (ptrdiff_t symbol_address)
+{
+  const char *const self_maps = "/proc/self/maps";
+  std::ifstream maps;
+  maps.open (self_maps);
+  if (!maps.fail())
+    {
+      std::string cxxline;
+      while (std::getline (maps, cxxline))
+        {
+          size_t start = 0, end = 0, offset = 0, inode = 0, pos = 0;
+          char perms[22 + 1], device[22 + 1] = "";
+          int count = sscanf (cxxline.c_str(), "%zx-%zx %22s %zx %22s %zu %zn", &start, &end, perms, &offset, device, &inode, &pos);
+          if (count != 6 || pos == 0)
+            break;
+          if (cxxline[pos] == '/' && symbol_address >= start && symbol_address < end &&
+              strncmp (perms, "r-xp", 4) == 0)
+            return cxxline.substr (pos);
+        }
+    }
+  return ""; // not found
+}
+
+// finding the *right* path is a fundamental requirement for AnklangSynthEngine
 static std::string
 determine_anklangsynthengine_installdir (bool *using_objdir)
 {
-  const char *self_maps = "/proc/self/maps";
-  std::ifstream maps;
-  maps.open (self_maps);
-  if (maps.fail())
-    fatal_system_error ("AnklangSynthEngine", 0, "failed to open \"%s\": %s", self_maps, strerror (errno));
-  char exename[256] = { 0, };
-  snprintf (exename, sizeof (exename), "/lib/AnklangSynthEngine-%u", ase_major_version);
-  char lbtname[256] = { 0, };
-  snprintf (lbtname, sizeof (lbtname), "/lib/%s/lt-AnklangSynthEngine-%u", LIBTOOL_OBJDIR, ase_major_version);
-  std::string cxxline;
-  while (std::getline (maps, cxxline))
+  // determine executable for symbol
+  const ptrdiff_t address = ptrdiff_t (&determine_anklangsynthengine_installdir);
+  String pathname = find_text_file (address);
+  const char *path = pathname.c_str(), *e = strrchr (path, '/');
+  // strip filename component to get dirname
+  if (e)
     {
-      const char *const line = cxxline.c_str();
-      const char *const path = strchr (line, '/');                      // find absolute pathname
-      const char *const rxp = strstr (line, " r-xp ");                  // of executable
-      if (rxp && path && rxp < path)
-        {
-          const char *const extlibso = strstr (path, exename);          // by external name
-          if (extlibso && !strchr (extlibso + strlen (exename), '/'))   // not dirname
-            {
-              *using_objdir = false;
-              return std::string (path, extlibso - path);               // path fragment before /lib/executable-*
-            }
-          const char *const lbtlibso = strstr (path, lbtname);          // by libtool internal name
-          if (lbtlibso && !strchr (lbtlibso + strlen (lbtname), '/'))   // not dirname
-            {
-              *using_objdir = true;
-              return std::string (path, lbtlibso - path);               // path fragment before /lib/.libs/lt-executable-*
-            }
-        }
+      const ssize_t ods = strlen (LIBTOOL_OBJDIR);
+      if (strncmp (e, "/lt-", 4) == 0 &&                        // libtool executable?
+          e - path >= 1 + ods &&
+          e[-(1 + ods)] == '/' &&                               // in subdir
+          strncmp (e - ods, LIBTOOL_OBJDIR, ods) == 0)          // named LIBTOOL_OBJDIR
+        pathname = pathname.substr (0, e - ods - 1 - path);
+      else
+        pathname = pathname.substr (0, e - path);
     }
-  const char *const needle = strrchr (exename, '/');
-  fatal_system_error ("AnklangSynthEngine", 0, "failed to find executable mapping for: .../%s", needle ? needle + 1 : exename);
+  // strip suffix from $prefix/{lib|bin}
+  if (string_endswith (pathname, "/lib") || string_endswith (pathname, "/bin"))
+    pathname = pathname.substr (0, pathname.size() - 4);
+  if (pathname.empty())
+    fatal_system_error ("AnklangSynthEngine", 0, "failed to find executable for symbol: %p", (void*) address);
+  return pathname;
 }
 
 std::string

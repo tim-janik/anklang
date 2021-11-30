@@ -24,6 +24,13 @@ ALL_TARGETS += $(lib/AnklangSynthEngine)
 # Work around legacy code in external/websocketpp/*.hpp
 ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec
 
+# == insn-targets ==
+insn-targets: $(lib/AnklangSynthEngine)
+	@test -n "$(INSN)"
+	$Q $(CP) -v $(lib/AnklangSynthEngine) $(INSNDEST)/lib/AnklangSynthEngine-$(version_m.m.m)-$(INSN)
+	$Q $(CP) -v $(lib/AnklangSynthEngine).map $(INSNDEST)/lib/AnklangSynthEngine-$(version_m.m.m)-$(INSN).map
+.PHONY: insn-targets
+
 # == ase/api.jsonipc.cc ==
 $>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/AnklangSynthEngine.deps) ase/Makefile.mk	| $>/ase/
 	$(QGEN)
@@ -42,7 +49,7 @@ $>/ase/buildversion.cc: ase/Makefile.mk					| $>/ase/
 	$Q echo 'const int         ase_major_version = $(version_major);'	>>$@.tmp
 	$Q echo 'const int         ase_minor_version = $(version_minor);'	>>$@.tmp
 	$Q echo 'const int         ase_micro_version = $(version_micro);'	>>$@.tmp
-	$Q echo 'const char *const ase_version_long = "$(version_buildid)";'	>>$@.tmp
+	$Q echo 'const char *const ase_version_long = "$(version_buildid) ($(INSN))";'	>>$@.tmp
 	$Q echo 'const char *const ase_version_short = "$(version_short)";'	>>$@.tmp
 	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_m.m.m)";' >>$@.tmp
 	$Q echo '} // Ase'							>>$@.tmp
@@ -97,7 +104,10 @@ $(call BUILD_PROGRAM, \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd, \
 	../lib)
 #	-lase-$(version_major)
-$(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(lib/AnklangSynthEngine))
+$(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
+	$(lib/AnklangSynthEngine)	\
+	$(lib/AnklangSynthEngine)-fma	\
+  ))
 # silence some websocketpp warnings
 $(ase/AnklangSynthEngine.objects): EXTRA_CXXFLAGS ::= -Wno-sign-promo
 

@@ -9,9 +9,9 @@ function die  { [ -n "$*" ] && echo "$SCRIPTNAME: $*" >&2; exit 127 ; }
 : make default prefix=/opt pkgprefix=/opt sharedir=/usr/share bindir=/usr/bin
 
 # paths
-BUILDDIR=out
+BUILDDIR="${BUILDDIR:-out}"
 DROOT=$BUILDDIR/mkdeb/
-PKGDIR=$(sed -rn '/^ *"pkgdir":/{ s/.*:.*"([^"]+)", *$/\1/; p; q; }' out/package.json)
+PKGDIR=$(sed -rn '/^ *"pkgdir":/{ s/.*:.*"([^"]+)", *$/\1/; p; q; }' $BUILDDIR/package.json)
 DEBIAN=$DROOT/DEBIAN
 DEBDOCDIR=$DROOT/$PKGDIR/doc
 ANKLANGLAUNCHER=$PKGDIR/bin/anklang
@@ -134,6 +134,6 @@ find $DEBIAN/../ -name '*.la' -delete
 find $DEBIAN/../ -name '*.py[co]' -delete
 
 # create binary deb
-fakeroot dpkg-deb -b $DROOT $DROOT/.. # -Zgzip
+fakeroot dpkg-deb -z9 -b $DROOT $DROOT/..
 ls -al $BUILDDIR/$NAME''_$VERSION''_$ARCH.deb
 echo lintian -i --no-tag-display-limit $BUILDDIR/$NAME''_$VERSION''_$ARCH.deb

@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 'use strict';
 const package_json = require ('./package.json');
+const fs = require ('fs');
 Object.defineProperty (globalThis, '__DEV__', { value: package_json.mode !== 'production' });
 const Electron = require ('electron');
 const Eapp = Electron.app;
@@ -64,7 +65,6 @@ Eapp.once ('window-all-closed', () => {
 // create the main browser window
 function create_window (onclose)
 {
-  const FS = require ('fs');
   // avoid menu flicker, leave menu construction to the window
   Electron.Menu.setApplicationMenu (null);
   // window configuraiton
@@ -137,8 +137,21 @@ async function load_and_show (w, winurl) {
 // == Sound Engine ==
 function start_sound_engine (config, datacb)
 {
+  let sound_engine = __dirname + '/../../../lib/AnklangSynthEngine-' + package_json.version;
+  let cpuinfo = '';
+  try 		{ cpuinfo = fs.readFileSync ('/proc/cpuinfo', { encoding: 'utf8', flag: 'r' }); }
+  catch (err)	{}
+  for (const suffix of [ 'fma', 'sse' ])
+    if (cpuinfo.search (new RegExp (`^flags\\s*:.*\\b${suffix}\\b`, 'm')) >= 0)
+      try {
+	const sound_engine_insn = sound_engine + '-' + suffix;
+	fs.accessSync (sound_engine_insn, fs.constants.X_OK);
+	sound_engine = sound_engine_insn;
+	break;
+      } catch (err) {
+	// console.error (__filename + ':', `missing "${suffix}" variant of AnklangSynthEngine`);
+      }
   const { spawn, spawnSync } = require ('child_process');
-  const sound_engine = __dirname + '/../../../lib/AnklangSynthEngine-' + package_json.version;
   const args = [ '--embed', '3' ];
   if (config.verbose)
     args.push ('--verbose');

@@ -80,23 +80,17 @@ endif
 
 # AMD64 / X86_64 optimizations
 ifeq ($(uname_M),x86_64)
-  proc/cpuinfo   != cat /proc/cpuinfo  # proc/cpuinfo ::= $(file < /proc/cpuinfo)
-  OPTIMIZE	 += -minline-all-stringops
-  # Use haswell (Intel) and bdver4 (AMD Excavator Family 15h) instruction sets, plus 2015 era tuning
-  ARCHX64_2015	::= -march=core2 -mtune=skylake -mfpmath=sse
-  ARCHX64_2015	 += -mavx -mavx2 -mbmi -mbmi2 -mf16c -mfma -mfsgsbase -mlzcnt -mmovbe -mpclmul
-  ARCHX64_2015	 += -mpopcnt -mrdrnd -msse4 -msse4.1 -msse4.2 -mxsave -mxsaveopt
-  ifeq ($(firstword $(filter bmi2, $(proc/cpuinfo))),bmi2)
-    OPTIMIZE	 += $(ARCHX64_2015)
-  else
-    OPTIMIZE	 += -mcx16			# for CMPXCHG16B, in AMD64 since 2005
-    OPTIMIZE	 += -mmmx -msse -msse2		# Intel since 2001, AMD since 2003
-    OPTIMIZE	 += -msse3			# Intel since 2004, AMD since 2007
-    OPTIMIZE	 += -mssse3			# Intel since 2006, AMD since 2011
-    #OPTIMIZE	 += -msse4a			# AMD only, since 2007
-    #OPTIMIZE	 += -msse4.1 -msse4.2		# Intel since 2008, AMD since 2011
-    #OPTIMIZE	 += -mavx			# Intel since 2011, AMD since 2011
-    #OPTIMIZE	 += -mavx2			# Intel since 2013, AMD since 2015
+  OPTIMIZE	+= -minline-all-stringops
+  ifeq ($(INSN),sse)		# SSE
+    # 2006 era: Use just core2 features, but tune for newer CPUs
+    OPTIMIZE	+= -march=core2 -mtune=sandybridge
+  else ifeq ($(INSN),fma)	# FMA AVX
+    # 2015 era: Use haswell (Intel) and bdver4 (AMD Excavator Family 15h) instructions (bdver4 lacks HLE)
+    OPTIMIZE	+= -march=haswell -mno-hle
+  else 				# NATIVE
+    INSN         = native
+    # Fastest, best for build machine CPU, not recommended for release builds
+    OPTIMIZE	+= -march=native
   endif
 endif
 

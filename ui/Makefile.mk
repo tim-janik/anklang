@@ -108,16 +108,16 @@ $>/ui/.build1-stamp: $>/ui/all-components.js
 
 # == File Copies ==
 ui/copy.targets ::= $(ui/copy.files:%=$>/%)
-$(ui/copy.targets): $>/ui/%: ui/%
+$(ui/copy.targets): $>/ui/%: ui/%	| $>/ui/b/
 	$(QECHO) COPY $<
-	$Q cp -a $< --parents $>/
+	$Q $(CP) $< --parents $>/
 $>/ui/.build1-stamp: $(ui/copy.targets)
 
 # == Copies to ui/ ==
 ui/public.targets ::= $(ui/public.wildcards:ui/%=$>/ui/%)
 $(ui/public.targets): $>/ui/%: ui/%			| $>/ui/
 	$(QECHO) COPY $<
-	$Q cd ui/ && cp -a $(<:ui/%=%) --parents $(abspath $>/)/ui/
+	$Q cd ui/ && $(CP) $(<:ui/%=%) --parents $(abspath $>/)/ui/
 $>/ui/.build1-stamp: $(ui/public.targets)
 
 # == Inter Typeface ==
@@ -139,8 +139,8 @@ $>/ui/fonts/AnklangIcons.css: ui/Makefile.mk		| $>/ui/fonts/
 		cd $>/ui/ $(call AND_DOWNLOAD_SHAURL, $H, $U) ; \
 	   fi
 	$Q rm -fr $>/ui/anklangicons/ && tar -xf $>/ui/$T -C $>/ui/ && rm $>/ui/$T
-	$Q cd $>/ui/anklangicons/ && cp AnklangCursors.scss AnklangIcons.woff2 ../fonts/
-	$Q cd $>/ui/anklangicons/ && cp AnklangIcons.css ../fonts/AnklangIcons.css.tmp
+	$Q cd $>/ui/anklangicons/ && $(CP) AnklangCursors.scss AnklangIcons.woff2 ../fonts/
+	$Q cd $>/ui/anklangicons/ && $(CP) AnklangIcons.css ../fonts/AnklangIcons.css.tmp
 	$Q rm -r $>/ui/anklangicons/ && mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/fonts/AnklangIcons.css
 
@@ -154,7 +154,7 @@ $>/ui/fonts/material-icons.css: ui/Makefile.mk		| $>/ui/fonts/
 	$Q cd $(@D) \
 		&& rm -fr material-icons/ && tar -xf $T \
 		&& mv material-icons/material-icons.woff2 ./ \
-		&& cp material-icons/material-icons.css material-icons.css.tmp \
+		&& $(CP) material-icons/material-icons.css material-icons.css.tmp \
 		&& rm -fr material-icons/ $T
 	$Q mv $@.tmp $@ && touch $@
 $>/ui/.build1-stamp: $>/ui/fonts/material-icons.css
@@ -201,7 +201,7 @@ $>/ui/.build1-stamp: $>/ui/favicon.ico $>/ui/anklang.png
 ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue)
 $>/ui/.eslint.files: ui/eslintrc.js $(ui/eslint.files)			| $>/ui/
 	$(QGEN)
-	$Q cp $< $(@D)/.eslintrc.js
+	$Q $(CP) $< $(@D)/.eslintrc.js
 	$Q echo '$(abspath $(ui/eslint.files))' | tr ' ' '\n' > $@
 $>/ui/.build1-stamp: $>/ui/.eslint.files
 

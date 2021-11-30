@@ -9,7 +9,7 @@ devices/blepsynth/4ase.objects ::= $(call BUILDDIR_O, $(devices/blepsynth/4ase.c
 
 # == devices/blepsynth/ dependencies ==
 # create object directories via explicit object dependency
-$(devices/blepsynth/4ase.objects): | $(sort $(dir $(devices/blepsynth/4ase.objects)))
+$>/devices/blepsynth/.nostray $(devices/blepsynth/4ase.objects): | $(sort $(dir $(devices/blepsynth/4ase.objects)))
 
 # == .nostray - catch non-git files ==
 $(devices/blepsynth/4ase.objects): | $>/devices/blepsynth/.nostray
