@@ -87,51 +87,24 @@ async function list_fields (proplist) {
     readonly: false,
     allowfloat: true,
   };
-  const awaits = [];
+  const pending_xprops = [];
   for (const prop of proplist)
     {
-      let xprop = { ident_: prop.identifier(),
-		    hints_: prop.hints(),
-		    is_numeric_: prop.is_numeric(),
-		    label_: prop.label(),
-		    nick_: prop.nick(),
-		    unit_: prop.unit(),
-		    group_: prop.group(),
-		    blurb_: prop.blurb(),
-		    description_: prop.description(),
-		    min_: prop.get_min(),
-		    max_: prop.get_max(),
-		    step_: prop.get_step(),
-		    has_choices_: false,
-		    ctype_: undefined,
-		    attrs_: attrs,
-		    apply_: (...a) => {
-		      xprop.set_value (a[0]);
-		    },
-		    value_: Vue.reactive ({ val: undefined, num: 0, text: '', choices: empty_list }),
-		    update_: async () => {
-		      const value_ = { val: xprop.get_value(),
-				       num: xprop.get_normalized(),
-				       text: xprop.get_text(),
-				       choices: xprop.has_choices_ ? xprop.choices() : empty_list,
-		      };
-		      Object.assign (xprop.value_, await Util.object_await_values (value_));
-		      if (this.augment)
-			await this.augment (xprop);
-		    },
-		    fetch_: () => xprop.is_numeric_ ? xprop.value_.num : xprop.value_.text,
-		    __proto__: prop,
+      const augment = async xprop => {
+	if (!xprop.attrs_)
+	  xprop.attrs_ = attrs;
+	if (this.augment)
+	  await this.augment (xprop);
       };
-      const disconnect = xprop.on ('change', _ => xprop.update_());
-      disconnectors.push (disconnect);
-      xprop = await Util.object_await_values (xprop);
-      xprop.has_choices_ = xprop.hints_.search (/:choice:/) >= 0;
-      awaits.push (xprop.update_()); // relies on xprop.has_choices_
+      pending_xprops.push (Util.extend_property (prop, cb => disconnectors.push (cb), augment));
+    }
+  for (const pending_prop of pending_xprops)
+    {
+      const xprop = await pending_prop;
       if (!groups[xprop.group_])
 	groups[xprop.group_] = [];
       groups[xprop.group_].push (xprop);
     }
-  await Promise.all (awaits);
   const grouplist = []; // [ { name, props: [richprop, ...] }, ... ]
   for (const k of Object.keys (groups))
     {
