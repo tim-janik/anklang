@@ -101,7 +101,7 @@ $duration: 0.3s;
 
 <template>
   <transition name="-fade">
-    <div class="b-dialog-modalshield" v-if='shown' >
+    <div class="b-dialog-modalshield" v-if='shown' v-show='done_resizing' >
       <v-flex class="b-dialog" @click.stop ref='dialog' >
 
 	<h-flex class="-header">
@@ -132,7 +132,17 @@ export default {
   emits: { 'update:shown': null, 'close': null },
   data() { return {
     footerclass: '',
+    b_dialog_resizers: [],
   }; },
+  provide() { return { b_dialog_resizers: this.b_dialog_resizers }; },
+  computed: {
+    done_resizing() {
+      for (const r of this.b_dialog_resizers)
+	if (r.call (null))
+	  return false;
+      return true;
+    },
+  },
   mounted () {
     this.$forceUpdate(); // force updated() after mounted()
   },
