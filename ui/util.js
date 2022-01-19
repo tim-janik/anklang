@@ -341,11 +341,12 @@ export function assign_forof (target, source) {
   return target;
 }
 
-/** Remove element `item` from `array` */
+/** Remove element `item` from `array` if present via `indexOf` */
 export function array_remove (array, item) {
-  for (let i = 0; i < array.length; i++)
-    if (item === array[i]) {
-      array.splice (i, 1);
+  const index = array.indexOf (item);
+  if (index >= 0)
+    {
+      array.splice (index, 1);
       return true;
     }
   return false;
