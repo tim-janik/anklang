@@ -118,6 +118,27 @@ class CCTree:
       if child.tag == 'Argument':
         args += 1
     return args
+  def find_method_defaults (self, node): # <Method><Argument name="number" default="17"/></Method>
+    args, discard = [], True
+    for child in node:
+      if child.tag != 'Argument':
+        continue
+      dflt = child.attrib.get ('default', None)
+      if dflt == None:
+        #args += [ '{}' ]
+        continue
+      discard = False
+      if dflt.startswith ('"'):
+        pass # dflt = 'std::string (' + dflt + ')'
+      elif dflt == 'nullptr':
+        pass # dflt = '0ULL'
+      elif re.match ('^-?[0-9]+$', dflt):
+        pass # dflt = dflt + ('LL' if dflt[0] == '-' else 'ULL')
+      else:
+        #raise Exception ('%s: unknown default argument: %s\n%s' % ('cxxjip.py', dflt, ET.tostring (child)))
+        pass # dflt = 'double (' + dflt + ')'
+      args += [ dflt ]
+    return [] if discard else args
   def returns_void (self, node):
     rettype = self.by_id (node.attrib.get ('returns', ''))
     if (rettype != None and rettype.tag == 'FundamentalType' and
@@ -241,7 +262,12 @@ def generate_jsonipc (cctree, namespaces, absfile = None):
         if kind == 'gs':
           p ('.set', '("%s", &%s::%s, &%s::%s)' % (mname, fqclname, mname, fqclname, mname))
         elif kind in ('f', 's', 'g'):
-          p ('.set', '("%s", &%s::%s)' % (mname, fqclname, mname))
+          sdflts, dflts = '', cctree.find_method_defaults (mf) # Method Argument default values
+          if dflts:
+            sdflts = [str (v) for v in dflts]
+            p ('.set_d', '("%s", &%s::%s, { %s })' % (mname, fqclname, mname, ', '.join (sdflts)))
+          else:
+            p ('.set', '("%s", &%s::%s)' % (mname, fqclname, mname))
       if details:
         p (';')
       indent -= 1
