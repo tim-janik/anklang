@@ -79,4 +79,5 @@ text/x-diff diff patch
 video/mp4 mp4
 video/ogg ogv
 video/webm webm
+video/x-matroska mkv
 )"""";
