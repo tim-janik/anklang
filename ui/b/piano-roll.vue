@@ -121,9 +121,8 @@
 <template>
 
   <c-grid class="b-piano-roll" tabindex="0"
-	  @keydown="piano_ctrl.keydown ($event)" @focus="focuschange" @blur="focuschange"
-	  @pointerdown="Util.drag_event"
-	  @mouseenter="mouseenter" @mouseleave="mouseleave" >
+	  @keydown="piano_ctrl.keydown ($event)" @pointerdown="Util.drag_event"
+	  @focus="focuschange" @blur="focuschange" >
     <!-- VTitle, COL-1 -->
     <span class="-vtitle" style="grid-row: 1/-1"  > VTitle </span>
 
@@ -194,6 +193,7 @@ function observable_msrc_data () {
     vzoom:         { default: 1.5, },
     hzoom:         { default: 2.0, },
     focus_noteid:  { default: -1, },
+    have_focus:	   { default: false, },
     end_tick:      { getter: c => this.msrc.end_tick(), notify: n => this.msrc.on ("notify:end_tick", n), },
     pnotes:        { default: [],                            notify: n => this.msrc.on ("notify:notes", n),
                      getter: async c => Object.freeze (await this.msrc.list_all_notes()), },
@@ -246,17 +246,11 @@ export default {
     this.piano_ctrl = null;
   },
   methods: {
-    focuschange() {
+    focuschange (ev) {
+      if (ev?.type)
+	this.adata.have_focus = ev.type == "focus";
       if (this.$refs.toolmenu)
 	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || document.activeElement == this.$el);
-    },
-    mouseenter (ev) {
-      this.entered = true;
-      this.focuschange();
-    },
-    mouseleave (ev) {
-      this.entered = false;
-      this.focuschange();
     },
     usetool (uri) {
       this.pianotool = uri;
