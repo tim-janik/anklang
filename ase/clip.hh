@@ -41,6 +41,7 @@ public:
   ClipNoteS      list_all_notes () override;
   bool           needs_serialize() const;
   int32          change_note    (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity) override;
+  bool           toggle_note    (int32 id, bool selected) override;
   ASE_DEFINE_MAKE_SHARED (ClipImpl);
 };
 

@@ -155,6 +155,27 @@ ClipImpl::change_note (int32 id, int64 tick, int64 duration, int32 key, int32 fi
 }
 
 bool
+ClipImpl::toggle_note (int32 id, bool selected)
+{
+  bool was_selected = false;
+  ClipNote ev;
+  ev.id = id;
+  const ClipNote *ce = notes_.lookup (ev);
+  if (ce)
+    {
+      was_selected = ce->selected;
+      if (ce->selected != selected)
+        {
+          ev = *ce;
+          ev.selected = selected;
+          notes_.insert (ev);
+          emit_event ("notify", "notes");
+        }
+    }
+  return was_selected;
+}
+
+bool
 ClipImpl::find_key_at_tick (ClipNote &ev)
 {
   for (const auto &e : notes_)
