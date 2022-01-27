@@ -44,6 +44,20 @@ struct Derived : Base, Base2, std::enable_shared_from_this<Derived> {
   Derived* dummy7 () { return NULL; }
   Derived& dummy8 () { return *dummy7(); }
   Derived  dummy9 () { return dummy8(); }
+  void defaults (bool a1 = true, ErrorType a2 = ErrorType::FATAL, std::string a3 = std::string ("a3"),
+                 signed a4 = -4, float a5 = -0.5, const char *a6 = "a6", double a7 = 0.7,
+                 size_t a8 = 8, Copyable *a9 = nullptr,
+                 Base *b = nullptr) {} // see .set_d()
+  template<class C> static void
+  set_d (C &c) // see .defaults()
+  {
+    c.set_d ("defaults", &Derived::defaults, {
+        true, ErrorType::FATAL, std::string ("a3"),
+        signed (-4), float (-0.5), "a6", 1e-70,
+        size_t (8), nullptr,
+        {} // not possible: (Base*) nullptr,
+      });
+  }
 };
 
 static size_t
@@ -79,7 +93,7 @@ parse_result (size_t id, const std::string json_reply)
 }
 
 static void
-test_jsonipc (bool dispatcher_shell = false)
+test_jsonipc (bool dispatcher_shell, bool printer)
 {
   using namespace Jsonipc;
   rapidjson::Document doc;
@@ -136,6 +150,7 @@ test_jsonipc (bool dispatcher_shell = false)
     .set ("dummy9", &Derived::dummy9)
     .set ("randomize", &Derived::randomize)
     ;
+  Derived::set_d (class_Derived);
 
   // Provide scope and instance ownership during dispatch_message()
   InstanceMap imap;
@@ -205,6 +220,11 @@ test_jsonipc (bool dispatcher_shell = false)
   const Copyable *c5 = parse_result<Copyable*> (111, result);
   JSONIPC_ASSERT_RETURN (c5 && (c5->i != c4->i || c5->f != c4->f));
 
+  if (printer)
+    {
+      printf ("%s\n", Jsonipc::ClassPrinter::to_string().c_str());
+    }
+
   // CLI test server
   if (dispatcher_shell)
     {
@@ -230,7 +250,8 @@ int
 main (int argc, char *argv[])
 {
   const bool dispatcher_shell = argc > 1 && 0 == strcmp (argv[1], "--shell");
-  test_jsonipc (dispatcher_shell);
+  const bool printer = argc > 1 && 0 == strcmp (argv[1], "--print");
+  test_jsonipc (dispatcher_shell, printer);
   return 0;
 }
 #endif
