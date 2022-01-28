@@ -192,8 +192,9 @@ function observable_msrc_data () {
   const data = {
     vzoom:         { default: 1.5, },
     hzoom:         { default: 2.0, },
-    focus_noteid:  { default: -1, },
+    focus_noteid:  undefined,
     have_focus:	   { default: false, },
+    srect:         { default: { x: -1, y: -1, w: 0, h: 0, sx: 0, sy: 0 } },
     end_tick:      { getter: c => this.msrc.end_tick(), notify: n => this.msrc.on ("notify:end_tick", n), },
     pnotes:        { default: [],                            notify: n => this.msrc.on ("notify:notes", n),
                      getter: async c => Object.freeze (await this.msrc.list_all_notes()), },
@@ -216,7 +217,7 @@ export default {
       this.adata.hzoom = this.auto_scrollto.hzoom;
       this.adata.vzoom = this.auto_scrollto.vzoom;
       // reset other state
-      this.adata.focus_noteid = -1;
+      this.adata.focus_noteid = undefined;
       this.stepping = [ Util.PPQN, 0, 0 ];
       // re-layout, even if just this.auto_scrollto changed
       this.$forceUpdate();
@@ -602,13 +603,27 @@ function render_notes()
     ctx.fillRect (0, oy, canvas.width, th);
   }
 
+  // paint selection rectangle
+  const srect = { x: layout.DPR * this.adata.srect.x, y: layout.DPR * this.adata.srect.y,
+		  w: layout.DPR * this.adata.srect.w, h: layout.DPR * this.adata.srect.h };
+  if (srect.w > 0 && srect.h > 0)
+    {
+      const note_focus_color = csp ('--piano-roll-note-focus-color');
+      ctx.strokeStyle = csp ('--piano-roll-note-focus-border');
+      ctx.lineWidth = layout.DPR; // layout.thickness;
+      ctx.fillStyle = note_focus_color;
+      ctx.fillRect (srect.x, srect.y, srect.w, srect.h);
+      ctx.strokeRect (srect.x, srect.y, srect.w, srect.h);
+    }
+
   // paint notes
   if (!this.adata.pnotes)
     return;
   const tickscale = layout.tickscale;
   const note_color = csp ('--piano-roll-note-color');
+  const note_selected_color = csp ('--piano-roll-note-focus-color');
   const note_focus_color = csp ('--piano-roll-note-focus-color');
-  const focus_noteid = this.adata.focus_noteid;
+  const focus_noteid = this.adata.have_focus ? this.adata.focus_noteid : -1;
   ctx.lineWidth = layout.DPR; // layout.thickness;
   ctx.fillStyle = note_color;
   ctx.strokeStyle = csp ('--piano-roll-note-focus-border');
@@ -618,15 +633,16 @@ function render_notes()
       const oct = floor (note.key / 12), key = note.key - oct * 12;
       const ny = yoffset - oct * layout.oct_length - key * layout.row + 1;
       const nx = round (note.tick * tickscale), nw = Math.max (1, round (note.duration * tickscale));
+      if (note.selected)
+	ctx.fillStyle = note_selected_color;
+      else
+	ctx.fillStyle = note_color;
+      ctx.fillRect (nx - lsx, ny - layout.row, nw, layout.row - 2);
       if (note.id == focus_noteid)
 	{
 	  ctx.fillStyle = note_focus_color;
-	  ctx.fillRect (nx - lsx, ny - layout.row, nw, layout.row - 2);
 	  ctx.strokeRect (nx - lsx, ny - layout.row, nw, layout.row - 2);
-	  ctx.fillStyle = note_color;
 	}
-      else
-	ctx.fillRect (nx - lsx, ny - layout.row, nw, layout.row - 2);
     }
 }
 
