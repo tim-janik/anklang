@@ -40,7 +40,7 @@ public:
   void           assign_range   (int64 starttick, int64 stoptick) override;
   ClipNoteS      list_all_notes () override;
   bool           needs_serialize() const;
-  int32          change_note    (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity) override;
+  int32          change_note    (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity, bool selected = false) override;
   bool           toggle_note    (int32 id, bool selected) override;
   ASE_DEFINE_MAKE_SHARED (ClipImpl);
 };
@@ -90,7 +90,10 @@ using ClipImplGeneratorS = std::vector<ClipImpl::Generator>;
 inline int
 ClipImpl::CmpNoteIds::operator () (const ClipNote &a, const ClipNote &b) const
 {
-  return Aux::compare_lesser (a.id, b.id);
+  int cmp = Aux::compare_lesser (a.id, b.id);
+  if (ASE_UNLIKELY (cmp == 0))
+    return Aux::compare_lesser (b.selected, a.selected);
+  return cmp;
 }
 
 inline int

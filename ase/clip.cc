@@ -124,7 +124,7 @@ ClipImpl::tick_events () const
 
 /// Change note `id`, or delete (`duration=0`) or create (`id=-1`) it.
 int32
-ClipImpl::change_note (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity)
+ClipImpl::change_note (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity, bool selected)
 {
   if (id < 0 && duration > 0)
     id = next_noteid++; // automatic id allocation for new notes
@@ -144,7 +144,7 @@ ClipImpl::change_note (int32 id, int64 tick, int64 duration, int32 key, int32 fi
   ev.duration = duration;
   ev.fine_tune = fine_tune;
   ev.velocity = velocity;
-  ev.selected = false;
+  ev.selected = selected;
   int ret = ev.id;
   if (duration > 0)
     notes_.insert (ev);
@@ -167,6 +167,7 @@ ClipImpl::toggle_note (int32 id, bool selected)
       if (ce->selected != selected)
         {
           ev = *ce;
+          notes_.remove (ev);
           ev.selected = selected;
           notes_.insert (ev);
           emit_event ("notify", "notes");
