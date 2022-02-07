@@ -144,7 +144,7 @@ export class PianoCtrl {
       }
   }
   drag_event (ev, MODE) {
-    const roll = this.piano_roll, layout = roll.layout, msrc = roll.msrc;
+    const roll = this.piano_roll, layout = roll.layout; // msrc = roll.msrc;
     if (ev.target == roll.$refs.timeline_canvas)
       {
 	const tick = layout.tick_from_x (event.offsetX);
