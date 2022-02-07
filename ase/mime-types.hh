@@ -3,7 +3,7 @@
 // Source: http://svn.apache.org/viewvc/httpd/httpd/trunk/docs/conf/mime.types
 static const char mime_types[] = R""""(
 application/gzip gz
-application/javascript js mjs
+application/javascript js cjs mjs
 application/json json
 application/ogg ogx
 application/pdf pdf
