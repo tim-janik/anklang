@@ -78,7 +78,6 @@
 
 <script>
 import * as Util from '../util.js';
-const empty_list = Object.freeze ([]);
 
 async function list_fields (proplist) {
   const disconnectors = [];
