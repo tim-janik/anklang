@@ -14,9 +14,11 @@ constexpr const uint MIDI_NOTE_ID_FIRST = 0x10000001;
 constexpr const uint MIDI_NOTE_ID_LAST = 0xfffffffe;
 
 class ClipImpl : public GadgetImpl, public virtual Clip {
-  int64 starttick_ = 0, stoptick_ = 0, endtick_ = 0;
+public:
   struct CmpNoteTicks { int operator() (const ClipNote &a, const ClipNote &b) const; };
   struct CmpNoteIds   { int operator() (const ClipNote &a, const ClipNote &b) const; };
+private:
+  int64 starttick_ = 0, stoptick_ = 0, endtick_ = 0;
   EventList<ClipNote,CmpNoteIds> notes_;
   Connection notifytrack_;
   using OrderedEventsV = OrderedEventList<ClipNote,CmpNoteTicks>;
@@ -90,7 +92,7 @@ using ClipImplGeneratorS = std::vector<ClipImpl::Generator>;
 inline int
 ClipImpl::CmpNoteIds::operator () (const ClipNote &a, const ClipNote &b) const
 {
-  int cmp = Aux::compare_lesser (a.id, b.id);
+  const int cmp = Aux::compare_lesser (a.id, b.id);
   if (ASE_UNLIKELY (cmp == 0))
     return Aux::compare_lesser (b.selected, a.selected);
   return cmp;
@@ -99,12 +101,17 @@ ClipImpl::CmpNoteIds::operator () (const ClipNote &a, const ClipNote &b) const
 inline int
 ClipImpl::CmpNoteTicks::operator() (const ClipNote &a, const ClipNote &b) const
 {
+  // tick is neccessary primary key for playback
   const int tcmp = Aux::compare_lesser (a.tick, b.tick);
   if (ASE_ISLIKELY (tcmp))
     return tcmp;
   const int kcmp = Aux::compare_lesser (a.key, b.key);
   if (ASE_ISLIKELY (kcmp))
     return kcmp;
+  // allow selected to "override" a previous unselected element
+  const int scmp = Aux::compare_lesser (a.selected, b.selected);
+  if (ASE_UNLIKELY (scmp))
+    return scmp;
   return Aux::compare_lesser (a.id, b.id);
 }
 
