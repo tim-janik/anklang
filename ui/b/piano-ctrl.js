@@ -63,35 +63,35 @@ export class PianoCtrl {
 	// nextid = idx > 0 ? roll.adata.pnotes[idx - 1].id : -1;
 	break;
       case 81: // Q
-	if (note.id)
-	    msrc.change_note (note.id, this.quantize (note.tick, true), note.duration, note.key, note.fine_tune, note.velocity, note.selected);
+	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
+	  msrc.change_note (note.id, this.quantize (note.tick, true), note.duration, note.key, note.fine_tune, note.velocity, note.selected);
 	break;
       case LEFT: case SHIFT + LEFT: // ←
-	if (note.id)
+	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
 	  msrc.change_note (note.id, Math.max (0, note.tick - this.tickdelta (event)), note.duration, note.key, note.fine_tune, note.velocity, note.selected);
 	break;
       case RIGHT: case SHIFT + RIGHT: // →
-	if (note.id)
+	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
 	  msrc.change_note (note.id, note.tick + this.tickdelta (event), note.duration, note.key, note.fine_tune, note.velocity, note.selected);
 	break;
       case CTRL + LEFT: case SHIFT + CTRL + LEFT: // ←
-	if (note.id)
+	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
 	  msrc.change_note (note.id, note.tick, Math.max (MINDURATION, note.duration - this.tickdelta (event)), note.key, note.fine_tune, note.velocity, note.selected);
 	break;
       case CTRL + RIGHT: case SHIFT + CTRL + RIGHT: // →
-	if (note.id)
+	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
 	  msrc.change_note (note.id, note.tick, note.duration + this.tickdelta (event), note.key, note.fine_tune, note.velocity, note.selected);
 	break;
       case DOWN: // ↓
-	if (note.id)
+	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
 	  msrc.change_note (note.id, note.tick, note.duration, Math.max (note.key - 1, 0), note.fine_tune, note.velocity, note.selected);
 	break;
       case UP: // ↑
-	if (note.id)
+	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
 	  msrc.change_note (note.id, note.tick, note.duration, Math.min (note.key + 1, PIANO_KEYS - 1), note.fine_tune, note.velocity, note.selected);
 	break;
       case Util.KeyCode.BACKSPACE: case Util.KeyCode.DELETE: // ⌫
-	if (note.id)
+	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
 	  {
 	    msrc.change_note (note.id, note.tick, 0, note.key, note.fine_tune, note.velocity, note.selected);
 	    this.change_focus_selection (NONE);
