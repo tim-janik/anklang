@@ -45,21 +45,21 @@ export class PianoCtrl {
     const idx = find_note (roll.adata.pnotes, n => roll.adata.focus_noteid == n.id);
     let note = idx >= 0 ? roll.adata.pnotes[idx] : {};
     const big = 9e12; // assert: big * 1000 + 999 < Number.MAX_SAFE_INTEGER
-    let nextdist = +Number.MAX_VALUE, nextid = -1, pred, score;
+    let nextdist = +Number.MAX_VALUE, nextid = -1, pred, sortscore;
     const SHIFT = 0x1000, CTRL = 0x2000, ALT = 0x4000;
     switch (event.keyCode + (event.shiftKey ? SHIFT : 0) + (event.ctrlKey ? CTRL : 0) + (event.altKey ? ALT : 0)) {
       case ALT + RIGHT:
 	if (idx < 0)
 	  note = { id: -1, tick: -1, note: -1, duration: 0 };
 	pred  = n => n.tick > note.tick || (n.tick == note.tick && n.key >= note.key);
-	score = n => (n.tick - note.tick) * 1000 + n.key;
+	sortscore = n => (n.tick - note.tick) * 1000 + n.key;
 	// nextid = idx >= 0 && idx + 1 < roll.adata.pnotes.length ? roll.adata.pnotes[idx + 1].id : -1;
 	break;
       case ALT + LEFT:
 	if (idx < 0)
 	  note = { id: -1, tick: +big, note: 1000, duration: 0 };
 	pred  = n => n.tick < note.tick || (n.tick == note.tick && n.key <= note.key);
-	score = n => (note.tick - n.tick) * 1000 + 1000 - n.key;
+	sortscore = n => (note.tick - n.tick) * 1000 + 1000 - n.key;
 	// nextid = idx > 0 ? roll.adata.pnotes[idx - 1].id : -1;
 	break;
       case 81: // Q
@@ -98,12 +98,12 @@ export class PianoCtrl {
 	  }
 	break;
     }
-    if (note.id && pred && score)
+    if (note.id && pred && sortscore)
       {
 	roll.adata.pnotes.forEach (n => {
 	  if (n.id != note.id && pred (n))
 	    {
-	      const dist = score (n);
+	      const dist = sortscore (n);
 	      if (dist < nextdist)
 		{
 		  nextdist = dist;
@@ -139,7 +139,7 @@ export class PianoCtrl {
       {
 	this.change_focus_selection (NONE);
 	const note_id = await msrc.change_note (-1, this.quantize (tick), Util.PPQN / 4, midinote, 0, 1, true);
-	if (roll.adata.focus_noteid === undefined)
+	if (!(roll.adata.focus_noteid > 0))
 	  this.change_focus_selection (note_id);
       }
   }
@@ -208,16 +208,15 @@ export class PianoCtrl {
       roll.adata.focus_noteid = undefined; // TODO
     else if (focusid != roll.adata.focus_noteid) // numeric
       {
+	const oldfocus = roll.adata.focus_noteid;
+	roll.adata.focus_noteid = focusid;
 	if (roll.adata.focus_noteid > 0)
 	  {
-	    msrc.toggle_note (roll.adata.focus_noteid, false);
-	    roll.adata.focus_noteid = undefined;
+	    // this may delete another note, in particular `oldfocus`
+	    msrc.toggle_note (roll.adata.focus_noteid, true);
 	  }
-	if (focusid > 0)
-	  {
-	    msrc.toggle_note (focusid, true);
-	    roll.adata.focus_noteid = focusid;
-	  }
+	if (oldfocus > 0)
+	  msrc.toggle_note (oldfocus, false);
       }
   }
 }
