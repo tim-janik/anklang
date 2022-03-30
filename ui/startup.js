@@ -32,6 +32,9 @@ import { AppClass } from './b/app.js';
 import Shell from './b/shell.js';
 import VueComponents from './all-components.js';
 
+// load `run_script()`
+import './script.js';
+
 // Custom Elements
 class PushButton extends HTMLElement {
   constructor() { super(); }
