@@ -217,19 +217,32 @@ eslint: $>/ui/.eslint.files $>/node_modules/.npm.done
 	$Q cd $>/ui/ && npm run $@
 .PHONY: eslint
 
+# == ui/scripting-docs.md ==
+$>/ui/scripting-docs.md: ui/host.js ui/ch-scripting.md $(ui/jsdoc.deps) ui/Makefile.mk $>/node_modules/.npm.done	| $>/ui/
+	$(QGEN)
+	$Q cat ui/ch-scripting.md 						>  $@.tmp
+	$Q $>/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X $<			>  $>/ui/host.jsdoc
+	$Q echo -e '\n## Reference for $<'					>> $@.tmp
+	$Q node doc/jsdoc2md.js -d 2 -e 'Host' $>/ui/host.jsdoc			>> $@.tmp
+	$Q mv $@.tmp $@
+$>/ui/.build1-stamp: $>/ui/scripting-docs.md
+
 # == ui/*js.md ==
 ui/jsdoc.deps     ::= ui/jsdocrc.json ui/slashcomment.js doc/jsdoc2md.js
 $>/ui/envuejs.md: ui/b/envue.js $(ui/jsdoc.deps) ui/Makefile.mk $>/node_modules/.npm.done	| $>/ui/
 	$(QGEN)
-	$Q $>/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X ui/b/envue.js	>  $(@:.md=.jsdoc)
-	$Q echo -e '\n## Reference for envue.js'				>  $@.tmp
+	$Q $>/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X $<			>  $(@:.md=.jsdoc)
+	$Q echo -e '\n## Reference for $<'					>  $@.tmp
 	$Q node doc/jsdoc2md.js -d 2 -e 'Envue' $(@:.md=.jsdoc)			>> $@.tmp
 	$Q mv $@.tmp $@
-$>/ui/utiljs.md: ui/util.js $(ui/jsdoc.deps) ui/Makefile.mk $>/node_modules/.npm.done	| $>/ui/
+$>/ui/utiljs.md: ui/util.js ui/script.js $(ui/jsdoc.deps) ui/Makefile.mk $>/node_modules/.npm.done	| $>/ui/
 	$(QGEN)
-	$Q $>/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X ui/util.js		>  $(@:.md=.jsdoc)
-	$Q echo -e '\n## Reference for util.js'					>  $@.tmp
-	$Q node doc/jsdoc2md.js -d 2 -e 'Util' $(@:.md=.jsdoc)			>> $@.tmp
+	$Q echo -e '\n## Reference for $<'					>  $@.tmp
+	$Q $>/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X $<			>  $>/ui/util.jsdoc
+	$Q node doc/jsdoc2md.js -d 2 -e 'Util' $>/ui/util.jsdoc			>> $@.tmp
+	$Q echo -e '\n## Reference for ui/script.js'				>> $@.tmp
+	$Q $>/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X ui/script.js	>  $>/ui/script.jsdoc
+	$Q node doc/jsdoc2md.js -d 2 -e 'Script' $>/ui/script.jsdoc		>> $@.tmp
 	$Q mv $@.tmp $@
 
 # == ui/vue-doc ==
