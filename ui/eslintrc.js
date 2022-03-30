@@ -23,6 +23,8 @@ module.exports = {
     "Vue": false,
     "__DEV__": false,
     "debug": false,
+    "log": false,
+    "host": false,
     "sfc_template": false,
     "globalThis": false },
 
