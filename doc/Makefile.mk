@@ -9,6 +9,7 @@ doc/all:
 doc/manual-chapters ::= $(strip		\
 	doc/ch-intro.md			\
 	$>/doc/ch-man-pages.md		\
+	$>/ui/scripting-docs.md		\
 	doc/ch-development.md		\
 	$>/ui/vue-docs.md		\
 	doc/ch-appendix.md		\
