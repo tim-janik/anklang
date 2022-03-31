@@ -85,7 +85,7 @@ $duration: 0.097s;
     <transition name="-slide">
       <div class="b-contextmenu-modalshield" ref="shield" v-show='visible' v-if='visible || keepmounted' >
 	<div class='b-contextmenu-area' :class='cmenu_class' ref='contextmenuarea' >
-	  <v-flex class='b-contextmenu' :class="popupclass" ref='cmenu' start
+	  <v-flex class='b-contextmenu' :class="popupclass()" ref='cmenu' start
 		  :style="cmenu_style()">
 	    <slot />
 	  </v-flex>
@@ -133,11 +133,6 @@ export default {
 	   yscale: { default: 1, }, },
   computed: {
     cmenu_class() { return this.notransitions !== false ? 'b-contextmenu-notransitions' : ''; },
-    popupclass() {
-      const pclasses = Array.from (this.$el?.classList || []);
-      const cclasses = pclasses.filter (e => e !== 'b-contextmenu-placeholder');
-      return cclasses;
-    },
   },
   data() { return {
     visible: false, doc_x: undefined, doc_y: undefined,
@@ -148,6 +143,11 @@ export default {
   provide: Util.fwdprovide ('b-contextmenu.menudata',	// context for menuitem descendants
 			    [ 'checkeduris', 'showicons', 'keepmounted', 'clicked', 'close', 'onclick', 'isdisabled' ]),
   methods: {
+    popupclass() {
+      const pclasses = Array.from (this.$el?.classList || []);
+      const cclasses = pclasses.filter (e => e !== 'b-contextmenu-placeholder');
+      return cclasses;
+    },
     dom_update () {
       const shield = this.$refs.shield; // capture shield for callbacks
       if (shield?.parentNode == this.$el)
