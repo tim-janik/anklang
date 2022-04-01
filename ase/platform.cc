@@ -36,6 +36,19 @@ namespace Ase {
 static std::string determine_anklangsynthengine_installdir (bool *using_objdir);
 static std::string construct_ladspa_path                   ();
 
+/// Get Anklang home dir, possibly adding `subdir`.
+String
+anklang_home_dir (const String &subdir)
+{
+  const char *anklanghomeenv = getenv ("ANKLANG_HOME_DIR");
+  String anklangdir = anklanghomeenv && anklanghomeenv[0] ? anklanghomeenv :
+                      Path::join (Path::xdg_dir ("DOCUMENTS"), "Anklang");
+  if (!subdir.empty())
+    anklangdir = Path::join (anklangdir, subdir);
+  return anklangdir;
+}
+
+/// Retrieve various resource paths at runtime.
 std::string
 runpath (RPath rpath)
 {
