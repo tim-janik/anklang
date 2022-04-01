@@ -86,8 +86,11 @@ public:
     if (dir_.empty())
       return "";
 
+    // decode URL, also uncovers '.' and '/'
+    String absurl = string_url_decode (urlpath);
+
     // normalize '.' and '..' dirs
-    String absurl = Path::simplify_abspath (urlpath);
+    absurl = Path::simplify_abspath (absurl);
 
     // ignore urls
     for (const auto &ignorepat : ignores_)
