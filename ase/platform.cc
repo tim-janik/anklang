@@ -50,7 +50,7 @@ anklang_home_dir (const String &subdir)
 
 /// Retrieve various resource paths at runtime.
 std::string
-runpath (RPath rpath)
+anklang_runpath (RPath rpath, const String &segment)
 {
   static bool using_objdir = false;
   static const std::string libexec_installdir = determine_anklangsynthengine_installdir (&using_objdir);
@@ -58,12 +58,12 @@ runpath (RPath rpath)
   const char *objdir = using_objdir ? "/" LIBTOOL_OBJDIR : "";
   switch (rpath)
     {
-    case RPath::PREFIXDIR:      return libexec_prefixdir;
-    case RPath::INSTALLDIR:     return libexec_installdir;
-    case RPath::LOCALEDIR:      return libexec_installdir + "/locale";
-    case RPath::LIBDIR:         return libexec_installdir + "/lib" + objdir;
-    case RPath::DEMODIR:        return libexec_installdir + "/media/Demos";
-    case RPath::LADSPADIRS:     return construct_ladspa_path();
+    case RPath::PREFIXDIR:      return Path::join (libexec_prefixdir, segment);
+    case RPath::INSTALLDIR:     return Path::join (libexec_installdir, segment);
+    case RPath::LOCALEDIR:      return Path::join (libexec_installdir + "/locale", segment);
+    case RPath::LIBDIR:         return Path::join (libexec_installdir + "/lib" + objdir, segment);
+    case RPath::DEMODIR:        return Path::join (libexec_installdir + "/media/Demos", segment);
+    case RPath::LADSPADIRS:     return Path::join (construct_ladspa_path(), segment);
     }
   return "";
 }
@@ -77,8 +77,8 @@ construct_ladspa_path()
   if (ladspa_path)
     sp = Path::searchpath_split (ladspa_path);
   // add $prefix/ladspa
-  sp.push_back (runpath (RPath::INSTALLDIR) + "/ladspa");
-  sp.push_back (runpath (RPath::PREFIXDIR) + "/ladspa");
+  sp.push_back (anklang_runpath (RPath::INSTALLDIR) + "/ladspa");
+  sp.push_back (anklang_runpath (RPath::PREFIXDIR) + "/ladspa");
   // add standard locations
   sp.push_back ("/usr/lib/ladspa");
   sp.push_back ("/usr/local/lib/ladspa");
@@ -101,7 +101,7 @@ initialized_ase_gettext_domain()
 {
   static const char *const gettexttextdomain = [] () {
     const char *const gtdomain = ase_gettext_domain;
-    bindtextdomain (gtdomain, Ase::runpath (Ase::RPath::LOCALEDIR).c_str());
+    bindtextdomain (gtdomain, anklang_runpath (RPath::LOCALEDIR).c_str());
     bind_textdomain_codeset (gtdomain, "UTF-8");
     return gtdomain;
   } ();

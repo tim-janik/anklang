@@ -68,7 +68,7 @@ FileCrawler::expand_dir (const String &which)
   if (which == ".")
     return Path::dir_terminate (cwd_);
   if (string_toupper (which) == "DEMO")
-    return Path::dir_terminate (Ase::runpath (RPath::DEMODIR));
+    return Path::dir_terminate (anklang_runpath (RPath::DEMODIR));
   String dir = Path::xdg_dir (which);
   if (!dir.empty())
     return Path::dir_terminate (dir);

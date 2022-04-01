@@ -32,7 +32,7 @@ enum class RPath {
   DEMODIR,
   LADSPADIRS,
 };
-std::string runpath          (RPath rpath);
+std::string anklang_runpath  (RPath rpath, const String &segment = "");
 String      anklang_home_dir (const String &subdir = "");
 
 // == AnsiColors ==

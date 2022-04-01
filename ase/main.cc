@@ -314,7 +314,7 @@ main (int argc, char *argv[])
 
   // open Jsonapi socket
   auto wss = WebSocketServer::create (jsonapi_make_connection, config.jsonapi_logflags);
-  wss->http_dir (runpath (RPath::INSTALLDIR) + "/ui/");
+  wss->http_dir (anklang_runpath (RPath::INSTALLDIR) + "/ui/");
   const int xport = embedding_fd >= 0 ? 0 : 1777;
   const String subprotocol = xport ? "" : make_auth_string();
   jsonapi_require_auth (subprotocol);
