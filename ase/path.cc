@@ -651,6 +651,8 @@ join_with (const String &head, char joiner, const String &tail)
         return head + tail.substr (1);
       return head + tail;
     }
+  if (tail[0] == joiner)
+    return head + tail;
   return head + joiner + tail;
 }
 
