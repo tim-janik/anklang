@@ -19,8 +19,8 @@ namespace Ase {
 // == FileCrawler ==
 JSONIPC_INHERIT (FileCrawler, ResourceCrawler);
 
-FileCrawler::FileCrawler (const String &cwd) :
-  cwd_ ("/")
+FileCrawler::FileCrawler (const String &cwd, bool constraindir, bool constrainfile) :
+  cwd_ ("/"), constraindir_ (constraindir), constrainfile_ (constrainfile)
 {
   if (!cwd.empty())
     assign (cwd);
@@ -99,7 +99,7 @@ FileCrawler::assign (const String &path)
       if (dir.empty() || dir == "/") // failed to expand special word
         dir = path;
     }
-  cwd_ = canonify (cwd_, dir.empty() ? "." : dir + "/", true, false);
+  cwd_ = canonify (cwd_, dir.empty() ? "." : dir + "/", constraindir_, constrainfile_);
   while (cwd_.size() > 1 && cwd_.back() == '/')
     cwd_.resize (cwd_.size() - 1);
   emit_event ("notify", "current");
@@ -150,7 +150,7 @@ static void
 crawler_tests()
 {
   using namespace Ase;
-  FileCrawlerP cp = FileCrawler::make_shared ("/dev");
+  FileCrawlerP cp = FileCrawler::make_shared ("/dev", true, false);
   FileCrawler &c = *cp;
   String r, e;
   r = c.canonify ("", "/dev/N°…Diŕ/N°…Fílė", 1, 1); e = "/dev/";        TCMP (r, ==, e);
