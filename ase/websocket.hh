@@ -45,6 +45,8 @@ public:
   using MakeConnection = std::function<WebSocketConnectionP (WebSocketConnection::Internals&, int)>;
   using UnlistenCB = std::function<void ()>;
   virtual void            http_dir      (const String &path) = 0;
+  virtual void            http_alias    (const String &webdir, const String &path) = 0;
+  virtual String          map_url       (const String &urlpath) = 0;
   virtual std::string     url           () const = 0;
   virtual void            listen        (const String &host = "", int port = 0, const UnlistenCB& = {}) = 0;
   virtual void            reset         () = 0;
