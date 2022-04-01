@@ -859,6 +859,50 @@ string_from_pretty_function_name (const char *cxx_pretty_function)
   String result = String (first + 1, last - first);
   return result;
 }
+/// Decode URL %-sequences in a string, decode '+' if `form_url_encoded`.
+String
+string_url_decode (const String &urlstr, const bool form_url_encoded)
+{
+  String s;
+  s.reserve (urlstr.size());
+  for (size_t i = 0; i < urlstr.size(); i++)
+    {
+      const char c = urlstr[i];
+      if (c == '%' && isxdigit (urlstr[i+1]) && isxdigit (urlstr[i+2]))
+        {
+          const char buf[3] = { urlstr[i+1], urlstr[i+2], 0 };
+          const long l = strtol (buf, nullptr, 16);
+          s.push_back (char (l));
+          i += 2;
+        }
+      else if (form_url_encoded && c == '+')
+        s.push_back (' ');
+      else
+        s.push_back (c);
+    }
+  return s;
+}
+
+/// Encode special characters to URL %-sequences, encode space as '+' if `form_url_encoded`.
+String
+string_url_encode (const String &rawstr, const bool form_url_encoded)
+{
+  String s;
+  s.reserve (rawstr.size());
+  const char *const unescaped = /*unreserved:*/ "-._~" /*ok-in-FF:*/ "[]!()*";
+  for (const uint8_t c : rawstr)
+    if (isalnum (c) || strchr (unescaped, c))
+      s.push_back (c);
+    else if (form_url_encoded && c == ' ')
+      s.push_back ('+');
+    else
+      {
+        const char *const hex = "0123456789ABCDEF";
+        const char buf[4] = { '%', hex[c >> 4], hex[c & 0x0f], 0 };
+        s += buf;
+      }
+  return s;
+}
 
 /// Escape text like a C string.
 /// Returns a string that escapes all characters with a backslash '\\' that need escaping in C language string syntax.
@@ -1592,6 +1636,11 @@ string_tests()
   TASSERT (string_cmp_uuid ("c18888f8-f026-4f70-92dd-78D4B16E54D5", "C18888F8-f026-4f70-92dd-78d4b16e54d5") == 0);
   TASSERT (string_cmp_uuid ("c18888f8-f026-4f70-92dd-78d4b16e54d4", "c18888f8-f026-4f70-92dd-78d4b16e54d5") < 0);
   TASSERT (string_cmp_uuid ("c18888f8-f026-4f70-92dd-78d4b16e54d5", "c18888f8-f026-4f70-92dd-78d4b16e54d4") > 0);
+  TCMP (string_url_encode ("x + z"), ==, "x%20%2B%20z");
+  TCMP (string_url_encode ("x + z", true), ==, "x+%2B+z");
+  TCMP (string_url_decode ("x%20%2B%20z"), ==, "x + z");
+  TCMP (string_url_decode ("x+%2B+z"), ==, "x+++z");
+  TCMP (string_url_decode ("x+%2B+z", true), ==, "x + z");
 }
 
 } // Anon

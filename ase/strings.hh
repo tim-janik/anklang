@@ -66,6 +66,8 @@ String  string_from_pretty_function_name                 (const char *cxx_pretty
 String  string_to_cescape                                (const String &str);
 String  string_to_cquote                                 (const String &str);
 String  string_from_cquote                               (const String &input);
+String  string_url_decode                                (const String &urlstr, bool form_url_encoded = false);
+String  string_url_encode                                (const String &rawstr, bool form_url_encoded = false);
 String  string_hexdump                                   (const void *addr, size_t length, size_t initial_offset = 0);
 String  string_lstrip                                    (const String &input);
 String  string_rstrip                                    (const String &input);
