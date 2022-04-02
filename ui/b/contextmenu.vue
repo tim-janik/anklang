@@ -85,7 +85,7 @@ $duration: 0.097s;
     <transition name="-slide">
       <div class="b-contextmenu-modalshield" ref="shield" v-show='visible' v-if='visible || keepmounted' >
 	<div class='b-contextmenu-area' :class='cmenu_class' ref='contextmenuarea' >
-	  <v-flex class='b-contextmenu' :class="popupclass" ref='cmenu' start
+	  <v-flex class='b-contextmenu' :class="popupclass()" ref='cmenu' start
 		  :style="cmenu_style()">
 	    <slot />
 	  </v-flex>
@@ -99,6 +99,8 @@ $duration: 0.097s;
 import * as Util from '../util.js';
 
 const menuitem_onclick = function (event) {
+  if (!this.uri)
+    throw new Error ("Attempt to click menuitem without URI");
   this.$emit ('click', this.uri, event);
   if (!event.defaultPrevented)
     {
@@ -124,30 +126,31 @@ const menuitem_isdisabled = function () {
 
 export default {
   sfc_template,
-  emits: { click: uri => !!uri,
+  emits: { click: (uri, event) => !!uri,
 	   close: null, },
   props: { notransitions: { default: false },
 	   keepmounted: { type: Boolean, },
 	   startfocus: { type: Boolean, },
+	   showicons: { default: true, type: Boolean },
 	   xscale: { default: 1, },
 	   yscale: { default: 1, }, },
   computed: {
     cmenu_class() { return this.notransitions !== false ? 'b-contextmenu-notransitions' : ''; },
-    popupclass() {
-      const pclasses = Array.from (this.$el?.classList || []);
-      const cclasses = pclasses.filter (e => e !== 'b-contextmenu-placeholder');
-      return cclasses;
-    },
   },
   data() { return {
     visible: false, doc_x: undefined, doc_y: undefined,
     resize_observer: undefined, checkeduris: {},
-    showicons: true, popup_options: {},
+    popup_options: {},
     onclick: menuitem_onclick, isdisabled: menuitem_isdisabled,
   }; },
   provide: Util.fwdprovide ('b-contextmenu.menudata',	// context for menuitem descendants
 			    [ 'checkeduris', 'showicons', 'keepmounted', 'clicked', 'close', 'onclick', 'isdisabled' ]),
   methods: {
+    popupclass() {
+      const pclasses = Array.from (this.$el?.classList || []);
+      const cclasses = pclasses.filter (e => e !== 'b-contextmenu-placeholder');
+      return cclasses;
+    },
     dom_update () {
       const shield = this.$refs.shield; // capture shield for callbacks
       if (shield?.parentNode == this.$el)

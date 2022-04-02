@@ -273,7 +273,7 @@ export default {
 
 const clamp = Util.clamp;
 
-function update_levels (active) {
+function _update_levels (active) {
   /* Paint model:
    * |                                           ######| dark tip cover layer, $refs.covertipN
    * |             #############################       | dark middle cover, $refs.covermidN

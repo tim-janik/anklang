@@ -32,7 +32,8 @@ enum class RPath {
   DEMODIR,
   LADSPADIRS,
 };
-std::string runpath (RPath rpath);      ///< Retrieve various resource paths at runtime.
+std::string anklang_runpath  (RPath rpath, const String &segment = "");
+String      anklang_home_dir (const String &subdir = "");
 
 // == AnsiColors ==
 /// The AnsiColors namespace contains utility functions for colored terminal output

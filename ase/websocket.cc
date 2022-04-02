@@ -40,6 +40,7 @@ struct WebSocketServerImpl : public WebSocketServer {
   std::thread   *initialized_thread_ = nullptr;
   WppServer      wppserver_;
   String         server_url_, dir_;
+  std::vector<std::pair<String,String>> aliases_;
   ConVec         opencons_;
   RegexVector    ignores_;
   MakeConnection make_con_;
@@ -56,7 +57,8 @@ public:
   http_dir (const String &path) override
   {
     assert_return (!initialized_thread_);
-    dir_ = path;
+    dir_ = Path::normalize (path);
+    aliases_.clear();
     ignores_.clear();
 
     // compile .aseignore
@@ -66,6 +68,46 @@ public:
     while (!aseignore.fail() && std::getline (aseignore, cxxline))
       if (!cxxline.empty())
         ignores_.push_back (std::regex (cxxline));
+  }
+  void
+  http_alias (const String &webdir, const String &path) override
+  {
+    assert_return (!dir_.empty());
+    String aliaspath = Path::normalize (Path::abspath (path, dir_));
+    aliases_.push_back (std::make_pair (webdir, aliaspath));
+    // sort by URL length, longest URLs come first
+    std::stable_sort (aliases_.begin(), aliases_.end(), [] (const auto &a, const auto &b) {
+      return a.first.size() > b.first.size();
+    });
+  }
+  String
+  map_url (const String &urlpath) override
+  {
+    if (dir_.empty())
+      return "";
+
+    // decode URL, also uncovers '.' and '/'
+    String absurl = string_url_decode (urlpath);
+
+    // normalize '.' and '..' dirs
+    absurl = Path::simplify_abspath (absurl);
+
+    // ignore urls
+    for (const auto &ignorepat : ignores_)
+      if (std::regex_search (absurl, ignorepat))
+        return "";
+
+    // map URL to sorted aliases, prefers longest match
+    for (const auto &pair : aliases_)
+      if (absurl == pair.first)
+        return pair.second;
+      else if (absurl.size() > pair.first.size() &&
+               absurl[pair.first.size()] == '/' &&
+               strncmp (absurl.c_str(), pair.first.c_str(), pair.first.size()) == 0)
+        return Path::join (pair.second, absurl.c_str() + pair.first.size());
+
+    // fallback to root
+    return Path::join (dir_, absurl);
   }
   void
   listen (const String &host, int port, const UnlistenCB &ulcb) override
@@ -309,15 +351,11 @@ WebSocketConnection::http_request ()
     return;
   WppConnectionP cp = internals_.wppconp();
   const auto &parts = string_split (cp->get_resource(), "?");
-  String simplepath = Path::simplify_abspath (parts[0]);
 
-  // ignore files
-  bool ignored = false;
-  for (size_t i = 0; i < internals_.server->ignores_.size() && !ignored; i++)
-    ignored = std::regex_search (simplepath, internals_.server->ignores_[i]);
+  // find file for URL
+  String filepath = internals_.server->map_url (parts[0]);
 
-  // find file, map dir to index.html
-  String filepath = ignored ? "" : Path::join (internals_.server->dir_, simplepath);
+  // map directories to index.html
   if (!filepath.empty() && Path::check (filepath, "dx"))
     filepath = Path::join (filepath, "index.html");
 
@@ -354,7 +392,7 @@ WebSocketConnection::http_request ()
       log (string_format ("%s%d %s %s%s%s",
                           C1, int (status),
                           cp->get_request().get_method(), cp->get_resource(), C0,
-                          ignored ? " [IGNORE]" : ""));
+                          filepath.empty() ? " [IGNORE]" : ""));
     }
 }
 

@@ -262,7 +262,18 @@ Server::get_session_data (const String &key) const
 ResourceCrawlerP
 Server::dir_crawler (const String &cwd)
 {
-  return FileCrawler::make_shared (cwd);
+  return FileCrawler::make_shared (cwd, true, false);
+}
+
+ResourceCrawlerP
+Server::url_crawler (const String &url)
+{
+  if (main_config.web_socket_server) {
+    String dir = main_config.web_socket_server->map_url (url);
+    if (!dir.empty())
+      return FileCrawler::make_shared (dir, false, false);
+  }
+  return nullptr;
 }
 
 // == Choice ==

@@ -424,7 +424,8 @@ static Ase::Error
 try_load_libasejack ()
 {
   using namespace Ase;
-  const std::string libasejack = string_format ("%s/lib/libase-jack-%u.%u.%u.so", runpath (RPath::INSTALLDIR),
+  const std::string libasejack = string_format ("%s/lib/libase-jack-%u.%u.%u.so",
+                                                anklang_runpath (RPath::INSTALLDIR),
                                                 ase_major_version, ase_minor_version, ase_micro_version);
   if (Path::check (libasejack, "fr"))
     {

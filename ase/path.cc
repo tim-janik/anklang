@@ -651,6 +651,8 @@ join_with (const String &head, char joiner, const String &tail)
         return head + tail.substr (1);
       return head + tail;
     }
+  if (tail[0] == joiner)
+    return head + tail;
   return head + joiner + tail;
 }
 
@@ -940,7 +942,7 @@ path_tests()
     TCMP (Path::expand_tilde ("~" + String (env_logname)), ==, env_home);
   TCMP (Path::expand_tilde ("~:unknown/"), ==, "~:unknown/");
   TCMP (Path::searchpath_multiply ("/:/tmp", "foo:bar"), ==, "/foo:/bar:/tmp/foo:/tmp/bar");
-  const String abs_basedir = Path::abspath (Ase::runpath (Ase::RPath::PREFIXDIR));
+  const String abs_basedir = Path::abspath (anklang_runpath (RPath::PREFIXDIR));
   TCMP (Path::searchpath_list ("/:" + abs_basedir, "e"), ==, StringS ({ "/", abs_basedir }));
   TCMP (Path::searchpath_contains ("/foo/:/bar", "/"), ==, false);
   TCMP (Path::searchpath_contains ("/foo/:/bar", "/foo"), ==, false); // false because "/foo" is file search

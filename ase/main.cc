@@ -314,7 +314,12 @@ main (int argc, char *argv[])
 
   // open Jsonapi socket
   auto wss = WebSocketServer::create (jsonapi_make_connection, config.jsonapi_logflags);
-  wss->http_dir (runpath (RPath::INSTALLDIR) + "/ui/");
+  main_config_.web_socket_server = &*wss;
+  wss->http_dir (anklang_runpath (RPath::INSTALLDIR, "/ui/"));
+  wss->http_alias ("/User/Controller", anklang_home_dir ("/Controller"));
+  wss->http_alias ("/Builtin/Controller", anklang_runpath (RPath::INSTALLDIR, "/Controller"));
+  wss->http_alias ("/User/Scripts", anklang_home_dir ("/Scripts"));
+  wss->http_alias ("/Builtin/Scripts", anklang_runpath (RPath::INSTALLDIR,"/Scripts"));
   const int xport = embedding_fd >= 0 ? 0 : 1777;
   const String subprotocol = xport ? "" : make_auth_string();
   jsonapi_require_auth (subprotocol);
@@ -381,6 +386,7 @@ main (int argc, char *argv[])
 
   // loop ended, close socket and shutdown
   wss->shutdown();
+  main_config_.web_socket_server = nullptr;
   wss = nullptr;
 
   // halt audio engine, join its threads, dispatch cleanups

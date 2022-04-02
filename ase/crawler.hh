@@ -8,7 +8,9 @@ namespace Ase {
 
 class FileCrawler : public ObjectImpl, public virtual ResourceCrawler {
   String cwd_;
-  FileCrawler (const String &cwd);
+  const uint constraindir_ : 1;
+  const uint constrainfile_ : 1;
+  FileCrawler (const String &cwd, bool constraindir = false, bool constrainfile = false);
 public:
   ASE_DEFINE_MAKE_SHARED (FileCrawler);
   ResourceS list_entries   () override;
