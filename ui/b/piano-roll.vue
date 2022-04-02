@@ -89,6 +89,7 @@
     .-notes-wrapper, .-piano-wrapper {} // leave these alone to preserve vertical sizing
     canvas { image-rendering: pixelated; }
     &[data-pianotool='S'] canvas.b-piano-roll-notes { cursor: crosshair; }
+    &[data-pianotool='S'] canvas.b-piano-roll-notes[data-notehover="true"] { cursor: default; }
     &[data-pianotool='H'] canvas.b-piano-roll-notes { cursor: col-resize; }
     &[data-pianotool='P'] canvas.b-piano-roll-notes { cursor: $anklang-cursor-pen; }
     &[data-pianotool='E'] canvas.b-piano-roll-notes { cursor: $anklang-cursor-eraser; }
@@ -126,6 +127,7 @@
 
   <c-grid class="b-piano-roll" tabindex="0"
 	  @keydown="piano_ctrl.keydown ($event)" @pointerdown="Util.drag_event"
+	  @pointermove="move_event"
 	  @focus="focuschange" @blur="focuschange" >
     <!-- VTitle, COL-1 -->
     <span class="-vtitle" style="grid-row: 1/-1"  > VTitle </span>
@@ -238,6 +240,7 @@ export default {
   created () {
     this.piano_ctrl = new PianoCtrl (this);
     this.stepping = [ Util.PPQN, 0, 0 ];
+    this.move_event = Util.debounce (this.piano_ctrl.move_event.bind (this.piano_ctrl), 50);
   },
   mounted () {
     // forward ctrl events
