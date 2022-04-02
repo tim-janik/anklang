@@ -145,6 +145,8 @@ export class PianoCtrl {
   }
   drag_event (ev, MODE) {
     const roll = this.piano_roll, layout = roll.layout; // msrc = roll.msrc;
+    if (ev.target == roll.$refs.notes_canvas && MODE == Util.START)
+      roll.$refs.notes_canvas.setAttribute ('data-notehover', false);
     if (ev.target == roll.$refs.timeline_canvas)
       {
 	const tick = layout.tick_from_x (event.offsetX);
@@ -183,6 +185,17 @@ export class PianoCtrl {
       }
     else
       debug ("odrag:", MODE, roll.pianotool, ev);
+  }
+  move_event (event) {
+    const roll = this.piano_roll, layout = roll.layout; // msrc = roll.msrc;
+    if (event.target == roll.$refs.notes_canvas) {
+      const tick = layout.tick_from_x (event.offsetX);
+      const midinote = layout.midinote_from_y (event.offsetY);
+      const idx = find_note (roll.adata.pnotes,
+			     n => tick >= n.tick && tick < n.tick + n.duration && n.key == midinote);
+      roll.$refs.notes_canvas.setAttribute ('data-notehover', idx >= 0);
+      debug ('data-notehover', idx >= 0);
+    }
   }
   change_focus_selection (focusid, selectionlist) {
     const roll = this.piano_roll, msrc = roll.msrc;
