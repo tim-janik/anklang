@@ -242,7 +242,8 @@ public:
   virtual void      assign_range   (int64 starttick, int64 stoptick) = 0; ///< Change start_tick() and stop_tick(); emits `notify:start_tick`, `notify:stop_tick`.
   virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
   /// Change note `id` according to the arguments or add a new note if `id` < 0; emits `notify:notes`.
-  virtual int32     change_note    (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity) = 0;
+  virtual int32     change_note    (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity, bool selected = false) = 0;
+  virtual bool      toggle_note    (int32 id, bool selected) = 0; ///< Change selected state of note `id`.
 };
 
 /// Container for Clip objects and sequencing information.

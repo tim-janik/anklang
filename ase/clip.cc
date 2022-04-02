@@ -122,29 +122,41 @@ ClipImpl::tick_events () const
   return const_cast<ClipImpl*> (this)->notes_.ordered_events<OrderedEventsV> ();
 }
 
+static bool
+find_same_note (const EventList<ClipNote,ClipImpl::CmpNoteIds> &notes, ClipNote &ev)
+{
+  for (const auto &e : notes)
+    if (e.key == ev.key && e.tick == ev.tick && e.selected == ev.selected)
+      {
+        ev = e;
+        return true;
+      }
+  return false;
+}
+
 /// Change note `id`, or delete (`duration=0`) or create (`id=-1`) it.
 int32
-ClipImpl::change_note (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity)
+ClipImpl::change_note (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity, bool selected)
 {
+  assert_return (duration >= 0, 0);
+  if (tick < 0)
+    return -1;
   if (id < 0 && duration > 0)
     id = next_noteid++; // automatic id allocation for new notes
   const uint uid = id;
   assert_return (uid >= MIDI_NOTE_ID_FIRST && uid <= MIDI_NOTE_ID_LAST, 0);
-  assert_return (duration >= 0, 0);
-  if (tick < 0)
-    return -1;
   ClipNote ev;
   ev.tick = tick;
   ev.key = key;
+  ev.selected = selected;
   ev.id = 0;
-  if (find_key_at_tick (ev) && ev.id != id)
+  if (find_same_note (notes_, ev) && ev.id != id)
     notes_.remove (ev);
   ev.id = id;
   ev.channel = 0;
   ev.duration = duration;
   ev.fine_tune = fine_tune;
   ev.velocity = velocity;
-  ev.selected = false;
   int ret = ev.id;
   if (duration > 0)
     notes_.insert (ev);
@@ -155,15 +167,27 @@ ClipImpl::change_note (int32 id, int64 tick, int64 duration, int32 key, int32 fi
 }
 
 bool
-ClipImpl::find_key_at_tick (ClipNote &ev)
+ClipImpl::toggle_note (int32 id, bool selected)
 {
-  for (const auto &e : notes_)
-    if (e.key == ev.key && e.tick == ev.tick)
-      {
-        ev = e;
-        return true;
-      }
-  return false;
+  bool was_selected = false;
+  ClipNote ev;
+  ev.id = id;
+  ev.selected = !selected;
+  const ClipNote *ce = notes_.lookup (ev);
+  if (ce)
+    {
+      was_selected = ce->selected;
+      ev = *ce;
+      ev.selected = selected;   // look for merge candidate
+      if (find_same_note (notes_, ev) && ev.id != id)
+        notes_.remove (ev);     // remove candidate
+      ev = *ce;
+      notes_.remove (ev);
+      ev.selected = selected;
+      notes_.insert (ev);
+      emit_event ("notify", "notes");
+    }
+  return was_selected;
 }
 
 // == ClipImpl::Generator ==

@@ -73,6 +73,7 @@ export default {
     selectall: { default: false, type: Boolean, },
   },
   data,
+  emits: { change: null, },
   methods:  {
     dom_create() {
       const activate = ev => { this.activate(); ev.stopPropagation(); };

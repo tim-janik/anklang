@@ -16,7 +16,7 @@
     "@fontsource/inconsolata": "^4.3.0",
     "babel-eslint": "^10.1.0",
     "browserify": "^17.0.0",
-    "chroma-js": "^2.1.2",
+    "chroma-js": "^2.3.0",
     "css-color-converter": "^2.0.0",
     "electron": "^15.1.0",
     "eslint": "^7.32.0",
