@@ -161,7 +161,7 @@
 
     <!-- Roll, COL-3 -->
     <div class="-overflow-hidden -notes-wrapper" style="grid-column: 3; grid-row: 2" ref="scrollarea"
-	 @contextmenu.prevent="$refs.pianorollmenu.popup ($event)"
+	 @contextmenu.prevent="pianorollmenu_popup ($event)"
 	 @wheel.stop="wheel_event ($event, 'notes')" >
       <canvas class="b-piano-roll-notes tabular-nums" @click="piano_ctrl.notes_click ($event)" ref="notes_canvas" ></canvas>
       <b-contextmenu ref="pianorollmenu" keepmounted :showicons="false" class="b-piano-roll-contextmenu" @click="pianorollmenu_click" >
@@ -272,6 +272,12 @@ export default {
     },
     piano_roll_scripts() {
       return Script.registry_keys ('PianoRoll');
+    },
+    pianorollmenu_popup (event) {
+      this.$refs.pianorollmenu.popup (event, { checker: this.pianorollmenu_check.bind (this) });
+    },
+    pianorollmenu_check (uri, component) {
+      return !!this.msrc;
     },
     async pianorollmenu_click (uri) {
       const result = await Script.run_script_fun (uri);
