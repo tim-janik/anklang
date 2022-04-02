@@ -68,8 +68,36 @@ function unhandled_error (event, filename, lineno, colno, error) {
 }
 globalThis.onerror = unhandled_error;
 
+// Allow releasing of remotely held refhandle references
+function refhandle_finalization_handler (held_value) {
+  host_call ('release_refhandle', held_value);
+}
+const refhandle_finalization = new FinalizationRegistry (refhandle_finalization_handler);
+
+/// Ase::Clip proxy
+class WorkerClip {
+  constructor (handle) {
+    this._handle = handle;
+    refhandle_finalization.register (this, handle, this);
+  }
+  async list_all_notes () {
+    return host_call ('clip_list_all_notes', this._handle);
+  }
+  async list_selected_notes () {
+    const notes = await this.list_all_notes();
+    return notes.filter (n => n.selected);
+  }
+  async insert_note (channel, key, tick, duration, velocity = 127, fine_tune = 0, selected = false) {
+    return host_call ('clip_insert_note', this._handle, channel, key, tick, duration, velocity, fine_tune, selected);
+  }
+}
+
 /// Global `host` instance for scripts.
 class WorkerHost {
+  /// Create handle for the currently selected clip.
+  async piano_roll_clip () {
+    return new WorkerClip (await host_call ('piano_roll_clip_refhandle'));
+  }
   /// Retrieve the file name of the current user script.
   script_name() { return host_globals.script_name; }
   /// Retrieve the UUID set via #use_api().
