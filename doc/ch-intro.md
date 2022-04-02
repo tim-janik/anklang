@@ -1,11 +1,10 @@
 ---
 title:      The ANKLANG Manual
 author:     The Anklang Project <[anklang.testbit.org](https://anklang.testbit.org/)>
-abstract:   Manual about usage, installation, development and implementation of the
+abstract:   Manual about usage, installation, and scripting of the
             Anklang digital synthesizer and music creation software.
-keywords:   Anklang, DAW, DSP, Audio Synthesis, Linux, ALSA
+keywords:   Anklang, DAW, DSP, Audio Synthesis, Linux, ALSA, JavaScript, Scripting
 ---
-
 
 # The ANKLANG Manual
 

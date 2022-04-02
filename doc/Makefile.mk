@@ -9,12 +9,16 @@ doc/all:
 doc/manual-chapters ::= $(strip		\
 	doc/ch-intro.md			\
 	$>/doc/ch-man-pages.md		\
+	$>/ui/scripting-docs.md		\
+)
+doc/internals-chapters ::= $(strip	\
 	doc/ch-development.md		\
 	$>/ui/vue-docs.md		\
 	doc/ch-appendix.md		\
 )
 doc/install.files ::= $(strip		\
 	$>/doc/anklang-manual.html	\
+	$>/doc/anklang-internals.html	\
 	$>/doc/anklang.1		\
 	$>/doc/NEWS.md			\
 	$>/doc/NEWS.html		\
@@ -22,11 +26,10 @@ doc/install.files ::= $(strip		\
 	$>/doc/README.html		\
 	$>/doc/copyright		\
 )
-doc/all: $(doc/install.files)
 
 # == PDF with Latex dependency ==
 ifneq ($(WITH_LATEX),)
-doc/install.files += $>/doc/anklang-manual.pdf
+doc/install.files += $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
 endif
 
 # == Copy files ==
@@ -96,6 +99,18 @@ $>/doc/anklang-manual.html: $>/doc/template.html $(doc/manual-chapters) $(doc/st
 		-c style/$(notdir $(doc/style/faketex.css)) \
 		--mathjax='style/mathjax-tex-svg.js' \
 		$(doc/manual-chapters) -o $@
+# == anklang-internals.html ==
+$>/doc/anklang-internals.html: $>/doc/template.html $(doc/internals-chapters) $(doc/style/install.files)	| $>/doc/
+	$(QGEN)
+	$Q $(PANDOC) $(doc/markdown-flavour) \
+		-s $(doc/html_flags) \
+		--toc --number-sections \
+		--variable=subparagraph \
+		--variable date="$(version_to_month)" \
+		--template=$< \
+		-c style/$(notdir $(doc/style/faketex.css)) \
+		--mathjax='style/mathjax-tex-svg.js' \
+		$(doc/internals-chapters) -o $@
 
 # == anklang-manual.pdf ==
 # REQUIRES: python3-pandocfilters texlive-xetex pandoc2
@@ -113,9 +128,25 @@ $>/doc/anklang-manual.pdf: doc/pandoc-pdf.tex $(doc/manual-chapters)					| $>/do
 		--pdf-engine=xelatex -V mainfont='Charis SIL' -V mathfont=Asana-Math -V monofont=inconsolata \
 		-V fontsize=11pt -V papersize:a4 -V geometry:margin=2cm \
 		$(doc/manual-chapters) -o $@
+# == anklang-internals.pdf ==
+# REQUIRES: python3-pandocfilters texlive-xetex pandoc2
+$>/doc/anklang-internals.pdf: doc/pandoc-pdf.tex $(doc/internals-chapters)					| $>/doc/
+	$(QGEN)
+	$Q xelatex --version 2>&1 | grep -q '^XeTeX 3.14159265' \
+	   || { echo '$@: missing xelatex, required version: XeTeX >= 3.14159265' >&2 ; false ; }
+	$Q $(PANDOC) $(doc/markdown-flavour) \
+		$(doc/pdf_flags) \
+		--toc --number-sections \
+		--variable=subparagraph \
+		-V date="$(version_to_month)" \
+		--variable=lot \
+		-H $< \
+		--pdf-engine=xelatex -V mainfont='Charis SIL' -V mathfont=Asana-Math -V monofont=inconsolata \
+		-V fontsize=11pt -V papersize:a4 -V geometry:margin=2cm \
+		$(doc/internals-chapters) -o $@
 
 # == viewdocs ==
-viewdocs: $>/doc/anklang-manual.html $>/doc/anklang-manual.pdf
+viewdocs: $>/doc/anklang-manual.html $>/doc/anklang-internals.html $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
 	$Q for B in firefox google-chrome ; do \
 	     command -v $$B && exec $$B $^ ; done ; \
 	   for U in $^ ; do xdg-open "$$U" & done
@@ -140,3 +171,5 @@ doc/uninstall: FORCE uninstall--doc/style/install.files
 	$Q rm -f '$(DESTDIR)$(docdir)/anklang'
 .PHONY: doc/uninstall
 uninstall: doc/uninstall
+
+doc/all: $(doc/install.files)

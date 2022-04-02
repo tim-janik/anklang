@@ -108,6 +108,7 @@ function strip_whitelines (s) { return s.replace (/\n\s*\n/g, '\n'); }
 function indent_lines (s, prefix) { return s.replace (/(^|\n)/g, '$1' + prefix); }
 /// Make indented description paragraph with lead character
 function dpara (s, prefix = '', c1 = '') {
+  s = description_markdown (s);
   s = strip (s);
   // s = strip_whitelines (s); // empty lines are needed as block seperators
   s = indent_lines (s, prefix);
@@ -147,6 +148,14 @@ const charn = '0-9\xB7\u0300-\u036F\u203F-\u2040.-';
 const re_char1 = new RegExp ('[^' + char1 + ']', 'gu');
 const re_charn = new RegExp ('[^' + char1 + charn + ']+', 'gu');
 
+/// Process description to add auto-links, etc
+function description_markdown (description) {
+  let d = description;
+  // support anchor links
+  d = d.replace (/(^|\s)#([a-z_A-Z][a-zA-Z0-9_]+)\b/, '$1[$2](#$2)');
+  // done
+  return d;
+}
 
 /// Generate function markdown
 function gen_function (cfg, fun, exports = '') {
@@ -176,13 +185,15 @@ function gen_global_function (cfg, fun) {
 
 /// Generate class markdown
 function gen_global_class (cfg, cl) {
-  const hprefix = ''; // cfg.exports && cl.exports ? cfg.exports + '.' : '';
+  const hprefix = '', anchor = make_anchor (cl.name); // cfg.exports && cl.exports ? cfg.exports + '.' : '';
   const exports = cfg.exports && cl.exports ? cfg.exports : '';
   const pexports = exports ? '<small>`' + exports + '`</small>.' : '';
   let s = '';
   s += '\n' + cfg.h2 + hprefix + cl.name + ' class\n';
-  s += '*class* ' + pexports + '**' + cl.name + '**\n';
-  s += dpara (cl.classdesc || ' … \n', '    ', ':') + '\n';
+  s += '*class* ' + pexports + '**' + cl.name + '**';
+  if (anchor)
+    s += '<span id="' + anchor + '"></span> ';
+  s += '\n' + dpara (cl.classdesc || ' … \n', '    ', ':') + '\n';
   s += '\n';
   for (const mt of cl.methods) {
     let t = gen_function (cfg, mt);
