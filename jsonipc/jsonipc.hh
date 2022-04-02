@@ -13,6 +13,7 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <variant>
 #include <map>
 #include <set>
 
@@ -673,6 +674,24 @@ Scope::Scope (InstanceMap &instance_map, ConstructorFlags cf) :
   stack_.push_back (this);
 }
 
+// == DefaultConstant ==
+using DefaultConstantVariant = std::variant<std::monostate, std::nullptr_t, uint64_t, int64_t, double, std::string>;
+/// Wrapper for function argument default value constants
+struct DefaultConstant : DefaultConstantVariant {
+  DefaultConstant () = default;
+  template<typename T, REQUIRES< std::is_integral<T>::value && std::is_unsigned<T>::value> = true>
+  DefaultConstant (T a) : DefaultConstantVariant (uint64_t (a))         {}
+  template<typename T, REQUIRES< std::is_integral<T>::value && !std::is_unsigned<T>::value> = true>
+  DefaultConstant (T a) : DefaultConstantVariant (int64_t (a))          {}
+  template<typename T, REQUIRES< std::is_convertible<T, double>::value && !std::is_integral<T>::value> = true>
+  DefaultConstant (T a) : DefaultConstantVariant (double (a))           {}
+  template<typename T, REQUIRES< std::is_convertible<T, std::string>::value && !std::is_same<T, std::nullptr_t>::value> = true>
+  DefaultConstant (T a) : DefaultConstantVariant (std::string (a))      {}
+  template<typename T, REQUIRES< std::is_same<T, std::nullptr_t>::value> = true>
+  DefaultConstant (T a) : DefaultConstantVariant (a)                    {}
+};
+using DefaultsList = std::initializer_list<DefaultConstant>;
+
 // == ClassPrinter ==
 class ClassPrinter {
   using DepthFunc = size_t (*) ();
@@ -708,10 +727,10 @@ public:
     return normalized;
   }
   void
-  print (const Op op, const std::string &name, int32_t count)
+  print (const Op op, const std::string &name, uint32_t count, const DefaultsList &dflts)
   {
-    auto &operations = operations_;
-    operations.push_back ({ name, op, count });
+    JSONIPC_ASSERT_RETURN (ssize_t (dflts.size()) <= count);
+    operations_.push_back ({ name, op, count, dflts });
   }
   void
   set_depth_func (DepthFunc depth_func)
@@ -740,21 +759,21 @@ private:
     std::stable_sort (printers.begin(), printers.end(), printers_cmp);
     // for (const auto &p : printers) dprintf (2, "%s < ", p->classname_.c_str()); dprintf (2, "∞\n");
   }
-  struct Operation { std::string name; Op op = DONE; int32_t count = 0; };
+  struct Operation { std::string name; Op op = DONE; uint32_t count = 0; std::vector<DefaultConstant> dflts; };
   std::string
   ops_to_string()
   {
-    auto &operations = operations_;
     // ensure NEW, BODY, DONE
-    if (operations.empty() || operations[0].op != NEW)
-      operations.insert (operations.begin(), { "", NEW, 0 });
-    auto it = operations.begin();
-    while (it != operations.end() && (it->op == NEW || it->op == INHERIT))
+    if (operations_.empty() || operations_[0].op != NEW)
+      operations_.insert (operations_.begin(), { "", NEW, 0 });
+    auto it = operations_.begin();
+    while (it != operations_.end() && (it->op == NEW || it->op == INHERIT))
       it++;
-    if (it == operations.end() || it->op != BODY)
-      operations.insert (it, { "", BODY, 0 });
-    if (operations.back().op != DONE)
-      operations.insert (operations.end(), { "", DONE, 0 });
+    if (it == operations_.end() || it->op != BODY)
+      operations_.insert (it, { "", BODY, 0 });
+    if (operations_.back().op != DONE)
+      operations_.insert (operations_.end(), { "", DONE, 0 });
+    const auto &operations = operations_;
     // context
     const char *lastcolon = strrchr (classname_.c_str(), ':');
     const std::string jsclass = canonify (lastcolon ? lastcolon + 1 : classname_);
@@ -800,11 +819,21 @@ private:
             }
           break;
         case METHOD: {
-          std::string args;
-          for (int i = 0; i < p.count; i++)
-            args += (i ? ", " : "") + string_format ("a%d", i + 1);
+          std::string args, dargs;
+          for (size_t i = 0; i < p.count; i++)
+            {
+              const std::string arg = (i ? ", " : "") + string_format ("a%d", i + 1);
+              args += arg;
+              if (i >= p.count - p.dflts.size())
+                {
+                  const std::string dflt = default_str (p.dflts.at (i - (p.count - p.dflts.size())));
+                  dargs += (i ? ", " : "") + string_format ("a%d = %s", i + 1, dflt.c_str());
+                }
+              else
+                dargs += arg;
+            }
           out += string_format ("  %s (%s) { return Jsonipc.send ('%s', [this%s%s]); }\n",
-                                p.name.c_str(), args.c_str(), p.name.c_str(), args.empty() ? "" : ", ", args.c_str());
+                                p.name.c_str(), dargs.c_str(), p.name.c_str(), args.empty() ? "" : ", ", args.c_str());
           break; }
         case GETSET:
           out += string_format ("  async %s (v) { return arguments.length > 0 ? "
@@ -842,6 +871,36 @@ private:
           break;
         }
     return out;
+  }
+  /// Stringify argument default value for Javascript.
+  static std::string
+  default_str (const DefaultConstantVariant &dflt)
+  {
+    if (auto *d = std::get_if<double> (&dflt))
+      return string_format ("%.17g", *d);
+    else if (auto *u = std::get_if<uint64_t> (&dflt))
+      return string_format ("%llu", (unsigned long long) *u);
+    else if (auto *i = std::get_if<int64_t> (&dflt))
+      return string_format ("%lld", (signed long long) *i);
+    else if (auto *s = std::get_if<std::string> (&dflt))
+      return cquote (*s);
+    else if (auto *n = std::get_if<std::nullptr_t> (&dflt))
+      return (void) n, "null";
+    else // std::monostate
+      return "undefined"; // normally unreached
+  }
+  /// Quote C string.
+  static std::string
+  cquote (const std::string &str)
+  {
+    std::string buffer = "\"";
+    for (const char c : str)
+      if      (c == '"')        buffer += "\\\"";
+      else if (c == '\\')       buffer += "\\\\";
+      else if (c < 32 || c > 126)
+        buffer += string_format ("\\%03o", c);
+      else                      buffer += c;
+    return buffer + '"';
   }
   /// Enforce a canonical charset for a string.
   static std::string
@@ -901,9 +960,9 @@ protected:
   virtual ~TypeInfo() {}
   explicit TypeInfo (ClassPrinter *printer) : printer_ (printer) {}
   void
-  print (ClassPrinter::Op op, const std::string &name, int32_t count = 0)
+  print (ClassPrinter::Op op, const std::string &name, int32_t count = 0, const DefaultsList &dflts = {})
   {
-    printer_->print (op, name, count);
+    printer_->print (op, name, count, dflts);
   }
 };
 
@@ -1128,6 +1187,15 @@ struct Class final : TypeInfo {
     add_member_function_closure (std::string ("get/") + name, make_closure (get));
     add_member_function_closure (std::string ("set/") + name, make_closure (set));
     print (ClassPrinter::GETSET, name, 0);
+    return *this;
+  }
+  template<typename F, REQUIRES< std::is_member_function_pointer<F>::value > = true> Class&
+  set_d (const char *name, const F &method, const DefaultsList &dflts)
+  {
+    constexpr const size_t N_ARGS = CallTraits<F>::N_ARGS;
+    JSONIPC_ASSERT_RETURN (dflts.size() <= N_ARGS, *this);
+    add_member_function_closure (name, make_closure (method));
+    print (ClassPrinter::METHOD, name, N_ARGS, dflts);
     return *this;
   }
   static std::string
