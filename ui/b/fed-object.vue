@@ -130,12 +130,14 @@ async function list_fields (proplist) {
       Object.freeze (groups[k]);
     }
   this.replace_disconnectors (disconnectors);
+  this.fetchingprops = false;
   return Object.freeze (grouplist);
 }
 
 function data () {
   const data = {
     gprops: { default: [], getter: c => this.list_fields (this.value), },
+    fetchingprops: true,
   };
   return this.observable_from_getters (data, () => this.value);
 }
@@ -150,9 +152,15 @@ export default {
     value:	{ required: true, },
     default:	{},
   },
+  inject: { b_dialog_resizers: { default: [] }, },
   emits: { input: null, },
+  mounted () {
+    this.resizing = () => this.fetchingprops;
+    this.b_dialog_resizers.push (this.resizing);
+  },
   unmounted() {
     this.replace_disconnectors();
+    Util.array_remove (this.b_dialog_resizers, this.resizing);
   },
   methods: {
     list_fields,
