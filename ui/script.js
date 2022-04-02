@@ -40,12 +40,12 @@ class ScriptHost {
     this.kill (err.message ? prefix + err.message : prefix, err);
     this.terminate();
   }
-  onmessage (msg) {
+  async onmessage (msg) {
     const d = msg.data, fun = d.fun ? '_' + d.fun : null;
     this.seen_lifesign = true;
     // handle call: WorkerHost -call-> ScriptHost
     if (d.callid > 0 && typeof this[fun] === 'function') {
-      const result = this[fun] (...(d.args ? d.args : []));
+      const result = await this[fun] (...(d.args ? d.args : []));
       this.worker.postMessage ({ resultid: d.callid, result });
       return;
     }
@@ -59,7 +59,7 @@ class ScriptHost {
       }
     }
     // complain
-    console.error ('script.js:', this.script_name + ':', 'Unknown message:', msg);
+    console.error ('script.js:', this.script_name + ':', 'Unknown message:', msg.data, msg);
   }
   // Handle incoming messages by resolving _promises entries
   async call (funid, ...args) {
@@ -89,6 +89,19 @@ class ScriptHost {
       category_list.splice (old, 1);
     category_list.push ({ label, funid, blurb, host: this });
   }
+  _piano_roll_clip_refhandle() {
+    // needs release_refhandle
+    return acquire_refhandle (Data.piano_roll_source);
+  }
+  _release_refhandle (refhandle) {
+    release_refhandle (refhandle);
+  }
+  _clip_list_all_notes (refhandle) {
+    return refhandle_object (refhandle).list_all_notes();
+  }
+  _clip_insert_note (refhandle, channel, key, tick, duration, velocity, fine_tune, selected) {
+    return refhandle_object (refhandle).change_note (-1, tick, duration, key, fine_tune, velocity, selected);
+  }
 }
 const registry = new Map();
 
@@ -114,3 +127,31 @@ export function load_script (url) {
   return host;
 }
 const script_hosts = [];
+
+// == Worker refhandle map ==
+function acquire_refhandle (object) {
+  const refhandle = object?.$id;
+  if (!refhandle)
+    return null;
+  const entry = refhandlemap.get (refhandle) || { count: 0, object };
+  if (!entry.count)
+    refhandlemap.set (refhandle, entry);
+  entry.count += 1;
+  return refhandle;
+}
+function release_refhandle (refhandle) {
+  const entry = refhandlemap.get (refhandle) || { count: 0 };
+  if (entry.count <= 1)
+    debug ("release_refhandle:", entry);
+  if (entry.count > 1)
+    entry.count -= 1;
+  else
+    refhandlemap.delete (refhandle);
+}
+function refhandle_object (refhandle) {
+  return refhandlemap.get (refhandle).object;
+}
+const refhandlemap = new Map();
+export function debug_refhandle_map() {
+  console.log (refhandlemap);
+}
