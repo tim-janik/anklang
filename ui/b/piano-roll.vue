@@ -107,15 +107,19 @@
       overflow-x: scroll; overflow-y: hidden; background: $scrollarea-bg;
       .-hscrollbar-area { height: 1px; width: 3840px; }
     }
+    .-overflow-hidden {
+      display: flex;
+      position: relative;
+      white-space: nowrap;
+      overflow: hidden;
+    }
   }
-  .b-piano-roll-key-width { width: $b-piano-roll-key-length; }
 
-  .-overflow-hidden {
-    display: flex;
-    position: relative;
-    white-space: nowrap;
-    overflow: hidden;
-  }
+.b-piano-roll-key-width { width: $b-piano-roll-key-length; }
+
+.b-piano-roll-contextmenu {
+  .b-menuseparator { width: 75%; }
+}
 </style>
 
 <template>
@@ -132,7 +136,7 @@
       <h-flex class="-toolbutton" @click="Util.dropdown ($refs.toolmenu, $event)" >
 	<b-icon class='-iconclass'
 		v-bind="Util.clone_menu_icon ($refs.toolmenu, pianotool, '**EDITOR TOOL**')" />
-	<b-contextmenu ref="toolmenu" keepmounted >
+	<b-contextmenu ref="toolmenu" keepmounted class="b-piano-roll-contextmenu" >
 	  <b-menuitem mi="open_with"     uri="S" @click="usetool" kbd="Digit1" > Rectangular Selection </b-menuitem>
 	  <b-menuitem mi="multiple_stop" uri="H" @click="usetool" kbd="Digit2" > Horizontal Selection </b-menuitem>
 	  <b-menuitem fa="pencil"        uri="P" @click="usetool" kbd="Digit3" > Pen          </b-menuitem>
@@ -155,8 +159,14 @@
 
     <!-- Roll, COL-3 -->
     <div class="-overflow-hidden -notes-wrapper" style="grid-column: 3; grid-row: 2" ref="scrollarea"
+	 @contextmenu.prevent="$refs.pianorollmenu.popup ($event)"
 	 @wheel.stop="wheel_event ($event, 'notes')" >
       <canvas class="b-piano-roll-notes tabular-nums" @click="piano_ctrl.notes_click ($event)" ref="notes_canvas" ></canvas>
+      <b-contextmenu ref="pianorollmenu" keepmounted :showicons="false" class="b-piano-roll-contextmenu" @click="pianorollmenu_click" >
+	<b-menutitle> Piano-Roll </b-menutitle>
+	<b-menuseparator />
+	<b-menuitem v-for="(script, index) in piano_roll_scripts()" :key="script.funid" :uri="script.funid" > {{script.label}} </b-menuitem>
+      </b-contextmenu>
     </div>
 
     <!-- VScrollborder, COL-4 -->
@@ -185,6 +195,8 @@ import {
   PIANO_OCTAVES,	// 11
   PIANO_KEYS,		// 132
 } from "./piano-ctrl.js";
+
+import * as Script from '../script.js';
 
 const floor = Math.floor, round = Math.round;
 
@@ -252,6 +264,16 @@ export default {
 	this.adata.have_focus = ev.type == "focus";
       if (this.$refs.toolmenu)
 	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || document.activeElement == this.$el);
+      if (this.$refs.pianorollmenu)
+	this.$refs.pianorollmenu.map_kbd_hotkeys (this.entered || document.activeElement == this.$el);
+    },
+    piano_roll_scripts() {
+      return Script.registry_keys ('PianoRoll');
+    },
+    async pianorollmenu_click (uri) {
+      const result = await Script.run_script_fun (uri);
+      if (result)
+	console.log ("piano-roll.vue: result from " + uri + ':', result);
     },
     usetool (uri) {
       this.pianotool = uri;
