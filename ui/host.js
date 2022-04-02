@@ -24,14 +24,26 @@ async function host_call (fun, ...args) {
 let _counter = 1;
 
 // Handle incoming messages by resolving _promises entries
-function host_receive (event) {
+async function host_receive (event) {
   const d = event.data;
   const resolve = d.resultid > 0 ? _promises.get (d.resultid) : null;
+  // handle call: ScriptHost funid -call-> WorkerHost
+  if (d.callid > 0 && d.funid) {
+    const fun = host_globals.registry.get (d.funid);
+    if (!fun)
+      throw new Error (globalThis.name + ': host.js: Attempt to call unregistered funid: ' + d.funid);
+    const result = await fun (...(d.args ? d.args : []));
+    postMessage ({ resultid: d.callid, result });
+    return;
+  }
+  // handle result: ScriptHost -result-> WorkerHost
   if (resolve) {
     _promises.delete (d.resultid);
     resolve (d.result);
-  } else
-    log ('host.js:', 'Unknown message event:', event);
+    return;
+  }
+  // complain
+  log ('host.js:', 'Unknown message event:', event);
 }
 addEventListener ('message', host_receive);
 const _promises = new Map();
@@ -75,10 +87,10 @@ class WorkerHost {
     }
   }
   /// Register a script function.
-  async register (label, fun, blurb) {
-    const funid = _counter++;
+  async register (category, label, fun, blurb) {
+    const funid = _counter++ + '@' + host_globals.script_uuid;
     host_globals.registry.set (funid, fun);
-    await host_call ('register', label, host_globals.script_uuid + '+' + funid, blurb);
+    await host_call ('register', category, label, funid, blurb);
   }
 }
 
@@ -94,6 +106,6 @@ const host_globals = {
 await object_await_values (host_globals);
 
 // == User Script ==
-let user_module = import ('./scripts/' + host.script_name());
+let user_module = import (host.script_name());
 user_module = await user_module;
 user_module;
