@@ -25,6 +25,7 @@ module.exports = {
     debug: false,
     log: false,
     host: false,
+    FinalizationRegistry: false,
     sfc_template: false,
     globalThis: false },
 
