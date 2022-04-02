@@ -1,4 +1,11 @@
-# Development Details
+---
+title:      ANKLANG Development Details
+author:     The Anklang Project <[anklang.testbit.org](https://anklang.testbit.org/)>
+abstract:   API documentation and development internals of the Anklang project.
+keywords:   Anklang, Linux, ALSA, JavaScript, Scripting, IPC
+---
+
+# ANKLANG Development Details
 
 Technically, Anklang consists of a user interface front-end based on web technologies (HTML, SCSS, JS, Vue)
 and a synthesis engine backend written in C++.
