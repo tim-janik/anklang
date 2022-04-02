@@ -32,8 +32,8 @@ import { AppClass } from './b/app.js';
 import Shell from './b/shell.js';
 import VueComponents from './all-components.js';
 
-// load `run_script()`
-import './script.js';
+// load Script host
+import * as Script from './script.js';
 
 // Custom Elements
 class PushButton extends HTMLElement {
@@ -186,6 +186,17 @@ async function bootup () {
       console.bootlog ("Loading LADSPA plugins...");
       await Ase.server.load_ladspa();
     }
+
+  // Load Anklang Scripts
+  if (true) {
+    for (const url of ['/Builtin/Controller', '/Builtin/Scripts', '/User/Controller', '/User/Scripts']) {
+      const crawler = await Ase.server.url_crawler (url);
+      const centries = await crawler.list_entries();
+      for (const e of centries)
+	if (e.type == Ase.ResourceType.FILE && e.label.endsWith ('.js'))
+	  Script.load_script (url + '/' + e.label);
+    }
+  }
 
   // UI-Script
   if (CONFIG.mainjs && CONFIG.uiscript)
