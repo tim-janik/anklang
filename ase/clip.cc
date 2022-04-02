@@ -182,6 +182,8 @@ ClipImpl::Generator::setup (const ClipImpl &clip)
   loop_end_ = tsig.bar_ticks() * 2;
   const int LOOPS = 2;
   last_ = loop_end_ - start_offset_ + LOOPS * (loop_end_ - loop_start_);
+  if (true) // keep looping
+    last_ = M52MAX;
 }
 
 /// Assign new play_position() (and clip_position()), preserves all other state.

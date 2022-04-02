@@ -766,7 +766,7 @@ const empty_list = Object.freeze ([]);
  * as second argument, to handle disconnection of property change notifications once
  * the property is not needed anymore.
  */
-export async function extend_property (prop, disconnector = undefined) {
+export async function extend_property (prop, disconnector = undefined, augment = undefined) {
   prop = await prop;
   const xprop = {
     hints_: prop.hints(),
@@ -792,16 +792,16 @@ export async function extend_property (prop, disconnector = undefined) {
 		       choices: xprop.has_choices_ ? xprop.choices() : empty_list,
       };
       Object.assign (xprop.value_, await Util.object_await_values (value_));
+      if (augment)
+	await augment (xprop);
     },
     __proto__: prop,
   };
   if (disconnector)
     disconnector (xprop.on ('change', _ => xprop.update_()));
-  xprop.hints_ = await xprop.hints_;
+  await Util.object_await_values (xprop);	// ensure xprop.hints_ is valid
   xprop.has_choices_ = xprop.hints_.search (/:choice:/) >= 0;
-  const update_promise = xprop.update_(); // needs xprop.has_choices_
-  await Util.object_await_values (xprop);
-  await update_promise; // assigns xprop.value_
+  await xprop.update_();			// needs xprop.has_choices_, assigns xprop.value_
   return xprop;
 }
 
