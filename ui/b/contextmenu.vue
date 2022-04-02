@@ -99,6 +99,8 @@ $duration: 0.097s;
 import * as Util from '../util.js';
 
 const menuitem_onclick = function (event) {
+  if (!this.uri)
+    throw new Error ("Attempt to click menuitem without URI");
   this.$emit ('click', this.uri, event);
   if (!event.defaultPrevented)
     {
@@ -124,11 +126,12 @@ const menuitem_isdisabled = function () {
 
 export default {
   sfc_template,
-  emits: { click: uri => !!uri,
+  emits: { click: (uri, event) => !!uri,
 	   close: null, },
   props: { notransitions: { default: false },
 	   keepmounted: { type: Boolean, },
 	   startfocus: { type: Boolean, },
+	   showicons: { default: true, type: Boolean },
 	   xscale: { default: 1, },
 	   yscale: { default: 1, }, },
   computed: {
@@ -137,7 +140,7 @@ export default {
   data() { return {
     visible: false, doc_x: undefined, doc_y: undefined,
     resize_observer: undefined, checkeduris: {},
-    showicons: true, popup_options: {},
+    popup_options: {},
     onclick: menuitem_onclick, isdisabled: menuitem_isdisabled,
   }; },
   provide: Util.fwdprovide ('b-contextmenu.menudata',	// context for menuitem descendants
