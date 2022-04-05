@@ -28,7 +28,7 @@
 
 <template>
   <label class="b-fed-text">
-    <input ref="texttype" type="text" :readonly="readonly" :style="textstyle()" :placeholder="placeholder"
+    <input ref="texttype" type="text" :readonly="readonly" style="width: 100%; min-width: 2.5em" :placeholder="placeholder"
 	   :value="value" @input="emit_input_value ($event.target.value)" >
   </label>
 </template>
@@ -54,11 +54,6 @@ export default {
     },
     constrain (v) {
       return String (v);
-    },
-    textstyle() {
-      // determine width for input types
-      const width = 1 + 15; // padding + characters
-      return `width: ${width}em;`;
     },
   },
 };
