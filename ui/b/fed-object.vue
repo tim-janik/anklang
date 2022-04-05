@@ -21,8 +21,8 @@
   @import 'mixins.scss';
   .b-fed-object		{
     .b-fed-object-clear	{
-      font-size: 1.1em; font-weight: bolder;
-      color: #888; background: none; padding: 0 0.1em 0;
+      -font-size: 1.1em; -font-weight: bolder;
+      color: #888; background: none; padding: 0 0 0 0.5em; margin: 0;
       outline: none; border: 1px solid rgba(0,0,0,0); border-radius: $b-button-radius;
       &:hover			{ color: #eb4; }
       &:active			{ color: #3bf; }
@@ -32,18 +32,29 @@
       min-width: 0;
       overflow-wrap: break-word;
     }
-    .-field {
+    .-group {
       align-items: center;
       margin-top: 0.5em;
       &:first-child { margin-top: 0; }
+      white-space: nowrap;
+      .-label { text-overflow: ellipsis; overflow: hidden; }
     }
-    .-label {
-      width: 19em;
-      max-width: 30vw;
+    .-flabel {
+      padding: 0 0.1em 0 0;
+      min-width: 3em;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+    .-field {
+      justify-self: flex-end;
+      justify-content: space-between;
+      white-space: nowrap;
+      max-width: 32em;
+      width: 50vw;
     }
     .-value {
-      width: 30em;
-      max-width: 50vw;
+      width: 100%;
     }
   }
 </style>
@@ -53,23 +64,25 @@
   <c-grid class="b-fed-object" style="grid-gap: 0.6em 0.5em;">
     <template v-for="group in gprops" :key="'group-' + group.name" >
 
-      <h-flex class="-field" style="grid-column: 1 / span 3" >
-	<span style="flex-grow: 0; font-weight: bold" v-if="group.name" >{{ group.name }}</span>
+      <h-flex class="-group" style="grid-column: 1 / span 3" >
+	<span class="-label" style="flex-grow: 0; font-weight: bold" v-if="group.name" >{{ group.name }}</span>
 	<hr style="flex-grow: 1; margin-left: 0.5em; min-width: 5em" v-if="group.name" />
       </h-flex>
 
       <template v-for="prop in group.props" :key="'fed-' + prop.ident_" >
-	<span class="-label" style="grid-column: 1; padding: 0 1em 0; text-align: left" :data-bubble="prop.blurb_"
+	<span class="-flabel" style="grid-column: 1" :data-bubble="prop.blurb_"
 	>{{ prop.label_ }}</span>
-	<span class="-value" style="text-align: right" :data-bubble="prop.blurb_" >
-	  <component :is="prop.ctype_" v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
-				       :value="prop.fetch_()" @input="prop.apply_" v-if="prop.ctype_ != 'b-choice'" ></component>
-	  <b-choice v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
-		    :value="prop.fetch_()" @update:value="prop.apply_ ($event)" :choices="prop.value_.choices"
-		    v-if="prop.ctype_ == 'b-choice'" ></b-choice>
-	</span>
-	<span>
-	  <button class="b-fed-object-clear" tabindex="-1" @click="prop.reset()" > ⊗  </button></span>
+	<h-flex class="-field" style="grid-column: 2 / span 2" >
+	  <span class="-value" style="text-align: right" :data-bubble="prop.blurb_" >
+	    <component :is="prop.ctype_" v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
+					 :value="prop.fetch_()" @input="prop.apply_" v-if="prop.ctype_ != 'b-choice'" ></component>
+	    <b-choice v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
+		      :value="prop.fetch_()" @update:value="prop.apply_ ($event)" :choices="prop.value_.choices"
+		      v-if="prop.ctype_ == 'b-choice'" ></b-choice>
+	  </span>
+	  <span>
+	    <span class="b-fed-object-clear" @click="prop.reset()" > ⊗  </span></span>
+	</h-flex>
       </template>
 
     </template>
