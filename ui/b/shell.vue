@@ -125,6 +125,7 @@ html.b-shell-during-drag .b-app {
 	    <b-icon v-bind="d.icon" />
 	    <div style="flex-grow: 1; white-space: pre-line;" >{{ d.body }}</div>
 	  </h-flex>
+	  <b-fed-object class="-modal-fed" ref="fedobject" v-if="d.proplist" :value="d.proplist" />
 	</template>
 	<template v-slot:footer>
 	  <h-flex class="-hfooter" :class="d.footerclass">
@@ -261,6 +262,7 @@ function async_modal_dialog (dialog_setup) {
   const promise = new Promise (r => resolve = r);
   const m = {
     uid: modal_dialog_counter++,
+    proplist: dialog_setup.proplist || [],
     visible: Vue.reactive ({ value: false }),
     input (v) {
       if (!this.visible.value || v)
@@ -299,6 +301,7 @@ function async_modal_dialog (dialog_setup) {
   return promise;
 }
 const dialog_emblems = {
+  PIANO:	{ mi: "piano",			style: "font-size: 300%; padding-right: 1rem; float: left; color: #ffbbbb" },
   QUESTION:	{ fa: "question-circle",	style: "font-size: 300%; padding-right: 1rem; float: left; color: #538cc1" },
   ERROR:	{ fa: "times-circle",		style: "font-size: 300%; padding-right: 1rem; float: left; color: #cc2f2a" },
 };
