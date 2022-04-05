@@ -147,7 +147,14 @@ ServerImpl *SERVER = nullptr;
 ServerImpl::ServerImpl () :
   telemetry_arena (telemetry_size)
 {
+  // initialize preferences to defaults
   prefs_ = preferences_defaults();
+  // create preference properties, capturing defaults
+  prefs_properties_ = prefs_.access_properties ([this] (const Event&) {
+    ValueR args { { "prefs", json_parse<ValueR> (json_stringify (prefs_)) } };
+    emit_event ("change", "prefs", args);
+  });
+  // load preferences
   const String jsontext = Path::stringread (pathname_anklangrc());
   if (!jsontext.empty())
     json_parse (jsontext, prefs_);
@@ -217,10 +224,7 @@ ServerImpl::create_project (String projectname)
 PropertyS
 ServerImpl::access_prefs()
 {
-  return prefs_.access_properties ([this] (const Event&) {
-    ValueR args { { "prefs", json_parse<ValueR> (json_stringify (prefs_)) } };
-    emit_event ("change", "prefs", args);
-  });
+  return prefs_properties_;
 }
 
 ServerImplP

@@ -9,6 +9,7 @@ namespace Ase {
 
 class ServerImpl : public GadgetImpl, public virtual Server {
   Preferences       prefs_;
+  PropertyS         prefs_properties_;
   Connection        pchange_;
   FastMemory::Arena telemetry_arena;
 public:
