@@ -47,6 +47,14 @@ construct_hints (const String &hints, const String &more, double pmin, double pm
 PropertyImpl::~PropertyImpl()
 {}
 
+static Value
+call_getter (const ValueGetter &g)
+{
+  Value v;
+  g(v);
+  return v;
+}
+
 // == LambdaPropertyImpl ==
 struct LambdaPropertyImpl : public virtual PropertyImpl {
   virtual ~LambdaPropertyImpl () {}
@@ -54,6 +62,7 @@ struct LambdaPropertyImpl : public virtual PropertyImpl {
   const ValueGetter getter_;
   const ValueSetter setter_;
   const ValueLister lister_;
+  const Value       vdefault_;
   void    notify         ();
   String  identifier     () override		{ return d.ident; }
   String  label          () override		{ return d.label; }
@@ -76,7 +85,7 @@ struct LambdaPropertyImpl : public virtual PropertyImpl {
   String  get_text       () override;
   bool    set_text       (String v) override;
   LambdaPropertyImpl (const Properties::Initializer &initializer, const ValueGetter &g, const ValueSetter &s, const ValueLister &l) :
-    d (initializer), getter_ (g), setter_ (s), lister_ (l)
+    d (initializer), getter_ (g), setter_ (s), lister_ (l), vdefault_ (call_getter (g))
   {
     d.ident = canonify_identifier (d.ident.empty() ? d.label : d.ident);
     assert_return (initializer.ident.size());
@@ -166,66 +175,8 @@ LambdaPropertyImpl::is_numeric ()
 void
 LambdaPropertyImpl::reset ()
 {
-  Value val;
-  getter_ (val);
-  bool changed = false;
-  switch (val.index())
-    {
-    case Value::BOOL:
-      if (false != std::get<bool> (val))
-        {
-          val = false;
-          changed = true;
-        }
-      break;
-    case Value::INT64:
-      if (0 != std::get<int64> (val))
-        {
-          val = int64 (0);
-          changed = true;
-        }
-      break;
-    case Value::DOUBLE:
-      if (0.0 != std::get<double> (val))
-        {
-          val = 0.0;
-          changed = true;
-        }
-      break;
-    case Value::STRING:
-      if (!std::get<String> (val).empty())
-        {
-          val = "";
-          changed = true;
-        }
-      break;
-    case Value::ARRAY:
-      if (!std::get<ValueS> (val).empty())
-        {
-          std::get<ValueS> (val) = {};
-          changed = true;
-        }
-      break;
-    case Value::RECORD:
-      if (!std::get<ValueR> (val).empty())
-        {
-          std::get<ValueR> (val) = {};
-          changed = true;
-        }
-      break;
-    case Value::INSTANCE:
-      if (std::get<InstanceP> (val))
-        {
-          std::get<InstanceP> (val) = nullptr;
-          changed = true;
-        }
-      break;
-    case Value::NONE: ; // std::monostate
-    }
-  if (changed)
-    changed = setter_ (val);
-  if (changed)
-    notify();
+  setter_ (vdefault_);
+  notify();
 }
 
 PropertyImplP
