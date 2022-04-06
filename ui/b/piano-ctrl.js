@@ -92,10 +92,8 @@ export class PianoCtrl {
 	break;
       case Util.KeyCode.BACKSPACE: case Util.KeyCode.DELETE: // ⌫
 	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
-	  {
-	    msrc.change_note (note.id, note.tick, 0, note.key, note.fine_tune, note.velocity, note.selected);
-	    this.change_focus_selection (NONE);
-	  }
+	  msrc.change_note (note.id, note.tick, 0, note.key, note.fine_tune, note.velocity, note.selected);
+	this.change_focus_selection (NONE);
 	break;
     }
     if (note.id && pred && sortscore)
