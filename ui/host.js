@@ -122,6 +122,16 @@ class WorkerHost {
   }
 }
 
+const string_to_identifier = s => s.toLowerCase().replace (/[^a-z_0-9]/g, '_').replace (/^([0-9])/, '_$1');
+
+// setup global functions / constructors
+globalThis.Text = (label, nick, dflt = "", blurb = "", description = "", hints = ':G:r:w:') => ({ label, nick, dflt, hints: hints + ':text:', blurb, description });
+globalThis.Choices = (label, nick, choices, dflt = "", blurb = "", description = "", hints = ':G:r:w:') => ({ label, nick, choices, dflt, hints: hints + 'text:choice:', blurb, description });
+globalThis.Choice = (ident, label = "", blurb = "") => ({ ident: string_to_identifier (ident), label: label || ident, blurb, });
+globalThis.Bool = (label, nick, dflt = false, blurb = "", description = "", hints = ':G:r:w:') => ({ label, nick, dflt, hints: hints + ':bool:', blurb, description });
+globalThis.Range = (label, nick, min, max, dflt, unit = "", blurb = "", description = "", hints = ':G:r:w:') =>
+  ({ label, nick, min, max, dflt, unit, hints: hints + ':range:', blurb, description });
+
 // setup global `host` and its members
 globalThis.host = new WorkerHost();
 Object.defineProperty (globalThis, 'host', { value: host });
