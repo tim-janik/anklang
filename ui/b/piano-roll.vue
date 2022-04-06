@@ -87,7 +87,7 @@
       border-bottom: 1px solid $b-scrollboundary-color;  //* edge near scroll area */
     }
     .-notes-wrapper, .-piano-wrapper {} // leave these alone to preserve vertical sizing
-    canvas { image-rendering: pixelated; }
+    canvas { image-rendering: pixelated; background-color: #000; }
     &[data-pianotool='S'] canvas.b-piano-roll-notes { cursor: crosshair; }
     &[data-pianotool='S'] canvas.b-piano-roll-notes[data-notehover="true"] { cursor: default; }
     &[data-pianotool='H'] canvas.b-piano-roll-notes { cursor: col-resize; }
