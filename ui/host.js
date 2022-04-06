@@ -115,10 +115,10 @@ class WorkerHost {
     }
   }
   /// Register a script function.
-  async register (category, label, fun, blurb) {
+  async register (category, label, fun, blurb, params = {}) {
     const funid = _counter++ + '@' + host_globals.script_uuid;
     host_globals.registry.set (funid, fun);
-    await host_call ('register', category, label, funid, blurb);
+    await host_call ('register', category, label, funid, blurb, params);
   }
 }
 
