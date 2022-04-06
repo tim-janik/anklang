@@ -79,7 +79,7 @@ class ScriptHost {
   _set_uuid (uuid) {
     this.script_uuid = uuid;
   }
-  _register (category, label, funid, blurb) {
+  _register (category, label, funid, blurb, params) {
     category = category.replace (/^\/+|\/+$/g, ''); // strip slashes
     const category_list = registry.get (category) || [];
     if (category_list.length == 0)
@@ -87,7 +87,7 @@ class ScriptHost {
     const old = category_list.findIndex (e => e.funid == funid);
     if (old >= 0) // TODO: there should be no dups if scripts properly exit and have UUIDs
       category_list.splice (old, 1);
-    category_list.push ({ label, funid, blurb, host: this });
+    category_list.push (Object.freeze ({ label, funid, blurb, params, host: this }));
   }
   _piano_roll_clip_refhandle() {
     // needs release_refhandle
@@ -106,11 +106,11 @@ class ScriptHost {
 const registry = new Map();
 
 // == run_script() ==
-export async function run_script_fun (funid) {
+export async function run_script_fun (funid, params = {}) {
   for (const [_key, list] of registry)
     for (const entry of list)
       if (entry.funid == funid) {
-	return entry.host.call (entry.funid);
+	return entry.host.call (entry.funid, params);
       }
   throw new Error ('script.js: Attempt to call unregistered funid: ' + funid);
 }
