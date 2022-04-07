@@ -293,6 +293,12 @@ public:
   virtual Error           save_dir       (const String &dir, bool selfcontained) = 0; ///< Store Project data in `dir`.
   virtual Error           load_project   (const String &filename) = 0; ///< Load project from file `filename`.
   virtual TelemetryFieldS telemetry      () const = 0; ///< Retrieve project telemetry locations.
+  virtual void            group_undo     (const String &undoname) = 0; ///< Merge upcoming undo steps.
+  virtual void            ungroup_undo   () = 0;                       ///< Stop merging undo steps.
+  virtual void            undo           () = 0;       ///< Undo the last project modification.
+  virtual bool            can_undo       () = 0;       ///< Check if any undo steps have been recorded.
+  virtual void            redo           () = 0;       ///< Redo the last undo modification.
+  virtual bool            can_redo       () = 0;       ///< Check if any redo steps have been recorded.
   static ProjectP         last_project   ();
 };
 

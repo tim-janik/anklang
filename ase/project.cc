@@ -194,6 +194,139 @@ ProjectImpl::serialize (WritNode &xs)
       }
 }
 
+UndoScope::UndoScope (ProjectImplP projectp) :
+  projectp_ (projectp)
+{
+  assert_return (projectp);
+  projectp->undo_scopes_open_++;
+}
+
+UndoScope::~UndoScope()
+{
+  assert_return (projectp_->undo_scopes_open_);
+  projectp_->undo_scopes_open_--;
+}
+
+void
+UndoScope::operator+= (const VoidF &func)
+{
+  projectp_->push_undo (func);
+}
+
+UndoScope
+ProjectImpl::undo_scope (const String &scopename)
+{
+  assert_warn (scopename != "");
+  const size_t old_size = undostack_.size();
+  UndoScope undoscope = add_undo_scope (scopename);
+  if (undostack_.size() > old_size)
+    redostack_.clear();
+  return undoscope;
+}
+
+UndoScope
+ProjectImpl::add_undo_scope (const String &scopename)
+{
+  UndoScope undoscope (shared_ptr_cast<ProjectImpl> (this)); // undo_scopes_open_ += 1
+  assert_return (scopename != "", undoscope);
+  if (undo_scopes_open_ == 1 && (undo_groups_open_ == 0 || undo_group_name_.size())) {
+    undostack_.push_back ({ nullptr, undo_group_name_.empty() ? scopename : undo_group_name_ });
+    undo_group_name_ = "";
+    emit_event ("notify", "dirty");
+  }
+  return undoscope;
+}
+
+void
+ProjectImpl::push_undo (const VoidF &func)
+{
+  undostack_.push_back ({ func, "" });
+}
+
+void
+ProjectImpl::undo ()
+{
+  assert_return (undo_scopes_open_ == 0 && undo_groups_open_ == 0);
+  return_unless (!undostack_.empty());
+  std::vector<VoidF> funcs;
+  while (!undostack_.empty() && undostack_.back().func)
+    {
+      funcs.push_back (undostack_.back().func);
+      undostack_.pop_back();
+    }
+  assert_return (!undostack_.empty() && undostack_.back().func == nullptr); // must contain scope name
+  const String scopename = undostack_.back().name;
+  undostack_.pop_back(); // pop scope name
+  // swap undo/redo stacks, run undo steps and scope redo
+  undostack_.swap (redostack_);
+  {
+    auto undoscope = add_undo_scope (scopename); // preserves redostack_
+    for (const auto &func : funcs)
+      func();
+  }
+  undostack_.swap (redostack_);
+  if (undostack_.empty())
+    emit_event ("notify", "dirty");
+}
+
+bool
+ProjectImpl::can_undo ()
+{
+  return undostack_.size() > 0;
+}
+
+void
+ProjectImpl::redo ()
+{
+  assert_return (undo_scopes_open_ == 0 && undo_groups_open_ == 0);
+  return_unless (!redostack_.empty());
+  std::vector<VoidF> funcs;
+  while (!redostack_.empty() && redostack_.back().func)
+    {
+      funcs.push_back (redostack_.back().func);
+      redostack_.pop_back();
+    }
+  assert_return (!redostack_.empty() && redostack_.back().func == nullptr); // must contain scope name
+  const String scopename = redostack_.back().name;
+  redostack_.pop_back(); // pop scope name
+  // run redo steps with undo scope
+  {
+    auto undoscope = add_undo_scope (scopename); // preserves redostack_
+    for (const auto &func : funcs)
+      func();
+  }
+}
+
+bool
+ProjectImpl::can_redo ()
+{
+  return redostack_.size() > 0;
+}
+
+void
+ProjectImpl::group_undo (const String &undoname)
+{
+  assert_return (undoname != "");
+  undo_groups_open_++;
+  if (undo_groups_open_ == 1)
+    undo_group_name_ = undoname;
+  /* Opened undo groups cause:
+   * a) rename of the first opened undo scope
+   * b) merging of undo scopes
+   * c) block undo(), redo() calls
+   * We avoid group state tracking through IPC boundaries.
+   */
+}
+
+void
+ProjectImpl::ungroup_undo ()
+{
+  assert_return (undo_groups_open_ > 0);
+  undo_groups_open_--;
+  if (!undo_groups_open_)
+    undo_group_name_ = "";
+}
+
 TelemetryFieldS
 ProjectImpl::telemetry () const
 {
@@ -377,8 +510,8 @@ ProjectImpl::access_properties ()
   auto setunt = [this] (const Value &val) { return set_denominator (val.as_int()); };
   using namespace Properties;
   PropertyBag bag;
-  bag.group = _("State");
-  bag += Bool ("dirty", &dirty_, _("Modification Flag"), _("Dirty"), false, ":r:G:", _("Flag indicating modified project state"));
+  // bag.group = _("State");
+  // TODO: bag += Bool ("dirty", &dirty_, _("Modification Flag"), _("Dirty"), false, ":r:G:", _("Flag indicating modified project state"));
   bag.group = _("Timing");
   bag += Range ("numerator", getbpb, setbpb, _("Signature Numerator"), _("Numerator"), 1., 63., 4., STANDARD);
   bag += Range ("denominator", getunt, setunt, _("Signature Denominator"), _("Denominator"), 1, 16, 4, STANDARD);
