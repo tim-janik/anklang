@@ -339,6 +339,14 @@ shared_ptr_cast (const std::shared_ptr<Source> &sptr)
   return shared_ptr_cast<Target> (const_cast<std::shared_ptr<Source>&> (sptr));
 }
 
+/// Use `shared_ptr_cast<>()` to convert an object pointer into a `shared_ptr<>`.
+template<class Source> std::shared_ptr<typename std::remove_pointer<Source>::type>
+shared_ptr_from (Source *object)
+{
+  // ultimately calls shared_from_this()
+  return shared_ptr_cast<Source> (object);
+}
+
 /// Fetch `shared_ptr` from `wptr` and create `C` with `ctor` if needed.
 template<class C> std::shared_ptr<C>
 weak_ptr_fetch_or_create (std::weak_ptr<C> &wptr, const std::function<std::shared_ptr<C>()> &ctor)
