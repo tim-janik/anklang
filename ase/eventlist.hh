@@ -27,7 +27,7 @@ public:
   using Notify = std::function<void (const Event &event, int mod)>;
   using CIter = typename EventVector::const_iterator;
   explicit     EventList      (const Notify &n = {}, const Compare &c = {});
-  void         insert         (const Event &event); /// Insert or replace `event`, notifies.
+  bool         insert         (const Event &event); /// Insert or replace `event`, notifies.
   bool         remove         (const Event &event); /// Return true if `event` was removed, notifies.
   const Event* lookup         (const Event &event) const; /// Return pointer to matching `event` or nullptr.
   const Event* lookup_after   (const Event &event) const; /// Return pointer to element that is >= `event` or nullptr.
@@ -71,7 +71,7 @@ EventList<Event,Compare>::uncache ()
   ordered_.reset();
 }
 
-template<class Event, class Compare> inline void
+template<class Event, class Compare> inline bool
 EventList<Event,Compare>::insert (const Event &event)
 {
   uncache();
@@ -79,7 +79,7 @@ EventList<Event,Compare>::insert (const Event &event)
     {
       events_.push_back (event);
       notify_ (event, +1);      // notify insertion
-      return;                   // O(1) fast path for append
+      return true;              // O(1) fast path for append
     }
   auto insmatch = Aux::binary_lookup_insertion_pos (events_.begin(), events_.end(), compare_, event);
   auto it = insmatch.first;
@@ -87,11 +87,13 @@ EventList<Event,Compare>::insert (const Event &event)
     {
       *it = event;
       notify_ (event, 0);       // notify change
+      return false;
     }
   else
     {
       events_.insert (it, event);
       notify_ (event, +1);      // notify insertion
+      return true;
     }
 }
 
