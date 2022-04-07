@@ -92,10 +92,7 @@ using ClipImplGeneratorS = std::vector<ClipImpl::Generator>;
 inline int
 ClipImpl::CmpNoteIds::operator () (const ClipNote &a, const ClipNote &b) const
 {
-  const int cmp = Aux::compare_lesser (a.id, b.id);
-  if (ASE_UNLIKELY (cmp == 0))
-    return Aux::compare_lesser (b.selected, a.selected);
-  return cmp;
+  return Aux::compare_lesser (a.id, b.id);
 }
 
 inline int
