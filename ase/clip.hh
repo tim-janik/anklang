@@ -105,6 +105,9 @@ ClipImpl::CmpNoteTicks::operator() (const ClipNote &a, const ClipNote &b) const
   const int kcmp = Aux::compare_lesser (a.key, b.key);
   if (ASE_ISLIKELY (kcmp))
     return kcmp;
+  const int ccmp = Aux::compare_lesser (a.channel, b.channel);
+  if (ASE_ISLIKELY (ccmp))
+    return ccmp;
   // allow selected to "override" a previous unselected element
   const int scmp = Aux::compare_lesser (a.selected, b.selected);
   if (ASE_UNLIKELY (scmp))
