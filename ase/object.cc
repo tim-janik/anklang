@@ -2,6 +2,7 @@
 #include "object.hh"
 #include "internal.hh"
 #include "utils.hh"
+#include "main.hh"
 
 namespace Ase {
 
@@ -112,6 +113,40 @@ EventConnection::~EventConnection()
 {
   handler_ = nullptr;
   dispatcher_ = nullptr;
+}
+
+struct EmittableNotification {
+  EmittableP emittable;
+  String  type, detail;
+};
+static std::vector<EmittableNotification> emittable_notifications;
+
+static void
+emit_notifies ()
+{
+  std::vector<EmittableNotification> notifies;
+  emittable_notifications.swap (notifies);
+  Emittable *emittable = nullptr;
+  String type, detail;
+  for (const auto &notify : notifies) {
+    if (emittable == &*notify.emittable && type == notify.type && detail == notify.detail)
+      continue; // coalesce double emissions
+    emittable = &*notify.emittable;
+    type = notify.type;
+    detail = notify.detail;
+    emittable->emit_event (type, detail, {});
+  }
+}
+
+void
+EmittableImpl::queue_notify (const String &type, const String &detail)
+{
+  EmittableP emittablep = shared_ptr_cast<Emittable> (this);
+  if (emittablep) {
+    if (emittable_notifications.empty())
+      main_loop->exec_now (emit_notifies);
+    emittable_notifications.push_back ({ emittablep, type, detail });
+  }
 }
 
 // == EmittableImpl ==
