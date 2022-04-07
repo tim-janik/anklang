@@ -100,7 +100,8 @@ class ScriptHost {
     return refhandle_object (refhandle).list_all_notes();
   }
   _clip_insert_note (refhandle, channel, key, tick, duration, velocity, fine_tune, selected) {
-    return refhandle_object (refhandle).change_note (-1, tick, duration, key, fine_tune, velocity, selected);
+    const note = { /*id,*/ channel, key, tick, duration, velocity, fine_tune, selected };
+    return refhandle_object (refhandle).insert_note (note);
   }
 }
 const registry = new Map();
