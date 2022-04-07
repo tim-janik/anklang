@@ -9,6 +9,19 @@
 
 namespace Ase {
 
+bool
+ClipNote::operator== (const ClipNote &o) const
+{
+  return (tick      == o.tick &&
+          id        == o.id &&
+          channel   == o.channel &&
+          key       == o.key &&
+          selected  == o.selected &&
+          duration  == o.duration &&
+          velocity  == o.velocity &&
+          fine_tune == o.fine_tune);
+}
+
 // == ClipImpl ==
 JSONIPC_INHERIT (ClipImpl, Clip);
 
