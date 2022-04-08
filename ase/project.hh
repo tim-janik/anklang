@@ -47,6 +47,7 @@ public:
   bool                 can_redo          () override;
   void                 group_undo        (const String &undoname) override;
   void                 ungroup_undo      () override;
+  void                 clear_undo        ();
   Error                save_dir          (const String &dir, bool selfcontained) override;
   void                 start_playback    () override;
   void                 stop_playback     () override;

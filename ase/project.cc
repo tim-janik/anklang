@@ -327,6 +327,14 @@ ProjectImpl::ungroup_undo ()
     undo_group_name_ = "";
 }
 
+void
+ProjectImpl::clear_undo ()
+{
+  assert_warn (undo_scopes_open_ == 0 && undo_groups_open_ == 0);
+  undostack_.clear();
+  redostack_.clear();
+}
+
 TelemetryFieldS
 ProjectImpl::telemetry () const
 {
@@ -467,6 +475,7 @@ ProjectImpl::remove_track (Track &child)
 {
   TrackImplP track = shared_ptr_cast<TrackImpl> (&child);
   return_unless (track && !track->is_master(), false);
+  clear_undo(); // TODO: implement undo for remove_track
   if (!Aux::erase_first (tracks_, [track] (TrackP t) { return t == track; }))
     return false;
   // destroy Track
