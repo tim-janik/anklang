@@ -17,24 +17,43 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
-  .b-choice {
-    display: flex; position: relative;
-    margin: 0;
+@import 'mixins.scss';
+.b-choice {
+  display: flex; position: relative;
+  margin: 0;
+  white-space: nowrap;
+  user-select: none;
+  &.b-choice-big {
+    justify-content: left; text-align: left;
+    padding: .1em 0;
+  }
+  &.b-choice-small {
+    justify-content: center; text-align: center;
+    padding: 0;
+  }
+  .b-fed-object &.b-choice {
+    text-align: left;
+    justify-content: left; text-align: left;
+    padding: 0;
+    flex: 1 1 auto;
+  }
+  .-nick {
     white-space: nowrap;
-    user-select: none;
-    &.b-choice-big {
-      justify-content: left; text-align: left;
-      padding: .1em 0;
-    }
-    &.b-choice-small {
-      justify-content: center; text-align: center;
-      padding: 0;
-    }
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 1em; flex: 1 1 auto;
+  }
+  .-arrow {
+    flex: 0 0 auto; width: 1em;
+    margin: 0 0 0 .3em;
+  }
+  &.b-choice-small .-arrow {
+    display: none;
   }
   .b-choice-current {
     align-self: center;
-    min-width: 0; //* allow ellipsized text in flex child */
+    padding-left: 0.3em;
+    width: 100%;
     margin: 0;
     white-space: nowrap; overflow: hidden;
     .b-choice-big & {
@@ -49,41 +68,30 @@
     }
     @include b-style-outset();
   }
-  .b-choice-nick {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+}
+.b-choice-contextmenu {
+  .b-choice-label { display: block; white-space: pre-line; }
+  .b-choice-line1,
+  .b-choice-line2 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-secondary; }
+  .b-choice-line3 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-notice; }
+  .b-choice-line4 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-warning; }
+  .b-menuitem {
+    &:focus, &.active, &:active {
+      .b-choice-line1, .b-choice-line2, .b-choice-line3,
+      .b-choice-line4 { filter: $b-style-fg-filter; } //* adjust to inverted menuitem */
+    } }
+  .b-menuitem {
+    white-space: pre-line;
   }
-  .b-choice-arrow {
-    flex: 0 0 auto; width: 1em;
-    margin: 0 0 0 .5em;
-    .b-choice-small & {
-      display: none;
-    }
-  }
-  .b-choice-contextmenu {
-    .b-choice-label { display: block; white-space: pre-line; }
-    .b-choice-line1,
-    .b-choice-line2 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-secondary; }
-    .b-choice-line3 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-notice; }
-    .b-choice-line4 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-warning; }
-    .b-menuitem {
-      &:focus, &.active, &:active {
-	.b-choice-line1, .b-choice-line2, .b-choice-line3,
-	.b-choice-line4 { filter: $b-style-fg-filter; } //* adjust to inverted menuitem */
-      } }
-    .b-menuitem {
-      white-space: pre-line;
-    }
-  }
+}
 </style>
 
 <template>
   <h-flex class="b-choice" ref="bchoice" :class="classlist" :data-tip="data_tip()"
 	  @pointerdown="pointerdown" @keydown="keydown" >
     <h-flex class="b-choice-current" ref="pophere" tabindex="0" >
-      <span class="b-choice-nick">{{ nick() }}</span>
-      <span class="b-choice-arrow" > ⬍ <!-- ▼ ▽ ▾ ▿ ⇕ ⬍ ⇳ --> </span>
+      <span class="-nick">{{ nick() }}</span>
+      <span class="-arrow" > ⬍ <!-- ▼ ▽ ▾ ▿ ⇕ ⬍ ⇳ --> </span>
     </h-flex>
     <b-contextmenu class="b-choice-contextmenu" ref="cmenu" @click="menuactivation" @close="menugone" >
       <b-menutitle v-if="title" > {{ title }} </b-menutitle>

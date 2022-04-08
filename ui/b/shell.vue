@@ -125,6 +125,7 @@ html.b-shell-during-drag .b-app {
 	    <b-icon v-bind="d.icon" />
 	    <div style="flex-grow: 1; white-space: pre-line;" >{{ d.body }}</div>
 	  </h-flex>
+	  <b-fed-object class="-modal-fed" ref="fedobject" v-if="d.proplist" :value="d.proplist" />
 	</template>
 	<template v-slot:footer>
 	  <h-flex class="-hfooter" :class="d.footerclass">
@@ -255,12 +256,13 @@ export default Shell.vue_export ({ sfc_template });
 
 // == modal dialog creation ==
 let modal_dialog_counter = 1;
-function async_modal_dialog (title, btext, buttons = [], icon) {
+function async_modal_dialog (dialog_setup) {
   const shell = this;
   let resolve;
   const promise = new Promise (r => resolve = r);
   const m = {
     uid: modal_dialog_counter++,
+    proplist: dialog_setup.proplist || [],
     visible: Vue.reactive ({ value: false }),
     input (v) {
       if (!this.visible.value || v)
@@ -274,14 +276,15 @@ function async_modal_dialog (title, btext, buttons = [], icon) {
       this.result = r;
       this.input (false);
     },
-    header: title,
-    body: btext,
-    icon: modal_icons[icon] || {},
+    header: dialog_setup.title,
+    body: dialog_setup.text,
+    icon: dialog_emblems[dialog_setup.emblem] || {},
     footerclass: '',
     buttons: []
   };
   const is_string = s => typeof s === 'string' || s instanceof String;
   const check_bool = (v, dflt) => v !== undefined ? !!v : dflt;
+  const buttons = dialog_setup.buttons;
   for (let i = 0; i < buttons.length; i++)
     {
       const label = is_string (buttons[i]) ? buttons[i] : buttons[i].label;
@@ -297,7 +300,8 @@ function async_modal_dialog (title, btext, buttons = [], icon) {
   setTimeout (_ => m.visible.value = true, 0); // changing value triggers animation
   return promise;
 }
-const modal_icons = {
+const dialog_emblems = {
+  PIANO:	{ mi: "piano",			style: "font-size: 300%; padding-right: 1rem; float: left; color: #ffbbbb" },
   QUESTION:	{ fa: "question-circle",	style: "font-size: 300%; padding-right: 1rem; float: left; color: #538cc1" },
   ERROR:	{ fa: "times-circle",		style: "font-size: 300%; padding-right: 1rem; float: left; color: #cc2f2a" },
 };

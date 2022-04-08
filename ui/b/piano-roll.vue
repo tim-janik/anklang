@@ -87,7 +87,7 @@
       border-bottom: 1px solid $b-scrollboundary-color;  //* edge near scroll area */
     }
     .-notes-wrapper, .-piano-wrapper {} // leave these alone to preserve vertical sizing
-    canvas { image-rendering: pixelated; }
+    canvas { image-rendering: pixelated; background-color: #000; }
     &[data-pianotool='S'] canvas.b-piano-roll-notes { cursor: crosshair; }
     &[data-pianotool='S'] canvas.b-piano-roll-notes[data-notehover="true"] { cursor: default; }
     &[data-pianotool='H'] canvas.b-piano-roll-notes { cursor: col-resize; }
@@ -271,7 +271,8 @@ export default {
 	this.$refs.pianorollmenu.map_kbd_hotkeys (this.entered || document.activeElement == this.$el);
     },
     piano_roll_scripts() {
-      return Script.registry_keys ('PianoRoll');
+      this.scripts_ = Script.registry_keys ('PianoRoll');
+      return this.scripts_;
     },
     pianorollmenu_popup (event) {
       this.$refs.pianorollmenu.popup (event, { checker: this.pianorollmenu_check.bind (this) });
@@ -280,9 +281,65 @@ export default {
       return !!this.msrc;
     },
     async pianorollmenu_click (uri) {
-      const result = await Script.run_script_fun (uri);
-      if (result)
-	console.log ("piano-roll.vue: result from " + uri + ':', result);
+      const funid = uri;
+      const script = this.scripts_.find (entry => entry.funid == funid);
+      debug ("script", script);
+      const propvalues = {}, proplist = [];
+      for (const key of Object.keys (script.params)) {
+	const param = script.params[key];
+	propvalues[key] = param.dflt;
+	const callbacklist = [], p = {
+	  hints() { return param.hints; },
+	  is_bool() { return param.hints.indexOf (':bool:') >= 0; },
+	  is_range() { return param.hints.indexOf (':range:') >= 0; },
+	  is_choice() { return param.hints.indexOf (':choice:') >= 0; },
+	  is_numeric() { return p.is_bool() || p.is_range(); },
+	  identifier() { return key; },
+	  label() { return param.label; },
+	  nick() { return param.nick; },
+	  unit() { return param.unit; },
+	  group() { return ''; },
+	  blurb() { return param.blurb; },
+	  description() { return param.description; },
+	  get_min() { return param.min; },
+	  get_max() { return param.max; },
+	  get_step() { return 0; },
+	  reset() { p.set_value (param.dflt); },
+	  set_value: (v) => {
+	    propvalues[key] = v;
+	    (async () => {
+	      await undefined;
+	      for (const c of callbacklist)
+		c();
+	    }) (); // async callback invocations
+	  },
+	  get_value () { return propvalues[key]; },
+	  get_text () { return '' + p.get_value(); },
+	  choices() { return param.choices; },
+	  get_normalized () { return (p.get_value() - param.min) / param.max; },
+	  on: (signal, callback) => {
+	    const idx = callbacklist.length;
+	    callbacklist.push (callback);
+	    return () => { delete callbacklist[idx]; };
+	  },
+	};
+	proplist.push (p);
+      }
+      let v = 1;
+      if (proplist.length > 0) {
+	v = App.async_modal_dialog ({
+	  title: "Run Script: " + script.label,
+	  text: script.blurb,
+	  buttons: [ "Cancel", { label: "OK", autofocus: true }, ],
+	  proplist, emblem: 'PIANO',
+	});
+	v = await v;
+      }
+      if (v === 1) {
+	const result = await Script.run_script_fun (uri, propvalues);
+	if (result)
+	  console.log ("piano-roll.vue: result from " + uri + ':', result);
+      }
     },
     usetool (uri) {
       this.pianotool = uri;

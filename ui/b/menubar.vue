@@ -113,14 +113,14 @@ export default {
 	  window.close();
 	  break;
 	case 'quit':
-	  v = App.async_modal_dialog ("Save Project?",
-				      "The current project may contain unsaved changes.\n" +
-				      "Save changes to the project before closing?",
-				      (window.Electron ?
-				       [ 'Discard Changes', { label: 'Cancel', autofocus: true }, 'Save' ] :
-				       [ 'Discard Changes', { label: 'Cancel', autofocus: true },
-					 { label: 'Save', disabled: true } ]),
-				      'QUESTION');
+	  v = App.async_button_dialog ("Save Project?",
+				       "The current project may contain unsaved changes.\n" +
+				       "Save changes to the project before closing?",
+				       (window.Electron ?
+					[ 'Discard Changes', { label: 'Cancel', autofocus: true }, 'Save' ] :
+					[ 'Discard Changes', { label: 'Cancel', autofocus: true },
+					  { label: 'Save', disabled: true } ]),
+				       'QUESTION');
 	  v = await v;
 	  if (v == 0)
 	    return this.window_close();
@@ -201,12 +201,12 @@ async function save_project (asnew = false) {
   //  filename += '.anklang';
   if (0 && !replace) // TODO: if file_exists (filename)
     {
-      replace = await App.async_modal_dialog ("Replace Project?",
-					      "Replace existing project file?\n" +
-					      filename + ": File exists", [
-						'Cancel',
-						{ label: 'Replace', autofocus: true }, ],
-					      'QUESTION');
+      replace = await App.async_button_dialog ("Replace Project?",
+					       "Replace existing project file?\n" +
+					       filename + ": File exists", [
+						 'Cancel',
+						 { label: 'Replace', autofocus: true }, ],
+					       'QUESTION');
       if (replace != 1)
 	return false;
     }
@@ -219,12 +219,12 @@ async function save_project (asnew = false) {
       Util.create_note (msg);
       return true;
     }
-  App.async_modal_dialog ("File IO Error",
-			  "Failed to save project.\n" +
-			  filename + ": " +
-			  await Ase.server.error_blurb (err), [
-			    { label: 'Dismiss', autofocus: true }
-			  ], 'ERROR');
+  App.async_button_dialog ("File IO Error",
+			   "Failed to save project.\n" +
+			   filename + ": " +
+			   await Ase.server.error_blurb (err), [
+			     { label: 'Dismiss', autofocus: true }
+			   ], 'ERROR');
   return false;
 }
 

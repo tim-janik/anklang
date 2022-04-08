@@ -34,6 +34,9 @@
     input[type='range'] {
       margin: auto 1em auto 0;
       @include b-style-hrange-input;
+      flex: 1 1 auto;  /* grow beyond minimum width */
+      max-width: 50%;  /* avoid excessive sizes */
+      width: 1.5em;    /* minimum width */
     }
   }
 </style>
@@ -116,10 +119,11 @@ export default {
       const l10 = Math.log (10);
       const minimum = 123456;			// minimum number of digits always representable
       const delta = Math.max (minimum, Math.abs (this.fmax()), Math.abs (this.fmin()),
-			      Math.abs (this.fmax() - this.fmin()));
+			      Math.abs (this.fmax() - this.fmin())) + (this.fmin() < 0);
       const digits = Math.log (Math.max (delta, 618)) / l10;
-      const width = Math.ceil (digits * 0.9 + 1); // margin + digits + spin-arrows
-      return `width: ${width}.5em;`;		// add 0.5em margin
+      const em2digit = 0.9;
+      const width = 0.5 + Math.ceil (digits * em2digit + 1); // margin + digits + spin-arrows
+      return `width: 100%; max-width: ${width}em; min-width: 2em`;
     },
   },
 };

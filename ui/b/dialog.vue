@@ -101,7 +101,7 @@ $duration: 0.3s;
 
 <template>
   <transition name="-fade">
-    <div class="b-dialog-modalshield" v-if='shown' v-show='done_resizing' >
+    <div class="b-dialog-modalshield" v-if='shown' v-show='done_resizing()' >
       <v-flex class="b-dialog" @click.stop ref='dialog' >
 
 	<h-flex class="-header">
@@ -110,7 +110,7 @@ $duration: 0.3s;
 	  </slot>
 	</h-flex>
 
-	<v-flex class="-body">
+	<v-flex class="-body" ref="body">
 	  <slot name="default"></slot>
 	</v-flex>
 
@@ -132,21 +132,17 @@ export default {
   emits: { 'update:shown': null, 'close': null },
   data() { return {
     footerclass: '',
+    childrenmounted_: false,
     b_dialog_resizers: [],
   }; },
   provide() { return { b_dialog_resizers: this.b_dialog_resizers }; },
   computed: {
-    done_resizing() {
-      for (const r of this.b_dialog_resizers)
-	if (r.call (null))
-	  return false;
-      return true;
-    },
   },
   mounted () {
     this.$forceUpdate(); // force updated() after mounted()
   },
   updated() {
+    this.childrenmounted_ = !!this.$refs.body;
     if (this.$refs.dialog && !this.undo_shield)
       { // newly shown
 	this.undo_shield = Util.setup_shield_element (this.$el, this.$refs.dialog, this.close.bind (this));
@@ -173,8 +169,19 @@ export default {
   },
   unmount() {
     this.undo_shield?.();
+    this.childrenmounted_ = false;
   },
   methods: {
+    done_resizing() {
+      // children may introduce new b_dialog_resizers entries, so
+      // done_resizing is `false` until children are present.
+      if (!this.childrenmounted_)
+	return false;
+      for (const r of this.b_dialog_resizers)
+	if (r.call (null))
+	  return false;
+      return true;
+    },
     close (event) {
       this.$emit ('update:shown', false); // shown = false
       if (this.shown)

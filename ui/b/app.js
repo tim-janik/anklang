@@ -94,12 +94,12 @@ export class AppClass {
   async load_project_checked (project_or_path) {
     const err = await this.load_project (project_or_path);
     if (err !== Ase.Error.NONE)
-      App.async_modal_dialog ("File Open Error",
-			      "Failed to open project.\n" +
-			      project_or_path + ": " +
-			      await Ase.server.error_blurb (err), [
-				{ label: 'Dismiss', autofocus: true },
-			      ], 'ERROR');
+      App.async_button_dialog ("File Open Error",
+			       "Failed to open project.\n" +
+			       project_or_path + ": " +
+			       await Ase.server.error_blurb (err), [
+				 { label: 'Dismiss', autofocus: true },
+			       ], 'ERROR');
     return err;
   }
   async load_project (project_or_path) {
@@ -151,8 +151,17 @@ export class AppClass {
   status (...args) {
     console.log (...args);
   }
-  async_modal_dialog() {
-    return this.shell.async_modal_dialog.apply (this.shell, arguments);
+  async_modal_dialog (dialog_setup) {
+    return this.shell.async_modal_dialog (dialog_setup);
+  }
+  async_button_dialog (title, text, buttons = [], emblem) {
+    const dialog_setup = {
+      title,
+      text,
+      buttons,
+      emblem,
+    };
+    return this.shell.async_modal_dialog (dialog_setup);
   }
   zmoves_add = ZMove.zmoves_add;
   zmove = ZMove.zmove;

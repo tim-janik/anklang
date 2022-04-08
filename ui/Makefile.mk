@@ -149,9 +149,9 @@ $>/ui/.build1-stamp: $>/ui/fonts/AnklangIcons.css
 # == Material-Icons ==
 $>/ui/fonts/material-icons.css: ui/Makefile.mk		| $>/ui/fonts/
 	$(QECHO) FETCH Material-Icons
-	@ $(eval T := material-icons-200821-1-h0fccaba10.tar.xz)
+	@ $(eval T := material-icons-220403-1-h964709088.tar.xz)
 	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
-		11653afda6690b5230a64d67a0057634bc5a45b9f2c9fc95916de839ba72e12f \
+		5b51584613a9f84ea935b785123d4fe088fa8cb7660f886e66420c81fee89659 \
 		  https://github.com/tim-janik/assets/releases/download/material-icons/$T)
 	$Q cd $(@D) \
 		&& rm -fr material-icons/ && tar -xf $T \
