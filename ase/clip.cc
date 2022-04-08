@@ -9,6 +9,19 @@
 
 namespace Ase {
 
+bool
+ClipNote::operator== (const ClipNote &o) const
+{
+  return (tick      == o.tick &&
+          id        == o.id &&
+          channel   == o.channel &&
+          key       == o.key &&
+          selected  == o.selected &&
+          duration  == o.duration &&
+          velocity  == o.velocity &&
+          fine_tune == o.fine_tune);
+}
+
 // == ClipImpl ==
 JSONIPC_INHERIT (ClipImpl, Clip);
 
@@ -122,70 +135,93 @@ ClipImpl::tick_events () const
   return const_cast<ClipImpl*> (this)->notes_.ordered_events<OrderedEventsV> ();
 }
 
-static bool
-find_same_note (const EventList<ClipNote,ClipImpl::CmpNoteIds> &notes, ClipNote &ev)
+void
+ClipImpl::add_note_event (const ClipNote &ev)
 {
-  for (const auto &e : notes)
-    if (e.key == ev.key && e.tick == ev.tick && e.selected == ev.selected)
-      {
-        ev = e;
-        return true;
-      }
-  return false;
+  assert_return (ev.id > 0 && ev.duration > 0 && ev.velocity > 0);
+  const ClipNote cev = ev;
+  const bool inserted = notes_.insert (ev); // insert or replace
+  auto thisp = shared_ptr_from (this);
+  undo_scope ("Add Note") += [thisp, cev] () { thisp->remove_note_event (cev); };
+  queue_notify ("notify", "notes");
+  (void) inserted;
 }
 
-/// Change note `id`, or delete (`duration=0`) or create (`id=-1`) it.
-int32
-ClipImpl::change_note (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity, bool selected)
+void
+ClipImpl::remove_note_event (const ClipNote &ev)
 {
-  assert_return (duration >= 0, 0);
-  if (tick < 0)
-    return -1;
-  if (id < 0 && duration > 0)
-    id = next_noteid++; // automatic id allocation for new notes
-  const uint uid = id;
-  assert_return (uid >= MIDI_NOTE_ID_FIRST && uid <= MIDI_NOTE_ID_LAST, 0);
-  ClipNote ev;
-  ev.tick = tick;
-  ev.key = key;
-  ev.selected = selected;
-  ev.id = 0;
-  if (find_same_note (notes_, ev) && ev.id != id)
-    notes_.remove (ev);
-  ev.id = id;
-  ev.channel = 0;
-  ev.duration = duration;
-  ev.fine_tune = fine_tune;
-  ev.velocity = velocity;
-  int ret = ev.id;
-  if (duration > 0)
-    notes_.insert (ev);
-  else
-    ret = notes_.remove (ev) ? 0 : -1;
-  emit_event ("notify", "notes");
-  return ret;
+  assert_return (ev.id > 0);
+  const ClipNote cev = ev;
+  if (notes_.remove (ev))
+    {
+      auto thisp = shared_ptr_from (this);
+      undo_scope ("Remove Note") += [thisp, cev] () { thisp->add_note_event (cev); };
+      queue_notify ("notify", "notes");
+    }
+}
+
+int32
+ClipImpl::insert_note (const ClipNote &note)
+{
+  auto undoscope = undo_scope ("Insert Note");
+  if (note.duration == 0 || note.velocity == 0)
+    return 0;
+  for (const auto &e : notes_)          // look for merge candidate
+    if (e.key == note.key && e.tick == note.tick && e.channel == note.channel && e.selected == note.selected) {
+      remove_note_event (e);            // remove candidate
+      break;
+    }
+  ClipNote ev = note;
+  ev.id = next_noteid++; // automatic id allocation for new notes
+  assert_return (ev.id >= MIDI_NOTE_ID_FIRST && ev.id <= MIDI_NOTE_ID_LAST, 0);
+  add_note_event (ev);
+  return ev.id;
+}
+
+bool
+ClipImpl::change_note (const ClipNote &note)
+{
+  const ClipNote *ce = notes_.lookup (note); // by id
+  if (!ce)
+    return false;
+  if (note == *ce)
+    return true;
+  if (note.duration == 0 || note.velocity == 0) {
+    auto undoscope = undo_scope ("Delete Note");
+    remove_note_event (*ce);
+    return true;
+  }
+  auto undoscope = undo_scope ("Change Note");
+  if (note.key != ce->key || note.tick != ce->tick || note.selected != ce->selected)
+    for (const auto &e : notes_)         // look for merge candidate
+      if (e.key == note.key && e.tick == note.tick && e.channel == note.channel && e.selected == note.selected && e.id != note.id)
+        {
+          ce = nullptr;
+          remove_note_event (e);        // remove candidate
+          ce = notes_.lookup (note); // by id
+          assert_return (ce != nullptr, false);
+          break;
+        }
+  const ClipNote ev = *ce;
+  auto thisp = shared_ptr_from (this);
+  undoscope += [thisp, ev] () { thisp->add_note_event (ev); };  // restore unchanged note
+  add_note_event (note);                                        // replace with changed note
+  return true;
 }
 
 bool
 ClipImpl::toggle_note (int32 id, bool selected)
 {
-  bool was_selected = false;
   ClipNote ev;
   ev.id = id;
-  ev.selected = !selected;
-  const ClipNote *ce = notes_.lookup (ev);
-  if (ce)
+  const ClipNote *ce = notes_.lookup (ev); // by id
+  const bool was_selected = ce && ce->selected;
+  if (ce && ce->selected != selected)
     {
-      was_selected = ce->selected;
+      auto undoscope = undo_scope (selected ? "Select Note" : "Unselect Note");
       ev = *ce;
-      ev.selected = selected;   // look for merge candidate
-      if (find_same_note (notes_, ev) && ev.id != id)
-        notes_.remove (ev);     // remove candidate
-      ev = *ce;
-      notes_.remove (ev);
       ev.selected = selected;
-      notes_.insert (ev);
-      emit_event ("notify", "notes");
+      change_note (ev);
     }
   return was_selected;
 }
@@ -286,7 +322,7 @@ ClipImpl::Generator::generate (int64 target_tick, const Receiver &receiver)
       // generate notes within [a,b)
       if (receiver && !muted_)
         {
-          ClipNote index = { .tick = a, .id = 0, .key = 0, };
+          ClipNote index = { .tick = a };
           const ClipNote *event = events_->lookup_after (index);
           while (event && event->tick < b)
             {

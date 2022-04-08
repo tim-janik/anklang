@@ -2,7 +2,7 @@
 #ifndef __ASE_CLIP_HH__
 #define __ASE_CLIP_HH__
 
-#include <ase/gadget.hh>
+#include <ase/project.hh>
 #include <ase/eventlist.hh>
 #include <ase/midievent.hh>
 
@@ -32,17 +32,21 @@ protected:
   void     serialize        (WritNode &xs) override;
   ssize_t  clip_index       () const;
   bool     find_key_at_tick (ClipNote &ev);
+  void     add_note_event   (const ClipNote &ev);
+  void     remove_note_event (const ClipNote &ev);
 public:
   using OrderedEventsP = OrderedEventsV::ConstP;
   OrderedEventsP tick_events    () const;
   ProjectImpl*   project        () const;
+  UndoScope      undo_scope     (const String &scopename) { return project()->undo_scope (scopename); }
   int64          start_tick     () const override { return starttick_; }
   int64          stop_tick      () const override { return stoptick_; }
   int64          end_tick       () const override { return endtick_; }
   void           assign_range   (int64 starttick, int64 stoptick) override;
   ClipNoteS      list_all_notes () override;
   bool           needs_serialize() const;
-  int32          change_note    (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity, bool selected = false) override;
+  int32          insert_note    (const ClipNote &note) override;
+  bool           change_note    (const ClipNote &note) override;
   bool           toggle_note    (int32 id, bool selected) override;
   ASE_DEFINE_MAKE_SHARED (ClipImpl);
 };
@@ -92,10 +96,7 @@ using ClipImplGeneratorS = std::vector<ClipImpl::Generator>;
 inline int
 ClipImpl::CmpNoteIds::operator () (const ClipNote &a, const ClipNote &b) const
 {
-  const int cmp = Aux::compare_lesser (a.id, b.id);
-  if (ASE_UNLIKELY (cmp == 0))
-    return Aux::compare_lesser (b.selected, a.selected);
-  return cmp;
+  return Aux::compare_lesser (a.id, b.id);
 }
 
 inline int
@@ -108,6 +109,9 @@ ClipImpl::CmpNoteTicks::operator() (const ClipNote &a, const ClipNote &b) const
   const int kcmp = Aux::compare_lesser (a.key, b.key);
   if (ASE_ISLIKELY (kcmp))
     return kcmp;
+  const int ccmp = Aux::compare_lesser (a.channel, b.channel);
+  if (ASE_ISLIKELY (ccmp))
+    return ccmp;
   // allow selected to "override" a previous unselected element
   const int scmp = Aux::compare_lesser (a.selected, b.selected);
   if (ASE_UNLIKELY (scmp))

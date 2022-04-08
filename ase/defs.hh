@@ -42,6 +42,7 @@ ASE_CLASS_DECLS (Clip);
 ASE_CLASS_DECLS (ClipImpl);
 ASE_CLASS_DECLS (Device);
 ASE_CLASS_DECLS (DeviceImpl);
+ASE_CLASS_DECLS (Emittable);
 ASE_CLASS_DECLS (FileCrawler);
 ASE_CLASS_DECLS (Gadget);
 ASE_CLASS_DECLS (Monitor);

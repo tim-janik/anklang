@@ -223,14 +223,15 @@ public:
 
 /// Part specific note event representation.
 struct ClipNote {
-  int64  tick;          /// Position in ticks
-  int32  id;            /// ID, > 0
-  int8   channel;       /// MIDI Channel
-  int8   key;           /// Musical note as MIDI key, 0 .. 127
-  bool   selected;      /// UI selection flag
-  int64  duration;      /// Duration in number of ticks
-  float  velocity;      /// Velocity, 0 .. +1
-  float  fine_tune;     /// Fine Tune, -100 .. +100
+  int32  id = 0;            /// ID, > 0
+  int8   channel = 0;       /// MIDI Channel
+  int8   key = 0;           /// Musical note as MIDI key, 0 .. 127
+  bool   selected = 0;      /// UI selection flag
+  int64  tick = 0;          /// Position in ticks
+  int64  duration = 0;      /// Duration in number of ticks
+  float  velocity = 0;      /// Velocity, 0 .. +1
+  float  fine_tune = 0;     /// Fine Tune, -100 .. +100
+  bool   operator== (const ClipNote&) const;
 };
 
 /// Container for MIDI note and control events.
@@ -242,7 +243,8 @@ public:
   virtual void      assign_range   (int64 starttick, int64 stoptick) = 0; ///< Change start_tick() and stop_tick(); emits `notify:start_tick`, `notify:stop_tick`.
   virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
   /// Change note `id` according to the arguments or add a new note if `id` < 0; emits `notify:notes`.
-  virtual int32     change_note    (int32 id, int64 tick, int64 duration, int32 key, int32 fine_tune, double velocity, bool selected = false) = 0;
+  virtual int32     insert_note    (const ClipNote &note) = 0; ///< Adds a note, returns note id.
+  virtual bool      change_note    (const ClipNote &note) = 0; ///< Changes an existing note, identified by its id, returns false for unknown ids.
   virtual bool      toggle_note    (int32 id, bool selected) = 0; ///< Change selected state of note `id`.
 };
 
@@ -292,6 +294,12 @@ public:
   virtual Error           save_dir       (const String &dir, bool selfcontained) = 0; ///< Store Project data in `dir`.
   virtual Error           load_project   (const String &filename) = 0; ///< Load project from file `filename`.
   virtual TelemetryFieldS telemetry      () const = 0; ///< Retrieve project telemetry locations.
+  virtual void            group_undo     (const String &undoname) = 0; ///< Merge upcoming undo steps.
+  virtual void            ungroup_undo   () = 0;                       ///< Stop merging undo steps.
+  virtual void            undo           () = 0;       ///< Undo the last project modification.
+  virtual bool            can_undo       () = 0;       ///< Check if any undo steps have been recorded.
+  virtual void            redo           () = 0;       ///< Redo the last undo modification.
+  virtual bool            can_redo       () = 0;       ///< Check if any redo steps have been recorded.
   static ProjectP         last_project   ();
 };
 

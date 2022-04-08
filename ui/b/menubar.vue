@@ -27,25 +27,39 @@
     <!-- menubar left -->
     <b-button-bar class="-menubar" >
       <!-- File Menu -->
-      <push-button data-tip="**CLICK** File Menu" data-hotkey="Alt+KeyF" @click="Util.dropdown ($refs.filemenu, $event)" >
+      <push-button data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click="Util.dropdown ($refs.filemenu, $event)" >
 	<div class="-stack" >
 	  <b-icon bc="folder" />
 	  <b-icon bc="menumore" />
 	</div>
 	<b-contextmenu ref="filemenu" @click="activation" startfocus keepmounted >
-	  <b-menuitem fa="file-o"	kbd="Ctrl+KeyN"		uri="loadnew" >	New Project		</b-menuitem>
-	  <b-menuitem fa="file-audio-o" kbd="Ctrl+KeyO"		uri="load"    >	Open Project…		</b-menuitem>
-	  <b-menuitem mi="save_alt"     kbd="Ctrl+KeyS"		uri="save"    >	Save Project		</b-menuitem>
-	  <b-menuitem fa="save"		kbd="Shift+Ctrl+KeyS"	uri="saveas"  >	Save As…		</b-menuitem>
+	  <b-menuitem fa="file-o"	kbd="Ctrl+N"		uri="loadnew" >	New Project		</b-menuitem>
+	  <b-menuitem fa="file-audio-o" kbd="Ctrl+O"		uri="load"    >	Open Project…		</b-menuitem>
+	  <b-menuitem mi="save_alt"     kbd="Ctrl+S"		uri="save"    >	Save Project		</b-menuitem>
+	  <b-menuitem fa="save"		kbd="Shift+Ctrl+S"	uri="saveas"  >	Save As…		</b-menuitem>
 	  <b-menuseparator style="margin: 7px"  />
-	  <b-menuitem fa="cog"         kbd="Ctrl+Comma"	uri="prefs">	Preferences		</b-menuitem>
+	  <b-menuitem fa="cog"         kbd="Ctrl+RawComma"	uri="prefs">	Preferences		</b-menuitem>
 	  <b-menuseparator style="margin: 7px"  />
-	  <b-menuitem mi="close" kbd="Shift+Ctrl+KeyQ" uri="quit">	Quit			</b-menuitem>
+	  <b-menuitem mi="close" kbd="Shift+Ctrl+Q" uri="quit">	Quit			</b-menuitem>
+	</b-contextmenu>
+      </push-button>
+
+      <!-- Edit Menu -->
+      <push-button data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click="Util.dropdown ($refs.editmenu, $event)" >
+	<div class="-stack" >
+	  <b-icon mi="draw" />
+	  <b-icon bc="menumore" />
+	</div>
+	<b-contextmenu ref="editmenu" @click="activation" :check="deactivation" startfocus keepmounted >
+	  <b-menuitem mi="undo" :disabled="!true"
+		      kbd="Ctrl+Z" uri="undo">	Undo	</b-menuitem>
+	  <b-menuitem mi="redo" :disabled="!true"
+		      kbd="Shift+Ctrl+Z" uri="redo">	Redo	</b-menuitem>
 	</b-contextmenu>
       </push-button>
 
       <!-- View Menu -->
-      <push-button data-tip="**CLICK** View Menu" data-hotkey="Alt+KeyV" @click="Util.dropdown ($refs.viewmenu, $event)" >
+      <push-button data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @click="Util.dropdown ($refs.viewmenu, $event)" >
 	<div class="-stack" >
 	  <b-icon fa="eye" />
 	  <b-icon bc="menumore" />
@@ -67,7 +81,7 @@
     <!-- menubar right -->
     <b-button-bar class="-menubar" >
       <!-- Help Menu -->
-      <push-button data-tip="**CLICK** Help Menu" data-hotkey="Alt+KeyH"
+      <push-button data-tip="**CLICK** Help Menu" data-hotkey="Alt+H"
 		@click="Util.dropdown ($refs.helpmenu, $event)" >
 	<div class="-stack" >
 	  <b-icon fa="life-ring" />
@@ -96,6 +110,7 @@ export default {
   },
   mounted() {
     this.$refs.filemenu.map_kbd_hotkeys (true);
+    this.$refs.editmenu.map_kbd_hotkeys (true);
     this.$refs.viewmenu.map_kbd_hotkeys (true);
   },
   methods: {
@@ -105,6 +120,16 @@ export default {
       setTimeout (() => {
 	window.location.href = 'about:blank';
       }, 0);
+    },
+    async deactivation (uri) {
+      switch (uri) {
+	case 'undo':
+	  return this.project.can_undo();
+	case 'redo':
+	  return this.project.can_redo();
+	default:
+	  return true;
+      }
     },
     async activation (uri, event) {
       let u, v;
@@ -143,6 +168,12 @@ export default {
 	  else
 	    document.body.requestFullscreen();
 	  break;
+	case 'undo':
+	  await this.project.undo();
+	  break;
+	case 'redo':
+	  await this.project.redo();
+	  break;
 	case 'loadnew':
 	  App.load_project_checked();
 	  break;
@@ -179,7 +210,7 @@ async function open_file() {
 	  let project_filename = filename;
           Data.project.set_custom ('filename', project_filename);
 	}
-      // else console.error ('Failed to load:', filename); // FIXME : warning
+      // else console.error ('Failed to load:', filename); // TODO: warning notice?
     }
 }
 

@@ -30,13 +30,13 @@
 </style>
 
 <template>
-  <h-flex class="b-deviceeditor" @contextmenu.stop="menuopen" >
+  <h-flex class="b-deviceeditor" @contextmenu.prevent="e => $refs.cmenu.popup (e)" >
     <span class="b-deviceeditor-sw" > {{ device_info.uri + ' #' + device.$id }} </span>
     <c-grid class="b-deviceeditor-areas" >
       <b-pro-group v-for="group in gprops" :key="group.name" :style="group_style (group)"
 		   :name="group.name" :props="group.props" />
     </c-grid>
-    <b-contextmenu ref="cmenu" @click="menuactivation" >
+    <b-contextmenu ref="cmenu" @click="activation" :check="deactivation" >
       <b-menutitle> Module </b-menutitle>
       <b-menuitem fa="plus-circle"      uri="add-module" >      Add Module		</b-menuitem>
       <b-menuitem fa="times-circle"     uri="delete-module" >   Delete Module		</b-menuitem>
@@ -253,22 +253,18 @@ export default {
 	}
       return s;
     },
-    menuactivation (uri) {
+    activation (uri) {
       // close popup to remove focus guards
       this.$refs.cmenu.close();
-      debug ("deviceeditor.vue: menuactivation:", uri);
     },
-    menucheck (uri, component) {
+    deactivation (uri, component) {
       if (!this.device)
 	return false;
-      switch (uri)
-      {
-	case 'add-module':   return true;
+      switch (uri) {
+	case 'add-module':
+	  return false;
       }
       return false;
-    },
-    menuopen (event) {
-      this.$refs.cmenu.popup (event, { check: this.menucheck.bind (this) });
     },
   },
 };

@@ -40,6 +40,7 @@ export class PianoCtrl {
   }
   keydown (event)
   {
+    Data.project.group_undo ("Modify Notes");
     const roll = this.piano_roll, msrc = roll.msrc;
     const LEFT = Util.KeyCode.LEFT, UP = Util.KeyCode.UP, RIGHT = Util.KeyCode.RIGHT, DOWN = Util.KeyCode.DOWN;
     const idx = find_note (roll.adata.pnotes, n => roll.adata.focus_noteid == n.id);
@@ -47,6 +48,7 @@ export class PianoCtrl {
     const big = 9e12; // assert: big * 1000 + 999 < Number.MAX_SAFE_INTEGER
     let nextdist = +Number.MAX_VALUE, nextid = -1, pred, sortscore;
     const SHIFT = 0x1000, CTRL = 0x2000, ALT = 0x4000;
+    const change_note = (note, key, tick, duration) => msrc.change_note (Object.assign ({}, note, { key, tick, duration }));
     switch (event.keyCode + (event.shiftKey ? SHIFT : 0) + (event.ctrlKey ? CTRL : 0) + (event.altKey ? ALT : 0)) {
       case ALT + RIGHT:
 	if (idx < 0)
@@ -64,35 +66,35 @@ export class PianoCtrl {
 	break;
       case 81: // Q
 	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
-	  msrc.change_note (note.id, this.quantize (note.tick, true), note.duration, note.key, note.fine_tune, note.velocity, note.selected);
+	  change_note (note, note.key, this.quantize (note.tick, true), note.duration);
 	break;
       case LEFT: case SHIFT + LEFT: // ←
 	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
-	  msrc.change_note (note.id, Math.max (0, note.tick - this.tickdelta (event)), note.duration, note.key, note.fine_tune, note.velocity, note.selected);
+	  change_note (note, note.key, Math.max (0, note.tick - this.tickdelta (event)), note.duration);
 	break;
       case RIGHT: case SHIFT + RIGHT: // →
 	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
-	  msrc.change_note (note.id, note.tick + this.tickdelta (event), note.duration, note.key, note.fine_tune, note.velocity, note.selected);
+	  change_note (note, note.key, note.tick + this.tickdelta (event), note.duration);
 	break;
       case CTRL + LEFT: case SHIFT + CTRL + LEFT: // ←
 	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
-	  msrc.change_note (note.id, note.tick, Math.max (MINDURATION, note.duration - this.tickdelta (event)), note.key, note.fine_tune, note.velocity, note.selected);
+	  change_note (note, note.key, note.tick, Math.max (MINDURATION, note.duration - this.tickdelta (event)));
 	break;
       case CTRL + RIGHT: case SHIFT + CTRL + RIGHT: // →
 	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
-	  msrc.change_note (note.id, note.tick, note.duration + this.tickdelta (event), note.key, note.fine_tune, note.velocity, note.selected);
+	  change_note (note, note.key, note.tick, note.duration + this.tickdelta (event));
 	break;
       case DOWN: // ↓
 	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
-	  msrc.change_note (note.id, note.tick, note.duration, Math.max (note.key - 1, 0), note.fine_tune, note.velocity, note.selected);
+	  change_note (note, Math.max (note.key - 1, 0), note.tick, note.duration);
 	break;
       case UP: // ↑
 	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
-	  msrc.change_note (note.id, note.tick, note.duration, Math.min (note.key + 1, PIANO_KEYS - 1), note.fine_tune, note.velocity, note.selected);
+	  change_note (note, Math.min (note.key + 1, PIANO_KEYS - 1), note.tick, note.duration);
 	break;
       case Util.KeyCode.BACKSPACE: case Util.KeyCode.DELETE: // ⌫
 	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
-	  msrc.change_note (note.id, note.tick, 0, note.key, note.fine_tune, note.velocity, note.selected);
+	  change_note (note, note.key, note.tick, 0);
 	this.change_focus_selection (NONE);
 	break;
     }
@@ -112,6 +114,7 @@ export class PianoCtrl {
       }
     if (nextid > 0)
       this.change_focus_selection (nextid);
+    Data.project.ungroup_undo();
     event.preventDefault();
   }
   async notes_click (event) {
@@ -125,8 +128,9 @@ export class PianoCtrl {
 			   n => tick >= n.tick && tick < n.tick + n.duration && n.key == midinote);
     if (idx >= 0 && roll.pianotool == 'E')
       {
-	let note = roll.adata.pnotes[idx];
-	msrc.change_note (note.id, note.tick, 0, note.key, note.fine_tune, note.velocity, note.selected);
+	const note = roll.adata.pnotes[idx];
+	note.duration = 0; // deletes
+	msrc.change_note (note);
       }
     else if (idx >= 0)
       {
@@ -135,10 +139,13 @@ export class PianoCtrl {
       }
     else if (roll.pianotool == 'P')
       {
+	Data.project.group_undo ("Insert Note");
 	this.change_focus_selection (NONE);
-	const note_id = await msrc.change_note (-1, this.quantize (tick), Util.PPQN / 4, midinote, 0, 1, true);
+	const note = { channel: 0, key: midinote, tick: this.quantize (tick), duration: Util.PPQN / 4, velocity: 1, fine_tune: 0, selected: true };
+	const note_id = await msrc.insert_note (note);
 	if (!(roll.adata.focus_noteid > 0))
 	  this.change_focus_selection (note_id);
+	Data.project.ungroup_undo();
       }
   }
   drag_event (ev, MODE) {

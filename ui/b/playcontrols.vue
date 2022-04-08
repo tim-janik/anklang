@@ -21,9 +21,9 @@
       class="b-playcontrols" >
     <push-button disabled @click="pcall ('...Last')"      ><b-icon fw lg fa="fast-backward" /></push-button>
     <push-button disabled @click="pcall ('...Backwards')" ><b-icon fw lg fa="backward"      /></push-button>
-    <push-button @click="pcall ('stop_playback')" data-hotkey="KeyS"
+    <push-button @click="pcall ('stop_playback')" data-hotkey="S"
 		 data-tip="**CLICK** Stop playback" >      <b-icon fw lg fa="stop"          /></push-button>
-    <push-button @click="toggle_play()"  data-hotkey="Space"
+    <push-button @click="toggle_play()"  data-hotkey="RawSpace"
 		 data-tip="**CLICK** Start/stop playback" ><b-icon fw lg fa="play"          /></push-button>
     <push-button disabled @click="pcall ('...Record')"    ><b-icon fw lg fa="circle"        /></push-button>
     <push-button disabled @click="pcall ('...Forwards')"  ><b-icon fw lg fa="forward"       /></push-button>
