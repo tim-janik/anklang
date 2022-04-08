@@ -178,13 +178,13 @@ class Shell extends Envue.Component {
   }
   mounted() {
     this.switch_panel2 = App.switch_panel2.bind (App);
-    Util.add_hotkey ('Backquote', this.switch_panel2);
+    Util.add_hotkey ('RawBackquote', this.switch_panel2);
     this.switch_panel3 = App.switch_panel3.bind (App);
-    Util.add_hotkey ('KeyI', this.switch_panel3);
+    Util.add_hotkey ('I', this.switch_panel3);
   }
   unmounted() {
-    Util.remove_hotkey ('Backquote', this.switch_panel2);
-    Util.remove_hotkey ('KeyI', this.switch_panel3);
+    Util.remove_hotkey ('RawBackquote', this.switch_panel2);
+    Util.remove_hotkey ('I', this.switch_panel3);
     App.shell_unmounted();
   }
   update() {

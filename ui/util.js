@@ -1887,6 +1887,8 @@ export function keyboard_map_name (keyname) {
 /// Create display name from KeyEvent.code names.
 export function display_keyname (keyname)
 {
+  // Strip Raw prefix
+  keyname = keyname.replace (/\bRaw(\w)/g, "$1");
   // Replace KeyX with 'X'
   keyname = keyname.replace (/\bKey([A-Z])/g, "$1");
   // Replace Digit7 with '7'
@@ -1901,7 +1903,7 @@ export function match_key_event (event, keyname)
   // split_hotkey (hotkey)
   const rex = new RegExp (/\s*[+]\s*/); // Split 'Shift+Ctrl+Alt+Meta+SPACE'
   const parts = keyname.split (rex);
-  const keycode = event.code; // fallback: search KeyCode[] for value()==event.keyCode
+  const rawkey = event.code; // contains physical key names for US-Layout
   const keychar = event.key || String.fromCharCode (event.which || event.keyCode);
   let need_meta = 0, need_alt = 0, need_ctrl = 0, need_shift = 0;
   for (let i = 0; i < parts.length; i++)
@@ -1915,12 +1917,13 @@ export function match_key_event (event, keyname)
 	case 'control': case 'ctrl':	need_ctrl  = 1; continue;
 	case 'shift':		  	need_shift = 1; continue;
       }
-      // match named keys
-      if (parts[i] == keycode)
-	continue;
       // match character keys
-      //if (keychar.toLowerCase() == parts[i].toLowerCase())
-      //  continue;
+      if (keychar.toLowerCase() == parts[i].toLowerCase())
+        continue;
+      // match physical keys
+      if (parts[i].startsWith ('Raw') &&
+	  parts[i].substr (3) == rawkey)
+	continue;
       // failed to match
       return false;
     }
