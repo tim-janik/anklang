@@ -210,7 +210,7 @@ async function open_file() {
 	  let project_filename = filename;
           Data.project.set_custom ('filename', project_filename);
 	}
-      // else console.error ('Failed to load:', filename); // FIXME : warning
+      // else console.error ('Failed to load:', filename); // TODO: warning notice?
     }
 }
 
