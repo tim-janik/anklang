@@ -12,12 +12,14 @@
   </div>
   ```
   ## Props:
+  *check*: function (uri: string): bool
+  : Callback property to check if a submenu item is enabled, the `uri` of the submenu is provided as argument.
   *xscale*
   : Consider a wider area than the context menu width for popup positioning.
   *yscale*
   : Consider a taller area than the context menu height for popup positioning.
   ## Events:
-  *click (uri)*
+  *click (uri: string)*
   : Event signaling activation of a submenu item, the `uri` of the submenu is provided as argument.
   *close*
   : Event signaling closing of a menu, regardless of whether menu item activation occoured or not.
@@ -132,6 +134,7 @@ export default {
 	   keepmounted: { type: Boolean, },
 	   startfocus: { type: Boolean, },
 	   showicons: { default: true, type: Boolean },
+	   check: { type: Function },
 	   xscale: { default: 1, },
 	   yscale: { default: 1, }, },
   computed: {
@@ -242,14 +245,15 @@ export default {
 	}
     },
     checkitems() {
-      if (!this.popup_options.checker)
+      const checker = this.popup_options.checker || this.check;
+      if (!checker)
 	return;
       const checkrecursive = component => {
 	component = Util.vue_component (component) || component;
 	if (component.uri)
 	  {
 	    let async_check = async () => {
-	      let result = this.popup_options.checker.call (null, component.uri, component);
+	      let result = checker.call (null, component.uri, component);
 	      result = await result;
 	      if ('boolean' !== typeof result)
 		result = undefined;
@@ -372,7 +376,26 @@ export default {
       const buildmap = v => {
 	const key = Object.hasOwnProperty.call (v, 'kbd_hotkey') && v.kbd_hotkey();
 	if (key)
-	  kmap[key] = _ => v.$el && Util.keyboard_click (v.$el);
+	  kmap[key] = async _ => { // v.$el && Util.keyboard_click (v.$el);
+	    if (!v.$el) return;
+	    const component = Util.vue_component (v) || v;
+	    if (this.check) {
+	      let result = this.check.call (null, component.uri, component);
+	      if (result instanceof Promise)
+		result = await result;
+	      if ('boolean' !== typeof result)
+		result = undefined;
+	      if (result != this.checkeduris[component.uri])
+		{
+		  this.checkeduris[component.uri] = result; // Vue reactivity
+		  component.$forceUpdate();
+		  await Vue.nextTick(); // keyboard_click needs updated component
+		}
+	      if (result === false)
+		return;
+	    }
+	    Util.keyboard_click (v.$el);
+	  };
 	for (const c of v.$children)
 	  buildmap (c);
       };
