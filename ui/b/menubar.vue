@@ -44,6 +44,20 @@
 	</b-contextmenu>
       </push-button>
 
+      <!-- Edit Menu -->
+      <push-button data-tip="**CLICK** Edit Menu" data-hotkey="Alt+KeyE" @click="Util.dropdown ($refs.editmenu, $event)" >
+	<div class="-stack" >
+	  <b-icon mi="draw" />
+	  <b-icon bc="menumore" />
+	</div>
+	<b-contextmenu ref="editmenu" @click="activation" :check="deactivation" startfocus keepmounted >
+	  <b-menuitem mi="undo" :disabled="!true"
+		      kbd="Ctrl+KeyZ" uri="undo">	Undo	</b-menuitem>
+	  <b-menuitem mi="redo" :disabled="!true"
+		      kbd="Shift+Ctrl+KeyZ" uri="redo">	Redo	</b-menuitem>
+	</b-contextmenu>
+      </push-button>
+
       <!-- View Menu -->
       <push-button data-tip="**CLICK** View Menu" data-hotkey="Alt+KeyV" @click="Util.dropdown ($refs.viewmenu, $event)" >
 	<div class="-stack" >
@@ -96,6 +110,7 @@ export default {
   },
   mounted() {
     this.$refs.filemenu.map_kbd_hotkeys (true);
+    this.$refs.editmenu.map_kbd_hotkeys (true);
     this.$refs.viewmenu.map_kbd_hotkeys (true);
   },
   methods: {
@@ -105,6 +120,16 @@ export default {
       setTimeout (() => {
 	window.location.href = 'about:blank';
       }, 0);
+    },
+    async deactivation (uri) {
+      switch (uri) {
+	case 'undo':
+	  return this.project.can_undo();
+	case 'redo':
+	  return this.project.can_redo();
+	default:
+	  return true;
+      }
     },
     async activation (uri, event) {
       let u, v;
@@ -142,6 +167,12 @@ export default {
 	    document.exitFullscreen();
 	  else
 	    document.body.requestFullscreen();
+	  break;
+	case 'undo':
+	  await this.project.undo();
+	  break;
+	case 'redo':
+	  await this.project.redo();
 	  break;
 	case 'loadnew':
 	  App.load_project_checked();
