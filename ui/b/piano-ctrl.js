@@ -9,6 +9,8 @@ const MINDURATION = Util.PPQN / 64;
 const MINTICKS = MINDURATION / 6;
 const ADD = 'add', SUB = 'sub', ASSIGN = 'assign', NONE = -1;
 
+let piano_clipboard = "[]";
+
 export class PianoCtrl {
   constructor (piano_roll)
   {
@@ -49,7 +51,39 @@ export class PianoCtrl {
     let nextdist = +Number.MAX_VALUE, nextid = -1, pred, sortscore;
     const SHIFT = 0x1000, CTRL = 0x2000, ALT = 0x4000;
     const change_note = (note, key, tick, duration) => msrc.change_note (Object.assign ({}, note, { key, tick, duration }));
+    let selected_notes;
     switch (event.keyCode + (event.shiftKey ? SHIFT : 0) + (event.ctrlKey ? CTRL : 0) + (event.altKey ? ALT : 0)) {
+      case CTRL + "A".charCodeAt (0):
+	for (const note of roll.adata.pnotes) // allnotes
+	  if (!note.selected)
+	    msrc.toggle_note (note.id, true);
+	break;
+      case SHIFT + CTRL + "A".charCodeAt (0):
+	for (const note of roll.adata.pnotes) // allnotes
+	  if (note.selected)
+	    msrc.toggle_note (note.id, false);
+	break;
+      case CTRL + "I".charCodeAt (0):
+	for (const note of roll.adata.pnotes) // allnotes
+	  msrc.toggle_note (note.id, !note.selected);
+	break;
+      case CTRL + "V".charCodeAt (0):
+	this.change_focus_selection (ASSIGN, []);
+	selected_notes = JSON.parse (piano_clipboard);
+	for (const note of selected_notes)
+	  msrc.insert_note (note);
+	break;
+      case CTRL + "C".charCodeAt (0):
+	piano_clipboard = JSON.stringify (find_notes (roll.adata.pnotes, n => n.selected));
+	debug (piano_clipboard);
+	break;
+      case CTRL + "X".charCodeAt (0):
+	selected_notes = find_notes (roll.adata.pnotes, n => n.selected);
+	piano_clipboard = JSON.stringify (selected_notes);
+	for (const note of selected_notes)
+	  change_note (note, note.key, note.tick, 0);
+	this.change_focus_selection (NONE);
+	break;
       case ALT + RIGHT:
 	if (idx < 0)
 	  note = { id: -1, tick: -1, note: -1, duration: 0 };
