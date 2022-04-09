@@ -96,7 +96,8 @@ export const Jsonipc = {
 	return;
       }
     // Text message
-    const msg = globalThis.JSON.parse (event.data, Jsonipc.Jsonipc_prototype.fromJSON);
+    const maybe_prototype = event.data.indexOf ('"$class":"') >= 0;
+    const msg = globalThis.JSON.parse (event.data, maybe_prototype ? Jsonipc.Jsonipc_prototype.fromJSON : null);
     if (msg.id)
       {
 	const handler = this.idmap[msg.id];
