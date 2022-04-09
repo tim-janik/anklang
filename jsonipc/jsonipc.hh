@@ -803,11 +803,10 @@ private:
         case BODY:
           if (entity_ == CLASSES)
             {
+              if (!inherits)
+                out += "  extends Jsonipc.Jsonipc_prototype\n";
               out += "{\n  constructor ($id) { ";
-              if (inherits)
-                out += "super ($id); ";
-              else
-                out += "Jsonipc.pdefine (this, '$id', { value: $id }); ";
+              out += "super ($id); ";
               out += "if (new.target === " + jsclass + ") Jsonipc.ofreeze (this); ";
               out += "}\n";
             }
