@@ -54,17 +54,17 @@ export const Jsonipc = {
   },
 
   /// Send a Jsonipc request
-  async send (methodname, args) {
+  async send (method, params) {
     if (!this.web_socket)
       throw "Jsonipc: connection closed";
-    const request_id = ++this.counter;
-    this.web_socket.send (globalThis.JSON.stringify ({ id: request_id, method: methodname, params: args }));
-    const reply_promise = new globalThis.Promise (resolve => { this.idmap[request_id] = resolve; });
-    const msg = await reply_promise;
+    const id = ++this.counter;
+    this.web_socket.send (globalThis.JSON.stringify ({ id, method, params }));
+    const register_reply_handler = resolve => this.idmap[id] = resolve;
+    const msg = await new globalThis.Promise (register_reply_handler);
     if (msg.error)
       throw globalThis.Error (
 	`${msg.error.code}: ${msg.error.message}\n` +
-	`Request: {"id":${request_id},"method":"${methodname}",…}\n` +
+	`Request: {"id":${id},"method":"${method}",…}\n` +
 	"Reply: " + globalThis.JSON.stringify (msg)
       );
     return msg.result;
