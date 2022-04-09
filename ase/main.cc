@@ -114,7 +114,7 @@ print_usage (bool help)
 }
 
 // 1:ERROR 2:FAILED+REJECT 4:IO 8:MESSAGE 16:GET 256:BINARY
-static constexpr int jsipc_logflags = 1 | 2 | 4 | 16;
+static constexpr int jsipc_logflags = 1 | 2 | 4 | 8 | 16;
 static constexpr int jsbin_logflags = 1 | 256;
 
 static MainConfig
