@@ -69,11 +69,11 @@ export class PianoCtrl {
 	  change_note (note, note.key, this.quantize (note.tick, true), note.duration);
 	break;
       case LEFT: case SHIFT + LEFT: // ←
-	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
+	for (const note of sort_selected (roll.adata.pnotes, (a, b) => cmpnums (a.tick, b.tick)))
 	  change_note (note, note.key, Math.max (0, note.tick - this.tickdelta (event)), note.duration);
 	break;
       case RIGHT: case SHIFT + RIGHT: // →
-	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
+	for (const note of sort_selected (roll.adata.pnotes, (a, b) => cmpnums (b.tick, a.tick)))
 	  change_note (note, note.key, note.tick + this.tickdelta (event), note.duration);
 	break;
       case CTRL + LEFT: case SHIFT + CTRL + LEFT: // ←
@@ -85,11 +85,11 @@ export class PianoCtrl {
 	  change_note (note, note.key, note.tick, note.duration + this.tickdelta (event));
 	break;
       case DOWN: // ↓
-	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
+	for (const note of sort_selected (roll.adata.pnotes, (a, b) => cmpnums (a.key, b.key)))
 	  change_note (note, Math.max (note.key - 1, 0), note.tick, note.duration);
 	break;
       case UP: // ↑
-	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
+	for (const note of sort_selected (roll.adata.pnotes, (a, b) => cmpnums (b.key, a.key)))
 	  change_note (note, Math.min (note.key + 1, PIANO_KEYS - 1), note.tick, note.duration);
 	break;
       case Util.KeyCode.BACKSPACE: case Util.KeyCode.DELETE: // ⌫
@@ -258,4 +258,11 @@ function find_notes (allnotes, predicate) {
 	l.push (n);
     }
   return l;
+}
+function sort_selected (allnotes, cmp) {
+  let selected = find_notes (allnotes, n => n.selected);
+  return selected.sort (cmp);
+}
+function cmpnums (a, b) {
+  return a < b ? -1 : b > a ? 1 : 0;
 }
