@@ -144,7 +144,7 @@ EmittableImpl::queue_notify (const String &type, const String &detail)
   EmittableP emittablep = shared_ptr_cast<Emittable> (this);
   if (emittablep) {
     if (emittable_notifications.empty())
-      main_loop->exec_now (emit_notifies);
+      main_loop->exec_timer (emit_notifies, 8); // emit updates around 125Hz
     emittable_notifications.push_back ({ emittablep, type, detail });
   }
 }
