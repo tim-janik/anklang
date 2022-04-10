@@ -2175,8 +2175,17 @@ export function observable_from_getters (tmpl, predicate) {
 	  }
 	else
 	  {
-	    if (async_notify) // sets up listener
-	      assign_async_cleanup (notify_cleanups, key, async_notify (getter));
+	    if (async_notify) { // sets up listener
+	      let getter_pending = null;
+	      const debounced_getter = async () => {
+		if (getter_pending)
+		  return; // debug ("debouncing async getter:", key);
+		await new Promise (r => getter_pending = setTimeout (() => r(), 17));
+		getter_pending = null;
+		getter();
+	      };
+	      assign_async_cleanup (notify_cleanups, key, async_notify (debounced_getter));
+	    }
 	    getter ();
 	  }
       };
