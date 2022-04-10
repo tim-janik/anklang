@@ -40,101 +40,124 @@ export class PianoCtrl {
     dist = Math.max (MINTICKS, dist * MINTICKS);
     return dist;
   }
-  keydown (event)
+  async keydown (event)
   {
-    Data.project.group_undo ("Modify Notes");
     const roll = this.piano_roll, msrc = roll.msrc;
+    if (!msrc) return;
+    event.preventDefault(); // needed before *await*
+    const allnotes = Util.freeze_deep (await msrc.list_all_notes());
+    Data.project.group_undo ("Modify Notes");
     const LEFT = Util.KeyCode.LEFT, UP = Util.KeyCode.UP, RIGHT = Util.KeyCode.RIGHT, DOWN = Util.KeyCode.DOWN;
-    const idx = find_note (roll.adata.pnotes, n => roll.adata.focus_noteid == n.id);
-    let note = idx >= 0 ? roll.adata.pnotes[idx] : {};
+    const idx = find_note (allnotes, n => roll.adata.focus_noteid == n.id);
+    let note = idx >= 0 ? allnotes[idx] : {};
     const big = 9e12; // assert: big * 1000 + 999 < Number.MAX_SAFE_INTEGER
     let nextdist = +Number.MAX_VALUE, nextid = -1, pred, sortscore;
     const SHIFT = 0x1000, CTRL = 0x2000, ALT = 0x4000;
-    const change_note = (note, key, tick, duration) => msrc.change_note (Object.assign ({}, note, { key, tick, duration }));
-    let selected_notes;
+    const strip_note_id = note => { note.id = -1; return note; };
+    let newnotes, delnotes;
     switch (event.keyCode + (event.shiftKey ? SHIFT : 0) + (event.ctrlKey ? CTRL : 0) + (event.altKey ? ALT : 0)) {
       case CTRL + "A".charCodeAt (0):
-	for (const note of roll.adata.pnotes) // allnotes
-	  if (!note.selected)
-	    msrc.toggle_note (note.id, true);
+	newnotes = Util.copy_deep (allnotes);
+	for (const note of newnotes)
+	  note.selected = true;
+	msrc.change_batch (newnotes);
 	break;
       case SHIFT + CTRL + "A".charCodeAt (0):
-	for (const note of roll.adata.pnotes) // allnotes
-	  if (note.selected)
-	    msrc.toggle_note (note.id, false);
+	newnotes = Util.copy_deep (allnotes);
+	for (const note of newnotes)
+	  note.selected = false;
+	msrc.change_batch (newnotes);
 	break;
       case CTRL + "I".charCodeAt (0):
-	for (const note of roll.adata.pnotes) // allnotes
-	  msrc.toggle_note (note.id, !note.selected);
+	newnotes = Util.copy_deep (allnotes);
+	for (const note of newnotes)
+	  note.selected = !note.selected;
+	msrc.change_batch (newnotes);
 	break;
       case CTRL + "V".charCodeAt (0):
-	this.change_focus_selection (ASSIGN, []);
-	selected_notes = JSON.parse (piano_clipboard);
-	for (const note of selected_notes)
-	  msrc.insert_note (note);
+	newnotes = JSON.parse (piano_clipboard);
+	newnotes = newnotes.map (strip_note_id);
+	msrc.change_batch (newnotes);
 	break;
       case CTRL + "C".charCodeAt (0):
-	piano_clipboard = JSON.stringify (find_notes (roll.adata.pnotes, n => n.selected));
-	debug (piano_clipboard);
+	newnotes = find_notes (allnotes, n => n.selected);
+	newnotes = newnotes.map (strip_note_id);
+	piano_clipboard = JSON.stringify (newnotes);
 	break;
       case CTRL + "X".charCodeAt (0):
-	selected_notes = find_notes (roll.adata.pnotes, n => n.selected);
-	piano_clipboard = JSON.stringify (selected_notes);
-	for (const note of selected_notes)
-	  change_note (note, note.key, note.tick, 0);
-	this.change_focus_selection (NONE);
+	newnotes = find_notes (allnotes, n => n.selected);
+	newnotes = newnotes.map (strip_note_id);
+	piano_clipboard = JSON.stringify (newnotes);
+	delnotes = find_notes (allnotes, n => n.selected);
+	delnotes = delnotes.map (n => (n.duration = 0, n));
+	msrc.change_batch (delnotes);
 	break;
-      case ALT + RIGHT:
-	if (idx < 0)
-	  note = { id: -1, tick: -1, note: -1, duration: 0 };
-	pred  = n => n.tick > note.tick || (n.tick == note.tick && n.key >= note.key);
-	sortscore = n => (n.tick - note.tick) * 1000 + n.key;
-	// nextid = idx >= 0 && idx + 1 < roll.adata.pnotes.length ? roll.adata.pnotes[idx + 1].id : -1;
+      case 81: // Q
+	newnotes = find_notes (allnotes, n => n.selected);
+	for (const note of newnotes)
+	  note.tick = this.quantize (note.tick, true);
+	msrc.change_batch (newnotes);
+	break;
+      case Util.KeyCode.BACKSPACE: case Util.KeyCode.DELETE: // ⌫
+	newnotes = find_notes (allnotes, n => n.selected);
+	for (const note of newnotes)
+	  note.duration = 0;
+	msrc.change_batch (newnotes);
+	break;
+      case DOWN: // ↓
+	newnotes = find_notes (allnotes, n => n.selected);
+	for (const note of newnotes)
+	  note.key = Math.max (note.key - 1, 0);
+	msrc.change_batch (newnotes);
+	break;
+      case UP: // ↑
+	newnotes = find_notes (allnotes, n => n.selected);
+	for (const note of newnotes)
+	  note.key = Math.min (note.key + 1, PIANO_KEYS - 1);
+	msrc.change_batch (newnotes);
+	break;
+      case LEFT: case SHIFT + LEFT: // ←
+	newnotes = find_notes (allnotes, n => n.selected);
+	for (const note of newnotes)
+	  note.tick = Math.max (0, note.tick - this.tickdelta (event)); // TODO: cache tickdelta
+	msrc.change_batch (newnotes);
+	break;
+      case RIGHT: case SHIFT + RIGHT: // →
+	newnotes = find_notes (allnotes, n => n.selected);
+	for (const note of newnotes)
+	  note.tick += this.tickdelta (event);
+	msrc.change_batch (newnotes);
+	break;
+      case CTRL + LEFT: case SHIFT + CTRL + LEFT: // ←←
+	newnotes = find_notes (allnotes, n => n.selected);
+	for (const note of newnotes)
+	  note.duration = Math.max (MINDURATION, note.duration - this.tickdelta (event));
+	msrc.change_batch (newnotes);
+	break;
+      case CTRL + RIGHT: case SHIFT + CTRL + RIGHT: // →→
+	newnotes = find_notes (allnotes, n => n.selected);
+	for (const note of newnotes)
+	  note.duration = note.duration + this.tickdelta (event);
+	msrc.change_batch (newnotes);
 	break;
       case ALT + LEFT:
 	if (idx < 0)
 	  note = { id: -1, tick: +big, note: 1000, duration: 0 };
 	pred  = n => n.tick < note.tick || (n.tick == note.tick && n.key <= note.key);
 	sortscore = n => (note.tick - n.tick) * 1000 + 1000 - n.key;
-	// nextid = idx > 0 ? roll.adata.pnotes[idx - 1].id : -1;
+	// nextid = idx > 0 ? allnotes[idx - 1].id : -1;
 	break;
-      case 81: // Q
-	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
-	  change_note (note, note.key, this.quantize (note.tick, true), note.duration);
-	break;
-      case LEFT: case SHIFT + LEFT: // ←
-	for (const note of sort_selected (roll.adata.pnotes, (a, b) => cmpnums (a.tick, b.tick)))
-	  change_note (note, note.key, Math.max (0, note.tick - this.tickdelta (event)), note.duration);
-	break;
-      case RIGHT: case SHIFT + RIGHT: // →
-	for (const note of sort_selected (roll.adata.pnotes, (a, b) => cmpnums (b.tick, a.tick)))
-	  change_note (note, note.key, note.tick + this.tickdelta (event), note.duration);
-	break;
-      case CTRL + LEFT: case SHIFT + CTRL + LEFT: // ←
-	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
-	  change_note (note, note.key, note.tick, Math.max (MINDURATION, note.duration - this.tickdelta (event)));
-	break;
-      case CTRL + RIGHT: case SHIFT + CTRL + RIGHT: // →
-	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
-	  change_note (note, note.key, note.tick, note.duration + this.tickdelta (event));
-	break;
-      case DOWN: // ↓
-	for (const note of sort_selected (roll.adata.pnotes, (a, b) => cmpnums (a.key, b.key)))
-	  change_note (note, Math.max (note.key - 1, 0), note.tick, note.duration);
-	break;
-      case UP: // ↑
-	for (const note of sort_selected (roll.adata.pnotes, (a, b) => cmpnums (b.key, a.key)))
-	  change_note (note, Math.min (note.key + 1, PIANO_KEYS - 1), note.tick, note.duration);
-	break;
-      case Util.KeyCode.BACKSPACE: case Util.KeyCode.DELETE: // ⌫
-	for (const note of find_notes (roll.adata.pnotes, n => n.selected))
-	  change_note (note, note.key, note.tick, 0);
-	this.change_focus_selection (NONE);
+      case ALT + RIGHT:
+	if (idx < 0)
+	  note = { id: -1, tick: -1, note: -1, duration: 0 };
+	pred  = n => n.tick > note.tick || (n.tick == note.tick && n.key >= note.key);
+	sortscore = n => (n.tick - note.tick) * 1000 + n.key;
+	// nextid = idx >= 0 && idx + 1 < allnotes.length ? allnotes[idx + 1].id : -1;
 	break;
     }
     if (note.id && pred && sortscore)
       {
-	roll.adata.pnotes.forEach (n => {
+	allnotes.forEach (n => {
 	  if (n.id != note.id && pred (n))
 	    {
 	      const dist = sortscore (n);
@@ -147,11 +170,10 @@ export class PianoCtrl {
 	});
       }
     if (nextid > 0)
-      this.change_focus_selection (nextid);
+      await this.change_selection (nextid);
     Data.project.ungroup_undo();
-    event.preventDefault();
   }
-  async notes_click (event) {
+  notes_click (event) {
     const roll = this.piano_roll, msrc = roll.msrc, layout = roll.layout;
     if (!msrc)
       return;
@@ -168,65 +190,75 @@ export class PianoCtrl {
       }
     else if (idx >= 0)
       {
-	const note = roll.adata.pnotes[idx];
-	this.change_focus_selection (note.id);
+	//const note = roll.adata.pnotes[idx];
+	//this.change_selection (note.id);
       }
     else if (roll.pianotool == 'P')
       {
-	Data.project.group_undo ("Insert Note");
-	this.change_focus_selection (NONE);
-	const note = { channel: 0, key: midinote, tick: this.quantize (tick), duration: Util.PPQN / 4, velocity: 1, fine_tune: 0, selected: true };
-	const note_id = await msrc.insert_note (note);
-	if (!(roll.adata.focus_noteid > 0))
-	  this.change_focus_selection (note_id);
-	Data.project.ungroup_undo();
+	(async () => {
+	  Data.project.group_undo ("Insert Note");
+	  await this.change_selection (NONE);
+	  const note = { channel: 0, key: midinote, tick: this.quantize (tick), duration: Util.PPQN / 4, velocity: 1, fine_tune: 0, selected: true };
+	  const note_id = await msrc.insert_note (note);
+	  if (!(roll.adata.focus_noteid > 0))
+	    await this.change_selection (note_id);
+	  Data.project.ungroup_undo();
+	}) ();
       }
   }
-  drag_event (ev, MODE) {
-    if (ev.button >= 2) // contextmenu
+  drag_event (event, MODE) {
+    const roll = this.piano_roll, layout = roll.layout, msrc = roll.msrc;
+    if (!msrc || event.button >= 2) // contextmenu
       return;
-    const roll = this.piano_roll, layout = roll.layout; // msrc = roll.msrc;
-    if (ev.target == roll.$refs.notes_canvas && MODE == Util.START)
+    if (event.target == roll.$refs.notes_canvas && MODE == Util.START)
       roll.$refs.notes_canvas.setAttribute ('data-notehover', false);
-    if (ev.target == roll.$refs.timeline_canvas)
+    if (event.target == roll.$refs.timeline_canvas)
       {
 	const tick = layout.tick_from_x (event.offsetX);
-	debug ("tdrag:", MODE, tick, ev);
+	debug ("tdrag:", MODE, tick, event);
       }
-    else if (ev.target == roll.$refs.piano_canvas)
-      debug ("pdrag:", MODE, roll.pianotool, ev);
-    else if (ev.target == roll.$refs.notes_canvas && roll.pianotool == 'S')
+    else if (event.target == roll.$refs.piano_canvas)
+      debug ("pdrag:", MODE, roll.pianotool, event);
+    else if (event.target == roll.$refs.notes_canvas && roll.pianotool == 'S')
       {
 	if (MODE == Util.START)
 	  {
+	    event.preventDefault();
 	    roll.adata.srect.sx = event.offsetX;
 	    roll.adata.srect.sy = event.offsetY;
-	    this.change_focus_selection (ASSIGN, []);
+	    this.change_selection (NONE);
 	  }
 	else if (MODE == Util.MOVE)
 	  {
-	    const srect = roll.adata.srect;
-	    srect.x = Math.min (event.offsetX, srect.sx);
-	    srect.y = Math.min (event.offsetY, srect.sy);
-	    srect.w = Math.max (event.offsetX, srect.sx) - srect.x;
-	    srect.h = Math.max (event.offsetY, srect.sy) - srect.y;
-	    const t0 = layout.tick_from_x (srect.x), t1 = layout.tick_from_x (srect.x + srect.w);
-	    const k0 = layout.midinote_from_y (srect.y + srect.h), k1 = layout.midinote_from_y (srect.y);
-	    const list = find_notes (roll.adata.pnotes,
-				     n => (n.key >= k0 && n.key <= k1 &&
-					   ((t0 < n.tick && t1 >= n.tick) ||
-					    (t0 >= n.tick && t0 < n.tick + n.duration))));
-	    this.change_focus_selection (ASSIGN, list);
+	    event.preventDefault();
+	    this.debounced_drag_move (event);
 	  }
 	else if (MODE == Util.STOP)
 	  {
+	    event.preventDefault();
+	    event.stopPropagation();
 	    roll.adata.srect.w = 0;
 	    roll.adata.srect.h = 0;
 	  }
       }
     else
-      debug ("odrag:", MODE, roll.pianotool, ev);
+      debug ("odrag:", MODE, roll.pianotool, event);
   }
+  drag_move (event) {
+    const roll = this.piano_roll, layout = roll.layout; // , msrc = roll.msrc;
+    const srect = roll.adata.srect;
+    srect.x = Math.min (event.offsetX, srect.sx);
+    srect.y = Math.min (event.offsetY, srect.sy);
+    srect.w = Math.max (event.offsetX, srect.sx) - srect.x;
+    srect.h = Math.max (event.offsetY, srect.sy) - srect.y;
+    const t0 = layout.tick_from_x (srect.x), t1 = layout.tick_from_x (srect.x + srect.w);
+    const k0 = layout.midinote_from_y (srect.y + srect.h), k1 = layout.midinote_from_y (srect.y);
+
+    this.change_selection (ASSIGN, n => (n.key >= k0 && n.key <= k1 &&
+					 ((t0 < n.tick && t1 >= n.tick) ||
+					  (t0 >= n.tick && t0 < n.tick + n.duration))));
+  }
+  debounced_drag_move = Util.debounce (this.drag_move.bind (this), { wait: 17, restart: true, immediate: true });
   move_event (event) {
     const roll = this.piano_roll, layout = roll.layout; // msrc = roll.msrc;
     if (event.target == roll.$refs.notes_canvas) {
@@ -237,40 +269,27 @@ export class PianoCtrl {
       roll.$refs.notes_canvas.setAttribute ('data-notehover', idx >= 0);
     }
   }
-  change_focus_selection (focusid, selectionlist) {
+  async change_selection (focusid, predicate) {
     const roll = this.piano_roll, msrc = roll.msrc;
-    if (focusid == ADD)
-      roll.adata.focus_noteid = undefined; // TODO
+    if (!msrc)
+      return;
+    const allnotes = await msrc.list_all_notes();
+    if (focusid == NONE)
+      for (const note of allnotes)
+	note.selected = false;
+    else if (focusid == ADD)
+      for (const note of allnotes)
+	note.selected = note.selected || predicate (note);
     else if (focusid == ASSIGN)
-      {
-	const ids = new Set (selectionlist.map (note => note.id));
-	const allnotes = roll.adata.pnotes;
-	for (let i = 0; i < allnotes.length; ++i)
-	  {
-	    const note = allnotes[i];
-	    const s = ids.has (note.id);
-	    if (note.selected != s)
-	      msrc.toggle_note (note.id, s);
-	    if (!s && roll.adata.focus_noteid == note.id)
-	      roll.adata.focus_noteid = undefined;
-	  }
-	if (!(roll.adata.focus_noteid > 0) && selectionlist.length)
-	  roll.adata.focus_noteid = selectionlist[0].id;
-      }
+      for (const note of allnotes)
+	note.selected = predicate (note);
     else if (focusid == SUB)
-      roll.adata.focus_noteid = undefined; // TODO
-    else if (focusid != roll.adata.focus_noteid) // numeric
-      {
-	const oldfocus = roll.adata.focus_noteid;
-	roll.adata.focus_noteid = focusid;
-	if (roll.adata.focus_noteid > 0)
-	  {
-	    // this may delete another note, in particular `oldfocus`
-	    msrc.toggle_note (roll.adata.focus_noteid, true);
-	  }
-	if (oldfocus > 0)
-	  msrc.toggle_note (oldfocus, false);
-      }
+      for (const note of allnotes)
+	note.selected = note.selected && !predicate (note);
+    else if (!isNaN (focusid)) // numeric id
+      for (const note of allnotes)
+	note.selected = note.id == focusid;
+    msrc.change_batch (allnotes);
   }
 }
 
@@ -289,14 +308,7 @@ function find_notes (allnotes, predicate) {
     {
       const n = allnotes[i];
       if (predicate (n))
-	l.push (n);
+	l.push (Util.copy_deep (n));
     }
   return l;
-}
-function sort_selected (allnotes, cmp) {
-  let selected = find_notes (allnotes, n => n.selected);
-  return selected.sort (cmp);
-}
-function cmpnums (a, b) {
-  return a < b ? -1 : b > a ? 1 : 0;
 }
