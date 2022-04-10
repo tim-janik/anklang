@@ -392,7 +392,7 @@ export function freeze_deep (object) {
 }
 
 /** Create a new object that has the same properties and Array values as `src` */
-export function copy_recursively (src = {}) {
+export function copy_deep (src = {}) {
   let o;
   if (Array.isArray (src))
     {
@@ -404,10 +404,10 @@ export function copy_recursively (src = {}) {
 	    {
 	      v = src[k];
 	      if (v !== undefined)              // no, missing property
-		o[k] = v instanceof Object && k !== '__proto__' ? copy_recursively (v) : v;
+		o[k] = v instanceof Object && k !== '__proto__' ? copy_deep (v) : v;
 	    }
 	  else if (v instanceof Object)         // Object cell
-	    o[k] = copy_recursively (v);
+	    o[k] = copy_deep (v);
 	}
     }
   else if (src instanceof Object && !(src instanceof Function))
@@ -418,7 +418,7 @@ export function copy_recursively (src = {}) {
 	  const v = o[k];
 	  if (v instanceof Object &&            // Object/Array property
 	      k !== '__proto__')
-	    o[k] = copy_recursively (v);
+	    o[k] = copy_deep (v);
 	}
     }
   else // primitive or Function
@@ -504,7 +504,7 @@ if (__DEV__)
     function eqr (a, b) { return equals_recursively (a, b) && equals_recursively (b, a); }
     let a = [ 0, 2, 3, 4, 5, 70, {a:null} ], b = [ 1, 2, 3, 4, 5, 70, {a:null} ]; console.assert (!eqr (a, b)); a[0] = 1; console.assert (eqr (a, b));
     a.x = 9; console.assert (!eqr (a, b)); b.x = 9.0; console.assert (eqr (a, b));
-    const c = copy_recursively (a); console.assert (eqr (a, c)); c[6].q = 'q'; console.assert (!eqr (a, c));
+    const c = copy_deep (a); console.assert (eqr (a, c)); c[6].q = 'q'; console.assert (!eqr (a, c));
     const as = new Set (a), bs = new Set (b); console.assert (eqr (as, bs));
     bs.add (99); console.assert (!eqr (as, bs)); bs.delete (99); console.assert (eqr (as, bs));
     // TODO: a[999] = b; b[999] = a; console.assert (eqr (a, b));
