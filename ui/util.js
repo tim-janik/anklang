@@ -381,6 +381,16 @@ export function* range (bound, end, step = 1) {
     yield bound;
 }
 
+/** Freeze object and its properties */
+export function freeze_deep (object) {
+  for (const key of Object.getOwnPropertyNames (object)) {
+    const value = object[key];
+    if (value instanceof Object)
+      freeze_deep (value);
+  }
+  return Object.freeze (object);
+}
+
 /** Create a new object that has the same properties and Array values as `src` */
 export function copy_recursively (src = {}) {
   let o;
