@@ -139,23 +139,27 @@ void
 ClipImpl::add_note_event (const ClipNote &ev)
 {
   assert_return (ev.id > 0 && ev.duration > 0 && ev.velocity > 0);
+  ClipNote rev;
   const ClipNote cev = ev;
-  const bool inserted = notes_.insert (ev); // insert or replace
+  const bool replaced = notes_.insert (cev, &rev); // insert or replace
   auto thisp = shared_ptr_from (this);
-  undo_scope ("Add Note") += [thisp, cev] () { thisp->remove_note_event (cev); };
+  auto scope = undo_scope ("Add Note");
+  if (replaced)
+    scope += [thisp, rev] () { thisp->add_note_event (rev); };
+  else
+    scope += [thisp, cev] () { thisp->remove_note_event (cev); };
   queue_notify ("notify", "notes");
-  (void) inserted;
 }
 
 void
 ClipImpl::remove_note_event (const ClipNote &ev)
 {
   assert_return (ev.id > 0);
-  const ClipNote cev = ev;
-  if (notes_.remove (ev))
+  ClipNote rem;
+  if (notes_.remove (ev, &rem))
     {
       auto thisp = shared_ptr_from (this);
-      undo_scope ("Remove Note") += [thisp, cev] () { thisp->add_note_event (cev); };
+      undo_scope ("Remove Note") += [thisp, rem] () { thisp->add_note_event (rem); };
       queue_notify ("notify", "notes");
     }
 }
@@ -224,6 +228,42 @@ ClipImpl::toggle_note (int32 id, bool selected)
       change_note (ev);
     }
   return was_selected;
+}
+
+int32
+ClipImpl::change_batch (const ClipNoteS &batch)
+{
+  /* the note batch must not introduce new ids and needs proper
+   * merging with existing notes without note loss due to temporary
+   * overlap.
+   */
+  auto undoscope = undo_scope ("Change Notes");
+  // delete existig notes
+  for (const auto &note : batch)
+    if (note.id > 0 && (note.duration == 0 || note.velocity == 0 || note.channel < 0))
+      remove_note_event (note);
+  // move and shuffle exisiting notes *without* replacements (stashed via channel < 0)
+  for (const auto &note : batch)
+    if (note.id > 0 && note.duration > 0 && note.velocity > 0 && note.channel >= 0) {
+      ClipNote ev = note;
+      ev.channel -= 128;
+      change_note (ev);
+    }
+  // "repair" stashed notes
+  ClipNoteS stashed;
+  for (const auto &note : notes_)
+    if (note.channel < 0) {
+      ClipNote ev = note;
+      ev.channel += 128;
+      stashed.push_back (ev);
+    }
+  for (const auto &note : stashed)
+    change_note (note);
+  // insert new notes
+  for (const auto &note : batch)
+    if (note.id <= 0 && note.duration > 0 && note.velocity > 0 && note.channel >= 0)
+      insert_note (note);
+  return 0;
 }
 
 // == ClipImpl::Generator ==

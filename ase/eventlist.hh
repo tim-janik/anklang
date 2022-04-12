@@ -27,8 +27,8 @@ public:
   using Notify = std::function<void (const Event &event, int mod)>;
   using CIter = typename EventVector::const_iterator;
   explicit     EventList      (const Notify &n = {}, const Compare &c = {});
-  bool         insert         (const Event &event); /// Insert or replace `event`, notifies.
-  bool         remove         (const Event &event); /// Return true if `event` was removed, notifies.
+  bool         insert         (const Event &event, Event *replaced = nullptr); /// Insert or replace `event`, notifies.
+  bool         remove         (const Event &event, Event *removed = nullptr); /// Return true if `event` was removed, notifies.
   const Event* lookup         (const Event &event) const; /// Return pointer to matching `event` or nullptr.
   const Event* lookup_after   (const Event &event) const; /// Return pointer to element that is >= `event` or nullptr.
   const Event* first          () const; /// Return first element or nullptr.
@@ -72,38 +72,42 @@ EventList<Event,Compare>::uncache ()
 }
 
 template<class Event, class Compare> inline bool
-EventList<Event,Compare>::insert (const Event &event)
+EventList<Event,Compare>::insert (const Event &event, Event *replaced)
 {
   uncache();
   if (events_.size() && compare_ (event, events_.back()) > 0)
     {
       events_.push_back (event);
       notify_ (event, +1);      // notify insertion
-      return true;              // O(1) fast path for append
+      return false;             // O(1) fast path for append
     }
   auto insmatch = Aux::binary_lookup_insertion_pos (events_.begin(), events_.end(), compare_, event);
   auto it = insmatch.first;
   if (insmatch.second == true)  // exact match
     {
+      if (replaced)
+        *replaced = *it;
       *it = event;
       notify_ (event, 0);       // notify change
-      return false;
+      return true;
     }
   else
     {
       events_.insert (it, event);
       notify_ (event, +1);      // notify insertion
-      return true;
+      return false;
     }
 }
 
 template<class Event, class Compare> inline bool
-EventList<Event,Compare>::remove (const Event &event)
+EventList<Event,Compare>::remove (const Event &event, Event *removed)
 {
   uncache();
   const int cmp = events_.empty() ? +1 : compare_ (event, events_.back());
   if (cmp == 0)
     {
+      if (removed)
+        *removed = events_.back();
       events_.pop_back();       // O(1) fast path for tail removal
       notify_ (event, -1);      // notify removal
       return true;              // found and removed
@@ -113,6 +117,8 @@ EventList<Event,Compare>::remove (const Event &event)
       auto it = Aux::binary_lookup (events_.begin(), events_.end() - 1, compare_, event);
       if (it != events_.end())
         {
+          if (removed)
+            *removed = *it;
           events_.erase (it);
           notify_ (event, -1);  // notify removal
           return true;          // found and removed

@@ -34,62 +34,40 @@ export const Jsonipc = {
     return promise;
   },
 
+  Jsonipc_prototype: class {
+    constructor ($id) {
+      Jsonipc.pdefine (this, '$id', { value: $id });
+    }
+    // JSON.stringify replacer
+    toJSON() {
+      return { $id: this.$id };
+    }
+    // JSON.parse reviver
+    static fromJSON (key, value) {
+      if (value?.$id > 0) {
+	const JsClass = Jsonipc.classes[value.$class];
+	if (JsClass)
+	  return new JsClass (value.$id);
+      }
+      return value;
+    }
+  },
+
   /// Send a Jsonipc request
-  async send (methodname, args) {
+  async send (method, params) {
     if (!this.web_socket)
       throw "Jsonipc: connection closed";
-    const unwrap_args = (e, i, a) => {
-      if (globalThis.Array.isArray (e))
-	e.forEach (unwrap_args);
-      else if (null === e)
-	;
-      else if ('object' === typeof e)
-	{
-	  if (e.$id > 0)
-	    a[i] = { '$id': e.$id }; // unwrap object
-	  else
-	    for (let key of Jsonipc.okeys (e))
-	      unwrap_args (e[key], key, e);
-	}
-    };
-    const wrap_args = (e, i, a) => {
-      if (globalThis.Array.isArray (e))
-	e.forEach (wrap_args);
-      else if (e && 'object' === typeof e)
-	{
-	  if (e.$class)
-	    a[i] = wrap_arg (e);
-	  else
-	    for (let key of Jsonipc.okeys (e))
-	      wrap_args (e[key], key, e);
-	}
-    };
-    const wrap_arg = (e) => {
-      if (e && 'object' === typeof e && e.$class && e.$id)
-	{
-	  const JsClass = this.classes[e.$class];
-	  if (JsClass)
-	    return new JsClass (e.$id);
-	}
-      return e;
-    };
-    args.forEach (unwrap_args);
-    const request_id = ++this.counter;
-    this.web_socket.send (globalThis.JSON.stringify ({ id: request_id, method: methodname, params: args }));
-    const reply_promise = new globalThis.Promise (resolve => { this.idmap[request_id] = resolve; });
-    const msg = await reply_promise;
+    const id = ++this.counter;
+    this.web_socket.send (globalThis.JSON.stringify ({ id, method, params }));
+    const register_reply_handler = resolve => this.idmap[id] = resolve;
+    const msg = await new globalThis.Promise (register_reply_handler);
     if (msg.error)
       throw globalThis.Error (
 	`${msg.error.code}: ${msg.error.message}\n` +
-	`Request: {"id":${request_id},"method":"${methodname}",…}\n` +
+	`Request: {"id":${id},"method":"${method}",…}\n` +
 	"Reply: " + globalThis.JSON.stringify (msg)
       );
-    let r = msg.result;
-    if (globalThis.Array.isArray (r))
-      r.forEach (wrap_args);
-    else
-      r = wrap_arg (r);
-    return r;
+    return msg.result;
   },
 
   /// Observe Jsonipc notifications
@@ -118,7 +96,8 @@ export const Jsonipc = {
 	return;
       }
     // Text message
-    const msg = globalThis.JSON.parse (event.data);
+    const maybe_prototype = event.data.indexOf ('"$class":"') >= 0;
+    const msg = globalThis.JSON.parse (event.data, maybe_prototype ? Jsonipc.Jsonipc_prototype.fromJSON : null);
     if (msg.id)
       {
 	const handler = this.idmap[msg.id];
