@@ -114,6 +114,20 @@ export const Jsonipc = {
       }
     globalThis.console.error ("Unhandled message:", event.data);
   },
+
+  /// Simplify initialization of globals
+  setup_promise_type (type, resolved = undefined) {
+    let resolve;
+    const p = new Promise (r => resolve = r);
+    p.__resolve__ = instance => {
+      if (instance instanceof type) {
+	resolve (instance);
+	if (resolved)
+	  resolved (instance);
+      }
+    };
+    return p;
+  },
 };
 
 // ----- End of jsonipc/jsonipc.js -----
