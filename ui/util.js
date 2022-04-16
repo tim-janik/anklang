@@ -1784,8 +1784,14 @@ export function in_keyboard_click()
   return keyboard_click_state.inclick > 0;
 }
 
+/// Retrieve event that triggers keyboard_click().
+export function keyboard_click_event (fallback = undefined) {
+  return keyboard_click_current_event[0] || fallback;
+}
+const keyboard_click_current_event = [ undefined ];
+
 /// Trigger element click via keyboard.
-export function keyboard_click (element, callclick = true)
+export function keyboard_click (element, event, callclick = true)
 {
   if (element instanceof Element)
     {
@@ -1800,8 +1806,11 @@ export function keyboard_click (element, callclick = true)
 	      e.classList.toggle ('active', false);
 	    }, 170); // match focus-activation delay
 	}
-      if (callclick)
-	element.click();
+      if (callclick) {
+	keyboard_click_current_event.unshift (event);
+	element.click (event);
+	keyboard_click_current_event.shift();
+      }
       keyboard_click_state.inclick -= 1;
       return true;
     }
@@ -2004,7 +2013,7 @@ function hotkey_handler (event) {
       // allow `onclick` activation via `Enter` on <button/> and <a href/> with event.isTrusted
       const click_pending = document.activeElement.nodeName == 'BUTTON' || (document.activeElement.nodeName == 'A' &&
 									    document.activeElement.href);
-      Util.keyboard_click (document.activeElement, !click_pending);
+      Util.keyboard_click (document.activeElement, event, !click_pending);
       if (!click_pending)
 	event.preventDefault();
       return true;
@@ -2034,7 +2043,7 @@ function hotkey_handler (event) {
 	  continue;
 	event.preventDefault();
 	kdebug ("hotkey_handler: keyboard-click2: '" + el.getAttribute ('data-hotkey') + "'", el);
-	Util.keyboard_click (el);
+	Util.keyboard_click (el, event);
 	return true;
       }
   kdebug ('hotkey_handler: unused-key: ' + event.code + ' ' + event.which + ' ' + event.charCode + ' (' + document.activeElement.tagName + ')');
