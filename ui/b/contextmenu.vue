@@ -107,7 +107,7 @@ const menuitem_onclick = function (event) {
   if (!event.defaultPrevented)
     {
       if (this.uri !== undefined && this.menudata.clicked)
-	this.menudata.clicked (this.uri);
+	this.menudata.clicked (this.uri, event);
       else if (this.menudata.close)
 	this.menudata.close();
     }
@@ -358,8 +358,8 @@ export default {
 	this.$refs.cmenu.style = this.cmenu_style();
       }
     },
-    clicked (uri) {
-      this.$emit ('click', uri);
+    clicked (uri, event) {
+      this.$emit ('click', uri, event);
       this.close();
     },
     /// Activate or disable the `kbd=...` hotkeys in menu items.
@@ -376,7 +376,7 @@ export default {
       const buildmap = v => {
 	const key = Object.hasOwnProperty.call (v, 'kbd_hotkey') && v.kbd_hotkey();
 	if (key)
-	  kmap[key] = async _ => { // v.$el && Util.keyboard_click (v.$el);
+	  kmap[key] = async event => { // v.$el && Util.keyboard_click (v.$el);
 	    if (!v.$el) return;
 	    const component = Util.vue_component (v) || v;
 	    if (this.check) {
@@ -394,7 +394,7 @@ export default {
 	      if (result === false)
 		return;
 	    }
-	    Util.keyboard_click (v.$el);
+	    Util.keyboard_click (v.$el, event);
 	  };
 	for (const c of v.$children)
 	  buildmap (c);
