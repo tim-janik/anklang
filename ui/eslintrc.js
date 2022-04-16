@@ -68,6 +68,7 @@ module.exports = {
     'vue/no-multiple-template-root': OFF,
     'vue/no-v-model-argument': OFF,
     'vue/v-slot-style': OFF,
+    'vue/no-v-html': OFF,
     quotes: [ OFF, "single" ]
   },
 
