@@ -122,7 +122,7 @@ async function bootup () {
 					   { onclose: want_reconnect });
     if (result instanceof Ase.Server)
       {
-	Ase.server (result);
+	Ase.server.__resolve__ (result);
 	Object.defineProperty (globalThis, 'Ase', { value: Ase });
 	Jsonapi._init (Ase.Jsonipc);
 	Ase.Emittable.prototype.on = function (eventselector, fun) {
