@@ -134,6 +134,7 @@ export default {
 	   keepmounted: { type: Boolean, },
 	   startfocus: { type: Boolean, },
 	   showicons: { default: true, type: Boolean },
+	   mapname: { type: String, default: '' },
 	   check: { type: Function },
 	   xscale: { default: 1, },
 	   yscale: { default: 1, }, },
@@ -147,7 +148,7 @@ export default {
     onclick: menuitem_onclick, isdisabled: menuitem_isdisabled,
   }; },
   provide: Util.fwdprovide ('b-contextmenu.menudata',	// context for menuitem descendants
-			    [ 'checkeduris', 'showicons', 'keepmounted', 'clicked', 'close', 'onclick', 'isdisabled' ]),
+			    [ 'checkeduris', 'showicons', 'mapname', 'keepmounted', 'clicked', 'close', 'onclick', 'isdisabled' ]),
   methods: {
     popupclass() {
       const pclasses = Array.from (this.$el?.classList || []);
