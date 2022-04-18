@@ -160,7 +160,7 @@ export default {
       if (shield?.parentNode == this.$el)
 	{
 	  this.remove_reparentation?.();
-	  document.body.querySelector ('#b-app-shell-modalmenus-layer').insertBefore (shield, null);
+	  document.body.querySelector ('#b-app-shell-modaldialogs').insertBefore (shield, null);
 	  this.remove_reparentation = () => shield.parentNode?.removeChild?. (shield);
 	}
       this.resize_observer?.disconnect?.();
