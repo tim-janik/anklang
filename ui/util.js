@@ -1929,18 +1929,6 @@ export function keyboard_map_name (keyname) {
   return name || keyname;
 }
 
-/// Create display name from KeyEvent.code names.
-export function display_keyname (keyname)
-{
-  // Strip Raw prefix
-  keyname = keyname.replace (/\bRaw(\w)/g, "$1");
-  // Replace KeyX with 'X'
-  keyname = keyname.replace (/\bKey([A-Z])/g, "$1");
-  // Replace Digit7 with '7'
-  keyname = keyname.replace (/\bDigit([0-9])/g, "$1");
-  return keyname;
-}
-
 /// Match an event's key code, considering modifiers.
 export function match_key_event (event, keyname)
 {
@@ -2324,3 +2312,5 @@ export function hash53 (key, seed = default_seed) {
   h2 = Math.imul (h2 ^ h1 >>> 16, 0x85ebca6b) ^ Math.imul (h1 ^ h2 >>> 13, 0xc2b2ae35);
   return 0x100000000 * (0x1fffff & h2) + (h1 >>> 0);
 }
+
+export * from './kbd.js';
