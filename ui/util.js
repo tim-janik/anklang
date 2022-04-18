@@ -934,6 +934,11 @@ export function split_comma (str) {
   return result;
 }
 
+/// Properly escape test into `&amp;` and related sequences.
+export function escape_html (unsafe) {
+  return unsafe.replaceAll ('&', '&amp;').replaceAll ('<', '&lt;').replaceAll ('>', '&gt;').replaceAll ('"', '&quot;').replaceAll("'", '&#039;');
+}
+
 /** Parse hexadecimal CSS color with 3 or 6 digits into [ R, G, B ]. */
 export function parse_hex_color (colorstr) {
   if (colorstr.substr (0, 1) == '#') {
@@ -2077,6 +2082,13 @@ export function has_ancestor (element, ancestor) {
       element = element.parentNode;
     }
   return false;
+}
+
+/** Retrieve root ancestor of `element` */
+export function root_ancestor (element) {
+  while (element && element.parentNode)
+    element = element.parentNode;
+  return element;
 }
 
 /** Show a notification popup, with adequate default timeout */
