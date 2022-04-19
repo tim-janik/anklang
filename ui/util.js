@@ -1,6 +1,8 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 'use strict';
 
+import * as Kbd from './kbd.js';
+
 // == Compat fixes ==
 class FallbackResizeObserver {
   constructor (resize_handler) {
@@ -1929,50 +1931,6 @@ export function keyboard_map_name (keyname) {
   return name || keyname;
 }
 
-/// Match an event's key code, considering modifiers.
-export function match_key_event (event, keyname)
-{
-  // SEE: http://unixpapa.com/js/key.html & https://developer.mozilla.org/en-US/docs/Mozilla/Gecko/Gecko_keypress_event
-  // split_hotkey (hotkey)
-  const rex = new RegExp (/\s*[+]\s*/); // Split 'Shift+Ctrl+Alt+Meta+SPACE'
-  const parts = keyname.split (rex);
-  const rawkey = event.code; // contains physical key names for US-Layout
-  const keychar = event.key || String.fromCharCode (event.which || event.keyCode);
-  let need_meta = 0, need_alt = 0, need_ctrl = 0, need_shift = 0;
-  for (let i = 0; i < parts.length; i++)
-    {
-      // collect meta keys
-      switch (parts[i].toLowerCase())
-      {
-	case 'cmd': case 'command':
-	case 'super': case 'meta':	need_meta  = 1; continue;
-	case 'option': case 'alt':	need_alt   = 1; continue;
-	case 'control': case 'ctrl':	need_ctrl  = 1; continue;
-	case 'shift':		  	need_shift = 1; continue;
-      }
-      // match character keys
-      if (keychar.toLowerCase() == parts[i].toLowerCase())
-        continue;
-      // match physical keys
-      if (parts[i].startsWith ('Raw') &&
-	  parts[i].substr (3) == rawkey)
-	continue;
-      // failed to match
-      return false;
-    }
-  // ignore shift for case insensitive characters (except for navigations)
-  if (keychar.toLowerCase() == keychar.toUpperCase() &&
-      !is_navigation_key_code (event.keyCode))
-    need_shift = -1;
-  // match meta keys
-  if (need_meta   != 0 + event.metaKey ||
-      need_alt    != 0 + event.altKey ||
-      need_ctrl   != 0 + event.ctrlKey ||
-      (need_shift != 0 + event.shiftKey && need_shift >= 0))
-    return false;
-  return true;
-}
-
 const hotkey_list = [];
 
 function hotkey_handler (event) {
@@ -2016,7 +1974,7 @@ function hotkey_handler (event) {
   // activate global hotkeys
   const array = hotkey_list;
   for (let i = 0; i < array.length; i++)
-    if (match_key_event (event, array[i][0]))
+    if (Kbd.match_key_event (event, array[i][0]))
       {
 	const subtree_element = array[i][2];
 	if (modal_element && !has_ancestor (subtree_element, modal_element))
@@ -2030,7 +1988,7 @@ function hotkey_handler (event) {
   // activate elements with data-hotkey=""
   const hotkey_elements = document.querySelectorAll ('[data-hotkey]:not([disabled])');
   for (const el of hotkey_elements)
-    if (match_key_event (event, el.getAttribute ('data-hotkey')))
+    if (Kbd.match_key_event (event, el.getAttribute ('data-hotkey')))
       {
 	if (modal_element && !has_ancestor (el, modal_element))
 	  continue;
