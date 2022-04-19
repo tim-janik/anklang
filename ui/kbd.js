@@ -501,3 +501,73 @@ export function is_nav_input (element) {
     return true;
   return false;
 }
+
+
+let shortcut_map = new Map();
+const MS = '\x1F'; // Menu Separator
+
+/// Lookup shortcut for `label` in `mapname`, default to `shortcut`
+export function shortcut_lookup (mapname, label, shortcut) {
+  const path = mapname + MS + label;
+  const assigned = shortcut_map.get (path);
+  return assigned !== undefined ? assigned : shortcut;
+}
+
+const shortcut_keydown_hotkey = { prev: undefined, next: undefined };
+
+function shortcut_keydown (div, event) {
+  const shortcut = Util.hotkey_name_from_event (event);
+  if (shortcut === 'Enter' || shortcut === 'Return')
+    return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (shortcut === 'Backspace' || shortcut === 'Delete')
+    shortcut_keydown_hotkey.next = '';
+  else
+    shortcut_keydown_hotkey.next = shortcut || shortcut_keydown_hotkey.prev;
+  div.innerText = Util.display_keyname (shortcut_keydown_hotkey.next || '');
+}
+
+/// Display shortcut editing dialog
+export async function shortcut_dialog (mapname, label, shortcut) {
+  shortcut_keydown_hotkey.prev = shortcut;
+  shortcut_keydown_hotkey.next = shortcut_lookup (mapname, label, shortcut) || shortcut_keydown_hotkey.prev;
+  const title = "Assign Shortcut";
+  const html = "Enter Shortcut for:\n" +
+	       "<b>" + Util.escape_html (label) + "</b>\n";
+  let shortcut_keydown_ = undefined;
+  const div_handler = (div, dialog) => {
+    div.innerText = Util.display_keyname (shortcut_keydown_hotkey.next || '');
+    if (!shortcut_keydown_) {
+      shortcut_keydown_ = shortcut_keydown.bind (null, div);
+      window.addEventListener ('keydown', shortcut_keydown_, { capture: true });
+    }
+  };
+  const destroy = () => {
+    window.removeEventListener ('keydown', shortcut_keydown_, { capture: true });
+  };
+  let v = App.async_modal_dialog ({ title, html, div_handler, destroy,
+				    class: "b-shortcut-dialog",
+				    buttons: [ 'Cancel', { label: "OK", autofocus: true } ],
+				    emblem: "KEYBOARD" });
+  v = await v;
+  // TODO: pick 'OK' on Enter
+  const assigned = v === 1 ? shortcut_keydown_hotkey.next : undefined;
+  shortcut_keydown_hotkey.prev = undefined;
+  shortcut_keydown_hotkey.next = undefined;
+  if (assigned === undefined)
+    return false;
+  const path = mapname + MS + label;
+  shortcut_map.set (path, assigned); // TODO: delete defaults
+  if (Ase.server)
+    Ase.server.set_data (Ase.ResourcePath.CONFIG, 'shortcuts.json', JSON.stringify ([...shortcut_map], null, 2));
+  return true;
+}
+
+import * as Ase from '../aseapi.js';
+(async () => {
+  await Ase.server;
+  const mapjson = await Ase.server.get_data (Ase.ResourcePath.CONFIG, 'shortcuts.json');
+  if (mapjson)
+    shortcut_map = new Map (JSON.parse (mapjson));
+}) ();

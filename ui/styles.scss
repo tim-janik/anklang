@@ -206,3 +206,17 @@ c-grid {
   }
   // keep in sync with @mixin scrollbar-hover-area
 }
+
+// == Shortcut Editor ==
+.b-shortcut-dialog {
+  .-div-handler {
+    height: 1em;
+    padding: 1em;
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+    text-align: center;
+    background: #000;
+  }
+}
