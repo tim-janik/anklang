@@ -824,6 +824,27 @@ export function promise_state (p) {
 		       v => 'rejected');
 }
 
+/// Turn a JS `$event` handler expression into a function.
+/// This yields a factory function that binds the scope to create an expression handler.
+export function compile_expression (expression, context) {
+  const cache = compile_expression.cache || (compile_expression.cache = new Map());
+  let mkfunc = cache.get (expression);
+  if (mkfunc) return mkfunc;
+  const code = `with ($·S) return function ${name} ($event) { "use strict"; const $·R = ( ${expression} ); return $·R instanceof Function ? $·R ($event) : $·R; }`;
+  try {
+    mkfunc = new Function ('$·S', code);
+  } catch (err) {
+    if (context)
+      console.warn ("At:", context, "Invalid expression: {{{\n", expression, "\n}}}");
+    else
+      console.warn ("Invalid expression: {{{\n", expression, "\n}}}");
+    console.error ("Failed to compile expression:", err);
+    throw new Error (err);
+  }
+  cache.set (expression, mkfunc);
+  return mkfunc;
+}
+
 /** VueifyObject - turn a regular object into a Vue instance.
  * The *object* passed in is used as the Vue `data` object. Properties
  * with a getter (and possibly setter) are turned into Vue `computed`
