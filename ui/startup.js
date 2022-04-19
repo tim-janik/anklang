@@ -143,7 +143,7 @@ async function bootup () {
   console.bootlog ("ASE: connect: server", await Ase.server.get_version());
 
   // prepare Vue component templates
-  for (const [name, component] of Object.entries (VueComponents))
+  for (const [__name, component] of Object.entries (VueComponents))
     if (component.sfc_template)
       component.template = component.sfc_template.call (null, Util.tmplstr, null);
   // create and configure Vue App
@@ -274,8 +274,8 @@ async function self_tests() {
   // test Ase::Value and server
   const ukey = "AseTest" + Util.hash53 ("" + Math.random() + Math.random() + Math.random());
   const obj = { 5: 5, a: [false, true, 2, "3", { a: [], o: {}, f: -0.17 }], mm: ["STRING", 7e42, null] };
-  Ase.server.set_session_data (ukey, obj);
-  const r = await Ase.server.get_session_data (ukey);
+  Ase.server.set_data (Ase.ResourcePath.SESSION, ukey, obj);
+  const r = await Ase.server.get_data (Ase.ResourcePath.SESSION, ukey);
   console.assert (Util.equals_recursively (obj, r));
-  Ase.server.set_session_data (ukey);
+  Ase.server.set_data (Ase.ResourcePath.SESSION, ukey, undefined);
 }
