@@ -53,8 +53,7 @@ export class PianoCtrl {
     const big = 9e12; // assert: big * 1000 + 999 < Number.MAX_SAFE_INTEGER
     let nextdist = +Number.MAX_VALUE, nextid = -1, pred, sortscore;
     const SHIFT = 0x1000, CTRL = 0x2000, ALT = 0x4000;
-    const strip_note_id = note => { note.id = -1; return note; };
-    let newnotes, delnotes;
+    let newnotes;
     switch (event.keyCode + (event.shiftKey ? SHIFT : 0) + (event.ctrlKey ? CTRL : 0) + (event.altKey ? ALT : 0)) {
       case CTRL + "A".charCodeAt (0):
 	newnotes = Util.copy_deep (allnotes);
@@ -74,31 +73,13 @@ export class PianoCtrl {
 	  note.selected = !note.selected;
 	msrc.change_batch (newnotes);
 	break;
-      case CTRL + "V".charCodeAt (0):
-	newnotes = JSON.parse (piano_clipboard);
-	newnotes = newnotes.map (strip_note_id);
-	msrc.change_batch (newnotes);
-	break;
-      case CTRL + "C".charCodeAt (0):
-	newnotes = find_notes (allnotes, n => n.selected);
-	newnotes = newnotes.map (strip_note_id);
-	piano_clipboard = JSON.stringify (newnotes);
-	break;
-      case CTRL + "X".charCodeAt (0):
-	newnotes = find_notes (allnotes, n => n.selected);
-	newnotes = newnotes.map (strip_note_id);
-	piano_clipboard = JSON.stringify (newnotes);
-	delnotes = find_notes (allnotes, n => n.selected);
-	delnotes = delnotes.map (n => (n.duration = 0, n));
-	msrc.change_batch (delnotes);
-	break;
       case 81: // Q
 	newnotes = find_notes (allnotes, n => n.selected);
 	for (const note of newnotes)
 	  note.tick = this.quantize (note.tick, true);
 	msrc.change_batch (newnotes);
 	break;
-      case Util.KeyCode.BACKSPACE: case Util.KeyCode.DELETE: // ⌫
+      case Util.KeyCode.BACKSPACE: // ⌫
 	newnotes = find_notes (allnotes, n => n.selected);
 	for (const note of newnotes)
 	  note.duration = 0;
@@ -312,3 +293,64 @@ function find_notes (allnotes, predicate) {
     }
   return l;
 }
+function strip_note_id (note) {
+  note.id = -1;
+  return note;
+}
+
+export function list_actions () {
+  return actions;
+}
+const actions = [];
+
+function action (icon, label, func, kbd) {
+  if (icon)
+    func.ic = icon;
+  func.label = label;
+  if (kbd)
+    func.kbd = kbd;
+  actions.push (func);
+}
+function _(arg) { return arg; }
+
+// == Standard PianoRoll operations ==
+async function action_cut_notes (event, clip) {
+  const allnotes = Util.freeze_deep (await clip.list_all_notes());
+  let newnotes = find_notes (allnotes, n => n.selected);
+  newnotes = newnotes.map (strip_note_id);
+  piano_clipboard = JSON.stringify (newnotes);
+  let delnotes = find_notes (allnotes, n => n.selected);
+  delnotes = delnotes.map (n => (n.duration = 0, n));
+  await Data.project.group_undo (action_cut_notes.label);
+  await clip.change_batch (delnotes);
+  await Data.project.ungroup_undo();
+}
+action ("fa-scissors", _("Cut Notes"), action_cut_notes, "Ctrl+X");
+
+async function action_copy_notes (event, clip) {
+  const allnotes = Util.freeze_deep (await clip.list_all_notes());
+  let newnotes = find_notes (allnotes, n => n.selected);
+  newnotes = newnotes.map (strip_note_id);
+  piano_clipboard = JSON.stringify (newnotes);
+}
+action ("fa-files-o", _("Copy Notes"), action_copy_notes, "Ctrl+C");
+
+async function action_paste_notes (event, clip) {
+  let newnotes = JSON.parse (piano_clipboard);
+  newnotes = newnotes.map (strip_note_id);
+  await Data.project.group_undo (action_paste_notes.label);
+  await clip.change_batch (newnotes);
+  await Data.project.ungroup_undo();
+}
+action ("fa-clipboard", _("Paste Notes"), action_paste_notes, "Ctrl+V");
+
+async function action_delete_notes (event, clip) {
+  const allnotes = Util.freeze_deep (await clip.list_all_notes());
+  let newnotes = find_notes (allnotes, n => n.selected);
+  for (const note of newnotes)
+    note.duration = 0;
+  await Data.project.group_undo (action_delete_notes.label);
+  await clip.change_batch (newnotes);
+  await Data.project.ungroup_undo();
+}
+action ("fa-times-circle", _("Delete Notes"), action_delete_notes, "Delete");

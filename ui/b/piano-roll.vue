@@ -164,10 +164,15 @@
 	 @contextmenu.prevent="pianorollmenu_popup ($event)"
 	 @wheel.stop="wheel_event ($event, 'notes')" >
       <canvas class="b-piano-roll-notes tabular-nums" @click="piano_ctrl.notes_click ($event)" ref="notes_canvas" ></canvas>
-      <b-contextmenu ref="pianorollmenu" keepmounted :showicons="false" class="b-piano-roll-contextmenu" @click="pianorollmenu_click" >
+      <b-contextmenu ref="pianorollmenu" keepmounted :showicons="true"
+		     class="b-piano-roll-contextmenu" mapname="Piano Roll"
+		     @click="pianorollmenu_click" :check="pianorollmenu_check" >
 	<b-menutitle> Piano-Roll </b-menutitle>
+	<b-menuitem v-for="ac in piano_roll_actions()" :key="ac.weakid" :uri="ac.weakid" :ic="ac.ic"
+		    :kbd="ac.kbd" > {{ac.label}} </b-menuitem>
 	<b-menuseparator />
-	<b-menuitem v-for="(script, index) in piano_roll_scripts()" :key="script.funid" :uri="script.funid" > {{script.label}} </b-menuitem>
+	<b-menuitem v-for="(script, index) in piano_roll_scripts()" :key="script.funid" :uri="script.funid"
+		    ic="mi-javascript" > {{script.label}} </b-menuitem>
       </b-contextmenu>
     </div>
 
@@ -192,11 +197,7 @@
 </template>
 
 <script>
-import {
-  PianoCtrl,
-  PIANO_OCTAVES,	// 11
-  PIANO_KEYS,		// 132
-} from "./piano-ctrl.js";
+import * as PianoCtrl from "./piano-ctrl.js";
 
 import * as Script from '../script.js';
 
@@ -238,7 +239,7 @@ export default {
     },
   },
   created () {
-    this.piano_ctrl = new PianoCtrl (this);
+    this.piano_ctrl = new PianoCtrl.PianoCtrl (this);
     this.stepping = [ Util.PPQN, 0, 0 ];
     this.move_event = Util.debounce (this.piano_ctrl.move_event.bind (this.piano_ctrl), 50);
   },
@@ -274,19 +275,39 @@ export default {
       this.scripts_ = Script.registry_keys ('PianoRoll');
       return this.scripts_;
     },
+    piano_roll_actions() {
+      const actions = [];
+      for (const actionfunc of PianoCtrl.list_actions()) {
+	if (actionfunc.label) {
+	  const label = actionfunc.label;
+	  const kbd = actionfunc.kbd;
+	  const ic = actionfunc.ic;
+	  actions.push ({ label, weakid: 'weakid:' + Util.weakid (actionfunc), kbd, ic });
+	}
+      }
+      return actions;
+    },
     pianorollmenu_popup (event) {
-      this.$refs.pianorollmenu.popup (event, { checker: this.pianorollmenu_check.bind (this) });
+      this.$refs.pianorollmenu.popup (event, { checker111111: this.pianorollmenu_check.bind (this) });
     },
     pianorollmenu_check (uri, component) {
       return !!this.msrc;
     },
-    async pianorollmenu_click (uri, event) {
+    pianorollmenu_click (uri, event) {
       event = Util.keyboard_click_event (event);
       event.stopPropagation();
       event.preventDefault();
-      const funid = uri;
+      if (uri.search (/^[0-9a-z-]+@[0-9a-z-]+$/) === 0)
+	return this.pianoroll_script (uri);
+      if (uri.startsWith ('weakid:') && this.msrc) {
+	const actionfunc = Util.weakid_lookup (Number (uri.substr (7)));
+	if (actionfunc instanceof Function)
+	  return actionfunc (event, this.msrc);
+      }
+      console.trace ("piano-roll.vue:", uri, event);
+    },
+    async pianoroll_script (funid) {
       const script = this.scripts_.find (entry => entry.funid == funid);
-      debug ("script", script);
       const propvalues = {}, proplist = [];
       for (const key of Object.keys (script.params)) {
 	const param = script.params[key];
@@ -339,9 +360,9 @@ export default {
 	v = await v;
       }
       if (v === 1) {
-	const result = await Script.run_script_fun (uri, propvalues);
+	const result = await Script.run_script_fun (funid, propvalues);
 	if (result)
-	  console.log ("piano-roll.vue: result from " + uri + ':', result);
+	  console.log ("piano-roll.vue: result from " + funid + ':', result);
       }
     },
     usetool (uri) {
@@ -424,7 +445,7 @@ const hscrollbar_proportion = 20, vscrollbar_proportion = 11;
 function piano_layout () {
   const piano_canvas = this.$refs.piano_canvas, piano_style = getComputedStyle (piano_canvas);
   const notes_canvas = this.$refs.notes_canvas, timeline_canvas = this.$refs.timeline_canvas;
-  const notes_cssheight = Math.floor (this.adata.vzoom * 84 / 12) * PIANO_KEYS;
+  const notes_cssheight = Math.floor (this.adata.vzoom * 84 / 12) * PianoCtrl.PIANO_KEYS;
   /* By design, each octave consists of 12 aligned rows that are used for note placement.
    * Each row is always pixel aligned. Consequently, the pixel area assigned to an octave
    * can only shrink or grow in 12 screen pixel intervalls.
@@ -441,7 +462,7 @@ function piano_layout () {
     virt_width:		0,			// virtual width in CSS pixels, derived from end_tick
     beat_pixels:	50,			// pixels per quarter note
     tickscale:		undefined,		// pixels per tick
-    octaves:		PIANO_OCTAVES,		// number of octaves to display
+    octaves:		PianoCtrl.PIANO_OCTAVES,// number of octaves to display
     yoffset:		notes_cssheight,	// y coordinate of lowest octave
     oct_length:		undefined,		// 12 * 7 = 84px for vzoom==1 && DPR==1
     row:		undefined,		// 7px for vzoom==1 && DPR==1
@@ -468,7 +489,7 @@ function piano_layout () {
   layout.tickscale = layout.beat_pixels / Util.PPQN;
   layout.hpad = 10 * DPR;
   layout.virt_width = Math.ceil (layout.tickscale * end_tick);
-  layout.row = Math.floor (layout.dpr_height / PIANO_KEYS);
+  layout.row = Math.floor (layout.dpr_height / PianoCtrl.PIANO_KEYS);
   layout.oct_length = layout.row * 12;
   layout.white_width = round (layout.white_width * layout.DPR);
   layout.black_width = round (layout.white_width * layout.black_width);

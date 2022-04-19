@@ -21,6 +21,7 @@ module.exports = {
     CONFIG: false,
     Util: false,
     Vue: false,
+    WeakRef: false,
     __DEV__: false,
     debug: false,
     log: false,

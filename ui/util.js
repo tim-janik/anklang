@@ -726,15 +726,33 @@ vue_mixins.dom_updates = {
   },
 };
 
-/// Fetch a unique object id.
-export function weakoid (object) {
-  if (!weakoid.weakmap) {
-    weakoid.weakmap = new WeakMap;
-    weakoid.counter = 1001;
+const WEAKOFFSET = 1001;
+const weakmaps = { ids: new WeakMap, objs: new Array, counter: WEAKOFFSET };
+
+/// Fetch a unique id for any object.
+export function weakid (object) {
+  if (!(object instanceof Object))
+    return 0;
+  let id = weakmaps.ids.get (object);
+  if (!id) {
+    id = weakmaps.counter++;
+    weakmaps.ids.set (object, id);
+    weakmaps.objs[id - WEAKOFFSET] = new WeakRef (object);
   }
-  if (!weakoid.weakmap.has (object))
-    weakoid.weakmap.set (object, weakoid.counter++);
-  return weakoid.weakmap.get (object);
+  return id;
+}
+
+/// Find an object from its unique id.
+export function weakid_lookup (id) {
+  const index = id - WEAKOFFSET;
+  const weakref = weakmaps.objs[index];
+  if (weakref) {
+    const object = weakref.deref();
+    if (object)
+      return object;
+    weakmaps.objs.splice (index, 1);
+  }
+  return undefined;
 }
 
 /// Join strings and arrays of class lists from `args`.
