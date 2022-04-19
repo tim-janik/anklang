@@ -56,7 +56,7 @@
     }
     flex-direction: row; align-items: baseline;
     & > .b-icon:first-child { margin: 0 $b-menu-spacing 0 0; }
-    .kbdspan {
+    .-kbdspan {
       flex-grow: 1;
       text-align: right;
       padding-left: 2.5em;
@@ -65,13 +65,14 @@
 	font-weight: 400;
       }
     }
+    &.-nokbd .-kbdspan { display:none; }
   }
   body .b-menurow-turn button.b-menuitem {
     flex-direction: column; align-items: center;
     & > .b-icon:first-child { margin: 0 0 $b-menu-spacing 0; }
   }
   body .b-menurow-noturn button.b-menuitem {
-    .menulabel { min-width: 2em; } //* this aligns blocks of 2-digit numbers */
+    .-menulabel { min-width: 2em; } //* this aligns blocks of 2-digit numbers */
     & > .b-icon:first-child { margin: 0 $b-menu-tightspace 0 0; }
   }
 </style>
@@ -81,14 +82,20 @@
 	  :disabled="isdisabled()"
 	  @mouseenter="focus"
 	  @keydown="Util.keydown_move_focus"
+	  @contextmenu.prevent.stop="rightclick"
 	  @click="onclick" >
     <b-icon :class='iconclass' :ic="ic" :fa="fa" :mi="mi" :bc="bc" :uc="uc" v-if="menudata.showicons" />
-    <span class="menulabel"><slot /></span>
-    <span v-if="kbd !== undefined" class="kbdspan"><kbd v-if="kbd">{{ Util.display_keyname (kbd) }}</kbd></span>
+    <span ref="menulabel" class="-menulabel"><slot /></span>
+    <span class="-kbdspan">
+      <kbd v-if="!!kbd_hotkey()"
+	   :title="menudata.mapname && 'RIGHT-CLICK Assign Shortcut'"
+      >{{ Util.display_keyname (kbd_hotkey()) }}</kbd></span>
   </button>
 </template>
 
 <script>
+import * as Kbd from '../kbd.js';
+
 const STR = { type: String, default: '' }; // empty string default
 export default {
   sfc_template,
@@ -97,30 +104,36 @@ export default {
 	   iconclass: STR, ic: STR, fa: STR, mi: STR, bc: STR, uc: STR,
 	   kbd: { type: String }, },
   inject: { menudata: { from: 'b-contextmenu.menudata',
-			default: { showicons: true, keepmounted: false, checkeduris: {},
-				   isdisabled: () => false, onclick: undefined, }, },
-  },
+			default: { showicons: true, keepmounted: false,
+				   checkeduris: {}, mapname: '',
+				   isdisabled: () => false, onclick: undefined, }, }, },
+  data: () => ({ label: '', mapped_kbd: '', }),
   methods: {
+    dom_update() {
+      const labeltext = this.$refs?.menulabel?.innerText || '';
+      if (this.label !== labeltext)
+	this.label = labeltext;  // reactive
+    },
+    get_text() {
+      return this.label || '';
+    },
+    kbd_hotkey() {
+      const labeltext = this.get_text();
+      this.mapped_kbd = Kbd.shortcut_lookup (this.menudata.mapname, labeltext, this.kbd);
+      return this.mapped_kbd;
+    },
     focus() {
       if (this.$el && !this.isdisabled())
 	this.$el.focus();
     },
     onclick (event) 	{ return this.menudata.onclick?.call (this, event); },
     isdisabled ()	{ return this.menudata.isdisabled.call (this); },
-    kbd_hotkey() {
-      return this.kbd;
-    },
-    /// Extract menu item label (without icon/kbd infos).
-    get_text() {
-      const filter = e => {
-	if (e.nodeType !== document.ELEMENT_NODE)
-	  return false;
-	if (e.nodeName == 'KBD')
-	  return false;
-	if (e.getAttribute ('role') == 'icon')
-	  return false;
-      };
-      return Util.element_text (this.$el, filter);
+    async rightclick (event) {
+      const labeltext = this.get_text();
+      if (this.menudata.mapname && labeltext) {
+	if (await Kbd.shortcut_dialog (this.menudata.mapname, labeltext, this.kbd))
+	  this.$forceUpdate();
+      }
     },
   },
 };
