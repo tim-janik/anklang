@@ -934,6 +934,11 @@ export function split_comma (str) {
   return result;
 }
 
+/// Properly escape test into `&amp;` and related sequences.
+export function escape_html (unsafe) {
+  return unsafe.replaceAll ('&', '&amp;').replaceAll ('<', '&lt;').replaceAll ('>', '&gt;').replaceAll ('"', '&quot;').replaceAll("'", '&#039;');
+}
+
 /** Parse hexadecimal CSS color with 3 or 6 digits into [ R, G, B ]. */
 export function parse_hex_color (colorstr) {
   if (colorstr.substr (0, 1) == '#') {
@@ -1092,310 +1097,6 @@ export function wheel2scrollbars (event, refs, ...scrollbars)
         scrollbar.scrollBy ({ top: delta.y });
       else                                                      // horizontal
 	scrollbar.scrollBy ({ left: delta.x });
-    }
-}
-
-/** List all elements that can take focus and are descendants of `element` or the document. */
-export function list_focusables (element)
-{
-  if (!element)
-    element = document.body;
-  const candidates = [
-    'a[href]',
-    'audio[controls]',
-    'button',
-    'input:not([type="radio"]):not([type="hidden"])',
-    'select',
-    'textarea',
-    'video[controls]',
-    '[contenteditable]:not([contenteditable="false"])',
-    '[tabindex]',
-  ];
-  const excludes = ':not([disabled]):not([tabindex="-1"])';
-  const candidate_selector = candidates.map (e => e + excludes).join (', ');
-  const nodes = element.querySelectorAll (candidate_selector); // selector for focusable elements
-  const array1 = [].slice.call (nodes);
-  // filter out non-tabable elements
-  const array = array1.filter (element => {
-    if (element.offsetWidth <= 0 &&     // browsers can focus 0x0 sized elements
-	element.offsetHeight <= 0 &&
-	inside_display_none (element))  // but not within display:none
-      return false;
-    return true;
-  });
-  return array;
-}
-
-/** Check if `element` has inner input navigation */
-export function is_nav_input (element) {
-  const nav_elements = [
-    "AUDIO",
-    "SELECT",
-    "TEXTAREA",
-    "VIDEO",
-    "EMBED",
-    "IFRAME",
-    "OBJECT",
-    "APPLET",
-  ];
-  if (in_array (element.tagName, nav_elements))
-    return true;
-  const nav_input_types = [
-    'date',
-    'datetime-local',
-    'email',
-    'month',
-    'number',
-    'password',
-    'range',
-    'search',
-    'tel',
-    'text',
-    'time',
-    'url',
-    'week',
-  ];
-  if (element.tagName == "INPUT" && in_array (element.type, nav_input_types))
-    return true;
-  return false;
-}
-
-/** Check if `element` is button-like input */
-export function is_button_input (element) {
-  const click_elements = [
-    "BUTTON",
-    "SUMMARY",
-  ];
-  if (in_array (element.tagName, click_elements))
-    return true;
-  const button_input_types = [
-    'button',
-    'checkbox',
-    'color',
-    'file',
-    // 'hidden',
-    'image',
-    'radio',
-    'reset',
-    'submit',
-  ];
-  if (element.tagName == "INPUT" && in_array (element.type, button_input_types))
-    return true;
-  return false;
-}
-
-/** Compute global midpoint position of element, e.g. for focus movement */
-export function element_midpoint (element) {
-  const r = element.getBoundingClientRect();
-  return { y: 0.5 * (r.top + r.bottom),
-	   x: 0.5 * (r.left + r.right) };
-}
-
-/** Install a FocusGuard to allow only a restricted set of elements to get focus. */
-class FocusGuard {
-  defaults() { return {
-    updown_focus: true,
-    updown_cycling: false,
-    focus_root_list: [],
-    last_focus: undefined,
-  }; }
-  constructor () {
-    Object.assign (this, this.defaults());
-    window.addEventListener ('focusin', this.focusin_handler.bind (this), true);
-    window.addEventListener ('keydown', this.keydown_handler.bind (this));
-    if (document.activeElement && document.activeElement != document.body)
-      this.last_focus = document.activeElement;
-    // Related: https://developer.mozilla.org/en-US/docs/Web/Accessibility/Keyboard-navigable_JavaScript_widgets
-  }
-  push_focus_root (element, escapecb) {
-    const current_focus = document.activeElement && document.activeElement != document.body ? document.activeElement : undefined;
-    this.focus_root_list.unshift ([ element, current_focus, escapecb ]);
-    if (current_focus)
-      this.focus_changed (current_focus, false);
-  }
-  remove_focus_root (element) {
-    if (this.last_focus && !this.last_focus.parentElement)
-      this.last_focus = undefined;	// cleanup to allow GC
-    for (let i = 0; i < this.focus_root_list.length; i++)
-      if (this.focus_root_list[i][0] === element)
-	{
-	  const saved_focus = this.focus_root_list[i][1];
-	  this.focus_root_list.splice (i, 1);
-	  if (saved_focus)
-	    saved_focus.focus(); // try restoring focus
-	  return true;
-	}
-    return false;
-  }
-  focusin_handler (event) {
-    return this.focus_changed (event.target);
-  }
-  focus_changed (target, refocus = true) {
-    if (this.focus_root_list.length == 0 || !document.activeElement ||
-	document.activeElement == document.body)
-      return false; // not interfering
-    const focuslist = list_focusables (this.focus_root_list[0][0]);
-    const idx = focuslist.indexOf (target);
-    if (idx < 0) // invalid element gaining focus
-      {
-	document.activeElement.blur();
-	if (refocus && focuslist.length)
-	  {
-	    const lastidx = focuslist.indexOf (this.last_focus);
-	    let newidx = 0;
-	    if (lastidx >= 0 && lastidx < focuslist.length / 2)
-	      newidx = focuslist.length - 1;
-	    focuslist[newidx].focus();
-	  }
-	return true;
-      }
-    else
-      this.last_focus = document.activeElement;
-    return false; // not interfering
-  }
-  keydown_handler (event) {
-    if (document.activeElement == document.body) // no focus
-      return keydown_move_focus (event);
-    else
-      return false; // not interfering
-  }
-}
-const the_focus_guard = new FocusGuard();
-
-/** Constrain focus to `element` and its descendants */
-export function push_focus_root (element, escapecb) {
-  the_focus_guard.push_focus_root (element, escapecb);
-}
-
-/** Remove an `element` previously installed via push_focus_root() */
-export function remove_focus_root (element) {
-  the_focus_guard.remove_focus_root (element);
-}
-
-/** Move focus on UP/DOWN/HOME/END `keydown` events */
-export function keydown_move_focus (event) {
-  const root = the_focus_guard?.focus_root_list?.[0]?.[0] || document.body;
-  let subfocus = null, left_right = false;
-  // constrain focus movements within data-subfocus=1 container
-  for (let element = document.activeElement; element; element = element.parentElement) {
-    if (element === root)
-      break;
-    const d = element.getAttribute ('data-subfocus');
-    if (d)
-      {
-	subfocus = element;
-	if (d === "*")
-	  left_right = true;
-	break;
-      }
-  }
-  let dir;
-  if (event.keyCode == KeyCode.HOME)
-    dir = 'HOME';
-  else if (event.keyCode == KeyCode.END)
-    dir = 'END';
-  else if (event.keyCode == KeyCode.UP)
-    dir = -1;
-  else if (event.keyCode == KeyCode.DOWN)
-    dir = +1;
-  else if (left_right && event.keyCode == KeyCode.LEFT)
-    dir = 'LEFT';
-  else if (left_right && event.keyCode == KeyCode.RIGHT)
-    dir = 'RIGHT';
-  return move_focus (dir, subfocus);
-}
-
-/** Move focus to prev or next focus widget */
-export function move_focus (dir = 0, subfocus = false) {
-  const home = dir == 'HOME', end = dir == 'END';
-  const up = dir == -1, down = dir == +1;
-  const left = dir == 'LEFT', right = dir == 'RIGHT';
-  const updown_focus = the_focus_guard.updown_focus;
-  const updown_cycling = the_focus_guard.updown_cycling;
-  const last_focus = the_focus_guard.last_focus;
-  if (!(home || up || down || end || left || right))
-    return false; // nothing to move
-
-  if (the_focus_guard.focus_root_list.length == 0 || !updown_focus ||
-      // is_nav_input (document.activeElement) || (document.activeElement.tagName == "INPUT" && !is_button_input (document.activeElement)) ||
-      !(up || down || home || end || left || right))
-    return false; // not interfering
-  const root = subfocus || the_focus_guard.focus_root_list[0][0];
-  const focuslist = list_focusables (root);
-  if (!focuslist)
-    return false; // not interfering
-  let idx = focuslist.indexOf (document.activeElement);
-  if (idx < 0 && (up || down))
-    { // re-focus last element if possible
-      idx = focuslist.indexOf (last_focus);
-      if (idx >= 0)
-	{
-	  focuslist[idx].focus();
-	  event.preventDefault();
-	  return true;
-	}
-    }
-  let next; // position to move new focus to
-  if (idx < 0)
-    next = (down || home) ? 0 : focuslist.length - 1;
-  else if (home || end)
-    next = home ? 0 : focuslist.length - 1;
-  else if (left || right)
-    {
-      const idx_pos = element_midpoint (focuslist[idx]);
-      let dist = { x: 9e99, y: 9e99 };
-      for (let i = 0; i < focuslist.length; i++)
-	if (i != idx)
-	  {
-	    const pos = element_midpoint (focuslist[i]);
-	    const d = { x: pos.x - idx_pos.x, y: pos.y - idx_pos.y };
-	    if ((right && d.x > 0) || (left && d.x < 0))
-	      {
-		d.x = Math.abs (d.x);
-		d.y = Math.abs (d.y);
-		if (d.x < dist.x || (d.x == dist.x && d.y < dist.y))
-		  {
-		    dist = d;
-		    next = i;
-		  }
-	      }
-	  }
-    }
-  else // up || down
-    {
-      next = idx + (up ? -1 : +1);
-      if (updown_cycling)
-	{
-	  if (next < 0)
-	    next += focuslist.length;
-	  else if (next >= focuslist.length)
-	    next -= focuslist.length;
-	}
-      else if (next < 0 || next >= focuslist.length)
-	next = undefined;
-    }
-  if (next >= 0 && next < focuslist.length)
-    {
-      focuslist[next].focus();
-      event.preventDefault();
-      return true;
-    }
-  return false;
-}
-
-/** Forget the last focus elemtn inside `element` */
-export function forget_focus (element) {
-  if (!the_focus_guard.last_focus)
-    return;
-  let l = the_focus_guard.last_focus;
-  while (l)
-    {
-      if (l == element)
-	{
-	  the_focus_guard.last_focus = undefined;
-	  return;
-	}
-      l = l.parentNode;
     }
 }
 
@@ -1784,8 +1485,14 @@ export function in_keyboard_click()
   return keyboard_click_state.inclick > 0;
 }
 
+/// Retrieve event that triggers keyboard_click().
+export function keyboard_click_event (fallback = undefined) {
+  return keyboard_click_current_event[0] || fallback;
+}
+const keyboard_click_current_event = [ undefined ];
+
 /// Trigger element click via keyboard.
-export function keyboard_click (element, callclick = true)
+export function keyboard_click (element, event, callclick = true)
 {
   if (element instanceof Element)
     {
@@ -1800,8 +1507,11 @@ export function keyboard_click (element, callclick = true)
 	      e.classList.toggle ('active', false);
 	    }, 170); // match focus-activation delay
 	}
-      if (callclick)
-	element.click();
+      if (callclick) {
+	keyboard_click_current_event.unshift (event);
+	element.click (event);
+	keyboard_click_current_event.shift();
+      }
       keyboard_click_state.inclick -= 1;
       return true;
     }
@@ -1868,31 +1578,6 @@ export function clone_menu_icon (menu, uri, title = '')
   };
 }
 
-/// Symbolic names for key codes
-export const KeyCode = {
-  BACKSPACE: 8, TAB: 9, LINEFEED: 10, ENTER: 13, RETURN: 13, CAPITAL: 20, CAPSLOCK: 20, ESC: 27, ESCAPE: 27, SPACE: 32,
-  PAGEUP: 33, PAGEDOWN: 34, END: 35, HOME: 36, LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, PRINTSCREEN: 44,
-  INSERT: 45, DELETE: 46, SELECT: 93,
-  F1: 112, F2: 113, F3: 114, F4: 115, F5: 116, F6: 117, F7: 118, F8: 119, F9: 120, F10: 121, F11: 122, F12: 123,
-  F13: 124, F14: 125, F15: 126, F16: 127, F17: 128, F18: 129, F19: 130, F20: 131, F21: 132, F22: 133, F23: 134, F24: 135,
-  BROWSERBACK: 166, BROWSERFORWARD: 167, PLUS: 187/*?*/, MINUS: 189/*?*/, PAUSE: 230, ALTGR: 255,
-  VOLUMEMUTE: 173, VOLUMEDOWN: 174, VOLUMEUP: 175, MEDIANEXTTRACK: 176, MEDIAPREVIOUSTRACK: 177, MEDIASTOP: 178, MEDIAPLAYPAUSE: 179,
-};
-
-/// Check if a key code is used of rnavigaiton (and non alphanumeric).
-export function is_navigation_key_code (keycode)
-{
-  const navigation_keys = [
-    KeyCode.UP, KeyCode.RIGHT, KeyCode.DOWN, KeyCode.LEFT,
-    KeyCode.PAGE_UP, KeyCode.PAGE_DOWN, KeyCode.HOME, KeyCode.END,
-    KeyCode.ESCAPE, KeyCode.TAB, KeyCode.SELECT /*contextmenu*/,
-    KeyCode.BROWSERBACK, KeyCode.BROWSERFORWARD,
-    KeyCode.BACKSPACE, KeyCode.DELETE,
-    KeyCode.SPACE, KeyCode.ENTER /*13*/,
-  ];
-  return in_array (keycode, navigation_keys);
-}
-
 // https://github.com/WICG/keyboard-map/blob/master/explainer.md
 let keyboard_map = {
   get (key) {
@@ -1915,150 +1600,6 @@ export function keyboard_map_name (keyname) {
   return name || keyname;
 }
 
-/// Create display name from KeyEvent.code names.
-export function display_keyname (keyname)
-{
-  // Strip Raw prefix
-  keyname = keyname.replace (/\bRaw(\w)/g, "$1");
-  // Replace KeyX with 'X'
-  keyname = keyname.replace (/\bKey([A-Z])/g, "$1");
-  // Replace Digit7 with '7'
-  keyname = keyname.replace (/\bDigit([0-9])/g, "$1");
-  return keyname;
-}
-
-/// Match an event's key code, considering modifiers.
-export function match_key_event (event, keyname)
-{
-  // SEE: http://unixpapa.com/js/key.html & https://developer.mozilla.org/en-US/docs/Mozilla/Gecko/Gecko_keypress_event
-  // split_hotkey (hotkey)
-  const rex = new RegExp (/\s*[+]\s*/); // Split 'Shift+Ctrl+Alt+Meta+SPACE'
-  const parts = keyname.split (rex);
-  const rawkey = event.code; // contains physical key names for US-Layout
-  const keychar = event.key || String.fromCharCode (event.which || event.keyCode);
-  let need_meta = 0, need_alt = 0, need_ctrl = 0, need_shift = 0;
-  for (let i = 0; i < parts.length; i++)
-    {
-      // collect meta keys
-      switch (parts[i].toLowerCase())
-      {
-	case 'cmd': case 'command':
-	case 'super': case 'meta':	need_meta  = 1; continue;
-	case 'option': case 'alt':	need_alt   = 1; continue;
-	case 'control': case 'ctrl':	need_ctrl  = 1; continue;
-	case 'shift':		  	need_shift = 1; continue;
-      }
-      // match character keys
-      if (keychar.toLowerCase() == parts[i].toLowerCase())
-        continue;
-      // match physical keys
-      if (parts[i].startsWith ('Raw') &&
-	  parts[i].substr (3) == rawkey)
-	continue;
-      // failed to match
-      return false;
-    }
-  // ignore shift for case insensitive characters (except for navigations)
-  if (keychar.toLowerCase() == keychar.toUpperCase() &&
-      !is_navigation_key_code (event.keyCode))
-    need_shift = -1;
-  // match meta keys
-  if (need_meta   != 0 + event.metaKey ||
-      need_alt    != 0 + event.altKey ||
-      need_ctrl   != 0 + event.ctrlKey ||
-      (need_shift != 0 + event.shiftKey && need_shift >= 0))
-    return false;
-  return true;
-}
-
-const hotkey_list = [];
-
-function hotkey_handler (event) {
-  let kdebug = () => undefined; // kdebug = debug;
-  const focus_root = the_focus_guard?.focus_root_list?.[0];
-  // avoid composition events, https://developer.cdn.mozilla.net/en-US/docs/Web/API/Element/keydown_event
-  if (event.isComposing || event.keyCode === 229)
-    {
-      kdebug ("hotkey_handler: ignore-composition: " + event.code + ' (' + document.activeElement.tagName + ')');
-      return false;
-    }
-  // allow ESCAPE callback for focus_root
-  if (focus_root && focus_root[2] && Util.match_key_event (event, 'Escape'))
-    {
-      const escapecb = focus_root[2];
-      if (false === escapecb (event))
-	event.preventDefault();
-      return true;
-    }
-  // give precedence to navigatable element with focus
-  if (is_nav_input (document.activeElement) ||
-      (document.activeElement.tagName == "INPUT" && !is_button_input (document.activeElement)))
-    {
-      kdebug ("hotkey_handler: ignore-nav: " + event.code + ' (' + document.activeElement.tagName + ')');
-      return false;
-    }
-  // activate focus via Enter
-  if (Util.match_key_event (event, 'Enter') && document.activeElement != document.body)
-    {
-      kdebug ("hotkey_handler: button-activation: " + ' (' + document.activeElement.tagName + ')');
-      // allow `onclick` activation via `Enter` on <button/> and <a href/> with event.isTrusted
-      const click_pending = document.activeElement.nodeName == 'BUTTON' || (document.activeElement.nodeName == 'A' &&
-									    document.activeElement.href);
-      Util.keyboard_click (document.activeElement, !click_pending);
-      if (!click_pending)
-	event.preventDefault();
-      return true;
-    }
-  // restrict global hotkeys during modal dialogs
-  const modal_element = !!(document._b_modal_shields?.[0]?.root || focus_root);
-  // activate global hotkeys
-  const array = hotkey_list;
-  for (let i = 0; i < array.length; i++)
-    if (match_key_event (event, array[i][0]))
-      {
-	const subtree_element = array[i][2];
-	if (modal_element && !has_ancestor (subtree_element, modal_element))
-	  continue;
-	const callback = array[i][1];
-	event.preventDefault();
-	kdebug ("hotkey_handler: hotkey-callback: '" + array[i][0] + "'", callback.name);
-	callback.call (null, event);
-	return true;
-      }
-  // activate elements with data-hotkey=""
-  const hotkey_elements = document.querySelectorAll ('[data-hotkey]:not([disabled])');
-  for (const el of hotkey_elements)
-    if (match_key_event (event, el.getAttribute ('data-hotkey')))
-      {
-	if (modal_element && !has_ancestor (el, modal_element))
-	  continue;
-	event.preventDefault();
-	kdebug ("hotkey_handler: keyboard-click2: '" + el.getAttribute ('data-hotkey') + "'", el);
-	Util.keyboard_click (el);
-	return true;
-      }
-  kdebug ('hotkey_handler: unused-key: ' + event.code + ' ' + event.which + ' ' + event.charCode + ' (' + document.activeElement.tagName + ')');
-  return false;
-}
-window.addEventListener ('keydown', hotkey_handler, { capture: true });
-
-/// Add a global hotkey handler.
-export function add_hotkey (hotkey, callback, subtree_element = undefined) {
-  hotkey_list.push ([ hotkey, callback, subtree_element ]);
-}
-
-/// Remove a global hotkey handler.
-export function remove_hotkey (hotkey, callback) {
-  const array = hotkey_list;
-  for (let i = 0; i < array.length; i++)
-    if (hotkey === array[i][0] && callback === array[i][1])
-      {
-	array.splice (i, 1);
-	return true;
-      }
-  return false;
-}
-
 /** Check if `ancestor` is an ancestor or `element` */
 export function has_ancestor (element, ancestor) {
   while (element)
@@ -2068,6 +1609,13 @@ export function has_ancestor (element, ancestor) {
       element = element.parentNode;
     }
   return false;
+}
+
+/** Retrieve root ancestor of `element` */
+export function root_ancestor (element) {
+  while (element && element.parentNode)
+    element = element.parentNode;
+  return element;
 }
 
 /** Show a notification popup, with adequate default timeout */
@@ -2303,3 +1851,5 @@ export function hash53 (key, seed = default_seed) {
   h2 = Math.imul (h2 ^ h1 >>> 16, 0x85ebca6b) ^ Math.imul (h1 ^ h2 >>> 13, 0xc2b2ae35);
   return 0x100000000 * (0x1fffff & h2) + (h1 >>> 0);
 }
+
+export * from './kbd.js';

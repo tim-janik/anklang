@@ -249,17 +249,41 @@ Server::instance ()
 
 static ValueR session_data;
 
-void
-Server::set_session_data (const String &key, const Value &v)
+bool
+Server::set_data (ResourcePath rpath, const String &key, const Value &value)
 {
-  session_data[key] = v;
-  // printerr ("%s: %s = %s\n", __func__, key, session_data[key].repr());
+  if (rpath == ResourcePath::SESSION)
+    {
+      session_data[key] = value;
+      return true;
+    }
+  else if (rpath == ResourcePath::CONFIG && key.size() > 0)
+    {
+      String filename = string_canonify (key, string_set_a2z() + "_0123456789.", "_");
+      if (filename[0] == '.')
+        filename[0] = '_';
+      filename = Path::join (Path::xdg_dir ("CONFIG"), "anklang", filename);
+      return Path::stringwrite (filename, value.as_string());
+    }
+  else
+    return false;
 }
 
-const Value&
-Server::get_session_data (const String &key) const
+Value
+Server::get_data (ResourcePath rpath, const String &key) const
 {
-  return session_data[key];
+  if (rpath == ResourcePath::SESSION)
+    return session_data[key];
+  else if (rpath == ResourcePath::CONFIG && key.size() > 0)
+    {
+      String filename = string_canonify (key, string_set_a2z() + "_0123456789.", "_");
+      if (filename[0] == '.')
+        filename[0] = '_';
+      filename = Path::join (Path::xdg_dir ("CONFIG"), "anklang", filename);
+      return Path::stringread (filename);
+    }
+  else
+    return Value::empty_value;
 }
 
 // == FileCrawler ==

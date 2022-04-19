@@ -280,7 +280,10 @@ export default {
     pianorollmenu_check (uri, component) {
       return !!this.msrc;
     },
-    async pianorollmenu_click (uri) {
+    async pianorollmenu_click (uri, event) {
+      event = Util.keyboard_click_event (event);
+      event.stopPropagation();
+      event.preventDefault();
       const funid = uri;
       const script = this.scripts_.find (entry => entry.funid == funid);
       debug ("script", script);

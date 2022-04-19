@@ -107,7 +107,7 @@ const menuitem_onclick = function (event) {
   if (!event.defaultPrevented)
     {
       if (this.uri !== undefined && this.menudata.clicked)
-	this.menudata.clicked (this.uri);
+	this.menudata.clicked (this.uri, event);
       else if (this.menudata.close)
 	this.menudata.close();
     }
@@ -134,6 +134,7 @@ export default {
 	   keepmounted: { type: Boolean, },
 	   startfocus: { type: Boolean, },
 	   showicons: { default: true, type: Boolean },
+	   mapname: { type: String, default: '' },
 	   check: { type: Function },
 	   xscale: { default: 1, },
 	   yscale: { default: 1, }, },
@@ -147,7 +148,7 @@ export default {
     onclick: menuitem_onclick, isdisabled: menuitem_isdisabled,
   }; },
   provide: Util.fwdprovide ('b-contextmenu.menudata',	// context for menuitem descendants
-			    [ 'checkeduris', 'showicons', 'keepmounted', 'clicked', 'close', 'onclick', 'isdisabled' ]),
+			    [ 'checkeduris', 'showicons', 'mapname', 'keepmounted', 'clicked', 'close', 'onclick', 'isdisabled' ]),
   methods: {
     popupclass() {
       const pclasses = Array.from (this.$el?.classList || []);
@@ -159,7 +160,7 @@ export default {
       if (shield?.parentNode == this.$el)
 	{
 	  this.remove_reparentation?.();
-	  document.body.querySelector ('#b-app-shell-modalmenus-layer').insertBefore (shield, null);
+	  document.body.querySelector ('#b-app-shell-modaldialogs').insertBefore (shield, null);
 	  this.remove_reparentation = () => shield.parentNode?.removeChild?. (shield);
 	}
       this.resize_observer?.disconnect?.();
@@ -358,8 +359,8 @@ export default {
 	this.$refs.cmenu.style = this.cmenu_style();
       }
     },
-    clicked (uri) {
-      this.$emit ('click', uri);
+    clicked (uri, event) {
+      this.$emit ('click', uri, event);
       this.close();
     },
     /// Activate or disable the `kbd=...` hotkeys in menu items.
@@ -376,7 +377,7 @@ export default {
       const buildmap = v => {
 	const key = Object.hasOwnProperty.call (v, 'kbd_hotkey') && v.kbd_hotkey();
 	if (key)
-	  kmap[key] = async _ => { // v.$el && Util.keyboard_click (v.$el);
+	  kmap[key] = async event => { // v.$el && Util.keyboard_click (v.$el);
 	    if (!v.$el) return;
 	    const component = Util.vue_component (v) || v;
 	    if (this.check) {
@@ -394,7 +395,7 @@ export default {
 	      if (result === false)
 		return;
 	    }
-	    Util.keyboard_click (v.$el);
+	    Util.keyboard_click (v.$el, event);
 	  };
 	for (const c of v.$children)
 	  buildmap (c);

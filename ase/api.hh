@@ -309,6 +309,11 @@ enum class ResourceType {
   FILE,
 };
 
+enum class ResourcePath {
+  SESSION = 0,
+  CONFIG,
+};
+
 /// Description of a resource, possibly nested.
 struct Resource {
   ResourceType type = {};       ///< Resource classification.
@@ -368,9 +373,10 @@ public:
   // Browsing
   ResourceCrawlerP dir_crawler    (const String &cwd = "");  ///< Create crawler to navigate directories.
   ResourceCrawlerP url_crawler    (const String &url = "/"); ///< Create crawler to navigate URL contents.
-  // testing
-  void         set_session_data (const String &key, const Value &v); ///< Assign session data.
-  const Value& get_session_data (const String &key) const;           ///< Retrieve session data.
+  /// Assign session data.
+  bool           set_data         (ResourcePath rpath, const String &key, const Value &v);
+  /// Retrieve session data.
+  Value          get_data         (ResourcePath rpath, const String &key) const;
 };
 #define ASE_SERVER      (::Ase::Server::instance())
 

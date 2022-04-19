@@ -106,15 +106,15 @@ html.b-shell-during-drag .b-app {
     <b-statusbar />
 
     <!-- Modal Dialogs -->
-    <div class="-modaldialogs" style="z-index: 90" >
+    <div class="-modaldialogs" style="z-index: 90" id="b-app-shell-modaldialogs" >
       <b-aboutdialog v-model:shown="Data.show_about_dialog" />
       <b-preferencesdialog v-model:shown="Data.show_preferences_dialog" />
       <b-filedialog :shown="!!fs.resolve" :title="fs.title" :filters="fs.filters" :button="fs.button"
 		    :cwd="fs.cwd" @close="fs.resolve()" @select="fs.resolve($event)" />
 
       <!-- Modal Message Popups -->
-      <b-dialog class="-modal-message"
-		v-for="d in m.modal_dialogs" :key="d.uid"
+      <b-dialog class="-modal-message" v-for="d in m.modal_dialogs"
+		:id="'MDialog_' + d.dialogid" :class="d.class" :key="d.dialogid"
 		:shown="d.visible.value" @update:shown="d.input ($event)"
 		:exclusive="true" bwidth="9em" style="z-index: 93" >
 	<template v-slot:header>
@@ -124,8 +124,10 @@ html.b-shell-during-drag .b-app {
 	  <h-flex style="justify-content: flex-start; align-items: center;">
 	    <b-icon v-bind="d.icon" />
 	    <div style="flex-grow: 1; white-space: pre-line;" >{{ d.body }}</div>
+	    <div style="flex-grow: 1; white-space: pre-line;" v-html="d.vhtml" ></div>
 	  </h-flex>
 	  <b-fed-object class="-modal-fed" ref="fedobject" v-if="d.proplist" :value="d.proplist" />
+	  <div class="-div-handler" v-if="d.div_handler"></div>
 	</template>
 	<template v-slot:footer>
 	  <h-flex class="-hfooter" :class="d.footerclass">
@@ -138,9 +140,6 @@ html.b-shell-during-drag .b-app {
 
     <!-- Noteboard -->
     <b-noteboard ref="noteboard" style="z-index: 95" />
-
-    <!-- Menus -->
-    <div id="b-app-shell-modalmenus-layer" class="-modalmenus" style="z-index: 98" ></div>
 
     <!-- Bubbles -->
 
@@ -161,7 +160,7 @@ function observable_project_data () { // yields reactive Proxy object
   const data = {
     filetree:	     { default: {}, getter: c => list_sample_files(), },
     usernotehook:    { notify: n => Ase.server.on ("usernote", this.usernote), },
-    __update__: Util.observable_force_update,
+    observable_force_update: Util.observable_force_update,
   };
   return this.observable_from_getters (data, () => Data.project);
 }
@@ -174,7 +173,8 @@ class Shell extends Envue.Component {
     this.m.modal_dialogs = [];
   }
   created() {
-    this.update();
+    this.$vm?.$forceUpdate();
+    this.m.observable_force_update();
   }
   mounted() {
     this.switch_panel2 = App.switch_panel2.bind (App);
@@ -187,9 +187,16 @@ class Shell extends Envue.Component {
     Util.remove_hotkey ('I', this.switch_panel3);
     App.shell_unmounted();
   }
-  update() {
-    this.$vm?.$forceUpdate();
-    this.m.__update__();
+  updated() {
+    for (const d of this.m.modal_dialogs)
+      if (d.div_handler) {
+	const dialog = this.$vm.$el.querySelector (`#MDialog_${d.dialogid}`);
+	if (dialog) {
+	  const div = dialog.querySelector (`.-div-handler`);
+	  if (div)
+	    d.div_handler (div, dialog);
+	}
+      }
   }
   panel2_style() {
     return Data.panel2 == 'p' ? 'flex-grow: 5' : '';
@@ -261,13 +268,17 @@ function async_modal_dialog (dialog_setup) {
   let resolve;
   const promise = new Promise (r => resolve = r);
   const m = {
-    uid: modal_dialog_counter++,
+    dialogid: modal_dialog_counter++,
+    div_handler: dialog_setup.div_handler,
+    class: dialog_setup.class,
     proplist: dialog_setup.proplist || [],
     visible: Vue.reactive ({ value: false }),
     input (v) {
       if (!this.visible.value || v)
 	return;
       this.visible.value = false;
+      if (dialog_setup.destroy)
+	dialog_setup.destroy();
       resolve (this.result);
       setTimeout (_ => Util.array_remove (shell.m.modal_dialogs, this), CONFIG.transitiondelay);
     },
@@ -278,6 +289,7 @@ function async_modal_dialog (dialog_setup) {
     },
     header: dialog_setup.title,
     body: dialog_setup.text,
+    vhtml: dialog_setup.html,
     icon: dialog_emblems[dialog_setup.emblem] || {},
     footerclass: '',
     buttons: []
@@ -304,5 +316,6 @@ const dialog_emblems = {
   PIANO:	{ mi: "piano",			style: "font-size: 300%; padding-right: 1rem; float: left; color: #ffbbbb" },
   QUESTION:	{ fa: "question-circle",	style: "font-size: 300%; padding-right: 1rem; float: left; color: #538cc1" },
   ERROR:	{ fa: "times-circle",		style: "font-size: 300%; padding-right: 1rem; float: left; color: #cc2f2a" },
+  KEYBOARD:	{ mi: "keyboard",		style: "font-size: 300%; padding-right: 1rem; float: left; color: #538cc1" },
 };
 </script>
