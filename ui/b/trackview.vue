@@ -112,25 +112,25 @@
       <b-menutitle> MIDI Channel </b-menutitle>
       <b-menuitem   uri="mc-0"  :uc="mcc( 0)" > Internal Channel </b-menuitem>
       <b-menurow noturn>
-	<b-menuitem uri="mc-1"  :uc="mcc(1)"  >  1 </b-menuitem>
-	<b-menuitem uri="mc-2"  :uc="mcc(2)"  >  2 </b-menuitem>
-	<b-menuitem uri="mc-3"  :uc="mcc(3)"  >  3 </b-menuitem>
-	<b-menuitem uri="mc-4"  :uc="mcc(4)"  >  4 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-1"  :uc="mcc(1)"  >  1 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-2"  :uc="mcc(2)"  >  2 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-3"  :uc="mcc(3)"  >  3 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-4"  :uc="mcc(4)"  >  4 </b-menuitem>
       </b-menurow> <b-menurow noturn>
-	<b-menuitem uri="mc-5"  :uc="mcc(5)"  >  5 </b-menuitem>
-	<b-menuitem uri="mc-6"  :uc="mcc(6)"  >  6 </b-menuitem>
-	<b-menuitem uri="mc-7"  :uc="mcc(7)"  >  7 </b-menuitem>
-	<b-menuitem uri="mc-8"  :uc="mcc(8)"  >  8 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-5"  :uc="mcc(5)"  >  5 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-6"  :uc="mcc(6)"  >  6 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-7"  :uc="mcc(7)"  >  7 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-8"  :uc="mcc(8)"  >  8 </b-menuitem>
       </b-menurow> <b-menurow noturn>
-	<b-menuitem uri="mc-9"  :uc="mcc(9)"  >  9 </b-menuitem>
-	<b-menuitem uri="mc-10" :uc="mcc(10)" > 10 </b-menuitem>
-	<b-menuitem uri="mc-11" :uc="mcc(11)" > 11 </b-menuitem>
-	<b-menuitem uri="mc-12" :uc="mcc(12)" > 12 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-9"  :uc="mcc(9)"  >  9 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-10" :uc="mcc(10)" > 10 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-11" :uc="mcc(11)" > 11 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-12" :uc="mcc(12)" > 12 </b-menuitem>
       </b-menurow> <b-menurow noturn>
-	<b-menuitem uri="mc-13" :uc="mcc(13)" > 13 </b-menuitem>
-	<b-menuitem uri="mc-14" :uc="mcc(14)" > 14 </b-menuitem>
-	<b-menuitem uri="mc-15" :uc="mcc(15)" > 15 </b-menuitem>
-	<b-menuitem uri="mc-16" :uc="mcc(16)" > 16 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-13" :uc="mcc(13)" > 13 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-14" :uc="mcc(14)" > 14 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-15" :uc="mcc(15)" > 15 </b-menuitem>
+	<b-menuitem class="-nokbd" uri="mc-16" :uc="mcc(16)" > 16 </b-menuitem>
       </b-menurow>
     </b-contextmenu>
 
