@@ -133,6 +133,8 @@ export default {
   data() { return {
     footerclass: '',
     childrenmounted_: false,
+    done_resizing_: false,
+    handled_autofocus_: false,
     b_dialog_resizers: [],
   }; },
   provide() { return { b_dialog_resizers: this.b_dialog_resizers }; },
@@ -143,18 +145,16 @@ export default {
   },
   updated() {
     this.childrenmounted_ = !!this.$refs.body;
+    // newly shown
     if (this.$refs.dialog && !this.undo_shield)
-      { // newly shown
-	this.undo_shield = Util.setup_shield_element (this.$el, this.$refs.dialog, this.close.bind (this));
-	// autofocus
-	const autofocus_element = this.$refs.dialog.querySelector ('[autofocus]:not([disabled]):not([display="none"])');
-	autofocus_element?.focus();
-      }
+      this.undo_shield = Util.setup_shield_element (this.$el, this.$refs.dialog, this.close.bind (this));
+    // newly hidden
     if (!this.$refs.dialog && this.undo_shield)
-      { // newly hidden
+      {
 	this.undo_shield();
 	this.undo_shield = null;
       }
+    // adjust CSS
     if (this.$refs.dialog)
       {
 	this.footerclass = this.$refs.footer && this.$refs.footer.innerHTML ? '' : '-empty';
@@ -166,6 +166,21 @@ export default {
 	}
 	Util.vm_scope_style (this, css.join ('\n'));
       }
+    // autofocus
+    if (this.$refs.dialog && this.undo_shield && !this.handled_autofocus_ && this.done_resizing_) {
+      this.handled_autofocus_ = true;
+      const seen_autofocus = this.$refs.dialog.querySelector ('[autofocus]:not([disabled]):not([display="none"])');
+      if (seen_autofocus) {
+	const next_tick_autofocus = async () => {
+	  // wait for v-show=done_resizing to take effect
+	  await Vue.nextTick();
+	  // adjust to possible DOM changes
+	  const autofocus_element = this.$refs.dialog.querySelector ('[autofocus]:not([disabled]):not([display="none"])');
+	  autofocus_element?.focus();
+	};
+	next_tick_autofocus();
+      }
+    }
   },
   unmount() {
     this.undo_shield?.();
@@ -173,6 +188,8 @@ export default {
   },
   methods: {
     done_resizing() {
+      if (this.done_resizing_)
+	return this.done_resizing_;
       // children may introduce new b_dialog_resizers entries, so
       // done_resizing is `false` until children are present.
       if (!this.childrenmounted_)
@@ -180,6 +197,10 @@ export default {
       for (const r of this.b_dialog_resizers)
 	if (r.call (null))
 	  return false;
+      // resizing is done, but changing done_resizing_ may be ignored during render()
+      this.done_resizing_ = true;
+      // so force an update, this can only be triggered once anyway
+      this.$forceUpdate();
       return true;
     },
     close (event) {

@@ -71,7 +71,7 @@ $>/ui/aseapi.js: jsonipc/jsonipc.js ase/api.hh $(lib/AnklangSynthEngine) ui/Make
 	$(QGEN)
 	$Q $(CP) $< $@.tmp
 	$Q $(lib/AnklangSynthEngine) --js-api		>> $@.tmp
-	$Q echo 'export let server = s => { if (s instanceof Server) server = s; };'	>> $@.tmp
+	$Q echo 'export let server = Jsonipc.setup_promise_type (Server, s => server = s);'	>> $@.tmp
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/aseapi.js
 

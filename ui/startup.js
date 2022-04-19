@@ -122,7 +122,7 @@ async function bootup () {
 					   { onclose: want_reconnect });
     if (result instanceof Ase.Server)
       {
-	Ase.server (result);
+	Ase.server.__resolve__ (result);
 	Object.defineProperty (globalThis, 'Ase', { value: Ase });
 	Jsonapi._init (Ase.Jsonipc);
 	Ase.Emittable.prototype.on = function (eventselector, fun) {
@@ -142,30 +142,15 @@ async function bootup () {
     throw (new Error ('Ase: failed to connect to AnklangSynthEngine: ' + error));
   console.bootlog ("ASE: connect: server", await Ase.server.get_version());
 
+  // prepare Vue component templates
+  for (const [name, component] of Object.entries (VueComponents))
+    if (component.sfc_template)
+      component.template = component.sfc_template.call (null, Util.tmplstr, null);
   // create and configure Vue App
   const VueApp = Vue.createApp (Shell);
   VueApp.config.compilerOptions.isCustomElement = tag => !!window.customElements.get (tag);
   VueApp.config.compilerOptions.whitespace = 'preserve';
-  // VueApp.config.compilerOptions.comments = true;
-  const app = new AppClass (VueApp);
-  console.assert (app == App);
-  // ensure App has an AseProject
-  await App.load_project_checked ((await Ase.server.last_project()) || '');
-  // register directives and mixins
-  for (let directivename in Util.vue_directives) // register all utility directives
-    VueApp.directive (directivename, Util.vue_directives[directivename]);
-  for (let mixinname in Util.vue_mixins)         // register all utility mixins
-    VueApp.mixin (Util.vue_mixins[mixinname]);
-  // register all Vue components
-  for (const [name, component] of Object.entries (VueComponents))
-    {
-      if (component.sfc_template)
-	component.template = component.sfc_template.call (null, Util.tmplstr, null);
-      VueApp.component (name, component);
-    }
-
-  // provide common globals inside Vue handlers
-  Object.assign (VueApp.config.globalProperties, {
+  Object.assign (VueApp.config.globalProperties, { // common globals
     CONFIG: globalThis.CONFIG,
     debug: globalThis.debug,
     Util: globalThis.Util,
@@ -174,6 +159,23 @@ async function bootup () {
     document: globalThis.document,
     observable_from_getters: Util.observable_from_getters,
   });
+  // VueApp.config.compilerOptions.comments = true;
+  // register directives, mixins, components
+  for (let directivename in Util.vue_directives) // register all utility directives
+    VueApp.directive (directivename, Util.vue_directives[directivename]);
+  for (let mixinname in Util.vue_mixins)         // register all utility mixins
+    VueApp.mixin (Util.vue_mixins[mixinname]);
+  for (const [name, component] of Object.entries (VueComponents))
+    if (component !== Shell)
+      VueApp.component (name, component);
+
+  // create main App instance
+  const app = new AppClass (VueApp);
+  console.assert (app == App);
+
+  // ensure App has an AseProject
+  await App.load_project_checked ((await Ase.server.last_project()) || '');
+
   // mount in DOM and create component hierarchy
   await document.fonts.ready; // Fonts - wait for fonts before Vue components are mounted and compute sizes
   App.mount ('#b-app');
