@@ -28,7 +28,9 @@ module.exports = {
     sfc_template: false },
 
   rules: {
-    "no-unused-vars": [ "warn", { args: "none", varsIgnorePattern: "^_.*" } ],
+    "no-unused-vars": OFF, // see unused-imports/no-unused-vars
+    "unused-imports/no-unused-vars": [ "warn", { args: "none", varsIgnorePattern: "^_.*" } ],
+    "unused-imports/no-unused-imports": OFF,
     "no-unreachable": [ "warn" ],
     semi: [ "error", "always" ],
     "no-extra-semi": [ "warn" ],
@@ -72,7 +74,7 @@ module.exports = {
     quotes: [ OFF, "single" ]
   },
 
-  plugins: [ "html" ],
+  plugins: [ "html", "unused-imports" ],
 
   extends: [
     "eslint:recommended",
