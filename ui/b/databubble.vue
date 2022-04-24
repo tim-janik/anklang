@@ -10,8 +10,8 @@
 
   /* Bubble color setup */
   $b-data-bubble-hue: 52;
-  $b-data-bubble-fg:  color($b-data-bubble-hue, 1%);
-  $b-data-bubble-bg:  color($b-data-bubble-hue, 90%);
+  $b-data-bubble-fg:  hsl($b-data-bubble-hue, 100%, 1%);
+  $b-data-bubble-bg:  hsl($b-data-bubble-hue, 100%, 90%);
   $b-data-bubble-bg2: lighter($b-data-bubble-bg, 3%);
   $b-data-bubble-br:  $b-data-bubble-bg2;
 
