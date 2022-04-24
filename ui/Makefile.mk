@@ -73,46 +73,32 @@ $>/ui/aseapi.js: jsonipc/jsonipc.js ase/api.hh $(lib/AnklangSynthEngine) ui/Make
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/aseapi.js
 
-# == ui/b/vue.targets ==
-ui/b/vue.targets ::= $(ui/vue.wildcards:%.vue=$>/%.js)
-$(ui/b/vue.targets): ui/sfc-compile.js 			| $>/ui/fonts/AnklangIcons.css
-$(ui/b/vue.targets): $>/%.js: %.vue			| $>/ui/b/ $>/node_modules/.npm.done
+# == ui/b/vuejs.targets ==
+ui/b/vuejs.targets ::= $(ui/vue.wildcards:%.vue=$>/%.js)
+ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.css)
+$(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
+$(ui/b/vuejs.targets): ui/sfc-compile.js 			| $>/ui/fonts/AnklangIcons.css
+$(ui/b/vuejs.targets): $>/%.js: %.vue			| $>/ui/b/ $>/node_modules/.npm.done
 	$(QGEN)
 	$Q node ui/sfc-compile.js --debug -I $>/ui/ $< -O $(@D)
-$(ui/b/vue.targets): $(wildcard ui/*.scss ui/b/*.scss)	# includes of the sfc-compile.js generated CSS outputs
-$>/ui/.build1-stamp: $(ui/b/vue.targets)
+$(ui/b/vuejs.targets): $(wildcard ui/*.scss ui/b/*.scss)	# includes of the sfc-compile.js generated CSS outputs
+$>/ui/.build1-stamp: $(ui/b/vuejs.targets)
 
-# == all-cssfiles.js ==
-ui/all-cssfiles ::= ui/cssaux.scss ui/styles.scss ui/theme.scss ui/mixins.scss
-$>/ui/all-cssfiles.js: $(ui/all-cssfiles) ui/Makefile.mk			| $>/ui/
+# == ui/all-styles.css ==
+ui/csscopy.sources ::= ui/styles.scss ui/theme.scss ui/mixins.scss
+$>/ui/all-styles.css: $>/ui/postcss.config.js ui/Makefile.mk $(ui/csscopy.sources) $(ui/b/vuecss.targets)	| $>/ui/
 	$(QGEN)
-	$Q $(file > $>/ui/all-cssfiles.gen.js, $(ui/all-cssfiles.gen.js))
-	$Q echo "export default {"						>  $@.tmp
-	$Q nodejs $>/ui/all-cssfiles.gen.js					>> $@.tmp
-	$Q echo "};"								>> $@.tmp
-	$Q mv $@.tmp $@ && rm $>/ui/all-cssfiles.gen.js
-$>/ui/.build1-stamp: $>/ui/all-cssfiles.js
-# ui/all-cssfiles.gen.js
-define ui/all-cssfiles.gen.js
-fs = require ('fs');
-for (let f of '$(ui/all-cssfiles)'.split (/ +/)) {
-  let s = '' + fs.readFileSync (f);
-  console.log ('  "' + f.replace (/.*\//, '') + '":', JSON.stringify (s) + ',');
-}
-endef
-
-# == all-styles.css ==
-$>/ui/all-styles.css: ui/Makefile.mk $(ui/b/vue.targets)			| $>/ui/
-	$(QGEN)
-	$Q echo 					>  $@.tmp
-	$Q for f in $$(cd $>/ui/b/ && ls *.css) ; do				\
-		echo "@import './b/$${f}';"		>> $@.tmp		\
+	$Q $(CP) $(ui/csscopy.sources) $>/ui/
+	$Q echo '@charset "UTF-8";'					>  $>/ui/imports.scss
+	$Q echo "@import 'styles.scss';"				>> $>/ui/imports.scss
+	$Q for f in $$(cd $>/ui/b/ && echo *.css) ; do			\
+		echo "@import 'b/$${f}';"				>> $>/ui/imports.scss \
 		|| exit 1 ; done
-	$Q mv $@.tmp $@
+	$Q cd $>/ui/ && npx postcss imports.scss --map -o $(@F)
 $>/ui/.build1-stamp: $>/ui/all-styles.css
 
 # == all-components.js ==
-$>/ui/all-components.js: ui/Makefile.mk $(ui/b/vue.targets) $(wildcard ui/b/*)	| $>/ui/
+$>/ui/all-components.js: ui/Makefile.mk $(ui/b/vuejs.targets) $(wildcard ui/b/*)	| $>/ui/
 	$(QGEN)
 	$Q echo 					>  $@.tmp
 	$Q EX='' && for f in $$(cd ui/b/ && ls *.vue) ; do			\
@@ -128,7 +114,7 @@ $>/ui/.build1-stamp: $>/ui/all-components.js
 # == File Copies ==
 ui/copy.targets ::= $(ui/copy.files:%=$>/%)
 $(ui/copy.targets): $>/ui/%: ui/%	| $>/ui/b/
-	$(QECHO) COPY $<
+	$(QECHO) COPY $@
 	$Q $(CP) $< --parents $>/
 $>/ui/.build1-stamp: $(ui/copy.targets)
 
