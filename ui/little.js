@@ -18,7 +18,7 @@ export async function postcss_process (css_string, fromname = '<style string>') 
   try {
     return await postcss_processor.process (css_string, options);
   } catch (ex) {
-    console.warn ('CSS error in:', fromname + '\n', css_string);
+    console.warn ('PostCSS input:', fromname + '\n', css_string);
     console.error ('PostCSS error:', ex);
     return '';
   }
@@ -27,10 +27,9 @@ export async function postcss_process (css_string, fromname = '<style string>') 
 const imports_done = memorize_imports ([ 'theme.scss', 'mixins.scss', 'shadow.scss' ]);
 
 export async function postcss (...args) {
-  const origin = "css`` literal";
   const css_string = args.join ('');
   await imports_done;
-  const result = await postcss_process (css_string, origin);
+  const result = await postcss_process (css_string, "literal-css``");
   return css`${unsafeCSS (result)}`;
 }
 
