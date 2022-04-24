@@ -3,7 +3,6 @@
 
 const fs = require ('fs');
 const path = require ('path');
-const sass = require ('sass');
 
 /// Count newlines
 function count_newlines (str) {
@@ -96,6 +95,11 @@ function process_file (filename, config) {
 
 /// Process and write style information
 function write_style (filename, ofile, config, stylestring) {
+  const with_sass = false;
+  if (!with_sass)
+    return fs.writeFileSync (ofile + '.css', stylestring);
+  // write CSS after SASS processing
+  const sass = require ('sass');
   const result = sass.renderSync ({
     data: stylestring,
     file: filename,
@@ -107,8 +111,6 @@ function write_style (filename, ofile, config, stylestring) {
     functions: require ("./chromatic-sass2"),
     outFile: ofile + '.css',
   });
-  //  function (err, result) {
-  // if (err)       console.error (err);
   const css_string = result.css.toString();
   fs.writeFileSync (ofile + '.css', css_string);
   return css_string;
