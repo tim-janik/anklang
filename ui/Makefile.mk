@@ -79,7 +79,7 @@ $(ui/b/vue.targets): ui/sfc-compile.js 			| $>/ui/fonts/AnklangIcons.css
 $(ui/b/vue.targets): $>/%.js: %.vue			| $>/ui/b/ $>/node_modules/.npm.done
 	$(QGEN)
 	$Q node ui/sfc-compile.js --debug -I $>/ui/ $< -O $(@D)
-$(ui/b/vue.targets): $(wildcard ui/*.scss ui/b/*.scss)	# includes of the sfc generated CSS outputs
+$(ui/b/vue.targets): $(wildcard ui/*.scss ui/b/*.scss)	# includes of the sfc-compile.js generated CSS outputs
 $>/ui/.build1-stamp: $(ui/b/vue.targets)
 
 # == all-styles.css ==
@@ -177,12 +177,17 @@ $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 	$(QGEN)
 	$Q: # re-export and bundle postcss modules
 	$Q mkdir -p $>/ui/tmp-browserify/
-	$Q echo "const module_list = {"								>  $>/ui/tmp-browserify/browserified.js
-	$Q for mod in markdown-it chroma-js ; do \
+	$Q echo "const modules = {"								>  $>/ui/tmp-browserify/browserified.js
+	$Q for mod in \
+		postcss postcss-advanced-variables postcss-color-hwb postcss-color-mod-function postcss-discard-comments \
+		postcss-functions postcss-js postcss-lab-function postcss-nested postcss-scss \
+		css-color-converter markdown-it chroma-js \
+		  ; do \
 		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp-browserify/browserified.js
 	$Q echo "};"										>> $>/ui/tmp-browserify/browserified.js
-	$Q echo "Object.defineProperty (window, 'require', { value: m => module_list[m] });"	>> $>/ui/tmp-browserify/browserified.js
-	$Q echo "if (__DEV__) window.require.module_list = module_list;"			>> $>/ui/tmp-browserify/browserified.js
+	$Q echo "const browserify_require = m => modules[m] || console.error ('Unknown module:', m);"	>> $>/ui/tmp-browserify/browserified.js
+	$Q echo "Object.defineProperty (window, 'require', { value: browserify_require });"		>> $>/ui/tmp-browserify/browserified.js
+	$Q echo "window.require.modules = modules;"						>> $>/ui/tmp-browserify/browserified.js
 	$Q $>/node_modules/.bin/browserify -o $>/ui/tmp-browserify/out.browserified.js $>/ui/tmp-browserify/browserified.js
 	$Q mv $>/ui/tmp-browserify/out.browserified.js $@ && rm -r $>/ui/tmp-browserify/
 $>/ui/.build1-stamp: $>/ui/browserified.js
