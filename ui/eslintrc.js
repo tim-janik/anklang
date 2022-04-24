@@ -4,14 +4,14 @@ const OFF = 'off';
 
 module.exports = {
   env: {
+    es2022: true,
     browser: true,
-    es6: true,
     node: true },
 
-  // babel-eslint as parser is needed for stage-3 syntax, see: https://stackoverflow.com/questions/60046847/eslint-does-not-allow-static-class-properties/60464446#60464446
-  // parser: "babel-eslint",	// <- moved to parserOptions under vue-eslint-parser
+  // parser: "babel-eslint", // <- moved to parserOptions under vue-eslint-parser (eslint-plugin-vue)
   parserOptions: {
-    parser: "babel-eslint",	// <- moved to parserOptions under vue-eslint-parser
+    parser: "@babel/eslint-parser",
+    requireConfigFile: false,
     sourceType: "module" },
 
   globals: {
@@ -21,14 +21,11 @@ module.exports = {
     CONFIG: false,
     Util: false,
     Vue: false,
-    WeakRef: false,
     __DEV__: false,
     debug: false,
     log: false,
     host: false,
-    FinalizationRegistry: false,
-    sfc_template: false,
-    globalThis: false },
+    sfc_template: false },
 
   rules: {
     "no-unused-vars": [ "warn", { args: "none", varsIgnorePattern: "^_.*" } ],
@@ -70,6 +67,8 @@ module.exports = {
     'vue/no-v-model-argument': OFF,
     'vue/v-slot-style': OFF,
     'vue/no-v-html': OFF,
+    'vue/multi-word-component-names': OFF,
+    'vue/first-attribute-linebreak': OFF,
     quotes: [ OFF, "single" ]
   },
 
