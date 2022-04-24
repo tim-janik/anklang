@@ -30,6 +30,27 @@ ui/public.wildcards ::= $(wildcard	\
 	ui/favicon.ico			\
 )
 
+# == ui/lit.js ==
+$>/ui/lit.js.map: $>/ui/lit.js ;
+$>/ui/lit.js:	$>/node_modules/.npm.done ui/Makefile.mk		| $>/ui/
+	$(QGEN)
+	$Q rm -f $>/ui/lit* $@
+	$Q for mod in \
+		lit lit/directives/async-append.js lit/directives/async-replace.js \
+		lit/directives/cache.js lit/directives/choose.js lit/directives/class-map.js lit/directives/guard.js \
+		lit/directives/if-defined.js lit/directives/join.js lit/directives/keyed.js lit/directives/live.js \
+		lit/directives/map.js lit/directives/range.js lit/directives/ref.js lit/directives/repeat.js \
+		lit/directives/style-map.js lit/directives/template-content.js lit/directives/unsafe-html.js \
+		lit/directives/unsafe-svg.js lit/directives/until.js lit/directives/when.js \
+		  ; do \
+		echo "export * from '$$mod';" ; \
+	   done							> $>/ui/lit-all.js
+	$Q cd $>/ui/ && ../node_modules/.bin/rollup \
+		-p @rollup/plugin-node-resolve \
+		lit-all.js -o lit.js --sourcemapFile lit.js.map -m
+	$Q $(RM) $>/ui/lit-all.js
+$>/ui/.build1-stamp: $>/ui/lit.js
+
 # == ui/vue.js ==
 $>/ui/vue.js:	$>/node_modules/.npm.done				| $>/ui/
 	$(QGEN)
