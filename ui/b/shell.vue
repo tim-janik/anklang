@@ -9,7 +9,7 @@
 </docs>
 
 <style lang="scss">
-@import '../styles.scss'; //* shell.vue only, everything else must: @import 'mixins.scss'; */
+@import 'mixins.scss';
 
 .b-shell {
   position: relative;
