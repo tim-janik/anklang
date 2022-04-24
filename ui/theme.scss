@@ -239,7 +239,7 @@ $b-singlebutton-bgd:  contrast-darken($b-singlebutton-bg, 1.28);
 $b-singlebutton-lg:   linear-gradient(to top, $b-singlebutton-bgd, $b-singlebutton-bgl);
 $b-singlebutton-dark: linear-gradient(to bottom, contrast-darken($b-singlebutton-bgd, 1.05), $b-singlebutton-bgd);
 $b-singlebutton-border-color: contrast-darken($b-singlebutton-bg, 3);
-@mixin b-singlebutton ($vpad: 5px, $hpad: 5px) {
+@mixin b-singlebutton($vpad: 5px, $hpad: 5px) {
   background: $b-singlebutton-lg;
   color: $b-singlebutton-fg;
   text-align: center;
@@ -286,7 +286,7 @@ $b-piano-roll-font:     	normal 9px $b-main-font-family; // the '9px' part is dy
 // font format: italic small-caps bold 12px serif
 
 // == input[type='number'] ==
-@mixin b-style-number-input () {
+@mixin b-style-number-input() {
   @include b-style-inset();
   // Assign webkit spinners that fit the theme
   &::-webkit-outer-spin-button {
