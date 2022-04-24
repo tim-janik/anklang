@@ -45,7 +45,7 @@ function process_file (filename, config) {
   const re = RegExp ('(' + pat + ')', 'mgs');
   const parts = string.split (re); // [ '', '<!-- -->', '\n\n', '<style></style>', '\n\n', '<template></template>', '\n\n', '<script></script>', '\n' ]
   // convert tags
-  let newlines = 0;
+  let css_string, newlines = 0;
   for (let i = 1; i < parts.length; i += 2)
     {
       newlines += count_newlines (parts[i - 1]);
@@ -68,7 +68,7 @@ function process_file (filename, config) {
 	  if (parts[i].match (/<\/style>$/i))
 	    {
 	      bits[3] = '\n';
-	      write_style (filename, ofile, config, '\n'.repeat (newlines) + bits.join (''));
+	      css_string = write_style (filename, ofile, config, '\n'.repeat (newlines) + bits.join (''));
 	      bits[2] = bits[2].replace (/([`\\])/g, '\\$1');
 	    }
 	  else
@@ -82,6 +82,12 @@ function process_file (filename, config) {
 	}
       newlines += part_newlines;
     }
+  // append CSS
+  if (false && css_string) {
+    let qcss = css_string.replace (/([`\\])/g, '\\$1');
+    qcss = qcss.replace (/\n\/\*# sourceMap.*\*\/\s*$/, '');
+    parts.push ('\nfunction sfc_css (css, m) { return css`' + qcss + '`; }\n');
+  }
   // return string.replace (re, 'function sfc_docs (tl_docs, m) { return tl_docs`$3`; }');
   ofile += '.js';
   fs.writeFileSync (ofile, parts.join (''));
@@ -103,7 +109,9 @@ function write_style (filename, ofile, config, stylestring) {
   });
   //  function (err, result) {
   // if (err)       console.error (err);
-  fs.writeFileSync (ofile + '.css', result.css.toString());
+  const css_string = result.css.toString();
+  fs.writeFileSync (ofile + '.css', css_string);
+  return css_string;
 }
 
 // Config and arguments
