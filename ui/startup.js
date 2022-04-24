@@ -23,9 +23,7 @@ import * as Ase from './aseapi.js';
 // Global Vue and Theme
 import * as Vue from './vue.js';
 Object.defineProperty (globalThis, 'Vue', { value: Vue });
-import { AppClass } from './b/app.js';
-import Shell from './b/shell.js';
-import VueComponents from './all-components.js';
+import { create_app } from './b/app.js';
 
 // load Script host
 import * as Script from './script.js';
@@ -137,36 +135,9 @@ async function bootup () {
     throw (new Error ('Ase: failed to connect to AnklangSynthEngine: ' + error));
   console.bootlog ("ASE: connect: server", await Ase.server.get_version());
 
-  // prepare Vue component templates
-  for (const [__name, component] of Object.entries (VueComponents))
-    if (component.sfc_template)
-      component.template = component.sfc_template.call (null, Util.tmplstr, null);
-  // create and configure Vue App
-  const VueApp = Vue.createApp (Shell);
-  VueApp.config.compilerOptions.isCustomElement = tag => !!window.customElements.get (tag);
-  VueApp.config.compilerOptions.whitespace = 'preserve';
-  Object.assign (VueApp.config.globalProperties, { // common globals
-    CONFIG: globalThis.CONFIG,
-    debug: globalThis.debug,
-    Util: globalThis.Util,
-    Ase: globalThis.Ase,
-    window: globalThis.window,
-    document: globalThis.document,
-    observable_from_getters: Util.observable_from_getters,
-  });
-  // VueApp.config.compilerOptions.comments = true;
-  // register directives, mixins, components
-  for (let directivename in Util.vue_directives) // register all utility directives
-    VueApp.directive (directivename, Util.vue_directives[directivename]);
-  for (let mixinname in Util.vue_mixins)         // register all utility mixins
-    VueApp.mixin (Util.vue_mixins[mixinname]);
-  for (const [name, component] of Object.entries (VueComponents))
-    if (component !== Shell)
-      VueApp.component (name, component);
-
   // create main App instance
-  const app = new AppClass (VueApp);
-  console.assert (app == App);
+  const app = await create_app();
+  console.assert (app === App);
 
   // ensure App has an AseProject
   await App.load_project_checked ((await Ase.server.last_project()) || '');
