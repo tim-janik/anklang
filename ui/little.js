@@ -24,14 +24,20 @@ export async function postcss_process (css_string, fromname = '<style string>') 
   }
 }
 
+const imports_done = memorize_imports ([ 'theme.scss', 'mixins.scss', 'shadow.scss' ]);
+
 export async function postcss (...args) {
+  const origin = "css`` literal";
   const css_string = args.join ('');
-  const result = await postcss_process (css_string, "css`` literal");
+  await imports_done;
+  const result = await postcss_process (css_string, origin);
   return css`${unsafeCSS (result)}`;
 }
 
-//export const css_import = PC.css_import;
-/* import all_cssfiles from '/all-cssfiles.js';
-for (const filename of Object.keys (all_cssfiles))
-  ; // css_import (filename, all_cssfiles[filename]);
-*/
+async function memorize_imports (imports) {
+  const fetchoptions = {};
+  const fetchlist = imports.map (async filename =>
+    postcss_config.add_import (filename, await (await fetch (filename, fetchoptions)).text()));
+  await Promise.all (fetchlist);
+}
+
