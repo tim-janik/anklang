@@ -186,8 +186,11 @@ class FocusGuard {
       return false; // not interfering
     const focuslist = list_focusables (this.focus_root_list[0][0]);
     const idx = focuslist.indexOf (target);
-    if (idx < 0) // invalid element gaining focus
-      {
+    if (idx >= 0 || // element found in our detected focus order
+	Util.has_ancestor (document.activeElement, this.focus_root_list[0][0])) // posisbly customElement
+      this.last_focus = document.activeElement;
+    else // invalid element gaining focus
+    {
 	document.activeElement.blur();
 	if (refocus && focuslist.length)
 	  {
@@ -199,8 +202,6 @@ class FocusGuard {
 	  }
 	return true;
       }
-    else
-      this.last_focus = document.activeElement;
     return false; // not interfering
   }
   keydown_handler (event) {
