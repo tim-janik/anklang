@@ -32,7 +32,7 @@
       padding: 0 $b-statusbar-field-spacing;
       filter: brightness(asfactor($b-statusbar-icon-brightness));
       &:hover:not(.b-active) {
-	filter: brightness(divfactor($b-statusbar-icon-brightness));
+	filter: brightness(div(1.0, asfactor($b-statusbar-icon-brightness)));
 	transform: scale($b-statusbar-icon-scaleup);
       }
       &.b-active {
@@ -52,7 +52,7 @@
       strong { color: $b-main-foreground; font-weight: normal; padding: 0 0.5em; }
       kbd {
 	padding: 0 0.4em 1px;
-	@include b-kbd-hotkey($border: true);
+	@include b-kbd-hotkey(true);
       }
     }
   }
