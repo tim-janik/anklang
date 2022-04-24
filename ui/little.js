@@ -10,18 +10,27 @@ export const docs = (...args) => undefined;
 // == PostCSS ==
 const postcssjs = require ('postcss');		// browserified
 import postcss_config from './postcss.esm.js';	// require()s browserified plugins
-const postcss_processor = postcssjs (postcss_config);
+const postcss_processor = postcssjs (postcss_config.plugins);
 
 /// Process CSS via PostCSS, uses async plugins.
 export async function postcss_process (css_string, fromname = '<style string>') {
   const options = Object.assign ({ from: fromname }, postcss_config);
+  let result;
   try {
-    return await postcss_processor.process (css_string, options);
+    result = (await postcss_processor.process (css_string, options)).css;
   } catch (ex) {
     console.warn ('PostCSS input:', fromname + '\n', css_string);
     console.error ('PostCSS error:', ex);
-    return '';
+    result = '';
   }
+  if (__DEV__) {
+    const errs = require ('csstree-validator').validate (result, "input.postcss");
+    if (errs.length) {
+      console.error ('postcss``:' + errs[0].line + ': ' + errs[0].name + ': ' + errs[0].message + ': ' + errs[0].css + '\n', errs);
+      console.info (result);
+    }
+  }
+  return result;
 }
 
 const imports_done = memorize_imports ([ 'theme.scss', 'mixins.scss', 'shadow.scss' ]);
