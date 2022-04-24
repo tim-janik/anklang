@@ -85,7 +85,7 @@ $(ui/b/vuejs.targets): $(wildcard ui/*.scss ui/b/*.scss)	# includes of the sfc-c
 $>/ui/.build1-stamp: $(ui/b/vuejs.targets)
 
 # == ui/all-styles.css ==
-ui/csscopy.sources ::= ui/styles.scss ui/theme.scss ui/mixins.scss
+ui/csscopy.sources ::= ui/styles.scss ui/theme.scss ui/mixins.scss ui/shadow.scss
 $>/ui/all-styles.css: $>/ui/postcss.config.js ui/Makefile.mk $(ui/csscopy.sources) $(ui/b/vuecss.targets)	| $>/ui/
 	$(QGEN)
 	$Q $(CP) $(ui/csscopy.sources) $>/ui/
