@@ -82,8 +82,27 @@ $(ui/b/vue.targets): $>/%.js: %.vue			| $>/ui/b/ $>/node_modules/.npm.done
 $(ui/b/vue.targets): $(wildcard ui/*.scss ui/b/*.scss)	# includes of the sfc-compile.js generated CSS outputs
 $>/ui/.build1-stamp: $(ui/b/vue.targets)
 
+# == all-cssfiles.js ==
+ui/all-cssfiles ::= ui/cssaux.scss ui/styles.scss ui/theme.scss ui/b/mixins.scss
+$>/ui/all-cssfiles.js: $(ui/all-cssfiles) ui/Makefile.mk			| $>/ui/
+	$(QGEN)
+	$Q $(file > $>/ui/all-cssfiles.gen.js, $(ui/all-cssfiles.gen.js))
+	$Q echo "export default {"						>  $@.tmp
+	$Q nodejs $>/ui/all-cssfiles.gen.js					>> $@.tmp
+	$Q echo "};"								>> $@.tmp
+	$Q mv $@.tmp $@ && rm $>/ui/all-cssfiles.gen.js
+$>/ui/.build1-stamp: $>/ui/all-cssfiles.js
+# ui/all-cssfiles.gen.js
+define ui/all-cssfiles.gen.js
+fs = require ('fs');
+for (let f of '$(ui/all-cssfiles)'.split (/ +/)) {
+  let s = '' + fs.readFileSync (f);
+  console.log ('  "' + f.replace (/.*\//, '') + '":', JSON.stringify (s) + ',');
+}
+endef
+
 # == all-styles.css ==
-$>/ui/all-styles.css: ui/Makefile.mk $(ui/b/vue.targets)
+$>/ui/all-styles.css: ui/Makefile.mk $(ui/b/vue.targets)			| $>/ui/
 	$(QGEN)
 	$Q echo 					>  $@.tmp
 	$Q for f in $$(cd $>/ui/b/ && ls *.css) ; do				\
@@ -93,7 +112,7 @@ $>/ui/all-styles.css: ui/Makefile.mk $(ui/b/vue.targets)
 $>/ui/.build1-stamp: $>/ui/all-styles.css
 
 # == all-components.js ==
-$>/ui/all-components.js: ui/Makefile.mk $(ui/b/vue.targets) $(wildcard ui/b/*)		| $>/ui/
+$>/ui/all-components.js: ui/Makefile.mk $(ui/b/vue.targets) $(wildcard ui/b/*)	| $>/ui/
 	$(QGEN)
 	$Q echo 					>  $@.tmp
 	$Q EX='' && for f in $$(cd ui/b/ && ls *.vue) ; do			\
