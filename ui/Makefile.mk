@@ -97,6 +97,7 @@ $>/ui/all-styles.css: $>/ui/postcss.config.js ui/Makefile.mk $(ui/csscopy.source
 	$Q cd $>/ui/ && npx postcss imports.scss --map -o $(@F)
 $>/ui/postcss.esm.js: $>/ui/postcss.config.js ui/Makefile.mk
 	$(QGEN)
+	$Q cd $>/ui/ && node ./postcss.config.js $V # CHECK transformations
 	$Q sed 's|/\*CJSONLY\*/module\.exports\s*=|export default|' $< > $@
 $>/ui/.build1-stamp: $>/ui/all-styles.css $>/ui/postcss.esm.js
 
