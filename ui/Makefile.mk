@@ -95,7 +95,7 @@ $>/ui/all-styles.css: $>/ui/postcss.config.js ui/Makefile.mk $(ui/csscopy.source
 		echo "@import 'b/$${f}';"				>> $>/ui/imports.scss \
 		|| exit 1 ; done
 	$Q cd $>/ui/ && npx postcss imports.scss --map -o $(@F)
-$>/ui/postcss.esm.js: $>/ui/postcss.config.js ui/Makefile.mk
+$>/ui/postcss.esm.js: $>/ui/postcss.config.js ui/Makefile.mk $>/node_modules/.npm.done
 	$(QGEN)
 	$Q cd $>/ui/ && node ./postcss.config.js $V # CHECK transformations
 	$Q sed 's|/\*CJSONLY\*/module\.exports\s*=|export default|' $< > $@
@@ -188,10 +188,9 @@ $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 	$Q mkdir -p $>/ui/tmp-browserify/
 	$Q echo "const modules = {"								>  $>/ui/tmp-browserify/browserified.js
 	$Q for mod in \
-		postcss postcss-advanced-variables postcss-color-hwb postcss-color-mod-function postcss-discard-comments \
-		postcss-functions postcss-js postcss-lab-function postcss-nested postcss-scss \
-		css-color-converter markdown-it chroma-js \
-		  ; do \
+		postcss postcss-advanced-variables postcss-color-mod-function postcss-color-hwb postcss-lab-function \
+		postcss-functions postcss-nested postcss-scss postcss-discard-comments postcss-discard-duplicates \
+		css-color-converter markdown-it chroma-js csstree-validator ; do \
 		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp-browserify/browserified.js
 	$Q echo "};"										>> $>/ui/tmp-browserify/browserified.js
 	$Q echo "const browserify_require = m => modules[m] || console.error ('Unknown module:', m);"	>> $>/ui/tmp-browserify/browserified.js
@@ -228,6 +227,15 @@ $>/ui/.build2-stamp: $>/ui/.eslint.done	# deferred during rebuilds
 eslint: $>/ui/.eslint.files $>/node_modules/.npm.done
 	$Q cd $>/ui/ && npm run $@
 .PHONY: eslint
+
+# == cssvalid.done ==
+$>/ui/.cssvalid.done: $>/ui/all-styles.css ui/Makefile.mk
+	$(QGEN)
+	$Q $>/node_modules/.bin/csstree-validator -r gnu $< > $>/ui/.cssvalid.err 2>&1 ; :
+	$Q test ! -s $>/ui/.cssvalid.err || sed -r $$'s/^"([^"]+)":/\e[31;1m\\1\e[0m:/' $>/ui/.cssvalid.err
+	$Q # test -s $>/ui/.cssvalid.err && exit 1
+	$Q touch $@
+$>/ui/.build2-stamp: $>/ui/.cssvalid.done	# deferred during rebuilds
 
 # == ui/scripting-docs.md ==
 $>/ui/scripting-docs.md: ui/host.js ui/ch-scripting.md $(ui/jsdoc.deps) ui/Makefile.mk $>/node_modules/.npm.done	| $>/ui/
