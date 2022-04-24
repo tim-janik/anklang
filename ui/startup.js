@@ -3,13 +3,8 @@
 
 import './browserified.js';	// provides require() and browserified modules
 
-// Hook into onload
-if (document.readyState == 'complete')
-  throw Error ("startup.js: script loaded too late");
-window.addEventListener ('load', bootup);
-console.bootlog = console.log;
-
 // Global CONFIG
+console.bootlog = console.log;
 const fallback_config = {
   // runtime defaults and constants
   MAXINT: 2147483647, MAXUINT: 4294967295, mainjs: false,
@@ -80,7 +75,7 @@ const Jsonapi = {
   },
 };
 
-// Bootup, called onload
+// Bootup, called after onload
 async function bootup () {
   if (window.__Electron__)
     {
@@ -251,11 +246,8 @@ function browser_config() {
   // Firefox sliders cannot be tragged when tabindex=-1
   const slidertabindex = gecko ? "0" : "-1";
   // Chrome Bug: https://bugs.chromium.org/p/chromium/issues/detail?id=1092358 https://github.com/w3c/pointerlock/issues/42
-  // TEST: let l={}; document.body.onpointermove = e=>{ console.log("screenX:",e.screenX-l.screenX,"movementX:",e.movementX); l=e; }
   const chrome_major = parseInt (( /\bChrome\/([0-9]+)\./.exec (navigator.userAgent) || [0,0] )[1]);
-  const chrome_major_last_buggy = 100;
-  const dpr_movement = chrome_major >= 37 && chrome_major <= chrome_major_last_buggy;
-  console.assert (chrome_major <= chrome_major_last_buggy, `WARNING: Chrome/${chrome_major} has not been tested for the movementX devicePixelRatio bug`);
+  const dpr_movement = chrome_major >= 37 && chrome_major <= 100; // Chrome-101 finally fixes #1092358
   if (dpr_movement)
     console.bootlog ("Detected Chrome bug #1092358...");
   // Prevent Web Browser menus interfering with the UI
@@ -279,3 +271,8 @@ async function self_tests() {
   console.assert (Util.equals_recursively (obj, r));
   Ase.server.set_data (Ase.ResourcePath.SESSION, ukey, undefined);
 }
+
+// Boot after onload
+if (document.readyState !== 'complete')
+  await new Promise (r => window.addEventListener ('load', r, { once: true }));
+bootup();
