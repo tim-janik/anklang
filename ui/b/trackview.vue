@@ -15,7 +15,7 @@
   $b-trackview-level-height: 3px;
   $b-trackview-level-space: 1px;
   .b-trackview-lbg {
-    height: $b-trackview-level-height + $b-trackview-level-space + $b-trackview-level-height;
+    height: calc($b-trackview-level-height + $b-trackview-level-space + $b-trackview-level-height);
     --db-zpc: 66.66%;
     background: linear-gradient(to right, #0b0, #bb0 var(--db-zpc), #b00);
   }
@@ -23,7 +23,7 @@
   .b-trackview-lbg, .b-trackview-lsp	{ position: absolute; width: 100%; }
   .b-trackview-ct0, .b-trackview-cm0	{ top: 0px; }
   .b-trackview-lsp				{ top: $b-trackview-level-height; height: $b-trackview-level-space; }
-  .b-trackview-ct1, .b-trackview-cm1	{ top: $b-trackview-level-height + $b-trackview-level-space; }
+  .b-trackview-ct1, .b-trackview-cm1	{ top: calc($b-trackview-level-height + $b-trackview-level-space); }
   .b-trackview-lsp {
     background-color: rgba( 0, 0, 0, .80);
   }
@@ -36,7 +36,7 @@
   }
   .b-trackview-cm0, .b-trackview-cm1	{ width: 100%; }
   .b-trackview-meter {
-    height: $b-trackview-level-height + $b-trackview-level-space + $b-trackview-level-height;
+    height: calc($b-trackview-level-height + $b-trackview-level-space + $b-trackview-level-height);
     position: relative;
     /* Pushing this element onto its own compositing layer helps to reduce
      * the compositing overhead for the layers contained within.

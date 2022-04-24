@@ -15,7 +15,7 @@
   .b-partthumb {
     display: inline-block; position: absolute; top: 0px; bottom: 0px;
     height: $b-trackrow-height;
-    border-radius: $b-theme-border-radius * 0.66;
+    border-radius: calc($b-theme-border-radius * 0.66);
     --partthumb-font-color: #{$b-partthumb-font-color}; --partthumb-font: #{$b-partthumb-font};
     --partthumb-note-color: #{$b-partthumb-note-color}; --partthumb-colors: #{$b-partthumb-colors};
     background-color: #222;

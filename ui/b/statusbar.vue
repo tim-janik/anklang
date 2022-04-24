@@ -19,7 +19,7 @@
       display: inline-block; overflow-y: visible; //* avoid scrolling */
       overflow-x: hidden; white-space: nowrap;
       flex-shrink: 1; flex-grow: 1;
-      margin-left: $b-statusbar-field-spacing * 2;
+      margin-left: calc($b-statusbar-field-spacing * 2);
     }
     .b-statusbar-spacer {
       display: inline; flex-shrink: 1; flex-grow: 0; white-space: nowrap;

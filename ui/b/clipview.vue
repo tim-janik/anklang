@@ -26,7 +26,7 @@ $b-clipview-colors: #ff7b50a7, #f68403a7, #d6960ea7, #92ad19a7, #67b518a7, #22bb
   .-canvas {
     display: inline; position: absolute; top: 0px; bottom: 0px; left: 0px; right: 0px;
     height: $b-trackrow-height;
-    border-radius: $b-theme-border-radius * 0.66;
+    border-radius: calc($b-theme-border-radius * 0.66);
     --clipview-font-color: #{$b-clipview-font-color}; --clipview-font: #{$b-clipview-font};
     --clipview-note-color: #{$b-clipview-note-color}; --clipview-colors: #{$b-clipview-colors};
     background-color: #222;

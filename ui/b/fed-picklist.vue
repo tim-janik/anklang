@@ -18,7 +18,7 @@
   .b-fed-picklist		{
     $b-fed-picklist-width: 23em;
     .b-fed-picklist-button {
-      width: 1.5 + $b-fed-picklist-width + 1.5;
+      width: calc(1.5 + $b-fed-picklist-width + 1.5);
       white-space: nowrap;
       text-overflow: ellipsis;
       overflow-x: hidden;

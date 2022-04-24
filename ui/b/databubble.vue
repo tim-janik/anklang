@@ -41,7 +41,7 @@
     }
     /* Triangle acting as bubble pointer */
     &::after {
-      position: absolute; bottom: 5px - 2; /* room below triangle: 5px */
+      position: absolute; bottom: calc(5px - 2); /* room below triangle: 5px */
       left: calc(50% - 5px); width: 0; height: 0; content: "";
       border-top: 5px solid $b-data-bubble-br;
       border-left: 5px solid transparent;
@@ -52,12 +52,12 @@
     .b-markdown-it-outer {
       @include b-markdown-it-inlined;
       $fsf: 1.05; //* font size factor */
-      h1 { font-size: pow($fsf, 6) * 1em; }
-      h2 { font-size: pow($fsf, 5) * 1em; }
-      h3 { font-size: pow($fsf, 4) * 1em; }
-      h4 { font-size: pow($fsf, 3) * 1em; }
-      h5 { font-size: pow($fsf, 2) * 1em; }
-      h6 { font-size: pow($fsf, 1) * 1em; }
+      h1 { font-size: calc(pow($fsf, 6) * 1em); }
+      h2 { font-size: calc(pow($fsf, 5) * 1em); }
+      h3 { font-size: calc(pow($fsf, 4) * 1em); }
+      h4 { font-size: calc(pow($fsf, 3) * 1em); }
+      h5 { font-size: calc(pow($fsf, 2) * 1em); }
+      h6 { font-size: calc(pow($fsf, 1) * 1em); }
     }
   }
 </style>
