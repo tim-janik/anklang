@@ -83,7 +83,7 @@ $(ui/b/vue.targets): $(wildcard ui/*.scss ui/b/*.scss)	# includes of the sfc-com
 $>/ui/.build1-stamp: $(ui/b/vue.targets)
 
 # == all-cssfiles.js ==
-ui/all-cssfiles ::= ui/cssaux.scss ui/styles.scss ui/theme.scss ui/b/mixins.scss
+ui/all-cssfiles ::= ui/cssaux.scss ui/styles.scss ui/theme.scss ui/mixins.scss
 $>/ui/all-cssfiles.js: $(ui/all-cssfiles) ui/Makefile.mk			| $>/ui/
 	$(QGEN)
 	$Q $(file > $>/ui/all-cssfiles.gen.js, $(ui/all-cssfiles.gen.js))
