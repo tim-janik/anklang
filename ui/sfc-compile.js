@@ -75,7 +75,8 @@ function process_file (filename, config) {
 	    {
 	      bits[2] = bits[2].replace (/([`$\\])/g, '\\$1');
 	    }
-	  bits[1] += `function sfc_${tag} (T, m) { return T\``; // start function
+	  const T = tag === 'style' ? 'css' : tag === 'template' ? 'html' : 'txt';
+	  bits[1] += `function sfc_${tag} (${T}, m) { return ${T}\``; // start function
 	  bits[3] = '`; }'; // end function
 	  parts[i] = bits.join ('');
 	}
