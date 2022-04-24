@@ -24,9 +24,7 @@ ui/nocopy.wildcards ::= $(wildcard	\
 	ui/slashcomment.js		\
 )
 ui/copy.files ::= $(filter-out $(ui/nocopy.wildcards), $(ui/copy.wildcards))
-ui/vue.wildcards ::= $(wildcard		\
-	ui/b/*.vue			\
-)
+ui/vue.wildcards ::= $(wildcard ui/b/*.vue)
 ui/public.wildcards ::= $(wildcard	\
 	ui/assets/*.svg			\
 	ui/favicon.ico			\
