@@ -95,7 +95,10 @@ $>/ui/all-styles.css: $>/ui/postcss.config.js ui/Makefile.mk $(ui/csscopy.source
 		echo "@import 'b/$${f}';"				>> $>/ui/imports.scss \
 		|| exit 1 ; done
 	$Q cd $>/ui/ && npx postcss imports.scss --map -o $(@F)
-$>/ui/.build1-stamp: $>/ui/all-styles.css
+$>/ui/postcss.esm.js: $>/ui/postcss.config.js ui/Makefile.mk
+	$(QGEN)
+	$Q sed 's|/\*CJSONLY\*/module\.exports\s*=|export default|' $< > $@
+$>/ui/.build1-stamp: $>/ui/all-styles.css $>/ui/postcss.esm.js
 
 # == all-components.js ==
 $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vuejs.targets) $(wildcard ui/b/*)	| $>/ui/
