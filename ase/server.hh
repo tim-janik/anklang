@@ -16,6 +16,8 @@ public:
   static ServerImplP instancep ();
   explicit     ServerImpl           ();
   virtual     ~ServerImpl           ();
+  bool         set_data             (const String &key, const Value &v) override;
+  Value        get_data             (const String &key) const override;
   String       get_version          () override;
   String       get_vorbis_version   () override;
   String       get_mp3_version      () override;

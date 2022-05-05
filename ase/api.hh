@@ -193,6 +193,10 @@ public:
   StringS             list_properties   ();                 ///< List all property identifiers.
   Value               get_value         (String ident);     ///< Get native property value.
   bool                set_value         (String ident, const Value &v); ///< Set native property value.
+  /// Assign session data, prefix ephemerals with '_'.
+  virtual bool        set_data          (const String &key, const Value &v) = 0;
+  /// Retrieve session data.
+  virtual Value       get_data          (const String &key) const = 0;
 };
 
 /// Info for device types.
@@ -309,11 +313,6 @@ enum class ResourceType {
   FILE,
 };
 
-enum class ResourcePath {
-  SESSION = 0,
-  CONFIG,
-};
-
 /// Description of a resource, possibly nested.
 struct Resource {
   ResourceType type = {};       ///< Resource classification.
@@ -373,10 +372,6 @@ public:
   // Browsing
   ResourceCrawlerP dir_crawler    (const String &cwd = "");  ///< Create crawler to navigate directories.
   ResourceCrawlerP url_crawler    (const String &url = "/"); ///< Create crawler to navigate URL contents.
-  /// Assign session data.
-  bool           set_data         (ResourcePath rpath, const String &key, const Value &v);
-  /// Retrieve session data.
-  Value          get_data         (ResourcePath rpath, const String &key) const;
 };
 #define ASE_SERVER      (::Ase::Server::instance())
 
