@@ -235,12 +235,12 @@ function browser_config() {
 // test basic functionality
 async function self_tests() {
   // test Ase::Value and server
-  const ukey = "AseTest" + Util.hash53 ("" + Math.random() + Math.random() + Math.random());
+  const ukey = "_AseTest" + Util.hash53 ("" + Math.random() + Math.random() + Math.random());
   const obj = { 5: 5, a: [false, true, 2, "3", { a: [], o: {}, f: -0.17 }], mm: ["STRING", 7e42, null] };
-  Ase.server.set_data (Ase.ResourcePath.SESSION, ukey, obj);
-  const r = await Ase.server.get_data (Ase.ResourcePath.SESSION, ukey);
+  Ase.server.set_data (ukey, obj);
+  const r = await Ase.server.get_data (ukey);
   console.assert (Util.equals_recursively (obj, r));
-  Ase.server.set_data (Ase.ResourcePath.SESSION, ukey, undefined);
+  Ase.server.set_data (ukey, undefined);
 }
 
 // Boot after onload
