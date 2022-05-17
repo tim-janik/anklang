@@ -64,6 +64,12 @@ $>/ui/vue.js:	$>/node_modules/.npm.done				| $>/ui/
 		-e 's/\b\(warn(`[^`]* was accessed during render\)/if(0) \1/'
 $>/ui/.build1-stamp: $>/ui/vue.js
 
+# == ui/zcam-js.mjs ==
+$>/ui/zcam-js.mjs: $>/node_modules/.npm.done				| $>/ui/
+	$(QGEN)
+	$Q $(CP) $>/node_modules/zcam-js/dist.js $@
+$>/ui/.build1-stamp: $>/ui/zcam-js.mjs
+
 # == ui/csstree-validator.esm.js ==
 $>/ui/csstree-validator.esm.js: $>/node_modules/.npm.done				| $>/ui/
 	$(QGEN)
