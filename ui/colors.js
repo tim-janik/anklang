@@ -9,6 +9,78 @@ export const color_names = {
 
 export const color_values = Array.from (new Set (Object.values (color_names)).values());
 
+/// Calculate sRGB from `hue, saturation, value`.
+export function srgb_from_hsv (hue,		// 0…360: 0=red, 120=green, 240=blue
+			       saturation,	// 0…1
+			       value)		// 0…1
+{
+  saturation = clamp (saturation, 0, 1);
+  value = clamp (value, 0, 1);
+  const center = Math.floor (hue / 60);
+  const frac = hue / 60 - center;
+  const v1s = value * (1 - saturation);
+  const vsf = value * (1 - saturation * frac);
+  const v1f = value * (1 - saturation * (1 - frac));
+  let r, g, b;
+  switch (center) {
+    case 6:
+    case 0: // red
+      r = value;
+      g = v1f;
+      b = v1s;
+      break;
+    case 1: // red + green
+      r = vsf;
+      g = value;
+      b = v1s;
+      break;
+    case 2: // green
+      r = v1s;
+      g = value;
+      b = v1f;
+      break;
+    case 3: // green + blue
+      r = v1s;
+      g = vsf;
+      b = value;
+      break;
+    case 4: // blue
+      r = v1f;
+      g = v1s;
+      b = value;
+      break;
+    case 5: // blue + red
+      r = value;
+      g = v1s;
+      b = vsf;
+      break;
+  }
+  return {r,g,b};
+}
+
+/// Calculate `{ hue, saturation, value }` from `srgb`.
+export function hsv_from_srgb (srgb) {
+  const {r,g,b} = Z.srgb_from (srgb);
+  const value = Math.max (r, g, b);
+  const delta = value - Math.min (r, g, b);
+  const saturation = value == 0 ? 0 : delta / value;
+  let hue = 0;
+  if (saturation > 0)
+    {
+      if (r == value)
+	{
+	  hue = 0 + 60 * (g - b) / delta;
+	  if (hue <= 0)
+	    hue += 360;
+	}
+      else if (g == value)
+	hue = 120 + 60 * (b - r) / delta;
+      else // b == value
+	hue = 240 + 60 * (r - g) / delta;
+    }
+  return { hue, saturation, value };
+}
+
 const sRGB_viewing_conditions = {
   Fs: Z.ZCAM_DIM,       // DIM comes closest to CIELAB L* in ZCAM and CIECAM97
   Yb: 9.1,              // Background luminance factor so Jz=50 yields #777777
