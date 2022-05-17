@@ -91,6 +91,7 @@ const default_gamut = new Z.Gamut (sRGB_viewing_conditions);
 const atsamples = [0, 0.005, 0.01, 0.02, 0.038, 0.05, 0.062, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.938, 0.95, 0.962, 0.98, 0.99, 0.995, 1];
 
 const ZHSV_EXP = 1.7; // exponent for ZHSV to approximate saturation distribution of HSV
+const ZHSL_EXP = 1.7; // exponent for ZHSL to approximate saturation distribution of HSL
 
 /// Class with logic and spline approximations to calculate ZHSV.
 export class HueSaturation {
@@ -108,6 +109,7 @@ export class HueSaturation {
     this.jz2cz = undefined;	// maximize_Cz (Jz) under hue
     this.z1s = undefined;	// zcam @ v=1   s=0…1
     this.cz2jz = undefined;	// maximize_Jz (Cz) under hue
+    this.lightness = undefined;
   }
   make_splines() {
     const zcusp = this.zcusp, viewing = zcusp.viewing, gamut = this.gamut;
@@ -121,17 +123,28 @@ export class HueSaturation {
       cys.push (z1s.Jz);
     }
     this.cz2jz = new Z.CubicSpline (cxs, cys);
-    // approximate Cz = maximize_Cz (Jz) under hue
+    // approximate Cz = maximize_Cz (Jz) under hue for 0…zcusp.Jz
     cxs.length = 0;
     cys.length = 0;
     for (const v of atsamples) {
       const Jz = zcusp.Jz * v;
-      const zv1 = { hz: zcusp.hz, Jz, Cz: 0, viewing };
-      zv1.Cz = gamut.maximize_Cz (zv1);
+      const zjp = { hz: zcusp.hz, Jz, Cz: 0, viewing };
+      zjp.Cz = gamut.maximize_Cz (zjp);
       cxs.push (Jz);
-      cys.push (zv1.Cz);
+      cys.push (zjp.Cz);
     }
     this.jz2cz = new Z.CubicSpline (cxs, cys);
+    // approximate Cz = maximize_Cz (Jz) under hue for zcusp.Jz…100
+    cxs.length = 0;
+    cys.length = 0;
+    for (const v of atsamples) {
+      const Jz = zcusp.Jz + (100 - zcusp.Jz) * v;
+      const zjp = { hz: zcusp.hz, Jz, Cz: 0, viewing };
+      zjp.Cz = gamut.maximize_Cz (zjp);
+      cxs.push (Jz);
+      cys.push (zjp.Cz);
+    }
+    this.jz2cz.add_segment (cxs, cys);
   }
   set_value (value) {
     const zcusp = this.zcusp, viewing = zcusp.viewing;
@@ -160,7 +173,7 @@ export class HueSaturation {
       this.z1s.Jz = this.cz2jz.splint (this.z1s.Cz);
     return s;
   }
-  zcam_from_saturation (saturation) {
+  zcam_from_zhsv (saturation) {
     const zcusp = this.zcusp, viewing = zcusp.viewing;
     this.ensure_zv1(); // needs this.value
     this.saturation = clamp (saturation, 0, 1);
@@ -176,24 +189,56 @@ export class HueSaturation {
     zcam.Cz *= rCz;
     return zcam;
   }
-  saturation_from_Cz (Cz) {
+  zhsv_saturation_from_Cz (Cz) {
     this.ensure_zv1(); // needs this.value
     const s = Cz / this.zv1.Cz;
     const saturation = clamp (s ** ZHSV_EXP, 0, 1);
     return saturation;
   }
-  srgb_from_saturation (saturation) {
-    const zcam = this.zcam_from_saturation (saturation);
+  srgb_from_zhsv (saturation) {
+    const zcam = this.zcam_from_zhsv (saturation);
     const {r,g,b} = Z.srgb_from_zcam_8bit (zcam, this.gamut.viewing);
     return {r,g,b};
   }
+  srgb_from_zhsl (saturation, lightness) {
+    const zcam = this.zcam_from_zhsl (saturation, lightness);
+    const {r,g,b} = Z.srgb_from_zcam_8bit (zcam, this.gamut.viewing);
+    return {r,g,b};
+  }
+  zcam_from_zhsl (saturation, lightness) {
+    const zcusp = this.zcusp, viewing = zcusp.viewing, gamut = this.gamut;
+    lightness = clamp (lightness, 0, 1);
+    const zcam = { hz: zcusp.hz, Jz: lightness * 100, Cz: 0, viewing }; // zcam @ s=0 l=0…1
+    saturation = clamp (saturation, 0, 1);
+    if (saturation > 0) {
+      if (!this.jz2cz)
+	zcam.Cz = gamut.maximize_Cz (zcam); // zcam @ s=1 l=0…1
+      else
+	zcam.Cz = this.jz2cz.splint (zcam.Jz);
+      zcam.Cz *= saturation ** (1/ZHSL_EXP);
+    }
+    return zcam;
+  }
+}
+
+/// Calculate `{ hue, saturation, lightness }` from `srgb`.
+export function zhsl_from (srgb, gamut = undefined) {
+  gamut = gamut || default_gamut;
+  const {r,g,b} = Z.srgb_from (srgb);
+  const zcam = Z.zcam_from_srgb ({r,g,b}, gamut.viewing);
+  const hue = zcam.hz;
+  const lightness = zcam.Jz * 0.01;
+  const maxCz = zcam.Cz > 0 ? gamut.maximize_Cz (zcam) : 1;
+  const s = zcam.Cz / maxCz;
+  const saturation = s ** ZHSL_EXP;
+  return {hue, saturation, lightness};
 }
 
 /// Calculate sRGB from `{ hue, saturation, value }`.
 export function srgb_from_zhsv (hue, saturation, value, gamut = undefined) {
   const hso = new HueSaturation (hue, gamut);
   hso.set_value (value);
-  return hso.srgb_from_saturation (saturation);
+  return hso.srgb_from_zhsv (saturation);
 }
 
 /// Calculate hexadecimal color from `{ hue, saturation, value }`.
@@ -212,8 +257,8 @@ export function zhsv_from (srgb, gamut = undefined) {
   while (Math.abs (va - vb) > 0.001) {
     const vc = (va + vb) * 0.5;
     hso.set_value (vc);
-    const s = hso.saturation_from_Cz (pz.Cz);
-    const zc = hso.zcam_from_saturation (s);
+    const s = hso.zhsv_saturation_from_Cz (pz.Cz);
+    const zc = hso.zcam_from_zhsv (s);
     if (zc.Jz > pz.Jz)
       vb = vc;
     else
@@ -221,6 +266,17 @@ export function zhsv_from (srgb, gamut = undefined) {
   }
   const value = (va + vb) * 0.5;
   hso.set_value (value);
-  const saturation = hso.saturation_from_Cz (pz.Cz);
+  const saturation = hso.zhsv_saturation_from_Cz (pz.Cz);
   return { hue, saturation, value };
+}
+
+/// Calculate sRGB from `{ hue, saturation, value }`.
+export function srgb_from_zhsl (hue, saturation, lightness, gamut = undefined) {
+  const hso = new HueSaturation (hue, gamut);
+  return hso.srgb_from_zhsl (saturation, lightness);
+}
+
+/// Calculate hexadecimal color from `{ hue, saturation, value }`.
+export function hex_from_zhsl (hue, saturation, lightness, gamut = undefined) {
+  return Z.srgb_hex (srgb_from_zhsl (hue, saturation, lightness, gamut));
 }
