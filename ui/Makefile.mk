@@ -67,7 +67,7 @@ $>/ui/.build1-stamp: $>/ui/vue.js
 # == ui/zcam-js.mjs ==
 $>/ui/zcam-js.mjs: $>/node_modules/.npm.done				| $>/ui/
 	$(QGEN)
-	$Q $(CP) $>/node_modules/zcam-js/dist.js $@
+	$Q $(CP) $>/node_modules/zcam-js/zcam-js.mjs $@
 $>/ui/.build1-stamp: $>/ui/zcam-js.mjs
 
 # == ui/csstree-validator.esm.js ==
