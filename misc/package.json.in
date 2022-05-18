@@ -1,10 +1,11 @@
 {
   "name": "Anklang",
   "private": true,
+  "type": "module",
   "scripts": {
     "serve": "run-p sound-engine monitor",
     "sound-engine": "lib/AnklangSynthEngine-$npm_package_config_version $ASEOPT && false",
-    "eslint": "eslint --no-eslintrc -c ui/.eslintrc.js -f unix --cache $(cat ui/.eslint.files)",
+    "eslint": "eslint --no-eslintrc -c ui/.eslintrc.cjs -f unix --cache $(cat ui/.eslint.files)",
     "ui/rebuild": "make ui/rebuild -C $npm_package_config_srcdir --no-print-directory -j",
     "monitor": "nodemon --ext '*' --watch $npm_package_config_srcdir/ui/ --delay 99ms --on-change-only --exec 'npm run -s ui/rebuild || false' --exitcrash"
   },
