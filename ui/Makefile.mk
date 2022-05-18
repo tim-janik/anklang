@@ -13,17 +13,20 @@ $>/ui/.build2-stamp:	# extra targets, deferred during incremental rebuilds
 # make && (cd out/ui/dist/ && python -m SimpleHTTPServer 3333)
 
 # == Copies ==
-ui/copy.wildcards ::= $(wildcard	\
+ui/jscopy.wildcards ::= $(wildcard	\
 	ui/*.js				\
 	ui/*.mjs			\
 	ui/b/*.js			\
 	ui/b/*.mjs			\
 )
+ui/cjs.wildcards ::= $(wildcard		\
+	ui/postcss.config.js		\
+)
 ui/nocopy.wildcards ::= $(wildcard	\
 	ui/sfc-compile.js		\
 	ui/slashcomment.js		\
 )
-ui/copy.files ::= $(filter-out $(ui/nocopy.wildcards), $(ui/copy.wildcards))
+ui/copy.files ::= $(filter-out $(ui/nocopy.wildcards) $(ui/cjs.wildcards), $(ui/jscopy.wildcards))
 ui/vue.wildcards ::= $(wildcard ui/b/*.vue)
 ui/public.wildcards ::= $(wildcard	\
 	ui/assets/*.svg			\
@@ -107,7 +110,7 @@ $>/ui/.build1-stamp: $(ui/b/vuejs.targets)
 
 # == ui/all-styles.css ==
 ui/csscopy.sources ::= ui/styles.scss ui/theme.scss ui/mixins.scss ui/shadow.scss
-$>/ui/all-styles.css: $>/ui/postcss.config.js ui/Makefile.mk $(ui/csscopy.sources) $(ui/b/vuecss.targets)	| $>/ui/
+$>/ui/all-styles.css: $>/ui/postcss.config.cjs ui/Makefile.mk $(ui/csscopy.sources) $(ui/b/vuecss.targets)	| $>/ui/
 	$(QGEN)
 	$Q $(CP) $(ui/csscopy.sources) $>/ui/
 	$Q echo '@charset "UTF-8";'					>  $>/ui/imports.scss
@@ -116,9 +119,9 @@ $>/ui/all-styles.css: $>/ui/postcss.config.js ui/Makefile.mk $(ui/csscopy.source
 		echo "@import 'b/$${f}';"				>> $>/ui/imports.scss \
 		|| exit 1 ; done
 	$Q cd $>/ui/ && npx postcss imports.scss --map -o $(@F)
-$>/ui/postcss.esm.js: $>/ui/postcss.config.js ui/Makefile.mk $>/node_modules/.npm.done
+$>/ui/postcss.esm.js: $>/ui/postcss.config.cjs ui/Makefile.mk $>/node_modules/.npm.done
 	$(QGEN)
-	$Q cd $>/ui/ && node ./postcss.config.js $V # CHECK transformations
+	$Q cd $>/ui/ && node ./postcss.config.cjs $V # CHECK transformations
 	$Q sed 's|/\*CJSONLY\*/module\.exports\s*=|export default|' $< > $@
 $>/ui/.build1-stamp: $>/ui/all-styles.css $>/ui/postcss.esm.js
 
@@ -153,6 +156,13 @@ $(ui/public.targets): $>/ui/%: ui/%			| $>/ui/
 	$(QECHO) COPY $<
 	$Q cd ui/ && $(CP) $(<:ui/%=%) --parents $(abspath $>/)/ui/
 $>/ui/.build1-stamp: $(ui/public.targets)
+
+# == CJS Files ==
+ui/cjs.targets ::= $(ui/cjs.wildcards:%.js=$>/%.cjs)
+$(ui/cjs.targets): $>/ui/%.cjs: ui/%.js	| $>/ui/b/
+	$(QECHO) COPY $@
+	$Q $(CP) $< $@
+$>/ui/.build1-stamp: $(ui/cjs.targets)
 
 # == Inter Typeface ==
 $>/ui/fonts/Inter-Medium.woff2: ui/Makefile.mk		| $>/ui/fonts/
@@ -239,7 +249,7 @@ $>/ui/.build1-stamp: $>/ui/favicon.ico $>/ui/anklang.png
 ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue)
 $>/ui/.eslint.files: ui/eslintrc.js $(ui/eslint.files)			| $>/ui/
 	$(QGEN)
-	$Q $(CP) $< $(@D)/.eslintrc.js
+	$Q $(CP) $< $(@D)/.eslintrc.cjs
 	$Q echo '$(abspath $(ui/eslint.files))' | tr ' ' '\n' > $@
 $>/ui/.build1-stamp: $>/ui/.eslint.files
 
