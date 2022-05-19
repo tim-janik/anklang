@@ -130,7 +130,7 @@ $>/ui/all-styles.css: $>/ui/postcss.js ui/Makefile.mk $(ui/csscopy.sources) $(ui
 		|| exit 1 ; done
 	$Q cd $>/ui/ && node ./postcss.js imports.scss > $(@F).tmp
 	$Q mv $@.tmp $@
-$>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/node_modules/.npm.done
+$>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/ui/colors.js $>/node_modules/.npm.done
 	$(QGEN)
 	$Q $(CP) $< $@.tst.js
 	$Q cd $>/ui/ && node ./$(@F).tst.js --test $V # CHECK transformations
