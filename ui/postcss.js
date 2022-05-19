@@ -1,15 +1,63 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 'use strict';
 
-// This module is used by nodejs and Browser engines
+/* PostCSS driver for the web browser and CLI.
+ * This is an ESM module that uses require() to load PostCSS CJS modules from
+ * node_modules/ or via a browserified window.require implementation.
+ */
+const __BROWSER__ = !globalThis.process?.versions?.node, __NODE__ = !__BROWSER__;
+const __filename = !__NODE__ ? 'postcss.js' : import.meta.url.replace (/^.*?:\/\/\//, '/');
+const __MAIN__ = __NODE__ && process.argv[1] == __filename;
+const require = globalThis.require || (await import ("module")).createRequire (__filename);
 
-// == helpers ==
-const __NODE__ = !!globalThis.process?.versions?.node;
-const __MAIN__ = __NODE__ && require.main === module;
-const clamp = (v,l,u) => v < l ? l : v > u ? u : v;
-
+// == imports ==
+const FS = __NODE__ && require ('fs');
 const chromajs = require ('chroma-js');
 const css_color_converter = require ('css-color-converter');
+const PostCss = require ('postcss');
+const postcss_scss = require ('postcss-scss');
+
+// == Plugins ==
+const postcss_plugins = [
+  require ('postcss-discard-comments') ({ remove: comment => true }),
+  require ('postcss-advanced-variables') ({ disable: '@content, @each, @for', // @if, @else, @mixin, @include, @import
+					    importResolve: __NODE__ ? load_import : find_import }),
+  require ('postcss-color-mod-function') ({ unresolved: 'throw' }),
+  require ('postcss-color-hwb'),
+  require ('postcss-lab-function'),
+  require ('postcss-functions') (css_functions()),
+  require ('postcss-nested'),
+  require ('postcss-discard-duplicates'),
+];
+const nodeonly_plugins = __NODE__ && [
+  // require ('postcss-preset-env') ({ stage: 3, browsers: 'Firefox >= 90 and chrome >= 90', autoprefixer: false }),
+  // require ('cssnano') ({ preset: ['default', { normalizeWhitespace: false }] }),
+  require ('perfectionist-dfd') ({ format: 'expanded', indentChar: '\t', indentSize: 1, trimLeadingZero: false }),
+];
+
+// == Options ==
+export const postcss_options = {
+  syntax: postcss_scss,
+  map: false,
+};
+
+// == Processing ==
+async function postcss_process (css_string, fromname = '<style string>') {
+  const postcss = PostCss (postcss_plugins);
+  const poptions = Object.assign ({ from: fromname }, postcss_options);
+  let result;
+  try {
+    result = await postcss.process (css_string, poptions);
+  } catch (ex) {
+    console.warn ('PostCSS input:', fromname + ':\n', css_string);
+    console.error ('PostCSS error:', ex);
+    result = { content: '' };
+  }
+  return result.content;
+}
+
+// == CSS Functions ==
+const clamp = (v,l,u) => v < l ? l : v > u ? u : v;
 
 /// Yield [ R, G, B, A ] from `color`.
 function color2rgba (color) {
@@ -158,11 +206,10 @@ function css_functions() {
 
 /// Load import files in nodejs to implement `@import`.
 function load_import (id, cwd, opts) {
-  const fs = require ('fs');
   for (let path of [ './', cwd ]) {
     const file = path + '/' + id;
-    if (fs.existsSync (file)) {
-      const input = fs.readFileSync (file);
+    if (FS.existsSync (file)) {
+      const input = FS.readFileSync (file);
       return { file, contents: input || '' };
     }
   }
@@ -183,25 +230,6 @@ const css_import_list = {};
 function add_import (filename, csstext) {
   css_import_list[filename] = '' + csstext;
 }
-
-// == plugins (browserified) ==
-// postcss processor plugins
-const pluginlist = [
-  require ('postcss-discard-comments') ({ remove: comment => true }),
-  require ('postcss-advanced-variables') ({ disable: '@content, @each, @for', // @if, @else, @mixin, @include, @import
-					    importResolve: __NODE__ ? load_import : find_import }),
-  require ('postcss-color-mod-function') ({ unresolved: 'throw' }),
-  require ('postcss-color-hwb'),
-  require ('postcss-lab-function'),
-  require ('postcss-functions') (css_functions()),
-  require ('postcss-nested'),
-  require ('postcss-discard-duplicates'),
-  // require ('postcss-preset-env') ({ stage: 3, browsers: 'Firefox >= 90 and chrome >= 90', autoprefixer: false }),
-  // __NODE__ && require ('cssnano') ({ preset: ['default', { normalizeWhitespace: false }] }),
-  __NODE__ && !__MAIN__ && require ('perfectionist-dfd') ({ format: 'expanded', indentChar: '\t', indentSize: 1, trimLeadingZero: false }),
-];
-const plugins = pluginlist .filter (p => !!p);
-const postcss_scss = require ('postcss-scss');
 
 // == self-test (nodejs) ==
 const test_rules = {
@@ -233,9 +261,7 @@ async function test_css (verbose) {
   test_rules[`--text-color: ${'#ABCDEF'};`] = '--text-color:#ABCDEF;';
   const input = Object.keys (test_rules).join ('\n');
   console.log ('  CHECK   ', __filename);
-  const options = { from: 'test_css()', syntax: postcss_scss, plugins, map: false };
-  let result = require ('postcss') (options.plugins).process (input, options);
-  result = (await result).css;
+  const result = await postcss_process (input, 'test_css()');
   if (verbose >= 2)
     console.log (__filename + ': result:', '\n' + result);
   let last = -1, errors = 0;
@@ -251,22 +277,35 @@ async function test_css (verbose) {
     }
   if (errors) {
     console.log (__filename + ': result:', '\n' + result);
-    throw new Error ('postcss.config.js: self test errors: ' + errors);
+    throw new Error (`${__filename}: self test errors: ` + errors);
   }
 }
 
-// == exports ==
-const options = {
-  syntax: postcss_scss,
-  map: __NODE__,
-  plugins,
-  add_import,
-  test_css,
-};
-// the following is replaced in the ESM variant
-/*CJSONLY*/module.exports = options;
+// == Exports ==
+export const options = postcss_options;
+export const plugins = postcss_plugins;
+export { postcss_process };
+export { add_import };
+export { test_css };
 
 // == main ==
-// Usage: postcss.config.js [VERBOSITYLEVEL]
-if (__MAIN__)
-  test_css (process.argv[2] | 0);
+// Usage: postcss.js <inputfile.css>
+// Usage: postcss.js --test [1|0]
+if (__MAIN__) {
+  async function main (argv) {
+    // run unit tests
+    if (argv[0] === '--test')
+      return test_css (argv[1] | 0);
+    // parse options
+    const filename = argv[0];
+    if (!filename)
+      throw new Error (`${__filename}: missing input filename`);
+    // configure CLI processor
+    postcss_options.map = true;
+    postcss_plugins.push (...nodeonly_plugins);
+    // process and printout
+    const result = await postcss_process (FS.readFileSync (filename), filename);
+    process.stdout.write (result);
+  }
+  process.exit (await main (process.argv.splice (2)));
+}
