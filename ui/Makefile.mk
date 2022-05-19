@@ -64,6 +64,12 @@ $>/ui/vue.js:	$>/node_modules/.npm.done				| $>/ui/
 		-e 's/\b\(warn(`[^`]* was accessed during render\)/if(0) \1/'
 $>/ui/.build1-stamp: $>/ui/vue.js
 
+# == ui/csstree-validator.esm.js ==
+$>/ui/csstree-validator.esm.js: $>/node_modules/.npm.done				| $>/ui/
+	$(QGEN)
+	$Q $(CP) $>/node_modules/csstree-validator/dist/csstree-validator.esm.js $@
+$>/ui/.build1-stamp: $>/ui/csstree-validator.esm.js
+
 # == ui/index.html ==
 $>/ui/index.html: ui/index.html ui/assets/eknob.svg ui/Makefile.mk	| $>/ui/
 	$(QGEN)
@@ -227,7 +233,7 @@ $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 	$Q for mod in \
 		postcss postcss-advanced-variables postcss-color-mod-function postcss-color-hwb postcss-lab-function \
 		postcss-functions postcss-nested postcss-scss postcss-discard-comments postcss-discard-duplicates \
-		css-color-converter markdown-it chroma-js csstree-validator ; do \
+		css-color-converter markdown-it chroma-js ; do \
 		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp-browserify/browserified.js
 	$Q echo "};"										>> $>/ui/tmp-browserify/browserified.js
 	$Q echo "const browserify_require = m => modules[m] || console.error ('Unknown module:', m);"	>> $>/ui/tmp-browserify/browserified.js
