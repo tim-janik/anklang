@@ -20,9 +20,9 @@ ui/jscopy.wildcards ::= $(wildcard	\
 	ui/b/*.mjs			\
 )
 ui/cjs.wildcards ::= $(wildcard		\
-	ui/postcss.config.js		\
 )
 ui/nocopy.wildcards ::= $(wildcard	\
+	ui/postcss.js			\
 	ui/sfc-compile.js		\
 	ui/slashcomment.js		\
 )
@@ -110,7 +110,7 @@ $>/ui/.build1-stamp: $(ui/b/vuejs.targets)
 
 # == ui/all-styles.css ==
 ui/csscopy.sources ::= ui/styles.scss ui/theme.scss ui/mixins.scss ui/shadow.scss
-$>/ui/all-styles.css: $>/ui/postcss.config.cjs ui/Makefile.mk $(ui/csscopy.sources) $(ui/b/vuecss.targets)	| $>/ui/
+$>/ui/all-styles.css: $>/ui/postcss.js ui/Makefile.mk $(ui/csscopy.sources) $(ui/b/vuecss.targets)	| $>/ui/
 	$(QGEN)
 	$Q $(CP) $(ui/csscopy.sources) $>/ui/
 	$Q echo '@charset "UTF-8";'					>  $>/ui/imports.scss
@@ -118,12 +118,14 @@ $>/ui/all-styles.css: $>/ui/postcss.config.cjs ui/Makefile.mk $(ui/csscopy.sourc
 	$Q for f in $$(cd $>/ui/b/ && echo *.css) ; do			\
 		echo "@import 'b/$${f}';"				>> $>/ui/imports.scss \
 		|| exit 1 ; done
-	$Q cd $>/ui/ && npx postcss imports.scss --map -o $(@F)
-$>/ui/postcss.esm.js: $>/ui/postcss.config.cjs ui/Makefile.mk $>/node_modules/.npm.done
+	$Q cd $>/ui/ && node ./postcss.js imports.scss > $(@F).tmp
+	$Q mv $@.tmp $@
+$>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/node_modules/.npm.done
 	$(QGEN)
-	$Q cd $>/ui/ && node ./postcss.config.cjs $V # CHECK transformations
-	$Q sed 's|/\*CJSONLY\*/module\.exports\s*=|export default|' $< > $@
-$>/ui/.build1-stamp: $>/ui/all-styles.css $>/ui/postcss.esm.js
+	$Q $(CP) $< $@.tst.js
+	$Q cd $>/ui/ && node ./$(@F).tst.js --test $V # CHECK transformations
+	$Q mv $@.tst.js $@
+$>/ui/.build1-stamp: $>/ui/all-styles.css $>/ui/postcss.js
 
 # == all-components.js ==
 $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vuejs.targets) $(wildcard ui/b/*)	| $>/ui/
@@ -340,6 +342,7 @@ ui/install.pattern ::= $(strip	\
 	$>/ui/*.html		\
 	$>/ui/*.ico		\
 	$>/ui/*.js		\
+	$>/ui/*.mjs		\
 	$>/ui/*.png		\
 )
 ui/install: $>/ui/.build1-stamp $>/ui/.build2-stamp
