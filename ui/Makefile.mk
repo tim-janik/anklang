@@ -77,7 +77,7 @@ $>/ui/index.html: ui/index.html ui/assets/eknob.svg ui/Makefile.mk	| $>/ui/
 	$Q : $(file > $>/ui/config.json,  { "config": { $(strip $(PACKAGE_VERSIONS)) } })
 	$Q sed -r \
 		-e "/<script type='application\/json' id='--EMBEDD-config_json'>/ r $>/ui/config.json" \
-		-e "/<!--EMBEDD='eknob\.svg'-->/r ui/assets/eknob.svg" \
+		-e "/<!--EMBEDD='eknob\.svg'-->/r ui/assets/eknob.svg" $(ui/sed-keepif) \
 		< $<	> $@.tmp
 	$Q rm $>/ui/config.json
 	$Q sed -r \
@@ -85,6 +85,10 @@ $>/ui/index.html: ui/index.html ui/assets/eknob.svg ui/Makefile.mk	| $>/ui/
 		-i $@.tmp
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/index.html
+# remove ::KEEPIF="__DEV__" directives
+ui/sed-keepif ::= $(if __DEV__, -e '/<[^<>]*::KEEPIF="__DEV__"/s/::KEEPIF="__DEV__"//')
+# delete unmatched ::KEEPIF="" tags
+ui/sed-keepif  += -e 's/<[^<>]*::KEEPIF="[^"]*"[^<>]*>//'
 
 # == ui/.aseignore ==
 $>/ui/.aseignore:					| $>/ui/
