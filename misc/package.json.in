@@ -48,6 +48,7 @@
     "postcss-nested": "^5.0.6",
     "postcss-scss": "^4.0.3",
     "rollup": "^2.70.2",
+    "rollup-plugin-node-resolve": "^5.2.0",
     "sass": "^1.50.1"
   }
 }
