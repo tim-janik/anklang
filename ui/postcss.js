@@ -16,6 +16,7 @@ const chromajs = require ('chroma-js');
 const css_color_converter = require ('css-color-converter');
 const PostCss = require ('postcss');
 const postcss_scss = require ('postcss-scss');
+import * as Colors from './colors.js';
 
 // == Plugins ==
 const postcss_plugins = [
@@ -198,6 +199,11 @@ function css_functions() {
 	color = color.set (channel, value);
       return String (color);
     },
+    zmod: Colors.zmod,
+    zhsl: Colors.zhsl,
+    zHsl: Colors.zHsl,
+    zhsv: Colors.zhsv,
+    zHsv: Colors.zHsv,
   };
   functions.darken = functions.darker;
   functions.lighten = functions.lighter;
