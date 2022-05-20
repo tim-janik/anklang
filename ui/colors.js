@@ -1,7 +1,12 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 'use strict';
 
-import * as Z from '../zcam-js.mjs';
+// Support require() in nodejs or rely on browserified window.require
+const require = globalThis.require || (await import ("module")).createRequire (import.meta.url.replace (/^.*?:\/\/\//, '/'));
+
+const CssColor = require ('css-color-converter'); // browserified or node_modules
+
+import * as Z from './zcam-js.mjs';
 const { clamp } = Z;
 
 export const color_names = {
@@ -279,4 +284,109 @@ export function srgb_from_zhsl (hue, saturation, lightness, gamut = undefined) {
 /// Calculate hexadecimal color from `{ hue, saturation, value }`.
 export function hex_from_zhsl (hue, saturation, lightness, gamut = undefined) {
   return Z.srgb_hex (srgb_from_zhsl (hue, saturation, lightness, gamut));
+}
+
+export function zhsl (hz, s, l) {
+  return hex_from_zhsl (parseFloat (hz), parseFloat (s), parseFloat (l));
+}
+
+export function zHsl (Hz, s, l) {
+  return hex_from_zhsl (Z.zcam_hue_angle (parseFloat (Hz)), parseFloat (s), parseFloat (l));
+}
+
+export function zhsv (hz, s, v) {
+  return hex_from_zhsv (parseFloat (hz), parseFloat (s), parseFloat (v));
+}
+
+export function zHsv (Hz, s, v) {
+  return hex_from_zhsv (Z.zcam_hue_angle (parseFloat (Hz)), parseFloat (s), parseFloat (v));
+}
+
+const d255 = 1 / 255;
+
+/// Yield [ R, G, B, A ] from `color`.
+function color2rgba (color) {
+  try {
+    const c = CssColor.fromString (color);
+    const [r,g,b,a] = c.toRgbaArray();
+    return [r * d255, g * d255, b * d255, a !== undefined ? a : 1];
+  } catch (ex) {
+    throw new Error ("CSS: invalid color: " + color + "\n" + ex);
+  }
+}
+
+function css_rgba ([r,g,b,a]) {
+  const rp = clamp (r * 100, 0, 100).toFixed (1);
+  const gp = clamp (g * 100, 0, 100).toFixed (1);
+  const bp = clamp (b * 100, 0, 100).toFixed (1);
+  const ap = a === undefined ? '' : ',' + a.toFixed (4).replace (/([0-9])0+$/, '$1');
+  return `rgb(${rp}%,${gp}%,${bp}%${ap})`;
+}
+
+const z_assignops = [ '=', '+=', '-=', '*=', '/=' ];
+
+// Modify value according to op
+function value_assignops (value, op, num, perc, nmax) {
+  const n = perc ? num * 0.01 : num;
+  switch (op) {
+    case '=':  return perc ? n * nmax() : n;
+    case '+=': return value + (perc ? n * value : n);
+    case '-=': return value - (perc ? n * value : n);
+    case '*=': return value * n;
+    case '/=': return Math.abs (n) > 0 ? value / n : 999999999;
+  }
+}
+
+/// Re-assign a specific color property.
+function zmod_assignop ([r,g,b,a], prop, op, num, perc = false) {
+  const gamut = default_gamut;
+  let zcam = gamut.zcam ({r,g,b});
+  const zmaxCz = () => ({ viewing: zcam.viewing, Jz: zcam.Jz, hz: zcam.hz,
+			  Cz: gamut.maximize_Cz (zcam) });
+  if (prop.toLowerCase() == 'jz')
+    zcam = { viewing: zcam.viewing, Cz: zcam.Cz, hz: zcam.hz,
+	     Jz: value_assignops (Z.zcam_ensure_Jz (zcam).Jz, op, num, perc,
+				  () => 100) };
+  else if (prop.toLowerCase() == 'cz')
+    zcam = { viewing: zcam.viewing, Jz: zcam.Jz, hz: zcam.hz,
+	     Cz: value_assignops (Z.zcam_ensure_Cz (zcam).Cz, op, num, perc,
+				  () => zmaxCz().Cz) };
+  else if (prop.toLowerCase() == 'mz')
+    zcam = { viewing: zcam.viewing, Jz: zcam.Jz, hz: zcam.hz,
+	     Mz: value_assignops (Z.zcam_ensure_Mz (zcam).Mz, op, num, perc,
+				  () => Z.zcam_ensure_Mz (zmaxCz()).Mz) };
+  else if (prop.toLowerCase() == 'sz')
+    zcam = { viewing: zcam.viewing, Jz: zcam.Jz, hz: zcam.hz,
+	     Sz: value_assignops (Z.zcam_ensure_Sz (zcam).Sz, op, num, perc,
+				  () => Z.zcam_ensure_Sz (zmaxCz()).Sz) };
+  else if (prop == 'hz' || prop == 'hZ')
+    zcam = { viewing: zcam.viewing, Jz: zcam.Jz, Cz: zcam.Cz,
+	     hz: value_assignops (Z.zcam_ensure_hz (zcam).hz, op, num, perc,
+				  () => 360) };
+  else if (prop == 'Hz' || prop == 'HZ')
+    zcam = { viewing: zcam.viewing, Jz: zcam.Jz, Cz: zcam.Cz,
+	     Hz: value_assignops (Z.zcam_ensure_Hz (zcam).Hz, op, num, perc,
+				  () => 400) };
+  else if (prop == 'a' || prop == 'alpha')
+    a = value_assignops (a, op, num, perc, () => 1);
+  else
+    console.warn ("CSS: invalid zmod: ", prop, op, num, perc ? '%' : '');
+  const rgb = gamut.contains (zcam);
+  return [rgb.r, rgb.g, rgb.b, a];
+}
+
+/// Apply a variety of modifications to an input color.
+export function zmod (colorlike, ...mods) {
+  let rgba = color2rgba (colorlike);
+  for (const mod of mods) {
+    const toks = mod.trim().split (/\s*([=*\/&|!+-]+)\s*|\s+/);
+    if (toks.length == 3 && z_assignops.includes (toks[1]))
+      rgba = zmod_assignop (rgba, toks[0], toks[1], parseFloat (toks[2]), toks[2].indexOf ('%') >= 0);
+    else
+      console.warn ("CSS: invalid zmod: " + mod);
+  }
+  rgba = rgba.map (v => clamp (v, 0, 1));
+  if (rgba[3] === 1)
+    rgba.splice (3);
+  return true ? Z.srgb_hex (rgba) : css_rgba (rgba);
 }
