@@ -233,18 +233,29 @@ $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 	$(QGEN)
 	$Q: # re-export and bundle postcss modules
 	$Q mkdir -p $>/ui/tmp-browserify/
-	$Q echo "const modules = {"								>  $>/ui/tmp-browserify/browserified.js
+	$Q echo "const modules = {"								>  $>/ui/tmp-browserify/requires.js
 	$Q for mod in \
-		postcss postcss-advanced-variables postcss-color-mod-function postcss-color-hwb postcss-lab-function \
-		postcss-functions postcss-nested postcss-scss postcss-discard-comments postcss-discard-duplicates \
-		css-color-converter markdown-it chroma-js ; do \
-		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp-browserify/browserified.js
-	$Q echo "};"										>> $>/ui/tmp-browserify/browserified.js
-	$Q echo "const browserify_require = m => modules[m] || console.error ('Unknown module:', m);"	>> $>/ui/tmp-browserify/browserified.js
-	$Q echo "Object.defineProperty (window, 'require', { value: browserify_require });"		>> $>/ui/tmp-browserify/browserified.js
-	$Q echo "window.require.modules = modules;"						>> $>/ui/tmp-browserify/browserified.js
-	$Q $>/node_modules/.bin/browserify -o $>/ui/tmp-browserify/out.browserified.js $>/ui/tmp-browserify/browserified.js
-	$Q mv $>/ui/tmp-browserify/out.browserified.js $@ && rm -r $>/ui/tmp-browserify/
+		markdown-it \
+		postcss \
+		postcss-discard-comments \
+		postcss-discard-duplicates \
+		css-color-converter \
+		postcss-scss \
+		postcss-advanced-variables \
+		postcss-functions \
+		postcss-nested \
+		postcss-color-mod-function postcss-color-hwb postcss-lab-function chroma-js \
+		; do \
+		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp-browserify/requires.js
+	$Q echo "};"										>> $>/ui/tmp-browserify/requires.js
+	$Q echo "const browserify_require = m => modules[m] || console.error ('Unknown module:', m);"	>> $>/ui/tmp-browserify/requires.js
+	$Q echo "Object.defineProperty (window, 'require', { value: browserify_require });"		>> $>/ui/tmp-browserify/requires.js
+	$Q echo "window.require.modules = modules;"						>> $>/ui/tmp-browserify/requires.js
+	$Q $>/node_modules/.bin/browserify --debug -o $>/ui/tmp-browserify/browserified.long.js $>/ui/tmp-browserify/requires.js
+	$Q $>/node_modules/.bin/terser --source-map content=inline --comments false $>/ui/tmp-browserify/browserified.long.js -o $>/ui/tmp-browserify/browserified.min.js
+	$Q mv $>/ui/tmp-browserify/browserified.min.js.map $@.map
+	$Q mv $>/ui/tmp-browserify/browserified.min.js $@
+	$Q rm -r $>/ui/tmp-browserify/
 $>/ui/.build1-stamp: $>/ui/browserified.js
 
 # == $>/ui/favicon.ico ==
