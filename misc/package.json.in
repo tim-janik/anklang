@@ -23,7 +23,7 @@
     "css-color-converter": "^2.0.0",
     "cssnano": "^5.1.7",
     "csstree-validator": "^3.0.0",
-    "electron": "^15.1.0",
+    "electron": "^19.0.0",
     "eslint": "^8.13.0",
     "eslint-plugin-html": "^6.2.0",
     "eslint-plugin-unused-imports": "^2.0.0",
