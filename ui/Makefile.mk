@@ -268,7 +268,7 @@ $>/ui/.build1-stamp: $>/ui/browserified.js
 $>/ui/favicon.ico: ui/assets/favicon.svg $>/node_modules/.npm.done ui/Makefile.mk	| $>/ui/
 	$(QGEN)
 	$Q mkdir -p $>/ui/tmp-icongen/
-	$Q $>/node_modules/.bin/icon-gen -i $< -o $>/ui/tmp-icongen/ # -r
+	$Q $>/node_modules/.bin/icon-gen -i $< -o $>/ui/tmp-icongen/ --favicon --favicon-png-sizes 128 --favicon-ico-sizes 128 # -r
 	$Q cd $>/ui/tmp-icongen/ && mv favicon-128.png ../anklang.png && mv favicon.ico ../favicon.ico.tmp
 	$Q rm -r $>/ui/tmp-icongen/ && mv $@.tmp $@
 $>/ui/anklang.png: $>/ui/favicon.ico
