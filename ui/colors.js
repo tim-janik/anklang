@@ -338,53 +338,86 @@ function value_assignops (value, op, num, perc, nmax) {
 }
 
 /// Re-assign a specific color property.
-function zmod_assignop ([r,g,b,a], prop, op, num, perc = false) {
-  const gamut = default_gamut;
-  let zcam = gamut.zcam ({r,g,b});
-  const zmaxCz = () => ({ viewing: zcam.viewing, Jz: zcam.Jz, hz: zcam.hz,
-			  Cz: gamut.maximize_Cz (zcam) });
+function zmod_assignop (col, prop, op, num, perc = false) {
+  // RGBA mods
+  if (prop == 'a' || prop == 'alpha') {
+    col.alpha = value_assignops (col.alpha, op, num, perc, () => 1);
+    return;
+  }
+  // ZCAM mods
+  const gamut = default_gamut, viewing = gamut.viewing;
+  if (!col.zcam)
+    col.zcam = gamut.zcam (col.rgb);
+  const zcam = col.zcam;
+  const zmaxCz = () => ({ viewing, Jz: zcam.Jz, hz: zcam.hz,
+			  Cz: gamut.maximize_Cz (col.zcam) });
   if (prop.toLowerCase() == 'jz')
-    zcam = { viewing: zcam.viewing, Cz: zcam.Cz, hz: zcam.hz,
-	     Jz: value_assignops (Z.zcam_ensure_Jz (zcam).Jz, op, num, perc,
-				  () => 100) };
+    col.zcam = { viewing, Cz: zcam.Cz, hz: zcam.hz,
+		 Jz: value_assignops (Z.zcam_ensure_Jz (zcam).Jz, op, num, perc,
+				      () => 100) };
   else if (prop.toLowerCase() == 'cz')
-    zcam = { viewing: zcam.viewing, Jz: zcam.Jz, hz: zcam.hz,
-	     Cz: value_assignops (Z.zcam_ensure_Cz (zcam).Cz, op, num, perc,
-				  () => zmaxCz().Cz) };
+    col.zcam = { viewing, Jz: zcam.Jz, hz: zcam.hz,
+		 Cz: value_assignops (Z.zcam_ensure_Cz (zcam).Cz, op, num, perc,
+				      () => zmaxCz().Cz) };
   else if (prop.toLowerCase() == 'mz')
-    zcam = { viewing: zcam.viewing, Jz: zcam.Jz, hz: zcam.hz,
-	     Mz: value_assignops (Z.zcam_ensure_Mz (zcam).Mz, op, num, perc,
-				  () => Z.zcam_ensure_Mz (zmaxCz()).Mz) };
+    col.zcam = { viewing, Jz: zcam.Jz, hz: zcam.hz,
+		 Mz: value_assignops (Z.zcam_ensure_Mz (zcam).Mz, op, num, perc,
+				      () => Z.zcam_ensure_Mz (zmaxCz()).Mz) };
   else if (prop.toLowerCase() == 'sz')
-    zcam = { viewing: zcam.viewing, Jz: zcam.Jz, hz: zcam.hz,
-	     Sz: value_assignops (Z.zcam_ensure_Sz (zcam).Sz, op, num, perc,
-				  () => Z.zcam_ensure_Sz (zmaxCz()).Sz) };
+    col.zcam = { viewing, Jz: zcam.Jz, hz: zcam.hz,
+		 Sz: value_assignops (Z.zcam_ensure_Sz (zcam).Sz, op, num, perc,
+				      () => Z.zcam_ensure_Sz (zmaxCz()).Sz) };
   else if (prop == 'hz' || prop == 'hZ')
-    zcam = { viewing: zcam.viewing, Jz: zcam.Jz, Cz: zcam.Cz,
-	     hz: value_assignops (Z.zcam_ensure_hz (zcam).hz, op, num, perc,
-				  () => 360) };
+    col.zcam = { viewing, Jz: zcam.Jz, Cz: zcam.Cz,
+		 hz: value_assignops (Z.zcam_ensure_hz (zcam).hz, op, num, perc,
+				      () => 360) };
   else if (prop == 'Hz' || prop == 'HZ')
-    zcam = { viewing: zcam.viewing, Jz: zcam.Jz, Cz: zcam.Cz,
-	     Hz: value_assignops (Z.zcam_ensure_Hz (zcam).Hz, op, num, perc,
-				  () => 400) };
-  else if (prop == 'a' || prop == 'alpha')
-    a = value_assignops (a, op, num, perc, () => 1);
+    col.zcam = { viewing, Jz: zcam.Jz, Cz: zcam.Cz,
+		 Hz: value_assignops (Z.zcam_ensure_Hz (zcam).Hz, op, num, perc,
+				      () => 400) };
   else
     console.warn ("CSS: invalid zmod: ", prop, op, num, perc ? '%' : '');
-  const rgb = gamut.contains (zcam);
-  return [rgb.r, rgb.g, rgb.b, a];
+  return zcam;
 }
+
+const split_ops = /\s*([=*\/&|!+-]+)\s*|\s+/;
 
 /// Apply a variety of modifications to an input color.
 export function zmod (colorlike, ...mods) {
-  let rgba = color2rgba (colorlike);
+  const gamut = default_gamut;
+  const col = { alpha: 1, rgba: undefined, zcam: undefined,  };
+  // support hz=[0-9] as Cusp
+  if (colorlike.indexOf ('=') >= 2) {
+    const toks = colorlike.trim().split (split_ops);
+    if (toks.length == 3 && toks[0].toLowerCase() === 'hz' && toks[1] === '=') {
+      col.rgb = { r: 0.42, g: 0.15, b: 0.30 }; // ca Jz=30 Cz=16, hz in tok[2]
+      zmod_assignop (col, toks[0], toks[1], parseFloat (toks[2]), toks[2].indexOf ('%') >= 0);
+      if (!col.zcam)
+	col.zcam = gamut.zcam (col.rgb);
+      col.zcam = gamut.find_cusp (col.zcam.hz);
+    }
+  }
+  // support hex colors and names
+  if (col.rgb === undefined) {
+    const rgba = color2rgba (colorlike);
+    col.rgb = { r: rgba[0], g: rgba[1], b: rgba[2] };
+    col.alpha = rgba[3];
+  }
+  // apply zmods
   for (const mod of mods) {
-    const toks = mod.trim().split (/\s*([=*\/&|!+-]+)\s*|\s+/);
+    const toks = mod.trim().split (split_ops);
     if (toks.length == 3 && z_assignops.includes (toks[1]))
-      rgba = zmod_assignop (rgba, toks[0], toks[1], parseFloat (toks[2]), toks[2].indexOf ('%') >= 0);
+      zmod_assignop (col, toks[0], toks[1], parseFloat (toks[2]), toks[2].indexOf ('%') >= 0);
     else
       console.warn ("CSS: invalid zmod: " + mod);
   }
+  // RGBA output, clamp Cz to gamut
+  if (col.zcam) {
+    col.rgb = gamut.contains (col.zcam);
+    if (!col.rgb.inside)
+      col.rgb = gamut.contains (gamut.clamp_chroma (col.zcam));
+  }
+  let rgba = [ col.rgb.r, col.rgb.g, col.rgb.b, col.alpha ];
   rgba = rgba.map (v => clamp (v, 0, 1));
   if (rgba[3] === 1)
     rgba.splice (3);
