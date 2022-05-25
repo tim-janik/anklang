@@ -1,5 +1,23 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-@import './b/mixins.scss';
+@import 'mixins.scss';
+
+// == Resets & Font Basics ==
+* {
+  box-sizing: border-box;
+  text-overflow: ellipsis;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+input, textarea, keygen, select, button	{ font: inherit; }
+// button				{ -webkit-appearance: normal; }
+.italic, i, cite, em, var, address, dfn { font-style: italic; }
+strong, b, h1, h2, h3, h4, h5, h6, th, ::-webkit-validation-bubble-heading,
+.bold					{ letter-spacing: 0.031em; font-weight: bold; }
+.bolder, optgroup			{ letter-spacing: 0.031em; font-weight: bolder; }
+.tabular-nums				{ font-variant-numeric: tabular-nums; }
+.slashed-zero				{ font-variant-numeric: slashed-zero; }
+plaintext, listing, xmp, input:-webkit-autofill-strong-password, .tnum, .code, tt, pre, code, kbd, samp,
+.tabular-nums.slashed-zero		{ font-variant-numeric: tabular-nums slashed-zero; }
 
 // == Full viewport Sizing ==
 html, body { margin: 0; padding: 0;
@@ -7,11 +25,9 @@ html, body { margin: 0; padding: 0;
 	     max-height: 100vh;
 	     overflow: hidden;
 	   }
-body       { width: 100vw; height: 100vh; }
-*          { box-sizing: border-box; text-overflow: ellipsis; }
-
-// == Main colors ==
 body {
+  width: 100vw; height: 100vh; // Full viewport Sizing
+  // Main colors
   color: $b-main-foreground;
   background: $b-main-background;
   &.window-inactive {
@@ -59,20 +75,6 @@ html {
   "kern";       // Kerning (default)
   font-variant-numeric: tabular-nums slashed-zero;
 }
-
-// == Resets & Font Basics ==
-input, textarea, keygen, select,
-button					{ font: inherit; }
-button					{ -webkit-appearance: normal; }
-.italic, i, cite, em, var, address, dfn { font-style: italic; }
-strong, b, h1, h2, h3, h4, h5, h6, th, ::-webkit-validation-bubble-heading,
-.bold					{ letter-spacing: 0.031em; font-weight: bold; }
-.bolder, optgroup			{ letter-spacing: 0.031em; font-weight: bolder; }
-plaintext, listing, xmp, input:-webkit-autofill-strong-password,
-.tnum, .code, tt, pre, code, kbd, samp	{ font-variant-numeric: tabular-nums slashed-zero; }
-.slashed-zero				{ font-variant-numeric: slashed-zero; }
-.tabular-nums				{ font-variant-numeric: tabular-nums; }
-.tabular-nums.slashed-zero		{ font-variant-numeric: tabular-nums slashed-zero; }
 
 // == push-button ==
 button, push-button {

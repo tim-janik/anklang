@@ -19,7 +19,7 @@
     input               { opacity: 0; width: 0; height: 0;
       &:focus   + .b-fed-switch-trough		{ box-shadow: $b-focus-box-shadow; }
       &:checked + .b-fed-switch-trough         { background-color: $b-switch-active; /*cursor: ew-resize;*/ }
-      &:checked + .b-fed-switch-trough:before	{ opacity: 1; /* checkmark */ }
+      &:checked + .b-fed-switch-trough::before	{ opacity: 1; /* checkmark */ }
       &:checked + .b-fed-switch-trough .b-fed-switch-knob { transform: translateX(1.2em); }
     }
   }
@@ -28,7 +28,7 @@
   }
   .b-fed-switch-trough { position: absolute; top: 0; left: 0; right: 0; bottom: 0;
     transition: .3s; background-color: $b-switch-inactive; border-radius: $b-button-radius;
-    &:before		{ position: absolute; top: 0.1em; left: 0.3em;
+    &::before		{ position: absolute; top: 0.1em; left: 0.3em;
       font-size: 1em; text-transform: none; text-decoration: none !important; speak: none;
       content: "\2713"; transition: .3s; color: $b-switch-knob; opacity: 0;
     }

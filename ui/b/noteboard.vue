@@ -46,7 +46,7 @@
       &:hover { color: #f88; }
     }
     // make room for .note-board-note-close
-    &:before { float: right; content: ' '; padding: 1px; }
+    &::before { float: right; content: ' '; padding: 1px; }
   }
   // markdown styling for notes
   .note-board-markdown {

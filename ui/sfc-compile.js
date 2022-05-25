@@ -3,7 +3,6 @@
 
 const fs = require ('fs');
 const path = require ('path');
-const sass = require ('sass');
 
 /// Count newlines
 function count_newlines (str) {
@@ -45,7 +44,7 @@ function process_file (filename, config) {
   const re = RegExp ('(' + pat + ')', 'mgs');
   const parts = string.split (re); // [ '', '<!-- -->', '\n\n', '<style></style>', '\n\n', '<template></template>', '\n\n', '<script></script>', '\n' ]
   // convert tags
-  let newlines = 0;
+  let css_string, newlines = 0;
   for (let i = 1; i < parts.length; i += 2)
     {
       newlines += count_newlines (parts[i - 1]);
@@ -68,19 +67,26 @@ function process_file (filename, config) {
 	  if (parts[i].match (/<\/style>$/i))
 	    {
 	      bits[3] = '\n';
-	      write_style (filename, ofile, config, '\n'.repeat (newlines) + bits.join (''));
+	      css_string = write_style (filename, ofile, config, '\n'.repeat (newlines) + bits.join (''));
 	      bits[2] = bits[2].replace (/([`\\])/g, '\\$1');
 	    }
 	  else
 	    {
 	      bits[2] = bits[2].replace (/([`$\\])/g, '\\$1');
 	    }
-	  bits[1] += `function sfc_${tag} (T, m) { return T\``; // start function
+	  const T = tag === 'style' ? 'css' : tag === 'template' ? 'html' : 'txt';
+	  bits[1] += `function sfc_${tag} (${T}, m) { return ${T}\``; // start function
 	  bits[3] = '`; }'; // end function
 	  parts[i] = bits.join ('');
 	}
       newlines += part_newlines;
     }
+  // append CSS
+  if (false && css_string) {
+    let qcss = css_string.replace (/([`\\])/g, '\\$1');
+    qcss = qcss.replace (/\n\/\*# sourceMap.*\*\/\s*$/, '');
+    parts.push ('\nfunction sfc_css (css, m) { return css`' + qcss + '`; }\n');
+  }
   // return string.replace (re, 'function sfc_docs (tl_docs, m) { return tl_docs`$3`; }');
   ofile += '.js';
   fs.writeFileSync (ofile, parts.join (''));
@@ -89,6 +95,11 @@ function process_file (filename, config) {
 
 /// Process and write style information
 function write_style (filename, ofile, config, stylestring) {
+  const with_sass = false;
+  if (!with_sass)
+    return fs.writeFileSync (ofile + '.css', stylestring);
+  // write CSS after SASS processing
+  const sass = require ('sass');
   const result = sass.renderSync ({
     data: stylestring,
     file: filename,
@@ -100,9 +111,9 @@ function write_style (filename, ofile, config, stylestring) {
     functions: require ("./chromatic-sass2"),
     outFile: ofile + '.css',
   });
-  //  function (err, result) {
-  // if (err)       console.error (err);
-  fs.writeFileSync (ofile + '.css', result.css.toString());
+  const css_string = result.css.toString();
+  fs.writeFileSync (ofile + '.css', css_string);
+  return css_string;
 }
 
 // Config and arguments

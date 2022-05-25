@@ -14,7 +14,7 @@
   @import 'mixins.scss';
   .b-pro-input        {
     display: flex; justify-content: center;
-    .b-pro-input-ldiv[class]:before { content: "\200b"; /* zero width character to force line height */ }
+    .b-pro-input-ldiv[class]::before { content: "\200b"; /* zero width character to force line height */ }
     .b-pro-input-knob { height: 2em; }
     .b-pro-input-toggle { height: 2em; }
     .b-pro-input-choice { height: 2em; width: 2.3em; }

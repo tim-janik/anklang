@@ -18,7 +18,7 @@
   .b-fed-picklist		{
     $b-fed-picklist-width: 23em;
     .b-fed-picklist-button {
-      width: 1.5 + $b-fed-picklist-width + 1.5;
+      width: calc(1.5 + $b-fed-picklist-width + 1.5);
       white-space: nowrap;
       text-overflow: ellipsis;
       overflow-x: hidden;
@@ -46,8 +46,8 @@
     }
   }
   .b-fed-picklist-contextmenu {
-    $b-fed-picklist-lines: ".b-fed-picklist-line1, .b-fed-picklist-line2, .b-fed-picklist-line3, .b-fed-picklist-line4, \
-      .b-fed-picklist-line5, .b-fed-picklist-line6, .b-fed-picklist-line7, .b-fed-picklist-line8, .b-fed-picklist-line9";
+    $b-fed-picklist-lines: .b-fed-picklist-line1, .b-fed-picklist-line2, .b-fed-picklist-line3, .b-fed-picklist-line4,
+      .b-fed-picklist-line5, .b-fed-picklist-line6, .b-fed-picklist-line7, .b-fed-picklist-line8, .b-fed-picklist-line9;
     .b-fed-picklist-label    { display: block; }
     #{$b-fed-picklist-lines} { display: block; font-size: 90%; color: $b-style-fg-secondary; }
     .b-menuitem {

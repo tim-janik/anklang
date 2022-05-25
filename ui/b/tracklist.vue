@@ -23,26 +23,26 @@
   .b-trackrow-cell {
     flex-shrink: 0;
     height: $b-trackrow-height;
-    margin: $b-panel-spacing * 0.5 0;
+    margin: calc($b-panel-spacing * 0.5) 0;
   }
   .b-tracklist-trackswrapper {
-    padding-top: $b-panel-spacing * 0.5; padding-bottom: $b-panel-spacing * 0.5;
-    padding-left: $b-panel-spacing * 0.5;
+    padding-top: calc($b-panel-spacing * 0.5); padding-bottom: calc($b-panel-spacing * 0.5);
+    padding-left: calc($b-panel-spacing * 0.5);
   }
   .b-tracklist-theader, .b-tracklist-tfooter, .b-tracklist-trackswrapper {
-    margin-left: $b-panel-spacing * 0.5;
+    margin-left: calc($b-panel-spacing * 0.5);
   }
   .b-tracklist-clipswrapper {
     display: inline-flex;
-    padding-top: $b-panel-spacing * 0.5; padding-bottom: $b-panel-spacing * 0.5;
+    padding-top: calc($b-panel-spacing * 0.5); padding-bottom: calc($b-panel-spacing * 0.5);
   }
   .b-tracklist-cheader, .b-tracklist-hscrollbar1, .b-tracklist-clipswrapper {
     margin: 0 $b-panel-spacing;
   }
   .b-tracklist-partswrapper {
     display: inline-flex;
-    padding-top: $b-panel-spacing * 0.5; padding-bottom: $b-panel-spacing * 0.5;
-    padding-right: $b-panel-spacing * 0.5;
+    padding-top: calc($b-panel-spacing * 0.5); padding-bottom: calc($b-panel-spacing * 0.5);
+    padding-right: calc($b-panel-spacing * 0.5);
   }
   .b-tracklist-vscrollbar {
     display: flex;
@@ -92,7 +92,7 @@
   .b-tracklist-tickpointer {
     position: absolute; height: 100%; display: flex;
     transform: translateX(0px);
-    left: $b-tracklist-arranger-lpad - 3px;
+    left: calc($b-tracklist-arranger-lpad - 3px);
     /* width: 1px; background: #fff8; border: 1px solid #0008; box-sizing: content-box; */
     width: 3px; background: linear-gradient(to right, #0f00, #0f08 80%, #0f0f);
   }

@@ -10,8 +10,8 @@
 
   /* Bubble color setup */
   $b-data-bubble-hue: 52;
-  $b-data-bubble-fg:  color($b-data-bubble-hue, 1%);
-  $b-data-bubble-bg:  color($b-data-bubble-hue, 90%);
+  $b-data-bubble-fg:  hsl($b-data-bubble-hue, 100%, 1%);
+  $b-data-bubble-bg:  hsl($b-data-bubble-hue, 100%, 90%);
   $b-data-bubble-bg2: lighter($b-data-bubble-bg, 3%);
   $b-data-bubble-br:  $b-data-bubble-bg2;
 
@@ -29,19 +29,19 @@
       max-width: 40em; border-radius: 3px;
       // border: dppx(2) solid lighter($b-data-bubble-bg2, 5%);
       box-shadow:
-      0 0 0 1px change-color($b-data-bubble-br, $alpha: 0.8),
+      0 0 0 1px fade($b-data-bubble-br, 0.8),
       0px 0px 2px 1px black;
       color: $b-data-bubble-fg; padding: 0.5em 0.5em 0.4em;
       background: $b-data-bubble-bg;
-      background-image: chromatic-gradient(to bottom right, $b-data-bubble-bg, $b-data-bubble-bg2);
+      background-image: linear-gradient(to bottom right, $b-data-bubble-bg, $b-data-bubble-bg2);
       font-variant-numeric: tabular-nums;
     }
     &.b-data-bubble-visible {
       visibility: visible; opacity: 0.95;
     }
     /* Triangle acting as bubble pointer */
-    &:after {
-      position: absolute; bottom: 5px - 2; /* room below triangle: 5px */
+    &::after {
+      position: absolute; bottom: calc(5px - 2); /* room below triangle: 5px */
       left: calc(50% - 5px); width: 0; height: 0; content: "";
       border-top: 5px solid $b-data-bubble-br;
       border-left: 5px solid transparent;
@@ -52,12 +52,12 @@
     .b-markdown-it-outer {
       @include b-markdown-it-inlined;
       $fsf: 1.05; //* font size factor */
-      h1 { font-size: ipow($fsf, 6) * 1em; }
-      h2 { font-size: ipow($fsf, 5) * 1em; }
-      h3 { font-size: ipow($fsf, 4) * 1em; }
-      h4 { font-size: ipow($fsf, 3) * 1em; }
-      h5 { font-size: ipow($fsf, 2) * 1em; }
-      h6 { font-size: ipow($fsf, 1) * 1em; }
+      h1 { font-size: calc(pow($fsf, 6) * 1em); }
+      h2 { font-size: calc(pow($fsf, 5) * 1em); }
+      h3 { font-size: calc(pow($fsf, 4) * 1em); }
+      h4 { font-size: calc(pow($fsf, 3) * 1em); }
+      h5 { font-size: calc(pow($fsf, 2) * 1em); }
+      h6 { font-size: calc(pow($fsf, 1) * 1em); }
     }
   }
 </style>

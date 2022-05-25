@@ -1,0 +1,16 @@
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+@import 'mixins.scss';
+
+// Apply styling inside shadow DOMs
+
+// == Inherit & Resets ==
+* {
+  box-sizing: border-box;
+  font-feature-settings: inherit;
+  font-variation-settings: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-overflow: inherit;
+  -moz-appearance: none;
+  -webkit-appearance: none;
+}

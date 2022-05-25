@@ -12,109 +12,110 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
-  $b-piano-roll-key-length: 64px;
-  $scrollbar-area-size: 15px;
-  $scrollarea-bg: transparent;
-  .b-piano-roll {
-    //* Make scss variables available to JS via getComputedStyle() */
-    --piano-roll-light-row:    #{$b-piano-roll-light-row};
-    --piano-roll-dark-row:     #{$b-piano-roll-dark-row};
-    --piano-roll-grid-main:    #{contrast-lighten($b-piano-roll-light-row, 2.2)};   // bar separator
-    --piano-roll-grid-sub:     #{contrast-lighten($b-piano-roll-light-row, 1.6)};   // quarter note separator
-    --piano-roll-semitone12:   #{contrast-lighten($b-piano-roll-light-row, 2.2)};   // separator per octave
-    --piano-roll-semitone6:    #{contrast-lighten($b-piano-roll-light-row, 2.2)};   // separator after 6 semitones
+@import 'mixins.scss';
+@import 'fonts/AnklangCursors.scss';
+$b-piano-roll-key-length: 64px;
+$scrollbar-area-size: 15px;
+$scrollarea-bg: transparent;
+.b-piano-roll {
+  //* Make scss variables available to JS via getComputedStyle() */
+  --piano-roll-light-row:    $b-piano-roll-light-row;
+  --piano-roll-dark-row:     $b-piano-roll-dark-row;
+  --piano-roll-grid-main:    contrast-lighten($b-piano-roll-light-row, 2.2);   // bar separator
+  --piano-roll-grid-sub:     contrast-lighten($b-piano-roll-light-row, 1.6);   // quarter note separator
+  --piano-roll-semitone12:   contrast-lighten($b-piano-roll-light-row, 2.2);   // separator per octave
+  --piano-roll-semitone6:    contrast-lighten($b-piano-roll-light-row, 2.2);   // separator after 6 semitones
 
-    --piano-roll-white-base:   #{$b-piano-roll-white-base};
-    --piano-roll-white-border: #{$b-scrollboundary-color};                          // border around piano key
-    --piano-roll-white-glint:  #{contrast-lighten($b-piano-roll-white-base, 1.2)};  // highlight on piano key
-    --piano-roll-key-color:    #{$b-scrollboundary-color};
-    --piano-roll-black-base:   #{$b-piano-roll-black-base};
-    --piano-roll-black-border: #{contrast-lighten($b-piano-roll-black-base, 1.1)};  // border around piano key
-    --piano-roll-black-glint:  #{contrast-lighten($b-piano-roll-black-base, 1.55)}; // highlight on piano key
-    --piano-roll-black-shine:  #{contrast-lighten($b-piano-roll-black-base, 3.1)};  // reflection on piano key
+  --piano-roll-white-base:   $b-piano-roll-white-base;
+  --piano-roll-white-border: $b-scrollboundary-color;                          // border around piano key
+  --piano-roll-white-glint:  contrast-lighten($b-piano-roll-white-base, 1.2);  // highlight on piano key
+  --piano-roll-key-color:    $b-scrollboundary-color;
+  --piano-roll-black-base:   $b-piano-roll-black-base;
+  --piano-roll-black-border: contrast-lighten($b-piano-roll-black-base, 1.1);  // border around piano key
+  --piano-roll-black-glint:  contrast-lighten($b-piano-roll-black-base, 1.55); // highlight on piano key
+  --piano-roll-black-shine:  contrast-lighten($b-piano-roll-black-base, 3.1);  // reflection on piano key
 
-    --piano-roll-font:                  #{$b-piano-roll-font};
-    --piano-roll-num-color:             #{$b-piano-roll-num-color};
-    --piano-roll-note-color:       	#{$b-piano-roll-note-color};
-    --piano-roll-note-focus-color:      #{$b-piano-roll-note-focus-color};
-    --piano-roll-note-focus-border:     #{$b-piano-roll-note-focus-border};
-    --piano-roll-key-length:            #{$b-piano-roll-key-length};
+  --piano-roll-font:                  $b-piano-roll-font;
+  --piano-roll-num-color:             $b-piano-roll-num-color;
+  --piano-roll-note-color:       	$b-piano-roll-note-color;
+  --piano-roll-note-focus-color:      $b-piano-roll-note-focus-color;
+  --piano-roll-note-focus-border:     $b-piano-roll-note-focus-border;
+  --piano-roll-key-length:            $b-piano-roll-key-length;
+}
+
+.b-piano-roll {
+  outline: none;
+  width: 100%;
+  @include scrollbar-hover-area;
+  //* COLS: VTitle Piano Roll Scrollborder Scrollbar */
+  grid-template-columns: min-content $b-piano-roll-key-length 1fr min-content min-content;
+  //* ROWS: Timeline Roll Scrollborder Scrollbar */
+  grid-template-rows: min-content 1fr min-content min-content;
+
+  .-vtitle {
+    text-align: center;
+    writing-mode: vertical-rl; transform: rotate(180deg); /* FF: writing-mode: sideways-rl; */
   }
-
-  .b-piano-roll {
-    outline: none;
-    width: 100%;
-    @include scrollbar-hover-area;
-    //* COLS: VTitle Piano Roll Scrollborder Scrollbar */
-    grid-template-columns: min-content $b-piano-roll-key-length 1fr min-content min-content;
-    //* ROWS: Timeline Roll Scrollborder Scrollbar */
-    grid-template-rows: min-content 1fr min-content min-content;
-
-    .-vtitle {
-      text-align: center;
-      writing-mode: vertical-rl; transform: rotate(180deg); /* FF: writing-mode: sideways-rl; */
-    }
-    .-buttons {
+  .-buttons {
+    justify-self: stretch; align-self: stretch;
+    @include b-softbuttonbar;
+    border-bottom: 1px solid $b-scrollboundary-color;	//* edge near scroll area */
+    border-right: 1px solid $b-scrollboundary-color;	//* edge near scroll area */
+    & > * {
       justify-self: stretch; align-self: stretch;
-      @include b-softbuttonbar;
-      border-bottom: 1px solid $b-scrollboundary-color;	//* edge near scroll area */
-      border-right: 1px solid $b-scrollboundary-color;	//* edge near scroll area */
-      & > * {
-	justify-self: stretch; align-self: stretch;
-	padding: 5px;
-	@include b-softbutton;
-	//* tweak child next to scroll boundary */
-	&:last-child {
-	  border-right: 1px solid transparent;			//* avoid double border */
-	  &.active, &:active {
-	    border-right: 1px inset $b-softbutton-border-color;	//* preserve glint */
-	  }
+      padding: 5px;
+      @include b-softbutton;
+      //* tweak child next to scroll boundary */
+      &:last-child {
+	border-right: 1px solid transparent;			//* avoid double border */
+	&.active, &:active {
+	  border-right: 1px inset $b-softbutton-border-color;	//* preserve glint */
 	}
       }
-      .-toolbutton {
-	align-items: center; justify-content: center;
-      }
     }
-    .-timeline-wrapper {
-      height: $b-timeline-outer-height;
-      border-bottom: 1px solid $b-scrollboundary-color;	//* edge near scroll area */
-    }
-    .-vscrollborder {
-      border-left: 1px solid $b-scrollboundary-color;  //* edge near scroll area */
-    }
-    .-hscrollborder {
-      border-bottom: 1px solid $b-scrollboundary-color;  //* edge near scroll area */
-    }
-    .-notes-wrapper, .-piano-wrapper {} // leave these alone to preserve vertical sizing
-    canvas { image-rendering: pixelated; background-color: #000; }
-    &[data-pianotool='S'] canvas.b-piano-roll-notes { cursor: crosshair; }
-    &[data-pianotool='S'] canvas.b-piano-roll-notes[data-notehover="true"] { cursor: default; }
-    &[data-pianotool='H'] canvas.b-piano-roll-notes { cursor: col-resize; }
-    &[data-pianotool='P'] canvas.b-piano-roll-notes { cursor: $anklang-cursor-pen; }
-    &[data-pianotool='E'] canvas.b-piano-roll-notes { cursor: $anklang-cursor-eraser; }
-
-    .-vscrollbar {
-      display: flex; justify-self: center;
-      width: $scrollbar-area-size; height: auto;
-      margin: 0 4px 0 2px;
-      overflow-y: scroll; overflow-x: hidden; background: $scrollarea-bg;
-      .-vscrollbar-area { width: 1px; height: 0; }
-    }
-    .-hscrollbar {
-      display: flex; flex-direction: column; align-self: center;
-      height: $scrollbar-area-size; width: auto;
-      margin: 2px 0 4px 0;
-      overflow-x: scroll; overflow-y: hidden; background: $scrollarea-bg;
-      .-hscrollbar-area { height: 1px; width: 3840px; }
-    }
-    .-overflow-hidden {
-      display: flex;
-      position: relative;
-      white-space: nowrap;
-      overflow: hidden;
+    .-toolbutton {
+      align-items: center; justify-content: center;
     }
   }
+  .-timeline-wrapper {
+    height: $b-timeline-outer-height;
+    border-bottom: 1px solid $b-scrollboundary-color;	//* edge near scroll area */
+  }
+  .-vscrollborder {
+    border-left: 1px solid $b-scrollboundary-color;  //* edge near scroll area */
+  }
+  .-hscrollborder {
+    border-bottom: 1px solid $b-scrollboundary-color;  //* edge near scroll area */
+  }
+  .-notes-wrapper, .-piano-wrapper {} // leave these alone to preserve vertical sizing
+  canvas { image-rendering: pixelated; background-color: #000; }
+  &[data-pianotool='S'] canvas.b-piano-roll-notes { cursor: crosshair; }
+  &[data-pianotool='S'] canvas.b-piano-roll-notes[data-notehover="true"] { cursor: default; }
+  &[data-pianotool='H'] canvas.b-piano-roll-notes { cursor: col-resize; }
+  &[data-pianotool='P'] canvas.b-piano-roll-notes { cursor: $anklang-cursor-pen; }
+  &[data-pianotool='E'] canvas.b-piano-roll-notes { cursor: $anklang-cursor-eraser; }
+
+  .-vscrollbar {
+    display: flex; justify-self: center;
+    width: $scrollbar-area-size; height: auto;
+    margin: 0 4px 0 2px;
+    overflow-y: scroll; overflow-x: hidden; background: $scrollarea-bg;
+    .-vscrollbar-area { width: 1px; height: 0; }
+  }
+  .-hscrollbar {
+    display: flex; flex-direction: column; align-self: center;
+    height: $scrollbar-area-size; width: auto;
+    margin: 2px 0 4px 0;
+    overflow-x: scroll; overflow-y: hidden; background: $scrollarea-bg;
+    .-hscrollbar-area { height: 1px; width: 3840px; }
+  }
+  .-overflow-hidden {
+    display: flex;
+    position: relative;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+}
 
 .b-piano-roll-key-width { width: $b-piano-roll-key-length; }
 

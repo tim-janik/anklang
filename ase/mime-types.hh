@@ -76,6 +76,8 @@ text/tab-separated-values tsv
 text/troff man me ms roff t tr
 text/x-c c c++ cc cpp cxx h h++ hh hpp hxx
 text/x-diff diff patch
+text/x-sass sass
+text/x-scss scss
 video/mp4 mp4
 video/ogg ogv
 video/webm webm
