@@ -28,7 +28,7 @@
     "eslint-plugin-html": "^6.2.0",
     "eslint-plugin-unused-imports": "^2.0.0",
     "eslint-plugin-vue": "^8.6.0",
-    "icon-gen": "^1.2.3",
+    "icon-gen": "^3.0.1",
     "jsdoc": "^3.6.7",
     "lit": "^2.2.2",
     "markdown-it": "^12.2.0",
