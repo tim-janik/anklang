@@ -48,7 +48,7 @@
     "postcss-scss": "^4.0.4",
     "rollup": "^2.74.1",
     "rollup-plugin-node-resolve": "^5.2.0",
-    "sass": "^1.50.1",
+    "sass": "^1.52.1",
     "terser": "^5.13.1",
     "zcam-js": "=0.0.9"
   }
