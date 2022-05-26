@@ -3,13 +3,8 @@
 
 import './browserified.js';	// provides require() and browserified modules
 
-// Hook into onload
-if (document.readyState == 'complete')
-  throw Error ("startup.js: script loaded too late");
-window.addEventListener ('load', bootup);
-console.bootlog = console.log;
-
 // Global CONFIG
+console.bootlog = console.log;
 const fallback_config = {
   // runtime defaults and constants
   MAXINT: 2147483647, MAXUINT: 4294967295, mainjs: false,
@@ -28,9 +23,7 @@ import * as Ase from './aseapi.js';
 // Global Vue and Theme
 import * as Vue from './vue.js';
 Object.defineProperty (globalThis, 'Vue', { value: Vue });
-import { AppClass } from './b/app.js';
-import Shell from './b/shell.js';
-import VueComponents from './all-components.js';
+import { create_app } from './b/app.js';
 
 // load Script host
 import * as Script from './script.js';
@@ -80,7 +73,7 @@ const Jsonapi = {
   },
 };
 
-// Bootup, called onload
+// Bootup, called after onload
 async function bootup () {
   if (window.__Electron__)
     {
@@ -142,36 +135,9 @@ async function bootup () {
     throw (new Error ('Ase: failed to connect to AnklangSynthEngine: ' + error));
   console.bootlog ("ASE: connect: server", await Ase.server.get_version());
 
-  // prepare Vue component templates
-  for (const [__name, component] of Object.entries (VueComponents))
-    if (component.sfc_template)
-      component.template = component.sfc_template.call (null, Util.tmplstr, null);
-  // create and configure Vue App
-  const VueApp = Vue.createApp (Shell);
-  VueApp.config.compilerOptions.isCustomElement = tag => !!window.customElements.get (tag);
-  VueApp.config.compilerOptions.whitespace = 'preserve';
-  Object.assign (VueApp.config.globalProperties, { // common globals
-    CONFIG: globalThis.CONFIG,
-    debug: globalThis.debug,
-    Util: globalThis.Util,
-    Ase: globalThis.Ase,
-    window: globalThis.window,
-    document: globalThis.document,
-    observable_from_getters: Util.observable_from_getters,
-  });
-  // VueApp.config.compilerOptions.comments = true;
-  // register directives, mixins, components
-  for (let directivename in Util.vue_directives) // register all utility directives
-    VueApp.directive (directivename, Util.vue_directives[directivename]);
-  for (let mixinname in Util.vue_mixins)         // register all utility mixins
-    VueApp.mixin (Util.vue_mixins[mixinname]);
-  for (const [name, component] of Object.entries (VueComponents))
-    if (component !== Shell)
-      VueApp.component (name, component);
-
   // create main App instance
-  const app = new AppClass (VueApp);
-  console.assert (app == App);
+  const app = await create_app();
+  console.assert (app === App);
 
   // ensure App has an AseProject
   await App.load_project_checked ((await Ase.server.last_project()) || '');
@@ -251,11 +217,8 @@ function browser_config() {
   // Firefox sliders cannot be tragged when tabindex=-1
   const slidertabindex = gecko ? "0" : "-1";
   // Chrome Bug: https://bugs.chromium.org/p/chromium/issues/detail?id=1092358 https://github.com/w3c/pointerlock/issues/42
-  // TEST: let l={}; document.body.onpointermove = e=>{ console.log("screenX:",e.screenX-l.screenX,"movementX:",e.movementX); l=e; }
   const chrome_major = parseInt (( /\bChrome\/([0-9]+)\./.exec (navigator.userAgent) || [0,0] )[1]);
-  const chrome_major_last_buggy = 100;
-  const dpr_movement = chrome_major >= 37 && chrome_major <= chrome_major_last_buggy;
-  console.assert (chrome_major <= chrome_major_last_buggy, `WARNING: Chrome/${chrome_major} has not been tested for the movementX devicePixelRatio bug`);
+  const dpr_movement = chrome_major >= 37 && chrome_major <= 100; // Chrome-101 finally fixes #1092358
   if (dpr_movement)
     console.bootlog ("Detected Chrome bug #1092358...");
   // Prevent Web Browser menus interfering with the UI
@@ -279,3 +242,8 @@ async function self_tests() {
   console.assert (Util.equals_recursively (obj, r));
   Ase.server.set_data (Ase.ResourcePath.SESSION, ukey, undefined);
 }
+
+// Boot after onload
+if (document.readyState !== 'complete')
+  await new Promise (r => window.addEventListener ('load', r, { once: true }));
+bootup();

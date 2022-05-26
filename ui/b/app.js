@@ -1,14 +1,18 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-// Global application instance for Anklang.
-// *zmovehooks*
-// : An array of callbacks to be notified on pointer moves.
-// *zmove (event)*
-// : Trigger the callback list `zmovehooks`, passing `event` along. This is useful to get debounced
-// notifications for pointer movements, including 0-distance moves after significant UI changes.
+/** # B-APP
+ * Global application instance for Anklang.
+ * *zmovehooks*
+ * : An array of callbacks to be notified on pointer moves.
+ * *zmove (event)*
+ * : Trigger the callback list `zmovehooks`, passing `event` along. This is useful to get debounced
+ * notifications for pointer movements, including 0-distance moves after significant UI changes.
+ */
 
-import * as Util from '../util.js';
+import VueComponents from '../all-components.js';
+import Shell from '../b/shell.js';
 import DataBubbleIface from '../b/databubble.js';
+import * as Util from '../util.js';
 
 // == zmove() ==
 class ZMove {
@@ -165,4 +169,41 @@ export class AppClass {
   }
   zmoves_add = ZMove.zmoves_add;
   zmove = ZMove.zmove;
+}
+
+// == addvc ==
+export async function create_app() {
+  if (globalThis.App)
+    return globalThis.App;
+  // prepare Vue component templates
+  for (const [__name, component] of Object.entries (VueComponents))
+    if (component.sfc_template) // also constructs Shell.template
+      component.template = component.sfc_template.call (null, Util.tmplstr, null);
+  // create and configure Vue App
+  const vue_app = Vue.createApp (Shell); // must have Shell.template
+  vue_app.config.compilerOptions.isCustomElement = tag => !!window.customElements.get (tag);
+  vue_app.config.compilerOptions.whitespace = 'preserve';
+  // common globals
+  const global_properties = {
+    CONFIG: globalThis.CONFIG,
+    debug: globalThis.debug,
+    Util: globalThis.Util,
+    Ase: globalThis.Ase,
+    window: globalThis.window,
+    document: globalThis.document,
+    observable_from_getters: Util.observable_from_getters,
+  };
+  Object.assign (vue_app.config.globalProperties, global_properties);
+  // register directives, mixins, components
+  for (let directivename in Util.vue_directives) // register all utility directives
+    vue_app.directive (directivename, Util.vue_directives[directivename]);
+  for (let mixinname in Util.vue_mixins)         // register all utility mixins
+    vue_app.mixin (Util.vue_mixins[mixinname]);
+  for (const [name, component] of Object.entries (VueComponents))
+    if (component !== Shell)
+      vue_app.component (name, component);
+  // create main App instance
+  const app = new AppClass (vue_app);
+  console.assert (app === globalThis.App);
+  return globalThis.App;
 }

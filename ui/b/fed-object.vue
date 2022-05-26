@@ -75,10 +75,13 @@
 	<h-flex class="-field" style="grid-column: 2 / span 2" >
 	  <span class="-value" style="text-align: right" :data-bubble="prop.blurb_" >
 	    <component :is="prop.ctype_" v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
-					 :value="prop.fetch_()" @input="prop.apply_" v-if="prop.ctype_ != 'b-choice'" ></component>
+					 :value="prop.fetch_()" @input="prop.apply_" v-if="prop.ctype_.startsWith ('b-fed-')" ></component>
+	    <b-textinput v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
+			 :value="prop.fetch_()" @input="prop.apply_ ($event.target.value)"
+			 v-if="prop.ctype_ === 'b-textinput'" ></b-textinput>
 	    <b-choice v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
 		      :value="prop.fetch_()" @update:value="prop.apply_ ($event)" :choices="prop.value_.choices"
-		      v-if="prop.ctype_ == 'b-choice'" ></b-choice>
+		      v-if="prop.ctype_ === 'b-choice'" ></b-choice>
 	  </span>
 	  <span>
 	    <span class="b-fed-object-clear" @click="prop.reset()" > ⊗  </span></span>
@@ -135,7 +138,7 @@ async function list_fields (proplist) {
 	  else if (xprop.has_choices_)
 	    ctype = 'b-choice';
 	  else
-	    ctype = 'b-fed-text';
+	    ctype = 'b-textinput';
 	  xprop.ctype_ = ctype;
 	  Object.freeze (xprop);
 	}
