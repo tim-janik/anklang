@@ -16,7 +16,7 @@
   .b-tracklist {
     background-color: $b-tracklist-bg;
     //* Layout: Tracks Spacer Clips Spacer Parts Scrollbar */
-    grid-template-columns: min-content 3px 1fr 3px 1fr 20px;
+    grid-template-columns: min-content 3px 17fr 3px 10px 20px;
     //* Layout: Header Spacer Main Spacer Footer */
     grid-template-rows: min-content 3px 1fr 3px 20px;
   }

@@ -64,6 +64,12 @@ $>/ui/vue.js:	$>/node_modules/.npm.done				| $>/ui/
 		-e 's/\b\(warn(`[^`]* was accessed during render\)/if(0) \1/'
 $>/ui/.build1-stamp: $>/ui/vue.js
 
+# == ui/zcam-js.mjs ==
+$>/ui/zcam-js.mjs: $>/node_modules/.npm.done				| $>/ui/
+	$(QGEN)
+	$Q $(CP) $>/node_modules/zcam-js/zcam-js.mjs $@
+$>/ui/.build1-stamp: $>/ui/zcam-js.mjs
+
 # == ui/csstree-validator.esm.js ==
 $>/ui/csstree-validator.esm.js: $>/node_modules/.npm.done				| $>/ui/
 	$(QGEN)
@@ -130,7 +136,7 @@ $>/ui/all-styles.css: $>/ui/postcss.js ui/Makefile.mk $(ui/csscopy.sources) $(ui
 		|| exit 1 ; done
 	$Q cd $>/ui/ && node ./postcss.js imports.scss > $(@F).tmp
 	$Q mv $@.tmp $@
-$>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/node_modules/.npm.done
+$>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/ui/colors.js $>/node_modules/.npm.done
 	$(QGEN)
 	$Q $(CP) $< $@.tst.js
 	$Q cd $>/ui/ && node ./$(@F).tst.js --test $V # CHECK transformations

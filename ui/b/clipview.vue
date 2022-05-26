@@ -17,7 +17,8 @@
 $b-clipview-font: normal 9px $b-theme-font-family !default;    // the '9px' part is dynamically resized
 $b-clipview-font-color: rgba(255, 255, 255, 0.7) !default;
 $b-clipview-note-color: rgba(255, 255, 255, 0.7) !default;
-$b-clipview-colors: #ff7b50a7, #f68403a7, #d6960ea7, #92ad19a7, #67b518a7, #22bb27a7, #21b873a7, #24b3b3a7, #11adeba7, #799fffa7, #a094ffa7, #c287ffa7, #e473ffa7, #ff5ff5a7, #ff70b0a7 !default;
+$b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;
+$b-clipview-color-zmod: Jz=55, Cz=30;
 
 .b-clipview {
   display: flex; position: relative;
@@ -28,7 +29,9 @@ $b-clipview-colors: #ff7b50a7, #f68403a7, #d6960ea7, #92ad19a7, #67b518a7, #22bb
     height: $b-trackrow-height;
     border-radius: calc($b-theme-border-radius * 0.66);
     --clipview-font-color: #{$b-clipview-font-color}; --clipview-font: #{$b-clipview-font};
-    --clipview-note-color: #{$b-clipview-note-color}; --clipview-colors: #{$b-clipview-colors};
+    --clipview-note-color: #{$b-clipview-note-color};
+    --clipview-color-hues: $b-clipview-color-hues;
+    --clipview-color-zmod: $b-clipview-color-zmod;
     background-color: #222;
     box-shadow: inset 0px 0 1px #fff9, inset -1px 0 1px #000;
   }
@@ -99,6 +102,8 @@ export default {
   },
 };
 
+import * as C from '../colors.js';
+
 function render_canvas () {
   // canvas setup
   const canvas = this.$refs.canvas;
@@ -110,14 +115,14 @@ function render_canvas () {
   //canvas.width = width; canvas.height = height;
   ctx.clearRect (0, 0, width, height);
   // color setup
-  const colors = Util.split_comma (csp ('--clipview-colors'));
   let cindex;
+  // cindex = Util.fnv1a_hash (this.clipname);	// - color from clip name
+  cindex = this.index;				// - color per clip
   cindex = this.trackindex;			// - color per track
-  cindex = (cindex + 1013904223) * 1664557;	//   LCG randomization step
-  cindex += '|' + this.index;			// - color per clip
-  cindex += '|' + this.clipname;		// - color from clip name
-  cindex = Util.fnv1a_hash (cindex);		// - create number
-  const bgcol = colors[(cindex >>> 0) % colors.length];
+  const hues = csp ('--clipview-color-hues').split (',');
+  const zmods = csp ('--clipview-color-zmod').split (',');
+  const hz = hues[cindex % hues.length];
+  const bgcol = C.zmod ('hz=' + hz, ...zmods);
   // paint clip background
   ctx.fillStyle = bgcol;
   ctx.fillRect (0, 0, width, height);
