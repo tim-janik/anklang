@@ -13,17 +13,20 @@ $>/ui/.build2-stamp:	# extra targets, deferred during incremental rebuilds
 # make && (cd out/ui/dist/ && python -m SimpleHTTPServer 3333)
 
 # == Copies ==
-ui/copy.wildcards ::= $(wildcard	\
+ui/jscopy.wildcards ::= $(wildcard	\
 	ui/*.js				\
 	ui/*.mjs			\
 	ui/b/*.js			\
 	ui/b/*.mjs			\
 )
+ui/cjs.wildcards ::= $(wildcard		\
+)
 ui/nocopy.wildcards ::= $(wildcard	\
+	ui/postcss.js			\
 	ui/sfc-compile.js		\
 	ui/slashcomment.js		\
 )
-ui/copy.files ::= $(filter-out $(ui/nocopy.wildcards), $(ui/copy.wildcards))
+ui/copy.files ::= $(filter-out $(ui/nocopy.wildcards) $(ui/cjs.wildcards), $(ui/jscopy.wildcards))
 ui/vue.wildcards ::= $(wildcard ui/b/*.vue)
 ui/public.wildcards ::= $(wildcard	\
 	ui/assets/*.svg			\
@@ -61,6 +64,12 @@ $>/ui/vue.js:	$>/node_modules/.npm.done				| $>/ui/
 		-e 's/\b\(warn(`[^`]* was accessed during render\)/if(0) \1/'
 $>/ui/.build1-stamp: $>/ui/vue.js
 
+# == ui/csstree-validator.esm.js ==
+$>/ui/csstree-validator.esm.js: $>/node_modules/.npm.done				| $>/ui/
+	$(QGEN)
+	$Q $(CP) $>/node_modules/csstree-validator/dist/csstree-validator.esm.js $@
+$>/ui/.build1-stamp: $>/ui/csstree-validator.esm.js
+
 # == ui/index.html ==
 $>/ui/index.html: ui/index.html ui/assets/eknob.svg ui/Makefile.mk	| $>/ui/
 	$(QGEN)
@@ -68,7 +77,7 @@ $>/ui/index.html: ui/index.html ui/assets/eknob.svg ui/Makefile.mk	| $>/ui/
 	$Q : $(file > $>/ui/config.json,  { "config": { $(strip $(PACKAGE_VERSIONS)) } })
 	$Q sed -r \
 		-e "/<script type='application\/json' id='--EMBEDD-config_json'>/ r $>/ui/config.json" \
-		-e "/<!--EMBEDD='eknob\.svg'-->/r ui/assets/eknob.svg" \
+		-e "/<!--EMBEDD='eknob\.svg'-->/r ui/assets/eknob.svg" $(ui/sed-keepif) \
 		< $<	> $@.tmp
 	$Q rm $>/ui/config.json
 	$Q sed -r \
@@ -76,6 +85,10 @@ $>/ui/index.html: ui/index.html ui/assets/eknob.svg ui/Makefile.mk	| $>/ui/
 		-i $@.tmp
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/index.html
+# remove ::KEEPIF="__DEV__" directives
+ui/sed-keepif ::= $(if __DEV__, -e '/<[^<>]*::KEEPIF="__DEV__"/s/::KEEPIF="__DEV__"//')
+# delete unmatched ::KEEPIF="" tags
+ui/sed-keepif  += -e 's/<[^<>]*::KEEPIF="[^"]*"[^<>]*>//'
 
 # == ui/.aseignore ==
 $>/ui/.aseignore:					| $>/ui/
@@ -107,7 +120,7 @@ $>/ui/.build1-stamp: $(ui/b/vuejs.targets)
 
 # == ui/all-styles.css ==
 ui/csscopy.sources ::= ui/styles.scss ui/theme.scss ui/mixins.scss ui/shadow.scss
-$>/ui/all-styles.css: $>/ui/postcss.config.js ui/Makefile.mk $(ui/csscopy.sources) $(ui/b/vuecss.targets)	| $>/ui/
+$>/ui/all-styles.css: $>/ui/postcss.js ui/Makefile.mk $(ui/csscopy.sources) $(ui/b/vuecss.targets)	| $>/ui/
 	$(QGEN)
 	$Q $(CP) $(ui/csscopy.sources) $>/ui/
 	$Q echo '@charset "UTF-8";'					>  $>/ui/imports.scss
@@ -115,12 +128,14 @@ $>/ui/all-styles.css: $>/ui/postcss.config.js ui/Makefile.mk $(ui/csscopy.source
 	$Q for f in $$(cd $>/ui/b/ && echo *.css) ; do			\
 		echo "@import 'b/$${f}';"				>> $>/ui/imports.scss \
 		|| exit 1 ; done
-	$Q cd $>/ui/ && npx postcss imports.scss --map -o $(@F)
-$>/ui/postcss.esm.js: $>/ui/postcss.config.js ui/Makefile.mk $>/node_modules/.npm.done
+	$Q cd $>/ui/ && node ./postcss.js imports.scss > $(@F).tmp
+	$Q mv $@.tmp $@
+$>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/node_modules/.npm.done
 	$(QGEN)
-	$Q cd $>/ui/ && node ./postcss.config.js $V # CHECK transformations
-	$Q sed 's|/\*CJSONLY\*/module\.exports\s*=|export default|' $< > $@
-$>/ui/.build1-stamp: $>/ui/all-styles.css $>/ui/postcss.esm.js
+	$Q $(CP) $< $@.tst.js
+	$Q cd $>/ui/ && node ./$(@F).tst.js --test $V # CHECK transformations
+	$Q mv $@.tst.js $@
+$>/ui/.build1-stamp: $>/ui/all-styles.css $>/ui/postcss.js
 
 # == all-components.js ==
 $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vuejs.targets) $(wildcard ui/b/*)	| $>/ui/
@@ -153,6 +168,13 @@ $(ui/public.targets): $>/ui/%: ui/%			| $>/ui/
 	$(QECHO) COPY $<
 	$Q cd ui/ && $(CP) $(<:ui/%=%) --parents $(abspath $>/)/ui/
 $>/ui/.build1-stamp: $(ui/public.targets)
+
+# == CJS Files ==
+ui/cjs.targets ::= $(ui/cjs.wildcards:%.js=$>/%.cjs)
+$(ui/cjs.targets): $>/ui/%.cjs: ui/%.js	| $>/ui/b/
+	$(QECHO) COPY $@
+	$Q $(CP) $< $@
+$>/ui/.build1-stamp: $(ui/cjs.targets)
 
 # == Inter Typeface ==
 $>/ui/fonts/Inter-Medium.woff2: ui/Makefile.mk		| $>/ui/fonts/
@@ -211,18 +233,29 @@ $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 	$(QGEN)
 	$Q: # re-export and bundle postcss modules
 	$Q mkdir -p $>/ui/tmp-browserify/
-	$Q echo "const modules = {"								>  $>/ui/tmp-browserify/browserified.js
+	$Q echo "const modules = {"								>  $>/ui/tmp-browserify/requires.js
 	$Q for mod in \
-		postcss postcss-advanced-variables postcss-color-mod-function postcss-color-hwb postcss-lab-function \
-		postcss-functions postcss-nested postcss-scss postcss-discard-comments postcss-discard-duplicates \
-		css-color-converter markdown-it chroma-js csstree-validator ; do \
-		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp-browserify/browserified.js
-	$Q echo "};"										>> $>/ui/tmp-browserify/browserified.js
-	$Q echo "const browserify_require = m => modules[m] || console.error ('Unknown module:', m);"	>> $>/ui/tmp-browserify/browserified.js
-	$Q echo "Object.defineProperty (window, 'require', { value: browserify_require });"		>> $>/ui/tmp-browserify/browserified.js
-	$Q echo "window.require.modules = modules;"						>> $>/ui/tmp-browserify/browserified.js
-	$Q $>/node_modules/.bin/browserify -o $>/ui/tmp-browserify/out.browserified.js $>/ui/tmp-browserify/browserified.js
-	$Q mv $>/ui/tmp-browserify/out.browserified.js $@ && rm -r $>/ui/tmp-browserify/
+		markdown-it \
+		postcss \
+		postcss-discard-comments \
+		postcss-discard-duplicates \
+		css-color-converter \
+		postcss-scss \
+		postcss-advanced-variables \
+		postcss-functions \
+		postcss-nested \
+		postcss-color-mod-function postcss-color-hwb postcss-lab-function chroma-js \
+		; do \
+		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp-browserify/requires.js
+	$Q echo "};"										>> $>/ui/tmp-browserify/requires.js
+	$Q echo "const browserify_require = m => modules[m] || console.error ('Unknown module:', m);"	>> $>/ui/tmp-browserify/requires.js
+	$Q echo "Object.defineProperty (window, 'require', { value: browserify_require });"		>> $>/ui/tmp-browserify/requires.js
+	$Q echo "window.require.modules = modules;"						>> $>/ui/tmp-browserify/requires.js
+	$Q $>/node_modules/.bin/browserify --debug -o $>/ui/tmp-browserify/browserified.long.js $>/ui/tmp-browserify/requires.js
+	$Q $>/node_modules/.bin/terser --source-map content=inline --comments false $>/ui/tmp-browserify/browserified.long.js -o $>/ui/tmp-browserify/browserified.min.js
+	$Q mv $>/ui/tmp-browserify/browserified.min.js.map $@.map
+	$Q mv $>/ui/tmp-browserify/browserified.min.js $@
+	$Q rm -r $>/ui/tmp-browserify/
 $>/ui/.build1-stamp: $>/ui/browserified.js
 
 # == $>/ui/favicon.ico ==
@@ -239,7 +272,7 @@ $>/ui/.build1-stamp: $>/ui/favicon.ico $>/ui/anklang.png
 ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue)
 $>/ui/.eslint.files: ui/eslintrc.js $(ui/eslint.files)			| $>/ui/
 	$(QGEN)
-	$Q $(CP) $< $(@D)/.eslintrc.js
+	$Q $(CP) $< $(@D)/.eslintrc.cjs
 	$Q echo '$(abspath $(ui/eslint.files))' | tr ' ' '\n' > $@
 $>/ui/.build1-stamp: $>/ui/.eslint.files
 
@@ -330,6 +363,7 @@ ui/install.pattern ::= $(strip	\
 	$>/ui/*.html		\
 	$>/ui/*.ico		\
 	$>/ui/*.js		\
+	$>/ui/*.mjs		\
 	$>/ui/*.png		\
 )
 ui/install: $>/ui/.build1-stamp $>/ui/.build2-stamp

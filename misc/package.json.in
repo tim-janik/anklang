@@ -1,10 +1,11 @@
 {
   "name": "Anklang",
   "private": true,
+  "type": "module",
   "scripts": {
     "serve": "run-p sound-engine monitor",
     "sound-engine": "lib/AnklangSynthEngine-$npm_package_config_version $ASEOPT && false",
-    "eslint": "eslint --no-eslintrc -c ui/.eslintrc.js -f unix --cache $(cat ui/.eslint.files)",
+    "eslint": "eslint --no-eslintrc -c ui/.eslintrc.cjs -f unix --cache $(cat ui/.eslint.files)",
     "ui/rebuild": "make ui/rebuild -C $npm_package_config_srcdir --no-print-directory -j",
     "monitor": "nodemon --ext '*' --watch $npm_package_config_srcdir/ui/ --delay 99ms --on-change-only --exec 'npm run -s ui/rebuild || false' --exitcrash"
   },
@@ -47,6 +48,8 @@
     "postcss-nested": "^5.0.6",
     "postcss-scss": "^4.0.3",
     "rollup": "^2.70.2",
-    "sass": "^1.50.1"
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "sass": "^1.50.1",
+    "terser": "^5.13.1"
   }
 }
