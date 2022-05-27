@@ -35,12 +35,6 @@ $b-scrollbar-thickness:	7px !default;
 
 // format: font: italic small-caps bold 12px serif;
 
-// b-partthumb
-$b-partthumb-font: normal 9px $b-theme-font-family !default;	// the '9px' part is dynamically resized
-$b-partthumb-font-color: rgba(255, 255, 255, 0.7) !default;
-$b-partthumb-note-color: rgba(255, 255, 255, 0.7) !default;
-$b-partthumb-colors: #ff7b50a7, #f68403a7, #d6960ea7, #92ad19a7, #67b518a7, #22bb27a7, #21b873a7, #24b3b3a7, #11adeba7, #799fffa7, #a094ffa7, #c287ffa7, #e473ffa7, #ff5ff5a7, #ff70b0a7 !default;
-
 @mixin b-popup-box-shadow()	{ box-shadow: 0 2px 8px $b-boxshadow-color; }
 
 // == Markdown Styling ==
