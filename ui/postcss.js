@@ -43,7 +43,7 @@ export const postcss_options = {
 };
 
 // == Processing ==
-async function postcss_process (css_string, fromname = '<style string>') {
+async function postcss_process (css_string, fromname = '<style string>', ethrow = false) {
   const postcss = PostCss (postcss_plugins);
   const poptions = Object.assign ({ from: fromname }, postcss_options);
   let result;
@@ -52,6 +52,8 @@ async function postcss_process (css_string, fromname = '<style string>') {
   } catch (ex) {
     console.warn ('PostCSS input:', fromname + ':\n', css_string);
     console.error ('PostCSS error:', ex);
+    if (ethrow)
+      throw (ex);
     result = { content: '' };
   }
   return result.content;
@@ -252,7 +254,7 @@ export { add_import };
 export { test_css };
 
 // == main ==
-// Usage: postcss.js <inputfile.css>
+// Usage: postcss.js <inputfile.css> <outputfile.css>
 // Usage: postcss.js --test [1|0]
 if (__MAIN__) {
   async function main (argv) {
@@ -263,12 +265,15 @@ if (__MAIN__) {
     const filename = argv[0];
     if (!filename)
       throw new Error (`${__filename}: missing input filename`);
+    const ofilename = argv[1];
+    if (!ofilename)
+      throw new Error (`${__filename}: missing output filename`);
     // configure CLI processor
     postcss_options.map = true;
     postcss_plugins.push (...nodeonly_plugins);
     // process and printout
-    const result = await postcss_process (FS.readFileSync (filename), filename);
-    process.stdout.write (result);
+    const result = await postcss_process (FS.readFileSync (filename), filename, true);
+    FS.writeFileSync (ofilename, result);
   }
   process.exit (await main (process.argv.splice (2)));
 }

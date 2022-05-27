@@ -134,7 +134,7 @@ $>/ui/all-styles.css: $>/ui/postcss.js ui/Makefile.mk $(ui/csscopy.sources) $(ui
 	$Q for f in $$(cd $>/ui/b/ && echo *.css) ; do			\
 		echo "@import 'b/$${f}';"				>> $>/ui/imports.scss \
 		|| exit 1 ; done
-	$Q cd $>/ui/ && node ./postcss.js imports.scss > $(@F).tmp
+	$Q cd $>/ui/ && node ./postcss.js imports.scss $(@F).tmp
 	$Q mv $@.tmp $@
 $>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/ui/colors.js $>/node_modules/.npm.done
 	$(QGEN)
