@@ -94,12 +94,6 @@ function css_functions() {
       console.info ("Postcss:info:", ...args);
       return ''; // args.join (',');
     },
-    lcolor (col, perc) {
-      const f = tofloat (perc, 0, 0, 1);
-      const [r,g,b,a] = color.fromString (col).toRgbaArray();
-      const rgba = [ r*f, g*f, b*f, a ]; // FIXME: need Lab
-      return color.fromRgba (rgba).toHexString();
-    },
     fade (col, perc) { // LESS fade, sets absolute alpha
       const a = tofloat (perc, 1, 0, 1);
       const [r,g,b] = color.fromString (col).toRgbaArray();
