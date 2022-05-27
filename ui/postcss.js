@@ -125,18 +125,6 @@ function css_functions() {
       const rgba = rgba1.map ((v,i) => v * (1-f) + rgba2[i] * f);
       return color.fromRgb (rgba).toHexString();
     },
-    'chromatic-color-luminance': function (color, luminance = '', mode = '') {
-      const rgba = color2rgba (color); // [ R, G, B, A ]
-      if (luminance)
-	{
-	  if (mode)
-	    return 'red'; // rgb2sass (chromajs (rgb).luminance (luminance, mode)._rgb);
-	  else
-	    return 'blue'; // rgb2sass (chromajs (rgb).luminance (luminance)._rgb);
-	}
-      else
-	return String (chromajs (rgba).luminance());
-    },
     'contrast-lighten': function (color, targetratio = 1, pivot = 'SAME') {
       color = chromajs (color2rgba (color));
       targetratio = tofloat (targetratio, 1, 1, 21);
@@ -168,13 +156,6 @@ function css_functions() {
 	currentratio = chromajs.contrast (pivot, cnew);
       }
       return String (cnew);
-    },
-    /// Set `channel` of `color` to `value`.
-    'chromatic-color-set': function (color, channel, value) {
-      color = chromajs (color2rgba (color));
-      if (typeof channel === 'string')
-	color = color.set (channel, value);
-      return String (color);
     },
     zmod: Colors.zmod,
     zhsl: Colors.zhsl,
