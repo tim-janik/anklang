@@ -34,7 +34,7 @@
     background: transparent; cursor: pointer; user-select: none; outline: none;
     border: 1px solid transparent;
     color: $b-menu-foreground;
-    kbd { color: contrast-darken($b-menu-foreground, 1.5); }
+    kbd { color: zmod($b-menu-foreground, Jz-=15); }
     &:not([disabled]) {
       .b-icon { color: $b-menu-fill; }
       &:focus {
