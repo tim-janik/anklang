@@ -40,13 +40,13 @@
       &:focus {
 	background-color: $b-menu-focus-bg; color: $b-menu-focus-fg; outline: none;
 	kbd { color: inherit; }
-	border: 1px solid darken($b-menu-focus-bg, 50%);
+	border: 1px solid zmod($b-menu-focus-bg, Jz-=50%);
 	.b-icon { color: $b-menu-focus-fg; }
       }
       &.active, &:active, &:focus.active, &:focus:active {
 	background-color: $b-menu-active-bg; color: $b-menu-active-fg; outline: none;
 	kbd { color: inherit; }
-	border: 1px solid darken($b-menu-active-bg, 50%);
+	border: 1px solid zmod($b-menu-active-bg, Jz-=50%);
 	.b-icon { color: $b-menu-active-fg; }
       }
     }

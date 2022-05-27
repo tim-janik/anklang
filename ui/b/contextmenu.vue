@@ -49,7 +49,7 @@
       position: relative; max-width: 100%; max-height: 100%;  //* constrain to .b-contextmenu-area */
       overflow-y: auto; overflow-x: hidden;		    //* scroll if necessary */
       padding: $b-menu-padding 0;
-      background-color: $b-menu-background; border: 1px outset darken($b-menu-background, 20%);
+      background-color: $b-menu-background; border: 1px outset zmod($b-menu-background, Jz-=20%);
       color: $b-menu-foreground;
       box-shadow: $b-menu-box-shadow;
       pointer-events: initial;

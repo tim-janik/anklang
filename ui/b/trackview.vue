@@ -52,7 +52,7 @@
     border: 1px solid $b-button-border;
     border-top-left-radius: $b-button-radius;
     border-bottom-left-radius: $b-button-radius; }
-  .b-trackview-current { background-color: lighten($b-button-border, 15%); }
+  .b-trackview-current { background-color: zmod($b-button-border, Jz+=15%); }
   .b-trackview-label {
     display: inline-flex; position: relative; width: 7em; overflow: hidden;
     .b-trackview-label-el {
