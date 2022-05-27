@@ -423,3 +423,11 @@ export function zmod (colorlike, ...mods) {
     rgba.splice (3);
   return true ? Z.srgb_hex (rgba) : css_rgba (rgba);
 }
+
+/// Yield a grey tone with CIELAB lightness.
+export function lgrey (lightness) {
+  const gamut = default_gamut;
+  const perc = lightness.indexOf ('%') >= 0;
+  const Jz = parseFloat (lightness) * (perc ? 1 : 100);
+  return gamut.zcam_hex ({ Cz: 0, hz: 0, Jz: clamp (Jz, 0, 100) });
+}
