@@ -222,8 +222,8 @@ const test_rules = {
   'a { color: color-mod(#123456 a(15.5%)); }':		'a{ color:rgba(18, 52, 86, 0.155); }',
   'b { hwbcolor: hwb(90deg, 13%, 70%); }':		'b{ hwbcolor:rgb(55, 77, 33); }',
   'c { colormod: color-mod(#345 lightness(50%)); }':	'c{ colormod:hsl(210, 25%, 50%); }', /* == color-mod(red l(50%)); */
-  'l { color: lighten(#abc, 17%); }':			'l{ color:#c6daee; }',
-  'd { color: darken(#abc, 50%); }':			'd{ color:#555d66; }',
+  'l { color: zmod(#abc, Jz+=14%); }':			'l{ color:#c7d9eb; }',
+  'd { color: zmod(#abc, Jz-=45%); }':			'd{ color:#566472; }',
   'n { &:hover { nested: 1; } }':			'n:hover{ nested:1; }',
   's { color: color-mod(hsla(125, 50%, 50%, .4) saturation(+ 10%) w(- 20%)); }': 's{ color:rgba(0, 204, 17, 0.4); }',
   'h { lchcolor: lch(62% 54 63); }':			'h{ lchcolor:rgb(205, 132, 63);', // match only first part to allow display-p3 extension
