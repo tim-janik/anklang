@@ -100,18 +100,6 @@ function css_functions() {
       const rgba = [ r, g, b, a ];
       return color.fromRgba (rgba).toHexString();
     },
-    lighter (col, perc) {
-      const f = 1 + tofloat (perc, 0.1, 0, 1);
-      const [r,g,b,a] = color.fromString (col).toRgbaArray();
-      const rgba = [ r*f, g*f, b*f, a ]; // FIXME: need Lab
-      return color.fromRgba (rgba).toHexString();
-    },
-    darker (col, perc) {
-      const f = 1 - tofloat (perc, 0.1, 0, 1);
-      const [r,g,b,a] = color.fromString (col).toRgbaArray();
-      const rgba = [ r*f, g*f, b*f, a ]; // FIXME: need Lab
-      return color.fromRgba (rgba).toHexString();
-    },
     asfactor (val) {
       const f = tofloat (val);
       return '' + f;
@@ -195,8 +183,6 @@ function css_functions() {
     zHsv: Colors.zHsv,
     lgrey: Colors.lgrey,
   };
-  functions.darken = functions.darker;
-  functions.lighten = functions.lighter;
   return { functions };
 }
 
