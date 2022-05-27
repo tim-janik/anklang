@@ -94,11 +94,6 @@ function css_functions() {
       console.info ("Postcss:info:", ...args);
       return ''; // args.join (',');
     },
-    lgrey (perc) {
-      const f = tofloat (perc, 0, 0, 1);
-      const rgb = [ 255*f, 255*f, 255*f ]; // FIXME: need Lab
-      return color.fromRgb (rgb).toHexString();
-    },
     lcolor (col, perc) {
       const f = tofloat (perc, 0, 0, 1);
       const [r,g,b,a] = color.fromString (col).toRgbaArray();
@@ -204,6 +199,7 @@ function css_functions() {
     zHsl: Colors.zHsl,
     zhsv: Colors.zhsv,
     zHsv: Colors.zHsv,
+    lgrey: Colors.lgrey,
   };
   functions.darken = functions.darker;
   functions.lighten = functions.lighter;
