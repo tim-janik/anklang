@@ -65,7 +65,7 @@ ClipImpl::serialize (WritNode &xs)
         {
           WritNode xn = xs["notes"].push();
           xn & cnote;
-          xn.value().purge_r ([] (const ValueField &field) {
+          xn.value().filter ([] (const ValueField &field) {
             if (field.name == "id" || field.name == "selected")
               return true;
             return false;

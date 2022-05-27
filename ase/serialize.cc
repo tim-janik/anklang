@@ -349,7 +349,7 @@ WritNode::purge_value ()
 {
   const bool purge_emptystring = skip_emptystring(), purge_zero = skip_zero();
   return_unless (purge_emptystring || purge_zero);
-  value_.purge_r ([purge_emptystring,purge_zero] (const ValueField &field) {
+  value_.filter ([purge_emptystring,purge_zero] (const ValueField &field) {
     return_unless (field.value, false);
     if (purge_emptystring && field.value->index() == Value::STRING && std::get<String> (*field.value) == "")
       return true;

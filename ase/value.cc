@@ -251,12 +251,12 @@ Value::repr() const
 
 /// Recursively purge/remove RECORD elements iff to `pred (recordfield) == true`.
 void
-Value::purge_r (const std::function<bool (const ValueField&)> &pred)
+Value::filter (const std::function<bool (const ValueField&)> &pred)
 {
   if (index() == Value::ARRAY)
     for (auto &vp : std::get<ValueS> (*this))
       if (vp)
-        vp->purge_r (pred);
+        vp->filter (pred);
   if (index() == Value::RECORD)
     {
       ValueR &rec = std::get<ValueR> (*this);
@@ -264,7 +264,7 @@ Value::purge_r (const std::function<bool (const ValueField&)> &pred)
         if (pred (rec[i - 1]))
           rec.erase (rec.begin() + i - 1);
         else if (rec[i - 1].value)
-          rec[i - 1].value->purge_r (pred);
+          rec[i - 1].value->filter (pred);
     }
 }
 
