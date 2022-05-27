@@ -11,8 +11,8 @@ $b-theme-font-family:		$b-main-font-family;
 $b-theme-foreground: 		$b-main-foreground;
 $b-theme-background: 		$b-main-background;
 $b-theme-border-radius:		$b-style-border-radius !default;
-$b-main-border-light:		lighten($b-base-background, 9%) !default;	// used for modal border
-$b-main-border-dark:		darken($b-base-background, 9%) !default;
+$b-main-border-light:		zmod($b-base-background, Jz+=9%) !default;	// used for modal border
+$b-main-border-dark:		zmod($b-base-background, Jz-=9%) !default;
 $b-toolbar-background:		#606060 !default;
 $b-toolbar-background-lg:	linear-gradient(to bottom, #666666 0%, #5a5a5a 100%) !default;
 $b-button-foreground:   	#dddddd !default;
