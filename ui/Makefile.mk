@@ -250,7 +250,7 @@ $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 		postcss-advanced-variables \
 		postcss-functions \
 		postcss-nested \
-		postcss-color-mod-function postcss-color-hwb postcss-lab-function chroma-js \
+		postcss-color-mod-function postcss-color-hwb postcss-lab-function \
 		; do \
 		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp-browserify/requires.js
 	$Q echo "};"										>> $>/ui/tmp-browserify/requires.js
