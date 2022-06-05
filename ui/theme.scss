@@ -18,9 +18,9 @@ $b-device-handle:	lgrey(26%); // or, device-handle
 $b-device-area1:	lgrey(24%);
 $b-device-area2:	lgrey(28%);
 $b-choice-0-bg:		lgrey(50%);
-$b-choice-0-bh:		zmod($b-choice-0-bg, Jz+=25%); // highlight
-$b-choice-0-bl:		zmod($b-choice-0-bg, Jz+=16.5%); // light
-$b-choice-0-bd:		zmod($b-choice-0-bg, Jz-=15%);  // dark
+$b-choice-0-bh:		zmod($b-choice-0-bg, Jz+=12.5); // highlight
+$b-choice-0-bl:		zmod($b-choice-0-bg, Jz+=8); // light
+$b-choice-0-bd:		zmod($b-choice-0-bg, Jz-=7.5);  // dark
 $b-toggle-0-bg:		$b-choice-0-bg;
 $b-toggle-0-bh:		$b-choice-0-bh;
 $b-toggle-0-bl:		$b-choice-0-bl;
@@ -198,9 +198,9 @@ $b-style-outset-activebg-glint: $b-style-outset-activebg-2 !default;
 $b-buttonbar-height: 1em;
 // softbutton is an almost flat button with subtle outlines
 $b-softbutton-bg: #585858;
-$b-softbutton-border-color: zmod($b-softbutton-bg, Jz+=36.7%);
-$b-softbutton-bgl: zmod($b-softbutton-bg, Jz+=5%);
-$b-softbutton-bgd: zmod($b-softbutton-bg, Jz-=5%);
+$b-softbutton-border-color: zmod($b-softbutton-bg, Jz+=13.5);
+$b-softbutton-bgl: zmod($b-softbutton-bg, Jz+=1.7);
+$b-softbutton-bgd: zmod($b-softbutton-bg, Jz-=1.7);
 $b-softbutton-lg-up: linear-gradient(to bottom, $b-softbutton-bgd, $b-softbutton-bgl);
 $b-softbutton-lg-down: linear-gradient(to top, $b-softbutton-bgd, $b-softbutton-bgl);
 @mixin b-softbutton() {
@@ -229,12 +229,12 @@ $b-softbutton-lg-down: linear-gradient(to top, $b-softbutton-bgd, $b-softbutton-
 }
 // singlebutton is a seperately standing button wich clearly looks clickable
 $b-singlebutton-fg:   $b-modal-foreground;
-$b-singlebutton-fgd:  zmod($b-singlebutton-fg, Jz-=3.7%);
+$b-singlebutton-fgd:  zmod($b-singlebutton-fg, Jz-=3.5);
 $b-singlebutton-bg:   lgrey(42.6%);
-$b-singlebutton-bgl:  zmod($b-singlebutton-bg, Jz+=17%);
-$b-singlebutton-bgd:  zmod($b-singlebutton-bg, Jz-=17%);
+$b-singlebutton-bgl:  zmod($b-singlebutton-bg, Jz+=7.2);
+$b-singlebutton-bgd:  zmod($b-singlebutton-bg, Jz-=7.2);
 $b-singlebutton-lg:   linear-gradient(to top, $b-singlebutton-bgd, $b-singlebutton-bgl);
-$b-singlebutton-dark: linear-gradient(to bottom, zmod($b-singlebutton-bgd, Jz-=5%), $b-singlebutton-bgd);
+$b-singlebutton-dark: linear-gradient(to bottom, zmod($b-singlebutton-bgd, Jz-=1.7), $b-singlebutton-bgd);
 $b-singlebutton-border-color: zmod($b-singlebutton-bg, Jz-=32.5);
 @mixin b-singlebutton($vpad: 5px, $hpad: 5px) {
   background: $b-singlebutton-lg;
