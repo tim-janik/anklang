@@ -62,17 +62,6 @@ async function postcss_process (css_string, fromname = '<style string>', ethrow 
 // == CSS Functions ==
 const clamp = (v,l,u) => v < l ? l : v > u ? u : v;
 
-/// Yield [ R, G, B, A ] from `color`.
-function color2rgba (color) {
-  try {
-    const c = css_color_converter.fromString (color);
-    const rgba = c.toRgbaArray();
-    return rgba; // [ R, G, B, A ]
-  } catch (ex) {
-    throw new Error ("invalid color: " + color + "\n" + ex);
-  }
-}
-
 /// Yield `value` as number in `[min..max]`, converts percentages.
 function tofloat (value, fallback = NaN, min = -Number.MAX_VALUE, max = Number.MAX_VALUE) {
   if (typeof value === 'string')
@@ -127,38 +116,6 @@ function css_functions() {
       const rgba = rgba1.map ((v,i) => v * (1-f) + rgba2[i] * f);
       return color.fromRgb (rgba).toHexString();
     },
-    'contrast-lighten': function (color, targetratio = 1, pivot = 'SAME') {
-      color = chromajs (color2rgba (color));
-      targetratio = tofloat (targetratio, 1, 1, 21);
-      pivot = pivot === 'SAME' ? color : chromajs (color2rgba (pivot));
-      let lnext = color.luminance();
-      let cnew = color;
-      let currentratio = chromajs.contrast (pivot, cnew);
-      let i = 0;
-      while (currentratio < targetratio && lnext < 1 && i++ < 99) { // FIXME
-	const delta = Math.max (0.000379, (targetratio - currentratio) / 21 / 2);
-	lnext = lnext + delta;
-	cnew = color.luminance (Math.max (0.0001, lnext));
-	currentratio = chromajs.contrast (pivot, cnew);
-      }
-      return String (cnew);
-    },
-    /// Darken `$color` until a target contrast ratio is met.
-    'contrast-darken': function (color, targetratio = 1, pivot = 'SAME') {
-      color = chromajs (color2rgba (color));
-      targetratio = tofloat (targetratio, 1, 1, 21);
-      pivot = pivot === 'SAME' ? color : chromajs (color2rgba (pivot));
-      let lnext = color.luminance();
-      let cnew = color;
-      let currentratio = chromajs.contrast (pivot, cnew);
-      while (currentratio < targetratio && lnext > 0.00015) {
-	const delta = clamp ((targetratio - currentratio) / 21 / 2, 0.00045, lnext * 0.7);
-	lnext = lnext - delta;
-	cnew = color.luminance (Math.max (0.0001, lnext));
-	currentratio = chromajs.contrast (pivot, cnew);
-      }
-      return String (cnew);
-    },
     zmod: Colors.zmod,
     zhsl: Colors.zhsl,
     zHsl: Colors.zHsl,
@@ -210,13 +167,6 @@ const test_rules = {
   'n { &:hover { nested: 1; } }':			'n:hover{ nested:1; }',
   's { color: color-mod(hsla(125, 50%, 50%, .4) saturation(+ 10%) w(- 20%)); }': 's{ color:rgba(0, 204, 17, 0.4); }',
   'h { lchcolor: lch(62% 54 63); }':			'h{ lchcolor:rgb(205, 132, 63);', // match only first part to allow display-p3 extension
-  't { --cd-1: contrast-darken(#fff,20.8); }':		'--cd-1:#010101;',
-  't { --cd-2: contrast-darken(#fff,1.007); }':		'--cd-2:#fefefe;',
-  't { --cd-3: contrast-darken(#abcdef,1.33); }':	'--cd-3:#94b2d0;',
-  't { --cl-1: contrast-lighten(#987,2.7); }':		'--cl-1:#e8e4e0;',
-  't { --cl-2: contrast-lighten(#000,1.006); }':	'--cl-2:#010101;',
-  't { --cl-3: contrast-lighten(#000,1.0075); }':	'--cl-3:#020202;',
-  't { --cl-4: contrast-lighten(#000,20.8); }':		'--cl-4:#fefefe;',
   't { --cd-5: div(5,2) div(5s,2) div(5km,2h); }':	'--cd-5:2.5 2.5s 2.5km/h;',
   'tn { font-variant-numeric:tabular-nums; }':		'tn{ font-variant-numeric:tabular-nums; }', // preprocessors must NOT reset font-feature-settings here
   // add_import ('imp.css', '$importval: "imported";');
