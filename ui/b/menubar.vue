@@ -88,7 +88,8 @@
 	  <b-icon bc="menumore" />
 	</div>
 	<b-contextmenu ref="helpmenu" @click="activation" startfocus >
-	  <b-menuitem mi="chrome_reader_mode"	uri="manual">	Anklang Manual…		</b-menuitem>
+	  <b-menuitem mi="chrome_reader_mode"	uri="user-manual">	Anklang Manual…		</b-menuitem>
+	  <b-menuitem mi="chrome_reader_mode"	uri="dev-manual">	Development Reference…	</b-menuitem>
 	  <b-menuseparator style="margin: 7px"  />
 	  <b-menuitem fa="id-card-o"		uri="about">	About…			</b-menuitem>
 	</b-contextmenu>
@@ -155,8 +156,12 @@ export default {
 	case 'about':
 	  Data.show_about_dialog = !Data.show_about_dialog;
 	  break;
-	case 'manual':
+	case 'user-manual':
 	  u = location.origin + '/doc/anklang-manual.html';
+	  window.open (u, '_blank');
+	  break;
+	case 'dev-manual':
+	  u = location.origin + '/doc/anklang-internals.html';
 	  window.open (u, '_blank');
 	  break;
 	case 'prefs':
