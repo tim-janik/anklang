@@ -12,7 +12,6 @@ const require = globalThis.require || (await import ("module")).createRequire (_
 
 // == imports ==
 const FS = __NODE__ && require ('fs');
-const chromajs = require ('chroma-js');
 const css_color_converter = require ('css-color-converter');
 const PostCss = require ('postcss');
 const postcss_scss = require ('postcss-scss');
