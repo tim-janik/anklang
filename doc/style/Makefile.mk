@@ -28,7 +28,7 @@ DOC/STYLE/SEDFONTS ::= -e "s/, *url('[^()']*\.woff') *format('woff')//" -e "s|ur
 $>/doc/style/charis-sil.css: $>/node_modules/.npm.done		| $>/doc/style/
 	$(QGEN)
 	$Q $(CP) $>/node_modules/@fontsource/charis-sil/files/*.woff2 $>/doc/style/
-	$Q sed $>/node_modules/@fontsource/charis-sil/all.css $(DOC/STYLE/SEDFONTS) > $@.tmp
+	$Q sed $>/node_modules/@fontsource/charis-sil/index.css $(DOC/STYLE/SEDFONTS) > $@.tmp
 	$Q mv $@.tmp $@
 doc/style/install.files += $>/doc/style/charis-sil.css
 
