@@ -47,9 +47,9 @@ and run it.
 
 ☑  Implement separate audio synthesis threads with MIDI device support.
 
-☐  Add devices for synthesis, filtering, envelopes, equalizers.
+☑  Add devices for synthesis and effects.
 
-☐  Support third-party plugins through e.g. [LV2](https://en.wikipedia.org/wiki/LV2).
+☐  Support third-party plugins via [CLAP](https://github.com/free-audio/clap) [🗩 ](https://www.kvraudio.com/forum/viewtopic.php?t=574861), [LV2](https://en.wikipedia.org/wiki/LV2).
 
 ☐  Add standard audio library for various instrument types.
 
