@@ -12,7 +12,7 @@
   $b-data-bubble-hue: 52;
   $b-data-bubble-fg:  hsl($b-data-bubble-hue, 100%, 1%);
   $b-data-bubble-bg:  hsl($b-data-bubble-hue, 100%, 90%);
-  $b-data-bubble-bg2: lighter($b-data-bubble-bg, 3%);
+  $b-data-bubble-bg2: zmod($b-data-bubble-bg, Jz+=3%);
   $b-data-bubble-br:  $b-data-bubble-bg2;
 
   /* Tooltips via CSS, using the data-bubble="" attribute */
@@ -27,7 +27,7 @@
       display: block; overflow: hidden; position: relative;
       white-space: normal; margin: 0;
       max-width: 40em; border-radius: 3px;
-      // border: dppx(2) solid lighter($b-data-bubble-bg2, 5%);
+      // border: dppx(2) solid zmod($b-data-bubble-bg2, Jz+=5%);
       box-shadow:
       0 0 0 1px fade($b-data-bubble-br, 0.8),
       0px 0px 2px 1px black;

@@ -21,19 +21,19 @@ $scrollarea-bg: transparent;
   //* Make scss variables available to JS via getComputedStyle() */
   --piano-roll-light-row:    $b-piano-roll-light-row;
   --piano-roll-dark-row:     $b-piano-roll-dark-row;
-  --piano-roll-grid-main:    contrast-lighten($b-piano-roll-light-row, 2.2);   // bar separator
-  --piano-roll-grid-sub:     contrast-lighten($b-piano-roll-light-row, 1.6);   // quarter note separator
-  --piano-roll-semitone12:   contrast-lighten($b-piano-roll-light-row, 2.2);   // separator per octave
-  --piano-roll-semitone6:    contrast-lighten($b-piano-roll-light-row, 2.2);   // separator after 6 semitones
+  --piano-roll-grid-main:    zmod($b-piano-roll-light-row, Jz+=22.5);   // bar separator
+  --piano-roll-grid-sub:     zmod($b-piano-roll-light-row, Jz+=13.5);   // quarter note separator
+  --piano-roll-semitone12:   zmod($b-piano-roll-light-row, Jz+=22.5);   // separator per octave
+  --piano-roll-semitone6:    zmod($b-piano-roll-light-row, Jz+=22.5);   // separator after 6 semitones
 
   --piano-roll-white-base:   $b-piano-roll-white-base;
-  --piano-roll-white-border: $b-scrollboundary-color;                          // border around piano key
-  --piano-roll-white-glint:  contrast-lighten($b-piano-roll-white-base, 1.2);  // highlight on piano key
+  --piano-roll-white-border: $b-scrollboundary-color;                   // border around piano key
+  --piano-roll-white-glint:  zmod($b-piano-roll-white-base, Jz+=6.5);   // highlight on piano key
   --piano-roll-key-color:    $b-scrollboundary-color;
   --piano-roll-black-base:   $b-piano-roll-black-base;
-  --piano-roll-black-border: contrast-lighten($b-piano-roll-black-base, 1.1);  // border around piano key
-  --piano-roll-black-glint:  contrast-lighten($b-piano-roll-black-base, 1.55); // highlight on piano key
-  --piano-roll-black-shine:  contrast-lighten($b-piano-roll-black-base, 3.1);  // reflection on piano key
+  --piano-roll-black-border: zmod($b-piano-roll-black-base, Jz+=3.8);   // border around piano key
+  --piano-roll-black-glint:  zmod($b-piano-roll-black-base, Jz+=14.3);  // highlight on piano key
+  --piano-roll-black-shine:  zmod($b-piano-roll-black-base, Jz+=33.5);  // reflection on piano key
 
   --piano-roll-font:                  $b-piano-roll-font;
   --piano-roll-num-color:             $b-piano-roll-num-color;

@@ -108,7 +108,6 @@ function write_style (filename, ofile, config, stylestring) {
     sourceMap: config.debug,
     omitSourceMapUrl: false,
     sourceMapEmbed: config.debug,
-    functions: require ("./chromatic-sass2"),
     outFile: ofile + '.css',
   });
   const css_string = result.css.toString();

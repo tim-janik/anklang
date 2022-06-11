@@ -194,7 +194,7 @@ c-grid {
     }
     &:hover ::-webkit-scrollbar-thumb {
       transition: background 0.4s ease;
-      background: linear-gradient(lighter($b-scrollbar-fg), darker($b-scrollbar-fg));
+      background: linear-gradient(zmod($b-scrollbar-fg,Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%));
     }
   }
   // Firefox

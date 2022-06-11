@@ -134,7 +134,7 @@ $>/ui/all-styles.css: $>/ui/postcss.js ui/Makefile.mk $(ui/csscopy.sources) $(ui
 	$Q for f in $$(cd $>/ui/b/ && echo *.css) ; do			\
 		echo "@import 'b/$${f}';"				>> $>/ui/imports.scss \
 		|| exit 1 ; done
-	$Q cd $>/ui/ && node ./postcss.js imports.scss > $(@F).tmp
+	$Q cd $>/ui/ && node ./postcss.js imports.scss $(@F).tmp
 	$Q mv $@.tmp $@
 $>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/ui/colors.js $>/node_modules/.npm.done
 	$(QGEN)
@@ -250,7 +250,7 @@ $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 		postcss-advanced-variables \
 		postcss-functions \
 		postcss-nested \
-		postcss-color-mod-function postcss-color-hwb postcss-lab-function chroma-js \
+		postcss-color-mod-function postcss-color-hwb postcss-lab-function \
 		; do \
 		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp-browserify/requires.js
 	$Q echo "};"										>> $>/ui/tmp-browserify/requires.js

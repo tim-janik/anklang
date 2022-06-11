@@ -412,14 +412,32 @@ export function zmod (colorlike, ...mods) {
       console.warn ("CSS: invalid zmod: " + mod);
   }
   // RGBA output, clamp Cz to gamut
-  if (col.zcam) {
-    col.rgb = gamut.contains (col.zcam);
-    if (!col.rgb.inside)
-      col.rgb = gamut.contains (gamut.clamp_chroma (col.zcam));
-  }
+  if (col.zcam)
+    return hex_from_zcam (col.zcam, col.alpha);
   let rgba = [ col.rgb.r, col.rgb.g, col.rgb.b, col.alpha ];
   rgba = rgba.map (v => clamp (v, 0, 1));
   if (rgba[3] === 1)
     rgba.splice (3);
   return true ? Z.srgb_hex (rgba) : css_rgba (rgba);
+}
+
+/// Yield a grey tone with CIELAB lightness.
+export function lgrey (lightness) {
+  const gamut = default_gamut;
+  const perc = lightness.indexOf ('%') >= 0;
+  const Jz = parseFloat (lightness) * (perc ? 1 : 100);
+  return gamut.zcam_hex ({ Cz: 0, hz: 0, Jz: clamp (Jz, 0, 100) });
+}
+
+// RGBA output, clamp Cz to gamut
+function hex_from_zcam (zcam, alpha = 1) {
+  const gamut = default_gamut;
+  let rgb = gamut.contains (zcam);
+  if (!rgb.inside)
+    rgb = gamut.contains (gamut.clamp_chroma (zcam));
+  let rgba = [ rgb.r, rgb.g, rgb.b, alpha ];
+  rgba = rgba.map (v => clamp (v, 0, 1));
+  if (rgba[3] === 1)
+    rgba.splice (3);
+  return Z.srgb_hex (rgba);
 }
