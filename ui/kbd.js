@@ -561,14 +561,14 @@ export async function shortcut_dialog (mapname, label, shortcut) {
   const path = mapname + MS + label;
   shortcut_map.set (path, assigned); // TODO: delete defaults
   if (Ase.server)
-    Ase.server.set_data (Ase.ResourcePath.CONFIG, 'shortcuts.json', JSON.stringify ([...shortcut_map], null, 2));
+    Ase.server.set_data ('shortcuts.json', JSON.stringify ([...shortcut_map], null, 2));
   return true;
 }
 
 import * as Ase from '../aseapi.js';
 (async () => {
   await Ase.server;
-  const mapjson = await Ase.server.get_data (Ase.ResourcePath.CONFIG, 'shortcuts.json');
+  const mapjson = await Ase.server.get_data ('shortcuts.json');
   if (mapjson)
     shortcut_map = new Map (JSON.parse (mapjson));
 }) ();

@@ -9,7 +9,9 @@ namespace Ase {
 
 /// Base type for classes that have a Property.
 class GadgetImpl : public ObjectImpl, public CustomDataContainer, public virtual Gadget, public virtual Serializable {
+  ValueR session_data;
 protected:
+  static String  canonify_key      (const String &input);
   virtual       ~GadgetImpl        ();
   virtual String fallback_name     () const;
   void           serialize         (WritNode &xs) override;
@@ -19,6 +21,8 @@ public:
   void           name              (String newname) override;
   PropertyP      access_property   (String ident) override;
   PropertyS      access_properties () override;
+  bool           set_data          (const String &key, const Value &v) override;
+  Value          get_data          (const String &key) const override;
 };
 
 } // Ase

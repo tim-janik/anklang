@@ -19,6 +19,32 @@ GadgetImpl::fallback_name () const
   return type_nick();
 }
 
+String
+GadgetImpl::canonify_key (const String &input)
+{
+  String key = string_canonify (input, string_set_a2z() + string_set_A2Z() + "_0123456789.", "_");
+  if (key.size() && key[0] == '.')
+    key = "_" + key;
+  return key;
+}
+
+Value
+GadgetImpl::get_data (const String &key) const
+{
+  const String ckey = canonify_key (key);
+  return session_data[ckey];
+}
+
+bool
+GadgetImpl::set_data (const String &key, const Value &v)
+{
+  const String ckey = canonify_key (key);
+  return_unless (ckey.size(), false);
+  session_data[ckey] = v;
+  emit_event ("data", ckey);
+  return true;
+}
+
 void
 GadgetImpl::serialize (WritNode &xs)
 {
@@ -52,6 +78,24 @@ GadgetImpl::serialize (WritNode &xs)
           xs[p->identifier()] & v;
           p->set_value (v);
         }
+    }
+  // data
+  if (xs.in_save())
+    {
+      ValueR cdata;
+      for (const ValueField &f : session_data)
+        if (f.name[0] != '_' && f.value)
+          cdata[f.name] = *f.value;
+      if (cdata.size())
+        xs["custom_data"] & cdata;
+    }
+  if (xs.in_load())
+    {
+      ValueR cdata;
+      xs["custom_data"] & cdata;
+      for (const ValueField &f : cdata)
+        if (f.value)
+          set_data (f.name, *f.value);
     }
 }
 

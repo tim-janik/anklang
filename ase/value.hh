@@ -64,7 +64,7 @@ struct Value : ValueVariant {
   String         repr      () const;
   StringS        keys      () const;
   bool           has       (const String &key) const;
-  void           purge_r   (const std::function<bool (const ValueField&)> &pred);
+  void           filter    (const std::function<bool (const ValueField&)> &pred);
   void operator= (bool v)               { ValueVariant::operator= (v); }
   void operator= (int64 v)              { ValueVariant::operator= (v); }
   void operator= (int32 v)              { ValueVariant::operator= (int64 (v)); }

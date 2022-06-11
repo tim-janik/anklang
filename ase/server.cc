@@ -234,6 +234,33 @@ ServerImpl::instancep ()
   return *sptr;
 }
 
+bool
+ServerImpl::set_data (const String &key, const Value &value)
+{
+  const String ckey = canonify_key (key);
+  if (ckey.size() && ckey[0] != '_')
+    {
+      const String filename = Path::join (Path::xdg_dir ("CONFIG"), "anklang", ckey);
+      emit_event ("data", key);
+      return Path::stringwrite (filename, value.as_string());
+    }
+  else
+    return GadgetImpl::set_data (ckey, value);
+}
+
+Value
+ServerImpl::get_data (const String &key) const
+{
+  const String ckey = canonify_key (key);
+  if (ckey.size() && ckey[0] != '_')
+    {
+      const String filename = Path::join (Path::xdg_dir ("CONFIG"), "anklang", ckey);
+      return Path::stringread (filename);
+    }
+  else
+    return GadgetImpl::get_data (ckey);
+}
+
 // == Server ==
 ServerP
 Server::instancep ()
@@ -245,45 +272,6 @@ Server&
 Server::instance ()
 {
   return *instancep();
-}
-
-static ValueR session_data;
-
-bool
-Server::set_data (ResourcePath rpath, const String &key, const Value &value)
-{
-  if (rpath == ResourcePath::SESSION)
-    {
-      session_data[key] = value;
-      return true;
-    }
-  else if (rpath == ResourcePath::CONFIG && key.size() > 0)
-    {
-      String filename = string_canonify (key, string_set_a2z() + "_0123456789.", "_");
-      if (filename[0] == '.')
-        filename[0] = '_';
-      filename = Path::join (Path::xdg_dir ("CONFIG"), "anklang", filename);
-      return Path::stringwrite (filename, value.as_string());
-    }
-  else
-    return false;
-}
-
-Value
-Server::get_data (ResourcePath rpath, const String &key) const
-{
-  if (rpath == ResourcePath::SESSION)
-    return session_data[key];
-  else if (rpath == ResourcePath::CONFIG && key.size() > 0)
-    {
-      String filename = string_canonify (key, string_set_a2z() + "_0123456789.", "_");
-      if (filename[0] == '.')
-        filename[0] = '_';
-      filename = Path::join (Path::xdg_dir ("CONFIG"), "anklang", filename);
-      return Path::stringread (filename);
-    }
-  else
-    return Value::empty_value;
 }
 
 // == FileCrawler ==
