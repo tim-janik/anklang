@@ -93,6 +93,18 @@ int main (int argc, const char *argv[]) {
 }
 endef
 
+# == external/clap ==
+$>/external/clap/clap.h: ase/Makefile.mk		| $>/external/
+	@ $(eval H := 24015f72118575ec4e040c80da64c0c0c8cca4378671a3c603b0288cae18621b)
+	@ $(eval U := https://github.com/free-audio/clap/archive/refs/tags/1.0.0.tar.gz)
+	@ $(eval T := clap-1.0.0.tar.gz)
+	$(QECHO) FETCH "$U"
+	$Q cd $>/external/ && rm -rf clap* \
+	     $(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
+	$Q ln -s $(T:.tar.gz=)/include/clap $>/external/clap
+	$Q test -e $@ && touch $@
+ase/clapdevice.cc: $>/external/clap/clap.h
+
 # == AnklangSynthEngine ==
 $(ase/AnklangSynthEngine.objects): $(ase/AnklangSynthEngine.deps) $(ase/libase.deps)
 $(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= -Iexternal/ -I$> -I$>/external/ $(GLIB_CFLAGS)
