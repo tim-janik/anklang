@@ -39,7 +39,7 @@ protected:
 public:
   explicit AudioChain        (AudioEngine &engine, SpeakerArrangement iobuses = SpeakerArrangement::STEREO);
   virtual ~AudioChain        ();
-  void     query_info        (AudioProcessorInfo &info) const override;
+  static void static_info    (AudioProcessorInfo &info);
 };
 
 } // Ase

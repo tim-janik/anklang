@@ -3,12 +3,14 @@
 #define __ASE_DEVICE_HH__
 
 #include <ase/gadget.hh>
+#include <ase/processor.hh>
 
 namespace Ase {
 
 class DeviceImpl : public GadgetImpl, public virtual Device {
   AudioProcessorP proc_;
   AudioComboP     combo_; // maybe null
+  DeviceInfo      info;
   ASE_DEFINE_MAKE_SHARED (DeviceImpl);
   friend class AudioProcessor;
   DeviceP         insert_device        (const String &uri, Device *sibling);
@@ -16,9 +18,9 @@ protected:
   virtual        ~DeviceImpl           ();
   void            serialize            (WritNode &xs) override;
 public:
-  AudioComboP     audio_combo          () const          { return combo_; }
-  explicit        DeviceImpl           (AudioProcessor &proc);
-  DeviceInfo      device_info          () override;
+  explicit        DeviceImpl           (const String &aseid, AudioProcessor::StaticInfo, AudioProcessorP);
+  AudioComboP     audio_combo          () const         { return combo_; }
+  DeviceInfo      device_info          () override      { return info; }
   PropertyP       access_property      (String ident) override;
   PropertyS       access_properties    () override;
   bool            is_combo_device      () override      { return combo_ != nullptr; }
@@ -31,8 +33,10 @@ public:
   AudioProcessorP _audio_processor     () const override { return proc_; }
   void            _set_event_source    (AudioProcessorP esource) override;
   void            _disconnect_remove   () override;
-  static DeviceP  create_output        (const String &uri);
+  static DeviceP  create_ase_device    (AudioEngine &engine, const String &registryuri);
 };
+
+DeviceP create_processor_device (AudioEngine &engine, const String &uri, bool engineproducer);
 
 } // Ase
 

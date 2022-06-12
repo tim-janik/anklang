@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "device.hh"
 #include "combo.hh"
-#include "main.hh"
 #include "jsonipc/jsonipc.hh"
 #include "serialize.hh"
 #include "internal.hh"
@@ -11,9 +10,20 @@ namespace Ase {
 // == DeviceImpl ==
 JSONIPC_INHERIT (DeviceImpl, Device);
 
-DeviceImpl::DeviceImpl (AudioProcessor &proc) :
-  proc_ (proc.shared_from_this()), combo_ (std::dynamic_pointer_cast<AudioCombo> (proc_))
-{}
+DeviceImpl::DeviceImpl (const String &aseid, AudioProcessor::StaticInfo static_info, AudioProcessorP aproc) :
+  proc_ (aproc), combo_ (std::dynamic_pointer_cast<AudioCombo> (proc_))
+{
+  assert_return (aproc != nullptr);
+  AudioProcessorInfo pinfo;
+  static_info (pinfo);
+  info.uri          = aseid;
+  info.name         = pinfo.label;
+  info.category     = pinfo.category;
+  info.description  = pinfo.description;
+  info.website_url  = pinfo.website_url;
+  info.creator_name = pinfo.creator_name;
+  info.creator_url  = pinfo.creator_url;
+}
 
 DeviceImpl::~DeviceImpl()
 {}
@@ -42,22 +52,6 @@ DeviceImpl::serialize (WritNode &xs)
         DeviceImplP subdevicep = shared_ptr_cast<DeviceImpl> (append_device (uuiduri));
         xc & *subdevicep;
       }
-}
-
-DeviceInfo
-DeviceImpl::device_info ()
-{
-  AudioProcessorInfo pinf;
-  proc_->query_info (pinf);
-  DeviceInfo info;
-  info.uri          = pinf.uri;
-  info.name         = pinf.label;
-  info.category     = pinf.category;
-  info.description  = pinf.description;
-  info.website_url  = pinf.website_url;
-  info.creator_name = pinf.creator_name;
-  info.creator_url  = pinf.creator_url;
-  return info;
 }
 
 PropertyS
@@ -91,7 +85,7 @@ DeviceImpl::list_devices ()
   AudioComboP combo = combo_;
   auto j = [&devs, combo] () {
     for (auto &proc : combo->list_processors())
-      devs.push_back (proc->device_impl());
+      devs.push_back (proc->get_device());
   };
   proc_->engine().const_jobs += j;
   return devs;
@@ -114,20 +108,20 @@ DeviceInfoS
 DeviceImpl::list_device_types ()
 {
   DeviceInfoS iseq;
-  const auto rlist = AudioProcessor::registry_list();
-  iseq.reserve (rlist.size());
-  for (const AudioProcessorInfo &entry : rlist)
-    {
-      DeviceInfo info;
-      info.uri          = entry.uri;
-      info.name         = entry.label;
-      info.category     = entry.category;
-      info.description  = entry.description;
-      info.website_url  = entry.website_url;
-      info.creator_name = entry.creator_name;
-      info.creator_url  = entry.creator_url;
+  AudioProcessor::registry_foreach ([&iseq] (const String &aseid, AudioProcessor::StaticInfo static_info) {
+    AudioProcessorInfo pinfo;
+    static_info (pinfo);
+    DeviceInfo info;
+    info.uri          = aseid;
+    info.name         = pinfo.label;
+    info.category     = pinfo.category;
+    info.description  = pinfo.description;
+    info.website_url  = pinfo.website_url;
+    info.creator_name = pinfo.creator_name;
+    info.creator_url  = pinfo.creator_url;
+    if (!info.name.empty() && !info.category.empty())
       iseq.push_back (info);
-    }
+  });
   return iseq;
 }
 
@@ -155,9 +149,10 @@ DeviceImpl::insert_device (const String &uri, Device *sibling)
   AudioProcessorP siblingp = siblingi ? siblingi->proc_ : nullptr;
   if (combo_)
     {
-      AudioProcessorP subp = proc_->engine().create_audio_processor (uri);
+      devicep = create_processor_device (proc_->engine(), uri, false);
+      return_unless (devicep, nullptr);
+      AudioProcessorP subp = devicep->_audio_processor();
       return_unless (subp, nullptr);
-      devicep = subp->get_device();
       AudioComboP combo = combo_;
       auto j = [combo, subp, siblingp] () {
         const size_t pos = siblingp ? combo->find_pos (*siblingp) : ~size_t (0);
@@ -196,16 +191,30 @@ DeviceImpl::_disconnect_remove ()
 }
 
 DeviceP
-DeviceImpl::create_output (const String &uri)
+DeviceImpl::create_ase_device (AudioEngine &engine, const String &aseid)
 {
-  AudioEngine *engine = main_config.engine;
-  AudioProcessorP procp = engine->create_audio_processor (uri);
-  return_unless (procp, nullptr);
-  DeviceP devicep = procp->get_device();
-  auto j = [procp] () {
-    procp->enable_engine_output (true);
+  auto make_device = [] (const String &aseid, AudioProcessor::StaticInfo static_info, AudioProcessorP aproc) -> DeviceP {
+    return DeviceImpl::make_shared (aseid, static_info, aproc);
   };
-  engine->async_jobs += j;
+  DeviceP devicep = AudioProcessor::registry_create (aseid, engine, make_device);
+  return_unless (devicep && devicep->_audio_processor(), nullptr);
+  return devicep;
+}
+
+DeviceP
+create_processor_device (AudioEngine &engine, const String &uri, bool engineproducer)
+{
+  DeviceP devicep;
+  // assume string_startswith (uri, "Ase:")
+  devicep = DeviceImpl::create_ase_device (engine, uri);
+  return_unless (devicep, nullptr);
+  AudioProcessorP procp = devicep->_audio_processor();
+  if (procp) {
+    auto j = [procp,engineproducer] () {
+      procp->enable_engine_output (engineproducer);
+    };
+    engine.async_jobs += j;
+  }
   return devicep;
 }
 

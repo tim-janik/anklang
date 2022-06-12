@@ -50,16 +50,9 @@ public:
     position_ = nullptr;
     SERVER->telemem_release (position_block_);
   }
-  void
-  query_info (AudioProcessorInfo &info) const override
-  {
-    info.uri          = "Anklang.Ase.MidiLib.MidiProducer";
-    info.version      = "1";
-    info.label        = "Ase MIDI Producer";
-    info.category     = "Input & Output";
-    info.creator_name = "Anklang Authors";
-    info.website_url  = "https://anklang.testbit.eu";
-  }
+  static void
+  static_info (AudioProcessorInfo &info)
+  {} // avoid public listing
   void
   initialize (SpeakerArrangement busses) override
   {

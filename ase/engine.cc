@@ -526,22 +526,6 @@ AudioEngine::add_job_mt (const std::function<void()> &jobfunc, int flags)
   sem.wait();
 }
 
-void
-AudioEngine::ensure_initialized (AudioProcessor &aproc)
-{
-  aproc.ensure_initialized();
-}
-
-AudioProcessorP
-AudioEngine::create_audio_processor (const String &uuiduri)
-{
-  AudioProcessor::MakeProcessor create_processor = AudioProcessor::registry_lookup (uuiduri);
-  AudioProcessorP aproc = create_processor ? create_processor (*this) : nullptr;
-  if (aproc)
-    ensure_initialized (*aproc);
-  return aproc;
-}
-
 AudioEngine&
 make_audio_engine (uint sample_rate, SpeakerArrangement speakerarrangement)
 {
@@ -551,16 +535,6 @@ make_audio_engine (uint sample_rate, SpeakerArrangement speakerarrangement)
 // == MidiInput ==
 // Processor providing MIDI device events
 class EngineMidiInput : public AudioProcessor {
-  void
-  query_info (AudioProcessorInfo &info) const override
-  {
-    info.uri          = "Anklang.Devices.EngineMidiInput";
-    info.version      = "1";
-    info.label        = "MIDI Input";
-    info.category     = "Routing";
-    info.creator_name = "Tim Janik";
-    info.website_url  = "https://anklang.testbit.eu";
-  }
   void
   initialize (SpeakerArrangement busses) override
   {
@@ -587,7 +561,6 @@ public:
     AudioProcessor (engine)
   {}
 };
-static auto engine_midi_input = register_audio_processor<EngineMidiInput>();
 
 template<class T> struct Mutable {
   mutable T value;
@@ -600,7 +573,7 @@ AudioEngineThread::swap_midi_drivers_sync (const MidiDriverS &midi_drivers)
 {
   if (!midi_proc_)
     {
-      AudioProcessorP aprocp = create_audio_processor ("Anklang.Devices.EngineMidiInput");
+      AudioProcessorP aprocp = AudioProcessor::create_processor<EngineMidiInput> (*this);
       assert_return (aprocp);
       midi_proc_ = std::dynamic_pointer_cast<EngineMidiInput> (aprocp);
       assert_return (midi_proc_);

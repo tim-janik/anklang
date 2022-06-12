@@ -227,30 +227,12 @@ AudioProcessor::note_to_freq (int note) const
   return MidiNote::note_to_freq (MusicalTuning::OD_12_TET, note, 440);
 }
 
-/// Create the `Ase::ProcessorIface` for `this`.
-DeviceImplP
-AudioProcessor::device_impl () const
-{
-  assert_return (is_initialized(), {});
-  return DeviceImpl::make_shared (*const_cast<AudioProcessor*> (this));
-}
-
-/// Gain access to `this` through the `Ase::ProcessorIface` interface.
+/// Gain access to the Device handle of `this` AudioProcessor.
 DeviceP
-AudioProcessor::get_device (bool create) const
+AudioProcessor::get_device() const
 {
-  std::weak_ptr<DeviceImpl> &wptr = const_cast<AudioProcessor*> (this)->device_;
-  DeviceImplP devicep = wptr.lock();
-  return_unless (!devicep && create, devicep);
-  DeviceImplP nprocp = device_impl();
-  assert_return (nprocp != nullptr, nullptr);
-  { // TODO: C++20 has: std::atomic<std::weak_ptr<C>>::compare_exchange
-    static std::mutex mutex;
-    std::lock_guard<std::mutex> locker (mutex);
-    devicep = wptr.lock();
-    if (!devicep)
-      wptr = devicep = nprocp;
-  }
+  std::weak_ptr<Device> &wptr = const_cast<AudioProcessor*> (this)->device_;
+  DeviceP devicep = wptr.lock();
   return devicep;
 }
 
@@ -696,18 +678,8 @@ AudioProcessor::param_range (Id32 paramid) const
 String
 AudioProcessor::debug_name () const
 {
-  AudioProcessorInfo info;
-  const_cast<AudioProcessor*> (this)->query_info (info);
-  return info.label.empty() ? info.uri : info.label;
+  return typeid_name (*this);
 }
-
-/// Mandatory method that provides unique URI, display label and registration information.
-/// Depending on the host, this method may be called often or only once per subclass type.
-/// The field `uri` must be a globally unique URI (or UUID), that is can be used as unique
-/// identifier for reliable (de-)serialization.
-void
-AudioProcessor::query_info (AudioProcessorInfo &info) const
-{}
 
 /// Mandatory method to setup parameters and I/O busses.
 /// See add_param(), add_input_bus() / add_output_bus().
@@ -1042,11 +1014,13 @@ AudioProcessor::connect (IBusId ibusid, AudioProcessor &oproc, OBusId obusid)
 
 /// Ensure `AudioProcessor::initialize()` has been called, so the parameters are fixed.
 void
-AudioProcessor::ensure_initialized()
+AudioProcessor::ensure_initialized (DeviceP devicep)
 {
   if (!is_initialized())
     {
       assert_return (n_ibuses() + n_obuses() == 0);
+      assert_return (get_device() == nullptr);
+      device_ = devicep;
       tls_param_group = "";
       initialize (engine_.speaker_arrangement());
       tls_param_group = "";
@@ -1128,104 +1102,54 @@ AudioProcessor::render_block (uint64 target_stamp)
   render_stamp_ = target_stamp;
 }
 
-// == RegistryEntry ==
-struct RegistryId::Entry : AudioProcessorInfo {
-  Entry *next = nullptr;
-  const AudioProcessor::MakeProcessor create = nullptr;
-  const CString file = "";
-  const int line = 0;
-  Entry (Entry *hnext, const AudioProcessor::MakeProcessor &make, CString f, int l) :
-    next (hnext), create (make), file (f), line (l)
-  {}
+// == Registry ==
+struct AudioProcessorRegistry {
+  CString           aseid;       ///< Unique identifier for de-/serialization.
+  void            (*static_info) (AudioProcessorInfo&) = nullptr;
+  AudioProcessorP (*make_shared) (AudioEngine&) = nullptr;
+  const AudioProcessorRegistry* next = nullptr;
 };
 
-static std::atomic<RegistryId::Entry*> processor_registry_entries = nullptr;
-using RegistryTable = std::unordered_map<CString, RegistryId::Entry*>;
-static std::recursive_mutex processor_registry_mutex;
-static Persistent<RegistryTable> processor_registry_table;
-static const RegistryId::Entry dummy_registry_entry { 0, 0, "", 0 };
+static std::atomic<const AudioProcessorRegistry*> registry_first;
 
 /// Add a new type to the AudioProcessor type registry.
 /// New AudioProcessor types must have a unique URI (see `query_info()`) and will be created
 /// with the factory function `create()`.
-RegistryId
-AudioProcessor::registry_enroll (MakeProcessor create, const char *bfile, int bline)
-{
-  assert_return (create != nullptr, { dummy_registry_entry });
-  auto *entry = new RegistryId::Entry { nullptr, create, bfile ? bfile : "", bline };
-  // push_front
-  while (!std::atomic_compare_exchange_strong (&processor_registry_entries,
-                                               &entry->next,
-                                               entry))
-    ; // when failing, compare_exchange automatically does *&arg2 = *&arg1
-  return { *entry };
-}
-
-// Ensure all registration entries have been examined
 void
-AudioProcessor::registry_init()
+AudioProcessor::registry_add (CString aseid, StaticInfo static_info, MakeProcessorP makeproc)
 {
-  static AudioEngine &regengine = make_audio_engine (48000, SpeakerArrangement::STEREO);
-  while (processor_registry_entries)
-    {
-      std::lock_guard<std::recursive_mutex> rlocker (processor_registry_mutex);
-      RegistryId::Entry *entry = nullptr;
-      // pop_all
-      while (!std::atomic_compare_exchange_strong (&processor_registry_entries, &entry, (RegistryId::Entry*) nullptr))
-        ; // when failing, compare_exchange automatically does *&arg2 = *&arg1
-      // register all
-      while (entry)
-        {
-          AudioProcessorP testproc = entry->create (regengine);
-          if (testproc)
-            {
-              testproc->query_info (*entry);
-              testproc = nullptr;
-              if (entry->uri.empty())
-                warning ("invalid empty URI for AudioProcessor: %s:%d", entry->file, entry->line);
-              else
-                {
-                  if (processor_registry_table->find (entry->uri) != processor_registry_table->end())
-                    warning ("duplicate AudioProcessor URI: %s", entry->uri);
-                  else
-                    (*processor_registry_table)[entry->uri] = entry;
-                }
-            }
-          RegistryId::Entry *const old = entry;
-          entry = old->next;
-          // unlisted entries are left dangling for registry_create(RegistryId,std::any)
-        }
+  assert_return (string_startswith (aseid, "Ase::"));
+  AudioProcessorRegistry *entry = new AudioProcessorRegistry();
+  entry->aseid = aseid;
+  entry->static_info = static_info;
+  entry->make_shared = makeproc;
+  // push_front via compare_exchange (*obj, *expected, desired)
+  while (!std::atomic_compare_exchange_strong (&registry_first, &entry->next, entry))
+    ; // if (*obj==*expected) *obj=desired; else *expected=*obj;
+}
+
+DeviceP
+AudioProcessor::registry_create (const String &aseid, AudioEngine &engine, const MakeDeviceP &makedevice)
+{
+  for (const AudioProcessorRegistry *entry = registry_first; entry; entry = entry->next)
+    if (entry->aseid == aseid) {
+      AudioProcessorP aproc = entry->make_shared (engine);
+      if (aproc) {
+        DeviceP devicep = makedevice (aseid, entry->static_info, aproc);
+        aproc->ensure_initialized (devicep);
+        return devicep;
+      }
     }
-  while (regengine.ipc_pending())
-    regengine.ipc_dispatch(); // empty any work queues
+  warning ("AudioProcessor::registry_create: failed to create processor: %s", aseid);
+  return nullptr;
 }
 
-/// Lookup AudioProcessor object of the type specified by `uuiduri` in registry.
-AudioProcessor::MakeProcessor
-AudioProcessor::registry_lookup (const String &uuiduri)
+/// Iterate over the known AudioProcessor types.
+void
+AudioProcessor::registry_foreach (const std::function<void (const String &aseid, StaticInfo)> &fun)
 {
-  registry_init();
-  RegistryId::Entry *entry = nullptr;
-  { // lock scope
-    std::lock_guard<std::recursive_mutex> rlocker (processor_registry_mutex);
-    auto it = processor_registry_table->find (uuiduri);
-    if (it != processor_registry_table->end())
-      entry = it->second;
-  }
-  return entry ? entry->create : nullptr;
-}
-
-/// List the registry entries of all known AudioProcessor types.
-AudioProcessorInfoS
-AudioProcessor::registry_list()
-{
-  registry_init();
-  RegistryList rlist;
-  std::lock_guard<std::recursive_mutex> rlocker (processor_registry_mutex);
-  rlist.reserve (processor_registry_table->size());
-  for (std::pair<CString, RegistryId::Entry*> el : *processor_registry_table)
-    rlist.push_back (*el.second);
-  return rlist;
+  for (const AudioProcessorRegistry *entry = registry_first; entry; entry = entry->next)
+    fun (entry->aseid, entry->static_info);
 }
 
 // == AudioProcessor::PParam ==
@@ -1438,7 +1362,7 @@ AudioProcessor::enotify_dispatch ()
       assert_warn (old_nqueue_next != nullptr);
       const uint32 nflags = NOTIFYMASK & current->flags_.fetch_and (~NOTIFYMASK);
       assert_warn (procp != nullptr);
-      DeviceP devicep = current->get_device (false);
+      DeviceP devicep = current->get_device();
       if (devicep)
         {
           if (nflags & BUSCONNECT)
