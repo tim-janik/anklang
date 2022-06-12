@@ -45,15 +45,15 @@ useld_fast+vs		::= # keep default linker
 endif
 
 # == Cache downloads in ANKLANG_CACHEDIR ==
-# $(call AND_DOWNLOAD_SHAURL, sha256sum, url) - Download and cache file via `url`, verify `sha256sum`
+# $(call AND_DOWNLOAD_SHAURL, sha256sum, url, filename) - Download and cache file via `url`, verify `sha256sum`
 AND_DOWNLOAD_SHAURL = && ( : \
-	&& ( test ! -e "$(ANKLANG_CACHEDIR)/downloads/$(notdir $2)" || $(CP) "$(ANKLANG_CACHEDIR)/downloads/$(notdir $2)" . ) \
-	&& ( echo "$(strip $1) $(notdir $2)" | sha256sum -c - >/dev/null 2>&1 || curl -sfSOL "$(strip $2)" ) \
-	&& ( echo "$(strip $1) $(notdir $2)" | sha256sum -c - ) \
+	&& ( test ! -e "$(ANKLANG_CACHEDIR)/downloads/$(strip $(or $3,$(notdir $2)))" || $(CP) "$(ANKLANG_CACHEDIR)/downloads/$(strip $(or $3,$(notdir $2)))" . ) \
+	&& ( echo "$(strip $1) $(or $3,$(notdir $2))" | sha256sum -c - >/dev/null 2>&1 || curl -sfSL "$(strip $2)" -o "$(strip $(or $3,$(notdir $2)))" ) \
+	&& ( echo "$(strip $1) $(or $3,$(notdir $2))" | sha256sum -c - ) \
 	&& ( test ! -x "$(XDG_CACHE_HOME)/" \
 	   || ( mkdir -p "$(ANKLANG_CACHEDIR)/downloads" \
-	      && ( cmp -s "$(notdir $2)" "$(ANKLANG_CACHEDIR)/downloads/$(notdir $2)" \
-		 || $(CP) "$(notdir $2)" "$(ANKLANG_CACHEDIR)/downloads/" ) ) ) )
+	      && ( cmp -s "$(strip $(or $3,$(notdir $2)))" "$(ANKLANG_CACHEDIR)/downloads/$(strip $(or $3,$(notdir $2)))" \
+		 || $(CP) "$(strip $(or $3,$(notdir $2)))" "$(ANKLANG_CACHEDIR)/downloads/" ) ) ) )
 
 # == conftest_lib & conftest_require_lib ==
 # $(call conftest_lib, header, symbol, lib) -> $CONFTEST
