@@ -115,7 +115,7 @@ public:
     bool             connected  () const;
     void             disconnect () const;
   };
-  virtual void       emit_event  (const String &type, const String &detail, ValueR fields) = 0;
+  virtual void       emit_event  (const String &type, const String &detail, ValueR fields = {}) = 0;
   ASE_USE_RESULT
   virtual Connection on_event    (const String &eventselector, const EventHandler &eventhandler) = 0;
   void               js_trigger  (const String &eventselector, JsTrigger callback);
@@ -223,6 +223,10 @@ public:
   virtual DeviceP     create_device      (const String &uuiduri) = 0; ///< Create a new device, see list_device_types().
   virtual DeviceP     create_device_before (const String &uuiduri,
                                             Device &sibling) = 0;      ///< Create device, before sibling.
+  // Internal
+  virtual AudioProcessorP _audio_processor   () const = 0;
+  virtual void            _set_event_source  (AudioProcessorP esource) = 0;
+  virtual void            _disconnect_remove () = 0;
 };
 
 /// Part specific note event representation.

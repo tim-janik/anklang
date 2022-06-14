@@ -98,7 +98,7 @@ DeviceImpl::list_devices ()
 }
 
 void
-DeviceImpl::set_event_source (AudioProcessorP esource)
+DeviceImpl::_set_event_source (AudioProcessorP esource)
 {
   if (esource)
     assert_return (esource->has_event_output());
@@ -181,7 +181,7 @@ DeviceImpl::create_device_before (const String &uuiduri, Device &sibling)
 }
 
 void
-DeviceImpl::disconnect_remove ()
+DeviceImpl::_disconnect_remove ()
 {
   AudioProcessorP proc = proc_;
   AudioEngine *engine = &proc->engine();
@@ -195,13 +195,13 @@ DeviceImpl::disconnect_remove ()
   engine->async_jobs += j;
 }
 
-DeviceImplP
+DeviceP
 DeviceImpl::create_output (const String &uuiduri)
 {
   AudioEngine *engine = main_config.engine;
   AudioProcessorP procp = make_audio_processor (*engine, uuiduri);
   return_unless (procp, nullptr);
-  DeviceImplP devicep = procp->get_device();
+  DeviceP devicep = procp->get_device();
   auto j = [procp] () {
     procp->enable_engine_output (true);
   };
