@@ -88,10 +88,9 @@ public:
   ColoredNoise (AudioEngine &engine) :
     AudioProcessor (engine)
   {}
-  void
-  query_info (AudioProcessorInfo &info) const override
+  static void
+  static_info (AudioProcessorInfo &info)
   {
-    info.uri          = "Anklang.Devices.ColoredNoise";
     info.version      = "1";
     info.label        = "Pink & White Noise";
     info.category     = "Generators";
@@ -132,7 +131,7 @@ public:
   using RenderF = void (ColoredNoise::*) (float*, float*, uint, float);
 };
 
-static auto noise_module = register_audio_processor<ColoredNoise>();
+static auto noise_module = register_audio_processor<ColoredNoise> ("Ase::Devices::ColoredNoise");
 
 template<ColoredNoise::Cases CASES> void
 ColoredNoise::render_cases (float *out0, float *out1, uint n_frames, const float gain)

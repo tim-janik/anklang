@@ -264,17 +264,6 @@ class BlepSynth : public AudioProcessor {
   std::vector<Voice *>  active_voices_;
   std::vector<Voice *>  idle_voices_;
   void
-  query_info (AudioProcessorInfo &info) const override
-  {
-    info.uri          = "Anklang.Devices.BlepSynth";
-    info.version      = "1";
-    info.label        = "BlepSynth";
-    info.category     = "Generators";
-    info.category     = "Synth";
-    info.creator_name = "Stefan Westerfeld";
-    info.website_url  = "https://anklang.testbit.eu";
-  }
-  void
   initialize (SpeakerArrangement busses) override
   {
     using namespace MakeIcon;
@@ -668,7 +657,16 @@ public:
   BlepSynth (AudioEngine &engine) :
     AudioProcessor (engine)
   {}
+  static void
+  static_info (AudioProcessorInfo &info)
+  {
+    info.version      = "1";
+    info.label        = "BlepSynth";
+    info.category     = "Synth";
+    info.creator_name = "Stefan Westerfeld";
+    info.website_url  = "https://anklang.testbit.eu";
+  }
 };
-static auto blepsynth = register_audio_processor<BlepSynth>();
+static auto blepsynth = register_audio_processor<BlepSynth> ("Ase::Devices::BlepSynth");
 
 } // Anon
