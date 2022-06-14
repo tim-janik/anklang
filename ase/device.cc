@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "device.hh"
+#include "clapdevice.hh"
 #include "combo.hh"
 #include "jsonipc/jsonipc.hh"
 #include "serialize.hh"
@@ -122,6 +123,8 @@ DeviceImpl::list_device_types ()
     if (!info.name.empty() && !info.category.empty())
       iseq.push_back (info);
   });
+  for (const DeviceInfo &info : ClapDeviceImpl::list_clap_plugins())
+    iseq.push_back (info);
   return iseq;
 }
 
@@ -205,8 +208,10 @@ DeviceP
 create_processor_device (AudioEngine &engine, const String &uri, bool engineproducer)
 {
   DeviceP devicep;
-  // assume string_startswith (uri, "Ase:")
-  devicep = DeviceImpl::create_ase_device (engine, uri);
+  if (string_startswith (uri, "CLAP:"))
+    devicep = ClapDeviceImpl::create_clap_device (engine, uri);
+  else // assume string_startswith (uri, "Ase:")
+    devicep = DeviceImpl::create_ase_device (engine, uri);
   return_unless (devicep, nullptr);
   AudioProcessorP procp = devicep->_audio_processor();
   if (procp) {
