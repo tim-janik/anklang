@@ -220,9 +220,9 @@ public:
   // Create sub Device
   virtual DeviceInfoS list_device_types  () = 0;                      ///< List registered Device types with their unique uri.
   virtual void        remove_device      (Device &sub) = 0;           ///< Remove a directly contained device.
-  virtual DeviceP     create_device      (const String &uuiduri) = 0; ///< Create a new device, see list_device_types().
-  virtual DeviceP     create_device_before (const String &uuiduri,
-                                            Device &sibling) = 0;      ///< Create device, before sibling.
+  virtual DeviceP     append_device      (const String &uri) = 0; ///< Append a new device, see list_device_types().
+  virtual DeviceP     insert_device      (const String &uri,
+                                          Device &beforesibling) = 0; ///< Insert a new device, before `beforesibling`.
   // Internal
   virtual AudioProcessorP _audio_processor   () const = 0;
   virtual void            _set_event_source  (AudioProcessorP esource) = 0;

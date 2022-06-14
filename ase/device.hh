@@ -11,7 +11,7 @@ class DeviceImpl : public GadgetImpl, public virtual Device {
   AudioComboP     combo_; // maybe null
   ASE_DEFINE_MAKE_SHARED (DeviceImpl);
   friend class AudioProcessor;
-  DeviceP         create_device_before (const String &uuiduri, Device *sibling);
+  DeviceP         insert_device        (const String &uri, Device *sibling);
 protected:
   virtual        ~DeviceImpl           ();
   void            serialize            (WritNode &xs) override;
@@ -26,12 +26,12 @@ public:
   // Create sub Device
   DeviceInfoS     list_device_types    () override;
   void            remove_device        (Device &sub) override;
-  DeviceP         create_device        (const String &uuiduri) override;
-  DeviceP         create_device_before (const String &uuiduri, Device &sibling) override;
+  DeviceP         append_device        (const String &uri) override;
+  DeviceP         insert_device        (const String &uri, Device &beforesibling) override;
   AudioProcessorP _audio_processor     () const override { return proc_; }
   void            _set_event_source    (AudioProcessorP esource) override;
   void            _disconnect_remove   () override;
-  static DeviceP  create_output        (const String &uuiduri);
+  static DeviceP  create_output        (const String &uri);
 };
 
 } // Ase

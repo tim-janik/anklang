@@ -39,7 +39,7 @@ DeviceImpl::serialize (WritNode &xs)
         String uuiduri = xc["Device.URI"].as_string();
         if (uuiduri.empty())
           continue;
-        DeviceImplP subdevicep = shared_ptr_cast<DeviceImpl> (create_device (uuiduri));
+        DeviceImplP subdevicep = shared_ptr_cast<DeviceImpl> (append_device (uuiduri));
         xc & *subdevicep;
       }
 }
@@ -148,14 +148,14 @@ DeviceImpl::remove_device (Device &sub)
 }
 
 DeviceP
-DeviceImpl::create_device_before (const String &uuiduri, Device *sibling)
+DeviceImpl::insert_device (const String &uri, Device *sibling)
 {
   DeviceP devicep;
   DeviceImpl *siblingi = dynamic_cast<DeviceImpl*> (sibling);
   AudioProcessorP siblingp = siblingi ? siblingi->proc_ : nullptr;
   if (combo_)
     {
-      AudioProcessorP subp = proc_->engine().create_audio_processor (uuiduri);
+      AudioProcessorP subp = proc_->engine().create_audio_processor (uri);
       return_unless (subp, nullptr);
       devicep = subp->get_device();
       AudioComboP combo = combo_;
@@ -169,15 +169,15 @@ DeviceImpl::create_device_before (const String &uuiduri, Device *sibling)
 }
 
 DeviceP
-DeviceImpl::create_device (const String &uuiduri)
+DeviceImpl::append_device (const String &uri)
 {
-  return create_device_before (uuiduri, nullptr);
+  return insert_device (uri, nullptr);
 }
 
 DeviceP
-DeviceImpl::create_device_before (const String &uuiduri, Device &sibling)
+DeviceImpl::insert_device (const String &uri, Device &sibling)
 {
-  return create_device_before (uuiduri, &sibling);
+  return insert_device (uri, &sibling);
 }
 
 void
@@ -196,10 +196,10 @@ DeviceImpl::_disconnect_remove ()
 }
 
 DeviceP
-DeviceImpl::create_output (const String &uuiduri)
+DeviceImpl::create_output (const String &uri)
 {
   AudioEngine *engine = main_config.engine;
-  AudioProcessorP procp = engine->create_audio_processor (uuiduri);
+  AudioProcessorP procp = engine->create_audio_processor (uri);
   return_unless (procp, nullptr);
   DeviceP devicep = procp->get_device();
   auto j = [procp] () {
