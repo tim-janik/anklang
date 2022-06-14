@@ -6,6 +6,7 @@
 #include "clip.hh"
 #include "midilib.hh"
 #include "server.hh"
+#include "main.hh"
 #include "serialize.hh"
 #include "jsonipc/jsonipc.hh"
 #include "internal.hh"
@@ -80,14 +81,15 @@ TrackImpl::set_project (ProjectImpl *project)
   project_ = project;
   if (project_)
     {
+      AudioEngine *engine = main_config.engine;
       assert_return (!midi_prod_);
-      midi_prod_ = DeviceImpl::create_output ("Anklang.Ase.MidiLib.MidiProducer");
+      midi_prod_ = create_processor_device (*engine, "Ase::MidiLib::MidiProducerImpl", true);
       assert_return (midi_prod_);
       AudioProcessorP esource = midi_prod_->_audio_processor()->engine().get_event_source();
       midi_prod_->_set_event_source (esource);
       midi_prod_->_audio_processor()->connect_event_input (*esource);
       assert_return (!chain_);
-      chain_ = DeviceImpl::create_output ("Anklang.Devices.AudioChain");
+      chain_ = create_processor_device (*engine, "Ase::AudioChain", true);
       assert_return (chain_);
       chain_->_set_event_source (midi_prod_->_audio_processor());
     }
