@@ -360,7 +360,7 @@ ProjectImpl::master_processor () const
   return_unless (master, nullptr);
   DeviceP device = master->access_device();
   return_unless (device, nullptr);
-  AudioProcessorP proc = dynamic_cast<DeviceImpl*> (device.get())->audio_processor();
+  AudioProcessorP proc = dynamic_cast<DeviceImpl*> (device.get())->_audio_processor();
   return_unless (proc, nullptr);
   return proc;
 }

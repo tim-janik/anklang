@@ -242,7 +242,7 @@ AudioProcessor::device_impl () const
 }
 
 /// Gain access to `this` through the `Ase::ProcessorIface` interface.
-DeviceImplP
+DeviceP
 AudioProcessor::get_device (bool create) const
 {
   std::weak_ptr<DeviceImpl> &wptr = const_cast<AudioProcessor*> (this)->device_;
@@ -1311,7 +1311,7 @@ AudioProcessor::FloatBuffer::check ()
 
 // == AudioPropertyImpl ==
 class AudioPropertyImpl : public Property, public virtual EmittableImpl {
-  DeviceImplP   device_;
+  DeviceP       device_;
   ParamInfoP    info_;
   const ParamId id_;
 public:
@@ -1327,7 +1327,7 @@ public:
   double   get_max        () override   { double mi, ma, st; info_->get_range (mi, ma, st); return ma; }
   double   get_step       () override   { double mi, ma, st; info_->get_range (mi, ma, st); return st; }
   explicit
-  AudioPropertyImpl (DeviceImplP devp, ParamId id, ParamInfoP param_) :
+  AudioPropertyImpl (DeviceP devp, ParamId id, ParamInfoP param_) :
     device_ (devp), info_ (param_), id_ (id)
   {}
   void
@@ -1338,7 +1338,7 @@ public:
   Value
   get_value () override
   {
-    const AudioProcessorP proc = device_->audio_processor();
+    const AudioProcessorP proc = device_->_audio_processor();
     const double v = AudioProcessor::param_peek_mt (proc, id_);
     const bool ischoice = strstr (info_->hints.c_str(), ":choice:") != nullptr;
     if (ischoice)
@@ -1349,7 +1349,7 @@ public:
   bool
   set_value (const Value &value) override
   {
-    const AudioProcessorP proc = device_->audio_processor();
+    const AudioProcessorP proc = device_->_audio_processor();
     const bool ischoice = strstr (info_->hints.c_str(), ":choice:") != nullptr;
     double v;
     if (ischoice && value.index() == Value::STRING)
@@ -1366,13 +1366,13 @@ public:
   double
   get_normalized () override
   {
-    const AudioProcessorP proc = device_->audio_processor();
+    const AudioProcessorP proc = device_->_audio_processor();
     return proc->value_to_normalized (id_, AudioProcessor::param_peek_mt (proc, id_));
   }
   bool
   set_normalized (double v) override
   {
-    const AudioProcessorP proc = device_->audio_processor();
+    const AudioProcessorP proc = device_->_audio_processor();
     const ParamId pid = id_;
     auto lambda = [proc, pid, v] () {
       proc->set_normalized (pid, v);
@@ -1383,14 +1383,14 @@ public:
   String
   get_text () override
   {
-    const AudioProcessorP proc = device_->audio_processor();
+    const AudioProcessorP proc = device_->_audio_processor();
     const double value = AudioProcessor::param_peek_mt (proc, id_);
     return proc->param_value_to_text (id_, value);
   }
   bool
   set_text (String vstr) override
   {
-    const AudioProcessorP proc = device_->audio_processor();
+    const AudioProcessorP proc = device_->_audio_processor();
     const double v = proc->param_value_from_text (id_, vstr);
     const ParamId pid = id_;
     auto lambda = [proc, pid, v] () {
@@ -1421,7 +1421,7 @@ AudioProcessor::access_property (ParamId id) const
   assert_return (is_initialized(), {});
   const PParam *param = find_pparam (id);
   assert_return (param, {});
-  DeviceImplP devp = get_device();
+  DeviceP devp = get_device();
   assert_return (devp, {});
   PropertyP newptr;
   PropertyP prop = weak_ptr_fetch_or_create<Property> (param->info->aprop_, [&] () {
@@ -1473,7 +1473,7 @@ AudioProcessor::enotify_dispatch ()
       assert_warn (old_nqueue_next != nullptr);
       const uint32 nflags = NOTIFYMASK & current->flags_.fetch_and (~NOTIFYMASK);
       assert_warn (procp != nullptr);
-      DeviceImplP devicep = current->get_device (false);
+      DeviceP devicep = current->get_device (false);
       if (devicep)
         {
           if (nflags & BUSCONNECT)

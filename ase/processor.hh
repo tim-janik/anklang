@@ -247,7 +247,7 @@ public:
   const float*  ifloats           (IBusId b, uint c) const;
   const float*  ofloats           (OBusId b, uint c) const;
   static uint64 timestamp         ();
-  DeviceImplP   get_device        (bool create = true) const;
+  DeviceP       get_device        (bool create = true) const;
   bool          has_event_input   () const;
   bool          has_event_output  () const;
   void          connect_event_input    (AudioProcessor &oproc);
