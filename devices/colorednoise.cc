@@ -85,6 +85,9 @@ class ColoredNoise : public AudioProcessor {
   bool      pink_ = true;
   enum Params { GAIN = 1, MONO, PINK };
 public:
+  ColoredNoise (AudioEngine &engine) :
+    AudioProcessor (engine)
+  {}
   void
   query_info (AudioProcessorInfo &info) const override
   {

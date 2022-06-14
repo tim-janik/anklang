@@ -664,6 +664,10 @@ class BlepSynth : public AudioProcessor {
       return cutoff_logscale_.scale (normalized);
     return AudioProcessor::value_from_normalized (paramid, normalized);
   }
+public:
+  BlepSynth (AudioEngine &engine) :
+    AudioProcessor (engine)
+  {}
 };
 static auto blepsynth = register_audio_processor<BlepSynth>();
 
