@@ -97,6 +97,7 @@ class AudioProcessor : public std::enable_shared_from_this<AudioProcessor>, publ
   struct PParam;
   class FloatBuffer;
   friend class ProcessorManager;
+  friend class AudioEngine;
   friend class DeviceImpl;
   friend class AudioEngineThread;
   struct OConnection {
@@ -147,7 +148,7 @@ private:
   PropertyP          access_property    (ParamId id) const;
 protected:
   AudioEngine  &engine_;
-  explicit      AudioProcessor    ();
+  explicit      AudioProcessor    (AudioEngine &engine);
   virtual      ~AudioProcessor    ();
   virtual void  initialize        (SpeakerArrangement busses) = 0;
   void          enotify_enqueue_mt (uint32 pushmask);
@@ -206,7 +207,7 @@ protected:
   MidiEventStream& get_event_output     ();
 public:
   using RegistryList = AudioProcessorInfoS;
-  using MakeProcessor = AudioProcessorP (*) (const std::any*);
+  using MakeProcessor = AudioProcessorP (*) (AudioEngine&);
   using MaybeParamId = std::pair<ParamId,bool>;
   static const String GUIONLY;     ///< ":G:r:w:" - GUI READABLE WRITABLE
   static const String STANDARD;    ///< ":G:S:r:w:" - GUI STORAGE READABLE WRITABLE
@@ -257,9 +258,8 @@ public:
   static double          param_peek_mt   (const AudioProcessorP proc, Id32 paramid);
   // Registration and factory
   static RegistryList    registry_list   ();
-  static AudioProcessorP registry_create (AudioEngine &engine, const String &uuiduri);
-  static AudioProcessorP registry_create (AudioEngine &engine, RegistryId rid, const std::any &any);
 private:
+  static MakeProcessor   registry_lookup (const String &uuiduri);
   static RegistryId      registry_enroll (MakeProcessor, const char*, int);
   template<class> friend RegistryId register_audio_processor (const char*, int);
   static bool   enotify_pending   ();
@@ -549,20 +549,14 @@ template<typename T> extern inline RegistryId
 register_audio_processor (const char *bfile, int bline)
 {
   AudioProcessor::MakeProcessor makeasp = nullptr;
-  if constexpr (std::is_constructible<T, const std::any&>::value)
+  if constexpr (std::is_constructible<T, AudioEngine&>::value)
     {
-      makeasp = [] (const std::any *any) -> AudioProcessorP {
-        return any ? std::make_shared<T> (*any) : nullptr;
-      };
-    }
-  else if constexpr (std::is_constructible<T>::value)
-    {
-      makeasp = [] (const std::any*) -> AudioProcessorP {
-        return std::make_shared<T>();
+      makeasp = [] (AudioEngine &engine) -> AudioProcessorP {
+        return std::make_shared<T> (engine);
       };
     }
   else
-    static_assert (sizeof (T) < 0, "type `T` must be constructible from void or any");
+    static_assert (sizeof (T) < 0, "type `T` must be constructible from AudioEngine&");
   return AudioProcessor::registry_enroll (makeasp, bfile, bline);
 }
 

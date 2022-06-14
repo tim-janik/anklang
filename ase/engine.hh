@@ -21,6 +21,7 @@ class AudioEngine : VirtualBase {
     void     operator+= (const std::function<void()> &job) { return engine_.add_job_mt (job, flags_); }
   };
   void         add_job_mt            (const std::function<void()> &job, int flags);
+  void         ensure_initialized    (AudioProcessor &aproc);
 protected:
   AudioTransport                    *transport_ = nullptr;
   explicit     AudioEngine           ();
@@ -45,10 +46,22 @@ public:
   ThreadId              thread_id           () const           { return thread_id_; }
   JobQueue              const_jobs;
   JobQueue              async_jobs;
+  AudioProcessorP create_audio_processor (const String &uuiduri);
+  template<class AudioProc, class ...Args>
+  AudioProcessorP create_audio_processor (const Args &...args);
 };
 
 AudioEngine&    make_audio_engine    (uint sample_rate, SpeakerArrangement speakerarrangement);
-AudioProcessorP make_audio_processor (AudioEngine &engine, const String &uuiduri);
+
+// internals
+template<class AudioProc, class ...Args> AudioProcessorP
+AudioEngine::create_audio_processor (const Args &...args)
+{
+  AudioProcessorP aproc = std::make_shared<AudioProc> (*this, args...);
+  if (aproc)
+    ensure_initialized (*aproc);
+  return aproc;
+}
 
 } // Ase
 

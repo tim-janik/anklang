@@ -205,17 +205,11 @@ const String AudioProcessor::GUIONLY = ":G:r:w:";     ///< GUI READABLE WRITABLE
 const String AudioProcessor::STANDARD = ":G:S:r:w:";  ///< GUI STORAGE READABLE WRITABLE
 const String AudioProcessor::STORAGEONLY = ":S:r:w:"; ///< STORAGE READABLE WRITABLE
 uint64 __thread AudioProcessor::tls_timestamp = 0;
-struct ProcessorRegistryContext {
-  AudioEngine *engine = nullptr;
-};
-static __thread ProcessorRegistryContext *processor_ctor_registry_context = nullptr;
 
 /// Constructor for AudioProcessor
-AudioProcessor::AudioProcessor() :
-  engine_ (*processor_ctor_registry_context->engine)
+AudioProcessor::AudioProcessor (AudioEngine &engine) :
+  engine_ (engine)
 {
-  assert_return (processor_ctor_registry_context->engine != nullptr);
-  processor_ctor_registry_context->engine = nullptr; // consumed
   engine_.processor_count_ += 1;
 }
 
@@ -1182,11 +1176,7 @@ AudioProcessor::registry_init()
       // register all
       while (entry)
         {
-          ProcessorRegistryContext *const saved = processor_ctor_registry_context;
-          ProcessorRegistryContext context { &regengine };
-          processor_ctor_registry_context = &context;
-          AudioProcessorP testproc = entry->create (nullptr);
-          processor_ctor_registry_context = saved;
+          AudioProcessorP testproc = entry->create (regengine);
           if (testproc)
             {
               testproc->query_info (*entry);
@@ -1210,9 +1200,9 @@ AudioProcessor::registry_init()
     regengine.ipc_dispatch(); // empty any work queues
 }
 
-/// Create a new AudioProcessor object of the type specified by `uuiduri`.
-AudioProcessorP
-AudioProcessor::registry_create (AudioEngine &engine, const String &uuiduri)
+/// Lookup AudioProcessor object of the type specified by `uuiduri` in registry.
+AudioProcessor::MakeProcessor
+AudioProcessor::registry_lookup (const String &uuiduri)
 {
   registry_init();
   RegistryId::Entry *entry = nullptr;
@@ -1222,32 +1212,7 @@ AudioProcessor::registry_create (AudioEngine &engine, const String &uuiduri)
     if (it != processor_registry_table->end())
       entry = it->second;
   }
-  AudioProcessorP procp;
-  if (entry)
-    {
-      ProcessorRegistryContext *const saved = processor_ctor_registry_context;
-      ProcessorRegistryContext context { &engine };
-      processor_ctor_registry_context = &context;
-      procp = entry->create (nullptr);
-      processor_ctor_registry_context = saved;
-      if (procp)
-        procp->ensure_initialized();
-    }
-  return procp;
-}
-
-AudioProcessorP
-AudioProcessor::registry_create (AudioEngine &engine, RegistryId regitry_id, const std::any &any)
-{
-  assert_return (regitry_id.entry.create != nullptr, {});
-  ProcessorRegistryContext *const saved = processor_ctor_registry_context;
-  ProcessorRegistryContext context { &engine };
-  processor_ctor_registry_context = &context;
-  AudioProcessorP procp = regitry_id.entry.create (&any);
-  processor_ctor_registry_context = saved;
-  if (procp)
-    procp->ensure_initialized();
-  return procp;
+  return entry ? entry->create : nullptr;
 }
 
 /// List the registry entries of all known AudioProcessor types.

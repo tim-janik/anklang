@@ -11,7 +11,7 @@ protected:
   AudioProcessorS  processors_;
   AudioProcessorP  eproc_;
   virtual void    reconnect          (size_t index, bool insertion) = 0;
-  explicit        AudioCombo         ();
+  explicit        AudioCombo         (AudioEngine &engine);
   virtual        ~AudioCombo         ();
 public:
   void            insert             (AudioProcessorP proc, size_t pos = ~size_t (0));
@@ -37,7 +37,7 @@ protected:
   void     reconnect         (size_t index, bool insertion) override;
   uint     chain_up          (AudioProcessor &pfirst, AudioProcessor &psecond);
 public:
-  explicit AudioChain        (SpeakerArrangement iobuses = SpeakerArrangement::STEREO);
+  explicit AudioChain        (AudioEngine &engine, SpeakerArrangement iobuses = SpeakerArrangement::STEREO);
   virtual ~AudioChain        ();
   void     query_info        (AudioProcessorInfo &info) const override;
 };

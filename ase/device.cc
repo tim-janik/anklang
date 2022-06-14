@@ -155,7 +155,7 @@ DeviceImpl::create_device_before (const String &uuiduri, Device *sibling)
   AudioProcessorP siblingp = siblingi ? siblingi->proc_ : nullptr;
   if (combo_)
     {
-      AudioProcessorP subp = make_audio_processor (proc_->engine(), uuiduri);
+      AudioProcessorP subp = proc_->engine().create_audio_processor (uuiduri);
       return_unless (subp, nullptr);
       devicep = subp->get_device();
       AudioComboP combo = combo_;
@@ -199,7 +199,7 @@ DeviceP
 DeviceImpl::create_output (const String &uuiduri)
 {
   AudioEngine *engine = main_config.engine;
-  AudioProcessorP procp = make_audio_processor (*engine, uuiduri);
+  AudioProcessorP procp = engine->create_audio_processor (uuiduri);
   return_unless (procp, nullptr);
   DeviceP devicep = procp->get_device();
   auto j = [procp] () {
