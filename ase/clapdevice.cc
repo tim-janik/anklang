@@ -33,67 +33,132 @@ list_clap_files ()
   return files;
 }
 
-struct ClapPluginInfo {
-  std::string dlclap, id, name, version, vendor, features;
-  std::string description, url, manual_url, support_url;
-};
-using ClapPluginInfoS = std::vector<ClapPluginInfo>;
-
-static void
-add_clap_plugin_infos (const std::string &pluginpath, ClapPluginInfoS &infos)
-{
-  auto get_dlerror = [] () { const char *err = dlerror(); return err ? err : "unknown dlerror"; };
-  void *handle = dlopen (pluginpath.c_str(), RTLD_LOCAL | RTLD_NOW);
-  if (!handle) {
-    CDEBUG ("dlopen failed: %s: %s", pluginpath, get_dlerror());
-    return;
+class ClapPluginHandle {
+  void *dlhandle_ = nullptr;
+  uint  opened_ = 0;
+public:
+  explicit ClapPluginHandle (std::string dlfilename) :
+    dlfile (dlfilename)
+  {}
+  ~ClapPluginHandle() {
+    assert_return (opened_ == 0);
   }
-  const clap_plugin_entry *pluginentry = (const clap_plugin_entry*) dlsym (handle, "clap_entry");
-  if (pluginentry && clap_version_is_compatible (pluginentry->clap_version)) {
-    const bool initialized = pluginentry->init (pluginpath.c_str());
-    if (initialized) {
-      const clap_plugin_factory *pluginfactory = (const clap_plugin_factory *) pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
-      const uint32_t plugincount = !pluginfactory ? 0 : pluginfactory->get_plugin_count (pluginfactory);
-      for (size_t i = 0; i < plugincount; i++) {
-        const clap_plugin_descriptor_t *pdesc = pluginfactory->get_plugin_descriptor (pluginfactory, i);
-        if (!pdesc || !pdesc->id || !pdesc->id[0])
-          continue;
-        const std::string clapversion = string_format ("clap-%u.%u.%u", pdesc->clap_version.major, pdesc->clap_version.minor, pdesc->clap_version.revision);
-        if (!clap_version_is_compatible (pdesc->clap_version)) {
-          CDEBUG ("invalid plugin: %s (%s)", pdesc->id, clapversion);
-          continue;
-        }
-        ClapPluginInfo cinfo;
-        cinfo.dlclap = pluginpath;
-        cinfo.id = pdesc->id;
-        cinfo.name = pdesc->name ? pdesc->name : pdesc->id;
-        cinfo.version = pdesc->version ? pdesc->version : "0.0.0-unknown";
-        cinfo.vendor = pdesc->vendor ? pdesc->vendor : "";
-        cinfo.url = pdesc->url ? pdesc->url : "";
-        cinfo.manual_url = pdesc->manual_url ? pdesc->manual_url : "";
-        cinfo.support_url = pdesc->support_url ? pdesc->support_url : "";
-        cinfo.description = pdesc->description ? pdesc->description : "";
-        StringS features;
-        if (pdesc->features)
-          for (size_t ft = 0; pdesc->features[ft]; ft++)
-            if (pdesc->features[ft][0])
-              features.push_back (pdesc->features[ft]);
-        cinfo.features = ":" + string_join (":", features) + ":";
-        infos.push_back (cinfo);
-        CDEBUG ("Plugin: %s %s %s (%s, %s)%s", cinfo.name, cinfo.version,
-                cinfo.vendor.empty() ? "" : "- " + cinfo.vendor,
-                cinfo.id, clapversion,
-                cinfo.features.empty() ? "" : ": " + cinfo.features);
+  const std::string dlfile;
+  std::string id, name, version, vendor, features;
+  std::string description, url, manual_url, support_url;
+  const clap_plugin_entry *pluginentry = nullptr;
+  bool opened() const { return dlhandle_ && pluginentry; }
+  void open();
+  void close();
+  template<typename Ptr> Ptr symbol (const char *symname);
+};
+using ClapPluginHandleS = std::vector<ClapPluginHandle*>;
+
+static auto get_dlerror = [] () { const char *err = dlerror(); return err ? err : "unknown dlerror"; };
+
+template<typename Ptr> Ptr
+ClapPluginHandle::symbol (const char *symname)
+{
+  void *p = dlhandle_ ? dlsym (dlhandle_, symname) : nullptr;
+  return (Ptr) p;
+}
+
+void
+ClapPluginHandle::open()
+{
+  if (!dlhandle_) {
+    dlhandle_ = dlopen (dlfile.c_str(), RTLD_LOCAL | RTLD_NOW);
+    if (dlhandle_) {
+      pluginentry = symbol<const clap_plugin_entry*> ("clap_entry");
+      bool initialized = false;
+      if (pluginentry && clap_version_is_compatible (pluginentry->clap_version)) {
+        initialized = pluginentry->init (dlfile.c_str());
+        if (!initialized)
+          pluginentry->deinit();
+      }
+      if (!initialized) {
+        CDEBUG ("invalid clap_entry: %s", !pluginentry ? "NULL" :
+                string_format ("clap-%u.%u.%u", pluginentry->clap_version.major, pluginentry->clap_version.minor,
+                               pluginentry->clap_version.revision));
+        pluginentry = nullptr;
+        dlclose (dlhandle_);
+        dlhandle_ = nullptr;
       }
     } else
-      CDEBUG ("init() failed: %s", pluginpath);
+      CDEBUG ("dlopen failed: %s: %s", dlfile, get_dlerror());
+  }
+  if (pluginentry)
+    opened_++;
+}
+
+void
+ClapPluginHandle::close()
+{
+  return_unless (opened_ > 0);
+  opened_--;
+  return_unless (opened_ == 0);
+  if (pluginentry) {
     pluginentry->deinit();
-  } else
-    CDEBUG ("invalid clap_entry: %s", !pluginentry ? "NULL" :
-            string_format ("clap-%u.%u.%u", pluginentry->clap_version.major, pluginentry->clap_version.minor,
-                           pluginentry->clap_version.revision));
-  if (dlclose (handle) != 0)
-    CDEBUG ("dlclose failed: %s: %s", pluginpath, get_dlerror());
+    pluginentry = nullptr;
+  }
+  if (dlhandle_) {
+    if (dlclose (dlhandle_) != 0)
+      CDEBUG ("dlclose failed: %s: %s", dlfile, get_dlerror());
+    dlhandle_ = nullptr;
+  }
+}
+
+static void
+add_clap_plugin_handle (const std::string &pluginpath, ClapPluginHandleS &infos)
+{
+  ClapPluginHandle scanhandle = ClapPluginHandle (pluginpath);
+  scanhandle.open();
+  if (scanhandle.opened()) {
+    const clap_plugin_factory *pluginfactory = (const clap_plugin_factory *) scanhandle.pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
+    const uint32_t plugincount = !pluginfactory ? 0 : pluginfactory->get_plugin_count (pluginfactory);
+    for (size_t i = 0; i < plugincount; i++) {
+      const clap_plugin_descriptor_t *pdesc = pluginfactory->get_plugin_descriptor (pluginfactory, i);
+      if (!pdesc || !pdesc->id || !pdesc->id[0])
+        continue;
+      const std::string clapversion = string_format ("clap-%u.%u.%u", pdesc->clap_version.major, pdesc->clap_version.minor, pdesc->clap_version.revision);
+      if (!clap_version_is_compatible (pdesc->clap_version)) {
+        CDEBUG ("invalid plugin: %s (%s)", pdesc->id, clapversion);
+        continue;
+      }
+      ClapPluginHandle *handle = new ClapPluginHandle (pluginpath);
+      handle->id = pdesc->id;
+      handle->name = pdesc->name ? pdesc->name : pdesc->id;
+      handle->version = pdesc->version ? pdesc->version : "0.0.0-unknown";
+      handle->vendor = pdesc->vendor ? pdesc->vendor : "";
+      handle->url = pdesc->url ? pdesc->url : "";
+      handle->manual_url = pdesc->manual_url ? pdesc->manual_url : "";
+      handle->support_url = pdesc->support_url ? pdesc->support_url : "";
+      handle->description = pdesc->description ? pdesc->description : "";
+      StringS features;
+      if (pdesc->features)
+        for (size_t ft = 0; pdesc->features[ft]; ft++)
+          if (pdesc->features[ft][0])
+            features.push_back (pdesc->features[ft]);
+      handle->features = ":" + string_join (":", features) + ":";
+      infos.push_back (handle);
+      CDEBUG ("Plugin: %s %s %s (%s, %s)%s", handle->name, handle->version,
+              handle->vendor.empty() ? "" : "- " + handle->vendor,
+              handle->id, clapversion,
+              handle->features.empty() ? "" : ": " + handle->features);
+    }
+  }
+  scanhandle.close();
+}
+
+static const ClapPluginHandleS&
+collect_clap_plugin_handles ()
+{
+  static ClapPluginHandleS handle_list;
+  if (handle_list.empty()) {
+    for (const auto &clapfile : list_clap_files())
+      add_clap_plugin_handle (clapfile, handle_list);
+  }
+  return handle_list;
 }
 
 // == ClapDeviceImpl ==
@@ -101,10 +166,37 @@ JSONIPC_INHERIT (ClapDeviceImpl, Device);
 
 ClapDeviceImpl::ClapDeviceImpl (const String &clapid, AudioProcessorP aproc) :
   proc_ (aproc)
-{}
+{
+  for (ClapPluginHandle *handle : collect_clap_plugin_handles())
+    if (clapid == handle->id) {
+      handle_ = handle;
+      break;
+    }
+  if (handle_)
+    handle_->open();
+  if (handle_ && handle_->opened()) {
+    const clap_plugin_factory *pluginfactory = (const clap_plugin_factory *) handle_->pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
+    clap_host_t phost = { .clap_version = CLAP_VERSION,
+                          .name = "Anklang/ase/" __FILE__,
+                          .vendor = "Anklang", .url = "https://anklang.testbit.eu/",
+                          .version = __DATE__,
+    };
+    const clap_plugin_t *plugin = pluginfactory->create_plugin (pluginfactory, &phost, clapid.c_str());
+    if (plugin && !plugin->init (plugin)) {
+      plugin->destroy (plugin);
+      plugin = nullptr;
+    }
+    if (plugin)
+      plugin->destroy (plugin);
+  } else
+    handle_ = nullptr;
+}
 
 ClapDeviceImpl::~ClapDeviceImpl()
-{}
+{
+  if (handle_)
+    handle_->close();
+}
 
 DeviceInfoS
 ClapDeviceImpl::list_clap_plugins ()
@@ -112,24 +204,20 @@ ClapDeviceImpl::list_clap_plugins ()
   static DeviceInfoS devs;
   if (devs.size())
     return devs;
-  ClapPluginInfoS plugininfos;
-  for (const auto &clapfile : list_clap_files())
-    add_clap_plugin_infos (clapfile, plugininfos);
-  for (const ClapPluginInfo &cinfo : plugininfos) {
-    std::string title = cinfo.name;
-    if (!cinfo.version.empty())
-      title = title + " " + cinfo.version;
-    if (!cinfo.vendor.empty())
-      title = title + " - " + cinfo.vendor;
-    printout ("%s\n", title);
+  for (const ClapPluginHandle *handle : collect_clap_plugin_handles()) {
+    std::string title = handle->name;
+    if (!handle->version.empty())
+      title = title + " " + handle->version;
+    if (!handle->vendor.empty())
+      title = title + " - " + handle->vendor;
     DeviceInfo di;
-    di.uri = "CLAP:" + cinfo.id;
-    di.name = cinfo.name;
-    di.description = cinfo.description;
-    di.website_url = cinfo.url;
-    di.creator_name = cinfo.vendor;
-    di.creator_url = cinfo.manual_url;
-    const char *const cfeatures = cinfo.features.c_str();
+    di.uri = "CLAP:" + handle->id;
+    di.name = handle->name;
+    di.description = handle->description;
+    di.website_url = handle->url;
+    di.creator_name = handle->vendor;
+    di.creator_url = handle->manual_url;
+    const char *const cfeatures = handle->features.c_str();
     if (strstr (cfeatures, ":instrument:"))        // CLAP_PLUGIN_FEATURE_INSTRUMENT
       di.category = "Instrument";
     else if (strstr (cfeatures, ":analyzer:"))     // CLAP_PLUGIN_FEATURE_ANALYZER
@@ -151,6 +239,18 @@ DeviceInfo
 ClapDeviceImpl::device_info ()
 {
   return {};
+}
+
+void
+ClapDeviceImpl::_set_event_source (AudioProcessorP esource)
+{
+  // FIXME: implement
+}
+
+void
+ClapDeviceImpl::_disconnect_remove ()
+{
+  // FIXME: implement
 }
 
 // == ClapWrapper ==
@@ -188,23 +288,12 @@ public:
 };
 static auto clap_wrapper_id = register_audio_processor<ClapWrapper>();
 
-void
-ClapDeviceImpl::_set_event_source (AudioProcessorP esource)
-{
-  // FIXME: implement
-}
-
-void
-ClapDeviceImpl::_disconnect_remove ()
-{
-  // FIXME: implement
-}
-
 DeviceP
 ClapDeviceImpl::create_clap_device (AudioEngine &engine, const String &clapid)
 {
+  assert_return (string_startswith (clapid, "CLAP:"), nullptr);
   auto make_device = [&clapid] (const String &aseid, AudioProcessor::StaticInfo static_info, AudioProcessorP aproc) -> DeviceP {
-    return ClapDeviceImpl::make_shared (clapid, aproc);
+    return ClapDeviceImpl::make_shared (clapid.substr (5), aproc);
   };
   DeviceP devicep = AudioProcessor::registry_create (clap_wrapper_id, engine, make_device);
   assert_return (devicep && devicep->_audio_processor(), nullptr);
