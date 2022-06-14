@@ -133,12 +133,12 @@ export default {
 	{
 	  let newdev;
 	  if (popup_options.device_sibling)
-	    newdev = this.chain_.create_device_before (uri, popup_options.device_sibling);
+	    newdev = this.chain_.insert_device (uri, popup_options.device_sibling);
 	  else
-	    newdev = this.chain_.create_device (uri);
+	    newdev = this.chain_.append_device (uri);
 	  newdev = await newdev;
 	  if (!newdev)
-	    debug ("create_device failed, got null:", uri);
+	    debug ("insert_device failed, got null:", uri);
 	}
     },
     menucheck (uri, component) {
