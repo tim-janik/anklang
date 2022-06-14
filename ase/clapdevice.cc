@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "clapdevice.hh"
 #include "jsonipc/jsonipc.hh"
+#include "processor.hh"
 #include <clap/clap.h>
 #include <dlfcn.h>
 #include <glob.h>
@@ -98,7 +99,8 @@ add_clap_plugin_infos (const std::string &pluginpath, ClapPluginInfoS &infos)
 // == ClapDeviceImpl ==
 JSONIPC_INHERIT (ClapDeviceImpl, Device);
 
-ClapDeviceImpl::ClapDeviceImpl ()
+ClapDeviceImpl::ClapDeviceImpl (const String &clapid, AudioProcessorP aproc) :
+  proc_ (aproc)
 {}
 
 ClapDeviceImpl::~ClapDeviceImpl()
@@ -107,10 +109,12 @@ ClapDeviceImpl::~ClapDeviceImpl()
 DeviceInfoS
 ClapDeviceImpl::list_clap_plugins ()
 {
+  static DeviceInfoS devs;
+  if (devs.size())
+    return devs;
   ClapPluginInfoS plugininfos;
   for (const auto &clapfile : list_clap_files())
     add_clap_plugin_infos (clapfile, plugininfos);
-  DeviceInfoS devs;
   for (const ClapPluginInfo &cinfo : plugininfos) {
     std::string title = cinfo.name;
     if (!cinfo.version.empty())
@@ -119,7 +123,7 @@ ClapDeviceImpl::list_clap_plugins ()
       title = title + " - " + cinfo.vendor;
     printout ("%s\n", title);
     DeviceInfo di;
-    di.uri = "clapid:" + cinfo.id;
+    di.uri = "CLAP:" + cinfo.id;
     di.name = cinfo.name;
     di.description = cinfo.description;
     di.website_url = cinfo.url;
@@ -149,39 +153,62 @@ ClapDeviceImpl::device_info ()
   return {};
 }
 
-bool
-ClapDeviceImpl::is_combo_device ()
-{
-  return false;
-}
+// == ClapWrapper ==
+class ClapWrapper : public AudioProcessor {
+public:
+  ClapWrapper (AudioEngine &engine) :
+    AudioProcessor (engine)
+  {}
+  static void
+  static_info (AudioProcessorInfo &info)
+  {
+    info.label = "Anklang.Devices.ClapWrapper";
+  }
+  void
+  reset (uint64 target_stamp) override
+  {}
+  void
+  initialize (SpeakerArrangement busses) override
+  {
+    remove_all_buses();
+    auto input = add_input_bus ("Input", busses);
+    auto output = add_output_bus ("Output", busses);
+  }
+  void
+  render (uint n_frames) override
+  {
+    const IBusId i1 = IBusId (1);
+    const OBusId o1 = OBusId (1);
+    const uint ni = this->n_ichannels (i1);
+    const uint no = this->n_ochannels (o1);
+    assert_return (ni == no);
+    for (size_t i = 0; i < ni; i++)
+      redirect_oblock (o1, i, ifloats (i1, i));
+  }
+};
+static auto clap_wrapper_id = register_audio_processor<ClapWrapper>();
 
-DeviceS
-ClapDeviceImpl::list_devices ()
+void
+ClapDeviceImpl::_set_event_source (AudioProcessorP esource)
 {
-  return {};
-}
-
-DeviceInfoS
-ClapDeviceImpl::list_device_types ()
-{
-  return {}; // FIXME: empty?
+  // FIXME: implement
 }
 
 void
-ClapDeviceImpl::remove_device (Device &sub)
+ClapDeviceImpl::_disconnect_remove ()
 {
+  // FIXME: implement
 }
 
 DeviceP
-ClapDeviceImpl::create_device (const String &uuiduri)
+ClapDeviceImpl::create_clap_device (AudioEngine &engine, const String &clapid)
 {
-  return {};
-}
-
-DeviceP
-ClapDeviceImpl::create_device_before (const String &uuiduri, Device &sibling)
-{
-  return {};
+  auto make_device = [&clapid] (const String &aseid, AudioProcessor::StaticInfo static_info, AudioProcessorP aproc) -> DeviceP {
+    return ClapDeviceImpl::make_shared (clapid, aproc);
+  };
+  DeviceP devicep = AudioProcessor::registry_create (clap_wrapper_id, engine, make_device);
+  assert_return (devicep && devicep->_audio_processor(), nullptr);
+  return devicep;
 }
 
 } // Ase

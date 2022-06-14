@@ -38,6 +38,7 @@ ASE_CLASS_DECLS (AudioCombo);
 ASE_CLASS_DECLS (AudioEngineThread);
 ASE_CLASS_DECLS (AudioProcessor);
 ASE_CLASS_DECLS (AudioProcessor);
+ASE_CLASS_DECLS (ClapDeviceImpl);
 ASE_CLASS_DECLS (Clip);
 ASE_CLASS_DECLS (ClipImpl);
 ASE_CLASS_DECLS (Device);

@@ -7,20 +7,24 @@
 namespace Ase {
 
 class ClapDeviceImpl : public GadgetImpl, public virtual Device {
+  AudioProcessorP proc_;
   ASE_DEFINE_MAKE_SHARED (ClapDeviceImpl);
 protected:
-  virtual           ~ClapDeviceImpl       ();
+  virtual           ~ClapDeviceImpl        ();
 public:
-  explicit           ClapDeviceImpl       ();
-  static DeviceInfoS list_clap_plugins    ();
-  DeviceInfo         device_info          () override;
-  bool               is_combo_device      () override;
-  DeviceS            list_devices         () override;
-  DeviceInfoS        list_device_types    () override;
-  void               remove_device        (Device &sub) override;
-  DeviceP            create_device        (const String &uuiduri) override;
-  DeviceP            create_device_before (const String &uuiduri,
-                                           Device &sibling) override;
+  explicit           ClapDeviceImpl        (const String &clapid, AudioProcessorP aproc);
+  static DeviceInfoS list_clap_plugins     ();
+  DeviceInfo         device_info           () override;
+  bool               is_combo_device       () override                       { return false; }
+  DeviceS            list_devices          () override                       { return {}; } // no children
+  DeviceInfoS        list_device_types     () override                       { return {}; } // no children
+  void               remove_device         (Device &sub) override            {} // no children
+  DeviceP            append_device         (const String&) override          { return {}; }
+  DeviceP            insert_device         (const String&, Device&) override { return {}; }
+  AudioProcessorP    _audio_processor      () const override { return proc_; }
+  void               _set_event_source     (AudioProcessorP esource) override;
+  void               _disconnect_remove    () override;
+  static DeviceP     create_clap_device    (AudioEngine &engine, const String &clapid);
 };
 
 } // Ase
