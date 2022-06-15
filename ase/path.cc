@@ -715,6 +715,25 @@ rglob (const String &basedir, const String &pattern, StringS &matches)
   globfree (&iglob);
 }
 
+/// Convert all `pathnames` via realpath() and eliminate duplicates.
+void
+unique_realpaths (StringS &pathnames)
+{
+  size_t j = 0;
+  for (ssize_t i = 0; i < pathnames.size(); i++) {
+    char *rpath = ::realpath (pathnames[i].c_str(), nullptr);
+    if (rpath) {
+      pathnames[j++] = rpath;
+      free (rpath);
+    }
+  }
+  pathnames.resize (j);
+  std::sort (pathnames.begin(), pathnames.end(), [] (auto &a, auto &b) -> bool {
+    return strverscmp (a.c_str(), b.c_str()) <= 0;
+  });
+  pathnames.erase (std::unique (pathnames.begin(), pathnames.end()), pathnames.end());
+}
+
 /// Remove extra slashes, './' and '../' from `abspath_expression`.
 String
 simplify_abspath (const std::string &abspath_expression)

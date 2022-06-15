@@ -71,6 +71,7 @@ String       searchpath_join     (const StringS &string_vector);
 template<class ...S>
 String       searchpath_join     (String path, const S &...more);
 void         rglob               (const String &basedir, const String &pattern, StringS &matches);
+void         unique_realpaths    (StringS &pathnames);
 
 // == implementations ==
 String join_with (const String &head, char joiner, const String &tail);
