@@ -19,6 +19,7 @@ feature_canonify (const String &str)
   return string_canonify (str, string_set_a2z() + string_set_A2Z() + "-0123456789", "-");
 }
 
+// == CLAP file locations ==
 static std::vector<std::string>
 list_clap_files ()
 {
@@ -33,90 +34,105 @@ list_clap_files ()
   return files;
 }
 
-class ClapPluginHandle {
+// == CLAP file handle ==
+class ClapFileHandle {
   void *dlhandle_ = nullptr;
-  uint  opened_ = 0;
+  uint  open_count_ = 0;
 public:
-  explicit ClapPluginHandle (std::string dlfilename) :
-    dlfile (dlfilename)
-  {}
-  ~ClapPluginHandle() {
-    assert_return (opened_ == 0);
-  }
   const std::string dlfile;
+  const clap_plugin_entry *pluginentry = nullptr;
+  ~ClapFileHandle() { assert_return (!opened()); }
+  explicit ClapFileHandle (const String &pathname) :
+    dlfile (pathname)
+  {}
+  static String
+  get_dlerror ()
+  {
+    const char *err = dlerror();
+    return err ? err : "unknown dlerror";
+  };
+  template<typename Ptr> Ptr
+  symbol (const char *symname) const
+  {
+    void *p = dlhandle_ ? dlsym (dlhandle_, symname) : nullptr;
+    return (Ptr) p;
+  }
+  void
+  close()
+  {
+    assert_return (open_count_ > 0);
+    open_count_--;
+    return_unless (open_count_ == 0);
+    if (pluginentry) {
+      pluginentry->deinit();
+      pluginentry = nullptr;
+    }
+    if (dlhandle_) {
+      if (dlclose (dlhandle_) != 0)
+        CDEBUG ("dlclose failed: %s: %s", dlfile, get_dlerror());
+      dlhandle_ = nullptr;
+    }
+  }
+  void
+  open()
+  {
+    if (open_count_++ == 0 && !dlhandle_) {
+      dlhandle_ = dlopen (dlfile.c_str(), RTLD_LOCAL | RTLD_NOW);
+      if (dlhandle_) {
+        pluginentry = symbol<const clap_plugin_entry*> ("clap_entry");
+        bool initialized = false;
+        if (pluginentry && clap_version_is_compatible (pluginentry->clap_version)) {
+          initialized = pluginentry->init (dlfile.c_str());
+          if (!initialized)
+            pluginentry->deinit();
+        }
+        if (!initialized) {
+          CDEBUG ("unusable clap_entry: %s", !pluginentry ? "NULL" :
+                  string_format ("clap-%u.%u.%u", pluginentry->clap_version.major, pluginentry->clap_version.minor,
+                                 pluginentry->clap_version.revision));
+          pluginentry = nullptr;
+          dlclose (dlhandle_);
+          dlhandle_ = nullptr;
+        }
+      } else
+        CDEBUG ("dlopen failed: %s: %s", dlfile, get_dlerror());
+    }
+  }
+  bool opened() const { return dlhandle_ && pluginentry; }
+};
+
+// == CLAP plugin descriptor ==
+class ClapPluginDescriptor {
+  ClapFileHandle &clapfile_;
+public:
+  explicit ClapPluginDescriptor (ClapFileHandle &clapfile) :
+    clapfile_ (clapfile)
+  {}
   std::string id, name, version, vendor, features;
   std::string description, url, manual_url, support_url;
-  const clap_plugin_entry *pluginentry = nullptr;
-  bool opened() const { return dlhandle_ && pluginentry; }
-  void open();
-  void close();
-  template<typename Ptr> Ptr symbol (const char *symname);
+  void open()   { clapfile_.open(); }
+  void close()  { clapfile_.close(); }
+  const clap_plugin_entry *
+  entry() {
+    return clapfile_.opened() ? clapfile_.pluginentry : nullptr;
+  }
 };
-using ClapPluginHandleS = std::vector<ClapPluginHandle*>;
-
-static auto get_dlerror = [] () { const char *err = dlerror(); return err ? err : "unknown dlerror"; };
-
-template<typename Ptr> Ptr
-ClapPluginHandle::symbol (const char *symname)
-{
-  void *p = dlhandle_ ? dlsym (dlhandle_, symname) : nullptr;
-  return (Ptr) p;
-}
-
-void
-ClapPluginHandle::open()
-{
-  if (!dlhandle_) {
-    dlhandle_ = dlopen (dlfile.c_str(), RTLD_LOCAL | RTLD_NOW);
-    if (dlhandle_) {
-      pluginentry = symbol<const clap_plugin_entry*> ("clap_entry");
-      bool initialized = false;
-      if (pluginentry && clap_version_is_compatible (pluginentry->clap_version)) {
-        initialized = pluginentry->init (dlfile.c_str());
-        if (!initialized)
-          pluginentry->deinit();
-      }
-      if (!initialized) {
-        CDEBUG ("invalid clap_entry: %s", !pluginentry ? "NULL" :
-                string_format ("clap-%u.%u.%u", pluginentry->clap_version.major, pluginentry->clap_version.minor,
-                               pluginentry->clap_version.revision));
-        pluginentry = nullptr;
-        dlclose (dlhandle_);
-        dlhandle_ = nullptr;
-      }
-    } else
-      CDEBUG ("dlopen failed: %s: %s", dlfile, get_dlerror());
-  }
-  if (pluginentry)
-    opened_++;
-}
-
-void
-ClapPluginHandle::close()
-{
-  return_unless (opened_ > 0);
-  opened_--;
-  return_unless (opened_ == 0);
-  if (pluginentry) {
-    pluginentry->deinit();
-    pluginentry = nullptr;
-  }
-  if (dlhandle_) {
-    if (dlclose (dlhandle_) != 0)
-      CDEBUG ("dlclose failed: %s: %s", dlfile, get_dlerror());
-    dlhandle_ = nullptr;
-  }
-}
+using ClapPluginDescriptorS = std::vector<ClapPluginDescriptor*>;
 
 static void
-add_clap_plugin_handle (const std::string &pluginpath, ClapPluginHandleS &infos)
+add_clap_plugin_descriptor (const std::string &pluginpath, ClapPluginDescriptorS &infos)
 {
-  ClapPluginHandle scanhandle = ClapPluginHandle (pluginpath);
-  scanhandle.open();
-  if (scanhandle.opened()) {
-    const clap_plugin_factory *pluginfactory = (const clap_plugin_factory *) scanhandle.pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
-    const uint32_t plugincount = !pluginfactory ? 0 : pluginfactory->get_plugin_count (pluginfactory);
-    for (size_t i = 0; i < plugincount; i++) {
+  ClapFileHandle *filehandle = new ClapFileHandle (pluginpath);
+  filehandle->open();
+  if (!filehandle->opened()) {
+    filehandle->close();
+    delete filehandle;
+    return;
+  }
+  const clap_plugin_factory *pluginfactory = (const clap_plugin_factory *) filehandle->pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
+  const uint32_t plugincount = !pluginfactory ? 0 : pluginfactory->get_plugin_count (pluginfactory);
+  for (size_t i = 0; i < plugincount; i++)
+    {
       const clap_plugin_descriptor_t *pdesc = pluginfactory->get_plugin_descriptor (pluginfactory, i);
       if (!pdesc || !pdesc->id || !pdesc->id[0])
         continue;
@@ -125,40 +141,39 @@ add_clap_plugin_handle (const std::string &pluginpath, ClapPluginHandleS &infos)
         CDEBUG ("invalid plugin: %s (%s)", pdesc->id, clapversion);
         continue;
       }
-      ClapPluginHandle *handle = new ClapPluginHandle (pluginpath);
-      handle->id = pdesc->id;
-      handle->name = pdesc->name ? pdesc->name : pdesc->id;
-      handle->version = pdesc->version ? pdesc->version : "0.0.0-unknown";
-      handle->vendor = pdesc->vendor ? pdesc->vendor : "";
-      handle->url = pdesc->url ? pdesc->url : "";
-      handle->manual_url = pdesc->manual_url ? pdesc->manual_url : "";
-      handle->support_url = pdesc->support_url ? pdesc->support_url : "";
-      handle->description = pdesc->description ? pdesc->description : "";
+      ClapPluginDescriptor *descriptor = new ClapPluginDescriptor (*filehandle);
+      descriptor->id = pdesc->id;
+      descriptor->name = pdesc->name ? pdesc->name : pdesc->id;
+      descriptor->version = pdesc->version ? pdesc->version : "0.0.0-unknown";
+      descriptor->vendor = pdesc->vendor ? pdesc->vendor : "";
+      descriptor->url = pdesc->url ? pdesc->url : "";
+      descriptor->manual_url = pdesc->manual_url ? pdesc->manual_url : "";
+      descriptor->support_url = pdesc->support_url ? pdesc->support_url : "";
+      descriptor->description = pdesc->description ? pdesc->description : "";
       StringS features;
       if (pdesc->features)
         for (size_t ft = 0; pdesc->features[ft]; ft++)
           if (pdesc->features[ft][0])
             features.push_back (feature_canonify (pdesc->features[ft]));
-      handle->features = ":" + string_join (":", features) + ":";
-      infos.push_back (handle);
-      CDEBUG ("Plugin: %s %s %s (%s, %s)%s", handle->name, handle->version,
-              handle->vendor.empty() ? "" : "- " + handle->vendor,
-              handle->id, clapversion,
-              handle->features.empty() ? "" : ": " + handle->features);
+      descriptor->features = ":" + string_join (":", features) + ":";
+      infos.push_back (descriptor);
+      CDEBUG ("Plugin: %s %s %s (%s, %s)%s", descriptor->name, descriptor->version,
+              descriptor->vendor.empty() ? "" : "- " + descriptor->vendor,
+              descriptor->id, clapversion,
+              descriptor->features.empty() ? "" : ": " + descriptor->features);
     }
-  }
-  scanhandle.close();
+  filehandle->close();
 }
 
-static const ClapPluginHandleS&
-collect_clap_plugin_handles ()
+static const ClapPluginDescriptorS&
+collect_clap_plugin_descriptors ()
 {
-  static ClapPluginHandleS handle_list;
-  if (handle_list.empty()) {
+  static ClapPluginDescriptorS descriptor_list;
+  if (descriptor_list.empty()) {
     for (const auto &clapfile : list_clap_files())
-      add_clap_plugin_handle (clapfile, handle_list);
+      add_clap_plugin_descriptor (clapfile, descriptor_list);
   }
-  return handle_list;
+  return descriptor_list;
 }
 
 // == ClapDeviceImpl ==
@@ -167,15 +182,17 @@ JSONIPC_INHERIT (ClapDeviceImpl, Device);
 ClapDeviceImpl::ClapDeviceImpl (const String &clapid, AudioProcessorP aproc) :
   proc_ (aproc)
 {
-  for (ClapPluginHandle *handle : collect_clap_plugin_handles())
-    if (clapid == handle->id) {
-      handle_ = handle;
+  ClapPluginDescriptor *descriptor = nullptr;
+  for (ClapPluginDescriptor *desc : collect_clap_plugin_descriptors())
+    if (clapid == desc->id) {
+      descriptor = desc;
       break;
     }
-  if (handle_)
-    handle_->open();
-  if (handle_ && handle_->opened()) {
-    const clap_plugin_factory *pluginfactory = (const clap_plugin_factory *) handle_->pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
+  if (descriptor)
+    descriptor->open();
+  const clap_plugin_entry *pluginentry = !descriptor ? nullptr : descriptor->entry();
+  if (pluginentry) {
+    const clap_plugin_factory *pluginfactory = (const clap_plugin_factory *) pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
     clap_host_t phost = { .clap_version = CLAP_VERSION,
                           .name = "Anklang/ase/" __FILE__,
                           .vendor = "Anklang", .url = "https://anklang.testbit.eu/",
@@ -188,15 +205,13 @@ ClapDeviceImpl::ClapDeviceImpl (const String &clapid, AudioProcessorP aproc) :
     }
     if (plugin)
       plugin->destroy (plugin);
-  } else
-    handle_ = nullptr;
+  }
+  if (descriptor)
+    descriptor->close();
 }
 
 ClapDeviceImpl::~ClapDeviceImpl()
-{
-  if (handle_)
-    handle_->close();
-}
+{}
 
 DeviceInfoS
 ClapDeviceImpl::list_clap_plugins ()
@@ -204,20 +219,20 @@ ClapDeviceImpl::list_clap_plugins ()
   static DeviceInfoS devs;
   if (devs.size())
     return devs;
-  for (const ClapPluginHandle *handle : collect_clap_plugin_handles()) {
-    std::string title = handle->name;
-    if (!handle->version.empty())
-      title = title + " " + handle->version;
-    if (!handle->vendor.empty())
-      title = title + " - " + handle->vendor;
+  for (const ClapPluginDescriptor *descriptor : collect_clap_plugin_descriptors()) {
+    std::string title = descriptor->name;
+    if (!descriptor->version.empty())
+      title = title + " " + descriptor->version;
+    if (!descriptor->vendor.empty())
+      title = title + " - " + descriptor->vendor;
     DeviceInfo di;
-    di.uri = "CLAP:" + handle->id;
-    di.name = handle->name;
-    di.description = handle->description;
-    di.website_url = handle->url;
-    di.creator_name = handle->vendor;
-    di.creator_url = handle->manual_url;
-    const char *const cfeatures = handle->features.c_str();
+    di.uri = "CLAP:" + descriptor->id;
+    di.name = descriptor->name;
+    di.description = descriptor->description;
+    di.website_url = descriptor->url;
+    di.creator_name = descriptor->vendor;
+    di.creator_url = descriptor->manual_url;
+    const char *const cfeatures = descriptor->features.c_str();
     if (strstr (cfeatures, ":instrument:"))        // CLAP_PLUGIN_FEATURE_INSTRUMENT
       di.category = "Instrument";
     else if (strstr (cfeatures, ":analyzer:"))     // CLAP_PLUGIN_FEATURE_ANALYZER
