@@ -70,6 +70,7 @@ StringS      searchpath_split    (const String &searchpath);
 String       searchpath_join     (const StringS &string_vector);
 template<class ...S>
 String       searchpath_join     (String path, const S &...more);
+void         rglob               (const String &basedir, const String &pattern, StringS &matches);
 
 // == implementations ==
 String join_with (const String &head, char joiner, const String &tail);
