@@ -2,6 +2,7 @@
 #include "clapdevice.hh"
 #include "jsonipc/jsonipc.hh"
 #include "processor.hh"
+#include "path.hh"
 #include <clap/clap.h>
 #include <dlfcn.h>
 #include <glob.h>
@@ -15,21 +16,13 @@ static std::vector<std::string>
 list_clap_files ()
 {
   std::vector<std::string> files;
-  glob_t pglob = { 0, };
-  int ret = glob ("~/.clap/*.clap", GLOB_TILDE_CHECK | GLOB_MARK | GLOB_NOSORT, nullptr, &pglob);
-  if (ret == 0) {
-    for (size_t i = 0; i < pglob.gl_pathc; i++) {
-      files.push_back (pglob.gl_pathv[i]);
-    }
-    globfree (&pglob);
-  }
-  ret = glob ("/usr/lib/clap/*.clap", GLOB_TILDE_CHECK | GLOB_MARK | GLOB_NOSORT, nullptr, &pglob);
-  if (ret == 0) {
-    for (size_t i = 0; i < pglob.gl_pathc; i++) {
-      files.push_back (pglob.gl_pathv[i]);
-    }
-    globfree (&pglob);
-  }
+  Path::rglob ("~/.clap", "*.clap", files);
+  Path::rglob ("/usr/lib/clap", "*.clap", files);
+  const char *clapsearchpath = getenv ("CLAP_PATH");
+  if (clapsearchpath)
+    for (const String &spath : Path::searchpath_split (clapsearchpath))
+      Path::rglob (spath, "*.clap", files);
+  Path::unique_realpaths (files);
   return files;
 }
 
