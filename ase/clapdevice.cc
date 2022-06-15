@@ -12,6 +12,13 @@
 
 namespace Ase {
 
+// == helpers ==
+static String
+feature_canonify (const String &str)
+{
+  return string_canonify (str, string_set_a2z() + string_set_A2Z() + "-0123456789", "-");
+}
+
 static std::vector<std::string>
 list_clap_files ()
 {
@@ -131,7 +138,7 @@ add_clap_plugin_handle (const std::string &pluginpath, ClapPluginHandleS &infos)
       if (pdesc->features)
         for (size_t ft = 0; pdesc->features[ft]; ft++)
           if (pdesc->features[ft][0])
-            features.push_back (pdesc->features[ft]);
+            features.push_back (feature_canonify (pdesc->features[ft]));
       handle->features = ":" + string_join (":", features) + ":";
       infos.push_back (handle);
       CDEBUG ("Plugin: %s %s %s (%s, %s)%s", handle->name, handle->version,
