@@ -27,6 +27,8 @@ anklang_host_name()
   return name.c_str();
 }
 
+static float scratch_float_buffer[AUDIO_BLOCK_FLOAT_ZEROS_SIZE];
+
 // == CLAP file locations ==
 static std::vector<std::string>
 list_clap_files ()
@@ -246,10 +248,13 @@ public:
   std::vector<clap_audio_ports_config_t> audio_ports_configs;
   std::vector<clap_audio_port_info_t> audio_iport_infos, audio_oport_infos;
   std::vector<clap_note_port_info_t> note_iport_infos, note_oport_infos;
+  std::vector<clap_audio_buffer_t> audio_inputs, audio_outputs;
+  std::vector<float*> data32ptrs;
   void
   get_port_infos()
   {
     assert_return (!activated());
+    uint total_channels = 0;
     // note_iport_infos
     note_iport_infos.resize (!plugin_note_ports ? 0 : plugin_note_ports->count (plugin_, true));
     for (size_t i = 0; i < note_iport_infos.size(); i++)
@@ -307,6 +312,8 @@ public:
     for (size_t i = 0; i < audio_iport_infos.size(); i++)
       if (!plugin_audio_ports->get (plugin_, i, true, &audio_iport_infos[i]))
         audio_iport_infos[i] = { CLAP_INVALID_ID, { 0 }, 0, 0, "", CLAP_INVALID_ID };
+      else
+        total_channels += audio_iport_infos[i].channel_count;
     if (audio_iport_infos.size()) {
       printerr ("%s: audio_iports:%u:", debug_name(), audio_iport_infos.size());
       for (size_t i = 0; i < audio_iport_infos.size(); i++)
@@ -324,6 +331,8 @@ public:
     for (size_t i = 0; i < audio_oport_infos.size(); i++)
       if (!plugin_audio_ports->get (plugin_, i, false, &audio_oport_infos[i]))
         audio_oport_infos[i] = { CLAP_INVALID_ID, { 0 }, 0, 0, "", CLAP_INVALID_ID };
+      else
+        total_channels += audio_oport_infos[i].channel_count;
     if (audio_oport_infos.size()) {
       printerr ("%s: audio_oports:%u:", debug_name(), audio_oport_infos.size());
       for (size_t i = 0; i < audio_oport_infos.size(); i++)
@@ -336,6 +345,31 @@ public:
                     audio_oport_infos[i].port_type);
       printerr ("\n");
     }
+    // allocate .data32 pointer arrays for all input/output port channels
+    data32ptrs.resize (total_channels);
+    // audio_inputs
+    audio_inputs.resize (audio_iport_infos.size());
+    for (size_t i = 0; i < audio_inputs.size(); i++) {
+      audio_inputs[i] = { nullptr, nullptr, 0, 0, 0 };
+      if (audio_iport_infos[i].id == CLAP_INVALID_ID) continue;
+      audio_inputs[i].channel_count = audio_iport_infos[i].channel_count;
+      total_channels -= audio_inputs[i].channel_count;
+      audio_inputs[i].data32 = &data32ptrs[total_channels];
+      for (size_t j = 0; j < audio_inputs[i].channel_count; j++)
+        audio_inputs[i].data32[j] = const_cast<float*> (const_float_zeros);
+    }
+    // audio_outputs
+    audio_outputs.resize (audio_oport_infos.size());
+    for (size_t i = 0; i < audio_outputs.size(); i++) {
+      audio_outputs[i] = { nullptr, nullptr, 0, 0, 0 };
+      if (audio_oport_infos[i].id == CLAP_INVALID_ID) continue;
+      audio_outputs[i].channel_count = audio_oport_infos[i].channel_count;
+      total_channels -= audio_outputs[i].channel_count;
+      audio_outputs[i].data32 = &data32ptrs[total_channels];
+      for (size_t j = 0; j < audio_outputs[i].channel_count; j++)
+        audio_outputs[i].data32[j] = scratch_float_buffer;
+    }
+    assert_return (total_channels == 0);
   }
   PluginHandle (const clap_plugin_factory *factory, const String &clapid) :
     clapid_ (clapid)
@@ -389,12 +423,15 @@ public:
     plugin_->deactivate (plugin_);
     log (CLAP_LOG_DEBUG, "deactivated");
   }
-  void
+  bool
   start_processing()
   {
-    return_unless (plugin_);
-    if (plugin_->start_processing)
-      plugin_->start_processing (plugin_);
+    return plugin_ && plugin_->process && plugin_->start_processing && plugin_->start_processing (plugin_);
+  }
+  clap_process_status
+  process (const clap_process_t *clapprocess)
+  {
+    return plugin_->process (plugin_, clapprocess);
   }
   void
   stop_processing()
@@ -418,6 +455,7 @@ ClapDeviceImpl::PluginHandle::log (clap_log_severity severity, const char *msg)
 // == CLAP AudioWrapper ==
 class ClapDeviceImpl::AudioWrapper : public AudioProcessor {
   PluginHandle *handle_ = nullptr;
+  bool can_process = false;
 public:
   AudioWrapper (AudioEngine &engine) :
     AudioProcessor (engine)
@@ -439,14 +477,21 @@ public:
     auto output = add_output_bus ("Output", busses);
     (void) output;
   }
+  clap_process_t processinfo = { 0, };
   void
   set_plugin (ClapDeviceImpl::PluginHandle *handle)
   {
     if (handle_)
       handle_->stop_processing();
+    can_process = false;
     handle_ = handle;
     if (handle_)
-      handle_->start_processing();
+      can_process = handle_->start_processing();
+    processinfo = clap_process_t {
+      .steady_time = 0, .frames_count = 0, .transport = nullptr,
+      .audio_inputs = &handle_->audio_inputs[0], .audio_outputs = &handle_->audio_outputs[0],
+      .audio_inputs_count = 0, .audio_outputs_count = 0, .in_events = nullptr, .out_events = nullptr,
+    };
   }
   void
   render (uint n_frames) override
@@ -458,8 +503,12 @@ public:
     assert_return (ni == no);
     for (size_t i = 0; i < ni; i++)
       redirect_oblock (o1, i, ifloats (i1, i));
-    if (handle_)
-      ; // printerr ("%s: with plugin: %s\n", debug_name(), handle_->debug_name());
+    if (can_process) {
+      processinfo.frames_count = n_frames;
+      processinfo.steady_time += processinfo.frames_count;
+      clap_process_status status = handle_->process (&processinfo);
+      (void) status;
+    }
   }
 };
 static auto clap_audio_wrapper_id = register_audio_processor<ClapDeviceImpl::AudioWrapper>();
