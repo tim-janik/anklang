@@ -475,10 +475,26 @@ ClapDeviceImpl::PluginHandle::log (clap_log_severity severity, const char *msg)
 class ClapDeviceImpl::AudioWrapper : public AudioProcessor {
   PluginHandle *handle_ = nullptr;
   bool can_process = false;
+  uint ibus_clapidx_ = -1, obus_clapidx_ = -1;
+  String ibus_name_, obus_name_;
+  IBusId ibusid = {};
+  OBusId obusid = {};
 public:
   AudioWrapper (AudioEngine &engine) :
     AudioProcessor (engine)
   {}
+  void
+  stereo_ibus (uint ibus_clapidx, const char *ibus_name)
+  {
+    ibus_clapidx_ = ibus_clapidx;
+    ibus_name_ = ibus_name;
+  }
+  void
+  stereo_obus (uint obus_clapidx, const char *obus_name)
+  {
+    obus_clapidx_ = obus_clapidx;
+    obus_name_ = obus_name;
+  }
   static void
   static_info (AudioProcessorInfo &info)
   {
@@ -491,10 +507,10 @@ public:
   initialize (SpeakerArrangement busses) override
   {
     remove_all_buses();
-    auto input = add_input_bus ("Input", busses);
-    (void) input;
-    auto output = add_output_bus ("Output", busses);
-    (void) output;
+    if (ibus_clapidx_ != -1)
+      ibusid = add_input_bus (ibus_name_, SpeakerArrangement::STEREO);
+    if (obus_clapidx_ != -1)
+      obusid = add_output_bus (obus_name_, SpeakerArrangement::STEREO);
   }
   clap_process_t processinfo = { 0, };
   void
@@ -518,13 +534,17 @@ public:
   void
   render (uint n_frames) override
   {
-    const IBusId i1 = IBusId (1);
-    const OBusId o1 = OBusId (1);
-    const uint ni = this->n_ichannels (i1);
-    const uint no = this->n_ochannels (o1);
-    assert_return (ni == no);
-    for (size_t i = 0; i < ni; i++)
-      redirect_oblock (o1, i, ifloats (i1, i));
+    const uint ni = ibusid != IBusId (0) ? this->n_ichannels (ibusid) : 0;
+    for (size_t i = 0; i < ni; i++) {
+      assert_return (processinfo.audio_inputs[ibus_clapidx_].channel_count == ni);
+      processinfo.audio_inputs[ibus_clapidx_].data32[i] = const_cast<float*> (ifloats (ibusid, i));
+    }
+    const uint no = obusid != OBusId (0) ? this->n_ochannels (obusid) : 0;
+    for (size_t i = 0; i < no; i++) {
+      assert_return (processinfo.audio_outputs[obus_clapidx_].channel_count == no);
+      processinfo.audio_outputs[obus_clapidx_].data32[i] = oblock (obusid, i);
+    }
+    // FIXME: pass through if !can_process or CLAP_PROCESS_ERROR
     if (can_process) {
       processinfo.frames_count = n_frames;
       processinfo.steady_time += processinfo.frames_count;
@@ -553,6 +573,34 @@ ClapDeviceImpl::ClapDeviceImpl (const String &clapid, AudioProcessorP aproc) :
   const clap_plugin_factory *pluginfactory = !pluginentry ? nullptr :
                                              (const clap_plugin_factory *) pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
   handle_ = new PluginHandle (pluginfactory, clapid);
+  if (handle_) {
+    handle_->get_port_infos();
+    uint ibus_clapidx = CLAP_INVALID_ID, ibus_channels = 0;
+    uint obus_clapidx = CLAP_INVALID_ID, obus_channels = 0;
+    const char *ibus_name = nullptr, *obus_name = nullptr;
+    const auto &audio_iport_infos = handle_->audio_iport_infos;
+    for (size_t i = 0; i < audio_iport_infos.size(); i++)
+      if (audio_iport_infos[i].port_type && strcmp (audio_iport_infos[i].port_type, CLAP_PORT_STEREO) == 0 &&
+          audio_iport_infos[i].channel_count == 2 && audio_iport_infos[i].flags & CLAP_AUDIO_PORT_IS_MAIN) {
+        // ibus_clapid = audio_iport_infos[i].id;
+        ibus_clapidx = i;
+        ibus_name = audio_iport_infos[i].name;
+        ibus_channels = audio_iport_infos[i].channel_count;
+      }
+    const auto &audio_oport_infos = handle_->audio_oport_infos;
+    for (size_t i = 0; i < audio_oport_infos.size(); i++)
+      if (audio_oport_infos[i].port_type && strcmp (audio_oport_infos[i].port_type, CLAP_PORT_STEREO) == 0 &&
+          audio_oport_infos[i].channel_count == 2 && audio_oport_infos[i].flags & CLAP_AUDIO_PORT_IS_MAIN) {
+        // obus_clapid = audio_oport_infos[i].id;
+        obus_clapidx = i;
+        obus_name = audio_oport_infos[i].name;
+        obus_channels = audio_oport_infos[i].channel_count;
+      }
+    if (ibus_channels == 2)
+      proc_->stereo_ibus (ibus_clapidx, ibus_name);
+    if (obus_channels == 2)
+      proc_->stereo_obus (obus_clapidx, obus_name);
+  }
 }
 
 ClapDeviceImpl::~ClapDeviceImpl()
@@ -572,7 +620,6 @@ ClapDeviceImpl::_set_parent (Gadget *parent)
   GadgetImpl::_set_parent (parent);
   // activate and use plugin from proc_
   if (parent && handle_) {
-    handle_->get_port_infos();
     if (handle_->activate (proc_->engine())) {
       auto j = [selfp] () {
         selfp->proc_->set_plugin (selfp->handle_);
