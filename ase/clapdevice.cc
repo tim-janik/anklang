@@ -281,6 +281,20 @@ public:
     plugin_->deactivate (plugin_);
     log (CLAP_LOG_DEBUG, "deactivated");
   }
+  void
+  start_processing()
+  {
+    return_unless (plugin_);
+    if (plugin_->start_processing)
+      plugin_->start_processing (plugin_);
+  }
+  void
+  stop_processing()
+  {
+    return_unless (plugin_);
+    if (plugin_->stop_processing)
+      plugin_->stop_processing (plugin_);
+  }
 };
 
 void
@@ -313,12 +327,18 @@ public:
   {
     remove_all_buses();
     auto input = add_input_bus ("Input", busses);
+    (void) input;
     auto output = add_output_bus ("Output", busses);
+    (void) output;
   }
   void
   set_plugin (ClapDeviceImpl::PluginHandle *handle)
   {
+    if (handle_)
+      handle_->stop_processing();
     handle_ = handle;
+    if (handle_)
+      handle_->start_processing();
   }
   void
   render (uint n_frames) override
