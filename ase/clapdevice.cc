@@ -196,6 +196,7 @@ class ClapDeviceImpl::PluginHandle {
   bool activated_ = false;
   clap_host_t phost = {
     .clap_version = CLAP_VERSION,
+    .host_data = (PluginHandle*) this,
     .name = anklang_host_name(), .vendor = "anklang.testbit.eu",
     .url = "https://anklang.testbit.eu/", .version = ase_version(),
     .get_extension = [] (const struct clap_host *host, const char *extension_id) {
@@ -245,6 +246,21 @@ class ClapDeviceImpl::PluginHandle {
   const clap_plugin_audio_ports *plugin_audio_ports = nullptr;
   const clap_plugin_note_ports *plugin_note_ports = nullptr;
 public:
+  const clap_input_events_t plugin_input_events = {
+    .ctx = (PluginHandle*) this,
+    .size = [] (const struct clap_input_events *evlist) -> uint32_t { return ((PluginHandle*) evlist->ctx)->input_events.size(); },
+    .get = [] (const struct clap_input_events *evlist, uint32_t index) -> const clap_event_header_t* {
+      return &((PluginHandle*) evlist->ctx)->input_events.at (index);
+    },
+  };
+  const clap_output_events_t plugin_output_events = {
+    .ctx = (PluginHandle*) this,
+    .try_push = [] (const struct clap_output_events *evlist, const clap_event_header_t *event) -> bool {
+      PluginHandle *self = (PluginHandle*) evlist->ctx;
+      return self && false;
+    },
+  };
+  std::vector<clap_event_header_t> input_events, output_events;
   std::vector<clap_audio_ports_config_t> audio_ports_configs;
   std::vector<clap_audio_port_info_t> audio_iport_infos, audio_oport_infos;
   std::vector<clap_note_port_info_t> note_iport_infos, note_oport_infos;
@@ -370,11 +386,14 @@ public:
         audio_outputs[i].data32[j] = scratch_float_buffer;
     }
     assert_return (total_channels == 0);
+    // input_events
+    input_events.resize (0);
+    // output_events
+    output_events.resize (0);
   }
   PluginHandle (const clap_plugin_factory *factory, const String &clapid) :
     clapid_ (clapid)
   {
-    phost.host_data = (PluginHandle*) this;
     if (factory)
       plugin_ = factory->create_plugin (factory, &phost, clapid_.c_str());
     if (plugin_ && !plugin_->init (plugin_)) {
@@ -485,13 +504,16 @@ public:
       handle_->stop_processing();
     can_process = false;
     handle_ = handle;
-    if (handle_)
+    if (handle_) {
       can_process = handle_->start_processing();
-    processinfo = clap_process_t {
-      .steady_time = 0, .frames_count = 0, .transport = nullptr,
-      .audio_inputs = &handle_->audio_inputs[0], .audio_outputs = &handle_->audio_outputs[0],
-      .audio_inputs_count = 0, .audio_outputs_count = 0, .in_events = nullptr, .out_events = nullptr,
-    };
+      processinfo = clap_process_t {
+        .steady_time = 0, .frames_count = 0, .transport = nullptr,
+        .audio_inputs = &handle_->audio_inputs[0], .audio_outputs = &handle_->audio_outputs[0],
+        .audio_inputs_count = uint32_t (handle_->audio_inputs.size()),
+        .audio_outputs_count = uint32_t (handle_->audio_outputs.size()),
+        .in_events = &handle_->plugin_input_events, .out_events = &handle_->plugin_output_events,
+      };
+    }
   }
   void
   render (uint n_frames) override
