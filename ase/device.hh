@@ -10,6 +10,7 @@ namespace Ase {
 class DeviceImpl : public GadgetImpl, public virtual Device {
   AudioProcessorP proc_;
   AudioComboP     combo_; // maybe null
+  DeviceS         children_;
   DeviceInfo      info;
   ASE_DEFINE_MAKE_SHARED (DeviceImpl);
   friend class AudioProcessor;
@@ -17,6 +18,7 @@ class DeviceImpl : public GadgetImpl, public virtual Device {
 protected:
   virtual        ~DeviceImpl           ();
   void            serialize            (WritNode &xs) override;
+  void            _set_parent          (Gadget *parent) override;
 public:
   explicit        DeviceImpl           (const String &aseid, AudioProcessor::StaticInfo, AudioProcessorP);
   AudioComboP     audio_combo          () const         { return combo_; }
