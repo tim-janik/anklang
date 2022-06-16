@@ -184,6 +184,10 @@ public:
 /// Base type for classes that have a Property.
 class Gadget : public virtual Object {
 public:
+  // Hierarchical parenting.
+  virtual void        _set_parent       (Gadget *parent) = 0;
+  virtual Gadget*     _parent           () const = 0;
+  // Naming
   virtual String      type_nick         () const = 0;
   virtual String      name              () const = 0;
   virtual void        name              (String newname) = 0;
