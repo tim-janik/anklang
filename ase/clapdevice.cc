@@ -271,6 +271,26 @@ public:
   {
     assert_return (!activated());
     uint total_channels = 0;
+    // audio_ports_configs
+    audio_ports_configs.resize (!plugin_audio_ports_config ? 0 : plugin_audio_ports_config->count (plugin_));
+    for (size_t i = 0; i < audio_ports_configs.size(); i++)
+      if (!plugin_audio_ports_config->get (plugin_, i, &audio_ports_configs[i]))
+        audio_ports_configs[i] = { CLAP_INVALID_ID, { 0, }, 0, 0, 0, 0, "", 0, 0, "" };
+    if (audio_ports_configs.size()) { // not encountered yet
+      printerr ("%s: audio_configs:%u:", debug_name(), audio_ports_configs.size());
+      for (size_t i = 0; i < audio_ports_configs.size(); i++)
+        if (audio_ports_configs[i].id != CLAP_INVALID_ID)
+          printerr (" %u:%s:iports=%u:oports=%u:imain=%u,%s:omain=%u,%s",
+                    audio_ports_configs[i].id,
+                    audio_ports_configs[i].name,
+                    audio_ports_configs[i].input_port_count,
+                    audio_ports_configs[i].output_port_count,
+                    audio_ports_configs[i].has_main_input * audio_ports_configs[i].main_input_channel_count,
+                    audio_ports_configs[i].main_input_port_type,
+                    audio_ports_configs[i].has_main_output * audio_ports_configs[i].main_output_channel_count,
+                    audio_ports_configs[i].main_output_port_type);
+      printerr ("\n");
+    }
     // note_iport_infos
     note_iport_infos.resize (!plugin_note_ports ? 0 : plugin_note_ports->count (plugin_, true));
     for (size_t i = 0; i < note_iport_infos.size(); i++)
@@ -301,26 +321,6 @@ public:
                     note_oport_infos[i].name,
                     note_oport_infos[i].supported_dialects,
                     note_oport_infos[i].preferred_dialect);
-      printerr ("\n");
-    }
-    // audio_ports_configs
-    audio_ports_configs.resize (!plugin_audio_ports_config ? 0 : plugin_audio_ports_config->count (plugin_));
-    for (size_t i = 0; i < audio_ports_configs.size(); i++)
-      if (!plugin_audio_ports_config->get (plugin_, i, &audio_ports_configs[i]))
-        audio_ports_configs[i] = { CLAP_INVALID_ID, { 0, }, 0, 0, 0, 0, "", 0, 0, "" };
-    if (audio_ports_configs.size()) { // not encountered yet
-      printerr ("%s: audio_configs:%u:", debug_name(), audio_ports_configs.size());
-      for (size_t i = 0; i < audio_ports_configs.size(); i++)
-        if (audio_ports_configs[i].id != CLAP_INVALID_ID)
-          printerr (" %u:%s:iports=%u:oports=%u:imain=%u,%s:omain=%u,%s",
-                    audio_ports_configs[i].id,
-                    audio_ports_configs[i].name,
-                    audio_ports_configs[i].input_port_count,
-                    audio_ports_configs[i].output_port_count,
-                    audio_ports_configs[i].has_main_input * audio_ports_configs[i].main_input_channel_count,
-                    audio_ports_configs[i].main_input_port_type,
-                    audio_ports_configs[i].has_main_output * audio_ports_configs[i].main_output_channel_count,
-                    audio_ports_configs[i].main_output_port_type);
       printerr ("\n");
     }
     // audio_iport_infos
