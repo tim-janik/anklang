@@ -297,6 +297,14 @@ ClapDeviceImpl::~ClapDeviceImpl()
     descriptor_->close();
 }
 
+void
+ClapDeviceImpl::_set_parent (Gadget *parent)
+{
+  if (!parent && handle_)
+    handle_->destroy();
+  GadgetImpl::_set_parent (parent);
+}
+
 DeviceInfoS
 ClapDeviceImpl::list_clap_plugins ()
 {

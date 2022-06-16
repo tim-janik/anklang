@@ -15,6 +15,7 @@ class ClapDeviceImpl : public GadgetImpl, public virtual Device {
   PluginDescriptor *descriptor_ = nullptr;
 protected:
   virtual           ~ClapDeviceImpl        ();
+  void              _set_parent            (Gadget *parent) override;
 public:
   explicit           ClapDeviceImpl        (const String &clapid, AudioProcessorP aproc);
   static DeviceInfoS list_clap_plugins     ();
