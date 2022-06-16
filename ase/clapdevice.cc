@@ -190,6 +190,7 @@ class ClapDeviceImpl::PluginHandle {
   const clap_plugin_t *plugin_ = nullptr;
   String clapid_;
   std::atomic<uint> request_restart_, request_process_, request_callback_;
+  bool activated_ = false;
   clap_host_t phost = {
     .clap_version = CLAP_VERSION,
     .name = anklang_host_name(), .vendor = "anklang.testbit.eu",
@@ -251,11 +252,32 @@ public:
   void
   destroy()
   {
+    if (plugin_ && activated())
+      deactivate();
     if (plugin_)
       log (CLAP_LOG_DEBUG, "destroying");
     if (plugin_)
       plugin_->destroy (plugin_);
     plugin_ = nullptr;
+  }
+  bool activated() const { return activated_; }
+  void
+  activate (AudioEngine &engine)
+  {
+    return_unless (plugin_);
+    assert_return (!activated());
+    activated_ = true;
+    plugin_->activate (plugin_, engine.sample_rate(), 32, 4096);
+    log (CLAP_LOG_DEBUG, "activated");
+  }
+  void
+  deactivate()
+  {
+    return_unless (plugin_);
+    assert_return (activated());
+    activated_ = false;
+    plugin_->deactivate (plugin_);
+    log (CLAP_LOG_DEBUG, "deactivated");
   }
 };
 
@@ -281,7 +303,7 @@ ClapDeviceImpl::ClapDeviceImpl (const String &clapid, AudioProcessorP aproc) :
     }
   if (descriptor_)
     descriptor_->open();
-  const clap_plugin_entry *pluginentry = !descriptor_ ? nullptr : descriptor_->entry();
+  const clap_plugin_entry *pluginentry = !descriptor_ || !proc_ ? nullptr : descriptor_->entry();
   const clap_plugin_factory *pluginfactory = !pluginentry ? nullptr :
                                              (const clap_plugin_factory *) pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
   handle_ = new PluginHandle (pluginfactory, clapid);
@@ -303,6 +325,8 @@ ClapDeviceImpl::_set_parent (Gadget *parent)
   if (!parent && handle_)
     handle_->destroy();
   GadgetImpl::_set_parent (parent);
+  if (parent && handle_)
+    handle_->activate (proc_->engine());
 }
 
 DeviceInfoS
