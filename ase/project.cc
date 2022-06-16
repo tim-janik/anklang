@@ -2,7 +2,6 @@
 #include "project.hh"
 #include "jsonipc/jsonipc.hh"
 #include "main.hh"
-#include "device.hh"
 #include "processor.hh"
 #include "path.hh"
 #include "serialize.hh"
@@ -360,7 +359,7 @@ ProjectImpl::master_processor () const
   return_unless (master, nullptr);
   DeviceP device = master->access_device();
   return_unless (device, nullptr);
-  AudioProcessorP proc = dynamic_cast<DeviceImpl*> (device.get())->_audio_processor();
+  AudioProcessorP proc = device->_audio_processor();
   return_unless (proc, nullptr);
   return proc;
 }
