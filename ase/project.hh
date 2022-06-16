@@ -38,7 +38,7 @@ protected:
 public:
   PropertyS            access_properties () override;
   const TickSignature& signature         () const       { return tick_sig_; }
-  void                 destroy           () override;
+  void                 discard           () override;
   UndoScope            undo_scope        (const String &scopename);
   void                 push_undo         (const VoidF &func);
   void                 undo              () override;

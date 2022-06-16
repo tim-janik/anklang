@@ -292,7 +292,7 @@ public:
 /// Projects support loading, saving, playback and act as containers for all other sound objects.
 class Project : public virtual Gadget {
 public:
-  virtual void            destroy        () = 0;       ///< Release project and associated resources.
+  virtual void            discard        () = 0;       ///< Discard project and associated resources.
   virtual void            start_playback () = 0;       ///< Start playback of a project, requires active sound engine.
   virtual void            stop_playback  () = 0;       ///< Stop project playback.
   virtual bool            is_playing     () = 0;       ///< Check whether a project is currently playing (song sequencing).
