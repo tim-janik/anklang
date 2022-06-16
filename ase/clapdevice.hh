@@ -7,11 +7,14 @@
 namespace Ase {
 
 class ClapDeviceImpl : public GadgetImpl, public virtual Device {
-  AudioProcessorP proc_;
-  ASE_DEFINE_MAKE_SHARED (ClapDeviceImpl);
-  class PluginHandle;
-  PluginHandle *handle_ = nullptr;
+public:
+  ASE_CLASS_DECLS (AudioWrapper);
+private:
   class PluginDescriptor;
+  class PluginHandle;
+  AudioWrapperP proc_;
+  ASE_DEFINE_MAKE_SHARED (ClapDeviceImpl);
+  PluginHandle *handle_ = nullptr;
   PluginDescriptor *descriptor_ = nullptr;
 protected:
   virtual           ~ClapDeviceImpl        ();
@@ -26,7 +29,7 @@ public:
   void               remove_device         (Device &sub) override            {} // no children
   DeviceP            append_device         (const String&) override          { return {}; }
   DeviceP            insert_device         (const String&, Device&) override { return {}; }
-  AudioProcessorP    _audio_processor      () const override { return proc_; }
+  AudioProcessorP    _audio_processor      () const override;
   void               _set_event_source     (AudioProcessorP esource) override;
   void               _disconnect_remove    () override;
   static DeviceP     create_clap_device    (AudioEngine &engine, const String &clapid);

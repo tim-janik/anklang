@@ -9,6 +9,7 @@
 #include "internal.hh"
 
 #define CDEBUG(...)     Ase::debug ("Clap", __VA_ARGS__)
+#define CDEBUG_ENABLED() Ase::debug_key_enabled ("Clap")
 
 namespace Ase {
 
@@ -249,6 +250,7 @@ public:
   {
     destroy();
   }
+  String debug_name() const { return clapid_; }
   void
   destroy()
   {
@@ -261,14 +263,14 @@ public:
     plugin_ = nullptr;
   }
   bool activated() const { return activated_; }
-  void
+  bool
   activate (AudioEngine &engine)
   {
-    return_unless (plugin_);
-    assert_return (!activated());
-    activated_ = true;
-    plugin_->activate (plugin_, engine.sample_rate(), 32, 4096);
-    log (CLAP_LOG_DEBUG, "activated");
+    return_unless (plugin_, false);
+    assert_return (!activated(), true);
+    activated_ = plugin_->activate (plugin_, engine.sample_rate(), 32, 4096);
+    log (CLAP_LOG_DEBUG, activated_ ? "activated" : "failed to activate");
+    return activated();
   }
   void
   deactivate()
@@ -287,15 +289,60 @@ ClapDeviceImpl::PluginHandle::log (clap_log_severity severity, const char *msg)
   static const char *severtities[] = { "DEBUG", "INFO", "WARNING", "ERROR", "FATAL",
                                        "BADHOST", "BADPLUGIN", };
   const char *cls = severity < sizeof (severtities) / sizeof (severtities[0]) ? severtities[severity] : "MISC";
-  printerr ("CLAP-%s:%s: %s\n", cls, clapid_, msg);
+  if (severity != CLAP_LOG_DEBUG || CDEBUG_ENABLED())
+    printerr ("CLAP-%s:%s: %s\n", cls, clapid_, msg);
 }
+
+// == CLAP AudioWrapper ==
+class ClapDeviceImpl::AudioWrapper : public AudioProcessor {
+  PluginHandle *handle_ = nullptr;
+public:
+  AudioWrapper (AudioEngine &engine) :
+    AudioProcessor (engine)
+  {}
+  static void
+  static_info (AudioProcessorInfo &info)
+  {
+    info.label = "Anklang.Devices.ClapAudioWrapper";
+  }
+  void
+  reset (uint64 target_stamp) override
+  {}
+  void
+  initialize (SpeakerArrangement busses) override
+  {
+    remove_all_buses();
+    auto input = add_input_bus ("Input", busses);
+    auto output = add_output_bus ("Output", busses);
+  }
+  void
+  set_plugin (ClapDeviceImpl::PluginHandle *handle)
+  {
+    handle_ = handle;
+  }
+  void
+  render (uint n_frames) override
+  {
+    const IBusId i1 = IBusId (1);
+    const OBusId o1 = OBusId (1);
+    const uint ni = this->n_ichannels (i1);
+    const uint no = this->n_ochannels (o1);
+    assert_return (ni == no);
+    for (size_t i = 0; i < ni; i++)
+      redirect_oblock (o1, i, ifloats (i1, i));
+    if (handle_)
+      ; // printerr ("%s: with plugin: %s\n", debug_name(), handle_->debug_name());
+  }
+};
+static auto clap_audio_wrapper_id = register_audio_processor<ClapDeviceImpl::AudioWrapper>();
 
 // == ClapDeviceImpl ==
 JSONIPC_INHERIT (ClapDeviceImpl, Device);
 
 ClapDeviceImpl::ClapDeviceImpl (const String &clapid, AudioProcessorP aproc) :
-  proc_ (aproc)
+  proc_ (shared_ptr_cast<AudioWrapper> (aproc))
 {
+  assert_return (proc_ != nullptr);
   for (PluginDescriptor *descriptor : PluginDescriptor::collect_descriptors())
     if (clapid == descriptor->id) {
       descriptor_ = descriptor;
@@ -322,11 +369,30 @@ ClapDeviceImpl::~ClapDeviceImpl()
 void
 ClapDeviceImpl::_set_parent (Gadget *parent)
 {
-  if (!parent && handle_)
-    handle_->destroy();
+  ClapDeviceImplP selfp = shared_ptr_cast<ClapDeviceImpl> (this);
   GadgetImpl::_set_parent (parent);
-  if (parent && handle_)
-    handle_->activate (proc_->engine());
+  // activate and use plugin from proc_
+  if (parent && handle_) {
+    if (handle_->activate (proc_->engine())) {
+      auto j = [selfp] () {
+        selfp->proc_->set_plugin (selfp->handle_);
+      };
+      proc_->engine().async_jobs += j;
+    }
+  }
+  // deactivate and destroy plugin, but first stop proc_ using it
+  if (!parent && handle_)
+    {
+      auto deferred_destroy = [selfp] (void*) {
+        selfp->handle_->destroy();
+      };
+      std::shared_ptr<void> atjobdtor = { nullptr, deferred_destroy };
+      auto j = [selfp, atjobdtor] () {
+        selfp->proc_->set_plugin (nullptr);
+      };
+      proc_->engine().async_jobs += j;
+      // once job is processed, dtor runs in mainthread
+    }
 }
 
 DeviceInfoS
@@ -366,6 +432,12 @@ ClapDeviceImpl::list_clap_plugins ()
   return devs;
 }
 
+AudioProcessorP
+ClapDeviceImpl::_audio_processor () const
+{
+  return proc_;
+}
+
 DeviceInfo
 ClapDeviceImpl::device_info ()
 {
@@ -384,41 +456,6 @@ ClapDeviceImpl::_disconnect_remove ()
   // FIXME: implement
 }
 
-// == ClapWrapper ==
-class ClapWrapper : public AudioProcessor {
-public:
-  ClapWrapper (AudioEngine &engine) :
-    AudioProcessor (engine)
-  {}
-  static void
-  static_info (AudioProcessorInfo &info)
-  {
-    info.label = "Anklang.Devices.ClapWrapper";
-  }
-  void
-  reset (uint64 target_stamp) override
-  {}
-  void
-  initialize (SpeakerArrangement busses) override
-  {
-    remove_all_buses();
-    auto input = add_input_bus ("Input", busses);
-    auto output = add_output_bus ("Output", busses);
-  }
-  void
-  render (uint n_frames) override
-  {
-    const IBusId i1 = IBusId (1);
-    const OBusId o1 = OBusId (1);
-    const uint ni = this->n_ichannels (i1);
-    const uint no = this->n_ochannels (o1);
-    assert_return (ni == no);
-    for (size_t i = 0; i < ni; i++)
-      redirect_oblock (o1, i, ifloats (i1, i));
-  }
-};
-static auto clap_wrapper_id = register_audio_processor<ClapWrapper>();
-
 DeviceP
 ClapDeviceImpl::create_clap_device (AudioEngine &engine, const String &clapid)
 {
@@ -426,7 +463,7 @@ ClapDeviceImpl::create_clap_device (AudioEngine &engine, const String &clapid)
   auto make_device = [&clapid] (const String &aseid, AudioProcessor::StaticInfo static_info, AudioProcessorP aproc) -> DeviceP {
     return ClapDeviceImpl::make_shared (clapid.substr (5), aproc);
   };
-  DeviceP devicep = AudioProcessor::registry_create (clap_wrapper_id, engine, make_device);
+  DeviceP devicep = AudioProcessor::registry_create (clap_audio_wrapper_id, engine, make_device);
   assert_return (devicep && devicep->_audio_processor(), nullptr);
   return devicep;
 }
