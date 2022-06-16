@@ -465,6 +465,7 @@ ProjectImpl::create_track ()
   TrackImplP track = TrackImpl::make_shared (!havemaster);
   tracks_.insert (tracks_.end() - int (havemaster), track);
   emit_event ("track", "insert", { { "track", track }, });
+  track->_set_parent (this);
   track->set_project (this);
   return track;
 }
@@ -472,6 +473,7 @@ ProjectImpl::create_track ()
 bool
 ProjectImpl::remove_track (Track &child)
 {
+  assert_return (child._parent() == this, false);
   TrackImplP track = shared_ptr_cast<TrackImpl> (&child);
   return_unless (track && !track->is_master(), false);
   clear_undo(); // TODO: implement undo for remove_track
@@ -479,6 +481,7 @@ ProjectImpl::remove_track (Track &child)
     return false;
   // destroy Track
   track->set_project (nullptr);
+  track->_set_parent (nullptr);
   emit_event ("track", "remove");
   return true;
 }
