@@ -85,18 +85,22 @@ TrackImpl::set_project (ProjectImpl *project)
       assert_return (!midi_prod_);
       midi_prod_ = create_processor_device (*engine, "Ase::MidiLib::MidiProducerImpl", true);
       assert_return (midi_prod_);
+      midi_prod_->_set_parent (this);
       AudioProcessorP esource = midi_prod_->_audio_processor()->engine().get_event_source();
       midi_prod_->_set_event_source (esource);
       midi_prod_->_audio_processor()->connect_event_input (*esource);
       assert_return (!chain_);
       chain_ = create_processor_device (*engine, "Ase::AudioChain", true);
       assert_return (chain_);
+      chain_->_set_parent (this);
       chain_->_set_event_source (midi_prod_->_audio_processor());
     }
   else if (chain_)
     {
+      chain_->_set_parent (nullptr);
       chain_->_disconnect_remove();
       chain_ = nullptr;
+      midi_prod_->_set_parent (nullptr);
       midi_prod_->_disconnect_remove();
       midi_prod_ = nullptr;
     }
