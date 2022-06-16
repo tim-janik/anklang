@@ -197,7 +197,9 @@ class ClapDeviceImpl::PluginHandle {
     .name = anklang_host_name(), .vendor = "anklang.testbit.eu",
     .url = "https://anklang.testbit.eu/", .version = ase_version(),
     .get_extension = [] (const struct clap_host *host, const char *extension_id) {
-      return ((PluginHandle*) host->host_data)->get_extension (extension_id);
+      const void *ext = ((PluginHandle*) host->host_data)->get_host_extension (extension_id);
+      CDEBUG ("%s: get_host_extension(\"%s\"): %p", ((PluginHandle*) host->host_data)->debug_name(), extension_id, ext);
+      return ext;
     },
     .request_restart = [] (const struct clap_host *host) {
       ((PluginHandle*) host->host_data)->plugin_request (1);
@@ -214,11 +216,16 @@ class ClapDeviceImpl::PluginHandle {
       ((PluginHandle*) host->host_data)->log (severity, msg);
     },
   };
+  clap_host_audio_ports host_audio_ports_ = {
+    .is_rescan_flag_supported = [] (const clap_host_t *host, uint32_t flag) { return false; },
+    .rescan = [] (const clap_host_t *host, uint32_t flags) {},
+  };
   const void*
-  get_extension (const char *extension_id)
+  get_host_extension (const char *extension_id)
   {
     const String ext = extension_id;
     if (ext == CLAP_EXT_LOG)            return &host_log_;
+    if (ext == CLAP_EXT_AUDIO_PORTS)    return &host_audio_ports_;
     else return nullptr;
   }
   void log (clap_log_severity severity, const char *msg);
@@ -232,7 +239,104 @@ class ClapDeviceImpl::PluginHandle {
     else if (what == 3) // on_main_thread()
       request_callback_++;
   }
+  const clap_plugin_audio_ports_config *plugin_audio_ports_config = nullptr;
+  const clap_plugin_audio_ports *plugin_audio_ports = nullptr;
+  const clap_plugin_note_ports *plugin_note_ports = nullptr;
 public:
+  std::vector<clap_audio_ports_config_t> audio_ports_configs;
+  std::vector<clap_audio_port_info_t> audio_iport_infos, audio_oport_infos;
+  std::vector<clap_note_port_info_t> note_iport_infos, note_oport_infos;
+  void
+  get_port_infos()
+  {
+    assert_return (!activated());
+    // note_iport_infos
+    note_iport_infos.resize (!plugin_note_ports ? 0 : plugin_note_ports->count (plugin_, true));
+    for (size_t i = 0; i < note_iport_infos.size(); i++)
+      if (!plugin_note_ports->get (plugin_, i, true, &note_iport_infos[i]))
+        note_iport_infos[i] = { CLAP_INVALID_ID, 0, 0, { 0, }, };
+    if (note_iport_infos.size()) {
+      printerr ("%s: note_iports:%u:", debug_name(), note_iport_infos.size());
+      for (size_t i = 0; i < note_iport_infos.size(); i++)
+        if (note_iport_infos[i].id != CLAP_INVALID_ID)
+          printerr (" %u:%s:can=%x:want=%x",
+                    note_iport_infos[i].id,
+                    note_iport_infos[i].name,
+                    note_iport_infos[i].supported_dialects,
+                    note_iport_infos[i].preferred_dialect);
+      printerr ("\n");
+    }
+    // note_oport_infos
+    note_oport_infos.resize (!plugin_note_ports ? 0 : plugin_note_ports->count (plugin_, false));
+    for (size_t i = 0; i < note_oport_infos.size(); i++)
+      if (!plugin_note_ports->get (plugin_, i, false, &note_oport_infos[i]))
+        note_oport_infos[i] = { CLAP_INVALID_ID, 0, 0, { 0, }, };
+    if (note_oport_infos.size()) {
+      printerr ("%s: note_oports:%u:", debug_name(), note_oport_infos.size());
+      for (size_t i = 0; i < note_oport_infos.size(); i++)
+        if (note_oport_infos[i].id != CLAP_INVALID_ID)
+          printerr (" %u:%s:can=%x:want=%x",
+                    note_oport_infos[i].id,
+                    note_oport_infos[i].name,
+                    note_oport_infos[i].supported_dialects,
+                    note_oport_infos[i].preferred_dialect);
+      printerr ("\n");
+    }
+    // audio_ports_configs
+    audio_ports_configs.resize (!plugin_audio_ports_config ? 0 : plugin_audio_ports_config->count (plugin_));
+    for (size_t i = 0; i < audio_ports_configs.size(); i++)
+      if (!plugin_audio_ports_config->get (plugin_, i, &audio_ports_configs[i]))
+        audio_ports_configs[i] = { CLAP_INVALID_ID, { 0, }, 0, 0, 0, 0, "", 0, 0, "" };
+    if (audio_ports_configs.size()) { // not encountered yet
+      printerr ("%s: audio_configs:%u:", debug_name(), audio_ports_configs.size());
+      for (size_t i = 0; i < audio_ports_configs.size(); i++)
+        if (audio_ports_configs[i].id != CLAP_INVALID_ID)
+          printerr (" %u:%s:iports=%u:oports=%u:imain=%u,%s:omain=%u,%s",
+                    audio_ports_configs[i].id,
+                    audio_ports_configs[i].name,
+                    audio_ports_configs[i].input_port_count,
+                    audio_ports_configs[i].output_port_count,
+                    audio_ports_configs[i].has_main_input * audio_ports_configs[i].main_input_channel_count,
+                    audio_ports_configs[i].main_input_port_type,
+                    audio_ports_configs[i].has_main_output * audio_ports_configs[i].main_output_channel_count,
+                    audio_ports_configs[i].main_output_port_type);
+      printerr ("\n");
+    }
+    // audio_iport_infos
+    audio_iport_infos.resize (!plugin_audio_ports ? 0 : plugin_audio_ports->count (plugin_, true));
+    for (size_t i = 0; i < audio_iport_infos.size(); i++)
+      if (!plugin_audio_ports->get (plugin_, i, true, &audio_iport_infos[i]))
+        audio_iport_infos[i] = { CLAP_INVALID_ID, { 0 }, 0, 0, "", CLAP_INVALID_ID };
+    if (audio_iport_infos.size()) {
+      printerr ("%s: audio_iports:%u:", debug_name(), audio_iport_infos.size());
+      for (size_t i = 0; i < audio_iport_infos.size(); i++)
+        if (audio_iport_infos[i].id != CLAP_INVALID_ID && audio_iport_infos[i].port_type)
+          printerr (" %u:ch=%u:%s:m=%u:%s:",
+                    audio_iport_infos[i].id,
+                    audio_iport_infos[i].channel_count,
+                    audio_iport_infos[i].name,
+                    audio_iport_infos[i].flags & CLAP_AUDIO_PORT_IS_MAIN,
+                    audio_iport_infos[i].port_type);
+      printerr ("\n");
+    }
+    // audio_oport_infos
+    audio_oport_infos.resize (!plugin_audio_ports ? 0 : plugin_audio_ports->count (plugin_, false));
+    for (size_t i = 0; i < audio_oport_infos.size(); i++)
+      if (!plugin_audio_ports->get (plugin_, i, false, &audio_oport_infos[i]))
+        audio_oport_infos[i] = { CLAP_INVALID_ID, { 0 }, 0, 0, "", CLAP_INVALID_ID };
+    if (audio_oport_infos.size()) {
+      printerr ("%s: audio_oports:%u:", debug_name(), audio_oport_infos.size());
+      for (size_t i = 0; i < audio_oport_infos.size(); i++)
+        if (audio_oport_infos[i].id != CLAP_INVALID_ID && audio_oport_infos[i].port_type)
+          printerr (" %u:ch=%u:%s:m=%u:%s:",
+                    audio_oport_infos[i].id,
+                    audio_oport_infos[i].channel_count,
+                    audio_oport_infos[i].name,
+                    audio_oport_infos[i].flags & CLAP_AUDIO_PORT_IS_MAIN,
+                    audio_oport_infos[i].port_type);
+      printerr ("\n");
+    }
+  }
   PluginHandle (const clap_plugin_factory *factory, const String &clapid) :
     clapid_ (clapid)
   {
@@ -243,8 +347,12 @@ public:
       plugin_->destroy (plugin_);
       plugin_ = nullptr;
     }
-    if (plugin_)
+    if (plugin_) {
       log (CLAP_LOG_DEBUG, "initialized");
+      plugin_audio_ports_config = (const clap_plugin_audio_ports_config*) plugin_->get_extension (plugin_, CLAP_EXT_AUDIO_PORTS_CONFIG);
+      plugin_audio_ports = (const clap_plugin_audio_ports*) plugin_->get_extension (plugin_, CLAP_EXT_AUDIO_PORTS);
+      plugin_note_ports = (const clap_plugin_note_ports*) plugin_->get_extension (plugin_, CLAP_EXT_NOTE_PORTS);
+    }
   }
   ~PluginHandle()
   {
@@ -393,6 +501,7 @@ ClapDeviceImpl::_set_parent (Gadget *parent)
   GadgetImpl::_set_parent (parent);
   // activate and use plugin from proc_
   if (parent && handle_) {
+    handle_->get_port_infos();
     if (handle_->activate (proc_->engine())) {
       auto j = [selfp] () {
         selfp->proc_->set_plugin (selfp->handle_);
