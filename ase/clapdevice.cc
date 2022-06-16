@@ -19,6 +19,13 @@ feature_canonify (const String &str)
   return string_canonify (str, string_set_a2z() + string_set_A2Z() + "-0123456789", "-");
 }
 
+static const char*
+anklang_host_name()
+{
+  static String name = "Anklang//" + executable_name();
+  return name.c_str();
+}
+
 // == CLAP file locations ==
 static std::vector<std::string>
 list_clap_files ()
@@ -102,10 +109,10 @@ public:
 };
 
 // == CLAP plugin descriptor ==
-class ClapPluginDescriptor {
+class ClapDeviceImpl::PluginDescriptor {
   ClapFileHandle &clapfile_;
 public:
-  explicit ClapPluginDescriptor (ClapFileHandle &clapfile) :
+  explicit PluginDescriptor (ClapFileHandle &clapfile) :
     clapfile_ (clapfile)
   {}
   std::string id, name, version, vendor, features;
@@ -116,11 +123,13 @@ public:
   entry() {
     return clapfile_.opened() ? clapfile_.pluginentry : nullptr;
   }
+  using Collection = std::vector<PluginDescriptor*>;
+  static void              add_descriptor      (const std::string &pluginpath, Collection &infos);
+  static const Collection& collect_descriptors ();
 };
-using ClapPluginDescriptorS = std::vector<ClapPluginDescriptor*>;
 
-static void
-add_clap_plugin_descriptor (const std::string &pluginpath, ClapPluginDescriptorS &infos)
+void
+ClapDeviceImpl::PluginDescriptor::add_descriptor (const std::string &pluginpath, Collection &infos)
 {
   ClapFileHandle *filehandle = new ClapFileHandle (pluginpath);
   filehandle->open();
@@ -141,7 +150,7 @@ add_clap_plugin_descriptor (const std::string &pluginpath, ClapPluginDescriptorS
         CDEBUG ("invalid plugin: %s (%s)", pdesc->id, clapversion);
         continue;
       }
-      ClapPluginDescriptor *descriptor = new ClapPluginDescriptor (*filehandle);
+      PluginDescriptor *descriptor = new PluginDescriptor (*filehandle);
       descriptor->id = pdesc->id;
       descriptor->name = pdesc->name ? pdesc->name : pdesc->id;
       descriptor->version = pdesc->version ? pdesc->version : "0.0.0-unknown";
@@ -165,16 +174,79 @@ add_clap_plugin_descriptor (const std::string &pluginpath, ClapPluginDescriptorS
   filehandle->close();
 }
 
-static const ClapPluginDescriptorS&
-collect_clap_plugin_descriptors ()
+const ClapDeviceImpl::PluginDescriptor::Collection&
+ClapDeviceImpl::PluginDescriptor::collect_descriptors ()
 {
-  static ClapPluginDescriptorS descriptor_list;
-  if (descriptor_list.empty()) {
+  static Collection collection;
+  if (collection.empty()) {
     for (const auto &clapfile : list_clap_files())
-      add_clap_plugin_descriptor (clapfile, descriptor_list);
+      add_descriptor (clapfile, collection);
   }
-  return descriptor_list;
+  return collection;
 }
+
+// == CLAP plugin handle ==
+class ClapDeviceImpl::PluginHandle {
+  const clap_plugin_t *plugin_ = nullptr;
+  String clapid_;
+  std::atomic<uint> request_restart_, request_process_, request_callback_;
+  clap_host_t phost = {
+    .clap_version = CLAP_VERSION,
+    .name = anklang_host_name(), .vendor = "anklang.testbit.eu",
+    .url = "https://anklang.testbit.eu/", .version = ase_version(),
+    .get_extension = [] (const struct clap_host *host, const char *extension_id) {
+      return ((PluginHandle*) host->host_data)->get_extension (extension_id);
+    },
+    .request_restart = [] (const struct clap_host *host) {
+      ((PluginHandle*) host->host_data)->plugin_request (1);
+    },  // deactivate() + activate()
+    .request_process = [] (const struct clap_host *host) {
+      ((PluginHandle*) host->host_data)->plugin_request (2);
+    },  // process()
+    .request_callback = [] (const struct clap_host *host) {
+      ((PluginHandle*) host->host_data)->plugin_request (3);
+    },  // on_main_thread()
+  };
+  const void*
+  get_extension (const char *extension_id)
+  {
+    const String ext = extension_id;
+    else return nullptr;
+  }
+  void
+  plugin_request (int what)
+  {
+    if (what == 1)      // deactivate() + activate()
+      request_restart_++;
+    else if (what == 2) // process()
+      request_process_++;
+    else if (what == 3) // on_main_thread()
+      request_callback_++;
+  }
+public:
+  PluginHandle (const clap_plugin_factory *factory, const String &clapid) :
+    clapid_ (clapid)
+  {
+    phost.host_data = (PluginHandle*) this;
+    if (factory)
+      plugin_ = factory->create_plugin (factory, &phost, clapid_.c_str());
+    if (plugin_ && !plugin_->init (plugin_)) {
+      plugin_->destroy (plugin_);
+      plugin_ = nullptr;
+    }
+  }
+  ~PluginHandle()
+  {
+    destroy();
+  }
+  void
+  destroy()
+  {
+    if (plugin_)
+      plugin_->destroy (plugin_);
+    plugin_ = nullptr;
+  }
+};
 
 // == ClapDeviceImpl ==
 JSONIPC_INHERIT (ClapDeviceImpl, Device);
@@ -182,36 +254,28 @@ JSONIPC_INHERIT (ClapDeviceImpl, Device);
 ClapDeviceImpl::ClapDeviceImpl (const String &clapid, AudioProcessorP aproc) :
   proc_ (aproc)
 {
-  ClapPluginDescriptor *descriptor = nullptr;
-  for (ClapPluginDescriptor *desc : collect_clap_plugin_descriptors())
-    if (clapid == desc->id) {
-      descriptor = desc;
+  for (PluginDescriptor *descriptor : PluginDescriptor::collect_descriptors())
+    if (clapid == descriptor->id) {
+      descriptor_ = descriptor;
       break;
     }
-  if (descriptor)
-    descriptor->open();
-  const clap_plugin_entry *pluginentry = !descriptor ? nullptr : descriptor->entry();
-  if (pluginentry) {
-    const clap_plugin_factory *pluginfactory = (const clap_plugin_factory *) pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
-    clap_host_t phost = { .clap_version = CLAP_VERSION,
-                          .name = "Anklang/ase/" __FILE__,
-                          .vendor = "Anklang", .url = "https://anklang.testbit.eu/",
-                          .version = __DATE__,
-    };
-    const clap_plugin_t *plugin = pluginfactory->create_plugin (pluginfactory, &phost, clapid.c_str());
-    if (plugin && !plugin->init (plugin)) {
-      plugin->destroy (plugin);
-      plugin = nullptr;
-    }
-    if (plugin)
-      plugin->destroy (plugin);
-  }
-  if (descriptor)
-    descriptor->close();
+  if (descriptor_)
+    descriptor_->open();
+  const clap_plugin_entry *pluginentry = !descriptor_ ? nullptr : descriptor_->entry();
+  const clap_plugin_factory *pluginfactory = !pluginentry ? nullptr :
+                                             (const clap_plugin_factory *) pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
+  handle_ = new PluginHandle (pluginfactory, clapid);
 }
 
 ClapDeviceImpl::~ClapDeviceImpl()
-{}
+{
+  if (handle_) {
+    delete handle_;
+    handle_ = nullptr;
+  }
+  if (descriptor_)
+    descriptor_->close();
+}
 
 DeviceInfoS
 ClapDeviceImpl::list_clap_plugins ()
@@ -219,7 +283,7 @@ ClapDeviceImpl::list_clap_plugins ()
   static DeviceInfoS devs;
   if (devs.size())
     return devs;
-  for (const ClapPluginDescriptor *descriptor : collect_clap_plugin_descriptors()) {
+  for (PluginDescriptor *descriptor : PluginDescriptor::collect_descriptors()) {
     std::string title = descriptor->name;
     if (!descriptor->version.empty())
       title = title + " " + descriptor->version;

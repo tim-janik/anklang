@@ -9,6 +9,10 @@ namespace Ase {
 class ClapDeviceImpl : public GadgetImpl, public virtual Device {
   AudioProcessorP proc_;
   ASE_DEFINE_MAKE_SHARED (ClapDeviceImpl);
+  class PluginHandle;
+  PluginHandle *handle_ = nullptr;
+  class PluginDescriptor;
+  PluginDescriptor *descriptor_ = nullptr;
 protected:
   virtual           ~ClapDeviceImpl        ();
 public:
