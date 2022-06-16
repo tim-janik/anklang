@@ -207,12 +207,19 @@ class ClapDeviceImpl::PluginHandle {
       ((PluginHandle*) host->host_data)->plugin_request (3);
     },  // on_main_thread()
   };
+  clap_host_log host_log_ = {
+    .log = [] (const clap_host_t *host, clap_log_severity severity, const char *msg) {
+      ((PluginHandle*) host->host_data)->log (severity, msg);
+    },
+  };
   const void*
   get_extension (const char *extension_id)
   {
     const String ext = extension_id;
+    if (ext == CLAP_EXT_LOG)            return &host_log_;
     else return nullptr;
   }
+  void log (clap_log_severity severity, const char *msg);
   void
   plugin_request (int what)
   {
@@ -234,6 +241,8 @@ public:
       plugin_->destroy (plugin_);
       plugin_ = nullptr;
     }
+    if (plugin_)
+      log (CLAP_LOG_DEBUG, "initialized");
   }
   ~PluginHandle()
   {
@@ -243,10 +252,21 @@ public:
   destroy()
   {
     if (plugin_)
+      log (CLAP_LOG_DEBUG, "destroying");
+    if (plugin_)
       plugin_->destroy (plugin_);
     plugin_ = nullptr;
   }
 };
+
+void
+ClapDeviceImpl::PluginHandle::log (clap_log_severity severity, const char *msg)
+{
+  static const char *severtities[] = { "DEBUG", "INFO", "WARNING", "ERROR", "FATAL",
+                                       "BADHOST", "BADPLUGIN", };
+  const char *cls = severity < sizeof (severtities) / sizeof (severtities[0]) ? severtities[severity] : "MISC";
+  printerr ("CLAP-%s:%s: %s\n", cls, clapid_, msg);
+}
 
 // == ClapDeviceImpl ==
 JSONIPC_INHERIT (ClapDeviceImpl, Device);
