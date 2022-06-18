@@ -286,6 +286,18 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
       return b;
     },
   };
+  clap_host_params host_params = {
+    .rescan = [] (const clap_host_t *host, clap_param_rescan_flags flags) {
+      CDEBUG ("%s: host.rescan(0x%x)", ((PluginHandle*) host->host_data)->debug_name(), flags);
+    },
+    .clear = [] (const clap_host_t *host, clap_id param_id, clap_param_clear_flags flags) {
+      CDEBUG ("%s: host.clear(0x%x)", ((PluginHandle*) host->host_data)->debug_name(), flags);
+    },
+    .request_flush = [] (const clap_host_t *host) {
+      CDEBUG ("%s: host.request_flush()", ((PluginHandle*) host->host_data)->debug_name());
+      // MT-Safe!
+    },
+  };
   const void*
   get_host_extension (const char *extension_id)
   {
@@ -295,6 +307,7 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
     if (ext == CLAP_EXT_GUI)            return &host_gui;
     if (ext == CLAP_EXT_TIMER_SUPPORT)  return &host_timer_support;
     if (ext == CLAP_EXT_THREAD_CHECK)   return &host_thread_check;
+    if (ext == CLAP_EXT_PARAMS)         return &host_params;
     else return nullptr;
   }
   void log (clap_log_severity severity, const char *msg);
@@ -350,6 +363,7 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
   const clap_plugin_audio_ports *plugin_audio_ports = nullptr;
   const clap_plugin_note_ports *plugin_note_ports = nullptr;
   const clap_plugin_timer_support *plugin_timer_support = nullptr;
+  const clap_plugin_params *plugin_params = nullptr;
 public:
   const clap_input_events_t plugin_input_events = {
     .ctx = (PluginHandle*) this,
@@ -512,6 +526,7 @@ public:
       plugin_note_ports = (const clap_plugin_note_ports*) plugin_->get_extension (plugin_, CLAP_EXT_NOTE_PORTS);
       plugin_gui = (const clap_plugin_gui*) plugin_->get_extension (plugin_, CLAP_EXT_GUI);
       plugin_timer_support = (const clap_plugin_timer_support*) plugin_->get_extension (plugin_, CLAP_EXT_TIMER_SUPPORT);
+      plugin_params = (const clap_plugin_params*) plugin_->get_extension (plugin_, CLAP_EXT_PARAMS);
     }
   }
   ~PluginHandle()
