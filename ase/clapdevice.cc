@@ -277,6 +277,18 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
       ((PluginHandle*) host->host_data)->plugin_gui_closed (was_destroyed);
     },
   };
+  clap_host_thread_check host_thread_check = {
+    .is_main_thread = [] (const clap_host_t *host) {
+      const bool b = this_thread_is_ase();
+      //CDEBUG ("%s: host.is_main_thread: %d", ((PluginHandle*) host->host_data)->debug_name(), b);
+      return b;
+    },
+    .is_audio_thread = [] (const clap_host_t *host) {
+      const bool b = AudioEngine::thread_is_engine();
+      //CDEBUG ("%s: host.is_audio_thread: %d", ((PluginHandle*) host->host_data)->debug_name(), b);
+      return b;
+    },
+  };
   const void*
   get_host_extension (const char *extension_id)
   {
@@ -285,6 +297,7 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
     if (ext == CLAP_EXT_AUDIO_PORTS)    return &host_audio_ports_;
     if (ext == CLAP_EXT_GUI)            return &host_gui;
     if (ext == CLAP_EXT_TIMER_SUPPORT)  return &host_timer_support;
+    if (ext == CLAP_EXT_THREAD_CHECK)   return &host_thread_check;
     else return nullptr;
   }
   void log (clap_log_severity severity, const char *msg);
