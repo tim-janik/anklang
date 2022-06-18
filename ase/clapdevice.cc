@@ -209,7 +209,6 @@ ClapDeviceImpl::PluginDescriptor::collect_descriptors ()
 class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginHandle> {
   const clap_plugin_t *plugin_ = nullptr;
   String clapid_;
-  std::atomic<uint> request_restart_, request_process_, request_callback_;
   bool activated_ = false;
   clap_host_t phost = {
     .clap_version = CLAP_VERSION,
@@ -222,16 +221,14 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
       return ext;
     },
     .request_restart = [] (const struct clap_host *host) {
-      CDEBUG ("%s: host.plugin_request", ((PluginHandle*) host->host_data)->debug_name());
-      ((PluginHandle*) host->host_data)->plugin_request (1);
+      CDEBUG ("%s: host.request_restart", ((PluginHandle*) host->host_data)->debug_name());
     },  // deactivate() + activate()
     .request_process = [] (const struct clap_host *host) {
       CDEBUG ("%s: host.request_process", ((PluginHandle*) host->host_data)->debug_name());
-      ((PluginHandle*) host->host_data)->plugin_request (2);
     },  // process()
     .request_callback = [] (const struct clap_host *host) {
       CDEBUG ("%s: host.request_callback", ((PluginHandle*) host->host_data)->debug_name());
-      ((PluginHandle*) host->host_data)->plugin_request (3);
+      ((PluginHandle*) host->host_data)->plugin_request_callback_mt();
     },  // on_main_thread()
   };
   clap_host_log host_log_ = {
@@ -302,14 +299,17 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
   }
   void log (clap_log_severity severity, const char *msg);
   void
-  plugin_request (int what)
+  plugin_request_callback_mt()
   {
-    if (what == 1)      // deactivate() + activate()
-      request_restart_++;
-    else if (what == 2) // process()
-      request_process_++;
-    else if (what == 3) // on_main_thread()
-      request_callback_++;
+    std::shared_ptr<PluginHandle> selfp = shared_ptr_cast<PluginHandle> (this);
+    main_loop->exec_callback ([selfp] () {
+      if (selfp->plugin_) {
+        const auto *uiwrapper = x11wrapper(); // FIXME: avoid demand creation here
+        if (uiwrapper) uiwrapper->threads_enter(); // FIXME
+        selfp->plugin_->on_main_thread (selfp->plugin_);
+        if (uiwrapper) uiwrapper->threads_leave();
+      }
+    });
   }
   std::vector<uint> timers;
   bool
