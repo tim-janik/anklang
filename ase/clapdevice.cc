@@ -31,6 +31,21 @@ anklang_host_name()
 
 static float scratch_float_buffer[AUDIO_BLOCK_FLOAT_ZEROS_SIZE];
 
+// == Gtk2DlWrapEntry ==
+static Gtk2DlWrapEntry*
+x11wrapper()
+{
+  static Gtk2DlWrapEntry *gtk2wrapentry = [] () {
+    String gtk2wrapso = anklang_runpath (RPath::LIBDIR, "gtk2wrap.so");
+    void *gtklhandle_ = dlopen (gtk2wrapso.c_str(), RTLD_LOCAL | RTLD_NOW);
+    const char *symname = "Ase__Gtk2__wrapentry";
+    void *ptr = gtklhandle_ ? dlsym (gtklhandle_, symname) : nullptr;
+    return (Gtk2DlWrapEntry*) ptr;
+  } ();
+  assert_return (gtk2wrapentry != nullptr, nullptr);
+  return gtk2wrapentry;
+}
+
 // == CLAP file locations ==
 static std::vector<std::string>
 list_clap_files ()
@@ -191,7 +206,7 @@ ClapDeviceImpl::PluginDescriptor::collect_descriptors ()
 }
 
 // == CLAP plugin handle ==
-class ClapDeviceImpl::PluginHandle {
+class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginHandle> {
   const clap_plugin_t *plugin_ = nullptr;
   String clapid_;
   std::atomic<uint> request_restart_, request_process_, request_callback_;
@@ -203,16 +218,19 @@ class ClapDeviceImpl::PluginHandle {
     .url = "https://anklang.testbit.eu/", .version = ase_version(),
     .get_extension = [] (const struct clap_host *host, const char *extension_id) {
       const void *ext = ((PluginHandle*) host->host_data)->get_host_extension (extension_id);
-      CDEBUG ("%s: get_host_extension(\"%s\"): %p", ((PluginHandle*) host->host_data)->debug_name(), extension_id, ext);
+      CDEBUG ("%s: host.get_host_extension(\"%s\"): %p", ((PluginHandle*) host->host_data)->debug_name(), extension_id, ext);
       return ext;
     },
     .request_restart = [] (const struct clap_host *host) {
+      CDEBUG ("%s: host.plugin_request", ((PluginHandle*) host->host_data)->debug_name());
       ((PluginHandle*) host->host_data)->plugin_request (1);
     },  // deactivate() + activate()
     .request_process = [] (const struct clap_host *host) {
+      CDEBUG ("%s: host.request_process", ((PluginHandle*) host->host_data)->debug_name());
       ((PluginHandle*) host->host_data)->plugin_request (2);
     },  // process()
     .request_callback = [] (const struct clap_host *host) {
+      CDEBUG ("%s: host.request_callback", ((PluginHandle*) host->host_data)->debug_name());
       ((PluginHandle*) host->host_data)->plugin_request (3);
     },  // on_main_thread()
   };
@@ -222,8 +240,13 @@ class ClapDeviceImpl::PluginHandle {
     },
   };
   clap_host_audio_ports host_audio_ports_ = {
-    .is_rescan_flag_supported = [] (const clap_host_t *host, uint32_t flag) { return false; },
-    .rescan = [] (const clap_host_t *host, uint32_t flags) {},
+    .is_rescan_flag_supported = [] (const clap_host_t *host, uint32_t flag) {
+      CDEBUG ("%s: host.is_rescan_flag_supported", ((PluginHandle*) host->host_data)->debug_name());
+      return false;
+    },
+    .rescan = [] (const clap_host_t *host, uint32_t flags) {
+      CDEBUG ("%s: host.rescan", ((PluginHandle*) host->host_data)->debug_name());
+    },
   };
   clap_host_timer_support host_timer_support = {
     .register_timer = [] (const clap_host_t *host, uint32_t period_ms, clap_id *timer_id) {
@@ -234,11 +257,23 @@ class ClapDeviceImpl::PluginHandle {
     }
   };
   clap_host_gui host_gui = {
-    .resize_hints_changed = [] (const clap_host_t *host) {},
-    .request_resize = [] (const clap_host_t *host, uint32_t width, uint32_t height) { return false; },
-    .request_show = [] (const clap_host_t *host) { return false; },
-    .request_hide = [] (const clap_host_t *host) { return false; },
+    .resize_hints_changed = [] (const clap_host_t *host) {
+      CDEBUG ("%s: host.resize_hints_changed", ((PluginHandle*) host->host_data)->debug_name());
+    },
+    .request_resize = [] (const clap_host_t *host, uint32_t width, uint32_t height) {
+      CDEBUG ("%s: host.request_resize (%d, %d)", ((PluginHandle*) host->host_data)->debug_name(), width, height);
+      return ((PluginHandle*) host->host_data)->resize_window (width, height);
+    },
+    .request_show = [] (const clap_host_t *host) {
+      CDEBUG ("%s: host.request_show", ((PluginHandle*) host->host_data)->debug_name());
+      return false;
+    },
+    .request_hide = [] (const clap_host_t *host) {
+      CDEBUG ("%s: host.request_hide", ((PluginHandle*) host->host_data)->debug_name());
+      return false;
+    },
     .closed = [] (const clap_host_t *host, bool was_destroyed) {
+      CDEBUG ("%s: host.closed(destroyed=%d)", ((PluginHandle*) host->host_data)->debug_name(), was_destroyed);
       ((PluginHandle*) host->host_data)->plugin_gui_closed (was_destroyed);
     },
   };
@@ -265,15 +300,23 @@ class ClapDeviceImpl::PluginHandle {
   }
   std::vector<uint> timers;
   bool
+  plugin_on_timer (clap_id timer_id)
+  {
+    const auto *uiwrapper = x11wrapper();
+    if (uiwrapper) uiwrapper->threads_enter(); // FIXME
+    plugin_timer_support->on_timer (plugin_, timer_id);
+    if (uiwrapper) uiwrapper->threads_leave();
+    return true; // keep-alive
+  }
+  bool
   register_timer (uint32_t period_ms, clap_id *timer_id)
   {
     if (!plugin_timer_support)
       return false;
     period_ms = MAX (30, period_ms);
     auto timeridp = std::make_shared<uint> (0);
-    *timeridp = main_loop->exec_timer ([this,timeridp] () {
-      plugin_timer_support->on_timer (plugin_, *timeridp);
-      return true;
+    *timeridp = main_loop->exec_timer ([this, timeridp] () {
+      return plugin_on_timer (*timeridp);
     }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
     *timer_id = *timeridp;
     timers.push_back (*timeridp);
@@ -466,6 +509,7 @@ public:
   void
   destroy()
   {
+    destroy_gui();
     if (plugin_ && activated())
       deactivate();
     while (timers.size())
@@ -512,51 +556,81 @@ public:
     if (plugin_->stop_processing)
       plugin_->stop_processing (plugin_);
   }
-  bool has_gui = false, gui_visible = false;
+  ulong gui_windowid = 0;
+  bool gui_visible = false;
   void
   plugin_gui_closed (bool was_destroyed)
   {
+    CDEBUG ("%s:%s: was_destroyed=%d", debug_name(), __func__);
     gui_visible = false;
     if (was_destroyed && plugin_gui) {
       plugin_gui->destroy (plugin_);
-      has_gui = false;
+      gui_windowid = 0;
     }
+  }
+  void
+  gui_delete_request()
+  {
+    CDEBUG ("%s: %s", __func__, debug_name());
+    destroy_gui();
+  }
+  ulong
+  create_x11_window (int width, int height)
+  {
+    std::shared_ptr<PluginHandle> selfp = shared_ptr_cast<PluginHandle> (this);
+    Gtk2WindowSetup wsetup {
+      .title = debug_name(), .width = width, .height = height,
+      .deleterequest_mt = [selfp] () { main_loop->exec_callback ([selfp]() { selfp->gui_delete_request(); }); },
+    };
+    const ulong windowid = x11wrapper()->create_window (wsetup);
+    return windowid;
+  }
+  bool
+  resize_window (int width, int height)
+  {
+    if (gui_windowid) {
+      if (x11wrapper()->resize_window (gui_windowid, width, height)) {
+        if (plugin_gui->can_resize (plugin_))
+          plugin_gui->set_size (plugin_, width, height);
+        return true;
+      }
+    }
+    return false;
   }
   void
   show_gui()
   {
-    if (!has_gui && plugin_gui) {
+    if (!gui_windowid && plugin_gui) {
       const bool floating = false;
       clap_window_t cwindow = { .api = CLAP_WINDOW_API_X11, .x11 = 0 };
-      if (plugin_gui->is_api_supported (plugin_, cwindow.api, false)) {
-        bool created = plugin_gui->create (plugin_, cwindow.api, false);
+      if (plugin_gui->is_api_supported (plugin_, cwindow.api, floating)) {
+        bool created = plugin_gui->create (plugin_, cwindow.api, floating);
         CDEBUG ("GUI: created: %d\n", created);
-        if (floating)
-          plugin_gui->suggest_title (plugin_, "CLAP WINDOW");
-        else {
-          uint32_t width = 0, height = 0;
-          double scale = 2.0;
-          bool scaled = plugin_gui->set_scale (plugin_, scale);
-          CDEBUG ("GUI: scaled: %f\n", scaled * scale);
-          bool sized = plugin_gui->get_size (plugin_, &width, &height);
-          CDEBUG ("GUI: size=%d: %dx%d\n", sized, width, height);
-          bool parentset = plugin_gui->set_parent (plugin_, &cwindow);
-          CDEBUG ("GUI: parentset: %d\n", parentset);
-          bool canresize = plugin_gui->can_resize (plugin_);
-          CDEBUG ("GUI: canresize: %d\n", canresize);
-        }
-        has_gui = true;
+        //bool scaled = plugin_gui->set_scale (plugin_, scale);
+        //CDEBUG ("GUI: scaled: %f\n", scaled * scale);
+        uint32_t width = 0, height = 0;
+        bool sized = plugin_gui->get_size (plugin_, &width, &height);
+        CDEBUG ("GUI: size=%d: %dx%d\n", sized, width, height);
+        cwindow.x11 = create_x11_window (width, height);
+        bool parentset = plugin_gui->set_parent (plugin_, &cwindow);
+        CDEBUG ("GUI: parentset: %d\n", parentset);
+        bool canresize = plugin_gui->can_resize (plugin_);
+        CDEBUG ("GUI: canresize: %d\n", canresize);
+        gui_windowid = cwindow.x11;
       }
     }
-    if (has_gui)
+    if (gui_windowid) {
       gui_visible = plugin_gui->show (plugin_);
-    CDEBUG ("GUI: gui_visible: %d\n", gui_visible);
+      x11wrapper()->show_window (gui_windowid);
+      CDEBUG ("GUI: gui_visible: %d\n", gui_visible);
+    }
   }
   void
   hide_gui()
   {
-    if (gui_visible) {
+    if (gui_windowid) {
       plugin_gui->hide (plugin_);
+      x11wrapper()->show_window (gui_windowid);
       gui_visible = false;
     }
   }
@@ -564,9 +638,10 @@ public:
   destroy_gui()
   {
     hide_gui();
-    if (has_gui) {
+    if (gui_windowid) {
       plugin_gui->destroy (plugin_);
-      has_gui = false;
+      x11wrapper()->destroy_window (gui_windowid);
+      gui_windowid = 0;
     }
   }
 };
@@ -682,7 +757,7 @@ ClapDeviceImpl::ClapDeviceImpl (const String &clapid, AudioProcessorP aproc) :
   const clap_plugin_entry *pluginentry = !descriptor_ || !proc_ ? nullptr : descriptor_->entry();
   const clap_plugin_factory *pluginfactory = !pluginentry ? nullptr :
                                              (const clap_plugin_factory *) pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
-  handle_ = new PluginHandle (pluginfactory, clapid);
+  handle_ = std::make_shared<PluginHandle> (pluginfactory, clapid);
   if (handle_) {
     handle_->get_port_infos();
     uint ibus_clapidx = CLAP_INVALID_ID, ibus_channels = 0;
@@ -715,10 +790,9 @@ ClapDeviceImpl::ClapDeviceImpl (const String &clapid, AudioProcessorP aproc) :
 
 ClapDeviceImpl::~ClapDeviceImpl()
 {
-  if (handle_) {
-    delete handle_;
-    handle_ = nullptr;
-  }
+  if (handle_)
+    handle_->destroy();
+  handle_ = nullptr;
   if (descriptor_)
     descriptor_->close();
 }
@@ -732,8 +806,9 @@ ClapDeviceImpl::_set_parent (Gadget *parent)
   if (parent && handle_) {
     handle_->show_gui();
     if (handle_->activate (proc_->engine())) {
+      handle_->show_gui();
       auto j = [selfp] () {
-        selfp->proc_->set_plugin (selfp->handle_);
+        selfp->proc_->set_plugin (&*selfp->handle_);
       };
       proc_->engine().async_jobs += j;
     }

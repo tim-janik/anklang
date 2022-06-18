@@ -14,7 +14,7 @@ private:
   class PluginHandle;
   AudioWrapperP proc_;
   ASE_DEFINE_MAKE_SHARED (ClapDeviceImpl);
-  PluginHandle *handle_ = nullptr;
+  std::shared_ptr<PluginHandle> handle_;
   PluginDescriptor *descriptor_ = nullptr;
 protected:
   virtual           ~ClapDeviceImpl        ();
