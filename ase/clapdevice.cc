@@ -5,6 +5,7 @@
 #include "path.hh"
 #include "main.hh"
 #include "internal.hh"
+#include "gtk2wrap.hh"
 #include <clap/clap.h>
 #include <dlfcn.h>
 #include <glob.h>
@@ -232,12 +233,22 @@ class ClapDeviceImpl::PluginHandle {
       return ((PluginHandle*) host->host_data)->unregister_timer (timer_id);
     }
   };
+  clap_host_gui host_gui = {
+    .resize_hints_changed = [] (const clap_host_t *host) {},
+    .request_resize = [] (const clap_host_t *host, uint32_t width, uint32_t height) { return false; },
+    .request_show = [] (const clap_host_t *host) { return false; },
+    .request_hide = [] (const clap_host_t *host) { return false; },
+    .closed = [] (const clap_host_t *host, bool was_destroyed) {
+      ((PluginHandle*) host->host_data)->plugin_gui_closed (was_destroyed);
+    },
+  };
   const void*
   get_host_extension (const char *extension_id)
   {
     const String ext = extension_id;
     if (ext == CLAP_EXT_LOG)            return &host_log_;
     if (ext == CLAP_EXT_AUDIO_PORTS)    return &host_audio_ports_;
+    if (ext == CLAP_EXT_GUI)            return &host_gui;
     if (ext == CLAP_EXT_TIMER_SUPPORT)  return &host_timer_support;
     else return nullptr;
   }
@@ -278,6 +289,7 @@ class ClapDeviceImpl::PluginHandle {
     CDEBUG ("%s: deleted=%u: id=%u", __func__, deleted, timer_id);
     return deleted;
   }
+  const clap_plugin_gui *plugin_gui = nullptr;
   const clap_plugin_audio_ports_config *plugin_audio_ports_config = nullptr;
   const clap_plugin_audio_ports *plugin_audio_ports = nullptr;
   const clap_plugin_note_ports *plugin_note_ports = nullptr;
@@ -442,6 +454,7 @@ public:
       plugin_audio_ports_config = (const clap_plugin_audio_ports_config*) plugin_->get_extension (plugin_, CLAP_EXT_AUDIO_PORTS_CONFIG);
       plugin_audio_ports = (const clap_plugin_audio_ports*) plugin_->get_extension (plugin_, CLAP_EXT_AUDIO_PORTS);
       plugin_note_ports = (const clap_plugin_note_ports*) plugin_->get_extension (plugin_, CLAP_EXT_NOTE_PORTS);
+      plugin_gui = (const clap_plugin_gui*) plugin_->get_extension (plugin_, CLAP_EXT_GUI);
       plugin_timer_support = (const clap_plugin_timer_support*) plugin_->get_extension (plugin_, CLAP_EXT_TIMER_SUPPORT);
     }
   }
@@ -498,6 +511,63 @@ public:
     return_unless (plugin_);
     if (plugin_->stop_processing)
       plugin_->stop_processing (plugin_);
+  }
+  bool has_gui = false, gui_visible = false;
+  void
+  plugin_gui_closed (bool was_destroyed)
+  {
+    gui_visible = false;
+    if (was_destroyed && plugin_gui) {
+      plugin_gui->destroy (plugin_);
+      has_gui = false;
+    }
+  }
+  void
+  show_gui()
+  {
+    if (!has_gui && plugin_gui) {
+      const bool floating = false;
+      clap_window_t cwindow = { .api = CLAP_WINDOW_API_X11, .x11 = 0 };
+      if (plugin_gui->is_api_supported (plugin_, cwindow.api, false)) {
+        bool created = plugin_gui->create (plugin_, cwindow.api, false);
+        CDEBUG ("GUI: created: %d\n", created);
+        if (floating)
+          plugin_gui->suggest_title (plugin_, "CLAP WINDOW");
+        else {
+          uint32_t width = 0, height = 0;
+          double scale = 2.0;
+          bool scaled = plugin_gui->set_scale (plugin_, scale);
+          CDEBUG ("GUI: scaled: %f\n", scaled * scale);
+          bool sized = plugin_gui->get_size (plugin_, &width, &height);
+          CDEBUG ("GUI: size=%d: %dx%d\n", sized, width, height);
+          bool parentset = plugin_gui->set_parent (plugin_, &cwindow);
+          CDEBUG ("GUI: parentset: %d\n", parentset);
+          bool canresize = plugin_gui->can_resize (plugin_);
+          CDEBUG ("GUI: canresize: %d\n", canresize);
+        }
+        has_gui = true;
+      }
+    }
+    if (has_gui)
+      gui_visible = plugin_gui->show (plugin_);
+    CDEBUG ("GUI: gui_visible: %d\n", gui_visible);
+  }
+  void
+  hide_gui()
+  {
+    if (gui_visible) {
+      plugin_gui->hide (plugin_);
+      gui_visible = false;
+    }
+  }
+  void
+  destroy_gui()
+  {
+    hide_gui();
+    if (has_gui) {
+      plugin_gui->destroy (plugin_);
+      has_gui = false;
+    }
   }
 };
 
@@ -660,6 +730,7 @@ ClapDeviceImpl::_set_parent (Gadget *parent)
   GadgetImpl::_set_parent (parent);
   // activate and use plugin from proc_
   if (parent && handle_) {
+    handle_->show_gui();
     if (handle_->activate (proc_->engine())) {
       auto j = [selfp] () {
         selfp->proc_->set_plugin (selfp->handle_);
@@ -670,6 +741,7 @@ ClapDeviceImpl::_set_parent (Gadget *parent)
   // deactivate and destroy plugin, but first stop proc_ using it
   if (!parent && handle_)
     {
+      handle_->destroy_gui();
       auto deferred_destroy = [selfp] (void*) {
         selfp->handle_->destroy();
       };
