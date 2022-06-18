@@ -11,7 +11,6 @@ namespace Ase {
 /// Main handle for AudioProcessor administration and audio rendering.
 class AudioEngine : VirtualBase {
   std::atomic<size_t>          processor_count_ = 0;
-  ThreadId                     thread_id_ = {};
   friend class AudioEngineThread;
   friend class AudioProcessor;
   class JobQueue {
@@ -42,9 +41,10 @@ public:
   uint                  nyquist             () const ASE_CONST { return transport().nyquist; }
   double                inyquist            () const ASE_CONST { return transport().inyquist; }
   SpeakerArrangement    speaker_arrangement () const           { return transport().speaker_arrangement; }
-  ThreadId              thread_id           () const           { return thread_id_; }
   JobQueue              const_jobs;
   JobQueue              async_jobs;
+  static const ThreadId &thread_id;
+  static bool           thread_is_engine    () { return std::this_thread::get_id() == thread_id; }
 };
 
 AudioEngine&    make_audio_engine    (uint sample_rate, SpeakerArrangement speakerarrangement);

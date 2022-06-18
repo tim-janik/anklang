@@ -326,13 +326,16 @@ AudioEngineThread::update_drivers (bool fullio)
     }
 }
 
+static std::thread::id audio_engine_thread_id = {};
+const ThreadId &AudioEngine::thread_id = audio_engine_thread_id;
+
 void
 AudioEngineThread::run (const VoidF &owner_wakeup, StartQueue *sq)
 {
   assert_return (pcm_driver_);
   // FIXME: assert owner_wakeup and free trash
   this_thread_set_name ("AudioEngine-0"); // max 16 chars
-  thread_id_ = std::this_thread::get_id();
+  audio_engine_thread_id = std::this_thread::get_id();
   owner_wakeup_ = owner_wakeup;
   event_loop_->exec_dispatcher (std::bind (&AudioEngineThread::driver_dispatcher, this, std::placeholders::_1));
   sq->push ('R'); // StartQueue becomes invalid after this call
@@ -480,7 +483,7 @@ AudioEngineThread::stop_thread ()
   assert_return (engine.thread_ != nullptr);
   engine.event_loop_->quit (0);
   engine.thread_->join();
-  thread_id_ = {};
+  audio_engine_thread_id = {};
   auto oldthread = engine.thread_;
   engine.thread_ = nullptr;
   delete oldthread;
