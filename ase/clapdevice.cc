@@ -3,10 +3,11 @@
 #include "jsonipc/jsonipc.hh"
 #include "processor.hh"
 #include "path.hh"
+#include "main.hh"
+#include "internal.hh"
 #include <clap/clap.h>
 #include <dlfcn.h>
 #include <glob.h>
-#include "internal.hh"
 
 #define CDEBUG(...)     Ase::debug ("Clap", __VA_ARGS__)
 #define CDEBUG_ENABLED() Ase::debug_key_enabled ("Clap")
@@ -223,12 +224,21 @@ class ClapDeviceImpl::PluginHandle {
     .is_rescan_flag_supported = [] (const clap_host_t *host, uint32_t flag) { return false; },
     .rescan = [] (const clap_host_t *host, uint32_t flags) {},
   };
+  clap_host_timer_support host_timer_support = {
+    .register_timer = [] (const clap_host_t *host, uint32_t period_ms, clap_id *timer_id) {
+      return ((PluginHandle*) host->host_data)->register_timer (period_ms, timer_id);
+    },
+    .unregister_timer = [] (const clap_host_t *host, clap_id timer_id) {
+      return ((PluginHandle*) host->host_data)->unregister_timer (timer_id);
+    }
+  };
   const void*
   get_host_extension (const char *extension_id)
   {
     const String ext = extension_id;
     if (ext == CLAP_EXT_LOG)            return &host_log_;
     if (ext == CLAP_EXT_AUDIO_PORTS)    return &host_audio_ports_;
+    if (ext == CLAP_EXT_TIMER_SUPPORT)  return &host_timer_support;
     else return nullptr;
   }
   void log (clap_log_severity severity, const char *msg);
@@ -242,9 +252,36 @@ class ClapDeviceImpl::PluginHandle {
     else if (what == 3) // on_main_thread()
       request_callback_++;
   }
+  std::vector<uint> timers;
+  bool
+  register_timer (uint32_t period_ms, clap_id *timer_id)
+  {
+    if (!plugin_timer_support)
+      return false;
+    period_ms = MAX (30, period_ms);
+    auto timeridp = std::make_shared<uint> (0);
+    *timeridp = main_loop->exec_timer ([this,timeridp] () {
+      plugin_timer_support->on_timer (plugin_, *timeridp);
+      return true;
+    }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
+    *timer_id = *timeridp;
+    timers.push_back (*timeridp);
+    CDEBUG ("%s: ms=%u: id=%u", __func__, period_ms, timer_id);
+    return true;
+  }
+  bool
+  unregister_timer (clap_id timer_id)
+  {
+    const bool deleted = Aux::erase_first (timers, [timer_id] (uint id) { return id == timer_id; });
+    if (deleted)
+      main_loop->remove (timer_id);
+    CDEBUG ("%s: deleted=%u: id=%u", __func__, deleted, timer_id);
+    return deleted;
+  }
   const clap_plugin_audio_ports_config *plugin_audio_ports_config = nullptr;
   const clap_plugin_audio_ports *plugin_audio_ports = nullptr;
   const clap_plugin_note_ports *plugin_note_ports = nullptr;
+  const clap_plugin_timer_support *plugin_timer_support = nullptr;
 public:
   const clap_input_events_t plugin_input_events = {
     .ctx = (PluginHandle*) this,
@@ -405,6 +442,7 @@ public:
       plugin_audio_ports_config = (const clap_plugin_audio_ports_config*) plugin_->get_extension (plugin_, CLAP_EXT_AUDIO_PORTS_CONFIG);
       plugin_audio_ports = (const clap_plugin_audio_ports*) plugin_->get_extension (plugin_, CLAP_EXT_AUDIO_PORTS);
       plugin_note_ports = (const clap_plugin_note_ports*) plugin_->get_extension (plugin_, CLAP_EXT_NOTE_PORTS);
+      plugin_timer_support = (const clap_plugin_timer_support*) plugin_->get_extension (plugin_, CLAP_EXT_TIMER_SUPPORT);
     }
   }
   ~PluginHandle()
@@ -417,6 +455,8 @@ public:
   {
     if (plugin_ && activated())
       deactivate();
+    while (timers.size())
+      host_timer_support.unregister_timer (&phost, timers.back());
     if (plugin_)
       log (CLAP_LOG_DEBUG, "destroying");
     if (plugin_)
