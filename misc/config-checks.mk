@@ -90,10 +90,12 @@ config-checks.require.pkgconfig ::= $(strip	\
 # == pkg-config variables ==
 # used for GLIB_CFLAGS and GLIB_LIBS
 GLIB_PACKAGES    ::= glib-2.0 gobject-2.0 gmodule-no-export-2.0 zlib
+# use for Gtk+2 X11 Window embedding
+GTK2_PACKAGES	 ::= gtk+-2.0
 # used for ASEDEPS_CFLAGS ASEDEPS_LIBS
 ASEDEPS_PACKAGES ::= fluidsynth vorbisenc vorbisfile vorbis ogg flac zlib $(GLIB_PACKAGES) # mad
 # used for ANKLANG_JACK_LIBS
-ANKLANGDEP_JACK     ::= jack >= 0.124.0
+ANKLANGDEP_JACK  ::= jack >= 0.124.0
 
 # == config-cache.mk ==
 # Note, using '-include config-cache.mk' will ignore errors during config-cache.mk creation,
@@ -120,6 +122,10 @@ $>/config-cache.mk: misc/config-checks.mk misc/version.sh $(GITCOMMITDEPS) | $>/
 	  && echo "GLIB_CFLAGS ::= $$GLIB_CFLAGS"		>>$@.tmp
 	$Q GLIB_LIBS=$$($(PKG_CONFIG) --libs $(GLIB_PACKAGES)) \
 	  && echo "GLIB_LIBS ::= $$GLIB_LIBS"			>>$@.tmp
+	$Q GTK2_CFLAGS=$$($(PKG_CONFIG) --cflags $(GTK2_PACKAGES)) \
+	  && echo "GTK2_CFLAGS ::= $$GTK2_CFLAGS"		>>$@.tmp
+	$Q GTK2_LIBS=$$($(PKG_CONFIG) --libs $(GTK2_PACKAGES)) \
+	  && echo "GTK2_LIBS ::= $$GTK2_LIBS"			>>$@.tmp
 	$Q ASEDEPS_CFLAGS=$$($(PKG_CONFIG) --cflags $(ASEDEPS_PACKAGES)) \
 	  && echo "ASEDEPS_CFLAGS ::= $$ASEDEPS_CFLAGS"		>>$@.tmp
 	$Q ASEDEPS_LIBS=$$($(PKG_CONFIG) --libs $(ASEDEPS_PACKAGES)) \
