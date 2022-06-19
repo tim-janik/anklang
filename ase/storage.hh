@@ -25,7 +25,7 @@ public:
   // Writer API
   Error    open_for_writing   (const String &filename);
   Error    open_with_mimetype (const String &filename, const String &mimetype);
-  Error    store_file_data    (const String &filename, const String &buffer);
+  Error    store_file_data    (const String &filename, const String &buffer, bool alwayscompress = false);
   Error    close              ();
   Error    remove_opened      ();
 };
