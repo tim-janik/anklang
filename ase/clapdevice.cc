@@ -358,10 +358,9 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
     std::shared_ptr<PluginHandle> selfp = shared_ptr_cast<PluginHandle> (this);
     main_loop->exec_callback ([selfp] () {
       if (selfp->plugin_) {
-        const auto *uiwrapper = x11wrapper(); // FIXME: avoid demand creation here
-        if (uiwrapper) uiwrapper->threads_enter(); // FIXME
+        // gui_threads_enter();
         selfp->plugin_->on_main_thread (selfp->plugin_);
-        if (uiwrapper) uiwrapper->threads_leave();
+        // gui_threads_leave();
       }
     });
   }
@@ -374,17 +373,18 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
   bool
   plugin_on_timer (clap_id timer_id)
   {
-    const auto *uiwrapper = x11wrapper();
-    if (uiwrapper) uiwrapper->threads_enter(); // FIXME
-    plugin_timer_support->on_timer (plugin_, timer_id);
-    if (uiwrapper) uiwrapper->threads_leave();
+    // gui_threads_enter();
+    if (plugin_timer_support) // register_timer() cannot catch this
+      plugin_timer_support->on_timer (plugin_, timer_id);
+    // gui_threads_leave();
     return true; // keep-alive
   }
   bool
   register_timer (uint32_t period_ms, clap_id *timer_id)
   {
-    if (!plugin_timer_support)
-      return false;
+    // Avoid premature check for plugin_timer_support, JUCE requests timers in ->init()
+    // *before* plugin_->get_extension (plugin_, CLAP_EXT_TIMER_SUPPORT); can be queried
+    // if (!plugin_timer_support) return false;
     period_ms = MAX (30, period_ms);
     auto timeridp = std::make_shared<uint> (0);
     *timeridp = main_loop->exec_timer ([this, timeridp] () {
@@ -392,16 +392,17 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
     }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
     *timer_id = *timeridp;
     timers.push_back (*timeridp);
-    CDEBUG ("%s: ms=%u: id=%u", __func__, period_ms, timer_id);
+    CDEBUG ("%s: %s: ms=%u: id=%u", debug_name(), __func__, period_ms, timer_id);
     return true;
   }
   bool
   unregister_timer (clap_id timer_id)
   {
+    // NOTE: plugin_ might be destroying here
     const bool deleted = Aux::erase_first (timers, [timer_id] (uint id) { return id == timer_id; });
     if (deleted)
       main_loop->remove (timer_id);
-    CDEBUG ("%s: deleted=%u: id=%u", __func__, deleted, timer_id);
+    CDEBUG ("%s: %s: deleted=%u: id=%u", debug_name(), __func__, deleted, timer_id);
     return deleted;
   }
   const clap_plugin_gui *plugin_gui = nullptr;
@@ -578,8 +579,8 @@ public:
     if (factory)
       plugin_ = factory->create_plugin (factory, &phost, clapid_.c_str());
     if (plugin_ && !plugin_->init (plugin_)) {
-      plugin_->destroy (plugin_);
-      plugin_ = nullptr;
+      CDEBUG ("%s: initialization failed", debug_name());
+      destroy(); // destroy per spec and cleanup resources used by init()
     }
     if (plugin_) {
       CDEBUG ("%s: initialized", debug_name());
@@ -602,10 +603,10 @@ public:
     destroy_gui();
     if (plugin_ && activated())
       deactivate();
-    while (timers.size())
-      host_timer_support.unregister_timer (&phost, timers.back());
     if (plugin_)
       CDEBUG ("%s: destroying", debug_name());
+    while (timers.size())
+      host_timer_support.unregister_timer (&phost, timers.back());
     if (plugin_)
       plugin_->destroy (plugin_);
     plugin_ = nullptr;
@@ -651,7 +652,7 @@ public:
   void
   plugin_gui_closed (bool was_destroyed)
   {
-    CDEBUG ("%s:%s: was_destroyed=%d", debug_name(), __func__);
+    CDEBUG ("%s: %s: was_destroyed=%d", debug_name(), __func__);
     gui_visible = false;
     if (was_destroyed && plugin_gui) {
       plugin_gui->destroy (plugin_);
@@ -661,7 +662,7 @@ public:
   void
   gui_delete_request()
   {
-    CDEBUG ("%s: %s", __func__, debug_name());
+    CDEBUG ("%s: %s", debug_name(), __func__);
     destroy_gui();
   }
   ulong
@@ -880,6 +881,12 @@ public:
   initialize (SpeakerArrangement busses) override
   {
     remove_all_buses();
+    if (ibus_clapidx_ != -1)
+      ibusid = add_input_bus (ibus_name_, SpeakerArrangement::STEREO);
+    if (obus_clapidx_ != -1)
+      obusid = add_output_bus (obus_name_, SpeakerArrangement::STEREO);
+    if (eventoutput_)
+      prepare_event_output();
     if (eventinput_ & CLAP_NOTE_DIALECT_CLAP) {
       prepare_event_input();
       convert_input_events = &AudioWrapper::convert_clap_events;
@@ -888,12 +895,9 @@ public:
       convert_input_events = &AudioWrapper::convert_midi1_events;
     } else
       convert_input_events = nullptr;
-    if (eventoutput_)
-      prepare_event_output();
-    if (ibus_clapidx_ != -1)
-      ibusid = add_input_bus (ibus_name_, SpeakerArrangement::STEREO);
-    if (obus_clapidx_ != -1)
-      obusid = add_output_bus (obus_name_, SpeakerArrangement::STEREO);
+    // workaround AudioProcessor asserting that a Processor should have *some* IO bus
+    if (!convert_input_events && !eventoutput_ && ibusid == IBusId (0) && obusid == OBusId (0))
+      prepare_event_input();
   }
   clap_process_t processinfo = { 0, };
   void
