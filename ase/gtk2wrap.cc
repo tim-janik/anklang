@@ -58,6 +58,7 @@ static BWrap* vwrap (const std::function<void()> &fun) {
 static void
 gtkmain()
 {
+  pthread_setname_np (pthread_self(), "gtk2wrap:thread");
   gdk_threads_init();
   gdk_threads_enter();
 
@@ -144,11 +145,14 @@ gtkidle_call (Ret (*func) (Params...), Args &&...args)
   Semaphore sem;
   Ret ret = {};
   BWrap *bw = bwrap ([&sem, &ret, func, &args...] () -> bool {
+    GDK_THREADS_ENTER ();
     ret = func (std::forward<Args> (args)...);
+    GDK_THREADS_LEAVE ();
     sem.post();
     return false;
   });
   g_idle_add_full (G_PRIORITY_HIGH, bw->boolfunc, bw, bw->deleter);
+  // See gdk_threads_add_idle_full for LEAVE/ENTER reasoning
   sem.wait();
   return ret;
 }
