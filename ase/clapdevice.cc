@@ -31,6 +31,47 @@ anklang_host_name()
 
 static float scratch_float_buffer[AUDIO_BLOCK_FLOAT_ZEROS_SIZE];
 
+static const char*
+clap_event_type_string (int etype)
+{
+  switch (etype)
+    {
+    case CLAP_EVENT_NOTE_ON:                    return "NOTE_ON";
+    case CLAP_EVENT_NOTE_OFF:                   return "NOTE_OFF";
+    case CLAP_EVENT_NOTE_CHOKE:                 return "NOTE_CHOKE";
+    case CLAP_EVENT_NOTE_END:                   return "NOTE_END";
+    case CLAP_EVENT_NOTE_EXPRESSION:            return "NOTE_EXPRESSION";
+    case CLAP_EVENT_PARAM_VALUE:                return "PARAM_VALUE";
+    case CLAP_EVENT_PARAM_MOD:                  return "PARAM_MOD";
+    case CLAP_EVENT_PARAM_GESTURE_BEGIN:        return "PARAM_GESTURE_BEGIN";
+    case CLAP_EVENT_PARAM_GESTURE_END:          return "PARAM_GESTURE_END";
+    case CLAP_EVENT_TRANSPORT:                  return "TRANSPORT";
+    case CLAP_EVENT_MIDI:                       return "MIDI";
+    case CLAP_EVENT_MIDI_SYSEX:                 return "MIDI_SYSEX";
+    case CLAP_EVENT_MIDI2:                      return "MIDI2";
+    default:                                    return "<UNKNOWN>";
+    }
+}
+
+static ASE_UNUSED String
+clap_event_to_string (const clap_event_note_t *enote)
+{
+  const char *et = clap_event_type_string (enote->header.type);
+  switch (enote->header.type)
+    {
+    case CLAP_EVENT_NOTE_ON:
+    case CLAP_EVENT_NOTE_OFF:
+    case CLAP_EVENT_NOTE_CHOKE:
+    case CLAP_EVENT_NOTE_END:
+      return string_format ("%+4d ch=%-2u %-14s pitch=%d vel=%f id=%x sz=%d spc=%d flags=%x port=%d",
+                            enote->header.time, enote->channel, et, enote->key, enote->velocity, enote->note_id,
+                            enote->header.size, enote->header.space_id, enote->header.flags, enote->port_index);
+    default:
+      return string_format ("%+4d %-20s sz=%d spc=%d flags=%x port=%d",
+                            enote->header.time, et, enote->header.size, enote->header.space_id, enote->header.flags);
+    }
+}
+
 // == Gtk2DlWrapEntry ==
 static Gtk2DlWrapEntry*
 x11wrapper()
@@ -238,11 +279,11 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
   };
   clap_host_audio_ports host_audio_ports_ = {
     .is_rescan_flag_supported = [] (const clap_host_t *host, uint32_t flag) {
-      CDEBUG ("%s: host.is_rescan_flag_supported", ((PluginHandle*) host->host_data)->debug_name());
+      CDEBUG ("%s: host.audio_ports.is_rescan_flag_supported: false", ((PluginHandle*) host->host_data)->debug_name());
       return false;
     },
     .rescan = [] (const clap_host_t *host, uint32_t flags) {
-      CDEBUG ("%s: host.rescan", ((PluginHandle*) host->host_data)->debug_name());
+      CDEBUG ("%s: host.audio_ports.rescan(0x%x)", ((PluginHandle*) host->host_data)->debug_name(), flags);
     },
   };
   clap_host_timer_support host_timer_support = {
@@ -288,14 +329,14 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
   };
   clap_host_params host_params = {
     .rescan = [] (const clap_host_t *host, clap_param_rescan_flags flags) {
-      CDEBUG ("%s: host.rescan(0x%x)", ((PluginHandle*) host->host_data)->debug_name(), flags);
+      CDEBUG ("%s: host.params.rescan(0x%x)", ((PluginHandle*) host->host_data)->debug_name(), flags);
     },
     .clear = [] (const clap_host_t *host, clap_id param_id, clap_param_clear_flags flags) {
-      CDEBUG ("%s: host.clear(0x%x)", ((PluginHandle*) host->host_data)->debug_name(), flags);
+      CDEBUG ("%s: host.params.clear(0x%x)", ((PluginHandle*) host->host_data)->debug_name(), flags);
     },
     .request_flush = [] (const clap_host_t *host) {
-      CDEBUG ("%s: host.request_flush()", ((PluginHandle*) host->host_data)->debug_name());
-      // MT-Safe!
+      CDEBUG ("%s: host.params.request_flush", ((PluginHandle*) host->host_data)->debug_name());
+      ((PluginHandle*) host->host_data)->plugin_request_flush_mt();
     },
   };
   const void*
@@ -323,6 +364,11 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
         if (uiwrapper) uiwrapper->threads_leave();
       }
     });
+  }
+  void
+  plugin_request_flush_mt()
+  {
+    // FIXME: flush plugin_params
   }
   std::vector<uint> timers;
   bool
@@ -367,19 +413,35 @@ class ClapDeviceImpl::PluginHandle : public std::enable_shared_from_this<PluginH
 public:
   const clap_input_events_t plugin_input_events = {
     .ctx = (PluginHandle*) this,
-    .size = [] (const struct clap_input_events *evlist) -> uint32_t { return ((PluginHandle*) evlist->ctx)->input_events.size(); },
+    .size = [] (const struct clap_input_events *evlist) -> uint32_t {
+      return ((PluginHandle*) evlist->ctx)->input_events.size();
+    },
     .get = [] (const struct clap_input_events *evlist, uint32_t index) -> const clap_event_header_t* {
-      return &((PluginHandle*) evlist->ctx)->input_events.at (index);
+      return &((PluginHandle*) evlist->ctx)->input_events.at (index).header;
     },
   };
   const clap_output_events_t plugin_output_events = {
     .ctx = (PluginHandle*) this,
     .try_push = [] (const struct clap_output_events *evlist, const clap_event_header_t *event) -> bool {
       PluginHandle *self = (PluginHandle*) evlist->ctx;
-      return self && false;
+      if (0)
+        CDEBUG ("%s: host.try_push(type=%x): false", self->debug_name(), event->type);
+      return false;
     },
   };
-  std::vector<clap_event_header_t> input_events, output_events;
+  union EventUnion {
+    clap_event_header_t          header;        // size, time, space_id, type, flags
+    clap_event_note_t            note;          // CLAP_NOTE_DIALECT_CLAP
+    clap_event_note_expression_t expression;    // CLAP_NOTE_DIALECT_CLAP
+    clap_event_param_value_t     value;
+    clap_event_param_mod_t       mod;
+    clap_event_param_gesture_t   gesture;
+    clap_event_midi_t            midi1;         // CLAP_NOTE_DIALECT_MIDI
+    clap_event_midi_sysex_t      sysex;         // CLAP_NOTE_DIALECT_MIDI
+    clap_event_midi2_t           midi2;         // CLAP_NOTE_DIALECT_MIDI2
+  };
+  std::vector<EventUnion> input_events;
+  std::vector<clap_event_header_t> output_events;
   std::vector<clap_audio_ports_config_t> audio_ports_configs;
   std::vector<clap_audio_port_info_t> audio_iport_infos, audio_oport_infos;
   std::vector<clap_note_port_info_t> note_iport_infos, note_oport_infos;
@@ -396,19 +458,19 @@ public:
       if (!plugin_audio_ports_config->get (plugin_, i, &audio_ports_configs[i]))
         audio_ports_configs[i] = { CLAP_INVALID_ID, { 0, }, 0, 0, 0, 0, "", 0, 0, "" };
     if (audio_ports_configs.size()) { // not encountered yet
-      printerr ("%s: audio_configs:%u:", debug_name(), audio_ports_configs.size());
+      String s = string_format ("audio_configs:%u:", audio_ports_configs.size());
       for (size_t i = 0; i < audio_ports_configs.size(); i++)
         if (audio_ports_configs[i].id != CLAP_INVALID_ID)
-          printerr (" %u:%s:iports=%u:oports=%u:imain=%u,%s:omain=%u,%s",
-                    audio_ports_configs[i].id,
-                    audio_ports_configs[i].name,
-                    audio_ports_configs[i].input_port_count,
-                    audio_ports_configs[i].output_port_count,
-                    audio_ports_configs[i].has_main_input * audio_ports_configs[i].main_input_channel_count,
-                    audio_ports_configs[i].main_input_port_type,
-                    audio_ports_configs[i].has_main_output * audio_ports_configs[i].main_output_channel_count,
-                    audio_ports_configs[i].main_output_port_type);
-      printerr ("\n");
+          s += string_format (" %u:%s:iports=%u:oports=%u:imain=%u,%s:omain=%u,%s",
+                              audio_ports_configs[i].id,
+                              audio_ports_configs[i].name,
+                              audio_ports_configs[i].input_port_count,
+                              audio_ports_configs[i].output_port_count,
+                              audio_ports_configs[i].has_main_input * audio_ports_configs[i].main_input_channel_count,
+                              audio_ports_configs[i].main_input_port_type,
+                              audio_ports_configs[i].has_main_output * audio_ports_configs[i].main_output_channel_count,
+                              audio_ports_configs[i].main_output_port_type);
+      CDEBUG ("%s: %s", debug_name(), s);
     }
     // note_iport_infos
     note_iport_infos.resize (!plugin_note_ports ? 0 : plugin_note_ports->count (plugin_, true));
@@ -416,15 +478,15 @@ public:
       if (!plugin_note_ports->get (plugin_, i, true, &note_iport_infos[i]))
         note_iport_infos[i] = { CLAP_INVALID_ID, 0, 0, { 0, }, };
     if (note_iport_infos.size()) {
-      printerr ("%s: note_iports:%u:", debug_name(), note_iport_infos.size());
+      String s = string_format ("note_iports=%u:", note_iport_infos.size());
       for (size_t i = 0; i < note_iport_infos.size(); i++)
         if (note_iport_infos[i].id != CLAP_INVALID_ID)
-          printerr (" %u:%s:can=%x:want=%x",
-                    note_iport_infos[i].id,
-                    note_iport_infos[i].name,
-                    note_iport_infos[i].supported_dialects,
-                    note_iport_infos[i].preferred_dialect);
-      printerr ("\n");
+          s += string_format (" %u:%s:can=%x:want=%x",
+                              note_iport_infos[i].id,
+                              note_iport_infos[i].name,
+                              note_iport_infos[i].supported_dialects,
+                              note_iport_infos[i].preferred_dialect);
+      CDEBUG ("%s: %s", debug_name(), s);
     }
     // note_oport_infos
     note_oport_infos.resize (!plugin_note_ports ? 0 : plugin_note_ports->count (plugin_, false));
@@ -432,15 +494,15 @@ public:
       if (!plugin_note_ports->get (plugin_, i, false, &note_oport_infos[i]))
         note_oport_infos[i] = { CLAP_INVALID_ID, 0, 0, { 0, }, };
     if (note_oport_infos.size()) {
-      printerr ("%s: note_oports:%u:", debug_name(), note_oport_infos.size());
+      String s = string_format ("note_oports=%u:", note_oport_infos.size());
       for (size_t i = 0; i < note_oport_infos.size(); i++)
         if (note_oport_infos[i].id != CLAP_INVALID_ID)
-          printerr (" %u:%s:can=%x:want=%x",
-                    note_oport_infos[i].id,
-                    note_oport_infos[i].name,
-                    note_oport_infos[i].supported_dialects,
-                    note_oport_infos[i].preferred_dialect);
-      printerr ("\n");
+          s += string_format (" %u:%s:can=%x:want=%x",
+                              note_oport_infos[i].id,
+                              note_oport_infos[i].name,
+                              note_oport_infos[i].supported_dialects,
+                              note_oport_infos[i].preferred_dialect);
+      CDEBUG ("%s: %s", debug_name(), s);
     }
     // audio_iport_infos
     audio_iport_infos.resize (!plugin_audio_ports ? 0 : plugin_audio_ports->count (plugin_, true));
@@ -450,16 +512,16 @@ public:
       else
         total_channels += audio_iport_infos[i].channel_count;
     if (audio_iport_infos.size()) {
-      printerr ("%s: audio_iports:%u:", debug_name(), audio_iport_infos.size());
+      String s = string_format ("audio_iports=%u:", audio_iport_infos.size());
       for (size_t i = 0; i < audio_iport_infos.size(); i++)
         if (audio_iport_infos[i].id != CLAP_INVALID_ID && audio_iport_infos[i].port_type)
-          printerr (" %u:ch=%u:%s:m=%u:%s:",
-                    audio_iport_infos[i].id,
-                    audio_iport_infos[i].channel_count,
-                    audio_iport_infos[i].name,
-                    audio_iport_infos[i].flags & CLAP_AUDIO_PORT_IS_MAIN,
-                    audio_iport_infos[i].port_type);
-      printerr ("\n");
+          s += string_format (" %u:ch=%u:%s:m=%u:%s:",
+                              audio_iport_infos[i].id,
+                              audio_iport_infos[i].channel_count,
+                              audio_iport_infos[i].name,
+                              audio_iport_infos[i].flags & CLAP_AUDIO_PORT_IS_MAIN,
+                              audio_iport_infos[i].port_type);
+      CDEBUG ("%s: %s", debug_name(), s);
     }
     // audio_oport_infos
     audio_oport_infos.resize (!plugin_audio_ports ? 0 : plugin_audio_ports->count (plugin_, false));
@@ -469,16 +531,16 @@ public:
       else
         total_channels += audio_oport_infos[i].channel_count;
     if (audio_oport_infos.size()) {
-      printerr ("%s: audio_oports:%u:", debug_name(), audio_oport_infos.size());
+      String s = string_format ("audio_oports=%u:", audio_oport_infos.size());
       for (size_t i = 0; i < audio_oport_infos.size(); i++)
         if (audio_oport_infos[i].id != CLAP_INVALID_ID && audio_oport_infos[i].port_type)
-          printerr (" %u:ch=%u:%s:m=%u:%s:",
-                    audio_oport_infos[i].id,
-                    audio_oport_infos[i].channel_count,
-                    audio_oport_infos[i].name,
-                    audio_oport_infos[i].flags & CLAP_AUDIO_PORT_IS_MAIN,
-                    audio_oport_infos[i].port_type);
-      printerr ("\n");
+          s += string_format (" %u:ch=%u:%s:m=%u:%s:",
+                              audio_oport_infos[i].id,
+                              audio_oport_infos[i].channel_count,
+                              audio_oport_infos[i].name,
+                              audio_oport_infos[i].flags & CLAP_AUDIO_PORT_IS_MAIN,
+                              audio_oport_infos[i].port_type);
+      CDEBUG ("%s: %s", debug_name(), s);
     }
     // allocate .data32 pointer arrays for all input/output port channels
     data32ptrs.resize (total_channels);
@@ -520,7 +582,7 @@ public:
       plugin_ = nullptr;
     }
     if (plugin_) {
-      log (CLAP_LOG_DEBUG, "initialized");
+      CDEBUG ("%s: initialized", debug_name());
       plugin_audio_ports_config = (const clap_plugin_audio_ports_config*) plugin_->get_extension (plugin_, CLAP_EXT_AUDIO_PORTS_CONFIG);
       plugin_audio_ports = (const clap_plugin_audio_ports*) plugin_->get_extension (plugin_, CLAP_EXT_AUDIO_PORTS);
       plugin_note_ports = (const clap_plugin_note_ports*) plugin_->get_extension (plugin_, CLAP_EXT_NOTE_PORTS);
@@ -543,7 +605,7 @@ public:
     while (timers.size())
       host_timer_support.unregister_timer (&phost, timers.back());
     if (plugin_)
-      log (CLAP_LOG_DEBUG, "destroying");
+      CDEBUG ("%s: destroying", debug_name());
     if (plugin_)
       plugin_->destroy (plugin_);
     plugin_ = nullptr;
@@ -555,7 +617,7 @@ public:
     return_unless (plugin_, false);
     assert_return (!activated(), true);
     activated_ = plugin_->activate (plugin_, engine.sample_rate(), 32, 4096);
-    log (CLAP_LOG_DEBUG, activated_ ? "activated" : "failed to activate");
+    CDEBUG ("%s: %s", debug_name(), activated_ ? "activated" : "failed to activate");
     return activated();
   }
   void
@@ -565,7 +627,7 @@ public:
     assert_return (activated());
     activated_ = false;
     plugin_->deactivate (plugin_);
-    log (CLAP_LOG_DEBUG, "deactivated");
+    CDEBUG ("%s: deactivated", debug_name());
   }
   bool
   start_processing()
@@ -687,7 +749,8 @@ ClapDeviceImpl::PluginHandle::log (clap_log_severity severity, const char *msg)
 // == CLAP AudioWrapper ==
 class ClapDeviceImpl::AudioWrapper : public AudioProcessor {
   PluginHandle *handle_ = nullptr;
-  bool can_process = false;
+  bool can_process_ = false;
+  clap_note_dialect eventinput_ = clap_note_dialect (0), eventoutput_ = clap_note_dialect (0);
   uint ibus_clapidx_ = -1, obus_clapidx_ = -1;
   String ibus_name_, obus_name_;
   IBusId ibusid = {};
@@ -696,6 +759,12 @@ public:
   AudioWrapper (AudioEngine &engine) :
     AudioProcessor (engine)
   {}
+  void
+  event_ports (clap_note_dialect eventinput, clap_note_dialect eventoutput)
+  {
+    eventinput_ = eventinput;
+    eventoutput_ = eventoutput;
+  }
   void
   stereo_ibus (uint ibus_clapidx, const char *ibus_name)
   {
@@ -717,9 +786,110 @@ public:
   reset (uint64 target_stamp) override
   {}
   void
+  convert_clap_events (int64_t steady_time)
+  {
+    auto &input_events = handle_->input_events;
+    MidiEventRange erange = get_event_input();
+    if (input_events.capacity() < erange.events_pending())
+      input_events.reserve (erange.events_pending() + 128);
+    input_events.resize (erange.events_pending());
+    uint j = 0;
+    for (const auto &ev : erange)
+      switch (ev.message())
+        {
+          clap_event_note_t *enote;
+        case MidiMessage::NOTE_ON:
+        case MidiMessage::NOTE_OFF:
+          enote = &input_events[j++].note;
+          enote->header.size = sizeof (*enote);
+          enote->header.type = ev.message() == MidiMessage::NOTE_ON ? CLAP_EVENT_NOTE_ON : CLAP_EVENT_NOTE_OFF;
+          enote->header.time = MAX (ev.frame, 0);
+          enote->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+          enote->header.flags = 0;
+          enote->note_id = ev.noteid;
+          enote->port_index = 0;
+          enote->channel = ev.channel;
+          enote->key = ev.key;
+          enote->velocity = ev.velocity;
+          break;
+        case MidiMessage::ALL_NOTES_OFF:
+          enote = &input_events[j++].note;
+          enote->header.size = sizeof (*enote);
+          enote->header.type = CLAP_EVENT_NOTE_CHOKE;
+          enote->header.time = MAX (ev.frame, 0);
+          enote->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+          enote->header.flags = 0;
+          enote->note_id = -1;
+          enote->port_index = 0;
+          enote->channel = -1;
+          enote->key = -1;
+          enote->velocity = 0;
+          break;
+        default: ;
+        }
+    input_events.resize (j);
+    // for (const auto &ev : input_events) CDEBUG ("input: %s", clap_event_to_string (&ev.note));
+  }
+  void
+  convert_midi1_events (int64_t steady_time)
+  {
+    auto &input_events = handle_->input_events;
+    MidiEventRange erange = get_event_input();
+    if (input_events.capacity() < erange.events_pending())
+      input_events.reserve (erange.events_pending() + 128);
+    input_events.resize (erange.events_pending());
+    uint j = 0;
+    for (const auto &ev : erange)
+      switch (ev.message())
+        {
+          clap_event_midi_t *midi1;
+        case MidiMessage::NOTE_ON:
+        case MidiMessage::NOTE_OFF:
+          midi1 = &input_events[j++].midi1;
+          midi1->header.size = sizeof (*midi1);
+          midi1->header.type = CLAP_EVENT_MIDI;
+          midi1->header.time = MAX (ev.frame, 0);
+          midi1->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+          midi1->header.flags = 0;
+          midi1->port_index = 0;
+          if (ev.message() == MidiMessage::NOTE_ON)
+            midi1->data[0] = 0x90 + ev.channel;
+          else
+            midi1->data[0] = 0x80 + ev.channel;
+          midi1->data[1] = ev.key;
+          midi1->data[2] = uint8_t (ev.velocity * 127);
+          break;
+        case MidiMessage::ALL_NOTES_OFF:
+          midi1 = &input_events[j++].midi1;
+          midi1->header.size = sizeof (*midi1);
+          midi1->header.type = CLAP_EVENT_MIDI;
+          midi1->header.time = MAX (ev.frame, 0);
+          midi1->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+          midi1->header.flags = 0;
+          midi1->port_index = 0;
+          midi1->data[0] = 0xB0 + ev.channel;
+          midi1->data[1] = 123;
+          midi1->data[2] = 0;
+          break;
+        default: ;
+        }
+    input_events.resize (j);
+  }
+  void (AudioWrapper::*convert_input_events) (int64_t) = nullptr;
+  void
   initialize (SpeakerArrangement busses) override
   {
     remove_all_buses();
+    if (eventinput_ & CLAP_NOTE_DIALECT_CLAP) {
+      prepare_event_input();
+      convert_input_events = &AudioWrapper::convert_clap_events;
+    } else if (eventinput_ & CLAP_NOTE_DIALECT_MIDI) {
+      prepare_event_input();
+      convert_input_events = &AudioWrapper::convert_midi1_events;
+    } else
+      convert_input_events = nullptr;
+    if (eventoutput_)
+      prepare_event_output();
     if (ibus_clapidx_ != -1)
       ibusid = add_input_bus (ibus_name_, SpeakerArrangement::STEREO);
     if (obus_clapidx_ != -1)
@@ -731,10 +901,10 @@ public:
   {
     if (handle_)
       handle_->stop_processing();
-    can_process = false;
+    can_process_ = false;
     handle_ = handle;
     if (handle_) {
-      can_process = handle_->start_processing();
+      can_process_ = handle_->start_processing();
       processinfo = clap_process_t {
         .steady_time = 0, .frames_count = 0, .transport = nullptr,
         .audio_inputs = &handle_->audio_inputs[0], .audio_outputs = &handle_->audio_outputs[0],
@@ -757,9 +927,11 @@ public:
       assert_return (processinfo.audio_outputs[obus_clapidx_].channel_count == no);
       processinfo.audio_outputs[obus_clapidx_].data32[i] = oblock (obusid, i);
     }
-    // FIXME: pass through if !can_process or CLAP_PROCESS_ERROR
-    if (can_process) {
+    // FIXME: pass through if !can_process_ or CLAP_PROCESS_ERROR
+    if (can_process_) {
       processinfo.frames_count = n_frames;
+      if (convert_input_events)
+        (this->*convert_input_events) (processinfo.steady_time);
       processinfo.steady_time += processinfo.frames_count;
       clap_process_status status = handle_->process (&processinfo);
       (void) status;
@@ -813,6 +985,10 @@ ClapDeviceImpl::ClapDeviceImpl (const String &clapid, AudioProcessorP aproc) :
       proc_->stereo_ibus (ibus_clapidx, ibus_name);
     if (obus_channels == 2)
       proc_->stereo_obus (obus_clapidx, obus_name);
+    proc_->event_ports (clap_note_dialect (handle_->note_iport_infos.size() ? handle_->note_iport_infos[0].supported_dialects : 0),
+                        clap_note_dialect (handle_->note_oport_infos.size() ? handle_->note_oport_infos[0].supported_dialects : 0));
+    if (handle_->note_iport_infos.size())
+      handle_->input_events.reserve (1024);
   }
 }
 
