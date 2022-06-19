@@ -68,7 +68,7 @@ TrackImpl::serialize (WritNode &xs)
         }
     }
   // device chain
-  xs["chain"] & *chain_; // always one present
+  xs["chain"] & *dynamic_cast<Serializable*> (&*chain_); // always exists
 }
 
 void
