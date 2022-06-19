@@ -11,7 +11,7 @@ class DeviceImpl : public GadgetImpl, public virtual Device {
   AudioProcessorP proc_;
   AudioComboP     combo_; // maybe null
   DeviceS         children_;
-  DeviceInfo      info;
+  DeviceInfo      info_;
   ASE_DEFINE_MAKE_SHARED (DeviceImpl);
   friend class AudioProcessor;
   DeviceP         insert_device        (const String &uri, Device *sibling);
@@ -22,7 +22,7 @@ protected:
 public:
   explicit        DeviceImpl           (const String &aseid, AudioProcessor::StaticInfo, AudioProcessorP);
   AudioComboP     audio_combo          () const         { return combo_; }
-  DeviceInfo      device_info          () override      { return info; }
+  DeviceInfo      device_info          () override      { return info_; }
   PropertyP       access_property      (String ident) override;
   PropertyS       access_properties    () override;
   bool            is_combo_device      () override      { return combo_ != nullptr; }

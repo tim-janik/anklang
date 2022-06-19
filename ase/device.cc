@@ -17,13 +17,13 @@ DeviceImpl::DeviceImpl (const String &aseid, AudioProcessor::StaticInfo static_i
   assert_return (aproc != nullptr);
   AudioProcessorInfo pinfo;
   static_info (pinfo);
-  info.uri          = aseid;
-  info.name         = pinfo.label;
-  info.category     = pinfo.category;
-  info.description  = pinfo.description;
-  info.website_url  = pinfo.website_url;
-  info.creator_name = pinfo.creator_name;
-  info.creator_url  = pinfo.creator_url;
+  info_.uri          = aseid;
+  info_.name         = pinfo.label;
+  info_.category     = pinfo.category;
+  info_.description  = pinfo.description;
+  info_.website_url  = pinfo.website_url;
+  info_.creator_name = pinfo.creator_name;
+  info_.creator_url  = pinfo.creator_url;
 }
 
 DeviceImpl::~DeviceImpl()
@@ -41,7 +41,7 @@ DeviceImpl::serialize (WritNode &xs)
         DeviceInfo info = subdevicep->device_info();
         WritNode xc = xs["devices"].push();
         xc & *subdevicep;
-        xc.front ("Device.URI") & info.uri;
+        xc.front ("Device.URI") & info_.uri;
       }
   // load subdevices
   if (combo_ && xs.in_load())
