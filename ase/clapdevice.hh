@@ -10,19 +10,21 @@ class ClapDeviceImpl : public GadgetImpl, public virtual Device {
 public:
   ASE_CLASS_DECLS (AudioWrapper);
 private:
-  class PluginDescriptor;
   class PluginHandle;
   AudioWrapperP proc_;
   ASE_DEFINE_MAKE_SHARED (ClapDeviceImpl);
   std::shared_ptr<PluginHandle> handle_;
-  PluginDescriptor *descriptor_ = nullptr;
+  DeviceInfo      info_;
 protected:
+  class PluginDescriptor;
+  PluginDescriptor *descriptor_ = nullptr;
   virtual           ~ClapDeviceImpl        ();
   void              _set_parent            (Gadget *parent) override;
+  static DeviceInfo device_info_from_clap  (PluginDescriptor &descriptor);
 public:
   explicit           ClapDeviceImpl        (const String &clapid, AudioProcessorP aproc);
   static DeviceInfoS list_clap_plugins     ();
-  DeviceInfo         device_info           () override;
+  DeviceInfo         device_info           () override                       { return info_; }
   bool               is_combo_device       () override                       { return false; }
   DeviceS            list_devices          () override                       { return {}; } // no children
   DeviceInfoS        list_device_types     () override                       { return {}; } // no children

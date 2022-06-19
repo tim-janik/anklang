@@ -956,8 +956,10 @@ ClapDeviceImpl::ClapDeviceImpl (const String &clapid, AudioProcessorP aproc) :
       descriptor_ = descriptor;
       break;
     }
-  if (descriptor_)
+  if (descriptor_) {
+    info_ = device_info_from_clap (*descriptor_);
     descriptor_->open();
+  }
   const clap_plugin_entry *pluginentry = !descriptor_ || !proc_ ? nullptr : descriptor_->entry();
   const clap_plugin_factory *pluginfactory = !pluginentry ? nullptr :
                                              (const clap_plugin_factory *) pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
@@ -1037,6 +1039,32 @@ ClapDeviceImpl::_set_parent (Gadget *parent)
     }
 }
 
+DeviceInfo
+ClapDeviceImpl::device_info_from_clap (PluginDescriptor &descriptor)
+{
+  DeviceInfo di;
+  di.uri = "CLAP:" + descriptor.id;
+  di.name = descriptor.name;
+  di.description = descriptor.description;
+  di.website_url = descriptor.url;
+  di.creator_name = descriptor.vendor;
+  di.creator_url = descriptor.manual_url;
+  const char *const cfeatures = descriptor.features.c_str();
+  if (strstr (cfeatures, ":instrument:"))        // CLAP_PLUGIN_FEATURE_INSTRUMENT
+    di.category = "Instrument";
+  else if (strstr (cfeatures, ":analyzer:"))     // CLAP_PLUGIN_FEATURE_ANALYZER
+    di.category = "Analyzer";
+  else if (strstr (cfeatures, ":note-effect:"))  // CLAP_PLUGIN_FEATURE_NOTE_EFFECT
+    di.category = "Note FX";
+  else if (strstr (cfeatures, ":audio-effect:")) // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT
+    di.category = "Audio FX";
+  else if (strstr (cfeatures, ":effect:"))       // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT
+    di.category = "Audio FX";
+  else
+    di.category = "Clap Device";
+  return di;
+}
+
 DeviceInfoS
 ClapDeviceImpl::list_clap_plugins ()
 {
@@ -1044,32 +1072,12 @@ ClapDeviceImpl::list_clap_plugins ()
   if (devs.size())
     return devs;
   for (PluginDescriptor *descriptor : PluginDescriptor::collect_descriptors()) {
-    std::string title = descriptor->name;
+    std::string title = descriptor->name; // FIXME
     if (!descriptor->version.empty())
       title = title + " " + descriptor->version;
     if (!descriptor->vendor.empty())
       title = title + " - " + descriptor->vendor;
-    DeviceInfo di;
-    di.uri = "CLAP:" + descriptor->id;
-    di.name = descriptor->name;
-    di.description = descriptor->description;
-    di.website_url = descriptor->url;
-    di.creator_name = descriptor->vendor;
-    di.creator_url = descriptor->manual_url;
-    const char *const cfeatures = descriptor->features.c_str();
-    if (strstr (cfeatures, ":instrument:"))        // CLAP_PLUGIN_FEATURE_INSTRUMENT
-      di.category = "Instrument";
-    else if (strstr (cfeatures, ":analyzer:"))     // CLAP_PLUGIN_FEATURE_ANALYZER
-      di.category = "Analyzer";
-    else if (strstr (cfeatures, ":note-effect:"))  // CLAP_PLUGIN_FEATURE_NOTE_EFFECT
-      di.category = "Note FX";
-    else if (strstr (cfeatures, ":audio-effect:")) // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT
-      di.category = "Audio FX";
-    else if (strstr (cfeatures, ":effect:"))       // CLAP_PLUGIN_FEATURE_AUDIO_EFFECT
-      di.category = "Audio FX";
-    else
-      di.category = "Clap Device";
-    devs.push_back (di);
+    devs.push_back (device_info_from_clap (*descriptor));
   }
   return devs;
 }
@@ -1078,12 +1086,6 @@ AudioProcessorP
 ClapDeviceImpl::_audio_processor () const
 {
   return proc_;
-}
-
-DeviceInfo
-ClapDeviceImpl::device_info ()
-{
-  return {};
 }
 
 void
