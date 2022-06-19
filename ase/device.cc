@@ -35,23 +35,22 @@ DeviceImpl::serialize (WritNode &xs)
   GadgetImpl::serialize (xs);
   // save subdevices
   if (combo_ && xs.in_save())
-    for (auto &subdev : list_devices())
+    for (DeviceP subdevicep : list_devices())
       {
-        DeviceImplP subdevicep = shared_ptr_cast<DeviceImpl> (subdev);
-        DeviceInfo info = subdevicep->device_info();
         WritNode xc = xs["devices"].push();
-        xc & *subdevicep;
-        xc.front ("Device.URI") & info_.uri;
+        xc & *dynamic_cast<Serializable*> (&*subdevicep);
+        String uri = subdevicep->device_info().uri;
+        xc.front ("Device.URI") & uri;
       }
   // load subdevices
   if (combo_ && xs.in_load())
     for (auto &xc : xs["devices"].to_nodes())
       {
-        String uuiduri = xc["Device.URI"].as_string();
-        if (uuiduri.empty())
+        String uri = xc["Device.URI"].as_string();
+        if (uri.empty())
           continue;
-        DeviceImplP subdevicep = shared_ptr_cast<DeviceImpl> (append_device (uuiduri));
-        xc & *subdevicep;
+        DeviceP subdevicep = append_device (uri);
+        xc & *dynamic_cast<Serializable*> (&*subdevicep);
       }
 }
 
@@ -168,8 +167,7 @@ DeviceP
 DeviceImpl::insert_device (const String &uri, Device *sibling)
 {
   DeviceP devicep;
-  DeviceImpl *siblingi = dynamic_cast<DeviceImpl*> (sibling);
-  AudioProcessorP siblingp = siblingi ? siblingi->proc_ : nullptr;
+  AudioProcessorP siblingp = sibling ? sibling->_audio_processor() : nullptr;
   if (combo_)
     {
       devicep = create_processor_device (proc_->engine(), uri, false);
