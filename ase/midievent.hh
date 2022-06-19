@@ -46,7 +46,7 @@ struct MidiEvent {
   constexpr static MidiEventType SYSEX            = MidiEventType (0xF0);
   MidiEventType type;   ///< MidiEvent type, one of the MidiEventType members
   int8      frame;      ///< Offset into current block, delayed if negative
-  uint8     channel;    ///< 1…16 for standard events
+  uint8     channel;    ///< 0…15 for standard events
   union {
     uint8   key;        ///< NOTE, KEY_PRESSURE MIDI note, 0…0x7f, 60 = middle C at 261.63 Hz.
     uint8   fragment;   ///< Flag for multi-part control change mesages.
