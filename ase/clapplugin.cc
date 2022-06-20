@@ -289,10 +289,6 @@ ClapPluginHandleImpl::get_port_infos()
       audio_outputs_[i].data32[j] = scratch_float_buffer;
   }
   assert_return (total_channels == 0);
-  // input_events_
-  input_events_.resize (0);
-  // output_events_
-  output_events_.resize (0);
 }
 
 // == helpers ==
@@ -841,6 +837,254 @@ try_load_x11wrapper()
     return (Gtk2DlWrapEntry*) ptr;
   } ();
   x11wrapper = gtk2wrapentry;
+}
+
+// == ClapEventUnion ==
+union ClapEventUnion {
+  clap_event_header_t          header;        // size, time, space_id, type, flags
+  clap_event_note_t            note;          // CLAP_NOTE_DIALECT_CLAP
+  clap_event_note_expression_t expression;    // CLAP_NOTE_DIALECT_CLAP
+  clap_event_param_value_t     value;
+  clap_event_param_mod_t       mod;
+  clap_event_param_gesture_t   gesture;
+  clap_event_midi_t            midi1;         // CLAP_NOTE_DIALECT_MIDI
+  clap_event_midi_sysex_t      sysex;         // CLAP_NOTE_DIALECT_MIDI
+  clap_event_midi2_t           midi2;         // CLAP_NOTE_DIALECT_MIDI2
+};
+
+// == ClapAudioWrapper ==
+class ClapAudioWrapper : public AudioProcessor {
+  ClapPluginHandle *handle_ = nullptr;
+  String ibus_name_, obus_name_;
+  IBusId ibusid = {};
+  OBusId obusid = {};
+  uint ibus_clapidx_ = -1, obus_clapidx_ = -1;
+  clap_note_dialect eventinput_ = clap_note_dialect (0);
+  clap_note_dialect eventoutput_ = clap_note_dialect (0);
+  bool can_process_ = false;
+public:
+  ClapAudioWrapper (AudioEngine &engine) :
+    AudioProcessor (engine)
+  {}
+  void
+  event_ports (clap_note_dialect eventinput, clap_note_dialect eventoutput)
+  {
+    eventinput_ = eventinput;
+    eventoutput_ = eventoutput;
+  }
+  void
+  stereo_ibus (uint ibus_clapidx, const char *ibus_name)
+  {
+    ibus_clapidx_ = ibus_clapidx;
+    ibus_name_ = ibus_name;
+  }
+  void
+  stereo_obus (uint obus_clapidx, const char *obus_name)
+  {
+    obus_clapidx_ = obus_clapidx;
+    obus_name_ = obus_name;
+  }
+  static void
+  static_info (AudioProcessorInfo &info)
+  {
+    info.label = "Anklang.Devices.ClapAudioWrapper";
+  }
+  void
+  reset (uint64 target_stamp) override
+  {}
+  void convert_clap_events (int64_t steady_time);
+  void convert_midi1_events (int64_t steady_time);
+  void (ClapAudioWrapper::*convert_input_events) (int64_t) = nullptr;
+  void
+  initialize (SpeakerArrangement busses) override
+  {
+    remove_all_buses();
+    if (ibus_clapidx_ != -1)
+      ibusid = add_input_bus (ibus_name_, SpeakerArrangement::STEREO);
+    if (obus_clapidx_ != -1)
+      obusid = add_output_bus (obus_name_, SpeakerArrangement::STEREO);
+    if (eventoutput_)
+      prepare_event_output();
+    if (eventinput_ & CLAP_NOTE_DIALECT_CLAP) {
+      prepare_event_input();
+      convert_input_events = &ClapAudioWrapper::convert_clap_events;
+    } else if (eventinput_ & CLAP_NOTE_DIALECT_MIDI) {
+      prepare_event_input();
+      convert_input_events = &ClapAudioWrapper::convert_midi1_events;
+    } else
+      convert_input_events = nullptr;
+    // workaround AudioProcessor asserting that a Processor should have *some* IO bus
+    if (!convert_input_events && !eventoutput_ && ibusid == IBusId (0) && obusid == OBusId (0))
+      prepare_event_input();
+  }
+  std::vector<ClapEventUnion> input_events_;
+  std::vector<clap_event_header_t> output_events_;
+  static uint32_t
+  input_events_size (const clap_input_events *evlist)
+  {
+    ClapAudioWrapper *self = (ClapAudioWrapper*) evlist->ctx;
+    return self->input_events_.size();
+  }
+  static const clap_event_header_t*
+  input_events_get (const clap_input_events *evlist, uint32_t index)
+  {
+    ClapAudioWrapper *self = (ClapAudioWrapper*) evlist->ctx;
+    return &self->input_events_.at (index).header;
+  }
+  static bool
+  output_events_try_push (const clap_output_events *evlist, const clap_event_header_t *event)
+  {
+    ClapAudioWrapper *self = (ClapAudioWrapper*) evlist->ctx;
+    if (0)
+      CDEBUG ("%s: host.try_push(type=%x): false", self->debug_name(), event->type);
+    return false;
+  }
+  const clap_input_events_t plugin_input_events = {
+    .ctx = (ClapAudioWrapper*) this,
+    .size = input_events_size,
+    .get = input_events_get,
+  };
+  const clap_output_events_t plugin_output_events = {
+    .ctx = (ClapAudioWrapper*) this,
+    .try_push = output_events_try_push,
+  };
+  clap_process_t processinfo = { 0, };
+  void
+  set_plugin (ClapPluginHandle *handle)
+  {
+    if (handle_)
+      handle_->stop_processing();
+    can_process_ = false;
+    handle_ = handle;
+    if (handle_) {
+      can_process_ = handle_->start_processing();
+      processinfo = clap_process_t {
+        .steady_time = 0, .frames_count = 0, .transport = nullptr,
+        .audio_inputs = &handle_->audio_inputs_[0], .audio_outputs = &handle_->audio_outputs_[0],
+        .audio_inputs_count = uint32_t (handle_->audio_inputs_.size()),
+        .audio_outputs_count = uint32_t (handle_->audio_outputs_.size()),
+        .in_events = &plugin_input_events, .out_events = &plugin_output_events,
+      };
+    }
+    // input_events_
+    input_events_.resize (0);
+    // output_events_
+    output_events_.resize (0);
+  }
+  void
+  render (uint n_frames) override
+  {
+    const uint ni = ibusid != IBusId (0) ? this->n_ichannels (ibusid) : 0;
+    for (size_t i = 0; i < ni; i++) {
+      assert_return (processinfo.audio_inputs[ibus_clapidx_].channel_count == ni);
+      processinfo.audio_inputs[ibus_clapidx_].data32[i] = const_cast<float*> (ifloats (ibusid, i));
+    }
+    const uint no = obusid != OBusId (0) ? this->n_ochannels (obusid) : 0;
+    for (size_t i = 0; i < no; i++) {
+      assert_return (processinfo.audio_outputs[obus_clapidx_].channel_count == no);
+      processinfo.audio_outputs[obus_clapidx_].data32[i] = oblock (obusid, i);
+    }
+    // FIXME: pass through if !can_process_ or CLAP_PROCESS_ERROR
+    if (can_process_) {
+      processinfo.frames_count = n_frames;
+      if (convert_input_events)
+        (this->*convert_input_events) (processinfo.steady_time);
+      processinfo.steady_time += processinfo.frames_count;
+      clap_process_status status = handle_->process (&processinfo);
+      (void) status;
+    }
+  }
+};
+static auto clap_audio_wrapper_id = register_audio_processor<ClapAudioWrapper>();
+
+void
+ClapAudioWrapper::convert_clap_events (int64_t steady_time)
+{
+  MidiEventRange erange = get_event_input();
+  if (input_events_.capacity() < erange.events_pending())
+    input_events_.reserve (erange.events_pending() + 128);
+  input_events_.resize (erange.events_pending());
+  uint j = 0;
+  for (const auto &ev : erange)
+    switch (ev.message())
+      {
+        clap_event_note_t *enote;
+      case MidiMessage::NOTE_ON:
+      case MidiMessage::NOTE_OFF:
+        enote = &input_events_[j++].note;
+        enote->header.size = sizeof (*enote);
+        enote->header.type = ev.message() == MidiMessage::NOTE_ON ? CLAP_EVENT_NOTE_ON : CLAP_EVENT_NOTE_OFF;
+        enote->header.time = MAX (ev.frame, 0);
+        enote->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+        enote->header.flags = 0;
+        enote->note_id = ev.noteid;
+        enote->port_index = 0;
+        enote->channel = ev.channel;
+        enote->key = ev.key;
+        enote->velocity = ev.velocity;
+        break;
+      case MidiMessage::ALL_NOTES_OFF:
+        enote = &input_events_[j++].note;
+        enote->header.size = sizeof (*enote);
+        enote->header.type = CLAP_EVENT_NOTE_CHOKE;
+        enote->header.time = MAX (ev.frame, 0);
+        enote->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+        enote->header.flags = 0;
+        enote->note_id = -1;
+        enote->port_index = 0;
+        enote->channel = -1;
+        enote->key = -1;
+        enote->velocity = 0;
+        break;
+      default: ;
+      }
+  input_events_.resize (j);
+  // for (const auto &ev : input_events_) CDEBUG ("input: %s", clap_event_to_string (&ev.note));
+}
+
+void
+ClapAudioWrapper::convert_midi1_events (int64_t steady_time)
+{
+  MidiEventRange erange = get_event_input();
+  if (input_events_.capacity() < erange.events_pending())
+    input_events_.reserve (erange.events_pending() + 128);
+  input_events_.resize (erange.events_pending());
+  uint j = 0;
+  for (const auto &ev : erange)
+    switch (ev.message())
+      {
+        clap_event_midi_t *midi1;
+      case MidiMessage::NOTE_ON:
+      case MidiMessage::NOTE_OFF:
+        midi1 = &input_events_[j++].midi1;
+        midi1->header.size = sizeof (*midi1);
+        midi1->header.type = CLAP_EVENT_MIDI;
+        midi1->header.time = MAX (ev.frame, 0);
+        midi1->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+        midi1->header.flags = 0;
+        midi1->port_index = 0;
+        if (ev.message() == MidiMessage::NOTE_ON)
+          midi1->data[0] = 0x90 + ev.channel;
+        else
+          midi1->data[0] = 0x80 + ev.channel;
+        midi1->data[1] = ev.key;
+        midi1->data[2] = uint8_t (ev.velocity * 127);
+        break;
+      case MidiMessage::ALL_NOTES_OFF:
+        midi1 = &input_events_[j++].midi1;
+        midi1->header.size = sizeof (*midi1);
+        midi1->header.type = CLAP_EVENT_MIDI;
+        midi1->header.time = MAX (ev.frame, 0);
+        midi1->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+        midi1->header.flags = 0;
+        midi1->port_index = 0;
+        midi1->data[0] = 0xB0 + ev.channel;
+        midi1->data[1] = 123;
+        midi1->data[2] = 0;
+        break;
+      default: ;
+      }
+  input_events_.resize (j);
 }
 
 } // Ase
