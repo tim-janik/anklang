@@ -608,6 +608,79 @@ host_request_callback_mt (const clap_host *host) {
   });
 }
 
+// == ClapFileHandle ==
+ClapFileHandle::ClapFileHandle (const String &pathname) :
+  dlfile (pathname)
+{}
+
+ClapFileHandle::~ClapFileHandle()
+{
+  assert_return (!opened());
+}
+
+String
+ClapFileHandle::get_dlerror ()
+{
+  const char *err = dlerror();
+  return err ? err : "unknown dlerror";
+}
+
+template<typename Ptr> Ptr
+ClapFileHandle::symbol (const char *symname) const
+{
+  void *p = dlhandle_ ? dlsym (dlhandle_, symname) : nullptr;
+  return (Ptr) p;
+}
+
+void
+ClapFileHandle::close()
+{
+  assert_return (open_count_ > 0);
+  open_count_--;
+  return_unless (open_count_ == 0);
+  if (pluginentry) {
+    pluginentry->deinit();
+    pluginentry = nullptr;
+  }
+  if (dlhandle_) {
+    if (dlclose (dlhandle_) != 0)
+      CDEBUG ("dlclose failed: %s: %s", dlfile, get_dlerror());
+    dlhandle_ = nullptr;
+  }
+}
+
+void
+ClapFileHandle::open()
+{
+  if (open_count_++ == 0 && !dlhandle_) {
+    dlhandle_ = dlopen (dlfile.c_str(), RTLD_LOCAL | RTLD_NOW);
+    if (dlhandle_) {
+      pluginentry = symbol<const clap_plugin_entry*> ("clap_entry");
+      bool initialized = false;
+      if (pluginentry && clap_version_is_compatible (pluginentry->clap_version)) {
+        initialized = pluginentry->init (dlfile.c_str());
+        if (!initialized)
+          pluginentry->deinit();
+      }
+      if (!initialized) {
+        CDEBUG ("unusable clap_entry: %s", !pluginentry ? "NULL" :
+                string_format ("clap-%u.%u.%u", pluginentry->clap_version.major, pluginentry->clap_version.minor,
+                               pluginentry->clap_version.revision));
+        pluginentry = nullptr;
+        dlclose (dlhandle_);
+        dlhandle_ = nullptr;
+      }
+    } else
+      CDEBUG ("dlopen failed: %s: %s", dlfile, get_dlerror());
+  }
+}
+
+bool
+ClapFileHandle::opened() const
+{
+  return dlhandle_ && pluginentry;
+}
+
 // == CLAP utilities ==
 StringS
 list_clap_files()

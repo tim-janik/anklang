@@ -52,8 +52,25 @@ private:
   const String clapid_;
 };
 
+// == ClapFileHandle ==
+class ClapFileHandle {
+  void *dlhandle_ = nullptr;
+  uint  open_count_ = 0;
+public:
+  const std::string dlfile;
+  const clap_plugin_entry *pluginentry = nullptr;
+  explicit      ClapFileHandle  (const String &pathname);
+  virtual      ~ClapFileHandle  ();
+  static String get_dlerror     ();
+  void          close           ();
+  void          open            ();
+  bool          opened          () const;
+  template<typename Ptr>
+  Ptr           symbol          (const char *symname) const;
+};
+
 // == CLAP utilities ==
-StringS     list_clap_files        ();
+StringS     list_clap_files     ();
 const char* clap_event_type_string (int etype);
 String      clap_event_to_string   (const clap_event_note_t *enote);
 
