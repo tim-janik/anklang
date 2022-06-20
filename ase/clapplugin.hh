@@ -30,14 +30,16 @@ struct ClapPluginHandle : public std::enable_shared_from_this<ClapPluginHandle> 
   const std::vector<clap_audio_buffer_t> &audio_outputs = audio_outputs_;
   const std::vector<float*> &data32ptrs = data32ptrs_;
 public:
-  explicit      ClapPluginHandle  (const String &clapid);
-  virtual       ~ClapPluginHandle ();
-  String        clapid            () const { return clapid_; }
-  virtual bool  activate          () = 0;
-  virtual bool  activated         () const = 0;
-  virtual bool  deactivate        () = 0;
-  virtual void  destroy_gui       () = 0;
-  virtual void  destroy           () = 0;
+  explicit     ClapPluginHandle  (const String &clapid);
+  virtual      ~ClapPluginHandle ();
+  String       clapid            () const { return clapid_; }
+  virtual bool activate          () = 0;
+  virtual bool activated         () const = 0;
+  virtual bool deactivate        () = 0;
+  virtual void show_gui          () = 0;
+  virtual void hide_gui          () = 0;
+  virtual void destroy_gui       () = 0;
+  virtual void destroy           () = 0;
 private:
   const String clapid_;
   std::vector<EventUnion> input_events_;

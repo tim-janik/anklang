@@ -24,6 +24,8 @@ static ClapPluginHandleImplP  handle_sptr              (const clap_host *host);
 static const void*      host_get_extension       (const clap_host *host, const char *extension_id);
 static void             host_request_callback_mt (const clap_host *host);
 static bool             host_unregister_timer    (const clap_host *host, clap_id timer_id);
+static void             try_load_x11wrapper      ();
+static Gtk2DlWrapEntry *x11wrapper = nullptr;
 
 // == ClapPluginHandle ==
 ClapPluginHandle::ClapPluginHandle (const String &clapid) :
@@ -86,7 +88,13 @@ public:
   {
     destroy();
   }
+  bool gui_visible = false;
+  bool gui_canresize = false;
+  ulong gui_windowid = 0;
   std::vector<uint> timers;
+  void show_gui    () override;
+  void hide_gui    () override;
+  void destroy_gui () override;
   void
   destroy () override
   {
@@ -218,7 +226,7 @@ static bool
 host_is_rescan_flag_supported (const clap_host_t *host, uint32_t flag)
 {
   const bool supported = false;
-  CDEBUG ("%s: %s: false", clapid (host), __func__, supported);
+  CDEBUG ("%s: %s: %s", clapid (host), __func__, supported);
   return supported;
 }
 
@@ -258,13 +266,155 @@ static const clap_host_params host_ext_params = {
   .request_flush = host_request_flush,
 };
 
+// == clap_host_gui ==
+static void
+host_gui_delete_request (ClapPluginHandleImplP handlep)
+{
+  CDEBUG ("%s: %s", handlep->clapid(), __func__);
+  handlep->destroy_gui();
+}
+
+static ulong
+host_gui_create_x11_window (ClapPluginHandleImplP handlep, int width, int height)
+{
+  Gtk2WindowSetup wsetup {
+    .title = handlep->clapid(), .width = width, .height = height,
+    .deleterequest_mt = [handlep] () {
+      main_loop->exec_callback ([handlep]() {
+        host_gui_delete_request (handlep);
+      });
+    },
+  };
+  const ulong windowid = x11wrapper->create_window (wsetup);
+  return windowid;
+}
+
+void
+ClapPluginHandleImpl::show_gui()
+{
+  if (plugin_gui)
+    try_load_x11wrapper();
+  if (!gui_windowid && plugin_gui && x11wrapper)
+    {
+      ClapPluginHandleImplP handlep = handle_sptr (&phost);
+      const bool floating = false;
+      clap_window_t cwindow = {
+        .api = CLAP_WINDOW_API_X11,
+        .x11 = 0
+      };
+      if (plugin_gui->is_api_supported (plugin_, cwindow.api, floating))
+        {
+          bool created = plugin_gui->create (plugin_, cwindow.api, floating);
+          CDEBUG ("%s: gui_create: %d\n", clapid(), created);
+          gui_canresize = plugin_gui->can_resize (plugin_);
+          CDEBUG ("%s: gui_can_resize: %d\n", clapid(), gui_canresize);
+          const double scale = 1.0;
+          const bool scaled = plugin_gui->set_scale (plugin_, scale);
+          CDEBUG ("%s: gui_set_scale(%f): %f\n", clapid(), scale, scaled);
+          uint32_t width = 0, height = 0;
+          const bool sized = plugin_gui->get_size (plugin_, &width, &height);
+          CDEBUG ("%s: gui_get_size: %ux%u: %d\n", clapid(), width, height, sized);
+          cwindow.x11 = host_gui_create_x11_window (handlep, width, height);
+          const bool parentset = plugin_gui->set_parent (plugin_, &cwindow);
+          CDEBUG ("%s: gui_set_parent: %d\n", clapid(), parentset);
+          gui_windowid = cwindow.x11;
+        }
+    }
+  if (gui_windowid) {
+    gui_visible = plugin_gui->show (plugin_);
+    CDEBUG ("%s: gui_show: %d\n", clapid(), gui_visible);
+    if (!gui_visible)
+      ; // do nothing, early JUCE versions have a bug returning false here
+    x11wrapper->show_window (gui_windowid);
+  }
+}
+
+void
+ClapPluginHandleImpl::hide_gui()
+{
+  if (gui_windowid)
+    {
+      plugin_gui->hide (plugin_);
+      x11wrapper->hide_window (gui_windowid);
+      gui_visible = false;
+  }
+}
+
+void
+ClapPluginHandleImpl::destroy_gui()
+{
+  hide_gui();
+  if (gui_windowid) {
+    plugin_gui->destroy (plugin_);
+    x11wrapper->destroy_window (gui_windowid);
+    gui_windowid = 0;
+  }
+}
+
+static void
+host_resize_hints_changed (const clap_host_t *host)
+{
+  CDEBUG ("%s: %s", clapid (host), __func__);
+}
+
+static bool
+host_request_resize (const clap_host_t *host, uint32_t width, uint32_t height)
+{
+  ClapPluginHandleImpl *handle = handle_ptr (host);
+  CDEBUG ("%s: %s(%u,%u)", clapid (host), __func__, width, height);
+  if (handle->gui_windowid) {
+    if (x11wrapper->resize_window (handle->gui_windowid, width, height)) {
+      if (handle->plugin_gui->can_resize (handle->plugin_))
+        handle->plugin_gui->set_size (handle->plugin_, width, height);
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool
+host_request_show (const clap_host_t *host)
+{
+  const bool supported = false;
+  CDEBUG ("%s: %s: %d", clapid (host), __func__, supported);
+  return supported;
+}
+
+static bool
+host_request_hide (const clap_host_t *host)
+{
+  const bool supported = false;
+  CDEBUG ("%s: %s: %d", clapid (host), __func__, supported);
+  return supported;
+}
+
+static void
+host_gui_closed (const clap_host_t *host, bool was_destroyed)
+{
+  ClapPluginHandleImpl *handle = handle_ptr (host);
+  CDEBUG ("%s: %s(was_destroyed=%u)", clapid (host), __func__, was_destroyed);
+  handle->gui_visible = false;
+  if (was_destroyed && handle->plugin_gui) {
+    handle->gui_windowid = 0;
+    handle->plugin_gui->destroy (handle->plugin_);
+  }
+}
+
+static const clap_host_gui host_ext_gui = {
+  .resize_hints_changed = host_resize_hints_changed,
+  .request_resize = host_request_resize,
+  .request_show = host_request_show,
+  .request_hide = host_request_hide,
+  .closed = host_gui_closed,
+};
+
 // == clap_host extensions ==
 static const void*
 host_get_extension (const clap_host *host, const char *extension_id)
 {
   const String ext = extension_id;
   if (ext == CLAP_EXT_LOG)            return &host_ext_log;
-  //if (ext == CLAP_EXT_GUI)            return &host_gui;
+  if (ext == CLAP_EXT_GUI)            return &host_ext_gui;
   if (ext == CLAP_EXT_TIMER_SUPPORT)  return &host_ext_timer_support;
   if (ext == CLAP_EXT_THREAD_CHECK)   return &host_ext_thread_check;
   if (ext == CLAP_EXT_AUDIO_PORTS)    return &host_ext_audio_ports;
@@ -283,6 +433,21 @@ host_request_callback_mt (const clap_host *host) {
       // gui_threads_leave();
     }
   });
+}
+
+// == Gtk2DlWrapEntry ==
+static void
+try_load_x11wrapper()
+{
+  return_unless (x11wrapper == nullptr);
+  static Gtk2DlWrapEntry *gtk2wrapentry = [] () {
+    String gtk2wrapso = anklang_runpath (RPath::LIBDIR, "gtk2wrap.so");
+    void *gtkdlhandle_ = dlopen (gtk2wrapso.c_str(), RTLD_LOCAL | RTLD_NOW);
+    const char *symname = "Ase__Gtk2__wrapentry";
+    void *ptr = gtkdlhandle_ ? dlsym (gtkdlhandle_, symname) : nullptr;
+    return (Gtk2DlWrapEntry*) ptr;
+  } ();
+  x11wrapper = gtk2wrapentry;
 }
 
 } // Ase
