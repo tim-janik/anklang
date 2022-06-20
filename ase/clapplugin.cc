@@ -213,6 +213,26 @@ static const clap_host_thread_check host_ext_thread_check = {
   .is_audio_thread = host_is_audio_thread,
 };
 
+// == clap_host_audio_ports ==
+static bool
+host_is_rescan_flag_supported (const clap_host_t *host, uint32_t flag)
+{
+  const bool supported = false;
+  CDEBUG ("%s: %s: false", clapid (host), __func__, supported);
+  return supported;
+}
+
+static void
+host_rescan (const clap_host_t *host, uint32_t flag)
+{
+  CDEBUG ("%s: %s", clapid (host), __func__);
+}
+
+static const clap_host_audio_ports host_ext_audio_ports = {
+  .is_rescan_flag_supported = host_is_rescan_flag_supported,
+  .rescan = host_rescan,
+};
+
 // == clap_host extensions ==
 static const void*
 host_get_extension (const clap_host *host, const char *extension_id)
@@ -222,7 +242,7 @@ host_get_extension (const clap_host *host, const char *extension_id)
   //if (ext == CLAP_EXT_GUI)            return &host_gui;
   if (ext == CLAP_EXT_TIMER_SUPPORT)  return &host_ext_timer_support;
   if (ext == CLAP_EXT_THREAD_CHECK)   return &host_ext_thread_check;
-  //if (ext == CLAP_EXT_AUDIO_PORTS)    return &host_audio_ports_;
+  if (ext == CLAP_EXT_AUDIO_PORTS)    return &host_ext_audio_ports;
   //if (ext == CLAP_EXT_PARAMS)         return &host_params;
   else return nullptr;
 }
