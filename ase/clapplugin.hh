@@ -19,8 +19,6 @@ struct ClapPluginHandle : public std::enable_shared_from_this<ClapPluginHandle> 
     clap_event_midi_sysex_t      sysex;         // CLAP_NOTE_DIALECT_MIDI
     clap_event_midi2_t           midi2;         // CLAP_NOTE_DIALECT_MIDI2
   };
-  const std::vector<EventUnion> &input_events = input_events_;
-  const std::vector<clap_event_header_t> &output_events = output_events_;
   const std::vector<clap_audio_ports_config_t> &audio_ports_configs = audio_ports_configs_;
   const std::vector<clap_audio_port_info_t> &audio_iport_infos = audio_iport_infos_;
   const std::vector<clap_audio_port_info_t> &audio_oport_infos = audio_oport_infos_;
@@ -28,20 +26,21 @@ struct ClapPluginHandle : public std::enable_shared_from_this<ClapPluginHandle> 
   const std::vector<clap_note_port_info_t> &note_oport_infos = note_oport_infos_;
   const std::vector<clap_audio_buffer_t> &audio_inputs = audio_inputs_;
   const std::vector<clap_audio_buffer_t> &audio_outputs = audio_outputs_;
-  const std::vector<float*> &data32ptrs = data32ptrs_;
 public:
-  explicit     ClapPluginHandle  (const String &clapid);
-  virtual      ~ClapPluginHandle ();
-  String       clapid            () const { return clapid_; }
-  virtual bool activate          () = 0;
-  virtual bool activated         () const = 0;
-  virtual bool deactivate        () = 0;
-  virtual void show_gui          () = 0;
-  virtual void hide_gui          () = 0;
-  virtual void destroy_gui       () = 0;
-  virtual void destroy           () = 0;
-private:
-  const String clapid_;
+  explicit                    ClapPluginHandle  (const String &clapid);
+  virtual                     ~ClapPluginHandle ();
+  String                      clapid            () const { return clapid_; }
+  virtual bool                activate          (AudioEngine &engine) = 0;
+  virtual bool                activated         () const = 0;
+  virtual void                deactivate        () = 0;
+  virtual bool                start_processing  ()  = 0;
+  virtual clap_process_status process           (const clap_process_t *clapprocess)  = 0;
+  virtual void                stop_processing   ()  = 0;
+  virtual void                show_gui          () = 0;
+  virtual void                hide_gui          () = 0;
+  virtual void                destroy_gui       () = 0;
+  virtual void                destroy           () = 0;
+protected:
   std::vector<EventUnion> input_events_;
   std::vector<clap_event_header_t> output_events_;
   std::vector<clap_audio_ports_config_t> audio_ports_configs_;
@@ -49,6 +48,8 @@ private:
   std::vector<clap_note_port_info_t> note_iport_infos_, note_oport_infos_;
   std::vector<clap_audio_buffer_t> audio_inputs_, audio_outputs_;
   std::vector<float*> data32ptrs_;
+private:
+  const String clapid_;
 };
 
 } // Ase
