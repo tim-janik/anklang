@@ -721,7 +721,7 @@ public:
   {
     if (gui_windowid) {
       plugin_gui->hide (plugin_);
-      x11wrapper()->show_window (gui_windowid);
+      x11wrapper()->hide_window (gui_windowid);
       gui_visible = false;
     }
   }
