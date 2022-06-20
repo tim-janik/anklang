@@ -6,26 +6,16 @@
 
 namespace Ase {
 
-class ClapPluginDescriptor;
-
 class ClapDeviceImpl : public GadgetImpl, public virtual Device {
-public:
-  ASE_CLASS_DECLS (AudioWrapper);
-private:
-  class PluginHandle;
-  AudioWrapperP proc_;
   ASE_DEFINE_MAKE_SHARED (ClapDeviceImpl);
-  std::shared_ptr<PluginHandle> handle_;
-  DeviceInfo      info_;
+  ClapPluginHandleP handle_;
 protected:
-  ClapPluginDescriptor *descriptor_ = nullptr;
   virtual           ~ClapDeviceImpl        ();
   void              _set_parent            (Gadget *parent) override;
-  static DeviceInfo device_info_from_clap  (ClapPluginDescriptor &descriptor);
 public:
-  explicit           ClapDeviceImpl        (const String &clapid, AudioProcessorP aproc);
+  explicit           ClapDeviceImpl        (ClapPluginHandleP claphandle);
   static DeviceInfoS list_clap_plugins     ();
-  DeviceInfo         device_info           () override                       { return info_; }
+  DeviceInfo         device_info           () override;
   bool               is_combo_device       () override                       { return false; }
   DeviceS            list_devices          () override                       { return {}; } // no children
   DeviceInfoS        list_device_types     () override                       { return {}; } // no children
@@ -35,7 +25,7 @@ public:
   AudioProcessorP    _audio_processor      () const override;
   void               _set_event_source     (AudioProcessorP esource) override;
   void               _disconnect_remove    () override;
-  static DeviceP     create_clap_device    (AudioEngine &engine, const String &clapid);
+  static DeviceP     create_clap_device    (AudioEngine &engine, const String &clapuri);
 };
 
 } // Ase
