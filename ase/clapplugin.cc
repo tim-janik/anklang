@@ -29,8 +29,8 @@ static Gtk2DlWrapEntry *x11wrapper = nullptr;
 static float scratch_float_buffer[AUDIO_BLOCK_FLOAT_ZEROS_SIZE];
 
 // == ClapPluginHandle ==
-ClapPluginHandle::ClapPluginHandle (const String &clapid) :
-  clapid_ (clapid)
+ClapPluginHandle::ClapPluginHandle (const ClapPluginDescriptor &descriptor_) :
+  descriptor (descriptor_)
 {}
 
 ClapPluginHandle::~ClapPluginHandle()
@@ -66,11 +66,16 @@ public:
   const clap_plugin_audio_ports_config *plugin_audio_ports_config = nullptr;
   const clap_plugin_audio_ports *plugin_audio_ports = nullptr;
   const clap_plugin_note_ports *plugin_note_ports = nullptr;
-  ClapPluginHandleImpl (const clap_plugin_factory *factory, const String &clapid_) :
-    ClapPluginHandle (clapid_)
+  ClapPluginHandleImpl (const ClapPluginDescriptor &descriptor_) :
+    ClapPluginHandle (descriptor_)
   {
-    if (factory)
-      plugin_ = factory->create_plugin (factory, &phost, clapid().c_str());
+    const clap_plugin_entry *pluginentry = descriptor.entry();
+    if (pluginentry)
+      {
+        const auto *factory = (const clap_plugin_factory*) pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
+        if (factory)
+          plugin_ = factory->create_plugin (factory, &phost, clapid().c_str());
+      }
     if (plugin_ && !plugin_->init (plugin_)) {
       CDEBUG ("%s: initialization failed", clapid());
       destroy(); // destroy per spec and cleanup resources used by init()
@@ -632,7 +637,7 @@ ClapPluginDescriptor::close()
 }
 
 const clap_plugin_entry*
-ClapPluginDescriptor::entry()
+ClapPluginDescriptor::entry() const
 {
   return clapfile_.opened() ? clapfile_.pluginentry : nullptr;
 }

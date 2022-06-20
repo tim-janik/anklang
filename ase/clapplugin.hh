@@ -19,7 +19,7 @@ public:
   explicit                 ClapPluginDescriptor (ClapFileHandle &clapfile);
   void                     open                 ();
   void                     close                ();
-  const clap_plugin_entry* entry                ();
+  const clap_plugin_entry* entry                () const;
   static void              add_descriptor       (const String &pluginpath, Collection &infos);
   static const Collection& collect_descriptors ();
 };
@@ -37,17 +37,18 @@ struct ClapPluginHandle : public std::enable_shared_from_this<ClapPluginHandle> 
     clap_event_midi_sysex_t      sysex;         // CLAP_NOTE_DIALECT_MIDI
     clap_event_midi2_t           midi2;         // CLAP_NOTE_DIALECT_MIDI2
   };
-  const std::vector<clap_audio_ports_config_t> &audio_ports_configs = audio_ports_configs_;
-  const std::vector<clap_audio_port_info_t> &audio_iport_infos = audio_iport_infos_;
-  const std::vector<clap_audio_port_info_t> &audio_oport_infos = audio_oport_infos_;
-  const std::vector<clap_note_port_info_t> &note_iport_infos = note_iport_infos_;
-  const std::vector<clap_note_port_info_t> &note_oport_infos = note_oport_infos_;
-  const std::vector<clap_audio_buffer_t> &audio_inputs = audio_inputs_;
-  const std::vector<clap_audio_buffer_t> &audio_outputs = audio_outputs_;
+  const ClapPluginDescriptor                    &descriptor;
+  const std::vector<clap_audio_ports_config_t>  &audio_ports_configs = audio_ports_configs_;
+  const std::vector<clap_audio_port_info_t>     &audio_iport_infos = audio_iport_infos_;
+  const std::vector<clap_audio_port_info_t>     &audio_oport_infos = audio_oport_infos_;
+  const std::vector<clap_note_port_info_t>      &note_iport_infos = note_iport_infos_;
+  const std::vector<clap_note_port_info_t>      &note_oport_infos = note_oport_infos_;
+  const std::vector<clap_audio_buffer_t>        &audio_inputs = audio_inputs_;
+  const std::vector<clap_audio_buffer_t>        &audio_outputs = audio_outputs_;
 public:
-  explicit                    ClapPluginHandle  (const String &clapid);
+  explicit                    ClapPluginHandle  (const ClapPluginDescriptor &descriptor);
   virtual                     ~ClapPluginHandle ();
-  String                      clapid            () const { return clapid_; }
+  String                      clapid            () const { return descriptor.id; }
   virtual bool                activate          (AudioEngine &engine) = 0;
   virtual bool                activated         () const = 0;
   virtual void                deactivate        () = 0;
@@ -66,8 +67,6 @@ protected:
   std::vector<clap_note_port_info_t> note_iport_infos_, note_oport_infos_;
   std::vector<clap_audio_buffer_t> audio_inputs_, audio_outputs_;
   std::vector<float*> data32ptrs_;
-private:
-  const String clapid_;
 };
 
 // == ClapFileHandle ==
