@@ -233,6 +233,31 @@ static const clap_host_audio_ports host_ext_audio_ports = {
   .rescan = host_rescan,
 };
 
+// == clap_host_params ==
+static void
+host_params_rescan (const clap_host_t *host, clap_param_rescan_flags flags)
+{
+  CDEBUG ("%s: %s(0x%x)", clapid (host), __func__, flags);
+}
+
+static void
+host_params_clear (const clap_host_t *host, clap_id param_id, clap_param_clear_flags flags)
+{
+  CDEBUG ("%s: %s(%u,0x%x)", clapid (host), __func__, param_id, flags);
+}
+
+static void
+host_request_flush (const clap_host_t *host)
+{
+  CDEBUG ("%s: %s", clapid (host), __func__);
+}
+
+static const clap_host_params host_ext_params = {
+  .rescan = host_params_rescan,
+  .clear = host_params_clear,
+  .request_flush = host_request_flush,
+};
+
 // == clap_host extensions ==
 static const void*
 host_get_extension (const clap_host *host, const char *extension_id)
@@ -243,7 +268,7 @@ host_get_extension (const clap_host *host, const char *extension_id)
   if (ext == CLAP_EXT_TIMER_SUPPORT)  return &host_ext_timer_support;
   if (ext == CLAP_EXT_THREAD_CHECK)   return &host_ext_thread_check;
   if (ext == CLAP_EXT_AUDIO_PORTS)    return &host_ext_audio_ports;
-  //if (ext == CLAP_EXT_PARAMS)         return &host_params;
+  if (ext == CLAP_EXT_PARAMS)         return &host_ext_params;
   else return nullptr;
 }
 
