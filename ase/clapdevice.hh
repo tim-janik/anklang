@@ -6,6 +6,8 @@
 
 namespace Ase {
 
+class ClapPluginDescriptor;
+
 class ClapDeviceImpl : public GadgetImpl, public virtual Device {
 public:
   ASE_CLASS_DECLS (AudioWrapper);
@@ -16,11 +18,10 @@ private:
   std::shared_ptr<PluginHandle> handle_;
   DeviceInfo      info_;
 protected:
-  class PluginDescriptor;
-  PluginDescriptor *descriptor_ = nullptr;
+  ClapPluginDescriptor *descriptor_ = nullptr;
   virtual           ~ClapDeviceImpl        ();
   void              _set_parent            (Gadget *parent) override;
-  static DeviceInfo device_info_from_clap  (PluginDescriptor &descriptor);
+  static DeviceInfo device_info_from_clap  (ClapPluginDescriptor &descriptor);
 public:
   explicit           ClapDeviceImpl        (const String &clapid, AudioProcessorP aproc);
   static DeviceInfoS list_clap_plugins     ();

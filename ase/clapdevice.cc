@@ -15,12 +15,6 @@
 namespace Ase {
 
 // == helpers ==
-static String
-feature_canonify (const String &str)
-{
-  return string_canonify (str, string_set_a2z() + string_set_A2Z() + "-0123456789", "-");
-}
-
 static const char*
 anklang_host_name()
 {
@@ -43,83 +37,6 @@ x11wrapper()
   } ();
   assert_return (gtk2wrapentry != nullptr, nullptr);
   return gtk2wrapentry;
-}
-
-// == CLAP plugin descriptor ==
-class ClapDeviceImpl::PluginDescriptor {
-  ClapFileHandle &clapfile_;
-public:
-  explicit PluginDescriptor (ClapFileHandle &clapfile) :
-    clapfile_ (clapfile)
-  {}
-  std::string id, name, version, vendor, features;
-  std::string description, url, manual_url, support_url;
-  void open()   { clapfile_.open(); }
-  void close()  { clapfile_.close(); }
-  const clap_plugin_entry *
-  entry() {
-    return clapfile_.opened() ? clapfile_.pluginentry : nullptr;
-  }
-  using Collection = std::vector<PluginDescriptor*>;
-  static void              add_descriptor      (const std::string &pluginpath, Collection &infos);
-  static const Collection& collect_descriptors ();
-};
-
-void
-ClapDeviceImpl::PluginDescriptor::add_descriptor (const std::string &pluginpath, Collection &infos)
-{
-  ClapFileHandle *filehandle = new ClapFileHandle (pluginpath);
-  filehandle->open();
-  if (!filehandle->opened()) {
-    filehandle->close();
-    delete filehandle;
-    return;
-  }
-  const clap_plugin_factory *pluginfactory = (const clap_plugin_factory *) filehandle->pluginentry->get_factory (CLAP_PLUGIN_FACTORY_ID);
-  const uint32_t plugincount = !pluginfactory ? 0 : pluginfactory->get_plugin_count (pluginfactory);
-  for (size_t i = 0; i < plugincount; i++)
-    {
-      const clap_plugin_descriptor_t *pdesc = pluginfactory->get_plugin_descriptor (pluginfactory, i);
-      if (!pdesc || !pdesc->id || !pdesc->id[0])
-        continue;
-      const std::string clapversion = string_format ("clap-%u.%u.%u", pdesc->clap_version.major, pdesc->clap_version.minor, pdesc->clap_version.revision);
-      if (!clap_version_is_compatible (pdesc->clap_version)) {
-        CDEBUG ("invalid plugin: %s (%s)", pdesc->id, clapversion);
-        continue;
-      }
-      PluginDescriptor *descriptor = new PluginDescriptor (*filehandle);
-      descriptor->id = pdesc->id;
-      descriptor->name = pdesc->name ? pdesc->name : pdesc->id;
-      descriptor->version = pdesc->version ? pdesc->version : "0.0.0-unknown";
-      descriptor->vendor = pdesc->vendor ? pdesc->vendor : "";
-      descriptor->url = pdesc->url ? pdesc->url : "";
-      descriptor->manual_url = pdesc->manual_url ? pdesc->manual_url : "";
-      descriptor->support_url = pdesc->support_url ? pdesc->support_url : "";
-      descriptor->description = pdesc->description ? pdesc->description : "";
-      StringS features;
-      if (pdesc->features)
-        for (size_t ft = 0; pdesc->features[ft]; ft++)
-          if (pdesc->features[ft][0])
-            features.push_back (feature_canonify (pdesc->features[ft]));
-      descriptor->features = ":" + string_join (":", features) + ":";
-      infos.push_back (descriptor);
-      CDEBUG ("Plugin: %s %s %s (%s, %s)%s", descriptor->name, descriptor->version,
-              descriptor->vendor.empty() ? "" : "- " + descriptor->vendor,
-              descriptor->id, clapversion,
-              descriptor->features.empty() ? "" : ": " + descriptor->features);
-    }
-  filehandle->close();
-}
-
-const ClapDeviceImpl::PluginDescriptor::Collection&
-ClapDeviceImpl::PluginDescriptor::collect_descriptors ()
-{
-  static Collection collection;
-  if (collection.empty()) {
-    for (const auto &clapfile : list_clap_files())
-      add_descriptor (clapfile, collection);
-  }
-  return collection;
 }
 
 // == CLAP plugin handle ==
@@ -827,7 +744,7 @@ ClapDeviceImpl::ClapDeviceImpl (const String &clapid, AudioProcessorP aproc) :
   proc_ (shared_ptr_cast<AudioWrapper> (aproc))
 {
   assert_return (proc_ != nullptr);
-  for (PluginDescriptor *descriptor : PluginDescriptor::collect_descriptors())
+  for (ClapPluginDescriptor *descriptor : ClapPluginDescriptor::collect_descriptors())
     if (clapid == descriptor->id) {
       descriptor_ = descriptor;
       break;
@@ -916,7 +833,7 @@ ClapDeviceImpl::_set_parent (Gadget *parent)
 }
 
 DeviceInfo
-ClapDeviceImpl::device_info_from_clap (PluginDescriptor &descriptor)
+ClapDeviceImpl::device_info_from_clap (ClapPluginDescriptor &descriptor)
 {
   DeviceInfo di;
   di.uri = "CLAP:" + descriptor.id;
@@ -947,7 +864,7 @@ ClapDeviceImpl::list_clap_plugins ()
   static DeviceInfoS devs;
   if (devs.size())
     return devs;
-  for (PluginDescriptor *descriptor : PluginDescriptor::collect_descriptors()) {
+  for (ClapPluginDescriptor *descriptor : ClapPluginDescriptor::collect_descriptors()) {
     std::string title = descriptor->name; // FIXME
     if (!descriptor->version.empty())
       title = title + " " + descriptor->version;

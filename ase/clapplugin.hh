@@ -7,6 +7,24 @@
 
 namespace Ase {
 
+class ClapFileHandle;
+
+// == ClapPluginDescriptor ==
+class ClapPluginDescriptor {
+  ClapFileHandle &clapfile_;
+public:
+  using Collection = std::vector<ClapPluginDescriptor*>;
+  std::string id, name, version, vendor, features;
+  std::string description, url, manual_url, support_url;
+  explicit                 ClapPluginDescriptor (ClapFileHandle &clapfile);
+  void                     open                 ();
+  void                     close                ();
+  const clap_plugin_entry* entry                ();
+  static void              add_descriptor       (const String &pluginpath, Collection &infos);
+  static const Collection& collect_descriptors ();
+};
+
+// == ClapPluginHandle ==
 struct ClapPluginHandle : public std::enable_shared_from_this<ClapPluginHandle> {
   union EventUnion {
     clap_event_header_t          header;        // size, time, space_id, type, flags
