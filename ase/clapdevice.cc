@@ -1,14 +1,13 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "clapdevice.hh"
+#include "clapplugin.hh"
 #include "jsonipc/jsonipc.hh"
 #include "processor.hh"
 #include "path.hh"
 #include "main.hh"
 #include "internal.hh"
 #include "gtk2wrap.hh"
-#include <clap/clap.h>
 #include <dlfcn.h>
-#include <glob.h>
 
 #define CDEBUG(...)     Ase::debug ("Clap", __VA_ARGS__)
 #define CDEBUG_ENABLED() Ase::debug_key_enabled ("Clap")
@@ -31,47 +30,6 @@ anklang_host_name()
 
 static float scratch_float_buffer[AUDIO_BLOCK_FLOAT_ZEROS_SIZE];
 
-static const char*
-clap_event_type_string (int etype)
-{
-  switch (etype)
-    {
-    case CLAP_EVENT_NOTE_ON:                    return "NOTE_ON";
-    case CLAP_EVENT_NOTE_OFF:                   return "NOTE_OFF";
-    case CLAP_EVENT_NOTE_CHOKE:                 return "NOTE_CHOKE";
-    case CLAP_EVENT_NOTE_END:                   return "NOTE_END";
-    case CLAP_EVENT_NOTE_EXPRESSION:            return "NOTE_EXPRESSION";
-    case CLAP_EVENT_PARAM_VALUE:                return "PARAM_VALUE";
-    case CLAP_EVENT_PARAM_MOD:                  return "PARAM_MOD";
-    case CLAP_EVENT_PARAM_GESTURE_BEGIN:        return "PARAM_GESTURE_BEGIN";
-    case CLAP_EVENT_PARAM_GESTURE_END:          return "PARAM_GESTURE_END";
-    case CLAP_EVENT_TRANSPORT:                  return "TRANSPORT";
-    case CLAP_EVENT_MIDI:                       return "MIDI";
-    case CLAP_EVENT_MIDI_SYSEX:                 return "MIDI_SYSEX";
-    case CLAP_EVENT_MIDI2:                      return "MIDI2";
-    default:                                    return "<UNKNOWN>";
-    }
-}
-
-static ASE_UNUSED String
-clap_event_to_string (const clap_event_note_t *enote)
-{
-  const char *et = clap_event_type_string (enote->header.type);
-  switch (enote->header.type)
-    {
-    case CLAP_EVENT_NOTE_ON:
-    case CLAP_EVENT_NOTE_OFF:
-    case CLAP_EVENT_NOTE_CHOKE:
-    case CLAP_EVENT_NOTE_END:
-      return string_format ("%+4d ch=%-2u %-14s pitch=%d vel=%f id=%x sz=%d spc=%d flags=%x port=%d",
-                            enote->header.time, enote->channel, et, enote->key, enote->velocity, enote->note_id,
-                            enote->header.size, enote->header.space_id, enote->header.flags, enote->port_index);
-    default:
-      return string_format ("%+4d %-20s sz=%d spc=%d flags=%x port=%d",
-                            enote->header.time, et, enote->header.size, enote->header.space_id, enote->header.flags);
-    }
-}
-
 // == Gtk2DlWrapEntry ==
 static Gtk2DlWrapEntry*
 x11wrapper()
@@ -85,21 +43,6 @@ x11wrapper()
   } ();
   assert_return (gtk2wrapentry != nullptr, nullptr);
   return gtk2wrapentry;
-}
-
-// == CLAP file locations ==
-static std::vector<std::string>
-list_clap_files ()
-{
-  std::vector<std::string> files;
-  Path::rglob ("~/.clap", "*.clap", files);
-  Path::rglob ("/usr/lib/clap", "*.clap", files);
-  const char *clapsearchpath = getenv ("CLAP_PATH");
-  if (clapsearchpath)
-    for (const String &spath : Path::searchpath_split (clapsearchpath))
-      Path::rglob (spath, "*.clap", files);
-  Path::unique_realpaths (files);
-  return files;
 }
 
 // == CLAP file handle ==

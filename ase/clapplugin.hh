@@ -52,6 +52,11 @@ private:
   const String clapid_;
 };
 
+// == CLAP utilities ==
+StringS     list_clap_files        ();
+const char* clap_event_type_string (int etype);
+String      clap_event_to_string   (const clap_event_note_t *enote);
+
 } // Ase
 
 #endif // __ASE_CLAP_PLUGIN_HH__
