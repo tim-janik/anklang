@@ -15,6 +15,7 @@
 
 namespace Ase {
 
+ASE_CLASS_DECLS (ClapAudioWrapper);
 ASE_CLASS_DECLS (ClapPluginHandleImpl);
 
 // == fwd decls ==
@@ -22,6 +23,7 @@ static const char*           anklang_host_name        ();
 static String                clapid                   (const clap_host *host);
 static ClapPluginHandleImpl* handle_ptr               (const clap_host *host);
 static ClapPluginHandleImplP handle_sptr              (const clap_host *host);
+static const clap_plugin*    access_clap_plugin       (ClapPluginHandle *handle);
 static const void*           host_get_extension       (const clap_host *host, const char *extension_id);
 static void                  host_request_callback_mt (const clap_host *host);
 static bool                  host_unregister_timer    (const clap_host *host, clap_id timer_id);
@@ -45,68 +47,76 @@ union ClapEventUnion {
 // == ClapAudioWrapper ==
 class ClapAudioWrapper : public AudioProcessor {
   ClapPluginHandle *handle_ = nullptr;
-  String ibus_name_, obus_name_;
+  const clap_plugin *clapplugin_ = nullptr;
   IBusId ibusid = {};
   OBusId obusid = {};
-  uint ibus_clapidx_ = -1, obus_clapidx_ = -1;
-  clap_note_dialect eventinput_ = clap_note_dialect (0);
-  clap_note_dialect eventoutput_ = clap_note_dialect (0);
+  uint imain_clapidx = ~0, omain_clapidx = ~0, iside_clapidx = ~0, oside_clapidx = ~0;
+  clap_note_dialect input_event_dialect = clap_note_dialect (0);
+  clap_note_dialect output_event_dialect = clap_note_dialect (0);
   bool can_process_ = false;
 public:
-  ClapAudioWrapper (AudioEngine &engine) :
-    AudioProcessor (engine)
-  {}
-  void
-  event_ports (clap_note_dialect eventinput, clap_note_dialect eventoutput)
-  {
-    eventinput_ = eventinput;
-    eventoutput_ = eventoutput;
-  }
-  void
-  stereo_ibus (uint ibus_clapidx, const char *ibus_name)
-  {
-    ibus_clapidx_ = ibus_clapidx;
-    ibus_name_ = ibus_name;
-  }
-  void
-  stereo_obus (uint obus_clapidx, const char *obus_name)
-  {
-    obus_clapidx_ = obus_clapidx;
-    obus_name_ = obus_name;
-  }
   static void
   static_info (AudioProcessorInfo &info)
   {
     info.label = "Anklang.Devices.ClapAudioWrapper";
   }
-  void
-  reset (uint64 target_stamp) override
+  ClapAudioWrapper (AudioEngine &engine) :
+    AudioProcessor (engine)
   {}
-  void convert_clap_events (int64_t steady_time);
-  void convert_midi1_events (int64_t steady_time);
-  void (ClapAudioWrapper::*convert_input_events) (int64_t) = nullptr;
   void
   initialize (SpeakerArrangement busses) override
   {
     remove_all_buses();
-    if (ibus_clapidx_ != -1)
-      ibusid = add_input_bus (ibus_name_, SpeakerArrangement::STEREO);
-    if (obus_clapidx_ != -1)
-      obusid = add_output_bus (obus_name_, SpeakerArrangement::STEREO);
-    if (eventoutput_)
+    handle_ = &*ClapDeviceImpl::access_clap_handle (get_device());
+    assert_return (handle_ != nullptr);
+    clapplugin_ = access_clap_plugin (handle_);
+    assert_return (clapplugin_ != nullptr);
+
+    // find iports
+    const auto &audio_iport_infos = handle_->audio_iport_infos;
+    for (size_t i = 0; i < audio_iport_infos.size(); i++)
+      if (audio_iport_infos[i].port_type && strcmp (audio_iport_infos[i].port_type, CLAP_PORT_STEREO) == 0 && audio_iport_infos[i].channel_count == 2) {
+        if (audio_iport_infos[i].flags & CLAP_AUDIO_PORT_IS_MAIN && imain_clapidx == ~0)
+          imain_clapidx = i;
+        else if (!(audio_iport_infos[i].flags & CLAP_AUDIO_PORT_IS_MAIN) && iside_clapidx == ~0)
+          iside_clapidx = i;
+      }
+    // find oports
+    const clap_audio_port_info_t *main_oport = nullptr, *side_oport = nullptr;
+    const auto &audio_oport_infos = handle_->audio_oport_infos;
+    for (size_t i = 0; i < audio_oport_infos.size(); i++)
+      if (audio_oport_infos[i].port_type && strcmp (audio_oport_infos[i].port_type, CLAP_PORT_STEREO) == 0 && audio_oport_infos[i].channel_count == 2) {
+        if (audio_oport_infos[i].flags & CLAP_AUDIO_PORT_IS_MAIN && !main_oport)
+          omain_clapidx = i;
+        else if (!(audio_oport_infos[i].flags & CLAP_AUDIO_PORT_IS_MAIN) && !side_oport)
+          oside_clapidx = i;
+      }
+    // find event ports
+    input_event_dialect  = clap_note_dialect (handle_->note_iport_infos.size() ? handle_->note_iport_infos[0].supported_dialects : 0);
+    output_event_dialect = clap_note_dialect (handle_->note_oport_infos.size() ? handle_->note_oport_infos[0].supported_dialects : 0);
+
+    // create busses
+    if (imain_clapidx < audio_iport_infos.size())
+      ibusid = add_input_bus (audio_iport_infos[imain_clapidx].name, SpeakerArrangement::STEREO);
+    if (omain_clapidx < audio_oport_infos.size())
+      obusid = add_output_bus (audio_oport_infos[omain_clapidx].name, SpeakerArrangement::STEREO);
+    // prepare event IO
+    if (input_event_dialect & (CLAP_NOTE_DIALECT_CLAP | CLAP_NOTE_DIALECT_MIDI)) {
+      prepare_event_input();
+      input_events_.reserve (256); // avoid audio-thread allocations
+    }
+    if (output_event_dialect & (CLAP_NOTE_DIALECT_CLAP | CLAP_NOTE_DIALECT_MIDI))
       prepare_event_output();
-    if (eventinput_ & CLAP_NOTE_DIALECT_CLAP) {
-      prepare_event_input();
-      convert_input_events = &ClapAudioWrapper::convert_clap_events;
-    } else if (eventinput_ & CLAP_NOTE_DIALECT_MIDI) {
-      prepare_event_input();
-      convert_input_events = &ClapAudioWrapper::convert_midi1_events;
-    } else
-      convert_input_events = nullptr;
-    // workaround AudioProcessor asserting that a Processor should have *some* IO bus
-    if (!convert_input_events && !eventoutput_ && ibusid == IBusId (0) && obusid == OBusId (0))
+
+    // workaround AudioProcessor asserting that a Processor should have *some* IO facilities
+    if (!has_event_output() && !has_event_input() && ibusid == 0 && obusid == 0)
       prepare_event_input();
   }
+  void
+  reset (uint64 target_stamp) override
+  {}
+  void convert_clap_events (const clap_process_t &process);
+  void convert_midi1_events (const clap_process_t &process);
   std::vector<ClapEventUnion> input_events_;
   std::vector<clap_event_header_t> output_events_;
   static uint32_t
@@ -126,7 +136,7 @@ public:
   {
     ClapAudioWrapper *self = (ClapAudioWrapper*) evlist->ctx;
     if (0)
-      CDEBUG ("%s: host.try_push(type=%x): false", self->debug_name(), event->type);
+      CDEBUG ("%s: %s(type=%x): false", self->handle_->clapid(), __func__, event->type);
     return false;
   }
   const clap_input_events_t plugin_input_events = {
@@ -139,56 +149,68 @@ public:
     .try_push = output_events_try_push,
   };
   clap_process_t processinfo = { 0, };
-  void
-  set_plugin (ClapPluginHandle *handle)
+  bool
+  start_processing()
   {
-    if (handle_)
-      handle_->stop_processing();
-    can_process_ = false;
-    handle_ = handle;
-    if (handle_) {
-      can_process_ = handle_->start_processing();
+    return_unless (!can_process_, true);
+    assert_return (clapplugin_, false);
+    can_process_ = clapplugin_->start_processing (clapplugin_);
+    CDEBUG ("%s: %s: %d", handle_->clapid(), __func__, can_process_);
+    if (can_process_) {
       processinfo = clap_process_t {
-        .steady_time = 0, .frames_count = 0, .transport = nullptr,
+        .steady_time = int64_t (engine().frame_counter()),
+        .frames_count = 0, .transport = nullptr,
         .audio_inputs = &handle_->audio_inputs_[0], .audio_outputs = &handle_->audio_outputs_[0],
         .audio_inputs_count = uint32_t (handle_->audio_inputs_.size()),
         .audio_outputs_count = uint32_t (handle_->audio_outputs_.size()),
         .in_events = &plugin_input_events, .out_events = &plugin_output_events,
       };
+      input_events_.resize (0);
+      output_events_.resize (0);
     }
-    // input_events_
+    return can_process_;
+  }
+  void
+  stop_processing()
+  {
+    return_unless (can_process_);
+    can_process_ = false;
+    clapplugin_->stop_processing (clapplugin_);
+    CDEBUG ("%s: %s", handle_->clapid(), __func__);
     input_events_.resize (0);
-    // output_events_
     output_events_.resize (0);
   }
   void
   render (uint n_frames) override
   {
-    const uint ni = ibusid != IBusId (0) ? this->n_ichannels (ibusid) : 0;
-    for (size_t i = 0; i < ni; i++) {
-      assert_return (processinfo.audio_inputs[ibus_clapidx_].channel_count == ni);
-      processinfo.audio_inputs[ibus_clapidx_].data32[i] = const_cast<float*> (ifloats (ibusid, i));
-    }
-    const uint no = obusid != OBusId (0) ? this->n_ochannels (obusid) : 0;
-    for (size_t i = 0; i < no; i++) {
-      assert_return (processinfo.audio_outputs[obus_clapidx_].channel_count == no);
-      processinfo.audio_outputs[obus_clapidx_].data32[i] = oblock (obusid, i);
-    }
-    // FIXME: pass through if !can_process_ or CLAP_PROCESS_ERROR
+    const uint icount = ibusid != 0 ? this->n_ichannels (ibusid) : 0;
     if (can_process_) {
+      for (size_t i = 0; i < icount; i++) {
+        assert_return (processinfo.audio_inputs[imain_clapidx].channel_count == icount);
+        processinfo.audio_inputs[imain_clapidx].data32[i] = const_cast<float*> (ifloats (ibusid, i));
+      }
+      const uint ocount = obusid != 0 ? this->n_ochannels (obusid) : 0;
+      for (size_t i = 0; i < ocount; i++) {
+        assert_return (processinfo.audio_outputs[omain_clapidx].channel_count == ocount);
+        processinfo.audio_outputs[omain_clapidx].data32[i] = oblock (obusid, i);
+      }
       processinfo.frames_count = n_frames;
-      if (convert_input_events)
-        (this->*convert_input_events) (processinfo.steady_time);
+      if (input_event_dialect & CLAP_NOTE_DIALECT_CLAP)
+        convert_clap_events (processinfo);
+      else if (input_event_dialect & CLAP_NOTE_DIALECT_MIDI)
+        convert_midi1_events (processinfo);
       processinfo.steady_time += processinfo.frames_count;
-      clap_process_status status = handle_->process (&processinfo);
-      (void) status;
+      clap_process_status status = clapplugin_->process (clapplugin_, &processinfo);
+      (void) status; // CLAP_PROCESS_ERROR ?
+      if (0)
+        CDEBUG ("render: status=%d", status);
     }
   }
 };
 static CString clap_audio_wrapper_aseid = register_audio_processor<ClapAudioWrapper>();
 
 void
-ClapAudioWrapper::convert_clap_events (int64_t steady_time)
+ClapAudioWrapper::convert_clap_events (const clap_process_t &process)
 {
   MidiEventRange erange = get_event_input();
   if (input_events_.capacity() < erange.events_pending())
@@ -233,7 +255,7 @@ ClapAudioWrapper::convert_clap_events (int64_t steady_time)
 }
 
 void
-ClapAudioWrapper::convert_midi1_events (int64_t steady_time)
+ClapAudioWrapper::convert_midi1_events (const clap_process_t &process)
 {
   MidiEventRange erange = get_event_input();
   if (input_events_.capacity() < erange.events_pending())
@@ -300,7 +322,7 @@ public:
     },  // process()
     .request_callback = host_request_callback_mt,
   };
-  AudioProcessorP proc_;
+  ClapAudioWrapperP proc_;
   const clap_plugin_t *plugin_ = nullptr;
   const clap_plugin_gui *plugin_gui = nullptr;
   const clap_plugin_params *plugin_params = nullptr;
@@ -324,7 +346,7 @@ public:
   init_plugin ()
   {
     return_unless (plugin_, false);
-    if (plugin_ && !plugin_->init (plugin_)) {
+    if (!plugin_->init (plugin_)) {
       CDEBUG ("%s: initialization failed", clapid());
       destroy(); // destroy per spec and cleanup resources used by init()
       return false;
@@ -351,45 +373,45 @@ public:
   std::vector<uint> timers;
   void get_port_infos ();
   bool
+  activated() const override
+  {
+    return plugin_activated;
+  }
+  bool
   activate() override
   {
-    return_unless (plugin_, false);
-    assert_return (!activated(), true);
+    return_unless (plugin_ && !activated(), activated());
     plugin_activated = plugin_->activate (plugin_, proc_->engine().sample_rate(), 32, 4096);
-    CDEBUG ("%s: %s", clapid(), plugin_activated ? "activate" : "failed to activate");
+    CDEBUG ("%s: %s: %d", clapid(), __func__, plugin_activated);
+    if (plugin_activated) {
+      ClapPluginHandleImplP selfp = shared_ptr_cast<ClapPluginHandleImpl> (this);
+      ScopedSemaphore sem;
+      proc_->engine().async_jobs += [&sem, selfp] () {
+        selfp->proc_->start_processing();
+        sem.post();
+      };
+      sem.wait();
+      // active && processing
+    }
     return activated();
   }
-  bool activated() const override { return plugin_activated; }
   void
   deactivate() override
   {
-    return_unless (plugin_);
-    assert_return (activated());
+    return_unless (plugin_ && activated());
+    if (true) {
+      ClapPluginHandleImplP selfp = shared_ptr_cast<ClapPluginHandleImpl> (this);
+      ScopedSemaphore sem;
+      proc_->engine().async_jobs += [&sem, selfp] () {
+        selfp->proc_->stop_processing();
+        sem.post();
+      };
+      sem.wait();
+      // !processing && !active
+    }
     plugin_activated = false;
     plugin_->deactivate (plugin_);
     CDEBUG ("%s: deactivated", clapid());
-  }
-  bool
-  start_processing() override
-  {
-    return_unless (plugin_, false);
-    assert_return (!plugin_processing, false);
-    plugin_processing = plugin_->start_processing && plugin_->start_processing (plugin_);
-    return plugin_processing;
-  }
-  clap_process_status
-  process (const clap_process_t *clapprocess) override
-  {
-    assert_return (plugin_processing, CLAP_PROCESS_ERROR);
-    return plugin_ && plugin_->process (plugin_, clapprocess);
-  }
-  void
-  stop_processing() override
-  {
-    return_unless (plugin_processing);
-    if (plugin_->stop_processing)
-      plugin_->stop_processing (plugin_);
-    plugin_processing = false;
   }
   void show_gui    () override;
   void hide_gui    () override;
@@ -577,6 +599,13 @@ handle_sptr (const clap_host *host)
 {
   ClapPluginHandleImpl *handle = handle_ptr (host);
   return shared_ptr_cast<ClapPluginHandleImpl> (handle);
+}
+
+static const clap_plugin*
+access_clap_plugin (ClapPluginHandle *handle)
+{
+  ClapPluginHandleImpl *handle_ = dynamic_cast<ClapPluginHandleImpl*> (handle);
+  return handle_ ? handle_->plugin_ : nullptr;
 }
 
 // == clap_host_log ==

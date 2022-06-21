@@ -47,9 +47,6 @@ public:
   virtual bool                activate          () = 0;
   virtual bool                activated         () const = 0;
   virtual void                deactivate        () = 0;
-  virtual bool                start_processing  ()  = 0;
-  virtual clap_process_status process           (const clap_process_t *clapprocess)  = 0;
-  virtual void                stop_processing   ()  = 0;
   virtual void                show_gui          () = 0;
   virtual void                hide_gui          () = 0;
   virtual void                destroy_gui       () = 0;
