@@ -226,12 +226,11 @@ build-nightly:
 		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
 		{ echo "$@: ERROR: Nightly release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
 	$Q git tag -f Nightly HEAD
-	@ $(eval DETAILED_VERSION != misc/version.sh misc/version.sh --nightly)
 	@: # Update NEWS.md with nightly changes
-	$(Q) : \
+	$Q DETAILED_VERSION=`misc/version.sh --nightly` \
 		&& LOG_RANGE=`git describe --match v'[0-9]*.[0-9]*' --abbrev=0 --first-parent` \
 		&& LOG_RANGE="$$LOG_RANGE..HEAD" \
-		&& echo -e '## Anklang $(DETAILED_VERSION)\n'		>  ./NEWS.build \
+		&& echo -e "## Anklang $$DETAILED_VERSION\n"		>  ./NEWS.build \
 		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
 		&& git log --pretty='%s    # %cd %an %h%n%w(0,4,4)%b' \
 			--first-parent --date=short "$$LOG_RANGE"	>> ./NEWS.build \
@@ -240,7 +239,8 @@ build-nightly:
 		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
 		&& echo 						>> ./NEWS.build \
 		&& cat ./NEWS.md					>> ./NEWS.build
-	$(Q) DETAILED_VERSION="$(DETAILED_VERSION)" VERSION_SH_NIGHTLY=true $(MAKE) build-assets
+	$Q DETAILED_VERSION=`misc/version.sh --nightly` \
+		VERSION_SH_NIGHTLY=true $(MAKE) build-assets
 
 # == upload-nightly ==
 upload-nightly:
