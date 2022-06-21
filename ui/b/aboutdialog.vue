@@ -50,6 +50,7 @@ async function about_pairs() {
   let array = [
     [ 'Anklang:',		CONFIG.buildid + ' (' + CONFIG.revdate.split (' ')[0] + ')' ],
     [ 'SoundEngine:',		await Ase.server.get_version() ],
+    [ 'CLAP:',			await Ase.server.get_clap_version() ],
     [ 'Vorbis:',		await Ase.server.get_vorbis_version() ],
     [ 'Vuejs:',			Vue.version ],
     [ 'User Agent:',		user_agent ],
