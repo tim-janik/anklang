@@ -31,7 +31,7 @@
 
 <template>
   <h-flex class="b-deviceeditor" @contextmenu.prevent="e => $refs.cmenu.popup (e)" >
-    <span class="b-deviceeditor-sw" > {{ device_info.uri + ' #' + device.$id }} </span>
+    <span class="b-deviceeditor-sw" > {{ device_info.name }} </span>
     <c-grid class="b-deviceeditor-areas" >
       <b-pro-group v-for="group in gprops" :key="group.name" :style="group_style (group)"
 		   :name="group.name" :props="group.props" />

@@ -123,7 +123,7 @@ export default {
   },
   data() { return observable_device_data.call (this); },
   methods: {
-    menuactivation (uri) {
+    async menuactivation (uri) {
       const popup_options = this.$refs.cmenu.popup_options;
       // close popup to remove focus guards
       this.$refs.cmenu.close();
@@ -131,10 +131,14 @@ export default {
 	debug ("devicepanel.vue:", uri);
       if (this.chain_ && !uri.startsWith ('DevicePanel:')) // assuming b-treeselector.devicetypes
 	{
+	  let newdev;
 	  if (popup_options.device_sibling)
-	    this.chain_.create_device_before (uri, popup_options.device_sibling);
+	    newdev = this.chain_.insert_device (uri, popup_options.device_sibling);
 	  else
-	    this.chain_.create_device (uri);
+	    newdev = this.chain_.append_device (uri);
+	  newdev = await newdev;
+	  if (!newdev)
+	    debug ("insert_device failed, got null:", uri);
 	}
     },
     menucheck (uri, component) {

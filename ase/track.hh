@@ -10,7 +10,7 @@ namespace Ase {
 class TrackImpl : public GadgetImpl, public virtual Track {
   const bool masterflag_ = false;
   ProjectImpl *project_ = nullptr;
-  DeviceImplP  chain_, midi_prod_;
+  DeviceP      chain_, midi_prod_;
   ClipImplS    clips_;
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;

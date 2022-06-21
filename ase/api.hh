@@ -115,7 +115,7 @@ public:
     bool             connected  () const;
     void             disconnect () const;
   };
-  virtual void       emit_event  (const String &type, const String &detail, ValueR fields) = 0;
+  virtual void       emit_event  (const String &type, const String &detail, ValueR fields = {}) = 0;
   ASE_USE_RESULT
   virtual Connection on_event    (const String &eventselector, const EventHandler &eventhandler) = 0;
   void               js_trigger  (const String &eventselector, JsTrigger callback);
@@ -184,6 +184,10 @@ public:
 /// Base type for classes that have a Property.
 class Gadget : public virtual Object {
 public:
+  // Hierarchical parenting.
+  virtual void        _set_parent       (Gadget *parent) = 0;
+  virtual Gadget*     _parent           () const = 0;
+  // Naming
   virtual String      type_nick         () const = 0;
   virtual String      name              () const = 0;
   virtual void        name              (String newname) = 0;
@@ -220,9 +224,13 @@ public:
   // Create sub Device
   virtual DeviceInfoS list_device_types  () = 0;                      ///< List registered Device types with their unique uri.
   virtual void        remove_device      (Device &sub) = 0;           ///< Remove a directly contained device.
-  virtual DeviceP     create_device      (const String &uuiduri) = 0; ///< Create a new device, see list_device_types().
-  virtual DeviceP     create_device_before (const String &uuiduri,
-                                            Device &sibling) = 0;      ///< Create device, before sibling.
+  virtual DeviceP     append_device      (const String &uri) = 0; ///< Append a new device, see list_device_types().
+  virtual DeviceP     insert_device      (const String &uri,
+                                          Device &beforesibling) = 0; ///< Insert a new device, before `beforesibling`.
+  // Internal
+  virtual AudioProcessorP _audio_processor   () const = 0;
+  virtual void            _set_event_source  (AudioProcessorP esource) = 0;
+  virtual void            _disconnect_remove () = 0;
 };
 
 /// Part specific note event representation.
@@ -288,7 +296,7 @@ public:
 /// Projects support loading, saving, playback and act as containers for all other sound objects.
 class Project : public virtual Gadget {
 public:
-  virtual void            destroy        () = 0;       ///< Release project and associated resources.
+  virtual void            discard        () = 0;       ///< Discard project and associated resources.
   virtual void            start_playback () = 0;       ///< Start playback of a project, requires active sound engine.
   virtual void            stop_playback  () = 0;       ///< Stop project playback.
   virtual bool            is_playing     () = 0;       ///< Check whether a project is currently playing (song sequencing).

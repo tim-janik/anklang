@@ -326,13 +326,16 @@ AudioEngineThread::update_drivers (bool fullio)
     }
 }
 
+static std::thread::id audio_engine_thread_id = {};
+const ThreadId &AudioEngine::thread_id = audio_engine_thread_id;
+
 void
 AudioEngineThread::run (const VoidF &owner_wakeup, StartQueue *sq)
 {
   assert_return (pcm_driver_);
   // FIXME: assert owner_wakeup and free trash
   this_thread_set_name ("AudioEngine-0"); // max 16 chars
-  thread_id_ = std::this_thread::get_id();
+  audio_engine_thread_id = std::this_thread::get_id();
   owner_wakeup_ = owner_wakeup;
   event_loop_->exec_dispatcher (std::bind (&AudioEngineThread::driver_dispatcher, this, std::placeholders::_1));
   sq->push ('R'); // StartQueue becomes invalid after this call
@@ -480,7 +483,7 @@ AudioEngineThread::stop_thread ()
   assert_return (engine.thread_ != nullptr);
   engine.event_loop_->quit (0);
   engine.thread_->join();
-  thread_id_ = {};
+  audio_engine_thread_id = {};
   auto oldthread = engine.thread_;
   engine.thread_ = nullptr;
   delete oldthread;
@@ -532,25 +535,9 @@ make_audio_engine (uint sample_rate, SpeakerArrangement speakerarrangement)
   return *new AudioEngineThread (sample_rate, speakerarrangement);
 }
 
-AudioProcessorP
-make_audio_processor (AudioEngine &engine, const String &uuiduri)
-{
-  return AudioProcessor::registry_create (engine, uuiduri);
-}
-
 // == MidiInput ==
 // Processor providing MIDI device events
 class EngineMidiInput : public AudioProcessor {
-  void
-  query_info (AudioProcessorInfo &info) const override
-  {
-    info.uri          = "Anklang.Devices.EngineMidiInput";
-    info.version      = "1";
-    info.label        = "MIDI Input";
-    info.category     = "Routing";
-    info.creator_name = "Tim Janik";
-    info.website_url  = "https://anklang.testbit.eu";
-  }
   void
   initialize (SpeakerArrangement busses) override
   {
@@ -573,8 +560,10 @@ class EngineMidiInput : public AudioProcessor {
   }
 public:
   MidiDriverS midi_drivers_;
+  EngineMidiInput (AudioEngine &engine) :
+    AudioProcessor (engine)
+  {}
 };
-static auto engine_midi_input = register_audio_processor<EngineMidiInput>();
 
 template<class T> struct Mutable {
   mutable T value;
@@ -587,7 +576,7 @@ AudioEngineThread::swap_midi_drivers_sync (const MidiDriverS &midi_drivers)
 {
   if (!midi_proc_)
     {
-      AudioProcessorP aprocp = make_audio_processor (*this, "Anklang.Devices.EngineMidiInput");
+      AudioProcessorP aprocp = AudioProcessor::create_processor<EngineMidiInput> (*this);
       assert_return (aprocp);
       midi_proc_ = std::dynamic_pointer_cast<EngineMidiInput> (aprocp);
       assert_return (midi_proc_);

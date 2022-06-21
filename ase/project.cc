@@ -2,7 +2,6 @@
 #include "project.hh"
 #include "jsonipc/jsonipc.hh"
 #include "main.hh"
-#include "device.hh"
 #include "processor.hh"
 #include "path.hh"
 #include "serialize.hh"
@@ -49,7 +48,7 @@ ProjectImpl::create (const String &projectname)
 }
 
 void
-ProjectImpl::destroy ()
+ProjectImpl::discard ()
 {
   stop_playback();
   const size_t nerased = Aux::erase_first (all_projects, [this] (auto ptr) { return ptr.get() == this; });
@@ -115,7 +114,7 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
       // serialize Project
       String jsd = json_stringify (*this, Writ::INDENT);
       jsd += '\n';
-      error = ws.store_file_data ("project.json", jsd);
+      error = ws.store_file_data ("project.json", jsd, true);
     }
   if (!error)
     error = ws.close();
@@ -360,7 +359,7 @@ ProjectImpl::master_processor () const
   return_unless (master, nullptr);
   DeviceP device = master->access_device();
   return_unless (device, nullptr);
-  AudioProcessorP proc = dynamic_cast<DeviceImpl*> (device.get())->audio_processor();
+  AudioProcessorP proc = device->_audio_processor();
   return_unless (proc, nullptr);
   return proc;
 }
@@ -466,6 +465,7 @@ ProjectImpl::create_track ()
   TrackImplP track = TrackImpl::make_shared (!havemaster);
   tracks_.insert (tracks_.end() - int (havemaster), track);
   emit_event ("track", "insert", { { "track", track }, });
+  track->_set_parent (this);
   track->set_project (this);
   return track;
 }
@@ -473,6 +473,7 @@ ProjectImpl::create_track ()
 bool
 ProjectImpl::remove_track (Track &child)
 {
+  assert_return (child._parent() == this, false);
   TrackImplP track = shared_ptr_cast<TrackImpl> (&child);
   return_unless (track && !track->is_master(), false);
   clear_undo(); // TODO: implement undo for remove_track
@@ -480,6 +481,7 @@ ProjectImpl::remove_track (Track &child)
     return false;
   // destroy Track
   track->set_project (nullptr);
+  track->_set_parent (nullptr);
   emit_event ("track", "remove");
   return true;
 }

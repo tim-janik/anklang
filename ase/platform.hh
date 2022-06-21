@@ -78,7 +78,7 @@ std::string executable_name       () ASE_PURE;          ///< Retrieve the name p
 std::string executable_path       () ASE_PURE;          ///< Retrieve the path to the currently running executable.
 std::string cpu_info              ();                   ///< Retrieve string identifying the runtime CPU type.
 std::string cpu_arch              ();                   ///< Retrieve string identifying the CPU architecture.
-std::string ase_version           ();                   ///< Provide a string containing the ASE library build.
+const char* ase_version           ();                   ///< Provide a string containing the ASE library build.
 
 // == user ==
 int     user_id         ();

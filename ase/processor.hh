@@ -13,24 +13,20 @@ namespace Ase {
 
 /// ID type for AudioProcessor parameters, the ID numbers are user assignable.
 enum class ParamId : uint32 {};
+ASE_DEFINE_ENUM_EQUALITY (ParamId);
 
 /// ID type for AudioProcessor input buses, buses are numbered with increasing index.
 enum class IBusId : uint16 {};
+ASE_DEFINE_ENUM_EQUALITY (IBusId);
 
 /// ID type for AudioProcessor output buses, buses are numbered with increasing index.
 enum class OBusId : uint16 {};
-
-/// ID type for the AudioProcessor registry.
-struct RegistryId { struct Entry; const Entry &entry; };
-
-/// Add an AudioProcessor derived type to the audio processor registry.
-template<typename T> RegistryId register_audio_processor (const char *bfile = __builtin_FILE(), int bline = __builtin_LINE());
+ASE_DEFINE_ENUM_EQUALITY (OBusId);
 
 /// Detailed information and common properties of AudioProcessor subclasses.
 struct AudioProcessorInfo {
-  CString uri;          ///< Unique identifier for de-/serialization.
-  CString version;      ///< Version identifier for de-/serialization.
   CString label;        ///< Preferred user interface name.
+  CString version;      ///< Version identifier.
   CString category;     ///< Category to allow grouping for processors of similar function.
   CString blurb;        ///< Short description for overviews.
   CString description;  ///< Elaborate description for help dialogs.
@@ -38,6 +34,9 @@ struct AudioProcessorInfo {
   CString creator_name; ///< Name of the creator.
   CString creator_url;  ///< Internet contact of the creator.
 };
+
+/// Add an AudioProcessor derived type to the audio processor registry.
+template<typename T> CString register_audio_processor (const char *aseid = nullptr);
 
 /// Detailed information and common properties of parameters.
 struct ParamInfo {
@@ -129,12 +128,11 @@ private:
   std::vector<OConnection> outputs_;
   EventStreams            *estreams_ = nullptr;
   uint64_t                 render_stamp_ = 0;
-  static void        registry_init      ();
   const PParam*      find_pparam        (Id32 paramid) const;
   const PParam*      find_pparam_       (ParamId paramid) const;
   void               assign_iobufs      ();
   void               release_iobufs     ();
-  void               ensure_initialized ();
+  void               ensure_initialized (DeviceP devicep);
   const FloatBuffer& float_buffer       (IBusId busid, uint channelindex) const;
   FloatBuffer&       float_buffer       (OBusId busid, uint channelindex, bool resetptr = false);
   static
@@ -147,13 +145,12 @@ private:
   PropertyP          access_property    (ParamId id) const;
 protected:
   AudioEngine  &engine_;
-  explicit      AudioProcessor    ();
+  explicit      AudioProcessor    (AudioEngine &engine);
   virtual      ~AudioProcessor    ();
   virtual void  initialize        (SpeakerArrangement busses) = 0;
   void          enotify_enqueue_mt (uint32 pushmask);
   uint          schedule_processor ();
   void          reschedule        ();
-  virtual DeviceImplP device_impl () const;
   virtual uint  schedule_children () { return 0; }
   static uint   schedule_processor (AudioProcessor &p)  { return p.schedule_processor(); }
   // Parameters
@@ -205,14 +202,12 @@ protected:
   void             prepare_event_output ();
   MidiEventStream& get_event_output     ();
 public:
-  using RegistryList = AudioProcessorInfoS;
-  using MakeProcessor = AudioProcessorP (*) (const std::any*);
+  using MakeProcessor = AudioProcessorP (*) (AudioEngine&);
   using MaybeParamId = std::pair<ParamId,bool>;
   static const String GUIONLY;     ///< ":G:r:w:" - GUI READABLE WRITABLE
   static const String STANDARD;    ///< ":G:S:r:w:" - GUI STORAGE READABLE WRITABLE
   static const String STORAGEONLY; ///< ":S:r:w:" - STORAGE READABLE WRITABLE
   float         note_to_freq      (int note) const;
-  virtual void  query_info        (AudioProcessorInfo &info) const = 0;
   String        debug_name        () const;
   AudioEngine&          engine      () const ASE_CONST;
   const AudioTransport& transport   () const ASE_CONST;
@@ -247,7 +242,7 @@ public:
   const float*  ifloats           (IBusId b, uint c) const;
   const float*  ofloats           (OBusId b, uint c) const;
   static uint64 timestamp         ();
-  DeviceImplP   get_device        (bool create = true) const;
+  DeviceP       get_device        () const;
   bool          has_event_input   () const;
   bool          has_event_output  () const;
   void          connect_event_input    (AudioProcessor &oproc);
@@ -255,18 +250,21 @@ public:
   void          enable_engine_output   (bool onoff);
   // MT-Safe accessors
   static double          param_peek_mt   (const AudioProcessorP proc, Id32 paramid);
-  // Registration and factory
-  static RegistryList    registry_list   ();
-  static AudioProcessorP registry_create (AudioEngine &engine, const String &uuiduri);
-  static AudioProcessorP registry_create (AudioEngine &engine, RegistryId rid, const std::any &any);
+  // AudioProcessor Registry
+  using StaticInfo = void (*) (AudioProcessorInfo&);
+  using MakeDeviceP = std::function<DeviceP (const String&, StaticInfo, AudioProcessorP)>;
+  using MakeProcessorP = AudioProcessorP (*) (AudioEngine&);
+  static void    registry_add     (CString aseid, StaticInfo, MakeProcessorP);
+  static DeviceP registry_create  (const String &aseid, AudioEngine &engine, const MakeDeviceP&);
+  static void    registry_foreach (const std::function<void (const String &aseid, StaticInfo)> &fun);
+  template<class AudioProc, class ...Args> std::shared_ptr<AudioProc>
+  static         create_processor (AudioEngine &engine, const Args &...args);
 private:
-  static RegistryId      registry_enroll (MakeProcessor, const char*, int);
-  template<class> friend RegistryId register_audio_processor (const char*, int);
   static bool   enotify_pending   ();
   static void   enotify_dispatch  ();
   std::atomic<AudioProcessor*> nqueue_next_ { nullptr }; ///< No notifications queued while == nullptr
   AudioProcessorP              nqueue_guard_;            ///< Only used while nqueue_next_ != nullptr
-  std::weak_ptr<DeviceImpl> device_;
+  std::weak_ptr<Device>        device_;
   static constexpr uint32 NOTIFYMASK = PARAMCHANGE | BUSCONNECT | BUSDISCONNECT | INSERTION | REMOVAL;
   static __thread uint64  tls_timestamp;
 };
@@ -545,25 +543,31 @@ AudioProcessor::FloatBuffer::speaker_arrangement () const
 }
 
 /// Add an AudioProcessor derived type to the audio processor registry.
-template<typename T> extern inline RegistryId
-register_audio_processor (const char *bfile, int bline)
+template<typename T> extern inline CString
+register_audio_processor (const char *caseid)
 {
-  AudioProcessor::MakeProcessor makeasp = nullptr;
-  if constexpr (std::is_constructible<T, const std::any&>::value)
+  CString aseid = caseid ? caseid : typeid_name<T>();
+  if constexpr (std::is_constructible<T, AudioEngine&>::value)
     {
-      makeasp = [] (const std::any *any) -> AudioProcessorP {
-        return any ? std::make_shared<T> (*any) : nullptr;
+      auto make_shared = [] (AudioEngine &engine) -> AudioProcessorP {
+        return std::make_shared<T> (engine);
       };
-    }
-  else if constexpr (std::is_constructible<T>::value)
-    {
-      makeasp = [] (const std::any*) -> AudioProcessorP {
-        return std::make_shared<T>();
-      };
+      AudioProcessor::registry_add (aseid, &T::static_info, make_shared);
     }
   else
-    static_assert (sizeof (T) < 0, "type `T` must be constructible from void or any");
-  return AudioProcessor::registry_enroll (makeasp, bfile, bline);
+    static_assert (sizeof (T) < 0, "type `T` must be constructible from `T(AudioEngine&)`");
+  return aseid;
+}
+
+template<class AudioProc, class ...Args> std::shared_ptr<AudioProc>
+AudioProcessor::create_processor (AudioEngine &engine, const Args &...args)
+{
+  std::shared_ptr<AudioProc> proc = std::make_shared<AudioProc> (engine, args...);
+  if (proc) {
+    AudioProcessorP aproc = proc;
+    aproc->ensure_initialized (nullptr);
+  }
+  return proc;
 }
 
 } // Ase

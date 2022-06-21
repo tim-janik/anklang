@@ -308,14 +308,14 @@ StorageWriter::open_with_mimetype (const String &filename, const String &mimetyp
 }
 
 Error
-StorageWriter::store_file_data (const String &filename, const String &buffer)
+StorageWriter::store_file_data (const String &filename, const String &buffer, bool alwayscompress)
 {
   assert_return (impl_, Error::INTERNAL);
   const bool compressed = is_compressed (buffer);
-  if (!compressed && (impl_->flags & AUTO_ZSTD))
+  if (!compressed && (alwayscompress || impl_->flags & AUTO_ZSTD))
     {
       const String cdata = zstd_compress (buffer);
-      if (cdata.size() + 128 <= buffer.size())
+      if (alwayscompress || cdata.size() + 128 <= buffer.size())
         return impl_->store_file_data (filename + ".zst", cdata, false, time (nullptr));
     }
   return impl_->store_file_data (filename, buffer,

@@ -13,6 +13,16 @@ JSONIPC_INHERIT (GadgetImpl, Gadget);
 GadgetImpl::~GadgetImpl()
 {}
 
+void
+GadgetImpl::_set_parent (Gadget *parent)
+{
+  if (parent)
+    assert_return (parent_ == nullptr);
+  else // !parent
+    assert_return (parent_ != nullptr);
+  parent_ = parent;
+}
+
 String
 GadgetImpl::fallback_name () const
 {

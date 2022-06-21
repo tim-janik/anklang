@@ -6,6 +6,7 @@
 #include "clip.hh"
 #include "midilib.hh"
 #include "server.hh"
+#include "main.hh"
 #include "serialize.hh"
 #include "jsonipc/jsonipc.hh"
 #include "internal.hh"
@@ -67,7 +68,7 @@ TrackImpl::serialize (WritNode &xs)
         }
     }
   // device chain
-  xs["chain"] & *chain_; // always one present
+  xs["chain"] & *dynamic_cast<Serializable*> (&*chain_); // always exists
 }
 
 void
@@ -80,22 +81,27 @@ TrackImpl::set_project (ProjectImpl *project)
   project_ = project;
   if (project_)
     {
+      AudioEngine *engine = main_config.engine;
       assert_return (!midi_prod_);
-      midi_prod_ = DeviceImpl::create_output ("Anklang.Ase.MidiLib.MidiProducer");
+      midi_prod_ = create_processor_device (*engine, "Ase::MidiLib::MidiProducerImpl", true);
       assert_return (midi_prod_);
-      AudioProcessorP esource = midi_prod_->audio_processor()->engine().get_event_source();
-      midi_prod_->set_event_source (esource);
-      midi_prod_->audio_processor()->connect_event_input (*esource);
+      midi_prod_->_set_parent (this);
+      AudioProcessorP esource = midi_prod_->_audio_processor()->engine().get_event_source();
+      midi_prod_->_set_event_source (esource);
+      midi_prod_->_audio_processor()->connect_event_input (*esource);
       assert_return (!chain_);
-      chain_ = DeviceImpl::create_output ("Anklang.Devices.AudioChain");
+      chain_ = create_processor_device (*engine, "Ase::AudioChain", true);
       assert_return (chain_);
-      chain_->set_event_source (midi_prod_->audio_processor());
+      chain_->_set_parent (this);
+      chain_->_set_event_source (midi_prod_->_audio_processor());
     }
   else if (chain_)
     {
-      chain_->disconnect_remove();
+      chain_->_set_parent (nullptr);
+      chain_->_disconnect_remove();
       chain_ = nullptr;
-      midi_prod_->disconnect_remove();
+      midi_prod_->_set_parent (nullptr);
+      midi_prod_->_disconnect_remove();
       midi_prod_ = nullptr;
     }
   emit_event ("notify", "project");
@@ -105,7 +111,7 @@ void
 TrackImpl::queue_cmd (CallbackS &queue, Cmd cmd, double arg)
 {
   assert_return (midi_prod_);
-  MidiLib::MidiProducerIfaceP midi_iface = std::dynamic_pointer_cast<MidiLib::MidiProducerIface> (midi_prod_->audio_processor());
+  MidiLib::MidiProducerIfaceP midi_iface = std::dynamic_pointer_cast<MidiLib::MidiProducerIface> (midi_prod_->_audio_processor());
   auto func = [midi_iface, cmd, arg] () {
     if (cmd == START)
       midi_iface->start();
@@ -119,7 +125,7 @@ void
 TrackImpl::queue_cmd (DCallbackS &queue, Cmd cmd)
 {
   assert_return (midi_prod_);
-  MidiLib::MidiProducerIfaceP midi_iface = std::dynamic_pointer_cast<MidiLib::MidiProducerIface> (midi_prod_->audio_processor());
+  MidiLib::MidiProducerIfaceP midi_iface = std::dynamic_pointer_cast<MidiLib::MidiProducerIface> (midi_prod_->_audio_processor());
   auto func = [midi_iface, cmd] (const double arg) {
     if (cmd == START)
       midi_iface->start();
@@ -180,7 +186,7 @@ void
 TrackImpl::update_clips ()
 {
   return_unless (midi_prod_);
-  MidiLib::MidiProducerIfaceP midi_iface = std::dynamic_pointer_cast<MidiLib::MidiProducerIface> (midi_prod_->audio_processor());
+  MidiLib::MidiProducerIfaceP midi_iface = std::dynamic_pointer_cast<MidiLib::MidiProducerIface> (midi_prod_->_audio_processor());
   MidiLib::MidiFeedP feedp = std::make_shared<MidiLib::MidiFeed>();
   MidiLib::MidiFeed &feed = *feedp;
   feed.generators.resize (clips_.size());
@@ -212,7 +218,7 @@ TrackImpl::create_monitor (int32 ochannel) // TODO: implement
 TelemetryFieldS
 TrackImpl::telemetry () const
 {
-  MidiLib::MidiProducerIfaceP midi_prod = std::dynamic_pointer_cast<MidiLib::MidiProducerIface> (midi_prod_->audio_processor());
+  MidiLib::MidiProducerIfaceP midi_prod = std::dynamic_pointer_cast<MidiLib::MidiProducerIface> (midi_prod_->_audio_processor());
   TelemetryFieldS v;
   assert_return (midi_prod, v);
   const MidiLib::MidiProducerIface::Position *const position = midi_prod->position();

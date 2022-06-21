@@ -488,7 +488,7 @@ WebSocketServer::create (const MakeConnection &make, int logflags)
 String
 WebSocketServer::user_agent ()
 {
-  return "AnklangSynthEngine/" + ase_version();
+  return String ("AnklangSynthEngine/") + ase_version();
 }
 
 #include "mime-types.hh"        // static const char mime_types[];

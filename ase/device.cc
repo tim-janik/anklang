@@ -1,7 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "device.hh"
+#include "clapdevice.hh"
 #include "combo.hh"
-#include "main.hh"
 #include "jsonipc/jsonipc.hh"
 #include "serialize.hh"
 #include "internal.hh"
@@ -11,9 +11,20 @@ namespace Ase {
 // == DeviceImpl ==
 JSONIPC_INHERIT (DeviceImpl, Device);
 
-DeviceImpl::DeviceImpl (AudioProcessor &proc) :
-  proc_ (proc.shared_from_this()), combo_ (std::dynamic_pointer_cast<AudioCombo> (proc_))
-{}
+DeviceImpl::DeviceImpl (const String &aseid, AudioProcessor::StaticInfo static_info, AudioProcessorP aproc) :
+  proc_ (aproc), combo_ (std::dynamic_pointer_cast<AudioCombo> (proc_))
+{
+  assert_return (aproc != nullptr);
+  AudioProcessorInfo pinfo;
+  static_info (pinfo);
+  info_.uri          = aseid;
+  info_.name         = pinfo.label;
+  info_.category     = pinfo.category;
+  info_.description  = pinfo.description;
+  info_.website_url  = pinfo.website_url;
+  info_.creator_name = pinfo.creator_name;
+  info_.creator_url  = pinfo.creator_url;
+}
 
 DeviceImpl::~DeviceImpl()
 {}
@@ -24,40 +35,23 @@ DeviceImpl::serialize (WritNode &xs)
   GadgetImpl::serialize (xs);
   // save subdevices
   if (combo_ && xs.in_save())
-    for (auto &subdev : list_devices())
+    for (DeviceP subdevicep : list_devices())
       {
-        DeviceImplP subdevicep = shared_ptr_cast<DeviceImpl> (subdev);
-        DeviceInfo info = subdevicep->device_info();
         WritNode xc = xs["devices"].push();
-        xc & *subdevicep;
-        xc.front ("Device.URI") & info.uri;
+        xc & *dynamic_cast<Serializable*> (&*subdevicep);
+        String uri = subdevicep->device_info().uri;
+        xc.front ("Device.URI") & uri;
       }
   // load subdevices
   if (combo_ && xs.in_load())
     for (auto &xc : xs["devices"].to_nodes())
       {
-        String uuiduri = xc["Device.URI"].as_string();
-        if (uuiduri.empty())
+        String uri = xc["Device.URI"].as_string();
+        if (uri.empty())
           continue;
-        DeviceImplP subdevicep = shared_ptr_cast<DeviceImpl> (create_device (uuiduri));
-        xc & *subdevicep;
+        DeviceP subdevicep = append_device (uri);
+        xc & *dynamic_cast<Serializable*> (&*subdevicep);
       }
-}
-
-DeviceInfo
-DeviceImpl::device_info ()
-{
-  AudioProcessorInfo pinf;
-  proc_->query_info (pinf);
-  DeviceInfo info;
-  info.uri          = pinf.uri;
-  info.name         = pinf.label;
-  info.category     = pinf.category;
-  info.description  = pinf.description;
-  info.website_url  = pinf.website_url;
-  info.creator_name = pinf.creator_name;
-  info.creator_url  = pinf.creator_url;
-  return info;
 }
 
 PropertyS
@@ -87,18 +81,11 @@ DeviceImpl::access_property (String ident)
 DeviceS
 DeviceImpl::list_devices ()
 {
-  DeviceS devs;
-  AudioComboP combo = combo_;
-  auto j = [&devs, combo] () {
-    for (auto &proc : combo->list_processors())
-      devs.push_back (proc->device_impl());
-  };
-  proc_->engine().const_jobs += j;
-  return devs;
+  return children_;
 }
 
 void
-DeviceImpl::set_event_source (AudioProcessorP esource)
+DeviceImpl::_set_event_source (AudioProcessorP esource)
 {
   if (esource)
     assert_return (esource->has_event_output());
@@ -114,54 +101,85 @@ DeviceInfoS
 DeviceImpl::list_device_types ()
 {
   DeviceInfoS iseq;
-  const auto rlist = AudioProcessor::registry_list();
-  iseq.reserve (rlist.size());
-  for (const AudioProcessorInfo &entry : rlist)
-    {
-      DeviceInfo info;
-      info.uri          = entry.uri;
-      info.name         = entry.label;
-      info.category     = entry.category;
-      info.description  = entry.description;
-      info.website_url  = entry.website_url;
-      info.creator_name = entry.creator_name;
-      info.creator_url  = entry.creator_url;
+  AudioProcessor::registry_foreach ([&iseq] (const String &aseid, AudioProcessor::StaticInfo static_info) {
+    AudioProcessorInfo pinfo;
+    static_info (pinfo);
+    DeviceInfo info;
+    info.uri          = aseid;
+    info.name         = pinfo.label;
+    info.category     = pinfo.category;
+    info.description  = pinfo.description;
+    info.website_url  = pinfo.website_url;
+    info.creator_name = pinfo.creator_name;
+    info.creator_url  = pinfo.creator_url;
+    if (!info.name.empty() && !info.category.empty())
       iseq.push_back (info);
-    }
+  });
+  for (const DeviceInfo &info : ClapDeviceImpl::list_clap_plugins())
+    iseq.push_back (info);
   return iseq;
+}
+
+void
+DeviceImpl::_set_parent (Gadget *parent)
+{
+  GadgetImpl::_set_parent (parent);
+  while (children_.size())
+    remove_device (*children_.back());
+}
+
+template<typename E> std::pair<std::shared_ptr<E>,ssize_t>
+find_shared_by_ref (const std::vector<std::shared_ptr<E> > &v, const E &e)
+{
+  for (ssize_t i = 0; i < v.size(); i++)
+    if (&e == &*v[i])
+      return std::make_pair (v[i], i);
+  return std::make_pair (std::shared_ptr<E>{}, -1);
 }
 
 void
 DeviceImpl::remove_device (Device &sub)
 {
-  DeviceImpl *subi = dynamic_cast<DeviceImpl*> (&sub);
-  AudioProcessorP subp = subi ? subi->proc_ : nullptr;
-  if (subp && combo_)
+  DeviceP selfp = shared_ptr_cast<Device> (this);
+  assert_return (selfp);
+  assert_return (sub._parent() == this);
+  auto [subp, nth] = find_shared_by_ref (children_, sub);
+  DeviceP childp = subp;
+  assert_return (childp && nth >= 0);
+  children_.erase (children_.begin() + nth);
+  AudioProcessorP sproc = childp->_audio_processor();
+  if (sproc && combo_)
     {
-      AudioComboP combo = combo_;
-      auto j = [combo, subp] () {
-        combo->remove (*subp);
+      auto deferred_unparent = [selfp, childp] (void*) {
+        childp->_set_parent (nullptr); // selfp must still be alive here
+      };
+      std::shared_ptr<void> atjobdtor = { nullptr, deferred_unparent };
+      AudioComboP combop = combo_;
+      auto j = [combop, sproc, atjobdtor] () {
+        combop->remove (*sproc);
       };
       proc_->engine().async_jobs += j;
+      // once job is processed, dtor runs in mainthread
     }
-  // blocking on an async_job for returning `true` would take fairly long
 }
 
 DeviceP
-DeviceImpl::create_device_before (const String &uuiduri, Device *sibling)
+DeviceImpl::insert_device (const String &uri, Device *sibling)
 {
   DeviceP devicep;
-  DeviceImpl *siblingi = dynamic_cast<DeviceImpl*> (sibling);
-  AudioProcessorP siblingp = siblingi ? siblingi->proc_ : nullptr;
+  AudioProcessorP siblingp = sibling ? sibling->_audio_processor() : nullptr;
   if (combo_)
     {
-      AudioProcessorP subp = make_audio_processor (proc_->engine(), uuiduri);
-      return_unless (subp, nullptr);
-      devicep = subp->get_device();
+      devicep = create_processor_device (proc_->engine(), uri, false);
+      return_unless (devicep, nullptr);
+      children_.push_back (devicep);
+      devicep->_set_parent (this);
+      AudioProcessorP sproc = devicep->_audio_processor();
+      return_unless (sproc, nullptr);
       AudioComboP combo = combo_;
-      auto j = [combo, subp, siblingp] () {
+      auto j = [combo, sproc, siblingp] () {
         const size_t pos = siblingp ? combo->find_pos (*siblingp) : ~size_t (0);
-        combo->insert (subp, pos);
+        combo->insert (sproc, pos);
       };
       proc_->engine().async_jobs += j;
     }
@@ -169,19 +187,19 @@ DeviceImpl::create_device_before (const String &uuiduri, Device *sibling)
 }
 
 DeviceP
-DeviceImpl::create_device (const String &uuiduri)
+DeviceImpl::append_device (const String &uri)
 {
-  return create_device_before (uuiduri, nullptr);
+  return insert_device (uri, nullptr);
 }
 
 DeviceP
-DeviceImpl::create_device_before (const String &uuiduri, Device &sibling)
+DeviceImpl::insert_device (const String &uri, Device &sibling)
 {
-  return create_device_before (uuiduri, &sibling);
+  return insert_device (uri, &sibling);
 }
 
 void
-DeviceImpl::disconnect_remove ()
+DeviceImpl::_disconnect_remove ()
 {
   AudioProcessorP proc = proc_;
   AudioEngine *engine = &proc->engine();
@@ -195,17 +213,33 @@ DeviceImpl::disconnect_remove ()
   engine->async_jobs += j;
 }
 
-DeviceImplP
-DeviceImpl::create_output (const String &uuiduri)
+DeviceP
+DeviceImpl::create_ase_device (AudioEngine &engine, const String &aseid)
 {
-  AudioEngine *engine = main_config.engine;
-  AudioProcessorP procp = make_audio_processor (*engine, uuiduri);
-  return_unless (procp, nullptr);
-  DeviceImplP devicep = procp->get_device();
-  auto j = [procp] () {
-    procp->enable_engine_output (true);
+  auto make_device = [] (const String &aseid, AudioProcessor::StaticInfo static_info, AudioProcessorP aproc) -> DeviceP {
+    return DeviceImpl::make_shared (aseid, static_info, aproc);
   };
-  engine->async_jobs += j;
+  DeviceP devicep = AudioProcessor::registry_create (aseid, engine, make_device);
+  return_unless (devicep && devicep->_audio_processor(), nullptr);
+  return devicep;
+}
+
+DeviceP
+create_processor_device (AudioEngine &engine, const String &uri, bool engineproducer)
+{
+  DeviceP devicep;
+  if (string_startswith (uri, "CLAP:"))
+    devicep = ClapDeviceImpl::create_clap_device (engine, uri);
+  else // assume string_startswith (uri, "Ase:")
+    devicep = DeviceImpl::create_ase_device (engine, uri);
+  return_unless (devicep, nullptr);
+  AudioProcessorP procp = devicep->_audio_processor();
+  if (procp) {
+    auto j = [procp,engineproducer] () {
+      procp->enable_engine_output (engineproducer);
+    };
+    engine.async_jobs += j;
+  }
   return devicep;
 }
 

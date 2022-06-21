@@ -11,12 +11,12 @@ namespace Ase {
 class AudioChain::Inlet : public AudioProcessor {
   AudioChain &audio_chain_;
 public:
-  Inlet (const std::any &any) :
-    audio_chain_ (*std::any_cast<AudioChain*> (any))
+  Inlet (AudioEngine &engine, AudioChain *audiochain) :
+    AudioProcessor (engine),
+    audio_chain_ (*audiochain)
   {
-    assert_return (nullptr != std::any_cast<AudioChain*> (any));
+    assert_return (nullptr != audiochain);
   }
-  void query_info (AudioProcessorInfo &info) const override { info.label = "Anklang.Devices.AudioChain.Inlet"; }
   void reset      (uint64 target_stamp) override            {}
   void
   initialize (SpeakerArrangement busses) override
@@ -39,7 +39,8 @@ public:
 };
 
 // == AudioCombo ==
-AudioCombo::AudioCombo()
+AudioCombo::AudioCombo (AudioEngine &engine) :
+  AudioProcessor (engine)
 {}
 
 AudioCombo::~AudioCombo ()
@@ -129,14 +130,12 @@ AudioCombo::set_event_source (AudioProcessorP eproc)
 }
 
 // == AudioChain ==
-AudioChain::AudioChain (SpeakerArrangement iobuses) :
+AudioChain::AudioChain (AudioEngine &engine, SpeakerArrangement iobuses) :
+  AudioCombo (engine),
   ispeakers_ (iobuses), ospeakers_ (iobuses)
 {
-  static const auto inlet_id = register_audio_processor<AudioChain::Inlet>();
   assert_return (speaker_arrangement_count_channels (iobuses) > 0);
-  AudioProcessorP inlet = AudioProcessor::registry_create (engine_, inlet_id, this);
-  assert_return (inlet != nullptr);
-  inlet_ = std::dynamic_pointer_cast<Inlet> (inlet);
+  inlet_ = AudioProcessor::create_processor<AudioChain::Inlet> (engine_, this);
   assert_return (inlet_ != nullptr);
 }
 
@@ -147,15 +146,8 @@ AudioChain::~AudioChain()
 }
 
 void
-AudioChain::query_info (AudioProcessorInfo &info) const
-{
-  info.uri          = "Anklang.Devices.AudioChain";
-  info.version      = "1";
-  info.label        = "Ase.AudioChain";
-  info.category     = "Routing";
-  info.creator_name = "Anklang Authors";
-  info.website_url  = "https://anklang.testbit.eu";
-}
+AudioChain::static_info (AudioProcessorInfo &info)
+{} // avoid public listing
 
 void
 AudioChain::initialize (SpeakerArrangement busses)

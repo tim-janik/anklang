@@ -5,14 +5,14 @@ CLEANDIRS     += $(wildcard $>/ase/ $>/lib/)
 include ase/tests/Makefile.mk
 
 # == ase/ *.cc file sets ==
-ase/AnklangSynthEngine.main.cc	::= ase/main.cc
-ase/nonlib.cc			::= $(ase/AnklangSynthEngine.main.cc)
-ase/libsources.cc		::= $(filter-out $(ase/nonlib.cc), $(wildcard ase/*.cc))
+ase/gtk2wrap.sources		::= ase/gtk2wrap.cc
+ase/noglob.cc			::= ase/main.cc $(ase/gtk2wrap.sources)
+ase/libsources.cc		::= $(filter-out $(ase/noglob.cc), $(wildcard ase/*.cc))
 ase/libsources.c		::= $(wildcard ase/*.c)
 
 # == AnklangSynthEngine definitions ==
 lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine-$(version_m.m.m)
-ase/AnklangSynthEngine.sources	::= $(ase/AnklangSynthEngine.main.cc) $(ase/libsources.cc) $(ase/libsources.c)
+ase/AnklangSynthEngine.sources	::= ase/main.cc $(ase/libsources.cc) $(ase/libsources.c)
 ase/AnklangSynthEngine.gensrc	::= $>/ase/api.jsonipc.cc
 ase/AnklangSynthEngine.deps	::= $>/ase/sysconfig.h
 ase/AnklangSynthEngine.deps	 += $>/external/websocketpp/server.hpp $>/external/rapidjson/rapidjson.h
@@ -93,6 +93,18 @@ int main (int argc, const char *argv[]) {
 }
 endef
 
+# == external/clap ==
+$>/external/clap/clap.h: ase/Makefile.mk		| $>/external/
+	@ $(eval H := 24015f72118575ec4e040c80da64c0c0c8cca4378671a3c603b0288cae18621b)
+	@ $(eval U := https://github.com/free-audio/clap/archive/refs/tags/1.0.0.tar.gz)
+	@ $(eval T := clap-1.0.0.tar.gz)
+	$(QECHO) FETCH "$U"
+	$Q cd $>/external/ && rm -rf clap* \
+	     $(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
+	$Q ln -s $(T:.tar.gz=)/include/clap $>/external/clap
+	$Q test -e $@ && touch $@
+ase/clapdevice.cc: $>/external/clap/clap.h
+
 # == AnklangSynthEngine ==
 $(ase/AnklangSynthEngine.objects): $(ase/AnklangSynthEngine.deps) $(ase/libase.deps)
 $(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= -Iexternal/ -I$> -I$>/external/ $(GLIB_CFLAGS)
@@ -101,7 +113,7 @@ $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
 	$(ase/AnklangSynthEngine.objects), \
 	$(lib/libase.so), \
-	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd, \
+	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl, \
 	../lib)
 #	-lase-$(version_major)
 $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
@@ -110,6 +122,19 @@ $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgd
   ))
 # silence some websocketpp warnings
 $(ase/AnklangSynthEngine.objects): EXTRA_CXXFLAGS ::= -Wno-sign-promo
+
+# == gtk2wrap.so ==
+lib/gtk2wrap.so         ::= $>/lib/gtk2wrap.so
+ase/gtk2wrap.objects    ::= $(call BUILDDIR_O, $(ase/gtk2wrap.sources))
+$(ase/gtk2wrap.objects): EXTRA_INCLUDES ::= -I$> $(GTK2_CFLAGS)
+$(ase/gtk2wrap.objects): EXTRA_CXXFLAGS ::= -Wno-deprecated -Wno-deprecated-declarations
+$(call BUILD_SHARED_LIB, \
+	$(lib/gtk2wrap.so), \
+	$(ase/gtk2wrap.objects), \
+	$(lib/libase.so) | $>/lib/, \
+	$(GTK2_LIBS), \
+	../lib)
+$(ALL_TARGETS) += $(lib/gtk2wrap.so)
 
 # == Check Integrity Tests ==
 check-ase-tests: $(lib/AnklangSynthEngine)

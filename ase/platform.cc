@@ -778,7 +778,7 @@ determine_anklangsynthengine_installdir (bool *using_objdir)
   return pathname;
 }
 
-std::string
+const char*
 ase_version ()
 {
   return ase_version_long;

@@ -38,27 +38,21 @@ class MidiProducerImpl : public MidiProducerIface {
   std::vector<TickEvent> future_stack; // newest events at back()
   FastMemory::Block position_block_;
 public:
+  MidiProducerImpl (AudioEngine &engine) :
+    MidiProducerIface (engine)
+  {
+    position_block_ = SERVER->telemem_allocate (sizeof (Position));
+    position_ = new (position_block_.block_start) Position {};
+  }
   ~MidiProducerImpl()
   {
     position_->~Position();
     position_ = nullptr;
     SERVER->telemem_release (position_block_);
   }
-  MidiProducerImpl()
-  {
-    position_block_ = SERVER->telemem_allocate (sizeof (Position));
-    position_ = new (position_block_.block_start) Position {};
-  }
-  void
-  query_info (AudioProcessorInfo &info) const override
-  {
-    info.uri          = "Anklang.Ase.MidiLib.MidiProducer";
-    info.version      = "1";
-    info.label        = "Ase MIDI Producer";
-    info.category     = "Input & Output";
-    info.creator_name = "Anklang Authors";
-    info.website_url  = "https://anklang.testbit.eu";
-  }
+  static void
+  static_info (AudioProcessorInfo &info)
+  {} // avoid public listing
   void
   initialize (SpeakerArrangement busses) override
   {

@@ -373,10 +373,10 @@ main (int argc, char *argv[])
     {
       AudioEngine *e = main_config_.engine;
       std::shared_ptr<void> vp = { nullptr, [e] (void*) {
-        printerr ("JOBTEST: Run Deleter (in_engine=%d)\n", e->thread_id() == std::this_thread::get_id());
+        printerr ("JOBTEST: Run Deleter (in_engine=%d)\n", e->thread_id == std::this_thread::get_id());
       } };
       e->async_jobs += [e,vp] () {
-        printerr ("JOBTEST: Run Handler (in_engine=%d)\n", e->thread_id() == std::this_thread::get_id());
+        printerr ("JOBTEST: Run Handler (in_engine=%d)\n", e->thread_id == std::this_thread::get_id());
       };
     }
 
