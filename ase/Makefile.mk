@@ -95,9 +95,9 @@ endef
 
 # == external/clap ==
 $>/external/clap/clap.h: ase/Makefile.mk		| $>/external/
-	@ $(eval H := 24015f72118575ec4e040c80da64c0c0c8cca4378671a3c603b0288cae18621b)
-	@ $(eval U := https://github.com/free-audio/clap/archive/refs/tags/1.0.0.tar.gz)
-	@ $(eval T := clap-1.0.0.tar.gz)
+	@ $(eval H := e99d297b9bca8dd71c4528f836840173e2415e2d5c800f0d475eed151924279d)
+	@ $(eval U := https://github.com/free-audio/clap/archive/refs/tags/1.0.2.tar.gz)
+	@ $(eval T := clap-1.0.2.tar.gz)
 	$(QECHO) FETCH "$U"
 	$Q cd $>/external/ && rm -rf clap* \
 	     $(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
