@@ -88,6 +88,13 @@ ClapDeviceImpl::_disconnect_remove ()
   // FIXME: implement
 }
 
+String
+ClapDeviceImpl::clap_version ()
+{
+  const String clapversion = string_format ("%u.%u.%u", CLAP_VERSION.major, CLAP_VERSION.minor, CLAP_VERSION.revision);
+  return clapversion;
+}
+
 ClapPluginHandleP
 ClapDeviceImpl::access_clap_handle (DeviceP device)
 {
