@@ -770,7 +770,7 @@ ClapPluginHandleImpl::show_gui()
           CDEBUG ("%s: gui_can_resize: %d\n", clapid(), gui_canresize);
           const double scale = 1.0;
           const bool scaled = scale > 0 ? plugin_gui->set_scale (plugin_, scale) : false;
-          CDEBUG ("%s: gui_set_scale(%f): %f\n", clapid(), scale, scaled);
+          CDEBUG ("%s: gui_set_scale(%f): %d\n", clapid(), scale, scaled);
           uint32_t width = 0, height = 0;
           const bool sized = plugin_gui->get_size (plugin_, &width, &height);
           CDEBUG ("%s: gui_get_size: %ux%u: %d\n", clapid(), width, height, sized);
