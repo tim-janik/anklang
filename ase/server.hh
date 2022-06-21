@@ -21,6 +21,7 @@ public:
   String       get_version          () override;
   String       get_vorbis_version   () override;
   String       get_mp3_version      () override;
+  String       get_clap_version     () override;
   String       error_blurb          (Error error) const override;
   String       musical_tuning_label (MusicalTuning musicaltuning) const override;
   String       musical_tuning_blurb (MusicalTuning musicaltuning) const override;

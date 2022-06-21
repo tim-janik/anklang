@@ -10,6 +10,7 @@
 #include "utils.hh"
 #include "project.hh"
 #include "path.hh"
+#include "clapdevice.hh"
 #include "internal.hh"
 #include <atomic>
 
@@ -200,6 +201,12 @@ String
 ServerImpl::get_mp3_version ()
 {
   return "-";
+}
+
+String
+ServerImpl::get_clap_version()
+{
+  return ClapDeviceImpl::clap_version();
 }
 
 void
