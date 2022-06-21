@@ -13,12 +13,15 @@ namespace Ase {
 
 /// ID type for AudioProcessor parameters, the ID numbers are user assignable.
 enum class ParamId : uint32 {};
+ASE_DEFINE_ENUM_EQUALITY (ParamId);
 
 /// ID type for AudioProcessor input buses, buses are numbered with increasing index.
 enum class IBusId : uint16 {};
+ASE_DEFINE_ENUM_EQUALITY (IBusId);
 
 /// ID type for AudioProcessor output buses, buses are numbered with increasing index.
 enum class OBusId : uint16 {};
+ASE_DEFINE_ENUM_EQUALITY (OBusId);
 
 /// Detailed information and common properties of AudioProcessor subclasses.
 struct AudioProcessorInfo {
