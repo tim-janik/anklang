@@ -88,6 +88,7 @@ scan-build:								| $>/misc/scan-build/
 $>/anklang_$(version_short)_amd64.deb: $>/TAGS $(GITCOMMITDEPS)
 	$(QGEN)
 	$Q BUILDDIR=$> misc/mkdeb.sh
+	$Q ls -l -h --color=auto $@
 anklang-deb: $>/anklang_$(version_short)_amd64.deb
 .PHONY: anklang-deb
 
