@@ -47,8 +47,8 @@ ClapDeviceImpl::_set_parent (Gadget *parent)
   // deactivate and destroy plugin
   if (!parent && handle_)
     {
-      handle_->deactivate();
       handle_->destroy_gui();
+      handle_->deactivate();
       handle_->destroy();
     }
 }
@@ -86,6 +86,13 @@ void
 ClapDeviceImpl::_disconnect_remove ()
 {
   // FIXME: implement
+}
+
+ClapPluginHandleP
+ClapDeviceImpl::access_clap_handle (DeviceP device)
+{
+  ClapDeviceImpl *clapdevice = dynamic_cast<ClapDeviceImpl*> (&*device);
+  return clapdevice ? clapdevice->handle_ : nullptr;
 }
 
 DeviceP

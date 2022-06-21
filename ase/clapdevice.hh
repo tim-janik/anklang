@@ -26,6 +26,7 @@ public:
   void               _set_event_source     (AudioProcessorP esource) override;
   void               _disconnect_remove    () override;
   static DeviceP     create_clap_device    (AudioEngine &engine, const String &clapuri);
+  static ClapPluginHandleP access_clap_handle (DeviceP device);
 };
 
 } // Ase
