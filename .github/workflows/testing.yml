@@ -1,6 +1,11 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-on: [push]
+# https://rhysd.github.io/actionlint/
+
+on:
+  push:
+    branches: ['trunk', 'wip/**']
+
 jobs:
   Testing:
     runs-on: ubuntu-latest

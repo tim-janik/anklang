@@ -365,6 +365,7 @@ ui/rebuild:
 ui/installdir ::= $(DESTDIR)$(pkgdir)/ui
 ui/install.pattern ::= $(strip	\
 	$>/ui/.aseignore	\
+	$>/ui/*.scss		\
 	$>/ui/*.css		\
 	$>/ui/*.html		\
 	$>/ui/*.ico		\
