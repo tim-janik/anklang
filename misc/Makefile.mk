@@ -252,8 +252,7 @@ upload-nightly:
 	$Q echo 'Nightly'				>  $(RELEASE_SSEDIR)/release-message
 	$Q echo						>> $(RELEASE_SSEDIR)/release-message
 	$Q echo 'Anklang $(DETAILED_VERSION)'		>> $(RELEASE_SSEDIR)/release-message
-	$Q git push origin ':Nightly' \
-		&& hub release delete 'Nightly'
+	$Q hub release delete 'Nightly' ; git push origin ':Nightly' || :
 	$Q git push origin 'Nightly' \
 		&& hub release create --prerelease		\
 		-F '$(RELEASE_SSEDIR)/release-message'		\
