@@ -222,6 +222,9 @@ RELEASE_CHANGELOG     = $(RELEASE_SSEDIR)/ChangeLog-$(DETAILED_VERSION).txt
 build-nightly:
 	$(QGEN)
 	@: # Determine version in nightly format
+	$Q VERSIONHASH=`git rev-parse HEAD` && \
+		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
+		{ echo "$@: ERROR: Nightly release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
 	$Q git tag -f Nightly HEAD
 	@ $(eval DETAILED_VERSION != misc/version.sh misc/version.sh --nightly)
 	@: # Update NEWS.md with nightly changes
