@@ -88,6 +88,7 @@ scan-build:								| $>/misc/scan-build/
 $>/anklang_$(version_short)_amd64.deb: $>/TAGS $(GITCOMMITDEPS)
 	$(QGEN)
 	$Q BUILDDIR=$> misc/mkdeb.sh
+	$Q ls -l -h --color=auto $@
 anklang-deb: $>/anklang_$(version_short)_amd64.deb
 .PHONY: anklang-deb
 
@@ -208,14 +209,89 @@ insn-build-sse:
 insn-build-fma:
 	$Q $(MAKE) INSN=fma builddir=out-fma insn-targets INSNDEST=out-sse/
 
+# == release rules ==
+RELEASE_CONTINUATION ?= false
+RELEASE_TMPDIR      ::= /tmp/anklang-build$(shell id -u)
+RELEASE_SSEDIR      ::= $(RELEASE_TMPDIR)/out-sse
+RELEASE_NEWSMD        = $(RELEASE_TMPDIR)/NEWS.md
+RELEASE_DEB           = $(RELEASE_SSEDIR)/anklang_$(DETAILED_VERSION)_amd64.deb
+RELEASE_APPIMAGE      = $(RELEASE_SSEDIR)/anklang-$(DETAILED_VERSION)-x64.AppImage
+RELEASE_CHANGELOG     = $(RELEASE_SSEDIR)/ChangeLog-$(DETAILED_VERSION).txt
+
+# == build-nightly ==
+build-nightly:
+	$(QGEN)
+	@: # Determine version in nightly format
+	$Q VERSIONHASH=`git rev-parse HEAD` && \
+		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
+		{ echo "$@: ERROR: Nightly release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
+	$Q git tag -f Nightly HEAD
+	@ $(eval DETAILED_VERSION != misc/version.sh misc/version.sh --nightly)
+	@: # Update NEWS.md with nightly changes
+	$(Q) : \
+		&& LOG_RANGE=`git describe --match v'[0-9]*.[0-9]*' --abbrev=0 --first-parent` \
+		&& LOG_RANGE="$$LOG_RANGE..HEAD" \
+		&& echo -e '## Anklang $(DETAILED_VERSION)\n'		>  ./NEWS.build \
+		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
+		&& git log --pretty='%s    # %cd %an %h%n%w(0,4,4)%b' \
+			--first-parent --date=short "$$LOG_RANGE"	>> ./NEWS.build \
+		&& sed -e '/^\s*Signed-off-by:.*<.*@.*>/d'		-i ./NEWS.build \
+		&& sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i ./NEWS.build \
+		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
+		&& echo 						>> ./NEWS.build \
+		&& cat ./NEWS.md					>> ./NEWS.build
+	$(Q) DETAILED_VERSION="$(DETAILED_VERSION)" VERSION_SH_NIGHTLY=true $(MAKE) build-assets
+
+# == upload-nightly ==
+upload-nightly:
+	$(QGEN)
+	@: # Determine version, check release attachments
+	@ $(eval DETAILED_VERSION != misc/version.sh misc/version.sh --nightly)
+	$Q du -hs $(RELEASE_CHANGELOG) $(RELEASE_DEB) $(RELEASE_APPIMAGE)
+	@: # Create Github release and upload assets
+	$Q echo 'Nightly'				>  $(RELEASE_SSEDIR)/release-message
+	$Q echo						>> $(RELEASE_SSEDIR)/release-message
+	$Q echo 'Anklang $(DETAILED_VERSION)'		>> $(RELEASE_SSEDIR)/release-message
+	$Q git push origin ':Nightly' \
+		&& hub release delete 'Nightly'
+	$Q git push origin 'Nightly' \
+		&& hub release create --prerelease		\
+		-F '$(RELEASE_SSEDIR)/release-message'		\
+		-a '$(RELEASE_CHANGELOG)'			\
+		-a '$(RELEASE_APPIMAGE)'			\
+		-a '$(RELEASE_DEB)'				\
+		'Nightly'
+
+# == build-assets ==
+build-assets:
+	$Q test -n "$$DETAILED_VERSION" -a -r ./NEWS.build
+	@: # Create temporary build directory
+	$Q if $(RELEASE_CONTINUATION) && test -d $(RELEASE_TMPDIR) ; then	\
+		WORKTREEHEAD=`git rev-parse HEAD`				\
+		&& cd $(RELEASE_TMPDIR)						\
+		&& git checkout -f "$$WORKTREEHEAD" ;				\
+	   else									\
+		git worktree remove --force $(RELEASE_TMPDIR) 2>/dev/null ;	\
+		git worktree add $(RELEASE_TMPDIR) HEAD ;			\
+	   fi
+	$Q mv ./NEWS.build $(RELEASE_TMPDIR)/NEWS.md
+	@: # Build binaries with different INSNs in parallel, delete tag on error
+	$Q nice $(MAKE) -C $(RELEASE_TMPDIR) -j`nproc` -l`nproc`	\
+		insn-build-sse						\
+		insn-build-fma
+	@: # Build release packages, INSN=sse is full build, delete tag on error
+	$Q nice $(MAKE) -C $(RELEASE_TMPDIR) -j`nproc` -l`nproc`	\
+		INSN=sse builddir=out-sse				\
+		anklang-deb						\
+		appimage
+	@: # Check build
+	$Q time $(RELEASE_APPIMAGE) --quitstartup
+
 # == release-upload ==
-RELEASE_CONTINUATION ::= false
 release-upload: NEWS.md
 	$(QGEN)
 	@: # Setup release variables (note, eval preceeds all shell commands)
 	@ $(eval RELEASE_TAG       != ./misc/version.sh --news-tag1)
-	@ $(eval RELEASE_TMPDIR    ::= /tmp/anklang-release$(UID))
-	@ $(eval RELEASE_SSEDIR    ::= $(RELEASE_TMPDIR)/out-sse)
 	@ $(eval RELEASE_CHANGELOG ::= $(RELEASE_SSEDIR)/ChangeLog-$(RELEASE_TAG:v%=%).txt)
 	@ $(eval RELEASE_DEB       ::= $(RELEASE_SSEDIR)/anklang_$(RELEASE_TAG:v%=%)_amd64.deb)
 	@ $(eval RELEASE_APPIMAGE  ::= $(RELEASE_SSEDIR)/anklang-$(RELEASE_TAG:v%=%)-x64.AppImage)
