@@ -24,7 +24,9 @@ static String                clapid                   (const clap_host *host);
 static ClapPluginHandleImpl* handle_ptr               (const clap_host *host);
 static ClapPluginHandleImplP handle_sptr              (const clap_host *host);
 static const clap_plugin*    access_clap_plugin       (ClapPluginHandle *handle);
-static const void*           host_get_extension       (const clap_host *host, const char *extension_id);
+static const void*           host_get_extension_mt    (const clap_host *host, const char *extension_id);
+static void                  host_request_restart_mt  (const clap_host *host);
+static void                  host_request_process_mt  (const clap_host *host);
 static void                  host_request_callback_mt (const clap_host *host);
 static bool                  host_unregister_timer    (const clap_host *host, clap_id timer_id);
 static void                  try_load_x11wrapper      ();
@@ -310,16 +312,12 @@ public:
     .name = anklang_host_name(), .vendor = "anklang.testbit.eu",
     .url = "https://anklang.testbit.eu/", .version = ase_version(),
     .get_extension = [] (const clap_host *host, const char *extension_id) {
-      const void *ext = host_get_extension (host, extension_id);
-      CDEBUG ("%s: host_get_extension(\"%s\"): %p", clapid (host), extension_id, ext);
+      const void *ext = host_get_extension_mt (host, extension_id);
+      CDEBUG ("%s: host_get_extension_mt(\"%s\"): %p", clapid (host), extension_id, ext);
       return ext;
     },
-    .request_restart = [] (const clap_host *host) { // FIXME: simplify
-      CDEBUG ("%s: host.request_restart", clapid (host));
-    },  // deactivate() + activate()
-    .request_process = [] (const clap_host *host) {
-      CDEBUG ("%s: host.request_process", clapid (host));
-    },  // process()
+    .request_restart = host_request_restart_mt,
+    .request_process = host_request_process_mt,
     .request_callback = host_request_callback_mt,
   };
   ClapAudioWrapperP proc_;
@@ -872,7 +870,7 @@ static const clap_host_gui host_ext_gui = {
 
 // == clap_host extensions ==
 static const void*
-host_get_extension (const clap_host *host, const char *extension_id)
+host_get_extension_mt (const clap_host *host, const char *extension_id)
 {
   const String ext = extension_id;
   if (ext == CLAP_EXT_LOG)            return &host_ext_log;
@@ -882,6 +880,18 @@ host_get_extension (const clap_host *host, const char *extension_id)
   if (ext == CLAP_EXT_AUDIO_PORTS)    return &host_ext_audio_ports;
   if (ext == CLAP_EXT_PARAMS)         return &host_ext_params;
   else return nullptr;
+}
+
+static void
+host_request_restart_mt (const clap_host *host)
+{
+  CDEBUG ("%s: %s", clapid (host), __func__);
+}
+
+static void
+host_request_process_mt (const clap_host *host)
+{
+  CDEBUG ("%s: %s", clapid (host), __func__);
 }
 
 static void
