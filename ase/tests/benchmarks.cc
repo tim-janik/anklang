@@ -207,12 +207,13 @@ struct TestAllocator<AllocatorType::PosixMemalign> {
     void *ptr = nullptr;
     const int posix_memalign_result = posix_memalign (&ptr, FastMemory::cache_line_size, length);
     TASSERT (posix_memalign_result == 0);
+    memset (ptr, 0, length);                            // match calloc() semantics
     return { ptr, length };
   }
   static void
   release_block (FastMemory::Block block)
   {
-    memset (block.block_start, 0, block.block_length); // match release_aligned_block() semantics
+    memset (block.block_start, 0, block.block_length); // match release_aligned_block() timing
     free (block.block_start);
   }
 };
@@ -230,7 +231,6 @@ struct TestAllocator<AllocatorType::FastMemAlloc> {
   static void
   release_block (FastMemory::Block block)
   {
-    memset (block.block_start, 0, block.block_length); // match release_aligned_block() semantics
     fast_mem_free (block.block_start);
   }
 };
@@ -281,9 +281,10 @@ ase_aligned_allocator_benchloop (uint32 seed)
         // allocate random sizes
         for (size_t i = 0; i < N_ALLOCS; i++)
           {
-            const size_t length = 1 + ((quick_rand32() * MAX_CHUNK_SIZE) >> 32);
+            const uint32 rnd = quick_rand32();
+            const size_t length = MAX (8, (rnd * MAX_CHUNK_SIZE) >> 32);
             blocks[i] = TestAllocator<AT>::allocate_block (length);
-            accu += *((double*) blocks[i].block_start);
+            accu += *(double*) blocks[i].block_start;
             TASSERT (blocks[i].block_length > 0);
             if (i > RESIDENT && (i & 1))
               {
@@ -313,9 +314,9 @@ ase_aligned_allocator_benchloop (uint32 seed)
             blocks[i2] = TestAllocator<AT>::allocate_block (l1 ? l1 : MAX_CHUNK_SIZE / 3);
             blocks[i1] = TestAllocator<AT>::allocate_block (l3 ? l3 : MAX_CHUNK_SIZE / 3);
             blocks[i3] = TestAllocator<AT>::allocate_block (l2 ? l2 : MAX_CHUNK_SIZE / 3);
-            accu += *((double*) blocks[i2].block_start);
-            accu += *((double*) blocks[i1].block_start);
-            accu += *((double*) blocks[i3].block_start);
+            accu += *(double*) blocks[i2].block_start;
+            accu += *(double*) blocks[i1].block_start;
+            accu += *(double*) blocks[i3].block_start;
           }
         // release blocks randomized (frees ca 59%)
         for (size_t j = 0; j < N_ALLOCS; j++)
@@ -341,7 +342,7 @@ ase_aligned_allocator_benchloop (uint32 seed)
   const double ns_p_a = 1000000000.0 * bench_aa / n_allocations;
   Ase::printerr ("  BENCH    %-23s %u allocations in %.1f msecs, %.1fnsecs/allocation\n",
                  TestAllocator<AT>::name() + ":", n_allocations, 1000 * bench_aa, ns_p_a);
-  TASSERT (!std::isnan (accu));
+  TASSERT (accu == 0);
 }
 
 TEST_BENCHMARK (zbench_aligned_allocator_aligned_block);
