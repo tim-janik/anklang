@@ -11,6 +11,7 @@ DIST=ubuntu:focal
 DOCKEROPTIONS="--cap-add SYS_PTRACE"
 EXEC_CMD=
 INITIALIZE=false
+OOTBUILD_VOLUME=
 NOCACHE=
 IMGTAG=$PROJECT-dbuild
 docker images | grep -q "^$IMGTAG " || INITIALIZE=true
@@ -24,6 +25,7 @@ usage() {
   echo "  -f <DOCKERFILE>   Choose a Dockerfile [$DOCKERFILE]"
   echo "  -h                Display command line help"
   echo "  -i                Initialize docker build environment [$INITIALIZE]"
+  echo "  -o <directory>    Mount <directory> as /ootbuild (\$OOTBUILD)"
   echo "  --no-cache        Build docker with --no-cache"
   echo "  shell             COMMAND: Run shell"
   echo "  root              COMMAND: Run root shell"
@@ -36,6 +38,7 @@ while test $# -ne 0 ; do
     -f)		shift; DOCKERFILE="$1" ;;
     -h)		usage ; exit 0 ;;
     -i)		INITIALIZE=true ;;
+    -o)		shift; OOTBUILD_VOLUME="-v `realpath $1`:/ootbuild/" ;;
     --no-cache)	NOCACHE=--no-cache ;;
     --)		shift ; break ;;
     *)		break ;;
@@ -88,6 +91,6 @@ test root != "$EXEC_CMD" || setup_ROOT_TMPVOLUME # let root operate on a tempora
 test root != "$EXEC_CMD" -a shell != "$EXEC_CMD" || EXEC_CMD=/bin/bash
 test -z "$EXEC_CMD" || (
   set -x
-  docker run $DOCKEROPTIONS $DOCKER_RUN_VOLUME $DOCKER_GITDIR_VOLUME $TI --rm -w /$PROJECT/ $IMGTAG "$EXEC_CMD" "$@"
+  docker run $DOCKEROPTIONS $DOCKER_RUN_VOLUME $DOCKER_GITDIR_VOLUME $OOTBUILD_VOLUME $TI --rm -w /$PROJECT/ $IMGTAG "$EXEC_CMD" "$@"
 ) # avoid 'exec' for TRAP(1) to take effect
 exit $?
