@@ -115,11 +115,6 @@ $(call BUILD_PROGRAM, \
 	$(lib/libase.so), \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl, \
 	../lib)
-#	-lase-$(version_major)
-$(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
-	$(lib/AnklangSynthEngine)	\
-	$(lib/AnklangSynthEngine)-fma	\
-  ))
 # silence some websocketpp warnings
 $(ase/AnklangSynthEngine.objects): EXTRA_CXXFLAGS ::= -Wno-sign-promo
 
@@ -135,6 +130,13 @@ $(call BUILD_SHARED_LIB, \
 	$(GTK2_LIBS), \
 	../lib)
 $(ALL_TARGETS) += $(lib/gtk2wrap.so)
+
+# == install binaries ==
+$(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
+	$(lib/AnklangSynthEngine)	\
+	$(lib/AnklangSynthEngine)-fma	\
+	$(lib/gtk2wrap.so)		\
+  ))
 
 # == Check Integrity Tests ==
 check-ase-tests: $(lib/AnklangSynthEngine)
