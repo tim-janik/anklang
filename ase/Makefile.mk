@@ -103,7 +103,7 @@ $>/external/clap/clap.h: ase/Makefile.mk		| $>/external/
 	     $(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
 	$Q ln -s $(T:.tar.gz=)/include/clap $>/external/clap
 	$Q test -e $@ && touch $@
-ase/clapdevice.cc: $>/external/clap/clap.h
+$(wildcard ase/clap*.cc): $>/external/clap/clap.h
 
 # == AnklangSynthEngine ==
 $(ase/AnklangSynthEngine.objects): $(ase/AnklangSynthEngine.deps) $(ase/libase.deps)
