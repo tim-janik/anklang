@@ -350,12 +350,27 @@ public:
       return false;
     }
     CDEBUG ("%s: initialized", clapid());
-    plugin_gui = (const clap_plugin_gui*) plugin_->get_extension (plugin_, CLAP_EXT_GUI);
-    plugin_params = (const clap_plugin_params*) plugin_->get_extension (plugin_, CLAP_EXT_PARAMS);
-    plugin_timer_support = (const clap_plugin_timer_support*) plugin_->get_extension (plugin_, CLAP_EXT_TIMER_SUPPORT);
-    plugin_audio_ports_config = (const clap_plugin_audio_ports_config*) plugin_->get_extension (plugin_, CLAP_EXT_AUDIO_PORTS_CONFIG);
-    plugin_audio_ports = (const clap_plugin_audio_ports*) plugin_->get_extension (plugin_, CLAP_EXT_AUDIO_PORTS);
-    plugin_note_ports = (const clap_plugin_note_ports*) plugin_->get_extension (plugin_, CLAP_EXT_NOTE_PORTS);
+    auto plugin_get_extension = [this] (const char *extname) {
+      const void *ext = plugin_->get_extension (plugin_, extname);
+      CDEBUG ("%s: plugin_get_extension(\"%s\"): %p", clapid(), extname, ext);
+      return ext;
+    };
+    plugin_gui = (const clap_plugin_gui*) plugin_get_extension (CLAP_EXT_GUI);
+    plugin_params = (const clap_plugin_params*) plugin_get_extension (CLAP_EXT_PARAMS);
+    plugin_timer_support = (const clap_plugin_timer_support*) plugin_get_extension (CLAP_EXT_TIMER_SUPPORT);
+    plugin_audio_ports_config = (const clap_plugin_audio_ports_config*) plugin_get_extension (CLAP_EXT_AUDIO_PORTS_CONFIG);
+    plugin_audio_ports = (const clap_plugin_audio_ports*) plugin_get_extension (CLAP_EXT_AUDIO_PORTS);
+    plugin_note_ports = (const clap_plugin_note_ports*) plugin_get_extension (CLAP_EXT_NOTE_PORTS);
+    const clap_plugin_posix_fd_support *plugin_posix_fd_support = nullptr;
+    plugin_posix_fd_support = (const clap_plugin_posix_fd_support*) plugin_get_extension (CLAP_EXT_POSIX_FD_SUPPORT);
+    const clap_plugin_state *plugin_state = nullptr;
+    plugin_state = (const clap_plugin_state*) plugin_get_extension (CLAP_EXT_STATE);
+    const clap_plugin_render *plugin_render = nullptr;
+    plugin_render = (const clap_plugin_render*) plugin_get_extension (CLAP_EXT_RENDER);
+    const clap_plugin_latency *plugin_latency = nullptr;
+    plugin_latency = (const clap_plugin_latency*) plugin_get_extension (CLAP_EXT_LATENCY);
+    const clap_plugin_tail *plugin_tail = nullptr;
+    plugin_tail = (const clap_plugin_tail*) plugin_get_extension (CLAP_EXT_TAIL);
     get_port_infos();
     return true;
   }
