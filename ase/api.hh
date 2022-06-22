@@ -224,7 +224,8 @@ public:
   // Create sub Device
   virtual DeviceInfoS list_device_types  () = 0;                      ///< List registered Device types with their unique uri.
   virtual void        remove_device      (Device &sub) = 0;           ///< Remove a directly contained device.
-  virtual DeviceP     append_device      (const String &uri) = 0; ///< Append a new device, see list_device_types().
+  virtual void        remove_self        ();                          ///< Remove device from its container.
+  virtual DeviceP     append_device      (const String &uri) = 0;     ///< Append a new device, see list_device_types().
   virtual DeviceP     insert_device      (const String &uri,
                                           Device &beforesibling) = 0; ///< Insert a new device, before `beforesibling`.
   // Internal

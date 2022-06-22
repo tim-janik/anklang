@@ -243,4 +243,14 @@ create_processor_device (AudioEngine &engine, const String &uri, bool engineprod
   return devicep;
 }
 
+// == Device ==
+void
+Device::remove_self ()
+{
+  Gadget *parent = _parent();
+  Device *device = dynamic_cast<Device*> (parent);
+  if (device)
+    device->remove_device (*this);
+}
+
 } // Ase
