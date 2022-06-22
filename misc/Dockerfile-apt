@@ -52,6 +52,10 @@ RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
 # Cleanup
 RUN apt-get clean
 
+# Provide out-of-tree build directory
+RUN mkdir /ootbuild/
+ENV OOTBUILD /ootbuild/
+
 # make sure getpwuid() works, prepare writable ~/
 ARG USERGROUP
 RUN mkdir -m 0755 -p /dbuild/ && cp /root/.bashrc /dbuild/ && \

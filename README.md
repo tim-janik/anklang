@@ -58,7 +58,7 @@ and run it.
 ## License
 
 This application including the audio engine are licensed under
-[MPL-2.0](https://github.com/tim-janik/anklang/blob/trunk/LICENSE). \
+[MPL-2.0](https://github.com/tim-janik/anklang/blob/trunk/LICENSE).
 
 However, plugins that can be used with this application or may be downloaded
 via extension packs, may fall under different licensing terms, such as

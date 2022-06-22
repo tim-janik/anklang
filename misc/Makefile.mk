@@ -211,9 +211,10 @@ insn-build-fma:
 
 # == release rules ==
 RELEASE_CONTINUATION ?= false
-RELEASE_TMPDIR      ::= /tmp/anklang-build$(shell id -u)
-RELEASE_SSEDIR      ::= $(RELEASE_TMPDIR)/out-sse
-RELEASE_NEWSMD        = $(RELEASE_TMPDIR)/NEWS.md
+OOTBUILD             ?= /tmp/anklang-ootbuild$(shell id -u)
+RELEASE_OOTBUILD    ::= $(OOTBUILD)
+RELEASE_SSEDIR      ::= $(RELEASE_OOTBUILD)/out-sse
+RELEASE_NEWSMD        = $(RELEASE_OOTBUILD)/NEWS.md
 RELEASE_DEB           = $(RELEASE_SSEDIR)/anklang_$(DETAILED_VERSION)_amd64.deb
 RELEASE_APPIMAGE      = $(RELEASE_SSEDIR)/anklang-$(DETAILED_VERSION)-x64.AppImage
 RELEASE_CHANGELOG     = $(RELEASE_SSEDIR)/ChangeLog-$(DETAILED_VERSION).txt
@@ -266,26 +267,26 @@ upload-nightly:
 build-assets:
 	$Q test -n "$$DETAILED_VERSION" -a -r ./NEWS.build
 	@: # Create temporary build directory
-	$Q if $(RELEASE_CONTINUATION) && test -d $(RELEASE_TMPDIR) ; then	\
+	$Q if $(RELEASE_CONTINUATION) && test -d $(RELEASE_OOTBUILD) ; then	\
 		WORKTREEHEAD=`git rev-parse HEAD`				\
-		&& cd $(RELEASE_TMPDIR)						\
+		&& cd $(RELEASE_OOTBUILD)					\
 		&& git checkout -f "$$WORKTREEHEAD" ;				\
 	   else									\
-		git worktree remove --force $(RELEASE_TMPDIR) 2>/dev/null ;	\
-		git worktree add $(RELEASE_TMPDIR) HEAD ;			\
+		git worktree remove --force $(RELEASE_OOTBUILD) 2>/dev/null ;	\
+		git worktree add $(RELEASE_OOTBUILD) HEAD ;			\
 	   fi
-	$Q mv ./NEWS.build $(RELEASE_TMPDIR)/NEWS.md
+	$Q mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
 	@: # Build binaries with different INSNs in parallel, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_TMPDIR) -j`nproc` -l`nproc`	\
+	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
 		insn-build-sse						\
 		insn-build-fma
 	@: # Build release packages, INSN=sse is full build, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_TMPDIR) -j`nproc` -l`nproc`	\
+	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
 		INSN=sse builddir=out-sse				\
 		anklang-deb						\
 		appimage
 	@: # Check build
-	$Q time $(RELEASE_APPIMAGE) --quitstartup
+	$Q test ! -r /dev/fuse || time $(RELEASE_APPIMAGE) --quitstartup
 
 # == release-upload ==
 release-upload: NEWS.md
@@ -301,20 +302,20 @@ release-upload: NEWS.md
 		{ echo '$@: error: release tag from NEWS.md already exists: $(RELEASE_TAG)' >&2 ; false ; }
 	@: # Tag release, create temporary build directory
 	$Q git tag -a '$(RELEASE_TAG)' -m "`git log -1 --pretty=%s`"
-	$Q if $(RELEASE_CONTINUATION) && test -d $(RELEASE_TMPDIR) ; then	\
-		cd $(RELEASE_TMPDIR) &&						\
+	$Q if $(RELEASE_CONTINUATION) && test -d $(RELEASE_OOTBUILD) ; then	\
+		cd $(RELEASE_OOTBUILD) &&					\
 		git checkout '$(RELEASE_TAG)' ;					\
 	   else									\
-		git worktree remove --force $(RELEASE_TMPDIR) 2>/dev/null ;	\
-		git worktree add $(RELEASE_TMPDIR) '$(RELEASE_TAG)' ;		\
+		git worktree remove --force $(RELEASE_OOTBUILD) 2>/dev/null ;	\
+		git worktree add $(RELEASE_OOTBUILD) '$(RELEASE_TAG)' ;		\
 	   fi
 	@: # Build binaries with different INSNs in parallel, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_TMPDIR) -j`nproc` -l`nproc`	\
+	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
 		insn-build-sse						\
 		insn-build-fma						\
 	|| { git tag -d '$(RELEASE_TAG)' ; exit -1 ; }
 	@: # Build release packages, INSN=sse is full build, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_TMPDIR) -j`nproc` -l`nproc`	\
+	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
 		INSN=sse builddir=out-sse				\
 		anklang-deb						\
 		appimage						\
@@ -339,5 +340,5 @@ release-upload: NEWS.md
 	&& test y == "$$ANSWER"							\
 	&& git push origin '$(RELEASE_TAG)'
 	@: # Clean temporary build directory
-	$Q ! $(RELEASE_CONTINUATION) || git worktree remove $(RELEASE_TMPDIR) 2>/dev/null
+	$Q ! $(RELEASE_CONTINUATION) || git worktree remove $(RELEASE_OOTBUILD) 2>/dev/null
 .PHONY: release-upload
