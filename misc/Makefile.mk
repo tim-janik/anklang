@@ -285,7 +285,7 @@ build-assets:
 		anklang-deb						\
 		appimage
 	@: # Check build
-	$Q time $(RELEASE_APPIMAGE) --quitstartup
+	$Q test ! -r /dev/fuse || time $(RELEASE_APPIMAGE) --quitstartup
 
 # == release-upload ==
 release-upload: NEWS.md
