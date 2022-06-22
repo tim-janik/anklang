@@ -24,6 +24,7 @@ umask 022
 
 # install into $DROOT
 #make && make check
+rm -f -r "$DROOT"
 make install "DESTDIR=$DROOT"
 #make installcheck "DESTDIR=$DROOT"
 
@@ -36,11 +37,12 @@ ARCH=$(dpkg --print-architecture)
 
 # Dependencies
 D="libc6 (>= 2.31)"
-D="$D, libstdc++6:amd64 (>= 10.2.0), libboost-system1.71.0"
+D="$D, libstdc++6:amd64 (>= 10.2.0)"
 D="$D, zlib1g, libzstd1:amd64, python3"
 D="$D, libasound2, libflac8 (>= 1.3.3), libfluidsynth2 (>= 2.1.1), libmad0"
 D="$D, libogg0, libvorbis0a, libvorbisenc2, libvorbisfile3 (>= 1.3.5)"
 D="$D, libglib2.0-0 (>= 2.64.6), libgtk2.0-0 (>= 2.24.32)"
+D="$D, libgtk-3-0 (>= 3.24.18), libnss3 (>= 2:3.49)"
 
 # DEBIAN/
 mkdir -p $DEBIAN
@@ -133,6 +135,6 @@ find $DEBIAN/../ -name '*.la' -delete
 find $DEBIAN/../ -name '*.py[co]' -delete
 
 # create binary deb
-fakeroot dpkg-deb -Zzstd -z9 -b $DROOT $DROOT/..
+fakeroot dpkg-deb -Zxz -z7 -b $DROOT $DROOT/..
 ls -al $BUILDDIR/$NAME''_$VERSION''_$ARCH.deb
 echo lintian -i --no-tag-display-limit $BUILDDIR/$NAME''_$VERSION''_$ARCH.deb
