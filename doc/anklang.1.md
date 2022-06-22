@@ -14,8 +14,7 @@ anklang - Music composition and modular synthesis application
 
 **Anklang** is a digital audio synthesis application for live creation
 and composition of music and other audio material.
-It is released as free software under the MPL-2.0 and includes plugins
-under the GNU LGPL-2.1+.
+It is released as free software under the MPL-2.0.
 
 Anklang comes with synthesis devices which can be arranged in tracks
 and controlled via MIDI input devices or pre-programmed clips which
