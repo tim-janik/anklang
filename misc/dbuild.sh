@@ -24,6 +24,7 @@ usage() {
   echo "  -f <DOCKERFILE>   Choose a Dockerfile [$DOCKERFILE]"
   echo "  -h                Display command line help"
   echo "  -i                Initialize docker build environment [$INITIALIZE]"
+  echo "  --no-cache        Build docker with --no-cache"
   echo "  shell             COMMAND: Run shell"
   echo "  root              COMMAND: Run root shell"
 }
@@ -34,7 +35,8 @@ while test $# -ne 0 ; do
     -d)		shift; DIST="$1" ;;
     -f)		shift; DOCKERFILE="$1" ;;
     -h)		usage ; exit 0 ;;
-    -i)		INITIALIZE=true ; NOCACHE=--no-cache ;;
+    -i)		INITIALIZE=true ;;
+    --no-cache)	NOCACHE=--no-cache ;;
     --)		shift ; break ;;
     *)		break ;;
   esac

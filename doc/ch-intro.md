@@ -10,8 +10,7 @@ keywords:   Anklang, DAW, DSP, Audio Synthesis, Linux, ALSA, JavaScript, Scripti
 
 This is the Anklang manual, Anklang is a music synthesis and composition program,
 released as Free Software under the
-GNU [LGPL-2.1+](https://tldrlegal.com/license/gnu-lesser-general-public-license-v2.1-%28lgpl-2.1%29) and
-the [MPL-2.0](https://tldrlegal.com/license/mozilla-public-license-2.0-(mpl-2)).
+[MPL-2.0](https://tldrlegal.com/license/mozilla-public-license-2.0-(mpl-2)).
 
 The manual is structured into sections covering tutorial material,
 Howto descriptions, Man pages, file formats and conventions,

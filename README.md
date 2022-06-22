@@ -1,6 +1,5 @@
 <!-- BADGES -->
 [![License][mpl2-badge]][mpl2-url]
-[![Plugins][lgpl-plugins-badge]][lgpl21-url]
 [![Contributors][contributors-badge]][contributors-url]
 [![Commits][commits-badge]][commits-url]
 [![Test Build][testing-badge]][testing-url] \
@@ -58,10 +57,12 @@ and run it.
 <!-- LICENSE.txt -->
 ## License
 
-Large parts of the application core are licensed under
-[MPL-2.0](https://github.com/tim-janik/anklang/blob/trunk/misc/MPL-2.0.txt). \
-Plugins are often licensed under
-[LGPL-2.1+](https://github.com/tim-janik/anklang/blob/trunk/misc/LGPL-2.1.txt).
+This application including the audio engine are licensed under
+[MPL-2.0](https://github.com/tim-janik/anklang/blob/trunk/LICENSE). \
+
+However, plugins that can be used with this application or may be downloaded
+via extension packs, may fall under different licensing terms, such as
+GPLv3 or proprietary licenses.
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
@@ -80,10 +81,8 @@ Plugins are often licensed under
 [irc-url]: https://web.libera.chat/#Anklang
 [issues-badge]: https://img.shields.io/github/issues-raw/tim-janik/anklang.svg?style=for-the-badge
 [issues-url]: https://github.com/tim-janik/anklang/issues
-[lgpl-plugins-badge]: https://img.shields.io/static/v1?label=Plugins&message=LGPL-2.1%2B&color=9c0&style=for-the-badge
-[lgpl21-url]: https://github.com/tim-janik/anklang/blob/trunk/misc/LGPL-2.1.txt
 [mpl2-badge]: https://img.shields.io/static/v1?label=License&message=MPL-2&color=9c0&style=for-the-badge
-[mpl2-url]: https://github.com/tim-janik/anklang/blob/trunk/misc/MPL-2.0.txt
+[mpl2-url]: https://github.com/tim-janik/anklang/blob/trunk/LICENSE
 [packages-badge]: https://img.shields.io/badge/Packages-AppImage%20|%20deb-999?style=for-the-badge
 [stars-badge]: https://img.shields.io/github/stars/tim-janik/anklang.svg?style=for-the-badge
 [stars-url]: https://github.com/tim-janik/anklang/stargazers
