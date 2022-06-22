@@ -62,8 +62,7 @@ cat >$DEBIAN/control <<-__EOF
 	 .
 	 Anklang is a digital audio synthesis application for live
 	 creation and composition of music and other audio material.
-	 It is released as free software under the MPL-2.0
-	 and includes plugins under the GNU LGPL-2.1+.
+	 It is released as free software under the MPL-2.0.
 	 .
 	 This package contains the entire distribution.
 __EOF
