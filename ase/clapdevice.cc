@@ -53,6 +53,27 @@ ClapDeviceImpl::_set_parent (Gadget *parent)
     }
 }
 
+void
+ClapDeviceImpl::gui_toggle ()
+{
+  if (handle_->gui_visible())
+    handle_->hide_gui();
+  else if (handle_->supports_gui())
+    handle_->show_gui();
+}
+
+bool
+ClapDeviceImpl::gui_supported ()
+{
+  return handle_->supports_gui();
+}
+
+bool
+ClapDeviceImpl::gui_visible ()
+{
+  return handle_->gui_visible();
+}
+
 DeviceInfoS
 ClapDeviceImpl::list_clap_plugins ()
 {

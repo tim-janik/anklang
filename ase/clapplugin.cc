@@ -380,7 +380,7 @@ public:
   }
   bool plugin_activated = false;
   bool plugin_processing = false;
-  bool gui_visible = false;
+  bool gui_visible_ = false;
   bool gui_canresize = false;
   ulong gui_windowid = 0;
   std::vector<uint> timers;
@@ -426,9 +426,11 @@ public:
     plugin_->deactivate (plugin_);
     CDEBUG ("%s: deactivated", clapid());
   }
-  void show_gui    () override;
-  void hide_gui    () override;
-  void destroy_gui () override;
+  void show_gui     () override;
+  void hide_gui     () override;
+  void destroy_gui  () override;
+  bool gui_visible  () override;
+  bool supports_gui () override;
   void
   destroy () override
   {
@@ -764,6 +766,18 @@ host_gui_create_x11_window (ClapPluginHandleImplP handlep, int width, int height
   return windowid;
 }
 
+bool
+ClapPluginHandleImpl::gui_visible ()
+{
+  return gui_visible_;
+}
+
+bool
+ClapPluginHandleImpl::supports_gui ()
+{
+  return plugin_gui != nullptr;
+}
+
 void
 ClapPluginHandleImpl::show_gui()
 {
@@ -796,9 +810,9 @@ ClapPluginHandleImpl::show_gui()
         }
     }
   if (gui_windowid) {
-    gui_visible = plugin_gui->show (plugin_);
-    CDEBUG ("%s: gui_show: %d\n", clapid(), gui_visible);
-    if (!gui_visible)
+    gui_visible_ = plugin_gui->show (plugin_);
+    CDEBUG ("%s: gui_show: %d\n", clapid(), gui_visible_);
+    if (!gui_visible_)
       ; // do nothing, early JUCE versions have a bug returning false here
     x11wrapper->show_window (gui_windowid);
   }
@@ -811,7 +825,7 @@ ClapPluginHandleImpl::hide_gui()
     {
       plugin_gui->hide (plugin_);
       x11wrapper->hide_window (gui_windowid);
-      gui_visible = false;
+      gui_visible_ = false;
   }
 }
 
@@ -868,7 +882,7 @@ host_gui_closed (const clap_host_t *host, bool was_destroyed)
 {
   ClapPluginHandleImpl *handle = handle_ptr (host);
   CDEBUG ("%s: %s(was_destroyed=%u)", clapid (host), __func__, was_destroyed);
-  handle->gui_visible = false;
+  handle->gui_visible_ = false;
   if (was_destroyed && handle->plugin_gui) {
     handle->gui_windowid = 0;
     handle->plugin_gui->destroy (handle->plugin_);
