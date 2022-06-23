@@ -9,8 +9,8 @@
 #include "gtk2wrap.hh"
 #include <dlfcn.h>
 
-#define CDEBUG(...)     Ase::debug ("Clap", __VA_ARGS__)
-#define CDEBUG_ENABLED() Ase::debug_key_enabled ("Clap")
+#define CDEBUG(...)     Ase::debug ("clap", __VA_ARGS__)
+#define CDEBUG_ENABLED() Ase::debug_key_enabled ("clap")
 
 namespace Ase {
 
