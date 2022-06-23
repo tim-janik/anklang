@@ -40,6 +40,7 @@
       <b-menutitle> Device </b-menutitle>
       <b-menuitem fa="plus-circle"      uri="add-device" >      Add Device		</b-menuitem>
       <b-menuitem fa="times-circle"     uri="delete-device" >   Delete Device		</b-menuitem>
+      <b-menuitem mi="video_settings"   uri="toggle-gui" >      Toggle GUI		</b-menuitem>
     </b-contextmenu>
   </h-flex>
 </template>
@@ -260,9 +261,12 @@ export default {
 	case 'delete-device':
 	  this.device.remove_self();
 	  break;
+	case 'toggle-gui':
+	  this.device.gui_toggle();
+	  break;
       }
     },
-    deactivation (uri, component) {
+    async deactivation (uri, component) {
       if (!this.device)
 	return false;
       switch (uri) {
@@ -270,6 +274,8 @@ export default {
 	  return false;
 	case 'delete-device':
 	  return true;
+	case 'toggle-gui':
+	  return await this.device.gui_supported();
       }
       return false;
     },
