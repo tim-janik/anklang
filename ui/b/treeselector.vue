@@ -20,7 +20,6 @@
 
 <template>
   <div class="b-treeselector">
-    <div>Tree Selector</div>
     <slot></slot>
     <ul class="b-treeselector-root"
 	@keydown="focus_updown"
