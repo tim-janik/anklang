@@ -37,9 +37,10 @@
 		   :name="group.name" :props="group.props" />
     </c-grid>
     <b-contextmenu ref="cmenu" @click="activation" :check="deactivation" >
-      <b-menutitle> Module </b-menutitle>
-      <b-menuitem fa="plus-circle"      uri="add-module" >      Add Module		</b-menuitem>
-      <b-menuitem fa="times-circle"     uri="delete-module" >   Delete Module		</b-menuitem>
+      <b-menutitle> Device </b-menutitle>
+      <b-menuitem fa="plus-circle"      uri="add-device" >      Add Device		</b-menuitem>
+      <b-menuitem fa="times-circle"     uri="delete-device" >   Delete Device		</b-menuitem>
+      <b-menuitem mi="video_settings"   uri="toggle-gui" >      Toggle GUI		</b-menuitem>
     </b-contextmenu>
   </h-flex>
 </template>
@@ -256,13 +257,25 @@ export default {
     activation (uri) {
       // close popup to remove focus guards
       this.$refs.cmenu.close();
+      switch (uri) {
+	case 'delete-device':
+	  this.device.remove_self();
+	  break;
+	case 'toggle-gui':
+	  this.device.gui_toggle();
+	  break;
+      }
     },
-    deactivation (uri, component) {
+    async deactivation (uri, component) {
       if (!this.device)
 	return false;
       switch (uri) {
-	case 'add-module':
+	case 'add-device':
 	  return false;
+	case 'delete-device':
+	  return true;
+	case 'toggle-gui':
+	  return await this.device.gui_supported();
       }
       return false;
     },

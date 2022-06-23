@@ -22,6 +22,9 @@ public:
   void               remove_device         (Device &sub) override            {} // no children
   DeviceP            append_device         (const String&) override          { return {}; }
   DeviceP            insert_device         (const String&, Device&) override { return {}; }
+  void               gui_toggle            () override;
+  bool               gui_supported         () override;
+  bool               gui_visible           () override;
   AudioProcessorP    _audio_processor      () const override;
   void               _set_event_source     (AudioProcessorP esource) override;
   void               _disconnect_remove    () override;

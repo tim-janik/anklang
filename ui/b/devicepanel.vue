@@ -70,9 +70,7 @@
       <b-more @click.stop="menuopen" :sibling="null"
 	      data-tip="**CLICK** Add New Elements" />
       <b-contextmenu ref="cmenu" @click="menuactivation" yscale="1.6" >
-	<b-menutitle> Device </b-menutitle>
-	<b-menuitem fa="plus-circle"      uri="DevicePanel:add-device" >      Add Device		</b-menuitem>
-	<b-menuitem fa="times-circle"     uri="DevicePanel:delete-device" >   Delete Device		</b-menuitem>
+	<b-menutitle> Devices </b-menutitle>
 	<b-treeselector :tree="devicetypes" :defaultcollapse="false"> </b-treeselector>
       </b-contextmenu>
     </h-flex>
@@ -127,8 +125,6 @@ export default {
       const popup_options = this.$refs.cmenu.popup_options;
       // close popup to remove focus guards
       this.$refs.cmenu.close();
-      if (uri == 'DevicePanel:add-device' || uri == 'DevicePanel:delete-device')
-	debug ("devicepanel.vue:", uri);
       if (this.chain_ && !uri.startsWith ('DevicePanel:')) // assuming b-treeselector.devicetypes
 	{
 	  let newdev;
@@ -144,10 +140,6 @@ export default {
     menucheck (uri, component) {
       if (!this.track)
 	return false;
-      switch (uri)
-      {
-	case 'add-device':   return true;
-      }
       return false;
     },
     menuopen (event) {

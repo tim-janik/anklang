@@ -10,8 +10,9 @@
 #include <dlfcn.h>
 #include <glob.h>
 
-#define CDEBUG(...)     Ase::debug ("Clap", __VA_ARGS__)
-#define CDEBUG_ENABLED() Ase::debug_key_enabled ("Clap")
+#define CDEBUG(...)          Ase::debug ("clap", __VA_ARGS__)
+#define CDEBUG_ENABLED()     Ase::debug_key_enabled ("clap")
+#define CLAPEVENT_ENABLED()  Ase::debug_key_enabled ("clapevent")
 
 namespace Ase {
 
@@ -54,7 +55,9 @@ class ClapAudioWrapper : public AudioProcessor {
   OBusId obusid = {};
   uint imain_clapidx = ~0, omain_clapidx = ~0, iside_clapidx = ~0, oside_clapidx = ~0;
   clap_note_dialect input_event_dialect = clap_note_dialect (0);
+  clap_note_dialect input_preferred_dialect = clap_note_dialect (0);
   clap_note_dialect output_event_dialect = clap_note_dialect (0);
+  clap_note_dialect output_preferred_dialect = clap_note_dialect (0);
   bool can_process_ = false;
 public:
   static void
@@ -95,7 +98,9 @@ public:
       }
     // find event ports
     input_event_dialect  = clap_note_dialect (handle_->note_iport_infos.size() ? handle_->note_iport_infos[0].supported_dialects : 0);
+    input_preferred_dialect = clap_note_dialect (handle_->note_iport_infos.size() ? handle_->note_iport_infos[0].preferred_dialect : 0);
     output_event_dialect = clap_note_dialect (handle_->note_oport_infos.size() ? handle_->note_oport_infos[0].supported_dialects : 0);
+    output_preferred_dialect = clap_note_dialect (handle_->note_oport_infos.size() ? handle_->note_oport_infos[0].preferred_dialect : 0);
 
     // create busses
     if (imain_clapidx < audio_iport_infos.size())
@@ -117,8 +122,7 @@ public:
   void
   reset (uint64 target_stamp) override
   {}
-  void convert_clap_events (const clap_process_t &process);
-  void convert_midi1_events (const clap_process_t &process);
+  void convert_clap_events (const clap_process_t &process, bool as_clapnotes);
   std::vector<ClapEventUnion> input_events_;
   std::vector<clap_event_header_t> output_events_;
   static uint32_t
@@ -197,10 +201,7 @@ public:
         processinfo.audio_outputs[omain_clapidx].data32[i] = oblock (obusid, i);
       }
       processinfo.frames_count = n_frames;
-      if (input_event_dialect & CLAP_NOTE_DIALECT_CLAP)
-        convert_clap_events (processinfo);
-      else if (input_event_dialect & CLAP_NOTE_DIALECT_MIDI)
-        convert_midi1_events (processinfo);
+      convert_clap_events (processinfo, input_preferred_dialect & CLAP_NOTE_DIALECT_CLAP);
       processinfo.steady_time += processinfo.frames_count;
       clap_process_status status = clapplugin_->process (clapplugin_, &processinfo);
       (void) status; // CLAP_PROCESS_ERROR ?
@@ -211,53 +212,47 @@ public:
 };
 static CString clap_audio_wrapper_aseid = register_audio_processor<ClapAudioWrapper>();
 
-void
-ClapAudioWrapper::convert_clap_events (const clap_process_t &process)
+static inline clap_event_midi*
+setup_midi1 (ClapEventUnion *evunion, uint32_t time, uint16_t port_index)
 {
-  MidiEventRange erange = get_event_input();
-  if (input_events_.capacity() < erange.events_pending())
-    input_events_.reserve (erange.events_pending() + 128);
-  input_events_.resize (erange.events_pending());
-  uint j = 0;
-  for (const auto &ev : erange)
-    switch (ev.message())
-      {
-        clap_event_note_t *enote;
-      case MidiMessage::NOTE_ON:
-      case MidiMessage::NOTE_OFF:
-        enote = &input_events_[j++].note;
-        enote->header.size = sizeof (*enote);
-        enote->header.type = ev.message() == MidiMessage::NOTE_ON ? CLAP_EVENT_NOTE_ON : CLAP_EVENT_NOTE_OFF;
-        enote->header.time = MAX (ev.frame, 0);
-        enote->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-        enote->header.flags = 0;
-        enote->note_id = ev.noteid;
-        enote->port_index = 0;
-        enote->channel = ev.channel;
-        enote->key = ev.key;
-        enote->velocity = ev.velocity;
-        break;
-      case MidiMessage::ALL_NOTES_OFF:
-        enote = &input_events_[j++].note;
-        enote->header.size = sizeof (*enote);
-        enote->header.type = CLAP_EVENT_NOTE_CHOKE;
-        enote->header.time = MAX (ev.frame, 0);
-        enote->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-        enote->header.flags = 0;
-        enote->note_id = -1;
-        enote->port_index = 0;
-        enote->channel = -1;
-        enote->key = -1;
-        enote->velocity = 0;
-        break;
-      default: ;
-      }
-  input_events_.resize (j);
-  // for (const auto &ev : input_events_) CDEBUG ("input: %s", clap_event_to_string (&ev.note));
+  clap_event_midi *midi1 = &evunion->midi1;
+  midi1->header.size = sizeof (*midi1);
+  midi1->header.time = time;
+  midi1->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+  midi1->header.type = CLAP_EVENT_MIDI;
+  midi1->header.flags = 0;
+  midi1->port_index = port_index;
+  return midi1;
+}
+
+static inline clap_event_note*
+setup_evnote (ClapEventUnion *evunion, uint32_t time, uint16_t port_index)
+{
+  clap_event_note *evnote = &evunion->note;
+  evnote->header.size = sizeof (*evnote);
+  evnote->header.type = 0;
+  evnote->header.time = time;
+  evnote->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+  evnote->header.flags = 0;
+  evnote->port_index = port_index;
+  return evnote;
+}
+
+static inline clap_event_note_expression*
+setup_expression (ClapEventUnion *evunion, uint32_t time, uint16_t port_index)
+{
+  clap_event_note_expression *expr = &evunion->expression;
+  expr->header.size = sizeof (*expr);
+  expr->header.type = CLAP_EVENT_NOTE_EXPRESSION;
+  expr->header.time = time;
+  expr->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
+  expr->header.flags = 0;
+  expr->port_index = port_index;
+  return expr;
 }
 
 void
-ClapAudioWrapper::convert_midi1_events (const clap_process_t &process)
+ClapAudioWrapper::convert_clap_events (const clap_process_t &process, const bool as_clapnotes)
 {
   MidiEventRange erange = get_event_input();
   if (input_events_.capacity() < erange.events_pending())
@@ -267,38 +262,88 @@ ClapAudioWrapper::convert_midi1_events (const clap_process_t &process)
   for (const auto &ev : erange)
     switch (ev.message())
       {
+        clap_event_note_expression *expr;
+        clap_event_note_t *evnote;
         clap_event_midi_t *midi1;
+        int16_t i16;
       case MidiMessage::NOTE_ON:
       case MidiMessage::NOTE_OFF:
-        midi1 = &input_events_[j++].midi1;
-        midi1->header.size = sizeof (*midi1);
-        midi1->header.type = CLAP_EVENT_MIDI;
-        midi1->header.time = MAX (ev.frame, 0);
-        midi1->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-        midi1->header.flags = 0;
-        midi1->port_index = 0;
-        if (ev.message() == MidiMessage::NOTE_ON)
-          midi1->data[0] = 0x90 + ev.channel;
-        else
-          midi1->data[0] = 0x80 + ev.channel;
-        midi1->data[1] = ev.key;
-        midi1->data[2] = uint8_t (ev.velocity * 127);
+      case MidiMessage::AFTERTOUCH:
+        if (as_clapnotes && ev.type == MidiEvent::AFTERTOUCH) {
+          expr = setup_expression (&input_events_[j++], MAX (ev.frame, 0), 0);
+          expr->expression_id = CLAP_NOTE_EXPRESSION_PRESSURE;
+          expr->note_id = ev.noteid;
+          expr->channel = ev.channel;
+          expr->key = ev.key;
+          expr->value = ev.velocity;
+        } else if (as_clapnotes) {
+          evnote = setup_evnote (&input_events_[j++], MAX (ev.frame, 0), 0);
+          evnote->header.type = ev.type == MidiEvent::NOTE_ON ? CLAP_EVENT_NOTE_ON : CLAP_EVENT_NOTE_OFF;
+          evnote->note_id = ev.noteid;
+          evnote->channel = ev.channel;
+          evnote->key = ev.key;
+          evnote->velocity = ev.velocity;
+        } else {
+          midi1 = setup_midi1 (&input_events_[j++], MAX (ev.frame, 0), 0);
+          midi1->data[0] = uint8_t (ev.type) | (ev.channel & 0xf);
+          midi1->data[1] = ev.key;
+          midi1->data[2] = std::min (uint8_t (ev.velocity * 127), uint8_t (127));
+        }
         break;
       case MidiMessage::ALL_NOTES_OFF:
-        midi1 = &input_events_[j++].midi1;
-        midi1->header.size = sizeof (*midi1);
-        midi1->header.type = CLAP_EVENT_MIDI;
-        midi1->header.time = MAX (ev.frame, 0);
-        midi1->header.space_id = CLAP_CORE_EVENT_SPACE_ID;
-        midi1->header.flags = 0;
-        midi1->port_index = 0;
-        midi1->data[0] = 0xB0 + ev.channel;
-        midi1->data[1] = 123;
+        if (as_clapnotes) {
+          evnote = setup_evnote (&input_events_[j++], MAX (ev.frame, 0), 0);
+          evnote->header.type = CLAP_EVENT_NOTE_CHOKE;
+          evnote->note_id = -1;
+          evnote->channel = -1;
+          evnote->key = -1;
+          evnote->velocity = 0;
+        } else {
+          midi1 = setup_midi1 (&input_events_[j++], MAX (ev.frame, 0), 0);
+          midi1->data[0] = 0xB0 | (ev.channel & 0xf);
+          midi1->data[1] = 123;
+          midi1->data[2] = 0;
+        }
+        break;
+      case MidiMessage::CONTROL_CHANGE:
+        midi1 = setup_midi1 (&input_events_[j++], MAX (ev.frame, 0), 0);
+        midi1->data[0] = 0xB0 | (ev.channel & 0xf);
+        midi1->data[1] = ev.param;
+        midi1->data[2] = ev.cval;
+        break;
+      case MidiMessage::CHANNEL_PRESSURE:
+        midi1 = setup_midi1 (&input_events_[j++], MAX (ev.frame, 0), 0);
+        midi1->data[0] = 0xD0 | (ev.channel & 0xf);
+        midi1->data[1] = std::min (uint8_t (ev.velocity * 127), uint8_t (127));
         midi1->data[2] = 0;
+        break;
+      case MidiMessage::PITCH_BEND:
+        midi1 = setup_midi1 (&input_events_[j++], MAX (ev.frame, 0), 0);
+        midi1->data[0] = 0xE0 | (ev.channel & 0xf);
+        midi1->data[1] = std::min (uint8_t (ev.velocity * 127), uint8_t (127));
+        midi1->data[2] = 0;
+        i16 = ev.value < 0 ? ev.value * 8192.0 : ev.value * 8191.0;
+        i16 += 8192;
+        midi1->data[1] = i16 & 127;
+        midi1->data[2] = (i16 >> 7) & 127;
         break;
       default: ;
       }
   input_events_.resize (j);
+  if (debug_enabled()) // lock-free check
+    {
+      static bool evdebug = CLAPEVENT_ENABLED();
+      if (ASE_UNLIKELY (evdebug))
+        for (const auto &ev : input_events_) {
+          if (ev.header.type == CLAP_EVENT_MIDI)
+            printerr ("%+4d ch=%-2u %-14s %02X %02X %02X sz=%d spc=%d flags=%x port=%d\n",
+                      ev.midi1.header.time, ev.midi1.data[0] & 0xf, "MIDI1",
+                      ev.midi1.data[0], ev.midi1.data[1], ev.midi1.data[2],
+                      ev.midi1.header.size, ev.midi1.header.space_id, ev.midi1.header.flags, ev.midi1.port_index);
+          else
+            printerr ("%s\n", clap_event_to_string (&ev.note));
+        }
+    }
 }
 
 // == ClapPluginHandleImpl ==
@@ -350,12 +395,27 @@ public:
       return false;
     }
     CDEBUG ("%s: initialized", clapid());
-    plugin_gui = (const clap_plugin_gui*) plugin_->get_extension (plugin_, CLAP_EXT_GUI);
-    plugin_params = (const clap_plugin_params*) plugin_->get_extension (plugin_, CLAP_EXT_PARAMS);
-    plugin_timer_support = (const clap_plugin_timer_support*) plugin_->get_extension (plugin_, CLAP_EXT_TIMER_SUPPORT);
-    plugin_audio_ports_config = (const clap_plugin_audio_ports_config*) plugin_->get_extension (plugin_, CLAP_EXT_AUDIO_PORTS_CONFIG);
-    plugin_audio_ports = (const clap_plugin_audio_ports*) plugin_->get_extension (plugin_, CLAP_EXT_AUDIO_PORTS);
-    plugin_note_ports = (const clap_plugin_note_ports*) plugin_->get_extension (plugin_, CLAP_EXT_NOTE_PORTS);
+    auto plugin_get_extension = [this] (const char *extname) {
+      const void *ext = plugin_->get_extension (plugin_, extname);
+      CDEBUG ("%s: plugin_get_extension(\"%s\"): %p", clapid(), extname, ext);
+      return ext;
+    };
+    plugin_gui = (const clap_plugin_gui*) plugin_get_extension (CLAP_EXT_GUI);
+    plugin_params = (const clap_plugin_params*) plugin_get_extension (CLAP_EXT_PARAMS);
+    plugin_timer_support = (const clap_plugin_timer_support*) plugin_get_extension (CLAP_EXT_TIMER_SUPPORT);
+    plugin_audio_ports_config = (const clap_plugin_audio_ports_config*) plugin_get_extension (CLAP_EXT_AUDIO_PORTS_CONFIG);
+    plugin_audio_ports = (const clap_plugin_audio_ports*) plugin_get_extension (CLAP_EXT_AUDIO_PORTS);
+    plugin_note_ports = (const clap_plugin_note_ports*) plugin_get_extension (CLAP_EXT_NOTE_PORTS);
+    const clap_plugin_posix_fd_support *plugin_posix_fd_support = nullptr;
+    plugin_posix_fd_support = (const clap_plugin_posix_fd_support*) plugin_get_extension (CLAP_EXT_POSIX_FD_SUPPORT);
+    const clap_plugin_state *plugin_state = nullptr;
+    plugin_state = (const clap_plugin_state*) plugin_get_extension (CLAP_EXT_STATE);
+    const clap_plugin_render *plugin_render = nullptr;
+    plugin_render = (const clap_plugin_render*) plugin_get_extension (CLAP_EXT_RENDER);
+    const clap_plugin_latency *plugin_latency = nullptr;
+    plugin_latency = (const clap_plugin_latency*) plugin_get_extension (CLAP_EXT_LATENCY);
+    const clap_plugin_tail *plugin_tail = nullptr;
+    plugin_tail = (const clap_plugin_tail*) plugin_get_extension (CLAP_EXT_TAIL);
     get_port_infos();
     return true;
   }
@@ -365,7 +425,7 @@ public:
   }
   bool plugin_activated = false;
   bool plugin_processing = false;
-  bool gui_visible = false;
+  bool gui_visible_ = false;
   bool gui_canresize = false;
   ulong gui_windowid = 0;
   std::vector<uint> timers;
@@ -411,9 +471,11 @@ public:
     plugin_->deactivate (plugin_);
     CDEBUG ("%s: deactivated", clapid());
   }
-  void show_gui    () override;
-  void hide_gui    () override;
-  void destroy_gui () override;
+  void show_gui     () override;
+  void hide_gui     () override;
+  void destroy_gui  () override;
+  bool gui_visible  () override;
+  bool supports_gui () override;
   void
   destroy () override
   {
@@ -749,6 +811,18 @@ host_gui_create_x11_window (ClapPluginHandleImplP handlep, int width, int height
   return windowid;
 }
 
+bool
+ClapPluginHandleImpl::gui_visible ()
+{
+  return gui_visible_;
+}
+
+bool
+ClapPluginHandleImpl::supports_gui ()
+{
+  return plugin_gui != nullptr;
+}
+
 void
 ClapPluginHandleImpl::show_gui()
 {
@@ -781,9 +855,9 @@ ClapPluginHandleImpl::show_gui()
         }
     }
   if (gui_windowid) {
-    gui_visible = plugin_gui->show (plugin_);
-    CDEBUG ("%s: gui_show: %d\n", clapid(), gui_visible);
-    if (!gui_visible)
+    gui_visible_ = plugin_gui->show (plugin_);
+    CDEBUG ("%s: gui_show: %d\n", clapid(), gui_visible_);
+    if (!gui_visible_)
       ; // do nothing, early JUCE versions have a bug returning false here
     x11wrapper->show_window (gui_windowid);
   }
@@ -796,7 +870,7 @@ ClapPluginHandleImpl::hide_gui()
     {
       plugin_gui->hide (plugin_);
       x11wrapper->hide_window (gui_windowid);
-      gui_visible = false;
+      gui_visible_ = false;
   }
 }
 
@@ -853,7 +927,7 @@ host_gui_closed (const clap_host_t *host, bool was_destroyed)
 {
   ClapPluginHandleImpl *handle = handle_ptr (host);
   CDEBUG ("%s: %s(was_destroyed=%u)", clapid (host), __func__, was_destroyed);
-  handle->gui_visible = false;
+  handle->gui_visible_ = false;
   if (was_destroyed && handle->plugin_gui) {
     handle->gui_windowid = 0;
     handle->plugin_gui->destroy (handle->plugin_);

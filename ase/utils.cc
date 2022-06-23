@@ -39,23 +39,24 @@ debug_key_value (const char *conditional)
   // cache $ASE_DEBUG and setup debug_any_enabled;
   static const std::string debug_flags = [] () {
     const char *f = getenv ("ASE_DEBUG");
-    const std::string flags = !f ? "" : ":" + std::string (f) + ":";
-    ase_debugging_enabled = !flags.empty() && flags != ":none:";
-    const ssize_t fw = flags.rfind (":fatal-warnings:");
-    const ssize_t nf = flags.rfind (":no-fatal-warnings:");
+    const std::string cflags = !f ? "" : ":" + std::string (f) + ":";
+    const std::string lflags = string_tolower (cflags);
+    ase_debugging_enabled = !lflags.empty() && lflags != ":none:";
+    const ssize_t fw = lflags.rfind (":fatal-warnings:");
+    const ssize_t nf = lflags.rfind (":no-fatal-warnings:");
     if (fw >= 0 && nf <= fw)
       ase_fatal_warnings = true;
-    const ssize_t sq = flags.rfind (":sigquit-on-abort:");
-    const ssize_t nq = flags.rfind (":no-sigquit-on-abort:");
+    const ssize_t sq = lflags.rfind (":sigquit-on-abort:");
+    const ssize_t nq = lflags.rfind (":no-sigquit-on-abort:");
     if (sq >= 0 && nq <= sq)
       ; // ase_sigquit_on_abort = true;
-    const ssize_t wb = flags.rfind (":backtrace:");
-    const ssize_t nb = flags.rfind (":no-backtrace:");
+    const ssize_t wb = lflags.rfind (":backtrace:");
+    const ssize_t nb = lflags.rfind (":no-backtrace:");
     if (wb > nb)
       ; // ase_backtrace_on_error = true;
     if (nb > wb)
       ; // ase_backtrace_on_error = false;
-    return flags;
+    return lflags;
   } ();
   // find key in colon-separated debug flags
   const ::std::string key = conditional ? conditional : "";

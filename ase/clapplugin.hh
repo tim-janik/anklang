@@ -49,6 +49,8 @@ public:
   virtual void                deactivate        () = 0;
   virtual void                show_gui          () = 0;
   virtual void                hide_gui          () = 0;
+  virtual bool                gui_visible       () = 0;
+  virtual bool                supports_gui      () = 0;
   virtual void                destroy_gui       () = 0;
   virtual void                destroy           () = 0;
   virtual AudioProcessorP     audio_processor   () = 0;

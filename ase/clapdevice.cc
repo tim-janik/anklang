@@ -9,8 +9,8 @@
 #include "gtk2wrap.hh"
 #include <dlfcn.h>
 
-#define CDEBUG(...)     Ase::debug ("Clap", __VA_ARGS__)
-#define CDEBUG_ENABLED() Ase::debug_key_enabled ("Clap")
+#define CDEBUG(...)     Ase::debug ("clap", __VA_ARGS__)
+#define CDEBUG_ENABLED() Ase::debug_key_enabled ("clap")
 
 namespace Ase {
 
@@ -51,6 +51,27 @@ ClapDeviceImpl::_set_parent (Gadget *parent)
       handle_->deactivate();
       handle_->destroy();
     }
+}
+
+void
+ClapDeviceImpl::gui_toggle ()
+{
+  if (handle_->gui_visible())
+    handle_->hide_gui();
+  else if (handle_->supports_gui())
+    handle_->show_gui();
+}
+
+bool
+ClapDeviceImpl::gui_supported ()
+{
+  return handle_->supports_gui();
+}
+
+bool
+ClapDeviceImpl::gui_visible ()
+{
+  return handle_->gui_visible();
 }
 
 DeviceInfoS
