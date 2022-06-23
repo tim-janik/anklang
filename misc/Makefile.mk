@@ -119,6 +119,8 @@ $>/anklang-$(version_short)-x64.AppImage: $>/misc/appaux/appimage-runtime-zstd $
 		-d $(APPIMAGEPKGDIR)/share/applications/anklang.desktop \
 		-l $$LIB64/libXss.so.1 \
 		-l $$LIB64/libXtst.so.6 \
+		--exclude-library="libnss3.so" \
+		--exclude-library="libnssutil3.so" \
 		--custom-apprun=misc/AppRun
 	@: # 'linuxdeploy -e bin/anklang' creates an executable copy in usr/bin/, which electron does not support
 	$Q rm $(APPBASE)/usr/bin/anklang && ln -s -r $(APPIMAGEPKGDIR)/bin/anklang $(APPBASE)/usr/bin/ # enforce bin/* as link
