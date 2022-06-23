@@ -114,13 +114,13 @@ uninstall: FORCE
 installcheck: FORCE
 
 # == subdirs ==
-include doc/style/Makefile.mk
-include doc/Makefile.mk
-include devices/Makefile.mk
 include ase/Makefile.mk
+include devices/Makefile.mk
 include ui/Makefile.mk
 include electron/Makefile.mk
 include misc/Makefile.mk
+include doc/style/Makefile.mk
+include doc/Makefile.mk
 
 # == FORCE rules ==
 # Use FORCE to mark phony targets via a dependency
