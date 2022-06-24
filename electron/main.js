@@ -3,6 +3,7 @@
 const package_json = require ('./package.json');
 const fs = require ('fs');
 Object.defineProperty (globalThis, '__DEV__', { value: package_json.mode !== 'production' });
+let devtools_option = false;
 const Electron = require ('electron');
 const Eapp = Electron.app;
 const Eshell = Electron.shell;
@@ -80,7 +81,7 @@ function create_window (onclose)
       contextIsolation:			true,
       nodeIntegration:                  false,
       enableRemoteModule:               false,
-      devTools:                         __DEV__,
+      devTools:                         __DEV__ || devtools_option,
       defaultEncoding:                  'UTF-8',
       defaultFontSize:                  parseInt (defaults.defaultFontSize),
       defaultMonospaceFontSize:         parseInt (defaults.defaultMonospaceFontSize),
@@ -130,7 +131,8 @@ async function load_and_show (w, winurl) {
   // load URL, show *afterwards*
   await w.loadURL (winurl);
   await win_ready;
-  // w.toggleDevTools(); // start with DevTools enabled
+  if (devtools_option)
+    w.toggleDevTools(); // start with DevTools enabled
   return w.show();
 }
 
@@ -222,6 +224,7 @@ function usage (what, exitcode = false) {
     '-v, --verbose     Print runtime information',
     '--binary          Print binary IPC messages',
     '--gdb             Print command to debug sound engine',
+    '--dev             Start with DevTools (for developers)',
     '--norc            Skip reading of anklangrc',
     '-U <ASEURL>       Run with URL of external sound engine',
   ];
@@ -257,6 +260,9 @@ function parse_args (argv)
 	  usage ('version', 0);
 	case '--verbose': case '-v':
 	  c.verbose = true;
+	  break;
+	case '--dev':
+	  devtools_option = true;
 	  break;
 	case '--quitstartup':
 	  ELECTRON_CONFIG.quitstartup = true;
