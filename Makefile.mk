@@ -114,8 +114,8 @@ uninstall: FORCE
 installcheck: FORCE
 
 # == subdirs ==
-include ase/Makefile.mk
 include devices/Makefile.mk
+include ase/Makefile.mk
 include ui/Makefile.mk
 include electron/Makefile.mk
 include misc/Makefile.mk
