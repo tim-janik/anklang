@@ -21,7 +21,7 @@
     "browserify": "^17.0.0",
     "css-color-converter": "^2.0.0",
     "csstree-validator": "^3.0.0",
-    "electron": "^19.0.0",
+    "electron": "^18.3.5",
     "eslint": "^8.16.0",
     "eslint-plugin-html": "^6.2.0",
     "eslint-plugin-unused-imports": "^2.0.0",
