@@ -90,7 +90,13 @@ Writ::from_json (const String &jsonstring)
   Jsonipc::Scope scope (instance_map_);
   rapidjson::Document document;
   Jsonipc::JsonValue &docroot = document;
-  document.Parse (jsonstring.data(), jsonstring.size());
+  constexpr unsigned PARSE_FLAGS =
+    rapidjson::kParseFullPrecisionFlag |
+    rapidjson::kParseCommentsFlag |
+    rapidjson::kParseTrailingCommasFlag |
+    rapidjson::kParseNanAndInfFlag |
+    rapidjson::kParseEscapedApostropheFlag;
+  document.Parse<PARSE_FLAGS> (jsonstring.data(), jsonstring.size());
   if (document.HasParseError())
     {
       // printerr ("%s: JSON-ERROR: %s\n", __func__, jsonstring);
