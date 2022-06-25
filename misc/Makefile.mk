@@ -213,6 +213,7 @@ insn-build-fma:
 
 # == release rules ==
 RELEASE_CONTINUATION ?= false
+RELEASE_TEST         ?= false
 OOTBUILD             ?= /tmp/anklang-ootbuild$(shell id -u)
 RELEASE_OOTBUILD    ::= $(OOTBUILD)
 RELEASE_SSEDIR      ::= $(RELEASE_OOTBUILD)/out-sse
@@ -227,7 +228,7 @@ build-nightly:
 	@: # Determine version in nightly format
 	$Q VERSIONHASH=`git rev-parse HEAD` && \
 		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
-		$(RELEASE_CONTINUATION) || \
+		$(RELEASE_TEST) || \
 		{ echo "$@: ERROR: Nightly release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
 	$Q git tag -f Nightly HEAD
 	@: # Update NEWS.md with nightly changes
