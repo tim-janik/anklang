@@ -19,7 +19,6 @@ ase/AnklangSynthEngine.deps	 += $>/external/rapidjson/rapidjson.h
 ase/AnklangSynthEngine.objects	::= $(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources)) $(ase/AnklangSynthEngine.gensrc:.cc=.o) $(ase/tests/objects)
 ase/AnklangSynthEngine.objects	 += $(devices/4ase.objects)
 ALL_TARGETS += $(lib/AnklangSynthEngine)
-# $(wildcard $>/ase/*.d): $>/external/rapidjson/rapidjson.h # fix deps on rapidjson/ internal headers
 
 # Work around legacy code in external/websocketpp/*.hpp
 ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec
@@ -117,6 +116,18 @@ $>/external/websocketpp/server.hpp: ase/Makefile.mk	| $>/external/
 	$Q test -e $@ && touch $@
 $>/external/websocketpp/config/asio_no_tls.hpp: $>/external/websocketpp/server.hpp
 ase/websocket.cc: $>/external/websocketpp/config/asio_no_tls.hpp
+
+# == external/rapidjson ==
+$>/external/rapidjson/rapidjson.h: ase/Makefile.mk	| $>/external/
+	@ $(eval H := 9a827f29371c4f17f831a682d18ca5bc8632fcdf5031fd3851fd68ba182db69c)
+	@ $(eval U := https://github.com/Tencent/rapidjson/archive/0ccdbf364c577803e2a751f5aededce935314313.tar.gz)
+	@ $(eval T := rapidjson-0ccdbf364c577803e2a751f5aededce935314313.tar.gz)
+	$(QECHO) FETCH "$U"
+	$Q cd $>/external/ && rm -rf rapidjson* \
+		$(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
+	$Q ln -s $(T:.tar.gz=)/include/rapidjson $>/external/rapidjson
+	$Q test -e $@ && touch $@
+$(wildcard ase/*.cc): $>/external/rapidjson/rapidjson.h
 
 # == external/clap ==
 $>/external/clap/clap.h: ase/Makefile.mk		| $>/external/
