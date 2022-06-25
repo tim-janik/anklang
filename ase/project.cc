@@ -112,7 +112,7 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
   if (!error)
     {
       // serialize Project
-      String jsd = json_stringify (*this, Writ::INDENT);
+      String jsd = json_stringify (*this, Writ::RELAXED);
       jsd += '\n';
       error = ws.store_file_data ("project.json", jsd, true);
     }
