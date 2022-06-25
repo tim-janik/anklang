@@ -269,15 +269,12 @@ upload-nightly:
 # == build-assets ==
 build-assets:
 	$Q test -n "$$DETAILED_VERSION" -a -r ./NEWS.build
-	@: # Create temporary build directory
-	$Q if $(RELEASE_CONTINUATION) && test -d $(RELEASE_OOTBUILD) ; then	\
-		WORKTREEHEAD=`git rev-parse HEAD`				\
-		&& cd $(RELEASE_OOTBUILD)					\
-		&& git checkout -f "$$WORKTREEHEAD" ;				\
-	   else									\
-		git worktree remove --force $(RELEASE_OOTBUILD) 2>/dev/null ;	\
-		git worktree add $(RELEASE_OOTBUILD) HEAD ;			\
-	   fi
+	@: # Create out-of-tree build directory, checkout current HEAD
+	$Q BUILDHEAD=`git rev-parse HEAD`						\
+		&& cd $(RELEASE_OOTBUILD)						\
+		&& ( $(RELEASE_CONTINUATION) || 					\
+			(rm -rf * .[^.]* ..?* && git clone $(abspath .git) .) )		\
+		&& git checkout -f "$$BUILDHEAD"
 	$Q mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
 	@: # Build binaries with different INSNs in parallel, delete tag on error
 	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
@@ -309,8 +306,8 @@ release-upload: NEWS.md
 		cd $(RELEASE_OOTBUILD) &&					\
 		git checkout '$(RELEASE_TAG)' ;					\
 	   else									\
-		git worktree remove --force $(RELEASE_OOTBUILD) 2>/dev/null ;	\
-		git worktree add $(RELEASE_OOTBUILD) '$(RELEASE_TAG)' ;		\
+		: git worktree remove --force $(RELEASE_OOTBUILD) 2>/dev/null ;	\
+		: git worktree add $(RELEASE_OOTBUILD) '$(RELEASE_TAG)' ;	\
 	   fi
 	@: # Build binaries with different INSNs in parallel, delete tag on error
 	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
@@ -343,5 +340,5 @@ release-upload: NEWS.md
 	&& test y == "$$ANSWER"							\
 	&& git push origin '$(RELEASE_TAG)'
 	@: # Clean temporary build directory
-	$Q ! $(RELEASE_CONTINUATION) || git worktree remove $(RELEASE_OOTBUILD) 2>/dev/null
+	$Q ! $(RELEASE_CONTINUATION) || : git worktree remove $(RELEASE_OOTBUILD) 2>/dev/null
 .PHONY: release-upload
