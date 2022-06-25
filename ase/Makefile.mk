@@ -15,7 +15,7 @@ lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine-$(version_m.m.m)
 ase/AnklangSynthEngine.sources	::= ase/main.cc $(ase/libsources.cc) $(ase/libsources.c)
 ase/AnklangSynthEngine.gensrc	::= $>/ase/api.jsonipc.cc
 ase/AnklangSynthEngine.deps	::= $>/ase/sysconfig.h
-ase/AnklangSynthEngine.deps	 += $>/external/websocketpp/server.hpp $>/external/rapidjson/rapidjson.h
+ase/AnklangSynthEngine.deps	 += $>/external/rapidjson/rapidjson.h
 ase/AnklangSynthEngine.objects	::= $(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources)) $(ase/AnklangSynthEngine.gensrc:.cc=.o) $(ase/tests/objects)
 ase/AnklangSynthEngine.objects	 += $(devices/4ase.objects)
 ALL_TARGETS += $(lib/AnklangSynthEngine)
@@ -92,6 +92,19 @@ int main (int argc, const char *argv[]) {
   return ferror (f) || fclose (f) != 0;
 }
 endef
+
+# == external/websocketpp ==
+$>/external/websocketpp/server.hpp: ase/Makefile.mk	| $>/external/
+	@ $(eval H := 6ce889d85ecdc2d8fa07408d6787e7352510750daa66b5ad44aacb47bea76755)
+	@ $(eval U := https://github.com/zaphoyd/websocketpp/archive/0.8.2.tar.gz)
+	@ $(eval T := websocketpp-0.8.2.tar.gz)
+	$(QECHO) FETCH "$U"
+	$Q cd $>/external/ && rm -rf websocketpp* \
+		$(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
+	$Q ln -s $(T:.tar.gz=)/websocketpp $>/external/websocketpp
+	$Q test -e $@ && touch $@
+$>/external/websocketpp/config/asio_no_tls.hpp: $>/external/websocketpp/server.hpp
+ase/websocket.cc: $>/external/websocketpp/config/asio_no_tls.hpp
 
 # == external/clap ==
 $>/external/clap/clap.h: ase/Makefile.mk		| $>/external/
