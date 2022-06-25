@@ -161,7 +161,7 @@ ServerImpl::ServerImpl () :
     json_parse (jsontext, prefs_);
   pchange_ =
     on_event ("change:prefs", [this] (auto...) {
-      Path::stringwrite (pathname_anklangrc(), json_stringify (prefs_, Writ::INDENT | Writ::SKIP_EMPTYSTRING), true);
+      Path::stringwrite (pathname_anklangrc(), json_stringify (prefs_, Writ::RELAXED | Writ::SKIP_EMPTYSTRING), true);
     });
   assert_return (telemetry_arena.reserved() >= telemetry_size);
   Block telemetry_header = telemetry_arena.allocate (64);
