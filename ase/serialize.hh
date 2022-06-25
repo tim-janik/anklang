@@ -66,7 +66,7 @@ public:
 /// Document containing all information needed to serialize and deserialize a Value.
 class Writ {
   WritNode root_;
-  bool in_load_ = false, in_save_ = false, skip_zero_ = false, skip_emptystring_ = false, indent_ = false;
+  bool in_load_ = false, in_save_ = false, skip_zero_ = false, skip_emptystring_ = false, relaxed_ = false;
   ValueP dummy_;
   struct InstanceMap : Jsonipc::InstanceMap {
     Jsonipc::JsonValue wrapper_to_json   (Wrapper*, size_t, const std::string&, Jsonipc::JsonAllocator&) override;
@@ -87,7 +87,7 @@ class Writ {
   void                   assign_links ();
   friend class WritNode;
 public:
-  enum Flags { INDENT = 1, SKIP_ZERO = 2, SKIP_EMPTYSTRING = 4, SKIP_DEFAULTS = SKIP_ZERO | SKIP_EMPTYSTRING };
+  enum Flags { RELAXED = 1, SKIP_ZERO = 2, SKIP_EMPTYSTRING = 4, SKIP_DEFAULTS = SKIP_ZERO | SKIP_EMPTYSTRING };
   friend Flags operator| (Flags a, Flags b) { return Flags (uint64_t (a) | b); }
   explicit               Writ         (Flags flags = Flags (0));
   template<class T> void save         (T &source);

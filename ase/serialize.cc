@@ -21,7 +21,7 @@ Jsonipc::InstanceMap::Wrapper*
 Writ::InstanceMap::wrapper_from_json (const Jsonipc::JsonValue &value)
 {
   if (!value.IsNull())
-    warning ("Ase::Writ: non persistent object cannot resolve: %s*", Jsonipc::jsonvalue_to_string (value));
+    warning ("Ase::Writ: non persistent object cannot resolve: %s*", Jsonipc::jsonvalue_to_string<Jsonipc::RELAXED> (value));
   //return nullptr;
   return this->Jsonipc::InstanceMap::wrapper_from_json (value);
 }
@@ -31,7 +31,7 @@ Writ::Writ (Flags flags) :
   root_(*this, std::make_shared<Value> (Value::empty_value)),
   skip_zero_ (flags & SKIP_ZERO),
   skip_emptystring_ (flags & SKIP_EMPTYSTRING),
-  indent_ (flags & INDENT),
+  relaxed_ (flags & RELAXED),
   dummy_ (std::make_shared<Value>())
 {}
 
@@ -67,9 +67,10 @@ Writ::to_json()
   Jsonipc::JsonAllocator &allocator = document.GetAllocator();
   docroot = Jsonipc::to_json (root_.value_, allocator); // move semantics!
   rapidjson::StringBuffer buffer;
-  if (indent_)
+  if (relaxed_)
     {
-      rapidjson::PrettyWriter<rapidjson::StringBuffer> writer (buffer);
+      constexpr unsigned FLAGS = rapidjson::kWriteNanAndInfFlag;
+      rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>, rapidjson::UTF8<>, rapidjson::CrtAllocator, FLAGS> writer (buffer);
       writer.SetIndent (' ', 2);
       writer.SetFormatOptions (rapidjson::kFormatSingleLineArray);
       document.Accept (writer);
@@ -662,7 +663,7 @@ test_serializable_hierarchy()
     special->factor_ = 2.5;
     special->state_ = -17;
     TASSERT (prjct.children_.size() == 3);
-    streamtext1 = json_stringify (prjct, Writ::INDENT);
+    streamtext1 = json_stringify (prjct, Writ::RELAXED);
     TASSERT (prjct.sibling_ && fimpl && (fimpl->nums_ == std::vector<int> { 1, 2, 3 }));
   }
   if (V)
@@ -675,7 +676,7 @@ test_serializable_hierarchy()
     TASSERT (prjct.children_.size() > 0 && dynamic_cast<FrobnicatorImpl*> (prjct.children_[0])->kind_ == "Nidi");
     TASSERT (prjct.children_.size() > 1 && dynamic_cast<FrobnicatorImpl*> (prjct.children_[1])->kind_ == "Odio");
     TASSERT (prjct.children_.size() > 2 && dynamic_cast<FrobnicatorSpecial*> (prjct.children_[2])->kind_ == "Special");
-    streamtext2 = json_stringify (prjct, Writ::INDENT);
+    streamtext2 = json_stringify (prjct, Writ::RELAXED);
     FrobnicatorImpl *fimpl = dynamic_cast<FrobnicatorImpl*> (prjct.sibling_);
     TASSERT (prjct.sibling_ && fimpl && (fimpl->nums_ == std::vector<int> { 1, 2, 3 }));
   }
