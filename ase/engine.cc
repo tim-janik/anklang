@@ -392,10 +392,9 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
       return pcm_check_write (false, timeout_usecs);
     case LoopState::DISPATCH:
       pcm_check_write (true);
-      process_jobs (const_jobs_);
       if (render_stamp_ <= write_stamp_)
         {
-          process_jobs (async_jobs_);
+          process_jobs (async_jobs_); // apply pending modifications before render
           if (schedule_invalid_)
             {
               schedule_clear();
@@ -406,6 +405,10 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
           schedule_render (AUDIO_BLOCK_MAX_RENDER_SIZE);
           pcm_check_write (true); // minimize drop outs
         }
+      if (!const_jobs_.empty()) {   // owner may be blocking for const_jobs_ execution
+        process_jobs (async_jobs_); // apply pending modifications first
+        process_jobs (const_jobs_);
+      }
       if (ipc_pending())
         owner_wakeup_(); // owner needs to ipc_dispatch()
       return true; // keep alive
