@@ -15,11 +15,10 @@ lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine-$(version_m.m.m)
 ase/AnklangSynthEngine.sources	::= ase/main.cc $(ase/libsources.cc) $(ase/libsources.c)
 ase/AnklangSynthEngine.gensrc	::= $>/ase/api.jsonipc.cc
 ase/AnklangSynthEngine.deps	::= $>/ase/sysconfig.h
-ase/AnklangSynthEngine.deps	 += $>/external/websocketpp/server.hpp $>/external/rapidjson/rapidjson.h
+ase/AnklangSynthEngine.deps	 += $>/external/rapidjson/rapidjson.h
 ase/AnklangSynthEngine.objects	::= $(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources)) $(ase/AnklangSynthEngine.gensrc:.cc=.o) $(ase/tests/objects)
 ase/AnklangSynthEngine.objects	 += $(devices/4ase.objects)
 ALL_TARGETS += $(lib/AnklangSynthEngine)
-# $(wildcard $>/ase/*.d): $>/external/rapidjson/rapidjson.h # fix deps on rapidjson/ internal headers
 
 # Work around legacy code in external/websocketpp/*.hpp
 ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec
@@ -92,6 +91,43 @@ int main (int argc, const char *argv[]) {
   return ferror (f) || fclose (f) != 0;
 }
 endef
+
+# == external/minizip ==
+$>/external/minizip/mz_zip.h: ase/Makefile.mk		| $>/external/
+	@ $(eval H := 80d745e1c8caf6f81f6457403b0d9212e8a138b2badd6060e8a5da8583da2551)
+	@ $(eval U := https://github.com/zlib-ng/minizip-ng/archive/refs/tags/2.9.0.tar.gz)
+	@ $(eval T := minizip-ng-2.9.0.tar.gz)
+	$(QECHO) FETCH "$U"
+	$Q cd $>/external/ && rm -rf minizip* \
+		$(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
+	$Q ln -s $(T:.tar.gz=) $>/external/minizip
+	$Q test -e $@ && touch $@
+ase/minizip.c: $>/external/minizip/mz_zip.h
+
+# == external/websocketpp ==
+$>/external/websocketpp/server.hpp: ase/Makefile.mk	| $>/external/
+	@ $(eval H := 6ce889d85ecdc2d8fa07408d6787e7352510750daa66b5ad44aacb47bea76755)
+	@ $(eval U := https://github.com/zaphoyd/websocketpp/archive/0.8.2.tar.gz)
+	@ $(eval T := websocketpp-0.8.2.tar.gz)
+	$(QECHO) FETCH "$U"
+	$Q cd $>/external/ && rm -rf websocketpp* \
+		$(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
+	$Q ln -s $(T:.tar.gz=)/websocketpp $>/external/websocketpp
+	$Q test -e $@ && touch $@
+$>/external/websocketpp/config/asio_no_tls.hpp: $>/external/websocketpp/server.hpp
+ase/websocket.cc: $>/external/websocketpp/config/asio_no_tls.hpp
+
+# == external/rapidjson ==
+$>/external/rapidjson/rapidjson.h: ase/Makefile.mk	| $>/external/
+	@ $(eval H := b9290a9a6d444c8e049bd589ab804e0ccf2b05dc5984a19ed5ae75d090064806)
+	@ $(eval U := https://github.com/Tencent/rapidjson/archive/232389d4f1012dddec4ef84861face2d2ba85709.tar.gz)
+	@ $(eval T := rapidjson-232389d4f1012dddec4ef84861face2d2ba85709.tar.gz)
+	$(QECHO) FETCH "$U"
+	$Q cd $>/external/ && rm -rf rapidjson* \
+		$(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
+	$Q ln -s $(T:.tar.gz=)/include/rapidjson $>/external/rapidjson
+	$Q test -e $@ && touch $@
+$(wildcard ase/*.cc): $>/external/rapidjson/rapidjson.h
 
 # == external/clap ==
 $>/external/clap/clap.h: ase/Makefile.mk		| $>/external/
