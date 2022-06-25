@@ -27,6 +27,12 @@ namespace Jsonipc {
 // == Json types ==
 using JsonValue = rapidjson::GenericValue<rapidjson::UTF8<char>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator> >;
 using JsonAllocator = rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>;
+static constexpr const unsigned  rapidjson_parse_flags =
+  rapidjson::kParseFullPrecisionFlag |
+  rapidjson::kParseCommentsFlag |
+  rapidjson::kParseTrailingCommasFlag |
+  rapidjson::kParseNanAndInfFlag |
+  rapidjson::kParseEscapedApostropheFlag;
 
 // == C++ Utilities ==
 /// Construct a std::string with printf-like syntax, ignoring locale settings.
@@ -1485,7 +1491,7 @@ struct IpcDispatcher {
   dispatch_message (const std::string &message)
   {
     rapidjson::Document document;
-    document.Parse (message.data(), message.size());
+    document.Parse<rapidjson_parse_flags> (message.data(), message.size());
     size_t id = 0;
     try {
       if (document.HasParseError())
