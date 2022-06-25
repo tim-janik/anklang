@@ -33,6 +33,10 @@ static constexpr const unsigned  rapidjson_parse_flags =
   rapidjson::kParseTrailingCommasFlag |
   rapidjson::kParseNanAndInfFlag |
   rapidjson::kParseEscapedApostropheFlag;
+enum JsonWriteFlags {
+  STRICT = 0,
+  RELAXED = 1,
+};
 
 // == C++ Utilities ==
 /// Construct a std::string with printf-like syntax, ignoring locale settings.
@@ -399,18 +403,19 @@ to_json (const char (&c)[N], size_t l, JsonAllocator &allocator)
 }
 
 /// Simple way to generate a string from a JsonValue
-static inline std::string
+template<JsonWriteFlags WFLAGS> static inline std::string
 jsonvalue_to_string (const JsonValue &value)
 {
   rapidjson::StringBuffer buffer;
-  rapidjson::Writer<rapidjson::StringBuffer> writer (buffer);
+  constexpr unsigned FLAGS = WFLAGS & RELAXED ? rapidjson::kWriteNanAndInfFlag : 0;
+  rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<>, rapidjson::UTF8<>, rapidjson::CrtAllocator, FLAGS> writer (buffer);
   value.Accept (writer);
   const std::string output { buffer.GetString(), buffer.GetSize() };
   return output;
 }
 
 /// Generate a string from a simple JsonValue object with up to 4 members.
-template<class T1, class T2 = bool, class T3 = bool, class T4 = bool> static inline std::string
+template<JsonWriteFlags WFLAGS, class T1, class T2 = bool, class T3 = bool, class T4 = bool> static inline std::string
 jsonobject_to_string (const char *m1, T1 &&v1, const char *m2 = 0, T2 &&v2 = {},
                       const char *m3 = 0, T3 &&v3 = {}, const char *m4 = 0, T4 &&v4 = {})
 {
@@ -420,7 +425,7 @@ jsonobject_to_string (const char *m1, T1 &&v1, const char *m2 = 0, T2 &&v2 = {},
   if (m2 && m2[0]) doc.AddMember (JsonValue (m2, a), to_json (v2, a), a);
   if (m3 && m3[0]) doc.AddMember (JsonValue (m3, a), to_json (v3, a), a);
   if (m4 && m4[0]) doc.AddMember (JsonValue (m4, a), to_json (v4, a), a);
-  return jsonvalue_to_string (doc);
+  return jsonvalue_to_string<WFLAGS> (doc);
 }
 
 // == CallbackInfo ==
