@@ -138,7 +138,7 @@ public:
     {
       JsonapiConnectionP selfp = selfw.lock();
       return_unless (selfp);
-      const String msg = jsonobject_to_string ("method", id /*"JsonapiTrigger/_%%%"*/, "params", args);
+      const String msg = jsonobject_to_string<Jsonipc::STRICT> ("method", id /*"JsonapiTrigger/_%%%"*/, "params", args);
       if (logflags & 8)
         selfp->log (string_format ("⬰ %s", msg));
       selfp->send_text (msg);
@@ -153,7 +153,7 @@ public:
       if (selfp->is_open())
         {
           ValueS args { id };
-          const String msg = jsonobject_to_string ("method", "JsonapiTrigger/killed", "params", args);
+          const String msg = jsonobject_to_string<Jsonipc::STRICT> ("method", "JsonapiTrigger/killed", "params", args);
           if (logflags & 8)
             selfp->log (string_format ("↚ %s", msg));
           selfp->send_text (msg);
