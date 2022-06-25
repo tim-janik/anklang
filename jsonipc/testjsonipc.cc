@@ -76,7 +76,7 @@ template<typename R> R
 parse_result (size_t id, const std::string json_reply)
 {
   rapidjson::Document document;
-  document.Parse (json_reply.data(), json_reply.size());
+  document.Parse<Jsonipc::rapidjson_parse_flags> (json_reply.data(), json_reply.size());
   if (!document.HasParseError())
     {
       size_t id_ = 0;
