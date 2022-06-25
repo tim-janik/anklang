@@ -251,7 +251,7 @@ build-nightly:
 upload-nightly:
 	$(QGEN)
 	@: # Determine version, check release attachments
-	@ $(eval DETAILED_VERSION != misc/version.sh misc/version.sh --nightly)
+	@ $(eval DETAILED_VERSION != misc/version.sh --nightly)
 	$Q du -hs $(RELEASE_CHANGELOG) $(RELEASE_DEB) $(RELEASE_APPIMAGE)
 	@: # Create Github release and upload assets
 	$Q echo 'Nightly'				>  $(RELEASE_SSEDIR)/release-message
