@@ -12,10 +12,9 @@ NPM_INSTALL		?= npm --prefer-offline install $(if $(PARALLEL_MAKE), --progress=f
 .config.defaults	+= CP PERL PYTHON3 PKG_CONFIG GDK_PIXBUF_CSOURCE PANDOC IMAGEMAGICK_CONVERT
 HAVE_PANDOC1		 = $(shell $(PANDOC) --version | grep -q '^pandoc 1\.' && echo 1)
 
-HOME			?= $(shell echo ~)
-XDG_CACHE_HOME		?= ${HOME}/.cache
-ANKLANG_CACHEDIR	?= $(XDG_CACHE_HOME)/anklang/
-.config.defaults	+= XDG_CACHE_HOME
+ABSPATH_DLCACHE		?= $(abspath ./.dlcache)
+npm_config_cache        ?= $(abspath ./.dlcache/npm)
+export ABSPATH_DLCACHE npm_config_cache
 
 INSTALL 		:= /usr/bin/install -c
 INSTALL_DATA 		:= $(INSTALL) -m 644
@@ -44,16 +43,16 @@ useld_fast+vs		::= # keep default linker
 # and lld optimizes better than gold in terms of resulting binary size.
 endif
 
-# == Cache downloads in ANKLANG_CACHEDIR ==
+# == Cache downloads in ABSPATH_DLCACHE ==
 # $(call AND_DOWNLOAD_SHAURL, sha256sum, url, filename) - Download and cache file via `url`, verify `sha256sum`
 AND_DOWNLOAD_SHAURL = && ( : \
-	&& ( test ! -e "$(ANKLANG_CACHEDIR)/downloads/$(strip $(or $3,$(notdir $2)))" || $(CP) "$(ANKLANG_CACHEDIR)/downloads/$(strip $(or $3,$(notdir $2)))" . ) \
+	&& ( test ! -e "$(ABSPATH_DLCACHE)/$(strip $(or $3,$(notdir $2)))" || $(CP) "$(ABSPATH_DLCACHE)/$(strip $(or $3,$(notdir $2)))" . ) \
 	&& ( echo "$(strip $1) $(or $3,$(notdir $2))" | sha256sum -c - >/dev/null 2>&1 || curl -sfSL "$(strip $2)" -o "$(strip $(or $3,$(notdir $2)))" ) \
 	&& ( echo "$(strip $1) $(or $3,$(notdir $2))" | sha256sum -c - ) \
-	&& ( test ! -x "$(XDG_CACHE_HOME)/" \
-	   || ( mkdir -p "$(ANKLANG_CACHEDIR)/downloads" \
-	      && ( cmp -s "$(strip $(or $3,$(notdir $2)))" "$(ANKLANG_CACHEDIR)/downloads/$(strip $(or $3,$(notdir $2)))" \
-		 || $(CP) "$(strip $(or $3,$(notdir $2)))" "$(ANKLANG_CACHEDIR)/downloads/" ) ) ) )
+	&& ( test ! -x "$(ABSPATH_DLCACHE)/" \
+	   || ( mkdir -p "$(ABSPATH_DLCACHE)/" \
+	      && ( cmp -s "$(strip $(or $3,$(notdir $2)))" "$(ABSPATH_DLCACHE)/$(strip $(or $3,$(notdir $2)))" \
+		 || $(CP) "$(strip $(or $3,$(notdir $2)))" "$(ABSPATH_DLCACHE)/" ) ) ) )
 
 # == conftest_lib & conftest_require_lib ==
 # $(call conftest_lib, header, symbol, lib) -> $CONFTEST
