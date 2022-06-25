@@ -119,9 +119,9 @@ ase/websocket.cc: $>/external/websocketpp/config/asio_no_tls.hpp
 
 # == external/rapidjson ==
 $>/external/rapidjson/rapidjson.h: ase/Makefile.mk	| $>/external/
-	@ $(eval H := 9a827f29371c4f17f831a682d18ca5bc8632fcdf5031fd3851fd68ba182db69c)
-	@ $(eval U := https://github.com/Tencent/rapidjson/archive/0ccdbf364c577803e2a751f5aededce935314313.tar.gz)
-	@ $(eval T := rapidjson-0ccdbf364c577803e2a751f5aededce935314313.tar.gz)
+	@ $(eval H := b9290a9a6d444c8e049bd589ab804e0ccf2b05dc5984a19ed5ae75d090064806)
+	@ $(eval U := https://github.com/Tencent/rapidjson/archive/232389d4f1012dddec4ef84861face2d2ba85709.tar.gz)
+	@ $(eval T := rapidjson-232389d4f1012dddec4ef84861face2d2ba85709.tar.gz)
 	$(QECHO) FETCH "$U"
 	$Q cd $>/external/ && rm -rf rapidjson* \
 		$(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
