@@ -49,8 +49,10 @@ DeviceImpl::serialize (WritNode &xs)
         String uri = xc["Device.URI"].as_string();
         if (uri.empty())
           continue;
-        DeviceP subdevicep = append_device (uri);
-        xc & *dynamic_cast<Serializable*> (&*subdevicep);
+        auto load_subdevice = [&xc] (DeviceP subdevicep) {
+          xc & *dynamic_cast<Serializable*> (&*subdevicep);
+        };
+        DeviceP subdevicep = insert_device (uri, nullptr, load_subdevice);
       }
 }
 
@@ -175,7 +177,7 @@ DeviceImpl::remove_device (Device &sub)
 }
 
 DeviceP
-DeviceImpl::insert_device (const String &uri, Device *sibling)
+DeviceImpl::insert_device (const String &uri, Device *sibling, const DeviceFunc &loader)
 {
   DeviceP devicep;
   AudioProcessorP siblingp = sibling ? sibling->_audio_processor() : nullptr;
@@ -185,6 +187,8 @@ DeviceImpl::insert_device (const String &uri, Device *sibling)
       return_unless (devicep, nullptr);
       children_.push_back (devicep);
       devicep->_set_parent (this);
+      if (loader)
+        loader (devicep);
       AudioProcessorP sproc = devicep->_audio_processor();
       return_unless (sproc, nullptr);
       if (activated_)
@@ -202,13 +206,13 @@ DeviceImpl::insert_device (const String &uri, Device *sibling)
 DeviceP
 DeviceImpl::append_device (const String &uri)
 {
-  return insert_device (uri, nullptr);
+  return insert_device (uri, nullptr, nullptr);
 }
 
 DeviceP
 DeviceImpl::insert_device (const String &uri, Device &sibling)
 {
-  return insert_device (uri, &sibling);
+  return insert_device (uri, &sibling, nullptr);
 }
 
 void

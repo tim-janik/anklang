@@ -14,8 +14,8 @@ class DeviceImpl : public GadgetImpl, public virtual Device {
   DeviceInfo      info_;
   bool            activated_ = false;
   ASE_DEFINE_MAKE_SHARED (DeviceImpl);
-  friend class AudioProcessor;
-  DeviceP         insert_device        (const String &uri, Device *sibling);
+  using DeviceFunc = std::function<void (DeviceP)>;
+  DeviceP         insert_device        (const String &uri, Device *sibling, const DeviceFunc &loader);
 protected:
   virtual        ~DeviceImpl           ();
   void            serialize            (WritNode &xs) override;
@@ -41,6 +41,7 @@ public:
   void            _set_event_source    (AudioProcessorP esource) override;
   void            _disconnect_remove   () override;
   static DeviceP  create_ase_device    (AudioEngine &engine, const String &registryuri);
+  friend class AudioProcessor;
 };
 
 DeviceP create_processor_device (AudioEngine &engine, const String &uri, bool engineproducer);
