@@ -11,7 +11,8 @@ class ClapDeviceImpl : public GadgetImpl, public virtual Device {
   ClapPluginHandleP handle_;
 protected:
   virtual           ~ClapDeviceImpl        ();
-  void              _set_parent            (Gadget *parent) override;
+  void               _set_parent           (Gadget *parent) override;
+  void               _activate             () override;
 public:
   explicit           ClapDeviceImpl        (ClapPluginHandleP claphandle);
   static DeviceInfoS list_clap_plugins     ();

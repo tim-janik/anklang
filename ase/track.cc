@@ -94,6 +94,8 @@ TrackImpl::set_project (ProjectImpl *project)
       assert_return (chain_);
       chain_->_set_parent (this);
       chain_->_set_event_source (midi_prod_->_audio_processor());
+      chain_->_activate();
+      midi_prod_->_activate();
     }
   else if (chain_)
     {

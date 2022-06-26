@@ -217,6 +217,7 @@ struct DeviceInfo {
 /// Interface to access Device instances.
 class Device : public virtual Gadget {
 public:
+  virtual void        _activate          () = 0;
   virtual DeviceInfo  device_info        () = 0;                      ///< Describe this Device type.
   // Combo
   virtual bool        is_combo_device    () = 0;                      ///< Retrieve wether this Device handles sub devices.

@@ -12,6 +12,7 @@ class DeviceImpl : public GadgetImpl, public virtual Device {
   AudioComboP     combo_; // maybe null
   DeviceS         children_;
   DeviceInfo      info_;
+  bool            activated_ = false;
   ASE_DEFINE_MAKE_SHARED (DeviceImpl);
   friend class AudioProcessor;
   DeviceP         insert_device        (const String &uri, Device *sibling);
@@ -19,6 +20,7 @@ protected:
   virtual        ~DeviceImpl           ();
   void            serialize            (WritNode &xs) override;
   void            _set_parent          (Gadget *parent) override;
+  void            _activate            () override;
 public:
   explicit        DeviceImpl           (const String &aseid, AudioProcessor::StaticInfo, AudioProcessorP);
   AudioComboP     audio_combo          () const         { return combo_; }

@@ -124,8 +124,19 @@ void
 DeviceImpl::_set_parent (Gadget *parent)
 {
   GadgetImpl::_set_parent (parent);
-  while (children_.size())
-    remove_device (*children_.back());
+  if (!parent)
+    while (children_.size())
+      remove_device (*children_.back());
+}
+
+void
+DeviceImpl::_activate ()
+{
+  if (!activated_) {
+    activated_ = true;
+    for (auto &child : children_)
+      child->_activate();
+  }
 }
 
 template<typename E> std::pair<std::shared_ptr<E>,ssize_t>
@@ -176,6 +187,8 @@ DeviceImpl::insert_device (const String &uri, Device *sibling)
       devicep->_set_parent (this);
       AudioProcessorP sproc = devicep->_audio_processor();
       return_unless (sproc, nullptr);
+      if (activated_)
+        devicep->_activate();
       AudioComboP combo = combo_;
       auto j = [combo, sproc, siblingp] () {
         const size_t pos = siblingp ? combo->find_pos (*siblingp) : ~size_t (0);

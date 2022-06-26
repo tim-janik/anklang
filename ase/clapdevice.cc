@@ -41,9 +41,6 @@ ClapDeviceImpl::_set_parent (Gadget *parent)
 {
   GadgetImpl::_set_parent (parent);
   ClapDeviceImplP selfp = shared_ptr_cast<ClapDeviceImpl> (this);
-  // activate plugin, show GUI, start processing
-  if (parent && handle_->activate())
-    handle_->show_gui();
   // deactivate and destroy plugin
   if (!parent && handle_)
     {
@@ -51,6 +48,13 @@ ClapDeviceImpl::_set_parent (Gadget *parent)
       handle_->deactivate();
       handle_->destroy();
     }
+}
+
+void
+ClapDeviceImpl::_activate ()
+{
+  if (_parent() && handle_)
+    handle_->activate();
 }
 
 void
