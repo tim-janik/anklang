@@ -9,8 +9,11 @@ namespace Ase {
 class ClapDeviceImpl : public GadgetImpl, public virtual Device {
   ASE_DEFINE_MAKE_SHARED (ClapDeviceImpl);
   ClapPluginHandleP handle_;
+  Connection        paramschange_;
 protected:
   virtual           ~ClapDeviceImpl        ();
+  void               serialize             (WritNode &xs) override;
+  void               params_change         (const Event &event);
   void               _set_parent           (Gadget *parent) override;
   void               _activate             () override;
 public:
@@ -29,6 +32,7 @@ public:
   AudioProcessorP    _audio_processor      () const override;
   void               _set_event_source     (AudioProcessorP esource) override;
   void               _disconnect_remove    () override;
+  String             get_device_path       ();
   static String      clap_version          ();
   static DeviceP     create_clap_device    (AudioEngine &engine, const String &clapuri);
   static ClapPluginHandleP access_clap_handle (DeviceP device);
