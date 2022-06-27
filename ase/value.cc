@@ -46,6 +46,14 @@ Value::keys () const
   return kk;
 }
 
+/// Checks if Value is a DOUBLE, INT64, or BOOL.
+bool
+Value::is_numeric (bool boolisnumeric) const
+{
+  Type t = index();
+  return t == INT64 || t == DOUBLE || (t == BOOL && boolisnumeric);
+}
+
 /// Convert Value to int64 or return 0.
 int64
 Value::as_int () const
