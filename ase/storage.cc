@@ -10,6 +10,7 @@
 #include <sys/stat.h>   // mkdir
 #include <unistd.h>     // rmdir
 #include <fcntl.h>      // O_EXCL
+#include <signal.h>
 #include <filesystem>
 
 #define SDEBUG(...)     Ase::debug ("storage", __VA_ARGS__)
@@ -178,10 +179,15 @@ anklang_cachedir_clean_stale()
               if (Path::check (guardfile, "frw"))
                 {
                   String guardstring = Path::stringread (guardfile, 3 * 4096);
-                  const int guardpid = string_to_int (guardstring);
-                  if (guardpid > 0 && guardstring == pid_string (guardpid))
+                  if (guardstring == pid_string (getpid()))
                     {
-                      SDEBUG ("skip: %s", guardfile);
+                      SDEBUG ("skipping dir (pid=self): %s", guardfile);
+                      continue;
+                    }
+                  const int guardpid = string_to_int (guardstring);
+                  if (guardpid > 0 && (kill (guardpid, 0) == 0 || Path::check (string_format ("/proc/%u/", guardpid), "d")))
+                    {
+                      SDEBUG ("skipping dir (live pid=%u): %s", guardpid, guardfile);
                       continue;
                     }
                   rmrf_dir (direntry.path().string());
