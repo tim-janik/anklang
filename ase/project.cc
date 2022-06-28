@@ -72,6 +72,7 @@ make_anklang_dir (const String path)
 Error
 ProjectImpl::save_dir (const String &pdir, bool selfcontained)
 {
+  assert_return (writer_cachedir_ == "", Error::OPERATION_BUSY);
   const String dotanklang = ".anklang";
   String projectfile;
   String path = Path::normalize (Path::abspath (pdir));
@@ -107,6 +108,8 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
     projectfile = "project";
   if (!string_endswith (projectfile, dotanklang))
     projectfile += dotanklang;
+  anklang_cachedir_clean_stale();
+  writer_cachedir_ = anklang_cachedir_create();
   StorageWriter ws (Storage::AUTO_ZSTD);
   Error error = ws.open_with_mimetype (Path::join (path, projectfile), "application/x-anklang");
   if (!error)
@@ -120,6 +123,8 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
     error = ws.close();
   if (!!error)
     ws.remove_opened();
+  anklang_cachedir_cleanup (writer_cachedir_);
+  writer_cachedir_ = "";
   return error;
 }
 

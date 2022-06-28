@@ -28,6 +28,7 @@ class ProjectImpl : public GadgetImpl, public virtual Project {
   String undo_group_name_;
   struct UndoFunc { VoidF func; String name; };
   std::vector<UndoFunc> undostack_, redostack_;
+  String writer_cachedir_;
   friend class UndoScope;
   UndoScope           add_undo_scope (const String &scopename);
 protected:
