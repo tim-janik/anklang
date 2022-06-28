@@ -45,9 +45,9 @@ public:
   Error    close              ();
 };
 
-String anklang_cachedir_create  ();
-void   anklang_cachedir_cleanup ();
-String anklang_cachedir_current ();
+String anklang_cachedir_create      ();
+void   anklang_cachedir_cleanup     (const String &cachedir);
+void   anklang_cachedir_clean_stale ();
 
 } // Ase
 

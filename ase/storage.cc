@@ -142,19 +142,28 @@ anklang_cachedir_create()
   return ""; // errno is set
 }
 
-/// Retrieve (or create) the temporary cache directory for this runtime.
-String
-anklang_cachedir_current ()
+/// Cleanup a cachedir previously created with anklang_cachedir_create().
+void
+anklang_cachedir_cleanup (const String &cachedir)
 {
-  static String current_cachedir = anklang_cachedir_create();
-  if (current_cachedir.empty())
-    fatal_error ("failed to create temporary cache directory: %s", strerror (errno));
-  return current_cachedir;
+  const String cachedir_base = anklang_cachedir_base (false);
+  assert_return (string_startswith (cachedir, cachedir_base));
+  if (Path::check (cachedir, "drw"))
+    {
+      const String guardfile = cachedir + "/guard.pid";
+      if (Path::check (guardfile, "frw"))
+        {
+          String guardstring = Path::stringread (guardfile, 3 * 4096);
+          const int guardpid = string_to_int (guardstring);
+          if (guardpid > 0 && guardstring == pid_string (guardpid))
+            rmrf_dir (cachedir);
+        }
+    }
 }
 
 /// Clean stale cache directories from past runtimes, may be called from any thread.
 void
-anklang_cachedir_cleanup()
+anklang_cachedir_clean_stale()
 {
   const String cachedir = anklang_cachedir_base (false);
   const String tmpprefix = tmpdir_prefix();
