@@ -34,12 +34,13 @@ enum class Error : int32_t {
   // Ase specific errors
   INTERNAL                      = 0x30000000,
   UNIMPLEMENTED,
-  FILE_EOF,
+  FILE_EOF                      = 0x30001000,
   FILE_OPEN_FAILED,
   FILE_SEEK_FAILED,
   FILE_READ_FAILED,
   FILE_WRITE_FAILED,
   // content errors
+  PARSE_ERROR                   = 0x30002000,
   NO_HEADER,
   NO_SEEK_INFO,
   NO_DATA_AVAILABLE,
@@ -48,8 +49,9 @@ enum class Error : int32_t {
   FORMAT_INVALID,
   FORMAT_UNKNOWN,
   DATA_UNMATCHED,
+  CODEC_FAILURE,
   // Device errors
-  DEVICE_NOT_AVAILABLE,
+  DEVICE_NOT_AVAILABLE          = 0x30003000,
   DEVICE_ASYNC,
   DEVICE_BUSY,
   DEVICE_FORMAT,
@@ -59,11 +61,10 @@ enum class Error : int32_t {
   DEVICE_FREQUENCY,
   DEVICES_MISMATCH,
   // miscellaneous errors
-  WAVE_NOT_FOUND,
-  CODEC_FAILURE,
+  WAVE_NOT_FOUND                = 0x30004000,
   INVALID_PROPERTY,
   INVALID_MIDI_CONTROL,
-  PARSE_ERROR,
+  OPERATION_BUSY,
 };
 ASE_DEFINE_ENUM_EQUALITY (Error);
 constexpr bool operator! (Error error)  { return !std::underlying_type_t<Error> (error); }
