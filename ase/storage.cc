@@ -82,15 +82,6 @@ anklang_cachedir_base (bool createbase = false)
   return "";
 }
 
-/// Recursively delete directory tree.
-static void
-rmrf_dir (const String &dir)
-{
-  std::error_code ec;
-  std::filesystem::remove_all (dir, ec);
-  SDEBUG ("rm-rf: %s: %s", dir, ec.message());
-}
-
 static std::vector<String> cachedirs_list;
 static std::mutex               cachedirs_mutex;
 
@@ -103,7 +94,7 @@ atexit_clean_cachedirs()
     {
       const String dir = cachedirs_list.back();
       cachedirs_list.pop_back();
-      rmrf_dir (dir);
+      Path::rmrf (dir);
     }
 }
 
@@ -137,7 +128,7 @@ anklang_cachedir_create()
       SDEBUG ("create: %s: %s", guardfile, strerror (errno));
       const int err = errno;
       close (guardfd);
-      rmrf_dir (cachedir);
+      Path::rmrf (cachedir);
       errno = err;
     }
   return ""; // errno is set
@@ -157,7 +148,7 @@ anklang_cachedir_cleanup (const String &cachedir)
           String guardstring = Path::stringread (guardfile, 3 * 4096);
           const int guardpid = string_to_int (guardstring);
           if (guardpid > 0 && guardstring == pid_string (guardpid))
-            rmrf_dir (cachedir);
+            Path::rmrf (cachedir);
         }
     }
 }
@@ -190,7 +181,7 @@ anklang_cachedir_clean_stale()
                       SDEBUG ("skipping dir (live pid=%u): %s", guardpid, guardfile);
                       continue;
                     }
-                  rmrf_dir (direntry.path().string());
+                  Path::rmrf (direntry.path().string());
                 }
             }
         }

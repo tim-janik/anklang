@@ -185,6 +185,14 @@ mkdirs (const String &dirpath, uint mode)
   return false;                 // !IS_DIR
 }
 
+/// Recursively delete directory tree.
+void
+rmrf (const String &dir)
+{
+  std::error_code ec;
+  std::filesystem::remove_all (dir, ec);
+}
+
 /// Get a @a user's home directory, uses $HOME if no @a username is given.
 String
 user_home (const String &username)
