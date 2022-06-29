@@ -56,6 +56,8 @@ ASE_CLASS_DECLS (ResourceCrawler);
 ASE_CLASS_DECLS (Server);
 ASE_CLASS_DECLS (ServerImpl);
 ASE_CLASS_DECLS (SharedBase);
+ASE_CLASS_DECLS (StreamWriter);
+ASE_CLASS_DECLS (StreamReader);
 ASE_CLASS_DECLS (Track);
 ASE_CLASS_DECLS (TrackImpl);
 
