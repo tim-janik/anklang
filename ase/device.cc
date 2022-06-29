@@ -2,6 +2,7 @@
 #include "device.hh"
 #include "clapdevice.hh"
 #include "combo.hh"
+#include "project.hh"
 #include "jsonipc/jsonipc.hh"
 #include "serialize.hh"
 #include "internal.hh"
@@ -268,6 +269,27 @@ Device::remove_self ()
   Device *device = dynamic_cast<Device*> (parent);
   if (device)
     device->remove_device (*this);
+}
+
+Track*
+Device::_track () const
+{
+  for (Gadget *parent = _parent(); parent; parent = parent->_parent())
+    {
+      Track *track = dynamic_cast<Track*> (parent);
+      if (track)
+        return track;
+    }
+  return nullptr;
+}
+
+ProjectImpl*
+Device::_project () const
+{
+  Gadget *last = nullptr;
+  for (Gadget *parent = this->_parent(); parent; parent = last->_parent())
+    last = parent;
+  return dynamic_cast<ProjectImpl*> (last);
 }
 
 } // Ase

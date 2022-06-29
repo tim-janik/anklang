@@ -186,8 +186,8 @@ public:
 class Gadget : public virtual Object {
 public:
   // Hierarchical parenting.
-  virtual void        _set_parent       (Gadget *parent) = 0;
-  virtual Gadget*     _parent           () const = 0;
+  virtual Gadget*     _parent           () const = 0;         ///< Retrieve parent container.
+  virtual void        _set_parent       (Gadget *parent) = 0; ///< Assign parent container.
   // Naming
   virtual String      type_nick         () const = 0;
   virtual String      name              () const = 0;
@@ -218,6 +218,8 @@ struct DeviceInfo {
 /// Interface to access Device instances.
 class Device : public virtual Gadget {
 public:
+  ProjectImpl*        _project           () const;                    ///< Find Project in parent ancestry.
+  Track*              _track             () const;                    ///< Find Track in parent ancestry.
   virtual void        _activate          () = 0;
   virtual DeviceInfo  device_info        () = 0;                      ///< Describe this Device type.
   // Combo
