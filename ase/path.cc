@@ -431,15 +431,18 @@ errno_check_file (const char *file_name, const char *mode)
   if (nac && access (file_name, access_mask) < 0)
     return -errno;
 
+  const bool check_size0 = strchr (mode, 'z') != NULL;  // zero size
+  const bool check_size1 = strchr (mode, 's') != NULL;  // non-zero size
   const bool check_file = strchr (mode, 'f') != NULL;   // open as file
   const bool check_dir  = strchr (mode, 'd') != NULL;   // open as directory
-  const bool check_link = strchr (mode, 'l') != NULL;   // open as link
+  const bool check_link = strchr (mode, 'L') != NULL || strchr (mode, 'h') != NULL;   // open as link
   const bool check_char = strchr (mode, 'c') != NULL;   // open as character device
   const bool check_block = strchr (mode, 'b') != NULL;  // open as block device
   const bool check_pipe = strchr (mode, 'p') != NULL;   // open as pipe
-  const bool check_socket = strchr (mode, 's') != NULL; // open as socket
+  const bool check_socket = strchr (mode, 'S') != NULL; // open as socket
 
-  if (check_exec || check_file || check_dir || check_link || check_char || check_block || check_pipe || check_socket)
+  if (check_exec || check_size0 || check_size1 || check_file || check_dir ||
+      check_link || check_char || check_block || check_pipe || check_socket)
     {
       struct stat st;
 
@@ -452,16 +455,21 @@ errno_check_file (const char *file_name, const char *mode)
         return -errno;
 
       if (0)
-        printerr ("file-check(\"%s\",\"%s\"): %s%s%s%s%s%s%s\n",
+        printerr ("file-check(\"%s\",\"%s\"): %u %s%s%s%s%s%s%s\n",
                   file_name, mode,
+                  st.st_size,
                   S_ISREG (st.st_mode) ? "f" : "",
                   S_ISDIR (st.st_mode) ? "d" : "",
-                  S_ISLNK (st.st_mode) ? "l" : "",
+                  S_ISLNK (st.st_mode) ? "L" : "",
                   S_ISCHR (st.st_mode) ? "c" : "",
                   S_ISBLK (st.st_mode) ? "b" : "",
                   S_ISFIFO (st.st_mode) ? "p" : "",
-                  S_ISSOCK (st.st_mode) ? "s" : "");
+                  S_ISSOCK (st.st_mode) ? "S" : "");
 
+      if (check_size0 && st.st_size != 0)
+        return -EFBIG;
+      if (check_size1 && st.st_size == 0)
+        return -ENODATA;
       if (S_ISDIR (st.st_mode) && (check_file || check_link || check_char || check_block || check_pipe))
         return -EISDIR;
       if (check_file && !S_ISREG (st.st_mode))
@@ -996,6 +1004,12 @@ path_tests()
   TCMP (Path::skip_root ("foo/"), ==, "foo/");
   TCMP (Path::skip_root ("/foo/"), ==, "foo/");
   TCMP (Path::skip_root ("///foo/"), ==, "foo/");
+#if 0
+  TCMP (Path::check ("/tmp/empty", "z"), ==, true);
+  TCMP (Path::check ("/tmp/empty", "s"), ==, false);
+#endif
+  TCMP (Path::check ("/etc/os-release", "s"), ==, true);
+  TCMP (Path::check ("/etc/os-release", "z"), ==, false);
 #ifdef  _WIN32
   TCMP (Path::skip_root ("//foo/."), ==, ".");
   TCMP (Path::skip_root ("C:/foo/."), ==, "foo/.");
