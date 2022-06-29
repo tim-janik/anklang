@@ -115,15 +115,18 @@ double   random_frange          (double begin, double end);             ///< Ret
     ::Ase::assertion_failed (#cond); } while (0)
 
 #define TCMP_op(a,cmp,b,sa,sb,cast)                                     \
-  do { if (a cmp b) break;                                              \
-    Ase::String __tcmp_va = Ase::Test::stringify_arg (cast (a), #a);    \
-    Ase::String __tcmp_vb = Ase::Test::stringify_arg (cast (b), #b),    \
+  do {                                                                  \
+    const auto &__tcmp_va = a ;                                         \
+    const auto &__tcmp_vb = b ;                                         \
+    if (__tcmp_va cmp __tcmp_vb) break;                                 \
+    Ase::String __tcmp_sa = Ase::Test::stringify_arg (cast (__tcmp_va), #a); \
+    Ase::String __tcmp_sb = Ase::Test::stringify_arg (cast (__tcmp_vb), #b), \
                 __tcmp_as = Ase::string_format ("'%s %s %s': %s %s %s", \
                                                 sa, #cmp, sb,           \
-                                                __tcmp_va.c_str(),      \
+                                                __tcmp_sa.c_str(),      \
                                                 #cmp,                   \
-                                                __tcmp_vb.c_str());     \
-    ::Ase::assertion_failed (__tcmp_as.c_str());                       \
+                                                __tcmp_sb.c_str());     \
+    ::Ase::assertion_failed (__tcmp_as.c_str());                        \
   } while (0)
 
 template<typename Callee> double
