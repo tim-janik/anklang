@@ -120,6 +120,15 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
       error = ws.store_file_data ("project.json", jsd, true);
     }
   if (!error)
+    for (const String &path : writer_files_) {
+      error = ws.store_file (Path::basename (path), path);
+      if (!!error) {
+        printerr ("%s: %s: %s\n", program_alias(), path, ase_error_blurb (error));
+        break;
+      }
+    }
+  writer_files_.clear();
+  if (!error)
     error = ws.close();
   if (!!error)
     ws.remove_opened();
@@ -133,6 +142,18 @@ ProjectImpl::writer_file_name (const String &filename) const
 {
   assert_return (!writer_cachedir_.empty(), "");
   return Path::join (writer_cachedir_, filename);
+}
+
+Error
+ProjectImpl::writer_add_file (const String &filename)
+{
+  assert_return (!writer_cachedir_.empty(), Error::INTERNAL);
+  if (!Path::check (filename, "frw"))
+    return Error::FILE_NOT_FOUND;
+  if (!string_startswith (filename, writer_cachedir_))
+    return Error::FILE_OPEN_FAILED;
+  writer_files_.push_back (filename);
+  return Error::NONE;
 }
 
 Error

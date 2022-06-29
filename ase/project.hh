@@ -29,6 +29,7 @@ class ProjectImpl : public GadgetImpl, public virtual Project {
   struct UndoFunc { VoidF func; String name; };
   std::vector<UndoFunc> undostack_, redostack_;
   String writer_cachedir_;
+  StringS writer_files_;
   String loading_file_;
   friend class UndoScope;
   UndoScope           add_undo_scope (const String &scopename);
@@ -64,6 +65,7 @@ public:
   Error                load_project      (const String &filename) override;
   String               loader_archive    () const { return loading_file_; }
   String               writer_file_name  (const String &filename) const;
+  Error                writer_add_file   (const String &filename);
   TelemetryFieldS      telemetry         () const override;
   AudioProcessorP      master_processor  () const;
   ssize_t              track_index       (const Track &child) const;
