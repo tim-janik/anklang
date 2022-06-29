@@ -55,6 +55,8 @@ public:
   static constexpr size_t buffer_size = 131072; ///< Recommended buffer size.
 };
 
+StreamReaderP stream_reader_zip_member (const String &archive, const String &member, Storage::StorageFlags f = Storage::AUTO_ZSTD);
+
 class StreamWriter {
 public:
   virtual                ~StreamWriter ();
@@ -63,6 +65,8 @@ public:
   virtual bool            close () = 0;
   static constexpr size_t buffer_size = 131072; ///< Recommended buffer size.
 };
+
+StreamWriterP stream_writer_create_file (const String &filename, int mode = 0644);
 
 String anklang_cachedir_create      ();
 void   anklang_cachedir_cleanup     (const String &cachedir);

@@ -4,7 +4,9 @@
 #include "utils.hh"
 #include "api.hh"
 #include "compress.hh"
+#include "platform.hh"
 #include "minizip.h"
+#include "compress.hh"
 #include "internal.hh"
 #include <stdlib.h>     // mkdtemp
 #include <sys/stat.h>   // mkdir
@@ -520,6 +522,180 @@ void
 StorageReader::search_dir (const String &dirname)
 {
   // TODO: implement directory search for fallbacks
+}
+
+// == StreamReader ==
+StreamReader::~StreamReader()
+{}
+
+class StreamReaderZipMember : public StreamReader {
+  void *reader_ = nullptr;
+  bool entry_opened_ = false;
+  String name_, member_;
+public:
+  ~StreamReaderZipMember()
+  {
+    close();
+  }
+  Error
+  open_zip (const String &zipname)
+  {
+    assert_return (reader_ == nullptr, Error::INTERNAL);
+    name_ = zipname;
+    mz_zip_reader_create (&reader_);
+    mz_zip_reader_set_password (reader_, nullptr);
+    mz_zip_reader_set_encoding (reader_, MZ_ENCODING_UTF8);
+    errno = ELIBBAD;
+    int err = mz_zip_reader_open_file (reader_, name_.c_str());
+    if (err != MZ_OK)
+      {
+        const int saved_errno = errno;
+        mz_zip_reader_delete (&reader_);
+        reader_ = nullptr;
+        return ase_error_from_errno (saved_errno);
+      }
+    return Error::NONE;
+  }
+  Error
+  open_entry (const String &member)
+  {
+    errno = EINVAL;
+    assert_return (mz_zip_reader_is_open (reader_) == MZ_OK, Error::INTERNAL);
+    assert_return (entry_opened_ == false, Error::INTERNAL);
+    String membername = Path::normalize (member);
+    if (MZ_OK != mz_zip_reader_locate_entry (reader_, membername.c_str(), false) ||
+        MZ_OK != mz_zip_reader_entry_open (reader_))
+      return Error::FILE_NOT_FOUND;
+    entry_opened_ = true;
+    member_ = membername;
+    return Error::NONE;
+  }
+  ssize_t
+  read (void *buffer, size_t len) override
+  {
+    return_unless (entry_opened_, 0);
+    if (entry_opened_)
+      {
+        ssize_t n = mz_zip_reader_entry_read (reader_, buffer, len);
+        if (n > 0)
+          return n;
+        mz_zip_reader_entry_close (reader_);
+        entry_opened_ = false;
+      }
+    return 0;
+  }
+  bool
+  close() override
+  {
+    return_unless (reader_ != nullptr, false);
+    const int mzerr = mz_zip_reader_close (reader_);
+    const int saved_errno = errno;
+    mz_zip_reader_delete (&reader_);
+    reader_ = nullptr;
+    entry_opened_ = false;
+    errno = saved_errno;
+    return mzerr == MZ_OK;
+  }
+  String
+  name() const override
+  {
+    return name_ + (member_.empty() ? "" : "/./" + member_);
+  }
+};
+
+StreamReaderP
+stream_reader_zip_member (const String &archive, const String &member, Storage::StorageFlags f)
+{
+  auto readerp = std::make_shared<StreamReaderZipMember>();
+  if (Error::NONE == readerp->open_zip (archive))
+    {
+      Error error = readerp->open_entry (member);
+      if (Error::NONE == error)
+        return readerp;
+      if (error == Error::FILE_NOT_FOUND && f & Storage::AUTO_ZSTD)
+        {
+          const String memberzstd = member + ".zst";
+          if (Error::NONE == readerp->open_entry (memberzstd))
+            {
+              StreamReaderP istream = readerp;
+              return stream_reader_zstd (istream);
+            }
+        }
+    }
+  return nullptr;
+}
+
+// == StreamWriter ==
+StreamWriter::~StreamWriter ()
+{}
+
+class FileStreamWriter : public StreamWriter {
+  String name_;
+  int fd_ = -1;
+public:
+  FileStreamWriter (const String &filename)
+  {
+    name_ = filename;
+  }
+  ~FileStreamWriter ()
+  {
+    close();
+  }
+  String
+  name() const override
+  {
+    return name_;
+  }
+  bool
+  create (int mode)
+  {
+    errno = EBUSY;
+    assert_return (fd_ < 0, false);
+    fd_ = open (name_.c_str(), O_CREAT | O_TRUNC | O_WRONLY, mode);
+    return fd_ >= 0;
+  }
+  ssize_t
+  write (const void *buffer, size_t len) override
+  {
+    if (len)
+      assert_return (buffer != nullptr, -1);
+    errno = EIO;
+    return_unless (fd_ >= 0, -1);
+    const char *p = (const char*) buffer, *const e = p + len;
+    while (p < e)
+      {
+        ssize_t l;
+        do
+          l = ::write (fd_, p, e - p);
+        while (l == -1 && errno == EINTR);
+        if (l < 0)
+          return -1;
+        p += l;
+      }
+    return len;
+  }
+  bool
+  close() override
+  {
+    int ret = 0;
+    if (fd_ >= 0)
+      {
+        ret = ::close (fd_);
+        fd_ = -1;
+        if (ret < 0)
+          printerr ("%s: StreamWriter: close(\"%s\"): %s\n", program_alias(), name_, strerror (errno));
+      }
+    return ret == 0;
+  }
+};
+
+StreamWriterP
+stream_writer_create_file (const String &filename, int mode)
+{
+  auto fw = std::make_shared<FileStreamWriter> (filename);
+  if (fw->create (mode) == false)
+    return nullptr;
+  return fw;
 }
 
 } // Ase
