@@ -26,6 +26,7 @@ public:
   Error    open_for_writing   (const String &filename);
   Error    open_with_mimetype (const String &filename, const String &mimetype);
   Error    store_file_data    (const String &filename, const String &buffer, bool alwayscompress = false);
+  Error    store_file         (const String &filename, const String &ondiskpath);
   Error    close              ();
   Error    remove_opened      ();
 };

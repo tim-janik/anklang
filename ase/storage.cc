@@ -281,6 +281,13 @@ public:
       mzerr = mz_zip_writer_add_buffer (writer, (void*) buffer.data(), buffer.size(), &file_info);
     return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
   }
+  Error
+  store_file (const String &filename, const String &ondiskpath)
+  {
+    assert_return (mz_zip_writer_is_open (writer) == MZ_OK, Error::INTERNAL);
+    int32_t mzerr = mz_zip_writer_add_file (writer, ondiskpath.c_str(), filename.c_str());
+    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
+  }
 };
 
 StorageWriter::StorageWriter (StorageFlags sflags) :
@@ -327,6 +334,13 @@ StorageWriter::store_file_data (const String &filename, const String &buffer, bo
   return impl_->store_file_data (filename, buffer,
                                  compressed ? false : true,
                                  time (nullptr));
+}
+
+Error
+StorageWriter::store_file (const String &filename, const String &ondiskpath)
+{
+  assert_return (impl_, Error::INTERNAL);
+  return impl_->store_file (filename, ondiskpath);
 }
 
 Error
