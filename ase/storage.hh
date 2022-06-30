@@ -46,6 +46,24 @@ public:
   Error    close              ();
 };
 
+class StreamReader {
+public:
+  virtual                ~StreamReader ();
+  virtual String          name  () const = 0;
+  virtual ssize_t         read  (void *buffer, size_t len) = 0;
+  virtual bool            close () = 0;
+  static constexpr size_t buffer_size = 131072; ///< Recommended buffer size.
+};
+
+class StreamWriter {
+public:
+  virtual                ~StreamWriter ();
+  virtual String          name  () const = 0;
+  virtual ssize_t         write (const void *buffer, size_t len) = 0;
+  virtual bool            close () = 0;
+  static constexpr size_t buffer_size = 131072; ///< Recommended buffer size.
+};
+
 String anklang_cachedir_create      ();
 void   anklang_cachedir_cleanup     (const String &cachedir);
 void   anklang_cachedir_clean_stale ();
