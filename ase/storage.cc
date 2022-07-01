@@ -284,10 +284,16 @@ public:
     return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
   }
   Error
-  store_file (const String &filename, const String &ondiskpath)
+  store_file (const String &filename, const String &ondiskpath, bool maycompress)
   {
     assert_return (mz_zip_writer_is_open (writer) == MZ_OK, Error::INTERNAL);
+    if (maycompress)
+      maycompress = !is_compressed (Path::stringread (ondiskpath, 1024));
+    if (!maycompress)
+      mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_STORE);
     int32_t mzerr = mz_zip_writer_add_file (writer, ondiskpath.c_str(), filename.c_str());
+    if (!maycompress)
+      mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_DEFLATE);
     return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
   }
 };
@@ -339,10 +345,10 @@ StorageWriter::store_file_data (const String &filename, const String &buffer, bo
 }
 
 Error
-StorageWriter::store_file (const String &filename, const String &ondiskpath)
+StorageWriter::store_file (const String &filename, const String &ondiskpath, bool maycompress)
 {
   assert_return (impl_, Error::INTERNAL);
-  return impl_->store_file (filename, ondiskpath);
+  return impl_->store_file (filename, ondiskpath, maycompress);
 }
 
 Error
