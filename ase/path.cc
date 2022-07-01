@@ -859,7 +859,7 @@ stringread (const String &filename, ssize_t maxlength)
   String s;
   size_t length = 0;
   errno = 0;
-  char *data = memread (filename, &length);
+  char *data = memread (filename, &length, maxlength);
   if (data)
     {
       s = String (data, length);
