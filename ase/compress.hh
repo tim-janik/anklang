@@ -28,7 +28,7 @@ bool   is_zstd         (const String &input);
 String zstd_compress   (const String &input);
 String zstd_uncompress (const String &input);
 
-StreamWriterP stream_writer_zstd (const StreamWriterP &ostream, int level = 9);
+StreamWriterP stream_writer_zstd (const StreamWriterP &ostream, int level = 0);
 StreamReaderP stream_reader_zstd (StreamReaderP &istream);
 
 } // Ase

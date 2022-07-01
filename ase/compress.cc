@@ -36,15 +36,23 @@ is_pdf (const String &input)
   return input.substr (0, 5) == "%PDF-";
 }
 
+static constexpr const size_t MB = 1024 * 1024;
+static struct { size_t level, size; } const zstd_adaptive_level[] = {
+  { 18,  1 * MB },      // slow, use only for small sizes
+  { 14,  3 * MB },
+  { 11, 11 * MB },
+  {  8, 20 * MB },
+  {  5, 42 * MB },
+  {  4, ~size_t (0) },  // acceptable fast compression
+}; // each level + size combination should take roughly the same time
+
 static int
 guess_zstd_level (size_t input_size)
 {
-  const size_t MB = 1024 * 1024;
-  if (input_size <= 8 * MB)
-    return 17;          // slow, but OK for small sizes
-  if (input_size <= 32 * MB)
-    return 10;          // starts to get fairly slow
-  return 4;             // acceptable fast compression
+  uint zal = 0;
+  while (zstd_adaptive_level[zal].size > input_size)
+    zal++;
+  return zstd_adaptive_level[zal].level;
 }
 
 String
@@ -286,11 +294,15 @@ stream_reader_zstd (StreamReaderP &istream)
   return std::make_shared<StreamReaderZStd> (istream);
 }
 
+static constexpr bool PRINT_ADAPTIVE = false;
+
 class StreamWriterZStd : public StreamWriter {
   StreamWriterP ostream_;
   std::vector<uint8_t> obuffer_;
   String name_;
   ZSTD_CCtx *cctx_ = nullptr;
+  size_t itotal_ = 0;
+  uint8_t zal_ = 0;
   bool last_block_ = false;
 public:
   ~StreamWriterZStd()
@@ -307,11 +319,19 @@ public:
     obuffer_.resize (ZSTD_CStreamOutSize());
     cctx_ = ZSTD_createCCtx();
     assert_return (cctx_ != nullptr);
-    size_t ret;
-    ret = ZSTD_CCtx_setParameter (cctx_, ZSTD_c_checksumFlag, 1);
-    assert_return (!ZSTD_isError (ret)); // ZSTD_getErrorName (ret)
-    ret = ZSTD_CCtx_setParameter (cctx_, ZSTD_c_compressionLevel, level);
-    assert_return (!ZSTD_isError (ret)); // ZSTD_getErrorName (ret)
+    size_t pret;
+    pret = ZSTD_CCtx_setParameter (cctx_, ZSTD_c_checksumFlag, 1);
+    assert_return (!ZSTD_isError (pret)); // ZSTD_getErrorName (pret)
+    if (level == 0) {
+      while (zstd_adaptive_level[zal_].size < std::numeric_limits<decltype (zstd_adaptive_level[0].size)>::max())
+        zal_++;
+      pret = ZSTD_CCtx_setParameter (cctx_, ZSTD_c_compressionLevel, level);
+      if (PRINT_ADAPTIVE) printerr ("ZSTD_compressStream2: fixed level=%u: %s\n", level, ZSTD_getErrorName (pret));
+    } else {
+      pret = ZSTD_CCtx_setParameter (cctx_, ZSTD_c_compressionLevel, zstd_adaptive_level[zal_].level);
+      if (PRINT_ADAPTIVE) printerr ("ZSTD_compressStream2: size=%u level=%u: %s\n", itotal_, zstd_adaptive_level[zal_].level, ZSTD_getErrorName (pret));
+    }
+    assert_return (!ZSTD_isError (pret)); // ZSTD_getErrorName (pret)
     ostream_ = ostream;
     name_ = ostream_->name();
   }
@@ -331,7 +351,20 @@ public:
     bool block_finished = false;
     while (!block_finished) {
       ZSTD_outBuffer zoutput = { &obuffer_[0], obuffer_.size(), 0 };
-      ret = ZSTD_compressStream2 (cctx_, &zoutput, &zinput, mode);
+
+      const size_t current_total = itotal_ + zinput.pos;
+      if (!last_block_ && current_total > zstd_adaptive_level[zal_].size)
+        {
+          zal_++;
+          const size_t pret = ZSTD_CCtx_setParameter (cctx_, ZSTD_c_compressionLevel, zstd_adaptive_level[zal_].level);
+          if (PRINT_ADAPTIVE) printerr ("ZSTD_compressStream2: size=%u level=%u: %s\n", current_total, zstd_adaptive_level[zal_].level, ZSTD_getErrorName (pret));
+          zinput.size = zinput.pos;
+          ret = ZSTD_compressStream2 (cctx_, &zoutput, &zinput, ZSTD_e_end);
+          zinput.size = len;
+        }
+      else
+        ret = ZSTD_compressStream2 (cctx_, &zoutput, &zinput, mode);
+
       if (ZSTD_isError (ret))
         goto zerror;
       const char *p = (const char*) &obuffer_[0], *const e = p + zoutput.pos;
@@ -343,6 +376,7 @@ public:
       }
       block_finished = last_block_ ? ret == 0 : zinput.pos == zinput.size;
     }
+    itotal_ += zinput.pos;
     return zinput.pos;
   zerror:
     printerr ("%s: ZSTD_compressStream2: %s\n", program_alias(), ZSTD_getErrorName (ret));
