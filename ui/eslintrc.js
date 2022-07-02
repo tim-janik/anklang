@@ -18,6 +18,7 @@ module.exports = {
     App: false,
     Ase: false,
     Data: false,
+    Shell: false,
     CONFIG: false,
     Util: false,
     Vue: false,
