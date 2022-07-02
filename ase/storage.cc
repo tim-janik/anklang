@@ -403,7 +403,7 @@ public:
         const int saved_errno = errno;
         mz_zip_reader_delete (&reader);
         reader = nullptr;
-        return ase_error_from_errno (saved_errno);
+        return saved_errno == ELIBBAD ? Error::BROKEN_ARCHIVE : ase_error_from_errno (saved_errno);
       }
     return Error::NONE;
   }
@@ -558,7 +558,7 @@ public:
         const int saved_errno = errno;
         mz_zip_reader_delete (&reader_);
         reader_ = nullptr;
-        return ase_error_from_errno (saved_errno);
+        return saved_errno == ELIBBAD ? Error::BROKEN_ARCHIVE : ase_error_from_errno (saved_errno);
       }
     return Error::NONE;
   }

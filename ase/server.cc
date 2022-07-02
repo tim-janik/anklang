@@ -340,6 +340,7 @@ ase_error_blurb (Error error)
     case Error::NO_SPACE:
     case Error::NO_FILES:
     case Error::MANY_FILES:
+    case Error::RETRY:
     case Error::NOT_DIRECTORY:
     case Error::FILE_NOT_FOUND:
     case Error::FILE_IS_DIR:
@@ -364,6 +365,7 @@ ase_error_blurb (Error error)
     case Error::FORMAT_UNKNOWN:		return _("Unknown format");
     case Error::DATA_UNMATCHED:		return _("Requested data values unmatched");
     case Error::CODEC_FAILURE:		return _("Codec failure");
+    case Error::BROKEN_ARCHIVE:         return _("Broken archive");
       // Device errors
     case Error::DEVICE_NOT_AVAILABLE:   return _("No device (driver) available");
     case Error::DEVICE_ASYNC:		return _("Device not async capable");
@@ -388,7 +390,39 @@ ase_error_blurb (Error error)
 Error
 ase_error_from_errno (int sys_errno, Error fallback)
 {
-  return Error (sys_errno);
+  switch (sys_errno)
+    {
+    case 0:             return Ase::Error::NONE;
+    case ELOOP:
+    case ENAMETOOLONG:
+    case ENOENT:        return Ase::Error::FILE_NOT_FOUND;
+    case EISDIR:        return Ase::Error::FILE_IS_DIR;
+    case EROFS:
+    case EPERM:
+    case EACCES:        return Ase::Error::PERMS;
+#ifdef ENODATA  /* GNU/kFreeBSD lacks this */
+    case ENODATA:
+#endif
+    case ENOMSG:        return Ase::Error::FILE_EOF;
+    case ENOMEM:        return Ase::Error::NO_MEMORY;
+    case ENOSPC:        return Ase::Error::NO_SPACE;
+    case ENFILE:        return Ase::Error::NO_FILES;
+    case EMFILE:        return Ase::Error::MANY_FILES;
+    case EFBIG:
+    case ESPIPE:
+    case EIO:           return Ase::Error::IO;
+    case EEXIST:        return Ase::Error::FILE_EXISTS;
+    case ETXTBSY:
+    case EBUSY:         return Ase::Error::FILE_BUSY;
+    case EAGAIN:
+    case EINTR:         return Ase::Error::RETRY;
+    case EFAULT:        return Ase::Error::INTERNAL;
+    case EBADF:
+    case ENOTDIR:
+    case ENODEV:
+    case EINVAL:
+    default:            return fallback;
+    }
 }
 
 String

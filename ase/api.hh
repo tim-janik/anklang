@@ -25,6 +25,7 @@ enum class Error : int32_t {
   NO_SPACE                      = ENOSPC,
   NO_FILES                      = ENFILE,
   MANY_FILES                    = EMFILE,
+  RETRY                         = EINTR,
   // file errors
   NOT_DIRECTORY                 = ENOTDIR,
   FILE_NOT_FOUND                = ENOENT,
@@ -50,6 +51,7 @@ enum class Error : int32_t {
   FORMAT_UNKNOWN,
   DATA_UNMATCHED,
   CODEC_FAILURE,
+  BROKEN_ARCHIVE,
   // Device errors
   DEVICE_NOT_AVAILABLE          = 0x30003000,
   DEVICE_ASYNC,
