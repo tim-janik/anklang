@@ -96,9 +96,9 @@ export class AppClass {
   async load_project_checked (project_or_path) {
     const err = await this.load_project (project_or_path);
     if (err !== Ase.Error.NONE)
-      App.async_button_dialog ("File Open Error",
+      App.async_button_dialog ("Project Loading Error",
 			       "Failed to open project.\n" +
-			       project_or_path + ": " +
+			       project_or_path + ":\n" +
 			       await Ase.server.error_blurb (err), [
 				 { label: 'Dismiss', autofocus: true },
 			       ], 'ERROR');
@@ -146,7 +146,6 @@ export class AppClass {
   }
   async save_project (projectpath) {
     Shell.show_spinner();
-    debug ("projectpath1",projectpath);
     const self_contained = false;
     let error = !Data.project ? Ase.Error.INTERNAL :
 		  Data.project.save_dir (projectpath, self_contained);
