@@ -10,6 +10,7 @@
 
 <style lang="scss">
 @import 'mixins.scss';
+@import 'spinner.scss';
 
 .b-shell {
   position: relative;
@@ -70,6 +71,15 @@ html.b-shell-during-drag .b-app {
     width: 100%; height: 100%;
     display: flex;
     pointer-events: none;
+  }
+}
+#b-shell-spinner-layer {
+  display: flex;
+  img {
+    $size: 4em;
+    width: $size; height: $size;
+    margin: auto; display: inline-block; vertical-align: middle;
+    animation: 1.1s linear infinite reverse spinner-svg-rotation-steps;
   }
 }
 </style>
@@ -144,6 +154,11 @@ html.b-shell-during-drag .b-app {
     <!-- Bubbles -->
     <div class="-fullcoverage" style="z-index: 96" id="b-shell-bubble-layer" ></div>
 
+    <!-- Spinners (busy indicator) -->
+    <div class="-fullcoverage" style="z-index: 98" id="b-shell-spinner-layer" v-show="m.show_spinner_count > 0" >
+      <img ref="spinner" src="assets/spinner.svg" >
+    </div>
+
   </v-flex>
 </template>
 
@@ -174,6 +189,14 @@ class ShellClass extends Envue.Component {
     this.fs = Vue.reactive ({ title: 'File Selector', button: 'Select', cwd: 'MUSIC', filters: [], resolve: null });
     this.m = observable_project_data.call (vm);
     this.m.modal_dialogs = [];
+    this.m.show_spinner_count = 0;
+  }
+  show_spinner() {
+    this.m.show_spinner_count++;
+  }
+  hide_spinner() {
+    console.assert (this.m.show_spinner_count > 0);
+    this.m.show_spinner_count--;
   }
   created() {
     this.$vm?.$forceUpdate();
