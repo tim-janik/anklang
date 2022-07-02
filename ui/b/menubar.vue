@@ -206,17 +206,18 @@ async function open_file() {
 	       { name: 'All Files', extensions: [ '*' ] }, ],
   };
   const filename = await App.shell.select_file (opt);
-  if (filename)
+  if (!filename)
+    return;
+  open_file.last_dir = filename.replace (/[^\/]*$/, ''); // dirname
+  const err = await App.load_project_checked (filename);
+  if (err == Ase.Error.NONE)
     {
-      open_file.last_dir = filename.replace (/[^\/]*$/, ''); // dirname
-      const lresult = await App.load_project_checked (filename);
-      if (lresult == Ase.Error.NONE)
-	{
-	  let project_filename = filename;
-          Data.project.set_custom ('filename', project_filename);
-	}
-      // else console.error ('Failed to load:', filename); // TODO: warning notice?
+      let project_filename = filename;
+      await Data.project.set_data ('file_abspath', project_filename);
+      return;
     }
+  else
+    ; // load_project_checked() displays a dialog
 }
 
 async function save_project (asnew = false) {
@@ -226,7 +227,7 @@ async function save_project (asnew = false) {
     cwd:    save_project.last_dir || "MUSIC",
     filters: [ { name: 'Projects', extensions: ['anklang'] }, ],
   };
-  let filename = ''; // TODO: await Data.project.get_custom ('filename');
+  let filename = await Data.project.get_data ('file_abspath');
   let replace = asnew ? 0 : !!filename;
   if (asnew || !filename)
     filename = await App.shell.select_file (opt);
@@ -249,18 +250,18 @@ async function save_project (asnew = false) {
   const err = await App.save_project (filename);
   if (err === Ase.Error.NONE)
     {
-      Data.project.set_custom ('filename', filename);
-      let msg = '# Project Saved\n';
+      await Data.project.set_data ('file_abspath', filename);
+      let msg = '### Project Saved\n';
       msg += '  \n  \nProject saved to: ``' + filename + '``\n';
       Util.create_note (msg);
       return true;
     }
-  App.async_button_dialog ("File IO Error",
-			   "Failed to save project.\n" +
-			   filename + ": " +
-			   await Ase.server.error_blurb (err), [
-			     { label: 'Dismiss', autofocus: true }
-			   ], 'ERROR');
+  await App.async_button_dialog ("File IO Error",
+				 "Failed to save project.\n" +
+				 filename + ": " +
+				 await Ase.server.error_blurb (err), [
+				   { label: 'Dismiss', autofocus: true }
+				 ], 'ERROR');
   return false;
 }
 
