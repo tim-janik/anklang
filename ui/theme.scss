@@ -285,15 +285,11 @@ $b-piano-roll-font:     	normal 9px $b-main-font-family; // the '9px' part is dy
 // == input[type='number'] ==
 @mixin b-style-number-input() {
   @include b-style-inset();
-  // Assign webkit spinners that fit the theme
-  &::-webkit-outer-spin-button {
-    -webkit-appearance: none; // allow customizations
-    display: none;
-  }
+  // Assign webkit spin-button arrows that fit the theme
   &::-webkit-inner-spin-button {
     -webkit-appearance: none; // allow customizations
-    width: 0.75em; margin-left: 0.25em; margin-right: $b-style-border-radius;
-    background: transparent url(../assets/spinners.svg) no-repeat center center !important;
+    width: 9px; margin-left: 5px; margin-right: $b-style-border-radius;
+    background: transparent url(../assets/spin-arrows.svg) no-repeat center center !important;
     background-size: 100% 100% !important;
     opacity: .5;
     &:hover { opacity: .99; }
