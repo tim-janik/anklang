@@ -145,10 +145,14 @@ export class AppClass {
     return Ase.Error.NONE;
   }
   async save_project (projectpath) {
+    Shell.show_spinner();
+    debug ("projectpath1",projectpath);
     const self_contained = false;
-    debug("projectpath",projectpath);
-    return !Data.project ? Ase.Error.INTERNAL :
-	   Data.project.save_dir (projectpath, self_contained);
+    let error = !Data.project ? Ase.Error.INTERNAL :
+		  Data.project.save_dir (projectpath, self_contained);
+    error = await error;
+    Shell.hide_spinner();
+    return error;
   }
   status (...args) {
     console.log (...args);
