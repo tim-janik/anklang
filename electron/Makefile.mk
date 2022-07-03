@@ -29,7 +29,7 @@ electron/all: $>/electron/anklang
 electron/installdir ::= $(pkgdir)/electron
 .PHONY: electron/install
 electron/install: $>/electron/anklang
-	@$(QECHO) INSTALL '$(DESTDIR)$(electron/installdir)/...'
+	@$(QECHO) INSTALL '$(DESTDIR)$(electron/installdir)/.'
 	$Q rm -f -r '$(DESTDIR)$(electron/installdir)'
 	$Q $(INSTALL) -d $(DESTDIR)$(electron/installdir)/
 	$Q $(CP) -Rp $>/electron/* $(DESTDIR)$(electron/installdir)
@@ -40,7 +40,7 @@ electron/install: $>/electron/anklang
 install: electron/install
 .PHONY: electron/uninstall
 electron/uninstall:
-	@$(QECHO) REMOVE '$(DESTDIR)$(electron/installdir)/...'
+	@$(QECHO) REMOVE '$(DESTDIR)$(electron/installdir)/.'
 	$Q rm -f -r '$(DESTDIR)$(electron/installdir)'
 	$Q rm -f '$(DESTDIR)$(pkgdir)/bin/anklang'
 	$Q $(RMDIR_P) '$(DESTDIR)$(pkgdir)/bin' || true

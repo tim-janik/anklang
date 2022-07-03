@@ -195,7 +195,7 @@ BUILD_TEST = $(eval $(call LINKER, $1, $2, $3, $4, $5))	$(eval ALL_TESTS += $1)
 define INSTALL_FILE_RULE.impl
 .PHONY: install--$(strip $1) uninstall--$(strip $1)
 install--$(strip $1): $3 # mkdir $2, avoid EBUSY by deleting first, add link aliases L, install target T
-	$$(QECHO) INSTALL '$(strip $2)/...'
+	$$(QECHO) INSTALL '$(strip $2)/.'
 	$$(call INSTALL_RULE.pre-hook,$@)
 	$$Q $$(INSTALL) -d '$(strip $2)'
 	$$Q cd '$(strip $2)' \
@@ -213,7 +213,7 @@ install--$(strip $1): $3 # mkdir $2, avoid EBUSY by deleting first, add link ali
 	$$(call INSTALL_RULE.post-hook,$@)
 install: install--$(strip $1)
 uninstall--$(strip $1): # delete target T and possible link aliases L
-	$$(QECHO) REMOVE '$(strip $2)/...'
+	$$(QECHO) REMOVE '$(strip $2)/.'
 	$$Q if cd '$(strip $2)' 2>/dev/null ; then \
 	      rm -f	$$(foreach T, $(notdir $3), $$T $$T.debug .debug/$$T.debug \
 			   $$(foreach L, $$(call BUILD_SHARED_LIB_SOLINKS, $$T), $$L) ) ; \
@@ -229,7 +229,7 @@ INSTALL_BIN_RULE_XDBG = $(eval $(call INSTALL_FILE_RULE.impl,$(strip $1),$2, $3,
 define INSTALL_DIR_RULE.impl
 .PHONY: install--$(strip $1) uninstall--$(strip $1)
 install--$(strip $1): $3 $4 # mkdir $2, avoid EBUSY by first deleting target files, then install target T
-	$$(QECHO) INSTALL '$(strip $2)/$(notdir $(abspath $(word 1,$3)))...'
+	$$(QECHO) INSTALL '$(strip $2)/$(notdir $(abspath $(word 1,$3)))/.'
 	$$(call INSTALL_RULE.pre-hook,$@)
 	$$Q $$(INSTALL) -d '$(strip $2)'
 	$$Q cd '$(strip $2)' && \
@@ -238,7 +238,7 @@ install--$(strip $1): $3 $4 # mkdir $2, avoid EBUSY by first deleting target fil
 	$$(call INSTALL_RULE.post-hook,$@)
 install: install--$(strip $1)
 uninstall--$(strip $1): # delete target T
-	$$(QECHO) REMOVE '$(strip $2)/$(notdir $(abspath $(word 1,$3)))...'
+	$$(QECHO) REMOVE '$(strip $2)/$(notdir $(abspath $(word 1,$3)))/.'
 	$$Q if cd '$(strip $2)' 2>/dev/null ; then \
 	      rm -f -r	$$(foreach T, $(notdir $(abspath $3)), $$T) ; \
 	    fi
