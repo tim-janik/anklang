@@ -83,7 +83,7 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
     {
       String dir = Path::dirname (path);
       if (!is_anklang_dir (dir))
-        return ase_error_from_errno (ENOTDIR);
+        return Error::BAD_PROJECT;
       projectfile = Path::basename (path);
       path = dir;                               // file inside project dir
     }
@@ -167,10 +167,9 @@ ProjectImpl::load_project (const String &filename)
   // turn /dir/ -> /dir/dir.anklang
   if (Path::check (fname, "d"))
     fname = Path::join (fname, Path::basename (Path::strip_slashes (Path::normalize (fname)))) + ".anklang";
-  // try /dir/file
+  // add missing '.anklang' extension
   if (!Path::check (fname, "e"))
     {
-      // try /dir/file.anklang
       fname += ".anklang";
       if (!Path::check (fname, "e"))
         return ase_error_from_errno (errno);
@@ -183,7 +182,7 @@ ProjectImpl::load_project (const String &filename)
     return error;
   loading_file_ = fname;
   if (rs.stringread ("mimetype") != "application/x-anklang")
-    return Error::FORMAT_INVALID;
+    return Error::BAD_PROJECT;
   // find project.json *inside* container
   String jsd = rs.stringread ("project.json");
   if (jsd.empty() && errno)
