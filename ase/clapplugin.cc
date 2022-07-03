@@ -37,6 +37,7 @@ static const void*           host_get_extension_mt    (const clap_host *host, co
 static void                  host_request_restart_mt  (const clap_host *host);
 static void                  host_request_process_mt  (const clap_host *host);
 static void                  host_request_callback_mt (const clap_host *host);
+static bool                  host_unregister_fd       (const clap_host_t *host, int fd);
 static bool                  host_unregister_timer    (const clap_host *host, clap_id timer_id);
 static bool                  event_unions_try_push    (ClapEventUnionS &events, const clap_event_header_t *event);
 static void                  try_load_x11wrapper      ();
@@ -563,6 +564,7 @@ public:
   const clap_plugin_audio_ports_config *plugin_audio_ports_config = nullptr;
   const clap_plugin_audio_ports *plugin_audio_ports = nullptr;
   const clap_plugin_note_ports *plugin_note_ports = nullptr;
+  const clap_plugin_posix_fd_support *plugin_posix_fd_support = nullptr;
   ClapPluginHandleImpl (const ClapPluginDescriptor &descriptor_, AudioProcessorP aproc) :
     ClapPluginHandle (descriptor_), proc_ (shared_ptr_cast<ClapAudioWrapper> (aproc))
   {
@@ -596,7 +598,6 @@ public:
     plugin_audio_ports_config = (const clap_plugin_audio_ports_config*) plugin_get_extension (CLAP_EXT_AUDIO_PORTS_CONFIG);
     plugin_audio_ports = (const clap_plugin_audio_ports*) plugin_get_extension (CLAP_EXT_AUDIO_PORTS);
     plugin_note_ports = (const clap_plugin_note_ports*) plugin_get_extension (CLAP_EXT_NOTE_PORTS);
-    const clap_plugin_posix_fd_support *plugin_posix_fd_support = nullptr;
     plugin_posix_fd_support = (const clap_plugin_posix_fd_support*) plugin_get_extension (CLAP_EXT_POSIX_FD_SUPPORT);
     plugin_state = (const clap_plugin_state*) plugin_get_extension (CLAP_EXT_STATE);
     const clap_plugin_render *plugin_render = nullptr;
@@ -618,6 +619,8 @@ public:
   bool gui_canresize = false;
   ulong gui_windowid = 0;
   std::vector<uint> timers_;
+  struct FdPoll { int fd = -1; uint source = 0; uint flags = 0; };
+  std::vector<FdPoll> fd_polls_;
   std::vector<ClapParamInfo> param_infos_;
   ClapParamInfoMap param_ids_;
   ClapParamUpdateS *load_updates_ = nullptr;
@@ -796,6 +799,8 @@ public:
     }
     param_ids_.clear();
     param_infos_.clear();
+    while (fd_polls_.size())
+      host_unregister_fd (&phost, fd_polls_.back().fd);
     while (timers_.size())
       host_unregister_timer (&phost, timers_.back());
     if (plugin_)
@@ -1151,7 +1156,7 @@ host_register_timer (const clap_host *host, uint32_t period_ms, clap_id *timer_i
   }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
   *timer_id = *timeridp;
   handlep->timers_.push_back (*timeridp);
-  CDEBUG ("%s: %s: ms=%u: id=%u", clapid (host), __func__, period_ms, timer_id);
+  CDEBUG ("%s: %s: ms=%u: id=%u", clapid (host), __func__, period_ms, *timer_id);
   return true;
 }
 
@@ -1208,6 +1213,81 @@ host_rescan (const clap_host_t *host, uint32_t flag)
 static const clap_host_audio_ports host_ext_audio_ports = {
   .is_rescan_flag_supported = host_is_rescan_flag_supported,
   .rescan = host_rescan,
+};
+
+// == clap_host_posix_fd_support ==
+static bool
+host_register_fd (const clap_host_t *host, int fd, clap_posix_fd_flags_t flags)
+{
+  ClapPluginHandleImplP handlep = handle_sptr (host);
+  auto plugin_on_fd = [handlep] (PollFD &pfd) {
+    uint revents = 0;
+    revents |= bool (pfd.revents & PollFD::IN) * CLAP_POSIX_FD_READ;
+    revents |= bool (pfd.revents & PollFD::OUT) * CLAP_POSIX_FD_WRITE;
+    revents |= bool (pfd.revents & (PollFD::ERR | PollFD::HUP)) * CLAP_POSIX_FD_ERROR;
+    if (0)
+      CDEBUG ("%s: plugin_on_fd: fd=%d revents=%u: %u", handlep->clapid(), pfd.fd, revents,
+              handlep->plugin_posix_fd_support && handlep->plugin_posix_fd_support->on_fd);
+    if (handlep->plugin_posix_fd_support)
+      handlep->plugin_posix_fd_support->on_fd (handlep->plugin_, pfd.fd, revents);
+    return true; // keep alive
+  };
+  String mode;
+  if (flags & CLAP_POSIX_FD_READ)
+    mode += "r";
+  if (flags & CLAP_POSIX_FD_WRITE)
+    mode += "w";
+  if (!(flags & CLAP_POSIX_FD_ERROR))
+    mode += "E";
+  ClapPluginHandleImpl::FdPoll fdpoll = {
+    .fd = fd,
+    .source = main_loop->exec_io_handler (plugin_on_fd, fd, mode),
+    .flags = flags,
+  };
+  if (fdpoll.source)
+    handlep->fd_polls_.push_back (fdpoll);
+  CDEBUG ("%s: %s: fd=%d flags=%u mode=\"%s\" (nfds=%u): id=%u", clapid (host), __func__, fd, flags, mode,
+          handlep->fd_polls_.size(), fdpoll.source);
+  return fdpoll.source != 0;
+}
+
+static bool
+host_unregister_fd (const clap_host_t *host, int fd)
+{
+  ClapPluginHandleImplP handlep = handle_sptr (host);
+  for (size_t i = 0; i < handlep->fd_polls_.size(); i++)
+    if (handlep->fd_polls_[i].fd == fd) {
+      const bool deleted = main_loop->try_remove (handlep->fd_polls_[i].source);
+      CDEBUG ("%s: %s: fd=%d id=%u (nfds=%u): deleted=%u", clapid (host), __func__, fd, handlep->fd_polls_[i].source,
+              handlep->fd_polls_.size(), deleted);
+      handlep->fd_polls_.erase (handlep->fd_polls_.begin() + i);
+      return true;
+    }
+  CDEBUG ("%s: %s: fd=%d: deleted=0", clapid (host), __func__, fd);
+  return false;
+}
+
+static bool
+host_modify_fd (const clap_host_t *host, int fd, clap_posix_fd_flags_t flags)
+{
+  ClapPluginHandleImplP handlep = handle_sptr (host);
+  for (size_t i = 0; i < handlep->fd_polls_.size(); i++)
+    if (handlep->fd_polls_[i].fd == fd) {
+      CDEBUG ("%s: %s: fd=%d flags=%u", clapid (host), __func__, fd, flags);
+      if (handlep->fd_polls_[i].flags == flags)
+        return true;
+      // the following calls invalidate fd_polls_
+      host_unregister_fd (host, fd);
+      return host_register_fd (host, fd, flags);
+    }
+  CDEBUG ("%s: %s: fd=%d flags=%u: false", clapid (host), __func__, fd, flags);
+  return false;
+}
+
+static const clap_host_posix_fd_support host_ext_posix_fd_support = {
+  .register_fd = host_register_fd,
+  .modify_fd = host_modify_fd,
+  .unregister_fd = host_unregister_fd,
 };
 
 // == clap_host_params ==
@@ -1394,12 +1474,13 @@ static const void*
 host_get_extension_mt (const clap_host *host, const char *extension_id)
 {
   const String ext = extension_id;
-  if (ext == CLAP_EXT_LOG)            return &host_ext_log;
-  if (ext == CLAP_EXT_GUI)            return &host_ext_gui;
-  if (ext == CLAP_EXT_TIMER_SUPPORT)  return &host_ext_timer_support;
-  if (ext == CLAP_EXT_THREAD_CHECK)   return &host_ext_thread_check;
-  if (ext == CLAP_EXT_AUDIO_PORTS)    return &host_ext_audio_ports;
-  if (ext == CLAP_EXT_PARAMS)         return &host_ext_params;
+  if (ext == CLAP_EXT_LOG)              return &host_ext_log;
+  if (ext == CLAP_EXT_GUI)              return &host_ext_gui;
+  if (ext == CLAP_EXT_TIMER_SUPPORT)    return &host_ext_timer_support;
+  if (ext == CLAP_EXT_THREAD_CHECK)     return &host_ext_thread_check;
+  if (ext == CLAP_EXT_AUDIO_PORTS)      return &host_ext_audio_ports;
+  if (ext == CLAP_EXT_PARAMS)           return &host_ext_params;
+  if (ext == CLAP_EXT_POSIX_FD_SUPPORT) return &host_ext_posix_fd_support;
   else return nullptr;
 }
 
