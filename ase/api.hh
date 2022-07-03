@@ -52,6 +52,7 @@ enum class Error : int32_t {
   DATA_UNMATCHED,
   CODEC_FAILURE,
   BROKEN_ARCHIVE,
+  BAD_PROJECT,
   // Device errors
   DEVICE_NOT_AVAILABLE          = 0x30003000,
   DEVICE_ASYNC,

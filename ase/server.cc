@@ -366,6 +366,7 @@ ase_error_blurb (Error error)
     case Error::DATA_UNMATCHED:		return _("Requested data values unmatched");
     case Error::CODEC_FAILURE:		return _("Codec failure");
     case Error::BROKEN_ARCHIVE:         return _("Broken archive");
+    case Error::BAD_PROJECT:            return _("Not a valid project");
       // Device errors
     case Error::DEVICE_NOT_AVAILABLE:   return _("No device (driver) available");
     case Error::DEVICE_ASYNC:		return _("Device not async capable");
