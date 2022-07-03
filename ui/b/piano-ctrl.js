@@ -240,8 +240,10 @@ export class PianoCtrl {
 					  (t0 >= n.tick && t0 < n.tick + n.duration))));
   }
   debounced_drag_move = Util.debounce (this.drag_move.bind (this), { wait: 17, restart: true, immediate: true });
-  move_event (event) {
+  move_event (event) // this method is debounced
+  {
     const roll = this.piano_roll, layout = roll.layout; // msrc = roll.msrc;
+    if (!layout) return; // UI layout may have changed for deferred events
     if (event.target == roll.$refs.notes_canvas) {
       const tick = layout.tick_from_x (event.offsetX);
       const midinote = layout.midinote_from_y (event.offsetY);
