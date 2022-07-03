@@ -1186,7 +1186,7 @@ PollFDSource::check (const LoopState &state)
 bool
 PollFDSource::dispatch (const LoopState &state)
 {
-  bool keep_alive = false;
+  bool keep_alive = !oneshot_;
   if (pfd_.fd >= 0 && (pfd_.revents & PollFD::NVAL))
     ; // close down
   else if (pfd_.fd >= 0 && !ignore_errors_ && (pfd_.revents & PollFD::ERR))
