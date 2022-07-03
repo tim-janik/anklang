@@ -1,12 +1,12 @@
 <!-- BADGES -->
 [![License][mpl2-badge]][mpl2-url]
-[![Contributors][contributors-badge]][contributors-url]
 [![Commits][commits-badge]][commits-url]
+[![Contributors][contributors-badge]][contributors-url]
+[![Issues][issues-badge]][issues-url]
 [![Test Build][testing-badge]][testing-url] \
 [![Version][version-badge]][version-url]
 [![Downloads][downloads-badge]][downloads-url]
 [![Watchers][watchers-badge]][watchers-url]
-[![Issues][issues-badge]][issues-url]
 [![Live Chat][irc-badge]][irc-url]
 <!-- [![Stargazers][stars-badge]][stars-url] [![Forks][forks-badge]][forks-url] -->
 
