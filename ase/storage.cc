@@ -403,7 +403,10 @@ public:
         const int saved_errno = errno;
         mz_zip_reader_delete (&reader);
         reader = nullptr;
-        return saved_errno == ELIBBAD ? Error::BROKEN_ARCHIVE : ase_error_from_errno (saved_errno);
+        if (saved_errno == ELIBBAD ||
+            (saved_errno == ENOENT && Path::check (zipname, "f")))
+          return Error::BROKEN_ARCHIVE;
+        return ase_error_from_errno (saved_errno);
       }
     return Error::NONE;
   }
