@@ -354,7 +354,7 @@ EventLoop::exec_timer (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms, in
 template<class BoolVoidPollFunctor> uint
 EventLoop::exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, int priority)
 {
-  typedef decltype (bvf (*(PollFD*) 0)) ReturnType;
+  using ReturnType = decltype (bvf (*std::declval<PollFD*>()));
   std::function<ReturnType (PollFD&)> slot (bvf);
   return add (PollFDSource::create (slot, fd, mode), priority);
 }

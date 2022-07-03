@@ -154,7 +154,7 @@ viewdocs: $>/doc/anklang-manual.html $>/doc/anklang-internals.html $>/doc/anklan
 # == installation ==
 pkgdocdir ::= $(pkgdir)/doc
 doc/install: $(doc/install.files) install--doc/style/install.files
-	@$(QECHO) INSTALL '$(DESTDIR)$(pkgdocdir)/...'
+	@$(QECHO) INSTALL '$(DESTDIR)$(pkgdocdir)/.'
 	$Q rm -f '$(DESTDIR)$(pkgdocdir)'/* 2>/dev/null ; true
 	$Q $(INSTALL)      -d $(DESTDIR)$(pkgdocdir)/ $(DESTDIR)$(mandir)/man1/
 	$Q $(CP) $(doc/install.files) $(DESTDIR)$(pkgdocdir)/
@@ -165,7 +165,7 @@ doc/install: $(doc/install.files) install--doc/style/install.files
 .PHONY: doc/install
 install: doc/install
 doc/uninstall: FORCE uninstall--doc/style/install.files
-	@$(QECHO) REMOVE '$(DESTDIR)$(pkgdocdir)/...'
+	@$(QECHO) REMOVE '$(DESTDIR)$(pkgdocdir)/.'
 	$Q rm -f -r '$(DESTDIR)$(pkgdocdir)'
 	$Q rm -f '$(DESTDIR)$(mandir)/man1/anklang.1'
 	$Q rm -f '$(DESTDIR)$(docdir)/anklang'

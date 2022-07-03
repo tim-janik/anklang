@@ -113,7 +113,7 @@ export default {
   }),
   watch: {
     label (vnew, vold) {
-      if (this.$el?.data_bubble_active) App.data_bubble.update (this.$el);
+      if (this.$el?.data_bubble_active) Shell.data_bubble.update (this.$el);
     },
   },
   mounted() {
@@ -228,7 +228,7 @@ export default {
 	this.unlock_pointer = Util.request_pointer_lock (this.$el);
       this.uncapture_wheel = Util.capture_event ('wheel', this.wheel_event);
       // display data-bubble during drag and monitor movement distance
-      App.data_bubble.force (this.$el);
+      Shell.data_bubble.force (this.$el);
       const DPR = Math.max (window.devicePixelRatio || 1, 1);
       this.last = { x: ev.pageX * DPR, y: ev.pageY * DPR };
       this.drag = USE_PTRLOCK ? { x: 0, y: 0 } : { x: ev.pageX * DPR, y: ev.pageY * DPR };
@@ -249,7 +249,7 @@ export default {
       this.captureid_ = undefined;
       this.last = null;
       this.drag = null;
-      App.data_bubble.unforce (this.$el);
+      Shell.data_bubble.unforce (this.$el);
       if (!ev)
 	return;
       ev.preventDefault();
@@ -366,7 +366,7 @@ export default {
 	}
       // to reduce CPU load, update data-bubble on demand only
       if (this.$el.data_bubble_active)
-	; // App.data_bubble.update (this.$el);
+	; // Shell.data_bubble.update (this.$el);
     },
   },
 };

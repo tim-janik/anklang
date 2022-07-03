@@ -380,7 +380,7 @@ ui/install.pattern ::= $(strip	\
 	$>/ui/*.png		\
 )
 ui/install: $>/ui/.build1-stamp $>/ui/.build2-stamp
-	@$(QECHO) INSTALL '$(ui/installdir)/...'
+	@$(QECHO) INSTALL '$(ui/installdir)/.'
 	$Q rm -f -r '$(ui/installdir)'
 	$Q $(INSTALL)      -d $(ui/installdir)/ $(ui/installdir)/assets/ $(ui/installdir)/b/ $(ui/installdir)/fonts/
 	$Q $(INSTALL_DATA) -p $(ui/install.pattern) $(ui/installdir)/
@@ -391,7 +391,7 @@ ui/install: $>/ui/.build1-stamp $>/ui/.build2-stamp
 .PHONY: ui/install
 install: ui/install
 ui/uninstall: FORCE
-	@$(QECHO) REMOVE '$(ui/installdir)/...'
+	@$(QECHO) REMOVE '$(ui/installdir)/.'
 	$Q rm -f -r '$(ui/installdir)'
 .PHONY: ui/uninstall
 uninstall: ui/uninstall

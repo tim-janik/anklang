@@ -154,7 +154,7 @@ misc/all: $>/misc/anklang.desktop
 # == installation ==
 misc/svgdir ::= $(sharedir)/icons/hicolor/scalable/apps
 misc/install:
-	@$(QECHO) INSTALL '$(DESTDIR)$(pkgsharedir)/...'
+	@$(QECHO) INSTALL '$(DESTDIR)$(pkgsharedir)/.'
 	$Q rm -f -r $(DESTDIR)$(pkgsharedir)/applications/ $(DESTDIR)$(pkgsharedir)/mime/packages/
 	$Q $(INSTALL) -d $(DESTDIR)$(pkgsharedir)/mime/packages/ && cp -p misc/anklang-mime.xml $(DESTDIR)$(pkgsharedir)/mime/packages/anklang.xml
 	$Q $(INSTALL) -d $(DESTDIR)$(sharedir)/mime/packages/ && ln -fs -r $(DESTDIR)$(pkgsharedir)/mime/packages/anklang.xml $(DESTDIR)$(sharedir)/mime/packages/anklang.xml
@@ -165,7 +165,7 @@ misc/install:
 .PHONY: misc/install
 install: misc/install
 misc/uninstall: FORCE
-	@$(QECHO) REMOVE '$(DESTDIR)$(pkgsharedir)/...'
+	@$(QECHO) REMOVE '$(DESTDIR)$(pkgsharedir)/.'
 	$Q rm -f -r $(DESTDIR)$(pkgsharedir)/applications/ $(DESTDIR)$(pkgsharedir)/mime/packages/
 	$Q rm -f $(DESTDIR)$(sharedir)/mime/packages/anklang.xml
 	$Q rm -f $(DESTDIR)$(sharedir)/applications/anklang.desktop
