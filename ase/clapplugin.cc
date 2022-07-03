@@ -74,11 +74,8 @@ public:
       if (dlhandle_) {
         pluginentry = symbol<const clap_plugin_entry*> ("clap_entry");
         bool initialized = false;
-        if (pluginentry && clap_version_is_compatible (pluginentry->clap_version)) {
+        if (pluginentry && clap_version_is_compatible (pluginentry->clap_version))
           initialized = pluginentry->init (dlfile.c_str());
-          if (!initialized)
-            pluginentry->deinit();
-        }
         if (!initialized) {
           CDEBUG ("unusable clap_entry: %s", !pluginentry ? "NULL" :
                   string_format ("clap-%u.%u.%u", pluginentry->clap_version.major, pluginentry->clap_version.minor,
