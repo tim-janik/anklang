@@ -1382,6 +1382,8 @@ AudioProcessor::enotify_dispatch ()
                   if (aprop)
                     aprop->emit_event ("notify", p.info->ident);
                 }
+          if (nflags & PARAMCHANGE)
+            devicep->emit_event ("params", "change");
         }
     }
 }

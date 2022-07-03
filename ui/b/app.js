@@ -10,8 +10,7 @@
  */
 
 import VueComponents from '../all-components.js';
-import Shell from '../b/shell.js';
-import DataBubbleIface from '../b/databubble.js';
+import ShellClass from '../b/shell.js';
 import * as Util from '../util.js';
 
 // == zmove() ==
@@ -41,13 +40,11 @@ class ZMove {
 
 // == App ==
 export class AppClass {
-  data_bubble = null;
   panel2_types = [ 'd' /*devices*/, 'p' /*pianoroll*/ ];
   panel3_types = [ 'i' /*info*/, 'b' /*browser*/ ];
   constructor (vue_app) {
     // super();
     this.vue_app = vue_app;
-    this.data_bubble = new DataBubbleIface();
     const data = {
       project: null,
       mtrack: null, // master track
@@ -70,6 +67,7 @@ export class AppClass {
   }
   mount (id) {
     this.shell = this.vue_app.mount (id);
+    Object.defineProperty (globalThis, 'Shell', { value: this.shell });
     if (!this.shell)
       throw Error (`failed to mount App at: ${id}`);
   }
@@ -98,9 +96,9 @@ export class AppClass {
   async load_project_checked (project_or_path) {
     const err = await this.load_project (project_or_path);
     if (err !== Ase.Error.NONE)
-      App.async_button_dialog ("File Open Error",
+      App.async_button_dialog ("Project Loading Error",
 			       "Failed to open project.\n" +
-			       project_or_path + ": " +
+			       project_or_path + ":\n" +
 			       await Ase.server.error_blurb (err), [
 				 { label: 'Dismiss', autofocus: true },
 			       ], 'ERROR');
@@ -147,10 +145,13 @@ export class AppClass {
     return Ase.Error.NONE;
   }
   async save_project (projectpath) {
+    Shell.show_spinner();
     const self_contained = false;
-    debug("projectpath",projectpath);
-    return !Data.project ? Ase.Error.INTERNAL :
-	   Data.project.save_dir (projectpath, self_contained);
+    let error = !Data.project ? Ase.Error.INTERNAL :
+		  Data.project.save_dir (projectpath, self_contained);
+    error = await error;
+    Shell.hide_spinner();
+    return error;
   }
   status (...args) {
     console.log (...args);
@@ -180,7 +181,7 @@ export async function create_app() {
     if (component.sfc_template) // also constructs Shell.template
       component.template = component.sfc_template.call (null, Util.tmplstr, null);
   // create and configure Vue App
-  const vue_app = Vue.createApp (Shell); // must have Shell.template
+  const vue_app = Vue.createApp (ShellClass); // must have Shell.template
   vue_app.config.compilerOptions.isCustomElement = tag => !!window.customElements.get (tag);
   vue_app.config.compilerOptions.whitespace = 'preserve';
   // common globals
@@ -200,7 +201,7 @@ export async function create_app() {
   for (let mixinname in Util.vue_mixins)         // register all utility mixins
     vue_app.mixin (Util.vue_mixins[mixinname]);
   for (const [name, component] of Object.entries (VueComponents))
-    if (component !== Shell)
+    if (component !== ShellClass)
       vue_app.component (name, component);
   // create main App instance
   const app = new AppClass (vue_app);

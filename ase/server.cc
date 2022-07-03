@@ -340,6 +340,7 @@ ase_error_blurb (Error error)
     case Error::NO_SPACE:
     case Error::NO_FILES:
     case Error::MANY_FILES:
+    case Error::RETRY:
     case Error::NOT_DIRECTORY:
     case Error::FILE_NOT_FOUND:
     case Error::FILE_IS_DIR:
@@ -354,6 +355,7 @@ ase_error_blurb (Error error)
     case Error::FILE_READ_FAILED:	return _("Read failed");
     case Error::FILE_WRITE_FAILED:	return _("Write failed");
       // content errors
+    case Error::PARSE_ERROR:		return _("Parsing error");
     case Error::NO_HEADER:		return _("Failed to detect header");
     case Error::NO_SEEK_INFO:		return _("Failed to retrieve seek information");
     case Error::NO_DATA_AVAILABLE:	return _("No data available");
@@ -362,6 +364,9 @@ ase_error_blurb (Error error)
     case Error::FORMAT_INVALID:		return _("Invalid format");
     case Error::FORMAT_UNKNOWN:		return _("Unknown format");
     case Error::DATA_UNMATCHED:		return _("Requested data values unmatched");
+    case Error::CODEC_FAILURE:		return _("Codec failure");
+    case Error::BROKEN_ARCHIVE:         return _("Broken archive");
+    case Error::BAD_PROJECT:            return _("Not a valid project");
       // Device errors
     case Error::DEVICE_NOT_AVAILABLE:   return _("No device (driver) available");
     case Error::DEVICE_ASYNC:		return _("Device not async capable");
@@ -374,11 +379,10 @@ ase_error_blurb (Error error)
     case Error::DEVICES_MISMATCH:	return _("Device configurations mismatch");
       // miscellaneous errors
     case Error::WAVE_NOT_FOUND:		return _("No such wave");
-    case Error::CODEC_FAILURE:		return _("Codec failure");
     case Error::UNIMPLEMENTED:		return _("Functionality not implemented");
     case Error::INVALID_PROPERTY:	return _("Invalid object property");
     case Error::INVALID_MIDI_CONTROL:	return _("Invalid MIDI control type");
-    case Error::PARSE_ERROR:		return _("Parsing error");
+    case Error::OPERATION_BUSY:		return _("Operation already in prgress");
     }
   return strerror (int (error));
 }
@@ -387,7 +391,39 @@ ase_error_blurb (Error error)
 Error
 ase_error_from_errno (int sys_errno, Error fallback)
 {
-  return Error (sys_errno);
+  switch (sys_errno)
+    {
+    case 0:             return Ase::Error::NONE;
+    case ELOOP:
+    case ENAMETOOLONG:
+    case ENOENT:        return Ase::Error::FILE_NOT_FOUND;
+    case EISDIR:        return Ase::Error::FILE_IS_DIR;
+    case EROFS:
+    case EPERM:
+    case EACCES:        return Ase::Error::PERMS;
+#ifdef ENODATA  /* GNU/kFreeBSD lacks this */
+    case ENODATA:
+#endif
+    case ENOMSG:        return Ase::Error::FILE_EOF;
+    case ENOMEM:        return Ase::Error::NO_MEMORY;
+    case ENOSPC:        return Ase::Error::NO_SPACE;
+    case ENFILE:        return Ase::Error::NO_FILES;
+    case EMFILE:        return Ase::Error::MANY_FILES;
+    case EFBIG:
+    case ESPIPE:
+    case EIO:           return Ase::Error::IO;
+    case EEXIST:        return Ase::Error::FILE_EXISTS;
+    case ETXTBSY:
+    case EBUSY:         return Ase::Error::FILE_BUSY;
+    case EAGAIN:
+    case EINTR:         return Ase::Error::RETRY;
+    case EFAULT:        return Ase::Error::INTERNAL;
+    case EBADF:
+    case ENOTDIR:
+    case ENODEV:
+    case EINVAL:
+    default:            return fallback;
+    }
 }
 
 String

@@ -2,6 +2,7 @@
 #include "device.hh"
 #include "clapdevice.hh"
 #include "combo.hh"
+#include "project.hh"
 #include "jsonipc/jsonipc.hh"
 #include "serialize.hh"
 #include "internal.hh"
@@ -49,8 +50,10 @@ DeviceImpl::serialize (WritNode &xs)
         String uri = xc["Device.URI"].as_string();
         if (uri.empty())
           continue;
-        DeviceP subdevicep = append_device (uri);
-        xc & *dynamic_cast<Serializable*> (&*subdevicep);
+        auto load_subdevice = [&xc] (DeviceP subdevicep) {
+          xc & *dynamic_cast<Serializable*> (&*subdevicep);
+        };
+        DeviceP subdevicep = insert_device (uri, nullptr, load_subdevice);
       }
 }
 
@@ -124,8 +127,19 @@ void
 DeviceImpl::_set_parent (Gadget *parent)
 {
   GadgetImpl::_set_parent (parent);
-  while (children_.size())
-    remove_device (*children_.back());
+  if (!parent)
+    while (children_.size())
+      remove_device (*children_.back());
+}
+
+void
+DeviceImpl::_activate ()
+{
+  if (!activated_) {
+    activated_ = true;
+    for (auto &child : children_)
+      child->_activate();
+  }
 }
 
 template<typename E> std::pair<std::shared_ptr<E>,ssize_t>
@@ -164,7 +178,7 @@ DeviceImpl::remove_device (Device &sub)
 }
 
 DeviceP
-DeviceImpl::insert_device (const String &uri, Device *sibling)
+DeviceImpl::insert_device (const String &uri, Device *sibling, const DeviceFunc &loader)
 {
   DeviceP devicep;
   AudioProcessorP siblingp = sibling ? sibling->_audio_processor() : nullptr;
@@ -174,8 +188,12 @@ DeviceImpl::insert_device (const String &uri, Device *sibling)
       return_unless (devicep, nullptr);
       children_.push_back (devicep);
       devicep->_set_parent (this);
+      if (loader)
+        loader (devicep);
       AudioProcessorP sproc = devicep->_audio_processor();
       return_unless (sproc, nullptr);
+      if (activated_)
+        devicep->_activate();
       AudioComboP combo = combo_;
       auto j = [combo, sproc, siblingp] () {
         const size_t pos = siblingp ? combo->find_pos (*siblingp) : ~size_t (0);
@@ -189,13 +207,13 @@ DeviceImpl::insert_device (const String &uri, Device *sibling)
 DeviceP
 DeviceImpl::append_device (const String &uri)
 {
-  return insert_device (uri, nullptr);
+  return insert_device (uri, nullptr, nullptr);
 }
 
 DeviceP
 DeviceImpl::insert_device (const String &uri, Device &sibling)
 {
-  return insert_device (uri, &sibling);
+  return insert_device (uri, &sibling, nullptr);
 }
 
 void
@@ -251,6 +269,27 @@ Device::remove_self ()
   Device *device = dynamic_cast<Device*> (parent);
   if (device)
     device->remove_device (*this);
+}
+
+Track*
+Device::_track () const
+{
+  for (Gadget *parent = _parent(); parent; parent = parent->_parent())
+    {
+      Track *track = dynamic_cast<Track*> (parent);
+      if (track)
+        return track;
+    }
+  return nullptr;
+}
+
+ProjectImpl*
+Device::_project () const
+{
+  Gadget *last = nullptr;
+  for (Gadget *parent = this->_parent(); parent; parent = last->_parent())
+    last = parent;
+  return dynamic_cast<ProjectImpl*> (last);
 }
 
 } // Ase

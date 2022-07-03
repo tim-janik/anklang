@@ -402,6 +402,16 @@ insert_sorted (std::vector<T> &vec, const T &value, Compare compare)
   return vec.insert (it, value);
 }
 
+template<class IterableContainer> ssize_t
+index_of (const IterableContainer &c, const std::function<bool(const typename IterableContainer::value_type &e)> &match)
+{
+  ssize_t index = 0;
+  for (auto it = std::begin (c); it != std::end (c); ++index, ++it)
+    if (match (*it))
+      return index;
+  return -1;
+}
+
 } // Aux
 
 } // Ase

@@ -10,6 +10,7 @@
 
 <style lang="scss">
 @import 'mixins.scss';
+@import 'spinner.scss';
 
 .b-shell {
   position: relative;
@@ -65,11 +66,20 @@ html.b-shell-during-drag .b-app {
 }
 
 .b-shell {
-  .-modaldialogs, .-modalmenus {
+  .-fullcoverage {
     position: fixed; top: 0; left: 0; bottom: 0; right: 0;
     width: 100%; height: 100%;
     display: flex;
     pointer-events: none;
+  }
+}
+#b-shell-spinner-layer {
+  display: flex;
+  img {
+    $size: 4em;
+    width: $size; height: $size;
+    margin: auto; display: inline-block; vertical-align: middle;
+    animation: 1.1s linear infinite reverse spinner-svg-rotation-steps;
   }
 }
 </style>
@@ -106,7 +116,7 @@ html.b-shell-during-drag .b-app {
     <b-statusbar />
 
     <!-- Modal Dialogs -->
-    <div class="-modaldialogs" style="z-index: 90" id="b-app-shell-modaldialogs" >
+    <div class="-fullcoverage" style="z-index: 90" id="b-app-shell-modaldialogs" >
       <b-aboutdialog v-model:shown="Data.show_about_dialog" />
       <b-preferencesdialog v-model:shown="Data.show_preferences_dialog" />
       <b-filedialog :shown="!!fs.resolve" :title="fs.title" :filters="fs.filters" :button="fs.button"
@@ -142,6 +152,12 @@ html.b-shell-during-drag .b-app {
     <b-noteboard ref="noteboard" style="z-index: 95" />
 
     <!-- Bubbles -->
+    <div class="-fullcoverage" style="z-index: 96" id="b-shell-bubble-layer" ></div>
+
+    <!-- Spinners (busy indicator) -->
+    <div class="-fullcoverage" style="z-index: 98" id="b-shell-spinner-layer" v-show="m.show_spinner_count > 0" >
+      <img ref="spinner" src="assets/spinner.svg" >
+    </div>
 
   </v-flex>
 </template>
@@ -149,6 +165,7 @@ html.b-shell-during-drag .b-app {
 <script>
 import * as Util from '../util.js';
 import * as Envue from './envue.js';
+import DataBubbleIface from '../b/databubble.js';
 
 async function list_sample_files() {
   // TODO: const crawler = await Ase.server.resource_crawler();
@@ -165,18 +182,28 @@ function observable_project_data () { // yields reactive Proxy object
   return this.observable_from_getters (data, () => Data.project);
 }
 
-class Shell extends Envue.Component {
+class ShellClass extends Envue.Component {
+  data_bubble = null;
   constructor (vm) {
     super (vm);
     this.fs = Vue.reactive ({ title: 'File Selector', button: 'Select', cwd: 'MUSIC', filters: [], resolve: null });
     this.m = observable_project_data.call (vm);
     this.m.modal_dialogs = [];
+    this.m.show_spinner_count = 0;
+  }
+  show_spinner() {
+    this.m.show_spinner_count++;
+  }
+  hide_spinner() {
+    console.assert (this.m.show_spinner_count > 0);
+    this.m.show_spinner_count--;
   }
   created() {
     this.$vm?.$forceUpdate();
     this.m.observable_force_update();
   }
   mounted() {
+    this.data_bubble = new DataBubbleIface();
     this.switch_panel2 = App.switch_panel2.bind (App);
     Util.add_hotkey ('RawBackquote', this.switch_panel2);
     this.switch_panel3 = App.switch_panel3.bind (App);
@@ -259,7 +286,7 @@ class Shell extends Envue.Component {
   }
   async_modal_dialog = async_modal_dialog;
 }
-export default Shell.vue_export ({ sfc_template });
+export default ShellClass.vue_export ({ sfc_template });
 
 // == modal dialog creation ==
 let modal_dialog_counter = 1;

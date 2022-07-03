@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:cc="http://creativecommons.org/ns#"
+     viewBox="0 0 100 100" >
+  <metadata> <rdf:RDF> <cc:Work> <cc:license rdf:resource="MPL-2.0"/></cc:Work> </rdf:RDF></metadata>
+<circle r="7.20" style="fill:#000000ff;stroke:#ffffffff" cx="50.000" cy="9.000" stroke-width="1.000000"/>
+<circle r="6.71" style="fill:#000000ef;stroke:#ffffffef" cx="66.676" cy="12.545" stroke-width="0.950000"/>
+<circle r="6.21" style="fill:#000000df;stroke:#ffffffdf" cx="80.469" cy="22.566" stroke-width="0.900000"/>
+<circle r="5.71" style="fill:#000000cf;stroke:#ffffffcf" cx="88.993" cy="37.330" stroke-width="0.850000"/>
+<circle r="5.22" style="fill:#000000bf;stroke:#ffffffbf" cx="90.775" cy="54.286" stroke-width="0.800000"/>
+<circle r="4.72" style="fill:#000000af;stroke:#ffffffaf" cx="85.507" cy="70.500" stroke-width="0.750000"/>
+<circle r="4.23" style="fill:#0000009f;stroke:#ffffff9f" cx="74.099" cy="83.170" stroke-width="0.700000"/>
+<circle r="3.73" style="fill:#0000008f;stroke:#ffffff8f" cx="58.524" cy="90.104" stroke-width="0.650000"/>
+<circle r="3.24" style="fill:#0000007f;stroke:#ffffff7f" cx="41.476" cy="90.104" stroke-width="0.600000"/>
+<circle r="2.74" style="fill:#0000006f;stroke:#ffffff6f" cx="25.901" cy="83.170" stroke-width="0.550000"/>
+<circle r="2.25" style="fill:#0000005f;stroke:#ffffff5f" cx="14.493" cy="70.500" stroke-width="0.500000"/>
+<circle r="1.75" style="fill:#0000004f;stroke:#ffffff4f" cx="9.225" cy="54.286" stroke-width="0.450000"/>
+<circle r="1.26" style="fill:#0000003f;stroke:#ffffff3f" cx="11.007" cy="37.330" stroke-width="0.400000"/>
+<circle r="0.76" style="fill:#0000002f;stroke:#ffffff2f" cx="19.531" cy="22.566" stroke-width="0.350000"/>
+<circle r="0.27" style="fill:#0000001f;stroke:#ffffff1f" cx="33.324" cy="12.545" stroke-width="0.300000"/>
+<style>
+@keyframes spinner-svg-rotation-steps {
+   0.0000% { transform: rotate(  0.0deg); }
+   6.6665% { transform: rotate(  0.0deg); }
+   6.6667% { transform: rotate( 24.0deg); }
+  13.3332% { transform: rotate( 24.0deg); }
+  13.3333% { transform: rotate( 48.0deg); }
+  19.9999% { transform: rotate( 48.0deg); }
+  20.0000% { transform: rotate( 72.0deg); }
+  26.6665% { transform: rotate( 72.0deg); }
+  26.6667% { transform: rotate( 96.0deg); }
+  33.3332% { transform: rotate( 96.0deg); }
+  33.3333% { transform: rotate(120.0deg); }
+  39.9999% { transform: rotate(120.0deg); }
+  40.0000% { transform: rotate(144.0deg); }
+  46.6665% { transform: rotate(144.0deg); }
+  46.6667% { transform: rotate(168.0deg); }
+  53.3332% { transform: rotate(168.0deg); }
+  53.3333% { transform: rotate(192.0deg); }
+  59.9999% { transform: rotate(192.0deg); }
+  60.0000% { transform: rotate(216.0deg); }
+  66.6665% { transform: rotate(216.0deg); }
+  66.6667% { transform: rotate(240.0deg); }
+  73.3332% { transform: rotate(240.0deg); }
+  73.3333% { transform: rotate(264.0deg); }
+  79.9999% { transform: rotate(264.0deg); }
+  80.0000% { transform: rotate(288.0deg); }
+  86.6665% { transform: rotate(288.0deg); }
+  86.6667% { transform: rotate(312.0deg); }
+  93.3332% { transform: rotate(312.0deg); }
+  93.3333% { transform: rotate(336.0deg); }
+  99.9999% { transform: rotate(336.0deg); }
+  100.000% { transform: rotate(360.0deg); }
+}
+</style>
+</svg>

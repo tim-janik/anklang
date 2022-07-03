@@ -1,6 +1,8 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "compress.hh"
+#include "storage.hh"
 #include "utils.hh"
+#include "platform.hh"
 #include "internal.hh"
 
 #if !__has_include(<zstd.h>)
@@ -34,15 +36,23 @@ is_pdf (const String &input)
   return input.substr (0, 5) == "%PDF-";
 }
 
+static constexpr const size_t MB = 1024 * 1024;
+static struct { size_t level, size; } const zstd_adaptive_level[] = {
+  { 18,  1 * MB },      // slow, use only for small sizes
+  { 14,  3 * MB },
+  { 11, 11 * MB },
+  {  8, 20 * MB },
+  {  5, 42 * MB },
+  {  4, ~size_t (0) },  // acceptable fast compression
+}; // each level + size combination should take roughly the same time
+
 static int
 guess_zstd_level (size_t input_size)
 {
-  const size_t MB = 1024 * 1024;
-  if (input_size <= 8 * MB)
-    return 17;          // slow, but OK for small sizes
-  if (input_size <= 32 * MB)
-    return 10;          // starts to get fairly slow
-  return 4;             // acceptable fast compression
+  uint zal = 0;
+  while (zstd_adaptive_level[zal].size > input_size)
+    zal++;
+  return zstd_adaptive_level[zal].level;
 }
 
 String
@@ -202,6 +212,206 @@ is_compressed (const String &input)
           is_png (input) ||
           is_jpg (input));
 
+}
+
+class StreamReaderZStd : public StreamReader {
+  StreamReaderP istream_;
+  std::vector<uint8_t> ibuffer_;
+  ZSTD_inBuffer zinput_ = { nullptr, 0, 0 };
+  ZSTD_DCtx *dctx_ = nullptr;
+  String name_;
+public:
+  StreamReaderZStd (const StreamReaderP &istream)
+  {
+    istream_ = istream;
+    name_ = istream_->name();
+    ibuffer_.resize (ZSTD_DStreamInSize());
+    dctx_ = ZSTD_createDCtx();
+    assert_return (dctx_ != nullptr);
+  }
+  ~StreamReaderZStd()
+  {
+    close();
+  }
+  String
+  name() const override
+  {
+    return name_;
+  }
+  ssize_t
+  read (void *buffer, size_t len) override
+  {
+    return_unless (buffer && len > 0, 0);
+    size_t ret = 0;
+    // (pos<size) is true until all decompressed data is flushed
+    if (zinput_.pos < zinput_.size) {
+      ZSTD_outBuffer zoutput = { buffer, len, 0 };
+      ret = ZSTD_decompressStream (dctx_, &zoutput, &zinput_);
+      if (ZSTD_isError (ret))
+        goto zerror;
+      if (zoutput.pos)
+        return zoutput.pos;
+    }
+    // provide more input
+    while (zinput_.pos == zinput_.size && istream_) {
+      const ssize_t l = istream_->read (&ibuffer_[0], ibuffer_.size());
+      if (l > 0) {
+        zinput_ = { &ibuffer_[0], size_t (l), 0 };
+      } else // l <= 0
+        goto done;
+      ZSTD_outBuffer zoutput = { buffer, len, 0 };
+      ret = ZSTD_decompressStream (dctx_, &zoutput, &zinput_);
+      if (ZSTD_isError (ret))
+        goto zerror;
+      if (zoutput.pos)
+        return zoutput.pos;
+    }
+  zerror:
+    printerr ("%s: ZSTD_decompressStream: %s\n", program_alias(), ZSTD_getErrorName (ret));
+  done:
+    istream_ = nullptr;
+    return 0;
+  }
+  bool
+  close() override
+  {
+    return_unless (istream_, false);
+    const bool closeok = istream_->close();
+    istream_ = nullptr;
+    ibuffer_.clear();
+    ibuffer_.reserve (0);
+    if (dctx_)
+      ZSTD_freeDCtx (dctx_);
+    dctx_ = nullptr;
+    return closeok;
+  }
+};
+
+StreamReaderP
+stream_reader_zstd (StreamReaderP &istream)
+{
+  return_unless (istream, nullptr);
+  return std::make_shared<StreamReaderZStd> (istream);
+}
+
+static constexpr bool PRINT_ADAPTIVE = false;
+
+class StreamWriterZStd : public StreamWriter {
+  StreamWriterP ostream_;
+  std::vector<uint8_t> obuffer_;
+  String name_;
+  ZSTD_CCtx *cctx_ = nullptr;
+  size_t itotal_ = 0;
+  uint8_t zal_ = 0;
+  bool last_block_ = false;
+public:
+  ~StreamWriterZStd()
+  {
+    close();
+    obuffer_.clear();
+    obuffer_.reserve (0);
+    if (cctx_)
+      ZSTD_freeCCtx (cctx_);
+    cctx_ = nullptr;
+  }
+  StreamWriterZStd (const StreamWriterP &ostream, int level)
+  {
+    obuffer_.resize (ZSTD_CStreamOutSize());
+    cctx_ = ZSTD_createCCtx();
+    assert_return (cctx_ != nullptr);
+    size_t pret;
+    pret = ZSTD_CCtx_setParameter (cctx_, ZSTD_c_checksumFlag, 1);
+    assert_return (!ZSTD_isError (pret)); // ZSTD_getErrorName (pret)
+    if (level == 0) {
+      while (zstd_adaptive_level[zal_].size < std::numeric_limits<decltype (zstd_adaptive_level[0].size)>::max())
+        zal_++;
+      pret = ZSTD_CCtx_setParameter (cctx_, ZSTD_c_compressionLevel, level);
+      if (PRINT_ADAPTIVE) printerr ("ZSTD_compressStream2: fixed level=%u: %s\n", level, ZSTD_getErrorName (pret));
+    } else {
+      pret = ZSTD_CCtx_setParameter (cctx_, ZSTD_c_compressionLevel, zstd_adaptive_level[zal_].level);
+      if (PRINT_ADAPTIVE) printerr ("ZSTD_compressStream2: size=%u level=%u: %s\n", itotal_, zstd_adaptive_level[zal_].level, ZSTD_getErrorName (pret));
+    }
+    assert_return (!ZSTD_isError (pret)); // ZSTD_getErrorName (pret)
+    ostream_ = ostream;
+    name_ = ostream_->name();
+  }
+  String
+  name() const override
+  {
+    return name_;
+  }
+  ssize_t
+  write (const void *buffer, size_t len) override
+  {
+    errno = EIO;
+    return_unless (ostream_, -1);
+    const ZSTD_EndDirective mode = last_block_ ? ZSTD_e_end : ZSTD_e_continue;
+    ZSTD_inBuffer zinput = { buffer, len, 0 };
+    size_t ret = 0;
+    bool block_finished = false;
+    while (!block_finished) {
+      ZSTD_outBuffer zoutput = { &obuffer_[0], obuffer_.size(), 0 };
+
+      const size_t current_total = itotal_ + zinput.pos;
+      if (!last_block_ && current_total > zstd_adaptive_level[zal_].size)
+        {
+          zal_++;
+          const size_t pret = ZSTD_CCtx_setParameter (cctx_, ZSTD_c_compressionLevel, zstd_adaptive_level[zal_].level);
+          if (PRINT_ADAPTIVE) printerr ("ZSTD_compressStream2: size=%u level=%u: %s\n", current_total, zstd_adaptive_level[zal_].level, ZSTD_getErrorName (pret));
+          zinput.size = zinput.pos;
+          ret = ZSTD_compressStream2 (cctx_, &zoutput, &zinput, ZSTD_e_end);
+          zinput.size = len;
+        }
+      else
+        ret = ZSTD_compressStream2 (cctx_, &zoutput, &zinput, mode);
+
+      if (ZSTD_isError (ret))
+        goto zerror;
+      const char *p = (const char*) &obuffer_[0], *const e = p + zoutput.pos;
+      while (p < e) {
+        const ssize_t n = ostream_->write (p, e - p);
+        if (n < 0)
+          goto error;
+        p += n;
+      }
+      block_finished = last_block_ ? ret == 0 : zinput.pos == zinput.size;
+    }
+    itotal_ += zinput.pos;
+    return zinput.pos;
+  zerror:
+    printerr ("%s: ZSTD_compressStream2: %s\n", program_alias(), ZSTD_getErrorName (ret));
+    errno = EIO;
+    return -1;
+  error:
+    printerr ("%s: ZSTD_compressStream2: %s\n", program_alias(), strerror (errno ? errno : EIO));
+    errno = errno ? errno : EIO;
+    return -1;
+  }
+  bool
+  close() override
+  {
+    bool closedok = true;
+    errno = EIO;
+    if (ostream_)
+      {
+        last_block_ = true;
+        size_t l;
+        do
+          l = write (nullptr, 0);
+        while (l > 0);
+        closedok &= l >= 0;
+        closedok &= ostream_->close();
+        ostream_ = nullptr;
+      }
+    return closedok;
+  }
+};
+
+StreamWriterP
+stream_writer_zstd (const StreamWriterP &ostream, int level)
+{
+  return_unless (ostream, nullptr);
+  return std::make_shared<StreamWriterZStd> (ostream, level);
 }
 
 } // Ase

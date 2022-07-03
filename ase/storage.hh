@@ -26,6 +26,7 @@ public:
   Error    open_for_writing   (const String &filename);
   Error    open_with_mimetype (const String &filename, const String &mimetype);
   Error    store_file_data    (const String &filename, const String &buffer, bool alwayscompress = false);
+  Error    store_file         (const String &filename, const String &ondiskpath, bool maycompress = true);
   Error    close              ();
   Error    remove_opened      ();
 };
@@ -45,9 +46,31 @@ public:
   Error    close              ();
 };
 
-String anklang_cachedir_create  ();
-void   anklang_cachedir_cleanup ();
-String anklang_cachedir_current ();
+class StreamReader {
+public:
+  virtual                ~StreamReader ();
+  virtual String          name  () const = 0;
+  virtual ssize_t         read  (void *buffer, size_t len) = 0;
+  virtual bool            close () = 0;
+  static constexpr size_t buffer_size = 131072; ///< Recommended buffer size.
+};
+
+StreamReaderP stream_reader_zip_member (const String &archive, const String &member, Storage::StorageFlags f = Storage::AUTO_ZSTD);
+
+class StreamWriter {
+public:
+  virtual                ~StreamWriter ();
+  virtual String          name  () const = 0;
+  virtual ssize_t         write (const void *buffer, size_t len) = 0;
+  virtual bool            close () = 0;
+  static constexpr size_t buffer_size = 131072; ///< Recommended buffer size.
+};
+
+StreamWriterP stream_writer_create_file (const String &filename, int mode = 0644);
+
+String anklang_cachedir_create      ();
+void   anklang_cachedir_cleanup     (const String &cachedir);
+void   anklang_cachedir_clean_stale ();
 
 } // Ase
 

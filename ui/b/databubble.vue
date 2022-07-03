@@ -17,7 +17,7 @@
 
   /* Tooltips via CSS, using the data-bubble="" attribute */
   .b-data-bubble {
-    position: absolute; z-index: 9999999999; pointer-events: none;
+    position: absolute; pointer-events: none;
     display: flex; max-width: 95vw;
     margin: 0; padding: 0 0 8px 0; /* make room for triangle: 5px + 3px */
     transition: visibility 0.1s, opacity 0.09s ease-in-out;
@@ -69,6 +69,12 @@ const UNSET = Symbol ('UNSET');
 
 /** A mechanism to display data-bubble="" tooltip popups */
 class DataBubbleImpl {
+  bubble_layer() {
+    const bubble_layer_id = '#b-shell-bubble-layer';
+    const el = document.body.querySelectorAll (bubble_layer_id);
+    console.assert (el.length, "Missing container:", bubble_layer_id);
+    return el[0];
+  }
   constructor() {
     // create one toplevel div.data-bubble element to deal with all popups
     this.bubble = document.createElement ('div');
@@ -76,7 +82,7 @@ class DataBubbleImpl {
     this.bubblediv = document.createElement ('div');
     this.bubblediv.classList.add ('b-data-bubble-inner');
     this.bubble.appendChild (this.bubblediv);
-    document.body.appendChild (this.bubble);
+    this.bubble_layer().appendChild (this.bubble);
     this.current = null; // current element showing a data-bubble
     this.stack = []; // element stack to force bubble
     this.lasttext = "";
@@ -192,7 +198,7 @@ class DataBubbleImpl {
     this.update_now(); // might hide()
     if (this.current) // resizing
       {
-	document.body.appendChild (this.bubble); // restack the bubble
+	this.bubble_layer().appendChild (this.bubble); // restack the bubble
 	const viewport = {
 	  width:  Math.max (document.documentElement.clientWidth || 0, window.innerWidth || 0),
 	  height: Math.max (document.documentElement.clientHeight || 0, window.innerHeight || 0),

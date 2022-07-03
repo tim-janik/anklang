@@ -25,6 +25,7 @@ enum class Error : int32_t {
   NO_SPACE                      = ENOSPC,
   NO_FILES                      = ENFILE,
   MANY_FILES                    = EMFILE,
+  RETRY                         = EINTR,
   // file errors
   NOT_DIRECTORY                 = ENOTDIR,
   FILE_NOT_FOUND                = ENOENT,
@@ -34,12 +35,13 @@ enum class Error : int32_t {
   // Ase specific errors
   INTERNAL                      = 0x30000000,
   UNIMPLEMENTED,
-  FILE_EOF,
+  FILE_EOF                      = 0x30001000,
   FILE_OPEN_FAILED,
   FILE_SEEK_FAILED,
   FILE_READ_FAILED,
   FILE_WRITE_FAILED,
   // content errors
+  PARSE_ERROR                   = 0x30002000,
   NO_HEADER,
   NO_SEEK_INFO,
   NO_DATA_AVAILABLE,
@@ -48,8 +50,11 @@ enum class Error : int32_t {
   FORMAT_INVALID,
   FORMAT_UNKNOWN,
   DATA_UNMATCHED,
+  CODEC_FAILURE,
+  BROKEN_ARCHIVE,
+  BAD_PROJECT,
   // Device errors
-  DEVICE_NOT_AVAILABLE,
+  DEVICE_NOT_AVAILABLE          = 0x30003000,
   DEVICE_ASYNC,
   DEVICE_BUSY,
   DEVICE_FORMAT,
@@ -59,11 +64,10 @@ enum class Error : int32_t {
   DEVICE_FREQUENCY,
   DEVICES_MISMATCH,
   // miscellaneous errors
-  WAVE_NOT_FOUND,
-  CODEC_FAILURE,
+  WAVE_NOT_FOUND                = 0x30004000,
   INVALID_PROPERTY,
   INVALID_MIDI_CONTROL,
-  PARSE_ERROR,
+  OPERATION_BUSY,
 };
 ASE_DEFINE_ENUM_EQUALITY (Error);
 constexpr bool operator! (Error error)  { return !std::underlying_type_t<Error> (error); }
@@ -185,8 +189,8 @@ public:
 class Gadget : public virtual Object {
 public:
   // Hierarchical parenting.
-  virtual void        _set_parent       (Gadget *parent) = 0;
-  virtual Gadget*     _parent           () const = 0;
+  virtual Gadget*     _parent           () const = 0;         ///< Retrieve parent container.
+  virtual void        _set_parent       (Gadget *parent) = 0; ///< Assign parent container.
   // Naming
   virtual String      type_nick         () const = 0;
   virtual String      name              () const = 0;
@@ -217,6 +221,9 @@ struct DeviceInfo {
 /// Interface to access Device instances.
 class Device : public virtual Gadget {
 public:
+  ProjectImpl*        _project           () const;                    ///< Find Project in parent ancestry.
+  Track*              _track             () const;                    ///< Find Track in parent ancestry.
+  virtual void        _activate          () = 0;
   virtual DeviceInfo  device_info        () = 0;                      ///< Describe this Device type.
   // Combo
   virtual bool        is_combo_device    () = 0;                      ///< Retrieve wether this Device handles sub devices.

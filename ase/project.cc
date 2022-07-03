@@ -72,6 +72,7 @@ make_anklang_dir (const String path)
 Error
 ProjectImpl::save_dir (const String &pdir, bool selfcontained)
 {
+  assert_return (writer_cachedir_ == "", Error::OPERATION_BUSY);
   const String dotanklang = ".anklang";
   String projectfile;
   String path = Path::normalize (Path::abspath (pdir));
@@ -82,7 +83,7 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
     {
       String dir = Path::dirname (path);
       if (!is_anklang_dir (dir))
-        return ase_error_from_errno (ENOTDIR);
+        return Error::BAD_PROJECT;
       projectfile = Path::basename (path);
       path = dir;                               // file inside project dir
     }
@@ -107,6 +108,8 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
     projectfile = "project";
   if (!string_endswith (projectfile, dotanklang))
     projectfile += dotanklang;
+  anklang_cachedir_clean_stale();
+  writer_cachedir_ = anklang_cachedir_create();
   StorageWriter ws (Storage::AUTO_ZSTD);
   Error error = ws.open_with_mimetype (Path::join (path, projectfile), "application/x-anklang");
   if (!error)
@@ -117,15 +120,46 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
       error = ws.store_file_data ("project.json", jsd, true);
     }
   if (!error)
+    for (const String &path : writer_files_) {
+      error = ws.store_file (Path::basename (path), path);
+      if (!!error) {
+        printerr ("%s: %s: %s\n", program_alias(), path, ase_error_blurb (error));
+        break;
+      }
+    }
+  writer_files_.clear();
+  if (!error)
     error = ws.close();
   if (!!error)
     ws.remove_opened();
+  anklang_cachedir_cleanup (writer_cachedir_);
+  writer_cachedir_ = "";
   return error;
+}
+
+String
+ProjectImpl::writer_file_name (const String &filename) const
+{
+  assert_return (!writer_cachedir_.empty(), "");
+  return Path::join (writer_cachedir_, filename);
+}
+
+Error
+ProjectImpl::writer_add_file (const String &filename)
+{
+  assert_return (!writer_cachedir_.empty(), Error::INTERNAL);
+  if (!Path::check (filename, "frw"))
+    return Error::FILE_NOT_FOUND;
+  if (!string_startswith (filename, writer_cachedir_))
+    return Error::FILE_OPEN_FAILED;
+  writer_files_.push_back (filename);
+  return Error::NONE;
 }
 
 Error
 ProjectImpl::load_project (const String &filename)
 {
+  assert_return (loading_file_.empty(), Error::INTERNAL);
   String fname = filename;
   // turn /dir/.anklang.project -> /dir/
   if (Path::basename (fname) == ".anklang.project" && is_anklang_dir (Path::dirname (fname)))
@@ -133,10 +167,9 @@ ProjectImpl::load_project (const String &filename)
   // turn /dir/ -> /dir/dir.anklang
   if (Path::check (fname, "d"))
     fname = Path::join (fname, Path::basename (Path::strip_slashes (Path::normalize (fname)))) + ".anklang";
-  // try /dir/file
+  // add missing '.anklang' extension
   if (!Path::check (fname, "e"))
     {
-      // try /dir/file.anklang
       fname += ".anklang";
       if (!Path::check (fname, "e"))
         return ase_error_from_errno (errno);
@@ -147,12 +180,14 @@ ProjectImpl::load_project (const String &filename)
   Error error = rs.open_for_reading (fname);
   if (!!error)
     return error;
+  loading_file_ = fname;
   if (rs.stringread ("mimetype") != "application/x-anklang")
-    return Error::FORMAT_INVALID;
+    return Error::BAD_PROJECT;
   // find project.json *inside* container
   String jsd = rs.stringread ("project.json");
   if (jsd.empty() && errno)
     return Error::FORMAT_INVALID;
+#if 0 // unimplemented
   // search in dirname or dirname/..
   if (is_anklang_dir (dirname))
     rs.search_dir (dirname);
@@ -162,9 +197,11 @@ ProjectImpl::load_project (const String &filename)
       if (is_anklang_dir (dirname))
         rs.search_dir (dirname);
     }
+#endif
   // parse project
   if (!json_parse (jsd, *this))
     return Error::PARSE_ERROR;
+  loading_file_ = "";
   return Error::NONE;
 }
 

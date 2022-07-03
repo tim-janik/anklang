@@ -215,7 +215,7 @@ StringFormatter::arg_as_chars (size_t nth)
     return "";
   if ((fargs_[nth-1].kind == 's' || fargs_[nth-1].kind == 'p') && fargs_[nth-1].p == NULL)
     return "(null)";
-  return fargs_[nth-1].kind != 's' ? "" : fargs_[nth-1].s;
+  return (fargs_[nth-1].kind != 's' && fargs_[nth-1].kind != 'p') ? "" : fargs_[nth-1].s;
 }
 
 void*
@@ -528,6 +528,7 @@ ase_string_format()
   using namespace Ase;
   // string_format
   enum { TEST17 = 17 };
+  TCMP (string_format ("%s", (void*) "FOO"), ==, "FOO");
   TCMP (string_format ("%d %s", -9223372036854775808uLL, "FOO"), ==, "-9223372036854775808 FOO");
   TCMP (string_format ("%g %d", 0.5, TEST17), ==, "0.5 17");
   TCMP (string_format ("0x%08x", 0xc0ffee), ==, "0x00c0ffee");

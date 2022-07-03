@@ -37,6 +37,7 @@ String       abspath             (const String &path, const String &incwd = "");
 bool         isabs               (const String &path);
 bool         isdirname           (const String &path);
 bool         mkdirs              (const String &dirpath, uint mode = 0750);
+void         rmrf                (const String &dir);
 StringPair   split_extension     (const std::string &filepath, bool lastdot = false);
 String       expand_tilde        (const String &path);
 String       user_home           (const String &username = "");

@@ -17,6 +17,19 @@ using StartQueue = AsyncBlockingQueue<char>;
 ASE_CLASS_DECLS (EngineMidiInput);
 constexpr uint fixed_sample_rate = 48000;
 
+// == EngineJobImpl ==
+struct EngineJobImpl : AudioEngineJob {
+  VoidFunc func;
+  std::atomic<EngineJobImpl*> next = nullptr;
+  EngineJobImpl (const VoidFunc &jobfunc) : func (jobfunc) {}
+};
+static inline std::atomic<EngineJobImpl*>&
+atomic_next_ptrref (EngineJobImpl *j)
+{
+  return j->next;
+}
+AudioEngineJob::~AudioEngineJob() {}
+
 // == AudioEngineThread ==
 class AudioEngineThread : public AudioEngine {
   PcmDriverP                   null_pcm_driver_, pcm_driver_;
@@ -31,11 +44,7 @@ class AudioEngineThread : public AudioEngine {
   JobQueue                     synchronized_jobs;
   FastMemory::Block            transport_block;
 public:
-  struct Job {
-    std::atomic<Job*> next = nullptr;
-    VoidFunc func;
-  };
-  AtomicIntrusiveStack<Job> async_jobs_, const_jobs_, trash_jobs_;
+  AtomicIntrusiveStack<EngineJobImpl> async_jobs_, const_jobs_, trash_jobs_;
   VoidF                     owner_wakeup_;
   std::thread              *thread_ = nullptr;
   MainLoopP                 event_loop_ = MainLoop::create();
@@ -61,18 +70,12 @@ public:
   void            schedule_clear        ();
   bool            pcm_check_write       (bool write_buffer, int64 *timeout_usecs_p = nullptr);
   bool            driver_dispatcher     (const LoopState &state);
-  bool            process_jobs          (AtomicIntrusiveStack<Job> &joblist);
+  bool            process_jobs          (AtomicIntrusiveStack<EngineJobImpl> &joblist);
   void            update_drivers        (bool fullio);
   void            run                   (const VoidF &owner_wakeup, StartQueue *sq);
   void            swap_midi_drivers_sync (const MidiDriverS &midi_drivers);
   void            queue_user_note        (const String &channel, UserNote::Flags flags, const String &text);
 };
-
-static inline std::atomic<AudioEngineThread::Job*>&
-atomic_next_ptrref (AudioEngineThread::Job *j)
-{
-  return j->next;
-}
 
 static inline std::atomic<AudioEngineThread::UserNoteJob*>&
 atomic_next_ptrref (AudioEngineThread::UserNoteJob *j)
@@ -345,10 +348,10 @@ AudioEngineThread::run (const VoidF &owner_wakeup, StartQueue *sq)
 }
 
 bool
-AudioEngineThread::process_jobs (AtomicIntrusiveStack<Job> &joblist)
+AudioEngineThread::process_jobs (AtomicIntrusiveStack<EngineJobImpl> &joblist)
 {
-  Job *const jobs = joblist.pop_reversed(), *last = nullptr;
-  for (Job *job = jobs; job; last = job, job = job->next)
+  EngineJobImpl *const jobs = joblist.pop_reversed(), *last = nullptr;
+  for (EngineJobImpl *job = jobs; job; last = job, job = job->next)
     job->func();
   if (last)
     {
@@ -392,10 +395,9 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
       return pcm_check_write (false, timeout_usecs);
     case LoopState::DISPATCH:
       pcm_check_write (true);
-      process_jobs (const_jobs_);
       if (render_stamp_ <= write_stamp_)
         {
-          process_jobs (async_jobs_);
+          process_jobs (async_jobs_); // apply pending modifications before render
           if (schedule_invalid_)
             {
               schedule_clear();
@@ -406,6 +408,10 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
           schedule_render (AUDIO_BLOCK_MAX_RENDER_SIZE);
           pcm_check_write (true); // minimize drop outs
         }
+      if (!const_jobs_.empty()) {   // owner may be blocking for const_jobs_ execution
+        process_jobs (async_jobs_); // apply pending modifications first
+        process_jobs (const_jobs_);
+      }
       if (ipc_pending())
         owner_wakeup_(); // owner needs to ipc_dispatch()
       return true; // keep alive
@@ -442,10 +448,10 @@ AudioEngineThread::ipc_dispatch ()
     }
   if (AudioProcessor::enotify_pending())
     AudioProcessor::enotify_dispatch();
-  Job *job = trash_jobs_.pop_all();
+  EngineJobImpl *job = trash_jobs_.pop_all();
   while (job)
     {
-      Job *old = job;
+      EngineJobImpl *old = job;
       job = job->next;
       delete old;
     }
@@ -491,42 +497,55 @@ AudioEngineThread::stop_thread ()
 
 // == AudioEngine ==
 AudioEngine::AudioEngine() :
-  const_jobs (*this, 1), async_jobs (*this, 0)
+  async_jobs (*this, 0), const_jobs (*this, 1)
 {}
 
 void
-AudioEngine::add_job_mt (const std::function<void()> &jobfunc, int flags)
+AudioEngine::add_job_mt (AudioEngineJob *aejob, int flags)
 {
+  EngineJobImpl *job = dynamic_cast<EngineJobImpl*> (aejob);
+  assert_return (job != nullptr);
   AudioEngineThread &engine = *dynamic_cast<AudioEngineThread*> (this);
+  // engine not running, run job right away
   if (!engine.thread_)
     {
-      jobfunc();
+      job->func();
+      delete job;
       return;
     }
-  if (flags == 0) // async_jobs flag
+  // enqueue async_jobs
+  if (flags == 0) // run asynchronously via async_jobs_
     {
-      AudioEngineThread::Job *job = new AudioEngineThread::Job { nullptr, jobfunc };
       const bool was_empty = engine.async_jobs_.push (job);
       if (was_empty)
         wakeup_thread_mt();
       return;
     }
+  // blocking job, queue wrapper that synchronizes via Semaphore
   ScopedSemaphore sem;
-  std::function<void()> wrapper = [&sem, &jobfunc] () {
+  VoidFunc jobfunc = job->func;
+  std::function<void()> wrapper = [&sem, jobfunc] () {
     jobfunc();
     sem.post();
   };
-  AudioEngineThread::Job *job = new AudioEngineThread::Job { nullptr, wrapper };
+  job->func = wrapper;
   bool need_wakeup;
-  if (flags == 1)
+  if (flags == 1) // blocking, run via const_jobs_
     need_wakeup = engine.const_jobs_.push (job);
-  else if (flags == 2)
+  else if (flags == 2) // blocking, run via async_jobs_
     need_wakeup = engine.async_jobs_.push (job);
   else
     assert_return_unreached();
   if (need_wakeup)
     wakeup_thread_mt();
   sem.wait();
+}
+
+AudioEngineJob*
+AudioEngine::new_engine_job (const std::function<void()> &jobfunc)
+{
+  EngineJobImpl *job = new EngineJobImpl (jobfunc);
+  return job;
 }
 
 AudioEngine&

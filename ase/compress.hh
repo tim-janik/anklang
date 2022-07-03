@@ -2,7 +2,7 @@
 #ifndef __ASE_COMPRESS_HH__
 #define __ASE_COMPRESS_HH__
 
-#include <ase/cxxaux.hh>
+#include <ase/defs.hh>
 
 namespace Ase {
 
@@ -27,6 +27,9 @@ bool   is_zip          (const String &input);
 bool   is_zstd         (const String &input);
 String zstd_compress   (const String &input);
 String zstd_uncompress (const String &input);
+
+StreamWriterP stream_writer_zstd (const StreamWriterP &ostream, int level = 0);
+StreamReaderP stream_reader_zstd (StreamReaderP &istream);
 
 } // Ase
 

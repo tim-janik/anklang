@@ -22,6 +22,7 @@ enum class Error;
 // == Struct Forward Declarations ==
 ASE_STRUCT_DECLS (AudioProcessorInfo);
 ASE_STRUCT_DECLS (Choice);
+ASE_STRUCT_DECLS (ClapParamUpdate);
 ASE_STRUCT_DECLS (ClipNote);
 ASE_STRUCT_DECLS (DeviceInfo);
 ASE_STRUCT_DECLS (DriverEntry);
@@ -55,6 +56,8 @@ ASE_CLASS_DECLS (ResourceCrawler);
 ASE_CLASS_DECLS (Server);
 ASE_CLASS_DECLS (ServerImpl);
 ASE_CLASS_DECLS (SharedBase);
+ASE_CLASS_DECLS (StreamWriter);
+ASE_CLASS_DECLS (StreamReader);
 ASE_CLASS_DECLS (Track);
 ASE_CLASS_DECLS (TrackImpl);
 

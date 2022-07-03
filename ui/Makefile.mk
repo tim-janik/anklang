@@ -96,6 +96,12 @@ ui/sed-keepif ::= $(if __DEV__, -e '/<[^<>]*::KEEPIF="__DEV__"/s/::KEEPIF="__DEV
 # delete unmatched ::KEEPIF="" tags
 ui/sed-keepif  += -e 's/<[^<>]*::KEEPIF="[^"]*"[^<>]*>//'
 
+# == ui/spinner.svg ==
+$>/ui/spinner.scss: ui/assets/spinner.svg
+	$(QGEN)
+	$Q sed -rn '/@keyframe/,$${ p; /^\s*}\s*$$/q; }' $< > $@
+$>/ui/all-styles.css: $>/ui/spinner.scss
+
 # == ui/.aseignore ==
 $>/ui/.aseignore:					| $>/ui/
 	$(QGEN)

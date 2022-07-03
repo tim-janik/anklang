@@ -4,12 +4,15 @@
 #include "utils.hh"
 #include "api.hh"
 #include "compress.hh"
+#include "platform.hh"
 #include "minizip.h"
+#include "compress.hh"
 #include "internal.hh"
 #include <stdlib.h>     // mkdtemp
 #include <sys/stat.h>   // mkdir
 #include <unistd.h>     // rmdir
 #include <fcntl.h>      // O_EXCL
+#include <signal.h>
 #include <filesystem>
 
 #define SDEBUG(...)     Ase::debug ("storage", __VA_ARGS__)
@@ -81,15 +84,6 @@ anklang_cachedir_base (bool createbase = false)
   return "";
 }
 
-/// Recursively delete directory tree.
-static void
-rmrf_dir (const String &dir)
-{
-  std::error_code ec;
-  std::filesystem::remove_all (dir, ec);
-  SDEBUG ("rm-rf: %s: %s", dir, ec.message());
-}
-
 static std::vector<String> cachedirs_list;
 static std::mutex               cachedirs_mutex;
 
@@ -102,7 +96,7 @@ atexit_clean_cachedirs()
     {
       const String dir = cachedirs_list.back();
       cachedirs_list.pop_back();
-      rmrf_dir (dir);
+      Path::rmrf (dir);
     }
 }
 
@@ -136,25 +130,34 @@ anklang_cachedir_create()
       SDEBUG ("create: %s: %s", guardfile, strerror (errno));
       const int err = errno;
       close (guardfd);
-      rmrf_dir (cachedir);
+      Path::rmrf (cachedir);
       errno = err;
     }
   return ""; // errno is set
 }
 
-/// Retrieve (or create) the temporary cache directory for this runtime.
-String
-anklang_cachedir_current ()
+/// Cleanup a cachedir previously created with anklang_cachedir_create().
+void
+anklang_cachedir_cleanup (const String &cachedir)
 {
-  static String current_cachedir = anklang_cachedir_create();
-  if (current_cachedir.empty())
-    fatal_error ("failed to create temporary cache directory: %s", strerror (errno));
-  return current_cachedir;
+  const String cachedir_base = anklang_cachedir_base (false);
+  assert_return (string_startswith (cachedir, cachedir_base));
+  if (Path::check (cachedir, "drw"))
+    {
+      const String guardfile = cachedir + "/guard.pid";
+      if (Path::check (guardfile, "frw"))
+        {
+          String guardstring = Path::stringread (guardfile, 3 * 4096);
+          const int guardpid = string_to_int (guardstring);
+          if (guardpid > 0 && guardstring == pid_string (guardpid))
+            Path::rmrf (cachedir);
+        }
+    }
 }
 
 /// Clean stale cache directories from past runtimes, may be called from any thread.
 void
-anklang_cachedir_cleanup()
+anklang_cachedir_clean_stale()
 {
   const String cachedir = anklang_cachedir_base (false);
   const String tmpprefix = tmpdir_prefix();
@@ -169,13 +172,18 @@ anklang_cachedir_cleanup()
               if (Path::check (guardfile, "frw"))
                 {
                   String guardstring = Path::stringread (guardfile, 3 * 4096);
-                  const int guardpid = string_to_int (guardstring);
-                  if (guardpid > 0 && guardstring == pid_string (guardpid))
+                  if (guardstring == pid_string (getpid()))
                     {
-                      SDEBUG ("skip: %s", guardfile);
+                      SDEBUG ("skipping dir (pid=self): %s", guardfile);
                       continue;
                     }
-                  rmrf_dir (direntry.path().string());
+                  const int guardpid = string_to_int (guardstring);
+                  if (guardpid > 0 && (kill (guardpid, 0) == 0 || Path::check (string_format ("/proc/%u/", guardpid), "d")))
+                    {
+                      SDEBUG ("skipping dir (live pid=%u): %s", guardpid, guardfile);
+                      continue;
+                    }
+                  Path::rmrf (direntry.path().string());
                 }
             }
         }
@@ -275,6 +283,19 @@ public:
       mzerr = mz_zip_writer_add_buffer (writer, (void*) buffer.data(), buffer.size(), &file_info);
     return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
   }
+  Error
+  store_file (const String &filename, const String &ondiskpath, bool maycompress)
+  {
+    assert_return (mz_zip_writer_is_open (writer) == MZ_OK, Error::INTERNAL);
+    if (maycompress)
+      maycompress = !is_compressed (Path::stringread (ondiskpath, 1024));
+    if (!maycompress)
+      mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_STORE);
+    int32_t mzerr = mz_zip_writer_add_file (writer, ondiskpath.c_str(), filename.c_str());
+    if (!maycompress)
+      mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_DEFLATE);
+    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
+  }
 };
 
 StorageWriter::StorageWriter (StorageFlags sflags) :
@@ -321,6 +342,13 @@ StorageWriter::store_file_data (const String &filename, const String &buffer, bo
   return impl_->store_file_data (filename, buffer,
                                  compressed ? false : true,
                                  time (nullptr));
+}
+
+Error
+StorageWriter::store_file (const String &filename, const String &ondiskpath, bool maycompress)
+{
+  assert_return (impl_, Error::INTERNAL);
+  return impl_->store_file (filename, ondiskpath, maycompress);
 }
 
 Error
@@ -375,6 +403,9 @@ public:
         const int saved_errno = errno;
         mz_zip_reader_delete (&reader);
         reader = nullptr;
+        if (saved_errno == ELIBBAD ||
+            (saved_errno == ENOENT && Path::check (zipname, "f")))
+          return Error::BROKEN_ARCHIVE;
         return ase_error_from_errno (saved_errno);
       }
     return Error::NONE;
@@ -500,6 +531,180 @@ void
 StorageReader::search_dir (const String &dirname)
 {
   // TODO: implement directory search for fallbacks
+}
+
+// == StreamReader ==
+StreamReader::~StreamReader()
+{}
+
+class StreamReaderZipMember : public StreamReader {
+  void *reader_ = nullptr;
+  bool entry_opened_ = false;
+  String name_, member_;
+public:
+  ~StreamReaderZipMember()
+  {
+    close();
+  }
+  Error
+  open_zip (const String &zipname)
+  {
+    assert_return (reader_ == nullptr, Error::INTERNAL);
+    name_ = zipname;
+    mz_zip_reader_create (&reader_);
+    mz_zip_reader_set_password (reader_, nullptr);
+    mz_zip_reader_set_encoding (reader_, MZ_ENCODING_UTF8);
+    errno = ELIBBAD;
+    int err = mz_zip_reader_open_file (reader_, name_.c_str());
+    if (err != MZ_OK)
+      {
+        const int saved_errno = errno;
+        mz_zip_reader_delete (&reader_);
+        reader_ = nullptr;
+        return saved_errno == ELIBBAD ? Error::BROKEN_ARCHIVE : ase_error_from_errno (saved_errno);
+      }
+    return Error::NONE;
+  }
+  Error
+  open_entry (const String &member)
+  {
+    errno = EINVAL;
+    assert_return (mz_zip_reader_is_open (reader_) == MZ_OK, Error::INTERNAL);
+    assert_return (entry_opened_ == false, Error::INTERNAL);
+    String membername = Path::normalize (member);
+    if (MZ_OK != mz_zip_reader_locate_entry (reader_, membername.c_str(), false) ||
+        MZ_OK != mz_zip_reader_entry_open (reader_))
+      return Error::FILE_NOT_FOUND;
+    entry_opened_ = true;
+    member_ = membername;
+    return Error::NONE;
+  }
+  ssize_t
+  read (void *buffer, size_t len) override
+  {
+    return_unless (entry_opened_, 0);
+    if (entry_opened_)
+      {
+        ssize_t n = mz_zip_reader_entry_read (reader_, buffer, len);
+        if (n > 0)
+          return n;
+        mz_zip_reader_entry_close (reader_);
+        entry_opened_ = false;
+      }
+    return 0;
+  }
+  bool
+  close() override
+  {
+    return_unless (reader_ != nullptr, false);
+    const int mzerr = mz_zip_reader_close (reader_);
+    const int saved_errno = errno;
+    mz_zip_reader_delete (&reader_);
+    reader_ = nullptr;
+    entry_opened_ = false;
+    errno = saved_errno;
+    return mzerr == MZ_OK;
+  }
+  String
+  name() const override
+  {
+    return name_ + (member_.empty() ? "" : "/./" + member_);
+  }
+};
+
+StreamReaderP
+stream_reader_zip_member (const String &archive, const String &member, Storage::StorageFlags f)
+{
+  auto readerp = std::make_shared<StreamReaderZipMember>();
+  if (Error::NONE == readerp->open_zip (archive))
+    {
+      Error error = readerp->open_entry (member);
+      if (Error::NONE == error)
+        return readerp;
+      if (error == Error::FILE_NOT_FOUND && f & Storage::AUTO_ZSTD)
+        {
+          const String memberzstd = member + ".zst";
+          if (Error::NONE == readerp->open_entry (memberzstd))
+            {
+              StreamReaderP istream = readerp;
+              return stream_reader_zstd (istream);
+            }
+        }
+    }
+  return nullptr;
+}
+
+// == StreamWriter ==
+StreamWriter::~StreamWriter ()
+{}
+
+class FileStreamWriter : public StreamWriter {
+  String name_;
+  int fd_ = -1;
+public:
+  FileStreamWriter (const String &filename)
+  {
+    name_ = filename;
+  }
+  ~FileStreamWriter ()
+  {
+    close();
+  }
+  String
+  name() const override
+  {
+    return name_;
+  }
+  bool
+  create (int mode)
+  {
+    errno = EBUSY;
+    assert_return (fd_ < 0, false);
+    fd_ = open (name_.c_str(), O_CREAT | O_TRUNC | O_WRONLY, mode);
+    return fd_ >= 0;
+  }
+  ssize_t
+  write (const void *buffer, size_t len) override
+  {
+    if (len)
+      assert_return (buffer != nullptr, -1);
+    errno = EIO;
+    return_unless (fd_ >= 0, -1);
+    const char *p = (const char*) buffer, *const e = p + len;
+    while (p < e)
+      {
+        ssize_t l;
+        do
+          l = ::write (fd_, p, e - p);
+        while (l == -1 && errno == EINTR);
+        if (l < 0)
+          return -1;
+        p += l;
+      }
+    return len;
+  }
+  bool
+  close() override
+  {
+    int ret = 0;
+    if (fd_ >= 0)
+      {
+        ret = ::close (fd_);
+        fd_ = -1;
+        if (ret < 0)
+          printerr ("%s: StreamWriter: close(\"%s\"): %s\n", program_alias(), name_, strerror (errno));
+      }
+    return ret == 0;
+  }
+};
+
+StreamWriterP
+stream_writer_create_file (const String &filename, int mode)
+{
+  auto fw = std::make_shared<FileStreamWriter> (filename);
+  if (fw->create (mode) == false)
+    return nullptr;
+  return fw;
 }
 
 } // Ase
