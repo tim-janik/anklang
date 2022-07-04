@@ -29,6 +29,21 @@ Re::search (const String &regex, const String &input, Flags flags)
   return -1;
 }
 
+/// Find `regex` in `input` and return non-overlapping matches.
+StringS
+Re::findall (const String &regex, const String &input, Flags flags)
+{
+  std::regex rex (regex, regex_flags (flags));
+  std::sregex_iterator itb = std::sregex_iterator (input.begin(), input.end(), rex);
+  std::sregex_iterator ite = std::sregex_iterator();
+  StringS all;
+  for (std::sregex_iterator it = itb; it != ite; ++it) {
+    std::smatch match = *it;
+    all.push_back (match.str());
+  }
+  return all;
+}
+
 /// Substitute `regex` in `input` with `subst`.
 String
 Re::sub (const String &regex, const String &subst, const String &input, uint count, Flags flags)
@@ -70,12 +85,14 @@ regex_tests()
   k = Re::search ("fail", "abc abc");                                   TCMP (k, ==, -1);
   k = Re::search (R"(\bb)", "abc bbc");                                 TCMP (k, ==, 4);
   String u, v;
+  StringS ss;
   u = "abc abc abc Abc"; v = Re::sub ("xyz", "ABC", u);                 TCMP (v, ==, "abc abc abc Abc");
   u = "abc abc abc Abc"; v = Re::sub ("abc", "ABC", u);                 TCMP (v, ==, "ABC ABC ABC Abc");
   u = "abc abc abc Abc"; v = Re::sub ("abc", "ABC", u, 2);              TCMP (v, ==, "ABC ABC abc Abc");
   u = "abc abc abc Abc"; v = Re::sub ("abc", "ABC", u, 0, Re::I);       TCMP (v, ==, "ABC ABC ABC ABC");
   u = "abc abc abc Abc"; v = Re::sub (R"(\bA)", "-", u);                TCMP (v, ==, "abc abc abc -bc");
   u = "abc abc abc Abc"; v = Re::sub (R"(\bA\b)", "-", u);              TCMP (v, ==, "abc abc abc Abc");
+  u = "abc 123 abc Abc"; ss = Re::findall (R"(\b\w)", u); TCMP (ss, ==, cstrings_to_vector ("a", "1", "a", "A", nullptr));
 }
 
 } // Anon
