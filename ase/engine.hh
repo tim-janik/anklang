@@ -76,7 +76,6 @@ public:
 template<typename T> BorrowedPtr<T>&
 BorrowedPtr<T>::operator= (const BorrowedPtr &other) noexcept
 {
-  ASE_ASSERT_RETURN (ptr() == nullptr, *this);
   job_ = other.job_;
   return *this;
 }
@@ -106,8 +105,8 @@ BorrowedPtr<T>::BorrowedPtr (T *ptr, const std::function<void(T*)> &deleter)
   job_ = AudioEngine::new_engine_job (jobfunc);
   ASE_ASSERT_RETURN (job_->voidp == nullptr);           // user data
   job_->voidp = ptr;
+  ASE_ASSERT_RETURN (job_->voidp != nullptr);
 }
-
 
 } // Ase
 
