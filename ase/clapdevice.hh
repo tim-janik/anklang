@@ -13,13 +13,14 @@ class ClapDeviceImpl : public GadgetImpl, public virtual Device {
 protected:
   virtual           ~ClapDeviceImpl        ();
   void               serialize             (WritNode &xs) override;
-  void               params_change         (const Event &event);
+  void               proc_params_change    (const Event &event);
   void               _set_parent           (Gadget *parent) override;
   void               _activate             () override;
 public:
   explicit           ClapDeviceImpl        (ClapPluginHandleP claphandle);
   static DeviceInfoS list_clap_plugins     ();
   DeviceInfo         device_info           () override;
+  PropertyS          access_properties     () override;
   bool               is_combo_device       () override                       { return false; }
   DeviceS            list_devices          () override                       { return {}; } // no children
   DeviceInfoS        list_device_types     () override                       { return {}; } // no children
@@ -36,6 +37,7 @@ public:
   static String      clap_version          ();
   static DeviceP     create_clap_device    (AudioEngine &engine, const String &clapuri);
   static ClapPluginHandleP access_clap_handle (DeviceP device);
+  friend struct ClapPropertyImpl;
 };
 
 } // Ase
