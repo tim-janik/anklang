@@ -35,6 +35,19 @@ struct ClapParamUpdate {
 };
 using ClapParamUpdateS = std::vector<ClapParamUpdate>;
 
+// == ClapParamInfo ==
+struct ClapParamInfo {
+  clap_id id = CLAP_INVALID_ID; // uint32_t
+  uint32_t flags = 0; // clap_param_info_flags
+  void *cookie = nullptr;
+  String name, module;
+  double min_value = NAN, max_value = NAN, default_value = NAN, current_value = NAN, next_value = NAN;
+  String min_value_text, max_value_text, default_value_text, current_value_text;
+  /*ctor*/ ClapParamInfo ();
+  void     unset         ();
+  void     operator=     (const clap_param_info &cinfo);
+};
+
 // == ClapPluginHandle ==
 class ClapPluginHandle : public std::enable_shared_from_this<ClapPluginHandle> {
 public:
