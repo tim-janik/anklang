@@ -22,7 +22,6 @@ public:
   String         type_nick         () const override;
   String         name              () const override;
   void           name              (String newname) override;
-  PropertyP      access_property   (String ident) override;
   PropertyS      access_properties () override;
   bool           set_data          (const String &key, const Value &v) override;
   Value          get_data          (const String &key) const override;
