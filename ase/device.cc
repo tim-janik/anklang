@@ -72,15 +72,6 @@ DeviceImpl::access_properties ()
   return pseq;
 }
 
-PropertyP
-DeviceImpl::access_property (String ident)
-{
-  for (const AudioProcessor::PParam &p : proc_->params_)
-    if (p.info->ident == ident)
-      return proc_->access_property (p.id);
-  return {};
-}
-
 DeviceS
 DeviceImpl::list_devices ()
 {
