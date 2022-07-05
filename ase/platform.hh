@@ -68,6 +68,17 @@ uint64  timestamp_resolution ();        // nseconds
 String  timestamp_format     (uint64 stamp, uint maxlength = 8);
 uint64  monotonic_counter    ();
 
+// == Stopwatch ==
+class Stopwatch {
+  uint64 start_ = 0, end_ = 0;   String msg_;
+public:
+  explicit Stopwatch (const String &msg = "");
+  void     start     (const String &msg = "");
+  void     stop      (const String &msg = "");
+  double   seconds   () const;
+  /*dtor*/~Stopwatch ();
+};
+
 // == process names ==
 String      program_alias         ();                   ///< Retrieve the program name as used for logging or debug messages.
 void        program_alias_init    (String customname);  ///< Set program_alias to a non-localized alias other than program_argv0 if desired.
