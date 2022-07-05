@@ -46,7 +46,7 @@ Re::findall (const String &regex, const String &input, Flags flags)
 
 /// Substitute `regex` in `input` with `subst`.
 String
-Re::sub (const String &regex, const String &subst, const String &input, uint count, Flags flags)
+Re::subn (const String &regex, const String &subst, const String &input, uint count, Flags flags)
 {
   const std::sregex_iterator end = std::sregex_iterator();
   std::regex rex (regex, regex_flags (flags));
@@ -86,12 +86,12 @@ regex_tests()
   k = Re::search (R"(\bb)", "abc bbc");                                 TCMP (k, ==, 4);
   String u, v;
   StringS ss;
-  u = "abc abc abc Abc"; v = Re::sub ("xyz", "ABC", u);                 TCMP (v, ==, "abc abc abc Abc");
-  u = "abc abc abc Abc"; v = Re::sub ("abc", "ABC", u);                 TCMP (v, ==, "ABC ABC ABC Abc");
-  u = "abc abc abc Abc"; v = Re::sub ("abc", "ABC", u, 2);              TCMP (v, ==, "ABC ABC abc Abc");
-  u = "abc abc abc Abc"; v = Re::sub ("abc", "ABC", u, 0, Re::I);       TCMP (v, ==, "ABC ABC ABC ABC");
-  u = "abc abc abc Abc"; v = Re::sub (R"(\bA)", "-", u);                TCMP (v, ==, "abc abc abc -bc");
-  u = "abc abc abc Abc"; v = Re::sub (R"(\bA\b)", "-", u);              TCMP (v, ==, "abc abc abc Abc");
+  u = "abc abc abc Abc"; v = Re::subn ("xyz", "ABC", u);                 TCMP (v, ==, "abc abc abc Abc");
+  u = "abc abc abc Abc"; v = Re::subn ("abc", "ABC", u);                 TCMP (v, ==, "ABC ABC ABC Abc");
+  u = "abc abc abc Abc"; v = Re::subn ("abc", "ABC", u, 2);              TCMP (v, ==, "ABC ABC abc Abc");
+  u = "abc abc abc Abc"; v = Re::subn ("abc", "ABC", u, 0, Re::I);       TCMP (v, ==, "ABC ABC ABC ABC");
+  u = "abc abc abc Abc"; v = Re::subn (R"(\bA)", "-", u);                TCMP (v, ==, "abc abc abc -bc");
+  u = "abc abc abc Abc"; v = Re::subn (R"(\bA\b)", "-", u);              TCMP (v, ==, "abc abc abc Abc");
   u = "abc 123 abc Abc"; ss = Re::findall (R"(\b\w)", u); TCMP (ss, ==, cstrings_to_vector ("a", "1", "a", "A", nullptr));
 }
 
