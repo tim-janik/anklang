@@ -19,6 +19,7 @@ public:
   static StringS findall (const String &regex, const String &input, Flags = DEFAULT);
   static ssize_t search  (const String &regex, const String &input, Flags = DEFAULT);
   static String  subn    (const String &regex, const String &subst, const String &input, uint count = 0, Flags = DEFAULT);
+  static String  sub     (const String &regex, const String &sbref, const String &input, Flags = DEFAULT);
 };
 extern constexpr inline Re::Flags operator| (Re::Flags a, Re::Flags b) { return Re::Flags (int32_t (a) | int32_t (b)); }
 
