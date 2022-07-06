@@ -118,6 +118,29 @@ public:
   }
 };
 
+// == ClapParamInfoImpl ==
+struct ClapParamInfoImpl : ClapParamInfo {
+  void *cookie_ = nullptr;
+  double next_value_ = NAN;
+  std::weak_ptr<Property> aseprop_;
+  void
+  operator= (const clap_param_info &cinfo)
+  {
+    unset();
+    param_id = cinfo.id;
+    flags = cinfo.flags;
+    ident = string_format ("%08x", param_id);
+    name = cinfo.name;
+    module = cinfo.module;
+    min_value = cinfo.min_value;
+    max_value = cinfo.max_value;
+    default_value = cinfo.default_value;
+    cookie_ = cinfo.cookie;
+    next_value_ = NAN;
+  }
+};
+using ClapParamInfoMap = std::unordered_map<clap_id,ClapParamInfoImpl*>;
+
 // == ClapParamInfo ==
 ClapParamInfo::ClapParamInfo()
 {
@@ -127,36 +150,54 @@ ClapParamInfo::ClapParamInfo()
 void
 ClapParamInfo::unset()
 {
-  id = CLAP_INVALID_ID;
+  param_id = CLAP_INVALID_ID;
   flags = 0;
-  cookie = nullptr;
+  ident = "";
   name = "";
   module = "";
   min_value = NAN;
   max_value = NAN;
   default_value = NAN;
   current_value = NAN;
-  next_value = NAN;
   min_value_text = "";
   max_value_text = "";
   default_value_text = "";
   current_value_text = "";
 }
 
-void
-ClapParamInfo::operator= (const clap_param_info &cinfo)
+String
+ClapParamInfo::hints_from_param_info_flags (clap_param_info_flags flags)
 {
-  unset();
-  id = cinfo.id;
-  flags = cinfo.flags;
-  cookie = cinfo.cookie;
-  name = cinfo.name;
-  module = cinfo.module;
-  min_value = cinfo.min_value;
-  max_value = cinfo.max_value;
-  default_value = cinfo.default_value;
+  static constexpr const struct { uint32_t bit; const char *const hint; } bits[] = {
+    { CLAP_PARAM_IS_STEPPED,                    "stepped" },
+    { CLAP_PARAM_IS_PERIODIC,                   "periodic" },
+    { CLAP_PARAM_IS_HIDDEN,                     "hidden" },
+    { CLAP_PARAM_IS_READONLY,                   "readonly" },
+    { CLAP_PARAM_IS_BYPASS,                     "bypass" },
+    { CLAP_PARAM_IS_AUTOMATABLE,                "automatable" },
+    { CLAP_PARAM_IS_AUTOMATABLE_PER_NOTE_ID,    "automatable-note-id" },
+    { CLAP_PARAM_IS_AUTOMATABLE_PER_KEY,        "automatable-key" },
+    { CLAP_PARAM_IS_AUTOMATABLE_PER_CHANNEL,    "automatable-channel" },
+    { CLAP_PARAM_IS_AUTOMATABLE_PER_PORT,       "automatable-port" },
+    { CLAP_PARAM_IS_MODULATABLE,                "modulatable" },
+    { CLAP_PARAM_IS_MODULATABLE_PER_NOTE_ID,    "modulatable-note-id" },
+    { CLAP_PARAM_IS_MODULATABLE_PER_KEY,        "modulatable-key" },
+    { CLAP_PARAM_IS_MODULATABLE_PER_CHANNEL,    "modulatable-channel" },
+    { CLAP_PARAM_IS_MODULATABLE_PER_PORT,       "modulatable-port" },
+    { CLAP_PARAM_REQUIRES_PROCESS,              "requires-process" },
+  };
+  String hints = ":";
+  for (size_t i = 0; i < ASE_ARRAY_SIZE (bits); i++)
+    if (flags & bits[i].bit)
+      hints += bits[i].hint + String (":");
+  if (!(flags & CLAP_PARAM_IS_HIDDEN))
+    hints += "G:";
+  if (flags & CLAP_PARAM_IS_READONLY)
+    hints += "r:";
+  else
+    hints += "r:w:";
+  return hints;
 }
-using ClapParamInfoMap = std::unordered_map<clap_id,ClapParamInfo*>;
 
 // == ClapEventUnion ==
 union ClapEventUnion {
@@ -311,16 +352,6 @@ public:
     // or add to existing queue
     enqueued_events_.push_back (pevents_b);
   }
-  void
-  dequeue_events (size_t nframes)
-  {
-    // TODO: need proper time stamp handling
-    while (enqueued_events_.size() && (enqueued_events_[0]->empty() || enqueued_events_[0]->back().header.time < nframes)) {
-      BorrowedPtr<ClapEventParamS> pevents_b = enqueued_events_[0];
-      enqueued_events_.erase (enqueued_events_.begin());
-      pevents_b.dispose (engine_);
-    }
-  }
   bool
   start_processing (const ClapParamInfoMap *param_info_map)
   {
@@ -372,26 +403,48 @@ public:
       convert_clap_events (processinfo, input_preferred_dialect & CLAP_NOTE_DIALECT_CLAP);
       processinfo.steady_time += processinfo.frames_count;
       clap_process_status status = clapplugin_->process (clapplugin_, &processinfo);
-      bool need_wakeup = false;
+      bool need_wakeup = dequeue_events (n_frames);
       for (const auto &e : output_events_)
-        if (e.header.type == CLAP_EVENT_PARAM_VALUE && e.header.size >= sizeof (clap_event_param_value))
-          {
-            const clap_event_param_value &event = e.value;
-            const auto it = param_info_map_->find (event.param_id);
-            if (it == param_info_map_->end())
-              continue;
-            ClapParamInfo *pinfo = it->second;
-            pinfo->next_value = event.value;
-            need_wakeup = true;
-            PDEBUG ("%s: PROCESS: %08x=%f: (%s)\n", clapplugin_->desc->name, pinfo->id, event.value, pinfo->name);
-          }
+        need_wakeup |= apply_param_value_event (e.value);
       output_events_.resize (0);
       if (need_wakeup)
         enotify_enqueue_mt (PARAMCHANGE);
       if (0)
         CDEBUG ("render: status=%d", status);
-      dequeue_events (n_frames);
     }
+  }
+  bool
+  apply_param_value_event (const clap_event_param_value &e)
+  {
+    bool need_wakeup = false;
+    if (e.header.type == CLAP_EVENT_PARAM_VALUE && e.header.size >= sizeof (clap_event_param_value))
+      {
+        const clap_event_param_value &event = e;
+        const auto it = param_info_map_->find (event.param_id);
+        if (it != param_info_map_->end())
+          {
+            ClapParamInfoImpl *pinfo = it->second;
+            pinfo->next_value_ = event.value;
+            need_wakeup = true;
+            PDEBUG ("%s: PROCESS: %08x=%f: (%s)\n", clapplugin_->desc->name, pinfo->param_id, event.value, pinfo->name);
+          }
+      }
+    return need_wakeup;
+  }
+  bool
+  dequeue_events (size_t nframes)
+  {
+    return_unless (enqueued_events_.size(), false);
+    // TODO: need proper time stamp handling
+    bool need_wakeup = false;
+    while (enqueued_events_.size() && (enqueued_events_[0]->empty() || enqueued_events_[0]->back().header.time < nframes)) {
+      BorrowedPtr<ClapEventParamS> pevents_b = enqueued_events_[0];
+      enqueued_events_.erase (enqueued_events_.begin());
+      for (const auto &e : *pevents_b)
+        need_wakeup |= apply_param_value_event (e);
+      pevents_b.dispose (engine_);
+    }
+    return need_wakeup;
   }
 };
 static CString clap_audio_wrapper_aseid = register_audio_processor<ClapAudioWrapper>();
@@ -615,30 +668,80 @@ public:
   std::vector<uint> timers_;
   struct FdPoll { int fd = -1; uint source = 0; uint flags = 0; };
   std::vector<FdPoll> fd_polls_;
-  std::vector<ClapParamInfo> param_infos_;
+  std::vector<ClapParamInfoImpl> param_infos_;
   ClapParamInfoMap param_ids_;
   ClapParamUpdateS *load_updates_ = nullptr;
   void get_port_infos ();
-  String get_param_value_text (clap_id paramid, double value);
+  String get_param_value_text (clap_id param_id, double value);
+  double get_param_value_double (clap_id param_id, const String &text);
   ClapEventParamS* convert_param_updates (const ClapParamUpdateS &updates);
   void flush_event_params (const ClapEventParamS &events, ClapEventUnionS &output_events);
+  void params_changed() override;
   void scan_params();
-  void update_params();
-  ClapParamInfo*
+  ClapParamInfoImpl*
   find_param_info (clap_id clapid)
   {
     auto it = param_ids_.find (clapid);
     return it != param_ids_.end() ? it->second : nullptr;
   }
-  void
-  params_changed () override
+  ClapParamInfoS
+  param_infos () override
   {
-    update_params();
+    ClapParamInfoS infos;
+    for (const auto &pinfo : param_infos_)
+      infos.push_back (pinfo);
+    return infos;
   }
-  void
-  param_updates (const ClapParamUpdateS &updates) override
+  bool
+  param_set_property (clap_id param_id, PropertyP prop) override
   {
-    printerr ("FIXME: send updates to process()\n"); // FIXME: implement
+    ClapParamInfoImpl *info = find_param_info (param_id);
+    return_unless (info, false);
+    info->aseprop_ = prop;
+    return true;
+  }
+  PropertyP
+  param_get_property (clap_id param_id) override
+  {
+    ClapParamInfoImpl *info = find_param_info (param_id);
+    return_unless (info, nullptr);
+    PropertyP prop = info->aseprop_.lock();
+    return prop;
+  }
+  double
+  param_get_value (clap_id param_id, String *text) override
+  {
+    ClapParamInfoImpl *info = find_param_info (param_id);
+    const double v = info ? info->current_value : NAN;
+    if (text)
+      *text = !info ? "NAN" : get_param_value_text (param_id, v);
+    return v;
+  }
+  bool
+  param_set_value (clap_id param_id, const String &stringvalue) override
+  {
+    ClapParamInfoImpl *info = find_param_info (param_id);
+    const double value = info ? get_param_value_double (param_id, stringvalue) : NAN;
+    return isnan (value) ? false : param_set_value (param_id, value);
+  }
+  bool
+  param_set_value (clap_id param_id, double v) override
+  {
+    ClapParamInfoImpl *info = find_param_info (param_id);
+    return_unless (info, false);
+    return_unless (!(info->flags & CLAP_PARAM_IS_READONLY), false);
+    ClapParamUpdateS updates;
+    if (info->flags & CLAP_PARAM_IS_STEPPED)
+      v = round (v);
+    ClapParamUpdate update = {
+      .steady_time = 0, // NOW
+      .param_id = param_id,
+      .flags = 0,
+      .value = CLAMP (v, info->min_value, info->max_value),
+    };
+    updates.push_back (update);
+    enqueue_updates (updates);
+    return true;
   }
   void
   load_state (StreamReaderP blob, const ClapParamUpdateS &updates) override
@@ -672,10 +775,10 @@ public:
     // store params if plugin_state->save is unimplemented
     if (!plugin_state)
       for (const auto &pinfo : param_infos_)
-        if (pinfo.id != CLAP_INVALID_ID) {
+        if (pinfo.param_id != CLAP_INVALID_ID) {
           ClapParamUpdate pu = {
             .steady_time = 0,
-            .param_id = pinfo.id,
+            .param_id = pinfo.param_id,
             .flags = 0,
             .value = pinfo.current_value,
           };
@@ -816,14 +919,24 @@ public:
 
 // == get_param_value_text ==
 String
-ClapPluginHandleImpl::get_param_value_text (clap_id paramid, double value)
+ClapPluginHandleImpl::get_param_value_text (clap_id param_id, double value)
 {
   constexpr uint LEN = 256;
   char buffer[LEN + 1] = { 0 };
-  if (!plugin_params || !plugin_params->value_to_text (plugin_, paramid, value, buffer, LEN))
+  if (!plugin_params || !plugin_params->value_to_text (plugin_, param_id, value, buffer, LEN))
     buffer[0] = 0;
   buffer[LEN] = 0;
   return buffer;
+}
+
+double
+ClapPluginHandleImpl::get_param_value_double (clap_id param_id, const String &text)
+{
+  double value = NAN;
+  if (!plugin_params || !plugin_params->text_to_value ||
+      !plugin_params->text_to_value (plugin_, param_id, text.c_str(), &value))
+    value = NAN;
+  return value;
 }
 
 // == scan_params ==
@@ -836,7 +949,7 @@ ClapPluginHandleImpl::scan_params()
   param_infos_.resize (count);
   param_ids_.reserve (param_infos_.size());
   for (size_t i = 0; i < param_infos_.size(); i++) {
-    ClapParamInfo &pinfo = param_infos_[i];
+    ClapParamInfoImpl &pinfo = param_infos_[i];
     pinfo.unset();
     clap_param_info cinfo = { CLAP_INVALID_ID, 0, nullptr, {0}, {0}, NAN, NAN, NAN };
     if (plugin_params->get_info (plugin_, i, &cinfo) && cinfo.id != CLAP_INVALID_ID) {
@@ -845,34 +958,38 @@ ClapPluginHandleImpl::scan_params()
     }
   }
   for (size_t i = 0; i < param_infos_.size(); i++) {
-    ClapParamInfo &pinfo = param_infos_[i];
-    if (pinfo.id == CLAP_INVALID_ID)
+    ClapParamInfoImpl &pinfo = param_infos_[i];
+    if (pinfo.param_id == CLAP_INVALID_ID)
       continue;
-    pinfo.min_value_text = get_param_value_text (pinfo.id, pinfo.min_value);
-    pinfo.max_value_text = get_param_value_text (pinfo.id, pinfo.max_value);
-    pinfo.default_value_text = get_param_value_text (pinfo.id, pinfo.default_value);
-    if (!plugin_params->get_value (plugin_, pinfo.id, &pinfo.current_value)) {
+    pinfo.min_value_text = get_param_value_text (pinfo.param_id, pinfo.min_value);
+    pinfo.max_value_text = get_param_value_text (pinfo.param_id, pinfo.max_value);
+    pinfo.default_value_text = get_param_value_text (pinfo.param_id, pinfo.default_value);
+    if (!plugin_params->get_value (plugin_, pinfo.param_id, &pinfo.current_value)) {
       pinfo.current_value = pinfo.default_value;
       pinfo.current_value_text = pinfo.default_value_text;
     } else
-      pinfo.current_value_text = get_param_value_text (pinfo.id, pinfo.current_value);
-    PDEBUG ("%s: SCAN: %08x=%f: %s (%s)\n", clapid(), pinfo.id, pinfo.current_value, pinfo.current_value_text, pinfo.name);
+      pinfo.current_value_text = get_param_value_text (pinfo.param_id, pinfo.current_value);
+    PDEBUG ("%s: SCAN: %08x=%f: %s (%s)\n", clapid(), pinfo.param_id, pinfo.current_value, pinfo.current_value_text, pinfo.name);
   }
 }
 
-// == update_params ==
+// == params_changed ==
 void
-ClapPluginHandleImpl::update_params()
+ClapPluginHandleImpl::params_changed ()
 {
-  for (size_t i = 0; i < param_infos_.size(); i++) {
-    ClapParamInfo &pinfo = param_infos_[i];
-    if (ASE_ISLIKELY (isnan (pinfo.next_value)) || pinfo.id == CLAP_INVALID_ID)
-      continue;
-    pinfo.current_value = pinfo.next_value;
-    pinfo.next_value = NAN;
-    pinfo.current_value_text = get_param_value_text (pinfo.id, pinfo.current_value);
-    PDEBUG ("%s: UPDATE: %08x=%f: %s (%s)\n", clapid(), pinfo.id, pinfo.current_value, pinfo.current_value_text, pinfo.name);
-  }
+  for (size_t i = 0; i < param_infos_.size(); i++)
+    {
+      ClapParamInfoImpl &pinfo = param_infos_[i];
+      if (ASE_ISLIKELY (isnan (pinfo.next_value_)) || pinfo.param_id == CLAP_INVALID_ID)
+        continue;
+      pinfo.current_value = pinfo.next_value_;
+      pinfo.next_value_ = NAN;
+      pinfo.current_value_text = get_param_value_text (pinfo.param_id, pinfo.current_value);
+      PDEBUG ("%s: UPDATE: %08x=%f: %s (%s)\n", clapid(), pinfo.param_id, pinfo.current_value, pinfo.current_value_text, pinfo.name);
+      PropertyP prop = pinfo.aseprop_.lock();
+      if (prop)
+        prop->emit_event ("notify", pinfo.ident);
+    }
 }
 
 // == convert_param_updates ==
@@ -880,9 +997,9 @@ ClapEventParamS*
 ClapPluginHandleImpl::convert_param_updates (const ClapParamUpdateS &updates)
 {
   ClapEventParamS *param_events = new ClapEventParamS();
-  for (size_t i = 0; i + 1 < updates.size(); i++)
+  for (size_t i = 0; i < updates.size(); i++)
     {
-      const ClapParamInfo *pinfo = find_param_info (updates[i].param_id);
+      const ClapParamInfoImpl *pinfo = find_param_info (updates[i].param_id);
       if (!pinfo)
         continue;
       const clap_event_param_value event = {
@@ -893,8 +1010,8 @@ ClapPluginHandleImpl::convert_param_updates (const ClapParamUpdateS &updates)
           .type = CLAP_EVENT_PARAM_VALUE,
           .flags = CLAP_EVENT_DONT_RECORD,
         },
-        .param_id = pinfo->id,
-        .cookie = pinfo->cookie,
+        .param_id = pinfo->param_id,
+        .cookie = pinfo->cookie_,
         .note_id = -1,
         .port_index = -1,
         .channel = -1,
@@ -902,7 +1019,7 @@ ClapPluginHandleImpl::convert_param_updates (const ClapParamUpdateS &updates)
         .value = updates[i].value
       };
       param_events->push_back (event);
-      PDEBUG ("%s: CONVERT: %08x=%f: (%s)\n", clapid(), pinfo->id, event.value, pinfo->name);
+      PDEBUG ("%s: CONVERT: %08x=%f: (%s)\n", clapid(), pinfo->param_id, event.value, pinfo->name);
     }
   return param_events;
 }
