@@ -337,6 +337,7 @@ public:
     .try_push = output_events_try_push,
   };
   const ClapParamInfoMap *param_info_map_ = nullptr;
+  const ClapParamInfoImpl *param_info_map_start_ = nullptr;
   clap_process_t processinfo = { 0, };
   std::vector<BorrowedPtr<ClapEventParamS>> enqueued_events_;
   void
@@ -353,11 +354,13 @@ public:
     enqueued_events_.push_back (pevents_b);
   }
   bool
-  start_processing (const ClapParamInfoMap *param_info_map)
+  start_processing (const ClapParamInfoMap *param_info_map, const ClapParamInfoImpl *map_start, size_t map_size)
   {
     return_unless (!can_process_, true);
     assert_return (clapplugin_, false);
     param_info_map_ = param_info_map;
+    param_info_map_start_ = map_start;
+    atomic_bits_resize (map_size);
     can_process_ = clapplugin_->start_processing (clapplugin_);
     CDEBUG ("%s: %s: %d", handle_->clapid(), __func__, can_process_);
     if (can_process_) {
@@ -381,6 +384,7 @@ public:
     can_process_ = false;
     clapplugin_->stop_processing (clapplugin_);
     param_info_map_ = nullptr;
+    param_info_map_start_ = nullptr;
     CDEBUG ("%s: %s", handle_->clapid(), __func__);
     input_events_.resize (0);
     output_events_.resize (0);
@@ -425,6 +429,7 @@ public:
           {
             ClapParamInfoImpl *pinfo = it->second;
             pinfo->next_value_ = event.value;
+            atomic_bit_notify (pinfo - param_info_map_start_);
             need_wakeup = true;
             PDEBUG ("%s: PROCESS: %08x=%f: (%s)\n", clapplugin_->desc->name, pinfo->param_id, event.value, pinfo->name);
           }
@@ -854,7 +859,7 @@ public:
       // synchronize with start_processing
       ScopedSemaphore sem;
       proc_->engine().async_jobs += [&sem, selfp] () {
-        selfp->proc_->start_processing (&selfp->param_ids_);
+        selfp->proc_->start_processing (&selfp->param_ids_, &selfp->param_infos_[0], selfp->param_infos_.size());
         sem.post();
       };
       sem.wait();
@@ -977,19 +982,20 @@ ClapPluginHandleImpl::scan_params()
 void
 ClapPluginHandleImpl::params_changed ()
 {
-  for (size_t i = 0; i < param_infos_.size(); i++)
-    {
-      ClapParamInfoImpl &pinfo = param_infos_[i];
-      if (ASE_ISLIKELY (isnan (pinfo.next_value_)) || pinfo.param_id == CLAP_INVALID_ID)
-        continue;
-      pinfo.current_value = pinfo.next_value_;
-      pinfo.next_value_ = NAN;
-      pinfo.current_value_text = get_param_value_text (pinfo.param_id, pinfo.current_value);
-      PDEBUG ("%s: UPDATE: %08x=%f: %s (%s)\n", clapid(), pinfo.param_id, pinfo.current_value, pinfo.current_value_text, pinfo.name);
-      PropertyP prop = pinfo.aseprop_.lock();
-      if (prop)
-        prop->emit_event ("notify", pinfo.ident);
-    }
+  for (AtomicBits::Iter it = proc_->atomic_bits_iter(); it.valid(); it.big_inc1())
+    if (it.clear())
+      {
+        ClapParamInfoImpl &pinfo = param_infos_[it.position()];
+        if (ASE_ISLIKELY (isnan (pinfo.next_value_)) || pinfo.param_id == CLAP_INVALID_ID)
+          continue;
+        pinfo.current_value = pinfo.next_value_;
+        pinfo.next_value_ = NAN;
+        pinfo.current_value_text = get_param_value_text (pinfo.param_id, pinfo.current_value);
+        PDEBUG ("%s: UPDATE: %08x=%f: %s (%s)\n", clapid(), pinfo.param_id, pinfo.current_value, pinfo.current_value_text, pinfo.name);
+        PropertyP prop = pinfo.aseprop_.lock();
+        if (prop)
+          prop->emit_event ("notify", pinfo.ident);
+      }
 }
 
 // == convert_param_updates ==
