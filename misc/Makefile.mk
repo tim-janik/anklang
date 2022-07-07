@@ -260,12 +260,11 @@ upload-nightly:
 	$Q echo						>> $(RELEASE_SSEDIR)/release-message
 	$Q echo 'Anklang $(DETAILED_VERSION)'		>> $(RELEASE_SSEDIR)/release-message
 	$Q hub release delete 'Nightly' ; git push origin ':Nightly' || :
-	$Q git push origin 'Nightly' \
-		&& hub release create --prerelease		\
-		-F '$(RELEASE_SSEDIR)/release-message'		\
-		-a '$(RELEASE_CHANGELOG)'			\
-		-a '$(RELEASE_APPIMAGE)'			\
-		-a '$(RELEASE_DEB)'				\
+	$Q git push origin 'Nightly'					\
+		&& ASSETS=( $(RELEASE_SSEDIR)/*"$(DETAILED_VERSION)"* )	\
+		&& hub release create --prerelease			\
+		-F '$(RELEASE_SSEDIR)/release-message'			\
+		"$${ASSETS[@]/#/-a}"					\
 		'Nightly'
 
 # == build-assets ==
