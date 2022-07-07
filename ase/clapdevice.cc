@@ -4,6 +4,7 @@
 #include "project.hh"
 #include "processor.hh"
 #include "compress.hh"
+#include "properties.hh"
 #include "storage.hh"
 #include "jsonipc/jsonipc.hh"
 #include "path.hh"
@@ -18,32 +19,20 @@
 
 namespace Ase {
 
-static String
-guess_nick (const String &longname)
-{
-  const size_t nchars = 3;
-  StringS letters = Re::findall (R"(\b\w)", longname);
-  if (letters.size() >= nchars) {
-    letters.resize (nchars);
-    return string_join ("", letters);
-  }
-  return longname.substr (0, nchars);
-}
-
 // == ClapPropertyImpl ==
 struct ClapPropertyImpl : public Property, public virtual EmittableImpl {
   ClapDeviceImplP device_;
   clap_id  param_id = CLAP_INVALID_ID; // uint32_t
   uint32_t flags = 0; // clap_param_info_flags
-  String ident, name, module;
+  String ident_, label_, module_;
   double min_value = NAN, max_value = NAN, default_value = NAN;
 public:
-  String   identifier     () override   { return ident; }
-  String   label          () override   { return name; }
-  String   nick           () override   { return guess_nick (name); }
+  String   identifier     () override   { return ident_; }
+  String   label          () override   { return label_; }
+  String   nick           () override   { return property_guess_nick (label_); }
   String   unit           () override   { return ""; }
   String   hints          () override   { return ClapParamInfo::hints_from_param_info_flags (flags); }
-  String   group          () override   { return module; }
+  String   group          () override   { return module_; }
   String   blurb          () override   { return ""; }
   String   description    () override   { return ""; }
   double   get_min        () override   { return min_value; }
@@ -57,9 +46,9 @@ public:
   {
     param_id = info.param_id;
     flags = info.flags;
-    ident = info.ident;
-    name = info.name;
-    module = info.module;
+    ident_ = info.ident;
+    label_ = info.name;
+    module_ = info.module;
     min_value = info.min_value;
     max_value = info.max_value;
     default_value = info.default_value;
@@ -228,6 +217,7 @@ ClapDeviceImpl::device_info ()
 PropertyS
 ClapDeviceImpl::access_properties ()
 {
+  // reuse existing properties
   ClapDeviceImplP selfp = shared_ptr_cast<ClapDeviceImpl> (this);
   PropertyS properties;
   for (const ClapParamInfo &pinfo : handle_->param_infos())
