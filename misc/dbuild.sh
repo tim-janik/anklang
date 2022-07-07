@@ -80,22 +80,15 @@ setup_ROOT_TMPVOLUME() {
     docker run $DOCKEROPTIONS -v `pwd`:/pwd_rovolume/:ro -v $TMPVOLUME:/$PROJECT/ $TI --rm $IMGTAG \
 	   cp -a --reflink=auto /pwd_rovolume/. /$PROJECT/
   }
-  DOCKER_RUN_VOLUME="-v $TMPVOLUME:/$PROJECT/"
+  VOLUME_ARGS="-v $TMPVOLUME:/$PROJECT/"
 }
 
-# == git-worktree support ==
-DOCKER_GITDIR_VOLUME=
-if test -f .git && grep -q '^gitdir: /' .git ; then
-  WORKTREEGITDIR=$(git rev-parse --git-common-dir)
-  DOCKER_GITDIR_VOLUME="-v $WORKTREEGITDIR:$WORKTREEGITDIR:ro"
-fi
-
 # == EXEC_CMD ==
-DOCKER_RUN_VOLUME="$PROJECT_VOLUME"
+VOLUME_ARGS="$PROJECT_VOLUME"
 test root != "$EXEC_CMD" || setup_ROOT_TMPVOLUME # let root operate on a temporary copy
 test root != "$EXEC_CMD" -a shell != "$EXEC_CMD" || EXEC_CMD=/bin/bash
 test -z "$EXEC_CMD" || (
   set -x
-  docker run $DOCKEROPTIONS $DOCKER_RUN_VOLUME $DOCKER_GITDIR_VOLUME $OOTBUILD_ARGS $TI --rm -w /$PROJECT/ $IMGTAG "$EXEC_CMD" "$@"
+  docker run $DOCKEROPTIONS $VOLUME_ARGS $OOTBUILD_ARGS $TI --rm -w /$PROJECT/ $IMGTAG "$EXEC_CMD" "$@"
 ) # avoid 'exec' for TRAP(1) to take effect
 exit $?
