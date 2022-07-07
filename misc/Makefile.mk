@@ -291,6 +291,13 @@ build-assets:
 		INSN=sse builddir=out-sse				\
 		anklang-deb						\
 		appimage
+	@: # Create release manuals (if present)
+	$Q cd $(RELEASE_SSEDIR)						\
+	   && test ! -f doc/anklang-manual.pdf				\
+	   || cp doc/anklang-manual.pdf anklang-manual-$(DETAILED_VERSION).pdf
+	$Q cd $(RELEASE_SSEDIR)						\
+	   && test ! -f doc/anklang-internals.pdf			\
+	   || cp doc/anklang-internals.pdf anklang-internals-$(DETAILED_VERSION).pdf
 	@: # Check build
 	$Q test ! -r /dev/fuse || time $(RELEASE_APPIMAGE) --quitstartup
 
