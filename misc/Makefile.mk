@@ -271,11 +271,15 @@ upload-nightly:
 # == build-assets ==
 build-assets:
 	$Q test -n "$$DETAILED_VERSION" -a -r ./NEWS.build
-	@: # Create out-of-tree build directory, checkout current HEAD
+	@: # Clear out-of-tree build directory (but keep .ccache/), note that
+	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
 	$Q BUILDHEAD=`git rev-parse HEAD`						\
+		&& rm -rf .tmp.ccache							\
 		&& cd $(RELEASE_OOTBUILD)						\
-		&& ( $(RELEASE_CONTINUATION) || 					\
-			(rm -rf * .[^.]* ..?* && git clone $(abspath .git) .) )		\
+		&& (mv .ccache/ $(abspath .tmp.ccache) || : ) 2>/dev/null		\
+		&& rm -rf * .[^.]* ..?*							\
+		&& git clone $(abspath .git) .						\
+		&& (mv $(abspath .tmp.ccache) .ccache || : ) 2>/dev/null		\
 		&& git checkout -f "$$BUILDHEAD"
 	$Q mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
 	@: # Build binaries with different INSNs in parallel, delete tag on error
