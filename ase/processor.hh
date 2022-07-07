@@ -7,6 +7,7 @@
 #include <ase/datautils.hh>
 #include <ase/properties.hh>
 #include <ase/engine.hh>
+#include <ase/atomics.hh>
 #include <any>
 
 namespace Ase {
@@ -127,6 +128,7 @@ private:
   std::vector<PParam>      params_; // const once is_initialized()
   std::vector<OConnection> outputs_;
   EventStreams            *estreams_ = nullptr;
+  AtomicBits              *atomic_bits_ = nullptr;
   uint64_t                 render_stamp_ = 0;
   const PParam*      find_pparam        (Id32 paramid) const;
   const PParam*      find_pparam_       (ParamId paramid) const;
@@ -201,7 +203,11 @@ protected:
   MidiEventRange   get_event_input      ();
   void             prepare_event_output ();
   MidiEventStream& get_event_output     ();
+  // Atomic notification bits
+  void             atomic_bits_resize (size_t count);
+  bool             atomic_bit_notify  (size_t nth);
 public:
+  AtomicBits::Iter atomic_bits_iter   (size_t pos = 0) const;
   using MakeProcessor = AudioProcessorP (*) (AudioEngine&);
   using MaybeParamId = std::pair<ParamId,bool>;
   static const String GUIONLY;     ///< ":G:r:w:" - GUI READABLE WRITABLE

@@ -632,6 +632,46 @@ monotonic_counter ()
   return global_monotonic_counter++;
 }
 
+// == Stopwatch ==
+/// Automatically start stop watch.
+Stopwatch::Stopwatch (const String &msg)
+{
+  start (msg);
+}
+
+/// Start or restart stop watch, printing `msg` later on.
+void
+Stopwatch::start (const String &msg)
+{
+  if (!msg.empty())
+    msg_ = msg;
+  start_ = timestamp_realtime();
+}
+
+/// Stop stop watch, print `msg`.
+void
+Stopwatch::stop (const String &msg)
+{
+  end_ = timestamp_realtime();
+  String pmsg = msg.empty() ? msg_ : "";
+  if (!pmsg.empty())
+    printerr ("%s: %.6fs\n", pmsg, seconds());
+}
+
+/// Provide seconds elapsed between start() and stop().
+double
+Stopwatch::seconds() const
+{
+  return (end_ - start_) * 0.000001;
+}
+
+/// Stop and print a previous `msg` if still running.
+Stopwatch::~Stopwatch()
+{
+  if (end_ == 0)
+    stop();
+}
+
 // == program and executable names ==
 static std::string
 get_executable_path()

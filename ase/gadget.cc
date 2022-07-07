@@ -142,16 +142,6 @@ GadgetImpl::name (String newname)
   emit_event ("notify", "name");
 }
 
-PropertyP
-GadgetImpl::access_property (String ident)
-{
-  PropertyS props = access_properties();
-  for (const auto &p : props)
-    if (ident == p->identifier())
-      return p;
-  return {};
-}
-
 PropertyS
 GadgetImpl::access_properties ()
 {
@@ -168,6 +158,15 @@ Gadget::list_properties ()
   for (const PropertyP &prop : props)
     names.push_back (prop->identifier());
   return names;
+}
+
+PropertyP
+Gadget::access_property (String ident)
+{
+  for (const auto &p : access_properties())
+    if (p->identifier() == ident)
+      return p;
+  return {};
 }
 
 Value

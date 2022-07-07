@@ -35,6 +35,19 @@ struct ClapParamUpdate {
 };
 using ClapParamUpdateS = std::vector<ClapParamUpdate>;
 
+// == ClapParamInfo ==
+struct ClapParamInfo {
+  clap_id  param_id = CLAP_INVALID_ID; // uint32_t
+  uint32_t flags = 0; // clap_param_info_flags
+  String ident, name, module;
+  double min_value = NAN, max_value = NAN, default_value = NAN, current_value = NAN;
+  String min_value_text, max_value_text, default_value_text, current_value_text;
+  /*ctor*/      ClapParamInfo ();
+  void          unset         ();
+  static String hints_from_param_info_flags (clap_param_info_flags flags);
+};
+using ClapParamInfoS = std::vector<ClapParamInfo>;
+
 // == ClapPluginHandle ==
 class ClapPluginHandle : public std::enable_shared_from_this<ClapPluginHandle> {
 public:
@@ -50,25 +63,30 @@ protected:
   std::vector<clap_note_port_info_t> note_iport_infos_, note_oport_infos_;
   std::vector<clap_audio_buffer_t> audio_inputs_, audio_outputs_;
   std::vector<float*> data32ptrs_;
-  explicit                    ClapPluginHandle  (const ClapPluginDescriptor &descriptor);
-  virtual                    ~ClapPluginHandle  ();
+  explicit                    ClapPluginHandle   (const ClapPluginDescriptor &descriptor);
+  virtual                    ~ClapPluginHandle   ();
 public:
-  String                      clapid            () const { return descriptor.id; }
-  virtual void                load_state        (StreamReaderP blob, const ClapParamUpdateS &updates) = 0;
-  virtual void                save_state        (String &blobfilename, ClapParamUpdateS &updates) = 0;
-  virtual void                params_changed    () = 0;
-  virtual void                param_updates     (const ClapParamUpdateS &updates) = 0;
-  virtual bool                activate          () = 0;
-  virtual bool                activated         () const = 0;
-  virtual void                deactivate        () = 0;
-  virtual void                show_gui          () = 0;
-  virtual void                hide_gui          () = 0;
-  virtual bool                gui_visible       () = 0;
-  virtual bool                supports_gui      () = 0;
-  virtual void                destroy_gui       () = 0;
-  virtual void                destroy           () = 0;
-  virtual AudioProcessorP     audio_processor   () = 0;
-  static ClapPluginHandleP    make_clap_handle  (const ClapPluginDescriptor &descriptor, AudioProcessorP audio_processor);
+  String                      clapid             () const { return descriptor.id; }
+  virtual void                load_state         (StreamReaderP blob, const ClapParamUpdateS &updates) = 0;
+  virtual void                save_state         (String &blobfilename, ClapParamUpdateS &updates) = 0;
+  virtual bool                param_set_property (clap_id param_id, PropertyP prop) = 0;
+  virtual PropertyP           param_get_property (clap_id param_id) = 0;
+  virtual double              param_get_value    (clap_id param_id, String *text = nullptr) = 0;
+  virtual bool                param_set_value    (clap_id param_id, double v) = 0;
+  virtual bool                param_set_value    (clap_id param_id, const String &stringvalue) = 0;
+  virtual ClapParamInfoS      param_infos        () = 0;
+  virtual void                params_changed     () = 0;
+  virtual bool                activate           () = 0;
+  virtual bool                activated          () const = 0;
+  virtual void                deactivate         () = 0;
+  virtual void                show_gui           () = 0;
+  virtual void                hide_gui           () = 0;
+  virtual bool                gui_visible        () = 0;
+  virtual bool                supports_gui       () = 0;
+  virtual void                destroy_gui        () = 0;
+  virtual void                destroy            () = 0;
+  virtual AudioProcessorP     audio_processor    () = 0;
+  static ClapPluginHandleP    make_clap_handle   (const ClapPluginDescriptor &descriptor, AudioProcessorP audio_processor);
   static CString              audio_processor_type();
   friend class ClapAudioWrapper;
 };

@@ -3,6 +3,7 @@
 #include "jsonipc/jsonipc.hh"
 #include "strings.hh"
 #include "utils.hh"
+#include "regex.hh"
 #include "internal.hh"
 
 namespace Ase {
@@ -274,6 +275,130 @@ Properties::Text (const String &ident, String *v, const String &label, const Str
   propp = ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
                      .hints = construct_hints (hints, "text:choice") }, v, vl);
   return propp;
+}
+
+// == guess_nick ==
+using String3 = std::tuple<String,String,String>;
+
+// Fast version of Re::search (R"(\d)")
+static ssize_t
+search_first_digit (const String &s)
+{
+  for (size_t i = 0; i < s.size(); ++i)
+    if (isdigit (s[i]))
+      return i;
+  return -1;
+}
+
+// Fast version of Re::search (R"(\d\d?\b)")
+static ssize_t
+search_last_digits (const String &s)
+{
+  for (size_t i = 0; i < s.size(); ++i)
+    if (isdigit (s[i])) {
+      if (isdigit (s[i+1]) && !isalnum (s[i+2]))
+        return i;
+      else if (!isalnum (s[i+1]))
+        return i;
+    }
+  return -1;
+}
+
+// Exract up to 3 useful letters or words from label
+static String3
+make_nick3 (const String &label)
+{
+  // split words
+  const StringS words = Re::findall (R"(\b\w+)", label); // TODO: allow Re caching
+
+  // single word nick, give precedence to digits
+  if (words.size() == 1) {
+    const ssize_t d = search_first_digit (words[0]);
+    if (d > 0 && isdigit (words[0][d + 1]))                     // A11
+      return { words[0].substr (0, 1), words[0].substr (d, 2), "" };
+    if (d > 0)                                                  // Aa1
+      return { words[0].substr (0, 2), words[0].substr (d, 1), "" };
+    else                                                        // Aaa
+      return { words[0].substr (0, 3), "", "" };
+  }
+
+  // two word nick, give precedence to second word digits
+  if (words.size() == 2) {
+    const ssize_t e = search_last_digits (words[1]);
+    if (e >= 0 && isdigit (words[1][e+1]))                      // A22
+      return { words[0].substr (0, 1), words[1].substr (e, 2), "" };
+    if (e > 0)                                                  // AB2
+      return { words[0].substr (0, 1), words[1].substr (0, 1), words[1].substr (e, 1) };
+    if (e == 0)                                                 // Aa2
+      return { words[0].substr (0, 2), words[1].substr (e, 1), "" };
+    const ssize_t d = search_first_digit (words[0]);
+    if (d > 0)                                                  // A1B
+      return { words[0].substr (0, 1), words[0].substr (d, 1), words[1].substr (0, 1) };
+    if (words[1].size() > 1)                                    // ABb
+      return { words[0].substr (0, 1), words[1].substr (0, 2), "" };
+    else                                                        // AaB
+      return { words[0].substr (0, 2), words[1].substr (0, 1), "" };
+  }
+
+  // 3+ word nick
+  if (words.size() >= 3) {
+    ssize_t i, e = -1; // digit pos in last possible word
+    for (i = words.size() - 1; i > 1; i--) {
+      e = search_last_digits (words[i]);
+      if (e >= 0)
+        break;
+    }
+    if (e >= 0 && isdigit (words[i][e + 1]))                    // A66
+      return { words[0].substr (0, 1), words[i].substr (e, 2), "" };
+    if (e >= 0 && i + 1 < words.size())                         // A6G
+      return { words[0].substr (0, 1), words[i].substr (e, 1), words[i+1].substr (0, 1) };
+    if (e > 0)                                                  // AF6
+      return { words[0].substr (0, 1), words[i].substr (0, 1), words[i].substr (e, 1) };
+    if (e == 0 && i >= 3)                                       // AE6
+      return { words[0].substr (0, 1), words[i-1].substr (0, 1), words[i].substr (e, 1) };
+    if (e == 0 && i >= 2)                                       // AB6
+      return { words[0].substr (0, 1), words[1].substr (0, 1), words[i].substr (e, 1) };
+    if (e == 0)                                                 // Aa6
+      return { words[0].substr (0, 2), words[i].substr (e, 1), "" };
+    if (words.back().size() >= 2)                               // AFf
+      return { words[0].substr (0, 1), words.back().substr (0, 2), "" };
+    else                                                        // AEF
+      return { words[0].substr (0, 1), words[words.size()-1].substr (0, 1), words.back().substr (0, 1) };
+  }
+
+  // pathological name
+  return { words[0].substr (0, 3), "", "" };
+}
+
+// Re::sub (R"(([a-zA-Z])([0-9]))", "$1 $2", s)
+static String
+spaced_nums (String s)
+{
+  for (ssize_t i = s.size() - 1; i > 0; i--)
+    if (isdigit (s[i]) && !isdigit (s[i-1]) && !isspace (s[i-1]))
+      s.insert (s.begin() + i, ' ');
+  return s;
+}
+
+/// Create a few letter nick name from a multi word property label.
+String
+property_guess_nick (const String &property_label)
+{
+  // seperate numbers from words, increases word count
+  String string = spaced_nums (property_label);
+
+  // use various letter extractions to construct nick portions
+  const auto& [a, b, c] = make_nick3 (string);
+
+  // combine from right to left to increase word variance
+  String nick;
+  if (c.size() > 0)
+    nick = a.substr (0, 1) + b.substr (0, 1) + c.substr (0, 1);
+  else if (b.size() > 0)
+    nick = a.substr (0, 1) + b.substr (0, 2);
+  else
+    nick = a.substr (0, 3);
+  return nick;
 }
 
 } // Ase

@@ -16,6 +16,8 @@ struct GroupId : CString {
   using CString::operator!=;
 };
 
+String property_guess_nick (const String &property_label);
+
 /// Implementation namespace for Property helpers
 namespace Properties {
 

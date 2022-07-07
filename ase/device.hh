@@ -25,7 +25,6 @@ public:
   explicit        DeviceImpl           (const String &aseid, AudioProcessor::StaticInfo, AudioProcessorP);
   AudioComboP     audio_combo          () const         { return combo_; }
   DeviceInfo      device_info          () override      { return info_; }
-  PropertyP       access_property      (String ident) override;
   PropertyS       access_properties    () override;
   bool            is_combo_device      () override      { return combo_ != nullptr; }
   DeviceS         list_devices         () override;

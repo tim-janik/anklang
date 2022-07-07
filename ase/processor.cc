@@ -218,6 +218,7 @@ AudioProcessor::~AudioProcessor ()
 {
   remove_all_buses();
   engine_.processor_count_ -= 1;
+  delete atomic_bits_;
 }
 
 /// Convert MIDI note to Hertz according to the current MusicalTuning.
@@ -658,6 +659,33 @@ AudioProcessor::param_value_from_text (Id32 paramid, const String &text) const
           return i;
     }
   return string_to_double (text);
+}
+
+/// Prepare `count` bits for atomic notifications.
+void
+AudioProcessor::atomic_bits_resize (size_t count)
+{
+  if (atomic_bits_)
+    delete atomic_bits_;
+  atomic_bits_ = new AtomicBits (count);
+}
+
+/// Set the nth atomic notification bit, return if enotify_enqueue_mt() is needed.
+bool
+AudioProcessor::atomic_bit_notify (size_t nth)
+{
+  assert_return (atomic_bits_ && nth < atomic_bits_->size() * 64, false);
+  const bool last = atomic_bits_->iter (nth).set (1);
+  const bool need_wakeup = last == false;
+  return need_wakeup;
+}
+
+/// Allow iterations over the atomic bits.
+AtomicBits::Iter
+AudioProcessor::atomic_bits_iter (size_t pos) const
+{
+  return_unless (atomic_bits_ && pos < atomic_bits_->size() * 64, {});
+  return atomic_bits_->iter (pos);
 }
 
 /// Check if AudioProcessor has been properly intiialized (so the parameter set is fixed).

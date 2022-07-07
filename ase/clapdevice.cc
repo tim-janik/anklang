@@ -4,6 +4,7 @@
 #include "project.hh"
 #include "processor.hh"
 #include "compress.hh"
+#include "properties.hh"
 #include "storage.hh"
 #include "jsonipc/jsonipc.hh"
 #include "path.hh"
@@ -18,6 +19,92 @@
 
 namespace Ase {
 
+// == ClapPropertyImpl ==
+struct ClapPropertyImpl : public Property, public virtual EmittableImpl {
+  ClapDeviceImplP device_;
+  clap_id  param_id = CLAP_INVALID_ID; // uint32_t
+  uint32_t flags = 0; // clap_param_info_flags
+  String ident_, label_, module_;
+  double min_value = NAN, max_value = NAN, default_value = NAN;
+public:
+  String   identifier     () override   { return ident_; }
+  String   label          () override   { return label_; }
+  String   nick           () override   { return property_guess_nick (label_); }
+  String   unit           () override   { return ""; }
+  String   hints          () override   { return ClapParamInfo::hints_from_param_info_flags (flags); }
+  String   group          () override   { return module_; }
+  String   blurb          () override   { return ""; }
+  String   description    () override   { return ""; }
+  double   get_min        () override   { return min_value; }
+  double   get_max        () override   { return max_value; }
+  double   get_step       () override   { return is_stepped() ? 1 : 0; }
+  bool     is_numeric     () override   { return true; }
+  bool     is_stepped     ()            { return strstr (hints().c_str(), ":stepped:"); }
+  void     reset          () override   { set_value (default_value); }
+  ClapPropertyImpl (ClapDeviceImplP device, const ClapParamInfo info) :
+    device_ (device)
+  {
+    param_id = info.param_id;
+    flags = info.flags;
+    ident_ = info.ident;
+    label_ = info.name;
+    module_ = info.module;
+    min_value = info.min_value;
+    max_value = info.max_value;
+    default_value = info.default_value;
+  }
+  ChoiceS
+  choices () override
+  {
+    const double mi = get_min(), ma = get_max();
+    const bool down = ma < mi;
+    return_unless (is_stepped(), {});
+    ChoiceS choices;
+    if (ma - mi <= 100)
+      for (double d = mi; down ? d > ma : d < ma; d += down ? -1 : +1) {
+        const String ident = string_format ("%f", d);
+        choices.push_back ({ ident, ident });
+      }
+    return choices;
+  }
+  double
+  get_normalized () override
+  {
+    const double mi = get_min(), ma = get_max();
+    const double value = get_value().as_double();
+    return (value - mi) / (ma - mi);
+  }
+  bool
+  set_normalized (double v) override
+  {
+    const double mi = get_min(), ma = get_max();
+    const double value = v * (ma - mi) + mi;
+    return set_value (value);
+  }
+  String
+  get_text () override
+  {
+    String txt;
+    device_->handle_->param_get_value (param_id, &txt);
+    return txt;
+  }
+  bool
+  set_text (String vstr) override
+  {
+    return device_->handle_->param_set_value (param_id, vstr);
+  }
+  Value
+  get_value () override
+  {
+    return Value (device_->handle_->param_get_value (param_id));
+  }
+  bool
+  set_value (const Value &val) override
+  {
+    return device_->handle_->param_set_value (param_id, val.as_double());
+  }
+};
+
 // == ClapDeviceImpl ==
 JSONIPC_INHERIT (ClapDeviceImpl, Device);
 
@@ -26,7 +113,7 @@ ClapDeviceImpl::ClapDeviceImpl (ClapPluginHandleP claphandle) :
 {
   assert_return (claphandle != nullptr);
   paramschange_ = on_event ("params:change", [this] (const Event &event) {
-    params_change (event);
+    proc_params_change (event);
   });
 }
 
@@ -127,8 +214,29 @@ ClapDeviceImpl::device_info ()
   return clap_device_info (handle_->descriptor);
 }
 
+PropertyS
+ClapDeviceImpl::access_properties ()
+{
+  // reuse existing properties
+  ClapDeviceImplP selfp = shared_ptr_cast<ClapDeviceImpl> (this);
+  PropertyS properties;
+  for (const ClapParamInfo &pinfo : handle_->param_infos())
+    {
+      auto aseprop = handle_->param_get_property (pinfo.param_id);
+      if (aseprop)
+        properties.push_back (aseprop);
+      else
+        {
+          auto prop = std::make_shared<ClapPropertyImpl> (selfp, pinfo);
+          handle_->param_set_property (prop->param_id, prop);
+          properties.push_back (prop);
+        }
+    }
+  return properties;
+}
+
 void
-ClapDeviceImpl::params_change (const Event &event)
+ClapDeviceImpl::proc_params_change (const Event &event)
 {
   if (handle_)
     handle_->params_changed();

@@ -839,9 +839,9 @@ memfree (char *memread_mem)
 }
 
 bool
-memwrite (const String &filename, size_t len, const uint8 *bytes)
+memwrite (const String &filename, size_t len, const uint8 *bytes, bool append)
 {
-  FILE *file = fopen (filename.c_str(), "w");
+  FILE *file = fopen (filename.c_str(), append ? "a" : "w");
   if (!file)
     return false;
   const size_t nbytes = fwrite (bytes, 1, len, file);
@@ -876,6 +876,14 @@ stringwrite (const String &filename, const String &data, bool mkdirs_)
   if (mkdirs_)
     mkdirs (dirname (filename), 0750);
   return memwrite (filename, data.size(), (const uint8*) data.data());
+}
+
+bool
+stringappend (const String &filename, const String &data, bool mkdirs_)
+{
+  if (mkdirs_)
+    mkdirs (dirname (filename), 0750);
+  return memwrite (filename, data.size(), (const uint8*) data.data(), true);
 }
 
 } // Path
