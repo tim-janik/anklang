@@ -1,3 +1,4 @@
 /config-defaults\.mk
 /out/
 /TAGS
+/\.dlcache/

@@ -49,12 +49,18 @@ RUN retry apt-get install -y \
 RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
 	apt-get install -y nodejs
 
+# Install TeX (+615MB) if needed
+ARG TEX
+RUN test "$TEX" != y || retry apt-get install -y \
+    texlive-xetex fonts-sil-charis texlive-fonts-extra
+
 # Cleanup
 RUN apt-get clean
 
-# Provide out-of-tree build directory
+# Provide out-of-tree build directory (docker volume mount point)
 RUN mkdir /ootbuild/
 ENV OOTBUILD /ootbuild/
+ENV CCACHE_DIR /ootbuild/.ccache/
 
 # make sure getpwuid() works, prepare writable ~/
 ARG USERGROUP

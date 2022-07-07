@@ -244,8 +244,10 @@ build-nightly:
 		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
 		&& echo 						>> ./NEWS.build \
 		&& cat ./NEWS.md					>> ./NEWS.build
-	$Q DETAILED_VERSION=`misc/version.sh --nightly` \
-		VERSION_SH_NIGHTLY=true $(MAKE) build-assets
+	$Q export DETAILED_VERSION=`misc/version.sh --nightly` \
+		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
+		  VERSION_SH_NIGHTLY=true \
+	   && $(MAKE) build-assets
 
 # == upload-nightly ==
 upload-nightly:
@@ -258,22 +260,25 @@ upload-nightly:
 	$Q echo						>> $(RELEASE_SSEDIR)/release-message
 	$Q echo 'Anklang $(DETAILED_VERSION)'		>> $(RELEASE_SSEDIR)/release-message
 	$Q hub release delete 'Nightly' ; git push origin ':Nightly' || :
-	$Q git push origin 'Nightly' \
-		&& hub release create --prerelease		\
-		-F '$(RELEASE_SSEDIR)/release-message'		\
-		-a '$(RELEASE_CHANGELOG)'			\
-		-a '$(RELEASE_APPIMAGE)'			\
-		-a '$(RELEASE_DEB)'				\
+	$Q git push origin 'Nightly'					\
+		&& ASSETS=( $(RELEASE_SSEDIR)/*"$(DETAILED_VERSION)"* )	\
+		&& hub release create --prerelease			\
+		-F '$(RELEASE_SSEDIR)/release-message'			\
+		"$${ASSETS[@]/#/-a}"					\
 		'Nightly'
 
 # == build-assets ==
 build-assets:
 	$Q test -n "$$DETAILED_VERSION" -a -r ./NEWS.build
-	@: # Create out-of-tree build directory, checkout current HEAD
+	@: # Clear out-of-tree build directory (but keep .ccache/), note that
+	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
 	$Q BUILDHEAD=`git rev-parse HEAD`						\
+		&& rm -rf .tmp.ccache							\
 		&& cd $(RELEASE_OOTBUILD)						\
-		&& ( $(RELEASE_CONTINUATION) || 					\
-			(rm -rf * .[^.]* ..?* && git clone $(abspath .git) .) )		\
+		&& (mv .ccache/ $(abspath .tmp.ccache) || : ) 2>/dev/null		\
+		&& rm -rf * .[^.]* ..?*							\
+		&& git clone $(abspath .git) .						\
+		&& (mv $(abspath .tmp.ccache) .ccache || : ) 2>/dev/null		\
 		&& git checkout -f "$$BUILDHEAD"
 	$Q mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
 	@: # Build binaries with different INSNs in parallel, delete tag on error
@@ -285,6 +290,13 @@ build-assets:
 		INSN=sse builddir=out-sse				\
 		anklang-deb						\
 		appimage
+	@: # Create release manuals (if present)
+	$Q cd $(RELEASE_SSEDIR)						\
+	   && test ! -f doc/anklang-manual.pdf				\
+	   || cp doc/anklang-manual.pdf anklang-manual-$(DETAILED_VERSION).pdf
+	$Q cd $(RELEASE_SSEDIR)						\
+	   && test ! -f doc/anklang-internals.pdf			\
+	   || cp doc/anklang-internals.pdf anklang-internals-$(DETAILED_VERSION).pdf
 	@: # Check build
 	$Q test ! -r /dev/fuse || time $(RELEASE_APPIMAGE) --quitstartup
 

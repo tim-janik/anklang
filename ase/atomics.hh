@@ -106,7 +106,7 @@ public:
     Iter&    operator^= (bool toggle) { xor_ (toggle); return *this; }
     Iter&    operator|= (bool toggle) { if (toggle) set (1); return *this; }
     Iter&    operator&= (bool toggle) { if (!toggle) set (0); return *this; }
-    Iter&    operator++ () { if (!done()) { s_ = ++s_ & 63; u_ += s_ == 0; } return *this;}
+    Iter&    operator++ () { if (!done()) { s_ = (s_ + 1) & 63; u_ += s_ == 0; } return *this;}
     Iter&    operator++ (int) { return this->operator++(); }
     bool     operator== (const Iter &o) const { return (done() && o.done()) || position() == o.position(); }
     bool     operator!= (const Iter &o) const { return !operator== (o); }
