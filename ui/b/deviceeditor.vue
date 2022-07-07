@@ -133,6 +133,24 @@ async function property_groups (asyncpropertylist) {
 	}
       grouplists[groupname].push (p);
     }
+  // split big groups
+  const GMAX = 64;
+  for (const group of [...groupnames]) // allow in-loop changes to groupnames
+    if (grouplists[group].length > GMAX) {
+      const PGCOUNT = Math.trunc (grouplists[group].length / GMAX);
+      const pages = [], pagenames = [];
+      for (let i = 0; i < PGCOUNT; i++)
+	pages.push (grouplists[group].splice (0, GMAX));
+      if (grouplists[group].length)
+	pages.push (grouplists[group]);
+      delete grouplists[group];
+      for (let i = 0; i < pages.length; i++) {
+	const pname = (group + ' Page ' + (1 + i)).trim();
+	pagenames.push (pname);
+	grouplists[pname] = pages[i];
+      }
+      groupnames.splice (groupnames.indexOf (group), 1, ...pagenames);
+    }
   // create group objects
   const grouplist = [];
   for (const name of groupnames)
