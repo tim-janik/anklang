@@ -244,8 +244,10 @@ build-nightly:
 		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
 		&& echo 						>> ./NEWS.build \
 		&& cat ./NEWS.md					>> ./NEWS.build
-	$Q DETAILED_VERSION=`misc/version.sh --nightly` \
-		VERSION_SH_NIGHTLY=true $(MAKE) build-assets
+	$Q export DETAILED_VERSION=`misc/version.sh --nightly` \
+		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
+		  VERSION_SH_NIGHTLY=true \
+	   && $(MAKE) build-assets
 
 # == upload-nightly ==
 upload-nightly:
