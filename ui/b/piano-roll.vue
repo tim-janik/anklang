@@ -127,8 +127,7 @@ $scrollarea-bg: transparent;
 <template>
 
   <c-grid class="b-piano-roll" tabindex="0"
-	  @keydown="piano_ctrl.keydown ($event)" @pointerdown="Util.drag_event"
-	  @pointermove="move_event"
+	  @keydown="piano_ctrl.keydown ($event)"
 	  @focus="focuschange" @blur="focuschange" >
     <!-- VTitle, COL-1 -->
     <span class="-vtitle" style="grid-row: 1/-1"  > VTitle </span>
@@ -164,7 +163,9 @@ $scrollarea-bg: transparent;
     <div class="-overflow-hidden -notes-wrapper" style="grid-column: 3; grid-row: 2" ref="scrollarea"
 	 @contextmenu.prevent="pianorollmenu_popup ($event)"
 	 @wheel.stop="wheel_event ($event, 'notes')" >
-      <canvas class="b-piano-roll-notes tabular-nums" @click="piano_ctrl.notes_click ($event)" ref="notes_canvas" ></canvas>
+      <canvas class="b-piano-roll-notes tabular-nums" ref="notes_canvas"
+	      @pointerdown="piano_roll_notes_pointerdown ($event)" @click="piano_roll_notes_click ($event)"
+      ></canvas>
       <b-contextmenu ref="pianorollmenu" keepmounted :showicons="true"
 		     class="b-piano-roll-contextmenu" mapname="Piano Roll"
 		     @click="pianorollmenu_click" :check="pianorollmenu_check" >
@@ -181,7 +182,7 @@ $scrollarea-bg: transparent;
     <div class="-vscrollborder" style="grid-column: 4; grid-row: 1/4" ></div>
 
     <!-- VScrollbar, COL-5 -->
-    <div class="-vscrollbar" ref="vscrollbar" style="grid-column: 5; grid-row: 2" @scroll="scrollbar_scroll" >
+    <div class="-vscrollbar" ref="vscrollbar" style="grid-column: 5; grid-row: 2" @scroll="scrollbar_scroll ($event)" >
       <div class="-vscrollbar-area" ref="vscrollbar_area" ></div>
     </div>
 
@@ -189,7 +190,7 @@ $scrollarea-bg: transparent;
     <div class="-hscrollborder" style="grid-column: 2/4; grid-row: 3" ></div>
 
     <!-- HScrollbar, ROW-4 -->
-    <div class="-hscrollbar" ref="hscrollbar" style="grid-column: 3; grid-row: 4" @scroll="scrollbar_scroll" >
+    <div class="-hscrollbar" ref="hscrollbar" style="grid-column: 3; grid-row: 4" @scroll="scrollbar_scroll ($event)" >
       <div class="-hscrollbar-area" ref="hscrollbar_area" ></div>
     </div>
 
@@ -262,6 +263,9 @@ export default {
   unmounted() {
     this.resize_observer.disconnect();
     this.piano_ctrl = null;
+    if (this.pointer_drag)
+      this.pointer_drag.destroy();
+    this.pointer_drag = null;
   },
   methods: {
     focuschange (ev) {
@@ -271,6 +275,30 @@ export default {
 	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || document.activeElement == this.$el);
       if (this.$refs.pianorollmenu)
 	this.$refs.pianorollmenu.map_kbd_hotkeys (this.entered || document.activeElement == this.$el);
+    },
+    piano_roll_notes_click (event) {
+      if (document.activeElement != this.$el)
+	this.$el.focus();
+      return this.piano_ctrl.notes_click (event);
+    },
+    piano_roll_notes_pointerdown (event) {
+      if (document.activeElement != this.$el)
+	this.$el.focus();
+      const methods = {
+	'S0': this.piano_ctrl.drag_select.bind (this.piano_ctrl),
+      };
+      if (this.pointer_drag) {
+	this.pointer_drag.pointercancel (event);
+	this.pointer_drag.destroy();
+	this.pointer_drag = null;
+      }
+      if (!this.msrc)
+	return false;
+      const combo = this.pianotool + event.button;
+      const method = methods[combo];
+      if (method) {
+	this.pointer_drag = new Util.PointerDrag (this, event, method);
+      }
     },
     piano_roll_scripts() {
       this.scripts_ = Script.registry_keys ('PianoRoll');
@@ -412,11 +440,14 @@ export default {
 	this.auto_scrolls[this.msrc.$id] = this.snapshot_zoomscroll();
       this.piano_ctrl.dom_update();
     },
-    scrollbar_scroll() {
+    scrollbar_scroll (event) {
       this.dom_queue_draw();
       // store new zoom & scroll positions
       if (this.msrc && this.msrc.$id && this.auto_scrolls)
 	this.auto_scrolls[this.msrc.$id] = this.snapshot_zoomscroll();
+      // adjust selection, etc
+      if (this.pointer_drag)
+	this.pointer_drag.scroll (event);
     },
     dom_draw() {
       if (this.layout)
