@@ -288,6 +288,9 @@ export default {
 	this.$el.focus();
       const methods = {
 	'S0': this.piano_ctrl.drag_select.bind (this.piano_ctrl),
+	'H0': this.piano_ctrl.drag_select.bind (this.piano_ctrl),
+	'P0': this.piano_ctrl.drag_paint.bind (this.piano_ctrl),
+	'E0': this.piano_ctrl.drag_erase.bind (this.piano_ctrl),
       };
       if (this.pointer_drag) {
 	this.pointer_drag.pointercancel (event);
@@ -308,12 +311,12 @@ export default {
     },
     piano_roll_actions() {
       const actions = [];
-      for (const actionfunc of PianoCtrl.list_actions()) {
-	if (actionfunc.label) {
-	  const label = actionfunc.label;
-	  const kbd = actionfunc.kbd;
-	  const ic = actionfunc.ic;
-	  actions.push ({ label, weakid: 'weakid:' + Util.weakid (actionfunc), kbd, ic });
+      for (const action of PianoCtrl.list_actions()) {
+	if (action.label) {
+	  const label = action.label;
+	  const kbd = action.kbd;
+	  const ic = action.ic;
+	  actions.push ({ label, weakid: 'weakid:' + Util.weakid (action), kbd, ic });
 	}
       }
       return actions;
@@ -331,9 +334,9 @@ export default {
       if (uri.search (/^[0-9a-z-]+@[0-9a-z-]+$/) === 0)
 	return this.pianoroll_script (uri);
       if (uri.startsWith ('weakid:') && this.msrc) {
-	const actionfunc = Util.weakid_lookup (Number (uri.substr (7)));
-	if (actionfunc instanceof Function)
-	  return actionfunc (event, this.msrc);
+	const action = Util.weakid_lookup (Number (uri.substr (7)));
+	if (action.func instanceof Function)
+	  return action.func (action, this, this.msrc, event);
       }
       console.trace ("piano-roll.vue:", uri, event);
     },
@@ -765,6 +768,8 @@ function render_notes()
     }
 
   // paint notes
+  if (!this.msrc)
+    return;
   const tickscale = layout.tickscale;
   const note_color = csp ('--piano-roll-note-color');
   const note_selected_color = csp ('--piano-roll-note-focus-color');
