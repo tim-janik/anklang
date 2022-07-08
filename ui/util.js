@@ -142,7 +142,10 @@ export const SCROLL = "SCROLL";
 export class PointerDrag {
   constructor (vuecomponent, event, method = 'drag_event') {
     this.vm = vuecomponent;
-    this.drag_method = this.vm[method].bind (this.vm);
+    if (typeof (method) === 'function')
+      this.drag_method = method;
+    else
+      this.drag_method = this.vm[method].bind (this.vm);
     this.el = event.target;
     this.pointermove = this.pointermove.bind (this);
     this.el.addEventListener ('pointermove', this.pointermove);
