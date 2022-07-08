@@ -137,10 +137,12 @@ export const START = "START";
 export const STOP = "STOP";
 export const CANCEL = "CANCEL";
 export const MOVE = "MOVE";
+export const SCROLL = "SCROLL";
 
-class PointerDrag {
-  constructor (vuecomponent, event) {
+export class PointerDrag {
+  constructor (vuecomponent, event, method = 'drag_event') {
     this.vm = vuecomponent;
+    this.drag_method = this.vm[method].bind (this.vm);
     this.el = event.target;
     this.pointermove = this.pointermove.bind (this);
     this.el.addEventListener ('pointermove', this.pointermove);
@@ -158,7 +160,7 @@ class PointerDrag {
       this._disconnect (event);
     }
     if (this.el)
-      this.vm.drag_event (event, START);
+      this.drag_method (event, START);
     if (!this.el)
       this.destroy();
   }
@@ -190,14 +192,21 @@ class PointerDrag {
       {
 	event = event || new PointerEvent ('pointercancel');
 	this._disconnect (event);
-	this.vm.drag_event (event, CANCEL);
+	this.drag_method (event, CANCEL);
 	this.el = null;
       }
     this.vm = null;
   }
+  scroll (event) {
+    if (this.el)
+      this.drag_method (event, SCROLL);
+    //event.preventDefault();
+    //event.stopPropagation();
+    this.seen_move = true;
+  }
   pointermove (event) {
     if (this.el)
-      this.vm.drag_event (event, MOVE);
+      this.drag_method (event, MOVE);
     event.preventDefault();
     event.stopPropagation();
     this.seen_move = true;
@@ -206,7 +215,7 @@ class PointerDrag {
     if (!this.el)
       return;
     this._disconnect (event);
-    this.vm.drag_event (event, STOP);
+    this.drag_method (event, STOP);
     this.destroy (event);
     event.preventDefault();
     event.stopPropagation();
@@ -215,7 +224,7 @@ class PointerDrag {
     if (!this.el)
       return;
     this._disconnect (event);
-    this.vm.drag_event (event, CANCEL);
+    this.drag_method (event, CANCEL);
     this.destroy (event);
     event.preventDefault();
     event.stopPropagation();
