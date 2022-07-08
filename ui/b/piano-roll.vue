@@ -528,6 +528,7 @@ function piano_layout () {
     yoffset -= 2 * layout.thickness; // leave room for overlapping piano key borders
     return yoffset;
   };
+  layout.yscroll = () => layout.yoffset() / layout.DPR;
   // hscrollbar setup
   px = (this.hscrollbar_width * (hscrollbar_proportion + 1)) + 'px';
   if (this.$refs.hscrollbar_area.style.width != px)
@@ -535,10 +536,11 @@ function piano_layout () {
       layout_changed = true;
       this.$refs.hscrollbar_area.style.width = px;
     }
-  layout.xscroll = () => {
-    const xpos = this.$refs.hscrollbar.scrollLeft / (this.hscrollbar_width * hscrollbar_proportion);
-    return xpos * layout.virt_width - layout.hpad;
+  layout.xposition = () => {
+    const xscroll = this.$refs.hscrollbar.scrollLeft / (this.hscrollbar_width * hscrollbar_proportion);
+    return xscroll * layout.virt_width - layout.hpad;
   };
+  layout.xscroll = () => layout.xposition() / layout.DPR;
   // restore scroll & zoom
   if (this.auto_scrollto)
     {
@@ -549,7 +551,7 @@ function piano_layout () {
   // conversions
   layout.tick_from_x = css_x => {
     const xp = css_x * layout.DPR;
-    const tick = Math.round ((layout.xscroll() + xp) / layout.tickscale);
+    const tick = Math.round ((layout.xposition() + xp) / layout.tickscale);
     return tick;
   };
   layout.midinote_from_y = css_y => {
@@ -693,7 +695,7 @@ function render_notes()
   // line thickness and line cap
   ctx.lineWidth = th;
   ctx.lineCap = 'butt'; // chrome 'butt' has a 0.5 pixel bug, so we use fillRect
-  const lsx = layout.xscroll();
+  const lsx = layout.xposition();
 
   // draw half octave separators
   const semitone6 = csp ('--piano-roll-semitone6');
@@ -777,7 +779,7 @@ function render_timegrid (canvas, with_labels)
   const cstyle = getComputedStyle (canvas), gy1 = 0;
   const gy2 = canvas.height * (with_labels ? 0.5 : 0), gy3 = canvas.height * (with_labels ? 0.75 : 0);
   const ctx = canvas.getContext ('2d'), csp = cstyle.getPropertyValue.bind (cstyle);
-  const layout = this.layout, lsx = layout.xscroll(), th = layout.thickness;
+  const layout = this.layout, lsx = layout.xposition(), th = layout.thickness;
   const grid_main = csp ('--piano-roll-grid-main'), grid_sub = csp ('--piano-roll-grid-sub');
   const TPN64 = Util.PPQN / 16;			// Ticks per 64th note
   const TPD = TPN64 * 64 / signature[1];	// Ticks per denominator fraction
@@ -801,7 +803,7 @@ function render_timegrid (canvas, with_labels)
     stepping = [ bar_ticks, 0, 0 ];
   this.stepping = stepping;
 
-  // first 2^x aligned bar tick before/at xscroll
+  // first 2^x aligned bar tick before/at xposition
   const start_bar = floor ((lsx + layout.hpad) / (barjumps * bar_pixels));
   const start = start_bar * bar_ticks;
 
