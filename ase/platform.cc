@@ -653,9 +653,9 @@ void
 Stopwatch::stop (const String &msg)
 {
   end_ = timestamp_realtime();
-  String pmsg = msg.empty() ? msg_ : "";
+  String pmsg = msg.empty() ? msg_ : msg;
   if (!pmsg.empty())
-    printerr ("%s: %.6fs\n", pmsg, seconds());
+    printerr ("%s: %.6fms\n", pmsg, milliseconds());
 }
 
 /// Provide seconds elapsed between start() and stop().
@@ -663,6 +663,13 @@ double
 Stopwatch::seconds() const
 {
   return (end_ - start_) * 0.000001;
+}
+
+/// Provide milliseconds elapsed between start() and stop().
+double
+Stopwatch::milliseconds() const
+{
+  return (end_ - start_) * 0.001;
 }
 
 /// Stop and print a previous `msg` if still running.
