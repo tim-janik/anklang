@@ -48,7 +48,7 @@ public:
   int32          insert_note    (const ClipNote &note) override;
   bool           change_note    (const ClipNote &note) override;
   bool           toggle_note    (int32 id, bool selected) override;
-  int32          change_batch   (const ClipNoteS &notes) override;
+  int32          change_batch   (const ClipNoteS &notes, const String &undogroup) override;
   ASE_DEFINE_MAKE_SHARED (ClipImpl);
 };
 

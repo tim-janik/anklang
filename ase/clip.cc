@@ -4,6 +4,7 @@
 #include "jsonipc/jsonipc.hh"
 #include "project.hh"
 #include "serialize.hh"
+#include "platform.hh"
 #include "internal.hh"
 #include <atomic>
 
@@ -231,32 +232,41 @@ ClipImpl::toggle_note (int32 id, bool selected)
 }
 
 int32
-ClipImpl::change_batch (const ClipNoteS &batch)
+ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
 {
   /* the note batch must not introduce new ids and needs proper
    * merging with existing notes without note loss due to temporary
    * overlap.
    */
-  auto undoscope = undo_scope ("Change Notes");
+  auto undoscope = undo_scope (undogroup.empty() ? "Change Notes" : undogroup);
+  bool unchanged = true;
   // delete existig notes
   for (const auto &note : batch)
-    if (note.id > 0 && (note.duration == 0 || note.velocity == 0 || note.channel < 0))
+    if (note.id > 0 && (note.duration == 0 || note.velocity == 0 || note.channel < 0)) {
       remove_note_event (note);
+      unchanged = false;
+    }
   // move and shuffle exisiting notes *without* replacements (stashed via channel < 0)
   for (const auto &note : batch)
     if (note.id > 0 && note.duration > 0 && note.velocity > 0 && note.channel >= 0) {
+      const ClipNote *ce = unchanged ? notes_.lookup (note) : nullptr; // by id
+      if (ce && *ce == note)
+        continue; // still unchanged
+      else
+        unchanged = false;
       ClipNote ev = note;
       ev.channel -= 128;
       change_note (ev);
     }
   // "repair" stashed notes
   ClipNoteS stashed;
-  for (const auto &note : notes_)
-    if (note.channel < 0) {
-      ClipNote ev = note;
-      ev.channel += 128;
-      stashed.push_back (ev);
-    }
+  if (!unchanged)
+    for (const auto &note : notes_)
+      if (note.channel < 0) {
+        ClipNote ev = note;
+        ev.channel += 128;
+        stashed.push_back (ev);
+      }
   for (const auto &note : stashed)
     change_note (note);
   // insert new notes

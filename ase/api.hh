@@ -269,7 +269,7 @@ public:
   virtual int32     insert_note    (const ClipNote &note) = 0; ///< Adds a note, returns note id.
   virtual bool      change_note    (const ClipNote &note) = 0; ///< Changes an existing note, identified by its id, returns false for unknown ids.
   virtual bool      toggle_note    (int32 id, bool selected) = 0; ///< Change selected state of note `id`.
-  virtual int32     change_batch   (const ClipNoteS &notes) = 0; ///< Insert, change, delete in a batch.
+  virtual int32     change_batch   (const ClipNoteS &notes, const String &undogroup = "") = 0; ///< Insert, change, delete in a batch.
 };
 
 /// Container for Clip objects and sequencing information.
