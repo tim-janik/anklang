@@ -213,8 +213,6 @@ function observable_msrc_data () {
     have_focus:	   { default: false, },
     srect:         { default: { x: -1, y: -1, w: 0, h: 0, sx: 0, sy: 0 } },
     end_tick:      { getter: c => this.msrc.end_tick(), notify: n => this.msrc.on ("notify:end_tick", n), },
-    pnotes:        { default: [],                            notify: n => this.msrc.on ("notify:notes", n),
-                     getter: async c => Object.freeze (await this.msrc.list_all_notes()), },
   };
   return this.observable_from_getters (data, () => this.msrc);
 }
@@ -763,8 +761,6 @@ function render_notes()
     }
 
   // paint notes
-  if (!this.adata.pnotes)
-    return;
   const tickscale = layout.tickscale;
   const note_color = csp ('--piano-roll-note-color');
   const note_selected_color = csp ('--piano-roll-note-focus-color');
@@ -774,7 +770,7 @@ function render_notes()
   ctx.fillStyle = note_color;
   ctx.strokeStyle = csp ('--piano-roll-note-focus-border');
   // draw notes
-  for (const note of this.adata.pnotes)
+  for (const note of Shell.get_note_cache (this.msrc).notes)
     {
       const oct = floor (note.key / 12), key = note.key - oct * 12;
       const ny = yoffset - oct * layout.oct_length - key * layout.row + 1;
