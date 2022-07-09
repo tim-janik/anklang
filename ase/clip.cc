@@ -149,7 +149,7 @@ ClipImpl::add_note_event (const ClipNote &ev)
     scope += [thisp, rev] () { thisp->add_note_event (rev); };
   else
     scope += [thisp, cev] () { thisp->remove_note_event (cev); };
-  queue_notify ("notify", "notes");
+  emit_notify ("notes");
 }
 
 void
@@ -161,7 +161,7 @@ ClipImpl::remove_note_event (const ClipNote &ev)
     {
       auto thisp = shared_ptr_from (this);
       undo_scope ("Remove Note") += [thisp, rem] () { thisp->add_note_event (rem); };
-      queue_notify ("notify", "notes");
+      emit_notify ("notes");
     }
 }
 
