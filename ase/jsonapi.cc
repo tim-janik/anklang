@@ -230,6 +230,7 @@ JsonapiConnection::handle_jsonipc (const std::string &message)
   if (logflags_ & 8)
     log (string_format ("→ %s", message.size() > 1024 ? message.substr (0, 1020) + "..." + message.back() : message));
   Jsonipc::Scope message_scope (imap_, Jsonipc::Scope::PURGE_TEMPORARIES);
+  CoalesceNotifies coalesce_notifies; // coalesce multiple "notify:detail" emissions
   const std::string reply = make_dispatcher()->dispatch_message (message);
   if (logflags_ & 8)
     {
@@ -243,6 +244,7 @@ JsonapiConnection::handle_jsonipc (const std::string &message)
       else
         log (string_format ("← %s", reply.size() > 1024 ? reply.substr (0, 1020) + "..." + reply.back() : reply));
     }
+  // coalesced notifications happen *here*
   return reply;
 }
 
