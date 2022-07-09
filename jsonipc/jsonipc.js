@@ -34,6 +34,8 @@ export const Jsonipc = {
     return promise;
   },
 
+  Jsonipc_objects: [],
+
   Jsonipc_prototype: class {
     constructor ($id) {
       Jsonipc.pdefine (this, '$id', { value: $id });
@@ -46,8 +48,14 @@ export const Jsonipc = {
     static fromJSON (key, value) {
       if (value?.$id > 0) {
 	const JsClass = Jsonipc.classes[value.$class];
-	if (JsClass)
-	  return new JsClass (value.$id);
+	if (JsClass) {
+	  let obj = Jsonipc.Jsonipc_objects[value.$id]?.deref();
+	  if (!obj) {
+	    obj = new JsClass (value.$id);
+	    Jsonipc.Jsonipc_objects[value.$id] = new WeakRef (obj);
+	  }
+	  return obj;
+	}
       }
       return value;
     }
