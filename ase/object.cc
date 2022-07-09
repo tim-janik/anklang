@@ -115,41 +115,58 @@ EventConnection::~EventConnection()
   dispatcher_ = nullptr;
 }
 
-struct EmittableNotification {
-  EmittableP emittable;
-  String  type, detail;
-};
-static std::vector<EmittableNotification> emittable_notifications;
+// == CoalesceNotifies ==
+static CoalesceNotifies *coalesce_notifies_head = nullptr;
 
-static void
-emit_notifies ()
+CoalesceNotifies::CoalesceNotifies ()
 {
-  std::vector<EmittableNotification> notifies;
-  emittable_notifications.swap (notifies);
-  Emittable *emittable = nullptr;
-  String type, detail;
-  for (const auto &notify : notifies) {
-    if (emittable == &*notify.emittable && type == notify.type && detail == notify.detail)
-      continue; // coalesce double emissions
-    emittable = &*notify.emittable;
-    type = notify.type;
-    detail = notify.detail;
-    emittable->emit_event (type, detail, {});
-  }
+  next_ = coalesce_notifies_head;
+  coalesce_notifies_head = this;
 }
 
 void
-EmittableImpl::queue_notify (const String &type, const String &detail)
+CoalesceNotifies::flush_notifications ()
 {
-  EmittableP emittablep = shared_ptr_cast<Emittable> (this);
-  if (emittablep) {
-    if (emittable_notifications.empty())
-      main_loop->exec_timer (emit_notifies, 8); // emit updates around 125Hz
-    emittable_notifications.push_back ({ emittablep, type, detail });
-  }
+  while (!notifications_.empty())
+    {
+      NotificationSet notifications;
+      notifications.swap (notifications_);
+      for (const auto &ns : notifications)
+        if (ns.emittable)
+          ns.emittable->emit_event ("notify", ns.detail);
+    }
+}
+
+CoalesceNotifies::~CoalesceNotifies ()
+{
+  CoalesceNotifies **ptrp = &coalesce_notifies_head;
+  while (*ptrp != this && *ptrp)
+    ptrp = &(*ptrp)->next_;
+  assert_return (*ptrp);
+  *ptrp = this->next_;
+  flush_notifications();
+}
+
+size_t
+CoalesceNotifies::NotificationHash::operator() (const Notification &notification) const
+{
+  size_t h = std::hash<void*>() (&*notification.emittable);
+  h ^= std::hash<String>() (notification.detail);
+  return h;
 }
 
 // == EmittableImpl ==
+/// Emit `notify::detail`, multiple notifications maybe coalesced if a CoalesceNotifies instance exists.
+void
+EmittableImpl::emit_notify (const String &detail)
+{
+  EmittableP emittablep = shared_ptr_cast<Emittable> (this);
+  if (emittablep && coalesce_notifies_head)
+    coalesce_notifies_head->notifications_.insert ({ emittablep, detail });
+  else
+    this->emit_event ("notify", detail);
+}
+
 EmittableImpl::~EmittableImpl()
 {
   EventDispatcher *old = ed_;
