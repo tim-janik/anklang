@@ -51,6 +51,7 @@ public:
   void                 group_undo        (const String &undoname) override;
   void                 ungroup_undo      () override;
   void                 clear_undo        ();
+  size_t               undo_size_guess   () const;
   Error                save_dir          (const String &dir, bool selfcontained) override;
   void                 start_playback    () override;
   void                 stop_playback     () override;
@@ -70,6 +71,7 @@ public:
   AudioProcessorP      master_processor  () const;
   ssize_t              track_index       (const Track &child) const;
   static ProjectImplP  create            (const String &projectname);
+  static size_t undo_mem_counter;
 };
 using ProjectImplP = std::shared_ptr<ProjectImpl>;
 
