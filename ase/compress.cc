@@ -56,15 +56,21 @@ guess_zstd_level (size_t input_size)
 }
 
 String
-zstd_compress (const String &input)
+zstd_compress (const String &input, int level)
 {
-  const size_t maxosize = ZSTD_compressBound (input.size());
+  return zstd_compress (input.data(), input.size(), level);
+}
+
+String
+zstd_compress (const void *src, size_t src_size, int level)
+{
+  const size_t maxosize = ZSTD_compressBound (src_size);
   String data;
   data.resize (maxosize);
-  const size_t osize = ZSTD_compress (&data[0], data.size(), &input[0], input.size(), guess_zstd_level (input.size()));
+  const size_t osize = ZSTD_compress (&data[0], data.size(), src, src_size, level ? level : guess_zstd_level (src_size));
   if (ZSTD_isError (osize))
     {
-      warning ("zstd compression failed (input=%zu): %s", input.size(), ZSTD_getErrorName (osize));
+      warning ("zstd compression failed (input=%zu): %s", src_size, ZSTD_getErrorName (osize));
       return "";
     }
   data.resize (osize);
@@ -72,22 +78,35 @@ zstd_compress (const String &input)
   return data;
 }
 
+ssize_t
+zstd_target_size (const String &input)
+{
+  const size_t maxosize = ZSTD_getFrameContentSize (&input[0], input.size());
+  if (maxosize == ZSTD_CONTENTSIZE_ERROR)
+    return -EILSEQ;
+  if (maxosize == ZSTD_CONTENTSIZE_UNKNOWN)
+    return -EOPNOTSUPP;
+  if (maxosize >= 2 * 1024 * 1024 * 1024ull)
+    return -EFBIG;
+  return maxosize;
+}
+
+ssize_t
+zstd_uncompress (const String &input, void *dst, size_t dst_size)
+{
+  const ssize_t target_size = zstd_target_size (input);
+  errno = ENOMEM;
+  assert_return (target_size >= 0 && target_size <= dst_size, -ENOMEM);
+  const size_t osize = ZSTD_decompress (dst, dst_size, input.data(), input.size());
+  assert_return (osize == target_size, -ENOMEM);
+  return target_size;
+}
+
 String
 zstd_uncompress (const String &input)
 {
-  const size_t maxosize = ZSTD_getFrameContentSize (&input[0], input.size());
-  if (maxosize > 8 * 1024 * 1024 * 1024ull)
-    {
-      String err;
-      switch (maxosize)
-        {
-        case ZSTD_CONTENTSIZE_ERROR:    err = "invalid zstd header"; break;
-        case ZSTD_CONTENTSIZE_UNKNOWN:  err = "unknown zstd data size"; break;
-        default:                        err = string_format ("uncompress limit exceeded (%u)", maxosize); break;
-        }
-      warning ("zstd decompression failed (input=%zu): %s", input.size(), err);
-      return "";
-    }
+  const ssize_t maxosize = zstd_target_size (input);
+  assert_return (maxosize >= 0, "unknown zstd data size");
   String data;
   data.resize (maxosize);
   const size_t osize = ZSTD_decompress (&data[0], data.size(), &input[0], input.size());
@@ -98,7 +117,7 @@ zstd_uncompress (const String &input)
     }
   data.resize (osize);
   data.reserve (data.size());
-  assert_return (osize == maxosize, data); // paranoid, esnured by zstd
+  assert_return (osize == maxosize, data); // paranoid, ensured by zstd
   return data;
 }
 
