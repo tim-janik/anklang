@@ -120,6 +120,8 @@ ClipImpl::CmpNoteTicks::operator() (const ClipNote &a, const ClipNote &b) const
   return Aux::compare_lesser (a.id, b.id);
 }
 
+String stringify_clip_note (const ClipNote &n);
+
 } // Ase
 
 #endif // __ASE_CLIP_HH__

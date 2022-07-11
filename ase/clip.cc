@@ -390,4 +390,13 @@ ClipImpl::Generator::generate (int64 target_tick, const Receiver &receiver)
   return xtick_ - old_xtick;
 }
 
+String
+stringify_clip_note (const ClipNote &n)
+{
+  return string_format ("{%d,%d,%d,%s,%d,%d,%f,%f}",
+                        n.id, n.channel, n.key,
+                        n.selected ? "true" : "false",
+                        n.tick, n.duration, n.velocity, n.fine_tune);
+}
+
 } // Ase
