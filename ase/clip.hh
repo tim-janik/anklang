@@ -17,11 +17,21 @@ class ClipImpl : public GadgetImpl, public virtual Clip {
 public:
   struct CmpNoteTicks { int operator() (const ClipNote &a, const ClipNote &b) const; };
   struct CmpNoteIds   { int operator() (const ClipNote &a, const ClipNote &b) const; };
+  using EventsById = EventList<ClipNote,CmpNoteIds>;
 private:
   int64 starttick_ = 0, stoptick_ = 0, endtick_ = 0;
-  EventList<ClipNote,CmpNoteIds> notes_;
+  EventsById notes_;
   Connection notifytrack_;
   using OrderedEventsV = OrderedEventList<ClipNote,CmpNoteTicks>;
+  struct EventImage {
+    String cbuffer;
+    static_assert (std::is_trivially_copyable<ClipNoteS::value_type>::value);
+    EventImage (const ClipNoteS &cnotes);
+    ~EventImage();
+  };
+  using EventImageP = std::shared_ptr<EventImage>;
+  void        apply_undo     (const EventImage &image, const String &undogroup);
+  static void collapse_notes (EventsById &notes, bool preserve_selected);
 public:
   class Generator;
 protected:
@@ -31,13 +41,11 @@ protected:
   virtual ~ClipImpl         ();
   void     serialize        (WritNode &xs) override;
   ssize_t  clip_index       () const;
-  bool     find_key_at_tick (ClipNote &ev);
-  void     add_note_event   (const ClipNote &ev);
-  void     remove_note_event (const ClipNote &ev);
 public:
   using OrderedEventsP = OrderedEventsV::ConstP;
   OrderedEventsP tick_events    () const;
   ProjectImpl*   project        () const;
+  void           push_undo      (const ClipNoteS &cnotes, const String &undogroup);
   UndoScope      undo_scope     (const String &scopename) { return project()->undo_scope (scopename); }
   int64          start_tick     () const override { return starttick_; }
   int64          stop_tick      () const override { return stoptick_; }
@@ -45,9 +53,6 @@ public:
   void           assign_range   (int64 starttick, int64 stoptick) override;
   ClipNoteS      list_all_notes () override;
   bool           needs_serialize() const;
-  int32          insert_note    (const ClipNote &note) override;
-  bool           change_note    (const ClipNote &note) override;
-  bool           toggle_note    (int32 id, bool selected) override;
   int32          change_batch   (const ClipNoteS &notes, const String &undogroup) override;
   ASE_DEFINE_MAKE_SHARED (ClipImpl);
 };
