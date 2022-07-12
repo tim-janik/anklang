@@ -26,12 +26,12 @@ private:
   struct EventImage {
     String cbuffer;
     static_assert (std::is_trivially_copyable<ClipNoteS::value_type>::value);
-    EventImage (const ClipNoteS &cnotes);
+    EventImage (const ClipNoteS &clipnotes);
     ~EventImage();
   };
   using EventImageP = std::shared_ptr<EventImage>;
-  void        apply_undo     (const EventImage &image, const String &undogroup);
-  static void collapse_notes (EventsById &notes, bool preserve_selected);
+  void          apply_undo     (const EventImage &image, const String &undogroup);
+  static size_t collapse_notes (EventsById &notes, bool preserve_selected);
 public:
   class Generator;
 protected:
@@ -45,7 +45,7 @@ public:
   using OrderedEventsP = OrderedEventsV::ConstP;
   OrderedEventsP tick_events    () const;
   ProjectImpl*   project        () const;
-  void           push_undo      (const ClipNoteS &cnotes, const String &undogroup);
+  void           push_undo      (const ClipNoteS &clipnotes, const String &undogroup);
   UndoScope      undo_scope     (const String &scopename) { return project()->undo_scope (scopename); }
   int64          start_tick     () const override { return starttick_; }
   int64          stop_tick      () const override { return stoptick_; }

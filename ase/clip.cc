@@ -10,6 +10,9 @@
 #include "internal.hh"
 #include <atomic>
 
+#define NDEBUG(...)     Ase::debug ("ClipNote", __VA_ARGS__)
+#define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)
+
 namespace Ase {
 
 bool
@@ -138,24 +141,27 @@ ClipImpl::tick_events () const
   return const_cast<ClipImpl*> (this)->notes_.ordered_events<OrderedEventsV> ();
 }
 
-ClipImpl::EventImage::EventImage (const ClipNoteS &cnotes)
+ClipImpl::EventImage::EventImage (const ClipNoteS &clipnotes)
 {
-  const size_t cnotes_bytes = cnotes.size() * sizeof (cnotes[0]);
-  cbuffer = zstd_compress (cnotes.data(), cnotes_bytes, 4);
+  const size_t clipnotes_bytes = clipnotes.size() * sizeof (clipnotes[0]);
+  cbuffer = zstd_compress (clipnotes.data(), clipnotes_bytes, 4);
   assert_return (cbuffer.size() > 0);
   ProjectImpl::undo_mem_counter += sizeof (*this) + cbuffer.size();
+  UDEBUG ("ClipImpl: store undo (notes=%d): %d->%d (%f%%)", clipnotes.size(),
+          clipnotes_bytes, cbuffer.size(), cbuffer.size() * 100.0 / clipnotes_bytes);
 }
 
 ClipImpl::EventImage::~EventImage()
 {
   ProjectImpl::undo_mem_counter -= sizeof (*this) + cbuffer.size();
+  UDEBUG ("ClipImpl: free undo mem: %d\n", sizeof (*this) + cbuffer.size());
 }
 
 void
-ClipImpl::push_undo (const ClipNoteS &cnotes, const String &undogroup)
+ClipImpl::push_undo (const ClipNoteS &clipnotes, const String &undogroup)
 {
   auto thisp = shared_ptr_from (this);
-  EventImageP imagep = std::make_shared<EventImage> (cnotes);
+  EventImageP imagep = std::make_shared<EventImage> (clipnotes);
   undo_scope (undogroup) += [thisp, imagep, undogroup] () { thisp->apply_undo (*imagep, undogroup); };
 }
 
@@ -175,10 +181,11 @@ ClipImpl::apply_undo (const EventImage &image, const String &undogroup)
   emit_notify ("notes");
 }
 
-void
+size_t
 ClipImpl::collapse_notes (EventsById &inotes, const bool preserve_selected)
 {
   ClipNoteS copies = inotes.copy();
+  size_t collapsed = 0;
   // sort notes by tick, keep order; delete from lhs, preserve newer entries on rhs
   std::stable_sort (copies.begin(), copies.end(), [] (const ClipNote &a, const ClipNote &b) {
     return a.tick < b.tick;
@@ -193,28 +200,38 @@ ClipImpl::collapse_notes (EventsById &inotes, const bool preserve_selected)
         if (note.selected != copies[j].selected && preserve_selected)
           continue;
         // note has a successor at same tick, with same key, channel
-        inotes.remove (note);
+        collapsed += inotes.remove (note);
       }
     }
   }
+  return collapsed;
 }
 
 int32
 ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
 {
-  bool changed = false;
+  bool changes = false, selections = false;
   // save undo image
   const ClipNoteS orig_notes = notes_.copy();
   // delete existing notes
   for (const auto &note : batch)
-    if (note.id > 0 && (note.duration == 0 || note.channel < 0))
-      changed |= notes_.remove (note);
+    if (note.id > 0 && (note.duration == 0 || note.channel < 0)) {
+      changes |= notes_.remove (note);
+      NDEBUG ("%s: delete notes: %d\n", __func__, note.id);
+    }
   // modify *existing* notes
   for (const auto &note : batch)
     if (note.id > 0 && note.duration > 0 && note.channel >= 0) {
       ClipNote replaced;
-      if (notes_.replace (note, &replaced))
-        changed = changed || !(note == replaced);
+      if (notes_.replace (note, &replaced) && !(note == replaced)) {
+        replaced.selected = !replaced.selected;
+        if (note == replaced)
+          selections = true; // only selection changed
+        else
+          changes = true;
+        NDEBUG ("%s: %s %d: new=%s old=%s\n", __func__, note == replaced ? "toggle" : "replace", note.id,
+                stringify_clip_note (note), stringify_clip_note (replaced));
+      }
     }
   // insert new notes
   for (const auto &note : batch)
@@ -223,14 +240,20 @@ ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
       ev.id = next_noteid++;    // automatic id allocation for new notes
       assert_warn (ev.id >= MIDI_NOTE_ID_FIRST && ev.id <= MIDI_NOTE_ID_LAST);
       const bool replaced = notes_.insert (ev);
-      changed |= !replaced;
+      changes |= !replaced;
+      NDEBUG ("%s: insert: %s%s\n", __func__, stringify_clip_note (ev), replaced ? " (REPLACED?)" : "");
     }
   // collapse overlapping notes
-  if (changed)
-    collapse_notes (notes_, true);
+  if (changes || selections) {
+    const size_t collapsed = collapse_notes (notes_, true);
+    changes = changes || collapsed;
+    if (collapsed) NDEBUG ("%s: collapsed=%d\n", __func__, collapsed);
+  }
   // queue undo
-  if (changed && !notes_.equals (orig_notes)) {
-    push_undo (orig_notes, undogroup.empty() ? "Change Notes" : undogroup);
+  if (!notes_.equals (orig_notes)) {
+    if (changes)
+      push_undo (orig_notes, undogroup.empty() ? "Change Notes" : undogroup);
+    if (changes) NDEBUG ("%s: notes=%d undo_size: %fMB\n", __func__, notes_.size(), project()->undo_size_guess() / (1024. * 1024));
     emit_notify ("notes");
   }
   return 0;
