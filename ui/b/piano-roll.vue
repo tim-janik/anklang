@@ -128,6 +128,7 @@ $scrollarea-bg: transparent;
 
   <c-grid class="b-piano-roll" tabindex="0"
 	  @keydown="piano_ctrl.keydown ($event)"
+	  @pointerenter="pointerenter" @pointerleave="pointerleave"
 	  @focus="focuschange" @blur="focuschange" >
     <!-- VTitle, COL-1 -->
     <span class="-vtitle" style="grid-row: 1/-1"  > VTitle </span>
@@ -266,13 +267,23 @@ export default {
     this.pointer_drag = null;
   },
   methods: {
+    pointerenter (event) {
+      this.entered = true;
+      if (this.$refs.toolmenu)
+	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || this.adata.have_focus);
+    },
+    pointerleave (event) {
+      this.entered = false;
+      if (this.$refs.toolmenu)
+	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || this.adata.have_focus);
+    },
     focuschange (ev) {
       if (ev?.type)
 	this.adata.have_focus = ev.type == "focus";
       if (this.$refs.toolmenu)
-	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || document.activeElement == this.$el);
+	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || this.adata.have_focus);
       if (this.$refs.pianorollmenu)
-	this.$refs.pianorollmenu.map_kbd_hotkeys (this.entered || document.activeElement == this.$el);
+	this.$refs.pianorollmenu.map_kbd_hotkeys (this.adata.have_focus);
     },
     piano_roll_notes_pointerdown (event) {
       if (document.activeElement != this.$el)
