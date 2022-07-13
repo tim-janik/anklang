@@ -210,7 +210,6 @@ function observable_msrc_data () {
   const data = {
     vzoom:         { default: 1.5, },
     hzoom:         { default: 2.0, },
-    focus_noteid:  undefined,
     have_focus:	   { default: false, },
     srect:         { default: { x: -1, y: -1, w: 0, h: 0, sx: 0, sy: 0 } },
     end_tick:      { getter: c => this.msrc.end_tick(), notify: n => this.msrc.on ("notify:end_tick", n), },
@@ -233,7 +232,6 @@ export default {
       this.adata.hzoom = this.auto_scrollto.hzoom;
       this.adata.vzoom = this.auto_scrollto.vzoom;
       // reset other state
-      this.adata.focus_noteid = undefined;
       this.stepping = [ Util.PPQN, 0, 0 ];
       // re-layout, even if just this.auto_scrollto changed
       this.$forceUpdate();
@@ -771,7 +769,6 @@ function render_notes()
   const note_color = csp ('--piano-roll-note-color');
   const note_selected_color = csp ('--piano-roll-note-focus-color');
   const note_focus_color = csp ('--piano-roll-note-focus-color');
-  const focus_noteid = this.adata.have_focus ? this.adata.focus_noteid : -1;
   ctx.lineWidth = layout.DPR; // layout.thickness;
   ctx.fillStyle = note_color;
   ctx.strokeStyle = csp ('--piano-roll-note-focus-border');
@@ -786,7 +783,7 @@ function render_notes()
       else
 	ctx.fillStyle = note_color;
       ctx.fillRect (nx - lsx, ny - layout.row, nw, layout.row - 2);
-      if (note.id == focus_noteid)
+      if (0) // frame notes
 	{
 	  ctx.fillStyle = note_focus_color;
 	  ctx.strokeRect (nx - lsx, ny - layout.row, nw, layout.row - 2);
