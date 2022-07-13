@@ -190,6 +190,7 @@ class ShellClass extends Envue.Component {
     this.m = observable_project_data.call (vm);
     this.m.modal_dialogs = [];
     this.m.show_spinner_count = 0;
+    this.note_cache = {};
   }
   show_spinner() {
     this.m.show_spinner_count++;
@@ -285,6 +286,48 @@ class ShellClass extends Envue.Component {
     return await fileselector_promise;
   }
   async_modal_dialog = async_modal_dialog;
+  // == note_cache ==
+  async _update_note_cache (clip) {
+    const cache = this.note_cache[clip.$id];
+    while (cache.dirty) {
+      cache.dirty = 0;
+      const notes = await clip.list_all_notes();
+      cache.notes = Util.freeze_deep (notes);
+      cache.rgen.value += 1; // trigger Vue reactivity hooks
+    }
+    cache.promise = null;
+  }
+  get_note_cache (clip) {
+    if (!this.note_cache[clip.$id]) {
+      const cache = { rgen: Vue.ref (1), // generational counter, Vue reactive
+		      destroynotify: null, promise: null, dirty: 0,
+		      notes: Object.freeze ([]) };
+      const update_note_cache = () => {
+	cache.dirty++;
+	if (!cache.promise)
+	  cache.promise = this._update_note_cache (clip);
+      };
+      cache.destroynotify = clip.on ("notify:notes", update_note_cache);
+      this.note_cache[clip.$id] = cache;
+      update_note_cache();
+    }
+    const cache = this.note_cache[clip.$id];
+    return Object.freeze ({
+      get gen() {
+	return cache.rgen.value;	// notifies Vue reactivity hooks
+      },
+      get notes() {
+	// use cache.rgen to notify Vue reactivity hooks
+	return cache.rgen.value && cache.notes;
+      },
+    });
+  }
+  async note_cache_notes (clip) {
+    this.get_note_cache (clip);
+    const cache = this.note_cache[clip.$id];
+    await cache.promise;
+    return cache.rgen.value && cache.notes;
+  }
 }
 export default ShellClass.vue_export ({ sfc_template });
 

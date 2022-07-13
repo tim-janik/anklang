@@ -28,6 +28,7 @@ public:
   using CIter = typename EventVector::const_iterator;
   explicit     EventList      (const Notify &n = {}, const Compare &c = {});
   bool         insert         (const Event &event, Event *replaced = nullptr); /// Insert or replace `event`, notifies.
+  bool         replace        (const Event &event, Event *replaced = nullptr); /// Only replace `event`, notifies.
   bool         remove         (const Event &event, Event *removed = nullptr); /// Return true if `event` was removed, notifies.
   const Event* lookup         (const Event &event) const; /// Return pointer to matching `event` or nullptr.
   const Event* lookup_after   (const Event &event) const; /// Return pointer to element that is >= `event` or nullptr.
@@ -39,6 +40,8 @@ public:
   inline       ordered_events ();       /// Create a read-only copy of this EventList (possibly cached).
   CIter        begin          () const { return events_.begin(); } /// Const iterator that points to the first element.
   CIter        end            () const { return events_.end(); }   /// Const iterator that points one past the last element.
+  EventVector  copy           () const { return events_; }
+  bool         equals         (const EventVector &ev) const { return ev == events_; }
 private:
   EventVector        events_;
   Compare            compare_;
@@ -97,6 +100,23 @@ EventList<Event,Compare>::insert (const Event &event, Event *replaced)
       notify_ (event, +1);      // notify insertion
       return false;
     }
+}
+
+template<class Event, class Compare> inline bool
+EventList<Event,Compare>::replace (const Event &event, Event *replaced)
+{
+  auto insmatch = Aux::binary_lookup_insertion_pos (events_.begin(), events_.end(), compare_, event);
+  if (insmatch.second == true)  // exact match
+    {
+      uncache();
+      auto it = insmatch.first;
+      if (replaced)
+        *replaced = *it;
+      *it = event;
+      notify_ (event, 0);       // notify change
+      return true;
+    }
+  return false;
 }
 
 template<class Event, class Compare> inline bool

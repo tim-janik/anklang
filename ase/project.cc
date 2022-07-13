@@ -9,6 +9,8 @@
 #include "server.hh"
 #include "internal.hh"
 
+#define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)
+
 namespace Ase {
 
 // == ProjectImpl ==
@@ -292,6 +294,7 @@ ProjectImpl::undo ()
     }
   assert_return (!undostack_.empty() && undostack_.back().func == nullptr); // must contain scope name
   const String scopename = undostack_.back().name;
+  UDEBUG ("Undo: steps=%d scope: %s\n", funcs.size(), scopename);
   undostack_.pop_back(); // pop scope name
   // swap undo/redo stacks, run undo steps and scope redo
   undostack_.swap (redostack_);
@@ -324,6 +327,7 @@ ProjectImpl::redo ()
     }
   assert_return (!redostack_.empty() && redostack_.back().func == nullptr); // must contain scope name
   const String scopename = redostack_.back().name;
+  UDEBUG ("Undo: steps=%d scope: %s\n", funcs.size(), scopename);
   redostack_.pop_back(); // pop scope name
   // run redo steps with undo scope
   {
@@ -369,6 +373,19 @@ ProjectImpl::clear_undo ()
   assert_warn (undo_scopes_open_ == 0 && undo_groups_open_ == 0);
   undostack_.clear();
   redostack_.clear();
+}
+
+size_t ProjectImpl::undo_mem_counter = 0;
+
+size_t
+ProjectImpl::undo_size_guess () const
+{
+  size_t count = undostack_.size();
+  count += redostack_.size();
+  size_t item = sizeof (UndoFunc);
+  item += sizeof (std::shared_ptr<void>); // undofunc selfp
+  item += 4 * sizeof (uint64);            // undofunc arguments: double ClipNote struct
+  return count * item + undo_mem_counter;
 }
 
 TelemetryFieldS

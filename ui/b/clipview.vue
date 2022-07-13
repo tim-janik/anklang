@@ -70,8 +70,6 @@ function observable_clip_data () {
   const data = {
     clipname: { getter: c => this.clip.name(),          notify: n => this.clip.on ("notify:name", n), },
     endtick:  { getter: c => this.clip.end_tick(),	notify: n => this.clip.on ("notify:end_tick", n), },
-    allnotes: { default: [],                            notify: n => this.clip.on ("notify:notes", n),
-		getter: async c => Object.freeze (await this.clip.list_all_notes()), },
   };
   return this.observable_from_getters (data, () => this.clip);
 }
@@ -137,10 +135,9 @@ function render_canvas () {
   ctx.fillText (this.clipname, 1.5, .5);
   // paint notes
   ctx.fillStyle = csp ('--clipview-note-color');
-  const pnotes = this.allnotes; // await clip.list_notes_crossing (0, MAXINT);
   const noteoffset = 12;
   const notescale = height / (123.0 - 2 * noteoffset); // MAX_NOTE
-  for (const note of pnotes) {
+  for (const note of Shell.get_note_cache (this.clip).notes) {
     ctx.fillRect (note.tick * tickscale, height - (note.key - noteoffset) * notescale, note.duration * tickscale, 1 * pixelratio);
   }
 }

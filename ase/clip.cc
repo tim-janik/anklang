@@ -4,8 +4,14 @@
 #include "jsonipc/jsonipc.hh"
 #include "project.hh"
 #include "serialize.hh"
+#include "platform.hh"
+#include "compress.hh"
+#include "path.hh"
 #include "internal.hh"
 #include <atomic>
+
+#define NDEBUG(...)     Ase::debug ("ClipNote", __VA_ARGS__)
+#define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)
 
 namespace Ase {
 
@@ -89,7 +95,7 @@ ClipImpl::serialize (WritNode &xs)
           note.selected = false;
           notes_.insert (note);
         }
-      emit_event ("notify", "notes");
+      emit_notify ("notes");
       // TODO: serialize range
     }
 }
@@ -135,134 +141,121 @@ ClipImpl::tick_events () const
   return const_cast<ClipImpl*> (this)->notes_.ordered_events<OrderedEventsV> ();
 }
 
-void
-ClipImpl::add_note_event (const ClipNote &ev)
+ClipImpl::EventImage::EventImage (const ClipNoteS &clipnotes)
 {
-  assert_return (ev.id > 0 && ev.duration > 0 && ev.velocity > 0);
-  ClipNote rev;
-  const ClipNote cev = ev;
-  const bool replaced = notes_.insert (cev, &rev); // insert or replace
+  const size_t clipnotes_bytes = clipnotes.size() * sizeof (clipnotes[0]);
+  cbuffer = zstd_compress (clipnotes.data(), clipnotes_bytes, 4);
+  assert_return (cbuffer.size() > 0);
+  ProjectImpl::undo_mem_counter += sizeof (*this) + cbuffer.size();
+  UDEBUG ("ClipImpl: store undo (notes=%d): %d->%d (%f%%)", clipnotes.size(),
+          clipnotes_bytes, cbuffer.size(), cbuffer.size() * 100.0 / clipnotes_bytes);
+}
+
+ClipImpl::EventImage::~EventImage()
+{
+  ProjectImpl::undo_mem_counter -= sizeof (*this) + cbuffer.size();
+  UDEBUG ("ClipImpl: free undo mem: %d\n", sizeof (*this) + cbuffer.size());
+}
+
+void
+ClipImpl::push_undo (const ClipNoteS &clipnotes, const String &undogroup)
+{
   auto thisp = shared_ptr_from (this);
-  auto scope = undo_scope ("Add Note");
-  if (replaced)
-    scope += [thisp, rev] () { thisp->add_note_event (rev); };
-  else
-    scope += [thisp, cev] () { thisp->remove_note_event (cev); };
-  queue_notify ("notify", "notes");
+  EventImageP imagep = std::make_shared<EventImage> (clipnotes);
+  undo_scope (undogroup) += [thisp, imagep, undogroup] () { thisp->apply_undo (*imagep, undogroup); };
 }
 
 void
-ClipImpl::remove_note_event (const ClipNote &ev)
+ClipImpl::apply_undo (const EventImage &image, const String &undogroup)
 {
-  assert_return (ev.id > 0);
-  ClipNote rem;
-  if (notes_.remove (ev, &rem))
-    {
-      auto thisp = shared_ptr_from (this);
-      undo_scope ("Remove Note") += [thisp, rem] () { thisp->add_note_event (rem); };
-      queue_notify ("notify", "notes");
-    }
+  push_undo (notes_.copy(), undogroup);
+  ClipNoteS onotes;
+  const ssize_t osize = zstd_target_size (image.cbuffer);
+  assert_return (osize >= 0 && osize == sizeof (onotes[0]) * (osize / sizeof (onotes[0])));
+  onotes.resize (osize / sizeof (onotes[0]));
+  const ssize_t rsize = zstd_uncompress (image.cbuffer, onotes.data(), osize);
+  assert_return (rsize == osize);
+  notes_.clear_silently();
+  for (const ClipNote &note : onotes)
+    notes_.insert (note);
+  emit_notify ("notes");
 }
 
-int32
-ClipImpl::insert_note (const ClipNote &note)
+size_t
+ClipImpl::collapse_notes (EventsById &inotes, const bool preserve_selected)
 {
-  auto undoscope = undo_scope ("Insert Note");
-  if (note.duration == 0 || note.velocity == 0)
-    return 0;
-  for (const auto &e : notes_)          // look for merge candidate
-    if (e.key == note.key && e.tick == note.tick && e.channel == note.channel && e.selected == note.selected) {
-      remove_note_event (e);            // remove candidate
-      break;
+  ClipNoteS copies = inotes.copy();
+  size_t collapsed = 0;
+  // sort notes by tick, keep order; delete from lhs, preserve newer entries on rhs
+  std::stable_sort (copies.begin(), copies.end(), [] (const ClipNote &a, const ClipNote &b) {
+    return a.tick < b.tick;
+  });
+  // remove duplicates at the same tick
+  for (size_t i = 0; i < copies.size(); i++) {
+    const ClipNote &note = copies[i];
+    for (size_t j = i + 1; j < copies.size(); j++) {
+      if (note.tick != copies[j].tick)
+        break;
+      if (note.key == copies[j].key && note.channel == copies[j].channel) {
+        if (note.selected != copies[j].selected && preserve_selected)
+          continue;
+        // note has a successor at same tick, with same key, channel
+        collapsed += inotes.remove (note);
+      }
     }
-  ClipNote ev = note;
-  ev.id = next_noteid++; // automatic id allocation for new notes
-  assert_return (ev.id >= MIDI_NOTE_ID_FIRST && ev.id <= MIDI_NOTE_ID_LAST, 0);
-  add_note_event (ev);
-  return ev.id;
-}
-
-bool
-ClipImpl::change_note (const ClipNote &note)
-{
-  const ClipNote *ce = notes_.lookup (note); // by id
-  if (!ce)
-    return false;
-  if (note == *ce)
-    return true;
-  if (note.duration == 0 || note.velocity == 0) {
-    auto undoscope = undo_scope ("Delete Note");
-    remove_note_event (*ce);
-    return true;
   }
-  auto undoscope = undo_scope ("Change Note");
-  if (note.key != ce->key || note.tick != ce->tick || note.selected != ce->selected)
-    for (const auto &e : notes_)         // look for merge candidate
-      if (e.key == note.key && e.tick == note.tick && e.channel == note.channel && e.selected == note.selected && e.id != note.id)
-        {
-          ce = nullptr;
-          remove_note_event (e);        // remove candidate
-          ce = notes_.lookup (note); // by id
-          assert_return (ce != nullptr, false);
-          break;
-        }
-  const ClipNote ev = *ce;
-  auto thisp = shared_ptr_from (this);
-  undoscope += [thisp, ev] () { thisp->add_note_event (ev); };  // restore unchanged note
-  add_note_event (note);                                        // replace with changed note
-  return true;
-}
-
-bool
-ClipImpl::toggle_note (int32 id, bool selected)
-{
-  ClipNote ev;
-  ev.id = id;
-  const ClipNote *ce = notes_.lookup (ev); // by id
-  const bool was_selected = ce && ce->selected;
-  if (ce && ce->selected != selected)
-    {
-      auto undoscope = undo_scope (selected ? "Select Note" : "Unselect Note");
-      ev = *ce;
-      ev.selected = selected;
-      change_note (ev);
-    }
-  return was_selected;
+  return collapsed;
 }
 
 int32
-ClipImpl::change_batch (const ClipNoteS &batch)
+ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
 {
-  /* the note batch must not introduce new ids and needs proper
-   * merging with existing notes without note loss due to temporary
-   * overlap.
-   */
-  auto undoscope = undo_scope ("Change Notes");
-  // delete existig notes
+  bool changes = false, selections = false;
+  // save undo image
+  const ClipNoteS orig_notes = notes_.copy();
+  // delete existing notes
   for (const auto &note : batch)
-    if (note.id > 0 && (note.duration == 0 || note.velocity == 0 || note.channel < 0))
-      remove_note_event (note);
-  // move and shuffle exisiting notes *without* replacements (stashed via channel < 0)
+    if (note.id > 0 && (note.duration == 0 || note.channel < 0)) {
+      changes |= notes_.remove (note);
+      NDEBUG ("%s: delete notes: %d\n", __func__, note.id);
+    }
+  // modify *existing* notes
   for (const auto &note : batch)
-    if (note.id > 0 && note.duration > 0 && note.velocity > 0 && note.channel >= 0) {
-      ClipNote ev = note;
-      ev.channel -= 128;
-      change_note (ev);
+    if (note.id > 0 && note.duration > 0 && note.channel >= 0) {
+      ClipNote replaced;
+      if (notes_.replace (note, &replaced) && !(note == replaced)) {
+        replaced.selected = !replaced.selected;
+        if (note == replaced)
+          selections = true; // only selection changed
+        else
+          changes = true;
+        NDEBUG ("%s: %s %d: new=%s old=%s\n", __func__, note == replaced ? "toggle" : "replace", note.id,
+                stringify_clip_note (note), stringify_clip_note (replaced));
+      }
     }
-  // "repair" stashed notes
-  ClipNoteS stashed;
-  for (const auto &note : notes_)
-    if (note.channel < 0) {
-      ClipNote ev = note;
-      ev.channel += 128;
-      stashed.push_back (ev);
-    }
-  for (const auto &note : stashed)
-    change_note (note);
   // insert new notes
   for (const auto &note : batch)
-    if (note.id <= 0 && note.duration > 0 && note.velocity > 0 && note.channel >= 0)
-      insert_note (note);
+    if (note.id <= 0 && note.duration > 0 && note.channel >= 0) {
+      ClipNote ev = note;
+      ev.id = next_noteid++;    // automatic id allocation for new notes
+      assert_warn (ev.id >= MIDI_NOTE_ID_FIRST && ev.id <= MIDI_NOTE_ID_LAST);
+      const bool replaced = notes_.insert (ev);
+      changes |= !replaced;
+      NDEBUG ("%s: insert: %s%s\n", __func__, stringify_clip_note (ev), replaced ? " (REPLACED?)" : "");
+    }
+  // collapse overlapping notes
+  if (changes || selections) {
+    const size_t collapsed = collapse_notes (notes_, true);
+    changes = changes || collapsed;
+    if (collapsed) NDEBUG ("%s: collapsed=%d\n", __func__, collapsed);
+  }
+  // queue undo
+  if (!notes_.equals (orig_notes)) {
+    if (changes)
+      push_undo (orig_notes, undogroup.empty() ? "Change Notes" : undogroup);
+    if (changes) NDEBUG ("%s: notes=%d undo_size: %fMB\n", __func__, notes_.size(), project()->undo_size_guess() / (1024. * 1024));
+    emit_notify ("notes");
+  }
   return 0;
 }
 
@@ -378,6 +371,15 @@ ClipImpl::Generator::generate (int64 target_tick, const Receiver &receiver)
         }
     }
   return xtick_ - old_xtick;
+}
+
+String
+stringify_clip_note (const ClipNote &n)
+{
+  return string_format ("{%d,%d,%d,%s,%d,%d,%f,%f}",
+                        n.id, n.channel, n.key,
+                        n.selected ? "true" : "false",
+                        n.tick, n.duration, n.velocity, n.fine_tune);
 }
 
 } // Ase

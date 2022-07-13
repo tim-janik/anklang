@@ -127,8 +127,8 @@ $scrollarea-bg: transparent;
 <template>
 
   <c-grid class="b-piano-roll" tabindex="0"
-	  @keydown="piano_ctrl.keydown ($event)" @pointerdown="Util.drag_event"
-	  @pointermove="move_event"
+	  @keydown="piano_ctrl.keydown ($event)"
+	  @pointerenter="pointerenter" @pointerleave="pointerleave"
 	  @focus="focuschange" @blur="focuschange" >
     <!-- VTitle, COL-1 -->
     <span class="-vtitle" style="grid-row: 1/-1"  > VTitle </span>
@@ -164,7 +164,9 @@ $scrollarea-bg: transparent;
     <div class="-overflow-hidden -notes-wrapper" style="grid-column: 3; grid-row: 2" ref="scrollarea"
 	 @contextmenu.prevent="pianorollmenu_popup ($event)"
 	 @wheel.stop="wheel_event ($event, 'notes')" >
-      <canvas class="b-piano-roll-notes tabular-nums" @click="piano_ctrl.notes_click ($event)" ref="notes_canvas" ></canvas>
+      <canvas class="b-piano-roll-notes tabular-nums" ref="notes_canvas"
+	      @pointerdown="piano_roll_notes_pointerdown ($event)"
+      ></canvas>
       <b-contextmenu ref="pianorollmenu" keepmounted :showicons="true"
 		     class="b-piano-roll-contextmenu" mapname="Piano Roll"
 		     @click="pianorollmenu_click" :check="pianorollmenu_check" >
@@ -181,7 +183,7 @@ $scrollarea-bg: transparent;
     <div class="-vscrollborder" style="grid-column: 4; grid-row: 1/4" ></div>
 
     <!-- VScrollbar, COL-5 -->
-    <div class="-vscrollbar" ref="vscrollbar" style="grid-column: 5; grid-row: 2" @scroll="scrollbar_scroll" >
+    <div class="-vscrollbar" ref="vscrollbar" style="grid-column: 5; grid-row: 2" @scroll="scrollbar_scroll ($event)" >
       <div class="-vscrollbar-area" ref="vscrollbar_area" ></div>
     </div>
 
@@ -189,7 +191,7 @@ $scrollarea-bg: transparent;
     <div class="-hscrollborder" style="grid-column: 2/4; grid-row: 3" ></div>
 
     <!-- HScrollbar, ROW-4 -->
-    <div class="-hscrollbar" ref="hscrollbar" style="grid-column: 3; grid-row: 4" @scroll="scrollbar_scroll" >
+    <div class="-hscrollbar" ref="hscrollbar" style="grid-column: 3; grid-row: 4" @scroll="scrollbar_scroll ($event)" >
       <div class="-hscrollbar-area" ref="hscrollbar_area" ></div>
     </div>
 
@@ -208,12 +210,9 @@ function observable_msrc_data () {
   const data = {
     vzoom:         { default: 1.5, },
     hzoom:         { default: 2.0, },
-    focus_noteid:  undefined,
     have_focus:	   { default: false, },
     srect:         { default: { x: -1, y: -1, w: 0, h: 0, sx: 0, sy: 0 } },
     end_tick:      { getter: c => this.msrc.end_tick(), notify: n => this.msrc.on ("notify:end_tick", n), },
-    pnotes:        { default: [],                            notify: n => this.msrc.on ("notify:notes", n),
-                     getter: async c => Object.freeze (await this.msrc.list_all_notes()), },
   };
   return this.observable_from_getters (data, () => this.msrc);
 }
@@ -233,7 +232,6 @@ export default {
       this.adata.hzoom = this.auto_scrollto.hzoom;
       this.adata.vzoom = this.auto_scrollto.vzoom;
       // reset other state
-      this.adata.focus_noteid = undefined;
       this.stepping = [ Util.PPQN, 0, 0 ];
       // re-layout, even if just this.auto_scrollto changed
       this.$forceUpdate();
@@ -262,15 +260,50 @@ export default {
   unmounted() {
     this.resize_observer.disconnect();
     this.piano_ctrl = null;
+    if (this.pointer_drag)
+      this.pointer_drag.destroy();
+    this.pointer_drag = null;
   },
   methods: {
+    pointerenter (event) {
+      this.entered = true;
+      if (this.$refs.toolmenu)
+	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || this.adata.have_focus);
+    },
+    pointerleave (event) {
+      this.entered = false;
+      if (this.$refs.toolmenu)
+	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || this.adata.have_focus);
+    },
     focuschange (ev) {
       if (ev?.type)
 	this.adata.have_focus = ev.type == "focus";
       if (this.$refs.toolmenu)
-	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || document.activeElement == this.$el);
+	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || this.adata.have_focus);
       if (this.$refs.pianorollmenu)
-	this.$refs.pianorollmenu.map_kbd_hotkeys (this.entered || document.activeElement == this.$el);
+	this.$refs.pianorollmenu.map_kbd_hotkeys (this.adata.have_focus);
+    },
+    piano_roll_notes_pointerdown (event) {
+      if (document.activeElement != this.$el)
+	this.$el.focus();
+      const methods = {
+	'S0': this.piano_ctrl.drag_select.bind (this.piano_ctrl),
+	'H0': this.piano_ctrl.drag_select.bind (this.piano_ctrl),
+	'P0': this.piano_ctrl.drag_paint.bind (this.piano_ctrl),
+	'E0': this.piano_ctrl.drag_erase.bind (this.piano_ctrl),
+      };
+      if (this.pointer_drag) {
+	this.pointer_drag.pointercancel (event);
+	this.pointer_drag.destroy();
+	this.pointer_drag = null;
+      }
+      if (!this.msrc)
+	return false;
+      const combo = this.pianotool + event.button;
+      const method = methods[combo];
+      if (method) {
+	this.pointer_drag = new Util.PointerDrag (this, event, method);
+      }
     },
     piano_roll_scripts() {
       this.scripts_ = Script.registry_keys ('PianoRoll');
@@ -278,12 +311,12 @@ export default {
     },
     piano_roll_actions() {
       const actions = [];
-      for (const actionfunc of PianoCtrl.list_actions()) {
-	if (actionfunc.label) {
-	  const label = actionfunc.label;
-	  const kbd = actionfunc.kbd;
-	  const ic = actionfunc.ic;
-	  actions.push ({ label, weakid: 'weakid:' + Util.weakid (actionfunc), kbd, ic });
+      for (const action of PianoCtrl.list_actions()) {
+	if (action.label) {
+	  const label = action.label;
+	  const kbd = action.kbd;
+	  const ic = action.ic;
+	  actions.push ({ label, weakid: 'weakid:' + Util.weakid (action), kbd, ic });
 	}
       }
       return actions;
@@ -301,9 +334,9 @@ export default {
       if (uri.search (/^[0-9a-z-]+@[0-9a-z-]+$/) === 0)
 	return this.pianoroll_script (uri);
       if (uri.startsWith ('weakid:') && this.msrc) {
-	const actionfunc = Util.weakid_lookup (Number (uri.substr (7)));
-	if (actionfunc instanceof Function)
-	  return actionfunc (event, this.msrc);
+	const action = Util.weakid_lookup (Number (uri.substr (7)));
+	if (action.func instanceof Function)
+	  return action.func (action, this, this.msrc, event);
       }
       console.trace ("piano-roll.vue:", uri, event);
     },
@@ -412,11 +445,14 @@ export default {
 	this.auto_scrolls[this.msrc.$id] = this.snapshot_zoomscroll();
       this.piano_ctrl.dom_update();
     },
-    scrollbar_scroll() {
+    scrollbar_scroll (event) {
       this.dom_queue_draw();
       // store new zoom & scroll positions
       if (this.msrc && this.msrc.$id && this.auto_scrolls)
 	this.auto_scrolls[this.msrc.$id] = this.snapshot_zoomscroll();
+      // adjust selection, etc
+      if (this.pointer_drag)
+	this.pointer_drag.scroll (event);
     },
     dom_draw() {
       if (this.layout)
@@ -528,6 +564,7 @@ function piano_layout () {
     yoffset -= 2 * layout.thickness; // leave room for overlapping piano key borders
     return yoffset;
   };
+  layout.yscroll = () => layout.yoffset() / layout.DPR;
   // hscrollbar setup
   px = (this.hscrollbar_width * (hscrollbar_proportion + 1)) + 'px';
   if (this.$refs.hscrollbar_area.style.width != px)
@@ -535,10 +572,11 @@ function piano_layout () {
       layout_changed = true;
       this.$refs.hscrollbar_area.style.width = px;
     }
-  layout.xscroll = () => {
-    const xpos = this.$refs.hscrollbar.scrollLeft / (this.hscrollbar_width * hscrollbar_proportion);
-    return xpos * layout.virt_width - layout.hpad;
+  layout.xposition = () => {
+    const xscroll = this.$refs.hscrollbar.scrollLeft / (this.hscrollbar_width * hscrollbar_proportion);
+    return xscroll * layout.virt_width - layout.hpad;
   };
+  layout.xscroll = () => layout.xposition() / layout.DPR;
   // restore scroll & zoom
   if (this.auto_scrollto)
     {
@@ -549,7 +587,7 @@ function piano_layout () {
   // conversions
   layout.tick_from_x = css_x => {
     const xp = css_x * layout.DPR;
-    const tick = Math.round ((layout.xscroll() + xp) / layout.tickscale);
+    const tick = Math.round ((layout.xposition() + xp) / layout.tickscale);
     return tick;
   };
   layout.midinote_from_y = css_y => {
@@ -693,7 +731,7 @@ function render_notes()
   // line thickness and line cap
   ctx.lineWidth = th;
   ctx.lineCap = 'butt'; // chrome 'butt' has a 0.5 pixel bug, so we use fillRect
-  const lsx = layout.xscroll();
+  const lsx = layout.xposition();
 
   // draw half octave separators
   const semitone6 = csp ('--piano-roll-semitone6');
@@ -730,18 +768,17 @@ function render_notes()
     }
 
   // paint notes
-  if (!this.adata.pnotes)
+  if (!this.msrc)
     return;
   const tickscale = layout.tickscale;
   const note_color = csp ('--piano-roll-note-color');
   const note_selected_color = csp ('--piano-roll-note-focus-color');
   const note_focus_color = csp ('--piano-roll-note-focus-color');
-  const focus_noteid = this.adata.have_focus ? this.adata.focus_noteid : -1;
   ctx.lineWidth = layout.DPR; // layout.thickness;
   ctx.fillStyle = note_color;
   ctx.strokeStyle = csp ('--piano-roll-note-focus-border');
   // draw notes
-  for (const note of this.adata.pnotes)
+  for (const note of Shell.get_note_cache (this.msrc).notes)
     {
       const oct = floor (note.key / 12), key = note.key - oct * 12;
       const ny = yoffset - oct * layout.oct_length - key * layout.row + 1;
@@ -751,7 +788,7 @@ function render_notes()
       else
 	ctx.fillStyle = note_color;
       ctx.fillRect (nx - lsx, ny - layout.row, nw, layout.row - 2);
-      if (note.id == focus_noteid)
+      if (0) // frame notes
 	{
 	  ctx.fillStyle = note_focus_color;
 	  ctx.strokeRect (nx - lsx, ny - layout.row, nw, layout.row - 2);
@@ -777,7 +814,7 @@ function render_timegrid (canvas, with_labels)
   const cstyle = getComputedStyle (canvas), gy1 = 0;
   const gy2 = canvas.height * (with_labels ? 0.5 : 0), gy3 = canvas.height * (with_labels ? 0.75 : 0);
   const ctx = canvas.getContext ('2d'), csp = cstyle.getPropertyValue.bind (cstyle);
-  const layout = this.layout, lsx = layout.xscroll(), th = layout.thickness;
+  const layout = this.layout, lsx = layout.xposition(), th = layout.thickness;
   const grid_main = csp ('--piano-roll-grid-main'), grid_sub = csp ('--piano-roll-grid-sub');
   const TPN64 = Util.PPQN / 16;			// Ticks per 64th note
   const TPD = TPN64 * 64 / signature[1];	// Ticks per denominator fraction
@@ -801,7 +838,7 @@ function render_timegrid (canvas, with_labels)
     stepping = [ bar_ticks, 0, 0 ];
   this.stepping = stepping;
 
-  // first 2^x aligned bar tick before/at xscroll
+  // first 2^x aligned bar tick before/at xposition
   const start_bar = floor ((lsx + layout.hpad) / (barjumps * bar_pixels));
   const start = start_bar * bar_ticks;
 

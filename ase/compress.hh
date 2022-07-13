@@ -24,9 +24,12 @@ bool   is_png          (const String &input);
 bool   is_xz           (const String &input);
 bool   is_zip          (const String &input);
 
-bool   is_zstd         (const String &input);
-String zstd_compress   (const String &input);
-String zstd_uncompress (const String &input);
+bool    is_zstd          (const String &input);
+String  zstd_compress    (const String &input, int level = 0);
+String  zstd_compress    (const void *src, size_t src_size, int level = 0);
+String  zstd_uncompress  (const String &input);
+ssize_t zstd_uncompress  (const String &input, void *dst, size_t dst_size);
+ssize_t zstd_target_size (const String &input);
 
 StreamWriterP stream_writer_zstd (const StreamWriterP &ostream, int level = 0);
 StreamReaderP stream_reader_zstd (StreamReaderP &istream);

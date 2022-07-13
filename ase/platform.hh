@@ -72,11 +72,12 @@ uint64  monotonic_counter    ();
 class Stopwatch {
   uint64 start_ = 0, end_ = 0;   String msg_;
 public:
-  explicit Stopwatch (const String &msg = "");
-  void     start     (const String &msg = "");
-  void     stop      (const String &msg = "");
-  double   seconds   () const;
-  /*dtor*/~Stopwatch ();
+  explicit Stopwatch    (const String &msg = "");
+  void     start        (const String &msg = "");
+  void     stop         (const String &msg = "");
+  double   seconds      () const;
+  double   milliseconds () const;
+  /*dtor*/ ~Stopwatch   ();
 };
 
 // == process names ==

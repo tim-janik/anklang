@@ -111,6 +111,14 @@ export function capture_event (eventname, callback) {
   return uncapture;
 }
 
+/// Expand pointer events into a list of possibly coalesced events.
+export function coalesced_events (event) {
+  const pevents = event.getCoalescedEvents ? event.getCoalescedEvents() : null;
+  if (!pevents || pevents.length == 0)
+    return [ event ];
+  return pevents;
+}
+
 /** Get Vue component handle from element or its ancestors */
 export function vue_component (element) {
   let el = element;
@@ -137,10 +145,15 @@ export const START = "START";
 export const STOP = "STOP";
 export const CANCEL = "CANCEL";
 export const MOVE = "MOVE";
+export const SCROLL = "SCROLL";
 
-class PointerDrag {
-  constructor (vuecomponent, event) {
+export class PointerDrag {
+  constructor (vuecomponent, event, method = 'drag_event') {
     this.vm = vuecomponent;
+    if (typeof (method) === 'function')
+      this.drag_method = method;
+    else
+      this.drag_method = this.vm[method].bind (this.vm);
     this.el = event.target;
     this.pointermove = this.pointermove.bind (this);
     this.el.addEventListener ('pointermove', this.pointermove);
@@ -149,6 +162,8 @@ class PointerDrag {
     this.pointercancel = this.pointercancel.bind (this);
     this.el.addEventListener ('pointercancel', this.pointercancel);
     this.el.addEventListener ('lostpointercapture', this.pointercancel);
+    this.keydown = this.keydown.bind (this);
+    window.addEventListener ('keydown', this.keydown);
     this.start_stamp = event.timeStamp;
     try {
       this.el.setPointerCapture (event.pointerId);
@@ -158,7 +173,7 @@ class PointerDrag {
       this._disconnect (event);
     }
     if (this.el)
-      this.vm.drag_event (event, START);
+      this.drag_method (event, START);
     if (!this.el)
       this.destroy();
   }
@@ -172,6 +187,7 @@ class PointerDrag {
     this.el.removeEventListener ('pointerup', this.pointerup);
     this.el.removeEventListener ('pointercancel', this.pointercancel);
     this.el.removeEventListener ('lostpointercapture', this.pointercancel);
+    window.removeEventListener ('keydown', this.keydown);
     // swallow dblclick after lengthy drags with bouncing start click
     if (this.el && (this.seen_move || event.timeStamp - this.start_stamp > 500)) // milliseconds
       {
@@ -190,14 +206,21 @@ class PointerDrag {
       {
 	event = event || new PointerEvent ('pointercancel');
 	this._disconnect (event);
-	this.vm.drag_event (event, CANCEL);
+	this.drag_method (event, CANCEL);
 	this.el = null;
       }
     this.vm = null;
   }
+  scroll (event) {
+    if (this.el)
+      this.drag_method (event, SCROLL);
+    //event.preventDefault();
+    //event.stopPropagation();
+    this.seen_move = true;
+  }
   pointermove (event) {
     if (this.el)
-      this.vm.drag_event (event, MOVE);
+      this.drag_method (event, MOVE);
     event.preventDefault();
     event.stopPropagation();
     this.seen_move = true;
@@ -206,16 +229,20 @@ class PointerDrag {
     if (!this.el)
       return;
     this._disconnect (event);
-    this.vm.drag_event (event, STOP);
+    this.drag_method (event, STOP);
     this.destroy (event);
     event.preventDefault();
     event.stopPropagation();
+  }
+  keydown (event) {
+    if (event.keyCode == 27) // Escape
+      return this.pointercancel (event);
   }
   pointercancel (event) {
     if (!this.el)
       return;
     this._disconnect (event);
-    this.vm.drag_event (event, CANCEL);
+    this.drag_method (event, CANCEL);
     this.destroy (event);
     event.preventDefault();
     event.stopPropagation();
@@ -1868,6 +1895,32 @@ export function hash53 (key, seed = default_seed) {
   h1 = Math.imul (h1 ^ h2 >>> 16, 0x85ebca6b) ^ Math.imul (h2 ^ h1 >>> 13, 0xc2b2ae35);
   h2 = Math.imul (h2 ^ h1 >>> 16, 0x85ebca6b) ^ Math.imul (h1 ^ h2 >>> 13, 0xc2b2ae35);
   return 0x100000000 * (0x1fffff & h2) + (h1 >>> 0);
+}
+
+// Raster pixel line between two points
+export function raster_line (x0, y0, x1, y1)
+{
+  x0 = x0 | 0; y0 = y0 | 0; // force integer
+  x1 = x1 | 0; y1 = y1 | 0; // force integer
+  // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+  const dx = +Math.abs (x1 - x0), sx = Math.sign (x1 - x0);
+  const dy = -Math.abs (y1 - y0), sy = Math.sign (y1 - y0);
+  const points = [ [x0,y0] ];
+  let fract = dx + dy;
+  while (x0 != x1 || y0 != y1)
+    {
+      const f2 = 2 * fract;
+      if (f2 < dx) {
+	fract += dx;
+	y0 += sy;
+      }
+      if (f2 > dy) {
+	fract += dy;
+	x0 += sx;
+      }
+      points.push ([x0,y0]);
+    }
+  return points;
 }
 
 export * from './kbd.js';
