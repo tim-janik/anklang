@@ -164,7 +164,7 @@ $scrollarea-bg: transparent;
 	 @contextmenu.prevent="pianorollmenu_popup ($event)"
 	 @wheel.stop="wheel_event ($event, 'notes')" >
       <canvas class="b-piano-roll-notes tabular-nums" ref="notes_canvas"
-	      @pointerdown="piano_roll_notes_pointerdown ($event)" @click="piano_roll_notes_click ($event)"
+	      @pointerdown="piano_roll_notes_pointerdown ($event)"
       ></canvas>
       <b-contextmenu ref="pianorollmenu" keepmounted :showicons="true"
 		     class="b-piano-roll-contextmenu" mapname="Piano Roll"
@@ -273,11 +273,6 @@ export default {
 	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || document.activeElement == this.$el);
       if (this.$refs.pianorollmenu)
 	this.$refs.pianorollmenu.map_kbd_hotkeys (this.entered || document.activeElement == this.$el);
-    },
-    piano_roll_notes_click (event) {
-      if (document.activeElement != this.$el)
-	this.$el.focus();
-      return this.piano_ctrl.notes_click (event);
     },
     piano_roll_notes_pointerdown (event) {
       if (document.activeElement != this.$el)
