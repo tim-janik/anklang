@@ -111,6 +111,14 @@ export function capture_event (eventname, callback) {
   return uncapture;
 }
 
+/// Expand pointer events into a list of possibly coalesced events.
+export function coalesced_events (event) {
+  const pevents = event.getCoalescedEvents ? event.getCoalescedEvents() : null;
+  if (!pevents || pevents.length == 0)
+    return [ event ];
+  return pevents;
+}
+
 /** Get Vue component handle from element or its ancestors */
 export function vue_component (element) {
   let el = element;
