@@ -1889,4 +1889,30 @@ export function hash53 (key, seed = default_seed) {
   return 0x100000000 * (0x1fffff & h2) + (h1 >>> 0);
 }
 
+// Raster pixel line between two points
+export function raster_line (x0, y0, x1, y1)
+{
+  x0 = x0 | 0; y0 = y0 | 0; // force integer
+  x1 = x1 | 0; y1 = y1 | 0; // force integer
+  // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+  const dx = +Math.abs (x1 - x0), sx = Math.sign (x1 - x0);
+  const dy = -Math.abs (y1 - y0), sy = Math.sign (y1 - y0);
+  const points = [ [x0,y0] ];
+  let fract = dx + dy;
+  while (x0 != x1 || y0 != y1)
+    {
+      const f2 = 2 * fract;
+      if (f2 < dx) {
+	fract += dx;
+	y0 += sy;
+      }
+      if (f2 > dy) {
+	fract += dy;
+	x0 += sx;
+      }
+      points.push ([x0,y0]);
+    }
+  return points;
+}
+
 export * from './kbd.js';
