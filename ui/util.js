@@ -154,6 +154,8 @@ export class PointerDrag {
     this.pointercancel = this.pointercancel.bind (this);
     this.el.addEventListener ('pointercancel', this.pointercancel);
     this.el.addEventListener ('lostpointercapture', this.pointercancel);
+    this.keydown = this.keydown.bind (this);
+    window.addEventListener ('keydown', this.keydown);
     this.start_stamp = event.timeStamp;
     try {
       this.el.setPointerCapture (event.pointerId);
@@ -177,6 +179,7 @@ export class PointerDrag {
     this.el.removeEventListener ('pointerup', this.pointerup);
     this.el.removeEventListener ('pointercancel', this.pointercancel);
     this.el.removeEventListener ('lostpointercapture', this.pointercancel);
+    window.removeEventListener ('keydown', this.keydown);
     // swallow dblclick after lengthy drags with bouncing start click
     if (this.el && (this.seen_move || event.timeStamp - this.start_stamp > 500)) // milliseconds
       {
@@ -222,6 +225,10 @@ export class PointerDrag {
     this.destroy (event);
     event.preventDefault();
     event.stopPropagation();
+  }
+  keydown (event) {
+    if (event.keyCode == 27) // Escape
+      return this.pointercancel (event);
   }
   pointercancel (event) {
     if (!this.el)
