@@ -1141,7 +1141,7 @@ public:
           const auto last_frame = estream.last_frame();
           frames = std::max (frames, last_frame);
         }
-      int8_t frame_delay = CLAMP (frames, -128, 0);     // ignore future scheduling, only account for delays
+      int16_t frame_delay = CLAMP (frames, -2048, 0);   // ignore future scheduling, only account for delays
       must_sort |= estream.append_unsorted (frame_delay, event);
     };
     int r;
