@@ -145,7 +145,7 @@ public:
         TickEvent tnote = future_stack.back();
         future_stack.pop_back();
         const int64 frame = transport.sample_from_tick (tnote.tick - begin_tick);
-        assert_paranoid (frame >= -128 && frame <= 127);
+        assert_paranoid (frame >= -2048 && frame <= 2047);
         MDEBUG ("POP: t=%d ev=%s f=%d\n", tnote.tick, tnote.event.to_string(), frame);
         evout.append_unsorted (frame, tnote.event);
       }
@@ -170,7 +170,7 @@ public:
               if (etick < end_tick)
                 {
                   const int64 frame = transport.sample_from_tick (etick - begin_tick);
-                  assert_paranoid (frame >= -128 && frame <= 127);
+                  assert_paranoid (frame >= -2048 && frame <= 2047);
                   // interleave with earlier MIDI through events
                   evout.append_unsorted (frame, event);
                   MDEBUG ("NOW: t=%d ev=%s f=%d\n", etick, event.to_string(), frame);
