@@ -18,7 +18,7 @@
   height: $b-trackrow-height;	//* fixed height is required to accurately calculate vertical scroll area */
   .-indicator {
     position: absolute; top: 0; bottom: 0; left: 0; width: 1px; height: 100%;
-    background: #f0f0f0cc;
+    background: $b-piano-roll-indicator;
     z-index: 2;
     transform: translateX(-9999px);
   }
