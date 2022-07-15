@@ -1124,6 +1124,7 @@ void
 AudioProcessor::render_block (uint64 target_stamp)
 {
   return_unless (render_stamp_ < target_stamp);
+  return_unless (target_stamp - render_stamp_ <= AUDIO_BLOCK_MAX_RENDER_SIZE);
   if (ASE_UNLIKELY (estreams_) && !ASE_ISLIKELY (estreams_->estream.empty()))
     estreams_->estream.clear();
   render (target_stamp - render_stamp_);
