@@ -443,6 +443,9 @@ public:
     block_size_ = read_handle_ ? rh_period_size : wh_period_size;
     n_periods_ = read_handle_ ? rh_n_periods : wh_n_periods;
     period_size_ = read_handle_ ? rh_period_size : wh_period_size;
+    if (!read_handle_ || !write_handle_)
+      ADEBUG ("PCM: %s: %s: mix=%.1fHz n=%d period=%d block=%d", alsadev_,
+              read_handle_ ? "READONLY" : "WRITEONLY", mix_freq_, n_periods_, period_size_, block_size_);
     if (error == 0 && snd_pcm_prepare (read_handle_ ? read_handle_ : write_handle_) < 0)
       error = Error::FILE_OPEN_FAILED;
     // finish opening or shutdown
@@ -491,7 +494,9 @@ public:
     snd_pcm_hw_params_get_period_size_min (hparams, &period_min, nullptr);
     snd_pcm_hw_params_get_period_size_max (hparams, &period_max, nullptr);
     const snd_pcm_uframes_t latency_frames = rate * latency_ms / 1000; // full IO latency in frames
-    snd_pcm_uframes_t period_size = 32; // smaller sizes are infeasible with most hw
+    snd_pcm_uframes_t period_size = 32; // sizes < 32 are infeasible with most hw
+    if (alsadev_ == "pulse")            // pulseaudio cannot do super low latency
+      period_size = MAX (period_size, 384);
     while (period_size + 16 <= latency_frames / 3)
       period_size += 16; // maximize period_size as long as 3 fit the latency
     period_size = CLAMP (period_size, period_min, period_max);
