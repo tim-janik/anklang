@@ -115,6 +115,12 @@ $scrollarea-bg: transparent;
     white-space: nowrap;
     overflow: hidden;
   }
+  .-indicator {
+    position: absolute; top: 0; bottom: 0; left: 0; width: 1px; height: 100%;
+    background: $b-piano-roll-indicator;
+    z-index: 2; backface-visibility: hidden; will-change: transform;
+    transform: translateX(-9999px);
+  }
 }
 
 .b-piano-roll-key-width { width: $b-piano-roll-key-length; }
@@ -167,6 +173,7 @@ $scrollarea-bg: transparent;
       <canvas class="b-piano-roll-notes tabular-nums" ref="notes_canvas"
 	      @pointerdown="piano_roll_notes_pointerdown ($event)"
       ></canvas>
+      <span class="-indicator" ref="indicator" />
       <b-contextmenu ref="pianorollmenu" keepmounted :showicons="true"
 		     class="b-piano-roll-contextmenu" mapname="Piano Roll"
 		     @click="pianorollmenu_click" :check="pianorollmenu_check" >
@@ -263,6 +270,8 @@ export default {
     if (this.pointer_drag)
       this.pointer_drag.destroy();
     this.pointer_drag = null;
+    Shell.piano_current_tick = null;
+    Shell.piano_current_clip = null;
   },
   methods: {
     pointerenter (event) {
@@ -429,6 +438,8 @@ export default {
     dom_update() {
       // DOM, $el and $refs are in place now
       this.layout = undefined;
+      Shell.piano_current_tick = null;
+      Shell.piano_current_clip = null;
       this.resize_observer.disconnect();
       this.resize_observer.observe (this.$refs.hscrollbar);
       this.hscrollbar_width = this.$refs.hscrollbar.clientWidth;
@@ -444,6 +455,23 @@ export default {
       if (this.msrc && this.msrc.$id && this.auto_scrolls)
 	this.auto_scrolls[this.msrc.$id] = this.snapshot_zoomscroll();
       this.piano_ctrl.dom_update();
+      Shell.piano_current_tick = this.piano_current_tick.bind (this);
+      Shell.piano_current_clip = this.msrc;
+      this.dpr_mul = window.devicePixelRatio;
+      this.dpr_div = 1.0 / this.dpr_mul;
+    },
+    piano_current_tick (current_clip, current_tick) {
+      if (this.msrc != current_clip) return;
+      const offst = this.layout.xscroll();
+      const t = -offst + current_tick * this.layout.tickscale * this.dpr_div;
+      const u = Math.round (t * this.dpr_mul) * this.dpr_div; // screen pixel alignment
+      if (u != this.last_pos)
+	{
+	  this.indicator_transform = "transform: translateX(" + u + "px);";
+	  this.last_pos = u;
+	  if (this.$refs?.indicator)
+	    this.$refs.indicator.style = this.indicator_transform;
+	}
     },
     scrollbar_scroll (event) {
       this.dom_queue_draw();
