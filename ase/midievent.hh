@@ -44,9 +44,9 @@ struct MidiEvent {
   constexpr static MidiEventType CHANNEL_PRESSURE = MidiEventType (0xD0); ///< Channel Aftertouch
   constexpr static MidiEventType PITCH_BEND       = MidiEventType (0xE0);
   constexpr static MidiEventType SYSEX            = MidiEventType (0xF0);
-  MidiEventType type;   ///< MidiEvent type, one of the MidiEventType members
-  int8      frame;      ///< Offset into current block, delayed if negative
-  uint8     channel;    ///< 0…15 for standard events
+  MidiEventType type;    ///< MidiEvent type, one of the MidiEventType members
+  int       frame : 12;  ///< Offset into current block, delayed if negative
+  uint      channel : 4; ///< 0…15 for standard events
   union {
     uint8   key;        ///< NOTE, KEY_PRESSURE MIDI note, 0…0x7f, 60 = middle C at 261.63 Hz.
     uint8   fragment;   ///< Flag for multi-part control change mesages.
@@ -73,6 +73,7 @@ struct MidiEvent {
   /*des*/    ~MidiEvent ()      {}
   MidiMessage message   () const;
   std::string to_string () const;
+  static_assert (AUDIO_BLOCK_MAX_RENDER_SIZE <= 2048); // -2048…+2047 fits frame
 };
 
 MidiEvent make_note_on    (uint16 chnl, uint8 mkey, float velo, float tune = 0, uint nid = 0xffffff);
@@ -90,13 +91,13 @@ class MidiEventStream {
   friend class MidiEventRange;
 public:
   explicit         MidiEventStream ();
-  void             append          (int8_t frame, const MidiEvent &event);
+  void             append          (int16_t frame, const MidiEvent &event);
   const MidiEvent* begin           () const noexcept { return &*events_.begin(); }
   const MidiEvent* end             () const noexcept { return &*events_.end(); }
   size_t           size            () const noexcept { return events_.size(); }
   bool             empty           () const noexcept { return events_.empty(); }
   void             clear           () noexcept       { events_.clear(); }
-  bool             append_unsorted (int8_t frame, const MidiEvent &event);
+  bool             append_unsorted (int16_t frame, const MidiEvent &event);
   void             ensure_order    ();
   int64_t          last_frame      () const ASE_PURE;
   size_t           capacity        () const noexcept    { return events_.capacity(); }
