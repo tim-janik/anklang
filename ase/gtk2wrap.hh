@@ -2,6 +2,7 @@
 #ifndef __ASE_GTK2WRAP_HH__
 #define __ASE_GTK2WRAP_HH__
 
+#include <string>
 #include <functional>
 
 namespace Ase {
