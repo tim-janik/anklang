@@ -60,7 +60,6 @@ RUN apt-get clean
 # Provide out-of-tree build directory (docker volume mount point)
 RUN mkdir /ootbuild/
 ENV OOTBUILD /ootbuild/
-ENV CCACHE_DIR /ootbuild/.ccache/
 
 # make sure getpwuid() works, prepare writable ~/
 ARG USERGROUP

@@ -176,7 +176,7 @@ $>/ui/.build1-stamp: $(ui/copy.targets)
 
 # == Copies to ui/ ==
 ui/public.targets ::= $(ui/public.wildcards:ui/%=$>/ui/%)
-$(ui/public.targets): $>/ui/%: ui/%			| $>/ui/
+$(ui/public.targets): $>/ui/%: ui/%			| $>/ui/assets/
 	$(QECHO) COPY $<
 	$Q cd ui/ && $(CP) $(<:ui/%=%) --parents $(abspath $>/)/ui/
 $>/ui/.build1-stamp: $(ui/public.targets)
