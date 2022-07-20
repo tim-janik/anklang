@@ -11,6 +11,7 @@
 #define MDEBUG(...)             Ase::debug ("alsamixer", __VA_ARGS__)
 #define EDEBUG(...)             Ase::debug ("midievent", __VA_ARGS__)
 
+#define ALSAQUIET(expr)         ({ silence_error_handler++; auto __ret_ = (expr); silence_error_handler--; __ret_; })
 #define WITH_MIDI_POLL  0
 
 #define alsa_alloca0(struc)     ({ struc##_t *ptr = (struc##_t*) alloca (struc##_sizeof()); memset (ptr, 0, struc##_sizeof()); ptr; })
@@ -104,7 +105,16 @@ ase_handle_alsa_error (const char *file, int line, const char *function, int err
   const int plen = vsnprintf (b, e - b, fmt, argv);
   (void) plen;
   va_end (argv);
-  ADEBUG ("ALSA-Error: %s", b);
+  String s;
+  if (file && line > 0 && function)
+    s = string_format ("%s:%u:%s: %s", file, line, function, b);
+  else if (file && line > 0)
+    s = string_format ("%s:%u: %s", file, line, b);
+  else if (file && function)
+    s = string_format ("%s:%s: %s", file, function, b);
+  else if (file || function)
+    s = string_format ("%s: %s", file ? file : function, b);
+  ADEBUG ("Error: %s", s);
 }
 
 static snd_output_t *snd_output = nullptr; // used for debugging
@@ -225,7 +235,7 @@ list_alsa_drivers (Driver::EntryVec &entries)
   // discover virtual (non-hw) devices
   bool seen_plughw = false; // maybe needed to resample at device boundaries
   void **nhints = nullptr;
-  if (snd_device_name_hint (-1, "pcm", &nhints) >= 0)
+  if (ALSAQUIET (snd_device_name_hint (-1, "pcm", &nhints)) >= 0) // ignore alsa.conf parsing errors
     {
       String name, desc, ioid;
       for (void **hint = nhints; *hint; hint++)
@@ -375,7 +385,7 @@ public:
   close () override
   {
     assert_return (opened());
-    ADEBUG ("PCM: %s: CLOSE: r=%d w=%d", alsadev_, !!read_handle_, !!write_handle_);
+    ADEBUG ("CLOSE: %s: r=%d w=%d", alsadev_, !!read_handle_, !!write_handle_);
     if (read_handle_)
       {
         snd_pcm_drop (read_handle_);
@@ -415,12 +425,10 @@ public:
     flags_ |= Flags::WRITABLE * require_writable;
     n_channels_ = config.n_channels;
     // try open
-    silence_error_handler++;
     if (!aerror && require_readable)
       aerror = snd_pcm_open (&read_handle_, alsadev_.c_str(), SND_PCM_STREAM_CAPTURE, SND_PCM_NONBLOCK);
     if (!aerror && require_writable)
       aerror = snd_pcm_open (&write_handle_, alsadev_.c_str(), SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK);
-    silence_error_handler--;
     // try setup
     const uint period_size = config.block_length;
     Error error = !aerror ? Error::NONE : ase_error_from_errno (-aerror, Error::FILE_OPEN_FAILED);
@@ -431,22 +439,25 @@ public:
     if (!aerror && write_handle_)
       error = alsa_device_setup (write_handle_, config.latency_ms, &wh_freq, &wh_n_periods, &wh_period_size);
     // check duplex
-    if (error == 0 && read_handle_ && write_handle_)
+    if (!error && read_handle_ && write_handle_)
       {
         const bool linked = snd_pcm_link (read_handle_, write_handle_) == 0;
         if (rh_freq != wh_freq || rh_n_periods != wh_n_periods || rh_period_size != wh_period_size || !linked)
           error = Error::DEVICES_MISMATCH;
-        ADEBUG ("PCM: %s: %s: %f==%f && %d*%d==%d*%d && linked==%d", alsadev_,
+        ADEBUG ("OPEN: %s: %s: %f==%f && %d*%d==%d*%d && linked==%d", alsadev_,
                 error != 0 ? "MISMATCH" : "LINKED", rh_freq, wh_freq, rh_n_periods, rh_period_size, wh_n_periods, wh_period_size, linked);
       }
     mix_freq_ = read_handle_ ? rh_freq : wh_freq;
     block_size_ = read_handle_ ? rh_period_size : wh_period_size;
     n_periods_ = read_handle_ ? rh_n_periods : wh_n_periods;
     period_size_ = read_handle_ ? rh_period_size : wh_period_size;
-    if (error == 0 && snd_pcm_prepare (read_handle_ ? read_handle_ : write_handle_) < 0)
+    if (!error && (!read_handle_ || !write_handle_))
+      ADEBUG ("OPEN: %s: %s: mix=%.1fHz n=%d period=%d block=%d", alsadev_,
+              read_handle_ ? "READONLY" : "WRITEONLY", mix_freq_, n_periods_, period_size_, block_size_);
+    if (!error && snd_pcm_prepare (read_handle_ ? read_handle_ : write_handle_) < 0)
       error = Error::FILE_OPEN_FAILED;
     // finish opening or shutdown
-    if (error == 0)
+    if (!error)
       {
         period_buffer_ = new int16[period_size_ * n_channels_];
         flags_ |= Flags::OPENED;
@@ -460,7 +471,7 @@ public:
           snd_pcm_close (write_handle_);
         write_handle_ = nullptr;
       }
-    ADEBUG ("PCM: %s: opening readable=%d writable=%d: %s", alsadev_, readable(), writable(), ase_error_blurb (error));
+    ADEBUG ("OPEN: %s: opening readable=%d writable=%d: %s", alsadev_, readable(), writable(), ase_error_blurb (error));
     if (error != 0)
       alsadev_ = "";
     return error;
@@ -485,13 +496,15 @@ public:
     uint rate = *mix_freq;
     if (snd_pcm_hw_params_set_rate (phandle, hparams, rate, 0) < 0 || rate != *mix_freq)
       return_error ("snd_pcm_hw_params_set_rate", DEVICE_FREQUENCY);
-    ADEBUG ("PCM: %s: rate: %d", alsadev_, rate);
+    ADEBUG ("SETUP: %s: rate: %d", alsadev_, rate);
     // fragment size
     snd_pcm_uframes_t period_min = 2, period_max = 1048576;
     snd_pcm_hw_params_get_period_size_min (hparams, &period_min, nullptr);
     snd_pcm_hw_params_get_period_size_max (hparams, &period_max, nullptr);
     const snd_pcm_uframes_t latency_frames = rate * latency_ms / 1000; // full IO latency in frames
-    snd_pcm_uframes_t period_size = 32; // smaller sizes are infeasible with most hw
+    snd_pcm_uframes_t period_size = 32; // sizes < 32 are infeasible with most hw
+    if (alsadev_ == "pulse")            // pulseaudio cannot do super low latency
+      period_size = MAX (period_size, 384);
     while (period_size + 16 <= latency_frames / 3)
       period_size += 16; // maximize period_size as long as 3 fit the latency
     period_size = CLAMP (period_size, period_min, period_max);
@@ -499,14 +512,14 @@ public:
     int dir = 0;
     if (snd_pcm_hw_params_set_period_size_near (phandle, hparams, &period_size, &dir) < 0)
       return_error ("snd_pcm_hw_params_set_period_size_near", DEVICE_LATENCY);
-    ADEBUG ("PCM: %s: period_size: %d (dir=%+d, min=%d max=%d)", alsadev_,
+    ADEBUG ("SETUP: %s: period_size: %d (dir=%+d, min=%d max=%d)", alsadev_,
             period_size, dir, period_min, period_max);
     // fragment count
     const uint want_nperiods = latency_ms == 0 ? 2 : CLAMP (latency_frames / period_size, 2, 1023) + 1;
     uint nperiods = want_nperiods;
     if (snd_pcm_hw_params_set_periods_near (phandle, hparams, &nperiods, nullptr) < 0)
       return_error ("snd_pcm_hw_params_set_periods", DEVICE_LATENCY);
-    ADEBUG ("PCM: %s: n_periods: %d (requested: %d)", alsadev_, nperiods, want_nperiods);
+    ADEBUG ("SETUP: %s: n_periods: %d (requested: %d)", alsadev_, nperiods, want_nperiods);
     if (snd_pcm_hw_params (phandle, hparams) < 0)
       return_error ("snd_pcm_hw_params", FILE_OPEN_FAILED);
     // verify hardware settings
@@ -515,7 +528,7 @@ public:
         snd_pcm_hw_params_get_buffer_size_max (hparams, &buffer_size_max) < 0 ||
         snd_pcm_hw_params_get_buffer_size (hparams, &buffer_size) < 0)
       return_error ("snd_pcm_hw_params_get_buffer_size", DEVICE_BUFFER);
-    ADEBUG ("PCM: %s: buffer_size: %d (min=%d, max=%d)", alsadev_, buffer_size, buffer_size_min, buffer_size_max);
+    ADEBUG ("SETUP: %s: buffer_size: %d (min=%d, max=%d)", alsadev_, buffer_size, buffer_size_min, buffer_size_max);
     // setup software configuration
     snd_pcm_sw_params_t *sparams = alsa_alloca0 (snd_pcm_sw_params);
     if (snd_pcm_sw_params_current (phandle, sparams) < 0)
@@ -526,13 +539,13 @@ public:
     if (snd_pcm_sw_params_set_avail_min (phandle, sparams, period_size) < 0 ||
         snd_pcm_sw_params_get_avail_min (sparams, &availmin) < 0)
       return_error ("snd_pcm_sw_params_set_avail_min", DEVICE_LATENCY);
-    ADEBUG ("PCM: %s: avail_min: %d", alsadev_, availmin);
+    ADEBUG ("SETUP: %s: avail_min: %d", alsadev_, availmin);
     if (snd_pcm_sw_params_set_stop_threshold (phandle, sparams, LONG_MAX) < 0) // keep going on underruns
       return_error ("snd_pcm_sw_params_set_stop_threshold", DEVICE_BUFFER);
     snd_pcm_uframes_t stopthreshold = 0;
     if (snd_pcm_sw_params_get_stop_threshold (sparams, &stopthreshold) < 0)
       return_error ("snd_pcm_sw_params_get_stop_threshold", DEVICE_BUFFER);
-    ADEBUG ("PCM: %s: stop_threshold: %d", alsadev_, stopthreshold);
+    ADEBUG ("SETUP: %s: stop_threshold: %d", alsadev_, stopthreshold);
     if (snd_pcm_sw_params_set_silence_threshold (phandle, sparams, 0) < 0)   // avoid early dropouts
       return_error ("snd_pcm_sw_params_set_silence_threshold", DEVICE_BUFFER);
     if (snd_pcm_sw_params_set_silence_size (phandle, sparams, LONG_MAX) < 0) // silence past frames
@@ -543,7 +556,7 @@ public:
     *mix_freq = rate;
     *n_periodsp = nperiods;
     *period_sizep = period_size;
-    ADEBUG ("PCM: %s: OPEN: r=%d w=%d n_channels=%d sample_freq=%d nperiods=%u period=%u (%u) bufsz=%u",
+    ADEBUG ("SETUP: %s: OPEN: r=%d w=%d n_channels=%d sample_freq=%d nperiods=%u period=%u (%u) bufsz=%u",
             alsadev_, phandle == read_handle_, phandle == write_handle_,
             n_channels_, *mix_freq, *n_periodsp, *period_sizep,
             nperiods * period_size, buffer_size);
@@ -554,7 +567,7 @@ public:
   pcm_retrigger ()
   {
     silence_error_handler++;
-    ADEBUG ("PCM: %s: retriggering device (r=%s w=%s)...",
+    ADEBUG ("RETRIGGER: %s: retriggering device (r=%s w=%s)...",
             alsadev_, !read_handle_ ? "<CLOSED>" : snd_pcm_state_name (snd_pcm_state (read_handle_)),
             !write_handle_ ? "<CLOSED>" : snd_pcm_state_name (snd_pcm_state (write_handle_)));
     snd_pcm_prepare (read_handle_ ? read_handle_ : write_handle_);
@@ -656,7 +669,7 @@ public:
         ssize_t n_frames = snd_pcm_readi (read_handle_, period_buffer_, n_left);
         if (n_frames < 0) // errors during read, could be underrun (-EPIPE)
           {
-            ADEBUG ("PCM: %s: read() error: %s", alsadev_, snd_strerror (n_frames));
+            ADEBUG ("READ: %s: read() error: %s", alsadev_, snd_strerror (n_frames));
             silence_error_handler++;
             snd_pcm_prepare (read_handle_);     // force retrigger
             silence_error_handler--;
@@ -697,7 +710,7 @@ public:
         n = snd_pcm_writei (write_handle_, period_buffer_, n_left);
         if (n < 0)                      // errors during write, could be overrun (-EPIPE)
           {
-            ADEBUG ("PCM: %s: write() error: %s", alsadev_, snd_strerror (n));
+            ADEBUG ("WRITE: %s: write() error: %s", alsadev_, snd_strerror (n));
             silence_error_handler++;
             snd_pcm_prepare (write_handle_);    // force retrigger
             silence_error_handler--;
@@ -1141,7 +1154,7 @@ public:
           const auto last_frame = estream.last_frame();
           frames = std::max (frames, last_frame);
         }
-      int8_t frame_delay = CLAMP (frames, -128, 0);     // ignore future scheduling, only account for delays
+      int16_t frame_delay = CLAMP (frames, -2048, 0);   // ignore future scheduling, only account for delays
       must_sort |= estream.append_unsorted (frame_delay, event);
     };
     int r;

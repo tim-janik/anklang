@@ -162,7 +162,7 @@ MidiEventStream::MidiEventStream ()
 
 /// Append an MidiEvent with conscutive `frame` time stamp.
 void
-MidiEventStream::append (int8_t frame, const MidiEvent &event)
+MidiEventStream::append (int16_t frame, const MidiEvent &event)
 {
   const bool out_of_order_event = append_unsorted (frame, event);
   assert_return (!out_of_order_event);
@@ -171,9 +171,9 @@ MidiEventStream::append (int8_t frame, const MidiEvent &event)
 /// Dangerous! Append a MidiEvent while ignoring sort order, violates constraints.
 /// Returns if ensure_order() must be called due to adding an out-of-order event.
 bool
-MidiEventStream::append_unsorted (int8_t frame, const MidiEvent &event)
+MidiEventStream::append_unsorted (int16_t frame, const MidiEvent &event)
 {
-  const int64_t last_event_stamp = !events_.empty() ? events_.back().frame : -128;
+  const int64_t last_event_stamp = !events_.empty() ? events_.back().frame : -2048;
   events_.push_back (event);
   events_.back().frame = frame;
   return frame < last_event_stamp;
@@ -192,7 +192,7 @@ MidiEventStream::ensure_order ()
 int64_t
 MidiEventStream::last_frame () const
 {
-  return !events_.empty() ? events_.back().frame : -128;
+  return !events_.empty() ? events_.back().frame : -2048;
 }
 
 // == MidiEventRange ==

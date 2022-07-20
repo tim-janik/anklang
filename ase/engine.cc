@@ -10,6 +10,8 @@
 #include "memory.hh"
 #include "internal.hh"
 
+#define EDEBUG(...)             Ase::debug ("engine", __VA_ARGS__)
+
 namespace Ase {
 
 using VoidFunc = std::function<void()>;
@@ -35,8 +37,9 @@ class AudioEngineThread : public AudioEngine {
   PcmDriverP                   null_pcm_driver_, pcm_driver_;
   MidiDriverS                  midi_drivers_;
   static constexpr uint        fixed_n_channels = 2;
-  constexpr static size_t      buffer_size_ = AUDIO_BLOCK_MAX_RENDER_SIZE * fixed_n_channels;
-  float                        buffer_data_[buffer_size_] = { 0, };
+  constexpr static size_t      MAX_BUFFER_SIZE = AUDIO_BLOCK_MAX_RENDER_SIZE * fixed_n_channels;
+  size_t                       buffer_size_ = MAX_BUFFER_SIZE;
+  float                        buffer_data_[MAX_BUFFER_SIZE] = { 0, };
   uint64                       write_stamp_ = 0, render_stamp_ = AUDIO_BLOCK_MAX_RENDER_SIZE;
   std::vector<AudioProcessor*> schedule_;
   bool                         schedule_invalid_ = true;
@@ -71,7 +74,7 @@ public:
   bool            pcm_check_write       (bool write_buffer, int64 *timeout_usecs_p = nullptr);
   bool            driver_dispatcher     (const LoopState &state);
   bool            process_jobs          (AtomicIntrusiveStack<EngineJobImpl> &joblist);
-  void            update_drivers        (bool fullio);
+  void            update_drivers        (bool fullio, uint latency);
   void            run                   (const VoidF &owner_wakeup, StartQueue *sq);
   void            swap_midi_drivers_sync (const MidiDriverS &midi_drivers);
   void            queue_user_note        (const String &channel, UserNote::Flags flags, const String &text);
@@ -199,9 +202,9 @@ AudioEngineThread::schedule_render (uint64 frames)
     if (oprocs_[i]->n_obuses())
       {
         if (n++ == 0)
-          interleaved_stereo<0> (AUDIO_BLOCK_MAX_RENDER_SIZE, buffer_data_, *oprocs_[i], MAIN_OBUS);
+          interleaved_stereo<0> (buffer_size_, buffer_data_, *oprocs_[i], MAIN_OBUS);
         else
-          interleaved_stereo<1> (AUDIO_BLOCK_MAX_RENDER_SIZE, buffer_data_, *oprocs_[i], MAIN_OBUS);
+          interleaved_stereo<1> (buffer_size_, buffer_data_, *oprocs_[i], MAIN_OBUS);
       }
   if (n == 0)
     floatfill (buffer_data_, 0.0, buffer_size_);
@@ -230,12 +233,12 @@ AudioEngineThread::enable_output (AudioProcessor &aproc, bool onoff)
 }
 
 void
-AudioEngineThread::update_drivers (bool fullio)
+AudioEngineThread::update_drivers (bool fullio, uint latency)
 {
   Error er = {};
   // PCM fallback
   PcmDriverConfig pconfig { .n_channels = fixed_n_channels, .mix_freq = fixed_sample_rate,
-                            .latency_ms = 8, .block_length = AUDIO_BLOCK_MAX_RENDER_SIZE };
+                            .latency_ms = latency, .block_length = AUDIO_BLOCK_MAX_RENDER_SIZE };
   const String null_driver = "null";
   if (!null_pcm_driver_)
     {
@@ -272,6 +275,11 @@ AudioEngineThread::update_drivers (bool fullio)
             }
         }
     }
+  buffer_size_ = std::min (MAX_BUFFER_SIZE, size_t (fixed_n_channels * pcm_driver_->block_length()));
+  floatfill (buffer_data_, 0.0, buffer_size_);
+  write_stamp_ = render_stamp_ - buffer_size_ / fixed_n_channels; // force zeros initially
+  EDEBUG ("AudioEngineThread::update_drivers: PCM: channels=%d block=%d buffer=%d\n",
+          fixed_n_channels, pcm_driver_->block_length(), buffer_size_);
   // MIDI Driver List
   MidiDriverS old_drivers = midi_drivers_, new_drivers;
   const auto midi_driver_names = {
@@ -405,7 +413,7 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
                 proc->schedule_processor();
               schedule_invalid_ = false;
             }
-          schedule_render (AUDIO_BLOCK_MAX_RENDER_SIZE);
+          schedule_render (buffer_size_ / fixed_n_channels);
           pcm_check_write (true); // minimize drop outs
         }
       if (!const_jobs_.empty()) {   // owner may be blocking for const_jobs_ execution
@@ -469,17 +477,18 @@ AudioEngineThread::start_thread (const VoidF &owner_wakeup)
 {
   schedule_.reserve (8192);
   assert_return (thread_ == nullptr);
-  update_drivers (false);
+  const uint latency = SERVER->preferences().synth_latency;
+  update_drivers (false, latency);
   schedule_queue_update();
   StartQueue start_queue;
   thread_ = new std::thread (&AudioEngineThread::run, this, owner_wakeup, &start_queue);
   const char reply = start_queue.pop(); // synchronize with thread start
   assert_return (reply == 'R');
   Emittable::Connection onprefs_;
-  onprefs_ = ASE_SERVER.on_event ("change:prefs", [this] (auto...) {
-    update_drivers (true);
+  onprefs_ = ASE_SERVER.on_event ("change:prefs", [this, latency] (auto...) {
+    update_drivers (true, latency);
   });
-  update_drivers (true);
+  update_drivers (true, latency);
 }
 
 void

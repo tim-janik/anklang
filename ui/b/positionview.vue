@@ -30,7 +30,10 @@ $b-positionview-bg: mix($b-positionview-b0, $b-positionview-b1);
   .b-positionview-sig, .b-positionview-counter, .b-positionview-bpm, .b-positionview-timer {
     position: relative;
     text-align: right;
+    height: 1em;
   }
+  .b-positionview-counter { width: 7em; } /* fixed size reduces layouting during updates */
+  .b-positionview-timer	  { width: 7em; } /* fixed size reduces layouting during updates */
 }
 </style>
 

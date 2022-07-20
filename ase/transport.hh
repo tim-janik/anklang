@@ -50,7 +50,6 @@ const char*        speaker_arrangement_bit_name       (SpeakerArrangement spa);
 std::string        speaker_arrangement_desc           (SpeakerArrangement spa);
 
 /// Maximum number of sample frames to calculate in Processor::render().
-constexpr const int64 AUDIO_BLOCK_MAX_RENDER_SIZE = 128;
 constexpr const int64 TRANSPORT_PPQN = 4838400;                 // Ticks per quarter note
 constexpr const int64 SEMIQUAVER_TICKS = TRANSPORT_PPQN / 4;    // 1209600 = PPQN * 4 / 16;
 constexpr const int64 MIN_BPM = 10;
@@ -112,7 +111,6 @@ public:
 
 /// Transport information for AudioSignal processing.
 struct AudioTransport {
-  static_assert (AUDIO_BLOCK_MAX_RENDER_SIZE == 128);
   static constexpr int64 ppqn = TRANSPORT_PPQN;
   const uint     samplerate;    ///< Sample rate (mixing frequency) in Hz used for rendering.
   const uint     nyquist;       ///< Half the `samplerate`.

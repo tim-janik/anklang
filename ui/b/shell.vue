@@ -191,6 +191,8 @@ class ShellClass extends Envue.Component {
     this.m.modal_dialogs = [];
     this.m.show_spinner_count = 0;
     this.note_cache = {};
+    this.piano_current_clip = null;
+    this.piano_current_tick = null;
   }
   show_spinner() {
     this.m.show_spinner_count++;
