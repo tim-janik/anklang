@@ -324,57 +324,21 @@ upload-nightly:
 		"$${ASSETS[@]/#/-a}"					\
 		'Nightly'
 
-# == release-upload ==
-release-upload: NEWS.md
+# == upload-release ==
+upload-release:
 	$(QGEN)
-	@: # Setup release variables (note, eval preceeds all shell commands)
-	@ $(eval RELEASE_TAG       != ./misc/version.sh --news-tag1)
-	@ $(eval RELEASE_CHANGELOG ::= $(RELEASE_SSEDIR)/ChangeLog-$(RELEASE_TAG:v%=%).txt)
-	@ $(eval RELEASE_DEB       ::= $(RELEASE_SSEDIR)/anklang_$(RELEASE_TAG:v%=%)_amd64.deb)
-	@ $(eval RELEASE_APPIMAGE  ::= $(RELEASE_SSEDIR)/anklang-$(RELEASE_TAG:v%=%)-x64.AppImage)
-	@: # Check release tag
-	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
-	$Q test -z "`git tag -l '$(RELEASE_TAG)'`" || \
-		{ echo '$@: error: release tag from NEWS.md already exists: $(RELEASE_TAG)' >&2 ; false ; }
-	@: # Tag release, create temporary build directory
-	$Q git tag -a '$(RELEASE_TAG)' -m "`git log -1 --pretty=%s`"
-	$Q if $(RELEASE_CONTINUATION) && test -d $(RELEASE_OOTBUILD) ; then	\
-		cd $(RELEASE_OOTBUILD) &&					\
-		git checkout '$(RELEASE_TAG)' ;					\
-	   else									\
-		: git worktree remove --force $(RELEASE_OOTBUILD) 2>/dev/null ;	\
-		: git worktree add $(RELEASE_OOTBUILD) '$(RELEASE_TAG)' ;	\
-	   fi
-	@: # Build binaries with different INSNs in parallel, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
-		insn-build-sse						\
-		insn-build-fma						\
-	|| { git tag -d '$(RELEASE_TAG)' ; exit -1 ; }
-	@: # Build release packages, INSN=sse is full build, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
-		INSN=sse builddir=out-sse				\
-		anklang-deb						\
-		appimage						\
-	&& time $(RELEASE_APPIMAGE) --quitstartup			\
-	|| { git tag -d '$(RELEASE_TAG)' ; exit -1 ; }
+	@: # Determine version, check release attachments
+	@ $(eval DETAILED_VERSION != misc/version.sh --release)
+	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "v$(DETAILED_VERSION)"
+	$Q du -hs $(RELEASE_CHANGELOG) $(RELEASE_DEB) $(RELEASE_APPIMAGE)
 	@: # Create Github release and upload assets
-	$Q echo 'Anklang $(RELEASE_TAG)'		>  $(RELEASE_SSEDIR)/release-message
+	$Q echo 'Anklang $(DETAILED_VERSION)'		>  $(RELEASE_SSEDIR)/release-message
 	$Q echo						>> $(RELEASE_SSEDIR)/release-message
 	$Q sed '0,/^## /b; /^## /Q; ' NEWS.md		>> $(RELEASE_SSEDIR)/release-message
-	$Q hub release create --draft --prerelease		\
-		-F '$(RELEASE_SSEDIR)/release-message'		\
-		-a '$(RELEASE_APPIMAGE)'			\
-		-a '$(RELEASE_DEB)'				\
-		-a '$(RELEASE_CHANGELOG)'			\
-		'$(RELEASE_TAG)'				\
-	|| { git tag -d '$(RELEASE_TAG)' ;			\
-	     hub release delete '$(RELEASE_TAG)' ;		\
-	     exit -1 ; }
-	@: # Publish tag
-	$Q true									\
-	&& read -p 'Publish release tag: $(RELEASE_TAG): (y/n) ' ANSWER		\
-	&& test y == "$$ANSWER"							\
-	&& git push origin '$(RELEASE_TAG)'
-	@: # Clean temporary build directory
-	$Q ! $(RELEASE_CONTINUATION) || : git worktree remove $(RELEASE_OOTBUILD) 2>/dev/null
-.PHONY: release-upload
+	$Q ASSETS=( $(RELEASE_SSEDIR)/*"$(DETAILED_VERSION)"* )		\
+		&& hub release create --draft				\
+		-F '$(RELEASE_SSEDIR)/release-message'			\
+		"$${ASSETS[@]/#/-a}"					\
+		'$(DETAILED_VERSION)'
+	$Q echo 'Run:'
+	$Q echo '  git push origin "$(DETAILED_VERSION)"'
