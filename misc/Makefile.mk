@@ -240,6 +240,7 @@ build-release:
 	$Q git tag -a '$(RELEASE_TAG)' -m "`git log -1 --pretty=%s`"
 	@: # Build versioned release assets
 	$Q export DETAILED_VERSION='$(RELEASE_TAG)' \
+		  CHECKOUT_HEAD='$(RELEASE_TAG)' \
 		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
 		  VERSION_SH_RELEASE=true \
 	   && $(MAKE) build-assets
@@ -252,6 +253,7 @@ build-nightly:
 		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
 		$(RELEASE_TEST) || \
 		{ echo "$@: ERROR: Nightly release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
+	@: # Tag Nightly, force to move any old version
 	$Q git tag -f Nightly HEAD
 	@: # Update NEWS.md with nightly changes
 	$Q DETAILED_VERSION=`misc/version.sh --nightly` \
@@ -268,6 +270,7 @@ build-nightly:
 		&& cat ./NEWS.md					>> ./NEWS.build
 	@: # Build versioned release assets
 	$Q export DETAILED_VERSION=`misc/version.sh --nightly` \
+		  CHECKOUT_HEAD=Nightly \
 		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
 		  VERSION_SH_NIGHTLY=true \
 	   && $(MAKE) build-assets
@@ -293,16 +296,17 @@ upload-nightly:
 # == build-assets ==
 build-assets:
 	$Q test -n "$$DETAILED_VERSION" || { echo "Missing DETAILED_VERSION" >&2 ; exit 1; }
+	$Q test -n "$$CHECKOUT_HEAD" || { echo "Missing CHECKOUT_HEAD" >&2 ; exit 1; }
 	@: # Clear out-of-tree build directory (but keep .ccache/), note that
 	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
-	$Q BUILDHEAD=`git rev-parse HEAD`						\
+	$Q :										\
 		&& rm -rf .tmp.ccache							\
 		&& cd $(RELEASE_OOTBUILD)						\
 		&& (mv .ccache/ $(abspath .tmp.ccache) || : ) 2>/dev/null		\
 		&& rm -rf * .[^.]* ..?*							\
 		&& git clone $(abspath .git) .						\
 		&& (mv $(abspath .tmp.ccache) .ccache || : ) 2>/dev/null		\
-		&& git checkout -f "$$BUILDHEAD"
+		&& git checkout -f "$$CHECKOUT_HEAD"
 	$Q test ! -r ./NEWS.build || mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
 	@: # Build binaries with different INSNs in parallel, delete tag on error
 	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
