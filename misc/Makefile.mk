@@ -233,7 +233,7 @@ build-nightly:
 	$Q git tag -f Nightly HEAD
 	@: # Update NEWS.md with nightly changes
 	$Q DETAILED_VERSION=`misc/version.sh --nightly` \
-		&& LOG_RANGE=`git describe --match v'[0-9]*.[0-9]*' --abbrev=0 --first-parent` \
+		&& LOG_RANGE=`git describe --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=0 --first-parent` \
 		&& LOG_RANGE="$$LOG_RANGE..HEAD" \
 		&& echo -e "## Anklang $$DETAILED_VERSION\n"		>  ./NEWS.build \
 		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
