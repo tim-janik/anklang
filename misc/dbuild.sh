@@ -57,6 +57,7 @@ EXEC_CMD="$1" && shift
 TUID=`id -u`
 TGID=`id -g`
 PROJECT_VOLUME="--user $TUID:$TGID -v `pwd`:/$PROJECT/"
+export PODMAN_USERNS=keep-id # keep UID of files in volume mounts under podman
 
 # == Initialize Build Environment ==
 $INITIALIZE && {
