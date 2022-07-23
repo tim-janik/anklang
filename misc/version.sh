@@ -125,4 +125,5 @@ test -n "$COMMIT_DATE" && {
 }
 
 # bail out
-die "ERROR: failed to find git commit or project version"
+test -d .git || die "ERROR: failed to find git repository"
+die "ERROR: failed to find git commit or project version in NEWS.md"
