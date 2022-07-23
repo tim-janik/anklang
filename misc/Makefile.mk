@@ -222,6 +222,39 @@ RELEASE_DEB           = $(RELEASE_SSEDIR)/anklang_$(DETAILED_VERSION)_amd64.deb
 RELEASE_APPIMAGE      = $(RELEASE_SSEDIR)/anklang-$(DETAILED_VERSION)-x64.AppImage
 RELEASE_CHANGELOG     = $(RELEASE_SSEDIR)/ChangeLog-$(DETAILED_VERSION).txt
 
+# == build-assets ==
+build-assets:
+	$Q test -n "$$CHECKOUT_HEAD" || { echo "Missing CHECKOUT_HEAD" >&2 ; exit 1; }
+	@: # Clear out-of-tree build directory (but keep .ccache/), note that
+	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
+	$Q :										\
+		&& rm -rf .tmp.ccache							\
+		&& cd $(RELEASE_OOTBUILD)						\
+		&& (mv .ccache/ $(abspath .tmp.ccache) || : ) 2>/dev/null		\
+		&& rm -rf * .[^.]* ..?*							\
+		&& git clone $(abspath .git) .						\
+		&& (mv $(abspath .tmp.ccache) .ccache || : ) 2>/dev/null		\
+		&& git checkout -f "$$CHECKOUT_HEAD"
+	$Q test ! -r ./NEWS.build || mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
+	@: # Build binaries with different INSNs in parallel, delete tag on error
+	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
+		insn-build-sse						\
+		insn-build-fma
+	@: # Build release packages, INSN=sse is full build, delete tag on error
+	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
+		INSN=sse builddir=out-sse				\
+		anklang-deb						\
+		appimage
+	@: # Create release manuals (if present)
+	$Q cd $(RELEASE_SSEDIR)						\
+	   && test ! -f doc/anklang-manual.pdf				\
+	   || cp doc/anklang-manual.pdf anklang-manual-$(version_short).pdf
+	$Q cd $(RELEASE_SSEDIR)						\
+	   && test ! -f doc/anklang-internals.pdf			\
+	   || cp doc/anklang-internals.pdf anklang-internals-$(version_short).pdf
+	@: # Check build
+	$Q test ! -r /dev/fuse || time $(RELEASE_APPIMAGE) --quitstartup
+
 # == build-release ==
 build-release:
 	$(QGEN)
@@ -290,39 +323,6 @@ upload-nightly:
 		-F '$(RELEASE_SSEDIR)/release-message'			\
 		"$${ASSETS[@]/#/-a}"					\
 		'Nightly'
-
-# == build-assets ==
-build-assets:
-	$Q test -n "$$CHECKOUT_HEAD" || { echo "Missing CHECKOUT_HEAD" >&2 ; exit 1; }
-	@: # Clear out-of-tree build directory (but keep .ccache/), note that
-	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
-	$Q :										\
-		&& rm -rf .tmp.ccache							\
-		&& cd $(RELEASE_OOTBUILD)						\
-		&& (mv .ccache/ $(abspath .tmp.ccache) || : ) 2>/dev/null		\
-		&& rm -rf * .[^.]* ..?*							\
-		&& git clone $(abspath .git) .						\
-		&& (mv $(abspath .tmp.ccache) .ccache || : ) 2>/dev/null		\
-		&& git checkout -f "$$CHECKOUT_HEAD"
-	$Q test ! -r ./NEWS.build || mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
-	@: # Build binaries with different INSNs in parallel, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
-		insn-build-sse						\
-		insn-build-fma
-	@: # Build release packages, INSN=sse is full build, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
-		INSN=sse builddir=out-sse				\
-		anklang-deb						\
-		appimage
-	@: # Create release manuals (if present)
-	$Q cd $(RELEASE_SSEDIR)						\
-	   && test ! -f doc/anklang-manual.pdf				\
-	   || cp doc/anklang-manual.pdf anklang-manual-$(version_short).pdf
-	$Q cd $(RELEASE_SSEDIR)						\
-	   && test ! -f doc/anklang-internals.pdf			\
-	   || cp doc/anklang-internals.pdf anklang-internals-$(version_short).pdf
-	@: # Check build
-	$Q test ! -r /dev/fuse || time $(RELEASE_APPIMAGE) --quitstartup
 
 # == release-upload ==
 release-upload: NEWS.md
