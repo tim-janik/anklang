@@ -55,6 +55,15 @@ make_nightly() {
   echo "$V"
 }
 
+# Make release version from git describe
+make_release() {
+  local V
+  V=$(git describe --first-parent --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=$L --long HEAD)
+  [[ "$V" =~ ^v([0-9.]+)-0-g[a-f0-9]+$ ]] || die "Missing release tag on HEAD"
+  BUILD_NAME="${BASH_REMATCH[1]#v}"
+  echo "$BUILD_NAME"
+}
+
 # Usage: version.sh [--news-tag|--last-tag]	# print project versions
 while test $# -ne 0 ; do
   case "$1" in
@@ -68,6 +77,8 @@ while test $# -ne 0 ; do
       echo "v${NEWS_VERSION#v}" && exit ;;
     --nightly)
       make_nightly && exit ;;
+    --release)
+      make_release && exit ;;
     *)
       true ;;
   esac
