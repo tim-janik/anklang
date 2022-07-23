@@ -192,6 +192,12 @@ ServerImpl::get_version ()
 }
 
 String
+ServerImpl::get_build_id ()
+{
+  return ase_build_id();
+}
+
+String
 ServerImpl::get_vorbis_version ()
 {
   return "-";

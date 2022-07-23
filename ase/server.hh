@@ -19,6 +19,7 @@ public:
   bool         set_data             (const String &key, const Value &v) override;
   Value        get_data             (const String &key) const override;
   String       get_version          () override;
+  String       get_build_id         () override;
   String       get_vorbis_version   () override;
   String       get_mp3_version      () override;
   String       get_clap_version     () override;

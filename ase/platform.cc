@@ -828,6 +828,12 @@ determine_anklangsynthengine_installdir (bool *using_objdir)
 const char*
 ase_version ()
 {
+  return ase_version_short;
+}
+
+const char*
+ase_build_id ()
+{
   return ase_version_long;
 }
 

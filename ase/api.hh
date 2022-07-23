@@ -371,6 +371,7 @@ public:
   static ServerP instancep          ();         ///< Retrieve global Server instance as std::shared_ptr.
   virtual void   shutdown           () = 0;     ///< Shutdown ASE.
   virtual String get_version        () = 0;     ///< Retrieve ASE version.
+  virtual String get_build_id       () = 0;     ///< Retrieve ASE build id.
   virtual String get_vorbis_version () = 0;     ///< Retrieve Vorbis handler version.
   virtual String get_mp3_version    () = 0;     ///< Retrieve MP3 handler version.
   virtual String get_clap_version   () = 0;     ///< Retrieve CLAP support version.
