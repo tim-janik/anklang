@@ -239,8 +239,7 @@ build-release:
 	@: # Tag release with annotation
 	$Q git tag -a '$(RELEASE_TAG)' -m "`git log -1 --pretty=%s`"
 	@: # Build versioned release assets
-	$Q export DETAILED_VERSION='$(RELEASE_TAG)' \
-		  CHECKOUT_HEAD='$(RELEASE_TAG)' \
+	$Q export CHECKOUT_HEAD='$(RELEASE_TAG)' \
 		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
 		  VERSION_SH_RELEASE=true \
 	   && $(MAKE) build-assets
@@ -269,8 +268,7 @@ build-nightly:
 		&& echo 						>> ./NEWS.build \
 		&& cat ./NEWS.md					>> ./NEWS.build
 	@: # Build versioned release assets
-	$Q export DETAILED_VERSION=`misc/version.sh --nightly` \
-		  CHECKOUT_HEAD=Nightly \
+	$Q export CHECKOUT_HEAD=Nightly \
 		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
 		  VERSION_SH_NIGHTLY=true \
 	   && $(MAKE) build-assets
@@ -295,7 +293,6 @@ upload-nightly:
 
 # == build-assets ==
 build-assets:
-	$Q test -n "$$DETAILED_VERSION" || { echo "Missing DETAILED_VERSION" >&2 ; exit 1; }
 	$Q test -n "$$CHECKOUT_HEAD" || { echo "Missing CHECKOUT_HEAD" >&2 ; exit 1; }
 	@: # Clear out-of-tree build directory (but keep .ccache/), note that
 	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
@@ -320,10 +317,10 @@ build-assets:
 	@: # Create release manuals (if present)
 	$Q cd $(RELEASE_SSEDIR)						\
 	   && test ! -f doc/anklang-manual.pdf				\
-	   || cp doc/anklang-manual.pdf anklang-manual-$(DETAILED_VERSION).pdf
+	   || cp doc/anklang-manual.pdf anklang-manual-$(version_short).pdf
 	$Q cd $(RELEASE_SSEDIR)						\
 	   && test ! -f doc/anklang-internals.pdf			\
-	   || cp doc/anklang-internals.pdf anklang-internals-$(DETAILED_VERSION).pdf
+	   || cp doc/anklang-internals.pdf anklang-internals-$(version_short).pdf
 	@: # Check build
 	$Q test ! -r /dev/fuse || time $(RELEASE_APPIMAGE) --quitstartup
 
