@@ -222,10 +222,32 @@ RELEASE_DEB           = $(RELEASE_SSEDIR)/anklang_$(DETAILED_VERSION)_amd64.deb
 RELEASE_APPIMAGE      = $(RELEASE_SSEDIR)/anklang-$(DETAILED_VERSION)-x64.AppImage
 RELEASE_CHANGELOG     = $(RELEASE_SSEDIR)/ChangeLog-$(DETAILED_VERSION).txt
 
+# == build-release ==
+build-release:
+	$(QGEN)
+	@: # Setup release variables (note, eval preceeds all shell commands)
+	@ $(eval RELEASE_TAG       != ./misc/version.sh --news-tag1)
+	@: # Check release tag
+	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
+	$Q test -z "`git tag -l '$(RELEASE_TAG)'`" || \
+		{ echo '$@: error: release tag from NEWS.md already exists: $(RELEASE_TAG)' >&2 ; false ; }
+	@: # Check against origin/trunk
+	$Q VERSIONHASH=`git rev-parse HEAD` && \
+		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
+		$(RELEASE_TEST) || \
+		{ echo "$@: ERROR: Release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
+	@: # Tag release with annotation
+	$Q git tag -a '$(RELEASE_TAG)' -m "`git log -1 --pretty=%s`"
+	@: # Build versioned release assets
+	$Q export DETAILED_VERSION='$(RELEASE_TAG)' \
+		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
+		  VERSION_SH_RELEASE=true \
+	   && $(MAKE) build-assets
+
 # == build-nightly ==
 build-nightly:
 	$(QGEN)
-	@: # Determine version in nightly format
+	@: # Check against origin/trunk
 	$Q VERSIONHASH=`git rev-parse HEAD` && \
 		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
 		$(RELEASE_TEST) || \
@@ -244,6 +266,7 @@ build-nightly:
 		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
 		&& echo 						>> ./NEWS.build \
 		&& cat ./NEWS.md					>> ./NEWS.build
+	@: # Build versioned release assets
 	$Q export DETAILED_VERSION=`misc/version.sh --nightly` \
 		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
 		  VERSION_SH_NIGHTLY=true \
@@ -269,7 +292,7 @@ upload-nightly:
 
 # == build-assets ==
 build-assets:
-	$Q test -n "$$DETAILED_VERSION" -a -r ./NEWS.build
+	$Q test -n "$$DETAILED_VERSION" || { echo "Missing DETAILED_VERSION" >&2 ; exit 1; }
 	@: # Clear out-of-tree build directory (but keep .ccache/), note that
 	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
 	$Q BUILDHEAD=`git rev-parse HEAD`						\
@@ -280,7 +303,7 @@ build-assets:
 		&& git clone $(abspath .git) .						\
 		&& (mv $(abspath .tmp.ccache) .ccache || : ) 2>/dev/null		\
 		&& git checkout -f "$$BUILDHEAD"
-	$Q mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
+	$Q test ! -r ./NEWS.build || mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
 	@: # Build binaries with different INSNs in parallel, delete tag on error
 	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
 		insn-build-sse						\
