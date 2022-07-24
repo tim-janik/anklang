@@ -3,7 +3,7 @@
 [Desktop Entry]
 Type=Application
 Name=Anklang
-Exec=$(pkgdir)/bin/anklang
+Exec=$(pkgdir)/bin/anklang %f
 Terminal=false
 Icon=anklang
 MimeType=application/x-anklang;
