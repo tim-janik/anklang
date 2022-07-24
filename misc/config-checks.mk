@@ -72,7 +72,6 @@ conftest_require_lib = { $(call conftest_lib,$1,$2,$3) && $$CONFTEST \
 config-checks.require.pkgconfig ::= $(strip	\
 	alsa			>= 1.0.5	\
 	flac			>= 1.2.1	\
-	fluidsynth		>= 2.0.5	\
 	ogg			>= 1.2.2	\
 	vorbis			>= 1.3.2	\
 	vorbisenc		>= 1.3.2	\
@@ -85,6 +84,7 @@ config-checks.require.pkgconfig ::= $(strip	\
 # mad.pc exists in Debian only:	mad >= 0.14.2
 # boost libraries have no .pc files
 # Note, vorbisfile <= 1.3.4 had a pcm_seek bug near EOF for small files
+# Unused: fluidsynth		>= 2.0.5
 
 # == pkg-config variables ==
 # used for GLIB_CFLAGS and GLIB_LIBS
@@ -92,7 +92,7 @@ GLIB_PACKAGES    ::= glib-2.0 gobject-2.0 gmodule-no-export-2.0 zlib
 # use for Gtk+2 X11 Window embedding
 GTK2_PACKAGES	 ::= gtk+-2.0
 # used for ASEDEPS_CFLAGS ASEDEPS_LIBS
-ASEDEPS_PACKAGES ::= fluidsynth vorbisenc vorbisfile vorbis ogg flac zlib $(GLIB_PACKAGES) # mad
+ASEDEPS_PACKAGES ::= vorbisenc vorbisfile vorbis ogg flac zlib $(GLIB_PACKAGES) # mad
 # used for ANKLANG_JACK_LIBS
 ANKLANGDEP_JACK  ::= jack >= 0.124.0
 
