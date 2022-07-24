@@ -100,12 +100,12 @@ print_usage (bool help)
       return;
     }
   printout ("Usage: AnklangSynthEngine [OPTIONS]\n");
-  printout ("  --check-integrity-tests Run integrity tests\n");
+  printout ("  --check          Run integrity tests\n");
   printout ("  --disable-randomization Test mode for deterministic tests\n");
   printout ("  --embed <fd>     Parent process socket for embedding\n");
   printout ("  --fatal-warnings Abort on warnings and failing assertions\n");
   printout ("  --help           Print program usage and options\n");
-  printout ("  --js-api                Print Javascript bindings\n");
+  printout ("  --js-api         Print Javascript bindings\n");
   printout ("  --jsbin          Print Javascript IPC & binary messages\n");
   printout ("  --jsipc          Print Javascript IPC messages\n");
   printout ("  --list-drivers   Print PCM and MIDI drivers\n");
@@ -136,7 +136,7 @@ parse_args (int *argcp, char **argv)
         config.fatal_warnings = true;
       else if (strcmp ("--disable-randomization", argv[i]) == 0)
         config.allow_randomization = false;
-      else if (strcmp ("--check-integrity-tests", argv[i]) == 0)
+      else if (strcmp ("--check", argv[i]) == 0)
         {
           config.mode = MainConfig::CHECK_INTEGRITY_TESTS;
           config.fatal_warnings = true;

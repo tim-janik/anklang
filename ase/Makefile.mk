@@ -177,5 +177,5 @@ $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgd
 # == Check Integrity Tests ==
 check-ase-tests: $(lib/AnklangSynthEngine)
 	$(QGEN)
-	$Q $(lib/AnklangSynthEngine) --check-integrity-tests
+	$Q $(lib/AnklangSynthEngine) --check
 CHECK_TARGETS += check-ase-tests
