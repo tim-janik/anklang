@@ -224,17 +224,16 @@ RELEASE_CHANGELOG     = $(RELEASE_SSEDIR)/ChangeLog-$(DETAILED_VERSION).txt
 
 # == build-assets ==
 build-assets:
-	$Q test -n "$$CHECKOUT_HEAD" || { echo "Missing CHECKOUT_HEAD" >&2 ; exit 1; }
 	@: # Clear out-of-tree build directory (but keep .ccache/), note that
 	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
 	$Q :										\
 		&& rm -rf .tmp.ccache							\
-		&& cd $(RELEASE_OOTBUILD)						\
+		&& mkdir -p $(RELEASE_OOTBUILD) && cd $(RELEASE_OOTBUILD)		\
 		&& (mv .ccache/ $(abspath .tmp.ccache) || : ) 2>/dev/null		\
 		&& rm -rf * .[^.]* ..?*							\
 		&& git clone $(abspath .git) .						\
 		&& (mv $(abspath .tmp.ccache) .ccache || : ) 2>/dev/null		\
-		&& git checkout -f "$$CHECKOUT_HEAD"
+		&& git checkout -f "$${CHECKOUT_HEAD:-HEAD}"
 	$Q test ! -r ./NEWS.build || mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
 	@: # Build binaries with different INSNs in parallel, delete tag on error
 	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
@@ -253,7 +252,7 @@ build-assets:
 	   && test ! -f doc/anklang-internals.pdf			\
 	   || cp doc/anklang-internals.pdf anklang-internals-$(version_short).pdf
 	@: # Check build
-	$Q test ! -r /dev/fuse || time $(RELEASE_APPIMAGE) --quitstartup
+	$Q test ! -r /dev/fuse || time $(RELEASE_SSEDIR)/anklang-$(version_short)-x64.AppImage --quitstartup
 
 # == build-release ==
 build-release:
