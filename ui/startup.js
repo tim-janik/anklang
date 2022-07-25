@@ -91,6 +91,10 @@ async function bootup () {
 	if (event.shiftKey && event.ctrlKey && event.keyCode == 73)
 	  window.Electron.call ('toggle_dev_tools');
       });
+      if (window.Electron.config.files)
+	console.log ("LOAD:", window.Electron.config.files);
+      if (window.Electron.config.files.length)
+	CONFIG.files.push (...window.Electron.config.files);
     }
   // Reload page on Websocket connection loss
   const url = window.location.href.replace ('http', 'ws');
@@ -179,17 +183,19 @@ async function bootup () {
 	window.Electron.call ('exit', 123);
       }
     }
+
   // Load command line files
-  if (CONFIG.mainjs && CONFIG.files.length)
+  if (CONFIG.files.length)
     {
       console.bootlog ("Loading", CONFIG.files.length, "command line files...");
       for (let arg of CONFIG.files)
         {
-	  const error = await App.load_project (arg);
+	  const error = await App.load_project_checked (arg);
 	  if (error != Ase.Error.NONE)
 	    console.error ('Failed to load:', arg + ":", error);
 	}
     }
+
   // Clear temporary files if *not* in script mode
   if (CONFIG.mainjs && !CONFIG.uiscript)
     {
@@ -200,6 +206,7 @@ async function bootup () {
         // debug ("Cleaned Ase cachedirs...");
       }, ms);
     }
+
   // Test integrity
   if (__DEV__)
     await self_tests();

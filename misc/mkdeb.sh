@@ -13,7 +13,7 @@ BUILDDIR="${BUILDDIR:-out}"
 DROOT=$BUILDDIR/mkdeb/
 PKGDIR=$(sed -rn '/^ *"pkgdir":/{ s/.*:.*"([^"]+)", *$/\1/; p; q; }' $BUILDDIR/package.json)
 DEBIAN=$DROOT/DEBIAN
-DEBDOCDIR=$DROOT/$PKGDIR/doc
+PKGDOCDIR=$DROOT/$PKGDIR/doc
 ANKLANGLAUNCHER=$PKGDIR/bin/anklang
 
 # start from scratch
@@ -27,6 +27,11 @@ umask 022
 rm -f -r "$DROOT"
 make install "DESTDIR=$DROOT"
 #make installcheck "DESTDIR=$DROOT"
+ls "$DROOT"/$PKGDIR >/dev/null # check dir
+
+# find mime dir
+DEBMIMEDIR=/$(realpath --relative-to="$DROOT" "$DROOT"/$PKGDIR/../../share/mime/)
+ls "$DROOT"$DEBMIMEDIR >/dev/null # check dir
 
 # Meta info
 NAME="anklang"
@@ -86,7 +91,7 @@ dch_msg() {
 }
 
 # changelog.Debian.gz (via dch)
-DEBCHANGELOG=$DEBDOCDIR/changelog.Debian
+DEBCHANGELOG=$PKGDOCDIR/changelog.Debian
 dch_msg "$NAME" "$VERSION" unstable medium \
 	"* ${NAME^} build: https://github.com/tim-janik/anklang/" \
 	"* git commit $GITCOMMIT" \
@@ -120,14 +125,28 @@ cat <<-\__EOF |
 	    #set_perms root root 4755 @ANKLANGLAUNCHER@	# wrapper which does renice -20
 	    # https://www.debian.org/doc/debian-policy/ch-sharedlibs.html#s-ldconfig
 	    #ldconfig
+	    which update-mime-database >/dev/null 2>&1 &&
+		update-mime-database @DEBMIMEDIR@
 	    ;;
 	  abort-upgrade|abort-remove|abort-deconfigure) ;;
 	  *) exit 1 ;; # unkown action
 	esac
 	exit 0
 __EOF
-sed "s|@ANKLANGLAUNCHER@|$ANKLANGLAUNCHER|g" >> $DEBIAN/postinst
+sed "s|@ANKLANGLAUNCHER@|$ANKLANGLAUNCHER|g; s|@DEBMIMEDIR@|$DEBMIMEDIR|g" >> $DEBIAN/postinst
 chmod +x $DEBIAN/postinst
+
+# DEBIAN/postrm
+cat <<-\__EOF |
+	#!/bin/bash
+	set -e -o pipefail
+	which update-mime-database >/dev/null 2>&1 && {
+	  	mkdir -p @DEBMIMEDIR@/packages  # required by update-mime-database
+	  	update-mime-database @DEBMIMEDIR@
+	}
+__EOF
+sed "s|@ANKLANGLAUNCHER@|$ANKLANGLAUNCHER|g; s|@DEBMIMEDIR@|$DEBMIMEDIR|g" >> $DEBIAN/postrm
+chmod +x $DEBIAN/postrm
 
 # https://wiki.debian.org/ReleaseGoals/LAFileRemoval
 find $DEBIAN/../ -name '*.la' -delete
