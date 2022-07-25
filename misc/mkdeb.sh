@@ -29,9 +29,9 @@ make install "DESTDIR=$DROOT"
 #make installcheck "DESTDIR=$DROOT"
 ls "$DROOT"/$PKGDIR >/dev/null # check dir
 
-# find mime dir
-DEBMIMEDIR=/$(realpath --relative-to="$DROOT" "$DROOT"/$PKGDIR/../../share/mime/)
-ls "$DROOT"$DEBMIMEDIR >/dev/null # check dir
+# find prefix dir for MIME and .desktop files
+PREFIXDIR=/$(realpath --relative-to="$DROOT" "$DROOT"/$PKGDIR/../../)
+ls "$DROOT"$PREFIXDIR >/dev/null # check dir
 
 # Meta info
 NAME="anklang"
@@ -98,54 +98,51 @@ dch_msg "$NAME" "$VERSION" unstable medium \
 	> $DEBCHANGELOG
 gzip -9 $DEBCHANGELOG
 
-# postinst, postrm - generate header
-write_pkgscript_header()
-{
-  cat <<-\__EOF
-	#!/bin/bash
-	set -e -o pipefail
-	set_perms() {
-	  USER="$1"; GROUP="$2"; MODE="$3"; FILE="$4"
-	  # https://www.debian.org/doc/debian-policy/ch-files.html#s10.9.1
-	  if ! dpkg-statoverride --list "$FILE" > /dev/null ; then
-	    chown "$USER:$GROUP" "$FILE"
-	    chmod "$MODE" "$FILE"
-	  fi
-	}
-__EOF
+# DEBIAN/postinst
+# Needed because Debian does not provide triggers for /usr/local/
+cat <<\__EOF |
+#!/bin/bash
+set -e -o pipefail
+set_perms() {
+	USER="$1"; GROUP="$2"; MODE="$3"; FILE="$4"
+	# https://www.debian.org/doc/debian-policy/ch-files.html#the-use-of-dpkg-statoverride
+	if ! dpkg-statoverride --list "$FILE" > /dev/null ; then
+		chown "$USER:$GROUP" "$FILE"
+		chmod "$MODE" "$FILE"
+	fi
 }
 
-# DEBIAN/postinst
-write_pkgscript_header >$DEBIAN/postinst
-cat <<-\__EOF |
-	# https://www.debian.org/doc/debian-policy/ch-maintainerscripts.html#s-mscriptsinstact
-	case "$1" in
-	  configure)
-	    # https://www.debian.org/doc/debian-policy/ch-files.html#s-permissions-owners
-	    #set_perms root root 4755 @ANKLANGLAUNCHER@	# wrapper which does renice -20
-	    # https://www.debian.org/doc/debian-policy/ch-sharedlibs.html#s-ldconfig
-	    #ldconfig
-	    which update-mime-database >/dev/null 2>&1 &&
-		update-mime-database @DEBMIMEDIR@
-	    ;;
-	  abort-upgrade|abort-remove|abort-deconfigure) ;;
-	  *) exit 1 ;; # unkown action
-	esac
-	exit 0
+# https://www.debian.org/doc/debian-policy/ch-maintainerscripts.html#s-mscriptsinstact
+case "$1" in
+     configure)
+	# https://www.debian.org/doc/debian-policy/ch-files.html#s-permissions-owners
+	#set_perms root root 4755 @ANKLANGLAUNCHER@	# wrapper which does renice -20
+	# https://www.debian.org/doc/debian-policy/ch-sharedlibs.html#s-ldconfig
+	#ldconfig
+	which update-mime-database >/dev/null 2>&1 &&
+		update-mime-database @PREFIXDIR@/share/mime/
+	which update-desktop-database >/dev/null 2>&1 &&
+		update-desktop-database @PREFIXDIR@/share/applications/
+	;;
+	abort-upgrade|abort-remove|abort-deconfigure) ;;
+	*) exit 1 ;; # unkown action
+esac
+exit 0
 __EOF
-sed "s|@ANKLANGLAUNCHER@|$ANKLANGLAUNCHER|g; s|@DEBMIMEDIR@|$DEBMIMEDIR|g" >> $DEBIAN/postinst
+sed "s|@ANKLANGLAUNCHER@|$ANKLANGLAUNCHER|g; s|@PREFIXDIR@|$PREFIXDIR|g" > $DEBIAN/postinst
 chmod +x $DEBIAN/postinst
 
 # DEBIAN/postrm
-cat <<-\__EOF |
-	#!/bin/bash
-	set -e -o pipefail
-	which update-mime-database >/dev/null 2>&1 && {
-	  	mkdir -p @DEBMIMEDIR@/packages  # required by update-mime-database
-	  	update-mime-database @DEBMIMEDIR@
-	}
+# Needed because Debian does not provide triggers for /usr/local/
+cat <<\__EOF |
+#!/bin/bash
+set -e -o pipefail
+which update-mime-database >/dev/null 2>&1 && {
+	mkdir -p @PREFIXDIR@/share/mime/packages  # required by update-mime-database
+	update-mime-database @PREFIXDIR@/share/mime/
+}
 __EOF
-sed "s|@ANKLANGLAUNCHER@|$ANKLANGLAUNCHER|g; s|@DEBMIMEDIR@|$DEBMIMEDIR|g" >> $DEBIAN/postrm
+sed "s|@ANKLANGLAUNCHER@|$ANKLANGLAUNCHER|g; s|@PREFIXDIR@|$PREFIXDIR|g" > $DEBIAN/postrm
 chmod +x $DEBIAN/postrm
 
 # https://wiki.debian.org/ReleaseGoals/LAFileRemoval
