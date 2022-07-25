@@ -8,7 +8,7 @@ const Electron = require ('electron');
 const Eapp = Electron.app;
 const Eshell = Electron.shell;
 const os = require ('os');
-const ELECTRON_CONFIG = { quitstartup: false };
+const ELECTRON_CONFIG = { quitstartup: false, files: [] };
 
 // CSS Defaults
 const defaults = {
@@ -243,14 +243,14 @@ function usage (what, exitcode = false) {
 function parse_args (argv)
 {
   argv = argv.slice (1); // take [1,...]
-  const c = { files: [], verbose: false, binary: false, gdb: false, norc: false, };
+  const c = { verbose: false, binary: false, gdb: false, norc: false, };
   const sep = false;
   while (argv.length)
     {
       const arg = argv.splice (0, 1)[0];
       if (sep)
 	{
-	  c.files.push (arg);
+	  ELECTRON_CONFIG.files.push (arg);
 	  continue;
 	}
       switch (arg) {
@@ -285,7 +285,7 @@ function parse_args (argv)
 	  sep = true;
 	  break;
 	default:
-	  c.files.push (arg);
+	  ELECTRON_CONFIG.files.push (arg);
 	  break;
       }
     }
