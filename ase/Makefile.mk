@@ -39,8 +39,8 @@ $>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/AnklangSynthEngine.dep
 	$Q echo '[[maybe_unused]] static bool init_jsonipc = (jsonipc_4_api_hh(), 0);'		>> $@.tmp
 	$Q mv $@.tmp $@
 
-# == ase/buildversion.cc ==
-$>/ase/buildversion.cc: ase/Makefile.mk					| $>/ase/
+# == ase/buildversion-$(version_m.m.m).cc ==
+$>/ase/buildversion-$(version_m.m.m).cc: ase/Makefile.mk					| $>/ase/
 	$(QGEN)
 	$Q echo '// make $@'							> $@.tmp
 	$Q echo '#include <ase/platform.hh>'					>>$@.tmp
@@ -53,8 +53,8 @@ $>/ase/buildversion.cc: ase/Makefile.mk					| $>/ase/
 	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_m.m.m)";' >>$@.tmp
 	$Q echo '} // Ase'							>>$@.tmp
 	$Q mv $@.tmp $@
-ase/AnklangSynthEngine.objects += $>/ase/buildversion.o
-# $>/ase/buildversion.o: $>/ase/buildversion.cc
+ase/AnklangSynthEngine.objects += $>/ase/buildversion-$(version_m.m.m).o
+# $>/ase/buildversion-$(version_m.m.m).o: $>/ase/buildversion-$(version_m.m.m).cc
 
 # == ase/sysconfig.h ==
 $>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk
@@ -177,5 +177,5 @@ $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgd
 # == Check Integrity Tests ==
 check-ase-tests: $(lib/AnklangSynthEngine)
 	$(QGEN)
-	$Q $(lib/AnklangSynthEngine) --check-integrity-tests
+	$Q $(lib/AnklangSynthEngine) --check
 CHECK_TARGETS += check-ase-tests

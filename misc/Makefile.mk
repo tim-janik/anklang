@@ -222,18 +222,73 @@ RELEASE_DEB           = $(RELEASE_SSEDIR)/anklang_$(DETAILED_VERSION)_amd64.deb
 RELEASE_APPIMAGE      = $(RELEASE_SSEDIR)/anklang-$(DETAILED_VERSION)-x64.AppImage
 RELEASE_CHANGELOG     = $(RELEASE_SSEDIR)/ChangeLog-$(DETAILED_VERSION).txt
 
+# == build-assets ==
+build-assets:
+	@: # Clear out-of-tree build directory (but keep .ccache/), note that
+	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
+	$Q :										\
+		&& rm -rf .tmp.ccache							\
+		&& mkdir -p $(RELEASE_OOTBUILD) && cd $(RELEASE_OOTBUILD)		\
+		&& (mv .ccache/ $(abspath .tmp.ccache) || : ) 2>/dev/null		\
+		&& rm -rf * .[^.]* ..?*							\
+		&& git clone $(abspath .git) .						\
+		&& (mv $(abspath .tmp.ccache) .ccache || : ) 2>/dev/null		\
+		&& git checkout -f "$${CHECKOUT_HEAD:-HEAD}"
+	$Q test ! -r ./NEWS.build || mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
+	@: # Build binaries with different INSNs in parallel, delete tag on error
+	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
+		insn-build-sse						\
+		insn-build-fma
+	@: # Build release packages, INSN=sse is full build, delete tag on error
+	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
+		INSN=sse builddir=out-sse				\
+		anklang-deb						\
+		appimage
+	@: # Create release manuals (if present)
+	$Q cd $(RELEASE_SSEDIR)						\
+	   && test ! -f doc/anklang-manual.pdf				\
+	   || cp doc/anklang-manual.pdf anklang-manual-$(version_short).pdf
+	$Q cd $(RELEASE_SSEDIR)						\
+	   && test ! -f doc/anklang-internals.pdf			\
+	   || cp doc/anklang-internals.pdf anklang-internals-$(version_short).pdf
+	@: # Check build
+	$Q test ! -r /dev/fuse || time $(RELEASE_SSEDIR)/anklang-$(version_short)-x64.AppImage --quitstartup
+
+# == build-release ==
+build-release:
+	$(QGEN)
+	@: # Setup release variables (note, eval preceeds all shell commands)
+	@ $(eval RELEASE_TAG       != ./misc/version.sh --news-tag1)
+	@: # Check release tag
+	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
+	$Q test -z "`git tag -l '$(RELEASE_TAG)'`" || \
+		{ echo '$@: error: release tag from NEWS.md already exists: $(RELEASE_TAG)' >&2 ; false ; }
+	@: # Check against origin/trunk
+	$Q VERSIONHASH=`git rev-parse HEAD` && \
+		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
+		$(RELEASE_TEST) || \
+		{ echo "$@: ERROR: Release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
+	@: # Tag release with annotation
+	$Q git tag -a '$(RELEASE_TAG)' -m "`git log -1 --pretty=%s`"
+	@: # Build versioned release assets
+	$Q export CHECKOUT_HEAD='$(RELEASE_TAG)' \
+		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
+		  VERSION_SH_RELEASE=true \
+	   && $(MAKE) build-assets
+
 # == build-nightly ==
 build-nightly:
 	$(QGEN)
-	@: # Determine version in nightly format
+	@: # Check against origin/trunk
 	$Q VERSIONHASH=`git rev-parse HEAD` && \
 		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
 		$(RELEASE_TEST) || \
 		{ echo "$@: ERROR: Nightly release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
+	@: # Tag Nightly, force to move any old version
 	$Q git tag -f Nightly HEAD
 	@: # Update NEWS.md with nightly changes
 	$Q DETAILED_VERSION=`misc/version.sh --nightly` \
-		&& LOG_RANGE=`git describe --match v'[0-9]*.[0-9]*' --abbrev=0 --first-parent` \
+		&& LOG_RANGE=`git describe --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=0 --first-parent` \
 		&& LOG_RANGE="$$LOG_RANGE..HEAD" \
 		&& echo -e "## Anklang $$DETAILED_VERSION\n"		>  ./NEWS.build \
 		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
@@ -244,7 +299,8 @@ build-nightly:
 		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
 		&& echo 						>> ./NEWS.build \
 		&& cat ./NEWS.md					>> ./NEWS.build
-	$Q export DETAILED_VERSION=`misc/version.sh --nightly` \
+	@: # Build versioned release assets
+	$Q export CHECKOUT_HEAD=Nightly \
 		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
 		  VERSION_SH_NIGHTLY=true \
 	   && $(MAKE) build-assets
@@ -267,90 +323,21 @@ upload-nightly:
 		"$${ASSETS[@]/#/-a}"					\
 		'Nightly'
 
-# == build-assets ==
-build-assets:
-	$Q test -n "$$DETAILED_VERSION" -a -r ./NEWS.build
-	@: # Clear out-of-tree build directory (but keep .ccache/), note that
-	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
-	$Q BUILDHEAD=`git rev-parse HEAD`						\
-		&& rm -rf .tmp.ccache							\
-		&& cd $(RELEASE_OOTBUILD)						\
-		&& (mv .ccache/ $(abspath .tmp.ccache) || : ) 2>/dev/null		\
-		&& rm -rf * .[^.]* ..?*							\
-		&& git clone $(abspath .git) .						\
-		&& (mv $(abspath .tmp.ccache) .ccache || : ) 2>/dev/null		\
-		&& git checkout -f "$$BUILDHEAD"
-	$Q mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
-	@: # Build binaries with different INSNs in parallel, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
-		insn-build-sse						\
-		insn-build-fma
-	@: # Build release packages, INSN=sse is full build, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
-		INSN=sse builddir=out-sse				\
-		anklang-deb						\
-		appimage
-	@: # Create release manuals (if present)
-	$Q cd $(RELEASE_SSEDIR)						\
-	   && test ! -f doc/anklang-manual.pdf				\
-	   || cp doc/anklang-manual.pdf anklang-manual-$(DETAILED_VERSION).pdf
-	$Q cd $(RELEASE_SSEDIR)						\
-	   && test ! -f doc/anklang-internals.pdf			\
-	   || cp doc/anklang-internals.pdf anklang-internals-$(DETAILED_VERSION).pdf
-	@: # Check build
-	$Q test ! -r /dev/fuse || time $(RELEASE_APPIMAGE) --quitstartup
-
-# == release-upload ==
-release-upload: NEWS.md
+# == upload-release ==
+upload-release:
 	$(QGEN)
-	@: # Setup release variables (note, eval preceeds all shell commands)
-	@ $(eval RELEASE_TAG       != ./misc/version.sh --news-tag1)
-	@ $(eval RELEASE_CHANGELOG ::= $(RELEASE_SSEDIR)/ChangeLog-$(RELEASE_TAG:v%=%).txt)
-	@ $(eval RELEASE_DEB       ::= $(RELEASE_SSEDIR)/anklang_$(RELEASE_TAG:v%=%)_amd64.deb)
-	@ $(eval RELEASE_APPIMAGE  ::= $(RELEASE_SSEDIR)/anklang-$(RELEASE_TAG:v%=%)-x64.AppImage)
-	@: # Check release tag
-	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
-	$Q test -z "`git tag -l '$(RELEASE_TAG)'`" || \
-		{ echo '$@: error: release tag from NEWS.md already exists: $(RELEASE_TAG)' >&2 ; false ; }
-	@: # Tag release, create temporary build directory
-	$Q git tag -a '$(RELEASE_TAG)' -m "`git log -1 --pretty=%s`"
-	$Q if $(RELEASE_CONTINUATION) && test -d $(RELEASE_OOTBUILD) ; then	\
-		cd $(RELEASE_OOTBUILD) &&					\
-		git checkout '$(RELEASE_TAG)' ;					\
-	   else									\
-		: git worktree remove --force $(RELEASE_OOTBUILD) 2>/dev/null ;	\
-		: git worktree add $(RELEASE_OOTBUILD) '$(RELEASE_TAG)' ;	\
-	   fi
-	@: # Build binaries with different INSNs in parallel, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
-		insn-build-sse						\
-		insn-build-fma						\
-	|| { git tag -d '$(RELEASE_TAG)' ; exit -1 ; }
-	@: # Build release packages, INSN=sse is full build, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
-		INSN=sse builddir=out-sse				\
-		anklang-deb						\
-		appimage						\
-	&& time $(RELEASE_APPIMAGE) --quitstartup			\
-	|| { git tag -d '$(RELEASE_TAG)' ; exit -1 ; }
+	@: # Determine version, check release attachments
+	@ $(eval DETAILED_VERSION != misc/version.sh --release)
+	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "v$(DETAILED_VERSION)"
+	$Q du -hs $(RELEASE_CHANGELOG) $(RELEASE_DEB) $(RELEASE_APPIMAGE)
 	@: # Create Github release and upload assets
-	$Q echo 'Anklang $(RELEASE_TAG)'		>  $(RELEASE_SSEDIR)/release-message
+	$Q echo 'Anklang $(DETAILED_VERSION)'		>  $(RELEASE_SSEDIR)/release-message
 	$Q echo						>> $(RELEASE_SSEDIR)/release-message
 	$Q sed '0,/^## /b; /^## /Q; ' NEWS.md		>> $(RELEASE_SSEDIR)/release-message
-	$Q hub release create --draft --prerelease		\
-		-F '$(RELEASE_SSEDIR)/release-message'		\
-		-a '$(RELEASE_APPIMAGE)'			\
-		-a '$(RELEASE_DEB)'				\
-		-a '$(RELEASE_CHANGELOG)'			\
-		'$(RELEASE_TAG)'				\
-	|| { git tag -d '$(RELEASE_TAG)' ;			\
-	     hub release delete '$(RELEASE_TAG)' ;		\
-	     exit -1 ; }
-	@: # Publish tag
-	$Q true									\
-	&& read -p 'Publish release tag: $(RELEASE_TAG): (y/n) ' ANSWER		\
-	&& test y == "$$ANSWER"							\
-	&& git push origin '$(RELEASE_TAG)'
-	@: # Clean temporary build directory
-	$Q ! $(RELEASE_CONTINUATION) || : git worktree remove $(RELEASE_OOTBUILD) 2>/dev/null
-.PHONY: release-upload
+	$Q ASSETS=( $(RELEASE_SSEDIR)/*"$(DETAILED_VERSION)"* )		\
+		&& hub release create --draft				\
+		-F '$(RELEASE_SSEDIR)/release-message'			\
+		"$${ASSETS[@]/#/-a}"					\
+		'$(DETAILED_VERSION)'
+	$Q echo 'Run:'
+	$Q echo '  git push origin "$(DETAILED_VERSION)"'

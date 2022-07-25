@@ -38,7 +38,7 @@ Anklang supports short and long options which start with two dashes ('-').
 **--fatal-warnings**
 :   Abort on warnings and failing assertions, useful for test modes.
 
-**--check-integrity-tests**
+**--check**
 :   Execute internal tests and benchmarks.
 
 **--disable-randomization**

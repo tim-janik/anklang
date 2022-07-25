@@ -14,8 +14,12 @@ RUN echo -e '#!/bin/bash\n"$@" || { sleep 5 ; "$@" ; } || { sleep 15 ; "$@" ; }'
 # Upgrade packages
 RUN retry apt-get update && retry apt-get -y upgrade
 
+# Prepare build environment
+RUN retry apt-get install -y build-essential curl cmake libglib2.0-dev
+
 # Build stripped down fluidsynth version without drivers
-RUN retry apt-get install -y build-essential curl cmake libglib2.0-dev && \
+# A dependency on fluidsynth is not needed for the current builds.
+RUN exit 0 && \
   mkdir -p /tmp/fluid/build && cd /tmp/fluid/ && \
   curl -sfSOL https://github.com/FluidSynth/fluidsynth/archive/v2.2.1.tar.gz && \
   tar xf v2.2.1.tar.gz && rm v2.2.1.tar.gz && cd build && \
