@@ -129,12 +129,19 @@ then
 fi
 
 # Shallow git repo, resorts to NEWS.md
-test -n "$COMMIT_DATE" && {
-  NEWS_VERSION="$(fetch_news_version 1)"dirty
-  BUILD_ID="v$NEWS_VERSION-shallow-g`shorthash`"
+if test -n "$COMMIT_DATE" &&
+    NEWS_VERSION="$(fetch_news_version 1)" &&
+    [[ $NEWS_VERSION =~ ^([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)$ ]]
+then
+  if test -z "${BASH_REMATCH[2]}" -a "${VERSION_SH_RELEASE:-}" != true ; then
+    BUILD_NAME="${BASH_REMATCH[1]}-devel0"	# force postfix for non-releases
+  else
+    BUILD_NAME="${BASH_REMATCH[1]}"		# has postfix
+  fi
+  BUILD_ID="v$BUILD_NAME-shallow-g`shorthash`"
   # not a release (shallow git repo)
-  exit_with_version "$NEWS_VERSION" "$BUILD_ID" "$COMMIT_DATE"
-}
+  exit_with_version "$BUILD_NAME" "$BUILD_ID" "$COMMIT_DATE"
+fi
 
 # bail out
 test -d .git || die "ERROR: failed to find git repository"
