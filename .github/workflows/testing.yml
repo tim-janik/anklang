@@ -11,8 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: satackey/action-docker-layer-caching@v0.0.11
-      continue-on-error: true
     - name: Show Version
       run: misc/version.sh
     - name: Build Project
