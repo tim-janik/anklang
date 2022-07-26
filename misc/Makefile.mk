@@ -327,8 +327,9 @@ upload-nightly:
 upload-release:
 	$(QGEN)
 	@: # Determine version, check release attachments
-	@ $(eval DETAILED_VERSION != misc/version.sh --release)
-	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "v$(DETAILED_VERSION)"
+	@ $(eval RELEASE_TAG != misc/version.sh --release-tag)
+	@ $(eval DETAILED_VERSION = $(RELEASE_TAG:v%=%))
+	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
 	$Q du -hs $(RELEASE_CHANGELOG) $(RELEASE_DEB) $(RELEASE_APPIMAGE)
 	@: # Create Github release and upload assets
 	$Q echo 'Anklang $(DETAILED_VERSION)'		>  $(RELEASE_SSEDIR)/release-message
@@ -338,6 +339,6 @@ upload-release:
 		&& hub release create --draft				\
 		-F '$(RELEASE_SSEDIR)/release-message'			\
 		"$${ASSETS[@]/#/-a}"					\
-		'$(DETAILED_VERSION)'
+		"$(RELEASE_TAG)"
 	$Q echo 'Run:'
-	$Q echo '  git push origin "$(DETAILED_VERSION)"'
+	$Q echo '  git push origin "$(RELEASE_TAG)"'

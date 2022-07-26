@@ -56,11 +56,11 @@ make_nightly() {
 }
 
 # Make release version from git describe
-make_release() {
+make_release_tag() {
   local V
   V=$(git describe --first-parent --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=$L --long HEAD)
-  [[ "$V" =~ ^v([0-9.]+)-0-g[a-f0-9]+$ ]] || die "Missing release tag on HEAD"
-  BUILD_NAME="${BASH_REMATCH[1]#v}"
+  [[ "$V" =~ ^(v[0-9.]+)-0-g[a-f0-9]+$ ]] || die "Missing release tag on HEAD"
+  BUILD_NAME="${BASH_REMATCH[1]}"
   echo "$BUILD_NAME"
 }
 
@@ -77,8 +77,8 @@ while test $# -ne 0 ; do
       echo "v${NEWS_VERSION#v}" && exit ;;
     --nightly)
       make_nightly && exit ;;
-    --release)
-      make_release && exit ;;
+    --release-tag)
+      make_release_tag && exit ;;
     *)
       true ;;
   esac
