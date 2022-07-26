@@ -1,3 +1,62 @@
+## Anklang 0.1.0
+
+#### System Requirements
+* Linux - Ubuntu 20.04 is needed to run the Anklang AppImage
+
+#### Hardware Support
+* Build and package a second sound engine binary with AVX & FMA optimizations.
+
+#### Documentation
+* Extended documentation in many places.
+* Improved copyright listing of all source files involved.
+* Provide user documentation as anklang-manual.pdf.
+* Provide developer documentation as anklang-internals.pdf.
+
+#### User Interface
+* Improve UI responsiveness when handling async API calls.
+* Support proper note selection sets in the piano roll.
+* Introduced Undo/Redo stack for piano roll changes.
+* Use batch processing to responsively handle thousands of notes.
+* Support shortcut editing for piano roll functions.
+* Added Cut/Copy/Paste to piano roll.
+* Added play position indicator to piano roll.
+* Tool selection in piano roils now works on hover.
+* Notes moved in the piano roll now properly bounce against edges.
+* Selection in the piano roll now supports SHIFT and CONTROL.
+* Clips can now store notes with velocity=0.
+* Migrated CSS processing to postcss.
+* Fix file path handling for project load and save.
+* Shortend nicknames are now auto-derived for external plugins.
+* Support loading of command line files in Anklang.
+* Add MIME support for starting Anklang for *.anklang files.
+
+#### Synthesis
+* Support single clip looping (very rudimentary), to be extended later.
+* Add Gtk+-2 dynlib to provide a wrapper window for plugin UIs.
+* Add support for CLAP-1.0.2 plugin loading and processing, the following
+  CLAP extensions are currently implemented:
+  LOG, GUI, TIMER_SUPPORT, THREAD_CHECK, AUDIO_PORTS, PARAMS, STATE,
+  POSIX_FD_SUPPORT, AUDIO_PORTS_CONFIG, AUDIO_PORTS, NOTE_PORTS.
+
+#### Internals
+* Provide infrastructure for future piano roll scripting.
+* Support lean UI component implementations with lit.js.
+* Use ZCAM color model to design/saturate/etc colors of the UI.
+* Updated various third party components.
+* Use Electron-18.3.5 as basis for the UI.
+* Use adaptive ZSTD compression for project storage.
+* Use fast ZSTD compression for binary snapshots in  Undo/Redo steps.
+* Support sound engine blocks up to 2k.
+* Adjust block sizes to reduce PulseAudio overhead.
+* Keys matching in ASE_DEBUG is now case insensitive.
+* Anklang can now be started with '--dev' to force open DevTools.
+
+#### Other
+* License clarification, the project uses MPL-2.0.
+* Improved reproducible dockerized builds.
+* Fixed dependencies of the Debian packages. #3
+
+
 ## Anklang 0.0.1-alpha1
 
 #### System Requirements
