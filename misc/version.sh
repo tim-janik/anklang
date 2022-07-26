@@ -108,13 +108,14 @@ fi
 if COMMIT_DATE=$(git log -1 --format='%ci' 2>/dev/null) &&
     TRUNK_TAG=$(git describe --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=0 --first-parent 2>/dev/null) && # only tags along first-parent
     BUILD_ID=$(git describe --match "$TRUNK_TAG" --abbrev=$L --long 2>/dev/null) && # now, count *all* commits since tag
-    [[ $BUILD_ID =~ v([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)(-[0-9]+-g[0-9a-f]+) ]]
+    [[ $BUILD_ID =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)-([0-9]+-g[0-9a-f]+)$ ]]
 then
   if test -z "${BASH_REMATCH[2]}" -a "${VERSION_SH_RELEASE:-}" != true ; then
     BUILD_NAME="${BASH_REMATCH[1]}-devel0"	# force postfix for non-releases
   else
     BUILD_NAME="${BASH_REMATCH[1]}"		# has postfix
   fi
+  BUILD_ID="v$BUILD_NAME-${BASH_REMATCH[3]}"
   # Nightly releases
   ${VERSION_SH_NIGHTLY:-false} &&
     NIGHTLY_ID=$(make_nightly) &&
