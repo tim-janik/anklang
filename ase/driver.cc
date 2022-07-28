@@ -417,21 +417,19 @@ static const String null_midi_driverid = MidiDriver::register_driver ("null", Nu
 
 } // Ase
 
-// == libasejack.so ==
-#include <gmodule.h>
+// == jackdriver.so ==
+#include <dlfcn.h>
 
 static Ase::Error
 try_load_libasejack ()
 {
   using namespace Ase;
-  const std::string libasejack = string_format ("%s/lib/libase-jack-%u.%u.%u.so",
-                                                anklang_runpath (RPath::INSTALLDIR),
-                                                ase_major_version, ase_minor_version, ase_micro_version);
+  const std::string libasejack = string_format ("%s/lib/jackdriver.so", anklang_runpath (RPath::INSTALLDIR));
   if (Path::check (libasejack, "fr"))
     {
-      GModule *gmodule = g_module_open (libasejack.c_str(), G_MODULE_BIND_LOCAL); // no API import
-      if (!gmodule)
-        DDEBUG ("loading \"%s\" failed: %s", libasejack, g_module_error());
+      void *dlhandle = dlopen (libasejack.c_str(), RTLD_LOCAL | RTLD_NOW); // no API import
+      const char *err = dlerror();
+      DDEBUG ("%s: dlopen: %s", libasejack, dlhandle ? "OK" : err ? err : "unknown dlerror");
     }
   return Error::NONE;
 }
