@@ -37,9 +37,9 @@ class AudioEngineThread : public AudioEngine {
   PcmDriverP                   null_pcm_driver_, pcm_driver_;
   MidiDriverS                  midi_drivers_;
   static constexpr uint        fixed_n_channels = 2;
-  constexpr static size_t      MAX_BUFFER_SIZE = AUDIO_BLOCK_MAX_RENDER_SIZE * fixed_n_channels;
-  size_t                       buffer_size_ = MAX_BUFFER_SIZE;
-  float                        buffer_data_[MAX_BUFFER_SIZE] = { 0, };
+  constexpr static size_t      MAX_BUFFER_SIZE = AUDIO_BLOCK_MAX_RENDER_SIZE;
+  size_t                       buffer_size_ = MAX_BUFFER_SIZE; // mono buffer size
+  float                        chbuffer_data_[MAX_BUFFER_SIZE * fixed_n_channels] = { 0, };
   uint64                       write_stamp_ = 0, render_stamp_ = AUDIO_BLOCK_MAX_RENDER_SIZE;
   std::vector<AudioProcessor*> schedule_;
   bool                         schedule_invalid_ = true;
@@ -103,13 +103,13 @@ AudioEngineThread::AudioEngineThread (uint sample_rate, SpeakerArrangement speak
 }
 
 template<int ADDING> static void
-interleaved_stereo (const size_t frames, float *buffer, AudioProcessor &proc, OBusId obus)
+interleaved_stereo (const size_t n_frames, float *buffer, AudioProcessor &proc, OBusId obus)
 {
   if (proc.n_ochannels (obus) >= 2)
     {
       const float *src0 = proc.ofloats (obus, 0);
       const float *src1 = proc.ofloats (obus, 1);
-      float *d = buffer, *const b = d + 2 * frames;
+      float *d = buffer, *const b = d + n_frames;
       do {
         if_constexpr (ADDING == 0)
           {
@@ -126,7 +126,7 @@ interleaved_stereo (const size_t frames, float *buffer, AudioProcessor &proc, OB
   else if (proc.n_ochannels (obus) >= 1)
     {
       const float *src = proc.ofloats (obus, 0);
-      float *d = buffer, *const b = d + 2 * frames;
+      float *d = buffer, *const b = d + n_frames;
       do {
         if_constexpr (ADDING == 0)
           {
@@ -202,12 +202,13 @@ AudioEngineThread::schedule_render (uint64 frames)
     if (oprocs_[i]->n_obuses())
       {
         if (n++ == 0)
-          interleaved_stereo<0> (buffer_size_, buffer_data_, *oprocs_[i], MAIN_OBUS);
+          interleaved_stereo<0> (buffer_size_ * fixed_n_channels, chbuffer_data_, *oprocs_[i], MAIN_OBUS);
         else
-          interleaved_stereo<1> (buffer_size_, buffer_data_, *oprocs_[i], MAIN_OBUS);
+          interleaved_stereo<1> (buffer_size_ * fixed_n_channels, chbuffer_data_, *oprocs_[i], MAIN_OBUS);
+        static_assert (2 == fixed_n_channels);
       }
   if (n == 0)
-    floatfill (buffer_data_, 0.0, buffer_size_);
+    floatfill (chbuffer_data_, 0.0, buffer_size_ * fixed_n_channels);
   render_stamp_ = target_stamp;
   transport_->advance (frames);
 }
@@ -275,10 +276,10 @@ AudioEngineThread::update_drivers (bool fullio, uint latency)
             }
         }
     }
-  buffer_size_ = std::min (MAX_BUFFER_SIZE, size_t (fixed_n_channels * pcm_driver_->block_length()));
-  floatfill (buffer_data_, 0.0, buffer_size_);
-  write_stamp_ = render_stamp_ - buffer_size_ / fixed_n_channels; // force zeros initially
-  EDEBUG ("AudioEngineThread::update_drivers: PCM: channels=%d block=%d buffer=%d\n",
+  buffer_size_ = std::min (MAX_BUFFER_SIZE, size_t (pcm_driver_->block_length()));
+  floatfill (chbuffer_data_, 0.0, buffer_size_ * fixed_n_channels);
+  write_stamp_ = render_stamp_ - buffer_size_; // force zeros initially
+  EDEBUG ("AudioEngineThread::update_drivers: PCM: channels=%d pcmblock=%d enginebuffer=%d\n",
           fixed_n_channels, pcm_driver_->block_length(), buffer_size_);
   // MIDI Driver List
   MidiDriverS old_drivers = midi_drivers_, new_drivers;
@@ -380,8 +381,8 @@ AudioEngineThread::pcm_check_write (bool write_buffer, int64 *timeout_usecs_p)
     return can_write;
   if (!can_write || write_stamp_ >= render_stamp_)
     return false;
-  pcm_driver_->pcm_write (buffer_size_, buffer_data_);
-  write_stamp_ += buffer_size_ / fixed_n_channels;
+  pcm_driver_->pcm_write (buffer_size_ * fixed_n_channels, chbuffer_data_);
+  write_stamp_ += buffer_size_;
   assert_warn (write_stamp_ == render_stamp_);
   return false;
 }
@@ -413,7 +414,7 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
                 proc->schedule_processor();
               schedule_invalid_ = false;
             }
-          schedule_render (buffer_size_ / fixed_n_channels);
+          schedule_render (buffer_size_);
           pcm_check_write (true); // minimize drop outs
         }
       if (!const_jobs_.empty()) {   // owner may be blocking for const_jobs_ execution
