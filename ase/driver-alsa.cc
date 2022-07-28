@@ -7,16 +7,15 @@
 #include <atomic>
 #include <cmath>
 
-#define ADEBUG(...)             Ase::debug ("alsa", __VA_ARGS__)
-#define MDEBUG(...)             Ase::debug ("alsamixer", __VA_ARGS__)
-#define EDEBUG(...)             Ase::debug ("midievent", __VA_ARGS__)
+#define PDEBUG(...)             Ase::debug ("alsa", "PCM: " __VA_ARGS__)
+#define MDEBUG(...)             Ase::debug ("alsa", "MIDI: " __VA_ARGS__)
 
 #define ALSAQUIET(expr)         ({ silence_error_handler++; auto __ret_ = (expr); silence_error_handler--; __ret_; })
 #define WITH_MIDI_POLL  0
 
 #define alsa_alloca0(struc)     ({ struc##_t *ptr = (struc##_t*) alloca (struc##_sizeof()); memset (ptr, 0, struc##_sizeof()); ptr; })
 #define return_error(reason, ERRMEMB) do {      \
-  ADEBUG ("PCM: %s: %s: %s",                    \
+  Ase::debug ("alsa", "%s: %s: %s",             \
     alsadev_, reason,                           \
     ase_error_blurb (Ase::Error::ERRMEMB));     \
   return Ase::Error::ERRMEMB;                   \
@@ -114,7 +113,7 @@ ase_handle_alsa_error (const char *file, int line, const char *function, int err
     s = string_format ("%s:%s: %s", file, function, b);
   else if (file || function)
     s = string_format ("%s: %s", file ? file : function, b);
-  ADEBUG ("Error: %s", s);
+  Ase::debug ("alsa", "Error: %s", s);
 }
 
 static snd_output_t *snd_output = nullptr; // used for debugging
@@ -158,8 +157,8 @@ mixer_info (const String &card_hw, const String &mixer_name, const String &long_
   if (err < 0) goto error_out;
   err = snd_mixer_selem_id_malloc (&selem_id);
   if (err < 0) goto error_out;
-  MDEBUG ("CARD(%s): %s [%s]", card_hw, long_name, mixer_name);
-  MDEBUG ("M-------- %-6s %2u %s %s - %s", "MIXER", snd_mixer_get_count (mixer), card_hw, mixer_name, long_name);
+  PDEBUG ("CARD(%s): %s [%s]", card_hw, long_name, mixer_name);
+  PDEBUG ("M-------- %-6s %2u %s %s - %s", "MIXER", snd_mixer_get_count (mixer), card_hw, mixer_name, long_name);
   for (snd_mixer_elem_t *mel = snd_mixer_first_elem (mixer); mel; mel = snd_mixer_elem_next (mel))
     {
       if (snd_mixer_elem_get_type (mel) != SND_MIXER_ELEM_SIMPLE)
@@ -199,7 +198,7 @@ mixer_info (const String &card_hw, const String &mixer_name, const String &long_
             0 == snd_mixer_selem_get_capture_volume (mel, ch, &l))
           val += (val.empty() ? "" : ",") + string_from_type (l);
       val = val.empty() ? "" : ": " + val;
-      MDEBUG ("-%c%c%c%c%c%c%c%c %-6s %2u %s%s",
+      PDEBUG ("-%c%c%c%c%c%c%c%c %-6s %2u %s%s",
               cv ? 'r' : '-', pv ? 'w' : '-', a ? '-' : 'i',
               j ? 'j' : '-',
               M ? 'M' : m ? 'm' : '-',
@@ -219,7 +218,7 @@ mixer_info (const String &card_hw, const String &mixer_name, const String &long_
   if (maxin > 2)
     hints += (hints.empty() ? "" : ", ") + String ("multi-track");
   if (!hints.empty())
-    MDEBUG ("(%s)", hints);
+    PDEBUG ("(%s)", hints);
  error_out:
   if (mixer)
     snd_mixer_close (mixer);
@@ -246,7 +245,7 @@ list_alsa_drivers (Driver::EntryVec &entries)
           seen_plughw = seen_plughw || strncmp (name.c_str(), "plughw:", 7) == 0;
           if (name == "pulse")
             {
-              ADEBUG ("DISCOVER: %s - %s - %s", name, ioid, substitute_string ("\n", " ", desc));
+              PDEBUG ("DISCOVER: %s - %s - %s", name, ioid, substitute_string ("\n", " ", desc));
               Driver::Entry entry;
               entry.devid = name;
               entry.device_name = desc;
@@ -280,7 +279,7 @@ list_alsa_drivers (Driver::EntryVec &entries)
       const String card_name = chars2string (snd_ctl_card_info_get_name (cinfo));
       const String card_longname = chars2string (snd_ctl_card_info_get_longname (cinfo));
       const String card_mixername = chars2string (snd_ctl_card_info_get_mixername (cinfo));
-      // ADEBUG ("DISCOVER: CARD: %s - %s - %s [%s] - %s", card_id, card_driver, card_name, card_mixername, card_longname);
+      // PDEBUG ("DISCOVER: CARD: %s - %s - %s [%s] - %s", card_id, card_driver, card_name, card_mixername, card_longname);
       const String mixer_keywords = mixer_info (card_hw, card_mixername, card_longname);
       const String mixer_options = ":" + string_join (":", string_split_any (mixer_keywords, " ,")) + ":";
       // discover PCM hardware
@@ -337,7 +336,7 @@ list_alsa_drivers (Driver::EntryVec &entries)
           entry.priority &= string_option_check (mixer_options, "headset")  ? ~Driver::HEADSET  : ~0; // bonus
           entry.priority &= string_option_check (mixer_options, "recorder") ? ~Driver::RECORDER : ~0; // bonus
           entries.push_back (entry);
-          ADEBUG ("DISCOVER: PCM: %s - %s", entry.devid, entry.device_name);
+          PDEBUG ("DISCOVER: %s - %s", entry.devid, entry.device_name);
         }
       snd_ctl_close (chandle);
     }
@@ -348,7 +347,6 @@ class AlsaPcmDriver : public PcmDriver {
   snd_pcm_t    *read_handle_ = nullptr;
   snd_pcm_t    *write_handle_ = nullptr;
   uint          mix_freq_ = 0;
-  uint          block_size_ = 0;
   uint          n_channels_ = 0;
   uint          n_periods_ = 0;
   int           period_size_ = 0;       // count in frames
@@ -379,13 +377,13 @@ public:
   virtual uint
   block_length () const override
   {
-    return block_size_;
+    return period_size_;
   }
   virtual void
   close () override
   {
     assert_return (opened());
-    ADEBUG ("CLOSE: %s: r=%d w=%d", alsadev_, !!read_handle_, !!write_handle_);
+    PDEBUG ("CLOSE: %s: r=%d w=%d", alsadev_, !!read_handle_, !!write_handle_);
     if (read_handle_)
       {
         snd_pcm_drop (read_handle_);
@@ -444,16 +442,15 @@ public:
         const bool linked = snd_pcm_link (read_handle_, write_handle_) == 0;
         if (rh_freq != wh_freq || rh_n_periods != wh_n_periods || rh_period_size != wh_period_size || !linked)
           error = Error::DEVICES_MISMATCH;
-        ADEBUG ("OPEN: %s: %s: %f==%f && %d*%d==%d*%d && linked==%d", alsadev_,
+        PDEBUG ("OPEN: %s: %s: %f==%f && %d*%d==%d*%d && linked==%d", alsadev_,
                 error != 0 ? "MISMATCH" : "LINKED", rh_freq, wh_freq, rh_n_periods, rh_period_size, wh_n_periods, wh_period_size, linked);
       }
     mix_freq_ = read_handle_ ? rh_freq : wh_freq;
-    block_size_ = read_handle_ ? rh_period_size : wh_period_size;
     n_periods_ = read_handle_ ? rh_n_periods : wh_n_periods;
     period_size_ = read_handle_ ? rh_period_size : wh_period_size;
     if (!error && (!read_handle_ || !write_handle_))
-      ADEBUG ("OPEN: %s: %s: mix=%.1fHz n=%d period=%d block=%d", alsadev_,
-              read_handle_ ? "READONLY" : "WRITEONLY", mix_freq_, n_periods_, period_size_, block_size_);
+      PDEBUG ("OPEN: %s: %s: mix=%.1fHz n=%d period=%d", alsadev_,
+              read_handle_ ? "READONLY" : "WRITEONLY", mix_freq_, n_periods_, period_size_);
     if (!error && snd_pcm_prepare (read_handle_ ? read_handle_ : write_handle_) < 0)
       error = Error::FILE_OPEN_FAILED;
     // finish opening or shutdown
@@ -471,7 +468,7 @@ public:
           snd_pcm_close (write_handle_);
         write_handle_ = nullptr;
       }
-    ADEBUG ("OPEN: %s: opening readable=%d writable=%d: %s", alsadev_, readable(), writable(), ase_error_blurb (error));
+    PDEBUG ("OPEN: %s: opening readable=%d writable=%d: %s", alsadev_, readable(), writable(), ase_error_blurb (error));
     if (error != 0)
       alsadev_ = "";
     return error;
@@ -496,7 +493,7 @@ public:
     uint rate = *mix_freq;
     if (snd_pcm_hw_params_set_rate (phandle, hparams, rate, 0) < 0 || rate != *mix_freq)
       return_error ("snd_pcm_hw_params_set_rate", DEVICE_FREQUENCY);
-    ADEBUG ("SETUP: %s: rate: %d", alsadev_, rate);
+    PDEBUG ("SETUP: %s: rate: %d", alsadev_, rate);
     // fragment size
     snd_pcm_uframes_t period_min = 2, period_max = 1048576;
     snd_pcm_hw_params_get_period_size_min (hparams, &period_min, nullptr);
@@ -512,14 +509,14 @@ public:
     int dir = 0;
     if (snd_pcm_hw_params_set_period_size_near (phandle, hparams, &period_size, &dir) < 0)
       return_error ("snd_pcm_hw_params_set_period_size_near", DEVICE_LATENCY);
-    ADEBUG ("SETUP: %s: period_size: %d (dir=%+d, min=%d max=%d)", alsadev_,
+    PDEBUG ("SETUP: %s: period_size: %d (dir=%+d, min=%d max=%d)", alsadev_,
             period_size, dir, period_min, period_max);
     // fragment count
     const uint want_nperiods = latency_ms == 0 ? 2 : CLAMP (latency_frames / period_size, 2, 1023) + 1;
     uint nperiods = want_nperiods;
     if (snd_pcm_hw_params_set_periods_near (phandle, hparams, &nperiods, nullptr) < 0)
       return_error ("snd_pcm_hw_params_set_periods", DEVICE_LATENCY);
-    ADEBUG ("SETUP: %s: n_periods: %d (requested: %d)", alsadev_, nperiods, want_nperiods);
+    PDEBUG ("SETUP: %s: n_periods: %d (requested: %d)", alsadev_, nperiods, want_nperiods);
     if (snd_pcm_hw_params (phandle, hparams) < 0)
       return_error ("snd_pcm_hw_params", FILE_OPEN_FAILED);
     // verify hardware settings
@@ -528,7 +525,7 @@ public:
         snd_pcm_hw_params_get_buffer_size_max (hparams, &buffer_size_max) < 0 ||
         snd_pcm_hw_params_get_buffer_size (hparams, &buffer_size) < 0)
       return_error ("snd_pcm_hw_params_get_buffer_size", DEVICE_BUFFER);
-    ADEBUG ("SETUP: %s: buffer_size: %d (min=%d, max=%d)", alsadev_, buffer_size, buffer_size_min, buffer_size_max);
+    PDEBUG ("SETUP: %s: buffer_size: %d (min=%d, max=%d)", alsadev_, buffer_size, buffer_size_min, buffer_size_max);
     // setup software configuration
     snd_pcm_sw_params_t *sparams = alsa_alloca0 (snd_pcm_sw_params);
     if (snd_pcm_sw_params_current (phandle, sparams) < 0)
@@ -539,13 +536,13 @@ public:
     if (snd_pcm_sw_params_set_avail_min (phandle, sparams, period_size) < 0 ||
         snd_pcm_sw_params_get_avail_min (sparams, &availmin) < 0)
       return_error ("snd_pcm_sw_params_set_avail_min", DEVICE_LATENCY);
-    ADEBUG ("SETUP: %s: avail_min: %d", alsadev_, availmin);
+    PDEBUG ("SETUP: %s: avail_min: %d", alsadev_, availmin);
     if (snd_pcm_sw_params_set_stop_threshold (phandle, sparams, LONG_MAX) < 0) // keep going on underruns
       return_error ("snd_pcm_sw_params_set_stop_threshold", DEVICE_BUFFER);
     snd_pcm_uframes_t stopthreshold = 0;
     if (snd_pcm_sw_params_get_stop_threshold (sparams, &stopthreshold) < 0)
       return_error ("snd_pcm_sw_params_get_stop_threshold", DEVICE_BUFFER);
-    ADEBUG ("SETUP: %s: stop_threshold: %d", alsadev_, stopthreshold);
+    PDEBUG ("SETUP: %s: stop_threshold: %d", alsadev_, stopthreshold);
     if (snd_pcm_sw_params_set_silence_threshold (phandle, sparams, 0) < 0)   // avoid early dropouts
       return_error ("snd_pcm_sw_params_set_silence_threshold", DEVICE_BUFFER);
     if (snd_pcm_sw_params_set_silence_size (phandle, sparams, LONG_MAX) < 0) // silence past frames
@@ -556,7 +553,7 @@ public:
     *mix_freq = rate;
     *n_periodsp = nperiods;
     *period_sizep = period_size;
-    ADEBUG ("SETUP: %s: OPEN: r=%d w=%d n_channels=%d sample_freq=%d nperiods=%u period=%u (%u) bufsz=%u",
+    PDEBUG ("SETUP: %s: OPEN: r=%d w=%d n_channels=%d sample_freq=%d nperiods=%u period=%u (%u) bufsz=%u",
             alsadev_, phandle == read_handle_, phandle == write_handle_,
             n_channels_, *mix_freq, *n_periodsp, *period_sizep,
             nperiods * period_size, buffer_size);
@@ -567,7 +564,7 @@ public:
   pcm_retrigger ()
   {
     silence_error_handler++;
-    ADEBUG ("RETRIGGER: %s: retriggering device (r=%s w=%s)...",
+    PDEBUG ("RETRIGGER: %s: retriggering device (r=%s w=%s)...",
             alsadev_, !read_handle_ ? "<CLOSED>" : snd_pcm_state_name (snd_pcm_state (read_handle_)),
             !write_handle_ ? "<CLOSED>" : snd_pcm_state_name (snd_pcm_state (write_handle_)));
     snd_pcm_prepare (read_handle_ ? read_handle_ : write_handle_);
@@ -669,7 +666,7 @@ public:
         ssize_t n_frames = snd_pcm_readi (read_handle_, period_buffer_, n_left);
         if (n_frames < 0) // errors during read, could be underrun (-EPIPE)
           {
-            ADEBUG ("READ: %s: read() error: %s", alsadev_, snd_strerror (n_frames));
+            PDEBUG ("READ: %s: read() error: %s", alsadev_, snd_strerror (n_frames));
             silence_error_handler++;
             snd_pcm_prepare (read_handle_);     // force retrigger
             silence_error_handler--;
@@ -710,7 +707,7 @@ public:
         n = snd_pcm_writei (write_handle_, period_buffer_, n_left);
         if (n < 0)                      // errors during write, could be overrun (-EPIPE)
           {
-            ADEBUG ("WRITE: %s: write() error: %s", alsadev_, snd_strerror (n));
+            PDEBUG ("WRITE: %s: write() error: %s", alsadev_, snd_strerror (n));
             silence_error_handler++;
             snd_pcm_prepare (write_handle_);    // force retrigger
             silence_error_handler--;
@@ -784,9 +781,9 @@ public:
     if (!aerror)
       aerror = snd_seq_drain_output (seq_);
     if (aerror)
-      ADEBUG ("SeqMIDI: %s: initialization failed: %s", myname, snd_strerror (aerror));
+      MDEBUG ("SndSeq: %s: initialization failed: %s", myname, snd_strerror (aerror));
     else
-      ADEBUG ("SeqMIDI: %s: queue started: %.5f", myname, queue_now());
+      MDEBUG ("SndSeq: %s: queue started: %.5f", myname, queue_now());
     return ase_error_from_errno (-aerror, Error::FILE_OPEN_FAILED);
   }
   static std::string
@@ -935,7 +932,7 @@ public:
                 entry.priority += Driver::WDEV * client; // priorize HW over software apps
                 entry.priority += Driver::WSUB * cport;
                 entries->push_back (entry);
-                ADEBUG ("DISCOVER: MIDI: %s - %s", entry.devid, entry.device_name);
+                MDEBUG ("DISCOVER: %s - %s", entry.devid, entry.device_name);
               }
             const bool match = selector == devportid;
             if (match && sinfo)
@@ -1052,7 +1049,7 @@ public:
         flags_ |= Flags::OPENED;
       }
     error = !aerror ? Error::NONE : ase_error_from_errno (-aerror, Error::FILE_OPEN_FAILED);
-    ADEBUG ("SeqMIDI: %s: opening readable=%d writable=%d: %s", devid_, readable(), writable(), ase_error_blurb (error));
+    MDEBUG ("SndSeq: %s: opening readable=%d writable=%d: %s", devid_, readable(), writable(), ase_error_blurb (error));
     if (error != Error::NONE)
       cleanup();
     else
@@ -1103,7 +1100,7 @@ public:
   {
     assert_return (opened());
     cleanup();
-    ADEBUG ("SeqMIDI: %s: CLOSE: r=%d w=%d", devid_, readable(), writable());
+    MDEBUG ("SndSeq: %s: CLOSE: r=%d w=%d", devid_, readable(), writable());
     flags_ &= ~size_t (Flags::OPENED | Flags::READABLE | Flags::WRITABLE);
     mdebug_ = false;
   }
@@ -1199,7 +1196,7 @@ public:
                                 (ev->data.control.value < 0 ? 1.0 / 8192.0 : 1.0 / 8191.0)));
           break;
         case SND_SEQ_EVENT_SYSEX:
-          EDEBUG ("%+4d ch=%-2u SYSEX: %s",
+          MDEBUG ("%+4d ch=%-2u SYSEX: %s",
                   int (samplerate * (ev->time.time.tv_sec + 1e-9 * ev->time.time.tv_nsec - now)),
                   ev->data.control.channel, hex_str (ev->data.ext.len, (const uint8*) ev->data.ext.ptr));
           break;
@@ -1211,17 +1208,17 @@ public:
         case SND_SEQ_EVENT_REGPARAM:
         case SND_SEQ_EVENT_NOTE:  // unhandled, duration usually too long for MidiEvent.frame
         default:
-          EDEBUG ("%+4d ch=%-2u SND_SEQ_EVENT_... %u",
+          MDEBUG ("%+4d ch=%-2u SND_SEQ_EVENT_... %u",
                   int (samplerate * (ev->time.time.tv_sec + 1e-9 * ev->time.time.tv_nsec - now)),
                   ev->data.control.channel, ev->type);
           break;
           // DEPRECATED: snd_seq_free_event (ev);
         }
     if (r < 0 && r != -EAGAIN) // -ENOSPC - sequencer FIFO overran
-      ADEBUG ("SeqMIDI: %s: snd_seq_event_input: %s", devid_, snd_strerror (r));
+      MDEBUG ("SndSeq: %s: snd_seq_event_input: %s", devid_, snd_strerror (r));
     if (ASE_UNLIKELY (mdebug_))
       for (size_t i = old_size; i < estream.size(); i++)
-        EDEBUG ("%s", (estream.begin() + i)->to_string());
+        MDEBUG ("%s", (estream.begin() + i)->to_string());
     if (must_sort)              // guard against devices with out-of-order events
       estream.ensure_order();
     return estream.size() - old_size;
