@@ -122,8 +122,11 @@ parse_args (int *argcp, char **argv)
 {
   MainConfig config;
 
-  config.jsonapi_logflags |= debug_key_enabled ("jsbin") ? jsbin_logflags : 0;
-  config.jsonapi_logflags |= debug_key_enabled ("jsipc") ? jsipc_logflags : 0;
+  if (0) // allow jsipc logging via ASE_DEBUG ?
+    {
+      config.jsonapi_logflags |= debug_key_enabled ("jsbin") ? jsbin_logflags : 0;
+      config.jsonapi_logflags |= debug_key_enabled ("jsipc") ? jsipc_logflags : 0;
+    }
   config.fatal_warnings = feature_check ("fatal-warnings");
 
   bool sep = false; // -- separator
