@@ -11,7 +11,7 @@ ase/libsources.cc		::= $(filter-out $(ase/noglob.cc), $(wildcard ase/*.cc))
 ase/libsources.c		::= $(wildcard ase/*.c)
 
 # == AnklangSynthEngine definitions ==
-lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine-$(version_m.m.m)
+lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine
 ase/AnklangSynthEngine.sources	::= ase/main.cc $(ase/libsources.cc) $(ase/libsources.c)
 ase/AnklangSynthEngine.gensrc	::= $>/ase/api.jsonipc.cc
 ase/AnklangSynthEngine.deps	::= $>/ase/sysconfig.h
@@ -26,8 +26,8 @@ ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec
 # == insn-targets ==
 insn-targets: $(lib/AnklangSynthEngine)
 	@test -n "$(INSN)"
-	$Q $(CP) -v $(lib/AnklangSynthEngine) $(INSNDEST)/lib/AnklangSynthEngine-$(version_m.m.m)-$(INSN)
-	$Q $(CP) -v $(lib/AnklangSynthEngine).map $(INSNDEST)/lib/AnklangSynthEngine-$(version_m.m.m)-$(INSN).map
+	$Q $(CP) -v $(lib/AnklangSynthEngine) $(INSNDEST)/lib/AnklangSynthEngine-$(INSN)
+	$Q $(CP) -v $(lib/AnklangSynthEngine).map $(INSNDEST)/lib/AnklangSynthEngine-$(INSN).map
 .PHONY: insn-targets
 
 # == ase/api.jsonipc.cc ==

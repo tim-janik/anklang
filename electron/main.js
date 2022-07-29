@@ -139,7 +139,7 @@ async function load_and_show (w, winurl) {
 // == Sound Engine ==
 function start_sound_engine (config, datacb)
 {
-  let sound_engine = __dirname + '/../../../lib/AnklangSynthEngine-' + package_json.version;
+  let sound_engine = __dirname + '/../../../lib/AnklangSynthEngine';
   let cpuinfo = '';
   try 		{ cpuinfo = fs.readFileSync ('/proc/cpuinfo', { encoding: 'utf8', flag: 'r' }); }
   catch (err)	{}
