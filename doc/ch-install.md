@@ -38,3 +38,38 @@ chmod +x ~/Downloads/anklang-[VERSION]-x64.AppImage
 # Run Anklang via self contained AppImage
 ~/Downloads/anklang-[VERSION]-x64.AppImage
 ```
+
+## Driver Setup
+
+Once Anklang is started, drivers and other settings can be adjusted
+in the Preferences. The 'File Menu' in the upper left includes an
+item to open the 'Preferences' dialog.
+
+Depending on the system, a number of PCM and MIDI devices can be selected
+here. The "PulseAudio Sound Server" or "Automatic driver selection" should
+work on most systems out of the box.
+On systems with Jackd installed, the Jackd sound server needs to be
+running first:
+
+```sh
+# Suspend PulseAudio and run Jackd instead
+# -r avoids realtime mode which requires special rights
+# -d alsa uses the Jackd ALSA backend
+pasuspender -- jackd -r -d alsa
+```
+
+The Jackd server should be running now, so in Anklang the
+"JACK Audio Device" can be selected.
+To verify Anklang does indeed use Jackd, the setup can be
+inspected as follows:
+
+```sh
+# List active Jack ports
+jack_lsp
+# The list should include 'AnklangSynthEngine'
+
+# Start GUI to control Jackd
+qjackctl
+# Click on the "Graph" button to show connections
+# The graph should include 'AnklangSynthEngine'
+```
