@@ -96,10 +96,10 @@ print_usage (bool help)
 {
   if (!help)
     {
-      printout ("AnklangSynthEngine version %s\n", ase_version());
+      printout ("%s version %s\n", executable_name(), ase_version());
       return;
     }
-  printout ("Usage: AnklangSynthEngine [OPTIONS]\n");
+  printout ("Usage: %s [OPTIONS]\n", executable_name());
   printout ("  --check          Run integrity tests\n");
   printout ("  --disable-randomization Test mode for deterministic tests\n");
   printout ("  --embed <fd>     Parent process socket for embedding\n");
