@@ -56,11 +56,11 @@ make_nightly() {
 }
 
 # Make release version from git describe
-make_release() {
+make_release_tag() {
   local V
   V=$(git describe --first-parent --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=$L --long HEAD)
-  [[ "$V" =~ ^v([0-9.]+)-0-g[a-f0-9]+$ ]] || die "Missing release tag on HEAD"
-  BUILD_NAME="${BASH_REMATCH[1]#v}"
+  [[ "$V" =~ ^(v[0-9.]+)-0-g[a-f0-9]+$ ]] || die "Missing release tag on HEAD"
+  BUILD_NAME="${BASH_REMATCH[1]}"
   echo "$BUILD_NAME"
 }
 
@@ -77,8 +77,8 @@ while test $# -ne 0 ; do
       echo "v${NEWS_VERSION#v}" && exit ;;
     --nightly)
       make_nightly && exit ;;
-    --release)
-      make_release && exit ;;
+    --release-tag)
+      make_release_tag && exit ;;
     *)
       true ;;
   esac
@@ -108,13 +108,14 @@ fi
 if COMMIT_DATE=$(git log -1 --format='%ci' 2>/dev/null) &&
     TRUNK_TAG=$(git describe --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=0 --first-parent 2>/dev/null) && # only tags along first-parent
     BUILD_ID=$(git describe --match "$TRUNK_TAG" --abbrev=$L --long 2>/dev/null) && # now, count *all* commits since tag
-    [[ $BUILD_ID =~ v([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)(-[0-9]+-g[0-9a-f]+) ]]
+    [[ $BUILD_ID =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)-([0-9]+-g[0-9a-f]+)$ ]]
 then
   if test -z "${BASH_REMATCH[2]}" -a "${VERSION_SH_RELEASE:-}" != true ; then
     BUILD_NAME="${BASH_REMATCH[1]}-devel0"	# force postfix for non-releases
   else
     BUILD_NAME="${BASH_REMATCH[1]}"		# has postfix
   fi
+  BUILD_ID="v$BUILD_NAME-${BASH_REMATCH[3]}"
   # Nightly releases
   ${VERSION_SH_NIGHTLY:-false} &&
     NIGHTLY_ID=$(make_nightly) &&
@@ -128,12 +129,19 @@ then
 fi
 
 # Shallow git repo, resorts to NEWS.md
-test -n "$COMMIT_DATE" && {
-  NEWS_VERSION="$(fetch_news_version 1)"dirty
-  BUILD_ID="v$NEWS_VERSION-shallow-g`shorthash`"
+if test -n "$COMMIT_DATE" &&
+    NEWS_VERSION="$(fetch_news_version 1)" &&
+    [[ $NEWS_VERSION =~ ^([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)$ ]]
+then
+  if test -z "${BASH_REMATCH[2]}" -a "${VERSION_SH_RELEASE:-}" != true ; then
+    BUILD_NAME="${BASH_REMATCH[1]}-devel0"	# force postfix for non-releases
+  else
+    BUILD_NAME="${BASH_REMATCH[1]}"		# has postfix
+  fi
+  BUILD_ID="v$BUILD_NAME-shallow-g`shorthash`"
   # not a release (shallow git repo)
-  exit_with_version "$NEWS_VERSION" "$BUILD_ID" "$COMMIT_DATE"
-}
+  exit_with_version "$BUILD_NAME" "$BUILD_ID" "$COMMIT_DATE"
+fi
 
 # bail out
 test -d .git || die "ERROR: failed to find git repository"
