@@ -1,11 +1,10 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "driver.hh"
-#include "aseengine.hh"
+#include "datautils.hh"
+#include "platform.hh"
 #include "internal.hh"
-#include "gsldatautils.hh"
-#include "aseblockutils.hh"
-
 #include <unistd.h>
+#include <atomic>
 
 #define JDEBUG(...)     Ase::debug ("jack", __VA_ARGS__)
 
@@ -14,9 +13,8 @@
 
 #define MAX_JACK_STRING_SIZE    1024
 
-using namespace Ase;
-
 namespace { // Anon
+using namespace Ase;
 
 /*------------------------------------------------------------------------
 The jack driver as provided here should be usable. However, there are a few
@@ -74,37 +72,6 @@ M complete blocks of N samples, still avoiding partially filled buffers.
 ------------------------------------------------------------------------*/
 
 /**
- * This function uses std::copy to copy the n_values of data from ivalues
- * to ovalues. If a specialized version is available in aseblockutils,
- * then this - usually faster - version will be used.
- *
- * The data in ivalues and ovalues may not overlap.
- */
-template<class Data> void
-fast_copy (uint        n_values,
-           Data       *ovalues,
-	   const Data *ivalues)
-{
-  copy (ivalues, ivalues + n_values, ovalues);
-}
-
-template<> void
-fast_copy (uint         n_values,
-           float       *ovalues,
-           const float *ivalues)
-{
-  Block::copy (n_values, ovalues, ivalues);
-}
-
-template<> ASE_UNUSED void
-fast_copy (uint	         n_values,
-           uint32       *ovalues,
-           const uint32 *ivalues)
-{
-  Block::copy (n_values, ovalues, ivalues);
-}
-
-/**
  * The FrameRingBuffer class implements a ringbuffer for the communication
  * between two threads. One thread - the producer thread - may only write
  * data to the ringbuffer. The other thread - the consumer thread - may
@@ -126,9 +93,9 @@ fast_copy (uint	         n_values,
  */
 template<class T>
 class FrameRingBuffer {
-  //BIRNET_PRIVATE_COPY (FrameRingBuffer);
+  ASE_CLASS_NON_COPYABLE (FrameRingBuffer);
 private:
-  vector<vector<T> >  channel_buffer_;
+  std::vector<std::vector<T> >  channel_buffer_;
   std::atomic<int>    atomic_read_frame_pos_ {0};
   std::atomic<int>    atomic_write_frame_pos_ {0};
   uint                channel_buffer_size_ = 0;       // = n_frames + 1; the extra frame allows us to
@@ -313,7 +280,13 @@ connect_jack()
   jack_set_error_function (error_callback_silent);
 
   jack_status_t status;
-  jack_client_t *jack_client = jack_client_open ("Anklang", JackNoStartServer, &status);
+  jack_client_t *jack_client;
+  {
+    const String thisthreadname = this_thread_get_name();       // work around libjack starting threads without setting thread name
+    this_thread_set_name ("JackPcmDriver-C");
+    jack_client = jack_client_open (executable_name().c_str(), JackNoStartServer, &status);
+    this_thread_set_name (thisthreadname);                      // thread name workaround
+  }
 
   jack_set_error_function (error_callback_show);
 
@@ -413,7 +386,7 @@ query_jack_devices (jack_client_t *jack_client)
 static void
 list_jack_drivers (Driver::EntryVec &entries)
 {
-  map<std::string, DeviceDetails> devices;
+  std::map<std::string, DeviceDetails> devices;
   jack_client_t *jack_client = connect_jack();
   if (jack_client)
     {
@@ -496,7 +469,7 @@ class JackPcmDriver : public PcmDriver {
     if (!atomic_active_)
       {
         for (auto values : out_values)
-          Block::fill (n_frames, values, 0.0);
+          floatfill (values, 0.0, n_frames);
       }
     else if (input_ringbuffer_.get_writable_frames() >= n_frames && output_ringbuffer_.get_readable_frames() >= n_frames)
       {
@@ -514,16 +487,16 @@ class JackPcmDriver : public PcmDriver {
         atomic_xruns_++;
 
         for (auto values : out_values)
-          Block::fill (n_frames, values, 0.0);
+          floatfill (values, 0.0, n_frames);
       }
     return 0;
   }
 
   static jack_latency_range_t
-  get_latency_for_ports (const vector<jack_port_t *>& ports,
+  get_latency_for_ports (const std::vector<jack_port_t *>& ports,
                          jack_latency_callback_mode_t mode)
   {
-    jack_latency_range_t range;
+    jack_latency_range_t range = { 0, 0 };
 
     // compute minimum possible and maximum possible latency over all ports
     for (size_t p = 0; p < ports.size(); p++)
@@ -571,11 +544,13 @@ class JackPcmDriver : public PcmDriver {
     is_down_ = true;
   }
 public:
-  explicit      JackPcmDriver (const String &devid) : PcmDriver (devid) {}
+  JackPcmDriver (const String &driver, const String &devid) :
+    PcmDriver (driver, devid)
+  {}
   static PcmDriverP
   create (const String &devid)
   {
-    auto pdriverp = std::make_shared<JackPcmDriver> (devid);
+    auto pdriverp = std::make_shared<JackPcmDriver> (kvpair_key (devid), kvpair_value (devid));
     return pdriverp;
   }
   ~JackPcmDriver()
@@ -663,7 +638,7 @@ public:
 
         input_ringbuffer_.resize (buffer_frames, n_channels_);
         output_ringbuffer_.resize (buffer_frames, n_channels_);
-        buffer_frames_  = output_ringbuffer_.get_writable_frames();
+        buffer_frames_ = output_ringbuffer_.get_writable_frames();
 
         // the ringbuffer should be exactly as big as requested
         if (buffer_frames_ != buffer_frames)
@@ -672,35 +647,45 @@ public:
                           buffer_frames_, buffer_frames);
             error = Ase::Error::INTERNAL;
           }
-        JDEBUG ("%s: ringbuffer size = %.3fms", devid_, buffer_frames_ / double (mix_freq_) * 1000);
+        JDEBUG ("%s: ringbuffer size=%d duration=%.3fms", devid_, buffer_frames_, buffer_frames_ / double (mix_freq_) * 1000);
 
         /* initialize output ringbuffer with silence
          * this will prevent dropouts at initialization, when no data is there at all
          */
-        vector<float>	  silence (output_ringbuffer_.get_total_n_frames());
-        vector<const float *> silence_buffers (output_ringbuffer_.get_n_channels());
+        std::vector<float>	  silence (output_ringbuffer_.get_total_n_frames());
+        std::vector<const float *> silence_buffers (output_ringbuffer_.get_n_channels());
 
         fill (silence_buffers.begin(), silence_buffers.end(), &silence[0]);
 
         uint frames_written = output_ringbuffer_.write (buffer_frames, &silence_buffers[0]);
         if (frames_written != buffer_frames)
           Ase::warning ("JACK driver: output silence init failed: (frames_written != jack->buffer_frames)\n");
-
       }
 
     /* activate */
     if (error == 0)
       {
-        jack_set_process_callback (jack_client_,
-          [] (jack_nframes_t n_frames, void *p) { return static_cast <JackPcmDriver *> (p)->process_callback (n_frames); }, this);
+        jack_set_process_callback (jack_client_, [] (jack_nframes_t n_frames, void *p) {
+          return static_cast <JackPcmDriver *> (p)->process_callback (n_frames);
+        }, this);
 
-        jack_set_latency_callback (jack_client_,
-          [] (jack_latency_callback_mode_t mode, void *p) { static_cast <JackPcmDriver *> (p)->latency_callback (mode); }, this);
+        jack_set_latency_callback (jack_client_, [] (jack_latency_callback_mode_t mode, void *p) {
+          static_cast <JackPcmDriver *> (p)->latency_callback (mode);
+        }, this);
 
-        jack_on_shutdown (jack_client_,
-          [] (void *p) { static_cast<JackPcmDriver *> (p)->shutdown_callback(); }, this);
+        jack_on_shutdown (jack_client_, [] (void *p) {
+          static_cast<JackPcmDriver *> (p)->shutdown_callback();
+        }, this);
 
-        if (jack_activate (jack_client_) != 0)
+        int active_err;
+        {
+          const String thisthreadname = this_thread_get_name();       // work around libjack starting threads without setting thread name
+          this_thread_set_name ("JackPcmDriver-A");
+          active_err = jack_activate (jack_client_);
+          this_thread_set_name (thisthreadname);                      // thread name workaround
+        }
+
+        if (active_err != 0)
           error = Ase::Error::FILE_OPEN_FAILED;
       }
 
@@ -740,7 +725,7 @@ public:
         disconnect_jack (jack_client_);
         jack_client_ = nullptr;
       }
-    JDEBUG ("%s: opening PCM: readable=%d writable=%d: %s", devid_, readable(), writable(), ase_error_blurb (error));
+    JDEBUG ("%s: opening PCM: readable=%d writable=%d mix=%.1fHz block=%d: %s", devid_, readable(), writable(), mix_freq_, block_length_, ase_error_blurb (error));
     return error;
   }
   virtual bool
@@ -776,7 +761,7 @@ public:
     if (atomic_xruns_ != printed_xruns_)
       {
         printed_xruns_ = atomic_xruns_;
-        Ase::printerr ("JACK: %s: %d anklang driver xruns\n", devid_, printed_xruns_);
+        Ase::printerr ("JACK: %s: %d beast driver xruns\n", devid_, printed_xruns_);
       }
     /* report jack shutdown */
     if (is_down_ && !printed_is_down_)
