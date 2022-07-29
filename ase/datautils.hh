@@ -26,6 +26,25 @@ floatfill (float *dst, float f, size_t n)
     dst[i] = f;
 }
 
+/// Copy a block of floats
+extern inline void
+fast_copy (size_t n, float *d, const float *s)
+{
+  static_assert (sizeof (float) == 4, "");
+  static_assert (sizeof (wchar_t) == 4, "");
+  wmemcpy ((wchar_t*) d, (const wchar_t*) s, n);
+}
+
+/// Copy a block of integers
+extern inline void
+fast_copy (size_t n, uint32_t *d, const uint32_t *s)
+{
+  static_assert (sizeof (uint32_t) == 4, "");
+  static_assert (sizeof (wchar_t) == 4, "");
+  wmemcpy ((wchar_t*) d, (const wchar_t*) s, n);
+}
+
+
 // == Implementations ==
 template<> inline void
 convert_samples (size_t n, const int16_t *src, float *dst, uint16 byte_order)

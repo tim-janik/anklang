@@ -94,7 +94,7 @@ GTK2_PACKAGES	 ::= gtk+-2.0
 # used for ASEDEPS_CFLAGS ASEDEPS_LIBS
 ASEDEPS_PACKAGES ::= vorbisenc vorbisfile vorbis ogg flac zlib $(GLIB_PACKAGES) # mad
 # used for ANKLANG_JACK_LIBS
-ANKLANGDEP_JACK  ::= jack >= 0.124.0
+ANKLANGDEP_JACK  ::= jack >= 0.125.0
 
 # == config-cache.mk ==
 # Note, using '-include config-cache.mk' will ignore errors during config-cache.mk creation,

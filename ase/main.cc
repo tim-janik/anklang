@@ -96,10 +96,10 @@ print_usage (bool help)
 {
   if (!help)
     {
-      printout ("AnklangSynthEngine version %s\n", ase_version());
+      printout ("%s version %s\n", executable_name(), ase_version());
       return;
     }
-  printout ("Usage: AnklangSynthEngine [OPTIONS]\n");
+  printout ("Usage: %s [OPTIONS]\n", executable_name());
   printout ("  --check          Run integrity tests\n");
   printout ("  --disable-randomization Test mode for deterministic tests\n");
   printout ("  --embed <fd>     Parent process socket for embedding\n");
@@ -122,8 +122,11 @@ parse_args (int *argcp, char **argv)
 {
   MainConfig config;
 
-  config.jsonapi_logflags |= debug_key_enabled ("jsbin") ? jsbin_logflags : 0;
-  config.jsonapi_logflags |= debug_key_enabled ("jsipc") ? jsipc_logflags : 0;
+  if (0) // allow jsipc logging via ASE_DEBUG ?
+    {
+      config.jsonapi_logflags |= debug_key_enabled ("jsbin") ? jsbin_logflags : 0;
+      config.jsonapi_logflags |= debug_key_enabled ("jsipc") ? jsipc_logflags : 0;
+    }
   config.fatal_warnings = feature_check ("fatal-warnings");
 
   bool sep = false; // -- separator
@@ -220,6 +223,19 @@ run_tests_and_quit ()
 
 } // Ase
 
+static void
+init_sigpipe()
+{
+  // don't die if we write() data to a process and that process dies (i.e. jackd)
+  sigset_t signal_mask;
+  sigemptyset (&signal_mask);
+  sigaddset (&signal_mask, SIGPIPE);
+
+  int rc = pthread_sigmask (SIG_BLOCK, &signal_mask, NULL);
+  if (rc != 0)
+    Ase::warning ("Ase: pthread_sigmask for SIGPIPE failed: %s\n", strerror (errno));
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -239,6 +255,9 @@ main (int argc, char *argv[])
       printout ("%s\n", Jsonipc::ClassPrinter::to_string());
       return 0;
     }
+
+  // SIGPIPE init: needs to be done before any child thread is created
+  init_sigpipe();
 
   // prepare main event loop
   main_loop = MainLoop::create();

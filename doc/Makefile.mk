@@ -8,6 +8,7 @@ doc/all:
 # == doc/ files ==
 doc/manual-chapters ::= $(strip		\
 	doc/ch-intro.md			\
+	doc/ch-install.md		\
 	$>/doc/ch-man-pages.md		\
 	$>/ui/scripting-docs.md		\
 )

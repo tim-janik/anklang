@@ -5,8 +5,9 @@ CLEANDIRS     += $(wildcard $>/ase/ $>/lib/)
 include ase/tests/Makefile.mk
 
 # == ase/ *.cc file sets ==
+ase/jackdriver.sources		::= ase/driver-jack.cc
 ase/gtk2wrap.sources		::= ase/gtk2wrap.cc
-ase/noglob.cc			::= ase/main.cc $(ase/gtk2wrap.sources)
+ase/noglob.cc			::= ase/main.cc $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
 ase/libsources.cc		::= $(filter-out $(ase/noglob.cc), $(wildcard ase/*.cc))
 ase/libsources.c		::= $(wildcard ase/*.c)
 
@@ -154,6 +155,22 @@ $(call BUILD_PROGRAM, \
 # silence some websocketpp warnings
 $(ase/AnklangSynthEngine.objects): EXTRA_CXXFLAGS ::= -Wno-sign-promo
 
+# == jackdriver.so ==
+lib/jackdriver.so	     ::= $>/lib/jackdriver.so
+ase/jackdriver.objects	     ::= $(call BUILDDIR_O, $(ase/jackdriver.sources))
+$(lib/jackdriver.so).LDFLAGS ::= -Wl,--unresolved-symbols=ignore-in-object-files
+$(ase/jackdriver.objects):   EXTRA_INCLUDES ::= -I$>
+ifneq ('','$(ANKLANG_JACK_LIBS)')
+lib/jackdriver.so.MAYBE ::= $(lib/jackdriver.so)
+$(call BUILD_SHARED_LIB,		\
+	$(lib/jackdriver.so),		\
+	$(ase/jackdriver.objects),	\
+	$(lib/libase.so) | $>/lib/,	\
+	$(ANKLANG_JACK_LIBS) $(lib/libase.so), \
+	../lib)
+endif
+$(ALL_TARGETS) += $(lib/jackdriver.so.MAYBE)
+
 # == gtk2wrap.so ==
 lib/gtk2wrap.so         ::= $>/lib/gtk2wrap.so
 ase/gtk2wrap.objects    ::= $(call BUILDDIR_O, $(ase/gtk2wrap.sources))
@@ -171,6 +188,7 @@ $(ALL_TARGETS) += $(lib/gtk2wrap.so)
 $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
 	$(lib/AnklangSynthEngine)	\
 	$(lib/AnklangSynthEngine)-fma	\
+	$(lib/jackdriver.so.MAYBE)	\
 	$(lib/gtk2wrap.so)		\
   ))
 
