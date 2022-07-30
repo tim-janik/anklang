@@ -100,8 +100,12 @@ $duration: 0.097s;
 <script>
 import * as Util from '../util.js';
 
+export function valid_uri (uri) {
+  return !(uri === '' || uri === undefined || uri === null); // allow uri=0
+}
+
 const menuitem_onclick = function (event) {
-  if (!this.uri)
+  if (!valid_uri (this.uri))
     throw new Error ("Attempt to click menuitem without URI");
   this.$emit ('click', this.uri, event);
   if (!event.defaultPrevented)
@@ -128,7 +132,7 @@ const menuitem_isdisabled = function () {
 
 export default {
   sfc_template,
-  emits: { click: (uri, event) => !!uri,
+  emits: { click: (uri, event) => valid_uri (uri),
 	   close: null, },
   props: { notransitions: { default: false },
 	   keepmounted: { type: Boolean, },
