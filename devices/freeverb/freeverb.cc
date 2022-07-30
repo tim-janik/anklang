@@ -1,7 +1,6 @@
 // Licensed GNU LGPL v2.1 or later: http://www.gnu.org/licenses/lgpl.html
-#include "bse/processor.hh"
-#include "bse/bseieee754.hh"
-#include "bse/internal.hh"
+#include "ase/processor.hh"
+#include "ase/internal.hh"
 
 namespace {
 
@@ -10,18 +9,20 @@ namespace {
 #include "allpass.cpp"
 #include "comb.cpp"
 
-using namespace Bse;
-using namespace AudioSignal;
+using namespace Ase;
 
-class Freeverb : public AudioSignal::Processor {
+class Freeverb : public AudioProcessor {
   IBusId stereoin;
   OBusId stereout;
   revmodel model;
-  void
-  query_info (ProcessorInfo &info) const override
+public:
+  Freeverb (AudioEngine &engine) :
+    AudioProcessor (engine)
+  {}
+  static void
+  static_info (AudioProcessorInfo &info)
   {
-    info.uri = "Bse.VST2.JzR3.Freeverb3";
-    info.version = "0";
+    info.version = "1";
     info.label = "Freeverb3";
     info.category = "Reverb";
     info.website_url = "https://beast.testbit.eu";
@@ -29,33 +30,30 @@ class Freeverb : public AudioSignal::Processor {
   }
   enum Params { MODE = 1, DRY, WET, ROOMSIZE, DAMPING, WIDTH };
   void
-  initialize () override
+  initialize (SpeakerArrangement busses) override
   {
-    ChoiceEntries centries;
+    remove_all_buses();
 
-    start_param_group ("Reverb Settings");
+    stereoin = add_input_bus  ("Stereo In",  SpeakerArrangement::STEREO);
+    stereout = add_output_bus ("Stereo Out", SpeakerArrangement::STEREO);
+
+    start_group ("Reverb Settings");
     add_param (DRY, "Dry level",  "Dry", 0, scaledry, scaledry * initialdry, "dB");
 
     add_param (WET, "Wet level",  "Wet", 0, scalewet, scalewet * initialwet, "dB");
 
-    start_param_group ("Room Settings");
+    start_group ("Room Settings");
     add_param (ROOMSIZE, "Room size",  "RS", offsetroom, offsetroom + scaleroom, offsetroom + scaleroom * initialroom, "size");
 
     add_param (WIDTH, "Width",  "W", 0, 100, 100 * initialwidth, "%");
 
     add_param (DAMPING, "Damping",  "D", 0, 100, 100 * initialdamp, "%");
 
+    ChoiceS centries;
     centries += { "Signflip 2000",  "Preserve May 2000 Freeverb damping sign flip" };
     centries += { "VLC Damping",    "The VLC Freeverb version disables one damping feedback chain" };
     centries += { "Normal Damping", "Damping with sign correction as implemented in STK Freeverb" };
     add_param (MODE, "Mode",  "M", std::move (centries), 2, "", "Damping mode found in different Freeverb variants");
-  }
-  void
-  configure (uint n_ibusses, const SpeakerArrangement *ibusses, uint n_obusses, const SpeakerArrangement *obusses) override
-  {
-    remove_all_buses();
-    stereoin = add_input_bus  ("Stereo In",  SpeakerArrangement::STEREO);
-    stereout = add_output_bus ("Stereo Out", SpeakerArrangement::STEREO);
   }
   void
   adjust_param (Id32 tag) override
@@ -68,14 +66,14 @@ class Freeverb : public AudioSignal::Processor {
       case WIDTH:       return model.setwidth (0.01 * get_param (tag));
       case MODE:
       case DAMPING:     return model.setdamp (0.01 * get_param (ParamId (DAMPING)),
-                                              1 - bse_ftoi (get_param (ParamId (MODE))));
+                                              1 - irintf (get_param (ParamId (MODE))));
       }
   }
   void
-  reset() override
+  reset (uint64 target_stamp) override
   {
-    model.setmode (0); // no-freeze, allow mute
-    model.mute(); // silence internal buffers
+    model.setmode (0);          // no-freeze, allow mute
+    model.mute();               // silence internal buffers
     adjust_params (true);
   }
   void
@@ -89,6 +87,6 @@ class Freeverb : public AudioSignal::Processor {
     model.processreplace (input0, input1, output0, output1, n_frames, 1);
   }
 };
-static auto freeverb = Bse::enroll_asp<Freeverb>();
+static auto freeverb = register_audio_processor<Freeverb> ("Ase::Devices::Freeverb");
 
 } // Anon
