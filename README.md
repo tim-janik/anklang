@@ -16,7 +16,7 @@ ANKLANG
 
 → Audio Synthesizer and MIDI Composer ←
 
-[Explore the manual](https://anklang.testbit.eu/pub/anklang/anklang-manual.html)
+[Explore the manual](https://anklang.testbit.eu/doc/anklang-manual.html)
 	·
 [Join Chat](https://web.libera.chat/#Anklang)
 	·

@@ -95,11 +95,12 @@
 
 <script>
 import * as Kbd from '../kbd.js';
+import * as ContextMenu from './contextmenu.js';
 
 const STR = { type: String, default: '' }; // empty string default
 export default {
   sfc_template,
-  emits: { click: uri => !!uri, },
+  emits: { click: uri => ContextMenu.valid_uri (uri), },
   props: { 'uri': {}, 'disabled': { type: Boolean },
 	   iconclass: STR, ic: STR, fa: STR, mi: STR, bc: STR, uc: STR,
 	   kbd: { type: String }, },

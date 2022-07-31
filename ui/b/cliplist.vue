@@ -96,7 +96,8 @@ export default {
 	  this.$refs.indicator.style = "transform: translateX(" + u + "px);";
 	  this.last_pos = u;
 	}
-      if (Shell.piano_current_clip == this.clips[current])
+      if (Shell.piano_current_tick &&
+	  Shell.piano_current_clip == this.clips[current])
 	Shell.piano_current_tick (this.clips[current], tick);
     },
   },
