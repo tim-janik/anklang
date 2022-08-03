@@ -84,6 +84,14 @@ scan-build:								| $>/misc/scan-build/
 .PHONY: scan-build
 # Note, 'make scan-build' requires 'make default CC=clang CXX=clang++' to generate any reports.
 
+# == versioned-manuals ==
+versioned-manuals: $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
+	$Q cp $>/doc/anklang-manual.pdf $>/anklang-manual-$(version_short).pdf
+	$Q cp $>/doc/anklang-internals.pdf $>/anklang-internals-$(version_short).pdf
+	$Q ls -l -h --color=auto \
+		$>/anklang-manual-$(version_short).pdf \
+		$>/anklang-internals-$(version_short).pdf
+
 # == anklang-deb ==
 $>/anklang_$(version_short)_amd64.deb: $>/TAGS $(GITCOMMITDEPS)
 	$(QGEN)
@@ -243,14 +251,8 @@ build-assets:
 	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
 		INSN=sse builddir=out-sse				\
 		anklang-deb						\
-		appimage
-	@: # Create release manuals (if present)
-	$Q cd $(RELEASE_SSEDIR)						\
-	   && test ! -f doc/anklang-manual.pdf				\
-	   || cp doc/anklang-manual.pdf anklang-manual-$(version_short).pdf
-	$Q cd $(RELEASE_SSEDIR)						\
-	   && test ! -f doc/anklang-internals.pdf			\
-	   || cp doc/anklang-internals.pdf anklang-internals-$(version_short).pdf
+		appimage						\
+		versioned-manuals
 	@: # Check build
 	$Q test ! -r /dev/fuse || time $(RELEASE_SSEDIR)/anklang-$(version_short)-x64.AppImage --quitstartup
 
