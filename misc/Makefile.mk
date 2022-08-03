@@ -289,10 +289,12 @@ build-nightly:
 	@: # Tag Nightly, force to move any old version
 	$Q git tag -f Nightly HEAD
 	@: # Update NEWS.md with nightly changes
-	$Q DETAILED_VERSION=`misc/version.sh --nightly` \
+	$Q NIGHTLY_VERSION=`misc/version.sh --nightly` \
+		&& echo "$$NIGHTLY_VERSION" | grep 'nightly' \
+		|| { echo "$@: missing nightly tag: $$NIGHTLY_VERSION" ; exit 1 ; } \
 		&& LOG_RANGE=`git describe --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=0 --first-parent` \
 		&& LOG_RANGE="$$LOG_RANGE..HEAD" \
-		&& echo -e "## Anklang $$DETAILED_VERSION\n"		>  ./NEWS.build \
+		&& echo -e "## Anklang $$NIGHTLY_VERSION\n"		>  ./NEWS.build \
 		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
 		&& git log --pretty='%s    # %cd %an %h%n%w(0,4,4)%b' \
 			--first-parent --date=short "$$LOG_RANGE"	>> ./NEWS.build \
