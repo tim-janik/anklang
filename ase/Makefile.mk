@@ -103,7 +103,7 @@ $>/external/minizip/mz_zip.h: ase/Makefile.mk		| $>/external/
 		$(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
 	$Q ln -s $(T:.tar.gz=) $>/external/minizip
 	$Q test -e $@ && touch $@
-ase/minizip.c: $>/external/minizip/mz_zip.h
+$(wildcard ase/*.cc ase/*.c): $>/external/minizip/mz_zip.h
 
 # == external/websocketpp ==
 $>/external/websocketpp/server.hpp: ase/Makefile.mk	| $>/external/
