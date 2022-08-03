@@ -28,6 +28,9 @@ version-info:
 	@echo version_date: $(version_date)
 	@echo version_m.m.m: $(version_m.m.m)
 	@echo version_to_month: "$(version_to_month)"
+ifeq ($(version_micro),)	# do we have any version?
+$(error Missing version information, run: misc/version.sh)
+endif
 
 # == User Defaults ==
 # see also 'make default' rule
