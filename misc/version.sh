@@ -30,7 +30,7 @@ exit_with_version() {
   V="${1#v}"	# strip 'v' prefix if any
   shift
   $NIGHTLY && {
-    [[ $V =~ nightly ]] || die "Missing nightly tag: $V"
+    [[ $V =~ nightly ]] || die "Not a nightly tag: $V"
     echo "$V"
   }
   echo "$V" "$@"
@@ -66,15 +66,6 @@ make_nightly() # make_nightly <Format:describe> <Format:date>
   echo "$V"
 }
 
-# Make release version from git describe
-make_release_tag() {
-  local V
-  V=$(git describe --first-parent --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=$L --long HEAD)
-  [[ "$V" =~ ^(v[0-9.]+)-0-g[a-f0-9]+$ ]] || die "Missing release tag on HEAD"
-  BUILD_NAME="${BASH_REMATCH[1]}"
-  echo "$BUILD_NAME"
-}
-
 # Usage: version.sh [--news-tag|--last-tag]	# print project versions
 while test $# -ne 0 ; do
   case "$1" in
@@ -86,11 +77,18 @@ while test $# -ne 0 ; do
       NEWS_VERSION="$(fetch_news_version 2)"
       test -n "$NEWS_VERSION" || die "ERROR: failed to extract release tag from NEWS.md"
       echo "v${NEWS_VERSION#v}" && exit ;;
-    --nightly)
+    --make-nightly)
       NIGHTLY=true
       ;;
-    --release-tag)
-      make_release_tag && exit ;;
+    --help)
+      cat <<-__EOF
+	Usage: $0 [OPTIONS]
+	  --help         Show brief usage info
+	  --make-nightly Print nightly version without checking NEWS.md
+	  --news-tag1    Extract latest version from NEWS.md
+	  --news-tag1    Extract next to latest version from NEWS.md
+__EOF
+      exit 0 ;;
     *)
       true ;;
   esac
@@ -110,7 +108,7 @@ COMMITINFO=(
 # If unset, assign from .git/
 test "${COMMITINFO[0]}" == "${COMMITINFO[0]/:/}" ||
   for i in "${!COMMITINFO[@]}" ; do
-    [[ ${COMMITINFO[$i]} =~ ^\$Format:([^\$]+)\$$ ]] || die 'missing $Format$ in' "COMMITINFO[$i]"
+    [[ ${COMMITINFO[$i]} =~ ^[$]Format[:]([^\$]+)\$$ ]] || die 'missing $Format$ in' "COMMITINFO[$i]"
     COMMITINFO[$i]=`git log -1 --pretty="tformat:${BASH_REMATCH[1]}" `
   done
 
