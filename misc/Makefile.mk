@@ -86,11 +86,8 @@ scan-build:								| $>/misc/scan-build/
 
 # == versioned-manuals ==
 versioned-manuals: $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
-	$Q cp $>/doc/anklang-manual.pdf $>/anklang-manual-$(version_short).pdf
-	$Q cp $>/doc/anklang-internals.pdf $>/anklang-internals-$(version_short).pdf
-	$Q ls -l -h --color=auto \
-		$>/anklang-manual-$(version_short).pdf \
-		$>/anklang-internals-$(version_short).pdf
+	$Q cp -v $>/doc/anklang-manual.pdf $>/anklang-manual-$(version_short).pdf
+	$Q cp -v $>/doc/anklang-internals.pdf $>/anklang-internals-$(version_short).pdf
 
 # == build-version ==
 $>/build-version: misc/version.sh
@@ -103,7 +100,7 @@ build-version: $>/build-version
 $>/anklang_$(version_short)_amd64.deb: $>/TAGS $(GITCOMMITDEPS)
 	$(QGEN)
 	$Q BUILDDIR=$> misc/mkdeb.sh
-	$Q ls -l -h --color=auto $@
+	$Q ls -l -h $@
 anklang-deb: $>/anklang_$(version_short)_amd64.deb
 .PHONY: anklang-deb
 
@@ -146,7 +143,7 @@ $>/anklang-$(version_short)-x64.AppImage: $>/misc/appaux/appimage-runtime-zstd $
 	$Q mksquashfs $(APPBASE) $>/Anklang-x86_64.AppImage $(misc/squashfsopts)
 	$Q cat $>/misc/appaux/appimage-runtime-zstd $>/Anklang-x86_64.AppImage > $@.tmp && rm -f $>/Anklang-x86_64.AppImage
 	$Q chmod +x $@.tmp
-	$Q mv $@.tmp $@ && ls -l -h --color=auto $@
+	$Q mv $@.tmp $@ && ls -l -h $@
 misc/squashfsopts ::= -root-owned -noappend -mkfs-time 0 -no-exports -no-recovery -noI -always-use-fragments -b 1048576 -comp zstd -Xcompression-level 22
 $>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
 	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
@@ -227,15 +224,9 @@ insn-build-fma:
 	$Q $(MAKE) INSN=fma builddir=out-fma insn-targets INSNDEST=out-sse/
 
 # == release rules ==
-RELEASE_CONTINUATION ?= false
 RELEASE_TEST         ?= false
 OOTBUILD             ?= /tmp/anklang-ootbuild$(shell id -u)
-RELEASE_OOTBUILD    ::= $(OOTBUILD)
-RELEASE_SSEDIR      ::= $(RELEASE_OOTBUILD)/out-sse
-RELEASE_NEWSMD        = $(RELEASE_OOTBUILD)/NEWS.md
-RELEASE_DEB           = $(RELEASE_SSEDIR)/anklang_$(DETAILED_VERSION)_amd64.deb
-RELEASE_APPIMAGE      = $(RELEASE_SSEDIR)/anklang-$(DETAILED_VERSION)-x64.AppImage
-RELEASE_CHANGELOG     = $(RELEASE_SSEDIR)/ChangeLog-$(DETAILED_VERSION).txt
+RELEASE_SSEDIR      ::= $(OOTBUILD)/out-sse
 
 # == build-assets ==
 build-assets:
@@ -243,25 +234,33 @@ build-assets:
 	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
 	$Q :										\
 		&& rm -rf .tmp.ccache							\
-		&& mkdir -p $(RELEASE_OOTBUILD) && cd $(RELEASE_OOTBUILD)		\
+		&& mkdir -p $(OOTBUILD) && cd $(OOTBUILD)				\
 		&& (mv .ccache/ $(abspath .tmp.ccache) || : ) 2>/dev/null		\
 		&& rm -rf * .[^.]* ..?*							\
-		&& git clone $(abspath .git) .						\
 		&& (mv $(abspath .tmp.ccache) .ccache || : ) 2>/dev/null		\
-		&& git checkout -f "$${CHECKOUT_HEAD:-HEAD}"
-	$Q test ! -r ./NEWS.build || mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
+		&& (cd $(abspath .) && git archive HEAD) | tar xf -
+	$Q test ! -r ./NEWS.build || mv ./NEWS.build $(OOTBUILD)/NEWS.md
 	@: # Build binaries with different INSNs in parallel, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
+	$Q nice $(MAKE) -C $(OOTBUILD) -j`nproc` -l`nproc`		\
 		insn-build-sse						\
 		insn-build-fma
 	@: # Build release packages, INSN=sse is full build, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
+	$Q nice $(MAKE) -C $(OOTBUILD) -j`nproc` -l`nproc`	\
 		INSN=sse builddir=out-sse				\
 		anklang-deb						\
 		appimage						\
 		versioned-manuals
+	$Q echo									>  $(RELEASE_SSEDIR)/build-assets
+	$Q echo	$(RELEASE_SSEDIR)/anklang_$(version_short)_amd64.deb		>> $(RELEASE_SSEDIR)/build-assets
+	$Q echo	$(RELEASE_SSEDIR)/anklang-$(version_short)-x64.AppImage		>> $(RELEASE_SSEDIR)/build-assets
+	$Q echo	$(RELEASE_SSEDIR)/ChangeLog-$(version_short).txt		>> $(RELEASE_SSEDIR)/build-assets
+	$Q echo $(RELEASE_SSEDIR)/anklang-manual-$(version_short).pdf		>> $(RELEASE_SSEDIR)/build-assets
+	$Q echo $(RELEASE_SSEDIR)/anklang-internals-$(version_short).pdf	>> $(RELEASE_SSEDIR)/build-assets
 	@: # Check build
+	$Q ls -l -h --color=auto `cat $(RELEASE_SSEDIR)/build-assets`
 	$Q test ! -r /dev/fuse || time $(RELEASE_SSEDIR)/anklang-$(version_short)-x64.AppImage --quitstartup
+	@: # Record build version and artifacts
+	$Q echo "$(version_short)"	> $(RELEASE_SSEDIR)/build-version
 
 # == build-release ==
 build-release:
@@ -319,20 +318,22 @@ build-nightly:
 # == upload-nightly ==
 upload-nightly:
 	$(QGEN)
-	@: # Determine version, check release attachments
-	@ $(eval DETAILED_VERSION != misc/version.sh --nightly)
-	$Q du -hs $(RELEASE_CHANGELOG) $(RELEASE_DEB) $(RELEASE_APPIMAGE)
+	@: # Check release attachments
+	$Q cat $(RELEASE_SSEDIR)/build-version
+	$Q du -hs `cat $(RELEASE_SSEDIR)/build-assets`
 	@: # Create Github release and upload assets
-	$Q echo 'Nightly'				>  $(RELEASE_SSEDIR)/release-message
-	$Q echo						>> $(RELEASE_SSEDIR)/release-message
-	$Q echo 'Anklang $(DETAILED_VERSION)'		>> $(RELEASE_SSEDIR)/release-message
-	$Q hub release delete 'Nightly' ; git push origin ':Nightly' || :
+	$Q echo 'Nightly'					>  $(RELEASE_SSEDIR)/release-message
+	$Q echo							>> $(RELEASE_SSEDIR)/release-message
+	$Q echo 'Anklang' \
+		`cut '-d ' -f1 $(RELEASE_SSEDIR)/build-version`	>> $(RELEASE_SSEDIR)/release-message
+	-$Q hub release delete 'Nightly'
+	-$Q git push origin ':Nightly'
 	$Q git push origin 'Nightly'					\
-		&& ASSETS=( $(RELEASE_SSEDIR)/*"$(DETAILED_VERSION)"* )	\
+		&& ASSETS=( `cat $(RELEASE_SSEDIR)/build-assets` )	\
 		&& hub release create --prerelease			\
-		-F '$(RELEASE_SSEDIR)/release-message'			\
-		"$${ASSETS[@]/#/-a}"					\
-		'Nightly'
+		     -F '$(RELEASE_SSEDIR)/release-message'		\
+		     "$${ASSETS[@]/#/-a}"				\
+		     'Nightly'
 
 # == upload-release ==
 upload-release:
