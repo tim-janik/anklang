@@ -289,7 +289,7 @@ build-nightly:
 	@: # Tag Nightly, force to move any old version
 	$Q git tag -f Nightly HEAD
 	@: # Update NEWS.md with nightly changes
-	$Q NIGHTLY_VERSION=`misc/version.sh --nightly` \
+	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly` \
 		&& echo "$$NIGHTLY_VERSION" | grep 'nightly' \
 		|| { echo "$@: missing nightly tag: $$NIGHTLY_VERSION" ; exit 1 ; } \
 		&& LOG_RANGE=`git describe --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=0 --first-parent` \
