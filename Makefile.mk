@@ -36,6 +36,20 @@ endif
 # see also 'make default' rule
 -include config-defaults.mk
 
+# == builddir ==
+# Allow O= and builddir= on the command line
+ifeq ("$(origin O)", "command line")
+builddir	::= $O
+builddir.origin ::= command line
+endif
+ifeq ('$(builddir)', '')
+builddir	::= out
+endif
+# Provide $> as builddir shorthand, used in almost every rule
+>		  = $(builddir)
+# if 'realpath --relative-to' is missing, os.path.realpath could be used as fallback
+build2srcdir	 != realpath --relative-to $(builddir) .
+
 # == Mode ==
 # determine build mode
 MODE.origin ::= $(origin MODE) # before overriding, remember if MODE came from command line
@@ -55,20 +69,6 @@ override MODE !=  case "$(MODE)" in \
 		  esac ; echo "$$MODE"
 .config.defaults += MODE
 $(info $S MODE     $(MODE))
-
-# == builddir ==
-# Allow O= and builddir= on the command line
-ifeq ("$(origin O)", "command line")
-builddir	::= $O
-builddir.origin ::= command line
-endif
-ifeq ('$(builddir)', '')
-builddir	::= out
-endif
-# Provide $> as builddir shorthand, used in almost every rule
->		  = $(builddir)
-# if 'realpath --relative-to' is missing, os.path.relpath could be used as fallback
-build2srcdir	 != realpath --relative-to $(builddir) .
 
 # == Dirctories ==
 prefix		 ?= /usr/local
