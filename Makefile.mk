@@ -125,16 +125,6 @@ include misc/Makefile.mk
 include doc/style/Makefile.mk
 include doc/Makefile.mk
 
-# == FORCE rules ==
-# Use FORCE to mark phony targets via a dependency
-.PHONY:	FORCE
-
-# == output directory rules ==
-# rule to create output directories from order only dependencies, trailing slash required
-$>/%/:
-	$Q mkdir -p $@
-.PRECIOUS: $>/%/ # prevent MAKE's 'rm ...' for automatically created dirs
-
 # == run ==
 run: FORCE all
 	$>/electron/anklang
@@ -187,6 +177,21 @@ default: FORCE
 	    echo '# $(VAR) = $(value $(VAR))'				>>$@.tmp ;	\
 	  fi )
 	$Q mv $@.tmp config-defaults.mk
+
+# == ls-tree.lst ==
+$>/ls-tree.lst: $(GITCOMMITDEPS)				| $>/
+	$(QGEN)
+	$Q git ls-tree -r --name-only HEAD	> $@
+
+# == output directory rules ==
+# rule to create output directories from order only dependencies, trailing slash required
+$>/%/:
+	$Q mkdir -p $@
+.PRECIOUS: $>/%/ # prevent MAKE's 'rm ...' for automatically created dirs
+
+# == FORCE rules ==
+# Use FORCE to mark phony targets via a dependency
+.PHONY:	FORCE
 
 # == PACKAGE_CONFIG ==
 define PACKAGE_VERSIONS
@@ -288,7 +293,7 @@ int main (int argc, char *argv[])
 endef
 
 # == dist ==
-extradist ::= ChangeLog doc/copyright TAGS # doc/README
+extradist ::= ChangeLog doc/copyright TAGS ls-tree.lst # doc/README
 dist: $(extradist:%=$>/%)
 	@$(eval distversion != misc/version.sh | sed 's/ .*//')
 	@$(eval distname := anklang-$(distversion))
