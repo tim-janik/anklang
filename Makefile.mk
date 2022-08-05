@@ -297,6 +297,8 @@ dist: $(extradist:%=$>/%)
 	$Q git archive -o $>/$(distname).tar --prefix=$(distname)/ HEAD
 	$Q rm -rf $>/dist/$(distname)/ && mkdir -p $>/dist/$(distname)/
 	$Q cd $>/ && $(CP) --parents $(extradist) $(abspath $>/dist/$(distname))
+	$Q git diff --exit-code NEWS.md >/dev/null \
+	|| { tar f $>/$(distname).tar --delete $(distname)/NEWS.md && cp NEWS.md $>/dist/$(distname)/ ; }
 	$Q cd $>/dist/ && tar uhf $(abspath $>/$(distname).tar) $(distname)
 	$Q rm -f $>/$(distname).tar.zst && zstd -17 --rm $>/$(distname).tar && ls -lh $>/$(distname).tar.zst
 	$Q echo "Archive ready: $>/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
