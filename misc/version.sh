@@ -29,11 +29,12 @@ NIGHTLY=false
 exit_with_version() {
   V="${1#v}"	# strip 'v' prefix if any
   shift
-  $NIGHTLY && {
+  if $NIGHTLY ; then
     [[ $V =~ nightly ]] || die "Not a nightly tag: $V"
     echo "$V"
-  }
-  echo "$V" "$@"
+  else
+    echo "$V" "$@"
+  fi
   exit 0
 }
 
