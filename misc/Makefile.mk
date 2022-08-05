@@ -10,14 +10,10 @@ clean-misc:
 	rm -rf $(misc/cleandirs)
 .PHONY: clean-misc
 
-# == git-ls-tree.lst ==
-$>/misc/git-ls-tree.lst: $(GITCOMMITDEPS)					| $>/misc/
-	$Q git ls-tree -r --name-only HEAD	> $@ || touch $@
-
 # == lint-cppcheck ==
 CPPCHECK ?= cppcheck
 CPPCHECK_CCENABLE := warning,style,performance,portability
-lint-cppcheck: $>/misc/git-ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
+lint-cppcheck: $>/ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
 	$Q egrep $(CLANGTIDY_GLOB) < $<		> $>/misc/cppcheck/sources.lst
 	$Q $(CPPCHECK) --enable=$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) \
 		$$(cat $>/misc/cppcheck/sources.lst)
@@ -25,7 +21,7 @@ CPPCHECK_DEFS := -D__SIZEOF_LONG__=8 -D__SIZEOF_WCHAR_T__=4 -D__linux__ -U_SC_NP
 .PHONY: lint-cppcheck
 
 # == lint-unused ==
-lint-unused: $>/misc/git-ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
+lint-unused: $>/ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
 	$Q egrep $(CLANGTIDY_GLOB) < $<			> $>/misc/cppcheck/sources.lst
 	$Q $(CPPCHECK) --enable=unusedFunction,$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) \
 		$$(cat $>/misc/cppcheck/sources.lst)	2>&1 | \
@@ -36,7 +32,7 @@ lint-unused: $>/misc/git-ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
 CLANGTIDY_GLOB	:= "^(ase|devices|jsonipc|ui)/.*\.(cc)$$"
 CLANGTIDY_IGNORE	:= "^(ase)/.*\.(cpp)$$"
 CLANGTIDY_SRC	:= # added to by ls-lint.d
-$>/misc/ls-lint.d: $>/misc/git-ls-tree.lst misc/Makefile.mk
+$>/misc/ls-lint.d: $>/ls-tree.lst misc/Makefile.mk	| $>/misc/
 	$Q egrep $(CLANGTIDY_GLOB) < $< | egrep -v $(CLANGTIDY_IGNORE)	> $@1
 	$Q while read L ; do			\
 		echo "CLANGTIDY_SRC += $$L" ;	\
@@ -186,9 +182,9 @@ misc/uninstall: FORCE
 uninstall: misc/uninstall
 
 # == Check Copyright Notices ==
-check-copyright: misc/mkcopyright.py doc/copyright.ini $>/misc/git-ls-tree.lst
+check-copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst
 	$(QGEN)
-	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini $$(cat $>/misc/git-ls-tree.lst)
+	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini $$(cat $>/ls-tree.lst)
 CHECK_TARGETS += $(WITHGIT) check-copyright
 
 # == ChangeLog ==
