@@ -13,11 +13,10 @@ QECHO	  = @QECHO() { Q1="$$1"; shift; QR="$$*"; QOUT=$$(printf '  %-8s ' "$$Q1" 
 QDIE	  = bash -c 'echo "  ERROR    $@: $$@" >&2 ; exit 127' _
 
 # == GIT ==
-# If ./.git is present then WITHOUTGIT=# else WITHGIT=#
-WITHGIT     != test -e ./.git || echo '\#'
-WITHOUTGIT ::= $(if $(WITHGIT),,\#)
 # Toplevel .git/ directory or empty if this is not a git repository
-DOTGIT ::= $(abspath $(shell git rev-parse --git-dir 2>/dev/null))
+DOTGIT	 ::= $(abspath $(shell git rev-parse --git-dir 2>/dev/null))
+# If ./.git is present then HAVE_GIT=true
+HAVE_GIT ::= $(DOTGIT:%=true)
 # Dependencies that are updated with each Git commit
 GITCOMMITDEPS ::= $(DOTGIT:%=%/logs/HEAD)
 
