@@ -382,13 +382,10 @@ CLEANFILES += $>/ChangeLog
 
 # == TAGS ==
 # ctags-universal --print-language ` git ls-tree -r --name-only HEAD`
-$>/TAGS: $(wildcard */*[hcsl])
+$>/TAGS: $(wildcard */*[hcsl]) Makefile.mk
 	$(QGEN)
 	$Q git ls-tree -r --name-only HEAD	> $@.lst
-	$Q if ctags-universal --version 2>&1 | grep -q Ctags ; \
-	   then ctags-universal -e -o $@ -L $@.lst ; \
-	   else touch $@ ; \
-	   fi
+	$Q ctags-universal -e -o $@ -L $@.lst
 	$Q rm -f $@.lst
 ALL_TARGETS += $>/TAGS
 
