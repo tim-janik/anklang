@@ -220,11 +220,11 @@ build-assets:
 		&& (mv $(abspath .tmp.dlcache) .dlcache || : ) 2>/dev/null
 	@: # Prepare source tree
 	$Q tar xf $(TARBALL) -C $(OOTBUILD) --strip-components=1
-	@: # Build binaries with different INSNs in parallel, delete tag on error
+	@: # Build binaries with different INSNs in parallel
 	$Q nice $(MAKE) -C $(OOTBUILD)					\
 		insn-build-sse						\
 		insn-build-fma
-	@: # Build release packages, INSN=sse is full build, delete tag on error
+	@: # Build release packages, INSN=sse is full build
 	$Q nice $(MAKE) -C $(OOTBUILD)					\
 		INSN=sse builddir=out-sse				\
 		anklang-deb						\
@@ -291,10 +291,9 @@ build-nightly:
 		&& echo 						>> ./NEWS.md \
 		&& git show HEAD:NEWS.md 				>> ./NEWS.md \
 		&& $(MAKE) dist						\
-		&& mv ./NEWS.saved ./NEWS.md				\
-		&& ls -lh $>/anklang-$$NIGHTLY_VERSION.tar.zst
+		&& mv ./NEWS.saved ./NEWS.md
 	@: # Build versioned release assets
-	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly` \
+	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly`		\
 		&& $(MAKE) build-assets TARBALL=$>/anklang-$$NIGHTLY_VERSION.tar.zst
 
 # == upload-nightly ==
