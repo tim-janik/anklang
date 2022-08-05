@@ -288,84 +288,19 @@ int main (int argc, char *argv[])
 endef
 
 # == dist ==
-distname    ::= anklang-$(version_short)
-disttarball ::= $>/$(distname).tar.xz
-dist_xz_opt  ?= -9e
-dist: $>/doc/README $>/ChangeLog FORCE
+extradist ::= ChangeLog doc/copyright TAGS # doc/README
+dist: $(extradist:%=$>/%)
+	@$(eval distversion != misc/version.sh | sed 's/ .*//')
+	@$(eval distname := anklang-$(distversion))
 	$(QECHO) MAKE $(disttarball)
-	$Q DIFFLINES=`git diff HEAD | wc -l` \
-	  && { test 0 = $$DIFFLINES || echo -e "#\n# $@: WARNING: working tree unclean\n#" >&2 ; }
-	$Q git archive --format=tar --prefix=$(distname)/ HEAD		> $>/$(distname).tar
-	$Q rm -rf $>/.extradist/ && mkdir -p $>/.extradist/$(distname)/	\
-	  && : tar -C $>/.extradist/ -xf $>/$(distname).tar
-	$Q cp -a $>/doc/README $>/ChangeLog $>/.extradist/$(distname)/
-	$Q cd $>/.extradist/ && tar uhf $(abspath $>/$(distname).tar) $(distname)
-	$Q rm -f -r $>/.extradist/
-	$Q rm -f $>/$(distname).tar.xz && xz $(dist_xz_opt) $>/$(distname).tar && test -e $(disttarball)
-	$Q echo "Archive ready: $(disttarball)" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
-CLEANFILES += $(wildcard $>/anklang-*.tar $>/anklang-*.tar.xz)
-
-# == distcheck ==
-# Distcheck aims:
-# - build *outside* the original source tree to catch missing files or dirs, and without picking up parent directory contents;
-# - support parallel builds;
-# - verify that no CLEANFILES are shipped in dist tarball;
-# - check that $(DESTDIR) is properly honored in installation rules.
-# distcheck_uniqdir - directory for build tests, outside of srcdir, unique per user and checkout
-distcheck_uniqdir_py3 ::= "import os, hashlib; print ('%u-%s' % (os.getuid(), hashlib.md5 (os.getcwd().encode()).hexdigest()[:5]))"
-distcheck: dist
-	$(QGEN)
-	@$(eval distcheck_uniqdir ::= distcheck-anklang-$(shell python3 -c $(distcheck_uniqdir_py3)) )
-	$Q TMPDIR="$${TMPDIR-$${TEMP-$${TMP-/tmp}}}" \
-	&& DCDIR="$$TMPDIR/$(distcheck_uniqdir)" \
-	&& test -n "$$TMPDIR" -a -n "$(distcheck_uniqdir)" -a -n "$$DCDIR" -a -n "$(distname)" \
-	&& { test ! -e "$$DCDIR/" || { chmod u+w -R "$$DCDIR/" && rm -r "$$DCDIR/" ; } ; } \
-	&& mkdir -p "$$DCDIR" \
-	&& set -x \
-	&& cd "$$DCDIR" \
-	&& tar xf $(abspath $(disttarball)) \
-	&& cd "$(distname)" \
-	&& $(MAKE) default prefix="$$DCDIR/inst" \
-	&& touch dc-buildtree-cleaned \
-	&& find . ! -path './out/*' -print >dc-buildtree-files \
-	&& $(MAKE) clean \
-	&& find . ! -path './out/*' -print >dc-buildtree-cleaned \
-	&& diff -u dc-buildtree-files dc-buildtree-cleaned \
-	&& $(MAKE) $(AM_MAKEFLAGS) -j`nproc` \
-	&& $(MAKE) $(AM_MAKEFLAGS) check \
-	&& $(MAKE) $(AM_MAKEFLAGS) install \
-	&& $(MAKE) $(AM_MAKEFLAGS) installcheck \
-	&& $(MAKE) $(AM_MAKEFLAGS) uninstall \
-	&& $(MAKE) $(AM_MAKEFLAGS) distuninstallcheck distuninstallcheck_dir="$$DCDIR/inst" \
-	&& chmod a-w -R "$$DCDIR/inst" \
-	&& mkdir -m 0700 "$$DCDIR/destdir" \
-	&& $(MAKE) $(AM_MAKEFLAGS) DESTDIR="$$DCDIR/destdir" install \
-	&& $(MAKE) $(AM_MAKEFLAGS) DESTDIR="$$DCDIR/destdir" uninstall \
-	&& $(MAKE) $(AM_MAKEFLAGS) DESTDIR="$$DCDIR/destdir" distuninstallcheck distuninstallcheck_dir="$$DCDIR/destdir" \
-	&& $(MAKE) $(AM_MAKEFLAGS) clean \
-	&& set +x \
-	&& cd "$(abs_top_builddir)" \
-	&& { chmod u+w -R "$$DCDIR/" && rm -r "$$DCDIR/" ; } \
-	&& echo "OK: archive ready for distribution: $(disttarball)" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
-distuninstallcheck:
-	$Q test -n '$(distuninstallcheck_dir)' || { echo '$@: missing distuninstallcheck_dir' >&2; false; }
-	$Q cd '$(distuninstallcheck_dir)' \
-	  && test `$(distuninstallcheck_listfiles) | sed 's|^\./|$(prefix)/|' | wc -l` -eq 0 \
-	  || { echo "$@: ERROR: files left after uninstall:" ; \
-	       $(distuninstallcheck_listfiles) ; \
-	       false; } >&2
-
-# == distuninstallcheck ignores ==
-# Some files remain after distcheck, that we cannot clean up. So we role our own listfiles filter.
-distuninstallcheck_listfiles  = find . -type f $(patsubst .../%, ! -path \*/%, $(distuninstallcheck_ignores)) -print
-#distuninstallcheck_listfiles = find . -type f -print	# original automake-1.14.1 setting
-distuninstallcheck_ignores = $(strip	\
-	.../share/mime/subclasses	.../share/mime/XMLnamespaces	.../share/mime/globs2	\
-	.../share/mime/version		.../share/mime/icons		.../share/mime/types	\
-	.../share/mime/treemagic	.../share/mime/aliases		.../share/mime/magic	\
-	.../share/mime/mime.cache	.../share/mime/generic-icons	.../share/mime/globs	\
-	.../share/applications/mimeinfo.cache	\
-)
+	$Q git describe --dirty | grep -qve -dirty || echo -e "#\n# $@: WARNING: working tree is dirty\n#"
+	$Q git archive -o $>/$(distname).tar --prefix=$(distname)/ HEAD
+	$Q rm -rf $>/dist/$(distname)/ && mkdir -p $>/dist/$(distname)/
+	$Q cd $>/ && $(CP) --parents $(extradist) $(abspath $>/dist/$(distname))
+	$Q cd $>/dist/ && tar uhf $(abspath $>/$(distname).tar) $(distname)
+	$Q rm -f $>/$(distname).tar.zst && zstd -17 --rm $>/$(distname).tar && ls -lh $>/$(distname).tar.zst
+	$Q echo "Archive ready: $>/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
+.PHONY: dist
 
 # == ChangeLog ==
 CHANGELOG_RANGE = $(shell git cat-file -e ce584d04999a7fb9393e1cfedde2048ba73e8878 && \
