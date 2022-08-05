@@ -241,11 +241,11 @@ build-assets:
 	@: # Prepare source tree
 	$Q tar xf $(TARBALL) -C $(OOTBUILD) --strip-components=1
 	@: # Build binaries with different INSNs in parallel, delete tag on error
-	$Q nice $(MAKE) -C $(OOTBUILD) -j`nproc` -l`nproc`		\
+	$Q nice $(MAKE) -C $(OOTBUILD)					\
 		insn-build-sse						\
 		insn-build-fma
 	@: # Build release packages, INSN=sse is full build, delete tag on error
-	$Q nice $(MAKE) -C $(OOTBUILD) -j`nproc` -l`nproc`	\
+	$Q nice $(MAKE) -C $(OOTBUILD)					\
 		INSN=sse builddir=out-sse				\
 		anklang-deb						\
 		appimage						\
