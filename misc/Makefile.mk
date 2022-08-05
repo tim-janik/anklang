@@ -233,13 +233,13 @@ build-assets:
 	@: # Clear out-of-tree build directory (but keep .ccache/), note that
 	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
 	$Q :										\
-		&& rm -rf .tmp.ccache							\
+		&& rm -rf .tmp.dlcache							\
 		&& mkdir -p $(OOTBUILD) && cd $(OOTBUILD)				\
-		&& (mv .ccache/ $(abspath .tmp.ccache) || : ) 2>/dev/null		\
+		&& (mv .dlcache/ $(abspath .tmp.dlcache) || : ) 2>/dev/null		\
 		&& rm -rf * .[^.]* ..?*							\
-		&& (mv $(abspath .tmp.ccache) .ccache || : ) 2>/dev/null		\
-		&& (cd $(abspath .) && git archive HEAD) | tar xf -
-	$Q test ! -r ./NEWS.build || mv ./NEWS.build $(OOTBUILD)/NEWS.md
+		&& (mv $(abspath .tmp.dlcache) .dlcache || : ) 2>/dev/null
+	@: # Prepare source tree
+	$Q tar xf $(TARBALL) -C $(OOTBUILD) --strip-components=1
 	@: # Build binaries with different INSNs in parallel, delete tag on error
 	$Q nice $(MAKE) -C $(OOTBUILD) -j`nproc` -l`nproc`		\
 		insn-build-sse						\
