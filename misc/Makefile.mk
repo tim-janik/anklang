@@ -209,7 +209,7 @@ release-changelog: $>/ChangeLog-$(version_short).txt
 
 # == release-news ==
 release-news:
-	$Q LAST_TAG=`./misc/version.sh --news-tag2` && ( set -x && \
+	$Q LAST_TAG=`misc/version.sh --news-tag2` && ( set -x && \
 	  git log --first-parent --date=short --pretty='%s    # %cd %an %h%d%n%w(0,4,4)%b' --reverse HEAD "$$LAST_TAG^!" ) | \
 		sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' -e '/^\s*$$/d'
 .PHONY: release-news
@@ -266,9 +266,9 @@ build-assets:
 build-release:
 	$(QGEN)
 	@: # Setup release variables (note, eval preceeds all shell commands)
-	@ $(eval RELEASE_TAG       != ./misc/version.sh --news-tag1)
+	@ $(eval RELEASE_TAG != misc/version.sh --news-tag1)
 	@: # Check release tag
-	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
+	$Q NEWS_TAG=`misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
 	$Q test -z "`git tag -l '$(RELEASE_TAG)'`" || \
 		{ echo '$@: error: release tag from NEWS.md already exists: $(RELEASE_TAG)' >&2 ; false ; }
 	@: # Check against origin/trunk
@@ -278,11 +278,12 @@ build-release:
 		{ echo "$@: ERROR: Release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
 	@: # Tag release with annotation
 	$Q git tag -a '$(RELEASE_TAG)' -m "`git log -1 --pretty=%s`"
+	@: # Create release dist tarball, needed as build-asset
+	$Q $(MAKE) dist
 	@: # Build versioned release assets
-	$Q export CHECKOUT_HEAD='$(RELEASE_TAG)' \
-		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
-		  VERSION_SH_RELEASE=true \
-	   && $(MAKE) build-assets
+	$Q $(MAKE) build-assets TARBALL=$>/anklang-$(RELEASE_TAG:v%=%).tar.zst
+	$Q ls -lh $(RELEASE_SSEDIR)/build-assets		\
+	&& echo $(abspath $>/anklang-$(RELEASE_TAG:v%=%).tar.zst)	>> $(RELEASE_SSEDIR)/build-assets
 
 # == build-nightly ==
 build-nightly:
@@ -292,28 +293,30 @@ build-nightly:
 		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
 		$(RELEASE_TEST) || \
 		{ echo "$@: ERROR: Nightly release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
-	@: # Tag Nightly, force to move any old version
+	@: # Tag Nightly, force to move any old version, verify
 	$Q git tag -f Nightly HEAD
-	@: # Update NEWS.md with nightly changes
 	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly` \
 		&& echo "$$NIGHTLY_VERSION" | grep 'nightly' \
-		|| { echo "$@: missing nightly tag: $$NIGHTLY_VERSION" ; exit 1 ; } \
-		&& LOG_RANGE=`git describe --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=0 --first-parent` \
-		&& LOG_RANGE="$$LOG_RANGE..HEAD" \
-		&& echo -e "## Anklang $$NIGHTLY_VERSION\n"		>  ./NEWS.build \
-		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
+		|| { echo "$@: missing nightly tag: $$NIGHTLY_VERSION" ; exit 1 ; }
+	@: # Create nightly dist tarball with updated NEWS.md
+	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly` \
+		&& mv ./NEWS.md ./NEWS.saved				\
+		&& echo -e "## Anklang $$NIGHTLY_VERSION\n"		>  ./NEWS.md \
+		&& echo '```````````````````````````````````````````'	>> ./NEWS.md \
+		&& LOGTAG=`git describe --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=0 --first-parent` \
 		&& git log --pretty='%s    # %cd %an %h%n%w(0,4,4)%b' \
-			--first-parent --date=short "$$LOG_RANGE"	>> ./NEWS.build \
-		&& sed -e '/^\s*Signed-off-by:.*<.*@.*>/d'		-i ./NEWS.build \
-		&& sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i ./NEWS.build \
-		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
-		&& echo 						>> ./NEWS.build \
-		&& cat ./NEWS.md					>> ./NEWS.build
+		       --first-parent --date=short "$$LOGTAG..HEAD"	>> ./NEWS.md \
+		&& sed -e '/^\s*Signed-off-by:.*<.*@.*>/d'		-i ./NEWS.md \
+		&& sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i ./NEWS.md \
+		&& echo '```````````````````````````````````````````'	>> ./NEWS.md \
+		&& echo 						>> ./NEWS.md \
+		&& git show HEAD:NEWS.md 				>> ./NEWS.md \
+		&& $(MAKE) dist						\
+		&& mv ./NEWS.saved ./NEWS.md				\
+		&& ls -lh $>/anklang-$$NIGHTLY_VERSION.tar.zst
 	@: # Build versioned release assets
-	$Q export CHECKOUT_HEAD=Nightly \
-		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
-		  VERSION_SH_NIGHTLY=true \
-	   && $(MAKE) build-assets
+	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly` \
+		&& $(MAKE) build-assets TARBALL=$>/anklang-$$NIGHTLY_VERSION.tar.zst
 
 # == upload-nightly ==
 upload-nightly:
