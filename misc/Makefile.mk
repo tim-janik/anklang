@@ -185,7 +185,7 @@ uninstall: misc/uninstall
 check-copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst
 	$(QGEN)
 	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini $$(cat $>/ls-tree.lst)
-CHECK_TARGETS += $(WITHGIT) check-copyright
+CHECK_TARGETS += $(if $(HAVE_GIT), check-copyright)
 
 # == release-news ==
 release-news:
