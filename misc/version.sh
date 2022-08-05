@@ -67,6 +67,20 @@ make_nightly() # make_nightly <Format:describe> <Format:date>
   echo "$V"
 }
 
+# Commit information provided by git-archive in export-subst format string, see gitattributes(5)
+COMMITINFO=(
+  '$Format:%H$'						# [0-9a-f]+
+  '$Format:%(describe:match=v[0-9]*.[0-9]*.[0-9]*)$'	# vN.N.N-3-g123abc
+  '$Format:%ci$'					# 2001-01-01 01:01:01 +0100
+  '$Format:%D,$'					# HEAD -> next, tag: v0.0.0, tag: Daily,
+)
+# If unset, assign from .git/
+test "${COMMITINFO[0]}" == "${COMMITINFO[0]/:/}" ||
+  for i in "${!COMMITINFO[@]}" ; do
+    [[ ${COMMITINFO[$i]} =~ ^[$]Format[:]([^\$]+)\$$ ]] || die 'missing $Format$ in' "COMMITINFO[$i]"
+    COMMITINFO[$i]=`git log -1 --pretty="tformat:${BASH_REMATCH[1]}" `
+  done
+
 # Usage: version.sh [--news-tag|--last-tag]	# print project versions
 while test $# -ne 0 ; do
   case "$1" in
@@ -78,6 +92,8 @@ while test $# -ne 0 ; do
       NEWS_VERSION="$(fetch_news_version 2)"
       test -n "$NEWS_VERSION" || die "ERROR: failed to extract release tag from NEWS.md"
       echo "v${NEWS_VERSION#v}" && exit ;;
+    --commit-hash)
+      echo "${COMMITINFO[0]}" && exit ;;
     --make-nightly)
       NIGHTLY=true
       ;;
@@ -98,20 +114,6 @@ done
 
 # Fetch NEWS.md version to compare against releast tags
 NEWS_VERSION="$(fetch_news_version 1)"
-
-# Commit information provided by git-archive in export-subst format string, see gitattributes(5)
-COMMITINFO=(
-  '$Format:%H$'						# [0-9a-f]+
-  '$Format:%(describe:match=v[0-9]*.[0-9]*.[0-9]*)$'	# vN.N.N-3-g123abc
-  '$Format:%ci$'					# 2001-01-01 01:01:01 +0100
-  '$Format:%D,$'					# HEAD -> next, tag: v0.0.0, tag: Daily,
-)
-# If unset, assign from .git/
-test "${COMMITINFO[0]}" == "${COMMITINFO[0]/:/}" ||
-  for i in "${!COMMITINFO[@]}" ; do
-    [[ ${COMMITINFO[$i]} =~ ^[$]Format[:]([^\$]+)\$$ ]] || die 'missing $Format$ in' "COMMITINFO[$i]"
-    COMMITINFO[$i]=`git log -1 --pretty="tformat:${BASH_REMATCH[1]}" `
-  done
 
 # Handle releases
 if [[ ${COMMITINFO[1]} =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)$ ]] && # match version tag
