@@ -187,22 +187,6 @@ check-copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst
 	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini $$(cat $>/ls-tree.lst)
 CHECK_TARGETS += $(WITHGIT) check-copyright
 
-# == ChangeLog ==
-$>/ChangeLog-$(version_short).txt: $(GITCOMMITDEPS) misc/Makefile.mk		| $>/
-	$(QGEN)
-	$Q LAST_TAG=`misc/version.sh --news-tag2`				\
-	&& { LAST_COMMIT=`git log -1 --pretty=%H "$$LAST_TAG" 2>/dev/null`	\
-	  || LAST_COMMIT=96e7881fac0a2cd7f4d20a3f0666f1295ff4ee77 ; }		\
-	&& git log --pretty='^^%ad  %an 	# %h%n%n%B%n'			\
-		--topo-order --full-history \
-		--abbrev=13 --date=short $$LAST_COMMIT..HEAD	 > $@.tmp	# Generate ChangeLog with ^^-prefixed records
-	$Q sed 's/^/	/; s/^	^^// ; s/[[:space:]]\+$$// '    -i $@.tmp	# Tab-indent commit bodies, kill trailing whitespaces
-	$Q sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i $@.tmp	# Compress multiple newlines
-	$Q mv $@.tmp $@
-CLEANFILES += $>/ChangeLog-$(version_short).txt
-release-changelog: $>/ChangeLog-$(version_short).txt
-.PHONY: release-changelog
-
 # == release-news ==
 release-news:
 	$Q LAST_TAG=`misc/version.sh --news-tag2` && ( set -x && \
@@ -213,7 +197,7 @@ release-news:
 # == insn-build ==
 # Build binary variants with INSN=sse and build 'all'
 insn-build-sse:
-	$Q $(MAKE) INSN=sse builddir=out-sse all release-changelog
+	$Q $(MAKE) INSN=sse builddir=out-sse all
 	$Q $(MAKE) INSN=sse builddir=out-sse check
 # Build binary variants with INSN=fma
 insn-build-fma:
@@ -249,7 +233,6 @@ build-assets:
 	$Q echo									>  $(RELEASE_SSEDIR)/build-assets
 	$Q echo	$(RELEASE_SSEDIR)/anklang_$(version_short)_amd64.deb		>> $(RELEASE_SSEDIR)/build-assets
 	$Q echo	$(RELEASE_SSEDIR)/anklang-$(version_short)-x64.AppImage		>> $(RELEASE_SSEDIR)/build-assets
-	$Q echo	$(RELEASE_SSEDIR)/ChangeLog-$(version_short).txt		>> $(RELEASE_SSEDIR)/build-assets
 	$Q echo $(RELEASE_SSEDIR)/anklang-manual-$(version_short).pdf		>> $(RELEASE_SSEDIR)/build-assets
 	$Q echo $(RELEASE_SSEDIR)/anklang-internals-$(version_short).pdf	>> $(RELEASE_SSEDIR)/build-assets
 	@: # Check build
