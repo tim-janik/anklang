@@ -323,12 +323,10 @@ $>/ChangeLog: $(GITCOMMITDEPS)					| $>/
 CLEANFILES += $>/ChangeLog
 
 # == TAGS ==
-# ctags-universal --print-language ` git ls-tree -r --name-only HEAD`
-$>/TAGS: $(wildcard */*[hcsl]) Makefile.mk
+# ctags-universal --print-language `git ls-tree -r --name-only HEAD`
+$>/TAGS: $>/ls-tree.lst Makefile.mk
 	$(QGEN)
-	$Q git ls-tree -r --name-only HEAD	> $@.lst
-	$Q ctags-universal -e -o $@ -L $@.lst
-	$Q rm -f $@.lst
+	$Q ctags-universal -e -o $@ -L $>/ls-tree.lst
 ALL_TARGETS += $>/TAGS
 
 # == all rules ==
