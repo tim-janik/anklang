@@ -29,7 +29,7 @@ doc/install.files ::= $(strip		\
 )
 
 # == PDF with Latex dependency ==
-ifneq ($(WITH_LATEX),)
+ifneq ($(SKIP_LATEX),true)
 doc/install.files += $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
 endif
 
