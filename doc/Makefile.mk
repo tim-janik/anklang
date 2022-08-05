@@ -39,10 +39,14 @@ $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/d
 	$Q $(CP) $< $@
 
 # == doc/copyright ==
-$>/doc/copyright: misc/mkcopyright.py doc/copyright.ini $>/misc/git-ls-tree.lst		| $>/doc/
+$>/doc/copyright: misc/mkcopyright.py doc/copyright.ini $>/misc/git-ls-tree.lst	| $>/doc/
 	$(QGEN)
-	$Q test ! -r .git -a -r $>/doc/copyright \
-	|| misc/mkcopyright.py -c doc/copyright.ini $$(cat $>/misc/git-ls-tree.lst) > $@.tmp
+	$Q if test -r .git ; then				\
+	     misc/mkcopyright.py -c doc/copyright.ini		\
+		$$(cat $>/misc/git-ls-tree.lst) > $@.tmp ;	\
+	   else							\
+	     $(CP) doc/copyright $@.tmp ;			\
+	   fi
 	$Q mv $@.tmp $@
 
 # == pandoc ==
