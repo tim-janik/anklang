@@ -312,13 +312,14 @@ dist: $(extradist:%=$>/%)
 # == ChangeLog ==
 $>/ChangeLog: $(GITCOMMITDEPS) Makefile.mk			| $>/
 	$(QGEN)
-	$Q git log --pretty='^^%ad  %an 	# %h%n%n%B%n' --first-parent \
-		--abbrev=11 --date=short HEAD			 > $@.tmp	# Generate ChangeLog with ^^-prefixed records
+	$Q git log --abbrev=13 --date=short --first-parent HEAD	\
+		--pretty='^^%ad  %an 	# %h%n%n%B%n'		 > $@.tmp	# Generate ChangeLog with ^^-prefixed records
 	$Q sed 's/^/	/; s/^	^^// ; s/[[:space:]]\+$$// '    -i $@.tmp	# Tab-indent commit bodies, kill trailing whitespaces
 	$Q sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i $@.tmp	# Compress multiple newlines
 	$Q mv $@.tmp $@
 	$Q test -s $@ || { mv $@ $@.empty ; ls -al --full-time $@.empty ; exit 1 ; }
 CLEANFILES += $>/ChangeLog
+
 
 # == TAGS ==
 # ctags-universal --print-language `git ls-tree -r --name-only HEAD`
