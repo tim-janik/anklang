@@ -92,6 +92,13 @@ versioned-manuals: $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
 		$>/anklang-manual-$(version_short).pdf \
 		$>/anklang-internals-$(version_short).pdf
 
+# == build-version ==
+$>/build-version: misc/version.sh
+	$(QGEN)
+	$Q misc/version.sh > $@.tmp && mv $@.tmp $@
+build-version: $>/build-version
+	$Q cat $>/build-version
+
 # == anklang-deb ==
 $>/anklang_$(version_short)_amd64.deb: $>/TAGS $(GITCOMMITDEPS)
 	$(QGEN)
