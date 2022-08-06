@@ -29,7 +29,7 @@ doc/install.files ::= $(strip		\
 )
 
 # == PDF with Latex dependency ==
-ifneq ($(WITH_LATEX),)
+ifneq ($(SKIP_LATEX),true)
 doc/install.files += $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
 endif
 
@@ -39,9 +39,14 @@ $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/d
 	$Q $(CP) $< $@
 
 # == doc/copyright ==
-$>/doc/copyright: misc/mkcopyright.py doc/copyright.ini $>/misc/git-ls-tree.lst		| $>/doc/
+$>/doc/copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst	| $>/doc/
 	$(QGEN)
-	$Q misc/mkcopyright.py -c doc/copyright.ini $$(cat $>/misc/git-ls-tree.lst) > $@.tmp
+	$Q if test -r .git ; then				\
+	     misc/mkcopyright.py -c doc/copyright.ini		\
+		$$(cat $>/ls-tree.lst) > $@.tmp ;		\
+	   else							\
+	     $(CP) doc/copyright $@.tmp ;			\
+	   fi
 	$Q mv $@.tmp $@
 
 # == pandoc ==

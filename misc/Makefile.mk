@@ -10,14 +10,10 @@ clean-misc:
 	rm -rf $(misc/cleandirs)
 .PHONY: clean-misc
 
-# == git-ls-tree.lst ==
-$>/misc/git-ls-tree.lst: $(GITCOMMITDEPS)					| $>/misc/
-	$Q git ls-tree -r --name-only HEAD	> $@ || touch $@
-
 # == lint-cppcheck ==
 CPPCHECK ?= cppcheck
 CPPCHECK_CCENABLE := warning,style,performance,portability
-lint-cppcheck: $>/misc/git-ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
+lint-cppcheck: $>/ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
 	$Q egrep $(CLANGTIDY_GLOB) < $<		> $>/misc/cppcheck/sources.lst
 	$Q $(CPPCHECK) --enable=$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) \
 		$$(cat $>/misc/cppcheck/sources.lst)
@@ -25,7 +21,7 @@ CPPCHECK_DEFS := -D__SIZEOF_LONG__=8 -D__SIZEOF_WCHAR_T__=4 -D__linux__ -U_SC_NP
 .PHONY: lint-cppcheck
 
 # == lint-unused ==
-lint-unused: $>/misc/git-ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
+lint-unused: $>/ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
 	$Q egrep $(CLANGTIDY_GLOB) < $<			> $>/misc/cppcheck/sources.lst
 	$Q $(CPPCHECK) --enable=unusedFunction,$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) \
 		$$(cat $>/misc/cppcheck/sources.lst)	2>&1 | \
@@ -36,7 +32,7 @@ lint-unused: $>/misc/git-ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
 CLANGTIDY_GLOB	:= "^(ase|devices|jsonipc|ui)/.*\.(cc)$$"
 CLANGTIDY_IGNORE	:= "^(ase)/.*\.(cpp)$$"
 CLANGTIDY_SRC	:= # added to by ls-lint.d
-$>/misc/ls-lint.d: $>/misc/git-ls-tree.lst misc/Makefile.mk
+$>/misc/ls-lint.d: $>/ls-tree.lst misc/Makefile.mk	| $>/misc/
 	$Q egrep $(CLANGTIDY_GLOB) < $< | egrep -v $(CLANGTIDY_IGNORE)	> $@1
 	$Q while read L ; do			\
 		echo "CLANGTIDY_SRC += $$L" ;	\
@@ -84,11 +80,23 @@ scan-build:								| $>/misc/scan-build/
 .PHONY: scan-build
 # Note, 'make scan-build' requires 'make default CC=clang CXX=clang++' to generate any reports.
 
+# == versioned-manuals ==
+versioned-manuals: $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
+	$Q cp -v $>/doc/anklang-manual.pdf $>/anklang-manual-$(version_short).pdf
+	$Q cp -v $>/doc/anklang-internals.pdf $>/anklang-internals-$(version_short).pdf
+
+# == build-version ==
+$>/build-version: misc/version.sh
+	$(QGEN)
+	$Q misc/version.sh > $@.tmp && mv $@.tmp $@
+build-version: $>/build-version
+	$Q cat $>/build-version
+
 # == anklang-deb ==
 $>/anklang_$(version_short)_amd64.deb: $>/TAGS $(GITCOMMITDEPS)
 	$(QGEN)
 	$Q BUILDDIR=$> misc/mkdeb.sh
-	$Q ls -l -h --color=auto $@
+	$Q ls -l -h $@
 anklang-deb: $>/anklang_$(version_short)_amd64.deb
 .PHONY: anklang-deb
 
@@ -131,7 +139,7 @@ $>/anklang-$(version_short)-x64.AppImage: $>/misc/appaux/appimage-runtime-zstd $
 	$Q mksquashfs $(APPBASE) $>/Anklang-x86_64.AppImage $(misc/squashfsopts)
 	$Q cat $>/misc/appaux/appimage-runtime-zstd $>/Anklang-x86_64.AppImage > $@.tmp && rm -f $>/Anklang-x86_64.AppImage
 	$Q chmod +x $@.tmp
-	$Q mv $@.tmp $@ && ls -l -h --color=auto $@
+	$Q mv $@.tmp $@ && ls -l -h $@
 misc/squashfsopts ::= -root-owned -noappend -mkfs-time 0 -no-exports -no-recovery -noI -always-use-fragments -b 1048576 -comp zstd -Xcompression-level 22
 $>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
 	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
@@ -174,30 +182,14 @@ misc/uninstall: FORCE
 uninstall: misc/uninstall
 
 # == Check Copyright Notices ==
-check-copyright: misc/mkcopyright.py doc/copyright.ini $>/misc/git-ls-tree.lst
+check-copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst
 	$(QGEN)
-	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini $$(cat $>/misc/git-ls-tree.lst)
-CHECK_TARGETS += $(WITHGIT) check-copyright
-
-# == ChangeLog ==
-$>/ChangeLog-$(version_short).txt: $(GITCOMMITDEPS) misc/Makefile.mk		| $>/
-	$(QGEN)
-	$Q LAST_TAG=`misc/version.sh --news-tag2`				\
-	&& { LAST_COMMIT=`git log -1 --pretty=%H "$$LAST_TAG" 2>/dev/null`	\
-	  || LAST_COMMIT=96e7881fac0a2cd7f4d20a3f0666f1295ff4ee77 ; }		\
-	&& git log --pretty='^^%ad  %an 	# %h%n%n%B%n'			\
-		--topo-order --full-history \
-		--abbrev=13 --date=short $$LAST_COMMIT..HEAD	 > $@.tmp	# Generate ChangeLog with ^^-prefixed records
-	$Q sed 's/^/	/; s/^	^^// ; s/[[:space:]]\+$$// '    -i $@.tmp	# Tab-indent commit bodies, kill trailing whitespaces
-	$Q sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i $@.tmp	# Compress multiple newlines
-	$Q mv $@.tmp $@
-CLEANFILES += $>/ChangeLog-$(version_short).txt
-release-changelog: $>/ChangeLog-$(version_short).txt
-.PHONY: release-changelog
+	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini $$(cat $>/ls-tree.lst)
+CHECK_TARGETS += $(if $(HAVE_GIT), check-copyright)
 
 # == release-news ==
 release-news:
-	$Q LAST_TAG=`./misc/version.sh --news-tag2` && ( set -x && \
+	$Q LAST_TAG=`misc/version.sh --news-tag2` && ( set -x && \
 	  git log --first-parent --date=short --pretty='%s    # %cd %an %h%d%n%w(0,4,4)%b' --reverse HEAD "$$LAST_TAG^!" ) | \
 		sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' -e '/^\s*$$/d'
 .PHONY: release-news
@@ -205,62 +197,60 @@ release-news:
 # == insn-build ==
 # Build binary variants with INSN=sse and build 'all'
 insn-build-sse:
-	$Q $(MAKE) INSN=sse builddir=out-sse all release-changelog
+	$Q $(MAKE) INSN=sse builddir=out-sse all
 	$Q $(MAKE) INSN=sse builddir=out-sse check
 # Build binary variants with INSN=fma
 insn-build-fma:
 	$Q $(MAKE) INSN=fma builddir=out-fma insn-targets INSNDEST=out-sse/
 
 # == release rules ==
-RELEASE_CONTINUATION ?= false
 RELEASE_TEST         ?= false
 OOTBUILD             ?= /tmp/anklang-ootbuild$(shell id -u)
-RELEASE_OOTBUILD    ::= $(OOTBUILD)
-RELEASE_SSEDIR      ::= $(RELEASE_OOTBUILD)/out-sse
-RELEASE_NEWSMD        = $(RELEASE_OOTBUILD)/NEWS.md
-RELEASE_DEB           = $(RELEASE_SSEDIR)/anklang_$(DETAILED_VERSION)_amd64.deb
-RELEASE_APPIMAGE      = $(RELEASE_SSEDIR)/anklang-$(DETAILED_VERSION)-x64.AppImage
-RELEASE_CHANGELOG     = $(RELEASE_SSEDIR)/ChangeLog-$(DETAILED_VERSION).txt
+RELEASE_SSEDIR      ::= $(OOTBUILD)/out-sse
 
 # == build-assets ==
 build-assets:
-	@: # Clear out-of-tree build directory (but keep .ccache/), note that
+	@: # Clear out-of-tree build directory (but keep .dlcache/), note that
 	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
 	$Q :										\
-		&& rm -rf .tmp.ccache							\
-		&& mkdir -p $(RELEASE_OOTBUILD) && cd $(RELEASE_OOTBUILD)		\
-		&& (mv .ccache/ $(abspath .tmp.ccache) || : ) 2>/dev/null		\
+		&& rm -rf .tmp.dlcache							\
+		&& mkdir -p $(OOTBUILD) && cd $(OOTBUILD)				\
+		&& (mv .dlcache/ $(abspath .tmp.dlcache) || : ) 2>/dev/null		\
 		&& rm -rf * .[^.]* ..?*							\
-		&& git clone $(abspath .git) .						\
-		&& (mv $(abspath .tmp.ccache) .ccache || : ) 2>/dev/null		\
-		&& git checkout -f "$${CHECKOUT_HEAD:-HEAD}"
-	$Q test ! -r ./NEWS.build || mv ./NEWS.build $(RELEASE_OOTBUILD)/NEWS.md
-	@: # Build binaries with different INSNs in parallel, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
+		&& (mv $(abspath .tmp.dlcache) .dlcache || : ) 2>/dev/null
+	@: # Prepare source tree
+	$Q tar xf $(TARBALL) -C $(OOTBUILD) --strip-components=1
+	@: # Build binaries with different INSNs in parallel
+	$Q nice $(MAKE) -C $(OOTBUILD)					\
+		build-version						\
 		insn-build-sse						\
 		insn-build-fma
-	@: # Build release packages, INSN=sse is full build, delete tag on error
-	$Q nice $(MAKE) -C $(RELEASE_OOTBUILD) -j`nproc` -l`nproc`	\
+	@: # Build release packages, INSN=sse is full build
+	$Q nice $(MAKE) -C $(OOTBUILD)					\
 		INSN=sse builddir=out-sse				\
+		build-version						\
 		anklang-deb						\
-		appimage
-	@: # Create release manuals (if present)
-	$Q cd $(RELEASE_SSEDIR)						\
-	   && test ! -f doc/anklang-manual.pdf				\
-	   || cp doc/anklang-manual.pdf anklang-manual-$(version_short).pdf
-	$Q cd $(RELEASE_SSEDIR)						\
-	   && test ! -f doc/anklang-internals.pdf			\
-	   || cp doc/anklang-internals.pdf anklang-internals-$(version_short).pdf
+		appimage						\
+		versioned-manuals
+	$Q ( D="$(RELEASE_SSEDIR)"				\
+	&& V=`cut '-d ' -f1 $(RELEASE_SSEDIR)/build-version`	\
+	&& echo	"$$D/anklang_$${V}_amd64.deb"			\
+	&& echo	"$$D/anklang-$$V-x64.AppImage"			\
+	&& echo "$$D/anklang-manual-$$V.pdf"			\
+	&& echo "$$D/anklang-internals-$$V.pdf"			\
+	)	> $(RELEASE_SSEDIR)/build-assets
 	@: # Check build
-	$Q test ! -r /dev/fuse || time $(RELEASE_SSEDIR)/anklang-$(version_short)-x64.AppImage --quitstartup
+	$Q ls -l -h --color=auto `cat $(RELEASE_SSEDIR)/build-assets`
+	$Q V=`cut '-d ' -f1 $(RELEASE_SSEDIR)/build-version`	\
+	&& test ! -r /dev/fuse || time $(RELEASE_SSEDIR)/anklang-$$V-x64.AppImage --quitstartup
 
 # == build-release ==
 build-release:
 	$(QGEN)
 	@: # Setup release variables (note, eval preceeds all shell commands)
-	@ $(eval RELEASE_TAG       != ./misc/version.sh --news-tag1)
+	@ $(eval RELEASE_TAG != misc/version.sh --news-tag1)
 	@: # Check release tag
-	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
+	$Q NEWS_TAG=`misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
 	$Q test -z "`git tag -l '$(RELEASE_TAG)'`" || \
 		{ echo '$@: error: release tag from NEWS.md already exists: $(RELEASE_TAG)' >&2 ; false ; }
 	@: # Check against origin/trunk
@@ -270,11 +260,14 @@ build-release:
 		{ echo "$@: ERROR: Release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
 	@: # Tag release with annotation
 	$Q git tag -a '$(RELEASE_TAG)' -m "`git log -1 --pretty=%s`"
+	@: # Create release dist tarball, needed as build-asset
+	$Q $(MAKE) dist
 	@: # Build versioned release assets
-	$Q export CHECKOUT_HEAD='$(RELEASE_TAG)' \
-		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
-		  VERSION_SH_RELEASE=true \
-	   && $(MAKE) build-assets
+	$Q $(MAKE) build-assets TARBALL=$>/anklang-$(RELEASE_TAG:v%=%).tar.zst
+	@: # Add tarball to release assets
+	$Q ls -lh $(RELEASE_SSEDIR)/build-assets		\
+	&& echo $(abspath $>/anklang-$(RELEASE_TAG:v%=%).tar.zst)	>> $(RELEASE_SSEDIR)/build-assets
+	$Q du -hs `cat $(RELEASE_SSEDIR)/build-assets`
 
 # == build-nightly ==
 build-nightly:
@@ -284,61 +277,74 @@ build-nightly:
 		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
 		$(RELEASE_TEST) || \
 		{ echo "$@: ERROR: Nightly release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
-	@: # Tag Nightly, force to move any old version
+	@: # Tag Nightly, force to move any old version, verify
 	$Q git tag -f Nightly HEAD
-	@: # Update NEWS.md with nightly changes
-	$Q DETAILED_VERSION=`misc/version.sh --nightly` \
-		&& LOG_RANGE=`git describe --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=0 --first-parent` \
-		&& LOG_RANGE="$$LOG_RANGE..HEAD" \
-		&& echo -e "## Anklang $$DETAILED_VERSION\n"		>  ./NEWS.build \
-		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
+	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly` \
+		&& echo "$$NIGHTLY_VERSION" | grep 'nightly' \
+		|| { echo "$@: missing nightly tag: $$NIGHTLY_VERSION" ; exit 1 ; }
+	@: # Create nightly dist tarball with updated NEWS.md
+	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly` \
+		&& mv ./NEWS.md ./NEWS.saved				\
+		&& echo -e "## Anklang $$NIGHTLY_VERSION\n"		>  ./NEWS.md \
+		&& echo '```````````````````````````````````````````'	>> ./NEWS.md \
+		&& LOGTAG=`git describe --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=0 --first-parent` \
 		&& git log --pretty='%s    # %cd %an %h%n%w(0,4,4)%b' \
-			--first-parent --date=short "$$LOG_RANGE"	>> ./NEWS.build \
-		&& sed -e '/^\s*Signed-off-by:.*<.*@.*>/d'		-i ./NEWS.build \
-		&& sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i ./NEWS.build \
-		&& echo '```````````````````````````````````````````'	>> ./NEWS.build \
-		&& echo 						>> ./NEWS.build \
-		&& cat ./NEWS.md					>> ./NEWS.build
+		       --first-parent --date=short "$$LOGTAG..HEAD"	>> ./NEWS.md \
+		&& sed -e '/^\s*Signed-off-by:.*<.*@.*>/d'		-i ./NEWS.md \
+		&& sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i ./NEWS.md \
+		&& echo '```````````````````````````````````````````'	>> ./NEWS.md \
+		&& echo 						>> ./NEWS.md \
+		&& git show HEAD:NEWS.md 				>> ./NEWS.md \
+		&& $(MAKE) dist						\
+		&& mv ./NEWS.saved ./NEWS.md
 	@: # Build versioned release assets
-	$Q export CHECKOUT_HEAD=Nightly \
-		  WITH_LATEX=`xelatex -version | grep -o 3.14159265` \
-		  VERSION_SH_NIGHTLY=true \
-	   && $(MAKE) build-assets
+	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly`		\
+	&& $(MAKE) build-assets TARBALL=$>/anklang-$$NIGHTLY_VERSION.tar.zst
+	@: # List Nightly changes
+	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly`			\
+	&& echo "$(RELEASE_SSEDIR)/Changes-$$NIGHTLY_VERSION.txt"		\
+		>> $(RELEASE_SSEDIR)/build-assets				\
+	&& NEWS_TAG=`misc/version.sh --news-tag1`				\
+	&& git log --topo-order --full-history --abbrev=13 $$NEWS_TAG..HEAD	\
+		--pretty="%h  %s"						\
+		>  $(RELEASE_SSEDIR)/Changes-$$NIGHTLY_VERSION.txt
+	$Q du -hs `cat $(RELEASE_SSEDIR)/build-assets`
 
 # == upload-nightly ==
 upload-nightly:
 	$(QGEN)
-	@: # Determine version, check release attachments
-	@ $(eval DETAILED_VERSION != misc/version.sh --nightly)
-	$Q du -hs $(RELEASE_CHANGELOG) $(RELEASE_DEB) $(RELEASE_APPIMAGE)
+	@: # Check release attachments
+	$Q cat $(RELEASE_SSEDIR)/build-version
+	$Q du -hs `cat $(RELEASE_SSEDIR)/build-assets`
 	@: # Create Github release and upload assets
-	$Q echo 'Nightly'				>  $(RELEASE_SSEDIR)/release-message
-	$Q echo						>> $(RELEASE_SSEDIR)/release-message
-	$Q echo 'Anklang $(DETAILED_VERSION)'		>> $(RELEASE_SSEDIR)/release-message
-	$Q hub release delete 'Nightly' ; git push origin ':Nightly' || :
+	$Q echo 'Nightly'					>  $(RELEASE_SSEDIR)/release-message
+	$Q echo							>> $(RELEASE_SSEDIR)/release-message
+	$Q echo 'Anklang' \
+		`cut '-d ' -f1 $(RELEASE_SSEDIR)/build-version`	>> $(RELEASE_SSEDIR)/release-message
+	-$Q hub release delete 'Nightly'
+	-$Q git push origin ':Nightly'
 	$Q git push origin 'Nightly'					\
-		&& ASSETS=( $(RELEASE_SSEDIR)/*"$(DETAILED_VERSION)"* )	\
+		&& ASSETS=( `cat $(RELEASE_SSEDIR)/build-assets` )	\
 		&& hub release create --prerelease			\
-		-F '$(RELEASE_SSEDIR)/release-message'			\
-		"$${ASSETS[@]/#/-a}"					\
-		'Nightly'
+		     -F '$(RELEASE_SSEDIR)/release-message'		\
+		     "$${ASSETS[@]/#/-a}"				\
+		     'Nightly'
 
 # == upload-release ==
 upload-release:
 	$(QGEN)
 	@: # Determine version, check release attachments
-	@ $(eval RELEASE_TAG != misc/version.sh --release-tag)
-	@ $(eval DETAILED_VERSION = $(RELEASE_TAG:v%=%))
-	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
-	$Q du -hs $(RELEASE_CHANGELOG) $(RELEASE_DEB) $(RELEASE_APPIMAGE)
+	@ $(eval RELEASE_TAG != misc/version.sh --news-tag1)
+	$Q du -hs `cat $(RELEASE_SSEDIR)/build-assets`
 	@: # Create Github release and upload assets
-	$Q echo 'Anklang $(DETAILED_VERSION)'		>  $(RELEASE_SSEDIR)/release-message
-	$Q echo						>> $(RELEASE_SSEDIR)/release-message
-	$Q sed '0,/^## /b; /^## /Q; ' NEWS.md		>> $(RELEASE_SSEDIR)/release-message
-	$Q ASSETS=( $(RELEASE_SSEDIR)/*"$(DETAILED_VERSION)"* )		\
+	$Q echo 'Anklang $(RELEASE_TAG:v%=%)'			>  $(RELEASE_SSEDIR)/release-message
+	$Q echo							>> $(RELEASE_SSEDIR)/release-message
+	$Q sed '0,/^## /b; /^## /Q; ' NEWS.md			>> $(RELEASE_SSEDIR)/release-message
+	$Q true								\
+		&& ASSETS=( `cat $(RELEASE_SSEDIR)/build-assets` )	\
 		&& hub release create --draft				\
-		-F '$(RELEASE_SSEDIR)/release-message'			\
-		"$${ASSETS[@]/#/-a}"					\
-		"$(RELEASE_TAG)"
+		     -F '$(RELEASE_SSEDIR)/release-message'		\
+		     "$${ASSETS[@]/#/-a}"				\
+		     "$(RELEASE_TAG)"
 	$Q echo 'Run:'
 	$Q echo '  git push origin "$(RELEASE_TAG)"'

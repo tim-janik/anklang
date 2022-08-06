@@ -36,7 +36,7 @@ ls "$DROOT"$PREFIXDIR >/dev/null # check dir
 # Meta info
 NAME="anklang"
 VERSION=$(misc/version.sh | cut -d\  -f1)
-GITCOMMIT=$(git rev-parse --verify HEAD)
+GITCOMMIT=$(misc/version.sh --commit-hash)
 DUSIZE=$(cd $DROOT && du -k -s .)
 ARCH=$(dpkg --print-architecture)
 

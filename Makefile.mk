@@ -28,10 +28,27 @@ version-info:
 	@echo version_date: $(version_date)
 	@echo version_m.m.m: $(version_m.m.m)
 	@echo version_to_month: "$(version_to_month)"
+ifeq ($(version_micro),)	# do we have any version?
+$(error Missing version information, run: misc/version.sh)
+endif
 
 # == User Defaults ==
 # see also 'make default' rule
 -include config-defaults.mk
+
+# == builddir ==
+# Allow O= and builddir= on the command line
+ifeq ("$(origin O)", "command line")
+builddir	::= $O
+builddir.origin ::= command line
+endif
+ifeq ('$(builddir)', '')
+builddir	::= out
+endif
+# Provide $> as builddir shorthand, used in almost every rule
+>		  = $(builddir)
+# if 'realpath --relative-to' is missing, os.path.realpath could be used as fallback
+build2srcdir	 != realpath --relative-to $(builddir) .
 
 # == Mode ==
 # determine build mode
@@ -52,20 +69,6 @@ override MODE !=  case "$(MODE)" in \
 		  esac ; echo "$$MODE"
 .config.defaults += MODE
 $(info $S MODE     $(MODE))
-
-# == builddir ==
-# Allow O= and builddir= on the command line
-ifeq ("$(origin O)", "command line")
-builddir	::= $O
-builddir.origin ::= command line
-endif
-ifeq ('$(builddir)', '')
-builddir	::= out
-endif
-# Provide $> as builddir shorthand, used in almost every rule
->		  = $(builddir)
-# if 'realpath --relative-to' is missing, os.path.relpath could be used as fallback
-build2srcdir	 != realpath --relative-to $(builddir) .
 
 # == Dirctories ==
 prefix		 ?= /usr/local
@@ -122,16 +125,6 @@ include misc/Makefile.mk
 include doc/style/Makefile.mk
 include doc/Makefile.mk
 
-# == FORCE rules ==
-# Use FORCE to mark phony targets via a dependency
-.PHONY:	FORCE
-
-# == output directory rules ==
-# rule to create output directories from order only dependencies, trailing slash required
-$>/%/:
-	$Q mkdir -p $@
-.PRECIOUS: $>/%/ # prevent MAKE's 'rm ...' for automatically created dirs
-
 # == run ==
 run: FORCE all
 	$>/electron/anklang
@@ -185,6 +178,21 @@ default: FORCE
 	  fi )
 	$Q mv $@.tmp config-defaults.mk
 
+# == ls-tree.lst ==
+$>/ls-tree.lst: $(GITCOMMITDEPS)				| $>/
+	$(QGEN)
+	$Q git ls-tree -r --name-only HEAD	> $@
+
+# == output directory rules ==
+# rule to create output directories from order only dependencies, trailing slash required
+$>/%/:
+	$Q mkdir -p $@
+.PRECIOUS: $>/%/ # prevent MAKE's 'rm ...' for automatically created dirs
+
+# == FORCE rules ==
+# Use FORCE to mark phony targets via a dependency
+.PHONY:	FORCE
+
 # == PACKAGE_CONFIG ==
 define PACKAGE_VERSIONS
   "version": "$(version_m.m.m)",
@@ -208,7 +216,6 @@ $>/package.json: misc/package.json.in					| $>/
 	$Q sed -e '1r '$@.config $< > $@.tmp
 	$Q rm $@.config
 	$Q mv $@.tmp $@
-CLEANFILES += $>/.eslintcache $>/package.json $>/package-lock.json
 CLEANDIRS += $>/node_modules/
 
 # == npm.done ==
@@ -285,109 +292,46 @@ int main (int argc, char *argv[])
 endef
 
 # == dist ==
-distname    ::= anklang-$(version_short)
-disttarball ::= $>/$(distname).tar.xz
-dist_xz_opt  ?= -9e
-dist: $>/doc/README $>/ChangeLog FORCE
+extradist ::= ChangeLog doc/copyright TAGS ls-tree.lst # doc/README
+dist: $(extradist:%=$>/%)
+	@$(eval distversion != misc/version.sh | sed 's/ .*//')
+	@$(eval distname := anklang-$(distversion))
 	$(QECHO) MAKE $(disttarball)
-	$Q DIFFLINES=`git diff HEAD | wc -l` \
-	  && { test 0 = $$DIFFLINES || echo -e "#\n# $@: WARNING: working tree unclean\n#" >&2 ; }
-	$Q git archive --format=tar --prefix=$(distname)/ HEAD		> $>/$(distname).tar
-	$Q rm -rf $>/.extradist/ && mkdir -p $>/.extradist/$(distname)/	\
-	  && : tar -C $>/.extradist/ -xf $>/$(distname).tar
-	$Q cp -a $>/doc/README $>/ChangeLog $>/.extradist/$(distname)/
-	$Q cd $>/.extradist/ && tar uhf $(abspath $>/$(distname).tar) $(distname)
-	$Q rm -f -r $>/.extradist/
-	$Q rm -f $>/$(distname).tar.xz && xz $(dist_xz_opt) $>/$(distname).tar && test -e $(disttarball)
-	$Q echo "Archive ready: $(disttarball)" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
-CLEANFILES += $(wildcard $>/anklang-*.tar $>/anklang-*.tar.xz)
-
-# == distcheck ==
-# Distcheck aims:
-# - build *outside* the original source tree to catch missing files or dirs, and without picking up parent directory contents;
-# - support parallel builds;
-# - verify that no CLEANFILES are shipped in dist tarball;
-# - check that $(DESTDIR) is properly honored in installation rules.
-# distcheck_uniqdir - directory for build tests, outside of srcdir, unique per user and checkout
-distcheck_uniqdir_py3 ::= "import os, hashlib; print ('%u-%s' % (os.getuid(), hashlib.md5 (os.getcwd().encode()).hexdigest()[:5]))"
-distcheck: dist
-	$(QGEN)
-	@$(eval distcheck_uniqdir ::= distcheck-anklang-$(shell python3 -c $(distcheck_uniqdir_py3)) )
-	$Q TMPDIR="$${TMPDIR-$${TEMP-$${TMP-/tmp}}}" \
-	&& DCDIR="$$TMPDIR/$(distcheck_uniqdir)" \
-	&& test -n "$$TMPDIR" -a -n "$(distcheck_uniqdir)" -a -n "$$DCDIR" -a -n "$(distname)" \
-	&& { test ! -e "$$DCDIR/" || { chmod u+w -R "$$DCDIR/" && rm -r "$$DCDIR/" ; } ; } \
-	&& mkdir -p "$$DCDIR" \
-	&& set -x \
-	&& cd "$$DCDIR" \
-	&& tar xf $(abspath $(disttarball)) \
-	&& cd "$(distname)" \
-	&& $(MAKE) default prefix="$$DCDIR/inst" \
-	&& touch dc-buildtree-cleaned \
-	&& find . ! -path './out/*' -print >dc-buildtree-files \
-	&& $(MAKE) clean \
-	&& find . ! -path './out/*' -print >dc-buildtree-cleaned \
-	&& diff -u dc-buildtree-files dc-buildtree-cleaned \
-	&& $(MAKE) $(AM_MAKEFLAGS) -j`nproc` \
-	&& $(MAKE) $(AM_MAKEFLAGS) check \
-	&& $(MAKE) $(AM_MAKEFLAGS) install \
-	&& $(MAKE) $(AM_MAKEFLAGS) installcheck \
-	&& $(MAKE) $(AM_MAKEFLAGS) uninstall \
-	&& $(MAKE) $(AM_MAKEFLAGS) distuninstallcheck distuninstallcheck_dir="$$DCDIR/inst" \
-	&& chmod a-w -R "$$DCDIR/inst" \
-	&& mkdir -m 0700 "$$DCDIR/destdir" \
-	&& $(MAKE) $(AM_MAKEFLAGS) DESTDIR="$$DCDIR/destdir" install \
-	&& $(MAKE) $(AM_MAKEFLAGS) DESTDIR="$$DCDIR/destdir" uninstall \
-	&& $(MAKE) $(AM_MAKEFLAGS) DESTDIR="$$DCDIR/destdir" distuninstallcheck distuninstallcheck_dir="$$DCDIR/destdir" \
-	&& $(MAKE) $(AM_MAKEFLAGS) clean \
-	&& set +x \
-	&& cd "$(abs_top_builddir)" \
-	&& { chmod u+w -R "$$DCDIR/" && rm -r "$$DCDIR/" ; } \
-	&& echo "OK: archive ready for distribution: $(disttarball)" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
-distuninstallcheck:
-	$Q test -n '$(distuninstallcheck_dir)' || { echo '$@: missing distuninstallcheck_dir' >&2; false; }
-	$Q cd '$(distuninstallcheck_dir)' \
-	  && test `$(distuninstallcheck_listfiles) | sed 's|^\./|$(prefix)/|' | wc -l` -eq 0 \
-	  || { echo "$@: ERROR: files left after uninstall:" ; \
-	       $(distuninstallcheck_listfiles) ; \
-	       false; } >&2
-
-# == distuninstallcheck ignores ==
-# Some files remain after distcheck, that we cannot clean up. So we role our own listfiles filter.
-distuninstallcheck_listfiles  = find . -type f $(patsubst .../%, ! -path \*/%, $(distuninstallcheck_ignores)) -print
-#distuninstallcheck_listfiles = find . -type f -print	# original automake-1.14.1 setting
-distuninstallcheck_ignores = $(strip	\
-	.../share/mime/subclasses	.../share/mime/XMLnamespaces	.../share/mime/globs2	\
-	.../share/mime/version		.../share/mime/icons		.../share/mime/types	\
-	.../share/mime/treemagic	.../share/mime/aliases		.../share/mime/magic	\
-	.../share/mime/mime.cache	.../share/mime/generic-icons	.../share/mime/globs	\
-	.../share/applications/mimeinfo.cache	\
-)
+	$Q git describe --dirty | grep -qve -dirty || echo -e "#\n# $@: WARNING: working tree is dirty\n#"
+	$Q git archive -o $>/$(distname).tar --prefix=$(distname)/ HEAD
+	$Q rm -rf $>/dist/$(distname)/ && mkdir -p $>/dist/$(distname)/
+	$Q cd $>/ && $(CP) --parents $(extradist) $(abspath $>/dist/$(distname))
+	$Q git diff --exit-code NEWS.md >/dev/null \
+	|| { tar f $>/$(distname).tar --delete $(distname)/NEWS.md && cp NEWS.md $>/dist/$(distname)/ ; }
+	$Q tar xf $>/$(distname).tar -C $>/dist/ $(distname)/misc/version.sh	# fetch archived version.sh
+	$Q tar f $>/$(distname).tar --delete $(distname)/misc/version.sh	# delete, make room for replacement
+	$Q GITDESCRIBE=`git describe --match='v[0-9]*.[0-9]*.[0-9]*'` \
+	&& sed "s/%[(]describe:match[^)]*[)]/$$GITDESCRIBE/" \
+		-i $>/dist/$(distname)/misc/version.sh				# git 2.25.1 cannot describe:match
+	$Q cd $>/dist/ && tar uhf $(abspath $>/$(distname).tar) $(distname)	# update (replace) files in tarball
+	$Q rm -f $>/$(distname).tar.zst && zstd -17 --rm $>/$(distname).tar && ls -lh $>/$(distname).tar.zst
+	$Q echo "Archive ready: $>/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
+.PHONY: dist
 
 # == ChangeLog ==
-CHANGELOG_RANGE = $(shell git cat-file -e ce584d04999a7fb9393e1cfedde2048ba73e8878 && \
-		    echo ce584d04999a7fb9393e1cfedde2048ba73e8878..HEAD || echo HEAD)
-$>/ChangeLog: $(GITCOMMITDEPS)					| $>/
+$>/ChangeLog: $(GITCOMMITDEPS) Makefile.mk			| $>/
 	$(QGEN)
-	$Q git log --pretty='^^%ad  %an 	# %h%n%n%B%n' --first-parent \
-		--abbrev=11 --date=short $(CHANGELOG_RANGE)	 > $@.tmp	# Generate ChangeLog with ^^-prefixed records
+	$Q git log --abbrev=13 --date=short --first-parent HEAD	\
+		--pretty='^^%ad  %an 	# %h%n%n%B%n'		 > $@.tmp	# Generate ChangeLog with ^^-prefixed records
 	$Q sed 's/^/	/; s/^	^^// ; s/[[:space:]]\+$$// '    -i $@.tmp	# Tab-indent commit bodies, kill trailing whitespaces
 	$Q sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i $@.tmp	# Compress multiple newlines
 	$Q mv $@.tmp $@
 	$Q test -s $@ || { mv $@ $@.empty ; ls -al --full-time $@.empty ; exit 1 ; }
-CLEANFILES += $>/ChangeLog
 
 # == TAGS ==
-# ctags-universal --print-language ` git ls-tree -r --name-only HEAD`
-$>/TAGS: $(wildcard */*[hcsl])
+# ctags-universal --print-language `git ls-tree -r --name-only HEAD`
+$>/TAGS: $>/ls-tree.lst Makefile.mk
 	$(QGEN)
-	$Q git ls-tree -r --name-only HEAD	> $@.lst
-	$Q if ctags-universal --version 2>&1 | grep -q Ctags ; \
-	   then ctags-universal -e -o $@ -L $@.lst ; \
-	   else touch $@ ; \
-	   fi
-	$Q rm -f $@.lst
+	$Q ctags-universal -e -o $@ -L $>/ls-tree.lst
 ALL_TARGETS += $>/TAGS
 
 # == all rules ==
 all: $(ALL_TARGETS) $(ALL_TESTS)
+
+# Clean non-directories in $>/
+CLEANFILES += $(filter-out $(patsubst %/,%,$(wildcard $>/*/)), $(wildcard $>/* $>/.[^.]* $>/..?* ))

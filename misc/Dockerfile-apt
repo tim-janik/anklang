@@ -44,9 +44,9 @@ RUN retry apt-get install -y \
     build-essential pkg-config git curl ccache curl unzip gawk g++ \
     clang clang-tidy clang-tools castxml cppcheck libboost-system-dev \
     imagemagick libxml2-utils libxml2-dev python3 python3-lxml \
-    python3-pandocfilters pandoc graphviz texlive-binaries \
+    python3-pandocfilters pandoc graphviz universal-ctags \
     libasound2-dev libflac-dev libvorbis-dev libmad0-dev libjack-dev libzstd-dev \
-    gettext libgconf-2-4 libgtk2.0-dev squashfs-tools \
+    gettext libgconf-2-4 libgtk2.0-dev squashfs-tools zstd \
     libgtk-3-0 libxss1 libgbm1 libnss3
 
 # Provide a recent nodejs
@@ -54,9 +54,9 @@ RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
 	apt-get install -y nodejs
 
 # Install TeX (+615MB) if needed
-ARG TEX
-RUN test "$TEX" != y || retry apt-get install -y \
-    texlive-xetex fonts-sil-charis texlive-fonts-extra
+ARG NO_TEX
+RUN test "$NO_TEX" = true || retry apt-get install -y \
+    texlive-xetex fonts-sil-charis texlive-binaries texlive-fonts-extra
 
 # Cleanup
 RUN apt-get clean

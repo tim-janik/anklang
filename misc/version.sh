@@ -5,25 +5,36 @@ set -Eeuo pipefail
 SCRIPTNAME=${0##*/} ; die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 9 ; }
 L=${VERSION_HASHLENGTH:-7}
 
-# Scenarios to retrieve versions:
-# 1) git-archive snapshots, version info is embedded via $Format$ strings
-# 2) Full git repo, uses git describe
-# 3) Shallow git repo, use NEWS.md version info
+# Determine project version.
 #
-# Version output may look like:
-#    1.2.3             v1.2.3-0-g4a3b2c1d              2001-01-01 00:00:00 +0000		# release
-#    1.2.3-rc4         v1.2.3-rc4-789-ga1b2c3d4-dirty  2001-01-01 00:00:00 +0000		# unreleased (with .git/)
-#    1.2.3-rc4snapshot v1.2.3-rc4snapshot-789-ga1b2c3d4 2001-01-01 00:00:00 +0000		# unreleased (via git-archive)
-# The first term is the version name and always starts with [0-9][0-9.]+,
-# it may be used to construct package names.
-# The second term is the build ID, it contains commit counts and a hash.
-# The third term is the last commit date in ISO 8601-like format.
+# Version info sources:
+# 1) COMMITINFO substitutions of $Format$ during git-archive
+# 2) COMMITINFO assignments using .git/ and git-describe
+# 3) HASH and date in COMMITINFO from shallow .git/ repos (e.g. during Github CI)
+# 4) Release news and version in NEWS.md, used to cross-check release tags
+# Consider:
+# - Release versions can be full .git/ repos or git-archive tarballs
+# - Release tags must match the most recent NEWS.md update
+# - Non-release versions *must* have a version number postfix
+# - Nightly versions include date and hash
+#
+# Output: <VerionName> <BuildId> <VersionDate>
+# - <VerionName> is used for package names
+# - <BuildId> uniquely identifies the build version and commit (like git describe --long)
+# - <VersionDate> is used in e.g. manual pages
+
+NIGHTLY=false
 
 # exit_with_version <version> <buildid> <releasedate>
 exit_with_version() {
   V="${1#v}"	# strip 'v' prefix if any
   shift
-  echo "$V" "$@"
+  if $NIGHTLY ; then
+    [[ $V =~ nightly ]] || die "Not a nightly tag: $V"
+    echo "$V"
+  else
+    echo "$V" "$@"
+  fi
   exit 0
 }
 
@@ -46,23 +57,31 @@ fetch_news_version() # fetch_news_version {1|2}
 }
 
 # Make nightly version from git describe
-make_nightly() {
-  test `git rev-parse HEAD` == `git rev-parse Nightly` || die "Nightly is not HEAD"
-  local V
-  V=$(git describe --first-parent --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=$L --long Nightly) &&
-    V=$(echo "$V" | sed -r "s/^v//;    s/-.*-g/-nightly`date +%y%m%d`-g/")
-  [[ "$V" =~ ^[0-9.]+-nightly[0-9]+-g[a-f0-9]+$ ]] || die "Missing tag for Nightly"
+make_nightly() # make_nightly <Format:describe> <Format:date>
+{
+  local VDESCRIBE VDATE V
+  VDESCRIBE="$1" && VDATE="$2"
+  VDATE="${VDATE%% *}" && VDATE="${VDATE#20}" && VDATE="${VDATE//-/}" # strip down to %y%m%d
+  V=$(echo "$VDESCRIBE" | sed -r "s/^v//;    s/-.*-g/-nightly$VDATE-g/")
+  [[ "$V" =~ ^[0-9.]+-nightly[0-9]+-g[a-f0-9]+$ ]] || die "Failed to parse tag description"
   echo "$V"
 }
 
-# Make release version from git describe
-make_release_tag() {
-  local V
-  V=$(git describe --first-parent --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=$L --long HEAD)
-  [[ "$V" =~ ^(v[0-9.]+)-0-g[a-f0-9]+$ ]] || die "Missing release tag on HEAD"
-  BUILD_NAME="${BASH_REMATCH[1]}"
-  echo "$BUILD_NAME"
-}
+# Commit information provided by git-archive in export-subst format string, see gitattributes(5)
+COMMITINFO=(
+  '$Format:%H$'						# [0-9a-f]+
+  '$Format:%(describe:match=v[0-9]*.[0-9]*.[0-9]*)$'	# vN.N.N-3-g123abc
+  '$Format:%ci$'					# 2001-01-01 01:01:01 +0100
+  '$Format:%D,$'					# HEAD -> next, tag: v0.0.0, tag: Daily,
+)
+# If unset, assign from .git/
+test "${COMMITINFO[0]}" == "${COMMITINFO[0]/:/}" ||
+  for i in "${!COMMITINFO[@]}" ; do
+    [[ ${COMMITINFO[$i]} =~ ^[$]Format[:]([^\$]+)\$$ ]] || die 'missing $Format$ in' "COMMITINFO[$i]"
+    COMMITINFO[$i]=`git log -1 --pretty="tformat:${BASH_REMATCH[1]}" `
+    [[ ${COMMITINFO[$i]} =~ describe:match ]] && # git 2.25.1 cannot describe:match
+      COMMITINFO[$i]=`git describe --match='v[0-9]*.[0-9]*.[0-9]*'`
+  done
 
 # Usage: version.sh [--news-tag|--last-tag]	# print project versions
 while test $# -ne 0 ; do
@@ -75,72 +94,73 @@ while test $# -ne 0 ; do
       NEWS_VERSION="$(fetch_news_version 2)"
       test -n "$NEWS_VERSION" || die "ERROR: failed to extract release tag from NEWS.md"
       echo "v${NEWS_VERSION#v}" && exit ;;
-    --nightly)
-      make_nightly && exit ;;
-    --release-tag)
-      make_release_tag && exit ;;
+    --commit-hash)
+      echo "${COMMITINFO[0]}" && exit ;;
+    --make-nightly)
+      NIGHTLY=true
+      ;;
+    --help)
+      cat <<-__EOF
+	Usage: $0 [OPTIONS]
+	  --help         Show brief usage info
+	  --make-nightly Print nightly version without checking NEWS.md
+	  --news-tag1    Extract latest version from NEWS.md
+	  --news-tag1    Extract next to latest version from NEWS.md
+__EOF
+      exit 0 ;;
     *)
       true ;;
   esac
   shift
 done
 
-# Yield abbreviated commit hash for version string
-shorthash() {
-  git log -1 --format='%h' --abbrev=$L
-}
+# Fetch NEWS.md version to compare against releast tags
+NEWS_VERSION="$(fetch_news_version 1)"
 
-# Tarball from git-archive: Find hash and tag in export-subst format string, see gitattributes(5)
-GITARCHIVE_HASH='$Format:%H$' && GITARCHIVE_DATE='$Format:%ci$' && GITARCHIVE_DESC='$Format:%(describe:match=v[0-9]*.[0-9]*.[0-9]*)$'
-if test "$GITARCHIVE_HASH" = "${GITARCHIVE_HASH/:/}" &&
-    [[ $GITARCHIVE_DESC =~ v([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)(-[0-9]+-g[0-9a-f]+)? ]]
+# Handle releases
+if [[ ${COMMITINFO[1]} =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)$ ]] && # match version tag
+     test v"$NEWS_VERSION" == "${COMMITINFO[1]}"				# version tag matches release NEWS
 then
-  BUILD_NAME="${BASH_REMATCH[1]}snapshot"
-  if test -z "${BASH_REMATCH[3]:-}" ; then
-    BUILD_ID="${BUILD_NAME}-0-g${GITARCHIVE_HASH:0:$L}" # add missing hash
-  else
-    BUILD_ID="${BUILD_NAME}${BASH_REMATCH[3]}"
-  fi
-  exit_with_version "$BUILD_NAME" "$BUILD_ID" "$GITARCHIVE_DATE"
+  VERSIONTAG="${COMMITINFO[1]}"
+  BUILD_ID="$VERSIONTAG-0-g${COMMITINFO[0]:0:$L}"				# add hash as in git describe --long
+  # Regular release
+  exit_with_version "$VERSIONTAG" "$BUILD_ID" "${COMMITINFO[2]}"
 fi
 
-# Git repository with history
-if COMMIT_DATE=$(git log -1 --format='%ci' 2>/dev/null) &&
-    TRUNK_TAG=$(git describe --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=0 --first-parent 2>/dev/null) && # only tags along first-parent
-    BUILD_ID=$(git describe --match "$TRUNK_TAG" --abbrev=$L --long 2>/dev/null) && # now, count *all* commits since tag
-    [[ $BUILD_ID =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)-([0-9]+-g[0-9a-f]+)$ ]]
+# Handle Nightly versions
+if [[ ${COMMITINFO[3]} =~ tag:\ Nightly, ]] ; then				# on Nightly tag
+  NIGHTLY_ID=`make_nightly "${COMMITINFO[1]}" "${COMMITINFO[2]}"`
+  test "$NIGHTLY" == true -o "$NIGHTLY_ID" = "$NEWS_VERSION" && {
+    # Nightly release version ID already contains shorthash
+    exit_with_version "$NIGHTLY_ID" "v$NIGHTLY_ID" "${COMMITINFO[2]}"
+  } # fall throughh
+fi
+
+# Handle development versions
+if [[ ${COMMITINFO[1]} =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)-([0-9]+-g[0-9a-f]+)$ ]] # match commit ahead of tag
 then
-  if test -z "${BASH_REMATCH[2]}" -a "${VERSION_SH_RELEASE:-}" != true ; then
+  if test -z "${BASH_REMATCH[2]}" ; then
     BUILD_NAME="${BASH_REMATCH[1]}-devel0"	# force postfix for non-releases
   else
     BUILD_NAME="${BASH_REMATCH[1]}"		# has postfix
   fi
   BUILD_ID="v$BUILD_NAME-${BASH_REMATCH[3]}"
-  # Nightly releases
-  ${VERSION_SH_NIGHTLY:-false} &&
-    NIGHTLY_ID=$(make_nightly) &&
-    NEWS_VERSION="$(fetch_news_version 1)" &&
-    test "${NIGHTLY_ID:-none}" = "$NEWS_VERSION" && {
-      # Nightly release version, ID already contains shorthash
-      exit_with_version "$NIGHTLY_ID" "v$NIGHTLY_ID" "$COMMIT_DATE"
-    }
-  # not a release (frequent case during development)
-  exit_with_version "$BUILD_NAME" "$BUILD_ID" "$COMMIT_DATE"
+  # A -devel version
+  exit_with_version "$BUILD_NAME" "$BUILD_ID" "${COMMITINFO[2]}"
 fi
 
 # Shallow git repo, resorts to NEWS.md
-if test -n "$COMMIT_DATE" &&
-    NEWS_VERSION="$(fetch_news_version 1)" &&
+if test "${COMMITINFO[0]}" == "${COMMITINFO[0]/:/}" &&		# have commit hash
     [[ $NEWS_VERSION =~ ^([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)$ ]]
 then
-  if test -z "${BASH_REMATCH[2]}" -a "${VERSION_SH_RELEASE:-}" != true ; then
-    BUILD_NAME="${BASH_REMATCH[1]}-devel0"	# force postfix for non-releases
+  if test -z "${BASH_REMATCH[2]}" ; then
+    BUILD_NAME="${BASH_REMATCH[1]}-devel0"			# enforce version postfix
   else
-    BUILD_NAME="${BASH_REMATCH[1]}"		# has postfix
+    BUILD_NAME="${BASH_REMATCH[1]}"				# has postfix
   fi
-  BUILD_ID="v$BUILD_NAME-shallow-g`shorthash`"
-  # not a release (shallow git repo)
-  exit_with_version "$BUILD_NAME" "$BUILD_ID" "$COMMIT_DATE"
+  BUILD_ID="v$BUILD_NAME-shallow-g${COMMITINFO[0]:0:$L}"	# add hash as in git describe --long
+  # A -devel or -shallow version (shallow git repo)
+  exit_with_version "$BUILD_NAME" "$BUILD_ID" "${COMMITINFO[2]}"
 fi
 
 # bail out
