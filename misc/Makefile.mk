@@ -264,8 +264,10 @@ build-release:
 	$Q $(MAKE) dist
 	@: # Build versioned release assets
 	$Q $(MAKE) build-assets TARBALL=$>/anklang-$(RELEASE_TAG:v%=%).tar.zst
+	@: # Add tarball to release assets
 	$Q ls -lh $(RELEASE_SSEDIR)/build-assets		\
 	&& echo $(abspath $>/anklang-$(RELEASE_TAG:v%=%).tar.zst)	>> $(RELEASE_SSEDIR)/build-assets
+	$Q du -hs `cat $(RELEASE_SSEDIR)/build-assets`
 
 # == build-nightly ==
 build-nightly:
@@ -297,7 +299,16 @@ build-nightly:
 		&& mv ./NEWS.saved ./NEWS.md
 	@: # Build versioned release assets
 	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly`		\
-		&& $(MAKE) build-assets TARBALL=$>/anklang-$$NIGHTLY_VERSION.tar.zst
+		&& :                             $(MAKE) build-assets TARBALL=$>/anklang-$$NIGHTLY_VERSION.tar.zst
+	@: # List Nightly changes
+	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly`			\
+	&& echo "$(RELEASE_SSEDIR)/Changes-$$NIGHTLY_VERSION.txt"		\
+		>> $(RELEASE_SSEDIR)/build-assets				\
+	&& NEWS_TAG=`misc/version.sh --news-tag1`				\
+	&& git log --topo-order --full-history --abbrev=13 $$NEWS_TAG..HEAD	\
+		--pretty="%h  %s"						\
+		>  $(RELEASE_SSEDIR)/Changes-$$NIGHTLY_VERSION.txt
+	$Q du -hs `cat $(RELEASE_SSEDIR)/build-assets`
 
 # == upload-nightly ==
 upload-nightly:
