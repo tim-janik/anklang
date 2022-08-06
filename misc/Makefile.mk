@@ -299,7 +299,7 @@ build-nightly:
 		&& mv ./NEWS.saved ./NEWS.md
 	@: # Build versioned release assets
 	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly`		\
-		&& :                             $(MAKE) build-assets TARBALL=$>/anklang-$$NIGHTLY_VERSION.tar.zst
+	&& $(MAKE) build-assets TARBALL=$>/anklang-$$NIGHTLY_VERSION.tar.zst
 	@: # List Nightly changes
 	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly`			\
 	&& echo "$(RELEASE_SSEDIR)/Changes-$$NIGHTLY_VERSION.txt"		\
