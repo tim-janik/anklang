@@ -222,24 +222,27 @@ build-assets:
 	$Q tar xf $(TARBALL) -C $(OOTBUILD) --strip-components=1
 	@: # Build binaries with different INSNs in parallel
 	$Q nice $(MAKE) -C $(OOTBUILD)					\
+		build-version						\
 		insn-build-sse						\
 		insn-build-fma
 	@: # Build release packages, INSN=sse is full build
 	$Q nice $(MAKE) -C $(OOTBUILD)					\
 		INSN=sse builddir=out-sse				\
+		build-version						\
 		anklang-deb						\
 		appimage						\
 		versioned-manuals
-	$Q echo									>  $(RELEASE_SSEDIR)/build-assets
-	$Q echo	$(RELEASE_SSEDIR)/anklang_$(version_short)_amd64.deb		>> $(RELEASE_SSEDIR)/build-assets
-	$Q echo	$(RELEASE_SSEDIR)/anklang-$(version_short)-x64.AppImage		>> $(RELEASE_SSEDIR)/build-assets
-	$Q echo $(RELEASE_SSEDIR)/anklang-manual-$(version_short).pdf		>> $(RELEASE_SSEDIR)/build-assets
-	$Q echo $(RELEASE_SSEDIR)/anklang-internals-$(version_short).pdf	>> $(RELEASE_SSEDIR)/build-assets
+	$Q ( D="$(RELEASE_SSEDIR)"				\
+	&& V=`cut '-d ' -f1 $(RELEASE_SSEDIR)/build-version`	\
+	&& echo	"$$D/anklang_$${V}_amd64.deb"			\
+	&& echo	"$$D/anklang-$$V-x64.AppImage"			\
+	&& echo "$$D/anklang-manual-$$V.pdf"			\
+	&& echo "$$D/anklang-internals-$$V.pdf"			\
+	)	> $(RELEASE_SSEDIR)/build-assets
 	@: # Check build
 	$Q ls -l -h --color=auto `cat $(RELEASE_SSEDIR)/build-assets`
-	$Q test ! -r /dev/fuse || time $(RELEASE_SSEDIR)/anklang-$(version_short)-x64.AppImage --quitstartup
-	@: # Record build version and artifacts
-	$Q echo "$(version_short)"	> $(RELEASE_SSEDIR)/build-version
+	$Q V=`cut '-d ' -f1 $(RELEASE_SSEDIR)/build-version`	\
+	&& test ! -r /dev/fuse || time $(RELEASE_SSEDIR)/anklang-$$V-x64.AppImage --quitstartup
 
 # == build-release ==
 build-release:
