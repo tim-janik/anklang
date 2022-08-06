@@ -16,7 +16,7 @@ jobs:
     - name: Build Project
       run: misc/dbuild.sh --no-tex -i make SKIP_LATEX=true -j `nproc`
     - name: Run Tests
-      run: misc/dbuild.sh make check
+      run: misc/dbuild.sh --no-tex -i make check
     - name: Ping IRC
       if: always()
       run: |
