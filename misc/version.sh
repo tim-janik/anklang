@@ -63,7 +63,7 @@ make_nightly() # make_nightly <Format:describe> <Format:date>
   VDESCRIBE="$1" && VDATE="$2"
   VDATE="${VDATE%% *}" && VDATE="${VDATE#20}" && VDATE="${VDATE//-/}" # strip down to %y%m%d
   V=$(echo "$VDESCRIBE" | sed -r "s/^v//;    s/-.*-g/-nightly$VDATE-g/")
-  [[ "$V" =~ ^[0-9.]+-nightly[0-9]+-g[a-f0-9]+$ ]] || die "Failed to parse Nightly tag description"
+  [[ "$V" =~ ^[0-9.]+-nightly[0-9]+-g[a-f0-9]+$ ]] || die "Failed to parse tag description"
   echo "$V"
 }
 
@@ -79,6 +79,8 @@ test "${COMMITINFO[0]}" == "${COMMITINFO[0]/:/}" ||
   for i in "${!COMMITINFO[@]}" ; do
     [[ ${COMMITINFO[$i]} =~ ^[$]Format[:]([^\$]+)\$$ ]] || die 'missing $Format$ in' "COMMITINFO[$i]"
     COMMITINFO[$i]=`git log -1 --pretty="tformat:${BASH_REMATCH[1]}" `
+    [[ ${COMMITINFO[$i]} =~ describe:match ]] && # git 2.25.1 cannot describe:match
+      COMMITINFO[$i]=`git describe --match='v[0-9]*.[0-9]*.[0-9]*'`
   done
 
 # Usage: version.sh [--news-tag|--last-tag]	# print project versions
