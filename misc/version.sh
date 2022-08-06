@@ -80,7 +80,7 @@ test "${COMMITINFO[0]}" == "${COMMITINFO[0]/:/}" ||
     [[ ${COMMITINFO[$i]} =~ ^[$]Format[:]([^\$]+)\$$ ]] || die 'missing $Format$ in' "COMMITINFO[$i]"
     COMMITINFO[$i]=`git log -1 --pretty="tformat:${BASH_REMATCH[1]}" `
     [[ ${COMMITINFO[$i]} =~ describe:match ]] && # git 2.25.1 cannot describe:match
-      COMMITINFO[$i]=`git describe --match='v[0-9]*.[0-9]*.[0-9]*'`
+      COMMITINFO[$i]=`git describe --match='v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || :`
   done
 
 # Usage: version.sh [--news-tag|--last-tag]	# print project versions
