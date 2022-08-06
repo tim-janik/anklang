@@ -38,7 +38,7 @@ while test $# -ne 0 ; do
   case "$1" in \
     -d)		shift; DIST="$1" ;;
     -f)		shift; DOCKERFILE="$1" ;;
-    -h)		usage ; exit 0 ;;
+    -h|--help)	usage ; exit 0 ;;
     -i)		INITIALIZE=true ;;
     -o)		shift
 		OOTBUILD_ARGS="-v `realpath $1`:/ootbuild/ -e CCACHE_DIR=/ootbuild/.dlcache/ccache"
