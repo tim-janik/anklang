@@ -46,7 +46,7 @@ RUN retry apt-get install -y \
     imagemagick libxml2-utils libxml2-dev python3 python3-lxml \
     python3-pandocfilters pandoc graphviz universal-ctags \
     libasound2-dev libflac-dev libvorbis-dev libmad0-dev libjack-dev libzstd-dev \
-    gettext libgconf-2-4 libgtk2.0-dev squashfs-tools \
+    gettext libgconf-2-4 libgtk2.0-dev squashfs-tools zstd \
     libgtk-3-0 libxss1 libgbm1 libnss3
 
 # Provide a recent nodejs
