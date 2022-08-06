@@ -230,7 +230,7 @@ RELEASE_SSEDIR      ::= $(OOTBUILD)/out-sse
 
 # == build-assets ==
 build-assets:
-	@: # Clear out-of-tree build directory (but keep .ccache/), note that
+	@: # Clear out-of-tree build directory (but keep .dlcache/), note that
 	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
 	$Q :										\
 		&& rm -rf .tmp.dlcache							\

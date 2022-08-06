@@ -41,7 +41,7 @@ while test $# -ne 0 ; do
     -h)		usage ; exit 0 ;;
     -i)		INITIALIZE=true ;;
     -o)		shift
-		OOTBUILD_ARGS="-v `realpath $1`:/ootbuild/ -e CCACHE_DIR=/ootbuild/.ccache/"
+		OOTBUILD_ARGS="-v `realpath $1`:/ootbuild/ -e CCACHE_DIR=/ootbuild/.dlcache/ccache"
 		;;
     --no-cache)	NOCACHE=--no-cache ;;
     --no-tex)	NO_TEX=true ;;
