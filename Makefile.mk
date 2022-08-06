@@ -216,7 +216,6 @@ $>/package.json: misc/package.json.in					| $>/
 	$Q sed -e '1r '$@.config $< > $@.tmp
 	$Q rm $@.config
 	$Q mv $@.tmp $@
-CLEANFILES += $>/.eslintcache $>/package.json $>/package-lock.json
 CLEANDIRS += $>/node_modules/
 
 # == npm.done ==
@@ -318,8 +317,6 @@ $>/ChangeLog: $(GITCOMMITDEPS) Makefile.mk			| $>/
 	$Q sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i $@.tmp	# Compress multiple newlines
 	$Q mv $@.tmp $@
 	$Q test -s $@ || { mv $@ $@.empty ; ls -al --full-time $@.empty ; exit 1 ; }
-CLEANFILES += $>/ChangeLog
-
 
 # == TAGS ==
 # ctags-universal --print-language `git ls-tree -r --name-only HEAD`
@@ -330,3 +327,6 @@ ALL_TARGETS += $>/TAGS
 
 # == all rules ==
 all: $(ALL_TARGETS) $(ALL_TESTS)
+
+# Clean non-directories in $>/
+CLEANFILES += $(filter-out $(patsubst %/,%,$(wildcard $>/*/)), $(wildcard $>/* $>/.[^.]* $>/..?* ))
