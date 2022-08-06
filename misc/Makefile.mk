@@ -323,18 +323,17 @@ upload-nightly:
 upload-release:
 	$(QGEN)
 	@: # Determine version, check release attachments
-	@ $(eval RELEASE_TAG != misc/version.sh --release-tag)
-	@ $(eval DETAILED_VERSION = $(RELEASE_TAG:v%=%))
-	$Q NEWS_TAG=`./misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
-	$Q du -hs $(RELEASE_CHANGELOG) $(RELEASE_DEB) $(RELEASE_APPIMAGE)
+	@ $(eval RELEASE_TAG != misc/version.sh --news-tag1)
+	$Q du -hs `cat $(RELEASE_SSEDIR)/build-assets`
 	@: # Create Github release and upload assets
-	$Q echo 'Anklang $(DETAILED_VERSION)'		>  $(RELEASE_SSEDIR)/release-message
-	$Q echo						>> $(RELEASE_SSEDIR)/release-message
-	$Q sed '0,/^## /b; /^## /Q; ' NEWS.md		>> $(RELEASE_SSEDIR)/release-message
-	$Q ASSETS=( $(RELEASE_SSEDIR)/*"$(DETAILED_VERSION)"* )		\
+	$Q echo 'Anklang $(RELEASE_TAG:v%=%)'			>  $(RELEASE_SSEDIR)/release-message
+	$Q echo							>> $(RELEASE_SSEDIR)/release-message
+	$Q sed '0,/^## /b; /^## /Q; ' NEWS.md			>> $(RELEASE_SSEDIR)/release-message
+	$Q true								\
+		&& ASSETS=( `cat $(RELEASE_SSEDIR)/build-assets` )	\
 		&& hub release create --draft				\
-		-F '$(RELEASE_SSEDIR)/release-message'			\
-		"$${ASSETS[@]/#/-a}"					\
-		"$(RELEASE_TAG)"
+		     -F '$(RELEASE_SSEDIR)/release-message'		\
+		     "$${ASSETS[@]/#/-a}"				\
+		     "$(RELEASE_TAG)"
 	$Q echo 'Run:'
 	$Q echo '  git push origin "$(RELEASE_TAG)"'
