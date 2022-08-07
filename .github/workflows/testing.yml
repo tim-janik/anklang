@@ -37,5 +37,5 @@ jobs:
         MSG=$(git log -1 --format="%s")
         .github/workflows/ircbot.py -q -j "#Anklang" -n AnklangGH -U "$N" -D "$B" -S "$S" "$MSG" "$URL"
     - name: Save Docker Image Cache
-      if: ${{ steps.ghcache.outputs.cache-hit == 'false' }}
+      if: ${{ steps.ghcache.outputs.cache-hit != 'true' }}
       run: mkdir -p ~/ghcache/ && docker save anklang-dbuild -o ~/ghcache/anklang-dockerimage.tar
