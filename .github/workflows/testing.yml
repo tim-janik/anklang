@@ -20,11 +20,11 @@ jobs:
     - name: Show Version
       run: |
         misc/version.sh
-        misc/dbuild.sh --no-tex -i misc/version.sh
+        misc/dbuild.sh --no-tex misc/version.sh
     - name: Build Project
-      run: misc/dbuild.sh --no-tex -i make SKIP_LATEX=true -j `nproc`
+      run: misc/dbuild.sh --no-tex make SKIP_LATEX=true -j `nproc`
     - name: Run Tests
-      run: misc/dbuild.sh --no-tex -i make check
+      run: misc/dbuild.sh --no-tex make check
     - name: Ping IRC
       if: always()
       run: |
