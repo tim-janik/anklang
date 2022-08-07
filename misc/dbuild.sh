@@ -7,7 +7,7 @@ SCRIPTNAME=${0##*/} ; die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 12
 # == defaults ==
 PROJECT=anklang
 DOCKERFILE=misc/Dockerfile-apt
-DIST=ubuntu:focal
+DIST=ubuntu:20.04
 DOCKEROPTIONS="--cap-add SYS_PTRACE"
 EXEC_CMD=
 INITIALIZE=false
