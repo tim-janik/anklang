@@ -14,9 +14,14 @@ jobs:
     - uses: actions/cache@v3.0.6
       with:
         path: ~/ghcache/
-        key: ${{ runner.os }}-build-ghcache
+        key: ${{ runner.os }}-build-${{ hashFiles ('misc/Dockerfile-apt') }}
     - name: Load Docker Image Cache
       run: test ! -r ~/ghcache/anklang-dockerimage.tar || docker load -i ~/ghcache/anklang-dockerimage.tar
+    - name: Test Docker Image
+      run: |
+        docker images
+        misc/dbuild.sh
+        docker images | grep  "^anklang-dbuild "
     - name: Show Version
       run: |
         misc/version.sh
