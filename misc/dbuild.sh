@@ -15,20 +15,8 @@ OOTBUILD_ARGS=
 NOCACHE=
 NO_TEX=
 IMGTAG=$PROJECT-dbuild
-
-echo DEBUGGING:
-set -x ; PS4='> '
-echo INITIALIZE=$INITIALIZE
-
-docker images | grep -q "^$IMGTAG " || INITIALIZE=true
-
-echo IMGTAG="$IMGTAG"
-echo grep IMGTAG:
-docker images | grep "^$IMGTAG " && echo status=$? || echo status=$?
-echo 'grep -q' IMGTAG:
-docker images | grep -q "^$IMGTAG " && echo status=$? || echo status=$?
-echo INITIALIZE=$INITIALIZE
-echo Aborting... ; exit -7
+DOCKER_IMAGES=$(docker images) # buffer image list to avoid SIGPIPE
+grep -q "^$IMGTAG " <<< "$DOCKER_IMAGES" || INITIALIZE=true
 
 # == usage ==
 usage() {
