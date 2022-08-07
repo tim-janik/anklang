@@ -21,7 +21,7 @@ jobs:
       run: |
         docker images
         misc/dbuild.sh
-        docker images | grep  "^anklang-dbuild "
+        docker images | grep "^anklang-dbuild " || true
     - name: Show Version
       run: |
         misc/version.sh
