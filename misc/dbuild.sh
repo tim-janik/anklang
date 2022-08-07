@@ -13,7 +13,6 @@ EXEC_CMD=
 INITIALIZE=false
 OOTBUILD_ARGS=
 NOCACHE=
-NO_TEX=
 IMGTAG=$PROJECT-dbuild
 DOCKER_IMAGES=$(docker images) # buffer image list to avoid SIGPIPE
 grep -q "^$IMGTAG " <<< "$DOCKER_IMAGES" || INITIALIZE=true
@@ -29,7 +28,6 @@ usage() {
   echo "  -i                Initialize docker build environment [$INITIALIZE]"
   echo "  -o <directory>    Mount <directory> as /ootbuild (\$OOTBUILD)"
   echo "  --no-cache        Build docker with --no-cache"
-  echo "  --no-tex          Build with \$NO_TEX=true"
   echo "  shell             COMMAND: Run shell"
   echo "  root              COMMAND: Run root shell"
 }
@@ -45,7 +43,6 @@ while test $# -ne 0 ; do
 		OOTBUILD_ARGS="-v `realpath $1`:/ootbuild/ -e CCACHE_DIR=/ootbuild/.dlcache/ccache"
 		;;
     --no-cache)	NOCACHE=--no-cache ;;
-    --no-tex)	NO_TEX=true ;;
     --)		shift ; break ;;
     *)		break ;;
   esac
@@ -66,7 +63,7 @@ $INITIALIZE && {
   test ! -d ~/.cache/electron/. || cp --reflink=auto --preserve=timestamps ~/.cache/electron -r misc/.dbuild/.cache/
   test ! -d ~/.cache/anklang/downloads/. || cp --reflink=auto --preserve=timestamps ~/.cache/anklang/downloads -r misc/.dbuild/.cache/anklang/
   ( set -x
-    docker build -f "$DOCKERFILE" --build-arg DIST="$DIST" --build-arg NO_TEX="$NO_TEX" --build-arg USERGROUP="$TUID:$TGID" -t $IMGTAG $NOCACHE misc/
+    docker build -f "$DOCKERFILE" --build-arg DIST="$DIST" --build-arg USERGROUP="$TUID:$TGID" -t $IMGTAG $NOCACHE misc/
   )
   rm -f -r misc/.dbuild/
 }

@@ -54,8 +54,7 @@ RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
 	apt-get install -y nodejs
 
 # Install TeX (+615MB) if needed
-ARG NO_TEX
-RUN test "$NO_TEX" = true || retry apt-get install -y \
+RUN retry apt-get install -y \
     texlive-xetex fonts-sil-charis texlive-binaries texlive-fonts-extra
 
 # Cleanup
