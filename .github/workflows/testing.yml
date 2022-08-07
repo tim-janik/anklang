@@ -12,7 +12,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Show Version
-      run: misc/version.sh
+      run: |
+        misc/version.sh
+        misc/dbuild.sh --no-tex -i misc/version.sh
     - name: Build Project
       run: misc/dbuild.sh --no-tex -i make SKIP_LATEX=true -j `nproc`
     - name: Run Tests
