@@ -324,10 +324,10 @@ $>/ChangeLog: $(GITCOMMITDEPS) Makefile.mk			| $>/
 	$Q test -s $@ || { mv $@ $@.empty ; ls -al --full-time $@.empty ; exit 1 ; }
 
 # == TAGS ==
-# ctags-universal --print-language `git ls-tree -r --name-only HEAD`
+# ctags --print-language `git ls-tree -r --name-only HEAD`
 $>/TAGS: $>/ls-tree.lst Makefile.mk
 	$(QGEN)
-	$Q ctags-universal -e -o $@ -L $>/ls-tree.lst
+	$Q ctags -e -o $@ -L $>/ls-tree.lst
 ALL_TARGETS += $>/TAGS
 
 # == all rules ==
