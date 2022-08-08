@@ -33,10 +33,10 @@ jobs:
     - name: Test Ubuntu
       run: |
         misc/dbuild.sh -f focal make check
+    - name: Cleanup
+      run: git clean -f -x -e '/\.dlcache/' . && git reset --hard
     - name: Prepare Arch
       run: |
-        rm -rf out/
-        : rm -rf .dlcache/
         misc/dbuild.sh -f arch -T misc/version.sh
     - name: Build Arch
       run: |
@@ -44,6 +44,8 @@ jobs:
     - name: Test Arch
       run: |
         misc/dbuild.sh -f arch make check
+    - name: Cleanup
+      run: git clean -f -x -e '/\.dlcache/' . && git reset --hard
     - name: Ping IRC
       if: always()
       run: |
