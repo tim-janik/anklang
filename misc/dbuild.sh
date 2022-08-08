@@ -12,6 +12,7 @@ EXEC_CMD=
 INITIALIZE=false
 OOTBUILD_ARGS=
 NOCACHE=
+NOTEX=false
 
 # == usage ==
 usage() {
@@ -23,6 +24,7 @@ usage() {
   echo "  -i                Always initialize docker build environment"
   echo "  -o <directory>    Mount <directory> as /ootbuild (\$OOTBUILD)"
   echo "  --no-cache        Build docker with --no-cache"
+  echo "  -T                Build with \$NOTEX=true"
   echo "  shell             COMMAND: Run shell"
   echo "  root              COMMAND: Run root shell"
 }
@@ -37,6 +39,7 @@ while test $# -ne 0 ; do
 		OOTBUILD_ARGS="-v `realpath $1`:/ootbuild/ -e CCACHE_DIR=/ootbuild/.dlcache/ccache"
 		;;
     --no-cache)	NOCACHE=--no-cache ;;
+    -T)		NOTEX=true ;;
     --)		shift ; break ;;
     *)		break ;;
   esac
@@ -64,7 +67,7 @@ $INITIALIZE && {
   test ! -d ~/.cache/electron/. || cp --reflink=auto --preserve=timestamps ~/.cache/electron -r misc/.dbuild/.cache/
   test ! -d ~/.cache/anklang/downloads/. || cp --reflink=auto --preserve=timestamps ~/.cache/anklang/downloads -r misc/.dbuild/.cache/anklang/
   ( set -x
-    docker build -f "$DOCKERFILE" --build-arg USERGROUP="$TUID:$TGID" -t $IMGTAG $NOCACHE misc/
+    docker build -f "$DOCKERFILE" --build-arg USERGROUP="$TUID:$TGID" --build-arg NOTEX="$NOTEX" -t $IMGTAG $NOCACHE misc/
   )
   rm -f -r misc/.dbuild/
 }
