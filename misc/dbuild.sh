@@ -6,26 +6,21 @@ SCRIPTNAME=${0##*/} ; die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 12
 
 # == defaults ==
 PROJECT=anklang
-DOCKERFILE=misc/Dockerfile-apt
-DIST=ubuntu:20.04
+DOCKEREXT=focal
 DOCKEROPTIONS="--cap-add SYS_PTRACE"
 EXEC_CMD=
 INITIALIZE=false
 OOTBUILD_ARGS=
 NOCACHE=
-IMGTAG=$PROJECT-dbuild
-DOCKER_IMAGES=$(docker images) # buffer image list to avoid SIGPIPE
-grep -q "^$IMGTAG " <<< "$DOCKER_IMAGES" || INITIALIZE=true
 
 # == usage ==
 usage() {
   #     12345678911234567892123456789312345678941234567895123456789612345678971234567898
   echo "Usage: $0 [OPTIONS] [--] [COMMAND...]"
   echo "Run COMMAND in $PWD inside docker environment."
-  echo "  -d <DIST>         Set DIST build arg [$DIST]"
-  echo "  -f <DOCKERFILE>   Choose a Dockerfile [$DOCKERFILE]"
+  echo "  -f <EXTENSION>    Choose a Dockerfile extension [focal,arch]"
   echo "  -h                Display command line help"
-  echo "  -i                Initialize docker build environment [$INITIALIZE]"
+  echo "  -i                Always initialize docker build environment"
   echo "  -o <directory>    Mount <directory> as /ootbuild (\$OOTBUILD)"
   echo "  --no-cache        Build docker with --no-cache"
   echo "  shell             COMMAND: Run shell"
@@ -35,8 +30,7 @@ usage() {
 # == parse args ==
 while test $# -ne 0 ; do
   case "$1" in \
-    -d)		shift; DIST="$1" ;;
-    -f)		shift; DOCKERFILE="$1" ;;
+    -f)		shift; DOCKEREXT="$1" ;;
     -h|--help)	usage ; exit 0 ;;
     -i)		INITIALIZE=true ;;
     -o)		shift
@@ -50,6 +44,13 @@ while test $# -ne 0 ; do
 done
 test $# -ne 0 || { usage ; exit 0 ; }
 EXEC_CMD="$1" && shift
+DOCKERFILE=misc/Dockerfile.$DOCKEREXT
+test -e $DOCKERFILE || die "$DOCKERFILE: no such file"
+IMGTAG=$PROJECT-$DOCKEREXT
+$INITIALIZE || {
+  DOCKER_IMAGES=$(docker images) # buffer image list to avoid SIGPIPE
+  grep -q "^$IMGTAG " <<< "$DOCKER_IMAGES" || INITIALIZE=true
+}
 
 # == Detect User Settings ==
 TUID=`id -u`
@@ -63,7 +64,7 @@ $INITIALIZE && {
   test ! -d ~/.cache/electron/. || cp --reflink=auto --preserve=timestamps ~/.cache/electron -r misc/.dbuild/.cache/
   test ! -d ~/.cache/anklang/downloads/. || cp --reflink=auto --preserve=timestamps ~/.cache/anklang/downloads -r misc/.dbuild/.cache/anklang/
   ( set -x
-    docker build -f "$DOCKERFILE" --build-arg DIST="$DIST" --build-arg USERGROUP="$TUID:$TGID" -t $IMGTAG $NOCACHE misc/
+    docker build -f "$DOCKERFILE" --build-arg USERGROUP="$TUID:$TGID" -t $IMGTAG $NOCACHE misc/
   )
   rm -f -r misc/.dbuild/
 }
