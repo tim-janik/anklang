@@ -1,8 +1,7 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 # == Distribution preparation ==
-ARG DIST
-FROM $DIST
+FROM ubuntu:20.04
 ENV DEBIAN_FRONTEND noninteractive
 
 # Use BASH(1) as shell, affects the RUN commands below
