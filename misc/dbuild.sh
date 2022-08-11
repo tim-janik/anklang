@@ -1,13 +1,13 @@
 #!/bin/bash
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-set -Eeuo pipefail
+set -Eeuo pipefail #-x
 
 SCRIPTNAME=${0##*/} ; die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 128 ; }
 
 # == defaults ==
 PROJECT=anklang
 DOCKEREXT=focal
-DOCKEROPTIONS="--cap-add SYS_PTRACE"
+DOCKEROPTIONS="--cap-add SYS_PTRACE -e V=$V"
 EXEC_CMD=
 INITIALIZE=false
 OOTBUILD_ARGS=
