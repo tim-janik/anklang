@@ -28,6 +28,10 @@ RUN apt-get update \
 		   texlive-xetex fonts-sil-charis texlive-binaries texlive-fonts-extra ) \
   && apt-get clean
 
+# Provide a recent nodejs
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
+	apt-get install -y nodejs
+
 # Build stripped down fluidsynth version without drivers (not needed atm)
 RUN exit 0 && \
   mkdir -p /tmp/fluid/build && cd /tmp/fluid/ && \
@@ -49,17 +53,14 @@ RUN exit 0 && \
 	-Denable-lash=0 && \
   make && make install
 
-# Provide a recent nodejs
-RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
-	apt-get install -y nodejs
-
-# Provide out-of-tree build directory (docker volume mount point)
+# Provide out-of-tree build directory (possible docker volume mount point)
 RUN mkdir /ootbuild/
 ENV OOTBUILD /ootbuild/
 
-# make sure getpwuid() works, prepare writable ~/
+# Become non-root, USERGROUP determines ids for docker volumes
 ARG USERGROUP
-RUN mkdir -m 0755 -p /dbuild/ && cp /root/.bashrc /dbuild/ && \
-  groupadd --gid ${USERGROUP#*:} dbuild && useradd --uid ${USERGROUP%:*} --gid ${USERGROUP#*:} --home-dir /dbuild dbuild
-COPY .dbuild/ /dbuild/
-RUN chown -R ${USERGROUP} /dbuild
+RUN groupadd --gid ${USERGROUP#*:} builder \
+  && useradd --uid ${USERGROUP%:*} --gid ${USERGROUP#*:} --create-home --shell /bin/bash builder \
+  && echo "builder ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/builder
+RUN chown -R ${USERGROUP} /ootbuild/
+USER builder
