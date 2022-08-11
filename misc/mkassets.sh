@@ -13,7 +13,7 @@ TARDIR=`dirname $TARBALL`
 ASSETLIST=$TARDIR/build-assets
 UID_=`id -u`
 OOTBUILD="${OOTBUILD:-/tmp/anklang-ootbuild$UID_}"
-MAKE="make -w V=$V"
+MAKE="make -w V=${V:-}"
 
 # prepare build dir
 mkdir -p $OOTBUILD/
