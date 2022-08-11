@@ -12,7 +12,7 @@ PKGDIR=$(sed -rn '/^ *"pkgdir":/{ s/.*:.*"([^"]+)", *$/\1/; p; q; }' $BUILDDIR/p
 DEBIAN=$DROOT/DEBIAN
 PKGDOCDIR=$DROOT/$PKGDIR/doc
 ANKLANGLAUNCHER=$PKGDIR/bin/anklang
-MAKE="make -w V=$V"
+MAKE="make -w V=${V:-}"
 
 # config for /opt/:
 : $MAKE default prefix=/opt pkgprefix=/opt sharedir=/usr/share bindir=/usr/bin
