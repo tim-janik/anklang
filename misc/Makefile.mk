@@ -100,47 +100,7 @@ $>/anklang_$(version_short)_amd64.deb: $>/TAGS $(GITCOMMITDEPS)
 anklang-deb: $>/anklang_$(version_short)_amd64.deb
 .PHONY: anklang-deb
 
-# == appimage ==
-APPINST = $>/appinst/
-APPBASE = $>/appbase/
-$>/anklang-$(version_short)-x64.AppImage: $>/misc/appaux/appimage-runtime-zstd $>/TAGS $(GITCOMMITDEPS) | $>/misc/bin/
-	$(QGEN)
-	@: # Installation Step
-	@echo '  INSTALL ' AppImage files
-	$Q rm -fr $(APPINST) $(APPBASE) && make install DESTDIR=$(APPINST)
-	@: # Populate appinst/, linuxdeploy expects libraries under usr/lib, binaries under usr/bin, etc
-	@: # We achieve that by treating the anklang-$MAJOR-$MINOR/ installation directory as /usr/.
-	@: # Also, we hand-pick extra libs for Anklang to keep the AppImage small.
-	$Q $(eval APPIMAGEPKGDIR ::= $(APPBASE)/anklang-$(version_major)-$(version_minor))
-	$Q mkdir $(APPBASE) && cp -a $(APPINST)$(pkgdir) $(APPIMAGEPKGDIR)
-	$Q rm -f Anklang-x86_64.AppImage
-	@echo '  RUN     ' linuxdeploy...
-	$Q if test -e /usr/lib64/libc_nonshared.a ; \
-	   then LIB64=/usr/lib64/ ; \
-	   else LIB64=/usr/lib/x86_64-linux-gnu/ ; fi \
-	   && LD_LIBRARY_PATH=$(APPIMAGEPKGDIR)/lib DISABLE_COPYRIGHT_FILES_DEPLOYMENT=1 \
-	     $>/misc/appaux/linuxdeploy-x86_64.AppImage --appimage-extract-and-run \
-		$(if $(findstring 1, $(V)), -v1, -v2) \
-		--appdir=$(APPBASE) \
-		-e $(APPIMAGEPKGDIR)/bin/anklang \
-		-i $(APPIMAGEPKGDIR)/ui/anklang.png \
-		-d $(APPIMAGEPKGDIR)/share/applications/anklang.desktop \
-		-l $$LIB64/libXss.so.1 \
-		-l $$LIB64/libXtst.so.6 \
-		--exclude-library="libnss3.so" \
-		--exclude-library="libnssutil3.so" \
-		--custom-apprun=misc/AppRun
-	@: # 'linuxdeploy -e bin/anklang' creates an executable copy in usr/bin/, which electron does not support
-	$Q rm $(APPBASE)/usr/bin/anklang && ln -s -r $(APPIMAGEPKGDIR)/bin/anklang $(APPBASE)/usr/bin/ # enforce bin/* as link
-	@: # linuxdeploy collects too many libs for electron/anklang, remove duplictaes present in electron/
-	$Q cd $(APPBASE)/usr/lib/ && rm -vf $(notdir $(wildcard $(APPIMAGEPKGDIR)/electron/lib*.so*))
-	@: # Create AppImage executable
-	@echo '  BUILD   ' appimage-runtime...
-	$Q mksquashfs $(APPBASE) $>/Anklang-x86_64.AppImage $(misc/squashfsopts)
-	$Q cat $>/misc/appaux/appimage-runtime-zstd $>/Anklang-x86_64.AppImage > $@.tmp && rm -f $>/Anklang-x86_64.AppImage
-	$Q chmod +x $@.tmp
-	$Q mv $@.tmp $@ && ls -l -h $@
-misc/squashfsopts ::= -root-owned -noappend -mkfs-time 0 -no-exports -no-recovery -noI -always-use-fragments -b 1048576 -comp zstd -Xcompression-level 22
+# == appimage-runtime-zstd ==
 $>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
 	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
 	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
@@ -148,8 +108,6 @@ $>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
 	$Q cd $>/misc/appaux/ && \
 		curl -sfSOL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
 		chmod +x linuxdeploy-x86_64.AppImage
-appimage: $>/anklang-$(version_short)-x64.AppImage
-.PHONY: appimage
 
 # == misc/anklang.desktop ==
 # https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html
