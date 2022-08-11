@@ -10,13 +10,25 @@ jobs:
   Testing:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Show Version
-      run: misc/version.sh
+    - uses: actions/checkout@v2.4.2
+    - uses: actions/cache@v3.0.6
+      id: ghcache
+      with:
+        path: ~/ghcache/
+        key: ${{ runner.os }}-build-${{ hashFiles ('misc/Dockerfile-apt', 'misc/dbuild.sh') }}
+    - name: Load Docker Image Cache
+      if: ${{ steps.ghcache.outputs.cache-hit == 'true' }}
+      run: test ! -r ~/ghcache/anklang-dockerimage.tar || docker load -i ~/ghcache/anklang-dockerimage.tar
+    - name: Project Version
+      run: |
+        misc/version.sh
+        misc/dbuild.sh misc/version.sh
     - name: Build Project
-      run: misc/dbuild.sh --no-tex -i make SKIP_LATEX=true -j `nproc`
+      run: |
+        misc/dbuild.sh make SKIP_LATEX=true -j `nproc`
     - name: Run Tests
-      run: misc/dbuild.sh make check
+      run: |
+        misc/dbuild.sh make check
     - name: Ping IRC
       if: always()
       run: |
@@ -24,3 +36,6 @@ jobs:
         N="$(git log -1 --format="%cL")" && B="$(git branch --show-current)"
         MSG=$(git log -1 --format="%s")
         .github/workflows/ircbot.py -q -j "#Anklang" -n AnklangGH -U "$N" -D "$B" -S "$S" "$MSG" "$URL"
+    - name: Save Docker Image Cache
+      if: ${{ steps.ghcache.outputs.cache-hit != 'true' }}
+      run: mkdir -p ~/ghcache/ && docker save anklang-dbuild -o ~/ghcache/anklang-dockerimage.tar

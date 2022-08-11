@@ -1,24 +1,34 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 # == Distribution preparation ==
-ARG DIST
-FROM $DIST
+FROM ubuntu:20.04
 ENV DEBIAN_FRONTEND noninteractive
 
 # Use BASH(1) as shell, affects the RUN commands below
 RUN ln -sf bash /bin/sh && ls -al /bin/sh
 
-# Provide /bin/retry to overcome short network outages
-RUN echo -e '#!/bin/bash\n"$@" || { sleep 5 ; "$@" ; } || { sleep 15 ; "$@" ; }' > /bin/retry && chmod +x /bin/retry
+# Save +615MB by skipping TeX
+ARG NOTEX
 
-# Upgrade packages
-RUN retry apt-get update && retry apt-get -y upgrade
+# Upgrade packages, install dependencies, clean up to shrink docker image
+# Add libXss.so, libgtk-3-0 for electron
+RUN apt-get update \
+  && apt-get -y upgrade \
+  && apt-get install -y \
+	     build-essential curl cmake libglib2.0-dev \
+	     build-essential pkg-config git curl ccache curl unzip gawk g++ \
+	     clang clang-tidy clang-tools castxml cppcheck libboost-system-dev \
+	     imagemagick libxml2-utils libxml2-dev python3 python3-lxml \
+	     python3-pandocfilters pandoc graphviz universal-ctags \
+	     libasound2-dev libflac-dev libvorbis-dev libmad0-dev libjack-dev libzstd-dev \
+	     gettext libgconf-2-4 libgtk2.0-dev squashfs-tools zstd \
+	     libgtk-3-0 libxss1 libgbm1 libnss3 \
+  && (test "${NOTEX:-false}" = true \
+	|| apt-get install -y \
+		   texlive-xetex fonts-sil-charis texlive-binaries texlive-fonts-extra ) \
+  && apt-get clean
 
-# Prepare build environment
-RUN retry apt-get install -y build-essential curl cmake libglib2.0-dev
-
-# Build stripped down fluidsynth version without drivers
-# A dependency on fluidsynth is not needed for the current builds.
+# Build stripped down fluidsynth version without drivers (not needed atm)
 RUN exit 0 && \
   mkdir -p /tmp/fluid/build && cd /tmp/fluid/ && \
   curl -sfSOL https://github.com/FluidSynth/fluidsynth/archive/v2.2.1.tar.gz && \
@@ -39,27 +49,9 @@ RUN exit 0 && \
 	-Denable-lash=0 && \
   make && make install
 
-# Provide Anklang dependencies, add libXss.so, libgtk-3-0 for electron
-RUN retry apt-get install -y \
-    build-essential pkg-config git curl ccache curl unzip gawk g++ \
-    clang clang-tidy clang-tools castxml cppcheck libboost-system-dev \
-    imagemagick libxml2-utils libxml2-dev python3 python3-lxml \
-    python3-pandocfilters pandoc graphviz universal-ctags \
-    libasound2-dev libflac-dev libvorbis-dev libmad0-dev libjack-dev libzstd-dev \
-    gettext libgconf-2-4 libgtk2.0-dev squashfs-tools zstd \
-    libgtk-3-0 libxss1 libgbm1 libnss3
-
 # Provide a recent nodejs
 RUN curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
 	apt-get install -y nodejs
-
-# Install TeX (+615MB) if needed
-ARG NO_TEX
-RUN test "$NO_TEX" = true || retry apt-get install -y \
-    texlive-xetex fonts-sil-charis texlive-binaries texlive-fonts-extra
-
-# Cleanup
-RUN apt-get clean
 
 # Provide out-of-tree build directory (docker volume mount point)
 RUN mkdir /ootbuild/

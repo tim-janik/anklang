@@ -10,13 +10,13 @@ ase/gtk2wrap.sources		::= ase/gtk2wrap.cc
 ase/noglob.cc			::= ase/main.cc $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
 ase/libsources.cc		::= $(filter-out $(ase/noglob.cc), $(wildcard ase/*.cc))
 ase/libsources.c		::= $(wildcard ase/*.c)
+ase/include.deps		::= $>/ase/sysconfig.h
+ase/include.deps		 += $>/external/rapidjson/rapidjson.h
 
 # == AnklangSynthEngine definitions ==
 lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine
 ase/AnklangSynthEngine.sources	::= ase/main.cc $(ase/libsources.cc) $(ase/libsources.c)
 ase/AnklangSynthEngine.gensrc	::= $>/ase/api.jsonipc.cc
-ase/AnklangSynthEngine.deps	::= $>/ase/sysconfig.h
-ase/AnklangSynthEngine.deps	 += $>/external/rapidjson/rapidjson.h
 ase/AnklangSynthEngine.objects	::= $(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources)) $(ase/AnklangSynthEngine.gensrc:.cc=.o) $(ase/tests/objects)
 ase/AnklangSynthEngine.objects	 += $(devices/4ase.objects)
 ALL_TARGETS += $(lib/AnklangSynthEngine)
@@ -32,7 +32,7 @@ insn-targets: $(lib/AnklangSynthEngine)
 .PHONY: insn-targets
 
 # == ase/api.jsonipc.cc ==
-$>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/AnklangSynthEngine.deps) ase/Makefile.mk	| $>/ase/
+$>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/include.deps) ase/Makefile.mk	| $>/ase/
 	$(QGEN)
 	$Q echo '#include <ase/jsonapi.hh>'							>  $@.tmp
 	$Q echo '#include <ase/api.hh>'								>> $@.tmp
@@ -143,7 +143,7 @@ $>/external/clap/clap.h: ase/Makefile.mk		| $>/external/
 $(wildcard ase/clap*.cc): $>/external/clap/clap.h
 
 # == AnklangSynthEngine ==
-$(ase/AnklangSynthEngine.objects): $(ase/AnklangSynthEngine.deps) $(ase/libase.deps)
+$(ase/AnklangSynthEngine.objects): $(ase/include.deps) $(ase/libase.deps)
 $(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= -Iexternal/ -I$> -I$>/external/ $(GLIB_CFLAGS)
 $(lib/AnklangSynthEngine):						| $>/lib/
 $(call BUILD_PROGRAM, \
@@ -158,8 +158,9 @@ $(ase/AnklangSynthEngine.objects): EXTRA_CXXFLAGS ::= -Wno-sign-promo
 # == jackdriver.so ==
 lib/jackdriver.so	     ::= $>/lib/jackdriver.so
 ase/jackdriver.objects	     ::= $(call BUILDDIR_O, $(ase/jackdriver.sources))
-$(lib/jackdriver.so).LDFLAGS ::= -Wl,--unresolved-symbols=ignore-in-object-files
+$(ase/jackdriver.objects):   $(ase/include.deps)
 $(ase/jackdriver.objects):   EXTRA_INCLUDES ::= -I$>
+$(lib/jackdriver.so).LDFLAGS ::= -Wl,--unresolved-symbols=ignore-in-object-files
 ifneq ('','$(ANKLANG_JACK_LIBS)')
 lib/jackdriver.so.MAYBE ::= $(lib/jackdriver.so)
 $(call BUILD_SHARED_LIB,		\
@@ -176,6 +177,7 @@ lib/gtk2wrap.so         ::= $>/lib/gtk2wrap.so
 ase/gtk2wrap.objects    ::= $(call BUILDDIR_O, $(ase/gtk2wrap.sources))
 $(ase/gtk2wrap.objects): EXTRA_INCLUDES ::= -I$> $(GTK2_CFLAGS)
 $(ase/gtk2wrap.objects): EXTRA_CXXFLAGS ::= -Wno-deprecated -Wno-deprecated-declarations
+$(ase/gtk2wrap.objects): $(ase/include.deps)
 $(call BUILD_SHARED_LIB, \
 	$(lib/gtk2wrap.so), \
 	$(ase/gtk2wrap.objects), \

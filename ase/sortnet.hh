@@ -2,7 +2,7 @@
 #ifndef __ASE_SORTNET_HH__
 #define __ASE_SORTNET_HH__
 
-#include <algorithm>
+#include <functional>
 
 namespace Ase {
 
