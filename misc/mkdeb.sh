@@ -5,9 +5,6 @@ set -Eeuo pipefail #-x
 SCRIPTNAME=`basename $0`
 function die  { [ -n "$*" ] && echo "$SCRIPTNAME: $*" >&2; exit 127 ; }
 
-# config for /opt/:
-: make default prefix=/opt pkgprefix=/opt sharedir=/usr/share bindir=/usr/bin
-
 # paths
 BUILDDIR="${BUILDDIR:-out}"
 DROOT=$BUILDDIR/mkdeb/
@@ -15,6 +12,10 @@ PKGDIR=$(sed -rn '/^ *"pkgdir":/{ s/.*:.*"([^"]+)", *$/\1/; p; q; }' $BUILDDIR/p
 DEBIAN=$DROOT/DEBIAN
 PKGDOCDIR=$DROOT/$PKGDIR/doc
 ANKLANGLAUNCHER=$PKGDIR/bin/anklang
+MAKE="make -w V=$V"
+
+# config for /opt/:
+: $MAKE default prefix=/opt pkgprefix=/opt sharedir=/usr/share bindir=/usr/bin
 
 # start from scratch
 rm -rf $DROOT
@@ -23,10 +24,8 @@ rm -rf $DROOT
 umask 022
 
 # install into $DROOT
-#make && make check
 rm -f -r "$DROOT"
-make install "DESTDIR=$DROOT"
-#make installcheck "DESTDIR=$DROOT"
+$MAKE install "DESTDIR=$DROOT"
 ls "$DROOT"/$PKGDIR >/dev/null # check dir
 
 # find prefix dir for MIME and .desktop files
