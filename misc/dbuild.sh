@@ -1,13 +1,13 @@
 #!/bin/bash
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-set -Eeuo pipefail
+set -Eeuo pipefail #-x
 
 SCRIPTNAME=${0##*/} ; die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 128 ; }
 
 # == defaults ==
 PROJECT=anklang
 DOCKEREXT=focal
-DOCKEROPTIONS="--cap-add SYS_PTRACE"
+DOCKEROPTIONS="--cap-add SYS_PTRACE -e V=$V"
 EXEC_CMD=
 INITIALIZE=false
 OOTBUILD_ARGS=
@@ -63,13 +63,9 @@ export PODMAN_USERNS=keep-id # keep UID of files in volume mounts under podman
 
 # == Initialize Build Environment ==
 $INITIALIZE && {
-  mkdir -p misc/.dbuild/.cache/anklang/
-  test ! -d ~/.cache/electron/. || cp --reflink=auto --preserve=timestamps ~/.cache/electron -r misc/.dbuild/.cache/
-  test ! -d ~/.cache/anklang/downloads/. || cp --reflink=auto --preserve=timestamps ~/.cache/anklang/downloads -r misc/.dbuild/.cache/anklang/
   ( set -x
     docker build -f "$DOCKERFILE" --build-arg USERGROUP="$TUID:$TGID" --build-arg NOTEX="$NOTEX" -t $IMGTAG $NOCACHE misc/
   )
-  rm -f -r misc/.dbuild/
 }
 
 # == Keep interactive tty ==

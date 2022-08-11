@@ -80,77 +80,6 @@ scan-build:								| $>/misc/scan-build/
 .PHONY: scan-build
 # Note, 'make scan-build' requires 'make default CC=clang CXX=clang++' to generate any reports.
 
-# == versioned-manuals ==
-versioned-manuals: $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
-	$Q cp -v $>/doc/anklang-manual.pdf $>/anklang-manual-$(version_short).pdf
-	$Q cp -v $>/doc/anklang-internals.pdf $>/anklang-internals-$(version_short).pdf
-
-# == build-version ==
-$>/build-version: misc/version.sh
-	$(QGEN)
-	$Q misc/version.sh > $@.tmp && mv $@.tmp $@
-build-version: $>/build-version
-	$Q cat $>/build-version
-
-# == anklang-deb ==
-$>/anklang_$(version_short)_amd64.deb: $>/TAGS $(GITCOMMITDEPS)
-	$(QGEN)
-	$Q BUILDDIR=$> misc/mkdeb.sh
-	$Q ls -l -h $@
-anklang-deb: $>/anklang_$(version_short)_amd64.deb
-.PHONY: anklang-deb
-
-# == appimage ==
-APPINST = $>/appinst/
-APPBASE = $>/appbase/
-$>/anklang-$(version_short)-x64.AppImage: $>/misc/appaux/appimage-runtime-zstd $>/TAGS $(GITCOMMITDEPS) | $>/misc/bin/
-	$(QGEN)
-	@: # Installation Step
-	@echo '  INSTALL ' AppImage files
-	$Q rm -fr $(APPINST) $(APPBASE) && make install DESTDIR=$(APPINST)
-	@: # Populate appinst/, linuxdeploy expects libraries under usr/lib, binaries under usr/bin, etc
-	@: # We achieve that by treating the anklang-$MAJOR-$MINOR/ installation directory as /usr/.
-	@: # Also, we hand-pick extra libs for Anklang to keep the AppImage small.
-	$Q $(eval APPIMAGEPKGDIR ::= $(APPBASE)/anklang-$(version_major)-$(version_minor))
-	$Q mkdir $(APPBASE) && cp -a $(APPINST)$(pkgdir) $(APPIMAGEPKGDIR)
-	$Q rm -f Anklang-x86_64.AppImage
-	@echo '  RUN     ' linuxdeploy...
-	$Q if test -e /usr/lib64/libc_nonshared.a ; \
-	   then LIB64=/usr/lib64/ ; \
-	   else LIB64=/usr/lib/x86_64-linux-gnu/ ; fi \
-	   && LD_LIBRARY_PATH=$(APPIMAGEPKGDIR)/lib DISABLE_COPYRIGHT_FILES_DEPLOYMENT=1 \
-	     $>/misc/appaux/linuxdeploy-x86_64.AppImage --appimage-extract-and-run \
-		$(if $(findstring 1, $(V)), -v1, -v2) \
-		--appdir=$(APPBASE) \
-		-e $(APPIMAGEPKGDIR)/bin/anklang \
-		-i $(APPIMAGEPKGDIR)/ui/anklang.png \
-		-d $(APPIMAGEPKGDIR)/share/applications/anklang.desktop \
-		-l $$LIB64/libXss.so.1 \
-		-l $$LIB64/libXtst.so.6 \
-		--exclude-library="libnss3.so" \
-		--exclude-library="libnssutil3.so" \
-		--custom-apprun=misc/AppRun
-	@: # 'linuxdeploy -e bin/anklang' creates an executable copy in usr/bin/, which electron does not support
-	$Q rm $(APPBASE)/usr/bin/anklang && ln -s -r $(APPIMAGEPKGDIR)/bin/anklang $(APPBASE)/usr/bin/ # enforce bin/* as link
-	@: # linuxdeploy collects too many libs for electron/anklang, remove duplictaes present in electron/
-	$Q cd $(APPBASE)/usr/lib/ && rm -vf $(notdir $(wildcard $(APPIMAGEPKGDIR)/electron/lib*.so*))
-	@: # Create AppImage executable
-	@echo '  BUILD   ' appimage-runtime...
-	$Q mksquashfs $(APPBASE) $>/Anklang-x86_64.AppImage $(misc/squashfsopts)
-	$Q cat $>/misc/appaux/appimage-runtime-zstd $>/Anklang-x86_64.AppImage > $@.tmp && rm -f $>/Anklang-x86_64.AppImage
-	$Q chmod +x $@.tmp
-	$Q mv $@.tmp $@ && ls -l -h $@
-misc/squashfsopts ::= -root-owned -noappend -mkfs-time 0 -no-exports -no-recovery -noI -always-use-fragments -b 1048576 -comp zstd -Xcompression-level 22
-$>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
-	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
-	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
-		0c4c18bb44e011e8416fc74fb067fe37a7de97a8548ee8e5350985ddee1c0164 https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd )
-	$Q cd $>/misc/appaux/ && \
-		curl -sfSOL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
-		chmod +x linuxdeploy-x86_64.AppImage
-appimage: $>/anklang-$(version_short)-x64.AppImage
-.PHONY: appimage
-
 # == misc/anklang.desktop ==
 # https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html
 $>/misc/anklang.desktop: misc/anklang.desktop
@@ -203,54 +132,22 @@ insn-build-sse:
 insn-build-fma:
 	$Q $(MAKE) INSN=fma builddir=out-fma insn-targets INSNDEST=out-sse/
 
-# == release rules ==
-RELEASE_TEST         ?= false
-OOTBUILD             ?= /tmp/anklang-ootbuild$(shell id -u)
-RELEASE_SSEDIR      ::= $(OOTBUILD)/out-sse
-
-# == build-assets ==
-build-assets:
-	@: # Clear out-of-tree build directory (but keep .dlcache/), note that
-	@: # ABSPATH_DLCACHE points to $(abspath .dlcache); checkout current HEAD
-	$Q :										\
-		&& rm -rf .tmp.dlcache							\
-		&& mkdir -p $(OOTBUILD) && cd $(OOTBUILD)				\
-		&& (mv .dlcache/ $(abspath .tmp.dlcache) || : ) 2>/dev/null		\
-		&& rm -rf * .[^.]* ..?*							\
-		&& (mv $(abspath .tmp.dlcache) .dlcache || : ) 2>/dev/null
-	@: # Prepare source tree
-	$Q tar xf $(TARBALL) -C $(OOTBUILD) --strip-components=1
-	@: # Build binaries with different INSNs in parallel
-	$Q nice $(MAKE) -C $(OOTBUILD)					\
-		build-version						\
-		insn-build-sse						\
-		insn-build-fma
-	@: # Build release packages, INSN=sse is full build
-	$Q nice $(MAKE) -C $(OOTBUILD)					\
-		INSN=sse builddir=out-sse				\
-		build-version						\
-		anklang-deb						\
-		appimage						\
-		versioned-manuals
-	$Q ( D="$(RELEASE_SSEDIR)"				\
-	&& V=`cut '-d ' -f1 $(RELEASE_SSEDIR)/build-version`	\
-	&& echo	"$$D/anklang_$${V}_amd64.deb"			\
-	&& echo	"$$D/anklang-$$V-x64.AppImage"			\
-	&& echo "$$D/anklang-manual-$$V.pdf"			\
-	&& echo "$$D/anklang-internals-$$V.pdf"			\
-	)	> $(RELEASE_SSEDIR)/build-assets
-	@: # Check build
-	$Q ls -l -h --color=auto `cat $(RELEASE_SSEDIR)/build-assets`
-	$Q V=`cut '-d ' -f1 $(RELEASE_SSEDIR)/build-version`	\
-	&& test ! -r /dev/fuse || time $(RELEASE_SSEDIR)/anklang-$$V-x64.AppImage --quitstartup
+# == appimage-runtime-zstd ==
+$>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
+	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
+	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
+		0c4c18bb44e011e8416fc74fb067fe37a7de97a8548ee8e5350985ddee1c0164 https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd )
+	$Q cd $>/misc/appaux/ && \
+		curl -sfSOL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
+		chmod +x linuxdeploy-x86_64.AppImage
+misc/mkassets.sh: $>/misc/appaux/appimage-runtime-zstd
 
 # == build-release ==
-build-release:
+build-release: misc/mkassets.sh
 	$(QGEN)
-	@: # Setup release variables (note, eval preceeds all shell commands)
+	@: # Determine release tag (eval preceeds all shell commands)
 	@ $(eval RELEASE_TAG != misc/version.sh --news-tag1)
-	@: # Check release tag
-	$Q NEWS_TAG=`misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "$(RELEASE_TAG)"
+	@: # Check for new release tag
 	$Q test -z "`git tag -l '$(RELEASE_TAG)'`" || \
 		{ echo '$@: error: release tag from NEWS.md already exists: $(RELEASE_TAG)' >&2 ; false ; }
 	@: # Check against origin/trunk
@@ -260,36 +157,31 @@ build-release:
 		{ echo "$@: ERROR: Release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
 	@: # Tag release with annotation
 	$Q git tag -a '$(RELEASE_TAG)' -m "`git log -1 --pretty=%s`"
-	@: # Create release dist tarball, needed as build-asset
+	@: # make dist - create release tarball
 	$Q $(MAKE) dist
-	@: # Build versioned release assets
-	$Q $(MAKE) build-assets TARBALL=$>/anklang-$(RELEASE_TAG:v%=%).tar.zst
-	@: # Add tarball to release assets
-	$Q ls -lh $(RELEASE_SSEDIR)/build-assets		\
-	&& echo $(abspath $>/anklang-$(RELEASE_TAG:v%=%).tar.zst)	>> $(RELEASE_SSEDIR)/build-assets
-	$Q du -hs `cat $(RELEASE_SSEDIR)/build-assets`
+	@: # mkassets.sh - build binary release assets
+	$Q export V=$V							\
+	&& misc/dbuild.sh misc/mkassets.sh $>/anklang-$(RELEASE_TAG:v%=%).tar.zst
+RELEASE_TEST ?= false
 
 # == build-nightly ==
-build-nightly:
+build-nightly: misc/mkassets.sh
 	$(QGEN)
 	@: # Check against origin/trunk
 	$Q VERSIONHASH=`git rev-parse HEAD` && \
 		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
 		$(RELEASE_TEST) || \
 		{ echo "$@: ERROR: Nightly release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
-	@: # Tag Nightly, force to move any old version, verify
+	@: # Tag Nightly, force to move any old version
 	$Q git tag -f Nightly HEAD
+	@: # make dist - create nightly tarball with updated NEWS.md
 	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly` \
-		&& echo "$$NIGHTLY_VERSION" | grep 'nightly' \
-		|| { echo "$@: missing nightly tag: $$NIGHTLY_VERSION" ; exit 1 ; }
-	@: # Create nightly dist tarball with updated NEWS.md
-	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly` \
+		&& NEWS_TAG=`misc/version.sh --news-tag1`		\
 		&& mv ./NEWS.md ./NEWS.saved				\
 		&& echo -e "## Anklang $$NIGHTLY_VERSION\n"		>  ./NEWS.md \
 		&& echo '```````````````````````````````````````````'	>> ./NEWS.md \
-		&& LOGTAG=`git describe --match v'[0-9]*.[0-9]*.[0-9]*' --abbrev=0 --first-parent` \
 		&& git log --pretty='%s    # %cd %an %h%n%w(0,4,4)%b' \
-		       --first-parent --date=short "$$LOGTAG..HEAD"	>> ./NEWS.md \
+		       --first-parent --date=short "$$NEWS_TAG..HEAD"	>> ./NEWS.md \
 		&& sed -e '/^\s*Signed-off-by:.*<.*@.*>/d'		-i ./NEWS.md \
 		&& sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i ./NEWS.md \
 		&& echo '```````````````````````````````````````````'	>> ./NEWS.md \
@@ -297,54 +189,37 @@ build-nightly:
 		&& git show HEAD:NEWS.md 				>> ./NEWS.md \
 		&& $(MAKE) dist						\
 		&& mv ./NEWS.saved ./NEWS.md
-	@: # Build versioned release assets
-	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly`		\
-	&& $(MAKE) build-assets TARBALL=$>/anklang-$$NIGHTLY_VERSION.tar.zst
-	@: # List Nightly changes
-	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly`			\
-	&& echo "$(RELEASE_SSEDIR)/Changes-$$NIGHTLY_VERSION.txt"		\
-		>> $(RELEASE_SSEDIR)/build-assets				\
-	&& NEWS_TAG=`misc/version.sh --news-tag1`				\
-	&& git log --topo-order --full-history --abbrev=13 $$NEWS_TAG..HEAD	\
-		--pretty="%h  %s"						\
-		>  $(RELEASE_SSEDIR)/Changes-$$NIGHTLY_VERSION.txt
-	$Q du -hs `cat $(RELEASE_SSEDIR)/build-assets`
-
-# == upload-nightly ==
-upload-nightly:
-	$(QGEN)
-	@: # Check release attachments
-	$Q cat $(RELEASE_SSEDIR)/build-version
-	$Q du -hs `cat $(RELEASE_SSEDIR)/build-assets`
-	@: # Create Github release and upload assets
-	$Q echo 'Nightly'					>  $(RELEASE_SSEDIR)/release-message
-	$Q echo							>> $(RELEASE_SSEDIR)/release-message
-	$Q echo 'Anklang' \
-		`cut '-d ' -f1 $(RELEASE_SSEDIR)/build-version`	>> $(RELEASE_SSEDIR)/release-message
-	-$Q hub release delete 'Nightly'
-	-$Q git push origin ':Nightly'
-	$Q git push origin 'Nightly'					\
-		&& ASSETS=( `cat $(RELEASE_SSEDIR)/build-assets` )	\
-		&& hub release create --prerelease			\
-		     -F '$(RELEASE_SSEDIR)/release-message'		\
-		     "$${ASSETS[@]/#/-a}"				\
-		     'Nightly'
+	@: # mkassets.sh - build binary release assets
+	$Q export V=$V							\
+	&& NIGHTLY_VERSION=`misc/version.sh --make-nightly`		\
+	&& misc/dbuild.sh misc/mkassets.sh $>/anklang-$$NIGHTLY_VERSION.tar.zst
 
 # == upload-release ==
 upload-release:
 	$(QGEN)
-	@: # Determine version, check release attachments
-	@ $(eval RELEASE_TAG != misc/version.sh --news-tag1)
-	$Q du -hs `cat $(RELEASE_SSEDIR)/build-assets`
+	@: # Determine version (eval preceeds all shell commands)
+	@ $(eval RELEASE_VERSION != cut '-d ' -f1 $>/build-version)
+	@ $(eval NIGHTLY != grep '[0-9]-nightly[0-9]' $>/build-version)
+	@: # Check release tag
+	$Q $(if $(NIGHTLY), true, false) \
+	|| ( NEWS_TAG=`misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "v$(RELEASE_VERSION)" )
+	@: # Check release attachments
+	$Q du -hs `cat $>/build-assets`
+	@: # Create release message
+	$Q echo	$(if $(NIGHTLY),			\
+		'Nightly',				\
+		'Anklang $(RELEASE_VERSION)'		)	>  $>/release-message
+	$Q echo							>> $>/release-message
+	$Q sed '0,/^## /b; /^## /Q; ' $>/build-news		>> $>/release-message
+	-$Q $(if $(NIGHTLY), hub release delete 'Nightly' )
+	-$Q $(if $(NIGHTLY), git push origin ':Nightly' )
 	@: # Create Github release and upload assets
-	$Q echo 'Anklang $(RELEASE_TAG:v%=%)'			>  $(RELEASE_SSEDIR)/release-message
-	$Q echo							>> $(RELEASE_SSEDIR)/release-message
-	$Q sed '0,/^## /b; /^## /Q; ' NEWS.md			>> $(RELEASE_SSEDIR)/release-message
-	$Q true								\
-		&& ASSETS=( `cat $(RELEASE_SSEDIR)/build-assets` )	\
-		&& hub release create --draft				\
-		     -F '$(RELEASE_SSEDIR)/release-message'		\
-		     "$${ASSETS[@]/#/-a}"				\
-		     "$(RELEASE_TAG)"
-	$Q echo 'Run:'
-	$Q echo '  git push origin "$(RELEASE_TAG)"'
+	$Q $(if $(NIGHTLY), git push origin 'Nightly' )
+	$Q ASSETS=( `cat $>/build-assets` )			\
+		&& hub release create				\
+			$(if $(NIGHTLY), --prerelease, --draft)	\
+			-F '$>/release-message'			\
+			"$${ASSETS[@]/#/-a}"			\
+			$(if $(NIGHTLY), 'Nightly', "v$(RELEASE_VERSION)" )
+	$Q $(if $(NIGHTLY), true, false) \
+	|| ( echo 'Run:' && echo '  git push origin "v$(RELEASE_VERSION)"' )

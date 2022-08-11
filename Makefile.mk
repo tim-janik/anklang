@@ -181,7 +181,11 @@ default: FORCE
 # == ls-tree.lst ==
 $>/ls-tree.lst: $(GITCOMMITDEPS)				| $>/
 	$(QGEN)
-	$Q git ls-tree -r --name-only HEAD	> $@
+	$Q if test -r .git ; then			\
+		git ls-tree -r --name-only HEAD	> $@ ;	\
+	   else						\
+		$(CP) ./ls-tree.lst $@ ;		\
+	   fi
 
 # == output directory rules ==
 # rule to create output directories from order only dependencies, trailing slash required
