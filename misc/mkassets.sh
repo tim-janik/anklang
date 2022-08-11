@@ -7,12 +7,13 @@ function die  { [ -n "$*" ] && echo "$SCRIPTNAME: $*" >&2; exit 127 ; }
 umask 022	# create 0755 dirs by default
 ORIG_PWD=$PWD
 
-# paths
+# paths & commands
 TARBALL=`readlink -f $1`
 TARDIR=`dirname $TARBALL`
 ASSETLIST=$TARDIR/build-assets
 UID_=`id -u`
 OOTBUILD="${OOTBUILD:-/tmp/anklang-ootbuild$UID_}"
+MAKE="make -w V=$V"
 
 # prepare build dir
 mkdir -p $OOTBUILD/
@@ -26,36 +27,45 @@ test -d .dlcache/ && {
   ln -s $PWD/.dlcache $OOTBUILD/.dlcache
 }
 
-# extract tarball, build
+# extract tarball, extract release infos
 tar xf $TARBALL -C $OOTBUILD --strip-components=1
 ( cd $OOTBUILD
-  make -j`nproc` \
-       build-version \
+  misc/version.sh
+)		> $TARDIR/build-version
+cp $OOTBUILD/NEWS.md $TARDIR/build-news
+OOTBUILD_VERSION=`cut '-d ' -f1 $TARDIR/build-version`
+
+# build and check
+( cd $OOTBUILD
+  $MAKE -j`nproc` \
        out/doc/anklang-manual.pdf \
        out/doc/anklang-internals.pdf \
        all
-  VERSION=`cut '-d ' -f1 out/build-version`
-  cp out/doc/anklang-manual.pdf out/anklang-manual-$VERSION.pdf
-  cp out/doc/anklang-internals.pdf out/anklang-internals-$VERSION.pdf
-  make check
+  $MAKE check
+)
+cp $OOTBUILD/out/doc/anklang-manual.pdf $OOTBUILD/out/anklang-manual-$OOTBUILD_VERSION.pdf
+cp $OOTBUILD/out/doc/anklang-internals.pdf $OOTBUILD/out/anklang-internals-$OOTBUILD_VERSION.pdf
+
+# make Deb
+( cd $OOTBUILD
+  BUILDDIR=out V=$V misc/mkdeb.sh
 )
 
-# make packages
+# make AppImage
 ( cd $OOTBUILD
-  BUILDDIR=out misc/mkdeb.sh
+  BUILDDIR=out V=$V misc/mkAppImage.sh
+  test ! -r /dev/fuse || time out/anklang-$OOTBUILD_VERSION-x64.AppImage --quitstartup
 )
-# TODO: AppImage
 
 # Gather assets
-cp $OOTBUILD/out/build-version $TARDIR/
-VERSION=`cut '-d ' -f1 $TARDIR/build-version`
-echo $TARBALL			>  $ASSETLIST.tmp
-for f in $OOTBUILD/out/anklang_${VERSION}_amd64.deb \
-	 $OOTBUILD/out/anklang-manual-$VERSION.pdf \
-	 $OOTBUILD/out/anklang-internals-$VERSION.pdf \
+echo ${TARDIR##*/}/${TARBALL##*/}	>  $ASSETLIST.tmp
+for f in $OOTBUILD/out/anklang_${OOTBUILD_VERSION}_amd64.deb \
+	 $OOTBUILD/out/anklang-$OOTBUILD_VERSION-x64.AppImage \
+	 $OOTBUILD/out/anklang-manual-$OOTBUILD_VERSION.pdf \
+	 $OOTBUILD/out/anklang-internals-$OOTBUILD_VERSION.pdf \
 	 ; do
   cp $f $TARDIR
-  echo $TARDIR/${f##*/}		>> $ASSETLIST.tmp
+  echo ${TARDIR##*/}/${f##*/}		>> $ASSETLIST.tmp
 done
 du -hs `cat $ASSETLIST.tmp`
 
