@@ -160,7 +160,8 @@ build-release: misc/mkassets.sh
 	@: # make dist - create release tarball
 	$Q $(MAKE) dist
 	@: # mkassets.sh - build binary release assets
-	$Q misc/dbuild.sh misc/mkassets.sh $>/anklang-$(RELEASE_TAG:v%=%).tar.zst
+	$Q export V=$V							\
+	&& misc/dbuild.sh misc/mkassets.sh $>/anklang-$(RELEASE_TAG:v%=%).tar.zst
 RELEASE_TEST ?= false
 
 # == build-nightly ==
@@ -189,7 +190,8 @@ build-nightly: misc/mkassets.sh
 		&& $(MAKE) dist						\
 		&& mv ./NEWS.saved ./NEWS.md
 	@: # mkassets.sh - build binary release assets
-	$Q NIGHTLY_VERSION=`misc/version.sh --make-nightly`		\
+	$Q export V=$V							\
+	&& NIGHTLY_VERSION=`misc/version.sh --make-nightly`		\
 	&& misc/dbuild.sh misc/mkassets.sh $>/anklang-$$NIGHTLY_VERSION.tar.zst
 
 # == upload-release ==
