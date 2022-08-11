@@ -1,4 +1,6 @@
 /config-defaults\.mk
 /out/
 /TAGS
+/TODO\.md
+/rand/
 /\.dlcache/

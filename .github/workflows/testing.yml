@@ -15,20 +15,37 @@ jobs:
       id: ghcache
       with:
         path: ~/ghcache/
-        key: ${{ runner.os }}-build-${{ hashFiles ('misc/Dockerfile-apt', 'misc/dbuild.sh') }}
-    - name: Load Docker Image Cache
+        key: ${{ runner.os }}-build-${{ hashFiles ('misc/Dockerfile*', 'misc/dbuild.sh') }}
+    - name: Load Docker Cache
       if: ${{ steps.ghcache.outputs.cache-hit == 'true' }}
-      run: test ! -r ~/ghcache/anklang-dockerimage.tar || docker load -i ~/ghcache/anklang-dockerimage.tar
+      run: |
+        test ! -r ~/ghcache/anklang-arch.tar || docker load -i ~/ghcache/anklang-arch.tar
+        test ! -r ~/ghcache/anklang-focal.tar || docker load -i ~/ghcache/anklang-focal.tar
     - name: Project Version
       run: |
         misc/version.sh
-        misc/dbuild.sh misc/version.sh
-    - name: Build Project
+    - name: Prepare Ubuntu
       run: |
-        misc/dbuild.sh make SKIP_LATEX=true -j `nproc`
-    - name: Run Tests
+        misc/dbuild.sh -f focal -T misc/version.sh
+    - name: Build Ubuntu
       run: |
-        misc/dbuild.sh make check
+        misc/dbuild.sh -f focal make SKIP_LATEX=true -j`nproc`
+    - name: Test Ubuntu
+      run: |
+        misc/dbuild.sh -f focal make check
+    - name: Cleanup
+      run: git clean -f -x -e '/\.dlcache/' . && git reset --hard
+    - name: Prepare Arch
+      run: |
+        misc/dbuild.sh -f arch -T misc/version.sh
+    - name: Build Arch
+      run: |
+        misc/dbuild.sh -f arch make SKIP_LATEX=true -j`nproc`
+    - name: Test Arch
+      run: |
+        misc/dbuild.sh -f arch make check
+    - name: Cleanup
+      run: git clean -f -x -e '/\.dlcache/' . && git reset --hard
     - name: Ping IRC
       if: always()
       run: |
@@ -36,6 +53,10 @@ jobs:
         N="$(git log -1 --format="%cL")" && B="$(git branch --show-current)"
         MSG=$(git log -1 --format="%s")
         .github/workflows/ircbot.py -q -j "#Anklang" -n AnklangGH -U "$N" -D "$B" -S "$S" "$MSG" "$URL"
-    - name: Save Docker Image Cache
+    - name: Save Docker Cache
       if: ${{ steps.ghcache.outputs.cache-hit != 'true' }}
-      run: mkdir -p ~/ghcache/ && docker save anklang-dbuild -o ~/ghcache/anklang-dockerimage.tar
+      run: |
+        mkdir -p ~/ghcache/
+        docker save anklang-arch -o ~/ghcache/anklang-arch.tar
+        docker save anklang-focal -o ~/ghcache/anklang-focal.tar
+        ls -al ~/ghcache/
