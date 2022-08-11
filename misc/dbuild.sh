@@ -63,13 +63,9 @@ export PODMAN_USERNS=keep-id # keep UID of files in volume mounts under podman
 
 # == Initialize Build Environment ==
 $INITIALIZE && {
-  mkdir -p misc/.dbuild/.cache/anklang/
-  test ! -d ~/.cache/electron/. || cp --reflink=auto --preserve=timestamps ~/.cache/electron -r misc/.dbuild/.cache/
-  test ! -d ~/.cache/anklang/downloads/. || cp --reflink=auto --preserve=timestamps ~/.cache/anklang/downloads -r misc/.dbuild/.cache/anklang/
   ( set -x
     docker build -f "$DOCKERFILE" --build-arg USERGROUP="$TUID:$TGID" --build-arg NOTEX="$NOTEX" -t $IMGTAG $NOCACHE misc/
   )
-  rm -f -r misc/.dbuild/
 }
 
 # == Keep interactive tty ==
