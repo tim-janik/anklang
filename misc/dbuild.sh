@@ -7,7 +7,7 @@ SCRIPTNAME=${0##*/} ; die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 12
 # == defaults ==
 PROJECT=anklang
 DOCKEREXT=focal
-DOCKEROPTIONS="--cap-add SYS_PTRACE -e V=$V"
+DOCKEROPTIONS="--cap-add SYS_PTRACE -e V=${V:-}"
 EXEC_CMD=
 INITIALIZE=false
 OOTBUILD_ARGS=

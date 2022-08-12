@@ -14,7 +14,7 @@ APPINST=$BUILDDIR/appinst/		# install dir
 APPBASE=$BUILDDIR/appbase/		# dir for packaging
 APPTOOLS=$BUILDDIR/misc/appaux		# AppImage build tools
 PKGDIR=$(sed -rn '/^ *"pkgdir":/{ s/.*:.*"([^"]+)", *$/\1/; p; q; }' $BUILDDIR/package.json)
-MAKE="make -w V=$V"
+MAKE="make -w V=${V:-}"
 
 # AppImage tooling
 echo 'AppImage tooling...'
