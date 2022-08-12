@@ -24,12 +24,17 @@ ALL_TARGETS += $(lib/AnklangSynthEngine)
 # Work around legacy code in external/websocketpp/*.hpp
 ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec
 
-# == insn-targets ==
-insn-targets: $(lib/AnklangSynthEngine)
-	@test -n "$(INSN)"
-	$Q $(CP) -v $(lib/AnklangSynthEngine) $(INSNDEST)/lib/AnklangSynthEngine-$(INSN)
-	$Q $(CP) -v $(lib/AnklangSynthEngine).map $(INSNDEST)/lib/AnklangSynthEngine-$(INSN).map
-.PHONY: insn-targets
+# == AnklangSynthEngine-fma ==
+$(lib/AnklangSynthEngine)-fma:
+	$(QGEN)
+	$Q $(MAKE) INSN=fma builddir=$>/fma $>/fma/lib/AnklangSynthEngine
+	$Q $(CP) -v $>/fma/lib/AnklangSynthEngine.map $@.map
+	$Q $(CP) -v $>/fma/lib/AnklangSynthEngine $@
+ifeq ($(MODE)+$(INSN),production+sse)
+ALL_TARGETS += $(lib/AnklangSynthEngine)-fma
+# Iff MODE=production and INSN=sse (i.e. release builds),
+# also build an FMA variant of the sound engine.
+endif
 
 # == ase/api.jsonipc.cc ==
 $>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/include.deps) ase/Makefile.mk	| $>/ase/
