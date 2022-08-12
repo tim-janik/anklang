@@ -123,15 +123,6 @@ release-news:
 		sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' -e '/^\s*$$/d'
 .PHONY: release-news
 
-# == insn-build ==
-# Build binary variants with INSN=sse and build 'all'
-insn-build-sse:
-	$Q $(MAKE) INSN=sse builddir=out-sse all
-	$Q $(MAKE) INSN=sse builddir=out-sse check
-# Build binary variants with INSN=fma
-insn-build-fma:
-	$Q $(MAKE) INSN=fma builddir=out-fma insn-targets INSNDEST=out-sse/
-
 # == appimage-runtime-zstd ==
 $>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
 	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
