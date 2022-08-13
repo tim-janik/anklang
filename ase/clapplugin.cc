@@ -10,6 +10,7 @@
 #include "compress.hh"
 #include "internal.hh"
 #include "gtk2wrap.hh"
+#include <clap/ext/draft/file-reference.h>
 #include <dlfcn.h>
 #include <glob.h>
 #include <math.h>
@@ -612,6 +613,7 @@ public:
   const clap_plugin_t *plugin_ = nullptr;
   const clap_plugin_gui *plugin_gui = nullptr;
   const clap_plugin_state *plugin_state = nullptr;
+  const clap_plugin_file_reference *plugin_file_reference = nullptr;
   const clap_plugin_params *plugin_params = nullptr;
   const clap_plugin_timer_support *plugin_timer_support = nullptr;
   const clap_plugin_audio_ports_config *plugin_audio_ports_config = nullptr;
@@ -658,6 +660,7 @@ public:
     plugin_note_ports = (const clap_plugin_note_ports*) plugin_get_extension (CLAP_EXT_NOTE_PORTS);
     plugin_posix_fd_support = (const clap_plugin_posix_fd_support*) plugin_get_extension (CLAP_EXT_POSIX_FD_SUPPORT);
     plugin_state = (const clap_plugin_state*) plugin_get_extension (CLAP_EXT_STATE);
+    plugin_file_reference = (const clap_plugin_file_reference*) plugin_get_extension (CLAP_EXT_FILE_REFERENCE);
     const clap_plugin_render *plugin_render = nullptr;
     plugin_render = (const clap_plugin_render*) plugin_get_extension (CLAP_EXT_RENDER);
     (void) plugin_render;
@@ -914,6 +917,8 @@ public:
       plugin_->destroy (plugin_);
     plugin_ = nullptr;
     plugin_gui = nullptr;
+    plugin_state = nullptr;
+    plugin_file_reference = nullptr;
     plugin_params = nullptr;
     plugin_timer_support = nullptr;
     plugin_audio_ports_config = nullptr;
@@ -1591,6 +1596,24 @@ static const clap_host_gui host_ext_gui = {
   .closed = host_gui_closed,
 };
 
+// == clap_host_file_reference ==
+static void
+host_file_reference_changed (const clap_host_t *host)
+{
+  CDEBUG ("%s: %s", clapid (host), __func__);
+}
+
+static void
+host_file_reference_set_dirty (const clap_host_t *host, clap_id resource_id)
+{
+  CDEBUG ("%s: %s: %d", clapid (host), __func__, resource_id);
+}
+
+static const clap_host_file_reference host_ext_file_reference = {
+  .changed = host_file_reference_changed,
+  .set_dirty = host_file_reference_set_dirty,
+};
+
 // == clap_host extensions ==
 static const void*
 host_get_extension_mt (const clap_host *host, const char *extension_id)
@@ -1598,6 +1621,7 @@ host_get_extension_mt (const clap_host *host, const char *extension_id)
   const String ext = extension_id;
   if (ext == CLAP_EXT_LOG)              return &host_ext_log;
   if (ext == CLAP_EXT_GUI)              return &host_ext_gui;
+  if (ext == CLAP_EXT_FILE_REFERENCE)   return &host_ext_file_reference;
   if (ext == CLAP_EXT_TIMER_SUPPORT)    return &host_ext_timer_support;
   if (ext == CLAP_EXT_THREAD_CHECK)     return &host_ext_thread_check;
   if (ext == CLAP_EXT_AUDIO_PORTS)      return &host_ext_audio_ports;
