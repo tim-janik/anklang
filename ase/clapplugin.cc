@@ -654,10 +654,13 @@ public:
     plugin_state = (const clap_plugin_state*) plugin_get_extension (CLAP_EXT_STATE);
     const clap_plugin_render *plugin_render = nullptr;
     plugin_render = (const clap_plugin_render*) plugin_get_extension (CLAP_EXT_RENDER);
+    (void) plugin_render;
     const clap_plugin_latency *plugin_latency = nullptr;
     plugin_latency = (const clap_plugin_latency*) plugin_get_extension (CLAP_EXT_LATENCY);
+    (void) plugin_latency;
     const clap_plugin_tail *plugin_tail = nullptr;
     plugin_tail = (const clap_plugin_tail*) plugin_get_extension (CLAP_EXT_TAIL);
+    (void) plugin_tail;
     get_port_infos();
     return true;
   }
