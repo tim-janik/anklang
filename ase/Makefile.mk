@@ -17,7 +17,11 @@ ase/include.deps		 += $>/external/rapidjson/rapidjson.h
 lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine
 ase/AnklangSynthEngine.sources	::= ase/main.cc $(ase/libsources.cc) $(ase/libsources.c)
 ase/AnklangSynthEngine.gensrc	::= $>/ase/api.jsonipc.cc
-ase/AnklangSynthEngine.objects	::= $(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources)) $(ase/AnklangSynthEngine.gensrc:.cc=.o) $(ase/tests/objects)
+ase/AnklangSynthEngine.objects	::= $(sort \
+	$(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources)) \
+	$(call SOURCE2_O, $(ase/AnklangSynthEngine.gensrc))   \
+	$(ase/tests/objects) \
+)
 ase/AnklangSynthEngine.objects	 += $(devices/4ase.objects)
 ALL_TARGETS += $(lib/AnklangSynthEngine)
 
