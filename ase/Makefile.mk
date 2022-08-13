@@ -151,6 +151,19 @@ $>/external/clap/clap.h: ase/Makefile.mk		| $>/external/
 	$Q test -e $@ && touch $@
 $(wildcard ase/clap*.cc): $>/external/clap/clap.h
 
+# == external/blake3 ==
+$>/external/blake3/blake3.h: ase/Makefile.mk		| $>/external/
+	@ $(eval H := 112becf0983b5c83efff07f20b458f2dbcdbd768fd46502e7ddd831b83550109)
+	@ $(eval U := https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.3.1.tar.gz)
+	@ $(eval T := BLAKE3-1.3.1.tar.gz)
+	$(QECHO) FETCH "$U"
+	$Q cd $>/external/ && rm -rf blake3* \
+	     $(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
+	$Q ln -s $(T:.tar.gz=)/c $>/external/blake3
+	$Q test -e $@ && touch $@
+ase/blake3impl.c: $>/external/blake3/blake3.h
+ase/blake3simd.c: $>/external/blake3/blake3.h
+
 # == AnklangSynthEngine ==
 $(ase/AnklangSynthEngine.objects): $(ase/include.deps) $(ase/libase.deps)
 $(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= -Iexternal/ -I$> -I$>/external/ $(GLIB_CFLAGS)
