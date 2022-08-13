@@ -148,9 +148,9 @@ $(wildcard ase/*.cc): $>/external/rapidjson/rapidjson.h
 
 # == external/clap ==
 $>/external/clap/clap.h: ase/Makefile.mk		| $>/external/
-	@ $(eval H := e99d297b9bca8dd71c4528f836840173e2415e2d5c800f0d475eed151924279d)
-	@ $(eval U := https://github.com/free-audio/clap/archive/refs/tags/1.0.2.tar.gz)
-	@ $(eval T := clap-1.0.2.tar.gz)
+	@ $(eval H := eef67a38df6c20fd4cb79698772d35d30aefc2e1a8d5275a5169f58cd530333e)
+	@ $(eval U := https://github.com/free-audio/clap/archive/refs/tags/1.1.1.tar.gz)
+	@ $(eval T := clap-1.1.1.tar.gz)
 	$(QECHO) FETCH "$U"
 	$Q cd $>/external/ && rm -rf clap* \
 	     $(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
