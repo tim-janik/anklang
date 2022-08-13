@@ -115,9 +115,13 @@ $>/%.o: $>/%.cc
 	$(QECHO) CXX $@
 	$(Q) $(CCACHE) $(CXX) $(CXXSTD) -fPIC $(compiledefs) $(compilecxxflags) -o $@ -c $<
 
+# == SOURCE2_O ==
+# $(call SOURCE2_O, sourcefiles...) - generate object file names from sources
+SOURCE2_O = $(sort $(foreach X, .c .C .cc .CC .y .l, $(subst $X,.o,$(filter %$X,$1))))
+
 # == BUILDDIR_O ==
-# $(call BUILDDIR_O, sourcefiles...) - generate object file names from sources
-BUILDDIR_O = $(addprefix $>/, $(sort $(foreach X, .c .C .cc .CC .y .l, $(subst $X,.o,$(filter %$X,$1)))))
+# $(call BUILDDIR_O, sourcefiles...) - generate builddir relative object file names from sources
+BUILDDIR_O = $(addprefix $>/, $(call SOURCE2_O,$1))
 
 # == LINKER ==
 # $(call LINKER, EXECUTABLE, OBJECTS, DEPS, LIBS, RELPATHS)
