@@ -785,6 +785,9 @@ public:
   save_state (String &blobfilename, ClapParamUpdateS &updates) override
   {
     updates.clear();
+    // first, flush plugin state to disk
+    if (plugin_file_reference && plugin_file_reference->save_resources)
+      plugin_file_reference->save_resources (plugin_);
     // store params if plugin_state->save is unimplemented
     if (!plugin_state)
       for (const auto &pinfo : param_infos_)
