@@ -1065,6 +1065,17 @@ string_substitute_char (const String &input, const char match, const char subst)
   return output;
 }
 
+/// Convert bytes in string `input` to hexadecimal numbers.
+String
+string_to_hex (const String &input)
+{
+  String s;
+  s.reserve (input.size() * 2);
+  for (const char &c : input)
+    s += string_format ("%02x", c);
+  return s;
+}
+
 /** Produce hexdump of a memory region.
  * Each output line consists of its hexadecimal offset, 16 hexadecimal bytes and the ASCII representation of the same 16 bytes.
  */
