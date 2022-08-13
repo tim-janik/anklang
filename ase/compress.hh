@@ -24,6 +24,10 @@ bool   is_png          (const String &input);
 bool   is_xz           (const String &input);
 bool   is_zip          (const String &input);
 
+
+String  blake3_hash_file   (const String &filename);
+String  blake3_hash_string (const String &input);
+
 bool    is_zstd          (const String &input);
 String  zstd_compress    (const String &input, int level = 0);
 String  zstd_compress    (const void *src, size_t src_size, int level = 0);
