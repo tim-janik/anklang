@@ -137,7 +137,7 @@ ClapDeviceImpl::get_device_path ()
         nums.insert (nums.begin(), string_from_int (index));
     }
   String s = string_join ("d", nums);
-  ProjectImpl *project = dynamic_cast<ProjectImpl*> (_project());
+  ProjectImpl *project = _project();
   Track *track = _track();
   if (project && track)
     s = string_format ("t%ud%s", project->track_index (*track), s);

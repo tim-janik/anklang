@@ -3,6 +3,7 @@
 #include "clapdevice.hh"
 #include "jsonipc/jsonipc.hh"
 #include "storage.hh"
+#include "project.hh"
 #include "processor.hh"
 #include "path.hh"
 #include "main.hh"

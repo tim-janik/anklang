@@ -274,13 +274,4 @@ Device::_track () const
   return nullptr;
 }
 
-ProjectImpl*
-Device::_project () const
-{
-  Gadget *last = nullptr;
-  for (Gadget *parent = this->_parent(); parent; parent = last->_parent())
-    last = parent;
-  return dynamic_cast<ProjectImpl*> (last);
-}
-
 } // Ase
