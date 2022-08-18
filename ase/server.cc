@@ -555,12 +555,17 @@ ServerImpl::musical_tuning_label (MusicalTuning musicaltuning) const
 static std::atomic<uint> user_note_id = 1;
 
 uint64
-ServerImpl::user_note (const String &text, const String &channel, UserNote::Flags flags, const String &r)
+ServerImpl::user_note (const String &text, const String &channel, UserNote::Flags flags, const String &rest)
 {
-  UserNote unote { user_note_id++, flags, channel, text };
+  UserNote unote { user_note_id++, flags, channel.empty() ? "misc" : channel, text, rest };
   ValueR vrec;
   json_parse (json_stringify (unote, Writ::SKIP_EMPTYSTRING), vrec);
   this->emit_event ("usernote", "", vrec);
+  String s;
+  s += string_format ("%s: usernote[%04x]: %s: %s", program_alias(), unote.noteid, unote.channel, unote.text);
+  if (!unote.rest.empty())
+    s += " (" + unote.rest + ")";
+  printerr ("%s\n", string_replace (s, "\n", "\t"));
   return unote.noteid;
 }
 

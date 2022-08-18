@@ -353,7 +353,7 @@ struct UserNote {
   enum Flags { APPEND, CLEAR, TRANSIENT };
   uint   noteid = 0;
   Flags  flags = APPEND;
-  String channel, text;
+  String channel, text, rest;
 };
 
 /// Telemetry segment location.
@@ -378,7 +378,7 @@ public:
   virtual String error_blurb          (Error error) const = 0;
   virtual String musical_tuning_label (MusicalTuning musicaltuning) const = 0;
   virtual String musical_tuning_blurb (MusicalTuning musicaltuning) const = 0;
-  virtual uint64 user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &r = "") = 0;
+  virtual uint64 user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &rest = "") = 0;
   virtual bool   user_reply           (uint64 noteid, uint r) = 0;
   virtual bool   broadcast_telemetry  (const TelemetrySegmentS &segments,
                                        int32 interval_ms) = 0;  ///< Broadcast telemetry memory segments to the current Jsonipc connection.
