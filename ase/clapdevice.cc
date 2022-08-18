@@ -189,7 +189,7 @@ ClapDeviceImpl::serialize (WritNode &xs)
     // load blob and value array
     xs["state_blob"] & blobname;
     if (!blobname.empty())
-      blob = stream_reader_zip_member (_project()->loader_archive(), blobname);
+      blob = _project()->load_blob (blobname);
     ValueS load_values;
     xs["param_values"] & load_values;
     // reconstruct parameter updates

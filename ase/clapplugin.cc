@@ -811,7 +811,7 @@ public:
         errno = 0;
         bool ok = plugin_state->save (plugin_, &ostream);
         ok &= swp->close();
-        if (!ok)
+        if (!ok) // TODO: user_note
           printerr ("%s: %s: write error: %s\n", clapid(), blobfilename, strerror (errno ? errno : EIO));
         // keep state only if size >0
         if (!ok || !Path::check (blobfilename, "frs"))

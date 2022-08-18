@@ -3,6 +3,7 @@
 #include "jsonipc/jsonipc.hh"
 #include "main.hh"
 #include "processor.hh"
+#include "compress.hh"
 #include "path.hh"
 #include "serialize.hh"
 #include "storage.hh"
@@ -15,6 +16,25 @@ namespace Ase {
 
 // == ProjectImpl ==
 JSONIPC_INHERIT (ProjectImpl, Project);
+
+using StringPairS = std::vector<std::pair<String,String>>;
+
+struct ProjectImpl::PStorage {
+  String loading_file;
+  String writer_cachedir;
+  StringPairS writer_files;
+  PStorage (PStorage **ptrp) :
+    ptrp_ (ptrp)
+  {
+    *ptrp_ = this;
+  }
+  ~PStorage()
+  {
+    *ptrp_ = nullptr;
+  }
+private:
+  PStorage **const ptrp_ = nullptr;
+};
 
 static std::vector<ProjectImplP> all_projects;
 
@@ -52,10 +72,12 @@ ProjectImpl::create (const String &projectname)
 void
 ProjectImpl::discard ()
 {
+  return_unless (!discarded_);
   stop_playback();
   const size_t nerased = Aux::erase_first (all_projects, [this] (auto ptr) { return ptr.get() == this; });
   if (nerased)
     ; // resource cleanups...
+  discarded_ = true;
 }
 
 static bool
@@ -74,7 +96,8 @@ make_anklang_dir (const String path)
 Error
 ProjectImpl::save_dir (const String &pdir, bool selfcontained)
 {
-  assert_return (writer_cachedir_ == "", Error::OPERATION_BUSY);
+  assert_return (storage_ == nullptr, Error::OPERATION_BUSY);
+  PStorage storage (&storage_); // storage_ = &storage;
   const String dotanklang = ".anklang";
   String projectfile;
   String path = Path::normalize (Path::abspath (pdir));
@@ -111,7 +134,7 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
   if (!string_endswith (projectfile, dotanklang))
     projectfile += dotanklang;
   anklang_cachedir_clean_stale();
-  writer_cachedir_ = anklang_cachedir_create();
+  storage_->writer_cachedir = anklang_cachedir_create();
   StorageWriter ws (Storage::AUTO_ZSTD);
   Error error = ws.open_with_mimetype (Path::join (path, projectfile), "application/x-anklang");
   if (!error)
@@ -122,46 +145,69 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
       error = ws.store_file_data ("project.json", jsd, true);
     }
   if (!error)
-    for (const String &path : writer_files_) {
-      error = ws.store_file (Path::basename (path), path);
+    for (const auto &[path, dest] : storage_->writer_files) {
+      error = ws.store_file (dest, path);
       if (!!error) {
-        printerr ("%s: %s: %s\n", program_alias(), path, ase_error_blurb (error));
+        printerr ("%s: %s: %s: %s\n", program_alias(), __func__, path, ase_error_blurb (error));
         break;
       }
     }
-  writer_files_.clear();
+  storage_->writer_files.clear();
   if (!error)
     error = ws.close();
   if (!!error)
     ws.remove_opened();
-  anklang_cachedir_cleanup (writer_cachedir_);
-  writer_cachedir_ = "";
+  anklang_cachedir_cleanup (storage_->writer_cachedir);
   return error;
 }
 
 String
 ProjectImpl::writer_file_name (const String &filename) const
 {
-  assert_return (!writer_cachedir_.empty(), "");
-  return Path::join (writer_cachedir_, filename);
+  assert_return (storage_ != nullptr, "");
+  assert_return (!storage_->writer_cachedir.empty(), "");
+  return Path::join (storage_->writer_cachedir, filename);
 }
 
 Error
 ProjectImpl::writer_add_file (const String &filename)
 {
-  assert_return (!writer_cachedir_.empty(), Error::INTERNAL);
+  assert_return (storage_ != nullptr, Error::INTERNAL);
+  assert_return (!storage_->writer_cachedir.empty(), Error::INTERNAL);
   if (!Path::check (filename, "frw"))
     return Error::FILE_NOT_FOUND;
-  if (!string_startswith (filename, writer_cachedir_))
+  if (!string_startswith (filename, storage_->writer_cachedir))
     return Error::FILE_OPEN_FAILED;
-  writer_files_.push_back (filename);
+  storage_->writer_files.push_back ({ filename, Path::basename (filename) });
+  return Error::NONE;
+}
+
+Error
+ProjectImpl::writer_collect (const String &filename, String *hexhash)
+{
+  assert_return (storage_ != nullptr, Error::INTERNAL);
+  assert_return (!storage_->writer_cachedir.empty(), Error::INTERNAL);
+  if (!Path::check (filename, "fr"))
+    return Error::FILE_NOT_FOUND;
+  // TODO: move to aklang dir before hashing
+  const String bhash = blake3_hash_file (filename);
+  if (bhash.empty())
+    return Error::FILE_NOT_FOUND;
+  *hexhash = string_to_hex (bhash);
+  const String bdest = string_format ("blake3/%s", *hexhash);
+  for (const auto &[path, dest] : storage_->writer_files) {
+    if (dest == bdest) // already in archive
+      return Error::NONE;
+  }
+  storage_->writer_files.push_back ({ filename, bdest });
   return Error::NONE;
 }
 
 Error
 ProjectImpl::load_project (const String &filename)
 {
-  assert_return (loading_file_.empty(), Error::INTERNAL);
+  assert_return (storage_ == nullptr, Error::OPERATION_BUSY);
+  PStorage storage (&storage_); // storage_ = &storage;
   String fname = filename;
   // turn /dir/.anklang.project -> /dir/
   if (Path::basename (fname) == ".anklang.project" && is_anklang_dir (Path::dirname (fname)))
@@ -171,25 +217,24 @@ ProjectImpl::load_project (const String &filename)
     fname = Path::join (fname, Path::basename (Path::strip_slashes (Path::normalize (fname)))) + ".anklang";
   // add missing '.anklang' extension
   if (!Path::check (fname, "e"))
-    {
-      fname += ".anklang";
-      if (!Path::check (fname, "e"))
-        return ase_error_from_errno (errno);
-    }
-  String dirname = Path::dirname (fname);
-  StorageReader rs (Storage::AUTO_ZSTD);
+    fname += ".anklang";
+  // check for readable file
+  if (!Path::check (fname, "e"))
+    return ase_error_from_errno (errno);
   // try reading .anklang container
+  StorageReader rs (Storage::AUTO_ZSTD);
   Error error = rs.open_for_reading (fname);
   if (!!error)
     return error;
-  loading_file_ = fname;
   if (rs.stringread ("mimetype") != "application/x-anklang")
     return Error::BAD_PROJECT;
   // find project.json *inside* container
   String jsd = rs.stringread ("project.json");
   if (jsd.empty() && errno)
     return Error::FORMAT_INVALID;
+  storage_->loading_file = fname;
 #if 0 // unimplemented
+  String dirname = Path::dirname (fname);
   // search in dirname or dirname/..
   if (is_anklang_dir (dirname))
     rs.search_dir (dirname);
@@ -203,8 +248,22 @@ ProjectImpl::load_project (const String &filename)
   // parse project
   if (!json_parse (jsd, *this))
     return Error::PARSE_ERROR;
-  loading_file_ = "";
   return Error::NONE;
+}
+
+StreamReaderP
+ProjectImpl::load_blob (const String &filename)
+{
+  assert_return (storage_ != nullptr, nullptr);
+  assert_return (!storage_->loading_file.empty(), nullptr);
+  return stream_reader_zip_member (storage_->loading_file, filename);
+}
+
+String
+ProjectImpl::loader_resolve (const String &hexhash)
+{
+  // TODO: load hash_list, resolve hash_list[hexhash] file relative to anklang_dir (loading_file)
+  return "";
 }
 
 void
@@ -466,6 +525,7 @@ ProjectImpl::update_tempo ()
 void
 ProjectImpl::start_playback ()
 {
+  assert_return (!discarded_);
   main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
@@ -515,6 +575,7 @@ ProjectImpl::is_playing ()
 TrackP
 ProjectImpl::create_track ()
 {
+  assert_return (!discarded_, nullptr);
   const bool havemaster = tracks_.size() != 0;
   TrackImplP track = TrackImpl::make_shared (!havemaster);
   tracks_.insert (tracks_.end() - int (havemaster), track);
