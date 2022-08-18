@@ -630,6 +630,11 @@ public:
           plugin_ = factory->create_plugin (factory, &phost, clapid().c_str());
       }
   }
+  ~ClapPluginHandleImpl()
+  {
+    destroy();
+    assert_return (!_parent());
+  }
   bool
   init_plugin ()
   {
@@ -664,10 +669,6 @@ public:
     (void) plugin_tail;
     get_port_infos();
     return true;
-  }
-  ~ClapPluginHandleImpl()
-  {
-    destroy();
   }
   bool plugin_activated = false;
   bool plugin_processing = false;

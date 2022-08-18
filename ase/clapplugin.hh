@@ -49,7 +49,7 @@ struct ClapParamInfo {
 using ClapParamInfoS = std::vector<ClapParamInfo>;
 
 // == ClapPluginHandle ==
-class ClapPluginHandle : public std::enable_shared_from_this<ClapPluginHandle> {
+class ClapPluginHandle : public GadgetImpl {
 public:
   const ClapPluginDescriptor                    &descriptor;
   const std::vector<clap_audio_ports_config_t>  &audio_ports_configs = audio_ports_configs_;

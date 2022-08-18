@@ -115,10 +115,14 @@ ClapDeviceImpl::ClapDeviceImpl (ClapPluginHandleP claphandle) :
   paramschange_ = on_event ("params:change", [this] (const Event &event) {
     proc_params_change (event);
   });
+  if (handle_)
+    handle_->_set_parent (this);
 }
 
 ClapDeviceImpl::~ClapDeviceImpl()
 {
+  if (handle_)
+    handle_->_set_parent (nullptr);
   if (handle_)
     handle_->destroy();
   handle_ = nullptr;
