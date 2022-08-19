@@ -194,6 +194,21 @@ mkdirs (const String &dirpath, uint mode)
   return false;                 // !IS_DIR
 }
 
+/// Check if `descendant` belongs to the directory hierarchy under `dirpath`.
+bool
+dircontains (const String &dirpath, const String &descendant, String *relpath)
+{
+  String child = realpath (descendant);
+  String dir = realpath (dirpath) + ASE_DIRSEP;
+  if (0 == child.compare (0, dir.size(), dir))
+    {
+      if (relpath)
+        *relpath = child.substr (dir.size(), String::npos);
+      return true;
+    }
+  return false;
+}
+
 /// Recursively delete directory tree.
 void
 rmrf (const String &dir)

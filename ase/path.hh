@@ -37,6 +37,7 @@ String       strip_slashes       (const String &path);
 String       abspath             (const String &path, const String &incwd = "");
 bool         isabs               (const String &path);
 bool         isdirname           (const String &path);
+bool         dircontains         (const String &dirpath, const String &descendant, String *relpath = nullptr);
 bool         mkdirs              (const String &dirpath, uint mode = 0750);
 void         rmrf                (const String &dir);
 bool         copy_file           (const String &src, const String &dest);
