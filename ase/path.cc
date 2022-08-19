@@ -418,6 +418,15 @@ skip_root (const String &path)
   return path.substr (p - &path[0]);
 }
 
+/// Retrieve the on-disk size in bytes of `path`.
+size_t
+file_size (const String &path)
+{
+  std::error_code ec = {};
+  size_t size = std::filesystem::file_size (path, ec); // [out] ec
+  return ec ? 0 : size;
+}
+
 static int
 errno_check_file (const char *file_name, const char *mode)
 {
