@@ -6,11 +6,20 @@
 #include "internal.hh"
 #include <unistd.h>     // getuid
 #include <sys/stat.h>   // lstat
+#include <sys/types.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
 #include <cstring>      // strchr
 #include <glob.h>       // glob
 #include <mutex>
+
+#if __has_include(<linux/fs.h>)
+#include <linux/fs.h>
+#endif
+
 #include <filesystem>
 namespace Fs = std::filesystem;
+
 
 #define IS_DIRSEP(c)                    ((c) == ASE_DIRSEP || (c) == ASE_DIRSEP2)
 #define IS_SEARCHPATH_SEPARATOR(c)      ((c) == ASE_SEARCHPATH_SEPARATOR || (c) == ';') // make ';' work under Windows and Unix
@@ -191,6 +200,40 @@ rmrf (const String &dir)
 {
   std::error_code ec;
   std::filesystem::remove_all (dir, ec);
+}
+
+/// Copy a file to a new non-existing location, sets errno and returns false on error.
+bool
+copy_file (const String &src, const String &dest)
+{
+  unsigned long ficlone = 0;
+#ifdef FICLONE
+  ficlone = FICLONE;
+#endif
+  // try cloning a file, supported on XFS & BTRFS
+  if (ficlone)
+    {
+      const int srcfd = open (src.c_str(), O_RDONLY | O_NOCTTY);
+      if (srcfd >= 0)
+        {
+          const int dstfd = open (dest.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
+          bool cloned = dstfd >= 0 ? 0 == ioctl (dstfd, ficlone, srcfd) : false; // FICLONE
+          close (srcfd);
+          if (dstfd >= 0)
+            {
+              cloned &= 0 == close (dstfd);
+              if (cloned)
+                return true;
+              // cleanup failed cloning attempt
+              unlink (dest.c_str());
+            }
+        }
+    }
+  // attempt regular file copy
+  std::error_code ec = {};
+  std::filesystem::copy_file (src, dest, ec); // [out] ec
+  errno = ec ? ec.value() : 0;
+  return !ec;
 }
 
 /// Get a @a user's home directory, uses $HOME if no @a username is given.

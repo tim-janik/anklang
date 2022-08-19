@@ -39,6 +39,7 @@ bool         isabs               (const String &path);
 bool         isdirname           (const String &path);
 bool         mkdirs              (const String &dirpath, uint mode = 0750);
 void         rmrf                (const String &dir);
+bool         copy_file           (const String &src, const String &dest);
 size_t       file_size           (const String &path);
 StringPair   split_extension     (const std::string &filepath, bool lastdot = false);
 String       expand_tilde        (const String &path);
