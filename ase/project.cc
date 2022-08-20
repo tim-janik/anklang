@@ -22,7 +22,9 @@ using StringPairS = std::vector<std::pair<String,String>>;
 struct ProjectImpl::PStorage {
   String loading_file;
   String writer_cachedir;
+  String anklang_dir;
   StringPairS writer_files;
+  StringPairS writer_hashes;
   PStorage (PStorage **ptrp) :
     ptrp_ (ptrp)
   {
@@ -128,6 +130,7 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
     }
   if (!make_anklang_dir (path))
     return ase_error_from_errno (errno);
+  storage_->anklang_dir = path;
   // here, path is_anklang_dir
   if (projectfile.empty())
     projectfile = "project";
@@ -183,23 +186,64 @@ ProjectImpl::writer_add_file (const String &filename)
 }
 
 Error
-ProjectImpl::writer_collect (const String &filename, String *hexhash)
+ProjectImpl::writer_collect (const String &filename, String *hexhashp)
 {
   assert_return (storage_ != nullptr, Error::INTERNAL);
-  assert_return (!storage_->writer_cachedir.empty(), Error::INTERNAL);
+  assert_return (!storage_->anklang_dir.empty(), Error::INTERNAL);
   if (!Path::check (filename, "fr"))
     return Error::FILE_NOT_FOUND;
-  // TODO: move to aklang dir before hashing
-  const String bhash = blake3_hash_file (filename);
-  if (bhash.empty())
-    return Error::FILE_NOT_FOUND;
-  *hexhash = string_to_hex (bhash);
-  const String bdest = string_format ("blake3/%s", *hexhash);
-  for (const auto &[path, dest] : storage_->writer_files) {
-    if (dest == bdest) // already in archive
+  // determine hash of file to collect
+  const String hexhash = string_to_hex (blake3_hash_file (filename));
+  if (hexhash.empty())
+    return ase_error_from_errno (errno ? errno : EIO);
+  // resolve against existing hashes
+  for (const auto &hf : storage_->writer_hashes)
+    if (hf.first == hexhash)
+      {
+        *hexhashp = hexhash;
+        return Error::NONE;
+      }
+  // file may be within project directory
+  String relpath;
+  if (Path::dircontains (storage_->anklang_dir, filename, &relpath))
+    {
+      storage_->writer_hashes.push_back ({ hexhash, relpath });
+      *hexhashp = hexhash;
       return Error::NONE;
-  }
-  storage_->writer_files.push_back ({ filename, bdest });
+    }
+  // determine unique path name
+  const size_t file_size = Path::file_size (filename);
+  const String basedir = storage_->anklang_dir;
+  relpath = Path::join ("samples", Path::basename (filename));
+  String dest = Path::join (basedir, relpath);
+  size_t i = 0;
+  while (Path::check (dest, "e"))
+    {
+      if (file_size == Path::file_size (dest))
+        {
+          const String althash = string_to_hex (blake3_hash_file (dest));
+          if (althash == hexhash)
+            {
+              // found file with same hash within project directory
+              storage_->writer_hashes.push_back ({ hexhash, relpath });
+              *hexhashp = hexhash;
+              return Error::NONE;
+            }
+        }
+      // add counter to create unique name
+      const StringPair parts = Path::split_extension (relpath, true);
+      dest = Path::join (basedir, string_format ("%s(%u)%s", parts.first, ++i, parts.second));
+    }
+  // create parent dir
+  if (!Path::mkdirs (Path::dirname (dest)))
+    return ase_error_from_errno (errno);
+  // copy into project dir
+  const bool copied = Path::copy_file (filename, dest);
+  if (!copied)
+    return ase_error_from_errno (errno);
+  // success
+  storage_->writer_hashes.push_back ({ hexhash, relpath });
+  *hexhashp = hexhash;
   return Error::NONE;
 }
 

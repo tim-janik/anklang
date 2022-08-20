@@ -68,7 +68,7 @@ public:
   Error                save_dir          (const String &dir, bool selfcontained) override;
   String               writer_file_name  (const String &filename) const;
   Error                writer_add_file   (const String &filename);
-  Error                writer_collect    (const String &filename, String *hexhash);
+  Error                writer_collect    (const String &filename, String *hexhashp);
   TelemetryFieldS      telemetry         () const override;
   AudioProcessorP      master_processor  () const;
   ssize_t              track_index       (const Track &child) const;
