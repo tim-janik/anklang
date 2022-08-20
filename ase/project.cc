@@ -103,12 +103,17 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
   const String dotanklang = ".anklang";
   String projectfile;
   String path = Path::normalize (Path::abspath (pdir));
-  // check path
-  if (Path::check (path, "d"))                  // existing directory
-    path = Path::dir_terminate (path);
-  else if (Path::check (path, "e"))             // existing file
+  // check path is a file
+  if (path.back() == '/' ||
+      Path::check (path, "d"))                  // need file not directory
+    return Error::FILE_IS_DIR;
+  // force .anklang extension
+  if (!string_endswith (path, dotanklang))
+    path += dotanklang;
+  // existing files need proper project directories
+  if (Path::check (path, "e"))                  // existing file
     {
-      String dir = Path::dirname (path);
+      const String dir = Path::dirname (path);
       if (!is_anklang_dir (dir))
         return Error::BAD_PROJECT;
       projectfile = Path::basename (path);
@@ -116,30 +121,28 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
     }
   else                                          // new file name
     {
-      while (path.back() == '/')                // strip trailing slashes
-        path = Path::dirname (path);
-      if (string_endswith (path, dotanklang))   // strip .anklang
-        path.resize (path.size() - dotanklang.size());
       projectfile = Path::basename (path);
       const String parentdir = Path::dirname (path);
       if (is_anklang_dir (parentdir))
         path = parentdir;
-      else if (!is_anklang_dir (path) &&
-          !Path::mkdirs (path))                 // create new project dir
-        return ase_error_from_errno (errno);
+      else {                                    // use projectfile stem as dir
+        assert_return (string_endswith (path, dotanklang), Error::INTERNAL);
+        path.resize (path.size() - dotanklang.size());
+      }
     }
+  // create parent directory
+  if (!Path::mkdirs (path))
+    return ase_error_from_errno (errno);
+  // ensure path is_anklang_dir
   if (!make_anklang_dir (path))
     return ase_error_from_errno (errno);
   storage_->anklang_dir = path;
-  // here, path is_anklang_dir
-  if (projectfile.empty())
-    projectfile = "project";
-  if (!string_endswith (projectfile, dotanklang))
-    projectfile += dotanklang;
+  const String abs_projectfile = Path::join (path, projectfile);
+  // start writing
   anklang_cachedir_clean_stale();
   storage_->writer_cachedir = anklang_cachedir_create();
   StorageWriter ws (Storage::AUTO_ZSTD);
-  Error error = ws.open_with_mimetype (Path::join (path, projectfile), "application/x-anklang");
+  Error error = ws.open_with_mimetype (abs_projectfile, "application/x-anklang");
   if (!error)
     {
       // serialize Project
