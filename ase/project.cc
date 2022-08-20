@@ -96,13 +96,12 @@ make_anklang_dir (const String path)
 }
 
 Error
-ProjectImpl::save_dir (const String &pdir, bool selfcontained)
+ProjectImpl::save_project (const String &savepath, bool collect)
 {
   assert_return (storage_ == nullptr, Error::OPERATION_BUSY);
   PStorage storage (&storage_); // storage_ = &storage;
   const String dotanklang = ".anklang";
-  String projectfile;
-  String path = Path::normalize (Path::abspath (pdir));
+  String projectfile, path = Path::normalize (Path::abspath (savepath));
   // check path is a file
   if (path.back() == '/' ||
       Path::check (path, "d"))                  // need file not directory

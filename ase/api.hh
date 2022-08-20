@@ -312,7 +312,7 @@ public:
   virtual bool            remove_track   (Track&) = 0; ///< Remove a track owned by this Project.
   virtual TrackS          list_tracks    () = 0;       ///< Retrieve a list of all tracks.
   virtual TrackP          master_track   () = 0;       ///< Retrieve the master track.
-  virtual Error           save_dir       (const String &dir, bool selfcontained) = 0; ///< Store Project data in `dir`.
+  virtual Error           save_project   (const String &filename, bool collect) = 0; ///< Store Project and collect external files.
   virtual Error           load_project   (const String &filename) = 0; ///< Load project from file `filename`.
   virtual TelemetryFieldS telemetry      () const = 0; ///< Retrieve project telemetry locations.
   virtual void            group_undo     (const String &undoname) = 0; ///< Merge upcoming undo steps.

@@ -65,7 +65,7 @@ public:
   Error                load_project      (const String &filename) override;
   StreamReaderP        load_blob         (const String &filename);
   String               loader_resolve    (const String &hexhash);
-  Error                save_dir          (const String &dir, bool selfcontained) override;
+  Error                save_project      (const String &filename, bool collect) override;
   String               writer_file_name  (const String &filename) const;
   Error                writer_add_file   (const String &filename);
   Error                writer_collect    (const String &filename, String *hexhashp);
