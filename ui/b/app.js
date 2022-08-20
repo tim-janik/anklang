@@ -146,11 +146,10 @@ export class AppClass {
       this.shell.update();
     return Ase.Error.NONE;
   }
-  async save_project (projectpath) {
+  async save_project (projectpath, collect = true) {
     Shell.show_spinner();
-    const self_contained = false;
     let error = !Data.project ? Ase.Error.INTERNAL :
-		  Data.project.save_dir (projectpath, self_contained);
+		  Data.project.save_project (projectpath, collect);
     error = await error;
     Shell.hide_spinner();
     return error;
