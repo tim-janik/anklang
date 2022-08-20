@@ -782,27 +782,41 @@ vpath_find (const String &file, const String &mode)
   return file;
 }
 
+/// Create list with filenames matching `pathpattern` with shell wildcards.
+void
+glob (const String &pathpattern, StringS &matches)
+{
+  glob_t iglob = { 0, };
+  const int ir = ::glob (pathpattern.c_str(), GLOB_TILDE, nullptr, &iglob);
+  if (ir != 0)
+    return;
+  for (size_t i = 0; i < iglob.gl_pathc; i++)
+    matches.push_back (iglob.gl_pathv[i]);
+  globfree (&iglob);
+}
+
 /// Recursively match files with glob `pattern` under `basedir`.
 void
 rglob (const String &basedir, const String &pattern, StringS &matches)
 {
   glob_t iglob = { 0, };
-  const int ir = glob (basedir.c_str(), GLOB_TILDE_CHECK | GLOB_NOSORT | GLOB_MARK | GLOB_ONLYDIR, nullptr, &iglob);
+  const int ir = ::glob (basedir.c_str(), GLOB_TILDE_CHECK | GLOB_NOSORT | GLOB_MARK | GLOB_ONLYDIR, nullptr, &iglob);
   if (ir != 0)
     return;
-  for (size_t i = 0; i < iglob.gl_pathc; i++) {
-    std::string subdir = iglob.gl_pathv[i];
-    if (subdir[subdir.size()-1] != ASE_DIRSEP && subdir[subdir.size()-1] != ASE_DIRSEP2)
-      continue;
-    rglob (subdir + "*", pattern, matches);
-    glob_t jglob = { 0, };
-    const int jr = glob ((subdir + pattern).c_str(), GLOB_NOSORT, nullptr, &jglob);
-    if (jr != 0)
-      continue;
-    for (size_t j = 0; j < jglob.gl_pathc; j++)
-      matches.push_back (jglob.gl_pathv[j]);
-    globfree (&jglob);
-  }
+  for (size_t i = 0; i < iglob.gl_pathc; i++)
+    {
+      std::string subdir = iglob.gl_pathv[i];
+      if (subdir[subdir.size()-1] != ASE_DIRSEP && subdir[subdir.size()-1] != ASE_DIRSEP2)
+        continue;
+      rglob (subdir + "*", pattern, matches);
+      glob_t jglob = { 0, };
+      const int jr = ::glob ((subdir + pattern).c_str(), GLOB_NOSORT, nullptr, &jglob);
+      if (jr != 0)
+        continue;
+      for (size_t j = 0; j < jglob.gl_pathc; j++)
+        matches.push_back (jglob.gl_pathv[j]);
+      globfree (&jglob);
+    }
   globfree (&iglob);
 }
 

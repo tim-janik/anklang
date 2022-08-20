@@ -77,6 +77,7 @@ StringS      searchpath_split    (const String &searchpath);
 String       searchpath_join     (const StringS &string_vector);
 template<class ...S>
 String       searchpath_join     (String path, const S &...more);
+void         glob                (const String &pathpattern, StringS &matches);
 void         rglob               (const String &basedir, const String &pattern, StringS &matches);
 void         unique_realpaths    (StringS &pathnames);
 
