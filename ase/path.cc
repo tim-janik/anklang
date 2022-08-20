@@ -811,9 +811,7 @@ unique_realpaths (StringS &pathnames)
     }
   }
   pathnames.resize (j);
-  std::sort (pathnames.begin(), pathnames.end(), [] (auto &a, auto &b) -> bool {
-    return strverscmp (a.c_str(), b.c_str()) <= 0;
-  });
+  strings_version_sort (&pathnames);
   pathnames.erase (std::unique (pathnames.begin(), pathnames.end()), pathnames.end());
 }
 

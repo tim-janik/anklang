@@ -86,6 +86,9 @@ void         memset4		   (uint32 *mem, uint32 filler, uint length);
 long double posix_locale_strtold   (const char *nptr, char **endptr);
 long double current_locale_strtold (const char *nptr, char **endptr);
 
+StringS strings_version_sort (const StringS &strings, bool reverse = false);
+void    strings_version_sort (StringS *strings, bool reverse = false);
+
 // == UTF-8 String Helpers ==
 String string_normalize_nfc  (const String &src);                       // Normalized, composed form UTF-8 string
 String string_normalize_nfd  (const String &src);
