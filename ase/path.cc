@@ -173,7 +173,6 @@ isdirname (const String &path)
 bool
 mkdirs (const String &dirpath, uint mode)
 {
-  std::vector<Fs::path> dirs;
   Fs::path target = dirpath;
   if (check (target, "d"))
     return true;                // IS_DIR
@@ -247,6 +246,15 @@ copy_file (const String &src, const String &dest)
   // attempt regular file copy
   std::error_code ec = {};
   std::filesystem::copy_file (src, dest, ec); // [out] ec
+  errno = ec ? ec.value() : 0;
+  return !ec;
+}
+
+bool
+rename (const String &src, const String &dest)
+{
+  std::error_code ec = {};
+  std::filesystem::rename (src, dest, ec); // [out] ec
   errno = ec ? ec.value() : 0;
   return !ec;
 }
