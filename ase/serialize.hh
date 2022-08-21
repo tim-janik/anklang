@@ -127,6 +127,12 @@ struct WritConverter {
 };
 
 // == Implementations ==
+/// Has_serialize_f<T> - Check if `serialize(T&,WritNode&)` is provided for `T`.
+template<class, class = void> struct
+Has_serialize_f : std::false_type {};
+template<class T> struct
+Has_serialize_f<T, void_t< decltype (serialize (std::declval<T&>(), std::declval<WritNode&>())) > > : std::true_type {};
+
 template<class T> inline void
 Writ::save (T &source)
 {
@@ -435,18 +441,21 @@ struct WritConverter<T, REQUIRESv< !std::is_base_of<Serializable,T>::value &&
                                    std::is_class<T>::value > >
 {
   static bool
-  check ()
-  {
-    if (Jsonipc::Serializable<T>::is_serializable())
-      return true;
-    Writ::not_serializable (typeid_name<T>());
-    return false;
-  }
-  static bool
   save_value (WritNode node, T &obj, const StringS &typedata, const String &fieldname)
   {
-    if (!check())
-      return false;
+    if (!Jsonipc::Serializable<T>::is_serializable())
+      {
+        if constexpr (Has_serialize_f<T>::value)
+          {
+            ASE_ASSERT_RETURN (node.value().index() == Value::NONE, false);
+            node.value() = ValueR::empty_record;        // linking not supported
+            serialize (obj, node);
+            node.purge_value();
+            return true;
+          }
+        Writ::not_serializable (typeid_name<T>());
+        return false;
+      }
     rapidjson::Document document (rapidjson::kNullType);
     Jsonipc::JsonValue &docroot = document;
     docroot = Jsonipc::Serializable<T>::serialize_to_json (obj, document.GetAllocator()); // move semantics!
@@ -457,8 +466,17 @@ struct WritConverter<T, REQUIRESv< !std::is_base_of<Serializable,T>::value &&
   static bool
   load_value (WritNode node, T &obj, const StringS &typedata, const String &fieldname)
   {
-    if (!check())
-      return false;
+    if (!Jsonipc::Serializable<T>::is_serializable())
+      {
+        if constexpr (Has_serialize_f<T>::value)
+          {
+            if (node.value().index() == Value::RECORD)
+              serialize (obj, node);                    // linking not supported
+            return true;
+          }
+        Writ::not_serializable (typeid_name<T>());
+        return false;
+      }
     rapidjson::Document document (rapidjson::kNullType);
     Jsonipc::JsonValue &docroot = document;
     docroot = Jsonipc::to_json<Value> (node.value(), document.GetAllocator()); // move semantics!

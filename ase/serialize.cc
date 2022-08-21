@@ -390,6 +390,15 @@ Serializable::serialize (WritNode &xs)
 namespace { // Anon
 using namespace Ase;
 
+struct Simple { int i = 0; float f = 0; String s; };
+static void
+serialize (Simple &simple, WritNode &xs)
+{
+  xs["i"] & simple.i;
+  xs["f"] & simple.f;
+  xs["s"] & simple.s;
+}
+
 struct SBase : Serializable {
   String hi;
   double d;
@@ -461,6 +470,11 @@ ase_serialize()
     Tuple u = via_json (tuple);
     TASSERT (std::get<0> (u) == "TUPLE" && std::get<long> (u) == -618033988);
     TASSERT (fabs (std::get<2> (u) - 1.6180339887498948482) < 1e-16);
+  }
+  { // serialize (O&, WritNode&)
+    Simple simple { 7, -3.14159265358979, "SIMPLE" };
+    auto s2 = via_json (simple);
+    TASSERT (s2.i == 7 && fabs (s2.f - -3.14159265358979) < 1e-7 && s2.s == "SIMPLE");
   }
   { // Json types
     std::string s;
