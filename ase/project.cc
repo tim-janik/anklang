@@ -160,6 +160,8 @@ ProjectImpl::save_project (const String &savepath, bool collect)
   storage_->writer_files.clear();
   if (!error)
     error = ws.close();
+  if (!error)
+    saved_filename_ = abs_projectfile;
   if (!!error)
     ws.remove_opened();
   anklang_cachedir_cleanup (storage_->writer_cachedir);
@@ -249,6 +251,12 @@ ProjectImpl::writer_collect (const String &filename, String *hexhashp)
   return Error::NONE;
 }
 
+String
+ProjectImpl::saved_filename ()
+{
+  return saved_filename_;
+}
+
 Error
 ProjectImpl::load_project (const String &filename)
 {
@@ -294,6 +302,7 @@ ProjectImpl::load_project (const String &filename)
   // parse project
   if (!json_parse (jsd, *this))
     return Error::PARSE_ERROR;
+  saved_filename_ = storage_->loading_file;
   return Error::NONE;
 }
 
