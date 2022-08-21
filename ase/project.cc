@@ -146,6 +146,32 @@ ProjectImpl::save_project (const String &savepath, bool collect)
     return ase_error_from_errno (errno);
   storage_->anklang_dir = path;
   const String abs_projectfile = Path::join (path, projectfile);
+  // create backups
+  if (Path::check (abs_projectfile, "e"))
+    {
+      const String backupdir = Path::join (path, "backup");
+      if (!Path::mkdirs (backupdir))
+        return ase_error_from_errno (errno ? errno : EPERM);
+      const StringPair parts = Path::split_extension (projectfile, true);
+      const String backupname = Path::join (backupdir, parts.first + now_strftime (" (%y%m%dT%H%M%S)") + parts.second);
+      const String backupglob = Path::join (backupdir, parts.first + " ([0-9]*[0-9]T[0-9]*[0-9])" + parts.second);
+      if (!Path::rename (abs_projectfile, backupname))
+        ASE_SERVER.user_note (string_format ("## Backup failed\n%s: \\\nFailed to create backup: \\\n%s",
+                                             backupname, ase_error_blurb (ase_error_from_errno (errno))));
+      else // successful backup, now prune
+        {
+          StringS backups;
+          Path::glob (backupglob, backups);
+          strings_version_sort (&backups, true);
+          const int bmax = 24;
+          while (backups.size() > bmax)
+            {
+              const String bfile = backups.back();
+              backups.pop_back();
+              Path::rmrf (bfile);
+            }
+        }
+    }
   // start writing
   anklang_cachedir_clean_stale();
   storage_->writer_cachedir = anklang_cachedir_create();
