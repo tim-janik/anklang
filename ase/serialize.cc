@@ -455,6 +455,13 @@ ase_serialize()
     TASSERT (choice.ident == choice2.ident && choice.icon == choice2.icon && choice.label == choice2.label &&
              choice.blurb == choice2.blurb && choice.notice == choice2.notice && choice.warning == choice2.warning);
   }
+  { // tuple
+    using Tuple = std::tuple<String,long,double>;
+    Tuple tuple = { "TUPLE", -618033988, 1.6180339887498948482 };
+    Tuple u = via_json (tuple);
+    TASSERT (std::get<0> (u) == "TUPLE" && std::get<long> (u) == -618033988);
+    TASSERT (fabs (std::get<2> (u) - 1.6180339887498948482) < 1e-16);
+  }
   { // Json types
     std::string s;
     bool b;
