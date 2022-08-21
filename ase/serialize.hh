@@ -54,12 +54,15 @@ public:
   bool                   operator& (T &v);
   bool                   operator& (const WritLink &l);
   template<class T, class E = void>
-  bool                   serialize (T&, const String& = "", const StringS& = StringS());
-  template<class T> bool serialize (std::vector<T> &vec, const String& = "", const StringS& = StringS());
-  bool                   serialize (ValueS &vec, const String& = "", const StringS& = StringS());
-  bool                   serialize (ValueR &rec, const String& = "", const StringS& = StringS());
-  bool                   serialize (Value &val, const String& = "", const StringS& = StringS());
-  bool                   serialize (Serializable &sobj);
+  bool     serialize (T&, const String& = "", const StringS& = StringS());
+  template<class T>
+  bool     serialize (std::vector<T> &vec, const String& = "", const StringS& = StringS());
+  bool     serialize (ValueS &vec, const String& = "", const StringS& = StringS());
+  bool     serialize (ValueR &rec, const String& = "", const StringS& = StringS());
+  bool     serialize (Value &val, const String& = "", const StringS& = StringS());
+  bool     serialize (Serializable &sobj);
+  template<class ...T>
+  bool     serialize (std::tuple<T...> &tup, const String& = "", const StringS& = StringS());
 };
 
 // == Writ ==
@@ -263,6 +266,44 @@ WritNode::serialize (std::vector<T> &vec, const String &fieldname, const StringS
           WritNode nth_node (writ_, array[i]);
           nth_node & vec.back();
         }
+      return true;
+    }
+  return false;
+}
+
+template<class ...T> inline bool
+WritNode::serialize (std::tuple<T...> &tuple, const String &fieldname, const StringS &typedata)
+{
+  using Tuple = std::tuple<T...>;
+  if (in_save() && Writ::typedata_is_storable (typedata, fieldname))
+    {
+      value_ = ValueS();
+      ValueS &array = std::get<ValueS> (value_);
+      array.reserve (std::tuple_size_v<Tuple>);
+      auto save_arg = [&] (auto arg) {
+        array.push_back (Value());
+        WritNode nth_node (writ_, array.back());
+        nth_node & arg;
+      };
+      std::apply ([&] (auto &&...parampack) {
+        (save_arg (parampack), ...); // fold expression to unpack parampack
+      }, tuple);
+      return true;
+    }
+  if (in_load() && Writ::typedata_is_loadable (typedata, fieldname) &&
+      value_.index() == Value::ARRAY)
+    {
+      ValueS &array = std::get<ValueS> (value_);
+      size_t idx = 0;
+      auto load_arg = [&] (auto &arg) {
+        if (idx >= array.size())
+          return;
+        WritNode nth_node (writ_, array[idx++]);
+        nth_node & arg;
+      };
+      std::apply ([&] (auto &...parampack) {
+        (load_arg (parampack), ...); // fold expression to unpack parampack
+      }, tuple);
       return true;
     }
   return false;
