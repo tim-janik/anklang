@@ -25,6 +25,7 @@ struct ProjectImpl::PStorage {
   String anklang_dir;
   StringPairS writer_files;
   StringPairS writer_hashes;
+  StringPairS loader_hashes;
   PStorage (PStorage **ptrp) :
     ptrp_ (ptrp)
   {
@@ -83,13 +84,22 @@ ProjectImpl::discard ()
 }
 
 static bool
-is_anklang_dir (const String path)
+is_anklang_dir (const String &path)
 {
   return Path::check (Path::join (path, ".anklang.project"), "r");
 }
 
+static String
+find_anklang_parent_dir (const String &path)
+{
+  for (String p = path; !p.empty(); p = Path::dirname (p))
+    if (is_anklang_dir (p))
+      return p;
+  return "";
+}
+
 static bool
-make_anklang_dir (const String path)
+make_anklang_dir (const String &path)
 {
   String mime = Path::join (path, ".anklang.project");
   return Path::stringwrite (mime, "# ANKLANG(1) project directory\n");
@@ -287,6 +297,7 @@ ProjectImpl::load_project (const String &filename)
   if (jsd.empty() && errno)
     return Error::FORMAT_INVALID;
   storage_->loading_file = fname;
+  storage_->anklang_dir = find_anklang_parent_dir (storage_->loading_file);
 #if 0 // unimplemented
   String dirname = Path::dirname (fname);
   // search in dirname or dirname/..
@@ -317,17 +328,20 @@ ProjectImpl::load_blob (const String &filename)
 String
 ProjectImpl::loader_resolve (const String &hexhash)
 {
-  // TODO: load hash_list, resolve hash_list[hexhash] file relative to anklang_dir (loading_file)
+  return_unless (storage_ && storage_->loader_hashes.size(), "");
+  return_unless (!storage_->anklang_dir.empty(), "");
+  for (const auto& [hash,relpath] : storage_->loader_hashes)
+    if (hexhash == hash)
+      return Path::join (storage_->anklang_dir, relpath);
   return "";
 }
 
 void
 ProjectImpl::serialize (WritNode &xs)
 {
-  // provide writer_hashes early on
-  if (xs.in_load() && storage_ && storage_->writer_hashes.empty())
-    xs["filehashes"] & storage_->writer_hashes;
-  printerr ("ProjectImpl: %s: filehashes: %s\n", __func__,  json_stringify (storage_->writer_hashes, Writ::RELAXED));
+  // provide loader_hashes early on
+  if (xs.in_load() && storage_ && storage_->loader_hashes.empty())
+    xs["filehashes"] & storage_->loader_hashes;
   // serrialize children
   GadgetImpl::serialize (xs);
   // load tracks
