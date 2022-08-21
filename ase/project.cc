@@ -17,7 +17,7 @@ namespace Ase {
 // == ProjectImpl ==
 JSONIPC_INHERIT (ProjectImpl, Project);
 
-using StringPairS = std::vector<std::pair<String,String>>;
+using StringPairS = std::vector<std::tuple<String,String>>;
 
 struct ProjectImpl::PStorage {
   String loading_file;
@@ -202,7 +202,7 @@ ProjectImpl::writer_collect (const String &filename, String *hexhashp)
     return ase_error_from_errno (errno ? errno : EIO);
   // resolve against existing hashes
   for (const auto &hf : storage_->writer_hashes)
-    if (hf.first == hexhash)
+    if (std::get<0> (hf) == hexhash)
       {
         *hexhashp = hexhash;
         return Error::NONE;
@@ -324,17 +324,12 @@ ProjectImpl::loader_resolve (const String &hexhash)
 void
 ProjectImpl::serialize (WritNode &xs)
 {
+  // provide writer_hashes early on
+  if (xs.in_load() && storage_ && storage_->writer_hashes.empty())
+    xs["filehashes"] & storage_->writer_hashes;
+  printerr ("ProjectImpl: %s: filehashes: %s\n", __func__,  json_stringify (storage_->writer_hashes, Writ::RELAXED));
+  // serrialize children
   GadgetImpl::serialize (xs);
-  // save tracks
-  if (xs.in_save())
-    for (auto &trackp : tracks_)
-      {
-        const bool True = true;
-        WritNode xc = xs["tracks"].push();
-        xc & *trackp;
-        if (trackp == tracks_.back())           // master_track
-          xc.front ("mastertrack") & True;
-      }
   // load tracks
   if (xs.in_load())
     for (auto &xc : xs["tracks"].to_nodes())
@@ -344,6 +339,21 @@ ProjectImpl::serialize (WritNode &xs)
           trackp = shared_ptr_cast<TrackImpl> (create_track());
         xc & *trackp;
       }
+  // save tracks
+  if (xs.in_save())
+    {
+      for (auto &trackp : tracks_)
+        {
+          const bool True = true;
+          WritNode xc = xs["tracks"].push();
+          xc & *trackp;
+          if (trackp == tracks_.back())           // master_track
+            xc.front ("mastertrack") & True;
+        }
+      // store external reference hashes *after* all other objects
+      if (storage_ && storage_->writer_hashes.size())
+        xs["filehashes"] & storage_->writer_hashes;
+    }
 }
 
 UndoScope::UndoScope (ProjectImplP projectp) :
