@@ -2,7 +2,6 @@
 #include "serialize.hh"
 #include "jsonapi.hh"
 #include "utils.hh"
-#include "driver.hh"
 #include "internal.hh"
 #include <rapidjson/prettywriter.h>
 
@@ -406,7 +405,7 @@ struct SBase : Serializable {
   bool b0, b1;
   Error e = Error (0);
   std::vector<char> chars;
-  DriverEntry r;
+  TelemetryField tf;
   ServerP serverp;
   void
   fill()
@@ -421,9 +420,7 @@ struct SBase : Serializable {
     chars.push_back ('A');
     chars.push_back ('B');
     chars.push_back ('C');
-    r = { .devid = "RS232", .device_name = "Serial", .capabilities = "IO++",
-          .device_info = "DEVinfo", .notice = "Handle with care", .priority = 17,
-          .readonly = false, .writeonly = false };
+    tf = { .name = "NAME", .type = "TYPE", .offset = -1234567, .length = 987654321 };
   }
   void
   serialize (WritNode &xs) override
@@ -435,7 +432,7 @@ struct SBase : Serializable {
     xs["s"] & hi;
     xs["e"] & e;
     xs["chars"] & chars;
-    xs["driver"] & r;
+    xs["tf"] & tf;
     // xs["server"] & serverp; // <- pointer is not persistent
   }
 };
