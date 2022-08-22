@@ -35,6 +35,7 @@ enum class Error : int32_t {
   // Ase specific errors
   INTERNAL                      = 0x30000000,
   UNIMPLEMENTED,
+  // File related errors
   FILE_EOF                      = 0x30001000,
   FILE_OPEN_FAILED,
   FILE_SEEK_FAILED,
@@ -53,6 +54,7 @@ enum class Error : int32_t {
   CODEC_FAILURE,
   BROKEN_ARCHIVE,
   BAD_PROJECT,
+  NO_PROJECT_DIR,
   // Device errors
   DEVICE_NOT_AVAILABLE          = 0x30003000,
   DEVICE_ASYNC,
