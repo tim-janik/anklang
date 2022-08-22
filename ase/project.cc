@@ -124,7 +124,7 @@ ProjectImpl::save_project (const String &savepath, bool collect)
     {
       const String dir = Path::dirname (path);
       if (!is_anklang_dir (dir))
-        return Error::BAD_PROJECT;
+        return Error::NO_PROJECT_DIR;
       projectfile = Path::basename (path);
       path = dir;                               // file inside project dir
     }
