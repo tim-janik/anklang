@@ -216,6 +216,7 @@ WritNode::loadable (const String &key) const
 template<typename T> inline bool
 WritNode::operator& (T &v)
 {
+  static_assert (!std::is_const<T>::value, "serializable type <T> may not be const");
   return serialize (v, "");
 }
 
