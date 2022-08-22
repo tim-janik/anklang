@@ -8,6 +8,7 @@
 #include "path.hh"
 #include "main.hh"
 #include "compress.hh"
+#include "serialize.hh"
 #include "internal.hh"
 #include "gtk2wrap.hh"
 #include <clap/ext/draft/file-reference.h>
@@ -590,6 +591,10 @@ ClapAudioWrapper::convert_clap_events (const clap_process_t &process, const bool
     }
 }
 
+// == ClapResourceHash ==
+using ClapResourceHash = std::tuple<clap_id,String>; // resource_id, hex_hash
+using ClapResourceHashS = std::vector<ClapResourceHash>;
+
 // == ClapPluginHandleImpl ==
 class ClapPluginHandleImpl : public ClapPluginHandle {
 public:
@@ -683,7 +688,7 @@ public:
   std::vector<FdPoll> fd_polls_;
   std::vector<ClapParamInfoImpl> param_infos_;
   ClapParamInfoMap param_ids_;
-  ClapParamUpdateS *load_updates_ = nullptr;
+  ClapParamUpdateS *loader_updates_ = nullptr;
   void get_port_infos ();
   String get_param_value_text (clap_id param_id, double value);
   double get_param_value_double (clap_id param_id, const String &text);
@@ -691,6 +696,7 @@ public:
   void flush_event_params (const ClapEventParamS &events, ClapEventUnionS &output_events);
   void params_changed() override;
   void scan_params();
+  void resolve_file_references (ClapResourceHashS loader_hashes);
   ClapParamInfoImpl*
   find_param_info (clap_id clapid)
   {
@@ -757,9 +763,9 @@ public:
     return true;
   }
   void
-  load_state (StreamReaderP blob, const ClapParamUpdateS &updates) override
+  load_state (WritNode &xs, StreamReaderP blob, const ClapParamUpdateS &updates) override
   {
-    assert_return (load_updates_ == nullptr);
+    assert_return (loader_updates_ == nullptr);
     // load saved blob
     if (blob)
       {
@@ -778,16 +784,22 @@ public:
           printerr ("%s: blob read error: %s\n", clapid(), strerror (errno ? errno : EIO));
       }
     // queue parameter update events
-    if (plugin_params && updates.size())
-      load_updates_ = new ClapParamUpdateS (updates);
+    if (plugin_params && updates.size()) // TODO: flush right away
+      loader_updates_ = new ClapParamUpdateS (updates);
+    // update collected files
+    ClapResourceHashS loader_hashes;
+    xs["resource_hashes"] & loader_hashes;
+    printerr ("LOADED: resource_hashes: %s\n", json_stringify (loader_hashes));
+    resolve_file_references (loader_hashes);
   }
   void
-  save_state (String &blobfilename, ClapParamUpdateS &updates) override
+  save_state (WritNode &xs, String &stateblob, ClapParamUpdateS &updates) override
   {
     updates.clear();
     // first, flush plugin state to disk
+    bool need_save_resources = false;
     if (plugin_file_reference && plugin_file_reference->save_resources)
-      plugin_file_reference->save_resources (plugin_);
+      need_save_resources = !plugin_file_reference->save_resources (plugin_);
     // store params if plugin_state->save is unimplemented
     if (!plugin_state)
       for (const auto &pinfo : param_infos_)
@@ -804,8 +816,8 @@ public:
     // save state into blob file
     if (plugin_state)
       {
-        blobfilename += ".zst"; // changes file name, *inout* arg
-        StreamWriterP swp = stream_writer_zstd (stream_writer_create_file (blobfilename));
+        stateblob += ".zst"; // changes file name, *inout* arg
+        StreamWriterP swp = stream_writer_zstd (stream_writer_create_file (stateblob));
         StreamWriter *sw = swp.get();
         const clap_ostream ostream = {
           .ctx = sw,
@@ -818,10 +830,43 @@ public:
         bool ok = plugin_state->save (plugin_, &ostream);
         ok &= swp->close();
         if (!ok) // TODO: user_note
-          printerr ("%s: %s: write error: %s\n", clapid(), blobfilename, strerror (errno ? errno : EIO));
+          printerr ("%s: %s: write error: %s\n", clapid(), stateblob, strerror (errno ? errno : EIO));
         // keep state only if size >0
-        if (!ok || !Path::check (blobfilename, "frs"))
-          Path::rmrf (blobfilename);
+        if (!ok || !Path::check (stateblob, "frs"))
+          Path::rmrf (stateblob);
+      }
+    // collect external files
+    if (plugin_file_reference && plugin_file_reference->count && plugin_file_reference->get)
+      {
+        ClapResourceHashS hashes;
+        if (need_save_resources) // retry if we got false previously
+          plugin_file_reference->save_resources (plugin_);
+        const size_t n_files = plugin_file_reference->count (plugin_);
+        for (size_t i = 0; i < n_files; i++)
+          {
+            char buffer[ASE_PATH_MAX + 2] = { 0, };
+            const size_t path_capacity = sizeof (buffer) - 1;
+            clap_file_reference pfile = {
+              .resource_id = CLAP_INVALID_ID,
+              .belongs_to_plugin_collection = false,
+              .path_capacity = path_capacity,
+              .path_size = 0, .path = buffer,
+            };
+            if (!plugin_file_reference->get (plugin_, i, &pfile) || pfile.path_size < 1 ||
+                !pfile.path || pfile.path_size >= path_capacity) // ignore excessive path lengths
+              continue;
+            pfile.path[pfile.path_size] = 0;
+            if (!Path::check (pfile.path, "r"))   // must exist and be readable
+              continue;
+            ClapResourceHash rhash = { pfile.resource_id, "" };
+            Error err = _project()->writer_collect (pfile.path, &std::get<String> (rhash));
+            if (!err)
+              hashes.push_back (rhash);
+            else
+              ASE_SERVER.user_note (string_format ("## Note Missing File\n%s: \\\nFailed to store: `%s` \\\n%s",
+                                                   clapid(), pfile.path, ase_error_blurb (err)));
+          }
+        xs["resource_hashes"] & hashes;
       }
   }
   bool
@@ -850,17 +895,17 @@ public:
       scan_params(); // needed for convert_param_updates
     }
     // load parameter updates and rescan
-    if (plugin_params && load_updates_) {
-      ClapEventParamS *pevents = convert_param_updates (*load_updates_);
+    if (plugin_params && loader_updates_) {
+      ClapEventParamS *pevents = convert_param_updates (*loader_updates_);
       ClapEventUnionS output_events;
       flush_event_params (*pevents, output_events);
       output_events.clear(); // discard output_events, we just do a rescan
       scan_params();
       delete pevents;
     }
-    if (load_updates_) {
-      delete load_updates_;
-      load_updates_ = nullptr;
+    if (loader_updates_) {
+      delete loader_updates_;
+      loader_updates_ = nullptr;
     }
     // activate, keeps param_ids_, param_infos_ locked now, start_processing
     plugin_activated = plugin_->activate (plugin_, proc_->engine().sample_rate(), 32, 4096);
@@ -1600,6 +1645,61 @@ static const clap_host_gui host_ext_gui = {
 };
 
 // == clap_host_file_reference ==
+void
+ClapPluginHandleImpl::resolve_file_references (ClapResourceHashS loader_hashes)
+{
+  if (!plugin_file_reference || !plugin_file_reference->update_path ||
+      !plugin_file_reference->count || !plugin_file_reference->get)
+    return;
+  const size_t n_files = plugin_file_reference->count (plugin_);
+  for (size_t i = 0; i < n_files; i++)
+    {
+      char buffer[ASE_PATH_MAX + 2] = { 0, };
+      const size_t path_capacity = sizeof (buffer) - 1;
+      clap_file_reference pfile = {
+        .resource_id = CLAP_INVALID_ID,
+        .belongs_to_plugin_collection = false,
+        .path_capacity = path_capacity,
+        .path_size = 0, .path = buffer,
+      };
+      if (!plugin_file_reference->get (plugin_, i, &pfile) ||
+          pfile.path_size >= path_capacity) // ignore excessive path lengths
+        continue;
+      if (pfile.path && Path::check (pfile.path, "e"))
+        continue;       // path exists, nothing to resolve
+      String hash;
+      uint8_t digest[32] = { 0, };
+      // fetch hash from plugin or cache
+      if (plugin_file_reference->get_blake3_digest &&
+          plugin_file_reference->get_blake3_digest (plugin_, pfile.resource_id, digest))
+        hash = string_to_hex (String ((const char*) digest, sizeof (digest)));
+      else
+        for (size_t i = 0; i < loader_hashes.size(); i++)
+          if (std::get<clap_id> (loader_hashes[i]) == pfile.resource_id)
+            {
+              hash = std::get<String> (loader_hashes[i]);
+              break;
+            }
+
+      printerr ("%s: resource_id=%u hash=%s\n", __func__, pfile.resource_id, hash);
+
+      // resolve or warn user
+      String content_file = hash.empty() ? "" : _project()->loader_resolve (hash);
+      if (content_file.size())
+        plugin_file_reference->update_path (plugin_, pfile.resource_id, content_file.c_str());
+      else
+        {
+          String what = string_format ("id=%04x", pfile.resource_id);
+          if (!hash.empty())
+            what += " hash=" + hash;
+          if (pfile.path && pfile.path[0])
+            what += String (" ") + pfile.path;
+          ASE_SERVER.user_note (string_format ("## Note Missing File\n%s: \\\nFailed to find file: \\\n%s",
+                                               clapid(), what));
+        }
+    }
+}
+
 static void
 host_file_reference_changed (const clap_host_t *host)
 {

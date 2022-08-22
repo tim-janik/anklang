@@ -158,7 +158,7 @@ ClapDeviceImpl::serialize (WritNode &xs)
     String blobname = string_format ("clap-%s.bin", get_device_path());
     String blobfile = _project()->writer_file_name (blobname);
     ClapParamUpdateS param_updates;
-    handle_->save_state (blobfile, param_updates); // blobfile is modifyable
+    handle_->save_state (xs, blobfile, param_updates); // [inout] params
     // add blob to project state
     if (Path::check (blobfile, "fr")) {
       blobname = Path::basename (blobfile);
@@ -208,7 +208,7 @@ ClapDeviceImpl::serialize (WritNode &xs)
     load_values.clear();
     load_values.reserve (0);
     // load blob and parameter updates state
-    handle_->load_state (blob, param_updates);
+    handle_->load_state (xs, blob, param_updates);
   }
 }
 
