@@ -29,6 +29,11 @@ ASE_CLASS_DECLS (ClapPluginHandleImpl);
 using ClapEventParamS = std::vector<clap_event_param_value>;
 union ClapEventUnion;
 using ClapEventUnionS = std::vector<ClapEventUnion>;
+using ClapResourceHash = std::tuple<clap_id,String>; // resource_id, hex_hash
+using ClapResourceHashS = std::vector<ClapResourceHash>;
+using ClapParamIdValue = std::tuple<clap_id,double>; // param_id, value
+using ClapParamIdValueS = std::vector<ClapParamIdValue>;
+
 
 // == fwd decls ==
 static const char*           anklang_host_name        ();
@@ -591,10 +596,6 @@ ClapAudioWrapper::convert_clap_events (const clap_process_t &process, const bool
     }
 }
 
-// == ClapResourceHash ==
-using ClapResourceHash = std::tuple<clap_id,String>; // resource_id, hex_hash
-using ClapResourceHashS = std::vector<ClapResourceHash>;
-
 // == ClapPluginHandleImpl ==
 class ClapPluginHandleImpl : public ClapPluginHandle {
 public:
@@ -763,64 +764,72 @@ public:
     return true;
   }
   void
-  load_state (WritNode &xs, StreamReaderP blob, const ClapParamUpdateS &updates) override
+  load_state (WritNode &xs) override
   {
     assert_return (loader_updates_ == nullptr);
-    // load saved blob
-    if (blob)
+    // queue parameter update events
+    if (!plugin_state)
       {
-        StreamReader *sr = blob.get();
+        ClapParamIdValueS params;
+        xs["param_values"] & params;
+        PDEBUG ("%s: LOAD: %s\n", clapid(), json_stringify (params));
+        loader_updates_ = new ClapParamUpdateS;
+        for (const auto &[id, value] : params)
+          loader_updates_->push_back ({
+              .steady_time = 0, .param_id = id, .flags = 0, .value = value,
+            });
+        // TODO: flush loader_updates_ right away
+      }
+    // load saved blob
+    if (plugin_state)
+      {
+        String blobname;
+        xs["state_blob"] & blobname;
+        StreamReaderP blob = blobname.empty() ? nullptr : _project()->load_blob (blobname);
         const clap_istream istream = {
-          .ctx = sr,
+          .ctx = blob.get(),
           .read = [] (const clap_istream *stream, void *buffer, uint64_t size) -> int64_t {
             StreamReader *sr = (StreamReader*) stream->ctx;
             return sr->read (buffer, size);
           }
         };
         errno = ENOSYS;
-        bool ok = !plugin_state ? false : plugin_state->load (plugin_, &istream);
-        ok &= blob->close();
-        if (!ok)
+        bool ok = !blob ? false : plugin_state->load (plugin_, &istream);
+        ok &= !blob ? false : blob->close();
+        if (!ok && blobname.size())
           printerr ("%s: blob read error: %s\n", clapid(), strerror (errno ? errno : EIO));
       }
-    // queue parameter update events
-    if (plugin_params && updates.size()) // TODO: flush right away
-      loader_updates_ = new ClapParamUpdateS (updates);
     // update collected files
     ClapResourceHashS loader_hashes;
     xs["resource_hashes"] & loader_hashes;
-    printerr ("LOADED: resource_hashes: %s\n", json_stringify (loader_hashes));
     resolve_file_references (loader_hashes);
   }
   void
-  save_state (WritNode &xs, String &stateblob, ClapParamUpdateS &updates) override
+  save_state (WritNode &xs, const String &device_path) override
   {
-    updates.clear();
     // first, flush plugin state to disk
     bool need_save_resources = false;
     if (plugin_file_reference && plugin_file_reference->save_resources)
       need_save_resources = !plugin_file_reference->save_resources (plugin_);
     // store params if plugin_state->save is unimplemented
     if (!plugin_state)
-      for (const auto &pinfo : param_infos_)
-        if (pinfo.param_id != CLAP_INVALID_ID) {
-          ClapParamUpdate pu = {
-            .steady_time = 0,
-            .param_id = pinfo.param_id,
-            .flags = 0,
-            .value = pinfo.current_value,
-          };
-          updates.push_back (pu);
-          PDEBUG ("%s: SAVE: %08x=%f: %s (%s)\n", clapid(), pu.param_id, pu.value, pinfo.current_value_text, pinfo.name);
-        }
+      {
+        ClapParamIdValueS params;
+        for (const auto &pinfo : param_infos_)
+          if (pinfo.param_id != CLAP_INVALID_ID)
+            params.push_back ({ pinfo.param_id, pinfo.current_value });
+        xs["param_values"] & params;
+        PDEBUG ("%s: SAVE: %s\n", clapid(), json_stringify (params));
+      }
     // save state into blob file
     if (plugin_state)
       {
-        stateblob += ".zst"; // changes file name, *inout* arg
-        StreamWriterP swp = stream_writer_zstd (stream_writer_create_file (stateblob));
-        StreamWriter *sw = swp.get();
+        String blobname = string_format ("clap-%s.bin", device_path);
+        printerr ("SAVE: blobname: %s\n", blobname);
+        const String blobfile = _project()->writer_file_name (blobname) + ".zst";
+        StreamWriterP swp = stream_writer_zstd (stream_writer_create_file (blobfile));
         const clap_ostream ostream = {
-          .ctx = sw,
+          .ctx = swp.get(),
           .write = [] (const clap_ostream *stream, const void *buffer, uint64_t size) -> int64_t {
             StreamWriter *sw = (StreamWriter*) stream->ctx;
             return sw->write (buffer, size);
@@ -830,10 +839,18 @@ public:
         bool ok = plugin_state->save (plugin_, &ostream);
         ok &= swp->close();
         if (!ok) // TODO: user_note
-          printerr ("%s: %s: write error: %s\n", clapid(), stateblob, strerror (errno ? errno : EIO));
+          printerr ("%s: %s: write error: %s\n", clapid(), blobfile, strerror (errno ? errno : EIO));
         // keep state only if size >0
-        if (!ok || !Path::check (stateblob, "frs"))
-          Path::rmrf (stateblob);
+        if (!ok || !Path::check (blobfile, "frs"))
+          Path::rmrf (blobfile);
+        else
+          {
+            Error err = _project()->writer_add_file (blobfile);
+            if (!!err)
+              printerr ("%s: %s: %s\n", program_alias(), blobfile, ase_error_blurb (err));
+            else
+              xs["state_blob"] & blobname;
+          }
       }
     // collect external files
     if (plugin_file_reference && plugin_file_reference->count && plugin_file_reference->get)
@@ -1680,9 +1697,6 @@ ClapPluginHandleImpl::resolve_file_references (ClapResourceHashS loader_hashes)
               hash = std::get<String> (loader_hashes[i]);
               break;
             }
-
-      printerr ("%s: resource_id=%u hash=%s\n", __func__, pfile.resource_id, hash);
-
       // resolve or warn user
       String content_file = hash.empty() ? "" : _project()->loader_resolve (hash);
       if (content_file.size())

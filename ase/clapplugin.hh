@@ -67,8 +67,8 @@ protected:
   virtual                    ~ClapPluginHandle   ();
 public:
   String                      clapid             () const { return descriptor.id; }
-  virtual void                load_state         (WritNode &xs, StreamReaderP blob, const ClapParamUpdateS &updates) = 0;
-  virtual void                save_state         (WritNode &xs, String &stateblob, ClapParamUpdateS &updates) = 0;
+  virtual void                load_state         (WritNode &xs) = 0;
+  virtual void                save_state         (WritNode &xs, const String &device_path) = 0;
   virtual bool                param_set_property (clap_id param_id, PropertyP prop) = 0;
   virtual PropertyP           param_get_property (clap_id param_id) = 0;
   virtual double              param_get_value    (clap_id param_id, String *text = nullptr) = 0;
