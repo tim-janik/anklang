@@ -24,8 +24,7 @@ struct ProjectImpl::PStorage {
   String writer_cachedir;
   String anklang_dir;
   StringPairS writer_files;
-  StringPairS writer_hashes;
-  StringPairS loader_hashes;
+  StringPairS asset_hashes;
   PStorage (PStorage **ptrp) :
     ptrp_ (ptrp)
   {
@@ -150,6 +149,7 @@ ProjectImpl::save_project (const String &savepath, bool collect)
   // start writing
   anklang_cachedir_clean_stale();
   storage_->writer_cachedir = anklang_cachedir_create();
+  storage_->asset_hashes.clear();
   StorageWriter ws (Storage::AUTO_ZSTD);
   Error error = ws.open_with_mimetype (abs_projectfile, "application/x-anklang");
   if (!error)
@@ -211,7 +211,7 @@ ProjectImpl::writer_collect (const String &filename, String *hexhashp)
   if (hexhash.empty())
     return ase_error_from_errno (errno ? errno : EIO);
   // resolve against existing hashes
-  for (const auto &hf : storage_->writer_hashes)
+  for (const auto &hf : storage_->asset_hashes)
     if (std::get<0> (hf) == hexhash)
       {
         *hexhashp = hexhash;
@@ -221,7 +221,7 @@ ProjectImpl::writer_collect (const String &filename, String *hexhashp)
   String relpath;
   if (Path::dircontains (storage_->anklang_dir, filename, &relpath))
     {
-      storage_->writer_hashes.push_back ({ hexhash, relpath });
+      storage_->asset_hashes.push_back ({ hexhash, relpath });
       *hexhashp = hexhash;
       return Error::NONE;
     }
@@ -239,7 +239,7 @@ ProjectImpl::writer_collect (const String &filename, String *hexhashp)
           if (althash == hexhash)
             {
               // found file with same hash within project directory
-              storage_->writer_hashes.push_back ({ hexhash, relpath });
+              storage_->asset_hashes.push_back ({ hexhash, relpath });
               *hexhashp = hexhash;
               return Error::NONE;
             }
@@ -256,7 +256,7 @@ ProjectImpl::writer_collect (const String &filename, String *hexhashp)
   if (!copied)
     return ase_error_from_errno (errno);
   // success
-  storage_->writer_hashes.push_back ({ hexhash, relpath });
+  storage_->asset_hashes.push_back ({ hexhash, relpath });
   *hexhashp = hexhash;
   return Error::NONE;
 }
@@ -328,9 +328,9 @@ ProjectImpl::load_blob (const String &filename)
 String
 ProjectImpl::loader_resolve (const String &hexhash)
 {
-  return_unless (storage_ && storage_->loader_hashes.size(), "");
+  return_unless (storage_ && storage_->asset_hashes.size(), "");
   return_unless (!storage_->anklang_dir.empty(), "");
-  for (const auto& [hash,relpath] : storage_->loader_hashes)
+  for (const auto& [hash,relpath] : storage_->asset_hashes)
     if (hexhash == hash)
       return Path::join (storage_->anklang_dir, relpath);
   return "";
@@ -339,9 +339,9 @@ ProjectImpl::loader_resolve (const String &hexhash)
 void
 ProjectImpl::serialize (WritNode &xs)
 {
-  // provide loader_hashes early on
-  if (xs.in_load() && storage_ && storage_->loader_hashes.empty())
-    xs["filehashes"] & storage_->loader_hashes;
+  // provide asset_hashes early on
+  if (xs.in_load() && storage_ && storage_->asset_hashes.empty())
+    xs["filehashes"] & storage_->asset_hashes;
   // serrialize children
   GadgetImpl::serialize (xs);
   // load tracks
@@ -365,8 +365,8 @@ ProjectImpl::serialize (WritNode &xs)
             xc.front ("mastertrack") & True;
         }
       // store external reference hashes *after* all other objects
-      if (storage_ && storage_->writer_hashes.size())
-        xs["filehashes"] & storage_->writer_hashes;
+      if (storage_ && storage_->asset_hashes.size())
+        xs["filehashes"] & storage_->asset_hashes;
     }
 }
 
