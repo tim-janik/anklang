@@ -50,9 +50,10 @@ public:
   StringS      keys             () const                   { return value_.keys(); }
   bool         has              (const String &key) const  { return value_.has (key); }
   bool         loadable         (const String &key) const;  ///< True if `in_load() && has (key)`.
-  template<typename T>
-  bool                   operator& (T &v);
-  bool                   operator& (const WritLink &l);
+  template<typename T> bool operator<< (const T &v);
+  template<typename T> bool operator>> (T &v);
+  template<typename T> bool operator&  (T &v);
+  bool                      operator&  (const WritLink &l);
   template<class T, class E = void>
   bool     serialize (T&, const String& = "", const StringS& = StringS());
   template<class T>
@@ -216,6 +217,21 @@ WritNode::loadable (const String &key) const
 template<typename T> inline bool
 WritNode::operator& (T &v)
 {
+  static_assert (!std::is_const<T>::value, "serializable type <T> may not be const");
+  return serialize (v, "");
+}
+
+template<typename T> inline bool
+WritNode::operator<< (const T &v)
+{
+  ASE_ASSERT_RETURN (in_save(), false);
+  return serialize (const_cast<T&> (v), "");
+}
+
+template<typename T> inline bool
+WritNode::operator>> (T &v)
+{
+  ASE_ASSERT_RETURN (in_load(), false);
   static_assert (!std::is_const<T>::value, "serializable type <T> may not be const");
   return serialize (v, "");
 }
