@@ -52,7 +52,7 @@ TrackImpl::serialize (WritNode &xs)
         WritNode xc = xs["clips"].push();
         xc & *clip;
         const int64 index = clip_index (*clip);
-        xc.front ("clip-index") & index;
+        xc.front ("clip-index") << index;
       }
   // load clips
   if (xs.in_load())

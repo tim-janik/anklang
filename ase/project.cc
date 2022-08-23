@@ -358,11 +358,10 @@ ProjectImpl::serialize (WritNode &xs)
     {
       for (auto &trackp : tracks_)
         {
-          const bool True = true;
           WritNode xc = xs["tracks"].push();
           xc & *trackp;
           if (trackp == tracks_.back())           // master_track
-            xc.front ("mastertrack") & True;
+            xc.front ("mastertrack") << true;
         }
       // store external reference hashes *after* all other objects
       if (storage_ && storage_->asset_hashes.size())
