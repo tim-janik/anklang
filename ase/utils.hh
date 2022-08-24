@@ -23,6 +23,9 @@ template<class... A> void printerr          (const char *format, const A &...arg
 const char*                      ase_gettext (const String &untranslated);
 template<class... A> const char* ase_gettext (const char *format, const A &...args) ASE_PRINTF (1, 0);
 
+// == Date & Time ==
+String  now_strftime (const String &format);
+
 // == MakeIcon ==
 namespace MakeIcon {
 IconString KwIcon  (const String &keywords);

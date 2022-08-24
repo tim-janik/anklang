@@ -158,6 +158,17 @@ ase_gettext (const String &untranslated)
   return translated.c_str(); // relies on global CString storage
 }
 
+// == Date & Time ==
+String
+now_strftime (const String &format)
+{
+  std::time_t t = std::time (nullptr);
+  char buffer[4096] = { 0, };
+  if (std::strftime (buffer, sizeof (buffer), format.c_str(), std::localtime (&t)))
+    return buffer;
+  return "";
+}
+
 // == MakeIcon ==
 namespace MakeIcon {
 

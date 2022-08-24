@@ -41,6 +41,7 @@ bool         dircontains         (const String &dirpath, const String &descendan
 bool         mkdirs              (const String &dirpath, uint mode = 0750);
 void         rmrf                (const String &dir);
 bool         copy_file           (const String &src, const String &dest);
+bool         rename              (const String &src, const String &dest);
 size_t       file_size           (const String &path);
 StringPair   split_extension     (const std::string &filepath, bool lastdot = false);
 String       expand_tilde        (const String &path);
@@ -76,6 +77,7 @@ StringS      searchpath_split    (const String &searchpath);
 String       searchpath_join     (const StringS &string_vector);
 template<class ...S>
 String       searchpath_join     (String path, const S &...more);
+void         glob                (const String &pathpattern, StringS &matches);
 void         rglob               (const String &basedir, const String &pattern, StringS &matches);
 void         unique_realpaths    (StringS &pathnames);
 
