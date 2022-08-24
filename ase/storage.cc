@@ -537,6 +537,54 @@ StorageReader::search_dir (const String &dirname)
 StreamReader::~StreamReader()
 {}
 
+class StreamReaderFile : public StreamReader {
+  FILE *file_ = nullptr;
+  String name_;
+public:
+  ~StreamReaderFile()
+  {
+    close();
+  }
+  bool
+  open (const String &filename)
+  {
+    return_unless (file_ == nullptr, false);
+    name_ = filename;
+    file_ = fopen (name_.c_str(), "r");
+    return file_ != nullptr;
+  }
+  ssize_t
+  read (void *buffer, size_t len) override
+  {
+    return_unless (file_ != nullptr, 0);
+    if (feof (file_))
+      return 0;
+    return fread (buffer, 1, len, file_);
+  }
+  bool
+  close() override
+  {
+    return_unless (file_ != nullptr, false);
+    const int e = fclose (file_);
+    file_ = nullptr;
+    return e == 0;
+  }
+  String
+  name() const override
+  {
+    return name_;
+  }
+};
+
+StreamReaderP
+stream_reader_from_file (const String &file)
+{
+  auto readerp = std::make_shared<StreamReaderFile>();
+  if (readerp->open (file))
+    return readerp;
+  return nullptr;
+}
+
 class StreamReaderZipMember : public StreamReader {
   void *reader_ = nullptr;
   bool entry_opened_ = false;

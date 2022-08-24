@@ -48,7 +48,7 @@ endif
 AND_DOWNLOAD_SHAURL = && ( : \
 	&& ( test ! -e "$(ABSPATH_DLCACHE)/$(strip $(or $3,$(notdir $2)))" || $(CP) "$(ABSPATH_DLCACHE)/$(strip $(or $3,$(notdir $2)))" . ) \
 	&& ( echo "$(strip $1) $(or $3,$(notdir $2))" | sha256sum -c - >/dev/null 2>&1 || curl -sfSL "$(strip $2)" -o "$(strip $(or $3,$(notdir $2)))" ) \
-	&& ( echo "$(strip $1) $(or $3,$(notdir $2))" | sha256sum -c - ) \
+	&& ( echo "$(strip $1) $(or $3,$(notdir $2))" | sha256sum -c - || { echo "sha256sum $$PWD/$(strip $3)" && false; }) \
 	&& ( test ! -x "$(ABSPATH_DLCACHE)/" \
 	   || ( mkdir -p "$(ABSPATH_DLCACHE)/" \
 	      && ( cmp -s "$(strip $(or $3,$(notdir $2)))" "$(ABSPATH_DLCACHE)/$(strip $(or $3,$(notdir $2)))" \

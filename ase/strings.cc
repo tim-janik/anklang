@@ -364,6 +364,24 @@ string_split_any (const String &string, const String &splitchars, size_t maxn)
   return sv;
 }
 
+StringS
+strings_version_sort (const StringS &strings, bool reverse)
+{
+  StringS dest = strings;
+  strings_version_sort (&dest, reverse);
+  return dest;
+}
+
+void
+strings_version_sort (StringS *strings, bool reverse)
+{
+  return_unless (strings);
+  std::sort (strings->begin(), strings->end(), [reverse] (auto &a, auto &b) -> bool {
+    const int c = strverscmp (a.c_str(), b.c_str());
+    return reverse ? c > 0 : c < 0;
+  });
+}
+
 /// Remove empty elements from a string vector.
 void
 string_vector_erase_empty (StringS &svector)
@@ -1063,6 +1081,17 @@ string_substitute_char (const String &input, const char match, const char subst)
       if (output.data()[i] == match)
         output[i] = subst; // unshares string
   return output;
+}
+
+/// Convert bytes in string `input` to hexadecimal numbers.
+String
+string_to_hex (const String &input)
+{
+  String s;
+  s.reserve (input.size() * 2);
+  for (const char &c : input)
+    s += string_format ("%02x", c);
+  return s;
 }
 
 /** Produce hexdump of a memory region.

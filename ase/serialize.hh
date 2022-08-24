@@ -50,16 +50,20 @@ public:
   StringS      keys             () const                   { return value_.keys(); }
   bool         has              (const String &key) const  { return value_.has (key); }
   bool         loadable         (const String &key) const;  ///< True if `in_load() && has (key)`.
-  template<typename T>
-  bool                   operator& (T &v);
-  bool                   operator& (const WritLink &l);
+  template<typename T> bool operator<< (const T &v);
+  template<typename T> bool operator>> (T &v);
+  template<typename T> bool operator&  (T &v);
+  bool                      operator&  (const WritLink &l);
   template<class T, class E = void>
-  bool                   serialize (T&, const String& = "", const StringS& = StringS());
-  template<class T> bool serialize (std::vector<T> &vec, const String& = "", const StringS& = StringS());
-  bool                   serialize (ValueS &vec, const String& = "", const StringS& = StringS());
-  bool                   serialize (ValueR &rec, const String& = "", const StringS& = StringS());
-  bool                   serialize (Value &val, const String& = "", const StringS& = StringS());
-  bool                   serialize (Serializable &sobj);
+  bool     serialize (T&, const String& = "", const StringS& = StringS());
+  template<class T>
+  bool     serialize (std::vector<T> &vec, const String& = "", const StringS& = StringS());
+  bool     serialize (ValueS &vec, const String& = "", const StringS& = StringS());
+  bool     serialize (ValueR &rec, const String& = "", const StringS& = StringS());
+  bool     serialize (Value &val, const String& = "", const StringS& = StringS());
+  bool     serialize (Serializable &sobj);
+  template<class ...T>
+  bool     serialize (std::tuple<T...> &tup, const String& = "", const StringS& = StringS());
 };
 
 // == Writ ==
@@ -124,6 +128,12 @@ struct WritConverter {
 };
 
 // == Implementations ==
+/// Has_serialize_f<T> - Check if `serialize(T&,WritNode&)` is provided for `T`.
+template<class, class = void> struct
+Has_serialize_f : std::false_type {};
+template<class T> struct
+Has_serialize_f<T, void_t< decltype (serialize (std::declval<T&>(), std::declval<WritNode&>())) > > : std::true_type {};
+
 template<class T> inline void
 Writ::save (T &source)
 {
@@ -207,6 +217,22 @@ WritNode::loadable (const String &key) const
 template<typename T> inline bool
 WritNode::operator& (T &v)
 {
+  static_assert (!std::is_const<T>::value, "serializable type <T> may not be const");
+  return serialize (v, "");
+}
+
+template<typename T> inline bool
+WritNode::operator<< (const T &v)
+{
+  ASE_ASSERT_RETURN (in_save(), false);
+  return serialize (const_cast<T&> (v), "");
+}
+
+template<typename T> inline bool
+WritNode::operator>> (T &v)
+{
+  ASE_ASSERT_RETURN (in_load(), false);
+  static_assert (!std::is_const<T>::value, "serializable type <T> may not be const");
   return serialize (v, "");
 }
 
@@ -263,6 +289,44 @@ WritNode::serialize (std::vector<T> &vec, const String &fieldname, const StringS
           WritNode nth_node (writ_, array[i]);
           nth_node & vec.back();
         }
+      return true;
+    }
+  return false;
+}
+
+template<class ...T> inline bool
+WritNode::serialize (std::tuple<T...> &tuple, const String &fieldname, const StringS &typedata)
+{
+  using Tuple = std::tuple<T...>;
+  if (in_save() && Writ::typedata_is_storable (typedata, fieldname))
+    {
+      value_ = ValueS();
+      ValueS &array = std::get<ValueS> (value_);
+      array.reserve (std::tuple_size_v<Tuple>);
+      auto save_arg = [&] (auto arg) {
+        array.push_back (Value());
+        WritNode nth_node (writ_, array.back());
+        nth_node & arg;
+      };
+      std::apply ([&] (auto &&...parampack) {
+        (save_arg (parampack), ...); // fold expression to unpack parampack
+      }, tuple);
+      return true;
+    }
+  if (in_load() && Writ::typedata_is_loadable (typedata, fieldname) &&
+      value_.index() == Value::ARRAY)
+    {
+      ValueS &array = std::get<ValueS> (value_);
+      size_t idx = 0;
+      auto load_arg = [&] (auto &arg) {
+        if (idx >= array.size())
+          return;
+        WritNode nth_node (writ_, array[idx++]);
+        nth_node & arg;
+      };
+      std::apply ([&] (auto &...parampack) {
+        (load_arg (parampack), ...); // fold expression to unpack parampack
+      }, tuple);
       return true;
     }
   return false;
@@ -394,18 +458,21 @@ struct WritConverter<T, REQUIRESv< !std::is_base_of<Serializable,T>::value &&
                                    std::is_class<T>::value > >
 {
   static bool
-  check ()
-  {
-    if (Jsonipc::Serializable<T>::is_serializable())
-      return true;
-    Writ::not_serializable (typeid_name<T>());
-    return false;
-  }
-  static bool
   save_value (WritNode node, T &obj, const StringS &typedata, const String &fieldname)
   {
-    if (!check())
-      return false;
+    if (!Jsonipc::Serializable<T>::is_serializable())
+      {
+        if constexpr (Has_serialize_f<T>::value)
+          {
+            ASE_ASSERT_RETURN (node.value().index() == Value::NONE, false);
+            node.value() = ValueR::empty_record;        // linking not supported
+            serialize (obj, node);
+            node.purge_value();
+            return true;
+          }
+        Writ::not_serializable (typeid_name<T>());
+        return false;
+      }
     rapidjson::Document document (rapidjson::kNullType);
     Jsonipc::JsonValue &docroot = document;
     docroot = Jsonipc::Serializable<T>::serialize_to_json (obj, document.GetAllocator()); // move semantics!
@@ -416,8 +483,17 @@ struct WritConverter<T, REQUIRESv< !std::is_base_of<Serializable,T>::value &&
   static bool
   load_value (WritNode node, T &obj, const StringS &typedata, const String &fieldname)
   {
-    if (!check())
-      return false;
+    if (!Jsonipc::Serializable<T>::is_serializable())
+      {
+        if constexpr (Has_serialize_f<T>::value)
+          {
+            if (node.value().index() == Value::RECORD)
+              serialize (obj, node);                    // linking not supported
+            return true;
+          }
+        Writ::not_serializable (typeid_name<T>());
+        return false;
+      }
     rapidjson::Document document (rapidjson::kNullType);
     Jsonipc::JsonValue &docroot = document;
     docroot = Jsonipc::to_json<Value> (node.value(), document.GetAllocator()); // move semantics!

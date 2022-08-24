@@ -115,10 +115,14 @@ ClapDeviceImpl::ClapDeviceImpl (ClapPluginHandleP claphandle) :
   paramschange_ = on_event ("params:change", [this] (const Event &event) {
     proc_params_change (event);
   });
+  if (handle_)
+    handle_->_set_parent (this);
 }
 
 ClapDeviceImpl::~ClapDeviceImpl()
 {
+  if (handle_)
+    handle_->_set_parent (nullptr);
   if (handle_)
     handle_->destroy();
   handle_ = nullptr;
@@ -137,7 +141,7 @@ ClapDeviceImpl::get_device_path ()
         nums.insert (nums.begin(), string_from_int (index));
     }
   String s = string_join ("d", nums);
-  ProjectImpl *project = dynamic_cast<ProjectImpl*> (_project());
+  ProjectImpl *project = _project();
   Track *track = _track();
   if (project && track)
     s = string_format ("t%ud%s", project->track_index (*track), s);
@@ -149,63 +153,10 @@ ClapDeviceImpl::serialize (WritNode &xs)
 {
   GadgetImpl::serialize (xs);
 
-  if (xs.in_save() && handle_) {
-    // save state into blob, collect parameter updates
-    String blobname = string_format ("clap-%s.bin", get_device_path());
-    String blobfile = _project()->writer_file_name (blobname);
-    ClapParamUpdateS param_updates;
-    handle_->save_state (blobfile, param_updates); // blobfile is modifyable
-    // add blob to project state
-    if (Path::check (blobfile, "fr")) {
-      blobname = Path::basename (blobfile);
-      if (string_endswith (blobname, ".zst")) // strip .zst for automatic decompression
-        blobname = blobname.substr (0, blobname.size() - 4);
-      xs["state_blob"] & blobname;
-      Error err = _project()->writer_add_file (blobfile);
-      if (!!err)
-        printerr ("%s: %s: %s\n", program_alias(), blobfile, ase_error_blurb (err));
-    }
-    // save parameter updates as simple value array
-    if (!param_updates.empty())
-      {
-        ValueS values;
-        for (const ClapParamUpdate &pu : param_updates) {
-          Value val;
-          val = pu.param_id;
-          values.push_back (val);
-          val = pu.value;
-          values.push_back (val);
-        }
-        xs["param_values"] & values;
-      }
-  }
-  if (xs.in_load() && handle_ && !handle_->activated()) {
-    StreamReaderP blob;
-    String blobname;
-    // load blob and value array
-    xs["state_blob"] & blobname;
-    if (!blobname.empty())
-      blob = stream_reader_zip_member (_project()->loader_archive(), blobname);
-    ValueS load_values;
-    xs["param_values"] & load_values;
-    // reconstruct parameter updates
-    ClapParamUpdateS param_updates;
-    for (size_t i = 0; i + 1 < load_values.size(); i += 2)
-      if (load_values[i]->is_numeric() && load_values[i+1]->is_numeric())
-        {
-          const ClapParamUpdate pu = {
-            .steady_time = 0,
-            .param_id = uint32_t (load_values[i]->as_int()),
-            .flags = 0,
-            .value = load_values[i+1]->as_double(),
-          };
-          param_updates.push_back (pu);
-        }
-    load_values.clear();
-    load_values.reserve (0);
-    // load blob and parameter updates state
-    handle_->load_state (blob, param_updates);
-  }
+  if (xs.in_save() && handle_)
+    handle_->save_state (xs, get_device_path());
+  if (xs.in_load() && handle_ && !handle_->activated())
+    handle_->load_state (xs);
 }
 
 DeviceInfo

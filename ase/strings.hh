@@ -68,6 +68,7 @@ String  string_to_cquote                                 (const String &str);
 String  string_from_cquote                               (const String &input);
 String  string_url_decode                                (const String &urlstr, bool form_url_encoded = false);
 String  string_url_encode                                (const String &rawstr, bool form_url_encoded = false);
+String  string_to_hex                                    (const String &input);
 String  string_hexdump                                   (const void *addr, size_t length, size_t initial_offset = 0);
 String  string_lstrip                                    (const String &input);
 String  string_rstrip                                    (const String &input);
@@ -84,6 +85,9 @@ StringS      cstrings_to_vector    (const char*, ...) ASE_SENTINEL;
 void         memset4		   (uint32 *mem, uint32 filler, uint length);
 long double posix_locale_strtold   (const char *nptr, char **endptr);
 long double current_locale_strtold (const char *nptr, char **endptr);
+
+StringS strings_version_sort (const StringS &strings, bool reverse = false);
+void    strings_version_sort (StringS *strings, bool reverse = false);
 
 // == UTF-8 String Helpers ==
 String string_normalize_nfc  (const String &src);                       // Normalized, composed form UTF-8 string

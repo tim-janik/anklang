@@ -65,7 +65,7 @@ ClipImpl::serialize (WritNode &xs)
   // save notes, along with their quantization
   if (xs.in_save())
     {
-      xs["ppq"] & TRANSPORT_PPQN;
+      xs["ppq"] << TRANSPORT_PPQN;
       OrderedEventsP event_vector = notes_.ordered_events<OrderedEventsV>();
       for (ClipNote cnote : *event_vector)
         {
@@ -82,7 +82,7 @@ ClipImpl::serialize (WritNode &xs)
   if (xs.in_load())
     {
       int64 ppq = TRANSPORT_PPQN;
-      xs["ppq"] & ppq;
+      xs["ppq"] >> ppq;
       std::vector<ClipNote> cnotes;
       xs["notes"] & cnotes;
       long double ppqfactor = TRANSPORT_PPQN / (long double) ppq;

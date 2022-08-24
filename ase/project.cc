@@ -3,6 +3,7 @@
 #include "jsonipc/jsonipc.hh"
 #include "main.hh"
 #include "processor.hh"
+#include "compress.hh"
 #include "path.hh"
 #include "serialize.hh"
 #include "storage.hh"
@@ -15,6 +16,27 @@ namespace Ase {
 
 // == ProjectImpl ==
 JSONIPC_INHERIT (ProjectImpl, Project);
+
+using StringPairS = std::vector<std::tuple<String,String>>;
+
+struct ProjectImpl::PStorage {
+  String loading_file;
+  String writer_cachedir;
+  String anklang_dir;
+  StringPairS writer_files;
+  StringPairS asset_hashes;
+  PStorage (PStorage **ptrp) :
+    ptrp_ (ptrp)
+  {
+    *ptrp_ = this;
+  }
+  ~PStorage()
+  {
+    *ptrp_ = nullptr;
+  }
+private:
+  PStorage **const ptrp_ = nullptr;
+};
 
 static std::vector<ProjectImplP> all_projects;
 
@@ -52,68 +74,84 @@ ProjectImpl::create (const String &projectname)
 void
 ProjectImpl::discard ()
 {
+  return_unless (!discarded_);
   stop_playback();
   const size_t nerased = Aux::erase_first (all_projects, [this] (auto ptr) { return ptr.get() == this; });
   if (nerased)
     ; // resource cleanups...
+  discarded_ = true;
 }
 
 static bool
-is_anklang_dir (const String path)
+is_anklang_dir (const String &path)
 {
   return Path::check (Path::join (path, ".anklang.project"), "r");
 }
 
+static String
+find_anklang_parent_dir (const String &path)
+{
+  for (String p = path; !p.empty(); p = Path::dirname (p))
+    if (is_anklang_dir (p))
+      return p;
+  return "";
+}
+
 static bool
-make_anklang_dir (const String path)
+make_anklang_dir (const String &path)
 {
   String mime = Path::join (path, ".anklang.project");
   return Path::stringwrite (mime, "# ANKLANG(1) project directory\n");
 }
 
 Error
-ProjectImpl::save_dir (const String &pdir, bool selfcontained)
+ProjectImpl::save_project (const String &savepath, bool collect)
 {
-  assert_return (writer_cachedir_ == "", Error::OPERATION_BUSY);
+  assert_return (storage_ == nullptr, Error::OPERATION_BUSY);
+  PStorage storage (&storage_); // storage_ = &storage;
   const String dotanklang = ".anklang";
-  String projectfile;
-  String path = Path::normalize (Path::abspath (pdir));
-  // check path
-  if (Path::check (path, "d"))                  // existing directory
-    path = Path::dir_terminate (path);
-  else if (Path::check (path, "e"))             // existing file
+  String projectfile, path = Path::normalize (Path::abspath (savepath));
+  // check path is a file
+  if (path.back() == '/' ||
+      Path::check (path, "d"))                  // need file not directory
+    return Error::FILE_IS_DIR;
+  // force .anklang extension
+  if (!string_endswith (path, dotanklang))
+    path += dotanklang;
+  // existing files need proper project directories
+  if (Path::check (path, "e"))                  // existing file
     {
-      String dir = Path::dirname (path);
+      const String dir = Path::dirname (path);
       if (!is_anklang_dir (dir))
-        return Error::BAD_PROJECT;
+        return Error::NO_PROJECT_DIR;
       projectfile = Path::basename (path);
       path = dir;                               // file inside project dir
     }
   else                                          // new file name
     {
-      while (path.back() == '/')                // strip trailing slashes
-        path = Path::dirname (path);
-      if (string_endswith (path, dotanklang))   // strip .anklang
-        path.resize (path.size() - dotanklang.size());
       projectfile = Path::basename (path);
       const String parentdir = Path::dirname (path);
       if (is_anklang_dir (parentdir))
         path = parentdir;
-      else if (!is_anklang_dir (path) &&
-          !Path::mkdirs (path))                 // create new project dir
-        return ase_error_from_errno (errno);
+      else {                                    // use projectfile stem as dir
+        assert_return (string_endswith (path, dotanklang), Error::INTERNAL);
+        path.resize (path.size() - dotanklang.size());
+      }
     }
+  // create parent directory
+  if (!Path::mkdirs (path))
+    return ase_error_from_errno (errno);
+  // ensure path is_anklang_dir
   if (!make_anklang_dir (path))
     return ase_error_from_errno (errno);
-  // here, path is_anklang_dir
-  if (projectfile.empty())
-    projectfile = "project";
-  if (!string_endswith (projectfile, dotanklang))
-    projectfile += dotanklang;
+  storage_->anklang_dir = path;
+  const String abs_projectfile = Path::join (path, projectfile);
+  // start writing
   anklang_cachedir_clean_stale();
-  writer_cachedir_ = anklang_cachedir_create();
+  storage_->writer_cachedir = anklang_cachedir_create();
+  storage_->asset_hashes.clear();
   StorageWriter ws (Storage::AUTO_ZSTD);
-  Error error = ws.open_with_mimetype (Path::join (path, projectfile), "application/x-anklang");
+  Error error = ws.open_with_mimetype (abs_projectfile, "application/x-anklang");
   if (!error)
     {
       // serialize Project
@@ -122,46 +160,118 @@ ProjectImpl::save_dir (const String &pdir, bool selfcontained)
       error = ws.store_file_data ("project.json", jsd, true);
     }
   if (!error)
-    for (const String &path : writer_files_) {
-      error = ws.store_file (Path::basename (path), path);
+    for (const auto &[path, dest] : storage_->writer_files) {
+      error = ws.store_file (dest, path);
       if (!!error) {
-        printerr ("%s: %s: %s\n", program_alias(), path, ase_error_blurb (error));
+        printerr ("%s: %s: %s: %s\n", program_alias(), __func__, path, ase_error_blurb (error));
         break;
       }
     }
-  writer_files_.clear();
+  storage_->writer_files.clear();
   if (!error)
     error = ws.close();
+  if (!error)
+    saved_filename_ = abs_projectfile;
   if (!!error)
     ws.remove_opened();
-  anklang_cachedir_cleanup (writer_cachedir_);
-  writer_cachedir_ = "";
+  anklang_cachedir_cleanup (storage_->writer_cachedir);
   return error;
 }
 
 String
 ProjectImpl::writer_file_name (const String &filename) const
 {
-  assert_return (!writer_cachedir_.empty(), "");
-  return Path::join (writer_cachedir_, filename);
+  assert_return (storage_ != nullptr, "");
+  assert_return (!storage_->writer_cachedir.empty(), "");
+  return Path::join (storage_->writer_cachedir, filename);
 }
 
 Error
 ProjectImpl::writer_add_file (const String &filename)
 {
-  assert_return (!writer_cachedir_.empty(), Error::INTERNAL);
+  assert_return (storage_ != nullptr, Error::INTERNAL);
+  assert_return (!storage_->writer_cachedir.empty(), Error::INTERNAL);
   if (!Path::check (filename, "frw"))
     return Error::FILE_NOT_FOUND;
-  if (!string_startswith (filename, writer_cachedir_))
+  if (!string_startswith (filename, storage_->writer_cachedir))
     return Error::FILE_OPEN_FAILED;
-  writer_files_.push_back (filename);
+  storage_->writer_files.push_back ({ filename, Path::basename (filename) });
   return Error::NONE;
+}
+
+Error
+ProjectImpl::writer_collect (const String &filename, String *hexhashp)
+{
+  assert_return (storage_ != nullptr, Error::INTERNAL);
+  assert_return (!storage_->anklang_dir.empty(), Error::INTERNAL);
+  if (!Path::check (filename, "fr"))
+    return Error::FILE_NOT_FOUND;
+  // determine hash of file to collect
+  const String hexhash = string_to_hex (blake3_hash_file (filename));
+  if (hexhash.empty())
+    return ase_error_from_errno (errno ? errno : EIO);
+  // resolve against existing hashes
+  for (const auto &hf : storage_->asset_hashes)
+    if (std::get<0> (hf) == hexhash)
+      {
+        *hexhashp = hexhash;
+        return Error::NONE;
+      }
+  // file may be within project directory
+  String relpath;
+  if (Path::dircontains (storage_->anklang_dir, filename, &relpath))
+    {
+      storage_->asset_hashes.push_back ({ hexhash, relpath });
+      *hexhashp = hexhash;
+      return Error::NONE;
+    }
+  // determine unique path name
+  const size_t file_size = Path::file_size (filename);
+  const String basedir = storage_->anklang_dir;
+  relpath = Path::join ("samples", Path::basename (filename));
+  String dest = Path::join (basedir, relpath);
+  size_t i = 0;
+  while (Path::check (dest, "e"))
+    {
+      if (file_size == Path::file_size (dest))
+        {
+          const String althash = string_to_hex (blake3_hash_file (dest));
+          if (althash == hexhash)
+            {
+              // found file with same hash within project directory
+              storage_->asset_hashes.push_back ({ hexhash, relpath });
+              *hexhashp = hexhash;
+              return Error::NONE;
+            }
+        }
+      // add counter to create unique name
+      const StringPair parts = Path::split_extension (relpath, true);
+      dest = Path::join (basedir, string_format ("%s(%u)%s", parts.first, ++i, parts.second));
+    }
+  // create parent dir
+  if (!Path::mkdirs (Path::dirname (dest)))
+    return ase_error_from_errno (errno);
+  // copy into project dir
+  const bool copied = Path::copy_file (filename, dest);
+  if (!copied)
+    return ase_error_from_errno (errno);
+  // success
+  storage_->asset_hashes.push_back ({ hexhash, relpath });
+  *hexhashp = hexhash;
+  return Error::NONE;
+}
+
+String
+ProjectImpl::saved_filename ()
+{
+  return saved_filename_;
 }
 
 Error
 ProjectImpl::load_project (const String &filename)
 {
-  assert_return (loading_file_.empty(), Error::INTERNAL);
+  assert_return (storage_ == nullptr, Error::OPERATION_BUSY);
+  PStorage storage (&storage_); // storage_ = &storage;
   String fname = filename;
   // turn /dir/.anklang.project -> /dir/
   if (Path::basename (fname) == ".anklang.project" && is_anklang_dir (Path::dirname (fname)))
@@ -171,25 +281,25 @@ ProjectImpl::load_project (const String &filename)
     fname = Path::join (fname, Path::basename (Path::strip_slashes (Path::normalize (fname)))) + ".anklang";
   // add missing '.anklang' extension
   if (!Path::check (fname, "e"))
-    {
-      fname += ".anklang";
-      if (!Path::check (fname, "e"))
-        return ase_error_from_errno (errno);
-    }
-  String dirname = Path::dirname (fname);
-  StorageReader rs (Storage::AUTO_ZSTD);
+    fname += ".anklang";
+  // check for readable file
+  if (!Path::check (fname, "e"))
+    return ase_error_from_errno (errno);
   // try reading .anklang container
+  StorageReader rs (Storage::AUTO_ZSTD);
   Error error = rs.open_for_reading (fname);
   if (!!error)
     return error;
-  loading_file_ = fname;
   if (rs.stringread ("mimetype") != "application/x-anklang")
     return Error::BAD_PROJECT;
   // find project.json *inside* container
   String jsd = rs.stringread ("project.json");
   if (jsd.empty() && errno)
     return Error::FORMAT_INVALID;
+  storage_->loading_file = fname;
+  storage_->anklang_dir = find_anklang_parent_dir (storage_->loading_file);
 #if 0 // unimplemented
+  String dirname = Path::dirname (fname);
   // search in dirname or dirname/..
   if (is_anklang_dir (dirname))
     rs.search_dir (dirname);
@@ -203,24 +313,37 @@ ProjectImpl::load_project (const String &filename)
   // parse project
   if (!json_parse (jsd, *this))
     return Error::PARSE_ERROR;
-  loading_file_ = "";
+  saved_filename_ = storage_->loading_file;
   return Error::NONE;
+}
+
+StreamReaderP
+ProjectImpl::load_blob (const String &filename)
+{
+  assert_return (storage_ != nullptr, nullptr);
+  assert_return (!storage_->loading_file.empty(), nullptr);
+  return stream_reader_zip_member (storage_->loading_file, filename);
+}
+
+String
+ProjectImpl::loader_resolve (const String &hexhash)
+{
+  return_unless (storage_ && storage_->asset_hashes.size(), "");
+  return_unless (!storage_->anklang_dir.empty(), "");
+  for (const auto& [hash,relpath] : storage_->asset_hashes)
+    if (hexhash == hash)
+      return Path::join (storage_->anklang_dir, relpath);
+  return "";
 }
 
 void
 ProjectImpl::serialize (WritNode &xs)
 {
+  // provide asset_hashes early on
+  if (xs.in_load() && storage_ && storage_->asset_hashes.empty())
+    xs["filehashes"] & storage_->asset_hashes;
+  // serrialize children
   GadgetImpl::serialize (xs);
-  // save tracks
-  if (xs.in_save())
-    for (auto &trackp : tracks_)
-      {
-        const bool True = true;
-        WritNode xc = xs["tracks"].push();
-        xc & *trackp;
-        if (trackp == tracks_.back())           // master_track
-          xc.front ("mastertrack") & True;
-      }
   // load tracks
   if (xs.in_load())
     for (auto &xc : xs["tracks"].to_nodes())
@@ -230,6 +353,20 @@ ProjectImpl::serialize (WritNode &xs)
           trackp = shared_ptr_cast<TrackImpl> (create_track());
         xc & *trackp;
       }
+  // save tracks
+  if (xs.in_save())
+    {
+      for (auto &trackp : tracks_)
+        {
+          WritNode xc = xs["tracks"].push();
+          xc & *trackp;
+          if (trackp == tracks_.back())           // master_track
+            xc.front ("mastertrack") << true;
+        }
+      // store external reference hashes *after* all other objects
+      if (storage_ && storage_->asset_hashes.size())
+        xs["filehashes"] & storage_->asset_hashes;
+    }
 }
 
 UndoScope::UndoScope (ProjectImplP projectp) :
@@ -466,6 +603,7 @@ ProjectImpl::update_tempo ()
 void
 ProjectImpl::start_playback ()
 {
+  assert_return (!discarded_);
   main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
@@ -515,6 +653,7 @@ ProjectImpl::is_playing ()
 TrackP
 ProjectImpl::create_track ()
 {
+  assert_return (!discarded_, nullptr);
   const bool havemaster = tracks_.size() != 0;
   TrackImplP track = TrackImpl::make_shared (!havemaster);
   tracks_.insert (tracks_.end() - int (havemaster), track);

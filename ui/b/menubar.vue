@@ -210,13 +210,7 @@ async function open_file() {
     return;
   open_file.last_dir = filename.replace (/[^\/]*$/, ''); // dirname
   const err = await App.load_project_checked (filename);
-  if (err == Ase.Error.NONE)
-    {
-      let project_filename = filename;
-      await Data.project.set_data ('file_abspath', project_filename);
-      return;
-    }
-  else
+  if (err != Ase.Error.NONE)
     ; // load_project_checked() displays a dialog
 }
 
@@ -227,7 +221,7 @@ async function save_project (asnew = false) {
     cwd:    save_project.last_dir || "MUSIC",
     filters: [ { name: 'Projects', extensions: ['anklang'] }, ],
   };
-  let filename = await Data.project.get_data ('file_abspath');
+  let filename = await Data.project.saved_filename();
   let replace = asnew ? 0 : !!filename;
   if (asnew || !filename)
     filename = await App.shell.select_file (opt);
@@ -250,7 +244,7 @@ async function save_project (asnew = false) {
   const err = await App.save_project (filename);
   if (err === Ase.Error.NONE)
     {
-      await Data.project.set_data ('file_abspath', filename);
+      filename = await Data.project.saved_filename();
       let msg = '### Project Saved\n';
       msg += '  \n  \nProject saved to: ``' + filename + '``\n';
       Util.create_note (msg);

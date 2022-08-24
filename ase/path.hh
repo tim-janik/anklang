@@ -21,6 +21,7 @@
 #define ASE_SEARCHPATH_SEPARATOR        ':'     ///< Platform searchpath separator, ':' on Unix-like systems, ';' on _WIN32.
 #define ASE_LIBEXT                      ".so"   ///< Dynamic library filename extension on this platform.
 #endif  // !_WIN32
+#define ASE_PATH_MAX    (PATH_MAX > 4096 ? PATH_MAX : 4096)
 
 namespace Ase {
 
@@ -36,8 +37,11 @@ String       strip_slashes       (const String &path);
 String       abspath             (const String &path, const String &incwd = "");
 bool         isabs               (const String &path);
 bool         isdirname           (const String &path);
+bool         dircontains         (const String &dirpath, const String &descendant, String *relpath = nullptr);
 bool         mkdirs              (const String &dirpath, uint mode = 0750);
 void         rmrf                (const String &dir);
+bool         copy_file           (const String &src, const String &dest);
+size_t       file_size           (const String &path);
 StringPair   split_extension     (const std::string &filepath, bool lastdot = false);
 String       expand_tilde        (const String &path);
 String       user_home           (const String &username = "");

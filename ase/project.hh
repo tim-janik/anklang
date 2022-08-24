@@ -28,9 +28,10 @@ class ProjectImpl : public GadgetImpl, public virtual Project {
   String undo_group_name_;
   struct UndoFunc { VoidF func; String name; };
   std::vector<UndoFunc> undostack_, redostack_;
-  String writer_cachedir_;
-  StringS writer_files_;
-  String loading_file_;
+  struct PStorage;
+  PStorage *storage_ = nullptr;
+  String saved_filename_;
+  bool discarded_ = false;
   friend class UndoScope;
   UndoScope           add_undo_scope (const String &scopename);
 protected:
@@ -52,7 +53,6 @@ public:
   void                 ungroup_undo      () override;
   void                 clear_undo        ();
   size_t               undo_size_guess   () const;
-  Error                save_dir          (const String &dir, bool selfcontained) override;
   void                 start_playback    () override;
   void                 stop_playback     () override;
   bool                 set_bpm           (double bpm);
@@ -64,9 +64,13 @@ public:
   TrackS               list_tracks       () override;
   TrackP               master_track      () override;
   Error                load_project      (const String &filename) override;
-  String               loader_archive    () const { return loading_file_; }
+  StreamReaderP        load_blob         (const String &filename);
+  String               loader_resolve    (const String &hexhash);
+  Error                save_project      (const String &filename, bool collect) override;
+  String               saved_filename    () override;
   String               writer_file_name  (const String &filename) const;
   Error                writer_add_file   (const String &filename);
+  Error                writer_collect    (const String &filename, String *hexhashp);
   TelemetryFieldS      telemetry         () const override;
   AudioProcessorP      master_processor  () const;
   ssize_t              track_index       (const Track &child) const;

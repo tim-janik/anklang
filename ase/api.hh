@@ -35,6 +35,7 @@ enum class Error : int32_t {
   // Ase specific errors
   INTERNAL                      = 0x30000000,
   UNIMPLEMENTED,
+  // File related errors
   FILE_EOF                      = 0x30001000,
   FILE_OPEN_FAILED,
   FILE_SEEK_FAILED,
@@ -53,6 +54,7 @@ enum class Error : int32_t {
   CODEC_FAILURE,
   BROKEN_ARCHIVE,
   BAD_PROJECT,
+  NO_PROJECT_DIR,
   // Device errors
   DEVICE_NOT_AVAILABLE          = 0x30003000,
   DEVICE_ASYNC,
@@ -191,6 +193,7 @@ public:
   // Hierarchical parenting.
   virtual Gadget*     _parent           () const = 0;         ///< Retrieve parent container.
   virtual void        _set_parent       (Gadget *parent) = 0; ///< Assign parent container.
+  ProjectImpl*        _project          () const;             ///< Find Project in parent ancestry.
   // Naming
   virtual String      type_nick         () const = 0;
   virtual String      name              () const = 0;
@@ -221,7 +224,6 @@ struct DeviceInfo {
 /// Interface to access Device instances.
 class Device : public virtual Gadget {
 public:
-  ProjectImpl*        _project           () const;                    ///< Find Project in parent ancestry.
   Track*              _track             () const;                    ///< Find Track in parent ancestry.
   virtual void        _activate          () = 0;
   virtual DeviceInfo  device_info        () = 0;                      ///< Describe this Device type.
@@ -312,7 +314,8 @@ public:
   virtual bool            remove_track   (Track&) = 0; ///< Remove a track owned by this Project.
   virtual TrackS          list_tracks    () = 0;       ///< Retrieve a list of all tracks.
   virtual TrackP          master_track   () = 0;       ///< Retrieve the master track.
-  virtual Error           save_dir       (const String &dir, bool selfcontained) = 0; ///< Store Project data in `dir`.
+  virtual Error           save_project   (const String &filename, bool collect) = 0; ///< Store Project and collect external files.
+  virtual String          saved_filename () = 0;       ///< Retrieve filename for save or from load.
   virtual Error           load_project   (const String &filename) = 0; ///< Load project from file `filename`.
   virtual TelemetryFieldS telemetry      () const = 0; ///< Retrieve project telemetry locations.
   virtual void            group_undo     (const String &undoname) = 0; ///< Merge upcoming undo steps.
@@ -353,7 +356,7 @@ struct UserNote {
   enum Flags { APPEND, CLEAR, TRANSIENT };
   uint   noteid = 0;
   Flags  flags = APPEND;
-  String channel, text;
+  String channel, text, rest;
 };
 
 /// Telemetry segment location.
@@ -378,7 +381,7 @@ public:
   virtual String error_blurb          (Error error) const = 0;
   virtual String musical_tuning_label (MusicalTuning musicaltuning) const = 0;
   virtual String musical_tuning_blurb (MusicalTuning musicaltuning) const = 0;
-  virtual uint64 user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &r = "") = 0;
+  virtual uint64 user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &rest = "") = 0;
   virtual bool   user_reply           (uint64 noteid, uint r) = 0;
   virtual bool   broadcast_telemetry  (const TelemetrySegmentS &segments,
                                        int32 interval_ms) = 0;  ///< Broadcast telemetry memory segments to the current Jsonipc connection.

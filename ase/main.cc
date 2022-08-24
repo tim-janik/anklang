@@ -7,6 +7,7 @@
 #include "driver.hh"
 #include "engine.hh"
 #include "project.hh"
+#include "compress.hh"
 #include "internal.hh"
 #include "testing.hh"
 
@@ -143,6 +144,16 @@ parse_args (int *argcp, char **argv)
         {
           config.mode = MainConfig::CHECK_INTEGRITY_TESTS;
           config.fatal_warnings = true;
+        }
+      else if (argv[i] == String ("--blake3") && i + 1 < size_t (argc))
+        {
+          argv[i++] = nullptr;
+          String hash = blake3_hash_file (argv[i]);
+          if (hash.empty())
+            printerr ("%s: failed to read: %s\n", argv[i], strerror (errno));
+          else
+            printout ("%s\n", string_to_hex (hash));
+          exit (hash == "");
         }
       else if (strcmp ("--js-api", argv[i]) == 0)
         config.print_js_api = true;

@@ -4,11 +4,13 @@
 #include "utils.hh"
 #include "platform.hh"
 #include "internal.hh"
+#include "testing.hh"
 
 #if !__has_include(<zstd.h>)
 #error "Missing <zstd.h> from libzstd-dev, please set CXXFLAGS and LDFLAGS"
 #endif
 #include <zstd.h>
+#include <blake3/blake3.h>
 
 namespace Ase {
 
@@ -433,4 +435,50 @@ stream_writer_zstd (const StreamWriterP &ostream, int level)
   return std::make_shared<StreamWriterZStd> (ostream, level);
 }
 
+String
+blake3_hash_string (const String &input)
+{
+  blake3_hasher hasher;
+  blake3_hasher_init (&hasher);
+  blake3_hasher_update (&hasher, input.data(), input.size());
+  uint8_t output[BLAKE3_OUT_LEN];
+  blake3_hasher_finalize (&hasher, output, BLAKE3_OUT_LEN);
+  blake3_hasher_reset (&hasher);
+  return String ((const char*) output, BLAKE3_OUT_LEN);
+}
+
+String
+blake3_hash_file (const String &filename)
+{
+  StreamReaderP stream = stream_reader_from_file (filename);
+  return_unless (stream, "");
+  blake3_hasher hasher;
+  blake3_hasher_init (&hasher);
+  uint8_t buffer[131072];
+  ssize_t l = stream->read (buffer, sizeof (buffer));
+  while (l > 0) {
+    blake3_hasher_update (&hasher, buffer, l);
+    l = stream->read (buffer, sizeof (buffer));
+  }
+  uint8_t output[BLAKE3_OUT_LEN];
+  blake3_hasher_finalize (&hasher, output, BLAKE3_OUT_LEN);
+  blake3_hasher_reset (&hasher);
+  return String ((const char*) output, BLAKE3_OUT_LEN);
+}
+
 } // Ase
+
+namespace {
+using namespace Ase;
+
+TEST_INTEGRITY (blake3_tests);
+static void
+blake3_tests()
+{
+  String h = string_to_hex (blake3_hash_string (""));
+  TASSERT (h == "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262");
+  h = string_to_hex (blake3_hash_string ("Hello Blake3"));
+  TASSERT (h == "6201e8ededb2f1f2b6362119b46b404e822efbd58d7922202408025c5f527c56");
+}
+
+} // Anon

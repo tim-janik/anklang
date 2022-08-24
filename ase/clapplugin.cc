@@ -3,12 +3,15 @@
 #include "clapdevice.hh"
 #include "jsonipc/jsonipc.hh"
 #include "storage.hh"
+#include "project.hh"
 #include "processor.hh"
 #include "path.hh"
 #include "main.hh"
 #include "compress.hh"
+#include "serialize.hh"
 #include "internal.hh"
 #include "gtk2wrap.hh"
+#include <clap/ext/draft/file-reference.h>
 #include <dlfcn.h>
 #include <glob.h>
 #include <math.h>
@@ -26,6 +29,11 @@ ASE_CLASS_DECLS (ClapPluginHandleImpl);
 using ClapEventParamS = std::vector<clap_event_param_value>;
 union ClapEventUnion;
 using ClapEventUnionS = std::vector<ClapEventUnion>;
+using ClapResourceHash = std::tuple<clap_id,String>; // resource_id, hex_hash
+using ClapResourceHashS = std::vector<ClapResourceHash>;
+using ClapParamIdValue = std::tuple<clap_id,double>; // param_id, value
+using ClapParamIdValueS = std::vector<ClapParamIdValue>;
+
 
 // == fwd decls ==
 static const char*           anklang_host_name        ();
@@ -611,6 +619,7 @@ public:
   const clap_plugin_t *plugin_ = nullptr;
   const clap_plugin_gui *plugin_gui = nullptr;
   const clap_plugin_state *plugin_state = nullptr;
+  const clap_plugin_file_reference *plugin_file_reference = nullptr;
   const clap_plugin_params *plugin_params = nullptr;
   const clap_plugin_timer_support *plugin_timer_support = nullptr;
   const clap_plugin_audio_ports_config *plugin_audio_ports_config = nullptr;
@@ -628,6 +637,11 @@ public:
         if (factory)
           plugin_ = factory->create_plugin (factory, &phost, clapid().c_str());
       }
+  }
+  ~ClapPluginHandleImpl()
+  {
+    destroy();
+    assert_return (!_parent());
   }
   bool
   init_plugin ()
@@ -652,18 +666,18 @@ public:
     plugin_note_ports = (const clap_plugin_note_ports*) plugin_get_extension (CLAP_EXT_NOTE_PORTS);
     plugin_posix_fd_support = (const clap_plugin_posix_fd_support*) plugin_get_extension (CLAP_EXT_POSIX_FD_SUPPORT);
     plugin_state = (const clap_plugin_state*) plugin_get_extension (CLAP_EXT_STATE);
+    plugin_file_reference = (const clap_plugin_file_reference*) plugin_get_extension (CLAP_EXT_FILE_REFERENCE);
     const clap_plugin_render *plugin_render = nullptr;
     plugin_render = (const clap_plugin_render*) plugin_get_extension (CLAP_EXT_RENDER);
+    (void) plugin_render;
     const clap_plugin_latency *plugin_latency = nullptr;
     plugin_latency = (const clap_plugin_latency*) plugin_get_extension (CLAP_EXT_LATENCY);
+    (void) plugin_latency;
     const clap_plugin_tail *plugin_tail = nullptr;
     plugin_tail = (const clap_plugin_tail*) plugin_get_extension (CLAP_EXT_TAIL);
+    (void) plugin_tail;
     get_port_infos();
     return true;
-  }
-  ~ClapPluginHandleImpl()
-  {
-    destroy();
   }
   bool plugin_activated = false;
   bool plugin_processing = false;
@@ -675,7 +689,7 @@ public:
   std::vector<FdPoll> fd_polls_;
   std::vector<ClapParamInfoImpl> param_infos_;
   ClapParamInfoMap param_ids_;
-  ClapParamUpdateS *load_updates_ = nullptr;
+  ClapParamUpdateS *loader_updates_ = nullptr;
   void get_port_infos ();
   String get_param_value_text (clap_id param_id, double value);
   double get_param_value_double (clap_id param_id, const String &text);
@@ -683,6 +697,7 @@ public:
   void flush_event_params (const ClapEventParamS &events, ClapEventUnionS &output_events);
   void params_changed() override;
   void scan_params();
+  void resolve_file_references (ClapResourceHashS loader_hashes);
   ClapParamInfoImpl*
   find_param_info (clap_id clapid)
   {
@@ -749,55 +764,72 @@ public:
     return true;
   }
   void
-  load_state (StreamReaderP blob, const ClapParamUpdateS &updates) override
+  load_state (WritNode &xs) override
   {
-    assert_return (load_updates_ == nullptr);
-    // load saved blob
-    if (blob)
+    assert_return (loader_updates_ == nullptr);
+    // queue parameter update events
+    if (!plugin_state)
       {
-        StreamReader *sr = blob.get();
+        ClapParamIdValueS params;
+        xs["param_values"] & params;
+        PDEBUG ("%s: LOAD: %s\n", clapid(), json_stringify (params));
+        loader_updates_ = new ClapParamUpdateS;
+        for (const auto &[id, value] : params)
+          loader_updates_->push_back ({
+              .steady_time = 0, .param_id = id, .flags = 0, .value = value,
+            });
+        // TODO: flush loader_updates_ right away
+      }
+    // load saved blob
+    if (plugin_state)
+      {
+        String blobname;
+        xs["state_blob"] & blobname;
+        StreamReaderP blob = blobname.empty() ? nullptr : _project()->load_blob (blobname);
         const clap_istream istream = {
-          .ctx = sr,
+          .ctx = blob.get(),
           .read = [] (const clap_istream *stream, void *buffer, uint64_t size) -> int64_t {
             StreamReader *sr = (StreamReader*) stream->ctx;
             return sr->read (buffer, size);
           }
         };
         errno = ENOSYS;
-        bool ok = !plugin_state ? false : plugin_state->load (plugin_, &istream);
-        ok &= blob->close();
-        if (!ok)
+        bool ok = !blob ? false : plugin_state->load (plugin_, &istream);
+        ok &= !blob ? false : blob->close();
+        if (!ok && blobname.size())
           printerr ("%s: blob read error: %s\n", clapid(), strerror (errno ? errno : EIO));
       }
-    // queue parameter update events
-    if (plugin_params && updates.size())
-      load_updates_ = new ClapParamUpdateS (updates);
+    // update collected files
+    ClapResourceHashS loader_hashes;
+    xs["resource_hashes"] & loader_hashes;
+    resolve_file_references (loader_hashes);
   }
   void
-  save_state (String &blobfilename, ClapParamUpdateS &updates) override
+  save_state (WritNode &xs, const String &device_path) override
   {
-    updates.clear();
+    // first, flush plugin state to disk
+    bool need_save_resources = false;
+    if (plugin_file_reference && plugin_file_reference->save_resources)
+      need_save_resources = !plugin_file_reference->save_resources (plugin_);
     // store params if plugin_state->save is unimplemented
     if (!plugin_state)
-      for (const auto &pinfo : param_infos_)
-        if (pinfo.param_id != CLAP_INVALID_ID) {
-          ClapParamUpdate pu = {
-            .steady_time = 0,
-            .param_id = pinfo.param_id,
-            .flags = 0,
-            .value = pinfo.current_value,
-          };
-          updates.push_back (pu);
-          PDEBUG ("%s: SAVE: %08x=%f: %s (%s)\n", clapid(), pu.param_id, pu.value, pinfo.current_value_text, pinfo.name);
-        }
+      {
+        ClapParamIdValueS params;
+        for (const auto &pinfo : param_infos_)
+          if (pinfo.param_id != CLAP_INVALID_ID)
+            params.push_back ({ pinfo.param_id, pinfo.current_value });
+        xs["param_values"] & params;
+        PDEBUG ("%s: SAVE: %s\n", clapid(), json_stringify (params));
+      }
     // save state into blob file
     if (plugin_state)
       {
-        blobfilename += ".zst"; // changes file name, *inout* arg
-        StreamWriterP swp = stream_writer_zstd (stream_writer_create_file (blobfilename));
-        StreamWriter *sw = swp.get();
+        String blobname = string_format ("clap-%s.bin", device_path);
+        printerr ("SAVE: blobname: %s\n", blobname);
+        const String blobfile = _project()->writer_file_name (blobname) + ".zst";
+        StreamWriterP swp = stream_writer_zstd (stream_writer_create_file (blobfile));
         const clap_ostream ostream = {
-          .ctx = sw,
+          .ctx = swp.get(),
           .write = [] (const clap_ostream *stream, const void *buffer, uint64_t size) -> int64_t {
             StreamWriter *sw = (StreamWriter*) stream->ctx;
             return sw->write (buffer, size);
@@ -806,11 +838,52 @@ public:
         errno = 0;
         bool ok = plugin_state->save (plugin_, &ostream);
         ok &= swp->close();
-        if (!ok)
-          printerr ("%s: %s: write error: %s\n", clapid(), blobfilename, strerror (errno ? errno : EIO));
+        if (!ok) // TODO: user_note
+          printerr ("%s: %s: write error: %s\n", clapid(), blobfile, strerror (errno ? errno : EIO));
         // keep state only if size >0
-        if (!ok || !Path::check (blobfilename, "frs"))
-          Path::rmrf (blobfilename);
+        if (!ok || !Path::check (blobfile, "frs"))
+          Path::rmrf (blobfile);
+        else
+          {
+            Error err = _project()->writer_add_file (blobfile);
+            if (!!err)
+              printerr ("%s: %s: %s\n", program_alias(), blobfile, ase_error_blurb (err));
+            else
+              xs["state_blob"] & blobname;
+          }
+      }
+    // collect external files
+    if (plugin_file_reference && plugin_file_reference->count && plugin_file_reference->get)
+      {
+        ClapResourceHashS hashes;
+        if (need_save_resources) // retry if we got false previously
+          plugin_file_reference->save_resources (plugin_);
+        const size_t n_files = plugin_file_reference->count (plugin_);
+        for (size_t i = 0; i < n_files; i++)
+          {
+            char buffer[ASE_PATH_MAX + 2] = { 0, };
+            const size_t path_capacity = sizeof (buffer) - 1;
+            clap_file_reference pfile = {
+              .resource_id = CLAP_INVALID_ID,
+              .belongs_to_plugin_collection = false,
+              .path_capacity = path_capacity,
+              .path_size = 0, .path = buffer,
+            };
+            if (!plugin_file_reference->get (plugin_, i, &pfile) || pfile.path_size < 1 ||
+                !pfile.path || pfile.path_size >= path_capacity) // ignore excessive path lengths
+              continue;
+            pfile.path[pfile.path_size] = 0;
+            if (!Path::check (pfile.path, "r"))   // must exist and be readable
+              continue;
+            ClapResourceHash rhash = { pfile.resource_id, "" };
+            Error err = _project()->writer_collect (pfile.path, &std::get<String> (rhash));
+            if (!err)
+              hashes.push_back (rhash);
+            else
+              ASE_SERVER.user_note (string_format ("## Note Missing File\n%s: \\\nFailed to store: `%s` \\\n%s",
+                                                   clapid(), pfile.path, ase_error_blurb (err)));
+          }
+        xs["resource_hashes"] & hashes;
       }
   }
   bool
@@ -839,17 +912,17 @@ public:
       scan_params(); // needed for convert_param_updates
     }
     // load parameter updates and rescan
-    if (plugin_params && load_updates_) {
-      ClapEventParamS *pevents = convert_param_updates (*load_updates_);
+    if (plugin_params && loader_updates_) {
+      ClapEventParamS *pevents = convert_param_updates (*loader_updates_);
       ClapEventUnionS output_events;
       flush_event_params (*pevents, output_events);
       output_events.clear(); // discard output_events, we just do a rescan
       scan_params();
       delete pevents;
     }
-    if (load_updates_) {
-      delete load_updates_;
-      load_updates_ = nullptr;
+    if (loader_updates_) {
+      delete loader_updates_;
+      loader_updates_ = nullptr;
     }
     // activate, keeps param_ids_, param_infos_ locked now, start_processing
     plugin_activated = plugin_->activate (plugin_, proc_->engine().sample_rate(), 32, 4096);
@@ -909,6 +982,8 @@ public:
       plugin_->destroy (plugin_);
     plugin_ = nullptr;
     plugin_gui = nullptr;
+    plugin_state = nullptr;
+    plugin_file_reference = nullptr;
     plugin_params = nullptr;
     plugin_timer_support = nullptr;
     plugin_audio_ports_config = nullptr;
@@ -1586,6 +1661,76 @@ static const clap_host_gui host_ext_gui = {
   .closed = host_gui_closed,
 };
 
+// == clap_host_file_reference ==
+void
+ClapPluginHandleImpl::resolve_file_references (ClapResourceHashS loader_hashes)
+{
+  if (!plugin_file_reference || !plugin_file_reference->update_path ||
+      !plugin_file_reference->count || !plugin_file_reference->get)
+    return;
+  const size_t n_files = plugin_file_reference->count (plugin_);
+  for (size_t i = 0; i < n_files; i++)
+    {
+      char buffer[ASE_PATH_MAX + 2] = { 0, };
+      const size_t path_capacity = sizeof (buffer) - 1;
+      clap_file_reference pfile = {
+        .resource_id = CLAP_INVALID_ID,
+        .belongs_to_plugin_collection = false,
+        .path_capacity = path_capacity,
+        .path_size = 0, .path = buffer,
+      };
+      if (!plugin_file_reference->get (plugin_, i, &pfile) ||
+          pfile.path_size >= path_capacity) // ignore excessive path lengths
+        continue;
+      if (pfile.path && Path::check (pfile.path, "e"))
+        continue;       // path exists, nothing to resolve
+      String hash;
+      uint8_t digest[32] = { 0, };
+      // fetch hash from plugin or cache
+      if (plugin_file_reference->get_blake3_digest &&
+          plugin_file_reference->get_blake3_digest (plugin_, pfile.resource_id, digest))
+        hash = string_to_hex (String ((const char*) digest, sizeof (digest)));
+      else
+        for (size_t i = 0; i < loader_hashes.size(); i++)
+          if (std::get<clap_id> (loader_hashes[i]) == pfile.resource_id)
+            {
+              hash = std::get<String> (loader_hashes[i]);
+              break;
+            }
+      // resolve or warn user
+      String content_file = hash.empty() ? "" : _project()->loader_resolve (hash);
+      if (content_file.size())
+        plugin_file_reference->update_path (plugin_, pfile.resource_id, content_file.c_str());
+      else
+        {
+          String what = string_format ("id=%04x", pfile.resource_id);
+          if (!hash.empty())
+            what += " hash=" + hash;
+          if (pfile.path && pfile.path[0])
+            what += String (" ") + pfile.path;
+          ASE_SERVER.user_note (string_format ("## Note Missing File\n%s: \\\nFailed to find file: \\\n%s",
+                                               clapid(), what));
+        }
+    }
+}
+
+static void
+host_file_reference_changed (const clap_host_t *host)
+{
+  CDEBUG ("%s: %s", clapid (host), __func__);
+}
+
+static void
+host_file_reference_set_dirty (const clap_host_t *host, clap_id resource_id)
+{
+  CDEBUG ("%s: %s: %d", clapid (host), __func__, resource_id);
+}
+
+static const clap_host_file_reference host_ext_file_reference = {
+  .changed = host_file_reference_changed,
+  .set_dirty = host_file_reference_set_dirty,
+};
+
 // == clap_host extensions ==
 static const void*
 host_get_extension_mt (const clap_host *host, const char *extension_id)
@@ -1593,6 +1738,7 @@ host_get_extension_mt (const clap_host *host, const char *extension_id)
   const String ext = extension_id;
   if (ext == CLAP_EXT_LOG)              return &host_ext_log;
   if (ext == CLAP_EXT_GUI)              return &host_ext_gui;
+  if (ext == CLAP_EXT_FILE_REFERENCE)   return &host_ext_file_reference;
   if (ext == CLAP_EXT_TIMER_SUPPORT)    return &host_ext_timer_support;
   if (ext == CLAP_EXT_THREAD_CHECK)     return &host_ext_thread_check;
   if (ext == CLAP_EXT_AUDIO_PORTS)      return &host_ext_audio_ports;

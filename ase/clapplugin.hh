@@ -49,7 +49,7 @@ struct ClapParamInfo {
 using ClapParamInfoS = std::vector<ClapParamInfo>;
 
 // == ClapPluginHandle ==
-class ClapPluginHandle : public std::enable_shared_from_this<ClapPluginHandle> {
+class ClapPluginHandle : public GadgetImpl {
 public:
   const ClapPluginDescriptor                    &descriptor;
   const std::vector<clap_audio_ports_config_t>  &audio_ports_configs = audio_ports_configs_;
@@ -67,8 +67,8 @@ protected:
   virtual                    ~ClapPluginHandle   ();
 public:
   String                      clapid             () const { return descriptor.id; }
-  virtual void                load_state         (StreamReaderP blob, const ClapParamUpdateS &updates) = 0;
-  virtual void                save_state         (String &blobfilename, ClapParamUpdateS &updates) = 0;
+  virtual void                load_state         (WritNode &xs) = 0;
+  virtual void                save_state         (WritNode &xs, const String &device_path) = 0;
   virtual bool                param_set_property (clap_id param_id, PropertyP prop) = 0;
   virtual PropertyP           param_get_property (clap_id param_id) = 0;
   virtual double              param_get_value    (clap_id param_id, String *text = nullptr) = 0;

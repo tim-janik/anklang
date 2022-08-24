@@ -55,6 +55,7 @@ public:
   static constexpr size_t buffer_size = 131072; ///< Recommended buffer size.
 };
 
+StreamReaderP stream_reader_from_file  (const String &file);
 StreamReaderP stream_reader_zip_member (const String &archive, const String &member, Storage::StorageFlags f = Storage::AUTO_ZSTD);
 
 class StreamWriter {

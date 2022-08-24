@@ -26,7 +26,7 @@ public:
   String       error_blurb          (Error error) const override;
   String       musical_tuning_label (MusicalTuning musicaltuning) const override;
   String       musical_tuning_blurb (MusicalTuning musicaltuning) const override;
-  uint64       user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &r = "") override;
+  uint64       user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &rest = "") override;
   bool         user_reply           (uint64 noteid, uint r) override;
   bool         broadcast_telemetry  (const TelemetrySegmentS &plan, int32 interval_ms) override;
   void         shutdown             () override;

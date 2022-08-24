@@ -2,7 +2,6 @@
 #include "serialize.hh"
 #include "jsonapi.hh"
 #include "utils.hh"
-#include "driver.hh"
 #include "internal.hh"
 #include <rapidjson/prettywriter.h>
 
@@ -390,6 +389,15 @@ Serializable::serialize (WritNode &xs)
 namespace { // Anon
 using namespace Ase;
 
+struct Simple { int i = 0; float f = 0; String s; };
+static void
+serialize (Simple &simple, WritNode &xs)
+{
+  xs["i"] & simple.i;
+  xs["f"] & simple.f;
+  xs["s"] & simple.s;
+}
+
 struct SBase : Serializable {
   String hi;
   double d;
@@ -397,7 +405,7 @@ struct SBase : Serializable {
   bool b0, b1;
   Error e = Error (0);
   std::vector<char> chars;
-  DriverEntry r;
+  TelemetryField tf;
   ServerP serverp;
   void
   fill()
@@ -412,9 +420,7 @@ struct SBase : Serializable {
     chars.push_back ('A');
     chars.push_back ('B');
     chars.push_back ('C');
-    r = { .devid = "RS232", .device_name = "Serial", .capabilities = "IO++",
-          .device_info = "DEVinfo", .notice = "Handle with care", .priority = 17,
-          .readonly = false, .writeonly = false };
+    tf = { .name = "NAME", .type = "TYPE", .offset = -1234567, .length = 987654321 };
   }
   void
   serialize (WritNode &xs) override
@@ -426,7 +432,7 @@ struct SBase : Serializable {
     xs["s"] & hi;
     xs["e"] & e;
     xs["chars"] & chars;
-    xs["driver"] & r;
+    xs["tf"] & tf;
     // xs["server"] & serverp; // <- pointer is not persistent
   }
 };
@@ -454,6 +460,18 @@ ase_serialize()
     Choice choice = { "grump", "¿"_uc, "Grump", "A flashy Grump", "Notice", "Warn" }, choice2 = via_json (choice);
     TASSERT (choice.ident == choice2.ident && choice.icon == choice2.icon && choice.label == choice2.label &&
              choice.blurb == choice2.blurb && choice.notice == choice2.notice && choice.warning == choice2.warning);
+  }
+  { // tuple
+    using Tuple = std::tuple<String,long,double>;
+    Tuple tuple = { "TUPLE", -618033988, 1.6180339887498948482 };
+    Tuple u = via_json (tuple);
+    TASSERT (std::get<0> (u) == "TUPLE" && std::get<long> (u) == -618033988);
+    TASSERT (fabs (std::get<2> (u) - 1.6180339887498948482) < 1e-16);
+  }
+  { // serialize (O&, WritNode&)
+    Simple simple { 7, -3.14159265358979, "SIMPLE" };
+    auto s2 = via_json (simple);
+    TASSERT (s2.i == 7 && fabs (s2.f - -3.14159265358979) < 1e-7 && s2.s == "SIMPLE");
   }
   { // Json types
     std::string s;

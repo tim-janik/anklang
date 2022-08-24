@@ -2,6 +2,7 @@
 #include "gadget.hh"
 #include "jsonipc/jsonipc.hh"
 #include "utils.hh"
+#include "project.hh"
 #include "serialize.hh"
 #include "internal.hh"
 
@@ -149,6 +150,15 @@ GadgetImpl::access_properties ()
 }
 
 // == Gadget ==
+ProjectImpl*
+Gadget::_project() const
+{
+  Gadget *last = const_cast<Gadget*> (this);
+  for (Gadget *parent = last->_parent(); parent; parent = last->_parent())
+    last = parent;
+  return dynamic_cast<ProjectImpl*> (last);
+}
+
 StringS
 Gadget::list_properties ()
 {
