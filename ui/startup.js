@@ -116,12 +116,13 @@ async function bootup () {
   let error;
   try {
     const cururl = new URL (window.location);
-    const result = await Ase.Jsonipc.open (url,
-					   cururl.searchParams.get ('subprotocol') || undefined,
-					   { onclose: want_reconnect });
-    if (result instanceof Ase.Server)
+    const connected = await Ase.Jsonipc.open (url,
+					      cururl.searchParams.get ('subprotocol') || undefined,
+					      { onclose: want_reconnect });
+    const initresult = connected ? await Ase.Jsonipc.send ("Jsonapi/initialize", []) : null;
+    if (initresult instanceof Ase.Server)
       {
-	Ase.server.__resolve__ (result);
+	Ase.server.__resolve__ (initresult);
 	Object.defineProperty (globalThis, 'Ase', { value: Ase });
 	Jsonapi._init (Ase.Jsonipc);
 	Ase.Emittable.prototype.on = function (eventselector, fun) {
@@ -132,8 +133,10 @@ async function bootup () {
 	  return discon;
 	};
       }
+    else if (!connected)
+      error = "failed to connect to Jsonipc endpoint";
     else
-      error = 'not an Ase.Server: ' + String (result);
+      error = 'not an Ase.Server: ' + String (initresult);
   } catch (ex) {
     error = String (ex);
   }
