@@ -110,6 +110,8 @@ async function bootup () {
   const want_reconnect = __DEV__ ? reconnect : undefined;
   if (want_reconnect)
     console.log ("__DEV__: watching:", url);
+  // prepare remote GC
+  Ase.Jsonipc.finalization_registration = jsonapi_finalization_registration;
   // connect to Ase.server
   let error;
   try {
@@ -210,6 +212,21 @@ async function bootup () {
   // Test integrity
   if (__DEV__)
     await self_tests();
+}
+
+const jsonapi_finalization_registry = new FinalizationRegistry (jsonapi_finalization_gc);
+const jsonapi_finalization_garbage = new Set();
+
+/// Jsonipc handler for object creation
+function jsonapi_finalization_registration (object) {
+  jsonapi_finalization_garbage.delete (object.$id);
+  jsonapi_finalization_registry.register (object, object.$id);
+}
+
+/// Jsonipc handler for IDs of GC-ed objects.
+function jsonapi_finalization_gc ($id) {
+  jsonapi_finalization_garbage.add ($id);
+  console.log ("GC: $id=" + $id, "(size=" + jsonapi_finalization_garbage.size + ")");
 }
 
 // browser_config() - detect browser oddities, called during early boot
