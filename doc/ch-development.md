@@ -43,8 +43,6 @@ remote method calls is generated via `Jsonipc::ClassPrinter::to_string()` by
 * [√] No uses are made of copy-ctor implementations.
 * [√] Need virtual ID serialization API on InstanceMap.
 * [√] Add `jsonvalue_as_string()` for debugging purposes.
-* [_] Rename observe to handle or receive or onmsg.
-* [_] Remove "Jsonipc.initialize" predefinition
 
 ### Callback Handling
 
