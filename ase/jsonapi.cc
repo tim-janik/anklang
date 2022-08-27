@@ -138,7 +138,7 @@ public:
     {
       JsonapiConnectionP selfp = selfw.lock();
       return_unless (selfp);
-      const String msg = jsonobject_to_string<Jsonipc::STRICT> ("method", id /*"JsonapiTrigger/_%%%"*/, "params", args);
+      const String msg = jsonobject_to_string<Jsonipc::STRICT> ("method", id /*"Jsonapi/Trigger/_%%%"*/, "params", args);
       if (logflags & 8)
         selfp->log (string_format ("⬰ %s", msg));
       selfp->send_text (msg);
@@ -153,7 +153,7 @@ public:
       if (selfp->is_open())
         {
           ValueS args { id };
-          const String msg = jsonobject_to_string<Jsonipc::STRICT> ("method", "JsonapiTrigger/killed", "params", args);
+          const String msg = jsonobject_to_string<Jsonipc::STRICT> ("method", "Jsonapi/Trigger/killed", "params", args);
           if (logflags & 8)
             selfp->log (string_format ("↚ %s", msg));
           selfp->send_text (msg);
@@ -201,21 +201,21 @@ make_dispatcher()
                               std::shared_ptr<Server> serverp = shared_ptr_cast<Server> (&server);
                               cbi.set_result (to_json (serverp, cbi.allocator()).Move());
                             });
-    dispatcher->add_method ("JsonapiTrigger/create",
+    dispatcher->add_method ("Jsonapi/Trigger/create",
                             [] (CallbackInfo &cbi)
                             {
                               assert_500 (current_message_conection);
                               const String triggerid = cbi.n_args() == 1 ? from_json<String> (cbi.ntharg (0)) : "";
-                              if (triggerid.compare (0, 16, "JsonapiTrigger/_") != 0)
+                              if (triggerid.compare (0, 17, "Jsonapi/Trigger/_") != 0)
                                 throw Jsonipc::bad_invocation (-32602, "Invalid params");
                               current_message_conection->trigger_create (triggerid);
                             });
-    dispatcher->add_method ("JsonapiTrigger/remove",
+    dispatcher->add_method ("Jsonapi/Trigger/remove",
                             [] (CallbackInfo &cbi)
                             {
                               assert_500 (current_message_conection);
                               const String triggerid = cbi.n_args() == 1 ? from_json<String> (cbi.ntharg (0)) : "";
-                              if (triggerid.compare (0, 16, "JsonapiTrigger/_") != 0)
+                              if (triggerid.compare (0, 17, "Jsonapi/Trigger/_") != 0)
                                 throw Jsonipc::bad_invocation (-32602, "Invalid params");
                               current_message_conection->trigger_remove (triggerid);
                             });
