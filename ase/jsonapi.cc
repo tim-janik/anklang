@@ -193,7 +193,7 @@ make_dispatcher()
   using namespace Jsonipc;
   static IpcDispatcher *dispatcher = [] () {
     dispatcher = new IpcDispatcher();
-    dispatcher->add_method ("Jsonipc.initialize",
+    dispatcher->add_method ("Jsonapi/initialize",
                             [] (CallbackInfo &cbi)
                             {
                               assert_500 (current_message_conection);
