@@ -50,17 +50,11 @@ Javascript can register/unregister remote Callbacks with *create* and *remove*.
 C++ sends events to inform about a remote Callback being *called* or unregistered *killed*.
 
 ```cxx
-void 	JsonapiTrigger/create (id);     // JS->C++
-void 	JsonapiTrigger/remove (id);     // JS->C++
-void 	JsonapiTrigger/_<id>  ([...]);  // C++->JS
-void 	JsonapiTrigger/killed (id);     // C++->JS
+void 	Jsonapi/Trigger/create (id);     // JS->C++
+void 	Jsonapi/Trigger/remove (id);     // JS->C++
+void 	Jsonapi/Trigger/_<id>  ([...]);  // C++->JS
+void 	Jsonapi/Trigger/killed (id);     // C++->JS
 ```
-
-* [_] Turn Jsonhook into `shared_ptr<CbFunc>` with `using CbFunc = std::function<void (ValueS)>;`
-* [_] Allow adding a Jsonhook Destroyer to e.g. disconnect Emittable::Connection
-* [_] Add Jsonhook.destroy
-* [_] Send hook ID to JS from Jsonhook impl with args for call
-* [_] Send "destroyed" to JS
 
 ## Serialization
 
