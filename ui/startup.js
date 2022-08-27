@@ -50,16 +50,16 @@ const Jsonapi = {
   jstrigger_counter: 100000 * (10 + (0 | 89 * Math.random())),
   jstrigger_map: {},
   jstrigger_create (fun) {
-    const id = 'JsonapiTrigger/_' + ++this.jstrigger_counter;
+    const id = 'Jsonapi/Trigger/_' + ++this.jstrigger_counter;
     this.jstrigger_map[id] = fun;
-    Ase.Jsonipc.send ('JsonapiTrigger/create', [ id ]);
+    Ase.Jsonipc.send ('Jsonapi/Trigger/create', [ id ]);
     Ase.Jsonipc.receive (id, fun);
     return id;
   },
   jstrigger_remove (id) {
     if (this.jstrigger_map[id])
       {
-	Ase.Jsonipc.send ('JsonapiTrigger/remove', [ id ]);
+	Ase.Jsonipc.send ('Jsonapi/Trigger/remove', [ id ]);
 	Ase.Jsonipc.receive (id, null);
 	delete this.jstrigger_map[id];
       }
@@ -67,7 +67,7 @@ const Jsonapi = {
   _init (AseJsonipc) {
     console.assert (AseJsonipc == Ase.Jsonipc);
     Ase.Jsonipc.Jsonapi = Jsonapi;
-    Ase.Jsonipc.receive ('JsonapiTrigger/killed', this.jstrigger_remove.bind (this));
+    Ase.Jsonipc.receive ('Jsonapi/Trigger/killed', this.jstrigger_remove.bind (this));
     Ase.Jsonipc.handle_binary (Util.jsonipc_binary_handler_);
     this._init = undefined;
   },
