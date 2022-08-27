@@ -1519,7 +1519,7 @@ struct IpcDispatcher {
           const auto it = extra_methods.find (methodname);
           if (it != extra_methods.end())
             closure = &it->second;
-          else if (strcmp (methodname, "Jsonipc.initialize") == 0)
+          else if (strcmp (methodname, "Jsonipc/handshake") == 0)
             {
               static Closure initialize = [] (CallbackInfo &cbi) { return jsonipc_initialize (cbi); };
               closure = &initialize;
@@ -1567,7 +1567,7 @@ private:
   static std::string*
   jsonipc_initialize (CallbackInfo &cbi)
   {
-    cbi.set_result (to_json (true, cbi.allocator()).Move());
+    cbi.set_result (to_json (0x00000001, cbi.allocator()).Move());
     return nullptr; // no error
   }
 };
