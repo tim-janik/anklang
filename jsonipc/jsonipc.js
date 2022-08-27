@@ -26,10 +26,17 @@ export const Jsonipc = {
     if (options.onclose)
       this.web_socket.onclose = options.onclose;
     this.web_socket.onmessage = this.socket_message.bind (this);
-    const promise = new globalThis.Promise (resolve => {
+    const promise = new globalThis.Promise ((resolve,reject) => {
       this.web_socket.onopen = (event) => {
-	const psend = this.send ('Jsonipc.initialize', []);
-	psend.then (result => { this.authresult = result; resolve (this.authresult); });
+	const psend = this.send ('Jsonipc/handshake', []);
+	psend.then (result => {
+	  this.authresult = result;
+	  const protocol = 0x00000001;
+	  if (this.authresult == protocol)
+	    resolve (true);
+	  else
+	    reject ("invalid protocoal (" + this.authresult + "), expected: " + protocol);
+	});
       };
     });
     return promise;
