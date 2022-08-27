@@ -7,6 +7,7 @@ export const Jsonipc = {
   okeys: globalThis.Object.keys,
   classes: {},
   receivers: {},
+  finalization_registration: () => undefined,
   onbinary: null,
   authresult: undefined,
   web_socket: null,
@@ -39,6 +40,7 @@ export const Jsonipc = {
   Jsonipc_prototype: class {
     constructor ($id) {
       Jsonipc.pdefine (this, '$id', { value: $id });
+      Jsonipc.finalization_registration (this);
     }
     // JSON.stringify replacer
     toJSON() {
