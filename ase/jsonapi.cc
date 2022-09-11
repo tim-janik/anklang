@@ -354,3 +354,24 @@ jsonapi_connection_sender ()
 }
 
 } // Ase
+
+#include "testing.hh"
+
+namespace { // Anon
+
+TEST_INTEGRITY (jsonapi_tests);
+static void
+jsonapi_tests()
+{
+  using namespace Ase;
+  using IdStringMap = std::map<size_t,std::string>;
+  IdStringMap tmap;
+  for (size_t i = 1; i <= 99; i++)
+    tmap[1000 - i] = string_format ("%d", i);
+  TASSERT (tmap.size() == 99);
+  for (auto it = tmap.begin(), next = it; it != tmap.end() ? ++next, 1 : 0; it = next) // keep next ahead of it, but avoid ++end
+    tmap.erase (it);
+  TASSERT (tmap.size() == 0);
+}
+
+} // Anon
