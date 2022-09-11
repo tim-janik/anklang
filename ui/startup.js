@@ -227,9 +227,20 @@ function jsonapi_finalization_registration (object) {
 }
 
 /// Jsonipc handler for IDs of GC-ed objects.
-function jsonapi_finalization_gc ($id) {
+async function jsonapi_finalization_gc ($id) {
   jsonapi_finalization_garbage.add ($id);
-  console.log ("GC: $id=" + $id, "(size=" + jsonapi_finalization_garbage.size + ")");
+  console.log ("GC: $id=" + $id, "(size=" + jsonapi_finalization_garbage.size + ")", jsonapi_finalization_gc.inflight ? "(remote gc inflight)" : "");
+  if (jsonapi_finalization_gc.inflight)
+    return; // avoid duplicate Jsonapi/renew-gc requests
+  let start = Ase.Jsonipc.send ('Jsonapi/renew-gc', []);
+  jsonapi_finalization_gc.inflight = true;
+  start = await start;
+  jsonapi_finalization_gc.inflight = false;
+  if (!start)
+    return; // may indicate another request pending
+  const ids = Array.from (jsonapi_finalization_garbage);
+  jsonapi_finalization_garbage.clear();
+  return Ase.Jsonipc.send ('Jsonapi/report-gc', [ ids ]);
 }
 
 // browser_config() - detect browser oddities, called during early boot
