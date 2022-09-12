@@ -124,6 +124,11 @@ public:
   void  swap    (std::list<Value> &list);
 };
 
+// == Scheduling ==
+int  sched_get_priority  (int tid);
+bool sched_set_priority  (int tid, int nicelevel);
+bool sched_fast_priority (int tid);
+
 // == Thread Status ==
 /// Acquire information about a task (process or thread) at runtime.
 struct TaskStatus {
