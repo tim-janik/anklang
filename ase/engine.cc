@@ -348,6 +348,7 @@ AudioEngineThread::run (const VoidF &owner_wakeup, StartQueue *sq)
   // FIXME: assert owner_wakeup and free trash
   this_thread_set_name ("AudioEngine-0"); // max 16 chars
   audio_engine_thread_id = std::this_thread::get_id();
+  sched_fast_priority (this_thread_gettid());
   owner_wakeup_ = owner_wakeup;
   event_loop_->exec_dispatcher (std::bind (&AudioEngineThread::driver_dispatcher, this, std::placeholders::_1));
   sq->push ('R'); // StartQueue becomes invalid after this call
