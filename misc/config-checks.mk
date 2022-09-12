@@ -81,18 +81,16 @@ config-checks.require.pkgconfig ::= $(strip	\
 	gthread-2.0		>= 2.32.3	\
 	gobject-2.0		>= 2.32.3	\
 )
-# mad.pc exists in Debian only:	mad >= 0.14.2
 # boost libraries have no .pc files
 # Note, vorbisfile <= 1.3.4 had a pcm_seek bug near EOF for small files
 # Unused: fluidsynth		>= 2.0.5
 
 # == pkg-config variables ==
-# used for GLIB_CFLAGS and GLIB_LIBS
-GLIB_PACKAGES    ::= glib-2.0 gobject-2.0 gmodule-no-export-2.0 zlib
 # use for Gtk+2 X11 Window embedding
 GTK2_PACKAGES	 ::= gtk+-2.0
 # used for ASEDEPS_CFLAGS ASEDEPS_LIBS
-ASEDEPS_PACKAGES ::= vorbisenc vorbisfile vorbis ogg flac zlib $(GLIB_PACKAGES) # mad
+ASEDEPS_PACKAGES ::= vorbisenc vorbisfile vorbis ogg flac zlib \
+		     glib-2.0 gobject-2.0 gmodule-no-export-2.0
 # used for ANKLANG_JACK_LIBS
 ANKLANGDEP_JACK  ::= jack >= 0.125.0
 
@@ -117,10 +115,6 @@ $>/config-cache.mk: misc/config-checks.mk misc/version.sh $(GITCOMMITDEPS) | $>/
 	$Q echo '# make $@'					> $@.tmp
 	$Q echo "ANKLANG_GETTEXT_DOMAIN ::=" \
 		'anklang-$$(version_m.m.m)'			>>$@.tmp
-	$Q GLIB_CFLAGS=$$($(PKG_CONFIG) --cflags $(GLIB_PACKAGES)) \
-	  && echo "GLIB_CFLAGS ::= $$GLIB_CFLAGS"		>>$@.tmp
-	$Q GLIB_LIBS=$$($(PKG_CONFIG) --libs $(GLIB_PACKAGES)) \
-	  && echo "GLIB_LIBS ::= $$GLIB_LIBS"			>>$@.tmp
 	$Q GTK2_CFLAGS=$$($(PKG_CONFIG) --cflags $(GTK2_PACKAGES)) \
 	  && echo "GTK2_CFLAGS ::= $$GTK2_CFLAGS"		>>$@.tmp
 	$Q GTK2_LIBS=$$($(PKG_CONFIG) --libs $(GTK2_PACKAGES)) \
@@ -132,10 +126,6 @@ $>/config-cache.mk: misc/config-checks.mk misc/version.sh $(GITCOMMITDEPS) | $>/
 	$Q ALSA_LIBS='-lasound' \
 	  && echo "ALSA_LIBS ::= $$ALSA_LIBS"			>>$@.tmp \
 	  && $(call conftest_require_lib, alsa/asoundlib.h, snd_asoundlib_version, $$ALSA_LIBS)
-	$Q MAD_LIBS='-lmad' \
-	  && echo "MAD_LIBS ::= $$MAD_LIBS"			>>$@.tmp \
-	  && echo 'ASEDEPS_LIBS += $$(MAD_LIBS)'		>>$@.tmp \
-	  && $(call conftest_require_lib, mad.h, mad_stream_errorstr, $$MAD_LIBS)
 	$Q ANKLANG_JACK_LIBS=$$($(PKG_CONFIG) --libs '$(ANKLANGDEP_JACK)' 2>/dev/null) \
 	  && echo "ANKLANG_JACK_LIBS ::= $$ANKLANG_JACK_LIBS"		>>$@.tmp \
 	  || echo "ANKLANG_JACK_LIBS ::= # missing: $(ANKLANGDEP_JACK)" >>$@.tmp
