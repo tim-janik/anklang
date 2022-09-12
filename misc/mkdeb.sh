@@ -11,7 +11,7 @@ DROOT=$BUILDDIR/mkdeb/
 PKGDIR=$(sed -rn '/^ *"pkgdir":/{ s/.*:.*"([^"]+)", *$/\1/; p; q; }' $BUILDDIR/package.json)
 DEBIAN=$DROOT/DEBIAN
 PKGDOCDIR=$DROOT/$PKGDIR/doc
-ANKLANGLAUNCHER=$PKGDIR/bin/anklang
+ANKLANGSYNTHENGINE=$PKGDIR/lib/AnklangSynthEngine
 MAKE="make -w V=${V:-}"
 
 # config for /opt/:
@@ -98,37 +98,30 @@ dch_msg "$NAME" "$VERSION" unstable medium \
 gzip -9 $DEBCHANGELOG
 
 # DEBIAN/postinst
-# Needed because Debian does not provide triggers for /usr/local/
 cat <<\__EOF |
 #!/bin/bash
 set -e -o pipefail
-set_perms() {
-	USER="$1"; GROUP="$2"; MODE="$3"; FILE="$4"
-	# https://www.debian.org/doc/debian-policy/ch-files.html#the-use-of-dpkg-statoverride
-	if ! dpkg-statoverride --list "$FILE" > /dev/null ; then
-		chown "$USER:$GROUP" "$FILE"
-		chmod "$MODE" "$FILE"
-	fi
-}
 
+# Setcap cap_sys_nice to allow renincing for low latency processing
+if [ "$1" = configure ] && command -v setcap > /dev/null ; then
+   setcap cap_sys_nice+ep @ANKLANGSYNTHENGINE@ ||
+	echo "$0: failed to enable 'setcap cap_sys_nice' on @ANKLANGSYNTHENGINE@" >&2
+fi
+
+# Debian lacks triggers outside /usr/share/
 # https://www.debian.org/doc/debian-policy/ch-maintainerscripts.html#s-mscriptsinstact
-case "$1" in
-     configure)
-	# https://www.debian.org/doc/debian-policy/ch-files.html#s-permissions-owners
-	#set_perms root root 4755 @ANKLANGLAUNCHER@	# wrapper which does renice -20
-	# https://www.debian.org/doc/debian-policy/ch-sharedlibs.html#s-ldconfig
-	#ldconfig
-	which update-mime-database >/dev/null 2>&1 &&
-		update-mime-database @PREFIXDIR@/share/mime/
-	which update-desktop-database >/dev/null 2>&1 &&
-		update-desktop-database @PREFIXDIR@/share/applications/
-	;;
-	abort-upgrade|abort-remove|abort-deconfigure) ;;
-	*) exit 1 ;; # unkown action
-esac
+if [ "$1" = configure ] ; then
+   # https://www.debian.org/doc/debian-policy/ch-sharedlibs.html#s-ldconfig
+   #ldconfig
+   which update-mime-database >/dev/null 2>&1 &&
+	update-mime-database @PREFIXDIR@/share/mime/
+   which update-desktop-database >/dev/null 2>&1 &&
+	update-desktop-database @PREFIXDIR@/share/applications/
+fi
+
 exit 0
 __EOF
-sed "s|@ANKLANGLAUNCHER@|$ANKLANGLAUNCHER|g; s|@PREFIXDIR@|$PREFIXDIR|g" > $DEBIAN/postinst
+sed "s|@ANKLANGSYNTHENGINE@|$ANKLANGSYNTHENGINE|g; s|@PREFIXDIR@|$PREFIXDIR|g" > $DEBIAN/postinst
 chmod +x $DEBIAN/postinst
 
 # DEBIAN/postrm
@@ -141,7 +134,7 @@ which update-mime-database >/dev/null 2>&1 && {
 	update-mime-database @PREFIXDIR@/share/mime/
 }
 __EOF
-sed "s|@ANKLANGLAUNCHER@|$ANKLANGLAUNCHER|g; s|@PREFIXDIR@|$PREFIXDIR|g" > $DEBIAN/postrm
+sed "s|@ANKLANGSYNTHENGINE@|$ANKLANGSYNTHENGINE|g; s|@PREFIXDIR@|$PREFIXDIR|g" > $DEBIAN/postrm
 chmod +x $DEBIAN/postrm
 
 # https://wiki.debian.org/ReleaseGoals/LAFileRemoval
