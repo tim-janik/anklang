@@ -4,6 +4,9 @@
 #include "main.hh"
 #include "internal.hh"
 
+#define GCDEBUG(...)      Ase::debug ("gc", __VA_ARGS__)
+#define GCDEBUG_ENABLED() Ase::debug_key_enabled ("gc")
+
 namespace Ase {
 
 static String subprotocol_authentication;
@@ -40,7 +43,7 @@ is_localhost (const String &url, int port)
 }
 
 class JsonapiConnection : public WebSocketConnection, public CustomDataContainer {
-  Jsonipc::InstanceMap imap_;
+  Jsonipc::InstanceMap imap_, gcmap_;
   void
   log (const String &message) override
   {
@@ -112,6 +115,27 @@ public:
   {
     trigger_destroy_hooks();
   }
+  bool
+  renew_gc ()
+  {
+    if (!gcmap_.empty())
+      return false; // waiting for report_gc
+    imap_.move_into (gcmap_);
+    GCDEBUG ("%s: imap_=%d gcmap_=%d\n", __func__, imap_.size(), gcmap_.size());
+    return true;
+  }
+  bool
+  report_gc (const std::vector<size_t> &ids)
+  {
+    gcmap_.move_into (imap_, /*preserve:*/ ids);
+    const size_t after = gcmap_.size();
+    Jsonipc::InstanceMap aged;
+    aged.swap (gcmap_); // empties gcmap_
+    GCDEBUG ("%s: considered=%d retained=%d purge=%d active=%d\n", __func__,
+             ids.size(), ids.size() - after, after, imap_.size());
+    aged.clear (GCDEBUG_ENABLED()); // calls dtors in InstanceMap wrappers
+    return imap_.size();
+  }
   JsTrigger
   trigger_lookup (const String &id)
   {
@@ -138,7 +162,7 @@ public:
     {
       JsonapiConnectionP selfp = selfw.lock();
       return_unless (selfp);
-      const String msg = jsonobject_to_string<Jsonipc::STRICT> ("method", id /*"JsonapiTrigger/_%%%"*/, "params", args);
+      const String msg = jsonobject_to_string<Jsonipc::STRICT> ("method", id /*"Jsonapi/Trigger/_%%%"*/, "params", args);
       if (logflags & 8)
         selfp->log (string_format ("⬰ %s", msg));
       selfp->send_text (msg);
@@ -153,7 +177,7 @@ public:
       if (selfp->is_open())
         {
           ValueS args { id };
-          const String msg = jsonobject_to_string<Jsonipc::STRICT> ("method", "JsonapiTrigger/killed", "params", args);
+          const String msg = jsonobject_to_string<Jsonipc::STRICT> ("method", "Jsonapi/Trigger/killed", "params", args);
           if (logflags & 8)
             selfp->log (string_format ("↚ %s", msg));
           selfp->send_text (msg);
@@ -193,7 +217,26 @@ make_dispatcher()
   using namespace Jsonipc;
   static IpcDispatcher *dispatcher = [] () {
     dispatcher = new IpcDispatcher();
-    dispatcher->add_method ("Jsonipc.initialize",
+    dispatcher->add_method ("Jsonapi/renew-gc",
+                            [] (CallbackInfo &cbi)
+                            {
+                              assert_500 (current_message_conection);
+                              if (cbi.n_args() > 0)
+                                throw Jsonipc::bad_invocation (-32602, "Invalid params");
+                              const auto ret = current_message_conection->renew_gc ();
+                              cbi.set_result (to_json (ret, cbi.allocator()).Move());
+                            });
+    dispatcher->add_method ("Jsonapi/report-gc",
+                            [] (CallbackInfo &cbi)
+                            {
+                              assert_500 (current_message_conection);
+                              if (cbi.n_args() != 1)
+                                throw Jsonipc::bad_invocation (-32602, "Invalid params");
+                              const auto ids = from_json<std::vector<size_t>> (cbi.ntharg (0));
+                              const auto ret = current_message_conection->report_gc (ids);
+                              cbi.set_result (to_json (ret, cbi.allocator()).Move());
+                            });
+    dispatcher->add_method ("Jsonapi/initialize",
                             [] (CallbackInfo &cbi)
                             {
                               assert_500 (current_message_conection);
@@ -201,21 +244,21 @@ make_dispatcher()
                               std::shared_ptr<Server> serverp = shared_ptr_cast<Server> (&server);
                               cbi.set_result (to_json (serverp, cbi.allocator()).Move());
                             });
-    dispatcher->add_method ("JsonapiTrigger/create",
+    dispatcher->add_method ("Jsonapi/Trigger/create",
                             [] (CallbackInfo &cbi)
                             {
                               assert_500 (current_message_conection);
                               const String triggerid = cbi.n_args() == 1 ? from_json<String> (cbi.ntharg (0)) : "";
-                              if (triggerid.compare (0, 16, "JsonapiTrigger/_") != 0)
+                              if (triggerid.compare (0, 17, "Jsonapi/Trigger/_") != 0)
                                 throw Jsonipc::bad_invocation (-32602, "Invalid params");
                               current_message_conection->trigger_create (triggerid);
                             });
-    dispatcher->add_method ("JsonapiTrigger/remove",
+    dispatcher->add_method ("Jsonapi/Trigger/remove",
                             [] (CallbackInfo &cbi)
                             {
                               assert_500 (current_message_conection);
                               const String triggerid = cbi.n_args() == 1 ? from_json<String> (cbi.ntharg (0)) : "";
-                              if (triggerid.compare (0, 16, "JsonapiTrigger/_") != 0)
+                              if (triggerid.compare (0, 17, "Jsonapi/Trigger/_") != 0)
                                 throw Jsonipc::bad_invocation (-32602, "Invalid params");
                               current_message_conection->trigger_remove (triggerid);
                             });
@@ -229,7 +272,7 @@ JsonapiConnection::handle_jsonipc (const std::string &message)
 {
   if (logflags_ & 8)
     log (string_format ("→ %s", message.size() > 1024 ? message.substr (0, 1020) + "..." + message.back() : message));
-  Jsonipc::Scope message_scope (imap_, Jsonipc::Scope::PURGE_TEMPORARIES);
+  Jsonipc::Scope message_scope (imap_);
   String reply;
   { // enfore notifies *before* reply (and the corresponding log() messages)
     CoalesceNotifies coalesce_notifies; // coalesce multiple "notify:detail" emissions
@@ -354,3 +397,24 @@ jsonapi_connection_sender ()
 }
 
 } // Ase
+
+#include "testing.hh"
+
+namespace { // Anon
+
+TEST_INTEGRITY (jsonapi_tests);
+static void
+jsonapi_tests()
+{
+  using namespace Ase;
+  using IdStringMap = std::map<size_t,std::string>;
+  IdStringMap tmap;
+  for (size_t i = 1; i <= 99; i++)
+    tmap[1000 - i] = string_format ("%d", i);
+  TASSERT (tmap.size() == 99);
+  for (auto it = tmap.begin(), next = it; it != tmap.end() ? ++next, 1 : 0; it = next) // keep next ahead of it, but avoid ++end
+    tmap.erase (it);
+  TASSERT (tmap.size() == 0);
+}
+
+} // Anon

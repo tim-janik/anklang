@@ -50,16 +50,16 @@ const Jsonapi = {
   jstrigger_counter: 100000 * (10 + (0 | 89 * Math.random())),
   jstrigger_map: {},
   jstrigger_create (fun) {
-    const id = 'JsonapiTrigger/_' + ++this.jstrigger_counter;
+    const id = 'Jsonapi/Trigger/_' + ++this.jstrigger_counter;
     this.jstrigger_map[id] = fun;
-    Ase.Jsonipc.send ('JsonapiTrigger/create', [ id ]);
+    Ase.Jsonipc.send ('Jsonapi/Trigger/create', [ id ]);
     Ase.Jsonipc.receive (id, fun);
     return id;
   },
   jstrigger_remove (id) {
     if (this.jstrigger_map[id])
       {
-	Ase.Jsonipc.send ('JsonapiTrigger/remove', [ id ]);
+	Ase.Jsonipc.send ('Jsonapi/Trigger/remove', [ id ]);
 	Ase.Jsonipc.receive (id, null);
 	delete this.jstrigger_map[id];
       }
@@ -67,7 +67,7 @@ const Jsonapi = {
   _init (AseJsonipc) {
     console.assert (AseJsonipc == Ase.Jsonipc);
     Ase.Jsonipc.Jsonapi = Jsonapi;
-    Ase.Jsonipc.receive ('JsonapiTrigger/killed', this.jstrigger_remove.bind (this));
+    Ase.Jsonipc.receive ('Jsonapi/Trigger/killed', this.jstrigger_remove.bind (this));
     Ase.Jsonipc.handle_binary (Util.jsonipc_binary_handler_);
     this._init = undefined;
   },
@@ -110,16 +110,19 @@ async function bootup () {
   const want_reconnect = __DEV__ ? reconnect : undefined;
   if (want_reconnect)
     console.log ("__DEV__: watching:", url);
+  // prepare remote GC
+  Ase.Jsonipc.finalization_registration = jsonapi_finalization_registration;
   // connect to Ase.server
   let error;
   try {
     const cururl = new URL (window.location);
-    const result = await Ase.Jsonipc.open (url,
-					   cururl.searchParams.get ('subprotocol') || undefined,
-					   { onclose: want_reconnect });
-    if (result instanceof Ase.Server)
+    const connected = await Ase.Jsonipc.open (url,
+					      cururl.searchParams.get ('subprotocol') || undefined,
+					      { onclose: want_reconnect });
+    const initresult = connected ? await Ase.Jsonipc.send ("Jsonapi/initialize", []) : null;
+    if (initresult instanceof Ase.Server)
       {
-	Ase.server.__resolve__ (result);
+	Ase.server.__resolve__ (initresult);
 	Object.defineProperty (globalThis, 'Ase', { value: Ase });
 	Jsonapi._init (Ase.Jsonipc);
 	Ase.Emittable.prototype.on = function (eventselector, fun) {
@@ -130,8 +133,10 @@ async function bootup () {
 	  return discon;
 	};
       }
+    else if (!connected)
+      error = "failed to connect to Jsonipc endpoint";
     else
-      error = 'not an Ase.Server: ' + String (result);
+      error = 'not an Ase.Server: ' + String (initresult);
   } catch (ex) {
     error = String (ex);
   }
@@ -210,6 +215,32 @@ async function bootup () {
   // Test integrity
   if (__DEV__)
     await self_tests();
+}
+
+const jsonapi_finalization_registry = new FinalizationRegistry (jsonapi_finalization_gc);
+const jsonapi_finalization_garbage = new Set();
+
+/// Jsonipc handler for object creation
+function jsonapi_finalization_registration (object) {
+  jsonapi_finalization_garbage.delete (object.$id);
+  jsonapi_finalization_registry.register (object, object.$id);
+}
+
+/// Jsonipc handler for IDs of GC-ed objects.
+async function jsonapi_finalization_gc ($id) {
+  jsonapi_finalization_garbage.add ($id);
+  console.log ("GC: $id=" + $id, "(size=" + jsonapi_finalization_garbage.size + ")", jsonapi_finalization_gc.inflight ? "(remote gc inflight)" : "");
+  if (jsonapi_finalization_gc.inflight)
+    return; // avoid duplicate Jsonapi/renew-gc requests
+  let start = Ase.Jsonipc.send ('Jsonapi/renew-gc', []);
+  jsonapi_finalization_gc.inflight = true;
+  start = await start;
+  jsonapi_finalization_gc.inflight = false;
+  if (!start)
+    return; // may indicate another request pending
+  const ids = Array.from (jsonapi_finalization_garbage);
+  jsonapi_finalization_garbage.clear();
+  return Ase.Jsonipc.send ('Jsonapi/report-gc', [ ids ]);
 }
 
 // browser_config() - detect browser oddities, called during early boot

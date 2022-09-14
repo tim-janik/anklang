@@ -41,18 +41,18 @@ __DEV__		::=
 else ifeq ($(MODE),devel)
 MODEFLAGS	::= -g -O2
 else ifeq ($(MODE),debug)
-MODEFLAGS	::= -gdwarf-4 -O0 -fno-omit-frame-pointer -fno-inline -fstack-protector-all -fverbose-asm
+MODEFLAGS	::= -gdwarf-4 -Og -fno-omit-frame-pointer -fno-inline -fstack-protector-all -fverbose-asm
 else ifeq ($(MODE),ubsan)
-MODEFLAGS	::= -O1 -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=undefined
+MODEFLAGS	::= -Og -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=undefined
 LDMODEFLAGS	 += -lubsan
 else ifeq ($(MODE),asan)
-MODEFLAGS	::= -O1 -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=address -fno-common
+MODEFLAGS	::= -Og -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=address -fno-common
 LDMODEFLAGS	 += -lasan
 else ifeq ($(MODE),tsan)
-MODEFLAGS	::= -O1 -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=thread
+MODEFLAGS	::= -Og -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=thread
 LDMODEFLAGS	 += -ltsan
 else ifeq ($(MODE),lsan)
-MODEFLAGS	::= -O1 -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=leak
+MODEFLAGS	::= -Og -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=leak
 LDMODEFLAGS	 += -llsan
 endif
 MODEFLAGS        += $(if $(__DEV__),-DASE_ENABLE_DEBUG -DG_ENABLE_DEBUG)

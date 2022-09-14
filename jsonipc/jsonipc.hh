@@ -20,6 +20,7 @@
 // Much of the API and some implementation ideas are influenced by https://github.com/pmed/v8pp/ and https://www.jsonrpc.org/.
 
 #define JSONIPC_ISLIKELY(expr)          __builtin_expect (bool (expr), 1)
+#define JSONIPC_WARNING(fmt,...)        do { fprintf (stderr, "%s:%d: warning: ", __FILE__, __LINE__); fprintf (stderr, fmt, __VA_ARGS__); fputs ("\n", stderr); } while (0)
 #define JSONIPC_ASSERT_RETURN(expr,...) do { if (JSONIPC_ISLIKELY (expr)) break; fprintf (stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #expr); return __VA_ARGS__; } while (0)
 
 namespace Jsonipc {
@@ -144,10 +145,14 @@ class InstanceMap;
 template<typename> struct Class;
 
 // == Scope ==
+using ScopeLocals = std::vector<std::shared_ptr<void>>;
+using ScopeLocalsP = std::shared_ptr<ScopeLocals>;
+
 /// Keep track of temporary instances during IpcDispatcher::dispatch_message().
 class Scope {
-  InstanceMap                        &instance_map_;
-  std::vector<std::shared_ptr<void>> &locals_, scope_locals_;
+  InstanceMap &instance_map_;
+  ScopeLocals  scope_locals_;
+  ScopeLocalsP localsp_;
   static std::vector<Scope*>&
   stack()
   {
@@ -171,7 +176,7 @@ public:
     if (scope)
       {
         sptr = std::make_shared<T>();
-        scope->locals_.push_back (sptr);
+        scope->localsp_->push_back (sptr);
       }
     return sptr;
   }
@@ -183,8 +188,7 @@ public:
       throw std::logic_error ("Jsonipc::Scope::instance_map(): invalid Scope: nullptr");
     return scope ? &scope->instance_map_ : nullptr;
   }
-  enum ConstructorFlags { KEEP_TEMPORARIES, PURGE_TEMPORARIES };
-  explicit Scope (InstanceMap &instance_map, ConstructorFlags cf = KEEP_TEMPORARIES);
+  explicit Scope (InstanceMap &instance_map, ScopeLocalsP localsp = {});
   ~Scope()
   {
     auto &stack_ = stack();
@@ -521,10 +525,10 @@ call_from_json (T &obj, const F &func, const CallbackInfo &args)
 
 // == InstanceMap ==
 class InstanceMap {
-  std::vector<std::shared_ptr<void>> locals_;
   friend class Scope;
   struct TypeidKey {
-    const std::type_index tindex; void *ptr;
+    const std::type_index tindex;
+    void *ptr;
     bool
     operator< (const TypeidKey &other) const noexcept
     {
@@ -567,8 +571,50 @@ private:
   TypeidMap          typeid_map_;
   static size_t      next_counter() { static size_t counter_ = 0; return ++counter_; }
 public:
-  virtual
-  ~InstanceMap()
+  bool
+  empty() const
+  {
+    return wmap_.empty();
+  }
+  size_t
+  size() const
+  {
+    return wmap_.size();
+  }
+  void
+  swap (InstanceMap &other)
+  {
+    wmap_.swap (other.wmap_);
+    typeid_map_.swap (other.typeid_map_);
+  }
+  void
+  move_into (InstanceMap &other, const std::vector<size_t> &preserve = {})
+  {
+    for (auto it = typeid_map_.begin(), next = it; it != typeid_map_.end() && (++next, 1); it = next) // keep next ahead of it, but avoid ++end
+      {
+        const size_t thisid = it->second;
+        if (preserve.end() != std::find (preserve.begin(), preserve.end(), thisid))
+          continue;
+        const auto wt = wmap_.find (thisid);
+        Wrapper *const wrapper = wt != wmap_.end() ? wt->second : nullptr;
+        if (!wrapper)
+          continue;
+        const TypeidKey tkey = it->first;
+        auto tyit = other.typeid_map_.find (tkey);
+        if (tyit != other.typeid_map_.end())
+          { // should never happen
+            if (tyit->second != thisid)
+              JSONIPC_WARNING ("multiple $id entries found for ((%s*)%p): %zu, %zu (discarded)", tkey.tindex.name(), tkey.ptr, tyit->second, thisid);
+            continue;
+          }
+        other.typeid_map_[tkey] = thisid;
+        other.wmap_[thisid] = wrapper;
+        wmap_.erase (wt);
+        typeid_map_.erase (it);
+      }
+  }
+  void
+  clear (const bool printdebug = false)
   {
     WrapperMap old;
     std::swap (old, wmap_);
@@ -576,8 +622,15 @@ public:
     for (auto &pair : old)
       {
         Wrapper *wrapper = pair.second;
+        if (printdebug)
+          fprintf (stderr, "Jsonipc::~Wrapper: %s: $id=%zu\n", string_demangle_cxx (wrapper->typeid_key().tindex.name()).c_str(), pair.first);
         delete wrapper;
       }
+  }
+  virtual
+  ~InstanceMap()
+  {
+    clear();
     JSONIPC_ASSERT_RETURN (wmap_.size() == 0); // deleters shouldn't re-add
     JSONIPC_ASSERT_RETURN (typeid_map_.size() == 0); // deleters shouldn't re-add
   }
@@ -678,8 +731,8 @@ CallbackInfo::find_closure (const char *methodname)
 }
 
 inline
-Scope::Scope (InstanceMap &instance_map, ConstructorFlags cf) :
-  instance_map_ (instance_map), locals_ (cf == KEEP_TEMPORARIES ? instance_map_.locals_ : scope_locals_)
+Scope::Scope (InstanceMap &instance_map, ScopeLocalsP localsp) :
+  instance_map_ (instance_map), localsp_ (localsp ? localsp : ScopeLocalsP (&scope_locals_, [] (ScopeLocals*) {}))
 {
   auto &stack_ = stack();
   stack_.push_back (this);
@@ -1519,7 +1572,7 @@ struct IpcDispatcher {
           const auto it = extra_methods.find (methodname);
           if (it != extra_methods.end())
             closure = &it->second;
-          else if (strcmp (methodname, "Jsonipc.initialize") == 0)
+          else if (strcmp (methodname, "Jsonipc/handshake") == 0)
             {
               static Closure initialize = [] (CallbackInfo &cbi) { return jsonipc_initialize (cbi); };
               closure = &initialize;
@@ -1567,7 +1620,7 @@ private:
   static std::string*
   jsonipc_initialize (CallbackInfo &cbi)
   {
-    cbi.set_result (to_json (true, cbi.allocator()).Move());
+    cbi.set_result (to_json (0x00000001, cbi.allocator()).Move());
     return nullptr; // no error
   }
 };
