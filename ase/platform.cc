@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "platform.hh"
 #include "path.hh"
+#include "dbus.hh"
 #include "utils.hh"
 #include "strings.hh"
 #include "internal.hh"
@@ -13,6 +14,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 #include <sys/syscall.h>        // SYS_gettid
 #include <semaphore.h>
 #include <stdarg.h>
@@ -29,6 +31,8 @@
 #else   // !_WIN32
 #define LIBTOOL_OBJDIR          ".libs"
 #endif  // !_WIN32
+
+#define PDEBUG(...)     Ase::debug ("Platform", __VA_ARGS__)
 
 namespace Ase {
 
@@ -906,6 +910,46 @@ ScopedSemaphore::~ScopedSemaphore () noexcept
   sem_t &sem = *(sem_t*) mem_;
   const int ret = sem_destroy (&sem);
   assert_return (ret == 0);
+}
+
+// == Scheduling ==
+/// Retrieve the nice level of process or thread `tid`.
+int
+sched_get_priority (int tid)
+{
+  errno = 0;
+  const int level = getpriority (PRIO_PROCESS, tid);
+  if (level == -1 && errno)
+    PDEBUG ("getpriority(%d) failed: %s", tid, strerror (errno));
+  return level == -1 && errno ? 0 : level;
+}
+
+/// Try to set the nice level of process or thread `tid` to `nicelevel`.
+bool
+sched_set_priority (int tid, int nicelevel)
+{
+  errno = 0;
+  return setpriority (PRIO_PROCESS, tid, nicelevel) >= 0;
+}
+
+/// Try to acquire low latency scheduling priority, returns true if nice level is < 0.
+bool
+sched_fast_priority (int tid)
+{
+  String emsg;
+  if (!sched_set_priority (tid, -20))
+    emsg = strerror (errno ? errno : EPERM);
+  if (!emsg.empty())
+    {
+      const int level = DBus::rtkit_get_min_nice_level();
+      if (level < 0)
+        emsg = DBus::rtkit_make_high_priority (tid, level);
+    }
+  if (emsg.empty())
+    PDEBUG ("acquired low latency scheduling for pid=%d: %d", tid, sched_get_priority (tid));
+  else
+    PDEBUG ("failed to acquire low latency scheduling for pid=%d: %s", tid, emsg);
+  return emsg.empty();
 }
 
 // == TaskStatus ==

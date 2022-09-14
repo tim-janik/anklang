@@ -59,7 +59,7 @@ debug_key_value (const char *conditional)
     return lflags;
   } ();
   // find key in colon-separated debug flags
-  const ::std::string key = conditional ? conditional : "";
+  const ::std::string key = conditional ? string_tolower (conditional) : "";
   static const std::string all = ":all:", none = ":none:";
   const std::string condr = ":no-" + key + ":";
   const std::string condc = ":" + key + ":";
