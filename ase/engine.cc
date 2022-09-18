@@ -23,7 +23,7 @@ constexpr uint fixed_sample_rate = 48000;
 struct EngineJobImpl : AudioEngineJob {
   VoidFunc func;
   std::atomic<EngineJobImpl*> next = nullptr;
-  EngineJobImpl (const VoidFunc &jobfunc) : func (jobfunc) {}
+  explicit EngineJobImpl (const VoidFunc &jobfunc) : func (jobfunc) {}
 };
 static inline std::atomic<EngineJobImpl*>&
 atomic_next_ptrref (EngineJobImpl *j)
@@ -411,7 +411,7 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
           if (schedule_invalid_)
             {
               schedule_clear();
-              for (AudioProcessorP proc :  oprocs_)
+              for (AudioProcessorP &proc :  oprocs_)
                 proc->schedule_processor();
               schedule_invalid_ = false;
             }
