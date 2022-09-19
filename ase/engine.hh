@@ -16,7 +16,7 @@ struct AudioEngineJob {
 /// Main handle for AudioProcessor administration and audio rendering.
 class AudioEngine : VirtualBase {
   std::atomic<size_t>          processor_count_ = 0;
-  friend class AudioEngineThread;
+  friend class AudioEngineImpl;
   friend class AudioProcessor;
   class JobQueue {
     AudioEngine &engine_; const int flags_;
@@ -30,11 +30,11 @@ protected:
   AudioTransport                    *transport_ = nullptr;
   explicit     AudioEngine           ();
   virtual void enable_output         (AudioProcessor &aproc, bool onoff) = 0;
-  virtual void schedule_queue_update () = 0;
-  virtual void schedule_add          (AudioProcessor &aproc, uint level) = 0;
+  void schedule_queue_update ();
+  void schedule_add          (AudioProcessor &aproc, uint level);
 public:
   // Owner-Thread API
-  virtual void start_thread          (const VoidF &owner_wakeup) = 0;
+  void start_thread          ();
   virtual void stop_thread           () = 0;
   virtual void wakeup_thread_mt      () = 0;
   virtual bool ipc_pending           () = 0;
@@ -54,7 +54,7 @@ public:
   JobQueue               const_jobs;    ///< Blocks during execution, must treat AudioProcessor objects read-only
 };
 
-AudioEngine&    make_audio_engine    (uint sample_rate, SpeakerArrangement speakerarrangement);
+AudioEngine&    make_audio_engine    (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement);
 
 /// A BorrowedPtr wraps an object pointer until it is disposed, i.e. returned to the main-thread and deleted.
 template<typename T>

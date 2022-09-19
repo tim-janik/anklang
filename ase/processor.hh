@@ -98,7 +98,7 @@ class AudioProcessor : public std::enable_shared_from_this<AudioProcessor>, publ
   class FloatBuffer;
   friend class ProcessorManager;
   friend class DeviceImpl;
-  friend class AudioEngineThread;
+  friend class AudioEngineImpl;
   struct OConnection {
     AudioProcessor *proc = nullptr; IBusId ibusid = {};
     bool operator== (const OConnection &o) const { return proc == o.proc && ibusid == o.ibusid; }
