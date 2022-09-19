@@ -242,6 +242,14 @@ run_tests_and_quit ()
   main_loop->quit (0);
 }
 
+void
+main_loop_wakeup ()
+{
+  MainLoopP loop = main_loop;
+  if (loop)
+    loop->wakeup();
+}
+
 } // Ase
 
 static void
@@ -350,9 +358,9 @@ main (int argc, char *argv[])
     }
 
   // start audio engine
-  AudioEngine &ae = make_audio_engine (48000, SpeakerArrangement::STEREO);
+  AudioEngine &ae = make_audio_engine (main_loop_wakeup, 48000, SpeakerArrangement::STEREO);
   main_config_.engine = &ae;
-  ae.start_thread ([] () { main_loop->wakeup(); });
+  ae.start_thread ();
   const uint loopdispatcherid = main_loop->exec_dispatcher ([&ae] (const LoopState &state) -> bool {
     switch (state.phase)
       {
