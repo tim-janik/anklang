@@ -18,20 +18,12 @@ class AudioEngine : VirtualBase {
   std::atomic<size_t>          processor_count_ = 0;
   friend class AudioEngineImpl;
   friend class AudioProcessor;
-  class JobQueue {
-    AudioEngine &engine_; const int flags_;
-  public:
-    explicit JobQueue   (AudioEngine &e, int f) : engine_ (e), flags_ (f) {}
-    void     operator+= (const std::function<void()> &job) { return engine_.add_job_mt (new_engine_job (job), flags_); }
-    void     operator+= (AudioEngineJob *job) { return engine_.add_job_mt (job, flags_); }
-  };
-  void         add_job_mt            (AudioEngineJob *job, int flags);
 protected:
-  AudioTransport                    *transport_ = nullptr;
-  explicit     AudioEngine           ();
-  void enable_output         (AudioProcessor &aproc, bool onoff);
-  void schedule_queue_update ();
-  void schedule_add          (AudioProcessor &aproc, uint level);
+  AudioTransport *transport_ = nullptr;
+  explicit AudioEngine           () {}
+  void     enable_output         (AudioProcessor &aproc, bool onoff);
+  void     schedule_queue_update ();
+  void     schedule_add          (AudioProcessor &aproc, uint level);
 public:
   // Owner-Thread API
   void            start_thread     ();
@@ -50,11 +42,16 @@ public:
   static AudioEngineJob* new_engine_job      (const std::function<void()> &jobfunc);
   static bool            thread_is_engine    () { return std::this_thread::get_id() == thread_id; }
   static const ThreadId &thread_id;
-  JobQueue               async_jobs;    ///< Executed asynchronously, may modify AudioProcessor objects
-  JobQueue               const_jobs;    ///< Blocks during execution, must treat AudioProcessor objects read-only
+  // JobQueues
+  struct JobQueue {
+    void                 operator+= (const std::function<void()> &job);
+    void                 operator+= (AudioEngineJob *job);
+  };
+  static JobQueue        async_jobs;    ///< Executed asynchronously, may modify AudioProcessor objects
+  static JobQueue        const_jobs;    ///< Blocks during execution, must treat AudioProcessor objects read-only
 };
 
-AudioEngine&    make_audio_engine    (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement);
+AudioEngine&     make_audio_engine    (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement);
 
 /// A BorrowedPtr wraps an object pointer until it is disposed, i.e. returned to the main-thread and deleted.
 template<typename T>

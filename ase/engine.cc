@@ -20,6 +20,11 @@ using StartQueue = AsyncBlockingQueue<char>;
 ASE_CLASS_DECLS (EngineMidiInput);
 constexpr uint fixed_sample_rate = 48000;
 
+// == JobQueue ==
+AudioEngine::JobQueue        AudioEngine::async_jobs;
+AudioEngine::JobQueue        AudioEngine::const_jobs;
+static AudioEngine::JobQueue synchronized_jobs;
+
 // == EngineJobImpl ==
 struct EngineJobImpl : AudioEngineJob {
   VoidFunc func;
@@ -45,7 +50,6 @@ class AudioEngineImpl : public AudioEngine {
   std::vector<AudioProcessor*> schedule_;
   bool                         schedule_invalid_ = true;
   EngineMidiInputP             midi_proc_;
-  JobQueue                     synchronized_jobs;
   FastMemory::Block            transport_block;
   AtomicIntrusiveStack<EngineJobImpl> async_jobs_, const_jobs_, trash_jobs_;
   const VoidF                  owner_wakeup_;
@@ -73,7 +77,7 @@ public:
   bool            ipc_pending            ();
   void            ipc_dispatch           ();
   AudioProcessorP get_event_source       ();
-  void            add_job_mt             (AudioEngineJob *aejob, int flags);
+  void            add_job_mt             (AudioEngineJob *aejob, const AudioEngine::JobQueue *jobqueue);
   bool            pcm_check_write        (bool write_buffer, int64 *timeout_usecs_p = nullptr);
   bool            driver_dispatcher      (const LoopState &state);
   bool            process_jobs           (AtomicIntrusiveStack<EngineJobImpl> &joblist);
@@ -100,7 +104,6 @@ AudioEngineImpl::~AudioEngineImpl ()
 }
 
 AudioEngineImpl::AudioEngineImpl (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement) :
-  synchronized_jobs (*this, 2),
   owner_wakeup_ (owner_wakeup)
 {
   transport_block = ServerImpl::instancep()->telemem_allocate (sizeof (*transport_));
@@ -509,7 +512,7 @@ AudioEngineImpl::stop_thread ()
 }
 
 void
-AudioEngineImpl::add_job_mt (AudioEngineJob *aejob, int flags)
+AudioEngineImpl::add_job_mt (AudioEngineJob *aejob, const AudioEngine::JobQueue *jobqueue)
 {
   EngineJobImpl *job = dynamic_cast<EngineJobImpl*> (aejob);
   assert_return (job != nullptr);
@@ -522,14 +525,14 @@ AudioEngineImpl::add_job_mt (AudioEngineJob *aejob, int flags)
       return;
     }
   // enqueue async_jobs
-  if (flags == 0) // run asynchronously via async_jobs_
-    {
+  if (jobqueue == &AudioEngine::async_jobs)     // non-blocking, via async_jobs_ queue
+    { // run asynchronously
       const bool was_empty = engine.async_jobs_.push (job);
       if (was_empty)
         wakeup_thread_mt();
       return;
     }
-  // blocking job, queue wrapper that synchronizes via Semaphore
+  // blocking jobs, queue wrapper that synchronizes via Semaphore
   ScopedSemaphore sem;
   VoidFunc jobfunc = job->func;
   std::function<void()> wrapper = [&sem, jobfunc] () {
@@ -538,29 +541,28 @@ AudioEngineImpl::add_job_mt (AudioEngineJob *aejob, int flags)
   };
   job->func = wrapper;
   bool need_wakeup;
-  if (flags == 1) // blocking, run via const_jobs_
+  if (jobqueue == &AudioEngine::const_jobs) // blocking, via const_jobs_ queue
     need_wakeup = engine.const_jobs_.push (job);
-  else if (flags == 2) // blocking, run via async_jobs_
+  else if (jobqueue == &synchronized_jobs)  // blocking, via async_jobs_ queue
     need_wakeup = engine.async_jobs_.push (job);
   else
-    assert_return_unreached();
+    assert_unreached();
   if (need_wakeup)
     wakeup_thread_mt();
   sem.wait();
 }
 
-// == AudioEngine ==
-AudioEngine::AudioEngine() :
-  async_jobs (*this, 0), const_jobs (*this, 1)
-{}
+static AudioEngineImpl *audio_engine_impl = nullptr;
 
-void
-AudioEngine::add_job_mt (AudioEngineJob *aejob, int flags)
+AudioEngine&
+make_audio_engine (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement)
 {
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
-  return impl.add_job_mt (aejob, flags);
+  assert_return (audio_engine_impl == nullptr, *audio_engine_impl);
+  audio_engine_impl = new AudioEngineImpl (owner_wakeup, sample_rate, speakerarrangement);
+  return *audio_engine_impl;
 }
 
+// == AudioEngine ==
 AudioEngineJob*
 AudioEngine::new_engine_job (const std::function<void()> &jobfunc)
 {
@@ -638,10 +640,16 @@ AudioEngine::get_event_source ()
   return impl.get_event_source();
 }
 
-AudioEngine&
-make_audio_engine (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement)
+void
+AudioEngine::JobQueue::operator+= (const std::function<void()> &job)
 {
-  return *new AudioEngineImpl (owner_wakeup, sample_rate, speakerarrangement);
+  return audio_engine_impl->add_job_mt (new_engine_job (job), this);
+}
+
+void
+AudioEngine::JobQueue::operator+= (AudioEngineJob *job)
+{
+  return audio_engine_impl->add_job_mt (job, this);
 }
 
 // == MidiInput ==
