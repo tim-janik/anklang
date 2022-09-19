@@ -64,15 +64,15 @@ public:
   void            schedule_clear         ();
   void            schedule_add           (AudioProcessor &aproc, uint level);
   void            schedule_queue_update  ();
+  uint64          frame_counter          () const               { return render_stamp_; }
   void            schedule_render        (uint64 frames);
-  uint64          frame_counter          () const override      { return render_stamp_; }
-  void            enable_output          (AudioProcessor &aproc, bool onoff) override;
+  void            enable_output          (AudioProcessor &aproc, bool onoff);
   void            start_thread           ();
-  void            stop_thread            () override;
-  void            wakeup_thread_mt       () override;
-  bool            ipc_pending            () override;
-  void            ipc_dispatch           () override;
-  AudioProcessorP get_event_source       () override;
+  void            stop_thread            ();
+  void            wakeup_thread_mt       ();
+  bool            ipc_pending            ();
+  void            ipc_dispatch           ();
+  AudioProcessorP get_event_source       ();
   void            add_job_mt             (AudioEngineJob *aejob, int flags);
   bool            pcm_check_write        (bool write_buffer, int64 *timeout_usecs_p = nullptr);
   bool            driver_dispatcher      (const LoopState &state);
@@ -82,6 +82,9 @@ public:
   void            swap_midi_drivers_sync (const MidiDriverS &midi_drivers);
   void            queue_user_note        (const String &channel, UserNote::Flags flags, const String &text);
 };
+
+static std::thread::id audio_engine_thread_id = {};
+const ThreadId &AudioEngine::thread_id = audio_engine_thread_id;
 
 static inline std::atomic<AudioEngineImpl::UserNoteJob*>&
 atomic_next_ptrref (AudioEngineImpl::UserNoteJob *j)
@@ -147,13 +150,6 @@ interleaved_stereo (const size_t n_frames, float *buffer, AudioProcessor &proc, 
 }
 
 void
-AudioEngine::schedule_queue_update()
-{
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
-  impl.schedule_queue_update();
-}
-
-void
 AudioEngineImpl::schedule_queue_update()
 {
   schedule_invalid_ = true;
@@ -175,13 +171,6 @@ AudioEngineImpl::schedule_clear()
         }
     }
   schedule_invalid_ = true;
-}
-
-void
-AudioEngine::schedule_add (AudioProcessor &aproc, uint level)
-{
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
-  impl.schedule_add (aproc, level);
 }
 
 void
@@ -356,9 +345,6 @@ AudioEngineImpl::update_drivers (bool fullio, uint latency)
     }
 }
 
-static std::thread::id audio_engine_thread_id = {};
-const ThreadId &AudioEngine::thread_id = audio_engine_thread_id;
-
 void
 AudioEngineImpl::run (StartQueue *sq)
 {
@@ -491,13 +477,6 @@ AudioEngineImpl::wakeup_thread_mt()
 }
 
 void
-AudioEngine::start_thread()
-{
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
-  return impl.start_thread();
-}
-
-void
 AudioEngineImpl::start_thread()
 {
   schedule_.reserve (8192);
@@ -587,6 +566,76 @@ AudioEngine::new_engine_job (const std::function<void()> &jobfunc)
 {
   EngineJobImpl *job = new EngineJobImpl (jobfunc);
   return job;
+}
+
+uint64
+AudioEngine::frame_counter () const
+{
+  const AudioEngineImpl &impl = static_cast<const AudioEngineImpl&> (*this);
+  return impl.frame_counter();
+}
+
+void
+AudioEngine::schedule_queue_update()
+{
+  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  impl.schedule_queue_update();
+}
+
+void
+AudioEngine::schedule_add (AudioProcessor &aproc, uint level)
+{
+  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  impl.schedule_add (aproc, level);
+}
+
+void
+AudioEngine::enable_output (AudioProcessor &aproc, bool onoff)
+{
+  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  return impl.enable_output (aproc, onoff);
+}
+
+void
+AudioEngine::start_thread()
+{
+  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  return impl.start_thread();
+}
+
+void
+AudioEngine::stop_thread()
+{
+  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  return impl.stop_thread();
+}
+
+void
+AudioEngine::wakeup_thread_mt ()
+{
+  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  return impl.wakeup_thread_mt();
+}
+
+bool
+AudioEngine::ipc_pending ()
+{
+  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  return impl.ipc_pending();
+}
+
+void
+AudioEngine::ipc_dispatch ()
+{
+  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  return impl.ipc_dispatch();
+}
+
+AudioProcessorP
+AudioEngine::get_event_source ()
+{
+  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  return impl.get_event_source();
 }
 
 AudioEngine&

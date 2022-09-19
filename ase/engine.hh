@@ -29,19 +29,19 @@ class AudioEngine : VirtualBase {
 protected:
   AudioTransport                    *transport_ = nullptr;
   explicit     AudioEngine           ();
-  virtual void enable_output         (AudioProcessor &aproc, bool onoff) = 0;
+  void enable_output         (AudioProcessor &aproc, bool onoff);
   void schedule_queue_update ();
   void schedule_add          (AudioProcessor &aproc, uint level);
 public:
   // Owner-Thread API
-  void start_thread          ();
-  virtual void stop_thread           () = 0;
-  virtual void wakeup_thread_mt      () = 0;
-  virtual bool ipc_pending           () = 0;
-  virtual void ipc_dispatch          () = 0;
-  virtual AudioProcessorP get_event_source () = 0;
+  void            start_thread     ();
+  void            stop_thread      ();
+  void            wakeup_thread_mt ();
+  bool            ipc_pending      ();
+  void            ipc_dispatch     ();
+  AudioProcessorP get_event_source ();
   // MT-Safe API
-  virtual uint64_t       frame_counter       () const = 0;
+  uint64_t               frame_counter       () const;
   const AudioTransport&  transport           () const           { return *transport_; }
   uint                   sample_rate         () const ASE_CONST { return transport().samplerate; }
   uint                   nyquist             () const ASE_CONST { return transport().nyquist; }
