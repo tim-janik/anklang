@@ -33,6 +33,8 @@ using Ase::String;
 #define assert_warn(expr)               ASE_ASSERT_WARN (expr)
 /// Issue an assertion warning if `expr` evaluates to false, check might be disabled in production.
 #define assert_paranoid(expr)           ASE_ASSERT_PARANOID (expr)
+/// Explicitely mark unreachable code locations.
+#define assert_unreached()              __builtin_unreachable()
 
 /// Indentation helper for editors that cannot (yet) decipher `if constexpr`
 #define	if_constexpr	if constexpr
