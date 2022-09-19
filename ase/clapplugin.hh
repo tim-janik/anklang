@@ -76,9 +76,9 @@ public:
   virtual bool                param_set_value    (clap_id param_id, const String &stringvalue) = 0;
   virtual ClapParamInfoS      param_infos        () = 0;
   virtual void                params_changed     () = 0;
-  virtual bool                activate           () = 0;
-  virtual bool                activated          () const = 0;
-  virtual void                deactivate         () = 0;
+  virtual bool                clap_activate      () = 0;
+  virtual bool                clap_activated     () const = 0;
+  virtual void                clap_deactivate    () = 0;
   virtual void                show_gui           () = 0;
   virtual void                hide_gui           () = 0;
   virtual bool                gui_visible        () = 0;

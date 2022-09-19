@@ -155,7 +155,7 @@ ClapDeviceImpl::serialize (WritNode &xs)
 
   if (xs.in_save() && handle_)
     handle_->save_state (xs, get_device_path());
-  if (xs.in_load() && handle_ && !handle_->activated())
+  if (xs.in_load() && handle_ && !handle_->clap_activated())
     handle_->load_state (xs);
 }
 
@@ -202,7 +202,7 @@ ClapDeviceImpl::_set_parent (GadgetImpl *parent)
   if (!parent && handle_)
     {
       handle_->destroy_gui();
-      handle_->deactivate();
+      handle_->clap_deactivate();
       handle_->destroy();
     }
 }
@@ -211,7 +211,7 @@ void
 ClapDeviceImpl::_activate ()
 {
   if (_parent() && handle_)
-    handle_->activate();
+    handle_->clap_activate();
 }
 
 void
