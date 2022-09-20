@@ -2,7 +2,7 @@
 #include "track.hh"
 #include "combo.hh"
 #include "project.hh"
-#include "device.hh"
+#include "nativedevice.hh"
 #include "clip.hh"
 #include "midilib.hh"
 #include "server.hh"

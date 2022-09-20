@@ -6,7 +6,7 @@
 
 namespace Ase {
 
-class ClapDeviceImpl : public GadgetImpl, public virtual Device {
+class ClapDeviceImpl : public DeviceImpl {
   ASE_DEFINE_MAKE_SHARED (ClapDeviceImpl);
   ClapPluginHandleP handle_;
   Connection        paramschange_;
@@ -21,12 +21,6 @@ public:
   static DeviceInfoS list_clap_plugins     ();
   DeviceInfo         device_info           () override;
   PropertyS          access_properties     () override;
-  bool               is_combo_device       () override                       { return false; }
-  DeviceS            list_devices          () override                       { return {}; } // no children
-  DeviceInfoS        list_device_types     () override                       { return {}; } // no children
-  void               remove_device         (Device &sub) override            {} // no children
-  DeviceP            append_device         (const String&) override          { return {}; }
-  DeviceP            insert_device         (const String&, Device&) override { return {}; }
   void               gui_toggle            () override;
   bool               gui_supported         () override;
   bool               gui_visible           () override;

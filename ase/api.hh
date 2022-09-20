@@ -227,23 +227,29 @@ public:
   Track*              _track             () const;                    ///< Find Track in parent ancestry.
   virtual void        _activate          () = 0;
   virtual DeviceInfo  device_info        () = 0;                      ///< Describe this Device type.
-  // Combo
-  virtual bool        is_combo_device    () = 0;                      ///< Retrieve wether this Device handles sub devices.
-  virtual DeviceS     list_devices       () = 0;                      ///< List devices in order of processing, notified via "devices".
-  // Create sub Device
-  virtual DeviceInfoS list_device_types  () = 0;                      ///< List registered Device types with their unique uri.
-  virtual void        remove_device      (Device &sub) = 0;           ///< Remove a directly contained device.
+  // handle sub Devices
   virtual void        remove_self        ();                          ///< Remove device from its container.
   virtual void        gui_toggle         () = 0;                      ///< Toggle GUI display.
   virtual bool        gui_supported      () = 0;                      ///< Has GUI display facilities.
   virtual bool        gui_visible        () = 0;                      ///< Is GUI currently visible.
-  virtual DeviceP     append_device      (const String &uri) = 0;     ///< Append a new device, see list_device_types().
-  virtual DeviceP     insert_device      (const String &uri,
-                                          Device &beforesibling) = 0; ///< Insert a new device, before `beforesibling`.
   // Internal
   virtual AudioProcessorP _audio_processor   () const = 0;
   virtual void            _set_event_source  (AudioProcessorP esource) = 0;
   virtual void            _disconnect_remove () = 0;
+};
+
+/// Interface to access NativeDevice instances.
+class NativeDevice : public virtual Device {
+public:
+  // Combo
+  virtual bool        is_combo_device   () = 0;                      ///< Retrieve wether this NativeDevice handles sub devices.
+  virtual DeviceS     list_devices      () = 0;                      ///< List devices in order of processing, notified via "devices".
+  // Create sub NativeDevice
+  virtual DeviceInfoS list_device_types () = 0;                      ///< List registered Device types with their unique uri.
+  virtual void        remove_device     (Device &sub) = 0;           ///< Remove a directly contained device.
+  virtual DeviceP     append_device     (const String &uri) = 0;     ///< Append a new device, see list_device_types().
+  virtual DeviceP     insert_device     (const String &uri,
+                                         Device &beforesibling) = 0; ///< Insert a new device, before `beforesibling`.
 };
 
 /// Part specific note event representation.
@@ -294,7 +300,7 @@ struct ProbeFeatures {
 /// Interface for monitoring output signals.
 class Monitor : public virtual Gadget {
 public:
-  virtual DeviceP get_output         () = 0;            ///< Retrieve output module the Monitor is connected to.
+  virtual DeviceP get_output         () = 0;            ///< Retrieve output device the Monitor is connected to.
   virtual int32   get_ochannel       () = 0;            ///< Retrieve output channel the Monitor is connected to.
   virtual int64   get_mix_freq       () = 0;            ///< Mix frequency at which monitor values are calculated.
   virtual int64   get_frame_duration () = 0;            ///< Frame duration in µseconds for the calculation of monitor values.
