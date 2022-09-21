@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <malloc.h>
 
 #undef B0 // undo pollution from termios.h
 
@@ -252,13 +253,19 @@ main (int argc, char *argv[])
 {
   using namespace Ase;
   using namespace AnsiColors;
-  const auto B1 = color (BOLD);
-  const auto B0 = color (BOLD_OFF);
+
+  // use malloc to serve allocations via sbrk only (avoid mmap)
+  mallopt (M_MMAP_MAX, 0);
+  // avoid releasing sbrk memory back to the system (reduce page faults)
+  mallopt (M_TRIM_THRESHOLD, -1);
 
   // setup thread and handle args and config
   TaskRegistry::setup_ase ("AnklangMainProc");
   main_config_ = parse_args (&argc, argv);
   const MainConfig &config = main_config_;
+
+  const auto B1 = color (BOLD);
+  const auto B0 = color (BOLD_OFF);
 
   // print Jsonipc binding
   if (config.print_js_api)
