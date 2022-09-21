@@ -248,6 +248,21 @@ init_sigpipe()
     Ase::warning ("Ase: pthread_sigmask for SIGPIPE failed: %s\n", strerror (errno));
 }
 
+static void
+prefault_pages (size_t stacksize, size_t heapsize)
+{
+  const size_t pagesize = sysconf (_SC_PAGESIZE);
+  char *heap = (char*) malloc (heapsize);
+  if (heap)
+    for (size_t i = 0; i < heapsize; i += pagesize)
+      heap[i] = 1;
+  free (heap);
+  char *stack = (char*) alloca (stacksize);
+  if (stack)
+    for (size_t i = 0; i < stacksize; i += pagesize)
+      stack[i] = 1;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -258,6 +273,8 @@ main (int argc, char *argv[])
   mallopt (M_MMAP_MAX, 0);
   // avoid releasing sbrk memory back to the system (reduce page faults)
   mallopt (M_TRIM_THRESHOLD, -1);
+  // reduce page faults for heap and stack
+  prefault_pages ((1024 + 768) * 1024, 128 * 1024 * 1024);
 
   // setup thread and handle args and config
   TaskRegistry::setup_ase ("AnklangMainProc");
