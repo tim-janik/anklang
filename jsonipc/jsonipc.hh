@@ -574,10 +574,59 @@ private:
   };
   using WrapperMap = std::unordered_map<size_t, Wrapper*>;
   using TypeidMap = std::map<TypeidKey, size_t>;
+  using IdSet = std::set<size_t>;
   WrapperMap         wmap_;
   TypeidMap          typeid_map_;
+  IdSet             *idset_ = nullptr;
   static size_t      next_counter() { static size_t counter_ = 0; return ++counter_; }
+  bool
+  delete_id (size_t thisid)
+  {
+    const auto w = wmap_.find (thisid);
+    if (w != wmap_.end())
+      {
+        Wrapper *wrapper = w->second;
+        wmap_.erase (w);
+        const auto t = typeid_map_.find (wrapper->typeid_key());
+        if (t != typeid_map_.end())
+          typeid_map_.erase (t);
+        delete wrapper;
+        if (idset_)
+          idset_->erase (thisid);
+        return true;
+      }
+    return false;
+  }
 public:
+  bool
+  mark_unused()
+  {
+    if (idset_)
+      return false;
+    idset_ = new IdSet();
+    return true;
+  }
+  size_t
+  purge_unused (const std::vector<size_t> &unused)
+  {
+    IdSet preserve;
+    if (idset_)
+      {
+        idset_->swap (preserve);
+        delete idset_;
+        idset_ = nullptr;
+      }
+    auto contains = [] (const auto &c, const auto &e) {
+      return c.end() != c.find (e);
+    };
+    size_t preserved = 0;
+    for (const size_t id : unused)
+      if (!contains (preserve, id))
+        delete_id (id);
+      else
+        preserved++;
+    return preserved;
+  }
   bool
   empty() const
   {
@@ -623,6 +672,11 @@ public:
   void
   clear (const bool printdebug = false)
   {
+    if (idset_)
+      {
+        delete idset_;
+        idset_ = nullptr;
+      }
     WrapperMap old;
     std::swap (old, wmap_);
     typeid_map_.clear();
@@ -675,6 +729,8 @@ public:
             wrapper = wt != imap->wmap_.end() ? wt->second : nullptr;
           }
       }
+    if (imap->idset_)
+      imap->idset_->insert (thisid);
     /* A note about TypeidKey:
      * Two tuples (TypeX,ptr0x123) and (TypeY,ptr0x123) holding the same pointer address can
      * occur if the RTII lookup to determine the actual Wrapper class fails, e.g. when
@@ -712,20 +768,7 @@ public:
   scope_forget_id (size_t thisid)
   {
     InstanceMap *imap = Scope::instance_map();
-    auto &wmap_ = imap->wmap_;
-    auto &typeid_map_ = imap->typeid_map_;
-    const auto w = wmap_.find (thisid);
-    if (w != wmap_.end())
-      {
-        Wrapper *wrapper = w->second;
-        wmap_.erase (w);
-        const auto t = typeid_map_.find (wrapper->typeid_key());
-        if (t != typeid_map_.end())
-          typeid_map_.erase (t);
-        delete wrapper;
-        return true;
-      }
-    return false;
+    return imap->delete_id (thisid);
   }
 };
 
