@@ -444,6 +444,7 @@ struct CallbackInfo final {
   const JsonValue& ntharg       (size_t index) const { static JsonValue j0; return index < args_.Size() ? args_[index] : j0; }
   size_t           n_args       () const                { return args_.Size(); }
   Closure*         find_closure (const char *methodname);
+  std::string      classname    (const std::string &fallback);
   JsonAllocator&   allocator    ()                      { return doc_.GetAllocator(); }
   void             set_result   (JsonValue &result)     { result_ = result; have_result_ = true; } // move-semantic!
   JsonValue&       get_result   ()                      { return result_; }
@@ -541,8 +542,9 @@ public:
     virtual          ~Wrapper        () {}
     friend            class InstanceMap;
   public:
-    virtual Closure*  lookup_closure (const char *method) = 0;
-    virtual void      try_upcast     (const std::string &baseclass, void *sptrB) = 0;
+    virtual Closure*    lookup_closure (const char *method) = 0;
+    virtual void        try_upcast     (const std::string &baseclass, void *sptrB) = 0;
+    virtual std::string classname      () = 0;
   };
 private:
   template<typename T>
@@ -563,6 +565,11 @@ private:
     create_typeid_key (const std::shared_ptr<T> &sptr)
     {
       return { typeid (T), sptr.get() };
+    }
+    std::string
+    classname() override
+    {
+      return Class<T>::classname();
     }
   };
   using WrapperMap = std::unordered_map<size_t, Wrapper*>;
@@ -728,6 +735,14 @@ CallbackInfo::find_closure (const char *methodname)
   const JsonValue &value = ntharg (0);
   InstanceMap::Wrapper *iw = InstanceMap::scope_lookup_wrapper (value);
   return iw ? iw->lookup_closure (methodname) : nullptr;
+}
+
+inline std::string
+CallbackInfo::classname (const std::string &fallback)
+{
+  const JsonValue &value = ntharg (0);
+  InstanceMap::Wrapper *iw = InstanceMap::scope_lookup_wrapper (value);
+  return iw ? iw->classname() : fallback;
 }
 
 inline
@@ -1579,7 +1594,7 @@ struct IpcDispatcher {
             }
         }
       if (!closure)
-        return create_error (id, -32601, std::string ("Method not found: unknown '") + methodname + "'");
+        return create_error (id, -32601, "Method not found: " + cbi.classname ("<unknown-this>") + "['" + methodname + "']");
       (*closure) (cbi);
       return create_reply (id, cbi.get_result(), !cbi.have_result(), cbi.document());
     } catch (const Jsonipc::bad_invocation &exc) {
