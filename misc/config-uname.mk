@@ -30,6 +30,7 @@ OPTIMIZE	::= -funroll-loops -ftree-vectorize
 SANITIZECC	::= -fno-strict-overflow -fno-strict-aliasing # sane C / C++
 LDOPTIMIZE	::= -O1 -Wl,--hash-style=both -Wl,--compress-debug-sections=zlib
 LDMODEFLAGS	  =
+LTOFLAGS	::=
 __DEV__		::= 1
 
 ifeq ($(MODE),quick)
@@ -37,6 +38,7 @@ MODEFLAGS	::= -O0
 __DEV__		::=
 else ifeq ($(MODE),production)
 MODEFLAGS	::= -O3 -DNDEBUG
+LTOFLAGS	 += -flto
 __DEV__		::=
 else ifeq ($(MODE),devel)
 MODEFLAGS	::= -g -O2
@@ -94,9 +96,9 @@ ifeq ($(uname_M),x86_64)
   endif
 endif
 
-pkgcflags	::= $(strip $(COMMONFLAGS) $(CONLYFLAGS) $(MODEFLAGS) $(OPTIMIZE) $(SANITIZECC)) $(CFLAGS)
-pkgcxxflags	::= $(strip $(COMMONFLAGS) $(CXXONLYFLAGS) $(MODEFLAGS) $(OPTIMIZE) $(SANITIZECC)) $(CXXFLAGS)
-pkgldflags	::= $(strip $(LDOPTIMIZE) $(LDMODEFLAGS)) -Wl,-export-dynamic -Wl,--as-needed -Wl,--no-undefined -Wl,-Bsymbolic-functions $(LDFLAGS)
+pkgcflags	::= $(strip $(COMMONFLAGS) $(CONLYFLAGS) $(MODEFLAGS) $(OPTIMIZE) $(SANITIZECC)) $(CFLAGS) $(LTOFLAGS)
+pkgcxxflags	::= $(strip $(COMMONFLAGS) $(CXXONLYFLAGS) $(MODEFLAGS) $(OPTIMIZE) $(SANITIZECC)) $(CXXFLAGS) $(LTOFLAGS)
+pkgldflags	::= $(strip $(LDOPTIMIZE) $(LDMODEFLAGS)) -Wl,-export-dynamic -Wl,--as-needed -Wl,--no-undefined -Wl,-Bsymbolic-functions $(LDFLAGS) $(LTOFLAGS)
 
 # == implicit rules ==
 compiledefs     = $(DEFS) $(EXTRA_DEFS) $($<.DEFS) $($@.DEFS) $(INCLUDES) $(EXTRA_INCLUDES) $($<.INCLUDES) $($@.INCLUDES)
