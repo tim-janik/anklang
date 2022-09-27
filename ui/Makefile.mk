@@ -37,7 +37,7 @@ ui/public.wildcards ::= $(wildcard	\
 $>/ui/lit.js.map: $>/ui/lit.js ;
 $>/ui/lit.js:	$>/node_modules/.npm.done ui/Makefile.mk		| $>/ui/
 	$(QGEN)
-	$Q rm -f $>/ui/lit* $@
+	$Q rm -f $>/ui/lit.js* $@
 	$Q for mod in \
 		lit lit/directives/async-append.js lit/directives/async-replace.js \
 		lit/directives/cache.js lit/directives/choose.js lit/directives/class-map.js lit/directives/guard.js \

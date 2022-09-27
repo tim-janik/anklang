@@ -202,7 +202,6 @@ class ShellClass extends Envue.Component {
     this.m.show_spinner_count--;
   }
   created() {
-    this.$vm?.$forceUpdate();
     this.m.observable_force_update();
   }
   mounted() {
