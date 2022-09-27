@@ -118,22 +118,16 @@ public:
   bool
   renew_gc ()
   {
-    if (!gcmap_.empty())
-      return false; // waiting for report_gc
-    imap_.move_into (gcmap_);
-    GCDEBUG ("%s: imap_=%d gcmap_=%d\n", __func__, imap_.size(), gcmap_.size());
-    return true;
+    const bool starting_gc = imap_.mark_unused();
+    GCDEBUG ("%s: imap_=%d%s\n", __func__, imap_.size(), starting_gc ? " (duplicate)" : "");
+    return starting_gc; // false: duplicate request, waiting for report_gc
   }
   bool
   report_gc (const std::vector<size_t> &ids)
   {
-    gcmap_.move_into (imap_, /*preserve:*/ ids);
-    const size_t after = gcmap_.size();
-    Jsonipc::InstanceMap aged;
-    aged.swap (gcmap_); // empties gcmap_
-    GCDEBUG ("%s: considered=%d retained=%d purge=%d active=%d\n", __func__,
-             ids.size(), ids.size() - after, after, imap_.size());
-    aged.clear (GCDEBUG_ENABLED()); // calls dtors in InstanceMap wrappers
+    const size_t preerved = imap_.purge_unused (ids);
+    GCDEBUG ("%s: considered=%d retained=%d purged=%d active=%d\n", __func__,
+             ids.size(), preerved, ids.size() - preerved, imap_.size());
     return imap_.size();
   }
   JsTrigger
