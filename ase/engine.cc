@@ -7,6 +7,7 @@
 #include "server.hh"
 #include "datautils.hh"
 #include "atomics.hh"
+#include "project.hh"
 #include "memory.hh"
 #include "internal.hh"
 
@@ -56,6 +57,7 @@ class AudioEngineImpl : public AudioEngine {
   std::thread                 *thread_ = nullptr;
   MainLoopP                    event_loop_ = MainLoop::create();
   AudioProcessorS              oprocs_;
+  ProjectImplP                 project_;
 public:
   struct UserNoteJob {
     std::atomic<UserNoteJob*> next = nullptr;
@@ -71,8 +73,8 @@ public:
   uint64          frame_counter          () const               { return render_stamp_; }
   void            schedule_render        (uint64 frames);
   void            enable_output          (AudioProcessor &aproc, bool onoff);
-  void            start_thread           ();
-  void            stop_thread            ();
+  void            start_threads          ();
+  void            stop_threads           ();
   void            wakeup_thread_mt       ();
   bool            ipc_pending            ();
   void            ipc_dispatch           ();
@@ -85,6 +87,8 @@ public:
   void            run                    (StartQueue *sq);
   void            swap_midi_drivers_sync (const MidiDriverS &midi_drivers);
   void            queue_user_note        (const String &channel, UserNote::Flags flags, const String &text);
+  void            set_project            (ProjectImplP project);
+  ProjectImplP    get_project            ();
 };
 
 static std::thread::id audio_engine_thread_id = {};
@@ -480,7 +484,7 @@ AudioEngineImpl::wakeup_thread_mt()
 }
 
 void
-AudioEngineImpl::start_thread()
+AudioEngineImpl::start_threads()
 {
   schedule_.reserve (8192);
   assert_return (thread_ == nullptr);
@@ -499,7 +503,7 @@ AudioEngineImpl::start_thread()
 }
 
 void
-AudioEngineImpl::stop_thread ()
+AudioEngineImpl::stop_threads()
 {
   AudioEngineImpl &engine = *dynamic_cast<AudioEngineImpl*> (this);
   assert_return (engine.thread_ != nullptr);
@@ -552,6 +556,29 @@ AudioEngineImpl::add_job_mt (AudioEngineJob *aejob, const AudioEngine::JobQueue 
   sem.wait();
 }
 
+void
+AudioEngineImpl::set_project (ProjectImplP project)
+{
+  if (project)
+    {
+      assert_return (project_ == nullptr);
+      assert_return (!project->is_active());
+    }
+  if (project_)
+    project_->deactivate();
+  const ProjectImplP old = project_;
+  project_ = project;
+  if (project_)
+    project_->activate();
+  // dtor of old runs here
+}
+
+ProjectImplP
+AudioEngineImpl::get_project ()
+{
+  return project_;
+}
+
 static AudioEngineImpl *audio_engine_impl = nullptr;
 
 AudioEngine&
@@ -599,17 +626,17 @@ AudioEngine::enable_output (AudioProcessor &aproc, bool onoff)
 }
 
 void
-AudioEngine::start_thread()
+AudioEngine::start_threads()
 {
   AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
-  return impl.start_thread();
+  return impl.start_threads();
 }
 
 void
-AudioEngine::stop_thread()
+AudioEngine::stop_threads()
 {
   AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
-  return impl.stop_thread();
+  return impl.stop_threads();
 }
 
 void
@@ -638,6 +665,20 @@ AudioEngine::get_event_source ()
 {
   AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
   return impl.get_event_source();
+}
+
+void
+AudioEngine::set_project (ProjectImplP project)
+{
+  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  return impl.set_project (project);
+}
+
+ProjectImplP
+AudioEngine::get_project ()
+{
+  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  return impl.get_project();
 }
 
 void

@@ -360,7 +360,7 @@ main (int argc, char *argv[])
   // start audio engine
   AudioEngine &ae = make_audio_engine (main_loop_wakeup, 48000, SpeakerArrangement::STEREO);
   main_config_.engine = &ae;
-  ae.start_thread ();
+  ae.start_threads ();
   const uint loopdispatcherid = main_loop->exec_dispatcher ([&ae] (const LoopState &state) -> bool {
     switch (state.phase)
       {
@@ -466,7 +466,7 @@ main (int argc, char *argv[])
   wss = nullptr;
 
   // halt audio engine, join its threads, dispatch cleanups
-  ae.stop_thread();
+  ae.stop_threads();
   main_loop->remove (loopdispatcherid);
   while (ae.ipc_pending())
     ae.ipc_dispatch();

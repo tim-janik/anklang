@@ -26,12 +26,14 @@ protected:
   void     schedule_add          (AudioProcessor &aproc, uint level);
 public:
   // Owner-Thread API
-  void            start_thread     ();
-  void            stop_thread      ();
+  void            start_threads    ();
+  void            stop_threads     ();
   void            wakeup_thread_mt ();
   bool            ipc_pending      ();
   void            ipc_dispatch     ();
   AudioProcessorP get_event_source ();
+  void            set_project      (ProjectImplP project);
+  ProjectImplP    get_project      ();
   // MT-Safe API
   uint64_t               frame_counter       () const;
   const AudioTransport&  transport           () const           { return *transport_; }
