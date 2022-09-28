@@ -20,6 +20,7 @@ public:
   bool            gui_visible          () override { return false; }
   void            gui_toggle           () override {}
   void            _disconnect_remove   () override;
+  static DeviceInfo extract_info       (const String &aseid, const AudioProcessor::StaticInfo &static_info);
 };
 
 } // Ase

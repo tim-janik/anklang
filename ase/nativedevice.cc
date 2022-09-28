@@ -12,25 +12,8 @@ namespace Ase {
 // == NativeDeviceImpl ==
 JSONIPC_INHERIT (NativeDeviceImpl, NativeDevice);
 
-static DeviceInfo
-device_info_static_info (const String &aseid, const AudioProcessor::StaticInfo &static_info)
-{
-  AudioProcessorInfo pinfo;
-  static_info (pinfo);
-  DeviceInfo info = {
-    .uri          = aseid,
-    .name         = pinfo.label,
-    .category     = pinfo.category,
-    .description  = pinfo.description,
-    .website_url  = pinfo.website_url,
-    .creator_name = pinfo.creator_name,
-    .creator_url  = pinfo.creator_url,
-  };
-  return info;
-}
-
 NativeDeviceImpl::NativeDeviceImpl (const String &aseid, AudioProcessor::StaticInfo static_info, AudioProcessorP aproc) :
-  proc_ (aproc), combo_ (std::dynamic_pointer_cast<AudioCombo> (aproc)), info_ (device_info_static_info (aseid, static_info))
+  proc_ (aproc), combo_ (std::dynamic_pointer_cast<AudioCombo> (aproc)), info_ (extract_info (aseid, static_info))
 {
   assert_return (aproc != nullptr);
 }
