@@ -20,6 +20,7 @@ protected:
   void                 serialize          (WritNode &xs) override;
   void                 _set_parent        (Gadget *parent) override;
   void                 _activate          () override;
+  void                 _deactivate        () override;
   explicit             NativeDeviceImpl   (const String &aseid, AudioProcessor::StaticInfo, AudioProcessorP);
 public:
   PropertyS            access_properties  () override;
@@ -28,11 +29,11 @@ public:
   bool                 is_combo_device    () override       { return combo_ != nullptr; }
   DeviceInfo           device_info        () override       { return info_; }
   // handle sub Devices
-  DeviceInfoS          list_device_types  () override;
   DeviceS              list_devices       () override      { return children_; }
   void                 remove_device      (Device &sub) override;
   DeviceP              append_device      (const String &uri) override;
   DeviceP              insert_device      (const String &uri, Device &beforesibling) override;
+  void                 remove_all_devices ();
   void                 _set_event_source  (AudioProcessorP esource) override;
   void                 _disconnect_remove () override;
 };

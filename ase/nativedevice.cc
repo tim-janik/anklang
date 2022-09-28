@@ -38,7 +38,7 @@ NativeDeviceImpl::NativeDeviceImpl (const String &aseid, AudioProcessor::StaticI
 void
 NativeDeviceImpl::serialize (WritNode &xs)
 {
-  GadgetImpl::serialize (xs);
+  DeviceImpl::serialize (xs);
   // save subdevices
   if (combo_ && xs.in_save())
     for (DeviceP subdevicep : list_devices())
@@ -90,47 +90,36 @@ NativeDeviceImpl::_set_event_source (AudioProcessorP esource)
   proc_->engine().async_jobs += j;
 }
 
-DeviceInfoS
-NativeDeviceImpl::list_device_types ()
+void
+NativeDeviceImpl::remove_all_devices()
 {
-  DeviceInfoS iseq;
-  AudioProcessor::registry_foreach ([&iseq] (const String &aseid, AudioProcessor::StaticInfo static_info) {
-    AudioProcessorInfo pinfo;
-    static_info (pinfo);
-    DeviceInfo info;
-    info.uri          = aseid;
-    info.name         = pinfo.label;
-    info.category     = pinfo.category;
-    info.description  = pinfo.description;
-    info.website_url  = pinfo.website_url;
-    info.creator_name = pinfo.creator_name;
-    info.creator_url  = pinfo.creator_url;
-    if (!info.name.empty() && !info.category.empty())
-      iseq.push_back (info);
-  });
-  for (const DeviceInfo &info : ClapDeviceImpl::list_clap_plugins())
-    iseq.push_back (info);
-  return iseq;
+  while (children_.size())
+    remove_device (*children_.back());
 }
 
 void
 NativeDeviceImpl::_set_parent (Gadget *parent)
 {
-  GadgetImpl::_set_parent (parent);
-  if (!parent)
-    while (children_.size())
-      remove_device (*children_.back());
+  assert_warn (!is_active());
+  DeviceImpl::_set_parent (parent);
 }
 
 void
 NativeDeviceImpl::_activate ()
 {
-  if (!is_active())
-    {
-      this->DeviceImpl::_activate();
-      for (auto &child : children_)
-        child->_activate();
-    }
+  assert_return (!is_active());
+  DeviceImpl::_activate();
+  for (auto &child : children_)
+    child->_activate();
+}
+
+void
+NativeDeviceImpl::_deactivate ()
+{
+  assert_return (is_active());
+  for (auto childit = children_.rbegin(); childit != children_.rend(); ++childit)
+    (*childit)->_deactivate();
+  DeviceImpl::_deactivate();
 }
 
 template<typename E> std::pair<std::shared_ptr<E>,ssize_t>
@@ -220,7 +209,7 @@ NativeDeviceImpl::_disconnect_remove ()
     // TODO: possibly merge with _set_parent(nullptr)
   };
   engine->async_jobs += j;
-  // FIXME: recurse
+  remove_all_devices();
 }
 
 DeviceP
@@ -232,6 +221,30 @@ NativeDeviceImpl::create_native_device (AudioEngine &engine, const String &aseid
   DeviceP devicep = AudioProcessor::registry_create (aseid, engine, make_device);
   return_unless (devicep && devicep->_audio_processor(), nullptr);
   return devicep;
+}
+
+// == NativeDevice ==
+DeviceInfoS
+NativeDevice::list_device_types ()
+{
+  DeviceInfoS iseq;
+  AudioProcessor::registry_foreach ([&iseq] (const String &aseid, AudioProcessor::StaticInfo static_info) {
+    AudioProcessorInfo pinfo;
+    static_info (pinfo);
+    DeviceInfo info;
+    info.uri          = aseid;
+    info.name         = pinfo.label;
+    info.category     = pinfo.category;
+    info.description  = pinfo.description;
+    info.website_url  = pinfo.website_url;
+    info.creator_name = pinfo.creator_name;
+    info.creator_url  = pinfo.creator_url;
+    if (!info.name.empty() && !info.category.empty())
+      iseq.push_back (info);
+  });
+  for (const DeviceInfo &info : ClapDeviceImpl::list_clap_plugins())
+    iseq.push_back (info);
+  return iseq;
 }
 
 DeviceP
