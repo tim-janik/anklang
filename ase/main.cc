@@ -19,12 +19,18 @@
 
 #undef B0 // undo pollution from termios.h
 
+namespace { // Anon
+static void print_class_tree ();
+} // Anon
+
 namespace Ase {
 
 MainLoopP          main_loop;
 MainConfig         main_config_;
 const MainConfig  &main_config = main_config_;
 static int         embedding_fd = -1;
+static bool        arg_js_api = false;
+static bool        arg_class_tree = false;
 
 // == JobQueue ==
 static void
@@ -103,6 +109,7 @@ print_usage (bool help)
     }
   printout ("Usage: %s [OPTIONS]\n", executable_name());
   printout ("  --check          Run integrity tests\n");
+  printout ("  --class-tree     Print exported class tree\n");
   printout ("  --disable-randomization Test mode for deterministic tests\n");
   printout ("  --embed <fd>     Parent process socket for embedding\n");
   printout ("  --fatal-warnings Abort on warnings and failing assertions\n");
@@ -157,7 +164,9 @@ parse_args (int *argcp, char **argv)
           exit (hash == "");
         }
       else if (strcmp ("--js-api", argv[i]) == 0)
-        config.print_js_api = true;
+        arg_js_api = true;
+      else if (strcmp ("--class-tree", argv[i]) == 0)
+        arg_class_tree = true;
       else if (strcmp ("--jsipc", argv[i]) == 0)
         config.jsonapi_logflags |= jsipc_logflags;
       else if (strcmp ("--jsbin", argv[i]) == 0)
@@ -284,10 +293,15 @@ main (int argc, char *argv[])
   const auto B1 = color (BOLD);
   const auto B0 = color (BOLD_OFF);
 
-  // print Jsonipc binding
-  if (config.print_js_api)
+  // CLI printout commands
+  if (arg_js_api)
     {
       printout ("%s\n", Jsonipc::ClassPrinter::to_string());
+      return 0;
+    }
+  if (arg_class_tree)
+    {
+      print_class_tree();
       return 0;
     }
 
@@ -476,6 +490,50 @@ test_feature_toggles()
   b = feature_toggle_bool ("no-a:b:c", "a"); TCMP (b, ==, false);
   b = feature_toggle_bool ("no-a:b:a=5:c", "b"); TCMP (b, ==, true);
   b = feature_toggle_bool ("x", ""); TCMP (b, ==, true); // *any* feature?
+}
+
+struct JWalker : Jsonipc::ClassWalker {
+  struct Class { String name; int depth = 0; Class *base = nullptr; StringS derived; };
+  std::map<std::string,Class> classmap;
+  void
+  new_class (const std::string &classname, const std::string &base)
+  {
+    Class *basep = nullptr;
+    int depth = 0;
+    if (!base.empty())
+      {
+        Class &b = classmap[base];
+        depth = b.depth + 1;
+        b.derived.push_back (classname);
+        basep = &b;
+      }
+    classmap[classname] = { classname, depth, basep };
+  }
+  void
+  print_class (const Class &c, bool sibling, const std::string &indent)
+  {
+    if (c.depth)
+      printout ("%s|\n", indent);
+    printout ("%s%s\n", c.depth ? indent + "+" : indent, c.name);
+    for (size_t i = 0; i < c.derived.size(); i++)
+      print_class (classmap[c.derived[i]], i + 1 < c.derived.size(),
+                   sibling ? indent + "|  " : indent + "   ");
+  }
+  void
+  print_recursive()
+  {
+    for (const auto &c : classmap)
+      if (c.second.depth == 0)
+        print_class (c.second, 0, "");
+  }
+};
+
+static void
+print_class_tree()
+{
+  JWalker walk;
+  Jsonipc::ClassPrinter::walk (walk);
+  walk.print_recursive();
 }
 
 } // Anon

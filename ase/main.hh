@@ -21,7 +21,6 @@ struct MainConfig {
   int    jsonapi_logflags = 1;
   bool   fatal_warnings = false;
   bool   allow_randomization = true;
-  bool   print_js_api = false;
   bool   list_drivers = false;
   enum ModeT { SYNTHENGINE, CHECK_INTEGRITY_TESTS };
   ModeT  mode = SYNTHENGINE;
