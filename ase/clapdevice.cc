@@ -151,7 +151,7 @@ ClapDeviceImpl::get_device_path ()
 void
 ClapDeviceImpl::serialize (WritNode &xs)
 {
-  GadgetImpl::serialize (xs);
+  DeviceImpl::serialize (xs);
 
   if (xs.in_save() && handle_)
     handle_->save_state (xs, get_device_path());
@@ -196,7 +196,7 @@ ClapDeviceImpl::proc_params_change (const Event &event)
 void
 ClapDeviceImpl::_set_parent (Gadget *parent)
 {
-  GadgetImpl::_set_parent (parent);
+  DeviceImpl::_set_parent (parent);
   ClapDeviceImplP selfp = shared_ptr_cast<ClapDeviceImpl> (this);
   // deactivate and destroy plugin
   if (!parent && handle_)
