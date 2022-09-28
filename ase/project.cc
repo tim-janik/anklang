@@ -14,6 +14,15 @@
 
 namespace Ase {
 
+static std::vector<ProjectImplP> all_projects;
+
+// == Project ==
+ProjectP
+Project::last_project()
+{
+  return all_projects.empty() ? nullptr : all_projects.back();
+}
+
 // == ProjectImpl ==
 JSONIPC_INHERIT (ProjectImpl, Project);
 
@@ -37,8 +46,6 @@ struct ProjectImpl::PStorage {
 private:
   PStorage **const ptrp_ = nullptr;
 };
-
-static std::vector<ProjectImplP> all_projects;
 
 ProjectImpl::ProjectImpl()
 {
@@ -369,7 +376,7 @@ ProjectImpl::serialize (WritNode &xs)
   if (xs.in_load() && storage_ && storage_->asset_hashes.empty())
     xs["filehashes"] & storage_->asset_hashes;
   // serrialize children
-  GadgetImpl::serialize (xs);
+  DeviceImpl::serialize (xs);
   // load tracks
   if (xs.in_load())
     for (auto &xc : xs["tracks"].to_nodes())
@@ -758,11 +765,22 @@ ProjectImpl::access_properties ()
   return bag.props;
 }
 
-// == Project ==
-ProjectP
-Project::last_project()
+DeviceInfo
+ProjectImpl::device_info ()
 {
-  return all_projects.empty() ? nullptr : all_projects.back();
+  return {}; // TODO: DeviceInfo
+}
+
+AudioProcessorP
+ProjectImpl::_audio_processor () const
+{
+  return {}; // TODO: AudioProcessorP
+}
+
+void
+ProjectImpl::_set_event_source (AudioProcessorP esource)
+{
+  // TODO: _set_event_source
 }
 
 } // Ase

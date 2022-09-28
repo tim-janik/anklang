@@ -2,6 +2,7 @@
 #ifndef __ASE_PROJECT_HH__
 #define __ASE_PROJECT_HH__
 
+#include <ase/device.hh>
 #include <ase/track.hh>
 #include <ase/transport.hh>
 
@@ -17,7 +18,7 @@ public:
   void      operator+= (const VoidF &func);
 };
 
-class ProjectImpl : public GadgetImpl, public virtual Project {
+class ProjectImpl : public DeviceImpl, public virtual Project {
   std::vector<TrackImplP> tracks_;
   ASE_DEFINE_MAKE_SHARED (ProjectImpl);
   TickSignature tick_sig_;
@@ -43,6 +44,9 @@ public:
   PropertyS            access_properties () override;
   const TickSignature& signature         () const       { return tick_sig_; }
   void                 discard           () override;
+  AudioProcessorP      _audio_processor  () const override;
+  void                 _set_event_source (AudioProcessorP esource) override;
+  DeviceInfo           device_info       () override;
   UndoScope            undo_scope        (const String &scopename);
   void                 push_undo         (const VoidF &func);
   void                 undo              () override;
