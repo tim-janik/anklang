@@ -280,7 +280,7 @@ public:
 };
 
 /// Container for Clip objects and sequencing information.
-class Track : public virtual Gadget {
+class Track : public virtual Device {
 public:
   virtual int32    midi_channel   () const = 0;          ///< Midi channel assigned to this track, 0 uses internal per-track channel.
   virtual void     midi_channel   (int32 midichannel) = 0;

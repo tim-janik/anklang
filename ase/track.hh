@@ -2,12 +2,12 @@
 #ifndef __ASE_TRACK_HH__
 #define __ASE_TRACK_HH__
 
-#include <ase/gadget.hh>
+#include <ase/device.hh>
 
 namespace Ase {
 
 /// Ase::Track implementation.
-class TrackImpl : public GadgetImpl, public virtual Track {
+class TrackImpl : public DeviceImpl, public virtual Track {
   ProjectImpl *project_ = nullptr;
   DeviceP      chain_, midi_prod_;
   ClipImplS    clips_;
@@ -22,6 +22,9 @@ protected:
   explicit TrackImpl      (bool masterflag);
 public:
   class ClipScout;
+  AudioProcessorP _audio_processor  () const override;
+  void            _set_event_source (AudioProcessorP esource) override;
+  DeviceInfo      device_info       () override;
   ProjectImpl*    project        () const               { return project_; }
   bool            is_master      () const override      { return masterflag_; }
   int32           midi_channel   () const override;

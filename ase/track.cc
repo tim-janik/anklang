@@ -35,13 +35,13 @@ TrackImpl::fallback_name () const
       ssize_t i = project_->track_index (*this);
       return string_format ("Track %u", i >= 0 ? i + 1 : i);
     }
-  return GadgetImpl::fallback_name();
+  return DeviceImpl::fallback_name();
 }
 
 void
 TrackImpl::serialize (WritNode &xs)
 {
-  GadgetImpl::serialize (xs);
+  DeviceImpl::serialize (xs);
   // save clips
   if (xs.in_save())
     for (auto &bclip : clips_)
@@ -228,6 +228,24 @@ TrackImpl::telemetry () const
   v.push_back (telemetry_field ("current_tick", &position->tick));
   v.push_back (telemetry_field ("next_clip", &position->next));
   return v;
+}
+
+DeviceInfo
+TrackImpl::device_info ()
+{
+  return {}; // TODO: DeviceInfo
+}
+
+AudioProcessorP
+TrackImpl::_audio_processor () const
+{
+  return {}; // TODO: AudioProcessorP
+}
+
+void
+TrackImpl::_set_event_source (AudioProcessorP esource)
+{
+  // TODO: _set_event_source
 }
 
 // == TrackImpl::ClipScout ==
