@@ -10,9 +10,11 @@ namespace Ase {
 class DeviceImpl : public GadgetImpl, public virtual Device {
   bool            activated_ = false;
 protected:
+  explicit        DeviceImpl           () {} // abstract base
+  void            _set_parent          (Gadget *parent) override;
   void            _activate            () override;
-  explicit        DeviceImpl           () {}
-  bool            is_active            () { return activated_; }
+  void            _deactivate          () override;
+  bool            is_active            () override { return activated_; }
 public:
   bool            gui_supported        () override { return false; }
   bool            gui_visible          () override { return false; }

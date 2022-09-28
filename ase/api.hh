@@ -224,28 +224,30 @@ struct DeviceInfo {
 /// Interface to access Device instances.
 class Device : public virtual Gadget {
 public:
-  Track*              _track             () const;                    ///< Find Track in parent ancestry.
-  virtual void        _activate          () = 0;
-  virtual DeviceInfo  device_info        () = 0;                      ///< Describe this Device type.
-  // handle sub Devices
-  virtual void        remove_self        ();                          ///< Remove device from its container.
-  virtual void        gui_toggle         () = 0;                      ///< Toggle GUI display.
-  virtual bool        gui_supported      () = 0;                      ///< Has GUI display facilities.
-  virtual bool        gui_visible        () = 0;                      ///< Is GUI currently visible.
-  // Internal
-  virtual AudioProcessorP _audio_processor   () const = 0;
+  // internal
+  Track*                  _track             () const;          ///< Find Track in parent ancestry.
+  virtual AudioProcessorP _audio_processor   () const = 0;      ///< Retrieve the corresponding AudioProcessor.
   virtual void            _set_event_source  (AudioProcessorP esource) = 0;
-  virtual void            _disconnect_remove () = 0;
+  virtual void            _activate          () = 0;            ///< Add AudioProcessor to the Engine and start processing.
+  virtual void            _deactivate        () = 0;            ///< Stop processing the corresponding AudioProcessor.
+  virtual void            _disconnect_remove () = 0;            ///< Disconnect the device and remove all object references.
+  // exported
+  virtual bool       is_active     () = 0;      ///< Check whether this is the active synthesis engine project.
+  virtual DeviceInfo device_info   () = 0;      ///< Describe this Device type.
+  void               remove_self   ();          ///< Remove device from its container.
+  // GUI handling
+  virtual void       gui_toggle    () = 0;      ///< Toggle GUI display.
+  virtual bool       gui_supported () = 0;      ///< Has GUI display facilities.
+  virtual bool       gui_visible   () = 0;      ///< Is GUI currently visible.
 };
 
 /// Interface to access NativeDevice instances.
 class NativeDevice : public virtual Device {
 public:
-  // Combo
+  // subdevice handling
   virtual bool        is_combo_device   () = 0;                      ///< Retrieve wether this NativeDevice handles sub devices.
   virtual DeviceS     list_devices      () = 0;                      ///< List devices in order of processing, notified via "devices".
-  // Create sub NativeDevice
-  virtual DeviceInfoS list_device_types () = 0;                      ///< List registered Device types with their unique uri.
+  DeviceInfoS         list_device_types ();                          ///< List registered Device types with their unique uri.
   virtual void        remove_device     (Device &sub) = 0;           ///< Remove a directly contained device.
   virtual DeviceP     append_device     (const String &uri) = 0;     ///< Append a new device, see list_device_types().
   virtual DeviceP     insert_device     (const String &uri,

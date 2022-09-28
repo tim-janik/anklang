@@ -10,13 +10,25 @@
 namespace Ase {
 
 // == DeviceImpl ==
-JSONIPC_INHERIT (DeviceImpl, Device);
+void
+DeviceImpl::_set_parent (Gadget *parent)
+{
+  assert_warn (!is_active());
+  GadgetImpl::_set_parent (parent);
+}
 
 void
-DeviceImpl::_activate ()
+DeviceImpl::_activate()
 {
-  if (!activated_)
-    activated_ = true;
+  assert_return (!activated_);
+  activated_ = true;
+}
+
+void
+DeviceImpl::_deactivate()
+{
+  assert_return (activated_);
+  activated_ = false;
 }
 
 template<typename E> std::pair<std::shared_ptr<E>,ssize_t>
