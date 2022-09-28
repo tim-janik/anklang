@@ -14,7 +14,7 @@ protected:
   virtual           ~ClapDeviceImpl        ();
   void               serialize             (WritNode &xs) override;
   void               proc_params_change    (const Event &event);
-  void               _set_parent           (Gadget *parent) override;
+  void               _set_parent           (GadgetImpl *parent) override;
   void               _activate             () override;
 public:
   explicit           ClapDeviceImpl        (ClapPluginHandleP claphandle);

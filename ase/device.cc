@@ -11,7 +11,7 @@ namespace Ase {
 
 // == DeviceImpl ==
 void
-DeviceImpl::_set_parent (Gadget *parent)
+DeviceImpl::_set_parent (GadgetImpl *parent)
 {
   assert_warn (!is_active());
   GadgetImpl::_set_parent (parent);

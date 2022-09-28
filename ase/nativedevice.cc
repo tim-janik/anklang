@@ -81,7 +81,7 @@ NativeDeviceImpl::remove_all_devices()
 }
 
 void
-NativeDeviceImpl::_set_parent (Gadget *parent)
+NativeDeviceImpl::_set_parent (GadgetImpl *parent)
 {
   assert_warn (!is_active());
   DeviceImpl::_set_parent (parent);

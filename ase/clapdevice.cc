@@ -194,7 +194,7 @@ ClapDeviceImpl::proc_params_change (const Event &event)
 }
 
 void
-ClapDeviceImpl::_set_parent (Gadget *parent)
+ClapDeviceImpl::_set_parent (GadgetImpl *parent)
 {
   DeviceImpl::_set_parent (parent);
   ClapDeviceImplP selfp = shared_ptr_cast<ClapDeviceImpl> (this);

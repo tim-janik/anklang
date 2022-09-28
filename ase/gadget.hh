@@ -9,16 +9,16 @@ namespace Ase {
 
 /// Base type for classes that have a Property.
 class GadgetImpl : public ObjectImpl, public CustomDataContainer, public virtual Gadget, public virtual Serializable {
+  GadgetImpl *parent_ = nullptr;
   ValueR session_data;
-  Gadget *parent_ = nullptr;
 protected:
   static String  canonify_key      (const String &input);
   virtual       ~GadgetImpl        ();
   virtual String fallback_name     () const;
   void           serialize         (WritNode &xs) override;
 public:
-  void           _set_parent       (Gadget *parent) override;
-  Gadget*        _parent           () const override    { return parent_; }
+  void           _set_parent       (GadgetImpl *parent) override;
+  GadgetImpl*    _parent           () const override    { return parent_; }
   String         type_nick         () const override;
   String         name              () const override;
   void           name              (String newname) override;

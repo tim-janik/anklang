@@ -191,9 +191,9 @@ public:
 class Gadget : public virtual Object {
 public:
   // Hierarchical parenting.
-  virtual Gadget*     _parent           () const = 0;         ///< Retrieve parent container.
-  virtual void        _set_parent       (Gadget *parent) = 0; ///< Assign parent container.
-  ProjectImpl*        _project          () const;             ///< Find Project in parent ancestry.
+  virtual GadgetImpl* _parent           () const = 0;             ///< Retrieve parent container.
+  virtual void        _set_parent       (GadgetImpl *parent) = 0; ///< Assign parent container.
+  ProjectImpl*        _project          () const;                 ///< Find Project in parent ancestry.
   // Naming
   virtual String      type_nick         () const = 0;
   virtual String      name              () const = 0;

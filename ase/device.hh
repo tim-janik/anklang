@@ -11,7 +11,7 @@ class DeviceImpl : public GadgetImpl, public virtual Device {
   bool            activated_ = false;
 protected:
   explicit        DeviceImpl           () {} // abstract base
-  void            _set_parent          (Gadget *parent) override;
+  void            _set_parent          (GadgetImpl *parent) override;
   void            _activate            () override;
   void            _deactivate          () override;
   bool            is_active            () override { return activated_; }

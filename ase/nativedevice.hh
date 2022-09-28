@@ -18,7 +18,7 @@ class NativeDeviceImpl : public DeviceImpl, public virtual NativeDevice {
 protected:
   static DeviceP       create_native_device (AudioEngine &engine, const String &registryuri);
   void                 serialize          (WritNode &xs) override;
-  void                 _set_parent        (Gadget *parent) override;
+  void                 _set_parent        (GadgetImpl *parent) override;
   void                 _activate          () override;
   void                 _deactivate        () override;
   explicit             NativeDeviceImpl   (const String &aseid, AudioProcessor::StaticInfo, AudioProcessorP);

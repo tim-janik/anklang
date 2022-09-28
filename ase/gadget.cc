@@ -15,7 +15,7 @@ GadgetImpl::~GadgetImpl()
 {}
 
 void
-GadgetImpl::_set_parent (Gadget *parent)
+GadgetImpl::_set_parent (GadgetImpl *parent)
 {
   if (parent)
     assert_return (parent_ == nullptr);
