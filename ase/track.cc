@@ -16,21 +16,29 @@ namespace Ase {
 // == TrackImpl ==
 JSONIPC_INHERIT (TrackImpl, Track);
 
-TrackImpl::TrackImpl (bool masterflag) :
-  masterflag_ (masterflag)
-{}
+TrackImpl::TrackImpl (ProjectImpl &project, bool masterflag)
+{
+  assert_return (masterflag == !!project.master_track());
+  gadget_flags (MASTER_TRACK);
+}
 
 TrackImpl::~TrackImpl()
 {
-  set_project (nullptr);
+  assert_return (_parent() == nullptr);
+}
+
+ProjectImpl*
+TrackImpl::project () const
+{
+  return static_cast<ProjectImpl*> (_parent());
 }
 
 String
 TrackImpl::fallback_name () const
 {
-  if (masterflag_)
+  if (is_master())
     return "Master";
-  if (project_)
+  if (auto project_ = project())
     {
       ssize_t i = project_->track_index (*this);
       return string_format ("Track %u", i >= 0 ? i + 1 : i);
@@ -72,14 +80,12 @@ TrackImpl::serialize (WritNode &xs)
 }
 
 void
-TrackImpl::set_project (ProjectImpl *project)
+TrackImpl::_set_parent (GadgetImpl *parent)
 {
+  auto project = dynamic_cast<ProjectImpl*> (parent);
+  assert_return (!!parent == !!project);
+  DeviceImpl::_set_parent (project);
   if (project)
-    assert_return (!project_);
-  ProjectImpl *old = project_;
-  (void) old;
-  project_ = project;
-  if (project_)
     {
       AudioEngine *engine = main_config.engine;
       assert_return (!midi_prod_);
@@ -94,16 +100,16 @@ TrackImpl::set_project (ProjectImpl *project)
       assert_return (chain_);
       chain_->_set_parent (this);
       chain_->_set_event_source (midi_prod_->_audio_processor());
-      chain_->_activate();
+      chain_->_activate(); // FIXME
       midi_prod_->_activate();
     }
   else if (chain_)
     {
-      chain_->_set_parent (nullptr);
+      midi_prod_->_disconnect_remove();
       chain_->_disconnect_remove();
+      chain_->_set_parent (nullptr);
       chain_ = nullptr;
       midi_prod_->_set_parent (nullptr);
-      midi_prod_->_disconnect_remove();
       midi_prod_ = nullptr;
     }
   emit_event ("notify", "project");

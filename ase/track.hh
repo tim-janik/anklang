@@ -8,37 +8,35 @@ namespace Ase {
 
 /// Ase::Track implementation.
 class TrackImpl : public DeviceImpl, public virtual Track {
-  ProjectImpl *project_ = nullptr;
   DeviceP      chain_, midi_prod_;
   ClipImplS    clips_;
-  const bool   masterflag_ = false;
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
-  virtual ~TrackImpl    ();
-  void     set_project    (ProjectImpl *project);
+  virtual         ~TrackImpl        ();
 protected:
-  String   fallback_name  () const override;
-  void     serialize      (WritNode &xs) override;
-  explicit TrackImpl      (bool masterflag);
+  String          fallback_name     () const override;
+  void            serialize         (WritNode &xs) override;
 public:
   class ClipScout;
+  explicit        TrackImpl         (ProjectImpl&, bool masterflag);
   AudioProcessorP _audio_processor  () const override;
   void            _set_event_source (AudioProcessorP esource) override;
+  void            _set_parent       (GadgetImpl *parent) override;
   DeviceInfo      device_info       () override;
-  ProjectImpl*    project        () const               { return project_; }
-  bool            is_master      () const override      { return masterflag_; }
-  int32           midi_channel   () const override;
-  void            midi_channel   (int32 midichannel) override;
-  ClipS           list_clips     () override;
-  DeviceP         access_device  () override;
-  MonitorP        create_monitor (int32 ochannel) override;
-  void            update_clips   ();
-  ssize_t         clip_index     (const ClipImpl &clip) const;
-  int             clip_succession (const ClipImpl &clip) const;
-  TelemetryFieldS telemetry      () const override;
+  ProjectImpl*    project           () const;
+  bool            is_master         () const override      { return MASTER_TRACK & gadget_flags(); }
+  int32           midi_channel      () const override;
+  void            midi_channel      (int32 midichannel) override;
+  ClipS           list_clips        () override;
+  DeviceP         access_device     () override;
+  MonitorP        create_monitor    (int32 ochannel) override;
+  void            update_clips      ();
+  ssize_t         clip_index        (const ClipImpl &clip) const;
+  int             clip_succession   (const ClipImpl &clip) const;
+  TelemetryFieldS telemetry         () const override;
   enum Cmd { STOP, START, };
-  void            queue_cmd      (CallbackS&, Cmd cmd, double arg = 0);
-  void            queue_cmd      (DCallbackS&, Cmd cmd);
+  void            queue_cmd         (CallbackS&, Cmd cmd, double arg = 0);
+  void            queue_cmd         (DCallbackS&, Cmd cmd);
   enum { NONE = -1 };
 };
 

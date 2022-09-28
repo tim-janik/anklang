@@ -688,11 +688,10 @@ ProjectImpl::create_track ()
 {
   assert_return (!discarded_, nullptr);
   const bool havemaster = tracks_.size() != 0;
-  TrackImplP track = TrackImpl::make_shared (!havemaster);
+  TrackImplP track = TrackImpl::make_shared (*this, !havemaster);
   tracks_.insert (tracks_.end() - int (havemaster), track);
   emit_event ("track", "insert", { { "track", track }, });
   track->_set_parent (this);
-  track->set_project (this);
   return track;
 }
 
@@ -706,7 +705,6 @@ ProjectImpl::remove_track (Track &child)
   if (!Aux::erase_first (tracks_, [track] (TrackP t) { return t == track; }))
     return false;
   // destroy Track
-  track->set_project (nullptr);
   track->_set_parent (nullptr);
   emit_event ("track", "remove");
   return true;

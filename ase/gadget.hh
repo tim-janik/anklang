@@ -13,7 +13,7 @@ class GadgetImpl : public ObjectImpl, public CustomDataContainer, public virtual
   uint64_t    gadget_flags_ = 0;
   ValueR      session_data_;
 protected:
-  enum : uint64_t { GADGET_DESTROYED = 0x1, DEVICE_ACTIVE = 0x2 };
+  enum : uint64_t { GADGET_DESTROYED = 0x1, DEVICE_ACTIVE = 0x2, MASTER_TRACK = 0x4 };
   uint64_t       gadget_flags      () const     { return gadget_flags_; }
   uint64_t       gadget_flags      (uint64_t setbits, uint64_t mask = ~uint64_t (0));
   static String  canonify_key      (const String &input);
