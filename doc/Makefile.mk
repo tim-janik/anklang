@@ -14,6 +14,7 @@ doc/manual-chapters ::= $(strip		\
 )
 doc/internals-chapters ::= $(strip	\
 	doc/ch-development.md		\
+	$>/doc/class-tree.md		\
 	$>/ui/vue-docs.md		\
 	doc/ch-appendix.md		\
 )
@@ -47,6 +48,16 @@ $>/doc/copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst	| $>/doc/
 	   else							\
 	     $(CP) doc/copyright $@.tmp ;			\
 	   fi
+	$Q mv $@.tmp $@
+
+# == ui/class-tree.md ==
+$>/doc/class-tree.md: $(lib/AnklangSynthEngine) doc/Makefile.mk
+	$(QGEN)
+	$Q echo '## Ase Class Inheritance Tree'			>  $@.tmp
+	$Q echo ''						>> $@.tmp
+	$Q echo '```'						>> $@.tmp
+	$Q $(lib/AnklangSynthEngine) --class-tree		>> $@.tmp
+	$Q echo '```'						>> $@.tmp
 	$Q mv $@.tmp $@
 
 # == pandoc ==

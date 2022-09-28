@@ -782,6 +782,19 @@ struct DefaultConstant : DefaultConstantVariant {
 };
 using DefaultsList = std::initializer_list<DefaultConstant>;
 
+// == ClassWalker ==
+class ClassWalker {
+public:
+  virtual void new_enum         (const std::string &enumname)           {}
+  virtual void new_serializable (const std::string &structname)         {}
+  virtual void new_class        (const std::string &classname,
+                                 const std::string &base)               {}
+  virtual void attribute        (const std::string &attributename)      {}
+  virtual void method           (const std::string &methodname)         {}
+  virtual void accessor         (const std::string &accessor)           {}
+  virtual void enumvalue        (const std::string &enumvalue)          {}
+};
+
 // == ClassPrinter ==
 class ClassPrinter {
   using DepthFunc = size_t (*) ();
@@ -836,6 +849,13 @@ public:
       all += pr->ops_to_string();
     return all;
   }
+  static void
+  walk (ClassWalker &cwalk)
+  {
+    sort_printers();
+    for (auto &pr : printers_())
+      pr->walker (cwalk);
+  }
 private:
   static void
   sort_printers()
@@ -850,6 +870,53 @@ private:
     // for (const auto &p : printers) dprintf (2, "%s < ", p->classname_.c_str()); dprintf (2, "∞\n");
   }
   struct Operation { std::string name; Op op = DONE; uint32_t count = 0; std::vector<DefaultConstant> dflts; };
+  void
+  walker (ClassWalker &walk)
+  {
+    // ensure NEW
+    if (operations_.empty() || operations_[0].op != NEW)
+      operations_.insert (operations_.begin(), { "", NEW, 0 });
+    const auto &operations = operations_;
+    // process OPS
+    for (const auto &p : operations)
+      switch (p.op)
+        {
+        case NEW:
+          if (entity_ == ENUMS)
+            walk.new_enum (classname_);
+          else if (entity_ == SERIALIZABLE)
+            walk.new_serializable (classname_);
+          else if (entity_ == CLASSES)
+            {
+              std::string base;
+              for (const auto &b : operations)
+                if (b.op == INHERIT)
+                  {
+                    base = b.name;
+                    break;
+                  }
+              walk.new_class (classname_, base);
+            }
+          break;
+        case METHOD:
+          walk.method (p.name);
+          break;
+        case GETSET:
+          walk.accessor (p.name);
+          break;
+        case ATTRIBUTE:
+          walk.attribute (p.name);
+          break;
+        case ENUMVALUE:
+          walk.enumvalue (p.name);
+          break;
+        case INHERIT:
+        case BODY:
+        case DONE:
+        default:
+          break;
+        }
+  }
   std::string
   ops_to_string()
   {
