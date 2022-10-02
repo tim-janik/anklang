@@ -566,11 +566,11 @@ AudioEngineImpl::set_project (ProjectImplP project)
       assert_return (!project->is_active());
     }
   if (project_)
-    project_->deactivate();
+    project_->_deactivate();
   const ProjectImplP old = project_;
   project_ = project;
   if (project_)
-    project_->activate();
+    project_->_activate();
   // dtor of old runs here
 }
 

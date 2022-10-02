@@ -100,8 +100,6 @@ TrackImpl::_set_parent (GadgetImpl *parent)
       assert_return (chain_);
       chain_->_set_parent (this);
       chain_->_set_event_source (midi_prod_->_audio_processor());
-      chain_->_activate(); // FIXME
-      midi_prod_->_activate();
     }
   else if (chain_)
     {
@@ -113,6 +111,24 @@ TrackImpl::_set_parent (GadgetImpl *parent)
       midi_prod_ = nullptr;
     }
   emit_event ("notify", "project");
+}
+
+void
+TrackImpl::_activate ()
+{
+  assert_return (!is_active() && _parent());
+  DeviceImpl::_activate();
+  midi_prod_->_activate();
+  chain_->_activate();
+}
+
+void
+TrackImpl::_deactivate ()
+{
+  assert_return (is_active());
+  chain_->_deactivate();
+  midi_prod_->_deactivate();
+  DeviceImpl::_deactivate();
 }
 
 void

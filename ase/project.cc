@@ -89,6 +89,24 @@ ProjectImpl::discard ()
   discarded_ = true;
 }
 
+void
+ProjectImpl::_activate ()
+{
+  assert_return (!is_active());
+  DeviceImpl::_activate();
+  for (auto &track : tracks_)
+    track->_activate();
+}
+
+void
+ProjectImpl::_deactivate ()
+{
+  assert_return (is_active());
+  for (auto trackit = tracks_.rbegin(); trackit != tracks_.rend(); ++trackit)
+    (*trackit)->_deactivate();
+  DeviceImpl::_deactivate();
+}
+
 static bool
 is_anklang_dir (const String &path)
 {

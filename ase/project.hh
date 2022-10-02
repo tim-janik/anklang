@@ -41,6 +41,8 @@ protected:
   void                serialize      (WritNode &xs) override;
   void                update_tempo   ();
 public:
+  void                 _activate         () override;
+  void                 _deactivate       () override;
   PropertyS            access_properties () override;
   const TickSignature& signature         () const       { return tick_sig_; }
   void                 discard           () override;

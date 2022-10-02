@@ -19,6 +19,8 @@ protected:
 public:
   class ClipScout;
   explicit        TrackImpl         (ProjectImpl&, bool masterflag);
+  void            _activate         () override;
+  void            _deactivate       () override;
   AudioProcessorP _audio_processor  () const override;
   void            _set_event_source (AudioProcessorP esource) override;
   void            _set_parent       (GadgetImpl *parent) override;

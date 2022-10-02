@@ -12,10 +12,10 @@ class DeviceImpl : public GadgetImpl, public virtual Device {
 protected:
   explicit        DeviceImpl           () {} // abstract base
   void            _set_parent          (GadgetImpl *parent) override;
+public:
   void            _activate            () override;
   void            _deactivate          () override;
   bool            is_active            () override { return activated_; }
-public:
   bool            gui_supported        () override { return false; }
   bool            gui_visible          () override { return false; }
   void            gui_toggle           () override {}
