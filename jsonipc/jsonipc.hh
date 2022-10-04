@@ -1106,7 +1106,23 @@ private:
   std::vector<Operation> operations_;
   std::string classname_;
   Entity entity_ = Entity (0);
-  static std::vector<ClassPrinter*>& printers_()   { static std::vector<ClassPrinter*> printers; return printers; }
+  static std::vector<ClassPrinter*>&
+  printers_()
+  {
+    struct ClassPrinterV : std::vector<ClassPrinter*> {
+      ~ClassPrinterV()
+      {
+        while (!empty())
+          {
+            ClassPrinter *p = back();
+            pop_back();
+            delete p;
+          }
+      }
+    };
+    static ClassPrinterV printers;
+    return printers;
+  }
 };
 
 // == TypeInfo ==
