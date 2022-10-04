@@ -56,7 +56,8 @@ $>/doc/class-tree.md: $(lib/AnklangSynthEngine) doc/Makefile.mk
 	$Q echo '## Ase Class Inheritance Tree'			>  $@.tmp
 	$Q echo ''						>> $@.tmp
 	$Q echo '```'						>> $@.tmp
-	$Q $(lib/AnklangSynthEngine) --class-tree		>> $@.tmp
+	$Q ASAN_OPTIONS=detect_leaks=0 \
+	   $(lib/AnklangSynthEngine) --class-tree		>> $@.tmp
 	$Q echo '```'						>> $@.tmp
 	$Q mv $@.tmp $@
 
