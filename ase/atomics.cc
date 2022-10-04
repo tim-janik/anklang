@@ -58,7 +58,7 @@ atomic_bits_test ()
 }
 
 // == MpmcStack<> test ==
-static const int COUNTING_THREADS = N_THREADS + 1;
+static const size_t COUNTING_THREADS = N_THREADS + 1;
 static constexpr const size_t NUMBER_NODES_PER_THREAD = 9999;
 struct NumberNode {
   size_t number;
