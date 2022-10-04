@@ -42,20 +42,22 @@ LTOFLAGS	 += -flto
 __DEV__		::=
 else ifeq ($(MODE),devel)
 MODEFLAGS	::= -g -O2
+LDMODEFLAGS	 += -g
 else ifeq ($(MODE),debug)
 MODEFLAGS	::= -gdwarf-4 -Og -fno-omit-frame-pointer -fno-inline -fstack-protector-all -fverbose-asm
+LDMODEFLAGS	 += -g
 else ifeq ($(MODE),ubsan)
 MODEFLAGS	::= -Og -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=undefined
-LDMODEFLAGS	 += -lubsan
+LDMODEFLAGS	 += -g -fsanitize=undefined
 else ifeq ($(MODE),asan)
 MODEFLAGS	::= -Og -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=address -fno-common
-LDMODEFLAGS	 += -lasan
+LDMODEFLAGS	 += -g -fsanitize=address
 else ifeq ($(MODE),tsan)
 MODEFLAGS	::= -Og -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=thread
-LDMODEFLAGS	 += -ltsan
+LDMODEFLAGS	 += -g -fsanitize=thread
 else ifeq ($(MODE),lsan)
 MODEFLAGS	::= -Og -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=leak
-LDMODEFLAGS	 += -llsan
+LDMODEFLAGS	 += -g -fsanitize=leak
 endif
 MODEFLAGS        += $(if $(__DEV__),-DASE_ENABLE_DEBUG -DG_ENABLE_DEBUG)
 
