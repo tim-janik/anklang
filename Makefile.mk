@@ -69,6 +69,7 @@ override MODE !=  case "$(MODE)" in \
 		  esac ; echo "$$MODE"
 .config.defaults += MODE
 $(info $S MODE     $(MODE))
+.config.defaults += INSN
 
 # == Dirctories ==
 prefix		 ?= /usr/local
