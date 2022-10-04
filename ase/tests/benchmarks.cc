@@ -2,6 +2,7 @@
 #include "../testing.hh"
 #include "../unicode.hh"
 #include "../memory.hh"
+#include "../loft.hh"
 #include "../internal.hh"
 #include <cmath>
 
@@ -183,6 +184,7 @@ ensure_block_allocator_initialization()
 enum class AllocatorType {
   FastMemoryArea = 1,
   FastMemAlloc,
+  LoftAlloc,
   PosixMemalign,
   LibcCalloc,
 };
@@ -232,6 +234,24 @@ struct TestAllocator<AllocatorType::FastMemAlloc> {
   release_block (FastMemory::Block block)
   {
     fast_mem_free (block.block_start);
+  }
+};
+
+template<>
+struct TestAllocator<AllocatorType::LoftAlloc> {
+  static std::string    name                    ()      { return "loft_calloc (cacheline)"; }
+  static FastMemory::Block
+  allocate_block (uint32 length)
+  {
+    LoftPtr<void> lptr = loft_calloc (length, 1);
+    TASSERT (lptr.get() != nullptr);
+    size_t size = lptr.get_deleter().size;
+    return { lptr.release(), uint32_t (size) };
+  }
+  static void
+  release_block (FastMemory::Block block)
+  {
+    LoftPtr<void> lptr (block.block_start, { block.block_length });
   }
 };
 
@@ -340,7 +360,7 @@ ase_aligned_allocator_benchloop (uint32 seed)
   const double bench_aa = timer.benchmark (loop_aa);
   const size_t n_allocations = ARUNS * N_ALLOCS * (1 + 3.0 / 2);
   const double ns_p_a = 1000000000.0 * bench_aa / n_allocations;
-  Ase::printerr ("  BENCH    %-23s %u allocations in %.1f msecs, %.1fnsecs/allocation\n",
+  Ase::printerr ("  BENCH    %-25s %u allocations in %.1f msecs, %.1fnsecs/allocation\n",
                  TestAllocator<AT>::name() + ":", n_allocations, 1000 * bench_aa, ns_p_a);
   TASSERT (accu == 0);
 }
@@ -378,6 +398,14 @@ zbench_aligned_allocator_fast_mem_alloc()
 {
   ensure_block_allocator_initialization();
   ase_aligned_allocator_benchloop<AllocatorType::FastMemAlloc> (2654435769);
+}
+
+TEST_BENCHMARK (zbench_aligned_allocator_loft_alloc);
+static void
+zbench_aligned_allocator_loft_alloc()
+{
+  ensure_block_allocator_initialization();
+  ase_aligned_allocator_benchloop<AllocatorType::LoftAlloc> (2654435769);
 }
 
 } // Anon
