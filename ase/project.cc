@@ -655,6 +655,21 @@ void
 ProjectImpl::start_playback ()
 {
   assert_return (!discarded_);
+  assert_return (main_config.engine);
+  AudioEngine &engine = *main_config.engine;
+  ProjectImplP selfp = shared_ptr_cast<ProjectImpl> (this);     // keep alive while engine changes refcounts
+  ProjectImplP oldp = engine.get_project();                     // keep alive while engine changes refs
+  if (oldp != selfp)
+    {
+      if (oldp)
+        {
+          oldp->stop_playback();
+          engine.set_project (nullptr);
+        }
+      engine.set_project (selfp);
+    }
+  assert_return (this == &*engine.get_project());
+
   main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
