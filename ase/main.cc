@@ -110,7 +110,7 @@ print_usage (bool help)
       printout ("%s version %s\n", executable_name(), ase_version());
       return;
     }
-  printout ("Usage: %s [OPTIONS]\n", executable_name());
+  printout ("Usage: %s [OPTIONS] [autoplay.anklang]\n", executable_name());
   printout ("  --check          Run integrity tests\n");
   printout ("  --class-tree     Print exported class tree\n");
   printout ("  --disable-randomization Test mode for deterministic tests\n");
@@ -446,16 +446,18 @@ main (int argc, char *argv[])
       }
   });
 
-  // preload project
+  // load projects
   ProjectP preload_project;
   if (config.preload)
+    main_config_.args.insert (main_config_.args.begin(), config.preload);
+  for (const auto &filename : config.args)
     {
-      preload_project = ProjectImpl::create (config.preload);
+      preload_project = ProjectImpl::create (Path::basename (filename));
       Error error = Error::NO_MEMORY;
       if (preload_project)
-        error = preload_project->load_project (config.preload);
+        error = preload_project->load_project (filename);
       if (!!error)
-        warning ("%s: failed to load project: %s", config.preload, ase_error_blurb (error));
+        warning ("%s: failed to load project: %s", filename, ase_error_blurb (error));
     }
 
   // open Jsonapi socket
