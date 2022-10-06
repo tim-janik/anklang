@@ -121,6 +121,7 @@ print_usage (bool help)
   printout ("  --jsbin          Print Javascript IPC & binary messages\n");
   printout ("  --jsipc          Print Javascript IPC messages\n");
   printout ("  --list-drivers   Print PCM and MIDI drivers\n");
+  printout ("  -o wavfile       Capture output to WAV file\n");
   printout ("  --play-autostart Automatically start playback of `project.anklang`\n");
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
   printout ("  --version        Print program version\n");
@@ -204,6 +205,11 @@ parse_args (int *argcp, char **argv)
         {
           argv[i++] = nullptr;
           embedding_fd = string_to_int (argv[i]);
+        }
+      else if (argv[i] == String ("-o") && i + 1 < size_t (argc))
+        {
+          argv[i++] = nullptr;
+          config.outputfile = argv[i];
         }
       else if (argv[i] == String ("--play-autostart"))
         {
@@ -523,6 +529,18 @@ main (int argc, char *argv[])
       e->async_jobs += [e,vp] () {
         printerr ("JOBTEST: Run Handler (in_engine=%d)\n", e->thread_id == std::this_thread::get_id());
       };
+    }
+
+  // start output capturing
+  if (config.outputfile)
+    {
+      std::shared_ptr<CallbackS> callbacks = std::make_shared<CallbackS>();
+      config.engine->queue_capture_start (*callbacks, config.outputfile);
+      auto job = [callbacks] () {
+        for (const auto &callback : *callbacks)
+          callback();
+      };
+      config.engine->async_jobs += job;
     }
 
   // start auto play

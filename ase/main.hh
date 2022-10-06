@@ -15,6 +15,7 @@ namespace Ase {
 struct MainConfig {
   AudioEngine *engine = nullptr;
   WebSocketServer *web_socket_server = nullptr;
+  const char         *outputfile = nullptr;
   std::vector<String> args;
   uint16 websocket_port = 0;
   int    jsonapi_logflags = 1;
