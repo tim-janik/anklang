@@ -15,13 +15,13 @@ namespace Ase {
 struct MainConfig {
   AudioEngine *engine = nullptr;
   WebSocketServer *web_socket_server = nullptr;
-  const char *preload = nullptr;
   std::vector<String> args;
   uint16 websocket_port = 0;
   int    jsonapi_logflags = 1;
   bool   fatal_warnings = false;
   bool   allow_randomization = true;
   bool   list_drivers = false;
+  bool   play_autostart = false;
   enum ModeT { SYNTHENGINE, CHECK_INTEGRITY_TESTS };
   ModeT  mode = SYNTHENGINE;
 };

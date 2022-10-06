@@ -110,7 +110,7 @@ print_usage (bool help)
       printout ("%s version %s\n", executable_name(), ase_version());
       return;
     }
-  printout ("Usage: %s [OPTIONS] [autoplay.anklang]\n", executable_name());
+  printout ("Usage: %s [OPTIONS] [project.anklang]\n", executable_name());
   printout ("  --check          Run integrity tests\n");
   printout ("  --class-tree     Print exported class tree\n");
   printout ("  --disable-randomization Test mode for deterministic tests\n");
@@ -121,7 +121,7 @@ print_usage (bool help)
   printout ("  --jsbin          Print Javascript IPC & binary messages\n");
   printout ("  --jsipc          Print Javascript IPC messages\n");
   printout ("  --list-drivers   Print PCM and MIDI drivers\n");
-  printout ("  --preload <prj>  Preload project as current\n");
+  printout ("  --play-autostart Automatically start playback of `project.anklang`\n");
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
   printout ("  --version        Print program version\n");
 }
@@ -205,10 +205,9 @@ parse_args (int *argcp, char **argv)
           argv[i++] = nullptr;
           embedding_fd = string_to_int (argv[i]);
         }
-      else if (argv[i] == String ("--preload") && i + 1 < size_t (argc))
+      else if (argv[i] == String ("--play-autostart"))
         {
-          argv[i++] = nullptr;
-          config.preload = argv[i];
+          config.play_autostart = true;
         }
       else if (argv[i] == String ("--") && !sep)
         sep = true;
@@ -448,8 +447,6 @@ main (int argc, char *argv[])
 
   // load projects
   ProjectP preload_project;
-  if (config.preload)
-    main_config_.args.insert (main_config_.args.begin(), config.preload);
   for (const auto &filename : config.args)
     {
       preload_project = ProjectImpl::create (Path::basename (filename));
@@ -527,6 +524,10 @@ main (int argc, char *argv[])
         printerr ("JOBTEST: Run Handler (in_engine=%d)\n", e->thread_id == std::this_thread::get_id());
       };
     }
+
+  // start auto play
+  if (config.play_autostart && preload_project)
+    main_loop->exec_idle ([preload_project] () { preload_project->start_playback(); });
 
   // run main event loop and catch SIGUSR2
   const int exitcode = main_loop->run();
