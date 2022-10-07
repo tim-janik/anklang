@@ -242,6 +242,7 @@ public:
   static void           raise  (int8 signum);
   static USignalSourceP create (int8 signum, const USignalSlot &slot)
   { return FriendAllocator<USignalSource>::make_shared (signum, slot); }
+  static void install_sigaction (int8);
 };
 
 // === TimedSource ===

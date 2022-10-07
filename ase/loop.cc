@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <signal.h>
 #include <algorithm>
 #include <list>
 #include <cstring>
@@ -1022,7 +1023,7 @@ USignalSource::~USignalSource ()
 
 static std::atomic<uint32> usignals_notified[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
-/// Flag a unix signalbeing raised, this function may be called from any thread at any time.
+/// Flag a unix signal being raised, this function may be called from any thread at any time.
 void
 USignalSource::raise  (int8 signum)
 {
@@ -1054,6 +1055,16 @@ USignalSource::dispatch (const LoopState &state)
 void
 USignalSource::destroy()
 {}
+
+void
+USignalSource::install_sigaction (int8 signum)
+{
+  struct sigaction action;
+  action.sa_handler = [] (int signum) { fputs ("sighandler", stdout); USignalSource::raise (signum); };
+  sigemptyset (&action.sa_mask);
+  action.sa_flags = SA_NOMASK;
+  sigaction (signum, &action, nullptr);
+}
 
 // == TimedSource ==
 TimedSource::TimedSource (const VoidSlot &slot, uint initial_interval_msecs, uint repeat_interval_msecs) :
