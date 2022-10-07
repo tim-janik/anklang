@@ -480,15 +480,13 @@ main (int argc, char *argv[])
   if (embedding_fd < 0 && !url.empty())
     printout ("%sLISTEN:%s %s\n", B1, B0, url);
 
+  // run atquit handler on SIGINT
+  main_loop->exec_usignal (SIGINT, [] (int8 sig) { atquit_run (-1); return false; });
+  USignalSource::install_sigaction (SIGINT);
+
   // catch SIGUSR2 to close sockets
-  {
-    struct sigaction action;
-    action.sa_handler = [] (int) { USignalSource::raise (SIGUSR2); };
-    sigemptyset (&action.sa_mask);
-    action.sa_flags = SA_NOMASK;
-    sigaction (SIGUSR2, &action, nullptr);
-  }
   main_loop->exec_usignal (SIGUSR2, [wss] (int8) { wss->reset(); return true; });
+  USignalSource::install_sigaction (SIGUSR2);
 
   // monitor and allow auth over keep-alive-fd
   if (embedding_fd >= 0)
