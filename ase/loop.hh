@@ -112,7 +112,7 @@ public:
   uint exec_dispatcher (const DispatcherSlot &sl, int priority
                         = PRIORITY_NORMAL);     /// Execute a single dispatcher callback for prepare, check, dispatch.
   uint exec_usignal    (int8 signum, const USignalSlot &sl, int priority
-                        = PRIORITY_NORMAL);     /// Execute a signal callback for prepare, check, dispatch.
+                        = PRIORITY_NOW -1);     /// Execute a signal callback for prepare, check, dispatch.
   /// Execute a callback after a specified timeout with adjustable initial timeout, returning true repeats callback.
   template<class BoolVoidFunctor>
   uint exec_timer      (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms = -1, int priority = PRIORITY_NORMAL);
