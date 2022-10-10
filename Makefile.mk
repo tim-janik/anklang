@@ -147,8 +147,9 @@ help: FORCE
 	@echo '                    command line. Inspect the file for a list of variables to'
 	@echo '                    be customized. Deleting it will undo any customizations.'
 	@echo '  check           - Run selfttests and unit tests'
+	@echo '  x11test         - Replay all JSON recordings from x11test/ in Electron.'
+	@echo '  x11test-v       - Run "x11test" in virtual XServer (headless).'
 	@echo '  check-audio     - Validate Anklang rendering against reference files'
-	@echo '  check-x11       - Optional checks that are skipped without $$DISPLAY'
 	@echo '  check-bench     - Run the benchmark tests'
 	@echo '  check-loading   - Check all distributed Anklang files load properly'
 	@echo '  check-suite     - Run the unit test suite'
@@ -241,6 +242,21 @@ export NODE_PATH
 uninstall:
 	$Q $(RMDIR_P) '$(DESTDIR)$(pkgdir)/' ; true
 
+# == x11test ==
+x11test/files.json := $(wildcard x11test/*.json)
+x11test x11test-v: $(x11test/files.json) $(lib/AnklangSynthEngine)
+	$(QGEN)
+	$Q rm -f -r $>/x11test/
+	$Q mkdir -p $>/x11test/
+	$Q $(CP) $(x11test/files.json) $>/x11test/
+	$Q cd $>/x11test/ \
+	&& { test "$@" == x11test-v && H=-v || H= ; } \
+	&& for json in *.json ; do \
+		echo "$$json" \
+		&& $(abspath x11test/replay.sh) $$H $$json || exit $$? \
+	 ; done
+.PHONY: x11test x11test-v
+
 # == check rules ==
 # Macro to generate test runs as 'check' dependencies
 define CHECK_ALL_TESTS_TEST
@@ -253,14 +269,6 @@ $(foreach TEST, $(ALL_TESTS), $(eval $(call CHECK_ALL_TESTS_TEST, $(TEST))))
 check: $(CHECK_TARGETS) check-audio check-bench
 $(CHECK_TARGETS): FORCE
 check-bench: FORCE
-check-x11 check-x11-disabled: FORCE
-ifneq ($(DISPLAY),)
-check: check-x11
-else
-check: check-x11-disabled
-check-x11-disabled:
-	@echo '  SKIP    ' 'Tests that involve an X11 environment with $$DISPLAY'
-endif
 
 # == installcheck ==
 installcheck-buildtest:

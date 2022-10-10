@@ -33,6 +33,14 @@ jobs:
     - name: Test Ubuntu
       run: |
         misc/dbuild.sh -f focal make check
+    - name: End-to-end X11 Tests
+      run: |
+        misc/dbuild.sh -f focal make x11test-v
+    - uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: x11test
+        path: out/x11test/
     - name: Cleanup
       run: git clean -f -x -e '/\.dlcache/' . && git reset --hard
     - name: Prepare Arch
