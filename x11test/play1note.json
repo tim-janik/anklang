@@ -1,0 +1,166 @@
+{
+  "title": "Play-1-Note",
+  "steps": [
+    {
+      "type": "setViewport",
+      "width": 1417,
+      "height": 1052,
+      "deviceScaleFactor": 1,
+      "isMobile": false,
+      "hasTouch": false,
+      "isLandscape": false
+    },
+    {
+      "type": "navigate",
+      "url": "http://127.0.0.1:1777/",
+      "assertedEvents": [
+        {
+          "type": "navigation",
+          "url": "http://127.0.0.1:1777/",
+          "title": "Untitled – Anklang"
+        }
+      ]
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex.b-menubar > span:nth-child(1) > push-button:nth-child(1) > div.-stack > span:nth-child(2) > i"
+        ]
+      ],
+      "offsetY": 2.340909004211426,
+      "offsetX": 3
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "aria/New Project Ctrl+N"
+        ],
+        [
+          "#b-app-shell-modaldialogs > div:nth-child(1) > div > v-flex > button:nth-child(1)"
+        ]
+      ],
+      "offsetY": 2.875,
+      "offsetX": 101
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex:nth-child(2) > v-flex > h-flex.b-shell-panel2 > c-grid > div.-buttons > h-flex > span > i"
+        ]
+      ],
+      "offsetY": -0.022735595703125,
+      "offsetX": 13.59090805053711
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app-shell-modaldialogs > div:nth-child(4) > div > v-flex > button:nth-child(3) > span.-kbdspan"
+        ]
+      ],
+      "offsetY": 8.45452880859375,
+      "offsetX": 32.0113525390625
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex:nth-child(2) > v-flex > h-flex.b-shell-panel2 > c-grid > div.-overflow-hidden.-notes-wrapper > canvas"
+        ]
+      ],
+      "offsetY": 238.97726440429688,
+      "offsetX": 46.090904235839844
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex.b-statusbar > span:nth-child(1) > span.b-icon.-dfl.-fa.-hflip > i"
+        ]
+      ],
+      "offsetY": 8.5164794921875,
+      "offsetX": 8.084091186523438
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex:nth-child(2) > v-flex > h-flex.b-shell-panel2 > h-flex > h-flex > b-more",
+          "v-flex"
+        ]
+      ],
+      "offsetY": 115.95452880859375,
+      "offsetX": 14.261363983154297
+    },
+    {
+      "type": "doubleClick",
+      "target": "main",
+      "selectors": [
+        [
+          "aria/BlepSynth"
+        ],
+        [
+          "#b-app-shell-modaldialogs > div:nth-child(6) > div > v-flex > div > ul > li:nth-child(4) > ul > li > span > div"
+        ]
+      ],
+      "offsetY": 8.0113525390625,
+      "offsetX": 50
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex.b-statusbar > span:nth-child(1) > span.b-icon.-dfl.-mi > i"
+        ]
+      ],
+      "offsetY": 10.1539306640625,
+      "offsetX": 17.74488067626953
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex.b-menubar > h-flex > span > push-button:nth-child(4) > span > i"
+        ]
+      ],
+      "offsetX": 15.34088134765625,
+      "offsetY": 10
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "frame": [],
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex:nth-child(2) > v-flex > h-flex.b-shell-panel1"
+        ]
+      ],
+      "offsetX": 0,
+      "offsetY": 0,
+      "duration": 4000
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex.b-menubar > h-flex > span > push-button:nth-child(3) > span > i"
+        ]
+      ],
+      "offsetX": 16.7613525390625,
+      "offsetY": 15
+    }
+  ]
+}
