@@ -7,7 +7,8 @@ on:
     branches: ['trunk', 'wip/**']
 
 jobs:
-  Testing:
+
+  Test-Ubuntu:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2.4.2
@@ -19,7 +20,6 @@ jobs:
     - name: Load Docker Cache
       if: ${{ steps.ghcache.outputs.cache-hit == 'true' }}
       run: |
-        test ! -r ~/ghcache/anklang-arch.tar || docker load -i ~/ghcache/anklang-arch.tar
         test ! -r ~/ghcache/anklang-focal.tar || docker load -i ~/ghcache/anklang-focal.tar
     - name: Project Version
       run: |
@@ -33,6 +33,12 @@ jobs:
     - name: Test Ubuntu
       run: |
         misc/dbuild.sh -f focal make check
+    - name: Save Docker Cache
+      if: ${{ steps.ghcache.outputs.cache-hit != 'true' }}
+      run: |
+        mkdir -p ~/ghcache/
+        docker save anklang-focal -o ~/ghcache/anklang-focal.tar
+        ls -al ~/ghcache/
     - name: End-to-end X11 Tests
       run: |
         misc/dbuild.sh -f focal make x11test-v
@@ -41,8 +47,20 @@ jobs:
       with:
         name: x11test
         path: out/x11test/
-    - name: Cleanup
-      run: git clean -f -x -e '/\.dlcache/' . && git reset --hard
+
+  Test-Arch:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2.4.2
+    - uses: actions/cache@v3.0.6
+      id: ghcache
+      with:
+        path: ~/ghcache/
+        key: ${{ runner.os }}-build-${{ hashFiles ('misc/Dockerfile*', 'misc/dbuild.sh') }}
+    - name: Load Docker Cache
+      if: ${{ steps.ghcache.outputs.cache-hit == 'true' }}
+      run: |
+        test ! -r ~/ghcache/anklang-arch.tar || docker load -i ~/ghcache/anklang-arch.tar
     - name: Prepare Arch
       run: |
         misc/dbuild.sh -f arch -T misc/version.sh
@@ -52,19 +70,28 @@ jobs:
     - name: Test Arch
       run: |
         misc/dbuild.sh -f arch make check
-    - name: Cleanup
-      run: git clean -f -x -e '/\.dlcache/' . && git reset --hard
-    - name: Ping IRC
-      if: always()
-      run: |
-        S="${{ job.status }}" && URL="${{ github.event.head_commit.url }}"
-        N="$(git log -1 --format="%cL")" && B="$(git branch --show-current)"
-        MSG=$(git log -1 --format="%s")
-        .github/workflows/ircbot.py -q -j "#Anklang" -n AnklangGH -U "$N" -D "$B" -S "$S" "$MSG" "$URL"
     - name: Save Docker Cache
       if: ${{ steps.ghcache.outputs.cache-hit != 'true' }}
       run: |
         mkdir -p ~/ghcache/
         docker save anklang-arch -o ~/ghcache/anklang-arch.tar
-        docker save anklang-focal -o ~/ghcache/anklang-focal.tar
         ls -al ~/ghcache/
+
+  Ping-IRC:
+    if: always()
+    needs: [Test-Ubuntu, Test-Arch]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2.4.2
+    - name: Check Jobs
+      run: |
+        echo '${{ needs.Test-Ubuntu.result }}' '${{ needs.Test-Arch.result }}'
+        test success = '${{ needs.Test-Ubuntu.result }}'
+        test success = '${{ needs.Test-Arch.result }}'
+    - name: Ping IRC
+      if: always()
+      run: |
+        S='${{ job.status }}' && URL='${{ github.event.head_commit.url }}'
+        N="$(git log -1 --format='%cL')" && B="$(git branch --show-current)"
+        MSG=$(git log -1 --format='%s')
+        .github/workflows/ircbot.py -q -j "#Anklang" -n YYBOT -U "$N" -D "$B" -S "$S" "$MSG" "$URL"
