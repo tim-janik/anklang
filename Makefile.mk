@@ -241,6 +241,21 @@ export NODE_PATH
 uninstall:
 	$Q $(RMDIR_P) '$(DESTDIR)$(pkgdir)/' ; true
 
+# == x11test ==
+x11test/files.json := $(wildcard x11test/*.json)
+x11test x11test-v: $(x11test/files.json) $(lib/AnklangSynthEngine)
+	$(QGEN)
+	$Q rm -f -r $>/x11test/
+	$Q mkdir -p $>/x11test/
+	$Q $(CP) $(x11test/files.json) $>/x11test/
+	$Q cd $>/x11test/ \
+	&& { test "$@" == x11test-v && H=-v || H= ; } \
+	&& for json in *.json ; do \
+		echo "$$json" \
+		&& $(abspath x11test/replay.sh) $$H $$json || exit $$? \
+	 ; done
+.PHONY: x11test x11test-v
+
 # == check rules ==
 # Macro to generate test runs as 'check' dependencies
 define CHECK_ALL_TESTS_TEST
