@@ -11,6 +11,7 @@
 #include "project.hh"
 #include "path.hh"
 #include "clapdevice.hh"
+#include "wave.hh"
 #include "internal.hh"
 #include <atomic>
 
@@ -198,15 +199,9 @@ ServerImpl::get_build_id ()
 }
 
 String
-ServerImpl::get_vorbis_version ()
+ServerImpl::get_opus_version ()
 {
-  return "-";
-}
-
-String
-ServerImpl::get_mp3_version ()
-{
-  return "-";
+  return wave_writer_opus_version();
 }
 
 String
