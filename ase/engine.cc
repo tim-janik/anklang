@@ -56,6 +56,7 @@ class AudioEngineImpl : public AudioEngine {
   const VoidF                  owner_wakeup_;
   std::thread                 *thread_ = nullptr;
   MainLoopP                    event_loop_ = MainLoop::create();
+  Emittable::Connection        onchange_prefs_;
   AudioProcessorS              oprocs_;
   ProjectImplP                 project_;
 public:
@@ -495,8 +496,7 @@ AudioEngineImpl::start_threads()
   thread_ = new std::thread (&AudioEngineImpl::run, this, &start_queue);
   const char reply = start_queue.pop(); // synchronize with thread start
   assert_return (reply == 'R');
-  Emittable::Connection onprefs_;
-  onprefs_ = ASE_SERVER.on_event ("change:prefs", [this, latency] (auto...) {
+  onchange_prefs_ = ASE_SERVER.on_event ("change:prefs", [this, latency] (auto...) {
     update_drivers (true, latency);
   });
   update_drivers (true, latency);
@@ -507,6 +507,7 @@ AudioEngineImpl::stop_threads()
 {
   AudioEngineImpl &engine = *dynamic_cast<AudioEngineImpl*> (this);
   assert_return (engine.thread_ != nullptr);
+  onchange_prefs_.reset();
   engine.event_loop_->quit (0);
   engine.thread_->join();
   audio_engine_thread_id = {};
