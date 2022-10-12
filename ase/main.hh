@@ -34,6 +34,7 @@ bool   feature_check       (const char *feature);
 
 // == Jobs & main loop ==
 extern MainLoopP main_loop;
+void             main_loop_wakeup ();
 
 /// Execute a lambda job in the Ase main loop and wait for its result.
 extern JobQueue main_jobs;

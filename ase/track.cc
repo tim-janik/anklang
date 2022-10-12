@@ -2,7 +2,7 @@
 #include "track.hh"
 #include "combo.hh"
 #include "project.hh"
-#include "device.hh"
+#include "nativedevice.hh"
 #include "clip.hh"
 #include "midilib.hh"
 #include "server.hh"
@@ -16,32 +16,39 @@ namespace Ase {
 // == TrackImpl ==
 JSONIPC_INHERIT (TrackImpl, Track);
 
-TrackImpl::TrackImpl (bool masterflag) :
-  masterflag_ (masterflag)
-{}
+TrackImpl::TrackImpl (ProjectImpl &project, bool masterflag)
+{
+  gadget_flags (MASTER_TRACK);
+}
 
 TrackImpl::~TrackImpl()
 {
-  set_project (nullptr);
+  assert_return (_parent() == nullptr);
+}
+
+ProjectImpl*
+TrackImpl::project () const
+{
+  return static_cast<ProjectImpl*> (_parent());
 }
 
 String
 TrackImpl::fallback_name () const
 {
-  if (masterflag_)
+  if (is_master())
     return "Master";
-  if (project_)
+  if (auto project_ = project())
     {
       ssize_t i = project_->track_index (*this);
       return string_format ("Track %u", i >= 0 ? i + 1 : i);
     }
-  return GadgetImpl::fallback_name();
+  return DeviceImpl::fallback_name();
 }
 
 void
 TrackImpl::serialize (WritNode &xs)
 {
-  GadgetImpl::serialize (xs);
+  DeviceImpl::serialize (xs);
   // save clips
   if (xs.in_save())
     for (auto &bclip : clips_)
@@ -72,14 +79,12 @@ TrackImpl::serialize (WritNode &xs)
 }
 
 void
-TrackImpl::set_project (ProjectImpl *project)
+TrackImpl::_set_parent (GadgetImpl *parent)
 {
+  auto project = dynamic_cast<ProjectImpl*> (parent);
+  assert_return (!!parent == !!project);
+  DeviceImpl::_set_parent (project);
   if (project)
-    assert_return (!project_);
-  ProjectImpl *old = project_;
-  (void) old;
-  project_ = project;
-  if (project_)
     {
       AudioEngine *engine = main_config.engine;
       assert_return (!midi_prod_);
@@ -94,19 +99,35 @@ TrackImpl::set_project (ProjectImpl *project)
       assert_return (chain_);
       chain_->_set_parent (this);
       chain_->_set_event_source (midi_prod_->_audio_processor());
-      chain_->_activate();
-      midi_prod_->_activate();
     }
   else if (chain_)
     {
-      chain_->_set_parent (nullptr);
+      midi_prod_->_disconnect_remove();
       chain_->_disconnect_remove();
+      chain_->_set_parent (nullptr);
       chain_ = nullptr;
       midi_prod_->_set_parent (nullptr);
-      midi_prod_->_disconnect_remove();
       midi_prod_ = nullptr;
     }
   emit_event ("notify", "project");
+}
+
+void
+TrackImpl::_activate ()
+{
+  assert_return (!is_active() && _parent());
+  DeviceImpl::_activate();
+  midi_prod_->_activate();
+  chain_->_activate();
+}
+
+void
+TrackImpl::_deactivate ()
+{
+  assert_return (is_active());
+  chain_->_deactivate();
+  midi_prod_->_deactivate();
+  DeviceImpl::_deactivate();
 }
 
 void
@@ -228,6 +249,24 @@ TrackImpl::telemetry () const
   v.push_back (telemetry_field ("current_tick", &position->tick));
   v.push_back (telemetry_field ("next_clip", &position->next));
   return v;
+}
+
+DeviceInfo
+TrackImpl::device_info ()
+{
+  return {}; // TODO: DeviceInfo
+}
+
+AudioProcessorP
+TrackImpl::_audio_processor () const
+{
+  return {}; // TODO: AudioProcessorP
+}
+
+void
+TrackImpl::_set_event_source (AudioProcessorP esource)
+{
+  // TODO: _set_event_source
 }
 
 // == TrackImpl::ClipScout ==

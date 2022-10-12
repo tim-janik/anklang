@@ -9,16 +9,20 @@ namespace Ase {
 
 /// Base type for classes that have a Property.
 class GadgetImpl : public ObjectImpl, public CustomDataContainer, public virtual Gadget, public virtual Serializable {
-  ValueR session_data;
-  Gadget *parent_ = nullptr;
+  GadgetImpl *parent_ = nullptr;
+  uint64_t    gadget_flags_ = 0;
+  ValueR      session_data_;
 protected:
+  enum : uint64_t { GADGET_DESTROYED = 0x1, DEVICE_ACTIVE = 0x2, MASTER_TRACK = 0x4 };
+  uint64_t       gadget_flags      () const     { return gadget_flags_; }
+  uint64_t       gadget_flags      (uint64_t setbits, uint64_t mask = ~uint64_t (0));
   static String  canonify_key      (const String &input);
   virtual       ~GadgetImpl        ();
   virtual String fallback_name     () const;
   void           serialize         (WritNode &xs) override;
 public:
-  void           _set_parent       (Gadget *parent) override;
-  Gadget*        _parent           () const override    { return parent_; }
+  void           _set_parent       (GadgetImpl *parent) override;
+  GadgetImpl*    _parent           () const override    { return parent_; }
   String         type_nick         () const override;
   String         name              () const override;
   void           name              (String newname) override;

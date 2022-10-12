@@ -14,6 +14,15 @@
 
 namespace Ase {
 
+static std::vector<ProjectImplP> all_projects;
+
+// == Project ==
+ProjectP
+Project::last_project()
+{
+  return all_projects.empty() ? nullptr : all_projects.back();
+}
+
 // == ProjectImpl ==
 JSONIPC_INHERIT (ProjectImpl, Project);
 
@@ -37,8 +46,6 @@ struct ProjectImpl::PStorage {
 private:
   PStorage **const ptrp_ = nullptr;
 };
-
-static std::vector<ProjectImplP> all_projects;
 
 ProjectImpl::ProjectImpl()
 {
@@ -80,6 +87,24 @@ ProjectImpl::discard ()
   if (nerased)
     ; // resource cleanups...
   discarded_ = true;
+}
+
+void
+ProjectImpl::_activate ()
+{
+  assert_return (!is_active());
+  DeviceImpl::_activate();
+  for (auto &track : tracks_)
+    track->_activate();
+}
+
+void
+ProjectImpl::_deactivate ()
+{
+  assert_return (is_active());
+  for (auto trackit = tracks_.rbegin(); trackit != tracks_.rend(); ++trackit)
+    (*trackit)->_deactivate();
+  DeviceImpl::_deactivate();
 }
 
 static bool
@@ -369,7 +394,7 @@ ProjectImpl::serialize (WritNode &xs)
   if (xs.in_load() && storage_ && storage_->asset_hashes.empty())
     xs["filehashes"] & storage_->asset_hashes;
   // serrialize children
-  GadgetImpl::serialize (xs);
+  DeviceImpl::serialize (xs);
   // load tracks
   if (xs.in_load())
     for (auto &xc : xs["tracks"].to_nodes())
@@ -630,6 +655,21 @@ void
 ProjectImpl::start_playback ()
 {
   assert_return (!discarded_);
+  assert_return (main_config.engine);
+  AudioEngine &engine = *main_config.engine;
+  ProjectImplP selfp = shared_ptr_cast<ProjectImpl> (this);     // keep alive while engine changes refcounts
+  ProjectImplP oldp = engine.get_project();                     // keep alive while engine changes refs
+  if (oldp != selfp)
+    {
+      if (oldp)
+        {
+          oldp->stop_playback();
+          engine.set_project (nullptr);
+        }
+      engine.set_project (selfp);
+    }
+  assert_return (this == &*engine.get_project());
+
   main_loop->clear_source (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
@@ -681,11 +721,10 @@ ProjectImpl::create_track ()
 {
   assert_return (!discarded_, nullptr);
   const bool havemaster = tracks_.size() != 0;
-  TrackImplP track = TrackImpl::make_shared (!havemaster);
+  TrackImplP track = TrackImpl::make_shared (*this, !havemaster);
   tracks_.insert (tracks_.end() - int (havemaster), track);
   emit_event ("track", "insert", { { "track", track }, });
   track->_set_parent (this);
-  track->set_project (this);
   return track;
 }
 
@@ -699,7 +738,6 @@ ProjectImpl::remove_track (Track &child)
   if (!Aux::erase_first (tracks_, [track] (TrackP t) { return t == track; }))
     return false;
   // destroy Track
-  track->set_project (nullptr);
   track->_set_parent (nullptr);
   emit_event ("track", "remove");
   return true;
@@ -758,11 +796,22 @@ ProjectImpl::access_properties ()
   return bag.props;
 }
 
-// == Project ==
-ProjectP
-Project::last_project()
+DeviceInfo
+ProjectImpl::device_info ()
 {
-  return all_projects.empty() ? nullptr : all_projects.back();
+  return {}; // TODO: DeviceInfo
+}
+
+AudioProcessorP
+ProjectImpl::_audio_processor () const
+{
+  return {}; // TODO: AudioProcessorP
+}
+
+void
+ProjectImpl::_set_event_source (AudioProcessorP esource)
+{
+  // TODO: _set_event_source
 }
 
 } // Ase

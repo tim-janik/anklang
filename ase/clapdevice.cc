@@ -132,8 +132,8 @@ String
 ClapDeviceImpl::get_device_path ()
 {
   std::vector<String> nums;
-  Device *parent = dynamic_cast<Device*> (this->_parent());
-  for (Device *dev = this; parent; dev = parent, parent = dynamic_cast<Device*> (dev->_parent()))
+  NativeDevice *parent = dynamic_cast<NativeDevice*> (this->_parent());
+  for (Device *dev = this; parent; dev = parent, parent = dynamic_cast<NativeDevice*> (dev->_parent()))
     {
       ssize_t index = Aux::index_of (parent->list_devices(),
                                      [dev] (const DeviceP &e) { return dev == &*e; });
@@ -151,11 +151,11 @@ ClapDeviceImpl::get_device_path ()
 void
 ClapDeviceImpl::serialize (WritNode &xs)
 {
-  GadgetImpl::serialize (xs);
+  DeviceImpl::serialize (xs);
 
   if (xs.in_save() && handle_)
     handle_->save_state (xs, get_device_path());
-  if (xs.in_load() && handle_ && !handle_->activated())
+  if (xs.in_load() && handle_ && !handle_->clap_activated())
     handle_->load_state (xs);
 }
 
@@ -194,15 +194,15 @@ ClapDeviceImpl::proc_params_change (const Event &event)
 }
 
 void
-ClapDeviceImpl::_set_parent (Gadget *parent)
+ClapDeviceImpl::_set_parent (GadgetImpl *parent)
 {
-  GadgetImpl::_set_parent (parent);
+  DeviceImpl::_set_parent (parent);
   ClapDeviceImplP selfp = shared_ptr_cast<ClapDeviceImpl> (this);
   // deactivate and destroy plugin
   if (!parent && handle_)
     {
       handle_->destroy_gui();
-      handle_->deactivate();
+      handle_->clap_deactivate();
       handle_->destroy();
     }
 }
@@ -211,7 +211,7 @@ void
 ClapDeviceImpl::_activate ()
 {
   if (_parent() && handle_)
-    handle_->activate();
+    handle_->clap_activate();
 }
 
 void

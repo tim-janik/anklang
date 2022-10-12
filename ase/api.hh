@@ -191,9 +191,9 @@ public:
 class Gadget : public virtual Object {
 public:
   // Hierarchical parenting.
-  virtual Gadget*     _parent           () const = 0;         ///< Retrieve parent container.
-  virtual void        _set_parent       (Gadget *parent) = 0; ///< Assign parent container.
-  ProjectImpl*        _project          () const;             ///< Find Project in parent ancestry.
+  virtual GadgetImpl* _parent           () const = 0;             ///< Retrieve parent container.
+  virtual void        _set_parent       (GadgetImpl *parent) = 0; ///< Assign parent container.
+  ProjectImpl*        _project          () const;                 ///< Find Project in parent ancestry.
   // Naming
   virtual String      type_nick         () const = 0;
   virtual String      name              () const = 0;
@@ -224,26 +224,34 @@ struct DeviceInfo {
 /// Interface to access Device instances.
 class Device : public virtual Gadget {
 public:
-  Track*              _track             () const;                    ///< Find Track in parent ancestry.
-  virtual void        _activate          () = 0;
-  virtual DeviceInfo  device_info        () = 0;                      ///< Describe this Device type.
-  // Combo
-  virtual bool        is_combo_device    () = 0;                      ///< Retrieve wether this Device handles sub devices.
-  virtual DeviceS     list_devices       () = 0;                      ///< List devices in order of processing, notified via "devices".
-  // Create sub Device
-  virtual DeviceInfoS list_device_types  () = 0;                      ///< List registered Device types with their unique uri.
-  virtual void        remove_device      (Device &sub) = 0;           ///< Remove a directly contained device.
-  virtual void        remove_self        ();                          ///< Remove device from its container.
-  virtual void        gui_toggle         () = 0;                      ///< Toggle GUI display.
-  virtual bool        gui_supported      () = 0;                      ///< Has GUI display facilities.
-  virtual bool        gui_visible        () = 0;                      ///< Is GUI currently visible.
-  virtual DeviceP     append_device      (const String &uri) = 0;     ///< Append a new device, see list_device_types().
-  virtual DeviceP     insert_device      (const String &uri,
-                                          Device &beforesibling) = 0; ///< Insert a new device, before `beforesibling`.
-  // Internal
-  virtual AudioProcessorP _audio_processor   () const = 0;
+  // internal
+  Track*                  _track             () const;          ///< Find Track in parent ancestry.
+  virtual AudioProcessorP _audio_processor   () const = 0;      ///< Retrieve the corresponding AudioProcessor.
   virtual void            _set_event_source  (AudioProcessorP esource) = 0;
-  virtual void            _disconnect_remove () = 0;
+  virtual void            _activate          () = 0;            ///< Add AudioProcessor to the Engine and start processing.
+  virtual void            _deactivate        () = 0;            ///< Stop processing the corresponding AudioProcessor.
+  virtual void            _disconnect_remove () = 0;            ///< Disconnect the device and remove all object references.
+  // exported
+  virtual bool       is_active     () = 0;      ///< Check whether this is the active synthesis engine project.
+  virtual DeviceInfo device_info   () = 0;      ///< Describe this Device type.
+  void               remove_self   ();          ///< Remove device from its container.
+  // GUI handling
+  virtual void       gui_toggle    () = 0;      ///< Toggle GUI display.
+  virtual bool       gui_supported () = 0;      ///< Has GUI display facilities.
+  virtual bool       gui_visible   () = 0;      ///< Is GUI currently visible.
+};
+
+/// Interface to access NativeDevice instances.
+class NativeDevice : public virtual Device {
+public:
+  // subdevice handling
+  virtual bool        is_combo_device   () = 0;                      ///< Retrieve wether this NativeDevice handles sub devices.
+  virtual DeviceS     list_devices      () = 0;                      ///< List devices in order of processing, notified via "devices".
+  DeviceInfoS         list_device_types ();                          ///< List registered Device types with their unique uri.
+  virtual void        remove_device     (Device &sub) = 0;           ///< Remove a directly contained device.
+  virtual DeviceP     append_device     (const String &uri) = 0;     ///< Append a new device, see list_device_types().
+  virtual DeviceP     insert_device     (const String &uri,
+                                         Device &beforesibling) = 0; ///< Insert a new device, before `beforesibling`.
 };
 
 /// Part specific note event representation.
@@ -272,7 +280,7 @@ public:
 };
 
 /// Container for Clip objects and sequencing information.
-class Track : public virtual Gadget {
+class Track : public virtual Device {
 public:
   virtual int32    midi_channel   () const = 0;          ///< Midi channel assigned to this track, 0 uses internal per-track channel.
   virtual void     midi_channel   (int32 midichannel) = 0;
@@ -294,7 +302,7 @@ struct ProbeFeatures {
 /// Interface for monitoring output signals.
 class Monitor : public virtual Gadget {
 public:
-  virtual DeviceP get_output         () = 0;            ///< Retrieve output module the Monitor is connected to.
+  virtual DeviceP get_output         () = 0;            ///< Retrieve output device the Monitor is connected to.
   virtual int32   get_ochannel       () = 0;            ///< Retrieve output channel the Monitor is connected to.
   virtual int64   get_mix_freq       () = 0;            ///< Mix frequency at which monitor values are calculated.
   virtual int64   get_frame_duration () = 0;            ///< Frame duration in µseconds for the calculation of monitor values.
@@ -304,7 +312,7 @@ public:
 };
 
 /// Projects support loading, saving, playback and act as containers for all other sound objects.
-class Project : public virtual Gadget {
+class Project : public virtual Device {
 public:
   virtual void            discard        () = 0;       ///< Discard project and associated resources.
   virtual void            start_playback () = 0;       ///< Start playback of a project, requires active sound engine.

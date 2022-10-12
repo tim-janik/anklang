@@ -887,7 +887,7 @@ public:
       }
   }
   bool
-  activated() const override
+  clap_activated() const override
   {
     return plugin_activated;
   }
@@ -895,7 +895,7 @@ public:
   enqueue_updates (const ClapParamUpdateS &updates)
   {
     ClapPluginHandleImplP selfp = shared_ptr_cast<ClapPluginHandleImpl> (this);
-    return_unless (activated(), false);
+    return_unless (clap_activated(), false);
     ClapEventParamS *pevents = convert_param_updates (updates);
     BorrowedPtr<ClapEventParamS> pevents_b (pevents); // moves ownership
     proc_->engine().async_jobs += [selfp, pevents_b] () {
@@ -904,9 +904,9 @@ public:
     return true;
   }
   bool
-  activate() override
+  clap_activate() override
   {
-    return_unless (plugin_ && !activated(), activated());
+    return_unless (plugin_ && !clap_activated(), clap_activated());
     // initial param scan
     if (plugin_params) {
       scan_params(); // needed for convert_param_updates
@@ -938,12 +938,12 @@ public:
       sem.wait();
       // active_state && processing_state
     }
-    return activated();
+    return clap_activated();
   }
   void
-  deactivate() override
+  clap_deactivate() override
   {
-    return_unless (plugin_ && activated());
+    return_unless (plugin_ && clap_activated());
     if (true) {
       ClapPluginHandleImplP selfp = shared_ptr_cast<ClapPluginHandleImpl> (this);
       ScopedSemaphore sem;
@@ -952,11 +952,11 @@ public:
         sem.post();
       };
       sem.wait();
-      // !processing && !active
+      // NOW: !processing && !clap_activated
     }
     plugin_activated = false;
     plugin_->deactivate (plugin_);
-    CDEBUG ("%s: deactivated", clapid());
+    CDEBUG ("%s: plugin->deactivated", clapid());
   }
   void show_gui     () override;
   void hide_gui     () override;
@@ -968,8 +968,8 @@ public:
   {
     destroy_gui();
     if (plugin_) {
-      if (activated())
-        deactivate();
+      if (clap_activated())
+        clap_deactivate();
       CDEBUG ("%s: destroying", clapid());
     }
     param_ids_.clear();
@@ -1137,7 +1137,7 @@ ClapPluginHandleImpl::flush_event_params (const ClapEventParamS &inevents, ClapE
 void
 ClapPluginHandleImpl::get_port_infos()
 {
-  assert_return (!activated());
+  assert_return (!clap_activated());
   uint total_channels = 0;
   // audio_ports_configs_
   audio_ports_configs_.resize (!plugin_audio_ports_config ? 0 : plugin_audio_ports_config->count (plugin_));

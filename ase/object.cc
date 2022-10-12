@@ -95,24 +95,25 @@ EventConnection::disconnect ()
     }
 }
 
+EventConnection::~EventConnection()
+{
+  handler_ = nullptr;
+  dispatcher_ = nullptr;
+}
+
 bool
 Emittable::Connection::connected () const
 {
   const EventConnectionP &econp = *this;
-  return econp->connected();
+  return econp && econp->connected();
 }
 
 void
 Emittable::Connection::disconnect () const
 {
   const EventConnectionP &econp = *this;
-  econp->disconnect();
-}
-
-EventConnection::~EventConnection()
-{
-  handler_ = nullptr;
-  dispatcher_ = nullptr;
+  if (econp)
+    econp->disconnect();
 }
 
 // == CoalesceNotifies ==

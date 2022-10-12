@@ -14,8 +14,16 @@ JSONIPC_INHERIT (GadgetImpl, Gadget);
 GadgetImpl::~GadgetImpl()
 {}
 
+uint64_t
+GadgetImpl::gadget_flags (uint64_t setbits, uint64_t mask)
+{
+  gadget_flags_ &= mask;
+  gadget_flags_ |= setbits;
+  return gadget_flags_;
+}
+
 void
-GadgetImpl::_set_parent (Gadget *parent)
+GadgetImpl::_set_parent (GadgetImpl *parent)
 {
   if (parent)
     assert_return (parent_ == nullptr);
@@ -43,7 +51,7 @@ Value
 GadgetImpl::get_data (const String &key) const
 {
   const String ckey = canonify_key (key);
-  return session_data[ckey];
+  return session_data_[ckey];
 }
 
 bool
@@ -51,7 +59,7 @@ GadgetImpl::set_data (const String &key, const Value &v)
 {
   const String ckey = canonify_key (key);
   return_unless (ckey.size(), false);
-  session_data[ckey] = v;
+  session_data_[ckey] = v;
   emit_event ("data", ckey);
   return true;
 }
@@ -94,7 +102,7 @@ GadgetImpl::serialize (WritNode &xs)
   if (xs.in_save())
     {
       ValueR cdata;
-      for (const ValueField &f : session_data)
+      for (const ValueField &f : session_data_)
         if (f.name[0] != '_' && f.value)
           cdata[f.name] = *f.value;
       if (cdata.size())

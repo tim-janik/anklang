@@ -16,32 +16,26 @@ struct AudioEngineJob {
 /// Main handle for AudioProcessor administration and audio rendering.
 class AudioEngine : VirtualBase {
   std::atomic<size_t>          processor_count_ = 0;
-  friend class AudioEngineThread;
+  friend class AudioEngineImpl;
   friend class AudioProcessor;
-  class JobQueue {
-    AudioEngine &engine_; const int flags_;
-  public:
-    explicit JobQueue   (AudioEngine &e, int f) : engine_ (e), flags_ (f) {}
-    void     operator+= (const std::function<void()> &job) { return engine_.add_job_mt (new_engine_job (job), flags_); }
-    void     operator+= (AudioEngineJob *job) { return engine_.add_job_mt (job, flags_); }
-  };
-  void         add_job_mt            (AudioEngineJob *job, int flags);
 protected:
-  AudioTransport                    *transport_ = nullptr;
-  explicit     AudioEngine           ();
-  virtual void enable_output         (AudioProcessor &aproc, bool onoff) = 0;
-  virtual void schedule_queue_update () = 0;
-  virtual void schedule_add          (AudioProcessor &aproc, uint level) = 0;
+  AudioTransport *transport_ = nullptr;
+  explicit AudioEngine           () {}
+  void     enable_output         (AudioProcessor &aproc, bool onoff);
+  void     schedule_queue_update ();
+  void     schedule_add          (AudioProcessor &aproc, uint level);
 public:
   // Owner-Thread API
-  virtual void start_thread          (const VoidF &owner_wakeup) = 0;
-  virtual void stop_thread           () = 0;
-  virtual void wakeup_thread_mt      () = 0;
-  virtual bool ipc_pending           () = 0;
-  virtual void ipc_dispatch          () = 0;
-  virtual AudioProcessorP get_event_source () = 0;
+  void            start_threads    ();
+  void            stop_threads     ();
+  void            wakeup_thread_mt ();
+  bool            ipc_pending      ();
+  void            ipc_dispatch     ();
+  AudioProcessorP get_event_source ();
+  void            set_project      (ProjectImplP project);
+  ProjectImplP    get_project      ();
   // MT-Safe API
-  virtual uint64_t       frame_counter       () const = 0;
+  uint64_t               frame_counter       () const;
   const AudioTransport&  transport           () const           { return *transport_; }
   uint                   sample_rate         () const ASE_CONST { return transport().samplerate; }
   uint                   nyquist             () const ASE_CONST { return transport().nyquist; }
@@ -50,11 +44,16 @@ public:
   static AudioEngineJob* new_engine_job      (const std::function<void()> &jobfunc);
   static bool            thread_is_engine    () { return std::this_thread::get_id() == thread_id; }
   static const ThreadId &thread_id;
-  JobQueue               async_jobs;    ///< Executed asynchronously, may modify AudioProcessor objects
-  JobQueue               const_jobs;    ///< Blocks during execution, must treat AudioProcessor objects read-only
+  // JobQueues
+  struct JobQueue {
+    void                 operator+= (const std::function<void()> &job);
+    void                 operator+= (AudioEngineJob *job);
+  };
+  static JobQueue        async_jobs;    ///< Executed asynchronously, may modify AudioProcessor objects
+  static JobQueue        const_jobs;    ///< Blocks during execution, must treat AudioProcessor objects read-only
 };
 
-AudioEngine&    make_audio_engine    (uint sample_rate, SpeakerArrangement speakerarrangement);
+AudioEngine&     make_audio_engine    (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement);
 
 /// A BorrowedPtr wraps an object pointer until it is disposed, i.e. returned to the main-thread and deleted.
 template<typename T>
