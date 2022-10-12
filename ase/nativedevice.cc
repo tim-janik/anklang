@@ -217,7 +217,7 @@ NativeDeviceImpl::_disconnect_remove ()
     proc->disconnect_ibuses();
     proc->disconnect_obuses();
     proc->disconnect_event_input();
-    // FIXME: remove from combo container if child
+    // TODO: possibly merge with _set_parent(nullptr)
   };
   engine->async_jobs += j;
   // FIXME: recurse
