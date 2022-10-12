@@ -256,6 +256,7 @@ x11test x11test-v: $(x11test/files.json) $(lib/AnklangSynthEngine)
 		echo "$$json" \
 		&& $(abspath x11test/replay.sh) $$H $$json || exit $$? \
 	 ; done
+CLEANDIRS += $>/x11test/
 .PHONY: x11test x11test-v
 
 # == check rules ==

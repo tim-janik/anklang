@@ -10,7 +10,7 @@
 #include "internal.hh"
 #include <atomic>
 
-#define NDEBUG(...)     Ase::debug ("ClipNote", __VA_ARGS__)
+#define CDEBUG(...)     Ase::debug ("ClipNote", __VA_ARGS__)
 #define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)
 
 namespace Ase {
@@ -217,7 +217,7 @@ ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
   for (const auto &note : batch)
     if (note.id > 0 && (note.duration == 0 || note.channel < 0)) {
       changes |= notes_.remove (note);
-      NDEBUG ("%s: delete notes: %d\n", __func__, note.id);
+      CDEBUG ("%s: delete notes: %d\n", __func__, note.id);
     }
   // modify *existing* notes
   for (const auto &note : batch)
@@ -229,7 +229,7 @@ ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
           selections = true; // only selection changed
         else
           changes = true;
-        NDEBUG ("%s: %s %d: new=%s old=%s\n", __func__, note == replaced ? "toggle" : "replace", note.id,
+        CDEBUG ("%s: %s %d: new=%s old=%s\n", __func__, note == replaced ? "toggle" : "replace", note.id,
                 stringify_clip_note (note), stringify_clip_note (replaced));
       }
     }
@@ -241,19 +241,19 @@ ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
       assert_warn (ev.id >= MIDI_NOTE_ID_FIRST && ev.id <= MIDI_NOTE_ID_LAST);
       const bool replaced = notes_.insert (ev);
       changes |= !replaced;
-      NDEBUG ("%s: insert: %s%s\n", __func__, stringify_clip_note (ev), replaced ? " (REPLACED?)" : "");
+      CDEBUG ("%s: insert: %s%s\n", __func__, stringify_clip_note (ev), replaced ? " (REPLACED?)" : "");
     }
   // collapse overlapping notes
   if (changes || selections) {
     const size_t collapsed = collapse_notes (notes_, true);
     changes = changes || collapsed;
-    if (collapsed) NDEBUG ("%s: collapsed=%d\n", __func__, collapsed);
+    if (collapsed) CDEBUG ("%s: collapsed=%d\n", __func__, collapsed);
   }
   // queue undo
   if (!notes_.equals (orig_notes)) {
     if (changes)
       push_undo (orig_notes, undogroup.empty() ? "Change Notes" : undogroup);
-    if (changes) NDEBUG ("%s: notes=%d undo_size: %fMB\n", __func__, notes_.size(), project()->undo_size_guess() / (1024. * 1024));
+    if (changes) CDEBUG ("%s: notes=%d undo_size: %fMB\n", __func__, notes_.size(), project()->undo_size_guess() / (1024. * 1024));
     emit_notify ("notes");
   }
   return 0;
