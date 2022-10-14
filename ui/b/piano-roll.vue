@@ -146,10 +146,10 @@ $scrollarea-bg: transparent;
 	<b-icon class='-iconclass'
 		v-bind="Util.clone_menu_icon ($refs.toolmenu, pianotool, '**EDITOR TOOL**')" />
 	<b-contextmenu ref="toolmenu" keepmounted class="b-piano-roll-contextmenu" >
-	  <b-menuitem mi="open_with"     uri="S" @click="usetool" kbd="1" > Rectangular Selection </b-menuitem>
-	  <b-menuitem mi="multiple_stop" uri="H" @click="usetool" kbd="2" > Horizontal Selection </b-menuitem>
-	  <b-menuitem fa="pencil"        uri="P" @click="usetool" kbd="3" > Pen          </b-menuitem>
-	  <b-menuitem fa="eraser"        uri="E" @click="usetool" kbd="4" > Eraser       </b-menuitem>
+	  <b-menuitem ic="mi-open_with"     uri="S" @click="usetool" kbd="1" > Rectangular Selection </b-menuitem>
+	  <b-menuitem ic="mi-multiple_stop" uri="H" @click="usetool" kbd="2" > Horizontal Selection </b-menuitem>
+	  <b-menuitem ic="fa-pencil"        uri="P" @click="usetool" kbd="3" > Pen          </b-menuitem>
+	  <b-menuitem ic="fa-eraser"        uri="E" @click="usetool" kbd="4" > Eraser       </b-menuitem>
 	</b-contextmenu>
       </h-flex>
     </div>

@@ -19,15 +19,15 @@
 
   <b-button-bar
       class="b-playcontrols" >
-    <push-button disabled @click="pcall ('...Last')"      ><b-icon fw lg fa="fast-backward" /></push-button>
-    <push-button disabled @click="pcall ('...Backwards')" ><b-icon fw lg fa="backward"      /></push-button>
+    <push-button disabled @click="pcall ('...Last')"      ><b-icon fw lg ic="fa-fast-backward" /></push-button>
+    <push-button disabled @click="pcall ('...Backwards')" ><b-icon fw lg ic="fa-backward"      /></push-button>
     <push-button @click="pcall ('stop_playback')" data-hotkey="S"
-		 data-tip="**CLICK** Stop playback" >      <b-icon fw lg fa="stop"          /></push-button>
+		 data-tip="**CLICK** Stop playback" >      <b-icon fw lg ic="fa-stop"          /></push-button>
     <push-button @click="toggle_play()"  data-hotkey="RawSpace"
-		 data-tip="**CLICK** Start/stop playback" ><b-icon fw lg fa="play"          /></push-button>
-    <push-button disabled @click="pcall ('...Record')"    ><b-icon fw lg fa="circle"        /></push-button>
-    <push-button disabled @click="pcall ('...Forwards')"  ><b-icon fw lg fa="forward"       /></push-button>
-    <push-button disabled @click="pcall ('...Next')"      ><b-icon fw lg fa="fast-forward"  /></push-button>
+		 data-tip="**CLICK** Start/stop playback" ><b-icon hi="ho" fw="true" lg ic="fa-play"          /></push-button>
+    <push-button disabled @click="pcall ('...Record')"    ><b-icon fw lg ic="fa-circle"        /></push-button>
+    <push-button disabled @click="pcall ('...Forwards')"  ><b-icon fw lg ic="fa-forward"       /></push-button>
+    <push-button disabled @click="pcall ('...Next')"      ><b-icon fw lg ic="fa-fast-forward"  /></push-button>
   </b-button-bar>
 
 </template>

@@ -29,31 +29,31 @@
       <!-- File Menu -->
       <push-button data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click="Util.dropdown ($refs.filemenu, $event)" >
 	<div class="-stack" >
-	  <b-icon bc="folder" />
-	  <b-icon bc="menumore" />
+	  <b-icon ic="bc-folder" />
+	  <b-icon ic="bc-menumore" />
 	</div>
 	<b-contextmenu ref="filemenu" @click="activation" startfocus keepmounted >
-	  <b-menuitem fa="file-o"	kbd="Ctrl+N"		uri="loadnew" >	New Project		</b-menuitem>
-	  <b-menuitem fa="file-audio-o" kbd="Ctrl+O"		uri="load"    >	Open Project…		</b-menuitem>
-	  <b-menuitem mi="save_alt"     kbd="Ctrl+S"		uri="save"    >	Save Project		</b-menuitem>
-	  <b-menuitem fa="save"		kbd="Shift+Ctrl+S"	uri="saveas"  >	Save As…		</b-menuitem>
+	  <b-menuitem ic="fa-file-o"	kbd="Ctrl+N"		uri="loadnew" >	New Project		</b-menuitem>
+	  <b-menuitem ic="fa-file-audio-o" kbd="Ctrl+O"		uri="load"    >	Open Project…		</b-menuitem>
+	  <b-menuitem ic="mi-save_alt"     kbd="Ctrl+S"		uri="save"    >	Save Project		</b-menuitem>
+	  <b-menuitem ic="fa-save"		kbd="Shift+Ctrl+S"	uri="saveas"  >	Save As…		</b-menuitem>
 	  <b-menuseparator style="margin: 7px"  />
-	  <b-menuitem fa="cog"         kbd="Ctrl+RawComma"	uri="prefs">	Preferences		</b-menuitem>
+	  <b-menuitem ic="fa-cog"         kbd="Ctrl+RawComma"	uri="prefs">	Preferences		</b-menuitem>
 	  <b-menuseparator style="margin: 7px"  />
-	  <b-menuitem mi="close" kbd="Shift+Ctrl+Q" uri="quit">	Quit			</b-menuitem>
+	  <b-menuitem ic="mi-close" kbd="Shift+Ctrl+Q" uri="quit">	Quit			</b-menuitem>
 	</b-contextmenu>
       </push-button>
 
       <!-- Edit Menu -->
       <push-button data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click="Util.dropdown ($refs.editmenu, $event)" >
 	<div class="-stack" >
-	  <b-icon mi="draw" />
-	  <b-icon bc="menumore" />
+	  <b-icon ic="mi-draw" />
+	  <b-icon ic="bc-menumore" />
 	</div>
 	<b-contextmenu ref="editmenu" @click="activation" :check="deactivation" startfocus keepmounted >
-	  <b-menuitem mi="undo" :disabled="!true"
+	  <b-menuitem ic="mi-undo" :disabled="!true"
 		      kbd="Ctrl+Z" uri="undo">	Undo	</b-menuitem>
-	  <b-menuitem mi="redo" :disabled="!true"
+	  <b-menuitem ic="mi-redo" :disabled="!true"
 		      kbd="Shift+Ctrl+Z" uri="redo">	Redo	</b-menuitem>
 	</b-contextmenu>
       </push-button>
@@ -61,11 +61,11 @@
       <!-- View Menu -->
       <push-button data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @click="Util.dropdown ($refs.viewmenu, $event)" >
 	<div class="-stack" >
-	  <b-icon fa="eye" />
-	  <b-icon bc="menumore" />
+	  <b-icon ic="fa-eye" />
+	  <b-icon ic="bc-menumore" />
 	</div>
 	<b-contextmenu ref="viewmenu" @click="activation" startfocus keepmounted >
-	  <b-menuitem mi="fullscreen" :disabled="!document.fullscreenEnabled"
+	  <b-menuitem ic="mi-fullscreen" :disabled="!document.fullscreenEnabled"
 		      kbd="F11" uri="fullscreen">	Toggle Fullscreen	</b-menuitem>
 	</b-contextmenu>
       </push-button>
@@ -84,14 +84,14 @@
       <push-button data-tip="**CLICK** Help Menu" data-hotkey="Alt+H"
 		@click="Util.dropdown ($refs.helpmenu, $event)" >
 	<div class="-stack" >
-	  <b-icon fa="life-ring" />
-	  <b-icon bc="menumore" />
+	  <b-icon ic="fa-life-ring" />
+	  <b-icon ic="bc-menumore" />
 	</div>
 	<b-contextmenu ref="helpmenu" @click="activation" startfocus >
-	  <b-menuitem mi="chrome_reader_mode"	uri="user-manual">	Anklang Manual…		</b-menuitem>
-	  <b-menuitem mi="chrome_reader_mode"	uri="dev-manual">	Development Reference…	</b-menuitem>
+	  <b-menuitem ic="mi-chrome_reader_mode"	uri="user-manual">	Anklang Manual…		</b-menuitem>
+	  <b-menuitem ic="mi-chrome_reader_mode"	uri="dev-manual">	Development Reference…	</b-menuitem>
 	  <b-menuseparator style="margin: 7px"  />
-	  <b-menuitem fa="id-card-o"		uri="about">	About…			</b-menuitem>
+	  <b-menuitem ic="fa-id-card-o"		uri="about">	About…			</b-menuitem>
 	</b-contextmenu>
       </push-button>
     </b-button-bar>
