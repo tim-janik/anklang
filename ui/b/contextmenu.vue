@@ -164,6 +164,9 @@ export default {
   }; },
   provide: Util.fwdprovide ('b-contextmenu.menudata',	// context for menuitem descendants
 			    [ 'checkeduris', 'showicons', 'mapname', 'keepmounted', 'clicked', 'close', 'onclick', 'isdisabled' ]),
+  created() {
+    this.keymap_ = [];
+  },
   methods: {
     popupclass() {
       const pclasses = Array.from (this.$el?.classList || []);
@@ -380,75 +383,23 @@ export default {
     },
     /// Activate or disable the `kbd=...` hotkeys in menu items.
     map_kbd_hotkeys (active = false) {
-      if (Object.hasOwnProperty.call (this, 'active_kmap_'))
+      if (this.keymap_.length)
 	{
-	  for (const k in this.active_kmap_)
-	    Util.remove_hotkey (k, this.active_kmap_[k]);
-	  this.active_kmap_ = undefined;
+	  this.keymap_.length = 0;
+	  Util.remove_keymap (this.keymap_);
 	}
       if (!active || !this.$el)
 	return;
-      const kmap = {}; // key -> component
-      const buildmap_4vue = v => {
-	const key = Object.hasOwnProperty.call (v, 'kbd_hotkey') && v.kbd_hotkey();
-	if (key)
-	  kmap[key] = async event => { // v.$el && Util.keyboard_click (v.$el);
-	    if (!v.$el) return;
-	    const component = Util.vue_component (v) || v;
-	    if (this.check) {
-	      let result = this.check.call (null, component.uri, component);
-	      if (result instanceof Promise)
-		result = await result;
-	      if ('boolean' !== typeof result)
-		result = undefined;
-	      if (result != this.checkeduris[component.uri])
-		{
-		  this.checkeduris[component.uri] = result; // Vue reactivity
-		  component.$forceUpdate();
-		  await Vue.nextTick(); // keyboard_click needs updated component
-		}
-	      if (result === false)
-		return;
-	    }
-	    Util.keyboard_click (v.$el, event);
-	  };
-	for (const c of v.$children)
-	  buildmap_4vue (c);
-      };
-      buildmap_4vue (this);
-      const mapkeys_4dom = e => {
-	const key = e.kbd_hotkey && e.kbd_hotkey();
-	if (!key)
-	  return;
-	kmap[key] = async event => {
-	  if (this.check)
-	    {
-	      let result = this.check.call (null, e.uri, e);
-	      if (result instanceof Promise)
-		result = await result;
-	      if ('boolean' !== typeof result)
-		result = undefined;
-	      if (result != this.checkeduris[e.uri])
-		{
-		  this.checkeduris[e.uri] = result;
-		  e.requestUpdate?.(); // LitElement
-		  if (result === false)
-		    return;
-		  await Vue.nextTick(); // keyboard_click needs updated components
-		}
-	      if (result === false)
-		return;
-	    }
-	  Util.keyboard_click (e, event);
-	};
-      };
       const w = document.createTreeWalker (this.$refs.cmenu, NodeFilter.SHOW_ELEMENT);
       let e;
       while ( (e = w.nextNode()) )
-	mapkeys_4dom (e);
-      this.active_kmap_ = kmap;
-      for (const k in this.active_kmap_)
-	Util.add_hotkey (k, this.active_kmap_[k], this.$el);
+	{
+	  const keymap_entry = e.keymap_entry;
+	  if (keymap_entry instanceof Util.KeymapEntry)
+	    this.keymap_.push (keymap_entry);
+	}
+      if (this.keymap_.length)
+	Util.add_keymap (this.keymap_);
     },
     /// Find a menuitem via its `uri`.
     find_menuitem (uri) {
