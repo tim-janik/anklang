@@ -1684,13 +1684,18 @@ export function keyboard_map_name (keyname) {
   return name || keyname;
 }
 
-/** Check if `ancestor` is an ancestor or `element` */
-export function has_ancestor (element, ancestor) {
-  while (element)
+/// Check if `ancestor` is an ancestor of `node`, maybe including shadowRoot elements.
+export function has_ancestor (node, ancestor, escape_shadowdom = true)
+{
+  while (node)
     {
-      if (element === ancestor)
+      if (node === ancestor)
 	return true;
-      element = element.parentNode;
+      if (escape_shadowdom && !node.parentNode &&
+	  node.nodeType == 11 && node.host) // shadowRoot fragment
+	node = node.host;
+      else
+	node = node.parentNode;
     }
   return false;
 }
