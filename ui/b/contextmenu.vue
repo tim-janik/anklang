@@ -88,6 +88,7 @@ $duration: 0.097s;
       <div class="b-contextmenu-modalshield" ref="shield" v-show='visible' v-if='visible || keepmounted' >
 	<div class='b-contextmenu-area' :class='cmenu_class' ref='contextmenuarea' >
 	  <v-flex class='b-contextmenu' :class="popupclass()" ref='cmenu' start
+		  :b-contextmenu-menudata.prop="$.provides['b-contextmenu.menudata']"
 		  :style="cmenu_style()">
 	    <slot />
 	  </v-flex>
@@ -107,8 +108,15 @@ export function valid_uri (uri) {
 const menuitem_onclick = function (event) {
   if (!valid_uri (this.uri))
     throw new Error ("Attempt to click menuitem without URI");
-  this.$emit ('click', this.uri, event);
-  if (!event.defaultPrevented)
+  let prevented = false;
+  if (this instanceof Element)
+    ; // this.click (); // LitElement called here for menudata.clicked() handling
+  else
+    {
+      this.$emit ('click', this.uri, event);
+      prevented = event.defaultPrevented;
+    }
+  if (!prevented)
     {
       if (this.uri !== undefined && this.menudata.clicked)
 	this.menudata.clicked (this.uri, event);
@@ -124,6 +132,9 @@ const menuitem_isdisabled = function () {
     return !this.menudata.checkeduris[this.uri];
   if (Object.hasOwnProperty.call (this, 'disabled') &&
       (this.disabled === "" || !!this.disabled))
+    return true;
+  const disabled_attr = this instanceof Element ? this.getAttribute ('disabled') : null;
+  if (disabled_attr != undefined && disabled_attr != null)
     return true;
   if (this.$attrs && (this.$attrs['disabled'] === "" || !!this.$attrs['disabled']))
     return true;
@@ -378,7 +389,7 @@ export default {
       if (!active || !this.$el)
 	return;
       const kmap = {}; // key -> component
-      const buildmap = v => {
+      const buildmap_4vue = v => {
 	const key = Object.hasOwnProperty.call (v, 'kbd_hotkey') && v.kbd_hotkey();
 	if (key)
 	  kmap[key] = async event => { // v.$el && Util.keyboard_click (v.$el);
@@ -402,9 +413,39 @@ export default {
 	    Util.keyboard_click (v.$el, event);
 	  };
 	for (const c of v.$children)
-	  buildmap (c);
+	  buildmap_4vue (c);
       };
-      buildmap (this);
+      buildmap_4vue (this);
+      const mapkeys_4dom = e => {
+	const key = e.kbd_hotkey && e.kbd_hotkey();
+	if (!key)
+	  return;
+	kmap[key] = async event => {
+	  if (this.check)
+	    {
+	      let result = this.check.call (null, e.uri, e);
+	      if (result instanceof Promise)
+		result = await result;
+	      if ('boolean' !== typeof result)
+		result = undefined;
+	      if (result != this.checkeduris[e.uri])
+		{
+		  this.checkeduris[e.uri] = result;
+		  e.requestUpdate?.(); // LitElement
+		  if (result === false)
+		    return;
+		  await Vue.nextTick(); // keyboard_click needs updated components
+		}
+	      if (result === false)
+		return;
+	    }
+	  Util.keyboard_click (e, event);
+	};
+      };
+      const w = document.createTreeWalker (this.$refs.cmenu, NodeFilter.SHOW_ELEMENT);
+      let e;
+      while ( (e = w.nextNode()) )
+	mapkeys_4dom (e);
       this.active_kmap_ = kmap;
       for (const k in this.active_kmap_)
 	Util.add_hotkey (k, this.active_kmap_[k], this.$el);
