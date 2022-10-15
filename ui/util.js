@@ -1658,7 +1658,7 @@ export function clone_menu_icon (menu, uri, title = '')
   return {
     ic: menuitem.ic, fa: menuitem.fa, mi: menuitem.mi, bc: menuitem.bc, uc: menuitem.uc,
     'data-kbd': menuitem.kbd,
-    'data-tip': title ? title + ' ' + menuitem.get_text() : '',
+    'data-tip': title ? title + ' ' + menuitem.slot_text() : '',
   };
 }
 
