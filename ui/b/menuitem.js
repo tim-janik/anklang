@@ -103,13 +103,22 @@ const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with
 const PRIVATE_PROPERTY = { state: true };	// non-attribute reactive property
 
 class BMenuItem extends LitElement {
+  static styles = [ STYLE ];
+  static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
+  render()
+  {
+    const d = {
+      hotkey: this.keymap_entry.key,
+      keyname: Util.display_keyname (this.keymap_entry.key),
+    };
+    return HTML (this, d);
+  }
   static properties = {
     uri: STRING_ATTRIBUTE,
     disabled: BOOL_ATTRIBUTE,
     iconclass: STRING_ATTRIBUTE,
     ic: STRING_ATTRIBUTE,
     kbd: STRING_ATTRIBUTE,
-    cached_shortcut: PRIVATE_PROPERTY,
   };
   constructor()
   {
@@ -119,6 +128,8 @@ class BMenuItem extends LitElement {
     this.iconclass = '';
     this.ic = '';
     this.kbd = '';
+    // BMenuItem.keymap_entry is picked up by contextmenu
+    this.keymap_entry = new Util.KeymapEntry ('', this.onclick.bind (this), this);
   }
   get menudata()
   {
@@ -140,16 +151,6 @@ class BMenuItem extends LitElement {
   {
     return this.menudata.isdisabled.call (this);
   }
-  static styles = [ STYLE ];
-  static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
-  render()
-  {
-    const d = {
-      hotkey: this.kbd_hotkey(),
-      keyname: Util.display_keyname (this.kbd_hotkey()),
-    };
-    return HTML (this, d);
-  }
   slot_text()
   {
     const slot = this.shadowRoot.querySelector ('slot');
@@ -162,14 +163,13 @@ class BMenuItem extends LitElement {
     if (rendered_slot_text)
       {
 	const shortcut = Kbd.shortcut_lookup (this.menudata.mapname, lrstrip (rendered_slot_text), this.kbd);
-	// Note, this.cached_shortcut cannot be setup until *after* render
-	if (shortcut != this.cached_shortcut)
-	  this.cached_shortcut = shortcut;      // Note, this may trigger a re-render
+	// Note, the correct shortcut cannot be found until *after* render
+	if (shortcut != this.keymap_entry.key)
+	  {
+	    this.keymap_entry.key = shortcut;
+	    this.requestUpdate();               // Note, this triggers a re-render
+	  }
       }
-  }
-  kbd_hotkey()  // used by contextmenu
-  {
-    return this.cached_shortcut;
   }
   onclick (event) // FIXME
   {
