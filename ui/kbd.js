@@ -424,6 +424,18 @@ function hotkey_handler (event) {
   // restrict global hotkeys during modal dialogs
   const modal_element = !!(document._b_modal_shields?.[0]?.root || focus_root);
   // activate global hotkeys
+  for (const keymap of global_keymaps)
+    for (const entry of keymap)
+      if (entry instanceof KeymapEntry)
+	{
+	  if (match_key_event (event, entry.key) &&
+	      (!modal_element || Util.has_ancestor (entry.element, modal_element)))
+	    {
+	      if (entry.handler && entry.handler (event) != false)
+		return true; // handled
+	    }
+	}
+  // activate global hotkeys
   const array = hotkey_list;
   for (let i = 0; i < array.length; i++)
     if (match_key_event (event, array[i][0]))
@@ -469,6 +481,30 @@ export function remove_hotkey (hotkey, callback) {
 	return true;
       }
   return false;
+}
+
+export class KeymapEntry {
+  constructor (key = '', handler = null, element = null)
+  {
+    this.key = key;
+    this.handler = handler;
+    this.element = element;
+  }
+}
+
+const global_keymaps = [];
+
+/// Add a global keymap.
+export function add_keymap (keymap)
+{
+  Util.array_remove (global_keymaps, keymap);
+  global_keymaps.push (keymap);
+}
+
+/// Remove a global keymap.
+export function remove_keymap (keymap)
+{
+  Util.array_remove (global_keymaps, keymap);
 }
 
 /** Check if `element` is button-like input */
