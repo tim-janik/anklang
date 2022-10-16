@@ -107,8 +107,8 @@ class BMenuItem extends LitElement {
   static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
   render()
   {
-    const turn = !!Util.closest (this, '.b-menurow:not([noturn])');
-    const noturn = !!Util.closest (this, '.b-menurow[noturn]');
+    const turn = !!Util.closest (this, 'b-menurow:not([noturn])');
+    const noturn = !!Util.closest (this, 'b-menurow[noturn]');
     const d = {
       turn, noturn,
       hotkey: this.keymap_entry.key,
