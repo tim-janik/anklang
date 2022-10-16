@@ -72,11 +72,11 @@ const STYLE = await postcss`
     }
     &.-nokbd .kbdspan { display:none; }
   }
-  .b-menurow-turn button {
+  button[turn] {
     flex-direction: column; align-items: center;
     & > b-icon:first-child { margin: 0 0 $b-menu-spacing 0; }
   }
-  .b-menurow-noturn button {
+  button[noturn] {
     .menulabel { min-width: 2em; } //* this aligns blocks of 2-digit numbers */
     & > b-icon:first-child { margin: 0 $b-menu-tightspace 0 0; }
   }
@@ -85,7 +85,7 @@ const STYLE = await postcss`
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <button ?disabled=${t.isdisabled}
+  <button ?disabled=${t.isdisabled} ?turn=${d.turn} ?noturn=${d.noturn}
     @mouseenter="${t.focus}" @keydown="${Util.keydown_move_focus}"
     @contextmenu="${t.rightclick}" @click="${t.onclick}" >
     <b-icon class=${t.iconclass} ic=${t.ic} v-if="menudata.showicons" ></b-icon>
@@ -107,7 +107,10 @@ class BMenuItem extends LitElement {
   static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
   render()
   {
+    const turn = !!Util.closest (this, '.b-menurow:not([noturn])');
+    const noturn = !!Util.closest (this, '.b-menurow[noturn]');
     const d = {
+      turn, noturn,
       hotkey: this.keymap_entry.key,
       keyname: Util.display_keyname (this.keymap_entry.key),
     };
