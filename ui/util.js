@@ -1700,6 +1700,23 @@ export function has_ancestor (node, ancestor, escape_shadowdom = true)
   return false;
 }
 
+/// Find the closest element or parent matching `selector`, traversing shadow DOMs.
+export function closest (element, selector)
+{
+  while (element)
+    {
+      if (element.matches (selector))
+	return element;
+      if (!element.parentElement && element.parentNode &&
+	  element.parentNode.nodeType == 11 && // shadowRoot fragment
+	  element.parentNode.host)
+	element = element.parentNode.host;
+      else
+	element = element.parentElement;
+    }
+  return null;
+}
+
 /** Retrieve root ancestor of `element` */
 export function root_ancestor (element) {
   while (element && element.parentNode)
