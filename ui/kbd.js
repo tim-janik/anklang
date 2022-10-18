@@ -258,22 +258,10 @@ function element_midpoint (element) {
 
 /** Move focus on UP/DOWN/HOME/END `keydown` events */
 export function keydown_move_focus (event) {
-  const root = the_focus_guard?.focus_root_list?.[0]?.[0] || document.body;
-  let subfocus = null, left_right = false;
   // constrain focus movements within data-subfocus=1 container
   const fe = activeElement();
-  for (let element = fe; element; element = element.parentElement) {
-    if (element === root)
-      break;
-    const d = element.getAttribute ('data-subfocus');
-    if (d)
-      {
-	subfocus = element;
-	if (d === "*")
-	  left_right = true;
-	break;
-      }
-  }
+  const subfocus = Util.closest (fe, '[data-subfocus]') || document.body;
+  const left_right = subfocus.getAttribute ('data-subfocus') === "*";
   let dir;
   if (event.keyCode == KeyCode.HOME)
     dir = 'HOME';
@@ -287,11 +275,13 @@ export function keydown_move_focus (event) {
     dir = 'LEFT';
   else if (left_right && event.keyCode == KeyCode.RIGHT)
     dir = 'RIGHT';
+  else
+    return false;
   return move_focus (dir, subfocus);
 }
 
 /** Move focus to prev or next focus widget */
-export function move_focus (dir = 0, subfocus = false) {
+export function move_focus (dir = 0, subfocus = null) {
   const home = dir == 'HOME', end = dir == 'END';
   const up = dir == -1, down = dir == +1;
   const left = dir == 'LEFT', right = dir == 'RIGHT';
@@ -300,12 +290,11 @@ export function move_focus (dir = 0, subfocus = false) {
   const last_focus = the_focus_guard.last_focus;
   if (!(home || up || down || end || left || right))
     return false; // nothing to move
-
-  if (the_focus_guard.focus_root_list.length == 0 || !updown_focus ||
+  const root = subfocus || the_focus_guard.focus_root_list[0]?.[0];
+  if (!root || !updown_focus ||
       // is_nav_input (fe) || (fe.tagName == "INPUT" && !is_button_input (fe)) ||
       !(up || down || home || end || left || right))
     return false; // not interfering
-  const root = subfocus || the_focus_guard.focus_root_list[0][0];
   const focuslist = list_focusables (root);
   if (!focuslist)
     return false; // not interfering
