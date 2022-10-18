@@ -1226,6 +1226,17 @@ export function swallow_event (type, timeout = 0) {
   setTimeout (() => document.removeEventListener (type, preventandstop, true), timeout);
 }
 
+/// Prevent default or any propagation for a possible event.
+export function prevent_event (event_or_null)
+{
+  if (!event_or_null || !event_or_null.preventDefault)
+    return;
+  const event = event_or_null;
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+}
+
 /** Determine position for a popup */
 export function popup_position (element, opts = { origin: undefined, x: undefined, y: undefined,
 						  xscale: 0, yscale: 0, })
