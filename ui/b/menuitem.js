@@ -32,66 +32,70 @@ import * as ContextMenu from './contextmenu.js';
 const STYLE = await postcss`
 @import 'shadow.scss';
 @import 'mixins.scss';
-  button {
-    width: 100%;
-    display: inline-flex; flex: 0 0 auto; flex-wrap: nowrap;
-    margin: 0; padding: $b-menu-vpad $b-menu-hpad; text-align: left;
-    // button-reset
-    background: transparent; color: $b-menu-foreground; border: 1px solid transparent;
-    cursor: pointer; user-select: none; outline: none;
-    kbd { color: zmod($b-menu-foreground, Jz-=15); }
-    &:not([disabled]) {
-      b-icon { color: $b-menu-fill; }
-      &:focus {
-	background-color: $b-menu-focus-bg; color: $b-menu-focus-fg; outline: none;
-	kbd { color: inherit; }
-	border: 1px solid zmod($b-menu-focus-bg, Jz-=50%);
-	b-icon { color: $b-menu-focus-fg; }
-      }
-      &.active, &:active, &:focus.active, &:focus:active {
-	background-color: $b-menu-active-bg; color: $b-menu-active-fg; outline: none;
-	kbd { color: inherit; }
-	border: 1px solid zmod($b-menu-active-bg, Jz-=50%);
-	b-icon { color: $b-menu-active-fg; }
-      }
-    }
-    &[disabled], &[disabled] * {
-      color: $b-menu-disabled;
-      b-icon { color: $b-menu-disabled-fill; }
-    }
-    flex-direction: row; align-items: baseline;
-    & > b-icon:first-child { margin: 0 $b-menu-spacing 0 0; }
-    .kbdspan {
-      flex-grow: 1;
-      text-align: right;
-      padding-left: 2.5em;
-      kbd {
-	font-family: inherit;
-	font-weight: 400;
-      }
-    }
-    &.-nokbd .kbdspan { display:none; }
+:host {
+  display: flex; flex-direction: column; align-items: stretch;
+}
+button {
+  display: flex; flex-direction: column; align-items: stretch;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  flex-direction: row;
+  margin: 0; padding: $b-menu-vpad $b-menu-hpad; text-align: left;
+  // button-reset
+  background: transparent; color: $b-menu-foreground; border: 1px solid transparent;
+  cursor: pointer; user-select: none; outline: none;
+  kbd { color: zmod($b-menu-foreground, Jz-=15); }
+  b-icon { color: $b-menu-fill; height: 1em; width: 1em; }
+  > b-icon:first-child { margin: 0 $b-menu-spacing 0 0; }
+}
+button:focus {
+  background-color: $b-menu-focus-bg; color: $b-menu-focus-fg; outline: none;
+  kbd { color: inherit; }
+  border: 1px solid zmod($b-menu-focus-bg, Jz-=50%);
+  b-icon { color: $b-menu-focus-fg; }
+}
+button.active, button:focus.active, button:focus:active,
+button:active {
+  background-color: $b-menu-active-bg; color: $b-menu-active-fg; outline: none;
+  kbd { color: inherit; }
+  b-icon { color: $b-menu-active-fg; }
+  border: 1px solid zmod($b-menu-active-bg, Jz-=50%);
+}
+*[disabled] {
+  color: $b-menu-disabled;
+  b-icon { color: $b-menu-disabled-fill; }
+}
+.kbdspan {
+  flex-grow: 1;
+  text-align: right;
+  padding-left: 2.5em;
+  kbd {
+    font-family: inherit;
+    font-weight: 400;
   }
-  button[turn] {
-    flex-direction: column; align-items: center;
-    & > b-icon:first-child { margin: 0 0 $b-menu-spacing 0; }
-  }
-  button[noturn] {
-    .menulabel { min-width: 2em; } //* this aligns blocks of 2-digit numbers */
-    & > b-icon:first-child { margin: 0 $b-menu-tightspace 0 0; }
-  }
-  kbd[data-can-remap] { font-style: italic; }
+}
+&.-nokbd .kbdspan { display:none; }
+button[turn] {
+  flex-direction: column; align-items: center;
+  & > b-icon:first-child { margin: 0 0 $b-menu-spacing 0; }
+}
+button[noturn] {
+  .menulabel { min-width: 2em; } //* this aligns blocks of 2-digit numbers */
+  > b-icon:first-child { margin: 0 $b-menu-tightspace 0 0; }
+}
+.kbdspan[kbdhidden] { display: none; }
+kbd[data-can-remap] { font-style: italic; }
 `;
 
 // == HTML ==
 const HTML = (t, d) => html`
   <button ?disabled=${t.isdisabled} ?turn=${d.turn} ?noturn=${d.noturn}
     @mouseenter="${t.focus}" @keydown="${Util.keydown_move_focus}"
-    @contextmenu="${t.rightclick}" @click="${t.onclick}" >
-    <b-icon class=${t.iconclass} ic=${t.ic} v-if="menudata.showicons" ></b-icon>
+    @click="${t.click}" @contextmenu="${t.rightclick}" >
+    <b-icon class=${t.iconclass} ic=${t.ic} ></b-icon>
     <span class="menulabel"><slot /></span>
-    <span class="kbdspan">
-      <kbd v-if="${!!d.hotkey}" ?data-can-remap=${t.can_remap}
+    <span class="kbdspan" ?kbdhidden=${!d.hotkey} >
+      <kbd ?data-can-remap=${t.can_remap}
 	   title="${t.menudata.mapname && 'RIGHT-CLICK Assign Shortcut'}"
 	>${d.keyname}</kbd></span>
   </button>
@@ -100,7 +104,7 @@ const HTML = (t, d) => html`
 // == SCRIPT ==
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with property
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
-const PRIVATE_PROPERTY = { state: true };	// non-attribute reactive property
+const FUNCTION_PROPERTY = { type: Function, reflect: true };
 
 class BMenuItem extends LitElement {
   static styles = [ STYLE ];
@@ -122,6 +126,7 @@ class BMenuItem extends LitElement {
     iconclass: STRING_ATTRIBUTE,
     ic: STRING_ATTRIBUTE,
     kbd: STRING_ATTRIBUTE,
+    check: FUNCTION_PROPERTY,
   };
   constructor()
   {
@@ -131,24 +136,14 @@ class BMenuItem extends LitElement {
     this.iconclass = '';
     this.ic = '';
     this.kbd = '';
+    this.check = () => true;
     // BMenuItem.keymap_entry is picked up by contextmenu
-    this.keymap_entry = new Util.KeymapEntry ('', this.onclick.bind (this), this);
+    this.keymap_entry = new Util.KeymapEntry ('', this.click.bind (this), this);
+    this.can_click_ = 0;
   }
   get menudata()
   {
-    // fetch injection provided by b-contextmenu.$refs.cmenu
-    let p = this;
-    while (p)
-      {
-	const menudata = p['b-contextmenu-menudata'];
-	if (menudata)
-	  return menudata;
-	p = p.parentElement;	// FIXME: also walk .host
-      }
-    // fallback
-    return { showicons: true, keepmounted: false,
-	     checkeduris: {}, mapname: '',
-	     isdisabled: () => false, onclick: undefined, };
+    return ContextMenu.provide_menudata (this);
   }
   get isdisabled()
   {
@@ -174,15 +169,22 @@ class BMenuItem extends LitElement {
 	  }
       }
   }
-  onclick (event) // FIXME
+  close (trigger)
   {
-    debug ("menuitem.js", "onclick");
-    return this.menudata.onclick?.call (this, event);
+    Util.prevent_event (trigger); // prevent trigger event bubbling out of shadow DOM (if any)
+    // dispatch close event
+    const event = new Event ('close', { bubbles: true, composed: true, cancelable: true });
+    this.dispatchEvent (event);
   }
-  click (event)
+  click (trigger)
   {
-    debug ("menuitem.js", "click");
-    return this.menudata.onclick?.call (this, event);
+    Util.prevent_event (trigger); // prevent trigger event bubbling out of shadow DOM (if any)
+    // check if click is allowed
+    this.allowed_ = this.menudata.checkuri.call (null, this.uri, this);
+    if (!this.allowed_)
+      return false;
+    // super does: dispatchEvent (new Event ('click', { bubbles: true, composed: true, cancelable: true }));
+    return super.click();
   }
   get can_remap()
   {
