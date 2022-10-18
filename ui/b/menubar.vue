@@ -27,7 +27,7 @@
     <!-- menubar left -->
     <b-button-bar class="-menubar" >
       <!-- File Menu -->
-      <push-button data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click="Util.dropdown ($refs.filemenu, $event)" >
+      <push-button data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click="$refs.filemenu.popup_event ($event)" @mousedown="$refs.filemenu.popup_event ($event)" >
 	<div class="-stack" >
 	  <b-icon ic="bc-folder" />
 	  <b-icon ic="bc-menumore" />
@@ -36,16 +36,16 @@
 	  <b-menuitem ic="fa-file-o"	kbd="Ctrl+N"		uri="loadnew" >	New Project		</b-menuitem>
 	  <b-menuitem ic="fa-file-audio-o" kbd="Ctrl+O"		uri="load"    >	Open Project…		</b-menuitem>
 	  <b-menuitem ic="mi-save_alt"     kbd="Ctrl+S"		uri="save"    >	Save Project		</b-menuitem>
-	  <b-menuitem ic="fa-save"		kbd="Shift+Ctrl+S"	uri="saveas"  >	Save As…		</b-menuitem>
+	  <b-menuitem ic="fa-save"	   kbd="Shift+Ctrl+S"	uri="saveas"  >	Save As…		</b-menuitem>
 	  <b-menuseparator style="margin: 7px"  />
-	  <b-menuitem ic="fa-cog"         kbd="Ctrl+RawComma"	uri="prefs">	Preferences		</b-menuitem>
+	  <b-menuitem ic="fa-cog"          kbd="Ctrl+RawComma"	uri="prefs"   >	Preferences		</b-menuitem>
 	  <b-menuseparator style="margin: 7px"  />
-	  <b-menuitem ic="mi-close" kbd="Shift+Ctrl+Q" uri="quit">	Quit			</b-menuitem>
+	  <b-menuitem ic="mi-close"        kbd="Shift+Ctrl+Q" uri="quit">	Quit			</b-menuitem>
 	</b-contextmenu>
       </push-button>
 
       <!-- Edit Menu -->
-      <push-button data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click="Util.dropdown ($refs.editmenu, $event)" >
+      <push-button data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @mousedown="$refs.editmenu.popup_event ($event)" @click="$refs.editmenu.popup_event ($event)" >
 	<div class="-stack" >
 	  <b-icon ic="mi-draw" />
 	  <b-icon ic="bc-menumore" />
@@ -59,7 +59,7 @@
       </push-button>
 
       <!-- View Menu -->
-      <push-button data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @click="Util.dropdown ($refs.viewmenu, $event)" >
+      <push-button data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @mousedown="$refs.viewmenu.popup_event ($event)" @click="$refs.viewmenu.popup_event ($event)" >
 	<div class="-stack" >
 	  <b-icon ic="fa-eye" />
 	  <b-icon ic="bc-menumore" />
@@ -81,8 +81,7 @@
     <!-- menubar right -->
     <b-button-bar class="-menubar" >
       <!-- Help Menu -->
-      <push-button data-tip="**CLICK** Help Menu" data-hotkey="Alt+H"
-		@click="Util.dropdown ($refs.helpmenu, $event)" >
+      <push-button data-tip="**CLICK** Help Menu" data-hotkey="Alt+H" @click="$refs.helpmenu.popup_event ($event)" @mousedown="$refs.helpmenu.popup_event ($event)" >
 	<div class="-stack" >
 	  <b-icon ic="fa-life-ring" />
 	  <b-icon ic="bc-menumore" />
@@ -110,7 +109,7 @@ export default {
     project: { type: Ase.Project, },
   },
   mounted() {
-    this.$refs.filemenu.map_kbd_hotkeys (true);
+    this.$refs.filemenu.map_kbd_hotkeys (true); // FIXME: defer
     this.$refs.editmenu.map_kbd_hotkeys (true);
     this.$refs.viewmenu.map_kbd_hotkeys (true);
   },
@@ -132,9 +131,9 @@ export default {
 	  return true;
       }
     },
-    async activation (uri, event) {
+    async activation (event) {
       let u, v;
-      switch (uri) {
+      switch (event.detail.uri) {
 	case 'quit_discard':
 	  window.close();
 	  break;
