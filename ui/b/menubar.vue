@@ -32,7 +32,7 @@
 	  <b-icon ic="bc-folder" />
 	  <b-icon ic="bc-menumore" />
 	</div>
-	<b-contextmenu ref="filemenu" @click="activation" startfocus keepmounted >
+	<b-contextmenu ref="filemenu" :activate.prop="activate" :isactive.prop="isactive" startfocus1 >
 	  <b-menuitem ic="fa-file-o"	kbd="Ctrl+N"		uri="loadnew" >	New Project		</b-menuitem>
 	  <b-menuitem ic="fa-file-audio-o" kbd="Ctrl+O"		uri="load"    >	Open Project…		</b-menuitem>
 	  <b-menuitem ic="mi-save_alt"     kbd="Ctrl+S"		uri="save"    >	Save Project		</b-menuitem>
@@ -50,7 +50,7 @@
 	  <b-icon ic="mi-draw" />
 	  <b-icon ic="bc-menumore" />
 	</div>
-	<b-contextmenu ref="editmenu" @click="activation" :check="deactivation" startfocus keepmounted >
+	<b-contextmenu ref="editmenu" :activate.prop="activate" :isactive.prop="isactive" startfocus >
 	  <b-menuitem ic="mi-undo" :disabled="!true"
 		      kbd="Ctrl+Z" uri="undo">	Undo	</b-menuitem>
 	  <b-menuitem ic="mi-redo" :disabled="!true"
@@ -64,7 +64,7 @@
 	  <b-icon ic="fa-eye" />
 	  <b-icon ic="bc-menumore" />
 	</div>
-	<b-contextmenu ref="viewmenu" @click="activation" startfocus keepmounted >
+	<b-contextmenu ref="viewmenu" :activate.prop="activate" :isactive.prop="isactive" startfocus >
 	  <b-menuitem ic="mi-fullscreen" :disabled="!document.fullscreenEnabled"
 		      kbd="F11" uri="fullscreen">	Toggle Fullscreen	</b-menuitem>
 	</b-contextmenu>
@@ -86,7 +86,7 @@
 	  <b-icon ic="fa-life-ring" />
 	  <b-icon ic="bc-menumore" />
 	</div>
-	<b-contextmenu ref="helpmenu" @click="activation" startfocus >
+	<b-contextmenu ref="helpmenu" :activate.prop="activate" :isactive.prop="isactive" startfocus >
 	  <b-menuitem ic="mi-chrome_reader_mode"	uri="user-manual">	Anklang Manual…		</b-menuitem>
 	  <b-menuitem ic="mi-chrome_reader_mode"	uri="dev-manual">	Development Reference…	</b-menuitem>
 	  <b-menuseparator style="margin: 7px"  />
@@ -108,12 +108,29 @@ export default {
     song: { type: Ase.Song, },
     project: { type: Ase.Project, },
   },
+  data() {
+    return { project_: null, project_cleanup1: null };
+  },
+  unmounted() {
+    this.project_cleanup1?.();
+    this.project_cleanup1 = null;
+  },
   mounted() {
-    this.$refs.filemenu.map_kbd_hotkeys (true); // FIXME: defer
+    this.$refs.filemenu.map_kbd_hotkeys (true);
     this.$refs.editmenu.map_kbd_hotkeys (true);
     this.$refs.viewmenu.map_kbd_hotkeys (true);
+    this.$refs.helpmenu.map_kbd_hotkeys (true);
   },
   methods: {
+    dom_update() {
+      if (this.project != this.project_)
+	{
+	  this.project_cleanup1?.();
+	  this.project_ = this.project;
+	  this.project_cleanup1 = this.project_?.on ("notify:dirty", () => this.check_isactive());
+	}
+      this.check_isactive();
+    },
     window_close() {
       window.close();
       // when we're running in the browser, window.close() might not work, so...
@@ -121,7 +138,14 @@ export default {
 	window.location.href = 'about:blank';
       }, 0);
     },
-    async deactivation (uri) {
+    check_isactive()
+    {
+      this.$refs.filemenu.check_isactive();
+      this.$refs.editmenu.check_isactive();
+      this.$refs.viewmenu.check_isactive();
+      this.$refs.helpmenu.check_isactive();
+    },
+    async isactive (uri) {
       switch (uri) {
 	case 'undo':
 	  return this.project.can_undo();
@@ -131,9 +155,9 @@ export default {
 	  return true;
       }
     },
-    async activation (event) {
+    async activate (uri, event) {
       let u, v;
-      switch (event.detail.uri) {
+      switch (uri) {
 	case 'quit_discard':
 	  window.close();
 	  break;
