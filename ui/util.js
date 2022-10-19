@@ -30,6 +30,18 @@ export function now () {
   return window.Date.now();
 }
 
+/// Retrieve a timestamp that is unique per (animation) frame.
+export function frame_stamp()
+{
+  if (0 === last_frame_stamp_)
+    {
+      last_frame_stamp_ = 1 * new Date();
+      requestAnimationFrame (() => last_frame_stamp_ = 0);
+    }
+  return last_frame_stamp_;
+}
+let last_frame_stamp_ = 0;
+
 /** Yield a wrapper function for `callback` that throttles invocations.
  * Regardless of the frequency of calls to the returned wrapper, `callback`
  * will only be called once per `requestAnimationFrame()` cycle, or
