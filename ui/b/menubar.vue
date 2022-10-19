@@ -27,7 +27,7 @@
     <!-- menubar left -->
     <b-button-bar class="-menubar" >
       <!-- File Menu -->
-      <push-button data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click="$refs.filemenu.popup_event ($event)" @mousedown="$refs.filemenu.popup_event ($event)" >
+      <push-button data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click="$refs.filemenu.popup ($event)" @mousedown="$refs.filemenu.popup ($event)" >
 	<div class="-stack" >
 	  <b-icon ic="bc-folder" />
 	  <b-icon ic="bc-menumore" />
@@ -45,7 +45,7 @@
       </push-button>
 
       <!-- Edit Menu -->
-      <push-button data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @mousedown="$refs.editmenu.popup_event ($event)" @click="$refs.editmenu.popup_event ($event)" >
+      <push-button data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click="$refs.editmenu.popup ($event)" @mousedown="$refs.editmenu.popup ($event)" >
 	<div class="-stack" >
 	  <b-icon ic="mi-draw" />
 	  <b-icon ic="bc-menumore" />
@@ -59,7 +59,7 @@
       </push-button>
 
       <!-- View Menu -->
-      <push-button data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @mousedown="$refs.viewmenu.popup_event ($event)" @click="$refs.viewmenu.popup_event ($event)" >
+      <push-button data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @click="$refs.viewmenu.popup ($event)" @mousedown="$refs.viewmenu.popup ($event)" >
 	<div class="-stack" >
 	  <b-icon ic="fa-eye" />
 	  <b-icon ic="bc-menumore" />
@@ -81,7 +81,7 @@
     <!-- menubar right -->
     <b-button-bar class="-menubar" >
       <!-- Help Menu -->
-      <push-button data-tip="**CLICK** Help Menu" data-hotkey="Alt+H" @click="$refs.helpmenu.popup_event ($event)" @mousedown="$refs.helpmenu.popup_event ($event)" >
+      <push-button data-tip="**CLICK** Help Menu" data-hotkey="Alt+H" @click="$refs.helpmenu.popup ($event)" @mousedown="$refs.helpmenu.popup ($event)" >
 	<div class="-stack" >
 	  <b-icon ic="fa-life-ring" />
 	  <b-icon ic="bc-menumore" />
