@@ -198,6 +198,8 @@ class BContextMenu extends LitElement {
 	const p = Util.popup_position (this.dialog, { origin, x: this.page_x, y: this.page_y, xscale: this.xscale, yscale: this.yscale, });
 	this.dialog.style.left = p.x + "px";
 	this.dialog.style.top = p.y + "px";
+	// chrome does auto-focus for showModal(), make FF behave the same
+	Util.move_focus ('HOME');
       }
   }
   popup (event, popup_options = {})
