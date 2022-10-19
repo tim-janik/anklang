@@ -142,8 +142,7 @@ $scrollarea-bg: transparent;
     <!-- Buttons, COL-2 -->
     <div class="-buttons" style="grid-column: 2; grid-row: 1" >
       <b-color-picker style="flex-shrink: 1" ></b-color-picker>
-      <h-flex class="-toolbutton"
-	      @click="$refs.toolmenu.popup_event ($event)" @mousedown="$refs.toolmenu.popup_event ($event)" >
+      <h-flex class="-toolbutton" @click="$refs.toolmenu.popup ($event)" @mousedown="$refs.toolmenu.popup ($event)" >
 	<b-icon style="width: 1.2em; height: 1.2em"
 		v-bind="Util.clone_menu_icon ($refs.toolmenu, pianotool, '**EDITOR TOOL**')" />
 	<b-contextmenu ref="toolmenu" class="b-piano-roll-contextmenu" :activate.prop="usetool" >
