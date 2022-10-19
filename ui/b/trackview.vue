@@ -89,7 +89,7 @@
       </div>
     </div>
 
-    <b-contextmenu ref="cmenu" @click="menuactivation" >
+    <b-contextmenu ref="cmenu" :activate.prop="menuactivation" :isactive.prop="menucheck" >
       <b-menutitle> Track </b-menutitle>
       <b-menuitem ic="fa-plus-circle"      uri="add-track" >      Add Track		</b-menuitem>
       <b-menuitem ic="fa-i-cursor"         uri="rename-track" >   Rename Track		</b-menuitem>
@@ -229,7 +229,8 @@ export default {
       Data.current_track = this.track;
       this.$refs.cmenu.popup (event, { checker: this.menucheck.bind (this) });
     },
-    async menucheck (uri, component) {
+    async menucheck (uri)
+    {
       switch (uri)
       {
 	case 'add-track':    return true;
