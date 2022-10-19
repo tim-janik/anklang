@@ -89,11 +89,14 @@ export default {
 	   entries:	{ default: _ => [] },
   },
   emits: { click: uri => !!uri, },
-  data: function() { return { is_active: undefined, }; },
-    inject: {
+  data: function() { return {
+    is_active: undefined,
+    click_stamp: 0, };
+  },
+  inject: {
       treedata: { from: 'b-treeselector.treedata',
 		  default: { defaultcollapse: true }, },
-    },
+  },
   computed: {
     menudata() {
       return ContextMenu.provide_menudata (this.$refs.el);
@@ -152,13 +155,15 @@ export default {
       event.stopPropagation();
     },
     leaf_click1 (event) {
-      Util.prevent_event (event);
-      // trigger via focus/keyboard activation
       if (this.isdisabled())
 	return;
-      debug ("click", this.menudata.popup_time, this.$refs.el.uri, this.$refs.el);
-      if (this.menudata.popup_time)
-	this.$refs.el.click();
+      Util.prevent_event (event);
+      // ignore duplicate click()-triggers, permit once per frame
+      if (Util.frame_stamp() === this.click_stamp)
+	return;
+      this.click_stamp = Util.frame_stamp();
+      // trigger via focus/keyboard activation
+      this.$refs.el.click();
     },
     isdisabled ()	{ return false; },
     li_or_div: function() { return 'li'; },
