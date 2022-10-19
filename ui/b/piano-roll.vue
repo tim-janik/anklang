@@ -142,14 +142,15 @@ $scrollarea-bg: transparent;
     <!-- Buttons, COL-2 -->
     <div class="-buttons" style="grid-column: 2; grid-row: 1" >
       <b-color-picker style="flex-shrink: 1" ></b-color-picker>
-      <h-flex class="-toolbutton" @click="Util.dropdown ($refs.toolmenu, $event)" >
-	<b-icon class='-iconclass'
+      <h-flex class="-toolbutton"
+	      @click="$refs.toolmenu.popup_event ($event)" @mousedown="$refs.toolmenu.popup_event ($event)" >
+	<b-icon style="width: 1.2em; height: 1.2em"
 		v-bind="Util.clone_menu_icon ($refs.toolmenu, pianotool, '**EDITOR TOOL**')" />
-	<b-contextmenu ref="toolmenu" keepmounted class="b-piano-roll-contextmenu" >
-	  <b-menuitem ic="mi-open_with"     uri="S" @click="usetool" kbd="1" > Rectangular Selection </b-menuitem>
-	  <b-menuitem ic="mi-multiple_stop" uri="H" @click="usetool" kbd="2" > Horizontal Selection </b-menuitem>
-	  <b-menuitem ic="fa-pencil"        uri="P" @click="usetool" kbd="3" > Pen          </b-menuitem>
-	  <b-menuitem ic="fa-eraser"        uri="E" @click="usetool" kbd="4" > Eraser       </b-menuitem>
+	<b-contextmenu ref="toolmenu" class="b-piano-roll-contextmenu" :activate.prop="usetool" >
+	  <b-menuitem ic="mi-open_with"     uri="S" kbd="1" > Rectangular Selection </b-menuitem>
+	  <b-menuitem ic="mi-multiple_stop" uri="H" kbd="2" > Horizontal Selection </b-menuitem>
+	  <b-menuitem ic="fa-pencil"        uri="P" kbd="3" > Pen          </b-menuitem>
+	  <b-menuitem ic="fa-eraser"        uri="E" kbd="4" > Eraser       </b-menuitem>
 	</b-contextmenu>
       </h-flex>
     </div>
@@ -174,9 +175,9 @@ $scrollarea-bg: transparent;
 	      @pointerdown="piano_roll_notes_pointerdown ($event)"
       ></canvas>
       <span class="-indicator" ref="indicator" />
-      <b-contextmenu ref="pianorollmenu" keepmounted :showicons="true"
+      <b-contextmenu ref="pianorollmenu" :showicons="true"
 		     class="b-piano-roll-contextmenu" mapname="Piano Roll"
-		     @click="pianorollmenu_click" :check="pianorollmenu_check" >
+		     :activate.prop="pianorollmenu_click" :isactive.prop="pianorollmenu_check" >
 	<b-menutitle> Piano-Roll </b-menutitle>
 	<b-menuitem v-for="ac in piano_roll_actions()" :key="ac.weakid" :uri="ac.weakid" :ic="ac.ic"
 		    :kbd="ac.kbd" > {{ac.label}} </b-menuitem>
