@@ -69,7 +69,7 @@
       </template>
       <b-more @click.stop="menuopen" :sibling="null"
 	      data-tip="**CLICK** Add New Elements" />
-      <b-contextmenu ref="cmenu" @click="menuactivation" yscale="1.6" >
+      <b-contextmenu ref="cmenu" :activate.prop="menuactivation" yscale="1.6" >
 	<b-menutitle> Devices </b-menutitle>
 	<b-treeselector :tree="devicetypes" :defaultcollapse="false"> </b-treeselector>
       </b-contextmenu>
