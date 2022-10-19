@@ -119,16 +119,18 @@ export function activeElement()
   return e;
 }
 
-function collect_focusables (element, list, is_focusable)
+function collect_focusables (element, elist, dlist, is_focusable)
 {
   const w = document.createTreeWalker (element, NodeFilter.SHOW_ELEMENT);
   let e;
   while ( (e = w.nextNode()) )
     {
+      if (e instanceof HTMLDialogElement && e.matches('[open]:modal'))
+	dlist.push (e); // open modal dialog
+      if (is_focusable (e))
+	elist.push (e);
       if (e.shadowRoot)
-	collect_focusables (e.shadowRoot, list, is_focusable);
-      else if (is_focusable (e))
-	list.push (e);
+	collect_focusables (e.shadowRoot, elist, dlist, is_focusable);
     }
 }
 
@@ -159,9 +161,24 @@ export function list_focusables (element)
       return false;
     return true;                                                // node should be focusable
   };
-  const l = [];
-  collect_focusables (element, l, is_focusable);
-  return l;
+  const l = [], d = [];
+  // find focusable elements, recursively piercing into shadow DOMs
+  collect_focusables (element, l, d, is_focusable);
+  if (!d.length)
+    return l;   // no modals, list is done
+  // handle modal dialogs
+  const inner = d[d.length - 1]; // this better be the innermost modal dialog
+  if (Util.has_ancestor (element, inner))
+    return l;   // search was confined to this dialog anyway
+  let droots = [ inner ];
+  // constrain results to modal dialog
+  const is_droot_descendant = e => {
+    for (const r of droots)
+      if (Util.has_ancestor (e, r))
+	return true;
+    return false;
+  };
+  return l.filter (is_droot_descendant);
 }
 
 /** Install a FocusGuard to allow only a restricted set of elements to get focus. */
