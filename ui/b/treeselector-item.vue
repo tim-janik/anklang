@@ -10,6 +10,9 @@
   .b-treeselector-item {
     user-select: none;
     & > span div:focus { outline: $b-focus-outline; }
+    b-contextmenu & > span div:focus {
+      background-color: $b-menu-active-bg; color: $b-menu-active-fg; outline: none;
+    }
     margin: $b-menu-vpad 0;
     &[disabled], &[disabled] * {
       color: $b-menu-disabled;
@@ -34,7 +37,7 @@
 	left: -0.8em;
 	color: white;
 	display: inline;
-	transition: all .3s ease;
+	transition: all .1s ease;
       }
     }
     .b-treeselector-active > .b-treeselector-caret::before {
@@ -48,13 +51,15 @@
 
 <template>
   <component
-      :is="li_or_div()"
-      :disabled="isdisabled() ? 1 : null"
-      class="b-treeselector-item"
-      :class="{ 'b-treeselector-active': css_active() }" >
+    :is="li_or_div()"
+    ref="el"
+    :uri.prop="uri" :check_isactive.prop="u => true"
+    :disabled="isdisabled() ? 1 : null"
+    :class="{ 'b-treeselector-active': css_active() }"
+    class="b-treeselector-item" >
     <span class="b-treeselector-leaf"
 	  v-if="!(entries && entries.length)">
-      <div tabindex="0" @click="leaf_click1" @dblclick="leaf_click2" @keydown="leaf_keydown"
+      <div tabindex="0" @click="leaf_click1" @keydown="leaf_keydown"
       >{{ label }}</div></span>
     <span class="b-treeselector-caret"
 	  v-if="entries && entries.length" @click="caret_click" >
@@ -75,6 +80,8 @@
 </template>
 
 <script>
+import * as ContextMenu from './contextmenu.js';
+
 export default {
   sfc_template,
   props: { label: 	{ default: '' },
@@ -83,11 +90,14 @@ export default {
   },
   emits: { click: uri => !!uri, },
   data: function() { return { is_active: undefined, }; },
-  inject: { menudata: { from: 'b-contextmenu.menudata',
-			default: { showicons: true, keepmounted: false, checkeduris: {},
-				   isdisabled: () => false, onclick: undefined, }, },
-	    treedata: { from: 'b-treeselector.treedata',
-			default: { defaultcollapse: true }, },
+    inject: {
+      treedata: { from: 'b-treeselector.treedata',
+		  default: { defaultcollapse: true }, },
+    },
+  computed: {
+    menudata() {
+      return ContextMenu.provide_menudata (this.$refs.el);
+    }
   },
   methods: {
     css_active() {
@@ -141,25 +151,16 @@ export default {
       event.preventDefault();
       event.stopPropagation();
     },
-    leaf_click1: function (event) {
+    leaf_click1 (event) {
+      Util.prevent_event (event);
       // trigger via focus/keyboard activation
-      if (this.isdisabled() || !Util.in_keyboard_click())
-	return;
-      if (this.menudata.onclick)
-	this.menudata.onclick.call (this, event);
-      else
-	debug ("SELECTED1:", event);
-    },
-    leaf_click2: function() {
       if (this.isdisabled())
 	return;
-      // using the mouse, only trigger on double click
-      if (this.menudata.onclick)
-	this.menudata.onclick.call (this, event);
-      else
-	debug ("SELECTED2:", event);
+      debug ("click", this.menudata.popup_time, this.$refs.el.uri, this.$refs.el);
+      if (this.menudata.popup_time)
+	this.$refs.el.click();
     },
-    isdisabled ()	{ return this.menudata.isdisabled.call (this); },
+    isdisabled ()	{ return false; },
     li_or_div: function() { return 'li'; },
   },
 };
