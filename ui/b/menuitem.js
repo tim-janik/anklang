@@ -217,6 +217,10 @@ class BMenuItem extends LitElement {
   {
     // prevent trigger event bubbling out of shadow DOM (if any)
     Util.prevent_event (trigger);
+    // ignore duplicate click()-triggers, permit once per frame
+    if (Util.frame_stamp() == this.menudata.item_stamp)
+      return;
+    this.menudata.item_stamp = Util.frame_stamp();
     // check if click is allowed
     const maybe_isactive = this.check_isactive();
     if (maybe_isactive instanceof Promise)
@@ -247,10 +251,11 @@ class BMenuItem extends LitElement {
   }
   mouseup_ (event)
   {
-    if (Util.has_ancestor (event.target, this) && this.menudata.popup_time)
+    if (Util.has_ancestor (event.target, this))
       {
 	const now = new Date();
-	if (now - this.menudata.popup_time > 500)
+	// threshold to avoid unintended click-drag activation
+	if (this.menudata.menu_stamp + 500 < now)
 	  {
 	    // simulate click for press-popup-drag-release menu selection
 	    this.click (event);
