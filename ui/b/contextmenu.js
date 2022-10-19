@@ -4,12 +4,17 @@
  * A modal popup that displays contextmenu choices, see [B-MENUITEM](#b-menuitem),
  * [B-MENUSEPARATOR](#b-menuseparator).
  * Using the `popup()` method, the menu can be popped up from the parent component,
- * and setting up an `onclick` handler can be used to handle menuitem actions. Example:
+ * and setting up a `.activate` handler can be used to handle menuitem actions. Example:
  * ```html
- * <div @contextmenu.prevent="$refs.cmenu.popup">
- *   <b-contextmenu ref="cmenu" @click="menuactivation">...</b-contextmenu>
+ * <div @contextmenu="e => querySelector('b-contextmenu').popup">
+ *   <b-contextmenu .activate="menuactivation">...</b-contextmenu>
  * </div>
  * ```
+ * Note that keyboard presses, mouse clicks, drag selections and event bubbling can
+ * all cause menu item clicks and contextmenu activation.
+ * In order to deduplicate multiple events that arise from the same user interaction,
+ * *one* popup request and *one* click activation is processed per animation frame.
+ *
  * ## Properties:
  * *.activate(uri)*
  * : Property callback which is called once a menu item is activated.
@@ -93,6 +98,7 @@ const BOOL_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with 
 const FUNCTION_ATTRIBUTE = { type: Function, reflect: false };
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
+const PRIVATE_PROPERTY = { state: true };
 
 export function provide_menudata (element)
 {
@@ -103,9 +109,10 @@ export function provide_menudata (element)
   // fallback
   return { close: () => undefined,
 	   isactive: (uri) => true,
+	   menu_stamp: 0,	// deduplicating frame_stamp() for contextmenu
+	   item_stamp: 0,	// deduplicating frame_stamp() for menuitem
 	   mapname: '',
 	   showicons: true,
-	   popup_time: null,
   };
 }
 
@@ -124,6 +131,7 @@ class BContextMenu extends LitElement {
     check: { type: Function, state: true },
     xscale: NUMBER_ATTRIBUTE,
     yscale: NUMBER_ATTRIBUTE,
+    reposition: PRIVATE_PROPERTY,
   };
   constructor()
   {
@@ -136,8 +144,8 @@ class BContextMenu extends LitElement {
     this.yscale = 1;
     this.popup_options = {};
     this.checkuri = () => true;
+    this.reposition = false;
     this.isdisabled = menuitem_isdisabled;
-    this.showmodal_update = false;
     this.keymap_ = [];
     this.dialog_ = null;
     // context for descendant menuitems
@@ -146,7 +154,7 @@ class BContextMenu extends LitElement {
     this.menudata.isactive = uri => valid_uri (uri) && (!this.isactive || this.isactive (uri));
     // prevent clicks bubbeling up
     this.allowed_click = null;
-    this.addEventListener ('click', e => this.bubbeling_click_ (e));
+    this.onclick = this.bubbeling_click_.bind (this);
   }
   get dialog ()     { return this.dialog_; }
   set dialog (dialog) {
@@ -162,7 +170,7 @@ class BContextMenu extends LitElement {
 	this.dialog_.onanimationend = ev => {
 	  dialog.classList.remove ('animating');
 	};
-	dialog.onclick = ev => {
+	dialog.onmousedown = ev => {
 	  // backdrop click
 	  if (ev.offsetX < 0 || ev.offsetX > ev.target.offsetWidth ||
 	      ev.offsetY < 0 || ev.offsetY > ev.target.offsetHeight)
@@ -182,44 +190,40 @@ class BContextMenu extends LitElement {
     clearInterval(this._timerInterval);
     this.map_kbd_hotkeys (false);
   }
-  updated () {
-    if (this.showmodal_update)
+  updated()
+  {
+    if (this.reposition)
       {
-	// updated() call directly after showModal()
-	this.showmodal_update = false;
-	// check items (and this used to handle auto-focus)
-	(async () => {
-	  await this.check_isactive();
-	}) ();
+	this.reposition = false;
+	const p = Util.popup_position (this.dialog, { origin, x: this.page_x, y: this.page_y, xscale: this.xscale, yscale: this.yscale, });
+	this.dialog.style.left = p.x + "px";
+	this.dialog.style.top = p.y + "px";
       }
   }
-  bubbeling_click_ (event)
+  popup (event, popup_options = {})
   {
-    if (this.allowed_click === event)
-      return; // this.click, not bubbeling
-    // prevent any further bubbeling
+    // stop other user actions following modal popup
     Util.prevent_event (event);
-    // for valid menuitem clicks with URI
-    const target = event.target;
-    if (target && target.uri && target.check_isactive &&
-	target.check_isactive (false))
-      return this.click (target.uri);
-  }
-  click (uri)
-  {
-    if (this.allowed_click)
-      return;
-    // emit non-bubbling activation click
-    if (uri && valid_uri (uri))
+    if (this.dialog?.open || Util.frame_stamp() == this.menudata.menu_stamp)
+      return false;     // duplicate popup request, only popup once per frame
+    const origin = popup_options.origin?.$el || popup_options.origin || event?.currentTarget;
+    if (origin && Util.inside_display_none (origin))
+      return false;     // cannot popup around hidden origin
+    this.menudata.menu_stamp = Util.frame_stamp();  // allows one popup per frame
+    this.popup_options = Object.assign ({}, popup_options || {});
+    if (event && event.pageX && event.pageY)
       {
-	const click_event = new CustomEvent ('click', { bubbles: false, composed: true, cancelable: true, detail: { uri } });
-	this.allowed_click = click_event;
-	const proceed = this.dispatchEvent (click_event);
-	this.allowed_click = null;
-	if (proceed && this.activate)
-	  this.activate (uri, click_event);
-	this.close();
+	this.page_x = event.pageX;
+	this.page_y = event.pageY;
       }
+    else
+      this.page_x = this.page_y = undefined;
+    this.dialog.showModal();
+    this.reposition = true;
+    // check items (and this used to handle auto-focus)
+    const promise = this.check_isactive();
+    App.zmove(); // force changes to be picked up
+    return promise;
   }
   async check_isactive()
   {
@@ -229,37 +233,49 @@ class BContextMenu extends LitElement {
       a.push (e.check_isactive?.());
     await Promise.all (a);
   }
-  popup (event, popup_options) {
-    if (this.dialog?.open)
-      return; // duplicate popup request
-    const origin = popup_options.origin?.$el || popup_options.origin;
-    if (origin && Util.inside_display_none (origin))
-      return false;
-    this.popup_options = Object.assign ({}, popup_options || {});
-    if (event && event.pageX && event.pageY)
-      {
-	this.page_x = event.pageX;
-	this.page_y = event.pageY;
-      }
-    else
-      this.page_x = this.page_y = undefined;
-    const dialog = this.dialog;
-    dialog.showModal();
-    this.menudata.popup_time = new Date();
-    const p = Util.popup_position (dialog, { origin,
-					     x: this.page_x, xscale: this.xscale,
-					     y: this.page_y, yscale: this.yscale, });
-    dialog.style.left = p.x + "px";
-    dialog.style.top = p.y + "px";
-    this.showmodal_update = true;
-    App.zmove(); // force changes to be picked up
-  }
-  popup_event (event, options = {})
+  bubbeling_click_ (event)
   {
-    if (!options.origin)
-      options.origin = event.currentTarget;
+    // event is this.click, not bubbeling
+    if (this.allowed_click === event)
+      return;
+    // prevent any further bubbeling
     Util.prevent_event (event);
-    return this.popup (event, options);
+    // allows one click activation per frame
+    if (Util.frame_stamp() == this.menudata.menu_stamp)
+      return;
+    // turn bubbled click into menu activation
+    const target = event.target;
+    if (target && target.uri && target.check_isactive)
+      {
+	const isactive = target.check_isactive (false);
+	if (isactive instanceof Promise)
+	  return (async () => (await isactive) && this.click (target.uri)) ();
+	if (isactive)
+	  return this.click (target.uri);
+      }
+  }
+  click (uri)
+  {
+    // prevent recursion
+    if (this.allowed_click)
+      return;
+    // allows one click activation per frame
+    if (Util.frame_stamp() == this.menudata.menu_stamp)
+      return;
+    // emit non-bubbling activation click
+    if (uri && valid_uri (uri))
+      {
+	this.menudata.menu_stamp = Util.frame_stamp();
+	const click_event = new CustomEvent ('click', { bubbles: false, composed: true, cancelable: true, detail: { uri } });
+	this.allowed_click = click_event;
+	const proceed = this.dispatchEvent (click_event);
+	this.allowed_click = null;
+	if (proceed && this.activate)
+	  debug ("ACTIVATE", uri);
+	if (proceed && this.activate)
+	  this.activate (uri, click_event);
+	this.close();
+      }
   }
   close () {
     if (this.dialog?.open)
@@ -267,7 +283,6 @@ class BContextMenu extends LitElement {
 	// this.dialog.classList.add ('animating');
 	this.dialog.close();
       }
-    this.menudata.popup_time = null;
     App.zmove(); // force changes to be picked up
   }
   /// Activate or disable the `kbd=...` hotkeys in menu items.
