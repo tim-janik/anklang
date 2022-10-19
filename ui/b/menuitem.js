@@ -7,18 +7,21 @@
  * modifier is used.
  * If no `uri` is specified, the B-CONTEXTMENU will still be notified to be closed,
  * unless `$event.preventDefault()` is called.
- * ## Props:
+ * ## Properties:
+ * *.isactive*: bool (uri)
+ * : Property callback used to check if a particular menu item should stay active or be disabled.
+ * ## Attributes:
  * *uri*
- * : Descriptor for this menuitem that is passed on to its B-CONTEXTMENU `onclick`.
+ * : Unique identifier for this menu item.
  * *kbd*
- * : Hotkey to display next to the menu item and to use for the context menu kbd map.
+ * : Hotkey to acivate the menu item, displayed next to the menu item label.
  * *disabled*
  * : Boolean flag indicating disabled state.
- * *fa*, *mi*, *bc*, *uc*
+ * *ic*
  * : Shorthands icon properties that are forwarded to a [B-ICON](#b-icon) used inside the menuitem.
  * ## Events:
  * *click*
- * : Event emitted on keyboard/mouse activation, use `preventDefault()` to avoid closing the menu on clicks.
+ * : Event emitted on keyboard or mouse activation, use `event.stopPropagation()` to prevent bubbling to the contextmenu.
  * ## Slots:
  * *default*
  * : All contents passed into this slot will be rendered as contents of this element.
@@ -89,8 +92,9 @@ kbd[data-can-remap] { font-style: italic; }
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <button ?disabled=${t.isdisabled} ?turn=${d.turn} ?noturn=${d.noturn}
-    @mouseenter="${t.focus}" @keydown="${Util.keydown_move_focus}"
+  <button ?disabled=${d.isdisabled} ?turn=${d.turn} ?noturn=${d.noturn}
+    @keydown="${Util.keydown_move_focus}"
+    @mouseenter="${t.focus}" @mouseup="${t.mouseup_}"
     @click="${t.click}" @contextmenu="${t.rightclick}" >
     <b-icon class=${t.iconclass} ic=${t.ic} ></b-icon>
     <span class="menulabel"><slot /></span>
@@ -105,6 +109,7 @@ const HTML = (t, d) => html`
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with property
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 const FUNCTION_PROPERTY = { type: Function, reflect: true };
+const PRIVATE_PROPERTY = { state: true };
 
 class BMenuItem extends LitElement {
   static styles = [ STYLE ];
@@ -113,7 +118,9 @@ class BMenuItem extends LitElement {
   {
     const turn = !!Util.closest (this, 'b-menurow:not([noturn])');
     const noturn = !!Util.closest (this, 'b-menurow[noturn]');
+    const isdisabled = this.isactive_cache == false || this.getAttribute ('disabled') != null;
     const d = {
+      isdisabled,
       turn, noturn,
       hotkey: this.keymap_entry.key,
       keyname: Util.display_keyname (this.keymap_entry.key),
@@ -127,12 +134,15 @@ class BMenuItem extends LitElement {
     ic: STRING_ATTRIBUTE,
     kbd: STRING_ATTRIBUTE,
     check: FUNCTION_PROPERTY,
+    isactive_cache: PRIVATE_PROPERTY,
   };
   constructor()
   {
     super();
     this.uri = '';
     this.disabled = false;
+    this.isactive = null;
+    this.isactive_cache = true;
     this.iconclass = '';
     this.ic = '';
     this.kbd = '';
@@ -141,26 +151,12 @@ class BMenuItem extends LitElement {
     this.keymap_entry = new Util.KeymapEntry ('', this.click.bind (this), this);
     this.can_click_ = 0;
   }
-  get menudata()
-  {
-    return ContextMenu.provide_menudata (this);
-  }
-  get isdisabled()
-  {
-    return this.menudata.isdisabled.call (this);
-  }
-  slot_text()
-  {
-    const slot = this.shadowRoot.querySelector ('slot');
-    const stext = collect_text_content (slot?.assignedNodes());
-    return stext;
-  }
   updated (changed_props)
   {
     const rendered_slot_text = this.slot_text();
     if (rendered_slot_text)
       {
-	const shortcut = Kbd.shortcut_lookup (this.menudata.mapname, lrstrip (rendered_slot_text), this.kbd);
+	const shortcut = Kbd.shortcut_lookup (this.menudata.mapname, Util.lrstrip (rendered_slot_text), this.kbd);
 	// Note, the correct shortcut cannot be found until *after* render
 	if (shortcut != this.keymap_entry.key)
 	  {
@@ -168,6 +164,47 @@ class BMenuItem extends LitElement {
 	    this.requestUpdate();               // Note, this triggers a re-render
 	  }
       }
+    this.check_isactive();
+  }
+  check_isactive (requery = true)
+  {
+    if (!requery)
+      return this.isactive_cache;
+    // query now, return result unless callbacks yield Promises
+    let isactive = !this.isactive || this.isactive (this.uri);
+    if (isactive instanceof Promise)
+      return (async () => {
+	isactive = (await isactive) && this.menudata.isactive (this.uri);
+	isactive = !!await isactive;
+	if (this.isactive_cache != isactive)
+	  this.isactive_cache = isactive;
+	return this.isactive_cache;
+      }) ();
+    if (isactive)
+      {
+	isactive = this.menudata.isactive (this.uri);
+	if (isactive instanceof Promise)
+	  return (async () => {
+	    isactive = !!await isactive;
+	    if (this.isactive_cache != isactive)
+	      this.isactive_cache = isactive;
+	    return this.isactive_cache;
+	  }) ();
+      }
+    isactive = !!isactive;
+    if (this.isactive_cache != isactive)
+      this.isactive_cache = isactive;
+    return this.isactive_cache;
+  }
+  get menudata()
+  {
+    return ContextMenu.provide_menudata (this);
+  }
+  slot_text()
+  {
+    const slot = this.shadowRoot.querySelector ('slot');
+    const stext = Util.collect_text_content (slot?.assignedNodes());
+    return stext;
   }
   close (trigger)
   {
@@ -178,13 +215,20 @@ class BMenuItem extends LitElement {
   }
   click (trigger)
   {
-    Util.prevent_event (trigger); // prevent trigger event bubbling out of shadow DOM (if any)
+    // prevent trigger event bubbling out of shadow DOM (if any)
+    Util.prevent_event (trigger);
     // check if click is allowed
-    this.allowed_ = this.menudata.checkuri.call (null, this.uri, this);
-    if (!this.allowed_)
-      return false;
+    const maybe_isactive = this.check_isactive();
+    if (maybe_isactive instanceof Promise)
+      {
+	const async_click = async (isactive) => {
+	  isactive = await isactive;
+	  return !!isactive && super.click();
+	};
+	return async_click (maybe_isactive);
+      }
     // super does: dispatchEvent (new Event ('click', { bubbles: true, composed: true, cancelable: true }));
-    return super.click();
+    return !!maybe_isactive && super.click();
   }
   get can_remap()
   {
@@ -199,6 +243,18 @@ class BMenuItem extends LitElement {
       {
 	if (await Kbd.shortcut_dialog (this.menudata.mapname, this.slot_text(), this.kbd))
 	  this.requestUpdate();
+      }
+  }
+  mouseup_ (event)
+  {
+    if (Util.has_ancestor (event.target, this) && this.menudata.popup_time)
+      {
+	const now = new Date();
+	if (now - this.menudata.popup_time > 500)
+	  {
+	    // simulate click for press-popup-drag-release menu selection
+	    this.click (event);
+	  }
       }
   }
 }
