@@ -10,25 +10,27 @@
  *   <b-contextmenu ref="cmenu" @click="menuactivation">...</b-contextmenu>
  * </div>
  * ```
- * ## Props:
- * *check*: function (uri: string): bool
- * : Callback property to check if a submenu item is enabled, the `uri` of the submenu is provided as argument.
+ * ## Properties:
+ * *.activate(uri)*
+ * : Property callback which is called once a menu item is activated.
+ * *.isactive (uri)* -> bool
+ * : Property callback used to check if a particular menu item should stay active or be disabled.
+ * ## Attributes:
  * *xscale*
  * : Consider a wider area than the context menu width for popup positioning.
  * *yscale*
  * : Consider a taller area than the context menu height for popup positioning.
  * ## Events:
- * *click (uri: string)*
- * : Event signaling activation of a submenu item, the `uri` of the submenu is provided as argument.
+ * *click (event)*
+ * : Event signaling activation of a menu item, the `uri` can be found via `event.target.uri`.
  * *close*
  * : Event signaling closing of a menu, regardless of whether menu item activation occoured or not.
- * *keepmounted*
- * : Keep the menu and menu items mounted at all times, needed for map_kbd_hotkeys().
  * ## Methods:
  * *popup (event, { origin, data-contextmenu })*
- * : Popup the contextmenu, the `event` coordinates are used for positioning, the `origin` is a
- * : reference DOM element to use for drop-down positioning. The `data-contextmenu` element (or `origin`)
- * : has the `data-contextmenu=true` attribute assigned during popup.
+ * : Popup the contextmenu, propagation of `event` is halted and the event coordinates or target is
+ * : used for positioning unless `origin` is given.
+ * : The `origin` is a reference DOM element to use for drop-down positioning.
+ * : The `data-contextmenu` element (or `origin`) has the `data-contextmenu=true` attribute assigned during popup.
  * *close()*
  * : Hide the contextmenu.
  * *map_kbd_hotkeys (active)*
@@ -88,6 +90,7 @@ const menuitem_isdisabled = function () {
 };
 
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with property
+const FUNCTION_ATTRIBUTE = { type: Function, reflect: false };
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 
@@ -98,11 +101,11 @@ export function provide_menudata (element)
   if (b_contextmenu && b_contextmenu.menudata)
     return b_contextmenu.menudata;
   // fallback
-  return { showicons: true, keepmounted: false,
+  return { close: () => undefined,
+	   isactive: (uri) => true,
 	   mapname: '',
-	   checkuri: () => true,
-	   isdisabled: () => false,
-	   close: () => undefined,
+	   showicons: true,
+	   popup_time: null,
   };
 }
 
@@ -114,7 +117,8 @@ class BContextMenu extends LitElement {
     return HTML (this, d);
   }
   static properties = {
-    keepmounted: BOOL_ATTRIBUTE,	// FIXME: verify unmounted
+    activate: FUNCTION_ATTRIBUTE,
+    isactive: FUNCTION_ATTRIBUTE,
     showicons: BOOL_ATTRIBUTE,
     mapname: STRING_ATTRIBUTE,
     check: { type: Function, state: true },
@@ -139,9 +143,10 @@ class BContextMenu extends LitElement {
     // context for descendant menuitems
     this.menudata = provide_menudata (this);
     this.menudata.close = this.close.bind (this);
+    this.menudata.isactive = uri => valid_uri (uri) && (!this.isactive || this.isactive (uri));
     // prevent clicks bubbeling up
     this.allowed_click = null;
-    this.addEventListener ('click', e => this.handle_click_ (e));
+    this.addEventListener ('click', e => this.bubbeling_click_ (e));
   }
   get dialog ()     { return this.dialog_; }
   set dialog (dialog) {
@@ -182,68 +187,47 @@ class BContextMenu extends LitElement {
       {
 	// updated() call directly after showModal()
 	this.showmodal_update = false;
-	// TODO: checkitems
-	const startfocus = true;
-	if (startfocus) // auto-focus for menu bars
-	  Util.move_focus (-999999);
+	// check items (and this used to handle auto-focus)
+	(async () => {
+	  await this.check_isactive();
+	}) ();
       }
   }
-  handle_click_ (event)
+  bubbeling_click_ (event)
   {
     if (this.allowed_click === event)
-      return;
-    // prevent any bubbeling
+      return; // this.click, not bubbeling
+    // prevent any further bubbeling
     Util.prevent_event (event);
     // for valid menuitem clicks with URI
-    if (event.target && event.target.uri)
-      {
-	// emit non-bubbling activation click
-	this.click (event.target.uri);
-      }
-    // this.close();
+    const target = event.target;
+    if (target && target.uri && target.check_isactive &&
+	target.check_isactive (false))
+      return this.click (target.uri);
   }
   click (uri)
   {
     if (this.allowed_click)
       return;
+    // emit non-bubbling activation click
     if (uri && valid_uri (uri))
       {
-	this.allowed_click = new CustomEvent ('click', { bubbles: false, composed: true, cancelable: true,
-							 detail: { uri } });
-	this.dispatchEvent (this.allowed_click);
+	const click_event = new CustomEvent ('click', { bubbles: false, composed: true, cancelable: true, detail: { uri } });
+	this.allowed_click = click_event;
+	const proceed = this.dispatchEvent (click_event);
 	this.allowed_click = null;
+	if (proceed && this.activate)
+	  this.activate (uri, click_event);
 	this.close();
       }
   }
-  checkitems() {
-    const checker = this.popup_options.checker || this.check;
-    if (!checker)
-      return;
-    const checkrecursive = component => {
-      component = Util.vue_component (component) || component;
-      if (component.uri)
-	{
-	  let async_check = async () => {
-	    let result = checker.call (null, component.uri, component);
-	    result = await result;
-	    if ('boolean' !== typeof result)
-	      result = undefined;
-	    if (result != this.checkeduris[component.uri])
-	      {
-		this.checkeduris[component.uri] = result; // Vue reactivity
-		component.$forceUpdate();
-	      }
-	  };
-	  async_check();
-	}
-      if (component.$children)
-	for (const child of component.$children)
-	  checkrecursive (child);
-      else if (component.children)    // DOM element, possibly a function component
-	for (const child of component.children)
-	  checkrecursive (child);
-    };
-    checkrecursive (this);
+  async check_isactive()
+  {
+    const w = document.createTreeWalker (this, NodeFilter.SHOW_ELEMENT);
+    let e, a = [];
+    while ( (e = w.nextNode()) )
+      a.push (e.check_isactive?.());
+    await Promise.all (a);
   }
   popup (event, popup_options) {
     if (this.dialog?.open)
@@ -261,6 +245,7 @@ class BContextMenu extends LitElement {
       this.page_x = this.page_y = undefined;
     const dialog = this.dialog;
     dialog.showModal();
+    this.menudata.popup_time = new Date();
     const p = Util.popup_position (dialog, { origin,
 					     x: this.page_x, xscale: this.xscale,
 					     y: this.page_y, yscale: this.yscale, });
@@ -282,6 +267,7 @@ class BContextMenu extends LitElement {
 	// this.dialog.classList.add ('animating');
 	this.dialog.close();
       }
+    this.menudata.popup_time = null;
     App.zmove(); // force changes to be picked up
   }
   /// Activate or disable the `kbd=...` hotkeys in menu items.
