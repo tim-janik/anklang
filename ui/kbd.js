@@ -310,7 +310,7 @@ export function move_focus (dir = 0, subfocus = null) {
   const last_focus = the_focus_guard.last_focus;
   if (!(home || up || down || end || left || right))
     return false; // nothing to move
-  const root = subfocus || the_focus_guard.focus_root_list[0]?.[0];
+  const root = subfocus || the_focus_guard.focus_root_list[0]?.[0] || document.body;
   if (!root || !updown_focus ||
       // is_nav_input (fe) || (fe.tagName == "INPUT" && !is_button_input (fe)) ||
       !(up || down || home || end || left || right))
