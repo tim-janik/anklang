@@ -170,7 +170,10 @@ export function list_focusables (element)
   const inner = d[d.length - 1]; // this better be the innermost modal dialog
   if (Util.has_ancestor (element, inner))
     return l;   // search was confined to this dialog anyway
+  // in case inner is part of a shadowRoot, find 'descendant' assigned elements
   let droots = [ inner ];
+  for (const slot of inner.querySelectorAll ('slot'))
+    droots.push (...slot.assignedNodes ({ flatten:true }));
   // constrain results to modal dialog
   const is_droot_descendant = e => {
     for (const r of droots)
