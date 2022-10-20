@@ -101,7 +101,7 @@ $duration: 0.3s;
 
 <template>
   <transition name="-fade">
-    <div class="b-dialog-modalshield" v-if='shown' v-show='done_resizing()' >
+    <div class="b-dialog-modalshield" v-if='shown' v-show='done_resizing()' @keydown="keydown" >
       <v-flex class="b-dialog" @click.stop ref='dialog' >
 
 	<h-flex class="-header">
@@ -145,9 +145,13 @@ export default {
   },
   updated() {
     this.childrenmounted_ = !!this.$refs.body;
+    let must_focus = false;
     // newly shown
     if (this.$refs.dialog && !this.undo_shield)
-      this.undo_shield = Util.setup_shield_element (this.$el, this.$refs.dialog, this.close.bind (this));
+      {
+	must_focus = true;
+	this.undo_shield = Util.setup_shield_element (this.$el, this.$refs.dialog, this.close.bind (this), false);
+      }
     // newly hidden
     if (!this.$refs.dialog && this.undo_shield)
       {
@@ -179,8 +183,15 @@ export default {
 	  autofocus_element?.focus();
 	};
 	next_tick_autofocus();
+	must_focus = false;
       }
     }
+    // force focus, so Escape can have an effect on closing the dialog
+    if (must_focus)
+      {
+	must_focus = false;
+	Util.move_focus ('HOME');
+      }
   },
   unmount() {
     this.undo_shield?.();
@@ -207,6 +218,14 @@ export default {
       this.$emit ('update:shown', false); // shown = false
       if (this.shown)
 	this.$emit ('close');
+    },
+    keydown (event)
+    {
+      if (this.shown && event.keyCode === Util.KeyCode.ESCAPE)
+	{
+	  event.stopPropagation();
+	  this.close (event);
+	}
     },
   },
 };
