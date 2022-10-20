@@ -227,7 +227,8 @@ export default {
     },
     menuopen (event) {
       Data.current_track = this.track;
-      this.$refs.cmenu.popup (event, { checker: this.menucheck.bind (this) });
+      // force popup at mouse coords
+      this.$refs.cmenu.popup (event, { origin: 'none' });
     },
     async menucheck (uri)
     {
