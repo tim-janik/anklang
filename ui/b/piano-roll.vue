@@ -331,7 +331,8 @@ export default {
       return actions;
     },
     pianorollmenu_popup (event) {
-      this.$refs.pianorollmenu.popup (event, { checker111111: this.pianorollmenu_check.bind (this) });
+      // force popup at mouse coords
+      this.$refs.pianorollmenu.popup (event, { origin: 'none' });
     },
     pianorollmenu_check (uri, component) {
       return !!this.msrc;
