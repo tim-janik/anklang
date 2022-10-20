@@ -163,6 +163,7 @@ class BContextMenu extends LitElement {
     if (this.dialog_)
       {
 	this.dialog_.onclose = null;
+	this.dialog_.onkeydown = null;
 	this.dialog_.onanimationend = null;
 	Util.dialog_backdrop_autoclose (this.dialog_, false);
       }
@@ -170,6 +171,11 @@ class BContextMenu extends LitElement {
     if (this.dialog_)
       {
 	this.dialog_.onclose = this.menudata.close;
+	this.dialog_.onkeydown = ev => {
+	  if (ev.keyCode === 27 && // Escape
+	      dialog.open && dialog.matches ('[open]:modal'))
+	    ev.stopPropagation(); // stop bubbling
+	};
 	this.dialog_.onanimationend = ev => {
 	  dialog.classList.remove ('animating');
 	};
