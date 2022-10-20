@@ -143,6 +143,7 @@ class BContextMenu extends LitElement {
     this.xscale = 1;
     this.yscale = 1;
     this.origin = null;
+    this.data_contextmenu = null;
     this.checkuri = () => true;
     this.reposition = false;
     this.isdisabled = menuitem_isdisabled;
@@ -202,10 +203,10 @@ class BContextMenu extends LitElement {
     if (this.dialog?.open || Util.frame_stamp() == this.menudata.menu_stamp)
       return false;     // duplicate popup request, only popup once per frame
     const origin = popup_options.origin?.$el || popup_options.origin || event?.currentTarget;
-    if (origin && Util.inside_display_none (origin))
+    if (origin instanceof Element && Util.inside_display_none (origin))
       return false;     // cannot popup around hidden origin
+    this.origin = origin instanceof Element ? origin : null;
     this.menudata.menu_stamp = Util.frame_stamp();  // allows one popup per frame
-    this.origin = origin;
     if (event && event.pageX && event.pageY)
       {
 	this.page_x = event.pageX;
@@ -213,6 +214,8 @@ class BContextMenu extends LitElement {
       }
     else
       this.page_x = this.page_y = undefined;
+    this.data_contextmenu = popup_options['data-contextmenu'] || this.origin;
+    this.data_contextmenu?.setAttribute ('data-contextmenu', 'true');
     this.dialog.showModal();
     this.reposition = true;
     // check items (and this used to handle auto-focus)
@@ -266,11 +269,11 @@ class BContextMenu extends LitElement {
 	const proceed = this.dispatchEvent (click_event);
 	this.allowed_click = null;
 	if (proceed && this.activate)
-	  debug ("ACTIVATE", uri);
-	if (proceed && this.activate)
 	  this.activate (uri, click_event);
 	this.close();
       }
+    else
+      console.error ("BContextMenu.click: invalid uri:", uri);
   }
   close () {
     if (this.dialog?.open)
@@ -279,6 +282,8 @@ class BContextMenu extends LitElement {
 	this.dialog.close();
       }
     this.origin = null;
+    this.data_contextmenu?.removeAttribute ('data-contextmenu', 'true');
+    this.data_contextmenu = null;
     App.zmove(); // force changes to be picked up
   }
   /// Activate or disable the `kbd=...` hotkeys in menu items.
