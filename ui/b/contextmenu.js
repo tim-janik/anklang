@@ -70,7 +70,7 @@ dialog::backdrop {
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <dialog ${ref(e => t.dialog = e)} >
+  <dialog ${ref(e => t.dialog = e)} part=dialog >
     <slot />
   </dialog>
 `;
