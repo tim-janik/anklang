@@ -1249,6 +1249,63 @@ export function prevent_event (event_or_null)
   event.stopImmediatePropagation();
 }
 
+/// Close dialog on backdrop clicks via hiding at mousedown
+function dialog_backdrop_mousedown (ev)
+{
+  const dialog = this;
+  if (!dialog.open || !ev.buttons)
+    return;
+  // detect click on backdrop area
+  if (ev.offsetX < 0 || ev.offsetX > ev.target.offsetWidth ||
+      ev.offsetY < 0 || ev.offsetY > ev.target.offsetHeight)
+    {
+      // just hide the dialog on mousedown
+      dialog.__dialog_backdrop_must_close = ev.button;
+      // avoid display:none, the dialog still needs to receive events
+      dialog.style.setProperty ('visibility', 'hidden', 'important');
+      // prevent bubbling back up to cause clicks
+      prevent_event (ev);
+    }
+}
+
+/// Close dialog on backdrop clicks via actual closing at mouseup
+function dialog_backdrop_mouseup (ev)
+{
+  const dialog = this;
+  // only handle "clicks" with previous backdrop mousedown
+  if (dialog.__dialog_backdrop_must_close !== ev.button)
+    return;
+  dialog.__dialog_backdrop_must_close = undefined;
+  // restore visibility to make the dialog reusable
+  dialog.style.removeProperty ('visibility');
+  // really close dialog due to backdrop click
+  dialog.close();
+  // prevent bubbling back up to cause clicks
+  prevent_event (ev);
+}
+
+/// Install handlers to close a dialog on backdrop clicks.
+export function dialog_backdrop_autoclose (dialog, install_or_remove)
+{
+  console.assert (dialog instanceof HTMLDialogElement);
+
+  // stop events in capture phase to reliably prevent followup clicks
+  const capture = { capture: true };
+
+  // closing on mousedown tends to re-open on the following mouseup
+  // so closing is deferred until mouseup
+  if (install_or_remove)
+    {
+      dialog.addEventListener ('mousedown', dialog_backdrop_mousedown, capture);
+      dialog.addEventListener ('mouseup', dialog_backdrop_mouseup, capture);
+    }
+  else
+    {
+      dialog.removeEventListener ('mousedown', dialog_backdrop_mousedown, capture);
+      dialog.removeEventListener ('mouseup', dialog_backdrop_mouseup, capture);
+    }
+}
+
 /** Determine position for a popup */
 export function popup_position (element, opts = { origin: undefined, x: undefined, y: undefined,
 						  xscale: 0, yscale: 0, })
