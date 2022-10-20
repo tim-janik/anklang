@@ -248,7 +248,10 @@ export class PointerDrag {
   }
   keydown (event) {
     if (event.keyCode == 27) // Escape
-      return this.pointercancel (event);
+      {
+	event.stopPropagation();
+	return this.pointercancel (event);
+      }
   }
   pointercancel (event) {
     if (!this.el)
@@ -1200,7 +1203,7 @@ export function wheel2scrollbars (event, refs, ...scrollbars)
  * Capture focus movements inside `containee`, call `closer(event)` for
  * pointer clicks on `shield` or when `ESCAPE` is pressed.
  */
-export function setup_shield_element (shield, containee, closer)
+export function setup_shield_element (shield, containee, closer, capture_escape = true)
 {
   const modal_mouse_guard = event => {
     if (!event.cancelBubble && !containee.contains (event.target)) {
@@ -1216,7 +1219,7 @@ export function setup_shield_element (shield, containee, closer)
     }
   };
   shield.addEventListener ('mousedown', modal_mouse_guard);
-  Util.push_focus_root (containee, closer);
+  Util.push_focus_root (containee, capture_escape ? closer : null);
   let undo_shield = () => {
     if (!undo_shield) return;
     undo_shield = null;
