@@ -108,7 +108,6 @@ const HTML = (t, d) => html`
 // == SCRIPT ==
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with property
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
-const FUNCTION_PROPERTY = { type: Function, reflect: true };
 const PRIVATE_PROPERTY = { state: true };
 
 class BMenuItem extends LitElement {
@@ -133,7 +132,6 @@ class BMenuItem extends LitElement {
     iconclass: STRING_ATTRIBUTE,
     ic: STRING_ATTRIBUTE,
     kbd: STRING_ATTRIBUTE,
-    check: FUNCTION_PROPERTY,
     isactive_cache: PRIVATE_PROPERTY,
   };
   constructor()
@@ -146,7 +144,6 @@ class BMenuItem extends LitElement {
     this.iconclass = '';
     this.ic = '';
     this.kbd = '';
-    this.check = () => true;
     // BMenuItem.keymap_entry is picked up by contextmenu
     this.keymap_entry = new Util.KeymapEntry ('', this.click.bind (this), this);
     this.can_click_ = 0;
