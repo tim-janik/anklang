@@ -1720,17 +1720,6 @@ export function element_text (element, filter)
   return texts.join ('');
 }
 
-/// Popup `menu` using `event.currentTarget` as origin.
-export function dropdown (menu, event, options = {})
-{
-  if (!options.origin)
-    {
-      // use the event handler element for positioning
-      options.origin = event.currentTarget;
-    }
-  return menu?.popup (event, options);
-}
-
 /// Clone a menuitem icon via its `uri`.
 export function clone_menu_icon (menu, uri, title = '')
 {
