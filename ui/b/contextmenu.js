@@ -157,6 +157,7 @@ class BContextMenu extends LitElement {
     this.allowed_click = null;
     this.onclick = this.bubbeling_click_.bind (this);
   }
+  get open ()       { return this.dialog_ && this.dialog_.open; }
   get dialog ()     { return this.dialog_; }
   set dialog (dialog) {
     if (this.dialog_)
