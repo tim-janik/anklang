@@ -142,7 +142,7 @@ class BContextMenu extends LitElement {
     this.page_y = undefined;
     this.xscale = 1;
     this.yscale = 1;
-    this.popup_options = {};
+    this.origin = null;
     this.checkuri = () => true;
     this.reposition = false;
     this.isdisabled = menuitem_isdisabled;
@@ -162,6 +162,7 @@ class BContextMenu extends LitElement {
       {
 	this.dialog_.onclose = null;
 	this.dialog_.onanimationend = null;
+	Util.dialog_backdrop_autoclose (this.dialog_, false);
       }
     this.dialog_ = dialog;
     if (this.dialog_)
@@ -170,15 +171,7 @@ class BContextMenu extends LitElement {
 	this.dialog_.onanimationend = ev => {
 	  dialog.classList.remove ('animating');
 	};
-	dialog.onmousedown = ev => {
-	  // backdrop click
-	  if (ev.offsetX < 0 || ev.offsetX > ev.target.offsetWidth ||
-	      ev.offsetY < 0 || ev.offsetY > ev.target.offsetHeight)
-	    {
-	      Util.prevent_event (ev); // prevent bubbling out of shadow DOM (if any)
-	      dialog.close();
-	    }
-	};
+	Util.dialog_backdrop_autoclose (this.dialog_, true);
       }
   }
   connectedCallback() {
@@ -195,7 +188,7 @@ class BContextMenu extends LitElement {
     if (this.reposition)
       {
 	this.reposition = false;
-	const p = Util.popup_position (this.dialog, { origin, x: this.page_x, y: this.page_y, xscale: this.xscale, yscale: this.yscale, });
+	const p = Util.popup_position (this.dialog, { origin: this.origin, x: this.page_x, y: this.page_y, xscale: this.xscale, yscale: this.yscale, });
 	this.dialog.style.left = p.x + "px";
 	this.dialog.style.top = p.y + "px";
 	// chrome does auto-focus for showModal(), make FF behave the same
@@ -212,7 +205,7 @@ class BContextMenu extends LitElement {
     if (origin && Util.inside_display_none (origin))
       return false;     // cannot popup around hidden origin
     this.menudata.menu_stamp = Util.frame_stamp();  // allows one popup per frame
-    this.popup_options = Object.assign ({}, popup_options || {});
+    this.origin = origin;
     if (event && event.pageX && event.pageY)
       {
 	this.page_x = event.pageX;
@@ -285,6 +278,7 @@ class BContextMenu extends LitElement {
 	// this.dialog.classList.add ('animating');
 	this.dialog.close();
       }
+    this.origin = null;
     App.zmove(); // force changes to be picked up
   }
   /// Activate or disable the `kbd=...` hotkeys in menu items.
