@@ -329,6 +329,45 @@ export function request_pointer_lock (element) {
   return element.__unrequest_pointer_lock;
 }
 
+/// Ensure the root node of `element` contains a `csstext` (replaceable via `stylesheet_name`)
+export function adopt_style (element, csstext, stylesheet_name)
+{
+  if (Array.isArray (csstext))
+    csstext = csstext.join ('');
+  stylesheet_name = stylesheet_name || element.nodeName;
+  const root = element.getRootNode();
+  let ads;
+  for (const adoptedsheet of root.adoptedStyleSheets)
+    if (adoptedsheet[stylesheet_name] == stylesheet_name)
+      {
+	ads = adoptedsheet;
+	break;
+      }
+  if (ads)
+    ads.replaceSync (csstext);
+  else // !ads
+    {
+      ads = new CSSStyleSheet();
+      ads[stylesheet_name] = stylesheet_name;
+      ads.replaceSync (csstext);
+      root.adoptedStyleSheets = [...root.adoptedStyleSheets, ads];
+    }
+}
+
+/// Ensure the root node of `element` has a `url` stylesheet link.
+export function add_style_sheet (element, url)
+{
+  let root = element.getRootNode();
+  root = root.head || root;
+  const has_link = root.querySelector (`LINK[rel="stylesheet"][href="${url}"]`);
+  if (has_link)
+    return;
+  const link = document.createElement ("LINK");
+  link.setAttribute ("rel", "stylesheet");
+  link.setAttribute ("href", url);
+  root.append (link);
+}
+
 // == Vue Helpers ==
 export const vue_mixins = {};
 export const vue_directives = {};
