@@ -32,7 +32,7 @@
 	  <b-icon ic="bc-folder" />
 	  <b-icon ic="bc-menumore" />
 	</div>
-	<b-contextmenu ref="filemenu" :activate.prop="activate" :isactive.prop="isactive" startfocus1 >
+	<b-contextmenu ref="filemenu" id="g-filemenu" :activate.prop="activate" :isactive.prop="isactive" startfocus1 >
 	  <b-menuitem ic="fa-file-o"	kbd="Ctrl+N"		uri="loadnew" >	New Project		</b-menuitem>
 	  <b-menuitem ic="fa-file-audio-o" kbd="Ctrl+O"		uri="load"    >	Open Project…		</b-menuitem>
 	  <b-menuitem ic="mi-save_alt"     kbd="Ctrl+S"		uri="save"    >	Save Project		</b-menuitem>
@@ -50,7 +50,7 @@
 	  <b-icon ic="mi-draw" />
 	  <b-icon ic="bc-menumore" />
 	</div>
-	<b-contextmenu ref="editmenu" :activate.prop="activate" :isactive.prop="isactive" startfocus >
+	<b-contextmenu ref="editmenu" id="g-editmenu" :activate.prop="activate" :isactive.prop="isactive" startfocus >
 	  <b-menuitem ic="mi-undo" :disabled="!true"
 		      kbd="Ctrl+Z" uri="undo">	Undo	</b-menuitem>
 	  <b-menuitem ic="mi-redo" :disabled="!true"
@@ -64,7 +64,7 @@
 	  <b-icon ic="fa-eye" />
 	  <b-icon ic="bc-menumore" />
 	</div>
-	<b-contextmenu ref="viewmenu" :activate.prop="activate" :isactive.prop="isactive" startfocus >
+	<b-contextmenu ref="viewmenu" id="g-viewmenu" :activate.prop="activate" :isactive.prop="isactive" startfocus >
 	  <b-menuitem ic="mi-fullscreen" :disabled="!document.fullscreenEnabled"
 		      kbd="F11" uri="fullscreen">	Toggle Fullscreen	</b-menuitem>
 	</b-contextmenu>
@@ -86,7 +86,7 @@
 	  <b-icon ic="fa-life-ring" />
 	  <b-icon ic="bc-menumore" />
 	</div>
-	<b-contextmenu ref="helpmenu" :activate.prop="activate" :isactive.prop="isactive" startfocus >
+	<b-contextmenu ref="helpmenu" id="g-helpmenu" :activate.prop="activate" :isactive.prop="isactive" startfocus >
 	  <b-menuitem ic="mi-chrome_reader_mode"	uri="user-manual">	Anklang Manual…		</b-menuitem>
 	  <b-menuitem ic="mi-chrome_reader_mode"	uri="dev-manual">	Development Reference…	</b-menuitem>
 	  <b-menuseparator style="margin: 7px"  />

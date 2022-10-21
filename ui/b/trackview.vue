@@ -89,7 +89,7 @@
       </div>
     </div>
 
-    <b-contextmenu ref="cmenu" :activate.prop="menuactivation" :isactive.prop="menucheck" >
+    <b-contextmenu ref="trackviewcmenu" id="g-trackviewcmenu" :activate.prop="menuactivation" :isactive.prop="menucheck" >
       <b-menutitle> Track </b-menutitle>
       <b-menuitem ic="fa-plus-circle"      uri="add-track" >      Add Track		</b-menuitem>
       <b-menuitem ic="fa-i-cursor"         uri="rename-track" >   Rename Track		</b-menuitem>
@@ -228,7 +228,7 @@ export default {
     menuopen (event) {
       Data.current_track = this.track;
       // force popup at mouse coords
-      this.$refs.cmenu.popup (event, { origin: 'none' });
+      this.$refs.trackviewcmenu.popup (event, { origin: 'none' });
     },
     async menucheck (uri)
     {
@@ -244,7 +244,7 @@ export default {
     },
     async menuactivation (uri) {
       // close popup to remove focus guards
-      this.$refs.cmenu.close();
+      this.$refs.trackviewcmenu.close();
       if (uri == 'add-track')
 	{
 	  const track = await Data.project.create_track ('Track');

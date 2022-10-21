@@ -142,10 +142,10 @@ $scrollarea-bg: transparent;
     <!-- Buttons, COL-2 -->
     <div class="-buttons" style="grid-column: 2; grid-row: 1" >
       <b-color-picker style="flex-shrink: 1" ></b-color-picker>
-      <h-flex class="-toolbutton" @click="$refs.toolmenu.popup ($event)" @mousedown="$refs.toolmenu.popup ($event)" >
+      <h-flex class="-toolbutton" @click="$refs.pianotoolmenu.popup ($event)" @mousedown="$refs.pianotoolmenu.popup ($event)" >
 	<b-icon style="width: 1.2em; height: 1.2em"
-		v-bind="Util.clone_menu_icon ($refs.toolmenu, pianotool, '**EDITOR TOOL**')" />
-	<b-contextmenu ref="toolmenu" class="b-piano-roll-contextmenu" :activate.prop="usetool" >
+		v-bind="Util.clone_menu_icon ($refs.pianotoolmenu, pianotool, '**EDITOR TOOL**')" />
+	<b-contextmenu ref="pianotoolmenu" id="g-pianotoolmenu" class="b-piano-roll-contextmenu" :activate.prop="usetool" >
 	  <b-menuitem ic="mi-open_with"     uri="S" kbd="1" > Rectangular Selection </b-menuitem>
 	  <b-menuitem ic="mi-multiple_stop" uri="H" kbd="2" > Horizontal Selection </b-menuitem>
 	  <b-menuitem ic="fa-pencil"        uri="P" kbd="3" > Pen          </b-menuitem>
@@ -174,7 +174,7 @@ $scrollarea-bg: transparent;
 	      @pointerdown="piano_roll_notes_pointerdown ($event)"
       ></canvas>
       <span class="-indicator" ref="indicator" />
-      <b-contextmenu ref="pianorollmenu" :showicons="true"
+      <b-contextmenu ref="pianorollmenu" id="g-pianorollmenu" :showicons="true"
 		     class="b-piano-roll-contextmenu" mapname="Piano Roll"
 		     :activate.prop="pianorollmenu_click" :isactive.prop="pianorollmenu_check" >
 	<b-menutitle> Piano-Roll </b-menutitle>
@@ -276,19 +276,19 @@ export default {
   methods: {
     pointerenter (event) {
       this.entered = true;
-      if (this.$refs.toolmenu)
-	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || this.adata.have_focus);
+      if (this.$refs.pianotoolmenu)
+	this.$refs.pianotoolmenu.map_kbd_hotkeys (this.entered || this.adata.have_focus);
     },
     pointerleave (event) {
       this.entered = false;
-      if (this.$refs.toolmenu)
-	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || this.adata.have_focus);
+      if (this.$refs.pianotoolmenu)
+	this.$refs.pianotoolmenu.map_kbd_hotkeys (this.entered || this.adata.have_focus);
     },
     focuschange (ev) {
       if (ev?.type)
 	this.adata.have_focus = ev.type == "focus";
-      if (this.$refs.toolmenu)
-	this.$refs.toolmenu.map_kbd_hotkeys (this.entered || this.adata.have_focus);
+      if (this.$refs.pianotoolmenu)
+	this.$refs.pianotoolmenu.map_kbd_hotkeys (this.entered || this.adata.have_focus);
       if (this.$refs.pianorollmenu)
 	this.$refs.pianorollmenu.map_kbd_hotkeys (this.adata.have_focus);
     },

@@ -69,7 +69,7 @@
       </template>
       <b-more @click.stop="menuopen" :sibling.prop="null"
 	      data-tip="**CLICK** Add New Elements" />
-      <b-contextmenu ref="cmenu" :activate.prop="activate" :isactive.prop="isactive" >
+      <b-contextmenu ref="devicepanelcmenu" id="g-devicepanelcmenu" :activate.prop="activate" :isactive.prop="isactive" >
 	<b-menutitle> Devices </b-menutitle>
 	<b-treeselector :tree="devicetypes" :defaultcollapse="false"> </b-treeselector>
       </b-contextmenu>
@@ -148,7 +148,7 @@ export default {
     menuopen (event)
     {
       this.menu_origin = event.target;
-      this.$refs.cmenu.popup (event, { origin: 'none' });
+      this.$refs.devicepanelcmenu.popup (event, { origin: 'none' });
     },
   },
 };
