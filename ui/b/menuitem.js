@@ -150,10 +150,10 @@ class BMenuItem extends LitElement {
   }
   updated (changed_props)
   {
-    const rendered_slot_text = this.slot_text();
-    if (rendered_slot_text)
+    const rendered_slot_label = this.slot_label();
+    if (rendered_slot_label)
       {
-	const shortcut = Kbd.shortcut_lookup (this.menudata.mapname, Util.lrstrip (rendered_slot_text), this.kbd);
+	const shortcut = Kbd.shortcut_lookup (this.menudata.mapname, rendered_slot_label, this.kbd);
 	// Note, the correct shortcut cannot be found until *after* render
 	if (shortcut != this.keymap_entry.key)
 	  {
@@ -197,11 +197,11 @@ class BMenuItem extends LitElement {
   {
     return ContextMenu.provide_menudata (this);
   }
-  slot_text()
+  slot_label()
   {
     const slot = this.shadowRoot.querySelector ('slot');
     const stext = Util.collect_text_content (slot?.assignedNodes());
-    return stext;
+    return Util.lrstrip (stext);
   }
   close (trigger)
   {
@@ -233,7 +233,7 @@ class BMenuItem extends LitElement {
   }
   get can_remap()
   {
-    const slottext = this.slot_text();
+    const slottext = this.slot_label();
     return this.menudata.mapname && !!slottext;
   }
   async rightclick (event)
@@ -242,7 +242,7 @@ class BMenuItem extends LitElement {
     event.stopPropagation();
     if (this.can_remap)
       {
-	if (await Kbd.shortcut_dialog (this.menudata.mapname, this.slot_text(), this.kbd))
+	if (await Kbd.shortcut_dialog (this.menudata.mapname, this.slot_label(), this.kbd))
 	  this.requestUpdate();
       }
   }
