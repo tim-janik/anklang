@@ -149,7 +149,8 @@ NativeDeviceImpl::insert_device (const String &uri, Device *sibling, const Devic
     {
       devicep = create_processor_device (proc_->engine(), uri, false);
       return_unless (devicep, nullptr);
-      children_.push_back (devicep);
+      const ssize_t cpos = Aux::index_of (children_, [sibling] (const DeviceP &d) { return sibling == d.get(); });
+      children_.insert (cpos < 0 ? children_.end() : children_.begin() + cpos, devicep);
       devicep->_set_parent (this);
       if (loader)
         loader (devicep);
@@ -158,9 +159,10 @@ NativeDeviceImpl::insert_device (const String &uri, Device *sibling, const Devic
       if (is_active())
         devicep->_activate();
       AudioComboP combo = combo_;
-      auto j = [combo, sproc, siblingp] () {
+      auto j = [combo, sproc, siblingp, cpos] () {
         const size_t pos = siblingp ? combo->find_pos (*siblingp) : ~size_t (0);
         combo->insert (sproc, pos);
+        assert_return (cpos == pos);
       };
       proc_->engine().async_jobs += j;
     }

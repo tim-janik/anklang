@@ -88,12 +88,12 @@
 
 <template>
   <h-flex class="b-choice" ref="bchoice" :class="classlist" :data-tip="data_tip()"
-	  @pointerdown="pointerdown" @keydown="keydown" >
+	  @click="popup_menu ($event)" @mousedown="popup_menu ($event)" @keydown="keydown" >
     <h-flex class="b-choice-current" ref="pophere" tabindex="0" >
       <span class="-nick">{{ nick() }}</span>
       <span class="-arrow" > ⬍ <!-- ▼ ▽ ▾ ▿ ⇕ ⬍ ⇳ --> </span>
     </h-flex>
-    <b-contextmenu class="b-choice-contextmenu" ref="cmenu" @click="menuactivation" @close="menugone" >
+    <b-contextmenu class="b-choice-contextmenu" ref="cmenu" :activate.prop="activate" >
       <b-menutitle v-if="title" > {{ title }} </b-menutitle>
 
       <b-menuitem v-for="e in mchoices" :uri="e.uri" :key="e.uri" :ic="e.icon" >
@@ -120,7 +120,6 @@ export default {
   emits: { 'update:value': null, },
   data: () => ({
     value_: 0,
-    buttondown_: false,
   }),
   computed: {
     classlist() {
@@ -169,31 +168,25 @@ export default {
       const c = this.mchoices[n];
       return c.label ? c.label : '';
     },
-    menuactivation (uri) {
+    activate (uri) {
       // close popup to remove focus guards
       this.$refs.cmenu.close();
       this.$emit ('update:value', uri);
     },
-    pointerdown (ev) {
+    popup_menu (event)
+    {
       this.$refs.pophere.focus();
-      // trigger only on primary button press
-      if (!this.buttondown_ && ev.buttons == 1)
-	{
-	  this.buttondown_ = true;
-	  ev.preventDefault();
-	  ev.stopPropagation();
-	  this.$refs.cmenu.popup (event, { origin: this.$refs.pophere });
-	}
+      this.$refs.cmenu.popup (event, { origin: this.$refs.pophere });
     },
-    menugone () {
-      this.buttondown_ = false;
-    },
-    keydown (ev) {
+    keydown (event)
+    {
+      if (this.$refs.cmenu.open)
+	return;
       // allow selection changes with UP/DOWN while menu is closed
       if (event.keyCode == Util.KeyCode.DOWN || event.keyCode == Util.KeyCode.UP)
 	{
-	  ev.preventDefault();
-	  ev.stopPropagation();
+	  event.preventDefault();
+	  event.stopPropagation();
 	  let n = this.ivalue;
 	  if (this.mchoices)
 	    {
@@ -203,11 +196,7 @@ export default {
 	    }
 	}
       else if (event.keyCode == Util.KeyCode.ENTER)
-	{
-	  ev.preventDefault();
-	  ev.stopPropagation();
-	  this.$refs.cmenu.popup (event, { origin: this.$refs.pophere });
-	}
+	this.popup_menu (event);
     },
   },
 };

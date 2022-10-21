@@ -27,45 +27,45 @@
     <!-- menubar left -->
     <b-button-bar class="-menubar" >
       <!-- File Menu -->
-      <push-button data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click="Util.dropdown ($refs.filemenu, $event)" >
+      <push-button data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click="$refs.filemenu.popup ($event)" @mousedown="$refs.filemenu.popup ($event)" >
 	<div class="-stack" >
-	  <b-icon bc="folder" />
-	  <b-icon bc="menumore" />
+	  <b-icon ic="bc-folder" />
+	  <b-icon ic="bc-menumore" />
 	</div>
-	<b-contextmenu ref="filemenu" @click="activation" startfocus keepmounted >
-	  <b-menuitem fa="file-o"	kbd="Ctrl+N"		uri="loadnew" >	New Project		</b-menuitem>
-	  <b-menuitem fa="file-audio-o" kbd="Ctrl+O"		uri="load"    >	Open Project…		</b-menuitem>
-	  <b-menuitem mi="save_alt"     kbd="Ctrl+S"		uri="save"    >	Save Project		</b-menuitem>
-	  <b-menuitem fa="save"		kbd="Shift+Ctrl+S"	uri="saveas"  >	Save As…		</b-menuitem>
+	<b-contextmenu ref="filemenu" id="g-filemenu" :activate.prop="activate" :isactive.prop="isactive" startfocus1 >
+	  <b-menuitem ic="fa-file-o"	kbd="Ctrl+N"		uri="loadnew" >	New Project		</b-menuitem>
+	  <b-menuitem ic="fa-file-audio-o" kbd="Ctrl+O"		uri="load"    >	Open Project…		</b-menuitem>
+	  <b-menuitem ic="mi-save_alt"     kbd="Ctrl+S"		uri="save"    >	Save Project		</b-menuitem>
+	  <b-menuitem ic="fa-save"	   kbd="Shift+Ctrl+S"	uri="saveas"  >	Save As…		</b-menuitem>
 	  <b-menuseparator style="margin: 7px"  />
-	  <b-menuitem fa="cog"         kbd="Ctrl+RawComma"	uri="prefs">	Preferences		</b-menuitem>
+	  <b-menuitem ic="fa-cog"          kbd="Ctrl+RawComma"	uri="prefs"   >	Preferences		</b-menuitem>
 	  <b-menuseparator style="margin: 7px"  />
-	  <b-menuitem mi="close" kbd="Shift+Ctrl+Q" uri="quit">	Quit			</b-menuitem>
+	  <b-menuitem ic="mi-close"        kbd="Shift+Ctrl+Q" uri="quit">	Quit			</b-menuitem>
 	</b-contextmenu>
       </push-button>
 
       <!-- Edit Menu -->
-      <push-button data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click="Util.dropdown ($refs.editmenu, $event)" >
+      <push-button data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click="$refs.editmenu.popup ($event)" @mousedown="$refs.editmenu.popup ($event)" >
 	<div class="-stack" >
-	  <b-icon mi="draw" />
-	  <b-icon bc="menumore" />
+	  <b-icon ic="mi-draw" />
+	  <b-icon ic="bc-menumore" />
 	</div>
-	<b-contextmenu ref="editmenu" @click="activation" :check="deactivation" startfocus keepmounted >
-	  <b-menuitem mi="undo" :disabled="!true"
+	<b-contextmenu ref="editmenu" id="g-editmenu" :activate.prop="activate" :isactive.prop="isactive" startfocus >
+	  <b-menuitem ic="mi-undo" :disabled="!true"
 		      kbd="Ctrl+Z" uri="undo">	Undo	</b-menuitem>
-	  <b-menuitem mi="redo" :disabled="!true"
+	  <b-menuitem ic="mi-redo" :disabled="!true"
 		      kbd="Shift+Ctrl+Z" uri="redo">	Redo	</b-menuitem>
 	</b-contextmenu>
       </push-button>
 
       <!-- View Menu -->
-      <push-button data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @click="Util.dropdown ($refs.viewmenu, $event)" >
+      <push-button data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @click="$refs.viewmenu.popup ($event)" @mousedown="$refs.viewmenu.popup ($event)" >
 	<div class="-stack" >
-	  <b-icon fa="eye" />
-	  <b-icon bc="menumore" />
+	  <b-icon ic="fa-eye" />
+	  <b-icon ic="bc-menumore" />
 	</div>
-	<b-contextmenu ref="viewmenu" @click="activation" startfocus keepmounted >
-	  <b-menuitem mi="fullscreen" :disabled="!document.fullscreenEnabled"
+	<b-contextmenu ref="viewmenu" id="g-viewmenu" :activate.prop="activate" :isactive.prop="isactive" startfocus >
+	  <b-menuitem ic="mi-fullscreen" :disabled="!document.fullscreenEnabled"
 		      kbd="F11" uri="fullscreen">	Toggle Fullscreen	</b-menuitem>
 	</b-contextmenu>
       </push-button>
@@ -81,17 +81,16 @@
     <!-- menubar right -->
     <b-button-bar class="-menubar" >
       <!-- Help Menu -->
-      <push-button data-tip="**CLICK** Help Menu" data-hotkey="Alt+H"
-		@click="Util.dropdown ($refs.helpmenu, $event)" >
+      <push-button data-tip="**CLICK** Help Menu" data-hotkey="Alt+H" @click="$refs.helpmenu.popup ($event)" @mousedown="$refs.helpmenu.popup ($event)" >
 	<div class="-stack" >
-	  <b-icon fa="life-ring" />
-	  <b-icon bc="menumore" />
+	  <b-icon ic="fa-life-ring" />
+	  <b-icon ic="bc-menumore" />
 	</div>
-	<b-contextmenu ref="helpmenu" @click="activation" startfocus >
-	  <b-menuitem mi="chrome_reader_mode"	uri="user-manual">	Anklang Manual…		</b-menuitem>
-	  <b-menuitem mi="chrome_reader_mode"	uri="dev-manual">	Development Reference…	</b-menuitem>
+	<b-contextmenu ref="helpmenu" id="g-helpmenu" :activate.prop="activate" :isactive.prop="isactive" startfocus >
+	  <b-menuitem ic="mi-chrome_reader_mode"	uri="user-manual">	Anklang Manual…		</b-menuitem>
+	  <b-menuitem ic="mi-chrome_reader_mode"	uri="dev-manual">	Development Reference…	</b-menuitem>
 	  <b-menuseparator style="margin: 7px"  />
-	  <b-menuitem fa="id-card-o"		uri="about">	About…			</b-menuitem>
+	  <b-menuitem ic="fa-id-card-o"		uri="about">	About…			</b-menuitem>
 	</b-contextmenu>
       </push-button>
     </b-button-bar>
@@ -109,12 +108,29 @@ export default {
     song: { type: Ase.Song, },
     project: { type: Ase.Project, },
   },
+  data() {
+    return { project_: null, project_cleanup1: null };
+  },
+  unmounted() {
+    this.project_cleanup1?.();
+    this.project_cleanup1 = null;
+  },
   mounted() {
     this.$refs.filemenu.map_kbd_hotkeys (true);
     this.$refs.editmenu.map_kbd_hotkeys (true);
     this.$refs.viewmenu.map_kbd_hotkeys (true);
+    this.$refs.helpmenu.map_kbd_hotkeys (true);
   },
   methods: {
+    dom_update() {
+      if (this.project != this.project_)
+	{
+	  this.project_cleanup1?.();
+	  this.project_ = this.project;
+	  this.project_cleanup1 = this.project_?.on ("notify:dirty", () => this.check_isactive());
+	}
+      this.check_isactive();
+    },
     window_close() {
       window.close();
       // when we're running in the browser, window.close() might not work, so...
@@ -122,7 +138,14 @@ export default {
 	window.location.href = 'about:blank';
       }, 0);
     },
-    async deactivation (uri) {
+    check_isactive()
+    {
+      this.$refs.filemenu.check_isactive();
+      this.$refs.editmenu.check_isactive();
+      this.$refs.viewmenu.check_isactive();
+      this.$refs.helpmenu.check_isactive();
+    },
+    async isactive (uri) {
       switch (uri) {
 	case 'undo':
 	  return this.project.can_undo();
@@ -132,7 +155,7 @@ export default {
 	  return true;
       }
     },
-    async activation (uri, event) {
+    async activate (uri, event) {
       let u, v;
       switch (uri) {
 	case 'quit_discard':

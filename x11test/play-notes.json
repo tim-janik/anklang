@@ -1,0 +1,170 @@
+{
+  "title": "Play Notes",
+  "steps": [
+    {
+      "type": "setViewport",
+      "width": 1454,
+      "height": 1052,
+      "deviceScaleFactor": 1,
+      "isMobile": false,
+      "hasTouch": false,
+      "isLandscape": false
+    },
+    {
+      "type": "navigate",
+      "url": "http://127.0.0.1:1777/",
+      "assertedEvents": [
+        {
+          "type": "navigation",
+          "url": "http://127.0.0.1:1777/",
+          "title": "Untitled – Anklang"
+        }
+      ]
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex.b-menubar > span:nth-child(1) > push-button:nth-child(1)"
+        ]
+      ],
+      "offsetY": 1,
+      "offsetX": 36
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "aria/New Project"
+        ],
+        [
+          "#g-filemenu > b-menuitem:nth-child(1)",
+          "button"
+        ]
+      ],
+      "offsetY": 1,
+      "offsetX": 1
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex.b-statusbar > span:nth-child(1) > b-icon:nth-child(1) > i"
+        ]
+      ],
+      "offsetY": 6,
+      "offsetX": 11
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex:nth-child(2) > v-flex > h-flex.b-shell-panel2 > h-flex > h-flex > b-more",
+          "v-flex"
+        ]
+      ],
+      "offsetY": 173.9375,
+      "offsetX": 11.96249771118164
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "aria/BlepSynth"
+        ],
+        [
+          "#g-devicepanelcmenu > div > ul > li:nth-child(4) > ul > li > span > div"
+        ]
+      ],
+      "offsetY": 8,
+      "offsetX": 38
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex.b-statusbar > span:nth-child(1) > b-icon:nth-child(2) > i"
+        ]
+      ],
+      "offsetY": 16,
+      "offsetX": 8.212499618530273
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex:nth-child(2) > v-flex > h-flex.b-shell-panel2 > c-grid > div.-buttons > h-flex"
+        ]
+      ],
+      "offsetY": 38.399993896484375,
+      "offsetX": 5
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "aria/Pen"
+        ],
+        [
+          "#g-pianotoolmenu > b-menuitem:nth-child(3)",
+          "button"
+        ]
+      ],
+      "offsetY": 1,
+      "offsetX": 1
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex:nth-child(2) > v-flex > h-flex.b-shell-panel2 > c-grid > div.-overflow-hidden.-notes-wrapper > canvas"
+        ]
+      ],
+      "offsetY": 329.3999938964844,
+      "offsetX": 20.79999542236328
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex:nth-child(2) > v-flex > h-flex.b-shell-panel2 > c-grid > div.-overflow-hidden.-notes-wrapper > canvas"
+        ]
+      ],
+      "offsetY": 280.3999938964844,
+      "offsetX": 68.79999542236328
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex.b-menubar > h-flex > span > push-button:nth-child(4)"
+        ]
+      ],
+      "offsetY": 25,
+      "offsetX": 33.54998779296875
+    },
+    {
+      "type": "click",
+      "target": "main",
+      "selectors": [
+        [
+          "#b-app > v-flex > h-flex.b-menubar > h-flex > span > push-button:nth-child(3)"
+        ]
+      ],
+      "offsetX": 36.9749755859375,
+      "offsetY": 29,
+      "duration": 1500
+    }
+  ]
+}

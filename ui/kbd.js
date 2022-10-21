@@ -110,11 +110,34 @@ export function is_navigation_key_code (keycode)
   return Util.in_array (keycode, navigation_keys);
 }
 
-/** List all elements that can take focus and are descendants of `element` or the document. */
+/// Get the currently focussed Element, also inspecting open shadowRoot hierarchies.
+export function activeElement()
+{
+  let e = document.activeElement;
+  while (e.shadowRoot)
+    e = e.shadowRoot.activeElement;
+  return e;
+}
+
+function collect_focusables (element, elist, dlist, is_focusable)
+{
+  const w = document.createTreeWalker (element, NodeFilter.SHOW_ELEMENT);
+  let e;
+  while ( (e = w.nextNode()) )
+    {
+      if (e instanceof HTMLDialogElement && e.matches('[open]:modal'))
+	dlist.push (e); // open modal dialog
+      if (is_focusable (e))
+	elist.push (e);
+      if (e.shadowRoot)
+	collect_focusables (e.shadowRoot, elist, dlist, is_focusable);
+    }
+}
+
+/// List elements that can take focus including shadow DOMs and are descendants of `element` or the document
 export function list_focusables (element)
 {
-  if (!element)
-    element = document.body;
+  element = element || document.body;
   const candidates = [
     'a[href]',
     'audio[controls]',
@@ -128,17 +151,37 @@ export function list_focusables (element)
   ];
   const excludes = ':not([disabled]):not([tabindex="-1"])';
   const candidate_selector = candidates.map (e => e + excludes).join (', ');
-  const nodes = element.querySelectorAll (candidate_selector); // selector for focusable elements
-  const array1 = [].slice.call (nodes);
-  // filter out non-tabable elements
-  const array = array1.filter (element => {
-    if (element.offsetWidth <= 0 &&     // browsers can focus 0x0 sized elements
-	element.offsetHeight <= 0 &&
-	Util.inside_display_none (element))  // but not within display:none
+  const is_focusable = e => {
+    // skip invisible elements
+    if (e.offsetWidth <= 0 && e.offsetHeight <= 0 &&            // 0x0 elements are still focusable
+	Util.inside_display_none (e))                           // but not within display:none
       return false;
-    return true;
-  });
-  return array;
+    // skip not focusable elements
+    if (!e.matches (candidate_selector))
+      return false;
+    return true;                                                // node should be focusable
+  };
+  const l = [], d = [];
+  // find focusable elements, recursively piercing into shadow DOMs
+  collect_focusables (element, l, d, is_focusable);
+  if (!d.length)
+    return l;   // no modals, list is done
+  // handle modal dialogs
+  const inner = d[d.length - 1]; // this better be the innermost modal dialog
+  if (Util.has_ancestor (element, inner))
+    return l;   // search was confined to this dialog anyway
+  // in case inner is part of a shadowRoot, find 'descendant' assigned elements
+  let droots = [ inner ];
+  for (const slot of inner.querySelectorAll ('slot'))
+    droots.push (...slot.assignedNodes ({ flatten:true }));
+  // constrain results to modal dialog
+  const is_droot_descendant = e => {
+    for (const r of droots)
+      if (Util.has_ancestor (e, r))
+	return true;
+    return false;
+  };
+  return l.filter (is_droot_descendant);
 }
 
 /** Install a FocusGuard to allow only a restricted set of elements to get focus. */
@@ -153,12 +196,14 @@ class FocusGuard {
     Object.assign (this, this.defaults());
     window.addEventListener ('focusin', this.focusin_handler.bind (this), true);
     window.addEventListener ('keydown', this.keydown_handler.bind (this));
-    if (document.activeElement && document.activeElement != document.body)
-      this.last_focus = document.activeElement;
+    const fe = activeElement();
+    if (fe && fe != document.body)
+      this.last_focus = fe;
     // Related: https://developer.mozilla.org/en-US/docs/Web/Accessibility/Keyboard-navigable_JavaScript_widgets
   }
   push_focus_root (element, escapecb) {
-    const current_focus = document.activeElement && document.activeElement != document.body ? document.activeElement : undefined;
+    const fe = activeElement();
+    const current_focus = fe && fe != document.body ? fe : undefined;
     this.focus_root_list.unshift ([ element, current_focus, escapecb ]);
     if (current_focus)
       this.focus_changed (current_focus, false);
@@ -181,17 +226,17 @@ class FocusGuard {
     return this.focus_changed (event.target);
   }
   focus_changed (target, refocus = true) {
-    if (this.focus_root_list.length == 0 || !document.activeElement ||
-	document.activeElement == document.body)
+    const fe = activeElement();
+    if (this.focus_root_list.length == 0 || !fe || fe == document.body)
       return false; // not interfering
     const focuslist = list_focusables (this.focus_root_list[0][0]);
     const idx = focuslist.indexOf (target);
     if (idx >= 0 || // element found in our detected focus order
-	Util.has_ancestor (document.activeElement, this.focus_root_list[0][0])) // posisbly customElement
-      this.last_focus = document.activeElement;
+	Util.has_ancestor (fe, this.focus_root_list[0][0])) // possibly customElement
+      this.last_focus = fe;
     else // invalid element gaining focus
-    {
-	document.activeElement.blur();
+      {
+	fe.blur();
 	if (refocus && focuslist.length)
 	  {
 	    const lastidx = focuslist.indexOf (this.last_focus);
@@ -205,7 +250,8 @@ class FocusGuard {
     return false; // not interfering
   }
   keydown_handler (event) {
-    if (document.activeElement == document.body) // no focus
+    const fe = activeElement();
+    if (!fe || fe == document.body) // no focus
       return keydown_move_focus (event);
     else
       return false; // not interfering
@@ -232,21 +278,10 @@ function element_midpoint (element) {
 
 /** Move focus on UP/DOWN/HOME/END `keydown` events */
 export function keydown_move_focus (event) {
-  const root = the_focus_guard?.focus_root_list?.[0]?.[0] || document.body;
-  let subfocus = null, left_right = false;
   // constrain focus movements within data-subfocus=1 container
-  for (let element = document.activeElement; element; element = element.parentElement) {
-    if (element === root)
-      break;
-    const d = element.getAttribute ('data-subfocus');
-    if (d)
-      {
-	subfocus = element;
-	if (d === "*")
-	  left_right = true;
-	break;
-      }
-  }
+  const fe = activeElement();
+  const subfocus = Util.closest (fe, '[data-subfocus]') || document.body;
+  const left_right = subfocus.getAttribute ('data-subfocus') === "*";
   let dir;
   if (event.keyCode == KeyCode.HOME)
     dir = 'HOME';
@@ -260,11 +295,13 @@ export function keydown_move_focus (event) {
     dir = 'LEFT';
   else if (left_right && event.keyCode == KeyCode.RIGHT)
     dir = 'RIGHT';
+  else
+    return false;
   return move_focus (dir, subfocus);
 }
 
 /** Move focus to prev or next focus widget */
-export function move_focus (dir = 0, subfocus = false) {
+export function move_focus (dir = 0, subfocus = null) {
   const home = dir == 'HOME', end = dir == 'END';
   const up = dir == -1, down = dir == +1;
   const left = dir == 'LEFT', right = dir == 'RIGHT';
@@ -273,23 +310,22 @@ export function move_focus (dir = 0, subfocus = false) {
   const last_focus = the_focus_guard.last_focus;
   if (!(home || up || down || end || left || right))
     return false; // nothing to move
-
-  if (the_focus_guard.focus_root_list.length == 0 || !updown_focus ||
-      // is_nav_input (document.activeElement) || (document.activeElement.tagName == "INPUT" && !is_button_input (document.activeElement)) ||
+  const root = subfocus || the_focus_guard.focus_root_list[0]?.[0] || document.body;
+  if (!root || !updown_focus ||
+      // is_nav_input (fe) || (fe.tagName == "INPUT" && !is_button_input (fe)) ||
       !(up || down || home || end || left || right))
     return false; // not interfering
-  const root = subfocus || the_focus_guard.focus_root_list[0][0];
   const focuslist = list_focusables (root);
   if (!focuslist)
     return false; // not interfering
-  let idx = focuslist.indexOf (document.activeElement);
+  const fe = activeElement();
+  let idx = focuslist.indexOf (fe);
   if (idx < 0 && (up || down))
     { // re-focus last element if possible
       idx = focuslist.indexOf (last_focus);
       if (idx >= 0)
 	{
 	  focuslist[idx].focus();
-	  event.preventDefault();
 	  return true;
 	}
     }
@@ -335,13 +371,12 @@ export function move_focus (dir = 0, subfocus = false) {
   if (next >= 0 && next < focuslist.length)
     {
       focuslist[next].focus();
-      event.preventDefault();
       return true;
     }
   return false;
 }
 
-/** Forget the last focus elemtn inside `element` */
+/** Forget the last focus element inside `element` */
 export function forget_focus (element) {
   if (!the_focus_guard.last_focus)
     return;
@@ -360,12 +395,13 @@ export function forget_focus (element) {
 const hotkey_list = [];
 
 function hotkey_handler (event) {
-  let kdebug = () => undefined; // kdebug = debug;
+  const kdebug = () => undefined; // kdebug = debug;
   const focus_root = the_focus_guard?.focus_root_list?.[0];
+  const fe = activeElement();
   // avoid composition events, https://developer.cdn.mozilla.net/en-US/docs/Web/API/Element/keydown_event
   if (event.isComposing || event.keyCode === 229)
     {
-      kdebug ("hotkey_handler: ignore-composition: " + event.code + ' (' + document.activeElement.tagName + ')');
+      kdebug ("hotkey_handler: ignore-composition: " + event.code + ' (' + fe.tagName + ')');
       return false;
     }
   // allow ESCAPE callback for focus_root
@@ -377,26 +413,37 @@ function hotkey_handler (event) {
       return true;
     }
   // give precedence to navigatable element with focus
-  if (is_nav_input (document.activeElement) ||
-      (document.activeElement.tagName == "INPUT" && !is_button_input (document.activeElement)))
+  if (is_nav_input (fe) ||
+      (fe.tagName == "INPUT" && !is_button_input (fe)))
     {
-      kdebug ("hotkey_handler: ignore-nav: " + event.code + ' (' + document.activeElement.tagName + ')');
+      kdebug ("hotkey_handler: ignore-nav: " + event.code + ' (' + fe.tagName + ')');
       return false;
     }
   // activate focus via Enter
-  if (Util.match_key_event (event, 'Enter') && document.activeElement != document.body)
+  if (Util.match_key_event (event, 'Enter') && fe != document.body)
     {
-      kdebug ("hotkey_handler: button-activation: " + ' (' + document.activeElement.tagName + ')');
+      kdebug ("hotkey_handler: button-activation: " + ' (' + fe.tagName + ')');
       // allow `onclick` activation via `Enter` on <button/> and <a href/> with event.isTrusted
-      const click_pending = document.activeElement.nodeName == 'BUTTON' || (document.activeElement.nodeName == 'A' &&
-									    document.activeElement.href);
-      Util.keyboard_click (document.activeElement, event, !click_pending);
+      const click_pending = fe.nodeName == 'BUTTON' || (fe.nodeName == 'A' && fe.href);
+      Util.keyboard_click (fe, event, !click_pending);
       if (!click_pending)
 	event.preventDefault();
       return true;
     }
   // restrict global hotkeys during modal dialogs
   const modal_element = !!(document._b_modal_shields?.[0]?.root || focus_root);
+  // activate global hotkeys
+  for (const keymap of global_keymaps)
+    for (const entry of keymap)
+      if (entry instanceof KeymapEntry)
+	{
+	  if (match_key_event (event, entry.key) &&
+	      (!modal_element || Util.has_ancestor (entry.element, modal_element)))
+	    {
+	      if (entry.handler && entry.handler (event) != false)
+		return true; // handled
+	    }
+	}
   // activate global hotkeys
   const array = hotkey_list;
   for (let i = 0; i < array.length; i++)
@@ -407,7 +454,7 @@ function hotkey_handler (event) {
 	  continue;
 	const callback = array[i][1];
 	event.preventDefault();
-	kdebug ("hotkey_handler: hotkey-callback: '" + array[i][0] + "'", callback.name);
+	kdebug ("hotkey_handler: hotkey-callback: '" + array[i][0] + "'", callback.name, "PREVENTED:", event.defaultPrevented);
 	callback.call (null, event);
 	return true;
       }
@@ -423,7 +470,7 @@ function hotkey_handler (event) {
 	Util.keyboard_click (el, event);
 	return true;
       }
-  kdebug ('hotkey_handler: unused-key: ' + event.code + ' ' + event.which + ' ' + event.charCode + ' (' + document.activeElement.tagName + ')');
+  kdebug ('hotkey_handler: unused-key: ' + event.code + ' ' + event.which + ' ' + event.charCode + ' (' + fe.tagName + ')');
   return false;
 }
 window.addEventListener ('keydown', hotkey_handler, { capture: true });
@@ -443,6 +490,30 @@ export function remove_hotkey (hotkey, callback) {
 	return true;
       }
   return false;
+}
+
+export class KeymapEntry {
+  constructor (key = '', handler = null, element = null)
+  {
+    this.key = key;
+    this.handler = handler;
+    this.element = element;
+  }
+}
+
+const global_keymaps = [];
+
+/// Add a global keymap.
+export function add_keymap (keymap)
+{
+  Util.array_remove (global_keymaps, keymap);
+  global_keymaps.push (keymap);
+}
+
+/// Remove a global keymap.
+export function remove_keymap (keymap)
+{
+  Util.array_remove (global_keymaps, keymap);
 }
 
 /** Check if `element` is button-like input */

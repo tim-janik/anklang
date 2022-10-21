@@ -30,6 +30,18 @@ export function now () {
   return window.Date.now();
 }
 
+/// Retrieve a timestamp that is unique per (animation) frame.
+export function frame_stamp()
+{
+  if (0 === last_frame_stamp_)
+    {
+      last_frame_stamp_ = 1 * new Date();
+      requestAnimationFrame (() => last_frame_stamp_ = 0);
+    }
+  return last_frame_stamp_;
+}
+let last_frame_stamp_ = 0;
+
 /** Yield a wrapper function for `callback` that throttles invocations.
  * Regardless of the frequency of calls to the returned wrapper, `callback`
  * will only be called once per `requestAnimationFrame()` cycle, or
@@ -236,7 +248,10 @@ export class PointerDrag {
   }
   keydown (event) {
     if (event.keyCode == 27) // Escape
-      return this.pointercancel (event);
+      {
+	event.stopPropagation();
+	return this.pointercancel (event);
+      }
   }
   pointercancel (event) {
     if (!this.el)
@@ -327,6 +342,45 @@ export function request_pointer_lock (element) {
       pending_pointer_lock.requestPointerLock();
     }
   return element.__unrequest_pointer_lock;
+}
+
+/// Ensure the root node of `element` contains a `csstext` (replaceable via `stylesheet_name`)
+export function adopt_style (element, csstext, stylesheet_name)
+{
+  if (Array.isArray (csstext))
+    csstext = csstext.join ('');
+  stylesheet_name = stylesheet_name || element.nodeName;
+  const root = element.getRootNode();
+  let ads;
+  for (const adoptedsheet of root.adoptedStyleSheets)
+    if (adoptedsheet[stylesheet_name] == stylesheet_name)
+      {
+	ads = adoptedsheet;
+	break;
+      }
+  if (ads)
+    ads.replaceSync (csstext);
+  else // !ads
+    {
+      ads = new CSSStyleSheet();
+      ads[stylesheet_name] = stylesheet_name;
+      ads.replaceSync (csstext);
+      root.adoptedStyleSheets = [...root.adoptedStyleSheets, ads];
+    }
+}
+
+/// Ensure the root node of `element` has a `url` stylesheet link.
+export function add_style_sheet (element, url)
+{
+  let root = element.getRootNode();
+  root = root.head || root;
+  const has_link = root.querySelector (`LINK[rel="stylesheet"][href="${url}"]`);
+  if (has_link)
+    return;
+  const link = document.createElement ("LINK");
+  link.setAttribute ("rel", "stylesheet");
+  link.setAttribute ("href", url);
+  root.append (link);
 }
 
 // == Vue Helpers ==
@@ -1149,7 +1203,7 @@ export function wheel2scrollbars (event, refs, ...scrollbars)
  * Capture focus movements inside `containee`, call `closer(event)` for
  * pointer clicks on `shield` or when `ESCAPE` is pressed.
  */
-export function setup_shield_element (shield, containee, closer)
+export function setup_shield_element (shield, containee, closer, capture_escape = true)
 {
   const modal_mouse_guard = event => {
     if (!event.cancelBubble && !containee.contains (event.target)) {
@@ -1165,7 +1219,7 @@ export function setup_shield_element (shield, containee, closer)
     }
   };
   shield.addEventListener ('mousedown', modal_mouse_guard);
-  Util.push_focus_root (containee, closer);
+  Util.push_focus_root (containee, capture_escape ? closer : null);
   let undo_shield = () => {
     if (!undo_shield) return;
     undo_shield = null;
@@ -1185,6 +1239,74 @@ export function swallow_event (type, timeout = 0) {
   };
   document.addEventListener (type, preventandstop, true);
   setTimeout (() => document.removeEventListener (type, preventandstop, true), timeout);
+}
+
+/// Prevent default or any propagation for a possible event.
+export function prevent_event (event_or_null)
+{
+  if (!event_or_null || !event_or_null.preventDefault)
+    return;
+  const event = event_or_null;
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+}
+
+/// Close dialog on backdrop clicks via hiding at mousedown
+function dialog_backdrop_mousedown (ev)
+{
+  const dialog = this;
+  if (!dialog.open || !ev.buttons)
+    return;
+  // detect click on backdrop area
+  if (ev.offsetX < 0 || ev.offsetX > ev.target.offsetWidth ||
+      ev.offsetY < 0 || ev.offsetY > ev.target.offsetHeight)
+    {
+      // just hide the dialog on mousedown
+      dialog.__dialog_backdrop_must_close = ev.button;
+      // avoid display:none, the dialog still needs to receive events
+      dialog.style.setProperty ('visibility', 'hidden', 'important');
+      // prevent bubbling back up to cause clicks
+      prevent_event (ev);
+    }
+}
+
+/// Close dialog on backdrop clicks via actual closing at mouseup
+function dialog_backdrop_mouseup (ev)
+{
+  const dialog = this;
+  // only handle "clicks" with previous backdrop mousedown
+  if (dialog.__dialog_backdrop_must_close !== ev.button)
+    return;
+  dialog.__dialog_backdrop_must_close = undefined;
+  // restore visibility to make the dialog reusable
+  dialog.style.removeProperty ('visibility');
+  // really close dialog due to backdrop click
+  dialog.close();
+  // prevent bubbling back up to cause clicks
+  prevent_event (ev);
+}
+
+/// Install handlers to close a dialog on backdrop clicks.
+export function dialog_backdrop_autoclose (dialog, install_or_remove)
+{
+  console.assert (dialog instanceof HTMLDialogElement);
+
+  // stop events in capture phase to reliably prevent followup clicks
+  const capture = { capture: true };
+
+  // closing on mousedown tends to re-open on the following mouseup
+  // so closing is deferred until mouseup
+  if (install_or_remove)
+    {
+      dialog.addEventListener ('mousedown', dialog_backdrop_mousedown, capture);
+      dialog.addEventListener ('mouseup', dialog_backdrop_mouseup, capture);
+    }
+  else
+    {
+      dialog.removeEventListener ('mousedown', dialog_backdrop_mousedown, capture);
+      dialog.removeEventListener ('mouseup', dialog_backdrop_mouseup, capture);
+    }
 }
 
 /** Determine position for a popup */
@@ -1598,17 +1720,6 @@ export function element_text (element, filter)
   return texts.join ('');
 }
 
-/// Popup `menu` using `event.currentTarget` as origin.
-export function dropdown (menu, event, options = {})
-{
-  if (!options.origin)
-    {
-      // use the event handler element for positioning
-      options.origin = event.currentTarget;
-    }
-  return menu?.popup (event, options);
-}
-
 /// Clone a menuitem icon via its `uri`.
 export function clone_menu_icon (menu, uri, title = '')
 {
@@ -1619,7 +1730,7 @@ export function clone_menu_icon (menu, uri, title = '')
   return {
     ic: menuitem.ic, fa: menuitem.fa, mi: menuitem.mi, bc: menuitem.bc, uc: menuitem.uc,
     'data-kbd': menuitem.kbd,
-    'data-tip': title ? title + ' ' + menuitem.get_text() : '',
+    'data-tip': title ? title + ' ' + menuitem.slot_label() : '',
   };
 }
 
@@ -1645,15 +1756,37 @@ export function keyboard_map_name (keyname) {
   return name || keyname;
 }
 
-/** Check if `ancestor` is an ancestor or `element` */
-export function has_ancestor (element, ancestor) {
-  while (element)
+/// Check if `ancestor` is an ancestor of `node`, maybe including shadowRoot elements.
+export function has_ancestor (node, ancestor, escape_shadowdom = true)
+{
+  while (node)
     {
-      if (element === ancestor)
+      if (node === ancestor)
 	return true;
-      element = element.parentNode;
+      if (escape_shadowdom && !node.parentNode &&
+	  node.nodeType == 11 && node.host) // shadowRoot fragment
+	node = node.host;
+      else
+	node = node.parentNode;
     }
   return false;
+}
+
+/// Find the closest element or parent matching `selector`, traversing shadow DOMs.
+export function closest (element, selector)
+{
+  while (element)
+    {
+      if (element.matches (selector))
+	return element;
+      if (!element.parentElement && element.parentNode &&
+	  element.parentNode.nodeType == 11 && // shadowRoot fragment
+	  element.parentNode.host)
+	element = element.parentNode.host;
+      else
+	element = element.parentElement;
+    }
+  return null;
 }
 
 /** Retrieve root ancestor of `element` */
@@ -1870,6 +2003,27 @@ export function zero_pad (string, n = 2) {
   while (string.length < n)
     string = '0' + string;
   return string;
+}
+
+/// Strip whitespace from start and end of string.
+export function lrstrip (str)
+{
+  return str.replaceAll (/^[\s\t\f]+|[\s\t\f]+$/g, '');
+}
+
+/// Gather text content from `node_or_array`.
+export function collect_text_content (node_or_array)
+{
+  const asarray = Array.isArray (node_or_array) ? node_or_array : node_or_array ? [ node_or_array ] : [];
+  let ctext = '';
+  for (const n of asarray)
+    {
+      const iter = document.createNodeIterator (n, NodeFilter.SHOW_TEXT);
+      let textnode;
+      while ( (textnode = iter.nextNode()) )
+	ctext += textnode.textContent;
+    }
+  return ctext;
 }
 
 export function fmt_date (datelike) {

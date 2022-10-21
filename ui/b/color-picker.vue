@@ -23,40 +23,41 @@
     }
   }
 
-  .b-color-picker-dropdown {
-    display: flex; flex-direction: column; padding: 10px;
-    position: fixed; right: auto; bottom: auto;
-    z-index: 9999;
-    box-shadow: 3px 3px 16px 0px rgba(0,0,0,0.9);
+  .b-color-picker-dropdown::part(dialog) {
     background-color: #4e4e4e; color: #f1f1f1;
-
-    $timing: 0.2s;
-    &.v-enter-active 		{ transition: opacity $timing ease-out, transform div($timing, 2) linear; }
-    &.v-leave-active		{ transition: opacity $timing ease-in,  transform $timing linear; }
-    &.v-enter	 		{ opacity: 0; transform: translateX(-5vw) translateY(-10vh) scale(1); }
-    &.v-leave-to	 	{ opacity: 0.5; transform: translateX(-50%) translateY(-50%) scale(0); }
-
-    .b-color-picker-entry {
-      margin: 1px;
-      width:  20px;
-      height: 20px;
-      border: 1px solid #777;
-    }
+    box-shadow: 3px 3px 16px 0px rgba(0,0,0,0.9);
+  }
+  .b-color-picker-box {
+    display: flex; flex-direction: column;
+    padding: 5px;
+  }
+  .b-color-picker-row {
+    display: flex; flex-direction: row;
+  }
+  .b-color-picker-entry {
+    margin: 1px;
+    width:  20px;
+    height: 20px;
+    border: 1px solid #777;
   }
 </style>
 
 <template>
   <div class="b-color-picker" style="position: relative; display: flex;" @mouseenter="mouseenter" @mouseleave="mouseleave" >
-    <div ref="button" class="-button" :style="style()" @click="Util.dropdown ($refs.contextmenu, $event)" >
+    <div ref="button" class="-button" :style="style()"
+	 @click="$refs.contextmenu.popup ($event)" @mousedown="$refs.contextmenu.popup ($event)" >
       <slot/>
       <b-contextmenu class="b-color-picker-dropdown" ref="contextmenu">
-	<div style="display: flex; flex-direction: row;"
-	     v-for="(row, row_index) in color_rows" :key="'row-' + row_index" >
-	  <div class="b-color-picker-entry"
-	       v-for="(item, index) in row"
-	       @click="select (item[0])"
-	       :data-bubble=" item[1] + '   ' + item[0] + '' "
-	       :key="row_index + '.' + index" :style="{ 'background-color': item[0] }" >
+	<div class="b-color-picker-box" >
+	  <div class="b-color-picker-row"
+	       v-for="(row, row_index) in color_rows" :key="'row-' + row_index" >
+	    <div class="b-color-picker-entry"
+		 v-for="(item, index) in row"
+		 @click="select (item[0], $event)"
+		 @mouseup="select (item[0], $event)"
+		 :data-bubble=" item[1] + '   ' + item[0] + '' "
+		 :key="row_index + '.' + index" :style="{ 'background-color': item[0] }" >
+	    </div>
 	  </div>
 	</div>
       </b-contextmenu>
@@ -121,9 +122,6 @@ export default {
     },
     close () {
       return this.$refs.contextmenu?.close?.();
-    },
-    popup (event, options) {
-      return this.$refs.contextmenu?.popup?. (event, options);
     },
   },
 };

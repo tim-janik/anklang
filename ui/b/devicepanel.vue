@@ -63,13 +63,13 @@
     <span class="b-devicepanel-before-scroller"> Device Panel </span>
     <h-flex class="b-devicepanel-scroller" >
       <template v-for="proc in devs" :key="proc.$id" >
-	<b-more @click.stop="menuopen" :sibling="proc"
+	<b-more @click.stop="menuopen" :sibling.prop="proc"
 		data-tip="**CLICK** Add New Elements" />
 	<b-deviceeditor :device="proc" center />
       </template>
-      <b-more @click.stop="menuopen" :sibling="null"
+      <b-more @click.stop="menuopen" :sibling.prop="null"
 	      data-tip="**CLICK** Add New Elements" />
-      <b-contextmenu ref="cmenu" @click="menuactivation" yscale="1.6" >
+      <b-contextmenu ref="devicepanelcmenu" id="g-devicepanelcmenu" :activate.prop="activate" :isactive.prop="isactive" >
 	<b-menutitle> Devices </b-menutitle>
 	<b-treeselector :tree="devicetypes" :defaultcollapse="false"> </b-treeselector>
       </b-contextmenu>
@@ -102,6 +102,7 @@ function observable_device_data () {
     devs:	  { default: [],	 notify: n => this.chain_.on ("sub", n), // sub:insert sub:remove
 		    getter: async c => Object.freeze (await this.chain_.list_devices()), },
     devicetypes:  { getter: async c => await list_device_types.call (this), },
+    menu_origin:  { default: null, },
   };
   const fetch_chain = async () => {
     if (this.last_track_ != this.track)
@@ -121,31 +122,33 @@ export default {
   },
   data() { return observable_device_data.call (this); },
   methods: {
-    async menuactivation (uri) {
-      const popup_options = this.$refs.cmenu.popup_options;
+    async activate (uri)
+    {
       // close popup to remove focus guards
-      this.$refs.cmenu.close();
       if (this.chain_ && !uri.startsWith ('DevicePanel:')) // assuming b-treeselector.devicetypes
 	{
+	  const sibling = this.menu_origin?.sibling;
 	  let newdev;
-	  if (popup_options.device_sibling)
-	    newdev = this.chain_.insert_device (uri, popup_options.device_sibling);
+	  if (sibling)
+	    newdev = this.chain_.insert_device (uri, sibling);
 	  else
 	    newdev = this.chain_.append_device (uri);
+	  this.menu_origin = null;
 	  newdev = await newdev;
 	  if (!newdev)
-	    debug ("insert_device failed, got null:", uri);
+	    console.error ("Ase.insert_device failed, got null:", uri);
 	}
     },
-    menucheck (uri, component) {
+    isactive (uri)
+    {
       if (!this.track)
 	return false;
       return false;
     },
-    menuopen (event) {
-      const sibling = event.target?.__vue__?.$attrs?.sibling;
-      this.$refs.cmenu.popup (event, { check: this.menucheck.bind (this),
-				       device_sibling: sibling });
+    menuopen (event)
+    {
+      this.menu_origin = event.target;
+      this.$refs.devicepanelcmenu.popup (event, { origin: 'none' });
     },
   },
 };

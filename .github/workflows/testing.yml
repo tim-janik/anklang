@@ -11,12 +11,12 @@ jobs:
   Test-Ubuntu:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2.4.2
-    - uses: actions/cache@v3.0.6
+    - uses: actions/checkout@v3.1.0
+    - uses: actions/cache@v3.0.10
       id: ghcache
       with:
         path: ~/ghcache/
-        key: ${{ runner.os }}-build-${{ hashFiles ('misc/Dockerfile*', 'misc/dbuild.sh') }}
+        key: ${{ runner.os }}-Ubuntu-${{ hashFiles ('misc/Dockerfile.focal', 'misc/dbuild.sh') }}
     - name: Load Docker Cache
       if: ${{ steps.ghcache.outputs.cache-hit == 'true' }}
       run: |
@@ -51,12 +51,12 @@ jobs:
   Test-Arch:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2.4.2
-    - uses: actions/cache@v3.0.6
+    - uses: actions/checkout@v3.1.0
+    - uses: actions/cache@v3.0.10
       id: ghcache
       with:
         path: ~/ghcache/
-        key: ${{ runner.os }}-build-${{ hashFiles ('misc/Dockerfile*', 'misc/dbuild.sh') }}
+        key: ${{ runner.os }}-Arch-${{ hashFiles ('misc/Dockerfile.arch', 'misc/dbuild.sh') }}
     - name: Load Docker Cache
       if: ${{ steps.ghcache.outputs.cache-hit == 'true' }}
       run: |
@@ -82,7 +82,7 @@ jobs:
     needs: [Test-Ubuntu, Test-Arch]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2.4.2
+    - uses: actions/checkout@v3.1.0
     - name: Check Jobs
       run: |
         echo '${{ needs.Test-Ubuntu.result }}' '${{ needs.Test-Arch.result }}'

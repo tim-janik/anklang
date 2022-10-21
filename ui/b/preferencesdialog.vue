@@ -13,11 +13,6 @@
   .b-preferencesdialog	{
     /* max-width: 70em; */
   }
-  body .b-fed-picklist-contextmenu { //* popup menus are reparented into a body shield  */
-    span.b-preferencesdialog-warning { color: $b-style-fg-warning; }
-    span.b-preferencesdialog-notice  { color: $b-style-fg-notice; }
-    //* for focus/active: b-fed-picklist-lines already applies $b-style-fg-filter */
-  }
 </style>
 
 <template>

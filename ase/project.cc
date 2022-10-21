@@ -443,10 +443,13 @@ UndoScope
 ProjectImpl::undo_scope (const String &scopename)
 {
   assert_warn (scopename != "");
-  const size_t old_size = undostack_.size();
+  const size_t old_undo = undostack_.size();
+  const size_t old_redo = redostack_.size();
   UndoScope undoscope = add_undo_scope (scopename);
-  if (undostack_.size() > old_size)
+  if (undostack_.size() > old_undo && redostack_.size())
     redostack_.clear();
+  if ((!old_undo ^ !undostack_.size()) || (!old_redo ^ !redostack_.size()))
+    emit_event ("notify", "dirty");
   return undoscope;
 }
 
@@ -455,11 +458,11 @@ ProjectImpl::add_undo_scope (const String &scopename)
 {
   UndoScope undoscope (shared_ptr_cast<ProjectImpl> (this)); // undo_scopes_open_ += 1
   assert_return (scopename != "", undoscope);
-  if (undo_scopes_open_ == 1 && (undo_groups_open_ == 0 || undo_group_name_.size())) {
-    undostack_.push_back ({ nullptr, undo_group_name_.empty() ? scopename : undo_group_name_ });
-    undo_group_name_ = "";
-    emit_event ("notify", "dirty");
-  }
+  if (undo_scopes_open_ == 1 && (undo_groups_open_ == 0 || undo_group_name_.size()))
+    {
+      undostack_.push_back ({ nullptr, undo_group_name_.empty() ? scopename : undo_group_name_ });
+      undo_group_name_ = "";
+    }
   return undoscope;
 }
 
@@ -467,6 +470,8 @@ void
 ProjectImpl::push_undo (const VoidF &func)
 {
   undostack_.push_back ({ func, "" });
+  if (undostack_.size() == 1)
+    emit_event ("notify", "dirty");
 }
 
 void
@@ -485,6 +490,7 @@ ProjectImpl::undo ()
   UDEBUG ("Undo: steps=%d scope: %s\n", funcs.size(), scopename);
   undostack_.pop_back(); // pop scope name
   // swap undo/redo stacks, run undo steps and scope redo
+  const bool redostack_was_empty = redostack_.empty();
   undostack_.swap (redostack_);
   {
     auto undoscope = add_undo_scope (scopename); // preserves redostack_
@@ -492,7 +498,7 @@ ProjectImpl::undo ()
       func();
   }
   undostack_.swap (redostack_);
-  if (undostack_.empty())
+  if (redostack_was_empty || undostack_.empty())
     emit_event ("notify", "dirty");
 }
 
@@ -518,11 +524,14 @@ ProjectImpl::redo ()
   UDEBUG ("Undo: steps=%d scope: %s\n", funcs.size(), scopename);
   redostack_.pop_back(); // pop scope name
   // run redo steps with undo scope
+  const bool undostack_was_empty = undostack_.empty();
   {
     auto undoscope = add_undo_scope (scopename); // preserves redostack_
     for (const auto &func : funcs)
       func();
   }
+  if (undostack_was_empty || redostack_.empty())
+    emit_event ("notify", "dirty");
 }
 
 bool
@@ -561,6 +570,7 @@ ProjectImpl::clear_undo ()
   assert_warn (undo_scopes_open_ == 0 && undo_groups_open_ == 0);
   undostack_.clear();
   redostack_.clear();
+  emit_event ("notify", "dirty");
 }
 
 size_t ProjectImpl::undo_mem_counter = 0;
