@@ -63,10 +63,12 @@
     <span class="b-statusbar-field" >
       <b-icon ic="fa-tasks" style="font-size:110%;" hflip :class="App.panel2 == 'd' && 'b-active'"
 	      @click="App.switch_panel2 ('d')" data-kbd="^"
+	      aria-label="Show Device Stack"
 	      data-tip="**CLICK** Show Device Stack" />
       <b-icon ic="mi-queue_music" style="font-size:140%" :class="App.panel2 == 'p' && 'b-active'"
-	      @click="App.switch_panel2 ('p')"
-	      data-kbd="^" data-tip="**CLICK** Show Piano Roll Editor" />
+	      @click="App.switch_panel2 ('p')" data-kbd="^"
+	      aria-label="Show Piano Roll Editor"
+	      data-tip="**CLICK** Show Piano Roll Editor" />
     </span>
     <span class="b-statusbar-spacer" />
     <span class="b-statusbar-text" ref="statusbar_text" />

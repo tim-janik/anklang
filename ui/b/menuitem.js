@@ -160,6 +160,7 @@ class BMenuItem extends LitElement {
 	    this.keymap_entry.key = shortcut;
 	    this.requestUpdate();               // Note, this triggers a re-render
 	  }
+	this.setAttribute ('aria-label', this.slot_label());
       }
     this.check_isactive();
   }
