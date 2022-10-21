@@ -1916,6 +1916,27 @@ export function zero_pad (string, n = 2) {
   return string;
 }
 
+/// Strip whitespace from start and end of string.
+export function lrstrip (str)
+{
+  return str.replaceAll (/^[\s\t\f]+|[\s\t\f]+$/g, '');
+}
+
+/// Gather text content from `node_or_array`.
+export function collect_text_content (node_or_array)
+{
+  const asarray = Array.isArray (node_or_array) ? node_or_array : node_or_array ? [ node_or_array ] : [];
+  let ctext = '';
+  for (const n of asarray)
+    {
+      const iter = document.createNodeIterator (n, NodeFilter.SHOW_TEXT);
+      let textnode;
+      while ( (textnode = iter.nextNode()) )
+	ctext += textnode.textContent;
+    }
+  return ctext;
+}
+
 export function fmt_date (datelike) {
   const a = new Date (datelike);
   const y = zero_pad (a.getFullYear(), 4);
