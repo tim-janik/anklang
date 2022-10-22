@@ -695,12 +695,147 @@ random_secret (uint64_t *secret_var)
 
 uint64_t cached_hash_secret = 0;
 
+
+Mwc256::Mwc256 (uint64_t x, uint64_t y, uint64_t z, uint64_t c)
+{
+  seed (x, y, z, c);
+}
+
+Mwc256::Mwc256()
+{
+  seed();
+}
+
+void
+Mwc256::seed()
+{
+  seed (random_int64(), random_int64(), random_int64(), random_int64());
+}
+
+void
+Mwc256::seed (uint64_t x, uint64_t y, uint64_t z, uint64_t c)
+{
+  // modify seed inputs to make multiplicative correlation unlikely, https://pcg.di.unimi.it/pcg.php#conclusions
+  state[0] = x ^ 0xAAAAAAAAAAAAAAAA;
+  state[1] = y * 0x25363F651FC21EB5;
+  state[2] = rotl (z, 37);
+  state[3] = c ^ 0x5555555555555555;
+  // ensure: 0 < c < MWC_A3 - 1
+  while (!state[3] || state[3] >= MWC_A3 - 1)
+    state[3] = state[3] / 2 | 1;
+  for (size_t i = 0; i < 37; i++)
+    next();
+  // Background on multiply-with-carry: https://groups.google.com/g/sci.stat.math/c/p7aLW3TsJys/m/QGb1kti6kN0J
+}
+
+static constexpr uint mwc256_MP_SIZE = 5;
+
+// Minimal, inefficient MPC library, only for MWC jumps.
+static int
+mpc_cmp (const uint64_t *const a, const uint64_t *const b)
+{
+  for (int i = mwc256_MP_SIZE; i-- != 0; ) {
+    if (a[i] < b[i]) return -1;
+    if (a[i] > b[i]) return 1;
+  }
+  return 0;
+}
+
+static void
+mpc_bsub (uint64_t *const a, const uint64_t *const b)
+{
+  // Assumes a >= b
+  int borrow = 0;
+  for (int i = 0; i < mwc256_MP_SIZE; i++)
+    {
+      __int128_t d = (__int128_t) a[i] - (__int128_t) b[i] - (__int128_t) borrow;
+      borrow = d < 0;
+      a[i] = ((__int128_t) UINT64_MAX + 1) + d;
+    }
+}
+
+static void
+mpc_rem (uint64_t *const a, const uint64_t *const m)
+{
+  for (;;)
+    {
+      if (mpc_cmp (a, m) < 0)
+        return;
+      mpc_bsub (a, m);
+    }
+}
+
+static void
+mpc_add (uint64_t *const a, const uint64_t *const b, const uint64_t *const m)
+{
+  int carry = 0;
+  for (int i = 0; i < mwc256_MP_SIZE; i++)
+    {
+      __uint128_t s = (__uint128_t) a[i] + (__uint128_t) b[i] + (__uint128_t) carry;
+      carry = s > UINT64_MAX;
+      a[i] = s;
+    }
+  if (m)
+    mpc_rem (a, m);
+}
+
+static void
+mpc_mul (uint64_t *const a, const uint64_t *const b, const uint64_t *const m)
+{
+  uint64_t r[mwc256_MP_SIZE] = {}, t[mwc256_MP_SIZE];
+  memcpy (t, a, sizeof t);
+
+  int d;
+  for (d = mwc256_MP_SIZE; d-- != 0 && b[d] == 0;)
+    ;
+  d++;
+  for (int i = 0; i < d * 64; i++)
+    {
+      if (b[i >> 6] & (UINT64_C (1) << (i & 63)))
+        mpc_add (r, t, m);
+      mpc_add (t, t, m);
+    }
+
+  memcpy (a, r, sizeof r);
+}
+
+static uint64_t mwc256_mod[mwc256_MP_SIZE] = { 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff, Mwc256::MWC_A3 - 1 };
+
+Mwc256
+Mwc256::clone128()
+{
+  static uint64_t jump128[mwc256_MP_SIZE] = { 0x49ffebb8aed35da, 0x8aeb90fc17d34f8c, 0x3e78ff9958b436d9, 0x377fc42deaad8b46 };
+  uint64_t newstate[mwc256_MP_SIZE] = { state[0], state[1], state[2], state[3] };
+  mpc_mul (newstate, jump128, mwc256_mod);
+  Mwc256 gen (0, 0, 0, 1);
+  gen.state[0] = newstate[0];
+  gen.state[1] = newstate[1];
+  gen.state[2] = newstate[2];
+  gen.state[3] = newstate[3];
+  return gen;
+}
+
+Mwc256
+Mwc256::clone192()
+{
+  static uint64_t jump192[mwc256_MP_SIZE] = { 0x7cbd7641a0db932f, 0x1eafd94d7d3ac65c, 0xf4fc97e3b80db1b, 0x630e9c671e238c8a };
+  uint64_t newstate[mwc256_MP_SIZE] = { state[0], state[1], state[2], state[3] };
+  mpc_mul (newstate, jump192, mwc256_mod);
+  Mwc256 gen (0, 0, 0, 1);
+  gen.state[0] = newstate[0];
+  gen.state[1] = newstate[1];
+  gen.state[2] = newstate[2];
+  gen.state[3] = newstate[3];
+  return gen;
+}
+
 } // Ase
 
 #include "testing.hh"
 
 namespace { // Anon
 using namespace Ase;
+
 
 TEST_INTEGRITY (randomhash_tests);
 static void
