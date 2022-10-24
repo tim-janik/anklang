@@ -156,6 +156,13 @@ struct MpmcStack
     node->intr_ptr_ = nullptr;          // `node->intr_ptr_ == nullptr` indicates unlisted node
     return node;
   }
+  // for debugging puposes, the pointer returned may be already invalid
+  Node*
+  peek()
+  {
+    const Head ohead = head_.load();
+    return ohead.next;
+  }
 private:
   struct Head {
     Node     *next = nullptr;
