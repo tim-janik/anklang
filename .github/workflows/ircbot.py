@@ -7,7 +7,7 @@ import sys, os, re, socket, select, time
 server = "irc.libera.chat"
 port = 6667
 channel = "#anklang2"
-nickname = "IrcBotPy"
+nickname = "YYBOT"
 ircsock = None
 timeout = 150
 wait_timeout = 15000
