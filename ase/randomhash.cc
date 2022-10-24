@@ -845,6 +845,31 @@ randomhash_tests()
   uint64 w, v;
   s = "HUHUhaha";
   w = fnv1a_consthash64 (s.c_str()); v = fnv1a_consthash64 (s.data(), s.size());        TASSERT (w == v);
+
+  FastRng a, b = a;
+  TASSERT (a.next() == b.next());
+  TASSERT (a.next() == b.next());
+  TASSERT (a.next() == b.next());
+  TASSERT (a.next() == b.next());
+  FastRng c = a.clone128();
+  FastRng d = a.clone192();
+  TASSERT (c.next() != d.next());
+  TASSERT (c.next() != d.next());
+  TASSERT (c.next() != d.next());
+  TASSERT (c.next() != d.next());
+  c = c.clone192();
+  d = d.clone128();
+  TASSERT (c.next() == d.next());
+  TASSERT (c.next() == d.next());
+  TASSERT (c.next() == d.next());
+  TASSERT (c.next() == d.next());
+  a = a.clone128().clone192();
+  TASSERT (a.next() != a.next());
+  TASSERT (a.next() != a.next());
+  TASSERT (a.next() != a.next());
+  TASSERT (a.next() != a.next());
+  TASSERT (a.next() == c.next()); d.next();
+  TASSERT (a.next() == d.next()); c.next();
 }
 
 } // Anon
