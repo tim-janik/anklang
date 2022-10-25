@@ -13,8 +13,8 @@ jobs:
   Test-Ubuntu:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3.1.0
-    - uses: actions/cache@v3.0.10
+    - uses: actions/checkout@v3
+    - uses: actions/cache@v3
       id: ghcache
       with:
         path: ~/ghcache/
@@ -60,8 +60,8 @@ jobs:
   Test-Arch:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3.1.0
-    - uses: actions/cache@v3.0.10
+    - uses: actions/checkout@v3
+    - uses: actions/cache@v3
       id: ghcache
       with:
         path: ~/ghcache/
@@ -91,7 +91,7 @@ jobs:
     needs: [Test-Ubuntu, Test-Arch]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3.1.0
+    - uses: actions/checkout@v3
     - name: Check Jobs
       run: |
         echo '${{ needs.Test-Ubuntu.result }}' '${{ needs.Test-Arch.result }}'
