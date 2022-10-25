@@ -28,7 +28,7 @@ jobs:
         misc/version.sh
     - name: Prepare Ubuntu
       run: |
-        misc/dbuild.sh -f focal -T misc/version.sh
+        misc/dbuild.sh -f focal misc/version.sh
     - name: Build Ubuntu
       run: |
         misc/dbuild.sh -f focal make -j`nproc` all pdf
@@ -72,7 +72,7 @@ jobs:
         test ! -r ~/ghcache/anklang-arch.tar || docker load -i ~/ghcache/anklang-arch.tar
     - name: Prepare Arch
       run: |
-        misc/dbuild.sh -f arch -T misc/version.sh
+        misc/dbuild.sh -f arch misc/version.sh
     - name: Build Arch
       run: |
         misc/dbuild.sh -f arch make SKIP_LATEX=true -j`nproc`
