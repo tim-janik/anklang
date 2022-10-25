@@ -590,8 +590,13 @@ struct FrobnicatorImpl : public FrobnicatorBase {
   std::vector<int> nums_;
   Serializable *sibling_ = nullptr;
   explicit FrobnicatorImpl (const String &t = "") : kind_ (t) {}
+  ~FrobnicatorImpl()
+  {
+    for (auto *c : children_)
+      delete c;
+  }
   Serializable&
-  create_track  (const String &kind)
+  create_lane  (const String &kind)
   {
     Serializable *c;
     if (kind == "Special")
@@ -645,7 +650,7 @@ protected:
     if (xs.in_load())                           // children_ in_load
       for (auto &xc : xs["tracks"].to_nodes())
         { // parses child constructor arg on the fly
-          Serializable &child = create_track (xc["kind"].as_string());
+          Serializable &child = create_lane (xc["kind"].as_string());
           xc & child;
         }
     // the `sibling_` is assigned at the *end* of the in_load serialization phase
@@ -669,14 +674,14 @@ test_serializable_hierarchy()
     prjct.flags_ = 1717;
     prjct.populate (true);
     TASSERT (prjct.children_.size() == 0);
-    auto &nidi = prjct.create_track ("Nidi");
+    auto &nidi = prjct.create_lane ("Nidi");
     dynamic_cast<FrobnicatorBase*> (&nidi)->flags_ = 0x02020202;
-    prjct.sibling_ = &prjct.create_track ("Odio");
+    prjct.sibling_ = &prjct.create_lane ("Odio");
     FrobnicatorImpl *fimpl = dynamic_cast<FrobnicatorImpl*> (prjct.sibling_);
     fimpl->populate (false);
     fimpl->yesno_ = true;
     TASSERT (prjct.children_.size() == 2);
-    FrobnicatorSpecial *special = dynamic_cast<FrobnicatorSpecial*> (&prjct.create_track ("Special"));
+    FrobnicatorSpecial *special = dynamic_cast<FrobnicatorSpecial*> (&prjct.create_lane ("Special"));
     special->flags_ = 0xeaeaeaea;
     special->factor_ = 2.5;
     special->state_ = -17;

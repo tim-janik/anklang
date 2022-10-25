@@ -10,8 +10,8 @@ RUN ln -sf bash /bin/sh && ls -al /bin/sh
 # Save +615MB by skipping TeX
 ARG NOTEX
 
-# Upgrade packages, install dependencies, clean up to shrink docker image
-# Add libXss.so, libgtk-3-0 for electron
+# Upgrade packages, install dependencies, clean up to shrink Docker image
+# Add libXss.so, libgtk-3-0 for Electron
 RUN apt-get update \
   && apt-get -y upgrade \
   && apt-get install -y \
@@ -31,7 +31,7 @@ RUN apt-get update \
   && apt-get install -y nodejs \
   && apt-get clean
 
-# Build stripped down fluidsynth version without drivers (not needed atm)
+# Build stripped down Fluidsynth version without drivers (not needed atm)
 RUN exit 0 && \
   mkdir -p /tmp/fluid/build && cd /tmp/fluid/ && \
   curl -sfSOL https://github.com/FluidSynth/fluidsynth/archive/v2.2.1.tar.gz && \
@@ -52,11 +52,11 @@ RUN exit 0 && \
 	-Denable-lash=0 && \
   make && make install
 
-# Provide out-of-tree build directory (possible docker volume mount point)
+# Provide out-of-tree build directory (possible Docker volume mount point)
 RUN mkdir /ootbuild/
 ENV OOTBUILD /ootbuild/
 
-# Become non-root, USERGROUP determines ids for docker volumes
+# Become non-root, USERGROUP determines ids for Docker volumes
 ARG USERGROUP
 RUN groupadd --gid ${USERGROUP#*:} builder \
   && useradd --uid ${USERGROUP%:*} --gid ${USERGROUP#*:} --create-home --shell /bin/bash builder \

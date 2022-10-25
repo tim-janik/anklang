@@ -114,7 +114,7 @@ $>/ui/.build1-stamp: $>/ui/.aseignore
 $>/ui/aseapi.js: jsonipc/jsonipc.js ase/api.hh $(lib/AnklangSynthEngine) ui/Makefile.mk	| $>/ui/
 	$(QGEN)
 	$Q $(CP) $< $@.tmp
-	$Q $(lib/AnklangSynthEngine) --js-api		>> $@.tmp
+	$Q ASAN_OPTIONS=detect_leaks=0 $(lib/AnklangSynthEngine) --js-api			>> $@.tmp
 	$Q echo 'export let server = Jsonipc.setup_promise_type (Server, s => server = s);'	>> $@.tmp
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/aseapi.js
