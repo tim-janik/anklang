@@ -40,9 +40,7 @@ OOTBUILD_VERSION=`cut '-d ' -f1 $TARDIR/build-version`
   $MAKE -j`nproc` \
 	MODE=production \
 	INSN=sse \
-	out/doc/anklang-manual.pdf \
-	out/doc/anklang-internals.pdf \
-	all
+	all pdf
   $MAKE check
 )
 cp $OOTBUILD/out/doc/anklang-manual.pdf $OOTBUILD/out/anklang-manual-$OOTBUILD_VERSION.pdf
