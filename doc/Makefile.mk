@@ -28,11 +28,11 @@ doc/install.files ::= $(strip		\
 	$>/doc/README.html		\
 	$>/doc/copyright		\
 )
+doc/pdf.files := $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
 
-# == PDF with Latex dependency ==
-ifneq ($(SKIP_LATEX),true)
-doc/install.files += $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
-endif
+# == PDF rule (Latex dependency) ==
+pdf: $(doc/pdf.files)
+.PHONY: pdf
 
 # == Copy files ==
 $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/doc/
@@ -171,10 +171,12 @@ viewdocs: $>/doc/anklang-manual.html $>/doc/anklang-internals.html $>/doc/anklan
 # == installation ==
 pkgdocdir ::= $(pkgdir)/doc
 doc/install: $(doc/install.files) install--doc/style/install.files
+	@ $(eval doc/install.pdf.files := $(wildcard $(doc/pdf.files)))
 	@$(QECHO) INSTALL '$(DESTDIR)$(pkgdocdir)/.'
 	$Q rm -f '$(DESTDIR)$(pkgdocdir)'/* 2>/dev/null ; true
 	$Q $(INSTALL)      -d $(DESTDIR)$(pkgdocdir)/ $(DESTDIR)$(mandir)/man1/
 	$Q $(CP) $(doc/install.files) $(DESTDIR)$(pkgdocdir)/
+	$Q test -z "$(doc/install.pdf.files)" || $(CP) $(doc/install.pdf.files) $(DESTDIR)$(pkgdocdir)/
 	$Q $(INSTALL) -d $(DESTDIR)$(mandir)/man1/ && ln -fs -r $(DESTDIR)$(pkgdir)/doc/anklang.1 $(DESTDIR)$(mandir)/man1/anklang.1
 	$Q $(INSTALL) -d '$(DESTDIR)$(docdir)/'
 	$Q rm -f '$(DESTDIR)$(docdir)/anklang'

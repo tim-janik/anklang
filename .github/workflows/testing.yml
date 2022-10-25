@@ -1,10 +1,12 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-# https://rhysd.github.io/actionlint/
+# Linting: xclip -sel c <.github/workflows/testing.yml # https://rhysd.github.io/actionlint/
 
 on:
   push:
-    branches: ['trunk', 'wip/**']
+    branches: ['trunk', 'next', 'wip/**']
+  pull_request:
+    branches: ['trunk', 'next']
 
 jobs:
 
@@ -29,7 +31,7 @@ jobs:
         misc/dbuild.sh -f focal -T misc/version.sh
     - name: Build Ubuntu
       run: |
-        misc/dbuild.sh -f focal make SKIP_LATEX=true -j`nproc`
+        misc/dbuild.sh -f focal make -j`nproc` all pdf
     - name: Test Ubuntu
       run: |
         misc/dbuild.sh -f focal make check
@@ -39,6 +41,13 @@ jobs:
         mkdir -p ~/ghcache/
         docker save anklang-focal -o ~/ghcache/anklang-focal.tar
         ls -al ~/ghcache/
+    - uses: actions/upload-artifact@v3
+      with:
+        name: docs
+        path: |
+          out/doc/copyright
+          out/doc/*.pdf
+          out/doc/[NR]*.html
     - name: End-to-end X11 Tests
       run: |
         misc/dbuild.sh -f focal make x11test-v
