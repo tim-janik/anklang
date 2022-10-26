@@ -8,10 +8,9 @@
 namespace {
 using namespace Ase;
 
-static const size_t n_threads = std::thread::hardware_concurrency();
+static const size_t N_THREADS = std::thread::hardware_concurrency();
 
 TEST_INTEGRITY (atomic_bits_test);
-
 static void
 atomic_bits_test ()
 {
@@ -56,6 +55,73 @@ atomic_bits_test ()
     TASSERT (!a.any (0));
     TASSERT (a.all (1));
   }
+}
+
+// == MpmcStack<> test ==
+static const size_t COUNTING_THREADS = N_THREADS + 1;
+static constexpr const size_t NUMBER_NODES_PER_THREAD = 9999;
+struct NumberNode {
+  size_t number;
+  Atomic<NumberNode*> intr_ptr_ = nullptr; // atomic intrusive pointer
+};
+using ConcurrentNumberStack = MpmcStack<NumberNode>;
+static ConcurrentNumberStack number_stack;
+static NumberNode *allocated_number_nodes = nullptr;
+static Atomic<unsigned long long> number_totals = 0;
+static void
+run_count_number_nodes (NumberNode *nodes, ssize_t count)
+{
+  const pid_t tid = gettid();
+  unsigned long long totals = 0, l = 0;
+  ssize_t i = 0, r = count / 50, j = -r;
+  while (i < count || j < count)
+    {
+      for (size_t t = 0; t < 77 && i < count; t++)
+        {
+          NumberNode *node = nodes + i;
+          node->number = ++i;
+          number_stack.push (node);
+        }
+      for (size_t t = 0; t < 37 && j < count; t++)
+        {
+          NumberNode *node = number_stack.pop();
+          if (node)
+            {
+              totals += node->number;
+              j++;
+              if (r > 0 && (node->number & 0x1))
+                {
+                  r--;
+                  node->number = 0;
+                  number_stack.push (node); // ABA mixing
+                }
+            }
+        }
+      if (totals > l * 10)
+        {
+          l = totals;
+          if (Test::verbose())
+            printout ("thread %u: %llu\n", tid, totals);
+        }
+    }
+  number_totals += totals;
+}
+
+TEST_INTEGRITY (mpmc_stack_test);
+static void
+mpmc_stack_test()
+{
+  allocated_number_nodes = (NumberNode*) calloc (COUNTING_THREADS * NUMBER_NODES_PER_THREAD, sizeof (NumberNode));
+  assert (allocated_number_nodes);
+
+  std::thread threads[COUNTING_THREADS];
+  for (size_t i = 0; i < COUNTING_THREADS; i++)
+    threads[i] = std::thread (run_count_number_nodes, allocated_number_nodes + i * NUMBER_NODES_PER_THREAD, NUMBER_NODES_PER_THREAD);
+  for (size_t i = 0; i < COUNTING_THREADS; i++)
+    threads[i].join();
+  free (allocated_number_nodes);
+  allocated_number_nodes = nullptr;
+  assert (number_totals == COUNTING_THREADS * (NUMBER_NODES_PER_THREAD * (NUMBER_NODES_PER_THREAD + 1ull)) / 2);
 }
 
 } // Anon

@@ -7,6 +7,7 @@
 #include "driver.hh"
 #include "engine.hh"
 #include "project.hh"
+#include "loft.hh"
 #include "compress.hh"
 #include "internal.hh"
 #include "testing.hh"
@@ -18,6 +19,8 @@
 #include <malloc.h>
 
 #undef B0 // undo pollution from termios.h
+
+#define MDEBUG(...)             Ase::debug ("memory", __VA_ARGS__)
 
 namespace { // Anon
 static void print_class_tree ();
@@ -278,6 +281,56 @@ init_sigpipe()
     Ase::warning ("Ase: pthread_sigmask for SIGPIPE failed: %s\n", strerror (errno));
 }
 
+static std::atomic<bool> loft_needs_preallocation_mt = false;
+
+// handle watermark underrun notifications
+static void
+notify_loft_lowmem ()
+{
+  if (!loft_needs_preallocation_mt)
+    {
+      loft_needs_preallocation_mt = true;
+      Ase::main_loop_wakeup();
+    }
+}
+
+static size_t last_loft_preallocation = 0;
+
+static void
+preallocate_loft (size_t preallocation)
+{
+  using namespace Ase;
+  last_loft_preallocation = preallocation;
+  LoftConfig loftcfg = {
+    .preallocate = last_loft_preallocation,
+    .watermark = last_loft_preallocation / 2,
+    .flags = Loft::PREFAULT_PAGES,
+  };
+  loft_set_config (loftcfg);
+  loft_set_notifier (notify_loft_lowmem);
+  loft_grow_preallocate();
+}
+
+static bool
+dispatch_loft_lowmem (const Ase::LoopState &lstate)
+{
+  using namespace Ase;
+  const bool keep_alive = lstate.phase == LoopState::DISPATCH;
+  // generally, dispatch logic may only run in LoopState::DISPATCH, but this handler
+  // makes a rare exception, because we try to get ahead of concurrently runnint RT-threads...
+  return_unless (loft_needs_preallocation_mt, keep_alive);
+  loft_needs_preallocation_mt = false;
+  last_loft_preallocation *= 2;
+  const size_t newalloc = loft_grow_preallocate (last_loft_preallocation);
+  LoftConfig config;
+  loft_get_config (config);
+  config.watermark = last_loft_preallocation / 2;
+  loft_set_config (config);
+  if (newalloc > 0)
+    MDEBUG ("Loft preallocation in main thread: %f MB", newalloc / (1024. * 1024));
+  return keep_alive;
+}
+
 static void
 prefault_pages (size_t stacksize, size_t heapsize)
 {
@@ -303,8 +356,10 @@ main (int argc, char *argv[])
   mallopt (M_MMAP_MAX, 0);
   // avoid releasing sbrk memory back to the system (reduce page faults)
   mallopt (M_TRIM_THRESHOLD, -1);
-  // reduce page faults for heap and stack
-  prefault_pages ((1024 + 768) * 1024, 128 * 1024 * 1024);
+  // reserve large sbrk area and reduce page faults for heap and stack
+  prefault_pages ((1024 + 768) * 1024, 64 * 1024 * 1024);
+  // preallocate memory for lock-free allocator
+  preallocate_loft (64 * 1024 * 1024);
 
   // setup thread and handle args and config
   TaskRegistry::setup_ase ("AnklangMainProc");
@@ -331,6 +386,8 @@ main (int argc, char *argv[])
 
   // prepare main event loop
   main_loop = MainLoop::create();
+  // handle loft preallocation needs
+  main_loop->exec_dispatcher (dispatch_loft_lowmem, EventLoop::PRIORITY_CEILING);
 
   // load drivers and dump device list
   load_registered_drivers();

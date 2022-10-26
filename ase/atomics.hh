@@ -4,13 +4,19 @@
 
 #include <ase/platform.hh>
 #include <atomic>
+#include <boost/atomic/atomic.hpp>      // Needed for gcc to emit CMPXCHG16B
 
 namespace Ase {
 
+// == Atomic ==
+/// Substitute for std::atomic<> with fixes for GCC.
+template<class T> using Atomic = boost::atomic<T>;
+
 // == AtomicIntrusiveStack ==
 
-/// Wait-free stack with atomic `push()` and `pop_all` operations.
-/// Relies on unqualified calls to `atomic<T*>& atomic_next_ptrref(T*)`.
+/** Lock-free stack with atomic `push()` and `pop_all` operations.
+ * Relies on unqualified calls to `atomic<T*>& atomic_next_ptrref(T*)`.
+ */
 template<class T>
 class AtomicIntrusiveStack {
   using AtomicTPtr = std::atomic<T*>;
@@ -73,6 +79,97 @@ public:
       }
     return prev;
   }
+};
+
+// == MpmcStack ==
+/** Multi-producer, multi-consumer stack for non-reclaimable memory nodes.
+ * Multiple producers can push and multiple consumers can pop nodes concurrently,
+ * but no thread may still be in calls to push/pop during destruction and the
+ * stack has to be empty for destruction.
+ * Nodes need to provide a nullptr-initialized intrusive `.intr_ptr_` pointer member
+ * to be pushed and must stay readable during the stack lifetime.
+ * The push() and pop() methods are lock free but not wait free and synchronize
+ * through the same memory cell, so for lots of clients they can easily become
+ * the single bottleneck.
+ */
+template<typename Node> /*alignas (64)*/
+struct MpmcStack
+{
+  MpmcStack()
+  {
+    Head thead = head_;
+    thead.next = (Node*) TAIL_;         // valid stack: `head.next != nullptr`
+    head_ = thead;
+    static_assert (Atomic<Head>::is_always_lock_free);
+    static_assert (decltype (std::declval<Node>().intr_ptr_)::is_always_lock_free);
+  }
+  ~MpmcStack()
+  {
+    assert (true == empty());           // may only destroy empty stacks
+    Head nhead, ohead = head_.load();
+    do // Note, `compare_exchange_weak == 0` does `ohead := head_`
+      {
+        nhead.aba_counter = ohead.aba_counter;
+        nhead.next = nullptr;
+      }
+    while (!head_.compare_exchange_weak (ohead, nhead));
+    ohead = head_.load();
+    assert (ohead.next == nullptr);     // valid stack: `head.next != nullptr`
+  }
+  bool
+  empty() const
+  {
+    const Head ohead = head_.load();
+    return ohead.next == (Node*) TAIL_;
+  }
+  bool
+  push (Node *node)
+  {
+    assert (node && !node->intr_ptr_);  // `node->intr_ptr_ != nullptr` indicates enlisted node
+    Head nhead, ohead = head_.load();
+    assert (ohead.next);                // valid stack: `head.next != nullptr`
+    do // Note, `compare_exchange_weak == 0` does `ohead := head_`
+      {
+        node->intr_ptr_ = ohead.next;   // access OK, push() assumes node ownership
+        nhead.aba_counter = ohead.aba_counter;  // no inc, ABA needs pop() which increments
+        nhead.next = node;
+      }
+    while (!head_.compare_exchange_weak (ohead, nhead));
+    const bool was_empty = ohead.next == (Node*) TAIL_;
+    return was_empty;
+  }
+  Node*
+  pop()
+  {
+    Node *node;
+    Head nhead, ohead = head_.load();
+    assert (ohead.next);                // valid stack: `head.next != nullptr`
+    do // Note, `compare_exchange_weak == 0` does `ohead := head_`
+      {
+        node = ohead.next;
+        if (node == (Node*) TAIL_)
+          return nullptr;               // empty stack
+        nhead.next = node->intr_ptr_;   // maybe access-after-pop, needs non-reclaimable memory
+        nhead.aba_counter = ohead.aba_counter + 1;  // tag pops to make ABA highly unlikely
+      }
+    while (!head_.compare_exchange_weak (ohead, nhead));
+    node->intr_ptr_ = nullptr;          // `node->intr_ptr_ == nullptr` indicates unlisted node
+    return node;
+  }
+  // for debugging puposes, the pointer returned may be already invalid
+  Node*
+  peek()
+  {
+    const Head ohead = head_.load();
+    return ohead.next;
+  }
+private:
+  struct Head {
+    Node     *next = nullptr;
+    uintptr_t aba_counter = 0;
+  };
+  Atomic<Head> head_;
+  static constexpr uintptr_t TAIL_ = ~uintptr_t (0);
 };
 
 // == AtomicBits ==
