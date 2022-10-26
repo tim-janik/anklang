@@ -32,6 +32,35 @@ double          random_float    ();
 double          random_frange   (double begin, double end);
 void            random_secret   (uint64_t *secret_var);
 
+// == FastRNG ==
+/// Marsaglia multiply-with-carry generator, period ca 2^255.
+class Mwc256 {
+  // Based on https://prng.di.unimi.it/MWC256.c
+  uint64_t state alignas (64) [4];
+public:
+  static constexpr uint64_t MWC_A3 = 0xff377e26f82da74a;
+  Mwc256   clone192  ();
+  Mwc256   clone128  ();
+  uint64_t next      ();
+  void     seed      ();
+  void     seed      (uint64_t x, uint64_t y = 0, uint64_t z = 0, uint64_t c = 1);
+  explicit Mwc256    (uint64_t x, uint64_t y = 0, uint64_t z = 0, uint64_t c = 1);
+  explicit Mwc256    ();
+  /*copy*/ Mwc256    (const Mwc256&) = default;
+  Mwc256&  operator= (const Mwc256&) = default;
+};
+
+inline uint64_t
+Mwc256::next()
+{
+  const __uint128_t t = MWC_A3 * __uint128_t (state[0]) + state[3];
+  state[0] = state[1];
+  state[1] = state[2];
+  state[3] = t >> 64;
+  return state[2] = t;
+}
+
+using FastRng = Mwc256;
 
 // == Hashing ==
 /** SHA3_224 - 224 Bit digest generation.

@@ -119,6 +119,7 @@ print_usage (bool help)
   printout ("  --jsipc          Print Javascript IPC messages\n");
   printout ("  --list-drivers   Print PCM and MIDI drivers\n");
   printout ("  --preload <prj>  Preload project as current\n");
+  printout ("  --rand64         Produce 64bit random numbers on stdout\n");
   printout ("  --version        Print program version\n");
 }
 
@@ -148,6 +149,18 @@ parse_args (int *argcp, char **argv)
         config.fatal_warnings = true;
       else if (strcmp ("--disable-randomization", argv[i]) == 0)
         config.allow_randomization = false;
+      else if (strcmp ("--rand64", argv[i]) == 0)
+        {
+          FastRng prng;
+          constexpr int N = 8192;
+          uint64_t buffer[N];
+          while (1)
+            {
+              for (size_t i = 0; i < N; i++)
+                buffer[i] = prng.next();
+              fwrite (buffer, sizeof (buffer[0]), N, stdout);
+            }
+        }
       else if (strcmp ("--check", argv[i]) == 0)
         {
           config.mode = MainConfig::CHECK_INTEGRITY_TESTS;

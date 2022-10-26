@@ -69,7 +69,7 @@ sortnet_tests()
   check_permutations<7,int>();
   check_permutations<8,int>();
   check_permutations<9,int>();
-  check_permutations<10,int>();
+  check_randomized<10,int> (RUNS);
   check_randomized<11,int> (RUNS);
   check_randomized<12,int> (RUNS);
   check_randomized<13,int> (RUNS);

@@ -268,7 +268,7 @@ template<AllocatorType AT> static void
 ase_aligned_allocator_benchloop (uint32 seed)
 {
   constexpr const size_t ARUNS = 3;
-  constexpr const int64 MAX_CHUNK_SIZE = 8192;
+  constexpr const int64 MAX_CHUNK_SIZE = 3 * 1024;
   constexpr const int64 N_ALLOCS = 2048;
   constexpr const int64 RESIDENT = N_ALLOCS / 3;
   static_assert (MAX_CHUNK_SIZE * N_ALLOCS <= TEST_AREA_SIZE);
