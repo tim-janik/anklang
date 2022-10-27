@@ -21,6 +21,7 @@ public:
   String       get_version          () override;
   String       get_build_id         () override;
   String       get_opus_version     () override;
+  String       get_flac_version     () override;
   String       get_clap_version     () override;
   String       error_blurb          (Error error) const override;
   String       musical_tuning_label (MusicalTuning musicaltuning) const override;

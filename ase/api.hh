@@ -384,6 +384,7 @@ public:
   virtual String get_version        () = 0;     ///< Retrieve ASE version.
   virtual String get_build_id       () = 0;     ///< Retrieve ASE build id.
   virtual String get_opus_version   () = 0;     ///< Retrieve Opus handler version.
+  virtual String get_flac_version   () = 0;     ///< Retrieve FLAC handler version.
   virtual String get_clap_version   () = 0;     ///< Retrieve CLAP support version.
   virtual String error_blurb          (Error error) const = 0;
   virtual String musical_tuning_label (MusicalTuning musicaltuning) const = 0;

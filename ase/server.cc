@@ -205,6 +205,12 @@ ServerImpl::get_opus_version ()
 }
 
 String
+ServerImpl::get_flac_version ()
+{
+  return wave_writer_flac_version();
+}
+
+String
 ServerImpl::get_clap_version()
 {
   return ClapDeviceImpl::clap_version();
