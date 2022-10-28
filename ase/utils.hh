@@ -20,11 +20,18 @@ template<class ...A> void warning           (const char *format, const A &...arg
 template<class... A> void printout          (const char *format, const A &...args) ASE_PRINTF (1, 0);
 template<class... A> void printerr          (const char *format, const A &...args) ASE_PRINTF (1, 0);
 
+// == misc ==
 const char*                      ase_gettext (const String &untranslated);
 template<class... A> const char* ase_gettext (const char *format, const A &...args) ASE_PRINTF (1, 0);
 
+// == atquit ==
+void atquit_add       (std::function<void()> *func);
+void atquit_del       (std::function<void()> *func);
+void atquit_run       (int exitcode) __attribute__ ((noreturn));
+bool atquit_triggered ();
+
 // == Date & Time ==
-String  now_strftime (const String &format);
+String  now_strftime  (const String &format);
 
 // == MakeIcon ==
 namespace MakeIcon {

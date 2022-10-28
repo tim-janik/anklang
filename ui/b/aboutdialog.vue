@@ -51,7 +51,8 @@ async function about_pairs() {
     [ 'Anklang:',		CONFIG.version + ' (' + CONFIG.revdate.split (' ')[0] + ')' ],
     [ 'SoundEngine:',		await Ase.server.get_build_id() ],
     [ 'CLAP:',			await Ase.server.get_clap_version() ],
-    [ 'Vorbis:',		await Ase.server.get_vorbis_version() ],
+    [ 'FLAC:',		        await Ase.server.get_flac_version() ],
+    [ 'Opus:',		        await Ase.server.get_opus_version() ],
     [ 'Vuejs:',			Vue.version ],
     [ 'User Agent:',		user_agent ],
   ];

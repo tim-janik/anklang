@@ -9,6 +9,7 @@
 #include <poll.h>
 #include <fcntl.h>
 #include <cmath>
+#include <atomic>
 #include <unistd.h>
 
 namespace Ase {
@@ -156,6 +157,47 @@ ase_gettext (const String &untranslated)
 {
   CString translated = untranslated;
   return translated.c_str(); // relies on global CString storage
+}
+
+// == atquit ==
+static std::mutex atquit_mutex;
+static std::vector<std::function<void()>*> atquit_funcs;
+
+void
+atquit_add (std::function<void()> *func)
+{
+  std::lock_guard<std::mutex> locker (atquit_mutex);
+  if (func)
+    atquit_funcs.push_back (func);
+}
+
+void
+atquit_del (std::function<void()> *func)
+{
+  std::lock_guard<std::mutex> locker (atquit_mutex);
+  Aux::erase_first (atquit_funcs, [func] (std::function<void()> *ele) { return func == ele; });
+}
+
+static std::atomic<uint8_t> atquit_triggered_ = false;
+
+void
+atquit_run (int exitcode)
+{
+  atquit_triggered_ = true;
+  while (atquit_funcs.size())
+    {
+      std::function<void()> *func = atquit_funcs.back();
+      atquit_funcs.pop_back();
+      if (func) // intentional leakage
+        (*func) ();
+    }
+  _Exit (exitcode);
+}
+
+bool
+atquit_triggered ()
+{
+  return atquit_triggered_;
 }
 
 // == Date & Time ==

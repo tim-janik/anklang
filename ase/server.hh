@@ -20,8 +20,8 @@ public:
   Value        get_data             (const String &key) const override;
   String       get_version          () override;
   String       get_build_id         () override;
-  String       get_vorbis_version   () override;
-  String       get_mp3_version      () override;
+  String       get_opus_version     () override;
+  String       get_flac_version     () override;
   String       get_clap_version     () override;
   String       error_blurb          (Error error) const override;
   String       musical_tuning_label (MusicalTuning musicaltuning) const override;
