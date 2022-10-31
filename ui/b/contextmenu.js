@@ -81,7 +81,7 @@ export function valid_uri (uri) {
 }
 
 const menuitem_isdisabled = function () {
-  if (this.uri && undefined !== this.menudata.checkeduris[this.uri])
+  if (valid_uri (this.uri) && undefined !== this.menudata.checkeduris[this.uri])
     return !this.menudata.checkeduris[this.uri];
   if (Object.hasOwnProperty.call (this, 'disabled') &&
       (this.disabled === "" || !!this.disabled))
@@ -250,7 +250,7 @@ class BContextMenu extends LitElement {
       return;
     // turn bubbled click into menu activation
     const target = event.target;
-    if (target && target.uri && target.check_isactive)
+    if (target && valid_uri (target.uri) && target.check_isactive)
       {
 	const isactive = target.check_isactive (false);
 	if (isactive instanceof Promise)
@@ -268,7 +268,7 @@ class BContextMenu extends LitElement {
     if (Util.frame_stamp() == this.menudata.menu_stamp)
       return;
     // emit non-bubbling activation click
-    if (uri && valid_uri (uri))
+    if (valid_uri (uri))
       {
 	this.menudata.menu_stamp = Util.frame_stamp();
 	const click_event = new CustomEvent ('click', { bubbles: false, composed: true, cancelable: true, detail: { uri } });
