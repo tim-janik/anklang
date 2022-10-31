@@ -85,10 +85,10 @@ import * as ContextMenu from './contextmenu.js';
 export default {
   sfc_template,
   props: { label: 	{ default: '' },
-	   uri:		{ default: '' },
+	   uri:		{ default: undefined },
 	   entries:	{ default: _ => [] },
   },
-  emits: { click: uri => !!uri, },
+  emits: { click: uri => ContextMenu.valid_uri (uri), },
   data: function() { return {
     is_active: undefined,
     click_stamp: 0, };
