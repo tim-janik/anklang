@@ -728,6 +728,35 @@ string_from_double_vector (const std::vector<double> &dvec, const String &delim)
   return s;
 }
 
+/// Parse string into seconds
+double
+string_to_seconds (const String &string, double fallback)
+{
+  const char *fail = nullptr;
+  const char *const cs = string.c_str();
+  double d = string_to_double (cs, &fail);
+  if (fail == cs)
+    return fallback;
+  if (!fail || fail[0] == 's')
+    return d;
+  if (strncmp (fail, "ns", 2) == 0)
+    return d * 0.000000001;
+  const char *usec = "µs";
+  if (strncmp (fail, "us", 2) == 0 || strncmp (fail, usec, strlen (usec)) == 0)
+    return d * 0.000001;
+  if (strncmp (fail, "ms", 2) == 0)
+    return d * 0.001;
+  if (fail[0] == 'm')
+    return d * 60;
+  if (fail[0] == 'h')
+    return d * 3600;
+  if (fail[0] == 'd')
+    return d * 3600 * 24;
+  if (fail[0] == 'w')
+    return d * 3600 * 24 * 7;
+  return d; // treat as seconds
+}
+
 /// Returns a String describing the passed in errno value, similar to strerror().
 String
 string_from_errno (int errno_val)
