@@ -205,7 +205,7 @@ private:
         double mod_res = res;
 
         if (freq_in)
-          mod_fc = fast_voltage2hz (freq_in[i]) * freq_scale / nyquist;
+          mod_fc = freq_in[i] * freq_scale / nyquist;
 
         if (freq_mod_in)
           mod_fc *= fast_exp2 (freq_mod_in[i] * freq_mod_octaves);
