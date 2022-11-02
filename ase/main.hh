@@ -23,6 +23,7 @@ struct MainConfig {
   bool   allow_randomization = true;
   bool   list_drivers = false;
   bool   play_autostart = false;
+  double play_autostop = D64MAX;
   enum ModeT { SYNTHENGINE, CHECK_INTEGRITY_TESTS };
   ModeT  mode = SYNTHENGINE;
 };
@@ -35,7 +36,8 @@ bool   feature_check       (const char *feature);
 
 // == Jobs & main loop ==
 extern MainLoopP main_loop;
-void             main_loop_wakeup ();
+void             main_loop_wakeup      ();
+void             main_loop_autostop_mt ();
 
 /// Execute a lambda job in the Ase main loop and wait for its result.
 extern JobQueue main_jobs;

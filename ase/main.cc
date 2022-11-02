@@ -124,6 +124,7 @@ print_usage (bool help)
   printout ("  -o wavfile       Capture output to WAV file\n");
   printout ("  --play-autostart Automatically start playback of `project.anklang`\n");
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
+  printout ("  -t <time>        Automatically play and stop after <time> has passed\n"); // -t <time>[{,|;}tailtime]
   printout ("  --version        Print program version\n");
 }
 
@@ -215,6 +216,12 @@ parse_args (int *argcp, char **argv)
         {
           config.play_autostart = true;
         }
+      else if (argv[i] == String ("-t") && i + 1 < size_t (argc))
+        {
+          config.play_autostart = true;
+          argv[i++] = nullptr;
+          config.play_autostop = string_to_seconds (argv[i]);
+        }
       else if (argv[i] == String ("--") && !sep)
         sep = true;
       else if (argv[i][0] == '-' && !sep)
@@ -269,6 +276,34 @@ main_loop_wakeup ()
   MainLoopP loop = main_loop;
   if (loop)
     loop->wakeup();
+}
+
+static std::atomic<bool> seen_autostop = false;
+
+// Lock and obstruction-free autostop trigger.
+void
+main_loop_autostop_mt()
+{
+  if (!seen_autostop)
+    {
+      seen_autostop = true;
+      main_loop_wakeup();
+    }
+}
+
+static bool
+handle_autostop (const LoopState &state)
+{
+  switch (state.phase)
+    {
+    case LoopState::PREPARE:    return seen_autostop;
+    case LoopState::CHECK:      return seen_autostop;
+    case LoopState::DISPATCH:
+      atquit_run (0);
+      return true; // keep alive
+    default: ;
+    }
+  return false;
 }
 
 } // Ase
@@ -393,6 +428,8 @@ main (int argc, char *argv[])
   main_loop = MainLoop::create();
   // handle loft preallocation needs
   main_loop->exec_dispatcher (dispatch_loft_lowmem, EventLoop::PRIORITY_CEILING);
+  // handle automatic shutdown
+  main_loop->exec_dispatcher (handle_autostop);
 
   // load drivers and dump device list
   load_registered_drivers();
@@ -452,7 +489,7 @@ main (int argc, char *argv[])
   });
 
   // load projects
-  ProjectP preload_project;
+  ProjectImplP preload_project;
   for (const auto &filename : config.args)
     {
       preload_project = ProjectImpl::create (Path::basename (filename));
@@ -533,7 +570,7 @@ main (int argc, char *argv[])
   if (config.outputfile)
     {
       std::shared_ptr<CallbackS> callbacks = std::make_shared<CallbackS>();
-      config.engine->queue_capture_start (*callbacks, config.outputfile);
+      config.engine->queue_capture_start (*callbacks, config.outputfile, true);
       auto job = [callbacks] () {
         for (const auto &callback : *callbacks)
           callback();
@@ -543,7 +580,7 @@ main (int argc, char *argv[])
 
   // start auto play
   if (config.play_autostart && preload_project)
-    main_loop->exec_idle ([preload_project] () { preload_project->start_playback(); });
+    main_loop->exec_idle ([preload_project] () { preload_project->start_playback (config.play_autostop); });
 
   // run main event loop and catch SIGUSR2
   const int exitcode = main_loop->run();
