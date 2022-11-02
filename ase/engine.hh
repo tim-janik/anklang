@@ -41,7 +41,8 @@ public:
   uint                   nyquist             () const ASE_CONST { return transport().nyquist; }
   double                 inyquist            () const ASE_CONST { return transport().inyquist; }
   SpeakerArrangement     speaker_arrangement () const           { return transport().speaker_arrangement; }
-  void                   queue_capture_start (CallbackS&, const String &filename);
+  void                   set_autostop        (uint64_t nsamples);
+  void                   queue_capture_start (CallbackS&, const String &filename, bool needsrunning);
   void                   queue_capture_stop  (CallbackS&);
   static AudioEngineJob* new_engine_job      (const std::function<void()> &jobfunc);
   static bool            thread_is_engine    () { return std::this_thread::get_id() == thread_id; }

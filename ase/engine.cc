@@ -9,6 +9,7 @@
 #include "atomics.hh"
 #include "project.hh"
 #include "wave.hh"
+#include "main.hh"      // main_loop_autostop_mt
 #include "memory.hh"
 #include "internal.hh"
 
@@ -50,8 +51,9 @@ class AudioEngineImpl : public AudioEngine {
   float                        chbuffer_data_[MAX_BUFFER_SIZE * fixed_n_channels] = { 0, };
   uint64                       write_stamp_ = 0, render_stamp_ = AUDIO_BLOCK_MAX_RENDER_SIZE;
   std::vector<AudioProcessor*> schedule_;
-  bool                         schedule_invalid_ = true;
   EngineMidiInputP             midi_proc_;
+  bool                         schedule_invalid_ = true;
+  bool                         output_needsrunning_ = false;
   FastMemory::Block            transport_block;
   AtomicIntrusiveStack<EngineJobImpl> async_jobs_, const_jobs_, trash_jobs_;
   const VoidF                  owner_wakeup_;
@@ -62,6 +64,7 @@ class AudioEngineImpl : public AudioEngine {
   ProjectImplP                 project_;
   WaveWriterP                  wwriter_;
 public:
+  std::atomic<uint64>          autostop_ = U64MAX;
   struct UserNoteJob {
     std::atomic<UserNoteJob*> next = nullptr;
     UserNote note;
@@ -79,7 +82,7 @@ public:
   void            start_threads          ();
   void            stop_threads           ();
   void            wakeup_thread_mt       ();
-  void            capture_start          (const String &filename);
+  void            capture_start          (const String &filename, bool needsrunning);
   void            capture_stop           ();
   bool            ipc_pending            ();
   void            ipc_dispatch           ();
@@ -358,9 +361,10 @@ AudioEngineImpl::update_drivers (bool fullio, uint latency)
 }
 
 void
-AudioEngineImpl::capture_start (const String &filename)
+AudioEngineImpl::capture_start (const String &filename, bool needsrunning)
 {
   capture_stop();
+  output_needsrunning_ = needsrunning;
   if (string_endswith (filename, ".wav"))
     {
       wwriter_ = wave_writer_create_wav (sample_rate(), fixed_n_channels, filename);
@@ -379,7 +383,7 @@ AudioEngineImpl::capture_start (const String &filename)
       if (!wwriter_)
         printerr ("%s: failed to open file: %s\n", filename, strerror (errno));
     }
-  else
+  else if (!filename.empty())
     printerr ("%s: unknown sample file: %s\n", filename, strerror (ENOSYS));
 }
 
@@ -433,10 +437,13 @@ AudioEngineImpl::pcm_check_write (bool write_buffer, int64 *timeout_usecs_p)
   if (!can_write || write_stamp_ >= render_stamp_)
     return false;
   pcm_driver_->pcm_write (buffer_size_ * fixed_n_channels, chbuffer_data_);
-  write_stamp_ += buffer_size_;
-  assert_warn (write_stamp_ == render_stamp_);
-  if (wwriter_ && fixed_n_channels == 2)
+  if (wwriter_ && fixed_n_channels == 2 && write_stamp_ < autostop_ &&
+      (!output_needsrunning_ || transport_->running()))
     wwriter_->write (chbuffer_data_, buffer_size_);
+  write_stamp_ += buffer_size_;
+  if (write_stamp_ >= autostop_)
+    main_loop_autostop_mt();
+  assert_warn (write_stamp_ == render_stamp_);
   return false;
 }
 
@@ -650,6 +657,13 @@ AudioEngine::frame_counter () const
 }
 
 void
+AudioEngine::set_autostop (uint64_t nsamples)
+{
+  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  impl.autostop_ = nsamples;
+}
+
+void
 AudioEngine::schedule_queue_update()
 {
   AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
@@ -685,12 +699,12 @@ AudioEngine::stop_threads()
 }
 
 void
-AudioEngine::queue_capture_start (CallbackS &callbacks, const String &filename)
+AudioEngine::queue_capture_start (CallbackS &callbacks, const String &filename, bool needsrunning)
 {
   AudioEngineImpl *impl = static_cast<AudioEngineImpl*> (this);
   String file = filename;
-  callbacks.push_back ([impl,file] () {
-    impl->capture_start (file);
+  callbacks.push_back ([impl,file,needsrunning] () {
+    impl->capture_start (file, needsrunning);
   });
 }
 
