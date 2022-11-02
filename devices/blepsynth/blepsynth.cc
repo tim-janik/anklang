@@ -453,6 +453,7 @@ class BlepSynth : public AudioProcessor {
         voice->osc1_.reset();
         voice->osc2_.reset();
         voice->vcf_.reset();
+        voice->vcf_.set_rate (sample_rate());
 
         voice->cutoff_smooth_.reset (sample_rate(), 0.020);
         voice->last_cutoff_ = -5000; // force reset
@@ -567,7 +568,7 @@ class BlepSynth : public AudioProcessor {
         /* TODO: under some conditions we could enable SSE in LadderVCF (alignment and block_size) */
         const float *inputs[2]  = { mix_left_out, mix_right_out };
         float       *outputs[2] = { mix_left_out, mix_right_out };
-        double cutoff = get_param (pid_cutoff_) * inyquist();
+        double cutoff = get_param (pid_cutoff_);
         double resonance = get_param (pid_resonance_) * 0.01;
         double key_track = get_param (pid_key_track_) * 0.01;
 
