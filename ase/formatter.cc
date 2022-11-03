@@ -2,6 +2,7 @@
 #include "formatter.hh"
 #include <unistd.h>     // isatty
 #include <cstring>
+#include <atomic>
 
 /** @TODO:
  * - StringFormatter: support directives: %%n %%S %%ls
@@ -526,12 +527,14 @@ static void
 ase_string_format()
 {
   using namespace Ase;
+  std::atomic<bool> boolean = 1;
   // string_format
-  enum { TEST17 = 17 };
+  TCMP (string_format ("%s", boolean), ==, "1");
   TCMP (string_format ("%s", (void*) "FOO"), ==, "FOO");
   TCMP (string_format ("%d %s", -9223372036854775808uLL, "FOO"), ==, "-9223372036854775808 FOO");
-  TCMP (string_format ("%g %d", 0.5, TEST17), ==, "0.5 17");
   TCMP (string_format ("0x%08x", 0xc0ffee), ==, "0x00c0ffee");
+  enum { TEST17 = 17 };
+  TCMP (string_format ("%g %d", 0.5, TEST17), ==, "0.5 17");
   static_assert (TEST17 == 17, "!");
   TCMP (string_format ("Only %c%%", '3'), ==, "Only 3%");
   // ostream tests

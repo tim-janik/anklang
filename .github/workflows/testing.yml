@@ -100,7 +100,9 @@ jobs:
     - name: Ping IRC
       if: always()
       run: |
+        R='${{ github.repository }}' && R=${R#*/}
+        B='${{ github.ref }}' && B=${B#refs/heads/}
         S='${{ job.status }}' && URL='${{ github.event.head_commit.url }}'
-        N="$(git log -1 --format='%cL')" && B="$(git branch --show-current)"
+        U='${{ github.actor }}' && B="$(git branch --show-current)"
         MSG=$(git log -1 --format='%s')
-        .github/workflows/ircbot.py -q -j "#Anklang" -n YYBOT -U "$N" -D "$B" -S "$S" "$MSG" "$URL"
+        .github/workflows/ircbot.py -q -j "#Anklang" -R "$R" -U "$U" -D "$B" -S "$S" "$MSG" "$URL"

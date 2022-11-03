@@ -54,6 +54,7 @@ inline double                   string_to_float          (const String &string) 
 std::vector<double>             string_to_double_vector  (const String         &string);
 String                          string_from_double_vector(const std::vector<double> &dvec,
                                                           const String         &delim = " ");
+double   			string_to_seconds        (const String &string, double fallback = NAN);
 String  			string_from_errno        (int         errno_val);
 bool                            string_is_uuid           (const String &uuid_string); /* check uuid formatting */
 int                             string_cmp_uuid          (const String &uuid_string1,

@@ -59,7 +59,8 @@ public:
   void                 ungroup_undo      () override;
   void                 clear_undo        ();
   size_t               undo_size_guess   () const;
-  void                 start_playback    () override;
+  void                 start_playback    (double autostop);
+  void                 start_playback    () override    { start_playback (D64MAX); }
   void                 stop_playback     () override;
   bool                 set_bpm           (double bpm);
   bool                 set_numerator     (uint8 numerator);
