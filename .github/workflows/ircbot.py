@@ -43,6 +43,8 @@ def format_msg (args, how = 2):
     msg = c.CYAN + args.D + c.RESET + ' ' + msg
   if args.U:
     msg = c.ORANGE + args.U + c.RESET + ' ' + msg
+  if args.R:
+    msg = '[' + c.BLUE + args.R + c.RESET + '] ' + msg
   return msg
 
 def sendline (text):
@@ -138,6 +140,8 @@ def parse_args (sysargs):
                        help = 'Port to connect to [' + str (port) + ']')
   parser.add_argument ('-l', action = "store_true",
                        help = 'List channels')
+  parser.add_argument ('-R', metavar = 'REPOSITORY', default = '',
+                       help = 'Initiating repository name')
   parser.add_argument ('-U', metavar = 'NAME', default = '',
                        help = 'Initiating user name')
   parser.add_argument ('-D', metavar = 'DEPARTMENT', default = '',
