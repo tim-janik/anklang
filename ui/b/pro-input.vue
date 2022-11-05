@@ -15,7 +15,6 @@
   .b-pro-input        {
     display: flex; justify-content: center;
     .b-pro-input-ldiv[class]::before { content: "\200b"; /* zero width character to force line height */ }
-    .b-pro-input-knob { height: 2em; }
     .b-pro-input-toggle { height: 2em; }
     .b-pro-input-choice { height: 2em; width: 2.3em; }
     .b-pro-input-span {
@@ -33,9 +32,6 @@
 
 <template>
   <v-flex class="b-pro-input tabular-nums" :data-bubble="bubble()" >
-    <b-knob class="b-pro-input-knob" v-if="type() == 'knob'" :prop="prop" :hscroll="false"
-	    :value="get_num()" :bidir="is_bidir()"
-	    @update:value="set_num ($event)" @reset:value="reset_num()"/>
     <b-toggle class="b-pro-input-toggle" v-if="type() == 'toggle'" label=""
 	      :value="get_num()" @update:value="set_num ($event)" />
     <b-choice class="b-pro-input-choice" v-if="type() == 'choice'" small="1" indexed="1"
@@ -109,7 +105,6 @@ export default {
 	    return 'toggle';
 	  if (hints.search (/:choice:/) >= 0)
 	    return 'choice';
-	  return 'knob';
 	}
       return '';
     },
