@@ -23,7 +23,7 @@ FileCrawler::FileCrawler (const String &cwd, bool constraindir, bool constrainfi
   cwd_ ("/"), constraindir_ (constraindir), constrainfile_ (constrainfile)
 {
   if (!cwd.empty())
-    assign (cwd);
+    assign (cwd, false);
 }
 
 ResourceS
@@ -90,7 +90,7 @@ FileCrawler::current_folder ()
 }
 
 void
-FileCrawler::assign (const String &path)
+FileCrawler::assign (const String &path, bool notify)
 {
   String dir = path;
   if (dir.find ("/") == dir.npos) // relative navigation features special expansions
@@ -102,8 +102,11 @@ FileCrawler::assign (const String &path)
   cwd_ = canonify (cwd_, dir.empty() ? "." : dir + "/", constraindir_, constrainfile_);
   while (cwd_.size() > 1 && cwd_.back() == '/')
     cwd_.resize (cwd_.size() - 1);
-  emit_event ("notify", "current");
-  emit_event ("notify", "entries");
+  if (notify)
+    {
+      emit_notify ("current");
+      emit_notify ("entries");
+    }
 }
 
 String
