@@ -118,11 +118,11 @@ ClipImpl::assign_range (int64 starttick, int64 stoptick)
   stoptick_ = stoptick;
   endtick_ = std::max (starttick_, stoptick_);
   if (last_endtick_ != endtick_)
-    emit_event ("notify", "end_tick");
+    emit_notify ("end_tick");
   if (last_stoptick_ != stoptick_)
-    emit_event ("notify", "stop_tick");
+    emit_notify ("stop_tick");
   if (last_starttick_ != starttick_)
-    emit_event ("notify", "start_tick");
+    emit_notify ("start_tick");
 }
 
 ClipNoteS

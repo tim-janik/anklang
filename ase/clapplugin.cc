@@ -1069,7 +1069,7 @@ ClapPluginHandleImpl::params_changed ()
         PDEBUG ("%s: UPDATE: %08x=%f: %s (%s)\n", clapid(), pinfo.param_id, pinfo.current_value, pinfo.current_value_text, pinfo.name);
         PropertyP prop = pinfo.aseprop_.lock();
         if (prop)
-          prop->emit_event ("notify", pinfo.ident);
+          dynamic_cast<EmittableImpl*> (prop.get())->emit_notify (pinfo.ident);
       }
 }
 

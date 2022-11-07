@@ -148,7 +148,7 @@ GadgetImpl::name (String newname)
     del_custom_data (&gadget_name_key);
   else
     set_custom_data (&gadget_name_key, newname);
-  emit_event ("notify", "name");
+  emit_notify ("name");
 }
 
 PropertyS
