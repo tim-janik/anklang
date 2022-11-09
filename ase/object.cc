@@ -157,7 +157,7 @@ CoalesceNotifies::NotificationHash::operator() (const Notification &notification
 }
 
 // == EmittableImpl ==
-/// Emit `notify::detail`, multiple notifications maybe coalesced if a CoalesceNotifies instance exists.
+/// Emit `notify:detail`, multiple notifications maybe coalesced if a CoalesceNotifies instance exists.
 void
 EmittableImpl::emit_notify (const String &detail)
 {
@@ -187,7 +187,7 @@ EmittableImpl::on_event (const String &eventselector, const EventHandler &eventh
 }
 
 void
-EmittableImpl::emit_event (const String &type, const String &detail, ValueR fields)
+EmittableImpl::emit_event (const String &type, const String &detail, const ValueR fields)
 {
   const char ident_chars[] =
     "0123456789"
