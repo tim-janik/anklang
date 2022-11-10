@@ -1,6 +1,6 @@
 ---
 title:      ANKLANG Development Details
-author:     The Anklang Project <[anklang.testbit.org](https://anklang.testbit.org/)>
+author:     The Anklang Project <[anklang.testbit.eu](https://anklang.testbit.eu/)>
 abstract:   API documentation and development internals of the Anklang project.
 keywords:   Anklang, Linux, ALSA, JavaScript, Scripting, IPC
 ---
