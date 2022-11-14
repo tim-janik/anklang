@@ -120,6 +120,7 @@ installcheck: FORCE
 # == subdirs ==
 include devices/Makefile.mk
 include ase/Makefile.mk
+include images/knobs/Makefile.mk
 include ui/Makefile.mk
 include electron/Makefile.mk
 include misc/Makefile.mk
