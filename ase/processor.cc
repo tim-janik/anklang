@@ -631,6 +631,8 @@ AudioProcessor::param_value_to_text (Id32 paramid, double value) const
     fdigits = 0;
   const bool need_sign = info.get_minmax().first < 0;
   String s = need_sign ? string_format ("%+.*f", fdigits, value) : string_format ("%.*f", fdigits, value);
+  if (fdigits == 0 && fabs (value) == 100 && unit == "%")
+    s += "."; // use '100. %' for fixed with
   if (!unit.empty())
     s += " " + unit;
   return s;
