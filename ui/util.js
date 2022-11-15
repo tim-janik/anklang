@@ -896,19 +896,18 @@ export async function extend_property (prop, disconnector = undefined, augment =
     apply_: prop.set_value.bind (prop),
     fetch_: () => xprop.is_numeric_ ? xprop.value_.num : xprop.value_.text,
     update_: async () => {
-      const value_ = { val: xprop.get_value(),
-		       num: xprop.get_normalized(),
-		       text: xprop.get_text(),
-		       choices: xprop.has_choices_ ? xprop.choices() : empty_list,
-      };
-      Object.assign (xprop.value_, await Util.object_await_values (value_));
+      const val = xprop.get_value(), text = xprop.get_text();
+      const choices = xprop.has_choices_ ? await xprop.choices() : empty_list;
+      const value_ = { val: await val, num: undefined, text: await text, choices };
+      value_.num = (value_.val - xprop.min_) / (xprop.max_ - xprop.min_);
+      Object.assign (xprop.value_, value_);
       if (augment)
 	await augment (xprop);
     },
     __proto__: prop,
   };
   if (disconnector)
-    disconnector (xprop.on ('change', _ => xprop.update_()));
+    disconnector (xprop.on ('notify', _ => xprop.update_()));
   await Util.object_await_values (xprop);	// ensure xprop.hints_ is valid
   xprop.has_choices_ = xprop.hints_.search (/:choice:/) >= 0;
   await xprop.update_();			// needs xprop.has_choices_, assigns xprop.value_
