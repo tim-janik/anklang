@@ -126,11 +126,12 @@ async function load_and_show (w, winurl) {
   w.webContents.on ('did-create-window', (childwin) => {                // Electron-12
     childwin.webContents.on ('will-navigate', (ev, navurl) => {
       console.log ('SUBWINDOW: will-navigate', navurl);
-    })
+    });
   });
   // load URL, show *afterwards*
   await w.loadURL (winurl);
   await win_ready;
+  // reset zoom: w.webContents.zoomFactor = 1;
   if (devtools_option)
     w.toggleDevTools(); // start with DevTools enabled
   return w.show();
@@ -170,7 +171,6 @@ function start_sound_engine (config, datacb)
   subproc.stdio[3].once ('data', (bytes) => datacb (bytes.toString()));
   // handle errors and exit
   const prefix = sound_engine.split ('/').pop() + ':';
-  const slog = (...args) => console.error (prefix, ...args);
   subproc.on ('exit', async (code, sig) => {
     // NOTE: await + setTimeout might *NOT* work at this point
     const reason = sig || subproc.signalCode || code || subproc.exitCode;
@@ -204,6 +204,11 @@ const ipc_handler = {
 	                                                  versions: process.versions, }; },
   toggle_dev_tools (browserwindow, ...args)	{ browserwindow.toggleDevTools(); },
   exit (browserwindow, status)			{ Electron.app.exit (0 | status); },
+  zoom_level (browserwindow, newval)		{
+    if (newval >= -9 && newval <= +9)
+      browserwindow.setZoomLevel (newval);
+    return browserwindow.getZoomLevel();
+  },
 };
 // Dispatch Renderer->Main message events
 for (const func in ipc_handler)
@@ -244,7 +249,7 @@ function parse_args (argv)
 {
   argv = argv.slice (1); // take [1,...]
   const c = { verbose: false, binary: false, gdb: false, norc: false, };
-  const sep = false;
+  let sep = false;
   while (argv.length)
     {
       const arg = argv.splice (0, 1)[0];
