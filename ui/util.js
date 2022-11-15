@@ -277,6 +277,8 @@ export function drag_event (event) {
   return _ => undefined;
 }
 
+const unrequestpointerlock = Symbol ('unrequest_pointer_lock');
+
 // Maintain pending_pointer_lock state
 function pointer_lock_changed (ev) {
   if (document.pointerLockElement !== pending_pointer_lock)
@@ -285,8 +287,8 @@ function pointer_lock_changed (ev) {
       pending_pointer_lock = null;
       // exit erroneous pointer lock
       if (document.pointerLockElement &&
-	  document.pointerLockElement.__unrequest_pointer_lock)
-	document.pointerLockElement.__unrequest_pointer_lock();
+	  document.pointerLockElement[unrequestpointerlock])
+	document.pointerLockElement[unrequestpointerlock]();
     }
 }
 let pending_pointer_lock = null;
@@ -300,13 +302,14 @@ document.addEventListener ('pointerlockerror', pointer_lock_changed, { passive: 
  */
 export function unrequest_pointer_lock (element) {
   console.assert (element instanceof Element);
-  // this API only operates on elements that have the __unrequest_pointer_lock member set
-  if (element.__unrequest_pointer_lock)
+  // this API only operates on elements that have the [unrequestpointerlock] member set
+  if (element[unrequestpointerlock])
     {
       if (pending_pointer_lock === element)
 	pending_pointer_lock = null;
       if (document.pointerLockElement === element)
 	document.exitPointerLock();
+      element[unrequestpointerlock] = null;
     }
 }
 
@@ -330,10 +333,10 @@ export function has_pointer_lock (element) {
  */
 export function request_pointer_lock (element) {
   console.assert (element instanceof Element);
-  if (has_pointer_lock (element) && element.__unrequest_pointer_lock)
-    return element.__unrequest_pointer_lock;
-  // this API only operates on elements that have the __unrequest_pointer_lock member set
-  element.__unrequest_pointer_lock = () => unrequest_pointer_lock (element);
+  if (has_pointer_lock (element) && element[unrequestpointerlock])
+    return element[unrequestpointerlock];
+  // this API only operates on elements that have the [unrequestpointerlock] member set
+  element[unrequestpointerlock] = () => unrequest_pointer_lock (element);
   pending_pointer_lock = element;
   if (document.pointerLockElement != element)
     {
@@ -341,7 +344,7 @@ export function request_pointer_lock (element) {
 	document.exitPointerLock();
       pending_pointer_lock.requestPointerLock();
     }
-  return element.__unrequest_pointer_lock;
+  return element[unrequestpointerlock];
 }
 
 /// Ensure the root node of `element` contains a `csstext` (replaceable via `stylesheet_name`)
