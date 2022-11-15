@@ -2077,4 +2077,40 @@ export function raster_line (x0, y0, x1, y1)
   return points;
 }
 
+
+const destroycallbacks = Symbol ('call_destroy_callbacks');
+
+/// Add a `callback` to `this` to be called from `call_destroy_callbacks()`.
+export function add_destroy_callback (callback)
+{
+  console.assert (this instanceof Object);
+  console.assert (callback instanceof Function);
+  const callbacks = this[destroycallbacks] || (this[destroycallbacks] = []);
+  const index = callbacks.indexOf (callback);
+  if (index < 0)
+    callbacks.push (callback);
+}
+
+/// Remove a `callback` from `this`, previously added via `add_destroy_callback()`.
+export function del_destroy_callback (callback)
+{
+  console.assert (this instanceof Object);
+  console.assert (callback instanceof Function);
+  const callbacks = this[destroycallbacks];
+  return callbacks && Util.array_remove (callbacks, callback);
+}
+
+/// Call destroy callbacks of `this`, clears the callback list.
+export function call_destroy_callbacks()
+{
+  console.assert (this instanceof Object);
+  const callbacks = this[destroycallbacks];
+  if (!callbacks)
+    return false;
+    while (callbacks.length)
+      callbacks.pop().call();
+  return true;
+}
+
+// Provide keyboard handling utilities
 export * from './kbd.js';
