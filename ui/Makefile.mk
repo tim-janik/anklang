@@ -96,6 +96,12 @@ ui/sed-keepif ::= $(if __DEV__, -e '/<[^<>]*::KEEPIF="__DEV__"/s/::KEEPIF="__DEV
 # delete unmatched ::KEEPIF="" tags
 ui/sed-keepif  += -e 's/<[^<>]*::KEEPIF="[^"]*"[^<>]*>//'
 
+# == knob sprites ==
+$>/ui/assets/%: $>/images/knobs/%
+	$(QGEN)
+	$Q $(CP) $< $@
+$>/ui/.build1-stamp: $>/ui/assets/cknob193u.png $>/ui/assets/cknob193b.png
+
 # == ui/spinner.svg ==
 $>/ui/spinner.scss: ui/assets/spinner.svg
 	$(QGEN)
