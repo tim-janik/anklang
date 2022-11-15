@@ -1155,29 +1155,33 @@ let scroll_line_height = undefined;
  * For zoom step interpretation, the x/y pixel values should be
  * reduced via `Math.sign()`.
  * For scales the pixel values might feel more natural, because
- * while Firefox tends to increase the number of events with
- * increasing wheel distance, Chromium tends to accumulate and
- * send fewer events with higher values instead.
+ * browsers sometimes increase the number of events with
+ * increasing wheel distance, in other cases values are accumulated
+ * so fewer events with larger deltas are sent instead.
  */
 export function wheel_delta (ev)
 {
   const DPR = Math.max (window.devicePixelRatio || 1, 1);
   const DIV_DPR = 1 / DPR;                      // Factor to divide by DPR
   const WHEEL_DELTA = -53 / 120.0 * DIV_DPR;    // Chromium wheelDeltaY to deltaY pixel ratio
-  const FIREFOX_X = 3;                          // Firefox sets deltaX=1 and deltaY=3 per step on Linux
+  const FIREFOX_Y = 1 / 1.8;                    // Firefox steps are ca 2 times as large as Chrome ones
+  const FIREFOX_X = 3 / 1.8;                    // Firefox sets deltaX=1 and deltaY=3 per step on Linux
   const PAGESTEP = -100;                        // Chromium pixels per scroll step
   // https://stackoverflow.com/questions/5527601/normalizing-mousewheel-speed-across-browsers
   // https://groups.google.com/a/chromium.org/forum/#!topic/blink-dev/U3kH6_98BuY
   if (ev.deltaMode >= 2)                        // DOM_DELTA_PAGE
     return { x: ev.deltaX * PAGESTEP, y: ev.deltaY * PAGESTEP };
-  if (ev.deltaMode >= 1)                        // DOM_DELTA_LINE - only Firefox is known to send this
+  if (ev.deltaMode >= 1)                        // DOM_DELTA_LINE - used by Firefox only
     {
       if (scroll_line_height === undefined)
         scroll_line_height = calculate_scroll_line_height();
-      return { x: ev.deltaX * FIREFOX_X * scroll_line_height, y: ev.deltaY * scroll_line_height };
+      return { x: ev.deltaX * FIREFOX_X * scroll_line_height, y: ev.deltaY * FIREFOX_Y * scroll_line_height };
     }
-  if (ev.deltaMode >= 0)                        // DOM_DELTA_PIXEL - Chromium includes DPR
-    return { x: ev.deltaX * DIV_DPR, y: ev.deltaY * DIV_DPR };
+  if (ev.deltaMode >= 0)                        // DOM_DELTA_PIXEL
+    {
+      const DFIX = 1; // * DIV_DPR;		// old Chromium included DPR
+      return { x: DFIX * ev.deltaX, y: DFIX * ev.deltaY };
+    }
   if (ev.wheelDeltaX !== undefined)             // Use Chromium factors for normalization
     return { x: ev.wheelDeltaX * WHEEL_DELTA, y: ev.wheelDeltaY * WHEEL_DELTA };
   if (ev.wheelDelta !== undefined)              // legacy support
