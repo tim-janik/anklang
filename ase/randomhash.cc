@@ -1,5 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-// Author: 2014, Tim Janik, see http://testbit.org/keccak
+// Author: 2014, Tim Janik, see http://testbit.eu/
 #include "randomhash.hh"
 #include "entropy.hh"
 #include "strings.hh"

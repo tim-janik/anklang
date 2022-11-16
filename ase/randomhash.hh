@@ -1,5 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-// Author: 2014, Tim Janik, see http://testbit.org/keccak
+// Author: 2014, Tim Janik, see http://testbit.eu/
 #ifndef __ASE_RANDOMHASH_HH__
 #define __ASE_RANDOMHASH_HH__
 
@@ -226,7 +226,7 @@ public:
 
 /** KeccakRng - A KeccakF1600 based pseudo-random number generator.
  * The permutation steps are derived from the Keccak specification @cite Keccak11 .
- * For further details about this implementation, see also: http://testbit.org/keccak
+ * For further details about this implementation, see also: http://testbit.eu/
  * This class is primarily used to implement more fine tuned generators, such as:
  * KeccakCryptoRng, KeccakGoodRng and KeccakFastRng.
  */

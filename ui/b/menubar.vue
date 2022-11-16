@@ -67,6 +67,12 @@
 	<b-contextmenu ref="viewmenu" id="g-viewmenu" :activate.prop="activate" :isactive.prop="isactive" startfocus >
 	  <b-menuitem ic="mi-fullscreen" :disabled="!document.fullscreenEnabled"
 		      kbd="F11" uri="fullscreen">	Toggle Fullscreen	</b-menuitem>
+	  <b-menuitem ic="mi-zoom_in" v-if="window.Electron"
+		      kbd="Ctrl++" uri="zoom-in">			Zoom In		</b-menuitem>
+	  <b-menuitem ic="mi-zoom_out" v-if="window.Electron"
+		      kbd="Ctrl+-" uri="zoom-out">			Zoom Out	</b-menuitem>
+	  <b-menuitem ic="—" v-if="window.Electron"
+		      kbd="Ctrl+0" uri="zoom-reset">			Reset Zoom	</b-menuitem>
 	</b-contextmenu>
       </push-button>
 
@@ -189,6 +195,15 @@ export default {
 	  break;
 	case 'prefs':
 	  Data.show_preferences_dialog = !Data.show_preferences_dialog;
+	  break;
+	case 'zoom-reset':
+	  await window.Electron.call ('zoom_level', 0.0);
+	  break;
+	case 'zoom-in':
+	  await window.Electron.call ('zoom_level', (await window.Electron.call ('zoom_level') + 1));
+	  break;
+	case 'zoom-out':
+	  await window.Electron.call ('zoom_level', (await window.Electron.call ('zoom_level')) - 1);
 	  break;
 	case 'fullscreen':
 	  if (document.fullscreen)

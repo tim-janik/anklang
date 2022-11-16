@@ -46,7 +46,7 @@ export function match_key_event (event, keyname)
 {
   // SEE: http://unixpapa.com/js/key.html & https://developer.mozilla.org/en-US/docs/Mozilla/Gecko/Gecko_keypress_event
   // split_hotkey (hotkey)
-  const rex = new RegExp (/\s*[+]\s*/); // Split 'Shift+Ctrl+Alt+Meta+SPACE'
+  const rex = new RegExp (/\s*(?<!\+)[+]\s*/); // Split 'Shift+Ctrl+Q' twice, but split 'Ctrl++' once
   const parts = keyname.split (rex);
   const rawkey = event.code; // contains physical key names for US-Layout
   const charname = event.key || String.fromCharCode (event.which || event.keyCode);

@@ -18,7 +18,7 @@ JSONIPC_INHERIT (TrackImpl, Track);
 
 TrackImpl::TrackImpl (ProjectImpl &project, bool masterflag)
 {
-  gadget_flags (MASTER_TRACK);
+  gadget_flags (masterflag ? MASTER_TRACK : 0);
 }
 
 TrackImpl::~TrackImpl()
