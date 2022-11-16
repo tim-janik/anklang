@@ -77,13 +77,12 @@ $>/ui/csstree-validator.esm.js: $>/node_modules/.npm.done				| $>/ui/
 $>/ui/.build1-stamp: $>/ui/csstree-validator.esm.js
 
 # == ui/index.html ==
-$>/ui/index.html: ui/index.html ui/assets/eknob.svg ui/Makefile.mk	| $>/ui/
+$>/ui/index.html: ui/index.html ui/Makefile.mk			| $>/ui/
 	$(QGEN)
 	$Q rm -f $>/ui/doc && ln -s ../doc $>/ui/doc # MAKE is flaky in tracking symlink timestamps
 	$Q : $(file > $>/ui/config.json,  { "config": { $(strip $(PACKAGE_VERSIONS)) } })
 	$Q sed -r \
 		-e "/<script type='application\/json' id='--EMBEDD-config_json'>/ r $>/ui/config.json" \
-		-e "/<!--EMBEDD='eknob\.svg'-->/r ui/assets/eknob.svg" $(ui/sed-keepif) \
 		< $<	> $@.tmp
 	$Q rm $>/ui/config.json
 	$Q sed -r \
