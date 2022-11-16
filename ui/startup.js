@@ -256,7 +256,7 @@ function browser_config() {
   const slidertabindex = gecko ? "0" : "-1";
   // Chrome Bug: https://bugs.chromium.org/p/chromium/issues/detail?id=1092358 https://github.com/w3c/pointerlock/issues/42
   const chrome_major = parseInt (( /\bChrome\/([0-9]+)\./.exec (navigator.userAgent) || [0,0] )[1]);
-  const dpr_movement = chrome_major >= 37 && chrome_major <= 100; // Chrome-101 finally fixes #1092358
+  const dpr_movement = gecko || (chrome_major >= 37 && chrome_major <= 100); // Chrome-101 fixes #1092358
   if (dpr_movement)
     console.bootlog ("Detected Chrome bug #1092358...");
   // Prevent Web Browser menus interfering with the UI
@@ -265,6 +265,7 @@ function browser_config() {
       e.preventDefault();
   });
   return {
+    gecko, chrome,
     dpr_movement,
     slidertabindex,
   };

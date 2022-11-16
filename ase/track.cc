@@ -109,7 +109,7 @@ TrackImpl::_set_parent (GadgetImpl *parent)
       midi_prod_->_set_parent (nullptr);
       midi_prod_ = nullptr;
     }
-  emit_event ("notify", "project");
+  emit_notify ("project");
 }
 
 void

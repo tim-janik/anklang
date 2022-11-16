@@ -498,11 +498,11 @@ AudioProcessor::find_pparam_ (ParamId paramid) const
 }
 
 /// Set parameter `id` to `value` within `ParamInfo.get_minmax()`.
-void
-AudioProcessor::set_param (Id32 paramid, const double value)
+bool
+AudioProcessor::set_param (Id32 paramid, const double value, bool sendnotify)
 {
   const PParam *pparam = find_pparam (ParamId (paramid.id));
-  return_unless (pparam);
+  return_unless (pparam, false);
   const ParamInfo *info = pparam->info.get();
   double v = value;
   if (info)
@@ -520,9 +520,10 @@ AudioProcessor::set_param (Id32 paramid, const double value)
           v = CLAMP (mm.first + v, mm.first, mm.second);
         }
     }
-  if (const_cast<PParam*> (pparam)->assign (v) &&
-      !pparam->info->aprop_.expired())
+  const bool need_notify = const_cast<PParam*> (pparam)->assign (v);
+  if (need_notify && sendnotify && !pparam->info->aprop_.expired())
     enotify_enqueue_mt (PARAMCHANGE);
+  return need_notify;
 }
 
 /// Retrieve supplemental information for parameters, usually to enhance the user interface.
@@ -583,14 +584,14 @@ AudioProcessor::get_normalized (Id32 paramid)
 }
 
 /// Set param value normalized into 0…1.
-void
-AudioProcessor::set_normalized (Id32 paramid, double normalized)
+bool
+AudioProcessor::set_normalized (Id32 paramid, double normalized, bool sendnotify)
 {
   if (!ASE_ISLIKELY (normalized >= 0.0))
     normalized = 0;
   else if (!ASE_ISLIKELY (normalized <= 1.0))
     normalized = 1.0;
-  set_param (paramid, value_from_normalized (paramid, normalized));
+  return set_param (paramid, value_from_normalized (paramid, normalized), sendnotify);
 }
 
 /** Format a parameter `paramid` value as text string.
@@ -630,6 +631,8 @@ AudioProcessor::param_value_to_text (Id32 paramid, double value) const
     fdigits = 0;
   const bool need_sign = info.get_minmax().first < 0;
   String s = need_sign ? string_format ("%+.*f", fdigits, value) : string_format ("%.*f", fdigits, value);
+  if (fdigits == 0 && fabs (value) == 100 && unit == "%")
+    s += "."; // use '100. %' for fixed with
   if (!unit.empty())
     s += " " + unit;
   return s;
@@ -1232,6 +1235,8 @@ class AudioPropertyImpl : public Property, public virtual EmittableImpl {
   DeviceP       device_;
   ParamInfoP    info_;
   const ParamId id_;
+  double              inflight_value_ = 0;
+  std::atomic<uint64> inflight_counter_ = 0;
 public:
   String   identifier     () override   { return info_->ident; }
   String   label          () override   { return info_->label; }
@@ -1249,6 +1254,15 @@ public:
     device_ (devp), info_ (param_), id_ (id)
   {}
   void
+  proc_paramchange()
+  {
+    const AudioProcessorP proc = device_->_audio_processor();
+    const double value = inflight_counter_ ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
+    ValueR vfields;
+    vfields["value"] = value;
+    emit_event ("notify", info_->ident, vfields);
+  }
+  void
   reset () override
   {
     set_value (info_->get_initial());
@@ -1257,16 +1271,17 @@ public:
   get_value () override
   {
     const AudioProcessorP proc = device_->_audio_processor();
-    const double v = AudioProcessor::param_peek_mt (proc, id_);
+    const double value = inflight_counter_ ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
     const bool ischoice = strstr (info_->hints.c_str(), ":choice:") != nullptr;
     if (ischoice)
-      return proc->param_value_to_text (id_, v);
+      return proc->param_value_to_text (id_, value);
     else
-      return v;
+      return value;
   }
   bool
   set_value (const Value &value) override
   {
+    PropertyP thisp = shared_ptr_cast<Property> (this); // thisp keeps this alive during lambda
     const AudioProcessorP proc = device_->_audio_processor();
     const bool ischoice = strstr (info_->hints.c_str(), ":choice:") != nullptr;
     double v;
@@ -1275,34 +1290,37 @@ public:
     else
       v = value.as_double();
     const ParamId pid = id_;
-    auto lambda = [proc, pid, v] () {
-      proc->set_param (pid, v);
+    inflight_value_ = v;
+    inflight_counter_++;
+    auto lambda = [proc, pid, v, thisp, this] () {
+      proc->set_param (pid, v, false);
+      inflight_counter_--;
     };
     proc->engine().async_jobs += lambda;
+    emit_notify (info_->ident);
     return true;
   }
   double
   get_normalized () override
   {
     const AudioProcessorP proc = device_->_audio_processor();
-    return proc->value_to_normalized (id_, AudioProcessor::param_peek_mt (proc, id_));
+    const double value = inflight_counter_ ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
+    const double v = proc->value_to_normalized (id_, value);
+    return v;
   }
   bool
-  set_normalized (double v) override
+  set_normalized (double normalized) override
   {
     const AudioProcessorP proc = device_->_audio_processor();
-    const ParamId pid = id_;
-    auto lambda = [proc, pid, v] () {
-      proc->set_normalized (pid, v);
-    };
-    proc->engine().async_jobs += lambda;
-    return true;
+    const auto mm = info_->get_minmax();
+    const double value = mm.first + CLAMP (normalized, 0, 1) * (mm.second - mm.first);
+    return set_value (value);
   }
   String
   get_text () override
   {
     const AudioProcessorP proc = device_->_audio_processor();
-    const double value = AudioProcessor::param_peek_mt (proc, id_);
+    const double value = inflight_counter_ ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
     return proc->param_value_to_text (id_, value);
   }
   bool
@@ -1312,9 +1330,10 @@ public:
     const double v = proc->param_value_from_text (id_, vstr);
     const ParamId pid = id_;
     auto lambda = [proc, pid, v] () {
-      proc->set_param (pid, v);
+      proc->set_param (pid, v, false);
     };
     proc->engine().async_jobs += lambda;
+    emit_notify (info_->ident);
     return true;
   }
   bool
@@ -1409,7 +1428,7 @@ AudioProcessor::enotify_dispatch ()
                   PropertyP propi = p.info->aprop_.lock();
                   AudioPropertyImpl *aprop = dynamic_cast<AudioPropertyImpl*> (propi.get());
                   if (aprop)
-                    aprop->emit_event ("notify", p.info->ident);
+                    aprop->proc_paramchange();
                 }
           if (nflags & PARAMCHANGE)
             devicep->emit_event ("params", "change");

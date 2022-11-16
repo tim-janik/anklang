@@ -48,46 +48,6 @@
 <script>
 import * as Ase from '../aseapi.js';
 
-async function cache_properties (propertylist) {
-  propertylist = await propertylist;
-  const promises = [];
-  for (const p of propertylist)
-    {
-      promises.push (p.label());		// ①
-      promises.push (p.nick()); 		// ②
-      promises.push (p.unit()); 		// ③
-      promises.push (p.hints()); 		// ④
-      promises.push (p.group()); 		// ⑤
-      promises.push (p.blurb()); 		// ⑥
-      promises.push (p.description()); 		// ⑦
-      promises.push (p.get_min()); 		// ⑧
-      promises.push (p.get_max()); 		// ⑨
-      promises.push (p.get_step()); 		// ⑩
-      promises.push (p.is_numeric()); 		// ⑪
-    }
-  const results = await Promise.all (promises);
-  console.assert (results.length == 11 * propertylist.length);
-  for (let k = 0, i = 0; i < propertylist.length; i++)
-    {
-      const p = {
-	__proto__: propertylist[i],
-	label_: results[k++],			// ①
-	nick_: results[k++], 			// ②
-	unit_: results[k++], 			// ③
-	hints_: results[k++], 			// ④
-	group_: results[k++], 			// ⑤
-	blurb_: results[k++], 			// ⑥
-	description_: results[k++], 		// ⑦
-	get_min_: results[k++], 		// ⑧
-	get_max_: results[k++], 		// ⑨
-	get_step_: results[k++], 		// ⑩
-	is_numeric_: results[k++], 		// ⑪
-      };
-      propertylist[i] = p;
-    }
-  return propertylist;
-}
-
 function guess_layout_rows (number_of_properties) {
   let n_lrows = 1;
   if (number_of_properties > 6)
@@ -117,11 +77,16 @@ function prop_visible (prop) {
   return true;
 }
 
-async function property_groups (asyncpropertylist) {
-  const propertylist = await cache_properties (asyncpropertylist);
+async function property_groups (asyncpropertylist)
+{
+  asyncpropertylist = await asyncpropertylist;
+  for (let i = 0; i < asyncpropertylist.length; i++)
+    asyncpropertylist[i] = Util.extend_property (asyncpropertylist[i], disconnectcallback => Util.add_destroy_callback.call (this, disconnectcallback));
+  for (let i = 0; i < asyncpropertylist.length; i++)
+    asyncpropertylist[i] = await asyncpropertylist[i];
   // split properties into group lists
   const grouplists = {}, groupnames = [];
-  for (const p of propertylist)
+  for (const p of asyncpropertylist)
     {
       if (!prop_visible (p))
 	continue;
@@ -240,7 +205,7 @@ async function property_groups (asyncpropertylist) {
 
 function observable_device_data () {
   const data = {
-    gprops:     { default: [], getter: async c => property_groups (this.device.access_properties ()), },
+    gprops:     { default: [], getter: async c => property_groups.call (this, this.device.access_properties ()), },
     device_info: { default: "",		notify: n => this.device.on ("notify:device_info", n),
 		   getter: async c => Object.freeze (await this.device.device_info()), },
   };
@@ -253,6 +218,10 @@ export default {
     device: { type: Ase.Device, },
   },
   data() { return observable_device_data.call (this); },
+  unmounted()
+  {
+    Util.call_destroy_callbacks.call (this);
+  },
   methods: {
     group_style (group) {
       let s = '';
@@ -297,4 +266,5 @@ export default {
     },
   },
 };
+
 </script>

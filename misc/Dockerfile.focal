@@ -18,7 +18,7 @@ RUN apt-get update \
 	     sudo build-essential curl cmake libglib2.0-dev \
 	     build-essential pkg-config git curl ccache curl unzip gawk g++ \
 	     clang clang-tidy clang-tools castxml cppcheck libboost-system-dev \
-	     imagemagick libxml2-utils libxml2-dev python3 python3-lxml \
+	     imagemagick librsvg2-bin libxml2-utils libxml2-dev python3 python3-lxml \
 	     python3-pandocfilters pandoc graphviz universal-ctags \
 	     libasound2-dev libflac-dev libopus-dev libjack-dev libzstd-dev \
 	     gettext libgconf-2-4 libgtk2.0-dev libgtk-3-dev squashfs-tools zstd \

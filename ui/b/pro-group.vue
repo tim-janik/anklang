@@ -56,7 +56,8 @@
     <span class="b-pro-group-title" > {{ name }} </span>
     <h-flex class="b-pro-group-row" v-for="row in proprows" :key="row.index" >
       <v-flex class="b-pro-group-vprop" v-for="prop in row" :key="prop.$id" :class="prop_class (prop)" >
-	<b-pro-input class="b-pro-group-input" :prop="prop" :labeled="false" :readonly="readonly" />
+	<b-pro-input v-if="ptype (prop) != 'knob'" class="b-pro-group-input" :prop="prop" :labeled="false" :readonly="readonly" />
+	<b-knob v-if="ptype (prop) == 'knob'" class="b-pro-group-knob" :prop="prop" :labeled="false" :readonly="readonly" />
 	<span class="b-pro-group-nick" > {{ prop.nick_ }} </span>
       </v-flex>
     </h-flex>
@@ -107,6 +108,18 @@ export default {
       return c;
     },
     dom_update() {
+    },
+    ptype (prop) {
+      if (prop.is_numeric_)
+	{
+	  const hints = ':' + prop.hints_ + ':';
+	  if (hints.search (/:toggle:/) >= 0)
+	    return 'toggle';
+	  if (hints.search (/:choice:/) >= 0)
+	    return 'choice';
+	  return 'knob';
+	}
+      return '';
     },
   },
 };

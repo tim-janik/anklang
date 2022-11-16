@@ -223,7 +223,7 @@ public:
   double                inyquist    () const ASE_CONST;
   // Parameters
   double              get_param             (Id32 paramid);
-  void                set_param             (Id32 paramid, double value);
+  bool                set_param             (Id32 paramid, double value, bool sendnotify = true);
   ParamInfoP          param_info            (Id32 paramid) const;
   MaybeParamId        find_param            (const String &identifier) const;
   MinMax              param_range           (Id32 paramid) const;
@@ -234,7 +234,7 @@ public:
   virtual double      value_to_normalized   (Id32 paramid, double value) const;
   virtual double      value_from_normalized (Id32 paramid, double normalized) const;
   double              get_normalized        (Id32 paramid);
-  void                set_normalized        (Id32 paramid, double normalized);
+  bool                set_normalized        (Id32 paramid, double normalized, bool sendnotify = true);
   bool                is_initialized        () const;
   // Buses
   IBusId        find_ibus         (const String &name) const;

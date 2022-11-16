@@ -277,6 +277,8 @@ export function drag_event (event) {
   return _ => undefined;
 }
 
+const unrequestpointerlock = Symbol ('unrequest_pointer_lock');
+
 // Maintain pending_pointer_lock state
 function pointer_lock_changed (ev) {
   if (document.pointerLockElement !== pending_pointer_lock)
@@ -285,8 +287,8 @@ function pointer_lock_changed (ev) {
       pending_pointer_lock = null;
       // exit erroneous pointer lock
       if (document.pointerLockElement &&
-	  document.pointerLockElement.__unrequest_pointer_lock)
-	document.pointerLockElement.__unrequest_pointer_lock();
+	  document.pointerLockElement[unrequestpointerlock])
+	document.pointerLockElement[unrequestpointerlock]();
     }
 }
 let pending_pointer_lock = null;
@@ -300,13 +302,14 @@ document.addEventListener ('pointerlockerror', pointer_lock_changed, { passive: 
  */
 export function unrequest_pointer_lock (element) {
   console.assert (element instanceof Element);
-  // this API only operates on elements that have the __unrequest_pointer_lock member set
-  if (element.__unrequest_pointer_lock)
+  // this API only operates on elements that have the [unrequestpointerlock] member set
+  if (element[unrequestpointerlock])
     {
       if (pending_pointer_lock === element)
 	pending_pointer_lock = null;
       if (document.pointerLockElement === element)
 	document.exitPointerLock();
+      element[unrequestpointerlock] = null;
     }
 }
 
@@ -330,10 +333,10 @@ export function has_pointer_lock (element) {
  */
 export function request_pointer_lock (element) {
   console.assert (element instanceof Element);
-  if (has_pointer_lock (element) && element.__unrequest_pointer_lock)
-    return element.__unrequest_pointer_lock;
-  // this API only operates on elements that have the __unrequest_pointer_lock member set
-  element.__unrequest_pointer_lock = () => unrequest_pointer_lock (element);
+  if (has_pointer_lock (element) && element[unrequestpointerlock])
+    return element[unrequestpointerlock];
+  // this API only operates on elements that have the [unrequestpointerlock] member set
+  element[unrequestpointerlock] = () => unrequest_pointer_lock (element);
   pending_pointer_lock = element;
   if (document.pointerLockElement != element)
     {
@@ -341,7 +344,7 @@ export function request_pointer_lock (element) {
 	document.exitPointerLock();
       pending_pointer_lock.requestPointerLock();
     }
-  return element.__unrequest_pointer_lock;
+  return element[unrequestpointerlock];
 }
 
 /// Ensure the root node of `element` contains a `csstext` (replaceable via `stylesheet_name`)
@@ -896,19 +899,18 @@ export async function extend_property (prop, disconnector = undefined, augment =
     apply_: prop.set_value.bind (prop),
     fetch_: () => xprop.is_numeric_ ? xprop.value_.num : xprop.value_.text,
     update_: async () => {
-      const value_ = { val: xprop.get_value(),
-		       num: xprop.get_normalized(),
-		       text: xprop.get_text(),
-		       choices: xprop.has_choices_ ? xprop.choices() : empty_list,
-      };
-      Object.assign (xprop.value_, await Util.object_await_values (value_));
+      const val = xprop.get_value(), text = xprop.get_text();
+      const choices = xprop.has_choices_ ? await xprop.choices() : empty_list;
+      const value_ = { val: await val, num: undefined, text: await text, choices };
+      value_.num = (value_.val - xprop.min_) / (xprop.max_ - xprop.min_);
+      Object.assign (xprop.value_, value_);
       if (augment)
 	await augment (xprop);
     },
     __proto__: prop,
   };
   if (disconnector)
-    disconnector (xprop.on ('change', _ => xprop.update_()));
+    disconnector (xprop.on ('notify', _ => xprop.update_()));
   await Util.object_await_values (xprop);	// ensure xprop.hints_ is valid
   xprop.has_choices_ = xprop.hints_.search (/:choice:/) >= 0;
   await xprop.update_();			// needs xprop.has_choices_, assigns xprop.value_
@@ -1153,29 +1155,33 @@ let scroll_line_height = undefined;
  * For zoom step interpretation, the x/y pixel values should be
  * reduced via `Math.sign()`.
  * For scales the pixel values might feel more natural, because
- * while Firefox tends to increase the number of events with
- * increasing wheel distance, Chromium tends to accumulate and
- * send fewer events with higher values instead.
+ * browsers sometimes increase the number of events with
+ * increasing wheel distance, in other cases values are accumulated
+ * so fewer events with larger deltas are sent instead.
  */
 export function wheel_delta (ev)
 {
   const DPR = Math.max (window.devicePixelRatio || 1, 1);
   const DIV_DPR = 1 / DPR;                      // Factor to divide by DPR
   const WHEEL_DELTA = -53 / 120.0 * DIV_DPR;    // Chromium wheelDeltaY to deltaY pixel ratio
-  const FIREFOX_X = 3;                          // Firefox sets deltaX=1 and deltaY=3 per step on Linux
+  const FIREFOX_Y = 1 / 1.8;                    // Firefox steps are ca 2 times as large as Chrome ones
+  const FIREFOX_X = 3 / 1.8;                    // Firefox sets deltaX=1 and deltaY=3 per step on Linux
   const PAGESTEP = -100;                        // Chromium pixels per scroll step
   // https://stackoverflow.com/questions/5527601/normalizing-mousewheel-speed-across-browsers
   // https://groups.google.com/a/chromium.org/forum/#!topic/blink-dev/U3kH6_98BuY
   if (ev.deltaMode >= 2)                        // DOM_DELTA_PAGE
     return { x: ev.deltaX * PAGESTEP, y: ev.deltaY * PAGESTEP };
-  if (ev.deltaMode >= 1)                        // DOM_DELTA_LINE - only Firefox is known to send this
+  if (ev.deltaMode >= 1)                        // DOM_DELTA_LINE - used by Firefox only
     {
       if (scroll_line_height === undefined)
         scroll_line_height = calculate_scroll_line_height();
-      return { x: ev.deltaX * FIREFOX_X * scroll_line_height, y: ev.deltaY * scroll_line_height };
+      return { x: ev.deltaX * FIREFOX_X * scroll_line_height, y: ev.deltaY * FIREFOX_Y * scroll_line_height };
     }
-  if (ev.deltaMode >= 0)                        // DOM_DELTA_PIXEL - Chromium includes DPR
-    return { x: ev.deltaX * DIV_DPR, y: ev.deltaY * DIV_DPR };
+  if (ev.deltaMode >= 0)                        // DOM_DELTA_PIXEL
+    {
+      const DFIX = 1; // * DIV_DPR;		// old Chromium included DPR
+      return { x: DFIX * ev.deltaX, y: DFIX * ev.deltaY };
+    }
   if (ev.wheelDeltaX !== undefined)             // Use Chromium factors for normalization
     return { x: ev.wheelDeltaX * WHEEL_DELTA, y: ev.wheelDeltaY * WHEEL_DELTA };
   if (ev.wheelDelta !== undefined)              // legacy support
@@ -2077,4 +2083,40 @@ export function raster_line (x0, y0, x1, y1)
   return points;
 }
 
+
+const destroycallbacks = Symbol ('call_destroy_callbacks');
+
+/// Add a `callback` to `this` to be called from `call_destroy_callbacks()`.
+export function add_destroy_callback (callback)
+{
+  console.assert (this instanceof Object);
+  console.assert (callback instanceof Function);
+  const callbacks = this[destroycallbacks] || (this[destroycallbacks] = []);
+  const index = callbacks.indexOf (callback);
+  if (index < 0)
+    callbacks.push (callback);
+}
+
+/// Remove a `callback` from `this`, previously added via `add_destroy_callback()`.
+export function del_destroy_callback (callback)
+{
+  console.assert (this instanceof Object);
+  console.assert (callback instanceof Function);
+  const callbacks = this[destroycallbacks];
+  return callbacks && Util.array_remove (callbacks, callback);
+}
+
+/// Call destroy callbacks of `this`, clears the callback list.
+export function call_destroy_callbacks()
+{
+  console.assert (this instanceof Object);
+  const callbacks = this[destroycallbacks];
+  if (!callbacks)
+    return false;
+    while (callbacks.length)
+      callbacks.pop().call();
+  return true;
+}
+
+// Provide keyboard handling utilities
 export * from './kbd.js';

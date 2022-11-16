@@ -11,11 +11,13 @@ class FileCrawler : public ObjectImpl, public virtual ResourceCrawler {
   const uint constraindir_ : 1;
   const uint constrainfile_ : 1;
   FileCrawler (const String &cwd, bool constraindir = false, bool constrainfile = false);
+protected:
+  void      assign         (const String &path, bool notify);
 public:
   ASE_DEFINE_MAKE_SHARED (FileCrawler);
   ResourceS list_entries   () override;
   Resource  current_folder () override;
-  void      assign         (const String &path) override;
+  void      assign         (const String &path) override { assign (path, true); }
   String    canonify       (const String &cwd, const String &fragment, bool constraindir, bool constrainfile) override;
   String    expand_dir     (const String &which);
 };

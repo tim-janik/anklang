@@ -37,6 +37,9 @@ class ZMove {
     };
   }
 }
+document.addEventListener ("pointerdown", ZMove.zmove, { capture: true, passive: true });
+document.addEventListener ("pointermove", ZMove.zmove, { capture: true, passive: true });
+document.addEventListener ("pointerup", ZMove.zmove, { capture: true, passive: true });
 
 // == App ==
 export class AppClass {

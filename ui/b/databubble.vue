@@ -95,35 +95,18 @@ class DataBubbleImpl {
     this.restart_bubble_timer = Util.debounce (() => this.check_showtime (true),
 					       { restart: true, wait: IDLE_DELAY });
     this.debounced_check = Util.debounce (this.check_showtime);
-    this.queue_update = Util.debounce (this.update_now);
-    const recheck_event = (ev, newmove) => {
-      this.last_event = ev;
-      this.debounced_check();
+
+    const recheck_event = event => {
+      this.last_event = event;
+      this.check_showtime();
     };
-    document.addEventListener ("mousemove", recheck_event, { capture: true, passive: true });
-    document.addEventListener ("mousedown", recheck_event, { capture: true, passive: true });
-    document.addEventListener ("mouseleave",
-			       ev => (ev.target === this.current) && this.debounced_check(),
-			       { capture: true, passive: true });
+    this.zmovedel = App.zmoves_add (recheck_event);
+
     this.resizeob = new ResizeObserver (() => !!this.current && this.debounced_check());
-    this.zmove_del = null;
   }
   check_showtime (showtime = false) {
-    if (this.last_event)
-      {
-	const coords = { x: this.last_event.screenX, y: this.last_event.screenY };
-	this.buttonsdown = !!this.last_event.buttons;
-	if (!this.buttonsdown && !this.stack.length && this.coords &&
-	    (this.coords.x != coords.x || this.coords.y != coords.y) &&
-	    this.last_event.type === "mousemove")
-	  {
-	    this.restart_bubble_timer();
-	    App.zmove (this.last_event);
-	  }
-	this.coords = coords; // needed to ignore 0-distance moves
-	this.last_event = null;
-      }
-    if (this.stack.length) // stack takes precedence over events
+    // check stack hide/show needs
+    if (this.stack.length)
       {
 	const next = this.stack[0];
 	if (next != this.current)
@@ -131,33 +114,51 @@ class DataBubbleImpl {
 	    this.hide();
 	    this.restart_bubble_timer.cancel();
 	  }
-	if (!this.current)
+	if (this.current)
+	  this.update_now();
+	else
 	  this.show (next);
 	return;
       }
+    // restart timer on move
+    if (this.last_event)
+      {
+	const coords = { x: this.last_event.screenX, y: this.last_event.screenY };
+	this.buttonsdown = !!this.last_event.buttons;
+	if (!this.buttonsdown &&
+	    !this.stack.length && this.coords &&
+	    (this.coords.x != coords.x || this.coords.y != coords.y) &&
+	    this.last_event.type === "pointermove")
+	  {
+	    this.restart_bubble_timer();
+	  }
+	this.coords = coords; // needed to ignore 0-distance moves
+	this.last_event = null;
+      }
+    // hide on button events
     if (this.buttonsdown)
       {
 	this.hide();
 	this.restart_bubble_timer.cancel();
 	return;
       }
+    // handle visible bubble
     if (!showtime && !this.current)
       return;
+    // bubble matches hovered element?
     const els = document.body.querySelectorAll ('*:hover[data-bubble]');
     const next = els.length ? els[els.length - 1] : null;
     if (next != this.current)
       this.hide();
+    // show new bubble or update
     if (next && showtime && !this.current)
       this.show (next);
+    else if (this.current)
+      this.update_now();
   }
   hide() {
     // ignore the next 0-distance move
     this.coords = null;
-    if (this.zmove_del)
-      {
-	this.zmove_del();
-	this.zmove_del = null;
-      }
     // hide bubble if any
     if (this.current)
       {
@@ -166,7 +167,7 @@ class DataBubbleImpl {
 	this.resizeob.disconnect();
 	this.bubble.classList.remove ('b-data-bubble-visible');
       }
-    // keep textContent for fade-outs
+    this.lasttext = ""; // no need to keep textContent for fade-outs
   }
   update_now() {
     if (this.current)
@@ -184,8 +185,6 @@ class DataBubbleImpl {
 	  {
 	    this.lasttext = newtext;
 	    Util.markdown_to_html (this.bubblediv, this.lasttext);
-	    if (!this.zmove_del)
-	      this.zmove_del = App.zmoves_add (() => { debug ("bubble zmove"); this.queue_update(); });
 	  }
       }
   }
@@ -195,6 +194,7 @@ class DataBubbleImpl {
     this.current.data_bubble_active = true;
     this.resizeob.observe (this.current);
     this.bubble.classList.add ('b-data-bubble-visible');
+    this.lasttext = "";
     this.update_now(); // might hide()
     if (this.current) // resizing
       {
@@ -237,14 +237,14 @@ class DataBubbleIface {
 	else
 	  element.removeAttribute ('data-bubble');
       }
-    this.data_bubble.queue_update();
+    App.zmove();
   }
   /// Assign a callback function to fetch the `data-bubble` attribute of `element`
   callback (element, callback) {
     element.data_bubble_callback = callback;
     if (callback)
       element.setAttribute ('data-bubble', "");	// [data-bubble] selector needs existing attribute
-    this.data_bubble.queue_update();
+    App.zmove();
   }
   /// Force `data-bubble` to be shown for `element`
   force (element) {
