@@ -120,7 +120,7 @@ sort_12 (RandomIt v, Compare c)
 template<class RandomIt, class Compare> void __attribute__ ((noinline))
 sort_13 (RandomIt v, Compare c)
 {
-  // http://users.telenet.be/bertdobbelaere/SorterHunter/sorting_networks.html
+  // http://bertdobbelaere.github.io/sorting_networks.html
   srt (v[0],  v[12], c); srt (v[1],  v[10], c); srt (v[2], v[9], c); srt (v[3],  v[7], c); srt (v[5], v[11], c);
   srt (v[6],   v[8], c); srt (v[1],   v[6], c); srt (v[2], v[3], c); srt (v[4], v[11], c); srt (v[7],  v[9], c);
   srt (v[8],  v[10], c); srt (v[0],   v[4], c); srt (v[1], v[2], c); srt (v[3],  v[6], c); srt (v[7],  v[8], c);
@@ -135,7 +135,7 @@ sort_13 (RandomIt v, Compare c)
 template<class RandomIt, class Compare> void __attribute__ ((noinline))
 sort_14 (RandomIt v, Compare c)
 {
-  // http://users.telenet.be/bertdobbelaere/SorterHunter/sorting_networks.html
+  // http://bertdobbelaere.github.io/sorting_networks.html
   srt (v[0],  v[6], c); srt (v[1], v[11], c); srt (v[2],  v[12], c); srt (v[3],  v[10], c); srt (v[4],   v[5], c);
   srt (v[7], v[13], c); srt (v[8],  v[9], c); srt (v[1],   v[2], c); srt (v[3],   v[7], c); srt (v[4],   v[8], c);
   srt (v[5],  v[9], c); srt (v[6], v[10], c); srt (v[11], v[12], c); srt (v[0],   v[4], c); srt (v[1],   v[3], c);
@@ -152,7 +152,7 @@ sort_14 (RandomIt v, Compare c)
 template<class RandomIt, class Compare> void __attribute__ ((noinline))
 sort_15 (RandomIt v, Compare c)
 {
-  // http://users.telenet.be/bertdobbelaere/SorterHunter/sorting_networks.html
+  // http://bertdobbelaere.github.io/sorting_networks.html
   srt (v[1],   v[2], c); srt (v[3], v[10], c); srt (v[4],  v[14], c); srt (v[5],   v[8], c); srt (v[6],  v[13], c);
   srt (v[7],  v[12], c); srt (v[9], v[11], c); srt (v[0],  v[14], c); srt (v[1],   v[5], c); srt (v[2],   v[8], c);
   srt (v[3],   v[7], c); srt (v[6],  v[9], c); srt (v[10], v[12], c); srt (v[11], v[13], c); srt (v[0],   v[7], c);
@@ -170,7 +170,7 @@ sort_15 (RandomIt v, Compare c)
 template<class RandomIt, class Compare> void __attribute__ ((noinline))
 sort_16 (RandomIt v, Compare c)
 {
-  // http://users.telenet.be/bertdobbelaere/SorterHunter/sorting_networks.html
+  // http://bertdobbelaere.github.io/sorting_networks.html
   srt (v[0],  v[13], c); srt (v[1],  v[12], c); srt (v[2],  v[15], c); srt (v[3],  v[14], c); srt (v[4],   v[8], c);
   srt (v[5],   v[6], c); srt (v[7],  v[11], c); srt (v[9],  v[10], c); srt (v[0],   v[5], c); srt (v[1],   v[7], c);
   srt (v[2],   v[9], c); srt (v[3],   v[4], c); srt (v[6],  v[13], c); srt (v[8],  v[14], c); srt (v[10], v[15], c);

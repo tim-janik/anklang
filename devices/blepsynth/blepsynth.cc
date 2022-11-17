@@ -309,16 +309,16 @@ class BlepSynth : public AudioProcessor {
     oscparams (1);
 
     start_group ("Volume Envelope");
-    pid_attack_  = add_param ("Attack",  "A", 0, 8000, 110.0, "ms", STANDARD + "logcenter=1000");
-    pid_decay_   = add_param ("Decay",   "D", 0, 8000, 200.0, "ms", STANDARD + "logcenter=1000");
+    pid_attack_  = add_param ("Attack",  "A", 0, 100, 20.0, "%");
+    pid_decay_   = add_param ("Decay",   "D", 0, 100, 30.0, "%");
     pid_sustain_ = add_param ("Sustain", "S", 0, 100, 50.0, "%");
-    pid_release_ = add_param ("Release", "R", 0, 8000, 300.0, "ms", STANDARD + "logcenter=1000");
+    pid_release_ = add_param ("Release", "R", 0, 100, 30.0, "%");
 
     start_group ("Filter Envelope");
-    pid_fil_attack_   = add_param ("Attack",  "A", 0, 8000, 500.0, "ms", STANDARD + "logcenter=1000");
-    pid_fil_decay_    = add_param ("Decay",   "D", 0, 8000, 1500.0, "ms", STANDARD + "logcenter=1000");
-    pid_fil_sustain_  = add_param ("Sustain", "S", 0, 100,  30.0, "%");
-    pid_fil_release_  = add_param ("Release", "R", 0, 8000, 300.0, "ms", STANDARD + "logcenter=1000");
+    pid_fil_attack_   = add_param ("Attack",  "A", 0, 100, 40, "%");
+    pid_fil_decay_    = add_param ("Decay",   "D", 0, 100, 55, "%");
+    pid_fil_sustain_  = add_param ("Sustain", "S", 0, 100, 30, "%");
+    pid_fil_release_  = add_param ("Release", "R", 0, 100, 30, "%");
     pid_fil_cut_mod_  = add_param ("Env Cutoff Modulation", "CutMod", -96, 96, 36, "semitones"); /* 8 octaves range */
 
     start_group ("Mix");
@@ -416,6 +416,25 @@ class BlepSynth : public AudioProcessor {
     unison_voices = CLAMP (unison_voices, 1, 16);
     osc.set_unison (unison_voices, get_param (params.unison_detune), get_param (params.unison_stereo) * 0.01);
   }
+  static double
+  perc_to_s (double perc)
+  {
+    // 100% -> 8s; 50% -> 1s; 0% -> 0s
+    const double x = perc * 0.01;
+    return x * x * x * 8;
+  }
+  static String
+  perc_to_str (double perc)
+  {
+    double ms = perc_to_s (perc) * 1000;
+    if (ms > 1000)
+      return string_format ("%.2f s", ms / 1000);
+    if (ms > 100)
+      return string_format ("%.0f ms", ms);
+    if (ms > 10)
+      return string_format ("%.1f ms", ms);
+    return string_format ("%.2f ms", ms);
+  }
   void
   note_on (int channel, int midi_note, int vel)
   {
@@ -428,22 +447,22 @@ class BlepSynth : public AudioProcessor {
         voice->midi_note_ = midi_note;
 
         // Volume Envelope
-        /* TODO: we need non-linear translation between percent and time/level */
+        /* TODO: maybe use non-linear translation between level and sustain % */
         voice->envelope_.set_delay (0);
-        voice->envelope_.set_attack (get_param (pid_attack_) * 0.001);   /* time in milliseconds */
+        voice->envelope_.set_attack (perc_to_s (get_param (pid_attack_)));
         voice->envelope_.set_hold (0);
-        voice->envelope_.set_decay (get_param (pid_decay_) * 0.001);     /* time in milliseconds */
+        voice->envelope_.set_decay (perc_to_s (get_param (pid_decay_)));
         voice->envelope_.set_sustain (get_param (pid_sustain_));         /* percent */
-        voice->envelope_.set_release (get_param (pid_release_) * 0.001); /* time in milliseconds */
+        voice->envelope_.set_release (perc_to_s (get_param (pid_release_)));
         voice->envelope_.start (sample_rate());
 
         // Filter Envelope
         voice->fil_envelope_.set_delay (0);
-        voice->fil_envelope_.set_attack (get_param (pid_fil_attack_) * 0.001);   /* time in milliseconds */
+        voice->fil_envelope_.set_attack (perc_to_s (get_param (pid_fil_attack_)));
         voice->fil_envelope_.set_hold (0);
-        voice->fil_envelope_.set_decay (get_param (pid_fil_decay_) * 0.001);     /* time in milliseconds */
+        voice->fil_envelope_.set_decay (perc_to_s (get_param (pid_fil_decay_)));
         voice->fil_envelope_.set_sustain (get_param (pid_fil_sustain_));         /* percent */
-        voice->fil_envelope_.set_release (get_param (pid_fil_release_) * 0.001); /* time in milliseconds */
+        voice->fil_envelope_.set_release (perc_to_s (get_param (pid_fil_release_)));
         voice->fil_envelope_.set_shape (Envelope::Shape::LINEAR);
         voice->fil_envelope_.start (sample_rate());
 
@@ -637,6 +656,9 @@ class BlepSynth : public AudioProcessor {
         if (paramid == osc_params[o].octave)
           return string_format ("%d octaves", irintf (value));
       }
+    for (auto p : { pid_attack_, pid_decay_, pid_release_, pid_fil_attack_, pid_fil_decay_, pid_fil_release_ })
+      if (paramid == p)
+        return perc_to_str (value);
 
     return AudioProcessor::param_value_to_text (paramid, value);
   }
