@@ -72,6 +72,16 @@ c-grid {
     z-index: 2; backface-visibility: hidden; will-change: transform;
     transform: translateX(-9999px);
   }
+  .-hextend {
+    background: #0000; opacity: 0; visibility: hidden;
+    margin-top: 0; height: 1px;
+    // height: 16px; margin-top: -8px; background: #0f0;
+  }
+  .-vextend {
+    background: #0000; opacity: 0; visibility: hidden;
+    margin-left: 0; width: 1px;
+    // width: 16px; margin-left: -3px; background: #00f;
+  }
 }
 `;
 
@@ -83,17 +93,11 @@ const HTML = (t, d) => html`
     <canvas class="-col1 -row2" ${ref(e => t.piano_canvas = e)} ></canvas>
     <canvas class="-col2 -row2" ${ref(e => t.notes_canvas = e)} ></canvas>
     <div class="-col3 -row2" style="overflow: hidden scroll; min-width: 17px; background: #000" ${ref(e => t.vscrollbar = e)} >
-      <div style="height: 151vh; width: 16px; margin-left: -3px; background1: #808" ${ref(e => t.vscrollbar_extend = e)} >
-	S <br />
-	C <br />
-	R <br />
-	O <br />
-	L <br />
-	L <br />
+      <div class="-vextend" style="height: 151vh" ${ref(e => t.vscrollbar_extend = e)} >
       </div>
     </div>
     <div class="-col2 -row3" ${ref(e => t.hscrollbar = e)} style="overflow: scroll hidden; min-height: 17px; background: #000" >
-      <div ${ref(e => t.hscrollbar_extend = e)} style="width:999px; height: 16px; margin-top: -8px; width:999px; background1: #080" > Scroll Row </div>
+      <div class="-hextend" ${ref(e => t.hscrollbar_extend = e)} style="width:999px" ></div>
     </div>
     <span class="-indicator" ${ref(e => t.indicator_bar = e)} />
   </c-grid>
