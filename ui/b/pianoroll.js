@@ -66,6 +66,12 @@ c-grid {
   canvas { background: black; object-fit: contain;
     min-width: 0; min-height: 0; // https://www.w3.org/TR/css3-grid-layout/#min-size-auto
   }
+  .-indicator {
+    position: absolute; top: 0; bottom: 0; left: 0; width: 1px; height: 100%;
+    background: $b-piano-roll-indicator;
+    z-index: 2; backface-visibility: hidden; will-change: transform;
+    transform: translateX(-9999px);
+  }
 }
 `;
 
@@ -89,6 +95,7 @@ const HTML = (t, d) => html`
     <div class="-col2 -row3" ${ref(e => t.hscrollbar = e)} style="overflow: scroll hidden; min-height: 17px; background: #000" >
       <div ${ref(e => t.hscrollbar_extend = e)} style="width:999px; height: 16px; margin-top: -8px; width:999px; background1: #080" > Scroll Row </div>
     </div>
+    <span class="-indicator" ${ref(e => t.indicator_bar = e)} />
   </c-grid>
 `;
 
@@ -120,6 +127,8 @@ class BPianoRoll extends LitElement {
     this.time_canvas = null;
     this.hscrollbar = null;
     this.vscrollbar = null;
+    this.indicator_bar = null;
+    this.last_pos = -9.987;
     this.srect = { x: 0, y: 0, w: 0, h: 0 };
     this.clip = null;
     this.disabled = false;
@@ -133,6 +142,12 @@ class BPianoRoll extends LitElement {
     this.resize_observer.observe (document.body);
     this.vscroll_must_center = true; // flag for initial vertical centering
   }
+  disconnectedCallback()
+  {
+    super.disconnectedCallback();
+    Shell.piano_current_tick = null;
+    Shell.piano_current_clip = null;
+  }
   updated (changed_props)
   {
     if (this.hscrollbar && !this.hscrollbar.onscroll)
@@ -145,6 +160,26 @@ class BPianoRoll extends LitElement {
 	this.vscroll_to (0.5);
       }
     this.repaint (true);
+    // indicator_bar setup
+    this.dpr_mul = window.devicePixelRatio;
+    this.dpr_div = 1.0 / this.dpr_mul;
+    Shell.piano_current_tick = this.piano_current_tick.bind (this);
+    Shell.piano_current_clip = this.clip;
+  }
+  piano_current_tick (current_clip, current_tick)
+  {
+    if (this.clip != current_clip) return;
+    const offst = this.layout.xscroll();
+    const t = -offst + current_tick * this.layout.tickscale * this.dpr_div;
+    let u = Math.round (t * this.dpr_mul) * this.dpr_div; // screen pixel alignment
+    u = u >= 0 ? u + this.notes_canvas.offsetLeft : -9999;
+    if (u != this.last_pos)
+      {
+	const indicator_transform = "translateX(" + u + "px)";
+	this.last_pos = u;
+	if (this.indicator_bar)
+	  this.indicator_bar.style.transform = indicator_transform;
+      }
   }
   vscroll_to (fraction)
   {
