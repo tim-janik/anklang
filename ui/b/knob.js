@@ -93,7 +93,8 @@ class BKnob extends LitElement {
     super();
     this.sprite = null;
     this.nosize = false;
-    this.hscroll = this.vscroll = true;
+    this.hscroll = false; // allow horizontal device panel scrolling
+    this.vscroll = true;
     this.notify_value_cb = (...args) => this.notify_value (...args);
     this.clear_notify_cb = undefined;
     this.relabel_cb = Util.debounce (this.relabel);
