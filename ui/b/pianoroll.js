@@ -87,11 +87,27 @@ c-grid {
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <c-grid @wheel=${t.wheel} >
-    <div class="-col1 -row1" ${ref(e => t.menu_btn = e)} style="height: 1.7em" >Menu</div>
-    <canvas class="-col2 -row1" ${ref(e => t.time_canvas = e)} ></canvas>
-    <canvas class="-col1 -row2" ${ref(e => t.piano_canvas = e)} ></canvas>
-    <canvas class="-col2 -row2" ${ref(e => t.notes_canvas = e)} ></canvas>
+  <c-grid
+    @keydown=${e => t.piano_ctrl.keydown (e)}
+    @wheel=${t.wheel} >
+
+    <v-flex class="-toolbutton -col1 -row1" style="height: 1.7em" ${ref(n => t.menu_btn = n)}
+      @click=${e => t.pianotoolmenu.popup (e)} @mousedown=${e => t.pianotoolmenu.popup (e)} >
+      <b-icon style="width: 1.2em; height: 1.2em" ${ref(n => t.menu_icon = n)} />
+      <b-contextmenu ${ref(n => t.pianotoolmenu = n)} id="g-pianotoolmenu" class="-pianotoolmenu" @activate=${e => t.usetool (e.detail.uri)} >
+	<b-menuitem ic="mi-open_with"     uri="S" kbd="1" > Rectangular Selection  </b-menuitem>
+	<b-menuitem ic="mi-multiple_stop" uri="H" kbd="2" > Horizontal Selection   </b-menuitem>
+	<b-menuitem ic="fa-pencil"        uri="P" kbd="3" > Pen                    </b-menuitem>
+	<b-menuitem ic="fa-eraser"        uri="E" kbd="4" > Eraser                 </b-menuitem>
+      </b-contextmenu>
+    </v-flex>
+
+    <canvas class="-col2 -row1" ${ref(n => t.time_canvas = n)} ></canvas>
+    <canvas class="-col1 -row2" ${ref(n => t.piano_canvas = n)} ></canvas>
+    <canvas class="-col2 -row2" ${ref(n => t.notes_canvas = n)}
+      @pointerdown=${t.notes_canvas_pointerdown}
+      ></canvas>
+
     <div class="-col3 -row2" style="overflow: hidden scroll; min-width: 17px; background: #000" ${ref(e => t.vscrollbar = e)} >
       <div class="-vextend" style="height: 151vh" ${ref(e => t.vscrollbar_extend = e)} >
       </div>
@@ -125,7 +141,10 @@ class BPianoRoll extends LitElement {
   constructor()
   {
     super();
+    this.pianotool = 'S';
     this.menu_btn = null;
+    this.menu_icon = null;
+    this.pianotoolmenu = null;
     this.notes_canvas = null;
     this.piano_canvas = null;
     this.time_canvas = null;
@@ -141,16 +160,26 @@ class BPianoRoll extends LitElement {
     this.hzoom = 1;
     this.vzoom = 1;
     this.end_click = 99999;
-    this.resize_observer = new ResizeObserver (els => this.repaint (true, els));
+    this.resize_observer = new ResizeObserver (els => this.repaint (true));
     this.resize_observer.observe (this);
     this.resize_observer.observe (document.body);
     this.vscroll_must_center = true; // flag for initial vertical centering
+    this.pointer_drag = null;
+    this.piano_ctrl = new PianoCtrl.PianoCtrl (this);
+    this.drag_event = this.piano_ctrl.drag_event.bind (this.piano_ctrl);
+    this.notes_changed = () => this.repaint (false);
   }
   disconnectedCallback()
   {
     super.disconnectedCallback();
     Shell.piano_current_tick = null;
     Shell.piano_current_clip = null;
+  }
+  firstUpdated()
+  {
+    // ensure DOM tee is complete // await this.updateComplete;
+    // initial menu button update
+    this.usetool (this.pianotool);
   }
   updated (changed_props)
   {
@@ -160,8 +189,13 @@ class BPianoRoll extends LitElement {
       this.vscrollbar.onscroll = e => this.repaint (false);
     if (changed_props.has ('clip'))
       {
+	const old = changed_props['clip'];
+	if (old)
+	  Shell.get_note_cache (old).del_callback (this.notes_changed);
 	this.hscrollbar.scrollTo ({ left: 0, behavior: 'instant' });
 	this.vscroll_to (0.5);
+	if (this.clip)
+	  Shell.get_note_cache (this.clip).add_callback (this.notes_changed);
       }
     this.repaint (true);
     // indicator_bar setup
@@ -169,6 +203,41 @@ class BPianoRoll extends LitElement {
     this.dpr_div = 1.0 / this.dpr_mul;
     Shell.piano_current_tick = this.piano_current_tick.bind (this);
     Shell.piano_current_clip = this.clip;
+  }
+  notes_canvas_pointerdown (event)
+  {
+    if (this.pointer_drag)
+      {
+	this.pointer_drag.pointercancel (event);
+	this.pointer_drag.destroy();
+	this.pointer_drag = null;
+      }
+    if (!this.clip)
+      return false;
+    if (document.activeElement != this)
+      this.focus();
+    let method;
+    switch (this.pianotool + event.button)
+    {
+      case 'S0': method = this.piano_ctrl.drag_select.bind (this.piano_ctrl); break;
+      case 'H0': method = this.piano_ctrl.drag_select.bind (this.piano_ctrl); break;
+      case 'P0': method = this.piano_ctrl.drag_paint.bind (this.piano_ctrl); break;
+      case 'E0': method = this.piano_ctrl.drag_erase.bind (this.piano_ctrl); break;
+    }
+    if (method)
+      this.pointer_drag = new Util.PointerDrag (this, event, method); // calls this.drag_event
+  }
+  usetool (uri)
+  {
+    this.pianotool = uri;
+    this.setAttribute ('data-pianotool', this.pianotool);
+    // clone menu item
+    const title = '**EDITOR TOOL**';
+    const menuitem = this.pianotoolmenu.find_menuitem (uri);
+    this.menu_icon.setAttribute ('ic', menuitem.getAttribute ('ic'));
+    this.menu_icon.setAttribute ('data-kbd', menuitem.getAttribute ('kbd'));
+    this.menu_icon.setAttribute ('data-tip', title + ' ' + menuitem.slot_label());
+    App.zmove(); // pick up 'data-tip'
   }
   piano_current_tick (current_clip, current_tick)
   {
@@ -190,7 +259,7 @@ class BPianoRoll extends LitElement {
     const vrange = this.vscrollbar_extend.clientHeight - this.vscrollbar.clientHeight;
     this.vscrollbar.scrollTo ({ top: fraction * vrange, behavior: 'instant' });
   }
-  repaint (resize = false, els = undefined)
+  repaint (resize = false)
   {
     if (!this.notes_canvas || !this.hscrollbar || !this.vscrollbar)
       return;
