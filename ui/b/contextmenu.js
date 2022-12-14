@@ -275,8 +275,15 @@ class BContextMenu extends LitElement {
 	this.allowed_click = click_event;
 	const proceed = this.dispatchEvent (click_event);
 	this.allowed_click = null;
-	if (proceed && this.activate)
-	  this.activate (uri, click_event);
+	if (proceed)
+	  {
+	    if (this.activate)
+	      this.activate (uri, click_event);
+	    else
+	      this.dispatchEvent (new CustomEvent ('activate', {
+	        detail: { uri }
+	      }));
+	  }
 	this.close();
       }
     else
