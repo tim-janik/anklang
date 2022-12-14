@@ -326,6 +326,8 @@ class ShellClass extends Envue.Component {
       const notes = await clip.list_all_notes();
       cache.notes = Util.freeze_deep (notes);
       cache.rgen.value += 1; // trigger Vue reactivity hooks
+      for (const cb of cache.callbacks_)
+	cb();
     }
     cache.promise = null;
   }
@@ -333,6 +335,7 @@ class ShellClass extends Envue.Component {
     if (!this.note_cache[clip.$id]) {
       const cache = { rgen: Vue.ref (1), // generational counter, Vue reactive
 		      destroynotify: null, promise: null, dirty: 0,
+		      callbacks_: [],
 		      notes: Object.freeze ([]) };
       const update_note_cache = () => {
 	cache.dirty++;
@@ -352,6 +355,8 @@ class ShellClass extends Envue.Component {
 	// use cache.rgen to notify Vue reactivity hooks
 	return cache.rgen.value && cache.notes;
       },
+      add_callback (cb) { cache.callbacks_.push (cb); },
+      del_callback (cb) { return Util.array_remove (cache.callbacks_, cb); },
     });
   }
   async note_cache_notes (clip) {
