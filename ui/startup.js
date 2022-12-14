@@ -41,8 +41,18 @@ class VFlex extends HTMLElement {
   constructor() { super(); }
 }
 customElements.define ('v-flex', VFlex);
-class CGrid extends HTMLElement {
+
+// == CGrid ==
+import { LitElement, html, css, postcss, docs } from '../little.js';
+class CGrid extends LitElement {
+  // Container for grid layouting, see: https://www.w3.org/TR/css-grid-1/#grid-containers
+  // visual cheatsheet: http://grid.malven.co/
+  static styles = [ css`
+    :host { display: grid; }
+    :host[inline] { display: inline-grid; }
+  ` ];
   constructor() { super(); }
+  render() { return html`<slot></slot>`; }
 }
 customElements.define ('c-grid', CGrid);
 

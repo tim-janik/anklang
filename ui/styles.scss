@@ -151,20 +151,6 @@ h-flex, v-flex {
 h-flex { flex-direction: row; }
 v-flex { flex-direction: column; }
 
-// == c-grid ==
-c-grid {
-  // Container for grid layouting, see: https://www.w3.org/TR/css-grid-1/#grid-containers
-  // visual cheatsheet: http://grid.malven.co/
-  display: grid;
-  &[inline] { display: inline-grid; }
-  // Alignment: https://www.w3.org/TR/css-align-3/#overview
-  // - grid within parent, vertically:   align-content:   start end center stretch space-around space-between space-evenly;
-  // - grid within parent, horizontally: justify-content: start end center stretch space-around space-between space-evenly;
-  // - items within grid, vertically:    align-items:     baseline start end center stretch;
-  // - items within grid, horizontally:  justify-items:   baseline start end center stretch space-around space-between space-evenly;
-  // - per-element: align-self justify-self
-}
-
 // == grid helpers ==
 .-row1 { grid-row: 1; } .-col1 { grid-column: 1; }
 .-row2 { grid-row: 2; } .-col2 { grid-column: 2; }
