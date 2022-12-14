@@ -88,6 +88,7 @@ c-grid {
 // == HTML ==
 const HTML = (t, d) => html`
   <c-grid tabindex="-1" ${ref(n => t.cgrid = n)}
+    @pointerenter=${t.pointerenter} @pointerleave=${t.pointerleave} @focus=${t.focuschange} @blur=${t.focuschange}
     @keydown=${e => t.piano_ctrl.keydown (e)}
     @wheel=${t.wheel} >
 
@@ -146,12 +147,15 @@ class BPianoRoll extends LitElement {
     this.menu_btn = null;
     this.menu_icon = null;
     this.pianotoolmenu = null;
+    this.pianorollmenu = null;
     this.notes_canvas = null;
     this.piano_canvas = null;
     this.time_canvas = null;
     this.hscrollbar = null;
     this.vscrollbar = null;
     this.indicator_bar = null;
+    this.have_focus = false;
+    this.entered = false;
     this.last_pos = -9.987;
     this.srect_ = { x: 0, y: 0, w: 0, h: 0, sx: 0, sy: 0 };
     this.clip = null;
@@ -207,6 +211,29 @@ class BPianoRoll extends LitElement {
   }
   get srect ()	{ return Object.assign ({}, this.srect_); }
   set srect (r)	{ Object.assign (this.srect_, r); this.repaint (false); }
+  pointerenter (event)
+  {
+    this.entered = true;
+    if (this.pianotoolmenu)
+      this.pianotoolmenu.map_kbd_hotkeys (this.entered || this.have_focus);
+    debug ("pianotoolmenu.map_kbd_hotkeys:", this.pianotoolmenu && (this.entered || this.have_focus) );
+  }
+  pointerleave (event)
+  {
+    this.entered = false;
+    if (this.pianotoolmenu)
+      this.pianotoolmenu.map_kbd_hotkeys (this.entered || this.have_focus);
+    debug ("pianotoolmenu.map_kbd_hotkeys:", this.pianotoolmenu && (this.entered || this.have_focus) );
+  }
+  focuschange (ev) {
+    if (ev?.type)
+      this.have_focus = ev.type == "focus";
+    if (this.pianotoolmenu)
+      this.pianotoolmenu.map_kbd_hotkeys (this.entered || this.have_focus);
+    if (this.pianorollmenu)
+      this.pianorollmenu.map_kbd_hotkeys (this.have_focus);
+    debug ("pianotoolmenu.map_kbd_hotkeys:", this.pianotoolmenu && (this.entered || this.have_focus) );
+  }
   notes_canvas_pointerdown (event)
   {
     if (this.pointer_drag)
