@@ -101,9 +101,9 @@ export default {
 	    }
 	}
     },
-    input_keydown (ev) {
+    input_keydown (event) {
       const input = this.$refs.input;
-      const esc = Util.match_key_event (ev, 'Escape');
+      const esc = Util.match_key_event (event, 'Escape');
       if (esc)
 	input.valid_change = 0;
       if (esc || Util.match_key_event (event, 'Enter'))
