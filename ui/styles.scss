@@ -162,39 +162,6 @@ v-flex { flex-direction: column; }
 .-row8 { grid-row: 8; } .-col8 { grid-column: 8; }
 .-row9 { grid-row: 9; } .-col9 { grid-column: 9; }
 
-// == Scrollbars ==
-#b-app {
-  // Chrome
-  html[chrome] & {
-    ::-webkit-scrollbar	{ width: $b-scrollbar-size; height: $b-scrollbar-size; }
-    ::-webkit-scrollbar-button { display: none; }
-    ::-webkit-scrollbar-track, &::-webkit-scrollbar-track-piece,
-    ::-webkit-scrollbar	{
-      background: $b-scrollbar-bg;
-      border: none; box-shadow: none;
-    }
-    ::-webkit-scrollbar-thumb	{
-      border-radius: 999px;
-      transition: background 0.4s ease;
-      background: $b-scrollbar-dd;
-    }
-    &:hover ::-webkit-scrollbar-thumb {
-      transition: background 0.4s ease;
-      background: linear-gradient(zmod($b-scrollbar-fg,Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%));
-    }
-  }
-  // Firefox
-  html[gecko] & {
-    scrollbar-width: thin;
-    transition: scrollbar-color 0.4s ease;
-    scrollbar-color: $b-scrollbar-dd $b-scrollbar-bg;
-    &:hover {
-      scrollbar-color: $b-scrollbar-fg $b-scrollbar-bg;
-    }
-  }
-  // keep in sync with @mixin scrollbar-hover-area
-}
-
 // == Shortcut Editor ==
 .b-shortcut-dialog {
   .-div-handler {
