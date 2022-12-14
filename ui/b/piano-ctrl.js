@@ -72,7 +72,7 @@ export class PianoCtrl {
   }
   keydown (event)
   {
-    const roll = this.piano_roll, clip = roll.msrc;
+    const roll = this.piano_roll, clip = roll.clip;
     if (!clip) return;
     const options = { prevent_default: false };
     const promise = this.async_keydown (event, options);
@@ -82,7 +82,7 @@ export class PianoCtrl {
   }
   async async_keydown (event, options)
   {
-    const roll = this.piano_roll, clip = roll.msrc;
+    const roll = this.piano_roll, clip = roll.clip;
     // most switch cases need event.preventDefault()
     options.prevent_default = true; // must be assigned *before* await
     // key handling
@@ -217,26 +217,28 @@ export class PianoCtrl {
   }
 
   drag_event (event, MODE) {
-    const roll = this.piano_roll, layout = roll.layout, msrc = roll.msrc;
-    if (!msrc || event.button >= 2) // contextmenu
+    const piano_roll = this.piano_roll, layout = piano_roll.layout, clip = piano_roll.clip;
+    if (!clip || event.button >= 2) // contextmenu
       return;
-    if (event.target == roll.$refs.notes_canvas && MODE == Util.START)
-      roll.$refs.notes_canvas.setAttribute ('data-notehover', false);
-    if (event.target == roll.$refs.timeline_canvas)
+    if (event.target == piano_roll.notes_canvas && MODE == Util.START)
+      piano_roll.notes_canvas.setAttribute ('data-notehover', false);
+    if (event.target == piano_roll.time_canvas)
       {
 	const tick = layout.tick_from_x (event.offsetX);
 	debug ("tdrag:", MODE, tick, event);
       }
-    else if (event.target == roll.$refs.piano_canvas)
-      debug ("pdrag:", MODE, roll.pianotool, event);
-    else if (event.target == roll.$refs.notes_canvas && roll.pianotool == 'S')
+    else if (event.target == piano_roll.piano_canvas)
+      debug ("pdrag:", MODE, piano_roll.pianotool, event);
+    else if (event.target == piano_roll.notes_canvas && piano_roll.pianotool == 'S')
       {
 	if (MODE == Util.START)
 	  {
 	    event.preventDefault();
-	    roll.adata.srect.sx = event.offsetX;
-	    roll.adata.srect.sy = event.offsetY;
-	    queue_change_selection (roll, NONE);
+	    const srect = piano_roll.srect;
+	    srect.sx = event.offsetX;
+	    srect.sy = event.offsetY;
+	    piano_roll.srect = srect;
+	    queue_change_selection (piano_roll, NONE);
 	  }
 	else if (MODE == Util.MOVE)
 	  {
@@ -247,46 +249,49 @@ export class PianoCtrl {
 	  {
 	    event.preventDefault();
 	    event.stopPropagation();
-	    roll.adata.srect.w = 0;
-	    roll.adata.srect.h = 0;
+	    const srect = piano_roll.srect;
+	    srect.w = 0;
+	    srect.h = 0;
+	    piano_roll.srect = srect;
 	  }
       }
     else
-      debug ("odrag:", MODE, roll.pianotool, event);
+      debug ("odrag:", MODE, piano_roll.pianotool, event);
   }
   drag_move (event) {
-    const roll = this.piano_roll, layout = roll.layout; // , msrc = roll.msrc;
-    const srect = roll.adata.srect;
+    const piano_roll = this.piano_roll, layout = piano_roll.layout;
+    const srect = piano_roll.srect;
     srect.x = Math.min (event.offsetX, srect.sx);
     srect.y = Math.min (event.offsetY, srect.sy);
     srect.w = Math.max (event.offsetX, srect.sx) - srect.x;
     srect.h = Math.max (event.offsetY, srect.sy) - srect.y;
+    piano_roll.srect = srect;
     const t0 = layout.tick_from_x (srect.x), t1 = layout.tick_from_x (srect.x + srect.w);
     const k0 = layout.midinote_from_y (srect.y + srect.h), k1 = layout.midinote_from_y (srect.y);
 
-    queue_change_selection (roll, ASSIGN, n => (n.key >= k0 && n.key <= k1 &&
-					  ((t0 < n.tick && t1 >= n.tick) ||
-					   (t0 >= n.tick && t0 < n.tick + n.duration))));
+    queue_change_selection (piano_roll, ASSIGN, n => (n.key >= k0 && n.key <= k1 &&
+						      ((t0 < n.tick && t1 >= n.tick) ||
+						       (t0 >= n.tick && t0 < n.tick + n.duration))));
   }
   debounced_drag_move = Util.debounce (this.drag_move.bind (this), { wait: 17, restart: true, immediate: true });
   move_event (event) // this method is debounced
   {
-    const roll = this.piano_roll, layout = roll.layout; // msrc = roll.msrc;
+    const piano_roll = this.piano_roll, layout = piano_roll.layout;
     if (!layout) return; // UI layout may have changed for deferred events
-    if (event.target == roll.$refs.notes_canvas) {
+    if (event.target == piano_roll.notes_canvas) {
       const tick = layout.tick_from_x (event.offsetX);
       const midinote = layout.midinote_from_y (event.offsetY);
-      const idx = find_note (roll.note_cache.notes,
+      const idx = find_note (piano_roll.note_cache.notes,
 			     n => tick >= n.tick && tick < n.tick + n.duration && n.key == midinote);
-      roll.$refs.notes_canvas.setAttribute ('data-notehover', idx >= 0);
+      piano_roll.notes_canvas.setAttribute ('data-notehover', idx >= 0);
     }
   }
 
   drag_select (event, MODE)
   {
-    const piano_roll = this.piano_roll, layout = piano_roll.layout, msrc = piano_roll.msrc, srect = piano_roll.adata.srect;
+    const piano_roll = this.piano_roll, layout = piano_roll.layout, clip = piano_roll.clip, srect = piano_roll.srect;
     const horizontal = piano_roll.pianotool == 'H';
-    if (!msrc || event.button >= 2) // contextmenu
+    if (!clip || event.button >= 2) // contextmenu
       return false;
 
     // TODO: click on unselected note needs to focus1 and start move
@@ -324,6 +329,7 @@ export class PianoCtrl {
 	srect.y = Math.min (srect.ly, srect.by);
 	srect.w = Math.max (srect.lx, srect.bx) - srect.x;
 	srect.h = Math.max (srect.ly, srect.by) - srect.y;
+	piano_roll.srect = srect;
 	const t0 = layout.tick_from_x (srect.x), t1 = layout.tick_from_x (srect.x + srect.w);
 	const k0 = layout.midinote_from_y (srect.y + srect.h);
 	const k1 = layout.midinote_from_y (srect.y);
@@ -340,6 +346,7 @@ export class PianoCtrl {
       case STOP:
 	srect.w = 0;
 	srect.h = 0;
+	piano_roll.srect = srect;
 	break;
     }
     event.preventDefault();
@@ -349,7 +356,7 @@ export class PianoCtrl {
 
   drag_paint (event, MODE)
   {
-    const piano_roll = this.piano_roll, clip = piano_roll.msrc, layout = piano_roll.layout;
+    const piano_roll = this.piano_roll, clip = piano_roll.clip, layout = piano_roll.layout;
     const event_tick = layout.tick_from_x (event.offsetX);
     const event_key = layout.midinote_from_y (event.offsetY);
     if (!clip)
@@ -385,7 +392,7 @@ export class PianoCtrl {
 
   drag_erase (pointerevent, MODE)
   {
-    const piano_roll = this.piano_roll, clip = piano_roll.msrc, layout = piano_roll.layout;
+    const piano_roll = this.piano_roll, clip = piano_roll.clip, layout = piano_roll.layout;
     if (!clip)
       return false;
     // stop+prevent *before* await
@@ -401,7 +408,7 @@ export class PianoCtrl {
 
     switch (MODE) {
       case START:
-	this.erase = { ids: new Set(), x: event.offsetX, y: event.offsetY };
+	this.erase = { ids: new Set(), x: pointerevent.offsetX, y: pointerevent.offsetY };
 	// fall through
       case MOVE: {
 	const erase = this.erase; // keep around after change_selection() queued the request
@@ -468,9 +475,9 @@ function find_note (allnotes, predicate)
 // == queue_change_selection ==
 // Asynchronously modify selected `clip` notes and adjust piano_roll focus.
 async function queue_change_selection (piano_roll, selectmode, predicate) {
-  const clip = piano_roll.msrc;
+  const clip = piano_roll.clip;
   if (!clip) return;
-  return queue_modify_notes (piano_roll.msrc, modify_selection);
+  return queue_modify_notes (clip, modify_selection);
 
   // Modify selection in allnotes according to selectmode and predicate
   async function modify_selection (clip, allnotes)
