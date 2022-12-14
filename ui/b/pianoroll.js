@@ -87,7 +87,7 @@ c-grid {
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <c-grid
+  <c-grid tabindex="-1" ${ref(n => t.cgrid = n)}
     @keydown=${e => t.piano_ctrl.keydown (e)}
     @wheel=${t.wheel} >
 
@@ -142,6 +142,7 @@ class BPianoRoll extends LitElement {
   {
     super();
     this.pianotool = 'S';
+    this.cgrid = null;
     this.menu_btn = null;
     this.menu_icon = null;
     this.pianotoolmenu = null;
@@ -216,8 +217,8 @@ class BPianoRoll extends LitElement {
       }
     if (!this.clip)
       return false;
-    if (document.activeElement != this)
-      this.focus();
+    if (document.activeElement != this.cgrid)
+      this.cgrid.focus();
     let method;
     switch (this.pianotool + event.button)
     {
