@@ -74,24 +74,27 @@ export class PianoCtrl {
   {
     const roll = this.piano_roll, clip = roll.clip;
     if (!clip) return;
-    const options = { prevent_default: false };
+    const options = { stop_event: false };
     const promise = this.async_keydown (event, options);
-    if (options.prevent_default)
-      event.preventDefault();
+    if (options.stop_event)
+      {
+	event.preventDefault();
+	event.stopPropagation();
+      }
     return promise;
   }
   async async_keydown (event, options)
   {
     const roll = this.piano_roll, clip = roll.clip;
     // most switch cases need event.preventDefault()
-    options.prevent_default = true; // must be assigned *before* await
+    options.stop_event = true; // must be assigned *before* await
     // key handling
     const key_ctrl_alt_shift = event.keyCode + (event.shiftKey && SHIFT) + (event.ctrlKey && CTRL) + (event.altKey && ALT);
     switch (key_ctrl_alt_shift) {
       default:
 	// undo order for event.preventDefault() *before* await or async return
-	options.prevent_default = false;
-	return; // returns promise, but options.prevent_default was modified before that
+	options.stop_event = false;
+	return; // returns promise, but options.stop_event was modified before that
       case "A".charCodeAt (0) + CTRL:
 	await queue_change_selection (roll, ASSIGN, n => 1);
 	break;
