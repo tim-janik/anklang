@@ -152,7 +152,7 @@ class BPianoRoll extends LitElement {
     this.vscrollbar = null;
     this.indicator_bar = null;
     this.last_pos = -9.987;
-    this.srect = { x: 0, y: 0, w: 0, h: 0 };
+    this.srect_ = { x: 0, y: 0, w: 0, h: 0, sx: 0, sy: 0 };
     this.clip = null;
     this.disabled = false;
     this.iconclass = '';
@@ -204,6 +204,8 @@ class BPianoRoll extends LitElement {
     Shell.piano_current_tick = this.piano_current_tick.bind (this);
     Shell.piano_current_clip = this.clip;
   }
+  get srect ()	{ return Object.assign ({}, this.srect_); }
+  set srect (r)	{ Object.assign (this.srect_, r); this.repaint (false); }
   notes_canvas_pointerdown (event)
   {
     if (this.pointer_drag)
@@ -586,8 +588,8 @@ function paint_notes()
   }
 
   // paint selection rectangle
-  const srect = { x: layout.DPR * this.srect.x, y: layout.DPR * this.srect.y,
-		  w: layout.DPR * this.srect.w, h: layout.DPR * this.srect.h };
+  const srect = { x: layout.DPR * this.srect_.x, y: layout.DPR * this.srect_.y,
+		  w: layout.DPR * this.srect_.w, h: layout.DPR * this.srect_.h };
   if (srect.w > 0 && srect.h > 0)
     {
       const note_focus_color = csp ('--piano-roll-note-focus-color');
