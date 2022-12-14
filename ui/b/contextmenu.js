@@ -307,6 +307,8 @@ class BContextMenu extends LitElement {
 	this.keymap_.length = 0;
 	Util.remove_keymap (this.keymap_);
       }
+    if (!active)
+      return;
     const w = document.createTreeWalker (this, NodeFilter.SHOW_ELEMENT);
     let e;
     while ( (e = w.nextNode()) )
