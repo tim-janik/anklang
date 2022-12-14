@@ -547,10 +547,19 @@ async function queue_modify_notes (clip, modifier, undogroup = "")
       const allnotes = last.notes || last.allnotes;
       // carry out mods
       const changednotes = await modifier (clip, allnotes);
-      if (Array.isArray (changednotes) && changednotes.length)
-	last.notes = changednotes;      // enqueue changes (frozen array replaces allnotes)
-      else if (changednotes)            // side effects
-	last.clip = null;		// force update polling
+      if (Array.isArray (changednotes))
+	{
+	  if (Object.isFrozen (changednotes))   // selection change, frozen array replaces allnotes
+	    last.notes = changednotes;
+	  else if (changednotes.length)         // Array with modification list, needs commit
+	    last.notes = last.notes ? last.notes.concat (changednotes) : changednotes;
+	}
+      else if (changednotes)
+	{
+	  console.assert (Array.isArray (changednotes));        // expect Array or null-ish
+	  last.clip = null;                                     // force update polling
+	}
+      debug ("modify_notes_handler:", last.notes ? last.notes.length : 0, ( undogroup || !Object.isFrozen (changednotes) ||  queue_modify_notes.requests_.length == 0 ));
       // force early or final commit
       if (undogroup || !Object.isFrozen (changednotes) ||
 	  queue_modify_notes.requests_.length == 0) // ensure final commit
@@ -599,13 +608,13 @@ async function queue_modify_notes (clip, modifier, undogroup = "")
 }
 
 // Filter `allnotes` with predicate() and apply object values from patchfunc().
-function notes_filter_modify (allnotes, predicate, patchfunc, discard = null)
+function notes_filter_modify (allnotes, predicate, patchfunc, confirm = null)
 {
   const notes = [];
   for (const note of allnotes)
     if (predicate (note))
       notes.push (Object.assign ({}, note, patchfunc (note)));
-  return !discard || discard (notes) ? notes : null;
+  return !confirm || confirm (notes) ? notes : null;
 }
 
 // Set note.id to -1.
