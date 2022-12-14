@@ -29,6 +29,7 @@ module.exports = {
     sfc_template: false },
 
   rules: {
+    "no-restricted-globals": ["warn", "event", /*"error"*/ ],
     "no-loss-of-precision": OFF,
     "no-unused-vars": OFF, // see unused-imports/no-unused-vars
     "unused-imports/no-unused-vars": [ "warn", { args: "none", varsIgnorePattern: "^_.*" } ],
