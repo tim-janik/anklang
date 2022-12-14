@@ -357,12 +357,19 @@ function piano_layout () {
 }
 
 // == canvas_font ==
-function canvas_font (size) {
+function set_canvas_font (ctx, size) {
   const cstyle = getComputedStyle (this);
   const fontstring = cstyle.getPropertyValue ('--piano-roll-font');
   const parts = fontstring.split (/\s*\d+px\s*/i); // 'bold 10px sans' -> ['bold', 'sans']
   console.assert (parts && parts.length >= 1);
   const font = parts[0] + ' ' + size + ' ' + (parts[1] || '');
+  try {
+    ctx.font = font;
+  } catch (err) {
+    // FireFox throws a "NS_ERROR_FAILURE" exception on first paint
+    console.error ("set_canvas_font: ctx.font assignment error" /*, err */ );
+    return false;
+  }
   return font;
 }
 
@@ -430,8 +437,8 @@ function paint_piano()
   fpx = Util.clamp (fpx / layout.DPR, 7, 12) * layout.DPR;
   if (fpx >= 6) {
     ctx.fillStyle = csp ('--piano-roll-key-color');
-    // const key_font = csp ('--piano-roll-font');
-    ctx.font = canvas_font.call (this, fpx + 'px');
+    if (!set_canvas_font.call (this, ctx, fpx + 'px'))
+      return; // abort paint
     // measure Midi labels, faster if batched into an array
     const midi_labels = Util.midi_label ([...Util.range (0, layout.octaves * (layout.wkeys.length + layout.bkeys.length))]);
     // draw names
@@ -621,9 +628,8 @@ function paint_timegrid (canvas, with_labels)
 
   // step through all denominators and draw labels
   ctx.fillStyle = csp ('--piano-roll-num-color');
-  // const num_font = csp ('--piano-roll-font');
-  // const fpx_parts = num_font.split (/\s*\d+px\s*/i); // 'bold 10px sans' -> [ ['bold', 'sans']
-  ctx.font = canvas_font.call (this, layout.DPR + 'em');
+  if (!set_canvas_font.call (this, ctx, layout.DPR + 'em'))
+    return; // abort paint
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   c = 0;
