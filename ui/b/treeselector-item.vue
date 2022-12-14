@@ -151,8 +151,7 @@ export default {
     },
     caret_click: function() {
       this.is_active = !this.css_active();
-      event.preventDefault();
-      event.stopPropagation();
+      // event.preventDefault(); event.stopPropagation();
     },
     leaf_click1 (event) {
       if (this.isdisabled())
