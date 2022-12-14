@@ -106,8 +106,7 @@ const HTML = (t, d) => html`
     <canvas class="-col2 -row1" ${ref(n => t.time_canvas = n)} ></canvas>
     <canvas class="-col1 -row2" ${ref(n => t.piano_canvas = n)} ></canvas>
     <canvas class="-col2 -row2" ${ref(n => t.notes_canvas = n)}
-      @pointerdown=${t.notes_canvas_pointerdown}
-      ></canvas>
+      @pointerdown=${t.notes_canvas_pointerdown} ></canvas>
 
     <div class="-col3 -row2" style="overflow: hidden scroll; min-width: 17px; background: #000" ${ref(e => t.vscrollbar = e)} >
       <div class="-vextend" style="height: 151vh" ${ref(e => t.vscrollbar_extend = e)} >
@@ -117,8 +116,26 @@ const HTML = (t, d) => html`
       <div class="-hextend" ${ref(e => t.hscrollbar_extend = e)} style="width:999px" ></div>
     </div>
     <span class="-indicator" ${ref(e => t.indicator_bar = e)} />
+
+    <b-contextmenu ${ref(n => t.pianorollmenu = n)} id="g-pianorollmenu" :showicons="true"
+      class="-pianorollmenu" mapname="Piano Roll"
+      .activate=${t.pianorollmenu_click.bind (t)} .isactive=${t.pianorollmenu_check.bind (t)} >
+      <b-menutitle> Piano-Roll </b-menutitle>
+      ${t.pianorollmenu_actions().map (ac => pianorollmenu_item (ac))}
+      <b-menuitem v-for="ac in piano_roll_actions()" :key="ac.weakid" :uri="ac.weakid" :ic="ac.ic"
+	:kbd="ac.kbd" > {{ac.label}} </b-menuitem>
+      <b-menuseparator />
+      <b-menuitem v-for="(script, index) in piano_roll_scripts()" :key="script.funid" :uri="script.funid"
+	ic="mi-javascript" > {{script.label}} </b-menuitem>
+    </b-contextmenu>
   </c-grid>
 `;
+function pianorollmenu_item (ac) {
+  // key=${ac.weakid}
+  return html`
+    <b-menuitem uri=${ac.weakid} ic=${ac.ic} kbd=${ac.kbd} > ${ac.label} </b-menuitem>
+  `;
+}
 
 // == SCRIPT ==
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with property
@@ -236,6 +253,12 @@ class BPianoRoll extends LitElement {
   }
   notes_canvas_pointerdown (event)
   {
+    if (event.button == 2)
+      {
+	Util.prevent_event (event);
+	this.pianorollmenu.popup (event, { origin: 'none' });
+	return;
+      }
     if (this.pointer_drag)
       {
 	this.pointer_drag.pointercancel (event);
@@ -256,6 +279,42 @@ class BPianoRoll extends LitElement {
     }
     if (method)
       this.pointer_drag = new Util.PointerDrag (this, event, method); // calls this.drag_event
+  }
+  pianorollmenu_actions()
+  {
+    const actions = [];
+    for (const action of PianoCtrl.list_actions())
+      {
+	if (action.label)
+	  {
+	    const label = action.label;
+	    const kbd = action.kbd;
+	    const ic = action.ic;
+	    actions.push ({ label, weakid: 'weakid:' + Util.weakid (action), kbd, ic });
+	  }
+      }
+    return actions;
+  }
+  pianorollmenu_check (uri)
+  {
+    return !!this.clip;
+  }
+  pianorollmenu_click (uri, event)
+  {
+    event = Util.keyboard_click_event (event);
+    if (event)
+      {
+	event.stopPropagation();
+	event.preventDefault();
+      }
+    if (uri.search (/^[0-9a-z-]+@[0-9a-z-]+$/) === 0)
+      return; // TODO: this.pianoroll_script (uri);
+    if (uri.startsWith ('weakid:') && this.clip) {
+      const action = Util.weakid_lookup (Number (uri.substr (7)));
+      if (action.func instanceof Function)
+	return action.func (action, this, this.clip, event);
+    }
+    console.trace ("piano-roll.vue:", uri, event);
   }
   usetool (uri)
   {
