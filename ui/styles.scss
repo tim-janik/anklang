@@ -114,11 +114,6 @@ button, push-button {
 // == h-flex, v-flex ==
 h-flex, v-flex {
   // Container for horizontal/vertical layouting, see: https://www.w3.org/TR/css-flexbox-1/#flex-containers
-  display: flex; flex-basis: auto;
-  flex-wrap: nowrap;
-  align-items: stretch;               // distribute extra cross-axis space
-  align-content: stretch;             // distribute extra cross-axis space for multi-line layouts
-  &[inline]		{ display: inline-flex; }	// integrate container into text flow
   &[start]		{ justify-content: flex-start; }	// pack children from start of flex direction
   &[end]		{ justify-content: flex-end; }		// pack children at end of flex direction
   &[center]		{ justify-content: center; }		// pack children towards center of flex direction
@@ -148,8 +143,6 @@ h-flex, v-flex {
   &[shrink9]		{ flex-shrink: 9; }
   &[shrink0]		{ flex-shrink: 0; }
 }
-h-flex { flex-direction: row; }
-v-flex { flex-direction: column; }
 
 // == grid helpers ==
 .-row1 { grid-row: 1; } .-col1 { grid-column: 1; }
