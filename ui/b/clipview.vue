@@ -105,7 +105,7 @@ import * as C from '../colors.js';
 function render_canvas () {
   // canvas setup
   const canvas = this.$refs.canvas;
-  const pixelratio = Util.resize_canvas (canvas, canvas.clientWidth, canvas.clientHeight, true);
+  const pixelratio = Util.resize_canvas (canvas, canvas.parentElement.clientWidth, canvas.parentElement.clientHeight, true);
   const ctx = canvas.getContext ('2d'), cstyle = getComputedStyle (canvas), csp = cstyle.getPropertyValue.bind (cstyle);
   const width = canvas.width, height = canvas.height;
   const tickscale = this.tickscale * pixelratio;
