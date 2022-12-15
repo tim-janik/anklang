@@ -92,7 +92,7 @@ const HTML = (t, d) => html`
     @keydown=${e => t.piano_ctrl.keydown (e)}
     @wheel=${t.wheel} >
 
-    <v-flex class="-toolbutton -col1 -row1" style="height: 1.7em" ${ref(n => t.menu_btn = n)}
+    <v-flex class="-toolbutton -col1 -row1" style="height: 1.7em; align-items: end; padding-right: 4px;" ${ref(n => t.menu_btn = n)}
       @click=${e => t.pianotoolmenu.popup (e)} @mousedown=${e => t.pianotoolmenu.popup (e)} >
       <b-icon style="width: 1.2em; height: 1.2em" ${ref(n => t.menu_icon = n)} />
       <b-contextmenu ${ref(n => t.pianotoolmenu = n)} id="g-pianotoolmenu" class="-pianotoolmenu" @activate=${e => t.usetool (e.detail.uri)} >
