@@ -221,8 +221,6 @@ class BPianoRoll extends LitElement {
       }
     this.repaint (true);
     // indicator_bar setup
-    this.dpr_mul = window.devicePixelRatio;
-    this.dpr_div = 1.0 / this.dpr_mul;
     Shell.piano_current_tick = this.piano_current_tick.bind (this);
     Shell.piano_current_clip = this.clip;
   }
@@ -332,8 +330,8 @@ class BPianoRoll extends LitElement {
   {
     if (this.clip != current_clip) return;
     const offst = this.layout.xscroll();
-    const t = -offst + current_tick * this.layout.tickscale * this.dpr_div;
-    let u = Math.round (t * this.dpr_mul) * this.dpr_div; // screen pixel alignment
+    const t = -offst + current_tick * this.layout.tickscale * this.layout.DPRDIV;
+    let u = Math.round (t * this.layout.DPR) * this.layout.DPRDIV; // screen pixel alignment
     u = u >= 0 ? u + this.notes_canvas.offsetLeft : -9999;
     if (u != this.last_pos)
       {
@@ -391,6 +389,7 @@ function piano_layout () {
   const DPR = window.devicePixelRatio;
   const layout = {
     DPR:		DPR,
+    DPRDIV:		1.0 / DPR,
     thickness:		Math.max (round (DPR * 0.5), 1),
     cssheight:		notes_cssheight + 1,
     piano_csswidth:	0,			// derived from white_width
