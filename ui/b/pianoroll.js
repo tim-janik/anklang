@@ -62,7 +62,7 @@ c-grid {
   .-row3		{ grid-row: 3/4; }
 
 
-  background: red;
+  background: #0000;
   canvas { background: black; object-fit: contain;
     min-width: 0; min-height: 0; // https://www.w3.org/TR/css3-grid-layout/#min-size-auto
   }
