@@ -122,11 +122,6 @@ const HTML = (t, d) => html`
       .activate=${t.pianorollmenu_click.bind (t)} .isactive=${t.pianorollmenu_check.bind (t)} >
       <b-menutitle> Piano-Roll </b-menutitle>
       ${t.pianorollmenu_actions().map (ac => pianorollmenu_item (ac))}
-      <b-menuitem v-for="ac in piano_roll_actions()" :key="ac.weakid" :uri="ac.weakid" :ic="ac.ic"
-	:kbd="ac.kbd" > {{ac.label}} </b-menuitem>
-      <b-menuseparator />
-      <b-menuitem v-for="(script, index) in piano_roll_scripts()" :key="script.funid" :uri="script.funid"
-	ic="mi-javascript" > {{script.label}} </b-menuitem>
     </b-contextmenu>
   </c-grid>
 `;
