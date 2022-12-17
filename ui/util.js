@@ -160,8 +160,9 @@ export const MOVE = "MOVE";
 export const SCROLL = "SCROLL";
 
 export class PointerDrag {
-  constructor (vuecomponent, event, method = 'drag_event') {
+  constructor (vuecomponent, event, method = 'drag_event', cleanup = null) {
     this.vm = vuecomponent;
+    this.cleanup = cleanup;
     if (typeof (method) === 'function')
       this.drag_method = method;
     else
@@ -222,6 +223,11 @@ export class PointerDrag {
 	this.el = null;
       }
     this.vm = null;
+    if (this.cleanup)
+      {
+	this.cleanup.call (null);
+	this.cleanup = null;
+      }
   }
   scroll (event) {
     if (this.el)
