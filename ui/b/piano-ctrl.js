@@ -459,6 +459,47 @@ function notes_canvas_drag_paint (event, MODE)
   return false;
 }
 
+/// Resize duration of a note
+function notes_canvas_drag_resize (event, MODE)
+{ // this = piano_layout_coords()
+  Util.prevent_event (event);
+  this.update_coords (event, MODE); // piano_layout_update_coords
+  const resize_note = (clip, allnotes) => {
+    const note_idx = find_note (allnotes, n => n.id === this.note_id);
+    if (note_idx < 0)
+      return false;
+    const newnote = Object.assign ({}, allnotes[note_idx]);
+    if (newnote.tick < this.event_tick)
+      {
+	const duration = quantize (this.piano_roll, this.event_tick - newnote.tick, true);
+	if (duration > 0)
+	  {
+	    newnote.duration = duration;
+	    this.last_note_length = duration;
+	    return [ newnote ];
+	  }
+      }
+    return false;
+  };
+  switch (MODE) {
+    case START:
+      this.last_note_length = this.piano_roll.last_note_length;
+      break;
+    case SCROLL:
+    case MOVE:
+      this.event_tick = this.piano_roll.layout.tick_from_x (this.x);
+      queue_modify_notes (this.piano_roll.clip, resize_note, "Resize Note");
+      break;
+    case STOP:
+      this.piano_roll.last_note_length = this.last_note_length;
+      break;
+    case CANCEL:
+      // FIXME: reset note size
+      break;
+  }
+  return false;
+}
+
 /// Get drag tool and cursor from hover position
 export function notes_canvas_tool_from_hover (piano_roll, pointerevent)
 {
@@ -484,6 +525,12 @@ export function notes_canvas_tool_from_hover (piano_roll, pointerevent)
     return { drag_start: make_drag_context,
 	     drag_event: notes_canvas_drag_select,
 	     cursor: 'crosshair' };
+  // resize
+  if (piano_roll.pianotool == 'P' && note_idx > 0)
+    return { drag_start: make_drag_context,
+	     drag_event: notes_canvas_drag_resize,
+	     note_id: notes[note_idx].id,
+	     cursor: 'var(--piano-note-resize-cursor)' };
   // paint
   if (piano_roll.pianotool == 'P')
     return { drag_start: make_drag_context,
