@@ -365,6 +365,9 @@ class ShellClass extends Envue.Component {
     await cache.promise;
     return cache.rgen.value && cache.notes;
   }
+  old_cache_notes (clip) {
+    return this.get_note_cache (clip).notes;
+  }
 }
 export default ShellClass.vue_export ({ sfc_template });
 

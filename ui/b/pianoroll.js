@@ -12,6 +12,7 @@
 
 import { LitElement, ref, html, css, postcss, docs } from '../little.js';
 import * as PianoCtrl from "./piano-ctrl.js";
+import * as Util from '../util.js';
 const floor = Math.floor, round = Math.round;
 
 // == STYLE ==
@@ -103,9 +104,10 @@ const HTML = (t, d) => html`
       </b-contextmenu>
     </v-flex>
 
-    <canvas class="-col2 -row1" ${ref(n => t.time_canvas = n)} ></canvas>
-    <canvas class="-col1 -row2" ${ref(n => t.piano_canvas = n)} ></canvas>
-    <canvas class="-col2 -row2" ${ref(n => t.notes_canvas = n)}
+    <canvas class="-col2 -row1 -time_canvas"  ${ref(n => t.time_canvas = n)} ></canvas>
+    <canvas class="-col1 -row2 -piano_canvas" ${ref(n => t.piano_canvas = n)} ></canvas>
+    <canvas class="-col2 -row2 -notes_canvas" ${ref(n => t.notes_canvas = n)}
+      @pointermove=${Util.debounce (t.notes_canvas_pointermove.bind (t))}
       @pointerdown=${t.notes_canvas_pointerdown} ></canvas>
 
     <div class="-col3 -row2" style="overflow: hidden scroll; min-width: 17px; background: #000" ${ref(e => t.vscrollbar = e)} >
@@ -136,6 +138,7 @@ function pianorollmenu_item (ac) {
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with property
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 const PRIVATE_PROPERTY = { state: true };
+const default_note_length = Util.PPQN / 4;
 
 class BPianoRoll extends LitElement {
   static styles = [ STYLE ];
@@ -154,7 +157,10 @@ class BPianoRoll extends LitElement {
   constructor()
   {
     super();
-    this.pianotool = 'S';
+    this.hzoom = 3;
+    this.vzoom = 1.5;
+    this.pianotool = 'P';
+    this.last_note_length = default_note_length;
     this.cgrid = null;
     this.menu_btn = null;
     this.menu_icon = null;
@@ -174,8 +180,6 @@ class BPianoRoll extends LitElement {
     this.disabled = false;
     this.iconclass = '';
     this.isactive = true;
-    this.hzoom = 1;
-    this.vzoom = 1;
     this.end_click = 99999;
     this.resize_observer = new ResizeObserver (els => this.repaint (true));
     this.resize_observer.observe (this);
@@ -201,9 +205,9 @@ class BPianoRoll extends LitElement {
   updated (changed_props)
   {
     if (this.hscrollbar && !this.hscrollbar.onscroll)
-      this.hscrollbar.onscroll = e => this.repaint (false);
+      this.hscrollbar.onscroll = e => this.hvscroll (e);
     if (this.vscrollbar && !this.vscrollbar.onscroll)
-      this.vscrollbar.onscroll = e => this.repaint (false);
+      this.vscrollbar.onscroll = e => this.hvscroll (e);
     if (changed_props.has ('clip'))
       {
 	const old = changed_props['clip'];
@@ -213,6 +217,7 @@ class BPianoRoll extends LitElement {
 	this.vscroll_to (0.5);
 	if (this.clip)
 	  Shell.get_note_cache (this.clip).add_callback (this.notes_changed);
+	this.last_note_length = default_note_length;
       }
     this.repaint (true);
     // indicator_bar setup
@@ -244,34 +249,40 @@ class BPianoRoll extends LitElement {
       this.pianorollmenu.map_kbd_hotkeys (this.have_focus);
     debug ("pianotoolmenu.map_kbd_hotkeys:", this.pianotoolmenu && (this.entered || this.have_focus) );
   }
+  notes_canvas_pointermove (event)
+  {
+    if (this.pointer_drag)
+      return;
+    this.notes_canvas_tool = PianoCtrl.notes_canvas_tool_from_hover (this, event);
+    if (this.notes_canvas_tool.cursor != this.notes_canvas.style.cursor)
+      this.notes_canvas.style.cursor = this.notes_canvas_tool.cursor;
+  }
   notes_canvas_pointerdown (event)
   {
+    if (this.pointer_drag)
+      {
+	this.pointer_drag.destroy();
+	return false;
+      }
+    if (!this.clip)
+      return false;
+    if (document.activeElement != this.cgrid)
+      this.cgrid.focus();
     if (event.button == 2)
       {
 	Util.prevent_event (event);
 	this.pianorollmenu.popup (event, { origin: 'none' });
 	return;
       }
-    if (this.pointer_drag)
+    if (event.button == 0 && this.notes_canvas_tool)
       {
-	this.pointer_drag.pointercancel (event);
-	this.pointer_drag.destroy();
-	this.pointer_drag = null;
+	const ctool_this = this.notes_canvas_tool.drag_start (this);
+	this.pointer_drag = new Util.PointerDrag (this, event,
+						  (event, MODE) => ctool_this.drag_event (event, MODE),
+						  () => this.pointer_drag = null);
+	return;
       }
-    if (!this.clip)
-      return false;
-    if (document.activeElement != this.cgrid)
-      this.cgrid.focus();
-    let method;
-    switch (this.pianotool + event.button)
-    {
-      case 'S0': method = this.piano_ctrl.drag_select.bind (this.piano_ctrl); break;
-      case 'H0': method = this.piano_ctrl.drag_select.bind (this.piano_ctrl); break;
-      case 'P0': method = this.piano_ctrl.drag_paint.bind (this.piano_ctrl); break;
-      case 'E0': method = this.piano_ctrl.drag_erase.bind (this.piano_ctrl); break;
-    }
-    if (method)
-      this.pointer_drag = new Util.PointerDrag (this, event, method); // calls this.drag_event
+    debug ('b-pianoroll: pointerdown without tool', event);
   }
   pianorollmenu_actions()
   {
@@ -312,7 +323,7 @@ class BPianoRoll extends LitElement {
   usetool (uri)
   {
     this.pianotool = uri;
-    this.setAttribute ('data-pianotool', this.pianotool);
+    this.cgrid.setAttribute ('data-pianotool', this.pianotool);
     // clone menu item
     const title = '**EDITOR TOOL**';
     const menuitem = this.pianotoolmenu.find_menuitem (uri);
@@ -340,6 +351,14 @@ class BPianoRoll extends LitElement {
   {
     const vrange = this.vscrollbar_extend.clientHeight - this.vscrollbar.clientHeight;
     this.vscrollbar.scrollTo ({ top: fraction * vrange, behavior: 'instant' });
+  }
+  hvscroll (event)
+  {
+    // scrollbar(s) changed
+    this.repaint (false);
+    // adjust selection, etc
+    if (this.pointer_drag)
+      this.pointer_drag.scroll (event);
   }
   repaint (resize = false)
   {
