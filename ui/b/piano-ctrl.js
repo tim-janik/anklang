@@ -40,6 +40,19 @@ const SHIFT = 0x1000, CTRL = 0x2000, ALT = 0x4000;
 
 let piano_clipboard = "[]";
 
+function quantization (piano_roll)
+{
+  const stepping = piano_roll.stepping ? piano_roll.stepping[0] : Util.PPQN;
+  return Math.min (stepping, Util.PPQN);
+}
+
+function quantize (piano_roll, tick, nearest = true)
+{
+  const quant = quantization (piano_roll);
+  const fract = tick / quant;
+  return (nearest ? Math.round : Math.trunc) (fract) * quant;
+}
+
 export class PianoCtrl {
   constructor (piano_roll)
   {
@@ -289,178 +302,241 @@ export class PianoCtrl {
       piano_roll.notes_canvas.setAttribute ('data-notehover', idx >= 0);
     }
   }
+}
 
-  drag_select (event, MODE)
-  {
-    const piano_roll = this.piano_roll, layout = piano_roll.layout, clip = piano_roll.clip, srect = piano_roll.srect;
-    const horizontal = piano_roll.pianotool == 'H';
-    if (!clip || event.button >= 2) // contextmenu
-      return false;
+/// Change note seleciton
+function notes_canvas_drag_select (event, MODE)
+{
+  Util.prevent_event (event);
+  this.update_coords (event, MODE); // piano_layout_update_coords
+  const srect = this.piano_roll.srect, horizontal = this.piano_roll.pianotool == 'H';
 
-    // TODO: click on unselected note needs to focus1 and start move
-    // TODO: click on selected note needs to start block move
+  // TODO: click on unselected note needs to focus1 and start move
+  // TODO: click on selected note needs to start block move
 
-    switch (MODE) {
-      case START:
-	srect.sx = layout.xscroll(); // scroll offset for bx
-	srect.sy = layout.yscroll(); // scroll offset for by
-	srect.bx = event.offsetX;
-	srect.by = event.offsetY;
-	srect.lx = srect.bx; // last x
-	srect.ly = srect.by; // last y
-	// implicit via case MOVE: queue_change_selection (piano_roll, NONE);
-	// fall through
-      case SCROLL:
-      case MOVE: {
-	if (MODE == SCROLL) { // adjust scroll offsets
-	  const sx = layout.xscroll(), sy = layout.yscroll();
-	  srect.bx += srect.sx - sx;
-	  srect.by -= srect.sy - sy;
-	  srect.sx = sx;
-	  srect.sy = sy;
-	} else if (MODE == MOVE) { // adjust last coords
-	  srect.lx = event.offsetX;
-	  srect.ly = event.offsetY;
-	}
-	if (horizontal) {
-	  srect.sy = 0;
-	  srect.by = 0;
-	  srect.ly = layout.cssheight;
-	}
-	// adjust selection
-	srect.x = Math.min (srect.lx, srect.bx);
-	srect.y = Math.min (srect.ly, srect.by);
-	srect.w = Math.max (srect.lx, srect.bx) - srect.x;
-	srect.h = Math.max (srect.ly, srect.by) - srect.y;
-	piano_roll.srect = srect;
-	const t0 = layout.tick_from_x (srect.x), t1 = layout.tick_from_x (srect.x + srect.w);
-	const k0 = layout.midinote_from_y (srect.y + srect.h);
-	const k1 = layout.midinote_from_y (srect.y);
-	let selectmode = ASSIGN;
-	if (event.shiftKey && !event.ctrlKey)
-	  selectmode = ADD;
-	if (!event.shiftKey && event.ctrlKey)
-	  selectmode = SUB;
-	queue_change_selection (piano_roll, selectmode,
-				n => (n.key >= k0 && n.key <= k1 &&
-				      ((t0 < n.tick && t1 >= n.tick) ||
-				       (t0 >= n.tick && t0 < n.tick + n.duration))));
-	break; }
-      case STOP:
-	srect.w = 0;
-	srect.h = 0;
-	piano_roll.srect = srect;
-	break;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    return false;
+  switch (MODE) {
+    case START:
+      // implicit via case MOVE: queue_change_selection (this.piano_roll, NONE);
+      // fall through
+    case SCROLL:
+    case MOVE: {
+      const sx = this.piano_roll.layout.xscroll(), sy = this.piano_roll.layout.yscroll();
+      const bx = this.begin.x + this.begin.sx - sx;
+      const by = this.begin.y - this.begin.sy + sy;
+      // adjust selection
+      srect.x = Math.min (this.x, bx);
+      srect.y = Math.min (this.y, by);
+      srect.w = Math.max (this.x, bx) - srect.x;
+      srect.h = Math.max (this.y, by) - srect.y;
+      if (horizontal) {
+	srect.y = 0;
+	srect.h = this.piano_roll.layout.cssheight;
+      }
+      this.piano_roll.srect = srect; // forces repaint
+      const t0 = this.piano_roll.layout.tick_from_x (srect.x), t1 = this.piano_roll.layout.tick_from_x (srect.x + srect.w);
+      const k0 = this.piano_roll.layout.midinote_from_y (srect.y + srect.h);
+      const k1 = this.piano_roll.layout.midinote_from_y (srect.y);
+      let selectmode = ASSIGN;
+      if (event.shiftKey && !event.ctrlKey)
+	selectmode = ADD;
+      if (!event.shiftKey && event.ctrlKey)
+	selectmode = SUB;
+      queue_change_selection (this.piano_roll, selectmode,
+			      n => (n.key >= k0 && n.key <= k1 &&
+				    ((t0 < n.tick && t1 >= n.tick) ||
+				     (t0 >= n.tick && t0 < n.tick + n.duration))));
+      break; }
+    case STOP: {
+      srect.w = 0;
+      srect.h = 0;
+      this.piano_roll.srect = srect; // forces repaint
+    } // fall through
+    case CANCEL:
+      break;
   }
+  return false;
+}
 
-  drag_paint (event, MODE)
-  {
-    const piano_roll = this.piano_roll, clip = piano_roll.clip, layout = piano_roll.layout;
-    const event_tick = layout.tick_from_x (event.offsetX);
-    const event_key = layout.midinote_from_y (event.offsetY);
-    if (!clip)
-      return false;
+/// Paint new notes
+function notes_canvas_drag_erase (event, MODE)
+{
+  Util.prevent_event (event);
 
-    // stop+prevent *before* await
-    event.preventDefault();
-    event.stopPropagation();
-    switch (MODE) {
-      case START:
-	queue_change_selection (piano_roll, NONE);
-	// fall through
-      case SCROLL:
-      case MOVE: {
-	const paint_note = (clip, allnotes) => {
-	  const note_idx = find_note (allnotes, n => event_tick >= n.tick && event_tick < n.tick + n.duration && event_key == n.key);
-	  if (note_idx < 0) {
-	    const newnote = { channel: 0, key: event_key, velocity: 1, fine_tune: 0,
-			      tick: this.quantize (event_tick, false),
-			      duration: Util.PPQN / 4,
-			      selected: true };
-	    return [ newnote ];
-	  }
-	  return false;
-	};
-	queue_modify_notes (clip, paint_note, "Paint Note");
-	break; }
-      case STOP:
-	break;
-    }
-    return false;
-  }
+  /* To allow consecutive erasure, (offsetX,offsetY) from two successive events need to be conected.
+   * Tick resolution is much higher than X pixels, so use pixels horizontally.
+   * Key resolution is lower than Y pixels, so use keys vertically.
+   * Event X/Y coordinates are floats (and are fractional in Chrome HIDPI settings), to work
+   * with integer line rastering, we scale X up/down around rastering.
+   */
 
-  drag_erase (pointerevent, MODE)
-  {
-    const piano_roll = this.piano_roll, clip = piano_roll.clip, layout = piano_roll.layout;
-    if (!clip)
-      return false;
-    // stop+prevent *before* await
-    pointerevent.preventDefault();
-    pointerevent.stopPropagation();
-
-    /* To allow consecutive erasure, (offsetX,offsetY) from two successive events need to be conected.
-     * Tick resolution is much higher than X pixels, so use pixels horizontally.
-     * Key resolution is lower than Y pixels, so use keys vertically.
-     * Event X/Y coordinates are floats (and are fractional in Chrome HIDPI settings), to work
-     * with integer line rastering, we scale X up/down around rastering.
-     */
-
-    switch (MODE) {
-      case START:
-	this.erase = { ids: new Set(), x: pointerevent.offsetX, y: pointerevent.offsetY };
-	// fall through
-      case MOVE: {
-	const erase = this.erase; // keep around after change_selection() queued the request
-	const positions = [];
-	let x0 = erase.x, k0 = layout.midinote_from_y (erase.y);
-	for (const event of Util.coalesced_events (pointerevent)) {
-	  erase.x = event.offsetX;
-	  erase.y = event.offsetY;
-	  const x1 = erase.x, k1 = layout.midinote_from_y (erase.y);
-	  for (const pos of Util.raster_line (x0*2, k0, x1*2, k1)) {
-	    const t = layout.tick_from_x (pos[0]/2), k = pos[1]; // pos[0] is x -> tick, pos[1] is key
-	    if (positions.length == 0 ||
-		positions[positions.length-1].tick != t ||
-		positions[positions.length-1].key != k)
-	      positions.push ({ tick: t, key: k });
-	  }
-	  x0 = x1;
-	  k0 = k1;
+  switch (MODE) {
+    case START:
+      this.update_coords (event, MODE); // piano_layout_update_coords
+      this.erase = { ids: new Set(), x: this.x, y: this.y };
+      // fall through
+    case SCROLL:
+    case MOVE: {
+      const erase = this.erase; // keep around after change_selection() queued the request
+      const positions = [];
+      let x0 = erase.x, k0 = this.piano_roll.layout.midinote_from_y (erase.y);
+      for (const cevent of Util.coalesced_events (event)) {
+	this.update_coords (cevent, MODE); // piano_layout_update_coords
+	erase.x = this.x;
+	erase.y = this.y;
+	const x1 = erase.x, k1 = this.piano_roll.layout.midinote_from_y (erase.y);
+	for (const pos of Util.raster_line (x0*2, k0, x1*2, k1)) {
+	  const t = this.piano_roll.layout.tick_from_x (pos[0]/2), k = pos[1]; // pos[0] is x -> tick, pos[1] is key
+	  if (positions.length == 0 ||
+	      positions[positions.length-1].tick != t ||
+	      positions[positions.length-1].key != k)
+	    positions.push ({ tick: t, key: k });
 	}
-	const erasable_note = (note) => {
-	  if (erase.ids.has (note.id))
+	x0 = x1;
+	k0 = k1;
+      }
+      const erasable_note = (note) => {
+	if (erase.ids.has (note.id))
+	  return true;
+	for (const pos of positions)
+	  if (pos.key == note.key && pos.tick >= note.tick && pos.tick < note.tick + note.duration) {
+	    erase.ids.add (note.id);
 	    return true;
-	  for (const pos of positions)
-	    if (pos.tick >= note.tick && pos.tick < note.tick + note.duration && pos.key == note.key) {
-	      erase.ids.add (note.id);
-	      return true;
-	    }
-	  return false;
-	};
-	queue_change_selection (piano_roll, ASSIGN, erasable_note);
-	break; }
-      case STOP: {
-	const erase = this.erase; // keep around after modify_notes() queued the request
-	this.erase = null;
-	const erase_notes = (clip, allnotes) => {
-	  const deletions = [];
-	  for (const note of allnotes)
-	    if (erase.ids.has (note.id))
-	      deletions.push (Object.assign ({}, note, { duration: 0 }));
-	  return deletions;
-	};
-	queue_modify_notes (clip, erase_notes, "Erase Notes");
-      } // fall through
-      case CANCEL:
-	queue_change_selection (piano_roll, NONE);
-	this.erase = null;
-	break;
-    }
-    return false;
+	  }
+	return false;
+      };
+      queue_change_selection (this.piano_roll, ASSIGN, erasable_note);
+      break; }
+    case STOP: {
+      const erase = this.erase; // keep around after modify_notes() queued the request
+      this.erase = null;
+      const erase_notes = (clip, allnotes) => {
+	const deletions = [];
+	for (const note of allnotes)
+	  if (erase.ids.has (note.id))
+	    deletions.push (Object.assign ({}, note, { duration: 0 }));
+	return deletions;
+      };
+      queue_modify_notes (this.piano_roll.clip, erase_notes, "Erase Notes");
+    } // fall through
+    case CANCEL:
+      this.erase = null;
+      queue_change_selection (this.piano_roll, NONE);
+      break;
+  }
+  return false;
+}
+
+/// Paint new notes
+function notes_canvas_drag_paint (event, MODE)
+{
+  Util.prevent_event (event);
+  this.update_coords (event, MODE); // piano_layout_update_coords
+  switch (MODE) {
+    case START:
+      queue_change_selection (this.piano_roll, NONE);
+      // fall through
+    case SCROLL:
+    case MOVE: {
+      const event_tick = this.piano_roll.layout.tick_from_x (this.x);
+      const event_key = this.piano_roll.layout.midinote_from_y (this.y);
+      const paint_note = (clip, allnotes) => {
+	const note_idx = find_note (allnotes, n => event_tick >= n.tick && event_tick < n.tick + n.duration && event_key == n.key);
+	if (note_idx < 0) {
+	  const newnote = { channel: 0, key: event_key, velocity: 1, fine_tune: 0,
+			    tick: quantize (this.piano_roll, event_tick, false),
+			    duration: this.piano_roll.last_note_length,
+			    selected: true };
+	  return [ newnote ];
+	}
+	return false;
+      };
+      queue_modify_notes (this.piano_roll.clip, paint_note, "Paint Note");
+      break; }
+    case STOP:
+    case CANCEL:
+      break;
+  }
+  return false;
+}
+
+/// Get drag tool and cursor from hover position
+export function notes_canvas_tool_from_hover (piano_roll, pointerevent)
+{
+  const clip = piano_roll.clip, layout = piano_roll.layout;
+  const coords = target_coords (pointerevent, piano_roll.notes_canvas);
+  const event_tick = layout.tick_from_x (coords.x);
+  const event_key = layout.midinote_from_y (coords.y);
+  const head_dist = 10; // minimum pixels distance from note start
+  // need an early decision if event is on a resizable note, so do with old cache
+  const notes = Shell.old_cache_notes (clip);
+  const note_idx = find_note (notes, n => event_key == n.key && event_tick >= n.tick + Math.max (head_dist, n.duration / 2) && event_tick < n.tick + n.duration);
+  // FIXME : always needed? ^^^^^^^^^^^^^^^^
+  function make_drag_context (piano_roll)
+  {
+    const ctool_this = piano_layout_coords (piano_roll.layout, piano_roll.notes_canvas);
+    ctool_this.piano_roll = piano_roll;
+    if (this)
+      Object.assign (ctool_this, this);
+    return ctool_this;
+  }
+  // select
+  if (piano_roll.pianotool == 'S' || piano_roll.pianotool == 'H')
+    return { drag_start: make_drag_context,
+	     drag_event: notes_canvas_drag_select,
+	     cursor: 'crosshair' };
+  // paint
+  if (piano_roll.pianotool == 'P')
+    return { drag_start: make_drag_context,
+	     drag_event: notes_canvas_drag_paint,
+	     cursor: 'pointer' };
+  // erase
+  if (piano_roll.pianotool == 'E')
+    return { drag_start: make_drag_context,
+	     drag_event: notes_canvas_drag_erase,
+	     cursor: 'not-allowed' };
+  // debug
+  return { drag_start: make_drag_context, drag_event: (e,m) => debug ("DRAG unhandled", m, e.offsetX, e.offsetY), cursor: 'default' };
+}
+
+/// Translate event offsetX,offsetY into taret element
+function target_coords (event, target)
+{
+  if (!target || event.target == target)
+    return { x: event.offsetX, y: event.offsetY };
+  const org = event.target.getBoundingClientRect();
+  const tar = target.getBoundingClientRect();
+  return { x: event.offsetX + org.left - tar.left,
+	   y: event.offsetY + org.top - tar.top };
+}
+
+// Track scroll position and target relative piano layout coordinates
+function piano_layout_coords (layout, target)
+{
+  return { x: 0, y: 0, sx: 0, sy: 0, begin: null, end: null, layout, target, update_coords: piano_layout_update_coords };
+}
+
+// Update piano_layout_coords()
+function piano_layout_update_coords (event, MODE)
+{
+  const coords = this, layout = this.layout;
+  // adjust coords according to MODE
+  switch (MODE) {
+    case START:	{	// begin, x, y
+      Object.assign (coords, target_coords (event, coords.target)); // x,y
+      const sx = layout.xscroll();
+      const sy = layout.yscroll();
+      coords.begin = { x: coords.x, y: coords.y, sx, sy };
+      break; }
+    case SCROLL: {		// adjust scroll offsets only
+      // coords.sx = layout.xscroll();
+      // coords.sy = layout.yscroll();
+      break; }
+    case MOVE:		// x,y
+      Object.assign (coords, target_coords (event, coords.target)); // x,y
+      break;
+    case STOP:
+      coords.end = { x: coords.x, y: coords.y, sx: coords.sx, sy: coords.sy };
+      break;
   }
 }
 
