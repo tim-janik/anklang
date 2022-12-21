@@ -26,7 +26,7 @@ test -e $TMP/node_modules/.bin/svgtofont || (
   rm -rf $TMP/
   mkdir -p $TMP/
   cd $TMP/
-  npm i svgtofont svgo )
+  npm i svgtofont svgo@2.8.0 )
 rm -rf $TMP/svgs/ $TMP/font/
 mkdir -p $TMP/svgs/
 
@@ -55,8 +55,8 @@ done
 
 # == Turn Glyphs into Paths ==
 for SVG in $TMP/svgs/*.svg ; do
-  inkscape -f $SVG --verb=EditSelectAll --verb=ObjectToPath --verb=StrokeToPath --verb=FileSave --verb=FileQuit
-  inkscape -f $SVG --vacuum-defs --export-plain-svg $SVG
+  inkscape $SVG --verb=EditSelectAll --verb=ObjectToPath --verb=StrokeToPath --verb=FileSave --verb=FileQuit
+  inkscape $SVG --vacuum-defs --export-plain-svg $SVG
 done
 
 # == Optimize Glyphs ==
