@@ -48,35 +48,6 @@ optimize_glyph()
   $TMP/node_modules/.bin/svgo -i $G --multipass -o $G
 }
 
-# == make_cursor ==
-make_cursor() # make_cursor foo.svg 16 16 fallback
-{
-  N=${1%.*}	# bare name
-  X=$(( $2 / $S )) && Y=$(( $3 / $S )) && FALLBACK="$4"
-  F=cursors/$1
-  G=$TMP/svgs/$1
-  if $HOTSPOT ; then
-    P=anklangicons/$N.png
-    O=anklangicons/$N.tmpdot
-    convert -background none $F $P					# Render SVG to PNG
-    convert -size $W'x'$H xc:none -draw "fill red point $X,$Y" $O.png	# Render .hotspot.png with red hotspot
-    convert $P $O.png -compose Atop -composite ${P%.png}.hotspot.png	# Compose hotspot
-    rm -f $O.png $P
-  fi
-  # Generate SCSS
-  URI=$( $TMP/node_modules/.bin/svgo -i $F --multipass --datauri=base64 -o - )
-  echo "\$anklang-cursor-$N: url($URI) $X $Y, $FALLBACK;" >> anklangicons/cursors.tmp
-  # Add to font files
-  cp $F $G
-  #inkscape -f $G --verb=EditSelectAll --verb=ObjectToPath --verb=StrokeToPath --verb=FileSave --verb=FileQuit
-  #inkscape -f $G --vacuum-defs --export-plain-svg $G
-}
-echo > anklangicons/cursors.tmp
-
-# == Cursor List ==
-make_cursor	pen.svg		 3 28 default
-make_cursor	eraser.svg	12 28 not-allowed
-
 # == Populate Glyphs ==
 for SVG in icons/*.svg ; do
   cp "$SVG" $TMP/svgs/
