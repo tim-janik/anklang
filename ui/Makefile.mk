@@ -348,6 +348,13 @@ $>/ui/utiljs.md: ui/util.js ui/script.js $(ui/jsdoc.deps) ui/Makefile.mk $>/node
 	$Q node doc/jsdoc2md.js -d 2 -e 'Script' $>/ui/script.jsdoc		>> $@.tmp
 	$Q mv $@.tmp $@
 
+# == $>/doc/b/*.md ==
+$>/doc/b/.doc-stamp: $(wildcard ui/b/*.js) ui/xbcomments.js ui/Makefile.mk $>/node_modules/.npm.done	| $>/doc/b/
+	$(QGEN)
+	$Q node ui/xbcomments.js $(wildcard ui/b/*.js) -O $>/doc/b/
+	$Q touch $@
+$>/ui/.build2-stamp: $>/doc/b/.doc-stamp # deferred during rebuilds
+
 # == ui/vue-doc ==
 $>/ui/vue-docs.md: ui/b/ch-vue.md $>/ui/envuejs.md $>/ui/utiljs.md $(ui/vue.wildcards) ui/Makefile.mk doc/filt-docs2.py		| $>/ui/
 	$(QGEN)
