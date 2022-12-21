@@ -220,7 +220,7 @@ $>/ui/fonts/AnklangIcons.css: ui/Makefile.mk		| $>/ui/fonts/
 		cd $>/ui/ $(call AND_DOWNLOAD_SHAURL, $H, $U) ; \
 	   fi
 	$Q rm -fr $>/ui/anklangicons/ && tar -xf $>/ui/$T -C $>/ui/ && rm $>/ui/$T
-	$Q cd $>/ui/anklangicons/ && $(CP) AnklangCursors.scss AnklangIcons.woff2 ../fonts/
+	$Q cd $>/ui/anklangicons/ && $(CP) AnklangIcons.woff2 ../fonts/
 	$Q cd $>/ui/anklangicons/ && $(CP) AnklangIcons.css ../fonts/AnklangIcons.css.tmp
 	$Q rm -r $>/ui/anklangicons/ && mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/fonts/AnklangIcons.css
