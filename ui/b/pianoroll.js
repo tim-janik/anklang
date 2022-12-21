@@ -87,7 +87,7 @@ c-grid {
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <c-grid tabindex="-1" ${ref(n => t.cgrid = n)}
+  <c-grid tabindex="-1" ${ref(n => t.cgrid = n)} data-f1="#piano-roll"
     @pointerenter=${t.pointerenter} @pointerleave=${t.pointerleave} @focus=${t.focuschange} @blur=${t.focuschange}
     @keydown=${e => t.piano_ctrl.keydown (e)}
     @wheel=${t.wheel} >
