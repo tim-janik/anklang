@@ -13,7 +13,7 @@
 
 <style lang="scss">
 @import 'mixins.scss';
-@import 'fonts/AnklangCursors.scss';
+// @import 'fonts/AnklangCursors.scss';
 $b-piano-roll-key-length: 64px;
 $scrollbar-area-size: 15px;
 $scrollarea-bg: transparent;
@@ -92,8 +92,8 @@ $scrollarea-bg: transparent;
   &[data-pianotool='S'] canvas.b-piano-roll-notes { cursor: crosshair; }
   &[data-pianotool='S'] canvas.b-piano-roll-notes[data-notehover="true"] { cursor: default; }
   &[data-pianotool='H'] canvas.b-piano-roll-notes { cursor: col-resize; }
-  &[data-pianotool='P'] canvas.b-piano-roll-notes { cursor: $anklang-cursor-pen; }
-  &[data-pianotool='E'] canvas.b-piano-roll-notes { cursor: $anklang-cursor-eraser; }
+  // &[data-pianotool='P'] canvas.b-piano-roll-notes { cursor: $anklang-cursor-pen; }
+  // &[data-pianotool='E'] canvas.b-piano-roll-notes { cursor: $anklang-cursor-eraser; }
 
   .-vscrollbar {
     display: flex; justify-self: center;
