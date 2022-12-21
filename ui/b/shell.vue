@@ -244,10 +244,13 @@ class ShellClass extends Envue.Component {
     Util.add_hotkey ('RawBackquote', this.switch_panel2);
     this.switch_panel3 = App.switch_panel3.bind (App);
     Util.add_hotkey ('I', this.switch_panel3);
+    this.f1_help_ = this.f1_help.bind (this);
+    Util.add_key_filter (112, this.f1_help_); // F1
   }
   unmounted() {
     Util.remove_hotkey ('RawBackquote', this.switch_panel2);
     Util.remove_hotkey ('I', this.switch_panel3);
+    Util.remove_key_filter (112, this.f1_help_); // F1
     App.shell_unmounted();
   }
   updated() {
@@ -267,6 +270,21 @@ class ShellClass extends Envue.Component {
   create_note (...args) {
     const noteboard = Util.envue_object (this.$vm.$refs.noteboard);
     return noteboard?.create_note (...args);
+  }
+  f1_help (event)
+  {
+    let data_f1;
+    for (const el of event.path)
+      {
+	data_f1 = el.getAttribute && el.getAttribute ('data-f1');
+	if (data_f1 && data_f1[0] === '#') // treat as anchor into manual
+	  break;
+      }
+    data_f1 = data_f1 && data_f1[0] === '#' ? data_f1 : '#using-anklang';
+    const u = location.origin + '/doc/anklang-manual.html' + data_f1;
+    window.open (u, '_blank');
+    Util.prevent_event (event);
+    return true;
   }
   sidebar_mouse (e) {
     const sidebar = this.$refs.sidebarcontainer;
