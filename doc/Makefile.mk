@@ -9,6 +9,9 @@ doc/all:
 doc/manual-chapters ::= $(strip		\
 	doc/ch-intro.md			\
 	doc/ch-install.md		\
+	doc/ch-editing.md		\
+	$>/doc/b/pianoroll.md		\
+	$>/doc/b/piano-ctrl.md		\
 	$>/doc/ch-man-pages.md		\
 	$>/ui/scripting-docs.md		\
 )
@@ -106,6 +109,7 @@ $>/doc/template.html: doc/template.diff doc/style/onload.html doc/Makefile.mk		|
 	  && cd $>/doc/ && patch < $(abspath doc/template.diff)
 
 # == anklang-manual.html ==
+$(doc/manual-chapters): $>/doc/b/.doc-stamp
 $>/doc/anklang-manual.html: $>/doc/template.html $(doc/manual-chapters) $(doc/style/install.files)	| $>/doc/
 	$(QGEN)
 	$Q $(PANDOC) $(doc/markdown-flavour) \
