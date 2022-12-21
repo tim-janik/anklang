@@ -25,7 +25,7 @@ export async function postcss_process (css_string, fromname = '<style string>', 
   return result;
 }
 
-const imports_done = memorize_imports ([ 'theme.scss', 'mixins.scss', 'shadow.scss' ]);
+const imports_done = memorize_imports ([ 'theme.scss', 'mixins.scss', 'shadow.scss', 'cursors/cursors.css' ]);
 
 export async function postcss (...args) {
   const css_string = args.join ('');
@@ -36,7 +36,11 @@ export async function postcss (...args) {
 
 async function memorize_imports (imports) {
   const fetchoptions = {};
-  const fetchlist = imports.map (async filename =>
-    PostCss.add_import (filename, await (await fetch (filename, fetchoptions)).text()));
+  const fetchlist = imports.map (async filename => {
+    const cssfile = await fetch (filename, fetchoptions);
+    const csstext = await cssfile.text();
+    // debug ("memorize_imports:", filename, cssfile, csstext);
+    PostCss.add_import (filename, csstext);
+  });
   await Promise.all (fetchlist);
 }
