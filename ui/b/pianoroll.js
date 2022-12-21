@@ -1,13 +1,11 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-/** # B-PIANOROLL
- * A pianoroll element.
- * ## Properties:
- * *.isactive*: bool (uri)
- * : Property callback used to check if a particular piano roll should stay active or be disabled.
- * ## Attributes:
- * *clip*
- * : The clip with notes to be edited.
+/** ## Piano-Roll
+ * The piano-roll editor displays notes in a grid where the vertical axis denotes the pitch and the horizontal axis the time line.
+ * It is modeled after a [classic piano-roll](https://en.wikipedia.org/wiki/Piano_roll#In_digital_audio_workstations).
+ * Several tools can be selected via a drop down menu or hotkeys which aid with creation, selection and modification of musical events.
+ * The cursor keys can be used to move selected notes, in combination with modifier keys the keys can also change note duration or note focus.
+ * A context menu is available with mouse button 3, which provides extended functionality.
  */
 
 import { LitElement, ref, html, css, postcss, docs } from '../little.js';
@@ -19,7 +17,9 @@ const floor = Math.floor, round = Math.round;
 const STYLE = await postcss`
 @import 'shadow.scss';
 @import 'mixins.scss';
+
 :host {
+  @import 'cursors/cursors.css';
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;
   // Make scss variables available to JS via getComputedStyle()
@@ -61,7 +61,6 @@ c-grid {
   .-row1		{ grid-row: 1/2; }
   .-row2		{ grid-row: 2/3; }
   .-row3		{ grid-row: 3/4; }
-
 
   background: #0000;
   canvas { background: black; object-fit: contain;
@@ -140,6 +139,7 @@ const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with
 const PRIVATE_PROPERTY = { state: true };
 const default_note_length = Util.PPQN / 4;
 
+/// UI element for note editing.
 class BPianoRoll extends LitElement {
   static styles = [ STYLE ];
   static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
@@ -149,10 +149,7 @@ class BPianoRoll extends LitElement {
     return HTML (this, d);
   }
   static properties = {
-    clip: STRING_ATTRIBUTE,
-    disabled: BOOL_ATTRIBUTE,
-    iconclass: STRING_ATTRIBUTE,
-    isactive: PRIVATE_PROPERTY,
+    clip: STRING_ATTRIBUTE,		///< The clip with notes to be edited.
   };
   constructor()
   {
@@ -177,9 +174,6 @@ class BPianoRoll extends LitElement {
     this.last_pos = -9.987;
     this.srect_ = { x: 0, y: 0, w: 0, h: 0, sx: 0, sy: 0 };
     this.clip = null;
-    this.disabled = false;
-    this.iconclass = '';
-    this.isactive = true;
     this.end_click = 99999;
     this.resize_observer = new ResizeObserver (els => this.repaint (true));
     this.resize_observer.observe (this);
@@ -195,6 +189,11 @@ class BPianoRoll extends LitElement {
     super.disconnectedCallback();
     Shell.piano_current_tick = null;
     Shell.piano_current_clip = null;
+    if (this.notes_canvas_pointermove_zmovedel)
+      {
+	this.notes_canvas_pointermove_zmovedel();
+	this.notes_canvas_pointermove_zmovedel = null;
+      }
   }
   firstUpdated()
   {
@@ -253,6 +252,11 @@ class BPianoRoll extends LitElement {
   {
     if (this.pointer_drag)
       return;
+    if (this.notes_canvas_pointermove_zmovedel)
+      {
+	this.notes_canvas_pointermove_zmovedel();
+	this.notes_canvas_pointermove_zmovedel = null;
+      }
     this.notes_canvas_tool = PianoCtrl.notes_canvas_tool_from_hover (this, event);
     if (this.notes_canvas_tool.cursor != this.notes_canvas.style.cursor)
       this.notes_canvas.style.cursor = this.notes_canvas_tool.cursor;
@@ -323,14 +327,16 @@ class BPianoRoll extends LitElement {
   usetool (uri)
   {
     this.pianotool = uri;
-    this.cgrid.setAttribute ('data-pianotool', this.pianotool);
     // clone menu item
     const title = '**EDITOR TOOL**';
     const menuitem = this.pianotoolmenu.find_menuitem (uri);
     this.menu_icon.setAttribute ('ic', menuitem.getAttribute ('ic'));
     this.menu_icon.setAttribute ('data-kbd', menuitem.getAttribute ('kbd'));
     this.menu_icon.setAttribute ('data-tip', title + ' ' + menuitem.slot_label());
-    App.zmove(); // pick up 'data-tip'
+    // pick up 'data-tip' and pick cursor via hover
+    if (!this.notes_canvas_pointermove_zmovedel)
+      this.notes_canvas_pointermove_zmovedel = App.zmoves_add (this.notes_canvas_pointermove.bind (this));
+    App.zmove(); // trigger move / hover
   }
   piano_current_tick (current_clip, current_tick)
   {
