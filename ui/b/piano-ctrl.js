@@ -304,7 +304,19 @@ export class PianoCtrl {
   }
 }
 
-/// Change note seleciton
+/// Add/register piano-roll canvas tool
+function ntool (toolmode, drag_event, cursor = 'default', predicate)
+{
+  const tool = { toolmode, drag_event, cursor, predicate };
+  ntool_list.push (tool);
+}
+const ntool_list = [];
+
+/// ### Select Tool
+/// ![Crosshair](cursors/cross.svg)
+/// The Select Tool allows selection of single notes or groups of notes. Modifier keys can be used to modify the selection behavior.
+///
+/// ### Horizontal Select
 function notes_canvas_drag_select (event, MODE)
 {
   Util.prevent_event (event);
@@ -356,8 +368,94 @@ function notes_canvas_drag_select (event, MODE)
   }
   return false;
 }
+ntool ('S', notes_canvas_drag_select, 'var(--svg-cursor-cross)');
+ntool ('H', notes_canvas_drag_select, 'var(--svg-cursor-cross)');
 
-/// Paint new notes
+/// ### Paint Tool
+/// ![Pen](cursors/pen.svg)
+/// With the note Paint Tool, notes can be placed everywhere in the grid by clicking mouse button 1 and possibly keeping it held during drags.
+function notes_canvas_drag_paint (event, MODE)
+{
+  Util.prevent_event (event);
+  this.update_coords (event, MODE); // piano_layout_update_coords
+  switch (MODE) {
+    case START:
+      queue_change_selection (this.piano_roll, NONE);
+      // fall through
+    case SCROLL:
+    case MOVE: {
+      const event_tick = this.piano_roll.layout.tick_from_x (this.x);
+      const event_key = this.piano_roll.layout.midinote_from_y (this.y);
+      const paint_note = (clip, allnotes) => {
+	const note_idx = find_note (allnotes, n => event_tick >= n.tick && event_tick < n.tick + n.duration && event_key == n.key);
+	if (note_idx < 0) {
+	  const newnote = { channel: 0, key: event_key, velocity: 1, fine_tune: 0,
+			    tick: quantize (this.piano_roll, event_tick, false),
+			    duration: this.piano_roll.last_note_length,
+			    selected: true };
+	  return [ newnote ];
+	}
+	return false;
+      };
+      queue_modify_notes (this.piano_roll.clip, paint_note, "Paint Note");
+      break; }
+    case STOP:
+    case CANCEL:
+      break;
+  }
+  return false;
+}
+ntool ('P', notes_canvas_drag_paint, 'var(--svg-cursor-pen)');
+
+/// #### Resizing Notes
+/// ![H-Resize](cursors/hresize.svg)
+/// When the Paint Tool is selected, the right edge of note can be draged to make notes shorter or longer in duration.
+function notes_canvas_drag_resize (event, MODE)
+{ // this = piano_layout_coords()
+  Util.prevent_event (event);
+  this.update_coords (event, MODE); // piano_layout_update_coords
+  const resize_note = (clip, allnotes) => {
+    const note_idx = find_note (allnotes, n => n.id === this.note_id);
+    if (note_idx < 0)
+      return false;
+    const newnote = Object.assign ({}, allnotes[note_idx]);
+    if (newnote.tick < this.event_tick)
+      {
+	let duration = Math.max (Util.PPQN / 16, this.event_tick - newnote.tick);
+	if (!event.shiftKey)
+	  duration = quantize (this.piano_roll, duration, true);
+	if (duration > 0)
+	  {
+	    newnote.duration = duration;
+	    this.last_note_length = duration;
+	    return [ newnote ];
+	  }
+      }
+    return false;
+  };
+  switch (MODE) {
+    case START:
+      this.last_note_length = this.piano_roll.last_note_length;
+      break;
+    case SCROLL:
+    case MOVE:
+      this.event_tick = this.piano_roll.layout.tick_from_x (this.x);
+      queue_modify_notes (this.piano_roll.clip, resize_note, "Resize Note");
+      break;
+    case STOP:
+      this.piano_roll.last_note_length = this.last_note_length;
+      break;
+    case CANCEL:
+      // TODO: reset note size
+      break;
+  }
+  return false;
+}
+ntool ('P', notes_canvas_drag_resize, 'var(--svg-cursor-hresize)', note_hover_tail);
+
+/// ### Erase Tool
+/// ![Eraser](cursors/eraser.svg)
+/// The Erase Tool allows deletion of all notes selected during a mouse button 1 drag. The deletion can be aborted by the Escape key.
 function notes_canvas_drag_erase (event, MODE)
 {
   Util.prevent_event (event);
@@ -425,94 +523,28 @@ function notes_canvas_drag_erase (event, MODE)
   }
   return false;
 }
+ntool ('E', notes_canvas_drag_erase, 'var(--svg-cursor-eraser)');
 
-/// Paint new notes
-function notes_canvas_drag_paint (event, MODE)
+/// Detect note if hovering over its tail
+function note_hover_tail (coords, tick, key, notes)
 {
-  Util.prevent_event (event);
-  this.update_coords (event, MODE); // piano_layout_update_coords
-  switch (MODE) {
-    case START:
-      queue_change_selection (this.piano_roll, NONE);
-      // fall through
-    case SCROLL:
-    case MOVE: {
-      const event_tick = this.piano_roll.layout.tick_from_x (this.x);
-      const event_key = this.piano_roll.layout.midinote_from_y (this.y);
-      const paint_note = (clip, allnotes) => {
-	const note_idx = find_note (allnotes, n => event_tick >= n.tick && event_tick < n.tick + n.duration && event_key == n.key);
-	if (note_idx < 0) {
-	  const newnote = { channel: 0, key: event_key, velocity: 1, fine_tune: 0,
-			    tick: quantize (this.piano_roll, event_tick, false),
-			    duration: this.piano_roll.last_note_length,
-			    selected: true };
-	  return [ newnote ];
-	}
-	return false;
-      };
-      queue_modify_notes (this.piano_roll.clip, paint_note, "Paint Note");
-      break; }
-    case STOP:
-    case CANCEL:
-      break;
-  }
-  return false;
-}
-
-/// Resize duration of a note
-function notes_canvas_drag_resize (event, MODE)
-{ // this = piano_layout_coords()
-  Util.prevent_event (event);
-  this.update_coords (event, MODE); // piano_layout_update_coords
-  const resize_note = (clip, allnotes) => {
-    const note_idx = find_note (allnotes, n => n.id === this.note_id);
-    if (note_idx < 0)
-      return false;
-    const newnote = Object.assign ({}, allnotes[note_idx]);
-    if (newnote.tick < this.event_tick)
-      {
-	const duration = quantize (this.piano_roll, this.event_tick - newnote.tick, true);
-	if (duration > 0)
-	  {
-	    newnote.duration = duration;
-	    this.last_note_length = duration;
-	    return [ newnote ];
-	  }
-      }
-    return false;
-  };
-  switch (MODE) {
-    case START:
-      this.last_note_length = this.piano_roll.last_note_length;
-      break;
-    case SCROLL:
-    case MOVE:
-      this.event_tick = this.piano_roll.layout.tick_from_x (this.x);
-      queue_modify_notes (this.piano_roll.clip, resize_note, "Resize Note");
-      break;
-    case STOP:
-      this.piano_roll.last_note_length = this.last_note_length;
-      break;
-    case CANCEL:
-      // FIXME: reset note size
-      break;
-  }
-  return false;
+  const head_dist = 10; // minimum pixels distance from note start
+  const note_idx = find_note (notes, n => key == n.key && tick >= n.tick + Math.max (head_dist, n.duration / 2) && tick < n.tick + n.duration);
+  return note_idx >= 0 ? { note_id: notes[note_idx].id } : null;
 }
 
 /// Get drag tool and cursor from hover position
 export function notes_canvas_tool_from_hover (piano_roll, pointerevent)
 {
   const clip = piano_roll.clip, layout = piano_roll.layout;
+  // coords for tool predicate
   const coords = target_coords (pointerevent, piano_roll.notes_canvas);
   const event_tick = layout.tick_from_x (coords.x);
   const event_key = layout.midinote_from_y (coords.y);
-  const head_dist = 10; // minimum pixels distance from note start
   // need an early decision if event is on a resizable note, so do with old cache
   const notes = Shell.old_cache_notes (clip);
-  const note_idx = find_note (notes, n => event_key == n.key && event_tick >= n.tick + Math.max (head_dist, n.duration / 2) && event_tick < n.tick + n.duration);
-  // FIXME : always needed? ^^^^^^^^^^^^^^^^
-  function make_drag_context (piano_roll)
+  // startup tool handler
+  function drag_start (piano_roll)
   {
     const ctool_this = piano_layout_coords (piano_roll.layout, piano_roll.notes_canvas);
     ctool_this.piano_roll = piano_roll;
@@ -520,29 +552,27 @@ export function notes_canvas_tool_from_hover (piano_roll, pointerevent)
       Object.assign (ctool_this, this);
     return ctool_this;
   }
-  // select
-  if (piano_roll.pianotool == 'S' || piano_roll.pianotool == 'H')
-    return { drag_start: make_drag_context,
-	     drag_event: notes_canvas_drag_select,
-	     cursor: 'crosshair' };
-  // resize
-  if (piano_roll.pianotool == 'P' && note_idx > 0)
-    return { drag_start: make_drag_context,
-	     drag_event: notes_canvas_drag_resize,
-	     note_id: notes[note_idx].id,
-	     cursor: 'var(--piano-note-resize-cursor)' };
-  // paint
-  if (piano_roll.pianotool == 'P')
-    return { drag_start: make_drag_context,
-	     drag_event: notes_canvas_drag_paint,
-	     cursor: 'pointer' };
-  // erase
-  if (piano_roll.pianotool == 'E')
-    return { drag_start: make_drag_context,
-	     drag_event: notes_canvas_drag_erase,
-	     cursor: 'not-allowed' };
+  // rate tools
+  const tool_prio = tool => !tool ? -1 : !!tool.drag_event + 2 * !!tool.cursor + 4 * !!tool.predicate;
+  // find tool
+  let best_tool = null;
+  for (let tool of ntool_list)
+    if (tool.toolmode === piano_roll.pianotool && tool_prio (tool) > tool_prio (best_tool))
+      {
+	tool = Object.assign ({ drag_start }, tool);
+	if (tool.predicate) // must match predicate
+	  {
+	    const result = tool.predicate (coords, event_tick, event_key, notes);
+	    if (!result)
+	      continue;
+	    tool = Object.assign (tool, result);
+	  }
+	best_tool = tool;
+      }
+  if (best_tool)
+    return best_tool; // found matching tool
   // debug
-  return { drag_start: make_drag_context, drag_event: (e,m) => debug ("DRAG unhandled", m, e.offsetX, e.offsetY), cursor: 'default' };
+  return { drag_start, drag_event: (e,m) => debug ("DRAG unhandled", m, e.offsetX, e.offsetY), cursor: 'default' };
 }
 
 /// Translate event offsetX,offsetY into taret element
