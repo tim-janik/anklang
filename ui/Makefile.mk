@@ -186,6 +186,14 @@ $(ui/public.targets): $>/ui/%: ui/%			| $>/ui/assets/
 	$Q cd ui/ && $(CP) $(<:ui/%=%) --parents $(abspath $>/)/ui/
 $>/ui/.build1-stamp: $(ui/public.targets)
 
+# == ui/cursors/ ==
+$>/ui/cursors/cursors.css: $(wildcard ui/cursors/*) Makefile.mk		| $>/ui/cursors/
+	$(QECHO) COPY $<
+	$Q for SVG in `sed -n '/url.cursors\//{ s/.*(//; s/).*//; p }' ui/cursors/cursors.css` ; do \
+		$(CP) ui/"$$SVG" $>/ui/cursors/ || break ; done
+	$Q $(CP) ui/cursors/cursors.css $@
+$>/ui/.build1-stamp: $>/ui/cursors/cursors.css
+
 # == CJS Files ==
 ui/cjs.targets ::= $(ui/cjs.wildcards:%.js=$>/%.cjs)
 $(ui/cjs.targets): $>/ui/%.cjs: ui/%.js	| $>/ui/b/
@@ -212,7 +220,7 @@ $>/ui/fonts/AnklangIcons.css: ui/Makefile.mk		| $>/ui/fonts/
 		cd $>/ui/ $(call AND_DOWNLOAD_SHAURL, $H, $U) ; \
 	   fi
 	$Q rm -fr $>/ui/anklangicons/ && tar -xf $>/ui/$T -C $>/ui/ && rm $>/ui/$T
-	$Q cd $>/ui/anklangicons/ && $(CP) AnklangCursors.scss AnklangIcons.woff2 ../fonts/
+	$Q cd $>/ui/anklangicons/ && $(CP) AnklangIcons.woff2 ../fonts/
 	$Q cd $>/ui/anklangicons/ && $(CP) AnklangIcons.css ../fonts/AnklangIcons.css.tmp
 	$Q rm -r $>/ui/anklangicons/ && mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/fonts/AnklangIcons.css

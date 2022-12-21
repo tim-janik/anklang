@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="28"
+   height="28"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#">
+  <metadata><rdf:RDF><cc:Work> <cc:license rdf:resource="MPL-2.0"/> </cc:Work></rdf:RDF></metadata>
+  <path
+     style="fill:#ffffff;stroke:#000000;stroke-width:1"
+     d="M 22.938297,10.462258 26.61476,6.7526632 C 27.173249,6.1889961 27.124367,5.2363779 26.499317,4.6103124 L 23.356384,1.4643847 C 22.732375,0.83831918 21.847319,0.86535858 21.218107,1.3479075 l -3.675422,3.7106347 5.395612,5.4037158 -16.5404403,16.5377 H 1.0001651 V 21.595201 L 17.542685,5.0585422" />
+</svg>
