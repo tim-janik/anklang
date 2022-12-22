@@ -21,8 +21,8 @@
 
 <template>
 
-  <!-- main menu & controlbar -->
   <h-flex class="b-menubar" space-between >
+    <!-- main menu & controlbar -->
 
     <!-- menubar left -->
     <b-button-bar class="-menubar" >

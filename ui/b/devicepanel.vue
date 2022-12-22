@@ -14,7 +14,6 @@
   $scrollbar-height: 6px; //* Should match Firefox 'scrollbar-width:thin' */
 
   .b-devicepanel {
-    height: 100%; width: 0; flex-grow: 1;
     background: $b-devicepanel-bg;
     border-radius: inherit;
     justify-content: flex-start;
@@ -26,28 +25,25 @@
       //* FF: writing-mode: sideways-rl; */
       writing-mode: vertical-rl; transform: rotate(180deg);
       border-right: 7px solid #9c61ff;
-      padding: 0 5px;
+      padding: 1em 5px;
       border-top-right-radius: inherit;
       border-bottom-right-radius: inherit;
-      height: 100%;
+      align-self: stretch;
       //* Add slight shadow to the right for a soft scroll boundary */
       box-shadow: -2px 0 $b-scroll-shadow-blur 0px #000;
       background: #000000ef;
       z-index: 9; //* raise above scrolled siblings */
     }
     .b-devicepanel-after-scroller {
-      height: 100%;
       //* Add slight shadow to the left for a soft scroll boundary */
       box-shadow: 0 0 5px 2px #000;
       width: 1px; background: #000000ef;
       z-index: 9; //* raise above scrolled siblings */
     }
     .b-devicepanel-scroller {
-      height: 100%; flex-grow: 1;
+      align-self: stretch;
       padding-top: $scrollbar-height;
       padding-bottom: 0;
-      overflow-y: hidden;
-      overflow-x: scroll;
       & > * {
 	flex-grow: 0;
       }

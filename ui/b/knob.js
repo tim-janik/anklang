@@ -93,7 +93,8 @@ class BKnob extends LitElement {
     super();
     this.sprite = null;
     this.nosize = false;
-    this.hscroll = this.vscroll = true;
+    this.hscroll = false; // allow horizontal device panel scrolling
+    this.vscroll = true;
     this.notify_value_cb = (...args) => this.notify_value (...args);
     this.clear_notify_cb = undefined;
     this.relabel_cb = Util.debounce (this.relabel);
@@ -310,12 +311,12 @@ export function spin_drag_start (element, event, value_callback)
 /// Stop sping drag event handlers and pointer grab.
 function spin_drag_stop (event_or_element= undefined)
 {
-  const spin_drag = event instanceof MouseEvent ? this : event_or_element[SPIN_DRAG];
+  const spin_drag = event_or_element instanceof MouseEvent ? this : event_or_element[SPIN_DRAG];
   if (!spin_drag?.stop)
     return;
   const element = spin_drag.element;
-  if (event instanceof MouseEvent)
-    spin_drag.stop_event (event);
+  if (event_or_element instanceof MouseEvent)
+    spin_drag.stop_event (event_or_element);
   element.removeEventListener ('pointerup', spin_drag.stop);
   element.removeEventListener ('pointermove', spin_drag.pointermove);
   document.body.removeEventListener ('wheel', spin_drag.stop_event, { capture: true, passive: false });

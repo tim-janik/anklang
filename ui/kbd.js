@@ -114,7 +114,7 @@ export function is_navigation_key_code (keycode)
 export function activeElement()
 {
   let e = document.activeElement;
-  while (e.shadowRoot)
+  while (e && e.shadowRoot && e.shadowRoot.activeElement)
     e = e.shadowRoot.activeElement;
   return e;
 }
@@ -398,6 +398,9 @@ function hotkey_handler (event) {
   const kdebug = () => undefined; // kdebug = debug;
   const focus_root = the_focus_guard?.focus_root_list?.[0];
   const fe = activeElement();
+  kdebug ("hotkey_handler:", "focus:", fe, event);
+  if (!fe)
+    return false;
   // avoid composition events, https://developer.cdn.mozilla.net/en-US/docs/Web/API/Element/keydown_event
   if (event.isComposing || event.keyCode === 229)
     {

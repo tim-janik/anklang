@@ -29,20 +29,44 @@ import { create_app } from './b/app.js';
 import * as Script from './script.js';
 
 // Custom Elements
+import { LitElement, html, css, postcss, docs } from '../little.js';
+
 class PushButton extends HTMLElement {
   constructor() { super(); }
 }
 customElements.define ('push-button', PushButton);
-class HFlex extends HTMLElement {
-  constructor() { super(); }
+
+// == HFlex ==
+class HFlex extends LitElement {
+  static styles = [ css`
+    :host { display: flex; flex-basis: auto; flex-direction: row;
+            flex-wrap: nowrap; align-items: stretch; align-content: stretch; }
+    :host[inline] { display: inline-flex; }
+  ` ];
+  render() { return html`<slot></slot>`; }
 }
 customElements.define ('h-flex', HFlex);
-class VFlex extends HTMLElement {
-  constructor() { super(); }
+
+// == VFlex ==
+class VFlex extends LitElement {
+  static styles = [ css`
+    :host { display: flex; flex-basis: auto; flex-direction: column;
+            flex-wrap: nowrap; align-items: stretch; align-content: stretch; }
+    :host[inline] { display: inline-flex; }
+  ` ];
+  render() { return html`<slot></slot>`; }
 }
 customElements.define ('v-flex', VFlex);
-class CGrid extends HTMLElement {
-  constructor() { super(); }
+
+// == CGrid ==
+class CGrid extends LitElement {
+  // Container for grid layouting, see: https://www.w3.org/TR/css-grid-1/#grid-containers
+  // visual cheatsheet: http://grid.malven.co/
+  static styles = [ css`
+    :host { display: grid; }
+    :host[inline] { display: inline-grid; }
+  ` ];
+  render() { return html`<slot></slot>`; }
 }
 customElements.define ('c-grid', CGrid);
 
