@@ -393,6 +393,7 @@ export function forget_focus (element) {
 }
 
 const hotkey_list = [];
+const filter_keycodes = {};
 
 function hotkey_handler (event) {
   const kdebug = () => undefined; // kdebug = debug;
@@ -406,6 +407,14 @@ function hotkey_handler (event) {
     {
       kdebug ("hotkey_handler: ignore-composition: " + event.code + ' (' + fe.tagName + ')');
       return false;
+    }
+  // allow filtering via keyCode
+  if (filter_keycodes[event.keyCode])
+    {
+      const filtered = filter_keycodes[event.keyCode] (event);
+      kdebug ("hotkey_handler: filtering:", event.keyCode, !!filtered);
+      if (filtered)
+	return true;
     }
   // allow ESCAPE callback for focus_root
   if (focus_root && focus_root[2] && Util.match_key_event (event, 'Escape'))
@@ -502,6 +511,18 @@ export class KeymapEntry {
     this.handler = handler;
     this.element = element;
   }
+}
+
+/// Add a global keymap.
+export function add_key_filter (keycode, callback)
+{
+  filter_keycodes[keycode] = callback;
+}
+
+/// Remove a global keymap.
+export function remove_key_filter (keycode)
+{
+  delete filter_keycodes[keycode];
 }
 
 const global_keymaps = [];

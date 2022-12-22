@@ -9,6 +9,9 @@ doc/all:
 doc/manual-chapters ::= $(strip		\
 	doc/ch-intro.md			\
 	doc/ch-install.md		\
+	doc/ch-editing.md		\
+	$>/doc/b/pianoroll.md		\
+	$>/doc/b/piano-ctrl.md		\
 	$>/doc/ch-man-pages.md		\
 	$>/ui/scripting-docs.md		\
 )
@@ -105,8 +108,15 @@ $>/doc/template.html: doc/template.diff doc/style/onload.html doc/Makefile.mk		|
 	  && sed $$'/^<\/body>/{r doc/style/onload.html\nN}' -i $>/doc/template.html \
 	  && cd $>/doc/ && patch < $(abspath doc/template.diff)
 
+# == doc/cursors/ ==
+$>/doc/cursors/cursors.css:			| $>/doc/
+	$(QGEN)
+	$Q $(RM) $>/doc/cursors
+	$Q ln -s ../ui/cursors $>/doc/
+
 # == anklang-manual.html ==
-$>/doc/anklang-manual.html: $>/doc/template.html $(doc/manual-chapters) $(doc/style/install.files)	| $>/doc/
+$(doc/manual-chapters): $>/doc/b/.doc-stamp
+$>/doc/anklang-manual.html: $>/doc/template.html $(doc/manual-chapters) $>/doc/cursors/cursors.css $(doc/style/install.files)	| $>/doc/
 	$(QGEN)
 	$Q $(PANDOC) $(doc/markdown-flavour) \
 		-s $(doc/html_flags) \
@@ -132,11 +142,12 @@ $>/doc/anklang-internals.html: $>/doc/template.html $(doc/internals-chapters) $(
 
 # == anklang-manual.pdf ==
 # REQUIRES: python3-pandocfilters texlive-xetex pandoc2
-$>/doc/anklang-manual.pdf: doc/pandoc-pdf.tex $(doc/manual-chapters)					| $>/doc/
+$>/doc/anklang-manual.pdf: doc/pandoc-pdf.tex $(doc/manual-chapters) $>/doc/cursors/cursors.css					| $>/doc/
 	$(QGEN)
 	$Q xelatex --version 2>&1 | grep -q '^XeTeX 3.14159265' \
 	   || { echo '$@: missing xelatex, required version: XeTeX >= 3.14159265' >&2 ; false ; }
 	$Q $(PANDOC) $(doc/markdown-flavour) \
+		--resource-path $>/doc/ --resource-path . \
 		$(doc/pdf_flags) \
 		--toc --number-sections \
 		--variable=subparagraph \
