@@ -69,6 +69,7 @@ $>/ui/zcam-js.mjs: $>/node_modules/.npm.done				| $>/ui/
 	$(QGEN)
 	$Q $(CP) $>/node_modules/zcam-js/zcam-js.mjs $@
 $>/ui/.build1-stamp: $>/ui/zcam-js.mjs
+$>/ui/colors.js: $>/ui/zcam-js.mjs
 
 # == ui/csstree-validator.esm.js ==
 $>/ui/csstree-validator.esm.js: $>/node_modules/.npm.done				| $>/ui/
