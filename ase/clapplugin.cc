@@ -1416,7 +1416,7 @@ host_register_fd (const clap_host_t *host, int fd, clap_posix_fd_flags_t flags)
     uint revents = 0;
     revents |= bool (pfd.revents & PollFD::IN) * CLAP_POSIX_FD_READ;
     revents |= bool (pfd.revents & PollFD::OUT) * CLAP_POSIX_FD_WRITE;
-    revents |= bool (pfd.revents & (PollFD::ERR | PollFD::HUP)) * CLAP_POSIX_FD_ERROR;
+    revents |= bool (pfd.revents & (PollFD::ERR | PollFD::HUP | PollFD::NVAL)) * CLAP_POSIX_FD_ERROR;
     if (0)
       CDEBUG ("%s: plugin_on_fd: fd=%d revents=%u: %u", handlep->clapid(), pfd.fd, revents,
               handlep->plugin_posix_fd_support && handlep->plugin_posix_fd_support->on_fd);
@@ -1429,8 +1429,6 @@ host_register_fd (const clap_host_t *host, int fd, clap_posix_fd_flags_t flags)
     mode += "r";
   if (flags & CLAP_POSIX_FD_WRITE)
     mode += "w";
-  if (!(flags & CLAP_POSIX_FD_ERROR))
-    mode += "E";
   ClapPluginHandleImpl::FdPoll fdpoll = {
     .fd = fd,
     .source = main_loop->exec_io_handler (plugin_on_fd, fd, mode),
