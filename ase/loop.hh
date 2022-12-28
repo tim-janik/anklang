@@ -13,7 +13,7 @@ struct PollFD   /// Mirrors struct pollfd for poll(3posix)
   uint16        events;
   uint16        revents;
   /// Event types that can be polled for, set in .events, updated in .revents
-  enum {
+  enum : uint {
     IN          = ASE_SYSVAL_POLLINIT[0],  ///< RDNORM || RDBAND
     PRI         = ASE_SYSVAL_POLLINIT[1],  ///< urgent data available
     OUT         = ASE_SYSVAL_POLLINIT[2],  ///< writing data will not block
@@ -287,8 +287,6 @@ protected:
   virtual bool  dispatch        (const LoopState &state);
   virtual void  destroy         ();
   PollFD        pfd_;
-  uint          ignore_errors_ : 1;    // 'E'
-  uint          ignore_hangup_ : 1;    // 'H'
   uint          never_close_ : 1;      // 'C'
 private:
   const uint    oneshot_ : 1;

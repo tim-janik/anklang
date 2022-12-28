@@ -1127,19 +1127,16 @@ TimedSource::~TimedSource ()
  * A PollFDSource can be used to execute a callback function from the main loop,
  * depending on certain file descriptor states.
  * The modes supported for polling the file descriptor are as follows:
- * @li @c "w" - poll writable
- * @li @c "r" - poll readable
- * @li @c "p" - poll urgent redable
+ * @li @c "r" - poll readable (POLLIN)
+ * @li @c "w" - poll writable (POLLOUT)
+ * @li @c "p" - priority data (POLLPRI)
+ * @li @c "d" - priority band writable (POLLWRBAND)
  * @li @c "b" - set fd blocking
  * @li @c "B" - set fd non-blocking
- * @li @c "E" - ignore erros (or auto destroy)
- * @li @c "H" - ignore hangup (or auto destroy)
  * @li @c "C" - prevent auto close on destroy
  */
 PollFDSource::PollFDSource (const BPfdSlot &slot, int fd, const String &mode) :
   pfd_ ((PollFD) { fd, 0, 0 }),
-  ignore_errors_ (strchr (mode.c_str(), 'E') != NULL),
-  ignore_hangup_ (strchr (mode.c_str(), 'H') != NULL),
   never_close_ (strchr (mode.c_str(), 'C') != NULL),
   oneshot_ (false), bool_poll_slot_ (slot)
 {
@@ -1148,8 +1145,6 @@ PollFDSource::PollFDSource (const BPfdSlot &slot, int fd, const String &mode) :
 
 PollFDSource::PollFDSource (const VPfdSlot &slot, int fd, const String &mode) :
   pfd_ ((PollFD) { fd, 0, 0 }),
-  ignore_errors_ (strchr (mode.c_str(), 'E') != NULL),
-  ignore_hangup_ (strchr (mode.c_str(), 'H') != NULL),
   never_close_ (strchr (mode.c_str(), 'C') != NULL),
   oneshot_ (true), void_poll_slot_ (slot)
 {
@@ -1163,6 +1158,7 @@ PollFDSource::construct (const String &mode)
   pfd_.events |= strchr (mode.c_str(), 'w') ? PollFD::OUT : 0;
   pfd_.events |= strchr (mode.c_str(), 'r') ? PollFD::IN : 0;
   pfd_.events |= strchr (mode.c_str(), 'p') ? PollFD::PRI : 0;
+  pfd_.events |= strchr (mode.c_str(), 'd') ? PollFD::WRBAND : 0;
   if (pfd_.fd >= 0)
     {
       const long lflags = fcntl (pfd_.fd, F_GETFL, 0);
@@ -1198,13 +1194,7 @@ bool
 PollFDSource::dispatch (const LoopState &state)
 {
   bool keep_alive = !oneshot_;
-  if (pfd_.fd >= 0 && (pfd_.revents & PollFD::NVAL))
-    ; // close down
-  else if (pfd_.fd >= 0 && !ignore_errors_ && (pfd_.revents & PollFD::ERR))
-    ; // close down
-  else if (pfd_.fd >= 0 && !ignore_hangup_ && (pfd_.revents & PollFD::HUP))
-    ; // close down
-  else if (oneshot_ && void_poll_slot_ != NULL)
+  if (oneshot_ && void_poll_slot_ != NULL)
     void_poll_slot_ (pfd_);
   else if (!oneshot_ && bool_poll_slot_ != NULL)
     keep_alive = bool_poll_slot_ (pfd_);
