@@ -282,13 +282,13 @@ public:
 /// Container for Clip objects and sequencing information.
 class Track : public virtual Device {
 public:
-  virtual int32    midi_channel   () const = 0;          ///< Midi channel assigned to this track, 0 uses internal per-track channel.
-  virtual void     midi_channel   (int32 midichannel) = 0;
-  virtual bool     is_master      () const = 0;          ///< Flag set on the main output track.
-  virtual ClipS    list_clips     () = 0;                ///< Retrieve a list of the clips within this track.
-  virtual DeviceP  access_device  () = 0;                ///< Retrieve Device handle for this track.
-  virtual MonitorP create_monitor (int32 ochannel) = 0;  /// Create signal monitor for an output channel.
-  virtual TelemetryFieldS telemetry () const = 0;        ///< Retrieve track telemetry locations.
+  virtual int32           midi_channel        () const = 0;          ///< Midi channel assigned to this track, 0 uses internal per-track channel.
+  virtual void            midi_channel        (int32 midichannel) = 0;
+  virtual bool            is_master           () const = 0;          ///< Flag set on the main output track.
+  virtual ClipS           list_launcher_clips () = 0;                ///< Retrieve the list of clips that can be directly played.
+  virtual DeviceP         access_device       () = 0;                ///< Retrieve Device handle for this track.
+  virtual MonitorP        create_monitor      (int32 ochannel) = 0;  /// Create signal monitor for an output channel.
+  virtual TelemetryFieldS telemetry           () const = 0;          ///< Retrieve track telemetry locations.
 };
 
 /// Bits representing a selection of probe sample data features.

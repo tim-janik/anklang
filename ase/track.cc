@@ -64,7 +64,7 @@ TrackImpl::serialize (WritNode &xs)
   // load clips
   if (xs.in_load())
     {
-      ClipS clips = list_clips(); // forces creation
+      ClipS clips = list_launcher_clips(); // forces creation
       for (auto &xc : xs["clips"].to_nodes())
         {
           int64 index = xc["clip-index"].as_int();
@@ -168,12 +168,12 @@ void
 TrackImpl::midi_channel (int32 midichannel) // TODO: implement
 {}
 
-static constexpr const uint MAX_CLIPS = 8;
+static constexpr const uint MAX_LAUNCHER_CLIPS = 8;
 
 ClipS
-TrackImpl::list_clips () // TODO: implement
+TrackImpl::list_launcher_clips ()
 {
-  const uint max_clips = MAX_CLIPS;
+  const uint max_clips = MAX_LAUNCHER_CLIPS;
   if (clips_.size() < max_clips)
     {
       clips_.reserve (max_clips);
