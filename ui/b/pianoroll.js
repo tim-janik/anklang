@@ -232,14 +232,12 @@ class BPianoRoll extends LitElement {
     this.entered = true;
     if (this.pianotoolmenu)
       this.pianotoolmenu.map_kbd_hotkeys (this.entered || this.have_focus);
-    debug ("pianotoolmenu.map_kbd_hotkeys:", this.pianotoolmenu && (this.entered || this.have_focus) );
   }
   pointerleave (event)
   {
     this.entered = false;
     if (this.pianotoolmenu)
       this.pianotoolmenu.map_kbd_hotkeys (this.entered || this.have_focus);
-    debug ("pianotoolmenu.map_kbd_hotkeys:", this.pianotoolmenu && (this.entered || this.have_focus) );
   }
   focuschange (ev) {
     if (ev?.type)
@@ -248,7 +246,6 @@ class BPianoRoll extends LitElement {
       this.pianotoolmenu.map_kbd_hotkeys (this.entered || this.have_focus);
     if (this.pianorollmenu)
       this.pianorollmenu.map_kbd_hotkeys (this.have_focus);
-    debug ("pianotoolmenu.map_kbd_hotkeys:", this.pianotoolmenu && (this.entered || this.have_focus) );
   }
   notes_canvas_pointermove (event)
   {
