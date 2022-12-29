@@ -134,7 +134,6 @@ function pianorollmenu_item (ac) {
 }
 
 // == SCRIPT ==
-const BOOL_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with property
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 const PRIVATE_PROPERTY = { state: true };
 const default_note_length = Util.PPQN / 4;
@@ -149,7 +148,7 @@ class BPianoRoll extends LitElement {
     return HTML (this, d);
   }
   static properties = {
-    clip: STRING_ATTRIBUTE,		///< The clip with notes to be edited.
+    clip: PRIVATE_PROPERTY,		///< The clip with notes to be edited.
   };
   constructor()
   {
@@ -217,6 +216,9 @@ class BPianoRoll extends LitElement {
 	if (this.clip)
 	  Shell.get_note_cache (this.clip).add_callback (this.notes_changed);
 	this.last_note_length = default_note_length;
+
+	if (this.indicator_bar)
+	  this.indicator_bar.style.transform = "translateX(-9999px)";
       }
     this.repaint (true);
     // indicator_bar setup
