@@ -184,11 +184,9 @@ class BContextMenu extends LitElement {
   }
   connectedCallback() {
     super.connectedCallback();
-    this._timerInterval = setInterval(() => this.requestUpdate(), 1000);
   }
   disconnectedCallback() {
     super.disconnectedCallback();
-    clearInterval(this._timerInterval);
     this.map_kbd_hotkeys (false);
   }
   updated()
