@@ -96,6 +96,7 @@ ClipImpl::serialize (WritNode &xs)
           notes_.insert (note);
         }
       emit_notify ("notes");
+      emit_notify ("all_notes");
       // TODO: serialize range
     }
 }
@@ -127,6 +128,15 @@ ClipImpl::assign_range (int64 starttick, int64 stoptick)
 
 ClipNoteS
 ClipImpl::list_all_notes ()
+{
+  ClipNoteS cnotes;
+  auto events = tick_events();
+  cnotes.assign (events->begin(), events->end());
+  return cnotes;
+}
+
+ClipNoteS
+ClipImpl::all_notes () const
 {
   ClipNoteS cnotes;
   auto events = tick_events();
@@ -179,6 +189,7 @@ ClipImpl::apply_undo (const EventImage &image, const String &undogroup)
   for (const ClipNote &note : onotes)
     notes_.insert (note);
   emit_notify ("notes");
+  emit_notify ("all_notes");
 }
 
 size_t
@@ -255,6 +266,7 @@ ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
       push_undo (orig_notes, undogroup.empty() ? "Change Notes" : undogroup);
     if (changes) CDEBUG ("%s: notes=%d undo_size: %fMB\n", __func__, notes_.size(), project()->undo_size_guess() / (1024. * 1024));
     emit_notify ("notes");
+    emit_notify ("all_notes");
   }
   return 0;
 }

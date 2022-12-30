@@ -274,9 +274,10 @@ public:
   virtual int64     stop_tick      () const = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
   virtual int64     end_tick       () const = 0; ///< Get the end tick, this tick is past any event ticks, changes on `notify:end_tick`.
   virtual void      assign_range   (int64 starttick, int64 stoptick) = 0; ///< Change start_tick() and stop_tick(); emits `notify:start_tick`, `notify:stop_tick`.
-  virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
+  virtual ClipNoteS all_notes      () const = 0; ///< List all notes of this Clip; changes on `notify:all_notes`.
   /// Change note `id` according to the arguments or add a new note if `id` < 0; emits `notify:notes`.
   virtual int32     change_batch   (const ClipNoteS &notes, const String &undogroup = "") = 0; ///< Insert, change, delete in a batch.
+  virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
 };
 
 /// Container for Clip objects and sequencing information.
