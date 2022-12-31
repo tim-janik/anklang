@@ -130,7 +130,8 @@ html.b-shell-during-drag .b-app {
     <b-devicepanel class="-row3 -col2" style="overflow: auto visible; padding: 0 0 3px 0" v-show="Data.panel2 == 'd'" :track="Data.current_track" />
 
     <!-- piano roll -->
-    <b-piano-roll class="-row4 -col2" style="overflow: hidden; height:50vh" :clip="Data.piano_roll_source" v-show="Data.panel2 == 'p'" ></b-piano-roll>
+    <b-piano-roll class="-row4 -col2" style="overflow: hidden; height:50vh" :clip="Data.piano_roll_source"
+		  ref="piano_roll" v-show="Data.panel2 == 'p'" ></b-piano-roll>
 
     <!-- browser -->
     <v-flex class="b-shell-sidebar -row28 -col1" style="width:10em" >
@@ -228,6 +229,7 @@ class ShellClass extends Envue.Component {
     this.piano_current_clip = null;
     this.piano_current_tick = null;
   }
+  get piano_roll() { return Shell.$refs.piano_roll; }
   show_spinner() {
     this.m.show_spinner_count++;
   }
