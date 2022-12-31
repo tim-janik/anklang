@@ -58,11 +58,12 @@ $>/ui/.build1-stamp: $>/ui/lit.js
 $>/ui/vue.js:	$>/node_modules/.npm.done				| $>/ui/
 	$(QGEN)
 	$Q rm -f $>/ui/vue.js $>/ui/.eslintcache
-	$Q $(CP) $>/node_modules/vue/dist/vue.esm-browser.js $>/ui/vue.js
+	$Q $(CP) $>/node_modules/vue/dist/$(UI/VUE-VARIANT.js) $>/ui/vue.js
 	$Q sed -i $>/ui/vue.js \
 		-e 's/^\s*\(console\.info(.You are running a development build of Vue\)/if(0) \1/' \
 		-e 's/\b\(warn(`[^`]* was accessed during render\)/if(0) \1/'
 $>/ui/.build1-stamp: $>/ui/vue.js
+UI/VUE-VARIANT.js ::= $(if $(__UIDEBUG__),vue.esm-browser.js,vue.esm-browser.prod.js)
 
 # == ui/zcam-js.mjs ==
 $>/ui/zcam-js.mjs: $>/node_modules/.npm.done				| $>/ui/
