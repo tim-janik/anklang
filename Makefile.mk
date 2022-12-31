@@ -231,7 +231,8 @@ $>/node_modules/.npm.done: $(if $(NPMBLOCK),, $>/package.json)	| $>/
 	$Q rm -f -r $>/node_modules/
 	@: # Install all node_modules and anonymize build path
 	$Q cd $>/ \
-	  && $(NPM_INSTALL) \
+	  && { POFFLINE= && test ! -d node_modules/ || POFFLINE=--prefer-offline ; } \
+	  && $(NPM_INSTALL) $$POFFLINE \
 	  && find . -name package.json -print0 | xargs -0 sed -r "\|$$PWD|s|^(\s*(\"_where\":\s*)?)\"$$PWD|\1\"/...|" -i
 	$Q: # add newer nodejs API to browserify-url.js, needed for e.g. postcss error messages
 	$Q grep pathToFileURL $>/node_modules/url/url.js || \
