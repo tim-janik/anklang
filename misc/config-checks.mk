@@ -8,7 +8,7 @@ GDK_PIXBUF_CSOURCE	?= gdk-pixbuf-csource
 IMAGEMAGICK_CONVERT	?= convert
 PANDOC			?= pandoc
 CP			?= cp --reflink=auto
-NPM_INSTALL		?= npm --prefer-offline install $(if $(PARALLEL_MAKE), --progress=false)
+NPM_INSTALL		?= npm install $(if $(PARALLEL_MAKE), --progress=false)
 .config.defaults	+= CP PERL PYTHON3 PKG_CONFIG GDK_PIXBUF_CSOURCE PANDOC IMAGEMAGICK_CONVERT
 HAVE_PANDOC1		 = $(shell $(PANDOC) --version | grep -q '^pandoc 1\.' && echo 1)
 
