@@ -97,7 +97,7 @@ ui/sed-keepif ::= $(if __DEV__, -e '/<[^<>]*::KEEPIF="__DEV__"/s/::KEEPIF="__DEV
 ui/sed-keepif  += -e 's/<[^<>]*::KEEPIF="[^"]*"[^<>]*>//'
 
 # == knob sprites ==
-$>/ui/assets/%: $>/images/knobs/%
+$>/ui/assets/%: $>/images/knobs/%			| $>/ui/assets/
 	$(QGEN)
 	$Q $(CP) $< $@
 $>/ui/.build1-stamp: $>/ui/assets/cknob193u.png $>/ui/assets/cknob193b.png
