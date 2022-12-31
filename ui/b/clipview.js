@@ -66,6 +66,7 @@ import * as Ase from '../aseapi.js';
 const tick_quant = Util.PPQN;
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
+const PRIVATE_PROPERTY = { state: true };
 
 class BClipView extends LitElement {
   static styles = [ STYLE ];
@@ -78,27 +79,29 @@ class BClipView extends LitElement {
   static properties = {
     clip: STRING_ATTRIBUTE,
     trackindex: NUMBER_ATTRIBUTE,
+    end_tick: PRIVATE_PROPERTY,	// trigger this.requestUpdate()
   };
   constructor()
   {
     super();
     this.clip = null;
+    this.wclip = null;
     this.canvas = null;
     this.starttick = 0;
-    this.endtick = 4 * Util.PPQN * 2; // FIXME
+    this.end_tick = null; // FIXME
     this.trackindex = -1;
-    this.tickscale = 10.0 / Util.PPQN; // FIXME
+    this.tickscale = 10.0 / Util.PPQN; // TODO: adjust hzoom
     this.notes_changed = () => this.repaint (false);
   }
   get pxoffset()	{ return this.starttick * this.tickscale; }
-  get canvas_width()	{ return this.tickscale * Math.floor ((this.endtick + tick_quant - 1) / tick_quant) * tick_quant; }
+  get canvas_width()	{ return this.tickscale * Math.floor ((this.end_tick + tick_quant - 1) / tick_quant) * tick_quant; }
   updated (changed_props)
   {
     if (changed_props.has ('clip'))
       {
-	const old = changed_props['clip'];
-	old && Shell.get_note_cache (old).del_callback (this.notes_changed);
-	this.clip && Shell.get_note_cache (this.clip).add_callback (this.notes_changed);
+	const weakthis = new WeakRef (this); // avoid strong wclip->this refs for automatic cleanup
+	this.wclip = Util.wrap_ase_object (this.clip, { end_tick: 0, name: '???' }, () => weakthis.deref()?.requestUpdate());
+	this.wclip.__add__ ('all_notes', [], () => weakthis.deref()?.notes_changed());
       }
     this.repaint (true);
   }
@@ -132,7 +135,7 @@ function render_canvas () {
   ctx.clearRect (0, 0, width, height);
   // color setup
   let cindex;
-  // cindex = Util.fnv1a_hash (this.clipname);	// - color from clip name
+  // cindex = Util.fnv1a_hash (this.name);	// - color from clip name
   cindex = this.index;				// - color per clip
   cindex = this.trackindex;			// - color per track
   const hues = csp ('--clipview-color-hues').split (',');
@@ -150,12 +153,12 @@ function render_canvas () {
   ctx.fillStyle = csp ('--clipview-font-color');
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText (this.clipname, 1.5, .5);
+  ctx.fillText (this.wclip.name, 1.5, .5);
   // paint notes
   ctx.fillStyle = csp ('--clipview-note-color');
   const noteoffset = 12;
   const notescale = height / (123.0 - 2 * noteoffset); // MAX_NOTE
-  for (const note of Shell.get_note_cache (this.clip).notes) {
+  for (const note of this.wclip.all_notes) {
     ctx.fillRect (note.tick * tickscale, height - (note.key - noteoffset) * notescale, note.duration * tickscale, 1 * pixelratio);
   }
 }
