@@ -32,6 +32,7 @@ LDOPTIMIZE	::= -O1 -Wl,--hash-style=both -Wl,--compress-debug-sections=zlib
 LDMODEFLAGS	  =
 LTOFLAGS	::=
 __DEV__		::= 1
+__UIDEBUG__	::=
 
 ifeq ($(MODE),quick)
 MODEFLAGS	::= -O0
@@ -46,6 +47,7 @@ LDMODEFLAGS	 += -g
 else ifeq ($(MODE),debug)
 MODEFLAGS	::= -gdwarf-4 -Og -fno-omit-frame-pointer -fno-inline -fstack-protector-all -fverbose-asm
 LDMODEFLAGS	 += -g
+__UIDEBUG__	::= 1
 else ifeq ($(MODE),ubsan)
 MODEFLAGS	::= -Og -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=undefined
 LDMODEFLAGS	 += -g -fsanitize=undefined
