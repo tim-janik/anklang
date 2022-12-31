@@ -247,13 +247,15 @@ const jsonapi_finalization_garbage = new Set();
 /// Jsonipc handler for object creation
 function jsonapi_finalization_registration (object) {
   jsonapi_finalization_garbage.delete (object.$id);
-  jsonapi_finalization_registry.register (object, object.$id);
+  jsonapi_finalization_registry.register (object, { $id: object.$id, classname: object.constructor.name });
 }
 
 /// Jsonipc handler for IDs of GC-ed objects.
-async function jsonapi_finalization_gc ($id) {
+async function jsonapi_finalization_gc (gcinfo)
+{
+  const { $id, classname } = gcinfo;
   jsonapi_finalization_garbage.add ($id);
-  console.log ("GC: $id=" + $id, "(size=" + jsonapi_finalization_garbage.size + ")", jsonapi_finalization_gc.inflight ? "(remote gc inflight)" : "");
+  console.log ("GC: $id=" + $id, "(" + classname + ")", "(size=" + jsonapi_finalization_garbage.size + ")", jsonapi_finalization_gc.inflight ? "(remote gc inflight)" : "");
   if (jsonapi_finalization_gc.inflight)
     return; // avoid duplicate Jsonapi/renew-gc requests
   let start = Ase.Jsonipc.send ('Jsonapi/renew-gc', []);
