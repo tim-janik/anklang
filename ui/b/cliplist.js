@@ -1,6 +1,9 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-
 import { LitElement, html, css, postcss, docs, ref } from '../little.js';
+
+/** ## Clip-List
+ * The Clip-List allows to start playback of individual clips.
+ */
 
 // == STYLE ==
 const STYLE = await postcss`
@@ -60,6 +63,7 @@ class BClipList extends LitElement {
     super.connectedCallback();
     this.ratiomul = window.devicePixelRatio;
     this.ratiodiv = 1.0 / this.ratiomul;
+    this.setAttribute ('data-f1', "#clip-list");
   }
   disconnectedCallback() {
     super.disconnectedCallback();
