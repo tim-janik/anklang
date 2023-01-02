@@ -122,16 +122,14 @@ const HTML = (t, d) => html`
       class="-pianorollmenu" mapname="Piano Roll"
       .activate=${t.pianorollmenu_click.bind (t)} .isactive=${t.pianorollmenu_check.bind (t)} >
       <b-menutitle> Piano-Roll </b-menutitle>
-      ${t.pianorollmenu_actions().map (ac => pianorollmenu_item (ac))}
+      ${t.pianorollmenu_actions().map (ac => CONTEXTITEM (ac))}
     </b-contextmenu>
   </c-grid>
 `;
-function pianorollmenu_item (ac) {
-  // key=${ac.weakid}
-  return html`
-    <b-menuitem uri=${ac.weakid} ic=${ac.ic} kbd=${ac.kbd} > ${ac.label} </b-menuitem>
-  `;
-}
+// key=${ac.weakid}
+const CONTEXTITEM = ac => html`
+  <b-menuitem uri=${ac.weakid} ic=${ac.ic} kbd=${ac.kbd} > ${ac.label} </b-menuitem>
+`;
 
 // == SCRIPT ==
 const PRIVATE_PROPERTY = { state: true };
