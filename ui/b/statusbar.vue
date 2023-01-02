@@ -98,30 +98,11 @@ export default {
     this.zmovedel = null;
   },
   methods: {
-    find_data_tip_element (root, x, y, visited) {
-      for (const el of root.elementsFromPoint (x, y))
-	{
-	  if (visited.has (el))
-	    continue;
-	  visited.add (el);
-	  if (el.getAttribute ('data-tip'))
-	    return el;
-	  if (el.shadowRoot)
-	    {
-	      const sub = this.find_data_tip_element (el.shadowRoot, x, y, visited);
-	      if (sub)
-		return sub;
-	    }
-	}
-      return null;
-    },
     seen_move (ev) {
       if (!ev.buttons)
 	{
           // const els = document.body.querySelectorAll ('*:hover[data-tip]');
-	  const visited = new Set();
-	  const dtel = this.find_data_tip_element (document, ev.clientX, ev.clientY, visited);
-	  // debug ("seen_move", visited.size);
+	  const dtel = Util.find_element_from_point (document, ev.clientX, ev.clientY, el => !!el.getAttribute ('data-tip'));
           const rawmsg = dtel ? dtel.getAttribute ('data-tip') : '';
           if (rawmsg != this.status_)
             Util.markdown_to_html (this.$refs.statusbar_text, this.status_ = rawmsg);
