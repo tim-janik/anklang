@@ -275,14 +275,12 @@ class ShellClass extends Envue.Component {
   }
   f1_help (event)
   {
-    let data_f1;
-    for (const el of event.path)
-      {
-	data_f1 = el.getAttribute && el.getAttribute ('data-f1');
-	if (data_f1 && data_f1[0] === '#') // treat as anchor into manual
-	  break;
-      }
-    data_f1 = data_f1 && data_f1[0] === '#' ? data_f1 : '#using-anklang';
+    const zlast = App.zmove_last();
+    const el_f1 = Util.find_element_from_point (document, zlast.pageX, zlast.pageY, el => {
+      const str = el.getAttribute ('data-f1');
+      return str && str[0] === '#'; // treat as anchor into manual
+    });
+    const data_f1 = el_f1 && el_f1.getAttribute ('data-f1') || '#using-anklang';
     const u = location.origin + '/doc/anklang-manual.html' + data_f1;
     window.open (u, '_blank');
     Util.prevent_event (event);
