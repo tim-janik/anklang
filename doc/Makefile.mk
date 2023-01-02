@@ -10,6 +10,7 @@ doc/manual-chapters ::= $(strip		\
 	doc/ch-intro.md			\
 	doc/ch-install.md		\
 	doc/ch-editing.md		\
+	$>/doc/b/cliplist.md		\
 	$>/doc/b/pianoroll.md		\
 	$>/doc/b/piano-ctrl.md		\
 	$>/doc/ch-man-pages.md		\
