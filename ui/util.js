@@ -1808,6 +1808,26 @@ export function root_ancestor (element) {
   return element;
 }
 
+/// Find an element at `(x,y)` for which `predicate (element)` is true.
+export function find_element_from_point (root, x, y, predicate, visited = new Set())
+{
+  for (const el of root.elementsFromPoint (x, y))
+    {
+      if (visited.has (el))
+	continue;
+      if (predicate (el))
+	return el;
+      visited.add (el);
+      if (el.shadowRoot)
+	{
+	  const sub = find_element_from_point (el.shadowRoot, x, y, predicate, visited);
+	  if (sub)
+	    return sub;
+	}
+    }
+  return null;
+}
+
 /** Show a notification popup, with adequate default timeout */
 export function create_note (text, timeout = undefined) {
   return App.shell.create_note (text, timeout);
