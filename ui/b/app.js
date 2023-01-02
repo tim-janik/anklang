@@ -137,7 +137,7 @@ export class AppClass {
     Data.project = newproject;
     Data.mtrack = mtrack;
     Data.current_track = tracks[0];
-    const clips = await Data.current_track.list_launcher_clips();
+    const clips = await Data.current_track.launcher_clips();
     App.open_piano_roll (clips.length ? clips[0] : null);
     const update_title = async () => {
       const name = Data.project ? await Data.project.name() : undefined;
@@ -174,6 +174,7 @@ export class AppClass {
   }
   zmoves_add = ZMove.zmoves_add;
   zmove = ZMove.zmove;
+  zmove_last = () => ZMove.last_event;
 }
 
 // == addvc ==
