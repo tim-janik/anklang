@@ -47,7 +47,7 @@ const INPUT_HTML = (t, d) =>
   !t.editable_ ? '' :
   html`
     <input class="b-editable-overlay"
-	${ref(e => t.input_ = e)}
+	${ref (h => t.input_ = h)}
 	@keydown=${t.input_keydown}
 	@change=${t.input_change}
 	@blur=${t.input_blur}
