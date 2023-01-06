@@ -623,6 +623,7 @@ ProjectImpl::set_bpm (double bpm)
   return_unless (tick_sig_.bpm() != bpm, false);
   tick_sig_.set_bpm (bpm);
   update_tempo();
+  emit_notify ("bpm");
   return true;
 }
 
@@ -632,6 +633,7 @@ ProjectImpl::set_numerator (uint8 numerator)
   if (tick_sig_.set_signature (numerator, tick_sig_.beat_unit()))
     {
       update_tempo();
+      emit_notify ("numerator");
       return true;
     }
   return false;
@@ -643,6 +645,7 @@ ProjectImpl::set_denominator (uint8 denominator)
   if (tick_sig_.set_signature (tick_sig_.beats_per_bar(), denominator))
     {
       update_tempo();
+      emit_notify ("denominator");
       return true;
     }
   return false;
