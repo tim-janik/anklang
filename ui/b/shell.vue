@@ -127,7 +127,7 @@ html.b-shell-during-drag .b-app {
     <b-tracklist class="-row2 -col2" style="overflow: hidden" :project="Data.project"></b-tracklist>
 
     <!-- devices -->
-    <b-devicepanel class="-row3 -col2" style="overflow: auto visible; padding: 0 0 3px 0" v-show="Data.panel2 == 'd'" :track="Data.current_track" />
+    <b-devicepanel class="-row3 -col2" style="overflow: auto visible; padding: 0 0 3px 0" v-show="Data.panel2 == 'd'" :track="App.current_track" />
 
     <!-- piano roll -->
     <b-piano-roll class="-row4 -col2" style="overflow: hidden; height:50vh" :clip="Data.piano_roll_source"

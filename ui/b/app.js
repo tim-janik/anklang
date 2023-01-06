@@ -1,6 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-/** # B-APP
+/** == B-APP ==
  * Global application instance for Anklang.
  * *zmovehooks*
  * : An array of callbacks to be notified on pointer moves.
@@ -67,6 +67,15 @@ export class AppClass {
     Object.defineProperty (globalThis, 'Data', { value: this.data });
     this.vue_app.config.globalProperties.App = App;   // global App, export methods
     this.vue_app.config.globalProperties.Data = Data; // global Data, reactive
+  }
+  get current_track () { return this.data.current_track; }
+  set current_track (t)
+  {
+    if (this.data.current_track === t) return;
+    this.data.current_track = t;
+    if (this.shell)
+      for (const tv of this.shell.$el.querySelectorAll ('b-trackview'))
+	tv.notify_current_track(); // see trackview.js
   }
   mount (id) {
     this.shell = this.vue_app.mount (id);
@@ -136,8 +145,8 @@ export class AppClass {
     // replace project & master track without await, to synchronously trigger Vue updates for both
     Data.project = newproject;
     Data.mtrack = mtrack;
-    Data.current_track = tracks[0];
-    const clips = await Data.current_track.launcher_clips();
+    App.current_track = tracks[0];
+    const clips = await App.current_track.launcher_clips();
     App.open_piano_roll (clips.length ? clips[0] : null);
     const update_title = async () => {
       const name = Data.project ? await Data.project.name() : undefined;
