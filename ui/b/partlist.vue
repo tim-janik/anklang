@@ -39,7 +39,7 @@ export default {
   },
   watch: {
     track: { immediate: true, async handler (n, o) {
-      let clips = await this.track.list_clips();
+      let clips = []; // TODO: await this.track.list_clips();
       clips = clips.map (async clip => ({ clip: clip, tick: 0 }) );
       /*clips =*/ await Promise.all (clips);
       this.parts = []; // not yet implemented
