@@ -159,15 +159,14 @@ TrackImpl::queue_cmd (DCallbackS &queue, Cmd cmd)
   queue.push_back (func);
 }
 
-int32
-TrackImpl::midi_channel () const
-{
-  return 0;
-}
-
 void
 TrackImpl::midi_channel (int32 midichannel) // TODO: implement
-{}
+{
+  midichannel = CLAMP (midichannel, 0, 16);
+  return_unless (midichannel != midi_channel_);
+  midi_channel_ = midichannel;
+  emit_notify ("midi_channel");
+}
 
 static constexpr const uint MAX_LAUNCHER_CLIPS = 8;
 
