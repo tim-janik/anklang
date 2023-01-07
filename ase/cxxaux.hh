@@ -49,8 +49,8 @@ using VoidF = std::function<void()>;
 #define ASE_CLAMP(v,mi,ma)      ((v) < (mi) ? (mi) : ((v) > (ma) ? (ma) : (v))) ///< Yield @a v clamped to [ @a mi .. @a ma ].
 #define ASE_ARRAY_SIZE(array)   (sizeof (array) / sizeof ((array)[0]))          ///< Yield the number of C @a array elements.
 #define ASE_ALIGN(size, base)   ((base) * ((size_t (size) + (base) - 1) / (base))) ///< Round up @a size to multiples of @a base.
-#define ASE_DEPRECATED          __attribute__ ((__deprecated__))
-
+#define ASE_ALIGNMENT16(pointer) (0xf & ptrdiff_t (pointer))
+#define ASE_ALIGNED16(pointer)   (!ALIGNMENT16 (pointer))
 
 // Ase macro shorthands for <a href="https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html">GCC Attributes</a>.
 #define ASE_ALWAYS_INLINE       __attribute__ ((always_inline))
