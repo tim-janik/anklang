@@ -45,7 +45,7 @@ import * as Ase from '../aseapi.js';
 function cliplist_data () {
   const data = {
     clips:	{ default: [],		notify: n => this.track.on ("notify:clips", n),
-		  getter: async c => Object.freeze (await this.track.list_clips()), },
+		  getter: async c => Object.freeze (await this.track.list_launcher_clips()), },
     telemetry:	{ getter: async c => Object.freeze (this.track.telemetry()), },
   };
   return this.observable_from_getters (data, () => this.track);

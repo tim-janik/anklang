@@ -536,13 +536,13 @@ function note_hover_tail (coords, tick, key, notes)
 /// Get drag tool and cursor from hover position
 export function notes_canvas_tool_from_hover (piano_roll, pointerevent)
 {
-  const clip = piano_roll.clip, layout = piano_roll.layout;
+  const layout = piano_roll.layout;
   // coords for tool predicate
   const coords = target_coords (pointerevent, piano_roll.notes_canvas);
   const event_tick = layout.tick_from_x (coords.x);
   const event_key = layout.midinote_from_y (coords.y);
-  // need an early decision if event is on a resizable note, so do with old cache
-  const notes = Shell.old_cache_notes (clip);
+  // need an early decision if event is on a resizable note, so use last cache without await
+  const notes = piano_roll.wclip.all_notes || [];
   // startup tool handler
   function drag_start (piano_roll)
   {
@@ -694,7 +694,14 @@ async function queue_modify_notes (clip, modifier, undogroup = "")
       // fetch most recent set of notes
       if (clip != last.clip) {
 	last.clip = clip;
-	last.allnotes = await Shell.note_cache_notes (clip);
+	let wclip = Shell.piano_roll?.wclip;
+	last.wclip = wclip?.__aseobj__ === clip ? wclip : null;
+	if (!last.wclip) { // reusing piano_roll.wclip suffices and is GC friendly
+	  last.wclip = Util.wrap_ase_object (clip);
+	  last.wclip.__add__ ('all_notes', []);
+	}
+	await last.wclip.__promise__;
+	last.allnotes = last.wclip.all_notes;
 	last.notes = null;
       }
       const allnotes = last.notes || last.allnotes;
@@ -712,7 +719,7 @@ async function queue_modify_notes (clip, modifier, undogroup = "")
 	  console.assert (Array.isArray (changednotes));        // expect Array or null-ish
 	  last.clip = null;                                     // force update polling
 	}
-      debug ("modify_notes_handler:", last.notes ? last.notes.length : 0, ( undogroup || !Object.isFrozen (changednotes) ||  queue_modify_notes.requests_.length == 0 ));
+      // debug ("modify_notes_handler:", last.notes ? last.notes.length : 0, ( undogroup || !Object.isFrozen (changednotes) ||  queue_modify_notes.requests_.length == 0 ));
       // force early or final commit
       if (undogroup || !Object.isFrozen (changednotes) ||
 	  queue_modify_notes.requests_.length == 0) // ensure final commit

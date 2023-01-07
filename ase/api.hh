@@ -274,21 +274,22 @@ public:
   virtual int64     stop_tick      () const = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
   virtual int64     end_tick       () const = 0; ///< Get the end tick, this tick is past any event ticks, changes on `notify:end_tick`.
   virtual void      assign_range   (int64 starttick, int64 stoptick) = 0; ///< Change start_tick() and stop_tick(); emits `notify:start_tick`, `notify:stop_tick`.
-  virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
+  virtual ClipNoteS all_notes      () const = 0; ///< List all notes of this Clip; changes on `notify:all_notes`.
   /// Change note `id` according to the arguments or add a new note if `id` < 0; emits `notify:notes`.
   virtual int32     change_batch   (const ClipNoteS &notes, const String &undogroup = "") = 0; ///< Insert, change, delete in a batch.
+  virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
 };
 
 /// Container for Clip objects and sequencing information.
 class Track : public virtual Device {
 public:
-  virtual int32    midi_channel   () const = 0;          ///< Midi channel assigned to this track, 0 uses internal per-track channel.
-  virtual void     midi_channel   (int32 midichannel) = 0;
-  virtual bool     is_master      () const = 0;          ///< Flag set on the main output track.
-  virtual ClipS    list_clips     () = 0;                ///< Retrieve a list of the clips within this track.
-  virtual DeviceP  access_device  () = 0;                ///< Retrieve Device handle for this track.
-  virtual MonitorP create_monitor (int32 ochannel) = 0;  /// Create signal monitor for an output channel.
-  virtual TelemetryFieldS telemetry () const = 0;        ///< Retrieve track telemetry locations.
+  virtual int32           midi_channel        () const = 0;          ///< Midi channel assigned to this track, 0 uses internal per-track channel.
+  virtual void            midi_channel        (int32 midichannel) = 0;
+  virtual bool            is_master           () const = 0;          ///< Flag set on the main output track.
+  virtual ClipS           list_launcher_clips () = 0;                ///< Retrieve the list of clips that can be directly played.
+  virtual DeviceP         access_device       () = 0;                ///< Retrieve Device handle for this track.
+  virtual MonitorP        create_monitor      (int32 ochannel) = 0;  /// Create signal monitor for an output channel.
+  virtual TelemetryFieldS telemetry           () const = 0;          ///< Retrieve track telemetry locations.
 };
 
 /// Bits representing a selection of probe sample data features.

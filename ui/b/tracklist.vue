@@ -280,7 +280,8 @@ export default {
   },
   methods:  {
     list_dblclick (event) {
-      Data.project?.create_track();
+      if (event.path[0] == this.$refs.tracks)
+	Data.project?.create_track();
     },
     dom_update() {
       this.last_tickpos = -1;

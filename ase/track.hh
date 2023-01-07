@@ -29,7 +29,7 @@ public:
   bool            is_master         () const override      { return MASTER_TRACK & gadget_flags(); }
   int32           midi_channel      () const override;
   void            midi_channel      (int32 midichannel) override;
-  ClipS           list_clips        () override;
+  ClipS           list_launcher_clips () override;
   DeviceP         access_device     () override;
   MonitorP        create_monitor    (int32 ochannel) override;
   void            update_clips      ();

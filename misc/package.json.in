@@ -10,7 +10,7 @@
     "monitor": "nodemon --ext '*' --watch $npm_package_config_srcdir/ui/ --delay 99ms --on-change-only --exec 'npm run -s ui/rebuild || false' --exitcrash"
   },
   "dependencies": {
-    "vue": "=3.2.40"
+    "vue": "=3.2.45"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.19.1",
@@ -28,7 +28,7 @@
     "eslint-plugin-vue": "^9.6.0",
     "icon-gen": "^3.0.1",
     "jsdoc": "^3.6.11",
-    "lit": "^2.4.0",
+    "lit": "^2.5.0",
     "markdown-it": "^13.0.1",
     "mathjax": "^3.2.2",
     "nodemon": "^2.0.20",

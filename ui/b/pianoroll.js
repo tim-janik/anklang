@@ -134,8 +134,6 @@ function pianorollmenu_item (ac) {
 }
 
 // == SCRIPT ==
-const BOOL_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with property
-const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 const PRIVATE_PROPERTY = { state: true };
 const default_note_length = Util.PPQN / 4;
 
@@ -149,7 +147,7 @@ class BPianoRoll extends LitElement {
     return HTML (this, d);
   }
   static properties = {
-    clip: STRING_ATTRIBUTE,		///< The clip with notes to be edited.
+    clip: PRIVATE_PROPERTY,		///< The clip with notes to be edited.
   };
   constructor()
   {
@@ -174,6 +172,7 @@ class BPianoRoll extends LitElement {
     this.last_pos = -9.987;
     this.srect_ = { x: 0, y: 0, w: 0, h: 0, sx: 0, sy: 0 };
     this.clip = null;
+    this.wclip = null;
     this.end_click = 99999;
     this.resize_observer = new ResizeObserver (els => this.repaint (true));
     this.resize_observer.observe (this);
@@ -209,14 +208,13 @@ class BPianoRoll extends LitElement {
       this.vscrollbar.onscroll = e => this.hvscroll (e);
     if (changed_props.has ('clip'))
       {
-	const old = changed_props['clip'];
-	if (old)
-	  Shell.get_note_cache (old).del_callback (this.notes_changed);
+	this.wclip = Util.wrap_ase_object (this.clip, { end_tick: 0, name: '???' }, this.requestUpdate.bind (this));
+	this.wclip.__add__ ('all_notes', [], this.notes_changed);
 	this.hscrollbar.scrollTo ({ left: 0, behavior: 'instant' });
 	this.vscroll_to (0.5);
-	if (this.clip)
-	  Shell.get_note_cache (this.clip).add_callback (this.notes_changed);
 	this.last_note_length = default_note_length;
+	if (this.indicator_bar)
+	  this.indicator_bar.style.transform = "translateX(-9999px)";
       }
     this.repaint (true);
     // indicator_bar setup
@@ -230,14 +228,12 @@ class BPianoRoll extends LitElement {
     this.entered = true;
     if (this.pianotoolmenu)
       this.pianotoolmenu.map_kbd_hotkeys (this.entered || this.have_focus);
-    debug ("pianotoolmenu.map_kbd_hotkeys:", this.pianotoolmenu && (this.entered || this.have_focus) );
   }
   pointerleave (event)
   {
     this.entered = false;
     if (this.pianotoolmenu)
       this.pianotoolmenu.map_kbd_hotkeys (this.entered || this.have_focus);
-    debug ("pianotoolmenu.map_kbd_hotkeys:", this.pianotoolmenu && (this.entered || this.have_focus) );
   }
   focuschange (ev) {
     if (ev?.type)
@@ -246,7 +242,6 @@ class BPianoRoll extends LitElement {
       this.pianotoolmenu.map_kbd_hotkeys (this.entered || this.have_focus);
     if (this.pianorollmenu)
       this.pianorollmenu.map_kbd_hotkeys (this.have_focus);
-    debug ("pianotoolmenu.map_kbd_hotkeys:", this.pianotoolmenu && (this.entered || this.have_focus) );
   }
   notes_canvas_pointermove (event)
   {
@@ -717,7 +712,7 @@ function paint_notes()
   ctx.fillStyle = note_color;
   ctx.strokeStyle = csp ('--piano-roll-note-focus-border');
   // draw notes
-  for (const note of Shell.get_note_cache (this.clip).notes)
+  for (const note of this.wclip.all_notes)
     {
       const oct = floor (note.key / 12), key = note.key - oct * 12;
       const ny = yoffset - oct * layout.oct_length - key * layout.row + 1;

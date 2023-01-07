@@ -2126,3 +2126,6 @@ export function call_destroy_callbacks()
 
 // Provide keyboard handling utilities
 export * from './kbd.js';
+
+// Provide wrapper utilities
+export * from './wrapper.js';

@@ -1,19 +1,20 @@
-<!-- This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 -->
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-<docs>
-  # B-CLIPVIEW
-  A Vue template to display a small view of Ase.Clip.
-  ## Props:
-  *clip*
-  : The Ase.Clip to display.
-  *tick*
-  : The Ase.Track tick position.
-  *tickscale* (read-only)
-  : The pixel to PPQN ratio.
-</docs>
+/** ## Clip-View
+ * Display a small view of a MIDI clip.
+ */
 
-<style lang="scss">
+import { LitElement, html, css, postcss, docs, ref } from '../little.js';
+
+// == STYLE ==
+const STYLE = await postcss`
+@import 'shadow.scss';
 @import 'mixins.scss';
+:host {
+  display: inline-grid;
+  width: 7em;
+  margin: 0 0 0 2px;
+}
 $b-clipview-font: normal 9px $b-theme-font-family !default;    // the '9px' part is dynamically resized
 $b-clipview-font-color: rgba(255, 255, 255, 0.7) !default;
 $b-clipview-note-color: rgba(255, 255, 255, 0.7) !default;
@@ -26,17 +27,15 @@ $b-clipview-color-zmod: Jz=55, Cz=30;
   border: 0;
   .-canvas {
     display: inline; position: absolute; top: 0px; bottom: 0px; left: 0px; right: 0px;
-    height: $b-trackrow-height;
-    border-radius: calc($b-theme-border-radius * 0.66);
     --clipview-font-color: #{$b-clipview-font-color}; --clipview-font: #{$b-clipview-font};
     --clipview-note-color: #{$b-clipview-note-color};
     --clipview-color-hues: $b-clipview-color-hues;
     --clipview-color-zmod: $b-clipview-color-zmod;
-    background-color: #222;
     box-shadow: inset 0px 0 1px #fff9, inset -1px 0 1px #000;
+    border-radius: $b-theme-border-radius;
   }
   .-play {
-    display: inline-block;
+    display: inline;
     position: absolute; top: 0px; left: 0px;
     padding: 3px;
     position: absolute;
@@ -46,65 +45,87 @@ $b-clipview-color-zmod: Jz=55, Cz=30;
     transform: translate(-50%, -50%);
     color: $b-clip-play-fg;
     background: $b-clip-play-bg;
-    border-radius: 3px;
+    border-radius: calc($b-theme-border-radius * 0.66);
   }
 }
-</style>
+`;
 
-<template>
-  <h-flex class="b-clipview"
-	  @click.stop="App.open_piano_roll (clip)">
-    <canvas class="-canvas" ref="canvas"
-	    :x-style="{ left: pxoffset + 'px', width: canvas_width + 'px', }" />
-    <span class="-play" @click.stop="click_play" >▶</span>
-  </h-flex>
-</template>
+// == HTML ==
+const HTML = (t, d) => html`
+<h-flex class="b-clipview"
+  @click=${t.click}
+  >
+  <canvas class="-canvas" ${ref(n => t.canvas = n)} ></canvas>
+  <span class="-play" @click.stop="click_play" >▶</span>
+</h-flex>
+`;
 
-<script>
+// == SCRIPT ==
 import * as Util from '../util.js';
 import * as Ase from '../aseapi.js';
-
 const tick_quant = Util.PPQN;
+const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
+const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
+const PRIVATE_PROPERTY = { state: true };
 
-function observable_clip_data () {
-  const data = {
-    clipname: { getter: c => this.clip.name(),          notify: n => this.clip.on ("notify:name", n), },
-    endtick:  { getter: c => this.clip.end_tick(),	notify: n => this.clip.on ("notify:end_tick", n), },
+class BClipView extends LitElement {
+  static styles = [ STYLE ];
+  static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
+  render()
+  {
+    const d = {};
+    return HTML (this, d);
+  }
+  static properties = {
+    clip: STRING_ATTRIBUTE,
+    trackindex: NUMBER_ATTRIBUTE,
+    end_tick: PRIVATE_PROPERTY,	// trigger this.requestUpdate()
   };
-  return this.observable_from_getters (data, () => this.clip);
+  constructor()
+  {
+    super();
+    this.clip = null;
+    this.wclip = null;
+    this.canvas = null;
+    this.starttick = 0;
+    this.end_tick = null; // FIXME
+    this.trackindex = -1;
+    this.tickscale = 10.0 / Util.PPQN; // TODO: adjust hzoom
+    this.notes_changed = () => this.repaint (false);
+  }
+  get pxoffset()	{ return this.starttick * this.tickscale; }
+  get canvas_width()	{ return this.tickscale * Math.floor ((this.end_tick + tick_quant - 1) / tick_quant) * tick_quant; }
+  updated (changed_props)
+  {
+    if (changed_props.has ('clip'))
+      {
+	const weakthis = new WeakRef (this); // avoid strong wclip->this refs for automatic cleanup
+	this.wclip = Util.wrap_ase_object (this.clip, { end_tick: 0, name: '???' }, () => weakthis.deref()?.requestUpdate());
+	this.wclip.__add__ ('all_notes', [], () => weakthis.deref()?.notes_changed());
+      }
+    this.repaint (true);
+  }
+  repaint (layoutchange)
+  {
+    render_canvas.call (this);
+  }
+  click (event)
+  {
+    App.open_piano_roll (this.clip);
+    Util.prevent_event (event);
+  }
+  click_play() {
+    debug ("PLAY: clip:", this.clip.$id);
+  }
 }
 
-export default {
-  sfc_template,
-  props: {
-    clip: { type: Ase.Clip, },
-    tick: { type: Number, },
-    index: { type: Number, },
-    trackindex: { type: Number, },
-  },
-  data() { return observable_clip_data.call (this); },
-  computed: {
-    tickscale:    function() { return 10.0 / Util.PPQN; },
-    pxoffset:     function() { return this.tick * this.tickscale; }, // TODO: adjust for tick_quant?
-    canvas_width: function() {
-      return this.tickscale * Math.floor ((this.endtick + tick_quant - 1) / tick_quant) * tick_quant;
-    },
-  },
-  methods: {
-    click_play() {
-      debug ("PLAY: clip:", this.clip.$id);
-    },
-    dom_update() {
-      render_canvas.call (this);
-    },
-  },
-};
+customElements.define ('b-clipview', BClipView);
 
 import * as C from '../colors.js';
 
 function render_canvas () {
   // canvas setup
-  const canvas = this.$refs.canvas;
+  const canvas = this.canvas;
   const pixelratio = Util.resize_canvas (canvas, canvas.parentElement.clientWidth, canvas.parentElement.clientHeight, true);
   const ctx = canvas.getContext ('2d'), cstyle = getComputedStyle (canvas), csp = cstyle.getPropertyValue.bind (cstyle);
   const width = canvas.width, height = canvas.height;
@@ -114,7 +135,7 @@ function render_canvas () {
   ctx.clearRect (0, 0, width, height);
   // color setup
   let cindex;
-  // cindex = Util.fnv1a_hash (this.clipname);	// - color from clip name
+  // cindex = Util.fnv1a_hash (this.name);	// - color from clip name
   cindex = this.index;				// - color per clip
   cindex = this.trackindex;			// - color per track
   const hues = csp ('--clipview-color-hues').split (',');
@@ -132,14 +153,12 @@ function render_canvas () {
   ctx.fillStyle = csp ('--clipview-font-color');
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText (this.clipname, 1.5, .5);
+  ctx.fillText (this.wclip.name, 1.5, .5);
   // paint notes
   ctx.fillStyle = csp ('--clipview-note-color');
   const noteoffset = 12;
   const notescale = height / (123.0 - 2 * noteoffset); // MAX_NOTE
-  for (const note of Shell.get_note_cache (this.clip).notes) {
+  for (const note of this.wclip.all_notes) {
     ctx.fillRect (note.tick * tickscale, height - (note.key - noteoffset) * notescale, note.duration * tickscale, 1 * pixelratio);
   }
 }
-
-</script>
