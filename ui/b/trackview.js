@@ -127,8 +127,10 @@ import * as Ase from '../aseapi.js';
 import * as Util from '../util.js';
 import { clamp } from '../util.js';
 
-const MINDB = -48.0; // -96.0;
+const MINDB = -72.0; // -96.0;
 const MAXDB =  +6.0; // +12.0;
+const DBOFFSET = Math.abs (MINDB) * 1.5;
+const DIV_DBRANGE = 1.0 / (MAXDB - MINDB);
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 const OBJECT_PROPERTY = { attribute: false };
 
@@ -149,8 +151,16 @@ class BTrackView extends LitElement {
     this.track = null;
     this.trackindex = -1;
     this.wtrack_ = { name: '   ' };
-    // lmon: { getter: c => channel_moniotr.call (this, 0, c), }
-    // rmon: { getter: c => channel_moniotr.call (this, 1, c), }
+    this.dbtip0_ = MINDB;
+    this.dbtip1_ = MINDB;
+    this.teleobj = null;
+    this.telemetry = null;
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.telemetry = null;
+    Util.telemetry_unsubscribe (this.teleobj);
+    this.teleobj = null;
   }
   notify_current_track() // see app.js
   {
@@ -165,6 +175,15 @@ class BTrackView extends LitElement {
       {
 	const weakthis = new WeakRef (this); // avoid strong wtrack_->this refs for automatic cleanup
 	this.wtrack_ = Util.wrap_ase_object (this.track, { name: '???', midi_channel: -1 }, () => weakthis.deref()?.requestUpdate());
+	Util.telemetry_unsubscribe (this.teleobj);
+	this.teleobj = null;
+	// subscribe telemetry
+	const async_updates = async () => {
+	  this.telemetry = await Object.freeze (this.track.telemetry());
+	  if (!this.teleobj && this.telemetry)
+	    this.teleobj = Util.telemetry_subscribe (this.recv_telemetry.bind (this), this.telemetry);
+	};
+	async_updates();
       }
     // setup level gradient based on MINDB..MAXDB
     this.levelbg_.style.setProperty ('--db-zpc', -MINDB * 100.0 / (MAXDB - MINDB) + '%');
@@ -233,22 +252,31 @@ class BTrackView extends LitElement {
 	this.track.midi_channel (ch);
       }
   }
+  recv_telemetry (teleobj, arrays)
+  {
+    let dbspl0 = arrays[teleobj.dbspl0.type][teleobj.dbspl0.index];
+    let dbspl1 = arrays[teleobj.dbspl1.type][teleobj.dbspl1.index];
+    dbspl0 = clamp (dbspl0, MINDB, MAXDB);
+    dbspl1 = clamp (dbspl1, MINDB, MAXDB);
+    this.dbtip0_ = Math.max ((DBOFFSET + this.dbtip0_) * 0.99, DBOFFSET + dbspl0) - DBOFFSET;
+    this.dbtip1_ = Math.max ((DBOFFSET + this.dbtip1_) * 0.99, DBOFFSET + dbspl1) - DBOFFSET;
+    update_levels.call (this, dbspl0, this.dbtip0_, dbspl1, this.dbtip1_);
+  }
 }
 
 customElements.define ('b-trackview', BTrackView);
 
-
-function update_levels (active) {
+function update_levels (dbspl0, dbtip0, dbspl1, dbtip1) {
   /* Paint model:
-   * |                                           ######| dark tip cover layer, $refs.covertipN
-   * |             #############################       | dark middle cover, $refs.covermidN
-   * |-36dB+++++++++++++++++++++++++++++++0++++++++12dB| dB gradient, this.levelbg_
+   * |                                           ######| covertipN_, dark tip cover layer
+   * |             #############################       | covermidN_, dark middle cover
+   * |-36dB+++++++++++++++++++++++++++++++0++++++++12dB| levelbg_, dB gradient
    *  ^^^^^^^^^^^^^ visible level (-24dB)       ^ visible tip (+6dB)
    */
   const covertip0 = this.covertip0_, covermid0 = this.covermid0_;
   const covertip1 = this.covertip1_, covermid1 = this.covermid1_;
   const level_width = this.level_width_, pxrs = 1.0 / level_width; // pixel width fraction between 0..1
-  if (!active) {
+  if (dbspl0 === undefined) {
     covertip0.style.setProperty ('transform', 'scaleX(1)');
     covertip1.style.setProperty ('transform', 'scaleX(1)');
     covermid0.style.setProperty ('transform', 'scaleX(0)');
@@ -258,16 +286,13 @@ function update_levels (active) {
   const tw = 2; // tip thickness in pixels
   const pxrs_round = (fraction) => Math.round (fraction / pxrs) * pxrs; // scale up, round to pixel, scale down
   // handle multiple channels
-  const channels = [ [Util.shm_array_float32[this.ldbspl], Util.shm_array_float32[this.ldbtip], covertip0, covermid0],
-		     [Util.shm_array_float32[this.rdbspl], Util.shm_array_float32[this.rdbtip], covertip1, covermid1], ];
-  for (const chan_entry of channels) {
-    const [dbspl, dbtip, covertip, covermid] = chan_entry;
+  const per_channel = (dbspl, dbtip, covertip, covermid) => {
     // map dB SPL to a 0..1 paint range
-    const tip = (clamp (dbtip, MINDB, MAXDB) - MINDB) / (MAXDB - MINDB);
-    const lev = (clamp (dbspl, MINDB, MAXDB) - MINDB) / (MAXDB - MINDB);
+    const tip = (dbtip - MINDB) * DIV_DBRANGE;
+    const lev = (dbspl - MINDB) * DIV_DBRANGE;
     // scale covertip from 100% down to just the amount above the tip
     let transform = 'scaleX(' + pxrs_round (1 - tip) + ')';
-    if (transform != covertip.style.getPropertyValue ('transform'))	// reduce style recalculations
+    if (transform !== covertip.style.getPropertyValue ('transform'))    // reduce style recalculations
       covertip.style.setProperty ('transform', transform);
     // scale and translate middle cover
     if (lev + pxrs + tw * pxrs <= tip) {
@@ -278,7 +303,9 @@ function update_levels (active) {
       // hide covermid if level and tip are aligned
       transform = 'scaleX(0)';
     }
-    if (transform != covermid.style.getPropertyValue ('transform'))	// reduce style recalculations
+    if (transform != covermid.style.getPropertyValue ('transform'))     // reduce style recalculations
       covermid.style.setProperty ('transform', transform);
-  }
+  };
+  per_channel (dbspl0, dbtip0, covertip0, covermid0);
+  per_channel (dbspl1, dbtip1, covertip1, covermid1);
 }
