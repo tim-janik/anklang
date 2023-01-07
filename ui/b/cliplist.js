@@ -94,7 +94,8 @@ class BClipList extends LitElement {
 			       x: clipview.offsetLeft, });
       }
   }
-  recv_telemetry (teleobj, arrays) {
+  recv_telemetry (teleobj, arrays)
+  {
     const current = arrays[teleobj.current_clip.type][teleobj.current_clip.index];
     const tick = arrays[teleobj.current_tick.type][teleobj.current_tick.index];
     // const next = arrays[teleobj.next.type][teleobj.next.index];
