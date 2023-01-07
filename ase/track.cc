@@ -242,12 +242,16 @@ TelemetryFieldS
 TrackImpl::telemetry () const
 {
   MidiLib::MidiProducerIfaceP midi_prod = std::dynamic_pointer_cast<MidiLib::MidiProducerIface> (midi_prod_->_audio_processor());
+  Ase::AudioChain *audio_chain = dynamic_cast<Ase::AudioChain*> (&*chain_->_audio_processor());
+  AudioChain::ProbeArray *probes = audio_chain->run_probes (true);
   TelemetryFieldS v;
   assert_return (midi_prod, v);
   const MidiLib::MidiProducerIface::Position *const position = midi_prod->position();
   v.push_back (telemetry_field ("current_clip", &position->current));
   v.push_back (telemetry_field ("current_tick", &position->tick));
   v.push_back (telemetry_field ("next_clip", &position->next));
+  v.push_back (telemetry_field ("dbspl0", &(*probes)[0].dbspl));
+  v.push_back (telemetry_field ("dbspl1", &(*probes)[1].dbspl));
   return v;
 }
 
