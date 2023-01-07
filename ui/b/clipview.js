@@ -65,22 +65,22 @@ import * as Util from '../util.js';
 import * as Ase from '../aseapi.js';
 const tick_quant = Util.PPQN;
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
-const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 const PRIVATE_PROPERTY = { state: true };
+const OBJECT_PROPERTY = { attribute: false };
 
 class BClipView extends LitElement {
   static styles = [ STYLE ];
   static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
+  static properties = {
+    clip: OBJECT_PROPERTY,
+    trackindex: NUMBER_ATTRIBUTE,
+    end_tick: PRIVATE_PROPERTY,	// trigger this.requestUpdate()
+  };
   render()
   {
     const d = {};
     return HTML (this, d);
   }
-  static properties = {
-    clip: STRING_ATTRIBUTE,
-    trackindex: NUMBER_ATTRIBUTE,
-    end_tick: PRIVATE_PROPERTY,	// trigger this.requestUpdate()
-  };
   constructor()
   {
     super();

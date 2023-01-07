@@ -64,7 +64,7 @@ TrackImpl::serialize (WritNode &xs)
   // load clips
   if (xs.in_load())
     {
-      ClipS clips = list_launcher_clips(); // forces creation
+      ClipS clips = launcher_clips(); // forces creation
       for (auto &xc : xs["clips"].to_nodes())
         {
           int64 index = xc["clip-index"].as_int();
@@ -73,6 +73,7 @@ TrackImpl::serialize (WritNode &xs)
           ClipImplP clip = shared_ptr_cast<ClipImpl> (clips[index]);
           xc & *clip;
         }
+      emit_notify ("launcher_clips");
     }
   // device chain
   xs["chain"] & *dynamic_cast<Serializable*> (&*chain_); // always exists
@@ -171,7 +172,7 @@ TrackImpl::midi_channel (int32 midichannel) // TODO: implement
 static constexpr const uint MAX_LAUNCHER_CLIPS = 8;
 
 ClipS
-TrackImpl::list_launcher_clips ()
+TrackImpl::launcher_clips ()
 {
   const uint max_clips = MAX_LAUNCHER_CLIPS;
   if (clips_.size() < max_clips)
