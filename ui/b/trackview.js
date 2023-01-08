@@ -236,7 +236,7 @@ class BTrackView extends LitElement {
     if (uri == 'delete-track')
       {
 	const del_track = this.track;
-	let tracks = Data.project.list_tracks();
+	let tracks = App.project.all_tracks();
 	Data.project.remove_track (del_track);
 	tracks = await tracks;
 	const index = Util.array_index_equals (tracks, del_track);
