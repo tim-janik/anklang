@@ -161,7 +161,7 @@ CoalesceNotifies::NotificationHash::operator() (const Notification &notification
 void
 EmittableImpl::emit_notify (const String &detail)
 {
-  EmittableP emittablep = shared_ptr_cast<Emittable> (this);
+  EmittableP emittablep = this->weak_from_this().expired() ? nullptr : shared_ptr_cast<Emittable> (this);
   if (emittablep && coalesce_notifies_head)
     coalesce_notifies_head->notifications_.insert ({ emittablep, detail });
   else
