@@ -30,7 +30,7 @@ $b-positionview-bg: mix($b-positionview-b0, $b-positionview-b1);
   .b-positionview-sig, .b-positionview-counter, .b-positionview-bpm, .b-positionview-timer {
     position: relative;
     text-align: right;
-    height: 1em;
+    height: 1.2em;
   }
   .b-positionview-counter { width: 7em; } /* fixed size reduces layouting during updates */
   .b-positionview-timer	  { width: 7em; } /* fixed size reduces layouting during updates */
@@ -40,9 +40,11 @@ $b-positionview-bg: mix($b-positionview-b0, $b-positionview-b1);
 <template>
 
   <h-flex class="b-positionview inter tabular-nums" >
-    <b-editable class="b-positionview-sig" @change="v => apply_sig (v)" >{{ numerator?.value_.val + '/' + denominator?.value_.val }}</b-editable>
+    <b-editable class="b-positionview-sig" @change="event => apply_sig (event.detail.value)"
+                selectall >{{ numerator + '/' + denominator }}</b-editable>
     <span class="b-positionview-counter" ref="counter" />
-    <b-editable class="b-positionview-bpm" @change="v => bpm.apply_ (v)" selectall >{{ bpm?.value_.val }}</b-editable>
+    <b-editable class="b-positionview-bpm" @change="event => project.set_value ('bpm', 0 | event.detail.value)"
+		selectall >{{ bpm }}</b-editable>
     <span class="b-positionview-timer" ref="timer" />
   </h-flex>
 
@@ -54,10 +56,10 @@ import * as Ase from '../aseapi.js';
 function data () {
   const data = {
     //tpqn:        { getter: c => this.project.get_prop ("tpqn"),        notify: n => this.project.on ("notify:tpqn", n), },
-    bpm:	{ getter: c => Util.extend_property (this.project.access_property ("bpm"), c), },
-    numerator:	{ getter: c => Util.extend_property (this.project.access_property ("numerator"), c), },
-    denominator:{ getter: c => Util.extend_property (this.project.access_property ("denominator"), c), },
-    telemetry:	{ getter: async c => Object.freeze (await this.project.telemetry()), },
+    bpm:         { getter: c => this.project.get_value ('bpm'),         notify: n => this.project.on ("notify:bpm", n), },
+    numerator:   { getter: c => this.project.get_value ('numerator'),   notify: n => this.project.on ("notify:numerator", n), },
+    denominator: { getter: c => this.project.get_value ('denominator'), notify: n => this.project.on ("notify:denominator", n), },
+    telemetry:   { getter: async c => Object.freeze (await this.project.telemetry()), },
     fps:         { default: 0, },
   };
   return this.observable_from_getters (data, () => this.project);
@@ -81,8 +83,8 @@ export default {
       if (parts.length == 2) {
 	const n = parts[0] | 0, d = parts[1] | 0;
 	if (n > 0 && d > 0) {
-	  this.numerator.apply_ (n);
-	  this.denominator.apply_ (d);
+	  this.project.set_value ('numerator', n);
+	  this.project.set_value ('denominator', d);
 	}
       }
     },

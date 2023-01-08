@@ -75,8 +75,8 @@
        data-tip="**CLICK** Select Track **RIGHTCLICK** Track Menu" >
     <div class="b-trackview-control">
       <span class="b-trackview-label" >
-	<b-editable class="b-trackview-label-el" ref="trackname" clicks="2"
-		    @change="v => track.name (v.trim())"
+	<b-editable class="b-trackview-label-el" ref="trackname" clicks="2" style="min-width:4em"
+			   selectall @change="event => track.name (event.detail.value.trim())"
 	>{{ tdata.name || '&nbsp;' }}</b-editable>
       </span>
       <div class="b-trackview-meter">
