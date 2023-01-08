@@ -34,7 +34,7 @@ input {
 const HTML = t =>
 html`
 <label class="b-fed-text">
-  <input ${ref(e => t.input_element = e)} type="text" ?readonly=${t.readonly}
+  <input ${ref (h => t.input_element = h)} type="text" ?readonly=${t.readonly}
 	 style="width: 100%; min-width: 2.5em" @input=${t.handle_input}
 	 placeholder=${t.placeholder} .value=${live (t.value)} >
 </label>

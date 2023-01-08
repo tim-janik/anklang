@@ -39,7 +39,14 @@ protected:
 public:
   explicit AudioChain        (AudioEngine &engine, SpeakerArrangement iobuses = SpeakerArrangement::STEREO);
   virtual ~AudioChain        ();
+  struct Probe { float dbspl = -192; };
+  using ProbeArray = std::array<Probe,2>;
+  ProbeArray* run_probes     (bool enable);
   static void static_info    (AudioProcessorInfo &info);
+private:
+  ProbeArray *probes_ = nullptr;
+  bool        probes_enabled_ = false;
+  FastMemory::Block probe_block_;
 };
 
 } // Ase

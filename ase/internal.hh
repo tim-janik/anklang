@@ -62,6 +62,11 @@ using Ase::String;
 /// Hint to the compiler to optimize for @a cond == FALSE.
 #define UNLIKELY(cond)  ASE_UNLIKELY (cond)
 
+/// Yield 16-Byte alignment of a pointer address.
+#define ALIGNMENT16(pointer) ASE_ALIGNMENT16 (pointer)
+/// Check if a pointer address is 16-Byte aligned.
+#define ALIGNED16(pointer)   ASE_ALIGNED16 (pointer)
+
 /// Return silently if @a cond does not evaluate to true with return value @a ...
 #define return_unless(cond, ...)        ASE_RETURN_UNLESS (cond, __VA_ARGS__)
 

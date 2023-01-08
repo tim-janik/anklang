@@ -87,15 +87,15 @@ c-grid {
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <c-grid tabindex="-1" ${ref(n => t.cgrid = n)} data-f1="#piano-roll"
+  <c-grid tabindex="-1" ${ref (h => t.cgrid = h)} data-f1="#piano-roll"
     @pointerenter=${t.pointerenter} @pointerleave=${t.pointerleave} @focus=${t.focuschange} @blur=${t.focuschange}
     @keydown=${e => t.piano_ctrl.keydown (e)}
     @wheel=${t.wheel} >
 
-    <v-flex class="-toolbutton -col1 -row1" style="height: 1.7em; align-items: end; padding-right: 4px;" ${ref(n => t.menu_btn = n)}
+    <v-flex class="-toolbutton -col1 -row1" style="height: 1.7em; align-items: end; padding-right: 4px;" ${ref (h => t.menu_btn = h)}
       @click=${e => t.pianotoolmenu.popup (e)} @mousedown=${e => t.pianotoolmenu.popup (e)} >
-      <b-icon style="width: 1.2em; height: 1.2em" ${ref(n => t.menu_icon = n)} />
-      <b-contextmenu ${ref(n => t.pianotoolmenu = n)} id="g-pianotoolmenu" class="-pianotoolmenu" @activate=${e => t.usetool (e.detail.uri)} >
+      <b-icon style="width: 1.2em; height: 1.2em" ${ref (h => t.menu_icon = h)} />
+      <b-contextmenu ${ref (h => t.pianotoolmenu = h)} id="g-pianotoolmenu" class="-pianotoolmenu" @activate=${e => t.usetool (e.detail.uri)} >
 	<b-menuitem ic="mi-open_with"     uri="S" kbd="1" > Rectangular Selection  </b-menuitem>
 	<b-menuitem ic="mi-multiple_stop" uri="H" kbd="2" > Horizontal Selection   </b-menuitem>
 	<b-menuitem ic="fa-pencil"        uri="P" kbd="3" > Pen                    </b-menuitem>
@@ -103,9 +103,9 @@ const HTML = (t, d) => html`
       </b-contextmenu>
     </v-flex>
 
-    <canvas class="-col2 -row1 -time_canvas"  ${ref(n => t.time_canvas = n)} ></canvas>
-    <canvas class="-col1 -row2 -piano_canvas" ${ref(n => t.piano_canvas = n)} ></canvas>
-    <canvas class="-col2 -row2 -notes_canvas" ${ref(n => t.notes_canvas = n)}
+    <canvas class="-col2 -row1 -time_canvas"  ${ref (h => t.time_canvas = h)} ></canvas>
+    <canvas class="-col1 -row2 -piano_canvas" ${ref (h => t.piano_canvas = h)} ></canvas>
+    <canvas class="-col2 -row2 -notes_canvas" ${ref (h => t.notes_canvas = h)}
       @pointermove=${Util.debounce (t.notes_canvas_pointermove.bind (t))}
       @pointerdown=${t.notes_canvas_pointerdown} ></canvas>
 
@@ -118,7 +118,7 @@ const HTML = (t, d) => html`
     </div>
     <span class="-indicator" ${ref(e => t.indicator_bar = e)} />
 
-    <b-contextmenu ${ref(n => t.pianorollmenu = n)} id="g-pianorollmenu" :showicons="true"
+    <b-contextmenu ${ref (h => t.pianorollmenu = h)} id="g-pianorollmenu" :showicons="true"
       class="-pianorollmenu" mapname="Piano Roll"
       .activate=${t.pianorollmenu_click.bind (t)} .isactive=${t.pianorollmenu_check.bind (t)} >
       <b-menutitle> Piano-Roll </b-menutitle>

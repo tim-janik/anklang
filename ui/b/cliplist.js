@@ -29,7 +29,7 @@ const HTML = (t, d) => [
   t.wtrack.launcher_clips.map ((clip, index) =>
     html`  <b-clipview .clip=${clip} index=${index} track=${t.track} trackindex=${t.trackindex} ></b-clipview>`
   ),
-  html`    <span class="-indicator" ${ref(e => t.indicator_bar = e)} /> `,
+  html`    <span class="-indicator" ${ref (h => t.indicator_bar = h)} /> `,
 ];
 
 // == SCRIPT ==
@@ -94,7 +94,8 @@ class BClipList extends LitElement {
 			       x: clipview.offsetLeft, });
       }
   }
-  recv_telemetry (teleobj, arrays) {
+  recv_telemetry (teleobj, arrays)
+  {
     const current = arrays[teleobj.current_clip.type][teleobj.current_clip.index];
     const tick = arrays[teleobj.current_tick.type][teleobj.current_tick.index];
     // const next = arrays[teleobj.next.type][teleobj.next.index];

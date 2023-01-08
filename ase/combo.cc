@@ -1,11 +1,14 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "combo.hh"
 #include "randomhash.hh"
+#include "server.hh"
 #include "internal.hh"
 
 #define PDEBUG(...)     Ase::debug ("combo", __VA_ARGS__)
 
 namespace Ase {
+
+static constexpr OBusId OUT1 = OBusId (1);
 
 // == Inlet ==
 class AudioChain::Inlet : public AudioProcessor {
@@ -137,12 +140,17 @@ AudioChain::AudioChain (AudioEngine &engine, SpeakerArrangement iobuses) :
   assert_return (speaker_arrangement_count_channels (iobuses) > 0);
   inlet_ = AudioProcessor::create_processor<AudioChain::Inlet> (engine_, this);
   assert_return (inlet_ != nullptr);
+  probe_block_ = SERVER->telemem_allocate (sizeof (ProbeArray));
+  probes_ = new (probe_block_.block_start) ProbeArray{};
 }
 
 AudioChain::~AudioChain()
 {
   pm_remove_all_buses (*inlet_);
   inlet_ = nullptr;
+  probes_->~ProbeArray();
+  probes_ = nullptr;
+  SERVER->telemem_release (probe_block_);
 }
 
 void
@@ -155,7 +163,7 @@ AudioChain::initialize (SpeakerArrangement busses)
   auto ibus = add_input_bus ("Input", ispeakers_);
   auto obus = add_output_bus ("Output", ospeakers_);
   (void) ibus;
-  (void) obus;
+  assert_return (OUT1 == obus);
 }
 
 void
@@ -182,14 +190,32 @@ void
 AudioChain::render (uint n_frames)
 {
   // make the last processor output the chain output
-  constexpr OBusId OUT1 = OBusId (1);
   const size_t nlastchannels = last_output_ ? last_output_->n_ochannels (OUT1) : 0;
   const size_t n_och = n_ochannels (OUT1);
+  std::array<Probe,2> *probes = n_och <= 2 ? probes_ : nullptr;
   for (size_t c = 0; c < n_och; c++)
     {
       // an enqueue_children() call is guranteed *before* render(), so last_output_ is valid
-      redirect_oblock (OUT1, c, !last_output_ ? nullptr :
-                       last_output_->ofloats (OUT1, std::min (c, nlastchannels - 1)));
+      if (UNLIKELY (!last_output_))
+        {
+          redirect_oblock (OUT1, c, nullptr);
+          if (probes)
+            (*probes)[c].dbspl = -192;
+        }
+      else
+        {
+          const float *cblock = last_output_->ofloats (OUT1, std::min (c, nlastchannels - 1));
+          redirect_oblock (OUT1, c, cblock);
+          if (probes)
+            {
+              // SPL = 20 * log10 (root_mean_square (p) / p0) dB
+              // const float sqrsig = square_sum (n_frames, cblock) / n_frames; // * 1.0 / p0^2
+              const float sqrsig = square_max (n_frames, cblock);
+              const float log2div = 3.01029995663981; // 20 / log2 (10) / 2.0
+              const float db_spl = ISLIKELY (sqrsig > 0.0) ? log2div * fast_log2 (sqrsig) : -192;
+              (*probes)[c].dbspl = db_spl;
+            }
+        }
     }
   // FIXME: assign obus if no children are present
 }
@@ -239,6 +265,16 @@ AudioChain::chain_up (AudioProcessor &prev, AudioProcessor &next)
       pm_connect (next, ibusid, prev, obusid);
     }
   return n_connected;
+}
+
+AudioChain::ProbeArray*
+AudioChain::run_probes (bool enable)
+{
+  if (enable && !probes_enabled_)
+    for (size_t i = 0; i < probes_->size(); i++)
+      (*probes_)[i] = Probe{};
+  probes_enabled_ = enable;
+  return probes_enabled_ ? probes_ : nullptr;
 }
 
 static const auto audio_chain_id = register_audio_processor<AudioChain>();

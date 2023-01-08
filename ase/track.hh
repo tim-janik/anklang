@@ -10,6 +10,7 @@ namespace Ase {
 class TrackImpl : public DeviceImpl, public virtual Track {
   DeviceP      chain_, midi_prod_;
   ClipImplS    clips_;
+  uint         midi_channel_ = 0;
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
   virtual         ~TrackImpl        ();
@@ -27,7 +28,7 @@ public:
   DeviceInfo      device_info       () override;
   ProjectImpl*    project           () const;
   bool            is_master         () const override      { return MASTER_TRACK & gadget_flags(); }
-  int32           midi_channel      () const override;
+  int32           midi_channel      () const override      { return midi_channel_; }
   void            midi_channel      (int32 midichannel) override;
   ClipS           launcher_clips    () override;
   DeviceP         access_device     () override;

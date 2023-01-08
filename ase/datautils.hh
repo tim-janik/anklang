@@ -12,6 +12,12 @@ constexpr const uint AUDIO_BLOCK_FLOAT_ZEROS_SIZE = 16384;
 /// Block of const floats allof value 0.
 extern float const_float_zeros[AUDIO_BLOCK_FLOAT_ZEROS_SIZE];
 
+/// Calculate suqare sum of a block of floats.
+float square_sum (uint n_values, const float *ivalues);
+
+/// Find the maximum suqared value in a block of floats.
+float square_max (uint n_values, const float *ivalues);
+
 // Convert integer to float samples.
 template<class S, class D> inline void convert_samples (size_t n, S *src, D *dst, uint16 byte_order);
 
@@ -43,7 +49,6 @@ fast_copy (size_t n, uint32_t *d, const uint32_t *s)
   static_assert (sizeof (wchar_t) == 4, "");
   wmemcpy ((wchar_t*) d, (const wchar_t*) s, n);
 }
-
 
 // == Implementations ==
 template<> inline void

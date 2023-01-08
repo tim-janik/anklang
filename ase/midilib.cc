@@ -43,6 +43,7 @@ public:
   {
     position_block_ = SERVER->telemem_allocate (sizeof (Position));
     position_ = new (position_block_.block_start) Position {};
+    future_stack.reserve (64); // likely enough to avoid malloc
   }
   ~MidiProducerImpl()
   {

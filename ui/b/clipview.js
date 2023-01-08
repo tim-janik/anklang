@@ -55,7 +55,7 @@ const HTML = (t, d) => html`
 <h-flex class="b-clipview"
   @click=${t.click}
   >
-  <canvas class="-canvas" ${ref(n => t.canvas = n)} ></canvas>
+  <canvas class="-canvas" ${ref (h => t.canvas = h)} ></canvas>
   <span class="-play" @click.stop="click_play" >▶</span>
 </h-flex>
 `;
