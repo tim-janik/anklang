@@ -27,12 +27,6 @@ $scroll-shadow-inset: 7px;
   // for :before box-shadow
   position: relative; padding: 0 calc(0.5 * $scroll-shadow-inset);
 }
-.grid::before { // add inner box-shadow to indicate scrolling borders
-  content: ""; // FIXME; broken
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  z-index: 999; pointer-events: none; user-select: none;
-  box-shadow: black 0 0 $scroll-shadow-inset 0px inset;
-}
 .trackviews,
 .partlists,
 .cliplists {
@@ -53,6 +47,14 @@ $scroll-shadow-inset: 7px;
 .partlists {
   grid-area: 2/3 / 3/4;
   overflow: scroll;
+}
+.scrollshadow {
+  grid-area: 2/1 / 3/4;
+  position: absolute; top: 0; left: 0; height: 200%;
+  width: calc(100% + 200px); margin-left: -100px;
+  // add inner box-shadow to indicate scrolling borders
+  z-index: 999; pointer-events: none; user-select: none;
+  box-shadow: black 0 0 $scroll-shadow-inset 0px inset;
 }
 `;
 
@@ -76,6 +78,7 @@ const HTML = (t, d) => html`
       ${repeat (t.wproject_.all_tracks, track => track.$id, (track, idx) => CLIPLIST_HTML (t, track, idx, t.wproject_.all_tracks.length))}
     </div>
     <div style="grid-area: 3/1 / 4/4;"> FOOTER </div>
+    <div class="scrollshadow"></div>
   </div>
 `;
 
