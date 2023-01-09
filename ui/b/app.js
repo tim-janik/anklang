@@ -68,6 +68,11 @@ export class AppClass {
     this.vue_app.config.globalProperties.App = App;   // global App, export methods
     this.vue_app.config.globalProperties.Data = Data; // global Data, reactive
   }
+  get project () { return this.data.project; }
+  set project (p)
+  {
+    this.data.project = p;
+  }
   get current_track () { return this.data.current_track; }
   set current_track (t)
   {
@@ -133,7 +138,7 @@ export class AppClass {
 	  }
       }
     const mtrack = await newproject.master_track();
-    const tracks = await newproject.list_tracks();
+    const tracks = await newproject.all_tracks();
     // shut down old project
     if (Data.project)
       {

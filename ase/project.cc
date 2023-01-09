@@ -742,6 +742,7 @@ ProjectImpl::create_track ()
   tracks_.insert (tracks_.end() - int (havemaster), track);
   emit_event ("track", "insert", { { "track", track }, });
   track->_set_parent (this);
+  emit_notify ("all_tracks");
   return track;
 }
 
@@ -757,11 +758,12 @@ ProjectImpl::remove_track (Track &child)
   // destroy Track
   track->_set_parent (nullptr);
   emit_event ("track", "remove");
+  emit_notify ("all_tracks");
   return true;
 }
 
 TrackS
-ProjectImpl::list_tracks ()
+ProjectImpl::all_tracks ()
 {
   TrackS tracks (tracks_.size());
   std::copy (tracks_.begin(), tracks_.end(), tracks.begin());

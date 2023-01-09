@@ -338,67 +338,40 @@ $b-piano-roll-font:     	normal 9px $b-main-font-family; // the '9px' part is dy
   &:hover::-webkit-slider-thumb    { @include b-style-hrange-thumb-bg(#ffc); }
 }
 
-// == Scrollbars ==
-/// Style container to constrain area within which its scrollbars highlight on hover.
-@mixin scrollbar-hover-area() {
-  #b-app & {
-    html[chrome] & {
-      & ::-webkit-scrollbar-thumb { background: $b-scrollbar-dd; }
-      &:hover ::-webkit-scrollbar-thumb { background: linear-gradient(zmod($b-scrollbar-fg, Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%)); }
-    }
-    html[gecko] & {
-      scrollbar-color: $b-scrollbar-dd $b-scrollbar-bg;
-      &:hover {
-	scrollbar-color: $b-scrollbar-fg $b-scrollbar-bg;
-      }
-    }
-  }
-  // sync with styles.scss
+// == Scrollbars & Forms ==
+:root {
+  color-scheme: dark;
 }
-$b-scrollbar-thickness: 15px; // ← only size that works with Chrome and FF
 
-// == Dark Chrome Scrollbars ==
+@mixin firefox-scrollbars() {
+  & { scrollbar-color: $b-scrollbar-dd $b-scrollbar-bg; }
+  & :hover,
+  &:hover { scrollbar-color: $b-scrollbar-fg $b-scrollbar-bg; }
+}
+
+@mixin scrollbar-hover-area() {
+  &         ::-webkit-scrollbar-thumb { background: $b-scrollbar-dd; border-radius: 5px; }
+  & :hover,
+  &:hover { ::-webkit-scrollbar-thumb { background: $b-scrollbar-fg; background: linear-gradient(zmod($b-scrollbar-fg, Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%)); } }
+  @include firefox-scrollbars();
+}
+
 @mixin chrome-scrollbars() {
   & {
-    ::-webkit-scrollbar	{ width: $b-scrollbar-size; height: $b-scrollbar-size; }
+    // ::-webkit-scrollbar        { width: $b-scrollbar-size; height: $b-scrollbar-size; }
     ::-webkit-scrollbar-button { display: none; }
-    ::-webkit-scrollbar-track, &::-webkit-scrollbar-track-piece,
-    ::-webkit-scrollbar	{
+    ::-webkit-scrollbar-track, &::-webkit-scrollbar-track-piece, ::-webkit-scrollbar-corner,
+    ::-webkit-scrollbar        {
       background: $b-scrollbar-bg;
       border: none; box-shadow: none;
-    }
-    ::-webkit-scrollbar-thumb	{
-      border-radius: 999px;
-      transition: background 0.4s ease;
-      background: $b-scrollbar-dd;
-    }
-    &:hover ::-webkit-scrollbar-thumb {
-      transition: background 0.4s ease;
-      background: linear-gradient(zmod($b-scrollbar-fg,Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%));
-      background: white;
+      background: #000;
     }
   }
-   &:hover, & :hover {
-    ::-webkit-scrollbar-thumb {
-      background: linear-gradient(zmod($b-scrollbar-fg,Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%));
-    }
-  }
+  &         ::-webkit-scrollbar-thumb { background: $b-scrollbar-dd; border-radius: 5px; }
+  & :hover,
+  &:hover { ::-webkit-scrollbar-thumb { background: $b-scrollbar-fg; background: linear-gradient(zmod($b-scrollbar-fg, Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%)); } }
 }
 
-// == Scrollbars ==
-// Chrome
-html[chrome] #b-app	{ @include chrome-scrollbars(); }
-:host   		{ @include chrome-scrollbars(); }
-
-#b-app {
-  // Firefox
-  html[gecko] & {
-    scrollbar-width: thin;
-    transition: scrollbar-color 0.4s ease;
-    scrollbar-color: $b-scrollbar-dd $b-scrollbar-bg;
-    &:hover {
-      scrollbar-color: $b-scrollbar-fg $b-scrollbar-bg;
-    }
-  }
-  // keep in sync with @mixin scrollbar-hover-area
-}
+html[gecko]	{ @include firefox-scrollbars(); }
+html[chrome]	{ @include chrome-scrollbars(); }
+:host		{ @include chrome-scrollbars(); @include firefox-scrollbars(); }

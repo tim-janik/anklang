@@ -17,17 +17,18 @@ const STYLE = await postcss`
     z-index: 2;
     transform: translateX(-9999px);
   }
-  .b-clipview {
-    margin: 0 1px;
-    width: $b-clipthumb-width;
-  }
+}
+b-clipview {
+  margin: 0 1px;
+  width: $b-clipthumb-width;
+  flex-shrink: 0; flex-grow: 0;
 }
 `;
 
 // == HTML ==
 const HTML = (t, d) => [
   t.wtrack.launcher_clips.map ((clip, index) =>
-    html`  <b-clipview .clip=${clip} index=${index} track=${t.track} trackindex=${t.trackindex} ></b-clipview>`
+    html`  <b-clipview .clip=${clip} index=${index} .track=${t.track} trackindex=${t.trackindex} ></b-clipview>`
   ),
   html`    <span class="-indicator" ${ref (h => t.indicator_bar = h)} /> `,
 ];

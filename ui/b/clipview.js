@@ -73,6 +73,7 @@ class BClipView extends LitElement {
   static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
   static properties = {
     clip: OBJECT_PROPERTY,
+    track: OBJECT_PROPERTY,
     trackindex: NUMBER_ATTRIBUTE,
     end_tick: PRIVATE_PROPERTY,	// trigger this.requestUpdate()
   };
@@ -85,7 +86,7 @@ class BClipView extends LitElement {
   {
     super();
     this.clip = null;
-    this.wclip = null;
+    this.wclip_ = null;
     this.canvas = null;
     this.starttick = 0;
     this.end_tick = null; // FIXME
@@ -100,8 +101,8 @@ class BClipView extends LitElement {
     if (changed_props.has ('clip'))
       {
 	const weakthis = new WeakRef (this); // avoid strong wclip->this refs for automatic cleanup
-	this.wclip = Util.wrap_ase_object (this.clip, { end_tick: 0, name: '???' }, () => weakthis.deref()?.requestUpdate());
-	this.wclip.__add__ ('all_notes', [], () => weakthis.deref()?.notes_changed());
+	this.wclip_ = Util.wrap_ase_object (this.clip, { end_tick: 0, name: '   ' }, () => weakthis.deref()?.requestUpdate());
+	this.wclip_.__add__ ('all_notes', [], () => weakthis.deref()?.notes_changed());
       }
     this.repaint (true);
   }
@@ -135,9 +136,10 @@ function render_canvas () {
   ctx.clearRect (0, 0, width, height);
   // color setup
   let cindex;
-  // cindex = Util.fnv1a_hash (this.name);	// - color from clip name
-  cindex = this.index;				// - color per clip
-  cindex = this.trackindex;			// - color per track
+  // cindex = Util.hash53 (this.wclip_.name);	// - color from clip name
+  // cindex = this.index;				// - color per clip
+  // cindex = this.trackindex;			// - color per track
+  cindex = this.track.$id;			// - color per track
   const hues = csp ('--clipview-color-hues').split (',');
   const zmods = csp ('--clipview-color-zmod').split (',');
   const hz = hues[cindex % hues.length];
@@ -153,12 +155,12 @@ function render_canvas () {
   ctx.fillStyle = csp ('--clipview-font-color');
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText (this.wclip.name, 1.5, .5);
+  ctx.fillText (this.wclip_.name, 1.5, .5);
   // paint notes
   ctx.fillStyle = csp ('--clipview-note-color');
   const noteoffset = 12;
   const notescale = height / (123.0 - 2 * noteoffset); // MAX_NOTE
-  for (const note of this.wclip.all_notes) {
+  for (const note of this.wclip_.all_notes) {
     ctx.fillRect (note.tick * tickscale, height - (note.key - noteoffset) * notescale, note.duration * tickscale, 1 * pixelratio);
   }
 }

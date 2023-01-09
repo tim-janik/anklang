@@ -68,7 +68,7 @@ public:
   bool                 is_playing        () override;
   TrackP               create_track      () override;
   bool                 remove_track      (Track &child) override;
-  TrackS               list_tracks       () override;
+  TrackS               all_tracks        () override;
   TrackP               master_track      () override;
   Error                load_project      (const String &filename) override;
   StreamReaderP        load_blob         (const String &filename);
