@@ -67,7 +67,7 @@ const CLIPLIST_HTML = (t, track, idx, len) => html`
 `;
 const HTML = (t, d) => html`
   <div class="grid" >
-    <div style="grid-area: 1/1 / 2/4;"> HEADER </div>
+    <div style="grid-area: 1/1 / 2/4;"> <!--HEADER--> </div>
     <div class="trackviews" ${ref (h => t.trackviews = h)} >
       ${repeat (t.wproject_.all_tracks, track => track.$id, (track, idx) => TRACKVIEW_HTML (t, track, idx, t.wproject_.all_tracks.length))}
     </div>
@@ -77,7 +77,7 @@ const HTML = (t, d) => html`
     <div class="partlists" ${ref (h => t.partlists = h)} >
       ${repeat (t.wproject_.all_tracks, track => track.$id, (track, idx) => CLIPLIST_HTML (t, track, idx, t.wproject_.all_tracks.length))}
     </div>
-    <div style="grid-area: 3/1 / 4/4;"> FOOTER </div>
+    <div style="grid-area: 3/1 / 4/4;"> <!--FOOTER--> </div>
     <div class="scrollshadow"></div>
   </div>
 `;
