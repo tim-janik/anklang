@@ -13,36 +13,46 @@ const STYLE = await postcss`
 @import 'mixins.scss';
 $scroll-shadow-inset: 7px;
 :host {
-  display: flex; flex-flow: row nowrap;
-  //* Layout: Tracks Spacer Clips Spacer Parts Scrollbar */
-  // grid-template-columns: min-content 3px 17fr 3px 10px 20px;
-  grid-template-columns: min-content 2fr 1fr;
-  //* Layout: Header Spacer Main Spacer Footer */
-  grid-template-rows: repeat(999,min-content) 1fr; // min-content 3px 1fr 3px 20px;
+  display: flex; flex-direction: column; align-items: stretch;
+  position: relative;
+}
+.grid {
+  display: grid;
+  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  align-items: stretch;
+  grid-template-columns: min-content 3fr 2fr;
+  grid-template-rows: min-content 1fr min-content;
   background-color: $b-tracklist-bg;
   overflow: hidden;
   // for :before box-shadow
   position: relative; padding: 0 calc(0.5 * $scroll-shadow-inset);
 }
-:host::before { // add inner box-shadow to indicate scrolling borders
-  content: "";
+.grid::before { // add inner box-shadow to indicate scrolling borders
+  content: ""; // FIXME; broken
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 999; pointer-events: none; user-select: none;
   box-shadow: black 0 0 $scroll-shadow-inset 0px inset;
 }
-.trackviews {
-  display: flex; flex-flow: column nowrap;
-  grid-column: 1/2; grid-row: 1/2;
-  > * { height: 46px; box-sizing: border-box; overflow: hidden; flex-grow: 0; flex-shrink: 0; }
-  padding: $scroll-shadow-inset 0;
-  overflow: hidden;
-}
+.trackviews,
+.partlists,
 .cliplists {
   display: flex; flex-flow: column nowrap;
-  grid-column: 2/3; grid-row: 1/2;
-  > * { height: 46px; box-sizing: border-box; overflow: hidden; flex-grow: 0; flex-shrink: 0; }
+  align-items: flex-start; // needed for scroll-x
   padding: $scroll-shadow-inset 0;
-  overflow: hidden scroll;
+  min-height: 0;
+  > * { height: 46px; box-sizing: border-box; overflow: hidden; flex-grow: 0; flex-shrink: 0; }
+}
+.trackviews {
+  grid-area: 2/1 / 3/2;
+  overflow: scroll hidden;
+}
+.cliplists {
+  grid-area: 2/2 / 3/3;
+  overflow: scroll;
+}
+.partlists {
+  grid-area: 2/3 / 3/4;
+  overflow: scroll;
 }
 `;
 
@@ -54,14 +64,18 @@ const CLIPLIST_HTML = (t, track, idx, len) => html`
   <b-cliplist .track=${track} trackindex=${idx} ></b-cliplist>
 `;
 const HTML = (t, d) => html`
-  <div class="trackviews" ${ref (h => t.trackviews = h)} >
-    ${repeat (t.wproject_.all_tracks, track => track.$id, (track, idx) => TRACKVIEW_HTML (t, track, idx, t.wproject_.all_tracks.length))}
-  </div>
-  <div class="cliplists" ${ref (h => t.cliplists = h)} >
-    ${repeat (t.wproject_.all_tracks, track => track.$id, (track, idx) => CLIPLIST_HTML (t, track, idx, t.wproject_.all_tracks.length))}
-  </div>
-  <div class="cliplists" ${ref (h => t.partlists = h)} >
-    ${repeat (t.wproject_.all_tracks, track => track.$id, (track, idx) => CLIPLIST_HTML (t, track, idx, t.wproject_.all_tracks.length))}
+  <div class="grid" >
+    <div style="grid-area: 1/1 / 2/4;"> HEADER </div>
+    <div class="trackviews" ${ref (h => t.trackviews = h)} >
+      ${repeat (t.wproject_.all_tracks, track => track.$id, (track, idx) => TRACKVIEW_HTML (t, track, idx, t.wproject_.all_tracks.length))}
+    </div>
+    <div class="cliplists" ${ref (h => t.cliplists = h)} >
+      ${repeat (t.wproject_.all_tracks, track => track.$id, (track, idx) => CLIPLIST_HTML (t, track, idx, t.wproject_.all_tracks.length))}
+    </div>
+    <div class="partlists" ${ref (h => t.partlists = h)} >
+      ${repeat (t.wproject_.all_tracks, track => track.$id, (track, idx) => CLIPLIST_HTML (t, track, idx, t.wproject_.all_tracks.length))}
+    </div>
+    <div style="grid-area: 3/1 / 4/4;"> FOOTER </div>
   </div>
 `;
 
@@ -102,7 +116,8 @@ class BTrackList extends LitElement {
   list_dblclick (event)
   {
     debug (event);
-    if (event.path[0].classList.contains ('trackviews'))
+    if (event.path[0] === this ||
+	event.path[0].classList.contains ('trackviews'))
       this.project.create_track();
   }
 }
