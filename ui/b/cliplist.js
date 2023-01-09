@@ -17,10 +17,11 @@ const STYLE = await postcss`
     z-index: 2;
     transform: translateX(-9999px);
   }
-  .b-clipview {
-    margin: 0 1px;
-    width: $b-clipthumb-width;
-  }
+}
+b-clipview {
+  margin: 0 1px;
+  width: $b-clipthumb-width;
+  flex-shrink: 0; flex-grow: 0;
 }
 `;
 
