@@ -13,7 +13,7 @@ import { LitElement, html, css, postcss, docs, ref } from '../little.js';
 // == STYLE ==
 const STYLE = await postcss`
 @import 'mixins.scss';
-$b-trackview-level-height: 3px;
+$b-trackview-level-height: 5px;
 $b-trackview-level-space: 1px;
 :host {
   display: flex;
@@ -30,15 +30,15 @@ $b-trackview-level-space: 1px;
   will-change: auto;
 }
 .-lvm-levelbg {
-  height: calc($b-trackview-level-height + $b-trackview-level-space + $b-trackview-level-height);
+  height: 100%;
   --db-zpc: 66.66%;
   background: linear-gradient(to right, #0b0, #bb0 var(--db-zpc), #b00);
-  }
+}
 .-lvm-covertip0, .-lvm-covermid0, .-lvm-covertip1, .-lvm-covermid1,
 .-lvm-levelbg, .-lvm-coverspace      { position: absolute; width: 100%; }
-.-lvm-covertip0, .-lvm-covermid0      { top: 0px; }
-.-lvm-coverspace                        { top: $b-trackview-level-height; height: $b-trackview-level-space; }
-.-lvm-covertip1, .-lvm-covermid1      { top: calc($b-trackview-level-height + $b-trackview-level-space); }
+.-lvm-covertip0, .-lvm-covermid0     { top: 0px; }
+.-lvm-coverspace                     { top: calc($b-trackview-level-height - 0.25px); height: calc($b-trackview-level-space + 0.5px); }
+.-lvm-covertip1, .-lvm-covermid1     { top: calc($b-trackview-level-height + $b-trackview-level-space); }
 .-lvm-coverspace {
   background-color: rgba( 0, 0, 0, .80);
 }
@@ -49,9 +49,16 @@ $b-trackview-level-space: 1px;
   will-change: transform;
   transform: scaleX(1);
 }
-.-lvm-covermid0, .-lvm-covermid1    { width: 100%; }
+.-lvm-covertip1, .-lvm-covermid1 {
+  height: calc($b-trackview-level-height + 1px);
+  // add 1px to cover for rounded coords
+}
 .b-trackview-control {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   margin-right: 5px;
+  overflow: hidden;
 }
 :host([current-track]) .b-trackview-control { background-color: zmod($b-button-border, Jz+=25%); }
 .-track-name {
