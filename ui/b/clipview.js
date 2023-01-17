@@ -12,7 +12,6 @@ JsExtract.scss`
 @import 'mixins.scss';
 :host {
   display: inline-grid;
-  width: 7em;
   margin: 0 0 0 2px;
 }
 $b-clipview-font: normal 9px $b-theme-font-family !default;    // the '9px' part is dynamically resized
