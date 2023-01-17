@@ -1,5 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-import { LitElement, html, JsExtract, docs, ref } from '../little.js';
+import { LitElement, html, render, JsExtract, docs, ref } from '../little.js';
 
 /** == B-TRACKVIEW ==
  * A Vue template to display a project's Ase.Track.
@@ -67,8 +67,9 @@ JsExtract.scss`
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <div class="b-trackview-control" @click=${t.track_click0} @contextmenu=${t.menu_open}
-       data-tip="**CLICK** Select Track **RIGHTCLICK** Track Menu" >
+  <div class="b-trackview-control" data-tip="**CLICK** Select Track **RIGHTCLICK** Track Menu"
+    @click=${t.track_click0} @contextmenu=${t.menu_open}
+    ${ref (h => t.trackviewcontrol_ = h)} >
     <span class="-track-name" >
       <b-editable ${ref (h => t.trackname_ = h)} clicks="2" style="min-width: 4em; width: 100%"
         selectall @change=${event => t.track.name (event.detail.value.trim())}
@@ -83,9 +84,11 @@ const HTML = (t, d) => html`
       <div class="-lvm-covertip1" ${ref (h => t.covertip1_ = h)}></div>
     </div>
   </div>
-
-  <b-contextmenu ${ref (h => t.trackviewcmenu_ = h)} id="g-trackviewcmenu" @activate=${t.menu_click} .isactive=${t.menu_check} >
-    <b-menutitle> Track </b-menutitle>
+`;
+const HTML_CMENU = (t, d) => html`
+  <b-contextmenu ${ref (h => t.htmlcmenu_ = h)} id="g-trackviewcmenu"
+    @activate=${t.menu_click} .isactive=${t.menu_check} @close=${t.menu_close} >
+    <b-menutitle>                                               Track                   </b-menutitle>
     <b-menuitem ic="fa-plus-circle"        uri="add-track" >      Add Track             </b-menuitem>
     <b-menuitem ic="fa-i-cursor"           uri="rename-track" >   Rename Track          </b-menuitem>
     <b-menuitem ic="fa-toggle-down"        uri="bounce-track" >   Bounce Track          </b-menuitem>
@@ -155,6 +158,8 @@ class BTrackView extends LitElement {
   {
     super();
     this.track = null;
+    this.trackviewcontrol_ = null;
+    this.htmlcmenu_ = null;
     this.trackindex = -1;
     this.wtrack_ = { name: '   ' };
     this.dbtip0_ = MINDB;
@@ -212,8 +217,11 @@ class BTrackView extends LitElement {
   menu_open (event)
   {
     App.current_track = this.track;
-    // force popup at mouse coords
-    this.trackviewcmenu_.popup (event, { origin: 'none' });
+    // create trackview menu for popup
+    if (!this.htmlcmenu_) // this.trackviewcontrol_ is not otherwise rendered by lit-html
+      render (HTML_CMENU (this), this.trackviewcontrol_, { host: this });
+    // popup menu at mouse coords
+    this.htmlcmenu_.popup (event, { origin: 'none' });
     event.stopPropagation();
   }
   async menu_check (uri)
@@ -228,11 +236,17 @@ class BTrackView extends LitElement {
       return true;
     return false;
   }
+  async menu_close (event)
+  {
+    // remove menu nodes
+    render (html``, this.trackviewcontrol_, { host: this });
+    console.assert (!this.htmlcmenu_);
+  }
   async menu_click (event)
   {
     const uri = event.detail.uri;
     // close popup to remove focus guards
-    this.trackviewcmenu_.close();
+    this.htmlcmenu_.close();
     if (uri == 'add-track')
       {
 	const track = await Data.project.create_track ('Track');
