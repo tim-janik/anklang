@@ -69,12 +69,12 @@ export class BClipList extends LitElement {
     this.ratiodiv = 1.0 / this.ratiomul;
     /**@type{HTMLElement}*/
     this.indicator_bar = null;
+    this.setAttribute ('data-f1', "#clip-list");
   }
   connectedCallback() {
     super.connectedCallback();
     this.ratiomul = window.devicePixelRatio;
     this.ratiodiv = 1.0 / this.ratiomul;
-    this.setAttribute ('data-f1', "#clip-list");
   }
   disconnectedCallback() {
     super.disconnectedCallback();
