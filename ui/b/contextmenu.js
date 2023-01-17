@@ -28,8 +28,8 @@
  * ## Events:
  * *click (event)*
  * : Event signaling activation of a menu item, the `uri` can be found via `event.target.uri`.
- * *close*
- * : Event signaling closing of a menu, regardless of whether menu item activation occoured or not.
+ * *close (event)*
+ * : Event signaling closing of the menu, regardless of whether menu item activation occoured or not.
  * ## Methods:
  * *popup (event, { origin, data-contextmenu })*
  * : Popup the contextmenu, propagation of `event` is halted and the event coordinates or target is
@@ -72,7 +72,7 @@ dialog::backdrop {
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <dialog ${ref (h => t.dialog = h)} part=dialog >
+  <dialog ${ref (h => t.dialog = h)} part="dialog" >
     <slot />
   </dialog>
 `;
@@ -140,6 +140,7 @@ class BContextMenu extends LitElement {
     super();
     this.body_div = null;
     this.showicons = true;
+    this.emit_close_ = 0;
     this.page_x = undefined;
     this.page_y = undefined;
     this.xscale = 1;
@@ -223,12 +224,15 @@ class BContextMenu extends LitElement {
       this.page_x = this.page_y = undefined;
     this.data_contextmenu = popup_options['data-contextmenu'] || this.origin;
     this.data_contextmenu?.setAttribute ('data-contextmenu', 'true');
-    this.dialog.showModal();
-    this.reposition = true;
-    // check items (and this used to handle auto-focus)
-    const promise = this.check_isactive();
-    App.zmove(); // force changes to be picked up
-    return promise;
+    this.emit_close_++;
+    return (async () => {
+      await this.updateComplete; // needed to access this.dialog
+      this.reposition = true;
+      this.dialog.showModal();
+      App.zmove(); // force changes to be picked up
+      // check items (and this used to handle auto-focus)
+      await this.check_isactive();
+    }) ();
   }
   async check_isactive()
   {
@@ -299,6 +303,10 @@ class BContextMenu extends LitElement {
     this.data_contextmenu?.removeAttribute ('data-contextmenu', 'true');
     this.data_contextmenu = null;
     App.zmove(); // force changes to be picked up
+    if (this.emit_close_) {
+      this.emit_close_--;
+      this.dispatchEvent (new CustomEvent ('close', { detail: {} }));
+    }
   }
   /// Activate or disable the `kbd=...` hotkeys in menu items.
   map_kbd_hotkeys (active = false) {
