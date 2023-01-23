@@ -208,7 +208,7 @@ AudioChain::render (uint n_frames)
           redirect_oblock (OUT1, c, cblock);
           if (probes)
             {
-              // SPL = 20 * log10 (root_mean_square (p) / p0) dB
+              // SPL = 20 * log10 (root_mean_square (p) / p0) dB        ; https://en.wikipedia.org/wiki/Sound_pressure#Sound_pressure_level
               // const float sqrsig = square_sum (n_frames, cblock) / n_frames; // * 1.0 / p0^2
               const float sqrsig = square_max (n_frames, cblock);
               const float log2div = 3.01029995663981; // 20 / log2 (10) / 2.0
