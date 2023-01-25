@@ -347,6 +347,7 @@ public:
   const ClapParamInfoMap *param_info_map_ = nullptr;
   const ClapParamInfoImpl *param_info_map_start_ = nullptr;
   clap_process_t processinfo = { 0, };
+  clap_event_transport_t transportinfo = { 0, };
   std::vector<BorrowedPtr<ClapEventParamS>> enqueued_events_;
   void
   enqueue_events (BorrowedPtr<ClapEventParamS> pevents_b)
@@ -374,11 +375,18 @@ public:
     if (can_process_) {
       processinfo = clap_process_t {
         .steady_time = int64_t (engine().frame_counter()),
-        .frames_count = 0, .transport = nullptr,
+        .frames_count = 0, .transport = &transportinfo,
         .audio_inputs = &handle_->audio_inputs_[0], .audio_outputs = &handle_->audio_outputs_[0],
         .audio_inputs_count = uint32_t (handle_->audio_inputs_.size()),
         .audio_outputs_count = uint32_t (handle_->audio_outputs_.size()),
         .in_events = &plugin_input_events, .out_events = &plugin_output_events,
+      };
+      transportinfo = clap_event_transport_t {
+        .header = clap_event_header_t {
+          .size     = sizeof (clap_event_transport_t),
+          .space_id = CLAP_CORE_EVENT_SPACE_ID,
+          .type     = CLAP_EVENT_TRANSPORT
+        }
       };
       input_events_.resize (0);
       output_events_.resize (0);
@@ -398,10 +406,38 @@ public:
     output_events_.resize (0);
   }
   void
+  update_transportinfo()
+  {
+    const auto &trans = transport();
+    const auto &tick_sig = trans.tick_sig;
+    transportinfo.flags = CLAP_TRANSPORT_HAS_TEMPO |
+                          CLAP_TRANSPORT_HAS_BEATS_TIMELINE |
+                          CLAP_TRANSPORT_HAS_SECONDS_TIMELINE |
+                          CLAP_TRANSPORT_HAS_TIME_SIGNATURE;
+    if (trans.running())
+      transportinfo.flags |= CLAP_TRANSPORT_IS_PLAYING;
+    double sec_pos  = trans.current_seconds + trans.current_minutes * 60;
+    double beat_pos = trans.current_tick_d * (1.0 / TRANSPORT_PPQN);
+    transportinfo.song_pos_beats      = llrint (beat_pos * CLAP_BEATTIME_FACTOR);
+    transportinfo.song_pos_seconds    = llrint (sec_pos * CLAP_SECTIME_FACTOR);
+    transportinfo.tempo               = tick_sig.bpm();
+    transportinfo.tempo_inc           = 0;
+    transportinfo.loop_start_beats    = 0;
+    transportinfo.loop_end_beats      = 0;
+    transportinfo.loop_start_seconds  = 0;
+    transportinfo.loop_end_seconds    = 0;
+    double bar_start = trans.current_bar_tick * (1.0 / TRANSPORT_PPQN);
+    transportinfo.bar_start           = llrint (bar_start * CLAP_BEATTIME_FACTOR);
+    transportinfo.bar_number          = trans.current_bar;
+    transportinfo.tsig_num            = tick_sig.beats_per_bar();
+    transportinfo.tsig_denom          = tick_sig.beat_unit();
+  }
+  void
   render (uint n_frames) override
   {
     const uint icount = ibusid != 0 ? this->n_ichannels (ibusid) : 0;
     if (can_process_) {
+      update_transportinfo();
       for (size_t i = 0; i < icount; i++) {
         assert_return (processinfo.audio_inputs[imain_clapidx].channel_count == icount);
         processinfo.audio_inputs[imain_clapidx].data32[i] = const_cast<float*> (ifloats (ibusid, i));
