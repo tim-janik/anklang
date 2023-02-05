@@ -217,6 +217,169 @@ fixed_sort (RandomIt first, RandomIt last,
     }
 }
 
+/// Vector that keeps its elements sorted.
+template<class T, class Less = std::less<T>>
+class SortedVector : private Less {
+  std::vector<T> v_;
+public:
+  using size_type = typename std::vector<T>::size_type;
+  using value_type = typename std::vector<T>::value_type;
+  using iterator = typename std::vector<T>::iterator;
+  using const_iterator = typename std::vector<T>::const_iterator;
+  using reverse_iterator = typename std::vector<T>::reverse_iterator;
+  using const_reverse_iterator = typename std::vector<T>::const_reverse_iterator;
+  using const_reference = typename std::vector<T>::const_reference;
+  constexpr void                   reserve       (size_type n) { v_.reserve (n); }
+  constexpr size_type              capacity      () const noexcept { return v_.capacity(); }
+  constexpr const_iterator         begin         () const noexcept { return v_.begin(); }
+  constexpr const_iterator         end           () const noexcept { return v_.end(); }
+  constexpr const_reverse_iterator crbegin       () const noexcept { return v_.crbegin(); }
+  constexpr const_reverse_iterator crend         () const noexcept { return v_.crend(); }
+  constexpr const_reverse_iterator rbegin        () const noexcept { return v_.rbegin(); }
+  constexpr const_reverse_iterator rend          () const noexcept { return v_.rend(); }
+  constexpr void                   clear         () noexcept { v_.clear(); }
+  constexpr bool                   empty         () const noexcept { return v_.empty(); }
+  constexpr iterator               erase         (const_iterator first, const_iterator last) { return v_.erase (first, last); }
+  constexpr iterator               erase         (const_iterator position) { return v_.erase (position); }
+  constexpr iterator               replace       (const value_type &val) { return insert (val, true); }
+  constexpr size_type              size          () const noexcept { return v_.size(); }
+  constexpr void                   shrink_to_fit () { v_.shrink_to_fit(); }
+  constexpr bool                   sorted        (const bool allow_multiple = false) const { return sorted (*this, allow_multiple); }
+  constexpr bool                   contains      (const value_type &val) const { return end() != find (val); }
+  constexpr const_iterator         find          (const value_type &val) const { return const_cast<SortedVector&> (*this).find (val); }
+  constexpr const_reference        front         () const noexcept { return v_.front(); }
+  constexpr const_reference        back          () const noexcept { return v_.back(); }
+  constexpr const T*               data          () const noexcept { return v_.data(); }
+  constexpr T*                     data          () noexcept { return v_.data(); }
+  constexpr void                   swap          (std::vector<T> &other) noexcept { v_.swap (other); sort(); }
+  constexpr void                   swap          (SortedVector &other) noexcept { v_.swap (other); }
+  constexpr const_reference        at            (size_type n) const { return v_.at (n); }
+  constexpr const_reference        operator[]    (size_type n) const noexcept { return v_[n]; }
+  constexpr SortedVector&          operator=     (const SortedVector &other) { v_ = other.v_; return *this; }
+  constexpr SortedVector&
+  operator= (const std::vector<T> &other)
+  {
+    v_ = other;
+    sort();
+    return *this;
+  }
+  constexpr SortedVector&
+  operator= (std::initializer_list<value_type> l)
+  {
+    v_.assign (l);
+    sort();
+    return *this;
+  }
+  constexpr SortedVector&
+  operator= (SortedVector &&other)
+  {
+    v_.clear();
+    v_.swap (other);
+    return *this;
+  }
+  constexpr SortedVector&
+  operator= (std::vector<T> &&other)
+  {
+    v_.clear();
+    v_.swap (other);
+    sort();
+    return *this;
+  }
+  constexpr void
+  resize (size_type n, const value_type &el)
+  {
+    const size_type o = v_.size();
+    v_.resize (n, el);
+    if (v_.size() > o)
+      sort();
+  }
+  constexpr void
+  assign (std::initializer_list<value_type> l)
+  {
+    v_.assign (l);
+    sort();
+  }
+  constexpr void
+  sort ()
+  {
+    const Less &lesser = *this;
+    fixed_sort (v_.begin(), v_.end(), lesser);
+  }
+  constexpr iterator
+  find (const value_type &val)
+  {
+    const Less &lesser = *this;
+    iterator it = std::lower_bound (v_.begin(), v_.end(), val, lesser);
+    if (it == v_.end() || lesser (val, *it))
+      return v_.end();                          // not found
+    return it;                                  // found
+  }
+  constexpr iterator
+  insert (const value_type &val, bool replace = false)
+  {
+    const Less &lesser = *this;
+    iterator it = std::lower_bound (v_.begin(), v_.end(), val, lesser);
+    if (it != end() && !lesser (val, *it))      // val == *it
+      {
+        if (!replace)
+          return v_.end();                      // insertion failed, duplicate
+        *it = val;
+        return it;                              // duplicate replaced
+      }
+    return v_.insert (it, val);                 // insert or append
+  }
+  constexpr bool
+  sorted (const Less &lesser, const bool allow_multiple = false) const
+  {
+    const size_type l = size();
+    for (size_type i = 1; i < l; i++)
+      if (lesser (v_[i-1], v_[i]) == false)
+        {
+          if (allow_multiple && lesser (v_[i], v_[i-1]) == false)
+            continue; // v_[i-1] == v_[i]
+          return false;
+        }
+    return true;
+  }
+  constexpr size_type
+  collapse (bool delete_first = true)
+  {
+    const Less &lesser = *this;
+    const size_type l = size();
+    for (size_type i = 1; i < size(); i++)
+      if (lesser (v_[i-1], v_[i]) == false)
+        {
+          erase (begin() + i - delete_first);
+          i--;
+        }
+    return l - size();
+  }
+  template<class Pred> constexpr size_type
+  erase_if (Pred pred)
+  {
+    const size_type l = size();
+    for (iterator it = v_.begin(); it != v_.end(); )
+      if (pred (*it))
+        it = v_.erase (it);
+      else
+        ++it;
+    return l - size();
+  }
+  template<class InputIterator> constexpr
+  SortedVector (InputIterator first, InputIterator last) :
+    v_ (first, last)
+  {
+    sort();
+  }
+  constexpr
+  SortedVector (std::initializer_list<value_type> l = {})
+  {
+    *this = l;
+  }
+  operator const std::vector<T> () const { return v_; }
+  template<class Pred> friend constexpr size_type erase_if (SortedVector &self, Pred pred) { return self.erase_if (pred); }
+};
+
 } // Ase
 
 #endif // __ASE_SORTNET_HH__
