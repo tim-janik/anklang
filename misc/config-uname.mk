@@ -39,14 +39,15 @@ MODEFLAGS	::= -O0
 __DEV__		::=
 else ifeq ($(MODE),production)
 MODEFLAGS	::= -O3 -DNDEBUG
+LDMODEFLAGS	 += -Wl,--no-undefined
 LTOFLAGS	 += -flto
 __DEV__		::=
 else ifeq ($(MODE),devel)
 MODEFLAGS	::= -g -O2
-LDMODEFLAGS	 += -g
+LDMODEFLAGS	 += -Wl,--no-undefined -g
 else ifeq ($(MODE),debug)
 MODEFLAGS	::= -gdwarf-4 -Og -fno-omit-frame-pointer -fno-inline -fstack-protector-all -fverbose-asm
-LDMODEFLAGS	 += -g
+LDMODEFLAGS	 += -Wl,--no-undefined -g
 __UIDEBUG__	::= 1
 else ifeq ($(MODE),ubsan)
 MODEFLAGS	::= -Og -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=undefined
@@ -102,7 +103,7 @@ endif
 
 pkgcflags	::= $(strip $(COMMONFLAGS) $(CONLYFLAGS) $(MODEFLAGS) $(OPTIMIZE) $(SANITIZECC)) $(CFLAGS) $(LTOFLAGS)
 pkgcxxflags	::= $(strip $(COMMONFLAGS) $(CXXONLYFLAGS) $(MODEFLAGS) $(OPTIMIZE) $(SANITIZECC)) $(CXXFLAGS) $(LTOFLAGS)
-pkgldflags	::= $(strip $(LDOPTIMIZE) $(LDMODEFLAGS)) -Wl,-export-dynamic -Wl,--as-needed -Wl,--no-undefined -Wl,-Bsymbolic-functions $(LDFLAGS) $(LTOFLAGS)
+pkgldflags	::= $(strip $(LDOPTIMIZE) $(LDMODEFLAGS)) -Wl,-export-dynamic -Wl,--as-needed -Wl,-Bsymbolic-functions $(LDFLAGS) $(LTOFLAGS)
 
 # == implicit rules ==
 compiledefs     = $(DEFS) $(EXTRA_DEFS) $($<.DEFS) $($@.DEFS) $(INCLUDES) $(EXTRA_INCLUDES) $($<.INCLUDES) $($@.INCLUDES)
