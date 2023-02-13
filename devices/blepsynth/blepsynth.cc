@@ -3,6 +3,7 @@
 #include "ase/midievent.hh"
 #include "devices/blepsynth/bleposc.hh"
 #include "devices/blepsynth/laddervcf.hh"
+#include "devices/blepsynth/skfilter.hh"
 #include "devices/blepsynth/linearsmooth.hh"
 #include "ase/internal.hh"
 
@@ -218,7 +219,9 @@ class BlepSynth : public AudioProcessor {
   ParamId pid_resonance_;
   ParamId pid_drive_;
   ParamId pid_key_track_;
-  ParamId pid_mode_;
+  ParamId pid_filter_type_;
+  ParamId pid_ladder_mode_;
+  ParamId pid_skfilter_mode_;
 
   ParamId pid_attack_;
   ParamId pid_decay_;
@@ -258,7 +261,11 @@ class BlepSynth : public AudioProcessor {
 
     BlepUtils::OscImpl osc1_;
     BlepUtils::OscImpl osc2_;
+
+    static constexpr int SKF_OVERSAMPLE = 4;
+
     LadderVCFNonLinear vcf_;
+    SKFilter           skfilter_ { SKF_OVERSAMPLE };
   };
   std::vector<Voice>    voices_;
   std::vector<Voice *>  active_voices_;
@@ -298,13 +305,37 @@ class BlepSynth : public AudioProcessor {
     pid_resonance_ = add_param ("Resonance", "Reso", 0, 100, 25.0, "%");
     pid_drive_ = add_param ("Drive", "Drive", -24, 36, 0, "dB");
     pid_key_track_ = add_param ("Key Tracking", "KeyTr", 0, 100, 50, "%");
-    ChoiceS choices;
-    choices += {  "—"_uc, "Bypass Filter" };
-    choices += { "L1"_uc, "1 Pole Lowpass, 6dB/Octave" };
-    choices += { "L2"_uc, "2 Pole Lowpass, 12dB/Octave" };
-    choices += { "L3"_uc, "3 Pole Lowpass, 18dB/Octave" };
-    choices += { "L4"_uc, "4 Pole Lowpass, 24dB/Octave" };
-    pid_mode_ = add_param ("Filter Mode", "Mode", std::move (choices), 2, "", "Ladder Filter Mode to be used");
+    ChoiceS filter_type_choices;
+    filter_type_choices += { "—"_uc, "Bypass Filter" };
+    filter_type_choices += { "LD"_uc, "Ladder Filter" };
+    filter_type_choices += { "SKF"_uc, "Sallen-Key Filter" };
+    pid_filter_type_ = add_param ("Filter Type", "Type", std::move (filter_type_choices), 1, "", "Filter Type to be used");
+
+    ChoiceS ladder_mode_choices;
+    ladder_mode_choices += { "LP1"_uc, "1 Pole Lowpass, 6dB/Octave" };
+    ladder_mode_choices += { "LP2"_uc, "2 Pole Lowpass, 12dB/Octave" };
+    ladder_mode_choices += { "LP3"_uc, "3 Pole Lowpass, 18dB/Octave" };
+    ladder_mode_choices += { "LP4"_uc, "4 Pole Lowpass, 24dB/Octave" };
+    pid_ladder_mode_ = add_param ("Filter Mode", "Mode", std::move (ladder_mode_choices), 2, "", "Ladder Filter Mode to be used");
+
+    ChoiceS skfilter_mode_choices;
+    skfilter_mode_choices += { "LP1"_uc, "1 Pole Lowpass, 6dB/Octave" };
+    skfilter_mode_choices += { "LP2"_uc, "2 Pole Lowpass, 12dB/Octave" };
+    skfilter_mode_choices += { "LP3"_uc, "3 Pole Lowpass, 18dB/Octave" };
+    skfilter_mode_choices += { "LP4"_uc, "4 Pole Lowpass, 24dB/Octave" };
+    skfilter_mode_choices += { "LP6"_uc, "6 Pole Lowpass, 36dB/Octave" };
+    skfilter_mode_choices += { "LP8"_uc, "8 Pole Lowpass, 48dB/Octave" };
+    skfilter_mode_choices += { "BP2"_uc, "2 Pole Bandpass, 6dB/Octave" };
+    skfilter_mode_choices += { "BP4"_uc, "4 Pole Bandpass, 12dB/Octave" };
+    skfilter_mode_choices += { "BP6"_uc, "6 Pole Bandpass, 18dB/Octave" };
+    skfilter_mode_choices += { "BP8"_uc, "8 Pole Bandpass, 24dB/Octave" };
+    skfilter_mode_choices += { "HP1"_uc, "1 Pole Highpass, 6dB/Octave" };
+    skfilter_mode_choices += { "HP2"_uc, "2 Pole Highpass, 12dB/Octave" };
+    skfilter_mode_choices += { "HP3"_uc, "3 Pole Highpass, 18dB/Octave" };
+    skfilter_mode_choices += { "HP4"_uc, "4 Pole Highpass, 24dB/Octave" };
+    skfilter_mode_choices += { "HP6"_uc, "6 Pole Highpass, 36dB/Octave" };
+    skfilter_mode_choices += { "HP8"_uc, "8 Pole Highpass, 48dB/Octave" };
+    pid_skfilter_mode_ = add_param ("SKFilter Mode", "Mode", std::move (skfilter_mode_choices), 3, "", "Sallen-Key Filter Mode to be used");
 
     oscparams (1);
 
@@ -474,6 +505,10 @@ class BlepSynth : public AudioProcessor {
         voice->vcf_.reset();
         voice->vcf_.set_rate (sample_rate());
 
+        voice->skfilter_.reset();
+        voice->skfilter_.set_rate (sample_rate());
+        voice->skfilter_.set_frequency_range (10, 30000);
+
         voice->cutoff_smooth_.reset (sample_rate(), 0.020);
         voice->last_cutoff_ = -5000; // force reset
 
@@ -568,18 +603,15 @@ class BlepSynth : public AudioProcessor {
             mix_left_out[i]  = osc1_left_out[i] * v1 + osc2_left_out[i] * v2;
             mix_right_out[i] = osc1_right_out[i] * v1 + osc2_right_out[i] * v2;
           }
-        bool run_filter = true;
-        switch (irintf (get_param (pid_mode_)))
+        switch (irintf (get_param (pid_ladder_mode_)))
           {
-          case 4: voice->vcf_.set_mode (LadderVCFMode::LP4);
+          case 3: voice->vcf_.set_mode (LadderVCFMode::LP4);
             break;
-          case 3: voice->vcf_.set_mode (LadderVCFMode::LP3);
+          case 2: voice->vcf_.set_mode (LadderVCFMode::LP3);
             break;
-          case 2: voice->vcf_.set_mode (LadderVCFMode::LP2);
+          case 1: voice->vcf_.set_mode (LadderVCFMode::LP2);
             break;
-          case 1: voice->vcf_.set_mode (LadderVCFMode::LP1);
-            break;
-          default: run_filter = false;
+          case 0: voice->vcf_.set_mode (LadderVCFMode::LP1);
             break;
           }
         /* --------- run ladder filter - processing in place is ok --------- */
@@ -617,17 +649,20 @@ class BlepSynth : public AudioProcessor {
         float freq_in[n_frames];
         for (uint i = 0; i < n_frames; i++)
           freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next() + voice->fil_envelope_.get_next() * voice->cut_mod_smooth_.get_next());
-        voice->vcf_.set_drive (get_param (pid_drive_));
 
-        float no_out[n_frames];
-        if (!run_filter)
+        int filter_type = irintf (get_param (pid_filter_type_));
+        if (filter_type == 1)
           {
-            // we keep running the filter even if it is disabled in order to have
-            // sane filter signal to switch to when the filter is enabled again
-            outputs[0] = no_out;
-            outputs[1] = no_out;
+            voice->vcf_.set_drive (get_param (pid_drive_));
+            voice->vcf_.run_block (n_frames, cutoff, resonance, inputs, outputs, true, true, freq_in, nullptr, nullptr, nullptr);
           }
-        voice->vcf_.run_block (n_frames, cutoff, resonance, inputs, outputs, true, true, freq_in, nullptr, nullptr, nullptr);
+        else if (filter_type == 2)
+          {
+            voice->skfilter_.set_mode (SKFilter::Mode (irintf (get_param (pid_skfilter_mode_))));
+            voice->skfilter_.set_drive (get_param (pid_drive_));
+            voice->skfilter_.set_reso (resonance);
+            voice->skfilter_.process_block (n_frames, outputs[0], outputs[1], freq_in);
+          }
 
         // apply volume envelope
         for (uint i = 0; i < n_frames; i++)
