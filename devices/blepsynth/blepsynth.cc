@@ -273,7 +273,7 @@ class BlepSynth : public AudioProcessor {
 
     static constexpr int SKF_OVERSAMPLE = 4;
 
-    LadderVCFNonLinear vcf_;
+    LadderVCFNonLinear ladder_filter_;
     SKFilter           skfilter_ { SKF_OVERSAMPLE };
   };
   std::vector<Voice>    voices_;
@@ -532,8 +532,8 @@ class BlepSynth : public AudioProcessor {
 
         voice->osc1_.reset();
         voice->osc2_.reset();
-        voice->vcf_.reset();
-        voice->vcf_.set_rate (sample_rate());
+        voice->ladder_filter_.reset();
+        voice->ladder_filter_.set_rate (sample_rate());
 
         voice->skfilter_.reset();
         voice->skfilter_.set_rate (sample_rate());
@@ -639,17 +639,6 @@ class BlepSynth : public AudioProcessor {
             mix_left_out[i]  = osc1_left_out[i] * v1 + osc2_left_out[i] * v2;
             mix_right_out[i] = osc1_right_out[i] * v1 + osc2_right_out[i] * v2;
           }
-        switch (irintf (get_param (pid_ladder_mode_)))
-          {
-          case 3: voice->vcf_.set_mode (LadderVCFMode::LP4);
-            break;
-          case 2: voice->vcf_.set_mode (LadderVCFMode::LP3);
-            break;
-          case 1: voice->vcf_.set_mode (LadderVCFMode::LP2);
-            break;
-          case 0: voice->vcf_.set_mode (LadderVCFMode::LP1);
-            break;
-          }
         /* --------- run ladder filter - processing in place is ok --------- */
 
         /* TODO: under some conditions we could enable SSE in LadderVCF (alignment and block_size) */
@@ -708,8 +697,9 @@ class BlepSynth : public AudioProcessor {
         int filter_type = irintf (get_param (pid_filter_type_));
         if (filter_type == 1)
           {
-            voice->vcf_.set_drive (get_param (pid_drive_));
-            voice->vcf_.run_block (n_frames, cutoff, resonance, inputs, outputs, true, true, freq_in, nullptr, nullptr, nullptr);
+            voice->ladder_filter_.set_mode (LadderVCFMode (irintf (get_param (pid_ladder_mode_))));
+            voice->ladder_filter_.set_drive (get_param (pid_drive_));
+            voice->ladder_filter_.run_block (n_frames, cutoff, resonance, inputs, outputs, true, true, freq_in, nullptr, nullptr, nullptr);
           }
         else if (filter_type == 2)
           {
