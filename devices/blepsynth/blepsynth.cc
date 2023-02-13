@@ -259,6 +259,12 @@ class BlepSynth : public AudioProcessor {
     LinearSmooth cut_mod_smooth_;
     double       last_cut_mod_;
 
+    LinearSmooth reso_smooth_;
+    double       last_reso_;
+
+    LinearSmooth drive_smooth_;
+    double       last_drive_;
+
     BlepUtils::OscImpl osc1_;
     BlepUtils::OscImpl osc2_;
 
@@ -515,6 +521,12 @@ class BlepSynth : public AudioProcessor {
         voice->cut_mod_smooth_.reset (sample_rate(), 0.020);
         voice->last_cut_mod_ = -5000; // force reset
         voice->last_key_track_ = -5000;
+
+        voice->reso_smooth_.reset (sample_rate(), 0.020);
+        voice->last_reso_ = -5000; // force reset
+                                   //
+        voice->drive_smooth_.reset (sample_rate(), 0.020);
+        voice->last_drive_ = -5000; // force reset
       }
   }
   void
@@ -620,7 +632,6 @@ class BlepSynth : public AudioProcessor {
         const float *inputs[2]  = { mix_left_out, mix_right_out };
         float       *outputs[2] = { mix_left_out, mix_right_out };
         double cutoff = get_param (pid_cutoff_);
-        double resonance = get_param (pid_resonance_) * 0.01;
         double key_track = get_param (pid_key_track_) * 0.01;
 
         if (fabs (voice->last_cutoff_ - cutoff) > 1e-7 || fabs (voice->last_key_track_ - key_track) > 1e-7)
@@ -642,13 +653,33 @@ class BlepSynth : public AudioProcessor {
             voice->cut_mod_smooth_.set (cut_mod, reset);
             voice->last_cut_mod_ = cut_mod;
           }
+        double resonance = get_param (pid_resonance_) * 0.01;
+        if (fabs (voice->last_reso_ - resonance) > 1e-7)
+          {
+            const bool reset = voice->last_reso_ < -1000;
+
+            voice->reso_smooth_.set (resonance, reset);
+            voice->last_reso_ = resonance;
+          }
+        double drive = get_param (pid_drive_);
+        if (fabs (voice->last_drive_ - drive) > 1e-7)
+          {
+            const bool reset = voice->last_drive_ < -1000;
+
+            voice->drive_smooth_.set (drive, reset);
+            voice->last_drive_ = drive;
+          }
         /* TODO: possible improvements:
          *  - exponential smoothing (get rid of exp2f)
          *  - don't do anything if cutoff_smooth_->steps_ == 0 (add accessor)
          */
-        float freq_in[n_frames];
+        float freq_in[n_frames], reso_in[n_frames], drive_in[n_frames];
         for (uint i = 0; i < n_frames; i++)
-          freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next() + voice->fil_envelope_.get_next() * voice->cut_mod_smooth_.get_next());
+          {
+            freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next() + voice->fil_envelope_.get_next() * voice->cut_mod_smooth_.get_next());
+            reso_in[i] = voice->reso_smooth_.get_next();
+            drive_in[i] = voice->drive_smooth_.get_next();
+          }
 
         int filter_type = irintf (get_param (pid_filter_type_));
         if (filter_type == 1)
@@ -659,9 +690,7 @@ class BlepSynth : public AudioProcessor {
         else if (filter_type == 2)
           {
             voice->skfilter_.set_mode (SKFilter::Mode (irintf (get_param (pid_skfilter_mode_))));
-            voice->skfilter_.set_drive (get_param (pid_drive_));
-            voice->skfilter_.set_reso (resonance);
-            voice->skfilter_.process_block (n_frames, outputs[0], outputs[1], freq_in);
+            voice->skfilter_.process_block (n_frames, outputs[0], outputs[1], freq_in, reso_in, drive_in);
           }
 
         // apply volume envelope
