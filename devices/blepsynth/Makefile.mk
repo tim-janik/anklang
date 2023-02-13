@@ -4,3 +4,4 @@ devices/4ase.ccfiles += $(strip			\
 	devices/blepsynth/bleposcdata.cc	\
 	devices/blepsynth/blepsynth.cc		\
 )
+$>/devices/blepsynth/blepsynth.o: EXTRA_FLAGS ::= -I/home/stefan/src/pandaresampler/lib
