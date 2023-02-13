@@ -213,6 +213,8 @@ class BlepSynth : public AudioProcessor {
   };
   OscParams osc_params[2];
   ParamId pid_mix_;
+  ParamId pid_vel_track_;
+  ParamId pid_post_gain_;
 
   ParamId pid_cutoff_;
   Logscale cutoff_logscale_;
@@ -251,6 +253,7 @@ class BlepSynth : public AudioProcessor {
     int          midi_note_   = -1;
     int          channel_     = 0;
     double       freq_        = 0;
+    float        vel_gain_    = 0;
 
     LinearSmooth cutoff_smooth_;
     double       last_cutoff_;
@@ -322,7 +325,7 @@ class BlepSynth : public AudioProcessor {
     ladder_mode_choices += { "LP2"_uc, "2 Pole Lowpass, 12dB/Octave" };
     ladder_mode_choices += { "LP3"_uc, "3 Pole Lowpass, 18dB/Octave" };
     ladder_mode_choices += { "LP4"_uc, "4 Pole Lowpass, 24dB/Octave" };
-    pid_ladder_mode_ = add_param ("Filter Mode", "Mode", std::move (ladder_mode_choices), 2, "", "Ladder Filter Mode to be used");
+    pid_ladder_mode_ = add_param ("Filter Mode", "Mode", std::move (ladder_mode_choices), 1, "", "Ladder Filter Mode to be used");
 
     ChoiceS skfilter_mode_choices;
     skfilter_mode_choices += { "LP1"_uc, "1 Pole Lowpass, 6dB/Octave" };
@@ -341,7 +344,7 @@ class BlepSynth : public AudioProcessor {
     skfilter_mode_choices += { "HP4"_uc, "4 Pole Highpass, 24dB/Octave" };
     skfilter_mode_choices += { "HP6"_uc, "6 Pole Highpass, 36dB/Octave" };
     skfilter_mode_choices += { "HP8"_uc, "8 Pole Highpass, 48dB/Octave" };
-    pid_skfilter_mode_ = add_param ("SKFilter Mode", "Mode", std::move (skfilter_mode_choices), 3, "", "Sallen-Key Filter Mode to be used");
+    pid_skfilter_mode_ = add_param ("SKFilter Mode", "Mode", std::move (skfilter_mode_choices), 2, "", "Sallen-Key Filter Mode to be used");
 
     oscparams (1);
 
@@ -360,6 +363,9 @@ class BlepSynth : public AudioProcessor {
 
     start_group ("Mix");
     pid_mix_ = add_param ("Mix", "Mix", 0, 100, 0, "%");
+    pid_vel_track_ = add_param ("Velocity Tracking", "VelTr", 0, 100, 50, "%");
+    // TODO: this probably should default to 0dB once we have track/mixer volumes
+    pid_post_gain_ = add_param ("Post Gain", "Gain", -24, 24, -12, "dB");
 
     start_group ("Keyboard Input");
     pid_c_ = add_param ("Main Input  1",  "C", false, GUIONLY);
@@ -472,8 +478,25 @@ class BlepSynth : public AudioProcessor {
       return string_format ("%.1f ms", ms);
     return string_format ("%.2f ms", ms);
   }
+  static float
+  velocity_to_gain (float velocity, float vel_track)
+  {
+    /* input: velocity  [0..1]
+     *        vel_track [0..1]
+     *
+     * convert, so that
+     *  - gain (0) is (1 - vel_track)^2
+     *  - gain (1) is 1
+     *  - sqrt(gain(velocity)) is a straight line
+     *
+     *  See Roger B. Dannenberg: The Interpretation of Midi Velocity
+     */
+    const float x = (1 - vel_track) + vel_track * velocity;
+
+    return x * x;
+  }
   void
-  note_on (int channel, int midi_note, int vel)
+  note_on (int channel, int midi_note, float vel)
   {
     Voice *voice = alloc_voice();
     if (voice)
@@ -482,6 +505,7 @@ class BlepSynth : public AudioProcessor {
         voice->state_ = Voice::ON;
         voice->channel_ = channel;
         voice->midi_note_ = midi_note;
+        voice->vel_gain_ = velocity_to_gain (vel, get_param (pid_vel_track_) * 0.01);
 
         // Volume Envelope
         /* TODO: maybe use non-linear translation between level and sustain % */
@@ -550,7 +574,7 @@ class BlepSynth : public AudioProcessor {
       {
         constexpr int channel = 0;
         if (value)
-          note_on (channel, note, 100);
+          note_on (channel, note, 100./127.);
         else
           note_off (channel, note);
         old_value = value;
@@ -608,8 +632,8 @@ class BlepSynth : public AudioProcessor {
         float mix_left_out[n_frames];
         float mix_right_out[n_frames];
         const float mix_norm = get_param (pid_mix_) * 0.01;
-        const float v1 = 1 - mix_norm;
-        const float v2 = mix_norm;
+        const float v1 = voice->vel_gain_ * (1 - mix_norm);
+        const float v2 = voice->vel_gain_ * mix_norm;
         for (uint i = 0; i < n_frames; i++)
           {
             mix_left_out[i]  = osc1_left_out[i] * v1 + osc2_left_out[i] * v2;
@@ -694,9 +718,10 @@ class BlepSynth : public AudioProcessor {
           }
 
         // apply volume envelope
+        float post_gain_factor = db2voltage (get_param (pid_post_gain_));
         for (uint i = 0; i < n_frames; i++)
           {
-            float amp = 0.25 * voice->envelope_.get_next();
+            float amp = post_gain_factor * voice->envelope_.get_next();
             left_out[i] += mix_left_out[i] * amp;
             right_out[i] += mix_right_out[i] * amp;
           }
