@@ -217,7 +217,6 @@ class BlepSynth : public AudioProcessor {
   ParamId pid_post_gain_;
 
   ParamId pid_cutoff_;
-  Logscale cutoff_logscale_;
   ParamId pid_resonance_;
   ParamId pid_drive_;
   ParamId pid_key_track_;
@@ -306,11 +305,7 @@ class BlepSynth : public AudioProcessor {
 
     start_group ("Filter");
 
-    const double FsharpHz = 440 * ::pow (2, 9 / 12.);
-    const double freq_lo = FsharpHz / ::pow (2, 5);
-    const double freq_hi = FsharpHz * ::pow (2, 5);
-    pid_cutoff_ = add_param ("Cutoff", "Cutoff", freq_lo, freq_hi, FsharpHz, "Hz", STANDARD);
-    cutoff_logscale_.setup (freq_lo, freq_hi);
+    pid_cutoff_ = add_param ("Cutoff", "Cutoff", 15, 144, 60); // cutoff as midi notes
     pid_resonance_ = add_param ("Resonance", "Reso", 0, 100, 25.0, "%");
     pid_drive_ = add_param ("Drive", "Drive", -24, 36, 0, "dB");
     pid_key_track_ = add_param ("Key Tracking", "KeyTr", 0, 100, 50, "%");
@@ -478,6 +473,17 @@ class BlepSynth : public AudioProcessor {
       return string_format ("%.1f ms", ms);
     return string_format ("%.2f ms", ms);
   }
+  static String
+  hz_to_str (double hz)
+  {
+    if (hz > 10000)
+      return string_format ("%.1f kHz", hz / 1000);
+    if (hz > 1000)
+      return string_format ("%.2f kHz", hz / 1000);
+    if (hz > 100)
+      return string_format ("%.0f Hz", hz);
+    return string_format ("%.1f Hz", hz);
+  }
   static float
   velocity_to_gain (float velocity, float vel_track)
   {
@@ -644,7 +650,7 @@ class BlepSynth : public AudioProcessor {
         /* TODO: under some conditions we could enable SSE in LadderVCF (alignment and block_size) */
         const float *inputs[2]  = { mix_left_out, mix_right_out };
         float       *outputs[2] = { mix_left_out, mix_right_out };
-        double cutoff = get_param (pid_cutoff_);
+        double cutoff = convert_cutoff (get_param (pid_cutoff_));
         double key_track = get_param (pid_key_track_) * 0.01;
 
         if (fabs (voice->last_cutoff_ - cutoff) > 1e-7 || fabs (voice->last_key_track_ - key_track) > 1e-7)
@@ -724,6 +730,11 @@ class BlepSynth : public AudioProcessor {
     if (need_free)
       free_unused_voices();
   }
+  static double
+  convert_cutoff (double midi_note)
+  {
+    return 440 * std::pow (2, (midi_note - 69) / 12.);
+  }
   std::string
   param_value_to_text (Id32 paramid, double value) const override
   {
@@ -738,22 +749,10 @@ class BlepSynth : public AudioProcessor {
     for (auto p : { pid_attack_, pid_decay_, pid_release_, pid_fil_attack_, pid_fil_decay_, pid_fil_release_ })
       if (paramid == p)
         return perc_to_str (value);
+    if (paramid == pid_cutoff_)
+      return hz_to_str (convert_cutoff (value));
 
     return AudioProcessor::param_value_to_text (paramid, value);
-  }
-  double
-  value_to_normalized (Id32 paramid, double value) const override
-  {
-    if (paramid == pid_cutoff_)
-      return cutoff_logscale_.iscale (value);
-    return AudioProcessor::value_to_normalized (paramid, value);
-  }
-  double
-  value_from_normalized (Id32 paramid, double normalized) const override
-  {
-    if (paramid == pid_cutoff_)
-      return cutoff_logscale_.scale (normalized);
-    return AudioProcessor::value_from_normalized (paramid, normalized);
   }
 public:
   BlepSynth (AudioEngine &engine) :
