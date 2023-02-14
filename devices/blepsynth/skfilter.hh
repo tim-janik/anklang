@@ -219,12 +219,26 @@ private:
         rtable_.lookup_resonance (res, mode2stages (mode_), fparams.k.data());
       }
   }
+  void
+  zero_fill_state()
+  {
+    for (auto& channel : channels_)
+      {
+        std::fill (channel.s1.begin(), channel.s1.end(), 0.0);
+        std::fill (channel.s2.begin(), channel.s2.end(), 0.0);
+      }
+  }
 public:
   void
   set_mode (Mode m)
   {
-    mode_ = m;
-    fparams_valid_ = false;
+    if (mode_ != m)
+      {
+        mode_ = m;
+
+        zero_fill_state();
+        fparams_valid_ = false;
+      }
   }
   void
   set_freq (float freq)
@@ -256,9 +270,8 @@ public:
       {
         channel.res_up->reset();
         channel.res_down->reset();
-        std::fill (channel.s1.begin(), channel.s1.end(), 0.0);
-        std::fill (channel.s2.begin(), channel.s2.end(), 0.0);
       }
+    zero_fill_state();
     fparams_valid_ = false;
   }
   void
