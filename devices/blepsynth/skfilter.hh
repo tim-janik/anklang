@@ -290,6 +290,11 @@ public:
 
     update_frequency_range();
   }
+  double
+  delay()
+  {
+    return channels_[0].res_up->delay() / over_ + channels_[0].res_down->delay();
+  }
 private:
   void
   update_frequency_range()

@@ -253,6 +253,7 @@ class BlepSynth : public AudioProcessor {
     int          channel_     = 0;
     double       freq_        = 0;
     float        vel_gain_    = 0;
+    bool         new_voice_   = false;
 
     LinearSmooth cutoff_smooth_;
     double       last_cutoff_;
@@ -558,6 +559,7 @@ class BlepSynth : public AudioProcessor {
         voice->skfilter_.reset();
         voice->skfilter_.set_rate (sample_rate());
         voice->skfilter_.set_frequency_range (10, 30000);
+        voice->new_voice_ = true;
 
         voice->cutoff_smooth_.reset (sample_rate(), 0.020);
         voice->last_cutoff_ = -5000; // force reset
@@ -600,6 +602,100 @@ class BlepSynth : public AudioProcessor {
         old_value = value;
       }
   }
+  template<bool INIT>
+  void
+  render_voice (Voice *voice, uint n_frames, float *mix_left_out, float *mix_right_out)
+  {
+    float osc1_left_out[n_frames];
+    float osc1_right_out[n_frames];
+    float osc2_left_out[n_frames];
+    float osc2_right_out[n_frames];
+
+    update_osc (voice->osc1_, osc_params[0]);
+    update_osc (voice->osc2_, osc_params[1]);
+    voice->osc1_.process_sample_stereo (osc1_left_out, osc1_right_out, n_frames);
+    voice->osc2_.process_sample_stereo (osc2_left_out, osc2_right_out, n_frames);
+
+    // apply volume envelope & mix
+    const float mix_norm = get_param (pid_mix_) * 0.01;
+    const float v1 = voice->vel_gain_ * (1 - mix_norm);
+    const float v2 = voice->vel_gain_ * mix_norm;
+    for (uint i = 0; i < n_frames; i++)
+      {
+        mix_left_out[i]  = osc1_left_out[i] * v1 + osc2_left_out[i] * v2;
+        mix_right_out[i] = osc1_right_out[i] * v1 + osc2_right_out[i] * v2;
+      }
+    /* --------- run ladder filter - processing in place is ok --------- */
+
+    /* TODO: under some conditions we could enable SSE in LadderVCF (alignment and block_size) */
+    const float *inputs[2]  = { mix_left_out, mix_right_out };
+    float       *outputs[2] = { mix_left_out, mix_right_out };
+    double cutoff = convert_cutoff (get_param (pid_cutoff_));
+    double key_track = get_param (pid_key_track_) * 0.01;
+
+    if (fabs (voice->last_cutoff_ - cutoff) > 1e-7 || fabs (voice->last_key_track_ - key_track) > 1e-7)
+      {
+        const bool reset = voice->last_cutoff_ < -1000;
+
+        // original strategy for key tracking: cutoff * exp (amount * log (key / 261.63))
+        // but since cutoff_smooth_ is already in log2-frequency space, we can do it better
+
+        voice->cutoff_smooth_.set (fast_log2 (cutoff) + key_track * fast_log2 (voice->freq_ / c3_hertz), reset);
+        voice->last_cutoff_ = cutoff;
+        voice->last_key_track_ = key_track;
+      }
+    double cut_mod = get_param (pid_fil_cut_mod_) / 12.; /* convert semitones to octaves */
+    if (fabs (voice->last_cut_mod_ - cut_mod) > 1e-7)
+      {
+        const bool reset = voice->last_cut_mod_ < -1000;
+
+        voice->cut_mod_smooth_.set (cut_mod, reset);
+        voice->last_cut_mod_ = cut_mod;
+      }
+    double resonance = get_param (pid_resonance_) * 0.01;
+    if (fabs (voice->last_reso_ - resonance) > 1e-7)
+      {
+        const bool reset = voice->last_reso_ < -1000;
+
+        voice->reso_smooth_.set (resonance, reset);
+        voice->last_reso_ = resonance;
+      }
+    double drive = get_param (pid_drive_);
+    if (fabs (voice->last_drive_ - drive) > 1e-7)
+      {
+        const bool reset = voice->last_drive_ < -1000;
+
+        voice->drive_smooth_.set (drive, reset);
+        voice->last_drive_ = drive;
+      }
+    /* TODO: possible improvements:
+     *  - exponential smoothing (get rid of exp2f)
+     *  - don't do anything if cutoff_smooth_->steps_ == 0 (add accessor)
+     */
+    float freq_in[n_frames], reso_in[n_frames], drive_in[n_frames];
+    for (uint i = 0; i < n_frames; i++)
+      {
+        if (INIT)
+          freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next());
+        else
+          freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next() + voice->fil_envelope_.get_next() * voice->cut_mod_smooth_.get_next());
+        reso_in[i] = voice->reso_smooth_.get_next();
+        drive_in[i] = voice->drive_smooth_.get_next();
+      }
+
+    int filter_type = irintf (get_param (pid_filter_type_));
+    if (filter_type == 1)
+      {
+        voice->ladder_filter_.set_mode (LadderVCFMode (irintf (get_param (pid_ladder_mode_))));
+        voice->ladder_filter_.set_drive (get_param (pid_drive_));
+        voice->ladder_filter_.run_block (n_frames, cutoff, resonance, inputs, outputs, true, true, freq_in, nullptr, nullptr, nullptr);
+      }
+    else if (filter_type == 2)
+      {
+        voice->skfilter_.set_mode (SKFilter::Mode (irintf (get_param (pid_skfilter_mode_))));
+        voice->skfilter_.process_block (n_frames, outputs[0], outputs[1], freq_in, reso_in, drive_in);
+      }
+  }
   void
   render (uint n_frames) override
   {
@@ -638,96 +734,24 @@ class BlepSynth : public AudioProcessor {
     floatfill (left_out, 0.f, n_frames);
     floatfill (right_out, 0.f, n_frames);
 
-    for (auto& voice : active_voices_)
+    for (Voice *voice : active_voices_)
       {
-        float osc1_left_out[n_frames];
-        float osc1_right_out[n_frames];
-        float osc2_left_out[n_frames];
-        float osc2_right_out[n_frames];
-
-        update_osc (voice->osc1_, osc_params[0]);
-        update_osc (voice->osc2_, osc_params[1]);
-        voice->osc1_.process_sample_stereo (osc1_left_out, osc1_right_out, n_frames);
-        voice->osc2_.process_sample_stereo (osc2_left_out, osc2_right_out, n_frames);
-
-        // apply volume envelope & mix
+        if (voice->new_voice_)
+          {
+            int filter_type = irintf (get_param (pid_filter_type_));
+            if (filter_type == 2)
+              {
+                // compensate FIR oversampling filter latency
+                int idelay = voice->skfilter_.delay();
+                float junk[idelay];
+                render_voice<true> (voice, voice->skfilter_.delay(), junk, junk);
+              }
+            voice->new_voice_ = false;
+          }
         float mix_left_out[n_frames];
         float mix_right_out[n_frames];
-        const float mix_norm = get_param (pid_mix_) * 0.01;
-        const float v1 = voice->vel_gain_ * (1 - mix_norm);
-        const float v2 = voice->vel_gain_ * mix_norm;
-        for (uint i = 0; i < n_frames; i++)
-          {
-            mix_left_out[i]  = osc1_left_out[i] * v1 + osc2_left_out[i] * v2;
-            mix_right_out[i] = osc1_right_out[i] * v1 + osc2_right_out[i] * v2;
-          }
-        /* --------- run ladder filter - processing in place is ok --------- */
 
-        /* TODO: under some conditions we could enable SSE in LadderVCF (alignment and block_size) */
-        const float *inputs[2]  = { mix_left_out, mix_right_out };
-        float       *outputs[2] = { mix_left_out, mix_right_out };
-        double cutoff = convert_cutoff (get_param (pid_cutoff_));
-        double key_track = get_param (pid_key_track_) * 0.01;
-
-        if (fabs (voice->last_cutoff_ - cutoff) > 1e-7 || fabs (voice->last_key_track_ - key_track) > 1e-7)
-          {
-            const bool reset = voice->last_cutoff_ < -1000;
-
-            // original strategy for key tracking: cutoff * exp (amount * log (key / 261.63))
-            // but since cutoff_smooth_ is already in log2-frequency space, we can do it better
-
-            voice->cutoff_smooth_.set (fast_log2 (cutoff) + key_track * fast_log2 (voice->freq_ / c3_hertz), reset);
-            voice->last_cutoff_ = cutoff;
-            voice->last_key_track_ = key_track;
-          }
-        double cut_mod = get_param (pid_fil_cut_mod_) / 12.; /* convert semitones to octaves */
-        if (fabs (voice->last_cut_mod_ - cut_mod) > 1e-7)
-          {
-            const bool reset = voice->last_cut_mod_ < -1000;
-
-            voice->cut_mod_smooth_.set (cut_mod, reset);
-            voice->last_cut_mod_ = cut_mod;
-          }
-        double resonance = get_param (pid_resonance_) * 0.01;
-        if (fabs (voice->last_reso_ - resonance) > 1e-7)
-          {
-            const bool reset = voice->last_reso_ < -1000;
-
-            voice->reso_smooth_.set (resonance, reset);
-            voice->last_reso_ = resonance;
-          }
-        double drive = get_param (pid_drive_);
-        if (fabs (voice->last_drive_ - drive) > 1e-7)
-          {
-            const bool reset = voice->last_drive_ < -1000;
-
-            voice->drive_smooth_.set (drive, reset);
-            voice->last_drive_ = drive;
-          }
-        /* TODO: possible improvements:
-         *  - exponential smoothing (get rid of exp2f)
-         *  - don't do anything if cutoff_smooth_->steps_ == 0 (add accessor)
-         */
-        float freq_in[n_frames], reso_in[n_frames], drive_in[n_frames];
-        for (uint i = 0; i < n_frames; i++)
-          {
-            freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next() + voice->fil_envelope_.get_next() * voice->cut_mod_smooth_.get_next());
-            reso_in[i] = voice->reso_smooth_.get_next();
-            drive_in[i] = voice->drive_smooth_.get_next();
-          }
-
-        int filter_type = irintf (get_param (pid_filter_type_));
-        if (filter_type == 1)
-          {
-            voice->ladder_filter_.set_mode (LadderVCFMode (irintf (get_param (pid_ladder_mode_))));
-            voice->ladder_filter_.set_drive (get_param (pid_drive_));
-            voice->ladder_filter_.run_block (n_frames, cutoff, resonance, inputs, outputs, true, true, freq_in, nullptr, nullptr, nullptr);
-          }
-        else if (filter_type == 2)
-          {
-            voice->skfilter_.set_mode (SKFilter::Mode (irintf (get_param (pid_skfilter_mode_))));
-            voice->skfilter_.process_block (n_frames, outputs[0], outputs[1], freq_in, reso_in, drive_in);
-          }
+        render_voice<false> (voice, n_frames, mix_left_out, mix_right_out);
 
         // apply volume envelope
         float post_gain_factor = db2voltage (get_param (pid_post_gain_));
