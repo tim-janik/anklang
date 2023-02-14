@@ -427,6 +427,7 @@ class BlepSynth : public AudioProcessor {
   {
     set_max_voices (0);
     set_max_voices (32);
+    adjust_params (true);
   }
   void
   init_osc (BlepUtils::OscImpl& osc, float freq)
@@ -436,6 +437,18 @@ class BlepSynth : public AudioProcessor {
 #if 0
     osc.freq_mod_octaves  = properties->freq_mod_octaves;
 #endif
+  }
+  void
+  adjust_param (Id32 tag) override
+  {
+    if (tag == pid_filter_type_)
+      {
+        for (Voice *voice : active_voices_)
+          {
+            voice->ladder_filter_.reset();
+            voice->skfilter_.reset();
+          }
+      }
   }
   void
   update_osc (BlepUtils::OscImpl& osc, const OscParams& params)
@@ -538,6 +551,7 @@ class BlepSynth : public AudioProcessor {
 
         voice->osc1_.reset();
         voice->osc2_.reset();
+
         voice->ladder_filter_.reset();
         voice->ladder_filter_.set_rate (sample_rate());
 
@@ -589,6 +603,8 @@ class BlepSynth : public AudioProcessor {
   void
   render (uint n_frames) override
   {
+    adjust_params (false);
+
     /* TODO: replace this with true midi input */
     check_note (pid_c_, old_c_, 60);
     check_note (pid_d_, old_d_, 62);
