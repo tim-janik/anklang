@@ -7,6 +7,20 @@ import { LitElement, html, css, unsafeCSS } from '../lit.js';
 
 export const docs = (...args) => undefined;
 
+// == lit_update_all ==
+/** Call requestUpdate() on all `LitElement`s */
+export function lit_update_all (root)
+{
+  root = root || document.body;
+  for (const el of root.querySelectorAll ('*'))
+    {
+      if (el instanceof LitElement)
+	el.requestUpdate();
+      if (el.shadowRoot)
+	lit_update_all (el.shadowRoot);
+    }
+}
+
 // == PostCSS ==
 import * as PostCss from './postcss.js';	// require()s browserified plugins
 const csstree_validator = __DEV__ && await import ('./csstree-validator.esm.js');
