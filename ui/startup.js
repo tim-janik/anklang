@@ -29,7 +29,7 @@ import { create_app } from './b/app.js';
 import * as Script from './script.js';
 
 // Custom Elements
-import { LitElement, html, css, postcss, docs } from '../little.js';
+import { LitElement, html, css, postcss, docs, lit_update_all } from '../little.js';
 
 class PushButton extends HTMLElement {
   constructor() { super(); }
@@ -171,6 +171,29 @@ async function bootup () {
   // create main App instance
   const app = await create_app();
   console.assert (app === App);
+
+  // Ensure APP rerenders when the browser window changes
+  const rerender_all = () => {
+    lit_update_all();
+    const vue_force_update = vm => {
+      vm.$forceUpdate();
+      for (const cv of vm.$children)
+	vue_force_update (cv);
+    };
+    if (window.Shell)
+      vue_force_update (Shell);
+  };
+  window.addEventListener ('resize', rerender_all);
+  document.fonts.addEventListener ("loadingdone", rerender_all);
+  const dpr_rerender_all = () => {
+    if (dpr_rerender_all.media)
+      dpr_rerender_all.media.removeListener (dpr_rerender_all);
+    const mquery_string = `(resolution: ${window.devicePixelRatio}dppx)`;
+    dpr_rerender_all.media = matchMedia (mquery_string);
+    dpr_rerender_all.media.addListener (dpr_rerender_all);
+    rerender_all();
+  };
+  dpr_rerender_all();
 
   // ensure App has an AseProject
   await App.load_project_checked ((await Ase.server.last_project()) || '');
