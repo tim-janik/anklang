@@ -226,6 +226,9 @@ class BlepSynth : public AudioProcessor {
 
   enum { FILTER_TYPE_BYPASS, FILTER_TYPE_LADDER, FILTER_TYPE_SKFILTER };
 
+  static constexpr int CUTOFF_MIN_MIDI = 15;
+  static constexpr int CUTOFF_MAX_MIDI = 144;
+
   ParamId pid_attack_;
   ParamId pid_decay_;
   ParamId pid_sustain_;
@@ -308,7 +311,7 @@ class BlepSynth : public AudioProcessor {
 
     start_group ("Filter");
 
-    pid_cutoff_ = add_param ("Cutoff", "Cutoff", 15, 144, 60); // cutoff as midi notes
+    pid_cutoff_ = add_param ("Cutoff", "Cutoff", CUTOFF_MIN_MIDI, CUTOFF_MAX_MIDI, 60); // cutoff as midi notes
     pid_resonance_ = add_param ("Resonance", "Reso", 0, 100, 25.0, "%");
     pid_drive_ = add_param ("Drive", "Drive", -24, 36, 0, "dB");
     pid_key_track_ = add_param ("Key Tracking", "KeyTr", 0, 100, 50, "%");
@@ -555,12 +558,16 @@ class BlepSynth : public AudioProcessor {
         voice->osc1_.reset();
         voice->osc2_.reset();
 
+        const float cutoff_min_hz = convert_cutoff (CUTOFF_MIN_MIDI);
+        const float cutoff_max_hz = convert_cutoff (CUTOFF_MAX_MIDI);
+
         voice->ladder_filter_.reset();
         voice->ladder_filter_.set_rate (sample_rate());
+        voice->ladder_filter_.set_frequency_range (cutoff_min_hz, cutoff_max_hz);
 
         voice->skfilter_.reset();
         voice->skfilter_.set_rate (sample_rate());
-        voice->skfilter_.set_frequency_range (10, 30000);
+        voice->skfilter_.set_frequency_range (cutoff_min_hz, cutoff_max_hz);
         voice->new_voice_ = true;
 
         voice->cutoff_smooth_.reset (sample_rate(), 0.020);
@@ -680,8 +687,8 @@ class BlepSynth : public AudioProcessor {
     int filter_type = irintf (get_param (pid_filter_type_));
     if (filter_type == FILTER_TYPE_LADDER)
       {
-        voice->ladder_filter_.set_mode (LadderVCFMode (irintf (get_param (pid_ladder_mode_))));
-        voice->ladder_filter_.run_block (n_frames, mix_left_out, mix_right_out, freq_in, reso_in, drive_in);
+        voice->ladder_filter_.set_mode (LadderVCF::Mode (irintf (get_param (pid_ladder_mode_))));
+        voice->ladder_filter_.process_block (n_frames, mix_left_out, mix_right_out, freq_in, reso_in, drive_in);
       }
     else if (filter_type == FILTER_TYPE_SKFILTER)
       {
