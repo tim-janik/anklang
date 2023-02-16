@@ -224,6 +224,8 @@ class BlepSynth : public AudioProcessor {
   ParamId pid_ladder_mode_;
   ParamId pid_skfilter_mode_;
 
+  enum { FILTER_TYPE_BYPASS, FILTER_TYPE_LADDER, FILTER_TYPE_SKFILTER };
+
   ParamId pid_attack_;
   ParamId pid_decay_;
   ParamId pid_sustain_;
@@ -314,7 +316,7 @@ class BlepSynth : public AudioProcessor {
     filter_type_choices += { "—"_uc, "Bypass Filter" };
     filter_type_choices += { "LD"_uc, "Ladder Filter" };
     filter_type_choices += { "SKF"_uc, "Sallen-Key Filter" };
-    pid_filter_type_ = add_param ("Filter Type", "Type", std::move (filter_type_choices), 1, "", "Filter Type to be used");
+    pid_filter_type_ = add_param ("Filter Type", "Type", std::move (filter_type_choices), FILTER_TYPE_LADDER, "", "Filter Type to be used");
 
     ChoiceS ladder_mode_choices;
     ladder_mode_choices += { "LP1"_uc, "1 Pole Lowpass, 6dB/Octave" };
@@ -676,12 +678,12 @@ class BlepSynth : public AudioProcessor {
       }
 
     int filter_type = irintf (get_param (pid_filter_type_));
-    if (filter_type == 1)
+    if (filter_type == FILTER_TYPE_LADDER)
       {
         voice->ladder_filter_.set_mode (LadderVCFMode (irintf (get_param (pid_ladder_mode_))));
         voice->ladder_filter_.run_block (n_frames, mix_left_out, mix_right_out, freq_in, reso_in, drive_in);
       }
-    else if (filter_type == 2)
+    else if (filter_type == FILTER_TYPE_SKFILTER)
       {
         voice->skfilter_.set_mode (SKFilter::Mode (irintf (get_param (pid_skfilter_mode_))));
         voice->skfilter_.process_block (n_frames, mix_left_out, mix_right_out, freq_in, reso_in, drive_in);
@@ -730,12 +732,16 @@ class BlepSynth : public AudioProcessor {
         if (voice->new_voice_)
           {
             int filter_type = irintf (get_param (pid_filter_type_));
-            if (filter_type == 2)
+            int idelay = 0;
+            if (filter_type == FILTER_TYPE_LADDER)
+              idelay = voice->ladder_filter_.delay();
+            if (filter_type == FILTER_TYPE_SKFILTER)
+              idelay = voice->skfilter_.delay();
+            if (idelay)
               {
                 // compensate FIR oversampling filter latency
-                int idelay = voice->skfilter_.delay();
                 float junk[idelay];
-                render_voice (voice, voice->skfilter_.delay(), junk, junk);
+                render_voice (voice, idelay, junk, junk);
               }
             voice->new_voice_ = false;
           }
