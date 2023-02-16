@@ -1,45 +1,56 @@
-// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// Licensed GNU LGPL v2.1 or later: http://www.gnu.org/licenses/lgpl.html
 #ifndef __ASE_DEVICES_LADDER_VCF_HH__
 #define __ASE_DEVICES_LADDER_VCF_HH__
 
-#include <ase/resampler2.hh>
+#define PANDA_RESAMPLER_HEADER_ONLY
+#include "pandaresampler.hh"
+
+#include <array>
 
 namespace Ase {
 
+using PandaResampler::Resampler2;
+
 enum class LadderVCFMode { LP1, LP2, LP3, LP4 };
 
-template<bool OVERSAMPLE, bool NON_LINEAR>
 class LadderVCF
 {
   struct Channel {
-    double x1, x2, x3, x4;
-    double y1, y2, y3, y4;
+    float x1, x2, x3, x4;
+    float y1, y2, y3, y4;
 
-    // NOTE: Ase currently doesn't enforce SSE alignment so we force FPU resampling
-    Resampler2 res_up   { Resampler2::UP,   Resampler2::PREC_48DB, false };
-    Resampler2 res_down { Resampler2::DOWN, Resampler2::PREC_48DB, false };
+    std::unique_ptr<Resampler2> res_up;
+    std::unique_ptr<Resampler2> res_down;
   };
   std::array<Channel, 2> channels;
   LadderVCFMode mode;
-  double pre_scale, post_scale;
-  double rate;
-  double freq_mod_octaves;
-  double key_tracking;
-  double resonance_mod;
+  float rate;
+  float freq_ = 440;
+  float reso_ = 0;
+  float drive_ = 0;
+  uint over_ = 0;
+  bool test_linear_ = false;
 
-  double last_key_tracking_factor;
-  float  last_key_freq;
-
-public:
-  LadderVCF()
+  struct FParams
   {
+    float reso = 0;
+    float pre_scale = 1;
+    float post_scale = 1;
+  };
+  FParams fparams_;
+  bool    fparams_valid_ = false;
+public:
+  LadderVCF (int over) :
+    over_ (over)
+  {
+    for (auto& channel : channels)
+      {
+        channel.res_up   = std::make_unique<Resampler2> (Resampler2::UP, over_, Resampler2::PREC_72DB);
+        channel.res_down = std::make_unique<Resampler2> (Resampler2::DOWN, over_, Resampler2::PREC_72DB);
+      }
     reset();
     set_mode (LadderVCFMode::LP4);
-    set_drive (0);
     set_rate (48000);
-    set_freq_mod_octaves (5);
-    set_key_tracking (0.5);
-    set_resonance_mod (0.1);
   }
   void
   set_mode (LadderVCFMode new_mode)
@@ -47,36 +58,32 @@ public:
     mode = new_mode;
   }
   void
-  set_drive (double drive_db)
+  set_freq (float freq)
   {
-    const double drive_delta_db = 36;
-
-    pre_scale = db2voltage (drive_db - drive_delta_db);
-    post_scale = std::max (1 / pre_scale, 1.0);
+    freq_ = freq;
   }
   void
-  set_rate (double r)
+  set_reso (float reso)
+  {
+    reso_ = reso;
+    fparams_valid_ = false;
+  }
+  void
+  set_drive (float drive)
+  {
+    drive_ = drive;
+    fparams_valid_ = false;
+  }
+  void
+  set_test_linear (bool test_linear)
+  {
+    test_linear_ = test_linear;
+    fparams_valid_ = false;
+  }
+  void
+  set_rate (float r)
   {
     rate = r;
-  }
-  void
-  set_freq_mod_octaves (double octaves)
-  {
-    freq_mod_octaves = octaves;
-  }
-  void
-  set_key_tracking (double amount)
-  {
-    key_tracking = amount;
-
-    // force recomputing key tracking factor
-    last_key_freq = -1;
-    last_key_tracking_factor = 0;
-  }
-  void
-  set_resonance_mod (double amount)
-  {
-    resonance_mod = amount;
   }
   void
   reset()
@@ -86,32 +93,45 @@ public:
         c.x1 = c.x2 = c.x3 = c.x4 = 0;
         c.y1 = c.y2 = c.y3 = c.y4 = 0;
 
-        c.res_up.reset();
-        c.res_down.reset();
+        c.res_up->reset();
+        c.res_down->reset();
       }
-    last_key_freq = -1;
-    last_key_tracking_factor = 0;
+    fparams_valid_ = false;
   }
-  double
-  distort (double x)
+  float
+  distort (float x)
   {
-    if (NON_LINEAR)
-      {
-        /* shaped somewhat similar to tanh() and others, but faster */
-        x = std::clamp (x, -1.0, 1.0);
+    /* shaped somewhat similar to tanh() and others, but faster */
+    x = std::clamp (x, -1.0f, 1.0f);
 
-        return x - x * x * x * (1.0 / 3);
-      }
-    else
-      {
-        return x;
-      }
+    return x - x * x * x * (1.0f / 3);
   }
 private:
-  template<int CHANNEL_MASK> inline bool
-  need_channel (uint ch)
+  void
+  setup_reso_drive (FParams& fparams, float reso, float drive)
   {
-    return (1 << ch) & CHANNEL_MASK;
+    if (test_linear_) // test filter as linear filter; don't do any resonance correction
+      {
+        const float scale = 1e-5;
+        fparams.pre_scale = scale;
+        fparams.post_scale = 1 / scale;
+        fparams.reso = reso;
+
+        return;
+      }
+    const float db_x2_factor = 0.166096404744368; // 1/(20*log(2)/log(10))
+
+    // scale signal down (without normalization on output) for negative drive
+    float negative_drive_vol = 1;
+    if (drive < 0)
+      {
+        negative_drive_vol = exp2f (drive * db_x2_factor);
+        drive = 0;
+      }
+    float vol = exp2f ((drive + -12 * reso) * db_x2_factor);
+    fparams.pre_scale = negative_drive_vol * vol;
+    fparams.post_scale = std::max (1 / vol, 1.0f);
+    fparams.reso = reso;
   }
   /*
    * This ladder filter implementation is mainly based on
@@ -120,217 +140,191 @@ private:
    * Oscillator and Filter Algorithms for Virtual Analog Synthesis.
    * Computer Music Journal. 30. 19-31. 10.1162/comj.2006.30.2.19.
    */
-  template<LadderVCFMode MODE, int CHANNEL_MASK> inline void
-  run (double *values, double fc, double res)
+  template<LadderVCFMode MODE, bool STEREO> inline void
+  run (float *left, float *right, float fc)
   {
-    fc = M_PI * fc;
-    const double g = 0.9892 * fc - 0.4342 * fc * fc + 0.1381 * fc * fc * fc - 0.0202 * fc * fc * fc * fc;
-    const double gg = g * g;
+    const float pi = M_PI;
+    fc = pi * fc;
+    const float g = 0.9892f * fc - 0.4342f * fc * fc + 0.1381f * fc * fc * fc - 0.0202f * fc * fc * fc * fc;
+    const float b0 = g * (1 / 1.3f);
+    const float b1 = g * (0.3f / 1.3f);
+    const float a1 = g - 1;
 
-    res *= 1.0029 + 0.0526 * fc - 0.0926 * fc * fc + 0.0218 * fc * fc * fc;
+    float res = fparams_.reso;
+    res *= 1.0029f + 0.0526f * fc - 0.0926f * fc * fc + 0.0218f * fc * fc * fc;
 
-    constexpr uint oversample_count = OVERSAMPLE ? 2 : 1;
-    for (uint os = 0; os < oversample_count; os++)
+    for (uint os = 0; os < over_; os++)
       {
-        for (uint i = 0; i < channels.size(); i++)
+        for (uint i = 0; i < (STEREO ? 2 : 1); i++)
           {
-            if (need_channel<CHANNEL_MASK> (i))
+            float &value = i == 0 ? left[os] : right[os];
+
+            Channel& c = channels[i];
+            const float x = value * fparams_.pre_scale;
+            const float g_comp = 0.5f; // passband gain correction
+            const float x0 = distort (x - (c.y4 - g_comp * x) * res * 4);
+
+            c.y1 = b0 * x0 + b1 * c.x1 - a1 * c.y1;
+            c.x1 = x0;
+
+            c.y2 = b0 * c.y1 + b1 * c.x2 - a1 * c.y2;
+            c.x2 = c.y1;
+
+            c.y3 = b0 * c.y2 + b1 * c.x3 - a1 * c.y3;
+            c.x3 = c.y2;
+
+            c.y4 = b0 * c.y3 + b1 * c.x4 - a1 * c.y4;
+            c.x4 = c.y3;
+
+            switch (MODE)
               {
-                Channel& c = channels[i];
-                const double x = values[i] * pre_scale;
-                const double g_comp = 0.5; // passband gain correction
-                const double x0 = distort (x - (c.y4 - g_comp * x) * res * 4) * gg * gg * (1.0 / 1.3 / 1.3 / 1.3 / 1.3);
-
-                c.y1 = x0 + c.x1 * 0.3 + c.y1 * (1 - g);
-                c.x1 = x0;
-
-                c.y2 = c.y1 + c.x2 * 0.3 + c.y2 * (1 - g);
-                c.x2 = c.y1;
-
-                c.y3 = c.y2 + c.x3 * 0.3 + c.y3 * (1 - g);
-                c.x3 = c.y2;
-
-                c.y4 = c.y3 + c.x4 * 0.3 + c.y4 * (1 - g);
-                c.x4 = c.y3;
-
-                switch (MODE)
-                  {
-                    case LadderVCFMode::LP1:
-                      values[i] = c.y1 / (gg * g * (1.0 / (1.3 * 1.3 * 1.3))) * post_scale;
-                      break;
-                    case LadderVCFMode::LP2:
-                      values[i] = c.y2 / (gg * (1.0 / (1.3 * 1.3))) * post_scale;
-                      break;
-                    case LadderVCFMode::LP3:
-                      values[i] = c.y3 / (g * (1.0 / 1.3)) * post_scale;
-                      break;
-                    case LadderVCFMode::LP4:
-                      values[i] = c.y4 * post_scale;
-                      break;
-                    default:
-                      ASE_ASSERT_RETURN_UNREACHED();
-                  }
+                case LadderVCFMode::LP1:
+                  value = c.y1 * fparams_.post_scale;
+                  break;
+                case LadderVCFMode::LP2:
+                  value = c.y2 * fparams_.post_scale;
+                  break;
+                case LadderVCFMode::LP3:
+                  value = c.y3 * fparams_.post_scale;
+                  break;
+                case LadderVCFMode::LP4:
+                  value = c.y4 * fparams_.post_scale;
+                  break;
+                default:
+                  assert (false);
               }
           }
-        values += channels.size();
       }
   }
-  template<LadderVCFMode MODE, int CHANNEL_MASK> inline void
+  template<LadderVCFMode MODE, bool STEREO> inline void
   do_run_block (uint          n_samples,
-                double        fc,
-                double        res,
-                const float **inputs,
-                float       **outputs,
+                float        *left,
+                float        *right,
                 const float  *freq_in,
-                const float  *freq_mod_in,
-                const float  *key_freq_in,
-                const float  *reso_mod_in)
+                const float  *reso_in,
+                const float  *drive_in)
   {
-    float over_samples[2][2 * n_samples];
-    float freq_scale = OVERSAMPLE ? 0.5 : 1.0;
+    float over_samples_left[over_ * n_samples];
+    float over_samples_right[over_ * n_samples];
+    float freq_scale = 1.0f / over_;
     float nyquist    = rate * 0.5;
 
-    if (OVERSAMPLE)
+    channels[0].res_up->process_block (left, n_samples, over_samples_left);
+    if (STEREO)
+      channels[1].res_up->process_block (right, n_samples, over_samples_right);
+
+    float fc = freq_ * freq_scale / nyquist;
+
+    if (!fparams_valid_)
       {
-        for (size_t i = 0; i < channels.size(); i++)
-          if (need_channel<CHANNEL_MASK> (i))
-            channels[i].res_up.process_block (inputs[i], n_samples, over_samples[i]);
+        setup_reso_drive (fparams_, reso_in ? reso_in[0] : reso_, drive_in ? drive_in[0] : drive_);
+        fparams_valid_ = true;
       }
 
-    fc *= freq_scale;
-
-    for (uint i = 0; i < n_samples; i++)
+    if (reso_in || drive_in)
       {
-        double mod_fc = fc;
-        double mod_res = res;
+        /* for reso or drive modulation, we split the input it into small blocks
+         * and interpolate the pre_scale / post_scale / reso parameters
+         */
+        float *left_blk = over_samples_left;
+        float *right_blk = over_samples_right;
 
-        if (freq_in)
-          mod_fc = freq_in[i] * freq_scale / nyquist;
-
-        if (freq_mod_in)
-          mod_fc *= fast_exp2 (freq_mod_in[i] * freq_mod_octaves);
-
-        if (key_freq_in)
+        uint n_remaining_samples = n_samples;
+        while (n_remaining_samples)
           {
-            if (ASE_UNLIKELY (voltage_changed (key_freq_in[i], last_key_freq)))
+            const uint todo = std::min<uint> (n_remaining_samples, 64);
+
+            FParams fparams_end;
+            setup_reso_drive (fparams_end, reso_in ? reso_in[todo - 1] : reso_, drive_in ? drive_in[todo - 1] : drive_);
+
+            float todo_inv = 1.f / todo;
+            float delta_pre_scale = (fparams_end.pre_scale - fparams_.pre_scale) * todo_inv;
+            float delta_post_scale = (fparams_end.post_scale - fparams_.post_scale) * todo_inv;
+            float delta_reso = (fparams_end.reso - fparams_.reso) * todo_inv;
+
+            uint j = 0;
+            for (uint i = 0; i < todo * over_; i += over_)
               {
-                /* key tracking from frequency is expensive to compute; with this optimization
-                 * it should be fast, because the key frequency usually doesn't change
-                 */
-                last_key_freq = key_freq_in[i];
-                last_key_tracking_factor = std::exp (key_tracking * std::log (voltage2hz (key_freq_in[i]) / c3_hertz));
+                fparams_.pre_scale += delta_pre_scale;
+                fparams_.post_scale += delta_post_scale;
+                fparams_.reso += delta_reso;
+
+                float mod_fc = fc;
+
+                if (freq_in)
+                  mod_fc = freq_in[j++] * freq_scale / nyquist;
+
+                mod_fc  = std::clamp (mod_fc, 0.0f, 1.0f);
+
+                run<MODE, STEREO> (left_blk + i, right_blk + i, mod_fc);
               }
-            mod_fc *= last_key_tracking_factor;
-          }
-        if (reso_mod_in)
-          mod_res = std::clamp (mod_res + resonance_mod * reso_mod_in[i], 0.0, 1.0);
 
-        mod_fc = std::clamp (mod_fc, 0.0, 1.0);
+            n_remaining_samples -= todo;
+            left_blk += todo * over_;
+            right_blk += todo * over_;
 
-        if (OVERSAMPLE)
-          {
-            const uint over_pos = i * 2;
-            double values[4] = {
-              over_samples[0][over_pos],
-              over_samples[1][over_pos],
-              over_samples[0][over_pos + 1],
-              over_samples[1][over_pos + 1],
-            };
-
-            run<MODE, CHANNEL_MASK> (values, mod_fc, mod_res);
-
-            over_samples[0][over_pos] = values[0];
-            over_samples[1][over_pos] = values[1];
-            over_samples[0][over_pos + 1] = values[2];
-            over_samples[1][over_pos + 1] = values[3];
-          }
-        else
-          {
-            double values[2] = { inputs[0][i], inputs[1][i] };
-
-            run<MODE, CHANNEL_MASK> (values, mod_fc, mod_res);
-
-            outputs[0][i] = values[0];
-            outputs[1][i] = values[1];
+            if (freq_in)
+              freq_in += todo;
+            if (reso_in)
+              reso_in += todo;
+            if (drive_in)
+              drive_in += todo;
           }
       }
-    if (OVERSAMPLE)
+    else
       {
-        for (size_t i = 0; i < channels.size(); i++)
-          if (need_channel<CHANNEL_MASK> (i))
-            channels[i].res_down.process_block (over_samples[i], 2 * n_samples, outputs[i]);
+        for (uint i = 0; i < n_samples; i++)
+          {
+            float mod_fc = fc;
+
+            if (freq_in)
+              mod_fc = freq_in[i] * freq_scale / nyquist;
+
+            mod_fc  = std::clamp (mod_fc, 0.0f, 1.0f);
+
+            const uint over_pos = i * over_;
+            run<MODE, STEREO> (over_samples_left + over_pos, over_samples_right + over_pos, mod_fc);
+          }
       }
+    channels[0].res_down->process_block (over_samples_left, over_ * n_samples, left);
+    if (STEREO)
+      channels[1].res_down->process_block (over_samples_right, over_ * n_samples, right);
   }
   template<LadderVCFMode MODE> inline void
   run_block_mode (uint          n_samples,
-                  double        fc,
-                  double        res,
-                  const float **inputs,
-                  float       **outputs,
-                  int           channel_mask,
+                  float        *left,
+                  float        *right,
                   const float  *freq_in,
-                  const float  *freq_mod_in,
-                  const float  *key_freq_in,
-                  const float  *reso_mod_in)
+                  const float  *reso_in,
+                  const float  *drive_in)
   {
-    switch (channel_mask)
-      {
-        case 0: do_run_block<MODE, 0> (n_samples, fc, res, inputs, outputs, freq_in, freq_mod_in, key_freq_in, reso_mod_in);
-                break;
-        case 1: do_run_block<MODE, 1> (n_samples, fc, res, inputs, outputs, freq_in, freq_mod_in, key_freq_in, reso_mod_in);
-                break;
-        case 2: do_run_block<MODE, 2> (n_samples, fc, res, inputs, outputs, freq_in, freq_mod_in, key_freq_in, reso_mod_in);
-                break;
-        case 3: do_run_block<MODE, 3> (n_samples, fc, res, inputs, outputs, freq_in, freq_mod_in, key_freq_in, reso_mod_in);
-                break;
-        default: ASE_ASSERT_RETURN_UNREACHED();
-      }
+    if (right) // stereo?
+      do_run_block<MODE, true> (n_samples, left, right, freq_in, reso_in, drive_in);
+    else
+      do_run_block<MODE, false> (n_samples, left, right, freq_in, reso_in, drive_in);
   }
 public:
   void
-  run_block (uint           n_samples,
-             double         fc,
-             double         res,
-             const float  **inputs,
-             float        **outputs,
-             bool           need_left,
-             bool           need_right,
-             const float   *freq_in,
-             const float   *freq_mod_in,
-             const float   *key_freq_in,
-             const float   *reso_mod_in)
+  run_block (uint         n_samples,
+             float       *left,
+             float       *right,
+             const float *freq_in = nullptr,
+             const float *reso_in = nullptr,
+             const float *drive_in = nullptr)
   {
-    int channel_mask = 0;
-    if (need_left)
-      channel_mask |= 1;
-    if (need_right)
-      channel_mask |= 2;
     switch (mode)
     {
-      case LadderVCFMode::LP4: run_block_mode<LadderVCFMode::LP4> (n_samples, fc, res, inputs, outputs, channel_mask,
-                                                                   freq_in, freq_mod_in, key_freq_in, reso_mod_in);
+      case LadderVCFMode::LP4: run_block_mode<LadderVCFMode::LP4> (n_samples, left, right, freq_in, reso_in, drive_in);
                                break;
-      case LadderVCFMode::LP3: run_block_mode<LadderVCFMode::LP3> (n_samples, fc, res, inputs, outputs, channel_mask,
-                                                                   freq_in, freq_mod_in, key_freq_in, reso_mod_in);
+      case LadderVCFMode::LP3: run_block_mode<LadderVCFMode::LP3> (n_samples, left, right, freq_in, reso_in, drive_in);
                                break;
-      case LadderVCFMode::LP2: run_block_mode<LadderVCFMode::LP2> (n_samples, fc, res, inputs, outputs, channel_mask,
-                                                                   freq_in, freq_mod_in, key_freq_in, reso_mod_in);
+      case LadderVCFMode::LP2: run_block_mode<LadderVCFMode::LP2> (n_samples, left, right, freq_in, reso_in, drive_in);
                                break;
-      case LadderVCFMode::LP1: run_block_mode<LadderVCFMode::LP1> (n_samples, fc, res, inputs, outputs, channel_mask,
-                                                                   freq_in, freq_mod_in, key_freq_in, reso_mod_in);
+      case LadderVCFMode::LP1: run_block_mode<LadderVCFMode::LP1> (n_samples, left, right, freq_in, reso_in, drive_in);
                                break;
     }
   }
 };
-
-// fast linear model of the filter
-typedef LadderVCF<false, false> LadderVCFLinear;
-
-// slow but accurate non-linear model of the filter (uses oversampling)
-typedef LadderVCF<true,  true>  LadderVCFNonLinear;
-
-// fast non-linear version (no oversampling), may have aliasing
-typedef LadderVCF<false, true>  LadderVCFNonLinearCheap;
 
 } // Ase
 
