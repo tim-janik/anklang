@@ -271,10 +271,10 @@ class BlepSynth : public AudioProcessor {
     BlepUtils::OscImpl osc1_;
     BlepUtils::OscImpl osc2_;
 
-    static constexpr int SKF_OVERSAMPLE = 4;
+    static constexpr int FILTER_OVERSAMPLE = 4;
 
-    LadderVCFNonLinear ladder_filter_;
-    SKFilter           skfilter_ { SKF_OVERSAMPLE };
+    LadderVCF ladder_filter_ { FILTER_OVERSAMPLE };
+    SKFilter  skfilter_ { FILTER_OVERSAMPLE };
   };
   std::vector<Voice>    voices_;
   std::vector<Voice *>  active_voices_;
@@ -602,7 +602,6 @@ class BlepSynth : public AudioProcessor {
         old_value = value;
       }
   }
-  template<bool INIT>
   void
   render_voice (Voice *voice, uint n_frames, float *mix_left_out, float *mix_right_out)
   {
@@ -625,11 +624,7 @@ class BlepSynth : public AudioProcessor {
         mix_left_out[i]  = osc1_left_out[i] * v1 + osc2_left_out[i] * v2;
         mix_right_out[i] = osc1_right_out[i] * v1 + osc2_right_out[i] * v2;
       }
-    /* --------- run ladder filter - processing in place is ok --------- */
-
-    /* TODO: under some conditions we could enable SSE in LadderVCF (alignment and block_size) */
-    const float *inputs[2]  = { mix_left_out, mix_right_out };
-    float       *outputs[2] = { mix_left_out, mix_right_out };
+    /* --------- run filter - processing in place is ok --------- */
     double cutoff = convert_cutoff (get_param (pid_cutoff_));
     double key_track = get_param (pid_key_track_) * 0.01;
 
@@ -675,10 +670,7 @@ class BlepSynth : public AudioProcessor {
     float freq_in[n_frames], reso_in[n_frames], drive_in[n_frames];
     for (uint i = 0; i < n_frames; i++)
       {
-        if (INIT)
-          freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next());
-        else
-          freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next() + voice->fil_envelope_.get_next() * voice->cut_mod_smooth_.get_next());
+        freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next() + voice->fil_envelope_.get_next() * voice->cut_mod_smooth_.get_next());
         reso_in[i] = voice->reso_smooth_.get_next();
         drive_in[i] = voice->drive_smooth_.get_next();
       }
@@ -687,13 +679,12 @@ class BlepSynth : public AudioProcessor {
     if (filter_type == 1)
       {
         voice->ladder_filter_.set_mode (LadderVCFMode (irintf (get_param (pid_ladder_mode_))));
-        voice->ladder_filter_.set_drive (get_param (pid_drive_));
-        voice->ladder_filter_.run_block (n_frames, cutoff, resonance, inputs, outputs, true, true, freq_in, nullptr, nullptr, nullptr);
+        voice->ladder_filter_.run_block (n_frames, mix_left_out, mix_right_out, freq_in, reso_in, drive_in);
       }
     else if (filter_type == 2)
       {
         voice->skfilter_.set_mode (SKFilter::Mode (irintf (get_param (pid_skfilter_mode_))));
-        voice->skfilter_.process_block (n_frames, outputs[0], outputs[1], freq_in, reso_in, drive_in);
+        voice->skfilter_.process_block (n_frames, mix_left_out, mix_right_out, freq_in, reso_in, drive_in);
       }
   }
   void
@@ -744,14 +735,14 @@ class BlepSynth : public AudioProcessor {
                 // compensate FIR oversampling filter latency
                 int idelay = voice->skfilter_.delay();
                 float junk[idelay];
-                render_voice<true> (voice, voice->skfilter_.delay(), junk, junk);
+                render_voice (voice, voice->skfilter_.delay(), junk, junk);
               }
             voice->new_voice_ = false;
           }
         float mix_left_out[n_frames];
         float mix_right_out[n_frames];
 
-        render_voice<false> (voice, n_frames, mix_left_out, mix_right_out);
+        render_voice (voice, n_frames, mix_left_out, mix_right_out);
 
         // apply volume envelope
         float post_gain_factor = db2voltage (get_param (pid_post_gain_));
