@@ -149,7 +149,11 @@ public:
         params_.delta  = (end_x - RATIO * (start_x - end_x)) * (1 - params_.factor);
       }
   }
-
+  bool
+  is_constant()
+  {
+    return state_ == State::SUSTAIN || state_ == State::DONE;
+  }
   float
   get_next()
   {
@@ -672,28 +676,54 @@ class BlepSynth : public AudioProcessor {
         voice->drive_smooth_.set (drive, reset);
         voice->last_drive_ = drive;
       }
-    /* TODO: possible improvements:
-     *  - exponential smoothing (get rid of exp2f)
-     *  - don't do anything if cutoff_smooth_->steps_ == 0 (add accessor)
-     */
-    float freq_in[n_frames], reso_in[n_frames], drive_in[n_frames];
-    for (uint i = 0; i < n_frames; i++)
+
+    auto filter_process_block = [&] (auto& filter)
       {
-        freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next() + voice->fil_envelope_.get_next() * voice->cut_mod_smooth_.get_next());
-        reso_in[i] = voice->reso_smooth_.get_next();
-        drive_in[i] = voice->drive_smooth_.get_next();
-      }
+        auto gen_filter_input = [&] (float *freq_in, float *reso_in, float *drive_in, uint n_frames)
+          {
+            for (uint i = 0; i < n_frames; i++)
+              {
+                freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next() + voice->fil_envelope_.get_next() * voice->cut_mod_smooth_.get_next());
+                reso_in[i] = voice->reso_smooth_.get_next();
+                drive_in[i] = voice->drive_smooth_.get_next();
+              }
+          };
+
+        bool const_freq = voice->cutoff_smooth_.is_constant() && voice->fil_envelope_.is_constant() && voice->cut_mod_smooth_.is_constant();
+        bool const_reso = voice->reso_smooth_.is_constant();
+        bool const_drive = voice->drive_smooth_.is_constant();
+
+        if (const_freq && const_reso && const_drive)
+          {
+            /* use more efficient version of the filter computation if all parameters are constants */
+            float freq, reso, drive;
+            gen_filter_input (&freq, &reso, &drive, 1);
+
+            filter.set_freq (freq);
+            filter.set_reso (reso);
+            filter.set_drive (drive);
+            filter.process_block (n_frames, mix_left_out, mix_right_out);
+          }
+        else
+          {
+            /* generic version: pass per-sample values for freq, reso and drive */
+            float freq_in[n_frames], reso_in[n_frames], drive_in[n_frames];
+            gen_filter_input (freq_in, reso_in, drive_in, n_frames);
+
+            filter.process_block (n_frames, mix_left_out, mix_right_out, freq_in, reso_in, drive_in);
+          }
+      };
 
     int filter_type = irintf (get_param (pid_filter_type_));
     if (filter_type == FILTER_TYPE_LADDER)
       {
         voice->ladder_filter_.set_mode (LadderVCF::Mode (irintf (get_param (pid_ladder_mode_))));
-        voice->ladder_filter_.process_block (n_frames, mix_left_out, mix_right_out, freq_in, reso_in, drive_in);
+        filter_process_block (voice->ladder_filter_);
       }
     else if (filter_type == FILTER_TYPE_SKFILTER)
       {
         voice->skfilter_.set_mode (SKFilter::Mode (irintf (get_param (pid_skfilter_mode_))));
-        voice->skfilter_.process_block (n_frames, mix_left_out, mix_right_out, freq_in, reso_in, drive_in);
+        filter_process_block (voice->skfilter_);
       }
   }
   void
