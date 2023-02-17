@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-#ifndef __ASE_DEVICES_LADDER_VCF_HH__
-#define __ASE_DEVICES_LADDER_VCF_HH__
+#pragma once
 
 #define PANDA_RESAMPLER_HEADER_ONLY
 #include "pandaresampler.hh"
@@ -147,12 +146,14 @@ private:
   void
   setup_reso_drive (FParams& fparams, float reso, float drive)
   {
+    reso = std::clamp (reso, 0.001f, 1.f);
+
     if (test_linear_) // test filter as linear filter; don't do any resonance correction
       {
         const float scale = 1e-5;
         fparams.pre_scale = scale;
         fparams.post_scale = 1 / scale;
-        fparams.reso = reso;
+        fparams.reso = reso * 4;
 
         return;
       }
@@ -165,10 +166,14 @@ private:
         negative_drive_vol = exp2f (drive * db_x2_factor);
         drive = 0;
       }
-    float vol = exp2f ((drive + -12 * reso) * db_x2_factor);
+    // drive resonance boost
+    if (drive > 0)
+      reso += drive * sqrt (reso) * reso * 0.03f;
+
+    float vol = exp2f ((drive + -12 * sqrt (reso)) * db_x2_factor);
     fparams.pre_scale = negative_drive_vol * vol;
     fparams.post_scale = std::max (1 / vol, 1.0f);
-    fparams.reso = reso;
+    fparams.reso = sqrt (reso) * 4;
   }
   /*
    * This ladder filter implementation is mainly based on
@@ -178,7 +183,7 @@ private:
    * Computer Music Journal. 30. 19-31. 10.1162/comj.2006.30.2.19.
    */
   template<Mode MODE, bool STEREO> inline void
-  run (float *left, float *right, float freq)
+  run (float *left, float *right, float freq, uint n_samples)
   {
     const float fc = std::clamp (freq, clamp_freq_min_, clamp_freq_max_) * freq_scale_factor_;
     const float g = 0.9892f * fc - 0.4342f * fc * fc + 0.1381f * fc * fc * fc - 0.0202f * fc * fc * fc * fc;
@@ -189,7 +194,7 @@ private:
     float res = fparams_.reso;
     res *= 1.0029f + 0.0526f * fc - 0.0926f * fc * fc + 0.0218f * fc * fc * fc;
 
-    for (uint os = 0; os < over_; os++)
+    for (uint os = 0; os < n_samples; os++)
       {
         for (uint i = 0; i < (STEREO ? 2 : 1); i++)
           {
@@ -198,7 +203,7 @@ private:
             Channel& c = channels_[i];
             const float x = value * fparams_.pre_scale;
             const float g_comp = 0.5f; // passband gain correction
-            const float x0 = distort (x - (c.y4 - g_comp * x) * res * 4);
+            const float x0 = distort (x - (c.y4 - g_comp * x) * res);
 
             c.y1 = b0 * x0 + b1 * c.x1 - a1 * c.y1;
             c.x1 = x0;
@@ -283,7 +288,7 @@ private:
 
                 float freq = freq_in ? freq_in[j++] : freq_;
 
-                run<MODE, STEREO> (left_blk + i, right_blk + i, freq);
+                run<MODE, STEREO> (left_blk + i, right_blk + i, freq, over_);
               }
 
             n_remaining_samples -= todo;
@@ -298,17 +303,19 @@ private:
               drive_in += todo;
           }
       }
-    else
+    else if (freq_in)
       {
         uint over_pos = 0;
 
         for (uint i = 0; i < n_samples; i++)
           {
-            float freq = freq_in ? freq_in[i] : freq_;
-
-            run<MODE, STEREO> (over_samples_left + over_pos, over_samples_right + over_pos, freq);
+            run<MODE, STEREO> (over_samples_left + over_pos, over_samples_right + over_pos, freq_in[i], over_);
             over_pos += over_;
           }
+      }
+    else
+      {
+        run<MODE, STEREO> (over_samples_left, over_samples_right, freq_, n_samples * over_);
       }
     channels_[0].res_down->process_block (over_samples_left, over_ * n_samples, left);
     if (STEREO)
@@ -331,7 +338,7 @@ public:
   void
   process_block (uint         n_samples,
                  float       *left,
-                 float       *right,
+                 float       *right = nullptr,
                  const float *freq_in = nullptr,
                  const float *reso_in = nullptr,
                  const float *drive_in = nullptr)
@@ -368,6 +375,4 @@ public:
   }
 };
 
-} // Ase
-
-#endif // __ASE_DEVICES_LADDER_VCF_HH__
+} // SpectMorph
