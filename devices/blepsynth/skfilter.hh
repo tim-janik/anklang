@@ -564,7 +564,7 @@ private:
   }
 public:
   void
-  process_block (uint n_samples, float *left, float *right, const float *freq_in, const float *reso_in = nullptr, const float *drive_in = nullptr)
+  process_block (uint n_samples, float *left, float *right, const float *freq_in = nullptr, const float *reso_in = nullptr, const float *drive_in = nullptr)
   {
     static constexpr auto jump_table { make_jump_table (std::make_index_sequence<LAST_MODE + 1>()) };
 

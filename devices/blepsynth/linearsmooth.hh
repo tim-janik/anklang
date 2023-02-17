@@ -53,6 +53,11 @@ public:
         return linear_value_;
       }
   }
+  bool
+  is_constant()
+  {
+    return steps_ == 0;
+  }
 };
 
 }
