@@ -166,14 +166,22 @@ class BPianoRoll extends LitComponent {
     this.clip = null;
     this.wclip = null;
     this.end_click = 99999;
-    this.resize_observer = new ResizeObserver (els => this.repaint (true));
-    this.resize_observer.observe (this);
-    this.resize_observer.observe (document.body);
     this.vscroll_must_center = true; // flag for initial vertical centering
     this.pointer_drag = null;
     this.piano_ctrl = new PianoCtrl.PianoCtrl (this);
     this.drag_event = this.piano_ctrl.drag_event.bind (this.piano_ctrl);
-    this.notes_changed = () => this.repaint (false);
+    // track repaint dependencies
+    this.repaint_pending_ = null;
+    this.queue_repaint = () =>
+      {
+	if (!this.repaint_pending_)
+	  this.repaint_pending_ = (async () => { await 0; this.repaint(); }) ();
+      };
+    this.repaint = Util.reactive_wrapper (this.repaint.bind (this), this.queue_repaint);
+    // trigger layout on resize
+    this.resize_observer = new ResizeObserver (els => this.requestUpdate.bind (this));
+    this.resize_observer.observe (this);
+    this.resize_observer.observe (document.body);
   }
   disconnectedCallback()
   {
@@ -200,21 +208,31 @@ class BPianoRoll extends LitComponent {
       this.vscrollbar.onscroll = e => this.hvscroll (e);
     if (changed_props.has ('clip'))
       {
+	this.wclip?.__cleanup__?.();
+	this.wclip = null;
+      }
+    if (changed_props.has ('clip') && this.clip)
+      {
 	this.wclip = Util.wrap_ase_object (this.clip, { end_tick: 0, name: '???' }, this.requestUpdate.bind (this));
-	this.wclip.__add__ ('all_notes', [], this.notes_changed);
+	this.wclip.__add__ ('all_notes', [], this.queue_repaint);
 	this.hscrollbar.scrollTo ({ left: 0, behavior: 'instant' });
 	this.vscroll_to (0.5);
 	this.last_note_length = default_note_length;
 	if (this.indicator_bar)
 	  this.indicator_bar.style.transform = "translateX(-9999px)";
       }
-    this.repaint (true);
     // indicator_bar setup
     Shell.piano_current_tick = this.piano_current_tick.bind (this);
     Shell.piano_current_clip = this.clip;
+    // trigger layout, track layout deps from updated()
+    piano_layout.call (this);
+    if (this.vscroll_must_center && this.vscrollbar.clientHeight)
+      this.vscroll_must_center = (this.vscroll_to (0.5), false);
+    // trigger repaint, but avoid tracking paint deps in updated()
+    this.queue_repaint();
   }
   get srect ()	{ return Object.assign ({}, this.srect_); }
-  set srect (r)	{ Object.assign (this.srect_, r); this.repaint (false); }
+  set srect (r)	{ Object.assign (this.srect_, r); this.queue_repaint(); }
   pointerenter (event)
   {
     this.entered = true;
@@ -348,19 +366,16 @@ class BPianoRoll extends LitComponent {
   hvscroll (event)
   {
     // scrollbar(s) changed
-    this.repaint (false);
+    this.queue_repaint();
     // adjust selection, etc
     if (this.pointer_drag)
       this.pointer_drag.scroll (event);
   }
-  repaint (resize = false)
+  repaint()
   {
-    if (!this.notes_canvas || !this.hscrollbar || !this.vscrollbar)
+    this.repaint_pending_ = null;
+    if (!this.clip || !this.notes_canvas || !this.hscrollbar || !this.vscrollbar)
       return;
-    if (resize)
-      piano_layout.call (this);
-    if (resize && this.vscroll_must_center && this.vscrollbar.clientHeight)
-      this.vscroll_must_center = (this.vscroll_to (0.5), false);
     paint_notes.call (this);
     paint_timeline.call (this);
     paint_piano.call (this);
