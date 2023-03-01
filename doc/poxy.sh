@@ -4,8 +4,19 @@ set -Eeuo pipefail #-x
 
 SCRIPTNAME=${0##*/} ; die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 128 ; }
 
-# must run in anklang/ root
+# Must run in anklang/ root
 test -e ase/api.hh || die "must run in anklang/"
+
+# Parse args
+SERVE=false
+while test $# -ne 0 ; do
+  case "$1" in \
+    -s)         SERVE=true ;;
+    -h|--help)  echo "Usage: $0 [-s] [-h]"; exit 0 ;;
+  esac
+  shift
+done
+
 
 # Poxy config: https://github.com/marzer/poxy/wiki/Configuration-options
 cat <<-__EOF >poxy.toml
@@ -89,3 +100,11 @@ cp doc/ch-scripting.md poxy/ui/
 
 # Generate via Doxygen and poxy and m.css
 poxy # --verbose
+
+# Serve documentation
+$SERVE && {
+  set -x
+  cd html/
+  python3 -m http.server
+  exit
+}
