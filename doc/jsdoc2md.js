@@ -208,7 +208,7 @@ function generate_md (cfg, ast) {
   let s = '';
   // build dicts from doclets
   for (const doclet of ast) {
-    if (!doclet.meta) continue;
+    if ('string' !== typeof doclet.meta?.code?.name) continue;
     // https://github.com/jsdoc/jsdoc/blob/master/packages/jsdoc/lib/jsdoc/schema.js
     const exports = doclet.meta.code.name && doclet.meta.code.name.search ('exports.') == 0;
     // collect classes
