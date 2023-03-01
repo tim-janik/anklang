@@ -101,6 +101,9 @@ cp doc/ch-scripting.md poxy/ui/
 # Generate via Doxygen and poxy and m.css
 poxy # --verbose
 
+# Fix missing accesskey="f" for Search
+sed -r '0,/<a class="m-doc-search-icon" href="#search" /s/(<a class="m-doc-search-icon")/\1 accesskey="f"/' -i html/*.html
+
 # Serve documentation
 $SERVE && {
   set -x
