@@ -48,6 +48,9 @@ __EOF
 # Prepare sources
 rm -rf poxy/ html/ && mkdir -p poxy/ase/ poxy/ui/b/
 
+# Add NEWS.md
+sed '1 s/^/# Anklang Release NEWS\n\n/' NEWS.md > poxy/NEWS.md
+
 # Add C++ files
 for f in ase/*.hh ; do
   fgrep -q ' @file ' "$f" ||
