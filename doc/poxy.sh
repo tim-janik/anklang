@@ -8,13 +8,15 @@ SCRIPTNAME=${0##*/} ; die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 12
 test -e ase/api.hh || die "must run in anklang/"
 
 # Parse args
+BUILD=false
 SERVE=false
 UPLOAD=false
 while test $# -ne 0 ; do
   case "$1" in \
+    -b)         BUILD=true ;;
     -s)         SERVE=true ;;
     -u)         UPLOAD=true ;;
-    -h|--help)  echo "Usage: $0 [-h] [-s] [-u]"; exit 0 ;;
+    -h|--help)  echo "Usage: $0 [-b] [-h] [-s] [-u]"; exit 0 ;;
   esac
   shift
 done
@@ -83,6 +85,7 @@ __EOF
 
   # Extract JS from Vue files
   for f in ui/b/*.vue ; do
+    grep '^\s*///\|/\*[!*] [^=]' -q "$f" || continue
     sed ' 0,/^<script\b/s/.*//; /^<\/script> *$/{d;q}; ' < "$f" > "$f".js
   done
 
@@ -108,7 +111,15 @@ __EOF
   # Fix missing accesskey="f" for Search
   sed -r '0,/<a class="m-doc-search-icon" href="#search" /s/(<a class="m-doc-search-icon")/\1 accesskey="f"/' -i html/*.html
 }
-poxy_build
+
+# Conditional build
+if $BUILD ; then
+  poxy_build
+  rm -v ui/b/*.vue.js poxy.toml
+else
+  test -e html/poxy/poxy.css || die "Failed to detect exiting build in html/"
+  echo "  OK  " "Docs exist in html/"
+fi
 
 # Serve documentation
 $SERVE && {
