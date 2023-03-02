@@ -8,6 +8,10 @@ SCRIPTNAME=${0##*/} ; die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 12
 test -e ase/api.hh || die "must run in anklang/"
 test -e out/doc/anklang-manual.html || die "a fully build project is required"
 
+# Find node_modules
+test -d out/node_modules/jsdoc-api || die "a fully build project is required"
+export NODE_PATH=out/node_modules/
+
 # Parse args
 VERSION=(`misc/version.sh`)
 BUILD=false
