@@ -8,6 +8,7 @@ SCRIPTNAME=${0##*/} ; die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 12
 test -e ase/api.hh || die "must run in anklang/"
 
 # Parse args
+VERSION=(`misc/version.sh`)
 BUILD=false
 SERVE=false
 UPLOAD=false
@@ -132,11 +133,10 @@ $SERVE && {
 # Upload docs to https://tim-janik.github.io/docs/anklang/
 $UPLOAD && {
   rm -rf poxy/iodocs/
-  git clone --depth 1 git@github.com:tim-janik/docs.git --branch trunk poxy/iodocs/
+  git clone --depth 1 git@github.com:tim-janik/docs.git --branch publish poxy/iodocs/
   rm -rf poxy/iodocs/anklang/
   cp -r html/ poxy/iodocs/anklang/
-  ( VERSION=(`misc/version.sh`)
-    cd poxy/iodocs/anklang/
+  ( cd poxy/iodocs/anklang/
     git add --all
     git commit --all -m "Anklang Programming Reference - ${VERSION[1]}"
     git push
