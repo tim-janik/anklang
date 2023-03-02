@@ -9,14 +9,15 @@ test -e ase/api.hh || die "must run in anklang/"
 
 # Parse args
 SERVE=false
+UPLOAD=false
 while test $# -ne 0 ; do
   case "$1" in \
     -s)         SERVE=true ;;
-    -h|--help)  echo "Usage: $0 [-s] [-h]"; exit 0 ;;
+    -u)         UPLOAD=true ;;
+    -h|--help)  echo "Usage: $0 [-h] [-s] [-u]"; exit 0 ;;
   esac
   shift
 done
-
 
 # Poxy config: https://github.com/marzer/poxy/wiki/Configuration-options
 cat <<-__EOF >poxy.toml
@@ -109,5 +110,20 @@ $SERVE && {
   set -x
   cd html/
   python3 -m http.server
+  exit
+}
+
+# Upload docs to https://tim-janik.github.io/docs/anklang/
+$UPLOAD && {
+  rm -rf poxy/iodocs/
+  git clone --depth 1 git@github.com:tim-janik/docs.git --branch trunk poxy/iodocs/
+  rm -rf poxy/iodocs/anklang/
+  cp -r html/ poxy/iodocs/anklang/
+  ( VERSION=(`misc/version.sh`)
+    cd poxy/iodocs/anklang/
+    git add --all
+    git commit --all -m "Anklang Programming Reference - ${VERSION[1]}"
+    git push
+  )
   exit
 }
