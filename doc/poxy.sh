@@ -27,9 +27,9 @@ poxy_build()
 {
   # Poxy config: https://github.com/marzer/poxy/wiki/Configuration-options
   cat <<-__EOF >poxy.toml
-name            = 'Anklang'
+name            = 'Anklang ${VERSION[0]}'
 author          = 'Tim Janik'
-description     = 'Anklang - Programming Reference'
+description     = 'Anklang Programming Reference'
 cpp             = 17
 github          = 'tim-janik/anklang'
 license         = [ 'MPL-2.0', 'https://mozilla.org/MPL/2.0' ]
