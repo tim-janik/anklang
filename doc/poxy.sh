@@ -66,6 +66,10 @@ __EOF
   # Prepare sources
   rm -rf poxy/ html/ && mkdir -p poxy/ase/ poxy/ui/b/
 
+  # MAIN page
+  sed '0,/^<!--\s*HEADING\s*-->/d' README.md	> index.md
+  sed '1 s/^ANKLANG$'/"Anklang ${VERSION[1]}"/ -i index.md
+
   # Add NEWS.md
   sed '1 s/^/# Anklang Release NEWS\n\n/' NEWS.md > poxy/NEWS.md
 
@@ -116,7 +120,7 @@ __EOF
 # Conditional build
 if $BUILD ; then
   poxy_build
-  rm -v ui/b/*.vue.js poxy.toml
+  rm -v ui/b/*.vue.js poxy.toml index.md
 else
   test -e html/poxy/poxy.css || die "Failed to detect exiting build in html/"
   echo "  OK  " "Docs exist in html/"
