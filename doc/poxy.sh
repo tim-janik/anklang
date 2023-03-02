@@ -6,6 +6,7 @@ SCRIPTNAME=${0##*/} ; die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 12
 
 # Must run in anklang/ root
 test -e ase/api.hh || die "must run in anklang/"
+test -e out/doc/anklang-manual.html || die "a fully build project is required"
 
 # Parse args
 VERSION=(`misc/version.sh`)
@@ -115,6 +116,14 @@ __EOF
 
   # Fix missing accesskey="f" for Search
   sed -r '0,/<a class="m-doc-search-icon" href="#search" /s/(<a class="m-doc-search-icon")/\1 accesskey="f"/' -i html/*.html
+
+  # Add doc/ with manuals
+  TMPINST=`pwd`/tmpinst/
+  rm -rf $TMPINST
+  make DESTDIR=$TMPINST doc/install -j
+  AMANUAL=$(find $TMPINST -name anklang-manual.html -printf %p\\n | head -1)
+  cp -r "${AMANUAL%/*}" html/
+  rm -rf $TMPINST
 }
 
 # Conditional build
