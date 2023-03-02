@@ -19,8 +19,11 @@ while test $# -ne 0 ; do
   shift
 done
 
-# Poxy config: https://github.com/marzer/poxy/wiki/Configuration-options
-cat <<-__EOF >poxy.toml
+# Build docs with poxy et al
+poxy_build()
+{
+  # Poxy config: https://github.com/marzer/poxy/wiki/Configuration-options
+  cat <<-__EOF >poxy.toml
 name            = 'Anklang'
 author          = 'Tim Janik'
 description     = 'Anklang - Programming Reference'
@@ -57,53 +60,55 @@ paths           = '.'
 '(?:Ase\.)?server' = 'class_ase_1_1_server.html'
 __EOF
 
-# Prepare sources
-rm -rf poxy/ html/ && mkdir -p poxy/ase/ poxy/ui/b/
+  # Prepare sources
+  rm -rf poxy/ html/ && mkdir -p poxy/ase/ poxy/ui/b/
 
-# Add NEWS.md
-sed '1 s/^/# Anklang Release NEWS\n\n/' NEWS.md > poxy/NEWS.md
+  # Add NEWS.md
+  sed '1 s/^/# Anklang Release NEWS\n\n/' NEWS.md > poxy/NEWS.md
 
-# Add C++ files
-for f in ase/*.hh ; do
-  fgrep -q ' @file ' "$f" ||
-    sed "1s|^|/** @file $f \\\\n */ |" < "$f" > poxy/"$f"
-done
-cp ase/*.cc poxy/ase/
+  # Add C++ files
+  for f in ase/*.hh ; do
+    grep -Fq ' @file ' "$f" ||
+      sed "1s|^|/** @file $f \\\\n */ |" < "$f" > poxy/"$f"
+  done
+  cp ase/*.cc poxy/ase/
 
-# Hack around Doxygen generating overlong file name from template
-sed -r 's|REQUIRESv< (.*&&)$|REQUIRESv<//\1|' -i poxy/ase/serialize.hh
+  # Hack around Doxygen generating overlong file name from template
+  sed -r 's|REQUIRESv< (.*&&)$|REQUIRESv<//\1|' -i poxy/ase/serialize.hh
 
-# Add directories
-echo -e "/** @dir\n@brief"	"Anklang Sound Engine API (C++)"	"*/"	> poxy/ase/dir.dox
-echo -e "/** @dir\n@brief"	"Anklang UI (Javascript)"		"*/"	> poxy/ui/dir.dox
-echo -e "/** @dir\n@brief"	"Anklang Web Components (Javascript)"	"*/"	> poxy/ui/b/dir.dox
+  # Add directories
+  echo -e "/** @dir\n@brief"	"Anklang Sound Engine API (C++)"	"*/"	> poxy/ase/dir.dox
+  echo -e "/** @dir\n@brief"	"Anklang UI (Javascript)"		"*/"	> poxy/ui/dir.dox
+  echo -e "/** @dir\n@brief"	"Anklang Web Components (Javascript)"	"*/"	> poxy/ui/b/dir.dox
 
-# Extract JS from Vue files
-for f in ui/b/*.vue ; do
-  sed ' 0,/^<script\b/s/.*//; /^<\/script> *$/{d;q}; ' < "$f" > "$f".js
-done
+  # Extract JS from Vue files
+  for f in ui/b/*.vue ; do
+    sed ' 0,/^<script\b/s/.*//; /^<\/script> *$/{d;q}; ' < "$f" > "$f".js
+  done
 
-# Extract JS docs
-make out/node_modules/.npm.done
-MARKDOWN_FLAVOUR="-f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart"
-HTML_FLAGS="--highlight-style doc/highlights.theme --html-q-tags --section-divs --email-obfuscation=references"
-for f in ui/*.js ui/b/*.js ; do
-  grep '^\s*///\|/\*[!*] [^=]' -q "$f" || continue
-  echo "Parsing $f..."
-  out/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X	"$f"			> poxy/"$f".jsdoc
-  node doc/jsdoc2md.js -d 2 -e Export			poxy/"$f".jsdoc		> poxy/"$f".js-md
-  pandoc $MARKDOWN_FLAVOUR -p -t html5 $HTML_FLAGS	poxy/"$f".js-md		> poxy/"$f".html
-  touch poxy/"$f"	# Doxygen needs foo.js to exist, but has no default JS EXTENSION_MAPPING
-  echo -e "/** @file $f\n @htmlinclude[block] poxy/$f.html */"			> poxy/"$f".dox
-done
-cp ui/b/ch-vue.md poxy/ui/b/
-cp doc/ch-scripting.md poxy/ui/
+  # Extract JS docs
+  make out/node_modules/.npm.done
+  MARKDOWN_FLAVOUR="-f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart"
+  HTML_FLAGS="--highlight-style doc/highlights.theme --html-q-tags --section-divs --email-obfuscation=references"
+  for f in ui/*.js ui/b/*.js ; do
+    grep '^\s*///\|/\*[!*] [^=]' -q "$f" || continue
+    echo "Parsing $f..."
+    out/node_modules/.bin/jsdoc -c doc/jsdocrc.json -X	"$f"			> poxy/"$f".jsdoc
+    node doc/jsdoc2md.js -d 2 -e Export			poxy/"$f".jsdoc		> poxy/"$f".js-md
+    pandoc $MARKDOWN_FLAVOUR -p -t html5 $HTML_FLAGS	poxy/"$f".js-md		> poxy/"$f".html
+    touch poxy/"$f"	# Doxygen needs foo.js to exist, but has no default JS EXTENSION_MAPPING
+    echo -e "/** @file $f\n @htmlinclude[block] poxy/$f.html */"			> poxy/"$f".dox
+  done
+  cp ui/b/ch-vue.md poxy/ui/b/
+  cp doc/ch-scripting.md poxy/ui/
 
-# Generate via Doxygen and poxy and m.css
-poxy # --verbose
+  # Generate via Doxygen and poxy and m.css
+  poxy # --verbose
 
-# Fix missing accesskey="f" for Search
-sed -r '0,/<a class="m-doc-search-icon" href="#search" /s/(<a class="m-doc-search-icon")/\1 accesskey="f"/' -i html/*.html
+  # Fix missing accesskey="f" for Search
+  sed -r '0,/<a class="m-doc-search-icon" href="#search" /s/(<a class="m-doc-search-icon")/\1 accesskey="f"/' -i html/*.html
+}
+poxy_build
 
 # Serve documentation
 $SERVE && {
