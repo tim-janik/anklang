@@ -322,56 +322,12 @@ $>/ui/.cssvalid.done: $>/ui/all-styles.css ui/Makefile.mk
 	$Q touch $@
 $>/ui/.build2-stamp: $>/ui/.cssvalid.done	# deferred during rebuilds
 
-# == ui/scripting-docs.md ==
-$>/ui/scripting-docs.md: ui/host.js ui/ch-scripting.md $(ui/jsdoc.deps) ui/Makefile.mk $>/node_modules/.npm.done	| $>/ui/
-	$(QGEN)
-	$Q cat ui/ch-scripting.md 						>  $@.tmp
-	$Q $>/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X $<			>  $>/ui/host.jsdoc
-	$Q echo -e '\n## Reference for $<'					>> $@.tmp
-	$Q node doc/jsdoc2md.js -d 2 -e 'Host' $>/ui/host.jsdoc			>> $@.tmp
-	$Q mv $@.tmp $@
-$>/ui/.build1-stamp: $>/ui/scripting-docs.md
-
-# == ui/*js.md ==
-ui/jsdoc.deps     ::= ui/jsdocrc.json ui/slashcomment.js doc/jsdoc2md.js
-$>/ui/envuejs.md: ui/b/envue.js $(ui/jsdoc.deps) ui/Makefile.mk $>/node_modules/.npm.done	| $>/ui/
-	$(QGEN)
-	$Q $>/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X $<			>  $(@:.md=.jsdoc)
-	$Q echo -e '\n## Reference for $<'					>  $@.tmp
-	$Q node doc/jsdoc2md.js -d 2 -e 'Envue' $(@:.md=.jsdoc)			>> $@.tmp
-	$Q mv $@.tmp $@
-$>/ui/utiljs.md: ui/util.js ui/script.js $(ui/jsdoc.deps) ui/Makefile.mk $>/node_modules/.npm.done	| $>/ui/
-	$(QGEN)
-	$Q echo -e '\n## Reference for $<'					>  $@.tmp
-	$Q $>/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X $<			>  $>/ui/util.jsdoc
-	$Q node doc/jsdoc2md.js -d 2 -e 'Util' $>/ui/util.jsdoc			>> $@.tmp
-	$Q echo -e '\n## Reference for ui/script.js'				>> $@.tmp
-	$Q $>/node_modules/.bin/jsdoc -c ui/jsdocrc.json -X ui/script.js	>  $>/ui/script.jsdoc
-	$Q node doc/jsdoc2md.js -d 2 -e 'Script' $>/ui/script.jsdoc		>> $@.tmp
-	$Q mv $@.tmp $@
-
 # == $>/doc/b/*.md ==
 $>/doc/b/.doc-stamp: $(wildcard ui/b/*.js) ui/xbcomments.js ui/Makefile.mk $>/node_modules/.npm.done	| $>/doc/b/
 	$(QGEN)
 	$Q node ui/xbcomments.js $(wildcard ui/b/*.js) -O $>/doc/b/
 	$Q touch $@
-$>/ui/.build2-stamp: $>/doc/b/.doc-stamp # deferred during rebuilds
-
-# == ui/vue-doc ==
-$>/ui/vue-docs.md: ui/b/ch-vue.md $>/ui/envuejs.md $>/ui/utiljs.md $(ui/vue.wildcards) ui/Makefile.mk doc/filt-docs2.py		| $>/ui/
-	$(QGEN)
-	$Q echo -e "<!-- Vue Components -->\n\n"					>  $@.tmp
-	@: # extract <docs/> blocks from vue files and filter headings through pandoc
-	$Q for f in $(sort $(ui/vue.wildcards)) ; do \
-		echo ""									>> $@.tmp ; \
-		sed -n '/^<docs>\s*$$/{ :loop n; /^<\/docs>/q; p;  b loop }' <"$$f"	>> $@.tmp \
-		|| exit $$? ; \
-	done
-	$Q sed -r 's/^  // ; s/^#/\n#/; ' -i $@.tmp # unindent, spread heading_without_preceding_blankline
-	$Q $(PANDOC) -t markdown -F doc/filt-docs2.py -f markdown+compact_definition_lists $@.tmp -o $@.tmp2
-	$Q cat $< $@.tmp2 $>/ui/envuejs.md $>/ui/utiljs.md > $@.tmp && rm -f $@.tmp2
-	$Q mv $@.tmp $@
-$>/ui/.build1-stamp: $>/ui/vue-docs.md
+$>/ui/.build1-stamp: $>/doc/b/.doc-stamp
 $>/ui/.build2-stamp: $>/doc/anklang-manual.html # deferred during rebuilds
 
 # == serve ==
