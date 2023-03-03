@@ -150,10 +150,21 @@ $SERVE && {
 # Upload docs to https://tim-janik.github.io/docs/anklang/
 $UPLOAD && {
   rm -rf poxy/iodocs/
-  git clone --depth 1 git@github.com:tim-janik/docs.git --branch publish poxy/iodocs/
-  rm -rf poxy/iodocs/anklang/
-  cp -r html/ poxy/iodocs/anklang/
-  ( cd poxy/iodocs/anklang/
+  (
+    # Support for CI uploads
+    test -z "`git config user.email`" && {
+      export GIT_AUTHOR_EMAIL="anklang-team@testbit.eu" GIT_AUTHOR_NAME="Anklang CI Action" # "github.com/tim-janik/anklang/actions/"
+      export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL" GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
+      GIT_SSH_COMMAND="ssh -o BatchMode=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+      # Add secret for github.com/tim-janik/docs/settings/keys ANKLANG_SSH_KEY
+      test -r .git/.ssh_id_ghdocs4anklang && GIT_SSH_COMMAND="$GIT_SSH_COMMAND -i `pwd`/.git/.ssh_id_ghdocs4anklang"
+      export GIT_SSH_COMMAND
+    }
+    # Clone docs/ repo and upload latest build
+    git clone --depth 1 git@github.com:tim-janik/docs.git --branch publish poxy/iodocs/
+    rm -rf poxy/iodocs/anklang/
+    cp -r html/ poxy/iodocs/anklang/
+    cd poxy/iodocs/anklang/
     git add --all
     git commit --all -m "Anklang Programming Reference - ${VERSION[1]}"
     git push
