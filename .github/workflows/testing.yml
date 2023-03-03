@@ -85,6 +85,13 @@ jobs:
         mkdir -p ~/ghcache/
         docker save anklang-arch -o ~/ghcache/anklang-arch.tar
         ls -al ~/ghcache/
+    - name: Upload docs/anklang/
+      if: github.ref == 'refs/heads/trunk'
+      env:
+        SSH_ID_GHDOCS4ANKLANG_ECDSA: ${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}
+      run: |
+        echo "$SSH_ID_GHDOCS4ANKLANG_ECDSA" > .git/.ssh_id_ghdocs4anklang && chmod 0600 .git/.ssh_id_ghdocs4anklang
+        misc/dbuild.sh -f arch doc/poxy.sh -b -u
 
   Ping-IRC:
     if: always()
