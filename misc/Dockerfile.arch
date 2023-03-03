@@ -16,6 +16,8 @@ RUN pacman -Sy --noconfirm archlinux-keyring && pacman-key --init && pacman-key 
 	    gtk2 \
 	    pandoc python-pandocfilters \
 	    cppcheck \
+	    python-pip doxygen openssh \
+  && pip install poxy \
   && yes | pacman -Scc
 
 # Become non-root, USERGROUP determines ids for docker volumes
