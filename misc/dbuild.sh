@@ -13,6 +13,7 @@ INITIALIZE=false
 OOTBUILD_ARGS=
 NOCACHE=
 NOTEX=false
+DOCKERPORTS=
 
 # == usage ==
 usage() {
@@ -23,6 +24,7 @@ usage() {
   echo "  -h                Display command line help"
   echo "  -i                Always initialize docker build environment"
   echo "  -o <directory>    Mount <directory> as /ootbuild (\$OOTBUILD)"
+  echo "  -p <DOCKERPORTS>  Publish docker ports when running"
   echo "  --no-cache        Build docker with --no-cache"
   echo "  -T                Build with \$NOTEX=true"
   echo "  shell             COMMAND: Run shell"
@@ -37,6 +39,9 @@ while test $# -ne 0 ; do
     -i)		INITIALIZE=true ;;
     -o)		shift
 		OOTBUILD_ARGS="-v `realpath $1`:/ootbuild/ -e CCACHE_DIR=/ootbuild/.dlcache/ccache"
+		;;
+    -p)		shift
+		DOCKERPORTS="-p $1"
 		;;
     --no-cache)	NOCACHE=--no-cache ;;
     -T)		NOTEX=true ;;
@@ -88,6 +93,6 @@ test root != "$EXEC_CMD" || setup_ROOT_TMPVOLUME # let root operate on a tempora
 test root != "$EXEC_CMD" -a shell != "$EXEC_CMD" || EXEC_CMD=/bin/bash
 test -z "$EXEC_CMD" || (
   set -x
-  docker run $DOCKEROPTIONS $VOLUME_ARGS $OOTBUILD_ARGS $TI --rm -w /$PROJECT/ $IMGTAG "$EXEC_CMD" "$@"
+  docker run $DOCKEROPTIONS $DOCKERPORTS $VOLUME_ARGS $OOTBUILD_ARGS $TI --rm -w /$PROJECT/ $IMGTAG "$EXEC_CMD" "$@"
 ) # avoid 'exec' for TRAP(1) to take effect
 exit $?
