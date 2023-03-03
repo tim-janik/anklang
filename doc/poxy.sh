@@ -106,8 +106,7 @@ __EOF
   for f in ui/*.js ui/b/*.js ; do
     grep '^\s*///\|/\*[!*] [^=]' -q "$f" || continue
     echo "Parsing $f..."
-    out/node_modules/.bin/jsdoc -c doc/jsdocrc.json -X	"$f"			> poxy/"$f".jsdoc
-    node doc/jsdoc2md.js -d 2 -e Export			poxy/"$f".jsdoc		> poxy/"$f".js-md
+    node doc/jsdoc2md.js -d 2 -e Export			"$f"			> poxy/"$f".js-md
     pandoc $MARKDOWN_FLAVOUR -p -t html5 $HTML_FLAGS	poxy/"$f".js-md		> poxy/"$f".html
     touch poxy/"$f"	# Doxygen needs foo.js to exist, but has no default JS EXTENSION_MAPPING
     echo -e "/** @file $f\n @htmlinclude[block] poxy/$f.html */"			> poxy/"$f".dox
