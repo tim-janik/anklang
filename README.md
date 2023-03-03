@@ -3,7 +3,7 @@
 [![Commits][commits-badge]][commits-url]
 [![Contributors][contributors-badge]][contributors-url]
 [![Issues][issues-badge]][issues-url]
-[![Test Build][testing-badge]][testing-url] \
+[![Test Build][testing-badge]][testing-url]
 [![Version][version-badge]][version-url]
 [![Downloads][downloads-badge]][downloads-url]
 [![Watchers][watchers-badge]][watchers-url]
@@ -88,7 +88,7 @@ GPLv3 or proprietary licenses.
 [packages-badge]: https://img.shields.io/badge/Packages-AppImage%20|%20deb-999?style=for-the-badge
 [stars-badge]: https://img.shields.io/github/stars/tim-janik/anklang.svg?style=for-the-badge
 [stars-url]: https://github.com/tim-janik/anklang/stargazers
-[testing-badge]: https://img.shields.io/github/workflow/status/tim-janik/anklang/Testing?style=for-the-badge
+[testing-badge]: https://img.shields.io/github/actions/workflow/status/tim-janik/anklang/testing.yml?style=for-the-badge
 [testing-url]: https://github.com/tim-janik/anklang/actions
 [version-badge]: https://img.shields.io/github/v/release/tim-janik/anklang?label=version&style=for-the-badge
 [version-url]: https://github.com/tim-janik/anklang/tags

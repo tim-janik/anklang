@@ -4,6 +4,7 @@
 
 #include <ase/value.hh>
 
+/// The Anklang C++ API namespace
 namespace Ase {
 
 // == Property hint constants ==

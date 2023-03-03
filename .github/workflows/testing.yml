@@ -10,7 +10,7 @@ on:
 
 jobs:
 
-  Test-Ubuntu:
+  Ubuntu-Artifacts:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -57,7 +57,7 @@ jobs:
         name: x11test
         path: out/x11test/
 
-  Test-Arch:
+  Arch-Docs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -85,18 +85,25 @@ jobs:
         mkdir -p ~/ghcache/
         docker save anklang-arch -o ~/ghcache/anklang-arch.tar
         ls -al ~/ghcache/
+    - name: Upload docs/anklang/
+      if: github.ref == 'refs/heads/trunk'
+      env:
+        SSH_ID_GHDOCS4ANKLANG_ECDSA: ${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}
+      run: |
+        echo "$SSH_ID_GHDOCS4ANKLANG_ECDSA" > .git/.ssh_id_ghdocs4anklang && chmod 0600 .git/.ssh_id_ghdocs4anklang
+        misc/dbuild.sh -f arch doc/poxy.sh -b -u
 
   Ping-IRC:
     if: always()
-    needs: [Test-Ubuntu, Test-Arch]
+    needs: [Ubuntu-Artifacts, Arch-Docs]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Check Jobs
       run: |
-        echo '${{ needs.Test-Ubuntu.result }}' '${{ needs.Test-Arch.result }}'
-        test success = '${{ needs.Test-Ubuntu.result }}'
-        test success = '${{ needs.Test-Arch.result }}'
+        echo '${{ needs.Ubuntu-Artifacts.result }}' '${{ needs.Arch-Docs.result }}'
+        test success = '${{ needs.Ubuntu-Artifacts.result }}'
+        test success = '${{ needs.Arch-Docs.result }}'
     - name: Ping IRC
       if: always()
       run: |

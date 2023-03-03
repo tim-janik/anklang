@@ -217,6 +217,7 @@ function observable_project_data () { // yields reactive Proxy object
   return this.observable_from_getters (data, () => Data.project);
 }
 
+/// The global `Shell` singleton carries all current UI and Ase.Project context
 class ShellClass extends Envue.Component {
   data_bubble = null;
   constructor (vm) {
@@ -229,11 +230,16 @@ class ShellClass extends Envue.Component {
     this.piano_current_clip = null;
     this.piano_current_tick = null;
   }
+  /// Access PianoRoll component
   get piano_roll() { return Shell.$refs.piano_roll; }
-  show_spinner() {
+  /// Show spinner to indicate "busy" state (increment reason)
+  show_spinner()
+  {
     this.m.show_spinner_count++;
   }
-  hide_spinner() {
+  /// Hide spinner to indicate "busy" state (decrement reason)
+  hide_spinner()
+  {
     console.assert (this.m.show_spinner_count > 0);
     this.m.show_spinner_count--;
   }
@@ -269,7 +275,9 @@ class ShellClass extends Envue.Component {
   usernote (user_note_event) {
     this.create_note (user_note_event.text);
   }
-  create_note (...args) {
+  /// Display notice to the user
+  create_note (...args)
+  {
     const noteboard = Util.envue_object (this.$vm.$refs.noteboard);
     return noteboard?.create_note (...args);
   }
@@ -286,7 +294,8 @@ class ShellClass extends Envue.Component {
     Util.prevent_event (event);
     return true;
   }
-  sidebar_mouse (e) {
+  sidebar_mouse (e)
+  {
     const sidebar = this.$refs.sidebarcontainer;
     console.assert (sidebar);
     const html_classes = document.documentElement.classList;
@@ -323,7 +332,8 @@ class ShellClass extends Envue.Component {
     // Resize via: https://www.w3.org/TR/css-flexbox-1/#flex-common
     e.preventDefault();
   }
-  async select_file (opt = {}) {
+  async select_file (opt = {})
+  {
     if (this.fs.resolve)
       return undefined;
     Object.assign (this.fs, opt);

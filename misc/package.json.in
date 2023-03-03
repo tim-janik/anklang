@@ -28,6 +28,7 @@
     "eslint-plugin-vue": "^9.6.0",
     "icon-gen": "^3.0.1",
     "jsdoc": "^3.6.11",
+    "jsdoc-api": "^8.0.0",
     "lit": "^2.5.0",
     "markdown-it": "^13.0.1",
     "mathjax": "^3.2.2",

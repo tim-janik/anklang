@@ -2,13 +2,14 @@
 "use strict";
 
 const fs = require ('fs');
+const jsdoc = require ('jsdoc-api');
 
 function usage (full = false) {
   const prog = process.argv[1].replace (/.*\//, '');
   console.log ("Usage:", prog, "[OPTIONS] [jsdoc-data.json...]");
   if (!full) return;
   //            12345678911234567892123456789312345678941234567895123456789612345678971234567898
-  console.log ("Generate API documentation in Markdown format from jsdoc-data.json.");
+  console.log ("Generate API documentation in Markdown format from *.js.");
   console.log ("  -h, --help        Display command line help");
   console.log ("  -d <DEPTH>        Set Markdown section level");
   console.log ("  -e <EXPORTNAME>   Use EXPORTNAME as API prefix");
@@ -208,7 +209,7 @@ function generate_md (cfg, ast) {
   let s = '';
   // build dicts from doclets
   for (const doclet of ast) {
-    if (!doclet.meta) continue;
+    if ('string' !== typeof doclet.meta?.code?.name) continue;
     // https://github.com/jsdoc/jsdoc/blob/master/packages/jsdoc/lib/jsdoc/schema.js
     const exports = doclet.meta.code.name && doclet.meta.code.name.search ('exports.') == 0;
     // collect classes
@@ -259,7 +260,7 @@ for (let filename of arg_config.files)
     global_classes = {};
     global_vars = {};
     global_overview = '';
-    const string = String (fs.readFileSync (filename));
-    const jsdocast = JSON.parse (string);
+    const configure = 'doc/jsdocrc.json';
+    const jsdocast = jsdoc.explainSync ({ configure, files: [ filename ] })
     console.log (generate_md (arg_config, jsdocast));
   }

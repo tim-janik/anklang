@@ -5,6 +5,8 @@
 #include <ase/utils.hh>
 
 namespace Ase {
+
+/// Helper namespace for unit testing
 namespace Test {
 
 // Test Macros

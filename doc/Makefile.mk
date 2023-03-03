@@ -14,12 +14,11 @@ doc/manual-chapters ::= $(strip		\
 	$>/doc/b/pianoroll.md		\
 	$>/doc/b/piano-ctrl.md		\
 	$>/doc/ch-man-pages.md		\
-	$>/ui/scripting-docs.md		\
+	$>/doc/scripting-docs.md	\
 )
 doc/internals-chapters ::= $(strip	\
 	doc/ch-development.md		\
 	$>/doc/class-tree.md		\
-	$>/ui/vue-docs.md		\
 	doc/ch-appendix.md		\
 )
 doc/install.files ::= $(strip		\
@@ -54,7 +53,17 @@ $>/doc/copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst	| $>/doc/
 	   fi
 	$Q mv $@.tmp $@
 
-# == ui/class-tree.md ==
+# == doc/scripting-docs.md ==
+NODE_PATH=out/node_modules/ node doc/jsdoc2md.js ui/util.js |&
+$>/doc/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) doc/Makefile.mk $>/node_modules/.npm.done	| $>/doc/
+	$(QGEN)
+	$Q cat doc/ch-scripting.md				>  $@.tmp
+	$Q echo -e '\n## Reference for $<'			>> $@.tmp
+	$Q node doc/jsdoc2md.js -d 2 -e 'Host' $<		>> $@.tmp
+	$Q mv $@.tmp $@
+doc/jsdoc.deps ::= doc/jsdocrc.json doc/jsdoc-slashes.js doc/jsdoc2md.js
+
+# == doc/class-tree.md ==
 $>/doc/class-tree.md: $(lib/AnklangSynthEngine) doc/Makefile.mk
 	$(QGEN)
 	$Q echo '## Ase Class Inheritance Tree'			>  $@.tmp

@@ -2,7 +2,8 @@
 FROM archlinux
 
 # Upgrade, install dependencies, clean up to shrink docker image
-RUN pacman -Syu --noconfirm \
+RUN pacman -Sy --noconfirm archlinux-keyring && pacman-key --init && pacman-key --populate \
+  && pacman -Syu --noconfirm \
   && pacman -S --noconfirm \
 	    sudo fakeroot git base-devel \
 	    ccache cmake \
@@ -15,6 +16,8 @@ RUN pacman -Syu --noconfirm \
 	    gtk2 \
 	    pandoc python-pandocfilters \
 	    cppcheck \
+	    python-pip doxygen openssh \
+  && pip install poxy \
   && yes | pacman -Scc
 
 # Become non-root, USERGROUP determines ids for docker volumes
