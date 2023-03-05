@@ -120,6 +120,42 @@ __EOF
   # Fix missing accesskey="f" for Search
   sed -r '0,/<a class="m-doc-search-icon" href="#search" /s/(<a class="m-doc-search-icon")/\1 accesskey="f"/' -i html/*.html
 
+  # Extend searchdata-v2.js with token list from JS docs
+  test -r html/searchdata-v2.js || die 'missing searchdata-v2.js'
+  ( cd html/
+    echo 'Search.__extra_tokens = ['
+    for f in *.html ; do
+      grep -qF '<a data-4search="' $f || continue
+      sed -nr \
+          '/\bdata-4search=.*<\/a>/{ s|.*<a data-4search="([^"]+);([^"]+)" id="([^"]+)".*|{name:"\1",typeName:"\2",url:"'"$f"'#\3"},|; T SKP; p; :SKP; }' \
+	  $f
+    done
+    echo '];'
+  ) >> html/searchdata-v2.js
+
+  # Support searching in __extra_tokens list
+  test -r html/search-v2.js || die 'missing search-v2.js'
+  cat >> xsearch.in <<-__EOF
+	if (results?.length > 0 && Array.isArray (results[0])) {
+	  const key = value.replace (/^\s+/gm, '');
+	  for (let xt of Search.__extra_tokens) {
+	    let name = xt.name;
+	    if (!name.startsWith (key)) {
+	      name = name.replace (/^.*[. :]/gm, '');
+	      if (!name.startsWith (key))
+	        continue;
+	    }
+	    results[0].push (Object.assign ({
+	      flags: 0,
+	      cssClass: "m-default",
+	      suffixLength: name.length - key.length,
+	    }, xt));
+	  }
+	}
+__EOF
+  sed '/let results = this.search(value);/r xsearch.in' -i html/search-v2.js
+  rm xsearch.in
+
   # Add doc/ with manuals
   TMPINST=`pwd`/tmpinst/
   rm -rf $TMPINST
