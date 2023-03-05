@@ -159,6 +159,7 @@ export const CANCEL = "CANCEL";
 export const MOVE = "MOVE";
 export const SCROLL = "SCROLL";
 
+/// Meld all pointer drag handling functions into a single `drag_event(event,MODE)` method.
 export class PointerDrag {
   constructor (vuecomponent, event, method = 'drag_event', cleanup = null) {
     this.vm = vuecomponent;
