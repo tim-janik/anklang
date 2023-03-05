@@ -160,7 +160,8 @@ function description_markdown (description) {
 
 /// Generate function markdown
 function gen_function (cfg, fun, exports = '') {
-  let prefix = '', postfix = '', anchor = make_anchor (exports + (exports && '.') + fun.name);
+  const exports_name = exports + (exports && '.') + fun.name;
+  let prefix = '', postfix = '', anchor = make_anchor (exports_name);
   const pexports = exports ? '<small>`' + exports + '`</small>.' : '';
   if (fun['static'])
     postfix += '   `[static]`';
@@ -170,7 +171,7 @@ function gen_function (cfg, fun, exports = '') {
   params = params ? ' `(`*' + params + '*`)`' : '`()`';
   let s = '';
   if (anchor)
-    s += '<span id="' + anchor + '"></span> ';
+    s += '<a id="' + anchor + '" data-4search="' + cfg.filename + ':' + exports_name + ';func"></a> ';
   s += prefix + pexports + '**`' + fun.name + '`**' + params + postfix + '\n';
   if (fun.description)
     s += dpara (fun.description, '    ', ':') + '\n';
@@ -193,7 +194,7 @@ function gen_global_class (cfg, cl) {
   s += '\n' + cfg.h2 + hprefix + cl.name + ' class\n';
   s += '*class* ' + pexports + '**' + cl.name + '**';
   if (anchor)
-    s += '<span id="' + anchor + '"></span> ';
+    s += '<a id="' + anchor + '" data-4search="' + cfg.filename + ':' + cl.name + ';class"></a> ';
   s += '\n' + dpara (cl.classdesc || ' … \n', '    ', ':') + '\n';
   s += '\n';
   for (const mt of cl.methods) {
@@ -262,5 +263,6 @@ for (let filename of arg_config.files)
     global_overview = '';
     const configure = 'doc/jsdocrc.json';
     const jsdocast = jsdoc.explainSync ({ configure, files: [ filename ] })
-    console.log (generate_md (arg_config, jsdocast));
+    const cfg = Object.assign ({ filename }, arg_config);
+    console.log (generate_md (cfg, jsdocast));
   }
