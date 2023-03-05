@@ -137,9 +137,9 @@ __EOF
   test -r html/search-v2.js || die 'missing search-v2.js'
   cat >> xsearch.in <<-__EOF
 	if (results?.length > 0 && Array.isArray (results[0])) {
-	  const key = value.replace (/^\s+/gm, '');
+	  const key = value.toLowerCase().replace (/^\s+/gm, '');
 	  for (let xt of Search.__extra_tokens) {
-	    let name = xt.name;
+	    let name = xt.name.toLowerCase();
 	    if (!name.startsWith (key)) {
 	      name = name.replace (/^.*[. :]/gm, '');
 	      if (!name.startsWith (key))
