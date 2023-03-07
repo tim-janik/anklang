@@ -21,6 +21,9 @@ class AseCachingWrapper {
     if (!propwrapper) {
       let notify_set = undefined;
       const wrapper = { count: 0, value: defaultvalue, get_value: null, unwatch_notify: null, callbacks: [] };
+      // debug helper
+      if (typeof aseobj[prop] !== 'function')
+	throw new TypeError (`property getter not callable: [${aseobj.constructor.name} ${aseobj.$id}].${prop}: ` + aseobj[prop]);
       // add reactive value getter
       wrapper.get_value = () =>
 	{
