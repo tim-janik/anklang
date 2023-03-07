@@ -207,18 +207,20 @@ export { test_css };
 // Usage: postcss.js --test [1|0]
 if (__MAIN__) {
   async function main (argv) {
+    let n = 0;
     // run unit tests
-    if (argv[0] === '--test')
-      return test_css (argv[1] | 0);
+    if (argv[n] === '--test')
+      return test_css (argv[++n] | 0);
     // parse options
-    const filename = argv[0];
+    if (argv[n] == '--map')
+      postcss_options.map = ++n, true;
+    const filename = argv[n++];
     if (!filename)
       throw new Error (`${__filename}: missing input filename`);
-    const ofilename = argv[1];
+    const ofilename = argv[n++];
     if (!ofilename)
       throw new Error (`${__filename}: missing output filename`);
     // configure CLI processor
-    postcss_options.map = true;
     postcss_plugins.push (...nodeonly_plugins);
     // process and printout
     const result = await postcss_process (FS.readFileSync (filename), filename, true);
