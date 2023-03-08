@@ -18,22 +18,31 @@ const postcss_scss = require ('postcss-scss');
 import * as Colors from './colors.js';
 
 // == Plugins ==
-const postcss_plugins = [
-  require ('postcss-discard-comments') ({ remove: comment => true }),
-  require ('postcss-advanced-variables') ({ disable: '@content, @each, @for', // @if, @else, @mixin, @include, @import
-					    importResolve: __NODE__ ? load_import : find_import }),
-  require ('postcss-color-mod-function') ({ unresolved: 'throw' }),
-  require ('postcss-color-hwb'),
-  require ('postcss-lab-function'),
-  require ('postcss-functions') (css_functions()),
-  require ('postcss-nested'),
-  require ('postcss-discard-duplicates'),
-];
-const nodeonly_plugins = __NODE__ && [
-  // require ('postcss-preset-env') ({ stage: 3, browsers: 'Firefox >= 90 and chrome >= 90', autoprefixer: false }),
-  // require ('cssnano') ({ preset: ['default', { normalizeWhitespace: false }] }),
-  require ('perfectionist-dfd') ({ format: 'expanded', indentChar: '\t', indentSize: 1, trimLeadingZero: false }),
-];
+const postcss_color_mod_function = require ('postcss-color-mod-function');
+const postcss_discard_comments = require ('postcss-discard-comments');
+const postcss_advanced_variables = require ('postcss-advanced-variables');
+const postcss_functions = require ('postcss-functions');
+const postcss_color_hwb = require ('postcss-color-hwb');
+const postcss_lab_function = require ('postcss-lab-function');
+const postcss_nested = require ('postcss-nested');
+const postcss_discard_duplicates = require ('postcss-discard-duplicates');
+// Configure processing behaviour
+function postcss_plugins (options = { import_all: false })
+{
+  const plugins = [
+    postcss_discard_comments ({ remove: comment => true }),
+    postcss_advanced_variables ({ disable: '@content, @each, @for', // @if, @else, @mixin, @include, @import
+				  importFilter: string => options.import_all || string.endsWith ('.scss'),
+				  importResolve: __NODE__ ? load_import : find_import }),
+    postcss_color_mod_function ({ unresolved: 'throw' }),
+    postcss_color_hwb,
+    postcss_lab_function,
+    postcss_functions (css_functions()),
+    postcss_nested,
+    postcss_discard_duplicates,
+  ];
+  return plugins;
+}
 
 // == Options ==
 export const postcss_options = {
@@ -42,18 +51,15 @@ export const postcss_options = {
 };
 
 // == Processing ==
-async function postcss_process (css_string, fromname = '<style string>', ethrow = false) {
-  const postcss = PostCss (postcss_plugins);
+async function postcss_process (css_string, fromname = '<style string>', options = { import_all: false }) {
+  const postcss = PostCss (postcss_plugins (options));
   const poptions = Object.assign ({ from: fromname }, postcss_options);
   let result;
   try {
     result = await postcss.process (css_string, poptions);
   } catch (ex) {
     console.warn ('PostCSS input:', fromname + ':\n', css_string);
-    console.error ('PostCSS error:', ex);
-    if (ethrow)
-      throw (ex);
-    result = { content: '' };
+    throw (ex);
   }
   return result.content;
 }
@@ -199,7 +205,6 @@ async function test_css (verbose) {
 
 // == Exports ==
 export const options = postcss_options;
-export const plugins = postcss_plugins;
 export { postcss_process };
 export { add_import };
 export { test_css };
@@ -210,22 +215,27 @@ export { test_css };
 if (__MAIN__) {
   async function main (argv) {
     let n = 0;
-    // run unit tests
-    if (argv[n] === '--test')
-      return test_css (argv[++n] | 0);
-    // parse options
-    if (argv[n] == '--map')
-      postcss_options.map = ++n, true;
+    const opt = { import_all: false };
+    while (n < argv.length && argv[n].startsWith ('-')) {
+      // run unit tests
+      if (argv[n] === '--test')
+	return test_css (argv[++n] | 0);
+      // parse options
+      if (argv[n] == '--map')
+	postcss_options.map = true;
+      // include imports
+      if (argv[n] == '-i')
+	opt.import_all = true;
+      n++;
+    }
     const filename = argv[n++];
     if (!filename)
       throw new Error (`${__filename}: missing input filename`);
     const ofilename = argv[n++];
     if (!ofilename)
       throw new Error (`${__filename}: missing output filename`);
-    // configure CLI processor
-    postcss_plugins.push (...nodeonly_plugins);
     // process and printout
-    const result = await postcss_process (FS.readFileSync (filename), filename, true);
+    const result = await postcss_process (FS.readFileSync (filename), filename, opt);
     FS.writeFileSync (ofilename, result);
   }
   process.exit (await main (process.argv.splice (2)));
