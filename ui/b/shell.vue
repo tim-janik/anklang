@@ -23,15 +23,6 @@
   align-items: stretch;
   user-select: none;
 }
-.b-shell-panel1 {
-  @include b-panel-box;
-  flex-grow: 1;
-}
-.b-shell-panel2 {
-  @include b-panel-box;
-  height: 19em;
-  flex-shrink: 0;
-}
 .b-shell-sidebar {
   padding: 3px;
   /* overflow: hidden scroll; */
