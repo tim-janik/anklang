@@ -43,7 +43,7 @@
   border: 2px solid $b-modal-bordercol; border-radius: 5px;
   color: $b-modal-foreground; background: $b-modal-background;
   padding: 1em;
-  @include b-popup-box-shadow;
+  box-shadow: 0 2px 8px $b-boxshadow-color;
   /* fix vscrolling: https://stackoverflow.com/a/33455342 */
   justify-content: space-between;
   overflow: auto;
