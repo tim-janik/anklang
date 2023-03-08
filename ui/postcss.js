@@ -117,6 +117,7 @@ function css_functions() {
     },
     zmod: Colors.zmod,
     zmod4: Colors.zmod4,
+    zlerp: Colors.zlerp,
     zhsl: Colors.zhsl,
     zHsl: Colors.zHsl,
     zhsv: Colors.zhsv,
