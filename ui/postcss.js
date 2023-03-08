@@ -142,15 +142,32 @@ function load_import (id, cwd, opts) {
       return { file, contents: input || '' };
     }
   }
-  console.error ("Failed to find CSS import:", id, 'in', cwd);
-  throw new Error ("Failed to find CSS import: " + id);
+  console.error (id + ': failed to load CSS import (wd: ' + cwd + ')');
+  throw new Error ('Import failed');
 }
 
-/// Provide canned CSS files to use with `@import`.
-function find_import (id, cwd, opts) {
+/// Provide canned CSS files or fetch css for use with `@import`.
+async function find_import (id, cwd, opts) {
   const csstext = css_import_list[id];
   if (csstext === undefined)
-    console.error ("Failed to find CSS import:", id, 'in', cwd);
+    {
+      const frequest = {
+	headers: { "Content-Type": "text/css" },
+	redirect: "follow",
+      };
+      const fresponse = await fetch (id, frequest);
+      if (fresponse.ok) {
+	const content_type = fresponse.headers.get ("content-type");
+	if (content_type && (content_type.includes ("text/css") || content_type.includes ("text/x-scss"))) {
+	  const blob = await fresponse.blob(), text = await blob.text();
+	  return { file: id, contents: text || '' };
+	}
+	console.warn ('Import file not of CSS type:', id + ', Content-Type:', content_type);
+	throw new Error ('Import failed');
+      }
+      console.warn ('Failed to load CSS import: ' + cwd + '/' + id);
+      throw new Error ('Import failed');
+    }
   return new Promise (r => r ({ file: id, contents: csstext || '' }));
 }
 const css_import_list = {};
