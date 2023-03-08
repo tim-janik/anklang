@@ -51,7 +51,7 @@ export async function postcss_process (css_string, fromname = '<style string>', 
   return result;
 }
 
-const imports_done = memorize_imports ([ 'theme.scss', 'mixins.scss', 'shadow.scss', 'cursors/cursors.css' ]);
+const imports_done = memorize_imports ([ 'theme.scss', 'mixins.scss', 'shadow.scss', ]);
 
 export async function postcss (...args) {
   const css_string = args.join ('');
