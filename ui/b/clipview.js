@@ -4,11 +4,10 @@
  * Display a small view of a MIDI clip.
  */
 
-import { LitElement, html, css, postcss, docs, ref } from '../little.js';
+import { LitComponent, LitElement, html, css, postcss, docs, ref } from '../little.js';
 
 // == STYLE ==
 const STYLE = await postcss`
-@import 'shadow.scss';
 @import 'mixins.scss';
 :host {
   display: inline-grid;
@@ -68,7 +67,7 @@ const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with
 const PRIVATE_PROPERTY = { state: true };
 const OBJECT_PROPERTY = { attribute: false };
 
-class BClipView extends LitElement {
+class BClipView extends LitComponent {
   static styles = [ STYLE ];
   static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
   static properties = {

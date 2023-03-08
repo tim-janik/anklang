@@ -8,14 +8,13 @@
  * A context menu is available with mouse button 3, which provides extended functionality.
  */
 
-import { LitElement, ref, html, css, postcss, docs } from '../little.js';
+import { LitComponent, LitElement, ref, html, css, postcss, docs } from '../little.js';
 import * as PianoCtrl from "./piano-ctrl.js";
 import * as Util from '../util.js';
 const floor = Math.floor, round = Math.round;
 
 // == STYLE ==
 const STYLE = await postcss`
-@import 'shadow.scss';
 @import 'mixins.scss';
 @import 'grid.css';
 
@@ -130,7 +129,7 @@ const PRIVATE_PROPERTY = { state: true };
 const default_note_length = Util.PPQN / 4;
 
 /// UI element for note editing.
-class BPianoRoll extends LitElement {
+class BPianoRoll extends LitComponent {
   static styles = [ STYLE ];
   static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
   render()

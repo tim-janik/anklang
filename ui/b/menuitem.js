@@ -27,13 +27,12 @@
  * : All contents passed into this slot will be rendered as contents of this element.
  */
 
-import { LitElement, html, css, postcss, docs } from '../little.js';
+import { LitComponent, LitElement, html, css, postcss, docs } from '../little.js';
 import * as Kbd from '../kbd.js';
 import * as ContextMenu from './contextmenu.js';
 
 // == STYLE ==
 const STYLE = await postcss`
-@import 'shadow.scss';
 @import 'mixins.scss';
 :host {
   display: flex; flex-direction: column; align-items: stretch;
@@ -110,7 +109,7 @@ const BOOL_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with 
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 const PRIVATE_PROPERTY = { state: true };
 
-class BMenuItem extends LitElement {
+class BMenuItem extends LitComponent {
   static styles = [ STYLE ];
   static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
   render()
