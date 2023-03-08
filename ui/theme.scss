@@ -1,9 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-// == Layout ==
-$b-panel-radius:	3px;
-$b-device-radius:	3px;
-
 // == Color Theme ==
 $b-main-foreground: 	#f3f1f5;
 $b-main-background: 	lgrey(13%);
@@ -45,16 +41,6 @@ $b-scrollbar-size:      13px; // tweaked to match supported Firefox scrollbar si
 $b-scrollbar-bg:	#111; // track
 $b-scrollbar-dd:	#222; // inactive slider
 $b-scrollbar-fg:	#777; // hovered slider
-
-@mixin b-panel-box {
-  color: $b-panel-foreground;
-  background: $b-panel-background; //* $b-panel-focus */
-  border: $b-panel-border; border-radius: $b-panel-radius;
-  overflow: hidden;
-  margin-left: $b-panel-spacing;
-  &:not(:first-of-type) { margin-top: calc($b-panel-spacing * 0.5); }
-  &:not(:last-of-type)  { margin-bottom: calc($b-panel-spacing * 0.5); }
-}
 
 // == Hotkey ==
 @mixin b-kbd-hotkey($border: true) {
@@ -108,7 +94,6 @@ $b-menu-box-shadow: 		0 0 13px 1px #0005;
 $b-menu-vpad:			5px;	// vertical border/margin around a menuitem
 $b-menu-hpad:			1em;	// horizontal border/margin around a menuitem
 $b-style-focus-color:		#0080ff !default;
-$b-style-border-radius:         3px !default;
 $b-style-light-foreground:	$b-main-foreground !default;
 $b-style-dark-outline:		#181818 !default;
 $b-style-modal-overlay:		#0000008c !default;
@@ -139,7 +124,7 @@ $b-focus-box-shadow:    0 0 0 1px $b-style-focus-color !default; // suitable for
 @mixin b-focus-outline($asborder: false)  {
   outline: 0 none;
   margin: 1px;
-  border-radius: $b-style-border-radius;
+  border-radius: $b-button-radius;
   @if $asborder {
     border: 1px solid transparent;
   }
@@ -162,7 +147,7 @@ $b-style-inset-glint-2:       #383838 !default;
 @mixin b-style-inset {
   //* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
   border-color: $b-style-inset-background-1 $b-style-inset-background-0 $b-style-inset-background-2 $b-style-inset-background-0;
-  border-left: 0px !important; border-right: 0px !important; border-radius: $b-style-border-radius;
+  border-left: 0px !important; border-right: 0px !important; border-radius: $b-button-radius;
   color: $b-style-light-foreground; outline: none; //* focus is handled via box-shadow */
   background-color: $b-style-inset-background-0; background: $b-style-inset-background;
   //* The inset is implemented similarly to b-style-outset */
@@ -183,13 +168,13 @@ $b-style-outset-activebg-glint: $b-style-outset-activebg-2 !default;
 @mixin b-style-outset {
   //* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
   border-color: $b-style-outset-background-1 $b-style-outset-background-0 $b-style-outset-background-2 $b-style-outset-background-0;
-  border-left: 0px !important; border-right: 0px !important; border-radius: $b-style-border-radius;
+  border-left: 0px !important; border-right: 0px !important; border-radius: $b-button-radius;
   color: $b-style-light-foreground; outline: none; //* focus is handled via box-shadow */
   background-color: $b-style-outset-background-0; background: $b-style-outset-background;
   //* The outset is implemented by adding a dark shadow around, and light shadows above and below */
   box-shadow: 0px -1px 0 0px $b-style-outset-glint-1, 0px -1px 0 1px $b-style-dark-outline, 0 0px 0 1px $b-style-dark-outline, 0px 2px 0px 0px $b-style-outset-glint-2;
   &:focus { box-shadow: 0px -1px 0 0px $b-style-outset-glint-1, 0px -1px 0 1px $b-style-focus-color, 0 0px 0 1px $b-style-focus-color, 0px 2px 0px 0px $b-style-outset-glint-2; }
-  &.active, &:active, &[data-contextmenu=true] {
+  &.active, &:active, &[data-contextmenu="true"] {
 	background-color: $b-style-outset-activebg-0; background: $b-style-outset-activebg;
 	box-shadow: 0px -1px 0 0px $b-style-outset-activebg-glint, 0px -1px 0 1px $b-style-dark-outline, 0 0px 0 1px $b-style-dark-outline, 0px 2px 0px 0px $b-style-outset-glint-2;
 	&:focus { box-shadow: 0px -1px 0 0px $b-style-outset-activebg-glint, 0px -1px 0 1px $b-style-focus-color, 0 0px 0 1px $b-style-focus-color, 0px 2px 0px 0px $b-style-outset-glint-2; }
@@ -211,7 +196,7 @@ $b-softbutton-lg-down: linear-gradient(to top, $b-softbutton-bgd, $b-softbutton-
   border-top-color: transparent; border-bottom-color: transparent;
   &:focus { outline: $b-focus-outline; }
   &.hover, &:hover   { box-shadow: inset 500px 500px rgba(255, 255, 255, 0.035); }
-  &.active, &:active, &[data-contextmenu=true] {
+  &.active, &:active, &[data-contextmenu="true"] {
     background: $b-softbutton-lg-up;
     border-color: $b-softbutton-bg; border-style: solid;
     box-shadow: inset 500px 500px rgba(0, 0, 0, 0.05);
@@ -246,7 +231,7 @@ $b-singlebutton-border-color: zmod($b-singlebutton-bg, Jz-=32.5);
   border: 1px outset $b-singlebutton-border-color;
   padding: $vpad $hpad $vpad $hpad;
   &.hover, &:hover   { box-shadow: inset 500px 500px rgba(255, 255, 255, 0.035); }
-  &.active, &:active, &[data-contextmenu=true] {
+  &.active, &:active, &[data-contextmenu="true"] {
     background: $b-singlebutton-dark;
     color: $b-singlebutton-fgd;
     border-color: zmod($b-singlebutton-border-color, Jz+=3.7);
@@ -257,7 +242,7 @@ $b-singlebutton-border-color: zmod($b-singlebutton-bg, Jz-=32.5);
     $focus-outline-col: $b-glow-control;
     outline: none;
     box-shadow: 0 0 0 1px $focus-outline-col;
-    &.active, &:active, &[data-contextmenu=true] {
+    &.active, &:active, &[data-contextmenu="true"] {
       outline: none;
       box-shadow: 0 0 0 1px zmod($focus-outline-col, Jz-=3);
     }
@@ -291,8 +276,8 @@ $b-piano-roll-font:     	normal 9px $b-main-font-family; // the '9px' part is dy
   // Assign webkit spin-button arrows that fit the theme
   &::-webkit-inner-spin-button {
     -webkit-appearance: none; // allow customizations
-    width: 9px; margin-left: 5px; margin-right: $b-style-border-radius;
-    background: transparent url(../assets/spin-arrows.svg) no-repeat center center !important;
+    width: 9px; margin-left: 5px; margin-right: $b-button-radius;
+    background: transparent url('../assets/spin-arrows.svg') no-repeat center center !important;
     background-size: 100% 100% !important;
     opacity: .5;
     &:hover { opacity: .99; }
@@ -308,7 +293,7 @@ $b-piano-roll-font:     	normal 9px $b-main-font-family; // the '9px' part is dy
 @mixin b-style-hrange-track() {
   -webkit-appearance: none;
   width: 100%; height: 7px; cursor: pointer;
-  border-radius: calc($b-style-border-radius * 0.5);
+  border-radius: calc($b-button-radius * 0.5);
   box-shadow: inset 0 1px 0 0px $b-style-dark-outline, inset 0px -1px 0px 0px $b-style-inset-glint-2;
   background-color: $b-style-inset-background-0; background: $b-style-inset-background;
 }
@@ -337,41 +322,3 @@ $b-piano-roll-font:     	normal 9px $b-main-font-family; // the '9px' part is dy
 				     margin-top: -4px; -webkit-appearance: none; }
   &:hover::-webkit-slider-thumb    { @include b-style-hrange-thumb-bg(#ffc); }
 }
-
-// == Scrollbars & Forms ==
-:root {
-  color-scheme: dark;
-}
-
-@mixin firefox-scrollbars() {
-  & { scrollbar-color: $b-scrollbar-dd $b-scrollbar-bg; }
-  & :hover,
-  &:hover { scrollbar-color: $b-scrollbar-fg $b-scrollbar-bg; }
-}
-
-@mixin scrollbar-hover-area() {
-  &         ::-webkit-scrollbar-thumb { background: $b-scrollbar-dd; border-radius: 5px; }
-  & :hover,
-  &:hover { ::-webkit-scrollbar-thumb { background: $b-scrollbar-fg; background: linear-gradient(zmod($b-scrollbar-fg, Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%)); } }
-  @include firefox-scrollbars();
-}
-
-@mixin chrome-scrollbars() {
-  & {
-    // ::-webkit-scrollbar        { width: $b-scrollbar-size; height: $b-scrollbar-size; }
-    ::-webkit-scrollbar-button { display: none; }
-    ::-webkit-scrollbar-track, &::-webkit-scrollbar-track-piece, ::-webkit-scrollbar-corner,
-    ::-webkit-scrollbar        {
-      background: $b-scrollbar-bg;
-      border: none; box-shadow: none;
-      background: #000;
-    }
-  }
-  &         ::-webkit-scrollbar-thumb { background: $b-scrollbar-dd; border-radius: 5px; }
-  & :hover,
-  &:hover { ::-webkit-scrollbar-thumb { background: $b-scrollbar-fg; background: linear-gradient(zmod($b-scrollbar-fg, Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%)); } }
-}
-
-html[gecko]	{ @include firefox-scrollbars(); }
-html[chrome]	{ @include chrome-scrollbars(); }
-:host		{ @include chrome-scrollbars(); @include firefox-scrollbars(); }
