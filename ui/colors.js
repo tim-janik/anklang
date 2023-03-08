@@ -359,23 +359,26 @@ function zmod_assignop (col, prop, op, num, perc = false) {
     col.zcam = { viewing, Jz: zcam.Jz, hz: zcam.hz,
 		 Cz: value_assignops (Z.zcam_ensure_Cz (zcam).Cz, op, num, perc,
 				      () => zmaxCz().Cz) };
-  else if (prop.toLowerCase() == 'mz')
+  else if (prop.toLowerCase() == 'mz') {
     col.zcam = { viewing, Jz: zcam.Jz, hz: zcam.hz,
 		 Mz: value_assignops (Z.zcam_ensure_Mz (zcam).Mz, op, num, perc,
 				      () => Z.zcam_ensure_Mz (zmaxCz()).Mz) };
-  else if (prop.toLowerCase() == 'sz')
+    col.zcam = Z.zcam_ensure_Cz (col.zcam);
+  } else if (prop.toLowerCase() == 'sz') {
     col.zcam = { viewing, Jz: zcam.Jz, hz: zcam.hz,
 		 Sz: value_assignops (Z.zcam_ensure_Sz (zcam).Sz, op, num, perc,
 				      () => Z.zcam_ensure_Sz (zmaxCz()).Sz) };
-  else if (prop == 'hz' || prop == 'hZ')
+    col.zcam = Z.zcam_ensure_Cz (col.zcam);
+  } else if (prop == 'hz' || prop == 'hZ')
     col.zcam = { viewing, Jz: zcam.Jz, Cz: zcam.Cz,
 		 hz: value_assignops (Z.zcam_ensure_hz (zcam).hz, op, num, perc,
 				      () => 360) };
-  else if (prop == 'Hz' || prop == 'HZ')
+  else if (prop == 'Hz' || prop == 'HZ') {
     col.zcam = { viewing, Jz: zcam.Jz, Cz: zcam.Cz,
 		 Hz: value_assignops (Z.zcam_ensure_Hz (zcam).Hz, op, num, perc,
 				      () => 400) };
-  else
+    col.zcam = Z.zcam_ensure_hz (col.zcam);
+  } else
     console.warn ("CSS: invalid zmod: ", prop, op, num, perc ? '%' : '');
   return zcam;
 }
