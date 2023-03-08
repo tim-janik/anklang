@@ -424,6 +424,16 @@ export function zmod (colorlike, ...mods) {
   return true ? Z.srgb_hex (rgba) : css_rgba (rgba);
 }
 
+/// Find zmod() for a color.
+export function zmod4 (colorlike)
+{
+  const rgba = color2rgba (colorlike);
+  const gamut = default_gamut;
+  const zcam = gamut.zcam ({ r: rgba[0], g: rgba[1], b: rgba[2] });
+  const fix = n => n.toFixed (3);
+  return `zmod (Jz=${fix (zcam.Jz)},Cz=${fix (zcam.Cz)},hz=${fix (zcam.hz)})`;
+}
+
 /// Yield a grey tone with CIELAB lightness.
 export function lgrey (lightness) {
   const gamut = default_gamut;
