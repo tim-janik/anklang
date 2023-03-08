@@ -26,6 +26,17 @@ ui/nocopy.wildcards ::= $(wildcard	\
 	ui/sfc-compile.js		\
 	ui/slashcomment.js		\
 )
+ui/scss.files ::= $(strip	\
+	ui/dark.scss		\
+	ui/domstyles.scss	\
+	ui/globals.scss		\
+	ui/grid.scss		\
+	ui/mixins.scss		\
+	ui/theme.scss		\
+)
+ui/b/scss2css.sources ::= $(strip	\
+	ui/shadow.scss			\
+)
 ui/copy.files ::= $(filter-out $(ui/nocopy.wildcards) $(ui/cjs.wildcards), $(ui/jscopy.wildcards))
 ui/vue.wildcards ::= $(wildcard ui/b/*.vue)
 ui/public.wildcards ::= $(wildcard	\
@@ -107,7 +118,7 @@ $>/ui/.build1-stamp: $>/ui/assets/cknob193u.png $>/ui/assets/cknob193b.png
 $>/ui/spinner.scss: ui/assets/spinner.svg
 	$(QGEN)
 	$Q sed -rn '/@keyframe/,$${ p; /^\s*}\s*$$/q; }' $< > $@
-$>/ui/all-styles.css: $>/ui/spinner.scss
+$>/ui/.build1-stamp: $>/ui/spinner.scss
 
 # == ui/.aseignore ==
 $>/ui/.aseignore:					| $>/ui/
@@ -137,24 +148,33 @@ $(ui/b/vuejs.targets): $>/%.js: %.vue			| $>/ui/b/ $>/node_modules/.npm.done
 $(ui/b/vuejs.targets): $(wildcard ui/*.scss ui/b/*.scss)	# includes of the sfc-compile.js generated CSS outputs
 $>/ui/.build1-stamp: $(ui/b/vuejs.targets)
 
-# == ui/all-styles.css ==
-ui/csscopy.sources ::= ui/styles.scss ui/theme.scss ui/mixins.scss ui/shadow.scss
-$>/ui/all-styles.css: $>/ui/postcss.js ui/Makefile.mk $(ui/csscopy.sources) $(ui/b/vuecss.targets)	| $>/ui/
-	$(QGEN)
-	$Q $(CP) $(ui/csscopy.sources) $>/ui/
-	$Q echo '@charset "UTF-8";'					>  $>/ui/imports.scss
-	$Q echo "@import 'styles.scss';"				>> $>/ui/imports.scss
-	$Q for f in $$(cd $>/ui/b/ && echo *.css) ; do			\
-		echo "@import 'b/$${f}';"				>> $>/ui/imports.scss \
-		|| exit 1 ; done
-	$Q cd $>/ui/ && node ./postcss.js --map -i imports.scss $(@F).tmp
-	$Q mv $@.tmp $@
+# == ui/postcss.js ==
 $>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/ui/colors.js $>/node_modules/.npm.done
 	$(QGEN)
 	$Q $(CP) $< $@.tst.js
 	$Q cd $>/ui/ && node ./$(@F).tst.js --test $V # CHECK transformations
 	$Q mv $@.tst.js $@
-$>/ui/.build1-stamp: $>/ui/all-styles.css $>/ui/postcss.js
+$>/ui/.build1-stamp: $>/ui/postcss.js
+
+# == ui/shadow.css ==
+ui/b/scss2css.targets ::= $(ui/b/scss2css.sources:ui/%.scss=$>/ui/%.css)
+$(ui/b/scss2css.targets): $>/ui/postcss.js ui/Makefile.mk
+$(ui/b/scss2css.targets): $>/ui/%.css: ui/%.scss		| $>/ui/
+	$(QGEN)
+	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -i $< $@.tmp
+	$Q mv $@.tmp $@
+$>/ui/.build1-stamp: $(ui/b/scss2css.targets)
+$>/ui/.scss2css.check: $(ui/b/scss2css.targets) | $>/ui/.stylelintrc.json
+	$(QECHO) CHECK 'ui/*.scss -> ui/*.css'
+	-$Q cd $>/ui/ && ../node_modules/.bin/stylelint $(ui/b/scss2css.targets:$>/ui/%=%) && touch $@
+$>/ui/.build2-stamp: $>/ui/.scss2css.check
+
+# == ui/*.scss ==
+ui/scss.targets ::= $(ui/scss.files:%.scss=$>/%.scss)
+$(ui/scss.targets): $>/%.scss: %.scss			| $>/ui/
+	$(QGEN)
+	$Q cat $< >$@
+$>/ui/.build1-stamp: $(ui/scss.targets)
 
 # == all-components.js ==
 $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vuejs.targets) $(wildcard ui/b/*)	| $>/ui/
@@ -312,15 +332,6 @@ $>/ui/.build2-stamp: $>/ui/.eslint.done	# deferred during rebuilds
 eslint: $>/ui/.eslint.files $>/node_modules/.npm.done
 	$Q cd $>/ui/ && npm run $@
 .PHONY: eslint
-
-# == cssvalid.done ==
-$>/ui/.cssvalid.done: $>/ui/all-styles.css ui/Makefile.mk
-	$(QGEN)
-	$Q $>/node_modules/.bin/csstree-validator -r gnu $< > $>/ui/.cssvalid.err 2>&1 ; :
-	$Q test ! -s $>/ui/.cssvalid.err || sed -r $$'s/^"([^"]+)":/\e[31;1m\\1\e[0m:/' $>/ui/.cssvalid.err
-	$Q # test -s $>/ui/.cssvalid.err && exit 1
-	$Q touch $@
-$>/ui/.build2-stamp: $>/ui/.cssvalid.done	# deferred during rebuilds
 
 # == $>/doc/b/*.md ==
 $>/doc/b/.doc-stamp: $(wildcard ui/b/*.js) ui/xbcomments.js ui/Makefile.mk $>/node_modules/.npm.done	| $>/doc/b/
