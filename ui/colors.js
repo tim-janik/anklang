@@ -395,6 +395,9 @@ export function zmod (colorlike, ...mods) {
       if (!col.zcam)
 	col.zcam = gamut.zcam (col.rgb);
       col.zcam = gamut.find_cusp (col.zcam.hz);
+    } else if (toks.length == 3 && z_assignops.includes (toks[1])) {
+      col.rgb = { r: 0, g: 0, b: 0 };
+      zmod_assignop (col, toks[0], toks[1], parseFloat (toks[2]), toks[2].indexOf ('%') >= 0);
     }
   }
   // support hex colors and names
