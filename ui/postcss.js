@@ -59,7 +59,8 @@ async function postcss_process (css_string, fromname = '<style string>', options
     result = await postcss.process (css_string, poptions);
   } catch (ex) {
     console.warn ('PostCSS input:', fromname + ':\n', css_string);
-    throw (ex);
+    console.error (ex);
+    return '';
   }
   return result.content;
 }
