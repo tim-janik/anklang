@@ -17,6 +17,7 @@ const floor = Math.floor, round = Math.round;
 const STYLE = await postcss`
 @import 'shadow.scss';
 @import 'mixins.scss';
+@import 'grid.css';
 
 :host {
   display: flex; flex-direction: column; align-items: stretch;
@@ -54,12 +55,6 @@ c-grid {
 
   grid-template-columns: min-content 1fr min-content;
   grid-template-rows:    min-content 1fr min-content;
-  .-col1		{ grid-column: 1/2; }
-  .-col2		{ grid-column: 2/3; }
-  .-col3		{ grid-column: 3/4; }
-  .-row1		{ grid-row: 1/2; }
-  .-row2		{ grid-row: 2/3; }
-  .-row3		{ grid-row: 3/4; }
 
   background: #0000;
   canvas { background: black; object-fit: contain;
