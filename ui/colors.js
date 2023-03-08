@@ -437,6 +437,27 @@ export function zmod4 (colorlike)
   return `zmod (Jz=${fix (zcam.Jz)},Cz=${fix (zcam.Cz)},hz=${fix (zcam.hz)})`;
 }
 
+/// Interpolate between 2 colors.
+export function zlerp (c1 = '#000', c2 = '#fff', t = 0.5)
+{
+  const perc = 'string' === typeof t && t.indexOf ('%') >= 0;
+  t = parseFloat (t);
+  t = Math.min (1, Math.max (0, perc ? t * 0.01 : t));
+  const k = 1 - t;
+  const rgba1 = color2rgba (c1);
+  const rgba2 = color2rgba (c2);
+  const gamut = default_gamut;
+  const zc1 = gamut.zcam ({ r: rgba1[0], g: rgba1[1], b: rgba1[2] });
+  const zc2 = gamut.zcam ({ r: rgba2[0], g: rgba2[1], b: rgba2[2] });
+  const izazbz1 = Z.Izazbz_from_zcam (zc1);
+  const izazbz2 = Z.Izazbz_from_zcam (zc2);
+  const izazbz = { Iz: izazbz1.Iz * k + izazbz2.Iz * t,
+		   az: izazbz1.az * k + izazbz2.az * t,
+		   bz: izazbz1.bz * k + izazbz2.bz * t };
+  const zcam = Z.zcam_from_Izazbz (izazbz);
+  return hex_from_zcam (zcam, rgba1[3] * k + rgba2[3] * t);
+}
+
 /// Yield a grey tone with CIELAB lightness.
 export function lgrey (lightness) {
   const gamut = default_gamut;
