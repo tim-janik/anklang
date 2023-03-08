@@ -7,6 +7,15 @@ import { LitElement, html, css, unsafeCSS } from '../lit.js';
 
 export const docs = (...args) => undefined;
 
+// Provide StyleSheet for all LitComponents
+const shadowdom_stylesheet = new CSSStyleSheet();
+(async () => {
+  const cssfile = 'shadow.css';
+  shadowdom_stylesheet[cssfile] = cssfile;
+  const csstext = await postcss_process ("@import url('" + cssfile + "');");
+  shadowdom_stylesheet.replaceSync (csstext);
+}) ();
+
 // == LitComponent ==
 /// A LitElement with reactive render() and updated() methods.
 export class LitComponent extends LitElement {
@@ -16,6 +25,12 @@ export class LitComponent extends LitElement {
     const request_update = this.requestUpdate.bind (this);
     this.render = Util.reactive_wrapper (this.render.bind (this), request_update);
     this.updated = Util.reactive_wrapper (this.updated.bind (this), request_update);
+  }
+  createRenderRoot()
+  {
+    const render_root = super.createRenderRoot();
+    render_root.adoptedStyleSheets.unshift (shadowdom_stylesheet);
+    return render_root;
   }
 }
 
