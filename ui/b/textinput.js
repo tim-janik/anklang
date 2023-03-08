@@ -18,8 +18,8 @@ import { LitComponent, LitElement, html, css, postcss, live, docs, ref } from '.
  */
 
 // <STYLE/>
-const STYLE = await
-postcss`
+const STYLE = await postcss`
+@import 'mixins.scss';
 input {
   outline-width: 0; border: none; border-radius: $b-button-radius;
   text-align: left; background-color: rgba(255,255,255,.3); color: #fff;
