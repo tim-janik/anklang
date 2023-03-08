@@ -7,6 +7,32 @@ import { LitElement, html, css, unsafeCSS } from '../lit.js';
 
 export const docs = (...args) => undefined;
 
+// == LitComponent ==
+/// A LitElement with reactive render() and updated() methods.
+export class LitComponent extends LitElement {
+  constructor()
+  {
+    super();
+    const request_update = this.requestUpdate.bind (this);
+    this.render = Util.reactive_wrapper (this.render.bind (this), request_update);
+    this.updated = Util.reactive_wrapper (this.updated.bind (this), request_update);
+  }
+}
+
+// == lit_update_all ==
+/** Call requestUpdate() on all `LitElement`s */
+export function lit_update_all (root)
+{
+  root = root || document.body;
+  for (const el of root.querySelectorAll ('*'))
+    {
+      if (el instanceof LitElement)
+	el.requestUpdate();
+      if (el.shadowRoot)
+	lit_update_all (el.shadowRoot);
+    }
+}
+
 // == PostCSS ==
 import * as PostCss from './postcss.js';	// require()s browserified plugins
 const csstree_validator = __DEV__ && await import ('./csstree-validator.esm.js');
