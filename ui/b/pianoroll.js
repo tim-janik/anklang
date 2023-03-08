@@ -49,7 +49,6 @@ const STYLE = await postcss`
 c-grid {
   background: $b-piano-roll-black-base;
   position: absolute; left: 0; right: 0; top: 0; bottom: 0;
-  color: $b-piano-roll-white-base;
   align-items: stretch;
 
   grid-template-columns: min-content 1fr min-content;
