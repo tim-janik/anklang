@@ -19,7 +19,6 @@ const STYLE = await postcss`
 @import 'mixins.scss';
 
 :host {
-  @import 'cursors/cursors.css';
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;
   // Make scss variables available to JS via getComputedStyle()
