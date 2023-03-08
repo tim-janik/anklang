@@ -8,6 +8,7 @@ import { LitComponent, html, css, postcss, docs } from '../little.js';
 
 // == STYLE ==
 const STYLE = await postcss`
+@import 'mixins.scss';
 hr {
   border-color: $b-menu-separator;
 }
