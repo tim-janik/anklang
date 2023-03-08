@@ -39,7 +39,7 @@ const csstree_validator = __DEV__ && await import ('./csstree-validator.esm.js')
 
 /// Process CSS via PostCSS, uses async plugins.
 export async function postcss_process (css_string, fromname = '<style string>', validate = true) {
-  const result = await PostCss.postcss_process (css_string, fromname);
+  const result = await PostCss.postcss_process (css_string, fromname, { import_all: true });
   if (__DEV__ && validate) {
     const errs = csstree_validator.validate (result, "input.postcss");
     if (errs.length) {
@@ -51,22 +51,8 @@ export async function postcss_process (css_string, fromname = '<style string>', 
   return result;
 }
 
-const imports_done = memorize_imports ([ 'theme.scss', 'mixins.scss', 'shadow.scss', ]);
-
 export async function postcss (...args) {
   const css_string = args.join ('');
-  await imports_done;
   const result = await postcss_process (css_string, "literal-css``");
   return css`${unsafeCSS (result)}`;
-}
-
-async function memorize_imports (imports) {
-  const fetchoptions = {};
-  const fetchlist = imports.map (async filename => {
-    const cssfile = await fetch (filename, fetchoptions);
-    const csstext = await cssfile.text();
-    // debug ("memorize_imports:", filename, cssfile, csstext);
-    PostCss.add_import (filename, csstext);
-  });
-  await Promise.all (fetchlist);
 }
