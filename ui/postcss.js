@@ -116,6 +116,7 @@ function css_functions() {
       return color.fromRgb (rgba).toHexString();
     },
     zmod: Colors.zmod,
+    zmod4: Colors.zmod4,
     zhsl: Colors.zhsl,
     zHsl: Colors.zHsl,
     zhsv: Colors.zhsv,
