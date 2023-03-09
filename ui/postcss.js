@@ -30,12 +30,14 @@ const postcss_discard_duplicates = require ('postcss-discard-duplicates');
 function postcss_plugins (options = {})
 {
   const opts = Object.assign ({ import_all: false, import_root: '/' }, options);
+  const variables = options.vars || {};
   const plugins = [
     postcss_discard_comments ({ remove: comment => true }),
     postcss_advanced_variables ({ disable: '@content, @each, @for', // @if, @else, @mixin, @include, @import
 				  importRoot: opts.import_root,
 				  importFilter: string => opts.import_all || string.endsWith ('.scss'),
-				  importResolve: __NODE__ ? load_import : find_import }),
+				  importResolve: __NODE__ ? load_import : find_import,
+				  variables }),
     postcss_color_mod_function ({ unresolved: 'throw' }),
     postcss_color_hwb,
     postcss_lab_function,
@@ -236,7 +238,7 @@ if (__MAIN__) {
   async function main (argv) {
     let n = 0;
     const cwd = process.cwd();
-    const opt = { import_all: false, import_root: cwd };
+    const opt = { import_all: false, import_root: cwd, vars: {} };
     while (n < argv.length && argv[n].startsWith ('-')) {
       // run unit tests
       if (argv[n] === '--test')
@@ -244,6 +246,17 @@ if (__MAIN__) {
       // parse options
       else if (argv[n] == '--map')
 	postcss_options.map = true;
+      // defines
+      else if (argv[n].startsWith ('-D')) {
+	const str = argv[n].length == 2 && n+1 < argv.length ? argv[++n] : argv[n].substr (2);
+	const eq = str.indexOf ('=');
+	const k = eq <= 0 ? str : str.substr (0, eq);
+	const v = eq <= 0 ? '1' : str.substr (eq + 1);
+	if (k)
+	  opt.vars[k] = v;
+	if (!opt.import_root.startsWith ('/'))
+	  opt.import_root = cwd + '/' + opt.import_root;
+      }
       // include root dir
       else if (argv[n].startsWith ('-C')) {
 	const dir = argv[n].length == 2 && n+1 < argv.length ? argv[++n] : argv[n].substr (2);
