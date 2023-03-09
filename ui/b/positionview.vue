@@ -8,8 +8,10 @@
 
 <style lang="scss">
 @import 'mixins.scss';
-$b-positionview-fg: #71cff2; $b-positionview-b0: #011214; $b-positionview-b1: #00171a;
-$b-positionview-bg: mix($b-positionview-b0, $b-positionview-b1);
+$b-positionview-fg: $t-lcdscreen-fg;
+$b-positionview-bg: $t-lcdscreen-bg;
+$b-positionview-b0: zmod($b-positionview-bg,Jz-=1);
+$b-positionview-b1: zmod($b-positionview-bg,Jz+=1);
 
 .b-positionview {
   margin: 0; padding: 5px 1em;
