@@ -20,8 +20,8 @@ $b-trackview-level-space: 1px;
   align-items: stretch;
   background-color: $b-button-border;
   border: 1px solid $b-button-border;
-  border-top-left-radius: $b-button-radius;
-  border-bottom-left-radius: $b-button-radius;
+  border-top-left-radius: var(--button-radius);
+  border-bottom-left-radius: var(--button-radius);
 }
 .-lvm-main { // level meter
   height: calc($b-trackview-level-height + $b-trackview-level-space + $b-trackview-level-height);
