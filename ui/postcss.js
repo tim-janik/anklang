@@ -27,12 +27,14 @@ const postcss_lab_function = require ('postcss-lab-function');
 const postcss_nested = require ('postcss-nested');
 const postcss_discard_duplicates = require ('postcss-discard-duplicates');
 // Configure processing behaviour
-function postcss_plugins (options = { import_all: false })
+function postcss_plugins (options = {})
 {
+  const opts = Object.assign ({ import_all: false, import_root: '/' }, options);
   const plugins = [
     postcss_discard_comments ({ remove: comment => true }),
     postcss_advanced_variables ({ disable: '@content, @each, @for', // @if, @else, @mixin, @include, @import
-				  importFilter: string => options.import_all || string.endsWith ('.scss'),
+				  importRoot: opts.import_root,
+				  importFilter: string => opts.import_all || string.endsWith ('.scss'),
 				  importResolve: __NODE__ ? load_import : find_import }),
     postcss_color_mod_function ({ unresolved: 'throw' }),
     postcss_color_hwb,
@@ -51,7 +53,7 @@ export const postcss_options = {
 };
 
 // == Processing ==
-async function postcss_process (css_string, fromname = '<style string>', options = { import_all: false }) {
+async function postcss_process (css_string, fromname = '<style string>', options = {}) {
   const postcss = PostCss (postcss_plugins (options));
   const poptions = Object.assign ({ from: fromname }, postcss_options);
   let result;
@@ -136,7 +138,7 @@ function css_functions() {
 
 /// Load import files in nodejs to implement `@import`.
 function load_import (id, cwd, opts) {
-  for (let path of [ './', cwd ]) {
+  for (let path of [ cwd, './' ]) {
     const file = path + '/' + id;
     if (FS.existsSync (file)) {
       const input = FS.readFileSync (file);
@@ -233,16 +235,22 @@ export { test_css };
 if (__MAIN__) {
   async function main (argv) {
     let n = 0;
-    const opt = { import_all: false };
+    const cwd = process.cwd();
+    const opt = { import_all: false, import_root: cwd };
     while (n < argv.length && argv[n].startsWith ('-')) {
       // run unit tests
       if (argv[n] === '--test')
 	return test_css (argv[++n] | 0);
       // parse options
-      if (argv[n] == '--map')
+      else if (argv[n] == '--map')
 	postcss_options.map = true;
+      // include root dir
+      else if (argv[n].startsWith ('-C')) {
+	const dir = argv[n].length == 2 && n+1 < argv.length ? argv[++n] : argv[n].substr (2);
+	opt.import_root = dir.startsWith ('/') ? dir : cwd + '/' + opt.import_root;
+      }
       // include imports
-      if (argv[n] == '-i')
+      else if (argv[n] == '-i')
 	opt.import_all = true;
       n++;
     }
