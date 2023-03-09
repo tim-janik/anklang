@@ -31,7 +31,7 @@ $b-clipview-color-zmod: Jz=55, Cz=30;
     --clipview-color-hues: $b-clipview-color-hues;
     --clipview-color-zmod: $b-clipview-color-zmod;
     box-shadow: inset 0px 0 1px #fff9, inset -1px 0 1px #000;
-    border-radius: $b-theme-border-radius;
+    border-radius: var(--button-radius);
   }
   .-play {
     display: inline;
@@ -44,7 +44,7 @@ $b-clipview-color-zmod: Jz=55, Cz=30;
     transform: translate(-50%, -50%);
     color: $b-clip-play-fg;
     background: $b-clip-play-bg;
-    border-radius: calc($b-theme-border-radius * 0.66);
+    border-radius: calc(var(--button-radius) * 0.66);
   }
 }
 `;
