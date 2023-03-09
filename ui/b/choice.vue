@@ -59,7 +59,7 @@
     .b-choice-big & {
       flex-grow: 1;
       justify-content: space-between;
-      padding: $b-button-radius 0 $b-button-radius .5em;
+      padding: var(--button-radius) 0 var(--button-radius) .5em;
     }
     .b-choice-small & {
       width: 100%; height: 1.33em;

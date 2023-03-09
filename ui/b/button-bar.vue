@@ -13,12 +13,12 @@
   .b-button-bar {
     display: inline-flex; background-color: $b-button-border;
     border: 1px solid $b-button-border;
-    border-radius: $b-button-radius;
+    border-radius: var(--button-radius);
     > button, > push-button {
       margin: 0 0 0 1px;
       &:first-of-type	{ margin-left: 0; }
-      &:first-of-type	{ border-top-left-radius: $b-button-radius; border-bottom-left-radius: $b-button-radius; }
-      &:last-of-type	{ border-top-right-radius: $b-button-radius; border-bottom-right-radius: $b-button-radius; }
+      &:first-of-type	{ border-top-left-radius: var(--button-radius); border-bottom-left-radius: var(--button-radius); }
+      &:last-of-type	{ border-top-right-radius: var(--button-radius); border-bottom-right-radius: var(--button-radius); }
     }
   }
 </style>

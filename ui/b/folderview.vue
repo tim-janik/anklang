@@ -18,9 +18,9 @@
   .b-folderview {
     @include scrollbar-hover-area;
     input {
-      outline-width: 0; border: none; border-radius: $b-button-radius;
+      outline-width: 0; border: none; border-radius: var(--button-radius);
       text-align: left; background-color: rgba(255,255,255,.3); color: #fff;
-      padding-left: $b-button-radius; padding-right: $b-button-radius;
+      padding-left: var(--button-radius); padding-right: var(--button-radius);
       @include b-style-inset;
       &:focus		{ box-shadow: $b-focus-box-shadow; }
     }
