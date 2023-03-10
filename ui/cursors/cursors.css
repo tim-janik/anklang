@@ -1,10 +1,10 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
 :root {
-  --svg-cursor-cross:	url(cursors/cross.svg)		13 13, crosshair;
-  --svg-cursor-eraser:	url(cursors/eraser.svg)		10 26, not-allowed;
-  --svg-cursor-hresize:	url(cursors/hresize.svg)	13 13, col-resize;
-  --svg-cursor-knife:	url(cursors/knife.svg)		 2 26, crosshair;
-  --svg-cursor-move:	url(cursors/move.svg)		13 13, crosshair;
-  --svg-cursor-pen:	url(cursors/pen.svg)		 1 26, default;
+  --svg-cursor-cross:	url('cursors/cross.svg')	13 13, crosshair;
+  --svg-cursor-eraser:	url('cursors/eraser.svg')	10 26, not-allowed;
+  --svg-cursor-hresize:	url('cursors/hresize.svg')	13 13, col-resize;
+  --svg-cursor-knife:	url('cursors/knife.svg')	 2 26, crosshair;
+  --svg-cursor-move:	url('cursors/move.svg')		13 13, crosshair;
+  --svg-cursor-pen:	url('cursors/pen.svg')		 1 26, default;
 }
