@@ -211,7 +211,7 @@ $>/ui/.build1-stamp: $(ui/public.targets)
 # == ui/cursors/ ==
 $>/ui/cursors/cursors.css: $(wildcard ui/cursors/*) Makefile.mk		| $>/ui/cursors/
 	$(QECHO) COPY $<
-	$Q for SVG in `sed -n '/url.cursors\//{ s/.*(//; s/).*//; p }' ui/cursors/cursors.css` ; do \
+	$Q for SVG in `sed -n "/url.'cursors\//{ s/.*('//; s/').*//; p }" ui/cursors/cursors.css` ; do \
 		$(CP) ui/"$$SVG" $>/ui/cursors/ || break ; done
 	$Q $(CP) ui/cursors/cursors.css $@
 $>/ui/.build1-stamp: $>/ui/cursors/cursors.css
