@@ -51,6 +51,8 @@
     "rollup": "^3.1.0",
     "rollup-plugin-node-resolve": "^5.2.0",
     "sass": "^1.55.0",
+    "stylelint": "^15.2.0",
+    "stylelint-config-standard": "^30.0.1",
     "terser": "^5.15.1",
     "zcam-js": "^0.0.9"
   }
