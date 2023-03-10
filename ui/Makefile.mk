@@ -139,7 +139,6 @@ $>/ui/.build1-stamp: $>/ui/aseapi.js
 
 # == ui/b/vuejs.targets ==
 ui/b/vuejs.targets ::= $(ui/vue.wildcards:%.vue=$>/%.js)
-$(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
 $(ui/b/vuejs.targets): ui/sfc-compile.js 			| $>/ui/fonts/AnklangIcons.css
 $(ui/b/vuejs.targets): $>/%.js: %.vue			| $>/ui/b/ $>/node_modules/.npm.done
 	$(QGEN)
@@ -173,6 +172,20 @@ $(ui/scss.targets): $>/%.scss: %.scss			| $>/ui/
 	$(QGEN)
 	$Q cat $< >$@
 $>/ui/.build1-stamp: $(ui/scss.targets)
+
+# == vue-styles.css ==
+ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.css)
+$(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
+$>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $(ui/scss.targets) ui/Makefile.mk
+	$(QGEN)
+	$Q echo '@charset "UTF-8";'					>  $@.scss
+	$Q echo "@import 'globals.scss';"				>> $@.scss
+	$Q for f in $(ui/b/vuecss.targets:$>/ui/b/%.css=%.css) ; do	\
+		echo "@import 'b/$${f}';"				>> $@.scss \
+		|| exit 1 ; done
+	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -i $(@F).scss $(@F).tmp
+	$Q mv $@.tmp $@ && rm -f $@.scss
+$>/ui/.build1-stamp: $>/ui/vue-styles.css
 
 # == all-components.js ==
 $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vuejs.targets) $(wildcard ui/b/*)	| $>/ui/
