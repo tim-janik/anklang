@@ -64,6 +64,8 @@ async function postcss_process (css_string, fromname = '<style string>', options
   } catch (ex) {
     console.warn ('PostCSS input:', fromname + ':\n', css_string);
     console.error (ex);
+    if (options.rethrow)
+      throw (ex);
     return '';
   }
   return result.content;
@@ -238,7 +240,7 @@ if (__MAIN__) {
   async function main (argv) {
     let n = 0;
     const cwd = process.cwd();
-    const opt = { import_all: false, import_root: cwd, vars: {} };
+    const opt = { import_all: false, import_root: cwd, vars: {}, rethrow: true };
     while (n < argv.length && argv[n].startsWith ('-')) {
       // run unit tests
       if (argv[n] === '--test')
