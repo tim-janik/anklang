@@ -10,7 +10,7 @@ export const docs = (...args) => undefined;
 // Provide StyleSheet for all LitComponents
 const shadowdom_stylesheet = new CSSStyleSheet();
 (async () => {
-  const cssfile = 'shadow.css';
+  const cssfile = 'shadow.scss';
   shadowdom_stylesheet[cssfile] = cssfile;
   const csstext = await postcss_process ("@import url('" + cssfile + "');");
   shadowdom_stylesheet.replaceSync (csstext);
