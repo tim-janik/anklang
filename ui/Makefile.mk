@@ -139,13 +139,11 @@ $>/ui/.build1-stamp: $>/ui/aseapi.js
 
 # == ui/b/vuejs.targets ==
 ui/b/vuejs.targets ::= $(ui/vue.wildcards:%.vue=$>/%.js)
-ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.css)
 $(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
 $(ui/b/vuejs.targets): ui/sfc-compile.js 			| $>/ui/fonts/AnklangIcons.css
 $(ui/b/vuejs.targets): $>/%.js: %.vue			| $>/ui/b/ $>/node_modules/.npm.done
 	$(QGEN)
 	$Q node ui/sfc-compile.js --debug -I $>/ui/ $< -O $(@D)
-$(ui/b/vuejs.targets): $(wildcard ui/*.scss ui/b/*.scss)	# includes of the sfc-compile.js generated CSS outputs
 $>/ui/.build1-stamp: $(ui/b/vuejs.targets)
 
 # == ui/postcss.js ==
