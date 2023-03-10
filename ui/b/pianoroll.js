@@ -16,7 +16,7 @@ const floor = Math.floor, round = Math.round;
 // == STYLE ==
 const STYLE = await postcss`
 @import 'mixins.scss';
-@import 'grid.css';
+@import 'grid.scss';
 
 :host {
   display: flex; flex-direction: column; align-items: stretch;
