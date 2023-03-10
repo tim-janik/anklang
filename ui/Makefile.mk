@@ -186,6 +186,12 @@ $>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $(ui/scss.targets)
 	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -i $(@F).scss $(@F).tmp
 	$Q mv $@.tmp $@ && rm -f $@.scss
 $>/ui/.build1-stamp: $>/ui/vue-styles.css
+$>/ui/.vue-styles.check: $>/ui/vue-styles.css $>/ui/.stylelintrc.json
+	$(QECHO) CHECK $<
+	-$Q cd $>/ui/ && ../node_modules/.bin/stylelint  $(<F) && touch $@
+$>/ui/.build2-stamp: $>/ui/.vue-styles.check
+$>/ui/.stylelintrc.json: ui/stylelintrc.json
+	$Q cp $< $@
 
 # == all-components.js ==
 $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vuejs.targets) $(wildcard ui/b/*)	| $>/ui/
