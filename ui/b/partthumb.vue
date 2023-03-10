@@ -19,7 +19,7 @@
   $b-partthumb-colors: #ff7b50a7, #f68403a7, #d6960ea7, #92ad19a7, #67b518a7, #22bb27a7, #21b873a7, #24b3b3a7, #11adeba7, #799fffa7, #a094ffa7, #c287ffa7, #e473ffa7, #ff5ff5a7, #ff70b0a7 !default;
   display: inline-block; position: absolute; top: 0px; bottom: 0px;
   height: $b-trackrow-height;
-  border-radius: calc(var(--button-radius) * 0.66);
+  border-radius: calc($b-button-radius * 0.66);
   --partthumb-font-color: $b-partthumb-font-color; --partthumb-font: $b-partthumb-font;
   --partthumb-note-color: $b-partthumb-note-color; --partthumb-colors: $b-partthumb-colors;
   background-color: #222;

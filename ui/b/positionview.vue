@@ -16,7 +16,7 @@ $b-positionview-b1: zmod($b-positionview-bg,Jz+=1);
 .b-positionview {
   margin: 0; padding: 5px 1em;
   letter-spacing: 0.05em;
-  border-radius: var(--button-radius); align-items: baseline;
+  border-radius: $b-button-radius; align-items: baseline;
   border-top:    1px solid zmod($b-positionview-bg, Jz-=3%);
   border-left:   1px solid zmod($b-positionview-bg, Jz-=3%);
   border-right:  1px solid zmod($b-positionview-bg, Jz+=3%);

@@ -13,7 +13,7 @@
   .b-deviceeditor {
     .b-deviceeditor-sw {
       background: $b-device-handle;
-      border-radius: var(--device-radius); border-top-left-radius: 0; border-bottom-left-radius: 0;
+      border-radius: $b-button-radius; border-top-left-radius: 0; border-bottom-left-radius: 0;
       padding: 0 5px;
       text-align: center;
       /* FF: writing-mode: sideways-rl; */
@@ -23,7 +23,7 @@
       background: $b-device-bg;
       grid-gap: 3px;
       border: $b-panel-border; /*DEBUG: border-color: #333;*/
-      border-radius: var(--device-radius); border-top-left-radius: 0; border-bottom-left-radius: 0;
+      border-radius: $b-button-radius; border-top-left-radius: 0; border-bottom-left-radius: 0;
       justify-content: flex-start;
     }
   }

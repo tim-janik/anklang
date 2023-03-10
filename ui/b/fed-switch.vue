@@ -24,10 +24,10 @@
     }
   }
   .b-fed-switch-knob	{ position: absolute; height: 1em; width: 1em; left: 0.2em; bottom: 0.2em;
-    content: ""; transition: .3s; background-color: $b-switch-knob; border-radius: var(--button-radius);
+    content: ""; transition: .3s; background-color: $b-switch-knob; border-radius: $b-button-radius;
   }
   .b-fed-switch-trough { position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-    transition: .3s; background-color: $b-switch-inactive; border-radius: var(--button-radius);
+    transition: .3s; background-color: $b-switch-inactive; border-radius: $b-button-radius;
     &::before		{ position: absolute; top: 0.1em; left: 0.3em;
       font-size: 1em; text-transform: none; text-decoration: none !important; speak: none;
       content: "\2713"; transition: .3s; color: $b-switch-knob; opacity: 0;
