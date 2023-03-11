@@ -29,7 +29,7 @@ import { create_app } from './b/app.js';
 import * as Script from './script.js';
 
 // Custom Elements
-import { LitElement, html, css, postcss, docs, lit_update_all } from '../little.js';
+import { LitElement, html, css, docs, lit_update_all } from '../little.js';
 
 class PushButton extends HTMLElement {
   constructor() { super(); }
