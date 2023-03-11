@@ -19,7 +19,6 @@ $b-clipview-font: normal 9px $b-theme-font-family !default;    // the '9px' part
 $b-clipview-font-color: rgba(255, 255, 255, 0.7) !default;
 $b-clipview-note-color: rgba(255, 255, 255, 0.7) !default;
 $b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;
-$b-clipview-color-zmod: Jz=55, Cz=30;
 
 .b-clipview {
   display: flex; position: relative;
@@ -30,7 +29,6 @@ $b-clipview-color-zmod: Jz=55, Cz=30;
     --clipview-font-color: #{$b-clipview-font-color}; --clipview-font: #{$b-clipview-font};
     --clipview-note-color: #{$b-clipview-note-color};
     --clipview-color-hues: $b-clipview-color-hues;
-    --clipview-color-zmod: $b-clipview-color-zmod;
     box-shadow: inset 0px 0 1px #fff9, inset -1px 0 1px #000;
     border-radius: $b-button-radius;
   }
@@ -122,7 +120,15 @@ class BClipView extends LitComponent {
 
 customElements.define ('b-clipview', BClipView);
 
-import * as C from '../colors.js';
+import * as Z from '../zcam-js.mjs';
+
+const sRGB_viewing_conditions = {
+  Fs: Z.ZCAM_DIM,       // DIM comes closest to CIELAB L* in ZCAM and CIECAM97
+  Yb: 9.1,              // Background luminance factor so Jz=50 yields #777777
+  La: 80,               // La = Lw * Yb / 100; Safdar21, ZCAM, a colour appearance model
+  Xw: Z.ZCAM_D65.x, Yw: Z.ZCAM_D65.y, Zw: Z.ZCAM_D65.z,
+};
+const default_gamut = new Z.Gamut (sRGB_viewing_conditions);
 
 function render_canvas () {
   // canvas setup
@@ -141,9 +147,15 @@ function render_canvas () {
   // cindex = this.trackindex;			// - color per track
   cindex = this.track.$id;			// - color per track
   const hues = csp ('--clipview-color-hues').split (',');
-  const zmods = csp ('--clipview-color-zmod').split (',');
   const hz = hues[cindex % hues.length];
-  const bgcol = C.zmod ('hz=' + hz, ...zmods);
+  const gamut = default_gamut, viewing = gamut.viewing;
+  let zcam = { Jz: 55, Cz: 30, viewing, hz: parseFloat (hz), };
+  const max_Cz = gamut.maximize_Cz (zcam);
+  zcam.Cz = max_Cz * 0.7;
+  let rgb = gamut.contains (zcam);
+  if (!rgb.inside)
+    rgb = gamut.contains (gamut.clamp_chroma (zcam));
+  const bgcol = Z.srgb_hex (rgb);
   // paint clip background
   ctx.fillStyle = bgcol;
   ctx.fillRect (0, 0, width, height);
