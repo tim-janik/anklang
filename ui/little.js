@@ -48,6 +48,38 @@ export function lit_update_all (root)
     }
 }
 
+// == JsExtract ==
+export const JsExtract = {
+  css: () => undefined,
+  scss: () => undefined,
+  html: () => undefined,
+  fetch_css,
+};
+async function fetch_css (import_meta_url)
+{
+  const url = import_meta_url?.url || import_meta_url;
+  const css_url = url.replace (/\.[^.]+$/, '.css');
+  const csstext = await fetch_text_css (css_url);
+  return css`${unsafeCSS (csstext)}`;
+}
+
+async function fetch_text_css (urlstr)
+{
+  const url = new URL (urlstr);
+  const fresponse = await fetch (url);
+  if (fresponse.ok) {
+    const content_type = fresponse.headers.get ("content-type");
+    if (content_type && content_type.includes ("text/css")) {
+      const blob = await fresponse.blob(), text = await blob.text();
+      return text;
+    }
+    console.error ('Invalid file type for CSS import:', url + ', Content-Type:', content_type);
+    return '';
+  }
+  console.error ('Failed to load CSS import:', url + '');
+  return '';
+}
+
 // == PostCSS ==
 import * as PostCss from './postcss.js';	// require()s browserified plugins
 const csstree_validator = __DEV__ && await import ('./csstree-validator.esm.js');
