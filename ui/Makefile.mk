@@ -174,22 +174,24 @@ $(ui/scss.targets): $>/%.scss: %.scss			| $>/ui/
 $>/ui/.build1-stamp: $(ui/scss.targets)
 
 # == vue-styles.css ==
-ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.css)
+ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.vuecss)
 $(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
 $>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $(ui/scss.targets) ui/Makefile.mk
 	$(QGEN)
-	$Q echo '@charset "UTF-8";'					>  $@.scss
-	$Q echo "@import 'globals.scss';"				>> $@.scss
-	$Q for f in $(ui/b/vuecss.targets:$>/ui/b/%.css=%.css) ; do	\
-		echo "@import 'b/$${f}';"				>> $@.scss \
+	$Q echo '@charset "UTF-8";'					>  $@.vuecss
+	$Q echo "@import 'globals.scss';"				>> $@.vuecss
+	$Q for f in $(ui/b/vuecss.targets:$>/ui/b/%=%) ; do		\
+		echo "@import 'b/$${f}';"				>> $@.vuecss \
 		|| exit 1 ; done
-	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -i $(@F).scss $(@F).tmp
-	$Q mv $@.tmp $@ && rm -f $@.scss
+	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -i $(@F).vuecss $(@F).tmp
+	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/vue-styles.css
 $>/ui/.vue-styles.check: $>/ui/vue-styles.css $>/ui/.stylelintrc.json
 	$(QECHO) CHECK $<
-	-$Q cd $>/ui/ && ../node_modules/.bin/stylelint  $(<F) && touch $@
+	-$Q cd $>/ui/ && ../node_modules/.bin/stylelint $(<F) && touch $@
 $>/ui/.build2-stamp: $>/ui/.vue-styles.check
+
+# == ui/.stylelintrc.json ==
 $>/ui/.stylelintrc.json: ui/stylelintrc.json
 	$Q cp $< $@
 
