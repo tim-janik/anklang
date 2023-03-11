@@ -83,12 +83,6 @@ $>/ui/zcam-js.mjs: $>/node_modules/.npm.done				| $>/ui/
 $>/ui/.build1-stamp: $>/ui/zcam-js.mjs
 $>/ui/colors.js: $>/ui/zcam-js.mjs
 
-# == ui/csstree-validator.esm.js ==
-$>/ui/csstree-validator.esm.js: $>/node_modules/.npm.done				| $>/ui/
-	$(QGEN)
-	$Q $(CP) $>/node_modules/csstree-validator/dist/csstree-validator.esm.js $@
-$>/ui/.build1-stamp: $>/ui/csstree-validator.esm.js
-
 # == ui/index.html ==
 $>/ui/index.html: ui/index.html ui/Makefile.mk			| $>/ui/
 	$(QGEN)
@@ -317,15 +311,6 @@ $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 	$Q echo "const modules = {"								>  $>/ui/tmp-browserify/requires.js
 	$Q for mod in \
 		markdown-it \
-		postcss \
-		postcss-discard-comments \
-		postcss-discard-duplicates \
-		css-color-converter \
-		postcss-scss \
-		postcss-advanced-variables \
-		postcss-functions \
-		postcss-nested \
-		postcss-color-mod-function postcss-color-hwb postcss-lab-function \
 		; do \
 		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp-browserify/requires.js
 	$Q echo "};"										>> $>/ui/tmp-browserify/requires.js
