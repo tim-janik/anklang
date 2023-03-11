@@ -7,15 +7,6 @@ import { LitElement, html, css, unsafeCSS } from '../lit.js';
 
 export const docs = (...args) => undefined;
 
-// Provide StyleSheet for all LitComponents
-const shadowdom_stylesheet = new CSSStyleSheet();
-(async () => {
-  const cssfile = './shadow.css';
-  shadowdom_stylesheet[cssfile] = cssfile;
-  const csstext = await fetch_text_css (import.meta.resolve (cssfile));
-  shadowdom_stylesheet.replaceSync (csstext);
-}) ();
-
 // == LitComponent ==
 /// A LitElement with reactive render() and updated() methods.
 export class LitComponent extends LitElement {
@@ -29,7 +20,12 @@ export class LitComponent extends LitElement {
   createRenderRoot()
   {
     const render_root = super.createRenderRoot();
-    render_root.adoptedStyleSheets.unshift (shadowdom_stylesheet);
+    if (render_root) {
+      const link = document.createElement ("link");
+      link.setAttribute ("rel", "stylesheet");
+      link.setAttribute ("href", "shadow.css");
+      render_root.appendChild (link);
+    }
     return render_root;
   }
 }
