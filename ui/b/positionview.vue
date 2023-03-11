@@ -8,8 +8,8 @@
 
 <style lang="scss">
 @import 'mixins.scss';
-$b-positionview-fg: $t-lcdscreen-fg;
-$b-positionview-bg: $t-lcdscreen-bg;
+$b-positionview-fg: $b-lcdscreen-fg;
+$b-positionview-bg: $b-lcdscreen-bg;
 $b-positionview-b0: zmod($b-positionview-bg,Jz-=1);
 $b-positionview-b1: zmod($b-positionview-bg,Jz+=1);
 
