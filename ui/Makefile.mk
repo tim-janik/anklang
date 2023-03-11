@@ -161,7 +161,7 @@ $(ui/b/scss2css.targets): $>/ui/%.css: ui/%.scss		| $>/ui/
 	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -i $< $@.tmp
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $(ui/b/scss2css.targets)
-$>/ui/.scss2css.check: $(ui/b/scss2css.targets) | $>/ui/.stylelintrc.json
+$>/ui/.scss2css.check: $(ui/b/scss2css.targets) | $>/ui/.stylelintrc.cjs
 	$(QECHO) CHECK 'ui/*.scss -> ui/*.css'
 	-$Q cd $>/ui/ && ../node_modules/.bin/stylelint $(ui/b/scss2css.targets:$>/ui/%=%) && touch $@
 $>/ui/.build2-stamp: $>/ui/.scss2css.check
@@ -186,13 +186,13 @@ $>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $(ui/scss.targets)
 	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -i $(@F).vuecss $(@F).tmp
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/vue-styles.css
-$>/ui/.vue-styles.check: $>/ui/vue-styles.css $>/ui/.stylelintrc.json
+$>/ui/.vue-styles.check: $>/ui/vue-styles.css $>/ui/.stylelintrc.cjs
 	$(QECHO) CHECK $<
 	-$Q cd $>/ui/ && ../node_modules/.bin/stylelint $(<F) && touch $@
 $>/ui/.build2-stamp: $>/ui/.vue-styles.check
 
-# == ui/.stylelintrc.json ==
-$>/ui/.stylelintrc.json: ui/stylelintrc.json
+# == ui/.stylelintrc.cjs ==
+$>/ui/.stylelintrc.cjs: ui/stylelintrc.cjs
 	$Q cp $< $@
 
 # == all-components.js ==
@@ -212,6 +212,21 @@ $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vuejs.targets) $(wildcard ui/b/*)
 	$Q cat $@.tmp2 >> $@.tmp && $(RM) $@.tmp2
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/all-components.js
+
+# == ui/b/*.css ==
+ui/b/js.files ::= $(wildcard ui/b/*.js)
+ui/b/css.targets ::= $(ui/b/js.files:%.js=$>/%.css)
+$(ui/b/css.targets): $>/ui/postcss.js $(ui/scss.targets) ui/Makefile.mk
+$(ui/b/css.targets): $>/%.css: %.js					| $>/ui/b/
+	$(QGEN)
+	$Q node ui/jsextract.js $< -O $(@D) # %.jscss
+	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -i b/$(@F:%.css=%.jscss) b/$(@F).tmp
+	$Q mv $@.tmp $@
+$>/ui/.build1-stamp: $(ui/b/css.targets)
+$>/ui/.jscss-styles.check: $(ui/b/css.targets) $>/ui/.stylelintrc.cjs
+	$(QECHO) CHECK $<
+	-$Q cd $>/ui/ && ../node_modules/.bin/stylelint $(ui/b/css.targets:$>/ui/%=%) && touch $@
+$>/ui/.build2-stamp: $>/ui/.jscss-styles.check
 
 # == File Copies ==
 ui/copy.targets ::= $(ui/copy.files:%=$>/%)
