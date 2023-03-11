@@ -163,7 +163,7 @@ $(ui/b/scss2css.targets): $>/ui/%.css: ui/%.scss		| $>/ui/
 $>/ui/.build1-stamp: $(ui/b/scss2css.targets)
 $>/ui/.scss2css.check: $(ui/b/scss2css.targets) | $>/ui/.stylelintrc.cjs
 	$(QECHO) CHECK 'ui/*.scss -> ui/*.css'
-	-$Q cd $>/ui/ && ../node_modules/.bin/stylelint $(ui/b/scss2css.targets:$>/ui/%=%) && touch $@
+	-$Q cd $>/ && node_modules/.bin/stylelint $(ui/b/scss2css.targets:$>/%=%) && touch $@
 $>/ui/.build2-stamp: $>/ui/.scss2css.check
 
 # == ui/*.scss ==
@@ -188,7 +188,7 @@ $>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $(ui/scss.targets)
 $>/ui/.build1-stamp: $>/ui/vue-styles.css
 $>/ui/.vue-styles.check: $>/ui/vue-styles.css $>/ui/.stylelintrc.cjs
 	$(QECHO) CHECK $<
-	-$Q cd $>/ui/ && ../node_modules/.bin/stylelint $(<F) && touch $@
+	-$Q cd $>/ && node_modules/.bin/stylelint $(<:$>/%=%) && touch $@
 $>/ui/.build2-stamp: $>/ui/.vue-styles.check
 
 # == ui/.stylelintrc.cjs ==
@@ -225,7 +225,7 @@ $(ui/b/css.targets): $>/%.css: %.js					| $>/ui/b/
 $>/ui/.build1-stamp: $(ui/b/css.targets)
 $>/ui/.jscss-styles.check: $(ui/b/css.targets) $>/ui/.stylelintrc.cjs
 	$(QECHO) CHECK $<
-	-$Q cd $>/ui/ && ../node_modules/.bin/stylelint $(ui/b/css.targets:$>/ui/%=%) && touch $@
+	-$Q cd $>/ && node_modules/.bin/stylelint $(ui/b/css.targets:$>/%=%) && touch $@
 $>/ui/.build2-stamp: $>/ui/.jscss-styles.check
 
 # == File Copies ==
