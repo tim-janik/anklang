@@ -36,10 +36,11 @@
  * the CSS setting `will-change: transform`.
  */
 
-import { LitComponent, html, css, postcss, docs } from '../little.js';
+import { LitComponent, html, JsExtract, docs } from '../little.js';
 
 // == STYLE ==
-const STYLE = await postcss`
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 @import 'mixins.scss';
 b-knob {
     display: flex; position: relative;

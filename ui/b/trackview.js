@@ -1,5 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-import { LitElement, html, css, postcss, docs, ref } from '../little.js';
+import { LitElement, html, JsExtract, docs, ref } from '../little.js';
 
 /** == B-TRACKVIEW ==
  * A Vue template to display a project's Ase.Track.
@@ -11,7 +11,8 @@ import { LitElement, html, css, postcss, docs, ref } from '../little.js';
  */
 
 // == STYLE ==
-const STYLE = await postcss`
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 @import 'mixins.scss';
 :host {
   display: flex;

@@ -8,13 +8,14 @@
  * A context menu is available with mouse button 3, which provides extended functionality.
  */
 
-import { LitComponent, LitElement, ref, html, css, postcss, docs } from '../little.js';
+import { LitComponent, LitElement, ref, html, JsExtract, docs } from '../little.js';
 import * as PianoCtrl from "./piano-ctrl.js";
 import * as Util from '../util.js';
 const floor = Math.floor, round = Math.round;
 
 // == STYLE ==
-const STYLE = await postcss`
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 @import 'mixins.scss';
 @import 'grid.scss';
 

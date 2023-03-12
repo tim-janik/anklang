@@ -27,12 +27,13 @@
  * : All contents passed into this slot will be rendered as contents of this element.
  */
 
-import { LitComponent, LitElement, html, css, postcss, docs } from '../little.js';
+import { LitComponent, LitElement, html, JsExtract, docs } from '../little.js';
 import * as Kbd from '../kbd.js';
 import * as ContextMenu from './contextmenu.js';
 
 // == STYLE ==
-const STYLE = await postcss`
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 @import 'mixins.scss';
 :host {
   display: flex; flex-direction: column; align-items: stretch;

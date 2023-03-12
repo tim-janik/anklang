@@ -1,6 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-import { LitElement, html, css, postcss, docs } from '../little.js';
+import { LitElement, html, JsExtract, docs } from '../little.js';
 
 /** # B-ICON
  * This element displays icons from various icon fonts.
@@ -29,7 +29,8 @@ import { LitElement, html, css, postcss, docs } from '../little.js';
  */
 
 // == STYLE ==
-const STYLE = await postcss`
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 b-icon { // not using shadow-root here
   display: inline-flex; justify-content: center;
   margin: 0; padding: 0; line-height: 1;

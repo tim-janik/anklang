@@ -4,10 +4,11 @@
  * Display a small view of a MIDI clip.
  */
 
-import { LitComponent, LitElement, html, css, postcss, docs, ref } from '../little.js';
+import { LitComponent, LitElement, html, JsExtract, docs, ref } from '../little.js';
 
 // == STYLE ==
-const STYLE = await postcss`
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 @import 'mixins.scss';
 :host {
   display: inline-grid;

@@ -1,6 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-import { LitElement, html, css, postcss, docs } from '../little.js';
+import { LitElement, html, JsExtract, docs } from '../little.js';
 
 /** # B-MENUTITLE
  * An element to be used as menu title.
@@ -10,7 +10,8 @@ import { LitElement, html, css, postcss, docs } from '../little.js';
  */
 
 // == STYLE ==
-const STYLE = await postcss`
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 @import 'mixins.scss';
 :host { // b-menutitle
   display: inline-flex; flex: 0 0 auto; flex-wrap: nowrap; flex-direction: row;

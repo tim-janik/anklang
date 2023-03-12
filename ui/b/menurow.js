@@ -10,10 +10,11 @@
  * : All contents passed into this slot will be rendered as contents of this element.
  */
 
-import { LitComponent, html, css, postcss, docs } from '../little.js';
+import { LitComponent, html, JsExtract, docs } from '../little.js';
 
 // == STYLE ==
-const STYLE = await postcss`
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 :host {
   display: inline-flex; flex: 0 0 auto; flex-wrap: nowrap; flex-direction: row;
   text-align: center; justify-content: center; align-items: baseline;
