@@ -215,7 +215,11 @@ function generate_md (cfg, ast) {
   let s = '';
   // build dicts from doclets
   for (const doclet of ast) {
-    if ('string' !== typeof doclet.meta?.code?.name) continue;
+    // collect overview
+    if (doclet.scope == 'global' && doclet.kind == 'file' && doclet.description)
+      global_overview = doclet.description;
+    if ('string' !== typeof doclet.meta?.code?.name)
+      continue;
     // https://github.com/jsdoc/jsdoc/blob/master/packages/jsdoc/lib/jsdoc/schema.js
     const exports = doclet.meta.code.name && doclet.meta.code.name.search ('exports.') == 0;
     // collect classes
@@ -231,9 +235,6 @@ function generate_md (cfg, ast) {
     // collect variables
     if (doclet.scope == 'global' && doclet.kind == 'constant' && doclet.description)
       add_var (doclet.name, doclet.description, exports);
-    // collect overview
-    if (doclet.scope == 'global' && doclet.kind == 'file' && doclet.description)
-      global_overview = doclet.description;
   }
   // produce overview
   if (global_overview)
