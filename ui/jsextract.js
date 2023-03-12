@@ -4,7 +4,7 @@
 const fs = require ('fs');
 const path = require ('path');
 
-/// Count newlines
+// Count newlines
 function count_newlines (str) {
   let l = 0;
   for (let i = 0; i < str.length; i++)
@@ -15,7 +15,7 @@ function count_newlines (str) {
 
 const re_jscss = /^\s*JsExtract\s*\.\s*s?css\s*`(.*?)`;/mgs;
 
-/// Extract and process sections of an SFC file.
+// Extract strings from JsExtract markers.
 function process_file (filename, config) {
   // determine output file
   const jscss_filename = filename.replace (/\.(vue|sfc|mjs|cjs|js)$/, '') + '.jscss';
@@ -60,3 +60,25 @@ if (arg_config.odir)
   arg_config.odir = path.resolve (arg_config.odir);
 for (const filename of arg_config.files)
   process_file (filename, arg_config);
+
+/** @file
+ *
+ * # NAME
+ * `jsextract.js` - Script to extract snippets marked with JsExtract
+ *
+ * # SYNOPSIS
+ * node **jsextract.js** [*OPTIONS*] [*file.js*...]
+ *
+ * # DESCRIPTION
+ *
+ * The **jsextract.js** processes its input files by looking for markers
+ * such as ``` JsExtract.css`...` ``` and extracting the template string
+ * contents into a corresponding `*.jscss` file. This can be preprocessed
+ * or copied into a corresponding `*.css` file, to be loaded via
+ * `JsExtract.fetch_css()`.
+ *
+ * # OPTIONS
+ *
+ * **-O** <*dir*>
+ * :   Specify the directory for output files.
+ */
