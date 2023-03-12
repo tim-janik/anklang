@@ -129,8 +129,13 @@ function gen_section_head (cfg, what) {
 
 /// Generate variable markdown
 function gen_global_var (cfg, gvar) {
+  const exports_name = cfg.exports && gvar.exports ? cfg.exports + '.' + gvar.name : gvar.name;
+  const anchor = make_anchor (exports_name);
   const exports = cfg.exports && gvar.exports ? '<small>`' + cfg.exports + '.`</small>' : '';
-  let s = exports + '**`' + gvar.name + '`**' + '\n';
+  let s = '';
+  if (anchor)
+    s += '<a id="' + anchor + '" data-4search="' + cfg.filename + ':' + exports_name + ';' + (gvar.exports ? 'export' : 'var') + '"></a> ';
+  s += exports + '**`' + gvar.name + '`**' + '\n';
   if (gvar.description)
     s += dpara (gvar.description, '    ', ':') + '\n';
   s += '\n';
