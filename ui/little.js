@@ -45,15 +45,31 @@ export function lit_update_all (root)
 }
 
 // == JsExtract ==
+/** API to mark template strings for extraction and fetch extracted assets.
+ * - ``` JsExtract.css`body { font-weight:bold; }` ``` \
+ *   Mark CSS text inside a Javascript file for extration by jsextract.js.
+ * - ``` node jsextract.js inputfile.js ``` \
+ *   Extract ``` JsExtract.css`` ``` strings into `inputfile.jscss`.
+ * - ``` await JsExtract.fetch_css ('/path/to/inputfile.js'); ``` \
+ *   Use the browser `fetch()` API to retrieve the extracted string as `text/css`
+ *   from '/path/to/inputfile.css'.
+ * - ``` JsExtract.fetch_css (import.meta); ``` \
+ *   Variant of the above that utilizes `import.meta.url`.
+ */
 export const JsExtract = {
+  // Mark CSS template string for jsextract.js
   css: () => undefined,
+  // Mark SCSS template string for jsextract.js
   scss: () => undefined,
+  // Mark HTML template string for jsextract.js
   html: () => undefined,
   fetch_css,
 };
-async function fetch_css (import_meta_url)
+
+/// Fetch (extracted) asset from a base URL (enforcing `.css` extension) as "text/css"
+async function fetch_css (base_url)
 {
-  const url = import_meta_url?.url || import_meta_url;
+  const url = base_url?.url || base_url;
   const css_url = url.replace (/\.[^.\/]+$/, '') + '.css';
   const csstext = await fetch_text_css (css_url);
   return css`${unsafeCSS (csstext)}`;
