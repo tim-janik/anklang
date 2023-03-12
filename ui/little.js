@@ -54,7 +54,7 @@ export const JsExtract = {
 async function fetch_css (import_meta_url)
 {
   const url = import_meta_url?.url || import_meta_url;
-  const css_url = url.replace (/\.[^.]+$/, '.css');
+  const css_url = url.replace (/\.[^.\/]+$/, '') + '.css';
   const csstext = await fetch_text_css (css_url);
   return css`${unsafeCSS (csstext)}`;
 }
