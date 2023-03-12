@@ -273,11 +273,12 @@ if (__MAIN__) {
     if (!filename)
       throw new Error (`${__filename}: missing input filename`);
     const ofilename = argv[n++];
-    if (!ofilename)
-      throw new Error (`${__filename}: missing output filename`);
     // process and printout
     const result = await postcss_process (FS.readFileSync (filename), filename, opt);
-    FS.writeFileSync (ofilename, result);
+    if (ofilename)
+      FS.writeFileSync (ofilename, result);
+    else
+      console.log (result);
   }
   process.exit (await main (process.argv.splice (2)));
 }
