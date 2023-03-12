@@ -79,31 +79,3 @@ async function fetch_text_css (urlstr)
   console.error ('Failed to load CSS import:', url + '');
   return '';
 }
-
-// == PostCSS ==
-import * as PostCss from './postcss.js';	// require()s browserified plugins
-const csstree_validator = __DEV__ && await import ('./csstree-validator.esm.js');
-
-/// Process CSS via PostCSS, uses async plugins.
-export async function postcss_process (css_string, fromname = '<style string>', validate = false) {
-  const options = {
-    import_all: true,
-    vars: { themename_scss: 'dark.scss' },
-  };
-  const result = await PostCss.postcss_process (css_string, fromname, options);
-  if (__DEV__ && validate) {
-    const errs = csstree_validator.validate (result, "input.postcss");
-    if (errs.length) {
-      // console.warn ('PostCSS output:', fromname + ':\n', css_string);
-      console.error (fromname + ':' + errs[0].line + ': ' + errs[0].name + ': ' + errs[0].message + ': ' + errs[0].css + '\n', errs);
-      console.info (result);
-    }
-  }
-  return result;
-}
-
-export async function postcss (...args) {
-  const css_string = args.join ('');
-  const result = await postcss_process (css_string, "literal-css``");
-  return css`${unsafeCSS (result)}`;
-}
