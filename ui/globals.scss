@@ -1,0 +1,88 @@
+/* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
+@import 'mixins.scss';
+
+// CSS cursor variables
+@import url('cursors/cursors.css');
+
+/* Fonts */
+@font-face { font-family: Inter; font-display: swap;
+	     font-style: normal; font-weight: 500;
+	     src: url("/fonts/Inter-Medium.woff2") format("woff2"); }
+
+// Globals
+html {
+  font: $b-html-font;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  letter-spacing: 0.011em;
+  font-variation-settings: var(--font-variation-settings);
+  font-feature-settings: var(--font-feature-settings);
+  font-variant-numeric: var(--font-variant-numeric);
+  color-scheme: $b-color-scheme;
+}
+
+html, body {
+  // full viewport sizing
+  margin: 0; padding: 0;
+  max-width: 100vw; max-height: 100vh;
+  overflow: hidden;
+}
+
+body {
+  // full viewport sizing
+  width: 100vw; height: 100vh;
+  // main colors
+  color: $b-foreground-color;
+  background: $b-background-color;
+  &:-moz-window-inactive {
+    color: $b-foreground-inactive;
+  }
+}
+
+// Scrollbars
+html {
+  @include firefox-scrollbars();
+  @include chrome-scrollbars();
+}
+
+// Button
+button, push-button {
+  // button shading
+  background-image: $b-button-lg;
+  border-top: 1px solid $b-button-light; border-left: 1px solid $b-button-light;
+  border-bottom: 1px solid $b-button-dark; border-right: 1px solid $b-button-dark;
+  // layout
+  text-align: center; margin: 0; padding: 3px 1em;
+  display: flex; align-items: center;
+  color: $b-button-foreground;
+  &:focus {
+    outline: $b-focus-outline;
+  }
+  &:hover {
+    box-shadow: inset 500px 500px $b-button-hover;
+  }
+  &.active, &:active, &[data-contextmenu="true"] {
+    box-shadow: inset 500px 500px $b-button-active;
+    background-image: $b-button-active-lg;
+    border-color: $b-button-active-border;
+    color: $b-button-active-fg;
+  }
+  &[disabled] {
+    filter: saturate(80%) brightness(80%);
+    pointer-events: none;
+  }
+  // A <button/> can focus, a <push-button/> cannot focus
+}
+
+// B-Shortcut-Dialog
+.b-shortcut-dialog {
+  .-div-handler {
+    height: 1em;
+    padding: 1em;
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+    text-align: center;
+    background: #000;
+  }
+}

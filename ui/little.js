@@ -17,6 +17,17 @@ export class LitComponent extends LitElement {
     this.render = Util.reactive_wrapper (this.render.bind (this), request_update);
     this.updated = Util.reactive_wrapper (this.updated.bind (this), request_update);
   }
+  createRenderRoot()
+  {
+    const render_root = super.createRenderRoot();
+    if (render_root) {
+      const link = document.createElement ("link");
+      link.setAttribute ("rel", "stylesheet");
+      link.setAttribute ("href", "shadow.css");
+      render_root.appendChild (link);
+    }
+    return render_root;
+  }
 }
 
 // == lit_update_all ==
@@ -33,40 +44,50 @@ export function lit_update_all (root)
     }
 }
 
-// == PostCSS ==
-import * as PostCss from './postcss.js';	// require()s browserified plugins
-const csstree_validator = __DEV__ && await import ('./csstree-validator.esm.js');
+// == JsExtract ==
+/** API to mark template strings for extraction and fetch extracted assets.
+ * - ``` JsExtract.css`body { font-weight:bold; }` ``` \
+ *   Mark CSS text inside a Javascript file for extration by jsextract.js.
+ * - ``` node jsextract.js inputfile.js ``` \
+ *   Extract ``` JsExtract.css`` ``` strings into `inputfile.jscss`.
+ * - ``` await JsExtract.fetch_css ('/path/to/inputfile.js'); ``` \
+ *   Use the browser `fetch()` API to retrieve the extracted string as `text/css`
+ *   from '/path/to/inputfile.css'.
+ * - ``` JsExtract.fetch_css (import.meta); ``` \
+ *   Variant of the above that utilizes `import.meta.url`.
+ */
+export const JsExtract = {
+  // Mark CSS template string for jsextract.js
+  css: () => undefined,
+  // Mark SCSS template string for jsextract.js
+  scss: () => undefined,
+  // Mark HTML template string for jsextract.js
+  html: () => undefined,
+  fetch_css,
+};
 
-/// Process CSS via PostCSS, uses async plugins.
-export async function postcss_process (css_string, fromname = '<style string>', validate = true) {
-  const result = await PostCss.postcss_process (css_string, fromname);
-  if (__DEV__ && validate) {
-    const errs = csstree_validator.validate (result, "input.postcss");
-    if (errs.length) {
-      console.warn ('PostCSS output:', fromname + ':\n', css_string);
-      console.error (fromname + ':' + errs[0].line + ': ' + errs[0].name + ': ' + errs[0].message + ': ' + errs[0].css + '\n', errs);
-      console.info (result);
+/// Fetch (extracted) asset from a base URL (enforcing `.css` extension) as "text/css"
+async function fetch_css (base_url)
+{
+  const url = base_url?.url || base_url;
+  const css_url = url.replace (/\.[^.\/]+$/, '') + '.css';
+  const csstext = await fetch_text_css (css_url);
+  return css`${unsafeCSS (csstext)}`;
+}
+
+async function fetch_text_css (urlstr)
+{
+  const url = new URL (urlstr);
+  const fresponse = await fetch (url);
+  if (fresponse.ok) {
+    const content_type = fresponse.headers.get ("content-type");
+    if (content_type && content_type.includes ("text/css")) {
+      const blob = await fresponse.blob(), text = await blob.text();
+      return text;
     }
+    console.error ('Invalid file type for CSS import:', url + ', Content-Type:', content_type);
+    return '';
   }
-  return result;
-}
-
-const imports_done = memorize_imports ([ 'theme.scss', 'mixins.scss', 'shadow.scss', 'cursors/cursors.css' ]);
-
-export async function postcss (...args) {
-  const css_string = args.join ('');
-  await imports_done;
-  const result = await postcss_process (css_string, "literal-css``");
-  return css`${unsafeCSS (result)}`;
-}
-
-async function memorize_imports (imports) {
-  const fetchoptions = {};
-  const fetchlist = imports.map (async filename => {
-    const cssfile = await fetch (filename, fetchoptions);
-    const csstext = await cssfile.text();
-    // debug ("memorize_imports:", filename, cssfile, csstext);
-    PostCss.add_import (filename, csstext);
-  });
-  await Promise.all (fetchlist);
+  console.error ('Failed to load CSS import:', url + '');
+  return '';
 }

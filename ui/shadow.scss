@@ -1,16 +1,12 @@
-// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-@import 'mixins.scss';
+/* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
-// Apply styling inside shadow DOMs
+// Styles for the ShadowDOM only
 
-// == Inherit & Resets ==
-* {
-  box-sizing: border-box;
-  font-feature-settings: inherit;
-  font-variation-settings: inherit;
-  font: inherit;
-  letter-spacing: inherit;
-  text-overflow: inherit;
-  -moz-appearance: none;
-  -webkit-appearance: none;
+// imports mixins.scss
+@import 'domstyles.scss';
+
+// Scrollbars
+:host {
+  // @include firefox-scrollbars(); // FF scrollbar-color is inherited
+  @include chrome-scrollbars();
 }

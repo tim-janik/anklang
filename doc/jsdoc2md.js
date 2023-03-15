@@ -129,8 +129,13 @@ function gen_section_head (cfg, what) {
 
 /// Generate variable markdown
 function gen_global_var (cfg, gvar) {
+  const exports_name = cfg.exports && gvar.exports ? cfg.exports + '.' + gvar.name : gvar.name;
+  const anchor = make_anchor (exports_name);
   const exports = cfg.exports && gvar.exports ? '<small>`' + cfg.exports + '.`</small>' : '';
-  let s = exports + '**`' + gvar.name + '`**' + '\n';
+  let s = '';
+  if (anchor)
+    s += '<a id="' + anchor + '" data-4search="' + cfg.filename + ':' + exports_name + ';' + (gvar.exports ? 'export' : 'var') + '"></a> ';
+  s += exports + '**`' + gvar.name + '`**' + '\n';
   if (gvar.description)
     s += dpara (gvar.description, '    ', ':') + '\n';
   s += '\n';
@@ -210,7 +215,11 @@ function generate_md (cfg, ast) {
   let s = '';
   // build dicts from doclets
   for (const doclet of ast) {
-    if ('string' !== typeof doclet.meta?.code?.name) continue;
+    // collect overview
+    if (doclet.scope == 'global' && doclet.kind == 'file' && doclet.description)
+      global_overview = doclet.description;
+    if ('string' !== typeof doclet.meta?.code?.name)
+      continue;
     // https://github.com/jsdoc/jsdoc/blob/master/packages/jsdoc/lib/jsdoc/schema.js
     const exports = doclet.meta.code.name && doclet.meta.code.name.search ('exports.') == 0;
     // collect classes
@@ -226,9 +235,6 @@ function generate_md (cfg, ast) {
     // collect variables
     if (doclet.scope == 'global' && doclet.kind == 'constant' && doclet.description)
       add_var (doclet.name, doclet.description, exports);
-    // collect overview
-    if (doclet.scope == 'global' && doclet.kind == 'file' && doclet.description)
-      global_overview = doclet.description;
   }
   // produce overview
   if (global_overview)

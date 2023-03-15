@@ -1,0 +1,70 @@
+/* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
+
+/* Fonts */
+$b-font-family: 'Inter';
+$b-font-size: 16px;			/* for <html/> */
+$b-font-variant-numeric: tabular-nums;	/* slashed-zero */
+$b-font-variation-settings: "wght" 450;	/* "slnt" 0deg */
+$b-font-feature-settings:
+  "dlig" 1,     /* Discretionary ligatures, e.g. !? -> interrobang */
+  // "tnum",    /* Tabular numbers (fixed width); use font-variant-numeric: tabular-nums; */
+  "salt" 0,     /* Stylistic Alternates */
+  "ss01" 0,     /* Stylistic set 1 "Open Digits" */
+  "ss02" 0,     /* Stylistic set 2 "Disambiguation" */
+  "ss03" 0,     /* Stylistic set 3 "Lower case r curves into round neighbors" */
+  // "zero",    /* Slashed zero; use font-variant-numeric: slashed-zero; */
+  "numr" 0,     /* Numerators */
+  "dnom" 0,     /* Denominators */
+  "case" 1,     /* Case alternates */
+  "frac" 0,     /* Contextual automatic fractions */
+  "sups" 0,     /* Superscript */
+  "subs" 0,     /* Subscript */
+  "cpsp" 0,     /* Capital spacing (adds 16 UPM to each sidebearing) */
+  "cv01" 1,     /* Alternate one */
+  "cv02" 1,     /* Open four */
+  "cv03" 1,     /* Open six */
+  "cv04" 1,     /* Open nine */
+  "cv05" 1,     /* Lower case L with tail */
+  "cv06" 1,     /* Lower case r with curved tail */
+  "cv07" 0,     /* Alternate German double-s */
+  "cv08" 1,     /* Upper-case i with serif */
+  "cv09" 0,     /* Flat top three */
+  "cv10" 1,     /* Capital G with spur */
+  "cv11" 0,     /* Single-storey a */
+  "calt",       /* Contextual alternates (default) */
+  "liga",       /* Common ligatures (default, none in Inter) */
+  "kern";       /* Kerning (default) */
+$b-html-font: normal var(--font-size) var(--font-family);
+$b-piano-font: normal calc(var(--font-size)*9/16) var(--font-family);
+
+/* Colors */
+$b-color-scheme: dark;	/* only normal light dark */
+$b-color-tone: #879;
+$b-grey-tone: zmod($b-color-tone,Sz=20%,Jz=50%);
+$b-foreground-color: zlerp($b-color-tone,#fff,91%);
+$b-foreground-inactive: zmod($b-foreground-color, a=80%);
+$b-background-color: zmod($b-color-tone,Sz=20%,Jz=13.1%);
+
+$b-panel-foreground: zmod($b-grey-tone,Jz=96%);
+$b-panel-background: zmod($b-grey-tone,Jz=36%);
+$b-panel-focus: zmod($b-grey-tone,Jz=50%);
+$b-active-color: #00e5ea;
+$b-devicepanel:  lgrey(3%);
+$b-device-bg:    $b-panel-background;
+$b-device-handle: lgrey(26%);
+$b-device-area1:  lgrey(24%);
+$b-device-area2:  lgrey(28%);
+$b-dialog-foreground: zmod($b-color-tone,Jz=98.7%);
+$b-dialog-background: zmod($b-color-tone,Jz=18%);
+$b-dialog-bordercol:  zmod($b-color-tone,Jz=36%);
+
+/* Spacings and Sizes */
+$b-panel-border: 2px;
+$b-button-radius: 3px;
+$b-device-radius: 3px;
+$b-panel-radius: 3px;
+$b-track-meter-thickness: 5px;
+$b-track-meter-gap: 1px;
+
+$b-lcdscreen-fg: #71cff2;
+$b-lcdscreen-bg: #001417;

@@ -1,13 +1,14 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-import { LitElement, html, css, postcss, docs } from '../little.js';
+import { LitElement, html, JsExtract, docs } from '../little.js';
 
 /** # B-MORE
  * Indicator for adding or dropping new UI elements.
  */
 
 // == STYLE ==
-const STYLE = await postcss`
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 @import 'mixins.scss';
 :host { // b-more
   display: flex;

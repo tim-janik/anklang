@@ -36,11 +36,11 @@
  * the CSS setting `will-change: transform`.
  */
 
-import { LitElement, html, css, postcss, docs } from '../little.js';
+import { LitComponent, html, JsExtract, docs } from '../little.js';
 
 // == STYLE ==
-const STYLE = await postcss`
-@import 'shadow.scss';
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 @import 'mixins.scss';
 b-knob {
     display: flex; position: relative;
@@ -82,7 +82,7 @@ const OBJ_ATTRIBUTE = { type: Object, reflect: true };  // sync attribute with p
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true };  // sync attribute with property
 const USE_PTRLOCK = true;
 
-class BKnob extends LitElement {
+class BKnob extends LitComponent {
   static styles = [ STYLE ];
   static properties = {
     prop: OBJ_ATTRIBUTE,

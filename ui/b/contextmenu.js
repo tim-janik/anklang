@@ -42,11 +42,12 @@
  * : Activate (deactivate) the `kbd=...` hotkeys specified in menu items.
  */
 
-import { LitElement, html, render, noChange, css, postcss, docs, ref } from '../little.js';
+import { LitElement, html, render, noChange, JsExtract, docs, ref } from '../little.js';
 import * as Kbd from '../kbd.js';
 
 // == STYLE ==
-const STYLE = await postcss`
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 @import 'mixins.scss';
 dialog {
   &[open], &.animating { display: flex; }

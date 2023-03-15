@@ -8,13 +8,15 @@
 
 <style lang="scss">
 @import 'mixins.scss';
-$b-positionview-fg: #71cff2; $b-positionview-b0: #011214; $b-positionview-b1: #00171a;
-$b-positionview-bg: mix($b-positionview-b0, $b-positionview-b1);
+$b-positionview-fg: $b-lcdscreen-fg;
+$b-positionview-bg: $b-lcdscreen-bg;
+$b-positionview-b0: zmod($b-positionview-bg,Jz-=1);
+$b-positionview-b1: zmod($b-positionview-bg,Jz+=1);
 
 .b-positionview {
   margin: 0; padding: 5px 1em;
   letter-spacing: 0.05em;
-  border-radius: $b-theme-border-radius; align-items: baseline;
+  border-radius: $b-button-radius; align-items: baseline;
   border-top:    1px solid zmod($b-positionview-bg, Jz-=3%);
   border-left:   1px solid zmod($b-positionview-bg, Jz-=3%);
   border-right:  1px solid zmod($b-positionview-bg, Jz+=3%);

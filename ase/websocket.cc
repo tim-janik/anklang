@@ -366,7 +366,8 @@ WebSocketConnection::http_request ()
       const char *ext = strrchr (filepath.c_str(), '.');
       const String mimetype = WebSocketServer::mime_type (ext ? ext + 1 : "", true);
       cp->append_header ("Content-Type", mimetype.c_str());
-      cp->append_header ("Cache-Control", "no-store, max-age=0");
+      // cp->append_header ("Cache-Control", "no-store, max-age=0");
+      cp->append_header ("Cache-Control", "max-age=1");
       // cp->append_header ("Cache-Control", "public, max-age=604800, immutable");
       Blob blob = Blob::from_file (filepath);
       cp->set_body (blob.string());

@@ -18,7 +18,7 @@
     display: flex;
     padding: 5px;
     justify-content: space-evenly;
-    border-radius: $b-device-radius;
+    border-radius: $b-button-radius;
     background: $b-device-area1;
     &:nth-child(2n) {
       background: $b-device-area2;

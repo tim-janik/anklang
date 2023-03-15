@@ -8,18 +8,18 @@
  * A context menu is available with mouse button 3, which provides extended functionality.
  */
 
-import { LitElement, ref, html, css, postcss, docs } from '../little.js';
+import { LitComponent, LitElement, ref, html, JsExtract, docs } from '../little.js';
 import * as PianoCtrl from "./piano-ctrl.js";
 import * as Util from '../util.js';
 const floor = Math.floor, round = Math.round;
 
 // == STYLE ==
-const STYLE = await postcss`
-@import 'shadow.scss';
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 @import 'mixins.scss';
+@import 'grid.scss';
 
 :host {
-  @import 'cursors/cursors.css';
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;
   // Make scss variables available to JS via getComputedStyle()
@@ -50,17 +50,10 @@ const STYLE = await postcss`
 c-grid {
   background: $b-piano-roll-black-base;
   position: absolute; left: 0; right: 0; top: 0; bottom: 0;
-  color: $b-piano-roll-white-base;
   align-items: stretch;
 
   grid-template-columns: min-content 1fr min-content;
   grid-template-rows:    min-content 1fr min-content;
-  .-col1		{ grid-column: 1/2; }
-  .-col2		{ grid-column: 2/3; }
-  .-col3		{ grid-column: 3/4; }
-  .-row1		{ grid-row: 1/2; }
-  .-row2		{ grid-row: 2/3; }
-  .-row3		{ grid-row: 3/4; }
 
   background: #0000;
   canvas { background: black; object-fit: contain;
@@ -136,7 +129,7 @@ const PRIVATE_PROPERTY = { state: true };
 const default_note_length = Util.PPQN / 4;
 
 /// UI element for note editing.
-class BPianoRoll extends LitElement {
+class BPianoRoll extends LitComponent {
   static styles = [ STYLE ];
   static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
   render()

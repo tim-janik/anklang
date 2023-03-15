@@ -1,6 +1,9 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-// == Scss Theme Basics ==
+// Basic Theme, SCSS variables
+@import $themename_scss;
+
+// Legacy definitions
 @import 'theme.scss';
 
 // == Variables ==
@@ -10,7 +13,6 @@
 $b-theme-font-family:		$b-main-font-family;
 $b-theme-foreground: 		$b-main-foreground;
 $b-theme-background: 		$b-main-background;
-$b-theme-border-radius:		$b-style-border-radius !default;
 $b-main-border-light:		zmod($b-base-background, Jz+=9%) !default;	// used for modal border
 $b-main-border-dark:		zmod($b-base-background, Jz-=9%) !default;
 $b-toolbar-background:		#606060 !default;
@@ -19,7 +21,6 @@ $b-button-foreground:   	#dddddd !default;
 $b-button-light:   		#999999 !default;
 $b-button-lg:      		linear-gradient(to bottom, #777777 0%, #707070 45%, #606060 55%, #555555 100%) !default;
 $b-button-dark:    		#444444 !default;
-$b-button-radius:		$b-theme-border-radius !default;
 $b-button-border:   		#333333 !default;
 $b-button-hover:		fade(#ffffff, 10%) !default;
 $b-button-active:		fade(#000000, 20%) !default;
@@ -32,10 +33,6 @@ $b-switch-active:		#2080f0 !default;
 $b-switch-knob:		$b-button-foreground !default;
 $b-boxshadow-color:		fade(#000000, 30%) !default;
 
-// format: font: italic small-caps bold 12px serif;
-
-@mixin b-popup-box-shadow()	{ box-shadow: 0 2px 8px $b-boxshadow-color; }
-
 // == Markdown Styling ==
 @mixin b-markdown-it-inlined($maywrap: true)	{
   // avoid all margins and padding, make elements suitable for 'inline' layouts
@@ -44,14 +41,41 @@ $b-boxshadow-color:		fade(#000000, 30%) !default;
   ul { padding-left: 1em; }
 }
 
-// == Flex Box ==
-@mixin hflex() {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
+// == Scrollbars ==
+@mixin firefox-scrollbars() {
+  & { scrollbar-color: $b-scrollbar-dd $b-scrollbar-bg; }
+  & :hover,
+  &:hover { scrollbar-color: $b-scrollbar-fg $b-scrollbar-bg; }
 }
-@mixin vflex() {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+@mixin chrome-scrollbars() {
+  & {
+    ::-webkit-scrollbar-button { display: none; }
+    ::-webkit-scrollbar-track, &::-webkit-scrollbar-track-piece, ::-webkit-scrollbar-corner,
+    ::-webkit-scrollbar {
+      border: none; box-shadow: none;
+      background: #000;
+    }
+  }
+  & ::-webkit-scrollbar-thumb {
+    background: $b-scrollbar-dd; border-radius: 5px;
+  }
+  & :hover,
+  &:hover {
+    ::-webkit-scrollbar-thumb {
+      background: $b-scrollbar-fg; background: linear-gradient(zmod($b-scrollbar-fg, Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%));
+    }
+  }
+}
+@mixin scrollbar-hover-area() {
+  & ::-webkit-scrollbar-thumb {
+    background: $b-scrollbar-dd; border-radius: 5px;
+  }
+  & :hover,
+  &:hover {
+    ::-webkit-scrollbar-thumb {
+      background: $b-scrollbar-fg;
+      background: linear-gradient(zmod($b-scrollbar-fg, Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%));
+    }
+  }
+  @include firefox-scrollbars();
 }

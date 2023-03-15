@@ -1,5 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-import { LitElement, html, css, postcss, docs, ref } from '../little.js';
+import { LitElement, html, JsExtract, docs, ref } from '../little.js';
 
 /** == B-TRACKVIEW ==
  * A Vue template to display a project's Ase.Track.
@@ -11,10 +11,9 @@ import { LitElement, html, css, postcss, docs, ref } from '../little.js';
  */
 
 // == STYLE ==
-const STYLE = await postcss`
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 @import 'mixins.scss';
-$b-trackview-level-height: 5px;
-$b-trackview-level-space: 1px;
 :host {
   display: flex;
   align-items: stretch;
@@ -24,7 +23,7 @@ $b-trackview-level-space: 1px;
   border-bottom-left-radius: $b-button-radius;
 }
 .-lvm-main { // level meter
-  height: calc($b-trackview-level-height + $b-trackview-level-space + $b-trackview-level-height);
+  height: calc($b-track-meter-thickness + $b-track-meter-gap + $b-track-meter-thickness);
   position: relative;
   // push element onto own compositing layer to reduce rendering overhead
   will-change: auto;
@@ -37,20 +36,20 @@ $b-trackview-level-space: 1px;
 .-lvm-covertip0, .-lvm-covermid0, .-lvm-covertip1, .-lvm-covermid1,
 .-lvm-levelbg, .-lvm-coverspace      { position: absolute; width: 100%; }
 .-lvm-covertip0, .-lvm-covermid0     { top: 0px; }
-.-lvm-coverspace                     { top: calc($b-trackview-level-height - 0.25px); height: calc($b-trackview-level-space + 0.5px); }
-.-lvm-covertip1, .-lvm-covermid1     { top: calc($b-trackview-level-height + $b-trackview-level-space); }
+.-lvm-coverspace                     { top: calc($b-track-meter-thickness - 0.25px); height: calc($b-track-meter-gap + 0.5px); }
+.-lvm-covertip1, .-lvm-covermid1     { top: calc($b-track-meter-thickness + $b-track-meter-gap); }
 .-lvm-coverspace {
   background-color: rgba( 0, 0, 0, .80);
 }
 .-lvm-covertip0, .-lvm-covermid0, .-lvm-covertip1, .-lvm-covermid1 {
-  height: $b-trackview-level-height;
+  height: $b-track-meter-thickness;
   background-color: rgba( 0, 0, 0, .75);
   transform-origin: center right;
   will-change: transform;
   transform: scaleX(1);
 }
 .-lvm-covertip1, .-lvm-covermid1 {
-  height: calc($b-trackview-level-height + 1px);
+  height: calc($b-track-meter-thickness + 1px);
   // add 1px to cover for rounded coords
 }
 .b-trackview-control {

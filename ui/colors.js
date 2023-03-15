@@ -359,23 +359,26 @@ function zmod_assignop (col, prop, op, num, perc = false) {
     col.zcam = { viewing, Jz: zcam.Jz, hz: zcam.hz,
 		 Cz: value_assignops (Z.zcam_ensure_Cz (zcam).Cz, op, num, perc,
 				      () => zmaxCz().Cz) };
-  else if (prop.toLowerCase() == 'mz')
+  else if (prop.toLowerCase() == 'mz') {
     col.zcam = { viewing, Jz: zcam.Jz, hz: zcam.hz,
 		 Mz: value_assignops (Z.zcam_ensure_Mz (zcam).Mz, op, num, perc,
 				      () => Z.zcam_ensure_Mz (zmaxCz()).Mz) };
-  else if (prop.toLowerCase() == 'sz')
+    col.zcam = Z.zcam_ensure_Cz (col.zcam);
+  } else if (prop.toLowerCase() == 'sz') {
     col.zcam = { viewing, Jz: zcam.Jz, hz: zcam.hz,
 		 Sz: value_assignops (Z.zcam_ensure_Sz (zcam).Sz, op, num, perc,
 				      () => Z.zcam_ensure_Sz (zmaxCz()).Sz) };
-  else if (prop == 'hz' || prop == 'hZ')
+    col.zcam = Z.zcam_ensure_Cz (col.zcam);
+  } else if (prop == 'hz' || prop == 'hZ')
     col.zcam = { viewing, Jz: zcam.Jz, Cz: zcam.Cz,
 		 hz: value_assignops (Z.zcam_ensure_hz (zcam).hz, op, num, perc,
 				      () => 360) };
-  else if (prop == 'Hz' || prop == 'HZ')
+  else if (prop == 'Hz' || prop == 'HZ') {
     col.zcam = { viewing, Jz: zcam.Jz, Cz: zcam.Cz,
 		 Hz: value_assignops (Z.zcam_ensure_Hz (zcam).Hz, op, num, perc,
 				      () => 400) };
-  else
+    col.zcam = Z.zcam_ensure_hz (col.zcam);
+  } else
     console.warn ("CSS: invalid zmod: ", prop, op, num, perc ? '%' : '');
   return zcam;
 }
@@ -395,6 +398,9 @@ export function zmod (colorlike, ...mods) {
       if (!col.zcam)
 	col.zcam = gamut.zcam (col.rgb);
       col.zcam = gamut.find_cusp (col.zcam.hz);
+    } else if (toks.length == 3 && z_assignops.includes (toks[1])) {
+      col.rgb = { r: 0, g: 0, b: 0 };
+      zmod_assignop (col, toks[0], toks[1], parseFloat (toks[2]), toks[2].indexOf ('%') >= 0);
     }
   }
   // support hex colors and names
@@ -419,6 +425,37 @@ export function zmod (colorlike, ...mods) {
   if (rgba[3] === 1)
     rgba.splice (3);
   return true ? Z.srgb_hex (rgba) : css_rgba (rgba);
+}
+
+/// Find zmod() for a color.
+export function zmod4 (colorlike)
+{
+  const rgba = color2rgba (colorlike);
+  const gamut = default_gamut;
+  const zcam = gamut.zcam ({ r: rgba[0], g: rgba[1], b: rgba[2] });
+  const fix = n => n.toFixed (3);
+  return `zmod (Jz=${fix (zcam.Jz)},Cz=${fix (zcam.Cz)},hz=${fix (zcam.hz)})`;
+}
+
+/// Interpolate between 2 colors.
+export function zlerp (c1 = '#000', c2 = '#fff', t = 0.5)
+{
+  const perc = 'string' === typeof t && t.indexOf ('%') >= 0;
+  t = parseFloat (t);
+  t = Math.min (1, Math.max (0, perc ? t * 0.01 : t));
+  const k = 1 - t;
+  const rgba1 = color2rgba (c1);
+  const rgba2 = color2rgba (c2);
+  const gamut = default_gamut;
+  const zc1 = gamut.zcam ({ r: rgba1[0], g: rgba1[1], b: rgba1[2] });
+  const zc2 = gamut.zcam ({ r: rgba2[0], g: rgba2[1], b: rgba2[2] });
+  const izazbz1 = Z.Izazbz_from_zcam (zc1);
+  const izazbz2 = Z.Izazbz_from_zcam (zc2);
+  const izazbz = { Iz: izazbz1.Iz * k + izazbz2.Iz * t,
+		   az: izazbz1.az * k + izazbz2.az * t,
+		   bz: izazbz1.bz * k + izazbz2.bz * t };
+  const zcam = Z.zcam_from_Izazbz (izazbz);
+  return hex_from_zcam (zcam, rgba1[3] * k + rgba2[3] * t);
 }
 
 /// Yield a grey tone with CIELAB lightness.

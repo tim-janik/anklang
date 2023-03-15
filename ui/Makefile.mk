@@ -26,6 +26,17 @@ ui/nocopy.wildcards ::= $(wildcard	\
 	ui/sfc-compile.js		\
 	ui/slashcomment.js		\
 )
+ui/scss.files ::= $(strip	\
+	ui/dark.scss		\
+	ui/domstyles.scss	\
+	ui/globals.scss		\
+	ui/grid.scss		\
+	ui/mixins.scss		\
+	ui/theme.scss		\
+)
+ui/b/scss2css.sources ::= $(strip	\
+	ui/shadow.scss			\
+)
 ui/copy.files ::= $(filter-out $(ui/nocopy.wildcards) $(ui/cjs.wildcards), $(ui/jscopy.wildcards))
 ui/vue.wildcards ::= $(wildcard ui/b/*.vue)
 ui/public.wildcards ::= $(wildcard	\
@@ -72,12 +83,6 @@ $>/ui/zcam-js.mjs: $>/node_modules/.npm.done				| $>/ui/
 $>/ui/.build1-stamp: $>/ui/zcam-js.mjs
 $>/ui/colors.js: $>/ui/zcam-js.mjs
 
-# == ui/csstree-validator.esm.js ==
-$>/ui/csstree-validator.esm.js: $>/node_modules/.npm.done				| $>/ui/
-	$(QGEN)
-	$Q $(CP) $>/node_modules/csstree-validator/dist/csstree-validator.esm.js $@
-$>/ui/.build1-stamp: $>/ui/csstree-validator.esm.js
-
 # == ui/index.html ==
 $>/ui/index.html: ui/index.html ui/Makefile.mk			| $>/ui/
 	$(QGEN)
@@ -107,7 +112,7 @@ $>/ui/.build1-stamp: $>/ui/assets/cknob193u.png $>/ui/assets/cknob193b.png
 $>/ui/spinner.scss: ui/assets/spinner.svg
 	$(QGEN)
 	$Q sed -rn '/@keyframe/,$${ p; /^\s*}\s*$$/q; }' $< > $@
-$>/ui/all-styles.css: $>/ui/spinner.scss
+$>/ui/.build1-stamp: $>/ui/spinner.scss
 
 # == ui/.aseignore ==
 $>/ui/.aseignore:					| $>/ui/
@@ -128,33 +133,61 @@ $>/ui/.build1-stamp: $>/ui/aseapi.js
 
 # == ui/b/vuejs.targets ==
 ui/b/vuejs.targets ::= $(ui/vue.wildcards:%.vue=$>/%.js)
-ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.css)
-$(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
 $(ui/b/vuejs.targets): ui/sfc-compile.js 			| $>/ui/fonts/AnklangIcons.css
 $(ui/b/vuejs.targets): $>/%.js: %.vue			| $>/ui/b/ $>/node_modules/.npm.done
 	$(QGEN)
 	$Q node ui/sfc-compile.js --debug -I $>/ui/ $< -O $(@D)
-$(ui/b/vuejs.targets): $(wildcard ui/*.scss ui/b/*.scss)	# includes of the sfc-compile.js generated CSS outputs
 $>/ui/.build1-stamp: $(ui/b/vuejs.targets)
 
-# == ui/all-styles.css ==
-ui/csscopy.sources ::= ui/styles.scss ui/theme.scss ui/mixins.scss ui/shadow.scss
-$>/ui/all-styles.css: $>/ui/postcss.js ui/Makefile.mk $(ui/csscopy.sources) $(ui/b/vuecss.targets)	| $>/ui/
-	$(QGEN)
-	$Q $(CP) $(ui/csscopy.sources) $>/ui/
-	$Q echo '@charset "UTF-8";'					>  $>/ui/imports.scss
-	$Q echo "@import 'styles.scss';"				>> $>/ui/imports.scss
-	$Q for f in $$(cd $>/ui/b/ && echo *.css) ; do			\
-		echo "@import 'b/$${f}';"				>> $>/ui/imports.scss \
-		|| exit 1 ; done
-	$Q cd $>/ui/ && node ./postcss.js imports.scss $(@F).tmp
-	$Q mv $@.tmp $@
+# == ui/postcss.js ==
 $>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/ui/colors.js $>/node_modules/.npm.done
 	$(QGEN)
 	$Q $(CP) $< $@.tst.js
 	$Q cd $>/ui/ && node ./$(@F).tst.js --test $V # CHECK transformations
 	$Q mv $@.tst.js $@
-$>/ui/.build1-stamp: $>/ui/all-styles.css $>/ui/postcss.js
+$>/ui/.build1-stamp: $>/ui/postcss.js
+
+# == ui/shadow.css ==
+ui/b/scss2css.targets ::= $(ui/b/scss2css.sources:ui/%.scss=$>/ui/%.css)
+$(ui/b/scss2css.targets): $>/ui/postcss.js ui/Makefile.mk
+$(ui/b/scss2css.targets): $>/ui/%.css: ui/%.scss		| $>/ui/
+	$(QGEN)
+	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -i $< $@.tmp
+	$Q mv $@.tmp $@
+$>/ui/.build1-stamp: $(ui/b/scss2css.targets)
+$>/ui/.scss2css.check: $(ui/b/scss2css.targets) | $>/ui/.stylelintrc.cjs
+	$(QECHO) CHECK 'ui/*.scss -> ui/*.css'
+	-$Q cd $>/ && node_modules/.bin/stylelint $(ui/b/scss2css.targets:$>/%=%) && touch $@
+$>/ui/.build2-stamp: $>/ui/.scss2css.check
+
+# == ui/*.scss ==
+ui/scss.targets ::= $(ui/scss.files:%.scss=$>/%.scss)
+$(ui/scss.targets): $>/%.scss: %.scss			| $>/ui/
+	$(QGEN)
+	$Q cat $< >$@
+$>/ui/.build1-stamp: $(ui/scss.targets)
+
+# == vue-styles.css ==
+ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.vuecss)
+$(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
+$>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $(ui/scss.targets) ui/Makefile.mk
+	$(QGEN)
+	$Q echo '@charset "UTF-8";'					>  $@.vuecss
+	$Q echo "@import 'globals.scss';"				>> $@.vuecss
+	$Q for f in $(ui/b/vuecss.targets:$>/ui/b/%=%) ; do		\
+		echo "@import 'b/$${f}';"				>> $@.vuecss \
+		|| exit 1 ; done
+	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -i $(@F).vuecss $(@F).tmp
+	$Q mv $@.tmp $@
+$>/ui/.build1-stamp: $>/ui/vue-styles.css
+$>/ui/.vue-styles.check: $>/ui/vue-styles.css $>/ui/.stylelintrc.cjs
+	$(QECHO) CHECK $<
+	-$Q cd $>/ && node_modules/.bin/stylelint $(<:$>/%=%) && touch $@
+$>/ui/.build2-stamp: $>/ui/.vue-styles.check
+
+# == ui/.stylelintrc.cjs ==
+$>/ui/.stylelintrc.cjs: ui/stylelintrc.cjs
+	$Q cp $< $@
 
 # == all-components.js ==
 $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vuejs.targets) $(wildcard ui/b/*)	| $>/ui/
@@ -174,6 +207,21 @@ $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vuejs.targets) $(wildcard ui/b/*)
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/all-components.js
 
+# == ui/b/*.css ==
+ui/b/js.files ::= $(wildcard ui/b/*.js)
+ui/b/css.targets ::= $(ui/b/js.files:%.js=$>/%.css)
+$(ui/b/css.targets): $>/ui/postcss.js $(ui/scss.targets) ui/Makefile.mk
+$(ui/b/css.targets): $>/%.css: %.js					| $>/ui/b/
+	$(QGEN)
+	$Q node ui/jsextract.js $< -O $(@D) # %.jscss
+	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -i b/$(@F:%.css=%.jscss) b/$(@F).tmp
+	$Q mv $@.tmp $@
+$>/ui/.build1-stamp: $(ui/b/css.targets)
+$>/ui/.jscss-styles.check: $(ui/b/css.targets) $>/ui/.stylelintrc.cjs
+	$(QECHO) CHECK $<
+	-$Q cd $>/ && node_modules/.bin/stylelint $(ui/b/css.targets:$>/%=%) && touch $@
+$>/ui/.build2-stamp: $>/ui/.jscss-styles.check
+
 # == File Copies ==
 ui/copy.targets ::= $(ui/copy.files:%=$>/%)
 $(ui/copy.targets): $>/ui/%: ui/%	| $>/ui/b/
@@ -191,7 +239,7 @@ $>/ui/.build1-stamp: $(ui/public.targets)
 # == ui/cursors/ ==
 $>/ui/cursors/cursors.css: $(wildcard ui/cursors/*) Makefile.mk		| $>/ui/cursors/
 	$(QECHO) COPY $<
-	$Q for SVG in `sed -n '/url.cursors\//{ s/.*(//; s/).*//; p }' ui/cursors/cursors.css` ; do \
+	$Q for SVG in `sed -n "/url.'cursors\//{ s/.*('//; s/').*//; p }" ui/cursors/cursors.css` ; do \
 		$(CP) ui/"$$SVG" $>/ui/cursors/ || break ; done
 	$Q $(CP) ui/cursors/cursors.css $@
 $>/ui/.build1-stamp: $>/ui/cursors/cursors.css
@@ -263,15 +311,6 @@ $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 	$Q echo "const modules = {"								>  $>/ui/tmp-browserify/requires.js
 	$Q for mod in \
 		markdown-it \
-		postcss \
-		postcss-discard-comments \
-		postcss-discard-duplicates \
-		css-color-converter \
-		postcss-scss \
-		postcss-advanced-variables \
-		postcss-functions \
-		postcss-nested \
-		postcss-color-mod-function postcss-color-hwb postcss-lab-function \
 		; do \
 		echo "  '$${mod}': require ('$$mod')," ; done					>> $>/ui/tmp-browserify/requires.js
 	$Q echo "};"										>> $>/ui/tmp-browserify/requires.js
@@ -313,15 +352,6 @@ eslint: $>/ui/.eslint.files $>/node_modules/.npm.done
 	$Q cd $>/ui/ && npm run $@
 .PHONY: eslint
 
-# == cssvalid.done ==
-$>/ui/.cssvalid.done: $>/ui/all-styles.css ui/Makefile.mk
-	$(QGEN)
-	$Q $>/node_modules/.bin/csstree-validator -r gnu $< > $>/ui/.cssvalid.err 2>&1 ; :
-	$Q test ! -s $>/ui/.cssvalid.err || sed -r $$'s/^"([^"]+)":/\e[31;1m\\1\e[0m:/' $>/ui/.cssvalid.err
-	$Q # test -s $>/ui/.cssvalid.err && exit 1
-	$Q touch $@
-$>/ui/.build2-stamp: $>/ui/.cssvalid.done	# deferred during rebuilds
-
 # == $>/doc/b/*.md ==
 $>/doc/b/.doc-stamp: $(wildcard ui/b/*.js) ui/xbcomments.js ui/Makefile.mk $>/node_modules/.npm.done	| $>/doc/b/
 	$(QGEN)
@@ -357,13 +387,17 @@ ui/install.pattern ::= $(strip	\
 	$>/ui/*.mjs		\
 	$>/ui/*.png		\
 )
+ui/b/install.pattern ::= $(strip \
+	$>/ui/b/*.css		\
+	$>/ui/b/*.js		\
+)
 ui/install: $>/ui/.build1-stamp $>/ui/.build2-stamp
 	@$(QECHO) INSTALL '$(ui/installdir)/.'
 	$Q rm -f -r '$(ui/installdir)'
 	$Q $(INSTALL)      -d $(ui/installdir)/ $(ui/installdir)/assets/ $(ui/installdir)/b/ $(ui/installdir)/fonts/
 	$Q $(INSTALL_DATA) -p $(ui/install.pattern) $(ui/installdir)/
 	$Q $(INSTALL_DATA) -p $>/ui/assets/* $(ui/installdir)/assets/
-	$Q $(INSTALL_DATA) -p $>/ui/b/* $(ui/installdir)/b/
+	$Q $(INSTALL_DATA) -p $(ui/b/install.pattern) $(ui/installdir)/b/
 	$Q $(INSTALL_DATA) -p $>/ui/fonts/* $(ui/installdir)/fonts/
 	$Q ln -s ../doc $(ui/installdir)/doc
 .PHONY: ui/install

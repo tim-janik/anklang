@@ -1,14 +1,15 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-import { LitElement, html, css, postcss, docs } from '../little.js';
+import { LitComponent, html, JsExtract, docs } from '../little.js';
 
 /** # B-MENUSEPARATOR
  * A menu element that serves as a visual separator between other elements.
  */
 
 // == STYLE ==
-const STYLE = await postcss`
-@import 'shadow.scss';
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
+@import 'mixins.scss';
 hr {
   border-color: $b-menu-separator;
 }
@@ -20,7 +21,7 @@ const HTML = html`
 `;
 
 // == SCRIPT ==
-class BMenuSeparator extends LitElement {
+class BMenuSeparator extends LitComponent {
   render = () => HTML;
   static styles = [ STYLE ];
 }

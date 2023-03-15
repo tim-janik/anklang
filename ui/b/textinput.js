@@ -1,5 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-import { LitElement, html, css, postcss, live, docs, ref } from '../little.js';
+import { LitComponent, LitElement, html, JsExtract, live, docs, ref } from '../little.js';
 
 /**
  * # B-FED-TEXT
@@ -18,9 +18,9 @@ import { LitElement, html, css, postcss, live, docs, ref } from '../little.js';
  */
 
 // <STYLE/>
-const STYLE = await
-postcss`
-@import 'shadow.scss';
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
+@import 'mixins.scss';
 input {
   outline-width: 0; border: none; border-radius: $b-button-radius;
   text-align: left; background-color: rgba(255,255,255,.3); color: #fff;
@@ -41,7 +41,7 @@ html`
 `;
 
 // <SCRIPT/>
-class BTextInput extends LitElement {
+class BTextInput extends LitComponent {
   render() { return HTML (this); }
   input_element = null;
   static styles = [ STYLE ];

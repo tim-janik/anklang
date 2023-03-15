@@ -18,22 +18,35 @@ const postcss_scss = require ('postcss-scss');
 import * as Colors from './colors.js';
 
 // == Plugins ==
-const postcss_plugins = [
-  require ('postcss-discard-comments') ({ remove: comment => true }),
-  require ('postcss-advanced-variables') ({ disable: '@content, @each, @for', // @if, @else, @mixin, @include, @import
-					    importResolve: __NODE__ ? load_import : find_import }),
-  require ('postcss-color-mod-function') ({ unresolved: 'throw' }),
-  require ('postcss-color-hwb'),
-  require ('postcss-lab-function'),
-  require ('postcss-functions') (css_functions()),
-  require ('postcss-nested'),
-  require ('postcss-discard-duplicates'),
-];
-const nodeonly_plugins = __NODE__ && [
-  // require ('postcss-preset-env') ({ stage: 3, browsers: 'Firefox >= 90 and chrome >= 90', autoprefixer: false }),
-  // require ('cssnano') ({ preset: ['default', { normalizeWhitespace: false }] }),
-  require ('perfectionist-dfd') ({ format: 'expanded', indentChar: '\t', indentSize: 1, trimLeadingZero: false }),
-];
+const postcss_color_mod_function = require ('postcss-color-mod-function');
+const postcss_discard_comments = require ('postcss-discard-comments');
+const postcss_advanced_variables = require ('postcss-advanced-variables');
+const postcss_functions = require ('postcss-functions');
+const postcss_color_hwb = require ('postcss-color-hwb');
+const postcss_lab_function = require ('postcss-lab-function');
+const postcss_nested = require ('postcss-nested');
+const postcss_discard_duplicates = require ('postcss-discard-duplicates');
+// Configure processing behaviour
+function postcss_plugins (options = {})
+{
+  const opts = Object.assign ({ import_all: false, import_root: '/' }, options);
+  const variables = options.vars || {};
+  const plugins = [
+    postcss_discard_comments ({ remove: comment => true }),
+    postcss_advanced_variables ({ disable: '@content, @each, @for', // @if, @else, @mixin, @include, @import
+				  importRoot: opts.import_root,
+				  importFilter: string => opts.import_all || string.endsWith ('.scss'),
+				  importResolve: __NODE__ ? load_import : find_import,
+				  variables }),
+    postcss_color_mod_function ({ unresolved: 'throw' }),
+    postcss_color_hwb,
+    postcss_lab_function,
+    postcss_functions (css_functions()),
+    postcss_nested,
+    postcss_discard_duplicates,
+  ];
+  return plugins;
+}
 
 // == Options ==
 export const postcss_options = {
@@ -42,18 +55,18 @@ export const postcss_options = {
 };
 
 // == Processing ==
-async function postcss_process (css_string, fromname = '<style string>', ethrow = false) {
-  const postcss = PostCss (postcss_plugins);
+async function postcss_process (css_string, fromname = '<style string>', options = {}) {
+  const postcss = PostCss (postcss_plugins (options));
   const poptions = Object.assign ({ from: fromname }, postcss_options);
   let result;
   try {
     result = await postcss.process (css_string, poptions);
   } catch (ex) {
     console.warn ('PostCSS input:', fromname + ':\n', css_string);
-    console.error ('PostCSS error:', ex);
-    if (ethrow)
+    console.error (ex);
+    if (options.rethrow)
       throw (ex);
-    result = { content: '' };
+    return '';
   }
   return result.content;
 }
@@ -116,6 +129,8 @@ function css_functions() {
       return color.fromRgb (rgba).toHexString();
     },
     zmod: Colors.zmod,
+    zmod4: Colors.zmod4,
+    zlerp: Colors.zlerp,
     zhsl: Colors.zhsl,
     zHsl: Colors.zHsl,
     zhsv: Colors.zhsv,
@@ -127,22 +142,39 @@ function css_functions() {
 
 /// Load import files in nodejs to implement `@import`.
 function load_import (id, cwd, opts) {
-  for (let path of [ './', cwd ]) {
+  for (let path of [ cwd, './' ]) {
     const file = path + '/' + id;
     if (FS.existsSync (file)) {
       const input = FS.readFileSync (file);
       return { file, contents: input || '' };
     }
   }
-  console.error ("Failed to find CSS import:", id, 'in', cwd);
-  throw new Error ("Failed to find CSS import: " + id);
+  console.error (id + ': failed to load CSS import (wd: ' + cwd + ')');
+  throw new Error ('Import failed');
 }
 
-/// Provide canned CSS files to use with `@import`.
-function find_import (id, cwd, opts) {
+/// Provide canned CSS files or fetch css for use with `@import`.
+async function find_import (id, cwd, opts) {
   const csstext = css_import_list[id];
   if (csstext === undefined)
-    console.error ("Failed to find CSS import:", id, 'in', cwd);
+    {
+      const frequest = {
+	headers: { "Content-Type": "text/css" },
+	redirect: "follow",
+      };
+      const fresponse = await fetch (id, frequest);
+      if (fresponse.ok) {
+	const content_type = fresponse.headers.get ("content-type");
+	if (content_type && (content_type.includes ("text/css") || content_type.includes ("text/x-scss"))) {
+	  const blob = await fresponse.blob(), text = await blob.text();
+	  return { file: id, contents: text || '' };
+	}
+	console.warn ('Import file not of CSS type:', id + ', Content-Type:', content_type);
+	throw new Error ('Import failed');
+      }
+      console.warn ('Failed to load CSS import: ' + cwd + '/' + id);
+      throw new Error ('Import failed');
+    }
   return new Promise (r => r ({ file: id, contents: csstext || '' }));
 }
 const css_import_list = {};
@@ -197,7 +229,6 @@ async function test_css (verbose) {
 
 // == Exports ==
 export const options = postcss_options;
-export const plugins = postcss_plugins;
 export { postcss_process };
 export { add_import };
 export { test_css };
@@ -207,22 +238,47 @@ export { test_css };
 // Usage: postcss.js --test [1|0]
 if (__MAIN__) {
   async function main (argv) {
-    // run unit tests
-    if (argv[0] === '--test')
-      return test_css (argv[1] | 0);
-    // parse options
-    const filename = argv[0];
+    let n = 0;
+    const cwd = process.cwd();
+    const opt = { import_all: false, import_root: cwd, vars: {}, rethrow: true };
+    while (n < argv.length && argv[n].startsWith ('-')) {
+      // run unit tests
+      if (argv[n] === '--test')
+	return test_css (argv[++n] | 0);
+      // parse options
+      else if (argv[n] == '--map')
+	postcss_options.map = true;
+      // defines
+      else if (argv[n].startsWith ('-D')) {
+	const str = argv[n].length == 2 && n+1 < argv.length ? argv[++n] : argv[n].substr (2);
+	const eq = str.indexOf ('=');
+	const k = eq <= 0 ? str : str.substr (0, eq);
+	const v = eq <= 0 ? '1' : str.substr (eq + 1);
+	if (k)
+	  opt.vars[k] = v;
+	if (!opt.import_root.startsWith ('/'))
+	  opt.import_root = cwd + '/' + opt.import_root;
+      }
+      // include root dir
+      else if (argv[n].startsWith ('-C')) {
+	const dir = argv[n].length == 2 && n+1 < argv.length ? argv[++n] : argv[n].substr (2);
+	opt.import_root = dir.startsWith ('/') ? dir : cwd + '/' + opt.import_root;
+      }
+      // include imports
+      else if (argv[n] == '-i')
+	opt.import_all = true;
+      n++;
+    }
+    const filename = argv[n++];
     if (!filename)
       throw new Error (`${__filename}: missing input filename`);
-    const ofilename = argv[1];
-    if (!ofilename)
-      throw new Error (`${__filename}: missing output filename`);
-    // configure CLI processor
-    postcss_options.map = true;
-    postcss_plugins.push (...nodeonly_plugins);
+    const ofilename = argv[n++];
     // process and printout
-    const result = await postcss_process (FS.readFileSync (filename), filename, true);
-    FS.writeFileSync (ofilename, result);
+    const result = await postcss_process (FS.readFileSync (filename), filename, opt);
+    if (ofilename)
+      FS.writeFileSync (ofilename, result);
+    else
+      console.log (result);
   }
   process.exit (await main (process.argv.splice (2)));
 }

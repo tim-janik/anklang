@@ -1,5 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-import { LitElement, html, css, postcss, docs, ref, repeat } from '../little.js';
+import { LitElement, html, JsExtract, docs, ref, repeat } from '../little.js';
 
 /** == B-TRACKLIST ==
  * A container for vertical display of Ase.Track instances.
@@ -9,7 +9,8 @@ import { LitElement, html, css, postcss, docs, ref, repeat } from '../little.js'
  */
 
 // == STYLE ==
-const STYLE = await postcss`
+const STYLE = await JsExtract.fetch_css (import.meta);
+JsExtract.scss`
 @import 'mixins.scss';
 $scroll-shadow-inset: 7px;
 :host {

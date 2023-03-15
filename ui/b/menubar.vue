@@ -21,7 +21,7 @@
 
 <template>
 
-  <h-flex class="b-menubar" space-between >
+  <h-flex class="b-menubar" style="justify-content: space-between" >
     <!-- main menu & controlbar -->
 
     <!-- menubar left -->
