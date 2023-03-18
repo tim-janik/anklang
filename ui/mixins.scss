@@ -79,3 +79,14 @@ $b-boxshadow-color:		fade(#000000, 30%) !default;
   }
   @include firefox-scrollbars();
 }
+@mixin transparent-scrollbars() {
+  // chrome
+  &::-webkit-scrollbar-button { display: none; }
+  &::-webkit-scrollbar-track, &::-webkit-scrollbar-track-piece, &::-webkit-scrollbar-corner, &::-webkit-scrollbar {
+    background: rgb(0 0 0 / 0%);
+    border: none; box-shadow: none;
+  }
+  & { // firefox
+    scrollbar-color: $b-scrollbar-dd rgb(0 0 0 / 0%);
+  }
+}
