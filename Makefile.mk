@@ -346,6 +346,12 @@ $>/TAGS: $>/ls-tree.lst Makefile.mk
 	$Q ctags -e -o $@ -L $>/ls-tree.lst
 ALL_TARGETS += $>/TAGS
 
+# == compile_commands.json ==
+compile_commands.json: Makefile.mk
+	$(QGEN)
+	$Q rm -f $>/*/*.o $>/*/*/*.o
+	bear -- $(MAKE) CC=clang CXX=clang++ -j
+
 # == all rules ==
 all: $(ALL_TARGETS) $(ALL_TESTS)
 
