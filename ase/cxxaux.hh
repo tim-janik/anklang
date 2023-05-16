@@ -5,6 +5,7 @@
 #include <ase/sysconfig.h>
 #include <sys/types.h>                  // uint, ssize
 #include <cstdint>                      // uint64_t
+#include <string>
 #include <functional>
 #include <vector>
 #include <memory>
