@@ -347,7 +347,7 @@ public:
   const ClapParamInfoMap *param_info_map_ = nullptr;
   const ClapParamInfoImpl *param_info_map_start_ = nullptr;
   clap_process_t processinfo = { 0, };
-  clap_event_transport_t transportinfo = { 0, };
+  clap_event_transport_t transportinfo = { { 0, }, };
   std::vector<BorrowedPtr<ClapEventParamS>> enqueued_events_;
   void
   enqueue_events (BorrowedPtr<ClapEventParamS> pevents_b)
