@@ -333,7 +333,7 @@ MainLoop::MainLoop() :
 MainLoopP
 MainLoop::create ()
 {
-  MainLoopP main_loop = FriendAllocator<MainLoop>::make_shared();
+  MainLoopP main_loop = make_shared();
   std::lock_guard<std::mutex> locker (main_loop->mutex());
   main_loop->add_loop_L (*main_loop);
   return main_loop;
@@ -847,7 +847,6 @@ MainLoop::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
 }
 
 class SubLoop : public EventLoop {
-  friend class FriendAllocator<SubLoop>;
 public:
   SubLoop (MainLoopP main) :
     EventLoop (*main)
@@ -862,7 +861,7 @@ EventLoopP
 MainLoop::create_sub_loop()
 {
   std::lock_guard<std::mutex> locker (mutex());
-  EventLoopP sub_loop = FriendAllocator<SubLoop>::make_shared (shared_ptr_cast<MainLoop> (this));
+  EventLoopP sub_loop = std::make_shared<SubLoop> (shared_ptr_cast<MainLoop> (this));
   this->add_loop_L (*sub_loop);
   return sub_loop;
 }

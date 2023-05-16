@@ -125,7 +125,6 @@ public:
 /// An EventLoop implementation that offers public API for running the loop.
 class MainLoop : public EventLoop
 {
-  friend                class FriendAllocator<MainLoop>;
   friend                class EventLoop;
   friend                class SubLoop;
   std::mutex            mutex_;
@@ -143,8 +142,9 @@ class MainLoop : public EventLoop
   void                  kill_loops_Lm       ();                 ///< Destroy this loop and all sub loops.
   bool                  iterate_loops_Lm    (LoopState&, bool b, bool d);
   explicit              MainLoop            ();
+  virtual              ~MainLoop            ();
+  ASE_DEFINE_MAKE_SHARED (MainLoop);
 public:
-  virtual   ~MainLoop        ();
   int        run             (); ///< Run loop iterations until a call to quit() or finishable becomes true.
   bool       running         (); ///< Indicates if quit() has been called already.
   bool       finishable      (); ///< Indicates wether this loop has no primary sources left to process.
@@ -153,8 +153,8 @@ public:
   bool       iterate         (bool block);           ///< Perform one loop iteration and return whether more iterations are needed.
   void       iterate_pending (); ///< Call iterate() until no immediate dispatching is needed.
   EventLoopP create_sub_loop (); ///< Creates a new event loop that is run as part of this main loop.
-  static MainLoopP   create  ();
   inline std::mutex& mutex   () { return mutex_; } ///< Provide access to the mutex associated with this main loop.
+  static MainLoopP   create  (); ///< Create a MainLoop shared pointer handle.
   bool    set_g_main_context (GlibGMainContext *glib_main_context); ///< Set context to integrate with a GLib @a GMainContext loop.
 };
 
@@ -209,9 +209,9 @@ public:
 // === DispatcherSource ===
 class DispatcherSource : public virtual EventSource /// EventLoop source for handler execution.
 {
-  friend class FriendAllocator<DispatcherSource>;
   typedef EventLoop::DispatcherSlot DispatcherSlot;
   DispatcherSlot slot_;
+  ASE_DEFINE_MAKE_SHARED (DispatcherSource);
 protected:
   virtual     ~DispatcherSource ();
   virtual bool prepare          (const LoopState &state, int64 *timeout_usecs_p);
@@ -221,16 +221,16 @@ protected:
   explicit     DispatcherSource (const DispatcherSlot &slot);
 public:
   static DispatcherSourceP create (const DispatcherSlot &slot)
-  { return FriendAllocator<DispatcherSource>::make_shared (slot); }
+  { return make_shared (slot); }
 };
 
 // === USignalSource ===
 class USignalSource : public virtual EventSource /// EventLoop source for handler execution.
 {
-  friend class FriendAllocator<USignalSource>;
   typedef EventLoop::USignalSlot USignalSlot;
   USignalSlot slot_;
   int8           signum_ = 0, index_ = 0, shift_ = 0;
+  ASE_DEFINE_MAKE_SHARED (USignalSource);
 protected:
   virtual     ~USignalSource  ();
   virtual bool prepare        (const LoopState &state, int64 *timeout_usecs_p);
@@ -241,14 +241,13 @@ protected:
 public:
   static void           raise  (int8 signum);
   static USignalSourceP create (int8 signum, const USignalSlot &slot)
-  { return FriendAllocator<USignalSource>::make_shared (signum, slot); }
+  { return make_shared (signum, slot); }
   static void install_sigaction (int8);
 };
 
 // === TimedSource ===
 class TimedSource : public virtual EventSource /// EventLoop source for timer execution.
 {
-  friend class FriendAllocator<TimedSource>;
   typedef EventLoop::BoolSlot BoolSlot;
   typedef EventLoop::VoidSlot VoidSlot;
   uint64     expiration_usecs_;
@@ -259,6 +258,7 @@ class TimedSource : public virtual EventSource /// EventLoop source for timer ex
     BoolSlot bool_slot_;
     VoidSlot void_slot_;
   };
+  ASE_DEFINE_MAKE_SHARED (TimedSource);
 protected:
   virtual     ~TimedSource  ();
   virtual bool prepare      (const LoopState &state, int64 *timeout_usecs_p);
@@ -268,15 +268,14 @@ protected:
   explicit     TimedSource  (const VoidSlot &slot, uint initial_interval_msecs, uint repeat_interval_msecs);
 public:
   static TimedSourceP create (const BoolSlot &slot, uint initial_interval_msecs = 0, uint repeat_interval_msecs = 0)
-  { return FriendAllocator<TimedSource>::make_shared (slot, initial_interval_msecs, repeat_interval_msecs); }
+  { return make_shared (slot, initial_interval_msecs, repeat_interval_msecs); }
   static TimedSourceP create (const VoidSlot &slot, uint initial_interval_msecs = 0, uint repeat_interval_msecs = 0)
-  { return FriendAllocator<TimedSource>::make_shared (slot, initial_interval_msecs, repeat_interval_msecs); }
+  { return make_shared (slot, initial_interval_msecs, repeat_interval_msecs); }
 };
 
 // === PollFDSource ===
 class PollFDSource : public virtual EventSource /// EventLoop source for IO callbacks.
 {
-  friend class FriendAllocator<PollFDSource>;
   typedef EventLoop::BPfdSlot BPfdSlot;
   typedef EventLoop::VPfdSlot VPfdSlot;
 protected:
@@ -296,11 +295,12 @@ private:
   };
   explicit      PollFDSource    (const BPfdSlot &slot, int fd, const String &mode);
   explicit      PollFDSource    (const VPfdSlot &slot, int fd, const String &mode);
+  ASE_DEFINE_MAKE_SHARED (PollFDSource);
 public:
   static PollFDSourceP create (const BPfdSlot &slot, int fd, const String &mode)
-  { return FriendAllocator<PollFDSource>::make_shared (slot, fd, mode); }
+  { return make_shared (slot, fd, mode); }
   static PollFDSourceP create (const VPfdSlot &slot, int fd, const String &mode)
-  { return FriendAllocator<PollFDSource>::make_shared (slot, fd, mode); }
+  { return make_shared (slot, fd, mode); }
 };
 
 // === EventLoop methods ===
