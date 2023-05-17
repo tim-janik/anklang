@@ -1,6 +1,8 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 'use strict';
 
+import * as Util from './util.js';
+
 const asecachingwrapper_cleanup_registry = new FinalizationRegistry (acw => acw.__cleanup__());
 
 /// Caching wrapper for ASE classes

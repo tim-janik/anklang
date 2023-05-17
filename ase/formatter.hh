@@ -2,6 +2,7 @@
 #ifndef __ASE_FORMATTER_HH__
 #define __ASE_FORMATTER_HH__
 
+#include <cstdint>
 #include <string>
 #include <sstream>
 #include <functional>
