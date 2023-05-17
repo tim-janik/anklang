@@ -75,7 +75,7 @@ jobs:
         misc/dbuild.sh -f arch misc/version.sh
     - name: Build Arch
       run: |
-        misc/dbuild.sh -f arch make SKIP_LATEX=true -j`nproc`
+        misc/dbuild.sh -f arch make -j`nproc`
     - name: Test Arch
       run: |
         misc/dbuild.sh -f arch make check
