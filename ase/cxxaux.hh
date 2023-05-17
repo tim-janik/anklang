@@ -239,17 +239,18 @@ template<bool value> using REQUIRESv = typename ::std::enable_if<value, void>::t
     { ::new (p) CLASS (std::forward<Args> (args)...); }                 \
     static void destroy (CLASS *p)                                      \
     { p->~CLASS (); }                                                   \
-    template<typename U>                                                \
-    struct rebind { using other = std::allocator<U>; };                 \
-    template<>                                                          \
-    struct rebind<CLASS> { using other = _make_shared_Allocator; };     \
+    template<typename U> struct rebind {                                \
+      using other =                                                     \
+        std::conditional_t<std::is_same<U, CLASS>::value,               \
+                           _make_shared_Allocator, std::allocator<U>>;  \
+    };                                                                  \
   };                                                                    \
   template<typename ...Args> static std::shared_ptr<CLASS>              \
   make_shared (Args &&...args)                                          \
   {                                                                     \
     return std::allocate_shared<CLASS> (_make_shared_Allocator(),       \
                                         std::forward<Args> (args)...);  \
-  }                                                                     \
+  }
 
 /** Shorthand for std::dynamic_pointer_cast<>(shared_from_this()).
  * A shared_ptr_cast() takes a std::shared_ptr or a pointer to an @a object that
