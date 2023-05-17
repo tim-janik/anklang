@@ -38,6 +38,8 @@ jobs:
     - name: Test Ubuntu
       run: |
         misc/dbuild.sh -f focal make check
+        misc/dbuild.sh -f focal make install DESTDIR=inst
+        misc/dbuild.sh -f focal cp -a inst/usr/local/share/doc/anklang/ out/anklang-docs/
     - name: Save Docker Cache
       if: ${{ steps.ghcache.outputs.cache-hit != 'true' }}
       run: |
@@ -48,9 +50,7 @@ jobs:
       with:
         name: docs
         path: |
-          out/doc/copyright
-          out/doc/*.pdf
-          out/doc/[NR]*.html
+          out/anklang-docs/
     - name: End-to-end X11 Tests
       run: |
         misc/dbuild.sh -f focal make x11test-v
