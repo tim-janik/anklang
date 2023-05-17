@@ -26,6 +26,9 @@ jobs:
     - name: Project Version
       run: |
         misc/version.sh
+    - name: Select Clang
+      run: |
+        echo -e 'CC=clang\n' 'CXX=clang++' > config-defaults.mk
     - name: Prepare Ubuntu
       run: |
         misc/dbuild.sh -f focal misc/version.sh
