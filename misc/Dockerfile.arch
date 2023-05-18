@@ -17,6 +17,7 @@ RUN pacman -Sy --noconfirm archlinux-keyring && pacman-key --init && pacman-key 
 	    pandoc python-pandocfilters \
 	    cppcheck \
 	    python-pip doxygen openssh \
+	    xorg-server-xvfb ffmpeg xorg-twm \
   && pip install poxy \
   && yes | pacman -Scc
 
