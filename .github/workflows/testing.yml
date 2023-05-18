@@ -91,15 +91,15 @@ jobs:
 
   Ping-IRC:
     if: always()
-    needs: [Ubuntu-Artifacts, Arch-Docs]
+    needs: [Ubuntu-Docs, Arch-Replay]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Check Jobs
       run: |
-        echo '${{ needs.Ubuntu-Artifacts.result }}' '${{ needs.Arch-Docs.result }}'
-        test success = '${{ needs.Ubuntu-Artifacts.result }}'
-        test success = '${{ needs.Arch-Docs.result }}'
+        echo '${{ needs.Ubuntu-Docs.result }}' '${{ needs.Arch-Replay.result }}'
+        test success = '${{ needs.Ubuntu-Docs.result }}'
+        test success = '${{ needs.Arch-Replay.result }}'
     - name: Ping IRC
       if: always()
       run: |
