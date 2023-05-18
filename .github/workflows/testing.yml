@@ -10,7 +10,7 @@ on:
 
 jobs:
 
-  Ubuntu+Docs:
+  Ubuntu-Docs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -56,7 +56,7 @@ jobs:
         echo "$SSH_ID_GHDOCS4ANKLANG_ECDSA" > .git/.ssh_id_ghdocs4anklang && chmod 0600 .git/.ssh_id_ghdocs4anklang
         misc/dbuild.sh -f focal doc/poxy.sh -b -u out/anklang-docs/
 
-  Arch+Replay:
+  Arch-Replay:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
