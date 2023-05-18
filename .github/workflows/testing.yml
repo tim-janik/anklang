@@ -60,7 +60,7 @@ jobs:
         name: x11test
         path: out/x11test/
 
-  Arch-Docs:
+  Arch+Replay:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -73,28 +73,25 @@ jobs:
       if: ${{ steps.ghcache.outputs.cache-hit == 'true' }}
       run: |
         test ! -r ~/ghcache/anklang-arch.tar || docker load -i ~/ghcache/anklang-arch.tar
-    - name: Prepare Arch
+    - name: Prepare Docker
       run: |
         misc/dbuild.sh -f arch misc/version.sh
-    - name: Build Arch
-      run: |
-        misc/dbuild.sh -f arch make -j`nproc`
-    - name: Test Arch
-      run: |
-        misc/dbuild.sh -f arch make check
     - name: Save Docker Cache
       if: ${{ steps.ghcache.outputs.cache-hit != 'true' }}
       run: |
-        mkdir -p ~/ghcache/
-        docker save anklang-arch -o ~/ghcache/anklang-arch.tar
-        ls -al ~/ghcache/
-    - name: Upload docs/anklang/
-      if: github.ref == 'refs/heads/trunk'
-      env:
-        SSH_ID_GHDOCS4ANKLANG_ECDSA: ${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}
+        mkdir -p ~/ghcache/ && docker save anklang-arch -o ~/ghcache/anklang-arch.tar
+    - name: Make all check
       run: |
-        echo "$SSH_ID_GHDOCS4ANKLANG_ECDSA" > .git/.ssh_id_ghdocs4anklang && chmod 0600 .git/.ssh_id_ghdocs4anklang
-        misc/dbuild.sh -f arch doc/poxy.sh -b -u
+        misc/dbuild.sh -f arch make -j`nproc`
+        misc/dbuild.sh -f arch make check
+    - name: Make x11test
+      run: |
+        misc/dbuild.sh -f arch make x11test-v
+    - uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: x11test
+        path: out/x11test/
 
   Ping-IRC:
     if: always()
