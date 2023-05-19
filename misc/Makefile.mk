@@ -193,27 +193,26 @@ upload-release:
 	@: # Determine version (eval preceeds all shell commands)
 	@ $(eval RELEASE_VERSION != cut '-d ' -f1 $>/build-version)
 	@ $(eval NIGHTLY != cmp -s $>/build-version $>/nightly-version && echo true)
+	@ $(eval RELEASE_TAG = $(if $(NIGHTLY), Nightly, $(RELEASE_VERSION)))
 	@: # Check release tag
-	$Q $(if $(NIGHTLY), true, false) \
-	|| ( NEWS_TAG=`misc/version.sh --news-tag1` && test "$$NEWS_TAG" == "v$(RELEASE_VERSION)" )
+	$Q $(if $(NIGHTLY),, NEWS_TAG=`misc/version.sh --news-tag1` \
+	&& set -x && test "$$NEWS_TAG" == "v$(RELEASE_VERSION)" )
 	@: # Check release attachments
 	$Q du -hs `cat $>/build-assets`
 	@: # Create release message
-	$Q echo $(if $(NIGHTLY), $(NIGHTLY_DISCLAIMER),		\
-				 'Anklang $(RELEASE_VERSION)')	>  $>/release-message
+	$Q echo $(if $(NIGHTLY), $(NIGHTLY_DISCLAIMER))		>  $>/release-message
 	$Q sed '0,/^## /b; /^## /Q; ' $>/build-news		>> $>/release-message
-	$Q echo							>> $>/release-message
-	-$Q $(if $(NIGHTLY), gh release delete -y 'Nightly' )
-	-$Q $(if $(NIGHTLY), git push origin ':Nightly' )
-	$Q  $(if $(NIGHTLY), git push origin 'Nightly' )
-	@: # Create Github release and upload assets
-	$Q ASSETS=( `cat $>/build-assets` )		\
-	&& gh release create				\
-		$(if $(NIGHTLY), --prerelease, --draft)	\
-		-F '$>/release-message'			\
-		-t $(if $(NIGHTLY), 'Nightly Build', "v$(RELEASE_VERSION)" ) \
-		$(if $(NIGHTLY), 'Nightly', "v$(RELEASE_VERSION)" ) \
-		"$${ASSETS[@]}"
-	$Q $(if $(NIGHTLY), true, false) \
-	|| ( echo 'Run:' && echo '  git push origin "v$(RELEASE_VERSION)"' )
+	@: # Create or update draft release (this unpublishes Nightly)
+	@: # Avoid 'create' for Nightly which emails all watchers
+	$Q gh release $(if $(NIGHTLY), edit --latest, create) \
+		--draft -F '$>/release-message' $(RELEASE_TAG)
+	@: # Update Nightly tag and purge old assets
+	$Q $(if $(NIGHTLY), misc/gh_delete_assets.sh 'Nightly' )
+	$Q $(if $(NIGHTLY), git push origin -f 'Nightly' )
+	@: # Upload assets
+	$Q gh release upload $(RELEASE_TAG) `cat $>/build-assets`
+	@: # Republish Nightly
+	$Q $(if $(NIGHTLY), gh release edit --draft=false $(RELEASE_TAG) )
+	@: # Suggest to publish release tag
+	$Q $(if $(NIGHTLY),, echo 'Run:' && echo '  git push origin "v$(RELEASE_VERSION)"' )
 NIGHTLY_DISCLAIMER = "Development version - may contain bugs or compatibility issues."
