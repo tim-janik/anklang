@@ -14,6 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      run: |
+        git fetch --shallow-since 2022-07-25
+        git describe
     - uses: actions/cache@v3
       id: ghcache
       with:
@@ -60,6 +63,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      run: |
+        git fetch --shallow-since 2022-07-25
+        git describe
     - uses: actions/cache@v3
       id: ghcache
       with:
