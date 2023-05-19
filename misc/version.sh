@@ -93,10 +93,10 @@ fi
 
 # == VERSIONTAG ==
 if [[ ${COMMITINFO[1]} =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)$ ]] ; then	# Version tag without hash
-  VERSIONTAG="${BASH_REMATCH[1]}-dev.0"							# Force -dev.0 postfix
+  VERSIONTAG="${BASH_REMATCH[1]}.dev0"							# Force .dev0 postfix
 elif [[ ${COMMITINFO[1]} =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z]+[0-9.]*)?)-([0-9]+)-g[0-9a-f]+$ ]]
 then											# Version tag with hash
-  VERSIONTAG="${BASH_REMATCH[1]}-dev.${BASH_REMATCH[3]}"				# Force -dev.000 postfix
+  VERSIONTAG="${BASH_REMATCH[1]}.dev${BASH_REMATCH[3]}"					# Force .dev000 postfix
 else
   die "ERROR: failed to detect project version"
 fi
