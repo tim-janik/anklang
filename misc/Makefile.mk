@@ -200,7 +200,7 @@ upload-release:
 	$Q du -hs `cat $>/build-assets`
 	@: # Create release message
 	$Q echo $(if $(NIGHTLY), $(NIGHTLY_DISCLAIMER),		\
-				 'Anklang $(RELEASE_VERSION)'	>  $>/release-message
+				 'Anklang $(RELEASE_VERSION)')	>  $>/release-message
 	$Q sed '0,/^## /b; /^## /Q; ' $>/build-news		>> $>/release-message
 	$Q echo							>> $>/release-message
 	-$Q $(if $(NIGHTLY), gh release delete -y 'Nightly' )
