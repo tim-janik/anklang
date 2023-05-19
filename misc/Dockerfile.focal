@@ -18,12 +18,13 @@ RUN apt-get update \
 	     sudo build-essential curl cmake libglib2.0-dev \
 	     build-essential pkg-config git curl ccache curl unzip gawk g++ \
 	     clang clang-tidy clang-tools castxml cppcheck libboost-system-dev \
-	     imagemagick librsvg2-bin libxml2-utils libxml2-dev python3 python3-lxml \
-	     python3-pandocfilters pandoc graphviz universal-ctags \
+	     imagemagick librsvg2-bin libxml2-utils libxml2-dev python3 python3-pip \
+	     python3-lxml python3-pandocfilters pandoc graphviz universal-ctags \
 	     libasound2-dev libflac-dev libopus-dev libjack-dev libzstd-dev \
 	     gettext libgconf-2-4 libgtk2.0-dev libgtk-3-dev squashfs-tools zstd \
 	     libgtk-3-0 libxss1 libgbm1 libnss3 \
-	     xvfb 9wm ffmpeg \
+	     xvfb twm ffmpeg doxygen \
+  && pip install poxy \
   && (test "${NOTEX:-false}" = true \
 	|| apt-get install -y \
 		   texlive-xetex fonts-sil-charis texlive-binaries texlive-fonts-extra ) \

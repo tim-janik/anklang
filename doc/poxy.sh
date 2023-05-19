@@ -160,8 +160,7 @@ __EOF
   TMPINST=`pwd`/tmpinst/
   rm -rf $TMPINST
   make DESTDIR=$TMPINST doc/install -j
-  AMANUAL=$(find $TMPINST -name anklang-manual.html -printf %p\\n | head -1)
-  cp -r "${AMANUAL%/*}" html/
+  cp -ru $TMPINST/share/doc/anklang/. html/
   rm -rf $TMPINST
 }
 

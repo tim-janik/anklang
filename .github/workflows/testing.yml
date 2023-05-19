@@ -10,10 +10,14 @@ on:
 
 jobs:
 
-  Ubuntu-Artifacts:
+  Ubuntu-Docs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Fetch last release tag
+      run: |
+        git fetch --shallow-since 2022-07-25
+        git describe
     - uses: actions/cache@v3
       id: ghcache
       with:
@@ -23,44 +27,47 @@ jobs:
       if: ${{ steps.ghcache.outputs.cache-hit == 'true' }}
       run: |
         test ! -r ~/ghcache/anklang-focal.tar || docker load -i ~/ghcache/anklang-focal.tar
-    - name: Project Version
+    - name: Configure Build and Docker
       run: |
-        misc/version.sh
-    - name: Prepare Ubuntu
-      run: |
+        echo 'prefix=/'		>  config-defaults.mk
+        echo 'CC=clang'		>> config-defaults.mk
+        echo 'CXX=clang++'	>> config-defaults.mk
         misc/dbuild.sh -f focal misc/version.sh
-    - name: Build Ubuntu
-      run: |
-        misc/dbuild.sh -f focal make -j`nproc` all pdf
-    - name: Test Ubuntu
-      run: |
-        misc/dbuild.sh -f focal make check
+        cat config-defaults.mk
+        misc/dbuild.sh -f focal bash -c 'source config-defaults.mk && $CXX --version'
     - name: Save Docker Cache
       if: ${{ steps.ghcache.outputs.cache-hit != 'true' }}
       run: |
-        mkdir -p ~/ghcache/
-        docker save anklang-focal -o ~/ghcache/anklang-focal.tar
-        ls -al ~/ghcache/
+        mkdir -p ~/ghcache/ && docker save anklang-focal -o ~/ghcache/anklang-focal.tar
+    - name: Make all pdf check
+      run: |
+        misc/dbuild.sh -f focal make -j`nproc` all pdf
+        misc/dbuild.sh -f focal make check
+    - name: Make install
+      run: |
+        misc/dbuild.sh -f focal make install DESTDIR=inst
+        cp -a inst/share/doc/anklang/ out/anklang-docs/
     - uses: actions/upload-artifact@v3
       with:
         name: docs
         path: |
-          out/doc/copyright
-          out/doc/*.pdf
-          out/doc/[NR]*.html
-    - name: End-to-end X11 Tests
+          out/anklang-docs/
+    - name: Upload tim-janik.github.io/docs/anklang
+      if: github.ref == 'refs/heads/trunk'
+      env:
+        SSH_ID_GHDOCS4ANKLANG_ECDSA: ${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}
       run: |
-        misc/dbuild.sh -f focal make x11test-v
-    - uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: x11test
-        path: out/x11test/
+        echo "$SSH_ID_GHDOCS4ANKLANG_ECDSA" > .git/.ssh_id_ghdocs4anklang && chmod 0600 .git/.ssh_id_ghdocs4anklang
+        misc/dbuild.sh -f focal doc/poxy.sh -b -u out/anklang-docs/
 
-  Arch-Docs:
+  Arch-Replay:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Fetch last release tag
+      run: |
+        git fetch --shallow-since 2022-07-25
+        git describe
     - uses: actions/cache@v3
       id: ghcache
       with:
@@ -70,40 +77,37 @@ jobs:
       if: ${{ steps.ghcache.outputs.cache-hit == 'true' }}
       run: |
         test ! -r ~/ghcache/anklang-arch.tar || docker load -i ~/ghcache/anklang-arch.tar
-    - name: Prepare Arch
+    - name: Prepare Docker
       run: |
         misc/dbuild.sh -f arch misc/version.sh
-    - name: Build Arch
-      run: |
-        misc/dbuild.sh -f arch make SKIP_LATEX=true -j`nproc`
-    - name: Test Arch
-      run: |
-        misc/dbuild.sh -f arch make check
     - name: Save Docker Cache
       if: ${{ steps.ghcache.outputs.cache-hit != 'true' }}
       run: |
-        mkdir -p ~/ghcache/
-        docker save anklang-arch -o ~/ghcache/anklang-arch.tar
-        ls -al ~/ghcache/
-    - name: Upload docs/anklang/
-      if: github.ref == 'refs/heads/trunk'
-      env:
-        SSH_ID_GHDOCS4ANKLANG_ECDSA: ${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}
+        mkdir -p ~/ghcache/ && docker save anklang-arch -o ~/ghcache/anklang-arch.tar
+    - name: Make all check
       run: |
-        echo "$SSH_ID_GHDOCS4ANKLANG_ECDSA" > .git/.ssh_id_ghdocs4anklang && chmod 0600 .git/.ssh_id_ghdocs4anklang
-        misc/dbuild.sh -f arch doc/poxy.sh -b -u
+        misc/dbuild.sh -f arch make -j`nproc`
+        misc/dbuild.sh -f arch make check
+    - name: Make x11test
+      run: |
+        misc/dbuild.sh -f arch make x11test-v
+    - uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: x11test
+        path: out/x11test/
 
   Ping-IRC:
     if: always()
-    needs: [Ubuntu-Artifacts, Arch-Docs]
+    needs: [Ubuntu-Docs, Arch-Replay]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Check Jobs
       run: |
-        echo '${{ needs.Ubuntu-Artifacts.result }}' '${{ needs.Arch-Docs.result }}'
-        test success = '${{ needs.Ubuntu-Artifacts.result }}'
-        test success = '${{ needs.Arch-Docs.result }}'
+        echo '${{ needs.Ubuntu-Docs.result }}' '${{ needs.Arch-Replay.result }}'
+        test success = '${{ needs.Ubuntu-Docs.result }}'
+        test success = '${{ needs.Arch-Replay.result }}'
     - name: Ping IRC
       if: always()
       run: |

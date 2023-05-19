@@ -67,8 +67,10 @@ tail -f $ffmpeg_stdin |
 	 -y $ONAME.mp4 &
 ffmpeg_pid=$!
 
-# start simple window manager
-DISPLAY=:$XDISPLAY 9wm &
+# Use twm as simple window manager
+grep -s RandomPlacement ~/.twmrc ||
+  echo RandomPlacement >> ~/.twmrc	# force auto placement
+DISPLAY=:$XDISPLAY twm &
 wm_pid=$!
 
 # run test
