@@ -61,11 +61,11 @@
 <template>
   <h-flex class="b-statusbar" >
     <span class="b-statusbar-field" >
-      <b-icon ic="fa-tasks" style="font-size:110%;" hflip :class="App.panel2 == 'd' && 'b-active'"
+      <b-icon ic="mi-equalizer" style="font-size:110%;" hflip :class="App.panel2 == 'd' && 'b-active'"
 	      @click="App.switch_panel2 ('d')" data-kbd="^"
 	      aria-label="Show Device Stack"
 	      data-tip="**CLICK** Show Device Stack" />
-      <b-icon ic="mi-queue_music" style="font-size:140%" :class="App.panel2 == 'p' && 'b-active'"
+      <b-icon ic="mi-queue_music" style="font-size:110%" :class="App.panel2 == 'p' && 'b-active'"
 	      @click="App.switch_panel2 ('p')" data-kbd="^"
 	      aria-label="Show Piano Roll Editor"
 	      data-tip="**CLICK** Show Piano Roll Editor" />
@@ -76,10 +76,10 @@
       <strong>KEY</strong> <kbd>{{ Util.display_keyname (kbd_) }}</kbd> </span>
     <span class="b-statusbar-spacer" />
     <span class="b-statusbar-field" >
-      <b-icon ic="fa-info-circle" style="font-size:120%" :class="App.panel3 == 'i' && 'b-active'"
+      <b-icon ic="mi-info"        style="font-size:110%" :class="App.panel3 == 'i' && 'b-active'"
 	      @click="App.switch_panel3 ('i')" data-kbd="i"
 	      data-tip="**CLICK** Show Information View" />
-      <b-icon ic="mi-folder_open" style="font-size:120%" :class="App.panel3 == 'b' && 'b-active'"
+      <b-icon ic="mi-folder_open" style="font-size:110%" :class="App.panel3 == 'b' && 'b-active'"
 	      @click="App.switch_panel3 ('b')" data-kbd="i"
 	      data-tip="**CLICK** Show Browser" />
     </span>
