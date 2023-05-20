@@ -1,5 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-'use strict';
+// @ts-check
 
 import * as Util from './util.js';
 
@@ -9,6 +9,7 @@ const asecachingwrapper_cleanup_registry = new FinalizationRegistry (acw => acw.
 class AseCachingWrapper {
   constructor (aseobj) {
     // each non '__*' property is an aseobj property wrapper
+    /**@type{null|WeakRef}*/
     this.__wref__ = new WeakRef (aseobj);
     this.__cleanups__ = [];
     this.__promise__ = null;
@@ -22,7 +23,10 @@ class AseCachingWrapper {
     let propwrapper = this[prop];
     if (!propwrapper) {
       let notify_set = undefined;
-      const wrapper = { count: 0, value: defaultvalue, get_value: null, unwatch_notify: null, callbacks: [] };
+      const wrapper = { count: 0, value: defaultvalue,
+			/**@type{null|function}*/ get_value: null,
+			unwatch_notify: null,
+			/**@type{Array<function>}*/ callbacks: [] };
       // debug helper
       if (typeof aseobj[prop] !== 'function')
 	throw new TypeError (`property getter not callable: [${aseobj.constructor.name} ${aseobj.$id}].${prop}: ` + aseobj[prop]);
@@ -125,6 +129,7 @@ export function wrap_ase_object (aseobj, fields = {}, callback = undefined)
     cwrapper = null;
   };
   __cleanup__.cleanups = [];
+  /**@this any*/
   const __add__ = function (prop, defaultvalue, callback) {
     if (!cwrapper) return;
     cwrapper.__add__ (prop, defaultvalue, callback);
@@ -211,10 +216,10 @@ function reactive_notify (notify_set)
 
 // Internal handle for reactive_wrapper()
 class ReactiveHandle {
-  wref = null;
-  notifier = null;
-  notify_sets = null;
-  effect = null;
+  wref;
+  notifier;
+  notify_sets;
+  effect;
   once = false;
   running = 0;
   notify ()
