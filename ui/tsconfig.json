@@ -1,0 +1,27 @@
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+{
+  /* Visit https://aka.ms/tsconfig to read more about this file */
+  "compilerOptions": {
+    "allowJs": true,                                    // Allow JavaScript files to be a part of your program. Use the 'checkJS' option to get errors from these files.
+    "checkJs": false,                                   // ATM, add this to js files:   // @ts-check
+    "noEmit": true,
+    "noImplicitAny": false,
+    "module": "esnext",
+    "target": "esnext",
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "strictNullChecks": false,
+    "strict": true,                                    // Enable all strict type-checking options.
+  },
+
+  // Files that must be present
+  "files": [
+    "types.d.ts"
+  ],
+
+  // Globs that may be present
+  "include": [
+    "*.js",
+    "b/*.js"
+  ]
+}
