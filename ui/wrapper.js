@@ -113,7 +113,9 @@ class AseCachingWrapper {
 
 const aseobj_weakmap = new WeakMap();
 
-/// Wrap AseObject to cache properties and support __add__, __cleanup__ and auto cleanup.
+/** Wrap AseObject to cache properties and support __add__, __cleanup__ and auto cleanup.
+ * @param {function|undefined} callback
+ */
 export function wrap_ase_object (aseobj, fields = {}, callback = undefined)
 {
   if (!aseobj) return aseobj;
