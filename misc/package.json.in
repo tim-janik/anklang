@@ -4,9 +4,9 @@
   "type": "module",
   "scripts": {
     "serve": "run-p sound-engine monitor",
-    "sound-engine": "lib/AnklangSynthEngine $ASEOPT && false",
-    "ui/rebuild": "make ui/rebuild -C $npm_package_config_srcdir --no-print-directory -j",
-    "monitor": "nodemon --ext '*' --watch $npm_package_config_srcdir/ui/ --delay 99ms --on-change-only --exec 'npm run -s ui/rebuild || false' --exitcrash"
+    "sound-engine": "lib/AnklangSynthEngine $ASEOPT",
+    "ui/rebuild": "make ui/rebuild -C $npm_package_config_srcdir -j",
+    "monitor": "nodemon --ext '*' --watch $npm_package_config_srcdir/ui/ --delay 99ms --on-change-only --exec 'npm run -s ui/rebuild' --exitcrash"
   },
   "dependencies": {
     "vue": "=3.3.4"
