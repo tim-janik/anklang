@@ -46,29 +46,25 @@ ui/public.wildcards ::= $(wildcard	\
 
 # == ui/lit.js ==
 $>/ui/lit.js.map: $>/ui/lit.js ;
-$>/ui/lit.js:	$>/node_modules/.npm.done ui/Makefile.mk		| $>/ui/
+$>/ui/lit.js: ui/Makefile.mk $>/node_modules/.npm.done					| $>/ui/
 	$(QGEN)
 	$Q rm -f $>/ui/lit.js* $@
-	$Q for mod in \
-		lit lit/directives/async-append.js lit/directives/async-replace.js \
-		lit/directives/cache.js lit/directives/choose.js lit/directives/class-map.js lit/directives/guard.js \
-		lit/directives/if-defined.js lit/directives/join.js lit/directives/keyed.js lit/directives/live.js \
-		lit/directives/map.js lit/directives/range.js lit/directives/ref.js lit/directives/repeat.js \
-		lit/directives/style-map.js lit/directives/template-content.js lit/directives/unsafe-html.js \
-		lit/directives/unsafe-svg.js lit/directives/until.js lit/directives/when.js \
-		  ; do \
-		echo "export * from '$$mod';" ; \
-	   done							> $>/ui/lit-all.js
-	$Q cd $>/ui/ && ../node_modules/.bin/rollup \
-		-p @rollup/plugin-node-resolve \
-		lit-all.js -o lit.js --sourcemapFile lit.js.map -m
+	$Q for mod in $(ui/lit.modules) ; do echo "export * from '$$mod';" ; done	> $>/ui/lit-all.js
+	$Q cd $>/ui/ && ../node_modules/.bin/rollup -p @rollup/plugin-node-resolve lit-all.js -o lit.js --sourcemapFile lit.js.map -m
 	$Q $(RM) $>/ui/lit-all.js
 $>/ui/.build1-stamp: $>/ui/lit.js
+ui/lit.modules = $(strip	\
+	lit lit/directives/live.js lit/directives/repeat.js lit/directives/ref.js \
+	lit/directives/async-append.js lit/directives/async-replace.js lit/directives/cache.js lit/directives/choose.js lit/directives/class-map.js \
+	lit/directives/guard.js lit/directives/if-defined.js lit/directives/join.js lit/directives/keyed.js lit/directives/map.js lit/directives/range.js \
+	lit/directives/style-map.js lit/directives/template-content.js lit/directives/unsafe-html.js lit/directives/unsafe-svg.js lit/directives/until.js \
+	lit/directives/when.js \
+)
 
 # == ui/vue.js ==
 $>/ui/vue.js:	$>/node_modules/.npm.done				| $>/ui/
 	$(QGEN)
-	$Q rm -f $>/ui/vue.js $>/ui/.eslintcache
+	$Q rm -f $>/ui/vue.js
 	$Q $(CP) $>/node_modules/vue/dist/$(UI/VUE-VARIANT.js) $>/ui/vue.js
 	$Q sed -i $>/ui/vue.js \
 		-e 's/^\s*\(console\.info(.You are running a development build of Vue\)/if(0) \1/' \
@@ -155,10 +151,6 @@ $(ui/b/scss2css.targets): $>/ui/%.css: ui/%.scss		| $>/ui/
 	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -i $< $@.tmp
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $(ui/b/scss2css.targets)
-$>/ui/.scss2css.check: $(ui/b/scss2css.targets) | $>/ui/.stylelintrc.cjs
-	$(QECHO) CHECK 'ui/*.scss -> ui/*.css'
-	-$Q cd $>/ && node_modules/.bin/stylelint $(ui/b/scss2css.targets:$>/%=%) && touch $@
-$>/ui/.build2-stamp: $>/ui/.scss2css.check
 
 # == ui/*.scss ==
 ui/scss.targets ::= $(ui/scss.files:%.scss=$>/%.scss)
@@ -180,14 +172,6 @@ $>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $(ui/scss.targets)
 	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -i $(@F).vuecss $(@F).tmp
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/vue-styles.css
-$>/ui/.vue-styles.check: $>/ui/vue-styles.css $>/ui/.stylelintrc.cjs
-	$(QECHO) CHECK $<
-	-$Q cd $>/ && node_modules/.bin/stylelint $(<:$>/%=%) && touch $@
-$>/ui/.build2-stamp: $>/ui/.vue-styles.check
-
-# == ui/.stylelintrc.cjs ==
-$>/ui/.stylelintrc.cjs: ui/stylelintrc.cjs
-	$Q cp $< $@
 
 # == all-components.js ==
 $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vuejs.targets) $(wildcard ui/b/*)	| $>/ui/
@@ -217,10 +201,6 @@ $(ui/b/css.targets): $>/%.css: %.js					| $>/ui/b/
 	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -i b/$(@F:%.css=%.jscss) b/$(@F).tmp
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $(ui/b/css.targets)
-$>/ui/.jscss-styles.check: $(ui/b/css.targets) $>/ui/.stylelintrc.cjs
-	$(QECHO) CHECK $<
-	-$Q cd $>/ && node_modules/.bin/stylelint $(ui/b/css.targets:$>/%=%) && touch $@
-$>/ui/.build2-stamp: $>/ui/.jscss-styles.check
 
 # == File Copies ==
 ui/copy.targets ::= $(ui/copy.files:%=$>/%)
@@ -276,18 +256,12 @@ $>/ui/fonts/AnklangIcons.css: ui/Makefile.mk		| $>/ui/fonts/
 $>/ui/.build1-stamp: $>/ui/fonts/AnklangIcons.css
 
 # == Material-Icons ==
-$>/ui/fonts/material-icons.css: ui/Makefile.mk		| $>/ui/fonts/
-	$(QECHO) FETCH Material-Icons
-	@ $(eval T := material-icons-220403-1-h964709088.tar.xz)
-	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
-		5b51584613a9f84ea935b785123d4fe088fa8cb7660f886e66420c81fee89659 \
-		  https://github.com/tim-janik/assets/releases/download/material-icons/$T)
-	$Q cd $(@D) \
-		&& rm -fr material-icons/ && tar -xf $T \
-		&& mv material-icons/material-icons.woff2 ./ \
-		&& $(CP) material-icons/material-icons.css material-icons.css.tmp \
-		&& rm -fr material-icons/ $T
-	$Q mv $@.tmp $@ && touch $@
+$>/ui/fonts/material-icons.css: ui/Makefile.mk		| $>/ui/fonts/ $>/node_modules/.npm.done
+	$(QGEN)
+	$Q grep -q '/material-icons.woff2' $>/node_modules/material-icons/iconfont/filled.css || \
+		{ echo "$<: failed to find font in $>/node_modules/material-icons/iconfont/" >&2 ; false ; }
+	$Q cp $>/node_modules/material-icons/iconfont/material-icons.woff2 $(@D)
+	$Q cp $>/node_modules/material-icons/iconfont/filled.css $@
 $>/ui/.build1-stamp: $>/ui/fonts/material-icons.css
 
 # == Fork-Awesome ==
@@ -334,23 +308,52 @@ $>/ui/favicon.ico: ui/assets/favicon.svg $>/node_modules/.npm.done ui/Makefile.m
 $>/ui/anklang.png: $>/ui/favicon.ico
 $>/ui/.build1-stamp: $>/ui/favicon.ico $>/ui/anklang.png
 
-# == $>/ui/eslint.files ==
+# == eslint ==
 ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue)
-$>/ui/.eslint.files: ui/eslintrc.js $(ui/eslint.files)			| $>/ui/
-	$(QGEN)
+$>/ui/.eslint.done: ui/eslintrc.js $(ui/eslint.files) ui/Makefile.mk $>/node_modules/.npm.done	| $>/ui/
+	$(QECHO) RUN eslint
 	$Q $(CP) $< $(@D)/.eslintrc.cjs
-	$Q echo '$(abspath $(ui/eslint.files))' | tr ' ' '\n' > $@
-$>/ui/.build1-stamp: $>/ui/.eslint.files
-
-# == eslint.done ==
-$>/ui/.eslint.done: $>/ui/.eslint.files $>/node_modules/.npm.done
-	$(QGEN)
-	$Q cd $>/ui/ && npm run eslint |& ../../misc/colorize.sh
+	$Q echo '$(abspath $(ui/eslint.files))' | tr ' ' '\n' > $>/ui/.eslint.files
+	$Q cd $>/ && node_modules/.bin/eslint --no-eslintrc -c ui/.eslintrc.cjs -f unix --cache $(abspath $(ui/eslint.files)) \
+	|& ./../misc/colorize.sh
+	$Q rm -f $>/ui/.eslint.files
 	$Q touch $@
-$>/ui/.build2-stamp: $>/ui/.eslint.done	# deferred during rebuilds
-eslint: $>/ui/.eslint.files $>/node_modules/.npm.done
-	$Q cd $>/ui/ && npm run $@
+$>/ui/.build2-stamp: $>/ui/.eslint.done
+eslint: $>/node_modules/.npm.done
+	$Q rm -f $>/ui/.eslint.done
+	$Q $(MAKE) $>/ui/.eslint.done
 .PHONY: eslint
+
+# == tscheck ==
+ui/tscheck.deps ::= $(wildcard ui/*.js ui/*/*.js) $(wildcard $>/ui/*.js $>/ui/*/*.js)
+$>/.tscheck.done: ui/types.d.ts ui/tsconfig.json $(ui/tscheck.deps) ui/Makefile.mk $>/node_modules/.npm.done | $>/tscheck/
+	$(QECHO) RUN tscheck
+	$Q cp ui/tsconfig.json ui/types.d.ts $>/ui/
+	@ # tsc *.js needs to find node_modules/ in the directory hierarchy ("moduleResolution": "node")
+	-$Q cd $>/ && node_modules/.bin/tsc -p ui/tsconfig.json --pretty false |& ../misc/colorize.sh
+	$Q touch $@
+$>/ui/.build2-stamp: $>/.tscheck.done
+tscheck: $>/node_modules/.npm.done
+	$Q rm -f $>/.tscheck.done
+	$Q $(MAKE) $>/.tscheck.done
+.PHONY: tscheck
+
+# == stylelint ==
+ui/stylelint.files = $(ui/b/scss2css.targets) $(ui/b/css.targets) $>/ui/vue-styles.css
+$>/ui/.stylelint.done: $(ui/stylelint.files) ui/stylelintrc.cjs $>/node_modules/.npm.done
+	$(QECHO) RUN stylelint
+	$Q cp ui/stylelintrc.cjs $>/ui/stylelintrc.cjs
+	-$Q cd $>/ && node_modules/.bin/stylelint -c ui/stylelintrc.cjs $(ui/stylelint.files:$>/%=%)
+	$Q touch $@
+$>/ui/.build2-stamp: $>/ui/.stylelint.done
+stylelint: $>/node_modules/.npm.done
+	$Q rm -f $>/ui/.stylelint.done
+	$Q $(MAKE) $>/ui/.stylelint.done
+.PHONY: stylelint
+
+# == lint ==
+lint: stylelint eslint tscheck
+.PHONY: lint
 
 # == $>/doc/b/*.md ==
 $>/doc/b/.doc-stamp: $(wildcard ui/b/*.js) ui/xbcomments.js ui/Makefile.mk $>/node_modules/.npm.done	| $>/doc/b/
@@ -368,11 +371,11 @@ serve: all $>/ui/.build1-stamp
 # == ui/rebuild ==
 ui/rebuild:
 	@: # incremental rebuild of source files without npm.done
-	$(MAKE) $>/ui/.build1-stamp NPMBLOCK=y -j
+	$(MAKE) --no-print-directory $>/ui/.build1-stamp NPMBLOCK=y -j
+	@: # perform non-essential rebuilds that may fail
+	$(MAKE) --no-print-directory $>/ui/.build2-stamp NPMBLOCK=y -j --no-print-directory
 	@: # close open sockets, only works if *same* executable still runs
 	killall -s USR2 -u $(USER) -- $(abspath $(lib/AnklangSynthEngine))
-	@: # perform non-essential rebuilds that may fail
-	$(MAKE) $>/ui/.build2-stamp NPMBLOCK=y -j --no-print-directory &
 .PHONY: ui/rebuild
 
 # == installation ==
