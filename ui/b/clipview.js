@@ -66,7 +66,7 @@ const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with
 const PRIVATE_PROPERTY = { state: true };
 const OBJECT_PROPERTY = { attribute: false };
 
-class BClipView extends LitComponent {
+export class BClipView extends LitComponent {
   static styles = [ STYLE ];
   static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
   static properties = {
