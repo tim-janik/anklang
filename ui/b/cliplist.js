@@ -4,7 +4,7 @@
 import { LitElement, html, JsExtract, docs, ref } from '../little.js';
 import * as Wrapper from '../wrapper.js';
 import * as Util from '../util.js';
-/** @typedef {import ("../b/clipview.js").BClipView} BClipView */
+/** @typedef {import("../b/clipview.js").BClipView} BClipView */
 
 /** ## Clip-List
  * The Clip-List allows to start playback of individual clips.

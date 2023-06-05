@@ -29,6 +29,7 @@
     "icon-gen": "^3.0.1",
     "jsdoc": "^4.0.2",
     "jsdoc-api": "^8.0.0",
+    "jsdoc-tsimport-plugin": "^1.0.5",
     "lit": "^2.7.4",
     "markdown-it": "^13.0.1",
     "material-icons": "^1.13.6",
