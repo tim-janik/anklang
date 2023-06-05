@@ -1,5 +1,10 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
+
 import { LitElement, html, JsExtract, docs, ref } from '../little.js';
+import * as Wrapper from '../wrapper.js';
+import * as Util from '../util.js';
+/** @typedef {import ("../b/clipview.js").BClipView} BClipView */
 
 /** ## Clip-List
  * The Clip-List allows to start playback of individual clips.
@@ -40,7 +45,7 @@ import * as Ase from '../aseapi.js';
 const OBJECT_PROPERTY = { attribute: false };
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 
-class BClipList extends LitElement {
+export class BClipList extends LitElement {
   static styles = [ STYLE ];
   static properties = {
     track:	OBJECT_PROPERTY,
@@ -60,6 +65,10 @@ class BClipList extends LitElement {
     this.clipviews = [];
     this.teleobj = null;
     this.telemetry = null;
+    this.ratiomul = window.devicePixelRatio;
+    this.ratiodiv = 1.0 / this.ratiomul;
+    /**@type{HTMLElement}*/
+    this.indicator_bar = null;
   }
   connectedCallback() {
     super.connectedCallback();
@@ -78,7 +87,7 @@ class BClipList extends LitElement {
     if (changed_props.has ('track'))
       {
 	const weakthis = new WeakRef (this); // avoid strong wtrack->this refs for automatic cleanup
-	this.wtrack = Util.wrap_ase_object (this.track, { launcher_clips: [] }, () => weakthis.deref()?.requestUpdate());
+	this.wtrack = Wrapper.wrap_ase_object (this.track, { launcher_clips: [] }, () => weakthis.deref()?.requestUpdate());
 	Util.telemetry_unsubscribe (this.teleobj);
 	this.teleobj = null;
 	const async_updates = async () => {
@@ -89,8 +98,9 @@ class BClipList extends LitElement {
 	async_updates();
       }
     this.clipviews.length = 0;
-    for (const clipview of this.shadowRoot.querySelectorAll (":host > b-clipview"))
+    for (const element of this.shadowRoot.querySelectorAll (":host > b-clipview"))
       {
+	const clipview = /**@type{BClipView}*/ (element);
 	this.clipviews.push ({ width: clipview.getBoundingClientRect().width,
 			       tickscale: clipview.tickscale,
 			       x: clipview.offsetLeft, });
@@ -112,7 +122,7 @@ class BClipList extends LitElement {
       u = -9999;
     if (u != this.last_pos)
       {
-	this.indicator_bar.style = "transform: translateX(" + u + "px);";
+	this.indicator_bar.style.transform = "translateX(" + u + "px)";
 	this.last_pos = u;
       }
     if (Shell.piano_current_tick &&

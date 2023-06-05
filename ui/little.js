@@ -1,9 +1,14 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
-// Little helpers for LitElement components
+import * as Wrapper from './wrapper.js';
 
-export * from '../lit.js';
-import { LitElement, html, css, unsafeCSS } from '../lit.js';
+// Export supported Lit constructs
+export { LitElement, noChange, render, html, css, unsafeCSS } from 'lit';
+export { ref } from 'lit/directives/ref';
+export { live } from 'lit/directives/live';
+export { repeat } from 'lit/directives/repeat';
+import { LitElement, css, unsafeCSS } from 'lit';
 
 export const docs = (...args) => undefined;
 
@@ -14,8 +19,8 @@ export class LitComponent extends LitElement {
   {
     super();
     const request_update = this.requestUpdate.bind (this);
-    this.render = Util.reactive_wrapper (this.render.bind (this), request_update);
-    this.updated = Util.reactive_wrapper (this.updated.bind (this), request_update);
+    this.render = Wrapper.reactive_wrapper (this.render.bind (this), request_update);
+    this.updated = Wrapper.reactive_wrapper (this.updated.bind (this), request_update);
   }
   createRenderRoot()
   {
@@ -60,7 +65,7 @@ export const JsExtract = {
   // Mark CSS template string for jsextract.js
   css: () => undefined,
   // Mark SCSS template string for jsextract.js
-  scss: () => undefined,
+  scss: (strings, ...values) => undefined,
   // Mark HTML template string for jsextract.js
   html: () => undefined,
   fetch_css,

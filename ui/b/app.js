@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
 /** == B-APP ==
  * Global application instance for Anklang.
@@ -15,6 +16,8 @@ import * as Util from '../util.js';
 
 // == zmove() ==
 class ZMove {
+  /** @type {Event} */
+  static last_event;
   static
   zmove (ev) {
     if (ev && ev.screenX && ev.screenY &&
@@ -196,9 +199,12 @@ export async function create_app() {
   if (globalThis.App)
     return globalThis.App;
   // prepare Vue component templates
-  for (const [__name, component] of Object.entries (VueComponents))
+  for (const [__name, vcomponent] of Object.entries (VueComponents)) {
+    /**@type{any}*/
+    const component = vcomponent;
     if (component.sfc_template) // also constructs Shell.template
       component.template = component.sfc_template.call (null, Util.tmplstr, null);
+  }
   // create and configure Vue App
   const vue_app = Vue.createApp (ShellClass); // must have Shell.template
   vue_app.config.compilerOptions.isCustomElement = tag => !!window.customElements.get (tag);

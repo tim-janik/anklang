@@ -64,6 +64,7 @@ c-grid {
     background: $b-piano-roll-indicator;
     z-index: 2; backface-visibility: hidden; will-change: transform;
     transform: translateX(-9999px);
+    pointer-events: none;
   }
   .-hextend {
     background: #0000; opacity: 0; visibility: hidden;

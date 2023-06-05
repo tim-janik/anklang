@@ -68,7 +68,7 @@ override MODE !=  case "$(MODE)" in \
 		    *)							MODE=production ;; \
 		  esac ; echo "$$MODE"
 .config.defaults += MODE
-$(info $S MODE     $(MODE))
+$(info $S  MODE     $(MODE))
 .config.defaults += INSN
 
 # == Dirctories ==
