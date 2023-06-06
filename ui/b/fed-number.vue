@@ -53,6 +53,8 @@
 </template>
 
 <script>
+import * as Util from "../util.js";
+
 export default {
   sfc_template,
   // https://vuejs.org/v2/guide/components.html#Using-v-model-on-Components

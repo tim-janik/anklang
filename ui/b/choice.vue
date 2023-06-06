@@ -109,6 +109,8 @@
 </template>
 
 <script>
+import * as Util from "../util.js";
+
 export default {
   sfc_template,
   props: { value:   { default: false },

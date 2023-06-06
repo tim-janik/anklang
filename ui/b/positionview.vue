@@ -54,6 +54,7 @@ $b-positionview-b1: zmod($b-positionview-bg,Jz+=1);
 
 <script>
 import * as Ase from '../aseapi.js';
+import * as Util from "../util.js";
 
 function data () {
   const data = {

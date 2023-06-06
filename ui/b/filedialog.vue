@@ -106,6 +106,7 @@
 
 <script>
 import * as Envue from './envue.js';
+import * as Util from "../util.js";
 
 class FileDialog extends Envue.Component {
   constructor (vm) {
