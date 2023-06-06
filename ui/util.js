@@ -1,6 +1,8 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 'use strict';
 
+import * as Kbd from './kbd.js';
+
 // == Compat fixes ==
 class FallbackResizeObserver {
   constructor (resize_handler) {
@@ -271,7 +273,7 @@ export class PointerDrag {
   }
 }
 
-/** Start `drag_event (event)` handling on a Vue component's element, use `@pointerdown="Util.drag_event"` */
+/** Start `drag_event (event)` handling on a Vue component's element, use `@pointerdown="drag_event"` */
 export function drag_event (event) {
   console.assert (event.type == "pointerdown" && event.pointerId);
   const vuecomponent = vue_component (event.target);
@@ -918,7 +920,7 @@ export async function extend_property (prop, disconnector = undefined, augment =
   };
   if (disconnector)
     disconnector (xprop.on ('notify', _ => xprop.update_()));
-  await Util.object_await_values (xprop);	// ensure xprop.hints_ is valid
+  await object_await_values (xprop);	// ensure xprop.hints_ is valid
   xprop.has_choices_ = xprop.hints_.search (/:choice:/) >= 0;
   await xprop.update_();			// needs xprop.has_choices_, assigns xprop.value_
   return xprop;
@@ -1199,7 +1201,7 @@ export function wheel_delta (ev)
 /** Use deltas from `event` to call scrollBy() on `refs[scrollbars...]`. */
 export function wheel2scrollbars (event, refs, ...scrollbars)
 {
-  const delta = Util.wheel_delta (event);
+  const delta = wheel_delta (event);
   for (const sb of scrollbars)
     {
       const scrollbar = refs[sb];
@@ -1228,16 +1230,16 @@ export function setup_shield_element (shield, containee, closer, capture_escape 
        * in this mousedown handler we can only prevent further mousedown handling.
        * So we set up a timer that swallows the next 'contextmenu' event.
        */
-      Util.swallow_event ('contextmenu', 0);
+      swallow_event ('contextmenu', 0);
     }
   };
   shield.addEventListener ('mousedown', modal_mouse_guard);
-  Util.push_focus_root (containee, capture_escape ? closer : null);
+  Kbd.push_focus_root (containee, capture_escape ? closer : null);
   let undo_shield = () => {
     if (!undo_shield) return;
     undo_shield = null;
     shield.removeEventListener ('mousedown', modal_mouse_guard);
-    Util.remove_focus_root (containee);
+    Kbd.remove_focus_root (containee);
   };
   return undo_shield;
 }
@@ -2130,7 +2132,7 @@ export function del_destroy_callback (callback)
   console.assert (this instanceof Object);
   console.assert (callback instanceof Function);
   const callbacks = this[destroycallbacks];
-  return callbacks && Util.array_remove (callbacks, callback);
+  return callbacks && array_remove (callbacks, callback);
 }
 
 /// Call destroy callbacks of `this`, clears the callback list.
