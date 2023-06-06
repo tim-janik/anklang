@@ -50,6 +50,8 @@ LD_LIBRARY_PATH=$APPIMAGEPKGDIR/lib \
   -v1 \
   --appdir=$APPBASE \
   -e $APPIMAGEPKGDIR/bin/anklang \
+  --deploy-deps-only $APPIMAGEPKGDIR/lib/AnklangSynthEngine \
+  --deploy-deps-only $APPIMAGEPKGDIR/lib/gtk2wrap.so \
   -i $APPIMAGEPKGDIR/ui/anklang.png \
   -d $APPIMAGEPKGDIR/share/applications/anklang.desktop \
   -l $LIB64/libXss.so.1 \
@@ -57,10 +59,10 @@ LD_LIBRARY_PATH=$APPIMAGEPKGDIR/lib \
   --exclude-library="libnss3.so" \
   --exclude-library="libnssutil3.so" \
   --custom-apprun=misc/AppRun
+# skip -l jackdriver.so, it is loaded only if the target system has all dependencies
 
 # 'linuxdeploy -e bin/anklang' creates an executable copy in usr/bin/, which electron does not support
-rm $APPBASE/usr/bin/anklang
-ln -s -r $APPIMAGEPKGDIR/bin/anklang $APPBASE/usr/bin/	# enforce bin/* as link
+ln -vsf -r $APPIMAGEPKGDIR/bin/anklang $APPBASE/usr/bin/		# enforce bin/* as link
 
 # linuxdeploy collects too many libs for electron/anklang, remove duplictaes present in electron/
 ( cd $APPBASE/usr/lib/
