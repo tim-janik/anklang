@@ -28,6 +28,7 @@
  */
 
 import { LitComponent, LitElement, html, JsExtract, docs } from '../little.js';
+import * as Util from "../util.js";
 import * as Kbd from '../kbd.js';
 import * as ContextMenu from './contextmenu.js';
 

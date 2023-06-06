@@ -43,6 +43,7 @@
  */
 
 import { LitElement, html, render, noChange, JsExtract, docs, ref } from '../little.js';
+import * as Util from "../util.js";
 import * as Kbd from '../kbd.js';
 
 // == STYLE ==

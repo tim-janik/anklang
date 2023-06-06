@@ -37,6 +37,7 @@
  */
 
 import { LitComponent, html, JsExtract, docs } from '../little.js';
+import * as Util from "../util.js";
 
 // == STYLE ==
 const STYLE = await JsExtract.fetch_css (import.meta);
