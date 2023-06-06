@@ -64,11 +64,6 @@ LD_LIBRARY_PATH=$APPIMAGEPKGDIR/lib \
 # 'linuxdeploy -e bin/anklang' creates an executable copy in usr/bin/, which electron does not support
 ln -vsf -r $APPIMAGEPKGDIR/bin/anklang $APPBASE/usr/bin/		# enforce bin/* as link
 
-# linuxdeploy collects too many libs for electron/anklang, remove duplictaes present in electron/
-( cd $APPBASE/usr/lib/
-  rm -vf $APPIMAGEPKGDIR/electron/lib*.so*
-)
-
 # Create AppImage executable
 echo '  BUILD   ' appimage-runtime...
 mksquashfs $APPBASE $BUILDDIR/Anklang-x86_64.sqfs \
