@@ -20,7 +20,6 @@ module.exports = {
     Data: false,
     Shell: false,
     CONFIG: false,
-    Util: false,
     Vue: false,
     __DEV__: false,
     debug: false,
