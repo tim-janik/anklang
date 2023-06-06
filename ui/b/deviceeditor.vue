@@ -47,6 +47,7 @@
 
 <script>
 import * as Ase from '../aseapi.js';
+import * as Util from "../util.js";
 
 function guess_layout_rows (number_of_properties) {
   let n_lrows = 1;

@@ -81,6 +81,7 @@
 
 <script>
 import * as ContextMenu from './contextmenu.js';
+import * as Util from "../util.js";
 
 export default {
   sfc_template,

@@ -28,6 +28,8 @@
 </template>
 
 <script>
+import * as Util from "../util.js";
+
 async function augment_property (xprop) {
   if (xprop.has_choices_)
     {

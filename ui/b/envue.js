@@ -2,6 +2,7 @@
 'use strict';
 
 import * as Vue from '/vue.js';
+import * as Util from "../util.js";
 export * from '/vue.js';
 
 /// Component base class for wrapping Vue components.

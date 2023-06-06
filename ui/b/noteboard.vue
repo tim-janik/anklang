@@ -67,6 +67,7 @@
 
 <script>
 import * as Envue from './envue.js';
+import * as Util from "../util.js";
 
 class Noteboard extends Envue.Component {
   TIMEOUT = 15 * 1000;	// time for note to last

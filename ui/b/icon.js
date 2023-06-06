@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 import { LitElement, html, JsExtract, docs } from '../little.js';
+import * as Util from "../util.js";
 
 /** # B-ICON
  * This element displays icons from various icon fonts.
