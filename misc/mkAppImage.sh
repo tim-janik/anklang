@@ -50,6 +50,8 @@ LD_LIBRARY_PATH=$APPIMAGEPKGDIR/lib \
   -v1 \
   --appdir=$APPBASE \
   -e $APPIMAGEPKGDIR/bin/anklang \
+  -e $APPIMAGEPKGDIR/lib/AnklangSynthEngine \
+  -l $APPIMAGEPKGDIR/lib/gtk2wrap.so \
   -i $APPIMAGEPKGDIR/ui/anklang.png \
   -d $APPIMAGEPKGDIR/share/applications/anklang.desktop \
   -l $LIB64/libXss.so.1 \
@@ -57,10 +59,13 @@ LD_LIBRARY_PATH=$APPIMAGEPKGDIR/lib \
   --exclude-library="libnss3.so" \
   --exclude-library="libnssutil3.so" \
   --custom-apprun=misc/AppRun
+# skip -l jackdriver.so, it is test-loaded only if the target system has all dependencies
 
 # 'linuxdeploy -e bin/anklang' creates an executable copy in usr/bin/, which electron does not support
-rm $APPBASE/usr/bin/anklang
-ln -s -r $APPIMAGEPKGDIR/bin/anklang $APPBASE/usr/bin/	# enforce bin/* as link
+ln -vsf -r $APPIMAGEPKGDIR/bin/anklang $APPBASE/usr/bin/		# enforce bin/* as link
+test -r $APPBASE/usr/bin/anklang || die "$APPBASE/usr/bin/anklang: not readable"
+rm -v $APPBASE/usr/bin/AnklangSynthEngine				# remove copy of internal binary
+rm -v $APPBASE/usr/lib/gtk2wrap.so					# remove copy of internal module
 
 # linuxdeploy collects too many libs for electron/anklang, remove duplictaes present in electron/
 ( cd $APPBASE/usr/lib/
