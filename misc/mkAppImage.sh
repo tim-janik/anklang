@@ -43,13 +43,15 @@ then
 else
   LIB64=/usr/lib/x86_64-linux-gnu/
 fi
-# -v2
+# Avoid `linuxdeploy {-e|-l}`, these options change the binary locations by copying.
+# The copies mess up ELF location detection and restoring the original locations
+# causes wrong relative $ORIGIN paths. We just use --deploy-deps-only now, which
+# keeps the binaries in place and correctly adjusts the relative $ORIGIN path.
 LD_LIBRARY_PATH=$APPIMAGEPKGDIR/lib \
   DISABLE_COPYRIGHT_FILES_DEPLOYMENT=1 \
-  $APPTOOLS/linuxdeploy-x86_64.AppImage --appimage-extract-and-run \
-  -v1 \
+  $APPTOOLS/linuxdeploy-x86_64.AppImage -v1 --appimage-extract-and-run \
   --appdir=$APPBASE \
-  -e $APPIMAGEPKGDIR/bin/anklang \
+  --deploy-deps-only $APPIMAGEPKGDIR/bin/anklang \
   --deploy-deps-only $APPIMAGEPKGDIR/lib/AnklangSynthEngine \
   --deploy-deps-only $APPIMAGEPKGDIR/lib/gtk2wrap.so \
   -i $APPIMAGEPKGDIR/ui/anklang.png \
@@ -59,15 +61,11 @@ LD_LIBRARY_PATH=$APPIMAGEPKGDIR/lib \
   --exclude-library="libnss3.so" \
   --exclude-library="libnssutil3.so" \
   --custom-apprun=misc/AppRun
-# skip -l jackdriver.so, it is loaded only if the target system has all dependencies
+# skip jackdriver.so, it is loaded only if the target system has all dependencies
 
-# 'linuxdeploy -e bin/anklang' creates an executable copy in usr/bin/, which electron does not support
-ln -vsf -r $APPIMAGEPKGDIR/bin/anklang $APPBASE/usr/bin/		# enforce bin/* as link
-
-# linuxdeploy collects too many libs for electron/anklang, remove duplictaes present in electron/
-( cd $APPBASE/usr/lib/
-  rm -vf $APPIMAGEPKGDIR/electron/lib*.so*
-)
+# Provide /usr/bin/anklang entry
+ln -v -s -r $APPIMAGEPKGDIR/bin/anklang $APPBASE/usr/bin/
+test -x $APPBASE/usr/bin/anklang || die "$APPBASE/usr/bin/anklang: file is not executable"
 
 # Create AppImage executable
 echo '  BUILD   ' appimage-runtime...
