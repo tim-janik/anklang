@@ -22,6 +22,8 @@ namespace Test {
 #define TASSERT(cond)           TASSERT__AT (__LINE__, cond)    ///< Unconditional test assertion, enters breakpoint if not fullfilled.
 #define TASSERT_AT(LINE, cond)  TASSERT__AT (LINE, cond)        ///< Unconditional test assertion for deputy __LINE__.
 #define TOK()                   do {} while (0)                 ///< Deprecated progress indicator, tests generally need to run fast.
+/// Test floats for equality while ignoring differences smaller than `eps`.
+#define TFLOATS(a,b,eps)        do { if (fabsl ((long double) (a) - (long double) (b)) > (long double) (eps)) TCMP (a,==,b); } while (0)
 
 /// Register a function to run as part of the unit test suite.
 #define TEST_ADD(fun)           static const ::Ase::Test::TestChain ASE_CPP_PASTE2 (__Ase__Test__TestChain_, __LINE__) (fun, ASE_CPP_STRINGIFY (fun), ::Ase::Test::PLAIN)
