@@ -69,7 +69,7 @@ scan-build:								| $>/misc/scan-build/
 
 # == misc/anklang.desktop ==
 # https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html
-$>/misc/anklang.desktop: misc/anklang.desktop
+$>/misc/anklang.desktop: misc/anklang.desktop		| $>/misc/
 	@$(QGEN)
 	$Q sed 's|\$$(pkgdir)|$(pkgdir)|g' $< > $@.tmp
 	$Q mv $@.tmp $@
