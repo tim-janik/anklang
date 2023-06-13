@@ -19,8 +19,10 @@ RUN pacman -Sy --noconfirm archlinux-keyring && pacman-key --init && pacman-key 
 	    python-pip doxygen openssh \
 	    gtk3 nss \
 	    xorg-server-xvfb ffmpeg xorg-twm \
-  && pip install poxy \
   && yes | pacman -Scc
+
+# Castxml is not provided by pacman
+RUN cd /tmp && git clone https://github.com/CastXML/CastXML.git && cd CastXML && cmake . && make -j && sudo make install
 
 # Become non-root, USERGROUP determines ids for docker volumes
 ARG USERGROUP
@@ -29,14 +31,5 @@ RUN groupadd --gid ${USERGROUP#*:} builder \
   && echo "builder ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/builder
 USER builder
 
-# castxml
-RUN cd /tmp && git clone https://github.com/CastXML/CastXML.git && cd CastXML && cmake . && make -j && sudo make install
-
-# Provide out-of-tree build directory (docker volume mount point)
-RUN sudo mkdir /ootbuild/ && sudo chown builder:builder /ootbuild/
-WORKDIR /ootbuild
-ENV OOTBUILD /ootbuild/
-
-
-# docker build -f misc/Dockerfile-arch --build-arg USERGROUP="1000:1000" -t anklang-arch .
-# docker run -ti --rm -v $PWD:/ootbuild anklang-arch
+# docker build -f misc/Dockerfile.arch --build-arg USERGROUP="1000:1000" -t anklang-arch misc/
+# docker run -ti --rm -v $PWD:/anklang -w /anklang anklang-arch
