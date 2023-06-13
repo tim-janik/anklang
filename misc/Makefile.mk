@@ -28,39 +28,26 @@ lint-unused: $>/ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
 	   grep -E '(\bunuse|reach)' | sort | tee $>/misc/cppcheck/lint-unused.log
 .PHONY: lint-unused
 
-# == ls-lint.d ==
-CLANGTIDY_GLOB	:= "^(ase|devices|jsonipc|ui)/.*\.(cc)$$"
-CLANGTIDY_IGNORE	:= "^(ase)/.*\.(cpp)$$"
-CLANGTIDY_SRC	:= # added to by ls-lint.d
-$>/misc/ls-lint.d: $>/ls-tree.lst misc/Makefile.mk	| $>/misc/
-	$Q egrep $(CLANGTIDY_GLOB) < $< | egrep -v $(CLANGTIDY_IGNORE)	> $@1
-	$Q while read L ; do			\
-		echo "CLANGTIDY_SRC += $$L" ;	\
-	   done							< $@1	> $@2
-	$Q mv $@2 $@ && rm $@1
--include $>/misc/ls-lint.d
-CLANGTIDY_LOGS = $(CLANGTIDY_SRC:%=$>/misc/clang-tidy/%.log)
-
-# == lint ==
-lint: $(CLANGTIDY_LOGS)
-	$Q for F in $(CLANGTIDY_LOGS) ; do \
-		test -s "$$F" || continue ; \
-		echo "$$F:" && cat "$$F" || exit -1 ; done
-lint-clean:
-	rm -f $(CLANGTIDY_LOGS)
-.PHONY: lint lint-clean
-# Note, 'make lint' requires a successfuly built source tree to access generated sources.
-
-# == clang-tidy logs ==
-$>/misc/clang-tidy/%.log: % $(GITCOMMITDEPS) # misc/Makefile.mk
-	$(QECHO) LINTING $@
+# == clang-tidy ==
+CLANG_TIDY_FILES = $(filter %.c %.cc %.C %.cpp %.cxx, $(LS_TREE_LST))
+CLANG_TIDY_LOGS  = $(patsubst %, $>/clang-tidy/%.log, $(CLANG_TIDY_FILES))
+clang-tidy: $(CLANG_TIDY_LOGS)
+	$(QGEN)
+	$Q for log in $(CLANG_TIDY_LOGS) ; do misc/colorize.sh < $$log >&2 ; done
+$>/clang-tidy/%.log: % $(GITCOMMITDEPS)			| $>/clang-tidy/
+	$(QECHO) CLANG-TIDY $@
 	$Q mkdir -p $(dir $@)
-	$Q set +o pipefail ; clang-tidy $< $($<.LINT_FLAGS) -- $($<.LINT_CCFLAGS) $(misc/clang-tidy/DEFS) 2>&1 | tee $@~
+	$Q set +o pipefail \
+	&& CTIDY_FLAGS=( $(CLANG_TIDY_DEFS) $($<.LINT_CCFLAGS) ) \
+	&& [[ $< = @(*.[hc]) ]] || CTIDY_FLAGS+=( -std=gnu++17 ) \
+	&& (set -x ; $(CLANG_TIDY) --export-fixes=$>/clang-tidy/$<.yaml $< $($<.LINT_FLAGS) -- "$${CTIDY_FLAGS[@]}" ) >$@~ 2>&1 || :
 	$Q mv $@~ $@
-misc/clang-tidy/DEFS := -std=gnu++17 -I. -I$> -isystem external/ -isystem $>/external/ -DASE_COMPILATION `$(PKG_CONFIG) --cflags glib-2.0`
-# Example for file specific LINT_FLAGS:
-# ase/jsonapi.cc.LINT_FLAGS ::= --checks=-clang-analyzer-core.NullDereference
+CLANG_TIDY_DEFS := -I. -I$> -isystem external/ -isystem $>/external/ -DASE_COMPILATION $(ASEDEPS_CFLAGS) $(GTK2_CFLAGS)
+# File specific LINT_FLAGS, example:		ase/jsonapi.cc.LINT_FLAGS ::= --checks=-clang-analyzer-core.NullDereference
 jsonipc/testjsonipc.cc.LINT_CCFLAGS ::= -D__JSONIPC_NULL_REFERENCE_THROWS__
+clang-tidy-clean:
+	rm -f -r $>/clang-tidy/
+.PHONY: clang-tid clang-tidy-clean
 
 # == scan-build ==
 scan-build:								| $>/misc/scan-build/
