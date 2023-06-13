@@ -31,11 +31,6 @@ RUN curl -sL https://deb.nodesource.com/setup_20.x | bash - \
   && apt install -y clang-tidy-17 \
   && apt-get clean
 
-# Provide out-of-tree build directory (possible Docker volume mount point)
-RUN mkdir /ootbuild/
-ENV OOTBUILD /ootbuild/
-
 # Become non-root, user "ubuntu" already exists with uid=1000
-RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu \
-  && chown -R ubuntu:ubuntu /ootbuild/
+RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu
 USER ubuntu
