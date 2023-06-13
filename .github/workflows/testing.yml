@@ -99,6 +99,8 @@ jobs:
 
   Lunar-Clang-Tidy:
     runs-on: ubuntu-latest
+    env:
+      DOCKER_RUN: docker run --cap-add SYS_PTRACE -v /home/runner/work/anklang/anklang/:/anklang/ -w /anklang/ -t --rm anklang-lunar
     steps:
     - uses: actions/checkout@v3
     - name: Fetch last release tag
@@ -106,6 +108,7 @@ jobs:
         git fetch --unshallow
         git describe
     - name: Prepare CI Image
+      # Build docker image `anklang-lunar` using latest package as cache
       run: |
         docker --version
         set -x
@@ -114,22 +117,27 @@ jobs:
         time docker build -f misc/Dockerfile.lunar -t anklang-lunar misc/ --cache-from=ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest
         docker tag anklang-lunar ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest
         docker push ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest || true
+        $DOCKER_RUN env </dev/null |& cat
     - name: Configure Build and Docker
+      # Set ubuntu:ubuntu permissions for docker volume, since Github CI uses something like 1001:123
+      # Silence host Git about ownership: https://github.com/git/git/commit/8959555cee7ec045958f9b6dd62e541affb7e7d9
       run: |
-        misc/dbuild.sh -f lunar misc/version.sh
         echo 'prefix=/'			>  config-defaults.mk
         echo 'CC=clang-17'		>> config-defaults.mk
         echo 'CXX=clang++-17'		>> config-defaults.mk
         echo 'CLANG_TIDY=clang-tidy-17'	>> config-defaults.mk
         cat config-defaults.mk
-        misc/dbuild.sh -f lunar bash -c 'source config-defaults.mk && $CXX --version'
+        git config --global --add safe.directory '*'
+        $DOCKER_RUN sudo chown ubuntu:ubuntu -R /anklang/
+        $DOCKER_RUN misc/version.sh
+        $DOCKER_RUN bash -c 'source config-defaults.mk && $CXX --version'
     - name: Make all check
       run: |
-        misc/dbuild.sh -f lunar make -j`nproc` all
-        misc/dbuild.sh -f lunar make check
+        $DOCKER_RUN make -j`nproc` all
+        $DOCKER_RUN make check
     - name: Make clang-tidy
       run: |
-        misc/dbuild.sh -f lunar make -j`nproc` clang-tidy
+        $DOCKER_RUN make -j`nproc` clang-tidy
     - uses: actions/upload-artifact@v3
       if: success()
       with:
