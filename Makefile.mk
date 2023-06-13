@@ -50,6 +50,21 @@ endif
 # if 'realpath --relative-to' is missing, os.path.realpath could be used as fallback
 build2srcdir	 != realpath --relative-to $(builddir) .
 
+# == ls-tree.lst ==
+# Requires either git or a pre-packaged `ls-tree.lst` file
+$>/ls-tree.lst: $(GITCOMMITDEPS)				| $>/
+	$(QGEN)
+	$Q if test -r .git ; then			\
+		git ls-tree -r --name-only HEAD	> $@ ;	\
+	   else						\
+		$(CP) ./ls-tree.lst $@ ;		\
+	   fi
+# read ls-tree.lst into $(LS_TREE_LST)
+LS_TREE_LST ::= # added to by ls-tree.d
+$>/ls-tree.d: $>/ls-tree.lst Makefile.mk
+	$Q (echo 'LS_TREE_LST += $$(strip '\\ && sed 's/$$/ \\/' $< && echo ')') > $@
+-include $>/ls-tree.d
+
 # == Mode ==
 # determine build mode
 MODE.origin ::= $(origin MODE) # before overriding, remember if MODE came from command line
@@ -180,15 +195,6 @@ default: FORCE
 	    echo '# $(VAR) = $(value $(VAR))'				>>$@.tmp ;	\
 	  fi )
 	$Q mv $@.tmp config-defaults.mk
-
-# == ls-tree.lst ==
-$>/ls-tree.lst: $(GITCOMMITDEPS)				| $>/
-	$(QGEN)
-	$Q if test -r .git ; then			\
-		git ls-tree -r --name-only HEAD	> $@ ;	\
-	   else						\
-		$(CP) ./ls-tree.lst $@ ;		\
-	   fi
 
 # == output directory rules ==
 # rule to create output directories from order only dependencies, trailing slash required
