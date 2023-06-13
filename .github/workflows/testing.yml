@@ -10,7 +10,7 @@ on:
 
 jobs:
 
-  Ubuntu-Docs:
+  Focal-Docs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -97,17 +97,57 @@ jobs:
         name: x11test
         path: out/x11test/
 
+  Lunar-Clang-Tidy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Fetch last release tag
+      run: |
+        git fetch --unshallow
+        git describe
+    - name: Prepare CI Image
+      run: |
+        docker --version
+        set -x
+        echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+        docker pull ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest || true
+        time docker build -f misc/Dockerfile.lunar -t anklang-lunar misc/ --cache-from=ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest
+        docker tag anklang-lunar ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest
+        docker push ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest || true
+    - name: Configure Build and Docker
+      run: |
+        misc/dbuild.sh -f lunar misc/version.sh
+        echo 'prefix=/'			>  config-defaults.mk
+        echo 'CC=clang-17'		>> config-defaults.mk
+        echo 'CXX=clang++-17'		>> config-defaults.mk
+        echo 'CLANG_TIDY=clang-tidy-17'	>> config-defaults.mk
+        cat config-defaults.mk
+        misc/dbuild.sh -f lunar bash -c 'source config-defaults.mk && $CXX --version'
+    - name: Make all check
+      run: |
+        misc/dbuild.sh -f lunar make -j`nproc` all
+        misc/dbuild.sh -f lunar make check
+    - name: Make clang-tidy
+      run: |
+        misc/dbuild.sh -f lunar make -j`nproc` clang-tidy
+    - uses: actions/upload-artifact@v3
+      if: success()
+      with:
+        name: clang-tidy
+        path: out/clang-tidy/
+
   Ping-IRC:
     if: always()
-    needs: [Ubuntu-Docs, Arch-Replay]
+    needs: [Focal-Docs, Arch-Replay, Lunar-Clang-Tidy]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Check Jobs
       run: |
-        echo '${{ needs.Ubuntu-Docs.result }}' '${{ needs.Arch-Replay.result }}'
-        test success = '${{ needs.Ubuntu-Docs.result }}'
+        echo '${{ needs.Focal-Docs.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Lunar-Clang-Tidy.result }}'
+        test success = '${{ needs.Focal-Docs.result }}'
         test success = '${{ needs.Arch-Replay.result }}'
+        test success = '${{ needs.Lunar-Clang-Tidy.result }}'
     - name: Ping IRC
       if: always()
       run: |
