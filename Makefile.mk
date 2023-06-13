@@ -116,13 +116,14 @@ CSTD		::= -std=gnu11 -pthread -pipe
 EXTRA_DEFS	::= # target private defs, lesser precedence than CXXFLAGS
 EXTRA_INCLUDES	::= # target private defs, lesser precedence than CXXFLAGS
 EXTRA_FLAGS	::= # target private flags, precedence over CXXFLAGS
+CLANG_TIDY	 ?= clang-tidy
 
 # == Utilities & Checks ==
 include misc/config-utils.mk
 include misc/config-uname.mk
 include misc/config-checks.mk
 include misc/config-external.mk
-.config.defaults += CC CFLAGS CXX CXXFLAGS LDFLAGS LDLIBS
+.config.defaults += CC CFLAGS CXX CLANG_TIDY CXXFLAGS LDFLAGS LDLIBS
 
 # == enduser targets ==
 all: FORCE
