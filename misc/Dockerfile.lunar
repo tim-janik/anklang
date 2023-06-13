@@ -24,7 +24,7 @@ RUN apt-get update \
   && apt-get clean
 
 # Install nodejs-18 and clang-17
-RUN curl -sL https://deb.nodesource.com/setup_18.x | bash - \
+RUN curl -sL https://deb.nodesource.com/setup_20.x | bash - \
   && apt-get install -y nodejs wget lsb-release software-properties-common gnupg \
   && wget https://apt.llvm.org/llvm.sh -O llvm.sh && chmod +x llvm.sh \
   && yes | ./llvm.sh 17 && rm ./llvm.sh \
