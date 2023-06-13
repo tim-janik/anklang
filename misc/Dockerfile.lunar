@@ -1,0 +1,41 @@
+# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+
+# == Distribution preparation ==
+FROM ubuntu:23.04
+ENV DEBIAN_FRONTEND noninteractive
+
+# Use BASH(1) as shell, affects the RUN commands below
+RUN ln -sf bash /bin/sh && ls -al /bin/sh
+
+# Upgrade packages, install dependencies, clean up to shrink Docker image
+# Add libXss.so, libgtk-3-0 for Electron
+RUN apt-get update \
+  && apt-get -y upgrade \
+  && apt-get install -y \
+	     sudo build-essential curl cmake libglib2.0-dev \
+	     build-essential pkg-config git curl ccache curl unzip gawk g++ \
+	     clang clang-tidy clang-tools castxml cppcheck libboost-system-dev \
+	     imagemagick librsvg2-bin libxml2-utils libxml2-dev python3 python3-pip \
+	     python3-lxml python3-pandocfilters pandoc graphviz universal-ctags \
+	     libasound2-dev libflac-dev libopus-dev libjack-dev libzstd-dev \
+	     gettext libgconf-2-4 libgtk2.0-dev libgtk-3-dev squashfs-tools zstd \
+	     libgtk-3-0 libxss1 libgbm1 libnss3 \
+	     xvfb twm ffmpeg doxygen \
+  && apt-get clean
+
+# Install nodejs-18 and clang-17
+RUN curl -sL https://deb.nodesource.com/setup_18.x | bash - \
+  && apt-get install -y nodejs wget lsb-release software-properties-common gnupg \
+  && wget https://apt.llvm.org/llvm.sh -O llvm.sh && chmod +x llvm.sh \
+  && yes | ./llvm.sh 17 && rm ./llvm.sh \
+  && apt install -y clang-tidy-17 \
+  && apt-get clean
+
+# Provide out-of-tree build directory (possible Docker volume mount point)
+RUN mkdir /ootbuild/
+ENV OOTBUILD /ootbuild/
+
+# Become non-root, user "ubuntu" already exists with uid=1000
+RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu \
+  && chown -R ubuntu:ubuntu /ootbuild/
+USER ubuntu
