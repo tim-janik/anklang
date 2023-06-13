@@ -50,7 +50,6 @@
     "puppeteer-core": "^20.2.1",
     "puppeteer-in-electron": "^3.0.5",
     "rollup": "^3.22.0",
-    "rollup-plugin-node-resolve": "^5.2.0",
     "sass": "^1.62.1",
     "stylelint": "^15.6.2",
     "stylelint-config-standard": "^33.0.0",
