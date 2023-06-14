@@ -89,7 +89,6 @@ jobs:
         cat config-defaults.mk
         $DOCKER_RUN sudo chown builder:builder -R /anklang/
         $DOCKER_RUN misc/version.sh
-        $DOCKER_RUN bash -c 'source config-defaults.mk && $CXX --version'
     - name: Make all check
       run: |
         $DOCKER_RUN make -j`nproc` all
