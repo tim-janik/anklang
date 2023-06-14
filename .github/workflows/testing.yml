@@ -12,42 +12,44 @@ jobs:
 
   Focal-Docs:
     runs-on: ubuntu-latest
+    env:
+      DOCKER_RUN: docker run --cap-add SYS_PTRACE -v /home/runner/work/anklang/anklang/:/anklang/ -w /anklang/ -t --rm anklang-focal
     steps:
     - uses: actions/checkout@v3
     - name: Fetch last release tag
       run: |
         git fetch --unshallow
         git describe
-    - uses: actions/cache@v3
-      id: ghcache
-      with:
-        path: ~/ghcache/
-        key: ${{ runner.os }}-Ubuntu-${{ hashFiles ('misc/Dockerfile.focal', 'misc/dbuild.sh') }}
-    - name: Load Docker Cache
-      if: ${{ steps.ghcache.outputs.cache-hit == 'true' }}
+    - name: Prepare CI Image
+      # Build docker image using latest package as cache
       run: |
-        test ! -r ~/ghcache/anklang-focal.tar || docker load -i ~/ghcache/anklang-focal.tar
-    - name: Configure Build and Docker
+        docker --version
+        set -x
+        echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+        docker pull ghcr.io/$GITHUB_REPOSITORY/anklang-ci:focal-latest || true
+        time docker build -f misc/Dockerfile.focal -t anklang-focal misc/ --cache-from=ghcr.io/$GITHUB_REPOSITORY/anklang-ci:focal-latest
+        docker tag anklang-focal ghcr.io/$GITHUB_REPOSITORY/anklang-ci:focal-latest
+        docker push ghcr.io/$GITHUB_REPOSITORY/anklang-ci:focal-latest || true
+        $DOCKER_RUN env </dev/null |& cat
+    - name: Configure Build
       run: |
         echo 'prefix=/'		>  config-defaults.mk
         echo 'CC=clang'		>> config-defaults.mk
         echo 'CXX=clang++'	>> config-defaults.mk
-        misc/dbuild.sh -f focal misc/version.sh
         cat config-defaults.mk
-        misc/dbuild.sh -f focal bash -c 'source config-defaults.mk && $CXX --version'
-    - name: Save Docker Cache
-      if: ${{ steps.ghcache.outputs.cache-hit != 'true' }}
-      run: |
-        mkdir -p ~/ghcache/ && docker save anklang-focal -o ~/ghcache/anklang-focal.tar
+        $DOCKER_RUN sudo chown ubuntu:ubuntu -R /anklang/
+        $DOCKER_RUN misc/version.sh
+        $DOCKER_RUN bash -c 'source config-defaults.mk && $CXX --version'
     - name: Make all pdf check
       run: |
-        misc/dbuild.sh -f focal make -j`nproc` all pdf
-        misc/dbuild.sh -f focal make check
+        $DOCKER_RUN make -j`nproc` all pdf
+        $DOCKER_RUN make check
     - name: Make install
       run: |
-        misc/dbuild.sh -f focal make install DESTDIR=inst
-        cp -a inst/share/doc/anklang/ out/anklang-docs/
+        $DOCKER_RUN make install DESTDIR=inst
+        $DOCKER_RUN cp -a inst/share/doc/anklang/ out/anklang-docs/
     - uses: actions/upload-artifact@v3
+      if: success()
       with:
         name: docs
         path: |
@@ -57,40 +59,44 @@ jobs:
       env:
         SSH_ID_GHDOCS4ANKLANG_ECDSA: ${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}
       run: |
-        echo "$SSH_ID_GHDOCS4ANKLANG_ECDSA" > .git/.ssh_id_ghdocs4anklang && chmod 0600 .git/.ssh_id_ghdocs4anklang
-        misc/dbuild.sh -f focal doc/poxy.sh -b -u out/anklang-docs/
+        echo "$SSH_ID_GHDOCS4ANKLANG_ECDSA" | $DOCKER_RUN cat '>' .git/.ssh_id_ghdocs4anklang
+        $DOCKER_RUN doc/poxy.sh -b -u out/anklang-docs/
 
   Arch-Replay:
     runs-on: ubuntu-latest
+    env:
+      DOCKER_RUN: docker run --cap-add SYS_PTRACE -v /home/runner/work/anklang/anklang/:/anklang/ -w /anklang/ -t --rm anklang-arch
     steps:
     - uses: actions/checkout@v3
     - name: Fetch last release tag
       run: |
         git fetch --unshallow
         git describe
-    - uses: actions/cache@v3
-      id: ghcache
-      with:
-        path: ~/ghcache/
-        key: ${{ runner.os }}-Arch-${{ hashFiles ('misc/Dockerfile.arch', 'misc/dbuild.sh') }}
-    - name: Load Docker Cache
-      if: ${{ steps.ghcache.outputs.cache-hit == 'true' }}
+    - name: Prepare CI Image
+      # Build docker image using latest package as cache
       run: |
-        test ! -r ~/ghcache/anklang-arch.tar || docker load -i ~/ghcache/anklang-arch.tar
-    - name: Prepare Docker
+        docker --version
+        set -x
+        echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+        docker pull ghcr.io/$GITHUB_REPOSITORY/anklang-ci:arch-latest || true
+        time docker build -f misc/Dockerfile.arch -t anklang-arch misc/ --cache-from=ghcr.io/$GITHUB_REPOSITORY/anklang-ci:arch-latest
+        docker tag anklang-arch ghcr.io/$GITHUB_REPOSITORY/anklang-ci:arch-latest
+        docker push ghcr.io/$GITHUB_REPOSITORY/anklang-ci:arch-latest || true
+        $DOCKER_RUN env </dev/null |& cat
+    - name: Configure Build
       run: |
-        misc/dbuild.sh -f arch misc/version.sh
-    - name: Save Docker Cache
-      if: ${{ steps.ghcache.outputs.cache-hit != 'true' }}
-      run: |
-        mkdir -p ~/ghcache/ && docker save anklang-arch -o ~/ghcache/anklang-arch.tar
+        echo 'prefix=/'		>  config-defaults.mk
+        cat config-defaults.mk
+        $DOCKER_RUN sudo chown ubuntu:ubuntu -R /anklang/
+        $DOCKER_RUN misc/version.sh
+        $DOCKER_RUN bash -c 'source config-defaults.mk && $CXX --version'
     - name: Make all check
       run: |
-        misc/dbuild.sh -f arch make -j`nproc`
-        misc/dbuild.sh -f arch make check
+        $DOCKER_RUN make -j`nproc` all
+        $DOCKER_RUN make check
     - name: Make x11test
       run: |
-        misc/dbuild.sh -f arch make x11test-v
+        $DOCKER_RUN make x11test-v
     - uses: actions/upload-artifact@v3
       if: always()
       with:
@@ -108,7 +114,7 @@ jobs:
         git fetch --unshallow
         git describe
     - name: Prepare CI Image
-      # Build docker image `anklang-lunar` using latest package as cache
+      # Build docker image using latest package as cache
       run: |
         docker --version
         set -x
@@ -118,16 +124,16 @@ jobs:
         docker tag anklang-lunar ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest
         docker push ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest || true
         $DOCKER_RUN env </dev/null |& cat
-    - name: Configure Build and Docker
+    - name: Configure Build
       # Set ubuntu:ubuntu permissions for docker volume, since Github CI uses something like 1001:123
       # Silence host Git about ownership: https://github.com/git/git/commit/8959555cee7ec045958f9b6dd62e541affb7e7d9
+      # git config --global --add safe.directory '*'
       run: |
         echo 'prefix=/'			>  config-defaults.mk
         echo 'CC=clang-17'		>> config-defaults.mk
         echo 'CXX=clang++-17'		>> config-defaults.mk
         echo 'CLANG_TIDY=clang-tidy-17'	>> config-defaults.mk
         cat config-defaults.mk
-        git config --global --add safe.directory '*'
         $DOCKER_RUN sudo chown ubuntu:ubuntu -R /anklang/
         $DOCKER_RUN misc/version.sh
         $DOCKER_RUN bash -c 'source config-defaults.mk && $CXX --version'
