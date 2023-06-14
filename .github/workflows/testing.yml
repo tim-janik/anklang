@@ -36,6 +36,7 @@ jobs:
         echo 'prefix=/'		>  config-defaults.mk
         echo 'CC=clang'		>> config-defaults.mk
         echo 'CXX=clang++'	>> config-defaults.mk
+        echo "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > .git/.ssh_id_ghdocs4anklang
         cat config-defaults.mk
         $DOCKER_RUN sudo chown ubuntu:ubuntu -R /anklang/
         $DOCKER_RUN misc/version.sh
@@ -56,11 +57,12 @@ jobs:
           out/anklang-docs/
     - name: Upload tim-janik.github.io/docs/anklang
       if: github.ref == 'refs/heads/trunk'
-      env:
-        SSH_ID_GHDOCS4ANKLANG_ECDSA: ${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}
       run: |
-        echo "$SSH_ID_GHDOCS4ANKLANG_ECDSA" | $DOCKER_RUN bash -c 'cat >.git/.ssh_id_ghdocs4anklang'
+        $DOCKER_RUN env
         $DOCKER_RUN doc/poxy.sh -b -u out/anklang-docs/
+    - name: Cleanup
+      run: |
+        $DOCKER_RUN sudo chown `id -u`:`id -g` -R /anklang/
 
   Arch-Replay:
     runs-on: ubuntu-latest
@@ -101,6 +103,9 @@ jobs:
       with:
         name: x11test
         path: out/x11test/
+    - name: Cleanup
+      run: |
+        $DOCKER_RUN sudo chown `id -u`:`id -g` -R /anklang/
 
   Lunar-Clang-Tidy:
     runs-on: ubuntu-latest
@@ -148,6 +153,9 @@ jobs:
       with:
         name: clang-tidy
         path: out/clang-tidy/
+    - name: Cleanup
+      run: |
+        $DOCKER_RUN sudo chown `id -u`:`id -g` -R /anklang/
 
   Ping-IRC:
     if: always()
