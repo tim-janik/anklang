@@ -24,12 +24,11 @@ RUN pacman -Sy --noconfirm archlinux-keyring && pacman-key --init && pacman-key 
 # Castxml is not provided by pacman
 RUN cd /tmp && git clone https://github.com/CastXML/CastXML.git && cd CastXML && cmake . && make -j && sudo make install
 
-# Become non-root, USERGROUP determines ids for docker volumes
-ARG USERGROUP
-RUN groupadd --gid ${USERGROUP#*:} builder \
-  && useradd --uid ${USERGROUP%:*} --gid ${USERGROUP#*:} --create-home --shell /bin/bash builder \
+# Become non-root
+RUN groupadd --gid 1000 builder \
+  && useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash builder \
   && echo "builder ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/builder
 USER builder
 
-# docker build -f misc/Dockerfile.arch --build-arg USERGROUP="1000:1000" -t anklang-arch misc/
+# docker build -f misc/Dockerfile.arch -t anklang-arch misc/
 # docker run -ti --rm -v $PWD:/anklang -w /anklang anklang-arch
