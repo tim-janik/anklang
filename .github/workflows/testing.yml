@@ -36,7 +36,7 @@ jobs:
         echo 'prefix=/'		>  config-defaults.mk
         echo 'CC=clang'		>> config-defaults.mk
         echo 'CXX=clang++'	>> config-defaults.mk
-        echo "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > .git/.ssh_id_ghdocs4anklang
+        (umask 0077 && echo "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > .git/.ssh_id_ghdocs4anklang)
         cat config-defaults.mk
         $DOCKER_RUN sudo chown ubuntu:ubuntu -R /anklang/
         $DOCKER_RUN misc/version.sh
