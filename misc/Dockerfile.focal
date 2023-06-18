@@ -53,14 +53,11 @@ RUN exit 0 && \
 	-Denable-lash=0 && \
   make && make install
 
-# Provide out-of-tree build directory (possible Docker volume mount point)
-RUN mkdir /ootbuild/
-ENV OOTBUILD /ootbuild/
+# Become non-root
+RUN groupadd --gid 1000 ubuntu \
+  && useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash ubuntu \
+  && echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu
+USER ubuntu
 
-# Become non-root, USERGROUP determines ids for Docker volumes
-ARG USERGROUP
-RUN groupadd --gid ${USERGROUP#*:} builder \
-  && useradd --uid ${USERGROUP%:*} --gid ${USERGROUP#*:} --create-home --shell /bin/bash builder \
-  && echo "builder ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/builder \
-  && chown -R ${USERGROUP} /ootbuild/
-USER builder
+# docker build -f misc/Dockerfile.focal -t anklang-focal misc/
+# docker run -ti --rm -v $PWD:/anklang -w /anklang anklang-focal
