@@ -9,6 +9,7 @@ declare global {
   var Ase: any;
   var Data: any;
   var Shell: any;
+  var __DEV__: bool;
 }
 
 export {};
