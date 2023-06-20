@@ -28,7 +28,7 @@ ui/nocopy.wildcards ::= $(wildcard	\
 )
 ui/scss.files ::= $(strip	\
 	ui/dark.scss		\
-	ui/domstyles.scss	\
+	ui/elements.scss	\
 	ui/globals.scss		\
 	ui/grid.scss		\
 	ui/mixins.scss		\
