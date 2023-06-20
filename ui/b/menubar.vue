@@ -6,16 +6,21 @@
 </docs>
 
 <style lang="scss">
-  .b-menubar {
-    margin: 5px;
-    .-stack {
-      display: inline-block;
-      position: relative;
-      vertical-align: middle;
-      width: 1em; height: 1em;
-      & :not(:first-child) { position: absolute; top: 0; left: 0; }
+.b-menubar {
+  margin: 5px;
+  .-stack {
+    display: inline-block;
+    position: relative;
+    vertical-align: middle;
+    width: 1em; height: 1em;
+    & :not(:first-child) { position: absolute; top: 0; left: 0; }
+  }
+  b-buttonbar.-menubar {
+    button, push-button {
+      padding: 3px 1em
     }
   }
+}
 </style>
 
 <template>
@@ -79,7 +84,7 @@
 
     <!-- playcontrols -->
     <h-flex>
-      <b-playcontrols :project="project"> </b-playcontrols>
+      <b-playcontrols></b-playcontrols>
       <b-positionview :project="project"> </b-positionview>
     </h-flex>
 

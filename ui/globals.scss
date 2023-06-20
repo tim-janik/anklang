@@ -53,7 +53,7 @@ button, push-button {
   border-top: 1px solid $b-button-light; border-left: 1px solid $b-button-light;
   border-bottom: 1px solid $b-button-dark; border-right: 1px solid $b-button-dark;
   // layout
-  text-align: center; margin: 0; padding: 3px 1em;
+  text-align: center; margin: 0; padding: 3px 0.5em;
   display: flex; align-items: center;
   color: $b-button-foreground;
   &:focus {
