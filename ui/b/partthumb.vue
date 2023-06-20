@@ -12,14 +12,13 @@
 
 <style lang="scss">
 .b-partthumb {
-  $b-partthumb-font: normal 9px $b-theme-font-family !default;	// the '9px' part is dynamically resized
   $b-partthumb-font-color: rgba(255, 255, 255, 0.7) !default;
   $b-partthumb-note-color: rgba(255, 255, 255, 0.7) !default;
   $b-partthumb-colors: #ff7b50a7, #f68403a7, #d6960ea7, #92ad19a7, #67b518a7, #22bb27a7, #21b873a7, #24b3b3a7, #11adeba7, #799fffa7, #a094ffa7, #c287ffa7, #e473ffa7, #ff5ff5a7, #ff70b0a7 !default;
   display: inline-block; position: absolute; top: 0px; bottom: 0px;
   height: $b-trackrow-height;
   border-radius: calc($b-button-radius * 0.66);
-  --partthumb-font-color: $b-partthumb-font-color; --partthumb-font: $b-partthumb-font;
+  --partthumb-font-color: $b-partthumb-font-color; --partthumb-font: $b-canvas-font;
   --partthumb-note-color: $b-partthumb-note-color; --partthumb-colors: $b-partthumb-colors;
   background-color: #222;
   box-shadow: inset 0px 0 1px #fff9, inset -1px 0 1px #000;
