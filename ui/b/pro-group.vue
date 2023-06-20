@@ -13,7 +13,6 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
   .b-pro-group {
     display: flex;
     padding: 5px;

@@ -9,7 +9,6 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
   .b-aboutdialog c-grid {
     max-width: 100%;
     & > * { //* avoid visible overflow for worst-case resizing */

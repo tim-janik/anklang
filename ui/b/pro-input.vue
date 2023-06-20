@@ -11,7 +11,6 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
   .b-pro-input        {
     display: flex; justify-content: center;
     .b-pro-input-ldiv[class]::before { content: "\200b"; /* zero width character to force line height */ }

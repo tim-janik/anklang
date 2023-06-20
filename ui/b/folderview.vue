@@ -14,7 +14,6 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
   .b-folderview {
     @include scrollbar-hover-area;
     input {

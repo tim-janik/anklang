@@ -9,7 +9,6 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
   .b-playcontrols {
     button, push-button	{ padding: 5px; }
   }

@@ -11,7 +11,6 @@
 </docs>
 
 <style lang="scss">
-@import 'mixins.scss';
 .b-partthumb {
   $b-partthumb-font: normal 9px $b-theme-font-family !default;	// the '9px' part is dynamically resized
   $b-partthumb-font-color: rgba(255, 255, 255, 0.7) !default;

@@ -12,8 +12,6 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
-
   .b-color-picker {
     * { flex-shrink: 0; }
     .-button {
@@ -22,7 +20,6 @@
       width: 100%; height: 100%;
     }
   }
-
   .b-color-picker-dropdown::part(dialog) {
     background-color: #4e4e4e; color: #f1f1f1;
     box-shadow: 3px 3px 16px 0px rgba(0,0,0,0.9);

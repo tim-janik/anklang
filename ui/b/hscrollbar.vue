@@ -41,7 +41,6 @@
 </template>
 
 <style lang="scss">
-  @import 'mixins.scss';
   .b-hscrollbar {
     .trough {
       display: flex;

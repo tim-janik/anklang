@@ -17,7 +17,6 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
   .b-toggle {
     display: flex; position: relative;
     margin: 0; padding: 0; text-align: center;

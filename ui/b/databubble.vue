@@ -6,8 +6,6 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
-
   /* Bubble color setup */
   $b-data-bubble-hue: 52;
   $b-data-bubble-fg:  hsl($b-data-bubble-hue, 100%, 1%);

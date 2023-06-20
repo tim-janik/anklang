@@ -6,8 +6,6 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
-
   .b-statusbar {
     display: flex; justify-content: space-between; white-space: nowrap;
     padding: 0 $b-statusbar-field-spacing; margin: 5px 0;

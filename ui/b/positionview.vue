@@ -7,7 +7,6 @@
 </docs>
 
 <style lang="scss">
-@import 'mixins.scss';
 $b-positionview-fg: $b-lcdscreen-fg;
 $b-positionview-bg: $b-lcdscreen-bg;
 $b-positionview-b0: zmod($b-positionview-bg,Jz-=1);

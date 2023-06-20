@@ -12,7 +12,6 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
   .b-treeselector {
     margin: 0 $b-menu-hpad;
   }

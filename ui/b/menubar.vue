@@ -6,7 +6,6 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
   .b-menubar {
     margin: 5px;
     .-stack {

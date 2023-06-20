@@ -10,7 +10,6 @@
 </docs>
 
 <style lang="scss">
-@import 'mixins.scss';
 @import 'spinner.scss';
 
 .b-shell {
