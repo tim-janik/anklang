@@ -40,7 +40,7 @@ JsExtract.scss`
   --piano-roll-black-glint:  zmod($b-piano-roll-black-base, Jz+=14.3);  // highlight on piano key
   --piano-roll-black-shine:  zmod($b-piano-roll-black-base, Jz+=33.5);  // reflection on piano key
 
-  --piano-roll-font:                  $b-piano-roll-font;
+  --piano-roll-font:                  $b-canvas-font;
   --piano-roll-num-color:             $b-piano-roll-num-color;
   --piano-roll-note-color:            $b-piano-roll-note-color;
   --piano-roll-note-focus-color:      $b-piano-roll-note-focus-color;
