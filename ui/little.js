@@ -4,7 +4,7 @@
 import * as Wrapper from './wrapper.js';
 
 // Export supported Lit constructs
-export { LitElement, noChange, render, html, css, unsafeCSS } from 'lit';
+export { noChange, render, html, css, unsafeCSS } from 'lit';
 export { ref } from 'lit/directives/ref';
 export { live } from 'lit/directives/live';
 export { repeat } from 'lit/directives/repeat';
