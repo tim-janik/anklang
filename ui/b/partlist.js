@@ -1,6 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-import { LitElement, html, JsExtract, docs, ref } from '../little.js';
+import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
 import * as Util from '../util.js';
 
 /** ## Part-List
@@ -35,7 +35,7 @@ import * as Ase from '../aseapi.js';
 const OBJECT_PROPERTY = { attribute: false };
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 
-class BPartList extends LitElement {
+class BPartList extends LitComponent {
   static styles = [ STYLE ];
   static properties = {
     track:	OBJECT_PROPERTY,

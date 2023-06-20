@@ -1,5 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-import { LitElement, html, render, JsExtract, docs, ref } from '../little.js';
+import { LitComponent, html, render, JsExtract, docs, ref } from '../little.js';
 
 /** == B-TRACKVIEW ==
  * A Vue template to display a project's Ase.Track.
@@ -143,7 +143,7 @@ const DIV_DBRANGE = 1.0 / (MAXDB - MINDB);
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 const OBJECT_PROPERTY = { attribute: false };
 
-class BTrackView extends LitElement {
+class BTrackView extends LitComponent {
   static styles = [ STYLE ];
   static properties = {
     track: OBJECT_PROPERTY,

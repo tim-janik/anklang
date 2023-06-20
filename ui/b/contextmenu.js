@@ -42,7 +42,7 @@
  * : Activate (deactivate) the `kbd=...` hotkeys specified in menu items.
  */
 
-import { LitElement, html, render, noChange, JsExtract, docs, ref } from '../little.js';
+import { LitComponent, html, render, noChange, JsExtract, docs, ref } from '../little.js';
 import * as Util from "../util.js";
 import * as Kbd from '../kbd.js';
 
@@ -118,7 +118,7 @@ export function provide_menudata (element)
   };
 }
 
-class BContextMenu extends LitElement {
+class BContextMenu extends LitComponent {
   static styles = [ STYLE ];
   render()
   {

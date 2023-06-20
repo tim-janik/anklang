@@ -1,6 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-import { LitElement, html, JsExtract, docs } from '../little.js';
+import { LitComponent, html, JsExtract, docs } from '../little.js';
 
 /** # B-MORE
  * Indicator for adding or dropping new UI elements.
@@ -40,7 +40,7 @@ const HTML = html`
 `;
 
 // == SCRIPT ==
-class BMore extends LitElement {
+class BMore extends LitComponent {
   render = () => HTML;
   static styles = [ STYLE ];
 }

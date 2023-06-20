@@ -1,5 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-import { LitElement, html, JsExtract, docs, ref, repeat } from '../little.js';
+import { LitComponent, html, JsExtract, docs, ref, repeat } from '../little.js';
 
 /** == B-TRACKLIST ==
  * A container for vertical display of Ase.Track instances.
@@ -89,7 +89,7 @@ import * as Util from '../util.js';
 
 const OBJECT_PROPERTY = { attribute: false };
 
-class BTrackList extends LitElement {
+class BTrackList extends LitComponent {
   static styles = [ STYLE ];
   static properties = {
     project: OBJECT_PROPERTY,

@@ -1,6 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-import { LitElement, html, JsExtract, docs } from '../little.js';
+import { LitComponent, html, JsExtract, docs } from '../little.js';
 import * as Util from "../util.js";
 
 /** # B-ICON
@@ -54,7 +54,7 @@ const HTML = (iconclasses, innertext) => html`
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true };  // sync attribute with property
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 
-class BIcon extends LitElement {
+class BIcon extends LitComponent {
   static properties = {
     iconclass: STRING_ATTRIBUTE, ic: STRING_ATTRIBUTE,
     hflip: BOOL_ATTRIBUTE, vflip: BOOL_ATTRIBUTE,
