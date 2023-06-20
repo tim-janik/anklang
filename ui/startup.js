@@ -2,6 +2,7 @@
 "use strict";
 
 import './browserified.js';	// provides require() and browserified modules
+import { LitComponent, html, css, docs, lit_update_all } from '../little.js';
 
 // Global CONFIG
 console.bootlog = console.log;
@@ -29,15 +30,13 @@ import { create_app } from './b/app.js';
 import * as Script from './script.js';
 
 // Custom Elements
-import { LitElement, html, css, docs, lit_update_all } from '../little.js';
-
 class PushButton extends HTMLElement {
   constructor() { super(); }
 }
 customElements.define ('push-button', PushButton);
 
 // == HFlex ==
-class HFlex extends LitElement {
+class HFlex extends LitComponent {
   static styles = [ css`
     :host { display: flex; flex-basis: auto; flex-direction: row;
             flex-wrap: nowrap; align-items: stretch; align-content: stretch; }
@@ -48,7 +47,7 @@ class HFlex extends LitElement {
 customElements.define ('h-flex', HFlex);
 
 // == VFlex ==
-class VFlex extends LitElement {
+class VFlex extends LitComponent {
   static styles = [ css`
     :host { display: flex; flex-basis: auto; flex-direction: column;
             flex-wrap: nowrap; align-items: stretch; align-content: stretch; }
@@ -59,7 +58,7 @@ class VFlex extends LitElement {
 customElements.define ('v-flex', VFlex);
 
 // == CGrid ==
-class CGrid extends LitElement {
+class CGrid extends LitComponent {
   // Container for grid layouting, see: https://www.w3.org/TR/css-grid-1/#grid-containers
   // visual cheatsheet: http://grid.malven.co/
   static styles = [ css`
