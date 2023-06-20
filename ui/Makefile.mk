@@ -145,7 +145,7 @@ $>/ui/.build1-stamp: $>/ui/postcss.js
 
 # == ui/shadow.css ==
 ui/b/scss2css.targets ::= $(ui/b/scss2css.sources:ui/%.scss=$>/ui/%.css)
-$(ui/b/scss2css.targets): $>/ui/postcss.js ui/Makefile.mk
+$(ui/b/scss2css.targets): $>/ui/postcss.js $(wildcard ui/*.scss) ui/Makefile.mk
 $(ui/b/scss2css.targets): $>/ui/%.css: ui/%.scss		| $>/ui/
 	$(QGEN)
 	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -i $< $@.tmp
