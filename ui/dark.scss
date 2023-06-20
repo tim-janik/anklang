@@ -1,41 +1,24 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
 /* Fonts */
-$b-font-family: 'Inter';
-$b-font-size: 16px;			/* for <html/> */
-$b-font-variant-numeric: tabular-nums;	/* slashed-zero */
-$b-font-variation-settings: "wght" 450;	/* "slnt" 0deg */
-$b-font-feature-settings:
-  "dlig" 1,     /* Discretionary ligatures, e.g. !? -> interrobang */
-  // "tnum",    /* Tabular numbers (fixed width); use font-variant-numeric: tabular-nums; */
-  "salt" 0,     /* Stylistic Alternates */
-  "ss01" 0,     /* Stylistic set 1 "Open Digits" */
-  "ss02" 0,     /* Stylistic set 2 "Disambiguation" */
-  "ss03" 0,     /* Stylistic set 3 "Lower case r curves into round neighbors" */
-  // "zero",    /* Slashed zero; use font-variant-numeric: slashed-zero; */
-  "numr" 0,     /* Numerators */
-  "dnom" 0,     /* Denominators */
-  "case" 1,     /* Case alternates */
-  "frac" 0,     /* Contextual automatic fractions */
-  "sups" 0,     /* Superscript */
-  "subs" 0,     /* Subscript */
-  "cpsp" 0,     /* Capital spacing (adds 16 UPM to each sidebearing) */
-  "cv01" 1,     /* Alternate one */
-  "cv02" 1,     /* Open four */
-  "cv03" 1,     /* Open six */
-  "cv04" 1,     /* Open nine */
-  "cv05" 1,     /* Lower case L with tail */
-  "cv06" 1,     /* Lower case r with curved tail */
-  "cv07" 0,     /* Alternate German double-s */
-  "cv08" 1,     /* Upper-case i with serif */
-  "cv09" 0,     /* Flat top three */
-  "cv10" 1,     /* Capital G with spur */
-  "cv11" 0,     /* Single-storey a */
-  "calt",       /* Contextual alternates (default) */
-  "liga",       /* Common ligatures (default, none in Inter) */
-  "kern";       /* Kerning (default) */
-$b-html-font: normal var(--font-size) var(--font-family);
-$b-piano-font: normal calc(var(--font-size)*9/16) var(--font-family);
+$b-canvas-font: normal 9px "InterVariable";	// the '9px' part is dynamically resized
+@mixin b-ui-font() {
+  font-family: "InterVariable";
+  font-size: 15.5px;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  text-transform: none;
+  font-variant-numeric: tabular-nums slashed-zero;
+  font-feature-settings: "case", "cpsp", "dlig" 0, "frac" 0, "dnom" 0, "numr" 0, "salt" 0, "subs" 0, "sups" 0,
+			 "tnum", "zero", "ss01", "ss02", "ss03" 0, "ss04" 0,
+			 "cv01" 0, "cv02" 0, "cv03" 0, "cv04" 0, "cv05" 0, "cv06", "cv07" 0, "cv08" 0, "cv09" 0, "cv10" 0, "cv11" 0,
+			 "liga", "calt", "ccmp", "kern";
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  font-variation-settings: "opsz" 28;
+  // Note, combining font-variation-settings with var()/slot/shadowRoot tends to lack support for live updates in Chrome and FF
+  // Also, specifying font-variation-settings in @font-face has no effect in Chrome 114
+}
 
 /* Colors */
 $b-color-scheme: dark;	/* only normal light dark */
