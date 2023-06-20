@@ -171,7 +171,7 @@ $>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $(ui/scss.targets)
 		echo "@import 'b/$${f}';"				>> $@.vuecss \
 		|| exit 1 ; done
 	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -i $(@F).vuecss $(@F).tmp
-	$Q mv $@.tmp $@
+	$Q $(RM) $@.vuecss && mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/vue-styles.css
 
 # == all-components.js ==
