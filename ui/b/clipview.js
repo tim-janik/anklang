@@ -4,7 +4,7 @@
  * Display a small view of a MIDI clip.
  */
 
-import { LitComponent, LitElement, html, JsExtract, docs, ref } from '../little.js';
+import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
 
 // == STYLE ==
 const STYLE = await JsExtract.fetch_css (import.meta);
@@ -67,7 +67,7 @@ const OBJECT_PROPERTY = { attribute: false };
 
 export class BClipView extends LitComponent {
   static styles = [ STYLE ];
-  static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
+  static shadowRootOptions = { ...LitComponent.shadowRootOptions, delegatesFocus: true };
   static properties = {
     clip: OBJECT_PROPERTY,
     track: OBJECT_PROPERTY,

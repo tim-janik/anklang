@@ -1,5 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-import { LitComponent, LitElement, html, JsExtract, live, docs, ref } from '../little.js';
+import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
 
 /**
  * # B-FED-TEXT
@@ -56,7 +56,7 @@ class BTextInput extends LitComponent {
     this.placeholder = '';
     this.readonly = false;
   }
-  static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
+  static shadowRootOptions = { ...LitComponent.shadowRootOptions, delegatesFocus: true };
   updated() {
     // debug ("textinput.js: value:", this.value, "live:", this.input_element.value);
   }

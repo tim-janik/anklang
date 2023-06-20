@@ -8,7 +8,7 @@
  * A context menu is available with mouse button 3, which provides extended functionality.
  */
 
-import { LitComponent, LitElement, ref, html, JsExtract, docs } from '../little.js';
+import { LitComponent, ref, html, JsExtract, docs } from '../little.js';
 import * as PianoCtrl from "./piano-ctrl.js";
 import * as Util from '../util.js';
 const floor = Math.floor, round = Math.round;
@@ -132,7 +132,7 @@ const default_note_length = Util.PPQN / 4;
 /// UI element for note editing.
 class BPianoRoll extends LitComponent {
   static styles = [ STYLE ];
-  static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
+  static shadowRootOptions = { ...LitComponent.shadowRootOptions, delegatesFocus: true };
   render()
   {
     const d = {};
