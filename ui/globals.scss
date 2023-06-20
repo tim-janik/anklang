@@ -1,5 +1,7 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
-@import 'mixins.scss';
+
+// imports mixins.scss
+@import 'elements.scss';
 
 // CSS cursor variables
 @import url('cursors/cursors.css');
