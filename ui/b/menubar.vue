@@ -25,7 +25,7 @@
     <!-- main menu & controlbar -->
 
     <!-- menubar left -->
-    <b-button-bar class="-menubar" >
+    <b-buttonbar class="-menubar" >
       <!-- File Menu -->
       <push-button data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click="$refs.filemenu.popup ($event)" @mousedown="$refs.filemenu.popup ($event)" >
 	<div class="-stack" >
@@ -76,7 +76,7 @@
 	</b-contextmenu>
       </push-button>
 
-    </b-button-bar>
+    </b-buttonbar>
 
     <!-- playcontrols -->
     <h-flex>
@@ -85,7 +85,7 @@
     </h-flex>
 
     <!-- menubar right -->
-    <b-button-bar class="-menubar" >
+    <b-buttonbar class="-menubar" >
       <!-- Help Menu -->
       <push-button data-tip="**CLICK** Help Menu" data-hotkey="Alt+H" @click="$refs.helpmenu.popup ($event)" @mousedown="$refs.helpmenu.popup ($event)" >
 	<div class="-stack" >
@@ -99,7 +99,7 @@
 	  <b-menuitem ic="fa-id-card-o"		uri="about">	About…			</b-menuitem>
 	</b-contextmenu>
       </push-button>
-    </b-button-bar>
+    </b-buttonbar>
 
   </h-flex>
 
