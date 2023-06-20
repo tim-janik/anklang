@@ -36,6 +36,7 @@ ui/scss.files ::= $(strip	\
 )
 ui/b/scss2css.sources ::= $(strip	\
 	ui/shadow.scss			\
+	ui/globals.scss			\
 )
 ui/copy.files ::= $(filter-out $(ui/nocopy.wildcards) $(ui/cjs.wildcards), $(ui/jscopy.wildcards))
 ui/vue.wildcards ::= $(wildcard ui/b/*.vue)
@@ -165,7 +166,7 @@ $(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
 $>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $(ui/scss.targets) ui/Makefile.mk
 	$(QGEN)
 	$Q echo '@charset "UTF-8";'					>  $@.vuecss
-	$Q echo "@import 'globals.scss';"				>> $@.vuecss
+	$Q echo "@import 'mixins.scss';"				>> $@.vuecss
 	$Q for f in $(ui/b/vuecss.targets:$>/ui/b/%=%) ; do		\
 		echo "@import 'b/$${f}';"				>> $@.vuecss \
 		|| exit 1 ; done
