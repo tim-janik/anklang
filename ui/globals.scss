@@ -8,13 +8,11 @@
 
 // Globals
 html {
-  font: $b-html-font;
-  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
-  letter-spacing: 0.011em;
-  font-variation-settings: var(--font-variation-settings);
-  font-feature-settings: var(--font-feature-settings);
-  font-variant-numeric: var(--font-variant-numeric);
+  @include b-ui-font();
   color-scheme: $b-color-scheme;
+  // Scrollbars
+  @include firefox-scrollbars();
+  @include chrome-scrollbars();
 }
 
 html, body {
@@ -33,12 +31,6 @@ body {
   &:-moz-window-inactive {
     color: $b-foreground-inactive;
   }
-}
-
-// Scrollbars
-html {
-  @include firefox-scrollbars();
-  @include chrome-scrollbars();
 }
 
 // Button
