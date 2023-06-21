@@ -19,8 +19,9 @@ export class LitComponent extends LitElement {
   {
     super();
     const request_update = this.requestUpdate.bind (this);
-    this.render = Wrapper.reactive_wrapper (this.render.bind (this), request_update);
-    this.updated = Wrapper.reactive_wrapper (this.updated.bind (this), request_update);
+    // Use cast to hide assignment causing instance member property shadowing instance member function (TS2425)
+    (/**@type{any}*/ (this)).render = Wrapper.reactive_wrapper (this.render.bind (this), request_update);
+    (/**@type{any}*/ (this)).updated = Wrapper.reactive_wrapper (this.updated.bind (this), request_update);
   }
   createRenderRoot()
   {
