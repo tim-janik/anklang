@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
 import { LitComponent, html, JsExtract, docs } from '../little.js';
 import * as Util from "../util.js";
@@ -30,7 +31,7 @@ import * as Util from "../util.js";
  */
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
+const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
 b-icon { // not using shadow-root here
   display: inline-flex; justify-content: center;
@@ -70,6 +71,7 @@ class BIcon extends LitComponent {
     this.hflip = false;
     this.vflip = false;
     this.nosize = false;
+    this.iconclass = "";
   }
   render()
   {
@@ -79,7 +81,7 @@ class BIcon extends LitComponent {
   }
   createRenderRoot()
   {
-    Util.adopt_style (this, STYLE);
+    Util.add_style_sheet (this, STYLE_URL);
     Util.add_style_sheet (this, '/fonts/AnklangIcons.css');
     Util.add_style_sheet (this, '/fonts/material-icons.css');
     Util.add_style_sheet (this, '/fonts/forkawesome-webfont.css');
