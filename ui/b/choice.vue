@@ -17,7 +17,6 @@
 </docs>
 
 <style lang="scss">
-@import 'mixins.scss';
 .b-choice {
   display: flex; position: relative;
   margin: 0;

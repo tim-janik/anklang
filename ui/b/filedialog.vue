@@ -20,7 +20,6 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
   .b-filedialog {
     .b-dialog {
       width: unset; //* <- leave width to INPUT.-file, see below */

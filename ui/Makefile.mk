@@ -28,7 +28,7 @@ ui/nocopy.wildcards ::= $(wildcard	\
 )
 ui/scss.files ::= $(strip	\
 	ui/dark.scss		\
-	ui/domstyles.scss	\
+	ui/elements.scss	\
 	ui/globals.scss		\
 	ui/grid.scss		\
 	ui/mixins.scss		\
@@ -36,6 +36,7 @@ ui/scss.files ::= $(strip	\
 )
 ui/b/scss2css.sources ::= $(strip	\
 	ui/shadow.scss			\
+	ui/globals.scss			\
 )
 ui/copy.files ::= $(filter-out $(ui/nocopy.wildcards) $(ui/cjs.wildcards), $(ui/jscopy.wildcards))
 ui/vue.wildcards ::= $(wildcard ui/b/*.vue)
@@ -145,7 +146,7 @@ $>/ui/.build1-stamp: $>/ui/postcss.js
 
 # == ui/shadow.css ==
 ui/b/scss2css.targets ::= $(ui/b/scss2css.sources:ui/%.scss=$>/ui/%.css)
-$(ui/b/scss2css.targets): $>/ui/postcss.js ui/Makefile.mk
+$(ui/b/scss2css.targets): $>/ui/postcss.js $(wildcard ui/*.scss) ui/Makefile.mk
 $(ui/b/scss2css.targets): $>/ui/%.css: ui/%.scss		| $>/ui/
 	$(QGEN)
 	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -i $< $@.tmp
@@ -165,12 +166,12 @@ $(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
 $>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $(ui/scss.targets) ui/Makefile.mk
 	$(QGEN)
 	$Q echo '@charset "UTF-8";'					>  $@.vuecss
-	$Q echo "@import 'globals.scss';"				>> $@.vuecss
+	$Q echo "@import 'mixins.scss';"				>> $@.vuecss
 	$Q for f in $(ui/b/vuecss.targets:$>/ui/b/%=%) ; do		\
 		echo "@import 'b/$${f}';"				>> $@.vuecss \
 		|| exit 1 ; done
 	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -i $(@F).vuecss $(@F).tmp
-	$Q mv $@.tmp $@
+	$Q $(RM) $@.vuecss && mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/vue-styles.css
 
 # == all-components.js ==

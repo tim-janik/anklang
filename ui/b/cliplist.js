@@ -1,7 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { LitElement, html, JsExtract, docs, ref } from '../little.js';
+import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
 import * as Wrapper from '../wrapper.js';
 import * as Util from '../util.js';
 /** @typedef {import("../b/clipview.js").BClipView} BClipView */
@@ -45,7 +45,7 @@ import * as Ase from '../aseapi.js';
 const OBJECT_PROPERTY = { attribute: false };
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 
-export class BClipList extends LitElement {
+export class BClipList extends LitComponent {
   static styles = [ STYLE ];
   static properties = {
     track:	OBJECT_PROPERTY,
@@ -69,12 +69,12 @@ export class BClipList extends LitElement {
     this.ratiodiv = 1.0 / this.ratiomul;
     /**@type{HTMLElement}*/
     this.indicator_bar = null;
+    this.setAttribute ('data-f1', "#clip-list");
   }
   connectedCallback() {
     super.connectedCallback();
     this.ratiomul = window.devicePixelRatio;
     this.ratiodiv = 1.0 / this.ratiomul;
-    this.setAttribute ('data-f1', "#clip-list");
   }
   disconnectedCallback() {
     super.disconnectedCallback();

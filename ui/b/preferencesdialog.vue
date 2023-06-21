@@ -9,7 +9,6 @@
 </docs>
 
 <style lang="scss" >
-  @import 'mixins.scss';
   .b-preferencesdialog	{
     /* max-width: 70em; */
   }

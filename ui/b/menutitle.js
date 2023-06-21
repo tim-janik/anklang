@@ -1,6 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-import { LitElement, html, JsExtract, docs } from '../little.js';
+import { LitComponent, html, JsExtract, docs } from '../little.js';
 
 /** # B-MENUTITLE
  * An element to be used as menu title.
@@ -32,7 +32,7 @@ const HTML = html`
 `;
 
 // == SCRIPT ==
-class BMenuTitle extends LitElement {
+class BMenuTitle extends LitComponent {
   render = () => HTML;
   static styles = [ STYLE ];
 }

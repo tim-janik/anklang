@@ -1,5 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-import { LitElement, html, JsExtract, docs, ref } from '../little.js';
+import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
 import * as Util from "../util.js";
 
 /** == B-EDITABLE ==
@@ -63,7 +63,7 @@ const BOOLEAN_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute wi
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 const PRIVATE_PROPERTY = { state: true };
 
-class BEditable extends LitElement {
+class BEditable extends LitComponent {
   static styles = [ STYLE ];
   static properties = {
     selectall:	BOOLEAN_ATTRIBUTE,

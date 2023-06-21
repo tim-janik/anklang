@@ -4,7 +4,7 @@
  * Display a small view of a MIDI clip.
  */
 
-import { LitComponent, LitElement, html, JsExtract, docs, ref } from '../little.js';
+import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
 
 // == STYLE ==
 const STYLE = await JsExtract.fetch_css (import.meta);
@@ -12,7 +12,6 @@ JsExtract.scss`
 @import 'mixins.scss';
 :host {
   display: inline-grid;
-  width: 7em;
   margin: 0 0 0 2px;
 }
 $b-clipview-font: normal 9px $b-theme-font-family !default;    // the '9px' part is dynamically resized
@@ -68,7 +67,7 @@ const OBJECT_PROPERTY = { attribute: false };
 
 export class BClipView extends LitComponent {
   static styles = [ STYLE ];
-  static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
+  static shadowRootOptions = { ...LitComponent.shadowRootOptions, delegatesFocus: true };
   static properties = {
     clip: OBJECT_PROPERTY,
     track: OBJECT_PROPERTY,

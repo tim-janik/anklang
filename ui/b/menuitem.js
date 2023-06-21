@@ -27,7 +27,7 @@
  * : All contents passed into this slot will be rendered as contents of this element.
  */
 
-import { LitComponent, LitElement, html, JsExtract, docs } from '../little.js';
+import { LitComponent, html, JsExtract, docs } from '../little.js';
 import * as Util from "../util.js";
 import * as Kbd from '../kbd.js';
 import * as ContextMenu from './contextmenu.js';
@@ -113,7 +113,7 @@ const PRIVATE_PROPERTY = { state: true };
 
 class BMenuItem extends LitComponent {
   static styles = [ STYLE ];
-  static shadowRootOptions = { ...LitElement.shadowRootOptions, delegatesFocus: true };
+  static shadowRootOptions = { ...LitComponent.shadowRootOptions, delegatesFocus: true };
   render()
   {
     const turn = !!Util.closest (this, 'b-menurow:not([noturn])');

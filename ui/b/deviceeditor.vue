@@ -9,7 +9,6 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
   .b-deviceeditor {
     .b-deviceeditor-sw {
       background: $b-device-handle;

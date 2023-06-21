@@ -1,5 +1,7 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
-@import 'mixins.scss';
+
+// imports mixins.scss
+@import 'elements.scss';
 
 // CSS cursor variables
 @import url('cursors/cursors.css');
@@ -51,7 +53,7 @@ button, push-button {
   border-top: 1px solid $b-button-light; border-left: 1px solid $b-button-light;
   border-bottom: 1px solid $b-button-dark; border-right: 1px solid $b-button-dark;
   // layout
-  text-align: center; margin: 0; padding: 3px 1em;
+  text-align: center; margin: 0; padding: 3px 0.5em;
   display: flex; align-items: center;
   color: $b-button-foreground;
   &:focus {

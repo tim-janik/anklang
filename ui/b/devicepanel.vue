@@ -9,10 +9,7 @@
 </docs>
 
 <style lang="scss">
-  @import 'mixins.scss';
-
   $scrollbar-height: 6px; //* Should match Firefox 'scrollbar-width:thin' */
-
   .b-devicepanel {
     background: $b-devicepanel-bg;
     border-radius: inherit;

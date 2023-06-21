@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
-import { LitElement, html, JsExtract, docs } from '../little.js';
+import { LitComponent, html, JsExtract, docs } from '../little.js';
 import * as Util from "../util.js";
 
 /** # B-ICON
@@ -30,7 +31,7 @@ import * as Util from "../util.js";
  */
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
+const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
 b-icon { // not using shadow-root here
   display: inline-flex; justify-content: center;
@@ -54,7 +55,7 @@ const HTML = (iconclasses, innertext) => html`
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true };  // sync attribute with property
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 
-class BIcon extends LitElement {
+class BIcon extends LitComponent {
   static properties = {
     iconclass: STRING_ATTRIBUTE, ic: STRING_ATTRIBUTE,
     hflip: BOOL_ATTRIBUTE, vflip: BOOL_ATTRIBUTE,
@@ -70,6 +71,7 @@ class BIcon extends LitElement {
     this.hflip = false;
     this.vflip = false;
     this.nosize = false;
+    this.iconclass = "";
   }
   render()
   {
@@ -79,7 +81,7 @@ class BIcon extends LitElement {
   }
   createRenderRoot()
   {
-    Util.adopt_style (this, STYLE);
+    Util.add_style_sheet (this, STYLE_URL);
     Util.add_style_sheet (this, '/fonts/AnklangIcons.css');
     Util.add_style_sheet (this, '/fonts/material-icons.css');
     Util.add_style_sheet (this, '/fonts/forkawesome-webfont.css');
