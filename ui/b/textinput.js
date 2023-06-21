@@ -1,8 +1,10 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
+// @ts-check
 
-/**
- * # B-FED-TEXT
+import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
+import * as Util from '../util.js';
+
+/** # B-TEXTINPUT
  *
  * A field-editor for text input.
  *
@@ -18,14 +20,13 @@ import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
  */
 
 // <STYLE/>
-const STYLE = await JsExtract.fetch_css (import.meta);
+const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
 @import 'mixins.scss';
-input {
+b-textinput input {
   outline-width: 0; border: none; border-radius: $b-button-radius;
   text-align: left; background-color: rgba(255,255,255,.3); color: #fff;
   padding-left: $b-button-radius; padding-right: $b-button-radius;
-  &:focus	{ box-shadow: $b-focus-box-shadow; }
   @include b-style-inset;
 }
 `;
@@ -33,7 +34,7 @@ input {
 // <HTML/>
 const HTML = t =>
 html`
-<label class="b-fed-text">
+<label>
   <input ${ref (h => t.input_element = h)} type="text" ?readonly=${t.readonly}
 	 style="width: 100%; min-width: 2.5em" @input=${t.handle_input}
 	 placeholder=${t.placeholder} .value=${live (t.value)} >
@@ -43,8 +44,12 @@ html`
 // <SCRIPT/>
 class BTextInput extends LitComponent {
   render() { return HTML (this); }
+  createRenderRoot()
+  {
+    Util.add_style_sheet (this, STYLE_URL);
+    return this;
+  }
   input_element = null;
-  static styles = [ STYLE ];
   static properties = {
     value:	 { type: String, },
     placeholder: { type: String, },
@@ -56,7 +61,6 @@ class BTextInput extends LitComponent {
     this.placeholder = '';
     this.readonly = false;
   }
-  static shadowRootOptions = { ...LitComponent.shadowRootOptions, delegatesFocus: true };
   updated() {
     // debug ("textinput.js: value:", this.value, "live:", this.input_element.value);
   }
@@ -72,5 +76,3 @@ class BTextInput extends LitComponent {
   }
 }
 customElements.define ('b-textinput', BTextInput);
-
-// FIXME: RM: fed
