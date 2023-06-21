@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 import { LitComponent, html, JsExtract, docs } from '../little.js';
+import * as Util from "../util.js";
 
 /** # B-MENUTITLE
  * An element to be used as menu title.
@@ -10,7 +11,7 @@ import { LitComponent, html, JsExtract, docs } from '../little.js';
  */
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
+const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
 @import 'mixins.scss';
 :host { // b-menutitle
@@ -21,19 +22,30 @@ JsExtract.scss`
   border: 1px solid transparent;
   color: $b-menu-foreground;
   font-variant: small-caps; font-weight: bolder;
+  // InterVariable-4.0beta9 has broken c2sc (small-caps), so for now use drop-caps
+  // https://github.com/rsms/inter/issues/556#issuecomment-1598010623
+  text-transform: uppercase; font-size: 80%;
+  ::first-letter {
+    font-size: 130%;
+  }
 }
 `;
 
 // == HTML ==
 const HTML = html`
 <div class="b-menutitle">
-<span class="menulabel"><slot /></span>
+  <span class="menulabel"><slot /></span>
 </div>
 `;
 
 // == SCRIPT ==
 class BMenuTitle extends LitComponent {
   render = () => HTML;
-  static styles = [ STYLE ];
+  createRenderRoot()
+  {
+    const rroot = super.createRenderRoot();
+    Util.add_style_sheet (rroot, STYLE_URL);
+    return rroot;
+  }
 }
 customElements.define ('b-menutitle', BMenuTitle);
