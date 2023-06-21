@@ -1,13 +1,14 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 import { LitComponent, html, JsExtract, docs } from '../little.js';
+import * as Util from "../util.js";
 
 /** # B-PLAYCONTROLS
  * A container holding the play and seek controls for a Ase.song.
  */
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
+const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
 :host {
   button, push-button	{ padding: 5px; }
@@ -31,14 +32,17 @@ const HTML = (t, D) => html`
 
 // == SCRIPT ==
 class BPlayControls extends LitComponent {
-  static styles = [ STYLE ];
   render()
   {
     const dispatcher = (method) =>
       (ev) => this.dispatch (method, ev);
     return HTML (this, dispatcher);
   }
-  createRenderRoot() { return this; }
+  createRenderRoot()
+  {
+    Util.add_style_sheet (this, STYLE_URL);
+    return this;
+  }
   async dispatch (method, ev)
   {
     const project = Data.project;
