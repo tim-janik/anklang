@@ -6,11 +6,6 @@
 // CSS cursor variables
 @import url('cursors/cursors.css');
 
-/* Fonts */
-@font-face { font-family: Inter; font-display: swap;
-	     font-style: normal; font-weight: 500;
-	     src: url("/fonts/Inter-Medium.woff2") format("woff2"); }
-
 // Globals
 html {
   font: $b-html-font;
