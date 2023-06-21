@@ -61,6 +61,8 @@ export function lit_update_all (root)
  *   from '/path/to/inputfile.css'.
  * - ``` JsExtract.fetch_css (import.meta); ``` \
  *   Variant of the above that utilizes `import.meta.url`.
+ * - ``` JsExtract.css_url (import.meta); ``` \
+ *   Variant of the above that just provides the stylesheet URL.
  */
 export const JsExtract = {
   // Mark CSS template string for jsextract.js
@@ -69,8 +71,17 @@ export const JsExtract = {
   scss: (strings, ...values) => undefined,
   // Mark HTML template string for jsextract.js
   html: () => undefined,
+  css_url,
   fetch_css,
 };
+
+/// Construct the stylesheet URL from a base URL (enforcing `.css` extension).
+async function css_url (base_url)
+{
+  const url = base_url?.url || base_url;
+  const css_url = url.replace (/\.[^.\/]+$/, '') + '.css';
+  return css_url;
+}
 
 /// Fetch (extracted) asset from a base URL (enforcing `.css` extension) as "text/css"
 async function fetch_css (base_url)
