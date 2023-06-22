@@ -59,7 +59,8 @@
     }
   }
   .-header {
-    font-size: 1.5em; font-weight: bold;
+    font-size: 1.5em;
+    @include b-font-weight-bold();
     justify-content: space-evenly;
     padding-bottom: 0.5em;
     border-bottom: 1px solid $b-modal-bordercol;

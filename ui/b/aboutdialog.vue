@@ -17,7 +17,8 @@
   }
   .b-aboutdialog .b-aboutdialog-header {
     grid-column: 1;
-    text-align: right; vertical-align: top; font-weight: bold;
+    text-align: right; vertical-align: top;
+    @include b-font-weight-bold();
     padding-right: .5em; min-width: 15em; }
   .b-aboutdialog .b-aboutdialog-field {
     grid-column: 2;

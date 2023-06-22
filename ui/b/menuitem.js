@@ -75,7 +75,7 @@ button:active {
   padding-left: 2.5em;
   kbd {
     font-family: inherit;
-    font-weight: 400;
+    @include b-font-weight-normal();
   }
 }
 &.-nokbd .kbdspan { display:none; }

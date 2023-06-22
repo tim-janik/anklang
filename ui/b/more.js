@@ -23,7 +23,7 @@ JsExtract.scss`
   padding: 0 0.2em;
   margin: 0 0.2em;
   border-radius: 3px;
-  font-weight: bold;
+  @include b-font-weight-bold();
   font-size: 120%;
   cursor: default; user-select: none;
   border: 1px solid #bbb3;

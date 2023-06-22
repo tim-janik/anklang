@@ -20,7 +20,7 @@
 <style lang="scss">
   .b-fed-object		{
     .b-fed-object-clear	{
-      -font-size: 1.1em; -font-weight: bolder;
+      -font-size: 1.1em; // @include b-font-weight-bolder();
       color: #888; background: none; padding: 0 0 0 0.5em; margin: 0;
       outline: none; border: 1px solid rgba(0,0,0,0); border-radius: $b-button-radius;
       &:hover			{ color: #eb4; }
@@ -36,7 +36,7 @@
       margin-top: 0.5em;
       &:first-child { margin-top: 0; }
       white-space: nowrap;
-      .-label { text-overflow: ellipsis; overflow: hidden; }
+      .-label { text-overflow: ellipsis; overflow: hidden; @include b-font-weight-bold(); }
     }
     .-flabel {
       padding: 0 0.1em 0 0;
@@ -64,7 +64,7 @@
     <template v-for="group in gprops" :key="'group-' + group.name" >
 
       <h-flex class="-group" style="grid-column: 1 / span 3" >
-	<span class="-label" style="flex-grow: 0; font-weight: bold" v-if="group.name" >{{ group.name }}</span>
+	<span class="-label" style="flex-grow: 0;" v-if="group.name" >{{ group.name }}</span>
 	<hr style="flex-grow: 1; margin-left: 0.5em; min-width: 5em" v-if="group.name" />
       </h-flex>
 
