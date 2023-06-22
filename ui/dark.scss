@@ -13,12 +13,22 @@ $b-canvas-font: normal 9px "InterVariable";	// the '9px' part is dynamically res
 			 "tnum", "zero", "ss01", "ss02", "ss03" 0, "ss04" 0,
 			 "cv01" 0, "cv02" 0, "cv03" 0, "cv04" 0, "cv05" 0, "cv06", "cv07" 0, "cv08" 0, "cv09" 0, "cv10" 0, "cv11" 0,
 			 "liga", "calt", "ccmp", "kern";
-  font-weight: 500;
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
-  font-variation-settings: "opsz" 28;
+  @include b-font-weight-normal();
   // Note, combining font-variation-settings with var()/slot/shadowRoot tends to lack support for live updates in Chrome and FF
   // Also, specifying font-variation-settings in @font-face has no effect in Chrome 114
+  font-variation-settings: "opsz" 28; // 14=Inter, 28=InterDisplay
 }
+@mixin b-font-weight-normal() {
+  // Inter may be too thin at regular weight (font-weight=400) for low contrast scenarios, so use 500.
+  // @media (prefers-color-scheme: light) { font-weight: 500; }
+  // However, in dark-mode fonts can appear thicker, which is why fonts like [Darkmode On](fonts.adobe.com/fonts/darkmode-on)
+  // reduce thickness in dark mode compared to light mode to ca 90%. For Inter weights, a stepping from 400 -> 500 equates
+  // roughly a thickness increases of 20%. So for dark mode, we use 450.
+  font-weight: 450;
+}
+@mixin b-font-weight-bold()   { font-weight: 700; }
+@mixin b-font-weight-bolder() { font-weight: 850; }
 
 /* Colors */
 $b-color-scheme: dark;	/* only normal light dark */
