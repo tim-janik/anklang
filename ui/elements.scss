@@ -16,8 +16,8 @@ input, textarea, keygen, select, button	{ font: inherit; }
 // button				{ -webkit-appearance: normal; }
 .italic, i, cite, em, var, address, dfn { font-style: italic; }
 strong, b, h1, h2, h3, h4, h5, h6, th, ::-webkit-validation-bubble-heading,
-.bold					{ --font-weight: 700; }
-.bolder, optgroup			{ --font-weight: 850; }
+.bold					{ @include b-font-weight-bold(); }
+.bolder, optgroup			{ @include b-font-weight-bolder(); }
 .tabular-nums				{ font-variant-numeric: tabular-nums; }
 .slashed-zero				{ font-variant-numeric: slashed-zero; }
 plaintext, listing, xmp, input:-webkit-autofill-strong-password, .tnum, .code, tt, pre, code, kbd, samp,
