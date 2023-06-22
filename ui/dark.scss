@@ -1,9 +1,12 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
+/* Font fallbacks, see modernfontstacks.com */
+$b-fallback-font-stack: Inter, Roboto, 'Helvetica Neue', 'Arial Nova', 'Nimbus Sans', Arial, sans-serif;
+
 /* Fonts */
-$b-canvas-font: normal 9px "InterVariable";	// the '9px' part is dynamically resized
+$b-canvas-font: normal 9px "InterVariable", $b-fallback-font-stack;	// the '9px' part is dynamically resized
 @mixin b-ui-font() {
-  font-family: "InterVariable";
+  font-family: "InterVariable", $b-fallback-font-stack;
   font-size: 15.5px;
   letter-spacing: 0.03em;
   text-decoration: none;
