@@ -36,7 +36,7 @@ const HTML = (t, d) => [
   t.wtrack.launcher_clips.map ((clip, index) =>
     html`  <b-clipview .clip=${clip} index=${index} .track=${t.track} trackindex=${t.trackindex} ></b-clipview>`
   ),
-  html`    <span class="-indicator" ${ref (h => t.indicator_bar = h)} /> `,
+  html`    <span class="-indicator" ${ref (h => t.indicator_bar = h)}></span> `,
 ];
 
 // == SCRIPT ==

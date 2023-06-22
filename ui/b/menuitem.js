@@ -98,7 +98,7 @@ const HTML = (t, d) => html`
     @mouseenter="${t.focus}" @mouseup="${t.mouseup_}"
     @click="${t.click}" @contextmenu="${t.rightclick}" >
     <b-icon class=${t.iconclass} ic=${t.ic} ></b-icon>
-    <span class="menulabel"><slot /></span>
+    <span class="menulabel"><slot></slot></span>
     <span class="kbdspan" ?kbdhidden=${!d.hotkey} >
       <kbd ?data-can-remap=${t.can_remap}
 	   title="${t.menudata.mapname && 'RIGHT-CLICK Assign Shortcut'}"
