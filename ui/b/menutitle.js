@@ -34,7 +34,7 @@ JsExtract.scss`
 // == HTML ==
 const HTML = html`
 <div class="b-menutitle">
-  <span class="menulabel"><slot /></span>
+  <span class="menulabel"><slot></slot></span>
 </div>
 `;
 

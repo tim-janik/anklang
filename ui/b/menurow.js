@@ -23,7 +23,7 @@ JsExtract.scss`
 
 // == HTML ==
 const HTML = () => html`
-  <slot />
+  <slot></slot>
 `;
 
 // == SCRIPT ==

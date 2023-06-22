@@ -81,6 +81,7 @@ module.exports = {
 
   extends: [
     "eslint:recommended",
+    "plugin:lit/recommended",
     'plugin:vue/vue3-recommended'
   ]
 };

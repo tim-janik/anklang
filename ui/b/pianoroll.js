@@ -88,7 +88,7 @@ const HTML = (t, d) => html`
 
     <v-flex class="-toolbutton -col1 -row1" style="height: 1.7em; align-items: end; padding-right: 4px;" ${ref (h => t.menu_btn = h)}
       @click=${e => t.pianotoolmenu.popup (e)} @mousedown=${e => t.pianotoolmenu.popup (e)} >
-      <b-icon style="width: 1.2em; height: 1.2em" ${ref (h => t.menu_icon = h)} />
+      <b-icon style="width: 1.2em; height: 1.2em" ${ref (h => t.menu_icon = h)}></b-icon>
       <b-contextmenu ${ref (h => t.pianotoolmenu = h)} id="g-pianotoolmenu" class="-pianotoolmenu" @activate=${e => t.usetool (e.detail.uri)} >
 	<b-menuitem ic="mi-open_with"     uri="S" kbd="1" > Rectangular Selection  </b-menuitem>
 	<b-menuitem ic="mi-multiple_stop" uri="H" kbd="2" > Horizontal Selection   </b-menuitem>
@@ -110,7 +110,7 @@ const HTML = (t, d) => html`
     <div class="-col2 -row3" ${ref(e => t.hscrollbar = e)} style="overflow: scroll hidden; min-height: 17px; background: #000" >
       <div class="-hextend" ${ref(e => t.hscrollbar_extend = e)} style="width:999px" ></div>
     </div>
-    <span class="-indicator" ${ref(e => t.indicator_bar = e)} />
+    <span class="-indicator" ${ref(e => t.indicator_bar = e)}></span>
 
     <b-contextmenu ${ref (h => t.pianorollmenu = h)} id="g-pianorollmenu" :showicons="true"
       class="-pianorollmenu" mapname="Piano Roll"
