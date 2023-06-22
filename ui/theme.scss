@@ -42,20 +42,6 @@ $b-scrollbar-bg:	#111; // track
 $b-scrollbar-dd:	#222; // inactive slider
 $b-scrollbar-fg:	#777; // hovered slider
 
-// == Hotkey ==
-@mixin b-kbd-hotkey($border: true) {
-  font-family: mono;
-  font-weight: 600;
-  font-size: calc(1em - 2px);
-  letter-spacing: 1px;
-  //* text-transform: uppercase; text-transform: lowercase; font-variant: small-caps; */
-  border-radius: 0.5em;
-  @if not $border {}
-  @else {
-    background: lgrey(30%); border: 1px outset lgrey(50%); color: lgrey(95%); // #3 #5 #e
-  }
-}
-
 // == Status Bar ==
 $b-statusbar-bg: $b-main-background;
 $b-statusbar-field-spacing: 0.5em;
@@ -70,9 +56,6 @@ $b-statusbar-icon-scaleup: 1.1;    // enlarge active
   border-left:  1px solid $groove-shade;
   border-right: 1px solid $groove-tint;
 }
-
-// == Font Basics ==
-$b-main-font-family: 'Inter';
 
 // == Basic Colors ==
 $b-base-foreground: 		#f0f0f0 !default;
@@ -105,8 +88,6 @@ $b-style-fg-filter:    brightness(66%) !default;	// adjust style-fg in inverted 
 
 // == BrowserWindow Defaults ==
 $b-default-background-color:	$b-main-background;	// #rrggbb needed
-$b-default-font-size:		12px;          		// int px needed
-$b-default-monospace-font-size: 13px;			// int px needed
 
 // == Animations ==
 $b-transition-fast-slide: 0.15s !default;
@@ -267,8 +248,6 @@ $b-piano-roll-note-color:	#88cc88b0;			// color(15,65%,25%);
 $b-piano-roll-note-focus-color:	 #aaf8;
 $b-piano-roll-note-focus-border: #f0f0f0;
 $b-piano-roll-indicator:	 #bbfc;				// color for play position indicator
-$b-piano-roll-font:     	normal 9px $b-main-font-family; // the '9px' part is dynamically resized
-// font format: italic small-caps bold 12px serif
 
 // == input[type='number'] ==
 @mixin b-style-number-input() {
