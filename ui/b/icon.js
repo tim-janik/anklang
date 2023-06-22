@@ -82,6 +82,7 @@ class BIcon extends LitComponent {
   createRenderRoot()
   {
     Util.add_style_sheet (this, STYLE_URL);
+    // icon fonts must be loaded into document and shadowRoot ancestors
     Util.add_style_sheet (this, '/fonts/AnklangIcons.css');
     Util.add_style_sheet (this, '/fonts/material-icons.css');
     Util.add_style_sheet (this, '/fonts/forkawesome-webfont.css');

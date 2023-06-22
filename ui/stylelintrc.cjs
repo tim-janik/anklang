@@ -10,6 +10,7 @@ module.exports = {
     "custom-property-empty-line-before": null,
     "declaration-block-no-shorthand-property-overrides": null,
     "declaration-empty-line-before": null,
+    "font-family-name-quotes": null,
     "length-zero-no-unit": null,
     "no-descending-specificity": null,
     "no-duplicate-selectors": null,

@@ -45,7 +45,7 @@
       .b-icon {
 	height: 100%; align-items: center; justify-content: center; vertical-align: middle;
 	min-width: 1.5em; margin: 0;
-	font-weight: bold;
+	@include b-font-weight-bold();
 	.-icon-folder { color: #bba460; }
 	padding: 0;
       }

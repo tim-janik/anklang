@@ -10,7 +10,6 @@
 // Only put *!default* definitions here, so `theme.scss` takes precedence.
 
 // theme basics
-$b-theme-font-family:		$b-main-font-family;
 $b-theme-foreground: 		$b-main-foreground;
 $b-theme-background: 		$b-main-background;
 $b-main-border-light:		zmod($b-base-background, Jz+=9%) !default;	// used for modal border
@@ -32,6 +31,20 @@ $b-switch-inactive:		#999999 !default;
 $b-switch-active:		#2080f0 !default;
 $b-switch-knob:		$b-button-foreground !default;
 $b-boxshadow-color:		fade(#000000, 30%) !default;
+
+// == Hotkey ==
+@mixin b-kbd-hotkey($border: true) {
+  font-family: mono;
+  font-weight: 600;
+  font-size: calc(1em - 2px);
+  letter-spacing: 1px;
+  //* text-transform: uppercase; text-transform: lowercase; font-variant: small-caps; */
+  border-radius: 0.5em;
+  @if not $border {}
+  @else {
+    background: lgrey(30%); border: 1px outset lgrey(50%); color: lgrey(95%); // #3 #5 #e
+  }
+}
 
 // == Markdown Styling ==
 @mixin b-markdown-it-inlined($maywrap: true)	{

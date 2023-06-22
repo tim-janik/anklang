@@ -14,7 +14,6 @@ JsExtract.scss`
   display: inline-grid;
   margin: 0 0 0 2px;
 }
-$b-clipview-font: normal 9px $b-theme-font-family !default;    // the '9px' part is dynamically resized
 $b-clipview-font-color: rgba(255, 255, 255, 0.7) !default;
 $b-clipview-note-color: rgba(255, 255, 255, 0.7) !default;
 $b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;
@@ -25,7 +24,7 @@ $b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;
   border: 0;
   .-canvas {
     display: inline; position: absolute; top: 0px; bottom: 0px; left: 0px; right: 0px;
-    --clipview-font-color: #{$b-clipview-font-color}; --clipview-font: #{$b-clipview-font};
+    --clipview-font-color: #{$b-clipview-font-color}; --clipview-font: #{$b-canvas-font};
     --clipview-note-color: #{$b-clipview-note-color};
     --clipview-color-hues: $b-clipview-color-hues;
     box-shadow: inset 0px 0 1px #fff9, inset -1px 0 1px #000;

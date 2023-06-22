@@ -47,7 +47,7 @@
 	display: inline-block; overflow-y: visible; //* avoids scrolling */
 	padding: 0; margin: 0; font-size: inherit; white-space: nowrap;
       }
-      strong { color: $b-main-foreground; font-weight: normal; padding: 0 0.5em; }
+      strong { color: $b-main-foreground; padding: 0 0.5em; @include b-font-weight-normal(); }
       kbd {
 	padding: 0 0.4em 1px;
 	@include b-kbd-hotkey(true);

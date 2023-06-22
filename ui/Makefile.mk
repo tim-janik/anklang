@@ -233,12 +233,17 @@ $(ui/cjs.targets): $>/ui/%.cjs: ui/%.js	| $>/ui/b/
 $>/ui/.build1-stamp: $(ui/cjs.targets)
 
 # == Inter Typeface ==
-$>/ui/fonts/Inter-Medium.woff2: ui/Makefile.mk		| $>/ui/fonts/
+$>/ui/fonts/InterVariable.woff2: ui/Makefile.mk		| $>/ui/fonts/
 	$(QECHO) FETCH Inter Typeface
-	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
-		9cd56084faa8cc5ee75bf6f3d01446892df88928731ee9321e544a682aec55ef https://github.com/rsms/inter/raw/v3.10/docs/font-files/Inter-Medium.woff2 )
+	$Q $(RM) -r $>/ui/fonts/tmp-inter/ && mkdir $>/ui/fonts/tmp-inter/
+	$Q cd $>/ui/fonts/tmp-inter/ $(call foreachpair, AND_DOWNLOAD_SHAURL, \
+		41b1253ed9b5e9cb5093249c8dd71f0094cb4dfb4ef92ec69125fcb90566e4c7 https://github.com/rsms/inter/releases/download/v4.0-beta9g/Inter-4.0-beta9g.zip )
+	$Q cd $>/ui/fonts/tmp-inter/ \
+		&& unzip -q Inter-4.0-beta9g.zip \
+		&& mv web/InterVariable.woff2 ..
+	$Q $(RM) -r $>/ui/fonts/tmp-inter/
 	$Q touch $@
-$>/ui/.build1-stamp: $>/ui/fonts/Inter-Medium.woff2
+$>/ui/.build1-stamp: $>/ui/fonts/InterVariable.woff2
 
 # == AnklangIcons ==
 $>/ui/fonts/AnklangIcons.css: ui/Makefile.mk		| $>/ui/fonts/
