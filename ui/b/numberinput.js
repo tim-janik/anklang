@@ -31,17 +31,22 @@ JsExtract.scss`
 @import 'mixins.scss';
 b-numberinput {
   display: flex; justify-content: flex-end;
-  input[type='number'] {
-    text-align: right;
-    outline-width: 0; border: none;
-    @include b-style-number-input;
+  label {
+    display: flex; justify-content: flex-end;
+    flex-grow: 1;
   }
   input[type='range'] {
+    flex-grow: 1;
     margin: auto 1em auto 0;
     @include b-style-hrange-input;
     flex: 1 1 auto;  /* grow beyond minimum width */
     max-width: 50%;  /* avoid excessive sizes */
     width: 1.5em;    /* minimum width */
+  }
+  input[type='number'] {
+    text-align: right;
+    outline-width: 0; border: none;
+    @include b-style-number-input;
   }
 }
 `;
@@ -51,11 +56,11 @@ const HTML = t =>
 html`
 <label class="tabular-nums">
   <input ${ref (h => t.slidertype = h)} type="range"
-         tabindex=${CONFIG.slidertabindex} :min=${t.fmin()} :max=${t.fmax()}
+         tabindex=${CONFIG.slidertabindex} min=${t.min} max=${t.max}
          step=${t.slidersteps()} ?disabled=${t.readonly}
          .value=${t.value} @input=${e => t.emit_input_value (e.target.value)} >
   <input ${ref (h => t.numbertype = h)} type="number" style=${t.numberstyle()}
-         min=${t.fmin()} max=${t.fmax()} step=${t.fstep()} ?readonly=${t.readonly}
+         min=${t.min} max=${t.max} step=${t.step} ?readonly=${t.readonly}
          .value=${t.value} @input=${e => t.emit_input_value (e.target.value)} >
 </label>
 `;
@@ -72,9 +77,9 @@ class BNumberInput extends LitComponent {
     value:	{ type: [String, Number] },
     allowfloat:	{ type: Boolean, },
     readonly:	{ type: Boolean, },
-    min:	{ type: [String, Number], },
-    max:	{ type: [String, Number], },
-    step:	{ type: [String, Number], },
+    min:	{ type: Number, },
+    max:	{ type: Number, },
+    step:	{ type: Number, },
   };
   constructor() {
     super();
@@ -84,6 +89,8 @@ class BNumberInput extends LitComponent {
     this.min = -Number.MAX_SAFE_INTEGER;
     this.max = +Number.MAX_SAFE_INTEGER;
     this.step = 1;
+    this.slidertype = null;
+    this.numbertype = null;
   }
   updated (changed_props)
   {
@@ -104,18 +111,15 @@ class BNumberInput extends LitComponent {
       v = 0;
     if (!this.allowfloat)                       // use v|0 to cast to int
       v = 0 | (v > 0 ? v + 0.5 : v - 0.5);
-    return Util.clamp (v, this.fmin(), this.fmax());
+    return Util.clamp (v, this.min, this.max);
   }
-  fmin()  { return parseFloat (this.min); }
-  fmax()  { return parseFloat (this.max); }
-  fstep() { return parseFloat (this.step); }
   slidersteps()                                 // aproximate slider steps to slider pixels
   {
     if (!this.allowfloat)
       return 1;                                 // use integer stepping for slider
     // slider float stepping, should roughly amount to the granularity the slider offers in pixels
     const sliderlength = 250;                   // uneducated approximation of maximum slider length
-    const delta = Math.abs (this.fmax() - this.fmin());
+    const delta = Math.abs (this.max - this.min);
     if (delta > 0)
       {
         const l10 = Math.log (10);
@@ -129,8 +133,8 @@ class BNumberInput extends LitComponent {
   {
     const l10 = Math.log (10);
     const minimum = 123456;                     // minimum number of digits always representable
-    const delta = Math.max (minimum, Math.abs (this.fmax()), Math.abs (this.fmin()),
-                            Math.abs (this.fmax() - this.fmin())) + (this.fmin() < 0);
+    const delta = Math.max (minimum, Math.abs (this.max), Math.abs (this.min),
+                            Math.abs (this.max - this.min)) + Number (this.min < 0);
     const digits = Math.log (Math.max (delta, 618)) / l10;
     const em2digit = 0.9;
     const width = 0.5 + Math.ceil (digits * em2digit + 1); // margin + digits + spin-arrows
