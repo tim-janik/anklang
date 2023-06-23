@@ -74,7 +74,11 @@
 	<h-flex class="-field" style="grid-column: 2 / span 2" >
 	  <span class="-value" style="text-align: right" :data-bubble="prop.blurb_" >
 	    <component :is="prop.ctype_" v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
-					 :value="prop.fetch_()" @input="prop.apply_" v-if="prop.ctype_.startsWith ('b-fed-')" ></component>
+					 :value="prop.fetch_()" @input="prop.apply_"
+					 v-if="prop.ctype_.startsWith ('b-fed-')" ></component>
+	    <b-numberinput v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
+			   :value="prop.fetch_()" @input="prop.apply_ ($event.target.value)"
+			   v-if="prop.ctype_ === 'b-numberinput'" ></b-numberinput>
 	    <b-textinput v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
 			 :value="prop.fetch_()" @input="prop.apply_ ($event.target.value)"
 			 v-if="prop.ctype_ === 'b-textinput'" ></b-textinput>
@@ -128,7 +132,7 @@ async function list_fields (proplist) {
 	  let ctype = '';	// component type
 	  if (xprop.hints_.search (/:range:/) >= 0)
 	    {
-	      ctype = 'b-fed-number';
+	      ctype = 'b-numberinput';
 	      if ((xprop.min_ | xprop.max_) != 0)
 		xprop.attrs_ = Object.assign ({}, xprop.attrs_, { min: xprop.min_, max: xprop.max_ });
 	    }
