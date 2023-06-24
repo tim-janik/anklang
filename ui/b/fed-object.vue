@@ -64,31 +64,34 @@
     <template v-for="group in gprops" :key="'group-' + group.name" >
 
       <h-flex class="-group" style="grid-column: 1 / span 3" >
-	<span class="-label" style="flex-grow: 0;" v-if="group.name" >{{ group.name }}</span>
-	<hr style="flex-grow: 1; margin-left: 0.5em; min-width: 5em" v-if="group.name" />
+        <span class="-label" style="flex-grow: 0;" v-if="group.name" >{{ group.name }}</span>
+        <hr style="flex-grow: 1; margin-left: 0.5em; min-width: 5em" v-if="group.name" />
       </h-flex>
 
       <template v-for="prop in group.props" :key="'fed-' + prop.ident_" >
-	<span class="-flabel" style="grid-column: 1" :data-bubble="prop.blurb_"
-	>{{ prop.label_ }}</span>
-	<h-flex class="-field" style="grid-column: 2 / span 2" >
-	  <span class="-value" style="text-align: right" :data-bubble="prop.blurb_" >
-	    <component :is="prop.ctype_" v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
-					 :value="prop.fetch_()" @input="prop.apply_"
-					 v-if="prop.ctype_.startsWith ('b-fed-')" ></component>
-	    <b-numberinput v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
-			   :value="prop.fetch_()" @input="prop.apply_ ($event.target.value)"
-			   v-if="prop.ctype_ === 'b-numberinput'" ></b-numberinput>
-	    <b-textinput v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
-			 :value="prop.fetch_()" @input="prop.apply_ ($event.target.value)"
-			 v-if="prop.ctype_ === 'b-textinput'" ></b-textinput>
-	    <b-choice v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
-		      :value="prop.fetch_()" @update:value="prop.apply_ ($event)" :choices="prop.value_.choices"
-		      v-if="prop.ctype_ === 'b-choice'" ></b-choice>
-	  </span>
-	  <span>
-	    <span class="b-fed-object-clear" @click="prop.reset()" > ⊗  </span></span>
-	</h-flex>
+        <span class="-flabel" style="grid-column: 1" :data-bubble="prop.blurb_"
+        >{{ prop.label_ }}</span>
+        <h-flex class="-field" style="grid-column: 2 / span 2" >
+          <span class="-value" style="text-align: right" :data-bubble="prop.blurb_" >
+            <component :is="prop.ctype_" v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
+                                         :value="prop.fetch_()" @input="prop.apply_"
+                                         v-if="prop.ctype_.startsWith ('b-fed-')" ></component>
+            <b-switchinput v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
+                           :value="prop.fetch_()" @input="prop.apply_ ($event.target.value)"
+                           v-if="prop.ctype_ === 'b-switchinput'" ></b-switchinput>
+            <b-numberinput v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
+                           :value="prop.fetch_()" @input="prop.apply_ ($event.target.value)"
+                           v-if="prop.ctype_ === 'b-numberinput'" ></b-numberinput>
+            <b-textinput v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
+                         :value="prop.fetch_()" @input="prop.apply_ ($event.target.value)"
+                         v-if="prop.ctype_ === 'b-textinput'" ></b-textinput>
+            <b-choice v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
+                      :value="prop.fetch_()" @update:value="prop.apply_ ($event)" :choices="prop.value_.choices"
+                      v-if="prop.ctype_ === 'b-choice'" ></b-choice>
+          </span>
+          <span>
+            <span class="b-fed-object-clear" @click="prop.reset()" > ⊗  </span></span>
+        </h-flex>
       </template>
 
     </template>
@@ -137,7 +140,7 @@ async function list_fields (proplist) {
 		xprop.attrs_ = Object.assign ({}, xprop.attrs_, { min: xprop.min_, max: xprop.max_ });
 	    }
 	  else if (xprop.hints_.search (/:bool:/) >= 0)
-	    ctype = 'b-fed-switch';
+	    ctype = 'b-switchinput';
 	  else if (xprop.has_choices_)
 	    ctype = 'b-choice';
 	  else
