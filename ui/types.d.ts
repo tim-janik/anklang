@@ -11,6 +11,7 @@ declare global {
   var Shell: any;
   var CONFIG: any;
   var __DEV__: bool;
+  var debug: Function;
 }
 
 export {};
