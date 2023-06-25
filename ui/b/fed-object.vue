@@ -85,9 +85,9 @@
             <b-textinput v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
                          :value="prop.fetch_()" @input="prop.apply_ ($event.target.value)"
                          v-if="prop.ctype_ === 'b-textinput'" ></b-textinput>
-            <b-choice v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
-                      :value="prop.fetch_()" @update:value="prop.apply_ ($event)" :choices="prop.value_.choices"
-                      v-if="prop.ctype_ === 'b-choice'" ></b-choice>
+            <b-choiceinput v-bind="prop.attrs_" :class="'b-fed-object--' + prop.ident_"
+			   :value="prop.fetch_()" @input="prop.apply_ ($event.target.value)" :choices="prop.value_.choices"
+			   v-if="prop.ctype_ === 'b-choiceinput'" ></b-choiceinput>
           </span>
           <span>
             <span class="b-fed-object-clear" @click="prop.reset()" > ⊗  </span></span>
@@ -142,7 +142,7 @@ async function list_fields (proplist) {
 	  else if (xprop.hints_.search (/:bool:/) >= 0)
 	    ctype = 'b-switchinput';
 	  else if (xprop.has_choices_)
-	    ctype = 'b-choice';
+	    ctype = 'b-choiceinput';
 	  else
 	    ctype = 'b-textinput';
 	  xprop.ctype_ = ctype;
