@@ -33,9 +33,9 @@
   <v-flex class="b-pro-input tabular-nums" :data-bubble="bubble()" >
     <b-toggle class="b-pro-input-toggle" v-if="type() == 'toggle'" label=""
 	      :value="get_num()" @update:value="set_num ($event)" />
-    <b-choice class="b-pro-input-choice" v-if="type() == 'choice'" small="1" indexed="1"
-	      :prop="prop" :choices="choices"
-	      :value="get_index()" @update:value="set_index ($event)" />
+    <b-choiceinput class="b-pro-input-choice" v-if="type() == 'choice'" small="1" indexed="1"
+		   :prop="prop" :choices="choices"
+		   :value="get_ident()" @input="set_index ($event.target.index())" />
     <span   class="b-pro-input-span" v-if="labeled && !!nick">{{ nick }}</span>
   </v-flex>
 </template>
@@ -142,6 +142,13 @@ export default {
 	return 0;
       const max = this.choices.length - 1;
       return this.vnum * max;
+    },
+    get_ident() {
+      if (this.choices === undefined || this.choices.length < 1)
+	return '';
+      const max = this.choices.length - 1;
+      const n = 0| this.vnum * max;
+      return n < this.choices.length ? this.choices[n].ident : '';
     },
     is_bidir() {
       this.bidir_ = this.hints.search (/:bidir:/) >= 0;
