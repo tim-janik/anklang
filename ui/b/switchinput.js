@@ -48,7 +48,7 @@ b-switchinput label {
 // <HTML/>
 const HTML = t =>
 html`
-<label>
+<label @keydown=${t.keydown} >
   <input ${ref (h => t.checkboxtype = h)} type="checkbox" ?disabled=${t.readonly}
          .checked=${!!t.value} @change=${e => t.emit_input_value (e.target.checked)} >
   <span class="b-switchinput-trough"><span class="b-switchinput-knob"></span></span>
@@ -100,6 +100,22 @@ class BSwitchInput extends LitComponent {
       this.value = boolvalue; // becomes Event.target.value
       this.dispatchEvent (new Event ('valuechange', { composed: true }));
     }
+  }
+  keydown (event)
+  {
+    // allow selection changes with LEFT/RIGHT/UP/DOWN
+    if (event.keyCode == Util.KeyCode.LEFT || event.keyCode == Util.KeyCode.UP)
+      {
+	event.preventDefault();
+	event.stopPropagation();
+	this.checkboxtype.checked == false || this.checkboxtype.click();
+      }
+    else if (event.keyCode == Util.KeyCode.RIGHT || event.keyCode == Util.KeyCode.DOWN)
+      {
+	event.preventDefault();
+	event.stopPropagation();
+	this.checkboxtype.checked == true || this.checkboxtype.click();
+      }
   }
 }
 customElements.define ('b-switchinput', BSwitchInput);
