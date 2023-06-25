@@ -2,6 +2,7 @@
 "use strict";
 
 import './browserified.js';	// provides require() and browserified modules
+import './b/basics.js';		// Register basic components first
 import { LitComponent, html, css, docs, lit_update_all } from '../little.js';
 
 // Global CONFIG
