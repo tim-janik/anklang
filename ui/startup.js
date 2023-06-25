@@ -29,46 +29,6 @@ import { create_app } from './b/app.js';
 // load Script host
 import * as Script from './script.js';
 
-// Custom Elements
-class PushButton extends HTMLElement {
-  constructor() { super(); }
-}
-customElements.define ('push-button', PushButton);
-
-// == HFlex ==
-class HFlex extends LitComponent {
-  static styles = [ css`
-    :host { display: flex; flex-basis: auto; flex-direction: row;
-            flex-wrap: nowrap; align-items: stretch; align-content: stretch; }
-    :host[inline] { display: inline-flex; }
-  ` ];
-  render() { return html`<slot></slot>`; }
-}
-customElements.define ('h-flex', HFlex);
-
-// == VFlex ==
-class VFlex extends LitComponent {
-  static styles = [ css`
-    :host { display: flex; flex-basis: auto; flex-direction: column;
-            flex-wrap: nowrap; align-items: stretch; align-content: stretch; }
-    :host[inline] { display: inline-flex; }
-  ` ];
-  render() { return html`<slot></slot>`; }
-}
-customElements.define ('v-flex', VFlex);
-
-// == CGrid ==
-class CGrid extends LitComponent {
-  // Container for grid layouting, see: https://www.w3.org/TR/css-grid-1/#grid-containers
-  // visual cheatsheet: http://grid.malven.co/
-  static styles = [ css`
-    :host { display: grid; }
-    :host[inline] { display: inline-grid; }
-  ` ];
-  render() { return html`<slot></slot>`; }
-}
-customElements.define ('c-grid', CGrid);
-
 const Jsonapi = {
   jstrigger_counter: 100000 * (10 + (0 | 89 * Math.random())),
   jstrigger_map: {},
