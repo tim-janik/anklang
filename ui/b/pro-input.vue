@@ -35,7 +35,7 @@
 	      :value="get_num()" @update:value="set_num ($event)" />
     <b-choiceinput class="b-pro-input-choice" v-if="type() == 'choice'" small="1" indexed="1"
 		   :prop="prop" :choices="choices"
-		   :value="get_ident()" @input="set_index ($event.target.index())" />
+		   :value="get_ident()" @valuechange="set_index ($event.target.index())" />
     <span   class="b-pro-input-span" v-if="labeled && !!nick">{{ nick }}</span>
   </v-flex>
 </template>
