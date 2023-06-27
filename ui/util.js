@@ -890,6 +890,11 @@ const empty_list = Object.freeze ([]);
  */
 export async function extend_property (prop, disconnector = undefined, augment = undefined) {
   prop = await prop;
+  if (prop.update_ && prop.fetch_) {
+    // already extended
+    await prop.update_();
+    return prop;
+  }
   const xprop = {
     hints_: prop.hints(),
     ident_: prop.identifier(),
