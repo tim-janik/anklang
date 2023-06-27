@@ -1244,16 +1244,19 @@ export function setup_shield_element (shield, containee, closer, capture_escape 
   return undo_shield;
 }
 
+/** Stop (immediate) propagation and prevent default handler for an event. */
+export function fullstop (event)
+{
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  return true;
+}
+
 /** Use capturing to swallow any `type` events until `timeout` has passed */
 export function swallow_event (type, timeout = 0) {
-  const preventandstop = function (event) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    return true;
-  };
-  document.addEventListener (type, preventandstop, true);
-  setTimeout (() => document.removeEventListener (type, preventandstop, true), timeout);
+  document.addEventListener (type, fullstop, true);
+  setTimeout (() => document.removeEventListener (type, fullstop, true), timeout);
 }
 
 /// Prevent default or any propagation for a possible event.
