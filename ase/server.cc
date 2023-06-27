@@ -94,7 +94,7 @@ Preferences::access_properties (const EventHandler &eventhandler)
   bag += Text (&plugin_path, _("Plugin Path"), "", STANDARD + "searchpath",
                _("Search path of directories, seperated by \";\", used to find plugins. This path "
                  "is searched for in addition to the standard plugin location on this system."));
-  bag.on_events ("change", eventhandler);
+  bag.on_events ("notify", eventhandler);
   return bag.props;
 }
 
