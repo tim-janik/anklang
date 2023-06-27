@@ -54,7 +54,7 @@ $scroll-shadow-inset: 7px;
   position: absolute; top: 0; left: 0; height: 200%;
   width: calc(100% + 200px); margin-left: -100px;
   // add inner box-shadow to indicate scrolling borders
-  z-index: 999; pointer-events: none; user-select: none;
+  z-index: 1; pointer-events: none; user-select: none;
   box-shadow: black 0 0 $scroll-shadow-inset 0px inset;
 }
 `;

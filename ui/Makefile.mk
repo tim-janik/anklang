@@ -336,7 +336,7 @@ $>/.tscheck.done: ui/types.d.ts ui/tsconfig.json $(ui/tscheck.deps) ui/Makefile.
 	$(QECHO) RUN tscheck
 	$Q cp ui/tsconfig.json ui/types.d.ts $>/ui/
 	@ # tsc *.js needs to find node_modules/ in the directory hierarchy ("moduleResolution": "node")
-	-$Q cd $>/ && node_modules/.bin/tsc -p ui/tsconfig.json --pretty false |& ../misc/colorize.sh
+	-$Q cd $>/ && node_modules/.bin/tsc -p ui/tsconfig.json $${INSIDE_EMACS:+--pretty false}
 	$Q touch $@
 $>/ui/.build2-stamp: $>/.tscheck.done
 tscheck: $>/node_modules/.npm.done

@@ -1,274 +1,290 @@
 {
-  "title": "Play Notes",
-  "steps": [
-    {
-      "type": "setViewport",
-      "width": 1356,
-      "height": 1052,
-      "deviceScaleFactor": 1,
-      "isMobile": false,
-      "hasTouch": false,
-      "isLandscape": false
-    },
-    {
-      "type": "navigate",
-      "url": "http://127.0.0.1:1777/",
-      "assertedEvents": [
+    "title": "Recording 6/27/2023 at 3:31:02 AM",
+    "steps": [
         {
-          "type": "navigation",
-          "url": "http://127.0.0.1:1777/",
-          "title": "Untitled – Anklang"
+            "type": "setViewport",
+            "width": 1459,
+            "height": 1052,
+            "deviceScaleFactor": 1,
+            "isMobile": false,
+            "hasTouch": false,
+            "isLandscape": false
+        },
+        {
+            "type": "navigate",
+            "url": "http://127.0.0.1:1777/",
+            "assertedEvents": [
+                {
+                    "type": "navigation",
+                    "url": "http://127.0.0.1:1777/",
+                    "title": "Untitled – Anklang"
+                }
+            ]
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "h-flex.b-menubar > b-buttonbar:nth-of-type(1) > push-button:nth-of-type(1)"
+                ],
+                [
+                    "xpath///*[@id=\"b-app\"]/c-grid/h-flex[1]/b-buttonbar[1]/push-button[1]"
+                ],
+                [
+                    "pierce/h-flex.b-menubar > b-buttonbar:nth-of-type(1) > push-button:nth-of-type(1)"
+                ]
+            ],
+            "offsetY": 14.199999809265137,
+            "offsetX": 29.199999809265137
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "h-flex.b-menubar > b-buttonbar:nth-of-type(1) > push-button:nth-of-type(1)"
+                ],
+                [
+                    "xpath///*[@id=\"b-app\"]/c-grid/h-flex[1]/b-buttonbar[1]/push-button[1]"
+                ],
+                [
+                    "pierce/h-flex.b-menubar > b-buttonbar:nth-of-type(1) > push-button:nth-of-type(1)"
+                ]
+            ],
+            "offsetY": 52.19999980926514,
+            "offsetX": 103.19999980926514
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "span:nth-of-type(1) > b-icon:nth-of-type(1) > i"
+                ],
+                [
+                    "xpath///*[@id=\"b-app\"]/c-grid/h-flex[3]/span[1]/b-icon[1]/i"
+                ],
+                [
+                    "pierce/span:nth-of-type(1) > b-icon:nth-of-type(1) > i"
+                ],
+                [
+                    "text/equalizer"
+                ]
+            ],
+            "offsetY": 16.824951171875,
+            "offsetX": 10.25
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "b-more",
+                    "v-flex"
+                ],
+                [
+                    "xpath///*[@id=\"b-app\"]/c-grid/h-flex[2]/h-flex/b-more",
+                    "xpath//v-flex"
+                ],
+                [
+                    "pierce/b-more",
+                    "pierce/v-flex"
+                ]
+            ],
+            "offsetY": 60.6875,
+            "offsetX": 5.6875
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "aria/BlepSynth"
+                ],
+                [
+                    "li:nth-of-type(4) > ul div"
+                ],
+                [
+                    "xpath///*[@id=\"g-devicepanelcmenu\"]/div/ul/li[4]/ul/li/span/div"
+                ],
+                [
+                    "pierce/li:nth-of-type(4) > ul div"
+                ]
+            ],
+            "offsetY": 10.64996337890625,
+            "offsetX": 40.69999694824219
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "span:nth-of-type(1) > b-icon:nth-of-type(2) > i"
+                ],
+                [
+                    "xpath///*[@id=\"b-app\"]/c-grid/h-flex[3]/span[1]/b-icon[2]/i"
+                ],
+                [
+                    "pierce/span:nth-of-type(1) > b-icon:nth-of-type(2) > i"
+                ],
+                [
+                    "text/queue_music"
+                ]
+            ],
+            "offsetY": 7.824951171875,
+            "offsetX": 6.4375
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "b-piano-roll",
+                    "v-flex"
+                ],
+                [
+                    "xpath///*[@id=\"b-app\"]/c-grid/b-piano-roll",
+                    "xpath//c-grid/v-flex"
+                ],
+                [
+                    "pierce/b-piano-roll",
+                    "pierce/v-flex"
+                ]
+            ],
+            "offsetY": 6.824981689453125,
+            "offsetX": 53
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "b-piano-roll",
+                    "v-flex"
+                ],
+                [
+                    "xpath///*[@id=\"b-app\"]/c-grid/b-piano-roll",
+                    "xpath//c-grid/v-flex"
+                ],
+                [
+                    "pierce/b-piano-roll",
+                    "pierce/v-flex"
+                ]
+            ],
+            "offsetY": 104.82498168945312,
+            "offsetX": 56
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "b-piano-roll",
+                    "canvas.-notes_canvas"
+                ],
+                [
+                    "xpath///*[@id=\"b-app\"]/c-grid/b-piano-roll",
+                    "xpath//c-grid/canvas[3]"
+                ],
+                [
+                    "pierce/canvas.-notes_canvas"
+                ]
+            ],
+            "offsetY": 314.4749755859375,
+            "offsetX": 21
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "b-piano-roll",
+                    "canvas.-notes_canvas"
+                ],
+                [
+                    "xpath///*[@id=\"b-app\"]/c-grid/b-piano-roll",
+                    "xpath//c-grid/canvas[3]"
+                ],
+                [
+                    "pierce/canvas.-notes_canvas"
+                ]
+            ],
+            "offsetY": 278.4749755859375,
+            "offsetX": 65
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "b-piano-roll",
+                    "canvas.-notes_canvas"
+                ],
+                [
+                    "xpath///*[@id=\"b-app\"]/c-grid/b-piano-roll",
+                    "xpath//c-grid/canvas[3]"
+                ],
+                [
+                    "pierce/canvas.-notes_canvas"
+                ]
+            ],
+            "offsetY": 249.4749755859375,
+            "offsetX": 107
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "b-piano-roll",
+                    "canvas.-notes_canvas"
+                ],
+                [
+                    "xpath///*[@id=\"b-app\"]/c-grid/b-piano-roll",
+                    "xpath//c-grid/canvas[3]"
+                ],
+                [
+                    "pierce/canvas.-notes_canvas"
+                ]
+            ],
+            "offsetY": 315.4749755859375,
+            "offsetX": 149
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "push-button:nth-of-type(4) i"
+                ],
+                [
+                    "xpath///*[@id=\"b-app\"]/c-grid/h-flex[1]/h-flex/b-playcontrols/b-buttonbar/push-button[4]/b-icon/i"
+                ],
+                [
+                    "pierce/push-button:nth-of-type(4) i"
+                ]
+            ],
+            "offsetY": 19.399999618530273,
+            "offsetX": 4.125
+        },
+        {
+            "type": "click",
+            "target": "main",
+            "selectors": [
+                [
+                    "push-button:nth-of-type(3) > b-icon"
+                ],
+                [
+                    "xpath///*[@id=\"b-app\"]/c-grid/h-flex[1]/h-flex/b-playcontrols/b-buttonbar/push-button[3]/b-icon"
+                ],
+                [
+                    "pierce/push-button:nth-of-type(3) > b-icon"
+                ]
+            ],
+            "offsetY": 16.399999618530273,
+            "offsetX": 2.71246337890625,
+            "duration": 2210
         }
-      ]
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > h-flex.b-menubar.-row1.-col123 > span:nth-child(1) > push-button:nth-child(1) > div > b-icon:nth-child(2) > i"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/h-flex[1]/span[1]/push-button[1]/div/b-icon[2]/i"
-        ]
-      ],
-      "offsetY": 17,
-      "offsetX": 28
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#g-filemenu > b-menuitem:nth-child(1)",
-          "button > span.menulabel"
-        ],
-        [
-          "xpath///*[@id=\"g-filemenu\"]/b-menuitem[1]",
-          "xpath//button/span[1]"
-        ]
-      ],
-      "offsetY": 1,
-      "offsetX": 1
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > h-flex.b-statusbar.-row9.-col123 > span:nth-child(1) > b-icon:nth-child(1) > i"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/h-flex[3]/span[1]/b-icon[1]/i"
-        ]
-      ],
-      "offsetY": 1,
-      "offsetX": 8
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > h-flex.b-devicepanel.-row3.-col2 > h-flex > b-more",
-          "v-flex"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/h-flex[2]/h-flex/b-more",
-          "xpath//v-flex"
-        ]
-      ],
-      "offsetY": 76.78125,
-      "offsetX": 14.171875
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "aria/BlepSynth"
-        ],
-        [
-          "#g-devicepanelcmenu > div > ul > li:nth-child(4) > ul > li > span > div"
-        ],
-        [
-          "xpath///*[@id=\"g-devicepanelcmenu\"]/div/ul/li[4]/ul/li/span/div"
-        ]
-      ],
-      "offsetY": 13.796875,
-      "offsetX": 55
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > h-flex.b-statusbar.-row9.-col123 > span:nth-child(1) > b-icon:nth-child(2) > i"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/h-flex[3]/span[1]/b-icon[2]/i"
-        ]
-      ],
-      "offsetY": 8,
-      "offsetX": 17.21875
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > b-piano-roll",
-          "c-grid > v-flex > b-icon > i"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/b-piano-roll",
-          "xpath//c-grid/v-flex/b-icon/i"
-        ]
-      ],
-      "offsetY": 4,
-      "offsetX": 4.1875
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > b-piano-roll",
-          "#g-pianotoolmenu > b-menuitem:nth-child(3)",
-          "button > span.kbdspan"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/b-piano-roll",
-          "xpath///*[@id=\"g-pianotoolmenu\"]/b-menuitem[3]",
-          "xpath//button/span[2]"
-        ]
-      ],
-      "offsetY": 1,
-      "offsetX": 1
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > b-piano-roll",
-          "c-grid > canvas.-col2.-row2.-notes_canvas"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/b-piano-roll",
-          "xpath//c-grid/canvas[3]"
-        ]
-      ],
-      "offsetY": 294.8125,
-      "offsetX": 21
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > b-piano-roll",
-          "c-grid > canvas.-col2.-row2.-notes_canvas"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/b-piano-roll",
-          "xpath//c-grid/canvas[3]"
-        ]
-      ],
-      "offsetY": 238.8125,
-      "offsetX": 71
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > b-piano-roll",
-          "c-grid > canvas.-col2.-row2.-notes_canvas"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/b-piano-roll",
-          "xpath//c-grid/canvas[3]"
-        ]
-      ],
-      "offsetY": 292.8125,
-      "offsetX": 107
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > b-piano-roll",
-          "c-grid > canvas.-col2.-row2.-notes_canvas"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/b-piano-roll",
-          "xpath//c-grid/canvas[3]"
-        ]
-      ],
-      "offsetY": 225.8125,
-      "offsetX": 148
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > h-flex.b-menubar.-row1.-col123 > h-flex > span > push-button:nth-child(4) > b-icon > i"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/h-flex[1]/h-flex/span/push-button[4]/b-icon/i"
-        ]
-      ],
-      "offsetY": 21,
-      "offsetX": 14.46875,
-      "duration": 50
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > h-flex.b-menubar.-row1.-col123"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/h-flex[1]"
-        ]
-      ],
-      "offsetY": 2,
-      "offsetX": 349,
-      "duration": 50
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > h-flex.b-menubar.-row1.-col123 > h-flex > span > push-button:nth-child(3) > b-icon > i"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/h-flex[1]/h-flex/span/push-button[3]/b-icon/i"
-        ]
-      ],
-      "offsetY": 1,
-      "offsetX": 11.65625,
-      "duration": 2000
-    },
-    {
-      "type": "click",
-      "target": "main",
-      "selectors": [
-        [
-          "#b-app > c-grid > h-flex.b-menubar.-row1.-col123"
-        ],
-        [
-          "xpath///*[@id=\"b-app\"]/c-grid/h-flex[1]"
-        ]
-      ],
-      "offsetY": 23,
-      "offsetX": 284,
-      "duration": 50
-    }
-  ]
+    ]
 }

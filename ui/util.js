@@ -2,6 +2,7 @@
 'use strict';
 
 import * as Kbd from './kbd.js';
+import * as Wrapper from './wrapper.js';
 
 // == Compat fixes ==
 class FallbackResizeObserver {
@@ -890,6 +891,11 @@ const empty_list = Object.freeze ([]);
  */
 export async function extend_property (prop, disconnector = undefined, augment = undefined) {
   prop = await prop;
+  if (prop.update_ && prop.fetch_) {
+    // already extended
+    await prop.update_();
+    return prop;
+  }
   const xprop = {
     hints_: prop.hints(),
     ident_: prop.identifier(),
@@ -904,7 +910,7 @@ export async function extend_property (prop, disconnector = undefined, augment =
     max_: prop.get_max(),
     step_: prop.get_step(),
     has_choices_: false,
-    value_: Vue.reactive ({ val: undefined, num: 0, text: '', choices: empty_list }),
+    value_: undefined, // define_reactive()
     apply_: prop.set_value.bind (prop),
     fetch_: () => xprop.is_numeric_ ? xprop.value_.num : xprop.value_.text,
     update_: async () => {
@@ -912,12 +918,15 @@ export async function extend_property (prop, disconnector = undefined, augment =
       const choices = xprop.has_choices_ ? await xprop.choices() : empty_list;
       const value_ = { val: await val, num: undefined, text: await text, choices };
       value_.num = (value_.val - xprop.min_) / (xprop.max_ - xprop.min_);
-      Object.assign (xprop.value_, value_);
+      xprop.value_ = value_;
       if (augment)
 	await augment (xprop);
     },
     __proto__: prop,
   };
+  Wrapper.define_reactive (xprop, {
+    value_: { val: undefined, num: 0, text: '', choices: empty_list },
+  });
   if (disconnector)
     disconnector (xprop.on ('notify', _ => xprop.update_()));
   await object_await_values (xprop);	// ensure xprop.hints_ is valid
@@ -1244,16 +1253,19 @@ export function setup_shield_element (shield, containee, closer, capture_escape 
   return undo_shield;
 }
 
+/** Stop (immediate) propagation and prevent default handler for an event. */
+export function fullstop (event)
+{
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  return true;
+}
+
 /** Use capturing to swallow any `type` events until `timeout` has passed */
 export function swallow_event (type, timeout = 0) {
-  const preventandstop = function (event) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    return true;
-  };
-  document.addEventListener (type, preventandstop, true);
-  setTimeout (() => document.removeEventListener (type, preventandstop, true), timeout);
+  document.addEventListener (type, fullstop, true);
+  setTimeout (() => document.removeEventListener (type, fullstop, true), timeout);
 }
 
 /// Prevent default or any propagation for a possible event.

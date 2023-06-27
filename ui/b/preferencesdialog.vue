@@ -19,7 +19,8 @@
     <template v-slot:header>
       <div>Anklang Preferences</div>
     </template>
-    <b-fed-object class="b-preferencesdialog-fed" ref="fedobject" :value="proplist" :augment="augment" @input="value_changed" debounce=75 />
+    <b-objecteditor class="b-preferencesdialog-fed" ref="fedobject" :value="proplist" :augment="augment" >
+    </b-objecteditor>
     <template v-slot:footer>
       <div><button autofocus @click="$emit ('update:shown', false)" > Close </button></div>
     </template>
@@ -32,7 +33,7 @@ import * as Util from "../util.js";
 async function augment_property (xprop) {
   if (xprop.has_choices_)
     {
-      Object.assign (xprop.attrs_, { title: xprop.label_ + " Selection" });
+      Object.assign (xprop, { title_: xprop.label_ + " Selection" });
       for (let i = 0; i < xprop.value_.choices.length; i++)
 	{
 	  const c = xprop.value_.choices[i];
@@ -118,13 +119,6 @@ export default {
   },
   methods: {
     augment (p) { return augment_property.call (this, p); },
-    async value_changed (po) {
-      const prefs = await Ase.server.get_prefs();
-      Util.assign_forin (prefs, po);
-      await Ase.server.set_prefs (prefs);
-      if (this.prefrefresh)
-	this.prefrefresh();
-    },
   },
 };
 </script>

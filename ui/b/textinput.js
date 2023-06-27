@@ -15,7 +15,7 @@ import * as Util from '../util.js';
  * : Make this component non editable for the user.
  *
  * ## Events:
- * *input*
+ * *valuechange*
  * : This event is emitted whenever the value changes through user input or needs to be constrained.
  */
 
@@ -68,7 +68,7 @@ class BTextInput extends LitComponent {
     const constrainedvalue = this.constrain (this.input_element.value);
     if (constrainedvalue !== this.value) {
       this.value = constrainedvalue; // becomes Event.target.value
-      this.dispatchEvent (new Event ('input', { composed: true }));
+      this.dispatchEvent (new Event ('valuechange', { composed: true }));
     }
   }
   constrain (txt) {

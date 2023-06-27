@@ -98,7 +98,7 @@ JSONIPC_INHERIT (LambdaPropertyImpl, Property);
 void
 LambdaPropertyImpl::notify()
 {
-  emit_event ("change", identifier());
+  emit_notify (identifier());
 }
 
 Value
@@ -204,7 +204,7 @@ void
 Bag::on_events (const String &eventselector, const EventHandler &eventhandler)
 {
   for (auto p : props)
-    connections.push_back (p->on_event ("change", eventhandler));
+    connections.push_back (p->on_event (eventselector, eventhandler));
 }
 
 } // Properties
