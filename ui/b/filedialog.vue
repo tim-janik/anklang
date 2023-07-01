@@ -48,11 +48,9 @@
     }
 
     input {
-      outline: 1px solid red;
       outline-width: 0;
       border: none; border-radius: $b-button-radius;
       text-align: left;
-      background-color: rgba(255,255,255,.3); color: #fff;
       padding-left: $b-button-radius; padding-right: $b-button-radius;
       @include b-style-inset;
       @include b-focus-outline;
