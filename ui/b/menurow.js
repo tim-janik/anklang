@@ -16,7 +16,7 @@ import { LitComponent, html, JsExtract, docs } from '../little.js';
 const STYLE = await JsExtract.fetch_css (import.meta);
 JsExtract.scss`
 :host {
-  display: inline-flex; flex: 0 0 auto; flex-wrap: nowrap; flex-direction: row;
+  display: inline-flex; flex: 0 0 auto; flex-flow: row nowrap;
   text-align: center; justify-content: center; align-items: baseline;
   margin: 0; padding: 0;
 }`;
