@@ -164,7 +164,7 @@ $>/ui/.build1-stamp: $(ui/scss.targets)
 # == vue-styles.css ==
 ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.vuecss)
 $(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
-$>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $(ui/scss.targets) ui/Makefile.mk
+$>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $>/ui/spinner.scss $(ui/scss.targets) ui/Makefile.mk
 	$(QGEN)
 	$Q echo '@charset "UTF-8";'					>  $@.vuecss
 	$Q echo "@import 'mixins.scss';"				>> $@.vuecss
