@@ -132,6 +132,7 @@ check-audio: FORCE
 install: FORCE
 uninstall: FORCE
 installcheck: FORCE
+lint: FORCE
 
 # == subdirs ==
 include devices/Makefile.mk
