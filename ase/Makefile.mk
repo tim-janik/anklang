@@ -238,6 +238,13 @@ $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgd
 	$(lib/gtk2wrap.so)		\
   ))
 
+# == ase/lint ==
+ase/lint: tscheck eslint stylelint
+	-$Q { TCOLOR=--color=always ; tty -s <&1 || TCOLOR=; } \
+	&& grep $$TCOLOR -nE '(/[*/]+[*/ ]*)?(FI[X]ME).*' -r ase/
+.PHONY: ase/lint
+lint: ase/lint
+
 # == Check Integrity Tests ==
 check-ase-tests: $(lib/AnklangSynthEngine)
 	$(QGEN)
