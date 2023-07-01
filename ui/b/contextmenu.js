@@ -66,8 +66,7 @@ dialog {
   overflow-x: hidden;
 }
 dialog::backdrop {
-  background: $b-style-modal-overlay;
-  background: #00000033;
+  background: $b-style-modal-overlay; // #00000033;
 }`;
 
 // == HTML ==
