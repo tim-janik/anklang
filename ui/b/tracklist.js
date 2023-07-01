@@ -19,14 +19,14 @@ $scroll-shadow-inset: 7px;
 }
 .grid {
   display: grid; flex-grow: 1;
-  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  position: relative; inset: 0;
+  padding: 0 calc(0.5 * $scroll-shadow-inset);
   align-items: stretch;
   grid-template-columns: min-content 3fr 2fr;
   grid-template-rows: min-content 1fr min-content;
   background-color: $b-tracklist-bg;
   overflow: hidden;
   // for :before box-shadow
-  position: relative; padding: 0 calc(0.5 * $scroll-shadow-inset);
 }
 .trackviews,
 .partlists,
