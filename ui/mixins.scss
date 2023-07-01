@@ -32,6 +32,12 @@ $b-switch-active:		#2080f0 !default;
 $b-switch-knob:		$b-button-foreground !default;
 $b-boxshadow-color:		fade(#000000, 30%) !default;
 
+// == h-flex ==
+@mixin h-flex() {
+  display: flex; flex-basis: auto; flex-direction: row;
+  flex-wrap: nowrap; align-items: stretch; align-content: stretch;
+}
+
 // == Hotkey ==
 @mixin b-kbd-hotkey($border: true) {
   font-family: mono;
