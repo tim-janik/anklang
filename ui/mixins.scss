@@ -40,7 +40,7 @@ $b-boxshadow-color:		fade(#000000, 30%) !default;
 
 // == Hotkey ==
 @mixin b-kbd-hotkey($border: true) {
-  font-family: mono;
+  font-family: $b-font-stack-kbd-mono;
   font-weight: 600;
   font-size: calc(1em - 2px);
   letter-spacing: 1px;
