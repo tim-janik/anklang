@@ -14,12 +14,12 @@ import * as Ase from '../aseapi.js';
 const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
 @import 'mixins.scss';
+b-positionview { @include h-flex(); }
 b-positionview {
   $b-positionview-fg: $b-lcdscreen-fg;
   $b-positionview-bg: $b-lcdscreen-bg;
   $b-positionview-b0: zmod($b-positionview-bg,Jz-=1);
   $b-positionview-b1: zmod($b-positionview-bg,Jz+=1);
-  @include h-flex();
   margin: 0; padding: 5px 1em;
   letter-spacing: 0.05em;
   border-radius: $b-button-radius; align-items: baseline;
