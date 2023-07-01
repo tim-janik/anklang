@@ -59,8 +59,8 @@ b-knob {
 
 #sprite {
   display: inline-block;
-  background: url(assets/cknob193u.png);
-  &[bidir] { background: url(assets/cknob193b.png); }
+  background: url("assets/cknob193u.png");
+  &[bidir] { background: url("assets/cknob193b.png"); }
   background-repeat: no-repeat;
   --pxsize: 40px;
   background-size: calc(1.0 * var(--pxsize));
