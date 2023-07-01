@@ -34,8 +34,12 @@ $b-boxshadow-color:		fade(#000000, 30%) !default;
 
 // == h-flex ==
 @mixin h-flex() {
-  display: flex; flex-basis: auto; flex-direction: row;
-  flex-wrap: nowrap; align-items: stretch; align-content: stretch;
+  display: flex; flex-basis: auto; flex-flow: row nowrap;
+  align-items: stretch; align-content: stretch;
+}
+@mixin v-flex() {
+  display: flex; flex-basis: auto; flex-flow: column nowrap;
+  align-items: stretch; align-content: stretch;
 }
 
 // == Hotkey ==
