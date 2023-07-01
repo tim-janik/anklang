@@ -12,9 +12,7 @@ JsExtract.scss`
 h-flex { @include h-flex(); }
 h-flex[inline] { display: inline-flex; }
 
-v-flex {
-  display: flex; flex-basis: auto; flex-direction: column;
-  flex-wrap: nowrap; align-items: stretch; align-content: stretch; }
+v-flex { @include v-flex(); }
 v-flex[inline] { display: inline-flex; }
 
 c-grid { display: grid; }
