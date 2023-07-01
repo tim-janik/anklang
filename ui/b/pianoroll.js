@@ -49,13 +49,12 @@ JsExtract.scss`
 }
 c-grid {
   background: $b-piano-roll-black-base;
-  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  position: absolute; inset: 0;
   align-items: stretch;
 
   grid-template-columns: min-content 1fr min-content;
   grid-template-rows:    min-content 1fr min-content;
 
-  background: #0000;
   canvas { background: black; object-fit: contain;
     min-width: 0; min-height: 0; // https://www.w3.org/TR/css3-grid-layout/#min-size-auto
   }
