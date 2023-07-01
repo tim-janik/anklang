@@ -350,7 +350,7 @@ ui/stylelint.files = $(ui/b/scss2css.targets) $(ui/b/css.targets) $>/ui/vue-styl
 $>/ui/.stylelint.done: $(ui/stylelint.files) ui/stylelintrc.cjs $>/node_modules/.npm.done
 	$(QECHO) RUN stylelint
 	$Q cp ui/stylelintrc.cjs $>/ui/stylelintrc.cjs
-	-$Q cd $>/ && node_modules/.bin/stylelint -c ui/stylelintrc.cjs $(ui/stylelint.files:$>/%=%)
+	-$Q cd $>/ && node_modules/.bin/stylelint $${INSIDE_EMACS:+-f unix} -c ui/stylelintrc.cjs $(ui/stylelint.files:$>/%=%)
 	$Q touch $@
 $>/ui/.build2-stamp: $>/ui/.stylelint.done
 stylelint: $>/node_modules/.npm.done
