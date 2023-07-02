@@ -1,5 +1,4 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-//import * as PianoRoll from "./piano-roll.mjs";
 
 import * as Util from '../util.js';
 
@@ -206,7 +205,7 @@ export class PianoCtrl {
 	const advance_selected = (clip, allnotes) => { // SINGLE signature
 	  const xnotes = [...allnotes];
 	  xnotes.sort ((a, b) => sortscore (a) - sortscore (b));
-	  let first = null, last = null, seenselected = false;
+	  let first = null, last = null, seenselected = 0;
 	  for (const note of xnotes) {
 	    if (note.selected) {
 	      seenselected++;
