@@ -50,21 +50,6 @@ endif
 # if 'realpath --relative-to' is missing, os.path.realpath could be used as fallback
 build2srcdir	 != realpath --relative-to $(builddir) .
 
-# == ls-tree.lst ==
-# Requires either git or a pre-packaged `ls-tree.lst` file
-$>/ls-tree.lst: $(GITCOMMITDEPS)				| $>/
-	$(QGEN)
-	$Q if test -r .git ; then			\
-		git ls-tree -r --name-only HEAD	> $@ ;	\
-	   else						\
-		$(CP) ./ls-tree.lst $@ ;		\
-	   fi
-# read ls-tree.lst into $(LS_TREE_LST)
-LS_TREE_LST ::= # added to by ls-tree.d
-$>/ls-tree.d: $>/ls-tree.lst Makefile.mk
-	$Q (echo 'LS_TREE_LST += $$(strip '\\ && sed 's/$$/ \\/' $< && echo ')') > $@
--include $>/ls-tree.d
-
 # == Mode ==
 # determine build mode
 MODE.origin ::= $(origin MODE) # before overriding, remember if MODE came from command line
@@ -124,6 +109,23 @@ include misc/config-uname.mk
 include misc/config-checks.mk
 include misc/config-external.mk
 .config.defaults += CC CFLAGS CXX CLANG_TIDY CXXFLAGS LDFLAGS LDLIBS
+
+# == ls-tree.lst ==
+# Requires either git or a pre-packaged `ls-tree.lst` file
+$>/ls-tree.lst: ; $(MAKE) $>/ls-tree.d
+# Note, GITCOMMITDEPS needs misc/config-utils.mk to be included
+# Read ls-tree.lst into $(LS_TREE_LST)
+LS_TREE_LST ::= # added to by ls-tree.d
+$>/ls-tree.d: $(GITCOMMITDEPS)						| $>/
+	$(QGEN)
+	$Q if test -r .git ; then					\
+		git ls-tree -r --name-only HEAD	> $>/ls-tree.lst ;	\
+	   else								\
+		$(CP) ./ls-tree.lst $>/ls-tree.lst ;			\
+	   fi
+	$Q ( echo 'LS_TREE_LST += $$(strip '\\ 				\
+	     && sed 's/$$/ \\/' $>/ls-tree.lst && echo ')' ) > $@
+-include $>/ls-tree.d
 
 # == enduser targets ==
 all: FORCE
