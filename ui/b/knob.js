@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
 /**
  * # B-KNOB
@@ -96,7 +97,7 @@ class BKnob extends LitComponent {
     this.nosize = false;
     this.hscroll = false; // allow horizontal device panel scrolling
     this.vscroll = true;
-    this.notify_value_cb = (...args) => this.notify_value (...args);
+    this.notify_value_cb = () => this.notify_value();
     this.clear_notify_cb = undefined;
     this.relabel_cb = Util.debounce (this.relabel);
     this.queue_commit = Util.debounce (this.commit_value);
@@ -104,6 +105,7 @@ class BKnob extends LitComponent {
     this.button1date = 0;
     this.last_ = 0; // knob value to paint
     this.text_ = '';
+    this.prop = null;
   }
   render()
   {
@@ -122,7 +124,7 @@ class BKnob extends LitComponent {
       return;
     const steps = 193 - 1;
     const r = Math.round (steps * this.last_);
-    this.sprite.style.backgroundPosition = "0px calc(" + -r + " * var(--pxsize))";
+    /**@type{HTMLElement}*/ (this.sprite).style.backgroundPosition = "0px calc(" + -r + " * var(--pxsize))";
     this.relabel_cb();
   }
   async relabel()
@@ -182,7 +184,7 @@ class BKnob extends LitComponent {
   wheel (event)
   {
     const d = Util.wheel_delta (event);
-    if (this.captureid_ === undefined && // not dragging
+    if (this[SPIN_DRAG].captureid === undefined && // not dragging
 	((!this.hscroll && d.x != 0) ||
 	 (!this.vscroll && d.y != 0)))
       return;	// only consume scroll events if enabled
@@ -220,7 +222,7 @@ class BKnob extends LitComponent {
     // handle double click
     if (event.buttons == 1)
       {
-        const button1date = new Date();
+        const button1date = Number (new Date());
         if (this.button1date && button1date - this.button1date <= 500)
           {
             this.button1date = 0;
@@ -246,7 +248,7 @@ class BKnob extends LitComponent {
 }
 customElements.define ('b-knob', BKnob);
 
-
+/** @this{BKnob} */
 function foreach_dispatch_propery_changed (changed_properties)
 {
   changed_properties.forEach ((oldprop, propname) => {
@@ -291,7 +293,7 @@ export function spin_drag_start (element, event, value_callback)
     spin_drag.captureid = event.pointerId;
   } catch (e) {
     // something went wrong, bail out the drag
-    console.warn ('drag_start: error:', e.message);
+    console.warn ('drag_start: error:', /**@type{Error}*/ (e).message);
     return false;
   }
   // use pointer lock for knob turning
@@ -309,7 +311,9 @@ export function spin_drag_start (element, event, value_callback)
   return true; // spin drag started
 }
 
-/// Stop sping drag event handlers and pointer grab.
+/** Stop sping drag event handlers and pointer grab.
+ * @this{any}
+ */
 function spin_drag_stop (event_or_element= undefined)
 {
   const spin_drag = event_or_element instanceof MouseEvent ? this : event_or_element[SPIN_DRAG];
@@ -320,7 +324,7 @@ function spin_drag_stop (event_or_element= undefined)
     spin_drag.stop_event (event_or_element);
   element.removeEventListener ('pointerup', spin_drag.stop);
   element.removeEventListener ('pointermove', spin_drag.pointermove);
-  document.body.removeEventListener ('wheel', spin_drag.stop_event, { capture: true, passive: false });
+  document.body.removeEventListener ('wheel', spin_drag.stop_event, { capture: true, /*passive: false*/ });
   // unset drag mode
   spin_drag.unlock_pointer = spin_drag.unlock_pointer?.();
   if (spin_drag.captureid !== undefined)
@@ -335,7 +339,9 @@ function spin_drag_stop (event_or_element= undefined)
   Shell.data_bubble.unforce (element);
 }
 
-/// Handle sping drag pointer motion.
+/** Handle sping drag pointer motion.
+ * @this{any}
+ */
 function spin_drag_pointermove (event)
 {
   console.assert (event.type === 'pointermove');
@@ -357,7 +363,9 @@ function spin_drag_pointermove (event)
   spin_drag.stop_event (event);
 }
 
-/// Turn accumulated spin drag motions into actual value changes.
+/** Turn accumulated spin drag motions into actual value changes.
+ * @this{any}
+ */
 function spin_drag_change ()
 {
   const spin_drag = this, element = spin_drag.element;
@@ -365,7 +373,7 @@ function spin_drag_change ()
   const has_ptrlock = Util.has_pointer_lock (element);
   const dx = (has_ptrlock ? drag.x : drag.x - last.x) * 0.5;
   const dy =  has_ptrlock ? drag.y : drag.y - last.y;
-  let s = 1;          // adjust via Increase and:
+  let s = true;       // adjust via Increase and:
   if (dy > 0)         // if DOWN
     s = dx >= dy;     //   Decrease unless mostly RIGHT
   else if (dx < 0)    // if LEFT
