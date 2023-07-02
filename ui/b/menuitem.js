@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
 /** # B-MENUITEM
  * A menuitem element to be used as a descendant of a [B-CONTEXTMENU](#b-contextmenu).
