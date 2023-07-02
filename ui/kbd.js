@@ -300,7 +300,9 @@ export function keydown_move_focus (event) {
   return move_focus (dir, subfocus);
 }
 
-/** Move focus to prev or next focus widget */
+/** Move focus to prev or next focus widget
+ * @param{Number|String} dir
+ */
 export function move_focus (dir = 0, subfocus = null) {
   const home = dir == 'HOME', end = dir == 'END';
   const up = dir == -1, down = dir == +1;
