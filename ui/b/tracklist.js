@@ -1,4 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
+
 import { LitComponent, html, JsExtract, docs, ref, repeat } from '../little.js';
 
 /** == B-TRACKLIST ==
@@ -101,6 +103,9 @@ class BTrackList extends LitComponent {
   constructor()
   {
     super();
+    this.trackviews = null;
+    this.cliplists = null;
+    this.partlists = null;
     this.project = null;
     this.wproject_ = { all_tracks: [] };
     this.addEventListener ('dblclick', this.list_dblclick.bind (this));
