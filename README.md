@@ -77,7 +77,7 @@ GPLv3 or proprietary licenses.
 [downloads-badge]: https://img.shields.io/github/downloads/tim-janik/anklang/total?style=for-the-badge&color=blue
 [downloads-url]: https://github.com/tim-janik/anklang/releases
 [drivers-badge]: https://img.shields.io/badge/Drivers-MIDI%20|%20ALSA%20|%20%20Pulse%20|%20Jack-999?style=for-the-badge
-[fixme-badge]: https://img.shields.io/github/search/tim-janik/anklang/fixme?label=FIXME&style=for-the-badge
+[fix\me-badge]: https://img.shields.io/github/search/tim-janik/anklang/fix%6De?label=FIX%4DE&style=for-the-badge
 [forks-badge]: https://img.shields.io/github/forks/tim-janik/anklang.svg?style=for-the-badge
 [forks-url]: https://github.com/tim-janik/anklang/network/members
 [irc-badge]: https://img.shields.io/badge/Live%20Chat-Libera%20IRC-blueviolet?style=for-the-badge
