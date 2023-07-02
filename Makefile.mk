@@ -365,5 +365,11 @@ compile_commands.json: Makefile.mk
 # == all rules ==
 all: $(ALL_TARGETS) $(ALL_TESTS)
 
+# == grep-reminders ==
+$>/.grep-reminders: $(LS_TREE_LST)
+	$Q test -r .git && git -P grep -nE '(/[*/]+[*/ ]*|[#*]+ *)?(FI[X]ME).*' || true
+	$Q touch $@
+all: $>/.grep-reminders
+
 # Clean non-directories in $>/
 CLEANFILES += $(filter-out $(patsubst %/,%,$(wildcard $>/*/)), $(wildcard $>/* $>/.[^.]* $>/..?* ))
