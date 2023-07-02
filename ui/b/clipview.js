@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
 /** ## Clip-View
  * Display a small view of a MIDI clip.
@@ -128,6 +129,7 @@ const sRGB_viewing_conditions = {
 };
 const default_gamut = new Z.Gamut (sRGB_viewing_conditions);
 
+/** @this{BClipView} */
 function render_canvas () {
   // canvas setup
   const canvas = this.canvas;
@@ -141,9 +143,9 @@ function render_canvas () {
   // color setup
   let cindex;
   // cindex = Util.hash53 (this.wclip_.name);	// - color from clip name
-  // cindex = this.index;				// - color per clip
+  // cindex = this.index;			// - color per clip
   // cindex = this.trackindex;			// - color per track
-  cindex = this.track.$id;			// - color per track
+  cindex = 0;
   const hues = csp ('--clipview-color-hues').split (',');
   const hz = hues[cindex % hues.length];
   const gamut = default_gamut, viewing = gamut.viewing;
