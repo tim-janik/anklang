@@ -358,9 +358,12 @@ stylelint: $>/node_modules/.npm.done
 	$Q $(MAKE) $>/ui/.stylelint.done
 .PHONY: stylelint
 
-# == lint ==
-lint: stylelint eslint tscheck
-.PHONY: lint
+# == ui/lint ==
+ui/lint: tscheck eslint stylelint
+	-$Q { TCOLOR=--color=always ; tty -s <&1 || TCOLOR=; } \
+	&& grep $$TCOLOR -nE '(/[*/]+[*/ ]*)?(FI[X]ME).*' -r ui/
+.PHONY: ui/lint
+lint: ui/lint
 
 # == $>/doc/b/*.md ==
 $>/doc/b/.doc-stamp: $(wildcard ui/b/*.js) ui/xbcomments.js ui/Makefile.mk $>/node_modules/.npm.done	| $>/doc/b/
