@@ -1,4 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
+
 import { LitComponent, html, render, JsExtract, docs, ref } from '../little.js';
 
 /** == B-TRACKVIEW ==
@@ -166,6 +168,12 @@ class BTrackView extends LitComponent {
     this.dbtip1_ = MINDB;
     this.teleobj = null;
     this.telemetry = null;
+    this.trackname_ = null;
+    this.levelbg_ = null;
+    this.covermid0_ = null;
+    this.covertip0_ = null;
+    this.covermid1_ = null;
+    this.covertip1_ = null;
   }
   disconnectedCallback() {
     super.disconnectedCallback();
@@ -280,52 +288,51 @@ class BTrackView extends LitComponent {
     dbspl1 = clamp (dbspl1, MINDB, MAXDB);
     this.dbtip0_ = Math.max ((DBOFFSET + this.dbtip0_) * 0.99, DBOFFSET + dbspl0) - DBOFFSET;
     this.dbtip1_ = Math.max ((DBOFFSET + this.dbtip1_) * 0.99, DBOFFSET + dbspl1) - DBOFFSET;
-    update_levels.call (this, dbspl0, this.dbtip0_, dbspl1, this.dbtip1_);
+    this.update_levels (dbspl0, this.dbtip0_, dbspl1, this.dbtip1_);
   }
-}
-
-customElements.define ('b-trackview', BTrackView);
-
-function update_levels (dbspl0, dbtip0, dbspl1, dbtip1) {
-  /* Paint model:
-   * |                                           ######| covertipN_, dark tip cover layer
-   * |             #############################       | covermidN_, dark middle cover
-   * |-36dB+++++++++++++++++++++++++++++++0++++++++12dB| levelbg_, dB gradient
-   *  ^^^^^^^^^^^^^ visible level (-24dB)       ^ visible tip (+6dB)
-   */
-  const covertip0 = this.covertip0_, covermid0 = this.covermid0_;
-  const covertip1 = this.covertip1_, covermid1 = this.covermid1_;
-  const level_width = this.level_width_, pxrs = 1.0 / level_width; // pixel width fraction between 0..1
-  if (dbspl0 === undefined) {
-    covertip0.style.setProperty ('transform', 'scaleX(1)');
-    covertip1.style.setProperty ('transform', 'scaleX(1)');
-    covermid0.style.setProperty ('transform', 'scaleX(0)');
-    covermid1.style.setProperty ('transform', 'scaleX(0)');
-    return;
-  }
-  const tw = 2; // tip thickness in pixels
-  const pxrs_round = (fraction) => Math.round (fraction / pxrs) * pxrs; // scale up, round to pixel, scale down
-  // handle multiple channels
-  const per_channel = (dbspl, dbtip, covertip, covermid) => {
-    // map dB SPL to a 0..1 paint range
-    const tip = (dbtip - MINDB) * DIV_DBRANGE;
-    const lev = (dbspl - MINDB) * DIV_DBRANGE;
-    // scale covertip from 100% down to just the amount above the tip
-    let transform = 'scaleX(' + pxrs_round (1 - tip) + ')';
-    if (transform !== covertip.style.getPropertyValue ('transform'))    // reduce style recalculations
-      covertip.style.setProperty ('transform', transform);
-    // scale and translate middle cover
-    if (lev + pxrs + tw * pxrs <= tip) {
-      const width = (tip - lev) - tw * pxrs;
-      const trnlx = level_width - level_width * tip + tw; // translate left in pixels
-      transform = 'translateX(-' + Math.round (trnlx) + 'px) scaleX(' + pxrs_round (width) + ')';
-    } else {
-      // hide covermid if level and tip are aligned
-      transform = 'scaleX(0)';
+  update_levels (dbspl0, dbtip0, dbspl1, dbtip1)
+  {
+    /* Paint model:
+     * |                                           ######| covertipN_, dark tip cover layer
+     * |             #############################       | covermidN_, dark middle cover
+     * |-36dB+++++++++++++++++++++++++++++++0++++++++12dB| levelbg_, dB gradient
+     *  ^^^^^^^^^^^^^ visible level (-24dB)       ^ visible tip (+6dB)
+     */
+    const covertip0 = this.covertip0_, covermid0 = this.covermid0_;
+    const covertip1 = this.covertip1_, covermid1 = this.covermid1_;
+    const level_width = this.level_width_, pxrs = 1.0 / level_width; // pixel width fraction between 0..1
+    if (dbspl0 === undefined) {
+      covertip0.style.setProperty ('transform', 'scaleX(1)');
+      covertip1.style.setProperty ('transform', 'scaleX(1)');
+      covermid0.style.setProperty ('transform', 'scaleX(0)');
+      covermid1.style.setProperty ('transform', 'scaleX(0)');
+      return;
     }
-    if (transform != covermid.style.getPropertyValue ('transform'))     // reduce style recalculations
-      covermid.style.setProperty ('transform', transform);
-  };
-  per_channel (dbspl0, dbtip0, covertip0, covermid0);
-  per_channel (dbspl1, dbtip1, covertip1, covermid1);
+    const tw = 2; // tip thickness in pixels
+    const pxrs_round = (fraction) => Math.round (fraction / pxrs) * pxrs; // scale up, round to pixel, scale down
+    // handle multiple channels
+    const per_channel = (dbspl, dbtip, covertip, covermid) => {
+      // map dB SPL to a 0..1 paint range
+      const tip = (dbtip - MINDB) * DIV_DBRANGE;
+      const lev = (dbspl - MINDB) * DIV_DBRANGE;
+      // scale covertip from 100% down to just the amount above the tip
+      let transform = 'scaleX(' + pxrs_round (1 - tip) + ')';
+      if (transform !== covertip.style.getPropertyValue ('transform'))    // reduce style recalculations
+	covertip.style.setProperty ('transform', transform);
+      // scale and translate middle cover
+      if (lev + pxrs + tw * pxrs <= tip) {
+	const width = (tip - lev) - tw * pxrs;
+	const trnlx = level_width - level_width * tip + tw; // translate left in pixels
+	transform = 'translateX(-' + Math.round (trnlx) + 'px) scaleX(' + pxrs_round (width) + ')';
+      } else {
+	// hide covermid if level and tip are aligned
+	transform = 'scaleX(0)';
+      }
+      if (transform != covermid.style.getPropertyValue ('transform'))     // reduce style recalculations
+	covermid.style.setProperty ('transform', transform);
+    };
+    per_channel (dbspl0, dbtip0, covertip0, covermid0);
+    per_channel (dbspl1, dbtip1, covertip1, covermid1);
+  }
 }
+customElements.define ('b-trackview', BTrackView);
