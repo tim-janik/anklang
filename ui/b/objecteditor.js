@@ -184,7 +184,6 @@ class BObjectEditor extends LitComponent {
 	    else
 	      component_html = TEXT_HTML;
 	    xprop.component_html_ = component_html;
-	    console.log (xprop.ident_, xprop.fetch_());
 	  }
 	Object.freeze (groups[k]);
       }
