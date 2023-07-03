@@ -1,12 +1,15 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
-/* Font fallbacks, see modernfontstacks.com */
-$b-fallback-font-stack: Inter, Roboto, 'Helvetica Neue', 'Arial Nova', 'Nimbus Sans', Arial, sans-serif;
+/* Useful font stacks, see modernfontstacks.com */
+$b-font-stack-grotesque: "Inter", "Roboto", "Helvetica Neue", "Arial Nova", "Nimbus Sans", "Arial", sans-serif;
+$b-font-stack-mono-serif: "Nimbus Mono PS", "Courier New", monospace;
+$b-font-stack-mono-code: "DejaVu Sans Mono", ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+$b-font-stack-kbd-mono: $b-font-stack-mono-code;
 
 /* Fonts */
-$b-canvas-font: normal 9px "InterVariable", $b-fallback-font-stack;	// the '9px' part is dynamically resized
+$b-canvas-font: normal 9px "InterVariable", $b-font-stack-grotesque;	// the '9px' part is dynamically resized
 @mixin b-ui-font() {
-  font-family: "InterVariable", $b-fallback-font-stack;
+  font-family: "InterVariable", $b-font-stack-grotesque;
   font-size: 15.5px;
   letter-spacing: 0.03em;
   text-decoration: none;

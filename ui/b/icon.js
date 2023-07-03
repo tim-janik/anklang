@@ -42,7 +42,7 @@ b-icon { // not using shadow-root here
   &[vflip]		{ transform: scaleY(-1); }
   &[hflip][vflip]	{ transform: scaleX(-1) scaleY(-1); }
   &[nosize]		{ height: 1em; width: 1em; }
-  &[ic^=mi-][nosize]	{ font-size: 1em; }
+  &[ic^="mi-"][nosize]	{ font-size: 1em; }
   .material-icons       { font-size: 1.28em; }
 }`;
 

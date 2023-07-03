@@ -1,9 +1,8 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-"use strict";
 
 import './browserified.js';	// provides require() and browserified modules
 import './b/basics.js';		// Register basic components first
-import { LitComponent, html, css, docs, lit_update_all } from '../little.js';
+import { LitComponent, html, css, docs, lit_update_all } from './little.js';
 
 // Global CONFIG
 console.bootlog = console.log;

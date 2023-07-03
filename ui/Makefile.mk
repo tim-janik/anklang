@@ -124,6 +124,7 @@ $>/ui/aseapi.js: jsonipc/jsonipc.js ase/api.hh $(lib/AnklangSynthEngine) ui/Make
 	$(QGEN)
 	$Q $(CP) $< $@.tmp
 	$Q ASAN_OPTIONS=detect_leaks=0 $(lib/AnklangSynthEngine) --js-api			>> $@.tmp
+	$Q echo '/**@type{ServerImpl}*/'							>> $@.tmp
 	$Q echo 'export let server = Jsonipc.setup_promise_type (Server, s => server = s);'	>> $@.tmp
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/aseapi.js
@@ -163,7 +164,7 @@ $>/ui/.build1-stamp: $(ui/scss.targets)
 # == vue-styles.css ==
 ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.vuecss)
 $(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
-$>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $(ui/scss.targets) ui/Makefile.mk
+$>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $>/ui/spinner.scss $(ui/scss.targets) ui/Makefile.mk
 	$(QGEN)
 	$Q echo '@charset "UTF-8";'					>  $@.vuecss
 	$Q echo "@import 'mixins.scss';"				>> $@.vuecss
@@ -349,7 +350,7 @@ ui/stylelint.files = $(ui/b/scss2css.targets) $(ui/b/css.targets) $>/ui/vue-styl
 $>/ui/.stylelint.done: $(ui/stylelint.files) ui/stylelintrc.cjs $>/node_modules/.npm.done
 	$(QECHO) RUN stylelint
 	$Q cp ui/stylelintrc.cjs $>/ui/stylelintrc.cjs
-	-$Q cd $>/ && node_modules/.bin/stylelint -c ui/stylelintrc.cjs $(ui/stylelint.files:$>/%=%)
+	-$Q cd $>/ && node_modules/.bin/stylelint $${INSIDE_EMACS:+-f unix} -c ui/stylelintrc.cjs $(ui/stylelint.files:$>/%=%)
 	$Q touch $@
 $>/ui/.build2-stamp: $>/ui/.stylelint.done
 stylelint: $>/node_modules/.npm.done
@@ -357,9 +358,12 @@ stylelint: $>/node_modules/.npm.done
 	$Q $(MAKE) $>/ui/.stylelint.done
 .PHONY: stylelint
 
-# == lint ==
-lint: stylelint eslint tscheck
-.PHONY: lint
+# == ui/lint ==
+ui/lint: tscheck eslint stylelint
+	-$Q { TCOLOR=--color=always ; tty -s <&1 || TCOLOR=; } \
+	&& grep $$TCOLOR -nE '(/[*/]+[*/ ]*)?(FI[X]ME).*' -r ui/
+.PHONY: ui/lint
+lint: ui/lint
 
 # == $>/doc/b/*.md ==
 $>/doc/b/.doc-stamp: $(wildcard ui/b/*.js) ui/xbcomments.js ui/Makefile.mk $>/node_modules/.npm.done	| $>/doc/b/

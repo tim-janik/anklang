@@ -164,6 +164,7 @@ export const SCROLL = "SCROLL";
 
 /// Meld all pointer drag handling functions into a single `drag_event(event,MODE)` method.
 export class PointerDrag {
+  /** @param{String|Function} method */
   constructor (vuecomponent, event, method = 'drag_event', cleanup = null) {
     this.vm = vuecomponent;
     this.cleanup = cleanup;

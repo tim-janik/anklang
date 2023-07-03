@@ -1,4 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
+
 import { LitComponent, html, JsExtract, docs, ref, repeat } from '../little.js';
 
 /** == B-TRACKLIST ==
@@ -19,14 +21,14 @@ $scroll-shadow-inset: 7px;
 }
 .grid {
   display: grid; flex-grow: 1;
-  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  position: relative; inset: 0;
+  padding: 0 calc(0.5 * $scroll-shadow-inset);
   align-items: stretch;
   grid-template-columns: min-content 3fr 2fr;
   grid-template-rows: min-content 1fr min-content;
   background-color: $b-tracklist-bg;
   overflow: hidden;
   // for :before box-shadow
-  position: relative; padding: 0 calc(0.5 * $scroll-shadow-inset);
 }
 .trackviews,
 .partlists,
@@ -101,6 +103,9 @@ class BTrackList extends LitComponent {
   constructor()
   {
     super();
+    this.trackviews = null;
+    this.cliplists = null;
+    this.partlists = null;
     this.project = null;
     this.wproject_ = { all_tracks: [] };
     this.addEventListener ('dblclick', this.list_dblclick.bind (this));

@@ -34,7 +34,7 @@ b-switchinput label {
     content: ""; transition: .3s; background-color: $b-switch-knob; border-radius: $b-button-radius;
   }
   .b-switchinput-trough {
-    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    position: absolute; inset: 0;
     transition: .3s; background-color: $b-switch-inactive; border-radius: $b-button-radius;
     &::before {
       position: absolute; top: 0.1em; left: 0.3em;

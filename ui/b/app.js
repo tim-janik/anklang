@@ -143,12 +143,14 @@ export class AppClass {
     const mtrack = await newproject.master_track();
     const tracks = await newproject.all_tracks();
     // shut down old project
+    let need_reload = false;
     if (Data.project)
       {
 	this.notifynameclear();
-	App.open_piano_roll (undefined);
 	Data.project.stop_playback();
 	Data.project = null; // TODO: should trigger FinalizationGroup
+	// TODO: App.open_piano_roll (undefined);
+	need_reload = true;
       }
     // replace project & master track without await, to synchronously trigger Vue updates for both
     Data.project = newproject;
@@ -164,6 +166,10 @@ export class AppClass {
     update_title();
     if (this.shell)
       this.shell.update();
+    if (need_reload) {
+      window.location.reload();
+      // TODO: only reload the UI partially when the project changes, this requires a full port to LitElements
+    }
     return Ase.Error.NONE;
   }
   async save_project (projectpath, collect = true) {

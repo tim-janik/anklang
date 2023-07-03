@@ -7,8 +7,8 @@
 
 <style lang="scss">
 .b-noteboard {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  display: flex; flex-direction: column; flex-wrap: wrap-reverse;
+  position: fixed; inset: 0;
+  display: flex; flex-flow: column wrap-reverse;
   align-items: flex-end; align-content: end;
   pointer-events: none; user-select: none;
   --note-board-padding: 12px;

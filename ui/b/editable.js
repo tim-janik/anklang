@@ -1,4 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
+
 import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
 import * as Util from "../util.js";
 
@@ -24,7 +26,7 @@ JsExtract.scss`
 input {
   position: absolute;
   display: inline-block;
-  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
   width: 100%; height: 100%;
   margin: 0; padding: 0; border: 0;
   width: 100%; height: 100%; line-height: 1;

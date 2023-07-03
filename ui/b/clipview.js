@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
 /** ## Clip-View
  * Display a small view of a MIDI clip.
@@ -23,7 +24,7 @@ $b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;
   flex-shrink: 0;
   border: 0;
   .-canvas {
-    display: inline; position: absolute; top: 0px; bottom: 0px; left: 0px; right: 0px;
+    display: inline; position: absolute; inset: 0;
     --clipview-font-color: #{$b-clipview-font-color}; --clipview-font: #{$b-canvas-font};
     --clipview-note-color: #{$b-clipview-note-color};
     --clipview-color-hues: $b-clipview-color-hues;
@@ -32,7 +33,7 @@ $b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;
   }
   .-play {
     display: inline;
-    position: absolute; top: 0px; left: 0px;
+    position: absolute;
     padding: 3px;
     position: absolute;
     padding: 3px;
@@ -128,6 +129,7 @@ const sRGB_viewing_conditions = {
 };
 const default_gamut = new Z.Gamut (sRGB_viewing_conditions);
 
+/** @this{BClipView} */
 function render_canvas () {
   // canvas setup
   const canvas = this.canvas;
@@ -141,9 +143,9 @@ function render_canvas () {
   // color setup
   let cindex;
   // cindex = Util.hash53 (this.wclip_.name);	// - color from clip name
-  // cindex = this.index;				// - color per clip
+  // cindex = this.index;			// - color per clip
   // cindex = this.trackindex;			// - color per track
-  cindex = this.track.$id;			// - color per track
+  cindex = 0;
   const hues = csp ('--clipview-color-hues').split (',');
   const hz = hues[cindex % hues.length];
   const gamut = default_gamut, viewing = gamut.viewing;

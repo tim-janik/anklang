@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
 /** # B-CONTEXTMENU
  * A modal popup that displays contextmenu choices, see [B-MENUITEM](#b-menuitem),
@@ -66,8 +67,7 @@ dialog {
   overflow-x: hidden;
 }
 dialog::backdrop {
-  background: $b-style-modal-overlay;
-  background: #00000033;
+  background: $b-style-modal-overlay; // #00000033;
 }`;
 
 // == HTML ==
@@ -82,7 +82,9 @@ export function valid_uri (uri) {
   return !(uri === '' || uri === undefined || uri === null); // allow uri=0
 }
 
-const menuitem_isdisabled = function () {
+/** @this{any} */
+function menuitem_isdisabled ()
+{
   if (valid_uri (this.uri) && undefined !== this.menudata.checkeduris[this.uri])
     return !this.menudata.checkeduris[this.uri];
   if (Object.hasOwnProperty.call (this, 'disabled') &&
@@ -94,7 +96,7 @@ const menuitem_isdisabled = function () {
   if (this.$attrs && (this.$attrs['disabled'] === "" || !!this.$attrs['disabled']))
     return true;
   return false;
-};
+}
 
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with property
 const FUNCTION_ATTRIBUTE = { type: Function, reflect: false };
@@ -152,6 +154,8 @@ class BContextMenu extends LitComponent {
     this.isdisabled = menuitem_isdisabled;
     this.keymap_ = [];
     this.dialog_ = null;
+    this.activate = null;
+    this.isactive = null;
     // context for descendant menuitems
     this.menudata = provide_menudata (this);
     this.menudata.close = this.close.bind (this);
@@ -238,8 +242,10 @@ class BContextMenu extends LitComponent {
   {
     const w = document.createTreeWalker (this, NodeFilter.SHOW_ELEMENT);
     let e, a = [];
-    while ( (e = w.nextNode()) )
-      a.push (e.check_isactive?.());
+    while ( (e = w.nextNode()) ) {
+      /**@type{any}*/ const any = e;
+      a.push (any.check_isactive?.());
+    }
     await Promise.all (a);
   }
   bubbeling_click_ (event)
@@ -272,33 +278,30 @@ class BContextMenu extends LitComponent {
     if (Util.frame_stamp() == this.menudata.menu_stamp)
       return;
     // emit non-bubbling activation click
-    if (valid_uri (uri))
-      {
-	this.menudata.menu_stamp = Util.frame_stamp();
-	const click_event = new CustomEvent ('click', { bubbles: false, composed: true, cancelable: true, detail: { uri } });
-	this.allowed_click = click_event;
-	const proceed = this.dispatchEvent (click_event);
-	this.allowed_click = null;
-	if (proceed)
-	  {
-	    if (this.activate)
-	      this.activate (uri, click_event);
-	    else
-	      this.dispatchEvent (new CustomEvent ('activate', {
-	        detail: { uri }
-	      }));
-	  }
-	this.close();
+    if (valid_uri (uri)) {
+      this.menudata.menu_stamp = Util.frame_stamp();
+      const click_event = new CustomEvent ('click', { bubbles: false, composed: true, cancelable: true, detail: { uri } });
+      this.allowed_click = click_event;
+      const proceed = this.dispatchEvent (click_event);
+      this.allowed_click = null;
+      if (proceed) {
+	if (this.activate)
+	  this.activate (uri, click_event);
+	else
+	  this.dispatchEvent (new CustomEvent ('activate', {
+	    detail: { uri }
+	  }));
       }
+      this.close();
+    }
     else
       console.error ("BContextMenu.click: invalid uri:", uri);
   }
   close () {
-    if (this.dialog?.open)
-      {
-	// this.dialog.classList.add ('animating');
-	this.dialog.close();
-      }
+    if (this.dialog?.open) {
+      // this.dialog.classList.add ('animating');
+      this.dialog.close();
+    }
     this.origin = null;
     this.data_contextmenu?.removeAttribute ('data-contextmenu', 'true');
     this.data_contextmenu = null;
@@ -310,21 +313,20 @@ class BContextMenu extends LitComponent {
   }
   /// Activate or disable the `kbd=...` hotkeys in menu items.
   map_kbd_hotkeys (active = false) {
-    if (this.keymap_.length)
-      {
-	this.keymap_.length = 0;
-	Util.remove_keymap (this.keymap_);
-      }
+    if (this.keymap_.length) {
+      this.keymap_.length = 0;
+      Util.remove_keymap (this.keymap_);
+    }
     if (!active)
       return;
     const w = document.createTreeWalker (this, NodeFilter.SHOW_ELEMENT);
     let e;
-    while ( (e = w.nextNode()) )
-      {
-	const keymap_entry = e.keymap_entry;
-	if (keymap_entry instanceof Util.KeymapEntry)
-	  this.keymap_.push (keymap_entry);
-      }
+    while ( (e = w.nextNode()) ) {
+      /**@type{any}*/ const any = e;
+      const keymap_entry = any.keymap_entry;
+      if (keymap_entry instanceof Util.KeymapEntry)
+	this.keymap_.push (keymap_entry);
+    }
     if (this.keymap_.length)
       Util.add_keymap (this.keymap_);
   }
@@ -333,9 +335,11 @@ class BContextMenu extends LitComponent {
   {
     const w = document.createTreeWalker (this, NodeFilter.SHOW_ELEMENT);
     let e;
-    while ( (e = w.nextNode()) )
-      if (e.uri == uri)
+    while ( (e = w.nextNode()) ) {
+      /**@type{any}*/ const any = e;
+      if (any.uri == uri)
 	return e;
+    }
     return null;
   }
 }

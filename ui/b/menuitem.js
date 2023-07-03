@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
 /** # B-MENUITEM
  * A menuitem element to be used as a descendant of a [B-CONTEXTMENU](#b-contextmenu).
@@ -40,10 +41,8 @@ JsExtract.scss`
   display: flex; flex-direction: column; align-items: stretch;
 }
 button {
-  display: flex; flex-direction: column; align-items: stretch;
-  flex: 0 0 auto;
-  flex-wrap: nowrap;
-  flex-direction: row;
+  display: flex; align-items: stretch;
+  flex: 0 0 auto; flex-flow: row nowrap;
   margin: 0; padding: $b-menu-vpad $b-menu-hpad; text-align: left;
   // button-reset
   background: transparent; color: $b-menu-foreground; border: 1px solid transparent;

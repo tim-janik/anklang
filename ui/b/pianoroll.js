@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
 /** ## Piano-Roll
  * The piano-roll editor displays notes in a grid where the vertical axis denotes the pitch and the horizontal axis the time line.
@@ -49,13 +50,12 @@ JsExtract.scss`
 }
 c-grid {
   background: $b-piano-roll-black-base;
-  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  position: absolute; inset: 0;
   align-items: stretch;
 
   grid-template-columns: min-content 1fr min-content;
   grid-template-rows:    min-content 1fr min-content;
 
-  background: #0000;
   canvas { background: black; object-fit: contain;
     min-width: 0; min-height: 0; // https://www.w3.org/TR/css3-grid-layout/#min-size-auto
   }
@@ -103,14 +103,14 @@ const HTML = (t, d) => html`
       @pointermove=${Util.debounce (t.notes_canvas_pointermove.bind (t))}
       @pointerdown=${t.notes_canvas_pointerdown} ></canvas>
 
-    <div class="-col3 -row2" style="overflow: hidden scroll; min-width: 17px; background: #000" ${ref(e => t.vscrollbar = e)} >
-      <div class="-vextend" style="height: 151vh" ${ref(e => t.vscrollbar_extend = e)} >
+    <div class="-col3 -row2" style="overflow: hidden scroll; min-width: 17px; background: #000" ${ref (h => t.vscrollbar = h)} >
+      <div class="-vextend" style="height: 151vh" ${ref (h => t.vscrollbar_extend = h)} >
       </div>
     </div>
-    <div class="-col2 -row3" ${ref(e => t.hscrollbar = e)} style="overflow: scroll hidden; min-height: 17px; background: #000" >
-      <div class="-hextend" ${ref(e => t.hscrollbar_extend = e)} style="width:999px" ></div>
+    <div class="-col2 -row3" ${ref (h => t.hscrollbar = h)} style="overflow: scroll hidden; min-height: 17px; background: #000" >
+      <div class="-hextend" ${ref (h => t.hscrollbar_extend = h)} style="width:999px" ></div>
     </div>
-    <span class="-indicator" ${ref(e => t.indicator_bar = e)}></span>
+    <span class="-indicator" ${ref (h => t.indicator_bar = h)}></span>
 
     <b-contextmenu ${ref (h => t.pianorollmenu = h)} id="g-pianorollmenu" :showicons="true"
       class="-pianorollmenu" mapname="Piano Roll"
@@ -144,6 +144,7 @@ class BPianoRoll extends LitComponent {
   constructor()
   {
     super();
+    this.layout = null;
     this.hzoom = 3;
     this.vzoom = 1.5;
     this.pianotool = 'P';
@@ -157,7 +158,9 @@ class BPianoRoll extends LitComponent {
     this.piano_canvas = null;
     this.time_canvas = null;
     this.hscrollbar = null;
+    this.hscrollbar_extend = null;
     this.vscrollbar = null;
+    this.vscrollbar_extend = null;
     this.indicator_bar = null;
     this.have_focus = false;
     this.entered = false;
@@ -166,7 +169,9 @@ class BPianoRoll extends LitComponent {
     this.clip = null;
     this.wclip = null;
     this.end_click = 99999;
-    this.vscroll_must_center = true; // flag for initial vertical centering
+    this.auto_scrollto = undefined;	// positions to restore scroll & zoom
+    this.stepping = [];                 // current grid stepping granularity
+    this.vscroll_must_center = true;	// flag for initial vertical centering
     this.pointer_drag = null;
     this.piano_ctrl = new PianoCtrl.PianoCtrl (this);
     this.drag_event = this.piano_ctrl.drag_event.bind (this.piano_ctrl);
@@ -225,12 +230,13 @@ class BPianoRoll extends LitComponent {
     Shell.piano_current_tick = this.piano_current_tick.bind (this);
     Shell.piano_current_clip = this.clip;
     // trigger layout, track layout deps from updated()
-    piano_layout.call (this);
+    this.piano_layout_();
     if (this.vscroll_must_center && this.vscrollbar.clientHeight)
       this.vscroll_must_center = (this.vscroll_to (0.5), false);
     // trigger repaint, but avoid tracking paint deps in updated()
     this.queue_repaint();
   }
+  piano_layout_ = piano_layout;
   get srect ()	{ return Object.assign ({}, this.srect_); }
   set srect (r)	{ Object.assign (this.srect_, r); this.queue_repaint(); }
   pointerenter (event)
@@ -390,15 +396,16 @@ class BPianoRoll extends LitComponent {
     Util.prevent_event (event);
   }
 }
-
 customElements.define ('b-piano-roll', BPianoRoll);
-
 
 
 const hscrollbar_proportion = 20, vscrollbar_proportion = 11;
 
-// == piano_layout ==
-function piano_layout () {
+/** Determine layout in pixels.
+ * @this{BPianoRoll}
+ */
+function piano_layout()
+{
   const notes_canvas = this.notes_canvas, timeline_canvas = this.time_canvas;
   const piano_canvas = this.piano_canvas, cstyle = getComputedStyle (this);
   const notes_cssheight = Math.floor (this.vzoom * 84 / 12) * PianoCtrl.PIANO_KEYS;
@@ -420,7 +427,7 @@ function piano_layout () {
     beat_pixels:	50,			// pixels per quarter note
     tickscale:		undefined,		// pixels per tick
     octaves:		PianoCtrl.PIANO_OCTAVES,// number of octaves to display
-    yoffset:		notes_cssheight,	// y coordinate of lowest octave
+    yoffset:		undefined,		// y coordinate of lowest octave
     oct_length:		undefined,		// 12 * 7 = 84px for vzoom==1 && DPR==1
     row:		undefined,		// 7px for vzoom==1 && DPR==1
     bkeys:		[], 			// [ [offset,size] * 5 ]
@@ -436,7 +443,7 @@ function piano_layout () {
   const white_offsets  = [ 0,    12,     24, 36,     48,       60,     72 ]; 	// for 84px octave
   const key_length = parseFloat (cstyle.getPropertyValue ('--piano-roll-key-length'));
   const min_end_tick = 16 * (4 * Util.PPQN);
-  const end_tick = Math.max (this.end_tick || 0, min_end_tick);
+  const end_tick = Math.max (this.wclip.end_tick || 0, min_end_tick);
   // scale layout
   layout.dpr_height = round (layout.DPR * layout.cssheight);
   layout.white_width = key_length || layout.white_width; // allow CSS override
@@ -535,7 +542,9 @@ function piano_layout () {
   return layout_changed;
 }
 
-// == canvas_font ==
+/** Assign canvas font to drawing context
+ * @this{BPianoRoll}
+ */
 function set_canvas_font (ctx, size) {
   const cstyle = getComputedStyle (this);
   const fontstring = cstyle.getPropertyValue ('--piano-roll-font');
@@ -552,7 +561,9 @@ function set_canvas_font (ctx, size) {
   return font;
 }
 
-// == paint_piano ==
+/** Paint piano key canvas
+ * @this{BPianoRoll}
+ */
 function paint_piano()
 {
   const canvas = this.piano_canvas, cstyle = getComputedStyle (this);
@@ -644,7 +655,9 @@ function paint_piano()
   }
 }
 
-// == paint_notes ==
+/** Paint piano roll notes
+ * @this{BPianoRoll}
+ */
 function paint_notes()
 {
   const canvas = this.notes_canvas, cstyle = getComputedStyle (this);
@@ -737,7 +750,9 @@ function paint_notes()
     }
 }
 
-// == paint_timeline ==
+/** Paint timeline digits and indicators
+ * @this{BPianoRoll}
+ */
 function paint_timeline()
 {
   const canvas = this.time_canvas, cstyle = getComputedStyle (this);
@@ -750,7 +765,9 @@ function paint_timeline()
   paint_timegrid.call (this, canvas, true);
 }
 
-// == paint_timegrid ==
+/** Paint timegrid into any canvas
+ * @this{BPianoRoll}
+ */
 function paint_timegrid (canvas, with_labels)
 {
   const signature = [ 4, 4 ]; // 15, 16

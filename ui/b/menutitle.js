@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
 import { LitComponent, html, JsExtract, docs } from '../little.js';
 import * as Util from "../util.js";
@@ -15,7 +16,7 @@ const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
 @import 'mixins.scss';
 :host { // b-menutitle
-  display: inline-flex; flex: 0 0 auto; flex-wrap: nowrap; flex-direction: row;
+  display: inline-flex; flex: 0 0 auto; flex-flow: row nowrap;
   align-items: baseline;      //* distribute extra cross-axis space */
   margin: 0; padding: 5px 1em; text-align: left;
   background: transparent; cursor: pointer; user-select: none;

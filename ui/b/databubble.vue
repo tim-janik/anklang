@@ -7,7 +7,7 @@
 
 <style lang="scss">
   /* Bubble color setup */
-  $b-data-bubble-hue: 52;
+  $b-data-bubble-hue: 52deg;
   $b-data-bubble-fg:  hsl($b-data-bubble-hue, 100%, 1%);
   $b-data-bubble-bg:  hsl($b-data-bubble-hue, 100%, 90%);
   $b-data-bubble-bg2: zmod($b-data-bubble-bg, Jz+=3%);
