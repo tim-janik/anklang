@@ -1,0 +1,42 @@
+/* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
+
+/* Currently, we only fixup the light theme, which messes up the dark theme */
+nav a#poxy-theme-switch { display: none; }
+
+/* Fix unfortunate header wrapping */
+@media screen and (min-width: 992px) { .m-container { width: 992px; } }
+
+/* Tame heading sizes */
+h5 { font-size: 1.03em; }
+h5 { font-size: 1.07em; }
+h4 { font-size: 1.1em; }
+h3 { font-size: 1.15em; }
+h2 { font-size: 1.2em; }
+h1 { font-size: 1.225em; }
+
+.poxy-theme-light {
+  --paragraph-indent: 0;
+  /* background */
+  --theme-surface4: #fff;
+  /* body & code color */
+  color: #000;
+  --dim-color: #bbb;
+  --default-color: var(--dim-color);
+}
+
+html.poxy-theme-light body {
+  background: white;
+}
+
+.poxy-theme-light div.m-row
+  dt strong {
+    font-size: 1.2em;
+  }
+.poxy-theme-light div.m-row
+  dd {
+    margin-bottom: 1em;
+  }
+
+html.poxy-theme-light	dt a.m-doc {
+}
+
