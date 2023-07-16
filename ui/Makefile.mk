@@ -80,10 +80,12 @@ $>/ui/.build1-stamp: $>/ui/zcam-js.mjs
 $>/ui/colors.js: $>/ui/zcam-js.mjs
 
 # == ui/index.html ==
-$>/ui/index.html: ui/index.html ui/Makefile.mk			| $>/ui/
+$>/ui/index.html: ui/index.html ui/Makefile.mk $>/node_modules/.npm.done		| $>/ui/
 	$(QGEN)
-	$Q rm -f $>/ui/doc && ln -s ../doc $>/ui/doc # MAKE is flaky in tracking symlink timestamps
-	$Q : $(file > $>/ui/config.json,  { "config": { $(strip $(PACKAGE_VERSIONS)) } })
+	$Q rm -f $>/ui/doc && ln -s ../doc $>/ui/doc # do here, b/c MAKE is flaky in tracking symlink timestamps
+	$Q echo '    { "config": { $(strip $(PACKAGE_VERSIONS)),'				> $>/ui/config.json
+	$Q (cd $>/ && npm list) | sed -nr '/ lit@/{s/.*@(.*)/    "lit_version": "\1" /;p}'	>>$>/ui/config.json
+	$Q echo '    } }'									>>$>/ui/config.json
 	$Q sed -r \
 		-e "/<script type='application\/json' id='--EMBEDD-config_json'>/ r $>/ui/config.json" \
 		< $<	> $@.tmp
