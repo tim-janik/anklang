@@ -130,5 +130,4 @@ export class BClipList extends LitComponent {
       Shell.piano_current_tick (this.wtrack.launcher_clips[current], tick);
   }
 }
-
 customElements.define ('b-cliplist', BClipList);
