@@ -23,5 +23,9 @@
   "include": [
     "*.js",
     "b/*.js"
+  ],
+  // Exceptions to "include"
+  "exclude": [
+    "postcss.js.tst.js"
   ]
 }
