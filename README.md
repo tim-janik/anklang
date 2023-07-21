@@ -43,19 +43,33 @@ and run it.
 <!-- ROADMAP -->
 ## Roadmap
 
-☑  Implement the application core in C++17 and the GUI as a web front-end, utilizing web browsers or Electron.
+☑  Implement the application core in C++17 and the GUI as a web front-end, utilizing web browsers or Electron
 
-☑  Implement separate audio synthesis threads with MIDI device support.
+☑  Implement separate audio synthesis threads with MIDI device support
 
-☑  Add devices for synthesis and effects.
+☑  Support third-party plugins via [CLAP](https://github.com/free-audio/clap) [🗩 ](https://www.kvraudio.com/forum/viewtopic.php?t=574861)
 
-☑  Support third-party plugins via [CLAP](https://github.com/free-audio/clap) [🗩 ](https://www.kvraudio.com/forum/viewtopic.php?t=574861).
+☑  Pianoroll editing and ☐ MIDI note scripting
 
-☐  Support third-party plugins via [LV2](https://en.wikipedia.org/wiki/LV2).
+☑  Add clip launcher with ☐ play order configuration
 
-☐  Add standard audio library for various instrument types.
+☑  Add devices for synthesis: BlepSynth
 
-☐  Implement a quality MIDI file importer with mappings into the audio library.
+☐  Add effects (and more devices): Chorus Delays Distortions LiquidSFZ Reverberation
+
+☐  Add arranger for clips and (stereo) samples
+
+☐  Add automation lanes with automation event recording
+
+☐  Add mixer to adjust solo, mute, panning, volume per track
+
+☐  Add mixer side chains or effect tracks
+
+☐  Support third-party plugins via [LV2](https://en.wikipedia.org/wiki/LV2)
+
+☐  Add standard audio library for various instrument types
+
+☐  Implement a quality MIDI file importer with mappings into the audio library
 
 <!-- LICENSE.txt -->
 ## License
