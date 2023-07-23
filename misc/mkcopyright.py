@@ -14,7 +14,7 @@ licenses = {
   'CC0-1.0':    [ 'Licensed CC0 Public Domain',
                   'CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1\.0/',
                   'Licensed CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1\.0' ],
-  'MIT':        [ 'MIT licensed', ],
+  'MIT':        [ 'MIT [Ll]icensed?', ],
 }
 
 # Comment suffix to ignore
