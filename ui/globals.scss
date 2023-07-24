@@ -3,37 +3,44 @@
 // Normalize latest Chrome & Firefox styles
 @import 'normalize.css';
 
-// imports mixins.scss
-@import 'elements.scss';
+// Import theme and color definitions
+@import 'mixins.scss';
 
-// CSS cursor variables
+// Provide cursor CSS variables on :root
 @import url('cursors/cursors.css');
 
-// Globals
-html {
-  @include b-ui-font();
-  color-scheme: $b-color-scheme;
-  // Scrollbars
-  @include firefox-scrollbars();
-  @include chrome-scrollbars();
-}
-
+// Full viewport sizing
 html, body {
-  // full viewport sizing
   margin: 0; padding: 0;
   max-width: 100vw; max-height: 100vh;
   overflow: hidden;
 }
+body { width: 100vw; height: 100vh; }
 
+// Font adjustments
+html, :host				{ @include b-ui-font(); }
+h1, h2, h3, h4, h5, h6, th,
+::-webkit-validation-bubble-heading,
+.bold					{ @include b-font-weight-bold(); }
+.bolder, optgroup			{ @include b-font-weight-bolder(); }
+.tabular-nums				{ font-variant-numeric: tabular-nums; }
+.slashed-zero				{ font-variant-numeric: slashed-zero; }
+plaintext, listing, xmp, tt, pre, code, kbd, samp, .tnum, .code,
+input:-webkit-autofill-strong-password,
+.tabular-nums.slashed-zero		{ font-variant-numeric: tabular-nums slashed-zero; }
+
+// Color scheme and default colors
+html { color-scheme: $b-color-scheme; }
 body {
-  // full viewport sizing
-  width: 100vw; height: 100vh;
-  // main colors
   color: $b-foreground-color;
   background: $b-background-color;
-  &:-moz-window-inactive {
-    color: $b-foreground-inactive;
-  }
+  &:-moz-window-inactive { color: $b-foreground-inactive; }
+}
+
+// Scrollbar styling
+html, :host {
+  @include firefox-scrollbars();
+  @include chrome-scrollbars();
 }
 
 // Button
