@@ -29,7 +29,7 @@ export class LitComponent extends LitElement {
     if (render_root) {
       const link = document.createElement ("link");
       link.setAttribute ("rel", "stylesheet");
-      link.setAttribute ("href", "shadow.css");
+      link.setAttribute ("href", "globals.css");
       render_root.appendChild (link);
     }
     return render_root;
