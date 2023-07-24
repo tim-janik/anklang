@@ -42,6 +42,15 @@ html, :host {
   @include chrome-scrollbars();
 }
 
+/* Animations */
+::view-transition-group(*) {
+  animation-duration: $b-animation-duration;
+  animation-timing-function: linear;
+  // on the linux desktop, view-transitions are fairly janky on Chrome-114, 'linear' helps a bit
+}
+@keyframes b-keyframe-from-scale0 { from { transform: scale(0.01); opacity: 0.01; } }
+@keyframes b-keyframe-to-scale0   { to   { transform: scale(0.01); opacity: 0.01; } }
+
 // Button
 button, push-button {
   // button shading
