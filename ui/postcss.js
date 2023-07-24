@@ -19,14 +19,15 @@ const import_paths = [];
 import * as Colors from './colors.js';
 
 // == Plugins ==
+const postcss_advanced_variables = require ('postcss-advanced-variables');
+const postcss_color_hwb = require ('postcss-color-hwb');
 const postcss_color_mod_function = require ('postcss-color-mod-function');
 const postcss_discard_comments = require ('postcss-discard-comments');
-const postcss_advanced_variables = require ('postcss-advanced-variables');
+const postcss_discard_duplicates = require ('postcss-discard-duplicates');
 const postcss_functions = require ('postcss-functions');
-const postcss_color_hwb = require ('postcss-color-hwb');
 const postcss_lab_function = require ('postcss-lab-function');
 const postcss_nested = require ('postcss-nested');
-const postcss_discard_duplicates = require ('postcss-discard-duplicates');
+const postcss_normalize_charset = require ('postcss-normalize-charset');
 // Configure processing behaviour
 function postcss_plugins (options = {})
 {
@@ -45,6 +46,7 @@ function postcss_plugins (options = {})
     postcss_functions (css_functions()),
     postcss_nested,
     postcss_discard_duplicates,
+    postcss_normalize_charset,
   ];
   return plugins;
 }
