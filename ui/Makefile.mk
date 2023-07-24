@@ -28,14 +28,12 @@ ui/nocopy.wildcards ::= $(wildcard	\
 )
 ui/scss.files ::= $(strip	\
 	ui/dark.scss		\
-	ui/elements.scss	\
 	ui/globals.scss		\
 	ui/grid.scss		\
 	ui/mixins.scss		\
 	ui/theme.scss		\
 )
 ui/b/scss2css.sources ::= $(strip	\
-	ui/shadow.scss			\
 	ui/globals.scss			\
 )
 ui/copy.files ::= $(filter-out $(ui/nocopy.wildcards) $(ui/cjs.wildcards), $(ui/jscopy.wildcards))
@@ -145,7 +143,7 @@ $>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/ui/colors.js $>/node_modules/.
 	$Q mv $@.tst.js $@
 $>/ui/.build1-stamp: $>/ui/postcss.js
 
-# == ui/shadow.css ==
+# == SCSS -> CSS ==
 ui/b/scss2css.targets ::= $(ui/b/scss2css.sources:ui/%.scss=$>/ui/%.css)
 $(ui/b/scss2css.targets): $>/ui/postcss.js $(wildcard ui/*.scss) ui/Makefile.mk
 $(ui/b/scss2css.targets): $>/ui/%.css: ui/%.scss		| $>/ui/
