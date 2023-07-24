@@ -280,7 +280,7 @@ $$(dir $1)check-$$(notdir $1): $1
 	$$Q $1
 endef
 $(foreach TEST, $(ALL_TESTS), $(eval $(call CHECK_ALL_TESTS_TEST, $(TEST))))
-check: $(CHECK_TARGETS) check-audio check-bench
+check: $(CHECK_TARGETS) check-audio check-bench lint
 $(CHECK_TARGETS): FORCE
 check-bench: FORCE
 
