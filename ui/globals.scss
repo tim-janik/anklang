@@ -32,9 +32,8 @@ input:-webkit-autofill-strong-password,
 // Color scheme and default colors
 html { color-scheme: $b-color-scheme; }
 body {
-  color: $b-foreground-color;
-  background: $b-background-color;
-  &:-moz-window-inactive { color: $b-foreground-inactive; }
+  @include b-body-colors();
+  &:-moz-window-inactive { color: $b-body-colors-inactive; }
 }
 
 // Scrollbar styling

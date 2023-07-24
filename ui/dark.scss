@@ -37,12 +37,15 @@ $b-canvas-font: normal 9px "InterVariable", $b-font-stack-grotesque;	// the '9px
 @mixin b-font-weight-bolder() { font-weight: 850; }
 
 /* Colors */
+@import 'palette.scss';
 $b-color-scheme: dark;	/* only normal light dark */
-$b-color-tone: #879;
+@mixin b-body-colors() {
+  color: $b-grey80;
+  background: $b-grey00;
+}
+$b-body-colors-inactive: zmod($b-grey80, a=80%);
+$b-color-tone: $b-grey50; // deprecated, use palette colors
 $b-grey-tone: zmod($b-color-tone,Sz=20%,Jz=50%);
-$b-foreground-color: zlerp($b-color-tone,#fff,91%);
-$b-foreground-inactive: zmod($b-foreground-color, a=80%);
-$b-background-color: zmod($b-color-tone,Sz=20%,Jz=13.1%);
 
 $b-panel-foreground: zmod($b-grey-tone,Jz=96%);
 $b-panel-background: zmod($b-grey-tone,Jz=36%);
