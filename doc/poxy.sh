@@ -44,7 +44,8 @@ changelog       = false
 favicon         = 'ui/assets/favicon.svg'
 logo            = 'ui/assets/favicon.svg'
 navbar          = 'all'	# [ 'namespaces', 'annotated' ]
-theme           = 'dark'
+theme           = 'light'
+stylesheets	= [ 'doc/poxystyle.css' ]
 
 [warnings]
 enabled         = true
@@ -66,6 +67,7 @@ paths           = '.'
 
 [autolinks]
 '(?:Ase\.)?server' = 'class_ase_1_1_server.html'
+
 __EOF
 
   # Prepare sources
@@ -119,6 +121,8 @@ __EOF
 
   # Fix missing accesskey="f" for Search
   sed -r '0,/<a class="m-doc-search-icon" href="#search" /s/(<a class="m-doc-search-icon")/\1 accesskey="f"/' -i html/*.html
+  # Text/border/etc colors are entagled in unfortunate ways, leave colors entirely to poxystyle.css.
+  sed -r 's/(^color:| color:)/ --unused-color:/g' -i html/poxy/poxy.css
 
   # Extend searchdata-v2.js with token list from JS docs
   test -r html/searchdata-v2.js || die 'missing searchdata-v2.js'
@@ -159,7 +163,7 @@ __EOF
   # Add doc/ with manuals
   TMPINST=`pwd`/tmpinst/
   rm -rf $TMPINST
-  make DESTDIR=$TMPINST doc/install -j
+  make DESTDIR=$TMPINST prefix=/ doc/install -j
   cp -ru $TMPINST/share/doc/anklang/. html/
   rm -rf $TMPINST
 }
