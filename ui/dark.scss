@@ -36,6 +36,9 @@ $b-canvas-font: normal 9px "InterVariable", $b-font-stack-grotesque;	// the '9px
 @mixin b-font-weight-bold()   { font-weight: 700; }
 @mixin b-font-weight-bolder() { font-weight: 850; }
 
+/* Animations */
+$b-animation-duration: 0.2s;
+
 /* Colors */
 @import 'palette.scss';
 $b-color-scheme: dark;	/* only normal light dark */
@@ -44,8 +47,17 @@ $b-color-scheme: dark;	/* only normal light dark */
   background: $b-grey00;
 }
 $b-body-colors-inactive: zmod($b-grey80, a=80%);
+
 $b-color-tone: $b-grey50; // deprecated, use palette colors
 $b-grey-tone: zmod($b-color-tone,Sz=20%,Jz=50%);
+
+$b-dialog-border-colors: $b-grey31;
+@mixin b-dialog-colors() {
+  color: $b-grey90; background-color: $b-grey16;
+  background: linear-gradient(to bottom, $b-grey16l, $b-grey16d);
+  border-color: $b-dialog-border-colors;
+  &::backdrop { background: fade($b-grey02, 50%); }
+}
 
 $b-panel-foreground: zmod($b-grey-tone,Jz=96%);
 $b-panel-background: zmod($b-grey-tone,Jz=36%);
