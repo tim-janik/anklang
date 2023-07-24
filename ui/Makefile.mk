@@ -31,6 +31,7 @@ ui/scss.files ::= $(strip	\
 	ui/globals.scss		\
 	ui/grid.scss		\
 	ui/mixins.scss		\
+	ui/palette.scss		\
 	ui/theme.scss		\
 )
 ui/b/scss2css.sources ::= $(strip	\
