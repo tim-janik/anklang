@@ -156,14 +156,24 @@ $(ui/b/jscss.targets): $>/%.jscss: %.js			| $>/ui/b/
 .INTERMEDIATE: $(ui/b/jscss.targets)
 
 # == ui/globals.css ==
-$>/ui/globals.css: ui/globals.scss $(ui/b/jscss.targets) $>/ui/postcss.js
+$>/ui/globals.css: ui/globals.scss $(ui/b/jscss.targets) $>/ui/postcss.js $>/ui/material-icons.css
 	$(QGEN)
 	$Q $(CP) $< $>/ui/globals.scss
 	$Q for f in $(ui/b/jscss.targets:$>/ui/%=%) ; do echo "@import '$$f';" >> $>/ui/globals.scss || exit 1 ; done
 	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -I ui/ -i $>/ui/globals.scss $@.tmp
-	$Q rm -f $(ui/b/jscss.targets) $>/ui/globals.scss
+	$Q rm -f $(ui/b/jscss.targets) $>/ui/globals.scss $>/ui/material-icons.css
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/globals.css
+# Material-Icons
+$>/ui/material-icons.css: ui/Makefile.mk		| $>/ui/fonts/ $>/node_modules/.npm.done
+	$(QGEN)
+	$Q grep -q '/material-icons.woff2' $>/node_modules/material-icons/iconfont/filled.css || \
+		{ echo "$<: failed to find font in $>/node_modules/material-icons/iconfont/" >&2 ; false ; }
+	$Q cp $>/node_modules/material-icons/iconfont/material-icons.woff2 $>/ui/fonts/material-icons.woff2
+	$Q sed -re 's|/material-icons.woff|/fonts/material-icons.woff|g' \
+		-e 's|\boptimizeLegibility\b|optimizelegibility|g' \
+		$>/node_modules/material-icons/iconfont/filled.css > $>/ui/material-icons.css
+.INTERMEDIATE: $>/ui/material-icons.css
 
 # == AnklangIcons ==
 $>/ui/fonts/AnklangIcons.css: ui/Makefile.mk		| $>/ui/fonts/
@@ -201,15 +211,6 @@ ui/fork-awesome-downloads ::= \
   630b0e84fa43579f7e97a26fd47d4b70cb5516ca7e6e73393597d12ca249a8ee \
     https://raw.githubusercontent.com/ForkAwesome/Fork-Awesome/b0605a81632452818bf19c8fa97469da1206b52b/css/fork-awesome.css
 $>/ui/.build1-stamp: $>/ui/fonts/forkawesome-webfont.css
-
-# == Material-Icons ==
-$>/ui/fonts/material-icons.css: ui/Makefile.mk		| $>/ui/fonts/ $>/node_modules/.npm.done
-	$(QGEN)
-	$Q grep -q '/material-icons.woff2' $>/node_modules/material-icons/iconfont/filled.css || \
-		{ echo "$<: failed to find font in $>/node_modules/material-icons/iconfont/" >&2 ; false ; }
-	$Q cp $>/node_modules/material-icons/iconfont/material-icons.woff2 $(@D)
-	$Q cp $>/node_modules/material-icons/iconfont/filled.css $@
-$>/ui/.build1-stamp: $>/ui/fonts/material-icons.css
 
 # == ui/spinner.svg ==
 $>/ui/spinner.scss: ui/assets/spinner.svg
