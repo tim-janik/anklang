@@ -34,61 +34,58 @@ import * as Kbd from '../kbd.js';
 import * as ContextMenu from './contextmenu.js';
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
-:host {
+:host(b-menuitem) {
   display: flex; flex-direction: column; align-items: stretch;
-}
-button {
-  display: flex; align-items: stretch;
-  flex: 0 0 auto; flex-flow: row nowrap;
-  margin: 0; padding: $b-menu-vpad $b-menu-hpad; text-align: left;
-  // button-reset
-  background: transparent; color: $b-menu-foreground; border: 1px solid transparent;
-  cursor: pointer; user-select: none; outline: none;
-  kbd { color: zmod($b-menu-foreground, Jz-=15); }
-  b-icon { color: $b-menu-fill; height: 1em; width: 1em; }
-  > b-icon:first-child { margin: 0 $b-menu-spacing 0 0; }
-}
-button:focus {
-  background-color: $b-menu-focus-bg; color: $b-menu-focus-fg; outline: none;
-  kbd { color: inherit; }
-  border: 1px solid zmod($b-menu-focus-bg, Jz-=50%);
-  b-icon { color: $b-menu-focus-fg; }
-}
-button.active, button:focus.active, button:focus:active,
-button:active {
-  background-color: $b-menu-active-bg; color: $b-menu-active-fg; outline: none;
-  kbd { color: inherit; }
-  b-icon { color: $b-menu-active-fg; }
-  border: 1px solid zmod($b-menu-active-bg, Jz-=50%);
-}
-*[disabled] {
-  color: $b-menu-disabled;
-  b-icon { color: $b-menu-disabled-fill; }
-}
-.kbdspan {
-  flex-grow: 1;
-  text-align: right;
-  padding-left: 2.5em;
-  kbd {
-    font-family: inherit;
-    @include b-font-weight-normal();
+  button {
+    display: flex; align-items: stretch;
+    flex: 0 0 auto; flex-flow: row nowrap;
+    margin: 0; padding: $b-menu-vpad $b-menu-hpad; text-align: left;
+    // button-reset
+    background: transparent; color: $b-menu-foreground; border: 1px solid transparent;
+    cursor: pointer; user-select: none; outline: none;
+    kbd { color: zmod($b-menu-foreground, Jz-=15); }
+    b-icon { color: $b-menu-fill; height: 1em; width: 1em; }
+    > b-icon:first-child { margin: 0 $b-menu-spacing 0 0; }
   }
-}
-&.-nokbd .kbdspan { display:none; }
-button[turn] {
-  flex-direction: column; align-items: center;
-  & > b-icon:first-child { margin: 0 0 $b-menu-spacing 0; }
-}
-button[noturn] {
-  .menulabel { min-width: 2em; } //* this aligns blocks of 2-digit numbers */
-  > b-icon:first-child { margin: 0 $b-menu-tightspace 0 0; }
-}
-.kbdspan[kbdhidden] { display: none; }
-kbd[data-can-remap] { font-style: italic; }
-`;
+  button:focus {
+    background-color: $b-menu-focus-bg; color: $b-menu-focus-fg; outline: none;
+    kbd { color: inherit; }
+    border: 1px solid zmod($b-menu-focus-bg, Jz-=50%);
+    b-icon { color: $b-menu-focus-fg; }
+  }
+  button.active, button:focus.active, button:focus:active,
+  button:active {
+    background-color: $b-menu-active-bg; color: $b-menu-active-fg; outline: none;
+    kbd { color: inherit; }
+    b-icon { color: $b-menu-active-fg; }
+    border: 1px solid zmod($b-menu-active-bg, Jz-=50%);
+  }
+  *[disabled] {
+    color: $b-menu-disabled;
+    b-icon { color: $b-menu-disabled-fill; }
+  }
+  .kbdspan {
+    flex-grow: 1;
+    text-align: right;
+    padding-left: 2.5em;
+    kbd {
+      font-family: inherit;
+      @include b-font-weight-normal();
+    }
+  }
+  &.-nokbd .kbdspan { display:none; }
+  button[turn] {
+    flex-direction: column; align-items: center;
+    & > b-icon:first-child { margin: 0 0 $b-menu-spacing 0; }
+  }
+  button[noturn] {
+    .menulabel { min-width: 2em; } //* this aligns blocks of 2-digit numbers */
+    > b-icon:first-child { margin: 0 $b-menu-tightspace 0 0; }
+  }
+  .kbdspan[kbdhidden] { display: none; }
+  kbd[data-can-remap] { font-style: italic; }
+}`;
 
 // == HTML ==
 const HTML = (t, d) => html`
@@ -111,7 +108,6 @@ const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with
 const PRIVATE_PROPERTY = { state: true };
 
 class BMenuItem extends LitComponent {
-  static styles = [ STYLE ];
   static shadowRootOptions = { ...LitComponent.shadowRootOptions, delegatesFocus: true };
   render()
   {
@@ -261,5 +257,4 @@ class BMenuItem extends LitComponent {
       }
   }
 }
-
 customElements.define ('b-menuitem', BMenuItem);
