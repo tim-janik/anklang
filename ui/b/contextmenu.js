@@ -48,10 +48,8 @@ import * as Util from "../util.js";
 import * as Kbd from '../kbd.js';
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
-dialog {
+dialog.b-contextmenu {
   &[open], &.animating { display: flex; }
   flex-direction: column;
   align-items: stretch;
@@ -66,7 +64,7 @@ dialog {
   overflow-y: auto;
   overflow-x: hidden;
 }
-dialog::backdrop {
+dialog.b-contextmenu::backdrop {
   /* Menu backdrop must be transparent, for one a popup menu is different from a modal dialog,
    * and second, showing a modal dialog via menu item would result in bad flickernig. */
   background: transparent;
@@ -74,7 +72,7 @@ dialog::backdrop {
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <dialog ${ref (h => t.dialog = h)} part="dialog" >
+  <dialog class="b-contextmenu" ${ref (h => t.dialog = h)} part="dialog">
     <slot></slot>
   </dialog>
 `;
@@ -123,7 +121,8 @@ export function provide_menudata (element)
 }
 
 class BContextMenu extends LitComponent {
-  static styles = [ STYLE ];
+  // If FOUC becomes an issue, add this as a bandaid:
+  // static styles = [ css` dialog[open] { display: flex; flex-direction: column; margin: 0; } ` ];
   render()
   {
     const d = {};
@@ -345,5 +344,4 @@ class BContextMenu extends LitComponent {
     return null;
   }
 }
-
 customElements.define ('b-contextmenu', BContextMenu);
