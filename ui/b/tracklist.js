@@ -11,55 +11,52 @@ import { LitComponent, html, JsExtract, docs, ref, repeat } from '../little.js';
  */
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
 $scroll-shadow-inset: 7px;
-:host {
+b-tracklist {
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;
-}
-.grid {
-  display: grid; flex-grow: 1;
-  position: relative; inset: 0;
-  padding: 0 calc(0.5 * $scroll-shadow-inset);
-  align-items: stretch;
-  grid-template-columns: min-content 3fr 2fr;
-  grid-template-rows: min-content 1fr min-content;
-  background-color: $b-tracklist-bg;
-  overflow: hidden;
-  // for :before box-shadow
-}
-.trackviews,
-.partlists,
-.cliplists {
-  display: flex; flex-flow: column nowrap;
-  align-items: flex-start; // needed for scroll-x
-  padding: $scroll-shadow-inset 0;
-  min-height: 0;
-  > * { height: 46px; box-sizing: border-box; overflow: hidden; flex-grow: 0; flex-shrink: 0; }
-}
-.trackviews {
-  grid-area: 2/1 / 3/2;
-  overflow: scroll hidden;
-}
-.cliplists {
-  grid-area: 2/2 / 3/3;
-  overflow: scroll;
-}
-.partlists {
-  grid-area: 2/3 / 3/4;
-  overflow: scroll;
-}
-.scrollshadow {
-  grid-area: 2/1 / 3/4;
-  position: absolute; top: 0; left: 0; height: 200%;
-  width: calc(100% + 200px); margin-left: -100px;
-  // add inner box-shadow to indicate scrolling borders
-  z-index: 1; pointer-events: none; user-select: none;
-  box-shadow: black 0 0 $scroll-shadow-inset 0px inset;
-}
-`;
+  .grid {
+    display: grid; flex-grow: 1;
+    position: relative; inset: 0;
+    padding: 0 calc(0.5 * $scroll-shadow-inset);
+    align-items: stretch;
+    grid-template-columns: min-content 3fr 2fr;
+    grid-template-rows: min-content 1fr min-content;
+    background-color: $b-tracklist-bg;
+    overflow: hidden;
+    // for :before box-shadow
+  }
+  .trackviews,
+  .partlists,
+  .cliplists {
+    display: flex; flex-flow: column nowrap;
+    align-items: flex-start; // needed for scroll-x
+    padding: $scroll-shadow-inset 0;
+    min-height: 0;
+    > * { height: 46px; box-sizing: border-box; overflow: hidden; flex-grow: 0; flex-shrink: 0; }
+  }
+  .trackviews {
+    grid-area: 2/1 / 3/2;
+    overflow: scroll hidden;
+  }
+  .cliplists {
+    grid-area: 2/2 / 3/3;
+    overflow: scroll;
+  }
+  .partlists {
+    grid-area: 2/3 / 3/4;
+    overflow: scroll;
+  }
+  .scrollshadow {
+    grid-area: 2/1 / 3/4;
+    position: absolute; top: 0; left: 0; height: 200%;
+    width: calc(100% + 200px); margin-left: -100px;
+    // add inner box-shadow to indicate scrolling borders
+    z-index: 1; pointer-events: none; user-select: none;
+    box-shadow: black 0 0 $scroll-shadow-inset 0px inset;
+  }
+}`;
 
 // == HTML ==
 const TRACKVIEW_HTML = (t, track, idx, len) => html`
@@ -92,14 +89,14 @@ import * as Util from '../util.js';
 const OBJECT_PROPERTY = { attribute: false };
 
 class BTrackList extends LitComponent {
-  static styles = [ STYLE ];
-  static properties = {
-    project: OBJECT_PROPERTY,
-  };
+  createRenderRoot() { return this; }
   render()
   {
     return HTML (this);
   }
+  static properties = {
+    project: OBJECT_PROPERTY,
+  };
   constructor()
   {
     super();
