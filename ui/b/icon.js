@@ -55,17 +55,11 @@ const HTML = (iconclasses, innertext) => html`
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true };  // sync attribute with property
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 
-let font_assertions = 0;
-
 class BIcon extends LitComponent {
   createRenderRoot()
   {
-    // icon fonts must be loaded into document and shadowRoot ancestors
-    Util.add_style_sheet (this, '/fonts/AnklangIcons.css');
-    if (!font_assertions++) {
-      console.assert (Dom.font_family_loaded ({ font_family: ' "Material Icons" ' }), 'Failed to verify loaded font: "Material Icons"');
-    }
-    Util.add_style_sheet (this, '/fonts/forkawesome-webfont.css');
+    // icon fonts must already be loaded into document and shadowRoot ancestors
+    verify_font_family();
     // avoid using shadow-root which does not have access to icon fonts
     return this;
   }
@@ -128,3 +122,23 @@ class BIcon extends LitComponent {
   }
 }
 customElements.define ('b-icon', BIcon);
+
+function verify_font_family (testnow = false)
+{
+  if (verify_font_family_status === undefined) {
+    verify_font_family_status = setTimeout (() => verify_font_family (true), 3 * 1000);
+    return undefined;
+  } else if (!testnow)
+    return undefined;
+  const Material_Icons_loaded = Dom.font_family_loaded ({ font_family: 'Material Icons' });
+  console.assert (Material_Icons_loaded, 'Failed to verify loaded font: "Material Icons"');
+
+  const AnklangIcons_loaded = Dom.font_family_loaded ({ font_family: 'AnklangIcons', text: '\uea01\uea02\uea03\uea04\uea05\uea06' });
+  console.assert (AnklangIcons_loaded, 'Failed to verify loaded font: AnklangIcons');
+
+  const ForkAwesome_loaded = Dom.font_family_loaded ({ font_family: 'ForkAwesome', text: '\uf011\uf040\uf05a' });
+  console.assert (ForkAwesome_loaded, 'Failed to verify loaded font: ForkAwesome');
+
+  verify_font_family_status = !!(Material_Icons_loaded && AnklangIcons_loaded && ForkAwesome_loaded);
+}
+let verify_font_family_status = undefined;
