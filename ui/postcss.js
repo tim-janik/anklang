@@ -37,7 +37,7 @@ function postcss_plugins (options = {})
     postcss_discard_comments ({ remove: comment => true }),
     postcss_advanced_variables ({ disable: '@content, @each, @for', // @if, @else, @mixin, @include, @import
 				  importRoot: opts.import_root,
-				  importFilter: string => opts.import_all || string.endsWith ('.scss'),
+				  importFilter: string => opts.import_all || !string.endsWith ('.css'),
 				  importResolve: __NODE__ ? load_import : find_import,
 				  variables }),
     postcss_color_mod_function ({ unresolved: 'throw' }),
