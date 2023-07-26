@@ -70,7 +70,8 @@ $>/ui/.build1-stamp: $>/ui/zcam-js.mjs
 $>/ui/colors.js: $>/ui/zcam-js.mjs
 
 # == ui/index.html ==
-$>/ui/index.html: ui/index.html ui/Makefile.mk $>/node_modules/.npm.done		| $>/ui/
+$>/ui/index.html: ui/index.html $>/ui/globals.css $>/ui/vue-styles.css $>/node_modules/.npm.done		| $>/ui/
+	@ $(eval ui/csshash != cat $>/ui/globals.css $>/ui/vue-styles.css | sha256sum | sed 's/ *-//')
 	$(QGEN)
 	$Q rm -f $>/ui/doc && ln -s ../doc $>/ui/doc # do here, b/c MAKE is flaky in tracking symlink timestamps
 	$Q echo '    { "config": { $(strip $(PACKAGE_VERSIONS)),'				> $>/ui/config.json
@@ -78,6 +79,7 @@ $>/ui/index.html: ui/index.html ui/Makefile.mk $>/node_modules/.npm.done		| $>/u
 	$Q echo '    } }'									>>$>/ui/config.json
 	$Q sed -r \
 		-e "/<script type='application\/json' id='--EMBEDD-config_json'>/ r $>/ui/config.json" \
+		-e "s/@--CSSHASH--@/$(ui/csshash)/g" \
 		< $<	> $@.tmp
 	$Q rm $>/ui/config.json
 	$Q sed -r \
