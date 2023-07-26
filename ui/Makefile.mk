@@ -159,7 +159,7 @@ $>/ui/globals.css: ui/globals.scss $(ui/b/jscss.targets) $>/ui/postcss.js
 	$Q $(CP) $< $>/ui/globals.scss
 	$Q for f in $(ui/b/jscss.targets:$>/ui/%=%) ; do echo "@import '$$f';" >> $>/ui/globals.scss || exit 1 ; done
 	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -I ui/ -i $>/ui/globals.scss $@.tmp
-	$Q rm -f $(ui/b/jscss.targets) #  $>/ui/globals.scss
+	$Q rm -f $(ui/b/jscss.targets) $>/ui/globals.scss
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/globals.css
 
