@@ -19,10 +19,8 @@ import * as Util from '../util.js';
  * : This event is emitted whenever the value changes through user input or needs to be constrained.
  */
 
-// <STYLE/>
-const STYLE_URL = await JsExtract.css_url (import.meta);
+// == STYLE ==
 JsExtract.scss`
-@import 'mixins.scss';
 b-textinput input {
   outline-width: 0; border: none; border-radius: $b-button-radius;
   text-align: left;
@@ -43,12 +41,8 @@ html`
 
 // <SCRIPT/>
 class BTextInput extends LitComponent {
+  createRenderRoot() { return this; }
   render() { return HTML (this); }
-  createRenderRoot()
-  {
-    Util.add_style_sheet (this, STYLE_URL);
-    return this;
-  }
   input_element = null;
   static properties = {
     value:	 { type: String, },
