@@ -26,9 +26,7 @@ import * as Util from '../util.js';
  */
 
 // <STYLE/>
-const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
 b-numberinput {
   display: flex; justify-content: flex-end;
   label {
@@ -48,8 +46,7 @@ b-numberinput {
     outline-width: 0; border: none;
     @include b-style-number-input;
   }
-}
-`;
+}`;
 
 // <HTML/>
 const HTML = t =>
@@ -67,12 +64,8 @@ html`
 
 // <SCRIPT/>
 class BNumberInput extends LitComponent {
+  createRenderRoot() { return this; }
   render() { return HTML (this); }
-  createRenderRoot()
-  {
-    Util.add_style_sheet (this, STYLE_URL);
-    return this;
-  }
   static properties = {
     value:	{ type: [String, Number] },
     allowfloat:	{ type: Boolean, },
