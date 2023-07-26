@@ -11,10 +11,8 @@ import { LitComponent, html, JsExtract, docs } from '../little.js';
  */
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
-:host {
+b-buttonbar {
   display: inline-flex; background-color: $b-button-border;
   border: 1px solid $b-button-border;
   border-radius: $b-button-radius;
@@ -24,8 +22,7 @@ JsExtract.scss`
     &:first-of-type	{ border-top-left-radius: $b-button-radius; border-bottom-left-radius: $b-button-radius; }
     &:last-of-type	{ border-top-right-radius: $b-button-radius; border-bottom-right-radius: $b-button-radius; }
   }
-}
-`;
+}`;
 
 // == HTML ==
 const HTML = html`
@@ -34,7 +31,7 @@ const HTML = html`
 
 // == SCRIPT ==
 class BButtonBar extends LitComponent {
-  static styles = [ STYLE ];
+  createRenderRoot() { return this; }
   render = () => HTML;
 }
 customElements.define ('b-buttonbar', BButtonBar);
