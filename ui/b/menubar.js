@@ -45,9 +45,9 @@ const HTML = (t, d) =>  html`
 	  <b-menuitem ic="fa-file-audio-o" kbd="Ctrl+O"		uri="load"    >	Open Project…		</b-menuitem>
 	  <b-menuitem ic="mi-save_alt"     kbd="Ctrl+S"		uri="save"    >	Save Project		</b-menuitem>
 	  <b-menuitem ic="fa-save"	   kbd="Shift+Ctrl+S"	uri="saveas"  >	Save As…		</b-menuitem>
-	  <b-menuseparator style="margin: 7px"  ></b-menuseparator>
+	  <b-menuseparator></b-menuseparator>
 	  <b-menuitem ic="fa-cog"          kbd="Ctrl+RawComma"	uri="prefs"   >	Preferences		</b-menuitem>
-	  <b-menuseparator style="margin: 7px"  ></b-menuseparator>
+	  <b-menuseparator></b-menuseparator>
 	  <b-menuitem ic="mi-close"        kbd="Shift+Ctrl+Q" uri="quit">	Quit			</b-menuitem>
 	</b-contextmenu>
       </push-button>
@@ -98,7 +98,7 @@ const HTML = (t, d) =>  html`
 	<b-contextmenu ${ref (h => t.helpmenu = h)} id="g-helpmenu" .activate=${activate} .isactive=${isactive} startfocus >
 	  <b-menuitem ic="mi-chrome_reader_mode"	uri="user-manual">	Anklang Manual…		</b-menuitem>
 	  <b-menuitem ic="mi-chrome_reader_mode"	uri="dev-manual">	Development Reference…	</b-menuitem>
-	  <b-menuseparator style="margin: 7px"  ></b-menuseparator>
+	  <b-menuseparator></b-menuseparator>
 	  <b-menuitem ic="fa-id-card-o"		uri="about">	About…			</b-menuitem>
 	</b-contextmenu>
       </push-button>
