@@ -10,7 +10,7 @@
 </docs>
 
 <style lang="scss">
-@import 'spinner.scss';
+/* globals.scss includes @import 'spinner.scss'; */
 
 .b-shell {
   position: relative;
