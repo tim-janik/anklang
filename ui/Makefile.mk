@@ -216,7 +216,7 @@ $>/ui/spinner.scss: ui/assets/spinner.svg
 $>/ui/.build1-stamp: $>/ui/spinner.scss
 
 # == stylelint ==
-ui/stylelint.files = $(ui/b/scss2css.targets) $(ui/b/css.targets) $>/ui/vue-styles.css
+ui/stylelint.files = $(ui/b/scss2css.targets) $(ui/b/css.targets) $>/ui/globals.css $>/ui/vue-styles.css
 $>/ui/.stylelint.done: $(ui/stylelint.files) ui/stylelintrc.cjs $>/node_modules/.npm.done
 	$(QECHO) RUN stylelint
 	$Q cp ui/stylelintrc.cjs $>/ui/stylelintrc.cjs
