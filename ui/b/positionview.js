@@ -11,9 +11,7 @@ import * as Ase from '../aseapi.js';
  */
 
 // <STYLE/>
-const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
 b-positionview { @include h-flex(); }
 b-positionview {
   $b-positionview-fg: $b-lcdscreen-fg;
@@ -59,14 +57,10 @@ const HTML = (t, d) =>  html`
 
 // <SCRIPT/>
 class BPositionView extends LitComponent {
+  createRenderRoot() { return this; }
   render()
   {
     return HTML (this, {});
-  }
-  createRenderRoot()
-  {
-    Util.add_style_sheet (this, STYLE_URL);
-    return this;
   }
   constructor()
   {
