@@ -10,9 +10,7 @@ import * as Ase from '../aseapi.js';
  */
 
 // <STYLE/>
-const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
 .b-menubar {
   margin: 5px;
   .-stack {
@@ -116,11 +114,7 @@ const ELECTRON_MENUITEMS = (t) => window['Electron'] && html`
 
 // == SCRIPT ==
 export class BMenuBar extends LitComponent {
-  createRenderRoot()
-  {
-    Util.add_style_sheet (this, STYLE_URL);
-    return this;
-  }
+  createRenderRoot() { return this; }
   render()
   {
     return HTML (this, {});
