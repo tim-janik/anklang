@@ -375,7 +375,7 @@ WebSocketConnection::http_request ()
       cp->append_header ("Content-Type", mimetype);
       // Use CACHE_FOREVER for text/css to reduce FOUC (flashing of unstyled content)
       // with shadowRoot stylesheet links in Chrome-115. CACHE_AUTO worsens FOUC.
-      const CacheType caching = mimetype == "text/css" ? CACHE_FOREVER : CACHE_BRIEFLY;
+      const CacheType caching = mimetype == "text/css" ? CACHE_FOREVER : CACHE_AUTO;
       switch (caching) {
       case CACHE_NEVER:         // response must not be stored in cache
         cp->append_header ("Cache-Control", "no-store");
@@ -383,11 +383,11 @@ WebSocketConnection::http_request ()
       case CACHE_AUTO:          // force response revalidation if content stored in cache
         cp->append_header ("Cache-Control", "no-cache"); // max-age=0, must-revalidate
         break;
-      case CACHE_BRIEFLY:       // force response revalidation after a few seconds
-        cp->append_header ("Cache-Control", "max-age=17, stale-while-revalidate=31536000");
+      case CACHE_BRIEFLY:       // needs validation support: https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests
+        cp->append_header ("Cache-Control", "max-age=7, stale-while-revalidate=31536000");
         break;
       case CACHE_FOREVER:       // keep content forever in cache
-        cp->append_header ("Cache-Control", "max-age=31536000, stale-while-revalidate=31536000, public, immutable");
+        cp->append_header ("Cache-Control", "max-age=31536000, public, immutable");
         break;
       }
       Blob blob = Blob::from_file (filepath);
