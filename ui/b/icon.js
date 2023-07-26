@@ -3,6 +3,7 @@
 
 import { LitComponent, html, JsExtract, docs } from '../little.js';
 import * as Util from "../util.js";
+import * as Dom from "../dom.js";
 
 /** # B-ICON
  * This element displays icons from various icon fonts.
@@ -54,12 +55,16 @@ const HTML = (iconclasses, innertext) => html`
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true };  // sync attribute with property
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 
+let font_assertions = 0;
+
 class BIcon extends LitComponent {
   createRenderRoot()
   {
     // icon fonts must be loaded into document and shadowRoot ancestors
     Util.add_style_sheet (this, '/fonts/AnklangIcons.css');
-    Util.add_style_sheet (this, '/fonts/material-icons.css');
+    if (!font_assertions++) {
+      console.assert (Dom.font_family_loaded ({ font_family: ' "Material Icons" ' }), 'Failed to verify loaded font: "Material Icons"');
+    }
     Util.add_style_sheet (this, '/fonts/forkawesome-webfont.css');
     // avoid using shadow-root which does not have access to icon fonts
     return this;
