@@ -22,7 +22,7 @@ export function font_family_loaded (options = {})
   el.style.fontFamily = 'sans-serif';
   document.body.appendChild (el);
   const sans_offset_width = el.offsetWidth, sans_offset_height = el.offsetHeight;
-  el.style.fontFamily = options.font_family + ', sans-serif';
+  el.style.fontFamily = '"'+options.font_family+'"' + ', sans-serif';
   let font_offset_width = el.offsetWidth, font_offset_height = el.offsetHeight;
   document.body.removeChild (el);
   if (sans_offset_width != font_offset_width || sans_offset_height != font_offset_height)
@@ -31,7 +31,7 @@ export function font_family_loaded (options = {})
   el.style.fontFamily = 'monospace';
   document.body.appendChild (el);
   const monospace_offset_width = el.offsetWidth, monospace_offset_height = el.offsetHeight;
-  el.style.fontFamily = options.font_family + ', monospace';
+  el.style.fontFamily = '"'+options.font_family+'"' + ', monospace';
   font_offset_width = el.offsetWidth; font_offset_height = el.offsetHeight;
   document.body.removeChild (el);
   if (monospace_offset_width != font_offset_width || monospace_offset_height != font_offset_height)
