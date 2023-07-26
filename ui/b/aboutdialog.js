@@ -12,9 +12,7 @@ import * as Util from "../util.js";
  */
 
 // == STYLE ==
-const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
 b-aboutdialog {
   c-grid {
     max-width: 100%;
@@ -54,11 +52,7 @@ const INFOS_HTML = (t, d) =>
 
 // == SCRIPT ==
 export class BAboutDialog extends LitComponent {
-  createRenderRoot()
-  {
-    Util.add_style_sheet (this, STYLE_URL);
-    return this;
-  }
+  createRenderRoot() { return this; }
   render()
   {
     const d = {};
