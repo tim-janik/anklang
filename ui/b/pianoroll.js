@@ -15,12 +15,8 @@ import * as Util from '../util.js';
 const floor = Math.floor, round = Math.round;
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
-@import 'grid.scss';
-
-:host {
+b-piano-roll {
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;
   // Make scss variables available to JS via getComputedStyle()
@@ -47,37 +43,34 @@ JsExtract.scss`
   --piano-roll-note-focus-color:      $b-piano-roll-note-focus-color;
   --piano-roll-note-focus-border:     $b-piano-roll-note-focus-border;
   --piano-roll-key-length:            $b-piano-roll-key-length;
-}
-c-grid {
-  background: $b-piano-roll-black-base;
-  position: absolute; inset: 0;
-  align-items: stretch;
-
-  grid-template-columns: min-content 1fr min-content;
-  grid-template-rows:    min-content 1fr min-content;
-
-  canvas { background: black; object-fit: contain;
-    min-width: 0; min-height: 0; // https://www.w3.org/TR/css3-grid-layout/#min-size-auto
+  c-grid {
+    background: $b-piano-roll-black-base;
+    position: absolute; inset: 0;
+    align-items: stretch;
+    grid-template-columns: min-content 1fr min-content;
+    grid-template-rows:    min-content 1fr min-content;
+    canvas { background: black; object-fit: contain;
+      min-width: 0; min-height: 0; // https://www.w3.org/TR/css3-grid-layout/#min-size-auto
+    }
+    .-indicator {
+      position: absolute; top: 0; bottom: 0; left: 0; width: 1px; height: 100%;
+      background: $b-piano-roll-indicator;
+      z-index: 2; backface-visibility: hidden; will-change: transform;
+      transform: translateX(-9999px);
+      pointer-events: none;
+    }
+    .-hextend {
+      background: #0000; opacity: 0; visibility: hidden;
+      margin-top: 0; height: 1px;
+      // height: 16px; margin-top: -8px; background: #0f0;
+    }
+    .-vextend {
+      background: #0000; opacity: 0; visibility: hidden;
+      margin-left: 0; width: 1px;
+      // width: 16px; margin-left: -3px; background: #00f;
+    }
   }
-  .-indicator {
-    position: absolute; top: 0; bottom: 0; left: 0; width: 1px; height: 100%;
-    background: $b-piano-roll-indicator;
-    z-index: 2; backface-visibility: hidden; will-change: transform;
-    transform: translateX(-9999px);
-    pointer-events: none;
-  }
-  .-hextend {
-    background: #0000; opacity: 0; visibility: hidden;
-    margin-top: 0; height: 1px;
-    // height: 16px; margin-top: -8px; background: #0f0;
-  }
-  .-vextend {
-    background: #0000; opacity: 0; visibility: hidden;
-    margin-left: 0; width: 1px;
-    // width: 16px; margin-left: -3px; background: #00f;
-  }
-}
-`;
+}`;
 
 // == HTML ==
 const HTML = (t, d) => html`
@@ -131,8 +124,7 @@ const default_note_length = Util.PPQN / 4;
 
 /// UI element for note editing.
 class BPianoRoll extends LitComponent {
-  static styles = [ STYLE ];
-  static shadowRootOptions = { ...LitComponent.shadowRootOptions, delegatesFocus: true };
+  createRenderRoot() { return this; }
   render()
   {
     const d = {};
