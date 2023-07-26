@@ -95,18 +95,18 @@ const HTML_CMENU = (t, d) => html`
     <b-menuitem ic="fa-i-cursor"           uri="rename-track" >   Rename Track          </b-menuitem>
     <b-menuitem ic="fa-toggle-down"        uri="bounce-track" >   Bounce Track          </b-menuitem>
     <b-menuitem ic="mi-visibility_off"     uri="track-details" >  Show / Hide Track Details </b-menuitem>
-    <b-menuseparator style="margin: 7px" ></b-menuseparator>
+    <b-menuseparator></b-menuseparator>
     <b-menurow>		<!-- ic="fa-clone" uri="clone-track" >    Dupl.                 -->
       <b-menuitem ic="fa-times-circle"     uri="delete-track" >   Delete                </b-menuitem>
       <b-menuitem ic="fa-scissors"         uri="cut-track" >      Cut                   </b-menuitem>
       <b-menuitem ic="fa-files-o"          uri="copy-track" >     Copy                  </b-menuitem>
       <b-menuitem ic="fa-clipboard"        uri="paste-track" >    Paste                 </b-menuitem>
     </b-menurow>
-    <b-menuseparator style="margin: 7px" ></b-menuseparator>
+    <b-menuseparator></b-menuseparator>
     <b-menutitle> Playback </b-menutitle>
     <b-menuitem ic="uc-Ｍ"                 uri="mute-track" >     Mute Track            </b-menuitem>
     <b-menuitem ic="uc-Ｓ"                 uri="solo-track" >     Solo Track            </b-menuitem>
-    <b-menuseparator style="margin: 7px" ></b-menuseparator>
+    <b-menuseparator></b-menuseparator>
     <b-menutitle> MIDI Channel </b-menutitle>
     <b-menuitem                  uri="mc-0"  ic=${t.mcc (0)}  > Internal Channel </b-menuitem>
     <b-menurow noturn>
