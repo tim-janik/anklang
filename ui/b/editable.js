@@ -16,32 +16,29 @@ import * as Util from "../util.js";
  */
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
-:host {
+b-editable {
   display: flex;
   position: relative;
-}
-input {
-  position: absolute;
-  display: inline-block;
-  inset: 0;
-  width: 100%; height: 100%;
-  margin: 0; padding: 0; border: 0;
-  width: 100%; height: 100%; line-height: 1;
-  letter-spacing: inherit; text-align: inherit;
-  background: #000; color: inherit; font: inherit;
-  z-index: 2;
-  outline: 0;
-  box-sizing: content-box;
-  vertical-align: middle;
-  white-space: nowrap;
-  overflow: hidden;
-}
-slot          { color: inherit; }
-slot[editing] { color: #0000; }
-`;
+  input {
+    position: absolute;
+    display: inline-block;
+    inset: 0;
+    width: 100%; height: 100%;
+    margin: 0; padding: 0; border: 0;
+    width: 100%; height: 100%; line-height: 1;
+    letter-spacing: inherit; text-align: inherit;
+    background: #000; color: inherit; font: inherit;
+    z-index: 2;
+    outline: 0;
+    box-sizing: content-box;
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  slot          { color: inherit; }
+  slot[editing] { color: #0000; }
+}`;
 
 // == HTML ==
 const HTML = (t, d) => html`
@@ -66,7 +63,6 @@ const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with
 const PRIVATE_PROPERTY = { state: true };
 
 class BEditable extends LitComponent {
-  static styles = [ STYLE ];
   static properties = {
     selectall:	BOOLEAN_ATTRIBUTE,
     clicks:	NUMBER_ATTRIBUTE,
@@ -146,5 +142,4 @@ class BEditable extends LitComponent {
     setTimeout (() => this.editable_ = false, 67);
   }
 }
-
 customElements.define ('b-editable', BEditable);
