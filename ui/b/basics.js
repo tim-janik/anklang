@@ -5,10 +5,7 @@ import { JsExtract } from '../little.js';
 import * as Util from '../util.js';
 
 // <STYLE/>
-const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
-
 h-flex { @include h-flex(); }
 h-flex[inline] { display: inline-flex; }
 
@@ -20,42 +17,19 @@ c-grid[inline] { display: inline-grid; }
 `;
 
 /** # PUSH-BUTTON - wrapper for an ordinary HTMLElement */
-class PushButton extends HTMLElement {
-  constructor() { super(); }
-  connectedCallback()
-  {
-    // LitCompnent: super.connectedCallback();
-    Util.add_style_sheet (this, STYLE_URL);
-  }
-}
+class PushButton extends HTMLElement {}
 customElements.define ('push-button', PushButton);
-
-// Util.add_style_sheet (this, STYLE_URL);
 
 /** # B-HFLEX
  * Horizontal [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
  */
-class HFlex extends HTMLElement {
-  constructor() { super(); }
-  connectedCallback()
-  {
-    // LitCompnent: super.connectedCallback();
-    Util.add_style_sheet (this, STYLE_URL);
-  }
-}
+class HFlex extends HTMLElement {}
 customElements.define ('h-flex', HFlex);
 
 /** # B-VFLEX
  * Vertical [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
  */
-class VFlex extends HTMLElement {
-  constructor() { super(); }
-  connectedCallback()
-  {
-    // LitCompnent: super.connectedCallback();
-    Util.add_style_sheet (this, STYLE_URL);
-  }
-}
+class VFlex extends HTMLElement {}
 customElements.define ('v-flex', VFlex);
 
 /** # B-CGRID
@@ -63,12 +37,5 @@ customElements.define ('v-flex', VFlex);
  * See also [Grid Container](https://www.w3.org/TR/css-grid-1/#grid-containers)
  * [Grid visual cheatsheet](http://grid.malven.co/)
  */
-class CGrid extends HTMLElement {
-  constructor() { super(); }
-  connectedCallback()
-  {
-    // LitCompnent: super.connectedCallback();
-    Util.add_style_sheet (this, STYLE_URL);
-  }
-}
+class CGrid extends HTMLElement {}
 customElements.define ('c-grid', CGrid);

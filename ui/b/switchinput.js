@@ -16,10 +16,8 @@ import * as Util from '../util.js';
  * : This event is emitted whenever the value changes through user input or needs to be constrained.
  */
 
-// <STYLE/>
-const STYLE_URL = await JsExtract.css_url (import.meta);
+// == STYLE ==
 JsExtract.scss`
-@import 'mixins.scss';
 b-switchinput label {
   position: relative; display: inline-block; width: 2.6em; height: 1.4em;
   input {
@@ -42,8 +40,7 @@ b-switchinput label {
       content: "\2713"; transition: .3s; color: $b-switch-knob; opacity: 0;
     }
   }
-}
-`;
+}`;
 
 // <HTML/>
 const HTML = t =>
@@ -58,12 +55,8 @@ html`
 // <SCRIPT/>
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true };  // sync attribute with property
 class BSwitchInput extends LitComponent {
+  createRenderRoot() { return this; }
   render() { return HTML (this); }
-  createRenderRoot()
-  {
-    Util.add_style_sheet (this, STYLE_URL);
-    return this;
-  }
   input_element = null;
   static properties = {
     value:	BOOL_ATTRIBUTE,

@@ -20,9 +20,7 @@ import * as Util from '../util.js';
  */
 
 // <STYLE/>
-const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
 b-choiceinput {
   display: flex;
   flex-basis: auto;
@@ -123,17 +121,13 @@ const CONTEXTMENU_ITEM = (t, c) => html`
 
 // <SCRIPT/>
 class BChoiceInput extends LitComponent {
+  createRenderRoot() { return this; }
   render()
   {
     return [
       HTML (this),
       !this.need_cmenu ? nothing : CONTEXTMENU_HTML (this),
     ];
-  }
-  createRenderRoot()
-  {
-    Util.add_style_sheet (this, STYLE_URL);
-    return this;
   }
   static properties = {
     value:	{ type: String, },

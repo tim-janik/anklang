@@ -13,59 +13,58 @@ import { LitComponent, html, render, JsExtract, docs, ref } from '../little.js';
  */
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
-:host {
+b-trackview {
   display: flex;
   align-items: stretch;
   background-color: $b-button-border;
   border: 1px solid $b-button-border;
   border-top-left-radius: $b-button-radius;
   border-bottom-left-radius: $b-button-radius;
+  .-lvm-main { // level meter
+    height: calc($b-track-meter-thickness + $b-track-meter-gap + $b-track-meter-thickness);
+    position: relative;
+    // push element onto own compositing layer to reduce rendering overhead
+    will-change: auto;
+  }
+  .-lvm-levelbg {
+    height: 100%;
+    --db-zpc: 66.66%;
+    background: linear-gradient(to right, #0b0, #bb0 var(--db-zpc), #b00);
+  }
+  .-lvm-covertip0, .-lvm-covermid0, .-lvm-covertip1, .-lvm-covermid1,
+  .-lvm-levelbg, .-lvm-coverspace      { position: absolute; width: 100%; }
+  .-lvm-covertip0, .-lvm-covermid0     { top: 0px; }
+  .-lvm-coverspace                     { top: calc($b-track-meter-thickness - 0.25px); height: calc($b-track-meter-gap + 0.5px); }
+  .-lvm-covertip1, .-lvm-covermid1     { top: calc($b-track-meter-thickness + $b-track-meter-gap); }
+  .-lvm-coverspace {
+    background-color: rgba( 0, 0, 0, .80);
+  }
+  .-lvm-covertip0, .-lvm-covermid0, .-lvm-covertip1, .-lvm-covermid1 {
+    height: $b-track-meter-thickness;
+    background-color: rgba( 0, 0, 0, .75);
+    transform-origin: center right;
+    will-change: transform;
+    transform: scaleX(1);
+  }
+  .-lvm-covertip1, .-lvm-covermid1 {
+    height: calc($b-track-meter-thickness + 1px);
+    // add 1px to cover for rounded coords
+  }
+  .b-trackview-control {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin-right: 5px;
+    overflow: hidden;
+  }
+  .-track-name {
+    display: inline-flex; position: relative; width: 7em; overflow: hidden;
+  }
 }
-.-lvm-main { // level meter
-  height: calc($b-track-meter-thickness + $b-track-meter-gap + $b-track-meter-thickness);
-  position: relative;
-  // push element onto own compositing layer to reduce rendering overhead
-  will-change: auto;
-}
-.-lvm-levelbg {
-  height: 100%;
-  --db-zpc: 66.66%;
-  background: linear-gradient(to right, #0b0, #bb0 var(--db-zpc), #b00);
-}
-.-lvm-covertip0, .-lvm-covermid0, .-lvm-covertip1, .-lvm-covermid1,
-.-lvm-levelbg, .-lvm-coverspace      { position: absolute; width: 100%; }
-.-lvm-covertip0, .-lvm-covermid0     { top: 0px; }
-.-lvm-coverspace                     { top: calc($b-track-meter-thickness - 0.25px); height: calc($b-track-meter-gap + 0.5px); }
-.-lvm-covertip1, .-lvm-covermid1     { top: calc($b-track-meter-thickness + $b-track-meter-gap); }
-.-lvm-coverspace {
-  background-color: rgba( 0, 0, 0, .80);
-}
-.-lvm-covertip0, .-lvm-covermid0, .-lvm-covertip1, .-lvm-covermid1 {
-  height: $b-track-meter-thickness;
-  background-color: rgba( 0, 0, 0, .75);
-  transform-origin: center right;
-  will-change: transform;
-  transform: scaleX(1);
-}
-.-lvm-covertip1, .-lvm-covermid1 {
-  height: calc($b-track-meter-thickness + 1px);
-  // add 1px to cover for rounded coords
-}
-.b-trackview-control {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  margin-right: 5px;
-  overflow: hidden;
-}
-:host([current-track]) .b-trackview-control { background-color: zmod($b-button-border, Jz+=25%); }
-.-track-name {
-  display: inline-flex; position: relative; width: 7em; overflow: hidden;
-}
-`;
+b-trackview[current-track] .b-trackview-control {
+  background-color: zmod($b-button-border, Jz+=25%);
+}`;
 
 // == HTML ==
 const HTML = (t, d) => html`
@@ -95,18 +94,18 @@ const HTML_CMENU = (t, d) => html`
     <b-menuitem ic="fa-i-cursor"           uri="rename-track" >   Rename Track          </b-menuitem>
     <b-menuitem ic="fa-toggle-down"        uri="bounce-track" >   Bounce Track          </b-menuitem>
     <b-menuitem ic="mi-visibility_off"     uri="track-details" >  Show / Hide Track Details </b-menuitem>
-    <b-menuseparator style="margin: 7px" ></b-menuseparator>
+    <b-menuseparator></b-menuseparator>
     <b-menurow>		<!-- ic="fa-clone" uri="clone-track" >    Dupl.                 -->
       <b-menuitem ic="fa-times-circle"     uri="delete-track" >   Delete                </b-menuitem>
       <b-menuitem ic="fa-scissors"         uri="cut-track" >      Cut                   </b-menuitem>
       <b-menuitem ic="fa-files-o"          uri="copy-track" >     Copy                  </b-menuitem>
       <b-menuitem ic="fa-clipboard"        uri="paste-track" >    Paste                 </b-menuitem>
     </b-menurow>
-    <b-menuseparator style="margin: 7px" ></b-menuseparator>
+    <b-menuseparator></b-menuseparator>
     <b-menutitle> Playback </b-menutitle>
     <b-menuitem ic="uc-Ｍ"                 uri="mute-track" >     Mute Track            </b-menuitem>
     <b-menuitem ic="uc-Ｓ"                 uri="solo-track" >     Solo Track            </b-menuitem>
-    <b-menuseparator style="margin: 7px" ></b-menuseparator>
+    <b-menuseparator></b-menuseparator>
     <b-menutitle> MIDI Channel </b-menutitle>
     <b-menuitem                  uri="mc-0"  ic=${t.mcc (0)}  > Internal Channel </b-menuitem>
     <b-menurow noturn>
@@ -146,16 +145,16 @@ const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with
 const OBJECT_PROPERTY = { attribute: false };
 
 class BTrackView extends LitComponent {
-  static styles = [ STYLE ];
-  static properties = {
-    track: OBJECT_PROPERTY,
-    trackindex: NUMBER_ATTRIBUTE,
-  };
+  createRenderRoot() { return this; }
   render()
   {
     this.notify_current_track();
     return HTML (this);
   }
+  static properties = {
+    track: OBJECT_PROPERTY,
+    trackindex: NUMBER_ATTRIBUTE,
+  };
   constructor()
   {
     super();

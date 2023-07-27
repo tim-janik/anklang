@@ -14,25 +14,18 @@
 import { LitComponent, html, JsExtract, docs } from '../little.js';
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
 JsExtract.scss`
-:host {
+b-menurow {
   display: inline-flex; flex: 0 0 auto; flex-flow: row nowrap;
   text-align: center; justify-content: center; align-items: baseline;
   margin: 0; padding: 0;
 }`;
 
-// == HTML ==
-const HTML = () => html`
-  <slot></slot>
-`;
-
 // == SCRIPT ==
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with property
 
 class BMenuRow extends LitComponent {
-  static styles = [ STYLE ];
-  render = HTML;
+  createRenderRoot() { return this; }
   static properties = {
     noturn: BOOL_ATTRIBUTE,
   };
@@ -42,5 +35,4 @@ class BMenuRow extends LitComponent {
     this.noturn = false;
   }
 }
-
 customElements.define ('b-menurow', BMenuRow);

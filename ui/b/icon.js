@@ -31,7 +31,6 @@ import * as Util from "../util.js";
  */
 
 // == STYLE ==
-const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
 b-icon { // not using shadow-root here
   display: inline-flex; justify-content: center;
@@ -56,6 +55,21 @@ const BOOL_ATTRIBUTE = { type: Boolean, reflect: true };  // sync attribute with
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 
 class BIcon extends LitComponent {
+  createRenderRoot()
+  {
+    // icon fonts must be loaded into document and shadowRoot ancestors
+    Util.add_style_sheet (this, '/fonts/AnklangIcons.css');
+    Util.add_style_sheet (this, '/fonts/material-icons.css');
+    Util.add_style_sheet (this, '/fonts/forkawesome-webfont.css');
+    // avoid using shadow-root which does not have access to icon fonts
+    return this;
+  }
+  render()
+  {
+    const { iconclasses, mi_, uc_ } = this;
+    let inner = mi_ || uc_;
+    return HTML (iconclasses, inner);
+  }
   static properties = {
     iconclass: STRING_ATTRIBUTE, ic: STRING_ATTRIBUTE,
     hflip: BOOL_ATTRIBUTE, vflip: BOOL_ATTRIBUTE,
@@ -72,22 +86,6 @@ class BIcon extends LitComponent {
     this.vflip = false;
     this.nosize = false;
     this.iconclass = "";
-  }
-  render()
-  {
-    const { iconclasses, mi_, uc_ } = this;
-    let inner = mi_ || uc_;
-    return HTML (iconclasses, inner);
-  }
-  createRenderRoot()
-  {
-    Util.add_style_sheet (this, STYLE_URL);
-    // icon fonts must be loaded into document and shadowRoot ancestors
-    Util.add_style_sheet (this, '/fonts/AnklangIcons.css');
-    Util.add_style_sheet (this, '/fonts/material-icons.css');
-    Util.add_style_sheet (this, '/fonts/forkawesome-webfont.css');
-    // avoid using shadow-root which does not have access to icon fonts
-    return this;
   }
   get iconclasses()
   {

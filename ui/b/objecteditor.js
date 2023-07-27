@@ -19,9 +19,7 @@ import * as Util from '../util.js';
  */
 
 // <STYLE/>
-const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
 b-objecteditor {
   display: grid;
   grid-gap: 0.6em 0.5em;
@@ -61,8 +59,7 @@ b-objecteditor {
   .b-objecteditor-value {
     width: 100%;
   }
-}
-`;
+}`;
 
 // <HTML/>
 const GROUP_HTML = (t, group) =>  html`
@@ -102,6 +99,7 @@ const CHOICE_HTML = (t, prop) => html`
 
 // <SCRIPT/>
 class BObjectEditor extends LitComponent {
+  createRenderRoot() { return this; }
   render()
   {
     const content = [];
@@ -113,11 +111,6 @@ class BObjectEditor extends LitComponent {
       }
     }
     return content;
-  }
-  createRenderRoot()
-  {
-    Util.add_style_sheet (this, STYLE_URL);
-    return this;
   }
   static properties = {
     readonly:	{ type: Boolean, },

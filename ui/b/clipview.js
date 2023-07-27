@@ -8,44 +8,40 @@
 import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
-:host {
+b-clipview {
   display: inline-grid;
   margin: 0 0 0 2px;
-}
-$b-clipview-font-color: rgba(255, 255, 255, 0.7) !default;
-$b-clipview-note-color: rgba(255, 255, 255, 0.7) !default;
-$b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;
-
-.b-clipview {
-  display: flex; position: relative;
-  flex-shrink: 0;
-  border: 0;
-  .-canvas {
-    display: inline; position: absolute; inset: 0;
-    --clipview-font-color: #{$b-clipview-font-color}; --clipview-font: #{$b-canvas-font};
-    --clipview-note-color: #{$b-clipview-note-color};
-    --clipview-color-hues: $b-clipview-color-hues;
-    box-shadow: inset 0px 0 1px #fff9, inset -1px 0 1px #000;
-    border-radius: $b-button-radius;
+  $b-clipview-font-color: rgba(255, 255, 255, 0.7) !default;
+  $b-clipview-note-color: rgba(255, 255, 255, 0.7) !default;
+  $b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;
+  .b-clipview {
+    display: flex; position: relative;
+    flex-shrink: 0;
+    border: 0;
+    .-canvas {
+      display: inline; position: absolute; inset: 0;
+      --clipview-font-color: #{$b-clipview-font-color}; --clipview-font: #{$b-canvas-font};
+      --clipview-note-color: #{$b-clipview-note-color};
+      --clipview-color-hues: $b-clipview-color-hues;
+      box-shadow: inset 0px 0 1px #fff9, inset -1px 0 1px #000;
+      border-radius: $b-button-radius;
+    }
+    .-play {
+      display: inline;
+      position: absolute;
+      padding: 3px;
+      position: absolute;
+      padding: 3px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: $b-clip-play-fg;
+      background: $b-clip-play-bg;
+      border-radius: calc($b-button-radius * 0.66);
+    }
   }
-  .-play {
-    display: inline;
-    position: absolute;
-    padding: 3px;
-    position: absolute;
-    padding: 3px;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: $b-clip-play-fg;
-    background: $b-clip-play-bg;
-    border-radius: calc($b-button-radius * 0.66);
-  }
-}
-`;
+}`;
 
 // == HTML ==
 const HTML = (t, d) => html`
@@ -66,19 +62,18 @@ const PRIVATE_PROPERTY = { state: true };
 const OBJECT_PROPERTY = { attribute: false };
 
 export class BClipView extends LitComponent {
-  static styles = [ STYLE ];
-  static shadowRootOptions = { ...LitComponent.shadowRootOptions, delegatesFocus: true };
+  createRenderRoot() { return this; }
+  render()
+  {
+    const d = {};
+    return HTML (this, d);
+  }
   static properties = {
     clip: OBJECT_PROPERTY,
     track: OBJECT_PROPERTY,
     trackindex: NUMBER_ATTRIBUTE,
     end_tick: PRIVATE_PROPERTY,	// trigger this.requestUpdate()
   };
-  render()
-  {
-    const d = {};
-    return HTML (this, d);
-  }
   constructor()
   {
     super();
@@ -116,7 +111,6 @@ export class BClipView extends LitComponent {
     debug ("PLAY: clip:", this.clip.$id);
   }
 }
-
 customElements.define ('b-clipview', BClipView);
 
 import * as Z from '../zcam-js.mjs';

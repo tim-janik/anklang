@@ -9,9 +9,8 @@ import * as Util from "../util.js";
  */
 
 // == STYLE ==
-const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
-:host {
+b-playcontrols {
   button, push-button	{ padding: 5px; }
 }
 `;
@@ -33,16 +32,12 @@ const HTML = (t, D) => html`
 
 // == SCRIPT ==
 class BPlayControls extends LitComponent {
+  createRenderRoot() { return this; }
   render()
   {
     const dispatcher = (method) =>
       (ev) => this.dispatch (method, ev);
     return HTML (this, dispatcher);
-  }
-  createRenderRoot()
-  {
-    Util.add_style_sheet (this, STYLE_URL);
-    return this;
   }
   async dispatch (method, ev)
   {

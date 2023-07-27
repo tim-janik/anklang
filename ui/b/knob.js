@@ -41,35 +41,31 @@ import { LitComponent, html, JsExtract, docs } from '../little.js';
 import * as Util from "../util.js";
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
 b-knob {
-    display: flex; position: relative;
-    margin: 0; padding: 0; text-align: center;
-    &.b-knob-h4w svg { position: absolute; width:  100%; } //* height for width */
-    &.b-knob-w4h svg { position: absolute; height: 100%; } //* width for height */
-    .b-knob-trf {
-      will-change: transform; /* request GPU texture for fast transforms */
-    }
-    & svg.b-knob-sizer {
-      //* empty SVG element, used by .b-knob to determine width from height from viewBox */
-      position: relative; //* participate in layout space allocation */
-    }
-}
-
-#sprite {
-  display: inline-block;
-  background: url("assets/cknob193u.png");
-  &[bidir] { background: url("assets/cknob193b.png"); }
-  background-repeat: no-repeat;
-  --pxsize: 40px;
-  background-size: calc(1.0 * var(--pxsize));
-  will-change: background-position;
-  width:  calc(1.0 * var(--pxsize));
-  height: calc(1.0 * var(--pxsize));
-}
-`;
+  display: flex; position: relative;
+  margin: 0; padding: 0; text-align: center;
+  &.b-knob-h4w svg { position: absolute; width:  100%; } //* height for width */
+  &.b-knob-w4h svg { position: absolute; height: 100%; } //* width for height */
+  .b-knob-trf {
+    will-change: transform; /* request GPU texture for fast transforms */
+  }
+  & svg.b-knob-sizer {
+    //* empty SVG element, used by .b-knob to determine width from height from viewBox */
+    position: relative; //* participate in layout space allocation */
+  }
+  #sprite {
+    display: inline-block;
+    background: url("assets/cknob193u.png");
+    &[bidir] { background: url("assets/cknob193b.png"); }
+    background-repeat: no-repeat;
+    --pxsize: 40px;
+    background-size: calc(1.0 * var(--pxsize));
+    will-change: background-position;
+    width:  calc(1.0 * var(--pxsize));
+    height: calc(1.0 * var(--pxsize));
+  }
+}`;
 
 // == HTML ==
 const HTML = (t,d) => html`
@@ -85,7 +81,12 @@ const BOOL_ATTRIBUTE = { type: Boolean, reflect: true };  // sync attribute with
 const USE_PTRLOCK = true;
 
 class BKnob extends LitComponent {
-  static styles = [ STYLE ];
+  createRenderRoot() { return this; }
+  render()
+  {
+    const bidir = this.prop.hints_.search (/:bidir:/) >= 0;
+    return HTML (this, { bidir });
+  }
   static properties = {
     prop: OBJ_ATTRIBUTE,
     nosize: BOOL_ATTRIBUTE,
@@ -107,14 +108,9 @@ class BKnob extends LitComponent {
     this.text_ = '';
     this.prop = null;
   }
-  render()
-  {
-    const bidir = this.prop.hints_.search (/:bidir:/) >= 0;
-    return HTML (this, { bidir });
-  }
   updated (changed_properties)
   {
-    this.sprite = this.shadowRoot.querySelector ('#sprite');
+    this.sprite = this.querySelector ('#sprite');
     foreach_dispatch_propery_changed.call (this, changed_properties);
     this.reposition();
   }

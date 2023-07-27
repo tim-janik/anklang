@@ -12,10 +12,8 @@ import * as Util from "../util.js";
  */
 
 // == STYLE ==
-const STYLE_URL = await JsExtract.css_url (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
-:host { // b-menutitle
+b-menutitle {
   display: inline-flex; flex: 0 0 auto; flex-flow: row nowrap;
   align-items: baseline;      //* distribute extra cross-axis space */
   margin: 0; padding: 5px 1em; text-align: left;
@@ -29,8 +27,7 @@ JsExtract.scss`
   ::first-letter {
     font-size: 130%;
   }
-}
-`;
+}`;
 
 // == HTML ==
 const HTML = html`
@@ -42,11 +39,5 @@ const HTML = html`
 // == SCRIPT ==
 class BMenuTitle extends LitComponent {
   render = () => HTML;
-  createRenderRoot()
-  {
-    const rroot = super.createRenderRoot();
-    Util.add_style_sheet (rroot, STYLE_URL);
-    return rroot;
-  }
 }
 customElements.define ('b-menutitle', BMenuTitle);

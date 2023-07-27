@@ -9,19 +9,16 @@ import * as Util from '../util.js';
  */
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
-:host {
+b-partlist {
   display: flex;
   position: relative;
-}
-b-clipview {
-  margin: 0 1px;
-  width: calc(5 * $b-clipthumb-width);
-  flex-shrink: 0; flex-grow: 0;
-}
-`;
+  b-clipview {
+    margin: 0 1px;
+    width: calc(5 * $b-clipthumb-width);
+    flex-shrink: 0; flex-grow: 0;
+  }
+}`;
 
 // == HTML ==
 const HTML = (t, d) => [
@@ -37,16 +34,16 @@ const OBJECT_PROPERTY = { attribute: false };
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 
 class BPartList extends LitComponent {
-  static styles = [ STYLE ];
-  static properties = {
-    track:	OBJECT_PROPERTY,
-    trackindex:	NUMBER_ATTRIBUTE,
-  };
+  createRenderRoot() { return this; }
   render()
   {
     const d = {};
     return HTML (this, d);
   }
+  static properties = {
+    track:	OBJECT_PROPERTY,
+    trackindex:	NUMBER_ATTRIBUTE,
+  };
   constructor()
   {
     super();

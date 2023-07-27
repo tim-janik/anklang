@@ -11,10 +11,8 @@ import * as Util from '../util.js';
  */
 
 // == STYLE ==
-const STYLE = await JsExtract.fetch_css (import.meta);
 JsExtract.scss`
-@import 'mixins.scss';
-:host {
+b-cliplist {
   display: flex;
   position: relative;
   .-indicator {
@@ -23,13 +21,12 @@ JsExtract.scss`
     z-index: 2;
     transform: translateX(-9999px);
   }
-}
-b-clipview {
-  margin: 0 1px;
-  width: $b-clipthumb-width;
-  flex-shrink: 0; flex-grow: 0;
-}
-`;
+  b-clipview {
+    margin: 0 1px;
+    width: $b-clipthumb-width;
+    flex-shrink: 0; flex-grow: 0;
+  }
+}`;
 
 // == HTML ==
 const HTML = (t, d) => [
@@ -46,16 +43,16 @@ const OBJECT_PROPERTY = { attribute: false };
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 
 export class BClipList extends LitComponent {
-  static styles = [ STYLE ];
-  static properties = {
-    track:	OBJECT_PROPERTY,
-    trackindex:	NUMBER_ATTRIBUTE,
-  };
+  createRenderRoot() { return this; }
   render()
   {
     const d = {};
     return HTML (this, d);
   }
+  static properties = {
+    track:	OBJECT_PROPERTY,
+    trackindex:	NUMBER_ATTRIBUTE,
+  };
   constructor()
   {
     super();
@@ -98,7 +95,7 @@ export class BClipList extends LitComponent {
 	async_updates();
       }
     this.clipviews.length = 0;
-    for (const element of this.shadowRoot.querySelectorAll (":host > b-clipview"))
+    for (const element of this.querySelectorAll ("b-cliplist > b-clipview"))
       {
 	const clipview = /**@type{BClipView}*/ (element);
 	this.clipviews.push ({ width: clipview.getBoundingClientRect().width,
