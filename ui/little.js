@@ -26,12 +26,9 @@ export class LitComponent extends LitElement {
   createRenderRoot()
   {
     const render_root = super.createRenderRoot();
-    if (render_root) {
-      const link = document.createElement ("link");
-      link.setAttribute ("rel", "stylesheet");
-      link.setAttribute ("href", "globals.css");
-      render_root.appendChild (link);
-    }
+    if (render_root)
+      for (const lnk of document.head.querySelectorAll ('link[data-4litcomponent][rel=stylesheet]'))
+	render_root.appendChild (lnk.cloneNode());
     return render_root;
   }
 }

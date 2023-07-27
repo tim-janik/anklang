@@ -344,6 +344,13 @@ void WebSocketConnection::message (const String &message)       { if (logflags_ 
 void WebSocketConnection::closed ()                             { if (logflags_ & 4) log (__func__); }
 void WebSocketConnection::log (const String &message)           { printerr ("%s\n", message);}
 
+enum CacheType {
+  CACHE_NEVER,
+  CACHE_AUTO,
+  CACHE_BRIEFLY,
+  CACHE_FOREVER,
+};
+
 void
 WebSocketConnection::http_request ()
 {
@@ -365,10 +372,24 @@ WebSocketConnection::http_request ()
     {
       const char *ext = strrchr (filepath.c_str(), '.');
       const String mimetype = WebSocketServer::mime_type (ext ? ext + 1 : "", true);
-      cp->append_header ("Content-Type", mimetype.c_str());
-      // cp->append_header ("Cache-Control", "no-store, max-age=0");
-      cp->append_header ("Cache-Control", "max-age=1");
-      // cp->append_header ("Cache-Control", "public, max-age=604800, immutable");
+      cp->append_header ("Content-Type", mimetype);
+      // Use CACHE_FOREVER for text/css to reduce FOUC (flashing of unstyled content)
+      // with shadowRoot stylesheet links in Chrome-115. CACHE_AUTO worsens FOUC.
+      const CacheType caching = mimetype == "text/css" ? CACHE_FOREVER : CACHE_BRIEFLY;
+      switch (caching) {
+      case CACHE_NEVER:         // response must not be stored in cache
+        cp->append_header ("Cache-Control", "no-store");
+        break;
+      case CACHE_AUTO:          // force response revalidation if content stored in cache
+        cp->append_header ("Cache-Control", "no-cache"); // max-age=0, must-revalidate
+        break;
+      case CACHE_BRIEFLY:       // force response revalidation after a few seconds
+        cp->append_header ("Cache-Control", "max-age=17, stale-while-revalidate=31536000");
+        break;
+      case CACHE_FOREVER:       // keep content forever in cache
+        cp->append_header ("Cache-Control", "max-age=31536000, stale-while-revalidate=31536000, public, immutable");
+        break;
+      }
       Blob blob = Blob::from_file (filepath);
       cp->set_body (blob.string());
       status = websocketpp::http::status_code::ok;
