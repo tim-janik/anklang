@@ -47,6 +47,7 @@
     "postcss-functions": "^4.0.2",
     "postcss-lab-function": "^5.2.3",
     "postcss-nested": "^6.0.1",
+    "postcss-normalize-charset": "^6.0.0",
     "postcss-scss": "^4.0.6",
     "puppeteer-core": "^20.7.1",
     "puppeteer-in-electron": "^3.0.5",

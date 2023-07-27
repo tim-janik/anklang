@@ -15,17 +15,19 @@ const FS = __NODE__ && require ('fs');
 const css_color_converter = require ('css-color-converter');
 const PostCss = require ('postcss');
 const postcss_scss = require ('postcss-scss');
+const import_paths = [];
 import * as Colors from './colors.js';
 
 // == Plugins ==
+const postcss_advanced_variables = require ('postcss-advanced-variables');
+const postcss_color_hwb = require ('postcss-color-hwb');
 const postcss_color_mod_function = require ('postcss-color-mod-function');
 const postcss_discard_comments = require ('postcss-discard-comments');
-const postcss_advanced_variables = require ('postcss-advanced-variables');
+const postcss_discard_duplicates = require ('postcss-discard-duplicates');
 const postcss_functions = require ('postcss-functions');
-const postcss_color_hwb = require ('postcss-color-hwb');
 const postcss_lab_function = require ('postcss-lab-function');
 const postcss_nested = require ('postcss-nested');
-const postcss_discard_duplicates = require ('postcss-discard-duplicates');
+const postcss_normalize_charset = require ('postcss-normalize-charset');
 // Configure processing behaviour
 function postcss_plugins (options = {})
 {
@@ -44,6 +46,7 @@ function postcss_plugins (options = {})
     postcss_functions (css_functions()),
     postcss_nested,
     postcss_discard_duplicates,
+    postcss_normalize_charset,
   ];
   return plugins;
 }
@@ -55,7 +58,8 @@ export const postcss_options = {
 };
 
 // == Processing ==
-async function postcss_process (css_string, fromname = '<style string>', options = {}) {
+async function postcss_process (css_string, fromname = '<style string>', options = {})
+{
   const postcss = PostCss (postcss_plugins (options));
   const poptions = Object.assign ({ from: fromname }, postcss_options);
   let result;
@@ -75,7 +79,8 @@ async function postcss_process (css_string, fromname = '<style string>', options
 const clamp = (v,l,u) => v < l ? l : v > u ? u : v;
 
 /// Yield `value` as number in `[min..max]`, converts percentages.
-function tofloat (value, fallback = NaN, min = -Number.MAX_VALUE, max = Number.MAX_VALUE) {
+function tofloat (value, fallback = NaN, min = -Number.MAX_VALUE, max = Number.MAX_VALUE)
+{
   if (typeof value === 'string')
     {
       const isperc = value.indexOf ('%') >= 0;
@@ -90,7 +95,8 @@ function tofloat (value, fallback = NaN, min = -Number.MAX_VALUE, max = Number.M
 const FLOAT_REGEXP = /^([+-]?(?:(?:[1-9][0-9]*|0)(?:\.[0-9]*)?(?:[eE][+-]?[0-9]+)?|\.[0-9]+(?:[eE][+-]?[0-9]+)?))/;
 
 // Provide CSS functions that are used after variable expansion
-function css_functions() {
+function css_functions()
+{
   const color = css_color_converter;
   const functions = {
     info: function (...args) {
@@ -141,8 +147,9 @@ function css_functions() {
 }
 
 /// Load import files in nodejs to implement `@import`.
-function load_import (id, cwd, opts) {
-  for (let path of [ cwd, './' ]) {
+function load_import (id, cwd, opts)
+{
+  for (let path of [ cwd, './' ].concat (import_paths)) {
     const file = path + '/' + id;
     if (FS.existsSync (file)) {
       const input = FS.readFileSync (file);
@@ -154,7 +161,8 @@ function load_import (id, cwd, opts) {
 }
 
 /// Provide canned CSS files or fetch css for use with `@import`.
-async function find_import (id, cwd, opts) {
+async function find_import (id, cwd, opts)
+{
   const csstext = css_import_list[id];
   if (csstext === undefined)
     {
@@ -180,7 +188,8 @@ async function find_import (id, cwd, opts) {
 const css_import_list = {};
 
 /// Provide `filename` as `@import "filename";` source with contents `csstext`.
-function add_import (filename, csstext) {
+function add_import (filename, csstext)
+{
   css_import_list[filename] = '' + csstext;
 }
 
@@ -203,7 +212,8 @@ const test_rules = {
   // add_import ('imp.css', '$importval: "imported";');
   // '@import "imp.css"; i { --importval: $importval; }': 'i { --importval: "imported"; }',
 };
-async function test_css (verbose) {
+async function test_css (verbose)
+{
   test_rules[`--text-color: ${'#ABCDEF'};`] = '--text-color:#ABCDEF;';
   const input = Object.keys (test_rules).join ('\n');
   console.log ('  CHECK   ', __filename);
@@ -263,6 +273,11 @@ if (__MAIN__) {
       else if (argv[n].startsWith ('-C')) {
 	const dir = argv[n].length == 2 && n+1 < argv.length ? argv[++n] : argv[n].substr (2);
 	opt.import_root = dir.startsWith ('/') ? dir : cwd + '/' + opt.import_root;
+      }
+      // include dirs
+      else if (argv[n].startsWith ('-I')) {
+	const dir = argv[n].length == 2 && n+1 < argv.length ? argv[++n] : argv[n].substr (2);
+	import_paths.push (dir.startsWith ('/') ? dir : cwd + '/' + dir);
       }
       // include imports
       else if (argv[n] == '-i')
