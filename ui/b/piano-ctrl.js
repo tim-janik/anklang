@@ -408,7 +408,7 @@ ntool ('P', notes_canvas_drag_paint, 'var(--svg-cursor-pen)');
 
 /// #### Resizing Notes
 /// ![H-Resize](cursors/hresize.svg)
-/// When the Paint Tool is selected, the right edge of note can be draged to make notes shorter or longer in duration.
+/// When the Paint Tool is selected, the right edge of a note can be draged to make notes shorter or longer in duration.
 function notes_canvas_drag_resize (event, MODE)
 { // this = piano_layout_coords()
   Util.prevent_event (event);
@@ -464,7 +464,7 @@ function notes_canvas_drag_resize (event, MODE)
   switch (MODE) {
     case START:
       this.last_note_length = this.piano_roll.last_note_length;
-      this.note_duration_delta = new Object();
+      this.note_duration_delta = {};
       break;
     case SCROLL:
     case MOVE:
@@ -473,9 +473,11 @@ function notes_canvas_drag_resize (event, MODE)
       break;
     case STOP:
       this.piano_roll.last_note_length = this.last_note_length;
+      this.note_duration_delta = undefined;
       break;
     case CANCEL:
       // TODO: reset note size
+      this.note_duration_delta = undefined;
       break;
   }
   return false;
