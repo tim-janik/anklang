@@ -18,4 +18,4 @@ b-menuseparator {
 // == SCRIPT ==
 class BMenuSeparator extends HTMLHRElement {
 }
-customElements.define ('b-menuseparator', BMenuSeparator);
+customElements.define ('b-menuseparator', BMenuSeparator, { extends: 'hr' });

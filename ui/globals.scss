@@ -1,13 +1,21 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
-// Normalize latest Chrome & Firefox styles
-@import 'normalize.css';
+// Provide icon collections, using fonts is most resource friendly
+@import url('material-icons.css');
+@import url('AnklangIcons.css');
+@import url('forkawesome.css');
+
+// Provide cursor CSS variables on :root
+@import url('cursors/cursors.css');
+
+// Keyframes for rotating spinner.svg
+@import 'spinner.scss';
 
 // Import theme and color definitions
 @import 'mixins.scss';
 
-// Provide cursor CSS variables on :root
-@import url('cursors/cursors.css');
+// Normalize latest Chrome & Firefox styles, last import - CSS rules start here
+@import 'normalize.scss';
 
 // Full viewport sizing
 html, body {

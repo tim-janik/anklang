@@ -172,6 +172,7 @@ export class AppClass {
     let error = !Data.project ? Ase.Error.INTERNAL :
 		  Data.project.save_project (projectpath, collect);
     error = await error;
+    // await new Promise (r => setTimeout (r, 3 * 1000)); // artificial wait to test spinner
     Shell.hide_spinner();
     return error;
   }

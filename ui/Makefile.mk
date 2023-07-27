@@ -126,7 +126,7 @@ $>/ui/.build1-stamp: $>/ui/postcss.js
 
 # == ui/b/vuejs.targets ==
 ui/b/vuejs.targets ::= $(ui/vue.wildcards:%.vue=$>/%.js)
-$(ui/b/vuejs.targets): ui/sfc-compile.js 			| $>/ui/fonts/AnklangIcons.css
+$(ui/b/vuejs.targets): ui/sfc-compile.js
 $(ui/b/vuejs.targets): $>/%.js: %.vue			| $>/ui/b/ $>/node_modules/.npm.done
 	$(QGEN)
 	$Q node ui/sfc-compile.js --debug -I $>/ui/ $< -O $(@D)
@@ -135,7 +135,7 @@ $>/ui/.build1-stamp: $(ui/b/vuejs.targets)
 # == vue-styles.css ==
 ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.vuecss)
 $(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
-$>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $>/ui/spinner.scss $(ui/scss.targets) ui/Makefile.mk
+$>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js ui/Makefile.mk
 	$(QGEN)
 	$Q echo '@charset "UTF-8";'					>  $@.vuecss
 	$Q echo "@import 'mixins.scss';"				>> $@.vuecss
@@ -147,75 +147,69 @@ $>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js $>/ui/spinner.scss
 $>/ui/.build1-stamp: $>/ui/vue-styles.css
 
 # == ui/b/*.jscss ==
-ui/b/js.files      := $(wildcard ui/b/*.js)
-ui/b/jscss.targets := $(ui/b/js.files:%.js=$>/%.jscss)
-$(ui/b/jscss.targets): ui/Makefile.mk
-$(ui/b/jscss.targets): $>/%.jscss: %.js			| $>/ui/b/
+ui/b/js.files             := $(wildcard ui/b/*.js)
+ui/b/jscss.intermediatess := $(ui/b/js.files:%.js=$>/%.jscss)
+$(ui/b/jscss.intermediatess): ui/Makefile.mk
+$(ui/b/jscss.intermediatess): $>/%.jscss: %.js			| $>/ui/b/
 	$(QGEN)
 	$Q node ui/jsextract.js $< -O $(@D) # %.jscss
-.INTERMEDIATE: $(ui/b/jscss.targets)
+.INTERMEDIATE: $(ui/b/jscss.intermediatess) # allow deletion without regeneration for e.g. linting
 
-# == ui/globals.css ==
-$>/ui/globals.css: ui/globals.scss $(ui/b/jscss.targets) $>/ui/postcss.js
+# == UI/GLOBALSCSS_IMPORTS ==
+UI/GLOBALSCSS_IMPORTS =
+# Material-Icons
+$>/ui/material-icons.css: ui/Makefile.mk		| $>/ui/ $>/node_modules/.npm.done
 	$(QGEN)
-	$Q $(CP) $< $>/ui/globals.scss
-	$Q for f in $(ui/b/jscss.targets:$>/ui/%=%) ; do echo "@import '$$f';" >> $>/ui/globals.scss || exit 1 ; done
-	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -I ui/ -i $>/ui/globals.scss $@.tmp
-	$Q rm -f $(ui/b/jscss.targets) $>/ui/globals.scss
+	$Q grep -q '/material-icons.woff2' $>/node_modules/material-icons/iconfont/filled.css || \
+		{ echo "$<: failed to find font in $>/node_modules/material-icons/iconfont/" >&2 ; false ; }
+	$Q cp $>/node_modules/material-icons/iconfont/material-icons.woff2 $>/ui/material-icons.woff2
+	$Q sed -re 's|\boptimizeLegibility\b|optimizelegibility|g' \
+		$>/node_modules/material-icons/iconfont/filled.css > $@.tmp
 	$Q mv $@.tmp $@
-$>/ui/.build1-stamp: $>/ui/globals.css
-
-# == AnklangIcons ==
-$>/ui/fonts/AnklangIcons.css: ui/Makefile.mk		| $>/ui/fonts/
+UI/GLOBALSCSS_IMPORTS += $>/ui/material-icons.css
+# AnklangIcons
+$>/ui/AnklangIcons.css: ui/Makefile.mk			| $>/ui/
 	$(QECHO) FETCH AnklangIcons
 	@ $(eval S := ae0daeee324a1be1051f722e5393cdef445b5209119b97330ab92f9052b7206a https://github.com/tim-janik/anklang/releases/download/buildassets-v0/anklangicons-201123.1.tgz)
 	@ $(eval H := $(firstword $(S))) $(eval U := $(lastword $(S))) $(eval T := $(notdir $(U)))
-	$Q if test -e images/$T ; then \
-		$(CP) images/$T $>/ui/ && exit $$? ; \
-	   else \
-		cd $>/ui/ $(call AND_DOWNLOAD_SHAURL, $H, $U) ; \
-	   fi
+	$Q cd $>/ui/ $(call AND_DOWNLOAD_SHAURL, $H, $U)
 	$Q rm -fr $>/ui/anklangicons/ && tar -xf $>/ui/$T -C $>/ui/ && rm $>/ui/$T
-	$Q cd $>/ui/anklangicons/ && $(CP) AnklangIcons.woff2 ../fonts/
-	$Q cd $>/ui/anklangicons/ && $(CP) AnklangIcons.css ../fonts/AnklangIcons.css.tmp
+	$Q cd $>/ui/anklangicons/ && $(CP) AnklangIcons.woff2 .. && $(CP) AnklangIcons.css ../AnklangIcons.css.tmp
+	$Q sed -e 's|@font-face *{|@font-face { font-display: block; |' -i $>/ui/AnklangIcons.css.tmp
 	$Q rm -r $>/ui/anklangicons/ && mv $@.tmp $@
-$>/ui/.build1-stamp: $>/ui/fonts/AnklangIcons.css
-
-# == ui/cursors/ ==
+UI/GLOBALSCSS_IMPORTS += $>/ui/AnklangIcons.css
+# Fork-Awesome
+$>/ui/forkawesome.css: ui/Makefile.mk		| $>/ui/
+	$(QECHO) FETCH Fork-Awesome
+	$Q cd $>/ui/ $(call foreachpair, AND_DOWNLOAD_SHAURL, \
+		844517a2bc5430242cb857e56b6dccf002f469c4c1b295ed8d0b7211fb452f50 https://raw.githubusercontent.com/ForkAwesome/Fork-Awesome/b0605a81632452818bf19c8fa97469da1206b52b/fonts/forkawesome-webfont.woff2 \
+		630b0e84fa43579f7e97a26fd47d4b70cb5516ca7e6e73393597d12ca249a8ee https://raw.githubusercontent.com/ForkAwesome/Fork-Awesome/b0605a81632452818bf19c8fa97469da1206b52b/css/fork-awesome.css)
+	$Q sed  -e "/^ *src: *url/s,src: *url(.*);,src: url('forkawesome-webfont.woff2');," \
+		-e 's|@font-face *{|@font-face { font-display: block; |' -i $>/ui/fork-awesome.css
+	$Q mv $>/ui/fork-awesome.css $@
+UI/GLOBALSCSS_IMPORTS += $>/ui/forkawesome.css
+# ui/cursors/
 $>/ui/cursors/cursors.css: $(wildcard ui/cursors/*) Makefile.mk		| $>/ui/cursors/
 	$(QECHO) COPY $<
 	$Q for SVG in `sed -n "/url.'cursors\//{ s/.*('//; s/').*//; p }" ui/cursors/cursors.css` ; do \
 		$(CP) ui/"$$SVG" $>/ui/cursors/ || break ; done
 	$Q $(CP) ui/cursors/cursors.css $@
-$>/ui/.build1-stamp: $>/ui/cursors/cursors.css
-
-# == Fork-Awesome ==
-$>/ui/fonts/forkawesome-webfont.css: ui/Makefile.mk	| $>/ui/fonts/
-	$(QECHO) FETCH Fork-Awesome
-	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, $(ui/fork-awesome-downloads))
-	$Q sed "/^ *src: *url/s,src: *url(.*);,src: url('forkawesome-webfont.woff2');," -i $>/ui/fonts/fork-awesome.css
-	$Q mv $>/ui/fonts/fork-awesome.css $@
-ui/fork-awesome-downloads ::= \
-  844517a2bc5430242cb857e56b6dccf002f469c4c1b295ed8d0b7211fb452f50 \
-    https://raw.githubusercontent.com/ForkAwesome/Fork-Awesome/b0605a81632452818bf19c8fa97469da1206b52b/fonts/forkawesome-webfont.woff2 \
-  630b0e84fa43579f7e97a26fd47d4b70cb5516ca7e6e73393597d12ca249a8ee \
-    https://raw.githubusercontent.com/ForkAwesome/Fork-Awesome/b0605a81632452818bf19c8fa97469da1206b52b/css/fork-awesome.css
-$>/ui/.build1-stamp: $>/ui/fonts/forkawesome-webfont.css
-
-# == Material-Icons ==
-$>/ui/fonts/material-icons.css: ui/Makefile.mk		| $>/ui/fonts/ $>/node_modules/.npm.done
-	$(QGEN)
-	$Q grep -q '/material-icons.woff2' $>/node_modules/material-icons/iconfont/filled.css || \
-		{ echo "$<: failed to find font in $>/node_modules/material-icons/iconfont/" >&2 ; false ; }
-	$Q cp $>/node_modules/material-icons/iconfont/material-icons.woff2 $(@D)
-	$Q cp $>/node_modules/material-icons/iconfont/filled.css $@
-$>/ui/.build1-stamp: $>/ui/fonts/material-icons.css
-
-# == ui/spinner.svg ==
+UI/GLOBALSCSS_IMPORTS += $>/ui/cursors/cursors.css
+# ui/spinner.svg
 $>/ui/spinner.scss: ui/assets/spinner.svg
 	$(QGEN)
 	$Q sed -rn '/@keyframe/,$${ p; /^\s*}\s*$$/q; }' $< > $@
-$>/ui/.build1-stamp: $>/ui/spinner.scss
+UI/GLOBALSCSS_IMPORTS += $>/ui/spinner.scss
+
+# == ui/globals.css ==
+$>/ui/globals.css: ui/globals.scss $(ui/b/jscss.intermediatess) $>/ui/postcss.js $(UI/GLOBALSCSS_IMPORTS)
+	$(QGEN)
+	$Q $(CP) $< $>/ui/globals.scss
+	$Q for f in $(ui/b/jscss.intermediatess:$>/ui/%=%) ; do echo "@import '$$f';" >> $>/ui/globals.scss || exit 1 ; done
+	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -I ui/ $>/ui/globals.scss $@.tmp
+	$Q rm -f $(ui/b/jscss.intermediatess)
+	$Q mv $@.tmp $@
+$>/ui/.build1-stamp: $>/ui/globals.css
 
 # == stylelint ==
 ui/stylelint.files = $(ui/b/scss2css.targets) $(ui/b/css.targets) $>/ui/globals.css $>/ui/vue-styles.css
@@ -270,17 +264,17 @@ $(ui/cjs.targets): $>/ui/%.cjs: ui/%.js	| $>/ui/b/
 $>/ui/.build1-stamp: $(ui/cjs.targets)
 
 # == Inter Typeface ==
-$>/ui/fonts/InterVariable.woff2: ui/Makefile.mk		| $>/ui/fonts/
+$>/ui/InterVariable.woff2: ui/Makefile.mk		| $>/ui/
 	$(QECHO) FETCH Inter Typeface
-	$Q $(RM) -r $>/ui/fonts/tmp-inter/ && mkdir $>/ui/fonts/tmp-inter/
-	$Q cd $>/ui/fonts/tmp-inter/ $(call foreachpair, AND_DOWNLOAD_SHAURL, \
+	$Q $(RM) -r $>/ui/tmp-inter/ && mkdir $>/ui/tmp-inter/
+	$Q cd $>/ui/tmp-inter/ $(call foreachpair, AND_DOWNLOAD_SHAURL, \
 		41b1253ed9b5e9cb5093249c8dd71f0094cb4dfb4ef92ec69125fcb90566e4c7 https://github.com/rsms/inter/releases/download/v4.0-beta9g/Inter-4.0-beta9g.zip )
-	$Q cd $>/ui/fonts/tmp-inter/ \
+	$Q cd $>/ui/tmp-inter/ \
 		&& unzip -q Inter-4.0-beta9g.zip \
 		&& mv web/InterVariable.woff2 ..
-	$Q $(RM) -r $>/ui/fonts/tmp-inter/
+	$Q $(RM) -r $>/ui/tmp-inter/
 	$Q touch $@
-$>/ui/.build1-stamp: $>/ui/fonts/InterVariable.woff2
+$>/ui/.build1-stamp: $>/ui/InterVariable.woff2
 
 # == $>/ui/browserified.js ==
 $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
