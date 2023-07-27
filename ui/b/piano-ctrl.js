@@ -408,44 +408,76 @@ ntool ('P', notes_canvas_drag_paint, 'var(--svg-cursor-pen)');
 
 /// #### Resizing Notes
 /// ![H-Resize](cursors/hresize.svg)
-/// When the Paint Tool is selected, the right edge of note can be draged to make notes shorter or longer in duration.
+/// When the Paint Tool is selected, the right edge of a note can be draged to make notes shorter or longer in duration.
 function notes_canvas_drag_resize (event, MODE)
 { // this = piano_layout_coords()
   Util.prevent_event (event);
   this.update_coords (event, MODE); // piano_layout_update_coords
-  const resize_note = (clip, allnotes) => {
+  const resize_notes = (clip, allnotes) => {
     const note_idx = find_note (allnotes, n => n.id === this.note_id);
     if (note_idx < 0)
       return false;
-    const newnote = Object.assign ({}, allnotes[note_idx]);
-    if (newnote.tick < this.event_tick)
+
+    // store delta between note durations to preserve them during resize
+    if (this.note_duration_delta[this.note_id] === undefined)
       {
-	let duration = Math.max (Util.PPQN / 16, this.event_tick - newnote.tick);
-	if (!event.shiftKey)
-	  duration = quantize (this.piano_roll, duration, true);
-	if (duration > 0)
-	  {
-	    newnote.duration = duration;
-	    this.last_note_length = duration;
-	    return [ newnote ];
-	  }
+        this.note_duration_delta[this.note_id] = 0;
+
+        for (const note of allnotes)
+          if (note.selected)
+            this.note_duration_delta[note.id] = note.duration - allnotes[note_idx].duration;
       }
-    return false;
+
+    // compute new duration of dragged note (may be negative)
+    let new_duration = this.event_tick - allnotes[note_idx].tick;
+    if (!event.shiftKey)
+      new_duration = quantize (this.piano_roll, new_duration, true);
+
+    // if note that is being resized was not selected before:
+    //  -> select it now and unselect other notes
+    let select_note = !allnotes[note_idx].selected;
+
+    const newnotes = [];
+    for (const note of allnotes)
+      {
+        const newnote = Object.assign ({}, note);
+        let changed = false;
+
+        if (select_note)
+          {
+            newnote.selected = (note.id === this.note_id);
+            changed = true;
+          }
+
+        if (newnote.selected)
+          {
+            newnote.duration = Math.max (Util.PPQN / 16, new_duration + this.note_duration_delta[note.id]);
+            if (note.id === this.note_id)
+              this.last_note_length = newnote.duration;
+            changed = true;
+          }
+        if (changed)
+          newnotes.push (newnote);
+      }
+    return newnotes;
   };
   switch (MODE) {
     case START:
       this.last_note_length = this.piano_roll.last_note_length;
+      this.note_duration_delta = {};
       break;
     case SCROLL:
     case MOVE:
       this.event_tick = this.piano_roll.layout.tick_from_x (this.x);
-      queue_modify_notes (this.piano_roll.clip, resize_note, "Resize Note");
+      queue_modify_notes (this.piano_roll.clip, resize_notes, "Resize Notes");
       break;
     case STOP:
       this.piano_roll.last_note_length = this.last_note_length;
+      this.note_duration_delta = undefined;
       break;
     case CANCEL:
       // TODO: reset note size
+      this.note_duration_delta = undefined;
       break;
   }
   return false;
