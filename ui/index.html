@@ -45,6 +45,15 @@
     Object.defineProperty (globalThis, 'CONFIG', { value: packagejson.config });
     Object.defineProperty (globalThis, '__DEV__', { value: CONFIG.mode !== 'production' });
     Object.defineProperty (globalThis, 'debug', { value: __DEV__ ? console.log : _ => undefined });
+    Object.defineProperty (globalThis, 'start_view_transition', { value: (func, want_transition = true) => {
+      if (!want_transition || !document.startViewTransition) return func(); /* no support in Firefox-115 */
+      const async_updater = () => {
+	const promises = [func()];
+	/* Sync with possibly pending Vue changes */
+	window.Vue?.nextTick && promises.push (new Promise (r => window.Vue.nextTick (r)));
+	return Promise.all (promises); };
+      document.startViewTransition (async_updater);
+    }, });
   } </script>
 </head>
 <body>

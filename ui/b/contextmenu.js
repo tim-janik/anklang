@@ -67,7 +67,9 @@ dialog {
   overflow-x: hidden;
 }
 dialog::backdrop {
-  background: $b-style-modal-overlay; // #00000033;
+  /* Menu backdrop must be transparent, for one a popup menu is different from a modal dialog,
+   * and second, showing a modal dialog via menu item would result in bad flickernig. */
+  background: transparent;
 }`;
 
 // == HTML ==

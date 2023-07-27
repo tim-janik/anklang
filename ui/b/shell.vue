@@ -141,8 +141,8 @@ html.b-shell-during-drag .b-app {
     <b-statusbar class="-row9 -col123" />
 
     <!-- Modal Dialogs -->
+    <b-aboutdialog ref="about_dialog" :shown.prop="show_about_dialog_" @close="show_about_dialog(0)" v-if="show_about_dialog_" />
     <div class="-fullcoverage" style="z-index: 90" id="b-app-shell-modaldialogs" >
-      <b-aboutdialog v-model:shown="Data.show_about_dialog" />
       <b-preferencesdialog v-model:shown="Data.show_preferences_dialog" />
       <b-filedialog :shown="!!fs.resolve" :title="fs.title" :filters="fs.filters" :button="fs.button"
 		    :cwd="fs.cwd" @close="fs.resolve()" @select="fs.resolve($event)" />
@@ -219,6 +219,7 @@ class ShellClass extends Envue.Component {
     this.note_cache = {};
     this.piano_current_clip = null;
     this.piano_current_tick = null;
+    this.$vm.show_about_dialog_ = false;
   }
   /// Access PianoRoll component
   get piano_roll() { return Shell.$refs.piano_roll; }
@@ -261,6 +262,17 @@ class ShellClass extends Envue.Component {
 	    d.div_handler (div, dialog);
 	}
       }
+  }
+  show_about_dialog (onof = undefined)
+  {
+    if (undefined === onof)
+      return this.$vm.show_about_dialog_;
+    onof = !!onof;
+    if (onof != this.$vm.show_about_dialog_)
+      start_view_transition (() => {
+	this.$vm.show_about_dialog_ = onof;
+	this.$vm.$forceUpdate();
+      }, !onof);
   }
   usernote (user_note_event) {
     this.create_note (user_note_event.text);

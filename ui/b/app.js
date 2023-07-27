@@ -58,14 +58,9 @@ export class AppClass {
       panel2: 'p',
       piano_roll_source: undefined,
       current_track: undefined,
-      show_about_dialog: false,
       show_preferences_dialog: false,
     };
     this.data = Vue.reactive (data);
-    // watch: {
-    // show_about_dialog:       function (newval) { if (newval && this.show_preferences_dialog) this.show_preferences_dialog = false; },
-    // show_preferences_dialog: function (newval) { if (newval && this.show_about_dialog) this.show_about_dialog = false; },
-    // }
     Object.defineProperty (globalThis, 'App', { value: this });
     Object.defineProperty (globalThis, 'Data', { value: this.data });
     this.vue_app.config.globalProperties.App = App;   // global App, export methods

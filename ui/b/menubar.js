@@ -203,7 +203,7 @@ async function activate (uri, event)
 	return window_close();
       break;
     case 'about':
-      Data.show_about_dialog = !Data.show_about_dialog;
+      Shell.show_about_dialog (true);
       break;
     case 'user-manual':
       u = location.origin + '/doc/anklang-manual.html';
