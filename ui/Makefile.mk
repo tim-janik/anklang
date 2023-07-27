@@ -70,8 +70,8 @@ $>/ui/.build1-stamp: $>/ui/zcam-js.mjs
 $>/ui/colors.js: $>/ui/zcam-js.mjs
 
 # == ui/index.html ==
-$>/ui/index.html: ui/index.html $>/ui/globals.css $>/ui/vue-styles.css $>/node_modules/.npm.done		| $>/ui/
-	@ $(eval ui/csshash != cat $>/ui/globals.css $>/ui/vue-styles.css | sha256sum | sed 's/ *-//')
+$>/ui/index.html: ui/index.html $>/ui/global.css $>/ui/vue-styles.css $>/node_modules/.npm.done		| $>/ui/
+	@ $(eval ui/csshash != cat $>/ui/global.css $>/ui/vue-styles.css | sha256sum | sed 's/ *-//')
 	$(QGEN)
 	$Q rm -f $>/ui/doc && ln -s ../doc $>/ui/doc # do here, b/c MAKE is flaky in tracking symlink timestamps
 	$Q echo '    { "config": { $(strip $(PACKAGE_VERSIONS)),'				> $>/ui/config.json
@@ -201,18 +201,18 @@ $>/ui/spinner.scss: ui/assets/spinner.svg
 	$Q sed -rn '/@keyframe/,$${ p; /^\s*}\s*$$/q; }' $< > $@
 UI/GLOBALSCSS_IMPORTS += $>/ui/spinner.scss
 
-# == ui/globals.css ==
-$>/ui/globals.css: ui/globals.scss $(ui/b/jscss.intermediatess) $>/ui/postcss.js $(UI/GLOBALSCSS_IMPORTS)
+# == ui/global.css ==
+$>/ui/global.css: ui/global.scss $(ui/b/jscss.intermediatess) $>/ui/postcss.js $(UI/GLOBALSCSS_IMPORTS)
 	$(QGEN)
-	$Q $(CP) $< $>/ui/globals.scss
-	$Q for f in $(ui/b/jscss.intermediatess:$>/ui/%=%) ; do echo "@import '$$f';" >> $>/ui/globals.scss || exit 1 ; done
-	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -I ui/ $>/ui/globals.scss $@.tmp
+	$Q $(CP) $< $>/ui/global.scss
+	$Q for f in $(ui/b/jscss.intermediatess:$>/ui/%=%) ; do echo "@import '$$f';" >> $>/ui/global.scss || exit 1 ; done
+	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -I ui/ $>/ui/global.scss $@.tmp
 	$Q rm -f $(ui/b/jscss.intermediatess)
 	$Q mv $@.tmp $@
-$>/ui/.build1-stamp: $>/ui/globals.css
+$>/ui/.build1-stamp: $>/ui/global.css
 
 # == stylelint ==
-ui/stylelint.files = $(ui/b/scss2css.targets) $(ui/b/css.targets) $>/ui/globals.css $>/ui/vue-styles.css
+ui/stylelint.files = $(ui/b/scss2css.targets) $(ui/b/css.targets) $>/ui/global.css $>/ui/vue-styles.css
 $>/ui/.stylelint.done: $(ui/stylelint.files) ui/stylelintrc.cjs $>/node_modules/.npm.done
 	$(QECHO) RUN stylelint
 	$Q cp ui/stylelintrc.cjs $>/ui/stylelintrc.cjs
