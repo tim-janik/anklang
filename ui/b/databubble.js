@@ -1,69 +1,64 @@
-<!-- This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 -->
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
-<docs>
-  # B-DATABUBBLE
-  A mechanism to display data-bubble="" tooltip popups on mouse hover.
-</docs>
-
-<style lang="scss">
-  /* Bubble color setup */
-  $b-data-bubble-hue: 52deg;
-  $b-data-bubble-fg:  hsl($b-data-bubble-hue, 100%, 1%);
-  $b-data-bubble-bg:  hsl($b-data-bubble-hue, 100%, 90%);
-  $b-data-bubble-bg2: zmod($b-data-bubble-bg, Jz+=3%);
-  $b-data-bubble-br:  $b-data-bubble-bg2;
-
-  /* Tooltips via CSS, using the data-bubble="" attribute */
-  .b-data-bubble {
-    position: absolute; pointer-events: none;
-    display: flex; max-width: 95vw;
-    margin: 0; padding: 0 0 8px 0; /* make room for triangle: 5px + 3px */
-    transition: visibility 0.1s, opacity 0.09s ease-in-out;
-    visibility: hidden; opacity: 0;
-
-    .b-data-bubble-inner {
-      display: block; overflow: hidden; position: relative;
-      white-space: normal; margin: 0;
-      max-width: 40em; border-radius: 3px;
-      // border: dppx(2) solid zmod($b-data-bubble-bg2, Jz+=5%);
-      box-shadow:
-      0 0 0 1px fade($b-data-bubble-br, 0.8),
-      0px 0px 2px 1px black;
-      color: $b-data-bubble-fg; padding: 0.5em 0.5em 0.4em;
-      background: $b-data-bubble-bg;
-      background-image: linear-gradient(to bottom right, $b-data-bubble-bg, $b-data-bubble-bg2);
-      font-variant-numeric: tabular-nums;
-    }
-    &.b-data-bubble-visible {
-      visibility: visible; opacity: 0.95;
-    }
-    /* Triangle acting as bubble pointer */
-    &::after {
-      position: absolute; bottom: calc(5px - 2); /* room below triangle: 5px */
-      left: calc(50% - 5px); width: 0; height: 0; content: "";
-      border-top: 5px solid $b-data-bubble-br;
-      border-left: 5px solid transparent;
-      border-right: 5px solid transparent;
-    }
-
-    /* markdown styling for data-bubble */
-    .b-markdown-it-outer {
-      @include b-markdown-it-inlined;
-      $fsf: 1.05; //* font size factor */
-      h1 { font-size: calc(pow($fsf, 6) * 1em); }
-      h2 { font-size: calc(pow($fsf, 5) * 1em); }
-      h3 { font-size: calc(pow($fsf, 4) * 1em); }
-      h4 { font-size: calc(pow($fsf, 3) * 1em); }
-      h5 { font-size: calc(pow($fsf, 2) * 1em); }
-      h6 { font-size: calc(pow($fsf, 1) * 1em); }
-    }
-  }
-</style>
-
-<script>
+import { JsExtract } from '../little.js';
 import * as Util from '../util.js';
 
-const UNSET = Symbol ('UNSET');
+/** # B-DATABUBBLE
+ * A mechanism to display data-bubble="" tooltip popups on mouse hover.
+ */
+
+// <STYLE/>
+JsExtract.scss`
+/* Bubble color setup */
+$b-data-bubble-hue: 52deg;
+$b-data-bubble-fg:  hsl($b-data-bubble-hue, 100%, 1%);
+$b-data-bubble-bg:  hsl($b-data-bubble-hue, 100%, 90%);
+$b-data-bubble-bg2: zmod($b-data-bubble-bg, Jz+=3%);
+$b-data-bubble-br:  $b-data-bubble-bg2;
+
+/* Tooltips via CSS, using the data-bubble="" attribute */
+.b-data-bubble {
+  position: absolute; pointer-events: none;
+  display: flex; max-width: 95vw;
+  margin: 0; padding: 0 0 8px 0; /* make room for triangle: 5px + 3px */
+  transition: visibility 0.1s, opacity 0.09s ease-in-out;
+  visibility: hidden; opacity: 0;
+
+  .b-data-bubble-inner {
+    display: block; overflow: hidden; position: relative;
+    white-space: normal; margin: 0;
+    max-width: 40em; border-radius: 3px;
+    // border: dppx(2) solid zmod($b-data-bubble-bg2, Jz+=5%);
+    box-shadow: 0 0 0 1px fade($b-data-bubble-br, 0.8), 0px 0px 2px 1px black;
+    color: $b-data-bubble-fg; padding: 0.5em 0.5em 0.4em;
+    background: $b-data-bubble-bg;
+    background-image: linear-gradient(to bottom right, $b-data-bubble-bg, $b-data-bubble-bg2);
+    font-variant-numeric: tabular-nums;
+  }
+  &.b-data-bubble-visible {
+    visibility: visible; opacity: 0.95;
+  }
+  /* Triangle acting as bubble pointer */
+  &::after {
+    position: absolute; bottom: calc(5px - 2); /* room below triangle: 5px */
+    left: calc(50% - 5px); width: 0; height: 0; content: "";
+    border-top: 5px solid $b-data-bubble-br;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+  }
+  /* markdown styling for data-bubble */
+  .b-markdown-it-outer {
+    @include b-markdown-it-inlined;
+    $fsf: 1.05; //* font size factor */
+    h1 { font-size: calc(pow($fsf, 6) * 1em); }
+    h2 { font-size: calc(pow($fsf, 5) * 1em); }
+    h3 { font-size: calc(pow($fsf, 4) * 1em); }
+    h4 { font-size: calc(pow($fsf, 3) * 1em); }
+    h5 { font-size: calc(pow($fsf, 2) * 1em); }
+    h6 { font-size: calc(pow($fsf, 1) * 1em); }
+  }
+}`;
 
 /** A mechanism to display data-bubble="" tooltip popups */
 class DataBubbleImpl {
@@ -85,7 +80,7 @@ class DataBubbleImpl {
     this.stack = []; // element stack to force bubble
     this.lasttext = "";
     this.last_event = null;
-    this.buttonsdown = 0;
+    this.buttonsdown = false;
     this.coords = null;
     // milliseconds to wait to detect idle time after mouse moves
     const IDLE_DELAY = 115;
@@ -222,6 +217,8 @@ class DataBubbleImpl {
   }
 }
 
+const UNSET = Symbol ('UNSET');
+
 class DataBubbleIface {
   constructor() {
     this.data_bubble = new DataBubbleImpl();
@@ -267,7 +264,4 @@ class DataBubbleIface {
     this.data_bubble.debounced_check();
   }
 }
-
 export default DataBubbleIface;
-
-</script>

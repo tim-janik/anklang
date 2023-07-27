@@ -371,7 +371,7 @@ ui/rebuild:
 ui/installdir ::= $(DESTDIR)$(pkgdir)/ui
 ui/install.pattern ::= $(strip	\
 	$>/ui/.aseignore	\
-	$>/ui/*.scss		\
+	$>/ui/*.woff2		\
 	$>/ui/*.css		\
 	$>/ui/*.html		\
 	$>/ui/*.ico		\
@@ -380,17 +380,15 @@ ui/install.pattern ::= $(strip	\
 	$>/ui/*.png		\
 )
 ui/b/install.pattern ::= $(strip \
-	$>/ui/b/*.css		\
 	$>/ui/b/*.js		\
 )
 ui/install: $>/ui/.build1-stamp $>/ui/.build2-stamp
 	@$(QECHO) INSTALL '$(ui/installdir)/.'
 	$Q rm -f -r '$(ui/installdir)'
-	$Q $(INSTALL)      -d $(ui/installdir)/ $(ui/installdir)/assets/ $(ui/installdir)/b/ $(ui/installdir)/fonts/
+	$Q $(INSTALL)      -d $(ui/installdir)/ $(ui/installdir)/assets/ $(ui/installdir)/b/
 	$Q $(INSTALL_DATA) -p $(ui/install.pattern) $(ui/installdir)/
 	$Q $(INSTALL_DATA) -p $>/ui/assets/* $(ui/installdir)/assets/
 	$Q $(INSTALL_DATA) -p $(ui/b/install.pattern) $(ui/installdir)/b/
-	$Q $(INSTALL_DATA) -p $>/ui/fonts/* $(ui/installdir)/fonts/
 	$Q ln -s ../doc $(ui/installdir)/doc
 .PHONY: ui/install
 install: ui/install
