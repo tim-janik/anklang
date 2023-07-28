@@ -366,7 +366,7 @@ compile_commands.json: Makefile.mk
 all: $(ALL_TARGETS) $(ALL_TESTS)
 
 # == grep-reminders ==
-$>/.grep-reminders: $(LS_TREE_LST)
+$>/.grep-reminders: $(wildcard $(LS_TREE_LST))
 	$Q test -r .git && git -P grep -nE '(/[*/]+[*/ ]*|[#*]+ *)?(FI[X]ME).*' || true
 	$Q touch $@
 all: $>/.grep-reminders
