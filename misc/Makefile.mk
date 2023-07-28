@@ -111,7 +111,6 @@ $>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
 	$Q cd $>/misc/appaux/ && \
 		curl -sfSOL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
 		chmod +x linuxdeploy-x86_64.AppImage
-misc/mkassets.sh: $>/misc/appaux/appimage-runtime-zstd
 CLEANDIRS += $>/mkdeb/
 
 # == build-release ==
