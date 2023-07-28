@@ -104,13 +104,14 @@ check-copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst
 CHECK_TARGETS += $(if $(HAVE_GIT), check-copyright)
 
 # == appimage-runtime-zstd ==
-$>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
+$>/appimagetools/appimage-runtime-zstd:					| $>/appimagetools/
 	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
+	$Q test -e $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage \
+	|| ( curl -sfSL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -o $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage.tmp \
+	     && mv $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage.tmp $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage )
+	$Q $(CP) $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage $(@D) && chmod +x $(@D)/linuxdeploy-x86_64.AppImage
 	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
 		0c4c18bb44e011e8416fc74fb067fe37a7de97a8548ee8e5350985ddee1c0164 https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd )
-	$Q cd $>/misc/appaux/ && \
-		curl -sfSOL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
-		chmod +x linuxdeploy-x86_64.AppImage
 CLEANDIRS += $>/mkdeb/
 
 # == build-release ==
