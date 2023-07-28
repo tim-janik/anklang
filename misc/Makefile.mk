@@ -103,13 +103,6 @@ check-copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst
 	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini $$(cat $>/ls-tree.lst)
 CHECK_TARGETS += $(if $(HAVE_GIT), check-copyright)
 
-# == release-news ==
-release-news:
-	$Q LAST_TAG=`misc/version.sh --news-tag2` && ( set -x && \
-	  git log --first-parent --date=short --pretty='%s    # %cd %an %h%d%n%w(0,4,4)%b' --reverse HEAD "$$LAST_TAG^!" ) | \
-		sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' -e '/^\s*$$/d'
-.PHONY: release-news
-
 # == appimage-runtime-zstd ==
 $>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
 	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
