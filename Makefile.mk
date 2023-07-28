@@ -326,8 +326,9 @@ dist: $(extradist:%=$>/%)
 	$Q rm -rf $>/dist/$(distname)/ && mkdir -p $>/dist/$(distname)/ assets/
 	$Q git archive -o assets/$(distname).tar --prefix=$(distname)/ HEAD
 	$Q cd $>/ && $(CP) --parents $(extradist) $(abspath $>/dist/$(distname))
-	$Q git diff --exit-code NEWS.md >/dev/null \
-	|| { tar f assets/$(distname).tar --delete $(distname)/NEWS.md && cp NEWS.md $>/dist/$(distname)/ ; }
+	$Q tar f assets/$(distname).tar --delete $(distname)/NEWS.md \
+	&& misc/mknews.sh				>  $>/dist/$(distname)/NEWS.md \
+	&& cat NEWS.md					>> $>/dist/$(distname)/NEWS.md
 	$Q tar xf assets/$(distname).tar -C $>/dist/ $(distname)/misc/version.sh	# fetch archived version.sh
 	$Q tar f assets/$(distname).tar --delete $(distname)/misc/version.sh	# delete, make room for replacement
 	$Q GITDESCRIBE=`git describe --match='v[0-9]*.[0-9]*.[0-9]*'` \
