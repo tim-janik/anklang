@@ -11,22 +11,23 @@ S +=
 # == Version ==
 version_full    != misc/version.sh
 version_short  ::= $(word 1, $(version_full))
-version_buildid::= $(word 2, $(version_full))
+version_hash   ::= $(word 2, $(version_full))
 version_date   ::= $(wordlist 3, 999, $(version_full))
 version_bits   ::= $(subst _, , $(subst -, , $(subst ., , $(version_short))))
 version_major  ::= $(word 1, $(version_bits))
 version_minor  ::= $(word 2, $(version_bits))
 version_micro  ::= $(word 3, $(version_bits))
-version_m.m.m  ::= $(version_major).$(version_minor).$(version_micro)
 version_to_month = $(shell echo "$(version_date)" | sed -r -e 's/^([2-9][0-9][0-9][0-9])-([0-9][0-9])-.*/m\2 \1/' \
 			-e 's/m01/January/ ; s/m02/February/ ; s/m03/March/ ; s/m04/April/ ; s/m05/May/ ; s/m06/June/' \
 			-e 's/m07/July/ ; s/m08/August/ ; s/m09/September/ ; s/m10/October/ ; s/m11/November/ ; s/m12/December/')
 version-info:
 	@echo version_full: $(version_full)
 	@echo version_short: $(version_short)
-	@echo version_buildid: $(version_buildid)
+	@echo version_hash: $(version_hash)
 	@echo version_date: $(version_date)
-	@echo version_m.m.m: $(version_m.m.m)
+	@echo version_major: $(version_major)
+	@echo version_minor: $(version_minor)
+	@echo version_micro: $(version_micro)
 	@echo version_to_month: "$(version_to_month)"
 ifeq ($(version_micro),)	# do we have any version?
 $(error Missing version information, run: misc/version.sh)
@@ -212,9 +213,8 @@ $>/%/:
 
 # == PACKAGE_CONFIG ==
 define PACKAGE_VERSIONS
-  "version": "$(version_m.m.m)",
+  "version": "$(version_short)",
   "revdate": "$(version_date)",
-  "buildid": "$(version_buildid)",
   "mode": "$(MODE)"
 endef
 
