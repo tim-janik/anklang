@@ -324,6 +324,7 @@ dist: $(extradist:%=$>/%)
 	$(QECHO) MAKE $(distname).tar.zst
 	$Q git describe --dirty | grep -qve -dirty || echo -e "#\n# $@: WARNING: working tree is dirty\n#"
 	$Q rm -rf $>/dist/$(distname)/ && mkdir -p $>/dist/$(distname)/ assets/
+	$Q $(CP) $>/ChangeLog assets/ChangeLog-$(version_short).txt
 	$Q git archive -o assets/$(distname).tar --prefix=$(distname)/ HEAD
 	$Q cd $>/ && $(CP) --parents $(extradist) $(abspath $>/dist/$(distname))
 	$Q tar f assets/$(distname).tar --delete $(distname)/NEWS.md \
