@@ -56,8 +56,8 @@ $>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/include.deps) ase/Make
 	$Q echo '[[maybe_unused]] static bool init_jsonipc = (jsonipc_4_api_hh(), 0);'		>> $@.tmp
 	$Q mv $@.tmp $@
 
-# == ase/buildversion-$(version_m.m.m).cc ==
-$>/ase/buildversion-$(version_m.m.m).cc: ase/Makefile.mk					| $>/ase/
+# == ase/buildversion-$(version_short).cc ==
+$>/ase/buildversion-$(version_short).cc: ase/Makefile.mk			| $>/ase/
 	$(QGEN)
 	$Q echo '// make $@'							> $@.tmp
 	$Q echo '#include <ase/platform.hh>'					>>$@.tmp
@@ -65,13 +65,13 @@ $>/ase/buildversion-$(version_m.m.m).cc: ase/Makefile.mk					| $>/ase/
 	$Q echo 'const int         ase_major_version = $(version_major);'	>>$@.tmp
 	$Q echo 'const int         ase_minor_version = $(version_minor);'	>>$@.tmp
 	$Q echo 'const int         ase_micro_version = $(version_micro);'	>>$@.tmp
-	$Q echo 'const char *const ase_version_long = "$(version_buildid) ($(INSN))";'	>>$@.tmp
+	$Q echo 'const char *const ase_version_long = "$(version_short)+g$(version_hash) ($(INSN))";'	>>$@.tmp
 	$Q echo 'const char *const ase_version_short = "$(version_short)";'	>>$@.tmp
-	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_m.m.m)";' >>$@.tmp
+	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_short)";' >>$@.tmp
 	$Q echo '} // Ase'							>>$@.tmp
 	$Q mv $@.tmp $@
-ase/AnklangSynthEngine.objects += $>/ase/buildversion-$(version_m.m.m).o
-# $>/ase/buildversion-$(version_m.m.m).o: $>/ase/buildversion-$(version_m.m.m).cc
+ase/AnklangSynthEngine.objects += $>/ase/buildversion-$(version_short).o
+# $>/ase/buildversion-$(version_short).o: $>/ase/buildversion-$(version_short).cc
 
 # == ase/sysconfig.h ==
 $>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk
