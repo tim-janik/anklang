@@ -320,23 +320,22 @@ endef
 # == dist ==
 extradist ::= ChangeLog doc/copyright TAGS ls-tree.lst # doc/README
 dist: $(extradist:%=$>/%)
-	@$(eval distversion != misc/version.sh | sed 's/ .*//')
-	@$(eval distname := anklang-$(distversion))
-	$(QECHO) MAKE $(disttarball)
+	@$(eval distname := anklang-$(version_short))
+	$(QECHO) MAKE $(distname).tar.zst
 	$Q git describe --dirty | grep -qve -dirty || echo -e "#\n# $@: WARNING: working tree is dirty\n#"
-	$Q git archive -o $>/$(distname).tar --prefix=$(distname)/ HEAD
-	$Q rm -rf $>/dist/$(distname)/ && mkdir -p $>/dist/$(distname)/
+	$Q rm -rf $>/dist/$(distname)/ && mkdir -p $>/dist/$(distname)/ assets/
+	$Q git archive -o assets/$(distname).tar --prefix=$(distname)/ HEAD
 	$Q cd $>/ && $(CP) --parents $(extradist) $(abspath $>/dist/$(distname))
 	$Q git diff --exit-code NEWS.md >/dev/null \
-	|| { tar f $>/$(distname).tar --delete $(distname)/NEWS.md && cp NEWS.md $>/dist/$(distname)/ ; }
-	$Q tar xf $>/$(distname).tar -C $>/dist/ $(distname)/misc/version.sh	# fetch archived version.sh
-	$Q tar f $>/$(distname).tar --delete $(distname)/misc/version.sh	# delete, make room for replacement
+	|| { tar f assets/$(distname).tar --delete $(distname)/NEWS.md && cp NEWS.md $>/dist/$(distname)/ ; }
+	$Q tar xf assets/$(distname).tar -C $>/dist/ $(distname)/misc/version.sh	# fetch archived version.sh
+	$Q tar f assets/$(distname).tar --delete $(distname)/misc/version.sh	# delete, make room for replacement
 	$Q GITDESCRIBE=`git describe --match='v[0-9]*.[0-9]*.[0-9]*'` \
 	&& sed "s/%[(]describe:match[^)]*[)]/$$GITDESCRIBE/" \
 		-i $>/dist/$(distname)/misc/version.sh				# git 2.25.1 cannot describe:match
-	$Q cd $>/dist/ && tar uhf $(abspath $>/$(distname).tar) $(distname)	# update (replace) files in tarball
-	$Q rm -f $>/$(distname).tar.zst && zstd -17 --rm $>/$(distname).tar && ls -lh $>/$(distname).tar.zst
-	$Q echo "Archive ready: $>/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
+	$Q cd $>/dist/ && tar uhf $(abspath assets/$(distname).tar) $(distname)	# update (replace) files in tarball
+	$Q rm -rf assets/$(distname).tar.zst && zstd --ultra -22 --rm assets/$(distname).tar && ls -lh assets/$(distname).tar.zst
+	$Q echo "Archive ready: assets/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
 .PHONY: dist
 
 # == ChangeLog ==
