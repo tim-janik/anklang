@@ -1,72 +1,42 @@
 #!/bin/bash
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-set -Eeuo pipefail && SCRIPTNAME=${0##*/} && die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 127 ; }
+set -Eeuo pipefail -x && SCRIPTNAME=${0##*/} && die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 127 ; }
 
-# Usage: mkassets.sh <TARDIR>/<TARBALL>
-# Build assets from TARBALL in a separate directory and copy those assets
-# together with `build-assets` into TARDIR.
+grep ' Anklang ' ./README.md || die 'failed to find Anklang project'
 
-umask 022	# create 0755 dirs by default
+# Usage: mkrelease.sh [RELEASE_BUILDDIR]
+# Make dist tarball and build release assets from it.
+BUILDDIR="${1:-/tmp/anklang/}"
 
-# paths & commands
-TARBALL=`readlink -f $1`
-TARDIR=`dirname $TARBALL`
-ASSETLIST=$TARDIR/build-assets
-SCRATCHDIR="/tmp/anklang-mkassets/"
-MAKE="make -w V=${V:-}"
+# Clear assets and builddir
+rm -rf assets assets.* $BUILDDIR
+mkdir -p $BUILDDIR assets/
 
-# Clear build dir, but keep it in place in case it is a mount point
-mkdir -p $SCRATCHDIR/
-test -O $SCRATCHDIR -a -w $SCRATCHDIR || die "SCRATCHDIR: build directory not writable"
-( cd $SCRATCHDIR
-  rm -rf * .[^.]* ..?*
+# build dist tarball and ChangeLog in assets/
+make dist
+
+# Extract release tarball and version
+tar xf assets/anklang-*.tar.zst -C $BUILDDIR --strip-components=1
+(cd $BUILDDIR && misc/version.sh | cut -d\  -f1)	> assets.ver
+
+# Extract initial release NEWS.md section
+sed '0,/^##/ n; /^##/{ s/.*//; q; }' $BUILDDIR/NEWS.md	> assets.txt
+
+# Copy populated .dlcache/ to speed up builds
+test -d .dlcache/ && cp -a --reflink .dlcache/ $BUILDDIR/
+
+# Make production build + pdfs + package assets
+( cd $BUILDDIR/
+  # Note, ase/ special cases MODE=production INSN=sse as non-native release builds
+  make default MODE=production INSN=sse
+  make -j`nproc` \
+       all assets/pdf
+  make check
+  misc/mkdeb.sh
+  misc/mkAppImage.sh
 )
 
-# Link .dlcache to reduce network IO
-test -d .dlcache/ && {
-  rm -rf $SCRATCHDIR/.dlcache
-  ln -s $PWD/.dlcache $SCRATCHDIR/.dlcache
-}
-
-# extract tarball, extract release infos
-tar xf $TARBALL -C $SCRATCHDIR --strip-components=1
-( cd $SCRATCHDIR
-  misc/version.sh
-)		> $TARDIR/build-version
-cp $SCRATCHDIR/NEWS.md $TARDIR/build-news
-TAR_VERSION=`cut '-d ' -f1 $TARDIR/build-version`
-
-# Change to $SCRATCHDIR to build various assets
-( cd $SCRATCHDIR
-
-  # Build and check, a `production+sse` build also triggers FMA builds in ui/Makefile.mk
-  $MAKE -j`nproc` \
-	MODE=production \
-	INSN=sse \
-	all pdf
-  $MAKE check
-  cp out/doc/anklang-manual.pdf out/anklang-manual-$TAR_VERSION.pdf
-  cp out/doc/anklang-internals.pdf out/anklang-internals-$TAR_VERSION.pdf
-
-  # Make Deb
-  BUILDDIR=out V=$V misc/mkdeb.sh
-
-  # Make AppImage
-  BUILDDIR=out V=$V misc/mkAppImage.sh
-  test ! -r /dev/fuse || time out/anklang-$TAR_VERSION-x64.AppImage --quitstartup
-)
-
-# Gather assets
-echo ${TARDIR##*/}/${TARBALL##*/}	>  $ASSETLIST.tmp
-for f in $SCRATCHDIR/out/anklang_${TAR_VERSION}_amd64.deb \
-	 $SCRATCHDIR/out/anklang-$TAR_VERSION-x64.AppImage \
-	 $SCRATCHDIR/out/anklang-manual-$TAR_VERSION.pdf \
-	 $SCRATCHDIR/out/anklang-internals-$TAR_VERSION.pdf \
-	 ; do
-  cp $f $TARDIR
-  echo ${TARDIR##*/}/${f##*/}		>> $ASSETLIST.tmp
-done
-du -hs `cat $ASSETLIST.tmp`
-
-# done
-mv $ASSETLIST.tmp $ASSETLIST
+# Fetch release assets and cleanup
+cp $BUILDDIR/assets/* ./assets/
+test "$BUILDDIR" == /tmp/anklang/ && rm -rf /tmp/anklang/
+ls -l assets/* assets*.*
