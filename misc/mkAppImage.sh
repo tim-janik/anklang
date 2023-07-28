@@ -12,13 +12,13 @@ BUILDDIR="${BUILDDIR:-out}"
 VERSION=$(misc/version.sh | cut -d\  -f1)
 APPINST=$BUILDDIR/appinst/		# install dir
 APPBASE=$BUILDDIR/appbase/		# dir for packaging
-APPTOOLS=$BUILDDIR/misc/appaux		# AppImage build tools
+APPTOOLS=$BUILDDIR/appimagetools	# AppImage build tools
 PKGDIR=$(sed -rn '/^ *"pkgdir":/{ s/.*:.*"([^"]+)", *$/\1/; p; q; }' $BUILDDIR/package.json)
 MAKE="make -w V=${V:-}"
 
 # AppImage tooling
 echo 'AppImage tooling...'
-$MAKE out/misc/appaux/appimage-runtime-zstd
+$MAKE out/appimagetools/appimage-runtime-zstd
 test -f $APPTOOLS/appimage-runtime-zstd || die "missing appimage-runtime-zstd"
 test -x $APPTOOLS/linuxdeploy-x86_64.AppImage || die "missing linuxdeploy-x86_64.AppImage"
 
