@@ -57,7 +57,7 @@ $>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/include.deps) ase/Make
 	$Q mv $@.tmp $@
 
 # == ase/buildversion-$(version_short).cc ==
-$>/ase/buildversion-$(version_short).cc: ase/Makefile.mk			| $>/ase/
+$>/ase/buildversion-$(version_short).cc: $(GITCOMMITDEPS)			| $>/ase/
 	$(QGEN)
 	$Q echo '// make $@'							> $@.tmp
 	$Q echo '#include <ase/platform.hh>'					>>$@.tmp
