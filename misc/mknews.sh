@@ -28,6 +28,8 @@ NEWS_TAG="v$(fetch_news_version 1)"
 
 echo "## Anklang $CURRENT_VERSION"
 echo
+echo 'Development version - may contain bugs or compatibility issues.'
+echo
 echo '``````````````````````````````````````````````````````````````````````````````````````'
 git log --pretty='%s    # %cd %an %h%n%w(0,4,4)%b' \
     --first-parent --date=short "$NEWS_TAG..HEAD" |
