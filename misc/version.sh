@@ -16,7 +16,7 @@ if ! [[ "$HASH" =~ ^[0-9a-f]+$ ]] ; then		# checks proper hash
   DESCRIBE=
   if test -e "${ABSPATHSCRIPT%/*}"/../.git ; then	# fetch version from live git
     HASH=$(git log -1 --pretty="tformat:%H")
-    DESCRIBE=$(git log -1 --pretty="tformat:%(describe:match=v[0-9]*.[0-9]*.[0-9]*)")
+    DESCRIBE=$(git describe --tags --match='v[0-9]*.[0-9]*.[0-9]*' --exact-match 2>/dev/null || git describe --match='v[0-9]*.[0-9]*.[0-9]*')
     VDATE=$(git log -1 --pretty="tformat:%ci")
   fi
 fi
