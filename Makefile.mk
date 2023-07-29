@@ -227,7 +227,7 @@ define PACKAGE_CONFIG
 endef
 
 # == package.json ==
-$>/package.json: misc/package.json.in					| $>/
+$>/package.json: misc/package.json.in $(GITCOMMITDEPS)			| $>/
 	$(QGEN)
 	$Q : $(file > $@.config,$(PACKAGE_CONFIG),)
 	$Q sed -e '1r '$@.config $< > $@.tmp
