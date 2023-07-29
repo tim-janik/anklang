@@ -18,7 +18,7 @@ DOTGIT	 ::= $(abspath $(shell git rev-parse --git-dir 2>/dev/null))
 # If ./.git is present then HAVE_GIT=true
 HAVE_GIT ::= $(DOTGIT:%=true)
 # Dependencies that are updated with each Git commit
-GITCOMMITDEPS ::= $(DOTGIT:%=%/logs/HEAD)
+GITCOMMITDEPS ::= $(wildcard $(DOTGIT:%=%/logs/HEAD) $(DOTGIT:%=%/packed-refs) $(DOTGIT:%=%/refs/tags/*) )
 
 # == MULTIOUTPUT ==
 # Macro to call for the output targets of a recipe with multiple side-effect outputs.
