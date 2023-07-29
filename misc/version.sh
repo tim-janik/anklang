@@ -7,9 +7,10 @@ ABSPATHSCRIPT=`readlink -f "$0"`
 
 # == Version baked in ==
 # Commit information provided by git-archive in export-subst format string, see gitattributes(5)
-DESCRIBE='$Format:%(describe:match=v[0-9]*.[0-9]*.[0-9]*)$'
 HASH='$Format:%H$'
 VDATE='$Format:%ci$'
+BAKED_DESCRIBE='$Format:%(describe:match=v[0-9]*.[0-9]*.[0-9]*)$' # altered for dist tarballs
+DESCRIBE="$BAKED_DESCRIBE"
 
 # == Version from git ==
 if ! [[ "$HASH" =~ ^[0-9a-f]+$ ]] ; then		# checks proper hash
