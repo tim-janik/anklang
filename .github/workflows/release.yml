@@ -1,0 +1,50 @@
+# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+
+# Linting: xclip -sel c <.github/workflows/release.yml # https://rhysd.github.io/actionlint/
+
+name: Release-Tag
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+jobs:
+
+  Release-Build-and-Upload:
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_RUN: docker run --cap-add SYS_PTRACE -v /home/runner/work/anklang/anklang/:/anklang/ -w /anklang/ -t --rm anklang-focal
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Fetch Repository Tags
+      run: |
+        misc/version.sh
+        git fetch --unshallow
+        git describe --tags
+        git cat-file -t $GITHUB_REF_NAME
+
+    - name: Prepare CI Image
+      run: |
+        echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+        docker pull ghcr.io/anklang/anklang-ci:focal-latest || true
+        time docker build -f misc/Dockerfile.focal -t anklang-focal misc/ --cache-from=ghcr.io/anklang/anklang-ci:focal-latest
+        $DOCKER_RUN sudo chown ubuntu:ubuntu -R /anklang/
+
+    - name: Build release assets
+      run: |
+        $DOCKER_RUN misc/mkassets.sh
+        $DOCKER_RUN sudo chown `id -u`:`id -g` -R /anklang/
+
+    - name: Release Upload
+      id: ghrelease
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        prerelease: true
+        files:      assets/*
+        body_path:  assets.txt
+
+    - name: Release Info
+      run: |
+        echo URL: ${{ steps.ghrelease.outputs.url }}
