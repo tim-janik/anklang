@@ -12,8 +12,6 @@ jobs:
 
   Focal-Docs:
     runs-on: ubuntu-latest
-    env:
-      DOCKER_RUN: docker run --cap-add SYS_PTRACE -v /home/runner/work/anklang/anklang/:/anklang/ -w /anklang/ -t --rm anklang-focal
     steps:
     - uses: actions/checkout@v3
     - name: Fetch last release tag
@@ -23,14 +21,9 @@ jobs:
     - name: Prepare CI Image
       # Build docker image using latest package as cache
       run: |
-        docker --version
-        set -x
-        echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-        docker pull ghcr.io/$GITHUB_REPOSITORY/anklang-ci:focal-latest || true
-        time docker build -f misc/Dockerfile.focal -t anklang-focal misc/ --cache-from=ghcr.io/$GITHUB_REPOSITORY/anklang-ci:focal-latest
-        docker tag anklang-focal ghcr.io/$GITHUB_REPOSITORY/anklang-ci:focal-latest
-        docker push ghcr.io/$GITHUB_REPOSITORY/anklang-ci:focal-latest || true
-        $DOCKER_RUN env </dev/null |& cat
+        echo ${{ secrets.GITHUB_TOKEN }} |
+          time misc/docker_build misc/Dockerfile.focal ghcr.io/tim-janik/anklang/anklang-ci $GITHUB_ACTOR
+        misc/docker_run sudo chown ubuntu:ubuntu -R /anklang/
     - name: Configure Build
       run: |
         echo 'prefix=/'		>  config-defaults.mk
@@ -38,17 +31,17 @@ jobs:
         echo 'CXX=clang++'	>> config-defaults.mk
         (umask 0077 && echo "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > .git/.ssh_id_ghdocs4anklang)
         cat config-defaults.mk
-        $DOCKER_RUN sudo chown ubuntu:ubuntu -R /anklang/
-        $DOCKER_RUN misc/version.sh
-        $DOCKER_RUN bash -c 'source config-defaults.mk && $CXX --version'
+        misc/docker_run sudo chown ubuntu:ubuntu -R /anklang/
+        misc/docker_run misc/version.sh
+        misc/docker_run bash -c 'source config-defaults.mk && $CXX --version'
     - name: Make all pdf check
       run: |
-        $DOCKER_RUN make -j`nproc` all pdf
-        $DOCKER_RUN make check
+        misc/docker_run make -j`nproc` all pdf
+        misc/docker_run make check
     - name: Make install
       run: |
-        $DOCKER_RUN make install DESTDIR=inst
-        $DOCKER_RUN cp -a inst/share/doc/anklang/ out/anklang-docs/
+        misc/docker_run make install DESTDIR=inst
+        misc/docker_run cp -a inst/share/doc/anklang/ out/anklang-docs/
     - uses: actions/upload-artifact@v3
       if: success()
       with:
@@ -58,11 +51,11 @@ jobs:
     - name: Upload tim-janik.github.io/docs/anklang
       if: github.ref == 'refs/heads/trunk'
       run: |
-        $DOCKER_RUN env
-        $DOCKER_RUN doc/poxy.sh -b -u out/anklang-docs/
+        misc/docker_run env
+        misc/docker_run doc/poxy.sh -b -u out/anklang-docs/
     - name: Cleanup
       run: |
-        $DOCKER_RUN sudo chown `id -u`:`id -g` -R /anklang/
+        misc/docker_clean
 
   Arch-Replay:
     runs-on: ubuntu-latest
