@@ -1,0 +1,13 @@
+#!/bin/bash
+# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+set -Eeuo pipefail && SCRIPTNAME=${0##*/} && die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 127 ; }
+SCRIPTDIR="${0%/*}"
+
+# Usage: docker_run [command...]
+
+PWDHASH=$(pwd | sha256sum | sed 's/\(.\{11\}\).*/\1/')
+CITAG=anklang-ci:"$PWDHASH"
+WORKDIR=/anklang
+
+set -x
+docker run --cap-add SYS_PTRACE -v "`pwd`:$WORKDIR" -w $WORKDIR -t --rm $CITAG "$@"
