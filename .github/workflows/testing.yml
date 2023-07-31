@@ -10,7 +10,7 @@ on:
 
 jobs:
 
-  Focal-Docs:
+  Jammy-Docs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -22,7 +22,7 @@ jobs:
       # Build docker image using latest package as cache
       run: |
         echo ${{ secrets.GITHUB_TOKEN }} |
-          time misc/docker_build misc/Dockerfile.focal ghcr.io/tim-janik/anklang/anklang-ci $GITHUB_ACTOR
+          time misc/docker_build misc/Dockerfile.jammy ghcr.io/tim-janik/anklang/anklang-ci $GITHUB_ACTOR
     - name: Configure Build
       run: |
         echo 'prefix=/'		>  config-defaults.mk
@@ -151,14 +151,14 @@ jobs:
 
   Ping-IRC:
     if: always()
-    needs: [Focal-Docs, Arch-Replay, Lunar-Clang-Tidy]
+    needs: [Jammy-Docs, Arch-Replay, Lunar-Clang-Tidy]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Check Jobs
       run: |
-        echo '${{ needs.Focal-Docs.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Lunar-Clang-Tidy.result }}'
-        test success = '${{ needs.Focal-Docs.result }}'
+        echo '${{ needs.Jammy-Docs.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Lunar-Clang-Tidy.result }}'
+        test success = '${{ needs.Jammy-Docs.result }}'
         test success = '${{ needs.Arch-Replay.result }}'
         test success = '${{ needs.Lunar-Clang-Tidy.result }}'
     - name: Ping IRC
