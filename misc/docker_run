@@ -8,6 +8,8 @@ SCRIPTDIR="${0%/*}"
 PWDHASH=$(pwd | sha256sum | sed 's/\(.\{11\}\).*/\1/')
 CITAG=anklang-ci:"$PWDHASH"
 WORKDIR=/anklang
+INTERACTIVE=
+tty -s && INTERACTIVE=-i
 
 set -x
-docker run --cap-add SYS_PTRACE -v "`pwd`:$WORKDIR" -w $WORKDIR -t --rm $CITAG "$@"
+docker run --cap-add SYS_PTRACE -v "`pwd`:$WORKDIR" -w $WORKDIR -t $INTERACTIVE --rm $CITAG "$@"
