@@ -23,7 +23,6 @@ jobs:
       run: |
         echo ${{ secrets.GITHUB_TOKEN }} |
           time misc/docker_build misc/Dockerfile.focal ghcr.io/tim-janik/anklang/anklang-ci $GITHUB_ACTOR
-        misc/docker_run sudo chown ubuntu:ubuntu -R /anklang/
     - name: Configure Build
       run: |
         echo 'prefix=/'		>  config-defaults.mk
