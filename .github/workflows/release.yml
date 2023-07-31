@@ -45,3 +45,23 @@ jobs:
     - name: Release Info
       run: |
         echo URL: ${{ steps.ghrelease.outputs.url }}
+
+  Ping-IRC:
+    if: always()
+    needs: [Release-Build-and-Upload]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Check Jobs
+      run: |
+        echo '${{ needs.Release-Build-and-Upload.result }}'
+        test success = '${{ needs.Release-Build-and-Upload.result }}'
+    - name: Ping IRC
+      if: always()
+      run: |
+        R='${{ github.repository }}' && R=${R#*/}
+        B='${{ github.ref }}' && B=${B#refs/heads/}
+        S='${{ job.status }}' && URL='${{ github.event.head_commit.url }}'
+        U='${{ github.actor }}' && B="$(git branch --show-current)"
+        MSG=$(git log -1 --format='%s')
+        .github/workflows/ircbot.py -q -j "#Anklang" -R "$R" -U "$U" -D "$B" -S "$S" "$MSG" "$URL"
