@@ -11,22 +11,23 @@ S +=
 # == Version ==
 version_full    != misc/version.sh
 version_short  ::= $(word 1, $(version_full))
-version_buildid::= $(word 2, $(version_full))
+version_hash   ::= $(word 2, $(version_full))
 version_date   ::= $(wordlist 3, 999, $(version_full))
 version_bits   ::= $(subst _, , $(subst -, , $(subst ., , $(version_short))))
 version_major  ::= $(word 1, $(version_bits))
 version_minor  ::= $(word 2, $(version_bits))
 version_micro  ::= $(word 3, $(version_bits))
-version_m.m.m  ::= $(version_major).$(version_minor).$(version_micro)
 version_to_month = $(shell echo "$(version_date)" | sed -r -e 's/^([2-9][0-9][0-9][0-9])-([0-9][0-9])-.*/m\2 \1/' \
 			-e 's/m01/January/ ; s/m02/February/ ; s/m03/March/ ; s/m04/April/ ; s/m05/May/ ; s/m06/June/' \
 			-e 's/m07/July/ ; s/m08/August/ ; s/m09/September/ ; s/m10/October/ ; s/m11/November/ ; s/m12/December/')
 version-info:
 	@echo version_full: $(version_full)
 	@echo version_short: $(version_short)
-	@echo version_buildid: $(version_buildid)
+	@echo version_hash: $(version_hash)
 	@echo version_date: $(version_date)
-	@echo version_m.m.m: $(version_m.m.m)
+	@echo version_major: $(version_major)
+	@echo version_minor: $(version_minor)
+	@echo version_micro: $(version_micro)
 	@echo version_to_month: "$(version_to_month)"
 ifeq ($(version_micro),)	# do we have any version?
 $(error Missing version information, run: misc/version.sh)
@@ -212,9 +213,8 @@ $>/%/:
 
 # == PACKAGE_CONFIG ==
 define PACKAGE_VERSIONS
-  "version": "$(version_m.m.m)",
+  "version": "$(version_short)",
   "revdate": "$(version_date)",
-  "buildid": "$(version_buildid)",
   "mode": "$(MODE)"
 endef
 
@@ -227,7 +227,7 @@ define PACKAGE_CONFIG
 endef
 
 # == package.json ==
-$>/package.json: misc/package.json.in					| $>/
+$>/package.json: misc/package.json.in $(GITCOMMITDEPS)			| $>/
 	$(QGEN)
 	$Q : $(file > $@.config,$(PACKAGE_CONFIG),)
 	$Q sed -e '1r '$@.config $< > $@.tmp
@@ -320,23 +320,23 @@ endef
 # == dist ==
 extradist ::= ChangeLog doc/copyright TAGS ls-tree.lst # doc/README
 dist: $(extradist:%=$>/%)
-	@$(eval distversion != misc/version.sh | sed 's/ .*//')
-	@$(eval distname := anklang-$(distversion))
-	$(QECHO) MAKE $(disttarball)
+	@$(eval distname := anklang-$(version_short))
+	$(QECHO) MAKE $(distname).tar.zst
 	$Q git describe --dirty | grep -qve -dirty || echo -e "#\n# $@: WARNING: working tree is dirty\n#"
-	$Q git archive -o $>/$(distname).tar --prefix=$(distname)/ HEAD
-	$Q rm -rf $>/dist/$(distname)/ && mkdir -p $>/dist/$(distname)/
+	$Q rm -rf $>/dist/$(distname)/ && mkdir -p $>/dist/$(distname)/ assets/
+	$Q $(CP) $>/ChangeLog assets/ChangeLog-$(version_short).txt
+	$Q git archive -o assets/$(distname).tar --prefix=$(distname)/ HEAD
 	$Q cd $>/ && $(CP) --parents $(extradist) $(abspath $>/dist/$(distname))
-	$Q git diff --exit-code NEWS.md >/dev/null \
-	|| { tar f $>/$(distname).tar --delete $(distname)/NEWS.md && cp NEWS.md $>/dist/$(distname)/ ; }
-	$Q tar xf $>/$(distname).tar -C $>/dist/ $(distname)/misc/version.sh	# fetch archived version.sh
-	$Q tar f $>/$(distname).tar --delete $(distname)/misc/version.sh	# delete, make room for replacement
-	$Q GITDESCRIBE=`git describe --match='v[0-9]*.[0-9]*.[0-9]*'` \
-	&& sed "s/%[(]describe:match[^)]*[)]/$$GITDESCRIBE/" \
-		-i $>/dist/$(distname)/misc/version.sh				# git 2.25.1 cannot describe:match
-	$Q cd $>/dist/ && tar uhf $(abspath $>/$(distname).tar) $(distname)	# update (replace) files in tarball
-	$Q rm -f $>/$(distname).tar.zst && zstd -17 --rm $>/$(distname).tar && ls -lh $>/$(distname).tar.zst
-	$Q echo "Archive ready: $>/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
+	$Q tar f assets/$(distname).tar --delete $(distname)/NEWS.md \
+	&& misc/mknews.sh				>  $>/dist/$(distname)/NEWS.md \
+	&& cat NEWS.md					>> $>/dist/$(distname)/NEWS.md
+	$Q tar xf assets/$(distname).tar -C $>/dist/ $(distname)/misc/version.sh	# fetch archived version.sh
+	$Q tar f assets/$(distname).tar --delete $(distname)/misc/version.sh	# delete, make room for replacement
+	$Q sed "s/^BAKED_DESCRIBE=.*/BAKED_DESCRIBE='$(version_short)'/" \
+		-i $>/dist/$(distname)/misc/version.sh	# support lightweight tags and fix git-2.25.1 which cannot describe:match
+	$Q cd $>/dist/ && tar uhf $(abspath assets/$(distname).tar) $(distname)	# update (replace) files in tarball
+	$Q rm -rf assets/$(distname).tar.zst && zstd --ultra -22 --rm assets/$(distname).tar && ls -lh assets/$(distname).tar.zst
+	$Q echo "Archive ready: assets/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
 .PHONY: dist
 
 # == ChangeLog ==
@@ -366,7 +366,7 @@ compile_commands.json: Makefile.mk
 all: $(ALL_TARGETS) $(ALL_TESTS)
 
 # == grep-reminders ==
-$>/.grep-reminders: $(LS_TREE_LST)
+$>/.grep-reminders: $(wildcard $(LS_TREE_LST))
 	$Q test -r .git && git -P grep -nE '(/[*/]+[*/ ]*|[#*]+ *)?(FI[X]ME).*' || true
 	$Q touch $@
 all: $>/.grep-reminders

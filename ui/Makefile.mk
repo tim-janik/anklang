@@ -325,16 +325,13 @@ eslint: $>/node_modules/.npm.done
 
 # == tscheck ==
 ui/tscheck.deps ::= $(wildcard ui/*.js ui/*/*.js) $(wildcard $>/ui/*.js $>/ui/*/*.js)
-$>/.tscheck.done: ui/types.d.ts ui/tsconfig.json $(ui/tscheck.deps) $>/ui/.build1-stamp $>/node_modules/.npm.done | $>/tscheck/
+tscheck $>/.tscheck.done: ui/types.d.ts ui/tsconfig.json $(ui/tscheck.deps) $>/node_modules/.npm.done | $>/ui/.build1-stamp $>/tscheck/
 	$(QECHO) RUN tscheck
 	$Q cp ui/tsconfig.json ui/types.d.ts $>/ui/
 	@ # tsc *.js needs to find node_modules/ in the directory hierarchy ("moduleResolution": "node")
 	-$Q cd $>/ && node_modules/.bin/tsc -p ui/tsconfig.json $${INSIDE_EMACS:+--pretty false}
-	$Q touch $@
+	$Q touch $>/.tscheck.done
 $>/ui/.build2-stamp: $>/.tscheck.done
-tscheck: $>/node_modules/.npm.done
-	$Q rm -f $>/.tscheck.done
-	$Q $(MAKE) $>/.tscheck.done
 .PHONY: tscheck
 
 # == ui/lint ==

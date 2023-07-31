@@ -19,6 +19,7 @@ doc/manual-chapters ::= $(strip		\
 doc/internals-chapters ::= $(strip	\
 	doc/ch-development.md		\
 	$>/doc/class-tree.md		\
+	doc/ch-releasing.md		\
 	doc/ch-appendix.md		\
 )
 doc/install.files ::= $(strip		\
@@ -35,7 +36,11 @@ doc/pdf.files := $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
 
 # == PDF rule (Latex dependency) ==
 pdf: $(doc/pdf.files)
-.PHONY: pdf
+assets/pdf: pdf
+	mkdir -p assets/
+	$(CP) $>/doc/anklang-manual.pdf assets/anklang-manual-$(version_short).pdf
+	$(CP) $>/doc/anklang-internals.pdf assets/anklang-internals-$(version_short).pdf
+.PHONY: pdf assets/pdf
 
 # == Copy files ==
 $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/doc/

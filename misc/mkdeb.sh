@@ -35,7 +35,7 @@ ls "$DROOT"$PREFIXDIR >/dev/null # check dir
 # Meta info
 NAME="anklang"
 VERSION=$(misc/version.sh | cut -d\  -f1)
-GITCOMMIT=$(misc/version.sh --commit-hash)
+GITCOMMIT=$(misc/version.sh | (read v h d && echo $h))
 DUSIZE=$(cd $DROOT && du -k -s .)
 ARCH=$(dpkg --print-architecture)
 
@@ -144,6 +144,6 @@ find $DEBIAN/../ -name '*.la' -delete
 find $DEBIAN/../ -name '*.py[co]' -delete
 
 # create binary deb
-fakeroot dpkg-deb -Zzstd -z9 -b $DROOT $DROOT/..
-ls -al $BUILDDIR/$NAME''_$VERSION''_$ARCH.deb
-echo lintian -i --no-tag-display-limit $BUILDDIR/$NAME''_$VERSION''_$ARCH.deb
+fakeroot dpkg-deb -Zzstd -z9 -b $DROOT assets/
+ls -al assets/$NAME''_$VERSION''_$ARCH.deb
+# lintian -i --no-tag-display-limit assets/$NAME''_$VERSION''_$ARCH.deb

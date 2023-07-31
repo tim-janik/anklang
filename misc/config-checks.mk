@@ -112,7 +112,7 @@ $>/config-cache.mk: misc/config-checks.mk misc/version.sh $(GITCOMMITDEPS) | $>/
 	$(QGEN)
 	$Q echo '# make $@'					> $@.tmp
 	$Q echo "ANKLANG_GETTEXT_DOMAIN ::=" \
-		'anklang-$$(version_m.m.m)'			>>$@.tmp
+		'anklang-$$(version_short)'			>>$@.tmp
 	$Q GTK2_CFLAGS=$$($(PKG_CONFIG) --cflags $(GTK2_PACKAGES)) \
 	  && echo "GTK2_CFLAGS ::= $$GTK2_CFLAGS"		>>$@.tmp
 	$Q GTK2_LIBS=$$($(PKG_CONFIG) --libs $(GTK2_PACKAGES)) \

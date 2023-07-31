@@ -107,7 +107,8 @@ print_usage (bool help)
 {
   if (!help)
     {
-      printout ("%s version %s\n", executable_name(), ase_version());
+      printout ("%s %s\n", executable_name(), ase_version());
+      printout ("Build: %s\n", ase_build_id());
       return;
     }
   printout ("Usage: %s [OPTIONS] [project.anklang]\n", executable_name());

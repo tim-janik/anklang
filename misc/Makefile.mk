@@ -103,103 +103,13 @@ check-copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst
 	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini $$(cat $>/ls-tree.lst)
 CHECK_TARGETS += $(if $(HAVE_GIT), check-copyright)
 
-# == release-news ==
-release-news:
-	$Q LAST_TAG=`misc/version.sh --news-tag2` && ( set -x && \
-	  git log --first-parent --date=short --pretty='%s    # %cd %an %h%d%n%w(0,4,4)%b' --reverse HEAD "$$LAST_TAG^!" ) | \
-		sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' -e '/^\s*$$/d'
-.PHONY: release-news
-
 # == appimage-runtime-zstd ==
-$>/misc/appaux/appimage-runtime-zstd:					| $>/misc/appaux/
+$>/appimagetools/appimage-runtime-zstd:					| $>/appimagetools/
 	$(QECHO) FETCH $(@F), linuxdeploy # fetch AppImage tools
+	$Q test -e $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage \
+	|| ( curl -sfSL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -o $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage.tmp \
+	     && mv $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage.tmp $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage )
+	$Q $(CP) $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage $(@D) && chmod +x $(@D)/linuxdeploy-x86_64.AppImage
 	$Q cd $(@D) $(call foreachpair, AND_DOWNLOAD_SHAURL, \
 		0c4c18bb44e011e8416fc74fb067fe37a7de97a8548ee8e5350985ddee1c0164 https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd )
-	$Q cd $>/misc/appaux/ && \
-		curl -sfSOL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
-		chmod +x linuxdeploy-x86_64.AppImage
-misc/mkassets.sh: $>/misc/appaux/appimage-runtime-zstd
 CLEANDIRS += $>/mkdeb/
-
-# == build-release ==
-build-release: misc/mkassets.sh
-	$(QGEN)
-	@: # Determine release tag (eval preceeds all shell commands)
-	@ $(eval RELEASE_TAG != misc/version.sh --news-tag1)
-	@: # Check for new release tag
-	$Q test -z "`git tag -l '$(RELEASE_TAG)'`" || \
-		{ echo '$@: error: release tag from NEWS.md already exists: $(RELEASE_TAG)' >&2 ; false ; }
-	@: # Check against origin/trunk
-	$Q VERSIONHASH=`git rev-parse HEAD` && \
-		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
-		$(RELEASE_TEST) || \
-		{ echo "$@: ERROR: Release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
-	@: # Tag release with annotation
-	$Q git tag -a '$(RELEASE_TAG)' -m "`git log -1 --pretty=%s`"
-	@: # make dist - create release tarball
-	$Q $(MAKE) dist
-	@: # mkassets.sh - build binary release assets
-	$Q export V=$V							\
-	&& misc/dbuild.sh misc/mkassets.sh $>/anklang-$(RELEASE_TAG:v%=%).tar.zst
-RELEASE_TEST ?= false
-
-# == build-nightly ==
-build-nightly: misc/mkassets.sh
-	$(QGEN)
-	@: # Check against origin/trunk
-	$Q VERSIONHASH=`git rev-parse HEAD` && \
-		git merge-base --is-ancestor "$$VERSIONHASH" origin/trunk || \
-		$(RELEASE_TEST) || \
-		{ echo "$@: ERROR: Nightly release ($$VERSIONHASH) must be built from origin/trunk" ; false ; }
-	@: # Tag Nightly, force to move any old version
-	$Q git tag -f Nightly HEAD
-	@: # make dist - create nightly tarball with updated NEWS.md
-	$Q ARCHIVE_VERSION=`misc/version.sh | sed 's/ .*//'`		\
-		&& NEWS_TAG=`misc/version.sh --news-tag1`		\
-		&& mv ./NEWS.md ./NEWS.saved				\
-		&& echo -e "## Anklang $$ARCHIVE_VERSION\n"		>  ./NEWS.md \
-		&& echo '```````````````````````````````````````````'	>> ./NEWS.md \
-		&& git log --pretty='%s    # %cd %an %h%n%w(0,4,4)%b' \
-		       --first-parent --date=short "$$NEWS_TAG..HEAD"	>> ./NEWS.md \
-		&& sed -e '/^\s*Signed-off-by:.*<.*@.*>/d'		-i ./NEWS.md \
-		&& sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i ./NEWS.md \
-		&& echo '```````````````````````````````````````````'	>> ./NEWS.md \
-		&& echo 						>> ./NEWS.md \
-		&& git show HEAD:NEWS.md 				>> ./NEWS.md \
-		&& $(MAKE) dist						\
-		&& mv ./NEWS.saved ./NEWS.md
-	@: # mkassets.sh - build binary release assets
-	$Q export V=$V								\
-	&& ARCHIVE_VERSION=`misc/version.sh | sed 's/ .*//'`			\
-	&& misc/dbuild.sh misc/mkassets.sh $>/anklang-$$ARCHIVE_VERSION.tar.zst	\
-	&& cp $>/build-version $>/nightly-version
-
-# == upload-release ==
-upload-release:
-	$(QGEN)
-	@: # Determine version (eval preceeds all shell commands)
-	@ $(eval RELEASE_VERSION != cut '-d ' -f1 $>/build-version)
-	@ $(eval NIGHTLY != cmp -s $>/build-version $>/nightly-version && echo true)
-	@ $(eval RELEASE_TAG = $(if $(NIGHTLY), Nightly, $(RELEASE_VERSION)))
-	@: # Check release tag
-	$Q $(if $(NIGHTLY),, NEWS_TAG=`misc/version.sh --news-tag1` \
-	&& set -x && test "$$NEWS_TAG" == "v$(RELEASE_VERSION)" )
-	@: # Check release attachments
-	$Q du -hs `cat $>/build-assets`
-	@: # Create release message
-	$Q echo $(if $(NIGHTLY), $(NIGHTLY_DISCLAIMER))		>  $>/release-message
-	$Q sed '0,/^## /b; /^## /Q; ' $>/build-news		>> $>/release-message
-	@: # Create or update draft release (this unpublishes Nightly)
-	@: # Avoid 'create' for Nightly which emails all watchers
-	$Q gh release $(if $(NIGHTLY), edit --latest, create) \
-		--draft -F '$>/release-message' $(RELEASE_TAG)
-	@: # Update Nightly tag and purge old assets
-	$Q $(if $(NIGHTLY), misc/gh_delete_assets.sh 'Nightly' )
-	$Q $(if $(NIGHTLY), git push origin -f 'Nightly' )
-	@: # Upload assets
-	$Q gh release upload $(RELEASE_TAG) `cat $>/build-assets`
-	@: # Republish Nightly
-	$Q $(if $(NIGHTLY), gh release edit --draft=false $(RELEASE_TAG) )
-	@: # Suggest to publish release tag
-	$Q $(if $(NIGHTLY),, echo 'Run:' && echo '  git push origin "v$(RELEASE_VERSION)"' )
-NIGHTLY_DISCLAIMER = "Development version - may contain bugs or compatibility issues."
