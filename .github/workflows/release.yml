@@ -12,8 +12,6 @@ jobs:
 
   Release-Build-and-Upload:
     runs-on: ubuntu-latest
-    env:
-      DOCKER_RUN: docker run --cap-add SYS_PTRACE -v /home/runner/work/anklang/anklang/:/anklang/ -w /anklang/ -t --rm anklang-focal
     steps:
     - uses: actions/checkout@v3
 
@@ -21,20 +19,19 @@ jobs:
       run: |
         misc/version.sh
         git fetch --unshallow
-        git describe --tags
+        git describe --tags --exact-match 2>/dev/null || git describe
         git cat-file -t $GITHUB_REF_NAME
 
     - name: Prepare CI Image
       run: |
-        echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-        docker pull ghcr.io/anklang/anklang-ci:focal-latest || true
-        time docker build -f misc/Dockerfile.focal -t anklang-focal misc/ --cache-from=ghcr.io/anklang/anklang-ci:focal-latest
-        $DOCKER_RUN sudo chown ubuntu:ubuntu -R /anklang/
+        echo ${{ secrets.GITHUB_TOKEN }} |
+          time misc/docker_build misc/Dockerfile.focal ghcr.io/tim-janik/anklang/anklang-ci $GITHUB_ACTOR
+        misc/docker_run sudo chown ubuntu:ubuntu -R /anklang/
 
     - name: Build release assets
       run: |
-        $DOCKER_RUN misc/mkassets.sh
-        $DOCKER_RUN sudo chown `id -u`:`id -g` -R /anklang/
+        misc/docker_run misc/mkassets.sh
+        misc/docker_clean
 
     - name: Release Upload
       id: ghrelease
