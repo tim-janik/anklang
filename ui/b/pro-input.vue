@@ -32,7 +32,7 @@
 <template>
   <v-flex class="b-pro-input tabular-nums" :data-bubble="bubble()" >
     <b-toggle class="b-pro-input-toggle" v-if="type() == 'toggle'" label=""
-	      :value="get_num()" @update:value="set_num ($event)" />
+	      :value="get_num()" @valuechange="set_num ($event.target.value)" />
     <b-choiceinput class="b-pro-input-choice" v-if="type() == 'choice'" small="1" indexed="1"
 		   :prop="prop" :choices="choices"
 		   :value="get_ident()" @valuechange="set_index ($event.target.index())" />
