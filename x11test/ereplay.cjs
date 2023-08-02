@@ -38,14 +38,14 @@ const window_options = {
     contextIsolation:                 true,
     nodeIntegration:                  false,
     enableRemoteModule:               false,
-    devTools:                         true,
+    devTools:                         false, // true,
     defaultEncoding:                  'UTF-8',
   },
   // darkTheme: true,
 };
 
 // Helpers
-const delay = ms => new Promise (resolve => setTimeout(resolve, ms));
+const delay = ms => new Promise (resolve => setTimeout (resolve, ms));
 
 // == TestRunnerExtension ==
 class TestRunnerExtension extends PuppeteerRunnerExtension {
@@ -54,10 +54,14 @@ class TestRunnerExtension extends PuppeteerRunnerExtension {
     super (browser, page, opts);
     this.REPLAY = (scriptname ? scriptname + ': ' : '') + 'REPLAY:';
   }
+  log (...args)
+  {
+    console.log (this.REPLAY, ...args);
+  }
   async beforeAllSteps (flow)
   {
     await super.beforeAllSteps (flow);
-    console.log ('\n' + this.REPLAY, 'START...');
+    this.log ('START...');
   }
   async beforeEachStep (step, flow)
   {
@@ -67,14 +71,14 @@ class TestRunnerExtension extends PuppeteerRunnerExtension {
     // chain super
     await super.beforeEachStep (step, flow);
     const s = step.selectors ? step.selectors.flat() : [];
-    let msg = this.REPLAY + ' ' + step.type;
+    let msg = step.type;
     if (step.url)
       msg += ': ' + step.url;
     else if (s.length)
       msg += ': ' + s[0];
     else
       msg += '...';
-    console.log (msg);
+    this.log (msg);
     // Give time to let clickable elements emerge
     if (click_types.indexOf (step.type) >= 0)
       await delay (DELAY);
@@ -83,13 +87,26 @@ class TestRunnerExtension extends PuppeteerRunnerExtension {
   {
     await super.afterEachStep (step, flow);
     // Give time to let clicks take effect
-    if (click_types.indexOf (step.type) >= 0)
+    if (click_types.indexOf (step.type) >= 0) {
       await delay (2 * DELAY);
+      /* Workaround: Add post-click timeout while Anklang uses intermittent reloads on project changes.
+       * Atm, with Anklang based on Vue, once a new project is loaded or created, Anklang does a full UI reload
+       * If the afterEachStep-delay for button clicks is too short (e.g. 0.2 seconds) for a full reload, consecutive
+       * events may get lost or fail to find their UI components while the UI is still rebuilding.
+       * For now, the only remedy we have is to add an extra delay that'd usually only be needed after
+       * a 'navigate' step.
+       */
+      await delay (1 * 333); // TODO: remove once "New Project" does not cause a reload.
+    } else if ('navigate' === step.type) {
+      const secs = 0.5;
+      await delay (secs * 1000);
+      this.log ("continuing after 'navigate' grace period of" + secs + " seconds");
+    }
   }
   async afterAllSteps (flow)
   {
     await super.afterAllSteps(flow);
-    console.log (this.REPLAY, 'DONE.\n');
+    this.log ('DONE.\n');
     // Give time to inspect/view final state
     await delay (TIMEOUT);
   }
@@ -112,10 +129,13 @@ main()
   // setup window, tester page and runner
   const page = await pie.getPage (browser, window);
   page.setDefaultTimeout (TIMEOUT);
-  const runner = await createRunner (flow, new TestRunnerExtension (browser, page, { timeout: TIMEOUT }, jsonfile));
+  const runner_extension = new TestRunnerExtension (browser, page, { timeout: TIMEOUT }, jsonfile);
+  const runner = await createRunner (flow, runner_extension);
 
   // start running steps
+  runner_extension.log ("ereplay.cjs: runner.run()");
   await runner.run();
+  runner_extension.log ("ereplay.cjs: browser.close()");
 
   // close down
   await browser.close();
