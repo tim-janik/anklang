@@ -38,7 +38,7 @@ export NODE_PATH=$X11TEST/../out/node_modules/
 cp $X11TEST/ereplay.cjs .
 
 # Start Anklang engine
-$X11TEST/../out/lib/AnklangSynthEngine --version >/dev/null || die "missing executable:" AnklangSynthEngine
+test -x $X11TEST/../out/lib/AnklangSynthEngine || die "missing executable:" AnklangSynthEngine
 $X11TEST/../out/lib/AnklangSynthEngine &
 
 # Replay in ELectron and record X11 session
