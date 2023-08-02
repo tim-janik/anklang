@@ -7,12 +7,52 @@ keywords:   Anklang, Linux, ALSA, JavaScript, Scripting, IPC
 
 # ANKLANG Development Details
 
-Technically, Anklang consists of a user interface front-end based on web technologies (HTML, SCSS, JS, Vue)
+Technically, Anklang consists of a user interface front-end based on web technologies (HTML, DOM, CSS, JavaScript, Lit)
 and a synthesis engine backend written in C++.
-The synthesis engine can load various audio rendering plugins which are executed in audio rendering worker
-threads.
+
+## ASE - Anklang synthesis engine
+
+The `ase/` subdirectory contains the C++ implementation of the `AnklangSynthEngine` executable
+which contains the core component for audio data processing and audio plugin handling.
+It interfaces with the HTML DOM based user interface via an IPC layer with JSON messages that reflect the C++ API.
+
+The synthesis engine can load various audio rendering plugins which are executed in audio rendering
+worker threads.
 The main synthesis engine thread coordinates synchronization and interafces between the engine and the UI
-via an IPC interface over a web-socket that uses remote method calls and event delivery marshalled as JSON messages.
+via an IPC interface over a web-socket that uses remote method calls and event delivery marshalled
+as JSON messages.
+
+### Serialization
+
+Building on [Jsonipc](#jsonipc), a small serializaiton framework provided by
+[ase/serialize.hh](https://github.com/tim-janik/anklang/blob/master/ase/serialize.hh)
+is used to marshal values, structs, enums and classes to/from JSON.
+This is used to store preferences and project data.
+The intended usage is as follows:
+
+```cxx
+  std::string jsontext = Ase::json_stringify (somevalue);
+  bool success = Ase::json_parse (jsontext, somevalue);
+  // The JSON root will be of type 'object' if somevalue is a class instance
+  std::string s;                                          // s contains:
+  s = json_stringify (true);                              // true
+  s = json_stringify (-0.17);                             // -0.17
+  s = json_stringify (32768);                             // 32768
+  s = json_stringify (Ase::Error::IO);                    // "Ase.Error.IO"
+  s = json_stringify (String ("STRing"));                 // "STRing"
+  s = json_stringify (ValueS ({ true, 5, "HI" }));        // [true,5,"HI"]
+  s = json_stringify (ValueR ({ {"a", 1}, {"b", "B"} })); // {"a":1,"b":"B"}
+```
+
+In the above examples, `Ase::Error::IO` can be serialized because it is registered as
+`Jsonipc::Enum<Ase::Error>` with its enum values. The same works for serializable
+classes registered through `Jsonipc::Serializable<SomeClass>`.
+
+[_] Serialization of class instances will have to depend on the Scope/InstanceMap, so
+instance pointers in copyable classes registered as `Jsonipc::Serializable<>` can be
+marshalled into a JsonValue (as `{$id,$class}` pair), then be resolved into an
+InstanceP stored in an Ase::Value and from there be marshalled into a persistent
+relative object link for project data storage.
 
 ## Jsonipc
 
@@ -55,35 +95,3 @@ void 	Jsonapi/Trigger/remove (id);     // JS->C++
 void 	Jsonapi/Trigger/_<id>  ([...]);  // C++->JS
 void 	Jsonapi/Trigger/killed (id);     // C++->JS
 ```
-
-## Serialization
-
-Building on [Jsonipc](#jsonipc), a small serializaiton framework provided by
-[ase/serialize.hh](https://github.com/tim-janik/anklang/blob/master/ase/serialize.hh)
-is used to marshal values, structs, enums and classes to/from JSON.
-This is used to store preferences and project data.
-The intended usage is as follows:
-
-```cxx
-  std::string jsontext = Ase::json_stringify (somevalue);
-  bool success = Ase::json_parse (jsontext, somevalue);
-  // The JSON root will be of type 'object' if somevalue is a class instance
-  std::string s;                                          // s contains:
-  s = json_stringify (true);                              // true
-  s = json_stringify (-0.17);                             // -0.17
-  s = json_stringify (32768);                             // 32768
-  s = json_stringify (Ase::Error::IO);                    // "Ase.Error.IO"
-  s = json_stringify (String ("STRing"));                 // "STRing"
-  s = json_stringify (ValueS ({ true, 5, "HI" }));        // [true,5,"HI"]
-  s = json_stringify (ValueR ({ {"a", 1}, {"b", "B"} })); // {"a":1,"b":"B"}
-```
-
-In the above examples, `Ase::Error::IO` can be serialized because it is registered as
-`Jsonipc::Enum<Ase::Error>` with its enum values. The same works for serializable
-classes registered through `Jsonipc::Serializable<SomeClass>`.
-
-[_] Serialization of class instances will have to depend on the Scope/InstanceMap, so
-instance pointers in copyable classes registered as `Jsonipc::Serializable<>` can be
-marshalled into a JsonValue (as `{$id,$class}` pair), then be resolved into an
-InstanceP stored in an Ase::Value and from there be marshalled into an persistent
-relative object link for project data storage.
