@@ -19,6 +19,7 @@ doc/manual-chapters ::= $(strip		\
 doc/internals-chapters ::= $(strip	\
 	doc/ch-development.md		\
 	$>/doc/class-tree.md		\
+	ui/ch-component.md		\
 	doc/ch-releasing.md		\
 	doc/ch-appendix.md		\
 )
