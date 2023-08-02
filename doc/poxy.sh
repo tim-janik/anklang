@@ -113,7 +113,7 @@ __EOF
     touch poxy/"$f"	# Doxygen needs foo.js to exist, but has no default JS EXTENSION_MAPPING
     echo -e "/** @file $f\n @htmlinclude[block] poxy/$f.html */"			> poxy/"$f".dox
   done
-  cp ui/b/ch-vue.md poxy/ui/b/
+  cp ui/ch-*.md poxy/ui/
   cp doc/ch-scripting.md poxy/ui/
 
   # Generate via Doxygen and poxy and m.css
