@@ -103,7 +103,7 @@ __EOF
 
   # Extract JS docs
   make out/node_modules/.npm.done
-  MARKDOWN_FLAVOUR="-f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart"
+  MARKDOWN_FLAVOUR="-f markdown+compact_definition_lists+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart"
   HTML_FLAGS="--highlight-style doc/highlights.theme --html-q-tags --section-divs --email-obfuscation=references"
   for f in ui/*.js ui/b/*.js ; do
     grep '^\s*///\|/\*[!*] [^=]' -q "$f" || continue
@@ -209,3 +209,5 @@ $UPLOAD && {
   )
   exit
 }
+
+exit 0
