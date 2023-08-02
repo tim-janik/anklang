@@ -81,6 +81,11 @@ However, plugins that can be used with this application or may be downloaded
 via extension packs, may fall under different licensing terms, such as
 GPLv3 or proprietary licenses.
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=tim-janik/Anklang&type=Timeline)](https://star-history.com/#tim-janik/Anklang)
+
+
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [commits-badge]: https://img.shields.io/github/commit-activity/w/tim-janik/anklang?label=Commits&style=for-the-badge&color=green
