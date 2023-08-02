@@ -107,12 +107,19 @@ __EOF
   HTML_FLAGS="--highlight-style doc/highlights.theme --html-q-tags --section-divs --email-obfuscation=references"
   for f in ui/*.js ui/b/*.js ; do
     grep '^\s*///\|/\*[!*] [^=]' -q "$f" || continue
-    echo "Parsing $f..."
-    node doc/jsdoc2md.js -d 2				"$f"			> poxy/"$f".js-md
-    pandoc $MARKDOWN_FLAVOUR -p -t html5 $HTML_FLAGS	poxy/"$f".js-md		> poxy/"$f".html
-    touch poxy/"$f"	# Doxygen needs foo.js to exist, but has no default JS EXTENSION_MAPPING
-    echo -e "/** @file $f\n @htmlinclude[block] poxy/$f.html */"			> poxy/"$f".dox
+     if test "$(jobs | wc -l)" -ge `nproc`; then
+      wait -n
+     fi
+    {
+      echo "Parsing $f..."
+      node doc/jsdoc2md.js -d 2				"$f"			> poxy/"$f".js-md
+      pandoc $MARKDOWN_FLAVOUR -p -t html5 $HTML_FLAGS	poxy/"$f".js-md		> poxy/"$f".html
+      touch poxy/"$f"	# Doxygen needs foo.js to exist, but has no default JS EXTENSION_MAPPING
+      echo -e "/** @file $f\n @htmlinclude[block] poxy/$f.html */"			> poxy/"$f".dox
+    } & # speed up via parallel execution, synchronize with wait
   done
+  wait
+
   cp ui/ch-*.md poxy/ui/
   cp doc/ch-scripting.md poxy/ui/
 
