@@ -42,6 +42,15 @@ const arg_config = {
   depth: 2,
 };
 
+// build dict for sections
+function add_section (sectionname, description = '', exports = false) {
+  let sc = global_sections[sectionname];
+  if (!sc)
+    global_sections[sectionname] = sc = { name: sectionname, description, exports };
+  return sc;
+}
+let global_sections;
+
 // build dict for classes
 function add_class (classname, classdesc = '', exports = false) {
   let cl = global_classes[classname];
@@ -97,6 +106,10 @@ function add_var (name, description = '', exports = false) {
 let global_vars;
 let global_overview;
 
+/// Add extra prefix to sections
+function prefix_sections (s, h = '') { return s.replace (/^(#+\s)/m, h + '$1'); }
+/// Escape special HTML chars
+function html_escape (s) { return s.replace (/&/g, '&amp;').replace (/</g, '&lt;'); }
 /// Strip left side / head
 function lstrip (s) { return s.replace (/^\s+/, ''); }
 /// Strip right side / tail
@@ -209,22 +222,39 @@ function gen_global_class (cfg, cl) {
   return s;
 }
 
+/// Generate section markdown
+function gen_global_section (cfg, sc) {
+  const anchor = make_anchor (sc.name);
+  let s = '';
+  s += '\n' + cfg.h1 + sc.name + '\n';
+  if (anchor)
+    s += '<a id="' + anchor + '" data-4search="' + cfg.filename + ':' + sc.name + ';section"></a> ';
+  const hprefix = arg_config.depth > 1 ? '#'.repeat (arg_config.depth - 1) : '';
+  s += '\n' + html_escape (prefix_sections (sc.description || '', '\n' + hprefix)) + '\n\n';
+  return s;
+}
+
 // Generate markdown from jsdoc AST
 function generate_md (cfg, ast) {
   const classdone = {};
   let s = '';
   // build dicts from doclets
   for (const doclet of ast) {
-    // collect overview
+    // collect file overview (possibly virtual)
     if (doclet.scope == 'global' && doclet.kind == 'file' && doclet.description)
       global_overview = doclet.description;
+    // https://github.com/jsdoc/jsdoc/blob/master/packages/jsdoc/lib/jsdoc/schema.js
+    const exports = doclet.meta && doclet.meta.code && doclet.meta.code.name && doclet.meta.code.name.search && doclet.meta.code.name.search ('exports.') == 0;
+    // collect classes (possibly virtual)
+    if (doclet.scope == 'global' && doclet.kind == 'class' && (doclet.classdesc || doclet.description)) {
+      if (exports && doclet.meta.code.type == "ClassDeclaration")
+	add_class (doclet.name, (doclet.classdesc || '\n') + (doclet.description || ''), true);
+      else
+	add_section (doclet.name, (doclet.classdesc || '\n') + (doclet.description || ''));
+    }
+    // only allow docs for concrete code from here on
     if ('string' !== typeof doclet.meta?.code?.name)
       continue;
-    // https://github.com/jsdoc/jsdoc/blob/master/packages/jsdoc/lib/jsdoc/schema.js
-    const exports = doclet.meta.code.name && doclet.meta.code.name.search ('exports.') == 0;
-    // collect classes
-    if (doclet.scope == 'global' && doclet.kind == 'class' && doclet.classdesc && doclet.meta.code.type == "ClassDeclaration")
-      add_class (doclet.name, doclet.classdesc, exports);
     // collect methods
     if (doclet.memberof && doclet.meta.code.paramnames && doclet.description &&
 	(doclet.scope == 'instance' || doclet.scope == 'static'))
@@ -239,6 +269,9 @@ function generate_md (cfg, ast) {
   // produce overview
   if (global_overview)
     s += global_overview + '\n';
+  // generate sections
+  for (let [name, sc] of Object.entries (global_sections))
+    s += gen_global_section (cfg, sc);
   // generate classes
   for (let [name, cl] of Object.entries (global_classes))
     s += gen_global_class (cfg, cl);
@@ -264,11 +297,14 @@ arg_config.h3 = '#' + arg_config.h2;
 for (let filename of arg_config.files)
   {
     global_functions = {};
+    global_sections = {};
     global_classes = {};
     global_vars = {};
     global_overview = '';
     const configure = 'doc/jsdocrc.json';
     const jsdocast = jsdoc.explainSync ({ configure, files: [ filename ] })
+    if (arg_config.debug)
+      console.error (filename + ": AST:", jsdocast);
     const cfg = Object.assign ({ filename }, arg_config);
     console.log (generate_md (cfg, jsdocast));
   }
