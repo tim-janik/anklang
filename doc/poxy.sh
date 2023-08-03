@@ -103,17 +103,24 @@ __EOF
 
   # Extract JS docs
   make out/node_modules/.npm.done
-  MARKDOWN_FLAVOUR="-f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart"
+  MARKDOWN_FLAVOUR="-f markdown+compact_definition_lists+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart-raw_html"
   HTML_FLAGS="--highlight-style doc/highlights.theme --html-q-tags --section-divs --email-obfuscation=references"
   for f in ui/*.js ui/b/*.js ; do
     grep '^\s*///\|/\*[!*] [^=]' -q "$f" || continue
-    echo "Parsing $f..."
-    node doc/jsdoc2md.js -d 2				"$f"			> poxy/"$f".js-md
-    pandoc $MARKDOWN_FLAVOUR -p -t html5 $HTML_FLAGS	poxy/"$f".js-md		> poxy/"$f".html
-    touch poxy/"$f"	# Doxygen needs foo.js to exist, but has no default JS EXTENSION_MAPPING
-    echo -e "/** @file $f\n @htmlinclude[block] poxy/$f.html */"			> poxy/"$f".dox
+     if test "$(jobs | wc -l)" -ge `nproc`; then
+      wait -n
+     fi
+    {
+      echo "Parsing $f..."
+      node doc/jsdoc2md.js -d 2				"$f"			> poxy/"$f".js-md
+      pandoc $MARKDOWN_FLAVOUR -p -t html5 $HTML_FLAGS	poxy/"$f".js-md		> poxy/"$f".html
+      touch poxy/"$f"	# Doxygen needs foo.js to exist, but has no default JS EXTENSION_MAPPING
+      echo -e "/** @file $f\n @htmlinclude[block] poxy/$f.html */"			> poxy/"$f".dox
+    } & # speed up via parallel execution, synchronize with wait
   done
-  cp ui/b/ch-vue.md poxy/ui/b/
+  wait
+
+  cp ui/ch-*.md poxy/ui/
   cp doc/ch-scripting.md poxy/ui/
 
   # Generate via Doxygen and poxy and m.css
@@ -129,9 +136,9 @@ __EOF
   ( cd html/
     echo 'Search.__extra_tokens = ['
     for f in *.html ; do
-      grep -qF '<a data-4search="' $f || continue
+      grep -qF ' data-4search="' $f || continue
       sed -nr \
-          '/\bdata-4search=.*<\/a>/{ s|.*<a data-4search="([^"]+);([^"]+)" id="([^"]+)".*|{name:"\1",typeName:"\2",url:"'"$f"'#\3"},|; T SKP; p; :SKP; }' \
+          '/\bdata-4search=.*<\/[span]+>/{ s|.* data-4search="([^"]+);([^"]+)" id="([^"]+)">.*|{name:"\1",typeName:"\2",url:"'"$f"'#\3"},|; T SKP; p; :SKP; }' \
 	  $f
     done
     echo '];'
@@ -209,3 +216,5 @@ $UPLOAD && {
   )
   exit
 }
+
+exit 0

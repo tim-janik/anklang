@@ -155,6 +155,7 @@ run: FORCE all
 clean: FORCE
 	@test -z "$(strip $(CLEANFILES))" || (set -x; rm -f $(CLEANFILES) )
 	@test -z "$(strip $(CLEANDIRS))" || (set -x; rm -fr $(CLEANDIRS) )
+CLEANDIRS += poxy/ html/ assets/
 
 # == help rules ==
 help: FORCE

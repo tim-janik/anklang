@@ -1,9 +1,11 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/** # B-CONTEXTMENU
- * A modal popup that displays contextmenu choices, see [B-MENUITEM](#b-menuitem),
- * [B-MENUSEPARATOR](#b-menuseparator).
+/** @class BContextMenu
+ * @description
+ * The <b-contextmenu> element implements a modal popup that displays contextmenu choices,
+ * see [BMenuItem](menuitem_8js.html#BMenuItem), [BMenuRow](menurow_8js.html#BMenuRow),
+ * [BMenuTitle](menutitle_8js.html#BMenuTitle) and [BMenuSeparator](menuseparator_8js.html#BMenuSeparator).
  * Using the `popup()` method, the menu can be popped up from the parent component,
  * and setting up a `.activate` handler can be used to handle menuitem actions. Example:
  * ```html

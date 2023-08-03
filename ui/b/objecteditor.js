@@ -4,8 +4,9 @@
 import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
 import * as Util from '../util.js';
 
-/** # B-OBJECTEDITOR
- * A field-editor for object input.
+/** @class BObjectEditor
+ * @description
+ * The <b-objecteditor> element is a field-editor for object input.
  * A copy of the input value is edited, update notifications are provided via
  * an `input` event.
  * ## Properties:

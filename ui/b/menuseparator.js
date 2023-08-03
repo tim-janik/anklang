@@ -1,11 +1,12 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { JsExtract, docs } from '../little.js';
-
-/** # B-MENUSEPARATOR
- * A menu element that serves as a visual separator between other elements.
+/** @class BMenuSeparator
+ * @description
+ * The <b-menuseparator> element is a menu element that serves as a visual separator between other elements.
  */
+
+import { JsExtract, docs } from '../little.js';
 
 // == STYLE ==
 JsExtract.scss`

@@ -5,7 +5,10 @@ import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
 import * as Util from '../util.js';
 import * as Ase from '../aseapi.js';
 
-/** # B-POSITIONVIEW - Display of the project transport position pointer and related information
+/** @class BPositionView
+ * @description
+ * The <b-positionview> element displays the project
+ * transport position pointer and related information.
  * ### Props:
  * - **project** - The object providing playback API.
  */

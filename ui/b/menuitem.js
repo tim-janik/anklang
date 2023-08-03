@@ -1,12 +1,12 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/** # B-MENUITEM
- * A menuitem element to be used as a descendant of a [B-CONTEXTMENU](#b-contextmenu).
+/** @class BMenuItem
+ * @description
+ * The <b-menuitem> element can be used as a descendant of a [BContextMenu](contextmenu_8js.html#BContextMenu).
  * The menuitem can be activated via keyboard focus or mouse click and will notify
- * its B-CONTEXTMENU about the click and its `uri`, unless the `@click.prevent`
- * modifier is used.
- * If no `uri` is specified, the B-CONTEXTMENU will still be notified to be closed,
+ * its BContextMenu about the click and its `uri`.
+ * If no `uri` is specified, the BContextMenu will still be notified to be closed,
  * unless `$event.preventDefault()` is called.
  * ## Properties:
  * *.isactive*: bool (uri)

@@ -1,8 +1,9 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/** # B-STATUSBAR
- * Area for the display of status messages and UI configuration.
+/** @class BStatusBar
+ * @description
+ * The <b-statusbar> element is an area for the display of status messages and UI configuration.
  */
 
 import { LitComponent, html, JsExtract, ref, docs } from '../little.js';

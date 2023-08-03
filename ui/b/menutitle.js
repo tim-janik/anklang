@@ -1,15 +1,17 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { LitComponent, html, JsExtract, docs } from '../little.js';
-import * as Util from "../util.js";
-
-/** # B-MENUTITLE
- * An element to be used as menu title.
+/** @class BMenuTitle
+ * @description
+ * The <b-menutitle> element can be used as menu title inside a
+ * [BContextMenu](contextmenu_8js.html#BContextMenu).
  * ## Slots:
  * *default*
  * : All contents passed into this slot will be rendered as contents of this element.
  */
+
+import { LitComponent, html, JsExtract, docs } from '../little.js';
+import * as Util from "../util.js";
 
 // == STYLE ==
 JsExtract.scss`

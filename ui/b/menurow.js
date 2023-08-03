@@ -1,8 +1,10 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/** # B-MENUROW
- * Menuitems are packed horizontally inside a menurow.
+/** @class BMenuRow
+ * @description
+ * The <b-menurow> element can contain [BMenuItem](menuitem_8js.html#BMenuItem)
+ * elements, that are packed horizontally inside a menurow.
  * ## Props:
  * *noturn*
  * : Avoid turning the icon-label direction in menu items to be upside down.

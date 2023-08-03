@@ -4,8 +4,10 @@
 import { JsExtract } from '../little.js';
 import * as Util from '../util.js';
 
-/** # B-DATABUBBLE
- * A mechanism to display data-bubble="" tooltip popups on mouse hover.
+/** @class DataBubbleImpl
+ * @description
+ * The **DataBubbleImpl** and **DataBubbleIface** classes implement the
+ * logic required to extract and display `data-bubble=""` tooltip popups on mouse hover.
  */
 
 // <STYLE/>

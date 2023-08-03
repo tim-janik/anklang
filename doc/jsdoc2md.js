@@ -42,6 +42,15 @@ const arg_config = {
   depth: 2,
 };
 
+// build dict for sections
+function add_section (sectionname, description = '', exports = false) {
+  let sc = global_sections[sectionname];
+  if (!sc)
+    global_sections[sectionname] = sc = { name: sectionname, description, exports };
+  return sc;
+}
+let global_sections;
+
 // build dict for classes
 function add_class (classname, classdesc = '', exports = false) {
   let cl = global_classes[classname];
@@ -97,6 +106,10 @@ function add_var (name, description = '', exports = false) {
 let global_vars;
 let global_overview;
 
+/// Add extra prefix to sections
+function prefix_sections (s, h = '') { return s.replace (/^(#+\s)/m, h + '$1'); }
+/// Escape special HTML chars
+function html_escape (s) { return s.replace (/&/g, '&amp;').replace (/</g, '&lt;'); }
 /// Strip left side / head
 function lstrip (s) { return s.replace (/^\s+/, ''); }
 /// Strip right side / tail
@@ -130,12 +143,12 @@ function gen_section_head (cfg, what) {
 /// Generate variable markdown
 function gen_global_var (cfg, gvar) {
   const exports_name = cfg.exports && gvar.exports ? cfg.exports + '.' + gvar.name : gvar.name;
-  const anchor = make_anchor (exports_name);
   const exports = cfg.exports && gvar.exports ? '<small>`' + cfg.exports + '.`</small>' : '';
   let s = '';
-  if (anchor)
-    s += '<a id="' + anchor + '" data-4search="' + cfg.filename + ':' + exports_name + ';' + (gvar.exports ? 'export' : 'var') + '"></a> ';
-  s += exports + '**`' + gvar.name + '`**' + '\n';
+  if (exports_name)
+    s += exports + pandoc_anchor ('**`' + gvar.name + '`**', make_anchor (exports_name), cfg.filename + ':' + exports_name + ';' + (gvar.exports ? 'export' : 'var')) + '\n';
+  else
+    s += exports + '**`' + gvar.name + '`**' + '\n';
   if (gvar.description)
     s += dpara (gvar.description, '    ', ':') + '\n';
   s += '\n';
@@ -166,7 +179,7 @@ function description_markdown (description) {
 /// Generate function markdown
 function gen_function (cfg, fun, exports = '') {
   const exports_name = exports + (exports && '.') + fun.name;
-  let prefix = '', postfix = '', anchor = make_anchor (exports_name);
+  let prefix = '', postfix = '';
   const pexports = exports ? '<small>`' + exports + '`</small>.' : '';
   if (fun['static'])
     postfix += '   `[static]`';
@@ -174,10 +187,12 @@ function gen_function (cfg, fun, exports = '') {
     prefix += '*new* ';
   let params = fun.params.join (', ');
   params = params ? ' `(`*' + params + '*`)`' : '`()`';
-  let s = '';
-  if (anchor)
-    s += '<a id="' + anchor + '" data-4search="' + cfg.filename + ':' + exports_name + ';func"></a> ';
-  s += prefix + pexports + '**`' + fun.name + '`**' + params + postfix + '\n';
+  let s = prefix + pexports;
+  if (exports_name)
+    s += pandoc_anchor ('**`' + fun.name + '`**', make_anchor (exports_name), cfg.filename + ':' + exports_name + ';func');
+  else
+    s += '**`' + fun.name + '`**';
+  s += ' ' + params + postfix + '\n';
   if (fun.description)
     s += dpara (fun.description, '    ', ':') + '\n';
   s += '\n';
@@ -192,20 +207,46 @@ function gen_global_function (cfg, fun) {
 
 /// Generate class markdown
 function gen_global_class (cfg, cl) {
-  const hprefix = '', anchor = make_anchor (cl.name); // cfg.exports && cl.exports ? cfg.exports + '.' : '';
+  const hprefix = '';
   const exports = cfg.exports && cl.exports ? cfg.exports : '';
   const pexports = exports ? '<small>`' + exports + '`</small>.' : '';
   let s = '';
   s += '\n' + cfg.h2 + hprefix + cl.name + ' class\n';
-  s += '*class* ' + pexports + '**' + cl.name + '**';
-  if (anchor)
-    s += '<a id="' + anchor + '" data-4search="' + cfg.filename + ':' + cl.name + ';class"></a> ';
-  s += '\n' + dpara (cl.classdesc || ' … \n', '    ', ':') + '\n';
+  s += '*class* ' + pexports;
+  s += pandoc_anchor ('**' + cl.name + '**', make_anchor (cl.name), cfg.filename + ':' + cl.name + ';class') + '\n';
+  s += dpara (cl.classdesc || ' … \n', '    ', ':') + '\n';
   s += '\n';
   for (const mt of cl.methods) {
     let t = gen_function (cfg, mt);
     s += rstrip (indent_lines (t, '    ')) + '\n\n';
   }
+  return s;
+}
+
+/// Generate pandoc notation for an anchor
+function pandoc_anchor (txt = ' ', target = '', data_4search = '')
+{
+  let s = `[${txt}]{`;
+  if (target)
+    s += '#' + target;
+  if (data_4search) {
+    if (target)
+      s += ' ';
+    s += 'data-4search="' + data_4search + '"';
+  }
+  s += '}';
+  return s; // [TXT]{#TARGET data-4search="filepath.js:SecName;section"}
+}
+
+/// Generate section markdown
+function gen_global_section (cfg, sc) {
+  const anchor = make_anchor (sc.name);
+  let s = '';
+  s += '\n' + cfg.h1;
+  s += pandoc_anchor (sc.name, anchor, cfg.filename + ':' + sc.name + ';section');
+  s += '\n';
+  const hprefix = arg_config.depth > 1 ? '#'.repeat (arg_config.depth - 1) : '';
+  s += '\n' + prefix_sections (sc.description || '', '\n' + hprefix) + '\n\n';
   return s;
 }
 
@@ -215,16 +256,21 @@ function generate_md (cfg, ast) {
   let s = '';
   // build dicts from doclets
   for (const doclet of ast) {
-    // collect overview
+    // collect file overview (possibly virtual)
     if (doclet.scope == 'global' && doclet.kind == 'file' && doclet.description)
       global_overview = doclet.description;
+    // https://github.com/jsdoc/jsdoc/blob/master/packages/jsdoc/lib/jsdoc/schema.js
+    const exports = doclet.meta && doclet.meta.code && doclet.meta.code.name && doclet.meta.code.name.search && doclet.meta.code.name.search ('exports.') == 0;
+    // collect classes (possibly virtual)
+    if (doclet.scope == 'global' && doclet.kind == 'class' && (doclet.classdesc || doclet.description)) {
+      if (exports && doclet.meta.code.type == "ClassDeclaration")
+	add_class (doclet.name, (doclet.classdesc || '\n') + (doclet.description || ''), true);
+      else
+	add_section (doclet.name, (doclet.classdesc || '\n') + (doclet.description || ''));
+    }
+    // only allow docs for concrete code from here on
     if ('string' !== typeof doclet.meta?.code?.name)
       continue;
-    // https://github.com/jsdoc/jsdoc/blob/master/packages/jsdoc/lib/jsdoc/schema.js
-    const exports = doclet.meta.code.name && doclet.meta.code.name.search ('exports.') == 0;
-    // collect classes
-    if (doclet.scope == 'global' && doclet.kind == 'class' && doclet.classdesc && doclet.meta.code.type == "ClassDeclaration")
-      add_class (doclet.name, doclet.classdesc, exports);
     // collect methods
     if (doclet.memberof && doclet.meta.code.paramnames && doclet.description &&
 	(doclet.scope == 'instance' || doclet.scope == 'static'))
@@ -239,6 +285,9 @@ function generate_md (cfg, ast) {
   // produce overview
   if (global_overview)
     s += global_overview + '\n';
+  // generate sections
+  for (let [name, sc] of Object.entries (global_sections))
+    s += gen_global_section (cfg, sc);
   // generate classes
   for (let [name, cl] of Object.entries (global_classes))
     s += gen_global_class (cfg, cl);
@@ -264,11 +313,14 @@ arg_config.h3 = '#' + arg_config.h2;
 for (let filename of arg_config.files)
   {
     global_functions = {};
+    global_sections = {};
     global_classes = {};
     global_vars = {};
     global_overview = '';
     const configure = 'doc/jsdocrc.json';
     const jsdocast = jsdoc.explainSync ({ configure, files: [ filename ] })
+    if (arg_config.debug)
+      console.error (filename + ": AST:", jsdocast);
     const cfg = Object.assign ({ filename }, arg_config);
     console.log (generate_md (cfg, jsdocast));
   }

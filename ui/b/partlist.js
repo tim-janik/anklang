@@ -4,8 +4,9 @@
 import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
 import * as Util from '../util.js';
 
-/** ## Part-List
- * The Part-List allows to arrange Clip objects for playback.
+/** @class BPartList
+ * @description
+ * The <b-partlist> element allows to arrange Clip objects for playback.
  */
 
 // == STYLE ==
@@ -66,5 +67,4 @@ class BPartList extends LitComponent {
     this.track.create_part (0);
   }
 }
-
 customElements.define ('b-partlist', BPartList);
