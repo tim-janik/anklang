@@ -406,6 +406,153 @@ function notes_canvas_drag_paint (event, MODE)
 }
 ntool ('P', notes_canvas_drag_paint, 'var(--svg-cursor-pen)');
 
+/// ### Move Tool
+/// ![Pen](cursors/move.svg)
+/// With the note Move Tool, selected notes can be moved clicking mouse button 1
+/// and keeping it held during drags. A copy will be made instead of moving
+/// the selected notes if the ctrl key is pressed during drag.
+function notes_canvas_drag_move (event, MODE)
+{
+  Util.prevent_event (event);
+  this.update_coords (event, MODE); // piano_layout_update_coords
+  const get_selection_range = (allnotes) => {
+    let selected_notes = allnotes.filter (note => note.selected);
+    return {
+      min_tick : Math.min (...selected_notes.map (note => note.tick)),
+      min_key  : Math.min (...selected_notes.map (note => note.key)),
+      max_key  : Math.max (...selected_notes.map (note => note.key))
+    };
+  };
+  const select_before_move = (clip, allnotes) => {
+    /* TODO: this.note_id is updated during hover, so it can happen that it is
+     * not up-to-date which can make the drag operation as a whole fail */
+    const note_idx = find_note (allnotes, n => n.id === this.note_id);
+    this.move_ok = (note_idx >= 0);
+    if (!this.move_ok || allnotes[note_idx].selected)
+      return false;
+    // select (only) current note if it wasn't selected before move
+    return notes_filter_modify (allnotes,
+                                note => true,
+                                note => ({ selected : (note.id == this.note_id) }));
+  };
+  const start_move_notes = (clip, allnotes) => {
+    const note_idx = find_note (allnotes, n => n.id === this.note_id);
+    if (!this.move_ok || note_idx < 0)
+      return false;
+
+    this.original_note_ids = {};
+    let srange = get_selection_range (allnotes);
+    this.move_note_relative_tick = allnotes[note_idx].tick - srange.min_tick;
+    this.move_note_relative_key = this.event_key - srange.min_key;
+    this.move_note_grid_offset = allnotes[note_idx].tick - quantize (this.piano_roll, allnotes[note_idx].tick, false);
+    this.move_note_cursor_offset = this.event_tick - allnotes[note_idx].tick;
+
+    const newnotes = [];
+    for (const note of allnotes)
+      {
+        if (note.selected)
+          {
+            // unselect note
+            const newnote = Object.assign ({}, note);
+            newnote.selected = false;
+            newnotes.push (newnote);
+            this.original_note_ids[note.id] = true;
+            // create a new note with the same attributes, but selected
+            const newnote2 = Object.assign ({}, note);
+            newnote2.id = -1;
+            newnotes.push (newnote2);
+          }
+      }
+    return newnotes;
+  };
+  const move_notes = (clip, allnotes) => {
+    if (!this.move_ok)
+      return false;
+
+    let start_tick = this.event_tick - this.move_note_cursor_offset;
+    let snap_tick = 0;
+    const snap_to = (tick) => {
+      let Q = quantization (this.piano_roll);
+      for (const t of [ tick - Q, tick, tick + Q ])
+        {
+          if (Math.abs (t - start_tick) < Math.abs (snap_tick - start_tick))
+            snap_tick = t;
+        }
+    };
+    if (!event.shiftKey)
+      {
+        // TODO: snapping should be configurable via menu, constraint: one of both needs to be on
+        const snap_to_grid = true;
+        const snap_to_grid_offset = true;
+        if (snap_to_grid)
+          snap_to (quantize (this.piano_roll, start_tick));
+        if (snap_to_grid_offset)
+          snap_to (quantize (this.piano_roll, start_tick - this.move_note_grid_offset) + this.move_note_grid_offset);
+      }
+    else
+      {
+        snap_tick = start_tick;
+      }
+    let srange = get_selection_range (allnotes);
+    let delta_key = this.event_key - srange.min_key - this.move_note_relative_key;
+    let delta_tick = snap_tick - srange.min_tick - this.move_note_relative_tick;
+    // constrain output tick/key range
+    if (srange.min_tick + delta_tick < 0)
+      delta_tick = -srange.min_tick;
+    if (srange.min_key + delta_key < 0)
+      delta_key = -srange.min_key;
+    if (srange.max_key + delta_key > 127)
+      delta_key = 127 - srange.max_key;
+    // move selected notes
+    return notes_filter_modify (allnotes,
+                                note => note.selected,
+                                note => ({ tick : note.tick + delta_tick, key : note.key + delta_key }));
+  };
+  const end_move_notes = (clip, allnotes) => {
+    if (!this.move_ok)
+      return false;
+
+    let killnotes = [];
+    // if ctrl key was pressed: copy notes, otherwise move notes
+    if (!event.ctrlKey)
+      {
+        // TODO: use different mouse cursors for copy and move
+        killnotes = notes_filter_modify (allnotes,
+                                         note => this.original_note_ids[note.id],
+                                         note => ({ duration: 0 }));
+      }
+    // cleanup state
+    this.original_note_ids = undefined;
+    return killnotes;
+  };
+  // TODO: START/SCROLL/MOVE/STOP should be in one undo group
+  switch (MODE) {
+    case START:
+      this.event_tick = this.piano_roll.layout.tick_from_x (this.x);
+      this.event_key = this.piano_roll.layout.midinote_from_y (this.y);
+      queue_modify_notes (this.piano_roll.clip, select_before_move, "Select Note Before Move");
+      queue_modify_notes (this.piano_roll.clip, start_move_notes, "Start Move Notes");
+      break;
+    case SCROLL:
+    case MOVE:
+      this.event_tick = this.piano_roll.layout.tick_from_x (this.x);
+      this.event_key = this.piano_roll.layout.midinote_from_y (this.y);
+      queue_modify_notes (this.piano_roll.clip, move_notes, "Move Notes");
+      break;
+    case STOP:
+      queue_modify_notes (this.piano_roll.clip, end_move_notes, "End Move Notes");
+      break;
+    case CANCEL:
+      // TODO: reset state
+      queue_modify_notes (this.piano_roll.clip, end_move_notes, "End Move Notes");
+      break;
+  }
+  return false;
+}
+ntool ('P', notes_canvas_drag_move, 'var(--svg-cursor-move)', note_hover_head);
+ntool ('S', notes_canvas_drag_move, 'var(--svg-cursor-move)', note_hover_body);
+ntool ('H', notes_canvas_drag_move, 'var(--svg-cursor-move)', note_hover_body);
+
 /// #### Resizing Notes
 /// ![H-Resize](cursors/hresize.svg)
 /// When the Paint Tool is selected, the right edge of a note can be draged to make notes shorter or longer in duration.
@@ -556,12 +703,27 @@ function notes_canvas_drag_erase (event, MODE)
 }
 ntool ('E', notes_canvas_drag_erase, 'var(--svg-cursor-eraser)');
 
+/// Detect note if hovering over its body
+function note_hover_body (coords, tick, key, notes)
+{
+  const note_idx = find_note (notes, n => key == n.key && tick >= n.tick && tick < n.tick + n.duration);
+  return note_idx >= 0 ? { note_id: notes[note_idx].id } : null;
+}
+
 /// Detect note if hovering over its tail
 function note_hover_tail (coords, tick, key, notes)
 {
   const head_dist = 10; // minimum pixels distance from note start
   const note_idx = find_note (notes, n => key == n.key && tick >= n.tick + Math.max (head_dist, n.duration / 2) && tick < n.tick + n.duration);
   return note_idx >= 0 ? { note_id: notes[note_idx].id } : null;
+}
+
+/// Detect note if hovering over its head
+function note_hover_head (coords, tick, key, notes)
+{
+  if (note_hover_tail (coords, tick, key, notes))
+    return null;
+  return note_hover_body (coords, tick, key, notes);
 }
 
 /// Get drag tool and cursor from hover position
