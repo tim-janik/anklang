@@ -6,9 +6,8 @@ import * as Wrapper from '../wrapper.js';
 import * as Util from '../util.js';
 /** @typedef {import("../b/clipview.js").BClipView} BClipView */
 
-/** @class BClipList
- * @description
- * The <b-cliplist> element allows to start playback of individual clips.
+/** ## Clip-List
+ * The Clip-List allows to start playback of individual clips.
  */
 
 // == STYLE ==
@@ -43,6 +42,7 @@ import * as Ase from '../aseapi.js';
 const OBJECT_PROPERTY = { attribute: false };
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 
+/// The <b-cliplist> element container holds BClipView elements.
 export class BClipList extends LitComponent {
   createRenderRoot() { return this; }
   render()
