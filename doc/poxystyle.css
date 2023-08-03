@@ -1,7 +1,7 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
 /* Currently, we only fixup the light theme, which messes up the dark theme */
-nav a#poxy-theme-switch { display: none; }
+/* nav a#poxy-theme-switch { display: none; } */
 
 /* Fix unfortunate header wrapping */
 @media screen and (min-width: 992px) { .m-container { width: 992px; } }
@@ -23,20 +23,27 @@ h1 { font-size: 1.225em; }
   --dim-color: #bbb;
   --default-color: var(--dim-color);
 }
+.poxy-theme-dark {
+  --paragraph-indent: 0;
+  /* background */
+  --theme-surface4: #121212;
+  /* body & code color */
+  color: #fff;
+  --dim-color: #444;
+  --default-color: var(--dim-color);
+}
+.poxy-theme-dark a { color: #bbf; }
+.poxy-theme-dark a:visited { color: #cbf; }
 
 html.poxy-theme-light body {
   background: white;
 }
-
-.poxy-theme-light div.m-row
-  dt strong {
-    font-size: 1.2em;
-  }
-.poxy-theme-light div.m-row
-  dd {
-    margin-bottom: 1em;
-  }
-
-html.poxy-theme-light	dt a.m-doc {
+html.poxy-theme-dark body {
+  background: #222;
 }
 
+.poxy-theme-dark div.m-row dt strong,
+.poxy-theme-light div.m-row dt strong { font-size: 1.2em; }
+.poxy-theme-dark div.m-row dd,
+.poxy-theme-light div.m-row dd        { margin-bottom: 1em; }
+html.poxy-theme-dark .m-doc-search input { color: #fff; }
