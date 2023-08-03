@@ -1,9 +1,9 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/**
- * # B-KNOB
- * This element provides a knob for scalar inputs.
+/** @class BKnob
+ * @description
+ * The <b-knob> element provides a knob for scalar inputs.
  * It supports the Vue
  * [v-model](https://vuejs.org/v2/guide/components-custom-events.html#Customizing-Component-v-model)
  * protocol by emitting an `input` event on value changes and accepting inputs via the `value` prop.
@@ -22,11 +22,6 @@
  * : Boolean, adjust value with vertical scrolling (without dragging).
  * *width4height*
  * : Automatically determine width from externally specified height (default), otherwise determines height.
- * ## Events:
- * *update:value (value)*
- * : Value change notification event, the first argument is the new value.
- * *reset:value ()*
- * : Request to reset the value.
  * ## Implementation Notes
  * The knob is rendered based on an SVG drawing, which is arranged in such a
  * way that adding rotational transforms to the SVG elements is sufficient to

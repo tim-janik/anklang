@@ -5,8 +5,9 @@ import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
 import * as Util from '../util.js';
 import * as Ase from '../aseapi.js';
 
-/** # B-MENUBAR
- * The main menu bar at the top of the window.
+/** @class BMenuBar
+ * @description
+ * The <b-menubar> element contains main menus at the top of the window.
  */
 
 // <STYLE/>

@@ -122,7 +122,7 @@ const CONTEXTITEM = ac => html`
 const PRIVATE_PROPERTY = { state: true };
 const default_note_length = Util.PPQN / 4;
 
-/// UI element for note editing.
+/** The <b-piano-roll> element allows note editing. */
 class BPianoRoll extends LitComponent {
   createRenderRoot() { return this; }
   render()

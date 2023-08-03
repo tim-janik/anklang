@@ -4,8 +4,9 @@
 import { LitComponent, html, JsExtract, docs } from '../little.js';
 import * as Util from "../util.js";
 
-/** # B-PLAYCONTROLS
- * A container holding the play and seek controls for a Ase.song.
+/** @class BPlayControls
+ * @description
+ * The <b-playcontrols> element is a container holding the play and seek controls for a Ase.song.
  */
 
 // == STYLE ==

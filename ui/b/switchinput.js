@@ -4,8 +4,9 @@
 import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
 import * as Util from '../util.js';
 
-/** # B-SWITCHINPUT
- * A field-editor switch to change between on and off.
+/** @class BSwitchInput
+ * @description
+ * The <b-switchinput> element is a field-editor switch to change between on and off.
  * ## Properties:
  * *value*
  * : Contains a boolean indicating whether the switch is on or off.
@@ -13,7 +14,7 @@ import * as Util from '../util.js';
  * : Make this component non editable for the user.
  * ## Events:
  * *valuechange*
- * : This event is emitted whenever the value changes through user input or needs to be constrained.
+ * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */
 
 // == STYLE ==

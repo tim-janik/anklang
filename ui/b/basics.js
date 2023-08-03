@@ -16,26 +16,33 @@ c-grid { display: grid; }
 c-grid[inline] { display: inline-grid; }
 `;
 
-/** # PUSH-BUTTON - wrapper for an ordinary HTMLElement */
-class PushButton extends HTMLElement {}
-customElements.define ('push-button', PushButton);
-
-/** # B-HFLEX
- * Horizontal [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
+/** @class BPushButton
+ * @description
+ * The <push-button> element is a wrapper for an ordinary HTMLElement. It is styled
+ * like a <button> and can behave like it, but cannot become a focus element.
  */
-class HFlex extends HTMLElement {}
-customElements.define ('h-flex', HFlex);
+class BPushButton extends HTMLElement {}
+customElements.define ('push-button', BPushButton);
 
-/** # B-VFLEX
- * Vertical [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
+/** @class BHFlex
+ * @description
+ * The <h-flex> element is a horizontal [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
  */
-class VFlex extends HTMLElement {}
-customElements.define ('v-flex', VFlex);
+class BHFlex extends HTMLElement {}
+customElements.define ('h-flex', BHFlex);
 
-/** # B-CGRID
- * Simple [grid](https://developer.mozilla.org/en-US/docs/Web/CSS/grid) container element.
- * See also [Grid Container](https://www.w3.org/TR/css-grid-1/#grid-containers)
- * [Grid visual cheatsheet](http://grid.malven.co/)
+/** @class BVFlex
+ * @description
+ * The <v-flex> element is a vertical [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
  */
-class CGrid extends HTMLElement {}
-customElements.define ('c-grid', CGrid);
+class BVFlex extends HTMLElement {}
+customElements.define ('v-flex', BVFlex);
+
+/** @class BGrid
+ * @description
+ * The <c-grid> element is a simple [grid](https://developer.mozilla.org/en-US/docs/Web/CSS/grid) container element.
+ * See also [Grid Container](https://www.w3.org/TR/css-grid-1/#grid-containers) and the
+ * [Grid visual cheatsheet](http://grid.malven.co/).
+ */
+class BGrid extends HTMLElement {}
+customElements.define ('c-grid', BGrid);

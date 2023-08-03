@@ -4,8 +4,9 @@
 import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
 import * as Util from '../util.js';
 
-/** # B-FED-NUMBER
- * A field-editor for integer or floating point number ranges.
+/** @class BNumberInput
+ * @description
+ * The <b-numberinput> element is a field-editor for integer or floating point number ranges.
  * The input `value` will be constrained to take on an amount between `min` and `max` inclusively.
  * ## Properties:
  * *value*
@@ -22,7 +23,7 @@ import * as Util from '../util.js';
  * : Make this component non editable for the user.
  * ## Events:
  * *valuechange*
- * : This event is emitted whenever the value changes through user input or needs to be constrained.
+ * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */
 
 // <STYLE/>

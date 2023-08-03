@@ -1,8 +1,9 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/** ## Clip-View
- * Display a small view of a MIDI clip.
+/** @class BClipView
+ * @description
+ * The <b-clipview> element displays a small view of a MIDI clip.
  */
 
 import { LitComponent, html, JsExtract, docs, ref } from '../little.js';

@@ -4,9 +4,9 @@
 import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
 import * as Util from '../util.js';
 
-/** # B-TEXTINPUT
- *
- * A field-editor for text input.
+/** @class BTextInput
+ * @description
+ * The <b-textinput> element is a field-editor for text input.
  *
  * ## Properties:
  * *value*
@@ -16,7 +16,7 @@ import * as Util from '../util.js';
  *
  * ## Events:
  * *valuechange*
- * : This event is emitted whenever the value changes through user input or needs to be constrained.
+ * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */
 
 // == STYLE ==

@@ -4,8 +4,9 @@
 import { LitComponent, html, nothing, JsExtract, live, docs, ref } from '../little.js';
 import * as Util from '../util.js';
 
-/** # B-CHOICE
- * This element provides a choice popup to choose from a set of options.
+/** @class BChoiceInput
+ * @description
+ * The <b-choiceinput> element provides a choice popup to choose from a set of options.
  * It supports the Vue
  * [v-model](https://vuejs.org/v2/guide/components-custom-events.html#Customizing-Component-v-model)
  * protocol by emitting an `input` event on value changes and accepting inputs via the `value` prop.
@@ -16,7 +17,7 @@ import * as Util from '../util.js';
  * : List of choices: `[ { icon, label, blurb }... ]`
  * ## Events:
  * *valuechange*
- * : Value change notification event.
+ * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */
 
 // <STYLE/>

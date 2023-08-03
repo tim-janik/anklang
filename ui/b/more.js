@@ -3,8 +3,9 @@
 
 import { LitComponent, html, JsExtract, docs } from '../little.js';
 
-/** # B-MORE
- * Indicator for adding or dropping new UI elements.
+/** @class BMore
+ * @description
+ * The <b-more> element is an indicator for adding or dropping new UI elements.
  */
 
 // == STYLE ==

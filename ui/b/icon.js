@@ -5,8 +5,9 @@ import { LitComponent, html, JsExtract, docs } from '../little.js';
 import * as Util from "../util.js";
 import * as Dom from "../dom.js";
 
-/** # B-ICON
- * This element displays icons from various icon fonts.
+/** @class BIcon
+ * @description
+ * The <b-icon> element displays icons from various icon fonts.
  * In order to style the color of icon font symbols, simply apply the `color` CSS property
  * to this element (styling `fill` as for SVG elements is not needed).
  * ## Props:
