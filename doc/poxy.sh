@@ -103,7 +103,7 @@ __EOF
 
   # Extract JS docs
   make out/node_modules/.npm.done
-  MARKDOWN_FLAVOUR="-f markdown+compact_definition_lists+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart"
+  MARKDOWN_FLAVOUR="-f markdown+compact_definition_lists+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart-raw_html"
   HTML_FLAGS="--highlight-style doc/highlights.theme --html-q-tags --section-divs --email-obfuscation=references"
   for f in ui/*.js ui/b/*.js ; do
     grep '^\s*///\|/\*[!*] [^=]' -q "$f" || continue
@@ -136,9 +136,9 @@ __EOF
   ( cd html/
     echo 'Search.__extra_tokens = ['
     for f in *.html ; do
-      grep -qF '<a data-4search="' $f || continue
+      grep -qF ' data-4search="' $f || continue
       sed -nr \
-          '/\bdata-4search=.*<\/a>/{ s|.*<a data-4search="([^"]+);([^"]+)" id="([^"]+)".*|{name:"\1",typeName:"\2",url:"'"$f"'#\3"},|; T SKP; p; :SKP; }' \
+          '/\bdata-4search=.*<\/[span]+>/{ s|.* data-4search="([^"]+);([^"]+)" id="([^"]+)">.*|{name:"\1",typeName:"\2",url:"'"$f"'#\3"},|; T SKP; p; :SKP; }' \
 	  $f
     done
     echo '];'
