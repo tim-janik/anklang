@@ -146,15 +146,6 @@ $>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js ui/Makefile.mk
 	$Q $(RM) $@.vuecss && mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/vue-styles.css
 
-# == ui/b/*.jscss ==
-ui/b/js.files             := $(wildcard ui/b/*.js)
-ui/b/jscss.intermediatess := $(ui/b/js.files:%.js=$>/%.jscss)
-$(ui/b/jscss.intermediatess): ui/Makefile.mk
-$(ui/b/jscss.intermediatess): $>/%.jscss: %.js			| $>/ui/b/
-	$(QGEN)
-	$Q node ui/jsextract.js $< -O $(@D) # %.jscss
-.INTERMEDIATE: $(ui/b/jscss.intermediatess) # allow deletion without regeneration for e.g. linting
-
 # == UI/GLOBALSCSS_IMPORTS ==
 UI/GLOBALSCSS_IMPORTS =
 # Material-Icons
@@ -202,12 +193,15 @@ $>/ui/spinner.scss: ui/assets/spinner.svg
 UI/GLOBALSCSS_IMPORTS += $>/ui/spinner.scss
 
 # == ui/global.css ==
-$>/ui/global.css: ui/global.scss $(ui/b/jscss.intermediatess) $>/ui/postcss.js $(UI/GLOBALSCSS_IMPORTS)
+ui/b/js.files := $(wildcard ui/b/*.js)
+$>/ui/global.css: ui/global.scss $(ui/b/js.files) ui/jsextract.js $>/ui/postcss.js $(UI/GLOBALSCSS_IMPORTS)
 	$(QGEN)
 	$Q $(CP) $< $>/ui/global.scss
-	$Q for f in $(ui/b/jscss.intermediatess:$>/ui/%=%) ; do echo "@import '$$f';" >> $>/ui/global.scss || exit 1 ; done
+	$Q node ui/jsextract.js -O $>/ui/b/ $(ui/b/js.files)		# 		do node ui/jsextract.js $$f -O "$>/$${f%/*}"
+	$Q for f in $(ui/b/js.files:$>/ui/%=%) ; do \
+		echo "@import '../$$f""css';" >> $>/ui/global.scss || exit 1 ; done
 	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -I ui/ $>/ui/global.scss $@.tmp
-	$Q rm -f $(ui/b/jscss.intermediatess)
+	$Q rm -f $>/ui/*.jscss $>/ui/b/*.jscss
 	$Q mv $@.tmp $@
 $>/ui/.build1-stamp: $>/ui/global.css
 
@@ -347,7 +341,7 @@ $>/doc/b/.doc-stamp: $(wildcard ui/b/*.js) ui/xbcomments.js ui/Makefile.mk $>/no
 	$Q node ui/xbcomments.js $(wildcard ui/b/*.js) -O $>/doc/b/
 	$Q touch $@
 $>/ui/.build1-stamp: $>/doc/b/.doc-stamp
-$>/ui/.build2-stamp: $>/doc/anklang-manual.html # deferred during rebuilds
+$>/ui/.build2-stamp: $>/doc/anklang-manual.html $>/doc/anklang-internals.html # deferred during rebuilds
 
 # == serve ==
 serve: all $>/ui/.build1-stamp
