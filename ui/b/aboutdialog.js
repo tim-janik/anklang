@@ -7,7 +7,7 @@ import * as Util from "../util.js";
 /** @class BAboutDialog
  * @description
  * The <b-aboutdialog> element is a modal [b-dialog] that displays version information about Anklang.
- * ## Events:
+ * ### Events:
  * *close*
  * : A *close* event is emitted once the "Close" button activated.
  */

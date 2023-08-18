@@ -8,7 +8,7 @@ import * as Util from '../util.js';
  * @description
  * The <b-numberinput> element is a field-editor for integer or floating point number ranges.
  * The input `value` will be constrained to take on an amount between `min` and `max` inclusively.
- * ## Properties:
+ * ### Properties:
  * *value*
  * : Contains the number being edited.
  * *min*
@@ -21,7 +21,7 @@ import * as Util from '../util.js';
  * : Unless this setting is `true`, numbers are constrained to integer values.
  * *readonly*
  * : Make this component non editable for the user.
- * ## Events:
+ * ### Events:
  * *valuechange*
  * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */

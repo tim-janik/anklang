@@ -18,22 +18,22 @@
  * In order to deduplicate multiple events that arise from the same user interaction,
  * *one* popup request and *one* click activation is processed per animation frame.
  *
- * ## Properties:
+ * ### Properties:
  * *.activate(uri)*
  * : Property callback which is called once a menu item is activated.
  * *.isactive (uri)* -> bool
  * : Property callback used to check if a particular menu item should stay active or be disabled.
- * ## Attributes:
+ * ### Attributes:
  * *xscale*
  * : Consider a wider area than the context menu width for popup positioning.
  * *yscale*
  * : Consider a taller area than the context menu height for popup positioning.
- * ## Events:
+ * ### Events:
  * *click (event)*
  * : Event signaling activation of a menu item, the `uri` can be found via `event.target.uri`.
  * *close (event)*
  * : Event signaling closing of the menu, regardless of whether menu item activation occoured or not.
- * ## Methods:
+ * ### Methods:
  * *popup (event, { origin, data-contextmenu })*
  * : Popup the contextmenu, propagation of `event` is halted and the event coordinates or target is
  * : used for positioning unless `origin` is given.

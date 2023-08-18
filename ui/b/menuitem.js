@@ -8,10 +8,10 @@
  * its BContextMenu about the click and its `uri`.
  * If no `uri` is specified, the BContextMenu will still be notified to be closed,
  * unless `$event.preventDefault()` is called.
- * ## Properties:
+ * ### Properties:
  * *.isactive*: bool (uri)
  * : Property callback used to check if a particular menu item should stay active or be disabled.
- * ## Attributes:
+ * ### Attributes:
  * *uri*
  * : Unique identifier for this menu item.
  * *kbd*
@@ -20,10 +20,10 @@
  * : Boolean flag indicating disabled state.
  * *ic*
  * : Shorthands icon properties that are forwarded to a [B-ICON](#b-icon) used inside the menuitem.
- * ## Events:
+ * ### Events:
  * *click*
  * : Event emitted on keyboard or mouse activation, use `event.stopPropagation()` to prevent bubbling to the contextmenu.
- * ## Slots:
+ * ### Slots:
  * *default*
  * : All contents passed into this slot will be rendered as contents of this element.
  */

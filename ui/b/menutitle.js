@@ -5,7 +5,7 @@
  * @description
  * The <b-menutitle> element can be used as menu title inside a
  * [BContextMenu](contextmenu_8js.html#BContextMenu).
- * ## Slots:
+ * ### Slots:
  * *default*
  * : All contents passed into this slot will be rendered as contents of this element.
  */

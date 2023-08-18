@@ -107,7 +107,7 @@ let global_vars;
 let global_overview;
 
 /// Add extra prefix to sections
-function prefix_sections (s, h = '') { return s.replace (/^(#+\s)/m, h + '$1'); }
+function prefix_sections (s, h = '') { return s.replace (/^(#+\s)/mg, h + '$1'); }
 /// Escape special HTML chars
 function html_escape (s) { return s.replace (/&/g, '&amp;').replace (/</g, '&lt;'); }
 /// Strip left side / head
@@ -245,7 +245,7 @@ function gen_global_section (cfg, sc) {
   s += '\n' + cfg.h1;
   s += pandoc_anchor (sc.name, anchor, cfg.filename + ':' + sc.name + ';section');
   s += '\n';
-  const hprefix = arg_config.depth > 1 ? '#'.repeat (arg_config.depth - 1) : '';
+  const hprefix = ''; // arg_config.depth > 1 ? '#'.repeat (arg_config.depth - 1) : '';
   s += '\n' + prefix_sections (sc.description || '', '\n' + hprefix) + '\n\n';
   return s;
 }

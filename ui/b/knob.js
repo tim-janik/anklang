@@ -7,7 +7,7 @@
  * It supports the Vue
  * [v-model](https://vuejs.org/v2/guide/components-custom-events.html#Customizing-Component-v-model)
  * protocol by emitting an `input` event on value changes and accepting inputs via the `value` prop.
- * ## Props:
+ * ### Props:
  * *bidir*
  * : Boolean, flag indicating bidirectional inputs with value range `-1…+1`.
  * *value*
@@ -22,7 +22,7 @@
  * : Boolean, adjust value with vertical scrolling (without dragging).
  * *width4height*
  * : Automatically determine width from externally specified height (default), otherwise determines height.
- * ## Implementation Notes
+ * ### Implementation Notes
  * The knob is rendered based on an SVG drawing, which is arranged in such a
  * way that adding rotational transforms to the SVG elements is sufficient to
  * display varying knob levels.

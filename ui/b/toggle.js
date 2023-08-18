@@ -6,12 +6,12 @@
  * The <b-toggle> element implements a simple toggle button for boolean audio processor
  * input properties. Its `value` can be accessed as a property and `valuechange` is emitted
  * on changes.
- * ## Props:
+ * ### Props:
  * *value*
  * : Boolean, the toggle value to be displayed, the values are `true` or `false`.
  * *label*
  * : String, label to be displayed inside the toggle button.
- * ## Events:
+ * ### Events:
  * *valuechange*
  * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */

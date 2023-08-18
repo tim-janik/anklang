@@ -5,7 +5,7 @@ import { LitComponent, html, render, JsExtract, docs, ref } from '../little.js';
 
 /** == B-TRACKVIEW ==
  * A Vue template to display a project's Ase.Track.
- * ## Props:
+ * ### Props:
  * *project*
  * : The *Ase.project* containing playback tracks.
  * *track*
