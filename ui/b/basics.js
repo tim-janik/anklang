@@ -27,6 +27,7 @@ customElements.define ('push-button', BPushButton);
 /** @class BHFlex
  * @description
  * The <h-flex> element is a horizontal [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
+ * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
  */
 class BHFlex extends HTMLElement {}
 customElements.define ('h-flex', BHFlex);
@@ -34,6 +35,7 @@ customElements.define ('h-flex', BHFlex);
 /** @class BVFlex
  * @description
  * The <v-flex> element is a vertical [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
+ * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
  */
 class BVFlex extends HTMLElement {}
 customElements.define ('v-flex', BVFlex);
@@ -42,7 +44,7 @@ customElements.define ('v-flex', BVFlex);
  * @description
  * The <c-grid> element is a simple [grid](https://developer.mozilla.org/en-US/docs/Web/CSS/grid) container element.
  * See also [Grid Container](https://www.w3.org/TR/css-grid-1/#grid-containers) and the
- * [Grid visual cheatsheet](http://grid.malven.co/).
+ * [Grid visual cheatsheet](https://grid.malven.co/).
  */
 class BGrid extends HTMLElement {}
 customElements.define ('c-grid', BGrid);
