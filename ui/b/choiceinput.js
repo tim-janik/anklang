@@ -10,12 +10,12 @@ import * as Util from '../util.js';
  * It supports the Vue
  * [v-model](https://vuejs.org/v2/guide/components-custom-events.html#Customizing-Component-v-model)
  * protocol by emitting an `input` event on value changes and accepting inputs via the `value` prop.
- * ## Props:
+ * ### Props:
  * *value*
  * : Integer, the index of the choice value to be displayed.
  * *choices*
  * : List of choices: `[ { icon, label, blurb }... ]`
- * ## Events:
+ * ### Events:
  * *valuechange*
  * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */

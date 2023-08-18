@@ -5,7 +5,7 @@ import { LitComponent, html, JsExtract, docs, ref, repeat } from '../little.js';
 
 /** == B-TRACKLIST ==
  * A container for vertical display of Ase.Track instances.
- * ## Props:
+ * ### Props:
  * *project*
  * : The *Ase.Project* containing playback tracks.
  */

@@ -8,13 +8,13 @@ import * as Util from '../util.js';
  * @description
  * The <b-textinput> element is a field-editor for text input.
  *
- * ## Properties:
+ * ### Properties:
  * *value*
  * : Contains the text string being edited.
  * *readonly*
  * : Make this component non editable for the user.
  *
- * ## Events:
+ * ### Events:
  * *valuechange*
  * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */

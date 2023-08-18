@@ -6,7 +6,7 @@ import { LitComponent, html, JsExtract, docs } from '../little.js';
 /** @class BButtonBar
  * @description
  * The <b-buttonbar> element is a container for tight packing of buttons.
- * ## Slots:
+ * ### Slots:
  * *slot*
  * : All contents passed into this element will be packed tightly and styled as buttons.
  */

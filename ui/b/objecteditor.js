@@ -9,12 +9,12 @@ import * as Util from '../util.js';
  * The <b-objecteditor> element is a field-editor for object input.
  * A copy of the input value is edited, update notifications are provided via
  * an `input` event.
- * ## Properties:
+ * ### Properties:
  * *value*
  * : Object with properties to be edited.
  * *readonly*
  * : Make this component non editable for the user.
- * ## Events:
+ * ### Events:
  * *input*
  * : This event is emitted whenever the value changes through user input or needs to be constrained.
  */

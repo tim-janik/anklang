@@ -10,7 +10,7 @@ import * as Dom from "../dom.js";
  * The <b-icon> element displays icons from various icon fonts.
  * In order to style the color of icon font symbols, simply apply the `color` CSS property
  * to this element (styling `fill` as for SVG elements is not needed).
- * ## Props:
+ * ### Props:
  * *iconclass*
  * : A CSS class to apply to this icon.
  * *ic*

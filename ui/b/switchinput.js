@@ -7,12 +7,12 @@ import * as Util from '../util.js';
 /** @class BSwitchInput
  * @description
  * The <b-switchinput> element is a field-editor switch to change between on and off.
- * ## Properties:
+ * ### Properties:
  * *value*
  * : Contains a boolean indicating whether the switch is on or off.
  * *readonly*
  * : Make this component non editable for the user.
- * ## Events:
+ * ### Events:
  * *valuechange*
  * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */
