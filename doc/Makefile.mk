@@ -20,6 +20,7 @@ doc/internals-chapters ::= $(strip	\
 	doc/ch-development.md		\
 	$>/doc/class-tree.md		\
 	ui/ch-component.md		\
+	$>/doc/jsdocs.md		\
 	doc/ch-releasing.md		\
 	doc/ch-appendix.md		\
 )
@@ -59,8 +60,26 @@ $>/doc/copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst	| $>/doc/
 	   fi
 	$Q mv $@.tmp $@
 
+# == doc/jsdocs.md ==
+doc/jsdocs_js := $(wildcard ui/*.js ui/b/*.js)
+doc/jsdocs_md := $(doc/jsdocs_js:ui/%.js=$>/doc/jsdocsmd/%.md)
+$(doc/jsdocs_md): doc/jsdoc2md.js
+$>/doc/jsdocsmd/%.md: ui/%.js		| $>/node_modules/.npm.done $>/doc/jsdocsmd/b/
+	$(QGEN)
+	$Q node doc/jsdoc2md.js -d 2 $< > $@.tmp
+	$Q grep -q '[^[:space:]]' $@.tmp && mv $@.tmp $@ || { rm -f $@.tmp && touch $@ ; }
+$>/doc/jsdocs.md: $(doc/jsdocs_md) doc/Makefile.mk
+	$(QGEN)
+	$Q echo -e '\n# UI Component Reference\n'		>  $@.tmp
+	$Q for f in $(sort $(doc/jsdocs_md)) ; do \
+		(echo && cat $$f && echo ) >> $@.tmp \
+	|| exit 1 ; done
+	$Q # Use pandoc to convert markdown *without* raw_html to regular markdown with escaped angle brackets
+	$Q pandoc -p -f markdown+compact_definition_lists+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart-raw_html \
+		-t markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart		$@.tmp > $@.tmp2
+	$Q mv $@.tmp2 $@
+
 # == doc/scripting-docs.md ==
-NODE_PATH=out/node_modules/ node doc/jsdoc2md.js ui/util.js |&
 $>/doc/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) doc/Makefile.mk $>/node_modules/.npm.done	| $>/doc/
 	$(QGEN)
 	$Q cat doc/ch-scripting.md				>  $@.tmp
