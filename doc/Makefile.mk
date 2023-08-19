@@ -75,7 +75,7 @@ $>/doc/jsdocs.md: $(doc/jsdocs_md) doc/Makefile.mk
 		(echo && cat $$f && echo ) >> $@.tmp \
 	|| exit 1 ; done
 	$Q # Use pandoc to convert markdown *without* raw_html to regular markdown with escaped angle brackets
-	$Q pandoc -p -f markdown+compact_definition_lists+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart-raw_html \
+	$Q pandoc -p -f markdown+compact_definition_lists+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart-raw_html-raw_tex \
 		-t markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart		$@.tmp > $@.tmp2
 	$Q mv $@.tmp2 $@
 
