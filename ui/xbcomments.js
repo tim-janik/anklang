@@ -10,7 +10,7 @@ function lrstrip (str)
   return str.replaceAll (/^[\s\t\f]+|[\s\t\f]+$/g, '');
 }
 
-/// Remove C-comment style \n\s\*\s
+/// Remove C-comment style `\n\s\*\s`
 function fix_indent (txt)
 {
   txt = lrstrip (txt);
