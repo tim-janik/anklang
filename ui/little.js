@@ -13,15 +13,25 @@ import { LitElement, css, unsafeCSS } from 'lit';
 export const docs = (...args) => undefined;
 
 // == LitComponent ==
-/// A LitElement with reactive render() and updated() methods.
+/** @class LitComponent
+ * @description
+ * An interface extending LitElement with reactive render() and updated() methods.
+ * ### Props:
+ * *render*
+ * : A pre-bound Wrapper.reactive_wrapper() around LitElement.render().
+ * *updated*
+ * : A pre-bound Wrapper.reactive_wrapper() around LitElement.updated().
+ * *request_update_*
+ * : A pre-bound wrapper around LitElement.requestUpdate().
+ */
 export class LitComponent extends LitElement {
   constructor()
   {
     super();
-    const request_update = this.requestUpdate.bind (this);
+    this.request_update_ = this.requestUpdate.bind (this);
     // Use cast to hide assignment causing instance member property shadowing instance member function (TS2425)
-    (/**@type{any}*/ (this)).render = Wrapper.reactive_wrapper (this.render.bind (this), request_update);
-    (/**@type{any}*/ (this)).updated = Wrapper.reactive_wrapper (this.updated.bind (this), request_update);
+    (/**@type{any}*/ (this)).render = Wrapper.reactive_wrapper (this.render.bind (this), this.request_update_);
+    (/**@type{any}*/ (this)).updated = Wrapper.reactive_wrapper (this.updated.bind (this), this.request_update_);
   }
   createRenderRoot()
   {
