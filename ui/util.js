@@ -897,6 +897,7 @@ export async function extend_property (prop, disconnector = undefined, augment =
     await prop.update_();
     return prop;
   }
+  const notify_cbs = []; // custom notify callbacks
   const xprop = {
     hints_: prop.hints(),
     ident_: prop.identifier(),
@@ -911,28 +912,44 @@ export async function extend_property (prop, disconnector = undefined, augment =
     max_: prop.get_max(),
     step_: prop.get_step(),
     has_choices_: false,
-    value_: undefined, // define_reactive()
+    value_: null,		// see define_reactive() below
+    clearnotify_: null,		// disables automatic update_() on 'notify'
     apply_: prop.set_value.bind (prop),
     fetch_: () => xprop.is_numeric_ ? xprop.value_.num : xprop.value_.text,
-    update_: async () => {
-      const val = xprop.get_value(), text = xprop.get_text();
-      const choices = xprop.has_choices_ ? await xprop.choices() : empty_list;
-      const value_ = { val: await val, num: undefined, text: await text, choices };
-      value_.num = (value_.val - xprop.min_) / (xprop.max_ - xprop.min_);
-      xprop.value_ = value_;
-      if (augment)
-	await augment (xprop);
+    addnotify_: cb => notify_cbs.push (cb),
+    delnotify_: cb => array_remove (notify_cbs, cb),
+    notify_: async () => {
+      await xprop.update_();
+      notify_cbs.forEach (cb => cb());
+    },
+    promise_: undefined,	// allows update synchronization
+    update_: () => {
+      const last_promise = xprop.promise_;
+      const async_update = async () => {
+	await last_promise; // sync with last update
+	const val = xprop.get_value(), text = xprop.get_text();
+	const choices = xprop.has_choices_ ? await xprop.choices() : empty_list;
+	const value_ = { val: await val, num: undefined, text: await text, choices };
+	value_.num = (value_.val - xprop.min_) / (xprop.max_ - xprop.min_);
+	xprop.value_ = value_;
+	if (augment)
+	  await augment (xprop);
+      };
+      xprop.promise_ = async_update();
+      return xprop.promise_;
     },
     __proto__: prop,
   };
   Wrapper.define_reactive (xprop, {
     value_: { val: undefined, num: 0, text: '', choices: empty_list },
   });
-  if (disconnector)
-    disconnector (xprop.on ('notify', _ => xprop.update_()));
+  xprop.clearnotify_ = xprop.on ('notify', xprop.notify_);
+  disconnector && disconnector (xprop.clearnotify_);
   await object_await_values (xprop);	// ensure xprop.hints_ is valid
   xprop.has_choices_ = xprop.hints_.search (/:choice:/) >= 0;
   await xprop.update_();			// needs xprop.has_choices_, assigns xprop.value_
+  await xprop.promise_;
+  xprop.promise_ = null;
   return xprop;
 }
 

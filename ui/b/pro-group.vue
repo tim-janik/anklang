@@ -55,7 +55,7 @@
     <span class="b-pro-group-title" > {{ name }} </span>
     <h-flex class="b-pro-group-row" v-for="row in proprows" :key="row.index" >
       <v-flex class="b-pro-group-vprop" v-for="prop in row" :key="prop.$id" :class="prop_class (prop)" >
-	<b-pro-input v-if="ptype (prop) != 'knob'" class="b-pro-group-input" :prop="prop" :labeled="false" :readonly="readonly" />
+	<b-propinput v-if="ptype (prop) != 'knob'" class="b-pro-group-input" :prop="prop" :labeled="false" :readonly="readonly" />
 	<b-knob v-if="ptype (prop) == 'knob'" class="b-pro-group-knob" :prop="prop" :labeled="false" :readonly="readonly" />
 	<span class="b-pro-group-nick" > {{ prop.nick_ }} </span>
       </v-flex>
