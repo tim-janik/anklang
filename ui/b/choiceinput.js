@@ -15,6 +15,14 @@ import * as Util from '../util.js';
  * : Integer, the index of the choice value to be displayed.
  * *choices*
  * : List of choices: `[ { icon, label, blurb }... ]`
+ * *title*
+ * : Optional title for the popup menu.
+ * *label*
+ * : A label used to extend the tip attached to the choice component.
+ * *small*
+ * : Reduce padding and use small layout.
+ * *prop*
+ * : If `label` is unspecified, it can be fetched from `prop->label` instead.
  * ### Events:
  * *valuechange*
  * : Event emitted whenever the value changes, which is provided as `event.target.value`.
@@ -133,6 +141,7 @@ class BChoiceInput extends LitComponent {
   static properties = {
     value:	{ type: String, },
     title:	{ type: String, },
+    label:	{ type: String, },
     small:	{ type: Boolean, },
     prop:	{ type: Object, },
     choices:	{ type: Array },
@@ -146,6 +155,7 @@ class BChoiceInput extends LitComponent {
     this.value = '';
     this.small = false;
     this.prop = null;
+    this.label = '';
     this.choices = [];
     this.need_cmenu = false;
     this.cmenu = null;
@@ -191,10 +201,11 @@ class BChoiceInput extends LitComponent {
     const mchoices = this.mchoices();
     const index = this.index();
     let tip = "**CLICK** Select Choice";
-    if (!this.prop?.label_ || !mchoices || index >= mchoices.length)
+    const plabel = this.label || this.prop?.label_;
+    if (!plabel || !mchoices || index >= mchoices.length)
       return tip;
     const c = mchoices[index];
-    let val = "**" + this.prop.label_ + "** ";
+    let val = "**" + plabel + "** ";
     val += c.label;
     return val + " " + tip;
   }
