@@ -71,7 +71,7 @@ const HTML = (t,d) => html`
 `;
 
 // == SCRIPT ==
-const OBJ_ATTRIBUTE = { type: Object, reflect: true };  // sync attribute with property
+const OBJ_ATTRIBUTE = { type: Object, reflect: true };    // sync attribute with property
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true };  // sync attribute with property
 const USE_PTRLOCK = true;
 
@@ -93,7 +93,6 @@ class BKnob extends LitComponent {
     this.nosize = false;
     this.hscroll = false; // allow horizontal device panel scrolling
     this.vscroll = true;
-    this.notify_value_cb = () => this.notify_value();
     this.clear_notify_cb = undefined;
     this.relabel_cb = Util.debounce (this.relabel);
     this.queue_commit = Util.debounce (this.commit_value);
@@ -103,10 +102,11 @@ class BKnob extends LitComponent {
     this.text_ = '';
     this.prop = null;
   }
-  updated (changed_properties)
+  updated (changed_props)
   {
     this.sprite = this.querySelector ('#sprite');
-    foreach_dispatch_propery_changed.call (this, changed_properties);
+    if (changed_props.has ('prop'))
+      this.prop_changed (this['prop'], changed_props['prop']);
     this.reposition();
   }
   reposition()
@@ -141,7 +141,7 @@ class BKnob extends LitComponent {
     console.assert (newprop === this.prop);
     if (!this.prop)
       return;
-    this.clear_notify_cb = this.prop.on ('notify', this.notify_value_cb);
+    this.clear_notify_cb = this.prop.on ('notify', this.notify_value.bind (this));
     this.setters_inflight = 0;
     this.last_ = this.prop?.fetch_();
     this.text_ = '';
@@ -156,7 +156,7 @@ class BKnob extends LitComponent {
   async notify_value() // this.prop value changed
   {
     // interactive knob changes may cause bursts of notify_value() calls, to avoid
-    // paint jitter, notifications are ignored taht are dispatched before setters return
+    // paint jitter, notifications are ignored that are dispatched before setters return
     if (this.setters_inflight)
       return;
     // perform actual update
@@ -238,17 +238,6 @@ class BKnob extends LitComponent {
   }
 }
 customElements.define ('b-knob', BKnob);
-
-/** @this{BKnob} */
-function foreach_dispatch_propery_changed (changed_properties)
-{
-  changed_properties.forEach ((oldprop, propname) => {
-    const changed_method = this[propname + '_changed'];
-    if (changed_method)
-      changed_method.call (this, this[propname], oldprop);
-  });
-  // when ´this.foo´ changed, call `this.foo_changed ('foo', oldfoo)´.
-}
 
 const SPIN_DRAG = Symbol ('SpinDrag');
 
