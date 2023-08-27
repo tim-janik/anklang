@@ -821,8 +821,7 @@ vue_mixins.dom_updates = {
   },
 };
 
-const WEAKOFFSET = 1001;
-const weakmaps = { ids: new WeakMap, objs: new Array, counter: WEAKOFFSET };
+const weakmaps = { ids: new WeakMap, objs: new Array, counter: 1001 };
 
 /// Fetch a unique id for any object.
 export function weakid (object) {
@@ -832,20 +831,41 @@ export function weakid (object) {
   if (!id) {
     id = weakmaps.counter++;
     weakmaps.ids.set (object, id);
-    weakmaps.objs[id - WEAKOFFSET] = new WeakRef (object);
+    weakmaps.objs[id] = new WeakRef (object);
   }
   return id;
 }
 
 /// Find an object from its unique id.
 export function weakid_lookup (id) {
-  const index = id - WEAKOFFSET;
-  const weakref = weakmaps.objs[index];
+  const weakref = weakmaps.objs[id];
   if (weakref) {
     const object = weakref.deref();
     if (object)
       return object;
-    weakmaps.objs.splice (index, 1);
+    weakmaps.objs.splice (id, 1);
+  }
+  return undefined;
+}
+
+/// Get a universally unique name for any object.
+export function uuname (object) {
+  const id = weakid (object);
+  const weakref = weakmaps.objs[id];
+  if (weakref) {
+    const object = weakref.deref();
+    if (object) {
+      let name = weakref.uuname;
+      if (!name) {
+	if (object.nodeName)
+	  name = object.nodeName.search (/\w$/) >= 0 ? object.nodeName + '-' + id : object.nodeName + '' + id;
+	else
+	  name = (typeof object) + '-' + id;
+	weakref.uuname = name; // persist name once constructed
+      }
+      return name;
+    }
+    weakmaps.objs.splice (id, 1);
   }
   return undefined;
 }
