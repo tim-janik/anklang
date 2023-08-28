@@ -62,11 +62,7 @@ const PRIVATE_PROPERTY = { state: true };
 
 class BToggle extends LitComponent {
   createRenderRoot() { return this; }
-  render()
-  {
-    const d = {};
-    return HTML (this, d);
-  }
+  render() { return HTML (this, {}); }
   static properties = {
     value: BOOL_ATTRIBUTE,
     label: STRING_ATTRIBUTE,
@@ -76,7 +72,7 @@ class BToggle extends LitComponent {
   {
     super();
     this.value = false;
-    this.buttondown_ = false;
+    this.buttondown_ = -1;
     this.label = 'Toggle';
     this.button_ = null;
   }
@@ -101,9 +97,9 @@ class BToggle extends LitComponent {
   pointerdown (event)
   {
     // trigger only on primary button press
-    if (!this.buttondown_ && event.buttons == 1)
+    if (this.buttondown_ < 0 && event.buttons == 1)
       {
-	this.buttondown_ = true;
+	this.buttondown_ = event.buttons;
 	this.button_.classList.add ('b-toggle-press');
 	event.preventDefault();
 	event.stopPropagation();
@@ -111,9 +107,9 @@ class BToggle extends LitComponent {
   }
   pointerup (event)
   {
-    if (this.buttondown_)
+    if (this.buttondown_ >= 0)
       {
-	this.buttondown_ = false;
+	this.buttondown_ = -1;
 	this.button_.classList.remove ('b-toggle-press');
 	event.preventDefault();
 	event.stopPropagation();
