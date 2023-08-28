@@ -69,7 +69,7 @@ class BPropInput extends LitComponent {
   constructor()
   {
     super();
-    this.labeled = true;
+    this.labeled = false;
     this.readonly = false;
     this.prop = null;
   }
