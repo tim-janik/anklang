@@ -36,13 +36,17 @@ JsExtract.scss`
 
 // == HTML ==
 const HTML = (t, d) => [
+  t.istype ('knob') &&
+  html`
+    <b-knob class=${t.classes + " b-propinput-toggle"} label=""
+      .prop="${t.prop}" ></b-toggle>`,
   t.istype ('toggle') &&
   html`
-    <b-toggle class="b-propinput-toggle" label=""
+    <b-toggle class=${t.classes + " b-propinput-toggle"} label=""
       .value=${t.prop.value_.num} @valuechange=${e => t.set_num (e.target.value)} ></b-toggle>`,
   t.istype ('choice') &&
   html`
-    <b-choiceinput class="b-propinput-choice" small="1" indexed="1"
+    <b-choiceinput class=${t.classes + " b-propinput-choice"} small="1" indexed="1"
       value=${t.prop.value_.val} @valuechange=${e => t.prop.apply_ (e.target.value)}
       label=${t.prop.label_} title=${t.prop.title_} .choices=${t.prop.value_.choices} ></b-choiceinput>`,
   !t.labeled || !t.prop.nick_ ? '' :
@@ -85,6 +89,8 @@ class BPropInput extends LitComponent {
   {
     this.prop && this.prop.delnotify_ (this.request_update_);
   }
+  get classes() {
+  }
   value_changed()
   {
     if (!this.prop) {
@@ -105,17 +111,20 @@ class BPropInput extends LitComponent {
     this.setAttribute ('data-bubble', b);
     App.zmove(); // force bubble changes to be picked up
   }
-  istype (proptyppe)
+  istype (proptype)
   {
     if (this.prop?.is_numeric_)
       {
 	const hints = ':' + this.prop.hints_ + ':';
-	if (proptyppe === 'toggle' && hints.search (/:toggle:/) >= 0)
-	  return true;
-	if (proptyppe === 'choice' && hints.search (/:choice:/) >= 0)
-	  return true;
+	let ptype = 'knob';
+	if (hints.search (/:choice:/) >= 0)
+	  ptype = 'choice';
+	else if (hints.search (/:toggle:/) >= 0)
+	  ptype = 'toggle';
+	if (proptype === ptype)
+	  return true; // allow html`` eval
       }
-    return '';
+    return ''; // empty html``
   }
   set_num (nv)
   {
