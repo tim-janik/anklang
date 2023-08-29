@@ -12,8 +12,8 @@ import * as Util from '../util.js';
 
 // == STYLE ==
 JsExtract.scss`
-.b-propgroup {
-  display: flex;
+b-propgroup {
+  @include v-flex();
   padding: 5px;
   justify-content: space-evenly;
   border-radius: $b-button-radius;
@@ -49,18 +49,15 @@ JsExtract.scss`
 }`;
 
 // == HTML ==
-const HTML = (t, proprows) => html`
-  <v-flex class="b-propgroup tabular-nums">
-    <span class="b-propgroup-title"> ${t.name} </span>
-    ${proprows.map ((row, index) => PROPROW (t, row, index))}
-  </v-flex>`;
-
-const PROPROW = (t, row, index) => html`
-  <h-flex class="b-propgroup-row" key="${index}">
-    ${row.map (prop => PROPFIELD (t, prop))}
-  </h-flex>`;
-
-const PROPFIELD = (t, prop) => html`
+const GROUP_HTML = (t, proprows) => [
+  html`
+    <span class="b-propgroup-title"> ${t.name} </span> `,
+  proprows.map ((row, index) => html`
+    <h-flex class="b-propgroup-row" key="${index}">
+      ${row.map (prop => PROP_HTML (t, prop))}
+    </h-flex>`),
+];
+const PROP_HTML = (t, prop) => html`
   <v-flex class=${t.prop_class (prop) + " b-propgroup-vprop"}>
     <b-propinput class="b-propgroup-input" .prop="${prop}" ?readonly=${t.readonly}></b-propinput>
     <span class="b-propgroup-nick"> ${prop.nick_} </span>
@@ -68,10 +65,11 @@ const PROPFIELD = (t, prop) => html`
 
 // == SCRIPT ==
 class BPropGroup extends LitComponent {
+  createRenderRoot() { return this; }
   render()
   {
     const proprows = this.assign_layout_rows (this.props);
-    return HTML (this, proprows);
+    return GROUP_HTML (this, proprows);
   }
   static properties = {
     name:     { type: String, reflect: true },
