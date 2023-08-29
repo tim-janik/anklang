@@ -291,7 +291,8 @@ export function drag_event (event) {
 const unrequestpointerlock = Symbol ('unrequest_pointer_lock');
 
 // Maintain pending_pointer_lock state
-function pointer_lock_changed (ev) {
+function pointer_lock_changed (ev)
+{
   if (document.pointerLockElement !== pending_pointer_lock)
     {
       // grabbing the lock did not work
@@ -311,7 +312,8 @@ document.addEventListener ('pointerlockerror', pointer_lock_changed, { passive: 
  * ensure it does not get a pointer lock granted unless
  * request_pointer_lock() is called on it again.
  */
-export function unrequest_pointer_lock (element) {
+export function unrequest_pointer_lock (element)
+{
   console.assert (element instanceof Element);
   // this API only operates on elements that have the [unrequestpointerlock] member set
   if (element[unrequestpointerlock])
@@ -330,7 +332,8 @@ export function unrequest_pointer_lock (element) {
  * - 1- if the pointer lock is pending;
  * - 0- otherwise.
  */
-export function has_pointer_lock (element) {
+export function has_pointer_lock (element)
+{
   if (document.pointerLockElement === element)
     return 2;
   if (pending_pointer_lock === element)
@@ -342,10 +345,15 @@ export function has_pointer_lock (element) {
  * Use this function to maintain pointer locks to avoid stuck
  * locks that can get granted *after* exitPointerLock() has been called.
  */
-export function request_pointer_lock (element) {
+export function request_pointer_lock (element)
+{
   console.assert (element instanceof Element);
   if (has_pointer_lock (element) && element[unrequestpointerlock])
     return element[unrequestpointerlock];
+  if (!has_ancestor (element, document, false)) { // detect orphans and shadowRoot descendants
+    console.warn ('request_pointer_lock: element requesting lock is not a document descendant');
+    return () => unrequest_pointer_lock (element);
+  }
   // this API only operates on elements that have the [unrequestpointerlock] member set
   element[unrequestpointerlock] = () => unrequest_pointer_lock (element);
   pending_pointer_lock = element;
