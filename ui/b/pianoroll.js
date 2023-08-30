@@ -380,6 +380,7 @@ class BPianoRoll extends LitComponent {
   }
   wheel (event)
   {
+    // TODO: use "scroll" for scrollbars, wheel delta is inappropriate
     const delta = Util.wheel_delta (event);
     if (Math.abs (delta.x) > Math.abs (delta.y))
       this.hscrollbar.scrollBy ({ left: delta.x });
