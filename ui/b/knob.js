@@ -175,7 +175,7 @@ class BKnob extends LitComponent {
   wheel (event)
   {
     const d = Util.wheel_delta (event);
-    if (this[SPIN_DRAG].captureid === undefined && // not dragging
+    if (this[SPIN_DRAG]?.captureid === undefined && // not dragging
 	((!this.hscroll && d.x != 0) ||
 	 (!this.vscroll && d.y != 0)))
       return;	// only consume scroll events if enabled
