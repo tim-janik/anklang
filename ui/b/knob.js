@@ -175,7 +175,7 @@ class BKnob extends LitComponent {
   wheel (event)
   {
     const d = Util.wheel_delta (event);
-    if (this[SPIN_DRAG].captureid === undefined && // not dragging
+    if (this[SPIN_DRAG]?.captureid === undefined && // not dragging
 	((!this.hscroll && d.x != 0) ||
 	 (!this.vscroll && d.y != 0)))
       return;	// only consume scroll events if enabled
@@ -380,6 +380,15 @@ function spin_drag_change ()
 /// Calculate spin drag acceleration (slowdown) from event type and modifiers.
 function spin_drag_granularity (event)
 {
+  if (event.type == 'wheel') {
+    let gran = 0.025;                   // approximate wheel delta "step" to percent
+    if (event.shiftKey)
+      gran = 0.005;                     // slow down
+    else if (event.ctrlKey)
+      gran = 0.10;                      // speed up
+    return gran;
+  }
+  // pixel drag
   const radius = 64;                    // assumed knob size
   const circum = 2 * radius * Math.PI;
   let gran = 1 / circum;                // steps per full turn to feel natural
@@ -387,7 +396,5 @@ function spin_drag_granularity (event)
     gran = gran * 0.1;                  // slow down
   else if (event.ctrlKey)
     gran = gran * 10;                   // speed up
-  if (event.type == 'wheel')
-    gran /= 2;                          // approximate mouse movements in pixels
   return gran;
 }

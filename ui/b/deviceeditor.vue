@@ -32,7 +32,7 @@
   <h-flex class="b-deviceeditor" @contextmenu.prevent="$refs.deviceeditorcmenu.popup ($event)" >
     <span class="b-deviceeditor-sw" > {{ device_info.name }} </span>
     <c-grid class="b-deviceeditor-areas" >
-      <b-pro-group v-for="group in gprops" :key="group.name" :style="group_style (group)"
+      <b-propgroup v-for="group in gprops" :key="group.name" :style="group_style (group)"
 		   :name="group.name" :props="group.props" />
     </c-grid>
     <b-contextmenu ref="deviceeditorcmenu" id="g-deviceeditorcmenu" :activate.prop="activate" :isactive.prop="isactive" >

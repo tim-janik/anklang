@@ -291,7 +291,8 @@ export function drag_event (event) {
 const unrequestpointerlock = Symbol ('unrequest_pointer_lock');
 
 // Maintain pending_pointer_lock state
-function pointer_lock_changed (ev) {
+function pointer_lock_changed (ev)
+{
   if (document.pointerLockElement !== pending_pointer_lock)
     {
       // grabbing the lock did not work
@@ -311,7 +312,8 @@ document.addEventListener ('pointerlockerror', pointer_lock_changed, { passive: 
  * ensure it does not get a pointer lock granted unless
  * request_pointer_lock() is called on it again.
  */
-export function unrequest_pointer_lock (element) {
+export function unrequest_pointer_lock (element)
+{
   console.assert (element instanceof Element);
   // this API only operates on elements that have the [unrequestpointerlock] member set
   if (element[unrequestpointerlock])
@@ -330,7 +332,8 @@ export function unrequest_pointer_lock (element) {
  * - 1- if the pointer lock is pending;
  * - 0- otherwise.
  */
-export function has_pointer_lock (element) {
+export function has_pointer_lock (element)
+{
   if (document.pointerLockElement === element)
     return 2;
   if (pending_pointer_lock === element)
@@ -342,10 +345,15 @@ export function has_pointer_lock (element) {
  * Use this function to maintain pointer locks to avoid stuck
  * locks that can get granted *after* exitPointerLock() has been called.
  */
-export function request_pointer_lock (element) {
+export function request_pointer_lock (element)
+{
   console.assert (element instanceof Element);
   if (has_pointer_lock (element) && element[unrequestpointerlock])
     return element[unrequestpointerlock];
+  if (!has_ancestor (element, document, false)) { // detect orphans and shadowRoot descendants
+    console.warn ('request_pointer_lock: element requesting lock is not a document descendant');
+    return () => unrequest_pointer_lock (element);
+  }
   // this API only operates on elements that have the [unrequestpointerlock] member set
   element[unrequestpointerlock] = () => unrequest_pointer_lock (element);
   pending_pointer_lock = element;
@@ -821,8 +829,7 @@ vue_mixins.dom_updates = {
   },
 };
 
-const WEAKOFFSET = 1001;
-const weakmaps = { ids: new WeakMap, objs: new Array, counter: WEAKOFFSET };
+const weakmaps = { ids: new WeakMap, objs: new Array, counter: 1001 };
 
 /// Fetch a unique id for any object.
 export function weakid (object) {
@@ -832,20 +839,41 @@ export function weakid (object) {
   if (!id) {
     id = weakmaps.counter++;
     weakmaps.ids.set (object, id);
-    weakmaps.objs[id - WEAKOFFSET] = new WeakRef (object);
+    weakmaps.objs[id] = new WeakRef (object);
   }
   return id;
 }
 
 /// Find an object from its unique id.
 export function weakid_lookup (id) {
-  const index = id - WEAKOFFSET;
-  const weakref = weakmaps.objs[index];
+  const weakref = weakmaps.objs[id];
   if (weakref) {
     const object = weakref.deref();
     if (object)
       return object;
-    weakmaps.objs.splice (index, 1);
+    weakmaps.objs.splice (id, 1);
+  }
+  return undefined;
+}
+
+/// Get a universally unique name for any object.
+export function uuname (object) {
+  const id = weakid (object);
+  const weakref = weakmaps.objs[id];
+  if (weakref) {
+    const object = weakref.deref();
+    if (object) {
+      let name = weakref.uuname;
+      if (!name) {
+	if (object.nodeName)
+	  name = object.nodeName.search (/\w$/) >= 0 ? object.nodeName + '-' + id : object.nodeName + '' + id;
+	else
+	  name = (typeof object) + '-' + id;
+	weakref.uuname = name; // persist name once constructed
+      }
+      return name;
+    }
+    weakmaps.objs.splice (id, 1);
   }
   return undefined;
 }
@@ -1171,20 +1199,6 @@ export function is_displayed (element) {
   return false;
 }
 
-function calculate_scroll_line_height()
-{
-  // Work around Firefox sending wheel events with ev.deltaMode == DOM_DELTA_LINE, see:
-  // https://stackoverflow.com/questions/20110224/what-is-the-height-of-a-line-in-a-wheel-event-deltamode-dom-delta-line/57788612#57788612
-  const el = document.createElement ('div');
-  el.style.fontSize = 'initial';
-  el.style.display = 'none';
-  document.body.appendChild (el);
-  const fontsize = window.getComputedStyle (el).fontSize;
-  document.body.removeChild (el);
-  return fontsize ? window.parseInt (fontsize) : 18;
-}
-let scroll_line_height = undefined;
-
 /** Retrieve normalized scroll wheel event delta in CSS pixels (across Browsers)
  * This returns an object `{x,y}` with negative values pointing
  * LEFT/UP and positive values RIGHT/DOWN respectively.
@@ -1197,32 +1211,17 @@ let scroll_line_height = undefined;
  */
 export function wheel_delta (ev)
 {
-  const DPR = Math.max (window.devicePixelRatio || 1, 1);
-  const DIV_DPR = 1 / DPR;                      // Factor to divide by DPR
-  const WHEEL_DELTA = -53 / 120.0 * DIV_DPR;    // Chromium wheelDeltaY to deltaY pixel ratio
-  const FIREFOX_Y = 1 / 1.8;                    // Firefox steps are ca 2 times as large as Chrome ones
-  const FIREFOX_X = 3 / 1.8;                    // Firefox sets deltaX=1 and deltaY=3 per step on Linux
-  const PAGESTEP = -100;                        // Chromium pixels per scroll step
-  // https://stackoverflow.com/questions/5527601/normalizing-mousewheel-speed-across-browsers
-  // https://groups.google.com/a/chromium.org/forum/#!topic/blink-dev/U3kH6_98BuY
-  if (ev.deltaMode >= 2)                        // DOM_DELTA_PAGE
-    return { x: ev.deltaX * PAGESTEP, y: ev.deltaY * PAGESTEP };
-  if (ev.deltaMode >= 1)                        // DOM_DELTA_LINE - used by Firefox only
-    {
-      if (scroll_line_height === undefined)
-        scroll_line_height = calculate_scroll_line_height();
-      return { x: ev.deltaX * FIREFOX_X * scroll_line_height, y: ev.deltaY * FIREFOX_Y * scroll_line_height };
-    }
-  if (ev.deltaMode >= 0)                        // DOM_DELTA_PIXEL
-    {
-      const DFIX = 1; // * DIV_DPR;		// old Chromium included DPR
-      return { x: DFIX * ev.deltaX, y: DFIX * ev.deltaY };
-    }
-  if (ev.wheelDeltaX !== undefined)             // Use Chromium factors for normalization
-    return { x: ev.wheelDeltaX * WHEEL_DELTA, y: ev.wheelDeltaY * WHEEL_DELTA };
-  if (ev.wheelDelta !== undefined)              // legacy support
-    return { x: 0, y: ev.wheelDelta / -120 * 10 };
-  return { x: 0, y: (ev.detail || 0) * -10 };
+  // The delta values must be read *first* in FF, see: https://bugzilla.mozilla.org/show_bug.cgi?id=1392460#c33
+  const deltaX = ev.deltaX, deltaY = ev.deltaY, deltaZ = ev.deltaZ;
+  // Also: https://github.com/facebook/Rapid/blob/724a7c92f73c295b87ca9b6a4568ce4e25074057/modules/pixi/PixiEvents.js#L359-L417
+  if (WheelEvent.DOM_DELTA_PAGE === ev.deltaMode)
+    return { x: deltaX * 24, y: deltaY * 24, z: deltaZ * 24 };
+  if (WheelEvent.DOM_DELTA_LINE === ev.deltaMode)
+    return { x: deltaX * 8, y: deltaY * 8, z: deltaZ * 8 };
+  if (WheelEvent.DOM_DELTA_PIXEL === ev.deltaMode)
+    return { x: deltaX / 120, y: deltaY / 120, z: deltaZ / 120 };
+  // legacy browsers
+  return { x: 0, y: (ev.detail || 0) / -3, z: 0 };
 }
 
 /** Use deltas from `event` to call scrollBy() on `refs[scrollbars...]`. */
