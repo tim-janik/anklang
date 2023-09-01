@@ -36,9 +36,7 @@ export class LitComponent extends LitElement {
   createRenderRoot()
   {
     const render_root = super.createRenderRoot();
-    if (render_root)
-      for (const lnk of document.head.querySelectorAll ('link[data-4litcomponent][rel=stylesheet]'))
-	render_root.appendChild (lnk.cloneNode());
+    adopt_component_styles (render_root);
     return render_root;
   }
 }
@@ -114,4 +112,26 @@ async function fetch_text_css (urlstr)
   }
   console.error ('Failed to load CSS import:', url + '');
   return '';
+}
+
+/// Ensure that element has all stylesheets with [data-4litcomponent] applied to it
+function adopt_component_styles (element)
+{
+  /* Apply stylesheets from document to shadowRoot. Notes on support and flash of unstyled content (FOUC):
+   * - Loading of a <link rel=stylesheet> href does *not* block rendering in shadowRoots, leading to FOUC if uncached.
+   *   https://github.com/Polymer/polymer/issues/4865#issuecomment-351799229
+   * - In Chrome, even a permanently cached link href is still re-requested every few seconds for newly created shadowRoot
+   *   links, leading to FOUC even if cached.
+   * - Loading a stylesheet via XHR and adopting it in the shadowRoot as a constructable stylesheet avoids FOUC, but it prevents
+   *   DevTools interpretation of source maps, potentially duplicates contents in the browser and does not support @import.
+   *   https://github.com/WICG/construct-stylesheets/issues/119#issuecomment-588352418
+   * - Using a <style type="text/css" data-4litcomponent>@import</style> element on the document will allow
+   *   easy cloning into a shadowRoot, and seems to not cause any FOUC due to uncached resources or refetching.
+   */
+  const root_element = element.getRootNode();
+  if (root_element === document) return;
+  const root = /**@type{ShadowRoot}*/ (root_element);	// make ts-check happy
+  // apply styles by cloning [data-4litcomponent] elements from head into the shadowRoot
+  for (const ele of document.head.querySelectorAll ('[data-4litcomponent]'))
+    root.appendChild (ele.cloneNode (true));
 }
