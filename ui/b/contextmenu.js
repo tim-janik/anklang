@@ -51,13 +51,13 @@ import * as Kbd from '../kbd.js';
 
 // == STYLE ==
 JsExtract.scss`
+b-contextmenu {
+  display: contents; /* avoids interfering when inside a flexbox with justify-content:space-between */
+}
 dialog.b-contextmenu {
-  &[open], &.animating { display: flex; }
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  /* The template uses flex+start for layouting to scroll without vertical shrinking */
-  [disabled], [disabled] * { pointer-events: none; }
   margin: 0;
   padding: $b-menu-padding 0;
   color: $b-menu-foreground;
@@ -65,6 +65,8 @@ dialog.b-contextmenu {
   box-shadow: $b-menu-box-shadow;
   overflow-y: auto;
   overflow-x: hidden;
+  &[open], &.animating { display: flex; }
+  [disabled], [disabled] * { pointer-events: none; }
 }
 dialog.b-contextmenu::backdrop {
   /* Menu backdrop must be transparent, for one a popup menu is different from a modal dialog,
