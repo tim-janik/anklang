@@ -7,9 +7,6 @@ ENV DEBIAN_FRONTEND noninteractive
 # Use BASH(1) as shell, affects the RUN commands below
 RUN ln -sf bash /bin/sh && ls -al /bin/sh
 
-# Save +615MB by skipping TeX
-ARG NOTEX
-
 # Upgrade packages, install dependencies, clean up to shrink Docker image
 # Add libXss.so, libgtk-3-0 for Electron
 RUN apt-get update \
@@ -24,10 +21,9 @@ RUN apt-get update \
 	     gettext libgconf-2-4 libgtk2.0-dev libgtk-3-dev squashfs-tools zstd \
 	     libgtk-3-0 libxss1 libgbm1 libnss3 \
 	     xvfb twm ffmpeg doxygen \
+  && apt-get install -y \
+	     texlive-xetex fonts-sil-charis texlive-binaries texlive-fonts-extra \
   && pip install poxy \
-  && (test "${NOTEX:-false}" = true \
-	|| apt-get install -y \
-		   texlive-xetex fonts-sil-charis texlive-binaries texlive-fonts-extra ) \
   && curl -sL https://deb.nodesource.com/setup_16.x | bash - \
   && apt-get install -y nodejs \
   && apt-get clean
