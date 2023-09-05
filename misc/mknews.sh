@@ -32,6 +32,7 @@ echo 'Development version - may contain bugs or compatibility issues.'
 echo
 echo '``````````````````````````````````````````````````````````````````````````````````````'
 git log --pretty='%s    # %cd %an %h%n%w(0,4,4)%b' \
+    --reverse \
     --first-parent --date=short "$NEWS_TAG..HEAD" |
   sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' |
   sed '/^\s*$/{ N; /^\s*\n\s*$/D }'
