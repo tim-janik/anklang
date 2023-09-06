@@ -21,8 +21,13 @@ fetch_news_version() # fetch_news_version {1|2}
   "
   sed -nre "$SEDSCRIPT" "${ABSPATHSCRIPT%/*}"/../NEWS.md
 }
+NEWS_TAG="v$(fetch_news_version 1)"
 
-# Produce assets/NEWS.md
+# Just print topmost NEWS.md version
+test " ${1:-}" == " --version" && {
+  echo "$NEWS_TAG"
+  exit 0
+}
 
 # When generating news for release tags...
 if RELEASETAG=$(git describe --match='v[0-9]*.[0-9]*.[0-9]*' --exact-match 2>/dev/null) ; then
@@ -36,7 +41,6 @@ if RELEASETAG=$(git describe --match='v[0-9]*.[0-9]*.[0-9]*' --exact-match 2>/de
 else
   # Generate pre-release news from git history
   CURRENT_VERSION=$("${ABSPATHSCRIPT%/*}"/version.sh | (read v h d && echo $v))
-  NEWS_TAG="v$(fetch_news_version 1)"
   echo "## Anklang $CURRENT_VERSION"
   echo
   echo 'Development version - may contain bugs or compatibility issues.'
