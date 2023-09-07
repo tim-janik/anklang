@@ -157,7 +157,7 @@ jobs:
     - name: Make clang-tidy
       run: |
         $RUN make -j`nproc` clang-tidy
-    # Artifact upload from make install
+    # Artifact upload from clang-tidy
     - uses: actions/upload-artifact@v3
       if: success()
       with:
