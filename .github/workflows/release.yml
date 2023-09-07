@@ -10,41 +10,51 @@ on:
 
 jobs:
 
-  Release-Build-and-Upload:
+  Focal-Release-Upload:
     runs-on: ubuntu-latest
+    env: # INTERACTIVE: docker run -i --cap-add SYS_PTRACE -v $PWD:/anklang ...
+      RUN: docker run -v /home/runner/work/anklang/anklang:/anklang -w /anklang/ -t --rm cifocal
     steps:
+    # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0 		# Fetch history and all (annotated) tags
-    - name: Fetch Tag
-      id: fetchtag
+      with: { fetch-depth: 0, show-progress: false }
+    - run: git fetch -f --tags
+    # Docker build - use BuildKit and Github action API for reliable caching
+    - uses: docker/setup-buildx-action@v2.10.0
+    - run: docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
+    - uses: docker/build-push-action@v4
+      with: # docker build -t cifocal:latest -f misc/Dockerfile.focal misc
+        tags: cifocal:latest
+        file: misc/Dockerfile.focal
+        context: misc/
+        cache-from: type=gha
+        cache-to:   type=gha,mode=max
+        load: true
+    # Configure Build
+    - name: Configure Build
+      id: tagcheck
       run: |
-        git fetch -f --tags	# Fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
-        echo "ISPRERELEASE=$(test tag != $(git cat-file -t $GITHUB_REF_NAME) && echo true || echo false)" >> "$GITHUB_OUTPUT"
+        git describe --tags --exact-match
         misc/version.sh
-        git describe --tags --exact-match 2>/dev/null || git describe
+        echo "ISPRERELEASE=$(test tag != $(git cat-file -t $GITHUB_REF_NAME) && echo true || echo false)" | tee -a "$GITHUB_OUTPUT"
         git cat-file -t $GITHUB_REF_NAME
-
-    - name: Prepare CI Image
+        $RUN sudo chown ubuntu:ubuntu -R /anklang/	# gh-runner $UID != 1000
+        $RUN misc/version.sh
+        $RUN c++ --version
+    # Build Assets
+    - name: Build Assets
       run: |
-        echo ${{ secrets.GITHUB_TOKEN }} |
-          time misc/docker_build misc/Dockerfile.focal ghcr.io/tim-janik/anklang/anklang-ci $GITHUB_ACTOR
-        misc/docker_run sudo chown ubuntu:ubuntu -R /anklang/
-
-    - name: Build release assets
-      run: |
-        misc/docker_run misc/mkassets.sh
-        misc/docker_clean
-
+        $RUN misc/mkassets.sh
+        $RUN sudo chown `id -u`:`id -g` -R /anklang/	# Restore gh-runner $UID
+    # Release Upload
     - name: Release Upload
       id: ghrelease
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        prerelease: ${{ steps.fetchtag.outputs.ISPRERELEASE }}
+        prerelease: ${{ steps.tagcheck.outputs.ISPRERELEASE }}
         files:      assets/*
         body_path:  assets.txt
-
     - name: Release Info
       run: |
         echo URL: ${{ steps.ghrelease.outputs.url }}
