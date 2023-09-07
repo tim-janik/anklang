@@ -12,49 +12,60 @@ jobs:
 
   Jammy-Docs:
     runs-on: ubuntu-latest
+    env: # INTERACTIVE: docker run -i --cap-add SYS_PTRACE -v $PWD:/anklang ...
+      RUN: docker run -v /home/runner/work/anklang/anklang:/anklang -w /anklang/ -t --rm cijammy
     steps:
-    - uses: actions/checkout@v3
-    - name: Fetch last release tag
-      run: |
-        git fetch --unshallow
-        git describe
-    - name: Prepare CI Image
-      # Build docker image using latest package as cache
-      run: |
-        echo ${{ secrets.GITHUB_TOKEN }} |
-          time misc/docker_build misc/Dockerfile.jammy ghcr.io/tim-janik/anklang/anklang-ci $GITHUB_ACTOR
+    # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
+    - uses: actions/checkout@v4
+      with: { fetch-depth: 0, show-progress: false }
+    - run: git fetch -f --tags
+    # Docker build - use BuildKit and Github action API for reliable caching
+    - uses: docker/setup-buildx-action@v2.10.0
+    - run: docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
+    - uses: docker/build-push-action@v4
+      with: # docker build -t cijammy:latest -f misc/Dockerfile.jammy misc
+        tags: cijammy:latest
+        file: misc/Dockerfile.jammy
+        context: misc/
+        cache-from: type=gha
+        cache-to:   type=gha,mode=max
+        load: true
+    # Configure Build
     - name: Configure Build
       run: |
+        git describe
+        misc/version.sh
         echo 'prefix=/'		>  config-defaults.mk
         echo 'CC=clang'		>> config-defaults.mk
         echo 'CXX=clang++'	>> config-defaults.mk
         (umask 0077 && echo "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > .git/.ssh_id_ghdocs4anklang)
         cat config-defaults.mk
-        misc/docker_run sudo chown ubuntu:ubuntu -R /anklang/
-        misc/docker_run misc/version.sh
-        misc/docker_run bash -c 'source config-defaults.mk && $CXX --version'
+        $RUN sudo chown ubuntu:ubuntu -R /anklang/	# gh-runner $UID != 1000
+        $RUN misc/version.sh
+        $RUN clang++ --version
+    # Build binaries, docs and check
     - name: Make all pdf check
       run: |
-        misc/docker_run make -j`nproc` all pdf
-        misc/docker_run make check
+        $RUN make -j`nproc` all pdf
+        $RUN make check
+    # Artifact upload from make install
     - name: Make install
       run: |
-        misc/docker_run make install DESTDIR=inst
-        misc/docker_run cp -a inst/share/doc/anklang/ out/anklang-docs/
+        $RUN make install DESTDIR=inst
+        $RUN cp -a inst/share/doc/anklang/ out/anklang-docs/
     - uses: actions/upload-artifact@v3
       if: success()
       with:
         name: docs
-        path: |
-          out/anklang-docs/
-    - name: Upload tim-janik.github.io/docs/anklang
+        path: out/anklang-docs/
+    - name: Upload http://tim-janik.github.io/docs/anklang
       if: github.ref == 'refs/heads/trunk'
       run: |
-        misc/docker_run env
-        misc/docker_run doc/poxy.sh -b -u out/anklang-docs/
+        $RUN doc/poxy.sh -b -u
+    # Restore gh-runner $UID
     - name: Cleanup
       run: |
-        misc/docker_clean
+        $RUN sudo chown `id -u`:`id -g` -R /anklang/
 
   Arch-Replay:
     runs-on: ubuntu-latest
@@ -101,53 +112,55 @@ jobs:
 
   Lunar-Clang-Tidy:
     runs-on: ubuntu-latest
-    env:
-      DOCKER_RUN: docker run --cap-add SYS_PTRACE -v /home/runner/work/anklang/anklang/:/anklang/ -w /anklang/ -t --rm anklang-lunar
+    env: # INTERACTIVE: docker run -i --cap-add SYS_PTRACE -v $PWD:/anklang ...
+      RUN: docker run -v /home/runner/work/anklang/anklang:/anklang -w /anklang/ -t --rm cilunar
     steps:
-    - uses: actions/checkout@v3
-    - name: Fetch last release tag
-      run: |
-        git fetch --unshallow
-        git describe
-    - name: Prepare CI Image
-      # Build docker image using latest package as cache
-      run: |
-        docker --version
-        set -x
-        echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-        docker pull ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest || true
-        time docker build -f misc/Dockerfile.lunar -t anklang-lunar misc/ --cache-from=ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest
-        docker tag anklang-lunar ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest
-        docker push ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest || true
-        $DOCKER_RUN env </dev/null |& cat
+    # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
+    - uses: actions/checkout@v4
+      with: { fetch-depth: 0, show-progress: false }
+    - run: git fetch -f --tags
+    # Docker build - use BuildKit and Github action API for reliable caching
+    - uses: docker/setup-buildx-action@v2.10.0
+    - run: docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
+    - uses: docker/build-push-action@v4
+      with: # docker build -t cilunar:latest -f misc/Dockerfile.lunar misc
+        tags: cilunar:latest
+        file: misc/Dockerfile.lunar
+        context: misc/
+        cache-from: type=gha
+        cache-to:   type=gha,mode=max
+        load: true
+    # Configure Build
     - name: Configure Build
-      # Set ubuntu:ubuntu permissions for docker volume, since Github CI uses something like 1001:123
-      # Silence host Git about ownership: https://github.com/git/git/commit/8959555cee7ec045958f9b6dd62e541affb7e7d9
-      # git config --global --add safe.directory '*'
       run: |
+        git describe
+        misc/version.sh
         echo 'prefix=/'			>  config-defaults.mk
         echo 'CC=clang-17'		>> config-defaults.mk
         echo 'CXX=clang++-17'		>> config-defaults.mk
         echo 'CLANG_TIDY=clang-tidy-17'	>> config-defaults.mk
         cat config-defaults.mk
-        $DOCKER_RUN sudo chown ubuntu:ubuntu -R /anklang/
-        $DOCKER_RUN misc/version.sh
-        $DOCKER_RUN bash -c 'source config-defaults.mk && $CXX --version'
+        cat config-defaults.mk
+        $RUN sudo chown ubuntu:ubuntu -R /anklang/	# gh-runner $UID != 1000
+        $RUN misc/version.sh
+    # Build binaries, docs and check
     - name: Make all check
       run: |
-        $DOCKER_RUN make -j`nproc` all
-        $DOCKER_RUN make check
+        $RUN make -j`nproc` all
+        $RUN make check
     - name: Make clang-tidy
       run: |
-        $DOCKER_RUN make -j`nproc` clang-tidy
+        $RUN make -j`nproc` clang-tidy
+    # Artifact upload from make install
     - uses: actions/upload-artifact@v3
       if: success()
       with:
         name: clang-tidy
         path: out/clang-tidy/
+    # Restore gh-runner $UID
     - name: Cleanup
       run: |
-        $DOCKER_RUN sudo chown `id -u`:`id -g` -R /anklang/
+        $RUN sudo chown `id -u`:`id -g` -R /anklang/
 
   Ping-IRC:
     if: always()
