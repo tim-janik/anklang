@@ -69,46 +69,52 @@ jobs:
 
   Arch-Replay:
     runs-on: ubuntu-latest
-    env:
-      DOCKER_RUN: docker run --cap-add SYS_PTRACE -v /home/runner/work/anklang/anklang/:/anklang/ -w /anklang/ -t --rm anklang-arch
+    env: # INTERACTIVE: docker run -i --cap-add SYS_PTRACE -v $PWD:/anklang ...
+      RUN: docker run -v /home/runner/work/anklang/anklang:/anklang -w /anklang/ -t --rm ciarch
     steps:
-    - uses: actions/checkout@v3
-    - name: Fetch last release tag
-      run: |
-        git fetch --unshallow
-        git describe
-    - name: Prepare CI Image
-      # Build docker image using latest package as cache
-      run: |
-        docker --version
-        set -x
-        echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-        docker pull ghcr.io/$GITHUB_REPOSITORY/anklang-ci:arch-latest || true
-        time docker build -f misc/Dockerfile.arch -t anklang-arch misc/ --cache-from=ghcr.io/$GITHUB_REPOSITORY/anklang-ci:arch-latest
-        docker tag anklang-arch ghcr.io/$GITHUB_REPOSITORY/anklang-ci:arch-latest
-        docker push ghcr.io/$GITHUB_REPOSITORY/anklang-ci:arch-latest || true
-        $DOCKER_RUN env </dev/null |& cat
+    # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
+    - uses: actions/checkout@v4
+      with: { fetch-depth: 0, show-progress: false }
+    - run: git fetch -f --tags
+    # Docker build - use BuildKit and Github action API for reliable caching
+    - uses: docker/setup-buildx-action@v2.10.0
+    - run: docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
+    - uses: docker/build-push-action@v4
+      with: # docker build -t ciarch:latest -f misc/Dockerfile.arch misc
+        tags: ciarch:latest
+        file: misc/Dockerfile.arch
+        context: misc/
+        cache-from: type=gha
+        cache-to:   type=gha,mode=max
+        load: true
+    # Configure Build
     - name: Configure Build
       run: |
+        git describe
+        misc/version.sh
         echo 'prefix=/'		>  config-defaults.mk
         cat config-defaults.mk
-        $DOCKER_RUN sudo chown builder:builder -R /anklang/
-        $DOCKER_RUN misc/version.sh
+        $RUN sudo chown builder:builder -R /anklang/	# gh-runner $UID != 1000
+        $RUN misc/version.sh
+    # Build binaries and check
     - name: Make all check
       run: |
-        $DOCKER_RUN make -j`nproc` all
-        $DOCKER_RUN make check
+        $RUN make -j`nproc` all
+        $RUN make check
+    # Run X11 GUI tests
     - name: Make x11test
       run: |
-        $DOCKER_RUN make x11test-v
+        $RUN make x11test-v
+    # Artifact upload from x11test
     - uses: actions/upload-artifact@v3
       if: always()
       with:
         name: x11test
         path: out/x11test/
+    # Restore gh-runner $UID
     - name: Cleanup
       run: |
-        $DOCKER_RUN sudo chown `id -u`:`id -g` -R /anklang/
+        $RUN sudo chown `id -u`:`id -g` -R /anklang/
 
   Lunar-Clang-Tidy:
     runs-on: ubuntu-latest
