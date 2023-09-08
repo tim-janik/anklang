@@ -42,7 +42,7 @@ RUN : \
   && apt-get install -y \
 	     doxygen \
 	     texlive-xetex fonts-sil-charis texlive-binaries texlive-fonts-extra \
-  && pip install poxy \
+  && pip install poxy==0.13.0 \
   && apt-get clean
 
 # X11 recording tools
