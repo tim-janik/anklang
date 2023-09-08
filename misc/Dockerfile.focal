@@ -66,6 +66,10 @@ RUN : \
   && curl -fsSLO https://apt.llvm.org/llvm.sh && chmod +x llvm.sh \
   && yes | ./llvm.sh 17 && rm -f ./llvm.sh \
   && apt-get install -y clang-tidy-17 \
+  && update-alternatives \
+       --install /usr/bin/clang         clang           /usr/bin/clang-17 0 \
+       --slave   /usr/bin/clang++       clang++         /usr/bin/clang++-17  \
+       --slave   /usr/bin/clang-tidy    clang-tidy      /usr/bin/clang-tidy-17 \
   && apt-get clean
 
 # Build stripped down Fluidsynth version without drivers (not needed atm)
