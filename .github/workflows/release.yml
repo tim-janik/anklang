@@ -52,9 +52,10 @@ jobs:
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        prerelease: ${{ steps.tagcheck.outputs.ISPRERELEASE }}
-        files:      assets/*
         body_path:  assets.txt
+        files:      assets/*
+        prerelease: ${{ steps.tagcheck.outputs.ISPRERELEASE }}
+        draft:      true
     - name: Release Info
       run: |
         echo URL: ${{ steps.ghrelease.outputs.url }}
