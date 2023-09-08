@@ -31,9 +31,9 @@ RUN : \
 RUN : \
   && apt-get install -y \
 	     python3 python3-pip python3-lxml python3-pandocfilters \
-  && curl -fsSLO https://github.com/jgm/pandoc/releases/download/3.1.7/pandoc-3.1.7-1-amd64.deb \
-  && apt-get install -y ./pandoc-3.1.7-1-amd64.deb \
-  && rm -f ./pandoc-3.1.7-1-amd64.deb \
+  && curl -fsSLO https://github.com/jgm/pandoc/releases/download/3.1.6.2/pandoc-3.1.6.2-1-amd64.deb \
+  && apt-get install -y ./pandoc-3.1.6.2-1-amd64.deb \
+  && rm -f ./pandoc-3.1.6.2-1-amd64.deb \
   && apt-get autoremove -y \
   && apt-get clean
 
