@@ -36,10 +36,6 @@ jobs:
       run: |
         time misc/cirun.sh --check --assets
     - uses: actions/upload-artifact@v3
-      if: success()
-      with: { name: docs, path: out/anklang-docs/ }
-    - uses: actions/upload-artifact@v3
-      if: success()
       with: { name: assets, path: assets/ }
     # Upload http://tim-janik.github.io/docs/anklang
     - name: Upload http://tim-janik.github.io/docs/anklang
@@ -47,6 +43,8 @@ jobs:
       run: |
         (umask 0077 && echo "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > ~/.id4poxy)
         time misc/cirun.sh --poxy-key ~/.id4poxy
+    - uses: actions/upload-artifact@v3
+      with: { name: docs, path: out/anklang-docs/ }
 
   Arch-Replay:
     runs-on: ubuntu-latest
@@ -106,7 +104,6 @@ jobs:
         time misc/cirun.sh --check --clang-tidy
     # Artifact upload from clang-tidy
     - uses: actions/upload-artifact@v3
-      if: success()
       with: { name: clang-tidy, path: out/clang-tidy/ }
 
   Release-Upload:
