@@ -31,28 +31,36 @@ test -r `git rev-parse --git-dir`/shallow &&
   git fetch --unshallow
 # Re-fetch all tags, because actions/checkout messes up annotation of the fetched tag: actions/checkout#290
 git fetch -f --tags
-misc/version.sh
-RELEASE_VERSION=$(misc/version.sh | cut -d\  -f1)
-echo RELEASE_VERSION=$RELEASE_VERSION
-RELEASE_TAG=$(git describe --tags --match='v[0-9]*.[0-9]*.[0-9]*' --exact-match)
-echo RELEASE_TAG=$RELEASE_TAG
-ISPRERELEASE=$(test tag != $(git cat-file -t $RELEASE_TAG) && echo true || echo false)
-echo ISPRERELEASE=$ISPRERELEASE
+echo -n 'Repository: ' && misc/version.sh
 
 # Download release assets from Github Action Run
 test -z "$RUNID" || {
+  echo "Download assets, github.run_id=$RUNID:"
   rm -rf assets/
   gh run download $RUNID -n assets -D assets/
 }
 
 # Extract initial NEWS section
-tar xvf assets/anklang-*.tar.zst -C out/ --strip-components=1 --wildcards 'anklang-*/NEWS.md'
-sed -r '0,/^##?\s/n; /^##?\s/Q;' out/NEWS.md  > out/changes.md
+rm -rf out/publish/
+mkdir -p out/publish/
+tar xf assets/anklang-*.tar.zst -C out/publish/ --strip-components=1 --wildcards 'anklang-*/NEWS.md' 'anklang-*/misc/version.sh'
+sed -r '0,/^##?\s/n; /^##?\s/Q;' out/publish/NEWS.md  > out/publish/changes.md
+
+# Determine release version
+echo "Tarball:" assets/anklang-*.tar.zst
+echo -n 'Release Assets: ' && out/publish/misc/version.sh
+RELEASE_VERSION=$(out/publish/misc/version.sh | cut -d\  -f1)
+echo RELEASE_VERSION=$RELEASE_VERSION
+RELEASE_TAG="v$RELEASE_VERSION"
+echo RELEASE_TAG=$RELEASE_TAG
+ISPRERELEASE=$(test tag != $(git cat-file -t $RELEASE_TAG) && echo true || echo false)
+echo ISPRERELEASE=$ISPRERELEASE
 
 # Create release and upload assets
 # --discussion-category Releases
+echo "Uploading release to Github:" $RELEASE_TAG
 gh release create --draft \
-   -F out/changes.md \
+   -F out/publish/changes.md \
    $($ISPRERELEASE && echo --prerelease) \
    -t "Anklang $RELEASE_VERSION" \
    $RELEASE_TAG \
