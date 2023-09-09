@@ -12,7 +12,8 @@ jobs:
 
   Focal-CI:
     runs-on: ubuntu-latest
-    env: { CITAG: cifocal:latest }
+    env:
+      CITAG: cifocal:latest
     steps:
     # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
     - uses: actions/checkout@v4
@@ -48,7 +49,8 @@ jobs:
 
   Arch-Replay:
     runs-on: ubuntu-latest
-    env: { CITAG: ciarch:latest }
+    env:
+      CITAG: ciarch:latest
     steps:
     # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
     - uses: actions/checkout@v4
@@ -78,7 +80,8 @@ jobs:
 
   Lunar-Clang-Tidy:
     runs-on: ubuntu-latest
-    env: { CITAG: cilunar:latest }
+    env:
+      CITAG: cilunar:latest
     steps:
     # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
     - uses: actions/checkout@v4
