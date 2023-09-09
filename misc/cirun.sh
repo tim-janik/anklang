@@ -69,8 +69,8 @@ CLANG_TIDY=clang-tidy
 __EOF
 cat config-defaults.mk
 
-# Adjust file permissions, needed because $USER might have $UID != 1000
-$RUN sudo chown ubuntu:ubuntu -R /anklang/
+# Adjust file permissions, needed because the caller of this script might have $UID != 1000
+$RUN sudo chown 1000:1000 -R /anklang/
 trap "$RUN sudo chown `id -u`:`id -g` -R /anklang/" 0 HUP INT QUIT TRAP USR1 PIPE TERM ERR EXIT
 
 # Show repo in docker
