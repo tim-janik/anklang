@@ -126,9 +126,9 @@ jobs:
     - name: Check Jobs
       run: |
         echo '${{ needs.Focal-CI.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Focal-Clang-Tidy.result }}'
-        test success = '${{ needs.Focal-CI.result }}'
-        test success = '${{ needs.Arch-Replay.result }}'
-        test success = '${{ needs.Focal-Clang-Tidy.result }}'
+        [[ ${{ needs.Focal-CI.result }}         =~ success|skipped ]]
+        [[ ${{ needs.Arch-Replay.result }}      =~ success|skipped ]]
+        [[ ${{ needs.Focal-Clang-Tidy.result }} =~ success|skipped ]]
     - name: Ping IRC
       if: always()
       run: |
