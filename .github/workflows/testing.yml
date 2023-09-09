@@ -109,6 +109,8 @@ jobs:
   Release-Upload:
     needs: [Focal-CI]
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    env:
+      GH_TOKEN: ${{ github.token }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
