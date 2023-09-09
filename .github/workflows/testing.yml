@@ -78,10 +78,10 @@ jobs:
         name: x11test
         path: out/x11test/
 
-  Lunar-Clang-Tidy:
+  Focal-Clang-Tidy:
     runs-on: ubuntu-latest
     env:
-      CITAG: cilunar:latest
+      CITAG: cifocal:latest
     steps:
     # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
     - uses: actions/checkout@v4
@@ -91,12 +91,12 @@ jobs:
     - uses: docker/setup-buildx-action@v2.10.0
     - run: docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
     - uses: docker/build-push-action@v4
-      with: # docker build -t cilunar:latest -f misc/Dockerfile.lunar misc
-        tags: cilunar:latest
-        file: misc/Dockerfile.lunar
+      with: # docker build -t cifocal:latest -f misc/Dockerfile.focal misc
+        tags: cifocal:latest
+        file: misc/Dockerfile.focal
         context: misc/
         cache-from: type=gha
-        cache-to:   type=gha,mode=max
+        # cache-to:   type=gha,mode=max
         load: true
     # Build and Run Clang-Tidy
     - name: Build and Run Clang-Tidy
@@ -105,22 +105,20 @@ jobs:
     # Artifact upload from clang-tidy
     - uses: actions/upload-artifact@v3
       if: success()
-      with:
-        name: clang-tidy
-        path: out/clang-tidy/
+      with: { name: clang-tidy, path: out/clang-tidy/ }
 
   Ping-IRC:
     if: always()
-    needs: [Focal-CI, Arch-Replay, Lunar-Clang-Tidy]
+    needs: [Focal-CI, Arch-Replay, Focal-Clang-Tidy]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Check Jobs
       run: |
-        echo '${{ needs.Focal-CI.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Lunar-Clang-Tidy.result }}'
+        echo '${{ needs.Focal-CI.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Focal-Clang-Tidy.result }}'
         test success = '${{ needs.Focal-CI.result }}'
         test success = '${{ needs.Arch-Replay.result }}'
-        test success = '${{ needs.Lunar-Clang-Tidy.result }}'
+        test success = '${{ needs.Focal-Clang-Tidy.result }}'
     - name: Ping IRC
       if: always()
       run: |
