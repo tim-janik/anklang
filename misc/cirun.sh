@@ -104,7 +104,7 @@ $WITH_X11TEST && $RUN make V="$V" x11test-v
 # actions/upload-artifact@v3 { name: x11test, path: out/x11test/ }
 
 # Create clang-tidy logs
-$WITH_CLANG_TIDY && make V="$V" -j`nproc` clang-tidy
+$WITH_CLANG_TIDY && $RUN make V="$V" -j`nproc` clang-tidy
 # actions/upload-artifact@v3 { name: clang-tidy, path: out/clang-tidy/ }
 
 # Clear exit code
