@@ -114,7 +114,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - run: misc/publish.sh ${{ github.run_id }}
+    - name: Download Release Assets
+      uses: actions/download-artifact@v3
+    - run: ls -lR assets/
+    - name: Create Release with Assets
+      run: misc/publish.sh
 
   Ping-IRC:
     if: always()
