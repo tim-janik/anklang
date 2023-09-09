@@ -8,7 +8,7 @@ cd $SCRIPTDIR/..
 test -r ase/api.hh || die "cd: failed to change to project root"
 
 help() {
-  echo "Usage: $0 [-h] [-x] [--assets] [--check] [--clang-tidy] [--poxy] [--poxy-key SshId] [--x11]"
+  echo "Usage: $0 [-h] [-x] [--assets] [--check] [--clang-tidy] [--poxy] [--poxy-key SshId] [--x11] [V=1]"
   exit 0
 }
 
@@ -32,11 +32,13 @@ while test $# -ne 0 ; do
     --poxy)		WITH_POXY=true ;;
     --poxy-key)		WITH_POXY=true ; shift ; SSH_IDENTITY="$1" ;;
     --x11)		WITH_X11TEST=true ;;
+    V=*)		V="${1#V=}" ;;
     -h|--help)		help ;;
   esac
   shift
 done
 $WITH_POXY && NEEDPDF=true
+V="${V:-}"
 
 # Properly fetch all of the repo history
 test -r `git rev-parse --git-dir`/shallow &&
@@ -77,12 +79,12 @@ trap "$RUN sudo chown `id -u`:`id -g` -R /anklang/" 0 HUP INT QUIT TRAP USR1 PIP
 $RUN misc/version.sh
 
 # Build binaries, docs and check
-$RUN make -j`nproc` all ${NEEDPDF:+ pdf }
-$WITH_CHECK && $RUN make check
+$RUN make V="$V" -j`nproc` all ${NEEDPDF:+ pdf }
+$WITH_CHECK && $RUN make V="$V" check
 
 # Artifact upload from make install
 test -z "$NEEDPDF" || {
-  $RUN make install DESTDIR=inst
+  $RUN make V="$V" install DESTDIR=inst
   $RUN cp -a inst/share/doc/anklang/ out/anklang-docs/
 }
 # actions/upload-artifact: { name: docs, path: out/anklang-docs/ }
@@ -98,11 +100,11 @@ $WITH_POXY && {
 }
 
 # X11 GUI tests, run and record
-$WITH_X11TEST && $RUN make x11test-v
+$WITH_X11TEST && $RUN make V="$V" x11test-v
 # actions/upload-artifact@v3 { name: x11test, path: out/x11test/ }
 
 # Create clang-tidy logs
-$WITH_CLANG_TIDY && make -j`nproc` clang-tidy
+$WITH_CLANG_TIDY && make V="$V" -j`nproc` clang-tidy
 # actions/upload-artifact@v3 { name: clang-tidy, path: out/clang-tidy/ }
 
 # Clear exit code
