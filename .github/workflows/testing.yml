@@ -10,10 +10,8 @@ on:
 
 jobs:
 
-  Jammy-Docs:
+  Focal-CI:
     runs-on: ubuntu-latest
-    env: # INTERACTIVE: docker run -i --cap-add SYS_PTRACE -v $PWD:/anklang ...
-      RUN: docker run -v /home/runner/work/anklang/anklang:/anklang -w /anklang/ -t --rm cijammy
     steps:
     # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
     - uses: actions/checkout@v4
@@ -23,49 +21,29 @@ jobs:
     - uses: docker/setup-buildx-action@v2.10.0
     - run: docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
     - uses: docker/build-push-action@v4
-      with: # docker build -t cijammy:latest -f misc/Dockerfile.jammy misc
-        tags: cijammy:latest
-        file: misc/Dockerfile.jammy
+      with: # docker build -t cifocal:latest -f misc/Dockerfile.focal misc
+        tags: cifocal:latest
+        file: misc/Dockerfile.focal
         context: misc/
         cache-from: type=gha
         cache-to:   type=gha,mode=max
         load: true
-    # Configure Build
-    - name: Configure Build
+    # Run CI Stages
+    - name: Run CI Stages
       run: |
-        git describe
-        misc/version.sh
-        echo 'prefix=/'		>  config-defaults.mk
-        echo 'CC=clang'		>> config-defaults.mk
-        echo 'CXX=clang++'	>> config-defaults.mk
-        (umask 0077 && echo "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > .git/.ssh_id_ghdocs4anklang)
-        cat config-defaults.mk
-        $RUN sudo chown ubuntu:ubuntu -R /anklang/	# gh-runner $UID != 1000
-        $RUN misc/version.sh
-        $RUN clang++ --version
-    # Build binaries, docs and check
-    - name: Make all pdf check
-      run: |
-        $RUN make -j`nproc` all pdf
-        $RUN make check
-    # Artifact upload from make install
-    - name: Make install
-      run: |
-        $RUN make install DESTDIR=inst
-        $RUN cp -a inst/share/doc/anklang/ out/anklang-docs/
+        time misc/cirun.sh --check --assets --x11
     - uses: actions/upload-artifact@v3
       if: success()
-      with:
-        name: docs
-        path: out/anklang-docs/
+      with: { name: docs, path: out/anklang-docs/ }
+    - uses: actions/upload-artifact@v3
+      if: success()
+      with: { name: assets, path: assets/ }
+    # Upload http://tim-janik.github.io/docs/anklang
     - name: Upload http://tim-janik.github.io/docs/anklang
       if: github.ref == 'refs/heads/trunk'
       run: |
-        $RUN doc/poxy.sh -b -u
-    # Restore gh-runner $UID
-    - name: Cleanup
-      run: |
-        $RUN sudo chown `id -u`:`id -g` -R /anklang/
+        (umask 0077 && echo "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > ~/.id4poxy)
+        time misc/cirun.sh --poxy-key ~/.id4poxy
 
   Arch-Replay:
     runs-on: ubuntu-latest
@@ -170,14 +148,14 @@ jobs:
 
   Ping-IRC:
     if: always()
-    needs: [Jammy-Docs, Arch-Replay, Lunar-Clang-Tidy]
+    needs: [Focal-CI, Arch-Replay, Lunar-Clang-Tidy]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Check Jobs
       run: |
-        echo '${{ needs.Jammy-Docs.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Lunar-Clang-Tidy.result }}'
-        test success = '${{ needs.Jammy-Docs.result }}'
+        echo '${{ needs.Focal-CI.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Lunar-Clang-Tidy.result }}'
+        test success = '${{ needs.Focal-CI.result }}'
         test success = '${{ needs.Arch-Replay.result }}'
         test success = '${{ needs.Lunar-Clang-Tidy.result }}'
     - name: Ping IRC
