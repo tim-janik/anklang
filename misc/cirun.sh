@@ -13,6 +13,7 @@ help() {
 }
 
 # Parse OPTIONS
+CITAG="${CITAG:-cifocal:latest}"
 WITH_CLANG_TIDY=false
 WITH_MKASSETS=false
 WITH_X11TEST=false
@@ -46,11 +47,11 @@ git describe --tags --match='v[0-9]*.[0-9]*.[0-9]*' --exact-match 2>/dev/null ||
 misc/version.sh
 
 # Build Docker image
-# docker build -t cifocal:latest -f misc/Dockerfile.focal misc
+# docker build -t $CITAG -f misc/Dockerfile.focal misc
 
 # RUN - setup alias `docker run`...
 tty -s && INTERACTIVE=-i || INTERACTIVE=
-RUN="docker run $INTERACTIVE -t --rm -v $PWD:/anklang -w /anklang cifocal:latest"
+RUN="docker run $INTERACTIVE -t --rm -v $PWD:/anklang -w /anklang $CITAG"
 $RUN c++ --version
 
 # Provide ssh key file for docu upload to https://tim-janik.github.io/docs/anklang/
