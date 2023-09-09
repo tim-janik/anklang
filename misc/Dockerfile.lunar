@@ -29,6 +29,10 @@ RUN curl -sL https://deb.nodesource.com/setup_20.x | bash - \
   && wget https://apt.llvm.org/llvm.sh -O llvm.sh && chmod +x llvm.sh \
   && yes | ./llvm.sh 17 && rm ./llvm.sh \
   && apt install -y clang-tidy-17 \
+  && update-alternatives \
+       --install /usr/bin/clang         clang           /usr/bin/clang-17 0 \
+       --slave   /usr/bin/clang++       clang++         /usr/bin/clang++-17  \
+       --slave   /usr/bin/clang-tidy    clang-tidy      /usr/bin/clang-tidy-17 \
   && apt-get clean
 
 # Become non-root, user "ubuntu" already exists with uid=1000
