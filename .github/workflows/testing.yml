@@ -4,7 +4,8 @@
 
 on:
   push:
-    branches: ['trunk', 'next', 'wip/**']
+    branches: [ 'trunk', 'next', 'wip/**' ]
+    tags:     [ 'v[0-9]+.[0-9]+.[0-9]+*' ]
   pull_request:
     branches: ['trunk', 'next']
 
@@ -107,9 +108,17 @@ jobs:
       if: success()
       with: { name: clang-tidy, path: out/clang-tidy/ }
 
+  Release-Upload:
+    needs: [Focal-CI, Arch-Replay, Focal-Clang-Tidy]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - run: misc/publish.sh ${{ github.run_id }}
+
   Ping-IRC:
     if: always()
-    needs: [Focal-CI, Arch-Replay, Focal-Clang-Tidy]
+    needs: [Focal-CI, Arch-Replay, Focal-Clang-Tidy, Release-Upload]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
