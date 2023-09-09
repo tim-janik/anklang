@@ -8,7 +8,7 @@ cd $SCRIPTDIR/..
 test -r ase/api.hh || die "cd: failed to change to project root"
 
 help() {
-  echo "Usage: $0 [-h] [-x] [--assets] [--check] [--clang-tidy] [--poxy] [--poxy-key SshId] [--x11] [V=1]"
+  echo "Usage: $0 [-h] [-x] [--assets] [--check] [--clang-tidy] [--pdf] [--poxy] [--poxy-key SshId] [--x11] [V=1]"
   exit 0
 }
 
@@ -49,7 +49,7 @@ git describe --tags --match='v[0-9]*.[0-9]*.[0-9]*' --exact-match 2>/dev/null ||
 misc/version.sh
 
 # Build Docker image
-# docker build -t $CITAG -f misc/Dockerfile.focal misc
+# docker build -t $CITAG -f misc/Dockerfile.CIDIST misc
 
 # RUN - setup alias `docker run`...
 tty -s && INTERACTIVE=-i || INTERACTIVE=
