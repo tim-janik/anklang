@@ -80,7 +80,7 @@ jobs:
         path: out/x11test/
 
   Focal-Clang-Tidy:
-    if: ! contains(github.ref, 'refs/tags/')
+    if: \! contains(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     env:
       CITAG: cifocal:latest
