@@ -13,7 +13,7 @@ help() {
 }
 
 # Parse OPTIONS
-test $# -eq 0 && help
+test $# -eq 0 -a ! -d assets/ && help
 RUNID=
 while test $# -ne 0 ; do
   case "$1" in \
@@ -24,7 +24,7 @@ while test $# -ne 0 ; do
   esac
   shift
 done
-test -n "$RUNID" || die "missing <run-id>"
+test -r "`echo assets/anklang-*.tar.zst`" -o -n "$RUNID" || die "need either $PWD/assets/anklang-*.tar.zst or <run-id>"
 
 # Properly fetch all of the repo history
 test -r `git rev-parse --git-dir`/shallow &&
@@ -40,12 +40,13 @@ ISPRERELEASE=$(test tag != $(git cat-file -t $RELEASE_TAG) && echo true || echo 
 echo ISPRERELEASE=$ISPRERELEASE
 
 # Download release assets from Github Action Run
-rm -rf out/publish/
-mkdir -p out/publish/
-gh run download $RUNID -n assets -D out/publish/
+test -z "$RUNID" || {
+  rm -rf assets/
+  gh run download $RUNID -n assets -D assets/
+}
 
 # Extract initial NEWS section
-tar xvf out/publish/anklang-*.tar.zst -C out/ --strip-components=1 --wildcards 'anklang-*/NEWS.md'
+tar xvf assets/anklang-*.tar.zst -C out/ --strip-components=1 --wildcards 'anklang-*/NEWS.md'
 sed -r '0,/^##?\s/n; /^##?\s/Q;' out/NEWS.md  > out/changes.md
 
 # Create release and upload assets
@@ -55,7 +56,7 @@ gh release create --draft \
    $($ISPRERELEASE && echo --prerelease) \
    -t "Anklang $RELEASE_VERSION" \
    $RELEASE_TAG \
-   out/publish/*
+   assets/*
 # gh release edit --draft=false $RELEASE_TAG
 
 # Clear exit code
