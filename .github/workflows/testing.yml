@@ -34,7 +34,7 @@ jobs:
     # Build Assets
     - name: Build Assets
       run: |
-        time misc/cirun.sh --check --assets
+        time misc/cirun.sh --check --assets --pdf
     - uses: actions/upload-artifact@v3
       with: { name: assets, path: assets/ }
     # Upload http://tim-janik.github.io/docs/anklang
