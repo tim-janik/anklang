@@ -59,7 +59,7 @@ echo ISPRERELEASE=$ISPRERELEASE
 # Create release and upload assets
 # --discussion-category Releases
 echo "Uploading release to Github:" $RELEASE_TAG
-gh release create --draft \
+gh release create \
    -F out/publish/changes.md \
    $($ISPRERELEASE && echo --prerelease) \
    -t "Anklang $RELEASE_VERSION" \
