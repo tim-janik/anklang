@@ -35,8 +35,6 @@ jobs:
     - name: Build Assets
       run: |
         time misc/cirun.sh --check --pdf
-    - uses: actions/upload-artifact@v3
-      with: { name: assets, path: assets/ }
     # Upload http://tim-janik.github.io/docs/anklang
     - name: Upload http://tim-janik.github.io/docs/anklang
       if: github.ref == 'refs/heads/trunk'
