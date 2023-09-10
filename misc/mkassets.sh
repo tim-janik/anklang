@@ -17,13 +17,9 @@ make dist
 
 # Extract release tarball and version
 tar xf assets/anklang-*.tar.zst -C $BUILDDIR --strip-components=1
-(cd $BUILDDIR && misc/version.sh | cut -d\  -f1)	> assets.ver
-
-# Extract initial release NEWS.md section
-sed '0,/^##/ n; /^##/{ s/.*//; q; }' $BUILDDIR/NEWS.md	> assets.txt
 
 # Copy populated .dlcache/ to speed up builds
-test -d .dlcache/ && cp -a --reflink .dlcache/ $BUILDDIR/
+test -d .dlcache/ && cp -a --reflink=auto .dlcache/ $BUILDDIR/
 
 # Make production build + pdfs + package assets
 ( cd $BUILDDIR/

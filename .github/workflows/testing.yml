@@ -4,163 +4,134 @@
 
 on:
   push:
-    branches: ['trunk', 'next', 'wip/**']
+    branches: [ 'trunk', 'next', 'wip/**' ]
+    tags:     [ 'v[0-9]+.[0-9]+.[0-9]+*' ]
   pull_request:
     branches: ['trunk', 'next']
 
 jobs:
 
-  Jammy-Docs:
+  Focal-CI:
     runs-on: ubuntu-latest
+    env:
+      CITAG: cifocal:latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Fetch last release tag
+    # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
+    - uses: actions/checkout@v4
+      with: { fetch-depth: 0, show-progress: false }
+    - run: git fetch -f --tags
+    # Docker build - use BuildKit and Github action API for reliable caching
+    - uses: docker/setup-buildx-action@v2.10.0
+    - run: docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
+    - uses: docker/build-push-action@v4
+      with: # docker build -t cifocal:latest -f misc/Dockerfile.focal misc
+        tags: cifocal:latest
+        file: misc/Dockerfile.focal
+        context: misc/
+        cache-from: type=gha
+        cache-to:   type=gha,mode=max
+        load: true
+    # Build Assets
+    - name: Build Assets
       run: |
-        git fetch --unshallow
-        git describe
-    - name: Prepare CI Image
-      # Build docker image using latest package as cache
-      run: |
-        echo ${{ secrets.GITHUB_TOKEN }} |
-          time misc/docker_build misc/Dockerfile.jammy ghcr.io/tim-janik/anklang/anklang-ci $GITHUB_ACTOR
-    - name: Configure Build
-      run: |
-        echo 'prefix=/'		>  config-defaults.mk
-        echo 'CC=clang'		>> config-defaults.mk
-        echo 'CXX=clang++'	>> config-defaults.mk
-        (umask 0077 && echo "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > .git/.ssh_id_ghdocs4anklang)
-        cat config-defaults.mk
-        misc/docker_run sudo chown ubuntu:ubuntu -R /anklang/
-        misc/docker_run misc/version.sh
-        misc/docker_run bash -c 'source config-defaults.mk && $CXX --version'
-    - name: Make all pdf check
-      run: |
-        misc/docker_run make -j`nproc` all pdf
-        misc/docker_run make check
-    - name: Make install
-      run: |
-        misc/docker_run make install DESTDIR=inst
-        misc/docker_run cp -a inst/share/doc/anklang/ out/anklang-docs/
+        time misc/cirun.sh --check --assets --pdf
     - uses: actions/upload-artifact@v3
-      if: success()
-      with:
-        name: docs
-        path: |
-          out/anklang-docs/
-    - name: Upload tim-janik.github.io/docs/anklang
+      with: { name: assets, path: assets/ }
+    # Upload http://tim-janik.github.io/docs/anklang
+    - name: Upload http://tim-janik.github.io/docs/anklang
       if: github.ref == 'refs/heads/trunk'
       run: |
-        misc/docker_run env
-        misc/docker_run doc/poxy.sh -b -u out/anklang-docs/
-    - name: Cleanup
-      run: |
-        misc/docker_clean
+        (umask 0077 && echo "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > ~/.id4poxy)
+        time misc/cirun.sh --poxy-key ~/.id4poxy
+    - uses: actions/upload-artifact@v3
+      with: { name: docs, path: out/anklang-docs/ }
 
   Arch-Replay:
     runs-on: ubuntu-latest
     env:
-      DOCKER_RUN: docker run --cap-add SYS_PTRACE -v /home/runner/work/anklang/anklang/:/anklang/ -w /anklang/ -t --rm anklang-arch
+      CITAG: ciarch:latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Fetch last release tag
+    # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
+    - uses: actions/checkout@v4
+      with: { fetch-depth: 0, show-progress: false }
+    - run: git fetch -f --tags
+    # Docker build - use BuildKit and Github action API for reliable caching
+    - uses: docker/setup-buildx-action@v2.10.0
+    - run: docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
+    - uses: docker/build-push-action@v4
+      with: # docker build -t ciarch:latest -f misc/Dockerfile.arch misc
+        tags: ciarch:latest
+        file: misc/Dockerfile.arch
+        context: misc/
+        cache-from: type=gha
+        cache-to:   type=gha,mode=max
+        load: true
+    # Run X11 GUI Tests
+    - name: Run X11 GUI Tests
       run: |
-        git fetch --unshallow
-        git describe
-    - name: Prepare CI Image
-      # Build docker image using latest package as cache
-      run: |
-        docker --version
-        set -x
-        echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-        docker pull ghcr.io/$GITHUB_REPOSITORY/anklang-ci:arch-latest || true
-        time docker build -f misc/Dockerfile.arch -t anklang-arch misc/ --cache-from=ghcr.io/$GITHUB_REPOSITORY/anklang-ci:arch-latest
-        docker tag anklang-arch ghcr.io/$GITHUB_REPOSITORY/anklang-ci:arch-latest
-        docker push ghcr.io/$GITHUB_REPOSITORY/anklang-ci:arch-latest || true
-        $DOCKER_RUN env </dev/null |& cat
-    - name: Configure Build
-      run: |
-        echo 'prefix=/'		>  config-defaults.mk
-        cat config-defaults.mk
-        $DOCKER_RUN sudo chown builder:builder -R /anklang/
-        $DOCKER_RUN misc/version.sh
-    - name: Make all check
-      run: |
-        $DOCKER_RUN make -j`nproc` all
-        $DOCKER_RUN make check
-    - name: Make x11test
-      run: |
-        $DOCKER_RUN make x11test-v
+        time misc/cirun.sh --check --x11
+    # Artifact upload from x11test
     - uses: actions/upload-artifact@v3
       if: always()
       with:
         name: x11test
         path: out/x11test/
-    - name: Cleanup
-      run: |
-        $DOCKER_RUN sudo chown `id -u`:`id -g` -R /anklang/
 
-  Lunar-Clang-Tidy:
+  Focal-Clang-Tidy:
+    if: ${{ ! contains(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
     env:
-      DOCKER_RUN: docker run --cap-add SYS_PTRACE -v /home/runner/work/anklang/anklang/:/anklang/ -w /anklang/ -t --rm anklang-lunar
+      CITAG: cifocal:latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Fetch last release tag
+    # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
+    - uses: actions/checkout@v4
+      with: { fetch-depth: 0, show-progress: false }
+    - run: git fetch -f --tags
+    # Docker build - use BuildKit and Github action API for reliable caching
+    - uses: docker/setup-buildx-action@v2.10.0
+    - run: docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
+    - uses: docker/build-push-action@v4
+      with: # docker build -t cifocal:latest -f misc/Dockerfile.focal misc
+        tags: cifocal:latest
+        file: misc/Dockerfile.focal
+        context: misc/
+        cache-from: type=gha
+        # cache-to:   type=gha,mode=max
+        load: true
+    # Build and Run Clang-Tidy
+    - name: Build and Run Clang-Tidy
       run: |
-        git fetch --unshallow
-        git describe
-    - name: Prepare CI Image
-      # Build docker image using latest package as cache
-      run: |
-        docker --version
-        set -x
-        echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-        docker pull ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest || true
-        time docker build -f misc/Dockerfile.lunar -t anklang-lunar misc/ --cache-from=ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest
-        docker tag anklang-lunar ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest
-        docker push ghcr.io/$GITHUB_REPOSITORY/anklang-ci:lunar-latest || true
-        $DOCKER_RUN env </dev/null |& cat
-    - name: Configure Build
-      # Set ubuntu:ubuntu permissions for docker volume, since Github CI uses something like 1001:123
-      # Silence host Git about ownership: https://github.com/git/git/commit/8959555cee7ec045958f9b6dd62e541affb7e7d9
-      # git config --global --add safe.directory '*'
-      run: |
-        echo 'prefix=/'			>  config-defaults.mk
-        echo 'CC=clang-17'		>> config-defaults.mk
-        echo 'CXX=clang++-17'		>> config-defaults.mk
-        echo 'CLANG_TIDY=clang-tidy-17'	>> config-defaults.mk
-        cat config-defaults.mk
-        $DOCKER_RUN sudo chown ubuntu:ubuntu -R /anklang/
-        $DOCKER_RUN misc/version.sh
-        $DOCKER_RUN bash -c 'source config-defaults.mk && $CXX --version'
-    - name: Make all check
-      run: |
-        $DOCKER_RUN make -j`nproc` all
-        $DOCKER_RUN make check
-    - name: Make clang-tidy
-      run: |
-        $DOCKER_RUN make -j`nproc` clang-tidy
+        time misc/cirun.sh --check --clang-tidy
+    # Artifact upload from clang-tidy
     - uses: actions/upload-artifact@v3
-      if: success()
-      with:
-        name: clang-tidy
-        path: out/clang-tidy/
-    - name: Cleanup
-      run: |
-        $DOCKER_RUN sudo chown `id -u`:`id -g` -R /anklang/
+      with: { name: clang-tidy, path: out/clang-tidy/ }
+
+  Release-Upload:
+    needs: [Focal-CI]
+    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
+    env:
+      GH_TOKEN: ${{ github.token }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download Release Assets
+      uses: actions/download-artifact@v3
+    - run: ls -lR assets/
+    - name: Create Release with Assets
+      run: misc/publish.sh
 
   Ping-IRC:
     if: always()
-    needs: [Jammy-Docs, Arch-Replay, Lunar-Clang-Tidy]
+    needs: [Focal-CI, Arch-Replay, Focal-Clang-Tidy, Release-Upload]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Check Jobs
       run: |
-        echo '${{ needs.Jammy-Docs.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Lunar-Clang-Tidy.result }}'
-        test success = '${{ needs.Jammy-Docs.result }}'
-        test success = '${{ needs.Arch-Replay.result }}'
-        test success = '${{ needs.Lunar-Clang-Tidy.result }}'
+        echo '${{ needs.Focal-CI.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Focal-Clang-Tidy.result }}'
+        [[ ${{ needs.Focal-CI.result }}         =~ success|skipped ]]
+        [[ ${{ needs.Arch-Replay.result }}      =~ success|skipped ]]
+        [[ ${{ needs.Focal-Clang-Tidy.result }} =~ success|skipped ]]
     - name: Ping IRC
       if: always()
       run: |
