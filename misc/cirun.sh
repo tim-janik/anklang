@@ -8,17 +8,18 @@ cd $SCRIPTDIR/..
 test -r ase/api.hh || die "cd: failed to change to project root"
 
 help() {
-  echo "Usage: $0 [-h] [-x] [--assets] [--check] [--clang-tidy] [--pdf] [--poxy] [--poxy-key SshId] [--x11] [V=1]"
+  echo "Usage: $0 [-h] [-x] [--assets] [--build] [--check] [--clang-tidy] [--pdf] [--poxy] [--poxy-key SshId] [--x11] [V=1]"
   exit 0
 }
 
 # Parse OPTIONS
 CITAG="${CITAG:-cifocal:latest}"
+WITH_BUILD=false
+WITH_CHECK=false
 WITH_CLANG_TIDY=false
 WITH_MKASSETS=false
 WITH_X11TEST=false
 WITH_POXY=false
-WITH_CHECK=false
 NEEDPDF=
 SSH_IDENTITY=
 test $# -eq 0 && help
@@ -26,7 +27,8 @@ while test $# -ne 0 ; do
   case "$1" in \
     -x)			set -x ;;
     --asset*)		WITH_MKASSETS=true ;;
-    --check)		WITH_CHECK=true ;;
+    --build)		WITH_BUILD=true ;;
+    --check)		WITH_BUILD=true ; WITH_CHECK=true ;;
     --clang-tidy)	WITH_CLANG_TIDY=true ;;
     --pdf)		NEEDPDF=true ;;
     --poxy)		WITH_POXY=true ;;
@@ -79,11 +81,12 @@ trap "$RUN sudo chown `id -u`:`id -g` -R /anklang/" 0 HUP INT QUIT TRAP USR1 PIP
 $RUN misc/version.sh
 
 # Build binaries, docs and check
-$RUN make V="$V" -j`nproc` all ${NEEDPDF:+ pdf }
+$WITH_BUILD && $RUN make V="$V" -j`nproc` all ${NEEDPDF:+ pdf }
 $WITH_CHECK && $RUN make V="$V" check
 
 # Artifact upload from make install
 test -z "$NEEDPDF" || {
+  $RUN make V="$V" -j`nproc` pdf
   $RUN make V="$V" install DESTDIR=inst
   $RUN cp -a inst/share/doc/anklang/ out/anklang-docs/
 }
