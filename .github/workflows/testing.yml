@@ -18,19 +18,17 @@ jobs:
     steps:
     # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
     - uses: actions/checkout@v4
-      with: { fetch-depth: 0, show-progress: false }
-    - run: git fetch -f --tags
-    # Docker build - use BuildKit and Github action API for reliable caching
-    - uses: docker/setup-buildx-action@v2.10.0
-    - run: docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
-    - uses: docker/build-push-action@v4
-      with: # docker build -t cifocal:latest -f misc/Dockerfile.focal misc
-        tags: cifocal:latest
-        file: misc/Dockerfile.focal
-        context: misc/
-        cache-from: type=gha
-        cache-to:   type=gha,mode=max
-        load: true
+    - run: git fetch --unshallow && git fetch -f --tags
+    # Use either cache-from or cache-to, so buildx cannot mess up good caches
+    - uses: actions/cache@v3
+      with:
+        key: cifocal-${{hashFiles ('misc/Dockerfile.focal')}}
+        path: /tmp/acache
+    - name: Docker Build cifocal
+      run: |
+        docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
+        test -r /tmp/acache/index.json && CACHETYPE=--cache-from=type=local,src=/tmp/acache || CACHETYPE=--cache-to=type=local,mode=max,dest=/tmp/acache
+        time docker buildx build $CACHETYPE --load -t $CITAG -f misc/Dockerfile.focal misc
     # Build Assets
     - name: Build Assets
       run: |
@@ -51,20 +49,17 @@ jobs:
     steps:
     # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
     - uses: actions/checkout@v4
+    - run: git fetch --unshallow && git fetch -f --tags
+    # Use either cache-from or cache-to, so buildx cannot mess up good caches
     - uses: actions/cache@v3
       with:
-        path: /tmp/aca/
-        key: Focal-${{ hashFiles ('misc/Dockerfile.focal') }}
-    - uses: docker/setup-buildx-action@v2.10.0	# Use BuildKit for reliable caching
-    - run: docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
-    - uses: docker/build-push-action@v4
-      with: # docker build -t cifocal:latest -f misc/Dockerfile.focal misc
-        tags: cifocal:latest
-        file: misc/Dockerfile.focal
-        context: misc/
-        cache-from: type=local,src=/tmp/aca/
-        cache-to:   type=local,dest=/tmp/aca/,mode=max
-        load: true
+        key: cifocal-${{hashFiles ('misc/Dockerfile.focal')}}
+        path: /tmp/acache
+    - name: Docker Build cifocal
+      run: |
+        docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
+        test -r /tmp/acache/index.json && CACHETYPE=--cache-from=type=local,src=/tmp/acache || CACHETYPE=--cache-to=type=local,mode=max,dest=/tmp/acache
+        time docker buildx build $CACHETYPE --load -t $CITAG -f misc/Dockerfile.focal misc
     # Build Assets
     - name: Build Assets
       run: |
