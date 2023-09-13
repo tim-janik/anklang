@@ -11,84 +11,47 @@ on:
 
 jobs:
 
-  Focal-CI:
-    runs-on: ubuntu-latest
-    env:
-      CITAG: cifocal:latest
-    steps:
-    # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
-    - uses: actions/checkout@v4
-    - run: git fetch --unshallow && git fetch -f --tags
-    # Use either cache-from or cache-to, so buildx cannot mess up good caches
-    - uses: actions/cache@v3
-      with:
-        key: cifocal-${{hashFiles ('misc/Dockerfile.focal')}}
-        path: /tmp/acache
-    - name: Docker Build cifocal
-      run: |
-        docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
-        test -r /tmp/acache/index.json && CACHETYPE=--cache-from=type=local,src=/tmp/acache || CACHETYPE=--cache-to=type=local,mode=max,dest=/tmp/acache
-        time docker buildx build $CACHETYPE --load -t $CITAG -f misc/Dockerfile.focal misc
-    # Build Assets
-    - name: Build Assets
-      run: |
-        time misc/cirun.sh --check --pdf
-    # Upload http://tim-janik.github.io/docs/anklang
-    - name: Upload http://tim-janik.github.io/docs/anklang
-      if: github.ref == 'refs/heads/trunk'
-      run: |
-        (umask 0077 && echo "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > ~/.id4poxy)
-        time misc/cirun.sh --poxy-key ~/.id4poxy
-    - uses: actions/upload-artifact@v3
-      with: { name: docs, path: out/anklang-docs/ }
-
   Focal-Assets:
     runs-on: ubuntu-latest
     env:
-      CITAG: cifocal:latest
+      CITAG: focal
+      CICACHE: /tmp/cicache
     steps:
-    # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
     - uses: actions/checkout@v4
-    - run: git fetch --unshallow && git fetch -f --tags
-    # Use either cache-from or cache-to, so buildx cannot mess up good caches
     - uses: actions/cache@v3
       with:
         key: cifocal-${{hashFiles ('misc/Dockerfile.focal')}}
-        path: /tmp/acache
-    - name: Docker Build cifocal
+        path: /tmp/cicache
+    - name: 'Build Dist Assets'
       run: |
-        docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
-        test -r /tmp/acache/index.json && CACHETYPE=--cache-from=type=local,src=/tmp/acache || CACHETYPE=--cache-to=type=local,mode=max,dest=/tmp/acache
-        time docker buildx build $CACHETYPE --load -t $CITAG -f misc/Dockerfile.focal misc
-    # Build Assets
-    - name: Build Assets
-      run: |
-        time misc/cirun.sh --assets
+        echo -e ' prefix=/ \n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
+        misc/cirun -u 1000 misc/mkassets.sh
     - uses: actions/upload-artifact@v3
       with: { name: assets, path: assets/ }
+    - name: 'Upload API Docs' # http://tim-janik.github.io/docs/anklang
+      if: github.ref == 'refs/heads/trunk'
+      run: |
+        misc/cirun -u 1000 make -j`nproc` all
+        (umask 0077 && cat <<< "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > .git/.ssh_id_ghdocs4anklang)
+        misc/cirun -u 1000 doc/poxy.sh -b -u
 
   Arch-Replay:
     runs-on: ubuntu-latest
     env:
-      CITAG: ciarch:latest
+      CITAG: arch
+      CIMAKE: misc/cirun -u 1000 make
+      CICACHE: /tmp/cicache
     steps:
-    # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
     - uses: actions/checkout@v4
-    - run: git fetch --unshallow && git fetch -f --tags
-    # Use either cache-from or cache-to, so buildx cannot mess up good caches
     - uses: actions/cache@v3
       with:
         key: ciarch-${{hashFiles ('misc/Dockerfile.arch')}}
-        path: /tmp/acache
-    - name: Docker Build ciarch
+        path: /tmp/cicache
+    - name: 'Run X11 GUI Tests'
       run: |
-        docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
-        test -r /tmp/acache/index.json && CACHETYPE=--cache-from=type=local,src=/tmp/acache || CACHETYPE=--cache-to=type=local,mode=max,dest=/tmp/acache
-        time docker buildx build $CACHETYPE --load -t $CITAG -f misc/Dockerfile.arch misc
-    # Run X11 GUI Tests
-    - name: Run X11 GUI Tests
-      run: |
-        time misc/cirun.sh --check --x11
+        echo -e ' prefix=/ \n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
+        $CIMAKE -j`nproc` all check
+        $CIMAKE x11test-v
     # Artifact upload from x11test
     - uses: actions/upload-artifact@v3
       if: always()
@@ -100,31 +63,25 @@ jobs:
     if: ${{ ! contains(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
     env:
-      CITAG: cifocal:latest
+      CITAG: focal
+      CIMAKE: misc/cirun -u 1000 make
+      CICACHE: /tmp/cicache
     steps:
-    # Checkout and fix actions/checkout messing up annotation of the fetched tag: actions/checkout#290
     - uses: actions/checkout@v4
-    - run: git fetch --unshallow && git fetch -f --tags
-    # Use either cache-from or cache-to, so buildx cannot mess up good caches
     - uses: actions/cache@v3
       with:
         key: cifocal-${{hashFiles ('misc/Dockerfile.focal')}}
-        path: /tmp/acache
-    - name: Docker Build cifocal
-      run: |
-        docker buildx create --use --driver=docker-container # multi-platform, exports cache, needs --load
-        test -r /tmp/acache/index.json && CACHETYPE=--cache-from=type=local,src=/tmp/acache || CACHETYPE=--cache-to=type=local,mode=max,dest=/tmp/acache
-        time docker buildx build $CACHETYPE --load -t $CITAG -f misc/Dockerfile.focal misc
-    # Build and Run Clang-Tidy
-    - name: Build and Run Clang-Tidy
-      run: |
-        time misc/cirun.sh --check --clang-tidy
+        path: /tmp/cicache
+    - run: |
+        $CIMAKE -j`nproc` all check
+    - run: |
+        $CIMAKE -j`nproc` clang-tidy
     # Artifact upload from clang-tidy
     - uses: actions/upload-artifact@v3
       with: { name: clang-tidy, path: out/clang-tidy/ }
 
   Release-Upload:
-    needs: [Focal-CI, Focal-Assets, Arch-Replay]
+    needs: [Focal-Assets, Arch-Replay]
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     env:
       GH_TOKEN: ${{ github.token }}
@@ -139,16 +96,17 @@ jobs:
 
   Ping-IRC:
     if: always()
-    needs: [Focal-CI, Arch-Replay, Focal-Clang-Tidy, Release-Upload]
+    needs: [Focal-Assets, Arch-Replay, Focal-Clang-Tidy, Release-Upload]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Check Jobs
       run: |
-        echo '${{ needs.Focal-CI.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Focal-Clang-Tidy.result }}'
-        [[ ${{ needs.Focal-CI.result }}         =~ success|skipped ]]
+        echo '${{ needs.Focal-Assets.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Focal-Clang-Tidy.result }}' '${{ needs.Release-Upload.result }}'
+        [[ ${{ needs.Focal-Assets.result }}     =~ success|skipped ]]
         [[ ${{ needs.Arch-Replay.result }}      =~ success|skipped ]]
         [[ ${{ needs.Focal-Clang-Tidy.result }} =~ success|skipped ]]
+        [[ ${{ needs.Release-Upload.result }}   =~ success|skipped ]]
     - name: Ping IRC
       if: always()
       run: |
