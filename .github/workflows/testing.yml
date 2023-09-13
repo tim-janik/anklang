@@ -22,9 +22,12 @@ jobs:
       with:
         key: cifocal-${{hashFiles ('misc/Dockerfile.focal')}}
         path: /tmp/cicache
-    - name: 'Build Dist Assets'
+    - name: 'Prepare Docker Image'
       run: |
         echo -e ' prefix=/ \n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
+        misc/cirun -u 1000 misc/version.sh
+    - name: 'Build Dist Assets'
+      run: |
         misc/cirun -u 1000 misc/mkassets.sh
     - uses: actions/upload-artifact@v3
       with: { name: assets, path: assets/ }
@@ -47,9 +50,12 @@ jobs:
       with:
         key: ciarch-${{hashFiles ('misc/Dockerfile.arch')}}
         path: /tmp/cicache
-    - name: 'Run X11 GUI Tests'
+    - name: 'Prepare Docker Image'
       run: |
         echo -e ' prefix=/ \n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
+        misc/cirun -u 1000 misc/version.sh
+    - name: 'Run X11 GUI Tests'
+      run: |
         $CIMAKE -j`nproc` all check
         $CIMAKE x11test-v
     # Artifact upload from x11test
@@ -72,9 +78,15 @@ jobs:
       with:
         key: cifocal-${{hashFiles ('misc/Dockerfile.focal')}}
         path: /tmp/cicache
-    - run: |
+    - name: 'Prepare Docker Image'
+      run: |
+        echo -e ' prefix=/ \n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
+        misc/cirun -u 1000 misc/version.sh
+    - name: 'Make all check'
+      run: |
         $CIMAKE -j`nproc` all check
-    - run: |
+    - name: 'Make clang-tidy'
+      run: |
         $CIMAKE -j`nproc` clang-tidy
     # Artifact upload from clang-tidy
     - uses: actions/upload-artifact@v3
