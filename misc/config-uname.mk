@@ -40,7 +40,7 @@ __DEV__		::=
 else ifeq ($(MODE),production)
 MODEFLAGS	::= -O3 -DNDEBUG
 LDMODEFLAGS	 += -Wl,--no-undefined
-LTOFLAGS	 += -flto
+LTOFLAGS	 += $(if $(HAVE_CLANG), -flto=thin, -flto)
 __DEV__		::=
 else ifeq ($(MODE),devel)
 MODEFLAGS	::= -g -O2
