@@ -9,7 +9,7 @@ grep ' Anklang ' ./README.md || die 'failed to find Anklang project'
 BUILDDIR="${1:-/tmp/anklang/}"
 
 # Clear assets and builddir
-rm -rf assets assets.* $BUILDDIR
+rm -rf assets $BUILDDIR
 mkdir -p $BUILDDIR assets/
 
 # build dist tarball and ChangeLog in assets/
@@ -35,4 +35,4 @@ test -d .dlcache/ && cp -a --reflink=auto .dlcache/ $BUILDDIR/
 # Fetch release assets and cleanup
 cp $BUILDDIR/assets/* ./assets/
 test "$BUILDDIR" == /tmp/anklang/ && rm -rf /tmp/anklang/
-ls -l assets/* assets*.*
+ls -l assets/*
