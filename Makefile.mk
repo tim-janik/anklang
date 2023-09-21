@@ -132,7 +132,7 @@ $>/ls-tree.d: $(GITCOMMITDEPS)						| $>/
 # == .submodule-stamp ==
 .submodule-stamp: $(GITCOMMITDEPS)
 	$(QGEN)
-	$Q git submodule update --init --recursive
+	$Q test ! -e .git || git submodule update --init --recursive
 	$Q touch $@
 Makefile.mk: .submodule-stamp
 
