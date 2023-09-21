@@ -13,3 +13,6 @@
 [submodule "blake3"]
 	path = external/blake3
 	url = https://github.com/BLAKE3-team/BLAKE3.git
+[submodule "blobs4anklang"]
+	path = external/blobs4anklang
+	url = https://github.com/tim-janik/blobs4anklang.git
