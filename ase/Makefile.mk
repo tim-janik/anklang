@@ -121,18 +121,6 @@ $>/external/websocketpp/server.hpp: ase/Makefile.mk	| $>/external/
 $>/external/websocketpp/config/asio_no_tls.hpp: $>/external/websocketpp/server.hpp
 ase/websocket.cc: $>/external/websocketpp/config/asio_no_tls.hpp
 
-# == external/clap ==
-$>/external/clap/clap.h: ase/Makefile.mk		| $>/external/
-	@ $(eval H := eef67a38df6c20fd4cb79698772d35d30aefc2e1a8d5275a5169f58cd530333e)
-	@ $(eval U := https://github.com/free-audio/clap/archive/refs/tags/1.1.1.tar.gz)
-	@ $(eval T := clap-1.1.1.tar.gz)
-	$(QECHO) FETCH "$U"
-	$Q cd $>/external/ && rm -rf clap* \
-	     $(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
-	$Q ln -s $(T:.tar.gz=)/include/clap $>/external/clap
-	$Q test -e $@ && touch $@
-$(wildcard ase/clap*.cc): $>/external/clap/clap.h
-
 # == external/blake3 ==
 $>/external/blake3/blake3.h: ase/Makefile.mk		| $>/external/
 	@ $(eval H := 112becf0983b5c83efff07f20b458f2dbcdbd768fd46502e7ddd831b83550109)
@@ -163,7 +151,7 @@ $>/ase/blake3avx512.c $>/ase/blake3avx2.c $>/ase/blake3sse41.c $>/ase/blake3sse2
 
 # == AnklangSynthEngine ==
 $(ase/AnklangSynthEngine.objects): $(ase/include.deps) $(ase/libase.deps)
-$(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= -Iexternal/ -Iexternal/rapidjson/include -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
+$(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= -Iexternal/ -Iexternal/rapidjson/include -Iexternal/clap/include -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
 $(lib/AnklangSynthEngine):						| $>/lib/
 $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
