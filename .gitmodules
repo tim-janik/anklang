@@ -7,3 +7,6 @@
 [submodule "clap"]
 	path = external/clap
 	url = https://github.com/free-audio/clap.git
+[submodule "websocketpp"]
+	path = external/websocketpp
+	url = https://github.com/zaphoyd/websocketpp.git
