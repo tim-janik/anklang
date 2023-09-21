@@ -10,7 +10,7 @@
 #error "Missing <zstd.h> from libzstd-dev, please set CXXFLAGS and LDFLAGS"
 #endif
 #include <zstd.h>
-#include <blake3/blake3.h>
+#include "external/blake3/c/blake3.h"
 
 namespace Ase {
 
