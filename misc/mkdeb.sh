@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 set -Eeuo pipefail #-x
 
@@ -99,7 +99,7 @@ gzip -9 $DEBCHANGELOG
 
 # DEBIAN/postinst
 cat <<\__EOF |
-#!/bin/bash
+#!/usr/bin/env bash
 set -e -o pipefail
 
 # Setcap cap_sys_nice to allow renincing for low latency processing
@@ -127,7 +127,7 @@ chmod +x $DEBIAN/postinst
 # DEBIAN/postrm
 # Needed because Debian does not provide triggers for /usr/local/
 cat <<\__EOF |
-#!/bin/bash
+#!/usr/bin/env bash
 set -e -o pipefail
 which update-mime-database >/dev/null 2>&1 && {
 	mkdir -p @PREFIXDIR@/share/mime/packages  # required by update-mime-database
