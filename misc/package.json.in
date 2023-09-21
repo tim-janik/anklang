@@ -27,6 +27,7 @@
     "eslint-plugin-lit": "^1.8.3",
     "eslint-plugin-unused-imports": "^2.0.0",
     "eslint-plugin-vue": "^9.14.1",
+    "fork-awesome": "^1.2.0",
     "icon-gen": "^3.0.1",
     "jsdoc": "^4.0.2",
     "jsdoc-api": "^8.0.0",

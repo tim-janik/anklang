@@ -11,7 +11,6 @@ ase/noglob.cc			::= ase/main.cc $(ase/gtk2wrap.sources) $(ase/jackdriver.sources
 ase/libsources.cc		::= $(filter-out $(ase/noglob.cc), $(wildcard ase/*.cc))
 ase/libsources.c		::= $(wildcard ase/*.c)
 ase/include.deps		::= $>/ase/sysconfig.h
-ase/include.deps		 += $>/external/rapidjson/rapidjson.h
 
 # == AnklangSynthEngine definitions ==
 lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine
@@ -31,9 +30,6 @@ ase/AnklangSynthEngine.objects	::= $(sort \
 )
 ase/AnklangSynthEngine.objects	 += $(devices/4ase.objects)
 ALL_TARGETS += $(lib/AnklangSynthEngine)
-
-# Work around legacy code in external/websocketpp/*.hpp
-ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec
 
 # == AnklangSynthEngine-fma ==
 $(lib/AnklangSynthEngine)-fma:
@@ -109,86 +105,30 @@ int main (int argc, const char *argv[]) {
 }
 endef
 
-# == external/minizip ==
-$>/external/minizip/mz_zip.h: ase/Makefile.mk		| $>/external/
-	@ $(eval H := 80d745e1c8caf6f81f6457403b0d9212e8a138b2badd6060e8a5da8583da2551)
-	@ $(eval U := https://github.com/zlib-ng/minizip-ng/archive/refs/tags/2.9.0.tar.gz)
-	@ $(eval T := minizip-ng-2.9.0.tar.gz)
-	$(QECHO) FETCH "$U"
-	$Q cd $>/external/ && rm -rf minizip* \
-		$(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
-	$Q ln -s $(T:.tar.gz=) $>/external/minizip
-	$Q test -e $@ && touch $@
-$(wildcard ase/*.cc ase/*.c): $>/external/minizip/mz_zip.h
-
-# == external/websocketpp ==
-$>/external/websocketpp/server.hpp: ase/Makefile.mk	| $>/external/
-	@ $(eval H := 6ce889d85ecdc2d8fa07408d6787e7352510750daa66b5ad44aacb47bea76755)
-	@ $(eval U := https://github.com/zaphoyd/websocketpp/archive/0.8.2.tar.gz)
-	@ $(eval T := websocketpp-0.8.2.tar.gz)
-	$(QECHO) FETCH "$U"
-	$Q cd $>/external/ && rm -rf websocketpp* \
-		$(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
-	$Q ln -s $(T:.tar.gz=)/websocketpp $>/external/websocketpp
-	$Q test -e $@ && touch $@
-$>/external/websocketpp/config/asio_no_tls.hpp: $>/external/websocketpp/server.hpp
-ase/websocket.cc: $>/external/websocketpp/config/asio_no_tls.hpp
-
-# == external/rapidjson ==
-$>/external/rapidjson/rapidjson.h: ase/Makefile.mk	| $>/external/
-	@ $(eval H := b9290a9a6d444c8e049bd589ab804e0ccf2b05dc5984a19ed5ae75d090064806)
-	@ $(eval U := https://github.com/Tencent/rapidjson/archive/232389d4f1012dddec4ef84861face2d2ba85709.tar.gz)
-	@ $(eval T := rapidjson-232389d4f1012dddec4ef84861face2d2ba85709.tar.gz)
-	$(QECHO) FETCH "$U"
-	$Q cd $>/external/ && rm -rf rapidjson* \
-		$(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
-	$Q ln -s $(T:.tar.gz=)/include/rapidjson $>/external/rapidjson
-	$Q test -e $@ && touch $@
-$(wildcard ase/*.cc): $>/external/rapidjson/rapidjson.h
-
-# == external/clap ==
-$>/external/clap/clap.h: ase/Makefile.mk		| $>/external/
-	@ $(eval H := eef67a38df6c20fd4cb79698772d35d30aefc2e1a8d5275a5169f58cd530333e)
-	@ $(eval U := https://github.com/free-audio/clap/archive/refs/tags/1.1.1.tar.gz)
-	@ $(eval T := clap-1.1.1.tar.gz)
-	$(QECHO) FETCH "$U"
-	$Q cd $>/external/ && rm -rf clap* \
-	     $(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
-	$Q ln -s $(T:.tar.gz=)/include/clap $>/external/clap
-	$Q test -e $@ && touch $@
-$(wildcard ase/clap*.cc): $>/external/clap/clap.h
-
-# == external/blake3 ==
-$>/external/blake3/blake3.h: ase/Makefile.mk		| $>/external/
-	@ $(eval H := 112becf0983b5c83efff07f20b458f2dbcdbd768fd46502e7ddd831b83550109)
-	@ $(eval U := https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.3.1.tar.gz)
-	@ $(eval T := BLAKE3-1.3.1.tar.gz)
-	$(QECHO) FETCH "$U"
-	$Q cd $>/external/ && rm -rf blake3* \
-	     $(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
-	$Q ln -s $(T:.tar.gz=)/c $>/external/blake3
-	$Q test -e $@ && touch $@
-ase/compress.cc: $>/external/blake3/blake3.h
-
 # == blake3impl.c ==
-$>/ase/blake3impl.c: $>/external/blake3/blake3.h	| $>/ase/
+$>/ase/blake3impl.c:		| $>/ase/
 	$(QGEN)
-	$Q echo -e '#ifdef __AVX512F__\n' ' #include "blake3/blake3_avx512.c"\n' '#endif' > $>/ase/blake3avx512.c
-	$Q echo -e '#ifdef __AVX2__\n'    ' #include "blake3/blake3_avx2.c"\n' '#endif'   > $>/ase/blake3avx2.c
-	$Q echo -e '#ifdef __SSE4_1__\n'  ' #include "blake3/blake3_sse41.c"\n' '#endif'  > $>/ase/blake3sse41.c
-	$Q echo -e '#ifdef __SSE2__\n'    ' #include "blake3/blake3_sse2.c"\n' '#endif'   > $>/ase/blake3sse2.c
+	$Q echo -e '#ifdef __AVX512F__\n' ' #include "external/blake3/c/blake3_avx512.c"\n' '#endif' > $>/ase/blake3avx512.c
+	$Q echo -e '#ifdef __AVX2__\n'    ' #include "external/blake3/c/blake3_avx2.c"\n' '#endif'   > $>/ase/blake3avx2.c
+	$Q echo -e '#ifdef __SSE4_1__\n'  ' #include "external/blake3/c/blake3_sse41.c"\n' '#endif'  > $>/ase/blake3sse41.c
+	$Q echo -e '#ifdef __SSE2__\n'    ' #include "external/blake3/c/blake3_sse2.c"\n' '#endif'   > $>/ase/blake3sse2.c
 	$Q echo -e '#ifndef __AVX512F__\n' ' #define BLAKE3_NO_AVX512\n' '#endif' >  $>/ase/blake3impl.c
 	$Q echo -e '#ifndef __AVX2__\n'    ' #define BLAKE3_NO_AVX2\n'   '#endif' >> $>/ase/blake3impl.c
 	$Q echo -e '#ifndef __SSE4_1__\n'  ' #define BLAKE3_NO_SSE41\n'  '#endif' >> $>/ase/blake3impl.c
 	$Q echo -e '#ifndef __SSE2__\n'    ' #define BLAKE3_NO_SSE2\n'   '#endif' >> $>/ase/blake3impl.c
-	$Q echo -e '#include "blake3/blake3.c"'                                   >> $>/ase/blake3impl.c
-	$Q echo -e '#include "blake3/blake3_portable.c"'                          >> $>/ase/blake3impl.c
-	$Q echo -e '#include "blake3/blake3_dispatch.c"'                          >> $>/ase/blake3impl.c
+	$Q echo -e '#include "external/blake3/c/blake3.c"'                                   >> $>/ase/blake3impl.c
+	$Q echo -e '#include "external/blake3/c/blake3_portable.c"'                          >> $>/ase/blake3impl.c
+	$Q echo -e '#include "external/blake3/c/blake3_dispatch.c"'                          >> $>/ase/blake3impl.c
 $>/ase/blake3avx512.c $>/ase/blake3avx2.c $>/ase/blake3sse41.c $>/ase/blake3sse2.c: $>/ase/blake3impl.c
 
 # == AnklangSynthEngine ==
+ASE_EXTERNAL_INCLUDES := $(strip	\
+	-Iexternal/clap/include		\
+	-Iexternal/rapidjson/include	\
+	-Iexternal/websocketpp		\
+)
 $(ase/AnklangSynthEngine.objects): $(ase/include.deps) $(ase/libase.deps)
-$(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= -Iexternal/ -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
+$(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
 $(lib/AnklangSynthEngine):						| $>/lib/
 $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
@@ -196,8 +136,8 @@ $(call BUILD_PROGRAM, \
 	$(lib/libase.so), \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl, \
 	../lib)
-# silence some websocketpp warnings
-$(ase/AnklangSynthEngine.objects): EXTRA_CXXFLAGS ::= -Wno-sign-promo
+# Work around legacy code in external/websocketpp/*.hpp
+ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec -Wno-sign-promo
 
 # == jackdriver.so ==
 lib/jackdriver.so	     ::= $>/lib/jackdriver.so

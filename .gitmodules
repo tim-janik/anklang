@@ -1,0 +1,18 @@
+[submodule "minizip-ng"]
+	path = external/minizip-ng
+	url = https://github.com/zlib-ng/minizip-ng.git
+[submodule "rapidjson"]
+	path = external/rapidjson
+	url = https://github.com/Tencent/rapidjson.git
+[submodule "clap"]
+	path = external/clap
+	url = https://github.com/free-audio/clap.git
+[submodule "websocketpp"]
+	path = external/websocketpp
+	url = https://github.com/zaphoyd/websocketpp.git
+[submodule "blake3"]
+	path = external/blake3
+	url = https://github.com/BLAKE3-team/BLAKE3.git
+[submodule "blobs4anklang"]
+	path = external/blobs4anklang
+	url = https://github.com/tim-janik/blobs4anklang.git

@@ -120,13 +120,21 @@ LS_TREE_LST ::= # added to by ls-tree.d
 $>/ls-tree.d: $(GITCOMMITDEPS)						| $>/
 	$(QGEN)
 	$Q if test -r .git ; then					\
-		git ls-tree -r --name-only HEAD	> $>/ls-tree.lst ;	\
+		git ls-tree -r --name-only HEAD				\
+		| grep -v '^external/' > $>/ls-tree.lst ;		\
 	   else								\
 		$(CP) ./ls-tree.lst $>/ls-tree.lst ;			\
 	   fi
 	$Q ( echo 'LS_TREE_LST += $$(strip '\\ 				\
 	     && sed 's/$$/ \\/' $>/ls-tree.lst && echo ')' ) > $@
 -include $>/ls-tree.d
+
+# == .submodule-stamp ==
+.submodule-stamp: $(GITCOMMITDEPS)
+	$(QGEN)
+	$Q test ! -e .git || git submodule update --init --recursive
+	$Q touch $@
+Makefile.mk: .submodule-stamp
 
 # == enduser targets ==
 all: FORCE
@@ -320,6 +328,14 @@ endef
 
 # == dist ==
 extradist ::= ChangeLog doc/copyright TAGS ls-tree.lst # doc/README
+dist_exclude := $(strip			\
+	external/rapidjson/bin		\
+	external/rapidjson/doc		\
+	external/websocketpp/test	\
+	external/clap/artwork		\
+	external/minizip-ng/test	\
+	external/minizip-ng/lib		\
+)
 dist: $(extradist:%=$>/%)
 	@$(eval distname := anklang-$(version_short))
 	$(QECHO) MAKE $(distname).tar.zst
@@ -327,6 +343,9 @@ dist: $(extradist:%=$>/%)
 	$Q rm -rf $>/dist/$(distname)/ && mkdir -p $>/dist/$(distname)/ assets/
 	$Q $(CP) $>/ChangeLog assets/ChangeLog-$(version_short).txt
 	$Q git archive -o assets/$(distname).tar --prefix=$(distname)/ HEAD
+	$Q git submodule foreach \
+	  'git archive --prefix="$(distname)/$${displaypath}/" -o tmp~.tar HEAD && tar Af "$(abspath assets/$(distname).tar)" tmp~.tar && rm tmp~.tar'
+	$Q tar f assets/$(distname).tar --delete $(dist_exclude:%=$(distname)/%)
 	$Q cd $>/ && $(CP) --parents $(extradist) $(abspath $>/dist/$(distname))
 	$Q tar f assets/$(distname).tar --delete $(distname)/NEWS.md \
 	&& misc/mknews.sh				>  $>/dist/$(distname)/NEWS.md \

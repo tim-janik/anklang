@@ -1,7 +1,6 @@
 /config-defaults\.mk
 /out/
 /TAGS
-/TODO\.md
-/BACKLOG\.md
 /rand/
+/\.submodule-stamp
 /\.dlcache/

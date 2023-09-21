@@ -159,26 +159,22 @@ $>/ui/material-icons.css: ui/Makefile.mk		| $>/ui/ $>/node_modules/.npm.done
 	$Q mv $@.tmp $@
 UI/GLOBALSCSS_IMPORTS += $>/ui/material-icons.css
 # AnklangIcons
-$>/ui/AnklangIcons.css: ui/Makefile.mk			| $>/ui/
-	$(QECHO) FETCH AnklangIcons
-	@ $(eval S := ae0daeee324a1be1051f722e5393cdef445b5209119b97330ab92f9052b7206a https://github.com/tim-janik/anklang/releases/download/buildassets-v0/anklangicons-201123.1.tgz)
-	@ $(eval H := $(firstword $(S))) $(eval U := $(lastword $(S))) $(eval T := $(notdir $(U)))
-	$Q cd $>/ui/ $(call AND_DOWNLOAD_SHAURL, $H, $U)
-	$Q rm -fr $>/ui/anklangicons/ && tar -xf $>/ui/$T -C $>/ui/ && rm $>/ui/$T
-	$Q cd $>/ui/anklangicons/ && $(CP) AnklangIcons.woff2 .. && $(CP) AnklangIcons.css ../AnklangIcons.css.tmp
-	$Q sed -e 's|@font-face *{|@font-face { font-display: block; |' -i $>/ui/AnklangIcons.css.tmp
+$>/ui/assets/AnklangIcons.css: ui/Makefile.mk			| $>/ui/assets/
+	$(QGEN)
+	$Q rm -fr $>/ui/anklangicons/ && tar xf external/blobs4anklang/icons/anklangicons-201123.1.tgz -C $>/ui/
+	$Q cd $>/ui/anklangicons/ && $(CP) AnklangIcons.woff2 ../assets/ && $(CP) AnklangIcons.css ../assets/AnklangIcons.css.tmp
+	$Q sed -e 's|@font-face *{|@font-face { font-display: block; |' -i $>/ui/assets/AnklangIcons.css.tmp
 	$Q rm -r $>/ui/anklangicons/ && mv $@.tmp $@
-UI/GLOBALSCSS_IMPORTS += $>/ui/AnklangIcons.css
+UI/GLOBALSCSS_IMPORTS += $>/ui/assets/AnklangIcons.css
 # Fork-Awesome
-$>/ui/forkawesome.css: ui/Makefile.mk		| $>/ui/
-	$(QECHO) FETCH Fork-Awesome
-	$Q cd $>/ui/ $(call foreachpair, AND_DOWNLOAD_SHAURL, \
-		844517a2bc5430242cb857e56b6dccf002f469c4c1b295ed8d0b7211fb452f50 https://raw.githubusercontent.com/ForkAwesome/Fork-Awesome/b0605a81632452818bf19c8fa97469da1206b52b/fonts/forkawesome-webfont.woff2 \
-		630b0e84fa43579f7e97a26fd47d4b70cb5516ca7e6e73393597d12ca249a8ee https://raw.githubusercontent.com/ForkAwesome/Fork-Awesome/b0605a81632452818bf19c8fa97469da1206b52b/css/fork-awesome.css)
+$>/ui/assets/fork-awesome.css: ui/Makefile.mk		| $>/node_modules/.npm.done $>/ui/assets/
+	$(QGEN)
+	$Q $(CP) $>/node_modules/fork-awesome/fonts/forkawesome-webfont.woff2 $>/ui/assets/
 	$Q sed  -e "/^ *src: *url/s,src: *url(.*);,src: url('forkawesome-webfont.woff2');," \
-		-e 's|@font-face *{|@font-face { font-display: block; |' -i $>/ui/fork-awesome.css
-	$Q mv $>/ui/fork-awesome.css $@
-UI/GLOBALSCSS_IMPORTS += $>/ui/forkawesome.css
+		-e 's|@font-face *{|@font-face { font-display: block; |' \
+		$>/node_modules/fork-awesome/css/fork-awesome.css > $@.tmp
+	$Q mv $@.tmp $@
+UI/GLOBALSCSS_IMPORTS += $>/ui/assets/fork-awesome.css
 # ui/cursors/
 $>/ui/cursors/cursors.css: $(wildcard ui/cursors/*) Makefile.mk		| $>/ui/cursors/
 	$(QECHO) COPY $<
@@ -258,16 +254,9 @@ $(ui/cjs.targets): $>/ui/%.cjs: ui/%.js	| $>/ui/b/
 $>/ui/.build1-stamp: $(ui/cjs.targets)
 
 # == Inter Typeface ==
-$>/ui/InterVariable.woff2: ui/Makefile.mk		| $>/ui/
-	$(QECHO) FETCH Inter Typeface
-	$Q $(RM) -r $>/ui/tmp-inter/ && mkdir $>/ui/tmp-inter/
-	$Q cd $>/ui/tmp-inter/ $(call foreachpair, AND_DOWNLOAD_SHAURL, \
-		41b1253ed9b5e9cb5093249c8dd71f0094cb4dfb4ef92ec69125fcb90566e4c7 https://github.com/rsms/inter/releases/download/v4.0-beta9g/Inter-4.0-beta9g.zip )
-	$Q cd $>/ui/tmp-inter/ \
-		&& unzip -q Inter-4.0-beta9g.zip \
-		&& mv web/InterVariable.woff2 ..
-	$Q $(RM) -r $>/ui/tmp-inter/
-	$Q touch $@
+$>/ui/InterVariable.woff2: external/blobs4anklang/fonts/InterVariable.woff2	| $>/ui/
+	$(QGEN)
+	$Q $(CP) $< $@
 $>/ui/.build1-stamp: $>/ui/InterVariable.woff2
 
 # == $>/ui/browserified.js ==
