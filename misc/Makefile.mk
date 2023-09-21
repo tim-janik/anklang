@@ -104,16 +104,17 @@ check-copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst
 CHECK_TARGETS += $(if $(HAVE_GIT), check-copyright)
 
 # == appimagetools/appimage-runtime-zstd ==
-$>/appimagetools/appimage-runtime-zstd:			| $>/appimagetools/ $(ABSPATH_DLCACHE)/
+$>/appimagetools/appimage-runtime-zstd:			| $>/appimagetools/
 	$(QECHO) FETCH linuxdeploy, appimage-runtime-zstd
-	$Q test -e $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage \
-	|| ( curl -sfSL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -o $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage.tmp \
-	     && chmod +x $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage.tmp \
-	     && mv $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage.tmp $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage )
-	$Q test -e $(ABSPATH_DLCACHE)/appimage-runtime-zstd \
-	|| ( curl -sfSL https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd -o $(ABSPATH_DLCACHE)/appimage-runtime-zstd.tmp \
-	     && mv $(ABSPATH_DLCACHE)/appimage-runtime-zstd.tmp $(ABSPATH_DLCACHE)/appimage-runtime-zstd )
-	$Q $(CP) $(ABSPATH_DLCACHE)/linuxdeploy-x86_64.AppImage $(ABSPATH_DLCACHE)/appimage-runtime-zstd $(@D)
+	$Q mkdir -p .dlcache/
+	$Q test -e .dlcache/linuxdeploy-x86_64.AppImage \
+	|| ( curl -sfSL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -o .dlcache/linuxdeploy-x86_64.AppImage.tmp \
+	     && chmod +x .dlcache/linuxdeploy-x86_64.AppImage.tmp \
+	     && mv .dlcache/linuxdeploy-x86_64.AppImage.tmp .dlcache/linuxdeploy-x86_64.AppImage )
+	$Q test -e .dlcache/appimage-runtime-zstd \
+	|| ( curl -sfSL https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd -o .dlcache/appimage-runtime-zstd.tmp \
+	     && mv .dlcache/appimage-runtime-zstd.tmp .dlcache/appimage-runtime-zstd )
+	$Q $(CP) .dlcache/linuxdeploy-x86_64.AppImage .dlcache/appimage-runtime-zstd $(@D)
 
 # == mkassets ==
 # Let misc/mkassets.sh do the work, just pre-cache needed downloads
