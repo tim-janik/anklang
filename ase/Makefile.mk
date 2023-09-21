@@ -105,32 +105,20 @@ int main (int argc, const char *argv[]) {
 }
 endef
 
-# == external/blake3 ==
-$>/external/blake3/blake3.h: ase/Makefile.mk		| $>/external/
-	@ $(eval H := 112becf0983b5c83efff07f20b458f2dbcdbd768fd46502e7ddd831b83550109)
-	@ $(eval U := https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.3.1.tar.gz)
-	@ $(eval T := BLAKE3-1.3.1.tar.gz)
-	$(QECHO) FETCH "$U"
-	$Q cd $>/external/ && rm -rf blake3* \
-	     $(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
-	$Q ln -s $(T:.tar.gz=)/c $>/external/blake3
-	$Q test -e $@ && touch $@
-ase/compress.cc: $>/external/blake3/blake3.h
-
 # == blake3impl.c ==
-$>/ase/blake3impl.c: $>/external/blake3/blake3.h	| $>/ase/
+$>/ase/blake3impl.c:		| $>/ase/
 	$(QGEN)
-	$Q echo -e '#ifdef __AVX512F__\n' ' #include "blake3/blake3_avx512.c"\n' '#endif' > $>/ase/blake3avx512.c
-	$Q echo -e '#ifdef __AVX2__\n'    ' #include "blake3/blake3_avx2.c"\n' '#endif'   > $>/ase/blake3avx2.c
-	$Q echo -e '#ifdef __SSE4_1__\n'  ' #include "blake3/blake3_sse41.c"\n' '#endif'  > $>/ase/blake3sse41.c
-	$Q echo -e '#ifdef __SSE2__\n'    ' #include "blake3/blake3_sse2.c"\n' '#endif'   > $>/ase/blake3sse2.c
+	$Q echo -e '#ifdef __AVX512F__\n' ' #include "external/blake3/c/blake3_avx512.c"\n' '#endif' > $>/ase/blake3avx512.c
+	$Q echo -e '#ifdef __AVX2__\n'    ' #include "external/blake3/c/blake3_avx2.c"\n' '#endif'   > $>/ase/blake3avx2.c
+	$Q echo -e '#ifdef __SSE4_1__\n'  ' #include "external/blake3/c/blake3_sse41.c"\n' '#endif'  > $>/ase/blake3sse41.c
+	$Q echo -e '#ifdef __SSE2__\n'    ' #include "external/blake3/c/blake3_sse2.c"\n' '#endif'   > $>/ase/blake3sse2.c
 	$Q echo -e '#ifndef __AVX512F__\n' ' #define BLAKE3_NO_AVX512\n' '#endif' >  $>/ase/blake3impl.c
 	$Q echo -e '#ifndef __AVX2__\n'    ' #define BLAKE3_NO_AVX2\n'   '#endif' >> $>/ase/blake3impl.c
 	$Q echo -e '#ifndef __SSE4_1__\n'  ' #define BLAKE3_NO_SSE41\n'  '#endif' >> $>/ase/blake3impl.c
 	$Q echo -e '#ifndef __SSE2__\n'    ' #define BLAKE3_NO_SSE2\n'   '#endif' >> $>/ase/blake3impl.c
-	$Q echo -e '#include "blake3/blake3.c"'                                   >> $>/ase/blake3impl.c
-	$Q echo -e '#include "blake3/blake3_portable.c"'                          >> $>/ase/blake3impl.c
-	$Q echo -e '#include "blake3/blake3_dispatch.c"'                          >> $>/ase/blake3impl.c
+	$Q echo -e '#include "external/blake3/c/blake3.c"'                                   >> $>/ase/blake3impl.c
+	$Q echo -e '#include "external/blake3/c/blake3_portable.c"'                          >> $>/ase/blake3impl.c
+	$Q echo -e '#include "external/blake3/c/blake3_dispatch.c"'                          >> $>/ase/blake3impl.c
 $>/ase/blake3avx512.c $>/ase/blake3avx2.c $>/ase/blake3sse41.c $>/ase/blake3sse2.c: $>/ase/blake3impl.c
 
 # == AnklangSynthEngine ==
