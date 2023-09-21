@@ -31,9 +31,6 @@ ase/AnklangSynthEngine.objects	::= $(sort \
 ase/AnklangSynthEngine.objects	 += $(devices/4ase.objects)
 ALL_TARGETS += $(lib/AnklangSynthEngine)
 
-# Work around legacy code in external/websocketpp/*.hpp
-ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec
-
 # == AnklangSynthEngine-fma ==
 $(lib/AnklangSynthEngine)-fma:
 	$(QGEN)
@@ -108,19 +105,6 @@ int main (int argc, const char *argv[]) {
 }
 endef
 
-# == external/websocketpp ==
-$>/external/websocketpp/server.hpp: ase/Makefile.mk	| $>/external/
-	@ $(eval H := 6ce889d85ecdc2d8fa07408d6787e7352510750daa66b5ad44aacb47bea76755)
-	@ $(eval U := https://github.com/zaphoyd/websocketpp/archive/0.8.2.tar.gz)
-	@ $(eval T := websocketpp-0.8.2.tar.gz)
-	$(QECHO) FETCH "$U"
-	$Q cd $>/external/ && rm -rf websocketpp* \
-		$(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
-	$Q ln -s $(T:.tar.gz=)/websocketpp $>/external/websocketpp
-	$Q test -e $@ && touch $@
-$>/external/websocketpp/config/asio_no_tls.hpp: $>/external/websocketpp/server.hpp
-ase/websocket.cc: $>/external/websocketpp/config/asio_no_tls.hpp
-
 # == external/blake3 ==
 $>/external/blake3/blake3.h: ase/Makefile.mk		| $>/external/
 	@ $(eval H := 112becf0983b5c83efff07f20b458f2dbcdbd768fd46502e7ddd831b83550109)
@@ -150,8 +134,13 @@ $>/ase/blake3impl.c: $>/external/blake3/blake3.h	| $>/ase/
 $>/ase/blake3avx512.c $>/ase/blake3avx2.c $>/ase/blake3sse41.c $>/ase/blake3sse2.c: $>/ase/blake3impl.c
 
 # == AnklangSynthEngine ==
+ASE_EXTERNAL_INCLUDES := $(strip	\
+	-Iexternal/clap/include		\
+	-Iexternal/rapidjson/include	\
+	-Iexternal/websocketpp		\
+)
 $(ase/AnklangSynthEngine.objects): $(ase/include.deps) $(ase/libase.deps)
-$(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= -Iexternal/ -Iexternal/rapidjson/include -Iexternal/clap/include -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
+$(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
 $(lib/AnklangSynthEngine):						| $>/lib/
 $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
@@ -159,8 +148,8 @@ $(call BUILD_PROGRAM, \
 	$(lib/libase.so), \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl, \
 	../lib)
-# silence some websocketpp warnings
-$(ase/AnklangSynthEngine.objects): EXTRA_CXXFLAGS ::= -Wno-sign-promo
+# Work around legacy code in external/websocketpp/*.hpp
+ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec -Wno-sign-promo
 
 # == jackdriver.so ==
 lib/jackdriver.so	     ::= $>/lib/jackdriver.so
