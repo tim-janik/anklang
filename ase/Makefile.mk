@@ -11,7 +11,6 @@ ase/noglob.cc			::= ase/main.cc $(ase/gtk2wrap.sources) $(ase/jackdriver.sources
 ase/libsources.cc		::= $(filter-out $(ase/noglob.cc), $(wildcard ase/*.cc))
 ase/libsources.c		::= $(wildcard ase/*.c)
 ase/include.deps		::= $>/ase/sysconfig.h
-ase/include.deps		 += $>/external/rapidjson/rapidjson.h
 
 # == AnklangSynthEngine definitions ==
 lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine
@@ -122,18 +121,6 @@ $>/external/websocketpp/server.hpp: ase/Makefile.mk	| $>/external/
 $>/external/websocketpp/config/asio_no_tls.hpp: $>/external/websocketpp/server.hpp
 ase/websocket.cc: $>/external/websocketpp/config/asio_no_tls.hpp
 
-# == external/rapidjson ==
-$>/external/rapidjson/rapidjson.h: ase/Makefile.mk	| $>/external/
-	@ $(eval H := b9290a9a6d444c8e049bd589ab804e0ccf2b05dc5984a19ed5ae75d090064806)
-	@ $(eval U := https://github.com/Tencent/rapidjson/archive/232389d4f1012dddec4ef84861face2d2ba85709.tar.gz)
-	@ $(eval T := rapidjson-232389d4f1012dddec4ef84861face2d2ba85709.tar.gz)
-	$(QECHO) FETCH "$U"
-	$Q cd $>/external/ && rm -rf rapidjson* \
-		$(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
-	$Q ln -s $(T:.tar.gz=)/include/rapidjson $>/external/rapidjson
-	$Q test -e $@ && touch $@
-$(wildcard ase/*.cc): $>/external/rapidjson/rapidjson.h
-
 # == external/clap ==
 $>/external/clap/clap.h: ase/Makefile.mk		| $>/external/
 	@ $(eval H := eef67a38df6c20fd4cb79698772d35d30aefc2e1a8d5275a5169f58cd530333e)
@@ -176,7 +163,7 @@ $>/ase/blake3avx512.c $>/ase/blake3avx2.c $>/ase/blake3sse41.c $>/ase/blake3sse2
 
 # == AnklangSynthEngine ==
 $(ase/AnklangSynthEngine.objects): $(ase/include.deps) $(ase/libase.deps)
-$(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= -Iexternal/ -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
+$(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= -Iexternal/ -Iexternal/rapidjson/include -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
 $(lib/AnklangSynthEngine):						| $>/lib/
 $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
