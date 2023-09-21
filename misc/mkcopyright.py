@@ -94,7 +94,11 @@ year_digits = re.compile (r'([1-9][0-9][0-9][0-9]\b|[0-9][0-9]\b)')
 year_range = re.compile (r'([1-9][0-9][0-9][0-9]|[0-9][0-9])\b\s*[—-]\s*([1-9][0-9][0-9][0-9]|[0-9][0-9])\b')
 
 def open_as_utf8 (filename):
-  for line in open (filename, 'rb'):
+  try:
+    ofile = open (filename, 'rb')
+  except IsADirectoryError:
+    return # ignore dirs
+  for line in ofile:
     try:        string = line.decode ('utf-8')
     except:     string = None
     if string != None: yield string
