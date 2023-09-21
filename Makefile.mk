@@ -328,6 +328,14 @@ endef
 
 # == dist ==
 extradist ::= ChangeLog doc/copyright TAGS ls-tree.lst # doc/README
+dist_exclude := $(strip			\
+	external/rapidjson/bin		\
+	external/rapidjson/doc		\
+	external/websocketpp/test	\
+	external/clap/artwork		\
+	external/minizip-ng/test	\
+	external/minizip-ng/lib		\
+)
 dist: $(extradist:%=$>/%)
 	@$(eval distname := anklang-$(version_short))
 	$(QECHO) MAKE $(distname).tar.zst
@@ -337,6 +345,7 @@ dist: $(extradist:%=$>/%)
 	$Q git archive -o assets/$(distname).tar --prefix=$(distname)/ HEAD
 	$Q git submodule foreach \
 	  'git archive --prefix="$(distname)/$${displaypath}/" -o tmp~.tar HEAD && tar Af "$(abspath assets/$(distname).tar)" tmp~.tar && rm tmp~.tar'
+	$Q tar f assets/$(distname).tar --delete $(dist_exclude:%=$(distname)/%)
 	$Q cd $>/ && $(CP) --parents $(extradist) $(abspath $>/dist/$(distname))
 	$Q tar f assets/$(distname).tar --delete $(distname)/NEWS.md \
 	&& misc/mknews.sh				>  $>/dist/$(distname)/NEWS.md \
