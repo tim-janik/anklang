@@ -335,6 +335,8 @@ dist: $(extradist:%=$>/%)
 	$Q rm -rf $>/dist/$(distname)/ && mkdir -p $>/dist/$(distname)/ assets/
 	$Q $(CP) $>/ChangeLog assets/ChangeLog-$(version_short).txt
 	$Q git archive -o assets/$(distname).tar --prefix=$(distname)/ HEAD
+	$Q git submodule foreach \
+	  'git archive --prefix="$(distname)/$${displaypath}/" -o tmp~.tar HEAD && tar Af "$(abspath assets/$(distname).tar)" tmp~.tar && rm tmp~.tar'
 	$Q cd $>/ && $(CP) --parents $(extradist) $(abspath $>/dist/$(distname))
 	$Q tar f assets/$(distname).tar --delete $(distname)/NEWS.md \
 	&& misc/mknews.sh				>  $>/dist/$(distname)/NEWS.md \
