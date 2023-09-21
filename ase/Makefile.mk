@@ -109,18 +109,6 @@ int main (int argc, const char *argv[]) {
 }
 endef
 
-# == external/minizip ==
-$>/external/minizip/mz_zip.h: ase/Makefile.mk		| $>/external/
-	@ $(eval H := 80d745e1c8caf6f81f6457403b0d9212e8a138b2badd6060e8a5da8583da2551)
-	@ $(eval U := https://github.com/zlib-ng/minizip-ng/archive/refs/tags/2.9.0.tar.gz)
-	@ $(eval T := minizip-ng-2.9.0.tar.gz)
-	$(QECHO) FETCH "$U"
-	$Q cd $>/external/ && rm -rf minizip* \
-		$(call AND_DOWNLOAD_SHAURL, $H, $U, $T) && tar xf $T && rm $T
-	$Q ln -s $(T:.tar.gz=) $>/external/minizip
-	$Q test -e $@ && touch $@
-$(wildcard ase/*.cc ase/*.c): $>/external/minizip/mz_zip.h
-
 # == external/websocketpp ==
 $>/external/websocketpp/server.hpp: ase/Makefile.mk	| $>/external/
 	@ $(eval H := 6ce889d85ecdc2d8fa07408d6787e7352510750daa66b5ad44aacb47bea76755)
