@@ -170,15 +170,14 @@ $>/ui/AnklangIcons.css: ui/Makefile.mk			| $>/ui/
 	$Q rm -r $>/ui/anklangicons/ && mv $@.tmp $@
 UI/GLOBALSCSS_IMPORTS += $>/ui/AnklangIcons.css
 # Fork-Awesome
-$>/ui/forkawesome.css: ui/Makefile.mk		| $>/ui/
-	$(QECHO) FETCH Fork-Awesome
-	$Q cd $>/ui/ $(call foreachpair, AND_DOWNLOAD_SHAURL, \
-		844517a2bc5430242cb857e56b6dccf002f469c4c1b295ed8d0b7211fb452f50 https://raw.githubusercontent.com/ForkAwesome/Fork-Awesome/b0605a81632452818bf19c8fa97469da1206b52b/fonts/forkawesome-webfont.woff2 \
-		630b0e84fa43579f7e97a26fd47d4b70cb5516ca7e6e73393597d12ca249a8ee https://raw.githubusercontent.com/ForkAwesome/Fork-Awesome/b0605a81632452818bf19c8fa97469da1206b52b/css/fork-awesome.css)
+$>/ui/assets/fork-awesome.css: ui/Makefile.mk		| $>/node_modules/.npm.done $>/ui/assets/
+	$(QGEN)
+	$Q $(CP) $>/node_modules/fork-awesome/fonts/forkawesome-webfont.woff2 $>/ui/assets/
 	$Q sed  -e "/^ *src: *url/s,src: *url(.*);,src: url('forkawesome-webfont.woff2');," \
-		-e 's|@font-face *{|@font-face { font-display: block; |' -i $>/ui/fork-awesome.css
-	$Q mv $>/ui/fork-awesome.css $@
-UI/GLOBALSCSS_IMPORTS += $>/ui/forkawesome.css
+		-e 's|@font-face *{|@font-face { font-display: block; |' \
+		$>/node_modules/fork-awesome/css/fork-awesome.css > $@.tmp
+	$Q mv $@.tmp $@
+UI/GLOBALSCSS_IMPORTS += $>/ui/assets/fork-awesome.css
 # ui/cursors/
 $>/ui/cursors/cursors.css: $(wildcard ui/cursors/*) Makefile.mk		| $>/ui/cursors/
 	$(QECHO) COPY $<
