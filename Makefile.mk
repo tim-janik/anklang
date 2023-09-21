@@ -129,6 +129,13 @@ $>/ls-tree.d: $(GITCOMMITDEPS)						| $>/
 	     && sed 's/$$/ \\/' $>/ls-tree.lst && echo ')' ) > $@
 -include $>/ls-tree.d
 
+# == .submodule-stamp ==
+.submodule-stamp: $(GITCOMMITDEPS)
+	$(QGEN)
+	$Q git submodule update --init --recursive
+	$Q touch $@
+Makefile.mk: .submodule-stamp
+
 # == enduser targets ==
 all: FORCE
 check: FORCE
