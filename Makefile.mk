@@ -120,7 +120,8 @@ LS_TREE_LST ::= # added to by ls-tree.d
 $>/ls-tree.d: $(GITCOMMITDEPS)						| $>/
 	$(QGEN)
 	$Q if test -r .git ; then					\
-		git ls-tree -r --name-only HEAD	> $>/ls-tree.lst ;	\
+		git ls-tree -r --name-only HEAD				\
+		| grep -v '^external/' > $>/ls-tree.lst ;		\
 	   else								\
 		$(CP) ./ls-tree.lst $>/ls-tree.lst ;			\
 	   fi
