@@ -4,3 +4,6 @@
 [submodule "rapidjson"]
 	path = external/rapidjson
 	url = https://github.com/Tencent/rapidjson.git
+[submodule "clap"]
+	path = external/clap
+	url = https://github.com/free-audio/clap.git
