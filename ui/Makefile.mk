@@ -159,16 +159,13 @@ $>/ui/material-icons.css: ui/Makefile.mk		| $>/ui/ $>/node_modules/.npm.done
 	$Q mv $@.tmp $@
 UI/GLOBALSCSS_IMPORTS += $>/ui/material-icons.css
 # AnklangIcons
-$>/ui/AnklangIcons.css: ui/Makefile.mk			| $>/ui/
-	$(QECHO) FETCH AnklangIcons
-	@ $(eval S := ae0daeee324a1be1051f722e5393cdef445b5209119b97330ab92f9052b7206a https://github.com/tim-janik/anklang/releases/download/buildassets-v0/anklangicons-201123.1.tgz)
-	@ $(eval H := $(firstword $(S))) $(eval U := $(lastword $(S))) $(eval T := $(notdir $(U)))
-	$Q cd $>/ui/ $(call AND_DOWNLOAD_SHAURL, $H, $U)
-	$Q rm -fr $>/ui/anklangicons/ && tar -xf $>/ui/$T -C $>/ui/ && rm $>/ui/$T
-	$Q cd $>/ui/anklangicons/ && $(CP) AnklangIcons.woff2 .. && $(CP) AnklangIcons.css ../AnklangIcons.css.tmp
-	$Q sed -e 's|@font-face *{|@font-face { font-display: block; |' -i $>/ui/AnklangIcons.css.tmp
+$>/ui/assets/AnklangIcons.css: ui/Makefile.mk			| $>/ui/assets/
+	$(QGEN)
+	$Q rm -fr $>/ui/anklangicons/ && tar xf external/blobs4anklang/icons/anklangicons-201123.1.tgz -C $>/ui/
+	$Q cd $>/ui/anklangicons/ && $(CP) AnklangIcons.woff2 ../assets/ && $(CP) AnklangIcons.css ../assets/AnklangIcons.css.tmp
+	$Q sed -e 's|@font-face *{|@font-face { font-display: block; |' -i $>/ui/assets/AnklangIcons.css.tmp
 	$Q rm -r $>/ui/anklangicons/ && mv $@.tmp $@
-UI/GLOBALSCSS_IMPORTS += $>/ui/AnklangIcons.css
+UI/GLOBALSCSS_IMPORTS += $>/ui/assets/AnklangIcons.css
 # Fork-Awesome
 $>/ui/assets/fork-awesome.css: ui/Makefile.mk		| $>/node_modules/.npm.done $>/ui/assets/
 	$(QGEN)
