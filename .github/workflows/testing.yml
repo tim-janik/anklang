@@ -28,7 +28,7 @@ jobs:
         misc/cirun -u 1000 misc/version.sh
     - name: 'Build Dist Assets'
       run: |
-        misc/cirun -u 1000 misc/mkassets.sh
+        misc/cirun -u 1000 make mkassets
     - uses: actions/upload-artifact@v3
       with: { name: assets, path: assets/ }
     - name: 'Upload API Docs' # http://tim-janik.github.io/docs/anklang
