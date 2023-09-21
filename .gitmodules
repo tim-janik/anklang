@@ -1,3 +1,6 @@
 [submodule "minizip-ng"]
 	path = external/minizip-ng
 	url = https://github.com/zlib-ng/minizip-ng.git
+[submodule "rapidjson"]
+	path = external/rapidjson
+	url = https://github.com/Tencent/rapidjson.git
