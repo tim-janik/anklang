@@ -423,7 +423,7 @@ public:
         mz_zip_file *file_info = nullptr;
         if (MZ_OK == mz_zip_reader_entry_get_info (reader, &file_info) && file_info->filename && file_info->filename[0])
           {
-            if (!strchr (file_info->filename, '/') && // see: https://github.com/nmoinvaz/minizip/issues/433
+            if (!strchr (file_info->filename, '/') && // see: https://github.com/zlib-ng/minizip-ng/issues/433
                 !strchr (file_info->filename, '\\'))
               list.push_back (file_info->filename);
           }
