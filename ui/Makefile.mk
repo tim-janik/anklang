@@ -258,16 +258,9 @@ $(ui/cjs.targets): $>/ui/%.cjs: ui/%.js	| $>/ui/b/
 $>/ui/.build1-stamp: $(ui/cjs.targets)
 
 # == Inter Typeface ==
-$>/ui/InterVariable.woff2: ui/Makefile.mk		| $>/ui/
-	$(QECHO) FETCH Inter Typeface
-	$Q $(RM) -r $>/ui/tmp-inter/ && mkdir $>/ui/tmp-inter/
-	$Q cd $>/ui/tmp-inter/ $(call foreachpair, AND_DOWNLOAD_SHAURL, \
-		41b1253ed9b5e9cb5093249c8dd71f0094cb4dfb4ef92ec69125fcb90566e4c7 https://github.com/rsms/inter/releases/download/v4.0-beta9g/Inter-4.0-beta9g.zip )
-	$Q cd $>/ui/tmp-inter/ \
-		&& unzip -q Inter-4.0-beta9g.zip \
-		&& mv web/InterVariable.woff2 ..
-	$Q $(RM) -r $>/ui/tmp-inter/
-	$Q touch $@
+$>/ui/InterVariable.woff2: external/blobs4anklang/fonts/InterVariable.woff2	| $>/ui/
+	$(QGEN)
+	$Q $(CP) $< $@
 $>/ui/.build1-stamp: $>/ui/InterVariable.woff2
 
 # == $>/ui/browserified.js ==
