@@ -29,7 +29,7 @@ jobs:
     - name: 'Build Dist Assets'
       run: |
         misc/cirun -u 1000 make mkassets
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v3.1.3
       with: { name: assets, path: assets/ }
     - name: 'Upload API Docs' # http://tim-janik.github.io/docs/anklang
       if: github.ref == 'refs/heads/trunk'
@@ -59,7 +59,7 @@ jobs:
         $CIMAKE -j`nproc` all check
         $CIMAKE x11test-v
     # Artifact upload from x11test
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v3.1.3
       if: always()
       with:
         name: x11test
@@ -89,7 +89,7 @@ jobs:
       run: |
         $CIMAKE -j`nproc` clang-tidy
     # Artifact upload from clang-tidy
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v3.1.3
       with: { name: clang-tidy, path: out/clang-tidy/ }
 
   Release-Upload:
