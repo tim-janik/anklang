@@ -31,6 +31,8 @@ jobs:
         misc/cirun -u 1000 make mkassets
     - uses: actions/upload-artifact@v3.1.3
       with: { name: assets, path: assets/ }
+    - uses: actions/upload-artifact@v3.1.3
+      with: { name: dist-tarball, path: assets/*.tar* }
     - name: 'Upload API Docs' # http://tim-janik.github.io/docs/anklang
       if: github.ref == 'refs/heads/trunk'
       run: |
