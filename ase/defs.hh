@@ -30,7 +30,7 @@ ASE_STRUCT_DECLS (ClapParamUpdate);
 ASE_STRUCT_DECLS (ClipNote);
 ASE_STRUCT_DECLS (DeviceInfo);
 ASE_STRUCT_DECLS (DriverEntry);
-ASE_STRUCT_DECLS (ParamInfo);
+ASE_STRUCT_DECLS (Parameter);
 ASE_STRUCT_DECLS (Resource);
 ASE_STRUCT_DECLS (TelemetryField);
 ASE_STRUCT_DECLS (TelemetrySegment);

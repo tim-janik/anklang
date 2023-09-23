@@ -12,168 +12,6 @@
 
 namespace Ase {
 
-// == ParamInfo ==
-static constexpr uint PTAG_FLOATS = 1;
-static constexpr uint PTAG_CENTRIES = 2;
-
-ParamInfo::ParamInfo (ParamId pid, uint porder) :
-  order (porder), union_tag (0)
-{
-  memset (&u, 0, sizeof (u));
-}
-
-ParamInfo::~ParamInfo()
-{
-  release();
-}
-
-void
-ParamInfo::copy_fields (const ParamInfo &src)
-{
-  ident = src.ident;
-  label = src.label;
-  nick = src.nick;
-  unit = src.unit;
-  hints = src.hints;
-  group = src.group;
-  blurb = src.blurb;
-  description = src.description;
-  switch (src.union_tag)
-    {
-    case PTAG_FLOATS:
-      set_range (src.u.fmin, src.u.fmax, src.u.fstep);
-      break;
-    case PTAG_CENTRIES:
-      set_choices (*src.u.centries());
-      break;
-    }
-}
-
-void
-ParamInfo::release()
-{
-  const bool destroy = union_tag == PTAG_CENTRIES;
-  union_tag = 0;
-  if (destroy)
-    u.centries()->~ChoiceS();
-}
-
-/// Clear all ParamInfo fields.
-void
-ParamInfo::clear ()
-{
-  ident = "";
-  label = "";
-  nick = "";
-  unit = "";
-  hints = "";
-  group = "";
-  blurb = "";
-  description = "";
-  release();
-}
-
-/// Get parameter stepping or 0 if not quantized.
-double
-ParamInfo::get_stepping () const
-{
-  switch (union_tag)
-    {
-    case PTAG_FLOATS:
-      return u.fstep;
-    case PTAG_CENTRIES:
-      return 1;
-    default:
-      return 0;
-    }
-}
-
-/// Get initial parameter value.
-double
-ParamInfo::get_initial () const
-{
-  return initial_;
-}
-
-/// Get parameter range minimum and maximum.
-ParamInfo::MinMax
-ParamInfo::get_minmax () const
-{
-  switch (union_tag)
-    {
-    case PTAG_FLOATS:
-      return { u.fmin, u.fmax };
-    case PTAG_CENTRIES:
-      return { 0, u.centries()->size() - 1 };
-    default:
-      return { NAN, NAN };
-    }
-}
-
-/// Get parameter range properties.
-void
-ParamInfo::get_range (double &fmin, double &fmax, double &fstep) const
-{
-  switch (union_tag)
-    {
-    case PTAG_FLOATS:
-      fmin = u.fmin;
-      fmax = u.fmax;
-      fstep = u.fstep;
-      break;
-    case PTAG_CENTRIES:
-      {
-        auto mm = get_minmax ();
-        fmin = mm.first;
-        fmax = mm.second;
-      }
-      fstep = 1;
-      break;
-    default:
-      fmin = NAN;
-      fmax = NAN;
-      fstep = NAN;
-      break;
-    }
-}
-
-/// Assign range properties to parameter.
-void
-ParamInfo::set_range (double fmin, double fmax, double fstep)
-{
-  release();
-  union_tag = PTAG_FLOATS;
-  u.fmin = fmin;
-  u.fmax = fmax;
-  u.fstep = fstep;
-}
-
-/// Get parameter choice list.
-const ChoiceS&
-ParamInfo::get_choices () const
-{
-  if (union_tag == PTAG_CENTRIES)
-    return *u.centries();
-  static const ChoiceS empty;
-  return empty;
-}
-
-/// Assign choice list to parameter via vector move.
-void
-ParamInfo::set_choices (ChoiceS &&centries)
-{
-  release();
-  union_tag = PTAG_CENTRIES;
-  new (u.centries()) ChoiceS (std::move (centries));
-}
-
-/// Assign choice list to parameter via deep copy.
-void
-ParamInfo::set_choices (const ChoiceS &centries)
-{
-  set_choices (ChoiceS (centries));
-}
-
 // == PBus ==
 AudioProcessor::PBus::PBus (const String &ident, const String &uilabel, SpeakerArrangement sa) :
   ibus (ident, uilabel, sa)
@@ -339,36 +177,37 @@ construct_hints (String hints, double pmin, double pmax, const String &more = ""
 ParamId
 AudioProcessor::nextid () const
 {
-  const uint pmax = params_.size();
-  const uint last = params_.empty() ? 0 : uint (params_.back().id);
+  const uint pmax = pparams_.size();
+  const uint last = pparams_.empty() ? 0 : uint (pparams_.back().id);
   return ParamId (MAX (pmax, last) + 1);
 }
 
 /// Add a new parameter with unique `ParamInfo.identifier`.
 /// The returned `ParamId` is forced to match `id` (and must be unique).
 ParamId
-AudioProcessor::add_param (Id32 id, const ParamInfo &infotmpl, double value)
+AudioProcessor::add_param (Id32 id, const Param &initparam, double value)
 {
   assert_return (uint (id) > 0, ParamId (0));
   assert_return (!is_initialized(), {});
-  assert_return (infotmpl.label != "", {});
-  if (params_.size())
-    assert_return (infotmpl.label != params_.back().info->label, {}); // easy CnP error
-  PParam param { ParamId (id.id), uint (1 + params_.size()), infotmpl };
-  if (param.info->ident == "")
-    param.info->ident = string_to_identifier (param.info->label);
-  if (params_.size())
-    assert_return (param.info->ident != params_.back().info->ident, {}); // easy CnP error
-  if (param.info->group.empty())
-    param.info->group = tls_param_group;
-  using P = decltype (params_);
+  assert_return (initparam.label != "", {});
+  if (pparams_.size())
+    assert_return (initparam.label != pparams_.back().parameter->label(), {}); // easy CnP error
+  Param iparam = initparam;
+  if (iparam.group.empty())
+    iparam.group = tls_param_group;
+  ParameterP parameterp = std::make_shared<Parameter> (iparam);
+  ParameterC parameterc = parameterp;
+  if (pparams_.size())
+    assert_return (parameterc->ident() != pparams_.back().parameter->ident(), {}); // easy CnP error
+  PParam pparam { ParamId (id.id), uint (1 + pparams_.size()), parameterc };
+  using P = decltype (pparams_);
   std::pair<P::iterator, bool> existing_parameter_position =
-    Aux::binary_lookup_insertion_pos (params_.begin(), params_.end(), PParam::cmp, param);
+    Aux::binary_lookup_insertion_pos (pparams_.begin(), pparams_.end(), PParam::cmp, pparam);
   assert_return (existing_parameter_position.second == false, {});
-  params_.insert (existing_parameter_position.first, std::move (param));
-  set_param (param.id, value); // forces dirty
-  param.info->initial_ = peek_param_mt (param.id);
-  return param.id;
+  pparams_.insert (existing_parameter_position.first, std::move (pparam));
+  set_param (pparam.id, value); // forces dirty
+  parameterp->initialsync (peek_param_mt (pparam.id));
+  return pparam.id;
 }
 
 /// Add new range parameter with most `ParamInfo` fields as inlined arguments.
@@ -382,16 +221,16 @@ AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname
                            const String &blurb, const String &description)
 {
   assert_return (uint (id) > 0, ParamId (0));
-  ParamInfo info;
-  info.ident = string_to_identifier (clabel);
-  info.label = clabel;
-  info.nick = nickname;
-  info.hints = construct_hints (hints, pmin, pmax);
-  info.unit = unit;
-  info.blurb = blurb;
-  info.description = description;
-  info.set_range (pmin, pmax);
-  return add_param (id, info, value);
+  return add_param (id, Param {
+      .label = clabel,
+      .nick = nickname,
+      .initial = value,
+      .unit = unit,
+      .extras = MinMaxStep { pmin, pmax, 0 },
+      .hints = construct_hints (hints, pmin, pmax),
+      .blurb = blurb,
+      .descr = description,
+    }, value);
 }
 
 /// Variant of AudioProcessor::add_param() with sequential `id` generation.
@@ -414,16 +253,16 @@ AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname
                            const String &blurb, const String &description)
 {
   assert_return (uint (id) > 0, ParamId (0));
-  ParamInfo info;
-  info.ident = string_to_identifier (clabel);
-  info.label = clabel;
-  info.nick = nickname;
-  info.blurb = blurb;
-  info.description = description;
   const double pmax = centries.size();
-  info.set_choices (std::move (centries));
-  info.hints = construct_hints (hints, 0, pmax, "choice");
-  return add_param (id, info, value);
+  return add_param (id, Param {
+      .label = clabel,
+      .nick = nickname,
+      .initial = value,
+      .extras = centries,
+      .hints = construct_hints (hints, 0, pmax, "choice"),
+      .blurb = blurb,
+      .descr = description,
+    }, value);
 }
 
 /// Variant of AudioProcessor::add_param() with sequential `id` generation.
@@ -445,21 +284,18 @@ AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname
                            const String &blurb, const String &description)
 {
   assert_return (uint (id) > 0, ParamId (0));
-  ParamInfo info;
-  info.ident = string_to_identifier (clabel);
-  info.label = clabel;
-  info.nick = nickname;
-  info.blurb = blurb;
-  info.description = description;
   using namespace MakeIcon;
   static const ChoiceS centries { { "on"_icon, "Off" }, { "off"_icon, "On" } };
-  info.set_choices (centries);
-  info.hints = construct_hints (hints, false, true, "toggle");
-  const auto rid = add_param (id, info, boolvalue);
-  assert_return (uint (rid) == id.id, rid);
-  const PParam *param = find_pparam (rid);
-  assert_return (param && param->peek() == (boolvalue ? 1.0 : 0.0), rid);
-  return rid;
+  const double value = boolvalue ? 1.0 : 0.0;
+  return add_param (id, Param {
+      .label = clabel,
+      .nick = nickname,
+      .initial = value,
+      .extras = centries,
+      .hints = construct_hints (hints, false, true, "toggle"),
+      .blurb = blurb,
+      .descr = description,
+    }, value);
 }
 
 /// Variant of AudioProcessor::add_param() with sequential `id` generation.
@@ -477,9 +313,9 @@ AudioProcessor::find_param (const String &identifier) const -> MaybeParamId
 {
   auto ident = CString::lookup (identifier);
   if (!ident.empty())
-    for (const PParam &p : params_)
-      if (p.info->ident == ident)
-        return std::make_pair (p.id, true);
+    for (const PParam &pp : pparams_)
+      if (pp.parameter->cident == ident)
+        return std::make_pair (pp.id, true);
   return std::make_pair (ParamId (0), false);
 }
 
@@ -489,8 +325,8 @@ AudioProcessor::find_pparam_ (ParamId paramid) const
 {
   // lookup id with gaps
   const PParam key { paramid };
-  auto iter = Aux::binary_lookup (params_.begin(), params_.end(), PParam::cmp, key);
-  const bool found_paramid = iter != params_.end();
+  auto iter = Aux::binary_lookup (pparams_.begin(), pparams_.end(), PParam::cmp, key);
+  const bool found_paramid = iter != pparams_.end();
   if (ISLIKELY (found_paramid))
     return &*iter;
   assert_return (found_paramid == true, nullptr);
@@ -503,35 +339,34 @@ AudioProcessor::set_param (Id32 paramid, const double value, bool sendnotify)
 {
   const PParam *pparam = find_pparam (ParamId (paramid.id));
   return_unless (pparam, false);
-  const ParamInfo *info = pparam->info.get();
+  ParameterC parameter = pparam->parameter;
   double v = value;
-  if (info)
+  if (parameter)
     {
-      const auto mm = info->get_minmax();
-      v = CLAMP (v, mm.first, mm.second);
-      const double stepping = info->get_stepping();
+      const auto [fmin, fmax, stepping] = parameter->range();
+      v = CLAMP (v, fmin, fmax);
       if (stepping > 0)
         {
           // round halfway cases down, so:
           // 0 -> -0.5…+0.5 yields -0.5
           // 1 -> -0.5…+0.5 yields +0.5
           constexpr const auto nearintoffset = 0.5 - DOUBLE_EPSILON; // round halfway case down
-          v = stepping * uint64_t ((v - mm.first) / stepping + nearintoffset);
-          v = CLAMP (mm.first + v, mm.first, mm.second);
+          v = stepping * uint64_t ((v - fmin) / stepping + nearintoffset);
+          v = CLAMP (fmin + v, fmin, fmax);
         }
     }
   const bool need_notify = const_cast<PParam*> (pparam)->assign (v);
-  if (need_notify && sendnotify && !pparam->info->aprop_.expired())
+  if (need_notify && sendnotify && !pparam->aprop_.expired())
     enotify_enqueue_mt (PARAMCHANGE);
   return need_notify;
 }
 
 /// Retrieve supplemental information for parameters, usually to enhance the user interface.
-ParamInfoP
-AudioProcessor::param_info (Id32 paramid) const
+ParameterC
+AudioProcessor::parameter (Id32 paramid) const
 {
-  const PParam *param = this->find_pparam (ParamId (paramid.id));
-  return ASE_ISLIKELY (param) ? param->info : nullptr;
+  const PParam *pparam = this->find_pparam (ParamId (paramid.id));
+  return ASE_ISLIKELY (pparam) ? pparam->parameter : nullptr;
 }
 
 /// Fetch the current parameter value of a AudioProcessor.
@@ -557,10 +392,10 @@ AudioProcessor::param_peek_mt (const AudioProcessorP proc, Id32 paramid)
 double
 AudioProcessor::value_to_normalized (Id32 paramid, double value) const
 {
-  const PParam *const param = find_pparam (paramid);
-  assert_return (param != nullptr, 0);
-  const auto mm = param->info->get_minmax();
-  const double normalized = (value - mm.first) / (mm.second - mm.first);
+  const PParam *const pparam = find_pparam (paramid);
+  assert_return (pparam != nullptr, 0);
+  const auto [fmin, fmax, step] = pparam->parameter->range();
+  const double normalized = (value - fmin) / (fmax - fmin);
   assert_return (normalized >= 0.0 && normalized <= 1.0, CLAMP (normalized, 0.0, 1.0));
   return normalized;
 }
@@ -568,10 +403,10 @@ AudioProcessor::value_to_normalized (Id32 paramid, double value) const
 double
 AudioProcessor::value_from_normalized (Id32 paramid, double normalized) const
 {
-  const PParam *const param = find_pparam (paramid);
-  assert_return (param != nullptr, 0);
-  const auto mm = param->info->get_minmax();
-  const double value = mm.first + normalized * (mm.second - mm.first);
+  const PParam *const pparam = find_pparam (paramid);
+  assert_return (pparam != nullptr, 0);
+  const auto [fmin, fmax, step] = pparam->parameter->range();
+  const double value = fmin + normalized * (fmax - fmin);
   assert_return (normalized >= 0.0 && normalized <= 1.0, value);
   return value;
 }
@@ -603,46 +438,14 @@ String
 AudioProcessor::param_value_to_text (Id32 paramid, double value) const
 {
   const PParam *pparam = find_pparam (ParamId (paramid.id));
-  if (!pparam || !pparam->info)
-    return "";
-  const ParamInfo &info = *pparam->info;
-  const bool ischoice = strstr (info.hints.c_str(), ":choice:") != nullptr;
-  if (ischoice)
-    {
-      const ChoiceS &choices = info.get_choices();
-      const size_t idx = value;
-      if (idx < choices.size())
-        return choices[idx].ident;
-    }
-  String unit = pparam->info->unit;
-  if (unit == "Hz" && fabs (value) >= 1000)
-    {
-      unit = "kHz";
-      value /= 1000;
-    }
-  int fdigits = 2;
-  if (fabs (value) < 10)
-    fdigits = 2;
-  else if (fabs (value) < 100)
-    fdigits = 1;
-  else if (fabs (value) < 1000)
-    fdigits = 0;
-  else
-    fdigits = 0;
-  const bool need_sign = info.get_minmax().first < 0;
-  String s = need_sign ? string_format ("%+.*f", fdigits, value) : string_format ("%.*f", fdigits, value);
-  if (fdigits == 0 && fabs (value) == 100 && unit == "%")
-    s += "."; // use '100. %' for fixed with
-  if (!unit.empty())
-    s += " " + unit;
-  return s;
+  return pparam && pparam->parameter ? pparam->parameter->value_to_text (value) : "";
 }
 
 /** Extract a parameter `paramid` value from a text string.
  * The string might contain unit information or consist only of
  * number characters. Non-recognized characters should be ignored,
  * so a best effort conversion is always undertaken.
- * Currently, this function may be called from any thread,
+ * This function may be called from any thread,
  * so `this` must be treated as `const` (it might be used
  * concurrently by a different thread).
  */
@@ -650,18 +453,7 @@ double
 AudioProcessor::param_value_from_text (Id32 paramid, const String &text) const
 {
   const PParam *pparam = find_pparam (ParamId (paramid.id));
-  if (!pparam || !pparam->info)
-    return 0.0;
-  const ParamInfo &info = *pparam->info;
-  const bool ischoice = strstr (info.hints.c_str(), ":choice:") != nullptr;
-  if (ischoice)
-    {
-      ChoiceS choices = info.get_choices();
-      for (size_t i = 0; i < choices.size(); i++)
-        if (text == choices[i].ident)
-          return i;
-    }
-  return string_to_double (text);
+  return pparam && pparam->parameter ? pparam->parameter->value_from_text (text).as_double() : 0.0;
 }
 
 /// Prepare `count` bits for atomic notifications.
@@ -702,8 +494,10 @@ AudioProcessor::is_initialized () const
 AudioProcessor::MinMax
 AudioProcessor::param_range (Id32 paramid) const
 {
-  ParamInfo *info = param_info (paramid).get();
-  return info ? info->get_minmax() : MinMax { FP_NAN, FP_NAN };
+  ParameterC parameterc = parameter (paramid);
+  return_unless (parameterc, MinMax { FP_NAN, FP_NAN });
+  const auto [fmin, fmax, step] = parameterc->range();
+  return MinMax { fmin, fmax };
 }
 
 String
@@ -1185,10 +979,10 @@ AudioProcessor::registry_foreach (const std::function<void (const String &aseid,
 }
 
 // == AudioProcessor::PParam ==
-AudioProcessor::PParam::PParam (ParamId _id, uint order, const ParamInfo &pinfo) :
-  id (_id), info (std::make_shared<ParamInfo> (_id, order))
+AudioProcessor::PParam::PParam (ParamId _id, uint order, ParameterC &parameterc) :
+  id (_id), order_ (order), parameter (parameterc)
 {
-  info->copy_fields (pinfo);
+  assert_return (parameterc != nullptr);
 }
 
 AudioProcessor::PParam::PParam (ParamId _id) :
@@ -1205,9 +999,11 @@ AudioProcessor::PParam&
 AudioProcessor::PParam::operator= (const PParam &src)
 {
   id = src.id;
+  order_ = src.order_;
   flags_ = src.flags_.load();
   value_ = src.value_.load();
-  info = src.info;
+  aprop_ = src.aprop_;
+  parameter = src.parameter;
   return *this;
 }
 
@@ -1233,25 +1029,25 @@ AudioProcessor::FloatBuffer::check ()
 // == AudioPropertyImpl ==
 class AudioPropertyImpl : public Property, public virtual EmittableImpl {
   DeviceP       device_;
-  ParamInfoP    info_;
+  ParameterC    parameter_;
   const ParamId id_;
   double              inflight_value_ = 0;
   std::atomic<uint64> inflight_counter_ = 0;
 public:
-  String   identifier     () override   { return info_->ident; }
-  String   label          () override   { return info_->label; }
-  String   nick           () override   { return info_->nick; }
-  String   unit           () override   { return info_->unit; }
-  String   hints          () override   { return info_->hints; }
-  String   group          () override   { return info_->group; }
-  String   blurb          () override   { return info_->blurb; }
-  String   description    () override   { return info_->description; }
-  double   get_min        () override   { double mi, ma, st; info_->get_range (mi, ma, st); return mi; }
-  double   get_max        () override   { double mi, ma, st; info_->get_range (mi, ma, st); return ma; }
-  double   get_step       () override   { double mi, ma, st; info_->get_range (mi, ma, st); return st; }
+  String   identifier     () override   { return parameter_->ident(); }
+  String   label          () override   { return parameter_->label(); }
+  String   nick           () override   { return parameter_->nick(); }
+  String   unit           () override   { return parameter_->unit(); }
+  String   hints          () override   { return parameter_->hints(); }
+  String   group          () override   { return parameter_->group(); }
+  String   blurb          () override   { return parameter_->blurb(); }
+  String   description    () override   { return parameter_->descr(); }
+  double   get_min        () override   { const auto [fmin, fmax, step] = parameter_->range(); return fmin; }
+  double   get_max        () override   { const auto [fmin, fmax, step] = parameter_->range(); return fmax; }
+  double   get_step       () override   { const auto [fmin, fmax, step] = parameter_->range(); return step; }
   explicit
-  AudioPropertyImpl (DeviceP devp, ParamId id, ParamInfoP param_) :
-    device_ (devp), info_ (param_), id_ (id)
+  AudioPropertyImpl (DeviceP devp, ParamId id, ParameterC parameter) :
+    device_ (devp), parameter_ (parameter), id_ (id)
   {}
   void
   proc_paramchange()
@@ -1260,19 +1056,19 @@ public:
     const double value = inflight_counter_ ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
     ValueR vfields;
     vfields["value"] = value;
-    emit_event ("notify", info_->ident, vfields);
+    emit_event ("notify", parameter_->ident(), vfields);
   }
   void
   reset () override
   {
-    set_value (info_->get_initial());
+    set_value (parameter_->initial());
   }
   Value
   get_value () override
   {
     const AudioProcessorP proc = device_->_audio_processor();
     const double value = inflight_counter_ ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
-    const bool ischoice = strstr (info_->hints.c_str(), ":choice:") != nullptr;
+    const bool ischoice = strstr (parameter_->hints().c_str(), ":choice:") != nullptr;
     if (ischoice)
       return proc->param_value_to_text (id_, value);
     else
@@ -1283,7 +1079,7 @@ public:
   {
     PropertyP thisp = shared_ptr_cast<Property> (this); // thisp keeps this alive during lambda
     const AudioProcessorP proc = device_->_audio_processor();
-    const bool ischoice = strstr (info_->hints.c_str(), ":choice:") != nullptr;
+    const bool ischoice = strstr (parameter_->hints().c_str(), ":choice:") != nullptr;
     double v;
     if (ischoice && value.index() == Value::STRING)
       v = proc->param_value_from_text (id_, value.as_string());
@@ -1297,7 +1093,7 @@ public:
       inflight_counter_--;
     };
     proc->engine().async_jobs += lambda;
-    emit_notify (info_->ident);
+    emit_notify (parameter_->ident());
     return true;
   }
   double
@@ -1312,8 +1108,8 @@ public:
   set_normalized (double normalized) override
   {
     const AudioProcessorP proc = device_->_audio_processor();
-    const auto mm = info_->get_minmax();
-    const double value = mm.first + CLAMP (normalized, 0, 1) * (mm.second - mm.first);
+    const auto [fmin, fmax, step] = parameter_->range();
+    const double value = fmin + CLAMP (normalized, 0, 1) * (fmax - fmin);
     return set_value (value);
   }
   String
@@ -1333,7 +1129,7 @@ public:
       proc->set_param (pid, v, false);
     };
     proc->engine().async_jobs += lambda;
-    emit_notify (info_->ident);
+    emit_notify (parameter_->ident());
     return true;
   }
   bool
@@ -1345,7 +1141,7 @@ public:
   ChoiceS
   choices () override
   {
-    return info_->get_choices();
+    return parameter_->choices();
   }
 };
 
@@ -1356,17 +1152,17 @@ PropertyP
 AudioProcessor::access_property (ParamId id) const
 {
   assert_return (is_initialized(), {});
-  const PParam *param = find_pparam (id);
-  assert_return (param, {});
+  const PParam *pparam = find_pparam (id);
+  assert_return (pparam, {});
   DeviceP devp = get_device();
   assert_return (devp, {});
   PropertyP newptr;
-  PropertyP prop = weak_ptr_fetch_or_create<Property> (param->info->aprop_, [&] () {
-      newptr = std::make_shared<AudioPropertyImpl> (devp, param->id, param->info);
+  PropertyP prop = weak_ptr_fetch_or_create<Property> (const_cast<PParam*> (pparam)->aprop_, [&] () {
+      newptr = std::make_shared<AudioPropertyImpl> (devp, pparam->id, pparam->parameter);
       return newptr;
     });
   if (newptr.get() == prop.get())
-    const_cast<AudioProcessor::PParam*> (param)->changed (false); // skip initial change notification
+    const_cast<AudioProcessor::PParam*> (pparam)->changed (false); // skip initial change notification
   return prop;
 }
 
@@ -1422,10 +1218,10 @@ AudioProcessor::enotify_dispatch ()
           if (nflags & REMOVAL)
             devicep->emit_event ("sub", "remove");
           if (nflags & PARAMCHANGE)
-            for (const PParam &p : current->params_)
-              if (ASE_UNLIKELY (p.changed()) && const_cast<PParam&> (p).changed (false))
+            for (PParam &pparam : current->pparams_)
+              if (ASE_UNLIKELY (pparam.changed()) && pparam.changed (false))
                 {
-                  PropertyP propi = p.info->aprop_.lock();
+                  PropertyP propi = pparam.aprop_.lock();
                   AudioPropertyImpl *aprop = dynamic_cast<AudioPropertyImpl*> (propi.get());
                   if (aprop)
                     aprop->proc_paramchange();

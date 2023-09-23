@@ -3,6 +3,7 @@
 #define __ASE_PROCESSOR_HH__
 
 #include <ase/gadget.hh>
+#include <ase/parameter.hh>
 #include <ase/midievent.hh>
 #include <ase/datautils.hh>
 #include <ase/properties.hh>
@@ -38,45 +39,6 @@ struct AudioProcessorInfo {
 
 /// Add an AudioProcessor derived type to the audio processor registry.
 template<typename T> CString register_audio_processor (const char *aseid = nullptr);
-
-/// Detailed information and common properties of parameters.
-struct ParamInfo {
-  CString    ident;        ///< Identifier used for serialization.
-  CString    label;        ///< Preferred user interface name.
-  CString    nick;         ///< Abbreviated user interface name, usually not more than 6 characters.
-  CString    unit;         ///< Units of the values within range.
-  CString    hints;        ///< Hints for parameter handling.
-  CString    group;        ///< Group for parameters of similar function.
-  CString    blurb;        ///< Short description for user interface tooltips.
-  CString    description;  ///< Elaborate description for help dialogs.
-  using MinMax = std::pair<double,double>;
-  void       clear       ();
-  MinMax     get_minmax  () const;
-  double     get_stepping() const;
-  double     get_initial () const;
-  void       get_range   (double &fmin, double &fmax, double &fstep) const;
-  void       set_range   (double fmin, double fmax, double fstep = 0);
-  void       set_choices (const ChoiceS &centries);
-  void       set_choices (ChoiceS &&centries);
-  const
-  ChoiceS&   get_choices () const;
-  void       copy_fields (const ParamInfo &src);
-  /*ctor*/   ParamInfo   (ParamId pid = ParamId (0), uint porder = 0);
-  virtual   ~ParamInfo   ();
-  const uint order;
-private:
-  uint       union_tag = 0;
-  union {
-    struct { double fmin, fmax, fstep; };
-    uint64_t mem[sizeof (ChoiceS) / sizeof (uint64_t)];
-    ChoiceS* centries() const { return (ChoiceS*) mem; }
-  } u;
-  double     initial_ = 0;
-  /*copy*/   ParamInfo   (const ParamInfo&) = delete;
-  void       release     ();
-  std::weak_ptr<Property> aprop_;
-  friend class AudioProcessor;
-};
 
 /// Structure providing supplementary information about input/output buses.
 struct BusInfo {
@@ -126,7 +88,7 @@ private:
   uint32                   output_offset_ = 0;
   FloatBuffer             *fbuffers_ = nullptr;
   std::vector<PBus>        iobuses_;
-  std::vector<PParam>      params_; // const once is_initialized()
+  std::vector<PParam>      pparams_; // const once is_initialized()
   std::vector<OConnection> outputs_;
   EventStreams            *estreams_ = nullptr;
   AtomicBits              *atomic_bits_ = nullptr;
@@ -159,7 +121,7 @@ protected:
   // Parameters
   virtual void  adjust_param      (Id32 tag) {}
   ParamId       nextid            () const;
-  ParamId       add_param         (Id32 id, const ParamInfo &infotmpl, double value);
+  ParamId       add_param         (Id32 id, const Param &initparam, double value);
   ParamId       add_param         (Id32 id, const String &clabel, const String &nickname,
                                    double pmin, double pmax, double value,
                                    const String &unit = "", String hints = "",
@@ -224,7 +186,7 @@ public:
   // Parameters
   double              get_param             (Id32 paramid);
   bool                set_param             (Id32 paramid, double value, bool sendnotify = true);
-  ParamInfoP          param_info            (Id32 paramid) const;
+  ParameterC          parameter             (Id32 paramid) const;
   MaybeParamId        find_param            (const String &identifier) const;
   MinMax              param_range           (Id32 paramid) const;
   bool                check_dirty           (Id32 paramid) const;
@@ -339,9 +301,9 @@ struct AudioProcessor::EventStreams {
 // AudioProcessor internal parameter book keeping
 struct AudioProcessor::PParam {
   explicit PParam          (ParamId id);
-  explicit PParam          (ParamId id, uint order, const ParamInfo &pinfo);
+  explicit PParam          (ParamId id, uint order, ParameterC &parameter);
   /*copy*/ PParam          (const PParam &);
-  PParam& operator=        (const PParam &);
+  PParam&  operator=       (const PParam &);
   double   fetch_and_clean ()       { dirty (false); return value_; }
   double   peek            () const { return value_; }
   bool     dirty           () const { return flags_ & DIRTY; }
@@ -360,8 +322,12 @@ private:
   enum { DIRTY = 1, CHANGED = 2, };
   std::atomic<uint32> flags_ = 1;
   std::atomic<double> value_ = NAN;
+  std::weak_ptr<Property> aprop_;
+  friend class AudioProcessor;
+  uint order_ = 0;
 public:
-  ParamInfoP          info;
+  ParameterC parameter;
+  uint       order() const { return order_; }
   bool
   assign (double f)
   {
@@ -480,7 +446,7 @@ AudioProcessor::n_ochannels (OBusId busid) const
 inline void
 AudioProcessor::adjust_params (bool include_nondirty)
 {
-  for (const PParam &p : params_)
+  for (const PParam &p : pparams_)
     if (include_nondirty || p.dirty())
       adjust_param (p.id);
 }
@@ -491,8 +457,8 @@ AudioProcessor::find_pparam (Id32 paramid) const
 {
   // fast path via sequential ids
   const size_t idx = paramid.id - 1;
-  if (ASE_ISLIKELY (idx < params_.size()) && ASE_ISLIKELY (params_[idx].id == ParamId (paramid.id)))
-    return &params_[idx];
+  if (ASE_ISLIKELY (idx < pparams_.size()) && ASE_ISLIKELY (pparams_[idx].id == ParamId (paramid.id)))
+    return &pparams_[idx];
   return find_pparam_ (ParamId (paramid.id));
 }
 
@@ -578,24 +544,5 @@ AudioProcessor::create_processor (AudioEngine &engine, const Args &...args)
 }
 
 } // Ase
-
-namespace std {
-template<>
-struct hash<::Ase::ParamInfo> {
-  /// Hash value for Ase::ParamInfo.
-  size_t
-  operator() (const ::Ase::ParamInfo &pi) const
-  {
-    size_t h = ::std::hash<::Ase::CString>() (pi.ident);
-    // h ^= ::std::hash (pi.label);
-    // h ^= ::std::hash (pi.nick);
-    // h ^= ::std::hash (pi.description);
-    h ^= ::std::hash<::Ase::CString>() (pi.unit);
-    h ^= ::std::hash<::Ase::CString>() (pi.hints);
-    // min, max, step
-    return h;
-  }
-};
-} // std
 
 #endif // __ASE_PROCESSOR_HH__

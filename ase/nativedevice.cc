@@ -49,10 +49,10 @@ PropertyS
 NativeDeviceImpl::access_properties ()
 {
   std::vector<const AudioProcessor::PParam*> pparams;
-  pparams.reserve (proc_->params_.size());
-  for (const AudioProcessor::PParam &p : proc_->params_)
+  pparams.reserve (proc_->pparams_.size());
+  for (const AudioProcessor::PParam &p : proc_->pparams_)
     pparams.push_back (&p);
-  std::sort (pparams.begin(), pparams.end(), [] (auto a, auto b) { return a->info->order < b->info->order; });
+  std::sort (pparams.begin(), pparams.end(), [] (auto a, auto b) { return a->order() < b->order(); });
   PropertyS pseq;
   pseq.reserve (pparams.size());
   for (const AudioProcessor::PParam *p : pparams)
