@@ -6,6 +6,85 @@
 
 namespace Ase {
 
+// == CallbackList<> ==
+/// Reentrant callback list with configurable arguments.
+template<class... A>
+class CallbackList : public std::enable_shared_from_this<CallbackList<A...>> {
+  CallbackList() {}
+public:
+  ASE_DEFINE_MAKE_SHARED (CallbackList);
+  using Callback = std::function<void(const A&...)>;
+  /// Check if the callback list is empty, i.e. invocation will not call any callbacks.
+  bool    empty   () const              { return funcs_.empty(); }
+  /// Delete a previously added callback via its id, returns if any was found.
+  bool    del     (size_t id)           { return del_id (id); }
+  /// Add a callback, returns an id that can be used for deletion.
+  size_t  add     (const Callback &f)   { return add_id (f); }
+  /// Add a callback and return a deleter that removes the callback when invoked.
+  std::function<void()>
+  add_delcb (const Callback &f)
+  {
+    std::shared_ptr<CallbackList> callbacklistp = this->shared_from_this();
+    ASE_ASSERT_RETURN (callbacklistp != nullptr, {});
+    const size_t id = add_id (f);
+    auto destroy_callback = [id, callbacklistp] () { callbacklistp->del (id); };
+    return destroy_callback;
+  }
+  /// Call all callbacks in the order they were added via wrapper function.
+  void
+  call (const std::function<void(const Callback&, const A&...)> &wrapper, const A &...args)
+  {
+    size_t next = 0;
+    iters_.push_back (&next);
+    while (next < funcs_.size())
+      // increment next *before* calling callback to be accurate and adjusted by del_id()
+      wrapper (funcs_[next++].func, std::forward<const A> (args)...);
+    const size_t old_size = iters_.size();
+    iters_.erase (std::remove_if (iters_.begin(), iters_.end(),
+                                  [&next] (const size_t *p) { return p == &next; }),
+                  iters_.end());
+    ASE_ASSERT_RETURN (1 == old_size - iters_.size());
+  }
+  /// Call all callbacks in the order they were added.
+  void
+  operator() (const A &...args)
+  {
+    auto caller = [] (const Callback &cb, const A &...args) { cb (std::forward<const A> (args)...); };
+    return call (caller, std::forward<const A> (args)...);
+  }
+private:
+  struct Entry { Callback func; size_t id = 0; };
+  std::vector<Entry>   funcs_;
+  std::vector<size_t*> iters_;
+  static size_t
+  newid()
+  {
+    static size_t counter = 0;
+    return ++counter;
+  }
+  size_t
+  add_id (const Callback &f)
+  {
+    const size_t id = newid();
+    funcs_.push_back ({ f, id });
+    return id;
+  }
+  bool
+  del_id (const size_t id)
+  {
+    for (size_t j = 0; j < funcs_.size(); j++)
+      if (funcs_[j].id == id) {
+        funcs_.erase (funcs_.begin() + j);
+        for (size_t i = 0; i < iters_.size(); i++)
+          if (j < *iters_[i]) // if a callback *before* next
+            *iters_[i] -= 1;  // was deleted, adjust next
+        return true;
+      }
+    return false;
+  }
+  ASE_CLASS_NON_COPYABLE (CallbackList);
+};
+
 // == JobQueue for cross-thread invocations ==
 struct JobQueue {
   enum Policy { SYNC, };
@@ -16,8 +95,6 @@ struct JobQueue {
 private:
   const Caller caller_;
 };
-
-
 
 // == Implementation Details ==
 template<typename F> std::invoke_result_t<F>
