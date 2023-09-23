@@ -120,6 +120,7 @@ TrackImpl::_activate ()
   DeviceImpl::_activate();
   midi_prod_->_activate();
   chain_->_activate();
+  set_chain_volumes();
 }
 
 void
@@ -166,6 +167,70 @@ TrackImpl::midi_channel (int32 midichannel) // TODO: implement
   return_unless (midichannel != midi_channel_);
   midi_channel_ = midichannel;
   emit_notify ("midi_channel");
+}
+
+void
+TrackImpl::mute (bool new_mute)
+{
+  mute_ = new_mute;
+  set_chain_volumes();
+  emit_notify ("mute");
+}
+
+void
+TrackImpl::solo (bool new_solo)
+{
+  solo_ = new_solo;
+  set_chain_volumes();
+  emit_notify ("solo");
+}
+
+void
+TrackImpl::volume (double new_volume)
+{
+  volume_ = new_volume;
+  // TODO: display this value if track volume is changed in the UI
+  // printf ("Track '%s' -> set volume to %f dB\n", name().c_str(), AudioChain::volume_db (new_volume));
+  set_chain_volumes();
+  emit_notify ("volume");
+}
+
+void
+TrackImpl::set_chain_volumes()
+{
+  Ase::Project *project = dynamic_cast<Ase::Project*> (_project());
+  if (!project)
+    return;
+
+  /* due to mute / solo, the volume of each track depends on its own volume and
+   * the mute/solo settings of all other tracks so we update all volumes
+   * together in this function (note: if we had automation we might want to do
+   * it differently if only one track volume changes)
+   */
+  auto all_tracks = project->all_tracks();
+
+  bool have_solo_tracks = false;
+  for (const auto& track : all_tracks)
+    have_solo_tracks = have_solo_tracks || track->solo();
+
+  for (const auto& track : all_tracks)
+    {
+      auto track_impl = dynamic_cast<Ase::TrackImpl*> (track.get());
+
+      bool mute;
+      if (track_impl->solo_)     // solo tracks are never muted
+        mute = false;
+      else if (have_solo_tracks) // if there are solo tracks all other tracks are muted
+        mute = true;
+      else                       // there isn't any solo track in the project, use mute from track
+        mute = track_impl->mute_;
+
+      Ase::AudioChain *audio_chain = dynamic_cast<Ase::AudioChain*> (&*track_impl->chain_->_audio_processor());
+      if (mute)
+        audio_chain->volume (0);
+      else
+        audio_chain->volume (track_impl->volume_);
+    }
 }
 
 static constexpr const uint MAX_LAUNCHER_CLIPS = 8;

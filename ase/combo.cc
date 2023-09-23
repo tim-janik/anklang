@@ -168,7 +168,10 @@ AudioChain::initialize (SpeakerArrangement busses)
 
 void
 AudioChain::reset (uint64 target_stamp)
-{}
+{
+  volume_smooth_.reset (sample_rate(), 0.020);
+  volume_smooth_.set (volume_, true);
+}
 
 uint
 AudioChain::schedule_children()
@@ -205,12 +208,28 @@ AudioChain::render (uint n_frames)
       else
         {
           const float *cblock = last_output_->ofloats (OUT1, std::min (c, nlastchannels - 1));
-          redirect_oblock (OUT1, c, cblock);
+          float *output_block = oblock (OUT1, c);
+          if (volume_smooth_.is_constant())
+            {
+              float v = volume_smooth_.get_next();
+              v = v * v * v;
+              for (uint i = 0; i < n_frames; i++)
+                output_block[i] = cblock[i] * v;
+            }
+          else
+            {
+              for (uint i = 0; i < n_frames; i++)
+                {
+                  float v = volume_smooth_.get_next();
+                  v = v * v * v;
+                  output_block[i] = cblock[i] * v;
+                }
+            }
           if (probes)
             {
               // SPL = 20 * log10 (root_mean_square (p) / p0) dB        ; https://en.wikipedia.org/wiki/Sound_pressure#Sound_pressure_level
               // const float sqrsig = square_sum (n_frames, cblock) / n_frames; // * 1.0 / p0^2
-              const float sqrsig = square_max (n_frames, cblock);
+              const float sqrsig = square_max (n_frames, output_block);
               const float log2div = 3.01029995663981; // 20 / log2 (10) / 2.0
               const float db_spl = ISLIKELY (sqrsig > 0.0) ? log2div * fast_log2 (sqrsig) : -192;
               (*probes)[c].dbspl = db_spl;
@@ -218,6 +237,21 @@ AudioChain::render (uint n_frames)
         }
     }
   // FIXME: assign obus if no children are present
+}
+
+void
+AudioChain::volume (float new_volume)
+{
+  /* compute volume factor so that volume_ * volume_ * volume_ is in range [0..2] */
+  const float cbrt_2 = 1.25992104989487; /* 2^(1/3) */
+  volume_ = new_volume * cbrt_2;
+  volume_smooth_.set (volume_);
+}
+
+float
+AudioChain::volume_db (float volume)
+{
+  return voltage2db (2 * volume * volume * volume);
 }
 
 /// Reconnect AudioChain child processors at start and after.

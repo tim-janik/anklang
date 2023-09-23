@@ -3,6 +3,7 @@
 #define __ASE_COMBO_HH__
 
 #include <ase/processor.hh>
+#include <devices/blepsynth/linearsmooth.hh>
 
 namespace Ase {
 
@@ -29,6 +30,8 @@ class AudioChain : public AudioCombo {
   const SpeakerArrangement ospeakers_ = SpeakerArrangement (0);
   InletP           inlet_;
   AudioProcessor  *last_output_ = nullptr;
+  float            volume_ = 0;
+  LinearSmooth     volume_smooth_;
 protected:
   void     initialize        (SpeakerArrangement busses) override;
   void     reset             (uint64 target_stamp) override;
@@ -42,6 +45,8 @@ public:
   struct Probe { float dbspl = -192; };
   using ProbeArray = std::array<Probe,2>;
   ProbeArray* run_probes     (bool enable);
+  void        volume         (float new_volume);
+  static float volume_db     (float volume);
   static void static_info    (AudioProcessorInfo &info);
 private:
   ProbeArray *probes_ = nullptr;

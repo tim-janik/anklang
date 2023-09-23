@@ -11,9 +11,13 @@ class TrackImpl : public DeviceImpl, public virtual Track {
   DeviceP      chain_, midi_prod_;
   ClipImplS    clips_;
   uint         midi_channel_ = 0;
+  bool         mute_ = false;
+  bool         solo_ = false;
+  double       volume_ = 0.5407418735601; // -10dB
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
   virtual         ~TrackImpl        ();
+  void            set_chain_volumes ();
 protected:
   String          fallback_name     () const override;
   void            serialize         (WritNode &xs) override;
@@ -30,6 +34,12 @@ public:
   bool            is_master         () const override      { return MASTER_TRACK & gadget_flags(); }
   int32           midi_channel      () const override      { return midi_channel_; }
   void            midi_channel      (int32 midichannel) override;
+  bool            mute              () const override      { return mute_; }
+  void            mute              (bool new_mute) override;
+  bool            solo              () const override      { return solo_; }
+  void            solo              (bool new_solo) override;
+  double          volume            () const override      { return volume_; }
+  void            volume            (double new_volume) override;
   ClipS           launcher_clips    () override;
   DeviceP         access_device     () override;
   MonitorP        create_monitor    (int32 ochannel) override;
