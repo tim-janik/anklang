@@ -193,6 +193,7 @@ public:
   friend std::ostream& operator<< (std::ostream &os, CString c)        { os << c.string(); return os; }
   static constexpr const std::string::size_type npos = -1;
 };
+using CStringS = std::vector<CString>;
 
 } // Ase
 
