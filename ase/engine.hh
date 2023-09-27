@@ -20,7 +20,7 @@ struct AudioEngineJob {
  */
 class AudioEngine : VirtualBase {
   std::atomic<size_t>          processor_count_ = 0;
-  friend class AudioEngineImpl;
+  friend class AudioEngineThread;
   friend class AudioProcessor;
 protected:
   AudioTransport *transport_ = nullptr;

@@ -99,7 +99,7 @@ class AudioProcessor : public std::enable_shared_from_this<AudioProcessor>, publ
   friend class ProcessorManager;
   friend class DeviceImpl;
   friend class NativeDeviceImpl;
-  friend class AudioEngineImpl;
+  friend class AudioEngineThread;
   struct OConnection {
     AudioProcessor *proc = nullptr; IBusId ibusid = {};
     bool operator== (const OConnection &o) const { return proc == o.proc && ibusid == o.ibusid; }
