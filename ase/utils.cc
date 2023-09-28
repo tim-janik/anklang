@@ -389,11 +389,6 @@ EventFd::~EventFd ()
   fds[1] = -1;
 }
 
-// == JobQueue ==
-JobQueue::JobQueue (const Caller &caller) :
-  caller_ (caller)
-{}
-
 // == CustomDataContainer ==
 CustomDataContainer::CustomDataEntry&
 CustomDataContainer::custom_data_entry (VirtualBase *key)
