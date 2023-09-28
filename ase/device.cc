@@ -95,21 +95,4 @@ Device::_track () const
   return nullptr;
 }
 
-DeviceInfo
-extract_info (const String &aseid, const AudioProcessor::StaticInfo &static_info)
-{
-  AudioProcessorInfo pinfo;
-  static_info (pinfo);
-  DeviceInfo info = {
-    .uri          = aseid,
-    .name         = pinfo.label,
-    .category     = pinfo.category,
-    .description  = pinfo.description,
-    .website_url  = pinfo.website_url,
-    .creator_name = pinfo.creator_name,
-    .creator_url  = pinfo.creator_url,
-  };
-  return info;
-}
-
 } // Ase
