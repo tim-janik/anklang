@@ -190,6 +190,14 @@ typeid_name (T &obj)
   return string_demangle_cxx (typeid (obj).name());
 }
 
+/// Force compiler to forget the origin of a possibly aliasing pointer.
+template<typename T> static T*
+unalias_ptr (T *ptr)
+{
+  asm ("" : "+r" (ptr));        // accept ptr and yield ptr
+  return ptr;
+}
+
 /// Common base type to allow casting between polymorphic classes.
 struct VirtualBase {
 protected:
