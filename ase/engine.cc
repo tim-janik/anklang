@@ -455,6 +455,7 @@ AudioEngineImpl::driver_dispatcher (const LoopState &state)
     {
     case LoopState::PREPARE:
       timeout_usecs = const_cast<int64*> (&state.timeout_usecs);
+      /* fall-through */
     case LoopState::CHECK:
       if (atquit_triggered())
         return false;   // stall engine once program is aborted
