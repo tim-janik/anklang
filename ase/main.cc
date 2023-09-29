@@ -57,9 +57,9 @@ JobQueue main_jobs (call_main_loop);
 // == RtCall::Callable ==
 struct RtCallJob {
   explicit RtCallJob (const RtCall &ucall) : call (ucall) {}
+  LoftPtr<RtCallJob>      loftptr;
   std::atomic<RtCallJob*> next = nullptr;
   RtCall                  call;
-  LoftPtr<RtCallJob>      loftptr;
 };
 static inline std::atomic<RtCallJob*>&
 atomic_next_ptrref (RtCallJob *j)
