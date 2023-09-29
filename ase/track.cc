@@ -196,7 +196,7 @@ TrackImpl::clip_index (const ClipImpl &clip) const
 int
 TrackImpl::clip_succession (const ClipImpl &clip) const
 {
-  size_t index = clip_index (clip);
+  ssize_t index = clip_index (clip);
   return_unless (index >= 0, NONE);
   // advance clip
   index += 1;
