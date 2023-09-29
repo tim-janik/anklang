@@ -85,7 +85,7 @@ ProjectImpl::discard ()
   stop_playback();
   const size_t nerased = Aux::erase_first (all_projects, [this] (auto ptr) { return ptr.get() == this; });
   if (nerased)
-    ; // resource cleanups...
+    {} // resource cleanups...
   discarded_ = true;
 }
 
