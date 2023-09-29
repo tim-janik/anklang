@@ -13,7 +13,11 @@ struct AudioEngineJob {
   void *voidp = nullptr;
 };
 
-/// Main handle for AudioProcessor administration and audio rendering.
+/** Main handle for AudioProcessor administration and audio rendering.
+ * Use async_jobs to have the engine execute arbitrary code.
+ * Use const_jobs for synchronous read-only data gathering, this may take quite long.
+ * Use main_rt_jobs (see main.hh) for obstruction free enqueueing of main_loop callbacks.
+ */
 class AudioEngine : VirtualBase {
   std::atomic<size_t>          processor_count_ = 0;
   friend class AudioEngineImpl;
