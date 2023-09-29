@@ -54,7 +54,7 @@ AudioCombo::~AudioCombo ()
 /// Add a new AudioProcessor `proc` at position `pos` to the AudioCombo.
 /// The processor `proc` must not be previously contained by another AudioCombo.
 void
-AudioCombo::insert (AudioProcessorP proc, size_t pos)
+AudioCombo::insert (AudioProcessorP proc, ssize_t pos)
 {
   assert_return (proc != nullptr);
   const size_t index = CLAMP (pos, 0, processors_.size());
