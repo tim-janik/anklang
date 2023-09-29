@@ -457,6 +457,9 @@ loft_bucket_size (size_t nbytes)
 void
 LoftFree::operator() (void *p)
 {
+  if (dtor_)
+    dtor_ (p);
+  // printerr ("--LOFT: %s: free: size=%d ptr=%p dtor_=%p\n", __func__, size, p, dtor_);
   if (ASE_UNLIKELY (no_allocators()))
     return free (p);
 
@@ -596,6 +599,16 @@ loft_simple_tests()
   bi = bucket_index (SMALL_BLOCK_LIMIT * 2 + 1); bs = bucket_size (bi); TCMP (bs, ==, SMALL_BLOCK_LIMIT * 2 * 2);
   auto sp = loft_make_unique<String> ("Sample String");
   TASSERT ("Sample String" == *sp);
+  struct Test2 {
+    bool *b_;
+    Test2 (bool *b) : b_ (b) {}
+    ~Test2() { *b_ = true; }
+  };
+  bool seen_loft_dtor = false;
+  LoftPtr<Test2> t2 = loft_make_unique<Test2> (&seen_loft_dtor);
+  TASSERT (t2.get() && seen_loft_dtor == false);
+  t2.reset();
+  TASSERT (!t2.get() && seen_loft_dtor == true);
 }
 
 inline constexpr size_t N_ALLOCS = 20000;
