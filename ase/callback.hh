@@ -102,11 +102,11 @@ struct RtCall {
   /*dtor*/            ~RtCall ();
 private:
   static constexpr int pdsize = 4;
+  ptrdiff_t mem_[pdsize] = { 0, 0, 0, 0 };
   struct Callable {
-    virtual void call () = 0;
+    virtual void call () const = 0;
   };
-  Callable *callable_ = nullptr;
-  ptrdiff_t mem_[pdsize];
+  const Callable* callable () const;
 };
 
 // == JobQueue for cross-thread invocations ==
@@ -126,11 +126,12 @@ RtCall::RtCall (T &o, void (T::*f) ())
 {
   struct Wrapper : Callable {
     Wrapper (T &o, void (T::*f) ()) : f_ (f), o_ (&o) {}
-    void call() override { return (o_->*f_)(); }
+    void call() const override { return (o_->*f_)(); }
     void (T::*f_) (); T *o_;
   };
   static_assert (sizeof (mem_) >= sizeof (Wrapper));
-  callable_ = new (mem_) Wrapper { o, f };
+  Wrapper *w = new (mem_) Wrapper { o, f };
+  ASE_ASSERT_RETURN (w == (void*) mem_);
 }
 
 template<typename T>
@@ -138,11 +139,12 @@ RtCall::RtCall (void (*f) (T*), T *d)
 {
   struct Wrapper : Callable {
     Wrapper (void (*f) (T*), T *d) : f_ (f), d_ (d) {}
-    void call() override { return f_ (d_); }
+    void call() const override { return f_ (d_); }
     void (*f_) (T*); T *d_;
   };
   static_assert (sizeof (mem_) >= sizeof (Wrapper));
-  callable_ = new (mem_) Wrapper { f, d };
+  Wrapper *w = new (mem_) Wrapper { f, d };
+  ASE_ASSERT_RETURN (w == (void*) mem_);
 }
 
 template<typename F> std::invoke_result_t<F>

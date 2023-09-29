@@ -10,38 +10,44 @@ namespace Ase {
 // == RtCall::Callable ==
 RtCall::~RtCall ()
 {
-  callable_ = 0;
   memset (mem_, 0, sizeof (mem_));
 }
 
 RtCall::RtCall (const RtCall &other)
 {
-  if (other.callable_) {
-    assert_return (&other.mem_[0] == (void*) other.callable_);
+  if (other.callable())
     memcpy (mem_, other.mem_, sizeof (other.mem_));
-    callable_ = reinterpret_cast<Callable*> (unalias_ptr (&mem_[0]));
-  }
+}
+
+const RtCall::Callable*
+RtCall::callable () const
+{
+  if (mem_[0] == 0 && mem_[1] == 0 && mem_[2] == 0 && mem_[3] == 0)
+    return nullptr;
+  return reinterpret_cast<const Callable*> (unalias_ptr (&mem_[0]));
 }
 
 RtCall::RtCall (void (*f) ())
 {
   struct Wrapper : Callable {
     Wrapper (void (*f) ()) : f_ (f) {}
-    void call() override { return f_ (); }
+    void call() const override { return f_ (); }
     void (*f_) ();
   };
   static_assert (sizeof (mem_) >= sizeof (Wrapper));
-  callable_ = new (mem_) Wrapper { f };
+  Wrapper *w = new (mem_) Wrapper { f };
+  ASE_ASSERT_RETURN (w == (void*) mem_);
 }
 
 void
 RtCall::invoke ()
 {
-  if (callable_)
-    callable_->call();
+  const Callable *wcallable = callable();
+  if (wcallable)
+    wcallable->call();
 }
 
-void RtCall::Callable::call () {}
+void RtCall::Callable::call () const {}
 
 // == JobQueue ==
 JobQueue::JobQueue (const Caller &caller) :
