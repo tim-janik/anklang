@@ -91,6 +91,7 @@ struct Block {
   void  *const block_start = nullptr;
   const uint32 block_length = 0;
   Block& operator= (const Block &src) { this->~Block(); new (this) Block (src); return *this; }
+  /*ctor*/ Block   (void *b, uint32 l) : block_start (b), block_length (l) {}
   /*copy*/ Block   (const Block &src) = default;
   /*dflt*/ Block   () = default;
 };
