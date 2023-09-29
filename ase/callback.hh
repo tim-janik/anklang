@@ -85,6 +85,30 @@ private:
   ASE_CLASS_NON_COPYABLE (CallbackList);
 };
 
+// == RtCall ==
+/// Wrap simple callback pointers, without using malloc (obstruction free).
+struct RtCall {
+  /// Wrap a simple `void func()` object member function call.
+  template<typename T> RtCall (T &o, void (T::*f) ());
+  /// Wrap a single argument `void func (T*)` function call with its pointer argument.
+  template<typename T> RtCall (void (*f) (T*), T *d);
+  /// Wrap a simple `void func ()` function call.
+  /*ctor*/             RtCall (void (*f) ());
+  /// Copy function call pointers from another RtCall.
+  explicit             RtCall (const RtCall &call);
+  /// Invoke the wrapped function call.
+  void                 invoke ();
+  /// Clear function pointers.
+  /*dtor*/            ~RtCall ();
+private:
+  static constexpr int pdsize = 4;
+  struct Callable {
+    virtual void call () = 0;
+  };
+  Callable *callable_ = nullptr;
+  ptrdiff_t mem_[pdsize];
+};
+
 // == JobQueue for cross-thread invocations ==
 struct JobQueue {
   enum Policy { SYNC, };
@@ -97,6 +121,30 @@ private:
 };
 
 // == Implementation Details ==
+template<typename T>
+RtCall::RtCall (T &o, void (T::*f) ())
+{
+  struct Wrapper : Callable {
+    Wrapper (T &o, void (T::*f) ()) : f_ (f), o_ (&o) {}
+    void call() override { return (o_->*f_)(); }
+    void (T::*f_) (); T *o_;
+  };
+  static_assert (sizeof (mem_) >= sizeof (Wrapper));
+  callable_ = new (mem_) Wrapper { o, f };
+}
+
+template<typename T>
+RtCall::RtCall (void (*f) (T*), T *d)
+{
+  struct Wrapper : Callable {
+    Wrapper (void (*f) (T*), T *d) : f_ (f), d_ (d) {}
+    void call() override { return f_ (d_); }
+    void (*f_) (T*); T *d_;
+  };
+  static_assert (sizeof (mem_) >= sizeof (Wrapper));
+  callable_ = new (mem_) Wrapper { f, d };
+}
+
 template<typename F> std::invoke_result_t<F>
 JobQueue::operator+= (const F &job)
 {
