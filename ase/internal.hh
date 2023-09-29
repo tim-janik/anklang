@@ -99,10 +99,9 @@ namespace Test {
 // == IntegrityCheck ==
 struct IntegrityCheck {
   using TestFunc = void (*) ();
-  IntegrityCheck (const char *name, TestFunc func, char hint)
+  IntegrityCheck (const char *name, TestFunc func, char hint) :
+    name_ (name), func_ (func)
   {
-    func_ = func;
-    name_ = name;
     next_ = first_;
     first_ = this;
   }
