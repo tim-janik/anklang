@@ -42,6 +42,11 @@ void             main_loop_autostop_mt ();
 /// Execute a lambda job in the Ase main loop and wait for its result.
 extern JobQueue main_jobs;
 
+/// Add a simple callback to the main event loop, without using malloc (obstruction free).
+struct RtJobQueue { void operator+= (const RtCall&); };
+/// Queue a callback for the `main_loop` without invoking malloc(), addition is obstruction free.
+extern RtJobQueue main_rt_jobs;
+
 } // Ase
 
 #endif // __ASE_MAIN_HH__

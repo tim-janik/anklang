@@ -54,6 +54,50 @@ call_main_loop (JobQueue::Policy policy, const std::function<void()> &fun)
 }
 JobQueue main_jobs (call_main_loop);
 
+// == RtCall::Callable ==
+struct RtCallJob {
+  explicit RtCallJob (const RtCall &ucall) : call (ucall) {}
+  std::atomic<RtCallJob*> next = nullptr;
+  RtCall                  call;
+  LoftPtr<RtCallJob>      loftptr;
+};
+static inline std::atomic<RtCallJob*>&
+atomic_next_ptrref (RtCallJob *j)
+{
+  return j->next;
+}
+
+static AtomicIntrusiveStack<RtCallJob> main_rt_jobs_;
+RtJobQueue main_rt_jobs;
+
+void
+RtJobQueue::operator+= (const RtCall &call)
+{
+  LoftPtr<RtCallJob> loftptr = loft_make_unique<RtCallJob> (call);
+  RtCallJob *const calljob = &*loftptr;
+  calljob->loftptr = std::move (loftptr); // keeps itself alive
+  const bool was_empty = main_rt_jobs_.push (calljob);
+  if (was_empty)
+    main_loop_wakeup();
+}
+
+static bool
+main_rt_jobs_pending()
+{
+  return !main_rt_jobs_.empty();
+}
+
+static void
+main_rt_jobs_process()
+{
+  RtCallJob *calljob = main_rt_jobs_.pop_reversed();
+  while (calljob) {
+    LoftPtr<RtCallJob> loftptr = std::move (calljob->loftptr); // assume ownership
+    calljob = calljob->next;
+    loftptr->call.invoke();
+  }
+}
+
 // == Feature Toggles ==
 /// Find @a feature in @a config, return its value or @a fallback.
 String
@@ -478,11 +522,12 @@ main (int argc, char *argv[])
     switch (state.phase)
       {
       case LoopState::PREPARE:
-        return ae.ipc_pending();
+        return main_rt_jobs_pending() || ae.ipc_pending();
       case LoopState::CHECK:
-        return ae.ipc_pending();
+        return main_rt_jobs_pending() || ae.ipc_pending();
       case LoopState::DISPATCH:
         ae.ipc_dispatch();
+        main_rt_jobs_process();
         return true;
       default:
         return false;
@@ -565,6 +610,11 @@ main (int argc, char *argv[])
       e->async_jobs += [e,vp] () {
         printerr ("JOBTEST: Run Handler (in_engine=%d)\n", e->thread_id == std::this_thread::get_id());
       };
+      main_rt_jobs += RtCall ([]() { printerr ("%s: Hello %s!\n", __func__, "World"); });
+      main_rt_jobs += RtCall ((void(*)(const char*)) [] (const char *a) { printerr ("%s: Hello %s!\n", __func__, a); }, "RtJobQueue");
+      struct Test1 { const char *a_; void print() { printerr ("%s: Hello %s!\n", __func__, a_); } };
+      static Test1 test1 { "Word" };
+      main_rt_jobs += RtCall (test1, &Test1::print);
     }
 
   // start output capturing
