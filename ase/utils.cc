@@ -50,13 +50,13 @@ debug_key_value (const char *conditional)
     const ssize_t sq = lflags.rfind (":sigquit-on-abort:");
     const ssize_t nq = lflags.rfind (":no-sigquit-on-abort:");
     if (sq >= 0 && nq <= sq)
-      ; // ase_sigquit_on_abort = true;
+      {} // ase_sigquit_on_abort = true;
     const ssize_t wb = lflags.rfind (":backtrace:");
     const ssize_t nb = lflags.rfind (":no-backtrace:");
     if (wb > nb)
-      ; // ase_backtrace_on_error = true;
+      {} // ase_backtrace_on_error = true;
     if (nb > wb)
-      ; // ase_backtrace_on_error = false;
+      {} // ase_backtrace_on_error = false;
     return lflags;
   } ();
   // find key in colon-separated debug flags

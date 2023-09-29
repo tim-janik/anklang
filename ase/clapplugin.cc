@@ -450,7 +450,7 @@ public:
       processinfo.frames_count = n_frames;
       convert_clap_events (processinfo, input_preferred_dialect & CLAP_NOTE_DIALECT_CLAP);
       processinfo.steady_time += processinfo.frames_count;
-      clap_process_status status = clapplugin_->process (clapplugin_, &processinfo);
+      const clap_process_status status = clapplugin_->process (clapplugin_, &processinfo);
       bool need_wakeup = dequeue_events (n_frames);
       for (const auto &e : output_events_)
         need_wakeup |= apply_param_value_event (e.value);
@@ -1611,7 +1611,7 @@ ClapPluginHandleImpl::show_gui()
     gui_visible_ = plugin_gui->show (plugin_);
     CDEBUG ("%s: gui_show: %d\n", clapid(), gui_visible_);
     if (!gui_visible_)
-      ; // do nothing, early JUCE versions have a bug returning false here
+      {} // do nothing, early JUCE versions have a bug returning false here
     x11wrapper->show_window (gui_windowid);
   }
 }

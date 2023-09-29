@@ -34,11 +34,11 @@ CLANG_TIDY_LOGS  = $(patsubst %, $>/clang-tidy/%.log, $(CLANG_TIDY_FILES))
 clang-tidy: $(CLANG_TIDY_LOGS)
 	$(QGEN)
 	$Q for log in $(CLANG_TIDY_LOGS) ; do misc/colorize.sh < $$log >&2 ; done
-$>/clang-tidy/%.log: % $(GITCOMMITDEPS)			| $>/clang-tidy/
+$>/clang-tidy/%.log: % $(GITCOMMITDEPS)	misc/Makefile.mk		| $>/clang-tidy/
 	$(QECHO) CLANG-TIDY $@
-	$Q mkdir -p $(dir $@)
+	$Q mkdir -p $(dir $@) && rm -f $>/clang-tidy/$<.*
 	$Q set +o pipefail \
-	&& CTIDY_FLAGS=( $(CLANG_TIDY_DEFS) $($<.LINT_CCFLAGS) ) \
+	&& CTIDY_FLAGS=( $(ASE_EXTERNAL_INCLUDES) $(CLANG_TIDY_DEFS) $($<.LINT_CCFLAGS) ) \
 	&& [[ $< = @(*.[hc]) ]] || CTIDY_FLAGS+=( -std=gnu++17 ) \
 	&& (set -x ; $(CLANG_TIDY) --export-fixes=$>/clang-tidy/$<.yaml $< $($<.LINT_FLAGS) -- "$${CTIDY_FLAGS[@]}" ) >$@~ 2>&1 || :
 	$Q mv $@~ $@

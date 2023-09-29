@@ -275,7 +275,7 @@ zintern_decompress (unsigned int decompressed_size, const unsigned char *cdata, 
       err = "internal data corruption";
       break;
     case Z_MEM_ERROR:
-      err = "out of memory";
+      // err = "out of memory";
       zintern_free (text);
       errno = ENOMEM;
       return NULL;      // handle ENOMEM gracefully

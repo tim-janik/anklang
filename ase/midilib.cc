@@ -72,7 +72,7 @@ public:
     // restore current play_position
     if (position_->current >= 0)
       {
-        if (feed_ && position_->current < feed_->generators.size())
+        if (feed_ && size_t (position_->current) < feed_->generators.size())
           feed_->generators[position_->current].jumpto (last_play_position);
         else
           {

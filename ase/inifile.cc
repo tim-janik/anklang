@@ -560,7 +560,7 @@ IniWriter::output ()
     if (!sections_[i].entries.empty())
       {
         String sec = sections_[i].name;
-        const size_t d = sec.find ('.');
+        const ssize_t d = sec.find ('.');
         if (d >= 0 && d < sec.size())
           sec = sec.substr (0, d) + " " + string_to_cquote (sec.substr (d + 1));
         s += String ("[") + sec + "]\n";

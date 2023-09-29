@@ -832,7 +832,7 @@ MainLoop::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
 #endif
         }
       else
-        loops[index]->dispatch_source_Lm (state); // passes on shared_ptr to keep alive wihle locked
+        loops[index]->dispatch_source_Lm (state); // passes on shared_ptr to keep alive while locked
     }
   // cleanup
   state.phase = state.NONE;

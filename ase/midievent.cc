@@ -50,7 +50,9 @@ MidiEvent::to_string () const
   switch (type)
     {
     case NOTE_OFF:        if (!et) et = "NOTE_OFF";
+      /* fall-through */
     case NOTE_ON:         if (!et) et = "NOTE_ON";
+      /* fall-through */
     case AFTERTOUCH:      if (!et) et = "AFTERTOUCH";
       return string_format ("%+4d ch=%-2u %-10s pitch=%d vel=%f tune=%f id=%x",
                             frame, channel, et, key, velocity, tuning, noteid);
@@ -60,8 +62,9 @@ MidiEvent::to_string () const
     case PROGRAM_CHANGE:        if (!et) et = "PROGRAM_CHANGE";
       return string_format ("%+4d ch=%-2u %s program=%d",
                             frame, channel, et, param);
-    case CHANNEL_PRESSURE:      if (!et) et = "CHANNEL_PRESSURE";
-    case PITCH_BEND:            if (!et) et = "PITCH_BEND";
+    case CHANNEL_PRESSURE: if (!et) et = "CHANNEL_PRESSURE";
+      /* fall-through */
+    case PITCH_BEND:       if (!et) et = "PITCH_BEND";
       return string_format ("%+4d ch=%-2u %s value=%+f",
                             frame, channel, et, value);
     case SYSEX:                 if (!et) et = "SYSEX";

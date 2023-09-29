@@ -162,7 +162,7 @@ NativeDeviceImpl::insert_device (const String &uri, Device *sibling, const Devic
       auto j = [combo, sproc, siblingp, cpos] () {
         const size_t pos = siblingp ? combo->find_pos (*siblingp) : ~size_t (0);
         combo->insert (sproc, pos);
-        assert_return (cpos == pos);
+        assert_return (size_t (cpos) == pos);
       };
       proc_->engine().async_jobs += j;
     }

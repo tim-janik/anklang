@@ -14,7 +14,7 @@ protected:
   explicit        AudioCombo         (AudioEngine &engine);
   virtual        ~AudioCombo         ();
 public:
-  void            insert             (AudioProcessorP proc, size_t pos = ~size_t (0));
+  void            insert             (AudioProcessorP proc, ssize_t pos = ~size_t (0));
   bool            remove             (AudioProcessor &proc);
   AudioProcessorP at                 (uint nth);
   ssize_t         find_pos           (AudioProcessor &proc);
