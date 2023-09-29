@@ -600,23 +600,6 @@ main (int argc, char *argv[])
   if (main_config.mode == MainConfig::CHECK_INTEGRITY_TESTS)
     main_loop->exec_now (run_tests_and_quit);
 
-  // Debugging test
-  if (0)
-    {
-      AudioEngine *e = main_config_.engine;
-      std::shared_ptr<void> vp = { nullptr, [e] (void*) {
-        printerr ("JOBTEST: Run Deleter (in_engine=%d)\n", e->thread_id == std::this_thread::get_id());
-      } };
-      e->async_jobs += [e,vp] () {
-        printerr ("JOBTEST: Run Handler (in_engine=%d)\n", e->thread_id == std::this_thread::get_id());
-      };
-      main_rt_jobs += RtCall ([]() { printerr ("%s: Hello %s!\n", __func__, "World"); });
-      main_rt_jobs += RtCall ((void(*)(const char*)) [] (const char *a) { printerr ("%s: Hello %s!\n", __func__, a); }, "RtJobQueue");
-      struct Test1 { const char *a_; void print() { printerr ("%s: Hello %s!\n", __func__, a_); } };
-      static Test1 test1 { "Word" };
-      main_rt_jobs += RtCall (test1, &Test1::print);
-    }
-
   // start output capturing
   if (config.outputfile)
     {
@@ -654,6 +637,38 @@ main (int argc, char *argv[])
 
 namespace { // Anon
 using namespace Ase;
+
+TEST_INTEGRITY (job_queue_tests);
+static void
+job_queue_tests()
+{
+  bool seen_engine_job = false, seen_deleter = false;
+  // enqueue job with deleter into engine
+  AudioEngine *e = main_config_.engine;
+  std::shared_ptr<void> vp = { nullptr, [e,&seen_deleter] (void*) {
+    printerr ("  job_queue_tests: Run Deleter (in_engine=%d)\n", e->thread_id == std::this_thread::get_id());
+    seen_deleter = true;
+  } };
+  e->async_jobs += [e,vp,&seen_engine_job] () {
+    printerr ("  job_queue_tests: Run Handler (in_engine=%d)\n", e->thread_id == std::this_thread::get_id());
+    seen_engine_job = true;
+  };
+  vp.reset(); // required to allow deleter execution further down
+  // enqueue jobs into main loop
+  main_rt_jobs += RtCall ([]() { printerr ("  job_queue_tests: Hello %s!\n", "void()"); });
+  main_rt_jobs += RtCall ((void(*)(const char*)) [] (const char *a) { printerr ("  job_queue_tests: Hello %s!\n", a); }, "RtJobQueue");
+  struct Test1 { const char *a_; void print() { printerr ("  job_queue_tests: Hello %s!\n", a_); } };
+  static Test1 test1 { "MemFn" };
+  main_rt_jobs += RtCall (test1, &Test1::print);
+  // lame busy looping to give the engine a chance at the job queue
+  uint64 start_usecs = timestamp_realtime();
+  do {
+    usleep (1500);      // give the audio engine some time
+    main_loop->iterate (false);
+  } while (timestamp_realtime() < start_usecs + 1871 * 1000 && !seen_deleter);
+  assert_return (seen_engine_job == true);
+  assert_return (seen_deleter == true);
+}
 
 TEST_INTEGRITY (test_feature_toggles);
 static void
