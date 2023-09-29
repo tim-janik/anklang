@@ -1611,7 +1611,7 @@ ClapPluginHandleImpl::show_gui()
     gui_visible_ = plugin_gui->show (plugin_);
     CDEBUG ("%s: gui_show: %d\n", clapid(), gui_visible_);
     if (!gui_visible_)
-      ; // do nothing, early JUCE versions have a bug returning false here
+      {} // do nothing, early JUCE versions have a bug returning false here
     x11wrapper->show_window (gui_windowid);
   }
 }
