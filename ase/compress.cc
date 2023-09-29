@@ -416,7 +416,7 @@ public:
     if (ostream_)
       {
         last_block_ = true;
-        size_t l;
+        ssize_t l;
         do
           l = write (nullptr, 0);
         while (l > 0);
