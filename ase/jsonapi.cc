@@ -103,6 +103,7 @@ class JsonapiConnection : public WebSocketConnection, public CustomDataContainer
       current_message_conection = nullptr;
       sem.post();
     };
+    nickname(); // cache socket nickname for use during errors
     sem.wait(); // synchronize with sem.post()
     // when queueing asynchronously, we have to use WebSocketConnectionP
     if (!reply.empty())
