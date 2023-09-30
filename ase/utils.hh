@@ -81,17 +81,6 @@ public:
   /*Des*/ ~EventFd   ();
 };
 
-// == JobQueue for cross-thread invocations ==
-struct JobQueue {
-  enum Policy { SYNC, };
-  using Caller = std::function<void (Policy, const std::function<void()>&)>;
-  explicit             JobQueue    (const Caller &caller);
-  template<typename F> std::invoke_result_t<F>
-  inline               operator+=  (const F &job);
-private:
-  const Caller caller_;
-};
-
 // == CustomData ==
 /// CustomDataKey objects are used to identify and manage custom data members of CustomDataContainer objects.
 template<typename T>
@@ -176,22 +165,6 @@ uint64_swap_le_be (uint64_t v)
            ((v & 0x0000ff0000000000UL) >> 24) |
            ((v & 0x00ff000000000000UL) >> 40) |
            ((v & 0xff00000000000000UL) >> 56) );
-}
-
-template<typename F> std::invoke_result_t<F>
-JobQueue::operator+= (const F &job)
-{
-  using R = std::invoke_result_t<F>;
-  if constexpr (std::is_same<R, void>::value)
-    caller_ (SYNC, job);
-  else // R != void
-    {
-      R result;
-      call_remote ([&job, &result] () {
-        result = job();
-      });
-      return result;
-    }
 }
 
 void debug_message (const char *cond, const std::string &message);

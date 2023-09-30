@@ -17,10 +17,10 @@ enum Flags : size_t {
 
 } // Loft
 
-// A std::unique_ptr<> deleter for Loft allocations.
+/// A std::unique_ptr<> deleter for Loft allocations.
 struct LoftFree {
   size_t size = 0;
-  void (*dtor)      (void*) = nullptr;
+  void (*dtor_)     (void*) = nullptr;
   void   operator() (void*);
 };
 
@@ -87,10 +87,11 @@ loft_make_unique (Args &&...args)
   LoftFree lfree = vp.get_deleter();
   void *vptr = vp.release();
   ASE_ASSERT_WARN (t == vptr); // require T* == void*
-  lfree.dtor = [] (void *p) {
+  lfree.dtor_ = [] (void *p) {
     T *const t = static_cast<T*> (p);
     t->~T();
   };
+  // dprintf (2, "--LOFT: %s: ctor: %s: size=%zd ptr=%p dtor_=%p\n", __func__, typeid_name<T>().c_str(), lfree.size, t, lfree.dtor_);
   return std::unique_ptr<T,LoftFree> (t, lfree);
 }
 
