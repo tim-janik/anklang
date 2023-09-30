@@ -95,12 +95,15 @@ class JsonapiConnection : public WebSocketConnection, public CustomDataContainer
     JsonapiConnectionP conp = std::dynamic_pointer_cast<JsonapiConnection> (shared_from_this());
     assert_return (conp);
     String reply;
-    // operator+=() works synchronously
-    main_jobs += [&message, &reply, conp, this] () {
+    // wait for main loop callback completion via semaphore
+    ScopedSemaphore sem;
+    main_jobs += [&message, &reply, conp, &sem, this] () {
       current_message_conection = conp;
       reply = handle_jsonipc (message);
       current_message_conection = nullptr;
+      sem.post();
     };
+    sem.wait(); // synchronize with sem.post()
     // when queueing asynchronously, we have to use WebSocketConnectionP
     if (!reply.empty())
       send_text (reply);
