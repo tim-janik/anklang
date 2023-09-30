@@ -293,12 +293,13 @@ WebSocketConnection::get_info ()
       printerr ("%s: %s\n", it.first, it.second);
   // https://github.com/zaphoyd/websocketpp/issues/694#issuecomment-454623641
   const auto &socket = cp->get_raw_socket();
-  const auto &laddress = socket.local_endpoint().address();
+  boost::system::error_code ec;
+  const auto &laddress = socket.local_endpoint (ec).address();
   info.local = laddress.to_string();
-  info.lport = socket.local_endpoint().port();
-  const auto &raddress = socket.remote_endpoint().address();
+  info.lport = socket.local_endpoint (ec).port();
+  const auto &raddress = socket.remote_endpoint (ec).address();
   info.remote = raddress.to_string();
-  info.rport = socket.remote_endpoint().port();
+  info.rport = socket.remote_endpoint (ec).port();
   info.subs = cp->get_requested_subprotocols();
   return info;
 }
