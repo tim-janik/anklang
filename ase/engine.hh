@@ -12,6 +12,7 @@ struct AudioEngineJob {
   virtual ~AudioEngineJob();
   void *voidp = nullptr;
 };
+class AudioEngineThread;
 
 /** Main handle for AudioProcessor administration and audio rendering.
  * Use async_jobs to have the engine execute arbitrary code.
@@ -19,12 +20,12 @@ struct AudioEngineJob {
  * Use main_rt_jobs (see main.hh) for obstruction free enqueueing of main_loop callbacks.
  */
 class AudioEngine : VirtualBase {
-  std::atomic<size_t>          processor_count_ = 0;
-  friend class AudioEngineThread;
-  friend class AudioProcessor;
 protected:
-  AudioTransport *transport_ = nullptr;
-  explicit AudioEngine           () {}
+  friend class AudioProcessor;
+  std::atomic<size_t> processor_count_ alignas (64) = 0;
+  AudioTransport     &transport_;
+  explicit AudioEngine           (AudioEngineThread&, AudioTransport&);
+  virtual ~AudioEngine           ();
   void     enable_output         (AudioProcessor &aproc, bool onoff);
   void     schedule_queue_update ();
   void     schedule_add          (AudioProcessor &aproc, uint level);
@@ -40,7 +41,7 @@ public:
   ProjectImplP    get_project      ();
   // MT-Safe API
   uint64_t               frame_counter       () const;
-  const AudioTransport&  transport           () const           { return *transport_; }
+  const AudioTransport&  transport           () const           { return transport_; }
   uint                   sample_rate         () const ASE_CONST { return transport().samplerate; }
   uint                   nyquist             () const ASE_CONST { return transport().nyquist; }
   double                 inyquist            () const ASE_CONST { return transport().inyquist; }
@@ -52,15 +53,21 @@ public:
   static bool            thread_is_engine    () { return std::this_thread::get_id() == thread_id; }
   static const ThreadId &thread_id;
   // JobQueues
-  struct JobQueue {
+  class JobQueue {
+    friend class AudioEngine;
+    const uint8_t        queue_tag_;
+    explicit             JobQueue (AudioEngine&);
+  public:
     void                 operator+= (const std::function<void()> &job);
     void                 operator+= (AudioEngineJob *job);
   };
-  static JobQueue        async_jobs;    ///< Executed asynchronously, may modify AudioProcessor objects
-  static JobQueue        const_jobs;    ///< Blocks during execution, must treat AudioProcessor objects read-only
+  JobQueue               async_jobs;    ///< Executed asynchronously, may modify AudioProcessor objects
+  JobQueue               const_jobs;    ///< Blocks during execution, must treat AudioProcessor objects read-only
+protected:
+  JobQueue               synchronized_jobs;
 };
 
-AudioEngine&     make_audio_engine    (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement);
+AudioEngine& make_audio_engine (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement);
 
 /// A BorrowedPtr wraps an object pointer until it is disposed, i.e. returned to the main-thread and deleted.
 template<typename T>
