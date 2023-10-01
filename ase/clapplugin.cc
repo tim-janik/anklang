@@ -244,9 +244,9 @@ public:
   ~ClapAudioProcessor()
   {
     while (enqueued_events_.size()) {
-      BorrowedPtr<ClapEventParamS> pevents_b = enqueued_events_.back();
+      ClapEventParamS *pevents = enqueued_events_.back();
       enqueued_events_.pop_back();
-      pevents_b.dispose (engine_);
+      main_rt_jobs += RtCall (delete_clap_event_params, pevents); // delete in main_thread
     }
   }
   void
@@ -348,19 +348,19 @@ public:
   const ClapParamInfoImpl *param_info_map_start_ = nullptr;
   clap_process_t processinfo = { 0, };
   clap_event_transport_t transportinfo = { { 0, }, };
-  std::vector<BorrowedPtr<ClapEventParamS>> enqueued_events_;
+  std::vector<ClapEventParamS*> enqueued_events_;
   void
-  enqueue_events (BorrowedPtr<ClapEventParamS> pevents_b)
+  enqueue_events (ClapEventParamS *pevents)
   {
     // insert 0-time event list *before* other events
-    if (pevents_b && pevents_b->size() && pevents_b->back().header.time == 0)
+    if (pevents && pevents->size() && pevents->back().header.time == 0)
       for (size_t i = 0; i < enqueued_events_.size(); i++)
         if (enqueued_events_[i]->size() && enqueued_events_[i]->back().header.time > 0) {
-          enqueued_events_.insert (enqueued_events_.begin() + i, pevents_b);
+          enqueued_events_.insert (enqueued_events_.begin() + i, pevents);
           return;
         }
     // or add to existing queue
-    enqueued_events_.push_back (pevents_b);
+    enqueued_events_.push_back (pevents);
   }
   bool
   start_processing (const ClapParamInfoMap *param_info_map, const ClapParamInfoImpl *map_start, size_t map_size)
@@ -487,13 +487,19 @@ public:
     // TODO: need proper time stamp handling
     bool need_wakeup = false;
     while (enqueued_events_.size() && (enqueued_events_[0]->empty() || enqueued_events_[0]->back().header.time < nframes)) {
-      BorrowedPtr<ClapEventParamS> pevents_b = enqueued_events_[0];
+      ClapEventParamS *const pevents = enqueued_events_[0];
       enqueued_events_.erase (enqueued_events_.begin());
-      for (const auto &e : *pevents_b)
+      for (const auto &e : *pevents)
         need_wakeup |= apply_param_value_event (e);
-      pevents_b.dispose (engine_);
+      main_rt_jobs += RtCall (delete_clap_event_params, pevents); // delete in main_thread
     }
     return need_wakeup;
+  }
+  static void
+  delete_clap_event_params (ClapEventParamS *p)
+  {
+    assert_return (this_thread_is_ase());
+    delete p;
   }
 };
 static CString clap_audio_wrapper_aseid = register_audio_processor<ClapAudioProcessor>();
@@ -932,10 +938,9 @@ public:
   {
     ClapPluginHandleImplP selfp = shared_ptr_cast<ClapPluginHandleImpl> (this);
     return_unless (clap_activated(), false);
-    ClapEventParamS *pevents = convert_param_updates (updates);
-    BorrowedPtr<ClapEventParamS> pevents_b (pevents); // moves ownership
-    proc_->engine().async_jobs += [selfp, pevents_b] () {
-      selfp->proc_->enqueue_events (pevents_b); // use BorrowedPtr in audio-thread, dispose in main-thread
+    ClapEventParamS *pevents = convert_param_updates (updates); // allocated in main_thread
+    proc_->engine().async_jobs += [selfp, pevents] () {
+      selfp->proc_->enqueue_events (pevents);
     };
     return true;
   }
