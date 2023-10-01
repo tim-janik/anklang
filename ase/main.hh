@@ -39,7 +39,7 @@ extern MainLoopP main_loop;
 void             main_loop_wakeup      ();
 void             main_loop_autostop_mt ();
 
-/// Execute a lambda job in the Ase main loop and wait for its result.
+/// Execute a job callback in the Ase main loop.
 extern JobQueue main_jobs;
 
 /// Add a simple callback to the main event loop, without using malloc (obstruction free).

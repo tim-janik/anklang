@@ -37,20 +37,9 @@ static bool        arg_class_tree = false;
 
 // == JobQueue ==
 static void
-call_main_loop (JobQueue::Policy policy, const std::function<void()> &fun)
+call_main_loop (const std::function<void()> &fun)
 {
-  if (policy == JobQueue::SYNC)
-    {
-      ScopedSemaphore sem;
-      std::function<void()> wrapper = [&sem, &fun] () {
-        fun();
-        sem.post();
-      };
-      main_loop->exec_callback (wrapper);
-      sem.wait();
-    }
-  else
-    main_loop->exec_callback (fun);
+  main_loop->exec_callback (fun);
 }
 JobQueue main_jobs (call_main_loop);
 
