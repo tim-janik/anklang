@@ -504,18 +504,19 @@ main (int argc, char *argv[])
     }
 
   // start audio engine
-  AudioEngine &ae = make_audio_engine (main_loop_wakeup, 48000, SpeakerArrangement::STEREO);
-  main_config_.engine = &ae;
-  ae.start_threads ();
-  const uint loopdispatcherid = main_loop->exec_dispatcher ([&ae] (const LoopState &state) -> bool {
+  AudioEngine &audio_engine = make_audio_engine (main_loop_wakeup, 48000, SpeakerArrangement::STEREO);
+  main_config_.engine = &audio_engine;
+  audio_engine.start_threads ();
+  /*const uint loopdispatcherid =*/
+  main_loop->exec_dispatcher ([&audio_engine] (const LoopState &state) -> bool {
     switch (state.phase)
       {
       case LoopState::PREPARE:
-        return main_rt_jobs_pending() || ae.ipc_pending();
+        return main_rt_jobs_pending() || audio_engine.ipc_pending();
       case LoopState::CHECK:
-        return main_rt_jobs_pending() || ae.ipc_pending();
+        return main_rt_jobs_pending() || audio_engine.ipc_pending();
       case LoopState::DISPATCH:
-        ae.ipc_dispatch();
+        audio_engine.ipc_dispatch();
         main_rt_jobs_process();
         return true;
       default:
@@ -609,16 +610,15 @@ main (int argc, char *argv[])
   const int exitcode = main_loop->run();
   assert_return (main_loop, -1); // ptr must be kept around
 
-  // loop ended, close socket and shutdown
-  wss->shutdown();
+  // cleanup
+  wss->shutdown(); // close socket, allow no more calls
   main_config_.web_socket_server = nullptr;
   wss = nullptr;
 
   // halt audio engine, join its threads, dispatch cleanups
-  ae.stop_threads();
-  main_loop->remove (loopdispatcherid);
-  while (ae.ipc_pending())
-    ae.ipc_dispatch();
+  audio_engine.set_project (nullptr);
+  audio_engine.stop_threads();
+  main_loop->iterate_pending();
   main_config_.engine = nullptr;
 
   return exitcode;

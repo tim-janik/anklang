@@ -8,7 +8,7 @@
 namespace Ase {
 
 class ClapFileHandle;
-class ClapAudioWrapper;
+class ClapAudioProcessor;
 
 // == ClapPluginDescriptor ==
 class ClapPluginDescriptor {
@@ -88,7 +88,7 @@ public:
   virtual AudioProcessorP     audio_processor    () = 0;
   static ClapPluginHandleP    make_clap_handle   (const ClapPluginDescriptor &descriptor, AudioProcessorP audio_processor);
   static CString              audio_processor_type();
-  friend class ClapAudioWrapper;
+  friend class ClapAudioProcessor;
 };
 
 // == CLAP utilities ==

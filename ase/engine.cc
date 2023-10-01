@@ -23,13 +23,8 @@ using StartQueue = AsyncBlockingQueue<char>;
 ASE_CLASS_DECLS (EngineMidiInput);
 constexpr uint fixed_sample_rate = 48000;
 
-// == JobQueue ==
-AudioEngine::JobQueue        AudioEngine::async_jobs;
-AudioEngine::JobQueue        AudioEngine::const_jobs;
-static AudioEngine::JobQueue synchronized_jobs;
-
 // == EngineJobImpl ==
-struct EngineJobImpl : AudioEngineJob {
+struct EngineJobImpl {
   VoidFunc func;
   std::atomic<EngineJobImpl*> next = nullptr;
   explicit EngineJobImpl (const VoidFunc &jobfunc) : func (jobfunc) {}
@@ -39,10 +34,9 @@ atomic_next_ptrref (EngineJobImpl *j)
 {
   return j->next;
 }
-AudioEngineJob::~AudioEngineJob() {}
 
-// == AudioEngineImpl ==
-class AudioEngineImpl : public AudioEngine {
+// == AudioEngineThread ==
+class AudioEngineThread : public AudioEngine {
   PcmDriverP                   null_pcm_driver_, pcm_driver_;
   MidiDriverS                  midi_drivers_;
   static constexpr uint        fixed_n_channels = 2;
@@ -54,7 +48,6 @@ class AudioEngineImpl : public AudioEngine {
   EngineMidiInputP             midi_proc_;
   bool                         schedule_invalid_ = true;
   bool                         output_needsrunning_ = false;
-  FastMemory::Block            transport_block;
   AtomicIntrusiveStack<EngineJobImpl> async_jobs_, const_jobs_, trash_jobs_;
   const VoidF                  owner_wakeup_;
   std::thread                 *thread_ = nullptr;
@@ -63,6 +56,7 @@ class AudioEngineImpl : public AudioEngine {
   AudioProcessorS              oprocs_;
   ProjectImplP                 project_;
   WaveWriterP                  wwriter_;
+  FastMemory::Block            transport_block_;
 public:
   std::atomic<uint64>          autostop_ = U64MAX;
   struct UserNoteJob {
@@ -71,8 +65,8 @@ public:
   };
   AtomicIntrusiveStack<UserNoteJob> user_notes_;
 public:
-  virtual         ~AudioEngineImpl       ();
-  explicit        AudioEngineImpl        (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement);
+  virtual        ~AudioEngineThread      ();
+  explicit        AudioEngineThread      (const VoidF&, uint, SpeakerArrangement, const FastMemory::Block&);
   void            schedule_clear         ();
   void            schedule_add           (AudioProcessor &aproc, uint level);
   void            schedule_queue_update  ();
@@ -87,7 +81,7 @@ public:
   bool            ipc_pending            ();
   void            ipc_dispatch           ();
   AudioProcessorP get_event_source       ();
-  void            add_job_mt             (AudioEngineJob *aejob, const AudioEngine::JobQueue *jobqueue);
+  void            add_job_mt             (EngineJobImpl *aejob, const AudioEngine::JobQueue *jobqueue);
   bool            pcm_check_write        (bool write_buffer, int64 *timeout_usecs_p = nullptr);
   bool            driver_dispatcher      (const LoopState &state);
   bool            process_jobs           (AtomicIntrusiveStack<EngineJobImpl> &joblist);
@@ -102,26 +96,10 @@ public:
 static std::thread::id audio_engine_thread_id = {};
 const ThreadId &AudioEngine::thread_id = audio_engine_thread_id;
 
-static inline std::atomic<AudioEngineImpl::UserNoteJob*>&
-atomic_next_ptrref (AudioEngineImpl::UserNoteJob *j)
+static inline std::atomic<AudioEngineThread::UserNoteJob*>&
+atomic_next_ptrref (AudioEngineThread::UserNoteJob *j)
 {
   return j->next;
-}
-
-AudioEngineImpl::~AudioEngineImpl ()
-{
-  fatal_error ("AudioEngine references must persist");
-  transport_ = nullptr;
-  ServerImpl::instancep()->telemem_release (transport_block);
-}
-
-AudioEngineImpl::AudioEngineImpl (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement) :
-  owner_wakeup_ (owner_wakeup)
-{
-  transport_block = ServerImpl::instancep()->telemem_allocate (sizeof (*transport_));
-  transport_ = new (transport_block.block_start) AudioTransport (speakerarrangement, sample_rate);
-  oprocs_.reserve (16);
-  assert_return (sample_rate == 48000);
 }
 
 template<int ADDING> static void
@@ -165,13 +143,13 @@ interleaved_stereo (const size_t n_frames, float *buffer, AudioProcessor &proc, 
 }
 
 void
-AudioEngineImpl::schedule_queue_update()
+AudioEngineThread::schedule_queue_update()
 {
   schedule_invalid_ = true;
 }
 
 void
-AudioEngineImpl::schedule_clear()
+AudioEngineThread::schedule_clear()
 {
   while (schedule_.size() != 0)
     {
@@ -189,7 +167,7 @@ AudioEngineImpl::schedule_clear()
 }
 
 void
-AudioEngineImpl::schedule_add (AudioProcessor &aproc, uint level)
+AudioEngineThread::schedule_add (AudioProcessor &aproc, uint level)
 {
   return_unless (0 == (aproc.flags_ & AudioProcessor::SCHEDULED));
   assert_return (aproc.sched_next_ == nullptr);
@@ -203,7 +181,7 @@ AudioEngineImpl::schedule_add (AudioProcessor &aproc, uint level)
 }
 
 void
-AudioEngineImpl::schedule_render (uint64 frames)
+AudioEngineThread::schedule_render (uint64 frames)
 {
   assert_return (0 == (frames & (8 - 1)));
   // render scheduled AudioProcessor nodes
@@ -232,11 +210,11 @@ AudioEngineImpl::schedule_render (uint64 frames)
   if (n == 0)
     floatfill (chbuffer_data_, 0.0, buffer_size_ * fixed_n_channels);
   render_stamp_ = target_stamp;
-  transport_->advance (frames);
+  transport_.advance (frames);
 }
 
 void
-AudioEngineImpl::enable_output (AudioProcessor &aproc, bool onoff)
+AudioEngineThread::enable_output (AudioProcessor &aproc, bool onoff)
 {
   AudioProcessorP procp = shared_ptr_cast<AudioProcessor> (&aproc);
   assert_return (procp != nullptr);
@@ -256,7 +234,7 @@ AudioEngineImpl::enable_output (AudioProcessor &aproc, bool onoff)
 }
 
 void
-AudioEngineImpl::update_drivers (bool fullio, uint latency)
+AudioEngineThread::update_drivers (bool fullio, uint latency)
 {
   Error er = {};
   // PCM fallback
@@ -301,7 +279,7 @@ AudioEngineImpl::update_drivers (bool fullio, uint latency)
   buffer_size_ = std::min (MAX_BUFFER_SIZE, size_t (pcm_driver_->block_length()));
   floatfill (chbuffer_data_, 0.0, buffer_size_ * fixed_n_channels);
   write_stamp_ = render_stamp_ - buffer_size_; // force zeros initially
-  EDEBUG ("AudioEngineImpl::update_drivers: PCM: channels=%d pcmblock=%d enginebuffer=%d\n",
+  EDEBUG ("AudioEngineThread::update_drivers: PCM: channels=%d pcmblock=%d enginebuffer=%d\n",
           fixed_n_channels, pcm_driver_->block_length(), buffer_size_);
   // MIDI Driver List
   MidiDriverS old_drivers = midi_drivers_, new_drivers;
@@ -361,25 +339,26 @@ AudioEngineImpl::update_drivers (bool fullio, uint latency)
 }
 
 void
-AudioEngineImpl::capture_start (const String &filename, bool needsrunning)
+AudioEngineThread::capture_start (const String &filename, bool needsrunning)
 {
+  const uint sample_rate = transport_.samplerate;
   capture_stop();
   output_needsrunning_ = needsrunning;
   if (string_endswith (filename, ".wav"))
     {
-      wwriter_ = wave_writer_create_wav (sample_rate(), fixed_n_channels, filename);
+      wwriter_ = wave_writer_create_wav (sample_rate, fixed_n_channels, filename);
       if (!wwriter_)
         printerr ("%s: failed to open file: %s\n", filename, strerror (errno));
     }
   else if (string_endswith (filename, ".opus"))
     {
-      wwriter_ = wave_writer_create_opus (sample_rate(), fixed_n_channels, filename);
+      wwriter_ = wave_writer_create_opus (sample_rate, fixed_n_channels, filename);
       if (!wwriter_)
         printerr ("%s: failed to open file: %s\n", filename, strerror (errno));
     }
   else if (string_endswith (filename, ".flac"))
     {
-      wwriter_ = wave_writer_create_flac (sample_rate(), fixed_n_channels, filename);
+      wwriter_ = wave_writer_create_flac (sample_rate, fixed_n_channels, filename);
       if (!wwriter_)
         printerr ("%s: failed to open file: %s\n", filename, strerror (errno));
     }
@@ -388,7 +367,7 @@ AudioEngineImpl::capture_start (const String &filename, bool needsrunning)
 }
 
 void
-AudioEngineImpl::capture_stop()
+AudioEngineThread::capture_stop()
 {
   if (wwriter_)
     {
@@ -398,21 +377,21 @@ AudioEngineImpl::capture_stop()
 }
 
 void
-AudioEngineImpl::run (StartQueue *sq)
+AudioEngineThread::run (StartQueue *sq)
 {
   assert_return (pcm_driver_);
   // FIXME: assert owner_wakeup and free trash
   this_thread_set_name ("AudioEngine-0"); // max 16 chars
   audio_engine_thread_id = std::this_thread::get_id();
   sched_fast_priority (this_thread_gettid());
-  event_loop_->exec_dispatcher (std::bind (&AudioEngineImpl::driver_dispatcher, this, std::placeholders::_1));
+  event_loop_->exec_dispatcher (std::bind (&AudioEngineThread::driver_dispatcher, this, std::placeholders::_1));
   sq->push ('R'); // StartQueue becomes invalid after this call
   sq = nullptr;
   event_loop_->run();
 }
 
 bool
-AudioEngineImpl::process_jobs (AtomicIntrusiveStack<EngineJobImpl> &joblist)
+AudioEngineThread::process_jobs (AtomicIntrusiveStack<EngineJobImpl> &joblist)
 {
   EngineJobImpl *const jobs = joblist.pop_reversed(), *last = nullptr;
   for (EngineJobImpl *job = jobs; job; last = job, job = job->next)
@@ -426,7 +405,7 @@ AudioEngineImpl::process_jobs (AtomicIntrusiveStack<EngineJobImpl> &joblist)
 }
 
 bool
-AudioEngineImpl::pcm_check_write (bool write_buffer, int64 *timeout_usecs_p)
+AudioEngineThread::pcm_check_write (bool write_buffer, int64 *timeout_usecs_p)
 {
   int64 timeout_usecs = INT64_MAX;
   const bool can_write = pcm_driver_->pcm_check_io (&timeout_usecs) || timeout_usecs == 0;
@@ -438,7 +417,7 @@ AudioEngineImpl::pcm_check_write (bool write_buffer, int64 *timeout_usecs_p)
     return false;
   pcm_driver_->pcm_write (buffer_size_ * fixed_n_channels, chbuffer_data_);
   if (wwriter_ && fixed_n_channels == 2 && write_stamp_ < autostop_ &&
-      (!output_needsrunning_ || transport_->running()))
+      (!output_needsrunning_ || transport_.running()))
     wwriter_->write (chbuffer_data_, buffer_size_);
   write_stamp_ += buffer_size_;
   if (write_stamp_ >= autostop_)
@@ -448,7 +427,7 @@ AudioEngineImpl::pcm_check_write (bool write_buffer, int64 *timeout_usecs_p)
 }
 
 bool
-AudioEngineImpl::driver_dispatcher (const LoopState &state)
+AudioEngineThread::driver_dispatcher (const LoopState &state)
 {
   int64 *timeout_usecs = nullptr;
   switch (state.phase)
@@ -493,7 +472,7 @@ AudioEngineImpl::driver_dispatcher (const LoopState &state)
 }
 
 void
-AudioEngineImpl::queue_user_note (const String &channel, UserNote::Flags flags, const String &text)
+AudioEngineThread::queue_user_note (const String &channel, UserNote::Flags flags, const String &text)
 {
   UserNoteJob *uj = new UserNoteJob { nullptr, { 0, flags, channel, text } };
   if (user_notes_.push (uj))
@@ -501,14 +480,14 @@ AudioEngineImpl::queue_user_note (const String &channel, UserNote::Flags flags, 
 }
 
 bool
-AudioEngineImpl::ipc_pending ()
+AudioEngineThread::ipc_pending ()
 {
   const bool have_jobs = !trash_jobs_.empty() || !user_notes_.empty();
   return have_jobs || AudioProcessor::enotify_pending();
 }
 
 void
-AudioEngineImpl::ipc_dispatch ()
+AudioEngineThread::ipc_dispatch ()
 {
   UserNoteJob *uj = user_notes_.pop_reversed();
   while (uj)
@@ -530,14 +509,14 @@ AudioEngineImpl::ipc_dispatch ()
 }
 
 void
-AudioEngineImpl::wakeup_thread_mt()
+AudioEngineThread::wakeup_thread_mt()
 {
   assert_return (event_loop_);
   event_loop_->wakeup();
 }
 
 void
-AudioEngineImpl::start_threads()
+AudioEngineThread::start_threads()
 {
   schedule_.reserve (8192);
   assert_return (thread_ == nullptr);
@@ -545,7 +524,7 @@ AudioEngineImpl::start_threads()
   update_drivers (false, latency);
   schedule_queue_update();
   StartQueue start_queue;
-  thread_ = new std::thread (&AudioEngineImpl::run, this, &start_queue);
+  thread_ = new std::thread (&AudioEngineThread::run, this, &start_queue);
   const char reply = start_queue.pop(); // synchronize with thread start
   assert_return (reply == 'R');
   onchange_prefs_ = ASE_SERVER.on_event ("change:prefs", [this, latency] (auto...) {
@@ -555,9 +534,9 @@ AudioEngineImpl::start_threads()
 }
 
 void
-AudioEngineImpl::stop_threads()
+AudioEngineThread::stop_threads()
 {
-  AudioEngineImpl &engine = *dynamic_cast<AudioEngineImpl*> (this);
+  AudioEngineThread &engine = *dynamic_cast<AudioEngineThread*> (this);
   assert_return (engine.thread_ != nullptr);
   onchange_prefs_.reset();
   engine.event_loop_->quit (0);
@@ -569,11 +548,10 @@ AudioEngineImpl::stop_threads()
 }
 
 void
-AudioEngineImpl::add_job_mt (AudioEngineJob *aejob, const AudioEngine::JobQueue *jobqueue)
+AudioEngineThread::add_job_mt (EngineJobImpl *job, const AudioEngine::JobQueue *jobqueue)
 {
-  EngineJobImpl *job = dynamic_cast<EngineJobImpl*> (aejob);
   assert_return (job != nullptr);
-  AudioEngineImpl &engine = *dynamic_cast<AudioEngineImpl*> (this);
+  AudioEngineThread &engine = *dynamic_cast<AudioEngineThread*> (this);
   // engine not running, run job right away
   if (!engine.thread_)
     {
@@ -582,7 +560,7 @@ AudioEngineImpl::add_job_mt (AudioEngineJob *aejob, const AudioEngine::JobQueue 
       return;
     }
   // enqueue async_jobs
-  if (jobqueue == &AudioEngine::async_jobs)     // non-blocking, via async_jobs_ queue
+  if (jobqueue == &async_jobs)  // non-blocking, via async_jobs_ queue
     { // run asynchronously
       const bool was_empty = engine.async_jobs_.push (job);
       if (was_empty)
@@ -598,7 +576,7 @@ AudioEngineImpl::add_job_mt (AudioEngineJob *aejob, const AudioEngine::JobQueue 
   };
   job->func = wrapper;
   bool need_wakeup;
-  if (jobqueue == &AudioEngine::const_jobs) // blocking, via const_jobs_ queue
+  if (jobqueue == &const_jobs)  // blocking, via const_jobs_ queue
     need_wakeup = engine.const_jobs_.push (job);
   else if (jobqueue == &synchronized_jobs)  // blocking, via async_jobs_ queue
     need_wakeup = engine.async_jobs_.push (job);
@@ -610,7 +588,7 @@ AudioEngineImpl::add_job_mt (AudioEngineJob *aejob, const AudioEngine::JobQueue 
 }
 
 void
-AudioEngineImpl::set_project (ProjectImplP project)
+AudioEngineThread::set_project (ProjectImplP project)
 {
   if (project)
     {
@@ -627,82 +605,97 @@ AudioEngineImpl::set_project (ProjectImplP project)
 }
 
 ProjectImplP
-AudioEngineImpl::get_project ()
+AudioEngineThread::get_project ()
 {
   return project_;
 }
 
-static AudioEngineImpl *audio_engine_impl = nullptr;
+AudioEngineThread::~AudioEngineThread ()
+{
+  FastMemory::Block transport_block = transport_block_; // keep alive until after ~AudioEngine
+  main_jobs += [transport_block] () { ServerImpl::instancep()->telemem_release (transport_block); };
+}
+
+AudioEngineThread::AudioEngineThread (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement,
+                                      const FastMemory::Block &transport_block) :
+  AudioEngine (*this, *new (transport_block.block_start) AudioTransport (speakerarrangement, sample_rate)),
+  owner_wakeup_ (owner_wakeup), transport_block_ (transport_block)
+{
+  oprocs_.reserve (16);
+  assert_return (transport_.samplerate == 48000);
+}
 
 AudioEngine&
 make_audio_engine (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement)
 {
-  assert_return (audio_engine_impl == nullptr, *audio_engine_impl);
-  audio_engine_impl = new AudioEngineImpl (owner_wakeup, sample_rate, speakerarrangement);
-  return *audio_engine_impl;
+  FastMemory::Block transport_block = ServerImpl::instancep()->telemem_allocate (sizeof (AudioTransport));
+  return *new AudioEngineThread (owner_wakeup, sample_rate, speakerarrangement, transport_block);
 }
 
 // == AudioEngine ==
-AudioEngineJob*
-AudioEngine::new_engine_job (const std::function<void()> &jobfunc)
+AudioEngine::AudioEngine (AudioEngineThread &audio_engine_thread, AudioTransport &transport) :
+  transport_ (transport), async_jobs (audio_engine_thread), const_jobs (audio_engine_thread), synchronized_jobs (audio_engine_thread)
+{}
+
+AudioEngine::~AudioEngine()
 {
-  EngineJobImpl *job = new EngineJobImpl (jobfunc);
-  return job;
+  // some ref-counted objects keep AudioEngine& members around
+  fatal_error ("AudioEngine must not be destroyed");
 }
 
 uint64
 AudioEngine::frame_counter () const
 {
-  const AudioEngineImpl &impl = static_cast<const AudioEngineImpl&> (*this);
+  const AudioEngineThread &impl = static_cast<const AudioEngineThread&> (*this);
   return impl.frame_counter();
 }
 
 void
 AudioEngine::set_autostop (uint64_t nsamples)
 {
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  AudioEngineThread &impl = static_cast<AudioEngineThread&> (*this);
   impl.autostop_ = nsamples;
 }
 
 void
 AudioEngine::schedule_queue_update()
 {
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  AudioEngineThread &impl = static_cast<AudioEngineThread&> (*this);
   impl.schedule_queue_update();
 }
 
 void
 AudioEngine::schedule_add (AudioProcessor &aproc, uint level)
 {
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  AudioEngineThread &impl = static_cast<AudioEngineThread&> (*this);
   impl.schedule_add (aproc, level);
 }
 
 void
 AudioEngine::enable_output (AudioProcessor &aproc, bool onoff)
 {
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  AudioEngineThread &impl = static_cast<AudioEngineThread&> (*this);
   return impl.enable_output (aproc, onoff);
 }
 
 void
 AudioEngine::start_threads()
 {
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  AudioEngineThread &impl = static_cast<AudioEngineThread&> (*this);
   return impl.start_threads();
 }
 
 void
 AudioEngine::stop_threads()
 {
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  AudioEngineThread &impl = static_cast<AudioEngineThread&> (*this);
   return impl.stop_threads();
 }
 
 void
 AudioEngine::queue_capture_start (CallbackS &callbacks, const String &filename, bool needsrunning)
 {
-  AudioEngineImpl *impl = static_cast<AudioEngineImpl*> (this);
+  AudioEngineThread *impl = static_cast<AudioEngineThread*> (this);
   String file = filename;
   callbacks.push_back ([impl,file,needsrunning] () {
     impl->capture_start (file, needsrunning);
@@ -712,7 +705,7 @@ AudioEngine::queue_capture_start (CallbackS &callbacks, const String &filename, 
 void
 AudioEngine::queue_capture_stop (CallbackS &callbacks)
 {
-  AudioEngineImpl *impl = static_cast<AudioEngineImpl*> (this);
+  AudioEngineThread *impl = static_cast<AudioEngineThread*> (this);
   callbacks.push_back ([impl] () {
     impl->capture_stop();
   });
@@ -721,55 +714,57 @@ AudioEngine::queue_capture_stop (CallbackS &callbacks)
 void
 AudioEngine::wakeup_thread_mt ()
 {
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  AudioEngineThread &impl = static_cast<AudioEngineThread&> (*this);
   return impl.wakeup_thread_mt();
 }
 
 bool
 AudioEngine::ipc_pending ()
 {
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  AudioEngineThread &impl = static_cast<AudioEngineThread&> (*this);
   return impl.ipc_pending();
 }
 
 void
 AudioEngine::ipc_dispatch ()
 {
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  AudioEngineThread &impl = static_cast<AudioEngineThread&> (*this);
   return impl.ipc_dispatch();
 }
 
 AudioProcessorP
 AudioEngine::get_event_source ()
 {
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  AudioEngineThread &impl = static_cast<AudioEngineThread&> (*this);
   return impl.get_event_source();
 }
 
 void
 AudioEngine::set_project (ProjectImplP project)
 {
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  AudioEngineThread &impl = static_cast<AudioEngineThread&> (*this);
   return impl.set_project (project);
 }
 
 ProjectImplP
 AudioEngine::get_project ()
 {
-  AudioEngineImpl &impl = static_cast<AudioEngineImpl&> (*this);
+  AudioEngineThread &impl = static_cast<AudioEngineThread&> (*this);
   return impl.get_project();
+}
+
+AudioEngine::JobQueue::JobQueue (AudioEngine &aet) :
+  queue_tag_ (ptrdiff_t (this) - ptrdiff_t (&aet))
+{
+  assert_return (ptrdiff_t (this) < 256 + ptrdiff_t (&aet));
 }
 
 void
 AudioEngine::JobQueue::operator+= (const std::function<void()> &job)
 {
-  return audio_engine_impl->add_job_mt (new_engine_job (job), this);
-}
-
-void
-AudioEngine::JobQueue::operator+= (AudioEngineJob *job)
-{
-  return audio_engine_impl->add_job_mt (job, this);
+  AudioEngine *audio_engine = reinterpret_cast<AudioEngine*> (ptrdiff_t (this) - queue_tag_);
+  AudioEngineThread &audio_engine_thread = static_cast<AudioEngineThread&> (*audio_engine);
+  return audio_engine_thread.add_job_mt (new EngineJobImpl (job), this);
 }
 
 // == MidiInput ==
@@ -809,7 +804,7 @@ template<class T> struct Mutable {
 };
 
 void
-AudioEngineImpl::swap_midi_drivers_sync (const MidiDriverS &midi_drivers)
+AudioEngineThread::swap_midi_drivers_sync (const MidiDriverS &midi_drivers)
 {
   if (!midi_proc_)
     {
@@ -831,7 +826,7 @@ AudioEngineImpl::swap_midi_drivers_sync (const MidiDriverS &midi_drivers)
 }
 
 AudioProcessorP
-AudioEngineImpl::get_event_source ()
+AudioEngineThread::get_event_source ()
 {
   return midi_proc_;
 }
