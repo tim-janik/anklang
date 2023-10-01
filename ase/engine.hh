@@ -11,6 +11,9 @@ namespace Ase {
 class AudioEngineThread;
 
 /** Main handle for AudioProcessor administration and audio rendering.
+ * Use make_audio_engine() to create a new engine and start_threads() to run
+ * its synthesis threads. AudioEngine objects cannot be deleted, because other
+ * ref-counted objects may hold `AudioEngine&` members until after main().
  * Use async_jobs to have the engine execute arbitrary code.
  * Use const_jobs for synchronous read-only data gathering, this may take quite long.
  * Use main_rt_jobs (see main.hh) for obstruction free enqueueing of main_loop callbacks.
