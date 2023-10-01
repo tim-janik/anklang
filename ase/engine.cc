@@ -24,7 +24,7 @@ ASE_CLASS_DECLS (EngineMidiInput);
 constexpr uint fixed_sample_rate = 48000;
 
 // == EngineJobImpl ==
-struct EngineJobImpl : AudioEngineJob {
+struct EngineJobImpl {
   VoidFunc func;
   std::atomic<EngineJobImpl*> next = nullptr;
   explicit EngineJobImpl (const VoidFunc &jobfunc) : func (jobfunc) {}
@@ -34,7 +34,6 @@ atomic_next_ptrref (EngineJobImpl *j)
 {
   return j->next;
 }
-AudioEngineJob::~AudioEngineJob() {}
 
 // == AudioEngineThread ==
 class AudioEngineThread : public AudioEngine {
@@ -82,7 +81,7 @@ public:
   bool            ipc_pending            ();
   void            ipc_dispatch           ();
   AudioProcessorP get_event_source       ();
-  void            add_job_mt             (AudioEngineJob *aejob, const AudioEngine::JobQueue *jobqueue);
+  void            add_job_mt             (EngineJobImpl *aejob, const AudioEngine::JobQueue *jobqueue);
   bool            pcm_check_write        (bool write_buffer, int64 *timeout_usecs_p = nullptr);
   bool            driver_dispatcher      (const LoopState &state);
   bool            process_jobs           (AtomicIntrusiveStack<EngineJobImpl> &joblist);
@@ -549,9 +548,8 @@ AudioEngineThread::stop_threads()
 }
 
 void
-AudioEngineThread::add_job_mt (AudioEngineJob *aejob, const AudioEngine::JobQueue *jobqueue)
+AudioEngineThread::add_job_mt (EngineJobImpl *job, const AudioEngine::JobQueue *jobqueue)
 {
-  EngineJobImpl *job = dynamic_cast<EngineJobImpl*> (aejob);
   assert_return (job != nullptr);
   AudioEngineThread &engine = *dynamic_cast<AudioEngineThread*> (this);
   // engine not running, run job right away
@@ -643,13 +641,6 @@ AudioEngine::~AudioEngine()
 {
   // some ref-counted objects keep AudioEngine& members around
   fatal_error ("AudioEngine must not be destroyed");
-}
-
-AudioEngineJob*
-AudioEngine::new_engine_job (const std::function<void()> &jobfunc)
-{
-  EngineJobImpl *job = new EngineJobImpl (jobfunc);
-  return job;
 }
 
 uint64
@@ -773,15 +764,7 @@ AudioEngine::JobQueue::operator+= (const std::function<void()> &job)
 {
   AudioEngine *audio_engine = reinterpret_cast<AudioEngine*> (ptrdiff_t (this) - queue_tag_);
   AudioEngineThread &audio_engine_thread = static_cast<AudioEngineThread&> (*audio_engine);
-  return audio_engine_thread.add_job_mt (new_engine_job (job), this);
-}
-
-void
-AudioEngine::JobQueue::operator+= (AudioEngineJob *job)
-{
-  AudioEngine *audio_engine = reinterpret_cast<AudioEngine*> (ptrdiff_t (this) - queue_tag_);
-  AudioEngineThread &audio_engine_thread = static_cast<AudioEngineThread&> (*audio_engine);
-  return audio_engine_thread.add_job_mt (job, this);
+  return audio_engine_thread.add_job_mt (new EngineJobImpl (job), this);
 }
 
 // == MidiInput ==
