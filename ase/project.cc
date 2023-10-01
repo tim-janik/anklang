@@ -14,7 +14,7 @@
 
 namespace Ase {
 
-static std::vector<ProjectImplP> all_projects;
+static std::vector<ProjectImplP> &all_projects = *new std::vector<ProjectImplP>();
 
 // == Project ==
 ProjectP
