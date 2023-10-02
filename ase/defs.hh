@@ -56,6 +56,7 @@ ASE_CLASS_DECLS (Monitor);
 ASE_CLASS_DECLS (NativeDevice);
 ASE_CLASS_DECLS (NativeDeviceImpl);
 ASE_CLASS_DECLS (Object);
+ASE_CLASS_DECLS (Preference);
 ASE_CLASS_DECLS (Project);
 ASE_CLASS_DECLS (ProjectImpl);
 ASE_CLASS_DECLS (Property);
