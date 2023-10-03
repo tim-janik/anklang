@@ -17,6 +17,12 @@
 
 namespace Ase {
 
+static std::atomic<uint> pref_synth_latency;
+static Preference synth_latency_p = Preference ("audio.synth_latency",
+                                                { _("Latency"), "", 15, { 0, 3000, 5 }, "ms", STANDARD,
+                                                  "", _("Processing duration between input and output of a single sample, smaller values increase CPU load") },
+                                                [] (const CString &ident, const Value &value) { pref_synth_latency = value.as_int(); printerr ("audio.synth_latency: %d\n", pref_synth_latency); });
+
 // == decls ==
 using VoidFunc = std::function<void()>;
 using StartQueue = AsyncBlockingQueue<char>;
