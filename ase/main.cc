@@ -178,6 +178,7 @@ parse_args (int *argcp, char **argv)
     }
   config.fatal_warnings = feature_check ("fatal-warnings");
 
+  bool norc = false;
   bool sep = false; // -- separator
   const uint argc = *argcp;
   for (uint i = 1; i < argc; i++)
@@ -188,6 +189,8 @@ parse_args (int *argcp, char **argv)
         config.fatal_warnings = true;
       else if (strcmp ("--disable-randomization", argv[i]) == 0)
         config.allow_randomization = false;
+      else if (strcmp ("--norc", argv[i]) == 0)
+        norc = true;
       else if (strcmp ("--rand64", argv[i]) == 0)
         {
           FastRng prng;
@@ -276,6 +279,9 @@ parse_args (int *argcp, char **argv)
           }
       *argcp = e;
     }
+  // load preferences unless --norc was given
+  if (!norc)
+    Preference::load_preferences (true);
   return config;
 }
 
@@ -426,6 +432,8 @@ main (int argc, char *argv[])
   using namespace Ase;
   using namespace AnsiColors;
 
+  // setup thread identifier
+  TaskRegistry::setup_ase ("AnklangMainProc");
   // use malloc to serve allocations via sbrk only (avoid mmap)
   mallopt (M_MMAP_MAX, 0);
   // avoid releasing sbrk memory back to the system (reduce page faults)
@@ -435,8 +443,16 @@ main (int argc, char *argv[])
   // preallocate memory for lock-free allocator
   preallocate_loft (64 * 1024 * 1024);
 
-  // setup thread and handle args and config
-  TaskRegistry::setup_ase ("AnklangMainProc");
+  // SIGPIPE init: needs to be done before any child thread is created
+  init_sigpipe();
+  // prepare main event loop (needed before parse_args)
+  main_loop = MainLoop::create();
+  // handle loft preallocation needs
+  main_loop->exec_dispatcher (dispatch_loft_lowmem, EventLoop::PRIORITY_CEILING);
+  // handle automatic shutdown
+  main_loop->exec_dispatcher (handle_autostop);
+
+  // setup thread and handle args and config (needs main_loop)
   main_config_ = parse_args (&argc, argv);
   const MainConfig &config = main_config_;
 
@@ -454,16 +470,6 @@ main (int argc, char *argv[])
       print_class_tree();
       return 0;
     }
-
-  // SIGPIPE init: needs to be done before any child thread is created
-  init_sigpipe();
-
-  // prepare main event loop
-  main_loop = MainLoop::create();
-  // handle loft preallocation needs
-  main_loop->exec_dispatcher (dispatch_loft_lowmem, EventLoop::PRIORITY_CEILING);
-  // handle automatic shutdown
-  main_loop->exec_dispatcher (handle_autostop);
 
   // load drivers and dump device list
   load_registered_drivers();
