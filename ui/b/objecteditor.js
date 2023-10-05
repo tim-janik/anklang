@@ -107,7 +107,7 @@ class BObjectEditor extends LitComponent {
     for (const group of this.gprops) {
       content.push (GROUP_HTML (this, group));
       for (const prop of group.props) {
-	const component_html = prop.component_html_ (this, prop);
+	const component_html = prop.b_objecteditor_component_html_ (this, prop);
 	content.push (PROP_HTML (this, prop, component_html));
       }
     }
@@ -177,7 +177,7 @@ class BObjectEditor extends LitComponent {
 	      component_html = CHOICE_HTML;
 	    else
 	      component_html = TEXT_HTML;
-	    xprop.component_html_ = component_html;
+	    xprop.b_objecteditor_component_html_ = component_html;
 	  }
 	Object.freeze (groups[k]);
       }
