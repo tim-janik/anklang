@@ -37,7 +37,7 @@ async function augment_property (xprop) {
       for (let i = 0; i < xprop.value_.choices.length; i++)
 	{
 	  const c = xprop.value_.choices[i];
-	  if (xprop.ident_ == 'pcm_driver')
+	  if (xprop.ident_ == 'driver.pcm.devid')
 	    augment_choice_entry (c, 'pcm');
 	  else if (xprop.ident_.match (/midi/i))
 	    augment_choice_entry (c, 'midi');
