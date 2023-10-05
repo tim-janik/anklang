@@ -8,8 +8,9 @@
 namespace Ase {
 
 // == Property hint constants ==
-extern const String STORAGE; // ":r:w:S:";
-extern const String STANDARD; // ":r:w:S:G:";
+constexpr const char GUIONLY[] = ":G:r:w:";     ///< GUI READABLE WRITABLE
+constexpr const char STORAGE[] = ":S:r:w:";     ///< STORAGE READABLE WRITABLE
+constexpr const char STANDARD[] = ":S:G:r:w:";  ///< STORAGE GUI READABLE WRITABLE
 
 /// Common base type for polymorphic classes managed by `std::shared_ptr<>`.
 class SharedBase : public virtual VirtualBase,

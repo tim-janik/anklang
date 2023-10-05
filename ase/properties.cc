@@ -8,9 +8,6 @@
 
 namespace Ase {
 
-const String STORAGE = ":r:w:S:";
-const String STANDARD = ":r:w:S:G:";
-
 static String
 canonify_identifier (const std::string &input)
 {

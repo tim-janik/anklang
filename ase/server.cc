@@ -68,7 +68,7 @@ Preferences::access_properties (const EventHandler &eventhandler)
   return_unless (bag.props.empty(), bag.props);
   bag.group = _("Synthesis Settings");
   bag += Text (&pcm_driver, _("PCM Driver"), "", pcm_driver_choices, STANDARD, _("Driver and device to be used for PCM input and output"));
-  bag += Range (&synth_latency, _("Latency"), "", 0, 3000, 5, "ms", STANDARD + "step=5",
+  bag += Range (&synth_latency, _("Latency"), "", 0, 3000, 5, "ms", STANDARD + String ("step=5"),
                 _("Processing duration between input and output of a single sample, smaller values increase CPU load"));
   bag += Range (&synth_mixing_freq, _("Synth Mixing Frequency"), "", 48000, 48000, 48000, "Hz", STANDARD,
                 _("Unused, synthesis mixing frequency is always 48000 Hz"));
@@ -85,13 +85,13 @@ Preferences::access_properties (const EventHandler &eventhandler)
   bag += Text (&author_default, _("Default Author"), "", STANDARD, _("Default value for 'Author' fields"));
   bag += Text (&license_default, _("Default License"), "", STANDARD, _("Default value for 'License' fields"));
   bag.group = _("Search Paths");
-  bag += Text (&sample_path, _("Sample Path"), "", STANDARD + "searchpath",
+  bag += Text (&sample_path, _("Sample Path"), "", STANDARD + String ("searchpath"),
                _("Search path of directories, seperated by \";\", used to find audio samples."));
-  bag += Text (&effect_path, _("Effect Path"), "", STANDARD + "searchpath",
+  bag += Text (&effect_path, _("Effect Path"), "", STANDARD + String ("searchpath"),
                _("Search path of directories, seperated by \";\", used to find effect files."));
-  bag += Text (&instrument_path, _("Instrument Path"), "", STANDARD + "searchpath",
+  bag += Text (&instrument_path, _("Instrument Path"), "", STANDARD + String ("searchpath"),
                _("Search path of directories, seperated by \";\", used to find instrument files."));
-  bag += Text (&plugin_path, _("Plugin Path"), "", STANDARD + "searchpath",
+  bag += Text (&plugin_path, _("Plugin Path"), "", STANDARD + String ("searchpath"),
                _("Search path of directories, seperated by \";\", used to find plugins. This path "
                  "is searched for in addition to the standard plugin location on this system."));
   bag.on_events ("notify", eventhandler);
