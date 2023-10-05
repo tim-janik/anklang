@@ -66,6 +66,7 @@ struct Value : ValueVariant {
   bool           has       (const String &key) const;
   void           filter    (const std::function<bool (const ValueField&)> &pred);
   bool           is_numeric (bool boolisnumeric = true) const;
+  bool           is_string () const     { return index() == Type::STRING; }
   void operator= (bool v)               { ValueVariant::operator= (v); }
   void operator= (int64 v)              { ValueVariant::operator= (v); }
   void operator= (int32 v)              { ValueVariant::operator= (int64 (v)); }
