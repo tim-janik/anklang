@@ -12,7 +12,7 @@ import * as Util from '../util.js';
  * protocol by emitting an `input` event on value changes and accepting inputs via the `value` prop.
  * ### Props:
  * *value*
- * : Integer, the index of the choice value to be displayed.
+ * : The choice value to be displayed.
  * *choices*
  * : List of choices: `[ { icon, label, blurb }... ]`
  * *title*
@@ -119,7 +119,7 @@ const CONTEXTMENU_HTML = (t) =>  html`
   </b-contextmenu>
 `;
 const CONTEXTMENU_ITEM = (t, c) => html`
-  <b-menuitem uri=${c.uri} ic=${c.icon} >
+  <b-menuitem uri=${c.ident} ic=${c.icon} >
     <span class="b-choice-label ${c.labelclass}" > ${ c.label } </span>
     <span class="b-choice-line1 ${c.line1class}" > ${ c.blurb } </span>
     <span class="b-choice-line2 ${c.line2class}" > ${ c.line2 } </span>
@@ -180,43 +180,33 @@ class BChoiceInput extends LitComponent {
     const mchoices = [];
     for (let i = 0; i < this.choices.length; i++) {
       const c = Object.assign ({}, this.choices[i]);
-      c.uri = c.uri || c.ident;
       mchoices.push (c);
     }
     return mchoices;
   }
-  index()
+  current()
   {
     const mchoices = this.mchoices();
     for (let i = 0; i < mchoices.length; i++)
-      if (mchoices[i].uri == this.value_)
-	return i;
-    for (let i = 0; i < mchoices.length; i++)
       if (mchoices[i].ident == this.value_)
-	return i;
-    return 999e99;
+	return mchoices[i];
+    return {};
   }
   data_tip()
   {
-    const mchoices = this.mchoices();
-    const index = this.index();
+    const choice = this.current();
     let tip = "**CLICK** Select Choice";
     const plabel = this.label || this.prop?.label_;
-    if (!plabel || !mchoices || index >= mchoices.length)
+    if (!plabel || !choice.label)
       return tip;
-    const c = mchoices[index];
     let val = "**" + plabel + "** ";
-    val += c.label;
+    val += choice.label;
     return val + " " + tip;
   }
   nick()
   {
-    const mchoices = this.mchoices();
-    const index = this.index();
-    if (!mchoices || index >= mchoices.length)
-      return "";
-    const c = mchoices[index];
-    return c.label ? c.label : '';
+    const choice = this.current();
+    return choice.label || "";
   }
   activate (uri)
   {
@@ -236,7 +226,7 @@ class BChoiceInput extends LitComponent {
       this.performUpdate();
     }
     this.pophere.focus();
-    this.cmenu.popup (event, { origin: this.pophere });
+    this.cmenu.popup (event, { origin: this.pophere, focus_uri: this.value });
   }
   keydown (event)
   {
@@ -248,12 +238,15 @@ class BChoiceInput extends LitComponent {
 	event.preventDefault();
 	event.stopPropagation();
 	const mchoices = this.mchoices();
-	let index = this.index();
-	if (mchoices) {
-	  index += event.keyCode == Util.KeyCode.DOWN ? +1 : -1;
-	  if (index >= 0 && index < mchoices.length)
-	    this.activate (mchoices[index].uri);
-	}
+	const choice = this.current();
+	if (choice.ident)
+	  for (let i = 0; i < mchoices.length; i++)
+	    if (mchoices[i].ident == choice.ident) {
+	      const index = i + (event.keyCode == Util.KeyCode.DOWN ? +1 : -1);
+	      if (index >= 0 && index < mchoices.length)
+		this.activate (mchoices[index].ident);
+	      break;
+	    }
       }
     else if (event.keyCode == Util.KeyCode.ENTER)
       this.popup_menu (event);
