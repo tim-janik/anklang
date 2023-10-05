@@ -9,6 +9,9 @@
 namespace Ase {
 typedef std::string String;
 
+#define ASE_STRING_SET_ASCII_ALNUM      "0123456789" "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "abcdefghijklmnopqrstuvwxyz"
+#define ASE_STRING_SET_LOWER_ALNUM      "0123456789" "abcdefghijklmnopqrstuvwxyz"
+
 // == C-String ==
 bool    		       cstring_to_bool       (const char *string, bool fallback = false);
 const char*                    strrstr               (const char *haystack, const char *needle);

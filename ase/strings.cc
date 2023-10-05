@@ -46,7 +46,7 @@ string_multiply (const String &s,
 String
 string_to_identifier (const String &input)
 {
-  static const String validset = string_set_a2z() + "_0123456789";
+  static const String validset = ASE_STRING_SET_LOWER_ALNUM "_";
   String ident = string_tolower (input);
   ident = string_canonify (ident, validset, "_");
   if (!ident.empty() && ident[0] <= '9')
@@ -110,7 +110,7 @@ string_set_A2Z ()
 const String&
 string_set_ascii_alnum ()
 {
-  static const String cached_alnum = "0123456789" + string_set_A2Z() + string_set_a2z();
+  static const String cached_alnum = ASE_STRING_SET_ASCII_ALNUM;
   return cached_alnum;
 }
 
