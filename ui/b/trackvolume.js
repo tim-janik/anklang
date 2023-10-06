@@ -65,6 +65,13 @@ class BTrackVolume extends LitComponent {
   updated (changed_props)
   {
     this.update_value();
+    var db_value = 20 * Math.log10 (2*this.value**3);
+    var db_string;
+    if (this.value === 0)
+      db_string = "-" + "\u221E";
+    else
+      db_string = db_value.toFixed (1);
+    this.setAttribute ('data-bubble', "Volume " + db_string + " dB");
   }
   async update_value()
   {
