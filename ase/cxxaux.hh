@@ -90,6 +90,9 @@ using VoidF = std::function<void()>;
 /// Like ASE_ASSERT_WARN(), enabled if expensive `expr` are allowed.
 #define ASE_ASSERT_PARANOID(expr)        do { if (ASE_ISLIKELY (expr)) break; ::Ase::assertion_failed (#expr); } while (0)
 
+/// Return from the current function if `expr` evaluates to false and issue an assertion warning.
+#define ASE_ASSERT_ALWAYS(expr, ...)     do { if (ASE_ISLIKELY (expr)) break; ::Ase::assertion_failed (#expr); __builtin_trap(); } while (0)
+
 /// Delete copy ctor and assignment operator.
 #define ASE_CLASS_NON_COPYABLE(ClassName)  \
   /*copy-ctor*/ ClassName  (const ClassName&) = delete; \
