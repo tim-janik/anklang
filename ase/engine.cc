@@ -842,9 +842,14 @@ choice_from_driver_entry (const DriverEntry &e, const String &icon_keywords)
 static ChoiceS
 pcm_driver_pref_list_choices (const CString &ident)
 {
-  ChoiceS choices;
-  for (const DriverEntry &e : PcmDriver::list_drivers())
-    choices.push_back (choice_from_driver_entry (e, "pcm"));
+  static ChoiceS choices;
+  static uint64 cache_age = 0;
+  if (choices.empty() || timestamp_realtime() > cache_age + 500 * 1000) {
+    choices.clear();
+    for (const DriverEntry &e : PcmDriver::list_drivers())
+      choices.push_back (choice_from_driver_entry (e, "pcm"));
+    cache_age = timestamp_realtime();
+  }
   return choices;
 }
 
