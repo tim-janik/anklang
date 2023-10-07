@@ -681,7 +681,7 @@ AudioEngine::JobQueue::operator+= (const std::function<void()> &job)
 }
 
 bool
-AudioEngine::update_drivers (const String &pcm_name, uint latency_ms, const StringS &midis)
+AudioEngine::update_drivers (const String &pcm_name, uint latency_ms, const StringS &midi_prefs)
 {
   AudioEngineThread &engine_thread = static_cast<AudioEngineThread&> (*this);
   DriverSet &dset = engine_thread.driver_set_ml;
@@ -713,15 +713,26 @@ AudioEngine::update_drivers (const String &pcm_name, uint latency_ms, const Stri
       printerr ("%s\n", string_replace (errmsg, "\n", " "));
     }
   }
+  // Deduplicate MIDI Drivers
+  StringS midis = midi_prefs;
+  midis.resize (FIXED_N_MIDI_DRIVERS);
+  for (size_t i = 0; i < midis.size(); i++)
+    if (midis[i].empty())
+      midis[i] = null_driver;
+    else
+      for (size_t j = 0; j < i; j++) // dedup
+        if (midis[i] != null_driver && midis[i] == midis[j]) {
+          midis[i] = null_driver;
+          break;
+        }
   // MIDI Drivers
-  dset.midi_drivers.resize (FIXED_N_MIDI_DRIVERS);
-  dset.midi_names.resize (dset.midi_drivers.size());
+  dset.midi_names.resize (midis.size());
+  dset.midi_drivers.resize (dset.midi_names.size());
   for (size_t i = 0; i < dset.midi_drivers.size(); i++) {
-    const String midi_name = i < midis.size() ? midis[i] : null_driver;
-    if (midi_name == dset.midi_names[i])
+    if (midis[i] == dset.midi_names[i])
       continue;
     must_update++;
-    dset.midi_names[i] = midi_name;
+    dset.midi_names[i] = midis[i];
     Error er = {};
     dset.midi_drivers[i] = dset.midi_names[i] == null_driver ? nullptr :
                            MidiDriver::open (dset.midi_names[i], Driver::READONLY, &er);
@@ -853,6 +864,21 @@ pcm_driver_pref_list_choices (const CString &ident)
   return choices;
 }
 
+static ChoiceS
+midi_driver_pref_list_choices (const CString &ident)
+{
+  static ChoiceS choices;
+  static uint64 cache_age = 0;
+  if (choices.empty() || timestamp_realtime() > cache_age + 500 * 1000) {
+    choices.clear();
+    for (const DriverEntry &e : MidiDriver::list_drivers())
+      if (!e.writeonly)
+        choices.push_back (choice_from_driver_entry (e, "midi"));
+    cache_age = timestamp_realtime();
+  }
+  return choices;
+}
+
 static Preference pcm_driver_pref =
   Preference ("driver.pcm.devid",
               { _("PCM Driver"), "", "auto", "ms", { pcm_driver_pref_list_choices },
@@ -865,13 +891,36 @@ static Preference synth_latency_pref =
                 "", _("Processing duration between input and output of a single sample, smaller values increase CPU load") },
               [] (const CString&,const Value&) { apply_driver_preferences(); });
 
+static Preference midi1_driver_pref =
+  Preference ("driver.midi1.devid",
+              { _("MIDI Controller (1)"), "", "auto", "ms", { midi_driver_pref_list_choices },
+                STANDARD, "", _("MIDI controller device to be used for MIDI input"), },
+              [] (const CString&,const Value&) { apply_driver_preferences(); });
+static Preference midi2_driver_pref =
+  Preference ("driver.midi2.devid",
+              { _("MIDI Controller (2)"), "", "auto", "ms", { midi_driver_pref_list_choices },
+                STANDARD, "", _("MIDI controller device to be used for MIDI input"), },
+              [] (const CString&,const Value&) { apply_driver_preferences(); });
+static Preference midi3_driver_pref =
+  Preference ("driver.midi3.devid",
+              { _("MIDI Controller (3)"), "", "auto", "ms", { midi_driver_pref_list_choices },
+                STANDARD, "", _("MIDI controller device to be used for MIDI input"), },
+              [] (const CString&,const Value&) { apply_driver_preferences(); });
+static Preference midi4_driver_pref =
+  Preference ("driver.midi4.devid",
+              { _("MIDI Controller (4)"), "", "auto", "ms", { midi_driver_pref_list_choices },
+                STANDARD, "", _("MIDI controller device to be used for MIDI input"), },
+              [] (const CString&,const Value&) { apply_driver_preferences(); });
+
+
 static void
 apply_driver_preferences ()
 {
   static uint engine_driver_set_timerid = 0;
   main_loop->exec_once (97, &engine_driver_set_timerid,
                         []() {
-                          main_config.engine->update_drivers (pcm_driver_pref.gets(), synth_latency_pref.getn(), {});
+                          StringS midis = { midi1_driver_pref.gets(), midi2_driver_pref.gets(), midi3_driver_pref.gets(), midi4_driver_pref.gets(), };
+                          main_config.engine->update_drivers (pcm_driver_pref.gets(), synth_latency_pref.getn(), midis);
                         });
 }
 
