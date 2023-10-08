@@ -97,7 +97,7 @@ INCLUDES	::= -I.
 DEFS		::=
 
 # == Compiler Setup ==
-CXXSTD		::= -std=gnu++17 -pthread -pipe
+CXXSTD		::= -std=gnu++20 -pthread -pipe
 CSTD		::= -std=gnu11 -pthread -pipe
 EXTRA_DEFS	::= # target private defs, lesser precedence than CXXFLAGS
 EXTRA_INCLUDES	::= # target private defs, lesser precedence than CXXFLAGS

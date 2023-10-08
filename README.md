@@ -43,7 +43,7 @@ and run it.
 <!-- ROADMAP -->
 ## Roadmap
 
-☑  Implement the application core in C++17 and the GUI as a web front-end, utilizing web browsers or Electron
+☑  Implement the application core in C++20 and the GUI as a web front-end, utilizing web browsers or Electron
 
 ☑  Implement separate audio synthesis threads with MIDI device support
 
