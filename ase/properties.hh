@@ -8,14 +8,6 @@
 
 namespace Ase {
 
-/// A named ID used to group parameters.
-struct GroupId : CString {
-  using CString::CString;
-  using CString::operator=;
-  using CString::operator==;
-  using CString::operator!=;
-};
-
 String property_guess_nick (const String &property_label);
 
 /// Implementation namespace for Property helpers
@@ -120,7 +112,7 @@ public:
   Bag&        operator+= (PropertyP p);
   void        on_events  (const String &eventselector, const EventHandler &eventhandler);
   ConnectionS connections;
-  GroupId     group;
+  CString     group;
   PropertyS   props;
 };
 
