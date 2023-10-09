@@ -205,7 +205,7 @@ default: FORCE
 	  if $(if $(filter command, $(origin $(VAR)) $($(VAR).origin)),			\
 		true, false) ; then							\
 	    echo '$(VAR) = $(value $(VAR))'				>>$@.tmp ;	\
-	  elif ! grep -sEm1 '^$(VAR)\s*:?[:!?]?=' config-defaults.mk	>>$@.tmp ; then	\
+	  elif ! grep -sEm1 '^\s*$(VAR)\s*:?[:!?]?=' config-defaults.mk	>>$@.tmp ; then	\
 	    echo '# $(VAR) = $(value $(VAR))'				>>$@.tmp ;	\
 	  fi )
 	$Q mv $@.tmp config-defaults.mk
