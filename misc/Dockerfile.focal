@@ -42,7 +42,7 @@ RUN : \
   && apt-get install -y \
 	     doxygen \
 	     texlive-xetex fonts-sil-charis texlive-binaries texlive-fonts-extra \
-  && pip install poxy==0.13.0 \
+  && pip install poxy \
   && apt-get clean
 
 # X11 recording tools
@@ -108,5 +108,5 @@ RUN groupadd --gid 1000 ubuntu \
   && echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu
 USER ubuntu
 
-# docker build -t cifocal:latest -f misc/Dockerfile.focal misc
-# docker run -i -t --rm -v $PWD:/anklang -w /anklang cifocal:latest
+# docker build -t focal:latest -f misc/Dockerfile.focal misc
+# docker run -i -t --rm -v $PWD:/anklang -w /anklang focal:latest
