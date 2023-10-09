@@ -13,7 +13,7 @@ rm -rf assets $BUILDDIR
 mkdir -p $BUILDDIR assets/
 
 # build dist tarball and ChangeLog in assets/
-make dist
+make -w V=${V:-} dist
 
 # Extract release tarball and version
 tar xf assets/anklang-*.tar.zst -C $BUILDDIR --strip-components=1
@@ -21,13 +21,17 @@ tar xf assets/anklang-*.tar.zst -C $BUILDDIR --strip-components=1
 # Copy populated .dlcache/ to speed up builds
 test -d .dlcache/ && cp -a --reflink=auto .dlcache/ $BUILDDIR/
 
+# Copy compiler config variables over
+test ! -r config-defaults.mk ||
+  grep '^ *[CL][CDLX]' config-defaults.mk >$BUILDDIR/config-defaults.mk
+
 # Make production build + pdfs + package assets
 ( cd $BUILDDIR/
   # Note, ase/ special cases MODE=production INSN=sse as non-native release builds
-  make default MODE=production INSN=sse
-  make -j`nproc` \
+  make -w V=${V:-} default MODE=production INSN=sse
+  make -w V=${V:-} -j`nproc` \
        all assets/pdf
-  make check
+  make -w V=${V:-} check
   misc/mkdeb.sh
   misc/mkAppImage.sh
 )
