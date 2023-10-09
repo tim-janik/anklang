@@ -53,7 +53,9 @@ LD_LIBRARY_PATH=$APPIMAGEPKGDIR/lib \
   --appdir=$APPBASE \
   --deploy-deps-only $APPIMAGEPKGDIR/bin/anklang \
   --deploy-deps-only $APPIMAGEPKGDIR/lib/AnklangSynthEngine \
+  --deploy-deps-only $APPIMAGEPKGDIR/lib/AnklangSynthEngine-fma \
   --deploy-deps-only $APPIMAGEPKGDIR/lib/gtk2wrap.so \
+  --deploy-deps-only $APPIMAGEPKGDIR/lib/jackdriver.so \
   -i $APPIMAGEPKGDIR/ui/anklang.png \
   -d $APPIMAGEPKGDIR/share/applications/anklang.desktop \
   -l $LIB64/libXss.so.1 \
