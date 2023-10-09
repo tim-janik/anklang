@@ -13,14 +13,14 @@ RUN : \
   && apt-get -y upgrade \
   && apt-get clean
 
-# Install build tools, TeX, etc
+# Install build tools, libstdc++-10-dev>=10 for C++20
 # Add libXss.so, libgtk-3-0 for Electron
 RUN : \
   && apt-get install -y \
 	     sudo build-essential gawk zstd unzip git wget curl \
 	     gnupg lsb-release software-properties-common ca-certificates \
 	     gettext graphviz imagemagick librsvg2-bin libxml2-utils \
-	     ccache cmake g++ universal-ctags castxml cppcheck \
+	     ccache cmake universal-ctags cppcheck libstdc++-10-dev \
 	     pkg-config libxml2-dev libglib2.0-dev \
 	     libboost-system-dev libasound2-dev libflac-dev libopus-dev libjack-dev libzstd-dev \
 	     libgconf-2-4 libgtk2.0-dev libgtk-3-dev libgtk-3-0 \
@@ -51,6 +51,25 @@ RUN : \
 	     xvfb twm ffmpeg \
   && apt-get clean
 
+# Install recent clang++
+RUN : \
+  && curl -fsSLO https://apt.llvm.org/llvm.sh && chmod +x llvm.sh \
+  && yes | ./llvm.sh 17 && rm -f ./llvm.sh \
+  && apt-get install -y clang-tidy-17 libclang-17-dev \
+  && update-alternatives \
+       --install /usr/bin/clang         clang           /usr/bin/clang-17 0 \
+       --slave   /usr/bin/clang++       clang++         /usr/bin/clang++-17  \
+       --slave   /usr/bin/clang-tidy    clang-tidy      /usr/bin/clang-tidy-17 \
+  && apt-get clean
+
+# Build recent castxml
+RUN : \
+  && cd /tmp \
+  && git clone https://github.com/CastXML/CastXML.git \
+  && export CC=clang CXX=clang++ \
+  && cd CastXML && cmake . && make -j`nproc` && sudo make install \
+  && cd /tmp && rm -rf CastXML
+
 # Nodejs - https://github.com/nodesource/distributions#nodejs
 RUN : \
   && mkdir -p /etc/apt/keyrings \
@@ -59,17 +78,6 @@ RUN : \
   && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
   && apt-get update \
   && apt-get install -y nodejs \
-  && apt-get clean
-
-# Install clang++
-RUN : \
-  && curl -fsSLO https://apt.llvm.org/llvm.sh && chmod +x llvm.sh \
-  && yes | ./llvm.sh 17 && rm -f ./llvm.sh \
-  && apt-get install -y clang-tidy-17 \
-  && update-alternatives \
-       --install /usr/bin/clang         clang           /usr/bin/clang-17 0 \
-       --slave   /usr/bin/clang++       clang++         /usr/bin/clang++-17  \
-       --slave   /usr/bin/clang-tidy    clang-tidy      /usr/bin/clang-tidy-17 \
   && apt-get clean
 
 # Build stripped down Fluidsynth version without drivers (not needed atm)
