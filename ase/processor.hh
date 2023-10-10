@@ -46,7 +46,7 @@ struct ParamInfo {
   CString    nick;         ///< Abbreviated user interface name, usually not more than 6 characters.
   CString    unit;         ///< Units of the values within range.
   CString    hints;        ///< Hints for parameter handling.
-  GroupId    group;        ///< Group for parameters of similar function.
+  CString    group;        ///< Group for parameters of similar function.
   CString    blurb;        ///< Short description for user interface tooltips.
   CString    description;  ///< Elaborate description for help dialogs.
   using MinMax = std::pair<double,double>;

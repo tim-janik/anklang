@@ -730,7 +730,27 @@ aligned_allocator_tests()
     }
   // test CString
 #ifndef NDEBUG
-  assert_return (cstring_early_test == "NULL");
+  const bool equality_checks =
+    cstring_early_test == CString ("NULL") &&
+    cstring_early_test == String ("NULL") &&
+    cstring_early_test == "NULL" &&
+    cstring_early_test != CString ("u") &&
+    cstring_early_test != String ("u") &&
+    cstring_early_test != "u" &&
+    1;
+  assert_return (equality_checks == true);
+  const bool lesser_checks =
+    CString ("1") < CString ("2") && CString ("x") <= CString ("x") &&
+    CString ("1") < String ("2") && CString ("x") <= String ("x") &&
+    CString ("1") < "2" && CString ("x") <= "x" &&
+    1;
+  assert_return (lesser_checks == true);
+  const bool greater_checks =
+    CString ("2") > CString ("1") && CString ("x") >= CString ("x") &&
+    CString ("2") > String ("1") && CString ("x") >= String ("x") &&
+    CString ("2") > "1" && CString ("x") >= "x" &&
+    1;
+  assert_return (greater_checks == true);
 #endif
   CString c;
   assert_return (c == "");
@@ -775,6 +795,28 @@ aligned_allocator_tests()
   assert_return (c.empty() == false);
   struct TwoCStrings { CString a, b; };
   static_assert (sizeof (TwoCStrings) <= 2 * 4);
+  // CString temporary comparisons
+  assert_return (CString ("a") == String ("a"));
+  assert_return (String ("a") == CString ("a"));
+  assert_return (CString ("a") == CString ("a"));
+  assert_return ("a" == CString ("a"));
+  assert_return (CString ("a") == "a");
+  assert_return (CString ("a") != String ("b"));
+  assert_return (String ("a") != CString ("b"));
+  assert_return (CString ("a") != CString ("b"));
+  assert_return ("b" != CString ("a"));
+  assert_return (CString ("a") != "b");
+  // CString const comparisons
+  const CString ac ("a"), bc ("b");
+  CString a ("a"), b ("b");
+  assert_return (a == a);
+  assert_return (ac == ac);
+  assert_return (a == ac);
+  assert_return (ac == a);
+  assert_return (a != b);
+  assert_return (ac != bc);
+  assert_return (a != bc);
+  assert_return (ac != b);
 }
 
 } // Anon

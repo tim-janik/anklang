@@ -91,6 +91,7 @@ struct Block {
   void  *const block_start = nullptr;
   const uint32 block_length = 0;
   Block& operator= (const Block &src) { this->~Block(); new (this) Block (src); return *this; }
+  /*ctor*/ Block   (void *b, uint32 l) : block_start (b), block_length (l) {}
   /*copy*/ Block   (const Block &src) = default;
   /*dflt*/ Block   () = default;
 };
@@ -176,40 +177,20 @@ public:
   const_reverse_iterator rend    () const noexcept      { return string().rend(); }
   const_reverse_iterator crend   () const noexcept      { return string().crend(); }
   /*conv*/  operator std::string () const noexcept      { return string(); }
-  constexpr bool     operator== (const CString &b) noexcept              { return quark_ == b.quark_; }
-  bool               operator== (const std::string &b) noexcept          { return string() == b; }
-  bool               operator== (const char *s) noexcept                 { return string() == s; }
-  constexpr bool     operator!= (const CString &b) noexcept              { return quark_ != b.quark_; }
-  bool               operator!= (const std::string &b) noexcept          { return string() != b; }
-  bool               operator!= (const char *s) noexcept                 { return string() != s; }
-  bool               operator<  (const CString &b) noexcept              { return string() < b.string(); }
-  bool               operator<  (const std::string &b) noexcept          { return string() < b; }
-  bool               operator<  (const char *s) noexcept                 { return string() < s; }
-  bool               operator<= (const CString &b) noexcept              { return string() <= b.string(); }
-  bool               operator<= (const std::string &b) noexcept          { return string() <= b; }
-  bool               operator<= (const char *s) noexcept                 { return string() <= s; }
-  bool               operator>  (const CString &b) noexcept              { return string() > b.string(); }
-  bool               operator>  (const std::string &b) noexcept          { return string() > b; }
-  bool               operator>  (const char *s) noexcept                 { return string() > s; }
-  bool               operator>= (const CString &b) noexcept              { return string() >= b.string(); }
-  bool               operator>= (const std::string &b) noexcept          { return string() >= b; }
-  bool               operator>= (const char *s) noexcept                 { return string() >= s; }
-  friend bool        operator== (const char *s, const CString &c)        { return s == c.string(); }
-  friend bool        operator!= (const char *s, const CString &c)        { return s != c.string(); }
-  friend bool        operator<  (const char *s, const CString &c)        { return s <  c.string(); }
-  friend bool        operator<= (const char *s, const CString &c)        { return s <= c.string(); }
-  friend bool        operator>  (const char *s, const CString &c)        { return s >  c.string(); }
-  friend bool        operator>= (const char *s, const CString &c)        { return s >= c.string(); }
-  friend bool        operator== (const std::string &s, const CString &c) { return s == c.string(); }
-  friend bool        operator!= (const std::string &s, const CString &c) { return s != c.string(); }
-  friend bool        operator<  (const std::string &s, const CString &c) { return s <  c.string(); }
-  friend bool        operator<= (const std::string &s, const CString &c) { return s <= c.string(); }
-  friend bool        operator>  (const std::string &s, const CString &c) { return s >  c.string(); }
-  friend bool        operator>= (const std::string &s, const CString &c) { return s >= c.string(); }
-  friend std::string operator+  (const std::string &s, const CString &c) { return s + c.string(); }
-  friend std::string operator+  (const CString &c, const std::string &s) { return c.string() + s; }
+  friend bool operator== (CString a, CString b)            { return a.quark_ == b.quark_; }
+  friend bool operator== (CString a, const std::string &b) { return a.string() == b; }
+  friend bool operator== (const std::string &a, CString b) { return a == b.string(); }
+  friend bool operator== (CString a, const char *b)        { return a.string() == b; }
+  friend bool operator== (const char *a, CString b)        { return a == b.string(); }
+  friend std::strong_ordering operator<=> (CString a, CString b) { return a.string() <=> b.string(); }
+  friend std::strong_ordering operator<=> (CString a, const String &b) { return a.string() <=> b; }
+  friend std::strong_ordering operator<=> (const String &a, CString b) { return a <=> b.string(); }
+  friend std::strong_ordering operator<=> (CString a, const char *b)   { return a.string() <=> b; }
+  friend std::strong_ordering operator<=> (const char *a, CString b)   { return a <=> b.string(); }
+  friend std::string operator+  (const std::string &s, CString c)      { return s + c.string(); }
+  friend std::string operator+  (CString c, const std::string &s)      { return c.string() + s; }
   static CString     lookup     (const std::string &s);
-  friend std::ostream& operator<< (std::ostream &os, const CString &c)     { os << c.string(); return os; }
+  friend std::ostream& operator<< (std::ostream &os, CString c)        { os << c.string(); return os; }
   static constexpr const std::string::size_type npos = -1;
 };
 

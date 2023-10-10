@@ -92,8 +92,12 @@ ifeq ($(uname_M),x86_64)
     # 2006 era: Use just core2 features, but tune for newer CPUs
     OPTIMIZE	+= -march=core2 -mtune=sandybridge
   else ifeq ($(INSN),fma)	# FMA AVX
-    # 2015 era: Use haswell (Intel) and bdver4 (AMD Excavator Family 15h) instructions (bdver4 lacks HLE)
-    OPTIMIZE	+= -march=haswell -mno-hle
+    ifdef HAVE_GCC    # g++
+      # 2015 era: Use haswell (Intel) and bdver4 (AMD Excavator Family 15h) instructions (bdver4 lacks HLE)
+      OPTIMIZE	+= -march=haswell -mno-hle
+    else # clang++
+      OPTIMIZE	+= -march=x86-64-v3
+    endif
   else 				# NATIVE
     INSN         = native
     # Fastest, best for build machine CPU, not recommended for release builds
