@@ -935,7 +935,7 @@ export async function extend_property (prop, disconnector = undefined, augment =
     unit_: prop.unit(),
     group_: prop.group(),
     blurb_: prop.blurb(),
-    description_: prop.description(),
+    descr_: prop.descr(),
     min_: prop.get_min(),
     max_: prop.get_max(),
     step_: prop.get_step(),
