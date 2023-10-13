@@ -8,9 +8,6 @@
 namespace Ase {
 
 class ServerImpl : public GadgetImpl, public virtual Server {
-  Preferences       prefs_;
-  PropertyS         prefs_properties_;
-  Connection        pchange_;
   FastMemory::Arena telemetry_arena;
 public:
   static ServerImplP instancep ();
@@ -34,7 +31,6 @@ public:
   ProjectP     create_project       (String projectname) override;
   PropertyP    access_preference    (const String &ident) override;
   StringS      list_preferences     () override;
-  const Preferences& preferences    () const    { return prefs_; }
   using Block = FastMemory::Block;
   Block        telemem_allocate     (uint32 length) const;
   void         telemem_release      (Block telememblock) const;

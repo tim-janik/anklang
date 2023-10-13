@@ -156,32 +156,6 @@ public:
   virtual ChoiceS  choices        () = 0;          ///< Enumerate choices for choosable properties.
 };
 
-// Preferences
-struct Preferences {
-  // Synthesis Settings
-  String pcm_driver;                    ///< Driver and device to be used for PCM input and output.
-  int32  synth_latency = 5;             ///< Processing duration between input and output of a single sample, smaller values increase CPU load.
-  int32  synth_mixing_freq = 48000;     ///< Unused, synthesis mixing frequency is always 48000 Hz.
-  int32  synth_control_freq = 1500;     ///< Unused frequency setting.
-  // MIDI
-  String midi_driver_1;                 ///< Driver and device to be used for MIDI input and output.
-  String midi_driver_2;
-  String midi_driver_3;
-  String midi_driver_4;
-  bool   invert_sustain = false;
-  // Default Values
-  String author_default;                ///< Default value for 'Author' fields.
-  String license_default;               ///< Default value for 'License' fields.
-  String sample_path;                   ///< Search path of directories, seperated by ";", used to find audio samples.
-  String effect_path;                   ///< Search path of directories, seperated by ";", used to find effect files.
-  String instrument_path;               ///< Search path of directories, seperated by ";", used to find instrument files.
-  String plugin_path;                   ///< Search path of directories, seperated by \";\", used to find plugins.
-                                        ///< This path is searched for in addition to the standard plugin location on this system.
-private:
-  PropertyS access_properties (const EventHandler&);    ///< Retrieve handles for all properties.
-  friend class ServerImpl;
-};
-
 /// Base type for classes with Property interfaces.
 class Object : public virtual Emittable {
 protected:
