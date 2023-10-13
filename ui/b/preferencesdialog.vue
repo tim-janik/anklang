@@ -33,7 +33,7 @@ import * as Util from "../util.js";
 async function augment_property (xprop) {
   if (xprop.has_choices_)
     {
-      Object.assign (xprop, { title_: xprop.label_ + " Selection" });
+      // Object.assign (xprop, { title_: xprop.label_ + " Selection" });
       for (let i = 0; i < xprop.value_.choices.length; i++)
 	{
 	  const c = xprop.value_.choices[i];
@@ -99,9 +99,30 @@ function augment_choice_entry (c, devicetype) {
     c.icon = "mi-not_interested";
 }
 
+async function access_preferences()
+{
+  // Ase.server.access_prefs()
+  const preferences = [ [ _("Synthesis Settings"),
+			  "driver.pcm.devid", "driver.pcm.synth_latency" ],
+			[ _("MIDI Settings"),
+			  "driver.midi1.devid", "driver.midi2.devid", "driver.midi3.devid", "driver.midi4.devid" ],
+  ];
+  let props = []; // [ [group,promise]... ]
+  for (const [group, ...idents] of preferences)
+    for (const ident of idents)
+      props.push ([ Ase.server.access_preference (ident), group ]); // [ [property_promise,group]... ]
+  const result = [];
+  for (let [property,group] of props) {
+    property = Object.create (await property); // new Object with prototype
+    property.group = () => group;
+    result.push (property);
+  }
+  return result;
+}
+
 function component_data () {
   const data = {
-    proplist: { default: [], getter: c => Ase.server.access_prefs(),
+    proplist: { default: [], getter: c => access_preferences(),
 		notify: n => { this.proprefresh = n; return () => this.proprefresh = null; }, },
   };
   return this.observable_from_getters (data, () => true);
