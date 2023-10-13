@@ -70,12 +70,12 @@ const GROUP_HTML = (t, group) =>  html`
 </h-flex>
 `;
 const PROP_HTML = (t, prop, INPUT_TAG) =>  html`
-<span class="b-objecteditor-flabel" style="grid-column: 1" data-bubble=${prop.blurb_} >${prop.label_}</span>
+<span class="b-objecteditor-flabel" style="grid-column: 1" data-bubble=${prop.descr_ || prop.blurb_} >${prop.label_}</span>
 <h-flex class="b-objecteditor-field" style="grid-column: 2 / span 2" >
-  <span class="b-objecteditor-value" data-bubble=${prop.blurb_} style="text-align: right" >
+  <span class="b-objecteditor-value" data-bubble=${prop.blurb_ || prop.descr_} style="text-align: right" >
     ${INPUT_TAG}
   </span>
-  <span><span class="b-objecteditor-clear" @click=${e => prop.reset()} > ⊗  </span></span>
+  <span><span class="b-objecteditor-clear" @click=${e => prop.reset()} data-bubble=${"Reset " + prop.label_} > ⊗  </span></span>
 </h-flex>
 `;
 const NUMBER_HTML = (t, prop) => html`
