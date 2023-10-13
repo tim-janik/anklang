@@ -395,9 +395,8 @@ public:
   virtual uint64 user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &rest = "") = 0;
   virtual bool   user_reply           (uint64 noteid, uint r) = 0;
   virtual bool   broadcast_telemetry  (const TelemetrySegmentS &segments,
-                                       int32 interval_ms) = 0;  ///< Broadcast telemetry memory segments to the current Jsonipc connection.
-  // preferences
-  virtual PropertyS access_prefs  () = 0;       ///< Retrieve property handles for Preferences fields.
+                                       int32 interval_ms) = 0;   ///< Broadcast telemetry memory segments to the current Jsonipc connection.
+  virtual PropertyP access_preference (const String &ident) = 0; ///< Retrieve property handle for a Preference identifier.
   // projects
   virtual ProjectP last_project   () = 0;       ///< Retrieve the last created project.
   virtual ProjectP create_project (String projectname) = 0; ///< Create a new project (name is modified to be unique if necessary.

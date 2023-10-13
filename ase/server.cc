@@ -235,10 +235,10 @@ ServerImpl::create_project (String projectname)
   return ProjectImpl::create (projectname);
 }
 
-PropertyS
-ServerImpl::access_prefs()
+PropertyP
+ServerImpl::access_preference (const String &ident)
 {
-  return prefs_properties_;
+  return Preference::find (ident);
 }
 
 ServerImplP
