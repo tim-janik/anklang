@@ -15,6 +15,7 @@ module.exports = {
     sourceType: "module" },
 
   globals: {
+    _: false,
     App: false,
     Ase: false,
     Data: false,

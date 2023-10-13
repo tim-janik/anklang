@@ -43,6 +43,7 @@
   </script>
   <script> { "use strict"; // Early globals
     const packagejson = JSON.parse (document.getElementById ('--EMBEDD-config_json').innerHTML);
+    Object.defineProperty (globalThis, '_', { value: t9n => t9n });
     Object.defineProperty (globalThis, 'CONFIG', { value: packagejson.config });
     Object.defineProperty (globalThis, '__DEV__', { value: CONFIG.mode !== 'production' });
     Object.defineProperty (globalThis, 'debug', { value: __DEV__ ? console.log : _ => undefined });
