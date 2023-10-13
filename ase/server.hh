@@ -33,6 +33,7 @@ public:
   ProjectP     last_project         () override;
   ProjectP     create_project       (String projectname) override;
   PropertyP    access_preference    (const String &ident) override;
+  StringS      list_preferences     () override;
   const Preferences& preferences    () const    { return prefs_; }
   using Block = FastMemory::Block;
   Block        telemem_allocate     (uint32 length) const;

@@ -396,6 +396,7 @@ public:
   virtual bool   user_reply           (uint64 noteid, uint r) = 0;
   virtual bool   broadcast_telemetry  (const TelemetrySegmentS &segments,
                                        int32 interval_ms) = 0;   ///< Broadcast telemetry memory segments to the current Jsonipc connection.
+  virtual StringS   list_preferences  () = 0;                    ///< Retrieve a list of all preference identifiers.
   virtual PropertyP access_preference (const String &ident) = 0; ///< Retrieve property handle for a Preference identifier.
   // projects
   virtual ProjectP last_project   () = 0;       ///< Retrieve the last created project.

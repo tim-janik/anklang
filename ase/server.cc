@@ -235,6 +235,13 @@ ServerImpl::create_project (String projectname)
   return ProjectImpl::create (projectname);
 }
 
+StringS
+ServerImpl::list_preferences ()
+{
+  const CStringS list = Preference::list();
+  return { std::begin (list), std::end (list) };
+}
+
 PropertyP
 ServerImpl::access_preference (const String &ident)
 {
