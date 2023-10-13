@@ -22,7 +22,7 @@
     <b-objecteditor class="b-preferencesdialog-fed" ref="fedobject" :value="proplist" :augment="augment" >
     </b-objecteditor>
     <template v-slot:footer>
-      <div><button autofocus @click="$emit ('update:shown', false)" > Close </button></div>
+      <div><button autofocus @click="close_button_click" > Close </button></div>
     </template>
   </b-dialog>
 </template>
@@ -101,6 +101,8 @@ function augment_choice_entry (c, devicetype) {
 
 async function access_preferences()
 {
+  if (this.all_prefs)
+    return Promise.all ((await Ase.server.list_preferences()).sort().map (id => Ase.server.access_preference (id)));
   // Ase.server.access_prefs()
   const preferences = [ [ _("Synthesis Settings"),
 			  "driver.pcm.devid", "driver.pcm.synth_latency" ],
@@ -122,7 +124,7 @@ async function access_preferences()
 
 function component_data () {
   const data = {
-    proplist: { default: [], getter: c => access_preferences(),
+    proplist: { default: [], getter: c => access_preferences.call (this),
 		notify: n => { this.proprefresh = n; return () => this.proprefresh = null; }, },
   };
   return this.observable_from_getters (data, () => true);
@@ -140,6 +142,16 @@ export default {
   },
   methods: {
     augment (p) { return augment_property.call (this, p); },
+    close_button_click (event)
+    {
+      if (event.shiftKey && event.ctrlKey &&
+	  (event.altKey || event.metaKey)) {
+	Util.prevent_event (event);
+	this.all_prefs = true;
+	this.proprefresh();
+      } else
+	this.$emit ('update:shown', false);
+    }
   },
 };
 </script>
