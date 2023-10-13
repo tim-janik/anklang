@@ -141,7 +141,7 @@ public:
   virtual String   hints          () = 0;          ///< Hints for parameter handling.
   virtual String   group          () = 0;          ///< Group name for parameters of similar function.
   virtual String   blurb          () = 0;          ///< Short description for user interface tooltips.
-  virtual String   description    () = 0;          ///< Elaborate description for help dialogs.
+  virtual String   descr          () = 0;          ///< Elaborate description for help dialogs.
   virtual double   get_min        () = 0;          ///< Get the minimum property value, converted to double.
   virtual double   get_max        () = 0;          ///< Get the maximum property value, converted to double.
   virtual double   get_step       () = 0;          ///< Get the property value stepping, converted to double.

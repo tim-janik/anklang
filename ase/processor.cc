@@ -1041,7 +1041,7 @@ public:
   String   hints          () override   { return parameter_->hints(); }
   String   group          () override   { return parameter_->group(); }
   String   blurb          () override   { return parameter_->blurb(); }
-  String   description    () override   { return parameter_->descr(); }
+  String   descr          () override   { return parameter_->descr(); }
   double   get_min        () override   { const auto [fmin, fmax, step] = parameter_->range(); return fmin; }
   double   get_max        () override   { const auto [fmin, fmax, step] = parameter_->range(); return fmax; }
   double   get_step       () override   { const auto [fmin, fmax, step] = parameter_->range(); return step; }

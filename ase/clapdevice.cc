@@ -34,7 +34,7 @@ public:
   String   hints          () override   { return ClapParamInfo::hints_from_param_info_flags (flags); }
   String   group          () override   { return module_; }
   String   blurb          () override   { return ""; }
-  String   description    () override   { return ""; }
+  String   descr          () override   { return ""; }
   double   get_min        () override   { return min_value; }
   double   get_max        () override   { return max_value; }
   double   get_step       () override   { return is_stepped() ? 1 : 0; }

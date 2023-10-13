@@ -69,7 +69,7 @@ struct LambdaPropertyImpl : public virtual PropertyImpl {
   String  hints          () override		{ return d.hints; }
   String  group          () override		{ return d.groupname; }
   String  blurb          () override		{ return d.blurb; }
-  String  description    () override		{ return d.description; }
+  String  descr          () override		{ return d.description; }
   ChoiceS choices        () override		{ return lister_ ? lister_ (*static_cast<PropertyImpl*> (this)) : ChoiceS{}; }
   double  get_min        () override		{ return d.pmin; }
   double  get_max        () override		{ return d.pmax; }
