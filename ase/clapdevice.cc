@@ -29,7 +29,7 @@ struct ClapPropertyImpl : public Property, public virtual EmittableImpl {
 public:
   String   identifier     () override   { return ident_; }
   String   label          () override   { return label_; }
-  String   nick           () override   { return property_guess_nick (label_); }
+  String   nick           () override   { return parameter_guess_nick (label_); }
   String   unit           () override   { return ""; }
   String   hints          () override   { return ClapParamInfo::hints_from_param_info_flags (flags); }
   String   group          () override   { return module_; }
