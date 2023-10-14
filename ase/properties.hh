@@ -2,85 +2,86 @@
 #ifndef __ASE_PROPERTIES_HH__
 #define __ASE_PROPERTIES_HH__
 
-#include <ase/object.hh>
+#include <ase/parameter.hh>
 #include <ase/memory.hh>
 #include <ase/jsonapi.hh>
 
 namespace Ase {
 
-String property_guess_nick (const String &property_label);
+/// Class for preference parameters (global settings)
+class Preference : public ParameterProperty {
+  /*ctor*/   Preference (ParameterC parameter);
+public:
+  using DelCb = std::function<void()>;
+  using StringValueF = std::function<void(const String&, const Value&)>;
+  virtual   ~Preference ();
+  /*ctor*/   Preference (const CString &ident, const Param&, const StringValueF& = nullptr);
+  String     gets       () const               { return const_cast<Preference*> (this)->get_value().as_string(); }
+  bool       getb       () const               { return const_cast<Preference*> (this)->get_value().as_int(); }
+  int64      getn       () const               { return const_cast<Preference*> (this)->get_value().as_int(); }
+  uint64     getu       () const               { return const_cast<Preference*> (this)->get_value().as_int(); }
+  double     getd       () const               { return const_cast<Preference*> (this)->get_value().as_double(); }
+  bool       set        (const Value &value)   { return set_value (value); }
+  bool       set        (const String &string) { return set_value (string); }
+  Value      get_value  () override;
+  bool       set_value  (const Value &v) override;
+  static Value       get    (const String &ident);
+  static PreferenceP find   (const String &ident);
+  static CStringS    list   ();
+  static DelCb       listen (const std::function<void(const CStringS&)>&);
+  static void save_preferences ();
+  static void load_preferences (bool autosave);
+private:
+  DelCb sigh_;
+  Connection *connection_ = nullptr;
+  ASE_DEFINE_MAKE_SHARED (Preference);
+};
 
-/// Implementation namespace for Property helpers
-namespace Properties {
+/// Function type for Property value getters.
+using PropertyGetter = std::function<void (Value&)>;
 
-struct PropertyImpl;
-using ValueGetter = std::function<void (Value&)>;
-using ValueSetter = std::function<bool (const Value&)>;
-using ValueLister = std::function<ChoiceS (PropertyImpl&)>;
+/// Function type for Property value setters.
+using PropertySetter = std::function<bool (const Value&)>;
 
-template<class V> inline ValueGetter Getter (const float *v);
-template<class V> inline ValueSetter Setter (const float *v);
+/// Function type to list Choice Property values.
+using PropertyLister = std::function<ChoiceS (ParameterProperty&)>;
 
-/// Helper for property hint construction.
-String construct_hints (const String &hints, const String &more, double pmin = 0, double pmax = 0);
+/// Structured initializer for PropertyImpl
+struct Prop {
+  CString        ident;         ///< Valid NCName identifier.
+  PropertyGetter getter;        ///< Lambda implementing the Property value getter.
+  PropertySetter setter;        ///< Lambda implementing the Property value setter.
+  Param          param;         ///< Parameter meta data for this Property.
+  PropertyLister lister;        ///< Lambda providing a list of possible Property value choices.
+};
 
-/// Construct Bool property.
-PropertyP        Bool   (const String &ident, bool *v, const String &label, const String &nickname, bool dflt, const String &hints = "", const String &blurb = "", const String &description = "");
-inline PropertyP Bool   (bool *v, const String &label, const String &nickname, bool dflt, const String &hints = "", const String &blurb = "", const String &description = "")
-{ return Bool (label, v, label, nickname, dflt, hints, blurb, description); }
+/// Property implementation for GadgetImpl, using lambdas as accessors.
+class PropertyImpl : public ParameterProperty {
+  PropertyGetter getter_; PropertySetter setter_; PropertyLister lister_;
+  PropertyImpl (CString, const Param&, const PropertyGetter&, const PropertySetter&, const PropertyLister&);
+public:
+  ASE_DEFINE_MAKE_SHARED (PropertyImpl);
+  Value   get_value () override                 { Value v; getter_ (v); return v; }
+  bool    set_value (const Value &v) override   { return setter_ (v); }
+  ChoiceS choices   () override                 { return lister_ ? lister_ (*this) : parameter_->choices(); }
+};
 
-/// Construct Range property.
-PropertyP Range (const String &ident, const ValueGetter &getter, const ValueSetter &setter, const String &label, const String &nickname, double pmin, double pmax, double dflt,
-                 const String &unit = "", const String &hints = "", const String &blurb = "", const String &description = "");
+/// Helper to simplify property registrations.
+struct PropertyBag {
+  using RegisterF = std::function<void(const Prop&,CString)>;
+  explicit PropertyBag (const RegisterF &f) : add_ (f) {}
+  void     operator+= (const Prop&) const;
+  CString  group;
+private:
+  RegisterF add_;
+};
 
-/// Construct integer Range property.
-PropertyP        Range  (const String &ident, int32  *v, const String &label, const String &nickname, int32 pmin, int32 pmax, int32 dflt,
-                         const String &unit = "", const String &hints = "", const String &blurb = "", const String &description = "");
-inline PropertyP Range  (int32  *v, const String &label, const String &nickname, int32 pmin, int32 pmax, int32 dflt,
-                         const String &unit = "", const String &hints = "", const String &blurb = "", const String &description = "")
-{ return Range (label, v, label, nickname, pmin, pmax, dflt, unit, hints, blurb, description); }
-
-/// Construct float Range property.
-PropertyP        Range  (const String &ident, float *v, const String &label, const String &nickname, double pmin, double pmax, double dflt,
-                         const String &unit = "", const String &hints = "", const String &blurb = "", const String &description = "");
-inline PropertyP Range  (float *v, const String &label, const String &nickname, double pmin, double pmax, double dflt,
-                         const String &unit = "", const String &hints = "", const String &blurb = "", const String &description = "")
-{ return Range (label, v, label, nickname, pmin, pmax, dflt, unit, hints, blurb, description); }
-
-/// Construct double Range property.
-PropertyP        Range  (const String &ident, double *v, const String &label, const String &nickname, double pmin, double pmax, double dflt,
-                         const String &unit = "", const String &hints = "", const String &blurb = "", const String &description = "");
-inline PropertyP Range  (double *v, const String &label, const String &nickname, double pmin, double pmax, double dflt,
-                         const String &unit = "", const String &hints = "", const String &blurb = "", const String &description = "")
-{ return Range (label, v, label, nickname, pmin, pmax, dflt, unit, hints, blurb, description); }
-
-/// Construct Text string property.
-PropertyP        Text   (const String &ident, String *v, const String &label, const String &nickname, const String &hints = "", const String &blurb = "", const String &description = "");
-inline PropertyP Text   (String *v, const String &label, const String &nickname, const String &hints = "", const String &blurb = "", const String &description = "")
-{ return Text (label, v, label, nickname, hints, blurb, description); }
-
-/// Construct Choice property.
-PropertyP        Text   (const String &ident, String *v, const String &label, const String &nickname, const ValueLister &vl, const String &hints = "", const String &blurb = "", const String &description = "");
-inline PropertyP Text   (String *v, const String &label, const String &nickname, const ValueLister &vl, const String &hints = "", const String &blurb = "", const String &description = "")
-{ return Text (label, v, label, nickname, vl, hints, blurb, description); }
-
-/// Construct Enum property.
-template<typename E, REQUIRES< std::is_enum<E>::value > = true> inline PropertyP
-Enum (const String &ident, E *v, const String &label, const String &nickname, const String &hints = "", const String &blurb = "", const String &description = "")
+/// Value getter for enumeration types.
+template<typename Enum> std::function<void(Value&)>
+make_enum_getter (Enum *v)
 {
-  using EnumType = Jsonipc::Enum<E>;
-  ASE_ASSERT_RETURN (v, nullptr);
-  auto setter = [v] (const Value &val) {
-    E e = *v;
-    if (val.index() == Value::STRING)
-      e = EnumType::get_value (val.as_string(), e);
-    else if (val.index() == Value::INT64)
-      e = E (val.as_int());
-    ASE_RETURN_UNLESS (e != *v, false);
-    *v = e;
-    return true;
-  };
-  auto getter = [v] (Value &val) {
+  using EnumType = Jsonipc::Enum<Enum>;
+  return [v] (Value &val) {
     if (EnumType::has_names())
       {
         const String &name = EnumType::get_name (*v);
@@ -90,82 +91,43 @@ Enum (const String &ident, E *v, const String &label, const String &nickname, co
             return;
           }
       }
-    val = int64 (*v);
+    val = int64_t (*v);
   };
-  auto lister = [] (PropertyImpl &prop) {
-    ChoiceS choices;
-    for (const auto &evalue : EnumType::list_values())
-      {
-        Choice choice (evalue.second, evalue.second);
-        choices.push_back (choice);
-      }
-    return choices;
-  };
-  return mkprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
-                   .hints = construct_hints (hints, "bool"), }, getter, setter, lister);
 }
 
-/// Helper for construction of Property lists.
-class Bag {
-public:
-  using ConnectionS = std::vector<EventConnectionP>;
-  Bag&        operator+= (PropertyP p);
-  void        on_events  (const String &eventselector, const EventHandler &eventhandler);
-  ConnectionS connections;
-  CString     group;
-  PropertyS   props;
-};
-
-// == Implementation Helpers ==
-struct Initializer {
-  String ident;
-  String label;
-  String nickname;
-  String unit;
-  String blurb;
-  String description;
-  String groupname;
-  String hints;
-  double pmin = -1.7976931348623157e+308;
-  double pmax = +1.7976931348623157e+308;
-  double pdef = 0;
-};
-
-struct PropertyImpl : public EmittableImpl, public virtual Property {
-  virtual ~PropertyImpl ();
-};
-using PropertyImplP = std::shared_ptr<PropertyImpl>;
-
-/// Construct Property with handlers, emits `Event { .type = "change", .detail = identifier() }`.
-PropertyImplP mkprop (const Initializer &initializer, const ValueGetter&, const ValueSetter&, const ValueLister&);
-
-/// == Implementations ==
-template<class V> inline ValueGetter
-Getter (const V *p)
+/// Value setter for enumeration types.
+template<typename Enum> std::function<bool(const Value&)>
+make_enum_setter (Enum *v)
 {
-  return [p] (Value &val) { val = *p; };
-}
-
-template<class V> inline ValueSetter
-Setter (V *p)
-{
-  return [p] (const Value &val) {
-    V v = {};
-    if constexpr (std::is_floating_point<V>::value)
-      v = val.as_double();
-    else if constexpr (std::is_integral<V>::value)
-      v = val.as_int();
-    else if constexpr (std::is_base_of<::std::string, V>::value)
-      v = val.as_string();
-    else
-      static_assert (sizeof (V) < 0, "Setter for type `V` unimplemented");
-    return v == *p ? false : (*p = v, true);
+  using EnumType = Jsonipc::Enum<Enum>;
+  return [v] (const Value &val) {
+    Enum e = *v;
+    if (val.index() == Value::STRING)
+      e = EnumType::get_value (val.as_string(), e);
+    else if (val.index() == Value::INT64)
+      e = Enum (val.as_int());
+    ASE_RETURN_UNLESS (e != *v, false);
+    *v = e;
+    return true;
   };
 }
 
-} // Properties
+template<typename T> concept IsEnum = std::is_enum_v<T>;
 
-using PropertyBag = Properties::Bag;
+/// Helper to list Jsonipc::Enum<> type values as Choice.
+template<typename Enum> requires IsEnum<Enum>
+ChoiceS
+enum_lister (ParameterProperty&)
+{
+  using EnumType = Jsonipc::Enum<Enum>;
+  ChoiceS choices;
+  for (const auto &evalue : EnumType::list_values())
+    {
+      Choice choice (evalue.second, evalue.second);
+      choices.push_back (choice);
+    }
+  return choices;
+}
 
 } // Ase
 

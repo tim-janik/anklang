@@ -3,399 +3,234 @@
 #include "jsonipc/jsonipc.hh"
 #include "strings.hh"
 #include "utils.hh"
-#include "regex.hh"
+#include "main.hh"
+#include "path.hh"
+#include "serialize.hh"
 #include "internal.hh"
+
+#define PDEBUG(...)     Ase::debug ("prefs", __VA_ARGS__)
 
 namespace Ase {
 
-static String
-canonify_identifier (const std::string &input)
-{
-  static const String validset = string_set_a2z() + "0123456789" + "_";
-  const String lowered = string_tolower (input);
-  String str = string_canonify (lowered, validset, "_");
-  if (str.size() && str[0] >= '0' && str[0] <= '9')
-    str = '_' + str;
-  return str;
-}
-
+// == Property ==
 Property::~Property()
 {}
 
-namespace Properties {
-
-String
-construct_hints (const String &hints, const String &more, double pmin, double pmax)
+// == PropertyImpl ==
+PropertyImpl::PropertyImpl (CString ident, const Param &param, const PropertyGetter &getter,
+                            const PropertySetter &setter, const PropertyLister &lister) :
+  getter_ (getter), setter_ (setter), lister_ (lister)
 {
-  String h = hints;
-  if (h.empty())
-    h = STANDARD;
-  if (h.back() != ':')
-    h = h + ":";
-  for (const auto &s : string_split (more))
-    if (!s.empty() && "" == string_option_find (h, s, ""))
-      h += s + ":";
-  if (h[0] != ':')
-    h = ":" + h;
-  if (pmax > 0 && pmax == -pmin)
-    h += "bidir:";
-  return h;
+  Param iparam = param;
+  iparam.ident = ident;
+  parameter_ = std::make_shared<Parameter> (iparam);
 }
 
-PropertyImpl::~PropertyImpl()
-{}
-
-static Value
-call_getter (const ValueGetter &g)
-{
-  Value v;
-  g(v);
-  return v;
-}
-
-// == LambdaPropertyImpl ==
-struct LambdaPropertyImpl : public virtual PropertyImpl {
-  virtual ~LambdaPropertyImpl () {}
-  Initializer d;
-  const ValueGetter getter_;
-  const ValueSetter setter_;
-  const ValueLister lister_;
-  const Value       vdefault_;
-  void    notify         ();
-  String  identifier     () override		{ return d.ident; }
-  String  label          () override		{ return d.label; }
-  String  nick           () override		{ return d.nickname; }
-  String  unit           () override		{ return d.unit; }
-  String  hints          () override		{ return d.hints; }
-  String  group          () override		{ return d.groupname; }
-  String  blurb          () override		{ return d.blurb; }
-  String  descr          () override		{ return d.description; }
-  ChoiceS choices        () override		{ return lister_ ? lister_ (*static_cast<PropertyImpl*> (this)) : ChoiceS{}; }
-  double  get_min        () override		{ return d.pmin; }
-  double  get_max        () override		{ return d.pmax; }
-  double  get_step       () override		{ return 0.0; }
-  bool    is_numeric     () override;
-  void    reset          () override;
-  Value   get_value      () override;
-  bool    set_value      (const Value &v) override;
-  double  get_normalized () override;
-  bool    set_normalized (double v) override;
-  String  get_text       () override;
-  bool    set_text       (String v) override;
-  LambdaPropertyImpl (const Properties::Initializer &initializer, const ValueGetter &g, const ValueSetter &s, const ValueLister &l) :
-    d (initializer), getter_ (g), setter_ (s), lister_ (l), vdefault_ (call_getter (g))
-  {
-    d.ident = canonify_identifier (d.ident.empty() ? d.label : d.ident);
-    assert_return (initializer.ident.size());
-  }
-};
-using LambdaPropertyImplP = std::shared_ptr<LambdaPropertyImpl>;
-JSONIPC_INHERIT (LambdaPropertyImpl, Property);
-
+// == PropertyBag ==
 void
-LambdaPropertyImpl::notify()
+PropertyBag::operator+= (const Prop &prop) const
 {
-  emit_notify (identifier());
+  add_ (prop, group);
+}
+
+// == Preference ==
+using PrefsValueCallbackList = CallbackList<CString,const Value&>;
+struct PrefsValue {
+  ParameterC parameter;
+  Value      value;
+  std::shared_ptr<PrefsValueCallbackList> callbacks;
+};
+using PrefsMap = std::unordered_map<CString,PrefsValue>;
+
+static std::shared_ptr<CallbackList<CStringS>> prefs_callbacks = CallbackList<CStringS>::make_shared();
+static CStringS notify_preference_queue;
+
+static PrefsMap&
+prefs_map()
+{
+  static PrefsMap *const prefsmap = []() { return new PrefsMap(); } ();
+  return *prefsmap;
+}
+
+static bool preferences_autosave = false;
+static uint timerid_maybe_save_preferences = 0;
+
+static void
+maybe_save_preferences()
+{
+  main_loop->clear_source (&timerid_maybe_save_preferences);
+  if (preferences_autosave && notify_preference_queue.empty())
+    Preference::save_preferences();
+}
+
+static void
+notify_preference_listeners ()
+{
+  CStringS changed_prefs (notify_preference_queue.begin(), notify_preference_queue.end()); // converts CStringS to StringS
+  notify_preference_queue.clear(); // clear, queue taken over
+  return_unless (!changed_prefs.empty());
+  std::sort (changed_prefs.begin(), changed_prefs.end()); // sort and dedup
+  changed_prefs.erase (std::unique (changed_prefs.begin(), changed_prefs.end()), changed_prefs.end());
+  // emit "notify" on individual preferences
+  PrefsMap &prefsmap = prefs_map();
+  for (auto cident : changed_prefs) {
+    PrefsValue &pv = prefsmap[cident];
+    (*pv.callbacks) (cident, pv.value);
+  }
+  // notify preference list listeners
+  const auto callbacklist = prefs_callbacks; // keep reference around invocation
+  (*callbacklist) (changed_prefs);
+  if (preferences_autosave)
+    main_loop->exec_once (577, &timerid_maybe_save_preferences, maybe_save_preferences);
+  else
+    main_loop->clear_source (&timerid_maybe_save_preferences);
+}
+
+static void
+queue_notify_preference_listeners (const CString &cident)
+{
+  return_unless (main_loop != nullptr);
+  // enqueue idle handler for accumulated preference change notifications
+  const bool need_enqueue = notify_preference_queue.empty();
+  notify_preference_queue.push_back (cident);
+  if (need_enqueue)
+    main_loop->exec_now (notify_preference_listeners);
+}
+
+Preference::Preference (ParameterC parameter)
+{
+  parameter_ = parameter;
+  PrefsMap &prefsmap = prefs_map(); // Preference must already be registered
+  auto it = prefsmap.find (parameter_->cident);
+  assert_return (it != prefsmap.end());
+  PrefsValue &pv = it->second;
+  sigh_ = pv.callbacks->add_delcb ([this] (const String &ident, const Value &value) { emit_event ("notify", ident); });
+}
+
+Preference::Preference (const CString &ident, const Param &param, const StringValueF &cb)
+{
+  Param iparam = param;
+  iparam.ident = ident;
+  parameter_ = std::make_shared<Parameter> (iparam);
+  PrefsMap &prefsmap = prefs_map();
+  PrefsValue &pv = prefsmap[parameter_->cident];
+  assert_return (pv.parameter == nullptr); // catch duplicate registration
+  pv.parameter = parameter_;
+  pv.value = pv.parameter->initial();
+  pv.callbacks = PrefsValueCallbackList::make_shared();
+  sigh_ = pv.callbacks->add_delcb ([this] (const String &ident, const Value &value) { emit_event ("notify", ident); });
+  queue_notify_preference_listeners (parameter_->cident);
+  if (cb) {
+    Connection connection = on_event ("notify", [this,cb] (const Event &event) { cb (this->parameter_->cident, this->get_value()); });
+    connection_ = new Connection (connection);
+  }
+}
+
+Preference::~Preference()
+{
+  if (connection_) {
+    connection_->disconnect();
+    delete connection_;
+    connection_ = nullptr;
+  }
+  if (sigh_)
+    sigh_(); // delete signal handler callback
 }
 
 Value
-LambdaPropertyImpl::get_value ()
+Preference::get_value ()
 {
-  Value val;
-  getter_ (val);
-  return val;
+  PrefsMap &prefsmap = prefs_map();
+  PrefsValue &pv = prefsmap[parameter_->cident];
+  return pv.value;
 }
 
 bool
-LambdaPropertyImpl::set_value (const Value &val)
+Preference::set_value (const Value &v)
 {
-  const bool changed = setter_ (val);
-  if (changed)
-    notify();
+  PrefsMap &prefsmap = prefs_map();
+  PrefsValue &pv = prefsmap[parameter_->cident];
+  Value next = parameter_->constrain (v);
+  const bool changed = next == pv.value;
+  pv.value = std::move (next);
+  queue_notify_preference_listeners (parameter_->cident); // delayed
   return changed;
 }
 
-double
-LambdaPropertyImpl::get_normalized () // TODO: implement
+Value
+Preference::get (const String &ident)
 {
-  Value val;
-  getter_ (val);
-  return val.as_double();
+  const CString cident = CString::lookup (ident);
+  return_unless (!cident.empty(), {});
+  PrefsMap &prefsmap = prefs_map();
+  auto it = prefsmap.find (cident);
+  return_unless (it != prefsmap.end(), {});
+  PrefsValue &pv = it->second;
+  return pv.value;
 }
 
-bool
-LambdaPropertyImpl::set_normalized (double v) // TODO: implement
+PreferenceP
+Preference::find (const String &ident)
 {
-  Value val { v };
-  const bool changed = setter_ (val);
-  if (changed)
-    notify();
-  return changed;
+  const CString cident = CString::lookup (ident);
+  return_unless (!cident.empty(), {});
+  PrefsMap &prefsmap = prefs_map();
+  auto it = prefsmap.find (cident);
+  return_unless (it != prefsmap.end(), {});
+  PrefsValue &pv = it->second;
+  return Preference::make_shared (pv.parameter);
 }
 
-String
-LambdaPropertyImpl::get_text ()
+CStringS
+Preference::list ()
 {
-  Value val;
-  getter_ (val);
-  return val.as_string();
+  CStringS strings;
+  for (const auto &e : prefs_map())
+    strings.push_back (e.first);
+  std::sort (strings.begin(), strings.end());
+  return strings;
 }
 
-bool
-LambdaPropertyImpl::set_text (String v)
+Preference::DelCb
+Preference::listen (const std::function<void(const CStringS&)> &func)
 {
-  Value val { v };
-  const bool changed = setter_ (val);
-  if (changed)
-    notify();
-  return changed;
+  return prefs_callbacks->add_delcb (func);
 }
 
-bool
-LambdaPropertyImpl::is_numeric ()
-{
-  Value val;
-  getter_ (val);
-  switch (val.index())
-    {
-    case Value::BOOL:           return true;
-    case Value::INT64:          return true;
-    case Value::DOUBLE:         return true;
-    case Value::ARRAY:
-    case Value::RECORD:
-    case Value::STRING:
-    case Value::INSTANCE:
-    case Value::NONE: ; // std::monostate
-    }
-  return false;
-}
-
-void
-LambdaPropertyImpl::reset ()
-{
-  setter_ (vdefault_);
-  notify();
-}
-
-PropertyImplP
-mkprop (const Initializer &initializer, const ValueGetter &getter, const ValueSetter &setter, const ValueLister &lister)
-{
-  return std::make_shared<Properties::LambdaPropertyImpl> (initializer, getter, setter, lister);
-}
-
-// == Bag ==
-Bag&
-Bag::operator+= (PropertyP p)
-{
-  if (!group.empty() && p->group().empty())
-    {
-      LambdaPropertyImpl *simple = dynamic_cast<LambdaPropertyImpl*> (p.get());
-      if (simple)
-        simple->d.groupname = group;
-    }
-  props.push_back (p);
-  return *this;
-}
-
-void
-Bag::on_events (const String &eventselector, const EventHandler &eventhandler)
-{
-  for (auto p : props)
-    connections.push_back (p->on_event (eventselector, eventhandler));
-}
-
-} // Properties
-
-template<class V> static PropertyP
-ptrprop (const Properties::Initializer &initializer, V *p, const Properties::ValueLister &lister = {})
-{
-  using namespace Properties;
-  assert_return (p, nullptr);
-  return mkprop (initializer, Getter (p), Setter (p), lister);
-}
-
-// == Property constructors ==
-PropertyP
-Properties::Bool (const String &ident, bool *v, const String &label, const String &nickname, bool dflt, const String &hints, const String &blurb, const String &description)
-{
-  return ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
-                    .hints = construct_hints (hints, "bool"), .pdef = double (dflt) }, v);
-}
-
-PropertyP
-Properties::Range (const String &ident, int32 *v, const String &label, const String &nickname, int32 pmin, int32 pmax, int32 dflt,
-                   const String &unit, const String &hints, const String &blurb, const String &description)
-{
-  return ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
-                    .hints = construct_hints (hints, "range"),
-                    .pmin = double (pmin), .pmax = double (pmax), .pdef = double (dflt) }, v);
-}
-
-PropertyP
-Properties::Range (const String &ident, const ValueGetter &getter, const ValueSetter &setter, const String &label, const String &nickname, double pmin, double pmax, double dflt,
-                   const String &unit, const String &hints, const String &blurb, const String &description)
-{
-  const Initializer initializer = {
-    .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
-    .hints = construct_hints (hints, "range"), .pmin = pmin, .pmax = pmax, .pdef = dflt,
-  };
-  return mkprop (initializer, getter, setter, {});
-}
-
-PropertyP
-Properties::Range (const String &ident, float *v, const String &label, const String &nickname, double pmin, double pmax, double dflt,
-                   const String &unit, const String &hints, const String &blurb, const String &description)
-{
-  return ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
-                    .hints = construct_hints (hints, "range"), .pmin = pmin, .pmax = pmax, .pdef = dflt }, v);
-}
-
-PropertyP
-Properties::Range (const String &ident, double *v, const String &label, const String &nickname, double pmin, double pmax, double dflt,
-                   const String &unit, const String &hints, const String &blurb, const String &description)
-{
-  return ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
-                    .hints = construct_hints (hints, "range"), .pmin = pmin, .pmax = pmax, .pdef = dflt }, v);
-}
-
-PropertyP
-Properties::Text (const String &ident, String *v, const String &label, const String &nickname, const String &hints, const String &blurb, const String &description)
-{
-  return ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
-                    .hints = construct_hints (hints, "text") }, v);
-}
-
-PropertyP
-Properties::Text (const String &ident, String *v, const String &label, const String &nickname, const ValueLister &vl, const String &hints, const String &blurb, const String &description)
-{
-  PropertyP propp;
-  propp = ptrprop ({ .ident = ident, .label = label, .nickname = nickname, .blurb = blurb, .description = description,
-                     .hints = construct_hints (hints, "text:choice") }, v, vl);
-  return propp;
-}
-
-// == guess_nick ==
-using String3 = std::tuple<String,String,String>;
-
-// Fast version of Re::search (R"(\d)")
-static ssize_t
-search_first_digit (const String &s)
-{
-  for (size_t i = 0; i < s.size(); ++i)
-    if (isdigit (s[i]))
-      return i;
-  return -1;
-}
-
-// Fast version of Re::search (R"(\d\d?\b)")
-static ssize_t
-search_last_digits (const String &s)
-{
-  for (size_t i = 0; i < s.size(); ++i)
-    if (isdigit (s[i])) {
-      if (isdigit (s[i+1]) && !isalnum (s[i+2]))
-        return i;
-      else if (!isalnum (s[i+1]))
-        return i;
-    }
-  return -1;
-}
-
-// Exract up to 3 useful letters or words from label
-static String3
-make_nick3 (const String &label)
-{
-  // split words
-  const StringS words = Re::findall (R"(\b\w+)", label); // TODO: allow Re caching
-
-  // single word nick, give precedence to digits
-  if (words.size() == 1) {
-    const ssize_t d = search_first_digit (words[0]);
-    if (d > 0 && isdigit (words[0][d + 1]))                     // A11
-      return { words[0].substr (0, 1), words[0].substr (d, 2), "" };
-    if (d > 0)                                                  // Aa1
-      return { words[0].substr (0, 2), words[0].substr (d, 1), "" };
-    else                                                        // Aaa
-      return { words[0].substr (0, 3), "", "" };
-  }
-
-  // two word nick, give precedence to second word digits
-  if (words.size() == 2) {
-    const ssize_t e = search_last_digits (words[1]);
-    if (e >= 0 && isdigit (words[1][e+1]))                      // A22
-      return { words[0].substr (0, 1), words[1].substr (e, 2), "" };
-    if (e > 0)                                                  // AB2
-      return { words[0].substr (0, 1), words[1].substr (0, 1), words[1].substr (e, 1) };
-    if (e == 0)                                                 // Aa2
-      return { words[0].substr (0, 2), words[1].substr (e, 1), "" };
-    const ssize_t d = search_first_digit (words[0]);
-    if (d > 0)                                                  // A1B
-      return { words[0].substr (0, 1), words[0].substr (d, 1), words[1].substr (0, 1) };
-    if (words[1].size() > 1)                                    // ABb
-      return { words[0].substr (0, 1), words[1].substr (0, 2), "" };
-    else                                                        // AaB
-      return { words[0].substr (0, 2), words[1].substr (0, 1), "" };
-  }
-
-  // 3+ word nick
-  if (words.size() >= 3) {
-    ssize_t i, e = -1; // digit pos in last possible word
-    for (i = words.size() - 1; i > 1; i--) {
-      e = search_last_digits (words[i]);
-      if (e >= 0)
-        break;
-    }
-    if (e >= 0 && isdigit (words[i][e + 1]))                    // A66
-      return { words[0].substr (0, 1), words[i].substr (e, 2), "" };
-    if (e >= 0 && i + 1 < words.size())                         // A6G
-      return { words[0].substr (0, 1), words[i].substr (e, 1), words[i+1].substr (0, 1) };
-    if (e > 0)                                                  // AF6
-      return { words[0].substr (0, 1), words[i].substr (0, 1), words[i].substr (e, 1) };
-    if (e == 0 && i >= 3)                                       // AE6
-      return { words[0].substr (0, 1), words[i-1].substr (0, 1), words[i].substr (e, 1) };
-    if (e == 0 && i >= 2)                                       // AB6
-      return { words[0].substr (0, 1), words[1].substr (0, 1), words[i].substr (e, 1) };
-    if (e == 0)                                                 // Aa6
-      return { words[0].substr (0, 2), words[i].substr (e, 1), "" };
-    if (words.back().size() >= 2)                               // AFf
-      return { words[0].substr (0, 1), words.back().substr (0, 2), "" };
-    else                                                        // AEF
-      return { words[0].substr (0, 1), words[words.size()-1].substr (0, 1), words.back().substr (0, 1) };
-  }
-
-  // pathological name
-  return { words[0].substr (0, 3), "", "" };
-}
-
-// Re::sub (R"(([a-zA-Z])([0-9]))", "$1 $2", s)
 static String
-spaced_nums (String s)
+pathname_anklangrc()
 {
-  for (ssize_t i = s.size() - 1; i > 0; i--)
-    if (isdigit (s[i]) && !isdigit (s[i-1]) && !isspace (s[i-1]))
-      s.insert (s.begin() + i, ' ');
-  return s;
+  static const String anklangrc = Path::join (Path::config_home(), "anklang", "anklangrc.json");
+  return anklangrc;
 }
 
-/// Create a few letter nick name from a multi word property label.
-String
-property_guess_nick (const String &property_label)
+void
+Preference::load_preferences (bool autosave)
 {
-  // seperate numbers from words, increases word count
-  String string = spaced_nums (property_label);
+  const String jsontext = Path::stringread (pathname_anklangrc());
+  ValueR precord;
+  json_parse (jsontext, precord);
+  for (ValueField vf : precord) {
+    PreferenceP pref = find (vf.name);
+    PDEBUG ("%s: %s %s=%s\n", __func__, pref ? "loading" : "ignoring", vf.name, vf.value->repr());
+    if (pref)
+      pref->set_value (*vf.value);
+  }
+  preferences_autosave = autosave;
+}
 
-  // use various letter extractions to construct nick portions
-  const auto& [a, b, c] = make_nick3 (string);
-
-  // combine from right to left to increase word variance
-  String nick;
-  if (c.size() > 0)
-    nick = a.substr (0, 1) + b.substr (0, 1) + c.substr (0, 1);
-  else if (b.size() > 0)
-    nick = a.substr (0, 1) + b.substr (0, 2);
-  else
-    nick = a.substr (0, 3);
-  return nick;
+void
+Preference::save_preferences ()
+{
+  ValueR precord;
+  for (auto ident : list())
+    precord[ident] = get (ident);
+  const String new_jsontext = json_stringify (precord, Writ::RELAXED | Writ::SKIP_EMPTYSTRING) + "\n";
+  const String cur_jsontext = Path::stringread (pathname_anklangrc());
+  if (new_jsontext != cur_jsontext) {
+    PDEBUG ("%s: %s\n", __func__, precord.repr());
+    Path::stringwrite (pathname_anklangrc(), new_jsontext, true);
+  }
 }
 
 } // Ase
