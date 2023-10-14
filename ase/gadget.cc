@@ -154,7 +154,9 @@ GadgetImpl::name (String newname)
 PropertyS
 GadgetImpl::access_properties ()
 {
-  return {}; // TODO: implement access_properties
+  if (props_.empty())
+    create_properties();
+  return { begin (props_), end (props_) };
 }
 
 // == Gadget ==
@@ -199,6 +201,19 @@ Gadget::set_value (String ident, const Value &v)
 {
   PropertyP prop = access_property (ident);
   return prop && prop->set_value (v);
+}
+
+PropertyBag
+GadgetImpl::property_bag ()
+{
+  auto add_prop = [this] (const Prop &prop, CString group) {
+    Param param = prop.param;
+    if (param.group.empty() && !group.empty())
+      param.group = group;
+    this->props_.push_back (PropertyImpl::make_shared (prop.ident, param, prop.getter, prop.setter, prop.lister));
+    // PropertyImpl &property = *gadget_.props_.back();
+  };
+  return PropertyBag (add_prop);
 }
 
 } // Ase
