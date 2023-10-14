@@ -40,10 +40,10 @@ protected:
   virtual            ~ProjectImpl    ();
   void                serialize      (WritNode &xs) override;
   void                update_tempo   ();
+  void                create_properties () override;
 public:
   void                 _activate         () override;
   void                 _deactivate       () override;
-  PropertyS            access_properties () override;
   const TickSignature& signature         () const       { return tick_sig_; }
   void                 discard           () override;
   AudioProcessorP      _audio_processor  () const override;
