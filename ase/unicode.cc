@@ -208,6 +208,9 @@ codepoint_is_ncname (uint32_t c)
     return ok;
 }
 
+/** Check `input` to be a NCName, according to the QName EBNF.
+ * See https://en.wikipedia.org/wiki/QName
+ */
 bool
 string_is_ncname (const String &input)
 {
@@ -219,6 +222,9 @@ string_is_ncname (const String &input)
   return true;
 }
 
+/** Convert `input` to a NCName, according to the QName EBNF.
+ * See https://en.wikipedia.org/wiki/QName
+ */
 String
 string_to_ncname (const String &input, uint32_t substitute)
 {
