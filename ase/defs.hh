@@ -60,6 +60,7 @@ ASE_CLASS_DECLS (Preference);
 ASE_CLASS_DECLS (Project);
 ASE_CLASS_DECLS (ProjectImpl);
 ASE_CLASS_DECLS (Property);
+ASE_CLASS_DECLS (PropertyImpl);
 ASE_CLASS_DECLS (ResourceCrawler);
 ASE_CLASS_DECLS (Server);
 ASE_CLASS_DECLS (ServerImpl);
