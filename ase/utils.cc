@@ -16,7 +16,7 @@ namespace Ase {
 
 // == Debugging ==
 bool ase_debugging_enabled = true;
-static bool ase_fatal_warnings = false;
+bool ase_fatal_warnings = false;
 static const char*
 getenv_ase_debug()
 {

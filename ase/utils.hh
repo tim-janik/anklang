@@ -172,6 +172,8 @@ void diag_message  (uint8 code, const std::string &message);
 
 /// Global boolean to reduce debugging penalty where possible
 extern bool ase_debugging_enabled;
+/// Global boolean to cause the program to abort on warnings.
+extern bool ase_fatal_warnings;
 
 /// Check if any kind of debugging is enabled by $ASE_DEBUG.
 inline bool ASE_ALWAYS_INLINE ASE_PURE
