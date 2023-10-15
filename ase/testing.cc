@@ -170,14 +170,14 @@ test_output (int kind, const String &msg)
 bool
 slow()
 {
-  static bool cached_slow = feature_toggle_bool (getenv ("ASE_TEST"), "slow");
+  static bool cached_slow = string_to_bool (String (string_option_find_value (getenv ("ASE_TEST"), "slow", "0", "0", true)));
   return cached_slow;
 }
 
 bool
 verbose()
 {
-  static bool cached_verbose = feature_toggle_bool (getenv ("ASE_TEST"), "verbose");
+  static bool cached_verbose = string_to_bool (String (string_option_find_value (getenv ("ASE_TEST"), "verbose", "0", "0", true)));
   return cached_verbose;
 }
 
