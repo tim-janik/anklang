@@ -139,8 +139,7 @@ template<> inline String        string_from_type<String> (String         value) 
 
 // == String Options ==
 bool             string_option_check      (const String &optionlist, const String &feature);
-String           string_option_get        (const String &optionlist, const String &feature);
-String           string_option_find       (const String &optionlist, const String &feature, const String &fallback = "0");
+String           string_option_find       (const String &optionlist, const String &feature, const String &fallback = "");
 std::string_view string_option_find_value (const char *string, const char *feature, const String &fallback, const String &denied, bool matchallnone);
 
 // == Generic Key-Value-Pairs ==

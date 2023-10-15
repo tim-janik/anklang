@@ -1317,7 +1317,7 @@ string_option_find_value (const char *string, const char *feature, const String 
   return string_option_find_value (string, feature, fallback.c_str(), denied.c_str(), matchallnone ? 3 : 2);
 }
 
-/// Find `feature` in an `optionlist`, return its value or `fallback`.
+/// Retrieve the option value from an options list separated by ':' or ';' or `fallback`.
 String
 string_option_find (const String &optionlist, const String &feature, const String &fallback)
 {
@@ -1330,14 +1330,6 @@ bool
 string_option_check (const String &optionlist, const String &feature)
 {
   return string_to_bool (string_option_find (optionlist, feature, "0"), true);
-}
-
-/// Retrieve the option value from an options list separated by ':' or ';'.
-String
-string_option_get (const String &optionlist, const String &feature)
-{
-  std::string_view sv = string_option_find_value (optionlist.data(), feature.data(), "", "", 3);
-  return { sv.data(), sv.size() };
 }
 
 // == Strings ==
@@ -1599,10 +1591,10 @@ string_tests()
   TASSERT (string_option_check (":foo7:", "foo9") == false);
   TASSERT (string_option_check (":bar:", "bar") == true);
   TASSERT (string_option_check (":bar=:", "bar") == true);
-  TASSERT (string_option_get (":bar:", "bar") == "1");
+  TASSERT (string_option_find (":bar:", "bar") == "1");
   TASSERT (string_option_check (":bar=0:", "bar") == false);
-  TASSERT (string_option_get (":bar=0:", "bar") == "0");
-  TASSERT (string_option_get (":no-bar:", "bar") == "");
+  TASSERT (string_option_find (":bar=0:", "bar") == "0");
+  TASSERT (string_option_find (":no-bar:", "bar") == "");
   TASSERT (string_option_check (":bar=no:", "bar") == false);
   TASSERT (string_option_check (":bar=false:", "bar") == false);
   TASSERT (string_option_check (":bar=off:", "bar") == false);
@@ -1648,13 +1640,19 @@ string_tests()
   String r;
   r = string_option_find ("a:b", "a"); TCMP (r, ==, "1");
   r = string_option_find ("a:b", "b"); TCMP (r, ==, "1");
-  r = string_option_find ("a:b", "c"); TCMP (r, ==, "0");
+  r = string_option_find ("a:b", "c", "0"); TCMP (r, ==, "0");
   r = string_option_find ("a:b", "c", "7"); TCMP (r, ==, "7");
-  r = string_option_find ("a:no-b", "b"); TCMP (r, ==, "0");
-  r = string_option_find ("no-a:b", "a"); TCMP (r, ==, "0");
+  r = string_option_find ("a:no-b", "b", "0"); TCMP (r, ==, "0");
+  r = string_option_find ("no-a:b", "a", "0"); TCMP (r, ==, "0");
   r = string_option_find ("no-a:b:a", "a"); TCMP (r, ==, "1");
   r = string_option_find ("no-a:b:a=5", "a"); TCMP (r, ==, "5");
   r = string_option_find ("no-a:b:a=5:c", "a"); TCMP (r, ==, "5");
+  bool b;
+  b = string_option_check ("", "a"); TCMP (b, ==, false);
+  b = string_option_check ("a:b:c", "a"); TCMP (b, ==, true);
+  b = string_option_check ("no-a:b:c", "a"); TCMP (b, ==, false);
+  b = string_option_check ("no-a:b:a=5:c", "b"); TCMP (b, ==, true);
+  b = string_option_check ("x:all", ""); TCMP (b, ==, false); // must have feature?
   TASSERT (typeid_name<int>() == "int");
   TASSERT (typeid_name<bool>() == "bool");
   TASSERT (typeid_name<::Ase::Strings>() == "Ase::Strings");
