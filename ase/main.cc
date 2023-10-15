@@ -87,53 +87,6 @@ main_rt_jobs_process()
   }
 }
 
-// == Feature Toggles ==
-/// Find @a feature in @a config, return its value or @a fallback.
-String
-feature_toggle_find (const String &config, const String &feature, const String &fallback)
-{
-  String haystack = ":" + config + ":";
-  String needle0 = ":no-" + feature + ":";
-  String needle1 = ":" + feature + ":";
-  String needle2 = ":" + feature + "=";
-  const char *n0 = strrstr (haystack.c_str(), needle0.c_str());
-  const char *n1 = strrstr (haystack.c_str(), needle1.c_str());
-  const char *n2 = strrstr (haystack.c_str(), needle2.c_str());
-  if (n0 && (!n1 || n0 > n1) && (!n2 || n0 > n2))
-    return "0";         // ":no-feature:" is the last toggle in config
-  if (n1 && (!n2 || n1 > n2))
-    return "1";         // ":feature:" is the last toggle in config
-  if (!n2)
-    return fallback;    // no "feature" variant found
-  const char *value = n2 + strlen (needle2.c_str());
-  const char *end = strchr (value, ':');
-  return end ? String (value, end - value) : String (value);
-}
-
-/// Check for @a feature in @a config, if @a feature is empty, checks for *any* feature.
-bool
-feature_toggle_bool (const char *config, const char *feature)
-{
-  if (feature && feature[0])
-    return string_to_bool (feature_toggle_find (config ? config : "", feature));
-  // check if *any* feature is enabled in config
-  if (!config || !config[0])
-    return false;
-  const size_t l = strlen (config);
-  for (size_t i = 0; i < l; i++)
-    if (config[i] && !strchr (": \t\n\r=", config[i]))
-      return true;      // found *some* non-space and non-separator config item
-  return false;         // just whitespace
-}
-
-/// Check if `feature` is enabled via $ASE_FEATURE.
-bool
-feature_check (const char *feature)
-{
-  const char *const asefeature = getenv ("ASE_FEATURE");
-  return asefeature ? feature_toggle_bool (asefeature, feature) : false;
-}
-
 // == MainConfig and arguments ==
 static void
 print_usage (bool help)
@@ -176,7 +129,6 @@ parse_args (int *argcp, char **argv)
       config.jsonapi_logflags |= debug_key_enabled ("jsbin") ? jsbin_logflags : 0;
       config.jsonapi_logflags |= debug_key_enabled ("jsipc") ? jsipc_logflags : 0;
     }
-  config.fatal_warnings = feature_check ("fatal-warnings");
 
   bool norc = false;
   bool sep = false; // -- separator
@@ -186,7 +138,7 @@ parse_args (int *argcp, char **argv)
       if (sep)
         config.args.push_back (argv[i]);
       else if (strcmp (argv[i], "--fatal-warnings") == 0 || strcmp (argv[i], "--g-fatal-warnings") == 0)
-        config.fatal_warnings = true;
+        ase_fatal_warnings = true;
       else if (strcmp ("--disable-randomization", argv[i]) == 0)
         config.allow_randomization = false;
       else if (strcmp ("--norc", argv[i]) == 0)
@@ -206,7 +158,7 @@ parse_args (int *argcp, char **argv)
       else if (strcmp ("--check", argv[i]) == 0)
         {
           config.mode = MainConfig::CHECK_INTEGRITY_TESTS;
-          config.fatal_warnings = true;
+          ase_fatal_warnings = true;
         }
       else if (argv[i] == String ("--blake3") && i + 1 < size_t (argc))
         {
@@ -663,28 +615,6 @@ job_queue_tests()
   } while (timestamp_realtime() < start_usecs + 1871 * 1000 && !seen_deleter);
   assert_return (seen_engine_job == true);
   assert_return (seen_deleter == true);
-}
-
-TEST_INTEGRITY (test_feature_toggles);
-static void
-test_feature_toggles()
-{
-  String r;
-  r = feature_toggle_find ("a:b", "a"); TCMP (r, ==, "1");
-  r = feature_toggle_find ("a:b", "b"); TCMP (r, ==, "1");
-  r = feature_toggle_find ("a:b", "c"); TCMP (r, ==, "0");
-  r = feature_toggle_find ("a:b", "c", "7"); TCMP (r, ==, "7");
-  r = feature_toggle_find ("a:no-b", "b"); TCMP (r, ==, "0");
-  r = feature_toggle_find ("no-a:b", "a"); TCMP (r, ==, "0");
-  r = feature_toggle_find ("no-a:b:a", "a"); TCMP (r, ==, "1");
-  r = feature_toggle_find ("no-a:b:a=5", "a"); TCMP (r, ==, "5");
-  r = feature_toggle_find ("no-a:b:a=5:c", "a"); TCMP (r, ==, "5");
-  bool b;
-  b = feature_toggle_bool ("", "a"); TCMP (b, ==, false);
-  b = feature_toggle_bool ("a:b:c", "a"); TCMP (b, ==, true);
-  b = feature_toggle_bool ("no-a:b:c", "a"); TCMP (b, ==, false);
-  b = feature_toggle_bool ("no-a:b:a=5:c", "b"); TCMP (b, ==, true);
-  b = feature_toggle_bool ("x", ""); TCMP (b, ==, true); // *any* feature?
 }
 
 struct JWalker : Jsonipc::ClassWalker {
