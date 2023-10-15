@@ -82,7 +82,7 @@ class ParameterProperty : public EmittableImpl, public virtual Property {
 protected:
   ParameterC parameter_;
 public:
-  String     identifier     () override           { return parameter_->cident; }
+  String     ident          () override           { return parameter_->cident; }
   String     label          () override           { return parameter_->label(); }
   String     nick           () override	          { return parameter_->nick(); }
   String     unit           () override	          { return parameter_->unit(); }

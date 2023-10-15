@@ -134,7 +134,7 @@ class Property : public virtual Emittable {
 protected:
   virtual         ~Property       () = 0;
 public:
-  virtual String   identifier     () = 0;          ///< Unique name (per owner) of this Property.
+  virtual String   ident          () = 0;          ///< Unique name (per owner) of this Property.
   virtual String   label          () = 0;          ///< Preferred user interface name.
   virtual String   nick           () = 0;          ///< Abbreviated user interface name, usually not more than 6 characters.
   virtual String   unit           () = 0;          ///< Units of the values within range.

@@ -89,12 +89,12 @@ GadgetImpl::serialize (WritNode &xs)
       if (xs.in_save() && string_option_check (hints, "r"))
         {
           Value v = p->get_value();
-          xs[p->identifier()] & v;
+          xs[p->ident()] & v;
         }
-      if (xs.in_load() && string_option_check (hints, "w") && xs.has (p->identifier()))
+      if (xs.in_load() && string_option_check (hints, "w") && xs.has (p->ident()))
         {
           Value v;
-          xs[p->identifier()] & v;
+          xs[p->ident()] & v;
           p->set_value (v);
         }
     }
@@ -176,7 +176,7 @@ Gadget::list_properties ()
   StringS names;
   names.reserve (props.size());
   for (const PropertyP &prop : props)
-    names.push_back (prop->identifier());
+    names.push_back (prop->ident());
   return names;
 }
 
@@ -184,7 +184,7 @@ PropertyP
 Gadget::access_property (String ident)
 {
   for (const auto &p : access_properties())
-    if (p->identifier() == ident)
+    if (p->ident() == ident)
       return p;
   return {};
 }

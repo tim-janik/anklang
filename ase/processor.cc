@@ -1034,7 +1034,7 @@ class AudioPropertyImpl : public Property, public virtual EmittableImpl {
   double              inflight_value_ = 0;
   std::atomic<uint64> inflight_counter_ = 0;
 public:
-  String   identifier     () override   { return parameter_->ident(); }
+  String   ident          () override   { return parameter_->ident(); }
   String   label          () override   { return parameter_->label(); }
   String   nick           () override   { return parameter_->nick(); }
   String   unit           () override   { return parameter_->unit(); }
