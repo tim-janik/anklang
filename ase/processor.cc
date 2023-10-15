@@ -164,7 +164,7 @@ construct_hints (String hints, double pmin, double pmax, const String &more = ""
   if (hints.back() != ':')
     hints = hints + ":";
   for (const auto &s : string_split (more))
-    if (!s.empty() && "" == feature_toggle_find (hints, s, ""))
+    if (!s.empty() && "" == string_option_find (hints, s, ""))
       hints += s + ":";
   if (hints[0] != ':')
     hints = ":" + hints;
