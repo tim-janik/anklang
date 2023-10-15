@@ -1227,7 +1227,7 @@ cstrings_to_vector (const char *s, ...)
   return sv;
 }
 
-// == Generic Key-Value-Pairs ==
+// == Key=Value Pairs ==
 String
 kvpair_key (const String &key_value_pair)
 {
@@ -1240,6 +1240,20 @@ kvpair_value (const String &key_value_pair)
 {
   const char *const eq = strchr (key_value_pair.c_str(), '=');
   return eq ? key_value_pair.substr (eq - key_value_pair.c_str() + 1) : "";
+}
+
+ssize_t
+kvpairs_search (const StringS &kvs, const String &k, const bool casesensitive)
+{
+  const size_t l = k.size();
+  for (size_t i = 0; i < kvs.size(); i++)
+    if (kvs[i].size() > l && kvs[i][l] == '=') {
+      if (casesensitive && strncmp (kvs[i].data(), k.data(), l) == 0)
+        return i;
+      if (casesensitive && strncasecmp (kvs[i].data(), k.data(), l) == 0)
+        return i;
+    }
+  return -1;
 }
 
 // === String Options ===

@@ -149,8 +149,9 @@ void    string_options_split    (const String   &option_string,
 String  string_option_find      (const String &config, const String &feature, const String &fallback = "0");
 
 // == Generic Key-Value-Pairs ==
-String  kvpair_key              (const String &key_value_pair);
-String  kvpair_value            (const String &key_value_pair);
+String  kvpair_key      (const String &key_value_pair);
+String  kvpair_value    (const String &key_value_pair);
+ssize_t kvpairs_search  (const StringS &kvs, const String &k, bool casesensitive = true);
 
 // == Strings ==
 /// Convenience Constructor for StringSeq or std::vector<std::string>
