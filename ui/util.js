@@ -928,7 +928,7 @@ export async function extend_property (prop, disconnector = undefined, augment =
   const notify_cbs = []; // custom notify callbacks
   const xprop = {
     hints_: prop.hints(),
-    ident_: prop.identifier(),
+    ident_: prop.ident(),
     is_numeric_: prop.is_numeric(),
     label_: prop.label(),
     nick_: prop.nick(),
