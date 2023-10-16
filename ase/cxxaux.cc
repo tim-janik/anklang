@@ -1,6 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "cxxaux.hh"
-#include "main.hh"              // main_config
+#include "utils.hh"             // ase_fatal_warnings
 #include "backtrace.hh"
 #include <cxxabi.h>             // abi::__cxa_demangle
 #include <signal.h>
@@ -45,7 +45,7 @@ assertion_failed (const std::string &msg, const char *file, int line, const char
     ASE_PRINT_BACKTRACE (__FILE__, __LINE__, __func__);
   else if (debug_key_enabled ("break"))
     breakpoint();
-  if (main_config.fatal_warnings)
+  if (ase_fatal_warnings)
     raise (SIGQUIT);
 }
 

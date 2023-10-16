@@ -8,6 +8,8 @@ namespace Ase {
 
 std::string             string_from_unicode     (const std::vector<uint32_t> &codepoints);
 std::string             string_from_unicode     (const uint32_t *codepoints, size_t n_codepoints);
+String                  string_to_ncname        (const String &input, uint32_t substitute = 0);
+bool                    string_is_ncname        (const String &input);
 size_t                  utf8_to_unicode         (const std::string &str, std::vector<uint32_t> &codepoints);
 size_t                  utf8_to_unicode         (const char *str, uint32_t *codepoints);
 size_t                  utf8len                 (const std::string &str);

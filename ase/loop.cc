@@ -259,6 +259,40 @@ EventLoop::remove (uint id)
     warning ("%s: failed to remove loop source: %u", __func__, id);
 }
 
+bool
+EventLoop::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priority)
+{
+  assert_return (once_id != nullptr, false);
+  assert_return (priority >= 1 && priority <= PRIORITY_CEILING, false);
+  if (!vfunc) {
+    clear_source (once_id);
+    return false;
+  }
+  auto once_handler = [vfunc,once_id]() { *once_id = 0; vfunc(); };
+  EventSourceP source = TimedSource::create (once_handler, delay_ms, 0);
+  source->loop_ = this;
+  source->id_ = alloc_id();
+  source->loop_state_ = WAITING;
+  source->priority_ = priority;
+  uint warn_id = 0;
+  {
+    std::lock_guard<std::mutex> locker (main_loop_->mutex());
+    if (*once_id) {
+      EventSourceP &source = find_source_L (*once_id);
+      if (source)
+        remove_source_Lm (source);
+      else
+        warn_id = *once_id;
+    }
+    sources_.push_back (source);
+    *once_id = source->id_;
+  }
+  if (warn_id)
+    warning ("%s: failed to remove loop source: %u", __func__, once_id);
+  wakeup();
+  return true;
+}
+
 /* void EventLoop::change_priority (EventSource *source, int priority) {
  * // ensure that source belongs to this
  * // reset all source->pfds[].idx = UINT_MAX

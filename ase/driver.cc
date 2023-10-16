@@ -281,15 +281,26 @@ public:
     auto pdriverp = std::make_shared<NullPcmDriver> (kvpair_key (devid), kvpair_value (devid));
     return pdriverp;
   }
-  virtual float
-  pcm_frequency () const override
+  uint
+  pcm_n_channels () const override
+  {
+    return n_channels_;
+  }
+  uint
+  pcm_mix_freq () const override
   {
     return mix_freq_;
   }
-  virtual uint
-  block_length () const override
+  uint
+  pcm_block_length () const override
   {
     return block_size_;
+  }
+  void
+  pcm_latency (uint *rlatency, uint *wlatency) const override
+  {
+    *rlatency = mix_freq_ / 10;
+    *wlatency = mix_freq_ / 10;
   }
   virtual void
   close () override
@@ -312,12 +323,6 @@ public:
     flags_ |= Flags::OPENED;
     DDEBUG ("NULL-PCM: opening with freq=%f channels=%d: %s", mix_freq_, n_channels_, ase_error_blurb (Error::NONE));
     return Error::NONE;
-  }
-  virtual void
-  pcm_latency (uint *rlatency, uint *wlatency) const override
-  {
-    *rlatency = mix_freq_ / 10;
-    *wlatency = mix_freq_ / 10;
   }
   virtual bool
   pcm_check_io (int64 *timeout_usecs) override

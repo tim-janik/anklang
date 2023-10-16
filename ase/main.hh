@@ -19,7 +19,6 @@ struct MainConfig {
   std::vector<String> args;
   uint16 websocket_port = 0;
   int    jsonapi_logflags = 1;
-  bool   fatal_warnings = false;
   bool   allow_randomization = true;
   bool   list_drivers = false;
   bool   play_autostart = false;
@@ -28,11 +27,6 @@ struct MainConfig {
   ModeT  mode = SYNTHENGINE;
 };
 extern const MainConfig &main_config;
-
-// == Feature Toggles ==
-String feature_toggle_find (const String &config, const String &feature, const String &fallback = "0");
-bool   feature_toggle_bool (const char *config, const char *feature);
-bool   feature_check       (const char *feature);
 
 // == Jobs & main loop ==
 extern MainLoopP main_loop;

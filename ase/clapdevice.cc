@@ -27,21 +27,21 @@ struct ClapPropertyImpl : public Property, public virtual EmittableImpl {
   String ident_, label_, module_;
   double min_value = NAN, max_value = NAN, default_value = NAN;
 public:
-  String   identifier     () override   { return ident_; }
-  String   label          () override   { return label_; }
-  String   nick           () override   { return property_guess_nick (label_); }
-  String   unit           () override   { return ""; }
-  String   hints          () override   { return ClapParamInfo::hints_from_param_info_flags (flags); }
-  String   group          () override   { return module_; }
-  String   blurb          () override   { return ""; }
-  String   description    () override   { return ""; }
-  double   get_min        () override   { return min_value; }
-  double   get_max        () override   { return max_value; }
-  double   get_step       () override   { return is_stepped() ? 1 : 0; }
-  bool     is_numeric     () override   { return true; }
-  bool     is_stepped     ()            { return strstr (hints().c_str(), ":stepped:"); }
-  void     reset          () override   { set_value (default_value); }
-  ClapPropertyImpl (ClapDeviceImplP device, const ClapParamInfo info) :
+  String ident      () override   { return ident_; }
+  String label      () override   { return label_; }
+  String nick       () override   { return parameter_guess_nick (label_); }
+  String unit       () override   { return ""; }
+  String hints      () override   { return ClapParamInfo::hints_from_param_info_flags (flags); }
+  String group      () override   { return module_; }
+  String blurb      () override   { return ""; }
+  String descr      () override   { return ""; }
+  double get_min    () override   { return min_value; }
+  double get_max    () override   { return max_value; }
+  double get_step   () override   { return is_stepped() ? 1 : 0; }
+  bool   is_numeric () override   { return true; }
+  bool   is_stepped ()            { return strstr (hints().c_str(), ":stepped:"); }
+  void   reset      () override   { set_value (default_value); }
+  ClapPropertyImpl  (ClapDeviceImplP device, const ClapParamInfo info) :
     device_ (device)
   {
     param_id = info.param_id;

@@ -46,7 +46,7 @@ string_multiply (const String &s,
 String
 string_to_identifier (const String &input)
 {
-  static const String validset = string_set_a2z() + "_0123456789";
+  static const String validset = ASE_STRING_SET_LOWER_ALNUM "_";
   String ident = string_tolower (input);
   ident = string_canonify (ident, validset, "_");
   if (!ident.empty() && ident[0] <= '9')
@@ -110,7 +110,7 @@ string_set_A2Z ()
 const String&
 string_set_ascii_alnum ()
 {
-  static const String cached_alnum = "0123456789" + string_set_A2Z() + string_set_a2z();
+  static const String cached_alnum = ASE_STRING_SET_ASCII_ALNUM;
   return cached_alnum;
 }
 
@@ -1227,7 +1227,7 @@ cstrings_to_vector (const char *s, ...)
   return sv;
 }
 
-// == Generic Key-Value-Pairs ==
+// == Key=Value Pairs ==
 String
 kvpair_key (const String &key_value_pair)
 {
@@ -1242,112 +1242,94 @@ kvpair_value (const String &key_value_pair)
   return eq ? key_value_pair.substr (eq - key_value_pair.c_str() + 1) : "";
 }
 
+ssize_t
+kvpairs_search (const StringS &kvs, const String &k, const bool casesensitive)
+{
+  const size_t l = k.size();
+  for (size_t i = 0; i < kvs.size(); i++)
+    if (kvs[i].size() > l && kvs[i][l] == '=') {
+      if (casesensitive && strncmp (kvs[i].data(), k.data(), l) == 0)
+        return i;
+      if (casesensitive && strncasecmp (kvs[i].data(), k.data(), l) == 0)
+        return i;
+    }
+  return -1;
+}
+
 // === String Options ===
-#define is_sep(c)               (c == ';' || c == ':')
-#define is_spacesep(c)          (isspace (c) || is_sep (c))
-#define find_sep(str)           (strpbrk (str, ";:"))
+static bool is_separator (char c) { return c == ';' || c == ':'; }
 
-static void
-string_option_add (const String   &assignment,
-                   std::vector<String> *option_namesp,
-                   std::vector<String> &option_values,
-                   const String   &empty_default,
-                   const String   *filter)
+static const char*
+find_option (const char *haystack, const char *const needle, const size_t l, const int allowoption)
 {
-  assert_return ((option_namesp != NULL) ^ (filter != NULL));
-  const char *n = assignment.c_str();
-  while (isspace (*n))
-    n++;
-  const char *p = n;
-  while (isalnum (*p) || *p == '-' || *p == '_')
-    p++;
-  const String name = String (n, p - n);
-  if (filter && name != *filter)
-    return;
-  while (isspace (*p))
-    p++;
-  const String value = *p == '=' ? String (p + 1) : empty_default;
-  if (!name.empty() && (*p == '=' || *p == 0)) // valid name
-    {
-      if (!filter)
-        option_namesp->push_back (name);
-      option_values.push_back (value);
-    }
+  const char *match = nullptr;
+  for (const char *c = strcasestr (haystack, needle); c; c = strcasestr (c + 1, needle))
+    if (!allowoption &&
+        (c[l] == 0 && is_separator (c[l])) &&
+        ((c == haystack + 3 && strncasecmp (haystack, "no-", 3) == 0) ||
+         (c >= haystack + 4 && is_separator (haystack[0]) && strncasecmp (haystack + 1, "no-", 3) == 0)))
+      match = c;
+    else if (allowoption &&
+             ((allowoption >= 2 && c[l] == '=') || c[l] == 0 || is_separator (c[l])) &&
+             (c == haystack || is_separator (c[-1])))
+      match = c;
+  return match;
 }
 
-static void
-string_options_split_filtered (const String   &option_string,
-                               std::vector<String> *option_namesp,
-                               std::vector<String> &option_values,
-                               const String   &empty_default,
-                               const String   *filter)
+static size_t
+separator_strlen (const char *const s)
 {
-  const char *s = option_string.c_str();
-  while (s)
-    {
-      // find next separator
-      const char *b = find_sep (s);
-      string_option_add (String (s, b ? b - s : strlen (s)), option_namesp, option_values, empty_default, filter);
-      s = b ? b + 1 : NULL;
-    }
+  const char *c = s;
+  while (c[0] && !is_separator (c[0]))
+    c++;
+  return c - s;
 }
 
-/// Split an option list string into name/value pairs.
-void
-string_options_split (const String   &option_string,
-                      std::vector<String> &option_names,
-                      std::vector<String> &option_values,
-                      const String   &empty_default)
+static std::string_view
+string_option_find_value (const char *string, const char *feature, const char *fallback, const char *denied, const int matching)
 {
-  string_options_split_filtered (option_string, &option_names, option_values, empty_default, NULL);
+  if (!string || !feature || !string[0] || !feature[0])
+    return { fallback, strlen (fallback) };                     // not-found
+  const size_t l = strlen (feature);
+  const char *match = find_option (string, feature, l, 2);      // .prio=2
+  if (matching >= 2) {
+    const char *deny = find_option (string, feature, l, 0);     // .prio=1
+    if (deny > match)
+      return { denied, strlen (denied) };                       // denied
+  }
+  if (match && match[l] == '=')
+    return { match + l + 1, separator_strlen (match + l + 1) }; // value
+  if (match)
+    return { "1", 1 };                                          // allowed
+  if (matching >= 3) {
+    if (find_option (string, "all", 3, 1))                      // .prio=3
+      return { "1", 1 };                                        // allowed
+    if (find_option (string, "none", 4, 1))                     // .prio=4
+      return { denied, strlen (denied) };                       // denied
+  }
+  return { fallback, strlen (fallback) };                       // not-found
 }
 
-static String
-string_option_find_value (const String &option_string,
-                          const String &option)
+/// Low level option search, avoids dynamic allocations.
+std::string_view
+string_option_find_value (const char *string, const char *feature, const String &fallback, const String &denied, bool matchallnone)
 {
-  std::vector<String> option_names, option_values;
-  string_options_split_filtered (option_string, NULL, option_values, "1", &option);
-  return option_values.empty() ? "0" : option_values[option_values.size() - 1];
+  return string_option_find_value (string, feature, fallback.c_str(), denied.c_str(), matchallnone ? 3 : 2);
 }
 
-/// Retrieve the option value from an options list separated by ':' or ';'.
+/// Retrieve the option value from an options list separated by ':' or ';' or `fallback`.
 String
-string_option_get (const String   &option_string,
-                   const String   &option)
+string_option_find (const String &optionlist, const String &feature, const String &fallback)
 {
-  return string_option_find_value (option_string, option);
+  std::string_view sv = string_option_find_value (optionlist.data(), feature.data(), fallback.data(), "0", 3);
+  return { sv.data(), sv.size() };
 }
 
 /// Check if an option is set/unset in an options list string.
 bool
-string_option_check (const String   &option_string,
-                     const String   &option)
+string_option_check (const String &optionlist, const String &feature)
 {
-  const String value = string_option_find_value (option_string, option);
-  return string_to_bool (value, true);
-}
-
-/// Find @a feature in @a config, return its value or @a fallback.
-String
-string_option_find (const String &config, const String &feature, const String &fallback)
-{
-  String haystack = ":" + config + ":";
-  String needle0 = ":no-" + feature + ":";
-  String needle1 = ":" + feature + ":";
-  String needle2 = ":" + feature + "=";
-  const char *n0 = g_strrstr (haystack.c_str(), needle0.c_str());
-  const char *n1 = g_strrstr (haystack.c_str(), needle1.c_str());
-  const char *n2 = g_strrstr (haystack.c_str(), needle2.c_str());
-  if (n0 && (!n1 || n0 > n1) && (!n2 || n0 > n2))
-    return "0";         // ":no-feature:" is the last toggle in config
-  if (n1 && (!n2 || n1 > n2))
-    return "1";         // ":feature:" is the last toggle in config
-  if (!n2)
-    return fallback;    // no "feature" variant found
-  const char *value = n2 + strlen (needle2.c_str());
-  const char *end = strchr (value, ':');
-  return end ? String (value, end - value) : String (value);
+  return string_to_bool (string_option_find (optionlist, feature, "0"), true);
 }
 
 // == Strings ==
@@ -1604,64 +1586,73 @@ string_tests()
   TCMP (string_join (";", sv), ==, "a;b;cdef");
   sv = string_split_any ("  foo  , bar     , \t\t baz \n", ",");
   TCMP (string_join (";", sv), ==, "  foo  ; bar     ; \t\t baz \n");
-  TASSERT (string_option_check (" foo ", "foo") == true);
-  TASSERT (string_option_check (" foo9 ", "foo9") == true);
-  TASSERT (string_option_check (" foo7 ", "foo9") == false);
-  TASSERT (string_option_check (" bar ", "bar") == true);
-  TASSERT (string_option_check (" bar= ", "bar") == true);
-  TASSERT (string_option_check (" bar=0 ", "bar") == false);
-  TASSERT (string_option_check (" bar=no ", "bar") == false);
-  TASSERT (string_option_check (" bar=false ", "bar") == false);
-  TASSERT (string_option_check (" bar=off ", "bar") == false);
-  TASSERT (string_option_check (" bar=1 ", "bar") == true);
-  TASSERT (string_option_check (" bar=2 ", "bar") == true);
-  TASSERT (string_option_check (" bar=3 ", "bar") == true);
-  TASSERT (string_option_check (" bar=4 ", "bar") == true);
-  TASSERT (string_option_check (" bar=5 ", "bar") == true);
-  TASSERT (string_option_check (" bar=6 ", "bar") == true);
-  TASSERT (string_option_check (" bar=7 ", "bar") == true);
-  TASSERT (string_option_check (" bar=8 ", "bar") == true);
-  TASSERT (string_option_check (" bar=9 ", "bar") == true);
-  TASSERT (string_option_check (" bar=09 ", "bar") == true);
-  TASSERT (string_option_check (" bar=yes ", "bar") == true);
-  TASSERT (string_option_check (" bar=true ", "bar") == true);
-  TASSERT (string_option_check (" bar=on ", "bar") == true);
-  TASSERT (string_option_check (" bar=1false ", "bar") == true);
-  TASSERT (string_option_check (" bar=0true ", "bar") == false);
-  TASSERT (string_option_check (" foo ", "foo") == true);
-  TASSERT (string_option_check (" foo9 ", "foo9") == true);
-  TASSERT (string_option_check (" foo7 ", "foo9") == false);
-  TASSERT (string_option_check (" bar ", "bar") == true);
-  TASSERT (string_option_check (" bar= ", "bar") == true);
-  TASSERT (string_option_check (" bar=0 ", "bar") == false);
-  TASSERT (string_option_check (" bar=no ", "bar") == false);
-  TASSERT (string_option_check (" bar=false ", "bar") == false);
-  TASSERT (string_option_check (" bar=off ", "bar") == false);
-  TASSERT (string_option_check (" bar=1 ", "bar") == true);
-  TASSERT (string_option_check (" bar=2 ", "bar") == true);
-  TASSERT (string_option_check (" bar=3 ", "bar") == true);
-  TASSERT (string_option_check (" bar=4 ", "bar") == true);
-  TASSERT (string_option_check (" bar=5 ", "bar") == true);
-  TASSERT (string_option_check (" bar=6 ", "bar") == true);
-  TASSERT (string_option_check (" bar=7 ", "bar") == true);
-  TASSERT (string_option_check (" bar=8 ", "bar") == true);
-  TASSERT (string_option_check (" bar=9 ", "bar") == true);
-  TASSERT (string_option_check (" bar=09 ", "bar") == true);
-  TASSERT (string_option_check (" bar=yes ", "bar") == true);
-  TASSERT (string_option_check (" bar=true ", "bar") == true);
-  TASSERT (string_option_check (" bar=on ", "bar") == true);
-  TASSERT (string_option_check (" bar=1false ", "bar") == true);
-  TASSERT (string_option_check (" bar=0true ", "bar") == false);
+  TASSERT (string_option_check (":foo:", "foo") == true);
+  TASSERT (string_option_check (":foo9:", "foo9") == true);
+  TASSERT (string_option_check (":foo7:", "foo9") == false);
+  TASSERT (string_option_check (":bar:", "bar") == true);
+  TASSERT (string_option_check (":bar=:", "bar") == true);
+  TASSERT (string_option_find (":bar:", "bar") == "1");
+  TASSERT (string_option_check (":bar=0:", "bar") == false);
+  TASSERT (string_option_find (":bar=0:", "bar") == "0");
+  TASSERT (string_option_find (":no-bar:", "bar") == "");
+  TASSERT (string_option_check (":bar=no:", "bar") == false);
+  TASSERT (string_option_check (":bar=false:", "bar") == false);
+  TASSERT (string_option_check (":bar=off:", "bar") == false);
+  TASSERT (string_option_check (":bar=1:", "bar") == true);
+  TASSERT (string_option_check (":bar=2:", "bar") == true);
+  TASSERT (string_option_check (":bar=3:", "bar") == true);
+  TASSERT (string_option_check (":bar=4:", "bar") == true);
+  TASSERT (string_option_check (":bar=5:", "bar") == true);
+  TASSERT (string_option_check (":bar=6:", "bar") == true);
+  TASSERT (string_option_check (":bar=7:", "bar") == true);
+  TASSERT (string_option_check (":bar=8:", "bar") == true);
+  TASSERT (string_option_check (":bar=9:", "bar") == true);
+  TASSERT (string_option_check (":bar=09:", "bar") == true);
+  TASSERT (string_option_check (":bar=yes:", "bar") == true);
+  TASSERT (string_option_check (":bar=true:", "bar") == true);
+  TASSERT (string_option_check (":bar=on:", "bar") == true);
+  TASSERT (string_option_check (":bar=1false:", "bar") == true);
+  TASSERT (string_option_check (":bar=0true:", "bar") == false);
+  TASSERT (string_option_check (":foo:", "foo") == true);
+  TASSERT (string_option_check (":foo9:", "foo9") == true);
+  TASSERT (string_option_check (":foo7:", "foo9") == false);
+  TASSERT (string_option_check (":bar:", "bar") == true);
+  TASSERT (string_option_check (":bar=:", "bar") == true);
+  TASSERT (string_option_check (":bar=0:", "bar") == false);
+  TASSERT (string_option_check (":bar=no:", "bar") == false);
+  TASSERT (string_option_check (":bar=false:", "bar") == false);
+  TASSERT (string_option_check (":bar=off:", "bar") == false);
+  TASSERT (string_option_check (":bar=1:", "bar") == true);
+  TASSERT (string_option_check (":bar=2:", "bar") == true);
+  TASSERT (string_option_check (":bar=3:", "bar") == true);
+  TASSERT (string_option_check (":bar=4:", "bar") == true);
+  TASSERT (string_option_check (":bar=5:", "bar") == true);
+  TASSERT (string_option_check (":bar=6:", "bar") == true);
+  TASSERT (string_option_check (":bar=7:", "bar") == true);
+  TASSERT (string_option_check (":bar=8:", "bar") == true);
+  TASSERT (string_option_check (":bar=9:", "bar") == true);
+  TASSERT (string_option_check (":bar=09:", "bar") == true);
+  TASSERT (string_option_check (":bar=yes:", "bar") == true);
+  TASSERT (string_option_check (":bar=true:", "bar") == true);
+  TASSERT (string_option_check (":bar=on:", "bar") == true);
+  TASSERT (string_option_check (":bar=1false:", "bar") == true);
+  TASSERT (string_option_check (":bar=0true:", "bar") == false);
   String r;
   r = string_option_find ("a:b", "a"); TCMP (r, ==, "1");
   r = string_option_find ("a:b", "b"); TCMP (r, ==, "1");
-  r = string_option_find ("a:b", "c"); TCMP (r, ==, "0");
+  r = string_option_find ("a:b", "c", "0"); TCMP (r, ==, "0");
   r = string_option_find ("a:b", "c", "7"); TCMP (r, ==, "7");
-  r = string_option_find ("a:no-b", "b"); TCMP (r, ==, "0");
-  r = string_option_find ("no-a:b", "a"); TCMP (r, ==, "0");
+  r = string_option_find ("a:no-b", "b", "0"); TCMP (r, ==, "0");
+  r = string_option_find ("no-a:b", "a", "0"); TCMP (r, ==, "0");
   r = string_option_find ("no-a:b:a", "a"); TCMP (r, ==, "1");
   r = string_option_find ("no-a:b:a=5", "a"); TCMP (r, ==, "5");
   r = string_option_find ("no-a:b:a=5:c", "a"); TCMP (r, ==, "5");
+  bool b;
+  b = string_option_check ("", "a"); TCMP (b, ==, false);
+  b = string_option_check ("a:b:c", "a"); TCMP (b, ==, true);
+  b = string_option_check ("no-a:b:c", "a"); TCMP (b, ==, false);
+  b = string_option_check ("no-a:b:a=5:c", "b"); TCMP (b, ==, true);
+  b = string_option_check ("x:all", ""); TCMP (b, ==, false); // must have feature?
   TASSERT (typeid_name<int>() == "int");
   TASSERT (typeid_name<bool>() == "bool");
   TASSERT (typeid_name<::Ase::Strings>() == "Ase::Strings");

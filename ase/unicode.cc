@@ -179,6 +179,70 @@ string_from_unicode (const std::vector<uint32_t> &codepoints)
   return string_from_unicode (codepoints.data(), codepoints.size());
 }
 
+/** Check `c` to be a NameStartChar, according to the QName EBNF.
+ * See https://en.wikipedia.org/wiki/QName
+ */
+static bool
+codepoint_is_namestartchar (uint32_t c)
+{
+  const bool ok =
+    std::isalpha (c) || c == '_' ||
+    (c >= 0xC0 && c <= 0xD6) || (c >= 0xD8 && c <= 0xF6) ||
+    (c >= 0xF8 && c <= 0x2FF) || (c >= 0x370 && c <= 0x37D) || (c >= 0x37F && c <= 0x1FFF) ||
+    (c >= 0x200C && c <= 0x200D) || (c >= 0x2070 && c <= 0x218F) || (c >= 0x2C00 && c <= 0x2FEF) ||
+    (c >= 0x3001 && c <= 0xD7FF) || (c >= 0xF900 && c <= 0xFDCF) || (c >= 0xFDF0 && c <= 0xFFFD) ||
+    (c >= 0x10000 && c <= 0xEFFFF);
+  return ok;
+}
+
+/** Check `c` to be a NameChar, according to the QName EBNF.
+ * See https://en.wikipedia.org/wiki/QName
+ */
+static bool
+codepoint_is_ncname (uint32_t c)
+{
+  const bool ok =
+    codepoint_is_namestartchar (c) ||
+    c == '-' || c == '.' || (c >= '0' && c <= '9') ||
+    c == 0xB7 || (c >= 0x0300 && c <= 0x036F) || (c >= 0x203F && c <= 0x2040);
+    return ok;
+}
+
+/** Check `input` to be a NCName, according to the QName EBNF.
+ * See https://en.wikipedia.org/wiki/QName
+ */
+bool
+string_is_ncname (const String &input)
+{
+  std::vector<uint32_t> tmp;
+  utf8_to_unicode (input, tmp);
+  for (auto c : tmp)
+    if (!codepoint_is_ncname (c))
+      return false;
+  return true;
+}
+
+/** Convert `input` to a NCName, according to the QName EBNF.
+ * See https://en.wikipedia.org/wiki/QName
+ */
+String
+string_to_ncname (const String &input, uint32_t substitute)
+{
+  std::vector<uint32_t> ucstring;
+  utf8_to_unicode (input, ucstring);
+  for (auto it = ucstring.begin(); it != ucstring.end(); /**/)
+    if (!codepoint_is_ncname (*it)) {
+      if (substitute)
+        *it++ = substitute;
+      else
+        it = ucstring.erase (it);
+    } else
+      ++it;
+  if (!ucstring.empty() && !codepoint_is_namestartchar (ucstring[0]))
+    ucstring.insert (ucstring.begin(), '_');
+  return string_from_unicode (ucstring);
+}
+
 } // Ase
 
 // == Testing ==
@@ -188,10 +252,9 @@ string_from_unicode (const std::vector<uint32_t> &codepoints)
 namespace { // Anon
 using namespace Ase;
 
-TEST_INTEGRITY (ase_test_utf8_funcs);
-
+TEST_INTEGRITY (unicode_tests);
 static void
-ase_test_utf8_funcs()
+unicode_tests()
 {
   Blob b = Blob::from_file ("/etc/mailcap");
   const std::string str = b.string();
@@ -227,6 +290,10 @@ ase_test_utf8_funcs()
       for (size_t i = 0; i < codepoints.size(); ++i)
         TASSERT (tmp[i] == codepoints[i]);
     }
+  TCMP (false, ==, string_is_ncname ("0abc@def^foo"));
+  TCMP ("_0abcdeffoo", ==, string_to_ncname ("0abc@def^foo"));
+  TCMP ("abc_def_foo", ==, string_to_ncname ("abc@def^foo", '_'));
+  TCMP (true, ==, string_is_ncname ("_0abc_def_foo"));
 }
 
 } // Anon

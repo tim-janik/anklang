@@ -88,27 +88,28 @@ using MidiDriverP = MidiDriver::MidiDriverP;
 struct PcmDriverConfig {
   uint n_channels = 0;
   uint mix_freq = 0;
-  uint latency_ms = 0;
   uint block_length = 0;
+  uint latency_ms = 0;
 };
 
 class PcmDriver : public Driver {
 protected:
-  explicit           PcmDriver       (const String &driver, const String &devid);
-  virtual Ase::Error open            (IODir iodir, const PcmDriverConfig &config) = 0;
+  explicit           PcmDriver        (const String &driver, const String &devid);
+  virtual Ase::Error open             (IODir iodir, const PcmDriverConfig &config) = 0;
 public:
   typedef std::shared_ptr<PcmDriver> PcmDriverP;
-  static PcmDriverP  open            (const String &devid, IODir desired, IODir required, const PcmDriverConfig &config, Ase::Error *ep);
-  virtual bool       pcm_check_io    (int64 *timeoutp) = 0;
-  virtual void       pcm_latency     (uint *rlatency, uint *wlatency) const = 0;
-  virtual float      pcm_frequency   () const = 0;
-  virtual uint       block_length    () const = 0;
-  virtual size_t     pcm_read        (size_t n, float *values) = 0;
-  virtual void       pcm_write       (size_t n, const float *values) = 0;
-  static EntryVec    list_drivers    ();
-  static String      register_driver (const String &driverid,
-                                      const std::function<PcmDriverP (const String&)> &create,
-                                      const std::function<void (EntryVec&)> &list);
+  static PcmDriverP  open             (const String &devid, IODir desired, IODir required, const PcmDriverConfig &config, Ase::Error *ep);
+  virtual uint       pcm_n_channels   () const = 0;
+  virtual uint       pcm_mix_freq     () const = 0;
+  virtual uint       pcm_block_length () const = 0;
+  virtual void       pcm_latency      (uint *rlatency, uint *wlatency) const = 0;
+  virtual bool       pcm_check_io     (int64 *timeoutp) = 0;
+  virtual size_t     pcm_read         (size_t n, float *values) = 0;
+  virtual void       pcm_write        (size_t n, const float *values) = 0;
+  static EntryVec    list_drivers     ();
+  static String      register_driver  (const String &driverid,
+                                       const std::function<PcmDriverP (const String&)> &create,
+                                       const std::function<void (EntryVec&)> &list);
 };
 using PcmDriverP = PcmDriver::PcmDriverP;
 

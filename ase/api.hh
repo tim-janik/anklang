@@ -8,8 +8,9 @@
 namespace Ase {
 
 // == Property hint constants ==
-extern const String STORAGE; // ":r:w:S:";
-extern const String STANDARD; // ":r:w:S:G:";
+constexpr const char GUIONLY[] = ":G:r:w:";     ///< GUI READABLE WRITABLE
+constexpr const char STORAGE[] = ":S:r:w:";     ///< STORAGE READABLE WRITABLE
+constexpr const char STANDARD[] = ":S:G:r:w:";  ///< STORAGE GUI READABLE WRITABLE
 
 /// Common base type for polymorphic classes managed by `std::shared_ptr<>`.
 class SharedBase : public virtual VirtualBase,
@@ -133,14 +134,14 @@ class Property : public virtual Emittable {
 protected:
   virtual         ~Property       () = 0;
 public:
-  virtual String   identifier     () = 0;          ///< Unique name (per owner) of this Property.
+  virtual String   ident          () = 0;          ///< Unique name (per owner) of this Property.
   virtual String   label          () = 0;          ///< Preferred user interface name.
   virtual String   nick           () = 0;          ///< Abbreviated user interface name, usually not more than 6 characters.
   virtual String   unit           () = 0;          ///< Units of the values within range.
   virtual String   hints          () = 0;          ///< Hints for parameter handling.
   virtual String   group          () = 0;          ///< Group name for parameters of similar function.
   virtual String   blurb          () = 0;          ///< Short description for user interface tooltips.
-  virtual String   description    () = 0;          ///< Elaborate description for help dialogs.
+  virtual String   descr          () = 0;          ///< Elaborate description for help dialogs.
   virtual double   get_min        () = 0;          ///< Get the minimum property value, converted to double.
   virtual double   get_max        () = 0;          ///< Get the maximum property value, converted to double.
   virtual double   get_step       () = 0;          ///< Get the property value stepping, converted to double.
@@ -153,32 +154,6 @@ public:
   virtual bool     set_text       (String v) = 0;  ///< Set the current property value as a text String.
   virtual bool     is_numeric     () = 0;          ///< Whether the property settings can be represented as a floating point number.
   virtual ChoiceS  choices        () = 0;          ///< Enumerate choices for choosable properties.
-};
-
-// Preferences
-struct Preferences {
-  // Synthesis Settings
-  String pcm_driver;                    ///< Driver and device to be used for PCM input and output.
-  int32  synth_latency = 5;             ///< Processing duration between input and output of a single sample, smaller values increase CPU load.
-  int32  synth_mixing_freq = 48000;     ///< Unused, synthesis mixing frequency is always 48000 Hz.
-  int32  synth_control_freq = 1500;     ///< Unused frequency setting.
-  // MIDI
-  String midi_driver_1;                 ///< Driver and device to be used for MIDI input and output.
-  String midi_driver_2;
-  String midi_driver_3;
-  String midi_driver_4;
-  bool   invert_sustain = false;
-  // Default Values
-  String author_default;                ///< Default value for 'Author' fields.
-  String license_default;               ///< Default value for 'License' fields.
-  String sample_path;                   ///< Search path of directories, seperated by ";", used to find audio samples.
-  String effect_path;                   ///< Search path of directories, seperated by ";", used to find effect files.
-  String instrument_path;               ///< Search path of directories, seperated by ";", used to find instrument files.
-  String plugin_path;                   ///< Search path of directories, seperated by \";\", used to find plugins.
-                                        ///< This path is searched for in addition to the standard plugin location on this system.
-private:
-  PropertyS access_properties (const EventHandler&);    ///< Retrieve handles for all properties.
-  friend class ServerImpl;
 };
 
 /// Base type for classes with Property interfaces.
@@ -394,9 +369,9 @@ public:
   virtual uint64 user_note            (const String &text, const String &channel = "misc", UserNote::Flags flags = UserNote::TRANSIENT, const String &rest = "") = 0;
   virtual bool   user_reply           (uint64 noteid, uint r) = 0;
   virtual bool   broadcast_telemetry  (const TelemetrySegmentS &segments,
-                                       int32 interval_ms) = 0;  ///< Broadcast telemetry memory segments to the current Jsonipc connection.
-  // preferences
-  virtual PropertyS access_prefs  () = 0;       ///< Retrieve property handles for Preferences fields.
+                                       int32 interval_ms) = 0;   ///< Broadcast telemetry memory segments to the current Jsonipc connection.
+  virtual StringS   list_preferences  () = 0;                    ///< Retrieve a list of all preference identifiers.
+  virtual PropertyP access_preference (const String &ident) = 0; ///< Retrieve property handle for a Preference identifier.
   // projects
   virtual ProjectP last_project   () = 0;       ///< Retrieve the last created project.
   virtual ProjectP create_project (String projectname) = 0; ///< Create a new project (name is modified to be unique if necessary.

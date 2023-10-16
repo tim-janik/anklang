@@ -9,6 +9,9 @@
 namespace Ase {
 typedef std::string String;
 
+#define ASE_STRING_SET_ASCII_ALNUM      "0123456789" "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "abcdefghijklmnopqrstuvwxyz"
+#define ASE_STRING_SET_LOWER_ALNUM      "0123456789" "abcdefghijklmnopqrstuvwxyz"
+
 // == C-String ==
 bool    		       cstring_to_bool       (const char *string, bool fallback = false);
 const char*                    strrstr               (const char *haystack, const char *needle);
@@ -135,19 +138,14 @@ template<> inline String        string_from_type<String> (String         value) 
 
 
 // == String Options ==
-bool    string_option_check     (const String   &option_string,
-                                 const String   &option);
-String  string_option_get       (const String   &option_string,
-                                 const String   &option);
-void    string_options_split    (const String   &option_string,
-                                 std::vector<String> &option_names,
-                                 std::vector<String> &option_values,
-                                 const String   &empty_default = "");
-String  string_option_find      (const String &config, const String &feature, const String &fallback = "0");
+bool             string_option_check      (const String &optionlist, const String &feature);
+String           string_option_find       (const String &optionlist, const String &feature, const String &fallback = "");
+std::string_view string_option_find_value (const char *string, const char *feature, const String &fallback, const String &denied, bool matchallnone);
 
 // == Generic Key-Value-Pairs ==
-String  kvpair_key              (const String &key_value_pair);
-String  kvpair_value            (const String &key_value_pair);
+String  kvpair_key      (const String &key_value_pair);
+String  kvpair_value    (const String &key_value_pair);
+ssize_t kvpairs_search  (const StringS &kvs, const String &k, bool casesensitive = true);
 
 // == Strings ==
 /// Convenience Constructor for StringSeq or std::vector<std::string>

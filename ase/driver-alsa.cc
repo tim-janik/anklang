@@ -369,13 +369,18 @@ public:
       snd_pcm_close (write_handle_);
     delete[] period_buffer_;
   }
-  virtual float
-  pcm_frequency () const override
+  uint
+  pcm_n_channels () const override
+  {
+    return n_channels_;
+  }
+  uint
+  pcm_mix_freq () const override
   {
     return mix_freq_;
   }
-  virtual uint
-  block_length () const override
+  uint
+  pcm_block_length () const override
   {
     return period_size_;
   }
@@ -639,7 +644,7 @@ public:
     *timeoutp = diff_frames * 1000 / mix_freq_;
     return false;
   }
-  virtual void
+  void
   pcm_latency (uint *rlatency, uint *wlatency) const override
   {
     snd_pcm_sframes_t rdelay, wdelay;

@@ -48,6 +48,7 @@ public:
   void                   set_autostop        (uint64_t nsamples);
   void                   queue_capture_start (CallbackS&, const String &filename, bool needsrunning);
   void                   queue_capture_stop  (CallbackS&);
+  bool                   update_drivers      (const String &pcm, uint latency_ms, const StringS &midis);
   static bool            thread_is_engine    () { return std::this_thread::get_id() == thread_id; }
   static const ThreadId &thread_id;
   // JobQueues
@@ -65,6 +66,14 @@ protected:
 };
 
 AudioEngine& make_audio_engine (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement);
+
+/// Helper to modify const struct contents, e.g. asyn job lambda members.
+template<class T>
+struct Mutable {
+  mutable T value;
+  Mutable (const T &v) : value (v) {}
+  operator T& () { return value; }
+};
 
 } // Ase
 

@@ -558,13 +558,18 @@ public:
     if (jack_client_)
       close();
   }
-  virtual float
-  pcm_frequency () const override
+  uint
+  pcm_n_channels () const override
+  {
+    return n_channels_;
+  }
+  uint
+  pcm_mix_freq () const override
   {
     return mix_freq_;
   }
-  virtual uint
-  block_length () const override
+  uint
+  pcm_block_length () const override
   {
     return block_length_;
   }
@@ -785,7 +790,7 @@ public:
     *timeoutp = std::max<int> (*timeoutp, 1);
     return false;
   }
-  virtual void
+  void
   pcm_latency (uint *rlatency, uint *wlatency) const override
   {
     assert_return (jack_client_ != NULL);

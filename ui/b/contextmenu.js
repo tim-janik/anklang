@@ -34,10 +34,11 @@
  * *close (event)*
  * : Event signaling closing of the menu, regardless of whether menu item activation occoured or not.
  * ### Methods:
- * *popup (event, { origin, data-contextmenu })*
+ * *popup (event, { origin, focus_uri, data-contextmenu })*
  * : Popup the contextmenu, propagation of `event` is halted and the event coordinates or target is
  * : used for positioning unless `origin` is given.
  * : The `origin` is a reference DOM element to use for drop-down positioning.
+ * : The `focus_uri` is a <b-menuitem/> URI to receive focus after popup.
  * : The `data-contextmenu` element (or `origin`) has the `data-contextmenu=true` attribute assigned during popup.
  * *close()*
  * : Hide the contextmenu.
@@ -153,6 +154,7 @@ class BContextMenu extends LitComponent {
     this.xscale = 1;
     this.yscale = 1;
     this.origin = null;
+    this.focus_uri = '';
     this.data_contextmenu = null;
     this.checkuri = () => true;
     this.reposition = false;
@@ -206,7 +208,8 @@ class BContextMenu extends LitComponent {
     if (this.reposition)
       {
 	this.reposition = false;
-	const p = Util.popup_position (this.dialog, { origin: this.origin, x: this.page_x, y: this.page_y, xscale: this.xscale, yscale: this.yscale, });
+	const p = Util.popup_position (this.dialog, { origin: this.origin, focus_uri: this.focus_uri,
+						      x: this.page_x, y: this.page_y, xscale: this.xscale, yscale: this.yscale, });
 	this.dialog.style.left = p.x + "px";
 	this.dialog.style.top = p.y + "px";
 	// chrome does auto-focus for showModal(), make FF behave the same
@@ -222,6 +225,7 @@ class BContextMenu extends LitComponent {
     const origin = popup_options.origin?.$el || popup_options.origin || event?.currentTarget;
     if (origin instanceof Element && Util.inside_display_none (origin))
       return false;     // cannot popup around hidden origin
+    this.focus_uri = popup_options.focus_uri || '';
     this.origin = origin instanceof Element ? origin : null;
     this.menudata.menu_stamp = Util.frame_stamp();  // allows one popup per frame
     if (event && event.pageX && event.pageY)
@@ -240,18 +244,26 @@ class BContextMenu extends LitComponent {
       this.dialog.showModal();
       App.zmove(); // force changes to be picked up
       // check items (and this used to handle auto-focus)
-      await this.check_isactive();
+      const focussable = await this.check_isactive (this.focus_uri);
+      this.focus_uri = '';
+      if (focussable)
+	focussable.focus();
     }) ();
   }
-  async check_isactive()
+  async check_isactive (finduri = null)
   {
     const w = document.createTreeWalker (this, NodeFilter.SHOW_ELEMENT);
-    let e, a = [];
+    let hasuri = null, e, a = [];
     while ( (e = w.nextNode()) ) {
       /**@type{any}*/ const any = e;
-      a.push (any.check_isactive?.());
+      if (any.check_isactive) {
+	if (any.uri === finduri)
+	  hasuri = any;
+	a.push (any.check_isactive());
+      }
     }
     await Promise.all (a);
+    return hasuri;
   }
   bubbeling_click_ (event)
   {
@@ -308,6 +320,7 @@ class BContextMenu extends LitComponent {
       this.dialog.close();
     }
     this.origin = null;
+    this.focus_uri = '';
     this.data_contextmenu?.removeAttribute ('data-contextmenu', 'true');
     this.data_contextmenu = null;
     App.zmove(); // force changes to be picked up

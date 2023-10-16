@@ -2,6 +2,7 @@
 #include "object.hh"
 #include "internal.hh"
 #include "utils.hh"
+#include "unicode.hh"
 #include "main.hh"
 
 namespace Ase {
@@ -189,22 +190,20 @@ EmittableImpl::on_event (const String &eventselector, const EventHandler &eventh
 void
 EmittableImpl::emit_event (const String &type, const String &detail, const ValueR fields)
 {
-  const char ident_chars[] =
-    "0123456789"
-    "abcdefghijklmnopqrstuvwxyz"
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+#ifndef NDEBUG
+  const char eventtype_chars[] = ASE_STRING_SET_ASCII_ALNUM "_";
   for (size_t i = 0; type[i]; i++)
-    if (!strchr (ident_chars, type[i]))
-      {
-        warning ("invalid characters in Event type: %s", type);
-        break;
-      }
+    if (!strchr (eventtype_chars, type[i])) {
+      warning ("invalid characters in Event type: %s", type);
+      break;
+    }
   for (size_t i = 0; detail[i]; i++)
-    if (!strchr (ident_chars, detail[i]) and detail[i] != '_')
-      {
+    if (!strchr (eventtype_chars, detail[i])) {
+      if (!string_is_ncname (detail))
         warning ("invalid characters in Event detail: %s:%s", type, detail);
-        break;
-      }
+      break;
+    }
+#endif // NDEBUG
   return_unless (ed_!= nullptr);
   Event ev { type, detail };
   for (auto &&e : fields)

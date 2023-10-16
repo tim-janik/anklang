@@ -16,14 +16,28 @@ namespace Ase {
 
 // == Debugging ==
 bool ase_debugging_enabled = true;
-static bool ase_fatal_warnings = false;
+bool ase_fatal_warnings = false;
+static const char*
+getenv_ase_debug()
+{
+  // cache $ASE_DEBUG and setup debug_any_enabled;
+  static const char *const ase_debug = [] {
+    const char *const d = getenv ("ASE_DEBUG");
+    ase_debugging_enabled = d && d[0];
+    ase_fatal_warnings = string_to_bool (String (string_option_find_value (d, "fatal-warnings", "0", "0", true)));
+    // ase_sigquit_on_abort = string_to_bool (String (string_option_find_value (d, "sigquit-on-abort", "0", "0", true)));
+    // ase_backtrace_on_error = string_to_bool (String (string_option_find_value (d, "backtrace", "0", "0", true)));
+    return d;
+  }();
+  return ase_debug;
+}
 
 /// Check if `conditional` is enabled by $ASE_DEBUG.
 bool
 debug_key_enabled (const char *conditional)
 {
-  const std::string value = debug_key_value (conditional);
-  return !value.empty() && (strchr ("123456789yYtT", value[0]) || strncasecmp (value.c_str(), "on", 2) == 0);
+  const std::string_view sv = string_option_find_value (getenv_ase_debug(), conditional, "0", "0", true);
+  return string_to_bool (String (sv));
 }
 
 /// Check if `conditional` is enabled by $ASE_DEBUG.
@@ -37,49 +51,8 @@ debug_key_enabled (const ::std::string &conditional)
 ::std::string
 debug_key_value (const char *conditional)
 {
-  // cache $ASE_DEBUG and setup debug_any_enabled;
-  static const std::string debug_flags = [] () {
-    const char *f = getenv ("ASE_DEBUG");
-    const std::string cflags = !f ? "" : ":" + std::string (f) + ":";
-    const std::string lflags = string_tolower (cflags);
-    ase_debugging_enabled = !lflags.empty() && lflags != ":none:";
-    const ssize_t fw = lflags.rfind (":fatal-warnings:");
-    const ssize_t nf = lflags.rfind (":no-fatal-warnings:");
-    if (fw >= 0 && nf <= fw)
-      ase_fatal_warnings = true;
-    const ssize_t sq = lflags.rfind (":sigquit-on-abort:");
-    const ssize_t nq = lflags.rfind (":no-sigquit-on-abort:");
-    if (sq >= 0 && nq <= sq)
-      {} // ase_sigquit_on_abort = true;
-    const ssize_t wb = lflags.rfind (":backtrace:");
-    const ssize_t nb = lflags.rfind (":no-backtrace:");
-    if (wb > nb)
-      {} // ase_backtrace_on_error = true;
-    if (nb > wb)
-      {} // ase_backtrace_on_error = false;
-    return lflags;
-  } ();
-  // find key in colon-separated debug flags
-  const ::std::string key = conditional ? string_tolower (conditional) : "";
-  static const std::string all = ":all:", none = ":none:";
-  const std::string condr = ":no-" + key + ":";
-  const std::string condc = ":" + key + ":";
-  const std::string conde = ":" + key + "=";
-  const ssize_t pa = debug_flags.rfind (all);
-  const ssize_t pn = debug_flags.rfind (none);
-  const ssize_t pr = debug_flags.rfind (condr);
-  const ssize_t pc = debug_flags.rfind (condc);
-  const ssize_t pe = debug_flags.rfind (conde);
-  const ssize_t pmax = std::max (pr, std::max (std::max (pa, pn), std::max (pc, pe)));
-  if (pn == pmax || pr == pmax)
-    return "false";     // found no key or ':none:' or ':no-key:'
-  if (pa == pmax || pc == pmax)
-    return "true";      // last setting is ':key:' or ':all:'
-  // pe == pmax, assignment via equal sign
-  const ssize_t pv = pe + conde.size();
-  const ssize_t pw = debug_flags.find (":", pv);
-  const std::string value = debug_flags.substr (pv, pw < 0 ? pw : pw - pv);
-  return value;
+  const std::string_view sv = string_option_find_value (getenv_ase_debug(), conditional, "", "", true);
+  return String (sv);
 }
 
 /// Print a debug message, called from ::Ase::debug().

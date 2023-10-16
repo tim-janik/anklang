@@ -89,12 +89,12 @@ GadgetImpl::serialize (WritNode &xs)
       if (xs.in_save() && string_option_check (hints, "r"))
         {
           Value v = p->get_value();
-          xs[p->identifier()] & v;
+          xs[p->ident()] & v;
         }
-      if (xs.in_load() && string_option_check (hints, "w") && xs.has (p->identifier()))
+      if (xs.in_load() && string_option_check (hints, "w") && xs.has (p->ident()))
         {
           Value v;
-          xs[p->identifier()] & v;
+          xs[p->ident()] & v;
           p->set_value (v);
         }
     }
@@ -154,7 +154,9 @@ GadgetImpl::name (String newname)
 PropertyS
 GadgetImpl::access_properties ()
 {
-  return {}; // TODO: implement access_properties
+  if (props_.empty())
+    create_properties();
+  return { begin (props_), end (props_) };
 }
 
 // == Gadget ==
@@ -174,7 +176,7 @@ Gadget::list_properties ()
   StringS names;
   names.reserve (props.size());
   for (const PropertyP &prop : props)
-    names.push_back (prop->identifier());
+    names.push_back (prop->ident());
   return names;
 }
 
@@ -182,7 +184,7 @@ PropertyP
 Gadget::access_property (String ident)
 {
   for (const auto &p : access_properties())
-    if (p->identifier() == ident)
+    if (p->ident() == ident)
       return p;
   return {};
 }
@@ -199,6 +201,19 @@ Gadget::set_value (String ident, const Value &v)
 {
   PropertyP prop = access_property (ident);
   return prop && prop->set_value (v);
+}
+
+PropertyBag
+GadgetImpl::property_bag ()
+{
+  auto add_prop = [this] (const Prop &prop, CString group) {
+    Param param = prop.param;
+    if (param.group.empty() && !group.empty())
+      param.group = group;
+    this->props_.push_back (PropertyImpl::make_shared (prop.ident, param, prop.getter, prop.setter, prop.lister));
+    // PropertyImpl &property = *gadget_.props_.back();
+  };
+  return PropertyBag (add_prop);
 }
 
 } // Ase

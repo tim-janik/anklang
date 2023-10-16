@@ -22,7 +22,7 @@
     <b-objecteditor class="b-preferencesdialog-fed" ref="fedobject" :value="proplist" :augment="augment" >
     </b-objecteditor>
     <template v-slot:footer>
-      <div><button autofocus @click="$emit ('update:shown', false)" > Close </button></div>
+      <div><button autofocus @click="close_button_click" > Close </button></div>
     </template>
   </b-dialog>
 </template>
@@ -33,11 +33,11 @@ import * as Util from "../util.js";
 async function augment_property (xprop) {
   if (xprop.has_choices_)
     {
-      Object.assign (xprop, { title_: xprop.label_ + " Selection" });
+      // Object.assign (xprop, { title_: xprop.label_ + " Selection" });
       for (let i = 0; i < xprop.value_.choices.length; i++)
 	{
 	  const c = xprop.value_.choices[i];
-	  if (xprop.ident_ == 'pcm_driver')
+	  if (xprop.ident_ == 'driver.pcm.devid')
 	    augment_choice_entry (c, 'pcm');
 	  else if (xprop.ident_.match (/midi/i))
 	    augment_choice_entry (c, 'midi');
@@ -99,9 +99,32 @@ function augment_choice_entry (c, devicetype) {
     c.icon = "mi-not_interested";
 }
 
+async function access_preferences()
+{
+  if (this.all_prefs)
+    return Promise.all ((await Ase.server.list_preferences()).sort().map (id => Ase.server.access_preference (id)));
+  // Ase.server.access_prefs()
+  const preferences = [ [ _("Synthesis Settings"),
+			  "driver.pcm.devid", "driver.pcm.synth_latency" ],
+			[ _("MIDI Settings"),
+			  "driver.midi1.devid", "driver.midi2.devid", "driver.midi3.devid", "driver.midi4.devid" ],
+  ];
+  let props = []; // [ [group,promise]... ]
+  for (const [group, ...idents] of preferences)
+    for (const ident of idents)
+      props.push ([ Ase.server.access_preference (ident), group ]); // [ [property_promise,group]... ]
+  const result = [];
+  for (let [property,group] of props) {
+    property = Object.create (await property); // new Object with prototype
+    property.group = () => group;
+    result.push (property);
+  }
+  return result;
+}
+
 function component_data () {
   const data = {
-    proplist: { default: [], getter: c => Ase.server.access_prefs(),
+    proplist: { default: [], getter: c => access_preferences.call (this),
 		notify: n => { this.proprefresh = n; return () => this.proprefresh = null; }, },
   };
   return this.observable_from_getters (data, () => true);
@@ -119,6 +142,16 @@ export default {
   },
   methods: {
     augment (p) { return augment_property.call (this, p); },
+    close_button_click (event)
+    {
+      if (event.shiftKey && event.ctrlKey &&
+	  (event.altKey || event.metaKey)) {
+	Util.prevent_event (event);
+	this.all_prefs = true;
+	this.proprefresh();
+      } else
+	this.$emit ('update:shown', false);
+    }
   },
 };
 </script>
