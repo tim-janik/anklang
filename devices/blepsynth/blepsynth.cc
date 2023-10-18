@@ -313,6 +313,20 @@ class BlepSynth : public AudioProcessor {
 
     oscparams (0);
 
+    start_group ("Mix");
+    pid_mix_ = add_param ("Mix", "Mix", 0, 100, 0, "%");
+    pid_vel_track_ = add_param ("Velocity Tracking", "VelTr", 0, 100, 50, "%");
+    // TODO: this probably should default to 0dB once we have track/mixer volumes
+    pid_post_gain_ = add_param ("Post Gain", "Gain", -24, 24, -12, "dB");
+
+    oscparams (1);
+
+    start_group ("Volume Envelope");
+    pid_attack_  = add_param ("Attack",  "A", 0, 100, 20.0, "%");
+    pid_decay_   = add_param ("Decay",   "D", 0, 100, 30.0, "%");
+    pid_sustain_ = add_param ("Sustain", "S", 0, 100, 50.0, "%");
+    pid_release_ = add_param ("Release", "R", 0, 100, 30.0, "%");
+
     start_group ("Filter");
 
     pid_cutoff_ = add_param ("Cutoff", "Cutoff", CUTOFF_MIN_MIDI, CUTOFF_MAX_MIDI, 60); // cutoff as midi notes
@@ -351,26 +365,12 @@ class BlepSynth : public AudioProcessor {
     skfilter_mode_choices += { "HP8"_uc, "8 Pole Highpass, 48dB/Octave" };
     pid_skfilter_mode_ = add_param ("SKFilter Mode", "Mode", std::move (skfilter_mode_choices), 2, "", "Sallen-Key Filter Mode to be used");
 
-    oscparams (1);
-
-    start_group ("Volume Envelope");
-    pid_attack_  = add_param ("Attack",  "A", 0, 100, 20.0, "%");
-    pid_decay_   = add_param ("Decay",   "D", 0, 100, 30.0, "%");
-    pid_sustain_ = add_param ("Sustain", "S", 0, 100, 50.0, "%");
-    pid_release_ = add_param ("Release", "R", 0, 100, 30.0, "%");
-
     start_group ("Filter Envelope");
     pid_fil_attack_   = add_param ("Attack",  "A", 0, 100, 40, "%");
     pid_fil_decay_    = add_param ("Decay",   "D", 0, 100, 55, "%");
     pid_fil_sustain_  = add_param ("Sustain", "S", 0, 100, 30, "%");
     pid_fil_release_  = add_param ("Release", "R", 0, 100, 30, "%");
     pid_fil_cut_mod_  = add_param ("Env Cutoff Modulation", "CutMod", -96, 96, 36, "semitones"); /* 8 octaves range */
-
-    start_group ("Mix");
-    pid_mix_ = add_param ("Mix", "Mix", 0, 100, 0, "%");
-    pid_vel_track_ = add_param ("Velocity Tracking", "VelTr", 0, 100, 50, "%");
-    // TODO: this probably should default to 0dB once we have track/mixer volumes
-    pid_post_gain_ = add_param ("Post Gain", "Gain", -24, 24, -12, "dB");
 
     start_group ("Keyboard Input");
     pid_c_ = add_param ("Main Input  1",  "C", false, GUIONLY);
