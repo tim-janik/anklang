@@ -253,6 +253,9 @@ $>/node_modules/.npm.done: $(if $(NPMBLOCK),, $>/package.json)	| $>/
 	  && { POFFLINE= && test ! -d node_modules/ || POFFLINE=--prefer-offline ; } \
 	  && $(XNPM) install $$POFFLINE \
 	  && find . -name package.json -print0 | xargs -0 sed -r "\|$$PWD|s|^(\s*(\"_where\":\s*)?)\"$$PWD|\1\"/...|" -i
+	@: # Fix bun installation, see: https://github.com/oven-sh/bun/pull/5077
+	$Q test ! -d $>/node_modules/sharp/ -o -d $>/node_modules/sharp/build/Release/ || (cd $>/node_modules/sharp/ && $(XNPM) install)
+	$Q test -d $>/node_modules/electron/dist/ || (cd $>/node_modules/electron/ && $(XNPM) install)
 	$Q: # add newer nodejs API to browserify-url.js, needed for e.g. postcss error messages
 	$Q touch $@
 NODE_PATH ::= $(abspath $>/node_modules/)
