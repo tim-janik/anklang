@@ -109,7 +109,7 @@ include misc/config-utils.mk
 include misc/config-uname.mk
 include misc/config-checks.mk
 include misc/config-external.mk
-.config.defaults += CC CFLAGS CXX CLANG_TIDY CXXFLAGS LDFLAGS LDLIBS
+.config.defaults += CC CFLAGS CXX CLANG_TIDY CXXFLAGS LDFLAGS LDLIBS XNPM
 
 # == ls-tree.lst ==
 # Requires either git or a pre-packaged `ls-tree.lst` file
@@ -251,11 +251,9 @@ $>/node_modules/.npm.done: $(if $(NPMBLOCK),, $>/package.json)	| $>/
 	@: # Install all node_modules and anonymize build path
 	$Q cd $>/ \
 	  && { POFFLINE= && test ! -d node_modules/ || POFFLINE=--prefer-offline ; } \
-	  && $(NPM_INSTALL) $$POFFLINE \
+	  && $(XNPM) install $$POFFLINE \
 	  && find . -name package.json -print0 | xargs -0 sed -r "\|$$PWD|s|^(\s*(\"_where\":\s*)?)\"$$PWD|\1\"/...|" -i
 	$Q: # add newer nodejs API to browserify-url.js, needed for e.g. postcss error messages
-	$Q grep pathToFileURL $>/node_modules/url/url.js || \
-	   echo 'exports.pathToFileURL = _ => _;' >> $>/node_modules/url/url.js
 	$Q touch $@
 NODE_PATH ::= $(abspath $>/node_modules/)
 export NODE_PATH
