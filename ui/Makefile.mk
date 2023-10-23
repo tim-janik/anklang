@@ -75,7 +75,8 @@ $>/ui/index.html: ui/index.html $>/ui/global.css $>/ui/vue-styles.css $>/node_mo
 	$(QGEN)
 	$Q rm -f $>/ui/doc && ln -s ../doc $>/ui/doc # do here, b/c MAKE is flaky in tracking symlink timestamps
 	$Q echo '    { "config": { $(strip $(PACKAGE_VERSIONS)),'				> $>/ui/config.json
-	$Q (cd $>/ && npm list) | sed -nr '/ lit@/{s/.*@(.*)/    "lit_version": "\1" /;p}'	>>$>/ui/config.json
+	$Q sed -nr '/^ *"version":/{s/.*: *"(.*)",/    "lit_version": "\1" /;p}' \
+		$>/node_modules/lit/package.json						>>$>/ui/config.json
 	$Q echo '    } }'									>>$>/ui/config.json
 	$Q sed -r \
 		-e "/<script type='application\/json' id='--EMBEDD-config_json'>/ r $>/ui/config.json" \
