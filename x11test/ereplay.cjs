@@ -7,7 +7,7 @@ const puppeteer = require ("puppeteer-core");
 const { createRunner, parse, PuppeteerRunnerExtension } = require ('@puppeteer/replay');
 
 // Maximum timeout per step
-const TIMEOUT = 1500;
+const TIMEOUT = 2500;
 // Delay per step, too fast replay interferes with animations
 const DELAY = 101;
 

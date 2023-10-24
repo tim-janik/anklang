@@ -8,7 +8,6 @@ GDK_PIXBUF_CSOURCE	?= gdk-pixbuf-csource
 IMAGEMAGICK_CONVERT	?= convert
 PANDOC			?= pandoc
 CP			?= cp --reflink=auto
-NPM_INSTALL		?= npm install $(if $(PARALLEL_MAKE), --progress=false)
 .config.defaults	+= CP PERL PYTHON3 PKG_CONFIG GDK_PIXBUF_CSOURCE PANDOC IMAGEMAGICK_CONVERT
 HAVE_PANDOC1		 = $(shell $(PANDOC) --version | grep -q '^pandoc 1\.' && echo 1)
 
@@ -113,6 +112,9 @@ $>/config-cache.mk: misc/config-checks.mk misc/version.sh $(GITCOMMITDEPS) | $>/
 	$Q echo '# make $@'					> $@.tmp
 	$Q echo "ANKLANG_GETTEXT_DOMAIN ::=" \
 		'anklang-$$(version_short)'			>>$@.tmp
+	$Q pnpm --version 2>&1 | grep -qE '^([89]|[1-9]+[0-9]+)\.[0-9]+\.[0-9]+$$' \
+	  && echo 'XNPM ::= pnpm'				>>$@.tmp \
+	  || echo 'XNPM ::= npm'				>>$@.tmp
 	$Q GTK2_CFLAGS=$$($(PKG_CONFIG) --cflags $(GTK2_PACKAGES)) \
 	  && echo "GTK2_CFLAGS ::= $$GTK2_CFLAGS"		>>$@.tmp
 	$Q GTK2_LIBS=$$($(PKG_CONFIG) --libs $(GTK2_PACKAGES)) \
