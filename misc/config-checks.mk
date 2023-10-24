@@ -112,8 +112,10 @@ $>/config-cache.mk: misc/config-checks.mk misc/version.sh $(GITCOMMITDEPS) | $>/
 	$Q echo '# make $@'					> $@.tmp
 	$Q echo "ANKLANG_GETTEXT_DOMAIN ::=" \
 		'anklang-$$(version_short)'			>>$@.tmp
-	$Q pnpm --version 2>&1 | grep -qE '^([89]|[1-9]+[0-9]+)\.[0-9]+\.[0-9]+$$' \
-	  && echo 'XNPM ::= pnpm'				>>$@.tmp \
+	$Q bun --version 2>&1 | grep -qE '^([1-9]+[0-9]*)\.[0-9]+\.[0-9]+$$' \
+	  && echo 'XNPM ::= bun'				>>$@.tmp \
+	  || { pnpm --version 2>&1 | grep -qE '^([89]|[1-9]+[0-9]+)\.[0-9]+\.[0-9]+$$' \
+	       && echo 'XNPM ::= pnpm'				>>$@.tmp ; } \
 	  || echo 'XNPM ::= npm'				>>$@.tmp
 	$Q GTK2_CFLAGS=$$($(PKG_CONFIG) --cflags $(GTK2_PACKAGES)) \
 	  && echo "GTK2_CFLAGS ::= $$GTK2_CFLAGS"		>>$@.tmp
