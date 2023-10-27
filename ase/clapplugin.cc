@@ -136,7 +136,6 @@ struct ClapParamInfoImpl : ClapParamInfo {
   {
     unset();
     param_id = cinfo.id;
-    flags = cinfo.flags;
     ident = string_format ("%08x", param_id);
     name = cinfo.name;
     module = cinfo.module;
@@ -159,7 +158,6 @@ void
 ClapParamInfo::unset()
 {
   param_id = CLAP_INVALID_ID;
-  flags = 0;
   ident = "";
   name = "";
   module = "";
@@ -798,7 +796,6 @@ public:
     ClapParamUpdate update = {
       .steady_time = 0, // NOW
       .param_id = param_id,
-      .flags = 0,
       .value = CLAMP (v, info->min_value, info->max_value),
     };
     updates.push_back (update);
@@ -818,7 +815,7 @@ public:
         loader_updates_ = new ClapParamUpdateS;
         for (const auto &[id, value] : params)
           loader_updates_->push_back ({
-              .steady_time = 0, .param_id = id, .flags = 0, .value = value,
+              .steady_time = 0, .param_id = id, .value = value,
             });
         // TODO: flush loader_updates_ right away
       }
