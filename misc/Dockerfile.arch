@@ -30,5 +30,5 @@ RUN groupadd --gid 1000 builder \
   && echo "builder ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/builder
 USER builder
 
-# docker build -f misc/Dockerfile.arch -t anklang-arch misc/
-# docker run -ti --rm -v $PWD:/anklang -w /anklang anklang-arch
+# docker build -t arch:latest -f misc/Dockerfile.arch misc
+# docker run -i -t --rm -v $PWD:/anklang -w /anklang arch:latest
