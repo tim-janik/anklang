@@ -54,11 +54,13 @@ jobs:
         path: /tmp/cicache
     - name: 'Prepare Docker Image'
       run: |
-        echo -e ' prefix=/ \n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
+        # Test the most recent g++ via Arch
+        echo -e ' prefix=/\n' > config-defaults.mk
         misc/cirun -u 1000 misc/version.sh
     - name: 'Run X11 GUI Tests'
       run: |
-        $CIMAKE -j`nproc` all check
+        $CIMAKE GCC_COLORS="" -j`nproc` all
+        $CIMAKE -j`nproc` check
         $CIMAKE x11test-v
     # Artifact upload from x11test
     - uses: actions/upload-artifact@v3.1.3
