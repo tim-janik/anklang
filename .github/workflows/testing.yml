@@ -24,7 +24,7 @@ jobs:
         path: /tmp/cicache
     - name: 'Prepare Docker Image'
       run: |
-        echo -e ' prefix=/ \n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
+        echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
         misc/cirun -u 1000 misc/version.sh
     - name: 'Build Dist Assets'
       run: |
@@ -82,7 +82,7 @@ jobs:
         path: /tmp/cicache
     - name: 'Prepare Docker Image'
       run: |
-        echo -e ' prefix=/ \n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
+        echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
         misc/cirun -u 1000 misc/version.sh
     - name: 'Make all check'
       run: |
