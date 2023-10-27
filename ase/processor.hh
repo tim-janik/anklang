@@ -50,13 +50,35 @@ struct BusInfo {
   uint               n_channels () const;
 };
 
+/// Audio parameter handling, internal to AudioProcessor.
+struct AudioParams final {
+  using Map = std::map<uint32_t,ParameterC>;
+  const uint32_t          *ids = nullptr;
+  double                  *values = nullptr;
+  std::atomic<uint64_t>   *bits = nullptr;
+  const ParameterC        *parameters = nullptr;
+  std::weak_ptr<Property> *wprops = nullptr;
+  uint32                   count = 0;
+  bool                     changed = false;
+  void          clear   ();
+  void          install (const Map &params);
+  ssize_t       index   (uint32_t id) const;
+  double        value   (uint32_t id) const;
+  double        value   (uint32_t id, double newval);
+  bool          dirty   (uint32_t id) const     { return dirty_index (index (id)); }
+  void          dirty   (uint32_t id, bool d)   { return dirty_index (index (id), d); }
+  /*dtor*/     ~AudioParams();
+  bool      dirty_index (uint32_t idx) const;
+  void      dirty_index (uint32_t idx, bool d);
+};
+
 /// Audio signal AudioProcessor base class, implemented by all effects and instruments.
 class AudioProcessor : public std::enable_shared_from_this<AudioProcessor>, public FastMemory::NewDeleteBase {
   struct IBus;
   struct OBus;
   struct EventStreams;
+  struct RenderContext;
   union  PBus;
-  struct PParam;
   class FloatBuffer;
   friend class ProcessorManager;
   friend class DeviceImpl;
@@ -73,6 +95,7 @@ protected:
   // Inherit `AudioSignal` concepts in derived classes from other namespaces
   using MinMax = std::pair<double,double>;
 #endif
+  using MidiEventInput = MidiEventReader<2>;
   enum { INITIALIZED   = 1 << 0,
          //            = 1 << 1,
          SCHEDULED     = 1 << 2,
@@ -88,13 +111,16 @@ private:
   uint32                   output_offset_ = 0;
   FloatBuffer             *fbuffers_ = nullptr;
   std::vector<PBus>        iobuses_;
-  std::vector<PParam>      pparams_; // const once is_initialized()
+  AudioParams              params_;
   std::vector<OConnection> outputs_;
   EventStreams            *estreams_ = nullptr;
   AtomicBits              *atomic_bits_ = nullptr;
   uint64_t                 render_stamp_ = 0;
-  const PParam*      find_pparam        (Id32 paramid) const;
-  const PParam*      find_pparam_       (ParamId paramid) const;
+  using MidiEventVector = std::vector<MidiEvent>;
+  using MidiEventVectorAP = std::atomic<MidiEventVector*>;
+  MidiEventVectorAP        t0events_ = nullptr;
+  RenderContext           *render_context_ = nullptr;
+  template<class F> void modify_t0events (const F&);
   void               assign_iobufs      ();
   void               release_iobufs     ();
   void               ensure_initialized (DeviceP devicep);
@@ -107,10 +133,16 @@ private:
   /*copy*/           AudioProcessor     (const AudioProcessor&) = delete;
   virtual void       render             (uint n_frames) = 0;
   virtual void       reset              (uint64 target_stamp) = 0;
-  PropertyP          access_property    (ParamId id) const;
+  PropertyS          access_properties  () const;
+public:
+  struct ProcessorSetup {
+    CString      aseid;
+    AudioEngine &engine;
+  };
 protected:
   AudioEngine  &engine_;
-  explicit      AudioProcessor    (AudioEngine &engine);
+  CString       aseid_;
+  explicit      AudioProcessor    (const ProcessorSetup&);
   virtual      ~AudioProcessor    ();
   virtual void  initialize        (SpeakerArrangement busses) = 0;
   void          enotify_enqueue_mt (uint32 pushmask);
@@ -119,30 +151,10 @@ protected:
   virtual uint  schedule_children () { return 0; }
   static uint   schedule_processor (AudioProcessor &p)  { return p.schedule_processor(); }
   // Parameters
-  virtual void  adjust_param      (Id32 tag) {}
-  ParamId       nextid            () const;
-  ParamId       add_param         (Id32 id, const Param &initparam, double value);
-  ParamId       add_param         (Id32 id, const String &clabel, const String &nickname,
-                                   double pmin, double pmax, double value,
-                                   const String &unit = "", String hints = "",
-                                   const String &blurb = "", const String &description = "");
-  ParamId       add_param         (Id32 id, const String &clabel, const String &nickname,
-                                   ChoiceS &&centries, double value, String hints = "",
-                                   const String &blurb = "", const String &description = "");
-  ParamId       add_param         (Id32 id, const String &clabel, const String &nickname,
-                                   bool boolvalue, String hints = "",
-                                   const String &blurb = "", const String &description = "");
-  void          start_group       (const String &groupname) const;
-  ParamId       add_param         (const String &clabel, const String &nickname,
-                                   double pmin, double pmax, double value,
-                                   const String &unit = "", String hints = "",
-                                   const String &blurb = "", const String &description = "");
-  ParamId       add_param         (const String &clabel, const String &nickname,
-                                   ChoiceS &&centries, double value, String hints = "",
-                                   const String &blurb = "", const String &description = "");
-  ParamId       add_param         (const String &clabel, const String &nickname,
-                                   bool boolvalue, String hints = "",
-                                   const String &blurb = "", const String &description = "");
+  void          install_params    (const AudioParams::Map &params);
+  void          apply_event       (const MidiEvent &event);
+  void          apply_input_events ();
+  virtual void  adjust_param      (uint32_t paramid) {}
   double        peek_param_mt     (Id32 paramid) const;
   // Buses
   IBusId        add_input_bus     (CString uilabel, SpeakerArrangement speakerarrangement,
@@ -163,9 +175,9 @@ protected:
   void          redirect_oblock   (OBusId b, uint c, const float *block);
   // event stream handling
   void             prepare_event_input  ();
-  MidiEventRange   get_event_input      ();
   void             prepare_event_output ();
-  MidiEventStream& get_event_output     ();
+  MidiEventInput   midi_event_input     ();
+  MidiEventOutput& midi_event_output    ();
   // Atomic notification bits
   void             atomic_bits_resize (size_t count);
   bool             atomic_bit_notify  (size_t nth);
@@ -185,18 +197,18 @@ public:
   double                inyquist    () const ASE_CONST;
   // Parameters
   double              get_param             (Id32 paramid);
-  bool                set_param             (Id32 paramid, double value, bool sendnotify = true);
+  bool                send_param            (Id32 paramid, double value);
   ParameterC          parameter             (Id32 paramid) const;
   MaybeParamId        find_param            (const String &identifier) const;
   MinMax              param_range           (Id32 paramid) const;
   bool                check_dirty           (Id32 paramid) const;
-  void                adjust_params         (bool include_nondirty = false);
-  virtual String      param_value_to_text   (Id32 paramid, double value) const;
-  virtual double      param_value_from_text (Id32 paramid, const String &text) const;
+  void                adjust_all_params     ();
+  virtual String      param_value_to_text   (uint32_t paramid, double value) const;
+  virtual double      param_value_from_text (uint32_t paramid, const String &text) const;
   virtual double      value_to_normalized   (Id32 paramid, double value) const;
   virtual double      value_from_normalized (Id32 paramid, double normalized) const;
   double              get_normalized        (Id32 paramid);
-  bool                set_normalized        (Id32 paramid, double normalized, bool sendnotify = true);
+  bool                set_normalized        (Id32 paramid, double normalized);
   bool                is_initialized        () const;
   // Buses
   IBusId        find_ibus         (const String &name) const;
@@ -222,9 +234,9 @@ public:
   // AudioProcessor Registry
   using StaticInfo = void (*) (AudioProcessorInfo&);
   using MakeDeviceP = std::function<DeviceP (const String&, StaticInfo, AudioProcessorP)>;
-  using MakeProcessorP = AudioProcessorP (*) (AudioEngine&);
+  using MakeProcessorP = AudioProcessorP (*) (CString,AudioEngine&);
   static void    registry_add     (CString aseid, StaticInfo, MakeProcessorP);
-  static DeviceP registry_create  (const String &aseid, AudioEngine &engine, const MakeDeviceP&);
+  static DeviceP registry_create  (CString aseid, AudioEngine &engine, const MakeDeviceP&);
   static void    registry_foreach (const std::function<void (const String &aseid, StaticInfo)> &fun);
   template<class AudioProc, class ...Args> std::shared_ptr<AudioProc>
   static         create_processor (AudioEngine &engine, const Args &...args);
@@ -292,56 +304,111 @@ union AudioProcessor::PBus {
 // AudioProcessor internal input/output event stream book keeping
 struct AudioProcessor::EventStreams {
   static constexpr auto EVENT_ISTREAM = IBusId (0xff01); // *not* an input bus, ID is used for OConnection
-  AudioProcessor      *oproc = nullptr;
-  MidiEventStream estream;
+  AudioProcessor *oproc = nullptr;
+  MidiEventOutput midi_event_output;
   bool            has_event_input = false;
   bool            has_event_output = false;
 };
 
-// AudioProcessor internal parameter book keeping
-struct AudioProcessor::PParam {
-  explicit PParam          (ParamId id);
-  explicit PParam          (ParamId id, uint order, ParameterC &parameter);
-  /*copy*/ PParam          (const PParam &);
-  PParam&  operator=       (const PParam &);
-  double   fetch_and_clean ()       { dirty (false); return value_; }
-  double   peek            () const { return value_; }
-  bool     dirty           () const { return flags_ & DIRTY; }
-  void     dirty           (bool b) { if (b) flags_ |= DIRTY; else flags_ &= ~uint32 (DIRTY); }
-  bool     changed         () const { return flags_ & CHANGED; }
-  bool     changed         (bool b) { return CHANGED & (b ? flags_.fetch_or (CHANGED) :
-                                                        flags_.fetch_and (~uint32 (CHANGED))); }
-  static int // Helper to keep PParam structures sorted.
-  cmp (const PParam &a, const PParam &b)
-  {
-    return a.id < b.id ? -1 : a.id > b.id;
+/// Find index of parameter identified by `id` or return -1.
+inline ssize_t
+AudioParams::index (const uint32_t id) const
+{
+  if (id - 1 < count && ids[id - 1] == id) [[likely]]
+    return id - 1;      // fast path for consecutive IDs
+  if (id < count && ids[id] == id) [[likely]]
+    return id - 1;      // fast handling of 0-based IDs
+  auto [it,found] = Aux::binary_lookup_insertion_pos (ids, ids + count,
+                                                      [] (auto a, auto b) { return a < b ? -1 : a > b; },
+                                                      id);
+  return found ? it - ids : -1;
+}
+
+/// Read current value of parameter identified by `id`.
+inline double
+AudioParams::value (uint32_t id) const
+{
+  const auto idx = index (id);
+  return idx < 0 ? 0.0 : values[idx];
+}
+
+/// Write new value into parameter identified by `id`, return old value.
+inline double
+AudioParams::value (uint32_t id, double newval)
+{
+  const auto idx = index (id);
+  if (idx < 0) return 0.0;
+  const double old = values[idx];
+  values[idx] = newval;
+  if (!wprops[idx].expired()) {
+    dirty_index (idx, true);
+    changed = true;
   }
-public:
-  ParamId             id = {};  ///< Tag to identify parameter in APIs.
-private:
-  enum { DIRTY = 1, CHANGED = 2, };
-  std::atomic<uint32> flags_ = 1;
-  std::atomic<double> value_ = NAN;
-  std::weak_ptr<Property> aprop_;
-  friend class AudioProcessor;
-  uint order_ = 0;
-public:
-  ParameterC parameter;
-  uint       order() const { return order_; }
-  bool
-  assign (double f)
-  {
-    const double old = value_;
-    value_ = f;
-    if (ASE_ISLIKELY (old != value_))
+  return old;
+}
+
+/// Check if parameter is dirty (changed).
+inline bool
+AudioParams::dirty_index (uint32_t idx) const
+{
+  return bits[idx >> 6] & uint64_t (1) << (idx & (64-1));
+}
+
+/// Set or clear parameter dirty flag.
+inline void
+AudioParams::dirty_index (uint32_t idx, bool d)
+{
+  if (d)
+    bits[idx >> 6] |= uint64_t (1) << (idx & (64-1));
+  else
+    bits[idx >> 6] &= ~(uint64_t (1) << (idx & (64-1)));
+}
+
+/// Handle atomic swapping of t0events around modifications by `F` [main-thread].
+template<class F> void
+AudioProcessor::modify_t0events (const F &mod)
+{
+  ASE_ASSERT_RETURN (this_thread_is_ase());
+  MidiEventVector *t0events = nullptr;
+  t0events = t0events_.exchange (t0events);
+  if (!t0events)
+    t0events = new std::vector<MidiEvent>;
+  mod (*t0events);
+  if (!t0events->empty())
+    t0events = t0events_.exchange (t0events);
+  delete t0events;
+}
+
+/// Assign MidiEvent::PARAM_VALUE event values to parameters.
+inline void
+AudioProcessor::apply_event (const MidiEvent &event)
+{
+  switch (event.type)
+    {
+    case MidiEvent::PARAM_VALUE:
+      params_.value (event.param, event.pvalue);
+      break;
+    default: ;
+    }
+}
+
+/// Process all input events via apply_event() and adjust_param().
+/// This applies all incoming parameter changes,
+/// events like NOTE_ON are not handled.
+inline void
+AudioProcessor::apply_input_events()
+{
+  MidiEventInput evinput = midi_event_input();
+  for (const auto &event : evinput)
+    switch (event.type) // event.message()
       {
-        const uint32 prev = flags_.fetch_or (DIRTY | CHANGED);
-        if (!ASE_ISLIKELY (prev & CHANGED))
-          return true; // need notify
+      case MidiEvent::PARAM_VALUE:
+        apply_event (event);
+        adjust_param (event.param);
+        break;
+      default: ;
       }
-    return false; // no notify needed
-  }
-};
+}
 
 /// Number of channels described by `speakers`.
 inline uint
@@ -442,41 +509,33 @@ AudioProcessor::n_ochannels (OBusId busid) const
   return obus.n_channels();
 }
 
-// Call adjust_param() for all or just dirty parameters.
+// Call adjust_param() for all parameters.
 inline void
-AudioProcessor::adjust_params (bool include_nondirty)
+AudioProcessor::adjust_all_params()
 {
-  for (const PParam &p : pparams_)
-    if (include_nondirty || p.dirty())
-      adjust_param (p.id);
+  for (size_t idx = 0; idx < params_.count; idx++)
+    adjust_param (params_.ids[idx]);
 }
 
-// Find parameter for internal access.
-inline const AudioProcessor::PParam*
-AudioProcessor::find_pparam (Id32 paramid) const
-{
-  // fast path via sequential ids
-  const size_t idx = paramid.id - 1;
-  if (ASE_ISLIKELY (idx < pparams_.size()) && ASE_ISLIKELY (pparams_[idx].id == ParamId (paramid.id)))
-    return &pparams_[idx];
-  return find_pparam_ (ParamId (paramid.id));
-}
-
-/// Fetch `value` of parameter `id` and clear its `dirty` flag.
+/// Fetch `value` of parameter `id`.
 inline double
 AudioProcessor::get_param (Id32 paramid)
 {
-  const PParam *pparam = find_pparam (ParamId (paramid.id));
-  return ASE_ISLIKELY (pparam) ? const_cast<PParam*> (pparam)->fetch_and_clean() : FP_NAN;
+  const ssize_t idx = params_.index (paramid.id);
+  if (idx < 0) [[unlikely]]
+    return 0;
+  return params_.values[idx];
 }
 
 /// Check if the parameter `dirty` flag is set.
-/// Return `true` if set_param() changed the parameter value since the last get_param() call.
+/// Return `true` if the parameter value changed during render().
 inline bool
 AudioProcessor::check_dirty (Id32 paramid) const
 {
-  const PParam *param = this->find_pparam (ParamId (paramid.id));
-  return ASE_ISLIKELY (param) ? param->dirty() : false;
+  const ssize_t idx = params_.index (paramid.id);
+  if (idx < 0) [[unlikely]]
+    return false;
+  return params_.dirty_index (idx);
 }
 
 /// Access readonly float buffer of input bus `b`, channel `c`, see also ofloats().
@@ -520,10 +579,11 @@ template<typename T> extern inline CString
 register_audio_processor (const char *caseid)
 {
   CString aseid = caseid ? caseid : typeid_name<T>();
-  if constexpr (std::is_constructible<T, AudioEngine&>::value)
+  if constexpr (std::is_constructible<T, const AudioProcessor::ProcessorSetup&>::value)
     {
-      auto make_shared = [] (AudioEngine &engine) -> AudioProcessorP {
-        return std::make_shared<T> (engine);
+      auto make_shared = [] (CString aseid, AudioEngine &engine) -> AudioProcessorP {
+        const AudioProcessor::ProcessorSetup psetup { aseid, engine };
+        return std::make_shared<T> (psetup);
       };
       AudioProcessor::registry_add (aseid, &T::static_info, make_shared);
     }
@@ -535,7 +595,9 @@ register_audio_processor (const char *caseid)
 template<class AudioProc, class ...Args> std::shared_ptr<AudioProc>
 AudioProcessor::create_processor (AudioEngine &engine, const Args &...args)
 {
-  std::shared_ptr<AudioProc> proc = std::make_shared<AudioProc> (engine, args...);
+  String aseid = typeid_name<AudioProc>();
+  const ProcessorSetup psetup { aseid, engine };
+  std::shared_ptr<AudioProc> proc = std::make_shared<AudioProc> (psetup, args...);
   if (proc) {
     AudioProcessorP aproc = proc;
     aproc->ensure_initialized (nullptr);
