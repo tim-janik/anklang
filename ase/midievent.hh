@@ -11,7 +11,17 @@ namespace Ase {
 enum class MusicalTuning : uint8;
 
 /// Type of MIDI Events.
-enum class MidiEventType : uint8_t {};
+enum class MidiEventType : uint8_t {
+  PARAM_VALUE      = 0x70, /// Ase internal Parameter update.
+  NOTE_OFF         = 0x80,
+  NOTE_ON          = 0x90,
+  AFTERTOUCH       = 0xA0, ///< Key Pressure, polyphonic aftertouch
+  CONTROL_CHANGE   = 0xB0, ///< Control Change
+  PROGRAM_CHANGE   = 0xC0,
+  CHANNEL_PRESSURE = 0xD0, ///< Channel Aftertouch
+  PITCH_BEND       = 0xE0,
+  SYSEX            = 0xF0,
+};
 
 /// Extended type information for MidiEvent.
 enum class MidiMessage : int32_t {
@@ -36,28 +46,23 @@ enum class MidiMessage : int32_t {
 
 /// MidiEvent data structure.
 struct MidiEvent {
-  constexpr static MidiEventType NOTE_OFF         = MidiEventType (0x80);
-  constexpr static MidiEventType NOTE_ON          = MidiEventType (0x90);
-  constexpr static MidiEventType AFTERTOUCH       = MidiEventType (0xA0); ///< Key Pressure, polyphonic aftertouch
-  constexpr static MidiEventType CONTROL_CHANGE   = MidiEventType (0xB0); ///< Control Change
-  constexpr static MidiEventType PROGRAM_CHANGE   = MidiEventType (0xC0);
-  constexpr static MidiEventType CHANNEL_PRESSURE = MidiEventType (0xD0); ///< Channel Aftertouch
-  constexpr static MidiEventType PITCH_BEND       = MidiEventType (0xE0);
-  constexpr static MidiEventType SYSEX            = MidiEventType (0xF0);
-  MidiEventType type;    ///< MidiEvent type, one of the MidiEventType members
+  using enum MidiEventType;
+  static_assert (AUDIO_BLOCK_MAX_RENDER_SIZE <= 2048); // -2048…+2047 fits frame
   int       frame : 12;  ///< Offset into current block, delayed if negative
   uint      channel : 4; ///< 0…15 for standard events
+  MidiEventType type;    ///< MidiEvent type, one of the MidiEventType members
   union {
     uint8   key;        ///< NOTE, KEY_PRESSURE MIDI note, 0…0x7f, 60 = middle C at 261.63 Hz.
     uint8   fragment;   ///< Flag for multi-part control change mesages.
   };
   union {
     uint    length;     ///< Data event length of byte array.
-    uint    param;      ///< PROGRAM_CHANGE program, CONTROL_CHANGE controller, 0…0x7f
+    uint    param;      ///< PROGRAM_CHANGE (program), CONTROL_CHANGE (controller):0…0x7f; PARAM_VALUE:uint32_t
     uint    noteid;     ///< NOTE, identifier for note expression handling or 0xffffffff.
   };
   union {
     char   *data;       ///< Data event byte array.
+    double  pvalue;     ///< Numeric parameter value, PARAM_VALUE.
     struct {
       float value;      ///< CONTROL_CHANGE 0…+1, CHANNEL_PRESSURE, 0…+1, PITCH_BEND -1…+1
       uint  cval;       ///< CONTROL_CHANGE control value, 0…0x7f
@@ -73,17 +78,17 @@ struct MidiEvent {
   /*des*/    ~MidiEvent ()      {}
   MidiMessage message   () const;
   std::string to_string () const;
-  static_assert (AUDIO_BLOCK_MAX_RENDER_SIZE <= 2048); // -2048…+2047 fits frame
 };
 
-MidiEvent make_note_on    (uint16 chnl, uint8 mkey, float velo, float tune = 0, uint nid = 0xffffff);
-MidiEvent make_note_off   (uint16 chnl, uint8 mkey, float velo, float tune = 0, uint nid = 0xffffff);
-MidiEvent make_aftertouch (uint16 chnl, uint8 mkey, float velo, float tune = 0, uint nid = 0xffffff);
-MidiEvent make_pressure   (uint16 chnl, float velo);
-MidiEvent make_control    (uint16 chnl, uint prm, float val);
-MidiEvent make_control8   (uint16 chnl, uint prm, uint8 cval);
-MidiEvent make_program    (uint16 chnl, uint prgrm);
-MidiEvent make_pitch_bend (uint16 chnl, float val);
+MidiEvent make_note_on     (uint16 chnl, uint8 mkey, float velo, float tune = 0, uint nid = 0xffffff);
+MidiEvent make_note_off    (uint16 chnl, uint8 mkey, float velo, float tune = 0, uint nid = 0xffffff);
+MidiEvent make_aftertouch  (uint16 chnl, uint8 mkey, float velo, float tune = 0, uint nid = 0xffffff);
+MidiEvent make_pressure    (uint16 chnl, float velo);
+MidiEvent make_control     (uint16 chnl, uint prm, float val);
+MidiEvent make_control8    (uint16 chnl, uint prm, uint8 cval);
+MidiEvent make_program     (uint16 chnl, uint prgrm);
+MidiEvent make_pitch_bend  (uint16 chnl, float val);
+MidiEvent make_param_value (uint param, double pvalue);
 
 /// A stream of writable MidiEvent structures.
 class MidiEventStream {

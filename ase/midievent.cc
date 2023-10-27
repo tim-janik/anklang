@@ -49,6 +49,9 @@ MidiEvent::to_string () const
   const char *et = nullptr;
   switch (type)
     {
+    case PARAM_VALUE:
+      return string_format ("%+4d ch=%-2u %s param=%d pvalue=%.5f",
+                            frame, channel, "PARAM_VALUE", param, pvalue);
     case NOTE_OFF:        if (!et) et = "NOTE_OFF";
       /* fall-through */
     case NOTE_ON:         if (!et) et = "NOTE_ON";
@@ -69,9 +72,8 @@ MidiEvent::to_string () const
                             frame, channel, et, value);
     case SYSEX:                 if (!et) et = "SYSEX";
       return string_format ("%+4d %s (unhandled)", frame, et);
-    default:
-      return string_format ("%+4d MidiEvent-%u (unhandled)", frame, type);
     }
+  return string_format ("%+4d MidiEvent-%u (unhandled)", frame, type);
 }
 
 MidiEvent
@@ -156,6 +158,16 @@ make_pitch_bend (uint16 chnl, float val)
   MidiEvent ev (MidiEvent::PITCH_BEND);
   ev.channel = chnl;
   ev.value = val;
+  return ev;
+}
+
+MidiEvent
+make_param_value (uint param, double pvalue)
+{
+  MidiEvent ev (MidiEvent::PARAM_VALUE);
+  ev.channel = 0xf;
+  ev.param = param;
+  ev.pvalue = pvalue;
   return ev;
 }
 
