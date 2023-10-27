@@ -80,6 +80,9 @@ RUN : \
   && apt-get install -y nodejs \
   && apt-get clean
 
+# Provide a fast JS package manager
+RUN npm install -g bun@latest
+
 # Build stripped down Fluidsynth version without drivers (not needed atm)
 RUN exit 0 && \
   mkdir -p /tmp/fluid/build && cd /tmp/fluid/ && \
