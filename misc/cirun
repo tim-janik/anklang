@@ -46,12 +46,12 @@ echo -n `git rev-parse HEAD`"    " && git describe 2>/dev/null || git describe -
 
 # Build Docker image
 # docker build -t $CITAG -f misc/Dockerfile.CIDIST misc
-docker buildx >/dev/null 2>&1 || die "missing docker-buildx-plugin"
 (
   DOCKER_IMAGES=$(docker images --format "|{{.ID}}|{{.Repository}}:{{.Tag}}|") # buffer image list to avoid SIGPIPE
   test -n "${CITAG:-}" || die "missing docker image, CITAG is unset"
   grep -q "|$CITAG:latest|" <<< "$DOCKER_IMAGES" || {
     echo "$SCRIPTNAME: need to build docker image: $CITAG:latest"
+    docker buildx >/dev/null 2>&1 || die "missing docker-buildx-plugin"
     # determine Dockerfile
     DOCKERFILE="./Dockerfile.$CITAG"
     test -r "$DOCKERFILE" ||
