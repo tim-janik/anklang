@@ -112,7 +112,9 @@ include misc/config-utils.mk
 include misc/config-uname.mk
 include misc/config-checks.mk
 include misc/config-external.mk
-.config.defaults += CC CFLAGS CXX CLANG_TIDY CXXFLAGS LDFLAGS LDLIBS XNPM
+
+NPM_INSTALL ?= $(XNPM) install
+.config.defaults += CC CFLAGS CXX CLANG_TIDY CXXFLAGS LDFLAGS LDLIBS NPM_INSTALL
 
 # == ls-tree.lst ==
 # Requires either git or a pre-packaged `ls-tree.lst` file
@@ -254,11 +256,11 @@ $>/node_modules/.npm.done: $(if $(NPMBLOCK),, $>/package.json)	| $>/
 	@: # Install all node_modules and anonymize build path
 	$Q cd $>/ \
 	  && { POFFLINE= && test ! -d node_modules/ || POFFLINE=--prefer-offline ; } \
-	  && $(XNPM) install $$POFFLINE \
+	  && $(NPM_INSTALL) $$POFFLINE \
 	  && find . -name package.json -print0 | xargs -0 sed -r "\|$$PWD|s|^(\s*(\"_where\":\s*)?)\"$$PWD|\1\"/...|" -i
 	@: # Fix bun installation, see: https://github.com/oven-sh/bun/pull/5077
-	$Q test ! -d $>/node_modules/sharp/ -o -d $>/node_modules/sharp/build/Release/ || (cd $>/node_modules/sharp/ && $(XNPM) install)
-	$Q test -d $>/node_modules/electron/dist/ || (cd $>/node_modules/electron/ && $(XNPM) install)
+	$Q test ! -d $>/node_modules/sharp/ -o -d $>/node_modules/sharp/build/Release/ || (cd $>/node_modules/sharp/ && $(NPM_INSTALL))
+	$Q test -d $>/node_modules/electron/dist/ || (cd $>/node_modules/electron/ && $(NPM_INSTALL))
 	$Q: # add newer nodejs API to browserify-url.js, needed for e.g. postcss error messages
 	$Q touch $@
 NODE_PATH ::= $(abspath $>/node_modules/)
