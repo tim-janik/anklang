@@ -285,13 +285,11 @@ AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname
 {
   assert_return (uint (id) > 0, ParamId (0));
   using namespace MakeIcon;
-  static const ChoiceS centries { { "on"_icon, "Off" }, { "off"_icon, "On" } };
   const double value = boolvalue ? 1.0 : 0.0;
   return add_param (id, Param {
       .label = clabel,
       .nick = nickname,
       .initial = value,
-      .extras = centries,
       .hints = construct_hints (hints, false, true, "toggle"),
       .blurb = blurb,
       .descr = description,
