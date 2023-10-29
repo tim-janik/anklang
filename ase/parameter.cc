@@ -159,6 +159,26 @@ Parameter::rescale (double t) const
   return value;
 }
 
+size_t
+Parameter::match_choice (const ChoiceS &choices, const String &text)
+{
+  for (size_t i = 0; i < choices.size(); i++)
+    if (text == choices[i].ident)
+      return i;
+  size_t selected = 0;
+  const String ltext = string_tolower (text);
+  float best = F32MAX;
+  for (size_t i = 0; i < choices.size(); i++) {
+    const size_t maxdist = std::max (choices[i].ident.size(), ltext.size());
+    const float dist = damerau_levenshtein_restricted (string_tolower (choices[i].ident), ltext) / maxdist;
+    if (dist < best) {
+      best = dist;
+      selected = i;
+    }
+  }
+  return selected;
+}
+
 Value
 Parameter::constrain (const Value &value) const
 {
@@ -170,23 +190,7 @@ Parameter::constrain (const Value &value) const
       if (i >= 0 && i < choices.size())
         return choices[i].ident;
     }
-    int64_t selected = 0;
-    if (value.is_string()) {
-      const String text = value.as_string();
-      for (size_t i = 0; i < choices.size(); i++)
-        if (text == choices[i].ident)
-          return choices[i].ident;
-      const String ltext = string_tolower (text);
-      float best = F32MAX;
-      for (size_t i = 0; i < choices.size(); i++) {
-        const size_t maxdist = std::max (choices[i].ident.size(), ltext.size());
-        const float dist = damerau_levenshtein_restricted (string_tolower (choices[i].ident), ltext) / maxdist;
-        if (dist < best) {
-          best = dist;
-          selected = i;
-        }
-      }
-    }
+    const size_t selected = value.is_string() ? match_choice (choices, value.as_string()) : 0;
     return choices.size() ? choices[selected].ident : initial_;
   }
   // text
@@ -356,10 +360,13 @@ Parameter::value_to_text (const Value &value) const
 Value
 Parameter::value_from_text (const String &text) const
 {
-  if (is_choice() || is_text())
+  if (is_choice()) {
+    const ChoiceS choices = this->choices();
+    return int64_t (match_choice (choices, text));
+  }
+  if (is_text())
     return constrain (text).as_string();
-  else
-    return constrain (string_to_double (text));
+  return constrain (string_to_double (text));
 }
 
 // == guess_nick ==

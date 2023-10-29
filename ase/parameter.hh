@@ -74,6 +74,7 @@ private:
   StringS       details_;
   ExtrasV       extras_;
   Value         initial_ = 0;
+  static size_t match_choice (const ChoiceS &choices, const String &text);
 };
 using ParameterC = std::shared_ptr<const Parameter>;
 
