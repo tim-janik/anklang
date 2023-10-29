@@ -125,10 +125,10 @@ class BPropInput extends LitComponent {
       {
 	const hints = ':' + this.prop.hints_ + ':';
 	let ptype = 'knob';
-	if (hints.search (/:choice:/) >= 0)
-	  ptype = 'choice';
-	else if (hints.search (/:toggle:/) >= 0)
+	if (hints.search (/:toggle:/) >= 0)
 	  ptype = 'toggle';
+	else if (hints.search (/:choice:/) >= 0)
+	  ptype = 'choice';
 	if (proptype === ptype)
 	  return true; // allow html`` eval
       }
