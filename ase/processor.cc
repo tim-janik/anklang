@@ -156,23 +156,6 @@ AudioProcessor::start_group (const String &groupname) const
   tls_param_group = groupname;
 }
 
-static CString
-construct_hints (String hints, double pmin, double pmax, const String &more = "")
-{
-  if (hints.empty())
-    hints = AudioProcessor::STANDARD;
-  if (hints.back() != ':')
-    hints = hints + ":";
-  for (const auto &s : string_split (more))
-    if (!s.empty() && "" == string_option_find (hints, s, ""))
-      hints += s + ":";
-  if (hints[0] != ':')
-    hints = ":" + hints;
-  if (pmax > 0 && pmax == -pmin)
-    hints += "bidir:";
-  return hints;
-}
-
 /// Helper for add_param() to generate the sequentially next ParamId.
 ParamId
 AudioProcessor::nextid () const
@@ -227,7 +210,7 @@ AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname
       .initial = value,
       .unit = unit,
       .extras = MinMaxStep { pmin, pmax, 0 },
-      .hints = construct_hints (hints, pmin, pmax),
+      .hints = Parameter::construct_hints (hints, "", pmin, pmax),
       .blurb = blurb,
       .descr = description,
     }, value);
@@ -259,7 +242,7 @@ AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname
       .nick = nickname,
       .initial = value,
       .extras = centries,
-      .hints = construct_hints (hints, 0, pmax, "choice"),
+      .hints = Parameter::construct_hints (hints, "choice", 0, pmax),
       .blurb = blurb,
       .descr = description,
     }, value);
@@ -285,15 +268,14 @@ AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname
 {
   assert_return (uint (id) > 0, ParamId (0));
   using namespace MakeIcon;
-  const double value = boolvalue ? 1.0 : 0.0;
   return add_param (id, Param {
       .label = clabel,
       .nick = nickname,
-      .initial = value,
-      .hints = construct_hints (hints, false, true, "toggle"),
+      .initial = boolvalue,
+      .hints = Parameter::construct_hints (hints, "toggle", false, true),
       .blurb = blurb,
       .descr = description,
-    }, value);
+    }, boolvalue);
 }
 
 /// Variant of AudioProcessor::add_param() with sequential `id` generation.
