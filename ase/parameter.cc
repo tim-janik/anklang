@@ -31,8 +31,8 @@ Param::ExtraVals::ExtraVals (const ChoicesFunc &choicesfunc)
 }
 
 // == Parameter ==
-static String
-construct_hints (const String &hints, const String &more, double pmin, double pmax)
+String
+Parameter::construct_hints (const String &hints, const String &more, double pmin, double pmax)
 {
   String h = hints;
   if (h.empty())
@@ -214,10 +214,10 @@ Parameter::constrain (const Value &value) const
 }
 
 static MinMaxStep
-minmaxstep_from_initialval (const Param::InitialVal &iv)
+minmaxstep_from_initialval (const Param::InitialVal &iv, bool *isbool)
 {
   MinMaxStep range;
-  std::visit ([&range] (auto &&arg)
+  std::visit ([&] (auto &&arg)
   {
     using T = std::decay_t<decltype (arg)>;
     if constexpr (std::is_same_v<T, bool>)
@@ -248,6 +248,8 @@ minmaxstep_from_initialval (const Param::InitialVal &iv)
       range = { 0, 0, 0 }; // strings have no numeric range
     else
       static_assert (sizeof (T) < 0, "unimplemented InitialVal type");
+    if (isbool)
+      *isbool = std::is_same_v<T, bool>;
   }, iv);
   return range;
 }
@@ -259,16 +261,18 @@ value_from_initialval (const Param::InitialVal &iv)
   std::visit ([&value] (auto &&arg)
   {
     using T = std::decay_t<decltype (arg)>;
-    if constexpr (std::is_same_v<T, bool> ||
-                  std::is_same_v<T, int8_t> ||
-                  std::is_same_v<T, uint8_t> ||
-                  std::is_same_v<T, int16_t> ||
-                  std::is_same_v<T, uint16_t> ||
-                  std::is_same_v<T, int32_t> ||
-                  std::is_same_v<T, uint32_t> ||
-                  std::is_same_v<T, int64_t>)
-      value = int64_t (arg);
-    else if constexpr (std::is_same_v<T, uint64_t>)
+    if constexpr (std::is_same_v<T, bool>)
+      value = arg;
+    else if constexpr (std::is_same_v<T, int8_t> ||
+                       std::is_same_v<T, uint8_t> ||
+                       std::is_same_v<T, int16_t> ||
+                       std::is_same_v<T, uint16_t> ||
+                       std::is_same_v<T, int32_t>)
+      value = int32_t (arg);
+    else if constexpr (std::is_same_v<T, uint32_t>)
+      value = arg;
+    else if constexpr (std::is_same_v<T, int64_t> ||
+                       std::is_same_v<T, uint64_t>)
       value = int64_t (arg);
     else if constexpr (std::is_same_v<T, float> ||
                        std::is_same_v<T, double>)
@@ -306,6 +310,7 @@ Parameter::Parameter (const Param &initparam)
   if (!p.group.empty())
     store ("group", p.group);
   const auto choicesp = std::get_if<ChoiceS> (&p.extras);
+  bool isbool = false;
   if (choicesfuncp)
     extras_ = *choicesfuncp;
   else if (choicesp)
@@ -313,14 +318,14 @@ Parameter::Parameter (const Param &initparam)
   else if (fmin != fmax)
     extras_ = range;
   else
-    extras_ = minmaxstep_from_initialval (p.initial);
+    extras_ = minmaxstep_from_initialval (p.initial, &isbool);
   initial_ = value_from_initialval (p.initial);
-  if (!p.hints.empty()) {
-    String choice = choicesp || choicesfuncp ? "choice" : "";
-    String text = choicesfuncp || initial_.is_string() ? "text" : "";
-    String dynamic = choicesfuncp ? "dynamic" : "";
-    store ("hints", construct_hints (p.hints, text + ":" + choice + ":" + dynamic, fmin, fmax));
-  }
+  String hints = p.hints.empty() ? STANDARD : p.hints;
+  String choice = choicesp || choicesfuncp ? "choice" : "";
+  String text = choicesfuncp || initial_.is_string() ? "text" : "";
+  String dynamic = choicesfuncp ? "dynamic" : "";
+  String stepped = isbool ? "stepped" : "";
+  store ("hints", construct_hints (p.hints, text + ":" + choice + ":" + dynamic + ":" + stepped, fmin, fmax));
 }
 
 String

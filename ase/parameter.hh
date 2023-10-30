@@ -69,12 +69,13 @@ struct Parameter {
   // helpers
   String    value_to_text   (const Value &value) const;
   Value     value_from_text (const String &text) const;
+  static String construct_hints (const String &hints, const String &more, double pmin = 0, double pmax = 0);
+  static size_t match_choice    (const ChoiceS &choices, const String &text);
 private:
   using ExtrasV = std::variant<MinMaxStep,ChoiceS,ChoicesFunc>;
   StringS       details_;
   ExtrasV       extras_;
   Value         initial_ = 0;
-  static size_t match_choice (const ChoiceS &choices, const String &text);
 };
 using ParameterC = std::shared_ptr<const Parameter>;
 
