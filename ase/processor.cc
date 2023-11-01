@@ -322,19 +322,7 @@ AudioProcessor::set_param (Id32 paramid, const double value, bool sendnotify)
   ParameterC parameter = pparam->parameter;
   double v = value;
   if (parameter)
-    {
-      const auto [fmin, fmax, stepping] = parameter->range();
-      v = CLAMP (v, fmin, fmax);
-      if (stepping > 0)
-        {
-          // round halfway cases down, so:
-          // 0 -> -0.5…+0.5 yields -0.5
-          // 1 -> -0.5…+0.5 yields +0.5
-          constexpr const auto nearintoffset = 0.5 - DOUBLE_EPSILON; // round halfway case down
-          v = stepping * uint64_t ((v - fmin) / stepping + nearintoffset);
-          v = CLAMP (fmin + v, fmin, fmax);
-        }
-    }
+    v = parameter->dconstrain (value);
   const bool need_notify = const_cast<PParam*> (pparam)->assign (v);
   if (need_notify && sendnotify && !pparam->aprop_.expired())
     enotify_enqueue_mt (PARAMCHANGE);
