@@ -67,7 +67,7 @@ class DataBubbleImpl {
   bubble_layer() {
     const bubble_layer_id = '#b-shell-bubble-layer';
     const el = document.body.querySelectorAll (bubble_layer_id);
-    console.assert (el.length, "Missing container:", bubble_layer_id);
+    console.assert (el.length > 0, "Missing container:", bubble_layer_id);
     return el[0];
   }
   constructor() {
