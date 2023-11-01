@@ -3,6 +3,7 @@
 #include "levenshtein.hh"
 #include "unicode.hh"
 #include "regex.hh"
+#include "mathutils.hh"
 #include "internal.hh"
 
 namespace Ase {
@@ -31,8 +32,8 @@ Param::ExtraVals::ExtraVals (const ChoicesFunc &choicesfunc)
 }
 
 // == Parameter ==
-static String
-construct_hints (const String &hints, const String &more, double pmin, double pmax)
+String
+Parameter::construct_hints (const String &hints, const String &more, double pmin, double pmax)
 {
   String h = hints;
   if (h.empty())
@@ -159,6 +160,26 @@ Parameter::rescale (double t) const
   return value;
 }
 
+size_t
+Parameter::match_choice (const ChoiceS &choices, const String &text)
+{
+  for (size_t i = 0; i < choices.size(); i++)
+    if (text == choices[i].ident)
+      return i;
+  size_t selected = 0;
+  const String ltext = string_tolower (text);
+  float best = F32MAX;
+  for (size_t i = 0; i < choices.size(); i++) {
+    const size_t maxdist = std::max (choices[i].ident.size(), ltext.size());
+    const float dist = damerau_levenshtein_restricted (string_tolower (choices[i].ident), ltext) / maxdist;
+    if (dist < best) {
+      best = dist;
+      selected = i;
+    }
+  }
+  return selected;
+}
+
 Value
 Parameter::constrain (const Value &value) const
 {
@@ -170,28 +191,30 @@ Parameter::constrain (const Value &value) const
       if (i >= 0 && i < choices.size())
         return choices[i].ident;
     }
-    int64_t selected = 0;
-    if (value.is_string()) {
-      const String text = value.as_string();
-      for (size_t i = 0; i < choices.size(); i++)
-        if (text == choices[i].ident)
-          return choices[i].ident;
-      const String ltext = string_tolower (text);
-      float best = F32MAX;
-      for (size_t i = 0; i < choices.size(); i++) {
-        const size_t maxdist = std::max (choices[i].ident.size(), ltext.size());
-        const float dist = damerau_levenshtein_restricted (string_tolower (choices[i].ident), ltext) / maxdist;
-        if (dist < best) {
-          best = dist;
-          selected = i;
-        }
-      }
-    }
+    const size_t selected = value.is_string() ? match_choice (choices, value.as_string()) : 0;
     return choices.size() ? choices[selected].ident : initial_;
   }
   // text
   if (is_text())
     return value.as_string();
+  // numeric
+  return dconstrain (value);
+}
+
+double
+Parameter::dconstrain (const Value &value) const
+{
+  // choices
+  if (is_choice()) {
+    const ChoiceS choices = this->choices();
+    if (value.is_numeric()) {
+      int64_t i = value.as_int();
+      if (i >= 0 && i < choices.size())
+        return i;
+    }
+    const size_t selected = value.is_string() ? match_choice (choices, value.as_string()) : 0;
+    return choices.size() ? selected : initial_.is_numeric() ? initial_.as_double() : 0;
+  }
   // numeric
   double val = value.as_double();
   const auto [fmin, fmax, step] = range();
@@ -200,9 +223,11 @@ Parameter::constrain (const Value &value) const
   val = std::max (val, fmin);
   val = std::min (val, fmax);
   if (step > F32EPS && has_hint ("stepped")) {
-    double t = val - fmin;
-    t /= step;
-    t = std::round (t);
+    // round halfway cases down, so:
+    // 0 -> -0.5…+0.5 yields -0.5
+    // 1 -> -0.5…+0.5 yields +0.5
+    constexpr const auto nearintoffset = 0.5 - DOUBLE_EPSILON; // round halfway case down
+    const double t = std::floor ((val - fmin) / step + nearintoffset);
     val = fmin + t * step;
     val = std::min (val, fmax);
   }
@@ -210,10 +235,10 @@ Parameter::constrain (const Value &value) const
 }
 
 static MinMaxStep
-minmaxstep_from_initialval (const Param::InitialVal &iv)
+minmaxstep_from_initialval (const Param::InitialVal &iv, bool *isbool)
 {
   MinMaxStep range;
-  std::visit ([&range] (auto &&arg)
+  std::visit ([&] (auto &&arg)
   {
     using T = std::decay_t<decltype (arg)>;
     if constexpr (std::is_same_v<T, bool>)
@@ -244,6 +269,8 @@ minmaxstep_from_initialval (const Param::InitialVal &iv)
       range = { 0, 0, 0 }; // strings have no numeric range
     else
       static_assert (sizeof (T) < 0, "unimplemented InitialVal type");
+    if (isbool)
+      *isbool = std::is_same_v<T, bool>;
   }, iv);
   return range;
 }
@@ -255,16 +282,18 @@ value_from_initialval (const Param::InitialVal &iv)
   std::visit ([&value] (auto &&arg)
   {
     using T = std::decay_t<decltype (arg)>;
-    if constexpr (std::is_same_v<T, bool> ||
-                  std::is_same_v<T, int8_t> ||
-                  std::is_same_v<T, uint8_t> ||
-                  std::is_same_v<T, int16_t> ||
-                  std::is_same_v<T, uint16_t> ||
-                  std::is_same_v<T, int32_t> ||
-                  std::is_same_v<T, uint32_t> ||
-                  std::is_same_v<T, int64_t>)
-      value = int64_t (arg);
-    else if constexpr (std::is_same_v<T, uint64_t>)
+    if constexpr (std::is_same_v<T, bool>)
+      value = arg;
+    else if constexpr (std::is_same_v<T, int8_t> ||
+                       std::is_same_v<T, uint8_t> ||
+                       std::is_same_v<T, int16_t> ||
+                       std::is_same_v<T, uint16_t> ||
+                       std::is_same_v<T, int32_t>)
+      value = int32_t (arg);
+    else if constexpr (std::is_same_v<T, uint32_t>)
+      value = arg;
+    else if constexpr (std::is_same_v<T, int64_t> ||
+                       std::is_same_v<T, uint64_t>)
       value = int64_t (arg);
     else if constexpr (std::is_same_v<T, float> ||
                        std::is_same_v<T, double>)
@@ -302,6 +331,7 @@ Parameter::Parameter (const Param &initparam)
   if (!p.group.empty())
     store ("group", p.group);
   const auto choicesp = std::get_if<ChoiceS> (&p.extras);
+  bool isbool = false;
   if (choicesfuncp)
     extras_ = *choicesfuncp;
   else if (choicesp)
@@ -309,14 +339,14 @@ Parameter::Parameter (const Param &initparam)
   else if (fmin != fmax)
     extras_ = range;
   else
-    extras_ = minmaxstep_from_initialval (p.initial);
+    extras_ = minmaxstep_from_initialval (p.initial, &isbool);
   initial_ = value_from_initialval (p.initial);
-  if (!p.hints.empty()) {
-    String choice = choicesp || choicesfuncp ? "choice" : "";
-    String text = choicesfuncp || initial_.is_string() ? "text" : "";
-    String dynamic = choicesfuncp ? "dynamic" : "";
-    store ("hints", construct_hints (p.hints, text + ":" + choice + ":" + dynamic, fmin, fmax));
-  }
+  String hints = p.hints.empty() ? STANDARD : p.hints;
+  String choice = choicesp || choicesfuncp ? "choice" : "";
+  String text = choicesfuncp || initial_.is_string() ? "text" : "";
+  String dynamic = choicesfuncp ? "dynamic" : "";
+  String stepped = isbool ? "stepped" : "";
+  store ("hints", construct_hints (p.hints, text + ":" + choice + ":" + dynamic + ":" + stepped, fmin, fmax));
 }
 
 String
@@ -356,10 +386,13 @@ Parameter::value_to_text (const Value &value) const
 Value
 Parameter::value_from_text (const String &text) const
 {
-  if (is_choice() || is_text())
+  if (is_choice()) {
+    const ChoiceS choices = this->choices();
+    return int64_t (match_choice (choices, text));
+  }
+  if (is_text())
     return constrain (text).as_string();
-  else
-    return constrain (string_to_double (text));
+  return constrain (string_to_double (text));
 }
 
 // == guess_nick ==

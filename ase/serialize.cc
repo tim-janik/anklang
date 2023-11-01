@@ -20,7 +20,7 @@ Jsonipc::InstanceMap::Wrapper*
 Writ::InstanceMap::wrapper_from_json (const Jsonipc::JsonValue &value)
 {
   if (!value.IsNull())
-    warning ("Ase::Writ: non persistent object cannot resolve: %s*", Jsonipc::jsonvalue_to_string<Jsonipc::RELAXED> (value));
+    warning ("Ase::Writ: non persistent object cannot resolve: %s*", Jsonipc::jsonvalue_to_string (value));
   //return nullptr;
   return this->Jsonipc::InstanceMap::wrapper_from_json (value);
 }

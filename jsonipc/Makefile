@@ -10,7 +10,7 @@ OBJECTS  = testjsonipc.o
 DEFS     = -DSTANDALONE
 DEPS     = jsonipc.hh Makefile
 
-INCLUDES = -I../$(builddir)/external/
+INCLUDES = -I../external/rapidjson/include/
 
 $(OBJECTS): %.o: %.cc $(DEPS)
 	$(CXX) $(DEFS) $(CXXFLAGS) $(INCLUDES) -c $<
