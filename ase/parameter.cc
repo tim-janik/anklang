@@ -3,6 +3,7 @@
 #include "levenshtein.hh"
 #include "unicode.hh"
 #include "regex.hh"
+#include "mathutils.hh"
 #include "internal.hh"
 
 namespace Ase {
@@ -197,6 +198,24 @@ Parameter::constrain (const Value &value) const
   if (is_text())
     return value.as_string();
   // numeric
+  return dconstrain (value);
+}
+
+double
+Parameter::dconstrain (const Value &value) const
+{
+  // choices
+  if (is_choice()) {
+    const ChoiceS choices = this->choices();
+    if (value.is_numeric()) {
+      int64_t i = value.as_int();
+      if (i >= 0 && i < choices.size())
+        return i;
+    }
+    const size_t selected = value.is_string() ? match_choice (choices, value.as_string()) : 0;
+    return choices.size() ? selected : initial_.is_numeric() ? initial_.as_double() : 0;
+  }
+  // numeric
   double val = value.as_double();
   const auto [fmin, fmax, step] = range();
   if (std::abs (fmax - fmin) < F32EPS)
@@ -204,9 +223,11 @@ Parameter::constrain (const Value &value) const
   val = std::max (val, fmin);
   val = std::min (val, fmax);
   if (step > F32EPS && has_hint ("stepped")) {
-    double t = val - fmin;
-    t /= step;
-    t = std::round (t);
+    // round halfway cases down, so:
+    // 0 -> -0.5…+0.5 yields -0.5
+    // 1 -> -0.5…+0.5 yields +0.5
+    constexpr const auto nearintoffset = 0.5 - DOUBLE_EPSILON; // round halfway case down
+    const double t = std::floor ((val - fmin) / step + nearintoffset);
     val = fmin + t * step;
     val = std::min (val, fmax);
   }

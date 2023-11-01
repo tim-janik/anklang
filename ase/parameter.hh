@@ -61,6 +61,7 @@ struct Parameter {
   double        normalize   (double val) const;
   double        rescale     (double t) const;
   Value         constrain   (const Value &value) const;
+  double        dconstrain  (const Value &value) const;
   void          initialsync (const Value &v);
   /*ctor*/      Parameter   () = default;
   /*ctor*/      Parameter   (const Param&);
