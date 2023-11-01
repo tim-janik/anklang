@@ -16,3 +16,6 @@
 [submodule "blobs4anklang"]
 	path = external/blobs4anklang
 	url = https://github.com/tim-janik/blobs4anklang.git
+[submodule "pandaresampler"]
+	path = external/pandaresampler
+	url = https://github.com/swesterfeld/pandaresampler.git

@@ -3,6 +3,7 @@
 #include "ase/midievent.hh"
 #include "devices/blepsynth/bleposc.hh"
 #include "devices/blepsynth/laddervcf.hh"
+#include "devices/blepsynth/skfilter.hh"
 #include "devices/blepsynth/linearsmooth.hh"
 #include "ase/internal.hh"
 
@@ -148,7 +149,11 @@ public:
         params_.delta  = (end_x - RATIO * (start_x - end_x)) * (1 - params_.factor);
       }
   }
-
+  bool
+  is_constant()
+  {
+    return state_ == State::SUSTAIN || state_ == State::DONE;
+  }
   float
   get_next()
   {
@@ -212,13 +217,21 @@ class BlepSynth : public AudioProcessor {
   };
   OscParams osc_params[2];
   ParamId pid_mix_;
+  ParamId pid_vel_track_;
+  ParamId pid_post_gain_;
 
   ParamId pid_cutoff_;
-  Logscale cutoff_logscale_;
   ParamId pid_resonance_;
   ParamId pid_drive_;
   ParamId pid_key_track_;
-  ParamId pid_mode_;
+  ParamId pid_filter_type_;
+  ParamId pid_ladder_mode_;
+  ParamId pid_skfilter_mode_;
+
+  enum { FILTER_TYPE_BYPASS, FILTER_TYPE_LADDER, FILTER_TYPE_SKFILTER };
+
+  static constexpr int CUTOFF_MIN_MIDI = 15;
+  static constexpr int CUTOFF_MAX_MIDI = 144;
 
   ParamId pid_attack_;
   ParamId pid_decay_;
@@ -248,6 +261,8 @@ class BlepSynth : public AudioProcessor {
     int          midi_note_   = -1;
     int          channel_     = 0;
     double       freq_        = 0;
+    float        vel_gain_    = 0;
+    bool         new_voice_   = false;
 
     LinearSmooth cutoff_smooth_;
     double       last_cutoff_;
@@ -256,9 +271,19 @@ class BlepSynth : public AudioProcessor {
     LinearSmooth cut_mod_smooth_;
     double       last_cut_mod_;
 
+    LinearSmooth reso_smooth_;
+    double       last_reso_;
+
+    LinearSmooth drive_smooth_;
+    double       last_drive_;
+
     BlepUtils::OscImpl osc1_;
     BlepUtils::OscImpl osc2_;
-    LadderVCFNonLinear vcf_;
+
+    static constexpr int FILTER_OVERSAMPLE = 4;
+
+    LadderVCF ladder_filter_ { FILTER_OVERSAMPLE };
+    SKFilter  skfilter_ { FILTER_OVERSAMPLE };
   };
   std::vector<Voice>    voices_;
   std::vector<Voice *>  active_voices_;
@@ -288,23 +313,11 @@ class BlepSynth : public AudioProcessor {
 
     oscparams (0);
 
-    start_group ("Filter");
-
-    const double FsharpHz = 440 * ::pow (2, 9 / 12.);
-    const double freq_lo = FsharpHz / ::pow (2, 5);
-    const double freq_hi = FsharpHz * ::pow (2, 5);
-    pid_cutoff_ = add_param ("Cutoff", "Cutoff", freq_lo, freq_hi, FsharpHz, "Hz", STANDARD);
-    cutoff_logscale_.setup (freq_lo, freq_hi);
-    pid_resonance_ = add_param ("Resonance", "Reso", 0, 100, 25.0, "%");
-    pid_drive_ = add_param ("Drive", "Drive", -24, 36, 0, "dB");
-    pid_key_track_ = add_param ("Key Tracking", "KeyTr", 0, 100, 50, "%");
-    ChoiceS choices;
-    choices += {  "—"_uc, "Bypass Filter" };
-    choices += { "L1"_uc, "1 Pole Lowpass, 6dB/Octave" };
-    choices += { "L2"_uc, "2 Pole Lowpass, 12dB/Octave" };
-    choices += { "L3"_uc, "3 Pole Lowpass, 18dB/Octave" };
-    choices += { "L4"_uc, "4 Pole Lowpass, 24dB/Octave" };
-    pid_mode_ = add_param ("Filter Mode", "Mode", std::move (choices), 2, "", "Ladder Filter Mode to be used");
+    start_group ("Mix");
+    pid_mix_ = add_param ("Mix", "Mix", 0, 100, 0, "%");
+    pid_vel_track_ = add_param ("Velocity Tracking", "VelTr", 0, 100, 50, "%");
+    // TODO: this probably should default to 0dB once we have track/mixer volumes
+    pid_post_gain_ = add_param ("Post Gain", "Gain", -24, 24, -12, "dB");
 
     oscparams (1);
 
@@ -314,15 +327,50 @@ class BlepSynth : public AudioProcessor {
     pid_sustain_ = add_param ("Sustain", "S", 0, 100, 50.0, "%");
     pid_release_ = add_param ("Release", "R", 0, 100, 30.0, "%");
 
+    start_group ("Filter");
+
+    pid_cutoff_ = add_param ("Cutoff", "Cutoff", CUTOFF_MIN_MIDI, CUTOFF_MAX_MIDI, 60); // cutoff as midi notes
+    pid_resonance_ = add_param ("Resonance", "Reso", 0, 100, 25.0, "%");
+    pid_drive_ = add_param ("Drive", "Drive", -24, 36, 0, "dB");
+    pid_key_track_ = add_param ("Key Tracking", "KeyTr", 0, 100, 50, "%");
+    ChoiceS filter_type_choices;
+    filter_type_choices += { "—"_uc, "Bypass Filter" };
+    filter_type_choices += { "LD"_uc, "Ladder Filter" };
+    filter_type_choices += { "SKF"_uc, "Sallen-Key Filter" };
+    pid_filter_type_ = add_param ("Filter Type", "Type", std::move (filter_type_choices), FILTER_TYPE_LADDER, "", "Filter Type to be used");
+
+    ChoiceS ladder_mode_choices;
+    ladder_mode_choices += { "LP1"_uc, "1 Pole Lowpass, 6dB/Octave" };
+    ladder_mode_choices += { "LP2"_uc, "2 Pole Lowpass, 12dB/Octave" };
+    ladder_mode_choices += { "LP3"_uc, "3 Pole Lowpass, 18dB/Octave" };
+    ladder_mode_choices += { "LP4"_uc, "4 Pole Lowpass, 24dB/Octave" };
+    pid_ladder_mode_ = add_param ("Filter Mode", "Mode", std::move (ladder_mode_choices), 1, "", "Ladder Filter Mode to be used");
+
+    ChoiceS skfilter_mode_choices;
+    skfilter_mode_choices += { "LP1"_uc, "1 Pole Lowpass, 6dB/Octave" };
+    skfilter_mode_choices += { "LP2"_uc, "2 Pole Lowpass, 12dB/Octave" };
+    skfilter_mode_choices += { "LP3"_uc, "3 Pole Lowpass, 18dB/Octave" };
+    skfilter_mode_choices += { "LP4"_uc, "4 Pole Lowpass, 24dB/Octave" };
+    skfilter_mode_choices += { "LP6"_uc, "6 Pole Lowpass, 36dB/Octave" };
+    skfilter_mode_choices += { "LP8"_uc, "8 Pole Lowpass, 48dB/Octave" };
+    skfilter_mode_choices += { "BP2"_uc, "2 Pole Bandpass, 6dB/Octave" };
+    skfilter_mode_choices += { "BP4"_uc, "4 Pole Bandpass, 12dB/Octave" };
+    skfilter_mode_choices += { "BP6"_uc, "6 Pole Bandpass, 18dB/Octave" };
+    skfilter_mode_choices += { "BP8"_uc, "8 Pole Bandpass, 24dB/Octave" };
+    skfilter_mode_choices += { "HP1"_uc, "1 Pole Highpass, 6dB/Octave" };
+    skfilter_mode_choices += { "HP2"_uc, "2 Pole Highpass, 12dB/Octave" };
+    skfilter_mode_choices += { "HP3"_uc, "3 Pole Highpass, 18dB/Octave" };
+    skfilter_mode_choices += { "HP4"_uc, "4 Pole Highpass, 24dB/Octave" };
+    skfilter_mode_choices += { "HP6"_uc, "6 Pole Highpass, 36dB/Octave" };
+    skfilter_mode_choices += { "HP8"_uc, "8 Pole Highpass, 48dB/Octave" };
+    pid_skfilter_mode_ = add_param ("SKFilter Mode", "Mode", std::move (skfilter_mode_choices), 2, "", "Sallen-Key Filter Mode to be used");
+
     start_group ("Filter Envelope");
     pid_fil_attack_   = add_param ("Attack",  "A", 0, 100, 40, "%");
     pid_fil_decay_    = add_param ("Decay",   "D", 0, 100, 55, "%");
     pid_fil_sustain_  = add_param ("Sustain", "S", 0, 100, 30, "%");
     pid_fil_release_  = add_param ("Release", "R", 0, 100, 30, "%");
     pid_fil_cut_mod_  = add_param ("Env Cutoff Modulation", "CutMod", -96, 96, 36, "semitones"); /* 8 octaves range */
-
-    start_group ("Mix");
-    pid_mix_ = add_param ("Mix", "Mix", 0, 100, 0, "%");
 
     start_group ("Keyboard Input");
     pid_c_ = add_param ("Main Input  1",  "C", false, GUIONLY);
@@ -389,6 +437,7 @@ class BlepSynth : public AudioProcessor {
   {
     set_max_voices (0);
     set_max_voices (32);
+    adjust_params (true);
   }
   void
   init_osc (BlepUtils::OscImpl& osc, float freq)
@@ -398,6 +447,18 @@ class BlepSynth : public AudioProcessor {
 #if 0
     osc.freq_mod_octaves  = properties->freq_mod_octaves;
 #endif
+  }
+  void
+  adjust_param (Id32 tag) override
+  {
+    if (tag == pid_filter_type_)
+      {
+        for (Voice *voice : active_voices_)
+          {
+            voice->ladder_filter_.reset();
+            voice->skfilter_.reset();
+          }
+      }
   }
   void
   update_osc (BlepUtils::OscImpl& osc, const OscParams& params)
@@ -435,8 +496,36 @@ class BlepSynth : public AudioProcessor {
       return string_format ("%.1f ms", ms);
     return string_format ("%.2f ms", ms);
   }
+  static String
+  hz_to_str (double hz)
+  {
+    if (hz > 10000)
+      return string_format ("%.1f kHz", hz / 1000);
+    if (hz > 1000)
+      return string_format ("%.2f kHz", hz / 1000);
+    if (hz > 100)
+      return string_format ("%.0f Hz", hz);
+    return string_format ("%.1f Hz", hz);
+  }
+  static float
+  velocity_to_gain (float velocity, float vel_track)
+  {
+    /* input: velocity  [0..1]
+     *        vel_track [0..1]
+     *
+     * convert, so that
+     *  - gain (0) is (1 - vel_track)^2
+     *  - gain (1) is 1
+     *  - sqrt(gain(velocity)) is a straight line
+     *
+     *  See Roger B. Dannenberg: The Interpretation of Midi Velocity
+     */
+    const float x = (1 - vel_track) + vel_track * velocity;
+
+    return x * x;
+  }
   void
-  note_on (int channel, int midi_note, int vel)
+  note_on (int channel, int midi_note, float vel)
   {
     Voice *voice = alloc_voice();
     if (voice)
@@ -445,6 +534,7 @@ class BlepSynth : public AudioProcessor {
         voice->state_ = Voice::ON;
         voice->channel_ = channel;
         voice->midi_note_ = midi_note;
+        voice->vel_gain_ = velocity_to_gain (vel, get_param (pid_vel_track_) * 0.01);
 
         // Volume Envelope
         /* TODO: maybe use non-linear translation between level and sustain % */
@@ -471,8 +561,18 @@ class BlepSynth : public AudioProcessor {
 
         voice->osc1_.reset();
         voice->osc2_.reset();
-        voice->vcf_.reset();
-        voice->vcf_.set_rate (sample_rate());
+
+        const float cutoff_min_hz = convert_cutoff (CUTOFF_MIN_MIDI);
+        const float cutoff_max_hz = convert_cutoff (CUTOFF_MAX_MIDI);
+
+        voice->ladder_filter_.reset();
+        voice->ladder_filter_.set_rate (sample_rate());
+        voice->ladder_filter_.set_frequency_range (cutoff_min_hz, cutoff_max_hz);
+
+        voice->skfilter_.reset();
+        voice->skfilter_.set_rate (sample_rate());
+        voice->skfilter_.set_frequency_range (cutoff_min_hz, cutoff_max_hz);
+        voice->new_voice_ = true;
 
         voice->cutoff_smooth_.reset (sample_rate(), 0.020);
         voice->last_cutoff_ = -5000; // force reset
@@ -480,6 +580,12 @@ class BlepSynth : public AudioProcessor {
         voice->cut_mod_smooth_.reset (sample_rate(), 0.020);
         voice->last_cut_mod_ = -5000; // force reset
         voice->last_key_track_ = -5000;
+
+        voice->reso_smooth_.reset (sample_rate(), 0.020);
+        voice->last_reso_ = -5000; // force reset
+                                   //
+        voice->drive_smooth_.reset (sample_rate(), 0.020);
+        voice->last_drive_ = -5000; // force reset
       }
   }
   void
@@ -503,15 +609,128 @@ class BlepSynth : public AudioProcessor {
       {
         constexpr int channel = 0;
         if (value)
-          note_on (channel, note, 100);
+          note_on (channel, note, 100./127.);
         else
           note_off (channel, note);
         old_value = value;
       }
   }
   void
+  render_voice (Voice *voice, uint n_frames, float *mix_left_out, float *mix_right_out)
+  {
+    float osc1_left_out[n_frames];
+    float osc1_right_out[n_frames];
+    float osc2_left_out[n_frames];
+    float osc2_right_out[n_frames];
+
+    update_osc (voice->osc1_, osc_params[0]);
+    update_osc (voice->osc2_, osc_params[1]);
+    voice->osc1_.process_sample_stereo (osc1_left_out, osc1_right_out, n_frames);
+    voice->osc2_.process_sample_stereo (osc2_left_out, osc2_right_out, n_frames);
+
+    // apply volume envelope & mix
+    const float mix_norm = get_param (pid_mix_) * 0.01;
+    const float v1 = voice->vel_gain_ * (1 - mix_norm);
+    const float v2 = voice->vel_gain_ * mix_norm;
+    for (uint i = 0; i < n_frames; i++)
+      {
+        mix_left_out[i]  = osc1_left_out[i] * v1 + osc2_left_out[i] * v2;
+        mix_right_out[i] = osc1_right_out[i] * v1 + osc2_right_out[i] * v2;
+      }
+    /* --------- run filter - processing in place is ok --------- */
+    double cutoff = convert_cutoff (get_param (pid_cutoff_));
+    double key_track = get_param (pid_key_track_) * 0.01;
+
+    if (fabs (voice->last_cutoff_ - cutoff) > 1e-7 || fabs (voice->last_key_track_ - key_track) > 1e-7)
+      {
+        const bool reset = voice->last_cutoff_ < -1000;
+
+        // original strategy for key tracking: cutoff * exp (amount * log (key / 261.63))
+        // but since cutoff_smooth_ is already in log2-frequency space, we can do it better
+
+        voice->cutoff_smooth_.set (fast_log2 (cutoff) + key_track * fast_log2 (voice->freq_ / c3_hertz), reset);
+        voice->last_cutoff_ = cutoff;
+        voice->last_key_track_ = key_track;
+      }
+    double cut_mod = get_param (pid_fil_cut_mod_) / 12.; /* convert semitones to octaves */
+    if (fabs (voice->last_cut_mod_ - cut_mod) > 1e-7)
+      {
+        const bool reset = voice->last_cut_mod_ < -1000;
+
+        voice->cut_mod_smooth_.set (cut_mod, reset);
+        voice->last_cut_mod_ = cut_mod;
+      }
+    double resonance = get_param (pid_resonance_) * 0.01;
+    if (fabs (voice->last_reso_ - resonance) > 1e-7)
+      {
+        const bool reset = voice->last_reso_ < -1000;
+
+        voice->reso_smooth_.set (resonance, reset);
+        voice->last_reso_ = resonance;
+      }
+    double drive = get_param (pid_drive_);
+    if (fabs (voice->last_drive_ - drive) > 1e-7)
+      {
+        const bool reset = voice->last_drive_ < -1000;
+
+        voice->drive_smooth_.set (drive, reset);
+        voice->last_drive_ = drive;
+      }
+
+    auto filter_process_block = [&] (auto& filter)
+      {
+        auto gen_filter_input = [&] (float *freq_in, float *reso_in, float *drive_in, uint n_frames)
+          {
+            for (uint i = 0; i < n_frames; i++)
+              {
+                freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next() + voice->fil_envelope_.get_next() * voice->cut_mod_smooth_.get_next());
+                reso_in[i] = voice->reso_smooth_.get_next();
+                drive_in[i] = voice->drive_smooth_.get_next();
+              }
+          };
+
+        bool const_freq = voice->cutoff_smooth_.is_constant() && voice->fil_envelope_.is_constant() && voice->cut_mod_smooth_.is_constant();
+        bool const_reso = voice->reso_smooth_.is_constant();
+        bool const_drive = voice->drive_smooth_.is_constant();
+
+        if (const_freq && const_reso && const_drive)
+          {
+            /* use more efficient version of the filter computation if all parameters are constants */
+            float freq, reso, drive;
+            gen_filter_input (&freq, &reso, &drive, 1);
+
+            filter.set_freq (freq);
+            filter.set_reso (reso);
+            filter.set_drive (drive);
+            filter.process_block (n_frames, mix_left_out, mix_right_out);
+          }
+        else
+          {
+            /* generic version: pass per-sample values for freq, reso and drive */
+            float freq_in[n_frames], reso_in[n_frames], drive_in[n_frames];
+            gen_filter_input (freq_in, reso_in, drive_in, n_frames);
+
+            filter.process_block (n_frames, mix_left_out, mix_right_out, freq_in, reso_in, drive_in);
+          }
+      };
+
+    int filter_type = irintf (get_param (pid_filter_type_));
+    if (filter_type == FILTER_TYPE_LADDER)
+      {
+        voice->ladder_filter_.set_mode (LadderVCF::Mode (irintf (get_param (pid_ladder_mode_))));
+        filter_process_block (voice->ladder_filter_);
+      }
+    else if (filter_type == FILTER_TYPE_SKFILTER)
+      {
+        voice->skfilter_.set_mode (SKFilter::Mode (irintf (get_param (pid_skfilter_mode_))));
+        filter_process_block (voice->skfilter_);
+      }
+  }
+  void
   render (uint n_frames) override
   {
+    adjust_params (false);
+
     /* TODO: replace this with true midi input */
     check_note (pid_c_, old_c_, 60);
     check_note (pid_d_, old_d_, 62);
@@ -545,94 +764,34 @@ class BlepSynth : public AudioProcessor {
     floatfill (left_out, 0.f, n_frames);
     floatfill (right_out, 0.f, n_frames);
 
-    for (auto& voice : active_voices_)
+    for (Voice *voice : active_voices_)
       {
-        float osc1_left_out[n_frames];
-        float osc1_right_out[n_frames];
-        float osc2_left_out[n_frames];
-        float osc2_right_out[n_frames];
-
-        update_osc (voice->osc1_, osc_params[0]);
-        update_osc (voice->osc2_, osc_params[1]);
-        voice->osc1_.process_sample_stereo (osc1_left_out, osc1_right_out, n_frames);
-        voice->osc2_.process_sample_stereo (osc2_left_out, osc2_right_out, n_frames);
-
-        // apply volume envelope & mix
+        if (voice->new_voice_)
+          {
+            int filter_type = irintf (get_param (pid_filter_type_));
+            int idelay = 0;
+            if (filter_type == FILTER_TYPE_LADDER)
+              idelay = voice->ladder_filter_.delay();
+            if (filter_type == FILTER_TYPE_SKFILTER)
+              idelay = voice->skfilter_.delay();
+            if (idelay)
+              {
+                // compensate FIR oversampling filter latency
+                float junk[idelay];
+                render_voice (voice, idelay, junk, junk);
+              }
+            voice->new_voice_ = false;
+          }
         float mix_left_out[n_frames];
         float mix_right_out[n_frames];
-        const float mix_norm = get_param (pid_mix_) * 0.01;
-        const float v1 = 1 - mix_norm;
-        const float v2 = mix_norm;
-        for (uint i = 0; i < n_frames; i++)
-          {
-            mix_left_out[i]  = osc1_left_out[i] * v1 + osc2_left_out[i] * v2;
-            mix_right_out[i] = osc1_right_out[i] * v1 + osc2_right_out[i] * v2;
-          }
-        bool run_filter = true;
-        switch (irintf (get_param (pid_mode_)))
-          {
-          case 4: voice->vcf_.set_mode (LadderVCFMode::LP4);
-            break;
-          case 3: voice->vcf_.set_mode (LadderVCFMode::LP3);
-            break;
-          case 2: voice->vcf_.set_mode (LadderVCFMode::LP2);
-            break;
-          case 1: voice->vcf_.set_mode (LadderVCFMode::LP1);
-            break;
-          default: run_filter = false;
-            break;
-          }
-        /* --------- run ladder filter - processing in place is ok --------- */
 
-        /* TODO: under some conditions we could enable SSE in LadderVCF (alignment and block_size) */
-        const float *inputs[2]  = { mix_left_out, mix_right_out };
-        float       *outputs[2] = { mix_left_out, mix_right_out };
-        double cutoff = get_param (pid_cutoff_);
-        double resonance = get_param (pid_resonance_) * 0.01;
-        double key_track = get_param (pid_key_track_) * 0.01;
-
-        if (fabs (voice->last_cutoff_ - cutoff) > 1e-7 || fabs (voice->last_key_track_ - key_track) > 1e-7)
-          {
-            const bool reset = voice->last_cutoff_ < -1000;
-
-            // original strategy for key tracking: cutoff * exp (amount * log (key / 261.63))
-            // but since cutoff_smooth_ is already in log2-frequency space, we can do it better
-
-            voice->cutoff_smooth_.set (fast_log2 (cutoff) + key_track * fast_log2 (voice->freq_ / c3_hertz), reset);
-            voice->last_cutoff_ = cutoff;
-            voice->last_key_track_ = key_track;
-          }
-        double cut_mod = get_param (pid_fil_cut_mod_) / 12.; /* convert semitones to octaves */
-        if (fabs (voice->last_cut_mod_ - cut_mod) > 1e-7)
-          {
-            const bool reset = voice->last_cut_mod_ < -1000;
-
-            voice->cut_mod_smooth_.set (cut_mod, reset);
-            voice->last_cut_mod_ = cut_mod;
-          }
-        /* TODO: possible improvements:
-         *  - exponential smoothing (get rid of exp2f)
-         *  - don't do anything if cutoff_smooth_->steps_ == 0 (add accessor)
-         */
-        float freq_in[n_frames];
-        for (uint i = 0; i < n_frames; i++)
-          freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next() + voice->fil_envelope_.get_next() * voice->cut_mod_smooth_.get_next());
-        voice->vcf_.set_drive (get_param (pid_drive_));
-
-        float no_out[n_frames];
-        if (!run_filter)
-          {
-            // we keep running the filter even if it is disabled in order to have
-            // sane filter signal to switch to when the filter is enabled again
-            outputs[0] = no_out;
-            outputs[1] = no_out;
-          }
-        voice->vcf_.run_block (n_frames, cutoff, resonance, inputs, outputs, true, true, freq_in, nullptr, nullptr, nullptr);
+        render_voice (voice, n_frames, mix_left_out, mix_right_out);
 
         // apply volume envelope
+        float post_gain_factor = db2voltage (get_param (pid_post_gain_));
         for (uint i = 0; i < n_frames; i++)
           {
-            float amp = 0.25 * voice->envelope_.get_next();
+            float amp = post_gain_factor * voice->envelope_.get_next();
             left_out[i] += mix_left_out[i] * amp;
             right_out[i] += mix_right_out[i] * amp;
           }
@@ -644,6 +803,11 @@ class BlepSynth : public AudioProcessor {
       }
     if (need_free)
       free_unused_voices();
+  }
+  static double
+  convert_cutoff (double midi_note)
+  {
+    return 440 * std::pow (2, (midi_note - 69) / 12.);
   }
   std::string
   param_value_to_text (Id32 paramid, double value) const override
@@ -659,22 +823,10 @@ class BlepSynth : public AudioProcessor {
     for (auto p : { pid_attack_, pid_decay_, pid_release_, pid_fil_attack_, pid_fil_decay_, pid_fil_release_ })
       if (paramid == p)
         return perc_to_str (value);
+    if (paramid == pid_cutoff_)
+      return hz_to_str (convert_cutoff (value));
 
     return AudioProcessor::param_value_to_text (paramid, value);
-  }
-  double
-  value_to_normalized (Id32 paramid, double value) const override
-  {
-    if (paramid == pid_cutoff_)
-      return cutoff_logscale_.iscale (value);
-    return AudioProcessor::value_to_normalized (paramid, value);
-  }
-  double
-  value_from_normalized (Id32 paramid, double normalized) const override
-  {
-    if (paramid == pid_cutoff_)
-      return cutoff_logscale_.scale (normalized);
-    return AudioProcessor::value_from_normalized (paramid, normalized);
   }
 public:
   BlepSynth (AudioEngine &engine) :
