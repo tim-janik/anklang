@@ -9,7 +9,7 @@
     "monitor": "nodemon --ext '*' --watch $npm_package_config_srcdir/ui/ --delay 2500ms --on-change-only --exec 'npm run -s ui/rebuild' --exitcrash"
   },
   "dependencies": {
-    "vue": "=3.3.6"
+    "vue": "=3.3.7"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.22.15",
@@ -24,15 +24,15 @@
     "electron": "^27.0.2",
     "eslint": "^8.52.0",
     "eslint-plugin-html": "^7.1.0",
-    "eslint-plugin-lit": "^1.9.1",
+    "eslint-plugin-lit": "^1.10.1",
     "eslint-plugin-unused-imports": "^3.0.0",
-    "eslint-plugin-vue": "^9.17.0",
+    "eslint-plugin-vue": "^9.18.1",
     "fork-awesome": "^1.2.0",
     "icon-gen": "^4.0.0",
     "jsdoc": "^4.0.2",
     "jsdoc-api": "^8.0.0",
     "jsdoc-tsimport-plugin": "^1.0.5",
-    "lit": "^3.0.0",
+    "lit": "^3.0.1",
     "markdown-it": "^13.0.2",
     "material-icons": "^1.13.12",
     "mathjax": "^3.2.2",
@@ -50,13 +50,13 @@
     "postcss-nested": "^6.0.1",
     "postcss-normalize-charset": "^6.0.0",
     "postcss-scss": "^4.0.9",
-    "puppeteer-core": "^21.4.0",
+    "puppeteer-core": "^21.4.1",
     "puppeteer-in-electron": "^3.0.5",
-    "rollup": "^4.1.4",
-    "sass": "^1.69.4",
+    "rollup": "^4.2.0",
+    "sass": "^1.69.5",
     "stylelint": "^15.11.0",
     "stylelint-config-standard": "^34.0.0",
-    "terser": "^5.22.0",
+    "terser": "^5.24.0",
     "typescript": "^5.2.2",
     "zcam-js": "^0.0.9"
   }
