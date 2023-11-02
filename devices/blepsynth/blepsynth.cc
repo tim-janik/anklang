@@ -589,9 +589,6 @@ class BlepSynth : public AudioProcessor {
     set_max_voices (0);
     set_max_voices (32);
     adjust_params (true);
-
-    need_update_filter_envelope_ = false;
-    need_update_volume_envelope_ = false;
   }
   void
   init_osc (BlepUtils::OscImpl& osc, float freq)
