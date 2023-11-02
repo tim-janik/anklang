@@ -442,6 +442,69 @@ loft_calloc (size_t nelem, size_t elemsize, size_t align)
   return ptr;
 }
 
+static char*
+align_forward (const char *const ptr, const size_t alignment) noexcept
+{
+  const uintptr_t uiptr = uintptr_t (ptr);
+  const uintptr_t alptr = (uiptr + size_t (alignment - 1)) & -alignment;
+  return reinterpret_cast<char*> (alptr);
+}
+
+struct BoundaryTag {
+  char  *mem = nullptr;
+  size_t sz = 0;
+};
+
+/// Alloc in a fashion similar to malloc(), using boundary tags.
+void*
+Loft::AllocatorBase::loft_btalloc (const size_t size, const size_t type_align)
+{
+  if (ASE_UNLIKELY (no_allocators()))
+    return aligned_alloc (type_align, size);
+  size_t asize = size + sizeof (BoundaryTag);
+  const size_t minalign = std::max (size_t (64), std::max (2 * sizeof (void*), sizeof (BoundaryTag)));
+  assert_return (0 == (minalign & (minalign - 1)), {}); // require power of 2
+  if (minalign > 2 * sizeof (void*))
+    asize += minalign;
+  LoftBuckets &pool = the_pool();
+  LoftPtr<void> uptr = pool.do_alloc (asize, minalign);
+  if (!uptr) return {};
+  LoftFree lfree = uptr.get_deleter();
+  assert_return (lfree.size >= asize, {});
+  char *const mem = (char*) uptr.release();
+  char *const alptr = align_forward (1 + mem, minalign);
+  assert_return (0 == (uintptr_t (alptr) & (minalign -1)), {});
+  assert_return (alptr >= mem + sizeof (BoundaryTag), {});
+  assert_return (mem + asize >= alptr + size, {});
+  BoundaryTag *bt = (BoundaryTag*) (alptr - sizeof (BoundaryTag));
+  bt->mem = mem;
+  bt->sz = lfree.size;
+  // printerr ("BoundaryTag: alloc: mem=%p sz=%-7u ptr=%p\n", bt->mem, bt->sz, alptr);
+  return alptr;
+}
+
+/// Free memory allocted from loft_btalloc().
+void
+Loft::AllocatorBase::loft_btfree (void *const p, const size_t size)
+{
+  if (!p) return;
+  if (ASE_UNLIKELY (no_allocators()))
+    return free (p);
+  assert_return (uintptr_t (p) > sizeof (BoundaryTag));
+  const size_t minalign = std::max (size_t (64), sizeof (BoundaryTag));
+  assert_return (0 == (uintptr_t (p) & (minalign -1)));
+  const char *const alptr = reinterpret_cast<char*> (p);
+  BoundaryTag *bt = (BoundaryTag*) (alptr - sizeof (BoundaryTag));
+  assert_return (bt->mem != nullptr);
+  assert_return (bt->mem <= (char*) bt);
+  assert_return (bt->sz >= sizeof (BoundaryTag));
+  assert_return (0 == (bt->sz & (minalign - 1)));
+  assert_return (alptr + size <= bt->mem + bt->sz);
+  // printerr ("BoundaryTag: mfree: mem=%p sz=%-7u ptr=%p\n", bt->mem, bt->sz, alptr);
+  LoftBuckets &pool = the_pool();
+  pool.do_free (bt->mem, bt->sz);
+}
+
 size_t
 loft_bucket_size (size_t nbytes)
 {
@@ -716,6 +779,20 @@ loft_shuffle_thread_allocs()
   loft_get_stats (lstats);
   if (Test::verbose())
     printout ("Loft Stats:\n%s\n", loft_stats_string (lstats));
+}
+
+TEST_INTEGRITY (loft_allocator_tests);
+static void
+loft_allocator_tests()
+{
+  using Element = std::pair<double,uint64_t>;
+  {
+    std::vector<Element,Loft::Allocator<Element>> v1;
+    v1.resize (2099);
+    std::vector<char,Loft::Allocator<char>> v2;
+    for (auto sz : { 256, 512, 1024, 2048, 4*32768 })
+      v2.reserve (sz);
+  }
 }
 
 } // Anon
