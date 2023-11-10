@@ -210,7 +210,7 @@ GadgetImpl::property_bag ()
     Param param = prop.param;
     if (param.group.empty() && !group.empty())
       param.group = group;
-    this->props_.push_back (PropertyImpl::make_shared (prop.ident, param, prop.getter, prop.setter, prop.lister));
+    this->props_.push_back (PropertyImpl::make_shared (param, prop.getter, prop.setter, prop.lister));
     // PropertyImpl &property = *gadget_.props_.back();
   };
   return PropertyBag (add_prop);

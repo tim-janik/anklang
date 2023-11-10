@@ -9,6 +9,12 @@
 namespace Ase {
 
 // == Param ==
+Param::ExtraVals::ExtraVals (double vmin, double vmax, double step)
+{
+  using Base = std::variant<MinMaxStep,ChoiceS,ChoicesFunc>;
+  Base::operator= (MinMaxStep { vmin, vmax, step });
+}
+
 Param::ExtraVals::ExtraVals (const MinMaxStep &range)
 {
   using Base = std::variant<MinMaxStep,ChoiceS,ChoicesFunc>;
@@ -393,6 +399,37 @@ Parameter::value_from_text (const String &text) const
   if (is_text())
     return constrain (text).as_string();
   return constrain (string_to_double (text));
+}
+
+// == ParameterMap ==
+ParameterMap::Entry
+ParameterMap::operator[] (uint32_t id)
+{
+  return { *this, id };
+}
+
+void
+ParameterMap::Entry::operator= (const Param &param)
+{
+  const char *const FUNC = "ParameterMap::Entry::operator=";
+  std::map<uint32_t,ParameterC> &pmap = map;
+  ParameterC old = pmap[id];
+  if (old)
+    warning ("%s: reassign parameter '%s' with: %s\n", FUNC, old->ident(), param.ident);
+  else if (id > 0) {
+    auto it = pmap.find (id - 1);
+    if (it != pmap.end() && it->second) {
+      // catch erroneous CnP reuse
+      if (it->second->ident() == param.ident)
+        warning ("%s: duplicate %s: '%s' (param_id=%u)", FUNC, "ident", param.ident, id);
+      else if (it->second->label() == param.label)
+        warning ("%s: duplicate %s: '%s' (param_id=%u)", FUNC, "label", param.label, id);
+    }
+  }
+  Param mparam = param;
+  if (mparam.group.empty())
+    mparam.group = map.group;
+  pmap[id] = std::make_shared<Parameter> (mparam);
 }
 
 // == guess_nick ==

@@ -15,7 +15,7 @@ public:
   using DelCb = std::function<void()>;
   using StringValueF = std::function<void(const String&, const Value&)>;
   virtual   ~Preference ();
-  /*ctor*/   Preference (const CString &ident, const Param&, const StringValueF& = nullptr);
+  /*ctor*/   Preference (const Param&, const StringValueF& = nullptr);
   String     gets       () const               { return const_cast<Preference*> (this)->get_value().as_string(); }
   bool       getb       () const               { return const_cast<Preference*> (this)->get_value().as_int(); }
   int64      getn       () const               { return const_cast<Preference*> (this)->get_value().as_int(); }
@@ -48,7 +48,6 @@ using PropertyLister = std::function<ChoiceS (ParameterProperty&)>;
 
 /// Structured initializer for PropertyImpl
 struct Prop {
-  CString        ident;         ///< Valid NCName identifier.
   PropertyGetter getter;        ///< Lambda implementing the Property value getter.
   PropertySetter setter;        ///< Lambda implementing the Property value setter.
   Param          param;         ///< Parameter meta data for this Property.
@@ -58,7 +57,7 @@ struct Prop {
 /// Property implementation for GadgetImpl, using lambdas as accessors.
 class PropertyImpl : public ParameterProperty {
   PropertyGetter getter_; PropertySetter setter_; PropertyLister lister_;
-  PropertyImpl (CString, const Param&, const PropertyGetter&, const PropertySetter&, const PropertyLister&);
+  PropertyImpl (const Param&, const PropertyGetter&, const PropertySetter&, const PropertyLister&);
 public:
   ASE_DEFINE_MAKE_SHARED (PropertyImpl);
   Value   get_value () override                 { Value v; getter_ (v); return v; }
