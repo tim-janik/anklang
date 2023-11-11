@@ -335,55 +335,25 @@ public:
 // - aliasing-free square/saw and similar sounds including hard sync
 class BlepSynth : public AudioProcessor {
   OBusId stereout_;
-  ParamId pid_c_, pid_d_, pid_e_, pid_f_, pid_g_;
-  bool    old_c_, old_d_, old_e_, old_f_, old_g_;
+  bool   old_c_, old_d_, old_e_, old_f_, old_g_;
 
-  struct OscParams {
-    ParamId shape;
-    ParamId pulse_width;
-    ParamId sub;
-    ParamId sub_width;
-    ParamId sync;
-    ParamId octave;
-    ParamId pitch;
-
-    ParamId unison_voices;
-    ParamId unison_detune;
-    ParamId unison_stereo;
+  enum ParamType : uint32_t {
+    OSC1_SHAPE = 1, OSC1_PULSE_WIDTH, OSC1_SUB, OSC1_SUB_WIDTH, OSC1_SYNC, OSC1_PITCH, OSC1_OCTAVE, OSC1_UNISON_VOICES, OSC1_UNISON_DETUNE, OSC1_UNISON_STEREO,
+    OSC2_SHAPE,     OSC2_PULSE_WIDTH, OSC2_SUB, OSC2_SUB_WIDTH, OSC2_SYNC, OSC2_PITCH, OSC2_OCTAVE, OSC2_UNISON_VOICES, OSC2_UNISON_DETUNE, OSC2_UNISON_STEREO,
+    VE_MODEL, ATTACK, DECAY, SUSTAIN, RELEASE, ATTACK_SLOPE, DECAY_SLOPE, RELEASE_SLOPE,
+    CUTOFF, RESONANCE, DRIVE, KEY_TRACK, FILTER_TYPE, LADDER_MODE, SKFILTER_MODE,
+    FIL_ATTACK, FIL_DECAY, FIL_SUSTAIN, FIL_RELEASE, FIL_CUT_MOD,
+    MIX, VEL_TRACK, POST_GAIN,
+    KEY_C, KEY_D, KEY_E, KEY_F, KEY_G,
   };
-  OscParams osc_params[2];
-  ParamId pid_mix_;
-  ParamId pid_vel_track_;
-  ParamId pid_post_gain_;
-
-  ParamId pid_cutoff_;
-  ParamId pid_resonance_;
-  ParamId pid_drive_;
-  ParamId pid_key_track_;
-  ParamId pid_filter_type_;
-  ParamId pid_ladder_mode_;
-  ParamId pid_skfilter_mode_;
 
   enum { FILTER_TYPE_BYPASS, FILTER_TYPE_LADDER, FILTER_TYPE_SKFILTER };
 
   static constexpr int CUTOFF_MIN_MIDI = 15;
   static constexpr int CUTOFF_MAX_MIDI = 144;
 
-  ParamId pid_attack_;
-  ParamId pid_decay_;
-  ParamId pid_sustain_;
-  ParamId pid_release_;
-  ParamId pid_ve_model_;
-  ParamId pid_attack_slope_;
-  ParamId pid_decay_slope_;
-  ParamId pid_release_slope_;
   bool    need_update_volume_envelope_;
 
-  ParamId pid_fil_attack_;
-  ParamId pid_fil_decay_;
-  ParamId pid_fil_sustain_;
-  ParamId pid_fil_release_;
-  ParamId pid_fil_cut_mod_;
   bool    need_update_filter_envelope_;
 
   class Voice
@@ -436,66 +406,71 @@ class BlepSynth : public AudioProcessor {
     using namespace MakeIcon;
     set_max_voices (32);
 
-    auto oscparams = [&] (int o) {
-      start_group (string_format ("Oscillator %d", o + 1));
-      osc_params[o].shape = add_param (string_format ("Osc %d Shape", o + 1), "Shape", -100, 100, 0, "%");
-      osc_params[o].pulse_width = add_param (string_format ("Osc %d Pulse Width", o + 1), "P.W", 0, 100, 50, "%");
-      osc_params[o].sub = add_param (string_format ("Osc %d Subharmonic", o + 1), "Sub", 0, 100, 0, "%");
-      osc_params[o].sub_width = add_param (string_format ("Osc %d Subharmonic Width", o + 1), "Sub.W", 0, 100, 50, "%");
-      osc_params[o].sync = add_param (string_format ("Osc %d Sync Slave", o + 1), "Sync", 0, 60, 0, "semitones");
+    ParameterMap pmap;
 
-      osc_params[o].pitch  = add_param (string_format ("Osc %d Pitch", o + 1), "Pitch", -7, 7, 0, "semitones");
-      osc_params[o].octave = add_param (string_format ("Osc %d Octave", o + 1), "Octave", -2, 3, 0, "octaves");
+    auto oscparams = [&] (int oscnum) {
+      const uint I = oscnum + 1;
+      const uint O = oscnum * (OSC2_SHAPE - OSC1_SHAPE);
+      const String o = string_format ("osc_%u_", I);
+      pmap.group = _("Oscillator %u", I);
+      pmap[O+OSC1_SHAPE]       = Param { o+"shape",       _("Osc %u Shape", I),             _("Shp%u", I),  0, "%", { -100, 100, }, };
+      pmap[O+OSC1_PULSE_WIDTH] = Param { o+"pulse_width", _("Osc %u Pulse Width", I),       _("PW%u", I),  50, "%", { 0, 100, }, };
+      pmap[O+OSC1_SUB]         = Param { o+"subharmonic", _("Osc %u Subharmonic", I),       _("Sub%u", I),  0, "%", { 0, 100, }, };
+      pmap[O+OSC1_SUB_WIDTH]   = Param { o+"subharmonic_width", _("Osc %u Subharmonic Width", I), _("SbW%u", I), 50, "%", { 0, 100, }, };
+      pmap[O+OSC1_SYNC]        = Param { o+"sync_slave",  _("Osc %u Sync Slave", I),        _("Syn%u", I),  0, "Semitones", { 0, 60, }, };
+
+      pmap[O+OSC1_PITCH]  = Param { o+"pitch",  _("Osc %u Pitch", I),  _("Pit%u", I), 0, "semitones", { -7, 7, }, };
+      pmap[O+OSC1_OCTAVE] = Param { o+"octave", _("Osc %u Octave", I), _("Oct%u", I), 0, "octaves",   { -2, 3, }, };
 
       /* TODO: unison_voices property should have stepping set to 1 */
-      osc_params[o].unison_voices = add_param (string_format ("Osc %d Unison Voices", o + 1), "Voices", 1, 16, 1, "voices");
-      osc_params[o].unison_detune = add_param (string_format ("Osc %d Unison Detune", o + 1), "Detune", 0.5, 50, 6, "%");
-      osc_params[o].unison_stereo = add_param (string_format ("Osc %d Unison Stereo", o + 1), "Stereo", 0, 100, 0, "%");
+      pmap[O+OSC1_UNISON_VOICES] = Param { o+"unison_voices", _("Osc %u Unison Voices", I), _("Voi%u", I), 1, "Voices", { 1, 16, }, };
+      pmap[O+OSC1_UNISON_DETUNE] = Param { o+"unison_detune", _("Osc %u Unison Detune", I), _("Dtu%u", I), 6, "%", { 0.5, 50, }, };
+      pmap[O+OSC1_UNISON_STEREO] = Param { o+"unison_stereo", _("Osc %u Unison Stereo", I), _("Ste%u", I), 0, "%", { 0, 100, }, };
     };
 
     oscparams (0);
 
-    start_group ("Mix");
-    pid_mix_ = add_param ("Mix", "Mix", 0, 100, 0, "%");
-    pid_vel_track_ = add_param ("Velocity Tracking", "VelTr", 0, 100, 50, "%");
-    // TODO: this probably should default to 0dB once we have track/mixer volumes
-    pid_post_gain_ = add_param ("Post Gain", "Gain", -24, 24, -12, "dB");
+    pmap.group = _("Mix");
+    pmap[MIX]       = Param { "mix", _("Mix"), _("Mix"), 0, "%", { 0, 100 }, };
+    pmap[VEL_TRACK] = Param { "vel_track", _("Velocity Tracking"), _("VelTr"), 50, "%", { 0, 100, }, };
+    // TODO: post_gain probably should default to 0dB once we have track/mixer volumes
+    pmap[POST_GAIN] = Param { "post_gain", _("Post Gain"), _("Gain"), -12, "dB", { -24, 24, }, };
 
     oscparams (1);
 
-    start_group ("Volume Envelope");
+    pmap.group = _("Volume Envelope");
     ChoiceS ve_model_cs;
     ve_model_cs += { "A", "Analog" };
     ve_model_cs += { "F", "Flexible" };
-    pid_ve_model_ = add_param ("Envelope Model", "Model", std::move (ve_model_cs), 0, "", "ADSR Model to be used");
+    pmap[VE_MODEL] = Param { "ve_model", _("Envelope Model"), _("Model"), 0, "", std::move (ve_model_cs), "", "ADSR Model to be used" };
 
-    pid_attack_  = add_param ("Attack",  "A", 0, 100, 20.0, "%");
-    pid_decay_   = add_param ("Decay",   "D", 0, 100, 30.0, "%");
-    pid_sustain_ = add_param ("Sustain", "S", 0, 100, 50.0, "%");
-    pid_release_ = add_param ("Release", "R", 0, 100, 30.0, "%");
+    pmap[ATTACK]  = Param { "attack",  _("Attack"),  _("A"), 20.0, "%", { 0, 100, }, };
+    pmap[DECAY]   = Param { "decay",   _("Decay"),   _("D"), 30.0, "%", { 0, 100, }, };
+    pmap[SUSTAIN] = Param { "sustain", _("Sustain"), _("S"), 50.0, "%", { 0, 100, }, };
+    pmap[RELEASE] = Param { "release", _("Release"), _("R"), 30.0, "%", { 0, 100, }, };
 
-    pid_attack_slope_ = add_param ("Attack Slope", "AS", -100, 100, 50, "%");
-    pid_decay_slope_ = add_param ("Decay Slope", "DS", -100, 100, -100, "%");
-    pid_release_slope_ = add_param ("Release Slope", "RS", -100, 100, -100, "%");
+    pmap[ATTACK_SLOPE]  = Param { "attack_slope", _("Attack Slope"), _("AS"), 50, "%", { -100, 100, }, };
+    pmap[DECAY_SLOPE]   = Param { "decay_slope", _("Decay Slope"), _("DS"), -100, "%", { -100, 100, }, };
+    pmap[RELEASE_SLOPE] = Param { "release_slope", _("Release Slope"), _("RS"), -100, "%", { -100, 100, }, };
 
-    start_group ("Filter");
+    pmap.group = _("Filter");
 
-    pid_cutoff_ = add_param ("Cutoff", "Cutoff", CUTOFF_MIN_MIDI, CUTOFF_MAX_MIDI, 60); // cutoff as midi notes
-    pid_resonance_ = add_param ("Resonance", "Reso", 0, 100, 25.0, "%");
-    pid_drive_ = add_param ("Drive", "Drive", -24, 36, 0, "dB");
-    pid_key_track_ = add_param ("Key Tracking", "KeyTr", 0, 100, 50, "%");
+    pmap[CUTOFF]    = Param { "cutoff", _("Cutoff"), _("Cutoff"), 60, "", { CUTOFF_MIN_MIDI, CUTOFF_MAX_MIDI, }, }; // cutoff as midi notes
+    pmap[RESONANCE] = Param { "resonance", _("Resonance"), _("Reso"), 25.0, "%", { 0, 100, }, };
+    pmap[DRIVE]     = Param { "drive", _("Drive"), _("Drive"), 0, "dB", { -24, 36, }, };
+    pmap[KEY_TRACK] = Param { "key_tracking", _("Key Tracking"), _("KeyTr"), 50, "%", { 0, 100, }, };
     ChoiceS filter_type_choices;
     filter_type_choices += { "—"_uc, "Bypass Filter" };
     filter_type_choices += { "LD"_uc, "Ladder Filter" };
     filter_type_choices += { "SKF"_uc, "Sallen-Key Filter" };
-    pid_filter_type_ = add_param ("Filter Type", "Type", std::move (filter_type_choices), FILTER_TYPE_LADDER, "", "Filter Type to be used");
+    pmap[FILTER_TYPE] = Param { "filter_type", _("Filter Type"), _("Type"), FILTER_TYPE_LADDER, "", std::move (filter_type_choices), "", _("Filter Type to be used") };
 
     ChoiceS ladder_mode_choices;
     ladder_mode_choices += { "LP1"_uc, "1 Pole Lowpass, 6dB/Octave" };
     ladder_mode_choices += { "LP2"_uc, "2 Pole Lowpass, 12dB/Octave" };
     ladder_mode_choices += { "LP3"_uc, "3 Pole Lowpass, 18dB/Octave" };
     ladder_mode_choices += { "LP4"_uc, "4 Pole Lowpass, 24dB/Octave" };
-    pid_ladder_mode_ = add_param ("Filter Mode", "Mode", std::move (ladder_mode_choices), 1, "", "Ladder Filter Mode to be used");
+    pmap[LADDER_MODE] = Param { "ladder_mode", _("Filter Mode"), _("Mode"), 1, "", std::move (ladder_mode_choices), "", "Ladder Filter Mode to be used" };
 
     ChoiceS skfilter_mode_choices;
     skfilter_mode_choices += { "LP1"_uc, "1 Pole Lowpass, 6dB/Octave" };
@@ -514,22 +489,24 @@ class BlepSynth : public AudioProcessor {
     skfilter_mode_choices += { "HP4"_uc, "4 Pole Highpass, 24dB/Octave" };
     skfilter_mode_choices += { "HP6"_uc, "6 Pole Highpass, 36dB/Octave" };
     skfilter_mode_choices += { "HP8"_uc, "8 Pole Highpass, 48dB/Octave" };
-    pid_skfilter_mode_ = add_param ("SKFilter Mode", "Mode", std::move (skfilter_mode_choices), 2, "", "Sallen-Key Filter Mode to be used");
+    pmap[SKFILTER_MODE] = Param { "skfilter_mode", _("SKFilter Mode"), _("Mode"), 2, "", std::move (skfilter_mode_choices), "", "Sallen-Key Filter Mode to be used" };
 
-    start_group ("Filter Envelope");
-    pid_fil_attack_   = add_param ("Attack",  "A", 0, 100, 40, "%");
-    pid_fil_decay_    = add_param ("Decay",   "D", 0, 100, 55, "%");
-    pid_fil_sustain_  = add_param ("Sustain", "S", 0, 100, 30, "%");
-    pid_fil_release_  = add_param ("Release", "R", 0, 100, 30, "%");
-    pid_fil_cut_mod_  = add_param ("Env Cutoff Modulation", "CutMod", -96, 96, 36, "semitones"); /* 8 octaves range */
+    pmap.group = _("Filter Envelope");
+    pmap[FIL_ATTACK]  = Param { "fil_attack", _("Attack"), _("A"), 40, "%", { 0, 100, }, };
+    pmap[FIL_DECAY]   = Param { "fil_decay", _("Decay"), _("D"), 55, "%", { 0, 100, }, };
+    pmap[FIL_SUSTAIN] = Param { "fil_sustain", _("Sustain"), _("S"), 30, "%", { 0, 100, }, };
+    pmap[FIL_RELEASE] = Param { "fil_release", _("Release"), _("R"), 30, "%", { 0, 100, }, };
+    pmap[FIL_CUT_MOD] = Param { "fil_cut_mod", _("Env Cutoff Modulation"), _("CutMod"), 36, "semitones", { -96, 96, }, }; /* 8 octaves range */
 
-    start_group ("Keyboard Input");
-    pid_c_ = add_param ("Main Input  1",  "C", false, GUIONLY);
-    pid_d_ = add_param ("Main Input  2",  "D", false, GUIONLY);
-    pid_e_ = add_param ("Main Input  3",  "E", false, GUIONLY);
-    pid_f_ = add_param ("Main Input  4",  "F", false, GUIONLY);
-    pid_g_ = add_param ("Main Input  5",  "G", false, GUIONLY);
+    pmap.group = _("Keyboard Input");
+    pmap[KEY_C] = Param { "c", _("Main Input 1"), _("C"), false, "", {}, GUIONLY + ":toggle" };
+    pmap[KEY_D] = Param { "d", _("Main Input 2"), _("D"), false, "", {}, GUIONLY + ":toggle" };
+    pmap[KEY_E] = Param { "e", _("Main Input 3"), _("E"), false, "", {}, GUIONLY + ":toggle" };
+    pmap[KEY_F] = Param { "f", _("Main Input 4"), _("F"), false, "", {}, GUIONLY + ":toggle" };
+    pmap[KEY_G] = Param { "g", _("Main Input 5"), _("G"), false, "", {}, GUIONLY + ":toggle" };
     old_c_ = old_d_ = old_e_ = old_f_ = old_g_ = false;
+
+    install_params (pmap);
 
     prepare_event_input();
     stereout_ = add_output_bus ("Stereo Out", SpeakerArrangement::STEREO);
@@ -588,7 +565,7 @@ class BlepSynth : public AudioProcessor {
   {
     set_max_voices (0);
     set_max_voices (32);
-    adjust_params (true);
+    adjust_all_params();
   }
   void
   init_osc (BlepUtils::OscImpl& osc, float freq)
@@ -600,9 +577,9 @@ class BlepSynth : public AudioProcessor {
 #endif
   }
   void
-  adjust_param (Id32 tag) override
+  adjust_param (uint32_t tag) override
   {
-    if (tag == pid_filter_type_)
+    if (tag == FILTER_TYPE)
       {
         for (Voice *voice : active_voices_)
           {
@@ -610,40 +587,41 @@ class BlepSynth : public AudioProcessor {
             voice->skfilter_.reset();
           }
       }
-    if (tag == pid_attack_ || tag == pid_decay_ || tag == pid_sustain_ || tag == pid_release_ ||
-        tag == pid_attack_slope_ || tag == pid_decay_slope_ || tag == pid_release_slope_)
+    if (tag == ATTACK || tag == DECAY || tag == SUSTAIN || tag == RELEASE ||
+        tag == ATTACK_SLOPE || tag == DECAY_SLOPE || tag == RELEASE_SLOPE)
       {
         need_update_volume_envelope_ = true;
       }
-    if (tag == pid_fil_attack_ || tag == pid_fil_decay_ || tag == pid_fil_sustain_ || tag == pid_fil_release_)
+    if (tag == FIL_ATTACK || tag == FIL_DECAY || tag == FIL_SUSTAIN || tag == FIL_RELEASE)
       {
         need_update_filter_envelope_ = true;
       }
-    if (tag == pid_ve_model_)
+    if (tag == VE_MODEL)
       {
-        bool ve_has_slope = irintf (get_param (pid_ve_model_)) > 0; // exponential envelope has no slope parameters
+        bool ve_has_slope = irintf (get_param (VE_MODEL)) > 0; // exponential envelope has no slope parameters
 
-        set_parameter_used (pid_attack_slope_,  ve_has_slope);
-        set_parameter_used (pid_decay_slope_,   ve_has_slope);
-        set_parameter_used (pid_release_slope_, ve_has_slope);
+        set_parameter_used (ATTACK_SLOPE,  ve_has_slope);
+        set_parameter_used (DECAY_SLOPE,   ve_has_slope);
+        set_parameter_used (RELEASE_SLOPE, ve_has_slope);
       }
   }
   void
-  update_osc (BlepUtils::OscImpl& osc, const OscParams& params)
+  update_osc (BlepUtils::OscImpl& osc, int oscnum)
   {
-    osc.shape_base          = get_param (params.shape) * 0.01;
-    osc.pulse_width_base    = get_param (params.pulse_width) * 0.01;
-    osc.sub_base            = get_param (params.sub) * 0.01;
-    osc.sub_width_base      = get_param (params.sub_width) * 0.01;
-    osc.sync_base           = get_param (params.sync);
+    const uint O = oscnum * (OSC2_SHAPE - OSC1_SHAPE);
+    osc.shape_base          = get_param (O+OSC1_SHAPE) * 0.01;
+    osc.pulse_width_base    = get_param (O+OSC1_PULSE_WIDTH) * 0.01;
+    osc.sub_base            = get_param (O+OSC1_SUB) * 0.01;
+    osc.sub_width_base      = get_param (O+OSC1_SUB_WIDTH) * 0.01;
+    osc.sync_base           = get_param (O+OSC1_SYNC);
 
-    int octave = irintf (get_param (params.octave));
+    int octave = irintf (get_param (O+OSC1_OCTAVE));
     octave = CLAMP (octave, -2, 3);
-    osc.frequency_factor = fast_exp2 (octave + get_param (params.pitch) / 12.);
+    osc.frequency_factor = fast_exp2 (octave + get_param (O+OSC1_PITCH) / 12.);
 
-    int unison_voices = irintf (get_param (params.unison_voices));
+    int unison_voices = irintf (get_param (O+OSC1_UNISON_VOICES));
     unison_voices = CLAMP (unison_voices, 1, 16);
-    osc.set_unison (unison_voices, get_param (params.unison_detune), get_param (params.unison_stereo) * 0.01);
+    osc.set_unison (unison_voices, get_param (O+OSC1_UNISON_DETUNE), get_param (O+OSC1_UNISON_STEREO) * 0.01);
   }
   static double
   perc_to_s (double perc)
@@ -702,11 +680,11 @@ class BlepSynth : public AudioProcessor {
         voice->state_ = Voice::ON;
         voice->channel_ = channel;
         voice->midi_note_ = midi_note;
-        voice->vel_gain_ = velocity_to_gain (vel, get_param (pid_vel_track_) * 0.01);
+        voice->vel_gain_ = velocity_to_gain (vel, get_param (VEL_TRACK) * 0.01);
 
         // Volume Envelope
         /* TODO: maybe use non-linear translation between level and sustain % */
-        switch (irintf (get_param (pid_ve_model_)))
+        switch (irintf (get_param (VE_MODEL)))
           {
             case 0:   voice->envelope_.set_shape (FlexADSR::Shape::EXPONENTIAL);
                       break;
@@ -769,7 +747,7 @@ class BlepSynth : public AudioProcessor {
       }
   }
   void
-  check_note (ParamId pid, bool& old_value, int note)
+  check_note (ParamType pid, bool& old_value, int note)
   {
     const bool value = get_param (pid) > 0.5;
     if (value != old_value)
@@ -790,13 +768,13 @@ class BlepSynth : public AudioProcessor {
     float osc2_left_out[n_frames];
     float osc2_right_out[n_frames];
 
-    update_osc (voice->osc1_, osc_params[0]);
-    update_osc (voice->osc2_, osc_params[1]);
+    update_osc (voice->osc1_, 0);
+    update_osc (voice->osc2_, 1);
     voice->osc1_.process_sample_stereo (osc1_left_out, osc1_right_out, n_frames);
     voice->osc2_.process_sample_stereo (osc2_left_out, osc2_right_out, n_frames);
 
     // apply volume envelope & mix
-    const float mix_norm = get_param (pid_mix_) * 0.01;
+    const float mix_norm = get_param (MIX) * 0.01;
     const float v1 = voice->vel_gain_ * (1 - mix_norm);
     const float v2 = voice->vel_gain_ * mix_norm;
     for (uint i = 0; i < n_frames; i++)
@@ -805,8 +783,8 @@ class BlepSynth : public AudioProcessor {
         mix_right_out[i] = osc1_right_out[i] * v1 + osc2_right_out[i] * v2;
       }
     /* --------- run filter - processing in place is ok --------- */
-    double cutoff = convert_cutoff (get_param (pid_cutoff_));
-    double key_track = get_param (pid_key_track_) * 0.01;
+    double cutoff = convert_cutoff (get_param (CUTOFF));
+    double key_track = get_param (KEY_TRACK) * 0.01;
 
     if (fabs (voice->last_cutoff_ - cutoff) > 1e-7 || fabs (voice->last_key_track_ - key_track) > 1e-7)
       {
@@ -819,7 +797,7 @@ class BlepSynth : public AudioProcessor {
         voice->last_cutoff_ = cutoff;
         voice->last_key_track_ = key_track;
       }
-    double cut_mod = get_param (pid_fil_cut_mod_) / 12.; /* convert semitones to octaves */
+    double cut_mod = get_param (FIL_CUT_MOD) / 12.; /* convert semitones to octaves */
     if (fabs (voice->last_cut_mod_ - cut_mod) > 1e-7)
       {
         const bool reset = voice->last_cut_mod_ < -1000;
@@ -827,7 +805,7 @@ class BlepSynth : public AudioProcessor {
         voice->cut_mod_smooth_.set (cut_mod, reset);
         voice->last_cut_mod_ = cut_mod;
       }
-    double resonance = get_param (pid_resonance_) * 0.01;
+    double resonance = get_param (RESONANCE) * 0.01;
     if (fabs (voice->last_reso_ - resonance) > 1e-7)
       {
         const bool reset = voice->last_reso_ < -1000;
@@ -835,7 +813,7 @@ class BlepSynth : public AudioProcessor {
         voice->reso_smooth_.set (resonance, reset);
         voice->last_reso_ = resonance;
       }
-    double drive = get_param (pid_drive_);
+    double drive = get_param (DRIVE);
     if (fabs (voice->last_drive_ - drive) > 1e-7)
       {
         const bool reset = voice->last_drive_ < -1000;
@@ -886,20 +864,20 @@ class BlepSynth : public AudioProcessor {
           }
       };
 
-    int filter_type = irintf (get_param (pid_filter_type_));
+    int filter_type = irintf (get_param (FILTER_TYPE));
     if (filter_type == FILTER_TYPE_LADDER)
       {
-        voice->ladder_filter_.set_mode (LadderVCF::Mode (irintf (get_param (pid_ladder_mode_))));
+        voice->ladder_filter_.set_mode (LadderVCF::Mode (irintf (get_param (LADDER_MODE))));
         filter_process_block (voice->ladder_filter_);
       }
     else if (filter_type == FILTER_TYPE_SKFILTER)
       {
-        voice->skfilter_.set_mode (SKFilter::Mode (irintf (get_param (pid_skfilter_mode_))));
+        voice->skfilter_.set_mode (SKFilter::Mode (irintf (get_param (SKFILTER_MODE))));
         filter_process_block (voice->skfilter_);
       }
   }
   void
-  set_parameter_used (ParamId id, bool used)
+  set_parameter_used (uint32_t id, bool used)
   {
     // TODO: implement this function to enable/disable parameters in the gui
     // printf ("TODO: set parameter %d used flag to %s\n", int (id), used ? "true" : "false");
@@ -907,36 +885,27 @@ class BlepSynth : public AudioProcessor {
   void
   update_volume_envelope (Voice *voice)
   {
-    voice->envelope_.set_attack (perc_to_s (get_param (pid_attack_)));
-    voice->envelope_.set_decay (perc_to_s (get_param (pid_decay_)));
-    voice->envelope_.set_sustain (get_param (pid_sustain_));         /* percent */
-    voice->envelope_.set_release (perc_to_s (get_param (pid_release_)));
-    voice->envelope_.set_attack_slope (get_param (pid_attack_slope_) * 0.01);
-    voice->envelope_.set_decay_slope (get_param (pid_decay_slope_) * 0.01);
-    voice->envelope_.set_release_slope (get_param (pid_release_slope_) * 0.01);
+    voice->envelope_.set_attack (perc_to_s (get_param (ATTACK)));
+    voice->envelope_.set_decay (perc_to_s (get_param (DECAY)));
+    voice->envelope_.set_sustain (get_param (SUSTAIN));         /* percent */
+    voice->envelope_.set_release (perc_to_s (get_param (RELEASE)));
+    voice->envelope_.set_attack_slope (get_param (ATTACK_SLOPE) * 0.01);
+    voice->envelope_.set_decay_slope (get_param (DECAY_SLOPE) * 0.01);
+    voice->envelope_.set_release_slope (get_param (RELEASE_SLOPE) * 0.01);
   }
   void
   update_filter_envelope (Voice *voice)
   {
-    voice->fil_envelope_.set_attack (perc_to_s (get_param (pid_fil_attack_)));
-    voice->fil_envelope_.set_decay (perc_to_s (get_param (pid_fil_decay_)));
-    voice->fil_envelope_.set_sustain (get_param (pid_fil_sustain_));         /* percent */
-    voice->fil_envelope_.set_release (perc_to_s (get_param (pid_fil_release_)));
+    voice->fil_envelope_.set_attack (perc_to_s (get_param (FIL_ATTACK)));
+    voice->fil_envelope_.set_decay (perc_to_s (get_param (FIL_DECAY)));
+    voice->fil_envelope_.set_sustain (get_param (FIL_SUSTAIN));         /* percent */
+    voice->fil_envelope_.set_release (perc_to_s (get_param (FIL_RELEASE)));
   }
   void
   render (uint n_frames) override
   {
-    adjust_params (false);
-
-    /* TODO: replace this with true midi input */
-    check_note (pid_c_, old_c_, 60);
-    check_note (pid_d_, old_d_, 62);
-    check_note (pid_e_, old_e_, 64);
-    check_note (pid_f_, old_f_, 65);
-    check_note (pid_g_, old_g_, 67);
-
-    MidiEventRange erange = get_event_input();
-    for (const auto &ev : erange)
+    MidiEventInput evinput = midi_event_input();
+    for (const auto &ev : evinput)
       switch (ev.message())
         {
         case MidiMessage::NOTE_OFF:
@@ -950,8 +919,19 @@ class BlepSynth : public AudioProcessor {
             if (voice->state_ == Voice::ON && voice->channel_ == ev.channel)
               note_off (voice->channel_, voice->midi_note_);
           break;
+        case MidiMessage::PARAM_VALUE:
+          apply_event (ev);
+          adjust_param (ev.param);
+          break;
         default: ;
         }
+
+    /* TODO: replace this with true midi input */
+    check_note (KEY_C, old_c_, 60);
+    check_note (KEY_D, old_d_, 62);
+    check_note (KEY_E, old_e_, 64);
+    check_note (KEY_F, old_f_, 65);
+    check_note (KEY_G, old_g_, 67);
 
     assert_return (n_ochannels (stereout_) == 2);
     bool   need_free = false;
@@ -965,7 +945,7 @@ class BlepSynth : public AudioProcessor {
       {
         if (voice->new_voice_)
           {
-            int filter_type = irintf (get_param (pid_filter_type_));
+            int filter_type = irintf (get_param (FILTER_TYPE));
             int idelay = 0;
             if (filter_type == FILTER_TYPE_LADDER)
               idelay = voice->ladder_filter_.delay();
@@ -989,7 +969,7 @@ class BlepSynth : public AudioProcessor {
         if (need_update_volume_envelope_)
           update_volume_envelope (voice);
         voice->envelope_.process (volume_env, n_frames);
-        float post_gain_factor = db2voltage (get_param (pid_post_gain_));
+        float post_gain_factor = db2voltage (get_param (POST_GAIN));
         for (uint i = 0; i < n_frames; i++)
           {
             float amp = post_gain_factor * volume_env[i];
@@ -1013,27 +993,28 @@ class BlepSynth : public AudioProcessor {
     return 440 * std::pow (2, (midi_note - 69) / 12.);
   }
   std::string
-  param_value_to_text (Id32 paramid, double value) const override
+  param_value_to_text (uint32_t paramid, double value) const override
   {
     /* fake step=1 */
-    for (int o = 0; o < 2; o++)
+    for (int oscnum = 0; oscnum < 2; oscnum++)
       {
-        if (paramid == osc_params[o].unison_voices)
-          return string_format ("%d voices", irintf (value));
-        if (paramid == osc_params[o].octave)
-          return string_format ("%d octaves", irintf (value));
+        const uint O = oscnum * (OSC2_SHAPE - OSC1_SHAPE);
+        if (paramid == O+OSC1_UNISON_VOICES)
+          return string_format ("%d Voices", irintf (value));
+        if (paramid == O+OSC1_OCTAVE)
+          return string_format ("%d Octaves", irintf (value));
       }
-    for (auto p : { pid_attack_, pid_decay_, pid_release_, pid_fil_attack_, pid_fil_decay_, pid_fil_release_ })
+    for (auto p : { ATTACK, DECAY, RELEASE, FIL_ATTACK, FIL_DECAY, FIL_RELEASE })
       if (paramid == p)
         return perc_to_str (value);
-    if (paramid == pid_cutoff_)
+    if (paramid == CUTOFF)
       return hz_to_str (convert_cutoff (value));
 
     return AudioProcessor::param_value_to_text (paramid, value);
   }
 public:
-  BlepSynth (AudioEngine &engine) :
-    AudioProcessor (engine)
+  BlepSynth (const ProcessorSetup &psetup) :
+    AudioProcessor (psetup)
   {}
   static void
   static_info (AudioProcessorInfo &info)
