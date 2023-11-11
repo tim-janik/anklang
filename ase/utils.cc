@@ -118,6 +118,8 @@ diag_message (uint8 code, const std::string &message)
       __sync_synchronize();
       Ase::abort_msg.msg = msg.c_str();
       __sync_synchronize();
+      if (code == 'W')
+        return breakpoint();
       ::raise (SIGQUIT);        // evade apport
       ::abort();                // default action for SIGABRT is core dump
       ::_exit (-1);             // ensure noreturn
