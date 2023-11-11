@@ -225,9 +225,10 @@ IconString
 UcIcon (const String &unicode)
 {
   std::vector<uint32_t> codepoints;
-  if (utf8_to_unicode (unicode, codepoints) > 2 ||
+  if (utf8_to_unicode (unicode, codepoints) > 3 ||
       (codepoints.size() >= 1 && !unicode_is_character (codepoints[0])) ||
-      (codepoints.size() >= 2 && !unicode_is_character (codepoints[1])))
+      (codepoints.size() >= 2 && !unicode_is_character (codepoints[1])) ||
+      (codepoints.size() >= 3 && !unicode_is_character (codepoints[2])))
     warning ("%s: invalid icon unicode: '%s'", __func__, unicode);
   IconString is;
   is.assign (unicode);
