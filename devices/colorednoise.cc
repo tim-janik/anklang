@@ -85,8 +85,8 @@ class ColoredNoise : public AudioProcessor {
   bool      pink_ = true;
   enum Params { GAIN = 1, MONO, PINK };
 public:
-  ColoredNoise (AudioEngine &engine) :
-    AudioProcessor (engine)
+  ColoredNoise (const ProcessorSetup &psetup) :
+    AudioProcessor (psetup)
   {}
   static void
   static_info (AudioProcessorInfo &info)
@@ -100,17 +100,22 @@ public:
   void
   initialize (SpeakerArrangement busses) override
   {
-    start_group ("Noise Settings");
-    add_param (GAIN, "Gain",  "Gain", -96, 24, 0, "dB");
-    add_param (MONO, "Mono",  "Monophonic", false);
-    add_param (PINK, "Pink", "Pink Noise", true);
     remove_all_buses();
     stereout_ = add_output_bus ("Stereo Out", SpeakerArrangement::STEREO);
+
+    ParameterMap pmap;
+
+    pmap.group = _("Noise Settings");
+    pmap[GAIN] = Param { "gain", _("Gain"), _("Gain"), 0, "dB", { -96, 24, }, };
+    pmap[MONO] = Param { "mono", _("Monophonic"), _("Mono"), false };
+    pmap[PINK] = Param { "pink", _("Pink Noise"), _("Pink"), true };
+
+    install_params (pmap);
   }
   void
-  adjust_param (Id32 tag) override
+  adjust_param (uint32_t tag) override
   {
-    switch (Params (tag.id))
+    switch (Params (tag))
       {
       case GAIN:        gain_factor_ = db2amp (get_param (tag)); break;
       case MONO:        mono_ = get_param (tag);        break;
@@ -122,7 +127,7 @@ public:
   {
     pink0.reset();
     pink1.reset();
-    adjust_params (true);
+    adjust_all_params();
   }
   void render (uint n_frames) override;
   // optimize rendering variants via template argument
@@ -180,7 +185,7 @@ static const auto render_table = make_case_table<ColoredNoise::MASK> ([] (auto C
 void
 ColoredNoise::render (uint n_frames)
 {
-  adjust_params (false);
+  apply_input_events();
   float *out0 = oblock (stereout_, 0);
   float *out1 = oblock (stereout_, 1);
   const float gain = gain_factor_;
