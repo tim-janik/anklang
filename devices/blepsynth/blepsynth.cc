@@ -13,184 +13,320 @@ namespace {
 
 using namespace Ase;
 
-class Envelope
+class FlexADSR
 {
 public:
-  enum class Shape { EXPONENTIAL, LINEAR };
+  enum class Shape { FLEXIBLE, EXPONENTIAL, LINEAR };
 private:
-  /* values in seconds */
-  float delay_ = 0;
   float attack_ = 0;
-  float hold_ = 0;
+  float attack_slope_ = 0;
   float decay_ = 0;
-  float sustain_ = 0; /* <- percent */
-  float release_ = 0;
-
-  int delay_len_ = 0;
-  int attack_len_ = 0;
-  int hold_len_ = 0;
-  int decay_len_ = 0;
-  int release_len_ = 0;
+  float decay_slope_ = 0;
   float sustain_level_ = 0;
+  float release_ = 0;
+  float release_slope_ = 0;
+  float level_ = 0;
+  float release_start_ = 0;  /* initial level of release stage */
+  int   sustain_steps_ = 0;  /* sustain smoothing */
+  bool  params_changed_ = true;
+  int   rate_ = 48000;
 
-  enum class State { DELAY, ATTACK, HOLD, DECAY, SUSTAIN, RELEASE, DONE };
+  enum class State { ATTACK, DECAY, SUSTAIN, RELEASE, DONE };
 
   State state_ = State::DONE;
-  Shape shape_ = Shape::EXPONENTIAL;
+  Shape shape_ = Shape::LINEAR;
 
-  struct SlopeParams {
-    int len;
+  float a_ = 0;
+  float b_ = 0;
+  float c_ = 0;
 
-    double factor;
-    double delta;
-    double end;
-  } params_;
+  void
+  init_abc (float time_s, float slope)
+  {
+    bool positive = slope > 0;
+    slope = std::abs (slope);
 
-  double level_ = 0;
+    const float t1y = 0.5f + 0.25f * slope;
+
+    a_ = slope * ( 1.0135809670870777f + slope * (-1.2970447050283254f + slope *   7.2390617313972063f));
+    b_ = slope * (-5.8998946320566281f + slope * ( 5.7282487210570903f + slope * -15.525953208626062f));
+    c_ = 1 - (t1y * a_ + b_) * t1y;
+
+    if (!positive)
+      {
+        c_ += a_ + b_;
+        b_ = -2 * a_ - b_;
+      }
+
+    const float time_factor = 1 / (rate_ * time_s);
+    a_ *= time_factor;
+    b_ *= time_factor;
+    c_ *= time_factor;
+
+    /* abc so far is for:
+     *
+     *   y += a * y * y + b * y + c
+     *
+     * now to save one addition later on, we add one to b, and update y using
+     *
+     *   y = a * y * y + b * y + c
+     */
+    b_ += 1;
+  }
+
+  void
+  compute_slope_params (float seconds, float start_x, float end_x)
+  {
+    if (!params_changed_)
+      return;
+
+    int steps = std::max<int> (seconds * rate_, 1);
+
+    if (shape_ == Shape::LINEAR)
+      {
+        // linear
+        a_ = 0;
+        b_ = 1;
+        c_ = (end_x - start_x) / steps;
+      }
+    else if (shape_ == Shape::EXPONENTIAL)
+      {
+        /* exponential: true exponential decay doesn't ever reach zero;
+         * therefore we need to fade out early
+         */
+        const double RATIO = (state_ == State::ATTACK) ? 0.2 : 0.001;
+
+        const double f = -log ((RATIO + 1) / RATIO) / steps;
+        double factor = exp (f);
+        c_ = (end_x - RATIO * (start_x - end_x)) * (1 - factor);
+        b_ = factor;
+        a_ = 0;
+      }
+    else if (shape_ == Shape::FLEXIBLE)
+      {
+        auto pos_time = [] (auto x) { return std::max (x, 0.0001f); /* 0.1ms */ };
+        if (state_ == State::ATTACK)
+          {
+            init_abc (pos_time (attack_), attack_slope_);
+          }
+        else if (state_ == State::DECAY)
+          {
+            /* exact timing for linear decay slope */
+            float stretch = 1 / std::max (1 - sustain_level_, 0.01f);
+            init_abc (-pos_time (decay_ * stretch), decay_slope_);
+          }
+        else if (state_ == State::RELEASE)
+          {
+            init_abc (-pos_time (release_), release_slope_);
+
+            /* stretch abc parameters to match release time */
+            float l = std::max (release_start_, 0.01f);
+            a_ /= l;
+            c_ *= l;
+          }
+      }
+    params_changed_ = false;
+  }
 
 public:
   void
   set_shape (Shape shape)
   {
     shape_ = shape;
-  }
-  void
-  set_delay (float f)
-  {
-    delay_ = f;
+    params_changed_ = true;
   }
   void
   set_attack (float f)
   {
     attack_ = f;
+    params_changed_ = true;
   }
   void
-  set_hold (float f)
+  set_attack_slope (float f)
   {
-    hold_ = f;
+    attack_slope_ = f;
+    params_changed_ = true;
   }
   void
   set_decay (float f)
   {
     decay_ = f;
+    params_changed_ = true;
+  }
+  void
+  set_decay_slope (float f)
+  {
+    decay_slope_ = f;
+    params_changed_ = true;
   }
   void
   set_sustain (float f)
   {
-    sustain_ = f;
+    sustain_level_ = f * 0.01f;
+    params_changed_ = true;
   }
   void
   set_release (float f)
   {
     release_ = f;
+    params_changed_ = true;
   }
   void
-  start (int sample_rate)
+  set_release_slope (float f)
   {
-    delay_len_ = std::max (int (sample_rate * delay_), 1);
-    attack_len_ = std::max (int (sample_rate * attack_), 1);
-    hold_len_ = std::max (int (sample_rate * hold_), 1);
-    decay_len_ = std::max (int (sample_rate * decay_), 1);
-    sustain_level_ = std::clamp<float> (sustain_ * 0.01, 0, 1); // percent->level
-    release_len_ = std::max (int (sample_rate * release_), 1);
-
-    level_ = 0;
-    state_ = State::DELAY;
-
-    compute_slope_params (delay_len_, 0, 0, State::DELAY);
+    release_slope_ = f;
+    params_changed_ = true;
+  }
+  void
+  set_rate (int sample_rate)
+  {
+    rate_ = sample_rate;
+    params_changed_ = true;
+  }
+  void
+  start ()
+  {
+    level_          = 0;
+    state_          = State::ATTACK;
+    params_changed_ = true;
   }
   void
   stop()
   {
-    state_ = State::RELEASE;
-    compute_slope_params (release_len_, level_, 0, State::RELEASE);
+    state_          = State::RELEASE;
+    release_start_  = level_;
+    params_changed_ = true;
   }
-  bool
-  done()
-  {
-    return state_ == State::DONE;
-  }
+private:
+  template<State STATE, Shape SHAPE>
   void
-  compute_slope_params (int len, float start_x, float end_x, State param_state)
+  process (uint *iptr, float *samples, uint n_samples)
   {
-    params_.end = end_x;
+    uint i = *iptr;
 
-    if (param_state == State::ATTACK || param_state == State::DELAY || param_state == State::HOLD || shape_ == Shape::LINEAR)
+    const float a = a_;
+    const float b = b_;
+    const float c = c_;
+    const float sustain_level = sustain_level_;
+
+    float level = level_;
+
+    while (i < n_samples)
       {
-        // linear
-        params_.len    = len;
-        params_.delta  = (end_x - start_x) / params_.len;
-        params_.factor = 1;
-      }
-    else
-      {
-        assert_return (param_state == State::DECAY || param_state == State::RELEASE);
+        samples[i++] = level;
 
-        // exponential
+        if (SHAPE == Shape::FLEXIBLE)
+          level = (a * level + b) * level + c;
 
-        /* true exponential decay doesn't ever reach zero; therefore we need to
-         * fade out early
-         */
-        const double RATIO = 0.001; // -60dB or 0.1% of the original height;
+        if (SHAPE == Shape::EXPONENTIAL)
+          level = b * level + c;
 
-        /* compute iterative exponential decay parameters from inputs:
-         *
-         *   - len:           half life time
-         *   - RATIO:         target ratio (when should we reach zero)
-         *   - start_x/end_x: level at start/end of the decay slope
-         *
-         * iterative computation of next value (should be done params.len times):
-         *
-         *    value = value * params.factor + params.delta
-         */
-        const double f = -log ((RATIO + 1) / RATIO) / len;
-        params_.len    = len;
-        params_.factor = exp (f);
-        params_.delta  = (end_x - RATIO * (start_x - end_x)) * (1 - params_.factor);
-      }
-  }
-  bool
-  is_constant()
-  {
-    return state_ == State::SUSTAIN || state_ == State::DONE;
-  }
-  float
-  get_next()
-  {
-    if (state_ == State::SUSTAIN || state_ == State::DONE)
-      return level_;
+        if (SHAPE == Shape::LINEAR)
+          level += c;
 
-    level_ = level_ * params_.factor + params_.delta;
-    params_.len--;
-    if (!params_.len)
-      {
-        level_ = params_.end;
-
-        if (state_ == State::DELAY)
+        if (STATE == State::ATTACK && level > 1)
           {
-            compute_slope_params (attack_len_, 0, 1, State::ATTACK);
-            state_ = State::ATTACK;
+            level           = 1;
+            state_          = State::DECAY;
+            params_changed_ = true;
+            break;
           }
-        else if (state_ == State::ATTACK)
+        if (STATE == State::DECAY && level < sustain_level)
           {
-            compute_slope_params (hold_len_, 1, 1, State::HOLD);
-            state_ = State::HOLD;
+            state_          = State::SUSTAIN;
+            level           = sustain_level;
+            params_changed_ = true;
+            break;
           }
-        else if (state_ == State::HOLD)
-          {
-            compute_slope_params (decay_len_, 1, sustain_level_, State::DECAY);
-            state_ = State::DECAY;
-          }
-        else if (state_ == State::DECAY)
-          {
-            state_ = State::SUSTAIN;
-          }
-        else if (state_ == State::RELEASE)
+        if (STATE == State::RELEASE && level < 1e-5f)
           {
             state_ = State::DONE;
+            level = 0;
+            break;
           }
       }
-    return level_;
+    level_ = level;
+
+    *iptr = i;
+  }
+  template<State STATE>
+  void
+  process (uint *iptr, float *samples, uint n_samples)
+  {
+    if (shape_ == Shape::LINEAR)
+      process<STATE, Shape::LINEAR> (iptr, samples, n_samples);
+
+    if (shape_ == Shape::EXPONENTIAL)
+      process<STATE, Shape::EXPONENTIAL> (iptr, samples, n_samples);
+
+    if (shape_ == Shape::FLEXIBLE)
+      process<STATE, Shape::FLEXIBLE> (iptr, samples, n_samples);
+  }
+public:
+  void
+  process (float *samples, uint n_samples)
+  {
+    uint i = 0;
+    if (state_ == State::ATTACK)
+      {
+        compute_slope_params (attack_, 0, 1);
+        process<State::ATTACK> (&i, samples, n_samples);
+      }
+    if (state_ == State::DECAY)
+      {
+        compute_slope_params (decay_, 1, sustain_level_);
+        process<State::DECAY> (&i, samples, n_samples);
+      }
+    if (state_ == State::RELEASE)
+      {
+        compute_slope_params (release_, release_start_, 0);
+        process<State::RELEASE> (&i, samples, n_samples);
+      }
+    if (state_ == State::SUSTAIN)
+      {
+        if (params_changed_)
+          {
+            if (std::abs (sustain_level_ - level_) > 1e-5)
+              {
+                sustain_steps_ = std::max<int> (0.020f * rate_, 1);
+                c_ = (sustain_level_ - level_) / sustain_steps_;
+              }
+            else
+              {
+                sustain_steps_ = 0;
+              }
+            params_changed_ = false;
+          }
+        while (sustain_steps_ && i < n_samples) /* sustain smoothing */
+          {
+            samples[i++] = level_;
+            level_ += c_;
+            sustain_steps_--;
+            if (sustain_steps_ == 0)
+              level_ = sustain_level_;
+          }
+        while (i < n_samples)
+          samples[i++] = level_;
+      }
+    if (state_ == State::DONE)
+      {
+        while (i < n_samples)
+          samples[i++] = 0;
+      }
+  }
+  bool
+  is_constant() const
+  {
+    if (state_ == State::SUSTAIN)
+      {
+        return !params_changed_ && sustain_steps_ == 0;
+      }
+    return state_ == State::DONE;
+  }
+  bool
+  done() const
+  {
+    return state_ == State::DONE;
   }
 };
 
@@ -237,12 +373,18 @@ class BlepSynth : public AudioProcessor {
   ParamId pid_decay_;
   ParamId pid_sustain_;
   ParamId pid_release_;
+  ParamId pid_ve_model_;
+  ParamId pid_attack_slope_;
+  ParamId pid_decay_slope_;
+  ParamId pid_release_slope_;
+  bool    need_update_volume_envelope_;
 
   ParamId pid_fil_attack_;
   ParamId pid_fil_decay_;
   ParamId pid_fil_sustain_;
   ParamId pid_fil_release_;
   ParamId pid_fil_cut_mod_;
+  bool    need_update_filter_envelope_;
 
   class Voice
   {
@@ -255,8 +397,8 @@ class BlepSynth : public AudioProcessor {
     };
     // TODO : enum class MonoType
 
-    Envelope     envelope_;
-    Envelope     fil_envelope_;
+    FlexADSR     envelope_;
+    FlexADSR     fil_envelope_;
     State        state_       = IDLE;
     int          midi_note_   = -1;
     int          channel_     = 0;
@@ -322,10 +464,19 @@ class BlepSynth : public AudioProcessor {
     oscparams (1);
 
     start_group ("Volume Envelope");
+    ChoiceS ve_model_cs;
+    ve_model_cs += { "A", "Analog" };
+    ve_model_cs += { "F", "Flexible" };
+    pid_ve_model_ = add_param ("Envelope Model", "Model", std::move (ve_model_cs), 0, "", "ADSR Model to be used");
+
     pid_attack_  = add_param ("Attack",  "A", 0, 100, 20.0, "%");
     pid_decay_   = add_param ("Decay",   "D", 0, 100, 30.0, "%");
     pid_sustain_ = add_param ("Sustain", "S", 0, 100, 50.0, "%");
     pid_release_ = add_param ("Release", "R", 0, 100, 30.0, "%");
+
+    pid_attack_slope_ = add_param ("Attack Slope", "AS", -100, 100, 50, "%");
+    pid_decay_slope_ = add_param ("Decay Slope", "DS", -100, 100, -100, "%");
+    pid_release_slope_ = add_param ("Release Slope", "RS", -100, 100, -100, "%");
 
     start_group ("Filter");
 
@@ -459,6 +610,23 @@ class BlepSynth : public AudioProcessor {
             voice->skfilter_.reset();
           }
       }
+    if (tag == pid_attack_ || tag == pid_decay_ || tag == pid_sustain_ || tag == pid_release_ ||
+        tag == pid_attack_slope_ || tag == pid_decay_slope_ || tag == pid_release_slope_)
+      {
+        need_update_volume_envelope_ = true;
+      }
+    if (tag == pid_fil_attack_ || tag == pid_fil_decay_ || tag == pid_fil_sustain_ || tag == pid_fil_release_)
+      {
+        need_update_filter_envelope_ = true;
+      }
+    if (tag == pid_ve_model_)
+      {
+        bool ve_has_slope = irintf (get_param (pid_ve_model_)) > 0; // exponential envelope has no slope parameters
+
+        set_parameter_used (pid_attack_slope_,  ve_has_slope);
+        set_parameter_used (pid_decay_slope_,   ve_has_slope);
+        set_parameter_used (pid_release_slope_, ve_has_slope);
+      }
   }
   void
   update_osc (BlepUtils::OscImpl& osc, const OscParams& params)
@@ -538,23 +706,22 @@ class BlepSynth : public AudioProcessor {
 
         // Volume Envelope
         /* TODO: maybe use non-linear translation between level and sustain % */
-        voice->envelope_.set_delay (0);
-        voice->envelope_.set_attack (perc_to_s (get_param (pid_attack_)));
-        voice->envelope_.set_hold (0);
-        voice->envelope_.set_decay (perc_to_s (get_param (pid_decay_)));
-        voice->envelope_.set_sustain (get_param (pid_sustain_));         /* percent */
-        voice->envelope_.set_release (perc_to_s (get_param (pid_release_)));
-        voice->envelope_.start (sample_rate());
+        switch (irintf (get_param (pid_ve_model_)))
+          {
+            case 0:   voice->envelope_.set_shape (FlexADSR::Shape::EXPONENTIAL);
+                      break;
+            default:  voice->envelope_.set_shape (FlexADSR::Shape::FLEXIBLE);
+                      break;
+          }
+        update_volume_envelope (voice);
+        voice->envelope_.set_rate (sample_rate());
+        voice->envelope_.start();
 
         // Filter Envelope
-        voice->fil_envelope_.set_delay (0);
-        voice->fil_envelope_.set_attack (perc_to_s (get_param (pid_fil_attack_)));
-        voice->fil_envelope_.set_hold (0);
-        voice->fil_envelope_.set_decay (perc_to_s (get_param (pid_fil_decay_)));
-        voice->fil_envelope_.set_sustain (get_param (pid_fil_sustain_));         /* percent */
-        voice->fil_envelope_.set_release (perc_to_s (get_param (pid_fil_release_)));
-        voice->fil_envelope_.set_shape (Envelope::Shape::LINEAR);
-        voice->fil_envelope_.start (sample_rate());
+        voice->fil_envelope_.set_shape (FlexADSR::Shape::LINEAR);
+        update_filter_envelope (voice);
+        voice->fil_envelope_.set_rate (sample_rate());
+        voice->fil_envelope_.start();
 
         init_osc (voice->osc1_, voice->freq_);
         init_osc (voice->osc2_, voice->freq_);
@@ -679,11 +846,16 @@ class BlepSynth : public AudioProcessor {
 
     auto filter_process_block = [&] (auto& filter)
       {
+        if (need_update_filter_envelope_)
+          update_filter_envelope (voice);
+
         auto gen_filter_input = [&] (float *freq_in, float *reso_in, float *drive_in, uint n_frames)
           {
+            voice->fil_envelope_.process (freq_in, n_frames);
+
             for (uint i = 0; i < n_frames; i++)
               {
-                freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next() + voice->fil_envelope_.get_next() * voice->cut_mod_smooth_.get_next());
+                freq_in[i] = fast_exp2 (voice->cutoff_smooth_.get_next() + freq_in[i] * voice->cut_mod_smooth_.get_next());
                 reso_in[i] = voice->reso_smooth_.get_next();
                 drive_in[i] = voice->drive_smooth_.get_next();
               }
@@ -725,6 +897,31 @@ class BlepSynth : public AudioProcessor {
         voice->skfilter_.set_mode (SKFilter::Mode (irintf (get_param (pid_skfilter_mode_))));
         filter_process_block (voice->skfilter_);
       }
+  }
+  void
+  set_parameter_used (ParamId id, bool used)
+  {
+    // TODO: implement this function to enable/disable parameters in the gui
+    // printf ("TODO: set parameter %d used flag to %s\n", int (id), used ? "true" : "false");
+  }
+  void
+  update_volume_envelope (Voice *voice)
+  {
+    voice->envelope_.set_attack (perc_to_s (get_param (pid_attack_)));
+    voice->envelope_.set_decay (perc_to_s (get_param (pid_decay_)));
+    voice->envelope_.set_sustain (get_param (pid_sustain_));         /* percent */
+    voice->envelope_.set_release (perc_to_s (get_param (pid_release_)));
+    voice->envelope_.set_attack_slope (get_param (pid_attack_slope_) * 0.01);
+    voice->envelope_.set_decay_slope (get_param (pid_decay_slope_) * 0.01);
+    voice->envelope_.set_release_slope (get_param (pid_release_slope_) * 0.01);
+  }
+  void
+  update_filter_envelope (Voice *voice)
+  {
+    voice->fil_envelope_.set_attack (perc_to_s (get_param (pid_fil_attack_)));
+    voice->fil_envelope_.set_decay (perc_to_s (get_param (pid_fil_decay_)));
+    voice->fil_envelope_.set_sustain (get_param (pid_fil_sustain_));         /* percent */
+    voice->fil_envelope_.set_release (perc_to_s (get_param (pid_fil_release_)));
   }
   void
   render (uint n_frames) override
@@ -788,10 +985,14 @@ class BlepSynth : public AudioProcessor {
         render_voice (voice, n_frames, mix_left_out, mix_right_out);
 
         // apply volume envelope
+        float volume_env[n_frames];
+        if (need_update_volume_envelope_)
+          update_volume_envelope (voice);
+        voice->envelope_.process (volume_env, n_frames);
         float post_gain_factor = db2voltage (get_param (pid_post_gain_));
         for (uint i = 0; i < n_frames; i++)
           {
-            float amp = post_gain_factor * voice->envelope_.get_next();
+            float amp = post_gain_factor * volume_env[i];
             left_out[i] += mix_left_out[i] * amp;
             right_out[i] += mix_right_out[i] * amp;
           }
@@ -803,6 +1004,8 @@ class BlepSynth : public AudioProcessor {
       }
     if (need_free)
       free_unused_voices();
+    need_update_volume_envelope_ = false;
+    need_update_filter_envelope_ = false;
   }
   static double
   convert_cutoff (double midi_note)
