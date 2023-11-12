@@ -11,7 +11,7 @@ protected:
   AudioProcessorS  processors_;
   AudioProcessorP  eproc_;
   virtual void    reconnect          (size_t index, bool insertion) = 0;
-  explicit        AudioCombo         (AudioEngine &engine);
+  explicit        AudioCombo         (const ProcessorSetup&);
   virtual        ~AudioCombo         ();
 public:
   void            insert             (AudioProcessorP proc, ssize_t pos = ~size_t (0));
@@ -37,7 +37,7 @@ protected:
   void     reconnect         (size_t index, bool insertion) override;
   uint     chain_up          (AudioProcessor &pfirst, AudioProcessor &psecond);
 public:
-  explicit AudioChain        (AudioEngine &engine, SpeakerArrangement iobuses = SpeakerArrangement::STEREO);
+  explicit AudioChain        (const ProcessorSetup&, SpeakerArrangement iobuses = SpeakerArrangement::STEREO);
   virtual ~AudioChain        ();
   struct Probe { float dbspl = -192; };
   using ProbeArray = std::array<Probe,2>;
