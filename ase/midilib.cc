@@ -38,8 +38,8 @@ class MidiProducerImpl : public MidiProducerIface {
   std::vector<TickEvent> future_stack; // newest events at back()
   FastMemory::Block position_block_;
 public:
-  MidiProducerImpl (AudioEngine &engine) :
-    MidiProducerIface (engine)
+  MidiProducerImpl (const ProcessorSetup &psetup) :
+    MidiProducerIface (psetup)
   {
     position_block_ = SERVER->telemem_allocate (sizeof (Position));
     position_ = new (position_block_.block_start) Position {};
