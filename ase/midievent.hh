@@ -34,6 +34,7 @@ enum class MidiMessage : int32_t {
   OMNI_MODE_ON                  = 125,
   MONO_MODE_ON                  = 126,
   POLY_MODE_ON                  = 127,
+  PARAM_VALUE                   = 0x70,
   NOTE_OFF                      = 0x80,
   NOTE_ON                       = 0x90,
   AFTERTOUCH                    = 0xA0,
