@@ -102,6 +102,7 @@ public:
   void            start_threads_ml       ();
   void            stop_threads_ml        ();
   void            create_processors_ml   ();
+  String          engine_stats_string    (uint64_t stats) const;
 };
 
 static std::thread::id audio_engine_thread_id = {};
@@ -363,7 +364,7 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
           if (schedule_invalid_)
             {
               schedule_clear();
-              for (AudioProcessorP &proc :  oprocs_)
+              for (AudioProcessorP &proc : oprocs_)
                 proc->schedule_processor();
               schedule_invalid_ = false;
             }
@@ -515,6 +516,22 @@ AudioEngineThread::set_project (ProjectImplP project)
   // dtor of old runs here
 }
 
+String
+AudioEngineThread::engine_stats_string (uint64_t stats) const
+{
+  String s;
+  for (size_t i = 0; i < oprocs_.size(); i++) {
+    AudioProcessorInfo pinfo;
+    pinfo.label = "INTERNAL";
+    AudioProcessor::registry_foreach ([&] (const String &aseid, AudioProcessor::StaticInfo static_info) {
+      if (aseid == oprocs_[i]->aseid_)
+        static_info (pinfo); // TODO: this is a bit awkward to fetch AudioProcessorInfo for an AudioProcessor
+    });
+    s += string_format ("%s: %s (MUST_SCHEDULE)\n", pinfo.label, oprocs_[i]->debug_name());
+  }
+  return s;
+}
+
 ProjectImplP
 AudioEngineThread::get_project ()
 {
@@ -554,6 +571,15 @@ AudioEngine::~AudioEngine()
 {
   // some ref-counted objects keep AudioEngine& members around
   fatal_error ("AudioEngine must not be destroyed");
+}
+
+String
+AudioEngine::engine_stats (uint64_t stats) const
+{
+  String strstats;
+  const AudioEngineThread &engine_thread = static_cast<const AudioEngineThread&> (*this);
+  const_cast<AudioEngine*> (this)->synchronized_jobs += [&] () { strstats = engine_thread.engine_stats_string (stats); };
+  return strstats;
 }
 
 uint64
@@ -779,8 +805,8 @@ class EngineMidiInput : public AudioProcessor {
   }
 public:
   MidiDriverS midi_drivers_;
-  EngineMidiInput (AudioEngine &engine) :
-    AudioProcessor (engine)
+  EngineMidiInput (const ProcessorSetup &psetup) :
+    AudioProcessor (psetup)
   {}
 };
 

@@ -49,6 +49,7 @@ public:
   void                   queue_capture_start (CallbackS&, const String &filename, bool needsrunning);
   void                   queue_capture_stop  (CallbackS&);
   bool                   update_drivers      (const String &pcm, uint latency_ms, const StringS &midis);
+  String                 engine_stats        (uint64_t stats) const;
   static bool            thread_is_engine    () { return std::this_thread::get_id() == thread_id; }
   static const ThreadId &thread_id;
   // JobQueues
