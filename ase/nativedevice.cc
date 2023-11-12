@@ -48,16 +48,7 @@ NativeDeviceImpl::serialize (WritNode &xs)
 PropertyS
 NativeDeviceImpl::access_properties ()
 {
-  std::vector<const AudioProcessor::PParam*> pparams;
-  pparams.reserve (proc_->pparams_.size());
-  for (const AudioProcessor::PParam &p : proc_->pparams_)
-    pparams.push_back (&p);
-  std::sort (pparams.begin(), pparams.end(), [] (auto a, auto b) { return a->order() < b->order(); });
-  PropertyS pseq;
-  pseq.reserve (pparams.size());
-  for (const AudioProcessor::PParam *p : pparams)
-    pseq.push_back (proc_->access_property (p->id));
-  return pseq;
+  return proc_->access_properties();
 }
 
 void
