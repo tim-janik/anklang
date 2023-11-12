@@ -236,8 +236,8 @@ public:
   {
     info.label = "Anklang.Devices.ClapAudioProcessor";
   }
-  ClapAudioProcessor (AudioEngine &engine) :
-    AudioProcessor (engine)
+  ClapAudioProcessor (const ProcessorSetup &psetup) :
+    AudioProcessor (psetup)
   {}
   ~ClapAudioProcessor()
   {
