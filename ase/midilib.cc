@@ -120,7 +120,7 @@ public:
   {
     const AudioTransport &transport = this->transport();
     MidiEventRange evinp = get_event_input(); // treat MIDI input as MIDI through
-    MidiEventStream &evout = get_event_output(); // needs prepare_event_output()
+    MidiEventOutput &evout = get_event_output(); // needs prepare_event_output()
     const int64 begin_tick = transport.current_tick;
     const int64 end_tick = transport.current_tick + transport.sample_to_tick (n_frames);
     const int64 bpm = transport.current_bpm;

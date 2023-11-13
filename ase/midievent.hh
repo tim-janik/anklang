@@ -92,11 +92,11 @@ MidiEvent make_pitch_bend  (uint16 chnl, float val);
 MidiEvent make_param_value (uint param, double pvalue);
 
 /// A stream of writable MidiEvent structures.
-class MidiEventStream {
+class MidiEventOutput {
   std::vector<MidiEvent> events_; // TODO: use O(1) allocator
   friend class MidiEventRange;
 public:
-  explicit         MidiEventStream ();
+  explicit         MidiEventOutput ();
   void             append          (int16_t frame, const MidiEvent &event);
   const MidiEvent* begin           () const noexcept { return &*events_.begin(); }
   const MidiEvent* end             () const noexcept { return &*events_.end(); }
@@ -110,14 +110,14 @@ public:
   void             reserve         (size_t n)           { events_.reserve (n); }
 };
 
-/// A readonly view and iterator into an MidiEventStream.
+/// A readonly view and iterator into a MidiEventOutput.
 class MidiEventRange {
-  const MidiEventStream &estream_;
+  const MidiEventOutput &estream_;
 public:
   const MidiEvent* begin          () const  { return &*estream_.begin(); }
   const MidiEvent* end            () const  { return &*estream_.end(); }
   size_t           events_pending () const  { return estream_.size(); }
-  explicit         MidiEventRange (const MidiEventStream &estream);
+  explicit         MidiEventRange (const MidiEventOutput &estream);
 };
 
 /// Components of a MIDI note.

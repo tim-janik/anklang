@@ -400,7 +400,7 @@ public:
     return false;
   }
   uint
-  fetch_events (MidiEventStream&, double) override
+  fetch_events (MidiEventOutput&, double) override
   {
     return 0; // FIXME: needed?
   }
