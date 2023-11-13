@@ -46,7 +46,8 @@ queuemux_test()
   std::vector<Queue*> queue_ptrs;
   for (Queue &queue : queues)
     queue_ptrs.push_back (&queue);
-  QueueMultiplexer<N, Queue> mux (queue_ptrs.size(), &queue_ptrs[0]);
+  QueueMultiplexer<N, Queue::const_iterator> mux;
+  mux.assign (queue_ptrs.size(), &queue_ptrs[0]);
   int last = -2147483648;
   size_t sc = 0;
   while (mux.more())

@@ -9,19 +9,18 @@ namespace Ase {
 /// Multiplexer to pop from multiple Queues, while preserving priorities.
 /// Order for values at the same priority is unstable.
 /// Relies on unqualified calls to `Priority QueueMultiplexer_priority (const ValueType&)`.
-template<size_t MAXQUEUES, class Queue, class ValueType = typename Queue::value_type>
+template<size_t MAXQUEUES, class ForwardIterator>
+  requires std::forward_iterator<ForwardIterator>
 struct QueueMultiplexer {
+  using ValueType = decltype (*std::declval<ForwardIterator>());
   using Priority = decltype (QueueMultiplexer_priority (std::declval<const ValueType&>()));
-  struct Ptr { typename Queue::const_iterator it, end; };
+  struct Ptr { ForwardIterator it, end; };
   ssize_t  n_queues = 0, current = -1;
   Priority first = {}, next = {};
   std::array<Ptr, MAXQUEUES> ptrs;
-  QueueMultiplexer (size_t nqueues, Queue **queues)
-  {
-    assign (nqueues, queues);
-  }
-  bool
-  assign (size_t nqueues, Queue **queues)
+  QueueMultiplexer () {}
+  template<class IterableContainer> bool
+  assign (size_t nqueues, IterableContainer **queues)
   {
     n_queues = 0;
     ASE_ASSERT_RETURN (nqueues <= MAXQUEUES, false);
