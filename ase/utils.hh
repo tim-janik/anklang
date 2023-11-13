@@ -21,8 +21,8 @@ template<class... A> void printout          (const char *format, const A &...arg
 template<class... A> void printerr          (const char *format, const A &...args) ASE_PRINTF (1, 0);
 
 // == misc ==
-const char*                      ase_gettext (const String &untranslated);
-template<class... A> const char* ase_gettext (const char *format, const A &...args) ASE_PRINTF (1, 0);
+const char*                                ase_gettext (const String &untranslated);
+template<class A0, class... Ar> const char* ase_gettext (const char *format, const A0 &a0, const Ar &...restargs) ASE_PRINTF (1, 0);
 
 // == atquit ==
 void atquit_add       (std::function<void()> *func);
@@ -226,10 +226,10 @@ printerr (const char *format, const Args &...args)
 }
 
 /// Translate a string, using the ASE locale.
-template<class... Args> const char*
-ase_gettext (const char *format, const Args &...args)
+template<class A0, class... Ar> const char*
+ase_gettext (const char *format, const A0 &a0, const Ar &...restargs)
 {
-  return ase_gettext (string_format (format, args...));
+  return ase_gettext (string_format (format, a0, restargs...));
 }
 
 /// Auxillary algorithms brodly useful

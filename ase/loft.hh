@@ -76,6 +76,40 @@ void      loft_get_stats    (LoftStats &stats);
 /// Stringify LoftStats.
 String    loft_stats_string (const LoftStats &stats);
 
+namespace Loft {
+
+/// Internal Helper
+struct AllocatorBase {
+protected:
+  static void*  loft_btalloc    (size_t size, size_t align);
+  static void   loft_btfree     (void *p, size_t size);
+};
+
+/// Allocator for STL containers.
+template<typename T>
+class Allocator : AllocatorBase {
+public:
+  using value_type = T;
+  Allocator () noexcept = default;
+  template<typename U>
+  Allocator(const Allocator<U>& other) noexcept {}
+  bool
+  operator== (const Allocator<T> &o) const noexcept { return true; }
+  bool
+  operator!= (const Allocator<T> &o) const noexcept { return !this->operator== (o); }
+  constexpr void
+  deallocate (T *p, size_t n) noexcept { loft_btfree (p, n); }
+  [[nodiscard]] constexpr T*
+  allocate (std::size_t n)
+  {
+    void *const mem = loft_btalloc (n * sizeof (T), alignof (T));
+    if (!mem)
+      throw std::bad_alloc();
+    return reinterpret_cast<T*> (mem);
+  }
+};
+
+} // Loft
 
 // == implementations ==
 template<class T, class ...Args> inline LoftPtr<T>

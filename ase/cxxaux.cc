@@ -46,7 +46,7 @@ assertion_failed (const std::string &msg, const char *file, int line, const char
   else if (debug_key_enabled ("break"))
     breakpoint();
   if (ase_fatal_warnings)
-    raise (SIGQUIT);
+    return breakpoint();
 }
 
 VirtualBase::~VirtualBase()
