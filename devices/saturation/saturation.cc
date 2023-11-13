@@ -10,8 +10,7 @@ using namespace Ase;
 class Saturation : public AudioProcessor {
   IBusId stereoin;
   OBusId stereout;
-  SaturationDSP dleft;
-  SaturationDSP dright;
+  SaturationDSP saturation;
 public:
   Saturation (AudioEngine &engine) :
     AudioProcessor (engine)
@@ -52,27 +51,25 @@ public:
       return SaturationDSP::Mode::HARD_CLIP;
     if (m == 1)
       return SaturationDSP::Mode::TANH_TRUE;
-    return SaturationDSP::Mode::TANH_TABLE;
+    return SaturationDSP::Mode::TANH_CHEAP;
   }
   void
   adjust_param (Id32 tag) override
   {
     switch (Params (tag.id))
       {
-      case DRIVE:       dleft.set_factor (pow (2, get_param (DRIVE) / 6));
-                        dright.set_factor (pow (2, get_param (DRIVE) / 6));
+      case DRIVE:       saturation.set_drive (get_param (DRIVE), false);
                         return;
-      case MIX:         dleft.set_mix (get_param (MIX));
-                        dright.set_mix (get_param (MIX));
+      case MIX:         saturation.set_mix (get_param (MIX), false);
                         return;
-      case MODE:        dleft.set_mode (map_mode (get_param (MODE)));
-                        dright.set_mode (map_mode (get_param (MODE)));
+      case MODE:        saturation.set_mode (map_mode (get_param (MODE)));
                         return;
       }
   }
   void
   reset (uint64 target_stamp) override
   {
+    saturation.reset (sample_rate());
     adjust_params (true);
   }
   void
@@ -83,8 +80,7 @@ public:
     float *input1 = const_cast<float*> (ifloats (stereoin, 1));
     float *output0 = oblock (stereout, 0);
     float *output1 = oblock (stereout, 1);
-    dleft.process (input0, output0, n_frames);
-    dright.process (input1, output1, n_frames);
+    saturation.process<true> (input0, input1, output0, output1, n_frames);
   }
 };
 static auto saturation = register_audio_processor<Saturation> ("Ase::Devices::Saturation");
