@@ -78,6 +78,7 @@ config-checks.require.pkgconfig ::= $(strip	\
 	gthread-2.0		>= 2.32.3	\
 	gobject-2.0		>= 2.32.3	\
 	dbus-1			>= 1.12.16	\
+	lilv-0			>= 0.24.0	\
 )
 # boost libraries have no .pc files
 # Unused: fluidsynth		>= 2.0.5
@@ -86,7 +87,7 @@ config-checks.require.pkgconfig ::= $(strip	\
 # use for Gtk+2 X11 Window embedding
 GTK2_PACKAGES	 ::= gtk+-2.0
 # used for ASEDEPS_CFLAGS ASEDEPS_LIBS
-ASEDEPS_PACKAGES ::= ogg opus flac zlib dbus-1 \
+ASEDEPS_PACKAGES ::= ogg opus flac zlib dbus-1 lilv-0 \
 		     glib-2.0 gobject-2.0 gmodule-no-export-2.0
 # used for ANKLANG_JACK_LIBS
 ANKLANGDEP_JACK  ::= jack >= 0.125.0
