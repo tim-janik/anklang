@@ -3,6 +3,7 @@
 #define __ASE_MIDI_EVENT_HH__
 
 #include <ase/memory.hh>
+#include <ase/queuemux.hh>
 #include <ase/mathutils.hh>
 
 namespace Ase {
@@ -94,7 +95,6 @@ MidiEvent make_param_value (uint param, double pvalue);
 /// A stream of writable MidiEvent structures.
 class MidiEventOutput {
   std::vector<MidiEvent> events_; // TODO: use O(1) allocator
-  friend class MidiEventRange;
 public:
   explicit         MidiEventOutput ();
   void             append          (int16_t frame, const MidiEvent &event);
@@ -108,17 +108,37 @@ public:
   int64_t          last_frame      () const ASE_PURE;
   size_t           capacity        () const noexcept    { return events_.capacity(); }
   void             reserve         (size_t n)           { events_.reserve (n); }
+  std::vector<MidiEvent>
+  const&           vector          () { return events_; }
 };
 
-/// A readonly view and iterator into a MidiEventOutput.
-class MidiEventRange {
-  const MidiEventOutput &estream_;
+/// An in-order MidiEvent reader for multiple MidiEvent sources.
+template<size_t MAXQUEUES>
+class MidiEventReader : QueueMultiplexer<MAXQUEUES,std::vector<MidiEvent>::const_iterator> {
+  using Base = QueueMultiplexer<MAXQUEUES,std::vector<MidiEvent>::const_iterator>;
+  ASE_CLASS_NON_COPYABLE (MidiEventReader);
 public:
-  const MidiEvent* begin          () const  { return &*estream_.begin(); }
-  const MidiEvent* end            () const  { return &*estream_.end(); }
-  size_t           events_pending () const  { return estream_.size(); }
-  explicit         MidiEventRange (const MidiEventOutput &estream);
+  using iterator = Base::iterator;
+  using Base::assign;
+  size_t   events_pending  () const { return this->count_pending(); }
+  iterator begin           ()       { return this->Base::begin(); }
+  iterator end             ()       { return this->Base::end(); }
+  using VectorArray = std::array<const std::vector<MidiEvent>*, MAXQUEUES>;
+  /*ctor*/ MidiEventReader (const VectorArray &midi_event_vector_array = VectorArray());
 };
+
+// == MidiEventReader ==
+template<size_t MAXQUEUES>
+MidiEventReader<MAXQUEUES>::MidiEventReader (const VectorArray &midi_event_vector_array)
+{
+  assign (midi_event_vector_array);
+}
+
+inline int
+QueueMultiplexer_priority (const MidiEvent &e)
+{
+  return e.frame;
+}
 
 /// Components of a MIDI note.
 struct MidiNote {

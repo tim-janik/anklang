@@ -210,9 +210,4 @@ MidiEventOutput::last_frame () const
   return !events_.empty() ? events_.back().frame : -2048;
 }
 
-// == MidiEventRange ==
-MidiEventRange::MidiEventRange (const MidiEventOutput &estream) :
-  estream_ (estream)
-{}
-
 } // Ase
