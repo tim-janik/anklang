@@ -538,12 +538,12 @@ setup_expression (ClapEventUnion *evunion, uint32_t time, uint16_t port_index)
 void
 ClapAudioProcessor::convert_clap_events (const clap_process_t &process, const bool as_clapnotes)
 {
-  MidiEventRange erange = get_event_input();
-  if (input_events_.capacity() < erange.events_pending())
-    input_events_.reserve (erange.events_pending() + 128);
-  input_events_.resize (erange.events_pending());
+  MidiEventInput evinput = midi_event_input();
+  if (input_events_.capacity() < evinput.events_pending())
+    input_events_.reserve (evinput.events_pending() + 128);
+  input_events_.resize (evinput.events_pending());
   uint j = 0;
-  for (const auto &ev : erange)
+  for (const auto &ev : evinput)
     switch (ev.message())
       {
         clap_event_note_expression *expr;
