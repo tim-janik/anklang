@@ -233,6 +233,13 @@ delete_inplace (Type &typemem)
   typemem.~Type();
 }
 
+/// Simple way to create a standalone callback to delete an object of type `T`.
+template<class T> void
+call_delete (T *o)
+{
+  delete o; // automatically handles nullptr
+}
+
 /// REQUIRES<value> - Simplified version of std::enable_if<cond,bool>::type to use SFINAE in function templates.
 template<bool value> using REQUIRES = typename ::std::enable_if<value, bool>::type;
 
