@@ -244,7 +244,7 @@ public:
     while (enqueued_events_.size()) {
       ClapEventParamS *pevents = enqueued_events_.back();
       enqueued_events_.pop_back();
-      main_rt_jobs += RtCall (delete_clap_event_params, pevents); // delete in main_thread
+      main_rt_jobs += RtCall (call_delete<ClapEventParamS>, pevents); // delete in main_thread
     }
   }
   void
@@ -489,15 +489,9 @@ public:
       enqueued_events_.erase (enqueued_events_.begin());
       for (const auto &e : *pevents)
         need_wakeup |= apply_param_value_event (e);
-      main_rt_jobs += RtCall (delete_clap_event_params, pevents); // delete in main_thread
+      main_rt_jobs += RtCall (call_delete<ClapEventParamS>, pevents); // delete in main_thread
     }
     return need_wakeup;
-  }
-  static void
-  delete_clap_event_params (ClapEventParamS *p)
-  {
-    assert_return (this_thread_is_ase());
-    delete p;
   }
 };
 static CString clap_audio_wrapper_aseid = register_audio_processor<ClapAudioProcessor>();
