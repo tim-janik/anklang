@@ -3,6 +3,7 @@
 #define __ASE_DATAUTILS_HH__
 
 #include <ase/signalmath.hh>
+#include <cstring>
 
 namespace Ase {
 
@@ -48,6 +49,13 @@ fast_copy (size_t n, uint32_t *d, const uint32_t *s)
   static_assert (sizeof (uint32_t) == 4, "");
   static_assert (sizeof (wchar_t) == 4, "");
   wmemcpy ((wchar_t*) d, (const wchar_t*) s, n);
+}
+
+/// Copy a block of unsigned chars
+extern inline void
+fast_copy (size_t n, uint8_t *d, const uint8_t *s)
+{
+  memcpy (d, s, n);
 }
 
 // == Implementations ==
