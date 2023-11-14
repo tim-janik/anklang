@@ -790,14 +790,14 @@ class EngineMidiInput : public AudioProcessor {
   void
   reset (uint64 target_stamp) override
   {
-    MidiEventOutput &estream = get_event_output();
+    MidiEventOutput &estream = midi_event_output();
     estream.clear();
     estream.reserve (256);
   }
   void
   render (uint n_frames) override
   {
-    MidiEventOutput &estream = get_event_output();
+    MidiEventOutput &estream = midi_event_output();
     estream.clear();
     for (size_t i = 0; i < midi_drivers_.size(); i++)
       if (midi_drivers_[i])
