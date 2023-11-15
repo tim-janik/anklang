@@ -53,9 +53,9 @@ public:
   static constexpr uint        fixed_n_channels = 2;
   PcmDriverP                   null_pcm_driver_, pcm_driver_;
   constexpr static size_t      MAX_BUFFER_SIZE = AUDIO_BLOCK_MAX_RENDER_SIZE;
-  size_t                       buffer_size_ = MAX_BUFFER_SIZE; // mono buffer size
+  std::atomic<uint64_t>        buffer_size_ = MAX_BUFFER_SIZE; // mono buffer size
   float                        chbuffer_data_[MAX_BUFFER_SIZE * fixed_n_channels] = { 0, };
-  uint64                       write_stamp_ = 0, render_stamp_ = MAX_BUFFER_SIZE;
+  uint64                       write_stamp_ = 0;
   std::vector<AudioProcessor*> schedule_;
   EngineMidiInputP             midi_proc_;
   bool                         schedule_invalid_ = true;
@@ -81,7 +81,6 @@ public:
   void            schedule_clear         ();
   void            schedule_add           (AudioProcessor &aproc, uint level);
   void            schedule_queue_update  ();
-  uint64          frame_counter          () const               { return render_stamp_; }
   void            schedule_render        (uint64 frames);
   void            enable_output          (AudioProcessor &aproc, bool onoff);
   void            wakeup_thread_mt       ();
@@ -549,6 +548,7 @@ AudioEngineThread::AudioEngineThread (const VoidF &owner_wakeup, uint sample_rat
   AudioEngine (*this, *new (transport_block.block_start) AudioTransport (speakerarrangement, sample_rate)),
   owner_wakeup_ (owner_wakeup), transport_block_ (transport_block)
 {
+  render_stamp_ = MAX_BUFFER_SIZE; // enforce non-0 start offset for all modules
   oprocs_.reserve (16);
   assert_return (transport_.samplerate == 48000);
 }
@@ -583,10 +583,10 @@ AudioEngine::engine_stats (uint64_t stats) const
 }
 
 uint64
-AudioEngine::frame_counter () const
+AudioEngine::block_size() const
 {
   const AudioEngineThread &impl = static_cast<const AudioEngineThread&> (*this);
-  return impl.frame_counter();
+  return impl.buffer_size_;
 }
 
 void

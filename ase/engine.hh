@@ -22,6 +22,7 @@ class AudioEngine : VirtualBase {
 protected:
   friend class AudioProcessor;
   std::atomic<size_t> processor_count_ alignas (64) = 0;
+  std::atomic<uint64_t> render_stamp_ = 0;
   AudioTransport     &transport_;
   explicit AudioEngine           (AudioEngineThread&, AudioTransport&);
   virtual ~AudioEngine           ();
@@ -39,7 +40,8 @@ public:
   void            set_project      (ProjectImplP project);
   ProjectImplP    get_project      ();
   // MT-Safe API
-  uint64_t               frame_counter       () const;
+  uint64_t               frame_counter       () const           { return render_stamp_; }
+  uint64_t               block_size          () const;
   const AudioTransport&  transport           () const           { return transport_; }
   uint                   sample_rate         () const ASE_CONST { return transport().samplerate; }
   uint                   nyquist             () const ASE_CONST { return transport().nyquist; }
