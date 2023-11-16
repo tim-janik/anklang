@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "nativedevice.hh"
 #include "clapdevice.hh"
+#include "lv2device.hh"
 #include "combo.hh"
 #include "project.hh"
 #include "jsonipc/jsonipc.hh"
@@ -220,6 +221,8 @@ NativeDevice::list_device_types ()
   });
   for (const DeviceInfo &info : ClapDeviceImpl::list_clap_plugins())
     iseq.push_back (info);
+  for (const DeviceInfo &info : LV2DeviceImpl::list_lv2_plugins())
+    iseq.push_back (info);
   return iseq;
 }
 
@@ -229,6 +232,8 @@ create_processor_device (AudioEngine &engine, const String &uri, bool engineprod
   DeviceP devicep;
   if (string_startswith (uri, "CLAP:"))
     devicep = ClapDeviceImpl::create_clap_device (engine, uri);
+  else if (string_startswith (uri, "LV2:"))
+    devicep = LV2DeviceImpl::create_lv2_device (engine, uri);
   else // assume string_startswith (uri, "Ase:")
     {
       struct NativeDeviceImpl2 : NativeDeviceImpl {

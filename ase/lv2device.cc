@@ -13,6 +13,7 @@
 
 #include "lv2evbuf.hh"
 #include "lv2ringbuffer.hh"
+#include "lv2device.hh"
 
 #include <lilv/lilv.h>
 
@@ -680,7 +681,7 @@ PluginInstance::run (uint32_t nframes)
 
 }
 
-class LV2Device : public AudioProcessor {
+class LV2Processor : public AudioProcessor {
   IBusId stereo_in_;
   OBusId stereo_out_;
   vector<IBusId> mono_ins_;
@@ -699,13 +700,20 @@ class LV2Device : public AudioProcessor {
       PID_CONTROL_OFFSET = 10
     };
 
+  string lv2_uri_;
+
   void
   initialize (SpeakerArrangement busses) override
   {
     plugin_host.options.set (sample_rate(), AUDIO_BLOCK_MAX_RENDER_SIZE);
     const char *uri = getenv ("LV2URI");
     if (!uri)
-      uri = "http://zynaddsubfx.sourceforge.net";
+      {
+        if (lv2_uri_ != "")
+          uri = lv2_uri_.c_str();
+        else
+          uri = "http://zynaddsubfx.sourceforge.net";
+      }
 
     plugin_instance = plugin_host.instantiate (uri, sample_rate());
     if (!plugin_instance)
@@ -939,11 +947,11 @@ class LV2Device : public AudioProcessor {
                   uint32_t            size,
                   uint32_t            type)
   {
-    LV2Device *dev = (LV2Device *) user_data;
+    LV2Processor *dev = (LV2Processor *) user_data;
     dev->set_port_value (port_symbol, value, size, type);
   }
 public:
-  LV2Device (AudioEngine &engine) :
+  LV2Processor (AudioEngine &engine) :
     AudioProcessor (engine)
   {}
   static void
@@ -952,13 +960,69 @@ public:
     // info.uri = "Bse.LV2Device";
     // info.version = "0";
     info.version ="1";
-    info.label = "LV2Device";
+    info.label = "LV2Processor";
     info.category = "Synth";
     info.creator_name = "Stefan Westerfeld";
     info.website_url  = "https://anklang.testbit.eu";
   }
+  void
+  set_uri (const string& lv2_uri)
+  {
+    lv2_uri_ = lv2_uri;
+  }
 };
 
-static auto lv2device = register_audio_processor<LV2Device> ("Ase::Devices::LV2Device");
+DeviceInfoS
+LV2DeviceImpl::list_lv2_plugins()
+{
+  static DeviceInfoS devs;
+  if (devs.size())
+    return devs;
+
+  PluginHost plugin_host; // TODO: dedup
+  const LilvPlugins* plugins = lilv_world_get_all_plugins (plugin_host.world);
+  LILV_FOREACH(plugins, i, plugins)
+    {
+      const LilvPlugin* p = lilv_plugins_get (plugins, i);
+      DeviceInfo device_info;
+      device_info.uri = string ("LV2:") + lilv_node_as_uri (lilv_plugin_get_uri (p));
+
+      LilvNode* n = lilv_plugin_get_name (p);
+      device_info.name = lilv_node_as_string (n);
+      lilv_node_free (n);
+
+      auto plugin_class = lilv_plugin_get_class (p);
+      device_info.category = string_format ("LV2 %s", lilv_node_as_string (lilv_plugin_class_get_label (plugin_class)));
+
+      devs.push_back (device_info);
+    }
+  return devs;
+}
+
+DeviceP
+LV2DeviceImpl::create_lv2_device (AudioEngine &engine, const String &lv2_uri_with_prefix)
+{
+  assert_return (string_startswith (lv2_uri_with_prefix, "LV2:"), nullptr);
+  const String lv2_uri = lv2_uri_with_prefix.substr (4);
+
+  auto make_device = [lv2_uri] (const String &aseid, AudioProcessor::StaticInfo static_info, AudioProcessorP aproc) -> LV2DeviceImplP {
+    /* TODO: is this good code to handle LV2Processor URI initialization */
+    auto lv2aproc = dynamic_cast<LV2Processor *> (aproc.get());
+    lv2aproc->set_uri (lv2_uri);
+
+    return LV2DeviceImpl::make_shared (aseid, static_info, aproc);
+  };
+  DeviceP devicep = AudioProcessor::registry_create ("Ase::Devices::LV2Processor", engine, make_device);
+  // return_unless (devicep && devicep->_audio_processor("Ase::Device::LV2Processor", nullptr);
+  return devicep;
+}
+
+LV2DeviceImpl::LV2DeviceImpl (const String &lv2_uri, AudioProcessor::StaticInfo info, AudioProcessorP proc) :
+  proc_ (proc)
+{
+}
+
+static auto lv2processor = register_audio_processor<LV2Processor> ("Ase::Devices::LV2Processor");
+
 
 } // Bse

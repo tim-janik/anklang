@@ -52,6 +52,7 @@ ASE_CLASS_DECLS (Emittable);
 ASE_CLASS_DECLS (FileCrawler);
 ASE_CLASS_DECLS (Gadget);
 ASE_CLASS_DECLS (GadgetImpl);
+ASE_CLASS_DECLS (LV2DeviceImpl);
 ASE_CLASS_DECLS (Monitor);
 ASE_CLASS_DECLS (NativeDevice);
 ASE_CLASS_DECLS (NativeDeviceImpl);
