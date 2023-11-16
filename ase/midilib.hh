@@ -29,7 +29,7 @@ public:
   virtual Position* position    () const = 0; // MT-Safe
   virtual void      start       () = 0;
   virtual void      stop        (bool restart = false) = 0;
-  MidiProducerIface (AudioEngine &engine) : AudioProcessor (engine) {}
+  MidiProducerIface (const ProcessorSetup &psetup) : AudioProcessor (psetup) {}
 };
 
 using MidiProducerIfaceP = std::shared_ptr<MidiProducerIface>;

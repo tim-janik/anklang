@@ -30,7 +30,6 @@ public:
 struct ClapParamUpdate {
   int64_t  steady_time = 0; // unimplemented
   clap_id  param_id = CLAP_INVALID_ID;
-  uint32_t flags = 0;
   double   value = NAN;
 };
 using ClapParamUpdateS = std::vector<ClapParamUpdate>;

@@ -176,6 +176,14 @@ Server::url_crawler (const String &url)
   return nullptr;
 }
 
+String
+Server::engine_stats ()
+{
+  const String s = main_config.engine->engine_stats (0);
+  printerr ("Server::engine_stats:\n%s\n", s);
+  return s;
+}
+
 // == Choice ==
 Choice::Choice (String ident_, String label_, String blurb_, String notice_, String warning_) :
   ident (ident_.empty() ? string_to_identifier (label_) : ident_),

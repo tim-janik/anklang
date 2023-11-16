@@ -17,11 +17,13 @@ struct Param {
   using InitialVal = std::variant<bool,int8_t,uint8_t,int16_t,uint16_t,int32_t,uint32_t,int64_t,uint64_t,float,double,const char*,std::string>;
   struct ExtraVals : std::variant<MinMaxStep,ChoiceS,ChoicesFunc> {
     ExtraVals () = default;
+    ExtraVals (double vmin, double vmax, double step = 0);
     ExtraVals (const MinMaxStep&);
     ExtraVals (const std::initializer_list<Choice>&);
     ExtraVals (const ChoiceS&);
     ExtraVals (const ChoicesFunc&);
   };
+  String     ident;       ///< Identifier used for serialization (can be derived from untranslated label).
   String     label;       ///< Preferred user interface name.
   String     nick;        ///< Abbreviated user interface name, usually not more than 6 characters.
   InitialVal initial = 0; ///< Initial value for float, int, choice types.
@@ -31,7 +33,6 @@ struct Param {
   String     blurb;       ///< Short description for user interface tooltips.
   String     descr;       ///< Elaborate description for help dialogs.
   String     group;       ///< Group for parameters of similar function.
-  String     ident;       ///< Identifier used for serialization (can be derived from untranslated label).
   StringS    details;     ///< Array of "key=value" pairs.
   static inline const String STORAGE = ":r:w:S:";
   static inline const String STANDARD = ":r:w:S:G:";
@@ -79,6 +80,20 @@ private:
   Value         initial_ = 0;
 };
 using ParameterC = std::shared_ptr<const Parameter>;
+
+/// Parameter list construction helper.
+struct ParameterMap final : std::map<uint32_t,ParameterC> {
+  /// Group to be applied to all newly inserted Parameter objects.
+  String group;
+  /// Helper for new Parameter creation from Param initializer.
+  struct Entry {
+    ParameterMap &map;
+    const uint32_t id;
+    void operator= (const Param&);
+  };
+  /// Slot subscription for new Parameter creation.
+  Entry operator[] (uint32_t id);
+};
 
 /// Abstract base type for Property implementations with Parameter meta data.
 class ParameterProperty : public EmittableImpl, public virtual Property {

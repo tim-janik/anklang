@@ -372,6 +372,7 @@ public:
                                        int32 interval_ms) = 0;   ///< Broadcast telemetry memory segments to the current Jsonipc connection.
   virtual StringS   list_preferences  () = 0;                    ///< Retrieve a list of all preference identifiers.
   virtual PropertyP access_preference (const String &ident) = 0; ///< Retrieve property handle for a Preference identifier.
+  String            engine_stats      ();                        ///< Print engine state.
   // projects
   virtual ProjectP last_project   () = 0;       ///< Retrieve the last created project.
   virtual ProjectP create_project (String projectname) = 0; ///< Create a new project (name is modified to be unique if necessary.

@@ -49,6 +49,9 @@ MidiEvent::to_string () const
   const char *et = nullptr;
   switch (type)
     {
+    case PARAM_VALUE:
+      return string_format ("%+4d ch=%-2u %s param=%d pvalue=%.5f",
+                            frame, channel, "PARAM_VALUE", param, pvalue);
     case NOTE_OFF:        if (!et) et = "NOTE_OFF";
       /* fall-through */
     case NOTE_ON:         if (!et) et = "NOTE_ON";
@@ -69,9 +72,8 @@ MidiEvent::to_string () const
                             frame, channel, et, value);
     case SYSEX:                 if (!et) et = "SYSEX";
       return string_format ("%+4d %s (unhandled)", frame, et);
-    default:
-      return string_format ("%+4d MidiEvent-%u (unhandled)", frame, type);
     }
+  return string_format ("%+4d MidiEvent-%u (unhandled)", frame, type);
 }
 
 MidiEvent
@@ -159,13 +161,23 @@ make_pitch_bend (uint16 chnl, float val)
   return ev;
 }
 
-// == MidiEventStream ==
-MidiEventStream::MidiEventStream ()
+MidiEvent
+make_param_value (uint param, double pvalue)
+{
+  MidiEvent ev (MidiEvent::PARAM_VALUE);
+  ev.channel = 0xf;
+  ev.param = param;
+  ev.pvalue = pvalue;
+  return ev;
+}
+
+// == MidiEventOutput ==
+MidiEventOutput::MidiEventOutput ()
 {}
 
 /// Append an MidiEvent with conscutive `frame` time stamp.
 void
-MidiEventStream::append (int16_t frame, const MidiEvent &event)
+MidiEventOutput::append (int16_t frame, const MidiEvent &event)
 {
   const bool out_of_order_event = append_unsorted (frame, event);
   assert_return (!out_of_order_event);
@@ -174,7 +186,7 @@ MidiEventStream::append (int16_t frame, const MidiEvent &event)
 /// Dangerous! Append a MidiEvent while ignoring sort order, violates constraints.
 /// Returns if ensure_order() must be called due to adding an out-of-order event.
 bool
-MidiEventStream::append_unsorted (int16_t frame, const MidiEvent &event)
+MidiEventOutput::append_unsorted (int16_t frame, const MidiEvent &event)
 {
   const int64_t last_event_stamp = !events_.empty() ? events_.back().frame : -2048;
   events_.push_back (event);
@@ -184,7 +196,7 @@ MidiEventStream::append_unsorted (int16_t frame, const MidiEvent &event)
 
 /// Fix event order after append_unsorted() returned `true`.
 void
-MidiEventStream::ensure_order ()
+MidiEventOutput::ensure_order ()
 {
   fixed_sort (events_.begin(), events_.end(), [] (const MidiEvent &a, const MidiEvent &b) -> bool {
     return a.frame < b.frame;
@@ -193,14 +205,9 @@ MidiEventStream::ensure_order ()
 
 /// Fetch the latest event stamp, can be used to enforce order.
 int64_t
-MidiEventStream::last_frame () const
+MidiEventOutput::last_frame () const
 {
   return !events_.empty() ? events_.back().frame : -2048;
 }
-
-// == MidiEventRange ==
-MidiEventRange::MidiEventRange (const MidiEventStream &estream) :
-  estream_ (estream)
-{}
 
 } // Ase

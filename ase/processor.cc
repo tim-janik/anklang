@@ -38,6 +38,66 @@ AudioProcessor::OBus::OBus (const String &identifier, const String &uilabel, Spe
   assert_return (ident != "");
 }
 
+// == AudioParams ==
+AudioParams::~AudioParams()
+{
+  clear();
+}
+
+/// Clear all fields.
+void
+AudioParams::clear()
+{
+  changed = false;
+  count = 0;
+  delete[] ids;
+  ids = nullptr;
+  delete[] values;
+  values = nullptr;
+  delete[] bits;
+  bits = nullptr;
+  const ParameterC *old_parameters = nullptr;
+  std::swap (old_parameters, parameters);
+  std::weak_ptr<Property> *old_wprops = nullptr;
+  std::swap (old_wprops, wprops);
+  delete[] old_wprops;
+  delete[] old_parameters; // call ~ParameterC *after* *this is cleaned up
+}
+
+/// Clear and install a new set of parameters.
+void
+AudioParams::install (const AudioParams::Map &params)
+{
+  assert_return (this_thread_is_ase());
+  clear();
+  count = params.size();
+  if (count == 0)
+    return;
+  // ids
+  uint32_t *new_ids = new uint32_t[count] ();
+  size_t i = 0;
+  for (auto [id,p] : params)
+    new_ids[i++] = id;
+  ids = new_ids;
+  assert_return (i == count);
+  // wprops
+  wprops = new std::weak_ptr<Property>[count] ();
+  // parameters
+  ParameterC *new_parameters = new ParameterC[count] ();
+  i = 0;
+  for (auto [id,p] : params)
+    new_parameters[i++] = p;
+  assert_return (i == count);
+  parameters = new_parameters;
+  // values
+  values = new double[count] ();                // value-initialized per ISO C++03 5.3.4[expr.new]/15
+  for (size_t i = 0; i < count; i++)
+    values[i] = parameters[i]->initial().as_double();
+  // bits
+  const size_t u = (count + 64-1) / 64;         // number of uint64_t bit fields
+  bits = new std::atomic<uint64_t>[u] ();       // a bit array causes vastly fewer cache misses
+}
+
 // == AudioProcessor ==
 const String AudioProcessor::GUIONLY = ":G:r:w:";     ///< GUI READABLE WRITABLE
 const String AudioProcessor::STANDARD = ":G:S:r:w:";  ///< GUI STORAGE READABLE WRITABLE
@@ -45,8 +105,8 @@ const String AudioProcessor::STORAGEONLY = ":S:r:w:"; ///< STORAGE READABLE WRIT
 uint64 __thread AudioProcessor::tls_timestamp = 0;
 
 /// Constructor for AudioProcessor
-AudioProcessor::AudioProcessor (AudioEngine &engine) :
-  engine_ (engine)
+AudioProcessor::AudioProcessor (const ProcessorSetup &psetup) :
+  engine_ (psetup.engine), aseid_ (psetup.aseid)
 {
   engine_.processor_count_ += 1;
 }
@@ -57,6 +117,9 @@ AudioProcessor::~AudioProcessor ()
   remove_all_buses();
   engine_.processor_count_ -= 1;
   delete atomic_bits_;
+  MidiEventVector *t0events = nullptr;
+  t0events = t0events_.exchange (t0events);
+  delete t0events;
 }
 
 /// Convert MIDI note to Hertz according to the current MusicalTuning.
@@ -147,144 +210,16 @@ AudioProcessor::assign_iobufs ()
     fbuffers_ = nullptr;
 }
 
-static __thread CString tls_param_group;
-
-/// Introduce a `ParamInfo.group` to be used for the following add_param() calls.
+/// Reset list of parameters, enqueues parameter value initializaiton events.
 void
-AudioProcessor::start_group (const String &groupname) const
+AudioProcessor::install_params (const AudioParams::Map &params)
 {
-  tls_param_group = groupname;
-}
-
-/// Helper for add_param() to generate the sequentially next ParamId.
-ParamId
-AudioProcessor::nextid () const
-{
-  const uint pmax = pparams_.size();
-  const uint last = pparams_.empty() ? 0 : uint (pparams_.back().id);
-  return ParamId (MAX (pmax, last) + 1);
-}
-
-/// Add a new parameter with unique `ParamInfo.identifier`.
-/// The returned `ParamId` is forced to match `id` (and must be unique).
-ParamId
-AudioProcessor::add_param (Id32 id, const Param &initparam, double value)
-{
-  assert_return (uint (id) > 0, ParamId (0));
-  assert_return (!is_initialized(), {});
-  assert_return (initparam.label != "", {});
-  if (pparams_.size())
-    assert_return (initparam.label != pparams_.back().parameter->label(), {}); // easy CnP error
-  Param iparam = initparam;
-  if (iparam.group.empty())
-    iparam.group = tls_param_group;
-  ParameterP parameterp = std::make_shared<Parameter> (iparam);
-  ParameterC parameterc = parameterp;
-  if (pparams_.size())
-    assert_return (parameterc->ident() != pparams_.back().parameter->ident(), {}); // easy CnP error
-  PParam pparam { ParamId (id.id), uint (1 + pparams_.size()), parameterc };
-  using P = decltype (pparams_);
-  std::pair<P::iterator, bool> existing_parameter_position =
-    Aux::binary_lookup_insertion_pos (pparams_.begin(), pparams_.end(), PParam::cmp, pparam);
-  assert_return (existing_parameter_position.second == false, {});
-  pparams_.insert (existing_parameter_position.first, std::move (pparam));
-  set_param (pparam.id, value); // forces dirty
-  parameterp->initialsync (peek_param_mt (pparam.id));
-  return pparam.id;
-}
-
-/// Add new range parameter with most `ParamInfo` fields as inlined arguments.
-/// The returned `ParamId` is newly assigned and increases with the number of parameters added.
-/// The `clabel` is the canonical, non-translated name for this parameter, its
-/// hyphenated lower case version is used for serialization.
-ParamId
-AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname,
-                           double pmin, double pmax, double value,
-                           const String &unit, String hints,
-                           const String &blurb, const String &description)
-{
-  assert_return (uint (id) > 0, ParamId (0));
-  return add_param (id, Param {
-      .label = clabel,
-      .nick = nickname,
-      .initial = value,
-      .unit = unit,
-      .extras = MinMaxStep { pmin, pmax, 0 },
-      .hints = Parameter::construct_hints (hints, "", pmin, pmax),
-      .blurb = blurb,
-      .descr = description,
-    }, value);
-}
-
-/// Variant of AudioProcessor::add_param() with sequential `id` generation.
-ParamId
-AudioProcessor::add_param (const String &clabel, const String &nickname,
-                           double pmin, double pmax, double value,
-                           const String &unit, String hints,
-                           const String &blurb, const String &description)
-{
-  return add_param (nextid(), clabel, nickname, pmin, pmax, value, unit, hints, blurb, description);
-}
-
-/// Add new choice parameter with most `ParamInfo` fields as inlined arguments.
-/// The returned `ParamId` is newly assigned and increases with the number of parameters added.
-/// The `clabel` is the canonical, non-translated name for this parameter, its
-/// hyphenated lower case version is used for serialization.
-ParamId
-AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname,
-                           ChoiceS &&centries, double value, String hints,
-                           const String &blurb, const String &description)
-{
-  assert_return (uint (id) > 0, ParamId (0));
-  const double pmax = centries.size();
-  return add_param (id, Param {
-      .label = clabel,
-      .nick = nickname,
-      .initial = value,
-      .extras = centries,
-      .hints = Parameter::construct_hints (hints, "choice", 0, pmax),
-      .blurb = blurb,
-      .descr = description,
-    }, value);
-}
-
-/// Variant of AudioProcessor::add_param() with sequential `id` generation.
-ParamId
-AudioProcessor::add_param (const String &clabel, const String &nickname,
-                           ChoiceS &&centries, double value, String hints,
-                           const String &blurb, const String &description)
-{
-  return add_param (nextid(), clabel, nickname, std::forward<ChoiceS> (centries), value, hints, blurb, description);
-}
-
-/// Add new toggle parameter with most `ParamInfo` fields as inlined arguments.
-/// The returned `ParamId` is newly assigned and increases with the number of parameters added.
-/// The `clabel` is the canonical, non-translated name for this parameter, its
-/// hyphenated lower case version is used for serialization.
-ParamId
-AudioProcessor::add_param (Id32 id, const String &clabel, const String &nickname,
-                           bool boolvalue, String hints,
-                           const String &blurb, const String &description)
-{
-  assert_return (uint (id) > 0, ParamId (0));
-  using namespace MakeIcon;
-  return add_param (id, Param {
-      .label = clabel,
-      .nick = nickname,
-      .initial = boolvalue,
-      .hints = Parameter::construct_hints (hints, "toggle", false, true),
-      .blurb = blurb,
-      .descr = description,
-    }, boolvalue);
-}
-
-/// Variant of AudioProcessor::add_param() with sequential `id` generation.
-ParamId
-AudioProcessor::add_param (const String &clabel, const String &nickname,
-                           bool boolvalue, String hints,
-                           const String &blurb, const String &description)
-{
-  return add_param (nextid(), clabel, nickname, boolvalue, hints, blurb, description);
+  assert_return (this_thread_is_ase());
+  params_.install (params);
+  modify_t0events ([&] (std::vector<MidiEvent> &t0events) {
+    for (size_t i = 0; i < params_.count; i++)
+      t0events.push_back (make_param_value (params_.ids[i], params_.parameters[i]->initial().as_double()));
+  });
 }
 
 /// Return the ParamId for parameter `identifier` or else 0.
@@ -292,59 +227,56 @@ auto
 AudioProcessor::find_param (const String &identifier) const -> MaybeParamId
 {
   auto ident = CString::lookup (identifier);
-  if (!ident.empty())
-    for (const PParam &pp : pparams_)
-      if (pp.parameter->cident == ident)
-        return std::make_pair (pp.id, true);
+  if (ident.empty())
+    return { ParamId (0), false };
+  for (size_t idx = 0; idx < params_.count; idx++)
+    if (params_.parameters[idx]->cident == ident)
+      return { ParamId (params_.ids[idx]), true };
   return std::make_pair (ParamId (0), false);
-}
-
-// Non-fastpath implementation of find_param().
-const AudioProcessor::PParam*
-AudioProcessor::find_pparam_ (ParamId paramid) const
-{
-  // lookup id with gaps
-  const PParam key { paramid };
-  auto iter = Aux::binary_lookup (pparams_.begin(), pparams_.end(), PParam::cmp, key);
-  const bool found_paramid = iter != pparams_.end();
-  if (ISLIKELY (found_paramid))
-    return &*iter;
-  assert_return (found_paramid == true, nullptr);
-  return nullptr;
 }
 
 /// Set parameter `id` to `value` within `ParamInfo.get_minmax()`.
 bool
-AudioProcessor::set_param (Id32 paramid, const double value, bool sendnotify)
+AudioProcessor::send_param (Id32 paramid, const double value)
 {
-  const PParam *pparam = find_pparam (ParamId (paramid.id));
-  return_unless (pparam, false);
-  ParameterC parameter = pparam->parameter;
+  assert_return (this_thread_is_ase(), false); // main_loop thread
+  const ssize_t idx = params_.index (paramid.id);
+  if (idx < 0) [[unlikely]]
+    return false;
+  ParameterC parameter = params_.parameters[idx];
   double v = value;
   if (parameter)
     v = parameter->dconstrain (value);
-  const bool need_notify = const_cast<PParam*> (pparam)->assign (v);
-  if (need_notify && sendnotify && !pparam->aprop_.expired())
-    enotify_enqueue_mt (PARAMCHANGE);
-  return need_notify;
+  modify_t0events ([&] (std::vector<MidiEvent> &t0events) {
+    for (auto &ev : t0events)
+      if (ev.type == MidiEvent::PARAM_VALUE &&
+          ev.param == params_.ids[idx]) {
+        ev.pvalue = v;
+        return; // re-assigned previous send_param event
+      }
+    t0events.push_back (make_param_value (params_.ids[idx], v));
+  });
+  return true;
 }
 
 /// Retrieve supplemental information for parameters, usually to enhance the user interface.
 ParameterC
 AudioProcessor::parameter (Id32 paramid) const
 {
-  const PParam *pparam = this->find_pparam (ParamId (paramid.id));
-  return ASE_ISLIKELY (pparam) ? pparam->parameter : nullptr;
+  const ssize_t idx = params_.index (paramid.id);
+  return idx < 0 ? nullptr : params_.parameters[idx];
 }
 
-/// Fetch the current parameter value of a AudioProcessor.
+/// Fetch the current parameter value of an AudioProcessor.
 /// This function does not modify the parameter `dirty` flag.
 /// This function is MT-Safe after proper AudioProcessor initialization.
 double
 AudioProcessor::peek_param_mt (Id32 paramid) const
 {
-  const PParam *param = find_pparam (ParamId (paramid.id));
-  return ASE_ISLIKELY (param) ? param->peek() : FP_NAN;
+  const ssize_t idx = params_.index (paramid.id);
+  if (idx < 0) [[unlikely]]
+    return false;
+  return params_.values[idx];
 }
 
 /// Fetch the current parameter value of a AudioProcessor from any thread.
@@ -360,9 +292,9 @@ AudioProcessor::param_peek_mt (const AudioProcessorP proc, Id32 paramid)
 double
 AudioProcessor::value_to_normalized (Id32 paramid, double value) const
 {
-  const PParam *const pparam = find_pparam (paramid);
-  assert_return (pparam != nullptr, 0);
-  const auto [fmin, fmax, step] = pparam->parameter->range();
+  ParameterC parameterp = parameter (paramid);
+  assert_return (parameterp != nullptr, 0);
+  const auto [fmin, fmax, step] = parameterp->range();
   const double normalized = (value - fmin) / (fmax - fmin);
   assert_return (normalized >= 0.0 && normalized <= 1.0, CLAMP (normalized, 0.0, 1.0));
   return normalized;
@@ -371,9 +303,9 @@ AudioProcessor::value_to_normalized (Id32 paramid, double value) const
 double
 AudioProcessor::value_from_normalized (Id32 paramid, double normalized) const
 {
-  const PParam *const pparam = find_pparam (paramid);
-  assert_return (pparam != nullptr, 0);
-  const auto [fmin, fmax, step] = pparam->parameter->range();
+  ParameterC parameterp = parameter (paramid);
+  assert_return (parameterp != nullptr, 0);
+  const auto [fmin, fmax, step] = parameterp->range();
   const double value = fmin + normalized * (fmax - fmin);
   assert_return (normalized >= 0.0 && normalized <= 1.0, value);
   return value;
@@ -388,13 +320,13 @@ AudioProcessor::get_normalized (Id32 paramid)
 
 /// Set param value normalized into 0…1.
 bool
-AudioProcessor::set_normalized (Id32 paramid, double normalized, bool sendnotify)
+AudioProcessor::set_normalized (Id32 paramid, double normalized)
 {
   if (!ASE_ISLIKELY (normalized >= 0.0))
     normalized = 0;
   else if (!ASE_ISLIKELY (normalized <= 1.0))
     normalized = 1.0;
-  return set_param (paramid, value_from_normalized (paramid, normalized), sendnotify);
+  return send_param (paramid, value_from_normalized (paramid, normalized));
 }
 
 /** Format a parameter `paramid` value as text string.
@@ -403,10 +335,10 @@ AudioProcessor::set_normalized (Id32 paramid, double normalized, bool sendnotify
  * concurrently by a different thread).
  */
 String
-AudioProcessor::param_value_to_text (Id32 paramid, double value) const
+AudioProcessor::param_value_to_text (uint32_t paramid, double value) const
 {
-  const PParam *pparam = find_pparam (ParamId (paramid.id));
-  return pparam && pparam->parameter ? pparam->parameter->value_to_text (value) : "";
+  ParameterC parameterp = parameter (paramid);
+  return parameterp ? parameterp->value_to_text (value) : "";
 }
 
 /** Extract a parameter `paramid` value from a text string.
@@ -418,10 +350,10 @@ AudioProcessor::param_value_to_text (Id32 paramid, double value) const
  * concurrently by a different thread).
  */
 double
-AudioProcessor::param_value_from_text (Id32 paramid, const String &text) const
+AudioProcessor::param_value_from_text (uint32_t paramid, const String &text) const
 {
-  const PParam *pparam = find_pparam (ParamId (paramid.id));
-  return pparam && pparam->parameter ? pparam->parameter->value_from_text (text).as_double() : 0.0;
+  ParameterC parameterp = parameter (paramid);
+  return parameterp ? parameterp->value_from_text (text).as_double() : 0.0;
 }
 
 /// Prepare `count` bits for atomic notifications.
@@ -510,18 +442,6 @@ AudioProcessor::prepare_event_input ()
   estreams_->has_event_input = true;
 }
 
-static const MidiEventStream empty_event_stream; // dummy
-
-/// Access the current input EventRange during render(), needs prepare_event_input().
-MidiEventRange
-AudioProcessor::get_event_input ()
-{
-  assert_return (estreams_ && estreams_->has_event_input, MidiEventRange (empty_event_stream));
-  if (estreams_ && estreams_->oproc && estreams_->oproc->estreams_)
-    return MidiEventRange (estreams_->oproc->estreams_->estream);
-  return MidiEventRange (empty_event_stream);
-}
-
 /// Prepare the AudioProcessor to produce Event objects during render() via get_event_output().
 /// Note, remove_all_buses() will remove the Event output created by this function.
 void
@@ -531,14 +451,6 @@ AudioProcessor::prepare_event_output ()
     estreams_ = new EventStreams();
   assert_return (estreams_->has_event_output == false);
   estreams_->has_event_output = true;
-}
-
-/// Access the current output EventStream during render(), needs prepare_event_input().
-MidiEventStream&
-AudioProcessor::get_event_output ()
-{
-  assert_return (estreams_ != nullptr, const_cast<MidiEventStream&> (empty_event_stream));
-  return estreams_->estream;
 }
 
 /// Disconnect event input if a connection is present.
@@ -814,9 +726,7 @@ AudioProcessor::ensure_initialized (DeviceP devicep)
       assert_return (n_ibuses() + n_obuses() == 0);
       assert_return (get_device() == nullptr);
       device_ = devicep;
-      tls_param_group = "";
       initialize (engine_.speaker_arrangement());
-      tls_param_group = "";
       flags_ |= INITIALIZED;
       if (n_ibuses() + n_obuses() == 0 &&
           (!estreams_ || (!estreams_->has_event_input && !estreams_->has_event_output)))
@@ -836,7 +746,7 @@ AudioProcessor::reset_state (uint64 target_stamp)
   if (render_stamp_ != target_stamp)
     {
       if (estreams_)
-        estreams_->estream.clear();
+        estreams_->midi_event_output.clear();
       reset (target_stamp);
       render_stamp_ = target_stamp;
     }
@@ -872,6 +782,10 @@ AudioProcessor::schedule_processor()
   return level + 1;
 }
 
+struct AudioProcessor::RenderContext {
+  MidiEventVector *render_events = nullptr;
+};
+
 /** Method called for every audio buffer to be processed.
  * Each connected output bus needs to be filled with `n_frames`,
  * i.e. `n_frames` many floating point samples per channel.
@@ -890,17 +804,50 @@ AudioProcessor::render_block (uint64 target_stamp)
 {
   return_unless (render_stamp_ < target_stamp);
   return_unless (target_stamp - render_stamp_ <= AUDIO_BLOCK_MAX_RENDER_SIZE);
-  if (ASE_UNLIKELY (estreams_) && !ASE_ISLIKELY (estreams_->estream.empty()))
-    estreams_->estream.clear();
+  RenderContext rc;
+  if (ASE_UNLIKELY (estreams_))
+    estreams_->midi_event_output.clear();
+  rc.render_events = t0events_.exchange (rc.render_events); // fetch t0events_ for rendering
+  render_context_ = &rc;
   render (target_stamp - render_stamp_);
+  render_context_ = nullptr;
   render_stamp_ = target_stamp;
+  if (rc.render_events) // delete in main_thread
+    main_rt_jobs += RtCall (call_delete<MidiEventVector>, rc.render_events);
+  if (params_.changed) {
+    params_.changed = false;
+    enotify_enqueue_mt (PARAMCHANGE);
+  }
+}
+
+/// Access the current MidiEvent inputs during render(), needs prepare_event_input().
+AudioProcessor::MidiEventInput
+AudioProcessor::midi_event_input()
+{
+  MidiEventInput::VectorArray mev_array{};
+  size_t n = 0;
+  if (estreams_ && estreams_->oproc && estreams_->oproc->estreams_)
+    mev_array[n++] = &estreams_->oproc->estreams_->midi_event_output.vector();
+  if (render_context_->render_events)
+    mev_array[n++] = render_context_->render_events;
+  return MidiEventInput (mev_array);
+}
+
+static const MidiEventOutput empty_event_output; // dummy
+
+/// Access the current output EventStream during render(), needs prepare_event_output().
+MidiEventOutput&
+AudioProcessor::midi_event_output()
+{
+  assert_return (estreams_ != nullptr, const_cast<MidiEventOutput&> (empty_event_output));
+  return estreams_->midi_event_output;
 }
 
 // == Registry ==
 struct AudioProcessorRegistry {
-  CString           aseid;       ///< Unique identifier for de-/serialization.
-  void            (*static_info) (AudioProcessorInfo&) = nullptr;
-  AudioProcessorP (*make_shared) (AudioEngine&) = nullptr;
+  CString        aseid;       ///< Unique identifier for de-/serialization.
+  void         (*static_info) (AudioProcessorInfo&) = nullptr;
+  AudioProcessor::MakeProcessorP make_shared = nullptr;
   const AudioProcessorRegistry* next = nullptr;
 };
 
@@ -923,11 +870,11 @@ AudioProcessor::registry_add (CString aseid, StaticInfo static_info, MakeProcess
 }
 
 DeviceP
-AudioProcessor::registry_create (const String &aseid, AudioEngine &engine, const MakeDeviceP &makedevice)
+AudioProcessor::registry_create (CString aseid, AudioEngine &engine, const MakeDeviceP &makedevice)
 {
   for (const AudioProcessorRegistry *entry = registry_first; entry; entry = entry->next)
     if (entry->aseid == aseid) {
-      AudioProcessorP aproc = entry->make_shared (engine);
+      AudioProcessorP aproc = entry->make_shared (aseid, engine);
       if (aproc) {
         DeviceP devicep = makedevice (aseid, entry->static_info, aproc);
         aproc->ensure_initialized (devicep);
@@ -944,35 +891,6 @@ AudioProcessor::registry_foreach (const std::function<void (const String &aseid,
 {
   for (const AudioProcessorRegistry *entry = registry_first; entry; entry = entry->next)
     fun (entry->aseid, entry->static_info);
-}
-
-// == AudioProcessor::PParam ==
-AudioProcessor::PParam::PParam (ParamId _id, uint order, ParameterC &parameterc) :
-  id (_id), order_ (order), parameter (parameterc)
-{
-  assert_return (parameterc != nullptr);
-}
-
-AudioProcessor::PParam::PParam (ParamId _id) :
-  id (_id)
-{}
-
-AudioProcessor::PParam::PParam (const PParam &src) :
-  id (src.id)
-{
-  *this = src;
-}
-
-AudioProcessor::PParam&
-AudioProcessor::PParam::operator= (const PParam &src)
-{
-  id = src.id;
-  order_ = src.order_;
-  flags_ = src.flags_.load();
-  value_ = src.value_.load();
-  aprop_ = src.aprop_;
-  parameter = src.parameter;
-  return *this;
 }
 
 // == FloatBuffer ==
@@ -996,11 +914,11 @@ AudioProcessor::FloatBuffer::check ()
 
 // == AudioPropertyImpl ==
 class AudioPropertyImpl : public Property, public virtual EmittableImpl {
-  DeviceP       device_;
-  ParameterC    parameter_;
-  const ParamId id_;
-  double              inflight_value_ = 0;
-  std::atomic<uint64> inflight_counter_ = 0;
+  DeviceP        device_;
+  ParameterC     parameter_;
+  const uint32_t id_;
+  double         inflight_value_ = 0;
+  uint64_t       inflight_stamp_ = 0;
 public:
   String   ident          () override   { return parameter_->ident(); }
   String   label          () override   { return parameter_->label(); }
@@ -1014,14 +932,14 @@ public:
   double   get_max        () override   { const auto [fmin, fmax, step] = parameter_->range(); return fmax; }
   double   get_step       () override   { const auto [fmin, fmax, step] = parameter_->range(); return step; }
   explicit
-  AudioPropertyImpl (DeviceP devp, ParamId id, ParameterC parameter) :
+  AudioPropertyImpl (DeviceP devp, uint32_t id, ParameterC parameter) :
     device_ (devp), parameter_ (parameter), id_ (id)
   {}
   void
   proc_paramchange()
   {
     const AudioProcessorP proc = device_->_audio_processor();
-    const double value = inflight_counter_ ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
+    const double value = inflight_stamp_ >  proc->engine().frame_counter() ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
     ValueR vfields;
     vfields["value"] = value;
     emit_event ("notify", parameter_->ident(), vfields);
@@ -1035,7 +953,7 @@ public:
   get_value () override
   {
     const AudioProcessorP proc = device_->_audio_processor();
-    const double value = inflight_counter_ ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
+    const double value = inflight_stamp_ >  proc->engine().frame_counter() ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
     const bool ischoice = strstr (parameter_->hints().c_str(), ":choice:") != nullptr;
     if (ischoice)
       return proc->param_value_to_text (id_, value);
@@ -1047,20 +965,15 @@ public:
   {
     PropertyP thisp = shared_ptr_cast<Property> (this); // thisp keeps this alive during lambda
     const AudioProcessorP proc = device_->_audio_processor();
-    const bool ischoice = strstr (parameter_->hints().c_str(), ":choice:") != nullptr;
     double v;
-    if (ischoice && value.index() == Value::STRING)
+    if (value.index() == Value::STRING && parameter_->is_choice())
       v = proc->param_value_from_text (id_, value.as_string());
     else
       v = value.as_double();
-    const ParamId pid = id_;
+    proc->send_param (id_, v);
     inflight_value_ = v;
-    inflight_counter_++;
-    auto lambda = [proc, pid, v, thisp, this] () {
-      proc->set_param (pid, v, false);
-      inflight_counter_--;
-    };
-    proc->engine().async_jobs += lambda;
+    inflight_stamp_ = proc->engine().frame_counter();
+    inflight_stamp_ += 2 * proc->engine().block_size(); // wait until after the *next* job queue has been processed
     emit_notify (parameter_->ident());
     return true;
   }
@@ -1068,7 +981,7 @@ public:
   get_normalized () override
   {
     const AudioProcessorP proc = device_->_audio_processor();
-    const double value = inflight_counter_ ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
+    const double value = inflight_stamp_ >  proc->engine().frame_counter() ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
     const double v = proc->value_to_normalized (id_, value);
     return v;
   }
@@ -1084,7 +997,7 @@ public:
   get_text () override
   {
     const AudioProcessorP proc = device_->_audio_processor();
-    const double value = inflight_counter_ ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
+    const double value = inflight_stamp_ >  proc->engine().frame_counter() ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
     return proc->param_value_to_text (id_, value);
   }
   bool
@@ -1092,13 +1005,7 @@ public:
   {
     const AudioProcessorP proc = device_->_audio_processor();
     const double v = proc->param_value_from_text (id_, vstr);
-    const ParamId pid = id_;
-    auto lambda = [proc, pid, v] () {
-      proc->set_param (pid, v, false);
-    };
-    proc->engine().async_jobs += lambda;
-    emit_notify (parameter_->ident());
-    return true;
+    return set_value (v);
   }
   bool
   is_numeric () override
@@ -1114,24 +1021,25 @@ public:
 };
 
 // == AudioProcessor::access_properties ==
-/// Retrieve/create Property handle from `id`.
-/// This function is MT-Safe after proper AudioProcessor initialization.
-PropertyP
-AudioProcessor::access_property (ParamId id) const
+/// Retrieve (or create) Property handles for all properties.
+/// This function must be called from the main-thread.
+PropertyS
+AudioProcessor::access_properties () const
 {
-  assert_return (is_initialized(), {});
-  const PParam *pparam = find_pparam (id);
-  assert_return (pparam, {});
   DeviceP devp = get_device();
   assert_return (devp, {});
-  PropertyP newptr;
-  PropertyP prop = weak_ptr_fetch_or_create<Property> (const_cast<PParam*> (pparam)->aprop_, [&] () {
-      newptr = std::make_shared<AudioPropertyImpl> (devp, pparam->id, pparam->parameter);
-      return newptr;
+  PropertyS props;
+  props.reserve (params_.count);
+  for (size_t idx = 0; idx < params_.count; idx++) {
+    const uint32_t id = params_.ids[idx];
+    ParameterC parameterp = params_.parameters[idx];
+    assert_return (parameterp != nullptr, {});
+    PropertyP prop = weak_ptr_fetch_or_create<Property> (params_.wprops[idx], [&] () {
+      return std::make_shared<AudioPropertyImpl> (devp, id, parameterp);
     });
-  if (newptr.get() == prop.get())
-    const_cast<AudioProcessor::PParam*> (pparam)->changed (false); // skip initial change notification
-  return prop;
+    props.push_back (prop);
+  }
+  return props;
 }
 
 // == enotify_queue ==
@@ -1186,14 +1094,18 @@ AudioProcessor::enotify_dispatch ()
           if (nflags & REMOVAL)
             devicep->emit_event ("sub", "remove");
           if (nflags & PARAMCHANGE)
-            for (PParam &pparam : current->pparams_)
-              if (ASE_UNLIKELY (pparam.changed()) && pparam.changed (false))
-                {
-                  PropertyP propi = pparam.aprop_.lock();
-                  AudioPropertyImpl *aprop = dynamic_cast<AudioPropertyImpl*> (propi.get());
-                  if (aprop)
-                    aprop->proc_paramchange();
-                }
+            for (size_t blockoffset = 0; blockoffset < current->params_.count; blockoffset += 64)
+              if (current->params_.bits[blockoffset >> 6]) {
+                const uint64_t bitmask = std::atomic_fetch_and (&current->params_.bits[blockoffset >> 6], 0);
+                const size_t bound = std::min (uint64_t (current->params_.count), blockoffset | uint64_t (64-1));
+                for (size_t idx = blockoffset; idx < bound; idx++)
+                  if (bitmask & uint64_t (1) << (idx & (64-1))) {
+                    PropertyP propi = current->params_.wprops[idx].lock();
+                    AudioPropertyImpl *aprop = dynamic_cast<AudioPropertyImpl*> (propi.get());
+                    if (aprop)
+                      aprop->proc_paramchange();
+                  }
+              }
           if (nflags & PARAMCHANGE)
             devicep->emit_event ("params", "change");
         }

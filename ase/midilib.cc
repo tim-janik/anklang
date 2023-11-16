@@ -38,8 +38,8 @@ class MidiProducerImpl : public MidiProducerIface {
   std::vector<TickEvent> future_stack; // newest events at back()
   FastMemory::Block position_block_;
 public:
-  MidiProducerImpl (AudioEngine &engine) :
-    MidiProducerIface (engine)
+  MidiProducerImpl (const ProcessorSetup &psetup) :
+    MidiProducerIface (psetup)
   {
     position_block_ = SERVER->telemem_allocate (sizeof (Position));
     position_ = new (position_block_.block_start) Position {};
@@ -119,8 +119,8 @@ public:
   render (uint n_frames) override
   {
     const AudioTransport &transport = this->transport();
-    MidiEventRange evinp = get_event_input(); // treat MIDI input as MIDI through
-    MidiEventStream &evout = get_event_output(); // needs prepare_event_output()
+    MidiEventInput evinput = midi_event_input(); // treat MIDI input as MIDI through
+    MidiEventOutput &evout = midi_event_output(); // needs prepare_event_output()
     const int64 begin_tick = transport.current_tick;
     const int64 end_tick = transport.current_tick + transport.sample_to_tick (n_frames);
     const int64 bpm = transport.current_bpm;
@@ -151,10 +151,10 @@ public:
         evout.append_unsorted (frame, tnote.event);
       }
     // enqueue pending MIDI input events
-    for (const MidiEvent *midi_through = evinp.begin(); ASE_UNLIKELY (midi_through < evinp.end()); midi_through++)
+    for (const MidiEvent &mevent : evinput)
       {
-        MDEBUG ("THROUGH: f=%+3d ev=%s\n", midi_through->frame, midi_through->to_string());
-        evout.append (midi_through->frame, *midi_through);
+        MDEBUG ("THROUGH: f=%+3d ev=%s\n", mevent.frame, mevent.to_string());
+        evout.append (mevent.frame, mevent);
       }
     // enqueue new events, keep queue of future events generated on the fly (NOTE-OFF)
     if (ASE_ISLIKELY (feed_ && feed_->generators.size() &&

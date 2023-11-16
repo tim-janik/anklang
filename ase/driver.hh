@@ -77,7 +77,7 @@ public:
   typedef std::shared_ptr<MidiDriver> MidiDriverP;
   static MidiDriverP open            (const String &devid, IODir iodir, Ase::Error *ep);
   virtual bool       has_events      () = 0;
-  virtual uint       fetch_events    (MidiEventStream &estream, double samplerate) = 0;
+  virtual uint       fetch_events    (MidiEventOutput &estream, double samplerate) = 0;
   static EntryVec    list_drivers    ();
   static String      register_driver (const String &driverid,
                                       const std::function<MidiDriverP (const String&)> &create,

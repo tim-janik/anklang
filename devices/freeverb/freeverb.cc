@@ -16,8 +16,8 @@ class Freeverb : public AudioProcessor {
   OBusId stereout;
   revmodel model;
 public:
-  Freeverb (AudioEngine &engine) :
-    AudioProcessor (engine)
+  Freeverb (const ProcessorSetup &psetup) :
+    AudioProcessor (psetup)
   {}
   static void
   static_info (AudioProcessorInfo &info)
@@ -37,33 +37,34 @@ public:
     stereoin = add_input_bus  ("Stereo In",  SpeakerArrangement::STEREO);
     stereout = add_output_bus ("Stereo Out", SpeakerArrangement::STEREO);
 
-    start_group ("Reverb Settings");
-    add_param (DRY, "Dry level",  "Dry", 0, scaledry, scaledry * initialdry, "dB");
+    ParameterMap pmap;
 
-    add_param (WET, "Wet level",  "Wet", 0, scalewet, scalewet * initialwet, "dB");
-
-    start_group ("Room Settings");
-    add_param (ROOMSIZE, "Room size",  "RS", offsetroom, offsetroom + scaleroom, offsetroom + scaleroom * initialroom, "size");
-
-    add_param (WIDTH, "Width",  "W", 0, 100, 100 * initialwidth, "%");
-
-    add_param (DAMPING, "Damping",  "D", 0, 100, 100 * initialdamp, "%");
+    pmap.group = _("Reverb Settings");
+    pmap[DRY] = Param ("drylevel", _("Dry level"), _("Dry"), scaledry * initialdry, "dB", { 0, scaledry });
+    pmap[WET] = Param ("wetlevel", _("Wet level"), _("Wet"), scalewet * initialwet, "dB", { 0, scalewet });
 
     ChoiceS centries;
-    centries += { "Signflip 2000",  "Preserve May 2000 Freeverb damping sign flip" };
-    centries += { "VLC Damping",    "The VLC Freeverb version disables one damping feedback chain" };
-    centries += { "Normal Damping", "Damping with sign correction as implemented in STK Freeverb" };
-    add_param (MODE, "Mode",  "M", std::move (centries), 2, "", "Damping mode found in different Freeverb variants");
+    centries += { "Signflip 2000",  _("Preserve May 2000 Freeverb damping sign flip") };
+    centries += { "VLC Damping",    _("The VLC Freeverb version disables one damping feedback chain") };
+    centries += { "Normal Damping", _("Damping with sign correction as implemented in STK Freeverb") };
+    pmap[MODE] = Param ("mode", _("Mode"), _("Mode"), 2, "", std::move (centries), "", _("Damping mode found in different Freeverb variants"));
+
+    pmap.group = _("Room Settings");
+    pmap[ROOMSIZE] = Param ("roomsize", _("Room size"), _("RS"), offsetroom + scaleroom * initialroom, _("size"), { offsetroom, offsetroom + scaleroom });
+    pmap[WIDTH]    = Param ("width", _("Width"), _("W"), 100 * initialwidth, "%", { 0, 100 });
+    pmap[DAMPING]  = Param ("damping", _("Damping"), _("D"), 100 * initialdamp, "%", { 0, 100 });
+
+    install_params (pmap);
   }
   void
-  adjust_param (Id32 tag) override
+  adjust_param (uint32_t paramid) override
   {
-    switch (Params (tag.id))
+    switch (Params (paramid))
       {
-      case WET:         return model.setwet (get_param (tag) / scalewet);
-      case DRY:         return model.setdry (get_param (tag) / scaledry);
-      case ROOMSIZE:    return model.setroomsize ((get_param (tag) - offsetroom) / scaleroom);
-      case WIDTH:       return model.setwidth (0.01 * get_param (tag));
+      case WET:         return model.setwet (get_param (paramid) / scalewet);
+      case DRY:         return model.setdry (get_param (paramid) / scaledry);
+      case ROOMSIZE:    return model.setroomsize ((get_param (paramid) - offsetroom) / scaleroom);
+      case WIDTH:       return model.setwidth (0.01 * get_param (paramid));
       case MODE:
       case DAMPING:     return model.setdamp (0.01 * get_param (ParamId (DAMPING)),
                                               1 - irintf (get_param (ParamId (MODE))));
@@ -74,12 +75,12 @@ public:
   {
     model.setmode (0);          // no-freeze, allow mute
     model.mute();               // silence internal buffers
-    adjust_params (true);
+    adjust_all_params();
   }
   void
   render (uint n_frames) override
   {
-    adjust_params (false);
+    apply_input_events();
     float *input0 = const_cast<float*> (ifloats (stereoin, 0));
     float *input1 = const_cast<float*> (ifloats (stereoin, 1));
     float *output0 = oblock (stereout, 0);

@@ -9,23 +9,25 @@ namespace Ase {
 /// Multiplexer to pop from multiple Queues, while preserving priorities.
 /// Order for values at the same priority is unstable.
 /// Relies on unqualified calls to `Priority QueueMultiplexer_priority (const ValueType&)`.
-template<size_t MAXQUEUES, class Queue, class ValueType = typename Queue::value_type>
+template<size_t MAXQUEUES, class ForwardIterator>
+  requires std::forward_iterator<ForwardIterator>
 struct QueueMultiplexer {
+  using ValueType = std::remove_reference_t<decltype (*std::declval<ForwardIterator>())>;
   using Priority = decltype (QueueMultiplexer_priority (std::declval<const ValueType&>()));
-  struct Ptr { typename Queue::const_iterator it, end; };
+  struct Ptr { ForwardIterator it, end; };
   ssize_t  n_queues = 0, current = -1;
   Priority first = {}, next = {};
   std::array<Ptr, MAXQUEUES> ptrs;
-  QueueMultiplexer (size_t nqueues, Queue **queues)
+  QueueMultiplexer () {}
+  template<class IterableContainer> bool
+  assign (const std::array<const IterableContainer*, MAXQUEUES> &queues)
   {
-    assign (nqueues, queues);
-  }
-  bool
-  assign (size_t nqueues, Queue **queues)
-  {
+    static_assert (std::is_same<
+                   ForwardIterator,
+                   decltype (std::begin (std::declval<const IterableContainer&>()))
+                   >::value);
     n_queues = 0;
-    ASE_ASSERT_RETURN (nqueues <= MAXQUEUES, false);
-    for (size_t i = 0; i < nqueues; i++)
+    for (size_t i = 0; i < queues.size(); i++)
       if (queues[i]) [[likely]]
         {
           ptrs[n_queues].it = std::begin (*queues[i]);
@@ -36,15 +38,30 @@ struct QueueMultiplexer {
     seek();
     return more();
   }
+  size_t
+  count_pending() const
+  {
+    size_t c = 0;
+    for (ssize_t i = 0; i < n_queues; i++)
+      c += ptrs[i].end - ptrs[i].it;
+    return c;
+  }
   bool
   more() const
   {
     return n_queues > 0;
   }
   const ValueType&
+  peek ()
+  {
+    if (!more()) [[unlikely]]
+      return empty();
+    return *ptrs[current].it;
+  }
+  const ValueType&
   pop ()
   {
-    ASE_ASSERT_RETURN (more(), []() -> const ValueType& { static const ValueType empty {}; return empty; }());
+    ASE_ASSERT_RETURN (more(), empty());
     const ValueType &result = *ptrs[current].it++;
     if (ptrs[current].it == ptrs[current].end) [[unlikely]]
       {                                         // remove emptied queue
@@ -58,6 +75,33 @@ struct QueueMultiplexer {
       seek();
     return result;
   }
+  class Iter {
+    QueueMultiplexer *mux_ = nullptr;
+  public:
+    using difference_type = ssize_t;
+    using value_type = const ValueType;
+    using pointer = const value_type*;
+    using reference = const value_type&;
+    using iterator_category = std::input_iterator_tag;
+    /*ctor*/    Iter       (QueueMultiplexer *u = nullptr) : mux_ (u && u->more() ? u : nullptr) {}
+    bool        oob        () const { return !mux_; }
+    friend bool operator== (const Iter &a, const Iter &b) { return a.mux_ == b.mux_; }
+    value_type& operator*  () const { return mux_ ? mux_->peek() : empty(); }
+    Iter        operator++ (int) { Iter copy (*this); this->operator++(); return copy; }
+    Iter&       operator++ ()
+    {
+      if (mux_) [[likely]] {
+        if (mux_->more()) [[likely]]
+          mux_->pop();
+        else
+          mux_ = nullptr;
+      }
+      return *this;
+    }
+  };
+  using iterator = Iter;
+  iterator begin ()     { return Iter (this); }
+  iterator end   ()     { return {}; }
 private:
   void
   seek()
@@ -80,6 +124,12 @@ private:
           next = prio;
       }
     // dprintf (2, "%s: n_queues=%zd current=%zd first=%ld next=%ld\n", __func__, n_queues, current, long (first), long (next));
+  }
+  static const ValueType&
+  empty()
+  {
+    static const ValueType empty_ {};
+    return empty_;
   }
 };
 

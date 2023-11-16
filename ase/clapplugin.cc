@@ -136,7 +136,6 @@ struct ClapParamInfoImpl : ClapParamInfo {
   {
     unset();
     param_id = cinfo.id;
-    flags = cinfo.flags;
     ident = string_format ("%08x", param_id);
     name = cinfo.name;
     module = cinfo.module;
@@ -159,7 +158,6 @@ void
 ClapParamInfo::unset()
 {
   param_id = CLAP_INVALID_ID;
-  flags = 0;
   ident = "";
   name = "";
   module = "";
@@ -238,15 +236,15 @@ public:
   {
     info.label = "Anklang.Devices.ClapAudioProcessor";
   }
-  ClapAudioProcessor (AudioEngine &engine) :
-    AudioProcessor (engine)
+  ClapAudioProcessor (const ProcessorSetup &psetup) :
+    AudioProcessor (psetup)
   {}
   ~ClapAudioProcessor()
   {
     while (enqueued_events_.size()) {
       ClapEventParamS *pevents = enqueued_events_.back();
       enqueued_events_.pop_back();
-      main_rt_jobs += RtCall (delete_clap_event_params, pevents); // delete in main_thread
+      main_rt_jobs += RtCall (call_delete<ClapEventParamS>, pevents); // delete in main_thread
     }
   }
   void
@@ -491,15 +489,9 @@ public:
       enqueued_events_.erase (enqueued_events_.begin());
       for (const auto &e : *pevents)
         need_wakeup |= apply_param_value_event (e);
-      main_rt_jobs += RtCall (delete_clap_event_params, pevents); // delete in main_thread
+      main_rt_jobs += RtCall (call_delete<ClapEventParamS>, pevents); // delete in main_thread
     }
     return need_wakeup;
-  }
-  static void
-  delete_clap_event_params (ClapEventParamS *p)
-  {
-    assert_return (this_thread_is_ase());
-    delete p;
   }
 };
 static CString clap_audio_wrapper_aseid = register_audio_processor<ClapAudioProcessor>();
@@ -546,12 +538,12 @@ setup_expression (ClapEventUnion *evunion, uint32_t time, uint16_t port_index)
 void
 ClapAudioProcessor::convert_clap_events (const clap_process_t &process, const bool as_clapnotes)
 {
-  MidiEventRange erange = get_event_input();
-  if (input_events_.capacity() < erange.events_pending())
-    input_events_.reserve (erange.events_pending() + 128);
-  input_events_.resize (erange.events_pending());
+  MidiEventInput evinput = midi_event_input();
+  if (input_events_.capacity() < evinput.events_pending())
+    input_events_.reserve (evinput.events_pending() + 128);
+  input_events_.resize (evinput.events_pending());
   uint j = 0;
-  for (const auto &ev : erange)
+  for (const auto &ev : evinput)
     switch (ev.message())
       {
         clap_event_note_expression *expr;
@@ -798,7 +790,6 @@ public:
     ClapParamUpdate update = {
       .steady_time = 0, // NOW
       .param_id = param_id,
-      .flags = 0,
       .value = CLAMP (v, info->min_value, info->max_value),
     };
     updates.push_back (update);
@@ -818,7 +809,7 @@ public:
         loader_updates_ = new ClapParamUpdateS;
         for (const auto &[id, value] : params)
           loader_updates_->push_back ({
-              .steady_time = 0, .param_id = id, .flags = 0, .value = value,
+              .steady_time = 0, .param_id = id, .value = value,
             });
         // TODO: flush loader_updates_ right away
       }

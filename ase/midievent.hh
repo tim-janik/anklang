@@ -3,6 +3,7 @@
 #define __ASE_MIDI_EVENT_HH__
 
 #include <ase/memory.hh>
+#include <ase/queuemux.hh>
 #include <ase/mathutils.hh>
 
 namespace Ase {
@@ -11,7 +12,17 @@ namespace Ase {
 enum class MusicalTuning : uint8;
 
 /// Type of MIDI Events.
-enum class MidiEventType : uint8_t {};
+enum class MidiEventType : uint8_t {
+  PARAM_VALUE      = 0x70, /// Ase internal Parameter update.
+  NOTE_OFF         = 0x80,
+  NOTE_ON          = 0x90,
+  AFTERTOUCH       = 0xA0, ///< Key Pressure, polyphonic aftertouch
+  CONTROL_CHANGE   = 0xB0, ///< Control Change
+  PROGRAM_CHANGE   = 0xC0,
+  CHANNEL_PRESSURE = 0xD0, ///< Channel Aftertouch
+  PITCH_BEND       = 0xE0,
+  SYSEX            = 0xF0,
+};
 
 /// Extended type information for MidiEvent.
 enum class MidiMessage : int32_t {
@@ -24,6 +35,7 @@ enum class MidiMessage : int32_t {
   OMNI_MODE_ON                  = 125,
   MONO_MODE_ON                  = 126,
   POLY_MODE_ON                  = 127,
+  PARAM_VALUE                   = 0x70,
   NOTE_OFF                      = 0x80,
   NOTE_ON                       = 0x90,
   AFTERTOUCH                    = 0xA0,
@@ -36,28 +48,23 @@ enum class MidiMessage : int32_t {
 
 /// MidiEvent data structure.
 struct MidiEvent {
-  constexpr static MidiEventType NOTE_OFF         = MidiEventType (0x80);
-  constexpr static MidiEventType NOTE_ON          = MidiEventType (0x90);
-  constexpr static MidiEventType AFTERTOUCH       = MidiEventType (0xA0); ///< Key Pressure, polyphonic aftertouch
-  constexpr static MidiEventType CONTROL_CHANGE   = MidiEventType (0xB0); ///< Control Change
-  constexpr static MidiEventType PROGRAM_CHANGE   = MidiEventType (0xC0);
-  constexpr static MidiEventType CHANNEL_PRESSURE = MidiEventType (0xD0); ///< Channel Aftertouch
-  constexpr static MidiEventType PITCH_BEND       = MidiEventType (0xE0);
-  constexpr static MidiEventType SYSEX            = MidiEventType (0xF0);
-  MidiEventType type;    ///< MidiEvent type, one of the MidiEventType members
+  using enum MidiEventType;
+  static_assert (AUDIO_BLOCK_MAX_RENDER_SIZE <= 2048); // -2048…+2047 fits frame
   int       frame : 12;  ///< Offset into current block, delayed if negative
   uint      channel : 4; ///< 0…15 for standard events
+  MidiEventType type;    ///< MidiEvent type, one of the MidiEventType members
   union {
     uint8   key;        ///< NOTE, KEY_PRESSURE MIDI note, 0…0x7f, 60 = middle C at 261.63 Hz.
     uint8   fragment;   ///< Flag for multi-part control change mesages.
   };
   union {
     uint    length;     ///< Data event length of byte array.
-    uint    param;      ///< PROGRAM_CHANGE program, CONTROL_CHANGE controller, 0…0x7f
+    uint    param;      ///< PROGRAM_CHANGE (program), CONTROL_CHANGE (controller):0…0x7f; PARAM_VALUE:uint32_t
     uint    noteid;     ///< NOTE, identifier for note expression handling or 0xffffffff.
   };
   union {
     char   *data;       ///< Data event byte array.
+    double  pvalue;     ///< Numeric parameter value, PARAM_VALUE.
     struct {
       float value;      ///< CONTROL_CHANGE 0…+1, CHANNEL_PRESSURE, 0…+1, PITCH_BEND -1…+1
       uint  cval;       ///< CONTROL_CHANGE control value, 0…0x7f
@@ -73,24 +80,23 @@ struct MidiEvent {
   /*des*/    ~MidiEvent ()      {}
   MidiMessage message   () const;
   std::string to_string () const;
-  static_assert (AUDIO_BLOCK_MAX_RENDER_SIZE <= 2048); // -2048…+2047 fits frame
 };
 
-MidiEvent make_note_on    (uint16 chnl, uint8 mkey, float velo, float tune = 0, uint nid = 0xffffff);
-MidiEvent make_note_off   (uint16 chnl, uint8 mkey, float velo, float tune = 0, uint nid = 0xffffff);
-MidiEvent make_aftertouch (uint16 chnl, uint8 mkey, float velo, float tune = 0, uint nid = 0xffffff);
-MidiEvent make_pressure   (uint16 chnl, float velo);
-MidiEvent make_control    (uint16 chnl, uint prm, float val);
-MidiEvent make_control8   (uint16 chnl, uint prm, uint8 cval);
-MidiEvent make_program    (uint16 chnl, uint prgrm);
-MidiEvent make_pitch_bend (uint16 chnl, float val);
+MidiEvent make_note_on     (uint16 chnl, uint8 mkey, float velo, float tune = 0, uint nid = 0xffffff);
+MidiEvent make_note_off    (uint16 chnl, uint8 mkey, float velo, float tune = 0, uint nid = 0xffffff);
+MidiEvent make_aftertouch  (uint16 chnl, uint8 mkey, float velo, float tune = 0, uint nid = 0xffffff);
+MidiEvent make_pressure    (uint16 chnl, float velo);
+MidiEvent make_control     (uint16 chnl, uint prm, float val);
+MidiEvent make_control8    (uint16 chnl, uint prm, uint8 cval);
+MidiEvent make_program     (uint16 chnl, uint prgrm);
+MidiEvent make_pitch_bend  (uint16 chnl, float val);
+MidiEvent make_param_value (uint param, double pvalue);
 
 /// A stream of writable MidiEvent structures.
-class MidiEventStream {
+class MidiEventOutput {
   std::vector<MidiEvent> events_; // TODO: use O(1) allocator
-  friend class MidiEventRange;
 public:
-  explicit         MidiEventStream ();
+  explicit         MidiEventOutput ();
   void             append          (int16_t frame, const MidiEvent &event);
   const MidiEvent* begin           () const noexcept { return &*events_.begin(); }
   const MidiEvent* end             () const noexcept { return &*events_.end(); }
@@ -102,17 +108,37 @@ public:
   int64_t          last_frame      () const ASE_PURE;
   size_t           capacity        () const noexcept    { return events_.capacity(); }
   void             reserve         (size_t n)           { events_.reserve (n); }
+  std::vector<MidiEvent>
+  const&           vector          () { return events_; }
 };
 
-/// A readonly view and iterator into an MidiEventStream.
-class MidiEventRange {
-  const MidiEventStream &estream_;
+/// An in-order MidiEvent reader for multiple MidiEvent sources.
+template<size_t MAXQUEUES>
+class MidiEventReader : QueueMultiplexer<MAXQUEUES,std::vector<MidiEvent>::const_iterator> {
+  using Base = QueueMultiplexer<MAXQUEUES,std::vector<MidiEvent>::const_iterator>;
+  ASE_CLASS_NON_COPYABLE (MidiEventReader);
 public:
-  const MidiEvent* begin          () const  { return &*estream_.begin(); }
-  const MidiEvent* end            () const  { return &*estream_.end(); }
-  size_t           events_pending () const  { return estream_.size(); }
-  explicit         MidiEventRange (const MidiEventStream &estream);
+  using iterator = Base::iterator;
+  using Base::assign;
+  size_t   events_pending  () const { return this->count_pending(); }
+  iterator begin           ()       { return this->Base::begin(); }
+  iterator end             ()       { return this->Base::end(); }
+  using VectorArray = std::array<const std::vector<MidiEvent>*, MAXQUEUES>;
+  /*ctor*/ MidiEventReader (const VectorArray &midi_event_vector_array = VectorArray());
 };
+
+// == MidiEventReader ==
+template<size_t MAXQUEUES>
+MidiEventReader<MAXQUEUES>::MidiEventReader (const VectorArray &midi_event_vector_array)
+{
+  assign (midi_event_vector_array);
+}
+
+inline int
+QueueMultiplexer_priority (const MidiEvent &e)
+{
+  return e.frame;
+}
 
 /// Components of a MIDI note.
 struct MidiNote {

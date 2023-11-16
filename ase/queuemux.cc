@@ -30,8 +30,9 @@ queuemux_test()
       ascending_counter++;
     return ascending_counter;
   };
+  const size_t TOTAL = 39;
   std::vector<int> samples;
-  for (size_t i = 0; i < 39; i++)
+  for (size_t i = 0; i < TOTAL; i++)
     samples.push_back (ascending_values());
 
   // setting: N queues contain ascending (sorted) values
@@ -43,10 +44,12 @@ queuemux_test()
     queues[random_int64() % N].push_back (SomeValue { v });
 
   // task: fetch values from all queues in sorted order
-  std::vector<Queue*> queue_ptrs;
-  for (Queue &queue : queues)
-    queue_ptrs.push_back (&queue);
-  QueueMultiplexer<N, Queue> mux (queue_ptrs.size(), &queue_ptrs[0]);
+  std::array<const Queue*,N> queue_ptrs{};
+  for (size_t i = 0; i < queues.size(); i++)
+    queue_ptrs[i] = &queues[i];
+  QueueMultiplexer<N, Queue::const_iterator> mux;
+  mux.assign (queue_ptrs);
+  TASSERT (mux.count_pending() == TOTAL);
   int last = -2147483648;
   size_t sc = 0;
   while (mux.more())
@@ -58,6 +61,7 @@ queuemux_test()
       TASSERT (sc < samples.size() && samples[sc++] == current.i);
     }
   TASSERT (sc == samples.size());
+  TASSERT (mux.count_pending() == 0);
 }
 
 } // Anon

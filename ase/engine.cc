@@ -53,9 +53,9 @@ public:
   static constexpr uint        fixed_n_channels = 2;
   PcmDriverP                   null_pcm_driver_, pcm_driver_;
   constexpr static size_t      MAX_BUFFER_SIZE = AUDIO_BLOCK_MAX_RENDER_SIZE;
-  size_t                       buffer_size_ = MAX_BUFFER_SIZE; // mono buffer size
+  std::atomic<uint64_t>        buffer_size_ = MAX_BUFFER_SIZE; // mono buffer size
   float                        chbuffer_data_[MAX_BUFFER_SIZE * fixed_n_channels] = { 0, };
-  uint64                       write_stamp_ = 0, render_stamp_ = MAX_BUFFER_SIZE;
+  uint64                       write_stamp_ = 0;
   std::vector<AudioProcessor*> schedule_;
   EngineMidiInputP             midi_proc_;
   bool                         schedule_invalid_ = true;
@@ -81,7 +81,6 @@ public:
   void            schedule_clear         ();
   void            schedule_add           (AudioProcessor &aproc, uint level);
   void            schedule_queue_update  ();
-  uint64          frame_counter          () const               { return render_stamp_; }
   void            schedule_render        (uint64 frames);
   void            enable_output          (AudioProcessor &aproc, bool onoff);
   void            wakeup_thread_mt       ();
@@ -102,6 +101,7 @@ public:
   void            start_threads_ml       ();
   void            stop_threads_ml        ();
   void            create_processors_ml   ();
+  String          engine_stats_string    (uint64_t stats) const;
 };
 
 static std::thread::id audio_engine_thread_id = {};
@@ -363,7 +363,7 @@ AudioEngineThread::driver_dispatcher (const LoopState &state)
           if (schedule_invalid_)
             {
               schedule_clear();
-              for (AudioProcessorP &proc :  oprocs_)
+              for (AudioProcessorP &proc : oprocs_)
                 proc->schedule_processor();
               schedule_invalid_ = false;
             }
@@ -515,6 +515,22 @@ AudioEngineThread::set_project (ProjectImplP project)
   // dtor of old runs here
 }
 
+String
+AudioEngineThread::engine_stats_string (uint64_t stats) const
+{
+  String s;
+  for (size_t i = 0; i < oprocs_.size(); i++) {
+    AudioProcessorInfo pinfo;
+    pinfo.label = "INTERNAL";
+    AudioProcessor::registry_foreach ([&] (const String &aseid, AudioProcessor::StaticInfo static_info) {
+      if (aseid == oprocs_[i]->aseid_)
+        static_info (pinfo); // TODO: this is a bit awkward to fetch AudioProcessorInfo for an AudioProcessor
+    });
+    s += string_format ("%s: %s (MUST_SCHEDULE)\n", pinfo.label, oprocs_[i]->debug_name());
+  }
+  return s;
+}
+
 ProjectImplP
 AudioEngineThread::get_project ()
 {
@@ -532,6 +548,7 @@ AudioEngineThread::AudioEngineThread (const VoidF &owner_wakeup, uint sample_rat
   AudioEngine (*this, *new (transport_block.block_start) AudioTransport (speakerarrangement, sample_rate)),
   owner_wakeup_ (owner_wakeup), transport_block_ (transport_block)
 {
+  render_stamp_ = MAX_BUFFER_SIZE; // enforce non-0 start offset for all modules
   oprocs_.reserve (16);
   assert_return (transport_.samplerate == 48000);
 }
@@ -556,11 +573,20 @@ AudioEngine::~AudioEngine()
   fatal_error ("AudioEngine must not be destroyed");
 }
 
+String
+AudioEngine::engine_stats (uint64_t stats) const
+{
+  String strstats;
+  const AudioEngineThread &engine_thread = static_cast<const AudioEngineThread&> (*this);
+  const_cast<AudioEngine*> (this)->synchronized_jobs += [&] () { strstats = engine_thread.engine_stats_string (stats); };
+  return strstats;
+}
+
 uint64
-AudioEngine::frame_counter () const
+AudioEngine::block_size() const
 {
   const AudioEngineThread &impl = static_cast<const AudioEngineThread&> (*this);
-  return impl.frame_counter();
+  return impl.buffer_size_;
 }
 
 void
@@ -764,14 +790,14 @@ class EngineMidiInput : public AudioProcessor {
   void
   reset (uint64 target_stamp) override
   {
-    MidiEventStream &estream = get_event_output();
+    MidiEventOutput &estream = midi_event_output();
     estream.clear();
     estream.reserve (256);
   }
   void
   render (uint n_frames) override
   {
-    MidiEventStream &estream = get_event_output();
+    MidiEventOutput &estream = midi_event_output();
     estream.clear();
     for (size_t i = 0; i < midi_drivers_.size(); i++)
       if (midi_drivers_[i])
@@ -779,8 +805,8 @@ class EngineMidiInput : public AudioProcessor {
   }
 public:
   MidiDriverS midi_drivers_;
-  EngineMidiInput (AudioEngine &engine) :
-    AudioProcessor (engine)
+  EngineMidiInput (const ProcessorSetup &psetup) :
+    AudioProcessor (psetup)
   {}
 };
 
@@ -880,38 +906,43 @@ midi_driver_pref_list_choices (const CString &ident)
 }
 
 static Preference pcm_driver_pref =
-  Preference ("driver.pcm.devid",
-              { _("PCM Driver"), "", "auto", "ms", { pcm_driver_pref_list_choices },
-                STANDARD, "", _("Driver and device to be used for PCM input and output"), },
-              [] (const CString&,const Value&) { apply_driver_preferences(); });
+  Preference ({
+      "driver.pcm.devid", _("PCM Driver"), "", "auto", "ms",
+      { pcm_driver_pref_list_choices }, STANDARD, "",
+      _("Driver and device to be used for PCM input and output"), },
+    [] (const CString&,const Value&) { apply_driver_preferences(); });
 
 static Preference synth_latency_pref =
-  Preference ("driver.pcm.synth_latency",
-              { _("Synth Latency"), "", 15, "ms", MinMaxStep { 0, 3000, 5 }, STANDARD + String ("step=5"),
-                "", _("Processing duration between input and output of a single sample, smaller values increase CPU load") },
-              [] (const CString&,const Value&) { apply_driver_preferences(); });
+  Preference ({
+      "driver.pcm.synth_latency", _("Synth Latency"), "", 15, "ms",
+      MinMaxStep { 0, 3000, 5 }, STANDARD + String ("step=5"), "",
+      _("Processing duration between input and output of a single sample, smaller values increase CPU load") },
+    [] (const CString&,const Value&) { apply_driver_preferences(); });
 
 static Preference midi1_driver_pref =
-  Preference ("driver.midi1.devid",
-              { _("MIDI Controller (1)"), "", "auto", "ms", { midi_driver_pref_list_choices },
-                STANDARD, "", _("MIDI controller device to be used for MIDI input"), },
-              [] (const CString&,const Value&) { apply_driver_preferences(); });
+  Preference ({
+      "driver.midi1.devid", _("MIDI Controller (1)"), "", "auto", "ms",
+      { midi_driver_pref_list_choices }, STANDARD, "",
+      _("MIDI controller device to be used for MIDI input"), },
+    [] (const CString&,const Value&) { apply_driver_preferences(); });
 static Preference midi2_driver_pref =
-  Preference ("driver.midi2.devid",
-              { _("MIDI Controller (2)"), "", "auto", "ms", { midi_driver_pref_list_choices },
-                STANDARD, "", _("MIDI controller device to be used for MIDI input"), },
-              [] (const CString&,const Value&) { apply_driver_preferences(); });
+  Preference ({
+      "driver.midi2.devid", _("MIDI Controller (2)"), "", "auto", "ms",
+      { midi_driver_pref_list_choices }, STANDARD, "",
+      _("MIDI controller device to be used for MIDI input"), },
+    [] (const CString&,const Value&) { apply_driver_preferences(); });
 static Preference midi3_driver_pref =
-  Preference ("driver.midi3.devid",
-              { _("MIDI Controller (3)"), "", "auto", "ms", { midi_driver_pref_list_choices },
-                STANDARD, "", _("MIDI controller device to be used for MIDI input"), },
-              [] (const CString&,const Value&) { apply_driver_preferences(); });
+  Preference ({
+      "driver.midi3.devid", _("MIDI Controller (3)"), "", "auto", "ms",
+      { midi_driver_pref_list_choices }, STANDARD, "",
+      _("MIDI controller device to be used for MIDI input"), },
+    [] (const CString&,const Value&) { apply_driver_preferences(); });
 static Preference midi4_driver_pref =
-  Preference ("driver.midi4.devid",
-              { _("MIDI Controller (4)"), "", "auto", "ms", { midi_driver_pref_list_choices },
-                STANDARD, "", _("MIDI controller device to be used for MIDI input"), },
-              [] (const CString&,const Value&) { apply_driver_preferences(); });
-
+  Preference ({
+      "driver.midi4.devid", _("MIDI Controller (4)"), "", "auto", "ms",
+      { midi_driver_pref_list_choices }, STANDARD, "",
+      _("MIDI controller device to be used for MIDI input"), },
+    [] (const CString&,const Value&) { apply_driver_preferences(); });
 
 static void
 apply_driver_preferences ()

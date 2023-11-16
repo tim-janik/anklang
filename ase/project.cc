@@ -803,12 +803,12 @@ ProjectImpl::create_properties ()
   // TODO: bag += Bool ("dirty", &dirty_, _("Modification Flag"), _("Dirty"), false, ":r:G:", _("Flag indicating modified project state"));
   // struct Prop { CString ident; ValueGetter getter; ValueSetter setter; Param param; ValueLister lister; };
   bag.group = _("Timing");
-  bag += Prop ("numerator", getbpb, setbpb, { _("Signature Numerator"), _("Numerator"), 4., "", MinMaxStep { 1., 63., 0 }, STANDARD });
-  bag += Prop ("denominator", getunt, setunt, { _("Signature Denominator"), _("Denominator"), 4, "", MinMaxStep { 1, 16, 0 }, STANDARD });
-  bag += Prop ("bpm", getbpm, setbpm, { _("Beats Per Minute"), _("BPM"), 90., "", MinMaxStep { 10., 1776., 0 }, STANDARD });
+  bag += Prop (getbpb, setbpb, { "numerator", _("Signature Numerator"), _("Numerator"), 4., "", MinMaxStep { 1., 63., 0 }, STANDARD });
+  bag += Prop (getunt, setunt, { "denominator", _("Signature Denominator"), _("Denominator"), 4, "", MinMaxStep { 1, 16, 0 }, STANDARD });
+  bag += Prop (getbpm, setbpm, { "bpm", _("Beats Per Minute"), _("BPM"), 90., "", MinMaxStep { 10., 1776., 0 }, STANDARD });
   bag.group = _("Tuning");
-  bag += Prop ("musical_tuning", make_enum_getter<MusicalTuning> (&musical_tuning_), make_enum_setter<MusicalTuning> (&musical_tuning_),
-               { _("Musical Tuning"), _("Tuning"), uint32_t (MusicalTuning::OD_12_TET), "", {}, STANDARD, "",
+  bag += Prop (make_enum_getter<MusicalTuning> (&musical_tuning_), make_enum_setter<MusicalTuning> (&musical_tuning_),
+               { "musical_tuning", _("Musical Tuning"), _("Tuning"), uint32_t (MusicalTuning::OD_12_TET), "", {}, STANDARD, "",
                  _("The tuning system which specifies the tones or pitches to be used. "
                    "Due to the psychoacoustic properties of tones, various pitch combinations can "
                    "sound \"natural\" or \"pleasing\" when used in combination, the musical "

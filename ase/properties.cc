@@ -17,13 +17,11 @@ Property::~Property()
 {}
 
 // == PropertyImpl ==
-PropertyImpl::PropertyImpl (CString ident, const Param &param, const PropertyGetter &getter,
+PropertyImpl::PropertyImpl (const Param &param, const PropertyGetter &getter,
                             const PropertySetter &setter, const PropertyLister &lister) :
   getter_ (getter), setter_ (setter), lister_ (lister)
 {
-  Param iparam = param;
-  iparam.ident = ident;
-  parameter_ = std::make_shared<Parameter> (iparam);
+  parameter_ = std::make_shared<Parameter> (param);
 }
 
 // == PropertyBag ==
@@ -107,11 +105,10 @@ Preference::Preference (ParameterC parameter)
   sigh_ = pv.callbacks->add_delcb ([this] (const String &ident, const Value &value) { emit_event ("notify", ident); });
 }
 
-Preference::Preference (const CString &ident, const Param &param, const StringValueF &cb)
+Preference::Preference (const Param &param, const StringValueF &cb)
 {
-  Param iparam = param;
-  iparam.ident = ident;
-  parameter_ = std::make_shared<Parameter> (iparam);
+  assert_return (param.ident.empty() == false);
+  parameter_ = std::make_shared<Parameter> (param);
   PrefsMap &prefsmap = prefs_map();
   PrefsValue &pv = prefsmap[parameter_->cident];
   assert_return (pv.parameter == nullptr); // catch duplicate registration

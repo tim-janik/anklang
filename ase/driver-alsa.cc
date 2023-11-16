@@ -1136,7 +1136,7 @@ public:
     return snd_seq_event_input_pending (seq_, pull_fifo) > 0;
   }
   uint
-  fetch_events (MidiEventStream &estream, double samplerate) override
+  fetch_events (MidiEventOutput &estream, double samplerate) override
   {
     assert_return (!!evparser_, 0);
     const size_t old_size = estream.size();
@@ -1147,7 +1147,7 @@ public:
       return (channel + 1) * 128 + note;
     };
     bool must_sort = false;
-    const auto add = [&] (MidiEventStream &estream, const snd_seq_event_t *ev, const MidiEvent &event) {
+    const auto add = [&] (MidiEventOutput &estream, const snd_seq_event_t *ev, const MidiEvent &event) {
       const double t = ev->time.time.tv_sec + 1e-9 * ev->time.time.tv_nsec;
       const double diff = t - now;
       int64_t frames = diff * samplerate;

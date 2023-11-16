@@ -14,8 +14,8 @@ static constexpr OBusId OUT1 = OBusId (1);
 class AudioChain::Inlet : public AudioProcessor {
   AudioChain &audio_chain_;
 public:
-  Inlet (AudioEngine &engine, AudioChain *audiochain) :
-    AudioProcessor (engine),
+  Inlet (const ProcessorSetup &psetup, AudioChain *audiochain) :
+    AudioProcessor (psetup),
     audio_chain_ (*audiochain)
   {
     assert_return (nullptr != audiochain);
@@ -42,8 +42,8 @@ public:
 };
 
 // == AudioCombo ==
-AudioCombo::AudioCombo (AudioEngine &engine) :
-  AudioProcessor (engine)
+AudioCombo::AudioCombo (const ProcessorSetup &psetup) :
+  AudioProcessor (psetup)
 {}
 
 AudioCombo::~AudioCombo ()
@@ -133,8 +133,8 @@ AudioCombo::set_event_source (AudioProcessorP eproc)
 }
 
 // == AudioChain ==
-AudioChain::AudioChain (AudioEngine &engine, SpeakerArrangement iobuses) :
-  AudioCombo (engine),
+AudioChain::AudioChain (const ProcessorSetup &psetup, SpeakerArrangement iobuses) :
+  AudioCombo (psetup),
   ispeakers_ (iobuses), ospeakers_ (iobuses)
 {
   assert_return (speaker_arrangement_count_channels (iobuses) > 0);
