@@ -112,7 +112,10 @@ class LiquidSFZ : public AudioProcessor {
   initialize (SpeakerArrangement busses) override
   {
     auto insts = hardcoded_instruments_;
-    add_param (INSTRUMENT, "Instrument", "Instrument", std::move (insts), 0, "", "Instrument (should have a file selector)");
+
+    ParameterMap pmap;
+    pmap[INSTRUMENT] = Param { "instrument", "Instrument", "Instrument", 0, "", std::move (insts), "", "Instrument (should have a file selector)" };
+    install_params (pmap);
 
     loader_.set_sample_rate (sample_rate());
     prepare_event_input();
@@ -123,10 +126,10 @@ class LiquidSFZ : public AudioProcessor {
   reset (uint64 target_stamp) override
   {
     synth_need_reset_ = true;
-    adjust_params (true);
+    adjust_all_params();
   }
   void
-  adjust_param (Id32 tag) override
+  adjust_param (uint32_t tag) override
   {
     switch (tag)
       {
@@ -162,8 +165,6 @@ class LiquidSFZ : public AudioProcessor {
   void
   render (uint n_frames) override
   {
-    adjust_params (false);
-
     if (loader_.idle())
       {
         if (synth_need_reset_)
@@ -172,8 +173,8 @@ class LiquidSFZ : public AudioProcessor {
             synth_need_reset_ = false;
           }
 
-        MidiEventRange erange = get_event_input();
-        for (const auto &ev : erange)
+        MidiEventInput evinput = midi_event_input();
+        for (const auto &ev : evinput)
           {
             const int time_stamp = std::max<int> (ev.frame, 0);
             switch (ev.message())
@@ -187,6 +188,10 @@ class LiquidSFZ : public AudioProcessor {
               case MidiMessage::ALL_NOTES_OFF:
               case MidiMessage::ALL_SOUND_OFF:
                 synth_.all_sound_off();    // NOTE: there is no extra "all notes off" in liquidsfz
+                break;
+              case MidiMessage::PARAM_VALUE:
+                apply_event (ev);
+                adjust_param (ev.param);
                 break;
               default: ;
               }
@@ -208,8 +213,8 @@ class LiquidSFZ : public AudioProcessor {
       }
   }
 public:
-  LiquidSFZ (AudioEngine &engine) :
-    AudioProcessor (engine),
+  LiquidSFZ (const ProcessorSetup &psetup) :
+    AudioProcessor (psetup),
     loader_ (synth_)
   {
     hardcoded_instruments_ += { "P", "Piano", "/home/stefan/sfz/SalamanderGrandPianoV3_44.1khz16bit/SalamanderGrandPianoV3.sfz" };
