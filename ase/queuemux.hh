@@ -84,8 +84,8 @@ struct QueueMultiplexer {
     using reference = const value_type&;
     using iterator_category = std::input_iterator_tag;
     /*ctor*/    Iter       (QueueMultiplexer *u = nullptr) : mux_ (u && u->more() ? u : nullptr) {}
-    bool        oob        () const { return !mux_; }
-    friend bool operator== (const Iter &a, const Iter &b) { return a.mux_ == b.mux_; }
+    bool        more       () const { return mux_ && mux_->more(); }
+    friend bool operator== (const Iter &a, const Iter &b) { return a.more() == b.more(); }
     value_type& operator*  () const { return mux_ ? mux_->peek() : empty(); }
     Iter        operator++ (int) { Iter copy (*this); this->operator++(); return copy; }
     Iter&       operator++ ()
