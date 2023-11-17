@@ -580,37 +580,52 @@ class BlepSynth : public AudioProcessor {
   void
   adjust_param (uint32_t tag) override
   {
-    if (tag == FILTER_TYPE)
+    switch (tag)
       {
-        int new_filter_type = irintf (get_param (FILTER_TYPE));
-        if (new_filter_type != filter_type_)
+        case FILTER_TYPE:
           {
-            filter_type_ = new_filter_type;
-            for (Voice *voice : active_voices_)
+            int new_filter_type = irintf (get_param (FILTER_TYPE));
+            if (new_filter_type != filter_type_)
               {
-                if (filter_type_ == FILTER_TYPE_LADDER)
-                  voice->ladder_filter_.reset();
-                if (filter_type_ == FILTER_TYPE_SKFILTER)
-                  voice->skfilter_.reset();
+                filter_type_ = new_filter_type;
+                for (Voice *voice : active_voices_)
+                  {
+                    if (filter_type_ == FILTER_TYPE_LADDER)
+                      voice->ladder_filter_.reset();
+                    if (filter_type_ == FILTER_TYPE_SKFILTER)
+                      voice->skfilter_.reset();
+                  }
               }
           }
-      }
-    if (tag == ATTACK || tag == DECAY || tag == SUSTAIN || tag == RELEASE ||
-        tag == ATTACK_SLOPE || tag == DECAY_SLOPE || tag == RELEASE_SLOPE)
-      {
-        need_update_volume_envelope_ = true;
-      }
-    if (tag == FIL_ATTACK || tag == FIL_DECAY || tag == FIL_SUSTAIN || tag == FIL_RELEASE)
-      {
-        need_update_filter_envelope_ = true;
-      }
-    if (tag == VE_MODEL)
-      {
-        bool ve_has_slope = irintf (get_param (VE_MODEL)) > 0; // exponential envelope has no slope parameters
+          break;
+        case ATTACK:
+        case DECAY:
+        case SUSTAIN:
+        case RELEASE:
+        case ATTACK_SLOPE:
+        case DECAY_SLOPE:
+        case RELEASE_SLOPE:
+          {
+            need_update_volume_envelope_ = true;
+            break;
+          }
+        case FIL_ATTACK:
+        case FIL_DECAY:
+        case FIL_SUSTAIN:
+        case FIL_RELEASE:
+          {
+            need_update_filter_envelope_ = true;
+            break;
+          }
+        case VE_MODEL:
+          {
+            bool ve_has_slope = irintf (get_param (VE_MODEL)) > 0; // exponential envelope has no slope parameters
 
-        set_parameter_used (ATTACK_SLOPE,  ve_has_slope);
-        set_parameter_used (DECAY_SLOPE,   ve_has_slope);
-        set_parameter_used (RELEASE_SLOPE, ve_has_slope);
+            set_parameter_used (ATTACK_SLOPE,  ve_has_slope);
+            set_parameter_used (DECAY_SLOPE,   ve_has_slope);
+            set_parameter_used (RELEASE_SLOPE, ve_has_slope);
+            break;
+          }
       }
   }
   void
