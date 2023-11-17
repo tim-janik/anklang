@@ -206,7 +206,7 @@ protected:
 using VirtualBaseP = std::shared_ptr<VirtualBase>;
 
 /// Issue a warning about an assertion error.
-void assertion_failed (const std::string &msg = "", const char *file = __builtin_FILE(),
+void assertion_failed (const char *msg = nullptr, const char *file = __builtin_FILE(),
                        int line = __builtin_LINE(), const char *func = __builtin_FUNCTION());
 
 /// Test string equality at compile time.
