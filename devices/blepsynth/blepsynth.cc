@@ -353,10 +353,6 @@ class BlepSynth : public AudioProcessor {
   static constexpr int CUTOFF_MIN_MIDI = 15;
   static constexpr int CUTOFF_MAX_MIDI = 144;
 
-  bool    need_update_volume_envelope_;
-
-  bool    need_update_filter_envelope_;
-
   class Voice
   {
   public:
@@ -608,7 +604,8 @@ class BlepSynth : public AudioProcessor {
         case DECAY_SLOPE:
         case RELEASE_SLOPE:
           {
-            need_update_volume_envelope_ = true;
+            for (Voice *voice : active_voices_)
+              update_volume_envelope (voice);
             break;
           }
         case FIL_ATTACK:
@@ -616,7 +613,8 @@ class BlepSynth : public AudioProcessor {
         case FIL_SUSTAIN:
         case FIL_RELEASE:
           {
-            need_update_filter_envelope_ = true;
+            for (Voice *voice : active_voices_)
+              update_filter_envelope (voice);
             break;
           }
         case VE_MODEL:
@@ -628,6 +626,11 @@ class BlepSynth : public AudioProcessor {
             set_parameter_used (RELEASE_SLOPE, ve_has_slope);
             break;
           }
+        case KEY_C: check_note (KEY_C, old_c_, 60); break;
+        case KEY_D: check_note (KEY_D, old_d_, 62); break;
+        case KEY_E: check_note (KEY_E, old_e_, 64); break;
+        case KEY_F: check_note (KEY_F, old_f_, 65); break;
+        case KEY_G: check_note (KEY_G, old_g_, 67); break;
       }
   }
   void
@@ -852,9 +855,6 @@ class BlepSynth : public AudioProcessor {
 
     auto filter_process_block = [&] (auto& filter)
       {
-        if (need_update_filter_envelope_)
-          update_filter_envelope (voice);
-
         auto gen_filter_input = [&] (float *freq_in, float *reso_in, float *drive_in, uint n_frames)
           {
             voice->fil_envelope_.process (freq_in, n_frames);
@@ -934,13 +934,6 @@ class BlepSynth : public AudioProcessor {
     if (!n_frames)
       return;
 
-    /* TODO: replace this with true midi input */
-    check_note (KEY_C, old_c_, 60);
-    check_note (KEY_D, old_d_, 62);
-    check_note (KEY_E, old_e_, 64);
-    check_note (KEY_F, old_f_, 65);
-    check_note (KEY_G, old_g_, 67);
-
     bool   need_free = false;
 
     for (Voice *voice : active_voices_)
@@ -967,8 +960,6 @@ class BlepSynth : public AudioProcessor {
 
         // apply volume envelope
         float volume_env[n_frames];
-        if (need_update_volume_envelope_)
-          update_volume_envelope (voice);
         voice->envelope_.process (volume_env, n_frames);
         float post_gain_factor = db2voltage (get_param (POST_GAIN));
         for (uint i = 0; i < n_frames; i++)
@@ -985,8 +976,6 @@ class BlepSynth : public AudioProcessor {
       }
     if (need_free)
       free_unused_voices();
-    need_update_volume_envelope_ = false;
-    need_update_filter_envelope_ = false;
   }
   void
   render (uint n_frames) override
