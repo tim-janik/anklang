@@ -126,7 +126,7 @@ private:
     // dprintf (2, "%s: n_queues=%zd current=%zd first=%ld next=%ld\n", __func__, n_queues, current, long (first), long (next));
   }
   static const ValueType&
-  empty() noexcept
+  empty() noexcept ASE_NOINLINE
   {
     static const ValueType empty_ {};
     return empty_;
