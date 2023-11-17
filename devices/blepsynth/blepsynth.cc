@@ -596,6 +596,8 @@ class BlepSynth : public AudioProcessor {
                       voice->skfilter_.reset();
                   }
               }
+            set_parameter_used (LADDER_MODE, filter_type_ == FILTER_TYPE_LADDER);
+            set_parameter_used (SKFILTER_MODE, filter_type_ == FILTER_TYPE_SKFILTER);
           }
           break;
         case ATTACK:
@@ -645,6 +647,9 @@ class BlepSynth : public AudioProcessor {
     int unison_voices = irintf (get_param (O+OSC1_UNISON_VOICES));
     unison_voices = CLAMP (unison_voices, 1, 16);
     osc.set_unison (unison_voices, get_param (O+OSC1_UNISON_DETUNE), get_param (O+OSC1_UNISON_STEREO) * 0.01);
+
+    set_parameter_used (O + OSC1_UNISON_DETUNE, unison_voices > 1);
+    set_parameter_used (O + OSC1_UNISON_STEREO, unison_voices > 1);
   }
   static double
   perc_to_s (double perc)
