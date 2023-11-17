@@ -556,8 +556,8 @@ AudioEngineThread::AudioEngineThread (const VoidF &owner_wakeup, uint sample_rat
 AudioEngine&
 make_audio_engine (const VoidF &owner_wakeup, uint sample_rate, SpeakerArrangement speakerarrangement)
 {
-  ASE_ASSERT_ALWAYS (sample_rate == FIXED_SAMPLE_RATE);
-  ASE_ASSERT_ALWAYS (speaker_arrangement_count_channels (speakerarrangement) == FIXED_N_CHANNELS);
+  ASE_ASSERT_WARN (sample_rate == FIXED_SAMPLE_RATE);
+  ASE_ASSERT_WARN (speaker_arrangement_count_channels (speakerarrangement) == FIXED_N_CHANNELS);
   FastMemory::Block transport_block = ServerImpl::instancep()->telemem_allocate (sizeof (AudioTransport));
   return *new AudioEngineThread (owner_wakeup, sample_rate, speakerarrangement, transport_block);
 }

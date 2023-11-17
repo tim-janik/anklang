@@ -79,19 +79,16 @@ using VoidF = std::function<void()>;
 #define ASE_RETURN_UNLESS(cond, ...)      do { if (ASE_UNLIKELY (!bool (cond))) return __VA_ARGS__; } while (0)
 
 /// Return from the current function if `expr` evaluates to false and issue an assertion warning.
-#define ASE_ASSERT_RETURN(expr, ...)     do { if (ASE_ISLIKELY (expr)) break; ::Ase::assertion_failed (#expr); return __VA_ARGS__; } while (0)
+#define ASE_ASSERT_RETURN(expr, ...)     do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); return __VA_ARGS__; } while (0)
 
 /// Return from the current function and issue an assertion warning.
 #define ASE_ASSERT_RETURN_UNREACHED(...) do { ::Ase::assertion_failed (""); return __VA_ARGS__; } while (0)
 
 /// Issue an assertion warning if `expr` evaluates to false.
-#define ASE_ASSERT_WARN(expr)            do { if (ASE_ISLIKELY (expr)) break; ::Ase::assertion_failed (#expr); } while (0)
+#define ASE_ASSERT_WARN(expr)            do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); } while (0)
 
 /// Like ASE_ASSERT_WARN(), enabled if expensive `expr` are allowed.
-#define ASE_ASSERT_PARANOID(expr)        do { if (ASE_ISLIKELY (expr)) break; ::Ase::assertion_failed (#expr); } while (0)
-
-/// Return from the current function if `expr` evaluates to false and issue an assertion warning.
-#define ASE_ASSERT_ALWAYS(expr, ...)     do { if (ASE_ISLIKELY (expr)) break; ::Ase::assertion_failed (#expr); __builtin_trap(); } while (0)
+#define ASE_ASSERT_PARANOID(expr)        do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); } while (0)
 
 /// Delete copy ctor and assignment operator.
 #define ASE_CLASS_NON_COPYABLE(ClassName)  \
@@ -209,8 +206,8 @@ protected:
 using VirtualBaseP = std::shared_ptr<VirtualBase>;
 
 /// Issue a warning about an assertion error.
-void assertion_failed (const std::string &msg = "", const char *file = __builtin_FILE(),
-                       int line = __builtin_LINE(), const char *func = __builtin_FUNCTION());
+void assertion_failed (const char *msg = nullptr, const char *file = __builtin_FILE(),
+                       int line = __builtin_LINE(), const char *func = __builtin_FUNCTION()) noexcept;
 
 /// Test string equality at compile time.
 extern inline constexpr bool

@@ -26,13 +26,13 @@ using Ase::String;
 #define ARRAY_SIZE(array)               ASE_ARRAY_SIZE (array)
 
 /// Return from the current function if `expr` is unmet and issue an assertion warning.
-#define assert_return(expr, ...)        ASE_ASSERT_RETURN (expr, __VA_ARGS__)
+#define assert_return(expr, ...)        do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); return __VA_ARGS__; } while (0)
 /// Return from the current function and issue an assertion warning.
-#define assert_return_unreached(...)    ASE_ASSERT_RETURN_UNREACHED (__VA_ARGS__)
+#define assert_return_unreached(...)    do { ::Ase::assertion_failed (""); return __VA_ARGS__; } while (0)
 /// Issue an assertion warning if `expr` evaluates to false.
-#define assert_warn(expr)               ASE_ASSERT_WARN (expr)
+#define assert_warn(expr)               do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); } while (0)
 /// Issue an assertion warning if `expr` evaluates to false, check might be disabled in production.
-#define assert_paranoid(expr)           ASE_ASSERT_PARANOID (expr)
+#define assert_paranoid(expr)           do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); } while (0)
 /// Explicitely mark unreachable code locations.
 #define assert_unreached()              __builtin_unreachable()
 
