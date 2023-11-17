@@ -207,7 +207,7 @@ using VirtualBaseP = std::shared_ptr<VirtualBase>;
 
 /// Issue a warning about an assertion error.
 void assertion_failed (const char *msg = nullptr, const char *file = __builtin_FILE(),
-                       int line = __builtin_LINE(), const char *func = __builtin_FUNCTION());
+                       int line = __builtin_LINE(), const char *func = __builtin_FUNCTION()) noexcept;
 
 /// Test string equality at compile time.
 extern inline constexpr bool

@@ -23,7 +23,7 @@ string_demangle_cxx (const char *mangled_identifier)
 }
 
 void
-assertion_failed (const char *msg, const char *file, int line, const char *func)
+assertion_failed (const char *msg, const char *file, int line, const char *func) noexcept
 {
   if (file && line > 0 && func)
     fprintf (stderr, "%s:%u:%s: ", file, line, func);
