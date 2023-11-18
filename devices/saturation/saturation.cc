@@ -91,9 +91,11 @@ public:
     MidiEventInput evinput = midi_event_input();
     for (const auto &ev : evinput)
       {
+        uint frame = std::max<int> (ev.frame, 0); // TODO: should be unsigned anyway, issue #26
+
         // process any audio that is before the event
-        render_audio (left_in + offset, right_in + offset, left_out + offset, right_out + offset, ev.frame - offset);
-        offset = ev.frame;
+        render_audio (left_in + offset, right_in + offset, left_out + offset, right_out + offset, frame - offset);
+        offset = frame;
 
         switch (ev.message())
           {
