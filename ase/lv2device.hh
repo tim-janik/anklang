@@ -24,4 +24,4 @@ public:
 
 } // Ase
 
-#endif // __ASE_CLAP_DEVICE_HH__
+#endif // __ASE_LV2_DEVICE_HH__
