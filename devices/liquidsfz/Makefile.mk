@@ -3,3 +3,4 @@
 devices/4ase.ccfiles += $(strip		\
 	devices/liquidsfz/liquidsfz.cc	\
 )
+$>/devices/liquidsfz/liquidsfz.o: EXTRA_FLAGS ::= -Iexternal/liquidsfz/lib
