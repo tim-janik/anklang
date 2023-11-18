@@ -73,7 +73,9 @@ MidiEvent::to_string () const
     case SYSEX:                 if (!et) et = "SYSEX";
       return string_format ("%+4d %s (unhandled)", frame, et);
     }
-  return string_format ("%+4d MidiEvent-%u (unhandled)", frame, type);
+  static_assert (sizeof (MidiEvent) >= 2 * sizeof (uint64_t));
+  const uint64_t *uu = reinterpret_cast<const uint64_t*> (this);
+  return string_format ("%+4d MidiEvent-%u (%08x %08x)", frame, type, uu[0], uu[1]);
 }
 
 MidiEvent

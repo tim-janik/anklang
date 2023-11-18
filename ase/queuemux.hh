@@ -39,7 +39,7 @@ struct QueueMultiplexer {
     return more();
   }
   size_t
-  count_pending() const
+  count_pending() const noexcept
   {
     size_t c = 0;
     for (ssize_t i = 0; i < n_queues; i++)
@@ -47,19 +47,19 @@ struct QueueMultiplexer {
     return c;
   }
   bool
-  more() const
+  more() const noexcept
   {
     return n_queues > 0;
   }
   const ValueType&
-  peek ()
+  peek () noexcept
   {
     if (!more()) [[unlikely]]
       return empty();
     return *ptrs[current].it;
   }
   const ValueType&
-  pop ()
+  pop () noexcept
   {
     ASE_ASSERT_RETURN (more(), empty());
     const ValueType &result = *ptrs[current].it++;
@@ -84,8 +84,8 @@ struct QueueMultiplexer {
     using reference = const value_type&;
     using iterator_category = std::input_iterator_tag;
     /*ctor*/    Iter       (QueueMultiplexer *u = nullptr) : mux_ (u && u->more() ? u : nullptr) {}
-    bool        oob        () const { return !mux_; }
-    friend bool operator== (const Iter &a, const Iter &b) { return a.mux_ == b.mux_; }
+    bool        more       () const { return mux_ && mux_->more(); }
+    friend bool operator== (const Iter &a, const Iter &b) { return a.more() == b.more(); }
     value_type& operator*  () const { return mux_ ? mux_->peek() : empty(); }
     Iter        operator++ (int) { Iter copy (*this); this->operator++(); return copy; }
     Iter&       operator++ ()
@@ -104,7 +104,7 @@ struct QueueMultiplexer {
   iterator end   ()     { return {}; }
 private:
   void
-  seek()
+  seek() noexcept
   {
     if (n_queues == 0) [[likely]]
       return;
@@ -126,7 +126,7 @@ private:
     // dprintf (2, "%s: n_queues=%zd current=%zd first=%ld next=%ld\n", __func__, n_queues, current, long (first), long (next));
   }
   static const ValueType&
-  empty()
+  empty() noexcept ASE_NOINLINE
   {
     static const ValueType empty_ {};
     return empty_;

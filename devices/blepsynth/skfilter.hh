@@ -1,5 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+#pragma once
+
 #define PANDA_RESAMPLER_HEADER_ONLY
 #include "pandaresampler.hh"
 #include <algorithm>
@@ -20,6 +22,7 @@ private:
   float freq_ = 440;
   float reso_ = 0;
   float drive_ = 0;
+  float global_volume_ = 1;
   bool test_linear_ = false;
   int over_ = 1;
   float freq_warp_factor_ = 0;
@@ -202,8 +205,8 @@ private:
         reso = 1 - (1-0.9f)*(1-0.9f)*(1-sqrt2/4) + (reso-0.9f)*0.1f;
       }
 
-    fparams.pre_scale = negative_drive_vol * vol;
-    fparams.post_scale = std::max (1 / vol, 1.0f);
+    fparams.pre_scale = negative_drive_vol * vol * global_volume_;
+    fparams.post_scale = std::max (1 / vol, 1.0f) / global_volume_;
     setup_k (fparams, reso);
   }
   void
@@ -255,6 +258,17 @@ public:
   set_drive (float drive)
   {
     drive_ = drive;
+    fparams_valid_ = false;
+  }
+  void
+  set_global_volume (float global_volume)
+  {
+    /* every samples that is processed by the filter is
+     *  - multiplied with global_volume before processing
+     *  - divided by global_volume after processing
+     * which has an effect on the non-linear part of the filter (drive)
+     */
+    global_volume_ = global_volume;
     fparams_valid_ = false;
   }
   void
@@ -319,6 +333,14 @@ private:
 
     return x * (c1 + c2 * x2) / (c3 + x2);
   }
+  static float
+  tanh_approx (float x)
+  {
+    // https://www.musicdsp.org/en/latest/Other/238-rational-tanh-approximation.html
+    x = std::clamp (x, -3.0f, 3.0f);
+
+    return x * (27.0f + x * x) / (27.0f + 9.0f * x * x);
+  }
   template<Mode MODE, bool STEREO>
   [[gnu::flatten]]
   void
@@ -369,14 +391,6 @@ private:
              }
           };
 
-        auto distort = [] (float x)
-          {
-            /* shaped somewhat similar to tanh() and others, but faster */
-            x = std::clamp (x, -1.0f, 1.0f);
-
-            return x - x * x * x * (1.0f / 3);
-          };
-
         float s1l, s1r, s2l, s2r;
 
         s1l = channels_[0].s1[stage];
@@ -405,8 +419,8 @@ private:
 
             if (last_stage)
               {
-                            { y0l = distort (y0l); }
-                if (STEREO) { y0r = distort (y0r); }
+                            { y0l = tanh_approx (y0l); }
+                if (STEREO) { y0r = tanh_approx (y0r); }
               }
                         { y1l = lowpass (y0l, s1l); }
             if (STEREO) { y1r = lowpass (y0r, s1r); }
@@ -564,7 +578,7 @@ private:
   }
 public:
   void
-  process_block (uint n_samples, float *left, float *right, const float *freq_in = nullptr, const float *reso_in = nullptr, const float *drive_in = nullptr)
+  process_block (uint n_samples, float *left, float *right = nullptr, const float *freq_in = nullptr, const float *reso_in = nullptr, const float *drive_in = nullptr)
   {
     static constexpr auto jump_table { make_jump_table (std::make_index_sequence<LAST_MODE + 1>()) };
 

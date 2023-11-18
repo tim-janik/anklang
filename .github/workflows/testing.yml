@@ -44,7 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CITAG: arch
-      CIMAKE: misc/cirun -u 1000 make
       CICACHE: /tmp/cicache
     steps:
     - uses: actions/checkout@v4
@@ -59,9 +58,9 @@ jobs:
         misc/cirun -u 1000 misc/version.sh
     - name: 'Run X11 GUI Tests'
       run: |
-        $CIMAKE GCC_COLORS="" -j`nproc` all
-        $CIMAKE -j`nproc` check
-        $CIMAKE x11test-v
+        misc/cirun -u 1000 make GCC_COLORS="" -j`nproc` all
+        misc/cirun -u 1000 make -j`nproc` check
+        misc/cirun -u 1000 make x11test-v
     # Artifact upload from x11test
     - uses: actions/upload-artifact@v3.1.3
       if: always()
@@ -74,7 +73,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CITAG: focal
-      CIMAKE: misc/cirun -u 1000 make
       CICACHE: /tmp/cicache
     steps:
     - uses: actions/checkout@v4
@@ -88,10 +86,11 @@ jobs:
         misc/cirun -u 1000 misc/version.sh
     - name: 'Make all check'
       run: |
-        $CIMAKE -j`nproc` all check
+        misc/cirun -u 1000 make -j`nproc` all
+        misc/cirun -u 1000 make -j`nproc` check
     - name: 'Make clang-tidy'
       run: |
-        $CIMAKE -j`nproc` clang-tidy
+        misc/cirun -u 1000 make -j`nproc` clang-tidy
     # Artifact upload from clang-tidy
     - uses: actions/upload-artifact@v3.1.3
       with: { name: clang-tidy, path: out/clang-tidy/ }

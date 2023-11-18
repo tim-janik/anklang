@@ -1118,7 +1118,7 @@ void
 this_thread_set_name (const String &name16chars)
 {
   if (name16chars.find (" ") != name16chars.npos)
-    ::Ase::assertion_failed (string_format ("new thread name contains spaces: \"%s\"", name16chars));
+    ::Ase::assertion_failed (string_format ("new thread name contains spaces: \"%s\"", name16chars).c_str());
   pthread_setname_np (pthread_self(), name16chars.c_str());
 }
 

@@ -23,7 +23,7 @@ string_demangle_cxx (const char *mangled_identifier)
 }
 
 void
-assertion_failed (const std::string &msg, const char *file, int line, const char *func)
+assertion_failed (const char *msg, const char *file, int line, const char *func) noexcept
 {
   if (file && line > 0 && func)
     fprintf (stderr, "%s:%u:%s: ", file, line, func);
@@ -31,13 +31,13 @@ assertion_failed (const std::string &msg, const char *file, int line, const char
     fprintf (stderr, "%s:%u: ", file, line);
   else if (file)
     fprintf (stderr, "%s: ", file);
-  if (msg.empty())
+  if (!msg || !msg[0])
     fputs ("state unreachable\n", stderr);
   else
     {
       fputs ("assertion failed: ", stderr);
-      fputs (msg.c_str(), stderr);
-      if (msg.size() && msg[msg.size() - 1] != '\n')
+      fputs (msg, stderr);
+      if (msg[0] && msg[strlen (msg) - 1] != '\n')
         fputc ('\n', stderr);
     }
   fflush (stderr);
