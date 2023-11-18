@@ -409,15 +409,19 @@ class BlepSynth : public AudioProcessor {
       const uint I = oscnum + 1;
       const uint O = oscnum * (OSC2_SHAPE - OSC1_SHAPE);
       const String o = string_format ("osc_%u_", I);
+
+      const double shape_default  = oscnum ? -100 : 0;
+      const double octave_default = oscnum;
+
       pmap.group = _("Oscillator %u", I);
-      pmap[O+OSC1_SHAPE]       = Param { o+"shape",       _("Osc %u Shape", I),             _("Shp%u", I),  0, "%", { -100, 100, }, };
+      pmap[O+OSC1_SHAPE]       = Param { o+"shape",       _("Osc %u Shape", I),             _("Shp%u", I),  shape_default, "%", { -100, 100, }, };
       pmap[O+OSC1_PULSE_WIDTH] = Param { o+"pulse_width", _("Osc %u Pulse Width", I),       _("PW%u", I),  50, "%", { 0, 100, }, };
       pmap[O+OSC1_SUB]         = Param { o+"subharmonic", _("Osc %u Subharmonic", I),       _("Sub%u", I),  0, "%", { 0, 100, }, };
       pmap[O+OSC1_SUB_WIDTH]   = Param { o+"subharmonic_width", _("Osc %u Subharmonic Width", I), _("SbW%u", I), 50, "%", { 0, 100, }, };
       pmap[O+OSC1_SYNC]        = Param { o+"sync_slave",  _("Osc %u Sync Slave", I),        _("Syn%u", I),  0, "Semitones", { 0, 60, }, };
 
-      pmap[O+OSC1_PITCH]  = Param { o+"pitch",  _("Osc %u Pitch", I),  _("Pit%u", I), 0, "semitones", { -7, 7, }, };
-      pmap[O+OSC1_OCTAVE] = Param { o+"octave", _("Osc %u Octave", I), _("Oct%u", I), 0, "octaves",   { -2, 3, }, };
+      pmap[O+OSC1_PITCH]  = Param { o+"pitch",  _("Osc %u Pitch", I),  _("Pit%u", I), 0,              "semitones", { -7, 7, }, };
+      pmap[O+OSC1_OCTAVE] = Param { o+"octave", _("Osc %u Octave", I), _("Oct%u", I), octave_default, "octaves",   { -2, 3, }, };
 
       /* TODO: unison_voices property should have stepping set to 1 */
       pmap[O+OSC1_UNISON_VOICES] = Param { o+"unison_voices", _("Osc %u Unison Voices", I), _("Voi%u", I), 1, "Voices", { 1, 16, }, };
@@ -428,7 +432,7 @@ class BlepSynth : public AudioProcessor {
     oscparams (0);
 
     pmap.group = _("Mix");
-    pmap[MIX]       = Param { "mix", _("Mix"), _("Mix"), 0, "%", { 0, 100 }, };
+    pmap[MIX]       = Param { "mix", _("Mix"), _("Mix"), 30, "%", { 0, 100 }, };
     pmap[VEL_TRACK] = Param { "vel_track", _("Velocity Tracking"), _("VelTr"), 50, "%", { 0, 100, }, };
     // TODO: post_gain probably should default to 0dB once we have track/mixer volumes
     pmap[POST_GAIN] = Param { "post_gain", _("Post Gain"), _("Gain"), -12, "dB", { -24, 24, }, };
