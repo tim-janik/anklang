@@ -348,13 +348,10 @@ class BlepSynth : public AudioProcessor {
   };
 
   enum { FILTER_TYPE_BYPASS, FILTER_TYPE_LADDER, FILTER_TYPE_SKFILTER };
+  int filter_type_ = 0;
 
   static constexpr int CUTOFF_MIN_MIDI = 15;
   static constexpr int CUTOFF_MAX_MIDI = 144;
-
-  bool    need_update_volume_envelope_;
-
-  bool    need_update_filter_envelope_;
 
   class Voice
   {
@@ -412,15 +409,19 @@ class BlepSynth : public AudioProcessor {
       const uint I = oscnum + 1;
       const uint O = oscnum * (OSC2_SHAPE - OSC1_SHAPE);
       const String o = string_format ("osc_%u_", I);
+
+      const double shape_default  = oscnum ? -100 : 0;
+      const double octave_default = oscnum;
+
       pmap.group = _("Oscillator %u", I);
-      pmap[O+OSC1_SHAPE]       = Param { o+"shape",       _("Osc %u Shape", I),             _("Shp%u", I),  0, "%", { -100, 100, }, };
+      pmap[O+OSC1_SHAPE]       = Param { o+"shape",       _("Osc %u Shape", I),             _("Shp%u", I),  shape_default, "%", { -100, 100, }, };
       pmap[O+OSC1_PULSE_WIDTH] = Param { o+"pulse_width", _("Osc %u Pulse Width", I),       _("PW%u", I),  50, "%", { 0, 100, }, };
       pmap[O+OSC1_SUB]         = Param { o+"subharmonic", _("Osc %u Subharmonic", I),       _("Sub%u", I),  0, "%", { 0, 100, }, };
       pmap[O+OSC1_SUB_WIDTH]   = Param { o+"subharmonic_width", _("Osc %u Subharmonic Width", I), _("SbW%u", I), 50, "%", { 0, 100, }, };
       pmap[O+OSC1_SYNC]        = Param { o+"sync_slave",  _("Osc %u Sync Slave", I),        _("Syn%u", I),  0, "Semitones", { 0, 60, }, };
 
-      pmap[O+OSC1_PITCH]  = Param { o+"pitch",  _("Osc %u Pitch", I),  _("Pit%u", I), 0, "semitones", { -7, 7, }, };
-      pmap[O+OSC1_OCTAVE] = Param { o+"octave", _("Osc %u Octave", I), _("Oct%u", I), 0, "octaves",   { -2, 3, }, };
+      pmap[O+OSC1_PITCH]  = Param { o+"pitch",  _("Osc %u Pitch", I),  _("Pit%u", I), 0,              "semitones", { -7, 7, }, };
+      pmap[O+OSC1_OCTAVE] = Param { o+"octave", _("Osc %u Octave", I), _("Oct%u", I), octave_default, "octaves",   { -2, 3, }, };
 
       /* TODO: unison_voices property should have stepping set to 1 */
       pmap[O+OSC1_UNISON_VOICES] = Param { o+"unison_voices", _("Osc %u Unison Voices", I), _("Voi%u", I), 1, "Voices", { 1, 16, }, };
@@ -431,7 +432,7 @@ class BlepSynth : public AudioProcessor {
     oscparams (0);
 
     pmap.group = _("Mix");
-    pmap[MIX]       = Param { "mix", _("Mix"), _("Mix"), 0, "%", { 0, 100 }, };
+    pmap[MIX]       = Param { "mix", _("Mix"), _("Mix"), 30, "%", { 0, 100 }, };
     pmap[VEL_TRACK] = Param { "vel_track", _("Velocity Tracking"), _("VelTr"), 50, "%", { 0, 100, }, };
     // TODO: post_gain probably should default to 0dB once we have track/mixer volumes
     pmap[POST_GAIN] = Param { "post_gain", _("Post Gain"), _("Gain"), -12, "dB", { -24, 24, }, };
@@ -579,30 +580,61 @@ class BlepSynth : public AudioProcessor {
   void
   adjust_param (uint32_t tag) override
   {
-    if (tag == FILTER_TYPE)
+    switch (tag)
       {
-        for (Voice *voice : active_voices_)
+        case FILTER_TYPE:
           {
-            voice->ladder_filter_.reset();
-            voice->skfilter_.reset();
+            int new_filter_type = irintf (get_param (FILTER_TYPE));
+            if (new_filter_type != filter_type_)
+              {
+                filter_type_ = new_filter_type;
+                for (Voice *voice : active_voices_)
+                  {
+                    if (filter_type_ == FILTER_TYPE_LADDER)
+                      voice->ladder_filter_.reset();
+                    if (filter_type_ == FILTER_TYPE_SKFILTER)
+                      voice->skfilter_.reset();
+                  }
+              }
+            set_parameter_used (LADDER_MODE, filter_type_ == FILTER_TYPE_LADDER);
+            set_parameter_used (SKFILTER_MODE, filter_type_ == FILTER_TYPE_SKFILTER);
           }
-      }
-    if (tag == ATTACK || tag == DECAY || tag == SUSTAIN || tag == RELEASE ||
-        tag == ATTACK_SLOPE || tag == DECAY_SLOPE || tag == RELEASE_SLOPE)
-      {
-        need_update_volume_envelope_ = true;
-      }
-    if (tag == FIL_ATTACK || tag == FIL_DECAY || tag == FIL_SUSTAIN || tag == FIL_RELEASE)
-      {
-        need_update_filter_envelope_ = true;
-      }
-    if (tag == VE_MODEL)
-      {
-        bool ve_has_slope = irintf (get_param (VE_MODEL)) > 0; // exponential envelope has no slope parameters
+          break;
+        case ATTACK:
+        case DECAY:
+        case SUSTAIN:
+        case RELEASE:
+        case ATTACK_SLOPE:
+        case DECAY_SLOPE:
+        case RELEASE_SLOPE:
+          {
+            for (Voice *voice : active_voices_)
+              update_volume_envelope (voice);
+            break;
+          }
+        case FIL_ATTACK:
+        case FIL_DECAY:
+        case FIL_SUSTAIN:
+        case FIL_RELEASE:
+          {
+            for (Voice *voice : active_voices_)
+              update_filter_envelope (voice);
+            break;
+          }
+        case VE_MODEL:
+          {
+            bool ve_has_slope = irintf (get_param (VE_MODEL)) > 0; // exponential envelope has no slope parameters
 
-        set_parameter_used (ATTACK_SLOPE,  ve_has_slope);
-        set_parameter_used (DECAY_SLOPE,   ve_has_slope);
-        set_parameter_used (RELEASE_SLOPE, ve_has_slope);
+            set_parameter_used (ATTACK_SLOPE,  ve_has_slope);
+            set_parameter_used (DECAY_SLOPE,   ve_has_slope);
+            set_parameter_used (RELEASE_SLOPE, ve_has_slope);
+            break;
+          }
+        case KEY_C: check_note (KEY_C, old_c_, 60); break;
+        case KEY_D: check_note (KEY_D, old_d_, 62); break;
+        case KEY_E: check_note (KEY_E, old_e_, 64); break;
+        case KEY_F: check_note (KEY_F, old_f_, 65); break;
+        case KEY_G: check_note (KEY_G, old_g_, 67); break;
       }
   }
   void
@@ -622,6 +654,9 @@ class BlepSynth : public AudioProcessor {
     int unison_voices = irintf (get_param (O+OSC1_UNISON_VOICES));
     unison_voices = CLAMP (unison_voices, 1, 16);
     osc.set_unison (unison_voices, get_param (O+OSC1_UNISON_DETUNE), get_param (O+OSC1_UNISON_STEREO) * 0.01);
+
+    set_parameter_used (O + OSC1_UNISON_DETUNE, unison_voices > 1);
+    set_parameter_used (O + OSC1_UNISON_STEREO, unison_voices > 1);
   }
   static double
   perc_to_s (double perc)
@@ -824,9 +859,6 @@ class BlepSynth : public AudioProcessor {
 
     auto filter_process_block = [&] (auto& filter)
       {
-        if (need_update_filter_envelope_)
-          update_filter_envelope (voice);
-
         auto gen_filter_input = [&] (float *freq_in, float *reso_in, float *drive_in, uint n_frames)
           {
             voice->fil_envelope_.process (freq_in, n_frames);
@@ -864,13 +896,12 @@ class BlepSynth : public AudioProcessor {
           }
       };
 
-    int filter_type = irintf (get_param (FILTER_TYPE));
-    if (filter_type == FILTER_TYPE_LADDER)
+    if (filter_type_ == FILTER_TYPE_LADDER)
       {
         voice->ladder_filter_.set_mode (LadderVCF::Mode (irintf (get_param (LADDER_MODE))));
         filter_process_block (voice->ladder_filter_);
       }
-    else if (filter_type == FILTER_TYPE_SKFILTER)
+    else if (filter_type_ == FILTER_TYPE_SKFILTER)
       {
         voice->skfilter_.set_mode (SKFilter::Mode (irintf (get_param (SKFILTER_MODE))));
         filter_process_block (voice->skfilter_);
@@ -902,54 +933,21 @@ class BlepSynth : public AudioProcessor {
     voice->fil_envelope_.set_release (perc_to_s (get_param (FIL_RELEASE)));
   }
   void
-  render (uint n_frames) override
+  render_audio (float *left_out, float *right_out, uint n_frames)
   {
-    MidiEventInput evinput = midi_event_input();
-    for (const auto &ev : evinput)
-      switch (ev.message())
-        {
-        case MidiMessage::NOTE_OFF:
-          note_off (ev.channel, ev.key);
-          break;
-        case MidiMessage::NOTE_ON:
-          note_on (ev.channel, ev.key, ev.velocity);
-          break;
-        case MidiMessage::ALL_NOTES_OFF:
-          for (auto voice : active_voices_)
-            if (voice->state_ == Voice::ON && voice->channel_ == ev.channel)
-              note_off (voice->channel_, voice->midi_note_);
-          break;
-        case MidiMessage::PARAM_VALUE:
-          apply_event (ev);
-          adjust_param (ev.param);
-          break;
-        default: ;
-        }
+    if (!n_frames)
+      return;
 
-    /* TODO: replace this with true midi input */
-    check_note (KEY_C, old_c_, 60);
-    check_note (KEY_D, old_d_, 62);
-    check_note (KEY_E, old_e_, 64);
-    check_note (KEY_F, old_f_, 65);
-    check_note (KEY_G, old_g_, 67);
-
-    assert_return (n_ochannels (stereout_) == 2);
     bool   need_free = false;
-    float *left_out = oblock (stereout_, 0);
-    float *right_out = oblock (stereout_, 1);
-
-    floatfill (left_out, 0.f, n_frames);
-    floatfill (right_out, 0.f, n_frames);
 
     for (Voice *voice : active_voices_)
       {
         if (voice->new_voice_)
           {
-            int filter_type = irintf (get_param (FILTER_TYPE));
             int idelay = 0;
-            if (filter_type == FILTER_TYPE_LADDER)
+            if (filter_type_ == FILTER_TYPE_LADDER)
               idelay = voice->ladder_filter_.delay();
-            if (filter_type == FILTER_TYPE_SKFILTER)
+            if (filter_type_ == FILTER_TYPE_SKFILTER)
               idelay = voice->skfilter_.delay();
             if (idelay)
               {
@@ -966,8 +964,6 @@ class BlepSynth : public AudioProcessor {
 
         // apply volume envelope
         float volume_env[n_frames];
-        if (need_update_volume_envelope_)
-          update_volume_envelope (voice);
         voice->envelope_.process (volume_env, n_frames);
         float post_gain_factor = db2voltage (get_param (POST_GAIN));
         for (uint i = 0; i < n_frames; i++)
@@ -984,9 +980,52 @@ class BlepSynth : public AudioProcessor {
       }
     if (need_free)
       free_unused_voices();
-    need_update_volume_envelope_ = false;
-    need_update_filter_envelope_ = false;
   }
+  void
+  render (uint n_frames) override
+  {
+    assert_return (n_ochannels (stereout_) == 2);
+
+    float *left_out = oblock (stereout_, 0);
+    float *right_out = oblock (stereout_, 1);
+
+    floatfill (left_out, 0.f, n_frames);
+    floatfill (right_out, 0.f, n_frames);
+
+    uint offset = 0;
+    MidiEventInput evinput = midi_event_input();
+    for (const auto &ev : evinput)
+      {
+        uint frame = std::max<int> (ev.frame, 0); // TODO: should be unsigned anyway, issue #26
+
+        // process any audio that is before the event
+        render_audio (left_out + offset, right_out + offset, frame - offset);
+        offset = frame;
+
+        switch (ev.message())
+          {
+          case MidiMessage::NOTE_OFF:
+            note_off (ev.channel, ev.key);
+            break;
+          case MidiMessage::NOTE_ON:
+            note_on (ev.channel, ev.key, ev.velocity);
+            break;
+          case MidiMessage::ALL_NOTES_OFF:
+            for (auto voice : active_voices_)
+              if (voice->state_ == Voice::ON && voice->channel_ == ev.channel)
+                note_off (voice->channel_, voice->midi_note_);
+            break;
+          case MidiMessage::PARAM_VALUE:
+            apply_event (ev);
+            adjust_param (ev.param);
+            break;
+          default: ;
+          }
+      }
+    // process frames after last event
+    render_audio (left_out + offset, right_out + offset, n_frames - offset);
+  }
+
   static double
   convert_cutoff (double midi_note)
   {

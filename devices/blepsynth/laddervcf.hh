@@ -6,6 +6,9 @@
 #include "pandaresampler.hh"
 
 #include <array>
+#include <algorithm>
+#include <cassert>
+#include <cmath>
 
 namespace Ase {
 
@@ -36,6 +39,7 @@ private:
   float freq_ = 440;
   float reso_ = 0;
   float drive_ = 0;
+  float global_volume_ = 1;
   uint over_ = 0;
   bool test_linear_ = false;
 
@@ -83,6 +87,17 @@ public:
   set_drive (float drive)
   {
     drive_ = drive;
+    fparams_valid_ = false;
+  }
+  void
+  set_global_volume (float global_volume)
+  {
+    /* every samples that is processed by the filter is
+     *  - multiplied with global_volume before processing
+     *  - divided by global_volume after processing
+     * which has an effect on the non-linear part of the filter (drive)
+     */
+    global_volume_ = global_volume;
     fparams_valid_ = false;
   }
   void
@@ -135,14 +150,6 @@ private:
     clamp_freq_min_ = frequency_range_min_;
     clamp_freq_max_ = std::min (frequency_range_max_, rate_ * over_ * 0.49f);
   }
-  float
-  distort (float x)
-  {
-    /* shaped somewhat similar to tanh() and others, but faster */
-    x = std::clamp (x, -1.0f, 1.0f);
-
-    return x - x * x * x * (1.0f / 3);
-  }
   void
   setup_reso_drive (FParams& fparams, float reso, float drive)
   {
@@ -171,9 +178,17 @@ private:
       reso += drive * sqrt (reso) * reso * 0.03f;
 
     float vol = exp2f ((drive + -12 * sqrt (reso)) * db_x2_factor);
-    fparams.pre_scale = negative_drive_vol * vol;
-    fparams.post_scale = std::max (1 / vol, 1.0f);
+    fparams.pre_scale = negative_drive_vol * vol * global_volume_;
+    fparams.post_scale = std::max (1 / vol, 1.0f) / global_volume_;
     fparams.reso = sqrt (reso) * 4;
+  }
+  static float
+  tanh_approx (float x)
+  {
+    // https://www.musicdsp.org/en/latest/Other/238-rational-tanh-approximation.html
+    x = std::clamp (x, -3.0f, 3.0f);
+
+    return x * (27.0f + x * x) / (27.0f + 9.0f * x * x);
   }
   /*
    * This ladder filter implementation is mainly based on
@@ -203,7 +218,7 @@ private:
             Channel& c = channels_[i];
             const float x = value * fparams_.pre_scale;
             const float g_comp = 0.5f; // passband gain correction
-            const float x0 = distort (x - (c.y4 - g_comp * x) * res);
+            const float x0 = tanh_approx (x - (c.y4 - g_comp * x) * res);
 
             c.y1 = b0 * x0 + b1 * c.x1 - a1 * c.y1;
             c.x1 = x0;
