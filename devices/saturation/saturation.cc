@@ -12,8 +12,8 @@ class Saturation : public AudioProcessor {
   OBusId stereout;
   SaturationDSP saturation;
 public:
-  Saturation (AudioEngine &engine) :
-    AudioProcessor (engine)
+  Saturation (const ProcessorSetup &psetup) :
+    AudioProcessor (psetup)
   {}
   static void
   static_info (AudioProcessorInfo &info)
@@ -28,35 +28,34 @@ public:
   void
   initialize (SpeakerArrangement busses) override
   {
-    remove_all_buses();
-
     stereoin = add_input_bus  ("Stereo In",  SpeakerArrangement::STEREO);
     stereout = add_output_bus ("Stereo Out", SpeakerArrangement::STEREO);
 
-    start_group ("Settings");
+    ParameterMap pmap;
+    pmap.group = "Settings";
 
     ChoiceS centries;
     centries += { "Soft/tanh",  "Soft Saturation using the tanh function" };
-    centries += { "True tanh",  "Soft Saturation using the tanh function" };
     centries += { "Hard",       "Hard clipping" };
-    add_param (MODE, "Mode",  "M", std::move (centries), 0, "", "Saturation Function");
+    pmap[MODE]  = Param { "mode",  "Mode",  "Mode", 0, "", std::move (centries), "", "Saturation Function" };
+    pmap[MIX]   = Param { "mix",   "Mix dry/wet", "Mix", 100, "%", { 0, 100 } };
+    pmap[DRIVE] = Param { "drive", "Drive", "Drive", 0, "dB", { -6, 36 } };
 
-    add_param (MIX, "Mix dry/wet", "Mix", 0, 100, 100, "%");
-    add_param (DRIVE, "Drive", "Drive", -6, 36, 0, "dB");
+    install_params (pmap);
+
+    prepare_event_input();
   }
   SaturationDSP::Mode
   map_mode (int m)
   {
-    if (m == 2)
-      return SaturationDSP::Mode::HARD_CLIP;
     if (m == 1)
-      return SaturationDSP::Mode::TANH_TRUE;
+      return SaturationDSP::Mode::HARD_CLIP;
     return SaturationDSP::Mode::TANH_CHEAP;
   }
   void
-  adjust_param (Id32 tag) override
+  adjust_param (uint32_t tag) override
   {
-    switch (Params (tag.id))
+    switch (Params (tag))
       {
       case DRIVE:       saturation.set_drive (get_param (DRIVE), false);
                         return;
@@ -70,17 +69,45 @@ public:
   reset (uint64 target_stamp) override
   {
     saturation.reset (sample_rate());
-    adjust_params (true);
+    adjust_all_params();
+  }
+  void
+  render_audio (float *left_in, float *right_in, float *left_out, float *right_out, uint n_frames)
+  {
+    if (!n_frames)
+      return;
+
+    saturation.process<true> (left_in, right_in, left_out, right_out, n_frames);
   }
   void
   render (uint n_frames) override
   {
-    adjust_params (false);
-    float *input0 = const_cast<float*> (ifloats (stereoin, 0));
-    float *input1 = const_cast<float*> (ifloats (stereoin, 1));
-    float *output0 = oblock (stereout, 0);
-    float *output1 = oblock (stereout, 1);
-    saturation.process<true> (input0, input1, output0, output1, n_frames);
+    float *left_in = const_cast<float*> (ifloats (stereoin, 0));
+    float *right_in = const_cast<float*> (ifloats (stereoin, 1));
+    float *left_out = oblock (stereout, 0);
+    float *right_out = oblock (stereout, 1);
+
+    uint offset = 0;
+    MidiEventInput evinput = midi_event_input();
+    for (const auto &ev : evinput)
+      {
+        assert_return (ev.frame >= 0); // TODO: should be unsigned anyway, issue #26
+
+        // process any audio that is before the event
+        render_audio (left_in + offset, right_in + offset, left_out + offset, right_out + offset, ev.frame - offset);
+        offset = ev.frame;
+
+        switch (ev.message())
+          {
+          case MidiMessage::PARAM_VALUE:
+            apply_event (ev);
+            adjust_param (ev.param);
+            break;
+          default: ;
+          }
+      }
+    // process frames after last event
+    render_audio (left_in + offset, right_in + offset, left_out + offset, right_out + offset, n_frames - offset);
   }
 };
 static auto saturation = register_audio_processor<Saturation> ("Ase::Devices::Saturation");
