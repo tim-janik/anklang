@@ -19,3 +19,6 @@
 [submodule "pandaresampler"]
 	path = external/pandaresampler
 	url = https://github.com/swesterfeld/pandaresampler.git
+[submodule "liquidsfz"]
+	path = external/liquidsfz
+	url = https://github.com/swesterfeld/liquidsfz.git
