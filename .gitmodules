@@ -10,6 +10,9 @@
 [submodule "libsndfile"]
 	path = external/libsndfile
 	url = https://github.com/libsndfile/libsndfile.git
+[submodule "liquidsfz"]
+	path = external/liquidsfz
+	url = https://github.com/swesterfeld/liquidsfz.git
 [submodule "minizip-ng"]
 	path = external/minizip-ng
 	url = https://github.com/zlib-ng/minizip-ng.git
