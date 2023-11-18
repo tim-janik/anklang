@@ -994,22 +994,9 @@ class BlepSynth : public AudioProcessor {
       {
         assert_return (ev.frame >= 0); // TODO: should be unsigned anyway, issue #26
 
-        // ensure that new offset from event is not larger than n_frames
-        uint new_offset = ev.frame;
-        if (new_offset > n_frames)
-          {
-            printerr ("*** BlepSynth: event offset is after end of block (new_offset = %d, n_frrames = %d)\n", new_offset, n_frames);
-            new_offset = n_frames;
-          }
-        // ensure that new offset is after last event
-        if (new_offset < offset)
-          {
-            printerr ("*** BlepSynth: events not sorted (event new_offset = %d less than offset = %d)\n", new_offset, offset);
-            new_offset = offset;
-          }
         // process any audio that is before the event
-        render_audio (left_out + offset, right_out + offset, new_offset - offset);
-        offset = new_offset;
+        render_audio (left_out + offset, right_out + offset, ev.frame - offset);
+        offset = ev.frame;
 
         switch (ev.message())
           {
