@@ -1,3 +1,5 @@
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+
 #include "../external/liquidsfz/lib/argparser.cc"
 #include "../external/liquidsfz/lib/hydrogenimport.cc"
 #include "../external/liquidsfz/lib/lfogen.cc"
