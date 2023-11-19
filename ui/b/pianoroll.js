@@ -97,16 +97,14 @@ const HTML = (t, d) => html`
       @pointerdown=${t.notes_canvas_pointerdown} ></canvas>
     <div class="-col1 -row3" style="text-align: center" @click=${e => t.pianogridmenu.popup (e)} @mousedown=${e => t.pianogridmenu.popup (e)}>
       ${t.grid_label}
-      <b-contextmenu ${ref (h => t.pianogridmenu = h)} @activate=${e => t.setgrid (e.detail.uri)} .isactive=${uri => t.isactive (uri)}>
-        <b-menutitle>Grid Mode</b-menutitle>
-        <b-menuitem uri="auto"   ic=${t.gchecked ('auto')} >   auto   </b-menuitem>
-        <b-menuitem uri="manual" ic=${t.gchecked ('manual')} > manual </b-menuitem>
+      <b-contextmenu ${ref (h => t.pianogridmenu = h)} @activate=${e => t.setgrid (e.detail.uri)}>
         <b-menutitle>Tuplet</b-menutitle>
-        <b-menuitem uri="2"      ic=${t.gchecked (2)}>  straight   </b-menuitem>
+        <b-menuitem uri="2"      ic=${t.gchecked (2)} > straight   </b-menuitem>
         <b-menuitem uri="3"      ic=${t.gchecked (3)} > triplet    </b-menuitem>
         <b-menuitem uri="5"      ic=${t.gchecked (5)} > quintuplet </b-menuitem>
         <b-menuitem uri="7"      ic=${t.gchecked (7)} > septuplet  </b-menuitem>
         <b-menutitle>Grid Quantization</b-menutitle>
+        <b-menuitem uri="auto"   ic=${t.gchecked ('auto')}  > auto </b-menuitem>
         <b-menuitem uri="2/1"    ic=${t.gchecked ('2/1')}   > 2/1  </b-menuitem>
         <b-menuitem uri="1/1"    ic=${t.gchecked ('1/1')}   > 1/1  </b-menuitem>
         <b-menuitem uri="1/2"    ic=${t.gchecked ('1/2')}   > 1/2  </b-menuitem>
@@ -168,11 +166,9 @@ class BPianoRoll extends LitComponent {
     this.cgrid = null;
     this.menu_btn = null;
     this.menu_icon = null;
-    this.grid_mode = "auto"; // either "auto" or "manual"
     this.grid_label = "auto";
-    // for manual grids
     this.grid_tuplet = 2;
-    this.grid_length = "1/16";
+    this.grid_length = "auto"; // either "auto" or length (like "1/16")
     this.grid_stepping = 0;
     this.pianotoolmenu = null;
     this.pianorollmenu = null;
@@ -373,32 +369,19 @@ class BPianoRoll extends LitComponent {
   }
   setgrid (uri)
   {
-    if (uri == "auto" || uri == "manual")
-      this.grid_mode = uri;
-    else if (uri == 2 || uri == 3 || uri == 5 || uri == 7)
+    if (uri == 2 || uri == 3 || uri == 5 || uri == 7)
       this.grid_tuplet = parseInt (uri);
     else
       this.grid_length = uri;
 
     this.grid_stepping = Math.round (Util.PPQN * 4 / this.grid_length_factor());
 
-    let grid_label;
-    if (this.grid_mode == "auto")
-      {
-        grid_label = "auto";
-      }
-    else
-      {
-        grid_label = this.grid_length;
-        if (this.grid_tuplet == 3) grid_label += "T";
-        if (this.grid_tuplet == 5) grid_label += "Q";
-        if (this.grid_tuplet == 7) grid_label += "S";
-      }
+    let grid_label = this.grid_length;
+    if (this.grid_tuplet == 3) grid_label += "T";
+    if (this.grid_tuplet == 5) grid_label += "Q";
+    if (this.grid_tuplet == 7) grid_label += "S";
+
     this.setAttribute ("grid_label", grid_label);
-  }
-  isactive (uri)
-  {
-    return uri == "manual" || uri == "auto" || this.grid_mode == "manual";
   }
   grid_length_factor()
   {
@@ -419,7 +402,7 @@ class BPianoRoll extends LitComponent {
   }
   gchecked (g)
   {
-    if (g == this.grid_mode || (this.grid_mode == "manual" && (g == this.grid_length || g == this.grid_tuplet)))
+    if (g == this.grid_length || g == this.grid_tuplet)
       return '√';
     else
       return ' ';
@@ -863,36 +846,32 @@ function paint_timegrid (canvas, with_labels)
 
   // determine stepping granularity
   let stepping; // [ ticks_per_step, steps_per_mainline, steps_per_midline ]
-  const mingap = th * 17;
-  if (this.grid_mode == "auto")
+  let mingap = th * 17;
+
+  let div;
+  if (this.grid_length == "auto")
     {
-      if (denominator_pixels / 16 >= mingap)
-        stepping = [ TPD / 16, 16, 4 ];
-      else if (denominator_pixels / 4 >= mingap)
-        stepping = [ TPD / 4, 4 * signature[0], 4 ];
-      else if (denominator_pixels >= mingap)
-        stepping = [ TPD, signature[0], 0 ];
-      else // just use bars
-        stepping = [ bar_ticks, 0, 0 ];
+      div = this.grid_tuplet * 4096;
+      mingap *= 2;
+    }
+  else
+    div = this.grid_length_factor() / signature[0];
+
+  while (denominator_pixels / div < mingap) // ensure that grid lines are not too close to each other
+    div /= 2;
+  let steps_per_mainline, steps_per_midline;
+  if (this.grid_tuplet == 2)
+    {
+      steps_per_mainline = Math.max (Math.round (div), 1);
+      steps_per_midline = Math.max (Math.round (div * 4), 1);
     }
   else
     {
-      let div = this.grid_length_factor() / signature[0];
-      while (denominator_pixels / div < mingap) // ensure that grid lines are not too close to each other
-        div /= 2;
-      let steps_per_mainline, steps_per_midline;
-      if (this.grid_tuplet == 2)
-        {
-          steps_per_mainline = Math.max (Math.round (div), 1);
-          steps_per_midline = Math.max (Math.round (div * 4), 1);
-        }
-      else
-        {
-          steps_per_mainline = Math.max (Math.round (div), this.grid_tuplet);
-          steps_per_midline = Math.max (Math.round (div * 4), this.grid_tuplet);
-        }
-      stepping = [ Math.round (TPD / div), steps_per_midline, steps_per_mainline ];
+      steps_per_mainline = Math.max (Math.round (div), this.grid_tuplet);
+      steps_per_midline = Math.max (Math.round (div * 4), this.grid_tuplet);
     }
+  stepping = [ Math.round (TPD / div), steps_per_midline, steps_per_mainline ];
+
   this.stepping = stepping;
 
   // first 2^x aligned bar tick before/at xposition

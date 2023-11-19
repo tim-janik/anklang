@@ -41,7 +41,7 @@ let piano_clipboard = "[]";
 
 function quantization (piano_roll)
 {
-  if (piano_roll.grid_mode == "auto")
+  if (piano_roll.grid_length == "auto")
     {
       const stepping = piano_roll.stepping ? piano_roll.stepping[0] : Util.PPQN;
       return Math.min (stepping, Util.PPQN);
