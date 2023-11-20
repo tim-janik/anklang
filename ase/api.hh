@@ -261,12 +261,6 @@ class Track : public virtual Device {
 public:
   virtual int32           midi_channel        () const = 0;          ///< Midi channel assigned to this track, 0 uses internal per-track channel.
   virtual void            midi_channel        (int32 midichannel) = 0;
-  virtual bool            mute                () const = 0;          ///< Whether the track is muted
-  virtual void            mute                (bool newmute) = 0;
-  virtual bool            solo                () const = 0;          ///< Whether the track is solo
-  virtual void            solo                (bool newsolo) = 0;
-  virtual double          volume              () const = 0;          ///< Volume of the track [0..1]
-  virtual void            volume              (double newvolume) = 0;
   virtual bool            is_master           () const = 0;          ///< Flag set on the main output track.
   virtual ClipS           launcher_clips      () = 0;                ///< Retrieve the list of clips that can be directly played.
   virtual DeviceP         access_device       () = 0;                ///< Retrieve Device handle for this track.

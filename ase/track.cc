@@ -169,23 +169,25 @@ TrackImpl::midi_channel (int32 midichannel) // TODO: implement
   emit_notify ("midi_channel");
 }
 
-void
+bool
 TrackImpl::mute (bool new_mute)
 {
   mute_ = new_mute;
   set_chain_volumes();
   emit_notify ("mute");
+  return true;
 }
 
-void
+bool
 TrackImpl::solo (bool new_solo)
 {
   solo_ = new_solo;
   set_chain_volumes();
   emit_notify ("solo");
+  return true;
 }
 
-void
+bool
 TrackImpl::volume (double new_volume)
 {
   volume_ = new_volume;
@@ -193,6 +195,7 @@ TrackImpl::volume (double new_volume)
   // printf ("Track '%s' -> set volume to %f dB\n", name().c_str(), AudioChain::volume_db (new_volume));
   set_chain_volumes();
   emit_notify ("volume");
+  return true;
 }
 
 void
@@ -211,7 +214,10 @@ TrackImpl::set_chain_volumes()
 
   bool have_solo_tracks = false;
   for (const auto& track : all_tracks)
-    have_solo_tracks = have_solo_tracks || track->solo();
+    {
+      auto track_impl = dynamic_cast<Ase::TrackImpl*> (track.get());
+      have_solo_tracks = have_solo_tracks || track_impl->solo();
+    }
 
   for (const auto& track : all_tracks)
     {
@@ -231,6 +237,25 @@ TrackImpl::set_chain_volumes()
       else
         audio_chain->volume (track_impl->volume_);
     }
+}
+
+void
+TrackImpl::create_properties ()
+{
+  // chain to base class
+  DeviceImpl::create_properties();
+  // create own properties
+  auto getvolume = [this] (Value &val)       { val = volume(); };
+  auto setvolume = [this] (const Value &val) { return volume (val.as_double()); };
+  auto getsolo   = [this] (Value &val)       { val = solo(); };
+  auto setsolo   = [this] (const Value &val) { return solo (val.as_double()); };
+  auto getmute   = [this] (Value &val)       { val = mute(); };
+  auto setmute   = [this] (const Value &val) { return mute (val.as_double()); };
+  PropertyBag bag = property_bag();
+  bag.group = _("Mix");
+  bag += Prop (getvolume, setvolume, { "volume", _("Volume"), _("Volume"), 1., "", { 0., 2 }, STANDARD });
+  bag += Prop (getsolo, setsolo,     { "solo",   _("Solo"),   _("Solo"), false, "", {}, STANDARD + String (":toggle") });
+  bag += Prop (getmute, setmute,     { "mute",   _("Mute"),   _("Mute"), false, "", {}, STANDARD + String (":toggle") });
 }
 
 static constexpr const uint MAX_LAUNCHER_CLIPS = 8;

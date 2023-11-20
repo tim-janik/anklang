@@ -21,6 +21,13 @@ class TrackImpl : public DeviceImpl, public virtual Track {
 protected:
   String          fallback_name     () const override;
   void            serialize         (WritNode &xs) override;
+  void            create_properties () override;
+  bool            mute              () const               { return mute_; }
+  bool            mute              (bool new_mute);
+  bool            solo              () const               { return solo_; }
+  bool            solo              (bool new_solo);
+  double          volume            () const               { return volume_; }
+  bool            volume            (double new_volume);
 public:
   class ClipScout;
   explicit        TrackImpl         (ProjectImpl&, bool masterflag);
@@ -34,12 +41,6 @@ public:
   bool            is_master         () const override      { return MASTER_TRACK & gadget_flags(); }
   int32           midi_channel      () const override      { return midi_channel_; }
   void            midi_channel      (int32 midichannel) override;
-  bool            mute              () const override      { return mute_; }
-  void            mute              (bool new_mute) override;
-  bool            solo              () const override      { return solo_; }
-  void            solo              (bool new_solo) override;
-  double          volume            () const override      { return volume_; }
-  void            volume            (double new_volume) override;
   ClipS           launcher_clips    () override;
   DeviceP         access_device     () override;
   MonitorP        create_monitor    (int32 ochannel) override;
