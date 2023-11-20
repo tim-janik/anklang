@@ -61,6 +61,7 @@ class BTrackVolume extends LitComponent {
     this.percent = 0;
     this.last_ = 0;
     this.track = null;
+    this.prop = null;
   }
   updated (changed_props)
   {
@@ -75,7 +76,12 @@ class BTrackVolume extends LitComponent {
   }
   async update_value()
   {
-    this.value = await this.track.volume();
+    if (!this.prop)
+      {
+        let prop = await this.track.access_property ("volume");
+        this.prop = prop;
+      }
+    this.value = await this.prop.get_normalized();
     this.percent = this.value * 100;
     this.last_ = this.value;
   }
@@ -86,9 +92,10 @@ class BTrackVolume extends LitComponent {
   drag_change (distance)
   {
     this.last_ = Util.clamp (this.last_ + distance, 0, +1);
-    this.track.volume (this.last_);
     this.value = this.last_;
     this.percent = this.value * 100;
+    if (this.prop)
+      this.prop.set_normalized (this.value);
   }
 }
 customElements.define ('b-trackvolume', BTrackVolume);

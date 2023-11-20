@@ -81,8 +81,8 @@ const HTML = (t, d) => html`
         >${t.wtrack_.name}</b-editable>
     </span>
     <span class="-mute-solo">
-      <b-toggle @valuechange=${event => t.track.mute (event.target.value)} label="M"></b-toggle>
-      <b-toggle @valuechange=${event => t.track.solo (event.target.value)} label="S"></b-toggle>
+      <b-toggle @valuechange=${event => t.track.set_value ("mute", event.target.value)} label="M"></b-toggle>
+      <b-toggle @valuechange=${event => t.track.set_value ("solo", event.target.value)} label="S"></b-toggle>
       <b-trackvolume .track="${t.track}" @valuechange=${event => t.track.volume (event.target.value)}></b-trackvolume>
     </span>
     <div class="-lvm-main">
