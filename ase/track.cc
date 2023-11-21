@@ -190,6 +190,7 @@ TrackImpl::midi_channel (int32 midichannel) // TODO: implement
 bool
 TrackImpl::solo (bool new_solo)
 {
+  return_unless (new_solo != solo_, false);
   solo_ = new_solo;
   set_solo_states();
   emit_notify ("solo");
