@@ -138,7 +138,7 @@ TrackImpl::_activate ()
   DeviceImpl::_activate();
   midi_prod_->_activate();
   chain_->_activate();
-  set_chain_volumes();
+  set_solo_states();
 }
 
 void
@@ -191,13 +191,13 @@ bool
 TrackImpl::solo (bool new_solo)
 {
   solo_ = new_solo;
-  set_chain_volumes();
+  set_solo_states();
   emit_notify ("solo");
   return true;
 }
 
 void
-TrackImpl::set_chain_volumes()
+TrackImpl::set_solo_states()
 {
   Ase::Project *project = dynamic_cast<Ase::Project*> (_project());
   if (!project)

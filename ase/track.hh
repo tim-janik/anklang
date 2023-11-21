@@ -15,7 +15,7 @@ class TrackImpl : public DeviceImpl, public virtual Track {
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
   virtual         ~TrackImpl        ();
-  void            set_chain_volumes ();
+  void            set_solo_states   ();
 protected:
   String          fallback_name     () const override;
   void            serialize         (WritNode &xs) override;
