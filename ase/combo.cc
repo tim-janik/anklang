@@ -288,7 +288,12 @@ std::string
 AudioChain::param_value_to_text (uint32_t paramid, double value) const
 {
   if (paramid == VOLUME)
-    return string_format ("Volume %.1f dB", volume_db (value));
+    {
+      if (value > 0)
+        return string_format ("Volume %.1f dB", volume_db (value));
+      else
+        return "Volume -\u221E dB";
+    }
   else
     return AudioProcessor::param_value_to_text (paramid, value);
 }
