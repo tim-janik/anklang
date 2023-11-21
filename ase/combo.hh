@@ -49,6 +49,7 @@ public:
   static void static_info    (AudioProcessorInfo &info);
   enum Params { VOLUME = 1, MUTE, SOLO_STATE };
   enum { SOLO_STATE_OFF, SOLO_STATE_ON, SOLO_STATE_OTHER };
+  std::string param_value_to_text (uint32_t paramid, double value) const override;
 private:
   ProbeArray *probes_ = nullptr;
   bool        probes_enabled_ = false;

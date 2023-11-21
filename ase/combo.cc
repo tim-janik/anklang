@@ -284,6 +284,15 @@ AudioChain::render (uint n_frames)
   // FIXME: assign obus if no children are present
 }
 
+std::string
+AudioChain::param_value_to_text (uint32_t paramid, double value) const
+{
+  if (paramid == VOLUME)
+    return string_format ("Volume %.1f dB", volume_db (value));
+  else
+    return AudioProcessor::param_value_to_text (paramid, value);
+}
+
 float
 AudioChain::volume_db (float volume)
 {
