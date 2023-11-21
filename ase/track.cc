@@ -77,6 +77,24 @@ TrackImpl::serialize (WritNode &xs)
     }
   // device chain
   xs["chain"] & *dynamic_cast<Serializable*> (&*chain_); // always exists
+  /* TODO: while other properties on the track are not suitable for automation,
+   * the following properies are; so we will need a different serialization
+   * strategy for these to once we support automation
+   */
+  for (auto prop : { "volume", "mute" })
+    {
+      if (xs.in_save())
+        {
+          Value v = get_value (prop);
+          xs[prop] & v;
+        }
+      if (xs.in_load())
+        {
+          Value v;
+          xs[prop] & v;
+          set_value (prop, v);
+        }
+    }
 }
 
 void

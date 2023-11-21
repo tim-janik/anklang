@@ -169,14 +169,14 @@ AudioChain::initialize (SpeakerArrangement busses)
 
   ParameterMap pmap;
   pmap.group = "Settings";
-  pmap[VOLUME] = Param { "volume", _("Volume"), _("Volume"), default_volume, "", { 0, 1 } };
+  pmap[VOLUME] = Param { "volume", _("Volume"), _("Volume"), default_volume, "", { 0, 1 }, GUIONLY };
   pmap[MUTE]   = Param { "mute",   _("Mute"),   _("Mute"), false, "", {}, GUIONLY + ":toggle" };
 
   ChoiceS solo_state_cs;
   solo_state_cs += { "Off",   "Solo is turned off" };
   solo_state_cs += { "On",    "This track is solo" };
   solo_state_cs += { "Other", "Another track is solo" };
-  pmap[SOLO_STATE] = Param { "solo_state", _("Solo State"), _("Solo State"), 0, "", std::move (solo_state_cs) };
+  pmap[SOLO_STATE] = Param { "solo_state", _("Solo State"), _("Solo State"), 0, "", std::move (solo_state_cs), GUIONLY };
 
   install_params (pmap);
   prepare_event_input();
