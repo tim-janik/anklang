@@ -30,8 +30,9 @@ class AudioChain : public AudioCombo {
   const SpeakerArrangement ospeakers_ = SpeakerArrangement (0);
   InletP           inlet_;
   AudioProcessor  *last_output_ = nullptr;
-  float            volume_ = 0;
+  static float volume_db     (float volume);
   LinearSmooth     volume_smooth_;
+  bool             reset_volume_ = false;
 protected:
   void     initialize        (SpeakerArrangement busses) override;
   void     reset             (uint64 target_stamp) override;
@@ -45,9 +46,9 @@ public:
   struct Probe { float dbspl = -192; };
   using ProbeArray = std::array<Probe,2>;
   ProbeArray* run_probes     (bool enable);
-  void        volume         (float new_volume);
-  static float volume_db     (float volume);
   static void static_info    (AudioProcessorInfo &info);
+  enum Params { VOLUME = 1, MUTE, SOLO_STATE };
+  enum { SOLO_STATE_OFF, SOLO_STATE_ON, SOLO_STATE_OTHER };
 private:
   ProbeArray *probes_ = nullptr;
   bool        probes_enabled_ = false;

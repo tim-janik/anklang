@@ -170,31 +170,11 @@ TrackImpl::midi_channel (int32 midichannel) // TODO: implement
 }
 
 bool
-TrackImpl::mute (bool new_mute)
-{
-  mute_ = new_mute;
-  set_chain_volumes();
-  emit_notify ("mute");
-  return true;
-}
-
-bool
 TrackImpl::solo (bool new_solo)
 {
   solo_ = new_solo;
   set_chain_volumes();
   emit_notify ("solo");
-  return true;
-}
-
-bool
-TrackImpl::volume (double new_volume)
-{
-  volume_ = new_volume;
-  // TODO: display this value if track volume is changed in the UI
-  // printf ("Track '%s' -> set volume to %f dB\n", name().c_str(), AudioChain::volume_db (new_volume));
-  set_chain_volumes();
-  emit_notify ("volume");
   return true;
 }
 
@@ -223,19 +203,13 @@ TrackImpl::set_chain_volumes()
     {
       auto track_impl = dynamic_cast<Ase::TrackImpl*> (track.get());
 
-      bool mute;
-      if (track_impl->solo_)     // solo tracks are never muted
-        mute = false;
-      else if (have_solo_tracks) // if there are solo tracks all other tracks are muted
-        mute = true;
-      else                       // there isn't any solo track in the project, use mute from track
-        mute = track_impl->mute_;
-
       Ase::AudioChain *audio_chain = dynamic_cast<Ase::AudioChain*> (&*track_impl->chain_->_audio_processor());
-      if (mute)
-        audio_chain->volume (0);
+      if (track_impl->solo_)
+        audio_chain->send_param (Ase::AudioChain::SOLO_STATE, Ase::AudioChain::SOLO_STATE_ON);
+      else if (have_solo_tracks)
+        audio_chain->send_param (Ase::AudioChain::SOLO_STATE, Ase::AudioChain::SOLO_STATE_OTHER);
       else
-        audio_chain->volume (track_impl->volume_);
+        audio_chain->send_param (Ase::AudioChain::SOLO_STATE, Ase::AudioChain::SOLO_STATE_OFF);
     }
 }
 
@@ -245,18 +219,22 @@ TrackImpl::create_properties ()
   // chain to base class
   DeviceImpl::create_properties();
   // create own properties
-  auto getvolume = [this] (Value &val)       { val = volume(); };
-  auto setvolume = [this] (const Value &val) { return volume (val.as_double()); };
   auto getsolo   = [this] (Value &val)       { val = solo(); };
   auto setsolo   = [this] (const Value &val) { return solo (val.as_double()); };
-  auto getmute   = [this] (Value &val)       { val = mute(); };
-  auto setmute   = [this] (const Value &val) { return mute (val.as_double()); };
   PropertyBag bag = property_bag();
   bag.group = _("Mix");
-  bag += Prop (getvolume, setvolume, { "volume", _("Volume"), _("Volume"), 1., "", { 0., 2 }, STANDARD });
   bag += Prop (getsolo, setsolo,     { "solo",   _("Solo"),   _("Solo"), false, "", {}, STANDARD + String (":toggle") });
-  bag += Prop (getmute, setmute,     { "mute",   _("Mute"),   _("Mute"), false, "", {}, STANDARD + String (":toggle") });
 }
+
+PropertyS
+TrackImpl::access_properties ()
+{
+  PropertyS props = DeviceImpl::access_properties();
+  PropertyS chain_props = chain_->access_properties();
+  props.insert (props.end(), chain_props.begin(), chain_props.end());
+  return props;
+}
+
 
 static constexpr const uint MAX_LAUNCHER_CLIPS = 8;
 

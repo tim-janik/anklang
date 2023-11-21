@@ -164,13 +164,30 @@ AudioChain::initialize (SpeakerArrangement busses)
   auto obus = add_output_bus ("Output", ospeakers_);
   (void) ibus;
   assert_return (OUT1 == obus);
+
+  const double default_volume = 0.5407418735601; // -10dB
+
+  ParameterMap pmap;
+  pmap.group = "Settings";
+  pmap[VOLUME] = Param { "volume", _("Volume"), _("Volume"), default_volume, "", { 0, 1 } };
+  pmap[MUTE]   = Param { "mute",   _("Mute"),   _("Mute"), false, "", {}, GUIONLY + ":toggle" };
+
+  ChoiceS solo_state_cs;
+  solo_state_cs += { "Off",   "Solo is turned off" };
+  solo_state_cs += { "On",    "This track is solo" };
+  solo_state_cs += { "Other", "Another track is solo" };
+  pmap[SOLO_STATE] = Param { "solo_state", _("Solo State"), _("Solo State"), 0, "", std::move (solo_state_cs) };
+
+  install_params (pmap);
+  prepare_event_input();
 }
 
 void
 AudioChain::reset (uint64 target_stamp)
 {
   volume_smooth_.reset (sample_rate(), 0.020);
-  volume_smooth_.set (volume_, true);
+  reset_volume_ = true;
+  adjust_all_params();
 }
 
 uint
@@ -192,6 +209,34 @@ AudioChain::schedule_children()
 void
 AudioChain::render (uint n_frames)
 {
+  bool volume_changed = false;
+  MidiEventInput evinput = midi_event_input();
+  for (const auto &ev : evinput)
+    {
+      switch (ev.message())
+        {
+        case MidiMessage::PARAM_VALUE:
+          apply_event (ev);
+          adjust_param (ev.param);
+          if (ev.param == VOLUME || ev.param == MUTE || ev.param == SOLO_STATE)
+            volume_changed = true;
+          break;
+        default: ;
+        }
+    }
+  if (volume_changed)
+    {
+      const int solo_state = irintf (get_param (SOLO_STATE));
+      float new_volume = get_param (VOLUME);
+      if (solo_state == SOLO_STATE_OTHER)
+        new_volume = 0;
+      if (get_param (MUTE) && solo_state != SOLO_STATE_ON)
+        new_volume = 0;
+      // compute volume factor so that volume * volume * volume is in range [0..2]
+      const float cbrt_2 = 1.25992104989487; /* 2^(1/3) */
+      volume_smooth_.set (new_volume * cbrt_2, reset_volume_);
+      reset_volume_ = false;
+    }
   // make the last processor output the chain output
   const size_t nlastchannels = last_output_ ? last_output_->n_ochannels (OUT1) : 0;
   const size_t n_och = n_ochannels (OUT1);
@@ -237,15 +282,6 @@ AudioChain::render (uint n_frames)
         }
     }
   // FIXME: assign obus if no children are present
-}
-
-void
-AudioChain::volume (float new_volume)
-{
-  /* compute volume factor so that volume_ * volume_ * volume_ is in range [0..2] */
-  const float cbrt_2 = 1.25992104989487; /* 2^(1/3) */
-  volume_ = new_volume * cbrt_2;
-  volume_smooth_.set (volume_);
 }
 
 float
