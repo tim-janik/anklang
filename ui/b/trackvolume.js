@@ -80,6 +80,10 @@ class BTrackVolume extends LitComponent {
       {
         let prop = await this.track.access_property ("volume");
         this.prop = prop;
+        this.prop.on ("notify", args => {
+          if (args.detail == "volume")
+            this.update_value();
+        });
       }
     this.value = await this.prop.get_normalized();
     this.percent = this.value * 100;
