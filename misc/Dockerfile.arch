@@ -12,7 +12,7 @@ RUN pacman -Sy --noconfirm archlinux-keyring && pacman-key --init && pacman-key 
 	    python-lxml \
 	    imagemagick \
 	    graphviz \
-	    flac libvorbis jack libmad \
+	    flac libvorbis jack mpg123 lame \
 	    gtk2 \
 	    pandoc python-pandocfilters \
 	    cppcheck \
@@ -34,4 +34,4 @@ RUN groupadd --gid 1000 builder \
 USER builder
 
 # docker build -t arch:latest -f misc/Dockerfile.arch misc
-# docker run -i -t --rm -v $PWD:/anklang -w /anklang arch:latest
+# docker run -ti --rm -v $PWD:/anklang -w /anklang arch:latest

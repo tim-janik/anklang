@@ -15,6 +15,9 @@ RUN : \
 
 # Install build tools, libstdc++-10-dev>=10 for C++20
 # Add libXss.so, libgtk-3-0 for Electron
+# Install recent pandoc and filters
+# Install Poxy, needs Doxygen and TeX
+# Install X11 recording tools
 RUN : \
   && apt-get install -y \
 	     sudo build-essential gawk zstd unzip git wget curl \
@@ -22,33 +25,22 @@ RUN : \
 	     gettext graphviz imagemagick librsvg2-bin libxml2-utils \
 	     ccache cmake universal-ctags cppcheck libstdc++-10-dev \
 	     pkg-config libxml2-dev libglib2.0-dev \
-	     libboost-system-dev libasound2-dev libflac-dev libopus-dev libjack-dev libzstd-dev \
+	     libboost-system-dev libzstd-dev libasound2-dev libjack-dev \
+	     libflac-dev libopus-dev libvorbis-dev libmpg123-dev libmp3lame-dev \
 	     libgconf-2-4 libgtk2.0-dev libgtk-3-dev libgtk-3-0 \
 	     squashfs-tools libxss1 libgbm1 libnss3 \
-  && apt-get clean
-
-# Install recent pandoc and filters
-RUN : \
   && apt-get install -y \
 	     python3 python3-pip python3-lxml python3-pandocfilters \
-  && curl -fsSLO https://github.com/jgm/pandoc/releases/download/3.1.6.2/pandoc-3.1.6.2-1-amd64.deb \
-  && apt-get install -y ./pandoc-3.1.6.2-1-amd64.deb \
-  && rm -f ./pandoc-3.1.6.2-1-amd64.deb \
-  && apt-get autoremove -y \
-  && apt-get clean
-
-# Poxy, needs doxygen and TeX
-RUN : \
+  && curl -fsSLO https://github.com/jgm/pandoc/releases/download/3.1.9/pandoc-3.1.9-1-amd64.deb \
+  && apt-get install -y ./pandoc-3.1.9-1-amd64.deb \
+  && rm -f ./pandoc-3.1.9-1-amd64.deb \
   && apt-get install -y \
 	     doxygen \
 	     texlive-xetex fonts-sil-charis texlive-binaries texlive-fonts-extra \
   && pip install poxy \
-  && apt-get clean
-
-# X11 recording tools
-RUN : \
   && apt-get install -y \
 	     xvfb twm ffmpeg \
+  && apt-get autoremove -y \
   && apt-get clean
 
 # Install recent clang++
@@ -112,4 +104,4 @@ RUN groupadd --gid 1000 ubuntu \
 USER ubuntu
 
 # docker build -t focal:latest -f misc/Dockerfile.focal misc
-# docker run -i -t --rm -v $PWD:/anklang -w /anklang focal:latest
+# docker run -ti --rm -v $PWD:/anklang -w /anklang focal:latest

@@ -121,20 +121,32 @@ $>/ase/blake3impl.c:		| $>/ase/
 	$Q echo -e '#include "external/blake3/c/blake3_dispatch.c"'                          >> $>/ase/blake3impl.c
 $>/ase/blake3avx512.c $>/ase/blake3avx2.c $>/ase/blake3sse41.c $>/ase/blake3sse2.c: $>/ase/blake3impl.c
 
+# == libsndfile ==
+$>/lib/libsndfile.so: .submodule-stamp external/libsndfile/include/sndfile.hh		| $>/lib/
+	$(QGEN)
+	$Q cmake \
+		-B $>/sndfile/ -S external/libsndfile/ -DCMAKE_BUILD_TYPE=MINSIZEREL \
+		-DBUILD_PROGRAMS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON
+	$Q $(MAKE) -C $>/sndfile/
+	$Q $(CP) -P $>/sndfile/libsndfile.so* $>/lib/
+CLEANDIRS += $>/sndfile/
+CLEANFILES += $>/lib/libsndfile.*
+
 # == AnklangSynthEngine ==
 ASE_EXTERNAL_INCLUDES := $(strip	\
 	-Iexternal/clap/include		\
+	-Iexternal/libsndfile/include	\
 	-Iexternal/rapidjson/include	\
 	-Iexternal/websocketpp		\
 )
 $(ase/AnklangSynthEngine.objects): $(ase/include.deps) $(ase/libase.deps)
 $(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
-$(lib/AnklangSynthEngine):						| $>/lib/
+$(lib/AnklangSynthEngine): $>/lib/libsndfile.so					| $>/lib/
 $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
 	$(ase/AnklangSynthEngine.objects), \
 	$(lib/libase.so), \
-	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl, \
+	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl $>/lib/libsndfile.so, \
 	../lib)
 # Work around legacy code in external/websocketpp/*.hpp
 ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec -Wno-sign-promo
