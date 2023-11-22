@@ -17,14 +17,14 @@ if ! [[ "$HASH" =~ ^[0-9a-f]+$ ]] ; then		# checks proper hash
   DESCRIBE=
   if test -e "${ABSPATHSCRIPT%/*}"/../.git ; then	# fetch version from live git
     HASH=$(git log -1 --pretty="tformat:%H")
-    DESCRIBE=$(git describe --tags --match='v[0-9]*.[0-9]*.[0-9]*' --exact-match 2>/dev/null || git describe --match='v[0-9]*.[0-9]*.[0-9]*')
+    DESCRIBE=$(git describe --tags --match='v[0-9]*.[0-9]*.[0-9]*' --exact-match 2>/dev/null || git describe --match='v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null) || DESCRIBE=""
     VDATE=$(git log -1 --pretty="tformat:%ci")
   fi
 fi
 
 # == Fallback version ==
-if test -z "$DESCRIBE" ; then
-  HASH=0000000000000000000000000000000000000000
+if test -z "$DESCRIBE" ; then # triggered by e.g. forks
+  HASH=$(git log -1 --pretty="tformat:%H" 2>/dev/null) || HASH=0000000000000000000000000000000000000000
   DESCRIBE=v0.0.0-snapshot0
   VDATE="2001-01-01 01:01:01 +0000"
 fi

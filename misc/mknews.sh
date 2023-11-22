@@ -23,6 +23,9 @@ fetch_news_version() # fetch_news_version {1|2}
 }
 NEWS_TAG="v$(fetch_news_version 1)"
 
+# Work around repos without tags
+git rev-parse --verify "$NEWS_TAG" 2>/dev/null || NEWS_TAG=`git log --reverse --format=%H | sed -n '1p' `
+
 # Just print topmost NEWS.md version
 test " ${1:-}" == " --version" && {
   echo "$NEWS_TAG"
@@ -47,7 +50,6 @@ else
   echo
   echo '``````````````````````````````````````````````````````````````````````````````````````'
   git log --pretty='%s    # %cd %an %h%n%w(0,4,4)%b' \
-      --reverse \
       --first-parent --date=short "$NEWS_TAG..HEAD" |
     sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' |
     sed '/^\s*$/{ N; /^\s*\n\s*$/D }'
