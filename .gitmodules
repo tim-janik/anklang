@@ -19,3 +19,6 @@
 [submodule "pandaresampler"]
 	path = external/pandaresampler
 	url = https://github.com/swesterfeld/pandaresampler.git
+[submodule "libsndfile"]
+	path = external/libsndfile
+	url = https://github.com/libsndfile/libsndfile.git
