@@ -16,6 +16,10 @@
 #include "lv2device.hh"
 
 #include <lilv/lilv.h>
+#include <suil/suil.h>
+
+// X11 wrapper
+#include "clapplugin.hh"
 
 namespace Ase {
 
@@ -307,6 +311,23 @@ struct PresetInfo
   const LilvNode *preset = nullptr;
 };
 
+void
+eh_ui_write (SuilController controller,
+             uint32_t       port_index,
+             uint32_t       buffer_size,
+             uint32_t       protocol,
+             const void*    buffer)
+{
+  printf ("ui_write called\n");
+}
+
+uint32_t
+eh_ui_index (SuilController controller, const char* symbol)
+{
+  printf ("ui_index called\n");
+  return 0;
+}
+
 struct PluginInstance
 {
   PluginHost& plugin_host;
@@ -320,6 +341,7 @@ struct PluginInstance
 
   const LilvPlugin             *plugin = nullptr;
   LilvInstance                 *instance = nullptr;
+  SuilInstance                 *ui_instance = nullptr;
   const LV2_Worker_Interface   *worker_interface = nullptr;
   std::vector<Port>             plugin_ports;
   std::vector<int>              atom_out_ports;
@@ -337,12 +359,18 @@ struct PluginInstance
   void run (uint32_t nframes);
   void activate();
   void deactivate();
+
+  const LilvUI *get_plugin_ui();
+  void open_ui();
 };
 
 struct PluginHost
 {
-  LilvWorld  *world;
+  LilvWorld  *world = nullptr;
+  SuilHost   *ui_host = nullptr;
   Map         urid_map;
+
+  static constexpr auto native_ui_type_uri = "http://lv2plug.in/ns/extensions/ui#GtkUI";
 
   struct URIDs {
     LV2_URID param_sampleRate;
@@ -407,8 +435,15 @@ struct PluginHost
   {
     world = lilv_world_new();
     lilv_world_load_all (world);
+    ui_host = suil_host_new (eh_ui_write, eh_ui_index, nullptr, nullptr);
 
     nodes.init (world);
+  }
+  PluginHost&
+  the()
+  {
+    static PluginHost host;
+    return host;
   }
   PluginInstance *instantiate (const char *plugin_uri, float mix_freq);
 
@@ -721,6 +756,73 @@ PluginInstance::run (uint32_t nframes)
   worker.end_run();
 }
 
+static const LilvNode *ui_type; // FIXME: not static
+
+const LilvUI *
+PluginInstance::get_plugin_ui()
+{
+  static LilvUIs* uis;            ///< All plugin UIs (RDF data) FIXME not static
+
+  uis = lilv_plugin_get_uis (plugin);
+
+  PluginHost host;
+  const LilvNode* native_ui_type = lilv_new_uri (host.world, host.native_ui_type_uri);
+  LILV_FOREACH(uis, u, uis)
+    {
+      const LilvUI* this_ui = lilv_uis_get (uis, u);
+
+      if (lilv_ui_is_supported (this_ui,
+                                suil_ui_supported,
+                                native_ui_type,
+                                &ui_type))
+        {
+          /* TODO: Multiple UI support */
+          printf ("UI: %s\n", lilv_node_as_uri (lilv_ui_get_uri (this_ui)));
+          return this_ui;
+        }
+    }
+  return nullptr;
+}
+
+void
+PluginInstance::open_ui()
+{
+  // ---------------------ui------------------------------
+  const LilvUI *ui = get_plugin_ui();
+  const char* bundle_uri  = lilv_node_as_uri(lilv_ui_get_bundle_uri(ui));
+  const char* binary_uri  = lilv_node_as_uri(lilv_ui_get_binary_uri(ui));
+  char*       bundle_path = lilv_file_uri_parse(bundle_uri, NULL);
+  char*       binary_path = lilv_file_uri_parse(binary_uri, NULL);
+
+  // instance access:
+  const LV2_Feature instance_feature = {
+    NS_EXT "instance-access", lilv_instance_get_handle (instance)
+  };
+
+  Features ui_features;
+  ui_features.add (&instance_feature);
+  ui_features.add (plugin_host.urid_map.feature());
+
+  //set_initial_controls_ui();
+
+  auto x11wrapper = get_x11wrapper();
+  if (x11wrapper)
+    {
+      auto func = [&] () {
+        return suil_instance_new (plugin_host.ui_host,
+                                  this,
+                                  plugin_host.native_ui_type_uri,
+                                  lilv_node_as_uri(lilv_plugin_get_uri(plugin)),
+                                  lilv_node_as_uri(lilv_ui_get_uri(ui)),
+                                  lilv_node_as_uri(ui_type),
+                                  bundle_path,
+                                  binary_path,
+                                  ui_features.get_features());
+      };
+      x11wrapper->create_suil_window (func);
+    }
+}
+
 }
 
 class LV2Processor : public AudioProcessor {
@@ -1012,6 +1114,11 @@ public:
   {
     lv2_uri_ = lv2_uri;
   }
+  PluginInstance *
+  instance()
+  {
+    return plugin_instance;
+  }
 };
 
 DeviceInfoS
@@ -1037,6 +1144,22 @@ LV2DeviceImpl::create_lv2_device (AudioEngine &engine, const String &lv2_uri_wit
   DeviceP devicep = AudioProcessor::registry_create ("Ase::Devices::LV2Processor", engine, make_device);
   // return_unless (devicep && devicep->_audio_processor("Ase::Device::LV2Processor", nullptr);
   return devicep;
+}
+
+bool
+LV2DeviceImpl::gui_supported()
+{
+  auto lv2aproc = dynamic_cast<LV2Processor *> (proc_.get());
+  auto ui = lv2aproc->instance()->get_plugin_ui();
+  printf ("%p\n", ui);
+  return ui != nullptr;
+}
+
+void
+LV2DeviceImpl::gui_toggle()
+{
+  auto lv2aproc = dynamic_cast<LV2Processor *> (proc_.get());
+  lv2aproc->instance()->open_ui();
 }
 
 LV2DeviceImpl::LV2DeviceImpl (const String &lv2_uri, AudioProcessorP proc) :

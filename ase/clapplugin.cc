@@ -1979,6 +1979,13 @@ try_load_x11wrapper()
   x11wrapper = gtk2wrapentry;
 }
 
+Gtk2DlWrapEntry *
+get_x11wrapper()
+{
+  try_load_x11wrapper();
+  return x11wrapper;
+}
+
 // == ClapPluginHandle ==
 ClapPluginHandle::ClapPluginHandle (const ClapPluginDescriptor &descriptor_) :
   descriptor (descriptor_)

@@ -4,6 +4,7 @@
 
 #include <ase/device.hh>
 #include <clap/clap.h>
+#include <ase/gtk2wrap.hh>
 
 namespace Ase {
 
@@ -95,6 +96,8 @@ StringS     list_clap_files        ();
 const char* clap_event_type_string (int etype);
 String      clap_event_to_string   (const clap_event_note_t *enote);
 DeviceInfo  clap_device_info       (const ClapPluginDescriptor &descriptor);
+
+Gtk2DlWrapEntry *get_x11wrapper();
 
 } // Ase
 
