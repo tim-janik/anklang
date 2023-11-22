@@ -428,6 +428,7 @@ struct PluginHost
 
   Options  options;
 
+private:
   PluginHost() :
     world (nullptr),
     urids (urid_map),
@@ -439,7 +440,8 @@ struct PluginHost
 
     nodes.init (world);
   }
-  PluginHost&
+public:
+  static PluginHost&
   the()
   {
     static PluginHost host;
@@ -765,8 +767,7 @@ PluginInstance::get_plugin_ui()
 
   uis = lilv_plugin_get_uis (plugin);
 
-  PluginHost host;
-  const LilvNode* native_ui_type = lilv_new_uri (host.world, host.native_ui_type_uri);
+  const LilvNode* native_ui_type = lilv_new_uri (plugin_host.world, plugin_host.native_ui_type_uri);
   LILV_FOREACH(uis, u, uis)
     {
       const LilvUI* this_ui = lilv_uis_get (uis, u);
@@ -832,7 +833,7 @@ class LV2Processor : public AudioProcessor {
   vector<OBusId> mono_outs_;
 
   PluginInstance *plugin_instance;
-  PluginHost plugin_host; // TODO: should be only one instance for all lv2 devices
+  PluginHost& plugin_host;
 
   vector<Port *> param_id_port;
   int current_preset = 0;
@@ -1096,7 +1097,8 @@ class LV2Processor : public AudioProcessor {
   }
 public:
   LV2Processor (AudioEngine &engine) :
-    AudioProcessor (engine)
+    AudioProcessor (engine),
+    plugin_host (PluginHost::the())
   {}
   static void
   static_info (AudioProcessorInfo &info)
@@ -1124,7 +1126,7 @@ public:
 DeviceInfoS
 LV2DeviceImpl::list_lv2_plugins()
 {
-  PluginHost plugin_host; // TODO: dedup
+  PluginHost& plugin_host = PluginHost::the();
   return plugin_host.list_plugins();
 }
 
@@ -1163,7 +1165,7 @@ LV2DeviceImpl::gui_toggle()
 }
 
 LV2DeviceImpl::LV2DeviceImpl (const String &lv2_uri, AudioProcessorP proc) :
-  proc_ (proc), info_ (PluginHost().lv2_device_info (lv2_uri))
+  proc_ (proc), info_ (PluginHost::the().lv2_device_info (lv2_uri))
 {
 }
 
