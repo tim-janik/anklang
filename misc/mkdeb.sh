@@ -43,7 +43,7 @@ ARCH=$(dpkg --print-architecture)
 D="libc6 (>= 2.31)"
 D="$D, libstdc++6:amd64 (>= 10.2.0)"
 D="$D, zlib1g, libzstd1:amd64, python3"
-D="$D, libasound2, libflac8 (>= 1.3.3), libmad0"
+D="$D, libasound2, libflac8 (>= 1.3.3), libmpg123-0"
 D="$D, libogg0, libvorbis0a, libvorbisenc2, libvorbisfile3 (>= 1.3.5)"
 D="$D, libglib2.0-0 (>= 2.64.6), libgtk2.0-0 (>= 2.24.32)"
 D="$D, libgtk-3-0 (>= 3.24.18), libnss3 (>= 2:3.49)"
