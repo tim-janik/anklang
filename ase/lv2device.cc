@@ -411,6 +411,48 @@ struct PluginHost
     nodes.init (world);
   }
   PluginInstance *instantiate (const char *plugin_uri, float mix_freq);
+
+private:
+  DeviceInfoS devs;
+  map<string, DeviceInfo> lv2_device_info_map;
+public:
+
+  DeviceInfo
+  lv2_device_info (const string& uri)
+  {
+    if (devs.empty())
+      list_plugins();
+
+    return lv2_device_info_map[uri];
+  }
+
+  DeviceInfoS
+  list_plugins()
+  {
+    if (!devs.empty())
+      return devs;
+
+    const LilvPlugins* plugins = lilv_world_get_all_plugins (world);
+    LILV_FOREACH(plugins, i, plugins)
+      {
+        const LilvPlugin* p = lilv_plugins_get (plugins, i);
+        DeviceInfo device_info;
+        string lv2_uri = lilv_node_as_uri (lilv_plugin_get_uri (p));
+        device_info.uri = "LV2:" + lv2_uri;
+
+        LilvNode* n = lilv_plugin_get_name (p);
+        device_info.name = lilv_node_as_string (n);
+        lilv_node_free (n);
+
+        auto plugin_class = lilv_plugin_get_class (p);
+        device_info.category = string_format ("LV2 %s", lilv_node_as_string (lilv_plugin_class_get_label (plugin_class)));
+
+        devs.push_back (device_info);
+
+        lv2_device_info_map[lv2_uri] = device_info;
+      }
+    return devs;
+  }
 };
 
 Options::Options (PluginHost& plugin_host) :
@@ -975,28 +1017,8 @@ public:
 DeviceInfoS
 LV2DeviceImpl::list_lv2_plugins()
 {
-  static DeviceInfoS devs;
-  if (devs.size())
-    return devs;
-
   PluginHost plugin_host; // TODO: dedup
-  const LilvPlugins* plugins = lilv_world_get_all_plugins (plugin_host.world);
-  LILV_FOREACH(plugins, i, plugins)
-    {
-      const LilvPlugin* p = lilv_plugins_get (plugins, i);
-      DeviceInfo device_info;
-      device_info.uri = string ("LV2:") + lilv_node_as_uri (lilv_plugin_get_uri (p));
-
-      LilvNode* n = lilv_plugin_get_name (p);
-      device_info.name = lilv_node_as_string (n);
-      lilv_node_free (n);
-
-      auto plugin_class = lilv_plugin_get_class (p);
-      device_info.category = string_format ("LV2 %s", lilv_node_as_string (lilv_plugin_class_get_label (plugin_class)));
-
-      devs.push_back (device_info);
-    }
-  return devs;
+  return plugin_host.list_plugins();
 }
 
 DeviceP
@@ -1010,15 +1032,15 @@ LV2DeviceImpl::create_lv2_device (AudioEngine &engine, const String &lv2_uri_wit
     auto lv2aproc = dynamic_cast<LV2Processor *> (aproc.get());
     lv2aproc->set_uri (lv2_uri);
 
-    return LV2DeviceImpl::make_shared (aseid, static_info, aproc);
+    return LV2DeviceImpl::make_shared (lv2_uri, aproc);
   };
   DeviceP devicep = AudioProcessor::registry_create ("Ase::Devices::LV2Processor", engine, make_device);
   // return_unless (devicep && devicep->_audio_processor("Ase::Device::LV2Processor", nullptr);
   return devicep;
 }
 
-LV2DeviceImpl::LV2DeviceImpl (const String &lv2_uri, AudioProcessor::StaticInfo info, AudioProcessorP proc) :
-  proc_ (proc)
+LV2DeviceImpl::LV2DeviceImpl (const String &lv2_uri, AudioProcessorP proc) :
+  proc_ (proc), info_ (PluginHost().lv2_device_info (lv2_uri))
 {
 }
 

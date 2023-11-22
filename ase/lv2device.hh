@@ -12,14 +12,14 @@ class LV2DeviceImpl : public DeviceImpl
   AudioProcessorP const proc_;
   DeviceInfo      const info_;
   ASE_DEFINE_MAKE_SHARED (LV2DeviceImpl);
-  explicit           LV2DeviceImpl     (const String &lv2_uri, AudioProcessor::StaticInfo, AudioProcessorP);
+  explicit           LV2DeviceImpl     (const String &lv2_uri, AudioProcessorP);
 public:
   AudioProcessorP    _audio_processor  () const override            { return proc_; }
   void               _set_event_source (AudioProcessorP esource)    { /* FIXME: implement */ }
   DeviceInfo         device_info       () override                  { return info_; }
 
   static DeviceInfoS list_lv2_plugins  ();
-  static DeviceP     create_lv2_device (AudioEngine &engine, const String &clapuri);
+  static DeviceP     create_lv2_device (AudioEngine &engine, const String &lv2_uri_with_prefix);
 };
 
 } // Ase
