@@ -4,9 +4,9 @@ set -Eeuo pipefail -x && SCRIPTNAME=${0##*/} && die() { [ -z "$*" ] || echo "$SC
 
 grep ' Anklang ' ./README.md || die 'failed to find Anklang project'
 
-# Usage: mkrelease.sh [RELEASE_BUILDDIR]
+# Usage: mkassets.sh [BUILDDIR]
 # Make dist tarball and build release assets from it.
-BUILDDIR="${1:-/tmp/anklang/}"
+BUILDDIR="${1:-/tmp/anklang.tmp/}"
 
 # Clear assets and builddir
 rm -rf assets $BUILDDIR
@@ -38,5 +38,5 @@ test ! -r config-defaults.mk ||
 
 # Fetch release assets and cleanup
 cp $BUILDDIR/assets/* ./assets/
-test "$BUILDDIR" == /tmp/anklang/ && rm -rf /tmp/anklang/
+test "$BUILDDIR" == /tmp/anklang.tmp/ && rm -rf /tmp/anklang.tmp/
 ls -l assets/*
