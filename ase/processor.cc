@@ -353,6 +353,27 @@ AudioProcessor::param_value_from_text (uint32_t paramid, const String &text) con
   return parameterp ? parameterp->value_from_text (text).as_double() : 0.0;
 }
 
+/// Ase main-thread helper for temporary string<->uint conversions.
+uint
+AudioProcessor::text_param_to_quark (uint32_t paramid, const String &text)
+{
+  assert_return (this_thread_is_ase(), 0);
+  ParameterC parameterp = parameter (paramid);
+  if (!parameterp->is_text())
+    return 0;
+  const CString cstr = text; // uint mapping
+  cstrings0_.push_back (cstr); // keep alive during event queue references
+  return CString::temp_quark_impl (cstr);
+}
+
+/// Helper for temporary uint<->string conversions.
+String
+AudioProcessor::text_param_from_quark (uint32_t paramid, uint vint)
+{
+  const CString cstr = CString::temp_quark_impl (vint);
+  return cstr;
+}
+
 /// Prepare `count` bits for atomic notifications.
 void
 AudioProcessor::atomic_bits_resize (size_t count)
@@ -951,8 +972,9 @@ public:
   {
     const AudioProcessorP proc = device_->_audio_processor();
     const double value = inflight_stamp_ >  proc->engine().frame_counter() ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
-    const bool ischoice = strstr (parameter_->hints().c_str(), ":choice:") != nullptr;
-    if (ischoice)
+    if (parameter_->is_text())
+      return proc->text_param_from_quark (id_, value);
+    else if (parameter_->is_choice())
       return proc->param_value_to_text (id_, value);
     else
       return value;
@@ -963,7 +985,9 @@ public:
     PropertyP thisp = shared_ptr_cast<Property> (this); // thisp keeps this alive during lambda
     const AudioProcessorP proc = device_->_audio_processor();
     double v;
-    if (value.index() == Value::STRING && parameter_->is_choice())
+    if (parameter_->is_text())
+      v = proc->text_param_to_quark (id_, value.as_string());
+    else if (value.index() == Value::STRING && parameter_->is_choice())
       v = proc->param_value_from_text (id_, value.as_string());
     else
       v = value.as_double();
@@ -1103,8 +1127,12 @@ AudioProcessor::enotify_dispatch ()
                       aprop->proc_paramchange();
                   }
               }
-          if (nflags & PARAMCHANGE)
+          if (nflags & PARAMCHANGE) {
             devicep->emit_event ("params", "change");
+            // cleanup temporary CStrings
+            std::swap (current->cstrings0_, current->cstrings1_); // aging of CString instances from last round
+            current->cstrings0_.clear();                          // CString instances to be freed
+          }
         }
     }
 }

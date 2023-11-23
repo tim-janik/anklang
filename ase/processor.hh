@@ -118,6 +118,7 @@ private:
   using MidiEventVectorAP = std::atomic<MidiEventVector*>;
   MidiEventVectorAP        t0events_ = nullptr;
   RenderContext           *render_context_ = nullptr;
+  std::vector<CString>     cstrings0_, cstrings1_;
   template<class F> void modify_t0events (const F&);
   void               assign_iobufs      ();
   void               release_iobufs     ();
@@ -208,6 +209,8 @@ public:
   double              get_normalized        (Id32 paramid);
   bool                set_normalized        (Id32 paramid, double normalized);
   bool                is_initialized        () const;
+  uint                text_param_to_quark   (uint32_t paramid, const String &text);
+  String              text_param_from_quark (uint32_t paramid, uint vint);
   // Buses
   IBusId        find_ibus         (const String &name) const;
   OBusId        find_obus         (const String &name) const;
