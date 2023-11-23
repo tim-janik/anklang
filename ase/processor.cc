@@ -13,28 +13,23 @@
 namespace Ase {
 
 // == PBus ==
-AudioProcessor::PBus::PBus (const String &ident, const String &uilabel, SpeakerArrangement sa) :
-  ibus (ident, uilabel, sa)
-{}
-
-AudioProcessor::IBus::IBus (const String &identifier, const String &uilabel, SpeakerArrangement sa)
+AudioProcessor::IOBus::IOBus (IOTag io_tag, const String &ident, const String &uilabel, SpeakerArrangement sa) :
+  BusInfo (ident, uilabel, "", "", sa), iotag (io_tag)
 {
-  ident = identifier;
-  label = uilabel;
-  speakers = sa;
-  proc = nullptr;
-  obusid = {};
-  assert_return (ident != "");
-}
-
-AudioProcessor::OBus::OBus (const String &identifier, const String &uilabel, SpeakerArrangement sa)
-{
-  ident = identifier;
-  label = uilabel;
-  speakers = sa;
-  fbuffer_concounter = 0;
-  fbuffer_count = 0;
-  fbuffer_index = ~0;
+  switch (iotag)
+    {
+    case IBUS:
+      assert_return (ibus == IBUS);
+      obusid = {};
+      oproc = nullptr;
+      break;
+    case OBUS:
+      assert_return (obus == OBUS);
+      fbuffer_concounter = 0;
+      fbuffer_count = 0;
+      fbuffer_index = ~0;
+      break;
+    }
   assert_return (ident != "");
 }
 
@@ -146,27 +141,29 @@ AudioProcessor::zero_buffer()
 }
 
 /// Get internal output bus handle.
-AudioProcessor::OBus&
+AudioProcessor::IOBus&
 AudioProcessor::iobus (OBusId obusid)
 {
+  static const uint64 dummy_iobusmem[sizeof (AudioProcessor::IOBus)] = { 0, };
+  auto &dummy_iobus = const_cast<IOBus&> (*reinterpret_cast<const IOBus*> (dummy_iobusmem));
   const size_t busindex = size_t (obusid) - 1;
-  if (ASE_ISLIKELY (busindex < n_obuses()))
-    return iobuses_[output_offset_ + busindex].obus;
-  static const OBus dummy { "?", "", {} };
-  assert_return (busindex < n_obuses(), const_cast<OBus&> (dummy));
-  return const_cast<OBus&> (dummy);
+  assert_return (busindex < n_obuses(), dummy_iobus);
+  IOBus &bus = iobuses_[output_offset_ + busindex];
+  assert_warn (bus.obus == IOBus::OBUS);
+  return bus;
 }
 
 /// Get internal input bus handle.
-AudioProcessor::IBus&
+AudioProcessor::IOBus&
 AudioProcessor::iobus (IBusId ibusid)
 {
+  static const uint64 dummy_iobusmem[sizeof (AudioProcessor::IOBus)] = { 0, };
+  auto &dummy_iobus = const_cast<IOBus&> (*reinterpret_cast<const IOBus*> (dummy_iobusmem));
   const size_t busindex = size_t (ibusid) - 1;
-  if (ASE_ISLIKELY (busindex < n_ibuses()))
-    return iobuses_[busindex].ibus;
-  static const IBus dummy { "?", "", {} };
-  assert_return (busindex < n_ibuses(), const_cast<IBus&> (dummy));
-  return const_cast<IBus&> (dummy);
+  assert_return (busindex < n_ibuses(), dummy_iobus);
+  IOBus &bus = iobuses_[busindex];
+  assert_warn (bus.ibus == IOBus::IBUS);
+  return bus;
 }
 
 // Release buffers allocated for input/output channels.
@@ -177,7 +174,7 @@ AudioProcessor::release_iobufs()
   disconnect_obuses();
   for (OBusId ob = OBusId (1); size_t (ob) <= n_obuses(); ob = OBusId (size_t (ob) + 1))
     {
-      OBus &bus = iobus (ob);
+      IOBus &bus = iobus (ob);
       bus.fbuffer_index = ~0;
       bus.fbuffer_count = 0;
     }
@@ -194,7 +191,7 @@ AudioProcessor::assign_iobufs ()
   ssize_t ochannel_count = 0;
   for (OBusId ob = OBusId (1); size_t (ob) <= n_obuses(); ob = OBusId (size_t (ob) + 1))
     {
-      OBus &bus = iobus (ob);
+      IOBus &bus = iobus (ob);
       bus.fbuffer_index = ochannel_count;
       bus.fbuffer_count = bus.n_channels();
       ochannel_count += bus.fbuffer_count;
@@ -497,10 +494,10 @@ AudioProcessor::add_input_bus (CString uilabel, SpeakerArrangement speakerarrang
   assert_return (iobuses_.size() < 65535, {});
   if (n_ibuses())
     assert_return (uilabel != iobus (IBusId (n_ibuses())).label, {}); // easy CnP error
-  PBus pbus { string_to_identifier (uilabel), uilabel, speakerarrangement };
-  pbus.pbus.hints = hints;
-  pbus.pbus.blurb = blurb;
-  iobuses_.insert (iobuses_.begin() + output_offset_, pbus);
+  IOBus bus { IOBus::IBUS, string_to_identifier (uilabel), uilabel, speakerarrangement };
+  bus.hints = hints;
+  bus.blurb = blurb;
+  iobuses_.insert (iobuses_.begin() + output_offset_, bus);
   output_offset_ += 1;
   const IBusId id = IBusId (n_ibuses());
   return id; // 1 + index
@@ -517,10 +514,10 @@ AudioProcessor::add_output_bus (CString uilabel, SpeakerArrangement speakerarran
   assert_return (iobuses_.size() < 65535, {});
   if (n_obuses())
     assert_return (uilabel != iobus (OBusId (n_obuses())).label, {}); // easy CnP error
-  PBus pbus { string_to_identifier (uilabel), uilabel, speakerarrangement };
-  pbus.pbus.hints = hints;
-  pbus.pbus.blurb = blurb;
-  iobuses_.push_back (pbus);
+  IOBus bus { IOBus::OBUS, string_to_identifier (uilabel), uilabel, speakerarrangement };
+  bus.hints = hints;
+  bus.blurb = blurb;
+  iobuses_.push_back (bus);
   const OBusId id = OBusId (n_obuses());
   return id; // 1 + index
 }
@@ -557,11 +554,11 @@ AudioProcessor::float_buffer (IBusId busid, uint channelindex) const
 {
   const size_t ibusindex = size_t (busid) - 1;
   assert_return (ibusindex < n_ibuses(), zero_buffer());
-  const IBus &ibus = iobus (busid);
-  if (ibus.proc)
+  const IOBus &ibus = iobus (busid);
+  if (ibus.oproc)
     {
-      const AudioProcessor &oproc = *ibus.proc;
-      const OBus &obus = oproc.iobus (ibus.obusid);
+      const AudioProcessor &oproc = *ibus.oproc;
+      const IOBus &obus = oproc.iobus (ibus.obusid);
       if (ASE_UNLIKELY (channelindex >= obus.fbuffer_count))
         channelindex = obus.fbuffer_count - 1;
       return oproc.fbuffers_[obus.fbuffer_index + channelindex];
@@ -574,12 +571,12 @@ AudioProcessor::float_buffer (IBusId busid, uint channelindex) const
 /// resetting any previous redirections. Assignments to FloatBuffer.buffer
 /// enable new redirections until the next call to this function or oblock().
 AudioProcessor::FloatBuffer&
-AudioProcessor::float_buffer (OBusId busid, uint channelindex, bool resetptr)
+AudioProcessor::float_buffer (OBusId obusid, uint channelindex, bool resetptr)
 {
-  const size_t obusindex = size_t (busid) - 1;
+  const size_t obusindex = size_t (obusid) - 1;
   FloatBuffer *const fallback = const_cast<FloatBuffer*> (&zero_buffer());
   assert_return (obusindex < n_obuses(), *fallback);
-  const OBus &obus = iobus (busid);
+  const IOBus &obus = iobus (obusid);
   assert_return (channelindex < obus.fbuffer_count, *fallback);
   FloatBuffer &fbuffer = fbuffers_[obus.fbuffer_index + channelindex];
   if (resetptr)
@@ -589,11 +586,11 @@ AudioProcessor::float_buffer (OBusId busid, uint channelindex, bool resetptr)
 
 /// Redirect output buffer of bus `b`, channel `c` to point to `block`, or zeros if `block==nullptr`.
 void
-AudioProcessor::redirect_oblock (OBusId busid, uint channelindex, const float *block)
+AudioProcessor::redirect_oblock (OBusId obusid, uint channelindex, const float *block)
 {
-  const size_t obusindex = size_t (busid) - 1;
+  const size_t obusindex = size_t (obusid) - 1;
   assert_return (obusindex < n_obuses());
-  const OBus &obus = iobus (busid);
+  const IOBus &obus = iobus (obusid);
   assert_return (channelindex < obus.fbuffer_count);
   FloatBuffer &fbuffer = fbuffers_[obus.fbuffer_index + channelindex];
   if (block != nullptr)
@@ -671,17 +668,17 @@ AudioProcessor::disconnect (IBusId ibusid)
     return disconnect_event_input();
   const size_t ibusindex = size_t (ibusid) - 1;
   assert_return (ibusindex < n_ibuses());
-  IBus &ibus = iobus (ibusid);
+  IOBus &ibus = iobus (ibusid);
   // disconnect
-  return_unless (ibus.proc != nullptr);
-  AudioProcessor &oproc = *ibus.proc;
+  return_unless (ibus.oproc != nullptr);
+  AudioProcessor &oproc = *ibus.oproc;
   const size_t obusindex = size_t (ibus.obusid) - 1;
   assert_return (obusindex < oproc.n_obuses());
-  OBus &obus = oproc.iobus (ibus.obusid);
+  IOBus &obus = oproc.iobus (ibus.obusid);
   assert_return (obus.fbuffer_concounter > 0);
   obus.fbuffer_concounter -= 1; // connection counter
   const bool backlink = Aux::erase_first (oproc.outputs_, [&] (auto &e) { return e.proc == this && e.ibusid == ibusid; });
-  ibus.proc = nullptr;
+  ibus.oproc = nullptr;
   ibus.obusid = {};
   reschedule();
   assert_return (backlink == true);
@@ -698,16 +695,16 @@ AudioProcessor::connect (IBusId ibusid, AudioProcessor &oproc, OBusId obusid)
   const size_t obusindex = size_t (obusid) - 1;
   assert_return (obusindex < oproc.n_obuses());
   disconnect (ibusid);
-  IBus &ibus = iobus (ibusid);
+  IOBus &ibus = iobus (ibusid);
   const uint n_ichannels = ibus.n_channels();
-  OBus &obus = oproc.iobus (obusid);
+  IOBus &obus = oproc.iobus (obusid);
   const uint n_ochannels = obus.n_channels();
   // match channels
   assert_return (n_ichannels <= n_ochannels ||
                  (ibus.speakers == SpeakerArrangement::STEREO &&
                   obus.speakers == SpeakerArrangement::MONO));
   // connect
-  ibus.proc = &oproc;
+  ibus.oproc = &oproc;
   ibus.obusid = obusid;
   // register backlink
   obus.fbuffer_concounter += 1; // conection counter
@@ -769,10 +766,10 @@ AudioProcessor::schedule_processor()
     }
   for (size_t i = 0; i < n_ibuses(); i++)
     {
-      IBus &ibus = iobus (IBusId (1 + i));
-      if (ibus.proc)
+      IOBus &ibus = iobus (IBusId (1 + i));
+      if (ibus.oproc)
         {
-          const uint l = schedule_processor (*ibus.proc);
+          const uint l = schedule_processor (*ibus.oproc);
           level = std::max (level, l);
         }
     }
