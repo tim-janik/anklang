@@ -573,11 +573,21 @@ static Persistent<CStringGlobals> cstring_globals;
 /// Note that CString::assign() is not particularly fast, use it only to save
 /// memory for strings that are known to persist throughout runtime.
 CString&
-CString::assign (const std::string &s)
+CString::assign (const std::string &s) noexcept
 {
   CStringGlobals &csg = *cstring_globals;
   quark_ = csg.assign_quark (s);
   return *this;
+}
+
+void
+CString::qset (uint quark) noexcept
+{
+  if (quark_)
+    /*unref (quark_)*/;
+  quark_ = quark;
+  if (quark_)
+    /*ref (quark_)*/;
 }
 
 uint

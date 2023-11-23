@@ -134,31 +134,33 @@ using HugePageP = HugePage::HugePageP;
 
 } // FastMemory
 
-/// Compact, deduplicating string variant for constant strings that never need to be freed.
-class CString {
+/// Compact, deduplicating string variant for constant strings.
+class CString final {
   uint quark_ = 0;
+  void qset (uint quark) noexcept;
 public:
   using size_type = std::string::size_type;
   using const_iterator = std::string::const_iterator;
   using const_reference = std::string::const_reference;
   using const_reverse_iterator = std::string::const_reverse_iterator;
+  /*dtor*/          ~CString     () noexcept                     { qset (0); }
   /*ctor*/           CString     (const char *c)                 { assign (c); }
   /*ctor*/           CString     (const char *c, size_type s)    { assign (c, s); }
   /*ctor*/           CString     (const std::string &s)          { assign (s); }
   /*ctor*/ constexpr CString     () noexcept                     = default;
-  /*copy*/ constexpr CString     (const CString&) noexcept       = default;
-  /*move*/ constexpr CString     (CString &&c) noexcept : quark_ (c.quark_) {}
-  constexpr CString& operator=   (const CString&) noexcept       = default;
+  /*copy*/ constexpr CString     (const CString &c) noexcept     { assign (c); }
+  /*move*/ constexpr CString     (CString &&c) noexcept          { assign (c); }
+  constexpr CString& operator=   (const CString &c) noexcept     { return assign (c); }
   constexpr CString& operator=   (CString &&c) noexcept          { return assign (c); }
-  CString&           operator=   (const std::string &s)          { return assign (s); }
-  CString&           operator=   (const char *c)                 { return assign (c); }
-  CString&           operator=   (char ch)                       { return assign (std::addressof (ch), 1); }
+  CString&           operator=   (const std::string &s) noexcept { return assign (s); }
+  CString&           operator=   (const char *c) noexcept        { return assign (c); }
+  CString&           operator=   (char ch) noexcept              { return assign (std::addressof (ch), 1); }
   CString&           operator=   (std::initializer_list<char> l) { return assign (l.begin(), l.size()); }
-  constexpr CString& assign      (const CString &c)              { quark_ = c.quark_; return *this; }
-  CString&           assign      (const std::string &s);
+  constexpr CString& assign      (const CString &c) noexcept     { qset (c.quark_); return *this; }
+  CString&           assign      (const std::string &s) noexcept;
   CString&           assign      (const char *c, size_type s)    { return assign (std::string (c, s)); }
-  CString&           assign      (const char *c)                 { return assign (std::string (c)); }
-  CString&           assign      (size_type count, char ch)      { return this->operator= (std::string (count, ch)); }
+  CString&           assign      (const char *c) noexcept        { return assign (std::string (c)); }
+  CString&           assign      (size_type count, char ch) noexcept { return this->operator= (std::string (count, ch)); }
   const std::string& string      () const;
   const char*        c_str       () const noexcept      { return string().c_str(); }
   const char*        data        () const noexcept      { return string().data(); }
