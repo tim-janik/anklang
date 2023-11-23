@@ -663,7 +663,21 @@ CStringGlobals::string (uint quark)
   if (ASE_ISLIKELY (quark < n_static_quarks))
     return static_quarks[quark];
   std::shared_lock slock (quarks_mutex);
-  return quarks_map[quark];
+  auto it = quarks_map.find (quark);
+  return it == quarks_map.end() ? static_quarks[0] : it->second;
+}
+
+uint
+CString::temp_quark_impl (CString c)
+{
+  return c.quark_;
+}
+
+CString
+CString::temp_quark_impl (uint maybequark)
+{
+  CStringGlobals &csg = *cstring_globals;
+  return csg.string (maybequark);
 }
 
 } // Ase

@@ -192,6 +192,8 @@ public:
   friend std::string operator+  (const std::string &s, CString c)      { return s + c.string(); }
   friend std::string operator+  (CString c, const std::string &s)      { return c.string() + s; }
   static CString     lookup     (const std::string &s);
+  static uint        temp_quark_impl (CString c);
+  static CString     temp_quark_impl (uint maybequark);
   friend std::ostream& operator<< (std::ostream &os, CString c)        { os << c.string(); return os; }
   static constexpr const std::string::size_type npos = -1;
 };
