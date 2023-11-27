@@ -311,21 +311,18 @@ struct PresetInfo
   const LilvNode *preset = nullptr;
 };
 
-void
-eh_ui_write (SuilController controller,
-             uint32_t       port_index,
-             uint32_t       buffer_size,
-             uint32_t       protocol,
-             const void*    buffer)
+struct UIEvent
 {
-  printf ("ui_write called\n");
-}
+  std::atomic<UIEvent *> next = nullptr;
+  uint32_t               port_index;
+  uint32_t               protocol;
+  vector<unsigned char>  data;
+};
 
-uint32_t
-eh_ui_index (SuilController controller, const char* symbol)
+static inline std::atomic<UIEvent*>&
+atomic_next_ptrref (UIEvent *event)
 {
-  printf ("ui_index called\n");
-  return 0;
+  return event->next;
 }
 
 struct PluginInstance
@@ -351,6 +348,8 @@ struct PluginInstance
   std::vector<PresetInfo>       presets;
   bool                          active = false;
 
+  AtomicIntrusiveStack<UIEvent> ui_events_, trash_ui_events_;
+
   void init_ports();
   void init_presets();
   void reset_event_buffers();
@@ -359,10 +358,35 @@ struct PluginInstance
   void run (uint32_t nframes);
   void activate();
   void deactivate();
+  void free_trash();
 
   const LilvUI *get_plugin_ui();
   void open_ui();
 };
+
+void
+eh_ui_write (SuilController controller,
+             uint32_t       port_index,
+             uint32_t       buffer_size,
+             uint32_t       protocol,
+             const void*    buffer)
+{
+  PluginInstance *plugin_instance = (PluginInstance *)controller;
+
+  UIEvent *event = new UIEvent();
+  event->port_index = port_index;
+  event->protocol   = protocol;
+  event->data.assign ((uint8_t *) buffer, (uint8_t *) buffer + buffer_size);
+  plugin_instance->ui_events_.push (event);
+  plugin_instance->free_trash();
+}
+
+uint32_t
+eh_ui_index (SuilController controller, const char* symbol)
+{
+  printf ("ui_index called\n");
+  return 0;
+}
 
 struct PluginHost
 {
@@ -559,6 +583,7 @@ PluginInstance::PluginInstance (PluginHost& plugin_host) :
 PluginInstance::~PluginInstance()
 {
   worker.stop();
+  free_trash();
 
   if (instance)
     {
@@ -567,6 +592,18 @@ PluginInstance::~PluginInstance()
 
       lilv_instance_free (instance);
       instance = nullptr;
+    }
+}
+
+void
+PluginInstance::free_trash()
+{
+  UIEvent *event = trash_ui_events_.pop_all();
+  while (event)
+    {
+      UIEvent *old = event;
+      event = event->next;
+      delete old;
     }
 }
 
@@ -752,6 +789,30 @@ PluginInstance::connect_audio_port (uint32_t port, float *buffer)
 void
 PluginInstance::run (uint32_t nframes)
 {
+  UIEvent *const events = ui_events_.pop_reversed(), *last = nullptr;
+  for (UIEvent *event = events; event; last = event, event = event->next)
+    {
+      assert (event->port_index < plugin_ports.size());
+      Port* port = &plugin_ports[event->port_index];
+      if (event->protocol == 0)
+        {
+          assert (event->data.size() == sizeof (float));
+          port->control = *(float *)event->data.data();
+        }
+      else if (event->protocol == plugin_host.urids.atom_eventTransfer)
+        {
+          LV2_Evbuf_Iterator    e    = lv2_evbuf_end (port->evbuf);
+          const LV2_Atom* const atom = (const LV2_Atom *) event->data.data();
+          lv2_evbuf_write (&e, nframes, 0, atom->type, atom->size, (const uint8_t*)LV2_ATOM_BODY_CONST(atom));
+        }
+      else
+        {
+          printerr ("LV2: PluginInstance: protocol: %d not implemented\n", event->protocol);
+        }
+    }
+  if (last)
+    trash_ui_events_.push_chain (events, last);
+
   lilv_instance_run (instance, nframes);
 
   worker.handle_responses();
@@ -908,7 +969,7 @@ class LV2Processor : public AudioProcessor {
     if (plugin_instance->audio_in_ports.size() == 2)
       {
         stereo_in_ = add_input_bus ("Stereo In", SpeakerArrangement::STEREO);
-        assert_return (bus_info (stereo_in_).ident == "stereo-in");
+        assert_return (bus_info (stereo_in_).ident == "stereo_in");
       }
     else
       {
@@ -1103,6 +1164,14 @@ public:
     AudioProcessor (psetup),
     plugin_host (PluginHost::the())
   {}
+  ~LV2Processor()
+  {
+    if (plugin_instance)
+      {
+        delete plugin_instance;
+        plugin_instance = nullptr;
+      }
+  }
   static void
   static_info (AudioProcessorInfo &info)
   {
