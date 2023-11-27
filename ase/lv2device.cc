@@ -10,6 +10,7 @@
 #include "lv2/buf-size/buf-size.h"
 #include "lv2/worker/worker.h"
 #include "lv2/presets/presets.h"
+#include "lv2/data-access/data-access.h"
 
 #include "lv2evbuf.hh"
 #include "lv2ringbuffer.hh"
@@ -329,6 +330,8 @@ struct PluginInstance
 {
   PluginHost& plugin_host;
 
+  LV2_Extension_Data_Feature lv2_ext_data;
+
   Features features;
 
   Worker   worker;
@@ -568,6 +571,7 @@ PluginHost::instantiate (const char *plugin_uri, float mix_freq)
   plugin_instance->init_ports();
   plugin_instance->init_presets();
   plugin_instance->worker.set_instance (instance);
+  plugin_instance->lv2_ext_data.data_access = lilv_instance_get_descriptor (instance)->extension_data;
 
   return plugin_instance;
 }
@@ -860,9 +864,14 @@ PluginInstance::open_ui()
   const LV2_Feature instance_feature = {
     NS_EXT "instance-access", lilv_instance_get_handle (instance)
   };
+  // data access:
+  const LV2_Feature ext_data_feature = {
+    LV2_DATA_ACCESS_URI, &lv2_ext_data
+  };
 
   Features ui_features;
   ui_features.add (&instance_feature);
+  ui_features.add (&ext_data_feature);
   ui_features.add (plugin_host.urid_map.feature());
 
   //set_initial_controls_ui();
