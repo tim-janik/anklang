@@ -864,6 +864,8 @@ class LV2Processor : public AudioProcessor {
     if (!plugin_instance)
       return;
 
+    ParameterMap pmap;
+
     if (plugin_instance->presets.size()) /* choice with 1 entry will crash */
       {
         ChoiceS centries;
@@ -871,11 +873,11 @@ class LV2Processor : public AudioProcessor {
         centries += { "0", "-none-" };
         for (auto preset : plugin_instance->presets)
           centries += { string_format ("%d", ++preset_num), preset.name };
-        add_param (PID_PRESET, "Device Preset", "Preset", std::move (centries), 0, "", "Device Preset to be used");
+        pmap[PID_PRESET] = Param { "device_preset", "Device Preset", "Preset", 0, "", std::move (centries), "", "Device Preset to be used" };
       }
     current_preset = 0;
 
-    add_param (PID_DELETE, "Test Delete", "TestDel", false);
+    pmap[PID_DELETE] = Param { "delete", _("Test Delete"), _("TestDel"), false, "", {}, GUIONLY + ":toggle" };
 
     int pid = PID_CONTROL_OFFSET;
     for (auto& port : plugin_instance->plugin_ports)
@@ -883,13 +885,15 @@ class LV2Processor : public AudioProcessor {
         {
           // TODO: lv2 port numbers are not reliable for serialization, should use port.symbol instead
           // TODO: special case boolean, enumeration, logarithmic,... controls
-          add_param (pid++, port.name, port.name, port.min_value, port.max_value, port.control);
+          pmap[pid++] = Param { port.symbol, port.name, port.name, port.control, "", { port.min_value, port.max_value } };
           param_id_port.push_back (&port);
         }
 
     // TODO: deactivate?
     // TODO: is this the right place?
     plugin_instance->activate();
+
+    install_params (pmap);
 
     prepare_event_input();
 
@@ -929,10 +933,10 @@ class LV2Processor : public AudioProcessor {
     if (!plugin_instance)
       return;
 
-    adjust_params (true);
+    adjust_all_params();
   }
   void
-  adjust_param (Id32 tag) override
+  adjust_param (uint32_t tag) override
   {
     if (!plugin_instance)
       return;
@@ -974,8 +978,6 @@ class LV2Processor : public AudioProcessor {
   void
   render (uint n_frames) override
   {
-    adjust_params (false);
-
     if (!plugin_instance)
       {
         if (plugin_instance->audio_out_ports.size() == 2)
@@ -993,9 +995,9 @@ class LV2Processor : public AudioProcessor {
 
     // reset event buffers and write midi events
     plugin_instance->reset_event_buffers();
-    MidiEventRange erange = get_event_input();
 
-    for (const auto &ev : erange)
+    MidiEventInput evinput = midi_event_input();
+    for (const auto &ev : evinput)
       {
         const int time_stamp = std::max<int> (ev.frame, 0);
         uint8_t midi_data[3] = { 0, };
@@ -1080,7 +1082,8 @@ class LV2Processor : public AudioProcessor {
       {
         if (param_id_port[i]->symbol == port_symbol)
           {
-            set_param (i + PID_CONTROL_OFFSET, dvalue);
+            // TODO: should set the parameters here
+            //set_param (i + PID_CONTROL_OFFSET, dvalue);
           }
       }
   }
@@ -1096,8 +1099,8 @@ class LV2Processor : public AudioProcessor {
     dev->set_port_value (port_symbol, value, size, type);
   }
 public:
-  LV2Processor (AudioEngine &engine) :
-    AudioProcessor (engine),
+  LV2Processor (const ProcessorSetup &psetup) :
+    AudioProcessor (psetup),
     plugin_host (PluginHost::the())
   {}
   static void
