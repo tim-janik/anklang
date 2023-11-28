@@ -3,6 +3,7 @@
 #include "main.hh"
 #include "internal.hh"
 #include "strings.hh"
+#include "loft.hh"
 
 #include "lv2/atom/atom.h"
 #include "lv2/midi/midi.h"
@@ -315,16 +316,43 @@ struct PresetInfo
 
 struct ControlEvent
 {
-  std::atomic<ControlEvent *> next = nullptr;
-  uint32_t                    port_index;
-  uint32_t                    protocol;
-  vector<unsigned char>       data;
+private:
+  LoftPtr<ControlEvent>       loft_ptr_;    // keep this object alive
+  uint32_t                    port_index_;
+  uint32_t                    protocol_;
+  size_t                      size_;
+  LoftPtr<void>               data_;
+
+ public:
+  std::atomic<ControlEvent *> next_ = nullptr;
+
+  static ControlEvent *
+  loft_new (uint32_t port_index, uint32_t protocol, size_t size)
+  {
+    LoftPtr<ControlEvent> loft_ptr = loft_make_unique<ControlEvent>();
+    ControlEvent *new_event = loft_ptr.get();
+    new_event->loft_ptr_ = std::move (loft_ptr);
+    new_event->port_index_ = port_index;
+    new_event->protocol_ = protocol;
+    new_event->size_ = size;
+    new_event->data_ = loft_alloc (size);
+    return new_event;
+  }
+  void
+  loft_free()
+  {
+    loft_ptr_.reset(); // do not access this after this line
+  }
+  uint32_t port_index() { return port_index_; }
+  uint32_t protocol()   { return protocol_; }
+  size_t   size()       { return size_; }
+  uint8_t *data()       { return reinterpret_cast<uint8_t *> (data_.get()); }
 };
 
 static inline std::atomic<ControlEvent*>&
 atomic_next_ptrref (ControlEvent *event)
 {
-  return event->next;
+  return event->next_;
 }
 
 struct PluginInstance
@@ -380,10 +408,8 @@ eh_ui_write (SuilController controller,
 {
   PluginInstance *plugin_instance = (PluginInstance *)controller;
 
-  ControlEvent *event = new ControlEvent();
-  event->port_index = port_index;
-  event->protocol   = protocol;
-  event->data.assign ((uint8_t *) buffer, (uint8_t *) buffer + buffer_size);
+  ControlEvent *event = ControlEvent::loft_new (port_index, protocol, buffer_size);
+  std::copy_n ((const uint8_t *) buffer, buffer_size, event->data());
   plugin_instance->ui2dsp_events_.push (event);
 }
 
@@ -609,8 +635,8 @@ PluginInstance::free_trash()
   while (event)
     {
       ControlEvent *old = event;
-      event = event->next;
-      delete old;
+      event = event->next_;
+      old->loft_free();
     }
 }
 
@@ -797,24 +823,24 @@ void
 PluginInstance::run (uint32_t nframes)
 {
   ControlEvent *const events = ui2dsp_events_.pop_reversed(), *last = nullptr;
-  for (ControlEvent *event = events; event; last = event, event = event->next)
+  for (ControlEvent *event = events; event; last = event, event = event->next_)
     {
-      assert (event->port_index < plugin_ports.size());
-      Port* port = &plugin_ports[event->port_index];
-      if (event->protocol == 0)
+      assert (event->port_index() < plugin_ports.size());
+      Port* port = &plugin_ports[event->port_index()];
+      if (event->protocol() == 0)
         {
-          assert (event->data.size() == sizeof (float));
-          port->control = *(float *)event->data.data();
+          assert (event->size() == sizeof (float));
+          port->control = *(float *)event->data();
         }
-      else if (event->protocol == plugin_host.urids.atom_eventTransfer)
+      else if (event->protocol() == plugin_host.urids.atom_eventTransfer)
         {
           LV2_Evbuf_Iterator    e    = lv2_evbuf_end (port->evbuf);
-          const LV2_Atom* const atom = (const LV2_Atom *) event->data.data();
+          const LV2_Atom* const atom = (const LV2_Atom *) event->data();
           lv2_evbuf_write (&e, nframes, 0, atom->type, atom->size, (const uint8_t*)LV2_ATOM_BODY_CONST(atom));
         }
       else
         {
-          printerr ("LV2: PluginInstance: protocol: %d not implemented\n", event->protocol);
+          printerr ("LV2: PluginInstance: protocol: %d not implemented\n", event->protocol());
         }
     }
   if (last)
@@ -825,6 +851,7 @@ PluginInstance::run (uint32_t nframes)
   worker.handle_responses();
   worker.end_run();
 
+  // TODO: this only needs to be done if the UI is visible (otherwise control events will never get read/freed)
   send_plugin_events_to_ui();
   send_ui_updates();
 }
@@ -832,9 +859,9 @@ PluginInstance::run (uint32_t nframes)
 void
 PluginInstance::send_plugin_events_to_ui()
 {
-  for (int p : atom_out_ports)
+  for (int port_index : atom_out_ports)
     {
-      LV2_Evbuf *evbuf = plugin_ports[p].evbuf;
+      LV2_Evbuf *evbuf = plugin_ports[port_index].evbuf;
 
       for (LV2_Evbuf_Iterator i = lv2_evbuf_begin (evbuf); lv2_evbuf_is_valid (i); i = lv2_evbuf_next (i))
         {
@@ -842,16 +869,13 @@ PluginInstance::send_plugin_events_to_ui()
           uint8_t *body;
           lv2_evbuf_get (i, &frames, &subframes, &type, &size, &body);
 
-          ControlEvent* event = new ControlEvent(); // FIXME: loft
-          event->port_index  = p;
-          event->protocol    = plugin_host.urids.atom_eventTransfer;
-          event->data.resize (sizeof (LV2_Atom) + size);
+          ControlEvent *event = ControlEvent::loft_new (port_index, plugin_host.urids.atom_eventTransfer, sizeof (LV2_Atom) + size);
 
-          LV2_Atom *atom = (LV2_Atom *)event->data.data();
+          LV2_Atom *atom = (LV2_Atom *) event->data();
           atom->type = type;
           atom->size = size;
 
-          memcpy (event->data.data() + sizeof (LV2_Atom), body, size);
+          memcpy (event->data() + sizeof (LV2_Atom), body, size);
           // printerr ("send_plugin_events_to_ui: push event: index=%zd, protocol=%d, sz=%zd\n", event->port_index, event->protocol, event->data.size());
           dsp2ui_events_.push (event);
         }
@@ -862,11 +886,11 @@ void
 PluginInstance::handle_dsp2ui_events()
 {
   ControlEvent *const events = dsp2ui_events_.pop_reversed(), *last = nullptr;
-  for (ControlEvent *event = events; event; last = event, event = event->next)
+  for (ControlEvent *event = events; event; last = event, event = event->next_)
     {
-      assert (event->port_index < plugin_ports.size());
+      assert (event->port_index() < plugin_ports.size());
       // printerr ("handle_dsp2ui_events: pop event: index=%zd, protocol=%d, sz=%zd\n", event->port_index, event->protocol, event->data.size());
-      suil_instance_port_event (ui_instance, event->port_index, event->data.size(), event->protocol, event->data.data());
+      suil_instance_port_event (ui_instance, event->port_index(), event->size(), event->protocol(), event->data());
     }
   if (last)
     trash_events_.push_chain (events, last);
@@ -878,18 +902,15 @@ PluginInstance::send_ui_updates()
   bool do_send_ui_updates = true; // FIXME: hz
   if (do_send_ui_updates)
     {
-      for (size_t p = 0; p < plugin_ports.size(); p++)
+      for (size_t port_index = 0; port_index < plugin_ports.size(); port_index++)
         {
-          const Port& port = plugin_ports[p];
+          const Port& port = plugin_ports[port_index];
 
           if (port.type == Port::CONTROL_OUT)
             {
-              ControlEvent* event = new ControlEvent(); // FIXME: loft
-              event->port_index  = p;
-              event->protocol    = 0;
-              event->data.resize (sizeof (float));
+              ControlEvent *event = ControlEvent::loft_new (port_index, 0, sizeof (float));
 
-              *(float*)event->data.data() = port.control;
+              *(float *) event->data() = port.control;
               // printerr ("send_ui_updates: push event: index=%zd, protocol=0, sz=%zd\n", p, event->data.size());
               dsp2ui_events_.push (event);
             }
