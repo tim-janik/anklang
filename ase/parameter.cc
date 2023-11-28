@@ -123,6 +123,8 @@ Parameter::choices () const
 bool
 Parameter::is_numeric () const
 {
+  if (is_text())
+    return false;
   auto [i, a, s] = range();
   return i != a;
 }
@@ -269,10 +271,9 @@ minmaxstep_from_initialval (const Param::InitialVal &iv, bool *isbool)
       range = { -F32MAX, F32MAX, 0 };
     else if constexpr (std::is_same_v<T, double>)
       range = { -D64MAX, D64MAX, 0 };
-    else if constexpr (std::is_same_v<T, const char*>)
-      range = { 0, 0, 0 }; // strings have no numeric range
-    else if constexpr (std::is_same_v<T, std::string>)
-      range = { 0, 0, 0 }; // strings have no numeric range
+    else if constexpr (std::is_same_v<T, const char*> ||
+                       std::is_same_v<T, std::string>)
+      range = { 0, I31MAX, 1 }; // strings can contain Quark IDs
     else
       static_assert (sizeof (T) < 0, "unimplemented InitialVal type");
     if (isbool)
