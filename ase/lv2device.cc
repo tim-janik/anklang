@@ -39,17 +39,22 @@ using std::min;
 
 class Map
 {
+  std::mutex            map_mutex;
   LV2_URID              next_id;
   map<string, LV2_URID> m_urid_map;
   map<LV2_URID, String> m_urid_unmap;
 
   LV2_URID_Map       lv2_urid_map;
   const LV2_Feature  lv2_urid_map_feature;
+  LV2_URID_Unmap     lv2_urid_unmap;
+  const LV2_Feature  lv2_urid_unmap_feature;
 public:
   Map() :
     next_id (1),
     lv2_urid_map { this, urid_map },
-    lv2_urid_map_feature { LV2_URID_MAP_URI, &lv2_urid_map }
+    lv2_urid_map_feature { LV2_URID_MAP_URI, &lv2_urid_map },
+    lv2_urid_unmap { this, urid_unmap },
+    lv2_urid_unmap_feature { LV2_URID_UNMAP_URI, &lv2_urid_unmap }
   {
   }
 
@@ -58,10 +63,17 @@ public:
   {
     return static_cast<Map *> (handle)->urid_map (str);
   }
+  static const char *
+  urid_unmap (LV2_URID_Unmap_Handle handle, LV2_URID id)
+  {
+    return static_cast<Map *> (handle)->urid_unmap (id);
+  }
 
   LV2_URID
   urid_map (const char *str)
   {
+    std::lock_guard lg (map_mutex);
+
     LV2_URID& id = m_urid_map[str];
     if (id == 0)
       id = next_id++;
@@ -73,6 +85,8 @@ public:
   const char *
   urid_unmap (LV2_URID id)
   {
+    std::lock_guard lg (map_mutex);
+
     auto it = m_urid_unmap.find (id);
     if (it != m_urid_unmap.end())
       return it->second.c_str();
@@ -81,9 +95,14 @@ public:
   }
 
   const LV2_Feature *
-  feature() const
+  map_feature() const
   {
     return &lv2_urid_map_feature;
+  }
+  const LV2_Feature *
+  unmap_feature() const
+  {
+    return &lv2_urid_unmap_feature;
   }
   LV2_URID_Map *
   lv2_map()
@@ -608,7 +627,8 @@ PluginHost::instantiate (const char *plugin_uri, float mix_freq)
 PluginInstance::PluginInstance (PluginHost& plugin_host) :
   plugin_host (plugin_host)
 {
-  features.add (plugin_host.urid_map.feature());
+  features.add (plugin_host.urid_map.map_feature());
+  features.add (plugin_host.urid_map.unmap_feature());
   features.add (worker.feature());
   features.add (plugin_host.options.feature()); /* TODO: maybe make a local version */
 }
@@ -967,7 +987,8 @@ PluginInstance::open_ui()
   Features ui_features;
   ui_features.add (&instance_feature);
   ui_features.add (&ext_data_feature);
-  ui_features.add (plugin_host.urid_map.feature());
+  ui_features.add (plugin_host.urid_map.map_feature());
+  ui_features.add (plugin_host.urid_map.unmap_feature());
 
   //set_initial_controls_ui();
 
@@ -984,6 +1005,7 @@ PluginInstance::open_ui()
                                          bundle_path,
                                          binary_path,
                                          ui_features.get_features());
+        // TODO: handle the case where suil_instance_new fails and returns a nullptr
         return ui_instance;
       };
       x11wrapper->create_suil_window (func);
@@ -1130,7 +1152,8 @@ class LV2Processor : public AudioProcessor {
                 printf ("load preset %s\n", preset_info.name.c_str());
                 LilvState *state = lilv_state_new_from_world (plugin_host.world, plugin_host.urid_map.lv2_map(), preset_info.preset);
                 const LV2_Feature* state_features[] = { // TODO: more features
-                  plugin_host.urid_map.feature(),
+                  plugin_host.urid_map.map_feature(),
+                  plugin_host.urid_map.unmap_feature(),
                   NULL
                 };
                 lilv_state_restore (state, plugin_instance->instance, set_port_value, this, 0, state_features);
