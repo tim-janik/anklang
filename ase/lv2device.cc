@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "processor.hh"
+#include "main.hh"
 #include "internal.hh"
 #include "strings.hh"
 
@@ -312,16 +313,16 @@ struct PresetInfo
   const LilvNode *preset = nullptr;
 };
 
-struct UIEvent
+struct ControlEvent
 {
-  std::atomic<UIEvent *> next = nullptr;
-  uint32_t               port_index;
-  uint32_t               protocol;
-  vector<unsigned char>  data;
+  std::atomic<ControlEvent *> next = nullptr;
+  uint32_t                    port_index;
+  uint32_t                    protocol;
+  vector<unsigned char>       data;
 };
 
-static inline std::atomic<UIEvent*>&
-atomic_next_ptrref (UIEvent *event)
+static inline std::atomic<ControlEvent*>&
+atomic_next_ptrref (ControlEvent *event)
 {
   return event->next;
 }
@@ -351,7 +352,7 @@ struct PluginInstance
   std::vector<PresetInfo>       presets;
   bool                          active = false;
 
-  AtomicIntrusiveStack<UIEvent> ui_events_, trash_ui_events_;
+  AtomicIntrusiveStack<ControlEvent> ui2dsp_events_, dsp2ui_events_, trash_events_;
 
   void init_ports();
   void init_presets();
@@ -365,6 +366,9 @@ struct PluginInstance
 
   const LilvUI *get_plugin_ui();
   void open_ui();
+  void send_plugin_events_to_ui();
+  void handle_dsp2ui_events();
+  void send_ui_updates();
 };
 
 void
@@ -376,12 +380,11 @@ eh_ui_write (SuilController controller,
 {
   PluginInstance *plugin_instance = (PluginInstance *)controller;
 
-  UIEvent *event = new UIEvent();
+  ControlEvent *event = new ControlEvent();
   event->port_index = port_index;
   event->protocol   = protocol;
   event->data.assign ((uint8_t *) buffer, (uint8_t *) buffer + buffer_size);
-  plugin_instance->ui_events_.push (event);
-  plugin_instance->free_trash();
+  plugin_instance->ui2dsp_events_.push (event);
 }
 
 uint32_t
@@ -602,10 +605,10 @@ PluginInstance::~PluginInstance()
 void
 PluginInstance::free_trash()
 {
-  UIEvent *event = trash_ui_events_.pop_all();
+  ControlEvent *event = trash_events_.pop_all();
   while (event)
     {
-      UIEvent *old = event;
+      ControlEvent *old = event;
       event = event->next;
       delete old;
     }
@@ -793,8 +796,8 @@ PluginInstance::connect_audio_port (uint32_t port, float *buffer)
 void
 PluginInstance::run (uint32_t nframes)
 {
-  UIEvent *const events = ui_events_.pop_reversed(), *last = nullptr;
-  for (UIEvent *event = events; event; last = event, event = event->next)
+  ControlEvent *const events = ui2dsp_events_.pop_reversed(), *last = nullptr;
+  for (ControlEvent *event = events; event; last = event, event = event->next)
     {
       assert (event->port_index < plugin_ports.size());
       Port* port = &plugin_ports[event->port_index];
@@ -815,12 +818,83 @@ PluginInstance::run (uint32_t nframes)
         }
     }
   if (last)
-    trash_ui_events_.push_chain (events, last);
+    trash_events_.push_chain (events, last);
 
   lilv_instance_run (instance, nframes);
 
   worker.handle_responses();
   worker.end_run();
+
+  send_plugin_events_to_ui();
+  send_ui_updates();
+}
+
+void
+PluginInstance::send_plugin_events_to_ui()
+{
+  for (int p : atom_out_ports)
+    {
+      LV2_Evbuf *evbuf = plugin_ports[p].evbuf;
+
+      for (LV2_Evbuf_Iterator i = lv2_evbuf_begin (evbuf); lv2_evbuf_is_valid (i); i = lv2_evbuf_next (i))
+        {
+          uint32_t frames, subframes, type, size;
+          uint8_t *body;
+          lv2_evbuf_get (i, &frames, &subframes, &type, &size, &body);
+
+          ControlEvent* event = new ControlEvent(); // FIXME: loft
+          event->port_index  = p;
+          event->protocol    = plugin_host.urids.atom_eventTransfer;
+          event->data.resize (sizeof (LV2_Atom) + size);
+
+          LV2_Atom *atom = (LV2_Atom *)event->data.data();
+          atom->type = type;
+          atom->size = size;
+
+          memcpy (event->data.data() + sizeof (LV2_Atom), body, size);
+          // printerr ("send_plugin_events_to_ui: push event: index=%zd, protocol=%d, sz=%zd\n", event->port_index, event->protocol, event->data.size());
+          dsp2ui_events_.push (event);
+        }
+    }
+}
+
+void
+PluginInstance::handle_dsp2ui_events()
+{
+  ControlEvent *const events = dsp2ui_events_.pop_reversed(), *last = nullptr;
+  for (ControlEvent *event = events; event; last = event, event = event->next)
+    {
+      assert (event->port_index < plugin_ports.size());
+      // printerr ("handle_dsp2ui_events: pop event: index=%zd, protocol=%d, sz=%zd\n", event->port_index, event->protocol, event->data.size());
+      suil_instance_port_event (ui_instance, event->port_index, event->data.size(), event->protocol, event->data.data());
+    }
+  if (last)
+    trash_events_.push_chain (events, last);
+}
+
+void
+PluginInstance::send_ui_updates()
+{
+  bool do_send_ui_updates = true; // FIXME: hz
+  if (do_send_ui_updates)
+    {
+      for (size_t p = 0; p < plugin_ports.size(); p++)
+        {
+          const Port& port = plugin_ports[p];
+
+          if (port.type == Port::CONTROL_OUT)
+            {
+              ControlEvent* event = new ControlEvent(); // FIXME: loft
+              event->port_index  = p;
+              event->protocol    = 0;
+              event->data.resize (sizeof (float));
+
+              *(float*)event->data.data() = port.control;
+              // printerr ("send_ui_updates: push event: index=%zd, protocol=0, sz=%zd\n", p, event->data.size());
+              dsp2ui_events_.push (event);
+            }
+        }
+    }
 }
 
 static const LilvNode *ui_type; // FIXME: not static
@@ -880,18 +954,26 @@ PluginInstance::open_ui()
   if (x11wrapper)
     {
       auto func = [&] () {
-        return suil_instance_new (plugin_host.ui_host,
-                                  this,
-                                  plugin_host.native_ui_type_uri,
-                                  lilv_node_as_uri(lilv_plugin_get_uri(plugin)),
-                                  lilv_node_as_uri(lilv_ui_get_uri(ui)),
-                                  lilv_node_as_uri(ui_type),
-                                  bundle_path,
-                                  binary_path,
-                                  ui_features.get_features());
+        ui_instance = suil_instance_new (plugin_host.ui_host,
+                                         this,
+                                         plugin_host.native_ui_type_uri,
+                                         lilv_node_as_uri (lilv_plugin_get_uri (plugin)),
+                                         lilv_node_as_uri (lilv_ui_get_uri (ui)),
+                                         lilv_node_as_uri (ui_type),
+                                         bundle_path,
+                                         binary_path,
+                                         ui_features.get_features());
+        return ui_instance;
       };
       x11wrapper->create_suil_window (func);
     }
+  int period_ms = 25;
+  // FIXME: remove timer when no longer needed
+  main_loop->exec_timer ([this] () {
+    handle_dsp2ui_events();
+    free_trash();
+    return true;
+  }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
 }
 
 }
