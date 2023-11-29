@@ -4,7 +4,6 @@
 
 #include <string>
 #include <functional>
-#include <suil/suil.h>
 
 namespace Ase {
 
@@ -22,8 +21,6 @@ struct Gtk2DlWrapEntry {
   void  (*destroy_window) (ulong windowid);
   void  (*threads_enter) ();
   void  (*threads_leave) ();
-
-  void* (*create_suil_window) (std::function<SuilInstance*()> func);
 };
 
 } // Ase

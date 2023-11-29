@@ -96,16 +96,6 @@ create_window (const Gtk2WindowSetup &wsetup)
   return windowid;
 }
 
-static void *
-create_suil_window (std::function<SuilInstance *()> func)
-{
-  GtkWidget *window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-  GtkWidget *widget = (GtkWidget*)suil_instance_get_widget (func());
-  gtk_container_add (GTK_CONTAINER (window), widget);
-  gtk_widget_show_all (window);
-  return window;
-}
-
 static bool
 destroy_window (ulong windowid)
 {
@@ -188,8 +178,5 @@ Ase::Gtk2DlWrapEntry Ase__Gtk2__wrapentry {
   },
   .threads_enter = gdk_threads_enter,
   .threads_leave = gdk_threads_leave,
-  .create_suil_window = [] (std::function<SuilInstance *()> func) -> void * {
-    return gtkidle_call (create_suil_window, func);
-  },
 };
 } // "C"
