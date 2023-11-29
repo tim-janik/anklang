@@ -380,7 +380,7 @@ struct PluginUI;
 struct PluginInstance
 {
   PluginHost& plugin_host;
-  PluginUI   *plugin_ui = nullptr;
+  std::unique_ptr<PluginUI>  plugin_ui;
 
   LV2_Extension_Data_Feature lv2_ext_data;
   LV2UI_Resize               ui_resize;
@@ -417,6 +417,7 @@ struct PluginInstance
 
   const LilvUI *get_plugin_ui();
   void open_ui();
+  void delete_ui_request();
   void send_plugin_events_to_ui();
   void handle_dsp2ui_events();
   void send_ui_updates();
@@ -602,13 +603,11 @@ public:
                 descriptor_ = descriptor;
                 Gtk2WindowSetup wsetup {
                   .title = ui_uri, .width = 640, .height = 480,
+                  .deleterequest_mt = [plugin_instance] ()
+                    {
+                      main_loop->exec_callback ([plugin_instance]() { plugin_instance->delete_ui_request(); });
+                    }
                 };
-                /* TODO: delete request
-                 .deleterequest_mt = [handlep] () {
-                   main_loop->exec_callback ([handlep]() {
-                 host_gui_delete_request (handlep);
-                 });
-                */
                 LV2UI_Widget ui_widget = nullptr;
 
                 auto x11wrapper = get_x11wrapper();
@@ -623,6 +622,16 @@ public:
                 x11wrapper->show_window (window_id_);
               }
           }
+      }
+  }
+  ~PluginUI()
+  {
+    if (descriptor_ && descriptor_->cleanup)
+      descriptor_->cleanup (handle_);
+    if (window_id_)
+      {
+        auto x11wrapper = get_x11wrapper();
+        x11wrapper->destroy_window (window_id_);
       }
   }
 };
@@ -971,9 +980,12 @@ PluginInstance::handle_dsp2ui_events()
     {
       assert (event->port_index() < plugin_ports.size());
       // printerr ("handle_dsp2ui_events: pop event: index=%zd, protocol=%d, sz=%zd\n", event->port_index, event->protocol, event->data.size());
-      auto port_event = plugin_ui->descriptor_->port_event;
-      if (port_event)
-        port_event (plugin_ui->handle_, event->port_index(), event->size(), event->protocol(), event->data());
+      if (plugin_ui)
+        {
+          auto port_event = plugin_ui->descriptor_->port_event;
+          if (port_event)
+            port_event (plugin_ui->handle_, event->port_index(), event->size(), event->protocol(), event->data());
+        }
     }
   if (last)
     trash_events_.push_chain (events, last);
@@ -1055,7 +1067,7 @@ PluginInstance::open_ui()
     else
       return 1;
   };
-  ui_resize.handle = plugin_ui;
+  ui_resize.handle = plugin_ui.get();
   ui_resize.ui_resize = resize_window;
   const LV2_Feature ui_resize_feature = {
     LV2_UI__resize, &ui_resize
@@ -1073,8 +1085,8 @@ PluginInstance::open_ui()
 
   //set_initial_controls_ui();
 
-  plugin_ui = new PluginUI (this, plugin_uri, binary_path, lilv_node_as_uri (lilv_ui_get_uri (get_plugin_ui())), bundle_path,
-                            ui_features.get_features(), &parent_feature, &ui_resize);
+  plugin_ui = std::make_unique <PluginUI> (this, plugin_uri, binary_path, lilv_node_as_uri (lilv_ui_get_uri (get_plugin_ui())), bundle_path,
+                                           ui_features.get_features(), &parent_feature, &ui_resize);
   int period_ms = 25;
   // FIXME: remove timer when no longer needed
   main_loop->exec_timer ([this] () {
@@ -1087,6 +1099,12 @@ PluginInstance::open_ui()
     free_trash();
     return true;
   }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
+}
+
+void
+PluginInstance::delete_ui_request()
+{
+  plugin_ui.reset();
 }
 
 }
