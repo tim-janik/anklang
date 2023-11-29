@@ -85,9 +85,9 @@ config-checks.require.pkgconfig ::= $(strip	\
 
 # == pkg-config variables ==
 # use for Gtk+2 X11 Window embedding
-GTK2_PACKAGES	 ::= gtk+-2.0 suil-0
+GTK2_PACKAGES	 ::= gtk+-2.0
 # used for ASEDEPS_CFLAGS ASEDEPS_LIBS
-ASEDEPS_PACKAGES ::= ogg opus flac zlib dbus-1 lilv-0 suil-0 \
+ASEDEPS_PACKAGES ::= ogg opus flac zlib dbus-1 lilv-0 \
 		     glib-2.0 gobject-2.0 gmodule-no-export-2.0
 # used for ANKLANG_JACK_LIBS
 ANKLANGDEP_JACK  ::= jack >= 0.125.0
