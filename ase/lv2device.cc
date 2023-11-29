@@ -13,13 +13,14 @@
 #include "lv2/worker/worker.h"
 #include "lv2/presets/presets.h"
 #include "lv2/data-access/data-access.h"
+#include "lv2/ui/ui.h"
 
 #include "lv2evbuf.hh"
 #include "lv2ringbuffer.hh"
 #include "lv2device.hh"
 
 #include <lilv/lilv.h>
-#include <suil/suil.h>
+#include <dlfcn.h>
 
 // X11 wrapper
 #include "clapplugin.hh"
@@ -374,11 +375,15 @@ atomic_next_ptrref (ControlEvent *event)
   return event->next_;
 }
 
+struct PluginUI;
+
 struct PluginInstance
 {
   PluginHost& plugin_host;
+  PluginUI   *plugin_ui = nullptr;
 
   LV2_Extension_Data_Feature lv2_ext_data;
+  LV2UI_Resize               ui_resize;
 
   Features features;
 
@@ -389,7 +394,6 @@ struct PluginInstance
 
   const LilvPlugin             *plugin = nullptr;
   LilvInstance                 *instance = nullptr;
-  SuilInstance                 *ui_instance = nullptr;
   const LV2_Worker_Interface   *worker_interface = nullptr;
   std::vector<Port>             plugin_ports;
   std::vector<int>              atom_out_ports;
@@ -419,11 +423,11 @@ struct PluginInstance
 };
 
 void
-eh_ui_write (SuilController controller,
-             uint32_t       port_index,
-             uint32_t       buffer_size,
-             uint32_t       protocol,
-             const void*    buffer)
+eh_ui_write (LV2UI_Controller controller,
+             uint32_t         port_index,
+             uint32_t         buffer_size,
+             uint32_t         protocol,
+             const void*      buffer)
 {
   PluginInstance *plugin_instance = (PluginInstance *)controller;
 
@@ -432,20 +436,19 @@ eh_ui_write (SuilController controller,
   plugin_instance->ui2dsp_events_.push (event);
 }
 
+/* TODO: do we need this function?
 uint32_t
 eh_ui_index (SuilController controller, const char* symbol)
 {
   printf ("ui_index called\n");
   return 0;
 }
+*/
 
 struct PluginHost
 {
-  LilvWorld  *world = nullptr;
-  SuilHost   *ui_host = nullptr;
-  Map         urid_map;
-
-  static constexpr auto native_ui_type_uri = "http://lv2plug.in/ns/extensions/ui#GtkUI";
+  LilvWorld   *world = nullptr;
+  Map          urid_map;
 
   struct URIDs {
     LV2_URID param_sampleRate;
@@ -482,6 +485,7 @@ struct PluginHost
     LilvNode *lv2_atom_Chunk;
     LilvNode *lv2_atom_Sequence;
     LilvNode *lv2_presets_Preset;
+    LilvNode *lv2_ui_x11ui;
 
     LilvNode *rdfs_label;
 
@@ -496,8 +500,9 @@ struct PluginHost
       lv2_atom_Chunk    = lilv_new_uri (world, LV2_ATOM__Chunk);
       lv2_atom_Sequence = lilv_new_uri (world, LV2_ATOM__Sequence);
 
-      lv2_presets_Preset = lilv_new_uri(world, LV2_PRESETS__Preset);
-      rdfs_label         = lilv_new_uri(world, LILV_NS_RDFS "label");
+      lv2_presets_Preset = lilv_new_uri (world, LV2_PRESETS__Preset);
+      lv2_ui_x11ui       = lilv_new_uri (world, LV2_UI__X11UI);
+      rdfs_label         = lilv_new_uri (world, LILV_NS_RDFS "label");
     }
   } nodes;
 
@@ -511,7 +516,6 @@ private:
   {
     world = lilv_world_new();
     lilv_world_load_all (world);
-    ui_host = suil_host_new (eh_ui_write, eh_ui_index, nullptr, nullptr);
 
     nodes.init (world);
   }
@@ -566,6 +570,63 @@ public:
     return devs;
   }
 };
+
+class PluginUI
+{
+public:
+  void *dlhandle_ = nullptr;
+  const LV2UI_Idle_Interface *idle_iface_ = nullptr;
+  LV2UI_Handle handle_ = nullptr;
+  const LV2UI_Descriptor *descriptor_ = nullptr;
+  ulong window_id_ = 0;
+
+  PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& dlpath, const string& ui_uri, const string& ui_bundle_path,
+            const LV2_Feature* const* features, LV2_Feature *parent_feature, LV2UI_Resize *ui_resize)
+  {
+    dlhandle_ = dlopen (dlpath.c_str(), RTLD_LOCAL | RTLD_NOW);
+    if (dlhandle_)
+      {
+        LV2UI_DescriptorFunction df = (LV2UI_DescriptorFunction) dlsym (dlhandle_, "lv2ui_descriptor");
+        if (df)
+          {
+            const LV2UI_Descriptor *descriptor = nullptr;
+            uint32_t i = 0;
+            do
+              {
+                descriptor = df (i++);
+              }
+            while (descriptor && descriptor->URI != ui_uri);
+
+            if (descriptor && descriptor->URI == ui_uri)
+              {
+                descriptor_ = descriptor;
+                Gtk2WindowSetup wsetup {
+                  .title = ui_uri, .width = 640, .height = 480,
+                };
+                /* TODO: delete request
+                 .deleterequest_mt = [handlep] () {
+                   main_loop->exec_callback ([handlep]() {
+                 host_gui_delete_request (handlep);
+                 });
+                */
+                LV2UI_Widget ui_widget = nullptr;
+
+                auto x11wrapper = get_x11wrapper();
+                window_id_ = x11wrapper->create_window (wsetup);
+                printerr ("creation: window_id_=%ld\n", window_id_);
+                parent_feature->data = (void *) window_id_;
+                ui_resize->handle = this;
+                handle_ = descriptor->instantiate (descriptor, plugin_uri.c_str(), ui_bundle_path.c_str(), eh_ui_write, plugin_instance, &ui_widget, features);
+                assert_return (handle_ != nullptr);
+                if (descriptor->extension_data)
+                  idle_iface_ = (const LV2UI_Idle_Interface*) descriptor->extension_data (LV2_UI__idleInterface);
+                x11wrapper->show_window (window_id_);
+              }
+          }
+      }
+  }
+};
+
 
 Options::Options (PluginHost& plugin_host) :
   plugin_host (plugin_host),
@@ -910,7 +971,9 @@ PluginInstance::handle_dsp2ui_events()
     {
       assert (event->port_index() < plugin_ports.size());
       // printerr ("handle_dsp2ui_events: pop event: index=%zd, protocol=%d, sz=%zd\n", event->port_index, event->protocol, event->data.size());
-      suil_instance_port_event (ui_instance, event->port_index(), event->size(), event->protocol(), event->data());
+      auto port_event = plugin_ui->descriptor_->port_event;
+      if (port_event)
+        port_event (plugin_ui->handle_, event->port_index(), event->size(), event->protocol(), event->data());
     }
   if (last)
     trash_events_.push_chain (events, last);
@@ -938,8 +1001,6 @@ PluginInstance::send_ui_updates()
     }
 }
 
-static const LilvNode *ui_type; // FIXME: not static
-
 const LilvUI *
 PluginInstance::get_plugin_ui()
 {
@@ -947,20 +1008,13 @@ PluginInstance::get_plugin_ui()
 
   uis = lilv_plugin_get_uis (plugin);
 
-  const LilvNode* native_ui_type = lilv_new_uri (plugin_host.world, plugin_host.native_ui_type_uri);
   LILV_FOREACH(uis, u, uis)
     {
       const LilvUI* this_ui = lilv_uis_get (uis, u);
 
-      if (lilv_ui_is_supported (this_ui,
-                                suil_ui_supported,
-                                native_ui_type,
-                                &ui_type))
-        {
-          /* TODO: Multiple UI support */
-          printf ("UI: %s\n", lilv_node_as_uri (lilv_ui_get_uri (this_ui)));
-          return this_ui;
-        }
+      printf ("UI: %s\n", lilv_node_as_uri (lilv_ui_get_uri (this_ui)));
+      if (lilv_ui_is_a (this_ui, plugin_host.nodes.lv2_ui_x11ui))
+        return this_ui;
     }
   return nullptr;
 }
@@ -972,6 +1026,7 @@ PluginInstance::open_ui()
   const LilvUI *ui = get_plugin_ui();
   const char* bundle_uri  = lilv_node_as_uri(lilv_ui_get_bundle_uri(ui));
   const char* binary_uri  = lilv_node_as_uri(lilv_ui_get_binary_uri(ui));
+  const char* plugin_uri  = lilv_node_as_uri (lilv_plugin_get_uri (plugin));
   char*       bundle_path = lilv_file_uri_parse(bundle_uri, NULL);
   char*       binary_path = lilv_file_uri_parse(binary_uri, NULL);
 
@@ -983,37 +1038,52 @@ PluginInstance::open_ui()
   const LV2_Feature ext_data_feature = {
     LV2_DATA_ACCESS_URI, &lv2_ext_data
   };
+  const LV2_Feature idle_feature = {
+    LV2_UI__idleInterface, nullptr
+  };
+  // for passing parent window id
+  LV2_Feature parent_feature = {
+    LV2_UI__parent, nullptr
+  };
+  // resize window func
+  auto resize_window = [] (LV2UI_Feature_Handle handle, int width, int height) -> int {
+    PluginUI *plugin_ui = (PluginUI *) handle;
+    auto x11wrapper = get_x11wrapper();
+    bool ok = x11wrapper->resize_window (plugin_ui->window_id_, width, height);
+    if (ok)
+      return 0;
+    else
+      return 1;
+  };
+  ui_resize.handle = plugin_ui;
+  ui_resize.ui_resize = resize_window;
+  const LV2_Feature ui_resize_feature = {
+    LV2_UI__resize, &ui_resize
+  };
 
   Features ui_features;
   ui_features.add (&instance_feature);
   ui_features.add (&ext_data_feature);
+  ui_features.add (&idle_feature);
+  ui_features.add (&parent_feature);
+  ui_features.add (&ui_resize_feature);
   ui_features.add (plugin_host.urid_map.map_feature());
   ui_features.add (plugin_host.urid_map.unmap_feature());
+  ui_features.add (plugin_host.options.feature()); /* TODO: maybe make a local version */
 
   //set_initial_controls_ui();
 
-  auto x11wrapper = get_x11wrapper();
-  if (x11wrapper)
-    {
-      auto func = [&] () {
-        ui_instance = suil_instance_new (plugin_host.ui_host,
-                                         this,
-                                         plugin_host.native_ui_type_uri,
-                                         lilv_node_as_uri (lilv_plugin_get_uri (plugin)),
-                                         lilv_node_as_uri (lilv_ui_get_uri (ui)),
-                                         lilv_node_as_uri (ui_type),
-                                         bundle_path,
-                                         binary_path,
-                                         ui_features.get_features());
-        // TODO: handle the case where suil_instance_new fails and returns a nullptr
-        return ui_instance;
-      };
-      x11wrapper->create_suil_window (func);
-    }
+  plugin_ui = new PluginUI (this, plugin_uri, binary_path, lilv_node_as_uri (lilv_ui_get_uri (get_plugin_ui())), bundle_path,
+                            ui_features.get_features(), &parent_feature, &ui_resize);
   int period_ms = 25;
   // FIXME: remove timer when no longer needed
   main_loop->exec_timer ([this] () {
-    handle_dsp2ui_events();
+    if (plugin_ui)
+      {
+        if (plugin_ui->idle_iface_)
+          plugin_ui->idle_iface_->idle (plugin_ui->handle_);
+        handle_dsp2ui_events();
+      }
     free_trash();
     return true;
   }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
