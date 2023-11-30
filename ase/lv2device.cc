@@ -16,7 +16,6 @@
 #include "lv2/ui/ui.h"
 
 #include "lv2evbuf.hh"
-#include "lv2ringbuffer.hh"
 #include "lv2device.hh"
 
 #include <lilv/lilv.h>
@@ -37,6 +36,76 @@ using std::string;
 using std::map;
 using std::max;
 using std::min;
+
+class ControlEvent;
+using ControlEventStack = AtomicIntrusiveStack<ControlEvent>;
+
+class ControlEvent
+{
+  LoftPtr<ControlEvent>       loft_ptr_;    // keep this object alive
+  uint32_t                    port_index_;
+  uint32_t                    protocol_;
+  size_t                      size_;
+  LoftPtr<void>               data_;
+
+ public:
+  std::atomic<ControlEvent *> next_ = nullptr;
+
+  static ControlEvent *
+  loft_new (uint32_t port_index, uint32_t protocol, size_t size, const void *data = nullptr)
+  {
+    LoftPtr<ControlEvent> loft_ptr = loft_make_unique<ControlEvent>();
+    ControlEvent *new_event = loft_ptr.get();
+    new_event->loft_ptr_ = std::move (loft_ptr);
+    new_event->port_index_ = port_index;
+    new_event->protocol_ = protocol;
+    new_event->size_ = size;
+    new_event->data_ = loft_alloc (size);
+    if (data)
+      memcpy (new_event->data_.get(), data, size);
+    return new_event;
+  }
+  void
+  loft_free()
+  {
+    loft_ptr_.reset(); // do not access this after this line
+  }
+  uint32_t port_index() const { return port_index_; }
+  uint32_t protocol() const   { return protocol_; }
+  size_t   size() const       { return size_; }
+  uint8_t *data() const       { return reinterpret_cast<uint8_t *> (data_.get()); }
+
+  template<typename Func>
+  static void
+  for_each (ControlEventStack& in_events, ControlEventStack& trash_events, Func func)
+  {
+    ControlEvent *const events = in_events.pop_reversed(), *last = nullptr;
+    for (ControlEvent *event = events; event; last = event, event = event->next_)
+      {
+        const ControlEvent *cevent = event;
+        func (cevent);
+      }
+    if (last)
+      trash_events.push_chain (events, last);
+  }
+  static void
+  free_all (ControlEventStack& events)
+  {
+    ControlEvent *event = events.pop_all();
+    while (event)
+      {
+        ControlEvent *old = event;
+        event = event->next_;
+        old->loft_free();
+      }
+  }
+};
+
+static inline std::atomic<ControlEvent*>&
+atomic_next_ptrref (ControlEvent *event)
+{
+  return event->next_;
+}
 
 class Map
 {
@@ -145,8 +214,7 @@ class Worker
 
   const LV2_Worker_Interface *worker_interface = nullptr;
   LV2_Handle                  instance = nullptr;
-  RingBuffer<uint8>           work_buffer_;
-  RingBuffer<uint8>           response_buffer_;
+  ControlEventStack           work_events_, response_events_, trash_events_;
   std::thread                 thread_;
   std::atomic<int>            quit_;
   ScopedSemaphore             sem_;
@@ -154,11 +222,15 @@ public:
   Worker() :
     lv2_worker_sched { this, schedule },
     lv2_worker_feature { LV2_WORKER__schedule, &lv2_worker_sched },
-    work_buffer_ (4096),
-    response_buffer_ (4096),
     quit_ (0)
   {
     thread_ = std::thread (&Worker::run, this);
+  }
+  ~Worker()
+  {
+    ControlEvent::free_all (work_events_);
+    ControlEvent::free_all (response_events_);
+    ControlEvent::free_all (trash_events_);
   }
   void
   stop()
@@ -185,35 +257,13 @@ public:
     while (!quit_)
       {
         sem_.wait();
-        while (work_buffer_.get_readable_values())
-          {
-            uint32 size;
-            work_buffer_.read (sizeof (size), (uint8 *) &size);
-            uint8 data[size];
-            work_buffer_.read (size, data);
-
-            printf ("got work %d bytes\n", size);
-            worker_interface->work (instance, respond, this, size, data);
-          }
-      }
-  }
-
-  LV2_Worker_Status
-  send_data (RingBuffer<uint8>& ring_buffer, uint32_t size, const void *data)
-  {
-    const uint32 n_values = sizeof (size) + size;
-    if (n_values <= ring_buffer.get_writable_values())
-      {
-        uint8 to_write[n_values];
-        memcpy (to_write, &size, sizeof (size));
-        memcpy (to_write + sizeof (size), data, size);
-
-        ring_buffer.write (n_values, to_write);
-        return LV2_WORKER_SUCCESS;
-      }
-    else
-      {
-        return LV2_WORKER_ERR_NO_SPACE;
+        ControlEvent::for_each (work_events_, trash_events_,
+          [this] (const ControlEvent *event)
+            {
+              printf ("got work %zd bytes\n", event->size());
+              worker_interface->work (instance, respond, this, event->size(), event->data());
+            });
+        ControlEvent::free_all (trash_events_);
       }
   }
   LV2_Worker_Status
@@ -222,9 +272,9 @@ public:
     if (!worker_interface)
       return LV2_WORKER_ERR_UNKNOWN;
 
-    auto rc = send_data (work_buffer_, size, data);
+    work_events_.push (ControlEvent::loft_new (0, 0, size, data));
     sem_.post();
-    return rc;
+    return LV2_WORKER_SUCCESS;
   }
   LV2_Worker_Status
   respond (uint32_t size, const void *data)
@@ -233,21 +283,18 @@ public:
       return LV2_WORKER_ERR_UNKNOWN;
 
     printf ("queue work response\n");
-    return send_data (response_buffer_, size, data);
+    response_events_.push (ControlEvent::loft_new (0, 0, size, data));
+    return LV2_WORKER_SUCCESS;
   }
   void
   handle_responses()
   {
-    while (response_buffer_.get_readable_values())
-      {
-        uint32 size;
-        response_buffer_.read (sizeof (size), (uint8 *) &size);
-        uint8 data[size];
-        response_buffer_.read (size, data);
-
-        printf ("got work response %d bytes\n", size);
-        worker_interface->work_response (instance, size, data);
-      }
+    ControlEvent::for_each (response_events_, trash_events_,
+      [this] (const ControlEvent *event)
+        {
+          printf ("got work response %zd bytes\n", event->size());
+          worker_interface->work_response (instance, event->size(), event->data());
+        });
   }
   void
   end_run()
@@ -334,47 +381,6 @@ struct PresetInfo
   String          name;
   const LilvNode *preset = nullptr;
 };
-
-struct ControlEvent
-{
-private:
-  LoftPtr<ControlEvent>       loft_ptr_;    // keep this object alive
-  uint32_t                    port_index_;
-  uint32_t                    protocol_;
-  size_t                      size_;
-  LoftPtr<void>               data_;
-
- public:
-  std::atomic<ControlEvent *> next_ = nullptr;
-
-  static ControlEvent *
-  loft_new (uint32_t port_index, uint32_t protocol, size_t size)
-  {
-    LoftPtr<ControlEvent> loft_ptr = loft_make_unique<ControlEvent>();
-    ControlEvent *new_event = loft_ptr.get();
-    new_event->loft_ptr_ = std::move (loft_ptr);
-    new_event->port_index_ = port_index;
-    new_event->protocol_ = protocol;
-    new_event->size_ = size;
-    new_event->data_ = loft_alloc (size);
-    return new_event;
-  }
-  void
-  loft_free()
-  {
-    loft_ptr_.reset(); // do not access this after this line
-  }
-  uint32_t port_index() { return port_index_; }
-  uint32_t protocol()   { return protocol_; }
-  size_t   size()       { return size_; }
-  uint8_t *data()       { return reinterpret_cast<uint8_t *> (data_.get()); }
-};
-
-static inline std::atomic<ControlEvent*>&
-atomic_next_ptrref (ControlEvent *event)
-{
-  return event->next_;
-}
 
 struct PluginUI;
 
