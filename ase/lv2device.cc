@@ -603,8 +603,10 @@ public:
             if (descriptor && descriptor->URI == ui_uri)
               {
                 descriptor_ = descriptor;
+
+                string window_title = PluginHost::the().lv2_device_info (plugin_uri).name;
                 Gtk2WindowSetup wsetup {
-                  .title = ui_uri, .width = 640, .height = 480,
+                  .title = window_title, .width = 640, .height = 480,
                   .deleterequest_mt = [plugin_instance] ()
                     {
                       main_loop->exec_callback ([plugin_instance]() { plugin_instance->delete_ui_request(); });
@@ -1125,8 +1127,6 @@ PluginInstance::open_ui()
   ui_features.add (plugin_host.urid_map.unmap_feature());
   ui_features.add (plugin_host.options.feature()); /* TODO: maybe make a local version */
 
-  //set_initial_controls_ui();
-
   plugin_ui = std::make_unique <PluginUI> (this, plugin_uri, binary_path, lilv_node_as_uri (lilv_ui_get_uri (get_plugin_ui())), bundle_path,
                                            ui_features.get_features(), &parent_feature, &ui_resize);
 }
@@ -1478,7 +1478,6 @@ LV2DeviceImpl::gui_supported()
 {
   auto lv2aproc = dynamic_cast<LV2Processor *> (proc_.get());
   auto ui = lv2aproc->instance()->get_plugin_ui();
-  printf ("%p\n", ui);
   return ui != nullptr;
 }
 
