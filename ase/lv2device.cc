@@ -292,7 +292,7 @@ public:
   const LV2_Feature * const*
   get_features()
   {
-    return &features[0];
+    return features.data();
   }
   void
   add (const LV2_Feature *lv2_feature)
@@ -398,6 +398,7 @@ struct PluginInstance
   std::vector<Port>             plugin_ports;
   std::vector<int>              atom_out_ports;
   std::vector<int>              atom_in_ports;
+  std::vector<int>              control_in_ports;
   std::vector<int>              audio_in_ports;
   std::vector<int>              audio_out_ports;
   std::vector<PresetInfo>       presets;
@@ -675,7 +676,7 @@ Options::Options (PluginHost& plugin_host) :
                           sizeof(int32_t), plugin_host.urids.atom_Int, &m_block_length });
   const_opts.push_back ({ LV2_OPTIONS_INSTANCE, 0, 0, 0, 0, nullptr });
 
-  lv2_options_feature.data = &const_opts[0];
+  lv2_options_feature.data = const_opts.data();
 }
 
 PluginInstance *
@@ -770,7 +771,7 @@ PluginInstance::init_ports()
 
   size_t n_control_ports = 0;
 
-  lilv_plugin_get_port_ranges_float (plugin, &min_values[0], &max_values[0], &defaults[0]);
+  lilv_plugin_get_port_ranges_float (plugin, min_values.data(), max_values.data(), defaults.data());
   for (int i = 0; i < n_ports; i++)
     {
       const LilvPort *port = lilv_plugin_get_port_by_index (plugin, i);
@@ -784,7 +785,7 @@ PluginInstance::init_ports()
                 }
               else if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_atom_class))
                 {
-                  printf ("found atom input port\n");
+                  /* TODO: need to support explicit port size from .ttl */
                   const int buf_size = 4096;
                   plugin_ports[i].evbuf = lv2_evbuf_new (buf_size, LV2_EVBUF_ATOM, plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Chunk)),
                                                                                    plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Sequence)));
@@ -807,6 +808,8 @@ PluginInstance::init_ports()
                   plugin_ports[i].symbol = lilv_node_as_string (nsymbol);
 
                   lilv_instance_connect_port (instance, i, &plugin_ports[i].control);
+
+                  control_in_ports.push_back (i);
 
                   n_control_ports++;
                 }
@@ -1154,7 +1157,6 @@ class LV2Processor : public AudioProcessor {
   enum
     {
       PID_PRESET         = 1,
-      PID_DELETE         = 2,
       PID_CONTROL_OFFSET = 10
     };
 
@@ -1189,8 +1191,6 @@ class LV2Processor : public AudioProcessor {
         pmap[PID_PRESET] = Param { "device_preset", "Device Preset", "Preset", 0, "", std::move (centries), "", "Device Preset to be used" };
       }
     current_preset = 0;
-
-    pmap[PID_DELETE] = Param { "delete", _("Test Delete"), _("TestDel"), false, "", {}, GUIONLY + ":toggle" };
 
     int pid = PID_CONTROL_OFFSET;
     for (auto& port : plugin_instance->plugin_ports)
@@ -1278,16 +1278,20 @@ class LV2Processor : public AudioProcessor {
               }
           }
       }
-    if (int (tag) == PID_DELETE && get_param (tag) > 0.5) // this is just test code
-      {
-        delete plugin_instance;
-        plugin_instance = nullptr;
-      }
 
     // real LV2 controls start at PID_CONTROL_OFFSET
     auto control_id = tag - PID_CONTROL_OFFSET;
     if (control_id >= 0 && control_id < param_id_port.size())
-      param_id_port[control_id]->control = get_param (tag);
+      {
+        Port *port = param_id_port[control_id];
+        port->control = get_param (tag);
+
+        ControlEvent *event = ControlEvent::loft_new (plugin_instance->control_in_ports[control_id], 0, sizeof (float));
+
+        *(float *) event->data() = port->control;
+        // printerr ("send_ui_updates: push event: index=%zd, protocol=0, sz=%zd\n", p, event->data.size());
+        plugin_instance->dsp2ui_events_.push (event);
+      }
   }
   void
   render (uint n_frames) override
@@ -1335,6 +1339,10 @@ class LV2Processor : public AudioProcessor {
             synth_.all_sound_off();    // NOTE: there is no extra "all notes off" in liquidsfz
             break;
 #endif
+          case MidiMessage::PARAM_VALUE:
+            apply_event (ev);
+            adjust_param (ev.param);
+            break;
           default: ;
           }
       }
@@ -1491,6 +1499,12 @@ LV2DeviceImpl::gui_toggle()
 LV2DeviceImpl::LV2DeviceImpl (const String &lv2_uri, AudioProcessorP proc) :
   proc_ (proc), info_ (PluginHost::the().lv2_device_info (lv2_uri))
 {
+}
+
+PropertyS
+LV2DeviceImpl::access_properties ()
+{
+  return proc_->access_properties();
 }
 
 static auto lv2processor = register_audio_processor<LV2Processor> ("Ase::Devices::LV2Processor");

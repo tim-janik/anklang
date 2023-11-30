@@ -19,6 +19,7 @@ public:
   DeviceInfo         device_info       () override                  { return info_; }
   bool               gui_supported     () override;
   void               gui_toggle        () override;
+  PropertyS          access_properties () override;
 
   static DeviceInfoS list_lv2_plugins  ();
   static DeviceP     create_lv2_device (AudioEngine &engine, const String &lv2_uri_with_prefix);

@@ -83,6 +83,7 @@ class AudioProcessor : public std::enable_shared_from_this<AudioProcessor>, publ
   friend class ProcessorManager;
   friend class DeviceImpl;
   friend class NativeDeviceImpl;
+  friend class LV2DeviceImpl; /* FIXME: is this the right way to do it */
   friend class AudioEngineThread;
   struct OConnection {
     AudioProcessor *proc = nullptr; IBusId ibusid = {};
