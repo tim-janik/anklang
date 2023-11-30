@@ -269,6 +269,7 @@ public:
               printf ("got work %zd bytes\n", event->size());
               worker_interface->work (instance, respond, this, event->size(), event->data());
             });
+        // free both: old worker events and old response events
         trash_events_.free_all();
       }
   }
@@ -428,7 +429,6 @@ struct PluginInstance
   void run (uint32_t nframes);
   void activate();
   void deactivate();
-  void free_trash();
 
   const LilvUI *get_plugin_ui();
   void open_ui();
@@ -647,8 +647,6 @@ public:
                   if (idle_iface_)
                     idle_iface_->idle (handle_);
                   plugin_instance->handle_dsp2ui_events();
-
-                  plugin_instance->free_trash();
                   return true;
                 }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
 
@@ -753,7 +751,6 @@ PluginInstance::PluginInstance (PluginHost& plugin_host) :
 PluginInstance::~PluginInstance()
 {
   worker.stop();
-  free_trash();
 
   if (instance)
     {
@@ -763,12 +760,6 @@ PluginInstance::~PluginInstance()
       lilv_instance_free (instance);
       instance = nullptr;
     }
-}
-
-void
-PluginInstance::free_trash()
-{
-  trash_events_.free_all();
 }
 
 void
@@ -1032,6 +1023,8 @@ PluginInstance::handle_dsp2ui_events()
               port_event (plugin_ui->handle_, event->port_index(), event->size(), event->protocol(), event->data());
           }
       });
+  // free both: old dsp2ui events and old ui2dsp events
+  trash_events_.free_all();
 }
 
 void
