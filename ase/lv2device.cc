@@ -382,6 +382,7 @@ struct PluginInstance
 {
   PluginHost& plugin_host;
   std::unique_ptr<PluginUI>  plugin_ui;
+  std::atomic<bool>          plugin_ui_is_active { false };
 
   LV2_Extension_Data_Feature lv2_ext_data;
   LV2UI_Resize               ui_resize;
@@ -584,10 +585,12 @@ public:
   const LV2UI_Descriptor *descriptor_ = nullptr;
   ulong window_id_ = 0;
   uint  timer_id_ = 0;
+  PluginInstance *plugin_instance_ = nullptr;
 
   PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& dlpath, const string& ui_uri, const string& ui_bundle_path,
             const LV2_Feature* const* features, LV2_Feature *parent_feature, LV2UI_Resize *ui_resize)
   {
+    plugin_instance_ = plugin_instance;
     dlhandle_ = dlopen (dlpath.c_str(), RTLD_LOCAL | RTLD_NOW);
     if (dlhandle_)
       {
@@ -638,6 +641,8 @@ public:
                   return true;
                 }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
 
+                // enable DSP->UI notifications
+                plugin_instance->plugin_ui_is_active.store (true);
                 plugin_instance->set_initial_controls_ui();
               }
           }
@@ -645,6 +650,9 @@ public:
   }
   ~PluginUI()
   {
+    // disable DSP->UI notifications
+    plugin_instance_->plugin_ui_is_active.store (false);
+
     if (descriptor_ && descriptor_->cleanup)
       {
         descriptor_->cleanup (handle_);
@@ -973,9 +981,11 @@ PluginInstance::run (uint32_t nframes)
   worker.handle_responses();
   worker.end_run();
 
-  // TODO: this only needs to be done if the UI is visible (otherwise control events will never get read/freed)
-  send_plugin_events_to_ui();
-  send_ui_updates();
+  if (plugin_ui_is_active)
+    {
+      send_plugin_events_to_ui();
+      send_ui_updates();
+    }
 }
 
 void
