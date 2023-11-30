@@ -421,6 +421,7 @@ struct PluginInstance
   void send_plugin_events_to_ui();
   void handle_dsp2ui_events();
   void send_ui_updates();
+  void set_initial_controls_ui();
 };
 
 void
@@ -632,6 +633,8 @@ public:
                   plugin_instance->free_trash();
                   return true;
                 }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
+
+                plugin_instance->set_initial_controls_ui();
               }
           }
       }
@@ -1010,6 +1013,24 @@ PluginInstance::handle_dsp2ui_events()
     }
   if (last)
     trash_events_.push_chain (events, last);
+}
+
+void
+PluginInstance::set_initial_controls_ui()
+{
+  /* Set initial control values on UI */
+  for (size_t port_index = 0; port_index < plugin_ports.size(); port_index++)
+    {
+      const auto& port = plugin_ports[port_index];
+
+      if (port.type == Port::CONTROL_IN || port.type == Port::CONTROL_OUT)
+        {
+          ControlEvent *event = ControlEvent::loft_new (port_index, 0, sizeof (float));
+
+          *(float *) event->data() = port.control;
+          dsp2ui_events_.push (event);
+        }
+    }
 }
 
 void
