@@ -311,6 +311,7 @@ struct Port
   float       control;    /* for control ports */
   float       min_value;  /* min control */
   float       max_value;  /* max control */
+  int         control_in_idx = -1; /* for control input ports */
   String      name;
   String      symbol;
 
@@ -398,11 +399,11 @@ struct PluginInstance
   std::vector<Port>             plugin_ports;
   std::vector<int>              atom_out_ports;
   std::vector<int>              atom_in_ports;
-  std::vector<int>              control_in_ports;
   std::vector<int>              audio_in_ports;
   std::vector<int>              audio_out_ports;
   std::vector<PresetInfo>       presets;
   bool                          active = false;
+  std::function<void(int, float)> control_in_changed_callback;
 
   AtomicIntrusiveStack<ControlEvent> ui2dsp_events_, dsp2ui_events_, trash_events_;
 
@@ -809,7 +810,7 @@ PluginInstance::init_ports()
 
                   lilv_instance_connect_port (instance, i, &plugin_ports[i].control);
 
-                  control_in_ports.push_back (i);
+                  plugin_ports[i].control_in_idx = n_control_ports;
 
                   n_control_ports++;
                 }
@@ -950,6 +951,8 @@ PluginInstance::run (uint32_t nframes)
         {
           assert (event->size() == sizeof (float));
           port->control = *(float *)event->data();
+
+          control_in_changed_callback (port->control_in_idx, port->control);
         }
       else if (event->protocol() == plugin_host.urids.atom_eventTransfer)
         {
@@ -1192,15 +1195,20 @@ class LV2Processor : public AudioProcessor {
       }
     current_preset = 0;
 
-    int pid = PID_CONTROL_OFFSET;
     for (auto& port : plugin_instance->plugin_ports)
       if (port.type == Port::CONTROL_IN)
         {
           // TODO: lv2 port numbers are not reliable for serialization, should use port.symbol instead
           // TODO: special case boolean, enumeration, logarithmic,... controls
-          pmap[pid++] = Param { port.symbol, port.name, port.name, port.control, "", { port.min_value, port.max_value } };
+          int pid = PID_CONTROL_OFFSET + port.control_in_idx;
+          pmap[pid] = Param { port.symbol, port.name, port.name, port.control, "", { port.min_value, port.max_value } };
           param_id_port.push_back (&port);
         }
+
+    // call if parameters are changed using the LV2 custom UI during render
+    plugin_instance->control_in_changed_callback = [this] (int id, float value) {
+      set_param_from_render (id + PID_CONTROL_OFFSET, value);
+    };
 
     // TODO: deactivate?
     // TODO: is this the right place?
@@ -1286,7 +1294,7 @@ class LV2Processor : public AudioProcessor {
         Port *port = param_id_port[control_id];
         port->control = get_param (tag);
 
-        ControlEvent *event = ControlEvent::loft_new (plugin_instance->control_in_ports[control_id], 0, sizeof (float));
+        ControlEvent *event = ControlEvent::loft_new (port->control_in_idx, 0, sizeof (float));
 
         *(float *) event->data() = port->control;
         // printerr ("send_ui_updates: push event: index=%zd, protocol=0, sz=%zd\n", p, event->data.size());
