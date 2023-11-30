@@ -37,9 +37,6 @@ using std::map;
 using std::max;
 using std::min;
 
-class ControlEvent;
-using ControlEventStack = AtomicIntrusiveStack<ControlEvent>;
-
 class ControlEvent
 {
   LoftPtr<ControlEvent>       loft_ptr_;    // keep this object alive
@@ -75,29 +72,44 @@ class ControlEvent
   size_t   size() const       { return size_; }
   uint8_t *data() const       { return reinterpret_cast<uint8_t *> (data_.get()); }
 
+};
+
+class ControlEventVector
+{
+  AtomicIntrusiveStack<ControlEvent> events_;
+public:
   template<typename Func>
-  static void
-  for_each (ControlEventStack& in_events, ControlEventStack& trash_events, Func func)
+  void
+  for_each (ControlEventVector& trash_events, Func func)
   {
-    ControlEvent *const events = in_events.pop_reversed(), *last = nullptr;
+    ControlEvent *const events = events_.pop_reversed(), *last = nullptr;
     for (ControlEvent *event = events; event; last = event, event = event->next_)
       {
         const ControlEvent *cevent = event;
         func (cevent);
       }
     if (last)
-      trash_events.push_chain (events, last);
+      trash_events.events_.push_chain (events, last);
   }
-  static void
-  free_all (ControlEventStack& events)
+  void
+  free_all()
   {
-    ControlEvent *event = events.pop_all();
+    ControlEvent *event = events_.pop_all();
     while (event)
       {
         ControlEvent *old = event;
         event = event->next_;
         old->loft_free();
       }
+  }
+  void
+  push (ControlEvent *event)
+  {
+    events_.push (event);
+  }
+  ~ControlEventVector()
+  {
+    free_all();
   }
 };
 
@@ -214,7 +226,7 @@ class Worker
 
   const LV2_Worker_Interface *worker_interface = nullptr;
   LV2_Handle                  instance = nullptr;
-  ControlEventStack           work_events_, response_events_, trash_events_;
+  ControlEventVector          work_events_, response_events_, trash_events_;
   std::thread                 thread_;
   std::atomic<int>            quit_;
   ScopedSemaphore             sem_;
@@ -225,12 +237,6 @@ public:
     quit_ (0)
   {
     thread_ = std::thread (&Worker::run, this);
-  }
-  ~Worker()
-  {
-    ControlEvent::free_all (work_events_);
-    ControlEvent::free_all (response_events_);
-    ControlEvent::free_all (trash_events_);
   }
   void
   stop()
@@ -257,13 +263,13 @@ public:
     while (!quit_)
       {
         sem_.wait();
-        ControlEvent::for_each (work_events_, trash_events_,
+        work_events_.for_each (trash_events_,
           [this] (const ControlEvent *event)
             {
               printf ("got work %zd bytes\n", event->size());
               worker_interface->work (instance, respond, this, event->size(), event->data());
             });
-        ControlEvent::free_all (trash_events_);
+        trash_events_.free_all();
       }
   }
   LV2_Worker_Status
@@ -289,7 +295,7 @@ public:
   void
   handle_responses()
   {
-    ControlEvent::for_each (response_events_, trash_events_,
+    response_events_.for_each (trash_events_,
       [this] (const ControlEvent *event)
         {
           printf ("got work response %zd bytes\n", event->size());
@@ -412,7 +418,7 @@ struct PluginInstance
   bool                          active = false;
   std::function<void(int, float)> control_in_changed_callback;
 
-  AtomicIntrusiveStack<ControlEvent> ui2dsp_events_, dsp2ui_events_, trash_events_;
+  ControlEventVector            ui2dsp_events_, dsp2ui_events_, trash_events_;
 
   void init_ports();
   void init_presets();
@@ -442,8 +448,7 @@ eh_ui_write (LV2UI_Controller controller,
 {
   PluginInstance *plugin_instance = (PluginInstance *)controller;
 
-  ControlEvent *event = ControlEvent::loft_new (port_index, protocol, buffer_size);
-  std::copy_n ((const uint8_t *) buffer, buffer_size, event->data());
+  ControlEvent *event = ControlEvent::loft_new (port_index, protocol, buffer_size, buffer);
   plugin_instance->ui2dsp_events_.push (event);
 }
 
@@ -763,13 +768,7 @@ PluginInstance::~PluginInstance()
 void
 PluginInstance::free_trash()
 {
-  ControlEvent *event = trash_events_.pop_all();
-  while (event)
-    {
-      ControlEvent *old = event;
-      event = event->next_;
-      old->loft_free();
-    }
+  trash_events_.free_all();
 }
 
 void
@@ -956,31 +955,29 @@ PluginInstance::connect_audio_port (uint32_t port, float *buffer)
 void
 PluginInstance::run (uint32_t nframes)
 {
-  ControlEvent *const events = ui2dsp_events_.pop_reversed(), *last = nullptr;
-  for (ControlEvent *event = events; event; last = event, event = event->next_)
-    {
-      assert (event->port_index() < plugin_ports.size());
-      Port* port = &plugin_ports[event->port_index()];
-      if (event->protocol() == 0)
-        {
-          assert (event->size() == sizeof (float));
-          port->control = *(float *)event->data();
+  ui2dsp_events_.for_each (trash_events_,
+    [&] (const ControlEvent *event)
+      {
+        assert (event->port_index() < plugin_ports.size());
+        Port* port = &plugin_ports[event->port_index()];
+        if (event->protocol() == 0)
+          {
+            assert (event->size() == sizeof (float));
+            port->control = *(float *)event->data();
 
-          control_in_changed_callback (port->control_in_idx, port->control);
-        }
-      else if (event->protocol() == plugin_host.urids.atom_eventTransfer)
-        {
-          LV2_Evbuf_Iterator    e    = lv2_evbuf_end (port->evbuf);
-          const LV2_Atom* const atom = (const LV2_Atom *) event->data();
-          lv2_evbuf_write (&e, nframes, 0, atom->type, atom->size, (const uint8_t*)LV2_ATOM_BODY_CONST(atom));
-        }
-      else
-        {
-          printerr ("LV2: PluginInstance: protocol: %d not implemented\n", event->protocol());
-        }
-    }
-  if (last)
-    trash_events_.push_chain (events, last);
+            control_in_changed_callback (port->control_in_idx, port->control);
+          }
+        else if (event->protocol() == plugin_host.urids.atom_eventTransfer)
+          {
+            LV2_Evbuf_Iterator    e    = lv2_evbuf_end (port->evbuf);
+            const LV2_Atom* const atom = (const LV2_Atom *) event->data();
+            lv2_evbuf_write (&e, nframes, 0, atom->type, atom->size, (const uint8_t*)LV2_ATOM_BODY_CONST(atom));
+          }
+        else
+          {
+            printerr ("LV2: PluginInstance: protocol: %d not implemented\n", event->protocol());
+          }
+      });
 
   lilv_instance_run (instance, nframes);
 
@@ -1023,20 +1020,18 @@ PluginInstance::send_plugin_events_to_ui()
 void
 PluginInstance::handle_dsp2ui_events()
 {
-  ControlEvent *const events = dsp2ui_events_.pop_reversed(), *last = nullptr;
-  for (ControlEvent *event = events; event; last = event, event = event->next_)
-    {
-      assert (event->port_index() < plugin_ports.size());
-      // printerr ("handle_dsp2ui_events: pop event: index=%zd, protocol=%d, sz=%zd\n", event->port_index, event->protocol, event->data.size());
-      if (plugin_ui)
-        {
-          auto port_event = plugin_ui->descriptor_->port_event;
-          if (port_event)
-            port_event (plugin_ui->handle_, event->port_index(), event->size(), event->protocol(), event->data());
-        }
-    }
-  if (last)
-    trash_events_.push_chain (events, last);
+  dsp2ui_events_.for_each (trash_events_,
+    [&] (const ControlEvent *event)
+      {
+        assert (event->port_index() < plugin_ports.size());
+        // printerr ("handle_dsp2ui_events: pop event: index=%zd, protocol=%d, sz=%zd\n", event->port_index, event->protocol, event->data.size());
+        if (plugin_ui)
+          {
+            auto port_event = plugin_ui->descriptor_->port_event;
+            if (port_event)
+              port_event (plugin_ui->handle_, event->port_index(), event->size(), event->protocol(), event->data());
+          }
+      });
 }
 
 void
@@ -1049,9 +1044,7 @@ PluginInstance::set_initial_controls_ui()
 
       if (port.type == Port::CONTROL_IN || port.type == Port::CONTROL_OUT)
         {
-          ControlEvent *event = ControlEvent::loft_new (port_index, 0, sizeof (float));
-
-          *(float *) event->data() = port.control;
+          ControlEvent *event = ControlEvent::loft_new (port_index, 0, sizeof (float), &port.control);
           dsp2ui_events_.push (event);
         }
     }
@@ -1069,10 +1062,7 @@ PluginInstance::send_ui_updates()
 
           if (port.type == Port::CONTROL_OUT)
             {
-              ControlEvent *event = ControlEvent::loft_new (port_index, 0, sizeof (float));
-
-              *(float *) event->data() = port.control;
-              // printerr ("send_ui_updates: push event: index=%zd, protocol=0, sz=%zd\n", p, event->data.size());
+              ControlEvent *event = ControlEvent::loft_new (port_index, 0, sizeof (float), &port.control);
               dsp2ui_events_.push (event);
             }
         }
@@ -1310,10 +1300,7 @@ class LV2Processor : public AudioProcessor {
         Port *port = param_id_port[control_id];
         port->control = get_param (tag);
 
-        ControlEvent *event = ControlEvent::loft_new (port->control_in_idx, 0, sizeof (float));
-
-        *(float *) event->data() = port->control;
-        // printerr ("send_ui_updates: push event: index=%zd, protocol=0, sz=%zd\n", p, event->data.size());
+        ControlEvent *event = ControlEvent::loft_new (port->control_in_idx, 0, sizeof (float), &port->control);
         plugin_instance->dsp2ui_events_.push (event);
       }
   }
