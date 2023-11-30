@@ -259,6 +259,12 @@ AudioProcessor::send_param (Id32 paramid, const double value)
   return true;
 }
 
+void
+AudioProcessor::set_param_from_render (Id32 paramid, const double value)
+{
+  params_.value (paramid, value);
+}
+
 /// Retrieve supplemental information for parameters, usually to enhance the user interface.
 ParameterC
 AudioProcessor::parameter (Id32 paramid) const

@@ -156,6 +156,7 @@ protected:
   void          apply_event       (const MidiEvent &event);
   void          apply_input_events ();
   virtual void  adjust_param      (uint32_t paramid) {}
+  void          set_param_from_render (Id32 paramid, const double value);
   double        peek_param_mt     (Id32 paramid) const;
   // Buses
   IBusId        add_input_bus     (CString uilabel, SpeakerArrangement speakerarrangement,
