@@ -580,6 +580,7 @@ public:
   LV2UI_Handle handle_ = nullptr;
   const LV2UI_Descriptor *descriptor_ = nullptr;
   ulong window_id_ = 0;
+  uint  timer_id_ = 0;
 
   PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& dlpath, const string& ui_uri, const string& ui_bundle_path,
             const LV2_Feature* const* features, LV2_Feature *parent_feature, LV2UI_Resize *ui_resize)
@@ -620,6 +621,17 @@ public:
                 if (descriptor->extension_data)
                   idle_iface_ = (const LV2UI_Idle_Interface*) descriptor->extension_data (LV2_UI__idleInterface);
                 x11wrapper->show_window (window_id_);
+
+                int period_ms = 25;
+
+                timer_id_ = main_loop->exec_timer ([this, plugin_instance] () {
+                  if (idle_iface_)
+                    idle_iface_->idle (handle_);
+                  plugin_instance->handle_dsp2ui_events();
+
+                  plugin_instance->free_trash();
+                  return true;
+                }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
               }
           }
       }
@@ -627,11 +639,20 @@ public:
   ~PluginUI()
   {
     if (descriptor_ && descriptor_->cleanup)
-      descriptor_->cleanup (handle_);
+      {
+        descriptor_->cleanup (handle_);
+        descriptor_ = nullptr;
+      }
     if (window_id_)
       {
         auto x11wrapper = get_x11wrapper();
         x11wrapper->destroy_window (window_id_);
+        window_id_ = 0;
+      }
+    if (timer_id_)
+      {
+        main_loop->remove (timer_id_);
+        timer_id_ = 0;
       }
   }
 };
@@ -1087,18 +1108,6 @@ PluginInstance::open_ui()
 
   plugin_ui = std::make_unique <PluginUI> (this, plugin_uri, binary_path, lilv_node_as_uri (lilv_ui_get_uri (get_plugin_ui())), bundle_path,
                                            ui_features.get_features(), &parent_feature, &ui_resize);
-  int period_ms = 25;
-  // FIXME: remove timer when no longer needed
-  main_loop->exec_timer ([this] () {
-    if (plugin_ui)
-      {
-        if (plugin_ui->idle_iface_)
-          plugin_ui->idle_iface_->idle (plugin_ui->handle_);
-        handle_dsp2ui_events();
-      }
-    free_trash();
-    return true;
-  }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
 }
 
 void
