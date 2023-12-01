@@ -71,7 +71,6 @@ class ControlEvent
   uint32_t protocol() const   { return protocol_; }
   size_t   size() const       { return size_; }
   uint8_t *data() const       { return reinterpret_cast<uint8_t *> (data_.get()); }
-
 };
 
 class ControlEventVector
@@ -410,6 +409,7 @@ struct PluginInstance
   const LilvPlugin             *plugin = nullptr;
   LilvInstance                 *instance = nullptr;
   const LV2_Worker_Interface   *worker_interface = nullptr;
+  uint                          sample_rate = 0;
   std::vector<Port>             plugin_ports;
   std::vector<int>              atom_out_ports;
   std::vector<int>              atom_in_ports;
@@ -418,6 +418,8 @@ struct PluginInstance
   std::vector<PresetInfo>       presets;
   bool                          active = false;
   std::function<void(int, float)> control_in_changed_callback;
+  uint32_t                      ui_update_frame_count = 0;
+  static constexpr double       ui_update_fps = 60;
 
   ControlEventVector            ui2dsp_events_, dsp2ui_events_, trash_events_;
 
@@ -426,7 +428,7 @@ struct PluginInstance
   void reset_event_buffers();
   void write_midi (uint32_t time, size_t size, const uint8_t *data);
   void connect_audio_port (uint32_t port, float *buffer);
-  void run (uint32_t nframes);
+  void run (uint32_t n_frames);
   void activate();
   void deactivate();
 
@@ -435,7 +437,7 @@ struct PluginInstance
   void delete_ui_request();
   void send_plugin_events_to_ui();
   void handle_dsp2ui_events();
-  void send_ui_updates();
+  void send_ui_updates (uint32_t delta_frames);
   void set_initial_controls_ui();
 };
 
@@ -542,7 +544,7 @@ public:
     static PluginHost host;
     return host;
   }
-  PluginInstance *instantiate (const char *plugin_uri, float mix_freq);
+  PluginInstance *instantiate (const char *plugin_uri, uint sample_rate);
 
 private:
   DeviceInfoS devs;
@@ -698,7 +700,7 @@ Options::Options (PluginHost& plugin_host) :
 }
 
 PluginInstance *
-PluginHost::instantiate (const char *plugin_uri, float mix_freq)
+PluginHost::instantiate (const char *plugin_uri, uint sample_rate)
 {
   LilvNode* uri = lilv_new_uri (world, plugin_uri);
   if (!uri)
@@ -720,7 +722,7 @@ PluginHost::instantiate (const char *plugin_uri, float mix_freq)
 
   PluginInstance *plugin_instance = new PluginInstance (*this);
 
-  LilvInstance *instance = lilv_plugin_instantiate (plugin, mix_freq, plugin_instance->features.get_features());
+  LilvInstance *instance = lilv_plugin_instantiate (plugin, sample_rate, plugin_instance->features.get_features());
   if (!instance)
     {
       fprintf (stderr, "plugin instantiate failed\n");
@@ -729,6 +731,7 @@ PluginHost::instantiate (const char *plugin_uri, float mix_freq)
       return nullptr;
     }
 
+  plugin_instance->sample_rate = sample_rate;
   plugin_instance->instance = instance;
   plugin_instance->plugin = plugin;
   plugin_instance->init_ports();
@@ -885,7 +888,7 @@ PluginInstance::write_midi (uint32_t time, size_t size, const uint8_t *data)
 {
   if (!atom_in_ports.empty())
     {
-      /* we use the first atom in port for midi, is there a better strategy? */
+      /* TODO: we use the first atom in port for midi, is there a better strategy? */
       int p = atom_in_ports[0];
 
       LV2_Evbuf           *evbuf = plugin_ports[p].evbuf;
@@ -944,7 +947,7 @@ PluginInstance::connect_audio_port (uint32_t port, float *buffer)
 }
 
 void
-PluginInstance::run (uint32_t nframes)
+PluginInstance::run (uint32_t n_frames)
 {
   ui2dsp_events_.for_each (trash_events_,
     [&] (const ControlEvent *event)
@@ -962,7 +965,7 @@ PluginInstance::run (uint32_t nframes)
           {
             LV2_Evbuf_Iterator    e    = lv2_evbuf_end (port->evbuf);
             const LV2_Atom* const atom = (const LV2_Atom *) event->data();
-            lv2_evbuf_write (&e, nframes, 0, atom->type, atom->size, (const uint8_t*)LV2_ATOM_BODY_CONST(atom));
+            lv2_evbuf_write (&e, n_frames, 0, atom->type, atom->size, (const uint8_t*)LV2_ATOM_BODY_CONST(atom));
           }
         else
           {
@@ -970,7 +973,7 @@ PluginInstance::run (uint32_t nframes)
           }
       });
 
-  lilv_instance_run (instance, nframes);
+  lilv_instance_run (instance, n_frames);
 
   worker.handle_responses();
   worker.end_run();
@@ -978,7 +981,7 @@ PluginInstance::run (uint32_t nframes)
   if (plugin_ui_is_active)
     {
       send_plugin_events_to_ui();
-      send_ui_updates();
+      send_ui_updates (n_frames);
     }
 }
 
@@ -1044,11 +1047,19 @@ PluginInstance::set_initial_controls_ui()
 }
 
 void
-PluginInstance::send_ui_updates()
+PluginInstance::send_ui_updates (uint32_t delta_frames)
 {
-  bool do_send_ui_updates = true; // FIXME: hz
-  if (do_send_ui_updates)
+  ui_update_frame_count += delta_frames;
+
+  uint update_n_frames = sample_rate / ui_update_fps;
+  if (ui_update_frame_count >= update_n_frames)
     {
+      ui_update_frame_count -= update_n_frames;
+      if (ui_update_frame_count > update_n_frames)
+        {
+          /* corner case: if block size is very large, we simply need to update every time */
+          ui_update_frame_count = update_n_frames;
+        }
       for (size_t port_index = 0; port_index < plugin_ports.size(); port_index++)
         {
           const Port& port = plugin_ports[port_index];
