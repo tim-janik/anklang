@@ -643,7 +643,7 @@ public:
                   idle_iface_ = (const LV2UI_Idle_Interface*) descriptor->extension_data (LV2_UI__idleInterface);
                 x11wrapper->show_window (window_id_);
 
-                int period_ms = 25;
+                int period_ms = 1000. / plugin_instance->ui_update_fps;
 
                 timer_id_ = main_loop->exec_timer ([this, plugin_instance] () {
                   if (idle_iface_)
