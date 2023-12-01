@@ -160,7 +160,7 @@ public:
       id = next_id++;
 
     m_urid_unmap[id] = str;
-    printf ("map %s -> %d\n", str, id);
+    printerr ("map %s -> %d\n", str, id);
     return id;
   }
   const char *
@@ -243,7 +243,7 @@ public:
     quit_ = 1;
     sem_.post();
     thread_.join();
-    printf ("worker thread joined\n");
+    printerr ("worker thread joined\n");
   }
 
   void
@@ -265,7 +265,7 @@ public:
         work_events_.for_each (trash_events_,
           [this] (const ControlEvent *event)
             {
-              printf ("got work %zd bytes\n", event->size());
+              printerr ("got work %zd bytes\n", event->size());
               worker_interface->work (instance, respond, this, event->size(), event->data());
             });
         // free both: old worker events and old response events
@@ -288,7 +288,7 @@ public:
     if (!worker_interface)
       return LV2_WORKER_ERR_UNKNOWN;
 
-    printf ("queue work response\n");
+    printerr ("queue work response\n");
     response_events_.push (ControlEvent::loft_new (0, 0, size, data));
     return LV2_WORKER_SUCCESS;
   }
@@ -298,7 +298,7 @@ public:
     response_events_.for_each (trash_events_,
       [this] (const ControlEvent *event)
         {
-          printf ("got work response %zd bytes\n", event->size());
+          printerr ("got work response %zd bytes\n", event->size());
           worker_interface->work_response (instance, event->size(), event->data());
         });
   }
@@ -458,7 +458,7 @@ eh_ui_write (LV2UI_Controller controller,
 uint32_t
 eh_ui_index (SuilController controller, const char* symbol)
 {
-  printf ("ui_index called\n");
+  printerr ("ui_index called\n");
   return 0;
 }
 */
@@ -705,7 +705,7 @@ PluginHost::instantiate (const char *plugin_uri, uint sample_rate)
   LilvNode* uri = lilv_new_uri (world, plugin_uri);
   if (!uri)
     {
-      fprintf (stderr, "Invalid plugin URI <%s>\n", plugin_uri);
+      printerr ("Invalid plugin URI <%s>\n", plugin_uri);
       return nullptr;
     }
 
@@ -715,7 +715,7 @@ PluginHost::instantiate (const char *plugin_uri, uint sample_rate)
 
   if (!plugin)
     {
-      fprintf (stderr, "plugin is nil\n");
+      printerr ("plugin is nil\n");
       return nullptr;
     }
   lilv_node_free (uri);
@@ -725,7 +725,7 @@ PluginHost::instantiate (const char *plugin_uri, uint sample_rate)
   LilvInstance *instance = lilv_plugin_instantiate (plugin, sample_rate, plugin_instance->features.get_features());
   if (!instance)
     {
-      fprintf (stderr, "plugin instantiate failed\n");
+      printerr ("plugin instantiate failed\n");
       delete plugin_instance;
 
       return nullptr;
@@ -823,7 +823,7 @@ PluginInstance::init_ports()
                 }
               else
                 {
-                  printf ("found unknown input port\n");
+                  printerr ("found unknown input port\n");
                 }
             }
           if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_output_class))
@@ -836,7 +836,7 @@ PluginInstance::init_ports()
                 {
                   atom_out_ports.push_back (i);
 
-                  printf ("found atom output port\n");
+                  printerr ("found atom output port\n");
                   const int buf_size = 4096;
                   plugin_ports[i].evbuf = lv2_evbuf_new (buf_size, LV2_EVBUF_ATOM, plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Chunk)),
                                                                                    plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Sequence)));
@@ -852,16 +852,16 @@ PluginInstance::init_ports()
                 }
               else
                 {
-                  printf ("found unknown output port\n");
+                  printerr ("found unknown output port\n");
                 }
             }
         }
     }
 
-  printf ("--------------------------------------------------\n");
-  printf ("audio IN:%zd OUT:%zd\n", audio_in_ports.size(), audio_out_ports.size());
-  printf ("control IN:%zd\n", n_control_ports);
-  printf ("--------------------------------------------------\n");
+  printerr ("--------------------------------------------------\n");
+  printerr ("audio IN:%zd OUT:%zd\n", audio_in_ports.size(), audio_out_ports.size());
+  printerr ("control IN:%zd\n", n_control_ports);
+  printerr ("--------------------------------------------------\n");
 }
 
 void
@@ -921,7 +921,7 @@ PluginInstance::activate()
 {
   if (!active)
     {
-      printf ("activate\n");
+      printerr ("activate\n");
       lilv_instance_activate (instance);
 
       active = true;
@@ -933,7 +933,7 @@ PluginInstance::deactivate()
 {
   if (active)
     {
-      printf ("deactivate\n");
+      printerr ("deactivate\n");
       lilv_instance_deactivate (instance);
 
       active = false;
@@ -1084,7 +1084,7 @@ PluginInstance::get_plugin_ui()
     {
       const LilvUI* this_ui = lilv_uis_get (uis, u);
 
-      printf ("UI: %s\n", lilv_node_as_uri (lilv_ui_get_uri (this_ui)));
+      printerr ("UI: %s\n", lilv_node_as_uri (lilv_ui_get_uri (this_ui)));
       if (lilv_ui_is_a (this_ui, plugin_host.nodes.lv2_ui_x11ui))
         return this_ui;
     }
@@ -1285,7 +1285,7 @@ class LV2Processor : public AudioProcessor {
                 // TODO: this should not be done in audio thread
 
                 auto preset_info = plugin_instance->presets[want_preset - 1];
-                printf ("load preset %s\n", preset_info.name.c_str());
+                printerr ("load preset %s\n", preset_info.name.c_str());
                 LilvState *state = lilv_state_new_from_world (plugin_host.world, plugin_host.urid_map.lv2_map(), preset_info.preset);
                 const LV2_Feature* state_features[] = { // TODO: more features
                   plugin_host.urid_map.map_feature(),
@@ -1410,11 +1410,11 @@ class LV2Processor : public AudioProcessor {
       }
     else
       {
-        fprintf (stderr, "error: Preset `%s' value has bad type <%s>\n",
-                          port_symbol, plugin_instance->plugin_host.urid_map.urid_unmap (type));
+        printerr ("error: Preset `%s' value has bad type <%s>\n",
+                  port_symbol, plugin_instance->plugin_host.urid_map.urid_unmap (type));
         return;
       }
-    printf ("%s = %f\n", port_symbol, dvalue);
+    printerr ("%s = %f\n", port_symbol, dvalue);
     for (int i = 0; i < (int) param_id_port.size(); i++)
       {
         if (param_id_port[i]->symbol == port_symbol)
