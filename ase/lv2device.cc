@@ -432,26 +432,13 @@ struct PluginInstance
   void deactivate();
 
   const LilvUI *get_plugin_ui();
-  void open_ui();
+  void toggle_ui();
   void delete_ui_request();
   void send_plugin_events_to_ui();
   void handle_dsp2ui_events();
   void send_ui_updates (uint32_t delta_frames);
   void set_initial_controls_ui();
 };
-
-void
-eh_ui_write (LV2UI_Controller controller,
-             uint32_t         port_index,
-             uint32_t         buffer_size,
-             uint32_t         protocol,
-             const void*      buffer)
-{
-  PluginInstance *plugin_instance = (PluginInstance *)controller;
-
-  ControlEvent *event = ControlEvent::loft_new (port_index, protocol, buffer_size, buffer);
-  plugin_instance->ui2dsp_events_.push (event);
-}
 
 /* TODO: do we need this function?
 uint32_t
@@ -590,6 +577,10 @@ public:
 
 class PluginUI
 {
+  static void ui_write (LV2UI_Controller controller, uint32_t port_index, uint32_t buffer_size, uint32_t protocol, const void* buffer);
+  static int resize_window (LV2UI_Feature_Handle handle, int width, int height);
+
+  bool init_ok_ = false;
 public:
   void *dlhandle_ = nullptr;
   const LV2UI_Idle_Interface *idle_iface_ = nullptr;
@@ -600,130 +591,156 @@ public:
   uint  timer_id_ = 0;
   PluginInstance *plugin_instance_ = nullptr;
 
-  PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& dlpath, const string& ui_uri, const string& ui_bundle_path)
-  {
-    plugin_instance_ = plugin_instance;
-    dlhandle_ = dlopen (dlpath.c_str(), RTLD_LOCAL | RTLD_NOW);
-    if (dlhandle_)
-      {
-        LV2UI_DescriptorFunction df = (LV2UI_DescriptorFunction) dlsym (dlhandle_, "lv2ui_descriptor");
-        if (df)
-          {
-            const LV2UI_Descriptor *descriptor = nullptr;
-            uint32_t i = 0;
-            do
-              {
-                descriptor = df (i++);
-              }
-            while (descriptor && descriptor->URI != ui_uri);
-
-            if (descriptor && descriptor->URI == ui_uri)
-              {
-                descriptor_ = descriptor;
-
-                string window_title = PluginHost::the().lv2_device_info (plugin_uri).name;
-                Gtk2WindowSetup wsetup {
-                  .title = window_title, .width = 640, .height = 480,
-                  .deleterequest_mt = [plugin_instance] ()
-                    {
-                      main_loop->exec_callback ([plugin_instance]() { plugin_instance->delete_ui_request(); });
-                    }
-                };
-
-                auto x11wrapper = get_x11wrapper();
-                window_id_ = x11wrapper->create_window (wsetup);
-                printerr ("creation: window_id_=%ld\n", window_id_);
-
-                // instance access:
-                const LV2_Feature instance_feature = {
-                  NS_EXT "instance-access", lilv_instance_get_handle (plugin_instance->instance)
-                };
-                // data access:
-                const LV2_Feature ext_data_feature = {
-                  LV2_DATA_ACCESS_URI, &plugin_instance->lv2_ext_data
-                };
-                const LV2_Feature idle_feature = {
-                  LV2_UI__idleInterface, nullptr
-                };
-                // for passing parent window id
-                LV2_Feature parent_feature = {
-                  LV2_UI__parent, (void *) window_id_
-                };
-                // resize window func
-                auto resize_window = [] (LV2UI_Feature_Handle handle, int width, int height) -> int {
-                  PluginUI *plugin_ui = (PluginUI *) handle;
-                  auto x11wrapper = get_x11wrapper();
-                  bool ok = x11wrapper->resize_window (plugin_ui->window_id_, width, height);
-                  if (ok)
-                    return 0;
-                  else
-                    return 1;
-                };
-                ui_resize_.handle = this;
-                ui_resize_.ui_resize = resize_window;
-                const LV2_Feature ui_resize_feature = {
-                  LV2_UI__resize, &ui_resize_
-                };
-
-                Features ui_features;
-                ui_features.add (&instance_feature);
-                ui_features.add (&ext_data_feature);
-                ui_features.add (&idle_feature);
-                ui_features.add (&parent_feature);
-                ui_features.add (&ui_resize_feature);
-                ui_features.add (plugin_instance->plugin_host.urid_map.map_feature());
-                ui_features.add (plugin_instance->plugin_host.urid_map.unmap_feature());
-                ui_features.add (plugin_instance->plugin_host.options.feature()); /* TODO: maybe make a local version */
-
-                LV2UI_Widget ui_widget = nullptr;
-
-                handle_ = descriptor->instantiate (descriptor, plugin_uri.c_str(), ui_bundle_path.c_str(), eh_ui_write,
-                                                   plugin_instance, &ui_widget, ui_features.get_features());
-                assert_return (handle_ != nullptr);
-                if (descriptor->extension_data)
-                  idle_iface_ = (const LV2UI_Idle_Interface*) descriptor->extension_data (LV2_UI__idleInterface);
-                x11wrapper->show_window (window_id_);
-
-                int period_ms = 1000. / plugin_instance->ui_update_fps;
-
-                timer_id_ = main_loop->exec_timer ([this, plugin_instance] () {
-                  if (idle_iface_)
-                    idle_iface_->idle (handle_);
-                  plugin_instance->handle_dsp2ui_events();
-                  return true;
-                }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
-
-                // enable DSP->UI notifications
-                plugin_instance->plugin_ui_is_active.store (true);
-                plugin_instance->set_initial_controls_ui();
-              }
-          }
-      }
-  }
-  ~PluginUI()
-  {
-    // disable DSP->UI notifications
-    plugin_instance_->plugin_ui_is_active.store (false);
-
-    if (descriptor_ && descriptor_->cleanup)
-      {
-        descriptor_->cleanup (handle_);
-        descriptor_ = nullptr;
-      }
-    if (window_id_)
-      {
-        auto x11wrapper = get_x11wrapper();
-        x11wrapper->destroy_window (window_id_);
-        window_id_ = 0;
-      }
-    if (timer_id_)
-      {
-        main_loop->remove (timer_id_);
-        timer_id_ = 0;
-      }
-  }
+  PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& dlpath, const string& ui_uri, const string& ui_bundle_path);
+  ~PluginUI();
+  bool init_ok() const { return init_ok_; }
 };
 
+PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& dlpath, const string& ui_uri, const string& ui_bundle_path)
+{
+  plugin_instance_ = plugin_instance;
+  dlhandle_ = dlopen (dlpath.c_str(), RTLD_LOCAL | RTLD_NOW);
+  if (dlhandle_)
+    {
+      LV2UI_DescriptorFunction df = (LV2UI_DescriptorFunction) dlsym (dlhandle_, "lv2ui_descriptor");
+      if (df)
+        {
+          const LV2UI_Descriptor *descriptor = nullptr;
+          uint32_t i = 0;
+          do
+            {
+              descriptor = df (i++);
+            }
+          while (descriptor && descriptor->URI != ui_uri);
+
+          if (descriptor && descriptor->URI == ui_uri)
+            {
+              descriptor_ = descriptor;
+
+              string window_title = PluginHost::the().lv2_device_info (plugin_uri).name;
+              Gtk2WindowSetup wsetup {
+                .title = window_title, .width = 640, .height = 480,
+                .deleterequest_mt = [plugin_instance] ()
+                  {
+                    main_loop->exec_callback ([plugin_instance]() { plugin_instance->delete_ui_request(); });
+                  }
+              };
+
+              auto x11wrapper = get_x11wrapper();
+              window_id_ = x11wrapper->create_window (wsetup);
+              printerr ("creation: window_id_=%ld\n", window_id_);
+
+              // instance access:
+              const LV2_Feature instance_feature = {
+                NS_EXT "instance-access", lilv_instance_get_handle (plugin_instance->instance)
+              };
+              // data access:
+              const LV2_Feature ext_data_feature = {
+                LV2_DATA_ACCESS_URI, &plugin_instance->lv2_ext_data
+              };
+              const LV2_Feature idle_feature = {
+                LV2_UI__idleInterface, nullptr
+              };
+              // for passing parent window id
+              LV2_Feature parent_feature = {
+                LV2_UI__parent, (void *) window_id_
+              };
+              // resize window func
+              ui_resize_.handle = this;
+              ui_resize_.ui_resize = resize_window;
+              const LV2_Feature ui_resize_feature = {
+                LV2_UI__resize, &ui_resize_
+              };
+
+              Features ui_features;
+              ui_features.add (&instance_feature);
+              ui_features.add (&ext_data_feature);
+              ui_features.add (&idle_feature);
+              ui_features.add (&parent_feature);
+              ui_features.add (&ui_resize_feature);
+              ui_features.add (plugin_instance->plugin_host.urid_map.map_feature());
+              ui_features.add (plugin_instance->plugin_host.urid_map.unmap_feature());
+              ui_features.add (plugin_instance->plugin_host.options.feature()); /* TODO: maybe make a local version */
+
+              LV2UI_Widget ui_widget = nullptr;
+
+              handle_ = descriptor->instantiate (descriptor, plugin_uri.c_str(), ui_bundle_path.c_str(), ui_write,
+                                                 plugin_instance, &ui_widget, ui_features.get_features());
+              if (!handle_)
+                {
+                  printerr ("LV2: ui for plugin %s could not be created\n", plugin_uri);
+                  return;
+                }
+              if (descriptor->extension_data)
+                idle_iface_ = (const LV2UI_Idle_Interface*) descriptor->extension_data (LV2_UI__idleInterface);
+              x11wrapper->show_window (window_id_);
+
+              int period_ms = 1000. / plugin_instance->ui_update_fps;
+
+              timer_id_ = main_loop->exec_timer ([this, plugin_instance] () {
+                if (idle_iface_)
+                  idle_iface_->idle (handle_);
+                plugin_instance->handle_dsp2ui_events();
+                return true;
+              }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
+
+              // enable DSP->UI notifications
+              plugin_instance->plugin_ui_is_active.store (true);
+              plugin_instance->set_initial_controls_ui();
+
+              init_ok_ = true;
+            }
+        }
+    }
+}
+
+PluginUI::~PluginUI()
+{
+  // disable DSP->UI notifications
+  plugin_instance_->plugin_ui_is_active.store (false);
+
+  if (descriptor_ && handle_ && descriptor_->cleanup)
+    {
+      descriptor_->cleanup (handle_);
+      descriptor_ = nullptr;
+    }
+  if (window_id_)
+    {
+      auto x11wrapper = get_x11wrapper();
+      x11wrapper->destroy_window (window_id_);
+      window_id_ = 0;
+    }
+  if (timer_id_)
+    {
+      main_loop->remove (timer_id_);
+      timer_id_ = 0;
+    }
+}
+
+void
+PluginUI::ui_write (LV2UI_Controller controller,
+                    uint32_t         port_index,
+                    uint32_t         buffer_size,
+                    uint32_t         protocol,
+                    const void*      buffer)
+{
+  PluginInstance *plugin_instance = (PluginInstance *)controller;
+
+  ControlEvent *event = ControlEvent::loft_new (port_index, protocol, buffer_size, buffer);
+  plugin_instance->ui2dsp_events_.push (event);
+}
+
+int
+PluginUI::resize_window (LV2UI_Feature_Handle handle, int width, int height)
+{
+  PluginUI *plugin_ui = (PluginUI *) handle;
+  auto x11wrapper = get_x11wrapper();
+  bool ok = x11wrapper->resize_window (plugin_ui->window_id_, width, height);
+  if (ok)
+    return 0;
+  else
+    return 1;
+};
 
 Options::Options (PluginHost& plugin_host) :
   plugin_host (plugin_host),
@@ -1133,8 +1150,13 @@ PluginInstance::get_plugin_ui()
 }
 
 void
-PluginInstance::open_ui()
+PluginInstance::toggle_ui()
 {
+  if (plugin_ui) // ui already opened? -> close!
+    {
+      plugin_ui.reset();
+      return;
+    }
   // ---------------------ui------------------------------
   const LilvUI *ui = get_plugin_ui();
   const char* bundle_uri  = lilv_node_as_uri(lilv_ui_get_bundle_uri(ui));
@@ -1144,6 +1166,10 @@ PluginInstance::open_ui()
   char*       binary_path = lilv_file_uri_parse(binary_uri, NULL);
 
   plugin_ui = std::make_unique <PluginUI> (this, plugin_uri, binary_path, lilv_node_as_uri (lilv_ui_get_uri (get_plugin_ui())), bundle_path);
+
+  // if UI could not be created (for whatever reason) reset pointer to nullptr to free stuff and avoid crashes
+  if (!plugin_ui->init_ok())
+    plugin_ui.reset();
 }
 
 void
@@ -1507,7 +1533,7 @@ void
 LV2DeviceImpl::gui_toggle()
 {
   auto lv2aproc = dynamic_cast<LV2Processor *> (proc_.get());
-  lv2aproc->instance()->open_ui();
+  lv2aproc->instance()->toggle_ui();
 }
 
 LV2DeviceImpl::LV2DeviceImpl (const String &lv2_uri, AudioProcessorP proc) :
