@@ -397,7 +397,6 @@ struct PluginInstance
   std::atomic<bool>          plugin_ui_is_active { false };
 
   LV2_Extension_Data_Feature lv2_ext_data;
-  LV2UI_Resize               ui_resize;
 
   Features features;
 
@@ -594,14 +593,14 @@ class PluginUI
 public:
   void *dlhandle_ = nullptr;
   const LV2UI_Idle_Interface *idle_iface_ = nullptr;
-  LV2UI_Handle handle_ = nullptr;
-  const LV2UI_Descriptor *descriptor_ = nullptr;
+  LV2UI_Resize               ui_resize_;
+  LV2UI_Handle               handle_ = nullptr;
+  const LV2UI_Descriptor    *descriptor_ = nullptr;
   ulong window_id_ = 0;
   uint  timer_id_ = 0;
   PluginInstance *plugin_instance_ = nullptr;
 
-  PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& dlpath, const string& ui_uri, const string& ui_bundle_path,
-            const LV2_Feature* const* features, LV2_Feature *parent_feature, LV2UI_Resize *ui_resize)
+  PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& dlpath, const string& ui_uri, const string& ui_bundle_path)
   {
     plugin_instance_ = plugin_instance;
     dlhandle_ = dlopen (dlpath.c_str(), RTLD_LOCAL | RTLD_NOW);
@@ -630,14 +629,56 @@ public:
                       main_loop->exec_callback ([plugin_instance]() { plugin_instance->delete_ui_request(); });
                     }
                 };
-                LV2UI_Widget ui_widget = nullptr;
 
                 auto x11wrapper = get_x11wrapper();
                 window_id_ = x11wrapper->create_window (wsetup);
                 printerr ("creation: window_id_=%ld\n", window_id_);
-                parent_feature->data = (void *) window_id_;
-                ui_resize->handle = this;
-                handle_ = descriptor->instantiate (descriptor, plugin_uri.c_str(), ui_bundle_path.c_str(), eh_ui_write, plugin_instance, &ui_widget, features);
+
+                // instance access:
+                const LV2_Feature instance_feature = {
+                  NS_EXT "instance-access", lilv_instance_get_handle (plugin_instance->instance)
+                };
+                // data access:
+                const LV2_Feature ext_data_feature = {
+                  LV2_DATA_ACCESS_URI, &plugin_instance->lv2_ext_data
+                };
+                const LV2_Feature idle_feature = {
+                  LV2_UI__idleInterface, nullptr
+                };
+                // for passing parent window id
+                LV2_Feature parent_feature = {
+                  LV2_UI__parent, (void *) window_id_
+                };
+                // resize window func
+                auto resize_window = [] (LV2UI_Feature_Handle handle, int width, int height) -> int {
+                  PluginUI *plugin_ui = (PluginUI *) handle;
+                  auto x11wrapper = get_x11wrapper();
+                  bool ok = x11wrapper->resize_window (plugin_ui->window_id_, width, height);
+                  if (ok)
+                    return 0;
+                  else
+                    return 1;
+                };
+                ui_resize_.handle = this;
+                ui_resize_.ui_resize = resize_window;
+                const LV2_Feature ui_resize_feature = {
+                  LV2_UI__resize, &ui_resize_
+                };
+
+                Features ui_features;
+                ui_features.add (&instance_feature);
+                ui_features.add (&ext_data_feature);
+                ui_features.add (&idle_feature);
+                ui_features.add (&parent_feature);
+                ui_features.add (&ui_resize_feature);
+                ui_features.add (plugin_instance->plugin_host.urid_map.map_feature());
+                ui_features.add (plugin_instance->plugin_host.urid_map.unmap_feature());
+                ui_features.add (plugin_instance->plugin_host.options.feature()); /* TODO: maybe make a local version */
+
+                LV2UI_Widget ui_widget = nullptr;
+
+                handle_ = descriptor->instantiate (descriptor, plugin_uri.c_str(), ui_bundle_path.c_str(), eh_ui_write,
+                                                   plugin_instance, &ui_widget, ui_features.get_features());
                 assert_return (handle_ != nullptr);
                 if (descriptor->extension_data)
                   idle_iface_ = (const LV2UI_Idle_Interface*) descriptor->extension_data (LV2_UI__idleInterface);
@@ -1102,49 +1143,7 @@ PluginInstance::open_ui()
   char*       bundle_path = lilv_file_uri_parse(bundle_uri, NULL);
   char*       binary_path = lilv_file_uri_parse(binary_uri, NULL);
 
-  // instance access:
-  const LV2_Feature instance_feature = {
-    NS_EXT "instance-access", lilv_instance_get_handle (instance)
-  };
-  // data access:
-  const LV2_Feature ext_data_feature = {
-    LV2_DATA_ACCESS_URI, &lv2_ext_data
-  };
-  const LV2_Feature idle_feature = {
-    LV2_UI__idleInterface, nullptr
-  };
-  // for passing parent window id
-  LV2_Feature parent_feature = {
-    LV2_UI__parent, nullptr
-  };
-  // resize window func
-  auto resize_window = [] (LV2UI_Feature_Handle handle, int width, int height) -> int {
-    PluginUI *plugin_ui = (PluginUI *) handle;
-    auto x11wrapper = get_x11wrapper();
-    bool ok = x11wrapper->resize_window (plugin_ui->window_id_, width, height);
-    if (ok)
-      return 0;
-    else
-      return 1;
-  };
-  ui_resize.handle = plugin_ui.get();
-  ui_resize.ui_resize = resize_window;
-  const LV2_Feature ui_resize_feature = {
-    LV2_UI__resize, &ui_resize
-  };
-
-  Features ui_features;
-  ui_features.add (&instance_feature);
-  ui_features.add (&ext_data_feature);
-  ui_features.add (&idle_feature);
-  ui_features.add (&parent_feature);
-  ui_features.add (&ui_resize_feature);
-  ui_features.add (plugin_host.urid_map.map_feature());
-  ui_features.add (plugin_host.urid_map.unmap_feature());
-  ui_features.add (plugin_host.options.feature()); /* TODO: maybe make a local version */
-
-  plugin_ui = std::make_unique <PluginUI> (this, plugin_uri, binary_path, lilv_node_as_uri (lilv_ui_get_uri (get_plugin_ui())), bundle_path,
-                                           ui_features.get_features(), &parent_feature, &ui_resize);
+  plugin_ui = std::make_unique <PluginUI> (this, plugin_uri, binary_path, lilv_node_as_uri (lilv_ui_get_uri (get_plugin_ui())), bundle_path);
 }
 
 void
