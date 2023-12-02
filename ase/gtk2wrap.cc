@@ -3,11 +3,14 @@
 #include <gtk/gtk.h>
 #include <semaphore.h>
 #include <thread>
+#include <map>
+#include <cassert>
 
 namespace { // Anon
 using namespace Ase;
 
-static std::thread *gtkthred = nullptr;
+static std::thread *gtk_thread = nullptr;
+static std::thread::id gtk_thread_id {};
 
 // == Semaphore ==
 class Semaphore {
@@ -137,11 +140,71 @@ hide_window (ulong windowid)
   return true;
 }
 
+static std::thread::id
+get_gtk_thread_id()
+{
+  return std::this_thread::get_id();
+}
+
+struct TimerHelper
+{
+  std::function<bool()> callback;
+  guint id = 0;
+};
+
+std::map<guint, std::unique_ptr<TimerHelper>> timer_helper_map;
+
+static guint
+register_timer (const std::function<bool()>& callback, guint interval_ms)
+{
+  auto timer_helper_ptr = std::make_unique<TimerHelper> (callback, 0);
+
+  guint id = g_timeout_add (interval_ms,
+    [] (gpointer data) -> int
+      {
+        TimerHelper *helper = (TimerHelper *) data;
+        auto again = helper->callback();
+        if (!again)
+          timer_helper_map.erase (helper->id);
+        return again;
+      },
+    timer_helper_ptr.get());
+
+  timer_helper_ptr->id = id;
+  timer_helper_map[id] = std::move (timer_helper_ptr);
+  return id;
+}
+
+static bool
+remove_timer (uint timer_id)
+{
+  if (timer_helper_map.erase (timer_id) != 1)
+    fprintf (stderr, "Gtk2Wrap: removing timer callback id=%u from map failed\n", timer_id);
+
+  if (g_source_remove (timer_id))
+    return true;
+
+  fprintf (stderr, "Gtk2Wrap: removing timer with id=%u failed", timer_id);
+  return false;
+}
+
+static bool
+exec_in_gtk_thread (const std::function<void()>& func)
+{
+  func();
+  return true;
+}
+
 template<typename Ret, typename ...Args, typename ...Params> static Ret
 gtkidle_call (Ret (*func) (Params...), Args &&...args)
 {
-  if (!gtkthred)        // FIXME: need thread cleanup
-    gtkthred = new std::thread (gtkmain);
+  if (!gtk_thread)        // FIXME: need thread cleanup
+    {
+      gtk_thread = new std::thread (gtkmain);
+      gtk_thread_id = gtk_thread->get_id();
+    }
+  // using this function from gtk thread would block execution (and never return)
+  assert (std::this_thread::get_id() != gtk_thread_id);
   Semaphore sem;
   Ret ret = {};
   BWrap *bw = bwrap ([&sem, &ret, func, &args...] () -> bool {
@@ -167,6 +230,9 @@ Ase::Gtk2DlWrapEntry Ase__Gtk2__wrapentry {
   .resize_window = [] (ulong windowid, int width, int height) {
     return gtkidle_call (resize_window, windowid, width, height);
   },
+  .resize_window_gtk_thread = [] (ulong windowid, int width, int height) {
+    return resize_window (windowid, width, height);
+  },
   .show_window = [] (ulong windowid) {
     gtkidle_call (show_window, windowid);
   },
@@ -178,5 +244,17 @@ Ase::Gtk2DlWrapEntry Ase__Gtk2__wrapentry {
   },
   .threads_enter = gdk_threads_enter,
   .threads_leave = gdk_threads_leave,
+  .gtk_thread_id = [] () -> std::thread::id {
+    return gtkidle_call (get_gtk_thread_id);
+  },
+  .register_timer = [] (const std::function<bool()>& callback, uint interval_ms) -> uint {
+    return gtkidle_call (register_timer, callback, interval_ms);
+  },
+  .remove_timer = [] (uint timer_id) -> bool {
+    return gtkidle_call (remove_timer, timer_id);
+  },
+  .exec_in_gtk_thread = [] (const std::function<void()>& func) {
+    gtkidle_call (exec_in_gtk_thread, func);
+  }
 };
 } // "C"
