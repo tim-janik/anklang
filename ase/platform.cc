@@ -1105,7 +1105,16 @@ TaskRegistry::setup_ase (const String &name16chars)
   this_thread_set_name (name16chars);
 }
 
+void
+TaskRegistry::set_gtk_thread_id (std::thread::id thread_id)
+{
+  assert_return (gtk_thread_id == std::thread::id{});
+  gtk_thread_id = thread_id;
+  assert_return (gtk_thread_id != std::thread::id{});
+}
+
 std::thread::id TaskRegistry::ase_thread_id = {};
+std::thread::id TaskRegistry::gtk_thread_id = {};
 
 // == Thread Info ==
 ThreadId
