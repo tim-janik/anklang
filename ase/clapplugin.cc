@@ -1977,6 +1977,8 @@ try_load_x11wrapper()
     return (Gtk2DlWrapEntry*) ptr;
   } ();
   x11wrapper = gtk2wrapentry;
+  if (x11wrapper)
+    TaskRegistry::set_gtk_thread_id (x11wrapper->gtk_thread_id());
 }
 
 Gtk2DlWrapEntry *
