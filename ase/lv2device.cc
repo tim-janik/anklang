@@ -19,7 +19,6 @@
 #include "lv2device.hh"
 
 #include <lilv/lilv.h>
-#include <dlfcn.h>
 
 // X11 wrapper
 #include "clapplugin.hh"
@@ -47,7 +46,7 @@ class ControlEvent
   size_t                      size_;
   LoftPtr<void>               data_;
 
- public:
+public:
   std::atomic<ControlEvent *> next_ = nullptr;
 
   static ControlEvent *
@@ -442,19 +441,31 @@ struct PluginInstance
   void set_initial_controls_ui();
 };
 
-/* TODO: do we need this function?
-uint32_t
-eh_ui_index (SuilController controller, const char* symbol)
+void
+host_ui_write (void          *controller,
+               uint32_t       port_index,
+               uint32_t       buffer_size,
+               uint32_t       protocol,
+               const void*    buffer)
 {
-  printerr ("ui_index called\n");
+  PluginInstance *plugin_instance = (PluginInstance *) controller;
+  ControlEvent *event = ControlEvent::loft_new (port_index, protocol, buffer_size, buffer);
+  plugin_instance->ui2dsp_events_.push (event);
+}
+
+// TODO: do we need to implement this function?
+uint32_t
+host_ui_index (void *controller, const char* symbol)
+{
+  printerr ("LV2: host_ui_index %s called but not implemented\n", symbol);
   return 0;
 }
-*/
 
 struct PluginHost
 {
   LilvWorld   *world = nullptr;
   Map          urid_map;
+  void        *suil_host;
 
   struct URIDs {
     LV2_URID param_sampleRate;
@@ -491,7 +502,6 @@ struct PluginHost
     LilvNode *lv2_atom_Chunk;
     LilvNode *lv2_atom_Sequence;
     LilvNode *lv2_presets_Preset;
-    LilvNode *lv2_ui_x11ui;
 
     LilvNode *rdfs_label;
 
@@ -507,7 +517,6 @@ struct PluginHost
       lv2_atom_Sequence = lilv_new_uri (world, LV2_ATOM__Sequence);
 
       lv2_presets_Preset = lilv_new_uri (world, LV2_PRESETS__Preset);
-      lv2_ui_x11ui       = lilv_new_uri (world, LV2_UI__X11UI);
       rdfs_label         = lilv_new_uri (world, LILV_NS_RDFS "label");
     }
   } nodes;
@@ -516,10 +525,17 @@ struct PluginHost
 
 private:
   PluginHost() :
-    world (nullptr),
     urids (urid_map),
     options (*this)
   {
+    if (!x11wrapper)
+      x11wrapper = get_x11wrapper();
+    if (x11wrapper)
+      {
+        suil_host = x11wrapper->create_suil_host (host_ui_write, host_ui_index);
+        // TODO: free suil_host when done
+      }
+
     world = lilv_world_new();
     lilv_world_load_all (world);
 
@@ -579,65 +595,28 @@ public:
 
 class PluginUI
 {
-  static void ui_write (LV2UI_Controller controller, uint32_t port_index, uint32_t buffer_size, uint32_t protocol, const void* buffer);
-  static int resize_window (LV2UI_Feature_Handle handle, int width, int height);
-
   bool init_ok_ = false;
   bool ui_is_visible_ = false;
 public:
-  void *dlhandle_ = nullptr;
   const LV2UI_Idle_Interface *idle_iface_ = nullptr;
-  LV2UI_Resize               ui_resize_;
   LV2UI_Handle               handle_ = nullptr;
-  const LV2UI_Descriptor    *descriptor_ = nullptr;
-  ulong window_id_ = 0;
-  uint  timer_id_ = 0;
+  void                      *window_ = nullptr;
+  uint                       timer_id_ = 0;
   PluginInstance *plugin_instance_ = nullptr;
+  void *ui_instance_ = nullptr;
 
-  PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& dlpath, const string& ui_uri, const string& ui_bundle_path);
+  PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& ui_uri,
+            const string& ui_type, const string& bundle_path, const string& binary_path);
   ~PluginUI();
   bool init_ok() const { return init_ok_; }
 };
 
-PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& dlpath, const string& ui_uri, const string& ui_bundle_path)
+PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& ui_uri,
+                    const string& ui_type, const string& bundle_path, const string& binary_path)
 {
   plugin_instance_ = plugin_instance;
 
-  dlhandle_ = dlopen (dlpath.c_str(), RTLD_LOCAL | RTLD_NOW);
-  if (!dlhandle_)
-    return;
-
-  LV2UI_DescriptorFunction df = (LV2UI_DescriptorFunction) dlsym (dlhandle_, "lv2ui_descriptor");
-  if (!df)
-    return;
-
-  const LV2UI_Descriptor *descriptor = nullptr;
-  uint32_t i = 0;
-  do
-    {
-      descriptor = df (i++);
-    }
-  while (descriptor && descriptor->URI != ui_uri);
-
-  if (!descriptor)
-   return;
-
-  if (descriptor->URI != ui_uri)
-    return;
-
-  descriptor_ = descriptor;
-
   string window_title = PluginHost::the().lv2_device_info (plugin_uri).name;
-  Gtk2WindowSetup wsetup {
-    .title = window_title, .width = 640, .height = 480,
-    .deleterequest_mt = [this] ()
-      {
-        ui_is_visible_ = false; /* don't want to call idle function if the ui has been closed */
-        main_loop->exec_callback ([this]() { plugin_instance_->delete_ui_request(); });
-      }
-  };
-
-  window_id_ = x11wrapper->create_window (wsetup);
 
   // instance access:
   const LV2_Feature instance_feature = {
@@ -647,58 +626,45 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, c
   const LV2_Feature ext_data_feature = {
     LV2_DATA_ACCESS_URI, &plugin_instance->lv2_ext_data
   };
-  const LV2_Feature idle_feature = {
-    LV2_UI__idleInterface, nullptr
-  };
-  // for passing parent window id
-  LV2_Feature parent_feature = {
-    LV2_UI__parent, (void *) window_id_
-  };
-  // resize window func
-  ui_resize_.handle = this;
-  ui_resize_.ui_resize = resize_window;
-  const LV2_Feature ui_resize_feature = {
-    LV2_UI__resize, &ui_resize_
-  };
 
   Features ui_features;
   ui_features.add (&instance_feature);
   ui_features.add (&ext_data_feature);
-  ui_features.add (&idle_feature);
-  ui_features.add (&parent_feature);
-  ui_features.add (&ui_resize_feature);
   ui_features.add (plugin_instance->plugin_host.urid_map.map_feature());
   ui_features.add (plugin_instance->plugin_host.urid_map.unmap_feature());
   ui_features.add (plugin_instance->plugin_host.options.feature()); /* TODO: maybe make a local version */
 
-  LV2UI_Widget ui_widget = nullptr;
-
-  x11wrapper->exec_in_gtk_thread ([&]()
-    {
-      handle_ = descriptor->instantiate (descriptor, plugin_uri.c_str(), ui_bundle_path.c_str(), ui_write,
-                                         plugin_instance, &ui_widget, ui_features.get_features());
-    });
-  if (!handle_)
+  ui_instance_ = x11wrapper->create_suil_instance (PluginHost::the().suil_host,
+                                                   plugin_instance,
+                                                   "http://lv2plug.in/ns/extensions/ui#GtkUI",
+                                                   plugin_uri,
+                                                   ui_uri,
+                                                   ui_type,
+                                                   bundle_path,
+                                                   binary_path,
+                                                   ui_features.get_features());
+  if (!ui_instance_)
     {
       printerr ("LV2: ui for plugin %s could not be created\n", plugin_uri);
       return;
     }
-  if (descriptor->extension_data)
-    idle_iface_ = (const LV2UI_Idle_Interface*) descriptor->extension_data (LV2_UI__idleInterface);
-  x11wrapper->show_window (window_id_);
+  window_ = x11wrapper->create_suil_window (ui_instance_, window_title,
+    [this] ()
+          {
+            ui_is_visible_ = false; /* don't want to pass dsp events to ui if it has been closed */
+            main_loop->exec_callback ([this]() { plugin_instance_->delete_ui_request(); });
+          });
+  ui_is_visible_ = true;
 
   int period_ms = 1000. / plugin_instance->ui_update_fps;
-
-  ui_is_visible_ = true;
-  timer_id_ = x11wrapper->register_timer ([this] {
-    if (ui_is_visible_)
+  timer_id_ = x11wrapper->register_timer (
+    [this]
       {
-        if (idle_iface_)
-          idle_iface_->idle (handle_);
-        plugin_instance_->handle_dsp2ui_events();
-      }
-    return true;
-  }, period_ms);
+        if (ui_is_visible_)
+          plugin_instance_->handle_dsp2ui_events();
+        return true;
+      },
+    period_ms);
 
   // enable DSP->UI notifications
   plugin_instance->plugin_ui_is_active.store (true);
@@ -712,15 +678,15 @@ PluginUI::~PluginUI()
   // disable DSP->UI notifications
   plugin_instance_->plugin_ui_is_active.store (false);
 
-  if (descriptor_ && handle_ && descriptor_->cleanup)
+  if (ui_instance_)
     {
-      descriptor_->cleanup (handle_);
-      descriptor_ = nullptr;
+      x11wrapper->destroy_suil_instance (ui_instance_);
+      ui_instance_ = nullptr;
     }
-  if (window_id_)
+  if (window_)
     {
-      x11wrapper->destroy_window (window_id_);
-      window_id_ = 0;
+      x11wrapper->destroy_suil_window (window_);
+      window_ = nullptr;
     }
   if (timer_id_)
     {
@@ -728,32 +694,6 @@ PluginUI::~PluginUI()
       timer_id_ = 0;
     }
 }
-
-void
-PluginUI::ui_write (LV2UI_Controller controller,
-                    uint32_t         port_index,
-                    uint32_t         buffer_size,
-                    uint32_t         protocol,
-                    const void*      buffer)
-{
-  PluginInstance *plugin_instance = (PluginInstance *)controller;
-
-  ControlEvent *event = ControlEvent::loft_new (port_index, protocol, buffer_size, buffer);
-  plugin_instance->ui2dsp_events_.push (event);
-}
-
-int
-PluginUI::resize_window (LV2UI_Feature_Handle handle, int width, int height)
-{
-  assert_return (this_thread_is_gtk(), /* fail */ 1);
-
-  PluginUI *plugin_ui = (PluginUI *) handle;
-  bool ok = x11wrapper->resize_window_gtk_thread (plugin_ui->window_id_, width, height);
-  if (ok)
-    return 0;
-  else
-    return 1;
-};
 
 Options::Options (PluginHost& plugin_host) :
   plugin_host (plugin_host),
@@ -779,8 +719,6 @@ PluginHost::instantiate (const char *plugin_uri, uint sample_rate)
       printerr ("Invalid plugin URI <%s>\n", plugin_uri);
       return nullptr;
     }
-  if (!x11wrapper)
-    x11wrapper = get_x11wrapper();
   if (!x11wrapper)
     {
       printerr ("LV2: cannot instantiate plugin: missing x11wrapper\n");
@@ -1107,11 +1045,7 @@ PluginInstance::handle_dsp2ui_events()
         assert (event->port_index() < plugin_ports.size());
         // printerr ("handle_dsp2ui_events: pop event: index=%zd, protocol=%d, sz=%zd\n", event->port_index, event->protocol, event->data.size());
         if (plugin_ui)
-          {
-            auto port_event = plugin_ui->descriptor_->port_event;
-            if (port_event)
-              port_event (plugin_ui->handle_, event->port_index(), event->size(), event->protocol(), event->data());
-          }
+          x11wrapper->suil_instance_port_event_gtk_thread (plugin_ui->ui_instance_, event->port_index(), event->size(), event->protocol(), event->data());
       });
   // free both: old dsp2ui events and old ui2dsp events
   trash_events_.free_all();
@@ -1160,6 +1094,8 @@ PluginInstance::send_ui_updates (uint32_t delta_frames)
     }
 }
 
+static const LilvNode *ui_type; // FIXME: not static
+
 const LilvUI *
 PluginInstance::get_plugin_ui()
 {
@@ -1167,12 +1103,18 @@ PluginInstance::get_plugin_ui()
 
   uis = lilv_plugin_get_uis (plugin);
 
+  const LilvNode* native_ui_type = lilv_new_uri (plugin_host.world, "http://lv2plug.in/ns/extensions/ui#GtkUI");
   LILV_FOREACH(uis, u, uis)
     {
       const LilvUI* this_ui = lilv_uis_get (uis, u);
 
-      printerr ("UI: %s\n", lilv_node_as_uri (lilv_ui_get_uri (this_ui)));
-      if (lilv_ui_is_a (this_ui, plugin_host.nodes.lv2_ui_x11ui))
+      if (lilv_ui_is_supported (this_ui,
+                                [](const char *host_type_uri, const char *ui_type_uri)
+                                  {
+                                    return x11wrapper->suil_ui_supported (host_type_uri, ui_type_uri);
+                                  },
+                                native_ui_type,
+                               &ui_type))
         return this_ui;
     }
   return nullptr;
@@ -1194,7 +1136,8 @@ PluginInstance::toggle_ui()
   char*       bundle_path = lilv_file_uri_parse(bundle_uri, NULL);
   char*       binary_path = lilv_file_uri_parse(binary_uri, NULL);
 
-  plugin_ui = std::make_unique <PluginUI> (this, plugin_uri, binary_path, lilv_node_as_uri (lilv_ui_get_uri (get_plugin_ui())), bundle_path);
+  plugin_ui = std::make_unique <PluginUI> (this, plugin_uri, lilv_node_as_uri (lilv_ui_get_uri (get_plugin_ui())),
+                                           lilv_node_as_uri (ui_type), bundle_path, binary_path);
 
   // if UI could not be created (for whatever reason) reset pointer to nullptr to free stuff and avoid crashes
   if (!plugin_ui->init_ok())
