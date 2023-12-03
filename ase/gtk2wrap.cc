@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "gtk2wrap.hh"
 #include <gtk/gtk.h>
+#include <suil/suil.h>
 #include <semaphore.h>
 #include <thread>
 #include <map>
@@ -8,6 +9,8 @@
 
 namespace { // Anon
 using namespace Ase;
+
+using std::string;
 
 static std::thread *gtk_thread = nullptr;
 static std::thread::id gtk_thread_id {};
@@ -97,6 +100,20 @@ create_window (const Gtk2WindowSetup &wsetup)
   gtk_widget_show_all (gtk_bin_get_child (GTK_BIN (window)));
   gtk_window_set_title (GTK_WINDOW (window), wsetup.title.c_str());
   return windowid;
+}
+
+static void *
+create_suil_window (void *suil_instance, const string &window_title, const std::function<void()>& deleterequest_mt)
+{
+  GtkWidget *window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_resizable (GTK_WINDOW (window), false);
+  BWrap *bw = vwrap (deleterequest_mt);
+  g_signal_connect_data (window, "delete-event", (GCallback) bw->truefunc, bw, (GClosureNotify) bw->deleter, G_CONNECT_SWAPPED);
+  GtkWidget *widget = GTK_WIDGET (suil_instance_get_widget ((SuilInstance *) suil_instance));
+  gtk_container_add (GTK_CONTAINER (window), widget);
+  gtk_window_set_title (GTK_WINDOW (window), window_title.c_str());
+  gtk_widget_show_all (window);
+  return window;
 }
 
 static bool
@@ -230,9 +247,6 @@ Ase::Gtk2DlWrapEntry Ase__Gtk2__wrapentry {
   .resize_window = [] (ulong windowid, int width, int height) {
     return gtkidle_call (resize_window, windowid, width, height);
   },
-  .resize_window_gtk_thread = [] (ulong windowid, int width, int height) {
-    return resize_window (windowid, width, height);
-  },
   .show_window = [] (ulong windowid) {
     gtkidle_call (show_window, windowid);
   },
@@ -255,6 +269,35 @@ Ase::Gtk2DlWrapEntry Ase__Gtk2__wrapentry {
   },
   .exec_in_gtk_thread = [] (const std::function<void()>& func) {
     gtkidle_call (exec_in_gtk_thread, func);
+  },
+  .create_suil_host = [] (SPortWriteFunc write_func, SPortIndexFunc index_func) -> void * {
+    return gtkidle_call (suil_host_new, write_func, index_func, nullptr, nullptr);
+  },
+  .create_suil_instance = [] (void *host, void *controller,
+                              const string &container_type_uri, const string &plugin_uri,
+                              const string &ui_uri, const string &ui_type_uri,
+                              const string &ui_bundle_path, const string &ui_binary_path,
+                              const LV2_Feature *const *features) -> void * {
+    return gtkidle_call (suil_instance_new, (SuilHost *) host, (SuilController *) controller,
+                         container_type_uri.c_str(), plugin_uri.c_str(),
+                         ui_uri.c_str(), ui_type_uri.c_str(),
+                         ui_bundle_path.c_str(), ui_binary_path.c_str(),
+                         features);
+  },
+  .destroy_suil_instance = [] (void *instance) {
+    gtkidle_call (exec_in_gtk_thread, [&] { suil_instance_free ((SuilInstance *) instance); });
+  },
+  .create_suil_window = [] (void *instance, const string &window_title, const std::function<void()>& deleterequest_mt) -> void * {
+    return gtkidle_call (create_suil_window, instance, window_title, deleterequest_mt);
+  },
+  .destroy_suil_window = [] (void *window) -> void {
+    gtkidle_call (exec_in_gtk_thread, [&] { gtk_widget_destroy (GTK_WIDGET (window)); });
+  },
+  .suil_ui_supported = [] (const string& host_type_uri, const string& ui_type_uri) -> unsigned {
+    return suil_ui_supported (host_type_uri.c_str(), ui_type_uri.c_str());
+  },
+  .suil_instance_port_event_gtk_thread = [] (void *instance, uint32_t port_index, uint32_t buffer_size, uint32_t format, const void *buffer) {
+    return suil_instance_port_event ((SuilInstance *) instance, port_index, buffer_size, format, buffer);
   }
 };
 } // "C"
