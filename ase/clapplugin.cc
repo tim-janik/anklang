@@ -1971,7 +1971,7 @@ try_load_x11wrapper()
   return_unless (x11wrapper == nullptr);
   static Gtk2DlWrapEntry *gtk2wrapentry = [] () {
     String gtk2wrapso = anklang_runpath (RPath::LIBDIR, "gtk2wrap.so");
-    void *gtkdlhandle_ = dlopen (gtk2wrapso.c_str(), RTLD_LOCAL | RTLD_NOW);
+    void *gtkdlhandle_ = dlopen (gtk2wrapso.c_str(), RTLD_GLOBAL | RTLD_NOW);
     const char *symname = "Ase__Gtk2__wrapentry";
     void *ptr = gtkdlhandle_ ? dlsym (gtkdlhandle_, symname) : nullptr;
     return (Gtk2DlWrapEntry*) ptr;
