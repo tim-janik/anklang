@@ -786,8 +786,13 @@ PluginInstance::~PluginInstance()
       if (active)
         deactivate();
 
-      lilv_instance_free (instance);
-      instance = nullptr;
+      if (instance)
+        {
+          x11wrapper->exec_in_gtk_thread ([&]() {
+            lilv_instance_free (instance);
+          });
+          instance = nullptr;
+        }
     }
 }
 
