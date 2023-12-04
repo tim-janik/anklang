@@ -626,10 +626,21 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, c
   const LV2_Feature ext_data_feature = {
     LV2_DATA_ACCESS_URI, &plugin_instance->lv2_ext_data
   };
+  window_ = x11wrapper->create_suil_window (window_title,
+    [this] ()
+      {
+        ui_is_visible_ = false; /* don't want to pass dsp events to ui if it has been closed */
+        main_loop->exec_callback ([this]() { plugin_instance_->delete_ui_request(); });
+      });
+  // for passing parent window id
+  LV2_Feature parent_feature = {
+    LV2_UI__parent, window_
+  };
 
   Features ui_features;
   ui_features.add (&instance_feature);
   ui_features.add (&ext_data_feature);
+  ui_features.add (&parent_feature);
   ui_features.add (plugin_instance->plugin_host.urid_map.map_feature());
   ui_features.add (plugin_instance->plugin_host.urid_map.unmap_feature());
   ui_features.add (plugin_instance->plugin_host.options.feature()); /* TODO: maybe make a local version */
@@ -648,12 +659,7 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, c
       printerr ("LV2: ui for plugin %s could not be created\n", plugin_uri);
       return;
     }
-  window_ = x11wrapper->create_suil_window (ui_instance_, window_title,
-    [this] ()
-          {
-            ui_is_visible_ = false; /* don't want to pass dsp events to ui if it has been closed */
-            main_loop->exec_callback ([this]() { plugin_instance_->delete_ui_request(); });
-          });
+  x11wrapper->add_suil_widget_to_window (window_, ui_instance_);
   ui_is_visible_ = true;
 
   int period_ms = 1000. / plugin_instance->ui_update_fps;
@@ -678,15 +684,15 @@ PluginUI::~PluginUI()
   // disable DSP->UI notifications
   plugin_instance_->plugin_ui_is_active.store (false);
 
-  if (ui_instance_)
-    {
-      x11wrapper->destroy_suil_instance (ui_instance_);
-      ui_instance_ = nullptr;
-    }
   if (window_)
     {
       x11wrapper->destroy_suil_window (window_);
       window_ = nullptr;
+    }
+  if (ui_instance_)
+    {
+      x11wrapper->destroy_suil_instance (ui_instance_);
+      ui_instance_ = nullptr;
     }
   if (timer_id_)
     {
