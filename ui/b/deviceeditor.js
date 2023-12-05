@@ -1,50 +1,56 @@
-<!-- This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 -->
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
-<docs>
-  # B-DEVICEEDITOR
-  Editor for audio signal devices.
-  ## Props:
-  *device*
-  : Audio signal processing device.
-</docs>
+/** @class BDeviceEditor
+ * @description
+* Editor for audio signal devices.
+ *
+ * ## Props:
+ * *device*
+ * : Audio signal processing device.
+ */
 
-<style lang="scss">
-  .b-deviceeditor {
-    .b-deviceeditor-sw {
-      background: $b-device-handle;
-      border-radius: $b-button-radius; border-top-left-radius: 0; border-bottom-left-radius: 0;
-      padding: 0 5px;
-      text-align: center;
-      /* FF: writing-mode: sideways-rl; */
-      writing-mode: vertical-rl; transform: rotate(180deg);
-    }
-    .b-deviceeditor-areas {
-      background: $b-device-bg;
-      grid-gap: 3px;
-      border: $b-panel-border; /*DEBUG: border-color: #333;*/
-      border-radius: $b-button-radius; border-top-left-radius: 0; border-bottom-left-radius: 0;
-      justify-content: flex-start;
-    }
+import { LitComponent, html, render, noChange, JsExtract, docs, ref } from '../little.js';
+import * as Kbd from '../kbd.js';
+
+// == STYLE ==
+JsExtract.scss`
+.b-deviceeditor {
+  .b-deviceeditor-sw {
+    background: $b-device-handle;
+    border-radius: $b-button-radius; border-top-left-radius: 0; border-bottom-left-radius: 0;
+    padding: 0 5px;
+    text-align: center;
+    /* FF: writing-mode: sideways-rl; */
+    writing-mode: vertical-rl; transform: rotate(180deg);
   }
-</style>
+  .b-deviceeditor-areas {
+    background: $b-device-bg;
+    grid-gap: 3px;
+    border: $b-panel-border; /*DEBUG: border-color: #333;*/
+    border-radius: $b-button-radius; border-top-left-radius: 0; border-bottom-left-radius: 0;
+    justify-content: flex-start;
+  }
+}`;
 
-<template>
-  <h-flex class="b-deviceeditor" @contextmenu.prevent="$refs.deviceeditorcmenu.popup ($event)" >
-    <span class="b-deviceeditor-sw" > {{ device_info.name }} </span>
-    <c-grid class="b-deviceeditor-areas" >
-      <b-propgroup v-for="group in gprops" :key="group.name" :style="group_style (group)"
-		   :name="group.name" :props="group.props" />
-    </c-grid>
-    <b-contextmenu ref="deviceeditorcmenu" id="g-deviceeditorcmenu" :activate.prop="activate" :isactive.prop="isactive" >
-      <b-menutitle> Device </b-menutitle>
-      <b-menuitem fa="plus-circle"      uri="add-device" >      Add Device		</b-menuitem>
-      <b-menuitem fa="times-circle"     uri="delete-device" >   Delete Device		</b-menuitem>
-      <b-menuitem mi="video_settings"   uri="toggle-gui" >      Toggle GUI		</b-menuitem>
-    </b-contextmenu>
-  </h-flex>
-</template>
+// == HTML ==
+const HTML = (t, d) => html`
+<h-flex class="b-deviceeditor" @contextmenu.prevent="$refs.deviceeditorcmenu.popup ($event)" >
+  <span class="b-deviceeditor-sw" > {{ device_info.name }} </span>
+  <c-grid class="b-deviceeditor-areas" >
+    <b-propgroup v-for="group in gprops" :key="group.name" :style="group_style (group)"
+	         :name="group.name" :props="group.props" />
+  </c-grid>
+  <b-contextmenu ref="deviceeditorcmenu" id="g-deviceeditorcmenu" :activate.prop="activate" :isactive.prop="isactive" >
+    <b-menutitle> Device </b-menutitle>
+    <b-menuitem fa="plus-circle"      uri="add-device" >      Add Device		</b-menuitem>
+    <b-menuitem fa="times-circle"     uri="delete-device" >   Delete Device		</b-menuitem>
+    <b-menuitem mi="video_settings"   uri="toggle-gui" >      Toggle GUI		</b-menuitem>
+  </b-contextmenu>
+</h-flex>
+`;
 
-<script>
+// == SCRIPT ==
 import * as Ase from '../aseapi.js';
 import * as Util from "../util.js";
 
@@ -57,7 +63,7 @@ function guess_layout_rows (number_of_properties) {
   if (number_of_properties > 18)
     n_lrows = 4;
   if (number_of_properties > 24)
-    ; // n_lrows = 5; is not supported, see rows_from_lrows()
+    {} // n_lrows = 5; is not supported, see rows_from_lrows()
   return n_lrows;
 }
 
@@ -150,7 +156,7 @@ async function property_groups (asyncpropertylist)
     if (n_lrows == 4)
       return 5;			// title + knobs + knobs + knobs + knobs
     if (n_lrows == 5)
-      ; // return 6; - not supported, layout becomes too crammed
+      {} // return 6; - not supported, layout becomes too crammed
   };
   const lrows_from_rows = (nrows) => nrows - 1; // see rows_from_lrows()
   // wrap groups into columns
@@ -212,59 +218,67 @@ function observable_device_data () {
   return this.observable_from_getters (data, () => this.device);
 }
 
-export default {
-  sfc_template,
-  props: {
-    device: { type: Ase.Device, },
-  },
-  data() { return observable_device_data.call (this); },
+class BDeviceEditor extends LitComponent {
+  render()
+  {
+    const d = {};
+    return HTML (this, d);
+  }
+  static properties = {
+    device: { type: Ase.Device, state: true }, // private property
+  };
+  constructor()
+  {
+    super();
+    this.device = null;
+  }
   unmounted()
   {
     Util.call_destroy_callbacks.call (this);
-  },
-  methods: {
-    group_style (group) {
-      let s = '';
-      if (group.row !== undefined)
-	{
-	  s += 'grid-row:' + (1 + group.row);
-	  if (group.rspan)
-	    s += '/span ' + group.rspan;
-	  s += ';';
-	}
-      if (group.col !== undefined)
-	{
-	  s += 'grid-column:' + (1 + group.col);
-	  if (group.cspan)
-	    s += '/span ' + group.cspan;
-	  s += ';';
-	}
-      return s;
-    },
-    activate (uri) {
-      switch (uri) {
-	case 'delete-device':
-	  this.device.remove_self();
-	  break;
-	case 'toggle-gui':
-	  this.device.gui_toggle();
-	  break;
+  }
+  group_style (group)
+  {
+    let s = '';
+    if (group.row !== undefined)
+      {
+	s += 'grid-row:' + (1 + group.row);
+	if (group.rspan)
+	  s += '/span ' + group.rspan;
+	s += ';';
       }
-    },
-    async isactive (uri, component) {
-      if (!this.device)
-	return false;
-      switch (uri) {
-	case 'add-device':
-	  return false;
-	case 'delete-device':
-	  return true;
-	case 'toggle-gui':
-	  return await this.device.gui_supported();
+    if (group.col !== undefined)
+      {
+	s += 'grid-column:' + (1 + group.col);
+	if (group.cspan)
+	  s += '/span ' + group.cspan;
+	s += ';';
       }
+    return s;
+  }
+  activate (uri)
+  {
+    switch (uri) {
+      case 'delete-device':
+	this.device.remove_self();
+	break;
+      case 'toggle-gui':
+	this.device.gui_toggle();
+	break;
+    }
+  }
+  async isactive (uri, component)
+  {
+    if (!this.device)
       return false;
-    },
-  },
-};
-
-</script>
+    switch (uri) {
+      case 'add-device':
+	return false;
+      case 'delete-device':
+	return true;
+      case 'toggle-gui':
+	return await this.device.gui_supported();
+    }
+    return false;
+  }
+}
+customElements.define ('b-deviceeditor', BDeviceEditor);
