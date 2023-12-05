@@ -131,6 +131,7 @@ $>/lib/libsndfile.so: .submodule-stamp external/libsndfile/include/sndfile.hh		|
 	$Q $(CP) -P $>/sndfile/libsndfile.so* $>/lib/
 CLEANDIRS += $>/sndfile/
 CLEANFILES += $>/lib/libsndfile.*
+ase/sndfile.cc: $>/lib/libsndfile.so # includes $>/sndfile/src/config.h
 
 # == AnklangSynthEngine ==
 ASE_EXTERNAL_INCLUDES := $(strip	\

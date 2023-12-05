@@ -88,6 +88,13 @@ $>/doc/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) doc/M
 	$Q mv $@.tmp $@
 doc/jsdoc.deps ::= doc/jsdocrc.json doc/jsdoc-slashes.js doc/jsdoc2md.js
 
+# == *.hafix.md ==
+# Pandoc-1.3.9 generates broken Latex for PDFs on `# [Heading]{#anchor}`, so we strip them out
+# https://github.com/jgm/pandoc/issues/9209
+$>/%.hafix.md: $>/%.md
+	$(QGEN)
+	$Q sed <$< >$@		-r 's/^(#+\s*)\[([^]]+)\]\{.*\}/\1\2/'
+
 # == doc/class-tree.md ==
 $>/doc/class-tree.md: $(lib/AnklangSynthEngine) doc/Makefile.mk
 	$(QGEN)
@@ -177,7 +184,8 @@ $>/doc/anklang-internals.html: $>/doc/template.html $(doc/internals-chapters) $(
 
 # == anklang-manual.pdf ==
 # REQUIRES: python3-pandocfilters texlive-xetex pandoc2
-$>/doc/anklang-manual.pdf: doc/pandoc-pdf.tex $(doc/manual-chapters) $>/doc/cursors/cursors.css					| $>/doc/
+doc/manual-hafix-chapters := $(subst $>/doc/scripting-docs.md, $>/doc/scripting-docs.hafix.md, $(doc/manual-chapters))
+$>/doc/anklang-manual.pdf: doc/pandoc-pdf.tex $(doc/manual-hafix-chapters) $>/doc/cursors/cursors.css		| $>/doc/
 	$(QGEN)
 	$Q xelatex --version 2>&1 | grep -q '^XeTeX 3.14159265' \
 	   || { echo '$@: missing xelatex, required version: XeTeX >= 3.14159265' >&2 ; false ; }
@@ -191,14 +199,16 @@ $>/doc/anklang-manual.pdf: doc/pandoc-pdf.tex $(doc/manual-chapters) $>/doc/curs
 		-H $< \
 		--pdf-engine=xelatex -V mainfont='Charis SIL' -V mathfont=Asana-Math -V monofont=inconsolata \
 		-V fontsize=11pt -V papersize:a4 -V geometry:margin=2cm \
-		$(doc/manual-chapters) -o $@
+		$(doc/manual-hafix-chapters) -o $@
 # == anklang-internals.pdf ==
 # REQUIRES: python3-pandocfilters texlive-xetex pandoc2
-$>/doc/anklang-internals.pdf: doc/pandoc-pdf.tex $(doc/internals-chapters)					| $>/doc/
+doc/internals-hafix-chapters := $(subst $>/doc/jsdocs.md, $>/doc/jsdocs.hafix.md, $(doc/internals-chapters))
+$>/doc/anklang-internals.pdf: doc/pandoc-pdf.tex $(doc/internals-hafix-chapters)					| $>/doc/
 	$(QGEN)
 	$Q xelatex --version 2>&1 | grep -q '^XeTeX 3.14159265' \
 	   || { echo '$@: missing xelatex, required version: XeTeX >= 3.14159265' >&2 ; false ; }
 	$Q $(PANDOC) $(doc/markdown-flavour) \
+		--resource-path $>/ui/ --resource-path . \
 		$(doc/pdf_flags) \
 		--toc --number-sections \
 		--variable=subparagraph \
@@ -207,7 +217,7 @@ $>/doc/anklang-internals.pdf: doc/pandoc-pdf.tex $(doc/internals-chapters)					|
 		-H $< \
 		--pdf-engine=xelatex -V mainfont='Charis SIL' -V mathfont=Asana-Math -V monofont=inconsolata \
 		-V fontsize=11pt -V papersize:a4 -V geometry:margin=2cm \
-		$(doc/internals-chapters) -o $@
+		$(doc/internals-hafix-chapters) -o $@
 
 # == viewdocs ==
 viewdocs: $>/doc/anklang-manual.html $>/doc/anklang-internals.html $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
