@@ -1532,5 +1532,15 @@ LV2DeviceImpl::access_properties ()
 
 static auto lv2processor = register_audio_processor<LV2Processor> ("Ase::Devices::LV2Processor");
 
+} // Ase
 
-} // Bse
+/* --- TODO ---
+ *
+ * - some plugins (with lots of properties?) freeze UI - padthv1, drmr
+ * - external ui support (yoshimi,...)
+ * - serialization (state extension)
+ * - ui resizable
+ * - port size for notifications
+ * - provide bpm,...
+ * - restore top level Makefile.mk
+ */
