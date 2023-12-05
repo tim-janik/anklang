@@ -302,6 +302,9 @@ Ase::Gtk2DlWrapEntry Ase__Gtk2__wrapentry {
   },
   .suil_instance_port_event_gtk_thread = [] (void *instance, uint32_t port_index, uint32_t buffer_size, uint32_t format, const void *buffer) {
     return suil_instance_port_event ((SuilInstance *) instance, port_index, buffer_size, format, buffer);
+  },
+  .get_suil_widget_gtk_thread = [] (void *instance) {
+    return suil_instance_get_widget ((SuilInstance *) instance);
   }
 };
 } // "C"

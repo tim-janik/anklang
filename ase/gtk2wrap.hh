@@ -43,6 +43,7 @@ struct Gtk2DlWrapEntry {
   void  (*destroy_suil_window)        (void *window);
   uint  (*suil_ui_supported)          (const std::string& host_type_uri, const std::string& ui_type_uri);
   void  (*suil_instance_port_event_gtk_thread) (void *instance, uint32_t port_index, uint32_t buffer_size, uint32_t format, const void *buffer);
+  void *(*get_suil_widget_gtk_thread) (void *instance);
 };
 
 } // Ase
