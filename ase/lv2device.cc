@@ -15,6 +15,8 @@
 #include "lv2/data-access/data-access.h"
 #include "lv2/ui/ui.h"
 
+#include "lv2_external_ui.h"
+
 #include "lv2evbuf.hh"
 #include "lv2device.hh"
 
@@ -503,6 +505,9 @@ struct PluginHost
     LilvNode *lv2_atom_Sequence;
     LilvNode *lv2_presets_Preset;
 
+    LilvNode *lv2_ui_external;
+    LilvNode *lv2_ui_externalkx;
+
     LilvNode *rdfs_label;
 
     void init (LilvWorld *world)
@@ -515,6 +520,9 @@ struct PluginHost
 
       lv2_atom_Chunk    = lilv_new_uri (world, LV2_ATOM__Chunk);
       lv2_atom_Sequence = lilv_new_uri (world, LV2_ATOM__Sequence);
+
+      lv2_ui_external    = lilv_new_uri(world, "http://lv2plug.in/ns/extensions/ui#external");
+      lv2_ui_externalkx  = lilv_new_uri(world, "http://kxstudio.sf.net/ns/lv2ext/external-ui#Widget");
 
       lv2_presets_Preset = lilv_new_uri (world, LV2_PRESETS__Preset);
       rdfs_label         = lilv_new_uri (world, LILV_NS_RDFS "label");
@@ -593,10 +601,15 @@ public:
   }
 };
 
+static const LilvNode *ui_type; // FIXME: not static
+
 class PluginUI
 {
   bool init_ok_ = false;
   bool ui_is_visible_ = false;
+  bool external_ui_ = false;
+  struct lv2_external_ui_host external_ui_host_;
+  lv2_external_ui *external_ui_widget_ = nullptr;
 public:
   const LV2UI_Idle_Interface *idle_iface_ = nullptr;
   LV2UI_Handle               handle_ = nullptr;
@@ -605,16 +618,19 @@ public:
   PluginInstance *plugin_instance_ = nullptr;
   void *ui_instance_ = nullptr;
 
-  PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& ui_uri,
-            const string& ui_type, const string& bundle_path, const string& binary_path);
+  PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
+            const LilvUI *ui, const string& bundle_path, const string& binary_path);
   ~PluginUI();
   bool init_ok() const { return init_ok_; }
 };
 
-PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const string& ui_uri,
-                    const string& ui_type, const string& bundle_path, const string& binary_path)
+PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
+                    const LilvUI *ui, const string& bundle_path, const string& binary_path)
 {
   plugin_instance_ = plugin_instance;
+
+  external_ui_ = lilv_ui_is_a (ui, plugin_instance_->plugin_host.nodes.lv2_ui_external) ||
+                 lilv_ui_is_a (ui, plugin_instance_->plugin_host.nodes.lv2_ui_externalkx);
 
   string window_title = PluginHost::the().lv2_device_info (plugin_uri).name;
 
@@ -645,12 +661,34 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, c
   ui_features.add (plugin_instance->plugin_host.urid_map.unmap_feature());
   ui_features.add (plugin_instance->plugin_host.options.feature()); /* TODO: maybe make a local version */
 
+  if (external_ui_)
+    {
+      external_ui_host_.ui_closed = [] (LV2UI_Controller controller)
+        {
+          PluginInstance *plugin_instance = (PluginInstance *) controller;
+          if (plugin_instance->plugin_ui)
+            {
+              plugin_instance->plugin_ui->ui_is_visible_ = false; /* don't want to pass dsp events to ui if it has been closed */
+              main_loop->exec_callback ([plugin_instance]() { plugin_instance->delete_ui_request(); });
+            }
+        };
+      external_ui_host_.plugin_human_id = strdup (window_title.c_str());
+
+      LV2_Feature external_ui_feature (LV2_EXTERNAL_UI_URI, &external_ui_host_);
+      LV2_Feature external_kxui_feature (LV2_EXTERNAL_UI_KX__Host, &external_ui_host_);
+
+      ui_features.add (&external_kxui_feature);
+      ui_features.add (&external_ui_feature);
+    }
+
+  string ui_uri = lilv_node_as_uri (lilv_ui_get_uri (ui));
+  string container_ui_uri = external_ui_ ? lilv_node_as_uri (ui_type) : "http://lv2plug.in/ns/extensions/ui#GtkUI";
   ui_instance_ = x11wrapper->create_suil_instance (PluginHost::the().suil_host,
                                                    plugin_instance,
-                                                   "http://lv2plug.in/ns/extensions/ui#GtkUI",
+                                                   container_ui_uri,
                                                    plugin_uri,
                                                    ui_uri,
-                                                   ui_type,
+                                                   lilv_node_as_uri (ui_type),
                                                    bundle_path,
                                                    binary_path,
                                                    ui_features.get_features());
@@ -659,7 +697,19 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, c
       printerr ("LV2: ui for plugin %s could not be created\n", plugin_uri);
       return;
     }
-  x11wrapper->add_suil_widget_to_window (window_, ui_instance_);
+  if (external_ui_)
+    {
+      x11wrapper->exec_in_gtk_thread (
+        [&]()
+          {
+            external_ui_widget_ = (lv2_external_ui *) x11wrapper->get_suil_widget_gtk_thread (ui_instance_);
+            external_ui_widget_->show (external_ui_widget_);
+          });
+    }
+  else
+    {
+      x11wrapper->add_suil_widget_to_window (window_, ui_instance_);
+    }
   ui_is_visible_ = true;
 
   int period_ms = 1000. / plugin_instance->ui_update_fps;
@@ -668,6 +718,8 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, c
       {
         if (ui_is_visible_)
           plugin_instance_->handle_dsp2ui_events();
+        if (external_ui_ && external_ui_widget_)
+          external_ui_widget_->run (external_ui_widget_);
         return true;
       },
     period_ms);
@@ -1105,8 +1157,6 @@ PluginInstance::send_ui_updates (uint32_t delta_frames)
     }
 }
 
-static const LilvNode *ui_type; // FIXME: not static
-
 const LilvUI *
 PluginInstance::get_plugin_ui()
 {
@@ -1128,6 +1178,22 @@ PluginInstance::get_plugin_ui()
                                &ui_type))
         return this_ui;
     }
+  // if no suil supported UI is available try external UI
+  LILV_FOREACH(uis, u, uis)
+    {
+      const LilvUI* this_ui = lilv_uis_get (uis, u);
+
+      if (lilv_ui_is_a (this_ui, plugin_host.nodes.lv2_ui_externalkx))
+        {
+          ui_type = plugin_host.nodes.lv2_ui_externalkx;
+          return this_ui;
+        }
+      if (lilv_ui_is_a (this_ui, plugin_host.nodes.lv2_ui_external))
+        {
+          ui_type = plugin_host.nodes.lv2_ui_external;
+          return this_ui;
+        }
+    }
   return nullptr;
 }
 
@@ -1141,14 +1207,13 @@ PluginInstance::toggle_ui()
     }
   // ---------------------ui------------------------------
   const LilvUI *ui = get_plugin_ui();
-  const char* bundle_uri  = lilv_node_as_uri(lilv_ui_get_bundle_uri(ui));
-  const char* binary_uri  = lilv_node_as_uri(lilv_ui_get_binary_uri(ui));
+  const char* bundle_uri  = lilv_node_as_uri (lilv_ui_get_bundle_uri (ui));
+  const char* binary_uri  = lilv_node_as_uri (lilv_ui_get_binary_uri (ui));
   const char* plugin_uri  = lilv_node_as_uri (lilv_plugin_get_uri (plugin));
-  char*       bundle_path = lilv_file_uri_parse(bundle_uri, NULL);
-  char*       binary_path = lilv_file_uri_parse(binary_uri, NULL);
+  char*       bundle_path = lilv_file_uri_parse (bundle_uri, NULL);
+  char*       binary_path = lilv_file_uri_parse (binary_uri, NULL);
 
-  plugin_ui = std::make_unique <PluginUI> (this, plugin_uri, lilv_node_as_uri (lilv_ui_get_uri (get_plugin_ui())),
-                                           lilv_node_as_uri (ui_type), bundle_path, binary_path);
+  plugin_ui = std::make_unique <PluginUI> (this, plugin_uri, ui, bundle_path, binary_path);
 
   // if UI could not be created (for whatever reason) reset pointer to nullptr to free stuff and avoid crashes
   if (!plugin_ui->init_ok())
@@ -1536,8 +1601,7 @@ static auto lv2processor = register_audio_processor<LV2Processor> ("Ase::Devices
 
 /* --- TODO ---
  *
- * - some plugins (with lots of properties?) freeze UI - padthv1, drmr
- * - external ui support (yoshimi,...)
+ * - some plugins (with lots of properties?) freeze UI - padthv1, drmr (#31)
  * - serialization (state extension)
  * - ui resizable
  * - port size for notifications
