@@ -103,11 +103,10 @@ create_window (const Gtk2WindowSetup &wsetup)
 }
 
 static void *
-create_suil_window (const string &window_title, const std::function<void()>& deleterequest_mt)
+create_suil_window (const string &window_title, bool resizable, const std::function<void()>& deleterequest_mt)
 {
   GtkWidget *window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-  // TODO: set this according to whether the plugin UI supports resize
-  gtk_window_set_resizable (GTK_WINDOW (window), false);
+  gtk_window_set_resizable (GTK_WINDOW (window), resizable);
   BWrap *bw = vwrap (deleterequest_mt);
   g_signal_connect_data (window, "delete-event", (GCallback) bw->truefunc, bw, (GClosureNotify) bw->deleter, G_CONNECT_SWAPPED);
   gtk_window_set_title (GTK_WINDOW (window), window_title.c_str());
@@ -285,8 +284,8 @@ Ase::Gtk2DlWrapEntry Ase__Gtk2__wrapentry {
   .destroy_suil_instance = [] (void *instance) {
     gtkidle_call (exec_in_gtk_thread, [&] { suil_instance_free ((SuilInstance *) instance); });
   },
-  .create_suil_window = [] (const string &window_title, const std::function<void()>& deleterequest_mt) -> void * {
-    return gtkidle_call (create_suil_window, window_title, deleterequest_mt);
+  .create_suil_window = [] (const string &window_title, bool resizable, const std::function<void()>& deleterequest_mt) -> void * {
+    return gtkidle_call (create_suil_window, window_title, resizable, deleterequest_mt);
   },
   .add_suil_widget_to_window = [] (void *window, void *instance) {
     gtkidle_call (exec_in_gtk_thread, [&] {

@@ -512,6 +512,10 @@ struct PluginHost
 
     LilvNode *lv2_ui_external;
     LilvNode *lv2_ui_externalkx;
+    LilvNode *lv2_ui_fixedSize;
+    LilvNode *lv2_ui_noUserResize;
+    LilvNode *lv2_optionalFeature;
+    LilvNode *lv2_requiredFeature;
 
     LilvNode *rdfs_label;
 
@@ -526,8 +530,13 @@ struct PluginHost
       lv2_atom_Chunk    = lilv_new_uri (world, LV2_ATOM__Chunk);
       lv2_atom_Sequence = lilv_new_uri (world, LV2_ATOM__Sequence);
 
-      lv2_ui_external    = lilv_new_uri(world, "http://lv2plug.in/ns/extensions/ui#external");
-      lv2_ui_externalkx  = lilv_new_uri(world, "http://kxstudio.sf.net/ns/lv2ext/external-ui#Widget");
+      lv2_ui_external     = lilv_new_uri(world, "http://lv2plug.in/ns/extensions/ui#external");
+      lv2_ui_externalkx   = lilv_new_uri(world, "http://kxstudio.sf.net/ns/lv2ext/external-ui#Widget");
+      lv2_ui_fixedSize    = lilv_new_uri (world, LV2_UI__fixedSize);
+      lv2_ui_noUserResize = lilv_new_uri (world, LV2_UI__noUserResize);
+
+      lv2_optionalFeature = lilv_new_uri (world, LV2_CORE__optionalFeature);
+      lv2_requiredFeature = lilv_new_uri (world, LV2_CORE__requiredFeature);
 
       lv2_presets_Preset = lilv_new_uri (world, LV2_PRESETS__Preset);
       rdfs_label         = lilv_new_uri (world, LILV_NS_RDFS "label");
@@ -615,6 +624,8 @@ class PluginUI
   bool external_ui_ = false;
   struct lv2_external_ui_host external_ui_host_;
   lv2_external_ui *external_ui_widget_ = nullptr;
+
+  bool ui_is_resizable (const LilvUI *ui);
 public:
   const LV2UI_Idle_Interface *idle_iface_ = nullptr;
   LV2UI_Handle               handle_ = nullptr;
@@ -671,7 +682,7 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
     }
   else
     {
-      window_ = x11wrapper->create_suil_window (window_title,
+      window_ = x11wrapper->create_suil_window (window_title, ui_is_resizable (ui),
         [this] ()
           {
             ui_is_visible_ = false; /* don't want to pass dsp events to ui if it has been closed */
@@ -728,6 +739,23 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
   plugin_instance->set_initial_controls_ui();
 
   init_ok_ = true;
+}
+
+bool
+PluginUI::ui_is_resizable (const LilvUI *ui)
+{
+  auto& host = plugin_instance_->plugin_host;
+
+  const LilvNode *s = lilv_ui_get_uri (ui);
+  for (auto feature : { host.nodes.lv2_ui_fixedSize, host.nodes.lv2_ui_noUserResize })
+    {
+      if (LilvNodes *matches = lilv_world_find_nodes (host.world, s, host.nodes.lv2_optionalFeature, feature))
+        {
+          lilv_nodes_free (matches);
+          return false;
+        }
+    }
+  return true;
 }
 
 PluginUI::~PluginUI()

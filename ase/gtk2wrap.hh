@@ -38,7 +38,7 @@ struct Gtk2DlWrapEntry {
                                        const std::string &ui_bundle_path, const std::string &ui_binary_path,
                                        const LV2_Feature *const *features);
   void  (*destroy_suil_instance)      (void *instance);
-  void *(*create_suil_window)         (const std::string &window_title, const std::function<void()>& deleterequest_mt);
+  void *(*create_suil_window)         (const std::string &window_title, bool resizable, const std::function<void()>& deleterequest_mt);
   void  (*add_suil_widget_to_window)  (void *window, void *instance);
   void  (*destroy_suil_window)        (void *window);
   uint  (*suil_ui_supported)          (const std::string& host_type_uri, const std::string& ui_type_uri);
