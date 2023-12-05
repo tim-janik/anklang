@@ -618,14 +618,13 @@ public:
   PluginInstance *plugin_instance_ = nullptr;
   void *ui_instance_ = nullptr;
 
-  PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
-            const LilvUI *ui, const string& bundle_path, const string& binary_path);
+  PluginUI (PluginInstance *plugin_instance, const string& plugin_uri, const LilvUI *ui);
   ~PluginUI();
   bool init_ok() const { return init_ok_; }
 };
 
 PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
-                    const LilvUI *ui, const string& bundle_path, const string& binary_path)
+                    const LilvUI *ui)
 {
   plugin_instance_ = plugin_instance;
 
@@ -633,6 +632,11 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
                  lilv_ui_is_a (ui, plugin_instance_->plugin_host.nodes.lv2_ui_externalkx);
 
   string window_title = PluginHost::the().lv2_device_info (plugin_uri).name;
+
+  const char* bundle_uri  = lilv_node_as_uri (lilv_ui_get_bundle_uri (ui));
+  const char* binary_uri  = lilv_node_as_uri (lilv_ui_get_binary_uri (ui));
+  char*       bundle_path = lilv_file_uri_parse (bundle_uri, nullptr);
+  char*       binary_path = lilv_file_uri_parse (binary_uri, nullptr);
 
   // instance access:
   const LV2_Feature instance_feature = {
@@ -1207,13 +1211,9 @@ PluginInstance::toggle_ui()
     }
   // ---------------------ui------------------------------
   const LilvUI *ui = get_plugin_ui();
-  const char* bundle_uri  = lilv_node_as_uri (lilv_ui_get_bundle_uri (ui));
-  const char* binary_uri  = lilv_node_as_uri (lilv_ui_get_binary_uri (ui));
   const char* plugin_uri  = lilv_node_as_uri (lilv_plugin_get_uri (plugin));
-  char*       bundle_path = lilv_file_uri_parse (bundle_uri, NULL);
-  char*       binary_path = lilv_file_uri_parse (binary_uri, NULL);
 
-  plugin_ui = std::make_unique <PluginUI> (this, plugin_uri, ui, bundle_path, binary_path);
+  plugin_ui = std::make_unique <PluginUI> (this, plugin_uri, ui);
 
   // if UI could not be created (for whatever reason) reset pointer to nullptr to free stuff and avoid crashes
   if (!plugin_ui->init_ok())
