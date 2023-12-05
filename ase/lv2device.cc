@@ -747,15 +747,9 @@ PluginUI::ui_is_resizable (const LilvUI *ui)
   auto& host = plugin_instance_->plugin_host;
 
   const LilvNode *s = lilv_ui_get_uri (ui);
-  for (auto feature : { host.nodes.lv2_ui_fixedSize, host.nodes.lv2_ui_noUserResize })
-    {
-      if (LilvNodes *matches = lilv_world_find_nodes (host.world, s, host.nodes.lv2_optionalFeature, feature))
-        {
-          lilv_nodes_free (matches);
-          return false;
-        }
-    }
-  return true;
+  bool fixed_size = lilv_world_ask (host.world, s, host.nodes.lv2_optionalFeature, host.nodes.lv2_ui_fixedSize) ||
+                    lilv_world_ask (host.world, s, host.nodes.lv2_optionalFeature, host.nodes.lv2_ui_noUserResize);
+  return !fixed_size;
 }
 
 PluginUI::~PluginUI()
