@@ -13,6 +13,7 @@
 #include "lv2/worker/worker.h"
 #include "lv2/presets/presets.h"
 #include "lv2/data-access/data-access.h"
+#include "lv2/instance-access/instance-access.h"
 #include "lv2/ui/ui.h"
 
 #include "lv2_external_ui.h"
@@ -339,25 +340,29 @@ public:
 
 class Features
 {
-  std::vector<const LV2_Feature *> features;
+  std::vector<LV2_Feature> features;
+  std::vector<const LV2_Feature *> null_terminated_ptrs;
 public:
-  Features()
-  {
-    features.push_back (nullptr);
-  }
   const LV2_Feature * const*
   get_features()
   {
-    return features.data();
+    assert_return (null_terminated_ptrs.empty(), nullptr);
+    for (const auto& f : features)
+      null_terminated_ptrs.push_back (&f);
+    null_terminated_ptrs.push_back (nullptr);
+
+    return null_terminated_ptrs.data();
   }
   void
   add (const LV2_Feature *lv2_feature)
   {
-    // preserve nullptr termination
-    assert_return (!features.empty());
-
-    features.back() = lv2_feature;
-    features.push_back (nullptr);
+    assert (null_terminated_ptrs.empty());
+    features.push_back (*lv2_feature);
+  }
+  void
+  add (const char *uri, void *data)
+  {
+    features.emplace_back (uri, data);
   }
 };
 
@@ -638,29 +643,9 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
   char*       bundle_path = lilv_file_uri_parse (bundle_uri, nullptr);
   char*       binary_path = lilv_file_uri_parse (binary_uri, nullptr);
 
-  // instance access:
-  const LV2_Feature instance_feature = {
-    NS_EXT "instance-access", lilv_instance_get_handle (plugin_instance->instance)
-  };
-  // data access:
-  const LV2_Feature ext_data_feature = {
-    LV2_DATA_ACCESS_URI, &plugin_instance->lv2_ext_data
-  };
-  window_ = x11wrapper->create_suil_window (window_title,
-    [this] ()
-      {
-        ui_is_visible_ = false; /* don't want to pass dsp events to ui if it has been closed */
-        main_loop->exec_callback ([this]() { plugin_instance_->delete_ui_request(); });
-      });
-  // for passing parent window id
-  LV2_Feature parent_feature = {
-    LV2_UI__parent, window_
-  };
-
   Features ui_features;
-  ui_features.add (&instance_feature);
-  ui_features.add (&ext_data_feature);
-  ui_features.add (&parent_feature);
+  ui_features.add (LV2_INSTANCE_ACCESS_URI, lilv_instance_get_handle (plugin_instance->instance));
+  ui_features.add (LV2_DATA_ACCESS_URI, &plugin_instance->lv2_ext_data);
   ui_features.add (plugin_instance->plugin_host.urid_map.map_feature());
   ui_features.add (plugin_instance->plugin_host.urid_map.unmap_feature());
   ui_features.add (plugin_instance->plugin_host.options.feature()); /* TODO: maybe make a local version */
@@ -683,6 +668,16 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
 
       ui_features.add (&external_kxui_feature);
       ui_features.add (&external_ui_feature);
+    }
+  else
+    {
+      window_ = x11wrapper->create_suil_window (window_title,
+        [this] ()
+          {
+            ui_is_visible_ = false; /* don't want to pass dsp events to ui if it has been closed */
+            main_loop->exec_callback ([this]() { plugin_instance_->delete_ui_request(); });
+          });
+      ui_features.add (LV2_UI__parent, window_);
     }
 
   string ui_uri = lilv_node_as_uri (lilv_ui_get_uri (ui));
@@ -1252,16 +1247,7 @@ class LV2Processor : public AudioProcessor {
   initialize (SpeakerArrangement busses) override
   {
     plugin_host.options.set (sample_rate(), AUDIO_BLOCK_MAX_RENDER_SIZE);
-    const char *uri = getenv ("LV2URI");
-    if (!uri)
-      {
-        if (lv2_uri_ != "")
-          uri = lv2_uri_.c_str();
-        else
-          uri = "http://zynaddsubfx.sourceforge.net";
-      }
-
-    plugin_instance = plugin_host.instantiate (uri, sample_rate());
+    plugin_instance = plugin_host.instantiate (lv2_uri_.c_str(), sample_rate());
     if (!plugin_instance)
       return;
 
