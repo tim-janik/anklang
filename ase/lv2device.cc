@@ -1270,7 +1270,7 @@ class LV2Processor : public AudioProcessor {
           // TODO: lv2 port numbers are not reliable for serialization, should use port.symbol instead
           // TODO: special case boolean, enumeration, logarithmic,... controls
           int pid = PID_CONTROL_OFFSET + port.control_in_idx;
-          pmap[pid] = Param { port.symbol, port.name, port.name, port.control, "", { port.min_value, port.max_value } };
+          pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value } };
           param_id_port.push_back (&port);
         }
 
