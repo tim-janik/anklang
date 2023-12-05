@@ -16,7 +16,7 @@
 #include "lv2/instance-access/instance-access.h"
 #include "lv2/ui/ui.h"
 
-#include "lv2_external_ui.h"
+#include "lv2externalui.hh"
 
 #include "lv2evbuf.hh"
 #include "lv2device.hh"
