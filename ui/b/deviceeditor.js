@@ -11,11 +11,14 @@
  */
 
 import { LitComponent, html, render, noChange, JsExtract, docs, ref } from '../little.js';
-import * as Kbd from '../kbd.js';
 
 // == STYLE ==
 JsExtract.scss`
-.b-deviceeditor {
+b-deviceeditor {
+  display: flex;
+  flex-basis: auto;
+  flex-flow: row nowrap;
+  align-items: stretch;
   .b-deviceeditor-sw {
     background: $b-device-handle;
     border-radius: $b-button-radius; border-top-left-radius: 0; border-bottom-left-radius: 0;
@@ -34,20 +37,21 @@ JsExtract.scss`
 }`;
 
 // == HTML ==
+const GROUP_HTML = (t, group) => html`
+    <b-propgroup style=${t.group_style (group)} name=${group.name} .props=${group.props} ></b-propgroup>
+`;
 const HTML = (t, d) => html`
-<h-flex class="b-deviceeditor" @contextmenu.prevent="$refs.deviceeditorcmenu.popup ($event)" >
-  <span class="b-deviceeditor-sw" > {{ device_info.name }} </span>
-  <c-grid class="b-deviceeditor-areas" >
-    <b-propgroup v-for="group in gprops" :key="group.name" :style="group_style (group)"
-	         :name="group.name" :props="group.props" />
-  </c-grid>
-  <b-contextmenu ref="deviceeditorcmenu" id="g-deviceeditorcmenu" :activate.prop="activate" :isactive.prop="isactive" >
-    <b-menutitle> Device </b-menutitle>
-    <b-menuitem fa="plus-circle"      uri="add-device" >      Add Device		</b-menuitem>
-    <b-menuitem fa="times-circle"     uri="delete-device" >   Delete Device		</b-menuitem>
-    <b-menuitem mi="video_settings"   uri="toggle-gui" >      Toggle GUI		</b-menuitem>
-  </b-contextmenu>
-</h-flex>
+<span class="b-deviceeditor-sw" @contextmenu=${e => t.deviceeditorcmenu.popup (e, null)}
+  > ${ t.device_info.name } </span>
+<c-grid class="b-deviceeditor-areas" >
+  ${ t.gprops.map (group => GROUP_HTML (t, group)) }
+</c-grid>
+<b-contextmenu ${ref (h => t.deviceeditorcmenu = h)} id="g-deviceeditorcmenu" .activate=${t.activate.bind (t)} .isactive=${t.isactive.bind (t)} >
+  <b-menutitle> Device </b-menutitle>
+  <b-menuitem fa="plus-circle"      uri="add-device" >      Add Device		</b-menuitem>
+  <b-menuitem fa="times-circle"     uri="delete-device" >   Delete Device		</b-menuitem>
+  <b-menuitem mi="video_settings"   uri="toggle-gui" >      Toggle GUI		</b-menuitem>
+</b-contextmenu>
 `;
 
 // == SCRIPT ==
@@ -63,7 +67,7 @@ function guess_layout_rows (number_of_properties) {
   if (number_of_properties > 18)
     n_lrows = 4;
   if (number_of_properties > 24)
-    {} // n_lrows = 5; is not supported, see rows_from_lrows()
+    {/**/} // n_lrows = 5; is not supported, see rows_from_lrows()
   return n_lrows;
 }
 
@@ -83,6 +87,9 @@ function prop_visible (prop) {
   return true;
 }
 
+/** Determine layout of properties.
+ * @this{BDeviceEditor}
+ */
 async function property_groups (asyncpropertylist)
 {
   asyncpropertylist = await asyncpropertylist;
@@ -156,7 +163,7 @@ async function property_groups (asyncpropertylist)
     if (n_lrows == 4)
       return 5;			// title + knobs + knobs + knobs + knobs
     if (n_lrows == 5)
-      {} // return 6; - not supported, layout becomes too crammed
+      {/**/} // return 6; - not supported, layout becomes too crammed
   };
   const lrows_from_rows = (nrows) => nrows - 1; // see rows_from_lrows()
   // wrap groups into columns
@@ -209,32 +216,52 @@ async function property_groups (asyncpropertylist)
   return Object.freeze (grouplist); // list of groups: [ { name, props: [ Prop... ] }... ]
 }
 
-function observable_device_data () {
-  const data = {
-    gprops:     { default: [], getter: async c => property_groups.call (this, this.device.access_properties ()), },
-    device_info: { default: "",		notify: n => this.device.on ("notify:device_info", n),
-		   getter: async c => Object.freeze (await this.device.device_info()), },
-  };
-  return this.observable_from_getters (data, () => this.device);
-}
-
 class BDeviceEditor extends LitComponent {
+  createRenderRoot() { return this; }
   render()
   {
     const d = {};
     return HTML (this, d);
   }
   static properties = {
+    gprops: { state: true }, // private property
     device: { type: Ase.Device, state: true }, // private property
   };
   constructor()
   {
     super();
     this.device = null;
+    this.gprops = [];
+    this.device_info = "";
+  }
+  updated (changed_props)
+  {
+    if (changed_props.has ('device')) {
+      this.gprops = [];
+      this.device_info = "";
+    }
+    if (changed_props.has ('device') && this.device) {
+      const async_fetch_device = async () => {
+	const device = this.device;
+	let device_info = device.device_info(); // TODO: watch "notify:device_info"
+	let gprops = device.access_properties();
+	gprops = await gprops;
+	device_info = Object.freeze (await device_info);
+	if (device === this.device)
+	  gprops = await property_groups.call (this, gprops);
+	if (device === this.device) {
+	  this.gprops = gprops;
+	  this.device_info = device_info;
+	}
+      };
+      async_fetch_device();
+    }
   }
   unmounted()
   {
     Util.call_destroy_callbacks.call (this);
+    this.gprops = [];
+    this.device_info = "";
   }
   group_style (group)
   {
