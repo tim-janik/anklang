@@ -4,6 +4,12 @@
 #include "internal.hh"
 #include "strings.hh"
 #include "loft.hh"
+#include "serialize.hh"
+#include "project.hh"
+#include "path.hh"
+
+// X11 wrapper
+#include "clapplugin.hh"
 
 #include "lv2/atom/atom.h"
 #include "lv2/midi/midi.h"
@@ -22,9 +28,6 @@
 #include "lv2device.hh"
 
 #include <lilv/lilv.h>
-
-// X11 wrapper
-#include "clapplugin.hh"
 
 namespace Ase {
 
@@ -193,6 +196,11 @@ public:
   lv2_map()
   {
     return &lv2_urid_map;
+  }
+  LV2_URID_Unmap *
+  lv2_unmap()
+  {
+    return &lv2_urid_unmap;
   }
 };
 
@@ -1550,6 +1558,78 @@ public:
   {
     return plugin_instance;
   }
+  static const void*
+  get_port_value_for_save (const char *port_symbol,
+                           void       *user_data,
+                           uint32_t   *size,
+                           uint32_t   *type)
+  {
+    auto *port_values = (map<string, float> *) user_data;
+
+    auto it = port_values->find (port_symbol);
+    if (it != port_values->end())
+      {
+        *size = sizeof (float);
+        *type = PluginHost::the().urids.atom_Float;
+
+        return &it->second;
+      }
+    else
+      {
+        *size = *type = 0;
+        return nullptr;
+      }
+  }
+  void
+  save_state (WritNode &xs, const string& device_path, ProjectImpl *project)
+  {
+    String blobname = string_format ("lv2-%s.ttl", device_path);
+    const String blobfile = project->writer_file_name (blobname);
+    printerr ("blobfile %s\n", blobfile.c_str());
+    /* build a map containing all the port values */
+    map<string, float> port_values;
+    for (size_t i = 0; i < param_id_port.size(); i++)
+      port_values[param_id_port[i]->symbol] = get_param (int (i) + PID_CONTROL_OFFSET);
+
+    LilvState *state;
+    x11wrapper->exec_in_gtk_thread (
+      [&]()
+        {
+          state = lilv_state_new_from_instance (plugin_instance->plugin,
+                                                plugin_instance->instance,
+                                                plugin_host.urid_map.lv2_map(),
+                                                nullptr,
+                                                nullptr,
+                                                nullptr,
+                                                nullptr,
+                                                get_port_value_for_save,
+                                                &port_values,
+                                                0,
+                                                nullptr);
+        });
+    char *str = lilv_state_to_string (plugin_host.world,
+                                      plugin_host.urid_map.lv2_map(),
+                                      plugin_host.urid_map.lv2_unmap(),
+                                      state,
+                                      "",
+                                      nullptr);
+    if (!Path::memwrite (blobfile, strlen (str), (uint8 *) str, false))
+      printerr ("%s: %s: memwrite failed\n", program_alias(), blobfile);
+    else
+      {
+        Error err = project->writer_add_file (blobfile);
+        if (!!err)
+          printerr ("%s: %s: %s\n", program_alias(), blobfile, ase_error_blurb (err));
+        else
+          xs["state_blob"] & blobname;
+      }
+    free (str);
+    lilv_state_free (state);
+  }
+  void
+  load_state (WritNode &xn)
+  {
+  }
 };
 
 DeviceInfoS
@@ -1601,6 +1681,41 @@ PropertyS
 LV2DeviceImpl::access_properties ()
 {
   return proc_->access_properties();
+}
+
+String
+LV2DeviceImpl::get_device_path ()
+{
+  // TODO: deduplicate this with clapdevice.cc
+  std::vector<String> nums;
+  NativeDevice *parent = dynamic_cast<NativeDevice*> (this->_parent());
+  for (Device *dev = this; parent; dev = parent, parent = dynamic_cast<NativeDevice*> (dev->_parent()))
+    {
+      ssize_t index = Aux::index_of (parent->list_devices(),
+                                     [dev] (const DeviceP &e) { return dev == &*e; });
+      if (index >= 0)
+        nums.insert (nums.begin(), string_from_int (index));
+    }
+  String s = string_join ("d", nums);
+  ProjectImpl *project = _project();
+  Track *track = _track();
+  if (project && track)
+    s = string_format ("t%ud%s", project->track_index (*track), s);
+  return s;
+}
+
+void
+LV2DeviceImpl::serialize (WritNode &xs)
+{
+  DeviceImpl::serialize (xs);
+
+  if (auto lv2aproc = dynamic_cast<LV2Processor *> (proc_.get()))
+    {
+      if (xs.in_save())
+        lv2aproc->save_state (xs, get_device_path(), _project());
+      if (xs.in_load())
+        lv2aproc->load_state (xs);
+    }
 }
 
 static auto lv2processor = register_audio_processor<LV2Processor> ("Ase::Devices::LV2Processor");

@@ -13,6 +13,8 @@ class LV2DeviceImpl : public DeviceImpl
   DeviceInfo      const info_;
   ASE_DEFINE_MAKE_SHARED (LV2DeviceImpl);
   explicit           LV2DeviceImpl     (const String &lv2_uri, AudioProcessorP);
+protected:
+  void               serialize         (WritNode &xs) override;
 public:
   AudioProcessorP    _audio_processor  () const override            { return proc_; }
   void               _set_event_source (AudioProcessorP esource)    { /* FIXME: implement */ }
@@ -20,6 +22,7 @@ public:
   bool               gui_supported     () override;
   void               gui_toggle        () override;
   PropertyS          access_properties () override;
+  String             get_device_path   ();
 
   static DeviceInfoS list_lv2_plugins  ();
   static DeviceP     create_lv2_device (AudioEngine &engine, const String &lv2_uri_with_prefix);
