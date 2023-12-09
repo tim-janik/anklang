@@ -619,6 +619,7 @@ public:
 
         lv2_device_info_map[lv2_uri] = device_info;
       }
+    std::stable_sort (devs.begin(), devs.end(), [] (auto& d1, auto& d2) { return string_casecmp (d1.name, d2.name) < 0; });
     return devs;
   }
 };
