@@ -5,6 +5,7 @@
 #include "strings.hh"
 #include "loft.hh"
 #include "serialize.hh"
+#include "storage.hh"
 #include "project.hh"
 #include "path.hh"
 
@@ -1252,6 +1253,53 @@ PluginInstance::delete_ui_request()
   plugin_ui.reset();
 }
 
+// TODO: may want to use this for preset loading as well
+struct PortRestoreHelper
+{
+  PluginHost& plugin_host;
+  map<string, double> values;
+
+  PortRestoreHelper (PluginHost& host) :
+    plugin_host (host)
+  {
+  }
+
+  static void
+  set (const char*         port_symbol,
+       void*               user_data,
+       const void*         value,
+       uint32_t            size,
+       uint32_t            type)
+  {
+    auto &port_restore = *(PortRestoreHelper *) user_data;
+    auto &plugin_host = port_restore.plugin_host;
+
+    double dvalue = 0;
+    if (type == plugin_host.urids.atom_Float)
+      {
+        dvalue = *(const float*)value;
+      }
+    else if (type == plugin_host.urids.atom_Double)
+      {
+        dvalue = *(const double*)value;
+      }
+    else if (type == plugin_host.urids.atom_Int)
+      {
+        dvalue = *(const int32_t*)value;
+      }
+    else if (type == plugin_host.urids.atom_Long)
+      {
+        dvalue = *(const int64_t*)value;
+      }
+    else
+      {
+        printerr ("error: port restore symbol `%s' value has bad type <%s>\n", port_symbol, plugin_host.urid_map.urid_unmap (type));
+        return;
+      }
+    port_restore.values[port_symbol] = dvalue;
+  }
+};
+
 }
 
 class LV2Processor : public AudioProcessor {
@@ -1291,7 +1339,7 @@ class LV2Processor : public AudioProcessor {
         centries += { "0", "-none-" };
         for (auto preset : plugin_instance->presets)
           centries += { string_format ("%d", ++preset_num), preset.name };
-        pmap[PID_PRESET] = Param { "device_preset", "Device Preset", "Preset", 0, "", std::move (centries), "", "Device Preset to be used" };
+        pmap[PID_PRESET] = Param { "device_preset", "Device Preset", "Preset", 0, "", std::move (centries), GUIONLY, "Device Preset to be used" };
       }
     current_preset = 0;
 
@@ -1301,7 +1349,7 @@ class LV2Processor : public AudioProcessor {
           // TODO: lv2 port numbers are not reliable for serialization, should use port.symbol instead
           // TODO: special case boolean, enumeration, logarithmic,... controls
           int pid = PID_CONTROL_OFFSET + port.control_in_idx;
-          pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value } };
+          pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value }, GUIONLY };
           param_id_port.push_back (&port);
         }
 
@@ -1581,6 +1629,8 @@ public:
         return nullptr;
       }
   }
+  // lilv_state_to_string requires a non-empty URI
+  static constexpr auto ANKLANG_STATE_URI = "urn:anklang:state";
   void
   save_state (WritNode &xs, const string& device_path, ProjectImpl *project)
   {
@@ -1612,7 +1662,7 @@ public:
                                       plugin_host.urid_map.lv2_map(),
                                       plugin_host.urid_map.lv2_unmap(),
                                       state,
-                                      "",
+                                      ANKLANG_STATE_URI,
                                       nullptr);
     if (!Path::memwrite (blobfile, strlen (str), (uint8 *) str, false))
       printerr ("%s: %s: memwrite failed\n", program_alias(), blobfile);
@@ -1628,8 +1678,61 @@ public:
     lilv_state_free (state);
   }
   void
-  load_state (WritNode &xn)
+  load_state (WritNode &xs, ProjectImpl *project)
   {
+    String blobname;
+    xs["state_blob"] & blobname;
+    StreamReaderP blob = blobname.empty() ? nullptr : project->load_blob (blobname);
+    if (blob)
+      {
+        int ret = 0;
+        String blob_data;
+        std::vector<char> buffer (StreamReader::buffer_size);
+        while ((ret = blob->read (buffer.data(), buffer.size())) > 0)
+          {
+            blob_data.insert (blob_data.end(), buffer.data(), buffer.data() + ret);
+          }
+        if (ret == 0)
+          {
+            LilvState *state = lilv_state_new_from_string (plugin_host.world,
+                                                           plugin_host.urid_map.lv2_map(),
+                                                           blob_data.c_str());
+            if (state)
+              {
+                PortRestoreHelper port_restore_helper (plugin_host);
+                x11wrapper->exec_in_gtk_thread (
+                  [&]()
+                    {
+                      const LV2_Feature* state_features[] = { // TODO: more features
+                        plugin_host.urid_map.map_feature(),
+                        plugin_host.urid_map.unmap_feature(),
+                        NULL
+                      };
+                      lilv_state_restore (state, plugin_instance->instance, PortRestoreHelper::set, &port_restore_helper, 0, state_features);
+                    });
+                for (int i = 0; i < (int) param_id_port.size(); i++)
+                  {
+                    auto it = port_restore_helper.values.find (param_id_port[i]->symbol);
+                    if (it != port_restore_helper.values.end())
+                      send_param (i + PID_CONTROL_OFFSET, it->second);
+                  }
+                lilv_state_free (state);
+              }
+            else
+              {
+                printerr ("%s: LV2Device: blob read error: '%s' LV2 state from string failed\n", program_alias(), blobname);
+              }
+          }
+        else
+          {
+            printerr ("%s: LV2Device: blob read error: '%s' read failed\n", program_alias(), blobname);
+          }
+        blob->close();
+      }
+    else
+      {
+        printerr ("%s: LV2Device: blob read error: '%s' open failed\n", program_alias(), blobname);
+      }
   }
 };
 
@@ -1715,7 +1818,7 @@ LV2DeviceImpl::serialize (WritNode &xs)
       if (xs.in_save())
         lv2aproc->save_state (xs, get_device_path(), _project());
       if (xs.in_load())
-        lv2aproc->load_state (xs);
+        lv2aproc->load_state (xs, _project());
     }
 }
 
