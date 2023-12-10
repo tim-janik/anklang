@@ -701,6 +701,12 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
       ui_features.add (LV2_UI__parent, window_);
     }
 
+  /* enable DSP->UI notifications - we need to do this before creating the instance because
+   * the newly created instance and the DSP code can already start to communicate while
+   * the rest of the UI initialization is still being performed
+   */
+  plugin_instance->plugin_ui_is_active.store (true);
+
   string ui_uri = lilv_node_as_uri (lilv_ui_get_uri (ui));
   string container_ui_uri = external_ui_ ? lilv_node_as_uri (ui_type) : "http://lv2plug.in/ns/extensions/ui#GtkUI";
   ui_instance_ = x11wrapper->create_suil_instance (PluginHost::the().suil_host,
@@ -744,8 +750,6 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
       },
     period_ms);
 
-  // enable DSP->UI notifications
-  plugin_instance->plugin_ui_is_active.store (true);
   plugin_instance->set_initial_controls_ui();
 
   init_ok_ = true;
