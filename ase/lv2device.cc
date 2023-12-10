@@ -19,6 +19,7 @@
 #include "lv2/buf-size/buf-size.h"
 #include "lv2/worker/worker.h"
 #include "lv2/presets/presets.h"
+#include "lv2/resize-port/resize-port.h"
 #include "lv2/data-access/data-access.h"
 #include "lv2/instance-access/instance-access.h"
 #include "lv2/ui/ui.h"
@@ -514,6 +515,7 @@ struct PluginHost
     LilvNode *lv2_input_class;
     LilvNode *lv2_output_class;
     LilvNode *lv2_control_class;
+    LilvNode *lv2_rsz_minimumSize;
 
     LilvNode *lv2_atom_Chunk;
     LilvNode *lv2_atom_Sequence;
@@ -535,6 +537,7 @@ struct PluginHost
       lv2_input_class   = lilv_new_uri (world, LILV_URI_INPUT_PORT);
       lv2_output_class  = lilv_new_uri (world, LILV_URI_OUTPUT_PORT);
       lv2_control_class = lilv_new_uri (world, LILV_URI_CONTROL_PORT);
+      lv2_rsz_minimumSize = lilv_new_uri (world, LV2_RESIZE_PORT__minimumSize);
 
       lv2_atom_Chunk    = lilv_new_uri (world, LV2_ATOM__Chunk);
       lv2_atom_Sequence = lilv_new_uri (world, LV2_ATOM__Sequence);
@@ -903,6 +906,13 @@ PluginInstance::init_ports()
       const LilvPort *port = lilv_plugin_get_port_by_index (plugin, i);
       if (port)
         {
+          int port_buffer_size = 4096;
+          LilvNode *min_size = lilv_port_get (plugin, port, plugin_host.nodes.lv2_rsz_minimumSize);
+          if (min_size && lilv_node_is_int (min_size))
+            {
+              port_buffer_size = max (lilv_node_as_int (min_size), port_buffer_size);
+              lilv_node_free (min_size);
+            }
           if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_input_class))
             {
               if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_audio_class))
@@ -911,10 +921,9 @@ PluginInstance::init_ports()
                 }
               else if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_atom_class))
                 {
-                  /* TODO: need to support explicit port size from .ttl */
-                  const int buf_size = 4096;
-                  plugin_ports[i].evbuf = lv2_evbuf_new (buf_size, LV2_EVBUF_ATOM, plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Chunk)),
-                                                                                   plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Sequence)));
+                  plugin_ports[i].evbuf = lv2_evbuf_new (port_buffer_size, LV2_EVBUF_ATOM,
+                                                         plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Chunk)),
+                                                         plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Sequence)));
                   lilv_instance_connect_port (instance, i, lv2_evbuf_get_buffer (plugin_ports[i].evbuf));
 
                   atom_in_ports.push_back (i);
@@ -954,10 +963,9 @@ PluginInstance::init_ports()
                 {
                   atom_out_ports.push_back (i);
 
-                  printerr ("found atom output port\n");
-                  const int buf_size = 4096;
-                  plugin_ports[i].evbuf = lv2_evbuf_new (buf_size, LV2_EVBUF_ATOM, plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Chunk)),
-                                                                                   plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Sequence)));
+                  plugin_ports[i].evbuf = lv2_evbuf_new (port_buffer_size, LV2_EVBUF_ATOM,
+                                                         plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Chunk)),
+                                                         plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Sequence)));
                   lilv_instance_connect_port (instance, i, lv2_evbuf_get_buffer (plugin_ports[i].evbuf));
 
                 }
@@ -1835,7 +1843,6 @@ static auto lv2processor = register_audio_processor<LV2Processor> ("Ase::Devices
  * - some plugins (with lots of properties?) freeze UI - padthv1, drmr (#31)
  * - serialization (state extension)
  * - ui resizable
- * - port size for notifications
  * - provide bpm,...
  * - restore top level Makefile.mk
  */
