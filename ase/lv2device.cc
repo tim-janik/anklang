@@ -44,6 +44,7 @@ static Gtk2DlWrapEntry *x11wrapper = nullptr;
 
 using std::vector;
 using std::string;
+using std::set;
 using std::map;
 using std::max;
 using std::min;
@@ -212,9 +213,9 @@ class PluginHost;
 
 class Options
 {
-  PluginHost& plugin_host;
   float       m_sample_rate;
-  uint32_t    m_block_length;
+  uint32_t    m_min_block_length = 0;
+  uint32_t    m_max_block_length = AUDIO_BLOCK_MAX_RENDER_SIZE;
 
   vector<LV2_Options_Option> const_opts;
 
@@ -222,10 +223,9 @@ class Options
 public:
   Options (PluginHost& plugin_host);
   void
-  set (float sample_rate, int32_t block_length)
+  set_rate (float sample_rate)
   {
-    m_sample_rate   = sample_rate;
-    m_block_length  = block_length;
+    m_sample_rate = sample_rate;
   }
   const LV2_Feature *
   feature() const
@@ -618,6 +618,35 @@ public:
 private:
   DeviceInfoS devs;
   map<string, DeviceInfo> lv2_device_info_map;
+
+  bool
+  required_features_supported (const LilvPlugin *plugin, const string& name)
+  {
+    bool can_use_plugin = true;
+
+    set<String> supported_features {
+      LV2_WORKER__schedule,
+      LV2_URID_MAP_URI,
+      LV2_URID_UNMAP_URI,
+      LV2_OPTIONS__options,
+      LV2_BUF_SIZE__boundedBlockLength,
+    };
+
+    LilvNodes *nodes = lilv_plugin_get_required_features (plugin);
+    LILV_FOREACH(nodes, i, nodes)
+      {
+        const LilvNode *feature = lilv_nodes_get (nodes, i);
+        if (!supported_features.contains (lilv_node_as_string (feature)))
+          {
+            printerr ("LV2: unsupported feature %s required for plugin %s\n", lilv_node_as_string (feature), name.c_str());
+            can_use_plugin = false;
+          }
+      }
+    lilv_nodes_free (nodes);
+
+    return can_use_plugin;
+  }
+
 public:
 
   DeviceInfo
@@ -639,6 +668,7 @@ public:
     LILV_FOREACH(plugins, i, plugins)
       {
         const LilvPlugin* p = lilv_plugins_get (plugins, i);
+
         DeviceInfo device_info;
         string lv2_uri = lilv_node_as_uri (lilv_plugin_get_uri (p));
         device_info.uri = "LV2:" + lv2_uri;
@@ -650,9 +680,11 @@ public:
         auto plugin_class = lilv_plugin_get_class (p);
         device_info.category = string_format ("LV2 %s", lilv_node_as_string (lilv_plugin_class_get_label (plugin_class)));
 
-        devs.push_back (device_info);
-
-        lv2_device_info_map[lv2_uri] = device_info;
+        if (required_features_supported (p, device_info.name))
+          {
+            devs.push_back (device_info);
+            lv2_device_info_map[lv2_uri] = device_info;
+          }
       }
     std::stable_sort (devs.begin(), devs.end(), [] (auto& d1, auto& d2) { return string_casecmp (d1.name, d2.name) < 0; });
     return devs;
@@ -823,15 +855,14 @@ PluginUI::~PluginUI()
 }
 
 Options::Options (PluginHost& plugin_host) :
-  plugin_host (plugin_host),
   lv2_options_feature { LV2_OPTIONS__options, nullptr }
 {
   const_opts.push_back ({ LV2_OPTIONS_INSTANCE, 0, plugin_host.urids.param_sampleRate,
                           sizeof(float), plugin_host.urids.atom_Float, &m_sample_rate });
   const_opts.push_back ({ LV2_OPTIONS_INSTANCE, 0, plugin_host.urids.bufsz_minBlockLength,
-                          sizeof(int32_t), plugin_host.urids.atom_Int, &m_block_length });
+                          sizeof(int32_t), plugin_host.urids.atom_Int, &m_min_block_length });
   const_opts.push_back ({ LV2_OPTIONS_INSTANCE, 0, plugin_host.urids.bufsz_maxBlockLength,
-                          sizeof(int32_t), plugin_host.urids.atom_Int, &m_block_length });
+                          sizeof(int32_t), plugin_host.urids.atom_Int, &m_max_block_length });
   const_opts.push_back ({ LV2_OPTIONS_INSTANCE, 0, 0, 0, 0, nullptr });
 
   lv2_options_feature.data = const_opts.data();
@@ -896,6 +927,7 @@ PluginInstance::PluginInstance (PluginHost& plugin_host) :
   features.add (plugin_host.urid_map.unmap_feature());
   features.add (worker.feature());
   features.add (plugin_host.options.feature()); /* TODO: maybe make a local version */
+  features.add (LV2_BUF_SIZE__boundedBlockLength, nullptr);
 
   lv2_atom_forge_init (&forge, plugin_host.urid_map.lv2_map());
 }
@@ -1420,7 +1452,7 @@ class LV2Processor : public AudioProcessor {
   void
   initialize (SpeakerArrangement busses) override
   {
-    plugin_host.options.set (sample_rate(), AUDIO_BLOCK_MAX_RENDER_SIZE);
+    plugin_host.options.set_rate (sample_rate());
     plugin_instance = plugin_host.instantiate (lv2_uri_.c_str(), sample_rate());
     if (!plugin_instance)
       return;
