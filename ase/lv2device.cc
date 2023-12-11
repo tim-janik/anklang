@@ -13,6 +13,7 @@
 #include "clapplugin.hh"
 
 #include "lv2/atom/atom.h"
+#include "lv2/atom/forge.h"
 #include "lv2/midi/midi.h"
 #include "lv2/options/options.h"
 #include "lv2/parameters/parameters.h"
@@ -23,6 +24,7 @@
 #include "lv2/data-access/data-access.h"
 #include "lv2/instance-access/instance-access.h"
 #include "lv2/ui/ui.h"
+#include "lv2/time/time.h"
 
 #include "lv2externalui.hh"
 
@@ -408,13 +410,17 @@ struct PresetInfo
 
 struct PluginUI;
 
-struct PluginInstance
+class PluginInstance
 {
+  std::array<uint8, 256>     last_position_buffer {};
+  std::array<uint8_t, 256>   position_buffer {};
+public:
   PluginHost& plugin_host;
   std::unique_ptr<PluginUI>  plugin_ui;
   std::atomic<bool>          plugin_ui_is_active { false };
 
   LV2_Extension_Data_Feature lv2_ext_data;
+  LV2_Atom_Forge             forge;
 
   Features features;
 
@@ -444,6 +450,7 @@ struct PluginInstance
   void init_presets();
   void reset_event_buffers();
   void write_midi (uint32_t time, size_t size, const uint8_t *data);
+  void write_position (const AudioTransport &transport);
   void connect_audio_port (uint32_t port, float *buffer);
   void run (uint32_t n_frames);
   void activate();
@@ -494,6 +501,14 @@ struct PluginHost
     LV2_URID bufsz_maxBlockLength;
     LV2_URID bufsz_minBlockLength;
     LV2_URID midi_MidiEvent;
+    LV2_URID time_Position;
+    LV2_URID time_bar;
+    LV2_URID time_barBeat;
+    LV2_URID time_beatUnit;
+    LV2_URID time_beatsPerBar;
+    LV2_URID time_beatsPerMinute;
+    LV2_URID time_frame;
+    LV2_URID time_speed;
 
     URIDs (Map& map) :
       param_sampleRate          (map.urid_map (LV2_PARAMETERS__sampleRate)),
@@ -504,7 +519,15 @@ struct PluginHost
       atom_eventTransfer        (map.urid_map (LV2_ATOM__eventTransfer)),
       bufsz_maxBlockLength      (map.urid_map (LV2_BUF_SIZE__maxBlockLength)),
       bufsz_minBlockLength      (map.urid_map (LV2_BUF_SIZE__minBlockLength)),
-      midi_MidiEvent            (map.urid_map (LV2_MIDI__MidiEvent))
+      midi_MidiEvent            (map.urid_map (LV2_MIDI__MidiEvent)),
+      time_Position             (map.urid_map (LV2_TIME__Position)),
+      time_bar                  (map.urid_map (LV2_TIME__bar)),
+      time_barBeat              (map.urid_map (LV2_TIME__barBeat)),
+      time_beatUnit             (map.urid_map (LV2_TIME__beatUnit)),
+      time_beatsPerBar          (map.urid_map (LV2_TIME__beatsPerBar)),
+      time_beatsPerMinute       (map.urid_map (LV2_TIME__beatsPerMinute)),
+      time_frame                (map.urid_map (LV2_TIME__frame)),
+      time_speed                (map.urid_map (LV2_TIME__speed))
     {
     }
   } urids;
@@ -865,6 +888,8 @@ PluginInstance::PluginInstance (PluginHost& plugin_host) :
   features.add (plugin_host.urid_map.unmap_feature());
   features.add (worker.feature());
   features.add (plugin_host.options.feature()); /* TODO: maybe make a local version */
+
+  lv2_atom_forge_init (&forge, plugin_host.urid_map.lv2_map());
 }
 
 PluginInstance::~PluginInstance()
@@ -1021,6 +1046,46 @@ PluginInstance::write_midi (uint32_t time, size_t size, const uint8_t *data)
       LV2_Evbuf_Iterator    iter = lv2_evbuf_end (evbuf);
 
       lv2_evbuf_write (&iter, time, 0, plugin_host.urids.midi_MidiEvent, size, data);
+    }
+}
+
+void
+PluginInstance::write_position (const AudioTransport &transport)
+{
+  if (atom_in_ports.empty())
+    return;
+
+  const auto &tick_sig = transport.tick_sig;
+  uint64 frames_since_start = llrint (transport.current_seconds * transport.samplerate) + transport.current_minutes * 60 * transport.samplerate;
+
+  LV2_Atom_Forge_Frame frame;
+  lv2_atom_forge_set_buffer (&forge, position_buffer.data(), position_buffer.size());
+  lv2_atom_forge_object (&forge, &frame, 0, plugin_host.urids.time_Position);
+  lv2_atom_forge_key    (&forge, plugin_host.urids.time_frame);
+  lv2_atom_forge_long   (&forge, frames_since_start);
+  lv2_atom_forge_key    (&forge, plugin_host.urids.time_speed);
+  lv2_atom_forge_float  (&forge, transport.running() ? 1.0 : 0.0);
+  lv2_atom_forge_key    (&forge, plugin_host.urids.time_bar);
+  lv2_atom_forge_long   (&forge, transport.current_bar);
+  lv2_atom_forge_key    (&forge, plugin_host.urids.time_barBeat);
+  lv2_atom_forge_float  (&forge, transport.current_beat + transport.current_semiquaver / 16.);
+  lv2_atom_forge_key    (&forge, plugin_host.urids.time_beatUnit);
+  lv2_atom_forge_int    (&forge, tick_sig.beat_unit());
+  lv2_atom_forge_key    (&forge, plugin_host.urids.time_beatsPerBar);
+  lv2_atom_forge_float  (&forge, tick_sig.beats_per_bar());
+  lv2_atom_forge_key    (&forge, plugin_host.urids.time_beatsPerMinute);
+  lv2_atom_forge_float  (&forge, tick_sig.bpm());
+
+  const LV2_Atom *lv2_pos = (LV2_Atom *) position_buffer.data();
+  const size_t buffer_used = lv2_pos->size + sizeof (LV2_Atom);
+  if (!std::equal (position_buffer.begin(), position_buffer.begin() + buffer_used, last_position_buffer.begin()))
+    {
+      /* TODO: we use the first atom in port for transport input, is there a better strategy? */
+      LV2_Evbuf           *evbuf = plugin_ports[0].evbuf;
+      LV2_Evbuf_Iterator    iter = lv2_evbuf_end (evbuf);
+
+      lv2_evbuf_write (&iter, 0, 0, lv2_pos->type, lv2_pos->size, (uint8 *) LV2_ATOM_BODY (lv2_pos));
+      std::copy (position_buffer.begin(), position_buffer.begin() + buffer_used, last_position_buffer.begin());
     }
 }
 
@@ -1478,6 +1543,7 @@ class LV2Processor : public AudioProcessor {
 
     // reset event buffers and write midi events
     plugin_instance->reset_event_buffers();
+    plugin_instance->write_position (transport());
 
     MidiEventInput evinput = midi_event_input();
     for (const auto &ev : evinput)
@@ -1843,6 +1909,5 @@ static auto lv2processor = register_audio_processor<LV2Processor> ("Ase::Devices
  * - some plugins (with lots of properties?) freeze UI - padthv1, drmr (#31)
  * - serialization (state extension)
  * - ui resizable
- * - provide bpm,...
  * - restore top level Makefile.mk
  */
