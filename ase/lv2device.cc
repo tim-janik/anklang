@@ -438,6 +438,8 @@ public:
   std::vector<int>              atom_in_ports;
   std::vector<int>              audio_in_ports;
   std::vector<int>              audio_out_ports;
+  std::vector<int>              midi_in_ports;
+  std::vector<int>              position_in_ports;
   std::vector<PresetInfo>       presets;
   bool                          active = false;
   std::function<void(int, float)> control_in_changed_callback;
@@ -542,6 +544,9 @@ struct PluginHost
 
     LilvNode *lv2_atom_Chunk;
     LilvNode *lv2_atom_Sequence;
+    LilvNode *lv2_atom_supports;
+    LilvNode *lv2_midi_MidiEvent;
+    LilvNode *lv2_time_Position;
     LilvNode *lv2_presets_Preset;
 
     LilvNode *lv2_ui_external;
@@ -564,9 +569,12 @@ struct PluginHost
 
       lv2_atom_Chunk    = lilv_new_uri (world, LV2_ATOM__Chunk);
       lv2_atom_Sequence = lilv_new_uri (world, LV2_ATOM__Sequence);
+      lv2_atom_supports = lilv_new_uri (world, LV2_ATOM__supports);
+      lv2_midi_MidiEvent  = lilv_new_uri (world, LV2_MIDI__MidiEvent);
+      lv2_time_Position   = lilv_new_uri (world, LV2_TIME__Position);
 
-      lv2_ui_external     = lilv_new_uri(world, "http://lv2plug.in/ns/extensions/ui#external");
-      lv2_ui_externalkx   = lilv_new_uri(world, "http://kxstudio.sf.net/ns/lv2ext/external-ui#Widget");
+      lv2_ui_external     = lilv_new_uri (world, "http://lv2plug.in/ns/extensions/ui#external");
+      lv2_ui_externalkx   = lilv_new_uri (world, "http://kxstudio.sf.net/ns/lv2ext/external-ui#Widget");
       lv2_ui_fixedSize    = lilv_new_uri (world, LV2_UI__fixedSize);
       lv2_ui_noUserResize = lilv_new_uri (world, LV2_UI__noUserResize);
 
@@ -951,6 +959,16 @@ PluginInstance::init_ports()
                                                          plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Sequence)));
                   lilv_instance_connect_port (instance, i, lv2_evbuf_get_buffer (plugin_ports[i].evbuf));
 
+                  if (LilvNodes *atom_supports = lilv_port_get_value (plugin, port, plugin_host.nodes.lv2_atom_supports))
+                    {
+                      if (lilv_nodes_contains (atom_supports, plugin_host.nodes.lv2_midi_MidiEvent))
+                        midi_in_ports.push_back (i);
+                      if (lilv_nodes_contains (atom_supports, plugin_host.nodes.lv2_time_Position))
+                        position_in_ports.push_back (i);
+
+                      lilv_nodes_free (atom_supports);
+                    }
+
                   atom_in_ports.push_back (i);
                 }
               else if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_control_class))
@@ -1009,6 +1027,10 @@ PluginInstance::init_ports()
         }
     }
 
+  if (midi_in_ports.size() > 1)
+    printerr ("LV2: more than one midi input found - this is not supported");
+  if (position_in_ports.size() > 1)
+    printerr ("LV2: more than one time position input found - this is not supported");
   printerr ("--------------------------------------------------\n");
   printerr ("audio IN:%zd OUT:%zd\n", audio_in_ports.size(), audio_out_ports.size());
   printerr ("control IN:%zd\n", n_control_ports);
@@ -1037,22 +1059,19 @@ PluginInstance::init_presets()
 void
 PluginInstance::write_midi (uint32_t time, size_t size, const uint8_t *data)
 {
-  if (!atom_in_ports.empty())
-    {
-      /* TODO: we use the first atom in port for midi, is there a better strategy? */
-      int p = atom_in_ports[0];
+  if (midi_in_ports.empty())
+    return;
 
-      LV2_Evbuf           *evbuf = plugin_ports[p].evbuf;
-      LV2_Evbuf_Iterator    iter = lv2_evbuf_end (evbuf);
+  LV2_Evbuf           *evbuf = plugin_ports[midi_in_ports.front()].evbuf;
+  LV2_Evbuf_Iterator    iter = lv2_evbuf_end (evbuf);
 
-      lv2_evbuf_write (&iter, time, 0, plugin_host.urids.midi_MidiEvent, size, data);
-    }
+  lv2_evbuf_write (&iter, time, 0, plugin_host.urids.midi_MidiEvent, size, data);
 }
 
 void
 PluginInstance::write_position (const AudioTransport &transport)
 {
-  if (atom_in_ports.empty())
+  if (position_in_ports.empty())
     return;
 
   const auto &tick_sig = transport.tick_sig;
@@ -1080,8 +1099,7 @@ PluginInstance::write_position (const AudioTransport &transport)
   const size_t buffer_used = lv2_pos->size + sizeof (LV2_Atom);
   if (!std::equal (position_buffer.begin(), position_buffer.begin() + buffer_used, last_position_buffer.begin()))
     {
-      /* TODO: we use the first atom in port for transport input, is there a better strategy? */
-      LV2_Evbuf           *evbuf = plugin_ports[0].evbuf;
+      LV2_Evbuf           *evbuf = plugin_ports[position_in_ports.front()].evbuf;
       LV2_Evbuf_Iterator    iter = lv2_evbuf_end (evbuf);
 
       lv2_evbuf_write (&iter, 0, 0, lv2_pos->type, lv2_pos->size, (uint8 *) LV2_ATOM_BODY (lv2_pos));
