@@ -282,7 +282,6 @@ public:
         work_events_.for_each (trash_events_,
           [this] (const ControlEvent *event)
             {
-              printerr ("got work %zd bytes\n", event->size());
               worker_interface->work (instance, respond, this, event->size(), event->data());
             });
         // free both: old worker events and old response events
@@ -315,7 +314,6 @@ public:
     response_events_.for_each (trash_events_,
       [this] (const ControlEvent *event)
         {
-          printerr ("got work response %zd bytes\n", event->size());
           worker_interface->work_response (instance, event->size(), event->data());
         });
   }
@@ -665,6 +663,7 @@ private:
       LV2_URID_MAP_URI,
       LV2_URID_UNMAP_URI,
       LV2_OPTIONS__options,
+      LV2_UI_PREFIX "makeResident",  // feature is pointless/deprecated so we simply ignore that some plugins want it
     };
     if (lilv_ui_is_a (ui, nodes.lv2_ui_x11ui))
       {
@@ -673,6 +672,11 @@ private:
     if (lilv_ui_is_a (ui, nodes.lv2_ui_external) ||  lilv_ui_is_a (ui, nodes.lv2_ui_externalkx))
       {
         supported_features.insert (lilv_node_as_string (nodes.lv2_ui_externalkx));
+      }
+    else
+      {
+        supported_features.insert (LV2_UI__parent);
+        supported_features.insert (LV2_UI__resize); // SUIL provides this interface
       }
 
     LilvNodes *req_features = lilv_world_find_nodes (world, s, nodes.lv2_requiredFeature, nullptr);
