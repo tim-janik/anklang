@@ -479,12 +479,15 @@ host_ui_write (void          *controller,
   plugin_instance->ui2dsp_events_.push (event);
 }
 
-// TODO: do we need to implement this function?
 uint32_t
 host_ui_index (void *controller, const char* symbol)
 {
-  printerr ("LV2: host_ui_index %s called but not implemented\n", symbol);
-  return 0;
+  PluginInstance *plugin_instance = (PluginInstance *) controller;
+  const vector<Port> &ports = plugin_instance->plugin_ports;
+  for (size_t i = 0; i < ports.size(); i++)
+    if (ports[i].symbol == symbol)
+      return i;
+  return LV2UI_INVALID_PORT_INDEX;
 }
 
 struct PluginHost
@@ -1021,6 +1024,14 @@ PluginInstance::init_ports()
               port_buffer_size = max (lilv_node_as_int (min_size), port_buffer_size);
               lilv_node_free (min_size);
             }
+
+          LilvNode *nname = lilv_port_get_name (plugin, port);
+          plugin_ports[i].name = lilv_node_as_string (nname);
+          lilv_node_free (nname);
+
+          const LilvNode *nsymbol = lilv_port_get_symbol (plugin, port);
+          plugin_ports[i].symbol = lilv_node_as_string (nsymbol);
+
           if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_input_class))
             {
               if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_audio_class))
@@ -1052,13 +1063,6 @@ PluginInstance::init_ports()
                   plugin_ports[i].type = Port::CONTROL_IN;
                   plugin_ports[i].min_value = min_values[i];
                   plugin_ports[i].max_value = max_values[i];
-
-                  LilvNode *nname = lilv_port_get_name (plugin, port);
-                  plugin_ports[i].name = lilv_node_as_string (nname);
-                  lilv_node_free (nname);
-
-                  const LilvNode *nsymbol = lilv_port_get_symbol (plugin, port);
-                  plugin_ports[i].symbol = lilv_node_as_string (nsymbol);
 
                   lilv_instance_connect_port (instance, i, &plugin_ports[i].control);
 
