@@ -25,6 +25,7 @@
 #include "lv2/instance-access/instance-access.h"
 #include "lv2/ui/ui.h"
 #include "lv2/time/time.h"
+#include "lv2/state/state.h"
 
 #include "lv2externalui.hh"
 
@@ -618,7 +619,7 @@ public:
     static PluginHost host;
     return host;
   }
-  PluginInstance *instantiate (const char *plugin_uri, uint sample_rate);
+  PluginInstance *instantiate (const char *plugin_uri, uint sample_rate, LilvState **default_state);
 
 private:
   DeviceInfoS devs;
@@ -635,6 +636,7 @@ private:
       LV2_URID_UNMAP_URI,
       LV2_OPTIONS__options,
       LV2_BUF_SIZE__boundedBlockLength,
+      LV2_STATE__loadDefaultState,
     };
 
     LilvNodes *req_features = lilv_plugin_get_required_features (plugin);
@@ -915,7 +917,7 @@ Options::Options (PluginHost& plugin_host) :
 }
 
 PluginInstance *
-PluginHost::instantiate (const char *plugin_uri, uint sample_rate)
+PluginHost::instantiate (const char *plugin_uri, uint sample_rate, LilvState **default_state)
 {
   LilvNode* uri = lilv_new_uri (world, plugin_uri);
   if (!uri)
@@ -963,6 +965,9 @@ PluginHost::instantiate (const char *plugin_uri, uint sample_rate)
   plugin_instance->worker.set_instance (instance);
   plugin_instance->lv2_ext_data.data_access = lilv_instance_get_descriptor (instance)->extension_data;
 
+  // load the plugin as a preset to get default
+  *default_state = lilv_state_new_from_world (world, urid_map.lv2_map(), lilv_plugin_get_uri (plugin));
+
   return plugin_instance;
 }
 
@@ -974,6 +979,7 @@ PluginInstance::PluginInstance (PluginHost& plugin_host) :
   features.add (worker.feature());
   features.add (plugin_host.options.feature()); /* TODO: maybe make a local version */
   features.add (LV2_BUF_SIZE__boundedBlockLength, nullptr);
+  features.add (LV2_STATE__loadDefaultState, nullptr);
 
   lv2_atom_forge_init (&forge, plugin_host.urid_map.lv2_map());
 }
@@ -1499,10 +1505,21 @@ class LV2Processor : public AudioProcessor {
   void
   initialize (SpeakerArrangement busses) override
   {
+    LilvState *default_state = nullptr;
     plugin_host.options.set_rate (sample_rate());
-    plugin_instance = plugin_host.instantiate (lv2_uri_.c_str(), sample_rate());
+    plugin_instance = plugin_host.instantiate (lv2_uri_.c_str(), sample_rate(), &default_state);
     if (!plugin_instance)
-      return;
+      {
+        if (default_state)
+          lilv_state_free (default_state);
+        return;
+      }
+
+    if (default_state)
+      {
+        apply_state (default_state);
+        lilv_state_free (default_state);
+      }
 
     ParameterMap pmap;
 
@@ -1853,6 +1870,27 @@ public:
     lilv_state_free (state);
   }
   void
+  apply_state (LilvState *state)
+  {
+    PortRestoreHelper port_restore_helper (plugin_host);
+    x11wrapper->exec_in_gtk_thread (
+      [&]()
+        {
+          const LV2_Feature* state_features[] = { // TODO: more features
+            plugin_host.urid_map.map_feature(),
+            plugin_host.urid_map.unmap_feature(),
+            NULL
+          };
+          lilv_state_restore (state, plugin_instance->instance, PortRestoreHelper::set, &port_restore_helper, 0, state_features);
+        });
+    for (int i = 0; i < (int) param_id_port.size(); i++)
+      {
+        auto it = port_restore_helper.values.find (param_id_port[i]->symbol);
+        if (it != port_restore_helper.values.end())
+          send_param (i + PID_CONTROL_OFFSET, it->second);
+      }
+  }
+  void
   load_state (WritNode &xs, ProjectImpl *project)
   {
     String blobname;
@@ -1874,23 +1912,7 @@ public:
                                                            blob_data.c_str());
             if (state)
               {
-                PortRestoreHelper port_restore_helper (plugin_host);
-                x11wrapper->exec_in_gtk_thread (
-                  [&]()
-                    {
-                      const LV2_Feature* state_features[] = { // TODO: more features
-                        plugin_host.urid_map.map_feature(),
-                        plugin_host.urid_map.unmap_feature(),
-                        NULL
-                      };
-                      lilv_state_restore (state, plugin_instance->instance, PortRestoreHelper::set, &port_restore_helper, 0, state_features);
-                    });
-                for (int i = 0; i < (int) param_id_port.size(); i++)
-                  {
-                    auto it = port_restore_helper.values.find (param_id_port[i]->symbol);
-                    if (it != port_restore_helper.values.end())
-                      send_param (i + PID_CONTROL_OFFSET, it->second);
-                  }
+                apply_state (state);
                 lilv_state_free (state);
               }
             else
