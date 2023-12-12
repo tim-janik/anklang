@@ -553,6 +553,7 @@ struct PluginHost
     LilvNode *lv2_ui_externalkx;
     LilvNode *lv2_ui_fixedSize;
     LilvNode *lv2_ui_noUserResize;
+    LilvNode *lv2_ui_x11ui;
     LilvNode *lv2_optionalFeature;
     LilvNode *lv2_requiredFeature;
 
@@ -577,6 +578,7 @@ struct PluginHost
       lv2_ui_externalkx   = lilv_new_uri (world, "http://kxstudio.sf.net/ns/lv2ext/external-ui#Widget");
       lv2_ui_fixedSize    = lilv_new_uri (world, LV2_UI__fixedSize);
       lv2_ui_noUserResize = lilv_new_uri (world, LV2_UI__noUserResize);
+      lv2_ui_x11ui        = lilv_new_uri (world, LV2_UI__X11UI);
 
       lv2_optionalFeature = lilv_new_uri (world, LV2_CORE__optionalFeature);
       lv2_requiredFeature = lilv_new_uri (world, LV2_CORE__requiredFeature);
@@ -632,21 +634,55 @@ private:
       LV2_BUF_SIZE__boundedBlockLength,
     };
 
-    LilvNodes *nodes = lilv_plugin_get_required_features (plugin);
-    LILV_FOREACH(nodes, i, nodes)
+    LilvNodes *req_features = lilv_plugin_get_required_features (plugin);
+    LILV_FOREACH (nodes, i, req_features)
       {
-        const LilvNode *feature = lilv_nodes_get (nodes, i);
+        const LilvNode *feature = lilv_nodes_get (req_features, i);
         if (!supported_features.contains (lilv_node_as_string (feature)))
           {
             printerr ("LV2: unsupported feature %s required for plugin %s\n", lilv_node_as_string (feature), name.c_str());
             can_use_plugin = false;
           }
       }
-    lilv_nodes_free (nodes);
+    lilv_nodes_free (req_features);
 
     return can_use_plugin;
   }
+  bool
+  required_ui_features_supported (const LilvUI *ui, const string& name)
+  {
+    const LilvNode *s = lilv_ui_get_uri (ui);
+    bool can_use_ui = true;
 
+    set<String> supported_features {
+      LV2_INSTANCE_ACCESS_URI,
+      LV2_DATA_ACCESS_URI,
+      LV2_URID_MAP_URI,
+      LV2_URID_UNMAP_URI,
+      LV2_OPTIONS__options,
+    };
+    if (lilv_ui_is_a (ui, nodes.lv2_ui_x11ui))
+      {
+        supported_features.insert (LV2_UI__idleInterface); // SUIL provides this interface for X11 UIs
+      }
+    if (lilv_ui_is_a (ui, nodes.lv2_ui_external) ||  lilv_ui_is_a (ui, nodes.lv2_ui_externalkx))
+      {
+        supported_features.insert (lilv_node_as_string (nodes.lv2_ui_externalkx));
+      }
+
+    LilvNodes *req_features = lilv_world_find_nodes (world, s, nodes.lv2_requiredFeature, nullptr);
+    LILV_FOREACH (nodes, i, req_features)
+      {
+        const LilvNode *feature = lilv_nodes_get (req_features, i);
+        if (!supported_features.contains (lilv_node_as_string (feature)))
+          {
+            printerr ("LV2: unsupported feature %s required for plugin ui %s\n", lilv_node_as_string (feature), name.c_str());
+            can_use_ui = false;
+          }
+      }
+    lilv_nodes_free (req_features);
+    return can_use_ui;
+  }
 public:
 
   DeviceInfo
@@ -665,7 +701,7 @@ public:
       return devs;
 
     const LilvPlugins* plugins = lilv_world_get_all_plugins (world);
-    LILV_FOREACH(plugins, i, plugins)
+    LILV_FOREACH (plugins, i, plugins)
       {
         const LilvPlugin* p = lilv_plugins_get (plugins, i);
 
@@ -684,6 +720,13 @@ public:
           {
             devs.push_back (device_info);
             lv2_device_info_map[lv2_uri] = device_info;
+
+            LilvUIs* uis = lilv_plugin_get_uis (p);
+            LILV_FOREACH (uis, u, uis)
+              {
+                const LilvUI* ui = lilv_uis_get (uis, u);
+                required_ui_features_supported (ui, device_info.name);
+              }
           }
       }
     std::stable_sort (devs.begin(), devs.end(), [] (auto& d1, auto& d2) { return string_casecmp (d1.name, d2.name) < 0; });
