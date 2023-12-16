@@ -1441,7 +1441,6 @@ PluginInstance::delete_ui_request()
   plugin_ui.reset();
 }
 
-// TODO: may want to use this for preset loading as well
 struct PortRestoreHelper
 {
   PluginHost& plugin_host;
@@ -1453,11 +1452,11 @@ struct PortRestoreHelper
   }
 
   static void
-  set (const char*         port_symbol,
-       void*               user_data,
-       const void*         value,
-       uint32_t            size,
-       uint32_t            type)
+  set (const char *port_symbol,
+       void       *user_data,
+       const void *value,
+       uint32_t    size,
+       uint32_t    type)
   {
     auto &port_restore = *(PortRestoreHelper *) user_data;
     auto &plugin_host = port_restore.plugin_host;
@@ -1630,7 +1629,20 @@ class LV2Processor : public AudioProcessor {
                   plugin_host.urid_map.unmap_feature(),
                   NULL
                 };
-                lilv_state_restore (state, plugin_instance->instance, set_port_value, this, 0, state_features);
+                PortRestoreHelper port_restore_helper (plugin_host);
+                lilv_state_restore (state, plugin_instance->instance, PortRestoreHelper::set, &port_restore_helper, 0, state_features);
+
+                // TODO: evil (possibly crashing) broken hack to set the parameters:
+                //  -> should be replaced by something else once presets are loaded outside the audio thread
+                main_loop->exec_idle ([port_restore_helper, this] () // <- delete source required if processor is destroyed
+                    {
+                      for (int i = 0; i < (int) param_id_port.size(); i++)
+                        {
+                          auto it = port_restore_helper.values.find (param_id_port[i]->symbol);
+                          if (it != port_restore_helper.values.end())
+                            send_param (i + PID_CONTROL_OFFSET, it->second);
+                        }
+                    });
               }
           }
       }
@@ -1723,56 +1735,6 @@ class LV2Processor : public AudioProcessor {
           plugin_instance->connect_audio_port (plugin_instance->audio_out_ports[i], oblock (mono_outs_[i], 0));
       }
     plugin_instance->run (n_frames);
-  }
-  void
-  set_port_value (const char*         port_symbol,
-                  const void*         value,
-                  uint32_t            size,
-                  uint32_t            type)
-  {
-    double dvalue = 0;
-    if (type == plugin_host.urids.atom_Float)
-      {
-        dvalue = *(const float*)value;
-      }
-    else if (type == plugin_host.urids.atom_Double)
-      {
-        dvalue = *(const double*)value;
-      }
-    else if (type == plugin_host.urids.atom_Int)
-      {
-        dvalue = *(const int32_t*)value;
-      }
-    else if (type == plugin_host.urids.atom_Long)
-      {
-        dvalue = *(const int64_t*)value;
-      }
-    else
-      {
-        printerr ("error: Preset `%s' value has bad type <%s>\n",
-                  port_symbol, plugin_instance->plugin_host.urid_map.urid_unmap (type));
-        return;
-      }
-    printerr ("%s = %f\n", port_symbol, dvalue);
-    for (int i = 0; i < (int) param_id_port.size(); i++)
-      {
-        if (param_id_port[i]->symbol == port_symbol)
-          {
-            // TODO: should set the parameters here
-            //set_param (i + PID_CONTROL_OFFSET, dvalue);
-          }
-      }
-  }
-
-  static void
-  set_port_value (const char*         port_symbol,
-                  void*               user_data,
-                  const void*         value,
-                  uint32_t            size,
-                  uint32_t            type)
-  {
-    LV2Processor *dev = (LV2Processor *) user_data;
-    dev->set_port_value (port_symbol, value, size, type);
   }
 public:
   LV2Processor (const ProcessorSetup &psetup) :
