@@ -34,6 +34,8 @@
 
 #include <lilv/lilv.h>
 
+// #define DEBUG_MAP
+
 namespace Ase {
 
 namespace
@@ -173,7 +175,9 @@ public:
       id = next_id++;
 
     m_urid_unmap[id] = str;
+#ifdef DEBUG_MAP
     printerr ("map %s -> %d\n", str, id);
+#endif
     return id;
   }
   const char *
@@ -1491,6 +1495,7 @@ class LV2Processor : public AudioProcessor {
   OBusId stereo_out_;
   vector<IBusId> mono_ins_;
   vector<OBusId> mono_outs_;
+  ProjectImpl *project_ = nullptr;
 
   PluginInstance *plugin_instance;
   PluginHost& plugin_host;
@@ -1521,7 +1526,7 @@ class LV2Processor : public AudioProcessor {
 
     if (default_state)
       {
-        apply_state (default_state);
+        apply_state (default_state, false);
         lilv_state_free (default_state);
       }
 
@@ -1830,6 +1835,11 @@ public:
   void
   save_state (WritNode &xs, const string& device_path, ProjectImpl *project)
   {
+    if (project_)
+      assert_return (project == project_);
+    else
+      project_ = project;
+
     String blobname = string_format ("lv2-%s.ttl", device_path);
     const String blobfile = project->writer_file_name (blobname);
     printerr ("blobfile %s\n", blobfile.c_str());
@@ -1838,6 +1848,25 @@ public:
     for (size_t i = 0; i < param_id_port.size(); i++)
       port_values[param_id_port[i]->symbol] = get_param (int (i) + PID_CONTROL_OFFSET);
 
+    Features save_features;
+    LV2_State_Map_Path  map_path {
+      .handle = this,
+      .abstract_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
+        {
+          auto *processor = (LV2Processor *) handle;
+          String hash;
+          // TODO: ok to do this in gtk thread?
+          processor->project_->writer_collect (path, &hash);
+          return strdup (hash.c_str());
+        },
+      .absolute_path = [] (LV2_State_Map_Path_Handle handle, const char *path) { printerr ("absolute_path %s called\n", path); return strdup (path); }
+    };
+    LV2_State_Free_Path free_path {
+      .handle = this,
+      .free_path = [] (LV2_State_Map_Path_Handle handle, char *path) { free (path); }
+    };
+    save_features.add (LV2_STATE__mapPath, &map_path);
+    save_features.add (LV2_STATE__freePath, &free_path);
     LilvState *state;
     x11wrapper->exec_in_gtk_thread (
       [&]()
@@ -1852,7 +1881,7 @@ public:
                                                 get_port_value_for_save,
                                                 &port_values,
                                                 0,
-                                                nullptr);
+                                                save_features.get_features());
         });
     char *str = lilv_state_to_string (plugin_host.world,
                                       plugin_host.urid_map.lv2_map(),
@@ -1874,18 +1903,41 @@ public:
     lilv_state_free (state);
   }
   void
-  apply_state (LilvState *state)
+  apply_state (LilvState *state, bool project_loading)
   {
     PortRestoreHelper port_restore_helper (plugin_host);
     x11wrapper->exec_in_gtk_thread (
       [&]()
         {
-          const LV2_Feature* state_features[] = { // TODO: more features
-            plugin_host.urid_map.map_feature(),
-            plugin_host.urid_map.unmap_feature(),
-            NULL
+          Features restore_features;
+          LV2_State_Map_Path  map_path {
+            .handle = this,
+            .abstract_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
+              {
+                printerr ("abstract path %s called from apply state\n");
+                return strdup (path);
+              },
+            .absolute_path = [] (LV2_State_Map_Path_Handle handle, const char *hash)
+              {
+                auto *processor = (LV2Processor *) handle;
+                // TODO: ok to do this in gtk thread?
+                String path = processor->project_->loader_resolve (hash);
+                printerr ("absolute_path %s called => %s\n", hash, path.c_str());
+                return strdup (path.c_str());
+              }
           };
-          lilv_state_restore (state, plugin_instance->instance, PortRestoreHelper::set, &port_restore_helper, 0, state_features);
+          LV2_State_Free_Path free_path {
+            .handle = this,
+            .free_path = [] (LV2_State_Map_Path_Handle handle, char *path) { free (path); }
+          };
+          if (project_loading)
+            {
+              restore_features.add (LV2_STATE__mapPath, &map_path);
+              restore_features.add (LV2_STATE__freePath, &free_path);
+            }
+          restore_features.add (plugin_host.urid_map.map_feature());
+          restore_features.add (plugin_host.urid_map.unmap_feature());
+          lilv_state_restore (state, plugin_instance->instance, PortRestoreHelper::set, &port_restore_helper, 0, restore_features.get_features());
         });
     for (int i = 0; i < (int) param_id_port.size(); i++)
       {
@@ -1897,6 +1949,11 @@ public:
   void
   load_state (WritNode &xs, ProjectImpl *project)
   {
+    if (project_)
+      assert_return (project == project_);
+    else
+      project_ = project;
+
     String blobname;
     xs["state_blob"] & blobname;
     StreamReaderP blob = blobname.empty() ? nullptr : project->load_blob (blobname);
@@ -1916,7 +1973,7 @@ public:
                                                            blob_data.c_str());
             if (state)
               {
-                apply_state (state);
+                apply_state (state, true);
                 lilv_state_free (state);
               }
             else
