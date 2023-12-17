@@ -26,6 +26,7 @@
 #include "lv2/ui/ui.h"
 #include "lv2/time/time.h"
 #include "lv2/state/state.h"
+#include "lv2/units/units.h"
 
 #include "lv2externalui.hh"
 
@@ -390,12 +391,13 @@ struct Port
   int         control_in_idx = -1; /* for control input ports */
   String      name;
   String      symbol;
+  String      unit;
 
   enum {
     UNKNOWN,
     CONTROL_IN,
     CONTROL_OUT
-  }           type;
+  } type;
 
   Port() :
     evbuf (nullptr),
@@ -554,6 +556,7 @@ struct PluginHost
     LilvNode *lv2_midi_MidiEvent;
     LilvNode *lv2_time_Position;
     LilvNode *lv2_presets_Preset;
+    LilvNode *lv2_units_unit;
 
     LilvNode *lv2_ui_external;
     LilvNode *lv2_ui_externalkx;
@@ -579,6 +582,7 @@ struct PluginHost
       lv2_atom_supports = lilv_new_uri (world, LV2_ATOM__supports);
       lv2_midi_MidiEvent  = lilv_new_uri (world, LV2_MIDI__MidiEvent);
       lv2_time_Position   = lilv_new_uri (world, LV2_TIME__Position);
+      lv2_units_unit      = lilv_new_uri (world, LV2_UNITS__unit);
 
       lv2_ui_external     = lilv_new_uri (world, "http://lv2plug.in/ns/extensions/ui#external");
       lv2_ui_externalkx   = lilv_new_uri (world, "http://kxstudio.sf.net/ns/lv2ext/external-ui#Widget");
@@ -1077,6 +1081,43 @@ PluginInstance::init_ports()
                   plugin_ports[i].type = Port::CONTROL_IN;
                   plugin_ports[i].min_value = min_values[i];
                   plugin_ports[i].max_value = max_values[i];
+
+                  LilvNodes *units = lilv_port_get_value (plugin, port, plugin_host.nodes.lv2_units_unit);
+                  LILV_FOREACH (nodes, pos, units)
+                    {
+                      const LilvNode *unit = lilv_nodes_get (units, pos);
+
+                      auto unit_symbol = [&] (const char *str, const char *sym) {
+                        if (strcmp (lilv_node_as_string (unit), str) == 0)
+                          plugin_ports[i].unit = sym;
+                      };
+
+                      unit_symbol (LV2_UNITS__bar, "bars");
+                      unit_symbol (LV2_UNITS__beat, "beats");
+                      unit_symbol (LV2_UNITS__bpm, "BPM");
+                      unit_symbol (LV2_UNITS__cent, "ct");
+                      unit_symbol (LV2_UNITS__cm, "cm");
+                      unit_symbol (LV2_UNITS__coef, "(coef)");
+                      unit_symbol (LV2_UNITS__db, "dB");
+                      unit_symbol (LV2_UNITS__degree, "deg");
+                      unit_symbol (LV2_UNITS__frame, "frames");
+                      unit_symbol (LV2_UNITS__hz, "Hz");
+                      unit_symbol (LV2_UNITS__inch, "in");
+                      unit_symbol (LV2_UNITS__khz, "kHz");
+                      unit_symbol (LV2_UNITS__km, "km");
+                      unit_symbol (LV2_UNITS__m, "m");
+                      unit_symbol (LV2_UNITS__mhz, "MHz");
+                      unit_symbol (LV2_UNITS__midiNote, "note");
+                      unit_symbol (LV2_UNITS__mile, "mi");
+                      unit_symbol (LV2_UNITS__min, "min");
+                      unit_symbol (LV2_UNITS__mm, "mm");
+                      unit_symbol (LV2_UNITS__ms, "ms");
+                      unit_symbol (LV2_UNITS__oct, "oct");
+                      unit_symbol (LV2_UNITS__pc, "%");
+                      unit_symbol (LV2_UNITS__s, "s");
+                      unit_symbol (LV2_UNITS__semitone12TET, "semi");
+                    }
+                  lilv_nodes_free (units);
 
                   lilv_instance_connect_port (instance, i, &plugin_ports[i].control);
 
@@ -1735,6 +1776,18 @@ class LV2Processor : public AudioProcessor {
           plugin_instance->connect_audio_port (plugin_instance->audio_out_ports[i], oblock (mono_outs_[i], 0));
       }
     plugin_instance->run (n_frames);
+  }
+  String
+  param_value_to_text (uint32_t paramid, double value) const
+  {
+    auto control_id = paramid - PID_CONTROL_OFFSET;
+    if (control_id >= 0 && control_id < param_id_port.size())
+      {
+        Port *port = param_id_port[control_id];
+        if (port->unit != "")
+          return AudioProcessor::param_value_to_text (paramid, value) + " " + port->unit;
+      }
+    return AudioProcessor::param_value_to_text (paramid, value);
   }
 public:
   LV2Processor (const ProcessorSetup &psetup) :
