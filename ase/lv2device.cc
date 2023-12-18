@@ -310,7 +310,6 @@ public:
     if (!worker_interface)
       return LV2_WORKER_ERR_UNKNOWN;
 
-    printerr ("queue work response\n");
     response_events_.push (ControlEvent::loft_new (0, 0, size, data));
     return LV2_WORKER_SUCCESS;
   }
@@ -383,6 +382,12 @@ public:
   }
 };
 
+struct ScalePoint
+{
+  String label;
+  float  value = 0;
+};
+
 struct Port
 {
   LV2_Evbuf  *evbuf;
@@ -390,9 +395,11 @@ struct Port
   float       min_value;  /* min control */
   float       max_value;  /* max control */
   int         control_in_idx = -1; /* for control input ports */
+  int         index = -1; /* lv2 index for this port */
   String      name;
   String      symbol;
   String      unit;
+  vector<ScalePoint> scale_points; /* for enumerations */
 
   enum {
     UNKNOWN,
@@ -401,7 +408,10 @@ struct Port
   } type;
 
   static constexpr uint NO_FLAGS    = 0;
-  static constexpr uint LOGARITHMIC = 1;
+  static constexpr uint LOGARITHMIC = 1 << 0;
+  static constexpr uint INTEGER     = 1 << 1;
+  static constexpr uint TOGGLED     = 1 << 2;
+  static constexpr uint ENUMERATION = 1 << 3;
 
   uint flags = NO_FLAGS;
 
@@ -414,9 +424,20 @@ struct Port
   float
   param_to_lv2 (double value) const
   {
-    if (flags & LOGARITHMIC)
+    if (flags & ENUMERATION)
+      {
+        int index = std::clamp (irintf (value), 0, int (scale_points.size()) - 1);
+        return scale_points[index].value;
+      }
+    else if (flags & LOGARITHMIC)
       {
         float f = exp2 (log2 (min_value) + (log2 (max_value) - log2 (min_value)) * value);
+        return std::clamp (f, min_value, max_value);
+      }
+    else if (flags & INTEGER)
+      {
+        // TODO: the knob at the UI should also only allow integer values
+        float f = std::round (value);
         return std::clamp (f, min_value, max_value);
       }
     else
@@ -427,10 +448,31 @@ struct Port
   double
   param_from_lv2 (double value) const
   {
-    if (flags & LOGARITHMIC)
+    if (flags & ENUMERATION)
+      {
+        double best_diff = 1e10;
+        size_t best_idx = 0;
+        for (size_t idx = 0; idx < scale_points.size(); idx++)
+          {
+            double diff = std::abs (scale_points[idx].value - value);
+            if (diff < best_diff)
+              {
+                best_idx = idx;
+                best_diff = diff;
+              }
+          }
+        return best_idx;
+      }
+    else if (flags & LOGARITHMIC)
       {
         double d = (log2 (value) - log2 (min_value)) / (log2 (max_value) - log2 (min_value));
         return std::clamp (d, 0.0, 1.0);
+      }
+    else if (flags & INTEGER)
+      {
+        // TODO: the knob at the UI should also only allow integer values
+        float f = std::round (value);
+        return std::clamp (f, min_value, max_value);
       }
     else
       {
@@ -445,7 +487,7 @@ struct PresetInfo
   const LilvNode *preset = nullptr;
 };
 
-struct PluginUI;
+class PluginUI;
 
 class PluginInstance
 {
@@ -527,8 +569,9 @@ host_ui_index (void *controller, const char* symbol)
   return LV2UI_INVALID_PORT_INDEX;
 }
 
-struct PluginHost
+class PluginHost
 {
+public:
   LilvWorld   *world = nullptr;
   Map          urid_map;
   void        *suil_host;
@@ -590,6 +633,9 @@ struct PluginHost
     LilvNode *lv2_presets_Preset;
     LilvNode *lv2_units_unit;
     LilvNode *lv2_pprop_logarithmic;
+    LilvNode *lv2_integer;
+    LilvNode *lv2_toggled;
+    LilvNode *lv2_enumeration;
 
     LilvNode *lv2_ui_external;
     LilvNode *lv2_ui_externalkx;
@@ -617,6 +663,9 @@ struct PluginHost
       lv2_time_Position   = lilv_new_uri (world, LV2_TIME__Position);
       lv2_units_unit      = lilv_new_uri (world, LV2_UNITS__unit);
       lv2_pprop_logarithmic = lilv_new_uri (world, LV2_PORT_PROPS__logarithmic);
+      lv2_integer         = lilv_new_uri (world, LV2_CORE__integer);
+      lv2_toggled         = lilv_new_uri (world, LV2_CORE__toggled);
+      lv2_enumeration     = lilv_new_uri (world, LV2_CORE__enumeration);
 
       lv2_ui_external     = lilv_new_uri (world, "http://lv2plug.in/ns/extensions/ui#external");
       lv2_ui_externalkx   = lilv_new_uri (world, "http://kxstudio.sf.net/ns/lv2ext/external-ui#Widget");
@@ -1083,6 +1132,7 @@ PluginInstance::init_ports()
 
           const LilvNode *nsymbol = lilv_port_get_symbol (plugin, port);
           plugin_ports[i].symbol = lilv_node_as_string (nsymbol);
+          plugin_ports[i].index = i;
 
           if (lilv_port_has_property (plugin, port, plugin_host.nodes.lv2_pprop_logarithmic))
             {
@@ -1091,6 +1141,28 @@ PluginInstance::init_ports()
               if (min_values[i] > 0 && max_values[i] > 0 && max_values[i] > min_values[i])
                 plugin_ports[i].flags |= Port::LOGARITHMIC;
             }
+          if (lilv_port_has_property (plugin, port, plugin_host.nodes.lv2_integer))
+            plugin_ports[i].flags |= Port::INTEGER;
+          if (lilv_port_has_property (plugin, port, plugin_host.nodes.lv2_toggled))
+            plugin_ports[i].flags |= Port::TOGGLED;
+          if (lilv_port_has_property (plugin, port, plugin_host.nodes.lv2_enumeration))
+            {
+              LilvScalePoints *points = lilv_port_get_scale_points (plugin, port);
+              LILV_FOREACH (scale_points, j, points)
+                {
+                  const LilvScalePoint *p     = lilv_scale_points_get (points, j);
+                  const LilvNode       *label = lilv_scale_point_get_label (p);
+                  const LilvNode       *value = lilv_scale_point_get_value (p);
+
+                  if (label && (lilv_node_is_int (value) || lilv_node_is_float (value)))
+                    plugin_ports[i].scale_points.emplace_back (lilv_node_as_string (label), lilv_node_as_float (value));
+                }
+              lilv_scale_points_free (points);
+
+              if (plugin_ports[i].scale_points.size() >= 2) // need scale points for valid enumeration
+                plugin_ports[i].flags |= Port::ENUMERATION;
+             }
+          std::sort (plugin_ports[i].scale_points.begin(), plugin_ports[i].scale_points.end(), [] (auto &p1, auto &p2) { return p1.value < p2.value; });
 
           if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_input_class))
             {
@@ -1408,7 +1480,7 @@ PluginInstance::handle_dsp2ui_events()
     [&] (const ControlEvent *event)
       {
         assert (event->port_index() < plugin_ports.size());
-        // printerr ("handle_dsp2ui_events: pop event: index=%zd, protocol=%d, sz=%zd\n", event->port_index, event->protocol, event->data.size());
+        // printerr ("handle_dsp2ui_events: pop event: index=%zd, protocol=%d, sz=%zd\n", event->port_index(), event->protocol(), event->size());
         if (plugin_ui)
           x11wrapper->suil_instance_port_event_gtk_thread (plugin_ui->ui_instance_, event->port_index(), event->size(), event->protocol(), event->data());
       });
@@ -1631,10 +1703,25 @@ class LV2Processor : public AudioProcessor {
           // TODO: lv2 port numbers are not reliable for serialization, should use port.symbol instead
           // TODO: special case boolean, enumeration, logarithmic,... controls
           int pid = PID_CONTROL_OFFSET + port.control_in_idx;
-          if (port.flags & Port::LOGARITHMIC)
+          if (port.flags & Port::ENUMERATION)
+            {
+              ChoiceS centries;
+              for (size_t i = 0; i < port.scale_points.size(); i++)
+                centries += { string_format ("%d", i), port.scale_points[i].label };
+              pmap[pid] = Param { port.symbol, port.name, "", port.param_from_lv2 (port.control), "", std::move (centries), GUIONLY };
+            }
+          else if (port.flags & Port::LOGARITHMIC)
             pmap[pid] = Param { port.symbol, port.name, "", port.param_from_lv2 (port.control), "", { 0, 1 }, GUIONLY };
+          else if (port.flags & Port::INTEGER)
+            {
+              String hints = GUIONLY;
+              if (port.flags & Port::TOGGLED)
+                hints += ":toggle";
+              pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value, 1 }, hints };
+            }
           else
             pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value }, GUIONLY };
+
           param_id_port.push_back (&port);
         }
 
@@ -1740,7 +1827,7 @@ class LV2Processor : public AudioProcessor {
         Port *port = param_id_port[control_id];
         port->control = port->param_to_lv2 (get_param (tag));
 
-        ControlEvent *event = ControlEvent::loft_new (port->control_in_idx, 0, sizeof (float), &port->control);
+        ControlEvent *event = ControlEvent::loft_new (port->index, 0, sizeof (float), &port->control);
         plugin_instance->dsp2ui_events_.push (event);
       }
   }
@@ -1823,19 +1910,39 @@ class LV2Processor : public AudioProcessor {
     plugin_instance->run (n_frames);
   }
   String
-  param_value_to_text (uint32_t paramid, double value) const
+  param_value_to_text (uint32_t paramid, double value) const override
   {
     auto control_id = paramid - PID_CONTROL_OFFSET;
     if (control_id >= 0 && control_id < param_id_port.size())
       {
         const Port *port = param_id_port[control_id];
 
-        String text = string_format ("%.3f", port->param_to_lv2 (value));
-        if (port->unit != "")
-          text += " " + port->unit;
-        return text;
+        if ((port->flags & Port::ENUMERATION) == 0)
+          {
+            String text;
+            if (port->flags & Port::INTEGER)
+              text = string_format ("%d", irintf (port->param_to_lv2 (value)));
+            else
+              text = string_format ("%.3f", port->param_to_lv2 (value));
+            if (port->unit != "")
+              text += " " + port->unit;
+            return text;
+          }
       }
     return AudioProcessor::param_value_to_text (paramid, value);
+  }
+  double
+  param_value_from_text (uint32_t paramid, const String &text) const override
+  {
+    auto control_id = paramid - PID_CONTROL_OFFSET;
+    if (control_id >= 0 && control_id < param_id_port.size())
+      {
+        const Port *port = param_id_port[control_id];
+
+        if ((port->flags & Port::ENUMERATION) == 0)
+          return port->param_from_lv2 (string_to_double (text));
+      }
+    return AudioProcessor::param_value_from_text (paramid, text);
   }
 public:
   LV2Processor (const ProcessorSetup &psetup) :
