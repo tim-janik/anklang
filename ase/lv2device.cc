@@ -632,6 +632,7 @@ public:
     LilvNode *lv2_time_Position;
     LilvNode *lv2_presets_Preset;
     LilvNode *lv2_units_unit;
+    LilvNode *lv2_units_symbol;
     LilvNode *lv2_pprop_logarithmic;
     LilvNode *lv2_integer;
     LilvNode *lv2_toggled;
@@ -662,6 +663,7 @@ public:
       lv2_midi_MidiEvent  = lilv_new_uri (world, LV2_MIDI__MidiEvent);
       lv2_time_Position   = lilv_new_uri (world, LV2_TIME__Position);
       lv2_units_unit      = lilv_new_uri (world, LV2_UNITS__unit);
+      lv2_units_symbol    = lilv_new_uri (world, LV2_UNITS__symbol);
       lv2_pprop_logarithmic = lilv_new_uri (world, LV2_PORT_PROPS__logarithmic);
       lv2_integer         = lilv_new_uri (world, LV2_CORE__integer);
       lv2_toggled         = lilv_new_uri (world, LV2_CORE__toggled);
@@ -1230,6 +1232,12 @@ PluginInstance::init_ports()
                       unit_symbol (LV2_UNITS__pc, "%");
                       unit_symbol (LV2_UNITS__s, "s");
                       unit_symbol (LV2_UNITS__semitone12TET, "semi");
+
+                      if (LilvNode *symbol = lilv_world_get (plugin_host.world, unit, plugin_host.nodes.lv2_units_symbol, nullptr))
+                        {
+                          if (auto sym = lilv_node_as_string (symbol))
+                            plugin_ports[i].unit = sym;
+                        }
                     }
                   lilv_nodes_free (units);
 
