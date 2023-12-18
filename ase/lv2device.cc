@@ -27,6 +27,7 @@
 #include "lv2/time/time.h"
 #include "lv2/state/state.h"
 #include "lv2/units/units.h"
+#include "lv2/port-props/port-props.h"
 
 #include "lv2externalui.hh"
 
@@ -399,11 +400,42 @@ struct Port
     CONTROL_OUT
   } type;
 
+  static constexpr uint NO_FLAGS    = 0;
+  static constexpr uint LOGARITHMIC = 1;
+
+  uint flags = NO_FLAGS;
+
   Port() :
     evbuf (nullptr),
     control (0.0),
     type (UNKNOWN)
   {
+  }
+  float
+  param_to_lv2 (double value) const
+  {
+    if (flags & LOGARITHMIC)
+      {
+        float f = exp2 (log2 (min_value) + (log2 (max_value) - log2 (min_value)) * value);
+        return std::clamp (f, min_value, max_value);
+      }
+    else
+      {
+        return value;
+      }
+  }
+  double
+  param_from_lv2 (double value) const
+  {
+    if (flags & LOGARITHMIC)
+      {
+        double d = (log2 (value) - log2 (min_value)) / (log2 (max_value) - log2 (min_value));
+        return std::clamp (d, 0.0, 1.0);
+      }
+    else
+      {
+        return value;
+      }
   }
 };
 
@@ -447,7 +479,7 @@ public:
   std::vector<int>              position_in_ports;
   std::vector<PresetInfo>       presets;
   bool                          active = false;
-  std::function<void(int, float)> control_in_changed_callback;
+  std::function<void(Port *)>   control_in_changed_callback;
   uint32_t                      ui_update_frame_count = 0;
   static constexpr double       ui_update_fps = 60;
 
@@ -557,6 +589,7 @@ struct PluginHost
     LilvNode *lv2_time_Position;
     LilvNode *lv2_presets_Preset;
     LilvNode *lv2_units_unit;
+    LilvNode *lv2_pprop_logarithmic;
 
     LilvNode *lv2_ui_external;
     LilvNode *lv2_ui_externalkx;
@@ -583,6 +616,7 @@ struct PluginHost
       lv2_midi_MidiEvent  = lilv_new_uri (world, LV2_MIDI__MidiEvent);
       lv2_time_Position   = lilv_new_uri (world, LV2_TIME__Position);
       lv2_units_unit      = lilv_new_uri (world, LV2_UNITS__unit);
+      lv2_pprop_logarithmic = lilv_new_uri (world, LV2_PORT_PROPS__logarithmic);
 
       lv2_ui_external     = lilv_new_uri (world, "http://lv2plug.in/ns/extensions/ui#external");
       lv2_ui_externalkx   = lilv_new_uri (world, "http://kxstudio.sf.net/ns/lv2ext/external-ui#Widget");
@@ -1050,6 +1084,14 @@ PluginInstance::init_ports()
           const LilvNode *nsymbol = lilv_port_get_symbol (plugin, port);
           plugin_ports[i].symbol = lilv_node_as_string (nsymbol);
 
+          if (lilv_port_has_property (plugin, port, plugin_host.nodes.lv2_pprop_logarithmic))
+            {
+              // min/max for logarithmic ports should not be zero, max larger than min
+              // in theory LV2 allows negative values (as long as they have the same sign), but we don't support that
+              if (min_values[i] > 0 && max_values[i] > 0 && max_values[i] > min_values[i])
+                plugin_ports[i].flags |= Port::LOGARITHMIC;
+            }
+
           if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_input_class))
             {
               if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_audio_class))
@@ -1306,7 +1348,7 @@ PluginInstance::run (uint32_t n_frames)
             assert (event->size() == sizeof (float));
             port->control = *(float *)event->data();
 
-            control_in_changed_callback (port->control_in_idx, port->control);
+            control_in_changed_callback (port);
           }
         else if (event->protocol() == plugin_host.urids.atom_eventTransfer)
           {
@@ -1589,13 +1631,16 @@ class LV2Processor : public AudioProcessor {
           // TODO: lv2 port numbers are not reliable for serialization, should use port.symbol instead
           // TODO: special case boolean, enumeration, logarithmic,... controls
           int pid = PID_CONTROL_OFFSET + port.control_in_idx;
-          pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value }, GUIONLY };
+          if (port.flags & Port::LOGARITHMIC)
+            pmap[pid] = Param { port.symbol, port.name, "", port.param_from_lv2 (port.control), "", { 0, 1 }, GUIONLY };
+          else
+            pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value }, GUIONLY };
           param_id_port.push_back (&port);
         }
 
     // call if parameters are changed using the LV2 custom UI during render
-    plugin_instance->control_in_changed_callback = [this] (int id, float value) {
-      set_param_from_render (id + PID_CONTROL_OFFSET, value);
+    plugin_instance->control_in_changed_callback = [this] (Port *port) {
+      set_param_from_render (PID_CONTROL_OFFSET + port->control_in_idx, port->param_from_lv2 (port->control));
     };
 
     // TODO: deactivate?
@@ -1693,7 +1738,7 @@ class LV2Processor : public AudioProcessor {
     if (control_id >= 0 && control_id < param_id_port.size())
       {
         Port *port = param_id_port[control_id];
-        port->control = get_param (tag);
+        port->control = port->param_to_lv2 (get_param (tag));
 
         ControlEvent *event = ControlEvent::loft_new (port->control_in_idx, 0, sizeof (float), &port->control);
         plugin_instance->dsp2ui_events_.push (event);
@@ -1783,9 +1828,12 @@ class LV2Processor : public AudioProcessor {
     auto control_id = paramid - PID_CONTROL_OFFSET;
     if (control_id >= 0 && control_id < param_id_port.size())
       {
-        Port *port = param_id_port[control_id];
+        const Port *port = param_id_port[control_id];
+
+        String text = string_format ("%.3f", port->param_to_lv2 (value));
         if (port->unit != "")
-          return AudioProcessor::param_value_to_text (paramid, value) + " " + port->unit;
+          text += " " + port->unit;
+        return text;
       }
     return AudioProcessor::param_value_to_text (paramid, value);
   }
@@ -1861,7 +1909,10 @@ public:
     /* build a map containing all the port values */
     map<string, float> port_values;
     for (size_t i = 0; i < param_id_port.size(); i++)
-      port_values[param_id_port[i]->symbol] = get_param (int (i) + PID_CONTROL_OFFSET);
+      {
+        const Port *port = param_id_port[i];
+        port_values[port->symbol] = port->param_to_lv2 (get_param (int (i) + PID_CONTROL_OFFSET));
+      }
 
     Features save_features;
     LV2_State_Map_Path  map_path {
@@ -1956,9 +2007,10 @@ public:
         });
     for (int i = 0; i < (int) param_id_port.size(); i++)
       {
-        auto it = port_restore_helper.values.find (param_id_port[i]->symbol);
+        const Port *port = param_id_port[i];
+        auto it = port_restore_helper.values.find (port->symbol);
         if (it != port_restore_helper.values.end())
-          send_param (i + PID_CONTROL_OFFSET, it->second);
+          send_param (i + PID_CONTROL_OFFSET, port->param_from_lv2 (it->second));
       }
   }
   void
