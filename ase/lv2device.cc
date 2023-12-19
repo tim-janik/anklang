@@ -522,6 +522,7 @@ struct PathMap
 
 class PluginInstance
 {
+  bool init_ok_ = false;
   std::array<uint8, 256>     last_position_buffer {};
   std::array<uint8, 256>     position_buffer {};
 
@@ -539,7 +540,7 @@ public:
 
   Worker   worker;
 
-  PluginInstance (PluginHost& plugin_host);
+  PluginInstance (PluginHost& plugin_host, uint sample_rate, const LilvPlugin *plugin, PortRestoreHelper *port_restore_helper);
   ~PluginInstance();
 
   const LilvPlugin             *plugin = nullptr;
@@ -560,6 +561,8 @@ public:
   static constexpr double       ui_update_fps = 60;
 
   ControlEventVector            ui2dsp_events_, dsp2ui_events_, trash_events_;
+
+  bool init_ok() const { return init_ok_; }
 
   void init_ports();
   void init_presets();
@@ -1079,14 +1082,8 @@ PluginHost::instantiate (const char *plugin_uri, uint sample_rate, PortRestoreHe
     }
   lilv_node_free (uri);
 
-  PluginInstance *plugin_instance = new PluginInstance (*this);
-
-
-  LilvInstance *instance = nullptr;
-  x11wrapper->exec_in_gtk_thread ([&]() {
-    instance = lilv_plugin_instantiate (plugin, sample_rate, plugin_instance->features.get_features());
-  });
-  if (!instance)
+  PluginInstance *plugin_instance = new PluginInstance (*this, sample_rate, plugin, port_restore_helper);
+  if (!plugin_instance->init_ok())
     {
       printerr ("plugin instantiate failed\n");
       delete plugin_instance;
@@ -1094,26 +1091,13 @@ PluginHost::instantiate (const char *plugin_uri, uint sample_rate, PortRestoreHe
       return nullptr;
     }
 
-  plugin_instance->sample_rate = sample_rate;
-  plugin_instance->instance = instance;
-  plugin_instance->plugin = plugin;
-  plugin_instance->init_ports();
-  plugin_instance->init_presets();
-  plugin_instance->worker.set_instance (instance);
-  plugin_instance->lv2_ext_data.data_access = lilv_instance_get_descriptor (instance)->extension_data;
-
-  // load the plugin as a preset to get default
-  if (LilvState *default_state = lilv_state_new_from_world (world, urid_map.lv2_map(), lilv_plugin_get_uri (plugin)))
-    {
-      plugin_instance->restore_state (default_state, port_restore_helper);
-      lilv_state_free (default_state);
-    }
-
   return plugin_instance;
 }
 
-PluginInstance::PluginInstance (PluginHost& plugin_host) :
-  plugin_host (plugin_host)
+PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const LilvPlugin *plugin, PortRestoreHelper *port_restore_helper) :
+  plugin_host (plugin_host),
+  plugin (plugin),
+  sample_rate (sample_rate)
 {
   features.add (plugin_host.urid_map.map_feature());
   features.add (plugin_host.urid_map.unmap_feature());
@@ -1123,6 +1107,27 @@ PluginInstance::PluginInstance (PluginHost& plugin_host) :
   features.add (LV2_STATE__loadDefaultState, nullptr);
 
   lv2_atom_forge_init (&forge, plugin_host.urid_map.lv2_map());
+
+  x11wrapper->exec_in_gtk_thread ([&]() {
+    instance = lilv_plugin_instantiate (plugin, sample_rate, features.get_features());
+  });
+  if (!instance)
+    {
+      printerr ("LV2: failed to create plugin instance");
+      return;
+    }
+  init_ports();
+  init_presets();
+  worker.set_instance (instance);
+  lv2_ext_data.data_access = lilv_instance_get_descriptor (instance)->extension_data;
+
+  // load the plugin as a preset to get default
+  if (LilvState *default_state = lilv_state_new_from_world (plugin_host.world, plugin_host.urid_map.lv2_map(), lilv_plugin_get_uri (plugin)))
+    {
+      restore_state (default_state, port_restore_helper);
+      lilv_state_free (default_state);
+    }
+  init_ok_ = true;
 }
 
 PluginInstance::~PluginInstance()
