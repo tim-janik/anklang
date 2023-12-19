@@ -493,6 +493,29 @@ class PluginUI;
 
 struct PathMap
 {
+  LV2_State_Map_Path map_path {
+    .handle = this,
+    .abstract_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
+      {
+        PathMap *path_map = (PathMap *) handle;
+        if (path_map->abstract_path)
+          return strdup (path_map->abstract_path (path).c_str());
+        else
+          return strdup (path);
+      },
+    .absolute_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
+      {
+        PathMap *path_map = (PathMap *) handle;
+        if (path_map->absolute_path)
+          return strdup (path_map->absolute_path (path).c_str());
+        else
+          return strdup (path);
+      }
+  };
+  LV2_State_Free_Path free_path {
+    .free_path = [] (LV2_State_Map_Path_Handle handle, char *path) { free (path); }
+  };
+
   std::function<String(String)> abstract_path;
   std::function<String(String)> absolute_path;
 };
@@ -1674,41 +1697,18 @@ struct PortRestoreHelper
 void
 PluginInstance::restore_state (LilvState *state, PortRestoreHelper *helper, PathMap *path_map)
 {
+  Features restore_features;
+  if (path_map)
+    {
+      restore_features.add (LV2_STATE__mapPath, &path_map->map_path);
+      restore_features.add (LV2_STATE__freePath, &path_map->free_path);
+    }
+  restore_features.add (plugin_host.urid_map.map_feature());
+  restore_features.add (plugin_host.urid_map.unmap_feature());
+
   x11wrapper->exec_in_gtk_thread (
     [&]()
       {
-        LV2_State_Map_Path map_path {
-          .handle = path_map,
-          .abstract_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
-            {
-              PathMap *path_map = (PathMap *) handle;
-              if (path_map->abstract_path)
-                return strdup (path_map->abstract_path (path).c_str());
-              else
-                return strdup (path);
-            },
-          .absolute_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
-            {
-              PathMap *path_map = (PathMap *) handle;
-              if (path_map->absolute_path)
-                return strdup (path_map->absolute_path (path).c_str());
-              else
-                return strdup (path);
-            }
-        };
-        LV2_State_Free_Path free_path {
-          .free_path = [] (LV2_State_Map_Path_Handle handle, char *path) { free (path); }
-        };
-
-        Features restore_features;
-        if (path_map)
-          {
-            restore_features.add (LV2_STATE__mapPath, &map_path);
-            restore_features.add (LV2_STATE__freePath, &free_path);
-          }
-        restore_features.add (plugin_host.urid_map.map_feature());
-        restore_features.add (plugin_host.urid_map.unmap_feature());
-
         lilv_state_restore (state, instance, PortRestoreHelper::set, helper, 0, restore_features.get_features());
       });
 }
@@ -1772,34 +1772,11 @@ get_port_value_for_save (const char *port_symbol,
 String
 PluginInstance::save_string (map<string,float> port_values, PathMap *path_map)
 {
-  LV2_State_Map_Path map_path {
-    .handle = path_map,
-    .abstract_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
-      {
-        PathMap *path_map = (PathMap *) handle;
-        if (path_map->abstract_path)
-          return strdup (path_map->abstract_path (path).c_str());
-        else
-          return strdup (path);
-      },
-    .absolute_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
-      {
-        PathMap *path_map = (PathMap *) handle;
-        if (path_map->absolute_path)
-          return strdup (path_map->absolute_path (path).c_str());
-        else
-          return strdup (path);
-      }
-  };
-  LV2_State_Free_Path free_path {
-    .free_path = [] (LV2_State_Map_Path_Handle handle, char *path) { free (path); }
-  };
-
   Features save_features;
   if (path_map)
     {
-      save_features.add (LV2_STATE__mapPath, &map_path);
-      save_features.add (LV2_STATE__freePath, &free_path);
+      save_features.add (LV2_STATE__mapPath, &path_map->map_path);
+      save_features.add (LV2_STATE__freePath, &path_map->free_path);
     }
   save_features.add (plugin_host.urid_map.map_feature());
   save_features.add (plugin_host.urid_map.unmap_feature());
@@ -1820,11 +1797,11 @@ PluginInstance::save_string (map<string,float> port_values, PathMap *path_map)
                                                          0,
                                                          save_features.get_features());
         char *c_str = lilv_state_to_string (plugin_host.world,
-                                          plugin_host.urid_map.lv2_map(),
-                                          plugin_host.urid_map.lv2_unmap(),
-                                          state,
-                                          ANKLANG_STATE_URI,
-                                          nullptr);
+                                            plugin_host.urid_map.lv2_map(),
+                                            plugin_host.urid_map.lv2_unmap(),
+                                            state,
+                                            ANKLANG_STATE_URI,
+                                            nullptr);
         str = c_str;
         free (c_str);
         lilv_state_free (state);
