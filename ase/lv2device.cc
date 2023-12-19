@@ -487,12 +487,20 @@ struct PresetInfo
   const LilvNode *preset = nullptr;
 };
 
+struct PortRestoreHelper;
+
 class PluginUI;
+
+struct PathMap
+{
+  std::function<String(String)> abstract_path;
+  std::function<String(String)> absolute_path;
+};
 
 class PluginInstance
 {
   std::array<uint8, 256>     last_position_buffer {};
-  std::array<uint8_t, 256>   position_buffer {};
+  std::array<uint8, 256>     position_buffer {};
 public:
   PluginHost& plugin_host;
   std::unique_ptr<PluginUI>  plugin_ui;
@@ -544,6 +552,9 @@ public:
   void handle_dsp2ui_events();
   void send_ui_updates (uint32_t delta_frames);
   void set_initial_controls_ui();
+  void restore_state (LilvState *state, PortRestoreHelper *helper, PathMap *path_map = nullptr);
+  bool restore_string (const String& str, PortRestoreHelper *helper, PathMap *path_map = nullptr);
+  void restore_preset (int preset, PortRestoreHelper *helper);
 };
 
 void
@@ -710,7 +721,7 @@ public:
     static PluginHost host;
     return host;
   }
-  PluginInstance *instantiate (const char *plugin_uri, uint sample_rate, LilvState **default_state);
+  PluginInstance *instantiate (const char *plugin_uri, uint sample_rate, PortRestoreHelper *port_restore_helper);
 
 private:
   DeviceInfoS devs;
@@ -1014,7 +1025,7 @@ Options::Options (PluginHost& plugin_host) :
 }
 
 PluginInstance *
-PluginHost::instantiate (const char *plugin_uri, uint sample_rate, LilvState **default_state)
+PluginHost::instantiate (const char *plugin_uri, uint sample_rate, PortRestoreHelper *port_restore_helper)
 {
   LilvNode* uri = lilv_new_uri (world, plugin_uri);
   if (!uri)
@@ -1063,7 +1074,11 @@ PluginHost::instantiate (const char *plugin_uri, uint sample_rate, LilvState **d
   plugin_instance->lv2_ext_data.data_access = lilv_instance_get_descriptor (instance)->extension_data;
 
   // load the plugin as a preset to get default
-  *default_state = lilv_state_new_from_world (world, urid_map.lv2_map(), lilv_plugin_get_uri (plugin));
+  if (LilvState *default_state = lilv_state_new_from_world (world, urid_map.lv2_map(), lilv_plugin_get_uri (plugin)))
+    {
+      plugin_instance->restore_state (default_state, port_restore_helper);
+      lilv_state_free (default_state);
+    }
 
   return plugin_instance;
 }
@@ -1284,9 +1299,9 @@ PluginInstance::init_ports()
     }
 
   if (midi_in_ports.size() > 1)
-    printerr ("LV2: more than one midi input found - this is not supported");
+    printerr ("LV2: more than one midi input found - this is not supported\n");
   if (position_in_ports.size() > 1)
-    printerr ("LV2: more than one time position input found - this is not supported");
+    printerr ("LV2: more than one time position input found - this is not supported\n");
   printerr ("--------------------------------------------------\n");
   printerr ("audio IN:%zd OUT:%zd\n", audio_in_ports.size(), audio_out_ports.size());
   printerr ("control IN:%zd\n", n_control_ports);
@@ -1650,6 +1665,81 @@ struct PortRestoreHelper
   }
 };
 
+void
+PluginInstance::restore_state (LilvState *state, PortRestoreHelper *helper, PathMap *path_map)
+{
+  x11wrapper->exec_in_gtk_thread (
+    [&]()
+      {
+        LV2_State_Map_Path map_path {
+          .handle = path_map,
+          .abstract_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
+            {
+              PathMap *path_map = (PathMap *) handle;
+              if (path_map->abstract_path)
+                return strdup (path_map->abstract_path (path).c_str());
+              else
+                return strdup (path);
+            },
+          .absolute_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
+            {
+              PathMap *path_map = (PathMap *) handle;
+              if (path_map->absolute_path)
+                return strdup (path_map->absolute_path (path).c_str());
+              else
+                return strdup (path);
+            }
+        };
+        LV2_State_Free_Path free_path {
+          .free_path = [] (LV2_State_Map_Path_Handle handle, char *path) { free (path); }
+        };
+
+        Features restore_features;
+        if (path_map)
+          {
+            restore_features.add (LV2_STATE__mapPath, &map_path);
+            restore_features.add (LV2_STATE__freePath, &free_path);
+          }
+        restore_features.add (plugin_host.urid_map.map_feature());
+        restore_features.add (plugin_host.urid_map.unmap_feature());
+
+        lilv_state_restore (state, instance, PortRestoreHelper::set, helper, 0, restore_features.get_features());
+      });
+}
+
+bool
+PluginInstance::restore_string (const String& str, PortRestoreHelper *helper, PathMap *path_map)
+{
+  LilvState *state = nullptr;
+  x11wrapper->exec_in_gtk_thread (
+    [&]()
+      {
+        state = lilv_state_new_from_string (plugin_host.world, plugin_host.urid_map.lv2_map(), str.c_str());
+      });
+  if (!state)
+    return false;
+
+  restore_state (state, helper, path_map);
+  lilv_state_free (state);
+  return true;
+}
+
+void
+PluginInstance::restore_preset (int preset, PortRestoreHelper *helper)
+{
+  LilvState *state = nullptr;
+  x11wrapper->exec_in_gtk_thread (
+    [&]()
+      {
+        state = lilv_state_new_from_world (plugin_host.world, plugin_host.urid_map.lv2_map(), presets[preset].preset);
+      });
+  if (state)
+    {
+      restore_state (state, helper);
+      lilv_state_free (state);
+    }
+}
+
 }
 
 class LV2Processor : public AudioProcessor {
@@ -1676,21 +1766,14 @@ class LV2Processor : public AudioProcessor {
   void
   initialize (SpeakerArrangement busses) override
   {
-    LilvState *default_state = nullptr;
-    plugin_host.options.set_rate (sample_rate());
-    plugin_instance = plugin_host.instantiate (lv2_uri_.c_str(), sample_rate(), &default_state);
-    if (!plugin_instance)
-      {
-        if (default_state)
-          lilv_state_free (default_state);
-        return;
-      }
+    PortRestoreHelper port_restore_helper (plugin_host);
 
-    if (default_state)
-      {
-        apply_state (default_state, false);
-        lilv_state_free (default_state);
-      }
+    plugin_host.options.set_rate (sample_rate());
+    plugin_instance = plugin_host.instantiate (lv2_uri_.c_str(), sample_rate(), &port_restore_helper);
+    restore_params (port_restore_helper);
+
+    if (!plugin_instance)
+      return;
 
     ParameterMap pmap;
 
@@ -1801,29 +1884,15 @@ class LV2Processor : public AudioProcessor {
             if (want_preset > 0 && want_preset <= int (plugin_instance->presets.size()))
               {
                 // TODO: this should not be done in audio thread
-
-                auto preset_info = plugin_instance->presets[want_preset - 1];
-                printerr ("load preset %s\n", preset_info.name.c_str());
-                LilvState *state = lilv_state_new_from_world (plugin_host.world, plugin_host.urid_map.lv2_map(), preset_info.preset);
-                const LV2_Feature* state_features[] = { // TODO: more features
-                  plugin_host.urid_map.map_feature(),
-                  plugin_host.urid_map.unmap_feature(),
-                  NULL
-                };
                 PortRestoreHelper port_restore_helper (plugin_host);
-                lilv_state_restore (state, plugin_instance->instance, PortRestoreHelper::set, &port_restore_helper, 0, state_features);
+                plugin_instance->restore_preset (want_preset - 1, &port_restore_helper);
 
                 // TODO: evil (possibly crashing) broken hack to set the parameters:
                 //  -> should be replaced by something else once presets are loaded outside the audio thread
                 main_loop->exec_idle ([port_restore_helper, this] () // <- delete source required if processor is destroyed
-                    {
-                      for (int i = 0; i < (int) param_id_port.size(); i++)
-                        {
-                          auto it = port_restore_helper.values.find (param_id_port[i]->symbol);
-                          if (it != port_restore_helper.values.end())
-                            send_param (i + PID_CONTROL_OFFSET, it->second);
-                        }
-                    });
+                  {
+                    restore_params (port_restore_helper);
+                  });
               }
           }
       }
@@ -1951,6 +2020,17 @@ class LV2Processor : public AudioProcessor {
           return port->param_from_lv2 (string_to_double (text));
       }
     return AudioProcessor::param_value_from_text (paramid, text);
+  }
+  void
+  restore_params (const PortRestoreHelper &port_restore_helper)
+  {
+    for (int i = 0; i < (int) param_id_port.size(); i++)
+      {
+        const Port *port = param_id_port[i];
+        auto it = port_restore_helper.values.find (port->symbol);
+        if (it != port_restore_helper.values.end())
+          send_param (i + PID_CONTROL_OFFSET, port->param_from_lv2 (it->second));
+      }
   }
 public:
   LV2Processor (const ProcessorSetup &psetup) :
@@ -2084,51 +2164,6 @@ public:
     lilv_state_free (state);
   }
   void
-  apply_state (LilvState *state, bool project_loading)
-  {
-    PortRestoreHelper port_restore_helper (plugin_host);
-    x11wrapper->exec_in_gtk_thread (
-      [&]()
-        {
-          Features restore_features;
-          LV2_State_Map_Path  map_path {
-            .handle = this,
-            .abstract_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
-              {
-                printerr ("abstract path %s called from apply state\n");
-                return strdup (path);
-              },
-            .absolute_path = [] (LV2_State_Map_Path_Handle handle, const char *hash)
-              {
-                auto *processor = (LV2Processor *) handle;
-                // TODO: ok to do this in gtk thread?
-                String path = processor->project_->loader_resolve (hash);
-                printerr ("absolute_path %s called => %s\n", hash, path.c_str());
-                return strdup (path.c_str());
-              }
-          };
-          LV2_State_Free_Path free_path {
-            .handle = this,
-            .free_path = [] (LV2_State_Map_Path_Handle handle, char *path) { free (path); }
-          };
-          if (project_loading)
-            {
-              restore_features.add (LV2_STATE__mapPath, &map_path);
-              restore_features.add (LV2_STATE__freePath, &free_path);
-            }
-          restore_features.add (plugin_host.urid_map.map_feature());
-          restore_features.add (plugin_host.urid_map.unmap_feature());
-          lilv_state_restore (state, plugin_instance->instance, PortRestoreHelper::set, &port_restore_helper, 0, restore_features.get_features());
-        });
-    for (int i = 0; i < (int) param_id_port.size(); i++)
-      {
-        const Port *port = param_id_port[i];
-        auto it = port_restore_helper.values.find (port->symbol);
-        if (it != port_restore_helper.values.end())
-          send_param (i + PID_CONTROL_OFFSET, port->param_from_lv2 (it->second));
-      }
-  }
-  void
   load_state (WritNode &xs, ProjectImpl *project)
   {
     if (project_)
@@ -2150,13 +2185,13 @@ public:
           }
         if (ret == 0)
           {
-            LilvState *state = lilv_state_new_from_string (plugin_host.world,
-                                                           plugin_host.urid_map.lv2_map(),
-                                                           blob_data.c_str());
-            if (state)
+            PathMap path_map;
+            path_map.absolute_path = [&] (String hash) { return project_->loader_resolve (hash); };
+
+            PortRestoreHelper port_restore_helper (plugin_host);
+            if (plugin_instance->restore_string (blob_data, &port_restore_helper, &path_map))
               {
-                apply_state (state, true);
-                lilv_state_free (state);
+                restore_params (port_restore_helper);
               }
             else
               {
