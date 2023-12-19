@@ -501,6 +501,9 @@ class PluginInstance
 {
   std::array<uint8, 256>     last_position_buffer {};
   std::array<uint8, 256>     position_buffer {};
+
+  // lilv_state_to_string requires a non-empty URI
+  static constexpr auto ANKLANG_STATE_URI = "urn:anklang:state";
 public:
   PluginHost& plugin_host;
   std::unique_ptr<PluginUI>  plugin_ui;
@@ -552,9 +555,12 @@ public:
   void handle_dsp2ui_events();
   void send_ui_updates (uint32_t delta_frames);
   void set_initial_controls_ui();
+
   void restore_state (LilvState *state, PortRestoreHelper *helper, PathMap *path_map = nullptr);
   bool restore_string (const String& str, PortRestoreHelper *helper, PathMap *path_map = nullptr);
   void restore_preset (int preset, PortRestoreHelper *helper);
+
+  String save_string (map<string,float> port_values, PathMap *path_map);
 };
 
 void
@@ -1740,6 +1746,92 @@ PluginInstance::restore_preset (int preset, PortRestoreHelper *helper)
     }
 }
 
+static const void*
+get_port_value_for_save (const char *port_symbol,
+                         void       *user_data,
+                         uint32_t   *size,
+                         uint32_t   *type)
+{
+  auto *port_values = (map<string, float> *) user_data;
+
+  auto it = port_values->find (port_symbol);
+  if (it != port_values->end())
+    {
+      *size = sizeof (float);
+      *type = PluginHost::the().urids.atom_Float;
+
+      return &it->second;
+    }
+  else
+    {
+      *size = *type = 0;
+      return nullptr;
+    }
+}
+
+String
+PluginInstance::save_string (map<string,float> port_values, PathMap *path_map)
+{
+  LV2_State_Map_Path map_path {
+    .handle = path_map,
+    .abstract_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
+      {
+        PathMap *path_map = (PathMap *) handle;
+        if (path_map->abstract_path)
+          return strdup (path_map->abstract_path (path).c_str());
+        else
+          return strdup (path);
+      },
+    .absolute_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
+      {
+        PathMap *path_map = (PathMap *) handle;
+        if (path_map->absolute_path)
+          return strdup (path_map->absolute_path (path).c_str());
+        else
+          return strdup (path);
+      }
+  };
+  LV2_State_Free_Path free_path {
+    .free_path = [] (LV2_State_Map_Path_Handle handle, char *path) { free (path); }
+  };
+
+  Features save_features;
+  if (path_map)
+    {
+      save_features.add (LV2_STATE__mapPath, &map_path);
+      save_features.add (LV2_STATE__freePath, &free_path);
+    }
+  save_features.add (plugin_host.urid_map.map_feature());
+  save_features.add (plugin_host.urid_map.unmap_feature());
+
+  String str;
+  x11wrapper->exec_in_gtk_thread (
+    [&]()
+      {
+        LilvState *state = lilv_state_new_from_instance (plugin,
+                                                         instance,
+                                                         plugin_host.urid_map.lv2_map(),
+                                                         nullptr,
+                                                         nullptr,
+                                                         nullptr,
+                                                         nullptr,
+                                                         get_port_value_for_save,
+                                                         &port_values,
+                                                         0,
+                                                         save_features.get_features());
+        char *c_str = lilv_state_to_string (plugin_host.world,
+                                          plugin_host.urid_map.lv2_map(),
+                                          plugin_host.urid_map.lv2_unmap(),
+                                          state,
+                                          ANKLANG_STATE_URI,
+                                          nullptr);
+        str = c_str;
+        free (c_str);
+        lilv_state_free (state);
+      });
+  return str;
+}
+
 }
 
 class LV2Processor : public AudioProcessor {
@@ -2066,30 +2158,6 @@ public:
   {
     return plugin_instance;
   }
-  static const void*
-  get_port_value_for_save (const char *port_symbol,
-                           void       *user_data,
-                           uint32_t   *size,
-                           uint32_t   *type)
-  {
-    auto *port_values = (map<string, float> *) user_data;
-
-    auto it = port_values->find (port_symbol);
-    if (it != port_values->end())
-      {
-        *size = sizeof (float);
-        *type = PluginHost::the().urids.atom_Float;
-
-        return &it->second;
-      }
-    else
-      {
-        *size = *type = 0;
-        return nullptr;
-      }
-  }
-  // lilv_state_to_string requires a non-empty URI
-  static constexpr auto ANKLANG_STATE_URI = "urn:anklang:state";
   void
   save_state (WritNode &xs, const string& device_path, ProjectImpl *project)
   {
@@ -2108,50 +2176,13 @@ public:
         const Port *port = param_id_port[i];
         port_values[port->symbol] = port->param_to_lv2 (get_param (int (i) + PID_CONTROL_OFFSET));
       }
+    PathMap path_map;
+    path_map.abstract_path = [&] (const String &path) { String hash; project_->writer_collect (path, &hash); return hash; };
 
-    Features save_features;
-    LV2_State_Map_Path  map_path {
-      .handle = this,
-      .abstract_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
-        {
-          auto *processor = (LV2Processor *) handle;
-          String hash;
-          // TODO: ok to do this in gtk thread?
-          processor->project_->writer_collect (path, &hash);
-          return strdup (hash.c_str());
-        },
-      .absolute_path = [] (LV2_State_Map_Path_Handle handle, const char *path) { printerr ("absolute_path %s called\n", path); return strdup (path); }
-    };
-    LV2_State_Free_Path free_path {
-      .handle = this,
-      .free_path = [] (LV2_State_Map_Path_Handle handle, char *path) { free (path); }
-    };
-    save_features.add (LV2_STATE__mapPath, &map_path);
-    save_features.add (LV2_STATE__freePath, &free_path);
-    LilvState *state;
-    x11wrapper->exec_in_gtk_thread (
-      [&]()
-        {
-          state = lilv_state_new_from_instance (plugin_instance->plugin,
-                                                plugin_instance->instance,
-                                                plugin_host.urid_map.lv2_map(),
-                                                nullptr,
-                                                nullptr,
-                                                nullptr,
-                                                nullptr,
-                                                get_port_value_for_save,
-                                                &port_values,
-                                                0,
-                                                save_features.get_features());
-        });
-    char *str = lilv_state_to_string (plugin_host.world,
-                                      plugin_host.urid_map.lv2_map(),
-                                      plugin_host.urid_map.lv2_unmap(),
-                                      state,
-                                      ANKLANG_STATE_URI,
-                                      nullptr);
-    if (!Path::memwrite (blobfile, strlen (str), (uint8 *) str, false))
-      printerr ("%s: %s: memwrite failed\n", program_alias(), blobfile);
+    String str = plugin_instance->save_string (port_values, &path_map);
+
+    if (!Path::stringwrite (blobfile, str, false))
+      printerr ("%s: %s: stringwrite failed\n", program_alias(), blobfile);
     else
       {
         Error err = project->writer_add_file (blobfile);
@@ -2160,8 +2191,6 @@ public:
         else
           xs["state_blob"] & blobname;
       }
-    free (str);
-    lilv_state_free (state);
   }
   void
   load_state (WritNode &xs, ProjectImpl *project)
