@@ -702,6 +702,7 @@ public:
     LilvNode *lv2_optionalFeature;
     LilvNode *lv2_requiredFeature;
     LilvNode *lv2_worker_schedule;
+    LilvNode *lv2_state_loadDefaultState;
 
     LilvNode *rdfs_label;
     LilvNode *native_ui_type;
@@ -736,6 +737,7 @@ public:
       lv2_optionalFeature = lilv_new_uri (world, LV2_CORE__optionalFeature);
       lv2_requiredFeature = lilv_new_uri (world, LV2_CORE__requiredFeature);
       lv2_worker_schedule = lilv_new_uri (world, LV2_WORKER__schedule);
+      lv2_state_loadDefaultState = lilv_new_uri (world, LV2_STATE__loadDefaultState);
 
       lv2_presets_Preset = lilv_new_uri (world, LV2_PRESETS__Preset);
       rdfs_label         = lilv_new_uri (world, LILV_NS_RDFS "label");
@@ -1157,11 +1159,14 @@ PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const
   lv2_ext_data.data_access = lilv_instance_get_descriptor (instance)->extension_data;
   uis_ = lilv_plugin_get_uis (plugin);
 
-  // load the plugin as a preset to get default
-  if (LilvState *default_state = lilv_state_new_from_world (plugin_host.world, plugin_host.urid_map.lv2_map(), lilv_plugin_get_uri (plugin)))
+  if (lilv_plugin_has_feature (plugin, plugin_host.nodes.lv2_state_loadDefaultState))
     {
-      restore_state (default_state, port_restore_helper);
-      lilv_state_free (default_state);
+      // load the plugin as a preset to get default
+      if (LilvState *default_state = lilv_state_new_from_world (plugin_host.world, plugin_host.urid_map.lv2_map(), lilv_plugin_get_uri (plugin)))
+        {
+          restore_state (default_state, port_restore_helper);
+          lilv_state_free (default_state);
+        }
     }
   init_ok_ = true;
 }
