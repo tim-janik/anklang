@@ -483,8 +483,8 @@ struct Port
 
 struct PresetInfo
 {
-  String          name;
-  const LilvNode *preset = nullptr;
+  String    name;
+  LilvNode *preset = nullptr;
 };
 
 struct PortRestoreHelper;
@@ -522,7 +522,8 @@ struct PathMap
 
 class PluginInstance
 {
-  bool init_ok_ = false;
+  bool                       init_ok_ = false;
+  LilvUIs                   *uis_;
   std::array<uint8, 256>     last_position_buffer {};
   std::array<uint8, 256>     position_buffer {};
 
@@ -565,7 +566,9 @@ public:
   bool init_ok() const { return init_ok_; }
 
   void init_ports();
+  void free_ports();
   void init_presets();
+  void free_presets();
   void reset_event_buffers();
   void write_midi (uint32_t time, size_t size, const uint8_t *data);
   void write_position (const AudioTransport &transport);
@@ -690,6 +693,7 @@ public:
     LilvNode *lv2_requiredFeature;
 
     LilvNode *rdfs_label;
+    LilvNode *native_ui_type;
 
     void init (LilvWorld *world)
     {
@@ -723,6 +727,8 @@ public:
 
       lv2_presets_Preset = lilv_new_uri (world, LV2_PRESETS__Preset);
       rdfs_label         = lilv_new_uri (world, LILV_NS_RDFS "label");
+
+      native_ui_type     = lilv_new_uri (world, "http://lv2plug.in/ns/extensions/ui#GtkUI");
     }
   } nodes;
 
@@ -866,12 +872,16 @@ public:
             devs.push_back (device_info);
             lv2_device_info_map[lv2_uri] = device_info;
 
-            LilvUIs* uis = lilv_plugin_get_uis (p);
+            LilvUIs *uis = lilv_plugin_get_uis (p);
             LILV_FOREACH (uis, u, uis)
               {
-                const LilvUI* ui = lilv_uis_get (uis, u);
+                const LilvUI *ui = lilv_uis_get (uis, u);
+
+                // just check required features here for debugging missing features for UIs
+                // don't exclude plugin if UI not supported, since we can instantiate the plugin without custom UI
                 required_ui_features_supported (ui, device_info.name);
               }
+            lilv_uis_free (uis);
           }
       }
     std::stable_sort (devs.begin(), devs.end(), [] (auto& d1, auto& d2) { return string_casecmp (d1.name, d2.name) < 0; });
@@ -972,6 +982,9 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
                                                    bundle_path,
                                                    binary_path,
                                                    ui_features.get_features());
+  lilv_free (bundle_path);
+  lilv_free (binary_path);
+
   if (!ui_instance_)
     {
       printerr ("LV2: ui for plugin %s could not be created\n", plugin_uri);
@@ -1120,6 +1133,7 @@ PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const
   init_presets();
   worker.set_instance (instance);
   lv2_ext_data.data_access = lilv_instance_get_descriptor (instance)->extension_data;
+  uis_ = lilv_plugin_get_uis (plugin);
 
   // load the plugin as a preset to get default
   if (LilvState *default_state = lilv_state_new_from_world (plugin_host.world, plugin_host.urid_map.lv2_map(), lilv_plugin_get_uri (plugin)))
@@ -1147,6 +1161,11 @@ PluginInstance::~PluginInstance()
           instance = nullptr;
         }
     }
+
+  free_presets();
+  free_ports();
+
+  lilv_uis_free (uis_);
 }
 
 void
@@ -1286,6 +1305,7 @@ PluginInstance::init_ports()
                         {
                           if (auto sym = lilv_node_as_string (symbol))
                             plugin_ports[i].unit = sym;
+                          lilv_node_free (symbol);
                         }
                     }
                   lilv_nodes_free (units);
@@ -1343,22 +1363,41 @@ PluginInstance::init_ports()
 }
 
 void
+PluginInstance::free_ports()
+{
+  for (auto& port : plugin_ports)
+    {
+      if (port.evbuf)
+        lv2_evbuf_free (port.evbuf);
+    }
+  plugin_ports.clear();
+}
+
+void
 PluginInstance::init_presets()
 {
-  LilvNodes* lilv_presets = lilv_plugin_get_related (plugin, plugin_host.nodes.lv2_presets_Preset);
+  LilvNodes *lilv_presets = lilv_plugin_get_related (plugin, plugin_host.nodes.lv2_presets_Preset);
   LILV_FOREACH (nodes, i, lilv_presets)
     {
-      const LilvNode* preset = lilv_nodes_get (lilv_presets, i);
+      const LilvNode *preset = lilv_nodes_get (lilv_presets, i);
       lilv_world_load_resource (plugin_host.world, preset);
-      LilvNodes* labels = lilv_world_find_nodes (plugin_host.world, preset, plugin_host.nodes.rdfs_label, NULL);
+      LilvNodes *labels = lilv_world_find_nodes (plugin_host.world, preset, plugin_host.nodes.rdfs_label, NULL);
       if (labels)
         {
-          const LilvNode* label = lilv_nodes_get_first (labels);
-          presets.push_back ({lilv_node_as_string (label), lilv_node_duplicate (preset)}); // TODO: preset leak
+          LilvNode *label = lilv_nodes_get_first (labels);
+          presets.push_back ({lilv_node_as_string (label), lilv_node_duplicate (preset)});
           lilv_nodes_free (labels);
         }
     }
   lilv_nodes_free (lilv_presets);
+}
+
+void
+PluginInstance::free_presets()
+{
+  for (auto& preset : presets)
+    lilv_node_free (preset.preset);
+  presets.clear();
 }
 
 void
@@ -1591,28 +1630,23 @@ PluginInstance::send_ui_updates (uint32_t delta_frames)
 const LilvUI *
 PluginInstance::get_plugin_ui()
 {
-  static LilvUIs* uis;            ///< All plugin UIs (RDF data) FIXME not static
-
-  uis = lilv_plugin_get_uis (plugin);
-
-  const LilvNode* native_ui_type = lilv_new_uri (plugin_host.world, "http://lv2plug.in/ns/extensions/ui#GtkUI");
-  LILV_FOREACH(uis, u, uis)
+  LILV_FOREACH (uis, u, uis_)
     {
-      const LilvUI* this_ui = lilv_uis_get (uis, u);
+      const LilvUI *this_ui = lilv_uis_get (uis_, u);
 
       if (lilv_ui_is_supported (this_ui,
                                 [](const char *host_type_uri, const char *ui_type_uri)
                                   {
                                     return x11wrapper->suil_ui_supported (host_type_uri, ui_type_uri);
                                   },
-                                native_ui_type,
+                                plugin_host.nodes.native_ui_type,
                                &ui_type))
         return this_ui;
     }
   // if no suil supported UI is available try external UI
-  LILV_FOREACH(uis, u, uis)
+  LILV_FOREACH (uis, u, uis_)
     {
-      const LilvUI* this_ui = lilv_uis_get (uis, u);
+      const LilvUI *this_ui = lilv_uis_get (uis_, u);
 
       if (lilv_ui_is_a (this_ui, plugin_host.nodes.lv2_ui_externalkx))
         {
