@@ -37,6 +37,8 @@
 #include <lilv/lilv.h>
 
 // #define DEBUG_MAP
+// #define DEBUG_WORKER
+// #define DEBUG_MISSING_FEATURES
 
 namespace Ase {
 
@@ -266,7 +268,9 @@ public:
     quit_ = 1;
     sem_.post();
     thread_.join();
+#ifdef DEBUG_WORKER
     printerr ("worker thread joined\n");
+#endif
   }
 
   void
@@ -282,12 +286,18 @@ public:
   void
   run()
   {
+#ifdef DEBUG_WORKER
+    printerr ("worker thread running\n");
+#endif
     while (!quit_)
       {
         sem_.wait();
         work_events_.for_each (trash_events_,
           [this] (const ControlEvent *event)
             {
+#ifdef DEBUG_WORKER
+              printerr ("worker: got work %zd bytes\n", event->size());
+#endif
               worker_interface->work (instance, respond, this, event->size(), event->data());
             });
         // free both: old worker events and old response events
@@ -524,8 +534,10 @@ class PluginInstance
 {
   bool                       init_ok_ = false;
   LilvUIs                   *uis_;
-  std::array<uint8, 256>     last_position_buffer {};
-  std::array<uint8, 256>     position_buffer {};
+  std::unique_ptr<Worker>    worker_;
+
+  std::array<uint8, 256>     last_position_buffer_ {};
+  std::array<uint8, 256>     position_buffer_ {};
 
   // lilv_state_to_string requires a non-empty URI
   static constexpr auto ANKLANG_STATE_URI = "urn:anklang:state";
@@ -538,8 +550,6 @@ public:
   LV2_Atom_Forge             forge;
 
   Features features;
-
-  Worker   worker;
 
   PluginInstance (PluginHost& plugin_host, uint sample_rate, const LilvPlugin *plugin, PortRestoreHelper *port_restore_helper);
   ~PluginInstance();
@@ -691,6 +701,7 @@ public:
     LilvNode *lv2_ui_x11ui;
     LilvNode *lv2_optionalFeature;
     LilvNode *lv2_requiredFeature;
+    LilvNode *lv2_worker_schedule;
 
     LilvNode *rdfs_label;
     LilvNode *native_ui_type;
@@ -724,6 +735,7 @@ public:
 
       lv2_optionalFeature = lilv_new_uri (world, LV2_CORE__optionalFeature);
       lv2_requiredFeature = lilv_new_uri (world, LV2_CORE__requiredFeature);
+      lv2_worker_schedule = lilv_new_uri (world, LV2_WORKER__schedule);
 
       lv2_presets_Preset = lilv_new_uri (world, LV2_PRESETS__Preset);
       rdfs_label         = lilv_new_uri (world, LILV_NS_RDFS "label");
@@ -785,7 +797,9 @@ private:
         const LilvNode *feature = lilv_nodes_get (req_features, i);
         if (!supported_features.contains (lilv_node_as_string (feature)))
           {
+#ifdef DEBUG_MISSING_FEATURES
             printerr ("LV2: unsupported feature %s required for plugin %s\n", lilv_node_as_string (feature), name.c_str());
+#endif
             can_use_plugin = false;
           }
       }
@@ -827,7 +841,9 @@ private:
         const LilvNode *feature = lilv_nodes_get (req_features, i);
         if (!supported_features.contains (lilv_node_as_string (feature)))
           {
+#ifdef DEBUG_MISSING_FEATURES
             printerr ("LV2: unsupported feature %s required for plugin ui %s\n", lilv_node_as_string (feature), name.c_str());
+#endif
             can_use_ui = false;
           }
       }
@@ -1112,9 +1128,14 @@ PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const
   plugin (plugin),
   sample_rate (sample_rate)
 {
+  if (lilv_plugin_has_feature (plugin, plugin_host.nodes.lv2_worker_schedule))
+    {
+      worker_ = std::make_unique<Worker>();
+      features.add (worker_->feature());
+    }
+
   features.add (plugin_host.urid_map.map_feature());
   features.add (plugin_host.urid_map.unmap_feature());
-  features.add (worker.feature());
   features.add (plugin_host.options.feature()); /* TODO: maybe make a local version */
   features.add (LV2_BUF_SIZE__boundedBlockLength, nullptr);
   features.add (LV2_STATE__loadDefaultState, nullptr);
@@ -1131,7 +1152,8 @@ PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const
     }
   init_ports();
   init_presets();
-  worker.set_instance (instance);
+  if (worker_)
+    worker_->set_instance (instance);
   lv2_ext_data.data_access = lilv_instance_get_descriptor (instance)->extension_data;
   uis_ = lilv_plugin_get_uis (plugin);
 
@@ -1146,7 +1168,8 @@ PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const
 
 PluginInstance::~PluginInstance()
 {
-  worker.stop();
+  if (worker_)
+    worker_->stop();
 
   if (instance)
     {
@@ -1422,7 +1445,7 @@ PluginInstance::write_position (const AudioTransport &transport)
   uint64 frames_since_start = llrint (transport.current_seconds * transport.samplerate) + transport.current_minutes * 60 * transport.samplerate;
 
   LV2_Atom_Forge_Frame frame;
-  lv2_atom_forge_set_buffer (&forge, position_buffer.data(), position_buffer.size());
+  lv2_atom_forge_set_buffer (&forge, position_buffer_.data(), position_buffer_.size());
   lv2_atom_forge_object (&forge, &frame, 0, plugin_host.urids.time_Position);
   lv2_atom_forge_key    (&forge, plugin_host.urids.time_frame);
   lv2_atom_forge_long   (&forge, frames_since_start);
@@ -1439,15 +1462,15 @@ PluginInstance::write_position (const AudioTransport &transport)
   lv2_atom_forge_key    (&forge, plugin_host.urids.time_beatsPerMinute);
   lv2_atom_forge_float  (&forge, tick_sig.bpm());
 
-  const LV2_Atom *lv2_pos = (LV2_Atom *) position_buffer.data();
+  const LV2_Atom *lv2_pos = (LV2_Atom *) position_buffer_.data();
   const size_t buffer_used = lv2_pos->size + sizeof (LV2_Atom);
-  if (!std::equal (position_buffer.begin(), position_buffer.begin() + buffer_used, last_position_buffer.begin()))
+  if (!std::equal (position_buffer_.begin(), position_buffer_.begin() + buffer_used, last_position_buffer_.begin()))
     {
       LV2_Evbuf           *evbuf = plugin_ports[position_in_ports.front()].evbuf;
       LV2_Evbuf_Iterator    iter = lv2_evbuf_end (evbuf);
 
       lv2_evbuf_write (&iter, 0, 0, lv2_pos->type, lv2_pos->size, (uint8 *) LV2_ATOM_BODY (lv2_pos));
-      std::copy (position_buffer.begin(), position_buffer.begin() + buffer_used, last_position_buffer.begin());
+      std::copy (position_buffer_.begin(), position_buffer_.begin() + buffer_used, last_position_buffer_.begin());
     }
 }
 
@@ -1532,8 +1555,11 @@ PluginInstance::run (uint32_t n_frames)
 
   lilv_instance_run (instance, n_frames);
 
-  worker.handle_responses();
-  worker.end_run();
+  if (worker_)
+    {
+      worker_->handle_responses();
+      worker_->end_run();
+    }
 
   if (plugin_ui_is_active)
     {
