@@ -934,6 +934,8 @@ public:
 PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
                     const LilvUI *ui)
 {
+  assert (this_thread_is_gtk());
+
   plugin_instance_ = plugin_instance;
 
   external_ui_ = lilv_ui_is_a (ui, plugin_instance_->plugin_host.nodes.lv2_ui_external) ||
@@ -1010,12 +1012,8 @@ PluginUI::PluginUI (PluginInstance *plugin_instance, const string& plugin_uri,
     }
   if (external_ui_)
     {
-      x11wrapper->exec_in_gtk_thread (
-        [&]()
-          {
-            external_ui_widget_ = (lv2_external_ui *) x11wrapper->get_suil_widget_gtk_thread (ui_instance_);
-            external_ui_widget_->show (external_ui_widget_);
-          });
+      external_ui_widget_ = (lv2_external_ui *) x11wrapper->get_suil_widget (ui_instance_);
+      external_ui_widget_->show (external_ui_widget_);
     }
   else
     {
@@ -1053,6 +1051,8 @@ PluginUI::ui_is_resizable (const LilvUI *ui)
 
 PluginUI::~PluginUI()
 {
+  assert (this_thread_is_gtk());
+
   // disable DSP->UI notifications
   plugin_instance_->plugin_ui_is_active.store (false);
 
@@ -1090,6 +1090,7 @@ Options::Options (PluginHost& plugin_host) :
 PluginInstance *
 PluginHost::instantiate (const char *plugin_uri, uint sample_rate, PortRestoreHelper *port_restore_helper)
 {
+  assert_return (this_thread_is_gtk(), nullptr);
   LilvNode* uri = lilv_new_uri (world, plugin_uri);
   if (!uri)
     {
@@ -1130,6 +1131,8 @@ PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const
   plugin (plugin),
   sample_rate (sample_rate)
 {
+  assert_return (this_thread_is_gtk());
+
   if (lilv_plugin_has_feature (plugin, plugin_host.nodes.lv2_worker_schedule))
     {
       worker_ = std::make_unique<Worker>();
@@ -1144,9 +1147,7 @@ PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const
 
   lv2_atom_forge_init (&forge, plugin_host.urid_map.lv2_map());
 
-  x11wrapper->exec_in_gtk_thread ([&]() {
-    instance = lilv_plugin_instantiate (plugin, sample_rate, features.get_features());
-  });
+  instance = lilv_plugin_instantiate (plugin, sample_rate, features.get_features());
   if (!instance)
     {
       printerr ("LV2: failed to create plugin instance");
@@ -1173,6 +1174,8 @@ PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const
 
 PluginInstance::~PluginInstance()
 {
+  assert_return (this_thread_is_gtk());
+
   if (worker_)
     worker_->stop();
 
@@ -1183,9 +1186,7 @@ PluginInstance::~PluginInstance()
 
       if (instance)
         {
-          x11wrapper->exec_in_gtk_thread ([&]() {
-            lilv_instance_free (instance);
-          });
+          lilv_instance_free (instance);
           instance = nullptr;
         }
     }
@@ -1500,13 +1501,11 @@ PluginInstance::reset_event_buffers()
 void
 PluginInstance::activate()
 {
+  assert_return (this_thread_is_gtk());
   if (!active)
     {
-      x11wrapper->exec_in_gtk_thread ([&]() {
-        printerr ("activate\n");
-        lilv_instance_activate (instance);
-      });
-
+      printerr ("activate\n");
+      lilv_instance_activate (instance);
       active = true;
     }
 }
@@ -1514,13 +1513,11 @@ PluginInstance::activate()
 void
 PluginInstance::deactivate()
 {
+  assert_return (this_thread_is_gtk());
   if (active)
     {
-      x11wrapper->exec_in_gtk_thread ([&]() {
-        printerr ("deactivate\n");
-        lilv_instance_deactivate (instance);
-      });
-
+      printerr ("deactivate\n");
+      lilv_instance_deactivate (instance);
       active = false;
     }
 }
@@ -1609,7 +1606,7 @@ PluginInstance::handle_dsp2ui_events()
         assert (event->port_index() < plugin_ports.size());
         // printerr ("handle_dsp2ui_events: pop event: index=%zd, protocol=%d, sz=%zd\n", event->port_index(), event->protocol(), event->size());
         if (plugin_ui)
-          x11wrapper->suil_instance_port_event_gtk_thread (plugin_ui->ui_instance_, event->port_index(), event->size(), event->protocol(), event->data());
+          x11wrapper->suil_instance_port_event (plugin_ui->ui_instance_, event->port_index(), event->size(), event->protocol(), event->data());
       });
   // free both: old dsp2ui events and old ui2dsp events
   trash_events_.free_all();
@@ -1715,7 +1712,8 @@ PluginInstance::toggle_ui()
 void
 PluginInstance::delete_ui_request()
 {
-  plugin_ui.reset();
+  assert (this_thread_is_ase());
+  x11wrapper->exec_in_gtk_thread ([&] { plugin_ui.reset(); });
 }
 
 struct PortRestoreHelper
@@ -1767,6 +1765,8 @@ struct PortRestoreHelper
 void
 PluginInstance::restore_state (LilvState *state, PortRestoreHelper *helper, PathMap *path_map)
 {
+  assert_return (this_thread_is_gtk());
+
   Features restore_features;
   if (path_map)
     {
@@ -1776,40 +1776,33 @@ PluginInstance::restore_state (LilvState *state, PortRestoreHelper *helper, Path
   restore_features.add (plugin_host.urid_map.map_feature());
   restore_features.add (plugin_host.urid_map.unmap_feature());
 
-  x11wrapper->exec_in_gtk_thread (
-    [&]()
-      {
-        lilv_state_restore (state, instance, PortRestoreHelper::set, helper, 0, restore_features.get_features());
-      });
+  lilv_state_restore (state, instance, PortRestoreHelper::set, helper, 0, restore_features.get_features());
 }
 
 bool
 PluginInstance::restore_string (const String& str, PortRestoreHelper *helper, PathMap *path_map)
 {
-  LilvState *state = nullptr;
-  x11wrapper->exec_in_gtk_thread (
-    [&]()
-      {
-        state = lilv_state_new_from_string (plugin_host.world, plugin_host.urid_map.lv2_map(), str.c_str());
-      });
-  if (!state)
-    return false;
+  assert_return (this_thread_is_gtk(), false);
 
-  restore_state (state, helper, path_map);
-  lilv_state_free (state);
-  return true;
+  if (LilvState *state = lilv_state_new_from_string (plugin_host.world, plugin_host.urid_map.lv2_map(), str.c_str()))
+    {
+      restore_state (state, helper, path_map);
+      lilv_state_free (state);
+      return true;
+    }
+  else
+    {
+      return false;
+    }
 }
 
 void
 PluginInstance::restore_preset (int preset, PortRestoreHelper *helper)
 {
-  LilvState *state = nullptr;
-  x11wrapper->exec_in_gtk_thread (
-    [&]()
-      {
-        state = lilv_state_new_from_world (plugin_host.world, plugin_host.urid_map.lv2_map(), presets[preset].preset);
-      });
-  if (state)
+  assert_return (this_thread_is_gtk());
+  assert_return (preset >= 0 && preset < int (presets.size()));
+
+  if (LilvState *state = lilv_state_new_from_world (plugin_host.world, plugin_host.urid_map.lv2_map(), presets[preset].preset))
     {
       restore_state (state, helper);
       lilv_state_free (state);
@@ -1842,6 +1835,8 @@ get_port_value_for_save (const char *port_symbol,
 String
 PluginInstance::save_string (map<string,float> port_values, PathMap *path_map)
 {
+  assert_return (this_thread_is_gtk(), "");
+
   Features save_features;
   if (path_map)
     {
@@ -1852,30 +1847,26 @@ PluginInstance::save_string (map<string,float> port_values, PathMap *path_map)
   save_features.add (plugin_host.urid_map.unmap_feature());
 
   String str;
-  x11wrapper->exec_in_gtk_thread (
-    [&]()
-      {
-        LilvState *state = lilv_state_new_from_instance (plugin,
-                                                         instance,
-                                                         plugin_host.urid_map.lv2_map(),
-                                                         nullptr,
-                                                         nullptr,
-                                                         nullptr,
-                                                         nullptr,
-                                                         get_port_value_for_save,
-                                                         &port_values,
-                                                         0,
-                                                         save_features.get_features());
-        char *c_str = lilv_state_to_string (plugin_host.world,
-                                            plugin_host.urid_map.lv2_map(),
-                                            plugin_host.urid_map.lv2_unmap(),
-                                            state,
-                                            ANKLANG_STATE_URI,
-                                            nullptr);
-        str = c_str;
-        free (c_str);
-        lilv_state_free (state);
-      });
+  LilvState *state = lilv_state_new_from_instance (plugin,
+                                                   instance,
+                                                   plugin_host.urid_map.lv2_map(),
+                                                   nullptr,
+                                                   nullptr,
+                                                   nullptr,
+                                                   nullptr,
+                                                   get_port_value_for_save,
+                                                   &port_values,
+                                                   0,
+                                                   save_features.get_features());
+  char *c_str = lilv_state_to_string (plugin_host.world,
+                                      plugin_host.urid_map.lv2_map(),
+                                      plugin_host.urid_map.lv2_unmap(),
+                                      state,
+                                      ANKLANG_STATE_URI,
+                                      nullptr);
+  str = c_str;
+  free (c_str);
+  lilv_state_free (state);
   return str;
 }
 
@@ -1903,12 +1894,19 @@ class LV2Processor : public AudioProcessor {
   string lv2_uri_;
 
   void
+  gtk_thread (const std::function<void()>& fun)
+  {
+    // make calling a function in gtk thread a little shorter by wrapping this
+    assert_return (x11wrapper);
+    x11wrapper->exec_in_gtk_thread (fun);
+  }
+  void
   initialize (SpeakerArrangement busses) override
   {
     PortRestoreHelper port_restore_helper (plugin_host);
 
     plugin_host.options.set_rate (sample_rate());
-    plugin_instance = plugin_host.instantiate (lv2_uri_.c_str(), sample_rate(), &port_restore_helper);
+    gtk_thread ([&] { plugin_instance = plugin_host.instantiate (lv2_uri_.c_str(), sample_rate(), &port_restore_helper); });
     restore_params (port_restore_helper);
 
     if (!plugin_instance)
@@ -1962,7 +1960,7 @@ class LV2Processor : public AudioProcessor {
 
     // TODO: deactivate?
     // TODO: is this the right place?
-    plugin_instance->activate();
+    gtk_thread ([&] { plugin_instance->activate(); });
 
     install_params (pmap);
 
@@ -2020,19 +2018,16 @@ class LV2Processor : public AudioProcessor {
           {
             current_preset = want_preset;
 
-            if (want_preset > 0 && want_preset <= int (plugin_instance->presets.size()))
-              {
-                // TODO: this should not be done in audio thread
-                PortRestoreHelper port_restore_helper (plugin_host);
-                plugin_instance->restore_preset (want_preset - 1, &port_restore_helper);
+            // TODO: blocking the audio thread here is a bad idea
+            PortRestoreHelper port_restore_helper (plugin_host);
+            gtk_thread ([&] { plugin_instance->restore_preset (want_preset - 1, &port_restore_helper); });
 
-                // TODO: evil (possibly crashing) broken hack to set the parameters:
-                //  -> should be replaced by something else once presets are loaded outside the audio thread
-                main_loop->exec_idle ([port_restore_helper, this] () // <- delete source required if processor is destroyed
-                  {
-                    restore_params (port_restore_helper);
-                  });
-              }
+            // TODO: evil (possibly crashing) broken hack to set the parameters:
+            //  -> should be replaced by something else once presets are loaded outside the audio thread
+            main_loop->exec_idle ([port_restore_helper, this] () // <- delete source required if processor is destroyed
+              {
+                restore_params (port_restore_helper);
+              });
           }
       }
 
@@ -2180,7 +2175,7 @@ public:
   {
     if (plugin_instance)
       {
-        delete plugin_instance;
+        gtk_thread ([&] { delete plugin_instance; });
         plugin_instance = nullptr;
       }
   }
@@ -2200,10 +2195,17 @@ public:
   {
     lv2_uri_ = lv2_uri;
   }
-  PluginInstance *
-  instance()
+  bool
+  gui_supported()
   {
-    return plugin_instance;
+    bool have_ui = false;
+    gtk_thread ([&] { have_ui = plugin_instance->get_plugin_ui() != nullptr; });
+    return have_ui;
+  }
+  void
+  gui_toggle()
+  {
+    gtk_thread ([&] { plugin_instance->toggle_ui(); });
   }
   void
   save_state (WritNode &xs, const string& device_path, ProjectImpl *project)
@@ -2226,7 +2228,8 @@ public:
     PathMap path_map;
     path_map.abstract_path = [&] (const String &path) { String hash; project_->writer_collect (path, &hash); return hash; };
 
-    String str = plugin_instance->save_string (port_values, &path_map);
+    String str;
+    gtk_thread ([&] { str = plugin_instance->save_string (port_values, &path_map); });
 
     if (!Path::stringwrite (blobfile, str, false))
       printerr ("%s: %s: stringwrite failed\n", program_alias(), blobfile);
@@ -2265,7 +2268,9 @@ public:
             path_map.absolute_path = [&] (String hash) { return project_->loader_resolve (hash); };
 
             PortRestoreHelper port_restore_helper (plugin_host);
-            if (plugin_instance->restore_string (blob_data, &port_restore_helper, &path_map))
+            bool restore_ok = false;
+            gtk_thread ([&] { restore_ok = plugin_instance->restore_string (blob_data, &port_restore_helper, &path_map); });
+            if (restore_ok)
               {
                 restore_params (port_restore_helper);
               }
@@ -2316,15 +2321,14 @@ bool
 LV2DeviceImpl::gui_supported()
 {
   auto lv2aproc = dynamic_cast<LV2Processor *> (proc_.get());
-  auto ui = lv2aproc->instance()->get_plugin_ui();
-  return ui != nullptr;
+  return lv2aproc->gui_supported();
 }
 
 void
 LV2DeviceImpl::gui_toggle()
 {
   auto lv2aproc = dynamic_cast<LV2Processor *> (proc_.get());
-  lv2aproc->instance()->toggle_ui();
+  lv2aproc->gui_toggle();
 }
 
 LV2DeviceImpl::LV2DeviceImpl (const String &lv2_uri, AudioProcessorP proc) :

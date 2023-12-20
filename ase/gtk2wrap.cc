@@ -234,6 +234,12 @@ gtkidle_call (Ret (*func) (Params...), Args &&...args)
   return ret;
 }
 
+void
+check_gtk_thread()
+{
+  assert (std::this_thread::get_id() == gtk_thread_id);
+}
+
 } // Anon
 
 extern "C" {
@@ -259,10 +265,12 @@ Ase::Gtk2DlWrapEntry Ase__Gtk2__wrapentry {
     return gtkidle_call (get_gtk_thread_id);
   },
   .register_timer = [] (const std::function<bool()>& callback, uint interval_ms) -> uint {
-    return gtkidle_call (register_timer, callback, interval_ms);
+    check_gtk_thread();
+    return register_timer (callback, interval_ms);
   },
   .remove_timer = [] (uint timer_id) -> bool {
-    return gtkidle_call (remove_timer, timer_id);
+    check_gtk_thread();
+    return remove_timer (timer_id);
   },
   .exec_in_gtk_thread = [] (const std::function<void()>& func) {
     gtkidle_call (exec_in_gtk_thread, func);
@@ -275,34 +283,40 @@ Ase::Gtk2DlWrapEntry Ase__Gtk2__wrapentry {
                               const string &ui_uri, const string &ui_type_uri,
                               const string &ui_bundle_path, const string &ui_binary_path,
                               const LV2_Feature *const *features) -> void * {
-    return gtkidle_call (suil_instance_new, (SuilHost *) host, (SuilController *) controller,
-                         container_type_uri.c_str(), plugin_uri.c_str(),
-                         ui_uri.c_str(), ui_type_uri.c_str(),
-                         ui_bundle_path.c_str(), ui_binary_path.c_str(),
-                         features);
+    check_gtk_thread();
+    return suil_instance_new ((SuilHost *) host, (SuilController *) controller,
+                              container_type_uri.c_str(), plugin_uri.c_str(),
+                              ui_uri.c_str(), ui_type_uri.c_str(),
+                              ui_bundle_path.c_str(), ui_binary_path.c_str(),
+                              features);
   },
   .destroy_suil_instance = [] (void *instance) {
-    gtkidle_call (exec_in_gtk_thread, [&] { suil_instance_free ((SuilInstance *) instance); });
+    check_gtk_thread();
+    suil_instance_free ((SuilInstance *) instance);
   },
   .create_suil_window = [] (const string &window_title, bool resizable, const std::function<void()>& deleterequest_mt) -> void * {
-    return gtkidle_call (create_suil_window, window_title, resizable, deleterequest_mt);
+    check_gtk_thread();
+    return create_suil_window (window_title, resizable, deleterequest_mt);
   },
   .add_suil_widget_to_window = [] (void *window, void *instance) {
-    gtkidle_call (exec_in_gtk_thread, [&] {
-      gtk_container_add (GTK_CONTAINER (window), GTK_WIDGET (suil_instance_get_widget ((SuilInstance *) instance)));
-      gtk_widget_show_all (GTK_WIDGET (window));
-    });
+    check_gtk_thread();
+    gtk_container_add (GTK_CONTAINER (window), GTK_WIDGET (suil_instance_get_widget ((SuilInstance *) instance)));
+    gtk_widget_show_all (GTK_WIDGET (window));
   },
   .destroy_suil_window = [] (void *window) -> void {
-    gtkidle_call (exec_in_gtk_thread, [&] { gtk_widget_destroy (GTK_WIDGET (window)); });
+    check_gtk_thread();
+    gtk_widget_destroy (GTK_WIDGET (window));
   },
   .suil_ui_supported = [] (const string& host_type_uri, const string& ui_type_uri) -> unsigned {
+    check_gtk_thread();
     return suil_ui_supported (host_type_uri.c_str(), ui_type_uri.c_str());
   },
-  .suil_instance_port_event_gtk_thread = [] (void *instance, uint32_t port_index, uint32_t buffer_size, uint32_t format, const void *buffer) {
+  .suil_instance_port_event = [] (void *instance, uint32_t port_index, uint32_t buffer_size, uint32_t format, const void *buffer) {
+    check_gtk_thread();
     return suil_instance_port_event ((SuilInstance *) instance, port_index, buffer_size, format, buffer);
   },
-  .get_suil_widget_gtk_thread = [] (void *instance) {
+  .get_suil_widget = [] (void *instance) {
+    check_gtk_thread();
     return suil_instance_get_widget ((SuilInstance *) instance);
   }
 };
