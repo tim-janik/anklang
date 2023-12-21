@@ -539,6 +539,13 @@ class PluginInstance
   std::array<uint8, 256>     last_position_buffer_ {};
   std::array<uint8, 256>     position_buffer_ {};
 
+  std::vector<int>           atom_out_ports_;
+  std::vector<int>           atom_in_ports_;
+  std::vector<int>           audio_in_ports_;
+  std::vector<int>           audio_out_ports_;
+  std::vector<int>           midi_in_ports_;
+  std::vector<int>           position_in_ports_;
+
   // lilv_state_to_string requires a non-empty URI
   static constexpr auto ANKLANG_STATE_URI = "urn:anklang:state";
 public:
@@ -559,12 +566,7 @@ public:
   const LV2_Worker_Interface   *worker_interface = nullptr;
   uint                          sample_rate = 0;
   std::vector<Port>             plugin_ports;
-  std::vector<int>              atom_out_ports;
-  std::vector<int>              atom_in_ports;
-  std::vector<int>              audio_in_ports;
-  std::vector<int>              audio_out_ports;
-  std::vector<int>              midi_in_ports;
-  std::vector<int>              position_in_ports;
+public:
   std::vector<PresetInfo>       presets;
   bool                          active = false;
   std::function<void(Port *)>   control_in_changed_callback;
@@ -574,6 +576,8 @@ public:
   ControlEventVector            ui2dsp_events_, dsp2ui_events_, trash_events_;
 
   bool init_ok() const { return init_ok_; }
+  uint n_audio_inputs() const { return audio_in_ports_.size(); }
+  uint n_audio_outputs() const { return audio_out_ports_.size(); }
 
   void init_ports();
   void free_ports();
@@ -582,7 +586,8 @@ public:
   void reset_event_buffers();
   void write_midi (uint32_t time, size_t size, const uint8_t *data);
   void write_position (const AudioTransport &transport);
-  void connect_audio_port (uint32_t port, float *buffer);
+  void connect_audio_in (uint32_t input_port, const float *buffer);
+  void connect_audio_out (uint32_t input_port, float *buffer);
   void run (uint32_t n_frames);
   void activate();
   void deactivate();
@@ -1267,7 +1272,7 @@ PluginInstance::init_ports()
             {
               if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_audio_class))
                 {
-                  audio_in_ports.push_back (i);
+                  audio_in_ports_.push_back (i);
                 }
               else if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_atom_class))
                 {
@@ -1279,14 +1284,14 @@ PluginInstance::init_ports()
                   if (LilvNodes *atom_supports = lilv_port_get_value (plugin, port, plugin_host.nodes.lv2_atom_supports))
                     {
                       if (lilv_nodes_contains (atom_supports, plugin_host.nodes.lv2_midi_MidiEvent))
-                        midi_in_ports.push_back (i);
+                        midi_in_ports_.push_back (i);
                       if (lilv_nodes_contains (atom_supports, plugin_host.nodes.lv2_time_Position))
-                        position_in_ports.push_back (i);
+                        position_in_ports_.push_back (i);
 
                       lilv_nodes_free (atom_supports);
                     }
 
-                  atom_in_ports.push_back (i);
+                  atom_in_ports_.push_back (i);
                 }
               else if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_control_class))
                 {
@@ -1354,11 +1359,11 @@ PluginInstance::init_ports()
             {
               if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_audio_class))
                 {
-                  audio_out_ports.push_back (i);
+                  audio_out_ports_.push_back (i);
                 }
               else if (lilv_port_is_a (plugin, port, plugin_host.nodes.lv2_atom_class))
                 {
-                  atom_out_ports.push_back (i);
+                  atom_out_ports_.push_back (i);
 
                   plugin_ports[i].evbuf = lv2_evbuf_new (port_buffer_size, LV2_EVBUF_ATOM,
                                                          plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Chunk)),
@@ -1381,12 +1386,12 @@ PluginInstance::init_ports()
         }
     }
 
-  if (midi_in_ports.size() > 1)
+  if (midi_in_ports_.size() > 1)
     printerr ("LV2: more than one midi input found - this is not supported\n");
-  if (position_in_ports.size() > 1)
+  if (position_in_ports_.size() > 1)
     printerr ("LV2: more than one time position input found - this is not supported\n");
   printerr ("--------------------------------------------------\n");
-  printerr ("audio IN:%zd OUT:%zd\n", audio_in_ports.size(), audio_out_ports.size());
+  printerr ("audio IN:%zd OUT:%zd\n", audio_in_ports_.size(), audio_out_ports_.size());
   printerr ("control IN:%zd\n", n_control_ports);
   printerr ("--------------------------------------------------\n");
 }
@@ -1432,10 +1437,10 @@ PluginInstance::free_presets()
 void
 PluginInstance::write_midi (uint32_t time, size_t size, const uint8_t *data)
 {
-  if (midi_in_ports.empty())
+  if (midi_in_ports_.empty())
     return;
 
-  LV2_Evbuf           *evbuf = plugin_ports[midi_in_ports.front()].evbuf;
+  LV2_Evbuf           *evbuf = plugin_ports[midi_in_ports_.front()].evbuf;
   LV2_Evbuf_Iterator    iter = lv2_evbuf_end (evbuf);
 
   lv2_evbuf_write (&iter, time, 0, plugin_host.urids.midi_MidiEvent, size, data);
@@ -1444,7 +1449,7 @@ PluginInstance::write_midi (uint32_t time, size_t size, const uint8_t *data)
 void
 PluginInstance::write_position (const AudioTransport &transport)
 {
-  if (position_in_ports.empty())
+  if (position_in_ports_.empty())
     return;
 
   const auto &tick_sig = transport.tick_sig;
@@ -1472,7 +1477,7 @@ PluginInstance::write_position (const AudioTransport &transport)
   const size_t buffer_used = lv2_pos->size + sizeof (LV2_Atom);
   if (!std::equal (position_buffer_.begin(), position_buffer_.begin() + buffer_used, last_position_buffer_.begin()))
     {
-      LV2_Evbuf           *evbuf = plugin_ports[position_in_ports.front()].evbuf;
+      LV2_Evbuf           *evbuf = plugin_ports[position_in_ports_.front()].evbuf;
       LV2_Evbuf_Iterator    iter = lv2_evbuf_end (evbuf);
 
       lv2_evbuf_write (&iter, 0, 0, lv2_pos->type, lv2_pos->size, (uint8 *) LV2_ATOM_BODY (lv2_pos));
@@ -1483,14 +1488,14 @@ PluginInstance::write_position (const AudioTransport &transport)
 void
 PluginInstance::reset_event_buffers()
 {
-  for (int p : atom_out_ports)
+  for (int p : atom_out_ports_)
     {
       /* Clear event output for plugin to write to */
       LV2_Evbuf *evbuf = plugin_ports[p].evbuf;
 
       lv2_evbuf_reset (evbuf, false);
     }
-  for (int p : atom_in_ports)
+  for (int p : atom_in_ports_)
     {
       LV2_Evbuf *evbuf = plugin_ports[p].evbuf;
 
@@ -1523,9 +1528,15 @@ PluginInstance::deactivate()
 }
 
 void
-PluginInstance::connect_audio_port (uint32_t port, float *buffer)
+PluginInstance::connect_audio_in (uint32_t input_port, const float *buffer)
 {
-  lilv_instance_connect_port (instance, port, buffer);
+  lilv_instance_connect_port (instance, audio_in_ports_[input_port], const_cast<float *> (buffer));
+}
+
+void
+PluginInstance::connect_audio_out (uint32_t output_port, float *buffer)
+{
+  lilv_instance_connect_port (instance, audio_out_ports_[output_port], buffer);
 }
 
 void
@@ -1573,7 +1584,7 @@ PluginInstance::run (uint32_t n_frames)
 void
 PluginInstance::send_plugin_events_to_ui()
 {
-  for (int port_index : atom_out_ports)
+  for (int port_index : atom_out_ports_)
     {
       LV2_Evbuf *evbuf = plugin_ports[port_index].evbuf;
 
@@ -1974,25 +1985,28 @@ class LV2Processor : public AudioProcessor {
      */
     mono_ins_.clear();
     mono_outs_.clear();
-    if (plugin_instance->audio_in_ports.size() == 2)
+
+    uint n_audio_inputs = plugin_instance->n_audio_inputs();
+    if (n_audio_inputs == 2)
       {
         stereo_in_ = add_input_bus ("Stereo In", SpeakerArrangement::STEREO);
         assert_return (bus_info (stereo_in_).ident == "stereo_in");
       }
     else
       {
-        for (size_t i = 0; i < plugin_instance->audio_in_ports.size(); i++)
+        for (uint i = 0; i < n_audio_inputs; i++)
           mono_ins_.push_back (add_input_bus (string_format ("Mono In %zd", i + 1), SpeakerArrangement::MONO));
       }
 
-    if (plugin_instance->audio_out_ports.size() == 2)
+    uint n_audio_outputs = plugin_instance->n_audio_outputs();
+    if (n_audio_outputs == 2)
       {
         stereo_out_ = add_output_bus ("Stereo Out", SpeakerArrangement::STEREO);
         assert_return (bus_info (stereo_out_).ident == "stereo_out");
       }
     else
       {
-        for (size_t i = 0; i < plugin_instance->audio_out_ports.size(); i++)
+        for (uint i = 0; i < n_audio_outputs; i++)
           mono_outs_.push_back (add_output_bus (string_format ("Mono Out %zd", i + 1), SpeakerArrangement::MONO));
       }
   }
@@ -2045,20 +2059,7 @@ class LV2Processor : public AudioProcessor {
   void
   render (uint n_frames) override
   {
-    if (!plugin_instance)
-      {
-        if (plugin_instance->audio_out_ports.size() == 2)
-          {
-            floatfill (oblock (stereo_out_, 0), 0.f, n_frames);
-            floatfill (oblock (stereo_out_, 1), 0.f, n_frames);
-          }
-        else
-          {
-            for (size_t i = 0; i < plugin_instance->audio_out_ports.size(); i++)
-              floatfill (oblock (mono_outs_[i], 0), 0.f, n_frames);
-          }
-        return;
-      }
+    assert_return (plugin_instance);
 
     // reset event buffers and write midi events
     plugin_instance->reset_event_buffers();
@@ -2097,26 +2098,28 @@ class LV2Processor : public AudioProcessor {
           }
       }
 
-    if (plugin_instance->audio_in_ports.size() == 2)
+    uint n_audio_inputs = plugin_instance->n_audio_inputs();
+    if (n_audio_inputs == 2)
       {
-        plugin_instance->connect_audio_port (plugin_instance->audio_in_ports[0], const_cast<float *> (ifloats (stereo_in_, 0)));
-        plugin_instance->connect_audio_port (plugin_instance->audio_in_ports[1], const_cast<float *> (ifloats (stereo_in_, 1)));
+        plugin_instance->connect_audio_in (0, ifloats (stereo_in_, 0));
+        plugin_instance->connect_audio_in (1, ifloats (stereo_in_, 1));
       }
     else
       {
-        for (size_t i = 0; i < plugin_instance->audio_in_ports.size(); i++)
-          plugin_instance->connect_audio_port (plugin_instance->audio_in_ports[i], const_cast<float *> (ifloats (mono_ins_[i], 0)));
+        for (uint i = 0; i < n_audio_inputs; i++)
+          plugin_instance->connect_audio_in (i, ifloats (mono_ins_[i], 0));
       }
 
-    if (plugin_instance->audio_out_ports.size() == 2)
+    uint n_audio_outputs = plugin_instance->n_audio_outputs();
+    if (n_audio_outputs == 2)
       {
-        plugin_instance->connect_audio_port (plugin_instance->audio_out_ports[0], oblock (stereo_out_, 0));
-        plugin_instance->connect_audio_port (plugin_instance->audio_out_ports[1], oblock (stereo_out_, 1));
+        plugin_instance->connect_audio_out (0, oblock (stereo_out_, 0));
+        plugin_instance->connect_audio_out (1, oblock (stereo_out_, 1));
       }
     else
       {
-        for (size_t i = 0; i < plugin_instance->audio_out_ports.size(); i++)
-          plugin_instance->connect_audio_port (plugin_instance->audio_out_ports[i], oblock (mono_outs_[i], 0));
+        for (uint i = 0; i < n_audio_outputs; i++)
+          plugin_instance->connect_audio_out (i, oblock (mono_outs_[i], 0));
       }
     plugin_instance->run (n_frames);
   }
