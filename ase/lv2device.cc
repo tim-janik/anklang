@@ -604,7 +604,7 @@ public:
   bool restore_string (const String& str, PortRestoreHelper *helper, PathMap *path_map = nullptr);
   void restore_preset (int preset, PortRestoreHelper *helper);
 
-  String save_string (map<string,float> port_values, PathMap *path_map);
+  String save_string (PathMap *path_map);
 };
 
 void
@@ -1826,25 +1826,22 @@ get_port_value_for_save (const char *port_symbol,
                          uint32_t   *size,
                          uint32_t   *type)
 {
-  auto *port_values = (map<string, float> *) user_data;
-
-  auto it = port_values->find (port_symbol);
-  if (it != port_values->end())
+  PluginInstance *plugin_instance = (PluginInstance *) user_data;
+  for (auto& port : plugin_instance->plugin_ports)
     {
-      *size = sizeof (float);
-      *type = PluginHost::the().urids.atom_Float;
-
-      return &it->second;
+      if (port.symbol == port_symbol && port.type == Port::CONTROL_IN)
+        {
+          *size = sizeof (float);
+          *type = plugin_instance->plugin_host.urids.atom_Float;
+          return &port.control;
+        }
     }
-  else
-    {
-      *size = *type = 0;
-      return nullptr;
-    }
+  *size = *type = 0;
+  return nullptr;
 }
 
 String
-PluginInstance::save_string (map<string,float> port_values, PathMap *path_map)
+PluginInstance::save_string (PathMap *path_map)
 {
   assert_return (this_thread_is_gtk(), "");
 
@@ -1866,7 +1863,7 @@ PluginInstance::save_string (map<string,float> port_values, PathMap *path_map)
                                                    nullptr,
                                                    nullptr,
                                                    get_port_value_for_save,
-                                                   &port_values,
+                                                   this,
                                                    0,
                                                    save_features.get_features());
   char *c_str = lilv_state_to_string (plugin_host.world,
@@ -2218,31 +2215,32 @@ public:
     else
       project_ = project;
 
-    String blobname = string_format ("lv2-%s.ttl", device_path);
-    const String blobfile = project->writer_file_name (blobname);
-    printerr ("blobfile %s\n", blobfile.c_str());
-    /* build a map containing all the port values */
-    map<string, float> port_values;
-    for (size_t i = 0; i < param_id_port.size(); i++)
-      {
-        const Port *port = param_id_port[i];
-        port_values[port->symbol] = port->param_to_lv2 (get_param (int (i) + PID_CONTROL_OFFSET));
-      }
+    /* save to string */
     PathMap path_map;
     path_map.abstract_path = [&] (const String &path) { String hash; project_->writer_collect (path, &hash); return hash; };
 
     String str;
-    gtk_thread ([&] { str = plugin_instance->save_string (port_values, &path_map); });
+    gtk_thread ([&] { str = plugin_instance->save_string (&path_map); });
 
-    if (!Path::stringwrite (blobfile, str, false))
-      printerr ("%s: %s: stringwrite failed\n", program_alias(), blobfile);
+    if (str != "")
+      {
+        String blobname = string_format ("lv2-%s.ttl", device_path);
+        const String blobfile = project->writer_file_name (blobname);
+
+        if (!Path::stringwrite (blobfile, str, false))
+          printerr ("%s: %s: stringwrite failed\n", program_alias(), blobfile);
+        else
+          {
+            Error err = project->writer_add_file (blobfile);
+            if (!!err)
+              printerr ("%s: %s: %s\n", program_alias(), blobfile, ase_error_blurb (err));
+            else
+              xs["state_blob"] & blobname;
+          }
+      }
     else
       {
-        Error err = project->writer_add_file (blobfile);
-        if (!!err)
-          printerr ("%s: %s: %s\n", program_alias(), blobfile, ase_error_blurb (err));
-        else
-          xs["state_blob"] & blobname;
+        printerr ("%s: LV2: save to string failed\n", program_alias());
       }
   }
   void
