@@ -411,24 +411,26 @@ struct Port
   String      unit;
   vector<ScalePoint> scale_points; /* for enumerations */
 
-  enum {
-    UNKNOWN,
-    CONTROL_IN,
-    CONTROL_OUT
-  } type;
-
   static constexpr uint NO_FLAGS    = 0;
   static constexpr uint LOGARITHMIC = 1 << 0;
   static constexpr uint INTEGER     = 1 << 1;
   static constexpr uint TOGGLED     = 1 << 2;
   static constexpr uint ENUMERATION = 1 << 3;
 
+  // port direction
+  static constexpr uint INPUT       = 1 << 4;
+  static constexpr uint OUTPUT      = 1 << 5;
+
+  // port type
+  static constexpr uint CONTROL     = 1 << 6;
+  static constexpr uint AUDIO       = 1 << 7;
+  static constexpr uint ATOM        = 1 << 8;
+
   uint flags = NO_FLAGS;
 
   Port() :
     evbuf (nullptr),
-    control (0.0),
-    type (UNKNOWN)
+    control (0.0)
   {
   }
   float
@@ -1251,12 +1253,16 @@ PluginInstance::init_ports()
 
           if (lilv_port_is_a (plugin_, port, plugin_host.nodes.lv2_input_class))
             {
+              plugin_ports[i].flags |= Port::INPUT;
+
               if (lilv_port_is_a (plugin_, port, plugin_host.nodes.lv2_audio_class))
                 {
+                  plugin_ports[i].flags |= Port::AUDIO;
                   audio_in_ports_.push_back (i);
                 }
               else if (lilv_port_is_a (plugin_, port, plugin_host.nodes.lv2_atom_class))
                 {
+                  plugin_ports[i].flags |= Port::ATOM;
                   plugin_ports[i].evbuf = lv2_evbuf_new (port_buffer_size, LV2_EVBUF_ATOM,
                                                          plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Chunk)),
                                                          plugin_host.urid_map.urid_map (lilv_node_as_string (plugin_host.nodes.lv2_atom_Sequence)));
@@ -1276,8 +1282,8 @@ PluginInstance::init_ports()
                 }
               else if (lilv_port_is_a (plugin_, port, plugin_host.nodes.lv2_control_class))
                 {
+                  plugin_ports[i].flags |= Port::CONTROL;
                   plugin_ports[i].control = defaults[i];      // start with default value
-                  plugin_ports[i].type = Port::CONTROL_IN;
                   plugin_ports[i].min_value = min_values[i];
                   plugin_ports[i].max_value = max_values[i];
 
@@ -1338,12 +1344,15 @@ PluginInstance::init_ports()
             }
           if (lilv_port_is_a (plugin_, port, plugin_host.nodes.lv2_output_class))
             {
+              plugin_ports[i].flags |= Port::OUTPUT;
               if (lilv_port_is_a (plugin_, port, plugin_host.nodes.lv2_audio_class))
                 {
+                  plugin_ports[i].flags |= Port::AUDIO;
                   audio_out_ports_.push_back (i);
                 }
               else if (lilv_port_is_a (plugin_, port, plugin_host.nodes.lv2_atom_class))
                 {
+                  plugin_ports[i].flags |= Port::ATOM;
                   atom_out_ports_.push_back (i);
 
                   plugin_ports[i].evbuf = lv2_evbuf_new (port_buffer_size, LV2_EVBUF_ATOM,
@@ -1354,8 +1363,8 @@ PluginInstance::init_ports()
                 }
               else if (lilv_port_is_a (plugin_, port, plugin_host.nodes.lv2_control_class))
                 {
+                  plugin_ports[i].flags |= Port::CONTROL;
                   plugin_ports[i].control = defaults[i];      // start with default value
-                  plugin_ports[i].type = Port::CONTROL_OUT;
 
                   lilv_instance_connect_port (instance, i, &plugin_ports[i].control);
                 }
@@ -1612,7 +1621,7 @@ PluginInstance::set_initial_controls_ui()
     {
       const auto& port = plugin_ports[port_index];
 
-      if (port.type == Port::CONTROL_IN || port.type == Port::CONTROL_OUT)
+      if (port.flags & Port::CONTROL)
         {
           ControlEvent *event = ControlEvent::loft_new (port_index, 0, sizeof (float), &port.control);
           dsp2ui_events_.push (event);
@@ -1650,7 +1659,7 @@ PluginInstance::send_ui_updates (uint32_t delta_frames)
         {
           const Port& port = plugin_ports[port_index];
 
-          if (port.type == Port::CONTROL_OUT)
+          if ((port.flags & Port::CONTROL) && (port.flags & Port::OUTPUT))
             {
               ControlEvent *event = ControlEvent::loft_new (port_index, 0, sizeof (float), &port.control);
               dsp2ui_events_.push (event);
@@ -1822,7 +1831,7 @@ get_port_value_for_save (const char *port_symbol,
   PluginInstance *plugin_instance = (PluginInstance *) user_data;
   for (auto& port : plugin_instance->plugin_ports)
     {
-      if (port.symbol == port_symbol && port.type == Port::CONTROL_IN)
+      if (port.symbol == port_symbol && (port.flags & Port::INPUT) && (port.flags & Port::CONTROL))
         {
           *size = sizeof (float);
           *type = plugin_instance->plugin_host.urids.atom_Float;
@@ -1950,7 +1959,7 @@ class LV2Processor : public AudioProcessor {
     current_preset = 0;
 
     for (auto& port : plugin_instance->plugin_ports)
-      if (port.type == Port::CONTROL_IN)
+      if ((port.flags & Port::INPUT) && (port.flags & Port::CONTROL))
         {
           // TODO: lv2 port numbers are not reliable for serialization, should use port.symbol instead
           // TODO: special case boolean, enumeration, logarithmic,... controls
