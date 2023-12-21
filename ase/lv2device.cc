@@ -553,6 +553,10 @@ class PluginInstance
   bool                       active_ = false;
   uint32_t                   ui_update_frame_count_ = 0;
 
+  ControlEventVector         ui2dsp_events_;
+  ControlEventVector         dsp2ui_events_;
+  ControlEventVector         trash_events_;
+
   // lilv_state_to_string requires a non-empty URI
   static constexpr auto ANKLANG_STATE_URI = "urn:anklang:state";
 public:
@@ -570,7 +574,6 @@ public:
   std::vector<PresetInfo>       presets;
   std::function<void(Port *)>   control_in_changed_callback;
   static constexpr double       ui_update_fps = 60;
-  ControlEventVector            ui2dsp_events_, dsp2ui_events_, trash_events_;
 
   bool init_ok() const { return init_ok_; }
   uint n_audio_inputs() const { return audio_in_ports_.size(); }
@@ -596,36 +599,17 @@ public:
   void handle_dsp2ui_events();
   void send_ui_updates (uint32_t delta_frames);
   void set_initial_controls_ui();
+  void set_port_value_from_run (Port *port, float value);
 
   void restore_state (LilvState *state, PortRestoreHelper *helper, PathMap *path_map = nullptr);
   bool restore_string (const String& str, PortRestoreHelper *helper, PathMap *path_map = nullptr);
   void restore_preset (int preset, PortRestoreHelper *helper);
 
   String save_string (PathMap *path_map);
+
+  static void host_ui_write (void *controller, uint32_t port_index, uint32_t buffer_size, uint32_t protocol, const void *buffer);
+  static uint32_t host_ui_index (void *controller, const char *symbol);
 };
-
-void
-host_ui_write (void          *controller,
-               uint32_t       port_index,
-               uint32_t       buffer_size,
-               uint32_t       protocol,
-               const void*    buffer)
-{
-  PluginInstance *plugin_instance = (PluginInstance *) controller;
-  ControlEvent *event = ControlEvent::loft_new (port_index, protocol, buffer_size, buffer);
-  plugin_instance->ui2dsp_events_.push (event);
-}
-
-uint32_t
-host_ui_index (void *controller, const char* symbol)
-{
-  PluginInstance *plugin_instance = (PluginInstance *) controller;
-  const vector<Port> &ports = plugin_instance->plugin_ports;
-  for (size_t i = 0; i < ports.size(); i++)
-    if (ports[i].symbol == symbol)
-      return i;
-  return LV2UI_INVALID_PORT_INDEX;
-}
 
 class PluginHost
 {
@@ -759,7 +743,7 @@ private:
       x11wrapper = get_x11wrapper();
     if (x11wrapper)
       {
-        suil_host = x11wrapper->create_suil_host (host_ui_write, host_ui_index);
+        suil_host = x11wrapper->create_suil_host (PluginInstance::host_ui_write, PluginInstance::host_ui_index);
         // TODO: free suil_host when done
       }
 
@@ -1637,6 +1621,18 @@ PluginInstance::set_initial_controls_ui()
 }
 
 void
+PluginInstance::set_port_value_from_run (Port *port, float value)
+{
+  port->control = value;
+
+  if (plugin_ui_is_active)
+    {
+      ControlEvent *event = ControlEvent::loft_new (port->index, 0, sizeof (float), &port->control);
+      dsp2ui_events_.push (event);
+    }
+}
+
+void
 PluginInstance::send_ui_updates (uint32_t delta_frames)
 {
   ui_update_frame_count_ += delta_frames;
@@ -1875,6 +1871,29 @@ PluginInstance::save_string (PathMap *path_map)
   return str;
 }
 
+void
+PluginInstance::host_ui_write (void          *controller,
+                               uint32_t       port_index,
+                               uint32_t       buffer_size,
+                               uint32_t       protocol,
+                               const void*    buffer)
+{
+  PluginInstance *plugin_instance = (PluginInstance *) controller;
+  ControlEvent *event = ControlEvent::loft_new (port_index, protocol, buffer_size, buffer);
+  plugin_instance->ui2dsp_events_.push (event);
+}
+
+uint32_t
+PluginInstance::host_ui_index (void *controller, const char* symbol)
+{
+  PluginInstance *plugin_instance = (PluginInstance *) controller;
+  const vector<Port> &ports = plugin_instance->plugin_ports;
+  for (size_t i = 0; i < ports.size(); i++)
+    if (ports[i].symbol == symbol)
+      return i;
+  return LV2UI_INVALID_PORT_INDEX;
+}
+
 }
 
 class LV2Processor : public AudioProcessor {
@@ -2044,10 +2063,7 @@ class LV2Processor : public AudioProcessor {
     if (control_id >= 0 && control_id < param_id_port.size())
       {
         Port *port = param_id_port[control_id];
-        port->control = port->param_to_lv2 (get_param (tag));
-
-        ControlEvent *event = ControlEvent::loft_new (port->index, 0, sizeof (float), &port->control);
-        plugin_instance->dsp2ui_events_.push (event);
+        plugin_instance->set_port_value_from_run (port, port->param_to_lv2 (get_param (tag)));
       }
   }
   void
