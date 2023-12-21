@@ -2182,13 +2182,7 @@ public:
   static void
   static_info (AudioProcessorInfo &info)
   {
-    // info.uri = "Bse.LV2Device";
-    // info.version = "0";
-    info.version ="1";
-    info.label = "LV2Processor";
-    info.category = "Synth";
-    info.creator_name = "Stefan Westerfeld";
-    info.website_url  = "https://anklang.testbit.eu";
+    info.label = "Anklang.Devices.LV2Processor";
   }
   void
   set_uri (const string& lv2_uri)
@@ -2293,6 +2287,8 @@ public:
   }
 };
 
+static auto lv2processor_aseid = register_audio_processor<LV2Processor>();
+
 DeviceInfoS
 LV2DeviceImpl::list_lv2_plugins()
 {
@@ -2313,7 +2309,7 @@ LV2DeviceImpl::create_lv2_device (AudioEngine &engine, const String &lv2_uri_wit
 
     return LV2DeviceImpl::make_shared (lv2_uri, aproc);
   };
-  DeviceP devicep = AudioProcessor::registry_create ("Ase::Devices::LV2Processor", engine, make_device);
+  DeviceP devicep = AudioProcessor::registry_create (lv2processor_aseid, engine, make_device);
   // return_unless (devicep && devicep->_audio_processor("Ase::Device::LV2Processor", nullptr);
   return devicep;
 }
@@ -2377,8 +2373,6 @@ LV2DeviceImpl::serialize (WritNode &xs)
         lv2aproc->load_state (xs, _project());
     }
 }
-
-static auto lv2processor = register_audio_processor<LV2Processor> ("Ase::Devices::LV2Processor");
 
 } // Ase
 
