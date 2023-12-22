@@ -536,6 +536,7 @@ class PluginInstance
 {
   bool                       init_ok_ = false;
   LilvUIs                   *uis_;
+  String                     ui_type_uri_;
   std::unique_ptr<Worker>    worker_;
 
   std::array<uint8, 256>     last_position_buffer_ {};
@@ -910,8 +911,6 @@ public:
   }
 };
 
-static const LilvNode *ui_type; // FIXME: not static
-
 class PluginUI
 {
   PluginHost&           plugin_host_;
@@ -927,13 +926,13 @@ class PluginUI
 
   bool ui_is_resizable (const LilvUI *ui);
 public:
-  PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, const string& plugin_uri, const LilvUI *ui);
+  PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, const string& plugin_uri, const string& ui_type_uri, const LilvUI *ui);
   ~PluginUI();
   bool init_ok() const { return init_ok_; }
 };
 
 PluginUI::PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, const string& plugin_uri,
-                    const LilvUI *ui) :
+                    const string& ui_type_uri, const LilvUI *ui) :
   plugin_host_ (plugin_host)
 {
   assert (this_thread_is_gtk());
@@ -990,13 +989,13 @@ PluginUI::PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, co
   plugin_instance_->enable_dsp2ui_notifications (true);
 
   string ui_uri = lilv_node_as_uri (lilv_ui_get_uri (ui));
-  string container_ui_uri = external_ui_ ? lilv_node_as_uri (ui_type) : "http://lv2plug.in/ns/extensions/ui#GtkUI";
+  string container_ui_uri = external_ui_ ? ui_type_uri : "http://lv2plug.in/ns/extensions/ui#GtkUI";
   ui_instance_ = x11wrapper->create_suil_instance (PluginHost::the().suil_host,
                                                    plugin_instance,
                                                    container_ui_uri,
                                                    plugin_uri,
                                                    ui_uri,
-                                                   lilv_node_as_uri (ui_type),
+                                                   ui_type_uri,
                                                    bundle_path,
                                                    binary_path,
                                                    ui_features.get_features());
@@ -1699,6 +1698,8 @@ PluginInstance::send_ui_updates (uint32_t delta_frames)
 const LilvUI *
 PluginInstance::get_plugin_ui()
 {
+  // TODO: do this once in the PluginInstance constructor
+  const LilvNode *ui_type;
   LILV_FOREACH (uis, u, uis_)
     {
       const LilvUI *this_ui = lilv_uis_get (uis_, u);
@@ -1710,7 +1711,10 @@ PluginInstance::get_plugin_ui()
                                   },
                                 plugin_host_.nodes.native_ui_type,
                                &ui_type))
-        return this_ui;
+        {
+          ui_type_uri_ = lilv_node_as_uri (ui_type);
+          return this_ui;
+        }
     }
   // if no suil supported UI is available try external UI
   LILV_FOREACH (uis, u, uis_)
@@ -1720,11 +1724,13 @@ PluginInstance::get_plugin_ui()
       if (lilv_ui_is_a (this_ui, plugin_host_.nodes.lv2_ui_externalkx))
         {
           ui_type = plugin_host_.nodes.lv2_ui_externalkx;
+          ui_type_uri_ = lilv_node_as_uri (ui_type);
           return this_ui;
         }
       if (lilv_ui_is_a (this_ui, plugin_host_.nodes.lv2_ui_external))
         {
           ui_type = plugin_host_.nodes.lv2_ui_external;
+          ui_type_uri_ = lilv_node_as_uri (ui_type);
           return this_ui;
         }
     }
@@ -1743,7 +1749,7 @@ PluginInstance::toggle_ui()
   const LilvUI *ui = get_plugin_ui();
   const char* plugin_uri  = lilv_node_as_uri (lilv_plugin_get_uri (plugin_));
 
-  plugin_ui_ = std::make_unique <PluginUI> (plugin_host_, this, plugin_uri, ui);
+  plugin_ui_ = std::make_unique <PluginUI> (plugin_host_, this, plugin_uri, ui_type_uri_, ui);
 
   // if UI could not be created (for whatever reason) reset pointer to nullptr to free stuff and avoid crashes
   if (!plugin_ui_->init_ok())
