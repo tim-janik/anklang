@@ -547,6 +547,7 @@ class PluginInstance
   std::vector<int>           atom_in_ports_;
   std::vector<int>           audio_in_ports_;
   std::vector<int>           audio_out_ports_;
+  std::vector<int>           control_in_ports_;
   std::vector<int>           midi_in_ports_;
   std::vector<int>           position_in_ports_;
 
@@ -597,9 +598,10 @@ public:
   bool init_ok() const { return init_ok_; }
   uint n_audio_inputs() const                         { return audio_in_ports_.size(); }
   uint n_audio_outputs() const                        { return audio_out_ports_.size(); }
+  uint n_control_inputs() const                       { return control_in_ports_.size(); }
   const LV2_Feature *instance_access_feature() const  { return &lv2_instance_access_feature_; }
   const LV2_Feature *data_access_feature() const      { return &lv2_data_access_feature_; }
-  vector<Port>& ports()                               { return plugin_ports_; } // TODO: may want to make this const
+  const Port &control_input_port (size_t index) const { assert (index < control_in_ports_.size()); return plugin_ports_[control_in_ports_[index]]; }
   const vector<PresetInfo>& presets() const           { return presets_; }
   PluginUI *plugin_ui() const                         { return plugin_ui_.get(); }
   bool gui_supported()                                { return ui_ != nullptr; }
@@ -620,7 +622,7 @@ public:
 
   void toggle_ui();
   void delete_ui();
-  void set_port_value_from_run (Port *port, float value);
+  void set_control_param (size_t index, double value);
 
   bool restore_string (const String& str, PortRestoreHelper *helper, PathMap *path_map = nullptr);
   void restore_preset (int preset, PortRestoreHelper *helper);
@@ -1222,8 +1224,6 @@ PluginInstance::init_ports()
   vector<float> min_values (n_ports);
   vector<float> max_values (n_ports);
 
-  size_t n_control_ports = 0;
-
   lilv_plugin_get_port_ranges_float (plugin_, min_values.data(), max_values.data(), defaults.data());
   for (int i = 0; i < n_ports; i++)
     {
@@ -1358,9 +1358,8 @@ PluginInstance::init_ports()
 
                   lilv_instance_connect_port (instance_, i, &plugin_ports_[i].control);
 
-                  plugin_ports_[i].control_in_idx = n_control_ports;
-
-                  n_control_ports++;
+                  plugin_ports_[i].control_in_idx = control_in_ports_.size();
+                  control_in_ports_.push_back (i);
                 }
               else
                 {
@@ -1407,7 +1406,7 @@ PluginInstance::init_ports()
     printerr ("LV2: more than one time position input found - this is not supported\n");
   printerr ("--------------------------------------------------\n");
   printerr ("audio IN:%zd OUT:%zd\n", audio_in_ports_.size(), audio_out_ports_.size());
-  printerr ("control IN:%zd\n", n_control_ports);
+  printerr ("control IN:%zd\n", control_in_ports_.size());
   printerr ("--------------------------------------------------\n");
 }
 
@@ -1660,13 +1659,15 @@ PluginInstance::set_initial_controls_ui()
 }
 
 void
-PluginInstance::set_port_value_from_run (Port *port, float value)
+PluginInstance::set_control_param (size_t index, double param_value)
 {
-  port->control = value;
+  auto& port = plugin_ports_[control_in_ports_[index]];
+  // param_value is the parameter value used in LV2Processor and needs to be converted to lv2 value first
+  port.control = port.param_to_lv2 (param_value);
 
   if (dsp2ui_notifications_enabled_.load())
     {
-      ControlEvent *event = ControlEvent::loft_new (port->index, 0, sizeof (float), &port->control);
+      ControlEvent *event = ControlEvent::loft_new (port.index, 0, sizeof (float), &port.control);
       dsp2ui_events_.push (event);
     }
 }
@@ -1960,7 +1961,6 @@ class LV2Processor : public AudioProcessor {
   PluginInstance *plugin_instance;
   PluginHost& plugin_host;
 
-  vector<Port *> param_id_port;
   int current_preset = 0;
 
   enum
@@ -2003,33 +2003,32 @@ class LV2Processor : public AudioProcessor {
       }
     current_preset = 0;
 
-    for (auto& port : plugin_instance->ports())
-      if ((port.flags & Port::INPUT) && (port.flags & Port::CONTROL))
-        {
-          // TODO: lv2 port numbers are not reliable for serialization, should use port.symbol instead
-          // TODO: special case boolean, enumeration, logarithmic,... controls
-          int pid = PID_CONTROL_OFFSET + port.control_in_idx;
-          if (port.flags & Port::ENUMERATION)
-            {
-              ChoiceS centries;
-              for (size_t i = 0; i < port.scale_points.size(); i++)
-                centries += { string_format ("%d", i), port.scale_points[i].label };
-              pmap[pid] = Param { port.symbol, port.name, "", port.param_from_lv2 (port.control), "", std::move (centries), GUIONLY };
-            }
-          else if (port.flags & Port::LOGARITHMIC)
-            pmap[pid] = Param { port.symbol, port.name, "", port.param_from_lv2 (port.control), "", { 0, 1 }, GUIONLY };
-          else if (port.flags & Port::INTEGER)
-            {
-              String hints = GUIONLY;
-              if (port.flags & Port::TOGGLED)
-                hints += ":toggle";
-              pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value, 1 }, hints };
-            }
-          else
-            pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value }, GUIONLY };
+    for (uint p = 0; p < plugin_instance->n_control_inputs(); p++)
+      {
+        auto &port = plugin_instance->control_input_port (p);
 
-          param_id_port.push_back (&port);
-        }
+        // TODO: lv2 port numbers are not reliable for serialization, should use port.symbol instead
+        // TODO: special case boolean, enumeration, logarithmic,... controls
+        int pid = PID_CONTROL_OFFSET + port.control_in_idx;
+        if (port.flags & Port::ENUMERATION)
+          {
+            ChoiceS centries;
+            for (size_t i = 0; i < port.scale_points.size(); i++)
+              centries += { string_format ("%d", i), port.scale_points[i].label };
+            pmap[pid] = Param { port.symbol, port.name, "", port.param_from_lv2 (port.control), "", std::move (centries), GUIONLY };
+          }
+        else if (port.flags & Port::LOGARITHMIC)
+          pmap[pid] = Param { port.symbol, port.name, "", port.param_from_lv2 (port.control), "", { 0, 1 }, GUIONLY };
+        else if (port.flags & Port::INTEGER)
+          {
+            String hints = GUIONLY;
+            if (port.flags & Port::TOGGLED)
+              hints += ":toggle";
+            pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value, 1 }, hints };
+          }
+        else
+          pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value }, GUIONLY };
+      }
 
     // call if parameters are changed using the LV2 custom UI during render
     plugin_instance->control_in_changed_callback = [this] (Port *port) {
@@ -2114,11 +2113,8 @@ class LV2Processor : public AudioProcessor {
 
     // real LV2 controls start at PID_CONTROL_OFFSET
     auto control_id = tag - PID_CONTROL_OFFSET;
-    if (control_id >= 0 && control_id < param_id_port.size())
-      {
-        Port *port = param_id_port[control_id];
-        plugin_instance->set_port_value_from_run (port, port->param_to_lv2 (get_param (tag)));
-      }
+    if (control_id >= 0 && control_id < plugin_instance->n_control_inputs())
+      plugin_instance->set_control_param (control_id, get_param (tag));
   }
   void
   render (uint n_frames) override
@@ -2191,19 +2187,19 @@ class LV2Processor : public AudioProcessor {
   param_value_to_text (uint32_t paramid, double value) const override
   {
     auto control_id = paramid - PID_CONTROL_OFFSET;
-    if (control_id >= 0 && control_id < param_id_port.size())
+    if (control_id >= 0 && control_id < plugin_instance->n_control_inputs())
       {
-        const Port *port = param_id_port[control_id];
+        const Port &port = plugin_instance->control_input_port (control_id);
 
-        if ((port->flags & Port::ENUMERATION) == 0)
+        if ((port.flags & Port::ENUMERATION) == 0)
           {
             String text;
-            if (port->flags & Port::INTEGER)
-              text = string_format ("%d", irintf (port->param_to_lv2 (value)));
+            if (port.flags & Port::INTEGER)
+              text = string_format ("%d", irintf (port.param_to_lv2 (value)));
             else
-              text = string_format ("%.3f", port->param_to_lv2 (value));
-            if (port->unit != "")
-              text += " " + port->unit;
+              text = string_format ("%.3f", port.param_to_lv2 (value));
+            if (port.unit != "")
+              text += " " + port.unit;
             return text;
           }
       }
@@ -2213,24 +2209,24 @@ class LV2Processor : public AudioProcessor {
   param_value_from_text (uint32_t paramid, const String &text) const override
   {
     auto control_id = paramid - PID_CONTROL_OFFSET;
-    if (control_id >= 0 && control_id < param_id_port.size())
+    if (control_id >= 0 && control_id < plugin_instance->n_control_inputs())
       {
-        const Port *port = param_id_port[control_id];
+        const Port &port = plugin_instance->control_input_port (control_id);
 
-        if ((port->flags & Port::ENUMERATION) == 0)
-          return port->param_from_lv2 (string_to_double (text));
+        if ((port.flags & Port::ENUMERATION) == 0)
+          return port.param_from_lv2 (string_to_double (text));
       }
     return AudioProcessor::param_value_from_text (paramid, text);
   }
   void
   restore_params (const PortRestoreHelper &port_restore_helper)
   {
-    for (int i = 0; i < (int) param_id_port.size(); i++)
+    for (int i = 0; i < (int) plugin_instance->n_control_inputs(); i++)
       {
-        const Port *port = param_id_port[i];
-        auto it = port_restore_helper.values.find (port->symbol);
+        const Port &port = plugin_instance->control_input_port (i);
+        auto it = port_restore_helper.values.find (port.symbol);
         if (it != port_restore_helper.values.end())
-          send_param (i + PID_CONTROL_OFFSET, port->param_from_lv2 (it->second));
+          send_param (i + PID_CONTROL_OFFSET, port.param_from_lv2 (it->second));
       }
   }
 public:
