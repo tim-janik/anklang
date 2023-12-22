@@ -535,7 +535,8 @@ struct PathMap
 class PluginInstance
 {
   bool                       init_ok_ = false;
-  LilvUIs                   *uis_;
+  LilvUIs                   *uis_ = nullptr;
+  const LilvUI              *ui_ = nullptr;
   String                     ui_type_uri_;
   std::unique_ptr<Worker>    worker_;
 
@@ -579,6 +580,7 @@ class PluginInstance
   void send_plugin_events_to_ui();
   void send_ui_updates (uint32_t delta_frames);
   void restore_state (LilvState *state, PortRestoreHelper *helper, PathMap *path_map = nullptr);
+  void find_plugin_ui();
 
   static const void* get_port_value_for_save (const char *port_symbol, void *user_data, uint32_t *size, uint32_t *type);
 
@@ -600,6 +602,7 @@ public:
   vector<Port>& ports()                               { return plugin_ports_; } // TODO: may want to make this const
   const vector<PresetInfo>& presets() const           { return presets_; }
   PluginUI *plugin_ui() const                         { return plugin_ui_.get(); }
+  bool gui_supported()                                { return ui_ != nullptr; }
 
   void reset_event_buffers();
   void write_midi (uint32_t time, size_t size, const uint8_t *data);
@@ -615,7 +618,6 @@ public:
   void enable_dsp2ui_notifications (bool enabled);
   void clear_dsp2ui_events();
 
-  const LilvUI *get_plugin_ui();
   void toggle_ui();
   void delete_ui();
   void set_port_value_from_run (Port *port, float value);
@@ -1169,6 +1171,7 @@ PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const
   lv2_data_access_feature_ = { LV2_DATA_ACCESS_URI, &lv2_ext_data };
 
   uis_ = lilv_plugin_get_uis (plugin);
+  find_plugin_ui();
 
   if (lilv_plugin_has_feature (plugin, plugin_host.nodes.lv2_state_loadDefaultState))
     {
@@ -1695,11 +1698,10 @@ PluginInstance::send_ui_updates (uint32_t delta_frames)
     }
 }
 
-const LilvUI *
-PluginInstance::get_plugin_ui()
+void
+PluginInstance::find_plugin_ui()
 {
-  // TODO: do this once in the PluginInstance constructor
-  const LilvNode *ui_type;
+  const LilvNode *ui_type {};
   LILV_FOREACH (uis, u, uis_)
     {
       const LilvUI *this_ui = lilv_uis_get (uis_, u);
@@ -1712,8 +1714,9 @@ PluginInstance::get_plugin_ui()
                                 plugin_host_.nodes.native_ui_type,
                                &ui_type))
         {
+          ui_          = this_ui;
           ui_type_uri_ = lilv_node_as_uri (ui_type);
-          return this_ui;
+          return;
         }
     }
   // if no suil supported UI is available try external UI
@@ -1723,18 +1726,19 @@ PluginInstance::get_plugin_ui()
 
       if (lilv_ui_is_a (this_ui, plugin_host_.nodes.lv2_ui_externalkx))
         {
-          ui_type = plugin_host_.nodes.lv2_ui_externalkx;
+          ui_          = this_ui;
+          ui_type      = plugin_host_.nodes.lv2_ui_externalkx;
           ui_type_uri_ = lilv_node_as_uri (ui_type);
-          return this_ui;
+          return;
         }
       if (lilv_ui_is_a (this_ui, plugin_host_.nodes.lv2_ui_external))
         {
-          ui_type = plugin_host_.nodes.lv2_ui_external;
+          ui_          = this_ui;
+          ui_type      = plugin_host_.nodes.lv2_ui_external;
           ui_type_uri_ = lilv_node_as_uri (ui_type);
-          return this_ui;
+          return;
         }
     }
-  return nullptr;
 }
 
 void
@@ -1746,14 +1750,15 @@ PluginInstance::toggle_ui()
       return;
     }
   // ---------------------ui------------------------------
-  const LilvUI *ui = get_plugin_ui();
-  const char* plugin_uri  = lilv_node_as_uri (lilv_plugin_get_uri (plugin_));
+  if (ui_)
+    {
+      String plugin_uri  = lilv_node_as_uri (lilv_plugin_get_uri (plugin_));
+      plugin_ui_ = std::make_unique <PluginUI> (plugin_host_, this, plugin_uri, ui_type_uri_, ui_);
 
-  plugin_ui_ = std::make_unique <PluginUI> (plugin_host_, this, plugin_uri, ui_type_uri_, ui);
-
-  // if UI could not be created (for whatever reason) reset pointer to nullptr to free stuff and avoid crashes
-  if (!plugin_ui_->init_ok())
-    plugin_ui_.reset();
+      // if UI could not be created (for whatever reason) reset pointer to nullptr to free stuff and avoid crashes
+      if (!plugin_ui_->init_ok())
+        plugin_ui_.reset();
+    }
 }
 
 void
@@ -2254,9 +2259,7 @@ public:
   bool
   gui_supported()
   {
-    bool have_ui = false;
-    gtk_thread ([&] { have_ui = plugin_instance->get_plugin_ui() != nullptr; });
-    return have_ui;
+    return plugin_instance->gui_supported();
   }
   void
   gui_toggle()
