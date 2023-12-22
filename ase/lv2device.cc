@@ -558,6 +558,8 @@ class PluginInstance
   ControlEventVector         ui2dsp_events_;
   ControlEventVector         dsp2ui_events_;
   ControlEventVector         trash_events_;
+  std::atomic<bool>          dsp2ui_notifications_enabled_ { false };
+  std::unique_ptr<PluginUI>  plugin_ui_;
 
   PluginHost&                plugin_host_;
 
@@ -585,9 +587,6 @@ public:
   PluginInstance (PluginHost& plugin_host, uint sample_rate, const LilvPlugin *plugin, PortRestoreHelper *port_restore_helper);
   ~PluginInstance();
 
-  std::unique_ptr<PluginUI>  plugin_ui;
-  std::atomic<bool>          plugin_ui_is_active { false };
-
   std::function<void(Port *)>   control_in_changed_callback;
 
   static constexpr double       ui_update_fps = 60;
@@ -599,6 +598,7 @@ public:
   const LV2_Feature *data_access_feature() const      { return &lv2_data_access_feature_; }
   vector<Port>& ports()                               { return plugin_ports_; } // TODO: may want to make this const
   const vector<PresetInfo>& presets() const           { return presets_; }
+  PluginUI *plugin_ui() const                         { return plugin_ui_.get(); }
 
   void reset_event_buffers();
   void write_midi (uint32_t time, size_t size, const uint8_t *data);
@@ -611,10 +611,12 @@ public:
 
   void set_initial_controls_ui();
   void handle_dsp2ui_events();
+  void enable_dsp2ui_notifications (bool enabled);
+  void clear_dsp2ui_events();
 
   const LilvUI *get_plugin_ui();
   void toggle_ui();
-  void delete_ui_request();
+  void delete_ui();
   void set_port_value_from_run (Port *port, float value);
 
   bool restore_string (const String& str, PortRestoreHelper *helper, PathMap *path_map = nullptr);
@@ -915,7 +917,7 @@ class PluginUI
   PluginHost& plugin_host_;
 
   bool init_ok_ = false;
-  bool ui_is_visible_ = false;
+  bool ui_closed_ = false;
   bool external_ui_ = false;
   struct lv2_external_ui_host external_ui_host_;
   lv2_external_ui *external_ui_widget_ = nullptr;
@@ -964,11 +966,8 @@ PluginUI::PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, co
       external_ui_host_.ui_closed = [] (LV2UI_Controller controller)
         {
           PluginInstance *plugin_instance = (PluginInstance *) controller;
-          if (plugin_instance->plugin_ui)
-            {
-              plugin_instance->plugin_ui->ui_is_visible_ = false; /* don't want to pass dsp events to ui if it has been closed */
-              main_loop->exec_callback ([plugin_instance]() { plugin_instance->delete_ui_request(); });
-            }
+          if (plugin_instance->plugin_ui())
+            plugin_instance->plugin_ui()->ui_closed_ = true; // will destroy UI on next timer iteration
         };
       external_ui_host_.plugin_human_id = strdup (window_title.c_str());
 
@@ -983,8 +982,7 @@ PluginUI::PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, co
       window_ = x11wrapper->create_suil_window (window_title, ui_is_resizable (ui),
         [this] ()
           {
-            ui_is_visible_ = false; /* don't want to pass dsp events to ui if it has been closed */
-            main_loop->exec_callback ([this]() { plugin_instance_->delete_ui_request(); });
+            ui_closed_ = true; // will destroy UI on next timer iteration
           });
       ui_features.add (LV2_UI__parent, window_);
     }
@@ -993,7 +991,7 @@ PluginUI::PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, co
    * the newly created instance and the DSP code can already start to communicate while
    * the rest of the UI initialization is still being performed
    */
-  plugin_instance->plugin_ui_is_active.store (true);
+  plugin_instance_->enable_dsp2ui_notifications (true);
 
   string ui_uri = lilv_node_as_uri (lilv_ui_get_uri (ui));
   string container_ui_uri = external_ui_ ? lilv_node_as_uri (ui_type) : "http://lv2plug.in/ns/extensions/ui#GtkUI";
@@ -1023,17 +1021,24 @@ PluginUI::PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, co
     {
       x11wrapper->add_suil_widget_to_window (window_, ui_instance_);
     }
-  ui_is_visible_ = true;
 
   int period_ms = 1000. / plugin_instance->ui_update_fps;
   timer_id_ = x11wrapper->register_timer (
     [this]
       {
-        if (ui_is_visible_)
-          plugin_instance_->handle_dsp2ui_events();
-        if (external_ui_ && external_ui_widget_)
-          external_ui_widget_->run (external_ui_widget_);
-        return true;
+        if (ui_closed_)
+          {
+            plugin_instance_->delete_ui();
+            // plugin ui has been destroyed at this point, do not access this after this line
+            return false;
+          }
+        else
+          {
+            plugin_instance_->handle_dsp2ui_events();
+            if (external_ui_ && external_ui_widget_)
+              external_ui_widget_->run (external_ui_widget_);
+            return true;
+          }
       },
     period_ms);
 
@@ -1055,8 +1060,9 @@ PluginUI::~PluginUI()
 {
   assert (this_thread_is_gtk());
 
-  // disable DSP->UI notifications
-  plugin_instance_->plugin_ui_is_active.store (false);
+  // disable DSP->UI notifications and remove old events from event queue
+  plugin_instance_->enable_dsp2ui_notifications (false);
+  plugin_instance_->clear_dsp2ui_events();
 
   if (window_)
     {
@@ -1585,11 +1591,17 @@ PluginInstance::run (uint32_t n_frames)
       worker_->end_run();
     }
 
-  if (plugin_ui_is_active)
+  if (dsp2ui_notifications_enabled_.load())
     {
       send_plugin_events_to_ui();
       send_ui_updates (n_frames);
     }
+}
+
+void
+PluginInstance::enable_dsp2ui_notifications (bool enabled)
+{
+  dsp2ui_notifications_enabled_.store (enabled);
 }
 
 void
@@ -1627,8 +1639,8 @@ PluginInstance::handle_dsp2ui_events()
       {
         assert (event->port_index() < plugin_ports_.size());
         // printerr ("handle_dsp2ui_events: pop event: index=%zd, protocol=%d, sz=%zd\n", event->port_index(), event->protocol(), event->size());
-        if (plugin_ui)
-          x11wrapper->suil_instance_port_event (plugin_ui->ui_instance_, event->port_index(), event->size(), event->protocol(), event->data());
+        if (plugin_ui_)
+          x11wrapper->suil_instance_port_event (plugin_ui_->ui_instance_, event->port_index(), event->size(), event->protocol(), event->data());
       });
   // free both: old dsp2ui events and old ui2dsp events
   trash_events_.free_all();
@@ -1655,7 +1667,7 @@ PluginInstance::set_port_value_from_run (Port *port, float value)
 {
   port->control = value;
 
-  if (plugin_ui_is_active)
+  if (dsp2ui_notifications_enabled_.load())
     {
       ControlEvent *event = ControlEvent::loft_new (port->index, 0, sizeof (float), &port->control);
       dsp2ui_events_.push (event);
@@ -1727,27 +1739,33 @@ PluginInstance::get_plugin_ui()
 void
 PluginInstance::toggle_ui()
 {
-  if (plugin_ui) // ui already opened? -> close!
+  if (plugin_ui_) // ui already opened? -> close!
     {
-      plugin_ui.reset();
+      plugin_ui_.reset();
       return;
     }
   // ---------------------ui------------------------------
   const LilvUI *ui = get_plugin_ui();
   const char* plugin_uri  = lilv_node_as_uri (lilv_plugin_get_uri (plugin_));
 
-  plugin_ui = std::make_unique <PluginUI> (plugin_host_, this, plugin_uri, ui);
+  plugin_ui_ = std::make_unique <PluginUI> (plugin_host_, this, plugin_uri, ui);
 
   // if UI could not be created (for whatever reason) reset pointer to nullptr to free stuff and avoid crashes
-  if (!plugin_ui->init_ok())
-    plugin_ui.reset();
+  if (!plugin_ui_->init_ok())
+    plugin_ui_.reset();
 }
 
 void
-PluginInstance::delete_ui_request()
+PluginInstance::delete_ui()
 {
-  assert (this_thread_is_ase());
-  x11wrapper->exec_in_gtk_thread ([&] { plugin_ui.reset(); });
+  assert (this_thread_is_gtk());
+  plugin_ui_.reset();
+}
+
+void
+PluginInstance::clear_dsp2ui_events()
+{
+  dsp2ui_events_.free_all();
 }
 
 struct PortRestoreHelper
