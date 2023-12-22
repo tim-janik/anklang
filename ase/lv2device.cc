@@ -532,6 +532,8 @@ struct PathMap
   std::function<String(String)> absolute_path;
 };
 
+typedef std::function<void(const Port *)> ControlChangedCallback;
+
 class PluginInstance
 {
   bool                       init_ok_ = false;
@@ -574,6 +576,8 @@ class PluginInstance
   vector<Port>               plugin_ports_;
   vector<PresetInfo>         presets_;
 
+  ControlChangedCallback     control_in_changed_callback_;
+
   void init_ports();
   void free_ports();
   void init_presets();
@@ -588,10 +592,9 @@ class PluginInstance
   // lilv_state_to_string requires a non-empty URI
   static constexpr auto ANKLANG_STATE_URI = "urn:anklang:state";
 public:
-  PluginInstance (PluginHost& plugin_host, uint sample_rate, const LilvPlugin *plugin, PortRestoreHelper *port_restore_helper);
+  PluginInstance (PluginHost& plugin_host, uint sample_rate, const LilvPlugin *plugin,
+                  PortRestoreHelper *port_restore_helper, const ControlChangedCallback& callback);
   ~PluginInstance();
-
-  std::function<void(Port *)>   control_in_changed_callback;
 
   static constexpr double       ui_update_fps = 60;
 
@@ -781,7 +784,7 @@ public:
     static PluginHost host;
     return host;
   }
-  PluginInstance *instantiate (const char *plugin_uri, uint sample_rate, PortRestoreHelper *port_restore_helper);
+  PluginInstance *instantiate (const char *plugin_uri, uint sample_rate, PortRestoreHelper *port_restore_helper, const ControlChangedCallback& callback);
 
 private:
   DeviceInfoS devs;
@@ -1095,7 +1098,7 @@ Options::Options (PluginHost& plugin_host) :
 }
 
 PluginInstance *
-PluginHost::instantiate (const char *plugin_uri, uint sample_rate, PortRestoreHelper *port_restore_helper)
+PluginHost::instantiate (const char *plugin_uri, uint sample_rate, PortRestoreHelper *port_restore_helper, const ControlChangedCallback& callback)
 {
   assert_return (this_thread_is_gtk(), nullptr);
   LilvNode* uri = lilv_new_uri (world, plugin_uri);
@@ -1121,7 +1124,7 @@ PluginHost::instantiate (const char *plugin_uri, uint sample_rate, PortRestoreHe
     }
   lilv_node_free (uri);
 
-  PluginInstance *plugin_instance = new PluginInstance (*this, sample_rate, plugin, port_restore_helper);
+  PluginInstance *plugin_instance = new PluginInstance (*this, sample_rate, plugin, port_restore_helper, callback);
   if (!plugin_instance->init_ok())
     {
       printerr ("plugin instantiate failed\n");
@@ -1133,10 +1136,12 @@ PluginHost::instantiate (const char *plugin_uri, uint sample_rate, PortRestoreHe
   return plugin_instance;
 }
 
-PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const LilvPlugin *plugin, PortRestoreHelper *port_restore_helper) :
+PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const LilvPlugin *plugin,
+                                PortRestoreHelper *port_restore_helper, const ControlChangedCallback& callback) :
   plugin_ (plugin),
   sample_rate_ (sample_rate),
-  plugin_host_ (plugin_host)
+  plugin_host_ (plugin_host),
+  control_in_changed_callback_ (callback)
 {
   assert_return (this_thread_is_gtk());
 
@@ -1566,7 +1571,7 @@ PluginInstance::run (uint32_t n_frames)
             assert (event->size() == sizeof (float));
             port->control = *(float *)event->data();
 
-            control_in_changed_callback (port);
+            control_in_changed_callback_ (port);
           }
         else if (event->protocol() == plugin_host_.urids.atom_eventTransfer)
           {
@@ -1983,8 +1988,13 @@ class LV2Processor : public AudioProcessor {
   {
     PortRestoreHelper port_restore_helper (plugin_host_);
 
+    // called if parameters are changed using the LV2 custom UI during render
+    auto control_in_changed_callback = [this] (const Port *port) {
+      set_param_from_render (PID_CONTROL_OFFSET + port->control_in_idx, port->param_from_lv2 (port->control));
+    };
+
     plugin_host_.options.set_rate (sample_rate());
-    gtk_thread ([&] { plugin_instance_ = plugin_host_.instantiate (lv2_uri_.c_str(), sample_rate(), &port_restore_helper); });
+    gtk_thread ([&] { plugin_instance_ = plugin_host_.instantiate (lv2_uri_.c_str(), sample_rate(), &port_restore_helper, control_in_changed_callback); });
 
     // TODO: this is probably not the right location for restoring the parameter values
     restore_params (port_restore_helper);
@@ -2031,11 +2041,6 @@ class LV2Processor : public AudioProcessor {
         else
           pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value }, GUIONLY };
       }
-
-    // call if parameters are changed using the LV2 custom UI during render
-    plugin_instance_->control_in_changed_callback = [this] (Port *port) {
-      set_param_from_render (PID_CONTROL_OFFSET + port->control_in_idx, port->param_from_lv2 (port->control));
-    };
 
     // TODO: deactivate?
     // TODO: is this the right place?
