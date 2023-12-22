@@ -610,7 +610,7 @@ public:
   void deactivate();
 
   void set_initial_controls_ui();
-  void handle_dsp2ui_events();
+  void handle_dsp2ui_events (void *ui_instance);
   void enable_dsp2ui_notifications (bool enabled);
   void clear_dsp2ui_events();
 
@@ -914,23 +914,19 @@ static const LilvNode *ui_type; // FIXME: not static
 
 class PluginUI
 {
-  PluginHost& plugin_host_;
-
-  bool init_ok_ = false;
-  bool ui_closed_ = false;
-  bool external_ui_ = false;
-  struct lv2_external_ui_host external_ui_host_;
-  lv2_external_ui *external_ui_widget_ = nullptr;
+  PluginHost&           plugin_host_;
+  bool                  init_ok_ = false;
+  bool                  ui_closed_ = false;
+  bool                  external_ui_ = false;
+  lv2_external_ui_host  external_ui_host_ {};
+  lv2_external_ui      *external_ui_widget_ = nullptr;
+  void                 *window_ = nullptr;
+  uint                  timer_id_ = 0;
+  PluginInstance       *plugin_instance_ = nullptr;
+  void                 *ui_instance_ = nullptr;
 
   bool ui_is_resizable (const LilvUI *ui);
 public:
-  const LV2UI_Idle_Interface *idle_iface_ = nullptr;
-  LV2UI_Handle               handle_ = nullptr;
-  void                      *window_ = nullptr;
-  uint                       timer_id_ = 0;
-  PluginInstance *plugin_instance_ = nullptr;
-  void *ui_instance_ = nullptr;
-
   PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, const string& plugin_uri, const LilvUI *ui);
   ~PluginUI();
   bool init_ok() const { return init_ok_; }
@@ -1034,7 +1030,7 @@ PluginUI::PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, co
           }
         else
           {
-            plugin_instance_->handle_dsp2ui_events();
+            plugin_instance_->handle_dsp2ui_events (ui_instance_);
             if (external_ui_ && external_ui_widget_)
               external_ui_widget_->run (external_ui_widget_);
             return true;
@@ -1631,16 +1627,15 @@ PluginInstance::send_plugin_events_to_ui()
 }
 
 void
-PluginInstance::handle_dsp2ui_events()
+PluginInstance::handle_dsp2ui_events (void *ui_instance)
 {
   assert_return (this_thread_is_gtk());
   dsp2ui_events_.for_each (trash_events_,
     [&] (const ControlEvent *event)
       {
-        assert (event->port_index() < plugin_ports_.size());
+        assert_return (plugin_ui_ && event->port_index() < plugin_ports_.size());
         // printerr ("handle_dsp2ui_events: pop event: index=%zd, protocol=%d, sz=%zd\n", event->port_index(), event->protocol(), event->size());
-        if (plugin_ui_)
-          x11wrapper->suil_instance_port_event (plugin_ui_->ui_instance_, event->port_index(), event->size(), event->protocol(), event->data());
+        x11wrapper->suil_instance_port_event (ui_instance, event->port_index(), event->size(), event->protocol(), event->data());
       });
   // free both: old dsp2ui events and old ui2dsp events
   trash_events_.free_all();
