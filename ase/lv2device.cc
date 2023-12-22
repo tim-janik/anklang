@@ -1952,16 +1952,17 @@ PluginInstance::host_ui_index (void *controller, const char* symbol)
 }
 
 class LV2Processor : public AudioProcessor {
-  IBusId stereo_in_;
-  OBusId stereo_out_;
-  vector<IBusId> mono_ins_;
-  vector<OBusId> mono_outs_;
-  ProjectImpl *project_ = nullptr;
+  IBusId              stereo_in_;
+  OBusId              stereo_out_;
+  vector<IBusId>      mono_ins_;
+  vector<OBusId>      mono_outs_;
 
-  PluginInstance *plugin_instance;
-  PluginHost& plugin_host;
+  ProjectImpl        *project_ = nullptr;
+  PluginInstance     *plugin_instance_;
+  PluginHost&         plugin_host_;
 
-  int current_preset = 0;
+  int                 current_preset_ = 0;
+  string              lv2_uri_;
 
   enum
     {
@@ -1969,7 +1970,6 @@ class LV2Processor : public AudioProcessor {
       PID_CONTROL_OFFSET = 10
     };
 
-  string lv2_uri_;
 
   void
   gtk_thread (const std::function<void()>& fun)
@@ -1981,31 +1981,33 @@ class LV2Processor : public AudioProcessor {
   void
   initialize (SpeakerArrangement busses) override
   {
-    PortRestoreHelper port_restore_helper (plugin_host);
+    PortRestoreHelper port_restore_helper (plugin_host_);
 
-    plugin_host.options.set_rate (sample_rate());
-    gtk_thread ([&] { plugin_instance = plugin_host.instantiate (lv2_uri_.c_str(), sample_rate(), &port_restore_helper); });
+    plugin_host_.options.set_rate (sample_rate());
+    gtk_thread ([&] { plugin_instance_ = plugin_host_.instantiate (lv2_uri_.c_str(), sample_rate(), &port_restore_helper); });
+
+    // TODO: this is probably not the right location for restoring the parameter values
     restore_params (port_restore_helper);
 
-    if (!plugin_instance)
+    if (!plugin_instance_)
       return;
 
     ParameterMap pmap;
 
-    if (plugin_instance->presets().size()) /* choice with 1 entry will crash */
+    if (plugin_instance_->presets().size()) /* choice with 1 entry will crash */
       {
         ChoiceS centries;
         int preset_num = 0;
         centries += { "0", "-none-" };
-        for (auto preset : plugin_instance->presets())
+        for (auto preset : plugin_instance_->presets())
           centries += { string_format ("%d", ++preset_num), preset.name };
         pmap[PID_PRESET] = Param { "device_preset", "Device Preset", "Preset", 0, "", std::move (centries), GUIONLY, "Device Preset to be used" };
       }
-    current_preset = 0;
+    current_preset_ = 0;
 
-    for (uint p = 0; p < plugin_instance->n_control_inputs(); p++)
+    for (uint p = 0; p < plugin_instance_->n_control_inputs(); p++)
       {
-        auto &port = plugin_instance->control_input_port (p);
+        auto &port = plugin_instance_->control_input_port (p);
 
         // TODO: lv2 port numbers are not reliable for serialization, should use port.symbol instead
         // TODO: special case boolean, enumeration, logarithmic,... controls
@@ -2031,13 +2033,13 @@ class LV2Processor : public AudioProcessor {
       }
 
     // call if parameters are changed using the LV2 custom UI during render
-    plugin_instance->control_in_changed_callback = [this] (Port *port) {
+    plugin_instance_->control_in_changed_callback = [this] (Port *port) {
       set_param_from_render (PID_CONTROL_OFFSET + port->control_in_idx, port->param_from_lv2 (port->control));
     };
 
     // TODO: deactivate?
     // TODO: is this the right place?
-    gtk_thread ([&] { plugin_instance->activate(); });
+    gtk_thread ([&] { plugin_instance_->activate(); });
 
     install_params (pmap);
 
@@ -2052,7 +2054,7 @@ class LV2Processor : public AudioProcessor {
     mono_ins_.clear();
     mono_outs_.clear();
 
-    uint n_audio_inputs = plugin_instance->n_audio_inputs();
+    uint n_audio_inputs = plugin_instance_->n_audio_inputs();
     if (n_audio_inputs == 2)
       {
         stereo_in_ = add_input_bus ("Stereo In", SpeakerArrangement::STEREO);
@@ -2064,7 +2066,7 @@ class LV2Processor : public AudioProcessor {
           mono_ins_.push_back (add_input_bus (string_format ("Mono In %zd", i + 1), SpeakerArrangement::MONO));
       }
 
-    uint n_audio_outputs = plugin_instance->n_audio_outputs();
+    uint n_audio_outputs = plugin_instance_->n_audio_outputs();
     if (n_audio_outputs == 2)
       {
         stereo_out_ = add_output_bus ("Stereo Out", SpeakerArrangement::STEREO);
@@ -2079,7 +2081,7 @@ class LV2Processor : public AudioProcessor {
   void
   reset (uint64 target_stamp) override
   {
-    if (!plugin_instance)
+    if (!plugin_instance_)
       return;
 
     adjust_all_params();
@@ -2087,20 +2089,20 @@ class LV2Processor : public AudioProcessor {
   void
   adjust_param (uint32_t tag) override
   {
-    if (!plugin_instance)
+    if (!plugin_instance_)
       return;
 
     // controls for LV2Device
     if (int (tag) == PID_PRESET)
       {
         int want_preset = irintf (get_param (tag));
-        if (current_preset != want_preset)
+        if (current_preset_ != want_preset)
           {
-            current_preset = want_preset;
+            current_preset_ = want_preset;
 
             // TODO: blocking the audio thread here is a bad idea
-            PortRestoreHelper port_restore_helper (plugin_host);
-            gtk_thread ([&] { plugin_instance->restore_preset (want_preset - 1, &port_restore_helper); });
+            PortRestoreHelper port_restore_helper (plugin_host_);
+            gtk_thread ([&] { plugin_instance_->restore_preset (want_preset - 1, &port_restore_helper); });
 
             // TODO: evil (possibly crashing) broken hack to set the parameters:
             //  -> should be replaced by something else once presets are loaded outside the audio thread
@@ -2113,17 +2115,17 @@ class LV2Processor : public AudioProcessor {
 
     // real LV2 controls start at PID_CONTROL_OFFSET
     auto control_id = tag - PID_CONTROL_OFFSET;
-    if (control_id >= 0 && control_id < plugin_instance->n_control_inputs())
-      plugin_instance->set_control_param (control_id, get_param (tag));
+    if (control_id >= 0 && control_id < plugin_instance_->n_control_inputs())
+      plugin_instance_->set_control_param (control_id, get_param (tag));
   }
   void
   render (uint n_frames) override
   {
-    assert_return (plugin_instance);
+    assert_return (plugin_instance_);
 
     // reset event buffers and write midi events
-    plugin_instance->reset_event_buffers();
-    plugin_instance->write_position (transport());
+    plugin_instance_->reset_event_buffers();
+    plugin_instance_->write_position (transport());
 
     MidiEventInput evinput = midi_event_input();
     for (const auto &ev : evinput)
@@ -2136,13 +2138,13 @@ class LV2Processor : public AudioProcessor {
           case MidiMessage::NOTE_OFF:
             midi_data[0] = 0x80 | ev.channel;
             midi_data[1] = ev.key;
-            plugin_instance->write_midi (time_stamp, 3, midi_data);
+            plugin_instance_->write_midi (time_stamp, 3, midi_data);
             break;
           case MidiMessage::NOTE_ON:
             midi_data[0] = 0x90 | ev.channel;
             midi_data[1] = ev.key;
             midi_data[2] = std::clamp (irintf (ev.velocity * 127), 0, 127);
-            plugin_instance->write_midi (time_stamp, 3, midi_data);
+            plugin_instance_->write_midi (time_stamp, 3, midi_data);
             break;
 #if 0
           case Message::ALL_NOTES_OFF:
@@ -2158,38 +2160,38 @@ class LV2Processor : public AudioProcessor {
           }
       }
 
-    uint n_audio_inputs = plugin_instance->n_audio_inputs();
+    uint n_audio_inputs = plugin_instance_->n_audio_inputs();
     if (n_audio_inputs == 2)
       {
-        plugin_instance->connect_audio_in (0, ifloats (stereo_in_, 0));
-        plugin_instance->connect_audio_in (1, ifloats (stereo_in_, 1));
+        plugin_instance_->connect_audio_in (0, ifloats (stereo_in_, 0));
+        plugin_instance_->connect_audio_in (1, ifloats (stereo_in_, 1));
       }
     else
       {
         for (uint i = 0; i < n_audio_inputs; i++)
-          plugin_instance->connect_audio_in (i, ifloats (mono_ins_[i], 0));
+          plugin_instance_->connect_audio_in (i, ifloats (mono_ins_[i], 0));
       }
 
-    uint n_audio_outputs = plugin_instance->n_audio_outputs();
+    uint n_audio_outputs = plugin_instance_->n_audio_outputs();
     if (n_audio_outputs == 2)
       {
-        plugin_instance->connect_audio_out (0, oblock (stereo_out_, 0));
-        plugin_instance->connect_audio_out (1, oblock (stereo_out_, 1));
+        plugin_instance_->connect_audio_out (0, oblock (stereo_out_, 0));
+        plugin_instance_->connect_audio_out (1, oblock (stereo_out_, 1));
       }
     else
       {
         for (uint i = 0; i < n_audio_outputs; i++)
-          plugin_instance->connect_audio_out (i, oblock (mono_outs_[i], 0));
+          plugin_instance_->connect_audio_out (i, oblock (mono_outs_[i], 0));
       }
-    plugin_instance->run (n_frames);
+    plugin_instance_->run (n_frames);
   }
   String
   param_value_to_text (uint32_t paramid, double value) const override
   {
     auto control_id = paramid - PID_CONTROL_OFFSET;
-    if (control_id >= 0 && control_id < plugin_instance->n_control_inputs())
+    if (control_id >= 0 && control_id < plugin_instance_->n_control_inputs())
       {
-        const Port &port = plugin_instance->control_input_port (control_id);
+        const Port &port = plugin_instance_->control_input_port (control_id);
 
         if ((port.flags & Port::ENUMERATION) == 0)
           {
@@ -2209,9 +2211,9 @@ class LV2Processor : public AudioProcessor {
   param_value_from_text (uint32_t paramid, const String &text) const override
   {
     auto control_id = paramid - PID_CONTROL_OFFSET;
-    if (control_id >= 0 && control_id < plugin_instance->n_control_inputs())
+    if (control_id >= 0 && control_id < plugin_instance_->n_control_inputs())
       {
-        const Port &port = plugin_instance->control_input_port (control_id);
+        const Port &port = plugin_instance_->control_input_port (control_id);
 
         if ((port.flags & Port::ENUMERATION) == 0)
           return port.param_from_lv2 (string_to_double (text));
@@ -2221,9 +2223,9 @@ class LV2Processor : public AudioProcessor {
   void
   restore_params (const PortRestoreHelper &port_restore_helper)
   {
-    for (int i = 0; i < (int) plugin_instance->n_control_inputs(); i++)
+    for (int i = 0; i < (int) plugin_instance_->n_control_inputs(); i++)
       {
-        const Port &port = plugin_instance->control_input_port (i);
+        const Port &port = plugin_instance_->control_input_port (i);
         auto it = port_restore_helper.values.find (port.symbol);
         if (it != port_restore_helper.values.end())
           send_param (i + PID_CONTROL_OFFSET, port.param_from_lv2 (it->second));
@@ -2232,14 +2234,14 @@ class LV2Processor : public AudioProcessor {
 public:
   LV2Processor (const ProcessorSetup &psetup) :
     AudioProcessor (psetup),
-    plugin_host (PluginHost::the())
+    plugin_host_ (PluginHost::the())
   {}
   ~LV2Processor()
   {
-    if (plugin_instance)
+    if (plugin_instance_)
       {
-        gtk_thread ([&] { delete plugin_instance; });
-        plugin_instance = nullptr;
+        gtk_thread ([&] { delete plugin_instance_; });
+        plugin_instance_ = nullptr;
       }
   }
   static void
@@ -2255,12 +2257,12 @@ public:
   bool
   gui_supported()
   {
-    return plugin_instance->gui_supported();
+    return plugin_instance_->gui_supported();
   }
   void
   gui_toggle()
   {
-    gtk_thread ([&] { plugin_instance->toggle_ui(); });
+    gtk_thread ([&] { plugin_instance_->toggle_ui(); });
   }
   void
   save_state (WritNode &xs, const string& device_path, ProjectImpl *project)
@@ -2275,7 +2277,7 @@ public:
     path_map.abstract_path = [&] (const String &path) { String hash; project_->writer_collect (path, &hash); return hash; };
 
     String str;
-    gtk_thread ([&] { str = plugin_instance->save_string (&path_map); });
+    gtk_thread ([&] { str = plugin_instance_->save_string (&path_map); });
 
     if (str != "")
       {
@@ -2323,9 +2325,9 @@ public:
             PathMap path_map;
             path_map.absolute_path = [&] (String hash) { return project_->loader_resolve (hash); };
 
-            PortRestoreHelper port_restore_helper (plugin_host);
+            PortRestoreHelper port_restore_helper (plugin_host_);
             bool restore_ok = false;
-            gtk_thread ([&] { restore_ok = plugin_instance->restore_string (blob_data, &port_restore_helper, &path_map); });
+            gtk_thread ([&] { restore_ok = plugin_instance_->restore_string (blob_data, &port_restore_helper, &path_map); });
             if (restore_ok)
               {
                 restore_params (port_restore_helper);
