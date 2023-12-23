@@ -222,7 +222,7 @@ class PluginHost;
 
 class Options
 {
-  float       m_sample_rate;
+  float       m_sample_rate = 0;
   uint32_t    m_min_block_length = 0;
   uint32_t    m_max_block_length = AUDIO_BLOCK_MAX_RENDER_SIZE;
 
@@ -400,12 +400,12 @@ struct ScalePoint
 
 struct Port
 {
-  LV2_Evbuf  *evbuf;
-  float       control;    /* for control ports */
-  float       min_value;  /* min control */
-  float       max_value;  /* max control */
+  LV2_Evbuf  *evbuf = nullptr; /* for atom ports */
+  float       control = 0;     /* for control ports */
+  float       min_value = 0;   /* min control */
+  float       max_value = 0;   /* max control */
   int         control_in_idx = -1; /* for control input ports */
-  int         index = -1; /* lv2 index for this port */
+  int         index = -1;      /* lv2 index for this port */
   String      name;
   String      symbol;
   String      unit;
@@ -428,11 +428,6 @@ struct Port
 
   uint flags = NO_FLAGS;
 
-  Port() :
-    evbuf (nullptr),
-    control (0.0)
-  {
-  }
   float
   param_to_lv2 (double value) const
   {
@@ -513,7 +508,10 @@ struct PathMap
         if (path_map->abstract_path)
           return strdup (path_map->abstract_path (path).c_str());
         else
-          return strdup (path);
+          {
+            printerr ("LV2: PathMap: abstract_path (%s) called, but no mapping function defined\n", path);
+            return strdup (path);
+          }
       },
     .absolute_path = [] (LV2_State_Map_Path_Handle handle, const char *path)
       {
@@ -521,7 +519,10 @@ struct PathMap
         if (path_map->absolute_path)
           return strdup (path_map->absolute_path (path).c_str());
         else
-          return strdup (path);
+          {
+            printerr ("LV2: PathMap: absolute_path (%s) called, but no mapping function defined\n", path);
+            return strdup (path);
+          }
       }
   };
   LV2_State_Free_Path free_path {
@@ -568,9 +569,9 @@ class PluginInstance
 
   PluginHost&                plugin_host_;
 
-  LV2_Feature                lv2_instance_access_feature_;
-  LV2_Feature                lv2_data_access_feature_;
-  LV2_Extension_Data_Feature lv2_ext_data;
+  LV2_Feature                lv2_instance_access_feature_ {};
+  LV2_Feature                lv2_data_access_feature_ {};
+  LV2_Extension_Data_Feature lv2_ext_data {};
 
   LilvInstance              *instance_ = nullptr;
   vector<Port>               plugin_ports_;
@@ -641,7 +642,7 @@ class PluginHost
 public:
   LilvWorld   *world = nullptr;
   Map          urid_map;
-  void        *suil_host;
+  void        *suil_host = nullptr;
 
   struct URIDs {
     LV2_URID param_sampleRate;
@@ -864,7 +865,6 @@ private:
     return can_use_ui;
   }
 public:
-
   DeviceInfo
   lv2_device_info (const string& uri)
   {
@@ -1368,7 +1368,7 @@ PluginInstance::init_ports()
                 }
               else
                 {
-                  printerr ("found unknown input port\n");
+                  printerr ("LV2: found unknown input port\n");
                 }
             }
           if (lilv_port_is_a (plugin_, port, plugin_host_.nodes.lv2_output_class))
@@ -1399,7 +1399,7 @@ PluginInstance::init_ports()
                 }
               else
                 {
-                  printerr ("found unknown output port\n");
+                  printerr ("LV2: found unknown output port\n");
                 }
             }
         }
