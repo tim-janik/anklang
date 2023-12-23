@@ -245,11 +245,11 @@ public:
 
 class Worker
 {
-  LV2_Worker_Schedule lv2_worker_sched;
-  const LV2_Feature   lv2_worker_feature;
+  LV2_Worker_Schedule         lv2_worker_sched_ {};
+  const LV2_Feature           lv2_worker_feature_;
 
-  const LV2_Worker_Interface *worker_interface = nullptr;
-  LV2_Handle                  instance = nullptr;
+  const LV2_Worker_Interface *worker_interface_ = nullptr;
+  LV2_Handle                  instance_ = nullptr;
   ControlEventVector          work_events_, response_events_, trash_events_;
   std::thread                 thread_;
   std::atomic<int>            quit_;
@@ -270,7 +270,7 @@ class Worker
 #ifdef DEBUG_WORKER
               printerr ("worker: got work %zd bytes\n", event->size());
 #endif
-              worker_interface->work (instance, respond, this, event->size(), event->data());
+              worker_interface_->work (instance_, respond, this, event->size(), event->data());
             });
         // free both: old worker events and old response events
         trash_events_.free_all();
@@ -279,7 +279,7 @@ class Worker
   LV2_Worker_Status
   schedule (uint32_t size, const void *data)
   {
-    if (!worker_interface)
+    if (!worker_interface_)
       return LV2_WORKER_ERR_UNKNOWN;
 
     work_events_.push (ControlEvent::loft_new (0, 0, size, data));
@@ -289,7 +289,7 @@ class Worker
   LV2_Worker_Status
   respond (uint32_t size, const void *data)
   {
-    if (!worker_interface)
+    if (!worker_interface_)
       return LV2_WORKER_ERR_UNKNOWN;
 
     response_events_.push (ControlEvent::loft_new (0, 0, size, data));
@@ -313,8 +313,8 @@ class Worker
   }
 public:
   Worker() :
-    lv2_worker_sched { this, schedule },
-    lv2_worker_feature { LV2_WORKER__schedule, &lv2_worker_sched },
+    lv2_worker_sched_ { this, schedule },
+    lv2_worker_feature_ { LV2_WORKER__schedule, &lv2_worker_sched_ },
     quit_ (0)
   {
     thread_ = std::thread (&Worker::run, this);
@@ -337,11 +337,11 @@ public:
   void
   set_instance (LilvInstance *lilv_instance)
   {
-    instance = lilv_instance_get_handle (lilv_instance);
+    instance_ = lilv_instance_get_handle (lilv_instance);
 
     const LV2_Descriptor *descriptor = lilv_instance_get_descriptor (lilv_instance);
     if (descriptor && descriptor->extension_data)
-       worker_interface = (const LV2_Worker_Interface *) (*descriptor->extension_data) (LV2_WORKER__interface);
+       worker_interface_ = (const LV2_Worker_Interface *) (*descriptor->extension_data) (LV2_WORKER__interface);
   }
   void
   handle_responses()
@@ -349,20 +349,20 @@ public:
     response_events_.for_each (trash_events_,
       [this] (const ControlEvent *event)
         {
-          worker_interface->work_response (instance, event->size(), event->data());
+          worker_interface_->work_response (instance_, event->size(), event->data());
         });
   }
   void
   end_run()
   {
     /* to be called after each run cycle */
-    if (worker_interface && worker_interface->end_run)
-      worker_interface->end_run (instance);
+    if (worker_interface_ && worker_interface_->end_run)
+      worker_interface_->end_run (instance_);
   }
   const LV2_Feature *
   feature() const
   {
-    return &lv2_worker_feature;
+    return &lv2_worker_feature_;
   }
 };
 
