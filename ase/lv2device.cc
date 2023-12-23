@@ -254,34 +254,6 @@ class Worker
   std::thread                 thread_;
   std::atomic<int>            quit_;
   ScopedSemaphore             sem_;
-public:
-  Worker() :
-    lv2_worker_sched { this, schedule },
-    lv2_worker_feature { LV2_WORKER__schedule, &lv2_worker_sched },
-    quit_ (0)
-  {
-    thread_ = std::thread (&Worker::run, this);
-  }
-  void
-  stop()
-  {
-    quit_ = 1;
-    sem_.post();
-    thread_.join();
-#ifdef DEBUG_WORKER
-    printerr ("worker thread joined\n");
-#endif
-  }
-
-  void
-  set_instance (LilvInstance *lilv_instance)
-  {
-    instance = lilv_instance_get_handle (lilv_instance);
-
-    const LV2_Descriptor *descriptor = lilv_instance_get_descriptor (lilv_instance);
-    if (descriptor && descriptor->extension_data)
-       worker_interface = (const LV2_Worker_Interface *) (*descriptor->extension_data) (LV2_WORKER__interface);
-  }
 
   void
   run()
@@ -323,22 +295,6 @@ public:
     response_events_.push (ControlEvent::loft_new (0, 0, size, data));
     return LV2_WORKER_SUCCESS;
   }
-  void
-  handle_responses()
-  {
-    response_events_.for_each (trash_events_,
-      [this] (const ControlEvent *event)
-        {
-          worker_interface->work_response (instance, event->size(), event->data());
-        });
-  }
-  void
-  end_run()
-  {
-    /* to be called after each run cycle */
-    if (worker_interface && worker_interface->end_run)
-      worker_interface->end_run (instance);
-  }
   static LV2_Worker_Status
   schedule (LV2_Worker_Schedule_Handle handle,
             uint32_t                   size,
@@ -355,7 +311,54 @@ public:
     Worker *worker = static_cast<Worker *> (handle);
     return worker->respond (size, data);
   }
+public:
+  Worker() :
+    lv2_worker_sched { this, schedule },
+    lv2_worker_feature { LV2_WORKER__schedule, &lv2_worker_sched },
+    quit_ (0)
+  {
+    thread_ = std::thread (&Worker::run, this);
+  }
+  ~Worker()
+  {
+    // need to call stop before destructor
+    assert_return (!thread_.joinable());
+  }
+  void
+  stop()
+  {
+    quit_ = 1;
+    sem_.post();
+    thread_.join();
+#ifdef DEBUG_WORKER
+    printerr ("worker thread joined\n");
+#endif
+  }
+  void
+  set_instance (LilvInstance *lilv_instance)
+  {
+    instance = lilv_instance_get_handle (lilv_instance);
 
+    const LV2_Descriptor *descriptor = lilv_instance_get_descriptor (lilv_instance);
+    if (descriptor && descriptor->extension_data)
+       worker_interface = (const LV2_Worker_Interface *) (*descriptor->extension_data) (LV2_WORKER__interface);
+  }
+  void
+  handle_responses()
+  {
+    response_events_.for_each (trash_events_,
+      [this] (const ControlEvent *event)
+        {
+          worker_interface->work_response (instance, event->size(), event->data());
+        });
+  }
+  void
+  end_run()
+  {
+    /* to be called after each run cycle */
+    if (worker_interface && worker_interface->end_run)
+      worker_interface->end_run (instance);
+  }
   const LV2_Feature *
   feature() const
   {
