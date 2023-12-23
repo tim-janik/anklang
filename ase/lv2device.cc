@@ -222,24 +222,19 @@ class PluginHost;
 
 class Options
 {
-  float       m_sample_rate = 0;
-  uint32_t    m_min_block_length = 0;
-  uint32_t    m_max_block_length = AUDIO_BLOCK_MAX_RENDER_SIZE;
+  float       m_sample_rate_ = 0;
+  uint32_t    m_min_block_length_ = 0;
+  uint32_t    m_max_block_length_ = AUDIO_BLOCK_MAX_RENDER_SIZE;
 
-  vector<LV2_Options_Option> const_opts;
+  vector<LV2_Options_Option> const_opts_;
 
-  LV2_Feature  lv2_options_feature;
+  LV2_Feature lv2_options_feature_;
 public:
-  Options (PluginHost& plugin_host);
-  void
-  set_rate (float sample_rate)
-  {
-    m_sample_rate = sample_rate;
-  }
+  Options (PluginHost& plugin_host, float sample_rate);
   const LV2_Feature *
   feature() const
   {
-    return &lv2_options_feature;
+    return &lv2_options_feature_;
   }
 };
 
@@ -545,6 +540,7 @@ class PluginInstance
   const LilvUI              *ui_ = nullptr;
   String                     ui_type_uri_;
   std::unique_ptr<Worker>    worker_;
+  Options                    options_;
 
   std::array<uint8, 256>     last_position_buffer_ {};
   std::array<uint8, 256>     position_buffer_ {};
@@ -608,6 +604,7 @@ public:
   uint n_control_inputs() const                       { return control_in_ports_.size(); }
   const LV2_Feature *instance_access_feature() const  { return &lv2_instance_access_feature_; }
   const LV2_Feature *data_access_feature() const      { return &lv2_data_access_feature_; }
+  const LV2_Feature *options_feature() const          { return options_.feature(); }
   const Port &control_input_port (size_t index) const { assert (index < control_in_ports_.size()); return plugin_ports_[control_in_ports_[index]]; }
   const vector<PresetInfo>& presets() const           { return presets_; }
   PluginUI *plugin_ui() const                         { return plugin_ui_.get(); }
@@ -761,12 +758,9 @@ public:
     }
   } nodes;
 
-  Options  options;
-
 private:
   PluginHost() :
-    urids (urid_map),
-    options (*this)
+    urids (urid_map)
   {
     if (!x11wrapper)
       x11wrapper = get_x11wrapper();
@@ -962,9 +956,9 @@ PluginUI::PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, co
   Features ui_features;
   ui_features.add (plugin_instance->instance_access_feature());
   ui_features.add (plugin_instance->data_access_feature());
+  ui_features.add (plugin_instance->options_feature());
   ui_features.add (plugin_host_.urid_map.map_feature());
   ui_features.add (plugin_host_.urid_map.unmap_feature());
-  ui_features.add (plugin_host_.options.feature()); /* TODO: maybe make a local version */
 
   if (external_ui_)
     {
@@ -1086,18 +1080,19 @@ PluginUI::~PluginUI()
     }
 }
 
-Options::Options (PluginHost& plugin_host) :
-  lv2_options_feature { LV2_OPTIONS__options, nullptr }
+Options::Options (PluginHost& plugin_host, float sample_rate) :
+  m_sample_rate_ (sample_rate),
+  lv2_options_feature_ { LV2_OPTIONS__options, nullptr }
 {
-  const_opts.push_back ({ LV2_OPTIONS_INSTANCE, 0, plugin_host.urids.param_sampleRate,
-                          sizeof(float), plugin_host.urids.atom_Float, &m_sample_rate });
-  const_opts.push_back ({ LV2_OPTIONS_INSTANCE, 0, plugin_host.urids.bufsz_minBlockLength,
-                          sizeof(int32_t), plugin_host.urids.atom_Int, &m_min_block_length });
-  const_opts.push_back ({ LV2_OPTIONS_INSTANCE, 0, plugin_host.urids.bufsz_maxBlockLength,
-                          sizeof(int32_t), plugin_host.urids.atom_Int, &m_max_block_length });
-  const_opts.push_back ({ LV2_OPTIONS_INSTANCE, 0, 0, 0, 0, nullptr });
+  const_opts_.push_back ({ LV2_OPTIONS_INSTANCE, 0, plugin_host.urids.param_sampleRate,
+                           sizeof (float), plugin_host.urids.atom_Float, &m_sample_rate_ });
+  const_opts_.push_back ({ LV2_OPTIONS_INSTANCE, 0, plugin_host.urids.bufsz_minBlockLength,
+                           sizeof (int32_t), plugin_host.urids.atom_Int, &m_min_block_length_ });
+  const_opts_.push_back ({ LV2_OPTIONS_INSTANCE, 0, plugin_host.urids.bufsz_maxBlockLength,
+                           sizeof (int32_t), plugin_host.urids.atom_Int, &m_max_block_length_ });
+  const_opts_.push_back ({ LV2_OPTIONS_INSTANCE, 0, 0, 0, 0, nullptr });
 
-  lv2_options_feature.data = const_opts.data();
+  lv2_options_feature_.data = const_opts_.data();
 }
 
 PluginInstance *
@@ -1141,6 +1136,7 @@ PluginHost::instantiate (const char *plugin_uri, uint sample_rate, PortRestoreHe
 
 PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const LilvPlugin *plugin,
                                 PortRestoreHelper *port_restore_helper, const ControlChangedCallback& callback) :
+  options_ (plugin_host, sample_rate),
   plugin_ (plugin),
   sample_rate_ (sample_rate),
   plugin_host_ (plugin_host),
@@ -1156,7 +1152,7 @@ PluginInstance::PluginInstance (PluginHost& plugin_host, uint sample_rate, const
 
   features_.add (plugin_host.urid_map.map_feature());
   features_.add (plugin_host.urid_map.unmap_feature());
-  features_.add (plugin_host.options.feature()); /* TODO: maybe make a local version */
+  features_.add (options_.feature());
   features_.add (LV2_BUF_SIZE__boundedBlockLength, nullptr);
   features_.add (LV2_STATE__loadDefaultState, nullptr);
 
@@ -1996,7 +1992,6 @@ class LV2Processor : public AudioProcessor {
       set_param_from_render (PID_CONTROL_OFFSET + port->control_in_idx, port->param_from_lv2 (port->control));
     };
 
-    plugin_host_.options.set_rate (sample_rate());
     gtk_thread ([&] { plugin_instance_ = plugin_host_.instantiate (lv2_uri_.c_str(), sample_rate(), &port_restore_helper, control_in_changed_callback); });
 
     // TODO: this is probably not the right location for restoring the parameter values
