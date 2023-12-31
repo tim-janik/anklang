@@ -704,6 +704,7 @@ public:
     LilvNode *lv2_units_unit;
     LilvNode *lv2_units_symbol;
     LilvNode *lv2_pprop_logarithmic;
+    LilvNode *lv2_pprop_notOnGUI;
     LilvNode *lv2_integer;
     LilvNode *lv2_toggled;
     LilvNode *lv2_enumeration;
@@ -739,6 +740,7 @@ public:
       lv2_units_unit              = lilv_new_uri (world, LV2_UNITS__unit);
       lv2_units_symbol            = lilv_new_uri (world, LV2_UNITS__symbol);
       lv2_pprop_logarithmic       = lilv_new_uri (world, LV2_PORT_PROPS__logarithmic);
+      lv2_pprop_notOnGUI          = lilv_new_uri (world, LV2_PORT_PROPS__notOnGUI);
       lv2_integer                 = lilv_new_uri (world, LV2_CORE__integer);
       lv2_toggled                 = lilv_new_uri (world, LV2_CORE__toggled);
       lv2_enumeration             = lilv_new_uri (world, LV2_CORE__enumeration);
@@ -1260,6 +1262,8 @@ PluginInstance::init_ports()
               if (min_values[i] > 0 && max_values[i] > 0 && max_values[i] > min_values[i])
                 plugin_ports_[i].flags |= Port::LOGARITHMIC;
             }
+          if (lilv_port_has_property (plugin_, port, plugin_host_.nodes.lv2_pprop_notOnGUI))
+            plugin_ports_[i].flags |= Port::HIDDEN;
           if (lilv_port_has_property (plugin_, port, plugin_host_.nodes.lv2_integer))
             plugin_ports_[i].flags |= Port::INTEGER;
           if (lilv_port_has_property (plugin_, port, plugin_host_.nodes.lv2_toggled))
