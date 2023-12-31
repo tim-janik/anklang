@@ -380,7 +380,6 @@ public:
   void
   add (const LV2_Feature *lv2_feature)
   {
-    assert (null_terminated_ptrs.empty());
     features.push_back (*lv2_feature);
   }
   void
@@ -939,7 +938,7 @@ PluginUI::PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, co
                     const string& ui_type_uri, const LilvUI *ui) :
   plugin_host_ (plugin_host)
 {
-  assert (this_thread_is_gtk());
+  assert_return (this_thread_is_gtk());
 
   plugin_instance_ = plugin_instance;
 
@@ -1057,7 +1056,7 @@ PluginUI::ui_is_resizable (const LilvUI *ui)
 
 PluginUI::~PluginUI()
 {
-  assert (this_thread_is_gtk());
+  assert_return (this_thread_is_gtk());
 
   // disable DSP->UI notifications and remove old events from event queue
   plugin_instance_->enable_dsp2ui_notifications (false);
@@ -1563,11 +1562,11 @@ PluginInstance::run (uint32_t n_frames)
   ui2dsp_events_.for_each (trash_events_,
     [&] (const ControlEvent *event)
       {
-        assert (event->port_index() < plugin_ports_.size());
+        assert_return (event->port_index() < plugin_ports_.size());
         Port* port = &plugin_ports_[event->port_index()];
         if (event->protocol() == 0)
           {
-            assert (event->size() == sizeof (float));
+            assert_return (event->size() == sizeof (float));
             port->control = *(float *)event->data();
 
             control_in_changed_callback_ (port);
@@ -1769,7 +1768,7 @@ PluginInstance::toggle_ui()
 void
 PluginInstance::delete_ui()
 {
-  assert (this_thread_is_gtk());
+  assert_return (this_thread_is_gtk());
   plugin_ui_.reset();
 }
 
@@ -2447,5 +2446,4 @@ LV2DeviceImpl::serialize (WritNode &xs)
  * - some plugins (with lots of properties?) freeze UI - padthv1, drmr (#31)
  * - serialization (state extension)
  * - ui resizable
- * - restore top level Makefile.mk
  */
