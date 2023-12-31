@@ -413,15 +413,16 @@ struct Port
   static constexpr uint INTEGER     = 1 << 1;
   static constexpr uint TOGGLED     = 1 << 2;
   static constexpr uint ENUMERATION = 1 << 3;
+  static constexpr uint HIDDEN      = 1 << 4;  // not visible in generic UI (i.e. bpm port)
 
   // port direction
-  static constexpr uint INPUT       = 1 << 4;
-  static constexpr uint OUTPUT      = 1 << 5;
+  static constexpr uint INPUT       = 1 << 5;
+  static constexpr uint OUTPUT      = 1 << 6;
 
   // port type
-  static constexpr uint CONTROL     = 1 << 6;
-  static constexpr uint AUDIO       = 1 << 7;
-  static constexpr uint ATOM        = 1 << 8;
+  static constexpr uint CONTROL     = 1 << 7;
+  static constexpr uint AUDIO       = 1 << 8;
+  static constexpr uint ATOM        = 1 << 9;
 
   uint flags = NO_FLAGS;
 
@@ -551,6 +552,7 @@ class PluginInstance
   std::vector<int>           control_in_ports_;
   std::vector<int>           midi_in_ports_;
   std::vector<int>           position_in_ports_;
+  int                        bpm_port_index_ = -1;
 
   const LilvPlugin          *plugin_ = nullptr;
   LV2_Atom_Forge             forge_;
@@ -697,6 +699,7 @@ public:
     LilvNode *lv2_atom_supports;
     LilvNode *lv2_midi_MidiEvent;
     LilvNode *lv2_time_Position;
+    LilvNode *lv2_time_beatsPerMinute;
     LilvNode *lv2_presets_Preset;
     LilvNode *lv2_units_unit;
     LilvNode *lv2_units_symbol;
@@ -720,35 +723,36 @@ public:
 
     void init (LilvWorld *world)
     {
-      lv2_audio_class   = lilv_new_uri (world, LILV_URI_AUDIO_PORT);
-      lv2_atom_class    = lilv_new_uri (world, LILV_URI_ATOM_PORT);
-      lv2_input_class   = lilv_new_uri (world, LILV_URI_INPUT_PORT);
-      lv2_output_class  = lilv_new_uri (world, LILV_URI_OUTPUT_PORT);
-      lv2_control_class = lilv_new_uri (world, LILV_URI_CONTROL_PORT);
-      lv2_rsz_minimumSize = lilv_new_uri (world, LV2_RESIZE_PORT__minimumSize);
+      lv2_audio_class             = lilv_new_uri (world, LILV_URI_AUDIO_PORT);
+      lv2_atom_class              = lilv_new_uri (world, LILV_URI_ATOM_PORT);
+      lv2_input_class             = lilv_new_uri (world, LILV_URI_INPUT_PORT);
+      lv2_output_class            = lilv_new_uri (world, LILV_URI_OUTPUT_PORT);
+      lv2_control_class           = lilv_new_uri (world, LILV_URI_CONTROL_PORT);
+      lv2_rsz_minimumSize         = lilv_new_uri (world, LV2_RESIZE_PORT__minimumSize);
 
-      lv2_atom_Chunk    = lilv_new_uri (world, LV2_ATOM__Chunk);
-      lv2_atom_Sequence = lilv_new_uri (world, LV2_ATOM__Sequence);
-      lv2_atom_supports = lilv_new_uri (world, LV2_ATOM__supports);
-      lv2_midi_MidiEvent  = lilv_new_uri (world, LV2_MIDI__MidiEvent);
-      lv2_time_Position   = lilv_new_uri (world, LV2_TIME__Position);
-      lv2_units_unit      = lilv_new_uri (world, LV2_UNITS__unit);
-      lv2_units_symbol    = lilv_new_uri (world, LV2_UNITS__symbol);
-      lv2_pprop_logarithmic = lilv_new_uri (world, LV2_PORT_PROPS__logarithmic);
-      lv2_integer         = lilv_new_uri (world, LV2_CORE__integer);
-      lv2_toggled         = lilv_new_uri (world, LV2_CORE__toggled);
-      lv2_enumeration     = lilv_new_uri (world, LV2_CORE__enumeration);
+      lv2_atom_Chunk              = lilv_new_uri (world, LV2_ATOM__Chunk);
+      lv2_atom_Sequence           = lilv_new_uri (world, LV2_ATOM__Sequence);
+      lv2_atom_supports           = lilv_new_uri (world, LV2_ATOM__supports);
+      lv2_midi_MidiEvent          = lilv_new_uri (world, LV2_MIDI__MidiEvent);
+      lv2_time_Position           = lilv_new_uri (world, LV2_TIME__Position);
+      lv2_time_beatsPerMinute     = lilv_new_uri (world, LV2_TIME__beatsPerMinute);
+      lv2_units_unit              = lilv_new_uri (world, LV2_UNITS__unit);
+      lv2_units_symbol            = lilv_new_uri (world, LV2_UNITS__symbol);
+      lv2_pprop_logarithmic       = lilv_new_uri (world, LV2_PORT_PROPS__logarithmic);
+      lv2_integer                 = lilv_new_uri (world, LV2_CORE__integer);
+      lv2_toggled                 = lilv_new_uri (world, LV2_CORE__toggled);
+      lv2_enumeration             = lilv_new_uri (world, LV2_CORE__enumeration);
 
-      lv2_ui_external     = lilv_new_uri (world, "http://lv2plug.in/ns/extensions/ui#external");
-      lv2_ui_externalkx   = lilv_new_uri (world, "http://kxstudio.sf.net/ns/lv2ext/external-ui#Widget");
-      lv2_ui_fixedSize    = lilv_new_uri (world, LV2_UI__fixedSize);
-      lv2_ui_noUserResize = lilv_new_uri (world, LV2_UI__noUserResize);
-      lv2_ui_x11ui        = lilv_new_uri (world, LV2_UI__X11UI);
+      lv2_ui_external             = lilv_new_uri (world, "http://lv2plug.in/ns/extensions/ui#external");
+      lv2_ui_externalkx           = lilv_new_uri (world, "http://kxstudio.sf.net/ns/lv2ext/external-ui#Widget");
+      lv2_ui_fixedSize            = lilv_new_uri (world, LV2_UI__fixedSize);
+      lv2_ui_noUserResize         = lilv_new_uri (world, LV2_UI__noUserResize);
+      lv2_ui_x11ui                = lilv_new_uri (world, LV2_UI__X11UI);
 
-      lv2_optionalFeature = lilv_new_uri (world, LV2_CORE__optionalFeature);
-      lv2_requiredFeature = lilv_new_uri (world, LV2_CORE__requiredFeature);
-      lv2_worker_schedule = lilv_new_uri (world, LV2_WORKER__schedule);
-      lv2_state_loadDefaultState = lilv_new_uri (world, LV2_STATE__loadDefaultState);
+      lv2_optionalFeature         = lilv_new_uri (world, LV2_CORE__optionalFeature);
+      lv2_requiredFeature         = lilv_new_uri (world, LV2_CORE__requiredFeature);
+      lv2_worker_schedule         = lilv_new_uri (world, LV2_WORKER__schedule);
+      lv2_state_loadDefaultState  = lilv_new_uri (world, LV2_STATE__loadDefaultState);
 
       lv2_presets_Preset = lilv_new_uri (world, LV2_PRESETS__Preset);
       rdfs_label         = lilv_new_uri (world, LILV_NS_RDFS "label");
@@ -1402,6 +1406,14 @@ PluginInstance::init_ports()
             }
         }
     }
+  const LilvPort *bpm_port = lilv_plugin_get_port_by_designation (plugin_,
+                                                                  plugin_host_.nodes.lv2_input_class,
+                                                                  plugin_host_.nodes.lv2_time_beatsPerMinute);
+  if (bpm_port)
+    {
+      bpm_port_index_ = lilv_port_get_index (plugin_, bpm_port);
+      plugin_ports_[bpm_port_index_].flags |= Port::HIDDEN;
+    }
 
   if (midi_in_ports_.size() > 1)
     printerr ("LV2: more than one midi input found - this is not supported\n");
@@ -1466,10 +1478,14 @@ PluginInstance::write_midi (uint32_t time, size_t size, const uint8_t *data)
 void
 PluginInstance::write_position (const AudioTransport &transport)
 {
+  const auto &tick_sig = transport.tick_sig;
+
+  if (bpm_port_index_ >= 0)
+    plugin_ports_[bpm_port_index_].control = tick_sig.bpm();
+
   if (position_in_ports_.empty())
     return;
 
-  const auto &tick_sig = transport.tick_sig;
   uint64 frames_since_start = llrint (transport.current_seconds * transport.samplerate) + transport.current_minutes * 60 * transport.samplerate;
 
   LV2_Atom_Forge_Frame frame;
@@ -2015,6 +2031,9 @@ class LV2Processor : public AudioProcessor {
     for (uint p = 0; p < plugin_instance_->n_control_inputs(); p++)
       {
         auto &port = plugin_instance_->control_input_port (p);
+        String hints = "r:w:";
+        if (!(port.flags & Port::HIDDEN))
+          hints = "G:" + hints;
 
         // TODO: lv2 port numbers are not reliable for serialization, should use port.symbol instead
         // TODO: special case boolean, enumeration, logarithmic,... controls
@@ -2024,19 +2043,18 @@ class LV2Processor : public AudioProcessor {
             ChoiceS centries;
             for (size_t i = 0; i < port.scale_points.size(); i++)
               centries += { string_format ("%d", i), port.scale_points[i].label };
-            pmap[pid] = Param { port.symbol, port.name, "", port.param_from_lv2 (port.control), "", std::move (centries), GUIONLY };
+            pmap[pid] = Param { port.symbol, port.name, "", port.param_from_lv2 (port.control), "", std::move (centries), hints };
           }
         else if (port.flags & Port::LOGARITHMIC)
-          pmap[pid] = Param { port.symbol, port.name, "", port.param_from_lv2 (port.control), "", { 0, 1 }, GUIONLY };
+          pmap[pid] = Param { port.symbol, port.name, "", port.param_from_lv2 (port.control), "", { 0, 1 }, hints };
         else if (port.flags & Port::INTEGER)
           {
-            String hints = GUIONLY;
             if (port.flags & Port::TOGGLED)
-              hints += ":toggle";
+              hints += "toggle:";
             pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value, 1 }, hints };
           }
         else
-          pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value }, GUIONLY };
+          pmap[pid] = Param { port.symbol, port.name, "", port.control, "", { port.min_value, port.max_value }, hints };
       }
 
     // TODO: deactivate?
