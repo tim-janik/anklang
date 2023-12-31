@@ -47,8 +47,6 @@ namespace
 
 static Gtk2DlWrapEntry *x11wrapper = nullptr;
 
-#define NS_EXT "http://lv2plug.in/ns/ext/"
-
 using std::vector;
 using std::string;
 using std::set;
@@ -2039,8 +2037,7 @@ class LV2Processor : public AudioProcessor {
         if (!(port.flags & Port::HIDDEN))
           hints = "G:" + hints;
 
-        // TODO: lv2 port numbers are not reliable for serialization, should use port.symbol instead
-        // TODO: special case boolean, enumeration, logarithmic,... controls
+        // TODO: this currently only supports the common LV2 stuff we can straight-forward map to our hints
         int pid = PID_CONTROL_OFFSET + port.control_in_idx;
         if (port.flags & Port::ENUMERATION)
           {
@@ -2073,7 +2070,10 @@ class LV2Processor : public AudioProcessor {
      *
      *   channels == 1 -> one mono bus
      *   channels == 2 -> one stereo bus
-     *   channels >= 3 -> N mono busses (TODO: is this the best mapping for all plugins?)
+     *   channels >= 3 -> N mono busses
+     *
+     * TODO: this is a simple solution - for some plugins we could use
+     * https://lv2plug.in/ns/ext/port-groups to do a better job
      */
     mono_ins_.clear();
     mono_outs_.clear();
@@ -2466,6 +2466,5 @@ LV2DeviceImpl::serialize (WritNode &xs)
 /* --- TODO ---
  *
  * - some plugins (with lots of properties?) freeze UI - padthv1, drmr (#31)
- * - serialization (state extension)
- * - ui resizable
+ * - ui resizing doesn't seem to work for SpectMorph
  */
