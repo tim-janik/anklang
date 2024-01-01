@@ -40,6 +40,18 @@
 // #define DEBUG_WORKER
 // #define DEBUG_MISSING_FEATURES
 
+// support building with older version of the lv2 includes that do not yet support free path
+#ifndef LV2_STATE__freePath
+#define LV2_STATE__freePath LV2_STATE_PREFIX "freePath"
+extern "C" {
+typedef void *LV2_State_Free_Path_Handle;
+typedef struct {
+  LV2_State_Free_Path_Handle handle;
+  void (*free_path) (LV2_State_Free_Path_Handle handle, char *path);
+} LV2_State_Free_Path;
+}
+#endif
+
 namespace Ase {
 
 namespace
