@@ -13,6 +13,7 @@ test $# -ne 1 && help
 SRC="$PWD"
 OUT="$SRC/$1"
 export PKG_CONFIG_PATH="$OUT/lv2-libs/lib/x86_64-linux-gnu/pkgconfig/:${PKG_CONFIG_PATH:-}"
+export PKG_CONFIG_PATH="$OUT/lv2-libs/lib/pkgconfig/:${PKG_CONFIG_PATH:-}"
 
 for LIB in lv2 zix serd sord sratom lilv
 do
@@ -25,4 +26,7 @@ do
   popd
 done
 
-cp $OUT/lv2-libs/lib/x86_64-linux-gnu/lib*.a "$OUT/lib"
+for LIB_A in $(find $OUT/lv2-libs/lib -type f -iname 'lib*.a')
+do
+  cp "$LIB_A" "$OUT/lib"
+done
