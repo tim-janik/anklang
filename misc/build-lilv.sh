@@ -12,7 +12,7 @@ test $# -ne 1 && help
 
 SRC="$PWD"
 OUT="$SRC/$1"
-export PKG_CONFIG_PATH="$OUT/lv2-libs/lib/x86_64-linux-gnu/pkgconfig/:$PKG_CONFIG_PATH"
+export PKG_CONFIG_PATH="$OUT/lv2-libs/lib/x86_64-linux-gnu/pkgconfig/:${PKG_CONFIG_PATH:-}"
 
 for LIB in lv2 zix serd sord sratom lilv
 do
