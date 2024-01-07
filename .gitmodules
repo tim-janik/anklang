@@ -22,3 +22,22 @@
 [submodule "websocketpp"]
 	path = external/websocketpp
 	url = https://github.com/zaphoyd/websocketpp.git
+# lilv and its dependencies
+[submodule "lilv"]
+	path = external/lilv
+	url = https://github.com/swesterfeld/lilv
+[submodule "lv2"]
+	path = external/lv2
+	url = https://github.com/drobilla/lv2.git
+[submodule "serd"]
+	path = external/serd
+	url = https://github.com/drobilla/serd.git
+[submodule "sord"]
+	path = external/sord
+	url = https://github.com/drobilla/sord.git
+[submodule "sratom"]
+	path = external/sratom
+	url = https://github.com/drobilla/sratom.git
+[submodule "zix"]
+	path = external/zix
+	url = https://github.com/drobilla/zix.git
