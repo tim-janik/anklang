@@ -133,21 +133,35 @@ CLEANDIRS += $>/sndfile/
 CLEANFILES += $>/lib/libsndfile.*
 ase/sndfile.cc: $>/lib/libsndfile.so # includes $>/sndfile/src/config.h
 
+# == lilv ==
+$>/lib/liblilv-0.a: .submodule-stamp external/lilv/include/lilv/lilv.h | $>/lib/
+	$(QGEN)
+	$Q misc/build-lilv.sh $>
+
 # == AnklangSynthEngine ==
 ASE_EXTERNAL_INCLUDES := $(strip	\
 	-Iexternal/clap/include		\
 	-Iexternal/libsndfile/include	\
+	-Iexternal/lilv/include		\
 	-Iexternal/rapidjson/include	\
 	-Iexternal/websocketpp		\
 )
+LILV_LIBS := $(strip 					\
+	$>/lib/libserd-0.a	\
+	$>/lib/libsord-0.a	\
+	$>/lib/libsratom-0.a	\
+	$>/lib/liblilv-0.a	\
+	$>/lib/libzix-0.a	\
+)
+
 $(ase/AnklangSynthEngine.objects): $(ase/include.deps) $(ase/libase.deps)
 $(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
-$(lib/AnklangSynthEngine): $>/lib/libsndfile.so					| $>/lib/
+$(lib/AnklangSynthEngine): $>/lib/libsndfile.so $>/lib/liblilv-0.a		| $>/lib/
 $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
 	$(ase/AnklangSynthEngine.objects), \
 	$(lib/libase.so), \
-	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl $>/lib/libsndfile.so, \
+	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl $(LILV_LIBS) $>/lib/libsndfile.so, \
 	../lib)
 # Work around legacy code in external/websocketpp/*.hpp
 ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec -Wno-sign-promo
