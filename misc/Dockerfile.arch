@@ -13,7 +13,7 @@ RUN pacman -Sy --noconfirm archlinux-keyring && pacman-key --init && pacman-key 
 	    imagemagick \
 	    graphviz \
 	    flac libvorbis jack mpg123 lame \
-	    gtk2 \
+	    gtk2 suil \
 	    pandoc python-pandocfilters \
 	    cppcheck \
 	    python-pip doxygen openssh \
