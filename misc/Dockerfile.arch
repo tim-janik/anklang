@@ -6,7 +6,7 @@ RUN pacman -Sy --noconfirm archlinux-keyring && pacman-key --init && pacman-key 
   && pacman -Syu --noconfirm \
   && pacman -S --noconfirm \
 	    sudo fakeroot git base-devel \
-	    ccache cmake unzip \
+	    ccache cmake meson unzip \
 	    clang llvm boost ctags \
 	    nodejs npm \
 	    python-lxml \
