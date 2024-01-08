@@ -20,7 +20,7 @@ do
   rm -rf "$OUT/lv2-build/$LIB"
   mkdir -p "$OUT/lv2-build/$LIB"
   pushd "$OUT/lv2-build/$LIB"
-  meson setup --reconfigure $SRC/external/$LIB --prefix=$OUT/lv2-libs -Ddefault_library=static
+  meson setup $SRC/external/$LIB --prefix=$OUT/lv2-libs -Ddefault_library=static
   ninja
   meson install
   popd
