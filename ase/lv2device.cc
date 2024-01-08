@@ -932,16 +932,16 @@ public:
 
 class PluginUI
 {
-  PluginHost&           plugin_host_;
-  bool                  init_ok_ = false;
-  bool                  ui_closed_ = false;
-  bool                  external_ui_ = false;
-  lv2_external_ui_host  external_ui_host_ {};
-  lv2_external_ui      *external_ui_widget_ = nullptr;
-  void                 *window_ = nullptr;
-  uint                  timer_id_ = 0;
-  PluginInstance       *plugin_instance_ = nullptr;
-  void                 *ui_instance_ = nullptr;
+  PluginHost&             plugin_host_;
+  bool                    init_ok_ = false;
+  bool                    ui_closed_ = false;
+  bool                    external_ui_ = false;
+  LV2_External_UI_Host    external_ui_host_ {};
+  LV2_External_UI_Widget *external_ui_widget_ = nullptr;
+  void                   *window_ = nullptr;
+  uint                    timer_id_ = 0;
+  PluginInstance         *plugin_instance_ = nullptr;
+  void                   *ui_instance_ = nullptr;
 
   bool ui_is_resizable (const LilvUI *ui);
 public:
@@ -986,7 +986,7 @@ PluginUI::PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, co
       external_ui_host_.plugin_human_id = strdup (window_title.c_str());
 
       LV2_Feature external_ui_feature (LV2_EXTERNAL_UI_URI, &external_ui_host_);
-      LV2_Feature external_kxui_feature (LV2_EXTERNAL_UI_KX__Host, &external_ui_host_);
+      LV2_Feature external_kxui_feature (LV2_EXTERNAL_UI__Host, &external_ui_host_);
 
       ui_features.add (&external_kxui_feature);
       ui_features.add (&external_ui_feature);
@@ -1028,7 +1028,7 @@ PluginUI::PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, co
     }
   if (external_ui_)
     {
-      external_ui_widget_ = (lv2_external_ui *) x11wrapper->get_suil_widget (ui_instance_);
+      external_ui_widget_ = (LV2_External_UI_Widget *) x11wrapper->get_suil_widget (ui_instance_);
       external_ui_widget_->show (external_ui_widget_);
     }
   else
