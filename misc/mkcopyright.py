@@ -15,6 +15,7 @@ licenses = {
                   'CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1\.0/',
                   'Licensed CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1\.0' ],
   'MIT':        [ 'MIT [Ll]icensed?', ],
+  'ISC':        [ 'SPDX-License-Identifier: ISC' ]
 }
 
 # Comment suffix to ignore
