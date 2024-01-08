@@ -985,11 +985,8 @@ PluginUI::PluginUI (PluginHost &plugin_host, PluginInstance *plugin_instance, co
         };
       external_ui_host_.plugin_human_id = strdup (window_title.c_str());
 
-      LV2_Feature external_ui_feature (LV2_EXTERNAL_UI_URI, &external_ui_host_);
-      LV2_Feature external_kxui_feature (LV2_EXTERNAL_UI__Host, &external_ui_host_);
-
-      ui_features.add (&external_kxui_feature);
-      ui_features.add (&external_ui_feature);
+      ui_features.add (LV2_EXTERNAL_UI__Host, &external_ui_host_);
+      ui_features.add (LV2_EXTERNAL_UI_DEPRECATED_URI, &external_ui_host_);
     }
   else
     {
