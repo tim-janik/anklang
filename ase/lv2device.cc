@@ -1309,9 +1309,9 @@ PluginInstance::init_ports()
               else if (lilv_port_is_a (plugin_, port, plugin_host_.nodes.lv2_atom_class))
                 {
                   plugin_ports_[i].flags |= Port::ATOM;
-                  plugin_ports_[i].evbuf = lv2_evbuf_new (port_buffer_size, LV2_EVBUF_ATOM,
-                                                         plugin_host_.urid_map.urid_map (lilv_node_as_string (plugin_host_.nodes.lv2_atom_Chunk)),
-                                                         plugin_host_.urid_map.urid_map (lilv_node_as_string (plugin_host_.nodes.lv2_atom_Sequence)));
+                  plugin_ports_[i].evbuf = lv2_evbuf_new (port_buffer_size,
+                                                          plugin_host_.urid_map.urid_map (lilv_node_as_string (plugin_host_.nodes.lv2_atom_Chunk)),
+                                                          plugin_host_.urid_map.urid_map (lilv_node_as_string (plugin_host_.nodes.lv2_atom_Sequence)));
                   lilv_instance_connect_port (instance_, i, lv2_evbuf_get_buffer (plugin_ports_[i].evbuf));
 
                   if (LilvNodes *atom_supports = lilv_port_get_value (plugin_, port, plugin_host_.nodes.lv2_atom_supports))
@@ -1400,9 +1400,9 @@ PluginInstance::init_ports()
                   plugin_ports_[i].flags |= Port::ATOM;
                   atom_out_ports_.push_back (i);
 
-                  plugin_ports_[i].evbuf = lv2_evbuf_new (port_buffer_size, LV2_EVBUF_ATOM,
-                                                         plugin_host_.urid_map.urid_map (lilv_node_as_string (plugin_host_.nodes.lv2_atom_Chunk)),
-                                                         plugin_host_.urid_map.urid_map (lilv_node_as_string (plugin_host_.nodes.lv2_atom_Sequence)));
+                  plugin_ports_[i].evbuf = lv2_evbuf_new (port_buffer_size,
+                                                          plugin_host_.urid_map.urid_map (lilv_node_as_string (plugin_host_.nodes.lv2_atom_Chunk)),
+                                                          plugin_host_.urid_map.urid_map (lilv_node_as_string (plugin_host_.nodes.lv2_atom_Sequence)));
                   lilv_instance_connect_port (instance_, i, lv2_evbuf_get_buffer (plugin_ports_[i].evbuf));
 
                 }
@@ -1644,7 +1644,7 @@ PluginInstance::send_plugin_events_to_ui()
       for (LV2_Evbuf_Iterator i = lv2_evbuf_begin (evbuf); lv2_evbuf_is_valid (i); i = lv2_evbuf_next (i))
         {
           uint32_t frames, subframes, type, size;
-          uint8_t *body;
+          void    *body;
           lv2_evbuf_get (i, &frames, &subframes, &type, &size, &body);
 
           ControlEvent *event = ControlEvent::loft_new (port_index, plugin_host_.urids.atom_eventTransfer, sizeof (LV2_Atom) + size);
