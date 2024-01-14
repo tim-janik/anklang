@@ -30,7 +30,7 @@ JSONFILE=$(readlink -f "$1")
 ONAME=$PWD/$(basename "${JSONFILE%.json}")
 
 # kill all child processes at exit
-trap 'pkill -P $$ '		0 HUP INT QUIT TRAP USR1 PIPE TERM ERR EXIT
+trap 'pkill -P $$ || true'	0 HUP INT QUIT TRAP USR1 PIPE TERM ERR EXIT
 
 # change dir to project build dir which has node_modules/
 # find node_modules/ relative to SCRIPTNAME
