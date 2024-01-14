@@ -37,10 +37,6 @@ trap 'pkill -P $$ '		0 HUP INT QUIT TRAP USR1 PIPE TERM ERR EXIT
 export NODE_PATH=$X11TEST/../out/node_modules/
 cp $X11TEST/ereplay.cjs .
 
-# Start Anklang engine
-test -x $X11TEST/../out/lib/AnklangSynthEngine || die "missing executable:" AnklangSynthEngine
-$X11TEST/../out/lib/AnklangSynthEngine &
-
 # Replay in ELectron and record X11 session
 EXITSTATUS=0
 $X11TEST/x11rec.sh \

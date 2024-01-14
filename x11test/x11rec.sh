@@ -73,6 +73,11 @@ grep -s RandomPlacement ~/.twmrc ||
 DISPLAY=:$XDISPLAY twm &
 wm_pid=$!
 
+# Start Anklang engine
+test -x ../lib/AnklangSynthEngine || die "missing executable:" AnklangSynthEngine
+DISPLAY=:$XDISPLAY ../lib/AnklangSynthEngine &
+anklang_pid=$!
+
 # run test
 EXITSTATUS=0
 (
@@ -82,9 +87,10 @@ EXITSTATUS=0
 ) |& tee $ONAME.log ||
   EXITSTATUS=$?
 
-# end video and WM
+# end video, Anklang and WM
 echo q >> $ffmpeg_stdin		# sends ffmpeg exit
 test -z "$wm_pid" || kill $wm_pid || :
+test -z "$anklang_pid" || kill $anklang_pid || :
 wait $ffmpeg_pid || :
 rm -f $ffmpeg_stdin
 
