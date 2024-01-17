@@ -44,7 +44,7 @@ ALL_TARGETS += $(lib/AnklangSynthEngine)-fma
 endif
 
 # == ase/api.jsonipc.cc ==
-$>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/include.deps) ase/Makefile.mk	| $>/ase/
+$>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/include.deps) | $>/ase/ # ase/Makefile.mk
 	$(QGEN)
 	$Q echo '#include <ase/jsonapi.hh>'							>  $@.tmp
 	$Q echo '#include <ase/api.hh>'								>> $@.tmp
@@ -53,7 +53,7 @@ $>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/include.deps) ase/Make
 	$Q mv $@.tmp $@
 
 # == ase/buildversion-$(version_short).cc ==
-$>/ase/buildversion-$(version_short).cc: $(GITCOMMITDEPS)			| $>/ase/
+$>/ase/buildversion-$(version_short).cc:				| $>/ase/ # $(GITCOMMITDEPS)
 	$(QGEN)
 	$Q echo '// make $@'							> $@.tmp
 	$Q echo '#include <ase/platform.hh>'					>>$@.tmp
@@ -122,7 +122,7 @@ $>/ase/blake3impl.c:		| $>/ase/
 $>/ase/blake3avx512.c $>/ase/blake3avx2.c $>/ase/blake3sse41.c $>/ase/blake3sse2.c: $>/ase/blake3impl.c
 
 # == libsndfile ==
-$>/lib/libsndfile.so: .submodule-stamp external/libsndfile/include/sndfile.hh		| $>/lib/
+$>/lib/libsndfile.so: external/libsndfile/include/sndfile.hh		| $>/lib/ .submodule-stamp
 	$(QGEN)
 	$Q cmake \
 		-B $>/sndfile/ -S external/libsndfile/ -DCMAKE_BUILD_TYPE=MINSIZEREL \
