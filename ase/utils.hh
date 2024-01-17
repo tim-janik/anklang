@@ -167,8 +167,9 @@ uint64_swap_le_be (uint64_t v)
            ((v & 0xff00000000000000UL) >> 56) );
 }
 
-void debug_message (const char *cond, const std::string &message);
-void diag_message  (uint8 code, const std::string &message);
+void   debug_message (const char *cond, const std::string &message);
+void   diag_flush (uint8 code, const String &txt);
+String diag_prefix (uint8 code);
 
 /// Global boolean to reduce debugging penalty where possible
 extern bool ase_debugging_enabled;
@@ -200,29 +201,28 @@ debug (const char *cond, const char *format, const Args &...args)
 template<class ...Args> void ASE_NORETURN
 fatal_error (const char *format, const Args &...args)
 {
-  diag_message ('F', string_format (format, args...));
-  while (1);
+  assertion_fatal ((diag_prefix ('F') + string_format (format, args...)).c_str(), nullptr, -1, nullptr);
 }
 
 /// Issue a printf-like warning message.
 template<class ...Args> void
 warning (const char *format, const Args &...args)
 {
-  diag_message ('W', string_format (format, args...));
+  assertion_failed ((diag_prefix ('W') + string_format (format, args...)).c_str(), nullptr, -1, nullptr);
 }
 
 /// Print a message on stdout (and flush stdout) ala printf(), using the POSIX/C locale.
 template<class... Args> void
 printout (const char *format, const Args &...args)
 {
-  diag_message ('o', string_format (format, args...));
+  diag_flush ('o', string_format (format, args...));
 }
 
 /// Print a message on stderr (and flush stderr) ala printf(), using the POSIX/C locale.
 template<class... Args> void
 printerr (const char *format, const Args &...args)
 {
-  diag_message ('e', string_format (format, args...));
+  diag_flush ('e', string_format (format, args...));
 }
 
 /// Translate a string, using the ASE locale.
