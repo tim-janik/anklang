@@ -82,7 +82,13 @@ using VoidF = std::function<void()>;
 #define ASE_ASSERT_RETURN(expr, ...)     do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); return __VA_ARGS__; } while (0)
 
 /// Return from the current function and issue an assertion warning.
-#define ASE_ASSERT_RETURN_UNREACHED(...) do { ::Ase::assertion_failed (""); return __VA_ARGS__; } while (0)
+#define ASE_ASSERT_RETURN_UNREACHED(...) do { ::Ase::assertion_failed (nullptr); return __VA_ARGS__; } while (0)
+
+/// Abort and issue an assertion error.
+#define ASE_ASSERT_UNREACHED(...)        do { ::Ase::assertion_fatal (nullptr); } while (0)
+
+/// Issue an assertion warning if `expr` evaluates to false.
+#define ASE_ASSERT(expr)                 do { if (expr) [[likely]] break; ::Ase::assertion_fatal (#expr); } while (0)
 
 /// Issue an assertion warning if `expr` evaluates to false.
 #define ASE_ASSERT_WARN(expr)            do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); } while (0)
