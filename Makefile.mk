@@ -382,7 +382,9 @@ $>/ChangeLog: $(GITCOMMITDEPS) Makefile.mk			| $>/
 # ctags --print-language `git ls-tree -r --name-only HEAD`
 $>/TAGS: $>/ls-tree.lst $(GITCOMMITDEPS)
 	$(QGEN)
-	$Q ctags -e -o $@ -L $<
+	$Q ctags -e -o $@ -L $< >$>tags.log 2>&1 || { cat $>tags.log >&2 ; false ; } \
+	&& sed -r '0,/Warning: ignoring null tag/b; /Warning: ignoring null tag/d' < $>tags.log && $(RM) $>tags.log
+# use sed to compress flood of "Warning: ignoring null tag"
 ALL_TARGETS += $>/TAGS
 
 # == compile_commands.json ==
