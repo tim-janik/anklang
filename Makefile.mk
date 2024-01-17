@@ -380,9 +380,9 @@ $>/ChangeLog: $(GITCOMMITDEPS) Makefile.mk			| $>/
 
 # == TAGS ==
 # ctags --print-language `git ls-tree -r --name-only HEAD`
-$>/TAGS: $>/ls-tree.lst Makefile.mk
+$>/TAGS: $>/ls-tree.lst $(GITCOMMITDEPS)
 	$(QGEN)
-	$Q ctags -e -o $@ -L $>/ls-tree.lst
+	$Q ctags -e -o $@ -L $<
 ALL_TARGETS += $>/TAGS
 
 # == compile_commands.json ==
