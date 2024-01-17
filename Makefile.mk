@@ -228,20 +228,24 @@ $>/%/:
 # Use FORCE to mark phony targets via a dependency
 .PHONY:	FORCE
 
-# == PACKAGE_CONFIG ==
+# == PACKAGE_VERSIONS ==
 define PACKAGE_VERSIONS
   "version": "$(version_short)",
   "revdate": "$(version_date)",
   "mode": "$(MODE)"
 endef
 
-define PACKAGE_CONFIG
-  "config": {
-    "srcdir": "$(abspath .)",
-    "outdir": "$(abspath $>)",
-    "pkgdir": "$(abspath $(pkgdir))",
-    $(strip $(PACKAGE_VERSIONS)) }
-endef
+# == config.sh ==
+$>/config.sh: $(wildcard config-defaults.mk)				| $>/
+	$(QGEN)
+	$Q echo 'srcdir="$(abspath .)"'					>  $@.tmp
+	$Q echo 'outdir="$(abspath $>)"'				>> $@.tmp
+	$Q echo 'pkgdir="$(abspath $(pkgdir))"'				>> $@.tmp
+	$Q echo 'version="$(version_short)"'				>> $@.tmp
+	$Q echo 'revdate="$(version_date)"'				>> $@.tmp
+	$Q echo 'mode="$(MODE)"'					>> $@.tmp
+	$Q mv $@.tmp $@
+ALL_TARGETS += $>/config.sh
 
 # == package.json ==
 $>/package.json: misc/package.json.in					| $>/
