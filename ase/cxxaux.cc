@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "cxxaux.hh"
 #include <cxxabi.h>             // abi::__cxa_demangle
+#include <unistd.h>
 #include <fcntl.h>
 #include <cstring>
 
