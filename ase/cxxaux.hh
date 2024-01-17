@@ -174,7 +174,7 @@ divmod (T dividend, T divisor, T *reminderp)
 }
 
 /// Demangle identifier via libcc.
-std::string string_demangle_cxx (const char *mangled_identifier);
+std::string string_demangle_cxx (const char *mangled_identifier) noexcept;
 
 /// Provide demangled stringified name for type `T`.
 template<class T> ASE_PURE static inline String
@@ -201,13 +201,16 @@ unalias_ptr (T *ptr)
 /// Common base type to allow casting between polymorphic classes.
 struct VirtualBase {
 protected:
-  virtual ~VirtualBase() = 0;
+  virtual ~VirtualBase() noexcept = 0;
 };
 using VirtualBaseP = std::shared_ptr<VirtualBase>;
 
 /// Issue a warning about an assertion error.
 void assertion_failed (const char *msg = nullptr, const char *file = __builtin_FILE(),
                        int line = __builtin_LINE(), const char *func = __builtin_FUNCTION()) noexcept;
+void assertion_fatal  (const char *msg = nullptr, const char *file = __builtin_FILE(),
+                       int line = __builtin_LINE(), const char *func = __builtin_FUNCTION()) noexcept ASE_NORETURN;
+extern bool assertion_failed_fatal;
 
 /// Test string equality at compile time.
 extern inline constexpr bool
