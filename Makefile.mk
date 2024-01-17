@@ -241,16 +241,14 @@ define PACKAGE_CONFIG
 endef
 
 # == package.json ==
-$>/package.json: misc/package.json.in $(GITCOMMITDEPS)			| $>/
+$>/package.json: misc/package.json.in					| $>/
 	$(QGEN)
-	$Q : $(file > $@.config,$(PACKAGE_CONFIG),)
-	$Q sed -e '1r '$@.config $< > $@.tmp
-	$Q rm $@.config
+	$Q $(CP) $< $@.tmp
 	$Q mv $@.tmp $@
 CLEANDIRS += $>/node_modules/
 
 # == npm.done ==
-$>/node_modules/.npm.done: $(if $(NPMBLOCK),, $>/package.json)	| $>/
+$>/node_modules/.npm.done: $(if $(NPMBLOCK),, $>/package.json)		| $>/
 	$(QGEN)
 	$Q rm -f -r $>/node_modules/
 	@: # Install all node_modules and anonymize build path
