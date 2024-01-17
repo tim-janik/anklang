@@ -8,8 +8,8 @@ function die  { [ -n "$*" ] && echo "$SCRIPTNAME: $*" >&2; exit 127 ; }
 # paths
 BUILDDIR="${BUILDDIR:-out}"
 DROOT=$BUILDDIR/mkdeb/
-PKGDIR=$(sed -rn '/^ *"pkgdir":/{ s/.*:.*"([^"]+)", *$/\1/; p; q; }' $BUILDDIR/package.json)
 DEBIAN=$DROOT/DEBIAN
+PKGDIR=$(source out/config.sh && echo "$pkgdir")
 PKGDOCDIR=$DROOT/$PKGDIR/doc
 ANKLANGSYNTHENGINE=$PKGDIR/lib/AnklangSynthEngine
 MAKE="make -w V=${V:-}"
