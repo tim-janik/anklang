@@ -24,7 +24,7 @@ fetch_news_version() # fetch_news_version {1|2}
 NEWS_TAG="v$(fetch_news_version 1)"
 
 # Work around repos without tags
-git rev-parse --verify "$NEWS_TAG" 2>/dev/null || NEWS_TAG=`git log --reverse --format=%H | sed -n '1p' `
+git rev-parse --verify "$NEWS_TAG" >/dev/null 2>&1 || NEWS_TAG=`git log --reverse --format=%H | sed -n '1p' `
 
 # Just print topmost NEWS.md version
 test " ${1:-}" == " --version" && {
