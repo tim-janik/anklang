@@ -126,10 +126,13 @@ $>/ls-tree.d: $(GITCOMMITDEPS)						| $>/
 	$(QGEN)
 	$Q if test -r .git ; then					\
 		git ls-tree -r --name-only HEAD				\
-		| grep -v '^external/' > $>/ls-tree.lst ;		\
+		| grep -v '^external/' > $>/ls-tree.lst.tmp ;		\
 	   else								\
-		$(CP) ./ls-tree.lst $>/ls-tree.lst ;			\
+		$(CP) ./ls-tree.lst $>/ls-tree.lst.tmp ;		\
 	   fi
+	$Q cmp -s $>/ls-tree.lst.tmp $>/ls-tree.lst			\
+	&& $(RM) $>/ls-tree.lst.tmp					\
+	|| mv $>/ls-tree.lst.tmp $>/ls-tree.lst
 	$Q ( echo 'LS_TREE_LST += $$(strip '\\ 				\
 	     && sed 's/$$/ \\/' $>/ls-tree.lst && echo ')' ) > $@
 -include $>/ls-tree.d
