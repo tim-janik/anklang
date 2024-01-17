@@ -256,8 +256,9 @@ $>/node_modules/.npm.done: $(if $(NPMBLOCK),, $>/package.json)	| $>/
 	@: # Install all node_modules and anonymize build path
 	$Q cd $>/ \
 	  && { POFFLINE= && test ! -d node_modules/ || POFFLINE=--prefer-offline ; } \
-	  && $(NPM_INSTALL) $$POFFLINE \
-	  && find . -name package.json -print0 | xargs -0 sed -r "\|$$PWD|s|^(\s*(\"_where\":\s*)?)\"$$PWD|\1\"/...|" -i
+	  && $(NPM_INSTALL) $$POFFLINE
+	@: # Anonymize build paths in node_modules
+	$Q find $>/node_modules/ -name package.json -print0 | xargs -0 sed -r "\|$$PWD|s|^(\s*(\"_where\":\s*)?)\"$$PWD|\1\"/...|" -i
 	@: # Fix bun installation, see: https://github.com/oven-sh/bun/pull/5077
 	$Q test ! -d $>/node_modules/sharp/ -o -d $>/node_modules/sharp/build/Release/ || (cd $>/node_modules/sharp/ && $(NPM_INSTALL))
 	$Q test -d $>/node_modules/electron/dist/ || (cd $>/node_modules/electron/ && $(NPM_INSTALL))
