@@ -317,6 +317,7 @@ tscheck $>/.tscheck.done: ui/types.d.ts ui/tsconfig.json $(ui/tscheck.deps) $>/n
 	$Q touch $>/.tscheck.done
 $>/ui/.build2-stamp: $>/.tscheck.done
 .PHONY: tscheck
+CLEANDIRS += $>/tscheck/
 
 # == ui/lint ==
 ui/lint: tscheck eslint stylelint
