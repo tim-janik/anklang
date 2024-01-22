@@ -73,57 +73,38 @@ debug_message (const char *cond, const std::string &message)
   printerr ("%s%s", sout, newline);
 }
 
-// Mimick relevant parts of glibc's abort_msg_s
-struct AbortMsg {
-  const char *msg = NULL;
-};
-static AbortMsg abort_msg;
-
-/// Handle various dignostics and stdout/stderr printing.
+/// Handle stdout and stderr printing with flushing.
 void
-diag_message (uint8 code, const std::string &message)
+diag_flush (uint8 code, const String &txt)
 {
-  FILE *const output = code == 'o' ? stdout : stderr;
-  String msg = message;
-  if (code == 'W' || code == 'F')
+  fflush (stdout);      // preserve output ordering
+  fputs (txt.c_str(), code == 'e' ? stderr : stdout);
+  fflush (stderr);      // some platforms (_WIN32) don't properly flush on '\n'
+}
+
+/// Create prefix for warnings and errors.
+String
+diag_prefix (uint8 code)
+{
+  using namespace AnsiColors;
+  String prefix;
+  if (code == 'W')
+    prefix = color (FG_YELLOW) + "warning:" + color (RESET) + " ";
+  else if (code == 'F')
+    prefix = color (BG_RED, FG_WHITE, BOLD) + "error:" + color (RESET) + " ";
+  std::string executable = executable_path();
+  if (!executable.empty())
     {
-      using namespace AnsiColors;
-      String prefix;
-      if (code == 'W')
-        prefix = color (FG_YELLOW) + "warning:" + color (RESET);
-      else
-        prefix = color (BG_RED, FG_WHITE, BOLD) + "error:" + color (RESET);
-      msg = prefix + ' ' + msg;
-      std::string executable = executable_path();
+      size_t sep = executable.find (" ");
+      if (sep != std::string::npos)
+        executable = executable.substr (0, sep);        // strips electron command line args
+      sep = executable.rfind ("/");
+      if (sep != std::string::npos)
+        executable = executable.substr (sep + 1);       // use simple basename
       if (!executable.empty())
-        {
-          size_t sep = executable.find (" ");
-          if (sep != std::string::npos)
-            executable = executable.substr (0, sep);        // strips electron command line args
-          sep = executable.rfind ("/");
-          if (sep != std::string::npos)
-            executable = executable.substr (sep + 1);       // use simple basename
-          if (!executable.empty())
-            msg = executable + ": " + msg;
-        }
-      if (msg.size() && msg[msg.size()] != '\n')
-        msg += '\n';
+        prefix = executable + ": " + prefix;
     }
-  // some platforms (_WIN32) don't properly flush on '\n'
-  fflush (output == stdout ? stderr : stdout); // preserve ordering
-  fputs (msg.c_str(), output);
-  fflush (output);
-  if (code == 'F' || (code == 'W' && ase_fatal_warnings))
-    {
-      __sync_synchronize();
-      Ase::abort_msg.msg = msg.c_str();
-      __sync_synchronize();
-      if (code == 'W')
-        return breakpoint();
-      ::raise (SIGQUIT);        // evade apport
-      ::abort();                // default action for SIGABRT is core dump
-      ::_exit (-1);             // ensure noreturn
-    }
+  return prefix;
 }
 
 // == i18n & gettext ==
@@ -418,13 +399,6 @@ CustomDataContainer::~CustomDataContainer()
 }
 
 } // Ase
-
-// == __abort_msg ==
-::Ase::AbortMsg *ase_abort_msg = &::Ase::abort_msg;
-#ifdef  __ELF__
-// allow 'print __abort_msg->msg' when debugging core files for apport/gdb to pick up
-extern "C" ::Ase::AbortMsg *__abort_msg __attribute__ ((weak, alias ("ase_abort_msg")));
-#endif // __ELF__
 
 #include "testing.hh"
 
