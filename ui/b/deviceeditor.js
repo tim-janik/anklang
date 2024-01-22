@@ -89,6 +89,7 @@ function prop_visible (prop) {
 
 /** Determine layout of properties.
  * @this{BDeviceEditor}
+ * TODO: handle combinations of 1-unit properties, mixed in with other that may be 2, 3, or 4 units in width.
  */
 async function property_groups (asyncpropertylist)
 {
