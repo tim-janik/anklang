@@ -13,6 +13,7 @@ $>/images/knobs/.deps: images/knobs/Makefile.mk		| $>/images/knobs/
 	$Q convert --version | egrep 'ImageMagick\b.* [2-9][0-9]*\.[0-9]' >/dev/null || \
 	   { echo "$@: missing ImageMagick version >= 6" ; false ; }
 	$Q touch $@
+CLEANDIRS += $>/images/
 
 # == cknob193u.png ==
 $>/images/knobs/cknob193u.png: images/knobs/cknob.svg images/knobs/mksprite.py $>/images/knobs/.deps

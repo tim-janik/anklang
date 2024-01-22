@@ -57,6 +57,40 @@ atomic_bits_test ()
   }
 }
 
+// Basic Unit test for AtomicIntrusiveStack<>
+struct AisNode { int value = 0; std::atomic<AisNode*> next = nullptr; };
+static std::atomic<AisNode*>&
+atomic_next_ptrref (AisNode *node)
+{
+  return node->next;
+}
+
+TEST_INTEGRITY (atomic_stack_test);
+static void
+atomic_stack_test()
+{
+  bool was_empty;
+  AtomicIntrusiveStack<AisNode> stack;
+  TASSERT (stack.empty());
+  AisNode n1, n2, n3;
+  n1.value = 1;
+  n2.value = 2;
+  n3.value = 3;
+  was_empty = stack.push (&n1);
+  TASSERT (was_empty);
+  n2.next = &n3;
+  was_empty = stack.push_chain (&n2, &n3);
+  TASSERT (!was_empty);
+  AisNode *node = stack.pop_all();
+  int sum = 0;
+  while (node)
+    {
+      sum += node->value;
+      node = node->next;
+    }
+  TASSERT (sum == 6);
+}
+
 // == MpmcStack<> test ==
 static const size_t COUNTING_THREADS = N_THREADS + 1;
 static constexpr const size_t NUMBER_NODES_PER_THREAD = 9999;

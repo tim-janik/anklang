@@ -126,10 +126,13 @@ $>/ls-tree.d: $(GITCOMMITDEPS)						| $>/
 	$(QGEN)
 	$Q if test -r .git ; then					\
 		git ls-tree -r --name-only HEAD				\
-		| grep -v '^external/' > $>/ls-tree.lst ;		\
+		| grep -v '^external/' > $>/ls-tree.lst.tmp ;		\
 	   else								\
-		$(CP) ./ls-tree.lst $>/ls-tree.lst ;			\
+		$(CP) ./ls-tree.lst $>/ls-tree.lst.tmp ;		\
 	   fi
+	$Q cmp -s $>/ls-tree.lst.tmp $>/ls-tree.lst			\
+	&& $(RM) $>/ls-tree.lst.tmp					\
+	|| mv $>/ls-tree.lst.tmp $>/ls-tree.lst
 	$Q ( echo 'LS_TREE_LST += $$(strip '\\ 				\
 	     && sed 's/$$/ \\/' $>/ls-tree.lst && echo ')' ) > $@
 -include $>/ls-tree.d
@@ -225,39 +228,42 @@ $>/%/:
 # Use FORCE to mark phony targets via a dependency
 .PHONY:	FORCE
 
-# == PACKAGE_CONFIG ==
+# == PACKAGE_VERSIONS ==
 define PACKAGE_VERSIONS
   "version": "$(version_short)",
   "revdate": "$(version_date)",
   "mode": "$(MODE)"
 endef
 
-define PACKAGE_CONFIG
-  "config": {
-    "srcdir": "$(abspath .)",
-    "outdir": "$(abspath $>)",
-    "pkgdir": "$(abspath $(pkgdir))",
-    $(strip $(PACKAGE_VERSIONS)) }
-endef
+# == config.sh ==
+$>/config.sh: $(wildcard config-defaults.mk)				| $>/
+	$(QGEN)
+	$Q echo 'srcdir="$(abspath .)"'					>  $@.tmp
+	$Q echo 'outdir="$(abspath $>)"'				>> $@.tmp
+	$Q echo 'pkgdir="$(abspath $(pkgdir))"'				>> $@.tmp
+	$Q echo 'version="$(version_short)"'				>> $@.tmp
+	$Q echo 'revdate="$(version_date)"'				>> $@.tmp
+	$Q echo 'mode="$(MODE)"'					>> $@.tmp
+	$Q mv $@.tmp $@
+ALL_TARGETS += $>/config.sh
 
 # == package.json ==
-$>/package.json: misc/package.json.in $(GITCOMMITDEPS)			| $>/
+$>/package.json: misc/package.json.in					| $>/
 	$(QGEN)
-	$Q : $(file > $@.config,$(PACKAGE_CONFIG),)
-	$Q sed -e '1r '$@.config $< > $@.tmp
-	$Q rm $@.config
+	$Q $(CP) $< $@.tmp
 	$Q mv $@.tmp $@
 CLEANDIRS += $>/node_modules/
 
 # == npm.done ==
-$>/node_modules/.npm.done: $(if $(NPMBLOCK),, $>/package.json)	| $>/
+$>/node_modules/.npm.done: $(if $(NPMBLOCK),, $>/package.json)		| $>/
 	$(QGEN)
 	$Q rm -f -r $>/node_modules/
 	@: # Install all node_modules and anonymize build path
 	$Q cd $>/ \
 	  && { POFFLINE= && test ! -d node_modules/ || POFFLINE=--prefer-offline ; } \
-	  && $(NPM_INSTALL) $$POFFLINE \
-	  && find . -name package.json -print0 | xargs -0 sed -r "\|$$PWD|s|^(\s*(\"_where\":\s*)?)\"$$PWD|\1\"/...|" -i
+	  && $(NPM_INSTALL) $$POFFLINE
+	@: # Anonymize build paths in node_modules
+	$Q find $>/node_modules/ -name package.json -print0 | xargs -0 sed -r "\|$$PWD|s|^(\s*(\"_where\":\s*)?)\"$$PWD|\1\"/...|" -i
 	@: # Fix bun installation, see: https://github.com/oven-sh/bun/pull/5077
 	$Q test ! -d $>/node_modules/sharp/ -o -d $>/node_modules/sharp/build/Release/ || (cd $>/node_modules/sharp/ && $(NPM_INSTALL))
 	$Q test -d $>/node_modules/electron/dist/ || (cd $>/node_modules/electron/ && $(NPM_INSTALL))
@@ -378,9 +384,11 @@ $>/ChangeLog: $(GITCOMMITDEPS) Makefile.mk			| $>/
 
 # == TAGS ==
 # ctags --print-language `git ls-tree -r --name-only HEAD`
-$>/TAGS: $>/ls-tree.lst Makefile.mk
+$>/TAGS: $>/ls-tree.lst $(GITCOMMITDEPS)
 	$(QGEN)
-	$Q ctags -e -o $@ -L $>/ls-tree.lst
+	$Q ctags -e -o $@ -L $< >$>tags.log 2>&1 || { cat $>tags.log >&2 ; false ; } \
+	&& sed -r '0,/Warning: ignoring null tag/b; /Warning: ignoring null tag/d' < $>tags.log && $(RM) $>tags.log
+# use sed to compress flood of "Warning: ignoring null tag"
 ALL_TARGETS += $>/TAGS
 
 # == compile_commands.json ==

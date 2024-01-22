@@ -24,7 +24,7 @@ while test $# -ne 0 ; do
   esac
   shift
 done
-test -r "`echo assets/anklang-*.tar.zst`" -o -n "$RUNID" || die "need either $PWD/assets/anklang-*.tar.zst or <run-id>"
+test -r "`echo assets/anklang-*.tar.zst`" -o -n "$RUNID" || die "need either <run-id> or a single $PWD/assets/anklang-*.tar.zst"
 
 # Properly fetch all of the repo history
 test -r `git rev-parse --git-dir`/shallow &&
@@ -53,7 +53,7 @@ RELEASE_VERSION=$(out/publish/misc/version.sh | cut -d\  -f1)
 echo RELEASE_VERSION=$RELEASE_VERSION
 RELEASE_TAG="v$RELEASE_VERSION"
 echo RELEASE_TAG=$RELEASE_TAG
-ISPRERELEASE=$(test tag != $(git cat-file -t $RELEASE_TAG) && echo true || echo false)
+ISPRERELEASE=$(test tag != "$(git cat-file -t $RELEASE_TAG)" && echo true || echo false)
 echo ISPRERELEASE=$ISPRERELEASE
 
 # Create release and upload assets

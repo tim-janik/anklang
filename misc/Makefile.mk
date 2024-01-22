@@ -115,6 +115,7 @@ $>/appimagetools/appimage-runtime-zstd:			| $>/appimagetools/
 	|| ( curl -sfSL https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd -o .dlcache/appimage-runtime-zstd.tmp \
 	     && mv .dlcache/appimage-runtime-zstd.tmp .dlcache/appimage-runtime-zstd )
 	$Q $(CP) .dlcache/linuxdeploy-x86_64.AppImage .dlcache/appimage-runtime-zstd $(@D)
+CLEANDIRS += $>/appimagetools/
 
 # == mkassets ==
 # Let misc/mkassets.sh do the work, just pre-cache needed downloads

@@ -13,8 +13,8 @@ VERSION=$(misc/version.sh | cut -d\  -f1)
 APPINST=$BUILDDIR/appinst/		# install dir
 APPBASE=$BUILDDIR/appbase/		# dir for packaging
 APPTOOLS=$BUILDDIR/appimagetools	# AppImage build tools
-PKGDIR=$(sed -rn '/^ *"pkgdir":/{ s/.*:.*"([^"]+)", *$/\1/; p; q; }' $BUILDDIR/package.json)
 MAKE="make -w V=${V:-}"
+PKGDIR=$(source out/config.sh && echo "$pkgdir")
 
 # AppImage tooling
 echo 'AppImage tooling...'
