@@ -2,35 +2,30 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 set -Eeuo pipefail
 
-SCRIPTNAME=${0##*/} ; die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 9 ; }
 ABSPATHSCRIPT=`readlink -f "$0"`
 
-# == Version baked in ==
 # Commit information provided by git-archive in export-subst format string, see gitattributes(5)
-HASH='$Format:%H$'
-VDATE='$Format:%ci$'
-BAKED_DESCRIBE='$Format:%(describe:match=v[0-9]*.[0-9]*.[0-9]*)$' # altered for dist tarballs
-DESCRIBE="$BAKED_DESCRIBE"
+read VHASH VDESCRIBE VDATE <<<' $Format: %H %(describe:match=v[0-9]*.[0-9]*.[0-9]*) %ci $ '
+[[ "$VDESCRIBE" =~ ^% ]] &&
+  VDESCRIBE='$Format:%(describe:match=v[0-9]*.[0-9]*.[0-9]*)$'	# <-- line altered by 'make dist'
 
-# == Version from git ==
-if ! [[ "$HASH" =~ ^[0-9a-f]+$ ]] ; then		# checks proper hash
-  DESCRIBE=
-  if test -e "${ABSPATHSCRIPT%/*}"/../.git ; then	# fetch version from live git
-    HASH=$(git log -1 --pretty="tformat:%H")
-    DESCRIBE=$(git describe --tags --match='v[0-9]*.[0-9]*.[0-9]*' --exact-match 2>/dev/null || git describe --match='v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null) || DESCRIBE=""
-    VDATE=$(git log -1 --pretty="tformat:%ci")
-  fi
-fi
+# When no version was baked in to the script
+[[ "$VHASH" =~ ^[0-9a-f]+$ ]] || {
+  # Fallback
+  read VHASH VDESCRIBE VDATE <<<' 0000000000000000000000000000000000000000 v0.0.0-unversioned0 2001-01-01 01:01:01 +0000 '
+  # Fetch version from live git
+  test -e "${ABSPATHSCRIPT%/*}"/../.git && {
+    VHASH=$(git log -1 --pretty="tformat:%H" || echo "$VHASH")
+    VDATE=$(git log -1 --pretty="tformat:%ci" || echo "$VDATE")
+    # Look for light version tag for exact matches (e.g. nighty), or annotated tag in ancestry
+    VDESCRIBE=$(git describe --tags --match='v[0-9]*.[0-9]*.[0-9]*' --exact-match 2>/dev/null ||
+		  git describe --match='v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null  ||
+		  echo "$VDESCRIBE")
+  }
+}
 
-# == Fallback version ==
-if test -z "$DESCRIBE" ; then # triggered by e.g. forks
-  HASH=$(git log -1 --pretty="tformat:%H" 2>/dev/null) || HASH=0000000000000000000000000000000000000000
-  DESCRIBE=v0.0.0-snapshot0
-  VDATE="2001-01-01 01:01:01 +0000"
-fi
-
-# == Produce: VERSION HASH DATE ==
-VERSIONNUMBER=$(echo "${DESCRIBE#v}" |
+# Produce: VERSION HASH DATE
+VERSIONNUMBER=$(echo "${VDESCRIBE#v}" |
 		  sed -e 's/-g[0-9a-f]\+$//i' \
-		      -e 's/-\([0-9]\+\)$/.dev\1/')	# strip ^v, -gCOMMIT, enforce .devXX
-echo "$VERSIONNUMBER" "$HASH" "$VDATE"
+		      -e 's/-\([0-9]\+\)$/.dev\1/')	# strip ^v, -gCOMMIT, enforce .devNN
+echo "$VERSIONNUMBER" "$VHASH" "$VDATE"

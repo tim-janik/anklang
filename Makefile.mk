@@ -365,7 +365,7 @@ dist: $(extradist:%=$>/%)
 	&& cat NEWS.md					>> $>/dist/$(distname)/NEWS.md
 	$Q tar xf assets/$(distname).tar -C $>/dist/ $(distname)/misc/version.sh	# fetch archived version.sh
 	$Q tar f assets/$(distname).tar --delete $(distname)/misc/version.sh	# delete, make room for replacement
-	$Q sed "s/^BAKED_DESCRIBE=.*/BAKED_DESCRIBE='$(version_short)'/" \
+	$Q sed "s/^ *VDESCRIBE=.*\bmake *dist\b.*/  VDESCRIBE='$(version_short)'/" \
 		-i $>/dist/$(distname)/misc/version.sh	# support lightweight tags and fix git-2.25.1 which cannot describe:match
 	$Q cd $>/dist/ && tar uhf $(abspath assets/$(distname).tar) $(distname)	# update (replace) files in tarball
 	$Q rm -rf assets/$(distname).tar.zst && zstd --ultra -22 --rm assets/$(distname).tar && ls -lh assets/$(distname).tar.zst
