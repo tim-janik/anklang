@@ -13,15 +13,11 @@ jobs:
 
   Focal-Assets:
     runs-on: ubuntu-latest
-    env:
-      CITAG: focal
-      CICACHE: /tmp/cicache
+    env: { CICACHE: "/tmp/cicache", CITAG: "focal" }
     steps:
     - uses: actions/checkout@v4
     - uses: actions/cache@v3
-      with:
-        key: cifocal-${{hashFiles ('misc/Dockerfile.focal')}}
-        path: /tmp/cicache
+      with: { path: "/tmp/cicache", key: "cifocal-${{hashFiles ('misc/Dockerfile.focal')}}" }
     - name: 'Prepare Docker Image'
       run: |
         echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
@@ -42,15 +38,11 @@ jobs:
 
   Arch-Replay:
     runs-on: ubuntu-latest
-    env:
-      CITAG: arch
-      CICACHE: /tmp/cicache
+    env: { CICACHE: "/tmp/cicache", CITAG: "arch" }
     steps:
     - uses: actions/checkout@v4
     - uses: actions/cache@v3
-      with:
-        key: ciarch-${{hashFiles ('misc/Dockerfile.arch')}}
-        path: /tmp/cicache
+      with: { path: "/tmp/cicache", key: "ciarch-${{hashFiles ('misc/Dockerfile.arch')}}" }
     - name: 'Prepare Docker Image'
       run: |
         # Test the most recent g++ via Arch
@@ -71,15 +63,11 @@ jobs:
   Focal-Clang-Tidy:
     if: ${{ ! contains(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
-    env:
-      CITAG: focal
-      CICACHE: /tmp/cicache
+    env: { CICACHE: "/tmp/cicache", CITAG: "focal" }
     steps:
     - uses: actions/checkout@v4
     - uses: actions/cache@v3
-      with:
-        key: cifocal-${{hashFiles ('misc/Dockerfile.focal')}}
-        path: /tmp/cicache
+      with: { path: "/tmp/cicache", key: "cifocal-${{hashFiles ('misc/Dockerfile.focal')}}" }
     - name: 'Prepare Docker Image'
       run: |
         echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
@@ -98,8 +86,7 @@ jobs:
   Release-Upload:
     needs: [Focal-Assets, Arch-Replay]
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
-    env:
-      GH_TOKEN: ${{ github.token }}
+    env: { GH_TOKEN: "${{ github.token }}" }
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
