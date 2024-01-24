@@ -87,8 +87,8 @@ AudioParams::install (const AudioParams::Map &params)
   i = 0;
   for (auto [id,p] : params)
     new_parameters[i++] = p;
-  assert_return (i == count);
   parameters = new_parameters;
+  assert_return (i == count);
   // values
   values = new double[count] ();                // value-initialized per ISO C++03 5.3.4[expr.new]/15
   for (size_t i = 0; i < count; i++)

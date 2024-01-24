@@ -235,7 +235,7 @@ is_compressed (const String &input)
 
 }
 
-class StreamReaderZStd : public StreamReader {
+class StreamReaderZStd final : public StreamReader {
   StreamReaderP istream_;
   std::vector<uint8_t> ibuffer_;
   ZSTD_inBuffer zinput_ = { nullptr, 0, 0 };
@@ -317,7 +317,7 @@ stream_reader_zstd (StreamReaderP &istream)
 
 static constexpr bool PRINT_ADAPTIVE = false;
 
-class StreamWriterZStd : public StreamWriter {
+class StreamWriterZStd final : public StreamWriter {
   StreamWriterP ostream_;
   std::vector<uint8_t> obuffer_;
   String name_;
@@ -378,6 +378,7 @@ public:
         {
           zal_++;
           const size_t pret = ZSTD_CCtx_setParameter (cctx_, ZSTD_c_compressionLevel, zstd_adaptive_level[zal_].level);
+          (void) pret;
           if (PRINT_ADAPTIVE) printerr ("ZSTD_compressStream2: size=%u level=%u: %s\n", current_total, zstd_adaptive_level[zal_].level, ZSTD_getErrorName (pret));
           zinput.size = zinput.pos;
           ret = ZSTD_compressStream2 (cctx_, &zoutput, &zinput, ZSTD_e_end);

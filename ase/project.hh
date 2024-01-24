@@ -18,7 +18,7 @@ public:
   void      operator+= (const VoidF &func);
 };
 
-class ProjectImpl : public DeviceImpl, public virtual Project {
+class ProjectImpl final : public DeviceImpl, public virtual Project {
   std::vector<TrackImplP> tracks_;
   ASE_DEFINE_MAKE_SHARED (ProjectImpl);
   TickSignature tick_sig_;
