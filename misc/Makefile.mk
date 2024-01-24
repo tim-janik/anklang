@@ -38,7 +38,7 @@ $>/clang-tidy/%.log: % $(GITCOMMITDEPS)	misc/Makefile.mk		| $>/clang-tidy/
 	$(QECHO) CLANG-TIDY $@
 	$Q mkdir -p $(dir $@) && rm -f $>/clang-tidy/$<.*
 	$Q set +o pipefail \
-	&& CTIDY_FLAGS=( $(ASE_EXTERNAL_INCLUDES) $(CLANG_TIDY_DEFS) $($<.LINT_CCFLAGS) ) \
+	&& CTIDY_FLAGS=( $(ASE_EXTERNAL_INCLUDES) $(CLANG_TIDY_DEFS) $($<.LINT_CCFLAGS) -march=x86-64-v2 ) \
 	&& [[ $< = @(*.[hc]) ]] || CTIDY_FLAGS+=( -std=gnu++20 ) \
 	&& (set -x ; $(CLANG_TIDY) --export-fixes=$>/clang-tidy/$<.yaml $< $($<.LINT_FLAGS) -- "$${CTIDY_FLAGS[@]}" ) >$@~ 2>&1 || :
 	$Q mv $@~ $@
