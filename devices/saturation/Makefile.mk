@@ -3,4 +3,3 @@
 devices/4ase.ccfiles += $(strip			\
 	devices/saturation/saturation.cc	\
 )
-$>/devices/saturation/saturation.o: EXTRA_FLAGS ::= -Iexternal/pandaresampler/lib
