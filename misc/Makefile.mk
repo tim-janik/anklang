@@ -31,12 +31,15 @@ lint-unused: $>/ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
 # == clang-tidy ==
 CLANG_TIDY_FILES = $(filter %.c %.cc %.C %.cpp %.cxx, $(LS_TREE_LST))
 CLANG_TIDY_LOGS  = $(patsubst %, $>/clang-tidy/%.log, $(CLANG_TIDY_FILES))
-clang-tidy: $(CLANG_TIDY_LOGS)
+clang-tidy clang-tidy-check: $(CLANG_TIDY_LOGS)
 	$(QGEN)
-	$Q for log in $(CLANG_TIDY_LOGS) ; do \
+	$Q OK=true \
+	&& for log in $(CLANG_TIDY_LOGS) ; do \
+		grep -Eq ': (error|warning):' $$log && OK=false ; \
 		test 1 -ge `wc -l < $$log` || \
 		  misc/colorize.sh < $$log >&2 ; \
-	   done
+	   done \
+	&& test $@ != clang-tidy-check || $$OK
 $>/clang-tidy/%.log: % $(GITCOMMITDEPS)					| $>/clang-tidy/
 	$(QECHO) CLANG-TIDY $@
 	$Q mkdir -p $(dir $@) && rm -f $>/clang-tidy/$<.*
