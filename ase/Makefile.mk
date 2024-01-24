@@ -152,6 +152,8 @@ $(call BUILD_PROGRAM, \
 	../lib)
 # Work around legacy code in external/websocketpp/*.hpp
 ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec -Wno-sign-promo
+# Allow tests in mathutils.cc
+ase/mathutils.cc.CTIDY_FLAGS = --checks=-clang-analyzer-security.FloatLoopCounter
 
 # == jackdriver.so ==
 lib/jackdriver.so	     ::= $>/lib/jackdriver.so
