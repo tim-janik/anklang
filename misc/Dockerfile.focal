@@ -8,18 +8,18 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN ln -sf bash /bin/sh && ls -al /bin/sh
 
 # Upgrade packages, clean up to shrink Docker image
-RUN : \
-  && apt-get update \
-  && apt-get -y upgrade \
-  && apt-get clean
+RUN \
+  --mount=type=cache,target=/var/cache/apt \
+  apt-get update && apt-get -y upgrade && apt-get autoremove -y
 
 # Install build tools, libstdc++-10-dev>=10 for C++20
 # Add libXss.so, libgtk-3-0 for Electron
 # Install recent pandoc and filters
 # Install Poxy, needs Doxygen and TeX
 # Install X11 recording tools
-RUN : \
-  && apt-get install -y \
+RUN \
+  --mount=type=cache,target=/var/cache/apt \
+  apt-get install -y \
 	     sudo build-essential gawk zstd unzip git wget curl \
 	     gnupg lsb-release software-properties-common ca-certificates \
 	     gettext graphviz imagemagick librsvg2-bin libxml2-utils \
@@ -40,19 +40,19 @@ RUN : \
   && pip install poxy \
   && apt-get install -y \
 	     xvfb twm ffmpeg \
-  && apt-get autoremove -y \
-  && apt-get clean
+  && apt-get autoremove -y
 
 # Install recent clang++
-RUN : \
-  && curl -fsSLO https://apt.llvm.org/llvm.sh && chmod +x llvm.sh \
+RUN \
+  --mount=type=cache,target=/var/cache/apt \
+  curl -fsSLO https://apt.llvm.org/llvm.sh && chmod +x llvm.sh \
   && yes | ./llvm.sh 17 && rm -f ./llvm.sh \
   && apt-get install -y clang-tidy-17 libclang-17-dev \
   && update-alternatives \
        --install /usr/bin/clang         clang           /usr/bin/clang-17 0 \
        --slave   /usr/bin/clang++       clang++         /usr/bin/clang++-17  \
        --slave   /usr/bin/clang-tidy    clang-tidy      /usr/bin/clang-tidy-17 \
-  && apt-get clean
+  && apt-get autoremove -y
 
 # Build recent castxml
 RUN : \
@@ -63,20 +63,23 @@ RUN : \
   && cd /tmp && rm -rf CastXML
 
 # Nodejs - https://github.com/nodesource/distributions#nodejs
-RUN : \
-  && mkdir -p /etc/apt/keyrings \
+RUN \
+  --mount=type=cache,target=/var/cache/apt \
+  mkdir -p /etc/apt/keyrings \
   && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
   && rm -f nodesource-repo.gpg.key \
   && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
   && apt-get update \
   && apt-get install -y nodejs \
-  && apt-get clean
+  && apt-get autoremove -y
 
 # Provide a fast JS package manager
 RUN npm install -g bun@latest
 
 # Build stripped down Fluidsynth version without drivers (not needed atm)
-RUN exit 0 && \
+RUN \
+  --mount=type=cache,target=/var/cache/apt \
+  exit 0 && \
   mkdir -p /tmp/fluid/build && cd /tmp/fluid/ && \
   curl -sfSOL https://github.com/FluidSynth/fluidsynth/archive/v2.2.1.tar.gz && \
   tar xf v2.2.1.tar.gz && rm v2.2.1.tar.gz && cd build && \
@@ -95,7 +98,7 @@ RUN exit 0 && \
 	-Denable-alsa=0 \
 	-Denable-lash=0 && \
   make && make install \
-  && apt-get clean
+  && apt-get autoremove -y
 
 # Become non-root
 RUN groupadd --gid 1000 ubuntu \
@@ -103,5 +106,5 @@ RUN groupadd --gid 1000 ubuntu \
   && echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu
 USER ubuntu
 
-# docker build -t focal:latest -f misc/Dockerfile.focal misc
-# docker run -ti --rm -v $PWD:/anklang -w /anklang focal:latest
+# docker build -t cirun:focal -f misc/Dockerfile.focal misc
+# docker run -ti --rm -v $PWD:/cirun -w /cirun cirun:focal
