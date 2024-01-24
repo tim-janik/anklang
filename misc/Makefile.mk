@@ -33,8 +33,11 @@ CLANG_TIDY_FILES = $(filter %.c %.cc %.C %.cpp %.cxx, $(LS_TREE_LST))
 CLANG_TIDY_LOGS  = $(patsubst %, $>/clang-tidy/%.log, $(CLANG_TIDY_FILES))
 clang-tidy: $(CLANG_TIDY_LOGS)
 	$(QGEN)
-	$Q for log in $(CLANG_TIDY_LOGS) ; do misc/colorize.sh < $$log >&2 ; done
-$>/clang-tidy/%.log: % $(GITCOMMITDEPS)	misc/Makefile.mk		| $>/clang-tidy/
+	$Q for log in $(CLANG_TIDY_LOGS) ; do \
+		test 1 -ge `wc -l < $$log` || \
+		  misc/colorize.sh < $$log >&2 ; \
+	   done
+$>/clang-tidy/%.log: % $(GITCOMMITDEPS)					| $>/clang-tidy/
 	$(QECHO) CLANG-TIDY $@
 	$Q mkdir -p $(dir $@) && rm -f $>/clang-tidy/$<.*
 	$Q set +o pipefail \
