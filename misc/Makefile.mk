@@ -35,7 +35,7 @@ clang-tidy clang-tidy-check: $(CLANG_TIDY_LOGS)
 	&& for log in $(CLANG_TIDY_LOGS) ; do \
 		grep -Eq ': (error|warning):' $$log && OK=false ; \
 		test 1 -ge `wc -l < $$log` || \
-		  misc/colorize.sh < $$log >&2 ; \
+		  sed "s|^$$PWD/||" < $$log | misc/colorize.sh >&2 ; \
 	   done \
 	&& test $@ != clang-tidy-check || $$OK
 $>/clang-tidy/%.log: % $(GITCOMMITDEPS)					| $>/clang-tidy/
