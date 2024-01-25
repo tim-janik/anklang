@@ -49,9 +49,8 @@ $>/clang-tidy/%.log: % $(GITCOMMITDEPS)					| $>/clang-tidy/
 CLANG_TIDY_DEFS := -I. -I$> -isystem external/ -isystem $>/external/ -DASE_COMPILATION $(ASEDEPS_CFLAGS) $(GTK2_CFLAGS)
 # File specific LINT_FLAGS, example:		ase/jsonapi.cc.LINT_FLAGS ::= --checks=-clang-analyzer-core.NullDereference
 jsonipc/testjsonipc.cc.CTIDY_DEFS ::= -D__JSONIPC_NULL_REFERENCE_THROWS__
-clang-tidy-clean:
-	rm -f -r $>/clang-tidy/
 .PHONY: clang-tid clang-tidy-clean
+CLEANDIRS += $>/clang-tidy/
 
 # == scan-build ==
 scan-build:								| $>/misc/scan-build/
