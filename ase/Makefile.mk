@@ -147,10 +147,10 @@ ASE_EXTERNAL_INCLUDES := $(strip	\
 	-Iexternal/websocketpp		\
 )
 LILV_LIBS := $(strip 					\
+	$>/lib/liblilv-0.a	\
 	$>/lib/libserd-0.a	\
 	$>/lib/libsord-0.a	\
 	$>/lib/libsratom-0.a	\
-	$>/lib/liblilv-0.a	\
 	$>/lib/libzix-0.a	\
 )
 
