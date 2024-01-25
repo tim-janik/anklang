@@ -14,9 +14,8 @@ clean-misc:
 CPPCHECK ?= cppcheck
 CPPCHECK_CCENABLE := warning,style,performance,portability
 lint-cppcheck: $>/ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
-	$Q egrep $(CLANGTIDY_GLOB) < $<		> $>/misc/cppcheck/sources.lst
-	$Q $(CPPCHECK) --enable=$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) \
-		$$(cat $>/misc/cppcheck/sources.lst)
+	$Q egrep "^(ase|devices|jsonipc|ui)/.*\.(cc|hh)$$" < $<		> $>/misc/$@.lst
+	$Q $(CPPCHECK) --enable=$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) $$(cat $>/misc/$@.lst) $(wildcard $>/ase/*.cc)
 CPPCHECK_DEFS := -D__SIZEOF_LONG__=8 -D__SIZEOF_WCHAR_T__=4 -D__linux__ -U_SC_NPROCESSORS_ONLN -U_WIN32 -U__clang__
 .PHONY: lint-cppcheck
 
