@@ -26,8 +26,8 @@ include $(wildcard $(devices/4ase.objects:.o=.o.d))
 CLEANDIRS += $>/devices/
 
 # == devices/lint ==
-devices/lint: tscheck eslint stylelint
-	-$Q { TCOLOR=--color=always ; tty -s <&1 || TCOLOR=; } \
-	&& grep $$TCOLOR -nE '(/[*/]+[*/ ]*)?(FI[X]ME).*' -r devices/
+devices/lint:
+	$(QGEN)
+	$Q misc/synsmell.py $(wildcard devices/*.*[hc] devices/*/*.*[hc])
 .PHONY: devices/lint
 lint: devices/lint
