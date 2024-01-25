@@ -21,13 +21,17 @@ tar xf assets/anklang-*.tar.zst -C $BUILDDIR --strip-components=1
 # Copy populated .dlcache/ to speed up builds
 test -d .dlcache/ && cp -a --reflink=auto .dlcache/ $BUILDDIR/
 
-# Copy compiler config variables over
-test ! -r config-defaults.mk ||
-  grep '^ *[CL][CDLX]' config-defaults.mk >$BUILDDIR/config-defaults.mk
+# Configure for release build
+cat <<-__EOF > $BUILDDIR/config-defaults.mk
+    prefix=/
+    CC=clang
+    CXX=clang++
+    CLANG_TIDY=clang-tidy
+__EOF
 
 # Make production build + pdfs + package assets
 ( cd $BUILDDIR/
-  # Note, ase/ special cases MODE=production INSN=sse as non-native release builds
+  # Note, ase/ special cases MODE=production INSN=sse as non march=native release builds
   make -w V=${V:-} default MODE=production INSN=sse
   make -w V=${V:-} -j`nproc` \
        all assets/pdf

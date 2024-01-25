@@ -1,81 +1,63 @@
 #!/usr/bin/env bash
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-set -Eeuo pipefail && SCRIPTNAME=${0##*/} && die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 127 ; }
+set -Eeuo pipefail
+
+SCRIPTNAME=${0##*/} && die() { [ -z "$*" ] || echo "$SCRIPTNAME: $*" >&2; exit 127 ; }
+ABSPATHSCRIPT=`readlink -f "$0"`&& ABSDIR=`readlink -f "${ABSPATHSCRIPT%/*}"`
 
 help() {
   echo "Usage: $0 [OPTIONS] [command…]"
-  echo "Script to run command in a dockerized environment."
-  echo "Options:"
-  echo "  -C DIR              Change to DIR before performing any operations"
-  echo "  -u ID               Run `chown ID:ID` before docker run"
-  echo "  -x                  Enable `set -x` to echo all commands before execution"
-  echo "Environemt variables:"
-  echo "  CIGIT=<repository>  Git repository to clone"
-  echo "  CITAG=<extension>   Build and run in [misc/]Dockerfile.<tag>"
-  echo "  CICACHE=<dir>       Directory to use as docker image cache"
+  echo 'Build docker image cirun:$CITAG and run command under mountpoint /cirun/.'
+  echo 'Options:'
+  echo '  -B              Force docker build even if tag exists'
+  echo '  -C DIR          Change to DIR before performing any operations'
+  echo '  -u ID           Run `chown ID:ID` on \$PWD before docker run'
+  echo '  -x              Enable `set -x` to echo all commands before execution'
+  echo 'Environemt variables:'
+  echo '  CITAG=<tag>     Build image cirun:<tag> from Dockerfile.<tag>'
+  echo '  CICACHE=<dir>   Optional directory to use as docker image cache'
   exit 0
 }
 
 # Parse OPTIONS
 CHOWNID=
+FORCE_BUILD=false
 test $# -eq 0 && help
 while test $# -ne 0 ; do
   case "$1" in \
     -C)			shift ; mkdir -p "$1" && echo "cd $1" >&2 && cd "$1" ;;
-    -x)			set -x ;;
-    -u)			shift; CHOWNID="$1" ;;
+    -B)			FORCE_BUILD=true ;;
     -h|--help)		help ;;
+    -u)			shift; CHOWNID="$1" ;;
+    -x)			set -x ;;
     *)			break ;;
   esac
   shift
 done
 
-# Clone git repository if needed
-git rev-parse --git-dir >/dev/null 2>&1 || {
-  test -n "${CIGIT:-}" || die "not in a git repository and CIGIT is unset"
-  git version
-  git clone --recurse-submodules "$CIGIT" .
-}
+# Check for existing docker image
+if $FORCE_BUILD || ! docker image inspect --format=1 cirun:focal >/dev/null 2>&1; then
+  # Utilize $CICACHE when present
+  CACHETYPE=
+  if test -n "${CICACHE:-}" ; then
+    # Use cache-from XOR cache-to, so buildx cannot mess up good caches
+    test -r "$CICACHE/index.json" &&
+      CACHETYPE="--cache-from=type=local,src=$CICACHE" ||
+	CACHETYPE="--cache-to=type=local,mode=max,compression=zstd,dest=$CICACHE"
+  fi
+  # Require buildx backend
+  docker buildx >/dev/null 2>&1 || die "missing docker-buildx-plugin"
+  # Build image and cleanup temporary driver
+  ( set -x
+    docker buildx create   --name cirunsh$$ --driver=docker-container
+    time docker buildx build --builder cirunsh$$ $CACHETYPE --load -t cirun:$CITAG -f "$ABSDIR/Dockerfile.$CITAG" "$ABSDIR/"
+    docker buildx rm    --builder cirunsh$$
+  )
+fi
 
-# Properly fetch all of the repo history
-test -r `git rev-parse --git-dir`/shallow &&
-  git fetch --unshallow
-# Re-fetch all tags, because actions/checkout messes up annotation of the fetched tag: actions/checkout#290
-git fetch -f --tags
-echo -n `git rev-parse HEAD`"    " && git describe 2>/dev/null || git describe --tags 2>/dev/null || git describe --all || :
-
-# Build Docker image
-# docker build -t $CITAG -f misc/Dockerfile.CIDIST misc
-(
-  DOCKER_IMAGES=$(docker images --format "|{{.ID}}|{{.Repository}}:{{.Tag}}|") # buffer image list to avoid SIGPIPE
-  test -n "${CITAG:-}" || die "missing docker image, CITAG is unset"
-  grep -q "|$CITAG:latest|" <<< "$DOCKER_IMAGES" || {
-    echo "$SCRIPTNAME: need to build docker image: $CITAG:latest"
-    docker buildx >/dev/null 2>&1 || die "missing docker-buildx-plugin"
-    # determine Dockerfile
-    DOCKERFILE="./Dockerfile.$CITAG"
-    test -r "$DOCKERFILE" ||
-      DOCKERFILE="misc/Dockerfile.$CITAG"
-    test -r "$DOCKERFILE" ||
-      die "failed to find docker file: Dockerfile.$CITAG misc/Dockerfile.$CITAG"
-    DOCKERDIR="${DOCKERFILE%/*}" # always build in dir of Dockerfile
-    # determine buildx caching, using cache-from and cache-to simultaneously can mess up the cache
-    CACHETYPE=
-    test -z "${CICACHE:-}" || {
-      test -r "$CICACHE/index.json" &&
-	CACHETYPE=--cache-from=type=local,src="$CICACHE" ||
-	  CACHETYPE=--cache-to=type=local,mode=max,dest="$CICACHE"
-    }
-    set -x
-    docker buildx create --name cirunsh$$ --driver=docker-container # multi-platform, exports cache, needs --load
-    time docker buildx build --builder cirunsh$$ $CACHETYPE --load -t $CITAG -f "$DOCKERFILE" "$DOCKERDIR"
-    docker buildx rm --builder cirunsh$$
-  }
-)
-
-# RUN - setup alias for `docker run`...
+# Sense interactive TTY support, prepare $RUN
 tty -s && INTERACTIVE=-i || INTERACTIVE=
-RUN="docker run $INTERACTIVE -t --rm -v $PWD:/cirun -w /cirun $CITAG"
+RUN="docker run $INTERACTIVE -t --rm -v $PWD:/cirun -w /cirun cirun:$CITAG"
 
 # Change ownership, needed if the caller of this script has $UID different from the Dockerfile USER
 test -z "$CHOWNID" || {
