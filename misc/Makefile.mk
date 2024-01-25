@@ -70,6 +70,24 @@ scan-build:								| $>/misc/scan-build/
 .PHONY: scan-build
 # Note, 'make scan-build' requires 'make default CC=clang CXX=clang++' to generate any reports.
 
+# == branch-check ==
+# Check for various lint results in files touched by the current branch
+BRANCH_CHECK_UPSTREAM ::= trunk
+branch-check:
+	$(QGEN)
+	$Q script -O $>/$(@F).log </dev/null -e -c ' : \
+		&& $(MAKE) -j`nproc` all \
+		&& $(MAKE) lint \
+		&& $(MAKE) -j`nproc` clang-tidy \
+	   '
+	$Q git diff --name-only $$(git merge-base $(BRANCH_CHECK_UPSTREAM) HEAD) > $>/$(@F).files && sed 's/$$/:/' -i $>/$(@F).files
+	$Q grep -qFf $>/$(@F).files $>/$(@F).log || exit 0 \
+	&& M="$@: $$(git describe --all --always HEAD): Problems found in files touched since '$(BRANCH_CHECK_UPSTREAM)'" \
+	&& echo && echo "$$M" | sed -e '1{ h; s/./=/g; p;x; p;x; }'
+	$Q (set -x && grep -m 24 --color=auto -Ff $>/$(@F).files $>/$(@F).log) || exit 0 && exit $(BRANCH_CHECK_EXIT)
+BRANCH_CHECK_EXIT ?= 0
+.PHONY: branch-check
+
 # == misc/anklang.desktop ==
 # https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html
 $>/misc/anklang.desktop: misc/anklang.desktop		| $>/misc/
