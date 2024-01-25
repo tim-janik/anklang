@@ -21,10 +21,9 @@ CPPCHECK_DEFS := -D__SIZEOF_LONG__=8 -D__SIZEOF_WCHAR_T__=4 -D__linux__ -U_SC_NP
 
 # == lint-unused ==
 lint-unused: $>/ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
-	$Q egrep $(CLANGTIDY_GLOB) < $<			> $>/misc/cppcheck/sources.lst
-	$Q $(CPPCHECK) --enable=unusedFunction,$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) \
-		$$(cat $>/misc/cppcheck/sources.lst)	2>&1 | \
-	   grep -E '(\bunuse|reach)' | sort | tee $>/misc/cppcheck/lint-unused.log
+	$Q egrep "^(ase|devices|jsonipc|ui)/.*\.(cc|hh)$$" < $<		> $>/misc/$@.lst
+	$Q $(CPPCHECK) --enable=unusedFunction,$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) $$(cat $>/misc/$@.lst) $(wildcard $>/ase/*.cc) \
+	|& grep --color=auto -E '(\b(un)?use|\bnever\b|\b(un)?reach)\w*'
 .PHONY: lint-unused
 
 # == clang-tidy ==
