@@ -19,20 +19,21 @@ K=$'\e[30m'	# black
 R=$'\e[31m'	# red
 T=$'\e[36m'	# turquoise
 Y=$'\e[33m'	# yellow
+M=$'\e[35m'	# magenta
 Z=$'\e[0m'	# reset
 
 # colorization patterns
 PAT=(
-  "s/(\[Warning\/[^]]*])/$B$Y\1$Z/;"		# eslint warning
-  "s/ (warning:) / $B$Y\1$Z /;"			# cc warning
+  "s/(\[Warning\/[^]]*])/$B$M\1$Z/;"		# eslint warning
+  "s/ (warning:) / $B$M\1$Z /;"			# cc warning
   "s/(\[Error\/[^]]*])/$B$R\1$Z/;"		# eslint error
   "s/ (error:) / $B$R\1$Z /;"			# cc error
-  "s/ (note:[^$e]+)/ $B$K\1$Z/;"		# lint note
+  "s/ (note:[^$e]+)/ $B$Y\1$Z/;"		# lint note
 )
 
 # Emacs does its own line coloring
 test "${INSIDE_EMACS:-}" == "" && PAT+=(
-    "s/^([^ :$e]+):([0-9:]+:)? /$B$C\1$F:\2$Z /;"	# file name
+    "s/^([^ :$e]+):([0-9:]+:)? /$B\1:\2$Z /;"	# file name
   )
 
 stdbuf -eL -oL \
