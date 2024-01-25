@@ -14,37 +14,41 @@ clean-misc:
 CPPCHECK ?= cppcheck
 CPPCHECK_CCENABLE := warning,style,performance,portability
 lint-cppcheck: $>/ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
-	$Q egrep $(CLANGTIDY_GLOB) < $<		> $>/misc/cppcheck/sources.lst
-	$Q $(CPPCHECK) --enable=$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) \
-		$$(cat $>/misc/cppcheck/sources.lst)
+	$Q egrep "^(ase|devices|jsonipc|ui)/.*\.(cc|hh)$$" < $<		> $>/misc/$@.lst
+	$Q $(CPPCHECK) --enable=$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) $$(cat $>/misc/$@.lst) $(wildcard $>/ase/*.cc)
 CPPCHECK_DEFS := -D__SIZEOF_LONG__=8 -D__SIZEOF_WCHAR_T__=4 -D__linux__ -U_SC_NPROCESSORS_ONLN -U_WIN32 -U__clang__
 .PHONY: lint-cppcheck
 
 # == lint-unused ==
 lint-unused: $>/ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
-	$Q egrep $(CLANGTIDY_GLOB) < $<			> $>/misc/cppcheck/sources.lst
-	$Q $(CPPCHECK) --enable=unusedFunction,$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) \
-		$$(cat $>/misc/cppcheck/sources.lst)	2>&1 | \
-	   grep -E '(\bunuse|reach)' | sort | tee $>/misc/cppcheck/lint-unused.log
+	$Q egrep "^(ase|devices|jsonipc|ui)/.*\.(cc|hh)$$" < $<		> $>/misc/$@.lst
+	$Q $(CPPCHECK) --enable=unusedFunction,$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) $$(cat $>/misc/$@.lst) $(wildcard $>/ase/*.cc) \
+	|& grep --color=auto -E '(\b(un)?use|\bnever\b|\b(un)?reach)\w*'
 .PHONY: lint-unused
 
 # == clang-tidy ==
 CLANG_TIDY_FILES = $(filter %.c %.cc %.C %.cpp %.cxx, $(LS_TREE_LST))
 CLANG_TIDY_LOGS  = $(patsubst %, $>/clang-tidy/%.log, $(CLANG_TIDY_FILES))
-clang-tidy: $(CLANG_TIDY_LOGS)
+clang-tidy clang-tidy-check: $(CLANG_TIDY_LOGS)
 	$(QGEN)
-	$Q for log in $(CLANG_TIDY_LOGS) ; do misc/colorize.sh < $$log >&2 ; done
-$>/clang-tidy/%.log: % $(GITCOMMITDEPS)	misc/Makefile.mk		| $>/clang-tidy/
+	$Q OK=true \
+	&& for log in $(CLANG_TIDY_LOGS) ; do \
+		grep -Eq ': (error|warning):' $$log && OK=false ; \
+		test 1 -ge `wc -l < $$log` || \
+		  sed "s|^$$PWD/||" < $$log | misc/colorize.sh >&2 ; \
+	   done \
+	&& test $@ != clang-tidy-check || $$OK
+$>/clang-tidy/%.log: % $(GITCOMMITDEPS)					| $>/clang-tidy/
 	$(QECHO) CLANG-TIDY $@
 	$Q mkdir -p $(dir $@) && rm -f $>/clang-tidy/$<.*
 	$Q set +o pipefail \
-	&& CTIDY_FLAGS=( $(ASE_EXTERNAL_INCLUDES) $(CLANG_TIDY_DEFS) $($<.LINT_CCFLAGS) ) \
-	&& [[ $< = @(*.[hc]) ]] || CTIDY_FLAGS+=( -std=gnu++20 ) \
-	&& (set -x ; $(CLANG_TIDY) --export-fixes=$>/clang-tidy/$<.yaml $< $($<.LINT_FLAGS) -- "$${CTIDY_FLAGS[@]}" ) >$@~ 2>&1 || :
+	&& CTIDY_DEFS=( $(ASE_EXTERNAL_INCLUDES) $(CLANG_TIDY_DEFS) $($<.CTIDY_DEFS) -march=x86-64-v2 ) \
+	&& [[ $< = @(*.[hc]) ]] || CTIDY_DEFS+=( -std=gnu++20 ) \
+	&& (set -x ; $(CLANG_TIDY) --export-fixes=$>/clang-tidy/$<.yaml $< $($<.CTIDY_FLAGS) -- "$${CTIDY_DEFS[@]}" ) >$@~ 2>&1 || :
 	$Q mv $@~ $@
 CLANG_TIDY_DEFS := -I. -I$> -isystem external/ -isystem $>/external/ -DASE_COMPILATION $(ASEDEPS_CFLAGS) $(GTK2_CFLAGS)
 # File specific LINT_FLAGS, example:		ase/jsonapi.cc.LINT_FLAGS ::= --checks=-clang-analyzer-core.NullDereference
-jsonipc/testjsonipc.cc.LINT_CCFLAGS ::= -D__JSONIPC_NULL_REFERENCE_THROWS__
+jsonipc/testjsonipc.cc.CTIDY_DEFS ::= -D__JSONIPC_NULL_REFERENCE_THROWS__
 clang-tidy-clean:
 	rm -f -r $>/clang-tidy/
 .PHONY: clang-tid clang-tidy-clean

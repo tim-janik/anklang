@@ -321,8 +321,10 @@ CLEANDIRS += $>/tscheck/
 
 # == ui/lint ==
 ui/lint: tscheck eslint stylelint
+	$(QGEN)
 	-$Q { TCOLOR=--color=always ; tty -s <&1 || TCOLOR=; } \
-	&& grep $$TCOLOR -nE '(/[*/]+[*/ ]*)?(FI[X]ME).*' -r ui/
+	&& grep $$TCOLOR -nE '(/[*/]+[*/ ]*)?(FI[X]ME).*' -r ui/ --exclude '*.js'
+	$Q misc/synsmell.py --separate-body=0 ui/*js ui/b/*.js
 .PHONY: ui/lint
 lint: ui/lint
 

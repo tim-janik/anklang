@@ -1532,6 +1532,7 @@ text_convert (const String &to_charset,
                   optr = obuffer;
                   olength = sizeof (obuffer);
                   n = iconv (alt_cd, const_cast<char**> (&iptr), &ilength, &optr, &olength);
+                  (void) n;
                   /* transfer output */
                   output_string.append (obuffer, optr - obuffer);
                 }

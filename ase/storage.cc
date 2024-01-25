@@ -537,7 +537,7 @@ StorageReader::search_dir (const String &dirname)
 StreamReader::~StreamReader()
 {}
 
-class StreamReaderFile : public StreamReader {
+class StreamReaderFile final : public StreamReader {
   FILE *file_ = nullptr;
   String name_;
 public:
@@ -585,7 +585,7 @@ stream_reader_from_file (const String &file)
   return nullptr;
 }
 
-class StreamReaderZipMember : public StreamReader {
+class StreamReaderZipMember final : public StreamReader {
   void *reader_ = nullptr;
   bool entry_opened_ = false;
   String name_, member_;
@@ -686,7 +686,7 @@ stream_reader_zip_member (const String &archive, const String &member, Storage::
 StreamWriter::~StreamWriter ()
 {}
 
-class FileStreamWriter : public StreamWriter {
+class FileStreamWriter final : public StreamWriter {
   String name_;
   int fd_ = -1;
 public:

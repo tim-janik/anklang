@@ -37,8 +37,8 @@ FileCrawler::list_entries ()
   String cwdfile = cwd_ + "/";
   for (struct dirent *de = readdir (dir); de; de = readdir (dir))
     {
-      bool is_dir = de->d_type == DT_DIR;
-      bool is_reg = de->d_type == DT_REG;
+      bool is_dir; // = de->d_type == DT_DIR;
+      bool is_reg; // = de->d_type == DT_REG;
       ssize_t size = -1;
       int64 mtime = 0;
       if (true) // (de->d_type == DT_LNK || de->d_type == DT_UNKNOWN)

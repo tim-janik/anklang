@@ -449,6 +449,7 @@ public:
       convert_clap_events (processinfo, input_preferred_dialect & CLAP_NOTE_DIALECT_CLAP);
       processinfo.steady_time += processinfo.frames_count;
       const clap_process_status status = clapplugin_->process (clapplugin_, &processinfo);
+      (void) status;
       bool need_wakeup = dequeue_events (n_frames);
       for (const auto &e : output_events_)
         need_wakeup |= apply_param_value_event (e.value);
@@ -631,7 +632,7 @@ ClapAudioProcessor::convert_clap_events (const clap_process_t &process, const bo
 }
 
 // == ClapPluginHandleImpl ==
-class ClapPluginHandleImpl : public ClapPluginHandle {
+class ClapPluginHandleImpl final : public ClapPluginHandle {
 public:
   static String     clapid (const clap_host *host) { return Ase::clapid (host); }
   String            clapid () const                { return ClapPluginHandle::clapid(); }
@@ -1603,7 +1604,7 @@ ClapPluginHandleImpl::show_gui()
           gui_windowid = cwindow.x11;
         }
     }
-  if (gui_windowid) {
+  if (gui_windowid && plugin_gui) {
     gui_visible_ = plugin_gui->show (plugin_);
     CDEBUG ("%s: gui_show: %d\n", clapid(), gui_visible_);
     if (!gui_visible_)

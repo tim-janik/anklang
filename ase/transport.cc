@@ -300,7 +300,7 @@ AudioTransport::update_current ()
   current_minutes = time.minutes;
   current_seconds = time.seconds;
 
-  if (false && old_next != next_bar_tick)
+  if (old_next != next_bar_tick && false)
     printerr ("%3d.%2d.%5.2f %02d:%06.3f frame=%d tick=%d next=%d bpm=%d sig=%d/%d ppqn=%d pps=%f rate=%d\n",
               current_bar, current_beat, current_semiquaver,
               current_minutes, current_seconds,
@@ -337,7 +337,7 @@ transport_tests()
   int32 hminutes, hours = divmod (tt.minutes, 60, &hminutes);
   TickSignature::Beat tb = ts.beat_from_tick (testtick);
   TCMP (ts.bar_from_tick (testtick), ==, tb.bar);
-  if (false)
+  if (hours && false)
     printerr ("%03d.%02d.%06.3f %02d:%02d:%06.3f tick=%d\n",
               tb.bar, tb.beat, tb.semiquaver,
               hours, hminutes, tt.seconds, testtick);

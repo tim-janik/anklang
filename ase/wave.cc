@@ -32,7 +32,7 @@ wav_header (const uint8_t n_bits, const uint32_t n_channels, const uint32_t samp
     char*
     puts (const char *str)
     {
-      strcpy (c, str);
+      strncpy (c, str, 1024);
       c += strlen (str);
       return c;
     }
@@ -148,7 +148,7 @@ wav_write (int fd, uint8_t n_bits, uint32_t n_channels, uint32_t sample_freq, co
   return 0;
 }
 
-class WavWriterImpl : public WaveWriter {
+class WavWriterImpl final : public WaveWriter {
   String   filename_;
   uint32_t n_channels_ = 0;
   uint32_t sample_freq_ = 0;
@@ -247,7 +247,7 @@ wave_writer_opus_version()
   return opus_get_version_string();
 }
 
-class OpusWriter : public WaveWriter {
+class OpusWriter final : public WaveWriter {
   String name_;
   OpusEncoder *enc_ = nullptr;
   int fd_ = -1;
@@ -513,7 +513,7 @@ wave_writer_flac_version()
   return FLAC__VERSION_STRING;
 }
 
-class FlacWriter : public WaveWriter {
+class FlacWriter final : public WaveWriter {
   String name_;
   FLAC__StreamEncoder *enc_ = nullptr;
   FLAC__StreamMetadata *metadata_[2] = { nullptr, nullptr };

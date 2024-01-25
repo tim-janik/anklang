@@ -139,7 +139,8 @@ ASE_EXTERNAL_INCLUDES := $(strip	\
 	-Iexternal/libsndfile/include	\
 	-Iexternal/rapidjson/include	\
 	-Iexternal/websocketpp		\
-)
+	-Iexternal/pandaresampler/lib	\
+) # also used by clang-tidy
 $(ase/AnklangSynthEngine.objects): $(ase/include.deps) $(ase/libase.deps)
 $(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
 $(lib/AnklangSynthEngine): $>/lib/libsndfile.so					| $>/lib/
@@ -151,6 +152,8 @@ $(call BUILD_PROGRAM, \
 	../lib)
 # Work around legacy code in external/websocketpp/*.hpp
 ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec -Wno-sign-promo
+# Allow tests in mathutils.cc
+ase/mathutils.cc.CTIDY_FLAGS = --checks=-clang-analyzer-security.FloatLoopCounter
 
 # == jackdriver.so ==
 lib/jackdriver.so	     ::= $>/lib/jackdriver.so
@@ -192,9 +195,9 @@ $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgd
   ))
 
 # == ase/lint ==
-ase/lint: tscheck eslint stylelint
-	-$Q { TCOLOR=--color=always ; tty -s <&1 || TCOLOR=; } \
-	&& grep $$TCOLOR -nE '(/[*/]+[*/ ]*)?(FI[X]ME).*' -r ase/
+ase/lint:
+	$(QGEN)
+	$Q misc/synsmell.py $(wildcard ase/*.[hc] ase/*.*[hc] ase/*/*.*[hc] jsonipc/*.hh)
 .PHONY: ase/lint
 lint: ase/lint
 

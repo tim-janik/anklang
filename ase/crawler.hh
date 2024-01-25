@@ -6,7 +6,7 @@
 
 namespace Ase {
 
-class FileCrawler : public ObjectImpl, public virtual ResourceCrawler {
+class FileCrawler final : public ObjectImpl, public virtual ResourceCrawler {
   String cwd_;
   const uint constraindir_ : 1;
   const uint constrainfile_ : 1;
