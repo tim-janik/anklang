@@ -80,6 +80,11 @@ jobs:
     # Artifact upload from clang-tidy
     - uses: actions/upload-artifact@v3.1.3
       with: { name: clang-tidy, path: out/clang-tidy/ }
+    - name: 'Make branch-check'
+      # Use non-0 exit status for a failing branch-check on PRs
+      run: |
+        test -z "${{ github.event.pull_request }}" || BRANCH_CHECK_EXIT=77
+        misc/cirun -u 1000 make branch-check BRANCH_CHECK_EXIT=$BRANCH_CHECK_EXIT
 
   Release-Upload:
     needs: [Focal-Assets, Arch-Replay]
