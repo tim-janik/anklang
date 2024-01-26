@@ -49,9 +49,8 @@ $>/clang-tidy/%.log: % $(GITCOMMITDEPS)					| $>/clang-tidy/
 CLANG_TIDY_DEFS := -I. -I$> -isystem external/ -isystem $>/external/ -DASE_COMPILATION $(ASEDEPS_CFLAGS) $(GTK2_CFLAGS)
 # File specific LINT_FLAGS, example:		ase/jsonapi.cc.LINT_FLAGS ::= --checks=-clang-analyzer-core.NullDereference
 jsonipc/testjsonipc.cc.CTIDY_DEFS ::= -D__JSONIPC_NULL_REFERENCE_THROWS__
-clang-tidy-clean:
-	rm -f -r $>/clang-tidy/
 .PHONY: clang-tid clang-tidy-clean
+CLEANDIRS += $>/clang-tidy/
 
 # == scan-build ==
 scan-build:								| $>/misc/scan-build/
@@ -70,6 +69,24 @@ scan-build:								| $>/misc/scan-build/
 	misc/blame-lines -b $>/misc/scan-build/scan-build.log
 .PHONY: scan-build
 # Note, 'make scan-build' requires 'make default CC=clang CXX=clang++' to generate any reports.
+
+# == branch-check ==
+# Check for various lint results in files touched by the current branch
+BRANCH_CHECK_UPSTREAM ::= trunk
+branch-check:
+	$(QGEN)
+	$Q script $>/$(@F).log </dev/null -e -c ' : \
+		&& $(MAKE) -j`nproc` all \
+		&& $(MAKE) lint \
+		&& $(MAKE) -j`nproc` clang-tidy \
+	   '
+	$Q git diff --name-only $$(git merge-base $(BRANCH_CHECK_UPSTREAM) HEAD) > $>/$(@F).files && sed 's/$$/:/' -i $>/$(@F).files
+	$Q grep -qFf $>/$(@F).files $>/$(@F).log || exit 0 \
+	&& M="$@: $$(git describe --all --always HEAD): Problems found in files touched since '$(BRANCH_CHECK_UPSTREAM)'" \
+	&& echo && echo "$$M" | sed -e '1{ h; s/./=/g; p;x; p;x; }'
+	$Q (set -x && grep -m 24 --color=auto -Ff $>/$(@F).files $>/$(@F).log) || exit 0 && exit $(BRANCH_CHECK_EXIT)
+BRANCH_CHECK_EXIT ?= 0
+.PHONY: branch-check
 
 # == misc/anklang.desktop ==
 # https://specifications.freedesktop.org/desktop-entry-spec/desktop-entry-spec-latest.html

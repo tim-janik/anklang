@@ -56,3 +56,5 @@ else
   echo '``````````````````````````````````````````````````````````````````````````````````````'
   echo
 fi
+
+echo "git log --first-parent --date=short --pretty=\"%s    # %cd %an %h%n%w(0,4,4)%b\" '$NEWS_TAG..HEAD' | sed -r 's/\s+[A-Z][a-zA-Z0-9-]*:.*<.*@.*>\s*$//' " >&2
