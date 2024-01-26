@@ -75,7 +75,7 @@ scan-build:								| $>/misc/scan-build/
 BRANCH_CHECK_UPSTREAM ::= trunk
 branch-check:
 	$(QGEN)
-	$Q script -O $>/$(@F).log </dev/null -e -c ' : \
+	$Q script $>/$(@F).log </dev/null -e -c ' : \
 		&& $(MAKE) -j`nproc` all \
 		&& $(MAKE) lint \
 		&& $(MAKE) -j`nproc` clang-tidy \
