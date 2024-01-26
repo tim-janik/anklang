@@ -20,7 +20,7 @@ jobs:
     - run: |
         git fetch -f --tags # Fix actions/checkout annotated tag mess; actions/checkout#290
         git submodule update --init --recursive
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with: { path: "/tmp/cicache", key: "cifocal-${{hashFiles ('misc/Dockerfile.focal')}}" }
     - name: 'Prepare Docker Image'
       run: |
@@ -49,7 +49,7 @@ jobs:
     - run: |
         git fetch -f --tags # Fix actions/checkout annotated tag mess; actions/checkout#290
         git submodule update --init --recursive
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with: { path: "/tmp/cicache", key: "ciarch-${{hashFiles ('misc/Dockerfile.arch')}}" }
     - name: 'Prepare Docker Image'
       run: |
@@ -76,7 +76,7 @@ jobs:
     - run: |
         git fetch -f --tags # Fix actions/checkout annotated tag mess; actions/checkout#290
         git submodule update --init --recursive
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       with: { path: "/tmp/cicache", key: "cifocal-${{hashFiles ('misc/Dockerfile.focal')}}" }
     - name: 'Prepare Docker Image'
       run: |
