@@ -86,32 +86,18 @@ jobs:
         test -z "${{ github.event.pull_request }}" || BRANCH_CHECK_EXIT=77
         misc/cirun -u 1000 make branch-check BRANCH_CHECK_EXIT=$BRANCH_CHECK_EXIT
 
-  Release-Upload:
-    needs: [Focal-Assets, Arch-Replay]
-    if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
-    env: { GH_TOKEN: "${{ github.token }}" }
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: Download Release Assets
-      uses: actions/download-artifact@v3
-    - run: ls -lR assets/
-    - name: Create Release with Assets
-      run: misc/publish.sh
-
   Ping-IRC:
     if: always()
-    needs: [Focal-Assets, Arch-Replay, Focal-Clang-Tidy, Release-Upload]
+    needs: [Focal-Assets, Arch-Replay, Focal-Clang-Tidy]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - name: Check Jobs
       run: |
-        echo '${{ needs.Focal-Assets.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Focal-Clang-Tidy.result }}' '${{ needs.Release-Upload.result }}'
+        echo '${{ needs.Focal-Assets.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Focal-Clang-Tidy.result }}'
         [[ ${{ needs.Focal-Assets.result }}     =~ success|skipped ]]
         [[ ${{ needs.Arch-Replay.result }}      =~ success|skipped ]]
         [[ ${{ needs.Focal-Clang-Tidy.result }} =~ success|skipped ]]
-        [[ ${{ needs.Release-Upload.result }}   =~ success|skipped ]]
     - name: Ping IRC
       if: always()
       run: |
