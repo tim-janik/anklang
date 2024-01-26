@@ -34,7 +34,7 @@ jobs:
     - uses: actions/upload-artifact@v3.1.3
       with: { name: dist-tarball, path: assets/*.tar* }
     - name: 'Upload API Docs' # http://tim-janik.github.io/docs/anklang
-      if: github.ref == 'refs/heads/trunk'
+      if: github.repository == 'tim-janik/anklang' && github.ref == 'refs/heads/trunk'
       run: |
         misc/cirun -u 1000 make -j`nproc` all
         (umask 0077 && cat <<< "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > .git/.ssh_id_ghdocs4anklang)
