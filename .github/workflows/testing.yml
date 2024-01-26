@@ -15,7 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     env: { CICACHE: "/tmp/cicache", CITAG: "focal" }
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4.1.1
+      with: { fetch-depth: 0 }
+    - run: |
+        git fetch -f --tags # Fix actions/checkout annotated tag mess; actions/checkout#290
+        git submodule update --init --recursive
     - uses: actions/cache@v3
       with: { path: "/tmp/cicache", key: "cifocal-${{hashFiles ('misc/Dockerfile.focal')}}" }
     - name: 'Prepare Docker Image'
@@ -40,7 +44,11 @@ jobs:
     runs-on: ubuntu-latest
     env: { CICACHE: "/tmp/cicache", CITAG: "arch" }
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4.1.1
+      with: { fetch-depth: 0 }
+    - run: |
+        git fetch -f --tags # Fix actions/checkout annotated tag mess; actions/checkout#290
+        git submodule update --init --recursive
     - uses: actions/cache@v3
       with: { path: "/tmp/cicache", key: "ciarch-${{hashFiles ('misc/Dockerfile.arch')}}" }
     - name: 'Prepare Docker Image'
@@ -63,7 +71,11 @@ jobs:
     runs-on: ubuntu-latest
     env: { CICACHE: "/tmp/cicache", CITAG: "focal" }
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4.1.1
+      with: { fetch-depth: 0 }
+    - run: |
+        git fetch -f --tags # Fix actions/checkout annotated tag mess; actions/checkout#290
+        git submodule update --init --recursive
     - uses: actions/cache@v3
       with: { path: "/tmp/cicache", key: "cifocal-${{hashFiles ('misc/Dockerfile.focal')}}" }
     - name: 'Prepare Docker Image'
@@ -91,7 +103,11 @@ jobs:
     needs: [Focal-Assets, Arch-Replay, Focal-Clang-Tidy]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4.1.1
+      with: { fetch-depth: 0 }
+    - run: |
+        git fetch -f --tags # Fix actions/checkout annotated tag mess; actions/checkout#290
+        git submodule update --init --recursive
     - name: Check Jobs
       run: |
         echo '${{ needs.Focal-Assets.result }}' '${{ needs.Arch-Replay.result }}' '${{ needs.Focal-Clang-Tidy.result }}'
