@@ -2,8 +2,7 @@
 #ifndef __ASE_LOFT_HH__
 #define __ASE_LOFT_HH__
 
-#include <ase/defs.hh>
-#include <utility>
+#include <ase/cxxaux.hh>
 
 namespace Ase {
 
