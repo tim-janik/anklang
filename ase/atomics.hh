@@ -5,6 +5,7 @@
 #include <ase/platform.hh>
 #include <atomic>
 #include <boost/atomic/atomic.hpp>      // Needed for gcc to emit CMPXCHG16B
+#include <ase/loft.hh>
 
 namespace Ase {
 
@@ -13,7 +14,6 @@ namespace Ase {
 template<class T> using Atomic = boost::atomic<T>;
 
 // == AtomicIntrusiveStack ==
-
 /** Lock-free stack with atomic `push()` and `pop_all` operations.
  * Relies on unqualified calls to `atomic<T*>& atomic_next_ptrref(T*)`.
  */
@@ -170,6 +170,59 @@ private:
   };
   Atomic<Head> head_;
   static constexpr uintptr_t TAIL_ = ~uintptr_t (0);
+};
+
+// == AtomicStack ==
+/** Thread-safe, lock-free stack based on MpmcStack and an Allocator with `allows_read_after_free`.
+ */
+template<typename Value, template<class> class GrowOnlyAllocator = Loft::Allocator>
+struct AtomicStack {
+  /// Return `true` if the stack holds no items.
+  bool  empty() const   { return stack_.empty(); }
+  /// Add `value` to top of the stack, returns if the stack was empty (true).
+  bool
+  push (Value &&value)
+  {
+    Node *node = node_realloc (nullptr);
+    std::construct_at (node, std::move (value));
+    return stack_.push (node);
+  }
+  /// Add a copy of `value` to top of the stack, returns if the stack was empty (true).
+  bool
+  push (const Value &value)
+  {
+    return push (std::move (Value (value)));
+  }
+  /// Pop `value` from top of the stack, returns if `value` was reassigned (true), otherwise the stack was empty.
+  bool
+  pop (Value &value)
+  {
+    Node *node = stack_.pop();
+    if (!node)
+      return false;
+    value = std::move (node->value);
+    std::destroy_at (node);
+    node_realloc (node);
+    return true;
+  }
+private:
+  struct Node {
+    Value         value = {};
+    Atomic<Node*> intr_ptr_ = nullptr; // atomic intrusive pointer
+  };
+  MpmcStack<Node> stack_;
+  Node*
+  node_realloc (Node *node)
+  {
+    static constexpr GrowOnlyAllocator<Node> grow_only_alloc;
+    static_assert (GrowOnlyAllocator<Node>::allows_read_after_free == true);
+    if (node) {
+      grow_only_alloc.deallocate (node, 1);
+      node = nullptr;
+    } else
+      node = grow_only_alloc.allocate (1);
+    return node;
+  }
 };
 
 // == AtomicBits ==
