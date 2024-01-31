@@ -90,23 +90,20 @@ template<typename T>
 class Allocator : AllocatorBase {
 public:
   using value_type = T;
-  Allocator () noexcept = default;
-  template<typename U>
-  Allocator(const Allocator<U>& other) noexcept {}
-  bool
-  operator== (const Allocator<T> &o) const noexcept { return true; }
-  bool
-  operator!= (const Allocator<T> &o) const noexcept { return !this->operator== (o); }
-  constexpr void
-  deallocate (T *p, size_t n) noexcept { loft_btfree (p, n); }
+  /**/                 Allocator  () noexcept = default;
+  template<typename U> Allocator  (const Allocator<U>& other) noexcept   {}
+  bool                 operator== (const Allocator<T> &o) const noexcept { return true; }
+  bool                 operator!= (const Allocator<T> &o) const noexcept { return !this->operator== (o); }
+  constexpr void       deallocate (T *p, size_t n) const noexcept        { loft_btfree (p, n); }
   [[nodiscard]] constexpr T*
-  allocate (std::size_t n)
+  allocate (std::size_t n) const
   {
     void *const mem = loft_btalloc (n * sizeof (T), alignof (T));
     if (!mem)
       throw std::bad_alloc();
     return reinterpret_cast<T*> (mem);
   }
+  static constexpr bool allows_read_after_free = true;
 };
 
 } // Loft
