@@ -27,10 +27,13 @@
     $b-scrollarea-frame: #202020;
     $b-scrollarea-foreground: $b-base-foreground;
     .b-folderview-scrollarea { //* wrapped */
-      flex-flow: column wrap;
-      align-items: stretch; align-content: flex-start;
+      display: grid;
+      grid-gap: 2px;
+      grid-template-rows: repeat(auto-fit, 1.5em);
+      grid-auto-columns: max-content;
+      grid-auto-flow: column;
       justify-items: flex-start; justify-content: flex-start;
-      max-height: 100%; flex-shrink: 1; flex-grow: 1; overflow-y: hidden;
+      flex-grow: 1; overflow-y: hidden;
       margin: 0; padding: 0;
       overflow-x: scroll; overflow-y: hidden;
       background: $b-scrollarea-background; color: $b-scrollarea-foreground;
@@ -81,7 +84,7 @@
 
 <template>
   <v-flex class="b-folderview">
-    <v-flex class="b-folderview-scrollarea" data-subfocus="*" ref="entrycontainer" >
+    <c-grid class="b-folderview-scrollarea" data-subfocus="*" ref="entrycontainer" >
 
       <template v-for="e in filtered_entries()" :key="e.label" >
 	<h-flex class="-entry">
@@ -102,7 +105,7 @@
 	<div style="text-align: center" >
 	  ⥁ </div> </h-flex>
 
-    </v-flex>
+    </c-grid>
   </v-flex>
 </template>
 
