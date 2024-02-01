@@ -269,11 +269,13 @@ export function remove_focus_root (element) {
   the_focus_guard.remove_focus_root (element);
 }
 
-/** Compute global midpoint position of element, e.g. for focus movement */
-function element_midpoint (element) {
+/** Compute element rectangle, e.g. for focus movement */
+function element_rect (element) {
   const r = element.getBoundingClientRect();
-  return { y: 0.5 * (r.top + r.bottom),
-	   x: 0.5 * (r.left + r.right) };
+  return {
+    x0: r.left, y0: r.top,
+    x1: r.right, y1: r.bottom,
+  };
 }
 
 /** Move focus on UP/DOWN/HOME/END `keydown` events */
@@ -297,7 +299,13 @@ export function keydown_move_focus (event) {
     dir = 'RIGHT';
   else
     return false;
-  return move_focus (dir, subfocus);
+  if (move_focus (dir, subfocus)) {
+    event.preventDefault();
+    //event.stopPropagation();
+    //event.stopImmediatePropagation();
+    return true;
+  }
+  return false;
 }
 
 /** Move focus to prev or next focus widget
@@ -338,20 +346,20 @@ export function move_focus (dir = 0, subfocus = null) {
     next = home ? 0 : focuslist.length - 1;
   else if (left || right)
     {
-      const idx_pos = element_midpoint (focuslist[idx]);
+      const last = element_rect (focuslist[idx]);
       let dist = { x: 9e99, y: 9e99 };
       for (let i = 0; i < focuslist.length; i++)
 	if (i != idx)
 	  {
-	    const pos = element_midpoint (focuslist[i]);
-	    const d = { x: pos.x - idx_pos.x, y: pos.y - idx_pos.y };
-	    if ((right && d.x > 0) || (left && d.x < 0))
+	    const cand = element_rect (focuslist[i]);
+	    if ((right && cand.x0 > last.x0 && cand.x1 > last.x1) ||
+		(left && cand.x0 < last.x0 && cand.x1 < last.x1))
 	      {
-		d.x = Math.abs (d.x);
-		d.y = Math.abs (d.y);
-		if (d.x < dist.x || (d.x == dist.x && d.y < dist.y))
+		const dx = Math.abs ((cand.x1 + cand.x0) - (last.x1 + last.x0)) * 0.5;
+		const dy = Math.abs ((cand.y1 + cand.y0) - (last.y1 + last.y0)) * 0.5;
+		if (dy < dist.y || (dy == dist.y && dx < dist.x))
 		  {
-		    dist = d;
+		    dist = { x: dx, y: dy };
 		    next = i;
 		  }
 	      }
