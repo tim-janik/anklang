@@ -23,47 +23,47 @@ String                         string_vprintf        (const char *format, va_lis
 String                         string_locale_vprintf (const char *format, va_list vargs);
 
 // == String ==
-String                          string_multiply          (const String &s, uint64 count);
-String                          string_canonify          (const String &s, const String &valid_chars, const String &substitute);
-String                          string_to_identifier     (const String &input);
-bool                            string_is_canonified     (const String &s, const String &valid_chars);
-const String&                   string_set_a2z           ();
-const String&                   string_set_A2Z           ();
-const String&                   string_set_ascii_alnum   ();
-bool                            string_is_ascii_alnum    (const String &str);
-String  			string_tolower           (const String &str);
-String  			string_toupper           (const String &str);
-String  			string_totitle           (const String &str);
-String                          string_capitalize        (const String &str, size_t maxn = size_t (-1), bool rest_tolower = true);
-StringS         		string_split             (const String &string, const String &splitter = "", size_t maxn = size_t (-1));
-StringS       			string_split_any         (const String &string, const String &splitchars = "", size_t maxn = size_t (-1));
-String  			string_join              (const String &junctor, const StringS &strvec);
-bool    			string_to_bool           (const String &string, bool fallback = false);
-String  			string_from_bool         (bool value);
-uint64  			string_to_uint           (const String &string, size_t *consumed = NULL, uint base = 10);
-String  			string_from_uint         (uint64 value);
-bool    			string_has_int           (const String &string);
-int64   			string_to_int            (const String &string, size_t *consumed = NULL, uint base = 10);
-String  			string_from_int          (int64 value);
-String  			string_from_float        (float value);
-long double  			string_to_long_double    (const String &string);
-long double  			string_to_long_double    (const char *dblstring, const char **endptr);
-String                          string_from_long_double  (long double value);
-double  			string_to_double         (const String &string);
-double  			string_to_double         (const char *dblstring, const char **endptr);
-String                          string_from_double       (double value);
-inline String                   string_from_float        (double value)         { return string_from_double (value); }
-inline double                   string_to_float          (const String &string) { return string_to_double (string); }
-std::vector<double>             string_to_double_vector  (const String         &string);
-String                          string_from_double_vector(const std::vector<double> &dvec,
-                                                          const String         &delim = " ");
-double   			string_to_seconds        (const String &string, double fallback = NAN);
-String  			string_from_errno        (int         errno_val);
-bool                            string_is_uuid           (const String &uuid_string); /* check uuid formatting */
-int                             string_cmp_uuid          (const String &uuid_string1,
-                                                          const String &uuid_string2); /* -1=smaller, 0=equal, +1=greater (assuming valid uuid strings) */
-bool                            string_startswith        (const String &string, const String &fragment);
-bool                            string_endswith          (const String &string, const String &fragment);
+String              string_multiply           (const String &s, uint64 count);
+String              string_canonify           (const String &s, const String &valid_chars, const String &substitute);
+String              string_to_identifier      (const String &input);
+bool                string_is_canonified      (const String &s, const String &valid_chars);
+const String&       string_set_a2z            ();
+const String&       string_set_A2Z            ();
+const String&       string_set_ascii_alnum    ();
+bool                string_is_ascii_alnum     (const String &str);
+String  	    string_tolower            (const String &str);
+String  	    string_toupper            (const String &str);
+String  	    string_totitle            (const String &str);
+String              string_capitalize         (const String &str, size_t maxn = size_t (-1), bool rest_tolower = true);
+StringS             string_split              (const String &string, const String &splitter = "", size_t maxn = size_t (-1));
+StringS       	    string_split_any          (const String &string, const String &splitchars = "", size_t maxn = size_t (-1));
+String  	    string_join               (const String &junctor, const StringS &strvec);
+bool    	    string_to_bool            (const String &string, bool fallback = false);
+String  	    string_from_bool          (bool value);
+uint64  	    string_to_uint            (const String &string, size_t *consumed = NULL, uint base = 10);
+String  	    string_from_uint          (uint64 value);
+bool    	    string_has_int            (const String &string);
+int64   	    string_to_int             (const String &string, size_t *consumed = NULL, uint base = 10);
+String  	    string_from_int           (int64 value);
+String  	    string_from_float         (float value);
+long double  	    string_to_long_double     (const String &string);
+long double  	    string_to_long_double     (const char *dblstring, const char **endptr);
+String              string_from_long_double   (long double value);
+double  	    string_to_double          (const String &string);
+double  	    string_to_double          (const char *dblstring, const char **endptr);
+String              string_from_double        (double value);
+inline String       string_from_float         (double value)         { return string_from_double (value); }
+inline double       string_to_float           (const String &string) { return string_to_double (string); }
+std::vector<double> string_to_double_vector   (const String         &string);
+String              string_from_double_vector (const std::vector<double> &dvec,
+                                               const String         &delim = " ");
+double   	    string_to_seconds         (const String &string, double fallback = NAN);
+String  	    string_from_errno         (int         errno_val);
+bool                string_is_uuid            (const String &uuid_string); /* check uuid formatting */
+int                 string_cmp_uuid           (const String &uuid_string1,
+                                               const String &uuid_string2); /* -1=smaller, 0=equal, +1=greater (assuming valid uuid strings) */
+bool                string_startswith         (const String &string, const String &fragment);
+bool                string_endswith           (const String &string, const String &fragment);
 bool    string_match_identifier                          (const String &ident1, const String &ident2);
 bool    string_match_identifier_tail                     (const String &ident, const String &tail);
 String  string_from_pretty_function_name                 (const char *cxx_pretty_function);
