@@ -15,18 +15,19 @@
     }
   }
   </script>
-  <link rel="modulepreload" href="./startup.js">
-  <link rel="modulepreload" href="./all-components.js">
-  <link rel="modulepreload" href="./browserified.js">
-  <link rel="modulepreload" href="./util.js">
-  <link rel="modulepreload" href="./vue.js">
-  <link rel="modulepreload" href="./aseapi.js">
-  <link rel="modulepreload" href="./little.js">
-  <link rel="modulepreload" href="./lit.js">
-  <link rel="modulepreload" href="./b/app.js">
-  <link rel="modulepreload" href="./b/shell.js">
-  <link rel="modulepreload" href="./b/piano-ctrl.js">
-  <link rel="modulepreload" href="./b/envue.js">
+  <!-- modulepreload triggers a race in Firefox-122 that causes ES6 module loading error
+    <link rel="modulepreload" href="./startup.js">
+    <link rel="modulepreload" href="./all-components.js">
+    <link rel="modulepreload" href="./browserified.js">
+    <link rel="modulepreload" href="./util.js">
+    <link rel="modulepreload" href="./vue.js">
+    <link rel="modulepreload" href="./aseapi.js">
+    <link rel="modulepreload" href="./little.js">
+    <link rel="modulepreload" href="./lit.js">
+    <link rel="modulepreload" href="./b/app.js">
+    <link rel="modulepreload" href="./b/shell.js">
+    <link rel="modulepreload" href="./b/piano-ctrl.js">
+    <link rel="modulepreload" href="./b/envue.js"> -->
   <link rel="preload" as="style" href="global.css?csshash=@--CSSHASH--@">
   <link rel="preload" as="style" href="assets/AnklangIcons.css">
   <link rel="preload" as="style" href="material-icons.css">
