@@ -76,16 +76,23 @@ export function event_movement (event, shift_swaps = false)
   // FF-122: movementX,movementY values in getCoalescedEvents() are utterly broken
 }
 
-/// Determine mouse wheel deltas bare units, independent of zoom or DPI.
+/** Determine mouse wheel deltas in bare units, independent of zoom or DPI.
+ * This returns an object `{deltaX,deltaY}` with negative values pointing LEFT/UP and positive values RIGHT/DOWN respectively.
+ * For zoom step interpretation, the x/y pixel values should be reduced via `Math.sign()`.
+ * For scales the pixel values might feel more natural, because browsers sometimes increase the number of events with
+ * increasing wheel distance, in other cases values are accumulated so fewer events with larger deltas are sent instead.
+ * The members `{x,y}` approximate the wheel delta in pixels.
+ */
 export function wheel_delta (event, shift_swaps = false)
 {
   // The delta values must be read *first* in FF, see: https://bugzilla.mozilla.org/show_bug.cgi?id=1392460#c33
   let dx = event.deltaX, dy = event.deltaY, dz = event.deltaZ;
   let dppx = CHROME_UA ? devicePixelRatio / Math.round (chrome_dppx) : 1;
+  // Also: https://github.com/facebook/Rapid/blob/724a7c92f73c295b87ca9b6a4568ce4e25074057/modules/pixi/PixiEvents.js#L359-L417
   if (event.deltaMode == WheelEvent.DOM_DELTA_LINE)
-    dppx *= 20;
+    dppx *= 8;
   else if (event.deltaMode == WheelEvent.DOM_DELTA_PAGE)
-    dppx *= 16 * 12;
+    dppx *= 24;
   dx *= dppx;
   dy *= dppx;
   dz *= dppx;
@@ -95,7 +102,13 @@ export function wheel_delta (event, shift_swaps = false)
     dy = 0;
     shiftSwapped = true;
   }
-  return { deltaX: dx, deltaY: dy, deltaZ: dz, deltaMode: WheelEvent.DOM_DELTA_PIXEL,
+  let x = dx, y = dy, z = dz;
+  if (event.deltaMode == WheelEvent.DOM_DELTA_PIXEL) {
+    x *= 1.0 / 120;
+    y *= 1.0 / 120;
+    z *= 1.0 / 120;
+  }
+  return { deltaX: dx, deltaY: dy, deltaZ: dz, deltaMode: WheelEvent.DOM_DELTA_PIXEL, x, y, z,
 	   shiftSwapped, shiftKey: event.shiftKey, ctrlKey: event.ctrlKey, altKey: event.altKey };
   // FF-122: deltaY is mostly close to ±120 for mouse wheel on Linux regardless of zoom mode, and regardless of screen DPI
   // CR-121: deltaY is ±120 for mouse wheel on Linux when devicePixelRatio=1, but is scaled along with zoom and screen DPI
@@ -124,20 +137,14 @@ function zmove_raf_handler()
 {
   zmove_rafid = undefined;
   if (!last_event) return;
-  if (zmove_hooks.length)
-    console.log ("zmove: {", zmove_hooks.length, "hooks");
   for (const hook of zmove_hooks)
     hook (last_event);
-  if (zmove_hooks.length)
-    console.log ("} zmove");
 }
 
 /// Trigger zmove hooks, this is useful to get debounced notifications for pointer movements,
 /// including 0-distance moves after significant UI changes.
 export function zmove_trigger (ev = undefined)
 {
-  if (!zmove_rafid)
-    console.trace ("zmove_trigger:", ev);
   if (!zmove_rafid)
     zmove_rafid = requestAnimationFrame (zmove_raf_handler);
 }
