@@ -47,7 +47,8 @@ public:
     centries += { "Signflip 2000",  _("Preserve May 2000 Freeverb damping sign flip") };
     centries += { "VLC Damping",    _("The VLC Freeverb version disables one damping feedback chain") };
     centries += { "Normal Damping", _("Damping with sign correction as implemented in STK Freeverb") };
-    pmap[MODE] = Param ("mode", _("Mode"), _("Mode"), 2, "", std::move (centries), "", _("Damping mode found in different Freeverb variants"));
+    pmap[MODE] = Param ("mode", _("Mode"), _("Mode"), 2, "", std::move (centries), "",
+                        { String ("blurb=") + _("Damping mode found in different Freeverb variants"), });
 
     pmap.group = _("Room Settings");
     pmap[ROOMSIZE] = Param ("roomsize", _("Room size"), _("RS"), offsetroom + scaleroom * initialroom, _("size"), { offsetroom, offsetroom + scaleroom });
