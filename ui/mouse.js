@@ -39,15 +39,15 @@ let chrome_dppx = 1; // dppx based on clientY/screenY
 function body_move_event (event)
 {
   if (event.isTrusted &&
-      (!last_event || last_event.timeStamp <= event.timeStamp))
+      (!last_event || last_event.timeStamp <= event.timeStamp)) {
     last_event = event;
+    zmove_trigger();
+  }
   // FF-122: clientX scales with devicePixelRatio, movementX and screenX scale with devicePixelRatio
   // CR-120: clientX scales with devicePixelRatio, movementX and screenX remain unscaled
 }
 let last_event = null;
 document.body.addEventListener ("pointermove", CHROME_UA ? body_move_event_4chrome : body_move_event, { capture: true, passive: true });
-document.body.addEventListener ("pointerdown", body_move_event, { capture: true, passive: true });
-document.body.addEventListener ("pointerup", body_move_event, { capture: true, passive: true });
 
 /// Determine factor for Chrome to convert movementX to CSS px (based on event history)
 export function chrome_movement_factor()
@@ -101,3 +101,45 @@ export function wheel_delta (event, shift_swaps = false)
   // CR-121: deltaY is ±120 for mouse wheel on Linux when devicePixelRatio=1, but is scaled along with zoom and screen DPI
   // CR-120: deltaY is ±6 for touchpad on Linux
 }
+
+/// Peek at the last pointer coordination event.
+export function zmove_last()
+{
+  return last_event || null;
+}
+
+/// Add hook to be called once the mouse position or stacking state changes, returns deleter.
+export function zmove_add (hook)
+{
+  zmove_hooks.push (hook);
+  return () => {
+    const i = zmove_hooks.indexOf (hook);
+    i <= -1 || zmove_hooks.splice (i, 1);
+  };
+}
+const zmove_hooks = [];
+
+let zmove_rafid;
+function zmove_raf_handler()
+{
+  zmove_rafid = undefined;
+  if (!last_event) return;
+  if (zmove_hooks.length)
+    console.log ("zmove: {", zmove_hooks.length, "hooks");
+  for (const hook of zmove_hooks)
+    hook (last_event);
+  if (zmove_hooks.length)
+    console.log ("} zmove");
+}
+
+/// Trigger zmove hooks, this is useful to get debounced notifications for pointer movements,
+/// including 0-distance moves after significant UI changes.
+export function zmove_trigger (ev = undefined)
+{
+  if (!zmove_rafid)
+    console.trace ("zmove_trigger:", ev);
+  if (!zmove_rafid)
+    zmove_rafid = requestAnimationFrame (zmove_raf_handler);
+}
+document.body.addEventListener ("pointerdown", zmove_trigger, { capture: true, passive: true });
+document.body.addEventListener ("pointerup", zmove_trigger, { capture: true, passive: true });
