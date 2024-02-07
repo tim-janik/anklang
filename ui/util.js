@@ -1200,22 +1200,6 @@ export function is_displayed (element) {
   return false;
 }
 
-/** Use deltas from `event` to call scrollBy() on `refs[scrollbars...]`. */
-export function wheel2scrollbars (event, refs, ...scrollbars)
-{
-  const delta = Mouse.wheel_delta (event);
-  for (const sb of scrollbars)
-    {
-      const scrollbar = refs[sb];
-      if (!scrollbar)
-	continue;
-      if (scrollbar.clientHeight > scrollbar.clientWidth)       // vertical
-        scrollbar.scrollBy ({ top: delta.deltaY });
-      else                                                      // horizontal
-	scrollbar.scrollBy ({ left: delta.deltaX });
-    }
-}
-
 /** Setup Element shield for a modal containee.
  * Capture focus movements inside `containee`, call `closer(event)` for
  * pointer clicks on `shield` or when `ESCAPE` is pressed.
