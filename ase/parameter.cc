@@ -72,31 +72,26 @@ Parameter::nick () const
 bool
 Parameter::has (const String &key) const
 {
-  return key == "ident" || kvpairs_search (details_, key) >= 0;
+  return key == "ident" || kvpairs_search (metadata_, key) >= 0;
 }
 
 String
 Parameter::fetch (const String &key) const
 {
   return_unless (key != "ident", cident);
-  const ssize_t i = kvpairs_search (details_, key);
-  return i >= 0 ? details_[i].data() + key.size() + 1 : "";
+  return kvpairs_fetch (metadata_, key);
 }
 
 void
 Parameter::store (const String &key, const String &value)
 {
   assert_return (key.size() > 0);
-  if (key == "ident") {
+  if (key == "ident")
     cident = value;
-    return;
+  else {
+    const std::string kv = key + '=' + value;
+    kvpairs_assign (metadata_, kv);
   }
-  const ssize_t i = kvpairs_search (details_, key);
-  const std::string kv = key + '=' + value;
-  if (i >= 0)
-    details_[i] = kv;
-  else
-    details_.push_back (kv);
 }
 
 MinMaxStep
@@ -319,7 +314,7 @@ Parameter::Parameter (const Param &initparam)
 {
   const Param &p = initparam;
   cident = !p.ident.empty() ? string_to_ncname (p.ident) : string_to_ncname (p.label, '_');
-  details_ = p.details;
+  metadata_ = p.metadata;
   const auto choicesfuncp = std::get_if<ChoicesFunc> (&p.extras);
   MinMaxStep range;
   if (const auto rangep = std::get_if<MinMaxStep> (&p.extras))
@@ -331,12 +326,6 @@ Parameter::Parameter (const Param &initparam)
     store ("nick", p.nick);
   if (!p.unit.empty())
     store ("unit", p.unit);
-  if (!p.blurb.empty())
-    store ("blurb", p.blurb);
-  if (!p.descr.empty())
-    store ("descr", p.descr);
-  if (!p.group.empty())
-    store ("group", p.group);
   const auto choicesp = std::get_if<ChoiceS> (&p.extras);
   bool isbool = false;
   if (choicesfuncp)
@@ -427,10 +416,37 @@ ParameterMap::Entry::operator= (const Param &param)
         warning ("%s: duplicate %s: '%s' (param_id=%u)", FUNC, "label", param.label, id);
     }
   }
-  Param mparam = param;
-  if (mparam.group.empty())
-    mparam.group = map.group;
-  pmap[id] = std::make_shared<Parameter> (mparam);
+  if (!map.group.empty() && param.fetch ("group").empty()) {
+    Param mparam = param;
+    mparam.store ("group", map.group);
+    pmap[id] = std::make_shared<Parameter> (mparam);
+  } else
+    pmap[id] = std::make_shared<Parameter> (param);
+}
+
+// == Property ==
+String
+Property::hints () const
+{
+  return kvpairs_fetch (metadata(), "hints");
+}
+
+String
+Property::blurb () const
+{
+  return kvpairs_fetch (metadata(), "blurb");
+}
+
+String
+Property::descr () const
+{
+  return kvpairs_fetch (metadata(), "descr");
+}
+
+String
+Property::group () const
+{
+  return kvpairs_fetch (metadata(), "group");
 }
 
 // == guess_nick ==

@@ -938,17 +938,17 @@ class AudioPropertyImpl : public Property, public virtual EmittableImpl {
   double         inflight_value_ = 0;
   uint64_t       inflight_stamp_ = 0;
 public:
-  String   ident          () override   { return parameter_->ident(); }
-  String   label          () override   { return parameter_->label(); }
-  String   nick           () override   { return parameter_->nick(); }
-  String   unit           () override   { return parameter_->unit(); }
-  String   hints          () override   { return parameter_->hints(); }
-  String   group          () override   { return parameter_->group(); }
-  String   blurb          () override   { return parameter_->blurb(); }
-  String   descr          () override   { return parameter_->descr(); }
-  double   get_min        () override   { const auto [fmin, fmax, step] = parameter_->range(); return fmin; }
-  double   get_max        () override   { const auto [fmin, fmax, step] = parameter_->range(); return fmax; }
-  double   get_step       () override   { const auto [fmin, fmax, step] = parameter_->range(); return step; }
+  String   ident          () const override { return parameter_->ident(); }
+  String   label          () const override { return parameter_->label(); }
+  String   nick           () const override { return parameter_->nick(); }
+  String   unit           () const override { return parameter_->unit(); }
+  String   hints          () const          { return parameter_->hints(); }
+  String   group          () const          { return parameter_->group(); }
+  String   blurb          () const          { return parameter_->blurb(); }
+  String   descr          () const          { return parameter_->descr(); }
+  double   get_min        () const override { const auto [fmin, fmax, step] = parameter_->range(); return fmin; }
+  double   get_max        () const override { const auto [fmin, fmax, step] = parameter_->range(); return fmax; }
+  double   get_step       () const override { const auto [fmin, fmax, step] = parameter_->range(); return step; }
   explicit
   AudioPropertyImpl (DeviceP devp, uint32_t id, ParameterC parameter) :
     device_ (devp), parameter_ (parameter), id_ (id)
@@ -968,7 +968,7 @@ public:
     set_value (parameter_->initial());
   }
   Value
-  get_value () override
+  get_value () const override
   {
     const AudioProcessorP proc = device_->_audio_processor();
     const double value = inflight_stamp_ >  proc->engine().frame_counter() ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
@@ -999,7 +999,7 @@ public:
     return true;
   }
   double
-  get_normalized () override
+  get_normalized () const override
   {
     const AudioProcessorP proc = device_->_audio_processor();
     const double value = inflight_stamp_ >  proc->engine().frame_counter() ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
@@ -1015,7 +1015,7 @@ public:
     return set_value (value);
   }
   String
-  get_text () override
+  get_text () const override
   {
     const AudioProcessorP proc = device_->_audio_processor();
     const double value = inflight_stamp_ >  proc->engine().frame_counter() ? inflight_value_ : AudioProcessor::param_peek_mt (proc, id_);
@@ -1029,15 +1029,20 @@ public:
     return set_value (v);
   }
   bool
-  is_numeric () override
+  is_numeric () const override
   {
     // TODO: we have yet to implement non-numeric AudioProcessor parameters
     return true;
   }
   ChoiceS
-  choices () override
+  choices () const override
   {
     return parameter_->choices();
+  }
+  StringS
+  metadata () const override
+  {
+    return parameter_->metadata();
   }
 };
 

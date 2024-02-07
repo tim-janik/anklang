@@ -23,7 +23,7 @@ public:
   double     getd       () const               { return const_cast<Preference*> (this)->get_value().as_double(); }
   bool       set        (const Value &value)   { return set_value (value); }
   bool       set        (const String &string) { return set_value (string); }
-  Value      get_value  () override;
+  Value      get_value  () const override;
   bool       set_value  (const Value &v) override;
   static Value       get    (const String &ident);
   static PreferenceP find   (const String &ident);
@@ -44,7 +44,7 @@ using PropertyGetter = std::function<void (Value&)>;
 using PropertySetter = std::function<bool (const Value&)>;
 
 /// Function type to list Choice Property values.
-using PropertyLister = std::function<ChoiceS (ParameterProperty&)>;
+using PropertyLister = std::function<ChoiceS (const ParameterProperty&)>;
 
 /// Structured initializer for PropertyImpl
 struct Prop {
@@ -60,9 +60,9 @@ class PropertyImpl : public ParameterProperty {
   PropertyImpl (const Param&, const PropertyGetter&, const PropertySetter&, const PropertyLister&);
 public:
   ASE_DEFINE_MAKE_SHARED (PropertyImpl);
-  Value   get_value () override                 { Value v; getter_ (v); return v; }
+  Value   get_value () const override           { Value v; getter_ (v); return v; }
   bool    set_value (const Value &v) override   { return setter_ (v); }
-  ChoiceS choices   () override                 { return lister_ ? lister_ (*this) : parameter_->choices(); }
+  ChoiceS choices   () const override           { return lister_ ? lister_ (*this) : parameter_->choices(); }
 };
 
 /// Helper to simplify property registrations.
@@ -116,7 +116,7 @@ template<typename T> concept IsEnum = std::is_enum_v<T>;
 /// Helper to list Jsonipc::Enum<> type values as Choice.
 template<typename Enum> requires IsEnum<Enum>
 ChoiceS
-enum_lister (ParameterProperty&)
+enum_lister (const ParameterProperty&)
 {
   using EnumType = Jsonipc::Enum<Enum>;
   ChoiceS choices;

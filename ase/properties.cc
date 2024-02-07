@@ -135,7 +135,7 @@ Preference::~Preference()
 }
 
 Value
-Preference::get_value ()
+Preference::get_value () const
 {
   PrefsMap &prefsmap = prefs_map();
   PrefsValue &pv = prefsmap[parameter_->cident];

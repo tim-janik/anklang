@@ -908,40 +908,40 @@ midi_driver_pref_list_choices (const CString &ident)
 static Preference pcm_driver_pref =
   Preference ({
       "driver.pcm.devid", _("PCM Driver"), "", "auto", "ms",
-      { pcm_driver_pref_list_choices }, STANDARD, "",
-      _("Driver and device to be used for PCM input and output"), },
+      { pcm_driver_pref_list_choices }, STANDARD, {
+        String ("descr=") + _("Driver and device to be used for PCM input and output"), } },
     [] (const CString&,const Value&) { apply_driver_preferences(); });
 
 static Preference synth_latency_pref =
   Preference ({
       "driver.pcm.synth_latency", _("Synth Latency"), "", 15, "ms",
-      MinMaxStep { 0, 3000, 5 }, STANDARD + String ("step=5"), "",
-      _("Processing duration between input and output of a single sample, smaller values increase CPU load") },
+      MinMaxStep { 0, 3000, 5 }, STANDARD + String ("step=5"), {
+        String ("descr=") + _("Processing duration between input and output of a single sample, smaller values increase CPU load"), } },
     [] (const CString&,const Value&) { apply_driver_preferences(); });
 
 static Preference midi1_driver_pref =
   Preference ({
       "driver.midi1.devid", _("MIDI Controller (1)"), "", "auto", "ms",
-      { midi_driver_pref_list_choices }, STANDARD, "",
-      _("MIDI controller device to be used for MIDI input"), },
+      { midi_driver_pref_list_choices }, STANDARD, {
+        String ("descr=") + _("MIDI controller device to be used for MIDI input"), } },
     [] (const CString&,const Value&) { apply_driver_preferences(); });
 static Preference midi2_driver_pref =
   Preference ({
       "driver.midi2.devid", _("MIDI Controller (2)"), "", "auto", "ms",
-      { midi_driver_pref_list_choices }, STANDARD, "",
-      _("MIDI controller device to be used for MIDI input"), },
+      { midi_driver_pref_list_choices }, STANDARD, {
+        String ("descr=") + _("MIDI controller device to be used for MIDI input"), } },
     [] (const CString&,const Value&) { apply_driver_preferences(); });
 static Preference midi3_driver_pref =
   Preference ({
       "driver.midi3.devid", _("MIDI Controller (3)"), "", "auto", "ms",
-      { midi_driver_pref_list_choices }, STANDARD, "",
-      _("MIDI controller device to be used for MIDI input"), },
+      { midi_driver_pref_list_choices }, STANDARD, {
+        String ("descr=") + _("MIDI controller device to be used for MIDI input"), } },
     [] (const CString&,const Value&) { apply_driver_preferences(); });
 static Preference midi4_driver_pref =
   Preference ({
       "driver.midi4.devid", _("MIDI Controller (4)"), "", "auto", "ms",
-      { midi_driver_pref_list_choices }, STANDARD, "",
-      _("MIDI controller device to be used for MIDI input"), },
+      { midi_driver_pref_list_choices }, STANDARD, {
+        String ("descr=") + _("MIDI controller device to be used for MIDI input"), } },
     [] (const CString&,const Value&) { apply_driver_preferences(); });
 
 static void

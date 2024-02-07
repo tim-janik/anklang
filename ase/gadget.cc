@@ -207,10 +207,12 @@ PropertyBag
 GadgetImpl::property_bag ()
 {
   auto add_prop = [this] (const Prop &prop, CString group) {
-    Param param = prop.param;
-    if (param.group.empty() && !group.empty())
-      param.group = group;
-    this->props_.push_back (PropertyImpl::make_shared (param, prop.getter, prop.setter, prop.lister));
+    if (!group.empty() && prop.param.fetch ("group").empty()) {
+      Param param = prop.param;
+      param.store ("group", group);
+      this->props_.push_back (PropertyImpl::make_shared (param, prop.getter, prop.setter, prop.lister));
+    } else
+      this->props_.push_back (PropertyImpl::make_shared (prop.param, prop.getter, prop.setter, prop.lister));
     // PropertyImpl &property = *gadget_.props_.back();
   };
   return PropertyBag (add_prop);
