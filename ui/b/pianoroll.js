@@ -12,6 +12,7 @@
 import { LitComponent, ref, html, JsExtract, docs } from '../little.js';
 import * as PianoCtrl from "./piano-ctrl.js";
 import * as Util from '../util.js';
+import { clamp } from '../util.js';
 import * as Mouse from '../mouse.js';
 const floor = Math.floor, round = Math.round;
 
@@ -382,10 +383,18 @@ class BPianoRoll extends LitComponent {
   wheel_event (event)
   {
     const delta = Mouse.wheel_delta (event, true);
-    if (delta.deltaX)
-      this.hscrollbar.scrollBy ({ left: delta.deltaX });
-    if (delta.deltaY)
-      this.vscrollbar.scrollBy ({ top: delta.deltaY });
+    if (event.ctrlKey) {
+      if (delta.deltaX)
+	this.hzoom = clamp (this.hzoom * (delta.deltaX > 0 ? 1.1 : 0.9), 0.25, 25);
+      if (delta.deltaY)
+	this.vzoom = clamp (this.vzoom * (delta.deltaY > 0 ? 1.1 : 0.9), 0.5, 25);
+      this.request_update_();
+    } else {
+      if (delta.deltaX)
+	this.hscrollbar.scrollBy ({ left: delta.deltaX });
+      if (delta.deltaY)
+	this.vscrollbar.scrollBy ({ top: delta.deltaY });
+    }
     Util.prevent_event (event);
   }
 }
