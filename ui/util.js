@@ -3,6 +3,7 @@
 
 import * as Kbd from './kbd.js';
 import * as Wrapper from './wrapper.js';
+import * as Mouse from './mouse.js';
 
 // == Compat fixes ==
 class FallbackResizeObserver {
@@ -1199,44 +1200,19 @@ export function is_displayed (element) {
   return false;
 }
 
-/** Retrieve normalized scroll wheel event delta in CSS pixels (across Browsers)
- * This returns an object `{x,y}` with negative values pointing
- * LEFT/UP and positive values RIGHT/DOWN respectively.
- * For zoom step interpretation, the x/y pixel values should be
- * reduced via `Math.sign()`.
- * For scales the pixel values might feel more natural, because
- * browsers sometimes increase the number of events with
- * increasing wheel distance, in other cases values are accumulated
- * so fewer events with larger deltas are sent instead.
- */
-export function wheel_delta (ev)
-{
-  // The delta values must be read *first* in FF, see: https://bugzilla.mozilla.org/show_bug.cgi?id=1392460#c33
-  const deltaX = ev.deltaX, deltaY = ev.deltaY, deltaZ = ev.deltaZ;
-  // Also: https://github.com/facebook/Rapid/blob/724a7c92f73c295b87ca9b6a4568ce4e25074057/modules/pixi/PixiEvents.js#L359-L417
-  if (WheelEvent.DOM_DELTA_PAGE === ev.deltaMode)
-    return { x: deltaX * 24, y: deltaY * 24, z: deltaZ * 24 };
-  if (WheelEvent.DOM_DELTA_LINE === ev.deltaMode)
-    return { x: deltaX * 8, y: deltaY * 8, z: deltaZ * 8 };
-  if (WheelEvent.DOM_DELTA_PIXEL === ev.deltaMode)
-    return { x: deltaX / 120, y: deltaY / 120, z: deltaZ / 120 };
-  // legacy browsers
-  return { x: 0, y: (ev.detail || 0) / -3, z: 0 };
-}
-
 /** Use deltas from `event` to call scrollBy() on `refs[scrollbars...]`. */
 export function wheel2scrollbars (event, refs, ...scrollbars)
 {
-  const delta = wheel_delta (event);
+  const delta = Mouse.wheel_delta (event);
   for (const sb of scrollbars)
     {
       const scrollbar = refs[sb];
       if (!scrollbar)
 	continue;
       if (scrollbar.clientHeight > scrollbar.clientWidth)       // vertical
-        scrollbar.scrollBy ({ top: delta.y });
+        scrollbar.scrollBy ({ top: delta.deltaY });
       else                                                      // horizontal
-	scrollbar.scrollBy ({ left: delta.x });
+	scrollbar.scrollBy ({ left: delta.deltaX });
     }
 }
 
