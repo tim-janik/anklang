@@ -443,7 +443,7 @@ class BlepSynth : public AudioProcessor {
     ChoiceS ve_model_cs;
     ve_model_cs += { "A", "Analog" };
     ve_model_cs += { "F", "Flexible" };
-    pmap[VE_MODEL] = Param { "ve_model", _("Envelope Model"), _("Model"), 0, "", std::move (ve_model_cs), "", "ADSR Model to be used" };
+    pmap[VE_MODEL] = Param { "ve_model", _("Envelope Model"), _("Model"), 0, "", std::move (ve_model_cs), "", { String ("blurb=") + _("ADSR Model to be used"), } };
 
     pmap[ATTACK]  = Param { "attack",  _("Attack"),  _("A"), 20.0, "%", { 0, 100, }, };
     pmap[DECAY]   = Param { "decay",   _("Decay"),   _("D"), 30.0, "%", { 0, 100, }, };
@@ -464,14 +464,14 @@ class BlepSynth : public AudioProcessor {
     filter_type_choices += { "—"_uc, "Bypass Filter" };
     filter_type_choices += { "LD"_uc, "Ladder Filter" };
     filter_type_choices += { "SKF"_uc, "Sallen-Key Filter" };
-    pmap[FILTER_TYPE] = Param { "filter_type", _("Filter Type"), _("Type"), FILTER_TYPE_LADDER, "", std::move (filter_type_choices), "", _("Filter Type to be used") };
+    pmap[FILTER_TYPE] = Param { "filter_type", _("Filter Type"), _("Type"), FILTER_TYPE_LADDER, "", std::move (filter_type_choices), "", { String ("blurb=") + _("Filter Type to be used"), } };
 
     ChoiceS ladder_mode_choices;
     ladder_mode_choices += { "LP1"_uc, "1 Pole Lowpass, 6dB/Octave" };
     ladder_mode_choices += { "LP2"_uc, "2 Pole Lowpass, 12dB/Octave" };
     ladder_mode_choices += { "LP3"_uc, "3 Pole Lowpass, 18dB/Octave" };
     ladder_mode_choices += { "LP4"_uc, "4 Pole Lowpass, 24dB/Octave" };
-    pmap[LADDER_MODE] = Param { "ladder_mode", _("Filter Mode"), _("Mode"), 1, "", std::move (ladder_mode_choices), "", "Ladder Filter Mode to be used" };
+    pmap[LADDER_MODE] = Param { "ladder_mode", _("Filter Mode"), _("Mode"), 1, "", std::move (ladder_mode_choices), "", { String ("blurb=") + _("Ladder Filter Mode to be used"), } };
 
     ChoiceS skfilter_mode_choices;
     skfilter_mode_choices += { "LP1"_uc, "1 Pole Lowpass, 6dB/Octave" };
@@ -490,7 +490,7 @@ class BlepSynth : public AudioProcessor {
     skfilter_mode_choices += { "HP4"_uc, "4 Pole Highpass, 24dB/Octave" };
     skfilter_mode_choices += { "HP6"_uc, "6 Pole Highpass, 36dB/Octave" };
     skfilter_mode_choices += { "HP8"_uc, "8 Pole Highpass, 48dB/Octave" };
-    pmap[SKFILTER_MODE] = Param { "skfilter_mode", _("SKFilter Mode"), _("Mode"), 2, "", std::move (skfilter_mode_choices), "", "Sallen-Key Filter Mode to be used" };
+    pmap[SKFILTER_MODE] = Param { "skfilter_mode", _("SKFilter Mode"), _("Mode"), 2, "", std::move (skfilter_mode_choices), "", { String ("blurb=") + _("Sallen-Key Filter Mode to be used"), } };
 
     pmap.group = _("Filter Envelope");
     pmap[FIL_ATTACK]  = Param { "fil_attack", _("Attack"), _("A"), 40, "%", { 0, 100, }, };
