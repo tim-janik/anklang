@@ -37,7 +37,7 @@ public:
     ChoiceS centries;
     centries += { "Soft/tanh",  "Soft Saturation using the tanh function" };
     centries += { "Hard",       "Hard clipping" };
-    pmap[MODE]  = Param { "mode",  "Mode",  "Mode", 0, "", std::move (centries), "", "Saturation Function" };
+    pmap[MODE]  = Param { "mode",  "Mode",  "Mode", 0, "", std::move (centries), "", { String ("blurb=") + _("Saturation Function"), } };
     pmap[MIX]   = Param { "mix",   "Mix dry/wet", "Mix", 100, "%", { 0, 100 } };
     pmap[DRIVE] = Param { "drive", "Drive", "Drive", 0, "dB", { -6, 36 } };
 

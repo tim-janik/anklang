@@ -30,10 +30,9 @@ struct Param {
   String     unit;        ///< Units of the values within range.
   ExtraVals  extras;      ///< Min, max, stepping for double ranges or array of choices to select from.
   String     hints;       ///< Hints for parameter handling.
-  String     blurb;       ///< Short description for user interface tooltips.
-  String     descr;       ///< Elaborate description for help dialogs.
-  String     group;       ///< Group for parameters of similar function.
-  StringS    details;     ///< Array of "key=value" pairs.
+  StringS    metadata;    ///< Array of "key=value" pairs.
+  String     fetch        (const String &key) const             { return kvpairs_fetch (metadata, key); }
+  void       store        (const String &key, const String &v)  { kvpairs_assign (metadata, key + '=' + v); }
   static inline const String STORAGE = ":r:w:S:";
   static inline const String STANDARD = ":r:w:S:G:";
 };
@@ -55,6 +54,7 @@ struct Parameter {
   Value         initial     () const   { return initial_; }
   bool          has_hint    (const String &hint) const;
   ChoiceS       choices     () const;
+  const StringS metadata    () const   { return metadata_; }
   MinMaxStep    range       () const;   ///< Min, max, stepping for double ranges.
   bool          is_numeric  () const;
   bool          is_choice   () const   { return has_hint ("choice"); }
@@ -75,7 +75,7 @@ struct Parameter {
   static size_t match_choice    (const ChoiceS &choices, const String &text);
 private:
   using ExtrasV = std::variant<MinMaxStep,ChoiceS,ChoicesFunc>;
-  StringS       details_;
+  StringS       metadata_;
   ExtrasV       extras_;
   Value         initial_ = 0;
 };
@@ -100,27 +100,24 @@ class ParameterProperty : public EmittableImpl, public virtual Property {
 protected:
   ParameterC parameter_;
 public:
-  String     ident          () override           { return parameter_->cident; }
-  String     label          () override           { return parameter_->label(); }
-  String     nick           () override	          { return parameter_->nick(); }
-  String     unit           () override	          { return parameter_->unit(); }
-  String     hints          () override	          { return parameter_->hints(); }
-  String     blurb          () override	          { return parameter_->blurb(); }
-  String     descr          () override	          { return parameter_->descr(); }
-  String     group          () override	          { return parameter_->group(); }
-  double     get_min        () override	          { return std::get<0> (parameter_->range()); }
-  double     get_max        () override	          { return std::get<1> (parameter_->range()); }
-  double     get_step       () override	          { return std::get<2> (parameter_->range()); }
-  bool       is_numeric     () override	          { return parameter_->is_numeric(); }
-  ChoiceS    choices        () override           { return parameter_->choices(); }
-  void       reset          () override	          { set_value (parameter_->initial()); }
-  double     get_normalized () override	          { return !is_numeric() ? 0 : parameter_->normalize (get_double()); }
+  String     ident          () const override     { return parameter_->cident; }
+  String     label          () const override     { return parameter_->label(); }
+  String     nick           () const override     { return parameter_->nick(); }
+  String     unit           () const override     { return parameter_->unit(); }
+  double     get_min        () const override     { return std::get<0> (parameter_->range()); }
+  double     get_max        () const override     { return std::get<1> (parameter_->range()); }
+  double     get_step       () const override     { return std::get<2> (parameter_->range()); }
+  bool       is_numeric     () const override     { return parameter_->is_numeric(); }
+  ChoiceS    choices        () const override     { return parameter_->choices(); }
+  StringS    metadata       () const override     { return parameter_->metadata(); }
+  void       reset          () override           { set_value (parameter_->initial()); }
+  double     get_normalized () const override     { return !is_numeric() ? 0 : parameter_->normalize (get_double()); }
   bool       set_normalized (double v) override   { return is_numeric() && set_value (parameter_->rescale (v)); }
-  String     get_text       () override           { return parameter_->value_to_text (get_value()); }
+  String     get_text       () const override     { return parameter_->value_to_text (get_value()); }
   bool       set_text       (String txt) override { set_value (parameter_->value_from_text (txt)); return !txt.empty(); }
-  Value      get_value      () override = 0;
+  Value      get_value      () const override = 0;
   bool       set_value      (const Value &v) override = 0;
-  double     get_double     ()                    { return !is_numeric() ? 0 : get_value().as_double(); }
+  double     get_double     () const              { return !is_numeric() ? 0 : get_value().as_double(); }
   ParameterC parameter      () const              { return parameter_; }
   Value      initial        () const              { return parameter_->initial(); }
   MinMaxStep range          () const              { return parameter_->range(); }

@@ -1242,18 +1242,46 @@ kvpair_value (const String &key_value_pair)
   return eq ? key_value_pair.substr (eq - key_value_pair.c_str() + 1) : "";
 }
 
+String
+kvpairs_fetch (const StringS &kvs, const String &key, bool casesensitive)
+{
+  const ssize_t i = kvpairs_search (kvs, key, casesensitive);
+  return i >= 0 ? kvs[i].data() + key.size() + 1 : "";
+}
+
 ssize_t
 kvpairs_search (const StringS &kvs, const String &k, const bool casesensitive)
 {
   const size_t l = k.size();
   for (size_t i = 0; i < kvs.size(); i++)
     if (kvs[i].size() > l && kvs[i][l] == '=') {
-      if (casesensitive && strncmp (kvs[i].data(), k.data(), l) == 0)
-        return i;
-      if (casesensitive && strncasecmp (kvs[i].data(), k.data(), l) == 0)
-        return i;
+      if (casesensitive) {
+        if (strncmp (kvs[i].data(), k.data(), l) == 0)
+          return i;
+      } else { // !casesensitive
+        if (strncasecmp (kvs[i].data(), k.data(), l) == 0)
+          return i;
+      }
     }
   return -1;
+}
+
+bool
+kvpairs_assign (StringS &kvs, const String &key_value_pair, bool casesensitive)
+{
+  const char *const eq = strchr (key_value_pair.c_str(), '=');
+  const String key = eq ? key_value_pair.substr (0, eq - key_value_pair.c_str()) : "";
+  assert_return (key.size() > 0, false);
+  const ssize_t i = kvpairs_search (kvs, key, casesensitive);
+  if (key_value_pair.size() == key.size() + 1 && key_value_pair[key_value_pair.size()-1] == '=') {
+    // value is empty
+    if (i >= 0)
+      kvs.erase (kvs.begin() + i);      // empty value, erase
+  } else if (i >= 0)
+    kvs[i] = key_value_pair;            // replace
+  else
+    kvs.push_back (key_value_pair);     // insert
+  return i >= 0;                        // replaced old value
 }
 
 // === String Options ===

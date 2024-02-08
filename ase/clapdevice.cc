@@ -27,19 +27,15 @@ struct ClapPropertyImpl : public Property, public virtual EmittableImpl {
   String ident_, label_, module_;
   double min_value = NAN, max_value = NAN, default_value = NAN;
 public:
-  String ident      () override   { return ident_; }
-  String label      () override   { return label_; }
-  String nick       () override   { return parameter_guess_nick (label_); }
-  String unit       () override   { return ""; }
-  String hints      () override   { return ClapParamInfo::hints_from_param_info_flags (flags); }
-  String group      () override   { return module_; }
-  String blurb      () override   { return ""; }
-  String descr      () override   { return ""; }
-  double get_min    () override   { return min_value; }
-  double get_max    () override   { return max_value; }
-  double get_step   () override   { return is_stepped() ? 1 : 0; }
-  bool   is_numeric () override   { return true; }
-  bool   is_stepped ()            { return strstr (hints().c_str(), ":stepped:"); }
+  String ident      () const override   { return ident_; }
+  String label      () const override   { return label_; }
+  String nick       () const override   { return parameter_guess_nick (label_); }
+  String unit       () const override   { return ""; }
+  double get_min    () const override   { return min_value; }
+  double get_max    () const override   { return max_value; }
+  double get_step   () const override   { return is_stepped() ? 1 : 0; }
+  bool   is_numeric () const override   { return true; }
+  bool   is_stepped () const            { return strstr (hints().c_str(), ":stepped:"); }
   void   reset      () override   { set_value (default_value); }
   ClapPropertyImpl  (ClapDeviceImplP device, const ClapParamInfo info) :
     device_ (device)
@@ -54,7 +50,7 @@ public:
     default_value = info.default_value;
   }
   ChoiceS
-  choices () override
+  choices () const override
   {
     const double mi = get_min(), ma = get_max();
     const bool down = ma < mi;
@@ -67,8 +63,17 @@ public:
       }
     return choices;
   }
+  StringS
+  metadata () const override
+  {
+    StringS md;
+    md.push_back ("hints=" + ClapParamInfo::hints_from_param_info_flags (flags));
+    if (!module_.empty())
+      md.push_back ("group=" + module_);
+    return md;
+  }
   double
-  get_normalized () override
+  get_normalized () const override
   {
     const double mi = get_min(), ma = get_max();
     const double value = get_value().as_double();
@@ -82,7 +87,7 @@ public:
     return set_value (value);
   }
   String
-  get_text () override
+  get_text () const override
   {
     String txt;
     device_->handle_->param_get_value (param_id, &txt);
@@ -94,7 +99,7 @@ public:
     return device_->handle_->param_set_value (param_id, vstr);
   }
   Value
-  get_value () override
+  get_value () const override
   {
     return Value (device_->handle_->param_get_value (param_id));
   }

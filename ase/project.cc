@@ -808,11 +808,11 @@ ProjectImpl::create_properties ()
   bag += Prop (getbpm, setbpm, { "bpm", _("Beats Per Minute"), _("BPM"), 90., "", MinMaxStep { 10., 1776., 0 }, STANDARD });
   bag.group = _("Tuning");
   bag += Prop (make_enum_getter<MusicalTuning> (&musical_tuning_), make_enum_setter<MusicalTuning> (&musical_tuning_),
-               { "musical_tuning", _("Musical Tuning"), _("Tuning"), uint32_t (MusicalTuning::OD_12_TET), "", {}, STANDARD, "",
-                 _("The tuning system which specifies the tones or pitches to be used. "
-                   "Due to the psychoacoustic properties of tones, various pitch combinations can "
-                   "sound \"natural\" or \"pleasing\" when used in combination, the musical "
-                   "tuning system defines the number and spacing of frequency values applied.") },
+               { "musical_tuning", _("Musical Tuning"), _("Tuning"), uint32_t (MusicalTuning::OD_12_TET), "", {}, STANDARD, {
+                  String ("descr=") + _("The tuning system which specifies the tones or pitches to be used. "
+                                        "Due to the psychoacoustic properties of tones, various pitch combinations can "
+                                        "sound \"natural\" or \"pleasing\" when used in combination, the musical "
+                                        "tuning system defines the number and spacing of frequency values applied."), } },
                enum_lister<MusicalTuning>);
 }
 

@@ -145,7 +145,9 @@ std::string_view string_option_find_value (const char *string, const char *featu
 // == Generic Key-Value-Pairs ==
 String  kvpair_key      (const String &key_value_pair);
 String  kvpair_value    (const String &key_value_pair);
-ssize_t kvpairs_search  (const StringS &kvs, const String &k, bool casesensitive = true);
+String  kvpairs_fetch   (const StringS &kvs, const String &key, bool casesensitive = true);
+ssize_t kvpairs_search  (const StringS &kvs, const String &key, bool casesensitive = true);
+bool    kvpairs_assign  (StringS &kvs, const String &key_value_pair, bool casesensitive = true);
 
 // == Strings ==
 /// Convenience Constructor for StringSeq or std::vector<std::string>

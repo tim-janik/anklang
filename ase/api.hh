@@ -134,26 +134,27 @@ class Property : public virtual Emittable {
 protected:
   virtual         ~Property       () = 0;
 public:
-  virtual String   ident          () = 0;          ///< Unique name (per owner) of this Property.
-  virtual String   label          () = 0;          ///< Preferred user interface name.
-  virtual String   nick           () = 0;          ///< Abbreviated user interface name, usually not more than 6 characters.
-  virtual String   unit           () = 0;          ///< Units of the values within range.
-  virtual String   hints          () = 0;          ///< Hints for parameter handling.
-  virtual String   group          () = 0;          ///< Group name for parameters of similar function.
-  virtual String   blurb          () = 0;          ///< Short description for user interface tooltips.
-  virtual String   descr          () = 0;          ///< Elaborate description for help dialogs.
-  virtual double   get_min        () = 0;          ///< Get the minimum property value, converted to double.
-  virtual double   get_max        () = 0;          ///< Get the maximum property value, converted to double.
-  virtual double   get_step       () = 0;          ///< Get the property value stepping, converted to double.
-  virtual void     reset          () = 0;          ///< Assign default as normalized property value.
-  virtual Value    get_value      () = 0;          ///< Get the native property value.
-  virtual bool     set_value      (const Value &v) = 0; ///< Set the native property value.
-  virtual double   get_normalized () = 0;          ///< Get the normalized property value, converted to double.
-  virtual bool     set_normalized (double v) = 0;  ///< Set the normalized property value as double.
-  virtual String   get_text       () = 0;          ///< Get the current property value, converted to a text String.
-  virtual bool     set_text       (String v) = 0;  ///< Set the current property value as a text String.
-  virtual bool     is_numeric     () = 0;          ///< Whether the property settings can be represented as a floating point number.
-  virtual ChoiceS  choices        () = 0;          ///< Enumerate choices for choosable properties.
+  virtual String  ident          () const = 0;         ///< Unique name (per owner) of this Property.
+  virtual String  label          () const = 0;         ///< Preferred user interface name.
+  virtual String  nick           () const = 0;         ///< Abbreviated user interface name, usually not more than 6 characters.
+  virtual String  unit           () const = 0;         ///< Units of the values within range.
+  virtual double  get_min        () const = 0;         ///< Get the minimum property value, converted to double.
+  virtual double  get_max        () const = 0;         ///< Get the maximum property value, converted to double.
+  virtual double  get_step       () const = 0;         ///< Get the property value stepping, converted to double.
+  virtual void    reset          () = 0;               ///< Assign default as normalized property value.
+  virtual Value   get_value      () const = 0;         ///< Get the native property value.
+  virtual bool    set_value      (const Value &v) = 0; ///< Set the native property value.
+  virtual double  get_normalized () const = 0;         ///< Get the normalized property value, converted to double.
+  virtual bool    set_normalized (double v) = 0;       ///< Set the normalized property value as double.
+  virtual String  get_text       () const = 0;         ///< Get the current property value, converted to a text String.
+  virtual bool    set_text       (String v) = 0;       ///< Set the current property value as a text String.
+  virtual bool    is_numeric     () const = 0;         ///< Whether the property settings can be represented as a floating point number.
+  virtual ChoiceS choices        () const = 0;         ///< Enumerate choices for choosable properties.
+  virtual StringS metadata       () const = 0;         ///< Get the list of additional metadata for a property.
+  String          hints          () const;             ///< Hints for parameter handling (metadata).
+  String          blurb          () const;             ///< Short description for user interface tooltips (metadata).
+  String          descr          () const;             ///< Elaborate description, e.g. for help dialogs (metadata).
+  String          group          () const;             ///< Group name for parameters of similar function (metadata).
 };
 
 /// Base type for classes with Property interfaces.
