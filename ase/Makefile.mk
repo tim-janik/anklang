@@ -137,9 +137,10 @@ ase/sndfile.cc: $>/lib/libsndfile.so # includes $>/sndfile/src/config.h
 ASE_EXTERNAL_INCLUDES := $(strip	\
 	-Iexternal/clap/include		\
 	-Iexternal/libsndfile/include	\
+	-Iexternal/liquidsfz/lib	\
+	-Iexternal/pandaresampler/lib	\
 	-Iexternal/rapidjson/include	\
 	-Iexternal/websocketpp		\
-	-Iexternal/pandaresampler/lib	\
 ) # also used by clang-tidy
 $(ase/AnklangSynthEngine.objects): $(ase/include.deps) $(ase/libase.deps)
 $(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
