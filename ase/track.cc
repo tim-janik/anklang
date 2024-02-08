@@ -77,6 +77,24 @@ TrackImpl::serialize (WritNode &xs)
     }
   // device chain
   xs["chain"] & *dynamic_cast<Serializable*> (&*chain_); // always exists
+  /* TODO: while other properties on the track are not suitable for automation,
+   * the following properies are; so we will need a different serialization
+   * strategy for these to once we support automation
+   */
+  for (auto prop : { "volume", "mute" })
+    {
+      if (xs.in_save())
+        {
+          Value v = get_value (prop);
+          xs[prop] & v;
+        }
+      if (xs.in_load())
+        {
+          Value v;
+          xs[prop] & v;
+          set_value (prop, v);
+        }
+    }
 }
 
 void
@@ -120,6 +138,7 @@ TrackImpl::_activate ()
   DeviceImpl::_activate();
   midi_prod_->_activate();
   chain_->_activate();
+  set_solo_states();
 }
 
 void
@@ -167,6 +186,74 @@ TrackImpl::midi_channel (int32 midichannel) // TODO: implement
   midi_channel_ = midichannel;
   emit_notify ("midi_channel");
 }
+
+bool
+TrackImpl::solo (bool new_solo)
+{
+  return_unless (new_solo != solo_, false);
+  solo_ = new_solo;
+  set_solo_states();
+  emit_notify ("solo");
+  return true;
+}
+
+void
+TrackImpl::set_solo_states()
+{
+  Ase::Project *project = dynamic_cast<Ase::Project*> (_project());
+  if (!project)
+    return;
+
+  /* due to mute / solo, the volume of each track depends on its own volume and
+   * the mute/solo settings of all other tracks so we update all volumes
+   * together in this function (note: if we had automation we might want to do
+   * it differently if only one track volume changes)
+   */
+  auto all_tracks = project->all_tracks();
+
+  bool have_solo_tracks = false;
+  for (const auto& track : all_tracks)
+    {
+      auto track_impl = dynamic_cast<Ase::TrackImpl*> (track.get());
+      have_solo_tracks = have_solo_tracks || track_impl->solo();
+    }
+
+  for (const auto& track : all_tracks)
+    {
+      auto track_impl = dynamic_cast<Ase::TrackImpl*> (track.get());
+
+      Ase::AudioChain *audio_chain = dynamic_cast<Ase::AudioChain*> (&*track_impl->chain_->_audio_processor());
+      if (track_impl->solo_)
+        audio_chain->send_param (Ase::AudioChain::SOLO_STATE, Ase::AudioChain::SOLO_STATE_ON);
+      else if (have_solo_tracks)
+        audio_chain->send_param (Ase::AudioChain::SOLO_STATE, Ase::AudioChain::SOLO_STATE_OTHER);
+      else
+        audio_chain->send_param (Ase::AudioChain::SOLO_STATE, Ase::AudioChain::SOLO_STATE_OFF);
+    }
+}
+
+void
+TrackImpl::create_properties ()
+{
+  // chain to base class
+  DeviceImpl::create_properties();
+  // create own properties
+  auto getsolo   = [this] (Value &val)       { val = solo(); };
+  auto setsolo   = [this] (const Value &val) { return solo (val.as_double()); };
+  PropertyBag bag = property_bag();
+  bag.group = _("Mix");
+  bag += Prop (getsolo, setsolo,     { "solo",   _("Solo"),   _("Solo"), false, "", {}, STANDARD + String (":toggle") });
+}
+
+PropertyS
+TrackImpl::access_properties ()
+{
+  PropertyS props = DeviceImpl::access_properties();
+  PropertyS chain_props = chain_->access_properties();
+  props.insert (props.end(), chain_props.begin(), chain_props.end());
+  return props;
+}
+
 
 static constexpr const uint MAX_LAUNCHER_CLIPS = 8;
 

@@ -61,6 +61,10 @@ b-trackview {
   .-track-name {
     display: inline-flex; position: relative; width: 7em; overflow: hidden;
   }
+  .-mute-solo {
+    display: flex;
+    flex-direction: row;
+  }
 }
 b-trackview[current-track] .b-trackview-control {
   background-color: zmod($b-button-border, Jz+=25%);
@@ -75,6 +79,11 @@ const HTML = (t, d) => html`
       <b-editable ${ref (h => t.trackname_ = h)} clicks="2" style="min-width: 4em; width: 100%"
         selectall @change=${event => t.track.name (event.detail.value.trim())}
         >${t.wtrack_.name}</b-editable>
+    </span>
+    <span class="-mute-solo">
+      <b-trackbutton .track="${t.track}" label="M"></b-trackbutton>
+      <b-trackbutton .track="${t.track}" label="S"></b-trackbutton>
+      <b-trackvolume .track="${t.track}"></b-trackvolume>
     </span>
     <div class="-lvm-main">
       <div class="-lvm-levelbg" ${ref (h => t.levelbg_ = h)}></div>

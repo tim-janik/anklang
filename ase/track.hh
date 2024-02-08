@@ -11,12 +11,17 @@ class TrackImpl : public DeviceImpl, public virtual Track {
   DeviceP      chain_, midi_prod_;
   ClipImplS    clips_;
   uint         midi_channel_ = 0;
+  bool         solo_ = false;
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
   virtual         ~TrackImpl        ();
+  void            set_solo_states   ();
 protected:
   String          fallback_name     () const override;
   void            serialize         (WritNode &xs) override;
+  void            create_properties () override;
+  bool            solo              () const               { return solo_; }
+  bool            solo              (bool new_solo);
 public:
   class ClipScout;
   explicit        TrackImpl         (ProjectImpl&, bool masterflag);
@@ -32,6 +37,7 @@ public:
   void            midi_channel      (int32 midichannel) override;
   ClipS           launcher_clips    () override;
   DeviceP         access_device     () override;
+  PropertyS       access_properties () override;
   MonitorP        create_monitor    (int32 ochannel) override;
   void            update_clips      ();
   ssize_t         clip_index        (const ClipImpl &clip) const;

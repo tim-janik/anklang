@@ -164,11 +164,31 @@ AudioChain::initialize (SpeakerArrangement busses)
   auto obus = add_output_bus ("Output", ospeakers_);
   (void) ibus;
   assert_return (OUT1 == obus);
+
+  const double default_volume = 0.5407418735601; // -10dB
+
+  ParameterMap pmap;
+  pmap.group = "Settings";
+  pmap[VOLUME] = Param { "volume", _("Volume"), _("Volume"), default_volume, "", { 0, 1 }, GUIONLY };
+  pmap[MUTE]   = Param { "mute",   _("Mute"),   _("Mute"), false, "", {}, GUIONLY + ":toggle" };
+
+  ChoiceS solo_state_cs;
+  solo_state_cs += { "Off",   "Solo is turned off" };
+  solo_state_cs += { "On",    "This track is solo" };
+  solo_state_cs += { "Other", "Another track is solo" };
+  pmap[SOLO_STATE] = Param { "solo_state", _("Solo State"), _("Solo State"), 0, "", std::move (solo_state_cs), GUIONLY };
+
+  install_params (pmap);
+  prepare_event_input();
 }
 
 void
 AudioChain::reset (uint64 target_stamp)
-{}
+{
+  volume_smooth_.reset (sample_rate(), 0.020);
+  reset_volume_ = true;
+  adjust_all_params();
+}
 
 uint
 AudioChain::schedule_children()
@@ -189,6 +209,34 @@ AudioChain::schedule_children()
 void
 AudioChain::render (uint n_frames)
 {
+  bool volume_changed = false;
+  MidiEventInput evinput = midi_event_input();
+  for (const auto &ev : evinput)
+    {
+      switch (ev.message())
+        {
+        case MidiMessage::PARAM_VALUE:
+          apply_event (ev);
+          adjust_param (ev.param);
+          if (ev.param == VOLUME || ev.param == MUTE || ev.param == SOLO_STATE)
+            volume_changed = true;
+          break;
+        default: ;
+        }
+    }
+  if (volume_changed)
+    {
+      const int solo_state = irintf (get_param (SOLO_STATE));
+      float new_volume = get_param (VOLUME);
+      if (solo_state == SOLO_STATE_OTHER)
+        new_volume = 0;
+      if (get_param (MUTE) && solo_state != SOLO_STATE_ON)
+        new_volume = 0;
+      // compute volume factor so that volume * volume * volume is in range [0..2]
+      const float cbrt_2 = 1.25992104989487; /* 2^(1/3) */
+      volume_smooth_.set (new_volume * cbrt_2, reset_volume_);
+      reset_volume_ = false;
+    }
   // make the last processor output the chain output
   const size_t nlastchannels = last_output_ ? last_output_->n_ochannels (OUT1) : 0;
   const size_t n_och = n_ochannels (OUT1);
@@ -205,12 +253,28 @@ AudioChain::render (uint n_frames)
       else
         {
           const float *cblock = last_output_->ofloats (OUT1, std::min (c, nlastchannels - 1));
-          redirect_oblock (OUT1, c, cblock);
+          float *output_block = oblock (OUT1, c);
+          if (volume_smooth_.is_constant())
+            {
+              float v = volume_smooth_.get_next();
+              v = v * v * v;
+              for (uint i = 0; i < n_frames; i++)
+                output_block[i] = cblock[i] * v;
+            }
+          else
+            {
+              for (uint i = 0; i < n_frames; i++)
+                {
+                  float v = volume_smooth_.get_next();
+                  v = v * v * v;
+                  output_block[i] = cblock[i] * v;
+                }
+            }
           if (probes)
             {
               // SPL = 20 * log10 (root_mean_square (p) / p0) dB        ; https://en.wikipedia.org/wiki/Sound_pressure#Sound_pressure_level
               // const float sqrsig = square_sum (n_frames, cblock) / n_frames; // * 1.0 / p0^2
-              const float sqrsig = square_max (n_frames, cblock);
+              const float sqrsig = square_max (n_frames, output_block);
               const float log2div = 3.01029995663981; // 20 / log2 (10) / 2.0
               const float db_spl = ISLIKELY (sqrsig > 0.0) ? log2div * fast_log2 (sqrsig) : -192;
               (*probes)[c].dbspl = db_spl;
@@ -218,6 +282,26 @@ AudioChain::render (uint n_frames)
         }
     }
   // FIXME: assign obus if no children are present
+}
+
+std::string
+AudioChain::param_value_to_text (uint32_t paramid, double value) const
+{
+  if (paramid == VOLUME)
+    {
+      if (value > 0)
+        return string_format ("Volume %.1f dB", volume_db (value));
+      else
+        return "Volume -\u221E dB";
+    }
+  else
+    return AudioProcessor::param_value_to_text (paramid, value);
+}
+
+float
+AudioChain::volume_db (float volume)
+{
+  return voltage2db (2 * volume * volume * volume);
 }
 
 /// Reconnect AudioChain child processors at start and after.

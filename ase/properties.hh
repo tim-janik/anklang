@@ -61,7 +61,7 @@ class PropertyImpl : public ParameterProperty {
 public:
   ASE_DEFINE_MAKE_SHARED (PropertyImpl);
   Value   get_value () override                 { Value v; getter_ (v); return v; }
-  bool    set_value (const Value &v) override   { return setter_ (v); }
+  bool    set_value (const Value &v) override   { bool changed = setter_ (v); if (changed) emit_notify (ident()); return changed; }
   ChoiceS choices   () override                 { return lister_ ? lister_ (*this) : parameter_->choices(); }
 };
 
