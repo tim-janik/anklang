@@ -9,7 +9,7 @@
  * Using the `popup()` method, the menu can be popped up from the parent component,
  * and setting up a `.activate` handler can be used to handle menuitem actions. Example:
  * ```html
- * <div @contextmenu="e => querySelector('b-contextmenu').popup">
+ * <div @contextmenu="e => querySelector('b-contextmenu').popup (e)">
  *   <b-contextmenu .activate="menuactivation">...</b-contextmenu>
  * </div>
  * ```
@@ -220,9 +220,11 @@ class BContextMenu extends LitComponent {
   {
     // stop other user actions following modal popup
     Util.prevent_event (event);
+    if (!popup_options)
+      popup_options = { origin: null };
     if (this.dialog?.open || Util.frame_stamp() == this.menudata.menu_stamp)
       return false;     // duplicate popup request, only popup once per frame
-    const origin = popup_options.origin?.$el || popup_options.origin || event?.currentTarget;
+    const origin = popup_options.origin === null ? null : popup_options.origin?.$el || popup_options.origin || event?.currentTarget;
     if (origin instanceof Element && Util.inside_display_none (origin))
       return false;     // cannot popup around hidden origin
     this.focus_uri = popup_options.focus_uri || '';
