@@ -580,16 +580,6 @@ CString::assign (const std::string &s) noexcept
   return *this;
 }
 
-void
-CString::qset (uint quark) noexcept
-{
-  if (quark_)
-    /*unref (quark_)*/;
-  quark_ = quark;
-  if (quark_)
-    /*ref (quark_)*/;
-}
-
 uint
 CStringGlobals::assign_quark (const std::string &s)
 {

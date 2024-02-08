@@ -137,7 +137,7 @@ using HugePageP = HugePage::HugePageP;
 /// Compact, deduplicating string variant for constant strings.
 class CString final {
   uint quark_ = 0;
-  void qset (uint quark) noexcept;
+  constexpr void qset (uint quark) noexcept                     { quark_ = quark; }
 public:
   using size_type = std::string::size_type;
   using const_iterator = std::string::const_iterator;

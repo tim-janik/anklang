@@ -101,10 +101,11 @@ class LiquidSFZ : public AudioProcessor {
   OBusId stereo_out_;
   Synth synth_;
   bool synth_need_reset_ = false;
-  ChoiceS hardcoded_instruments_;
   LiquidSFZLoader loader_;
 
-  enum Params { INSTRUMENT = 1 };
+  enum Params {
+    INSTRUMENT = 1,
+  };
 
   static constexpr const int PID_CC_OFFSET = 1000;
 
@@ -124,10 +125,8 @@ class LiquidSFZ : public AudioProcessor {
   ParameterMap
   build_parameter_map()
   {
-    auto insts = hardcoded_instruments_;
-
     ParameterMap pmap;
-    pmap[INSTRUMENT] = Param { "instrument", "Instrument", "Instrument", 0, "", std::move (insts), "", "Instrument (should have a file selector)" };
+    pmap[INSTRUMENT] = Param { "instrument", _("Instrument"), _("Inst"), "", "", {}, "", "Instrument File Name" };
     auto ccs = synth_.list_ccs();
     for (const auto& cc_info : ccs)
       {
@@ -148,8 +147,9 @@ class LiquidSFZ : public AudioProcessor {
   {
     switch (tag)
       {
-        case INSTRUMENT: loader_.load (hardcoded_instruments_[irintf (get_param (tag))].blurb);
-                         break;
+      case INSTRUMENT:
+        loader_.load (text_param_from_quark (INSTRUMENT, irintf (get_param (tag))));
+        break;
       }
   }
   void
@@ -224,11 +224,7 @@ public:
   LiquidSFZ (const ProcessorSetup &psetup) :
     AudioProcessor (psetup),
     loader_ (synth_)
-  {
-    hardcoded_instruments_ += { "P", "Piano", "/home/stefan/sfz/SalamanderGrandPianoV3_44.1khz16bit/SalamanderGrandPianoV3.sfz" };
-    hardcoded_instruments_ += { "C", "CelloEns", "/home/stefan/sfz/VSCO-2-CE-1.1.0/CelloEnsSusVib.sfz" };
-    hardcoded_instruments_ += { "O", "Organ", "/home/stefan/sfz/VSCO-2-CE-1.1.0/OrganLoud.sfz" };
-  }
+  {}
   static void
   static_info (AudioProcessorInfo &info)
   {
