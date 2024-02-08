@@ -56,6 +56,11 @@ const HTML = (t, d) => [
     <b-choiceinput class=${t.classes + " b-propinput-choice"} small="1" indexed="1" ?disabled=${t.readonly}
       value=${t.prop.value_.val} @valuechange=${e => t.prop.apply_ (e.target.value)}
       label=${t.prop.label_} title=${t.prop.title_} .choices=${t.prop.value_.choices} ></b-choiceinput>`,
+  t.istype ('text') &&
+  html`
+    <b-textinput class=${t.classes + " b-propinput-text"} ?disabled=${t.readonly}
+      value=${t.prop.value_.val} @valuechange=${e => t.prop.apply_ (e.target.value)}
+      label=${t.prop.label_} title=${t.prop.title_} ></b-textinput>`,
   !t.labeled || !t.prop.nick_ ? '' :
   html`
     <span class="b-propinput-span">${t.prop.nick_}</span> `,
@@ -121,17 +126,23 @@ class BPropInput extends LitComponent {
   }
   istype (proptype)
   {
-    if (this.prop?.is_numeric_)
-      {
-	const hints = ':' + this.prop.hints_ + ':';
-	let ptype = 'knob';
-	if (hints.search (/:toggle:/) >= 0)
-	  ptype = 'toggle';
-	else if (hints.search (/:choice:/) >= 0)
-	  ptype = 'choice';
-	if (proptype === ptype)
-	  return true; // allow html`` eval
-      }
+    if (!this.prop?.is_numeric_) {
+      let ptype = 'text';
+      if (proptype === ptype)
+	return true; // allow html`` eval
+      return ''; // empty html``
+    }
+    // is_numeric_
+    const hints = ':' + this.prop.hints_ + ':';
+    let ptype = 'knob';
+    if (hints.search (/:text:/) >= 0)
+      ptype = 'text';
+    if (hints.search (/:toggle:/) >= 0)
+      ptype = 'toggle';
+    else if (hints.search (/:choice:/) >= 0)
+      ptype = 'choice';
+    if (proptype === ptype)
+      return true; // allow html`` eval
     return ''; // empty html``
   }
   set_num (nv)

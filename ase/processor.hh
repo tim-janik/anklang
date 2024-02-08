@@ -74,11 +74,9 @@ struct AudioParams final {
 
 /// Audio signal AudioProcessor base class, implemented by all effects and instruments.
 class AudioProcessor : public std::enable_shared_from_this<AudioProcessor>, public FastMemory::NewDeleteBase {
-  struct IBus;
-  struct OBus;
+  struct IOBus;
   struct EventStreams;
   struct RenderContext;
-  union  PBus;
   class FloatBuffer;
   friend class ProcessorManager;
   friend class DeviceImpl;
@@ -110,7 +108,7 @@ protected:
 private:
   uint32                   output_offset_ = 0;
   FloatBuffer             *fbuffers_ = nullptr;
-  std::vector<PBus>        iobuses_;
+  std::vector<IOBus>       iobuses_;
   AudioParams              params_;
   std::vector<OConnection> outputs_;
   EventStreams            *estreams_ = nullptr;
@@ -120,6 +118,7 @@ private:
   using MidiEventVectorAP = std::atomic<MidiEventVector*>;
   MidiEventVectorAP        t0events_ = nullptr;
   RenderContext           *render_context_ = nullptr;
+  std::vector<CString>     cstrings0_, cstrings1_;
   template<class F> void modify_t0events (const F&);
   void               assign_iobufs      ();
   void               release_iobufs     ();
@@ -162,10 +161,10 @@ protected:
   OBusId        add_output_bus    (CString uilabel, SpeakerArrangement speakerarrangement,
                                    const String &hints = "", const String &blurb = "");
   void          remove_all_buses  ();
-  OBus&         iobus             (OBusId busid);
-  IBus&         iobus             (IBusId busid);
-  const OBus&   iobus             (OBusId busid) const { return const_cast<AudioProcessor*> (this)->iobus (busid); }
-  const IBus&   iobus             (IBusId busid) const { return const_cast<AudioProcessor*> (this)->iobus (busid); }
+  IOBus&        iobus             (OBusId busid);
+  IOBus&        iobus             (IBusId busid);
+  const IOBus&  iobus             (OBusId busid) const { return const_cast<AudioProcessor*> (this)->iobus (busid); }
+  const IOBus&  iobus             (IBusId busid) const { return const_cast<AudioProcessor*> (this)->iobus (busid); }
   void          disconnect_ibuses ();
   void          disconnect_obuses ();
   void          disconnect        (IBusId ibus);
@@ -210,6 +209,8 @@ public:
   double              get_normalized        (Id32 paramid);
   bool                set_normalized        (Id32 paramid, double normalized);
   bool                is_initialized        () const;
+  uint                text_param_to_quark   (uint32_t paramid, const String &text);
+  String              text_param_from_quark (uint32_t paramid, uint vint);
   // Buses
   IBusId        find_ibus         (const String &name) const;
   OBusId        find_obus         (const String &name) const;
@@ -282,23 +283,25 @@ protected:
 };
 
 // == Inlined Internals ==
-struct AudioProcessor::IBus : BusInfo {
-  AudioProcessor *proc = {};
-  OBusId     obusid = {};
-  explicit IBus (const String &ident, const String &label, SpeakerArrangement sa);
-};
-struct AudioProcessor::OBus : BusInfo {
-  uint fbuffer_concounter = 0;
-  uint fbuffer_count = 0;
-  uint fbuffer_index = ~0;
-  explicit OBus (const String &ident, const String &label, SpeakerArrangement sa);
-};
 // AudioProcessor internal input/output bus book keeping
-union AudioProcessor::PBus {
-  IBus    ibus;
-  OBus    obus;
-  BusInfo pbus;
-  explicit PBus (const String &ident, const String &label, SpeakerArrangement sa);
+struct AudioProcessor::IOBus : BusInfo {
+  enum IOTag : uint { IBUS = 1, OBUS = 2 };
+  union {
+    IOTag iotag;
+    struct /*IBus*/ {
+      IOTag           ibus;
+      OBusId          obusid;
+      AudioProcessor *oproc;
+    };
+    struct /*OBus*/ {
+      IOTag obus;
+      uint  fbuffer_concounter;
+      uint  fbuffer_count;
+      uint  fbuffer_index; /* = ~0 */
+    };
+    uint mem_[4] = { 0, 0, 0, 0 };
+  };
+  explicit IOBus (IOTag io_tag, const String &ident, const String &label, SpeakerArrangement sa);
 };
 
 // AudioProcessor internal input/output event stream book keeping
@@ -497,7 +500,7 @@ AudioProcessor::bus_info (OBusId busid) const
 inline uint
 AudioProcessor::n_ichannels (IBusId busid) const
 {
-  const IBus &ibus = iobus (busid);
+  const IOBus &ibus = iobus (busid);
   return ibus.n_channels();
 }
 
@@ -505,7 +508,7 @@ AudioProcessor::n_ichannels (IBusId busid) const
 inline uint
 AudioProcessor::n_ochannels (OBusId busid) const
 {
-  const OBus &obus = iobus (busid);
+  const IOBus &obus = iobus (busid);
   return obus.n_channels();
 }
 
