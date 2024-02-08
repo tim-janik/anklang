@@ -1791,7 +1791,8 @@ host_request_process_mt (const clap_host *host)
 }
 
 static void
-host_request_callback_mt (const clap_host *host) {
+host_request_callback_mt (const clap_host *host)
+{
   CDEBUG ("%s: %s", clapid (host), __func__);
   ClapPluginHandleImplP handlep = handle_sptr (host);
   main_loop->exec_callback ([handlep] () {

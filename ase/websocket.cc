@@ -328,7 +328,7 @@ WebSocketConnection::nickname ()
       else if (Re::search (R"(\bChrome-Lighthouse\b)", ua) >= 0)
         hh = "Lh";
       else if (Re::search (R"(\bChrome/)", ua) >= 0)
-        hh = "Ch";
+        hh = "CR";
       else if (Re::search (R"(\bSafari/)", ua) >= 0)
         hh = "Sa";
       else

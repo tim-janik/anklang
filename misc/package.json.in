@@ -5,8 +5,8 @@
   "scripts": {
     "serve": "run-p sound-engine monitor",
     "sound-engine": "lib/AnklangSynthEngine $ASEOPT",
-    "monitor": "nodemon --ext '*' --watch $npm_package_config_srcdir/ui/ --delay 2500ms --on-change-only --exec 'npm run -s ui/rebuild' --exitcrash",
-    "ui/rebuild": "make ui/rebuild -C $npm_package_config_srcdir -j`nproc`"
+    "monitor": "nodemon --ext '*' --watch ../ui/ --delay 2500ms --on-change-only --exec 'npm run -s ui/rebuild' --exitcrash",
+    "ui/rebuild": "make ui/rebuild -C .. -j`nproc`"
   },
   "dependencies": {
     "vue": "=3.3.7"
