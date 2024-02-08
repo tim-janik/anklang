@@ -12,6 +12,8 @@
 import { LitComponent, ref, html, JsExtract, docs } from '../little.js';
 import * as PianoCtrl from "./piano-ctrl.js";
 import * as Util from '../util.js';
+import { clamp } from '../util.js';
+import * as Mouse from '../mouse.js';
 const floor = Math.floor, round = Math.round;
 
 // == STYLE ==
@@ -77,7 +79,7 @@ const HTML = (t, d) => html`
   <c-grid tabindex="-1" ${ref (h => t.cgrid = h)} data-f1="#piano-roll"
     @pointerenter=${t.pointerenter} @pointerleave=${t.pointerleave} @focus=${t.focuschange} @blur=${t.focuschange}
     @keydown=${e => t.piano_ctrl.keydown (e)}
-    @wheel=${t.wheel} >
+    @wheel=${t.wheel_event} >
 
     <v-flex class="-toolbutton -col1 -row1" style="height: 1.7em; align-items: end; padding-right: 4px;" ${ref (h => t.menu_btn = h)}
       @click=${e => t.pianotoolmenu.popup (e)} @mousedown=${e => t.pianotoolmenu.popup (e)} >
@@ -378,14 +380,21 @@ class BPianoRoll extends LitComponent {
     paint_timeline.call (this);
     paint_piano.call (this);
   }
-  wheel (event)
+  wheel_event (event)
   {
-    // TODO: use "scroll" for scrollbars, wheel delta is inappropriate
-    const delta = Util.wheel_delta (event);
-    if (Math.abs (delta.x) > Math.abs (delta.y))
-      this.hscrollbar.scrollBy ({ left: delta.x });
-    else
-      this.vscrollbar.scrollBy ({ top: delta.y });
+    const delta = Mouse.wheel_delta (event, true);
+    if (event.ctrlKey) {
+      if (delta.deltaX)
+	this.hzoom = clamp (this.hzoom * (delta.deltaX > 0 ? 1.1 : 0.9), 0.25, 25);
+      if (delta.deltaY)
+	this.vzoom = clamp (this.vzoom * (delta.deltaY > 0 ? 1.1 : 0.9), 0.5, 25);
+      this.request_update_();
+    } else {
+      if (delta.deltaX)
+	this.hscrollbar.scrollBy ({ left: delta.deltaX });
+      if (delta.deltaY)
+	this.vscrollbar.scrollBy ({ top: delta.deltaY });
+    }
     Util.prevent_event (event);
   }
 }

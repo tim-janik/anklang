@@ -5,44 +5,15 @@
  * Global application instance for Anklang.
  * *zmovehooks*
  * : An array of callbacks to be notified on pointer moves.
- * *zmove (event)*
- * : Trigger the callback list `zmovehooks`, passing `event` along. This is useful to get debounced
+ * *zmove()*
+ * : Trigger the callback list `zmovehooks`. This is useful to get debounced
  * notifications for pointer movements, including 0-distance moves after significant UI changes.
  */
 
 import VueComponents from '../all-components.js';
 import ShellClass from '../b/shell.js';
 import * as Util from '../util.js';
-
-// == zmove() ==
-class ZMove {
-  /** @type {Event} */
-  static last_event;
-  static
-  zmove (ev) {
-    if (ev && ev.screenX && ev.screenY &&
-	ev.timeStamp > (ZMove.last_event?.timeStamp || 0))
-      ZMove.last_event = ev;
-    ZMove.trigger();
-  }
-  static
-  trigger_hooks() {
-    if (ZMove.last_event)
-      for (const hook of ZMove.zmovehooks)
-        hook (ZMove.last_event);
-  }
-  static trigger = Util.debounce (ZMove.trigger_hooks);
-  static zmovehooks = [];
-  static zmoves_add (cb) {
-    ZMove.zmovehooks.push (cb);
-    return _ => {
-      Util.array_remove (ZMove.zmovehooks, cb);
-    };
-  }
-}
-document.addEventListener ("pointerdown", ZMove.zmove, { capture: true, passive: true });
-document.addEventListener ("pointermove", ZMove.zmove, { capture: true, passive: true });
-document.addEventListener ("pointerup", ZMove.zmove, { capture: true, passive: true });
+import * as Mouse from '../mouse.js';
 
 // == App ==
 export class AppClass {
@@ -191,9 +162,9 @@ export class AppClass {
     };
     return this.shell.async_modal_dialog (dialog_setup);
   }
-  zmoves_add = ZMove.zmoves_add;
-  zmove = ZMove.zmove;
-  zmove_last = () => ZMove.last_event;
+  zmoves_add = Mouse.zmove_add;
+  zmove = Mouse.zmove_trigger;
+  zmove_last = Mouse.zmove_last;
 }
 
 // == addvc ==

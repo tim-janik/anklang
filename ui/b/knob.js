@@ -34,6 +34,7 @@
 
 import { LitComponent, html, JsExtract, docs } from '../little.js';
 import * as Util from "../util.js";
+import * as Mouse from '../mouse.js';
 
 // == STYLE ==
 JsExtract.scss`
@@ -64,7 +65,7 @@ b-knob {
 
 // == HTML ==
 const HTML = (t,d) => html`
-  <div id="sprite" ?bidir=${d.bidir}   @wheel="${t.wheel}"
+  <div id="sprite" ?bidir=${d.bidir}   @wheel="${t.wheel_event}"
     @pointerdown="${t.pointerdown}"
     @dblclick="${Util.prevent_event}"
     style="background-position: 0px calc(-270 * var(--pxsize))"></div>
@@ -172,9 +173,9 @@ class BKnob extends LitComponent {
 	this.reposition();
       }
   }
-  wheel (event)
+  wheel_event (event)
   {
-    const d = Util.wheel_delta (event);
+    const d = Mouse.wheel_delta (event);
     if (this[SPIN_DRAG]?.captureid === undefined && // not dragging
 	((!this.hscroll && d.x != 0) ||
 	 (!this.vscroll && d.y != 0)))
