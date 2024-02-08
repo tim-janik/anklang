@@ -29,21 +29,22 @@ def line_matcher (code, text, has_comment, orig, filename):
       m = m.end() - 2
       warning = "missing whitespace after parenthesis"
   # ban-fixme
-  elif m := checks['ban-fixme'] and has_comment and re.search (r'\bFIXME\b', text, re.IGNORECASE):
+  elif m := checks['ban-fixme'] and has_comment and re.search (r'\bFI[X]ME\b', text, re.IGNORECASE):
     error = "comment indicates unfinished code"
   # ban-todo
   elif m := checks['ban-todo'] and has_comment and re.search (r'\bTODO\b', text, re.IGNORECASE):
     error = "comment indicates open issues"
   # separate-body
-  elif m := checks['separate-body'] and re.match (r'\s*[\w <:,>]+\s*\(.*\)[\s\w]*{\s*(/[/*].*)?$', code):
+  elif m := checks['separate-body'] and re.match (r'\s*[\w <:,>]+\s*\((.+\s+.+)?\)[\s\w]*{\s*(/[/*].*)?$', code):
     m = m.start() + m.group().find ('{')
-    bad = not re.search (r'\]\s*\(', code)              # ignore lambda
-    if bad:
+    ignore = bool (re.search (r'\]\s*\(', code))                # ignore lambda
+    ignore |= bool (re.search (r'\balignas\s*\(', code))        # ignore alignas()
+    if not ignore:
       for w in ('do', 'switch', 'while', 'for', 'if', 'namespace'):
         if re.search (r'\b' + w + r'\b', code):
-          bad = False
+          ignore = True
           break
-    if bad:
+    if not ignore:
       warning = "missing newline before function body"
   # print diagnostics
   if error or warning:

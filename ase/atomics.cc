@@ -65,9 +65,9 @@ atomic_next_ptrref (AisNode *node)
   return node->next;
 }
 
-TEST_INTEGRITY (atomic_stack_test);
+TEST_INTEGRITY (atomic_mpmcstack_test);
 static void
-atomic_stack_test()
+atomic_mpmcstack_test()
 {
   bool was_empty;
   AtomicIntrusiveStack<AisNode> stack;
@@ -156,6 +156,31 @@ mpmc_stack_test()
   free (allocated_number_nodes);
   allocated_number_nodes = nullptr;
   assert (number_totals == COUNTING_THREADS * (NUMBER_NODES_PER_THREAD * (NUMBER_NODES_PER_THREAD + 1ull)) / 2);
+}
+
+// == AtomicStack<> test ==
+TEST_INTEGRITY (atomic_valuestack_test);
+static void
+atomic_valuestack_test()
+{
+  AtomicStack<std::string> sstack;
+  TASSERT (sstack.empty());
+  bool was_empty, had;
+  std::string s = "foo";
+  was_empty = sstack.push (s);
+  TASSERT (was_empty);
+  TASSERT (!sstack.empty());
+  was_empty = sstack.push (std::string ("bar"));
+  TASSERT (!was_empty);
+  TASSERT (!sstack.empty());
+  had = sstack.pop (s);
+  TASSERT (had && s == "bar");
+  TASSERT (!sstack.empty());
+  had = sstack.pop (s);
+  TASSERT (had && s == "foo");
+  had = sstack.pop (s);
+  TASSERT (!had);
+  TASSERT (sstack.empty());
 }
 
 } // Anon
