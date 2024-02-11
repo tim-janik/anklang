@@ -1,6 +1,6 @@
-/config-defaults\.mk
+/config-defaults.mk
 /out/
 /TAGS
 /rand/
-/\.submodule-stamp
-/\.dlcache/
+/.submodule-stamp
+/.dlcache/

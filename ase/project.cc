@@ -116,7 +116,7 @@ is_anklang_dir (const String &path)
 static String
 find_anklang_parent_dir (const String &path)
 {
-  for (String p = path; !p.empty(); p = Path::dirname (p))
+  for (String p = path; !p.empty() && !Path::isroot (p); p = Path::dirname (p))
     if (is_anklang_dir (p))
       return p;
   return "";

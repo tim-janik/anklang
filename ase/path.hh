@@ -5,18 +5,18 @@
 #include <ase/cxxaux.hh>
 
 #ifdef  _WIN32 // includes _WIN64
-#define ASE_UNIX_PATHS                  0       ///< Equals 1 _WIN32 and _WIN64 and 0 on Unix.
-#define ASE_DOS_PATHS                   1       ///< Equals 0 _WIN32 and _WIN64 and 1 on Unix.
+#define ASE_UNIX_PATHS                  0       ///< Equals 0 on _WIN32 and _WIN64 and 1 on Unix.
+#define ASE_DOS_PATHS                   1       ///< Equals 1 on _WIN32 and _WIN64 and 0 on Unix.
 #define ASE_DIRSEP                     '/'
 #define ASE_DIRSEP2                    '\\'
 #define ASE_DIRSEPARATORS               "/\\"
 #define ASE_SEARCHPATH_SEPARATOR        ';'
 #define ASE_LIBEXT                      ".dll"
 #else   // !_WIN32
-#define ASE_UNIX_PATHS                  1       ///< Equals 0 _WIN32 and _WIN64 and 1 on Unix.
-#define ASE_DOS_PATHS                   0       ///< Equals 1 _WIN32 and _WIN64 and 0 on Unix.
-#define ASE_DIRSEP                     '/'     ///< Platform directory separator character, '/' on Unix-like systems, a '\\' on _WIN32.
-#define ASE_DIRSEP2                    '/'     ///< Secondary directory separator character, '/' on Unix-like systems.
+#define ASE_UNIX_PATHS                  1       ///< Equals 0 on _WIN32 and _WIN64 and 1 on Unix.
+#define ASE_DOS_PATHS                   0       ///< Equals 1 on _WIN32 and _WIN64 and 0 on Unix.
+#define ASE_DIRSEP                     '/'      ///< Platform directory separator character, '/' on Unix-like systems, a '\\' on _WIN32.
+#define ASE_DIRSEP2                    '/'      ///< Secondary directory separator character, '/' on Unix-like systems.
 #define ASE_DIRSEPARATORS               "/"     ///< List of platform directory separator characters, "/" on Unix-like systems, "/\\" on _WIN32.
 #define ASE_SEARCHPATH_SEPARATOR        ':'     ///< Platform searchpath separator, ':' on Unix-like systems, ';' on _WIN32.
 #define ASE_LIBEXT                      ".so"   ///< Dynamic library filename extension on this platform.
@@ -36,6 +36,7 @@ String       dir_terminate       (const String &path);
 String       strip_slashes       (const String &path);
 String       abspath             (const String &path, const String &incwd = "");
 bool         isabs               (const String &path);
+bool         isroot              (const String &path, bool dos_drives = ASE_DOS_PATHS);
 bool         isdirname           (const String &path);
 bool         dircontains         (const String &dirpath, const String &descendant, String *relpath = nullptr);
 bool         mkdirs              (const String &dirpath, uint mode = 0750);
