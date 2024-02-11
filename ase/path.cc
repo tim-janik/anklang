@@ -153,6 +153,27 @@ isabs (const String &path)
   return false;
 }
 
+/// Return wether @a path is an absolute pathname which identifies the root directory.
+bool
+isroot (const String &path, bool dos_drives)
+{
+  const char *c = path.data();
+  // skip drive letter
+  if (dos_drives &&
+      ((c[0] >= 'A' && c[0] <= 'Z') ||
+       (c[0] >= 'a' && c[0] <= 'z')) &&
+      c[1] == ':')
+    c += 2; // skip drive letter like "C:"
+  // path MUST begin with a slash
+  if (!IS_DIRSEP (c[0]))
+    return false;
+  // path MAY contain "./" or more slashes
+  while (IS_DIRSEP (c[0]) || (c[1] == '.' && IS_DIRSEP (c[1])))
+    c += 1 + (c[1] == '.');                     // skip slash and possibly leading dot
+  // path MUST NOT contain other entries
+  return c[0] == 0;
+}
+
 /// Return wether @a path is pointing to a directory component.
 bool
 isdirname (const String &path)
@@ -1075,6 +1096,23 @@ path_tests()
   TCMP (Path::dirname ("dir" + String (dirsep) + "file"), ==, "dir");
   TCMP (Path::cwd(), !=, "");
   TCMP (Path::check (Path::join (Path::cwd(), "..", Path::basename (Path::cwd())), "rd"), ==, true); // ../. should be a readable directory
+  TASSERT (Path::isroot ("/") == true);
+  TASSERT (Path::isroot ("//") == true);
+  TASSERT (Path::isroot ("//////////") == true);
+  TASSERT (Path::isroot ("/.") == true);
+  TASSERT (Path::isroot ("./") == false);
+  TASSERT (Path::isroot (".////") == false);
+  TASSERT (Path::isroot ("/./") == true);
+  TASSERT (Path::isroot ("/./././././") == true);
+  TASSERT (Path::isroot ("/././././.") == true);
+  TASSERT (Path::isroot ("///././././//.///") == true);
+  TASSERT (Path::isroot ("///././././//.///.") == true);
+  TASSERT (Path::isroot ("abc") == false);
+  TASSERT (Path::isroot ("C:/", true) == true);
+  TASSERT (Path::isroot ("C:/.", true) == true);
+  TASSERT (Path::isroot ("8:/", true) == false);
+  TASSERT (Path::isroot ("8:/..", true) == false);
+  TASSERT (Path::isroot ("C:/D", true) == false);
   TCMP (Path::isdirname (""), ==, false);
   TCMP (Path::isdirname ("foo"), ==, false);
   TCMP (Path::isdirname ("foo/"), ==, true);
