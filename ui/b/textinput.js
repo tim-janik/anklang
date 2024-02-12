@@ -45,27 +45,43 @@ class BTextInput extends LitComponent {
   render() { return HTML (this); }
   input_element = null;
   static properties = {
-    value:	 { type: String, },
+    prop:	 { type: Object, reflect: true },
     placeholder: { type: String, },
     readonly:	 { type: Boolean, },
   };
-  constructor() {
+  constructor()
+  {
     super();
     this.value = '';
     this.placeholder = '';
     this.readonly = false;
   }
-  updated() {
-    // debug ("textinput.js: value:", this.value, "live:", this.input_element.value);
-  }
-  handle_input (event) {	// emit 'input' with constrained value
-    const constrainedvalue = this.constrain (this.input_element.value);
-    if (constrainedvalue !== this.value) {
-      this.value = constrainedvalue; // becomes Event.target.value
-      this.dispatchEvent (new Event ('valuechange', { composed: true }));
+  updated (changed_props)
+  {
+    if (changed_props.has ('prop')) {
+      changed_props['prop'] && changed_props['prop'].delnotify_ (this.request_update_);
+      this.prop && this.prop.addnotify_ (this.request_update_);
+    }
+    const value = this.prop ? this.prop.value_.val : "";
+    if (value !== this.value) {
+      this.value = value;
+      this.request_update_ ('value');
     }
   }
-  constrain (txt) {
+  disconnectedCallback()
+  {
+    this.prop && this.prop.delnotify_ (this.request_update_);
+  }
+  handle_input (event)  	// emit 'input' with constrained value
+  {
+    const constrainedvalue = this.constrain (this.input_element.value);
+    if (constrainedvalue !== this.value) {
+      this.value = constrainedvalue;
+      this.prop?.apply_ (this.value);
+    }
+  }
+  constrain (txt)
+  {
     return '' + txt;
   }
 }

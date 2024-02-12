@@ -85,8 +85,7 @@ const NUMBER_HTML = (t, prop) => html`
     ></b-numberinput>`;
 const TEXT_HTML = (t, prop) => html`
   <b-textinput class=${'b-objecteditor--' + prop.ident_}
-    value=${prop.value_.val} @valuechange=${e => prop.apply_ (e.target.value)}
-    ></b-textinput>`;
+    .prop=${prop} ></b-textinput>`;
 const SWITCH_HTML = (t, prop) => html`
   <b-switchinput class=${'b-objecteditor--' + prop.ident_}
     ?value=${prop.value_.val} @valuechange=${e => prop.apply_ (e.target.value)}

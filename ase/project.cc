@@ -14,6 +14,14 @@
 
 namespace Ase {
 
+static Preference synth_latency_pref =
+  Preference ({
+      "project.default_license", _("Default License"), "",
+      "CC-BY-SA-4.0 - https://creativecommons.org/licenses/by-sa/4.0/legalcode",
+      "",
+      {}, STANDARD, {
+        String ("descr=") + _("Default LICENSE to apply in the project properties."), } });
+
 static std::vector<ProjectImplP> &all_projects = *new std::vector<ProjectImplP>();
 
 // == Project ==

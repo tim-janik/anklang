@@ -58,8 +58,7 @@ const HTML = (t, d) => [
       label=${t.prop.label_} title=${t.prop.title_} .choices=${t.prop.value_.choices} ></b-choiceinput>`,
   t.istype ('text') &&
   html`
-    <b-textinput class=${t.classes + " b-propinput-text"} ?disabled=${t.readonly}
-      value=${t.prop.value_.val} @valuechange=${e => t.prop.apply_ (e.target.value)}
+    <b-textinput class=${t.classes + " b-propinput-text"} ?disabled=${t.readonly} .prop=${t.prop}
       label=${t.prop.label_} title=${t.prop.title_} ></b-textinput>`,
   !t.labeled || !t.prop.nick_ ? '' :
   html`
