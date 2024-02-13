@@ -803,6 +803,25 @@ vpath_find (const String &file, const String &mode)
   return file;
 }
 
+/// Create list with directories and filenames matching `pathpattern` with shell wildcards.
+void
+glob (const String &pathpattern, StringS &dirs, StringS &files)
+{
+  glob_t iglob = { 0, };
+  const int ir = ::glob (pathpattern.c_str(), GLOB_TILDE | GLOB_MARK, nullptr, &iglob);
+  if (ir != 0)
+    return;
+  for (size_t i = 0; i < iglob.gl_pathc; i++) {
+    const char *const p = iglob.gl_pathv[i];
+    size_t l = strlen (p);
+    if (IS_DIRSEP (p[l-1]))
+      dirs.push_back (p);
+    else
+      files.push_back (p);
+  }
+  globfree (&iglob);
+}
+
 /// Create list with filenames matching `pathpattern` with shell wildcards.
 void
 glob (const String &pathpattern, StringS &matches)
