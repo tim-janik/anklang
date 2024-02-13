@@ -35,10 +35,9 @@ class LiquidSFZLoader
           {
             if (want_sfz_ != have_sfz_)
               {
-                printf ("LiquidSFZ: loading %s...", want_sfz_.c_str());
-                fflush (stdout);
+                printerr ("LiquidSFZ: loading %s...", want_sfz_.c_str());
                 bool result = synth_.load (want_sfz_);
-                printf ("%s\n", result ? "OK" : "FAIL");
+                printerr ("%s\n", result ? "OK" : "FAIL");
                 // TODO: handle load error
 
                 have_sfz_ = want_sfz_;
@@ -51,7 +50,7 @@ class LiquidSFZLoader
             state_.store (STATE_IDLE);
           }
       }
-    printf ("run() done\n");
+    printerr ("LiquidSFZ: run() done\n");
   }
 public:
   LiquidSFZLoader (Synth &synth) :
@@ -59,14 +58,14 @@ public:
   {
     thread_ = std::thread (&LiquidSFZLoader::run, this);
     want_sfz_.reserve (4096); // avoid allocations in audio thread
-    printf ("LiquidSFZLoader()\n");
+    printerr ("LiquidSFZLoader()\n");
   }
   ~LiquidSFZLoader()
   {
     quit_.store (1);
     sem_.post();
     thread_.join();
-    printf ("~LiquidSFZLoader()\n");
+    printerr ("~LiquidSFZLoader()\n");
   }
   // called from audio thread
   bool
