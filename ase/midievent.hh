@@ -118,7 +118,7 @@ class MidiEventReader : QueueMultiplexer<MAXQUEUES,std::vector<MidiEvent>::const
   using Base = QueueMultiplexer<MAXQUEUES,std::vector<MidiEvent>::const_iterator>;
   ASE_CLASS_NON_COPYABLE (MidiEventReader);
 public:
-  using iterator = Base::iterator;
+  using iterator = typename Base::iterator;
   using Base::assign;
   size_t   events_pending  () const { return this->count_pending(); }
   iterator begin           ()       { return this->Base::begin(); }
