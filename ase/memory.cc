@@ -555,17 +555,61 @@ fast_mem_free (void *mem)
 #ifndef NDEBUG
 static CString cstring_early_test = "NULL"; // initialization must preceede cstring_globals
 #endif
-struct CStringGlobals {
-  static constexpr size_t static_quarks_max = 2048; // results in ca 64k for sizeof (static_quarks)
-  std::string static_quarks[static_quarks_max];
-  std::atomic<size_t> n_static_quarks = 1;
-  std::shared_mutex quarks_mutex;
-  std::unordered_map<uint, std::string> quarks_map;
-  uint               assign_quark (const std::string &s);
-  uint               lookup_quark (const std::string &s);
-  const std::string& string       (uint quark);
+/// Map std::string <-> uint IDs, thread safe
+class CStringTable {
+  struct StrPtrHash {
+    std::size_t operator() (const String *k) const noexcept             { return std::hash<String>{} (*k); }
+  };
+  struct StrPtrEqual {
+    bool operator() (const String *a, const String *b) const noexcept   { return *a == *b; }
+  };
+  using StrPtrMap = std::unordered_map<const String*,uint,StrPtrHash,StrPtrEqual>;
+  StrPtrMap                  quarks_;
+  std::vector<const String*> strings_;
+  std::shared_mutex          mutex_;
+  static constexpr String empty_string;
+  CStringTable()
+  {
+    strings_ = { &empty_string }; // ID==0
+    quarks_[&empty_string] = 0;
+  }
+public:
+  uint                 add    (const String &s) noexcept;
+  uint                 find   (const String &s) noexcept;
+  const String&        lookup (uint quark) noexcept;
+  static CStringTable& the    () noexcept       { static CStringTable g; return g; }
 };
-static Persistent<CStringGlobals> cstring_globals;
+
+uint
+CStringTable::add (const String &s) noexcept
+{
+  const std::unique_lock ulock (mutex_);
+  auto it = quarks_.find (&s);
+  if (it != quarks_.end()) [[likely]]
+    return it->second;
+  const uint quark = strings_.size();
+  strings_.push_back (new String (s));
+  quarks_[strings_.back()] = quark;
+  return quark;
+}
+
+uint
+CStringTable::find (const String &s) noexcept
+{
+  const std::unique_lock ulock (mutex_);
+  auto it = quarks_.find (&s);
+  if (it == quarks_.end()) return 0;
+  return it->second;
+}
+
+const String&
+CStringTable::lookup (uint quark) noexcept
+{
+  const std::unique_lock ulock (mutex_);
+  if (quark < strings_.size()) [[likely]]
+    return *strings_[quark];
+  return empty_string;
+}
 
 /// Assign a std::string to a CString, after deduplication, its memory is never released.
 /// In contrast to lookup(), the resulting CString is guaranteed to resolve to the contents
@@ -573,41 +617,10 @@ static Persistent<CStringGlobals> cstring_globals;
 /// Note that CString::assign() is not particularly fast, use it only to save
 /// memory for strings that are known to persist throughout runtime.
 CString&
-CString::assign (const std::string &s) noexcept
+CString::assign (const String &s) noexcept
 {
-  CStringGlobals &csg = *cstring_globals;
-  quark_ = csg.assign_quark (s);
+  quark_ = CStringTable::the().add (s);
   return *this;
-}
-
-uint
-CStringGlobals::assign_quark (const std::string &s)
-{
-  const size_t lastmax = n_static_quarks;
-  for (size_t i = 0; i < lastmax; i++)
-    if (s == static_quarks[i])
-      return i; // fast path
-  std::unique_lock ulock (quarks_mutex);
-  for (size_t i = lastmax; i < n_static_quarks; i++)
-    if (s == static_quarks[i])
-      return i; // found concurrently assigned quark
-  if (n_static_quarks < static_quarks_max)
-    {
-      const uint quark = n_static_quarks;
-      std::string str = s;
-      str.shrink_to_fit();
-      static_quarks[quark] = str;
-      n_static_quarks += 1;
-      return quark; // assignment via static_quarks
-    }
-  for (auto it = quarks_map.begin(); it != quarks_map.end(); it++)
-    if (it->second == s)
-      return it->first; // found quark in map
-  const uint quark = static_quarks_max + quarks_map.size();
-  std::string str = s;
-  str.shrink_to_fit();
-  quarks_map[quark] = str;
-  return quark; // assignment via quarks_map
 }
 
 /// Lookup a previously existing CString for a std::string `s`.
@@ -616,45 +629,16 @@ CStringGlobals::assign_quark (const std::string &s)
 CString
 CString::lookup (const std::string &s)
 {
-  CStringGlobals &csg = *cstring_globals;
   CString cstring;
-  cstring.quark_ = csg.lookup_quark (s);
+  cstring.quark_ = CStringTable::the().find (s);
   return cstring;
-}
-
-uint
-CStringGlobals::lookup_quark (const std::string &s)
-{
-  const size_t lastmax = n_static_quarks;
-  for (size_t i = 0; i < lastmax; i++)
-    if (s == static_quarks[i])
-      return i; // fast path
-  std::shared_lock ulock (quarks_mutex);
-  for (size_t i = lastmax; i < n_static_quarks; i++)
-    if (s == static_quarks[i])
-      return i; // found concurrently assigned quark
-  for (auto it = quarks_map.begin(); it != quarks_map.end(); it++)
-    if (it->second == s)
-      return it->first; // found quark in map
-  return 0; // giving up
 }
 
 /// Convert `CString` into a std::string.
 const std::string&
 CString::string () const
 {
-  CStringGlobals &csg = *cstring_globals;
-  return csg.string (quark_);
-}
-
-const std::string&
-CStringGlobals::string (uint quark)
-{
-  if (ASE_ISLIKELY (quark < n_static_quarks))
-    return static_quarks[quark];
-  std::shared_lock slock (quarks_mutex);
-  auto it = quarks_map.find (quark);
-  return it == quarks_map.end() ? static_quarks[0] : it->second;
+  return CStringTable::the().lookup (quark_);
 }
 
 uint
@@ -666,8 +650,10 @@ CString::temp_quark_impl (CString c)
 CString
 CString::temp_quark_impl (uint maybequark)
 {
-  CStringGlobals &csg = *cstring_globals;
-  return csg.string (maybequark);
+  CString cstring;
+  const std::string &stdstring = CStringTable::the().lookup (maybequark);
+  cstring.quark_ = stdstring.empty() ? 0 : maybequark;
+  return cstring;
 }
 
 } // Ase
@@ -742,6 +728,12 @@ aligned_allocator_tests()
       fast_mem_free (ptrs.back());
       ptrs.pop_back();
     }
+}
+
+TEST_INTEGRITY (memory_cstring_tests);
+static void
+memory_cstring_tests()
+{
   // test CString
 #ifndef NDEBUG
   const bool equality_checks =
@@ -831,6 +823,7 @@ aligned_allocator_tests()
   assert_return (ac != bc);
   assert_return (a != bc);
   assert_return (ac != b);
+  assert_return ("foo" == CString::temp_quark_impl (CString::temp_quark_impl ("foo")));
 }
 
 } // Anon

@@ -16,6 +16,7 @@ extern const int         ase_micro_version;
 extern const char *const ase_version_long;
 extern const char *const ase_version_short;
 extern const char *const ase_gettext_domain;
+extern const char *const ase_sharedir;
 
 // == Translate i18n strings ==
 const char* (_) (const char *string) __attribute__ ((__format_arg__ (1)));

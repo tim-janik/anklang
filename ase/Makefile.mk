@@ -53,7 +53,9 @@ $>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/include.deps) | $>/ase
 	$Q mv $@.tmp $@
 
 # == ase/buildversion-$(version_short).cc ==
-$>/ase/buildversion-$(version_short).cc:				| $>/ase/ # $(GITCOMMITDEPS)
+ase/buildsum != echo '$(sharedir)' | sha256sum - | sed -r 's/(.{12}).*/$(version_short).mk\1/'
+ase/buildversion.cc := $>/ase/buildversion-$(ase/buildsum).cc
+$(ase/buildversion.cc):								| $>/ase/ # $(GITCOMMITDEPS)
 	$(QGEN)
 	$Q echo '// make $@'							> $@.tmp
 	$Q echo '#include <ase/platform.hh>'					>>$@.tmp
@@ -64,10 +66,10 @@ $>/ase/buildversion-$(version_short).cc:				| $>/ase/ # $(GITCOMMITDEPS)
 	$Q echo 'const char *const ase_version_long = "$(version_short)+g$(version_hash) ($(INSN))";'	>>$@.tmp
 	$Q echo 'const char *const ase_version_short = "$(version_short)";'	>>$@.tmp
 	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_short)";' >>$@.tmp
+	$Q echo 'const char *const ase_sharedir = "$(sharedir)";'		>>$@.tmp
 	$Q echo '} // Ase'							>>$@.tmp
 	$Q mv $@.tmp $@
-ase/AnklangSynthEngine.objects += $>/ase/buildversion-$(version_short).o
-# $>/ase/buildversion-$(version_short).o: $>/ase/buildversion-$(version_short).cc
+ase/AnklangSynthEngine.objects += $(ase/buildversion.cc:.cc=.o)
 
 # == ase/sysconfig.h ==
 $>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk

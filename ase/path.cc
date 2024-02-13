@@ -803,6 +803,25 @@ vpath_find (const String &file, const String &mode)
   return file;
 }
 
+/// Create list with directories and filenames matching `pathpattern` with shell wildcards.
+void
+glob (const String &pathpattern, StringS &dirs, StringS &files)
+{
+  glob_t iglob = { 0, };
+  const int ir = ::glob (pathpattern.c_str(), GLOB_TILDE | GLOB_MARK, nullptr, &iglob);
+  if (ir != 0)
+    return;
+  for (size_t i = 0; i < iglob.gl_pathc; i++) {
+    const char *const p = iglob.gl_pathv[i];
+    size_t l = strlen (p);
+    if (IS_DIRSEP (p[l-1]))
+      dirs.push_back (p);
+    else
+      files.push_back (p);
+  }
+  globfree (&iglob);
+}
+
 /// Create list with filenames matching `pathpattern` with shell wildcards.
 void
 glob (const String &pathpattern, StringS &matches)
@@ -878,7 +897,7 @@ simplify_abspath (const std::string &abspath_expression)
 static char* // return malloc()-ed buffer containing a full read of FILE
 file_memread (FILE *stream, size_t *lengthp, ssize_t maxlength)
 {
-  size_t sz = 4096;
+  size_t sz = maxlength <= 0 || maxlength > 1048576 ? 1048576 : maxlength;
   char *buffer = (char*) malloc (sz);
   if (!buffer)
     return NULL;
@@ -935,6 +954,7 @@ memread (const String &filename, size_t *lengthp, ssize_t maxlength)
   char *contents = file_memread (file, lengthp, maxlength);
   int savederr = errno;
   fclose (file);
+  contents = (char*) realloc (contents, *lengthp);
   errno = savederr;
   return contents;
 }
