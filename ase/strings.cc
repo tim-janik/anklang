@@ -801,18 +801,38 @@ string_cmp_uuid (const String &uuid_string1, const String &uuid_string2)
   return strcasecmp (uuid_string1.c_str(), uuid_string2.c_str()); /* good enough for numeric equality and defines stable order */
 }
 
-/// Returns whether @a string starts with @a fragment.
+/// Returns whether `string` starts with `fragment`.
 bool
 string_startswith (const String &string, const String &fragment)
 {
   return fragment.size() <= string.size() && 0 == string.compare (0, fragment.size(), fragment);
 }
 
-/// Returns whether @a string ends with @a fragment.
+/// Returns whether @a string starts with any element of `fragments`.
+bool
+string_startswith (const String &string, const StringS &fragments)
+{
+  for (const String &frag : fragments)
+    if (string_startswith (string, frag))
+      return true;
+  return false;
+}
+
+/// Returns whether `string` ends with `fragment`.
 bool
 string_endswith (const String &string, const String &fragment)
 {
   return fragment.size() <= string.size() && 0 == string.compare (string.size() - fragment.size(), fragment.size(), fragment);
+}
+
+/// Returns whether @a string ends with any element of `fragments`.
+bool
+string_endswith (const String &string, const StringS &fragments)
+{
+  for (const String &frag : fragments)
+    if (string_endswith (string, frag))
+      return true;
+  return false;
 }
 
 static inline bool
