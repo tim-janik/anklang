@@ -878,7 +878,7 @@ simplify_abspath (const std::string &abspath_expression)
 static char* // return malloc()-ed buffer containing a full read of FILE
 file_memread (FILE *stream, size_t *lengthp, ssize_t maxlength)
 {
-  size_t sz = 4096;
+  size_t sz = maxlength <= 0 || maxlength > 1048576 ? 1048576 : maxlength;
   char *buffer = (char*) malloc (sz);
   if (!buffer)
     return NULL;
@@ -935,6 +935,7 @@ memread (const String &filename, size_t *lengthp, ssize_t maxlength)
   char *contents = file_memread (file, lengthp, maxlength);
   int savederr = errno;
   fclose (file);
+  contents = (char*) realloc (contents, *lengthp);
   errno = savederr;
   return contents;
 }
