@@ -49,8 +49,8 @@ enum class MidiMessage : int32_t {
 /// MidiEvent data structure.
 struct MidiEvent {
   using enum MidiEventType;
-  static_assert (AUDIO_BLOCK_MAX_RENDER_SIZE <= 2048); // -2048…+2047 fits frame
-  int       frame : 12;  ///< Offset into current block, delayed if negative
+  static_assert (AUDIO_BLOCK_MAX_RENDER_SIZE <= 4096); // 0…+4095 fits frame
+  uint      frame : 12;  ///< Offset into current block, delayed if negative
   uint      channel : 4; ///< 0…15 for standard events
   MidiEventType type;    ///< MidiEvent type, one of the MidiEventType members
   union {
