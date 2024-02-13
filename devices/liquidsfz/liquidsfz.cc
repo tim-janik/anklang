@@ -182,14 +182,13 @@ class LiquidSFZ : public AudioProcessor {
         MidiEventInput evinput = midi_event_input();
         for (const auto &ev : evinput)
           {
-            const int time_stamp = std::max<int> (ev.frame, 0);
             switch (ev.message())
               {
               case MidiMessage::NOTE_OFF:
-                synth_.add_event_note_off (time_stamp, ev.channel, ev.key);
+                synth_.add_event_note_off (ev.frame, ev.channel, ev.key);
                 break;
               case MidiMessage::NOTE_ON:
-                synth_.add_event_note_on (time_stamp, ev.channel, ev.key, std::clamp (irintf (ev.velocity * 127), 0, 127));
+                synth_.add_event_note_on (ev.frame, ev.channel, ev.key, std::clamp (irintf (ev.velocity * 127), 0, 127));
                 break;
               case MidiMessage::ALL_NOTES_OFF:
               case MidiMessage::ALL_SOUND_OFF:
