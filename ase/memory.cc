@@ -567,9 +567,9 @@ class CStringTable {
   StrPtrMap                  quarks_;
   std::vector<const String*> strings_;
   std::shared_mutex          mutex_;
-  static constexpr String empty_string;
   CStringTable()
   {
+    static String empty_string;
     strings_ = { &empty_string }; // ID==0
     quarks_[&empty_string] = 0;
   }
@@ -608,7 +608,7 @@ CStringTable::lookup (uint quark) noexcept
   const std::unique_lock ulock (mutex_);
   if (quark < strings_.size()) [[likely]]
     return *strings_[quark];
-  return empty_string;
+  return *strings_[0]; // empty_string;
 }
 
 /// Assign a std::string to a CString, after deduplication, its memory is never released.
