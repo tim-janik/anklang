@@ -57,6 +57,8 @@ void
 AudioCombo::insert (AudioProcessorP proc, ssize_t pos)
 {
   assert_return (proc != nullptr);
+  if (pos == -1)
+    pos = processors_.size(); // insert at the end of the chain
   const size_t index = CLAMP (pos, 0, processors_.size());
   processors_.insert (processors_.begin() + index, proc);
   // fixup following connections
