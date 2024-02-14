@@ -86,13 +86,11 @@ public:
     adjust_all_params();
   }
   void
-  render (uint n_frames) override
+  render_audio (float *input0, float *input1, float *output0, float *output1, uint n_frames)
   {
-    apply_input_events();
-    float *input0 = const_cast<float*> (ifloats (stereoin, 0));
-    float *input1 = const_cast<float*> (ifloats (stereoin, 1));
-    float *output0 = oblock (stereout, 0);
-    float *output1 = oblock (stereout, 1);
+    if (!n_frames)
+      return;
+
     // this only generates the wet signal
     model.processreplace (input0, input1, output0, output1, n_frames, 1);
 
@@ -114,6 +112,34 @@ public:
             output1[i] = input1[i] * (1 - mix) + output1[i] * mix;
           }
       }
+  }
+  void
+  render (uint n_frames) override
+  {
+    float *input0 = const_cast<float*> (ifloats (stereoin, 0));
+    float *input1 = const_cast<float*> (ifloats (stereoin, 1));
+    float *output0 = oblock (stereout, 0);
+    float *output1 = oblock (stereout, 1);
+
+    uint offset = 0;
+    MidiEventInput evinput = midi_event_input();
+    for (const auto &ev : evinput)
+      {
+        // process any audio that is before the event
+        render_audio (input0 + offset, input1 + offset, output0 + offset, output1 + offset, ev.frame - offset);
+        offset = ev.frame;
+
+        switch (ev.message())
+          {
+          case MidiMessage::PARAM_VALUE:
+            apply_event (ev);
+            adjust_param (ev.param);
+            break;
+          default: ;
+          }
+      }
+    // process frames after last event
+    render_audio (input0 + offset, input1 + offset, output0 + offset, output1 + offset, n_frames - offset);
   }
 };
 static auto freeverb = register_audio_processor<Freeverb> ("Ase::Devices::Freeverb");
