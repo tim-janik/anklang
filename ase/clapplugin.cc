@@ -555,21 +555,21 @@ ClapAudioProcessor::convert_clap_events (const clap_process_t &process, const bo
       case MidiMessage::NOTE_OFF:
       case MidiMessage::AFTERTOUCH:
         if (as_clapnotes && ev.type == MidiEvent::AFTERTOUCH) {
-          expr = setup_expression (&input_events_[j++], MAX (ev.frame, 0), 0);
+          expr = setup_expression (&input_events_[j++], ev.frame, 0);
           expr->expression_id = CLAP_NOTE_EXPRESSION_PRESSURE;
           expr->note_id = ev.noteid;
           expr->channel = ev.channel;
           expr->key = ev.key;
           expr->value = ev.velocity;
         } else if (as_clapnotes) {
-          evnote = setup_evnote (&input_events_[j++], MAX (ev.frame, 0), 0);
+          evnote = setup_evnote (&input_events_[j++], ev.frame, 0);
           evnote->header.type = ev.type == MidiEvent::NOTE_ON ? CLAP_EVENT_NOTE_ON : CLAP_EVENT_NOTE_OFF;
           evnote->note_id = ev.noteid;
           evnote->channel = ev.channel;
           evnote->key = ev.key;
           evnote->velocity = ev.velocity;
         } else {
-          midi1 = setup_midi1 (&input_events_[j++], MAX (ev.frame, 0), 0);
+          midi1 = setup_midi1 (&input_events_[j++], ev.frame, 0);
           midi1->data[0] = uint8_t (ev.type) | (ev.channel & 0xf);
           midi1->data[1] = ev.key;
           midi1->data[2] = std::min (uint8_t (ev.velocity * 127), uint8_t (127));
@@ -577,33 +577,33 @@ ClapAudioProcessor::convert_clap_events (const clap_process_t &process, const bo
         break;
       case MidiMessage::ALL_NOTES_OFF:
         if (as_clapnotes) {
-          evnote = setup_evnote (&input_events_[j++], MAX (ev.frame, 0), 0);
+          evnote = setup_evnote (&input_events_[j++], ev.frame, 0);
           evnote->header.type = CLAP_EVENT_NOTE_CHOKE;
           evnote->note_id = -1;
           evnote->channel = -1;
           evnote->key = -1;
           evnote->velocity = 0;
         } else {
-          midi1 = setup_midi1 (&input_events_[j++], MAX (ev.frame, 0), 0);
+          midi1 = setup_midi1 (&input_events_[j++], ev.frame, 0);
           midi1->data[0] = 0xB0 | (ev.channel & 0xf);
           midi1->data[1] = 123;
           midi1->data[2] = 0;
         }
         break;
       case MidiMessage::CONTROL_CHANGE:
-        midi1 = setup_midi1 (&input_events_[j++], MAX (ev.frame, 0), 0);
+        midi1 = setup_midi1 (&input_events_[j++], ev.frame, 0);
         midi1->data[0] = 0xB0 | (ev.channel & 0xf);
         midi1->data[1] = ev.param;
         midi1->data[2] = ev.cval;
         break;
       case MidiMessage::CHANNEL_PRESSURE:
-        midi1 = setup_midi1 (&input_events_[j++], MAX (ev.frame, 0), 0);
+        midi1 = setup_midi1 (&input_events_[j++], ev.frame, 0);
         midi1->data[0] = 0xD0 | (ev.channel & 0xf);
         midi1->data[1] = std::min (uint8_t (ev.velocity * 127), uint8_t (127));
         midi1->data[2] = 0;
         break;
       case MidiMessage::PITCH_BEND:
-        midi1 = setup_midi1 (&input_events_[j++], MAX (ev.frame, 0), 0);
+        midi1 = setup_midi1 (&input_events_[j++], ev.frame, 0);
         midi1->data[0] = 0xE0 | (ev.channel & 0xf);
         midi1->data[1] = std::min (uint8_t (ev.velocity * 127), uint8_t (127));
         midi1->data[2] = 0;

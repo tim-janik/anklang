@@ -35,10 +35,9 @@ class LiquidSFZLoader
           {
             if (want_sfz_ != have_sfz_)
               {
-                printf ("LiquidSFZ: loading %s...", want_sfz_.c_str());
-                fflush (stdout);
+                printerr ("LiquidSFZ: loading %s...", want_sfz_.c_str());
                 bool result = synth_.load (want_sfz_);
-                printf ("%s\n", result ? "OK" : "FAIL");
+                printerr ("%s\n", result ? "OK" : "FAIL");
                 // TODO: handle load error
 
                 have_sfz_ = want_sfz_;
@@ -51,7 +50,7 @@ class LiquidSFZLoader
             state_.store (STATE_IDLE);
           }
       }
-    printf ("run() done\n");
+    printerr ("LiquidSFZ: run() done\n");
   }
 public:
   LiquidSFZLoader (Synth &synth) :
@@ -59,14 +58,14 @@ public:
   {
     thread_ = std::thread (&LiquidSFZLoader::run, this);
     want_sfz_.reserve (4096); // avoid allocations in audio thread
-    printf ("LiquidSFZLoader()\n");
+    printerr ("LiquidSFZLoader()\n");
   }
   ~LiquidSFZLoader()
   {
     quit_.store (1);
     sem_.post();
     thread_.join();
-    printf ("~LiquidSFZLoader()\n");
+    printerr ("~LiquidSFZLoader()\n");
   }
   // called from audio thread
   bool
@@ -182,14 +181,13 @@ class LiquidSFZ : public AudioProcessor {
         MidiEventInput evinput = midi_event_input();
         for (const auto &ev : evinput)
           {
-            const int time_stamp = std::max<int> (ev.frame, 0);
             switch (ev.message())
               {
               case MidiMessage::NOTE_OFF:
-                synth_.add_event_note_off (time_stamp, ev.channel, ev.key);
+                synth_.add_event_note_off (ev.frame, ev.channel, ev.key);
                 break;
               case MidiMessage::NOTE_ON:
-                synth_.add_event_note_on (time_stamp, ev.channel, ev.key, std::clamp (irintf (ev.velocity * 127), 0, 127));
+                synth_.add_event_note_on (ev.frame, ev.channel, ev.key, std::clamp (irintf (ev.velocity * 127), 0, 127));
                 break;
               case MidiMessage::ALL_NOTES_OFF:
               case MidiMessage::ALL_SOUND_OFF:

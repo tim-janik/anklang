@@ -50,32 +50,32 @@ MidiEvent::to_string () const
   switch (type)
     {
     case PARAM_VALUE:
-      return string_format ("%+4d ch=%-2u %s param=%d pvalue=%.5f",
+      return string_format ("%4u ch=%-2u %s param=%d pvalue=%.5f",
                             frame, channel, "PARAM_VALUE", param, pvalue);
     case NOTE_OFF:        if (!et) et = "NOTE_OFF";
       /* fall-through */
     case NOTE_ON:         if (!et) et = "NOTE_ON";
       /* fall-through */
     case AFTERTOUCH:      if (!et) et = "AFTERTOUCH";
-      return string_format ("%+4d ch=%-2u %-10s pitch=%d vel=%f tune=%f id=%x",
+      return string_format ("%4u ch=%-2u %-10s pitch=%d vel=%f tune=%f id=%x",
                             frame, channel, et, key, velocity, tuning, noteid);
     case CONTROL_CHANGE:        if (!et) et = "CONTROL_CHANGE";
-      return string_format ("%+4d ch=%-2u %s control=%d value=%f (%02x) {%u}",
+      return string_format ("%4u ch=%-2u %s control=%d value=%f (%02x) {%u}",
                             frame, channel, et, param, value, cval, fragment);
     case PROGRAM_CHANGE:        if (!et) et = "PROGRAM_CHANGE";
-      return string_format ("%+4d ch=%-2u %s program=%d",
+      return string_format ("%4u ch=%-2u %s program=%d",
                             frame, channel, et, param);
     case CHANNEL_PRESSURE: if (!et) et = "CHANNEL_PRESSURE";
       /* fall-through */
     case PITCH_BEND:       if (!et) et = "PITCH_BEND";
-      return string_format ("%+4d ch=%-2u %s value=%+f",
+      return string_format ("%4u ch=%-2u %s value=%+f",
                             frame, channel, et, value);
     case SYSEX:                 if (!et) et = "SYSEX";
-      return string_format ("%+4d %s (unhandled)", frame, et);
+      return string_format ("%4u %s (unhandled)", frame, et);
     }
   static_assert (sizeof (MidiEvent) >= 2 * sizeof (uint64_t));
   const uint64_t *uu = reinterpret_cast<const uint64_t*> (this);
-  return string_format ("%+4d MidiEvent-%u (%08x %08x)", frame, type, uu[0], uu[1]);
+  return string_format ("%4u MidiEvent-%u (%08x %08x)", frame, type, uu[0], uu[1]);
 }
 
 MidiEvent
@@ -190,7 +190,10 @@ MidiEventOutput::append (int16_t frame, const MidiEvent &event)
 bool
 MidiEventOutput::append_unsorted (int16_t frame, const MidiEvent &event)
 {
-  const int64_t last_event_stamp = !events_.empty() ? events_.back().frame : -2048;
+  // we discard timing information by ignoring negative frame offsets here (#26)
+  // when we implement recording, we might want to preserve the exact timestamp
+  frame = std::max<int16_t> (frame, 0);
+  const int64_t last_event_stamp = !events_.empty() ? events_.back().frame : 0;
   events_.push_back (event);
   events_.back().frame = frame;
   return frame < last_event_stamp;
@@ -209,7 +212,7 @@ MidiEventOutput::ensure_order ()
 int64_t
 MidiEventOutput::last_frame () const
 {
-  return !events_.empty() ? events_.back().frame : -2048;
+  return !events_.empty() ? events_.back().frame : 0;
 }
 
 } // Ase
