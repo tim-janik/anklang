@@ -95,11 +95,24 @@ public:
     float *output1 = oblock (stereout, 1);
     // this only generates the wet signal
     model.processreplace (input0, input1, output0, output1, n_frames, 1);
-    for (uint i = 0; i < n_frames; i++)
+
+    if (mix_smooth_.is_constant()) // faster version: mix parameter is constant during the block
       {
         float mix = mix_smooth_.get_next();
-        output0[i] = input0[i] * (1 - mix) + output0[i] * mix;
-        output1[i] = input1[i] * (1 - mix) + output1[i] * mix;
+        for (uint i = 0; i < n_frames; i++)
+          {
+            output0[i] = input0[i] * (1 - mix) + output0[i] * mix;
+            output1[i] = input1[i] * (1 - mix) + output1[i] * mix;
+          }
+      }
+    else
+      {
+        for (uint i = 0; i < n_frames; i++)
+          {
+            float mix = mix_smooth_.get_next();
+            output0[i] = input0[i] * (1 - mix) + output0[i] * mix;
+            output1[i] = input1[i] * (1 - mix) + output1[i] * mix;
+          }
       }
   }
 };
