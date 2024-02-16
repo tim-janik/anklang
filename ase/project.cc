@@ -697,12 +697,14 @@ ProjectImpl::start_playback (double autostop)
   std::shared_ptr<CallbackS> queuep = std::make_shared<CallbackS>();
   for (auto track : tracks_)
     track->queue_cmd (*queuep, track->START);
-  auto job = [proc, queuep, autostop] () {
+  const TickSignature tsig (tick_sig_);
+  auto job = [proc, queuep, tsig, autostop] () {
     AudioEngine &engine = proc->engine();
     const double udmax = 18446744073709549568.0; // max double exactly matching an uint64_t
     const uint64_t s = autostop > udmax ? udmax : autostop * engine.sample_rate();
     engine.set_autostop (s);
     AudioTransport &transport = const_cast<AudioTransport&> (engine.transport());
+    transport.tempo (tsig);
     transport.running (true);
     for (const auto &cmd : *queuep)
       cmd();
