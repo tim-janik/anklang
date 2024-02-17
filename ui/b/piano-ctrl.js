@@ -176,10 +176,11 @@ export class PianoCtrl {
 	};
 	await queue_modify_notes (clip, notes_shift, "Shift Left");
 	break; }
-      case UP: { // ↑
+      case UP: case SHIFT + UP: { // ↑
+	const semitones = (key_ctrl_alt_shift & SHIFT) ? 12 : 1;
 	let bounced = false;
 	const note_mods = note => {
-	  const newkey = note.key + 1;
+	  const newkey = note.key + semitones;
 	  bounced |= newkey >= 128;
 	  return { key: newkey };
 	};
@@ -187,10 +188,11 @@ export class PianoCtrl {
 	  notes_filter_modify (allnotes, note => note.selected, note_mods, () => !bounced);
 	await queue_modify_notes (clip, notes_shift, "Shift Up");
 	break; }
-      case DOWN: { // ↓
+      case DOWN: case SHIFT + DOWN: { // ↓
+	const semitones = (key_ctrl_alt_shift & SHIFT) ? 12 : 1;
 	let bounced = false;
 	const note_mods = note => {
-	  const newkey = note.key - 1;
+	  const newkey = note.key - semitones;
 	  bounced |= newkey < 0;
 	  return { key: newkey };
 	};
