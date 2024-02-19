@@ -738,6 +738,7 @@ export function notes_canvas_tool_from_hover (piano_roll, pointerevent)
   const event_key = layout.midinote_from_y (coords.y);
   // need an early decision if event is on a resizable note, so use last cache without await
   const notes = piano_roll.wclip.all_notes || [];
+  const selected_notes = notes.filter (note => note.selected);
   // startup tool handler
   function drag_start (piano_roll)
   {
@@ -747,22 +748,35 @@ export function notes_canvas_tool_from_hover (piano_roll, pointerevent)
       Object.assign (ctool_this, this);
     return ctool_this;
   }
-  // rate tools
-  const tool_prio = tool => !tool ? -1 : !!tool.drag_event + 2 * !!tool.cursor + 4 * !!tool.predicate;
-  // find tool
+  // rate tools and find best tool
   let best_tool = null;
+  let best_tool_prio = -1;
   for (let tool of ntool_list)
-    if (tool.toolmode === piano_roll.pianotool && tool_prio (tool) > tool_prio (best_tool))
+    if (tool.toolmode === piano_roll.pianotool)
       {
-	tool = Object.assign ({ drag_start }, tool);
-	if (tool.predicate) // must match predicate
-	  {
-	    const result = tool.predicate (coords, event_tick, event_key, notes);
-	    if (!result)
-	      continue;
-	    tool = Object.assign (tool, result);
-	  }
-	best_tool = tool;
+        let tool_prio = !!tool.drag_event + 2 * !!tool.cursor + 4 * !!tool.predicate;
+        tool = Object.assign ({ drag_start }, tool);
+        if (tool.predicate) // must match predicate
+          {
+            let result = tool.predicate (coords, event_tick, event_key, selected_notes);
+            if (result)
+              {
+                // prefer predicate matches on selected notes
+                tool_prio += 8;
+              }
+            else
+              {
+                result = tool.predicate (coords, event_tick, event_key, notes);
+                if (!result)
+                  continue;
+              }
+            tool = Object.assign (tool, result);
+          }
+        if (tool_prio > best_tool_prio)
+          {
+            best_tool = tool;
+            best_tool_prio = tool_prio;
+          }
       }
   if (best_tool)
     return best_tool; // found matching tool
