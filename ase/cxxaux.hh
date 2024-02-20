@@ -218,6 +218,9 @@ void assertion_fatal  (const char *msg = nullptr, const char *file = __builtin_F
                        int line = __builtin_LINE(), const char *func = __builtin_FUNCTION()) noexcept ASE_NORETURN;
 extern bool assertion_failed_fatal;
 
+/// Command to start external debugger for a backtrace.
+std::string     backtrace_command ();
+
 /// Test string equality at compile time.
 extern inline constexpr bool
 constexpr_equals (const char *a, const char *b, size_t n)
