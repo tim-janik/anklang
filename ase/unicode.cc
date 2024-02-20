@@ -189,7 +189,7 @@ utf8_to_unicode (const std::string &str, std::vector<uint32_t> &codepoints)
 
 /// Convert @a codepoints into an UTF-8 string, using the shortest possible encoding.
 std::string
-string_from_unicode (const uint32_t *codepoints, size_t n_codepoints)
+utf8encode (const uint32_t *codepoints, size_t n_codepoints)
 {
   std::string str;
   str.reserve (n_codepoints);
@@ -227,9 +227,9 @@ string_from_unicode (const uint32_t *codepoints, size_t n_codepoints)
 
 /// Convert @a codepoints into an UTF-8 string, using the shortest possible encoding.
 std::string
-string_from_unicode (const std::vector<uint32_t> &codepoints)
+utf8encode (const std::vector<uint32_t> &codepoints)
 {
-  return string_from_unicode (codepoints.data(), codepoints.size());
+  return utf8encode (codepoints.data(), codepoints.size());
 }
 
 /** Check `c` to be a NameStartChar, according to the QName EBNF.
@@ -293,7 +293,7 @@ string_to_ncname (const String &input, uint32_t substitute)
       ++it;
   if (!ucstring.empty() && !codepoint_is_namestartchar (ucstring[0]))
     ucstring.insert (ucstring.begin(), '_');
-  return string_from_unicode (ucstring);
+  return utf8encode (ucstring);
 }
 
 } // Ase
@@ -330,7 +330,7 @@ unicode_tests()
   TASSERT (nc == 66);
   TASSERT (cc == 65);
   TASSERT (pc == 6400 + 65534 + 65534);
-  std::string big = string_from_unicode (codepoints);
+  std::string big = utf8encode (codepoints);
   ase_utf8len = utf8len (big.c_str());
   glib_utf8len = g_utf8_strlen (big.c_str(), -1);
   TCMP (ase_utf8len, ==, glib_utf8len);
