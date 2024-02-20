@@ -1,13 +1,42 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "unicode.hh"
 #include "blob.hh"
+#include "platform.hh"
+#include "websocket.hh"
 
 #include <glib.h>
 
 namespace Ase {
 
-/// Decode valid UTF-8 sequences, invalid sequences are treated as Latin-1 characters.
-template<bool CODEPOINT> static inline size_t // returns length of unicode char
+/* https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf
+ * Table 3-6. UTF-8 Bit Distribution
+ * | Scalar Value               | First Byte | Second Byte | Third Byte | Fourth Byte
+ * | 00000000 0xxxxxxx          | 0xxxxxxx   |             |            |
+ * | 00000yyy yyxxxxxx          | 110yyyyy   | 10xxxxxx    |            |
+ * | zzzzyyyy yyxxxxxx          | 1110zzzz   | 10yyyyyy    | 10xxxxxx   |
+ * | 000uuuuu zzzzyyyy yyxxxxxx | 11110uuu   | 10uuzzzz    | 10yyyyyy   | 10xxxxxx
+ *
+ * Table 3-7. Well-Formed UTF-8 Byte Sequences
+ * | Code Points        | First Byte | Second Byte | Third Byte | Fourth Byte
+ * | U+0000..U+007F     | 00..7F     |             |            |
+ * | U+0080..U+07FF     | C2..DF     | 80..BF      |            |
+ * | U+0800..U+0FFF     | E0         | A0..BF      | 80..BF     |
+ * | U+1000..U+CFFF     | E1..EC     | 80..BF      | 80..BF     |
+ * | U+D000..U+D7FF     | ED         | 80..9F      | 80..BF     |
+ * | U+E000..U+FFFF     | EE..EF     | 80..BF      | 80..BF     |
+ * | U+10000..U+3FFFF   | F0         | 90..BF      | 80..BF     | 80..BF
+ * | U+40000..U+FFFFF   | F1..F3     | 80..BF      | 80..BF     | 80..BF
+ * | U+100000..U+10FFFF | F4         | 80..8F      | 80..BF     | 80..BF
+ */
+
+/** Decode valid UTF-8 sequences, invalid sequences are treated as Latin-1 characters.
+ * - CODEPOINT=0: The return value indicates the number of bytes forgivingly parsed as a single UTF-8 character.
+ * - CODEPOINT=1: The return value indicates the number of bytes forgivingly parsed as a single UTF-8 character and `*unicode` is assigned.
+ *   If `*unicode` is >= 0x80, a Latin-1 character was encountered.
+ * - CODEPOINT=2: Invalid characters are encoded as private code points in the range 0xEF80..0xEFFF, see also: https://en.wikipedia.org/wiki/UTF-8#PEP_383
+ * - CODEPOINT=3: Validly encoded code points in the range 0xEF80..0xEFFF are also treated as invalid characters and are encoded into 0xEF80..0xEFFF.
+*/
+template<int CODEPOINT> static inline size_t // returns length of unicode char
 utf8character (const char *str, uint32_t *unicode)
 {
   /* https://en.wikipedia.org/wiki/UTF-8
@@ -18,7 +47,7 @@ utf8character (const char *str, uint32_t *unicode)
    */
   const uint8_t c = str[0];
   // optimized for one-byte sequences
-  if (__builtin_expect (c < 0xc0, true))
+  if (CODEPOINT <= 1 && __builtin_expect (c < 0xc0, true))
     {
       if (CODEPOINT)
         *unicode = c;                                   // valid if c <= 0x7F
@@ -32,8 +61,9 @@ utf8character (const char *str, uint32_t *unicode)
       d = str[1];
       if (__builtin_expect ((d & 0xC0) != 0x80, false))
         goto one_byte;
-      if (CODEPOINT)
+      if (CODEPOINT) {
         *unicode = ((c & 0x1f) << 6) + (d & 0x3f);
+      }
       return 2;                                         // valid
     case 0xE0: case 0xE8:                               // 3-byte sequence
       d = str[1];
@@ -42,8 +72,13 @@ utf8character (const char *str, uint32_t *unicode)
       e = str[2];
       if (__builtin_expect ((e & 0xC0) != 0x80, false))
         goto one_byte;
-      if (CODEPOINT)
+      if (CODEPOINT) {
         *unicode = ((c & 0x0f) << 12) + ((d & 0x3f) << 6) + (e & 0x3f);
+        if (CODEPOINT >= 2 && *unicode >= 0xd800 && *unicode <= 0xdfff)
+          goto one_byte;                                // UTF-16 surrogates are invalid in UTF-8
+        if (CODEPOINT >= 3 && *unicode >= 0xef80 && *unicode <= 0xefff)
+          goto one_byte;                                // MirBSD OPTU-8/16 private use
+      }
       return 3;                                         // valid
     case 0xF0:                                          // 4-byte sequence
       d = str[1];
@@ -55,11 +90,18 @@ utf8character (const char *str, uint32_t *unicode)
       f = str[3];
       if (__builtin_expect ((f & 0xC0) != 0x80, false))
         goto one_byte;
-      if (CODEPOINT)
+      if (CODEPOINT) {
         *unicode = ((c & 0x07) << 18) + ((d & 0x3f) << 12) + ((e & 0x3f) << 6) + (f & 0x3f);
+        if (CODEPOINT >= 2 && *unicode >= 0xd800 && *unicode <= 0xdfff)
+          goto one_byte;                                // UTF-16 surrogates are invalid in UTF-8
+        if (CODEPOINT >= 3 && *unicode >= 0xef80 && *unicode <= 0xefff)
+          goto one_byte;                                // MirBSD OPTU-8/16 private use
+      }
       return 4;                                         // valid
     default: one_byte:
-      if (CODEPOINT)
+      if (CODEPOINT >= 2 && c >= 0x80)
+        *unicode = 0xef80 - 0x80 + c;                   // escape byte as surrogate
+      else if (CODEPOINT)
         *unicode = c;                                   // treat as Latin-1 otherwise
       return 1;
     }
@@ -69,14 +111,14 @@ utf8character (const char *str, uint32_t *unicode)
 static inline size_t
 utf8codepoint (const char *str, uint32_t *unicode)
 {
-  return utf8character<true> (str, unicode);
+  return utf8character<1> (str, unicode);
 }
 
 /// Returns length of unicode character in bytes
 static inline size_t
 utf8skip (const char *str)
 {
-  return utf8character<false> (str, NULL);
+  return utf8character<0> (str, NULL);
 }
 
 /// Count valid UTF-8 sequences, invalid sequences are counted as Latin-1 characters.
