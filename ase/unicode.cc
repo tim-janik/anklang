@@ -107,6 +107,64 @@ utf8character (const char *str, uint32_t *unicode)
     }
 }
 
+/// Encode a file system path consisting of bytes into UTF-8, using surrogate code points to store non UTF-8 bytes.
+std::string
+encodefs (const std::string &fschars)
+{
+  const char *fstr = fschars.c_str();
+  std::string utf8str;
+  utf8str.reserve (fschars.size());
+  while (*fstr) {
+    uint32_t unicode;
+    const int w = utf8character<3> (fstr, &unicode);
+    if (unicode >= 0xef80 && unicode <= 0xefff)
+      utf8str += utf8encode (&unicode, 1);
+    else
+      utf8str += std::string_view (fstr, w);
+    fstr += w;
+  }
+  return utf8str;
+}
+
+/// Decode UTF-8 string back into file system path representation, extracting surrogate code points as bytes.
+std::string
+decodefs (const std::string &utf8str)
+{
+  const char *ustr = utf8str.c_str();
+  std::string fschars;
+  fschars.reserve (utf8str.size());
+  while (*ustr) {
+    uint32_t unicode;
+    const int w = utf8character<1> (ustr, &unicode);
+    if (unicode >= 0xef80 && unicode <= 0xefff)
+      fschars += char (unicode - (0xef80 - 0x80));
+    else
+      fschars += std::string_view (ustr, w);
+    ustr += w;
+  }
+  return fschars;
+}
+
+/// Convert UTF-8 encoded file system path into human readable display format, the conversion is lossy but readable.
+std::string
+displayfs (const std::string &utf8str)
+{
+  const char *ustr = utf8str.c_str();
+  std::string display;
+  display.reserve (utf8str.size());
+  while (*ustr) {
+    uint32_t unicode;
+    const int w = utf8character<2> (ustr, &unicode);
+    if (unicode >= 0xef80 && unicode <= 0xefff) {
+      unicode = unicode - (0xef80 - 0x80); // leaves 0x80..0xff
+      display += utf8encode (&unicode, 1);
+    } else
+      display += std::string_view (ustr, w);
+    ustr += w;
+  }
+  return display;
+}
+
 /// Returns length of unicode character in bytes
 static inline size_t
 utf8codepoint (const char *str, uint32_t *unicode)

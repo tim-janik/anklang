@@ -21,6 +21,9 @@ constexpr inline bool   unicode_is_character    (uint32_t u);
 constexpr inline bool   unicode_is_control_code (uint32_t u);
 constexpr inline bool   unicode_is_private      (uint32_t u);
 constexpr uint32_t      unicode_last_codepoint  = 0x10FFFF;
+std::string             encodefs                (const std::string &fschars);
+std::string             decodefs                (const std::string &utf8str);
+std::string             displayfs               (const std::string &utf8str);
 std::vector<uint32_t>   utf8decode              (const std::string &utf8str);
 
 
