@@ -233,8 +233,7 @@ size_t
 utf8_to_unicode (const std::string &str, std::vector<uint32_t> &codepoints)
 {
   const size_t l = codepoints.size();
-  if (l >= 8)
-    codepoints.reserve (codepoints.size() + l / 4);
+  codepoints.reserve (codepoints.size() + str.size());
   const char *c = str.data(), *const e = c + str.size();
   while (c < e)
     {
@@ -362,6 +361,67 @@ string_to_ncname (const String &input, uint32_t substitute)
 
 namespace { // Anon
 using namespace Ase;
+
+TEST_INTEGRITY (unicode_displayfs_tests);
+static void
+unicode_displayfs_tests()
+{
+  // ASCII is fully preserved in encodefs, decodefs, displayfs
+  const char *const asciistr = "\001\t09AZaz|~\177";
+  TASSERT (WebSocketServer::utf8_validate (asciistr));
+  TASSERT (WebSocketServer::utf8_validate (encodefs (asciistr)));
+  TASSERT (decodefs (encodefs (asciistr)) == asciistr);
+  TASSERT (displayfs (encodefs (asciistr)) == asciistr);
+  TASSERT (WebSocketServer::utf8_validate (displayfs (encodefs (asciistr))));
+  TASSERT (displayfs (asciistr) == asciistr);
+  TASSERT (WebSocketServer::utf8_validate (displayfs (asciistr)));
+  TASSERT (encodefs (asciistr) == asciistr);
+  TASSERT (decodefs (asciistr) == asciistr);
+  // non UTF-8 bytes need conversions
+  const char *const lowbytes = "\x80\x87\x88\x8f\x90\x97\x98\x9f\xa0\xa7\xa8\xaf\xb0\xb7\xb8\xbf";
+  const char *const low2utf8 = "\u0080\u0087\u0088\u008f\u0090\u0097\u0098\u009f\u00a0\u00a7\u00a8\u00af\u00b0\u00b7\u00b8\u00bf";
+  TASSERT (WebSocketServer::utf8_validate (encodefs (lowbytes)));
+  TASSERT (decodefs (encodefs (lowbytes)) == lowbytes);
+  TASSERT (displayfs (encodefs (lowbytes)) == low2utf8);
+  TASSERT (WebSocketServer::utf8_validate (encodefs (lowbytes)));
+  TASSERT (displayfs (lowbytes) == low2utf8);
+  TASSERT (WebSocketServer::utf8_validate (displayfs (lowbytes)));
+  TASSERT (encodefs (lowbytes) != lowbytes);
+  // non UTF-8 sequences need conversions
+  const char *const highbytes = "\xc0 \xc7 \xc8 \xcf \xd0 \xd7 \xd8 \xdf \xe0 \xe7 \xe8 \xef \xf0 \xf7 \xf8 \xff";
+  const char *const high2utf8 = "\u00c0 \u00c7 \u00c8 \u00cf \u00d0 \u00d7 \u00d8 \u00df \u00e0 \u00e7 \u00e8 \u00ef \u00f0 \u00f7 \u00f8 \u00ff";
+  TASSERT (WebSocketServer::utf8_validate (encodefs (highbytes)));
+  TASSERT (decodefs (encodefs (highbytes)) == highbytes);
+  TASSERT (WebSocketServer::utf8_validate (displayfs (highbytes)));
+  TASSERT (displayfs (highbytes) == high2utf8);
+  TASSERT (displayfs (encodefs (highbytes)) == high2utf8);
+  TASSERT (WebSocketServer::utf8_validate (displayfs (encodefs (highbytes))));
+  TASSERT (encodefs (highbytes) != highbytes);
+  TASSERT (WebSocketServer::utf8_validate (encodefs (highbytes)));
+  // UTF-8 characters are fully preserved in encodefs, decodefs, displayfs
+  const char *const utf8str = "äöüßÄÖÜïÿ";
+  TASSERT (WebSocketServer::utf8_validate (encodefs (utf8str)));
+  TASSERT (decodefs (encodefs (utf8str)) == utf8str);
+  TASSERT (WebSocketServer::utf8_validate (displayfs (utf8str)));
+  TASSERT (displayfs (utf8str) == utf8str);
+  TASSERT (displayfs (encodefs (utf8str)) == utf8str);
+  TASSERT (WebSocketServer::utf8_validate (encodefs (utf8str)));
+  TASSERT (encodefs (utf8str) == utf8str);
+  TASSERT (decodefs (utf8str) == utf8str);
+  const char *const lat1str = "\xe4\xf6\xfc\xdf\xc4\xd6\xdc\xef\xff";
+  TASSERT (WebSocketServer::utf8_validate (encodefs (lat1str)));
+  TASSERT (displayfs (encodefs (lat1str)) == utf8str);
+  TASSERT (displayfs (lat1str) == utf8str);
+  // Preserve filenames containing UTF-8 encoded surrogates and private use codes
+  const char *const srg8str = "\xed\xb2\x80\xed\xb3\xbf\xee\xbf\xa4\xee\xbf\xbf";
+  TASSERT (encodefs (srg8str) != srg8str);
+  TASSERT (WebSocketServer::utf8_validate (encodefs (srg8str)));
+  const std::string srg8enc = encodefs (srg8str);
+  TASSERT (decodefs (srg8enc) == srg8str);
+  TASSERT (displayfs (srg8enc) != srg8enc);
+  TASSERT (WebSocketServer::utf8_validate (displayfs (srg8enc)));
+  TASSERT (displayfs (srg8enc) != displayfs (srg8str));
+}
 
 TEST_INTEGRITY (unicode_tests);
 static void
