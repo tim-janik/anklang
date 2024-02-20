@@ -54,6 +54,7 @@ public:
   static WebSocketServerP create        (const MakeConnection &make, int logflags = 0);
   static String           user_agent    ();
   static String           mime_type     (const String &ext, bool utf8);
+  static bool             utf8_validate (const std::string &utf8string);
 };
 
 } // Ase
