@@ -146,6 +146,17 @@ utf8len (const std::string &str)
 }
 
 /// Convert valid UTF-8 sequences to Unicode codepoints, invalid sequences are treated as Latin-1 characters.
+std::vector<uint32_t>
+utf8decode (const std::string &utf8str)
+{
+  std::vector<uint32_t> codepoints;
+  codepoints.resize (utf8str.size());
+  size_t l = utf8_to_unicode (utf8str.c_str(), &codepoints[0]);
+  codepoints.resize (l);
+  return codepoints;
+}
+
+/// Convert valid UTF-8 sequences to Unicode codepoints, invalid sequences are treated as Latin-1 characters.
 /// The array @a codepoints must be able to hold at least as many elements as are characters stored in @a str.
 /// Returns the number of codepoints stored in @a codepoints.
 size_t
