@@ -12,6 +12,7 @@ declare global {
   var CONFIG: any;
   var __DEV__: bool;
   var debug: Function;
+  var assert: Function;
 }
 
 export {};
