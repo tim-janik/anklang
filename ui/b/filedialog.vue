@@ -104,6 +104,17 @@
 <script>
 import * as Envue from './envue.js';
 import * as Util from "../util.js";
+import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
+
+function enhance_entries (origentries)
+{
+  const entries = [];
+  for (let oentry of origentries) {
+    const entry = Object.create (oentry, { label: { value: displaybasename (oentry.uri) }, });
+    entries.push (entry);
+  }
+  return Object.freeze (entries);
+}
 
 class FileDialog extends Envue.Component {
   constructor (vm) {
@@ -118,7 +129,7 @@ class FileDialog extends Envue.Component {
 		 getter: async c => Object.freeze (await this.crawler.current_folder()),
 		 default: '', },
       entries: { notify: n => this.crawler.on ("notify:entries", n),
-		 getter: async c => Object.freeze (await this.crawler.list_entries()),
+		 getter: async c => enhance_entries (await this.crawler.list_entries()),
 		 default: [], },
       filename: '',
     };
@@ -138,7 +149,7 @@ class FileDialog extends Envue.Component {
   directory() {
     let path = this.r?.folder?.uri || '/';
     path = path.replace (/^file:\/+/, '/');
-    return path;
+    return displayfs (path);
   }
   async canonify_input (pathfragment, constraindirs = true) {
     // strip file:/// prefix if any
@@ -147,7 +158,8 @@ class FileDialog extends Envue.Component {
     const root = (this.r.folder?.uri || "/").replace (/^file:\/+/, '/'); // strip protocol
     if (this.select_dir && path && !path.endsWith ("/"))
       path += "/";
-    path = await this.crawler.canonify (root, path, constraindirs, false);
+    const res = await this.crawler.canonify (root, path, constraindirs, false);
+    path = res.uri.replace (/^file:\/+/, "/");
     // handle directory vs file path
     if (!path.endsWith ('/') && // path is file (maybe notexisting)
 	this.$vm.ext)           // ensure extension
