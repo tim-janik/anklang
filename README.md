@@ -42,6 +42,7 @@ and run it.
 
 <!-- ROADMAP -->
 ## Roadmap
+Roadmap Discussions: Feedback & Ideas: [#52](https://github.com/tim-janik/anklang/issues/52)
 
 ☑  Implement the application core in C++20 and the GUI as a web front-end, utilizing web browsers or Electron
 

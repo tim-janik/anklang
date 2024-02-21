@@ -308,21 +308,20 @@ class BTrackView extends LitComponent {
       return;
     }
     const tw = 2; // tip thickness in pixels
-    const pxrs_round = (fraction) => Math.round (fraction / pxrs) * pxrs; // scale up, round to pixel, scale down
     // handle multiple channels
     const per_channel = (dbspl, dbtip, covertip, covermid) => {
       // map dB SPL to a 0..1 paint range
       const tip = (dbtip - MINDB) * DIV_DBRANGE;
       const lev = (dbspl - MINDB) * DIV_DBRANGE;
       // scale covertip from 100% down to just the amount above the tip
-      let transform = 'scaleX(' + pxrs_round (1 - tip) + ')';
+      let transform = 'scaleX(' + (1 - tip) + ')';
       if (transform !== covertip.style.getPropertyValue ('transform'))    // reduce style recalculations
 	covertip.style.setProperty ('transform', transform);
       // scale and translate middle cover
       if (lev + pxrs + tw * pxrs <= tip) {
 	const width = (tip - lev) - tw * pxrs;
 	const trnlx = level_width - level_width * tip + tw; // translate left in pixels
-	transform = 'translateX(-' + Math.round (trnlx) + 'px) scaleX(' + pxrs_round (width) + ')';
+	transform = 'translateX(-' + trnlx + 'px) scaleX(' + width + ')';
       } else {
 	// hide covermid if level and tip are aligned
 	transform = 'scaleX(0)';
