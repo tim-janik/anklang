@@ -20,7 +20,7 @@ all_codepoints_to_utf8 ()
   for (size_t i = 1; i <= Ase::unicode_last_codepoint; i++)
     if (Ase::unicode_is_assigned (i))
       codepoints.push_back (i);
-  return Ase::string_from_unicode (codepoints);
+  return Ase::utf8encode (codepoints);
 }
 
 TEST_BENCHMARK (utf8_codepoint_bench);
