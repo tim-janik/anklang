@@ -14,6 +14,7 @@ import VueComponents from '../all-components.js';
 import ShellClass from '../b/shell.js';
 import * as Util from '../util.js';
 import * as Mouse from '../mouse.js';
+import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
 
 // == App ==
 export class AppClass {
@@ -84,7 +85,7 @@ export class AppClass {
     if (err !== Ase.Error.NONE)
       App.async_button_dialog ("Project Loading Error",
 			       "Failed to open project.\n" +
-			       project_or_path + ":\n" +
+			       displayfs (project_or_path) + ":\n" +
 			       await Ase.server.error_blurb (err), [
 				 { label: 'Dismiss', autofocus: true },
 			       ], 'ERROR');
@@ -103,7 +104,7 @@ export class AppClass {
 	    const error = await newproject.load_project (project_or_path);
 	    if (error != Ase.Error.NONE)
 	      return error;
-	    await newproject.name (project_or_path.replace (/.*\//, ''));
+	    await newproject.name (displaybasename (project_or_path));
 	  }
       }
     const mtrack = await newproject.master_track();

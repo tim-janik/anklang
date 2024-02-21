@@ -514,6 +514,13 @@ WebSocketServer::user_agent ()
   return String ("AnklangSynthEngine/") + ase_version();
 }
 
+/// Validate UTF-8 string with websocketpp::utf8_validator.
+bool
+WebSocketServer::utf8_validate (const std::string &utf8string)
+{
+  return !!websocketpp::utf8_validator::validate (utf8string);
+}
+
 #include "mime-types.hh"        // static const char mime_types[];
 
 String

@@ -70,14 +70,14 @@ public:
   bool                 remove_track      (Track &child) override;
   TrackS               all_tracks        () override;
   TrackP               master_track      () override;
-  Error                load_project      (const String &filename) override;
-  StreamReaderP        load_blob         (const String &filename);
+  Error                load_project      (const String &utf8filename) override;
+  StreamReaderP        load_blob         (const String &fspath);
   String               loader_resolve    (const String &hexhash);
-  Error                save_project      (const String &filename, bool collect) override;
-  String               saved_filename    () override;
-  String               writer_file_name  (const String &filename) const;
-  Error                writer_add_file   (const String &filename);
-  Error                writer_collect    (const String &filename, String *hexhashp);
+  Error                save_project      (const String &utf8filename, bool collect) override;
+  String               saved_filename    () override; // returns utf8filename
+  String               writer_file_name  (const String &fspath) const;
+  Error                writer_add_file   (const String &fspath);
+  Error                writer_collect    (const String &fspath, String *hexhashp);
   TelemetryFieldS      telemetry         () const override;
   AudioProcessorP      master_processor  () const;
   ssize_t              track_index       (const Track &child) const;

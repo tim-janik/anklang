@@ -26,7 +26,7 @@ string_demangle_cxx (const char *mangled_identifier) noexcept
 }
 
 /// Find GDB and construct command line
-static std::string
+std::string
 backtrace_command()
 {
   bool allow_ptrace = false;
@@ -40,20 +40,32 @@ backtrace_command()
 #else
   allow_ptrace = true;
 #endif
-  const char *const usr_bin_gdb = "/usr/bin/gdb";
-  if (!allow_ptrace || access (usr_bin_gdb, X_OK) != 0)
+  if (!allow_ptrace)
     return "";
-  char cmd[1024];
-  snprintf (cmd, sizeof (cmd),
-            "%s -q -n -p %u --batch "
-            "-iex 'set auto-load python-scripts off' "
-            "-iex 'set script-extension off' "
-            "-ex 'set print address off' "
-            // "-ex 'set print frame-arguments none' "
-            "-ex 'thread apply all backtrace 21' " // max frames
-            ">&2 2>/dev/null",
-            usr_bin_gdb, gettid());
-  return cmd;
+  char cmd[3192];
+  const char *const usr_bin_lldb = "/usr/bin/lldb";
+  if (access (usr_bin_lldb, X_OK) == 0) {
+    snprintf (cmd, sizeof (cmd),
+              "%s -Q -x --batch -p %u "
+              "-o 'settings set frame-format \"#${frame.index}: ${ansi.fg.yellow}${function.name-without-args}${ansi.normal} in{ ${module.file.basename}{@${function.name-with-args}{${frame.no-debug}${function.pc-offset}}}}{ at ${ansi.fg.cyan}${line.file.basename}${ansi.normal}:${ansi.fg.yellow}${line.number}${ansi.normal}{:${ansi.fg.yellow}${line.column}${ansi.normal}}}{${function.is-optimized} [opt]}{${frame.is-artificial} [artificial]}\\n\" ' "
+              "-o 'bt all'",
+              usr_bin_lldb, gettid());
+    return cmd;
+  }
+  const char *const usr_bin_gdb = "/usr/bin/gdb";
+  if (access (usr_bin_gdb, X_OK) == 0) {
+    snprintf (cmd, sizeof (cmd),
+              "%s -q -n --nx -p %u --batch "
+              "-iex 'set auto-load python-scripts off' "
+              "-iex 'set script-extension off' "
+              "-ex 'set print address off' "
+              // "-ex 'set print frame-arguments none' "
+              "-ex 'thread apply all backtrace 99' " // max frames
+              ">&2 2>/dev/null",
+              usr_bin_gdb, gettid());
+    return cmd;
+  }
+  return "";
 }
 
 /// Quick boolean check for a colon separated key in a haystack.

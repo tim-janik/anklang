@@ -6,8 +6,8 @@
 
 namespace Ase {
 
-std::string             string_from_unicode     (const std::vector<uint32_t> &codepoints);
-std::string             string_from_unicode     (const uint32_t *codepoints, size_t n_codepoints);
+std::string             utf8encode              (const std::vector<uint32_t> &codepoints);
+std::string             utf8encode              (const uint32_t *codepoints, size_t n_codepoints);
 String                  string_to_ncname        (const String &input, uint32_t substitute = 0);
 bool                    string_is_ncname        (const String &input);
 size_t                  utf8_to_unicode         (const std::string &str, std::vector<uint32_t> &codepoints);
@@ -21,6 +21,10 @@ constexpr inline bool   unicode_is_character    (uint32_t u);
 constexpr inline bool   unicode_is_control_code (uint32_t u);
 constexpr inline bool   unicode_is_private      (uint32_t u);
 constexpr uint32_t      unicode_last_codepoint  = 0x10FFFF;
+std::string             encodefs                (const std::string &fschars);
+std::string             decodefs                (const std::string &utf8str);
+std::string             displayfs               (const std::string &utf8str);
+std::vector<uint32_t>   utf8decode              (const std::string &utf8str);
 
 
 // == Implementations ==

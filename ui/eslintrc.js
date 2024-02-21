@@ -24,6 +24,7 @@ module.exports = {
     Vue: false,
     __DEV__: false,
     debug: false,
+    assert: false,
     log: false,
     host: false,
     start_view_transition: false,

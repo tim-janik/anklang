@@ -5,6 +5,7 @@
 #include "processor.hh"
 #include "compress.hh"
 #include "path.hh"
+#include "unicode.hh"
 #include "serialize.hh"
 #include "storage.hh"
 #include "server.hh"
@@ -138,8 +139,9 @@ make_anklang_dir (const String &path)
 }
 
 Error
-ProjectImpl::save_project (const String &savepath, bool collect)
+ProjectImpl::save_project (const String &utf8filename, bool collect)
 {
+  const String savepath = decodefs (utf8filename);
   assert_return (storage_ == nullptr, Error::OPERATION_BUSY);
   PStorage storage (&storage_); // storage_ = &storage;
   const String dotanklang = ".anklang";
@@ -238,35 +240,35 @@ ProjectImpl::save_project (const String &savepath, bool collect)
 }
 
 String
-ProjectImpl::writer_file_name (const String &filename) const
+ProjectImpl::writer_file_name (const String &fspath) const
 {
   assert_return (storage_ != nullptr, "");
   assert_return (!storage_->writer_cachedir.empty(), "");
-  return Path::join (storage_->writer_cachedir, filename);
+  return Path::join (storage_->writer_cachedir, fspath);
 }
 
 Error
-ProjectImpl::writer_add_file (const String &filename)
+ProjectImpl::writer_add_file (const String &fspath)
 {
   assert_return (storage_ != nullptr, Error::INTERNAL);
   assert_return (!storage_->writer_cachedir.empty(), Error::INTERNAL);
-  if (!Path::check (filename, "frw"))
+  if (!Path::check (fspath, "frw"))
     return Error::FILE_NOT_FOUND;
-  if (!string_startswith (filename, storage_->writer_cachedir))
+  if (!string_startswith (fspath, storage_->writer_cachedir))
     return Error::FILE_OPEN_FAILED;
-  storage_->writer_files.push_back ({ filename, Path::basename (filename) });
+  storage_->writer_files.push_back ({ fspath, Path::basename (fspath) });
   return Error::NONE;
 }
 
 Error
-ProjectImpl::writer_collect (const String &filename, String *hexhashp)
+ProjectImpl::writer_collect (const String &fspath, String *hexhashp)
 {
   assert_return (storage_ != nullptr, Error::INTERNAL);
   assert_return (!storage_->anklang_dir.empty(), Error::INTERNAL);
-  if (!Path::check (filename, "fr"))
+  if (!Path::check (fspath, "fr"))
     return Error::FILE_NOT_FOUND;
   // determine hash of file to collect
-  const String hexhash = string_to_hex (blake3_hash_file (filename));
+  const String hexhash = string_to_hex (blake3_hash_file (fspath));
   if (hexhash.empty())
     return ase_error_from_errno (errno ? errno : EIO);
   // resolve against existing hashes
@@ -278,16 +280,16 @@ ProjectImpl::writer_collect (const String &filename, String *hexhashp)
       }
   // file may be within project directory
   String relpath;
-  if (Path::dircontains (storage_->anklang_dir, filename, &relpath))
+  if (Path::dircontains (storage_->anklang_dir, fspath, &relpath))
     {
       storage_->asset_hashes.push_back ({ hexhash, relpath });
       *hexhashp = hexhash;
       return Error::NONE;
     }
   // determine unique path name
-  const size_t file_size = Path::file_size (filename);
+  const size_t file_size = Path::file_size (fspath);
   const String basedir = storage_->anklang_dir;
-  relpath = Path::join ("samples", Path::basename (filename));
+  relpath = Path::join ("samples", Path::basename (fspath));
   String dest = Path::join (basedir, relpath);
   size_t i = 0;
   while (Path::check (dest, "e"))
@@ -311,7 +313,7 @@ ProjectImpl::writer_collect (const String &filename, String *hexhashp)
   if (!Path::mkdirs (Path::dirname (dest)))
     return ase_error_from_errno (errno);
   // copy into project dir
-  const bool copied = Path::copy_file (filename, dest);
+  const bool copied = Path::copy_file (fspath, dest);
   if (!copied)
     return ase_error_from_errno (errno);
   // success
@@ -323,12 +325,13 @@ ProjectImpl::writer_collect (const String &filename, String *hexhashp)
 String
 ProjectImpl::saved_filename ()
 {
-  return saved_filename_;
+  return encodefs (saved_filename_);
 }
 
 Error
-ProjectImpl::load_project (const String &filename)
+ProjectImpl::load_project (const String &utf8filename)
 {
+  const String filename = decodefs (utf8filename);
   assert_return (storage_ == nullptr, Error::OPERATION_BUSY);
   PStorage storage (&storage_); // storage_ = &storage;
   String fname = filename;
@@ -377,13 +380,14 @@ ProjectImpl::load_project (const String &filename)
 }
 
 StreamReaderP
-ProjectImpl::load_blob (const String &filename)
+ProjectImpl::load_blob (const String &fspath)
 {
   assert_return (storage_ != nullptr, nullptr);
   assert_return (!storage_->loading_file.empty(), nullptr);
-  return stream_reader_zip_member (storage_->loading_file, filename);
+  return stream_reader_zip_member (storage_->loading_file, fspath);
 }
 
+/// Find file from hash code, returns fspath.
 String
 ProjectImpl::loader_resolve (const String &hexhash)
 {

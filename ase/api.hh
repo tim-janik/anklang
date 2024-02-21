@@ -300,9 +300,9 @@ public:
   virtual bool            remove_track   (Track&) = 0; ///< Remove a track owned by this Project.
   virtual TrackS          all_tracks     () = 0;       ///< List all tracks of the project.
   virtual TrackP          master_track   () = 0;       ///< Retrieve the master track.
-  virtual Error           save_project   (const String &filename, bool collect) = 0; ///< Store Project and collect external files.
-  virtual String          saved_filename () = 0;       ///< Retrieve filename for save or from load.
-  virtual Error           load_project   (const String &filename) = 0; ///< Load project from file `filename`.
+  virtual Error           save_project   (const String &utf8filename, bool collect) = 0; ///< Store Project and collect external files.
+  virtual String          saved_filename () = 0;       ///< Retrieve UTF-8 filename for save or from load.
+  virtual Error           load_project   (const String &utf8filename) = 0; ///< Load project from file `filename`.
   virtual TelemetryFieldS telemetry      () const = 0; ///< Retrieve project telemetry locations.
   virtual void            group_undo     (const String &undoname) = 0; ///< Merge upcoming undo steps.
   virtual void            ungroup_undo   () = 0;                       ///< Stop merging undo steps.
@@ -330,11 +330,11 @@ struct Resource {
 /// Helper to crawl hierarchical resources.
 class ResourceCrawler : public virtual Object {
 public:
-  virtual ResourceS list_entries   () = 0;                      ///< List entries of a folder.
-  virtual Resource  current_folder () = 0;                      ///< Describe current folder.
-  virtual void      assign         (const String &path) = 0;    ///< Move to a different path.
+  virtual ResourceS list_entries   () = 0;                              ///< List entries of a folder.
+  virtual Resource  current_folder () = 0;                              ///< Describe current folder.
+  virtual void      assign         (const String &utf8path) = 0;        ///< Move to a different path.
   /// Return absolute path, slash-terminated if directory, constrain to existing paths.
-  virtual String    canonify       (const String &cwd, const String &fragment, bool constraindir, bool constrainfile) = 0;
+  virtual Resource  canonify       (const String &utf8cwd, const String &utf8fragment, bool constraindir, bool constrainfile) = 0;
 };
 
 /// Contents of user interface notifications.

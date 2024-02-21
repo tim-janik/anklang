@@ -4,6 +4,7 @@
 import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
 import * as Util from '../util.js';
 import * as Ase from '../aseapi.js';
+import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
 
 /** @class BMenuBar
  * @description
@@ -268,7 +269,7 @@ async function open_file() {
   const filename = await App.shell.select_file (opt);
   if (!filename)
     return;
-  open_file_last_dir = filename.replace (/[^\/]*$/, ''); // dirname
+  open_file_last_dir = dirname (filename);
   const err = await App.load_project_checked (filename);
   if (err != Ase.Error.NONE)
     {
@@ -290,14 +291,14 @@ async function save_project (asnew = false) {
     filename = await App.shell.select_file (opt);
   if (!filename)
     return false;
-  save_project_last_dir = filename.replace (/[^\/]*$/, ''); // dirname
+  save_project_last_dir = dirname (filename);
   //if (!filename.endsWith ('.anklang'))
   //  filename += '.anklang';
   if (0 && !replace) // TODO: if file_exists (filename)
     {
       replace = await App.async_button_dialog ("Replace Project?",
 					       "Replace existing project file?\n" +
-					       filename + ": File exists", [
+					       displayfs (filename) + ": File exists", [
 						 'Cancel',
 						 { label: 'Replace', autofocus: true }, ],
 					       'QUESTION');
@@ -309,13 +310,13 @@ async function save_project (asnew = false) {
     {
       filename = await Data.project.saved_filename();
       let msg = '### Project Saved\n';
-      msg += '  \n  \nProject saved to: ``' + filename + '``\n';
+      msg += '  \n  \nProject saved to: ``' + displayfs (filename) + '``\n';
       Util.create_note (msg);
       return true;
     }
   await App.async_button_dialog ("File IO Error",
 				 "Failed to save project.\n" +
-				 filename + ": " +
+				 displayfs (filename) + ": " +
 				 await Ase.server.error_blurb (err), [
 				   { label: 'Dismiss', autofocus: true }
 				 ], 'ERROR');

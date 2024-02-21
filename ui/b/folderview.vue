@@ -111,6 +111,7 @@
 
 <script>
 import * as Util from "../util.js";
+import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
 
 export default {
   sfc_template,
