@@ -3,6 +3,7 @@
 #include "jsonipc/jsonipc.hh"
 #include "path.hh"
 #include "platform.hh"
+#include "unicode.hh"
 #include "internal.hh"
 #include <dirent.h>
 #include <fcntl.h>      // AT_NO_AUTOMOUNT
@@ -23,7 +24,7 @@ FileCrawler::FileCrawler (const String &cwd, bool constraindir, bool constrainfi
   cwd_ ("/"), constraindir_ (constraindir), constrainfile_ (constrainfile)
 {
   if (!cwd.empty())
-    assign (cwd, false);
+    assign (encodefs (cwd), false);
 }
 
 ResourceS
@@ -53,8 +54,11 @@ FileCrawler::list_entries ()
         }
       if (!is_reg && !is_dir)
         continue;
-      Resource r { .type = is_dir ? ResourceType::FOLDER : ResourceType::FILE,
-                   .label = de->d_name, .uri = cwdfile + de->d_name, .mtime = mtime };
+      Resource r {
+        .type = is_dir ? ResourceType::FOLDER : ResourceType::FILE,
+        .label = displayfs (encodefs (de->d_name)),
+        .uri = encodefs (cwdfile + de->d_name),
+        .mtime = mtime };
       r.size = is_dir && size > 0 ? -size : size;
       rs.push_back (r);
     }
@@ -63,13 +67,13 @@ FileCrawler::list_entries ()
 }
 
 String
-FileCrawler::expand_dir (const String &which)
+FileCrawler::expand_fsdir (const String &fsdir)
 {
-  if (which == ".")
+  if (fsdir == ".")
     return Path::dir_terminate (cwd_);
-  if (string_toupper (which) == "DEMO")
+  if (string_toupper (fsdir) == "DEMO")
     return Path::dir_terminate (anklang_runpath (RPath::DEMODIR));
-  String dir = Path::xdg_dir (which);
+  String dir = Path::xdg_dir (fsdir);
   if (!dir.empty())
     return Path::dir_terminate (dir);
   return "/";
@@ -78,8 +82,11 @@ FileCrawler::expand_dir (const String &which)
 Resource
 FileCrawler::current_folder ()
 {
-  Resource r { .type = ResourceType::FOLDER, .label = Path::basename (cwd_),
-               .uri = Path::dir_terminate (cwd_), };
+  Resource r {
+    .type = ResourceType::FOLDER,
+    .label = displayfs (encodefs (Path::basename (cwd_))),
+    .uri = encodefs (Path::dir_terminate (cwd_)),
+    .mtime = 0 };
   struct stat statbuf = { 0, };
   if (lstat (cwd_.c_str(), &statbuf) == 0)
     {
@@ -90,16 +97,16 @@ FileCrawler::current_folder ()
 }
 
 void
-FileCrawler::assign (const String &path, bool notify)
+FileCrawler::assign (const String &utf8path, bool notify)
 {
-  String dir = path;
+  String dir = decodefs (utf8path);
   if (dir.find ("/") == dir.npos) // relative navigation features special expansions
     {
-      dir = expand_dir (dir);
+      dir = expand_fsdir (dir);
       if (dir.empty() || dir == "/") // failed to expand special word
-        dir = path;
+        dir = decodefs (utf8path);
     }
-  cwd_ = canonify (cwd_, dir.empty() ? "." : dir + "/", constraindir_, constrainfile_);
+  cwd_ = canonify_fspath (cwd_, dir.empty() ? "." : dir + "/", constraindir_, constrainfile_);
   while (cwd_.size() > 1 && cwd_.back() == '/')
     cwd_.resize (cwd_.size() - 1);
   if (notify)
@@ -109,15 +116,27 @@ FileCrawler::assign (const String &path, bool notify)
     }
 }
 
+Resource
+FileCrawler::canonify (const String &utf8cwd, const String &utf8fragment, bool constraindir, bool constrainfile)
+{
+  const String utf8path = encodefs (canonify_fspath (decodefs (utf8cwd), decodefs (utf8fragment), constraindir, constrainfile));
+  Resource r {
+    .type = string_endswith (utf8path, "/") ? ResourceType::FOLDER : ResourceType::FILE,
+    .label = displayfs (utf8path),
+    .uri = utf8path,
+    .mtime = 0 };
+  return r;
+}
+
 String
-FileCrawler::canonify (const String &cwd, const String &fragment, bool constraindir, bool constrainfile)
+FileCrawler::canonify_fspath (const String &fscwd, const String &fsfragment, bool constraindir, bool constrainfile)
 {
   // expansions
-  Fs::path p = Path::expand_tilde (fragment);
+  Fs::path p = Path::expand_tilde (fsfragment);
   // make absolute
   if (!p.is_absolute())
     {
-      Fs::path root = cwd;
+      Fs::path root = fscwd;
       if (!root.is_absolute())
         root = cwd_ / root;
       p = root / p;
@@ -156,12 +175,12 @@ crawler_tests()
   FileCrawlerP cp = FileCrawler::make_shared ("/dev", true, false);
   FileCrawler &c = *cp;
   String r, e;
-  r = c.canonify ("", "/dev/N°…Diŕ/N°…Fílė", 1, 1); e = "/dev/";        TCMP (r, ==, e);
-  r = c.canonify (".", ".", 1, 1); e = "/dev/";                         TCMP (r, ==, e);
-  r = c.canonify ("", "/dev/N°…Diŕ/null", 1, 1); e = "/dev/null";       TCMP (r, ==, e);
-  r = c.canonify ("", "/tmp/N°…Diŕ/N°…Fílė", 1, 0); e = "/tmp/N°…Fílė"; TCMP (r, ==, e);
-  r = c.canonify ("", "/tmp/N°…Diŕ//.//", 0, 0); e = "/tmp/N°…Diŕ/";    TCMP (r, ==, e);
-  r = c.canonify ("", "/tmp/N°…Diŕ//..//", 0, 0); e = "/tmp/";          TCMP (r, ==, e);
-  r = c.canonify ("N°…Diŕ", "N°…Fílė", 1, 1); e = "/dev/";              TCMP (r, ==, e);
-  r = c.canonify ("/N°…Diŕ", "N°…Fílė", 1, 1); e = "/";                 TCMP (r, ==, e);
+  r = c.canonify_fspath ("", "/dev/N°…Diŕ/N°…Fílė", 1, 1); e = "/dev/";        TCMP (r, ==, e);
+  r = c.canonify_fspath (".", ".", 1, 1); e = "/dev/";                         TCMP (r, ==, e);
+  r = c.canonify_fspath ("", "/dev/N°…Diŕ/null", 1, 1); e = "/dev/null";       TCMP (r, ==, e);
+  r = c.canonify_fspath ("", "/tmp/N°…Diŕ/N°…Fílė", 1, 0); e = "/tmp/N°…Fílė"; TCMP (r, ==, e);
+  r = c.canonify_fspath ("", "/tmp/N°…Diŕ//.//", 0, 0); e = "/tmp/N°…Diŕ/";    TCMP (r, ==, e);
+  r = c.canonify_fspath ("", "/tmp/N°…Diŕ//..//", 0, 0); e = "/tmp/";          TCMP (r, ==, e);
+  r = c.canonify_fspath ("N°…Diŕ", "N°…Fílė", 1, 1); e = "/dev/";              TCMP (r, ==, e);
+  r = c.canonify_fspath ("/N°…Diŕ", "N°…Fílė", 1, 1); e = "/";                 TCMP (r, ==, e);
 }

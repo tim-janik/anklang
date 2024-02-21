@@ -330,11 +330,11 @@ struct Resource {
 /// Helper to crawl hierarchical resources.
 class ResourceCrawler : public virtual Object {
 public:
-  virtual ResourceS list_entries   () = 0;                      ///< List entries of a folder.
-  virtual Resource  current_folder () = 0;                      ///< Describe current folder.
-  virtual void      assign         (const String &path) = 0;    ///< Move to a different path.
+  virtual ResourceS list_entries   () = 0;                              ///< List entries of a folder.
+  virtual Resource  current_folder () = 0;                              ///< Describe current folder.
+  virtual void      assign         (const String &utf8path) = 0;        ///< Move to a different path.
   /// Return absolute path, slash-terminated if directory, constrain to existing paths.
-  virtual String    canonify       (const String &cwd, const String &fragment, bool constraindir, bool constrainfile) = 0;
+  virtual Resource  canonify       (const String &utf8cwd, const String &utf8fragment, bool constraindir, bool constrainfile) = 0;
 };
 
 /// Contents of user interface notifications.
