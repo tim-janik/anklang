@@ -3,6 +3,7 @@
 import './browserified.js';	// provides require() and browserified modules
 import './b/basics.js';		// Register basic components first
 import { LitComponent, html, css, docs, lit_update_all } from './little.js';
+import * as String from './strings.js';
 
 // Global CONFIG
 console.bootlog = console.log;
