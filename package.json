@@ -21,6 +21,7 @@
     "browserify": "^17.0.0",
     "css-color-converter": "^2.0.0",
     "csstree-validator": "^3.0.0",
+    "colorjs.io": "^0.4.5",
     "electron": "^27.0.2",
     "eslint": "^8.52.0",
     "eslint-plugin-html": "^7.1.0",
