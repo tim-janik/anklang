@@ -17,6 +17,9 @@
 // Normalize latest Chrome & Firefox styles, last import - CSS rules start here
 @import 'normalize.scss';
 
+// Tailwind classes, components, reset.
+@import 'tailwind.scss';
+
 // Full viewport sizing
 html, body {
   margin: 0; padding: 0;
