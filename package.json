@@ -42,7 +42,6 @@
     "postcss-advanced-variables": "^3.0.1",
     "postcss-cli": "^10.1.0",
     "postcss-color-hwb": "^3.0.0",
-    "postcss-color-mod-function": "^3.0.3",
     "postcss-discard-comments": "^6.0.0",
     "postcss-discard-duplicates": "^6.0.0",
     "postcss-functions": "^4.0.2",
