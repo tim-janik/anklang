@@ -22,10 +22,15 @@ import * as Colors from './colors.js';
 // == TailwindCSS ==
 const tailwind_config = {
   content: [
-    'ui/*.html', 'ui/*.js', 'ui/*.css', 'ui/*.scss',
-    'ui/b/*.js', 'ui/b/*.vue',
+    'ui/*.html', 'ui/*.*js', 'ui/*.*css',
+    'ui/b/*.*js', 'ui/b/*.vue',
   ],
-  theme: {},
+  theme: {
+    borderColor: ({ theme }) => ({
+      ...theme ('colors'),
+      DEFAULT: 'var(--tw-border-default-color)', // theme ('colors.gray.200', 'currentColor'),
+    }),
+  },
 };
 
 // == Plugins ==
