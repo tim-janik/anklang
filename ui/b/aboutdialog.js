@@ -12,43 +12,23 @@ import * as Util from "../util.js";
  * : A *close* event is emitted once the "Close" button activated.
  */
 
-// == STYLE ==
-JsExtract.scss`
-b-aboutdialog {
-  c-grid {
-    max-width: 100%;
-    & > * { // avoid visible overflow for worst-case resizing
-      overflow-wrap: break-word;
-      min-width: 0; }
-  }
-  .b-aboutdialog-label {
-    grid-column: 1;
-    text-align: right; vertical-align: top;
-    @include b-font-weight-bold();
-    padding-right: .5em; min-width: 15em; }
-  .b-aboutdialog-field {
-    grid-column: 2;
-    overflow-wrap: break-word;
-    display: inline-block; white-space: pre-wrap; }
-}`;
-
 // == HTML ==
 const HTML = (t, d) => html`
-<dialog class="b-dialog" ${ref (h => t.dialog = h)} @cancel=${t.close_dialog} @pointerdown=${t.backdrop_click}>
-  <div class="b-dialog-header">
+<dialog class="floating-dialog" ${ref (h => t.dialog = h)} @cancel=${t.close_dialog} @pointerdown=${t.backdrop_click}>
+  <div class="dialog-header">
     About ANKLANG
   </div>
-  <c-grid class="b-dialog-body">
+  <c-grid class="max-w-full">
     ${INFOS_HTML (t, d)}
   </c-grid>
-  <div class="b-dialog-footer">
-    <button autofocus @click=${t.close_dialog} > Close </button>
+  <div class="dialog-footer">
+    <button class="button-xl" autofocus @click=${t.close_dialog} > Close </button>
   </div>
 </dialog>`;
 const INFOS_HTML = (t, d) =>
   t.info_pairs.map (p => html`
-    <span class="b-aboutdialog-label"> ${p[0]} </span>
-    <span class="b-aboutdialog-field"> ${p[1]} </span>
+    <span class="min-w-[15em] col-start-1 pr-2 text-right align-top font-bold"> ${p[0]} </span>
+    <span class="col-start-2 whitespace-pre-wrap break-words"> ${p[1]} </span>
   `);
 
 // == SCRIPT ==
