@@ -63,3 +63,12 @@ p { user-select: text; }
 }
 
 } // @layer components
+
+
+// == Utilities (small CSS helpers) ==
+@layer utilities {
+
+/// Add border-1 for `border-width:1px` to tailwind.
+.border-1	{ border-width: 1px; }
+
+} // @layer utilities
