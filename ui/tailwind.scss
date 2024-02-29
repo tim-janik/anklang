@@ -54,12 +54,60 @@ p { user-select: text; }
 
 /// Use `::after` pseudo element to simulate an indented <hr/> groove at the bottom.
 .groove-below {
-  @apply after:border-b-dim-700 after:border-t-dim-900 relative after:pointer-events-none after:absolute after:inset-x-[15%] after:bottom-[0] after:h-0 after:border-b-2 after:border-t-2;
+  @apply
+    after:border-b-dim-700 after:border-t-dim-900 relative after:pointer-events-none
+    after:absolute after:inset-x-[15%] after:bottom-[0] after:h-0 after:border-b-2 after:border-t-2;
 }
 
 /// Use `::before` pseudo element to simulate an indented <hr/> groove at the top.
 .groove-above {
-  @apply before:border-b-dim-700 before:border-t-dim-900 relative before:pointer-events-none before:absolute before:inset-x-[15%] before:top-[0] before:h-0 before:border-b-2 before:border-t-2;
+  @apply
+    before:border-b-dim-700 before:border-t-dim-900 relative before:pointer-events-none
+    before:absolute before:inset-x-[15%] before:top-[0] before:h-0 before:border-b-2 before:border-t-2;
+}
+
+/// Style for buttons with hover .active, disabled, potentially focussable.
+.button-dim {
+  // button shading
+  box-shadow:    0 0 0 2px #00000088;
+  border-top:    1px solid color-mix(in oklab, theme('colors.dim.600'), #fff 25%);
+  border-left:   1px solid color-mix(in oklab, theme('colors.dim.600'), #fff 25%);
+  border-bottom: 1px solid color-mix(in oklab, theme('colors.dim.600'), #000 20%);
+  border-right:  1px solid color-mix(in oklab, theme('colors.dim.600'), #000 20%);
+  background-image:
+    linear-gradient(to bottom,
+		    color-mix(in oklab, theme('colors.dim.600'), #fff 5%) 0%,
+		    color-mix(in oklab, theme('colors.dim.600'), #000 9%) 100%);
+  &:hover { box-shadow: 0 0 0 2px #00000088, inset 500px 500px #ffffff08; }
+  &:focus { outline: 1px solid #0080cc; }
+  &.active, /* Adding class="active" allows buttons during click() to simulate being pressed */
+  &:active {
+    box-shadow: 0 0 0 2px #00000088;
+    border-bottom: 1px solid color-mix(in oklab, theme('colors.dim.700'), #fff 15%);
+    border-right:  1px solid color-mix(in oklab, theme('colors.dim.700'), #fff 15%);
+    border-top:    1px solid color-mix(in oklab, theme('colors.dim.700'), #000 20%);
+    border-left:   1px solid color-mix(in oklab, theme('colors.dim.700'), #000 20%);
+    background-image:
+      linear-gradient(to bottom,
+		      color-mix(in oklab, theme('colors.dim.600'), #000 9%) 0%,
+		      color-mix(in oklab, theme('colors.dim.600'), #fff 4%) 100%);
+  }
+  &[disabled], &[inert] {
+    box-shadow: 0 0 0 2px #00000044;
+    border: 1px solid color-mix(in oklab, theme('colors.dim.600'), #fff 5%);
+    background-image:
+      linear-gradient(to bottom,
+		      color-mix(in oklab, theme('colors.dim.700'), #fff 9%) 0%,
+		      color-mix(in oklab, theme('colors.dim.700'), #fff 9%) 100%);
+    color: theme('colors.dim.500');
+    pointer-events: none;
+  }
+}
+
+/// Style for buttons in dialogs, potentially focussable.
+.button-xl {
+  @apply hflex button-dim m-0 justify-center px-1 py-1 align-middle;
+  min-width: 7rem;
 }
 
 } // @layer components
