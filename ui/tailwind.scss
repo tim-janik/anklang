@@ -24,3 +24,42 @@ html { user-select: none; }
 p { user-select: text; }
 
 } // @layer base
+
+
+// == Components (functional classes) ==
+@layer components {
+
+/// Horizontal & vertical flexbox
+.hflex { @apply flex flex-row; }
+.vflex { @apply flex flex-col; }
+
+/// Backdrop useful for modal dialogs, lightens up to make shadows visible in dark mode.
+.modal-backdrop {
+  @apply backdrop:bg-gray-500/30 backdrop:backdrop-brightness-50;
+}
+
+/// Backdrop for modal dialogs, with XL shadow.
+.backdrop\+shadow-xl {
+  @apply modal-backdrop;
+  box-shadow: 0 25px 50px 0px #000000cc;
+}
+
+/// Styling for floating modal dialogs with colors, backdrop, rounded, etc.
+.floating-dialog {
+  @apply
+    backdrop+shadow-xl
+    vflex border-b-dim-900 border-l-dim-800/50 border-r-dim-800/50 border-t-dim-700 bg-dim-800 text-dim-300
+    rounded-2xl border-2 px-4 backdrop:bg-gray-500/30 backdrop:backdrop-brightness-50;
+}
+
+/// Use `::after` pseudo element to simulate an indented <hr/> groove at the bottom.
+.groove-below {
+  @apply after:border-b-dim-700 after:border-t-dim-900 relative after:pointer-events-none after:absolute after:inset-x-[15%] after:bottom-[0] after:h-0 after:border-b-2 after:border-t-2;
+}
+
+/// Use `::before` pseudo element to simulate an indented <hr/> groove at the top.
+.groove-above {
+  @apply before:border-b-dim-700 before:border-t-dim-900 relative before:pointer-events-none before:absolute before:inset-x-[15%] before:top-[0] before:h-0 before:border-b-2 before:border-t-2;
+}
+
+} // @layer components
