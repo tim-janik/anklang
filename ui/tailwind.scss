@@ -66,6 +66,16 @@ p { user-select: text; }
     before:absolute before:inset-x-[15%] before:top-[0] before:h-0 before:border-b-2 before:border-t-2;
 }
 
+/// Style for dialog header containers.
+.dialog-header {
+  @apply groove-below mb-8 py-6 text-center text-2xl leading-6 font-bold;
+}
+
+/// Style for dialog footer containers.
+.dialog-footer {
+  @apply groove-above mt-8 flex justify-center py-6 text-center leading-6;
+}
+
 /// Style for buttons with hover .active, disabled, potentially focussable.
 .button-dim {
   // button shading
