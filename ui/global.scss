@@ -118,34 +118,6 @@ dialog.b-dialog[open] {
 ::view-transition-new(b-dialog-inflight) { animation-name: b-keyframe-from-scale0; }
 ::view-transition-old(b-dialog-inflight) { animation-name: b-keyframe-to-scale0; }
 
-// Button
-body button, body push-button {
-  // button shading
-  background-image: $b-button-lg;
-  border-top: 1px solid $b-button-light; border-left: 1px solid $b-button-light;
-  border-bottom: 1px solid $b-button-dark; border-right: 1px solid $b-button-dark;
-  // layout
-  text-align: center; margin: 0; padding: 3px 0.5em;
-  display: flex; align-items: center;
-  color: $b-button-foreground;
-  &:focus {
-    outline: $b-focus-outline;
-  }
-  &:hover {
-    box-shadow: inset 500px 500px $b-button-hover;
-  }
-  &.active, &:active, &[data-contextmenu="true"] {
-    box-shadow: inset 500px 500px $b-button-active;
-    background-image: $b-button-active-lg;
-    border-color: $b-button-active-border;
-    color: $b-button-active-fg;
-  }
-  &[disabled] {
-    filter: saturate(80%) brightness(80%);
-    pointer-events: none;
-  }
-  // A <button/> can focus, a <push-button/> cannot focus
-}
 
 // B-Shortcut-Dialog
 .b-shortcut-dialog {
