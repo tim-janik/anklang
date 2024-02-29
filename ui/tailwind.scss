@@ -4,3 +4,23 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Note, Tailwind is run and configured via PostCSS.
+ * The rules in here assume a dark color alias or scheme named "dim" is provided.
+ * The values are accesible as theme('colors.dim.*').
+ */
+
+
+// == Reset and Basics ==
+@layer base {
+
+// Default border color per Tailwind config.
+html {
+  --tw-border-default-color: #77777777;
+}
+
+// For apps that are not word processors, text selection is best to be enables sparingly.
+html { user-select: none; }
+p { user-select: text; }
+
+} // @layer base
