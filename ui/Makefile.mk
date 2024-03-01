@@ -36,11 +36,11 @@ ui/public.wildcards ::= $(wildcard	\
 
 # == ui/lit.js ==
 $>/ui/lit.js.map: $>/ui/lit.js ;
-$>/ui/lit.js: ui/Makefile.mk $>/node_modules/.npm.done					| $>/ui/
+$>/ui/lit.js: ui/Makefile.mk node_modules/.npm.done					| $>/ui/
 	$(QGEN)
 	$Q rm -f $>/ui/lit.js* $@
 	$Q for mod in $(ui/lit.modules) ; do echo "export * from '$$mod';" ; done	> $>/ui/lit-all.js
-	$Q cd $>/ui/ && ../node_modules/.bin/rollup -p @rollup/plugin-node-resolve lit-all.js -o lit.js --sourcemapFile lit.js.map -m
+	$Q cd $>/ui/ && ../../node_modules/.bin/rollup -p @rollup/plugin-node-resolve lit-all.js -o lit.js --sourcemapFile lit.js.map -m
 	$Q $(RM) $>/ui/lit-all.js
 $>/ui/.build1-stamp: $>/ui/lit.js
 ui/lit.modules = $(strip	\
@@ -52,10 +52,10 @@ ui/lit.modules = $(strip	\
 )
 
 # == ui/vue.js ==
-$>/ui/vue.js:	$>/node_modules/.npm.done				| $>/ui/
+$>/ui/vue.js:	node_modules/.npm.done				| $>/ui/
 	$(QGEN)
 	$Q rm -f $>/ui/vue.js
-	$Q $(CP) $>/node_modules/vue/dist/$(UI/VUE-VARIANT.js) $>/ui/vue.js
+	$Q $(CP) node_modules/vue/dist/$(UI/VUE-VARIANT.js) $>/ui/vue.js
 	$Q sed -i $>/ui/vue.js \
 		-e 's/^\s*\(console\.info(.You are running a development build of Vue\)/if(0) \1/' \
 		-e 's/\b\(warn(`[^`]* was accessed during render\)/if(0) \1/'
@@ -63,20 +63,20 @@ $>/ui/.build1-stamp: $>/ui/vue.js
 UI/VUE-VARIANT.js ::= $(if $(__UIDEBUG__),vue.esm-browser.js,vue.esm-browser.prod.js)
 
 # == ui/zcam-js.mjs ==
-$>/ui/zcam-js.mjs: $>/node_modules/.npm.done				| $>/ui/
+$>/ui/zcam-js.mjs: node_modules/.npm.done				| $>/ui/
 	$(QGEN)
-	$Q $(CP) $>/node_modules/zcam-js/zcam-js.mjs $@
+	$Q $(CP) node_modules/zcam-js/zcam-js.mjs $@
 $>/ui/.build1-stamp: $>/ui/zcam-js.mjs
 $>/ui/colors.js: $>/ui/zcam-js.mjs
 
 # == ui/index.html ==
-$>/ui/index.html: ui/index.html $>/ui/global.css $>/ui/vue-styles.css $>/node_modules/.npm.done		| $>/ui/
+$>/ui/index.html: ui/index.html $>/ui/global.css $>/ui/vue-styles.css node_modules/.npm.done		| $>/ui/
 	@ $(eval ui/csshash != cat $>/ui/global.css $>/ui/vue-styles.css | sha256sum | sed 's/ *-//')
 	$(QGEN)
 	$Q rm -f $>/ui/doc && ln -s ../doc $>/ui/doc # do here, b/c MAKE is flaky in tracking symlink timestamps
 	$Q echo '    { "config": { $(strip $(PACKAGE_VERSIONS)),'				> $>/ui/config.json
 	$Q sed -nr '/^ *"version":/{s/.*: *"(.*)",/    "lit_version": "\1" /;p}' \
-		$>/node_modules/lit/package.json						>>$>/ui/config.json
+		node_modules/lit/package.json						>>$>/ui/config.json
 	$Q echo '    } }'									>>$>/ui/config.json
 	$Q sed -r \
 		-e "/<script type='application\/json' id='--EMBEDD-config_json'>/ r $>/ui/config.json" \
@@ -118,7 +118,7 @@ $>/ui/aseapi.js: jsonipc/jsonipc.js ase/api.hh $(lib/AnklangSynthEngine) ui/Make
 $>/ui/.build1-stamp: $>/ui/aseapi.js
 
 # == ui/postcss.js ==
-$>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/ui/colors.js $>/node_modules/.npm.done
+$>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/ui/colors.js node_modules/.npm.done
 	$(QGEN)
 	$Q $(CP) $< $@.tst.js
 	$Q cd $>/ui/ && node ./$(@F).tst.js --test $V # CHECK transformations
@@ -128,7 +128,7 @@ $>/ui/.build1-stamp: $>/ui/postcss.js
 # == ui/b/vuejs.targets ==
 ui/b/vuejs.targets ::= $(ui/vue.wildcards:%.vue=$>/%.js)
 $(ui/b/vuejs.targets): ui/sfc-compile.js
-$(ui/b/vuejs.targets): $>/%.js: %.vue			| $>/ui/b/ $>/node_modules/.npm.done
+$(ui/b/vuejs.targets): $>/%.js: %.vue			| $>/ui/b/ node_modules/.npm.done
 	$(QGEN)
 	$Q node ui/sfc-compile.js --debug -I $>/ui/ $< -O $(@D)
 $>/ui/.build1-stamp: $(ui/b/vuejs.targets)
@@ -150,13 +150,13 @@ $>/ui/.build1-stamp: $>/ui/vue-styles.css
 # == UI/GLOBALSCSS_IMPORTS ==
 UI/GLOBALSCSS_IMPORTS =
 # Material-Icons
-$>/ui/material-icons.css: ui/Makefile.mk		| $>/ui/ $>/node_modules/.npm.done
+$>/ui/material-icons.css: ui/Makefile.mk		| $>/ui/ node_modules/.npm.done
 	$(QGEN)
-	$Q grep -q '/material-icons.woff2' $>/node_modules/material-icons/iconfont/filled.css || \
-		{ echo "$<: failed to find font in $>/node_modules/material-icons/iconfont/" >&2 ; false ; }
-	$Q cp $>/node_modules/material-icons/iconfont/material-icons.woff2 $>/ui/material-icons.woff2
+	$Q grep -q '/material-icons.woff2' node_modules/material-icons/iconfont/filled.css || \
+		{ echo "$<: failed to find font in node_modules/material-icons/iconfont/" >&2 ; false ; }
+	$Q cp node_modules/material-icons/iconfont/material-icons.woff2 $>/ui/material-icons.woff2
 	$Q sed -re 's|\boptimizeLegibility\b|optimizelegibility|g' \
-		$>/node_modules/material-icons/iconfont/filled.css > $@.tmp
+		node_modules/material-icons/iconfont/filled.css > $@.tmp
 	$Q mv $@.tmp $@
 UI/GLOBALSCSS_IMPORTS += $>/ui/material-icons.css
 # AnklangIcons
@@ -168,12 +168,12 @@ $>/ui/assets/AnklangIcons.css: ui/Makefile.mk			| $>/ui/assets/
 	$Q rm -r $>/ui/anklangicons/ && mv $@.tmp $@
 UI/GLOBALSCSS_IMPORTS += $>/ui/assets/AnklangIcons.css
 # Fork-Awesome
-$>/ui/assets/fork-awesome.css: ui/Makefile.mk		| $>/node_modules/.npm.done $>/ui/assets/
+$>/ui/assets/fork-awesome.css: ui/Makefile.mk		| node_modules/.npm.done $>/ui/assets/
 	$(QGEN)
-	$Q $(CP) $>/node_modules/fork-awesome/fonts/forkawesome-webfont.woff2 $>/ui/assets/
+	$Q $(CP) node_modules/fork-awesome/fonts/forkawesome-webfont.woff2 $>/ui/assets/
 	$Q sed  -e "/^ *src: *url/s,src: *url(.*);,src: url('forkawesome-webfont.woff2');," \
 		-e 's|@font-face *{|@font-face { font-display: block; |' \
-		$>/node_modules/fork-awesome/css/fork-awesome.css > $@.tmp
+		node_modules/fork-awesome/css/fork-awesome.css > $@.tmp
 	$Q mv $@.tmp $@
 UI/GLOBALSCSS_IMPORTS += $>/ui/assets/fork-awesome.css
 # ui/cursors/
@@ -204,13 +204,13 @@ $>/ui/.build1-stamp: $>/ui/global.css
 
 # == stylelint ==
 ui/stylelint.files = $(ui/b/scss2css.targets) $(ui/b/css.targets) $>/ui/global.css $>/ui/vue-styles.css
-$>/ui/.stylelint.done: $(ui/stylelint.files) ui/stylelintrc.cjs $>/node_modules/.npm.done
+$>/ui/.stylelint.done: $(ui/stylelint.files) ui/stylelintrc.cjs node_modules/.npm.done
 	$(QECHO) RUN stylelint
 	$Q cp ui/stylelintrc.cjs $>/ui/stylelintrc.cjs
 	-$Q cd $>/ && node_modules/.bin/stylelint $${INSIDE_EMACS:+-f unix} -c ui/stylelintrc.cjs $(ui/stylelint.files:$>/%=%)
 	$Q touch $@
 $>/ui/.build2-stamp: $>/ui/.stylelint.done
-stylelint: $>/node_modules/.npm.done
+stylelint: node_modules/.npm.done
 	$Q rm -f $>/ui/.stylelint.done
 	$Q $(MAKE) $>/ui/.stylelint.done
 .PHONY: stylelint
@@ -261,7 +261,7 @@ $>/ui/InterVariable.woff2: external/blobs4anklang/fonts/InterVariable.woff2	| $>
 $>/ui/.build1-stamp: $>/ui/InterVariable.woff2
 
 # == $>/ui/browserified.js ==
-$>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
+$>/ui/browserified.js: node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 	$(QGEN)
 	$Q: # bundle and re-export module for the browser
 	$Q mkdir -p $>/ui/tmp-browserify/
@@ -274,18 +274,18 @@ $>/ui/browserified.js: $>/node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 	$Q echo "const browserify_require = m => modules[m] || console.error ('Unknown module:', m);"	>> $>/ui/tmp-browserify/requires.js
 	$Q echo "Object.defineProperty (window, 'require', { value: browserify_require });"		>> $>/ui/tmp-browserify/requires.js
 	$Q echo "window.require.modules = modules;"						>> $>/ui/tmp-browserify/requires.js
-	$Q $>/node_modules/.bin/browserify --debug -o $>/ui/tmp-browserify/browserified.long.js $>/ui/tmp-browserify/requires.js
-	$Q $>/node_modules/.bin/terser --source-map content=inline --comments false $>/ui/tmp-browserify/browserified.long.js -o $>/ui/tmp-browserify/browserified.min.js
+	$Q node_modules/.bin/browserify --debug -o $>/ui/tmp-browserify/browserified.long.js $>/ui/tmp-browserify/requires.js
+	$Q node_modules/.bin/terser --source-map content=inline --comments false $>/ui/tmp-browserify/browserified.long.js -o $>/ui/tmp-browserify/browserified.min.js
 	$Q mv $>/ui/tmp-browserify/browserified.min.js.map $@.map
 	$Q mv $>/ui/tmp-browserify/browserified.min.js $@
 	$Q rm -r $>/ui/tmp-browserify/
 $>/ui/.build1-stamp: $>/ui/browserified.js
 
 # == $>/ui/favicon.ico ==
-$>/ui/favicon.ico: ui/assets/favicon.svg $>/node_modules/.npm.done ui/Makefile.mk	| $>/ui/
+$>/ui/favicon.ico: ui/assets/favicon.svg node_modules/.npm.done ui/Makefile.mk	| $>/ui/
 	$(QGEN)
 	$Q mkdir -p $>/ui/tmp-icongen/
-	$Q $>/node_modules/.bin/icon-gen -i $< -o $>/ui/tmp-icongen/ --favicon --favicon-png-sizes 128 --favicon-ico-sizes 128 # -r
+	$Q node_modules/.bin/icon-gen -i $< -o $>/ui/tmp-icongen/ --favicon --favicon-png-sizes 128 --favicon-ico-sizes 128 # -r
 	$Q cd $>/ui/tmp-icongen/ && mv favicon-128.png ../anklang.png && mv favicon.ico ../favicon.ico.tmp
 	$Q rm -r $>/ui/tmp-icongen/ && mv $@.tmp $@
 $>/ui/anklang.png: $>/ui/favicon.ico
@@ -293,7 +293,7 @@ $>/ui/.build1-stamp: $>/ui/favicon.ico $>/ui/anklang.png
 
 # == eslint ==
 ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue)
-$>/ui/.eslint.done: ui/eslintrc.js $(ui/eslint.files) ui/Makefile.mk $>/node_modules/.npm.done	| $>/ui/
+$>/ui/.eslint.done: ui/eslintrc.js $(ui/eslint.files) ui/Makefile.mk node_modules/.npm.done	| $>/ui/
 	$(QECHO) RUN eslint
 	$Q $(CP) $< $(@D)/.eslintrc.cjs
 	$Q echo '$(abspath $(ui/eslint.files))' | tr ' ' '\n' > $>/ui/.eslint.files
@@ -302,14 +302,14 @@ $>/ui/.eslint.done: ui/eslintrc.js $(ui/eslint.files) ui/Makefile.mk $>/node_mod
 	$Q rm -f $>/ui/.eslint.files
 	$Q touch $@
 $>/ui/.build2-stamp: $>/ui/.eslint.done
-eslint: $>/node_modules/.npm.done
+eslint: node_modules/.npm.done
 	$Q rm -f $>/ui/.eslint.done
 	$Q $(MAKE) $>/ui/.eslint.done
 .PHONY: eslint
 
 # == tscheck ==
 ui/tscheck.deps ::= $(wildcard ui/*.js ui/*/*.js) $(wildcard $>/ui/*.js $>/ui/*/*.js)
-tscheck $>/.tscheck.done: ui/types.d.ts ui/tsconfig.json $(ui/tscheck.deps) $>/node_modules/.npm.done | $>/ui/.build1-stamp $>/tscheck/
+tscheck $>/.tscheck.done: ui/types.d.ts ui/tsconfig.json $(ui/tscheck.deps) node_modules/.npm.done | $>/ui/.build1-stamp $>/tscheck/
 	$(QECHO) RUN tscheck
 	$Q cp ui/tsconfig.json ui/types.d.ts $>/ui/
 	@ # tsc *.js needs to find node_modules/ in the directory hierarchy ("moduleResolution": "node")
@@ -329,7 +329,7 @@ ui/lint: tscheck eslint stylelint
 lint: ui/lint
 
 # == $>/doc/b/*.md ==
-$>/doc/b/.doc-stamp: $(wildcard ui/b/*.js) ui/xbcomments.js ui/Makefile.mk $>/node_modules/.npm.done	| $>/doc/b/
+$>/doc/b/.doc-stamp: $(wildcard ui/b/*.js) ui/xbcomments.js ui/Makefile.mk node_modules/.npm.done	| $>/doc/b/
 	$(QGEN)
 	$Q node ui/xbcomments.js $(wildcard ui/b/*.js) -O $>/doc/b/
 	$Q touch $@
