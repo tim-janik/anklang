@@ -1,6 +1,8 @@
 /// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 "use strict";
 
+/* This fils is loaded as CJS module from jsdoc, via jsdocrc.json */
+
 /// Export jsdoc plugin to convert '/// comment\n' into '/** comment */\n'
 exports.handlers = {
   beforeParse: (arg) => {
