@@ -21,7 +21,7 @@
 
   // Globs that may be present
   "include": [
-    "*.js",
-    "b/*.js"
+    "ui/*.js",
+    "ui/b/*.js"
   ]
 }
