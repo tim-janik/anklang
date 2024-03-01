@@ -81,7 +81,7 @@ const HTML = (t, d) => html`
     @keydown=${e => t.piano_ctrl.keydown (e)}
     @wheel=${t.wheel_event} >
 
-    <v-flex class="-toolbutton -col1 -row1" style="height: 1.7em; align-items: end; padding-right: 4px;" ${ref (h => t.menu_btn = h)}
+    <v-flex class="-toolbutton col-start-1 row-start-1" style="height: 1.7em; align-items: end; padding-right: 4px;" ${ref (h => t.menu_btn = h)}
       @click=${e => t.pianotoolmenu.popup (e)} @mousedown=${e => t.pianotoolmenu.popup (e)} >
       <b-icon style="width: 1.2em; height: 1.2em" ${ref (h => t.menu_icon = h)}></b-icon>
       <b-contextmenu ${ref (h => t.pianotoolmenu = h)} id="g-pianotoolmenu" class="-pianotoolmenu" @activate=${e => t.usetool (e.detail.uri)} >
@@ -92,17 +92,17 @@ const HTML = (t, d) => html`
       </b-contextmenu>
     </v-flex>
 
-    <canvas class="-col2 -row1 -time_canvas"  ${ref (h => t.time_canvas = h)} ></canvas>
-    <canvas class="-col1 -row2 -piano_canvas" ${ref (h => t.piano_canvas = h)} ></canvas>
-    <canvas class="-col2 -row2 -notes_canvas" ${ref (h => t.notes_canvas = h)}
+    <canvas class="-time_canvas col-start-2 row-start-1"  ${ref (h => t.time_canvas = h)} ></canvas>
+    <canvas class="-piano_canvas col-start-1 row-start-2" ${ref (h => t.piano_canvas = h)} ></canvas>
+    <canvas class="-notes_canvas col-start-2 row-start-2" ${ref (h => t.notes_canvas = h)}
       @pointermove=${Util.debounce (t.notes_canvas_pointermove.bind (t))}
       @pointerdown=${t.notes_canvas_pointerdown} ></canvas>
 
-    <div class="-col3 -row2" style="overflow: hidden scroll; min-width: 17px; background: #000" ${ref (h => t.vscrollbar = h)} >
+    <div class="col-start-3 row-start-2" style="overflow: hidden scroll; min-width: 17px; background: #000" ${ref (h => t.vscrollbar = h)} >
       <div class="-vextend" style="height: 151vh" ${ref (h => t.vscrollbar_extend = h)} >
       </div>
     </div>
-    <div class="-col2 -row3" ${ref (h => t.hscrollbar = h)} style="overflow: scroll hidden; min-height: 17px; background: #000" >
+    <div class="col-start-2 row-start-3" ${ref (h => t.hscrollbar = h)} style="overflow: scroll hidden; min-height: 17px; background: #000" >
       <div class="-hextend" ${ref (h => t.hscrollbar_extend = h)} style="width:999px" ></div>
     </div>
     <span class="-indicator" ${ref (h => t.indicator_bar = h)}></span>
