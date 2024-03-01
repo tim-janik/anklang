@@ -292,20 +292,18 @@ $>/ui/anklang.png: $>/ui/favicon.ico
 $>/ui/.build1-stamp: $>/ui/favicon.ico $>/ui/anklang.png
 
 # == eslint ==
-ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue)
-$>/ui/.eslint.done: ui/eslintrc.js $(ui/eslint.files) ui/Makefile.mk node_modules/.npm.done	| $>/ui/
+ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue) # ui/*.*css ui/b/*.*css
+$>/.eslint.done: ui/eslintrc.cjs $(ui/eslint.files) ui/Makefile.mk node_modules/.npm.done	| $>/ui/
 	$(QECHO) RUN eslint
-	$Q $(CP) $< $(@D)/.eslintrc.cjs
-	$Q echo '$(abspath $(ui/eslint.files))' | tr ' ' '\n' > $>/ui/.eslint.files
-	$Q cd $>/ && node_modules/.bin/eslint --no-eslintrc -c ui/.eslintrc.cjs -f unix --cache $(abspath $(ui/eslint.files)) \
-	|& ./../misc/colorize.sh
-	$Q rm -f $>/ui/.eslint.files
+	$Q node_modules/.bin/eslint --no-eslintrc -c ui/eslintrc.cjs -f unix --cache $(abspath $(ui/eslint.files)) \
+	|& ./misc/colorize.sh
 	$Q touch $@
-$>/ui/.build2-stamp: $>/ui/.eslint.done
+$>/ui/.build2-stamp: $>/.eslint.done
 eslint: node_modules/.npm.done
-	$Q rm -f $>/ui/.eslint.done
-	$Q $(MAKE) $>/ui/.eslint.done
+	$Q rm -f $>/.eslint.done
+	$Q $(MAKE) $>/.eslint.done
 .PHONY: eslint
+CLEANFILES += .eslintcache
 
 # == tscheck ==
 ui/tscheck.deps ::= $(wildcard ui/*.js ui/*/*.js) $(wildcard $>/ui/*.js $>/ui/*/*.js)
