@@ -8,10 +8,10 @@ electron/all:
 electron/js.sources ::= electron/main.js electron/preload.js $>/ui/anklang.png
 
 # == electron/anklang ==
-$>/electron/anklang: $(electron/js.sources) electron/Makefile.mk $>/node_modules/.npm.done
+$>/electron/anklang: $(electron/js.sources) electron/Makefile.mk node_modules/.npm.done
 	$(QGEN)
 	$Q rm -f -r $(@D)
-	$Q $(CP) -r $>/node_modules/electron/dist/ $(@D)
+	$Q $(CP) -r node_modules/electron/dist/ $(@D)
 	$Q chmod -x $>/electron/lib*.so*
 	$Q rm $(@D)/resources/default_app.asar
 	$Q mkdir -p $(@D)/resources/app
