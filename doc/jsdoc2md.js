@@ -1,8 +1,8 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 "use strict";
 
-const fs = require ('fs');
-const jsdoc = require ('jsdoc-api');
+import * as fs from 'fs';
+import * as jsdoc from 'jsdoc-api';
 
 function usage (full = false) {
   const prog = process.argv[1].replace (/.*\//, '');

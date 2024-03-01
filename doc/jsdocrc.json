@@ -1,6 +1,6 @@
 {
   "plugins": [
     "jsdoc-tsimport-plugin",
-    "doc/jsdoc-slashes"
+    "doc/jsdoc-slashes.cjs"
   ]
 }

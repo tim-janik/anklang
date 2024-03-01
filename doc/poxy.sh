@@ -9,8 +9,8 @@ test -e ase/api.hh || die "must run in anklang/"
 test -e out/doc/anklang-manual.html || die "a fully build project is required"
 
 # Find node_modules
-test -d out/node_modules/jsdoc-api || die "a fully build project is required"
-export NODE_PATH=out/node_modules/
+test -d node_modules/jsdoc-api || die "a fully build project is required"
+export NODE_PATH=node_modules/
 
 # Parse args
 VERSION=(`misc/version.sh`)
@@ -102,7 +102,7 @@ __EOF
   done
 
   # Extract JS docs
-  make out/node_modules/.npm.done
+  make node_modules/.npm.done
   MARKDOWN_FLAVOUR="-f markdown+compact_definition_lists+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart-raw_html"
   HTML_FLAGS="--highlight-style doc/highlights.theme --html-q-tags --section-divs --email-obfuscation=references"
   for f in ui/*.js ui/b/*.js ; do

@@ -143,6 +143,7 @@ $>/ls-tree.d: $(GITCOMMITDEPS)						| $>/
 	$Q test ! -e .git || git submodule update --init --recursive
 	$Q touch $@
 Makefile.mk: .submodule-stamp
+CLEANFILES += .submodule-stamp
 
 # == enduser targets ==
 all: FORCE
@@ -247,30 +248,24 @@ $>/config.sh: $(wildcard config-defaults.mk)				| $>/
 	$Q mv $@.tmp $@
 ALL_TARGETS += $>/config.sh
 
-# == package.json ==
-$>/package.json: misc/package.json.in					| $>/
-	$(QGEN)
-	$Q $(CP) $< $@.tmp
-	$Q mv $@.tmp $@
-CLEANDIRS += $>/node_modules/
-
 # == npm.done ==
-$>/node_modules/.npm.done: $(if $(NPMBLOCK),, $>/package.json)		| $>/
+node_modules/.npm.done: $(if $(NPMBLOCK),, package.json)		| $>/
 	$(QGEN)
-	$Q rm -f -r $>/node_modules/
+	$Q rm -f -r node_modules/
 	@: # Install all node_modules and anonymize build path
-	$Q cd $>/ \
+	$Q : \
 	  && { POFFLINE= && test ! -d node_modules/ || POFFLINE=--prefer-offline ; } \
 	  && $(NPM_INSTALL) $$POFFLINE
 	@: # Anonymize build paths in node_modules
-	$Q find $>/node_modules/ -name package.json -print0 | xargs -0 sed -r "\|$$PWD|s|^(\s*(\"_where\":\s*)?)\"$$PWD|\1\"/...|" -i
+	$Q find node_modules/ -name package.json -print0 | xargs -0 sed -r "\|$$PWD|s|^(\s*(\"_where\":\s*)?)\"$$PWD|\1\"/...|" -i
 	@: # Fix bun installation, see: https://github.com/oven-sh/bun/pull/5077
-	$Q test ! -d $>/node_modules/sharp/ -o -d $>/node_modules/sharp/build/Release/ || (cd $>/node_modules/sharp/ && $(NPM_INSTALL))
-	$Q test -d $>/node_modules/electron/dist/ || (cd $>/node_modules/electron/ && $(NPM_INSTALL))
-	$Q: # add newer nodejs API to browserify-url.js, needed for e.g. postcss error messages
+	$Q test ! -d node_modules/sharp/ -o -d node_modules/sharp/build/Release/ || (cd node_modules/sharp/ && $(NPM_INSTALL))
+	$Q test -d node_modules/electron/dist/ || (cd node_modules/electron/ && $(NPM_INSTALL))
 	$Q touch $@
-NODE_PATH ::= $(abspath $>/node_modules/)
+NODE_PATH ::= $(abspath node_modules/)
 export NODE_PATH
+CLEANDIRS += node_modules/
+CLEANFILES += bun.lockb package-lock.json
 
 # == uninstall ==
 uninstall:

@@ -1,8 +1,8 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 "use strict";
 
-const fs = require ('fs');
-const path = require ('path');
+import * as fs from 'fs';
+import * as path from 'path';
 
 /// Count newlines
 function count_newlines (str) {

@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "serve": "run-p sound-engine monitor",
-    "sound-engine": "lib/AnklangSynthEngine $ASEOPT",
-    "monitor": "nodemon --ext '*' --watch ../ui/ --delay 2500ms --on-change-only --exec 'npm run -s ui/rebuild' --exitcrash",
-    "ui/rebuild": "make ui/rebuild -C .. -j`nproc`"
+    "serve": "exec run-p sound-engine monitor",
+    "sound-engine": "exec out/lib/AnklangSynthEngine $ASEOPT",
+    "monitor": "exec nodemon --ext '*' --watch ui/ --delay 1000ms --on-change-only --exec 'npm run -s ui/rebuild' --exitcrash",
+    "ui/rebuild": "exec make ui/rebuild -j`nproc`"
   },
   "dependencies": {
     "vue": "=3.3.7"
