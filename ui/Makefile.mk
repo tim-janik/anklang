@@ -204,15 +204,14 @@ $>/.build1-stamp: $>/ui/global.css
 
 # == stylelint ==
 ui/stylelint.files = $(ui/b/scss2css.targets) $(ui/b/css.targets) $>/ui/global.css $>/ui/vue-styles.css
-$>/ui/.stylelint.done: $(ui/stylelint.files) ui/stylelintrc.cjs node_modules/.npm.done
+$>/.stylelint.done: $(ui/stylelint.files) ui/stylelintrc.cjs node_modules/.npm.done
 	$(QECHO) RUN stylelint
-	$Q cp ui/stylelintrc.cjs $>/ui/stylelintrc.cjs
-	-$Q cd $>/ && node_modules/.bin/stylelint $${INSIDE_EMACS:+-f unix} -c ui/stylelintrc.cjs $(ui/stylelint.files:$>/%=%)
-	$Q touch $@
-$>/ui/.build2-stamp: $>/ui/.stylelint.done
+	-$Q cd $>/ && ../node_modules/.bin/stylelint $${INSIDE_EMACS:+-f unix} -c ../ui/stylelintrc.cjs $(ui/stylelint.files:$>/%=%) \
+	&& touch $@
+$>/.build2-stamp: $>/.stylelint.done
 stylelint: node_modules/.npm.done
-	$Q rm -f $>/ui/.stylelint.done
-	$Q $(MAKE) $>/ui/.stylelint.done
+	$Q rm -f $>/.stylelint.done
+	$Q $(MAKE) $>/.stylelint.done
 .PHONY: stylelint
 
 # == all-components.js ==
