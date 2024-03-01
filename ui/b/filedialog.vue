@@ -78,16 +78,16 @@
     </template>
 
     <c-grid class="-browser" style="grid-template-columns: auto 1fr; grid-template-rows: auto auto 1fr" >
-      <span class="-col1 -row1 -dir"> Directory: </span>
-      <span class="-col2 -row1 -dir"> {{ directory() }} </span>
+      <span class="-dir col-start-1 row-start-1"> Directory: </span>
+      <span class="-dir col-start-2 row-start-1"> {{ directory() }} </span>
 
-      <span  class="-col1 -row2 -file" > File: </span>
-      <input class="-col2 -row2 -file" ref="fileentry" type="text" :value="r.filename"
+      <span  class="-file col-start-1 row-start-2" > File: </span>
+      <input class="-file col-start-2 row-start-2" ref="fileentry" type="text" :value="r.filename"
 	     @keydown.enter="fileentry_enter ($event)" @change="fileentry_change()"
 	     @keydown.down="Util.keydown_move_focus ($event)" autofocus >
 
-      <span class="-col1 -row3 -places" > Places </span>
-      <b-folderview class="-col2 -row3" ref="folderview" :entries="r.entries"
+      <span class="-places col-start-1 row-start-3" > Places </span>
+      <b-folderview class="col-start-2 row-start-3" ref="folderview" :entries="r.entries"
 		    @select="entry_select ($event)" @click="entry_click ($event)" />
     </c-grid>
 
