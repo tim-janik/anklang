@@ -306,13 +306,13 @@ CLEANFILES += .eslintcache
 
 # == tscheck ==
 ui/tscheck.deps ::= $(wildcard ui/*.js ui/*/*.js) $(wildcard $>/ui/*.js $>/ui/*/*.js)
-tscheck $>/.tscheck.done: ui/types.d.ts ui/tsconfig.json $(ui/tscheck.deps) node_modules/.npm.done | $>/ui/.build1-stamp $>/tscheck/
+tscheck $>/.tscheck.done: ui/types.d.ts ui/tsconfig.json $(ui/tscheck.deps) node_modules/.npm.done | $>/.build1-stamp $>/tscheck/
 	$(QECHO) RUN tscheck
-	$Q cp ui/tsconfig.json ui/types.d.ts $>/ui/
 	@ # tsc *.js needs to find node_modules/ in the directory hierarchy ("moduleResolution": "node")
-	-$Q cd $>/ && node_modules/.bin/tsc -p ui/tsconfig.json $${INSIDE_EMACS:+--pretty false}
-	$Q touch $>/.tscheck.done
-$>/ui/.build2-stamp: $>/.tscheck.done
+	$Q cp ui/tsconfig.json ui/types.d.ts $>/
+	-$Q (cd $>/ && ../node_modules/.bin/tsc -p tsconfig.json $${INSIDE_EMACS:+--pretty false}) \
+	&& touch $>/.tscheck.done
+$>/.build2-stamp: $>/.tscheck.done
 .PHONY: tscheck
 CLEANDIRS += $>/tscheck/
 
