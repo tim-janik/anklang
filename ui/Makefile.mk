@@ -2,9 +2,9 @@
 include $(wildcard $>/ui/*.d)
 ui/cleandirs ::= $(wildcard $>/ui/ $>/dist/)
 CLEANDIRS         += $(ui/cleandirs)
-ALL_TARGETS       += $>/ui/.build1-stamp $>/ui/.build2-stamp
-$>/ui/.build1-stamp:	# essential build targets for the UI
-$>/ui/.build2-stamp:	# extra targets, deferred during incremental rebuilds
+ALL_TARGETS       += $>/.build1-stamp $>/.build2-stamp
+$>/.build1-stamp:	# essential build targets for the UI
+$>/.build2-stamp:	# extra targets, deferred during incremental rebuilds
 
 # This Makefile creates the web UI in $>/ui/.
 # * make run - Build UI, start electron app
@@ -42,7 +42,7 @@ $>/ui/lit.js: ui/Makefile.mk node_modules/.npm.done					| $>/ui/
 	$Q for mod in $(ui/lit.modules) ; do echo "export * from '$$mod';" ; done	> $>/ui/lit-all.js
 	$Q cd $>/ui/ && ../../node_modules/.bin/rollup -p @rollup/plugin-node-resolve lit-all.js -o lit.js --sourcemapFile lit.js.map -m
 	$Q $(RM) $>/ui/lit-all.js
-$>/ui/.build1-stamp: $>/ui/lit.js
+$>/.build1-stamp: $>/ui/lit.js
 ui/lit.modules = $(strip	\
 	lit lit/directives/live.js lit/directives/repeat.js lit/directives/ref.js \
 	lit/directives/async-append.js lit/directives/async-replace.js lit/directives/cache.js lit/directives/choose.js lit/directives/class-map.js \
@@ -59,14 +59,14 @@ $>/ui/vue.js:	node_modules/.npm.done				| $>/ui/
 	$Q sed -i $>/ui/vue.js \
 		-e 's/^\s*\(console\.info(.You are running a development build of Vue\)/if(0) \1/' \
 		-e 's/\b\(warn(`[^`]* was accessed during render\)/if(0) \1/'
-$>/ui/.build1-stamp: $>/ui/vue.js
+$>/.build1-stamp: $>/ui/vue.js
 UI/VUE-VARIANT.js ::= $(if $(__UIDEBUG__),vue.esm-browser.js,vue.esm-browser.prod.js)
 
 # == ui/zcam-js.mjs ==
 $>/ui/zcam-js.mjs: node_modules/.npm.done				| $>/ui/
 	$(QGEN)
 	$Q $(CP) node_modules/zcam-js/zcam-js.mjs $@
-$>/ui/.build1-stamp: $>/ui/zcam-js.mjs
+$>/.build1-stamp: $>/ui/zcam-js.mjs
 $>/ui/colors.js: $>/ui/zcam-js.mjs
 
 # == ui/index.html ==
@@ -87,7 +87,7 @@ $>/ui/index.html: ui/index.html $>/ui/global.css $>/ui/vue-styles.css node_modul
 		-e "/^<\?xml .*\?>\s*$$/d" \
 		-i $@.tmp
 	$Q mv $@.tmp $@
-$>/ui/.build1-stamp: $>/ui/index.html
+$>/.build1-stamp: $>/ui/index.html
 # remove ::KEEPIF="__DEV__" directives
 ui/sed-keepif ::= $(if __DEV__, -e '/<[^<>]*::KEEPIF="__DEV__"/s/::KEEPIF="__DEV__"//')
 # delete unmatched ::KEEPIF="" tags
@@ -97,7 +97,7 @@ ui/sed-keepif  += -e 's/<[^<>]*::KEEPIF="[^"]*"[^<>]*>//'
 $>/ui/assets/%: $>/images/knobs/%			| $>/ui/assets/
 	$(QGEN)
 	$Q $(CP) $< $@
-$>/ui/.build1-stamp: $>/ui/assets/cknob193u.png $>/ui/assets/cknob193b.png
+$>/.build1-stamp: $>/ui/assets/cknob193u.png $>/ui/assets/cknob193b.png
 
 # == ui/.aseignore ==
 $>/ui/.aseignore:					| $>/ui/
@@ -105,7 +105,7 @@ $>/ui/.aseignore:					| $>/ui/
 	$Q rm -f $@.tmp
 	$Q echo '.*/[.].*'			>> $@.tmp
 	$Q mv $@.tmp $@
-$>/ui/.build1-stamp: $>/ui/.aseignore
+$>/.build1-stamp: $>/ui/.aseignore
 
 # == ui/aseapi.js ==
 $>/ui/aseapi.js: jsonipc/jsonipc.js ase/api.hh $(lib/AnklangSynthEngine) ui/Makefile.mk	| $>/ui/
@@ -115,7 +115,7 @@ $>/ui/aseapi.js: jsonipc/jsonipc.js ase/api.hh $(lib/AnklangSynthEngine) ui/Make
 	$Q echo '/**@type{ServerImpl}*/'							>> $@.tmp
 	$Q echo 'export let server = Jsonipc.setup_promise_type (Server, s => server = s);'	>> $@.tmp
 	$Q mv $@.tmp $@
-$>/ui/.build1-stamp: $>/ui/aseapi.js
+$>/.build1-stamp: $>/ui/aseapi.js
 
 # == ui/postcss.js ==
 $>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/ui/colors.js node_modules/.npm.done
@@ -123,7 +123,7 @@ $>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/ui/colors.js node_modules/.npm
 	$Q $(CP) $< $@.tst.js
 	$Q cd $>/ui/ && node ./$(@F).tst.js --test $V # CHECK transformations
 	$Q mv $@.tst.js $@
-$>/ui/.build1-stamp: $>/ui/postcss.js
+$>/.build1-stamp: $>/ui/postcss.js
 
 # == ui/b/vuejs.targets ==
 ui/b/vuejs.targets ::= $(ui/vue.wildcards:%.vue=$>/%.js)
@@ -131,7 +131,7 @@ $(ui/b/vuejs.targets): ui/sfc-compile.js
 $(ui/b/vuejs.targets): $>/%.js: %.vue			| $>/ui/b/ node_modules/.npm.done
 	$(QGEN)
 	$Q node ui/sfc-compile.js --debug -I $>/ui/ $< -O $(@D)
-$>/ui/.build1-stamp: $(ui/b/vuejs.targets)
+$>/.build1-stamp: $(ui/b/vuejs.targets)
 
 # == vue-styles.css ==
 ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.vuecss)
@@ -145,7 +145,7 @@ $>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js ui/Makefile.mk
 		|| exit 1 ; done
 	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -I ../../ui/ -i $(@F).vuecss $(@F).tmp
 	$Q $(RM) $@.vuecss && mv $@.tmp $@
-$>/ui/.build1-stamp: $>/ui/vue-styles.css
+$>/.build1-stamp: $>/ui/vue-styles.css
 
 # == UI/GLOBALSCSS_IMPORTS ==
 UI/GLOBALSCSS_IMPORTS =
@@ -200,7 +200,7 @@ $>/ui/global.css: ui/global.scss $(ui/b/js.files) ui/jsextract.js $>/ui/postcss.
 	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -I ui/ $>/ui/global.scss $@.tmp
 	$Q rm -f $>/ui/*.jscss $>/ui/b/*.jscss
 	$Q mv $@.tmp $@
-$>/ui/.build1-stamp: $>/ui/global.css
+$>/.build1-stamp: $>/ui/global.css
 
 # == stylelint ==
 ui/stylelint.files = $(ui/b/scss2css.targets) $(ui/b/css.targets) $>/ui/global.css $>/ui/vue-styles.css
@@ -231,34 +231,34 @@ $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vuejs.targets) $(wildcard ui/b/*)
 	$Q echo "};"						>> $@.tmp2
 	$Q cat $@.tmp2 >> $@.tmp && $(RM) $@.tmp2
 	$Q mv $@.tmp $@
-$>/ui/.build1-stamp: $>/ui/all-components.js
+$>/.build1-stamp: $>/ui/all-components.js
 
 # == File Copies ==
 ui/copy.targets ::= $(ui/copy.files:%=$>/%)
 $(ui/copy.targets): $>/ui/%: ui/%	| $>/ui/b/
 	$(QECHO) COPY $@
 	$Q $(CP) $< --parents $>/
-$>/ui/.build1-stamp: $(ui/copy.targets)
+$>/.build1-stamp: $(ui/copy.targets)
 
 # == Copies to ui/ ==
 ui/public.targets ::= $(ui/public.wildcards:ui/%=$>/ui/%)
 $(ui/public.targets): $>/ui/%: ui/%			| $>/ui/assets/
 	$(QECHO) COPY $<
 	$Q cd ui/ && $(CP) $(<:ui/%=%) --parents $(abspath $>/)/ui/
-$>/ui/.build1-stamp: $(ui/public.targets)
+$>/.build1-stamp: $(ui/public.targets)
 
 # == CJS Files ==
 ui/cjs.targets ::= $(ui/cjs.wildcards:%.js=$>/%.cjs)
 $(ui/cjs.targets): $>/ui/%.cjs: ui/%.js	| $>/ui/b/
 	$(QECHO) COPY $@
 	$Q $(CP) $< $@
-$>/ui/.build1-stamp: $(ui/cjs.targets)
+$>/.build1-stamp: $(ui/cjs.targets)
 
 # == Inter Typeface ==
 $>/ui/InterVariable.woff2: external/blobs4anklang/fonts/InterVariable.woff2	| $>/ui/
 	$(QGEN)
 	$Q $(CP) $< $@
-$>/ui/.build1-stamp: $>/ui/InterVariable.woff2
+$>/.build1-stamp: $>/ui/InterVariable.woff2
 
 # == $>/ui/browserified.js ==
 $>/ui/browserified.js: node_modules/.npm.done	| ui/Makefile.mk $>/ui/
@@ -279,7 +279,7 @@ $>/ui/browserified.js: node_modules/.npm.done	| ui/Makefile.mk $>/ui/
 	$Q mv $>/ui/tmp-browserify/browserified.min.js.map $@.map
 	$Q mv $>/ui/tmp-browserify/browserified.min.js $@
 	$Q rm -r $>/ui/tmp-browserify/
-$>/ui/.build1-stamp: $>/ui/browserified.js
+$>/.build1-stamp: $>/ui/browserified.js
 
 # == $>/ui/favicon.ico ==
 $>/ui/favicon.ico: ui/assets/favicon.svg node_modules/.npm.done ui/Makefile.mk	| $>/ui/
@@ -289,7 +289,7 @@ $>/ui/favicon.ico: ui/assets/favicon.svg node_modules/.npm.done ui/Makefile.mk	|
 	$Q cd $>/ui/tmp-icongen/ && mv favicon-128.png ../anklang.png && mv favicon.ico ../favicon.ico.tmp
 	$Q rm -r $>/ui/tmp-icongen/ && mv $@.tmp $@
 $>/ui/anklang.png: $>/ui/favicon.ico
-$>/ui/.build1-stamp: $>/ui/favicon.ico $>/ui/anklang.png
+$>/.build1-stamp: $>/ui/favicon.ico $>/ui/anklang.png
 
 # == eslint ==
 ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js ui/b/*.vue) # ui/*.*css ui/b/*.*css
@@ -298,7 +298,7 @@ $>/.eslint.done: ui/eslintrc.cjs $(ui/eslint.files) ui/Makefile.mk node_modules/
 	$Q node_modules/.bin/eslint --no-eslintrc -c ui/eslintrc.cjs -f unix --cache $(abspath $(ui/eslint.files)) \
 	|& ./misc/colorize.sh
 	$Q touch $@
-$>/ui/.build2-stamp: $>/.eslint.done
+$>/.build2-stamp: $>/.eslint.done
 eslint: node_modules/.npm.done
 	$Q rm -f $>/.eslint.done
 	$Q $(MAKE) $>/.eslint.done
@@ -331,20 +331,20 @@ $>/doc/b/.doc-stamp: $(wildcard ui/b/*.js) ui/xbcomments.js ui/Makefile.mk node_
 	$(QGEN)
 	$Q node ui/xbcomments.js $(wildcard ui/b/*.js) -O $>/doc/b/
 	$Q touch $@
-$>/ui/.build1-stamp: $>/doc/b/.doc-stamp
-$>/ui/.build2-stamp: $>/doc/anklang-manual.html $>/doc/anklang-internals.html # deferred during rebuilds
+$>/.build1-stamp: $>/doc/b/.doc-stamp
+$>/.build2-stamp: $>/doc/anklang-manual.html $>/doc/anklang-internals.html # deferred during rebuilds
 
 # == serve ==
-serve: all $>/ui/.build1-stamp
+serve: all $>/.build1-stamp
 	$Q cd $>/ui/ && npm run serve
 .PHONY: serve
 
 # == ui/rebuild ==
 ui/rebuild:
 	@: # incremental rebuild of source files without npm.done
-	$(MAKE) --no-print-directory $>/ui/.build1-stamp NPMBLOCK=y -j
+	$(MAKE) --no-print-directory $>/.build1-stamp NPMBLOCK=y -j
 	@: # perform non-essential rebuilds that may fail
-	$(MAKE) --no-print-directory $>/ui/.build2-stamp NPMBLOCK=y -j --no-print-directory
+	$(MAKE) --no-print-directory $>/.build2-stamp NPMBLOCK=y -j --no-print-directory
 	@: # close open sockets, only works if *same* executable still runs
 	killall -s USR2 -u $(USER) -- $(abspath $(lib/AnklangSynthEngine))
 .PHONY: ui/rebuild
@@ -364,7 +364,7 @@ ui/install.pattern ::= $(strip	\
 ui/b/install.pattern ::= $(strip \
 	$>/ui/b/*.js		\
 )
-ui/install: $>/ui/.build1-stamp $>/ui/.build2-stamp
+ui/install: $>/.build1-stamp $>/.build2-stamp
 	@$(QECHO) INSTALL '$(ui/installdir)/.'
 	$Q rm -f -r '$(ui/installdir)'
 	$Q $(INSTALL)      -d $(ui/installdir)/ $(ui/installdir)/assets/ $(ui/installdir)/b/
