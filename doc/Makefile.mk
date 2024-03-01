@@ -64,7 +64,7 @@ $>/doc/copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst	| $>/doc/
 doc/jsdocs_js := $(wildcard ui/*.js ui/b/*.js)
 doc/jsdocs_md := $(doc/jsdocs_js:ui/%.js=$>/doc/jsdocsmd/%.md)
 $(doc/jsdocs_md): doc/jsdoc2md.js
-$>/doc/jsdocsmd/%.md: ui/%.js		| $>/node_modules/.npm.done $>/doc/jsdocsmd/b/
+$>/doc/jsdocsmd/%.md: ui/%.js		| node_modules/.npm.done $>/doc/jsdocsmd/b/
 	$(QGEN)
 	$Q node doc/jsdoc2md.js -d 2 $< > $@.tmp
 	$Q grep -q '[^[:space:]]' $@.tmp && mv $@.tmp $@ || { rm -f $@.tmp && touch $@ ; }
@@ -80,7 +80,7 @@ $>/doc/jsdocs.md: $(doc/jsdocs_md) doc/Makefile.mk
 	$Q mv $@.tmp2 $@
 
 # == doc/scripting-docs.md ==
-$>/doc/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) doc/Makefile.mk $>/node_modules/.npm.done	| $>/doc/
+$>/doc/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) doc/Makefile.mk node_modules/.npm.done	| $>/doc/
 	$(QGEN)
 	$Q cat doc/ch-scripting.md				>  $@.tmp
 	$Q echo -e '\n## Reference for $<'			>> $@.tmp
