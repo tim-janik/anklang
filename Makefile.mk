@@ -143,6 +143,7 @@ $>/ls-tree.d: $(GITCOMMITDEPS)						| $>/
 	$Q test ! -e .git || git submodule update --init --recursive
 	$Q touch $@
 Makefile.mk: .submodule-stamp
+CLEANFILES += .submodule-stamp
 
 # == enduser targets ==
 all: FORCE
@@ -264,6 +265,7 @@ node_modules/.npm.done: $(if $(NPMBLOCK),, package.json)		| $>/
 NODE_PATH ::= $(abspath node_modules/)
 export NODE_PATH
 CLEANDIRS += node_modules/
+CLEANFILES += bun.lockb package-lock.json
 
 # == uninstall ==
 uninstall:
