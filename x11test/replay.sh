@@ -34,7 +34,7 @@ trap 'pkill -P $$ '		0 HUP INT QUIT TRAP USR1 PIPE TERM ERR EXIT
 
 # change dir to project build dir which has node_modules/
 # find node_modules/ relative to SCRIPTNAME
-export NODE_PATH=$X11TEST/../out/node_modules/
+export NODE_PATH=$X11TEST/../node_modules/
 cp $X11TEST/ereplay.cjs .
 
 # Start Anklang engine
