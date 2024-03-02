@@ -33,28 +33,17 @@ b-positionview {
   color: $b-positionview-fg;
   .b-positionview-counter,
   .b-positionview-timer	{ font-size: 110%; margin-right: .5em; }
-  .b-positionview-bpm,
-  .b-positionview-sig		{ font-size: 90%; margin: 0 0.5em; }
-  .b-positionview-sig, .b-positionview-counter, .b-positionview-bpm, .b-positionview-timer {
-    position: relative;
-    text-align: right;
-    height: 1.2em;
-  }
-  .b-positionview-bpm {
-    display: block;
-    text-align: center;
-    width: 3em; }
   .b-positionview-counter { width: 7em; } /* fixed size reduces layouting during updates */
   .b-positionview-timer	  { width: 7em; } /* fixed size reduces layouting during updates */
 }`;
 
 // <HTML/>
 const HTML = (t, d) =>  html`
-  <b-editable class="b-positionview-sig" @change=${event => t.apply_sig (event.detail.value)} selectall
-    >${t.project_.numerator + '/' + t.project_.denominator}</b-editable>
+  <b-editable class="w-16 text-center" @change=${event => t.apply_sig (event.detail.value)} selectall
+    value=${t.project_.numerator + '/' + t.project_.denominator}></b-editable>
   <span class="b-positionview-counter" ${ref (h => t.counter = h)} ></span>
-  <b-editable class="b-positionview-bpm" @change=${event => Data.project.set_value ('bpm', 0 | event.detail.value)} selectall
-    >${t.project_.bpm}</b-editable>
+  <b-editable class="w-16 text-center" @change=${event => Data.project.set_value ('bpm', 0 | event.detail.value)} selectall
+    value=${t.project_.bpm}></b-editable>
   <span class="b-positionview-timer" ${ref (h => t.timer = h)}></span>
 `;
 
