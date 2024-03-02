@@ -58,9 +58,6 @@ b-trackview {
     margin-right: 5px;
     overflow: hidden;
   }
-  .-track-name {
-    display: inline-flex; position: relative; width: 7em; overflow: hidden;
-  }
 }
 b-trackview[current-track] .b-trackview-control {
   background-color: zmod($b-button-border, Jz+=25%);
@@ -71,11 +68,9 @@ const HTML = (t, d) => html`
   <div class="b-trackview-control" data-tip="**CLICK** Select Track **RIGHTCLICK** Track Menu"
     @click=${t.track_click0} @contextmenu=${t.menu_open}
     ${ref (h => t.trackviewcontrol_ = h)} >
-    <span class="-track-name" >
-      <b-editable ${ref (h => t.trackname_ = h)} clicks="2" style="min-width: 4em; width: 100%"
-        selectall @change=${event => t.track.name (event.detail.value.trim())}
-        >${t.wtrack_.name}</b-editable>
-    </span>
+    <b-editable ${ref (h => t.trackname_ = h)} clicks="2" style="min-width: 4em; width: 7em"
+      selectall @change=${event => t.track.name (event.detail.value.trim())}
+      value=${t.wtrack_.name}></b-editable>
     <div class="-lvm-main">
       <div class="-lvm-levelbg" ${ref (h => t.levelbg_ = h)}></div>
       <div class="-lvm-covermid0" ${ref (h => t.covermid0_ = h)}></div>
