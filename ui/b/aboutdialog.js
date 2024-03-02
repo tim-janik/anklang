@@ -62,12 +62,14 @@ export class BAboutDialog extends LitComponent {
       this.dialog.showModal();
     }
     if (!this.shown && this.dialog.open)
-      this.dialog.close();
+      this.close_dialog();
   }
   close_dialog (event = null)
   {
     Util.prevent_event (event);
-    this.dispatchEvent (new CustomEvent ('close', { detail: {} }));
+    document.startViewTransition (() => {
+      this.dispatchEvent (new CustomEvent ('close', { detail: {} }));
+    });
   }
   disconnectedCallback()
   {
