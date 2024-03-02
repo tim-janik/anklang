@@ -14,16 +14,22 @@
 // == Reset and Basics ==
 @layer base {
 
-// Default border color per Tailwind config.
-html {
-  --tw-border-default-color: #77777777;
-}
-
-// For apps that are not word processors, text selection is best to be enables sparingly.
-html { user-select: none; }
-p { user-select: text; }
+/// Inherit font family.
+.text-inherit	{ font-family: inherit; letter-spacing: inherit; text-align: inherit; }
 
 } // @layer base
+
+// Default border color per Tailwind config.
+html		{ --tw-border-default-color: #77777777; }
+
+// For apps that are not word processors, text selection is best to be enables sparingly.
+html		{ user-select: none; }
+
+/// Per default, allow text selection in text paragraphs.
+p		{ user-select: text; }
+
+// Default focus outline
+:focus-visible	{ outline: 2px solid theme('colors.cyan.500'); }
 
 
 // == Components (functional classes) ==
@@ -126,7 +132,7 @@ p { user-select: text; }
 // == Utilities (small CSS helpers) ==
 @layer utilities {
 
-/// Add border-1 for `border-width:1px` to tailwind.
+  /// Utility for a 1px border.
 .border-1	{ border-width: 1px; }
 
 } // @layer utilities
