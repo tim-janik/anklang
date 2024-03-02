@@ -9,7 +9,6 @@ import * as Util from "../util.js";
  * ### Methods:
  * - **activate()** - Show input field and start editing.
  * ### Props:
- * - **selectall** - Set to `true` to automatically select all editable text.
  * - **clicks** - Set to 1 or 2 to activate for single or double click.
  * ### Events:
  * - **change** - Emitted when an edit ends successfully, text is in `event.detail.value`.
@@ -18,128 +17,89 @@ import * as Util from "../util.js";
 // == STYLE ==
 JsExtract.scss`
 b-editable {
-  display: flex;
-  position: relative;
-  input {
-    position: absolute;
-    display: inline-block;
-    inset: 0;
-    width: 100%; height: 100%;
-    margin: 0; padding: 0; border: 0;
-    width: 100%; height: 100%; line-height: 1;
-    letter-spacing: inherit; text-align: inherit;
-    background: #000; color: inherit; font: inherit;
-    z-index: 2;
-    outline: 0;
-    box-sizing: content-box;
-    vertical-align: middle;
-    white-space: nowrap;
-    overflow: hidden;
-  }
-  slot          { color: inherit; }
-  slot[editing] { color: #0000; }
+  @apply inline-flex;
 }`;
 
-// == HTML ==
-const HTML = (t, d) => html`
-  <slot ?editing=${t.editable_} ></slot>${INPUT_HTML (t, d)}
-`;
-const INPUT_HTML = (t, d) =>
-  !t.editable_ ? '' :
-  html`
-    <input class="b-editable-overlay"
-	${ref (h => t.input_ = h)}
-	@keydown=${t.input_keydown}
-	@change=${t.input_change}
-	@blur=${t.input_blur}
-    /></span>
-  `;
 
 // == SCRIPT ==
 import * as Ase from '../aseapi.js';
 
-const BOOLEAN_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with property
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
+const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 const PRIVATE_PROPERTY = { state: true };
 
 class BEditable extends LitComponent {
   static properties = {
-    selectall:	BOOLEAN_ATTRIBUTE,
     clicks:	NUMBER_ATTRIBUTE,
     editable_:	PRIVATE_PROPERTY,
+    value: 	STRING_ATTRIBUTE,
   };
+  createRenderRoot() { return this; }
   render()
   {
-    return HTML (this);
+    // Since this.input_ is focussable, we avoid putting it into a shadowRoot
+    return this.input_;
   }
   constructor()
   {
     super();
-    this.selectall = false;
     this.clicks = 1;
+    this.value = '';
     this.editable_ = false;
-    this.input_ = null;
     const input_click = this.input_click.bind (this);
     this.addEventListener ("click", input_click);
     this.addEventListener ("dblclick", input_click);
+    this.input_ = document.createElement ('input');
+    this.input_.className = "focus:via-dim-950 m-[2px] box-content h-min w-full p-0 leading-none text-inherit [&[inert]]:bg-transparent";
+    this.input_.inert = true;
+    this.input_.onkeydown = this.input_keydown.bind (this);
+    this.input_.onchange = e => Util.prevent_event (e);
+    this.input_.onblur = this.input_blur.bind (this);
   }
   updated (changed_props)
   {
-    const input = this.input_;
-    if (input && input.valid_change === undefined)
-      {
-	input.value = this.innerText;
-	if (this.selectall)
-	  input.select();
-	input.focus();
-	if (input === Util.activeElement())
-	  {
-	    // allow input
-	    input.valid_change = 1;
-	  }
-      }
+    if (changed_props.has ('value'))
+      this.input_.value = this.value;
   }
   activate()
   {
     this.editable_ = true;
+    this.input_.inert = false;
+    if (document.activeElement !== this.input_) {
+      this.input_.focus();
+      this.input_.selectionEnd = this.input_.selectionStart = 0;
+      this.input_.setSelectionRange (2**31, 2**31); // move cursor to end
+    }
   }
   input_click (event)
   {
     const clicks = 0 | this.clicks;
     if ((clicks === 1 && event.type === "click") ||
 	(clicks === 2 && event.type === "dblclick")) {
-      event.stopPropagation();
+      Util.prevent_event (event);
       this.activate();
     }
   }
   input_keydown (event)
   {
     event.stopPropagation();
-    const input = this.input_;
     const esc = Util.match_key_event (event, 'Escape');
-    if (esc)
-      input.valid_change = 0;
-    if (esc || Util.match_key_event (event, 'Enter'))
-      input.blur();
+    const enter = Util.match_key_event (event, 'Enter');
+    if (esc || enter)
+      this.input_blur (null, enter);
   }
-  input_change (event)
+  input_blur (event_, confirmed = false)
   {
-    Util.prevent_event (event);
-    const input = this.input_;
-    if (input.valid_change)
-      input.valid_change = 2;
-  }
-  input_blur (event)
-  {
-    const input = this.input_;
-    if (input.valid_change == 2)
+    this.input_.selectionEnd = this.input_.selectionStart = 0;
+    this.input_.inert = true;
+    this.input_.scrollLeft = 0;
+    if (!confirmed)
+      this.input_.value = this.value;
+    else {
       this.dispatchEvent (new CustomEvent ('change', {
-	detail: { value: input.value }
+	detail: { value: this.input_.value }
       }));
-    input.valid_change = 0;
-    input.disabled = true;
-    // give async 'change' handlers some time for updates
-    setTimeout (() => this.editable_ = false, 67);
+    }
   }
 }
 customElements.define ('b-editable', BEditable);
