@@ -60,7 +60,7 @@ ProjectImpl::ProjectImpl()
 {
   if (tracks_.empty())
     create_track (); // ensure Master track
-  tick_sig_.set_bpm (90);
+  tick_sig_.set_bpm (120);
 
   if (0)
     autoplay_timer_ = main_loop->exec_timer ([this] () {
@@ -701,12 +701,14 @@ ProjectImpl::start_playback (double autostop)
   std::shared_ptr<CallbackS> queuep = std::make_shared<CallbackS>();
   for (auto track : tracks_)
     track->queue_cmd (*queuep, track->START);
-  auto job = [proc, queuep, autostop] () {
+  const TickSignature tsig (tick_sig_);
+  auto job = [proc, queuep, tsig, autostop] () {
     AudioEngine &engine = proc->engine();
     const double udmax = 18446744073709549568.0; // max double exactly matching an uint64_t
     const uint64_t s = autostop > udmax ? udmax : autostop * engine.sample_rate();
     engine.set_autostop (s);
     AudioTransport &transport = const_cast<AudioTransport&> (engine.transport());
+    transport.tempo (tsig);
     transport.running (true);
     for (const auto &cmd : *queuep)
       cmd();
@@ -817,7 +819,7 @@ ProjectImpl::create_properties ()
   bag.group = _("Timing");
   bag += Prop (getbpb, setbpb, { "numerator", _("Signature Numerator"), _("Numerator"), 4., "", MinMaxStep { 1., 63., 0 }, STANDARD });
   bag += Prop (getunt, setunt, { "denominator", _("Signature Denominator"), _("Denominator"), 4, "", MinMaxStep { 1, 16, 0 }, STANDARD });
-  bag += Prop (getbpm, setbpm, { "bpm", _("Beats Per Minute"), _("BPM"), 90., "", MinMaxStep { 10., 1776., 0 }, STANDARD });
+  bag += Prop (getbpm, setbpm, { "bpm", _("Beats Per Minute"), _("BPM"), 120., "", MinMaxStep { 10., 1776., 0 }, STANDARD });
   bag.group = _("Tuning");
   bag += Prop (make_enum_getter<MusicalTuning> (&musical_tuning_), make_enum_setter<MusicalTuning> (&musical_tuning_),
                { "musical_tuning", _("Musical Tuning"), _("Tuning"), uint32_t (MusicalTuning::OD_12_TET), "", {}, STANDARD, {
