@@ -19,15 +19,15 @@ b-playcontrols {
 // == HTML ==
 const HTML = (t, D) => html`
 <b-buttonbar class="b-playcontrols" >
-  <push-button class="button-dim" @click="${D ('-todo-Last')}" disabled >      <b-icon fw lg ic="fa-fast-backward"></b-icon></push-button>
-  <push-button class="button-dim" @click="${D ('-todo-Backwards')}" disabled > <b-icon fw lg ic="fa-backward"     ></b-icon></push-button>
-  <push-button class="button-dim" @click="${D ('stop_playback')}" data-hotkey="S"
+  <push-button class="button-down" @click="${D ('-todo-Last')}" disabled >      <b-icon fw lg ic="fa-fast-backward"></b-icon></push-button>
+  <push-button class="button-down" @click="${D ('-todo-Backwards')}" disabled > <b-icon fw lg ic="fa-backward"     ></b-icon></push-button>
+  <push-button class="button-down" @click="${D ('stop_playback')}" data-hotkey="S"
                 data-tip="**CLICK** Stop playback" >        <b-icon fw lg ic="fa-stop"         ></b-icon></push-button>
-  <push-button class="button-dim" @click="${t.toggle_play}" data-hotkey="RawSpace"
+  <push-button class="button-down" @click="${t.toggle_play}" data-hotkey="RawSpace"
                 data-tip="**CLICK** Start/stop playback" >  <b-icon fw lg ic="fa-play" hi="ho" ></b-icon></push-button>
-  <push-button class="button-dim" @click="${D ('-todo-Record')}" disabled >    <b-icon fw lg ic="fa-circle"       ></b-icon></push-button>
-  <push-button class="button-dim" @click="${D ('-todo-Forwards')}" disabled >  <b-icon fw lg ic="fa-forward"      ></b-icon></push-button>
-  <push-button class="button-dim" @click="${D ('-todo-Next')}" disabled >      <b-icon fw lg ic="fa-fast-forward" ></b-icon></push-button>
+  <push-button class="button-down" @click="${D ('-todo-Record')}" disabled >    <b-icon fw lg ic="fa-circle"       ></b-icon></push-button>
+  <push-button class="button-down" @click="${D ('-todo-Forwards')}" disabled >  <b-icon fw lg ic="fa-forward"      ></b-icon></push-button>
+  <push-button class="button-down" @click="${D ('-todo-Next')}" disabled >      <b-icon fw lg ic="fa-fast-forward" ></b-icon></push-button>
 </b-buttonbar>
 `;
 
