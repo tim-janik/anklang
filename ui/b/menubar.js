@@ -37,7 +37,7 @@ const HTML = (t, d) =>  html`
     <!-- menubar left -->
     <b-buttonbar class="-menubar" >
       <!-- File Menu -->
-      <push-button data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click=${e => t.filemenu.popup (e)} @mousedown=${e => t.filemenu.popup (e)} >
+      <push-button class="button-dim" data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click=${e => t.filemenu.popup (e)} @mousedown=${e => t.filemenu.popup (e)} >
 	<div class="-stack" >
 	  <b-icon ic="bc-folder"></icon>
 	  <b-icon ic="bc-menumore"></icon>
@@ -55,7 +55,7 @@ const HTML = (t, d) =>  html`
       </push-button>
 
       <!-- Edit Menu -->
-      <push-button data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click=${e => t.editmenu.popup (e)} @mousedown=${e => t.editmenu.popup (e)} >
+      <push-button class="button-dim" data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click=${e => t.editmenu.popup (e)} @mousedown=${e => t.editmenu.popup (e)} >
 	<div class="-stack" >
 	  <b-icon ic="mi-draw" ></b-icon>
 	  <b-icon ic="bc-menumore" ></b-icon>
@@ -69,7 +69,7 @@ const HTML = (t, d) =>  html`
       </push-button>
 
       <!-- View Menu -->
-      <push-button data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @click=${e => t.viewmenu.popup (e)} @mousedown=${e => t.viewmenu.popup (e)} >
+      <push-button class="button-dim" data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @click=${e => t.viewmenu.popup (e)} @mousedown=${e => t.viewmenu.popup (e)} >
 	<div class="-stack" >
 	  <b-icon ic="fa-eye" ></b-icon>
 	  <b-icon ic="bc-menumore" ></b-icon>
@@ -92,7 +92,7 @@ const HTML = (t, d) =>  html`
     <!-- menubar right -->
     <b-buttonbar class="-menubar" >
       <!-- Help Menu -->
-      <push-button data-tip="**CLICK** Help Menu" data-hotkey="Alt+H" @click=${e => t.helpmenu.popup (e)} @mousedown=${e => t.helpmenu.popup (e)} >
+      <push-button class="button-dim" data-tip="**CLICK** Help Menu" data-hotkey="Alt+H" @click=${e => t.helpmenu.popup (e)} @mousedown=${e => t.helpmenu.popup (e)} >
 	<div class="-stack" >
 	  <b-icon ic="fa-life-ring" ></b-icon>
 	  <b-icon ic="bc-menumore" ></b-icon>
