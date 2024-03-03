@@ -86,9 +86,9 @@ class BEditable extends LitComponent {
     const esc = Util.match_key_event (event, 'Escape');
     const enter = Util.match_key_event (event, 'Enter');
     if (esc || enter)
-      this.input_blur (null, enter);
+      this.input_blur (null, !esc);
   }
-  input_blur (event_, confirmed = false)
+  input_blur (event_, confirmed = true)
   {
     this.input_.selectionEnd = this.input_.selectionStart = 0;
     this.input_.inert = true;
