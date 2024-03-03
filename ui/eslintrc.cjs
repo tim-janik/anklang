@@ -78,6 +78,7 @@ module.exports = {
     'vue/no-v-html': OFF,
     'vue/multi-word-component-names': OFF,
     'vue/first-attribute-linebreak': OFF,
+    'tailwindcss/no-custom-classname': OFF,
     quotes: [ OFF, "single" ]
   },
 
