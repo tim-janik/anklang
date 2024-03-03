@@ -1,8 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { LitComponent, html, render, JsExtract, docs, ref } from '../little.js';
-
 /** == B-TRACKVIEW ==
  * A Vue template to display a project's Ase.Track.
  * ### Props:
@@ -11,6 +9,9 @@ import { LitComponent, html, render, JsExtract, docs, ref } from '../little.js';
  * *track*
  * : The *Ase.Track* to display.
  */
+
+import { LitComponent, html, render, JsExtract, docs, ref } from '../little.js';
+import { get_uri } from '../dom.js';
 
 // == STYLE ==
 JsExtract.scss`
@@ -246,7 +247,7 @@ class BTrackView extends LitComponent {
   }
   async menu_click (event)
   {
-    const uri = event.detail.uri;
+    const uri = get_uri (event.detail);
     // close popup to remove focus guards
     this.htmlcmenu_.close();
     if (uri == 'add-track')
