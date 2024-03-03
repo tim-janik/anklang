@@ -1,9 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { LitComponent, html, nothing, JsExtract, live, docs, ref } from '../little.js';
-import * as Util from '../util.js';
-
 /** @class BChoiceInput
  * @description
  * The <b-choiceinput> element provides a choice popup to choose from a set of options.
@@ -27,6 +24,10 @@ import * as Util from '../util.js';
  * *valuechange*
  * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */
+
+import { LitComponent, html, nothing, JsExtract, live, docs, ref } from '../little.js';
+import * as Util from '../util.js';
+import { get_uri } from '../dom.js';
 
 // <STYLE/>
 JsExtract.scss`
@@ -113,7 +114,7 @@ const HTML = (t, d) =>  html`
 `;
 const CONTEXTMENU_HTML = (t) =>  html`
   <b-contextmenu class="b-choiceinput-contextmenu" ${ref (h => t.cmenu = h)}
-    @activate=${e => t.activate (e.detail.uri)} @close=${e => t.need_cmenu = false} >
+    @activate=${e => t.activate (get_uri (e.detail))} @close=${e => t.need_cmenu = false} >
     <b-menutitle style=${!t.title ? 'display:none' : ''}> ${t.title} </b-menutitle>
     ${ t.mchoices().map ((c, index) => CONTEXTMENU_ITEM (t, c) )}
   </b-contextmenu>
