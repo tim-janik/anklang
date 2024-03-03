@@ -18,6 +18,16 @@ const postcss_scss = require ('postcss-scss');
 const import_paths = [];
 import * as Colors from './colors.js';
 
+
+// == TailwindCSS ==
+const tailwind_config = {
+  content: [
+    'ui/*.html', 'ui/*.js', 'ui/*.css', 'ui/*.scss',
+    'ui/b/*.js', 'ui/b/*.vue',
+  ],
+  theme: {},
+};
+
 // == Plugins ==
 const postcss_advanced_variables = require ('postcss-advanced-variables');
 const postcss_color_hwb = require ('postcss-color-hwb');
@@ -25,7 +35,6 @@ const postcss_discard_comments = require ('postcss-discard-comments');
 const postcss_discard_duplicates = require ('postcss-discard-duplicates');
 const postcss_functions = require ('postcss-functions');
 const postcss_lab_function = require ('postcss-lab-function');
-const postcss_nested = require ('postcss-nested');
 const postcss_normalize_charset = require ('postcss-normalize-charset');
 // Configure processing behaviour
 function postcss_plugins (options = {})
@@ -42,7 +51,8 @@ function postcss_plugins (options = {})
     postcss_color_hwb,
     postcss_lab_function,
     postcss_functions (css_functions()),
-    postcss_nested,
+    require ('tailwindcss/nesting') ({}), // require ('postcss-nested'),
+    require ('tailwindcss') (tailwind_config),
     postcss_discard_duplicates,
     postcss_normalize_charset,
   ];

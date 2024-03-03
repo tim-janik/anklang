@@ -26,6 +26,7 @@
     "eslint": "^8.52.0",
     "eslint-plugin-html": "^7.1.0",
     "eslint-plugin-lit": "^1.10.1",
+    "eslint-plugin-tailwindcss": "^3.14.3",
     "eslint-plugin-unused-imports": "^3.0.0",
     "eslint-plugin-vue": "^9.18.1",
     "fork-awesome": "^1.2.0",
@@ -52,12 +53,20 @@
     "postcss-scss": "^4.0.9",
     "puppeteer-core": "^21.4.1",
     "puppeteer-in-electron": "^3.0.5",
+    "prettier": "^3.2.5",
+    "prettier-plugin-tailwindcss": "^0.5.11",
     "rollup": "^4.2.0",
     "sass": "^1.69.5",
     "stylelint": "^15.11.0",
     "stylelint-config-standard": "^34.0.0",
     "terser": "^5.24.0",
     "typescript": "^5.2.2",
+    "@tailwindcss/aspect-ratio": "^0.4.2",
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.3",
+    "@tailwindcss/typography": "^0.5.9",
+    "tailwindcss": "^3.3.2",
+    "tailwindcss-children": "^2.1.0",
     "zcam-js": "^0.0.9"
   }
 }

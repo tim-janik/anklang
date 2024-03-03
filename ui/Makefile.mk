@@ -191,7 +191,8 @@ UI/GLOBALSCSS_IMPORTS += $>/ui/spinner.scss
 
 # == ui/global.css ==
 ui/b/js.files := $(wildcard ui/b/*.js)
-$>/ui/global.css: ui/global.scss $(ui/b/js.files) ui/jsextract.js $>/ui/postcss.js $(UI/GLOBALSCSS_IMPORTS)
+ui/tailwind.inputs := $(wildcard ui/*.html ui/*.css ui/*.scss ui/*.js ui/b/*.js ui/b/*.vue $(ui/b/js.files))
+$>/ui/global.css: ui/global.scss $(ui/tailwind.inputs) ui/jsextract.js $>/ui/postcss.js $(UI/GLOBALSCSS_IMPORTS)
 	$(QGEN)
 	$Q $(CP) $< $>/ui/global.scss
 	$Q node ui/jsextract.js -O $>/ui/b/ $(ui/b/js.files)		# 		do node ui/jsextract.js $$f -O "$>/$${f%/*}"

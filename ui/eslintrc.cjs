@@ -86,6 +86,7 @@ module.exports = {
 
   extends: [
     "eslint:recommended",
+    "plugin:tailwindcss/recommended",
     "plugin:lit/recommended",
     'plugin:vue/vue3-recommended'
   ]
