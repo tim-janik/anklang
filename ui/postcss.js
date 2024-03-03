@@ -21,7 +21,6 @@ import * as Colors from './colors.js';
 // == Plugins ==
 const postcss_advanced_variables = require ('postcss-advanced-variables');
 const postcss_color_hwb = require ('postcss-color-hwb');
-const postcss_color_mod_function = require ('postcss-color-mod-function');
 const postcss_discard_comments = require ('postcss-discard-comments');
 const postcss_discard_duplicates = require ('postcss-discard-duplicates');
 const postcss_functions = require ('postcss-functions');
@@ -40,7 +39,6 @@ function postcss_plugins (options = {})
 				  importFilter: string => opts.import_all || !string.endsWith ('.css'),
 				  importResolve: __NODE__ ? load_import : find_import,
 				  variables }),
-    postcss_color_mod_function ({ unresolved: 'throw' }),
     postcss_color_hwb,
     postcss_lab_function,
     postcss_functions (css_functions()),
@@ -199,13 +197,10 @@ const test_rules = {
   '$ivar: 22px; interpolation { margin: #{$ivar}; }':	'interpolation{ margin:22px; }',
   '@mixin foo() { f: "Mf"; } mfoo { @include foo(); }':	'mfoo{ f:"Mf"; }',
   '@media screen { color: var(--text-color) }':		'@media screen{ color:var(--text-color) }',
-  'a { color: color-mod(#123456 a(15.5%)); }':		'a{ color:rgba(18, 52, 86, 0.155); }',
   'b { hwbcolor: hwb(90deg, 13%, 70%); }':		'b{ hwbcolor:rgb(55, 77, 33); }',
-  'c { colormod: color-mod(#345 lightness(50%)); }':	'c{ colormod:hsl(210, 25%, 50%); }', /* == color-mod(red l(50%)); */
   'l { color: zmod(#abc, Jz+=14%); }':			'l{ color:#c7d9eb; }',
   'd { color: zmod(#abc, Jz-=45%); }':			'd{ color:#566472; }',
   'n { &:hover { nested: 1; } }':			'n:hover{ nested:1; }',
-  's { color: color-mod(hsla(125, 50%, 50%, .4) saturation(+ 10%) w(- 20%)); }': 's{ color:rgba(0, 204, 17, 0.4); }',
   'h { lchcolor: lch(62% 54 63); }':			'h{ lchcolor:rgb(205, 132, 63);', // match only first part to allow display-p3 extension
   't { --cd-5: div(5,2) div(5s,2) div(5km,2h); }':	'--cd-5:2.5 2.5s 2.5km/h;',
   'tn { font-variant-numeric:tabular-nums; }':		'tn{ font-variant-numeric:tabular-nums; }', // preprocessors must NOT reset font-feature-settings here

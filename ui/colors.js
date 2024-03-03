@@ -437,6 +437,14 @@ export function zmod4 (colorlike)
   return `zmod (Jz=${fix (zcam.Jz)},Cz=${fix (zcam.Cz)},hz=${fix (zcam.hz)})`;
 }
 
+/// Find zcam() for a color.
+export function zcam4 (colorlike)
+{
+  const rgba = color2rgba (colorlike);
+  const gamut = default_gamut;
+  return gamut.zcam ({ r: rgba[0], g: rgba[1], b: rgba[2] });
+}
+
 /// Interpolate between 2 colors.
 export function zlerp (c1 = '#000', c2 = '#fff', t = 0.5)
 {
@@ -467,7 +475,7 @@ export function lgrey (lightness) {
 }
 
 // RGBA output, clamp Cz to gamut
-function hex_from_zcam (zcam, alpha = 1) {
+export function hex_from_zcam (zcam, alpha = 1) {
   const gamut = default_gamut;
   let rgb = gamut.contains (zcam);
   if (!rgb.inside)
