@@ -13,34 +13,31 @@ import { hex, basename, dirname, displayfs, displaybasename, displaydirname } fr
 
 // <STYLE/>
 JsExtract.scss`
-.b-menubar {
-  margin: 5px;
-  .-stack {
-    display: inline-block;
+b-menubar {
+  push-button {
+    @apply button-down-within size-10;
     position: relative;
-    vertical-align: middle;
-    width: 1em; height: 1em;
-    & :not(:first-child) { position: absolute; top: 0; left: 0; }
   }
-  b-buttonbar.-menubar {
-    button, push-button {
-      padding: 3px 1em
-    }
+  .b-menubar-icon {
+    position: absolute; inset: 0;
+    display: inline-flex; justify-content: center;
+    & [ic] { inset: 0; position: absolute; vertical-align: middle; } // display: inline-block;
+    & [ic="bc-menumore"] { position: absolute; top: unset; left: unset; }
   }
 }`;
 
 // <HTML/>
 const HTML = (t, d) =>  html`
-  <h-flex class="b-menubar" style="justify-content: space-between" >
+  <h-flex class="b-menubar m-2" style="justify-content: space-between" >
     <!-- main menu & controlbar -->
 
     <!-- menubar left -->
     <b-buttonbar class="-menubar" >
       <!-- File Menu -->
       <push-button class="button-dim" data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click=${e => t.filemenu.popup (e)} @mousedown=${e => t.filemenu.popup (e)} >
-	<div class="-stack" >
-	  <b-icon ic="bc-folder"></icon>
-	  <b-icon ic="bc-menumore"></icon>
+	<div class="b-menubar-icon" >
+	  <b-icon ic="bc-folder" ></b-icon>
+	  <b-icon ic="bc-menumore" ></b-icon>
 	</div>
 	<b-contextmenu ${ref (h => t.filemenu = h)} id="g-filemenu" .activate=${activate} .isactive=${isactive} startfocus1 >
 	  <b-menuitem ic="fa-file-o"	kbd="Ctrl+N"		uri="loadnew" >	New Project		</b-menuitem>
@@ -56,7 +53,7 @@ const HTML = (t, d) =>  html`
 
       <!-- Edit Menu -->
       <push-button class="button-dim" data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click=${e => t.editmenu.popup (e)} @mousedown=${e => t.editmenu.popup (e)} >
-	<div class="-stack" >
+	<div class="b-menubar-icon" >
 	  <b-icon ic="mi-draw" ></b-icon>
 	  <b-icon ic="bc-menumore" ></b-icon>
 	</div>
@@ -70,7 +67,7 @@ const HTML = (t, d) =>  html`
 
       <!-- View Menu -->
       <push-button class="button-dim" data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @click=${e => t.viewmenu.popup (e)} @mousedown=${e => t.viewmenu.popup (e)} >
-	<div class="-stack" >
+	<div class="b-menubar-icon" >
 	  <b-icon ic="fa-eye" ></b-icon>
 	  <b-icon ic="bc-menumore" ></b-icon>
 	</div>
@@ -93,7 +90,7 @@ const HTML = (t, d) =>  html`
     <b-buttonbar class="-menubar" >
       <!-- Help Menu -->
       <push-button class="button-dim" data-tip="**CLICK** Help Menu" data-hotkey="Alt+H" @click=${e => t.helpmenu.popup (e)} @mousedown=${e => t.helpmenu.popup (e)} >
-	<div class="-stack" >
+	<div class="b-menubar-icon" >
 	  <b-icon ic="fa-life-ring" ></b-icon>
 	  <b-icon ic="bc-menumore" ></b-icon>
 	</div>
