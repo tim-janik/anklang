@@ -188,12 +188,12 @@ ui/tailwind.inputs := $(wildcard ui/*.html ui/*.css ui/*.scss ui/*.js ui/b/*.js 
 $>/ui/global.css: ui/global.scss $(ui/tailwind.inputs) ui/jsextract.js $(UI/GLOBALSCSS_IMPORTS)
 	$(QGEN)
 	$Q $(CP) $< $>/ui/global.scss
-	$Q node ui/jsextract.js -O $>/ui/b/ $(ui/b/js.files)		# 		do node ui/jsextract.js $$f -O "$>/$${f%/*}"
+	$Q node ui/jsextract.js -O $>/ui/b/ $(ui/b/js.files)		# do node ui/jsextract.js $$f -O "$>/$${f%/*}"
 	$Q for f in $(ui/b/js.files:$>/ui/%=%) ; do \
 		echo "@import '../$$f""css';" >> $>/ui/global.scss || exit 1 ; done
 	$Q node ui/postcss.js --test $V # CHECK transformations
 	$Q node ui/postcss.js --map -Dthemename_scss=dark.scss -I ui/ $>/ui/global.scss $@.tmp
-	$Q rm -f $>/ui/*.jscss $>/ui/b/*.jscss
+	$Q rm -f $>/ui/*.jscss $>/ui/b/*.jscss $>/ui/global.scss
 	$Q mv $@.tmp $@
 $>/.ui-reload-stamp: $>/ui/global.css
 
