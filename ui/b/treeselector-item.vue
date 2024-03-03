@@ -70,9 +70,9 @@
 	  v-for="entry in entries"
           :entries="entry.entries"
           :label="entry.label"
-          :uri="entry.uri"
+          :uri="get_uri (entry)"
           :disabled="entry.disabled ? 1 : null"
-	  :key="entry.label + ';' + entry.uri"
+	  :key="entry.label + ';' + get_uri (entry)"
       ></b-treeselector-item>
     </ul>
   </component>
@@ -81,6 +81,7 @@
 <script>
 import * as ContextMenu from './contextmenu.js';
 import * as Util from "../util.js";
+import { get_uri } from '../dom.js';
 
 export default {
   sfc_template,
