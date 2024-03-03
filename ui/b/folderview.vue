@@ -45,12 +45,11 @@
       /* an unwrapped button inside `flex-flow: column wrap` tends to cut off the focus frame */
     }
     button.b-folderview-entry {
-      .b-icon {
-	height: 100%; align-items: center; justify-content: center; vertical-align: middle;
-	min-width: 1.5em; margin: 0;
+      b-icon {
+	width: 1.9rem;
+	vertical-align: middle;
 	@include b-font-weight-bold();
-	.-icon-folder { color: #bba460; }
-	padding: 0;
+	&[ic="mi-folder"] { color: #bba460; }
       }
       min-width: 10em;
       display: inline-block; white-space: pre-wrap;
@@ -91,7 +90,7 @@
 	  <button class="b-folderview-entry" @keydown="Util.keydown_move_focus"
 		  @focus="emit_select ($event, e)"
 	          @click="emit_key_click ($event, e)" @dblclick="emit_click ($event, e)" >
-	    <b-icon :ic="fmt_icon (e)" :iconclass="icon_cssclass (e)" ></b-icon>
+	    <b-icon :ic="fmt_icon (e)" ></b-icon>
 	    {{ e.label }}
 	    <!--span class="b-folderview-meta">{{ fmt_size (e) }}   {{ Util.fmt_date (e.mtime) }}</span-->
 	  </button>
@@ -142,12 +141,6 @@ export default {
 	return "fa-file-o";
       // return "mi-description";
       // return "mi-text_snippet";
-    },
-    icon_cssclass (e) {
-      if (e.type == Ase.ResourceType.FOLDER)
-	return "-icon-folder";
-      else
-	return "-icon-other";
     },
     filtered_entries() {
       let e = this.entries;
