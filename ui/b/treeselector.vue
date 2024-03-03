@@ -27,9 +27,9 @@
 			   v-for="entry in tree.entries"
 			   :entries="entry.entries"
 			   :label="entry.label"
-			   :uri="entry.uri"
+			   :uri="get_uri (entry)"
 			   :disabled="entry.disabled ? 1 : null"
-			   :key="entry.label + ';' + entry.uri" >
+			   :key="entry.label + ';' + get_uri (entry)" >
       </b-treeselector-item>
     </ul>
   </div>
@@ -37,6 +37,7 @@
 
 <script>
 import * as Util from '../util.js';
+import { get_uri } from '../dom.js';
 
 // Example data
 const tree_data = {
