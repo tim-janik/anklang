@@ -94,8 +94,8 @@
     <slot></slot>
     <template v-slot:footer>
       <h-flex>
-	<button v-if="button" @click="emit_select()" > {{ button }} </button>
-	<button @click="emit_close()" > Close </button>
+	<button class="button-xl" v-if="button" @click="emit_select()" > {{ button }} </button>
+	<button class="button-xl" @click="emit_close()" > Close </button>
       </h-flex>
     </template>
   </b-dialog>
