@@ -734,22 +734,30 @@ function paint_notes()
   ctx.fillStyle = note_color;
   ctx.strokeStyle = csp ('--piano-roll-note-focus-border');
   // draw notes
-  for (const note of this.wclip.all_notes)
-    {
-      const oct = floor (note.key / 12), key = note.key - oct * 12;
-      const ny = yoffset - oct * layout.oct_length - key * layout.row + 1;
-      const nx = round (note.tick * tickscale), nw = Math.max (1, round (note.duration * tickscale));
-      if (note.selected)
-	ctx.fillStyle = note_selected_color;
-      else
-	ctx.fillStyle = note_color;
-      ctx.fillRect (nx - lsx, ny - layout.row, nw, layout.row - 2);
-      if (0) // frame notes
-	{
-	  ctx.fillStyle = note_focus_color;
-	  ctx.strokeRect (nx - lsx, ny - layout.row, nw, layout.row - 2);
-	}
-    }
+  const draw_notes = (selected) => {
+    for (const note of this.wclip.all_notes)
+      {
+        if (note.selected == selected)
+          {
+            const oct = floor (note.key / 12), key = note.key - oct * 12;
+            const ny = yoffset - oct * layout.oct_length - key * layout.row + 1;
+            const nx = round (note.tick * tickscale), nw = Math.max (1, round (note.duration * tickscale));
+            if (note.selected)
+              ctx.fillStyle = note_selected_color;
+            else
+              ctx.fillStyle = note_color;
+            ctx.fillRect (nx - lsx, ny - layout.row, nw, layout.row - 2);
+            if (0) // frame notes
+              {
+                ctx.fillStyle = note_focus_color;
+                ctx.strokeRect (nx - lsx, ny - layout.row, nw, layout.row - 2);
+              }
+          }
+      }
+  };
+  // draw selected notes over unselected notes
+  draw_notes (false);
+  draw_notes (true);
 }
 
 /** Paint timeline digits and indicators
