@@ -50,7 +50,7 @@ class BEditable extends LitComponent {
     this.addEventListener ("click", input_click);
     this.addEventListener ("dblclick", input_click);
     this.input_ = document.createElement ('input');
-    this.input_.className = "focus:via-dim-950 m-[2px] box-content h-min w-full p-0 leading-none text-inherit [&[inert]]:bg-transparent";
+    this.input_.className = "bg-dim-950 m-[2px] box-content h-min w-full p-0 leading-none text-inherit [&[inert]]:bg-transparent";
     this.input_.inert = true;
     this.input_.onkeydown = this.input_keydown.bind (this);
     this.input_.onchange = e => Util.prevent_event (e);
