@@ -4,14 +4,6 @@
 import { LitComponent, html, render, noChange, JsExtract, docs, ref } from '../little.js';
 import * as Util from "../util.js";
 
-/** @class BAboutDialog
- * @description
- * The <b-aboutdialog> element is a modal [b-dialog] that displays version information about Anklang.
- * ### Events:
- * *close*
- * : A *close* event is emitted once the "Close" button activated.
- */
-
 // == HTML ==
 const HTML = (t, d) => html`
 <dialog class="floating-dialog" ${ref (h => t.dialog = h)} @cancel=${t.close_dialog} @pointerdown=${t.backdrop_click}>
@@ -32,6 +24,14 @@ const INFOS_HTML = (t, d) =>
   `);
 
 // == SCRIPT ==
+
+/** @class BAboutDialog
+ * @description
+ * The <b-aboutdialog> element is a modal [b-dialog] that displays version information about Anklang.
+ * ### Events:
+ * *close*
+ * : A *close* event is emitted once the "Close" button activated.
+ */
 export class BAboutDialog extends LitComponent {
   createRenderRoot() { return this; }
   render()
