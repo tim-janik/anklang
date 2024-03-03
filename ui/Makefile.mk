@@ -117,14 +117,6 @@ $>/ui/aseapi.js: jsonipc/jsonipc.js ase/api.hh $(lib/AnklangSynthEngine) ui/Make
 	$Q mv $@.tmp $@
 $>/.ui-build-stamp: $>/ui/aseapi.js
 
-# == ui/postcss.js ==
-$>/ui/postcss.js: ui/postcss.js ui/Makefile.mk $>/ui/colors.js node_modules/.npm.done
-	$(QGEN)
-	$Q $(CP) $< $@.tst.js
-	$Q cd $>/ui/ && node ./$(@F).tst.js --test $V # CHECK transformations
-	$Q mv $@.tst.js $@
-$>/.ui-reload-stamp: $>/ui/postcss.js
-
 # == ui/b/vuejs.targets ==
 ui/b/vuejs.targets ::= $(ui/vue.wildcards:%.vue=$>/%.js)
 $(ui/b/vuejs.targets): ui/sfc-compile.js
@@ -136,14 +128,15 @@ $>/.ui-reload-stamp: $(ui/b/vuejs.targets)
 # == vue-styles.css ==
 ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.vuecss)
 $(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
-$>/ui/vue-styles.css: $(ui/b/vuecss.targets) $>/ui/postcss.js ui/Makefile.mk
+$>/ui/vue-styles.css: $(ui/b/vuecss.targets) ui/Makefile.mk
 	$(QGEN)
 	$Q echo '@charset "UTF-8";'					>  $@.vuecss
 	$Q echo "@import 'mixins.scss';"				>> $@.vuecss
 	$Q for f in $(ui/b/vuecss.targets:$>/ui/b/%=%) ; do		\
 		echo "@import 'b/$${f}';"				>> $@.vuecss \
 		|| exit 1 ; done
-	$Q cd $>/ui/ && node ./postcss.js --map -Dthemename_scss=dark.scss -I ../../ui/ -i $(@F).vuecss $(@F).tmp
+	$Q node ui/postcss.js --test $V # CHECK transformations
+	$Q cd $>/ui/ && node $(abspath ui/postcss.js) --map -Dthemename_scss=dark.scss -I ../../ui/ -i $(@F).vuecss $(@F).tmp
 	$Q $(RM) $@.vuecss && mv $@.tmp $@
 $>/.ui-reload-stamp: $>/ui/vue-styles.css
 
@@ -192,13 +185,14 @@ UI/GLOBALSCSS_IMPORTS += $>/ui/spinner.scss
 # == ui/global.css ==
 ui/b/js.files := $(wildcard ui/b/*.js)
 ui/tailwind.inputs := $(wildcard ui/*.html ui/*.css ui/*.scss ui/*.js ui/b/*.js ui/b/*.vue $(ui/b/js.files))
-$>/ui/global.css: ui/global.scss $(ui/tailwind.inputs) ui/jsextract.js $>/ui/postcss.js $(UI/GLOBALSCSS_IMPORTS)
+$>/ui/global.css: ui/global.scss $(ui/tailwind.inputs) ui/jsextract.js $(UI/GLOBALSCSS_IMPORTS)
 	$(QGEN)
 	$Q $(CP) $< $>/ui/global.scss
 	$Q node ui/jsextract.js -O $>/ui/b/ $(ui/b/js.files)		# 		do node ui/jsextract.js $$f -O "$>/$${f%/*}"
 	$Q for f in $(ui/b/js.files:$>/ui/%=%) ; do \
 		echo "@import '../$$f""css';" >> $>/ui/global.scss || exit 1 ; done
-	$Q node $>/ui/postcss.js --map -Dthemename_scss=dark.scss -I ui/ $>/ui/global.scss $@.tmp
+	$Q node ui/postcss.js --test $V # CHECK transformations
+	$Q node ui/postcss.js --map -Dthemename_scss=dark.scss -I ui/ $>/ui/global.scss $@.tmp
 	$Q rm -f $>/ui/*.jscss $>/ui/b/*.jscss
 	$Q mv $@.tmp $@
 $>/.ui-reload-stamp: $>/ui/global.css
