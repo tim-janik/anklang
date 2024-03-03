@@ -1268,8 +1268,6 @@ function dialog_backdrop_mousedown (ev)
     {
       // just hide the dialog on mousedown
       dialog.__dialog_backdrop_must_close = ev.button;
-      // avoid display:none, the dialog still needs to receive events
-      dialog.style.setProperty ('visibility', 'hidden', 'important');
       // prevent bubbling back up to cause clicks
       prevent_event (ev);
     }
@@ -1283,8 +1281,6 @@ function dialog_backdrop_mouseup (ev)
   if (dialog.__dialog_backdrop_must_close !== ev.button)
     return;
   dialog.__dialog_backdrop_must_close = undefined;
-  // restore visibility to make the dialog reusable
-  dialog.style.removeProperty ('visibility');
   // really close dialog due to backdrop click
   dialog.close();
   // prevent bubbling back up to cause clicks
