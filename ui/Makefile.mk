@@ -343,9 +343,13 @@ ui/rebuild:
 	@: # incremental rebuild targets (without npm) that must succeed
 	$(MAKE) --no-print-directory $>/.ui-build-stamp NPMBLOCK=y -j`nproc`
 	@: # rebuild live reload targets
-	$(MAKE) --no-print-directory $>/.ui-reload-stamp NPMBLOCK=y -j`nproc`
+	$(MAKE) $>/.ui-reload-stamp NPMBLOCK=y -j`nproc` |& tee $>/ui-build.log || ( : \
+		&& echo '<html><head><title>anklang/ui: make error</title></head><body><pre>' \
+		&& cat out/ui-build.log && echo '</pre>' \
+		&& echo '<script>setTimeout(_=>window.location.reload(), 3000)</script></body></html>' \
+		) > $>/ui/index.html
 	@: # close open sockets, only works if *same* executable still runs
-	killall -s USR2 -u $(USER) -- $(abspath $(lib/AnklangSynthEngine))
+	-killall -s USR2 -u $(USER) -- $(abspath $(lib/AnklangSynthEngine))
 .PHONY: ui/rebuild
 
 # == installation ==
