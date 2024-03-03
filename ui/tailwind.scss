@@ -74,7 +74,7 @@ p		{ user-select: text; }
 
 /// Style for dialog header containers.
 .dialog-header {
-  @apply groove-below mb-8 py-6 text-center text-2xl leading-6 font-bold;
+  @apply groove-below mb-8 py-6 text-center text-2xl font-bold leading-6;
 }
 
 /// Style for dialog footer containers.
@@ -82,7 +82,7 @@ p		{ user-select: text; }
   @apply groove-above mt-8 flex justify-center py-6 text-center leading-6;
 }
 
-/// Style for buttons with hover .active, disabled, potentially focussable.
+/// Style for buttons with hover, disabled, potentially focussable, see also .button-down.
 .button-dim {
   // button shading
   box-shadow:    0 0 0 2px #00000088;
@@ -96,18 +96,6 @@ p		{ user-select: text; }
 		    color-mix(in oklab, theme('colors.dim.600'), #000 9%) 100%);
   &:hover { box-shadow: 0 0 0 2px #00000088, inset 500px 500px #ffffff08; }
   &:focus { outline: 1px solid #0080cc; }
-  &.active, /* Adding class="active" allows buttons during click() to simulate being pressed */
-  &:active {
-    box-shadow: 0 0 0 2px #00000088;
-    border-bottom: 1px solid color-mix(in oklab, theme('colors.dim.700'), #fff 15%);
-    border-right:  1px solid color-mix(in oklab, theme('colors.dim.700'), #fff 15%);
-    border-top:    1px solid color-mix(in oklab, theme('colors.dim.700'), #000 20%);
-    border-left:   1px solid color-mix(in oklab, theme('colors.dim.700'), #000 20%);
-    background-image:
-      linear-gradient(to bottom,
-		      color-mix(in oklab, theme('colors.dim.600'), #000 9%) 0%,
-		      color-mix(in oklab, theme('colors.dim.600'), #fff 4%) 100%);
-  }
   &[disabled], &[inert] {
     box-shadow: 0 0 0 2px #00000044;
     border: 1px solid color-mix(in oklab, theme('colors.dim.600'), #fff 5%);
@@ -120,9 +108,26 @@ p		{ user-select: text; }
   }
 }
 
+/// Style for buttons with hover .active, disabled, potentially focussable.
+.button-down {
+  @apply button-dim;
+  &.active, /* Adding class="active" allows buttons during click() to simulate being pressed */
+  &:active {
+    box-shadow: 0 0 0 2px #00000088;
+    border-bottom: 1px solid color-mix(in oklab, theme('colors.dim.700'), #fff 15%);
+    border-right:  1px solid color-mix(in oklab, theme('colors.dim.700'), #fff 15%);
+    border-top:    1px solid color-mix(in oklab, theme('colors.dim.700'), #000 20%);
+    border-left:   1px solid color-mix(in oklab, theme('colors.dim.700'), #000 20%);
+    background-image:
+      linear-gradient(to bottom,
+		      color-mix(in oklab, theme('colors.dim.600'), #000 9%) 0%,
+		      color-mix(in oklab, theme('colors.dim.600'), #fff 4%) 100%);
+  }
+}
+
 /// Style for buttons in dialogs, potentially focussable.
 .button-xl {
-  @apply hflex button-dim m-0 justify-center px-1 py-1 align-middle;
+  @apply hflex button-down m-0 justify-center px-1 py-1 align-middle;
   min-width: 7rem;
 }
 
