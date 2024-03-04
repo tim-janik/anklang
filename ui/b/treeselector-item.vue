@@ -104,6 +104,7 @@ export default {
     }
   },
   methods: {
+    get_uri (e) { return get_uri (e); }, // allow get_uri() in <template/>
     css_active() {
       if (this.entries && this.entries.length && // non-leaf
 	  // this.entries.length < 2 &&
