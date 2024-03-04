@@ -13,7 +13,7 @@ import { LitComponent, ref, html, JsExtract, docs } from '../little.js';
 import * as PianoCtrl from "./piano-ctrl.js";
 import * as Util from '../util.js';
 import { clamp } from '../util.js';
-import { get_uri } from '../dom.js';
+import { text_content, get_uri } from '../dom.js';
 import * as Mouse from '../mouse.js';
 const floor = Math.floor, round = Math.round;
 
@@ -86,10 +86,10 @@ const HTML = (t, d) => html`
       @click=${e => t.pianotoolmenu.popup (e)} @mousedown=${e => t.pianotoolmenu.popup (e)} >
       <b-icon style="width: 1.2em; height: 1.2em" ${ref (h => t.menu_icon = h)}></b-icon>
       <b-contextmenu ${ref (h => t.pianotoolmenu = h)} id="g-pianotoolmenu" class="-pianotoolmenu" @activate=${e => t.usetool (get_uri (e.detail))} >
-	<b-menuitem ic="mi-open_with"     uri="S" kbd="1" > Rectangular Selection  </b-menuitem>
-	<b-menuitem ic="mi-multiple_stop" uri="H" kbd="2" > Horizontal Selection   </b-menuitem>
-	<b-menuitem ic="fa-pencil"        uri="P" kbd="3" > Pen                    </b-menuitem>
-	<b-menuitem ic="fa-eraser"        uri="E" kbd="4" > Eraser                 </b-menuitem>
+	<button ic="mi-open_with"     uri="S" kbd="1" > Rectangular Selection  </button>
+	<button ic="mi-multiple_stop" uri="H" kbd="2" > Horizontal Selection   </button>
+	<button ic="fa-pencil"        uri="P" kbd="3" > Pen                    </button>
+	<button ic="fa-eraser"        uri="E" kbd="4" > Eraser                 </button>
       </b-contextmenu>
     </v-flex>
 
@@ -118,7 +118,7 @@ const HTML = (t, d) => html`
 `;
 // key=${ac.weakid}
 const CONTEXTITEM = ac => html`
-  <b-menuitem uri=${ac.weakid} ic=${ac.ic} kbd=${ac.kbd} > ${ac.label} </b-menuitem>
+  <button uri=${ac.weakid} ic=${ac.ic} kbd=${ac.kbd} > ${ac.label} </button>
 `;
 
 // == SCRIPT ==
@@ -338,7 +338,7 @@ class BPianoRoll extends LitComponent {
     const menuitem = this.pianotoolmenu.find_menuitem (uri);
     this.menu_icon.setAttribute ('ic', menuitem.getAttribute ('ic'));
     this.menu_icon.setAttribute ('data-kbd', menuitem.getAttribute ('kbd'));
-    this.menu_icon.setAttribute ('data-tip', title + ' ' + menuitem.slot_label());
+    this.menu_icon.setAttribute ('data-tip', title + ' ' + text_content (menuitem, false).trim());
     // pick up 'data-tip' and pick cursor via hover
     if (!this.notes_canvas_pointermove_zmovedel)
       this.notes_canvas_pointermove_zmovedel = App.zmoves_add (this.notes_canvas_pointermove.bind (this));
