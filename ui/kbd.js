@@ -405,6 +405,7 @@ export function forget_focus (element) {
 const hotkey_list = [];
 const filter_keycodes = {};
 
+/// Global key handler to dispatch key events according to global keymaps.
 function hotkey_handler (event) {
   const kdebug = () => undefined; // kdebug = debug;
   const focus_root = the_focus_guard?.focus_root_list?.[0];
@@ -444,13 +445,17 @@ function hotkey_handler (event) {
   // activate focus via Enter
   if (Util.match_key_event (event, 'Enter') && fe != document.body)
     {
-      kdebug ("hotkey_handler: button-activation: " + ' (' + fe.tagName + ')');
-      // allow `onclick` activation via `Enter` on <button/> and <a href/> with event.isTrusted
-      const click_pending = fe.nodeName == 'BUTTON' || (fe.nodeName == 'A' && fe.href);
-      Util.keyboard_click (fe, event, !click_pending);
-      if (!click_pending)
-	event.preventDefault();
-      return true;
+      if (0) {
+	kdebug ("hotkey_handler: button-activation: " + ' (' + fe.tagName + ')');
+	// allow `onclick` activation via `Enter` on <button/> and <a href/> with event.isTrusted
+	const click_pending = fe.nodeName == 'BUTTON' || (fe.nodeName == 'A' && fe.href);
+	Util.keyboard_click (fe, event, !click_pending);
+	if (!click_pending)
+	  event.preventDefault();
+	return true;
+      }
+      kdebug ("hotkey_handler: ignore-enter: " + ' (' + fe.tagName + ')');
+      return false; // leave fous activation to the browser
     }
   // restrict global hotkeys during modal dialogs
   const modal_element = !!(document._b_modal_shields?.[0]?.root || focus_root);
@@ -462,8 +467,10 @@ function hotkey_handler (event) {
 	  if (match_key_event (event, entry.key) &&
 	      (!modal_element || Util.has_ancestor (entry.element, modal_element)))
 	    {
-	      if (entry.handler && entry.handler (event) != false)
+	      if (entry.handler && entry.handler (event) != false) {
+		kdebug ("hotkey_handler: global_keymaps activation: " + ' (' + entry.element + ')');
 		return true; // handled
+	      }
 	    }
 	}
   // activate global hotkeys
@@ -495,7 +502,7 @@ function hotkey_handler (event) {
   kdebug ('hotkey_handler: unused-key: ' + event.code + ' ' + event.which + ' ' + event.charCode + ' (' + fe.tagName + ')');
   return false;
 }
-window.addEventListener ('keydown', hotkey_handler, { capture: true });
+window.addEventListener ('keydown', event => hotkey_handler (event) && event.preventDefault(), { capture: true });
 
 /// Add a global hotkey handler.
 export function add_hotkey (hotkey, callback, subtree_element = undefined) {
