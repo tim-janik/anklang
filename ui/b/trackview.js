@@ -85,45 +85,45 @@ const HTML = (t, d) => html`
 const HTML_CMENU = (t, d) => html`
   <b-contextmenu ${ref (h => t.htmlcmenu_ = h)} id="g-trackviewcmenu"
     @activate=${t.menu_click} .isactive=${t.menu_check} @close=${t.menu_close} >
-    <b-menutitle>                                               Track                   </b-menutitle>
-    <b-menuitem ic="fa-plus-circle"        uri="add-track" >      Add Track             </b-menuitem>
-    <b-menuitem ic="fa-i-cursor"           uri="rename-track" >   Rename Track          </b-menuitem>
-    <b-menuitem ic="fa-toggle-down"        uri="bounce-track" >   Bounce Track          </b-menuitem>
-    <b-menuitem ic="mi-visibility_off"     uri="track-details" >  Show / Hide Track Details </b-menuitem>
+    <b-menutitle>                                         Track             </b-menutitle>
+    <button ic="fa-plus-circle"    uri="add-track" >      Add Track             </button>
+    <button ic="fa-i-cursor"       uri="rename-track" >   Rename Track          </button>
+    <button ic="fa-toggle-down"    uri="bounce-track" >   Bounce Track          </button>
+    <button ic="mi-visibility_off" uri="track-details" >  Show / Hide Track Details </button>
     <b-menuseparator></b-menuseparator>
-    <b-menurow>		<!-- ic="fa-clone" uri="clone-track" >    Dupl.                 -->
-      <b-menuitem ic="fa-times-circle"     uri="delete-track" >   Delete                </b-menuitem>
-      <b-menuitem ic="fa-scissors"         uri="cut-track" >      Cut                   </b-menuitem>
-      <b-menuitem ic="fa-files-o"          uri="copy-track" >     Copy                  </b-menuitem>
-      <b-menuitem ic="fa-clipboard"        uri="paste-track" >    Paste                 </b-menuitem>
+    <b-menurow> <!-- ic="fa-clone" uri="clone-track" >    Dupl.                 -->
+      <button ic="fa-times-circle" uri="delete-track" >   Delete                </button>
+      <button ic="fa-scissors"     uri="cut-track" >      Cut                   </button>
+      <button ic="fa-files-o"      uri="copy-track" >     Copy                  </button>
+      <button ic="fa-clipboard"    uri="paste-track" >    Paste                 </button>
     </b-menurow>
     <b-menuseparator></b-menuseparator>
     <b-menutitle> Playback </b-menutitle>
-    <b-menuitem ic="uc-Ｍ"                 uri="mute-track" >     Mute Track            </b-menuitem>
-    <b-menuitem ic="uc-Ｓ"                 uri="solo-track" >     Solo Track            </b-menuitem>
+    <button ic="uc-Ｍ"             uri="mute-track" >     Mute Track            </button>
+    <button ic="uc-Ｓ"             uri="solo-track" >     Solo Track            </button>
     <b-menuseparator></b-menuseparator>
     <b-menutitle> MIDI Channel </b-menutitle>
-    <b-menuitem                  uri="mc-0"  ic=${t.mcc (0)}  > Internal Channel </b-menuitem>
+    <button                  uri="mc-0"  ic=${t.mcc (0)}  > Internal Channel </button>
     <b-menurow noturn>
-      <b-menuitem class="-nokbd" uri="mc-1"  ic=${t.mcc (1)}  >  1 </b-menuitem>
-      <b-menuitem class="-nokbd" uri="mc-2"  ic=${t.mcc (2)}  >  2 </b-menuitem>
-      <b-menuitem class="-nokbd" uri="mc-3"  ic=${t.mcc (3)}  >  3 </b-menuitem>
-      <b-menuitem class="-nokbd" uri="mc-4"  ic=${t.mcc (4)}  >  4 </b-menuitem>
+      <button uri="mc-1"  ic=${t.mcc (1)}  >  1 </button>
+      <button uri="mc-2"  ic=${t.mcc (2)}  >  2 </button>
+      <button uri="mc-3"  ic=${t.mcc (3)}  >  3 </button>
+      <button uri="mc-4"  ic=${t.mcc (4)}  >  4 </button>
     </b-menurow> <b-menurow noturn>
-      <b-menuitem class="-nokbd" uri="mc-5"  ic=${t.mcc (5)}  >  5 </b-menuitem>
-      <b-menuitem class="-nokbd" uri="mc-6"  ic=${t.mcc (6)}  >  6 </b-menuitem>
-      <b-menuitem class="-nokbd" uri="mc-7"  ic=${t.mcc (7)}  >  7 </b-menuitem>
-      <b-menuitem class="-nokbd" uri="mc-8"  ic=${t.mcc (8)}  >  8 </b-menuitem>
+      <button uri="mc-5"  ic=${t.mcc (5)}  >  5 </button>
+      <button uri="mc-6"  ic=${t.mcc (6)}  >  6 </button>
+      <button uri="mc-7"  ic=${t.mcc (7)}  >  7 </button>
+      <button uri="mc-8"  ic=${t.mcc (8)}  >  8 </button>
     </b-menurow> <b-menurow noturn>
-      <b-menuitem class="-nokbd" uri="mc-9"  ic=${t.mcc (9)}  >  9 </b-menuitem>
-      <b-menuitem class="-nokbd" uri="mc-10" ic=${t.mcc (10)} > 10 </b-menuitem>
-      <b-menuitem class="-nokbd" uri="mc-11" ic=${t.mcc (11)} > 11 </b-menuitem>
-      <b-menuitem class="-nokbd" uri="mc-12" ic=${t.mcc (12)} > 12 </b-menuitem>
+      <button uri="mc-9"  ic=${t.mcc (9)}  >  9 </button>
+      <button uri="mc-10" ic=${t.mcc (10)} > 10 </button>
+      <button uri="mc-11" ic=${t.mcc (11)} > 11 </button>
+      <button uri="mc-12" ic=${t.mcc (12)} > 12 </button>
     </b-menurow> <b-menurow noturn>
-      <b-menuitem class="-nokbd" uri="mc-13" ic=${t.mcc (13)} > 13 </b-menuitem>
-      <b-menuitem class="-nokbd" uri="mc-14" ic=${t.mcc (14)} > 14 </b-menuitem>
-      <b-menuitem class="-nokbd" uri="mc-15" ic=${t.mcc (15)} > 15 </b-menuitem>
-      <b-menuitem class="-nokbd" uri="mc-16" ic=${t.mcc (16)} > 16 </b-menuitem>
+      <button uri="mc-13" ic=${t.mcc (13)} > 13 </button>
+      <button uri="mc-14" ic=${t.mcc (14)} > 14 </button>
+      <button uri="mc-15" ic=${t.mcc (15)} > 15 </button>
+      <button uri="mc-16" ic=${t.mcc (16)} > 16 </button>
     </b-menurow>
   </b-contextmenu>
 `;
