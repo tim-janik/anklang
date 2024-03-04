@@ -38,3 +38,27 @@ export function font_family_loaded (options = {})
     return true;
   return false;
 }
+
+/// Fetch URI from a DOM element, returns undefined if none is found (e.g. Number(0) is a valid URI).
+export function get_uri (element)
+{
+  if (!element) return undefined;
+  let uri = element['uri'];
+  if (uri === undefined || uri === null || uri === '')
+    uri = !element.getAttribute ? undefined : element.getAttribute ('uri');
+  if (uri === undefined || uri === null || uri === '')
+    return undefined;
+  return uri;
+}
+
+/// Check if URI is not undefined.
+export function valid_uri (uri)
+{
+  return uri !== undefined;
+}
+
+/// Check if DOM element has valid URI.
+export function has_uri (element)
+{
+  return valid_uri (get_uri (element));
+}
