@@ -93,12 +93,12 @@ b-choiceinput {
   .b-choice-line2 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-secondary; }
   .b-choice-line3 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-notice; }
   .b-choice-line4 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-warning; }
-  .b-menuitem {
+  button {
     &:focus, &.active, &:active {
       .b-choice-line1, .b-choice-line2, .b-choice-line3,
       .b-choice-line4 { filter: $b-style-fg-filter; } //* adjust to inverted menuitem */
     } }
-  .b-menuitem {
+  button {
     white-space: pre-line;
   }
 }
@@ -120,13 +120,13 @@ const CONTEXTMENU_HTML = (t) =>  html`
   </b-contextmenu>
 `;
 const CONTEXTMENU_ITEM = (t, c) => html`
-  <b-menuitem uri=${c.ident} ic=${c.icon} >
+  <button uri=${c.ident} ic=${c.icon} >
     <span class="b-choice-label ${c.labelclass}" > ${ c.label } </span>
     <span class="b-choice-line1 ${c.line1class}" > ${ c.blurb } </span>
     <span class="b-choice-line2 ${c.line2class}" > ${ c.line2 } </span>
     <span class="b-choice-line3 ${c.line3class}" > ${ c.notice } </span>
     <span class="b-choice-line4 ${c.line4class}" > ${ c.warning } </span>
-  </b-menuitem>
+  </button>
 `;
 
 // <SCRIPT/>
