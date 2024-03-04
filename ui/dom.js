@@ -62,3 +62,14 @@ export function has_uri (element)
 {
   return valid_uri (get_uri (element));
 }
+
+/// Get `.textContent` with or without children from a DOM element.
+export function text_content (element, with_children = true)
+{
+  if (with_children) return element.textContent;
+  let s = '';
+  for (let i = 0; i < element.childNodes.length; ++i)
+    if (element.childNodes[i].nodeType === Node.TEXT_NODE)
+      s += element.childNodes[i].textContent;
+  return s;
+}
