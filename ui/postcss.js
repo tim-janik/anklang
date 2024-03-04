@@ -244,7 +244,7 @@ async function test_css (verbose)
   test_rules[`--text-color: ${'#ABCDEF'};`] = '--text-color:#ABCDEF;';
   const input = Object.keys (test_rules).join ('\n');
   console.log ('  CHECK   ', __filename);
-  const result = await postcss_process (input, 'test_css()');
+  const result = await postcss_process (input, 'test.css');
   if (verbose >= 2)
     console.log (__filename + ': result:', '\n' + result);
   let last = -1, errors = 0;
