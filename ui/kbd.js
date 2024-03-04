@@ -638,7 +638,7 @@ function shortcut_keydown (div, event) {
     shortcut_keydown_hotkey.next = '';
   else
     shortcut_keydown_hotkey.next = shortcut || shortcut_keydown_hotkey.prev;
-  div.innerText = Util.display_keyname (shortcut_keydown_hotkey.next || '');
+  div.innerText = display_keyname (shortcut_keydown_hotkey.next || '');
 }
 
 /// Display shortcut editing dialog
@@ -650,7 +650,7 @@ export async function shortcut_dialog (mapname, label, shortcut) {
 	       "<b>" + Util.escape_html (label) + "</b>\n";
   let shortcut_keydown_ = undefined;
   const div_handler = (div, dialog) => {
-    div.innerText = Util.display_keyname (shortcut_keydown_hotkey.next || '');
+    div.innerText = display_keyname (shortcut_keydown_hotkey.next || '');
     if (!shortcut_keydown_) {
       shortcut_keydown_ = shortcut_keydown.bind (null, div);
       window.addEventListener ('keydown', shortcut_keydown_, { capture: true });
