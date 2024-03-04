@@ -20,7 +20,7 @@ JsExtract.scss`
 b-menurow {
   display: inline-flex; flex: 0 0 auto; flex-flow: row nowrap;
   text-align: center; justify-content: center; align-items: baseline;
-  margin: 0 0.5rem; padding: 0;
+  @apply m-0;
 }`;
 
 // == SCRIPT ==

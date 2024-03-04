@@ -60,8 +60,7 @@ dialog.b-contextmenu {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  margin: 0;
-  padding: $b-menu-padding 0;
+  @apply m-0 p-2;
   color: $b-menu-foreground;
   background-color: $b-menu-background; border: 1px outset zmod($b-menu-background, Jz-=20%);
   box-shadow: $b-menu-box-shadow;
@@ -97,7 +96,7 @@ b-contextmenu button {
 b-contextmenu b-menurow button {
   @apply px-1;
   min-width: 5rem; //* this aligns blocks of 2-digit numbers */
-  > b-icon:first-child { margin: 0 2px 0 0; }
+  > b-icon:first-child { @apply m-0 mb-1; }
 }
 b-contextmenu button:focus {
   background-color: $b-menu-focus-bg; color: $b-menu-focus-fg; outline: none;
