@@ -49,14 +49,18 @@
     Object.defineProperty (globalThis, '__DEV__', { value: CONFIG.mode !== 'production' });
     Object.defineProperty (globalThis, 'debug', { value: __DEV__ ? console.log : _ => undefined });
     Object.defineProperty (globalThis, 'assert', { value: console.assert });
-    Object.defineProperty (globalThis, 'start_view_transition', { value: (func, want_transition = true) => {
-      if (!want_transition || !document.startViewTransition) return func(); /* no support in Firefox-115 */
+    const document_startViewTransition = document.startViewTransition ? document.startViewTransition.bind (document) : null;
+    Object.defineProperty (document, 'startViewTransition', { value: (func, want_transition = true) => {
       const async_updater = () => {
 	const promises = [func()];
 	/* Sync with possibly pending Vue changes */
 	window.Vue?.nextTick && promises.push (new Promise (r => window.Vue.nextTick (r)));
-	return Promise.all (promises); };
-      document.startViewTransition (async_updater);
+	return Promise.all (promises);
+      };
+      if (want_transition && document_startViewTransition)
+	document_startViewTransition (async_updater);
+      else
+	async_updater();
     }, });
   } </script>
 </head>

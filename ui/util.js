@@ -1230,30 +1230,22 @@ export function setup_shield_element (shield, containee, closer, capture_escape 
   return undo_shield;
 }
 
-/** Stop (immediate) propagation and prevent default handler for an event. */
-export function fullstop (event)
-{
-  event.preventDefault();
-  event.stopPropagation();
-  event.stopImmediatePropagation();
-  return true;
-}
-
 /** Use capturing to swallow any `type` events until `timeout` has passed */
 export function swallow_event (type, timeout = 0) {
-  document.addEventListener (type, fullstop, true);
-  setTimeout (() => document.removeEventListener (type, fullstop, true), timeout);
+  document.addEventListener (type, prevent_event, true);
+  setTimeout (() => document.removeEventListener (type, prevent_event, true), timeout);
 }
 
 /// Prevent default or any propagation for a possible event.
 export function prevent_event (event_or_null)
 {
   if (!event_or_null || !event_or_null.preventDefault)
-    return;
+    return false;
   const event = event_or_null;
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation();
+  return false; // no-default
 }
 
 /// Close dialog on backdrop clicks via hiding at mousedown
@@ -1268,8 +1260,6 @@ function dialog_backdrop_mousedown (ev)
     {
       // just hide the dialog on mousedown
       dialog.__dialog_backdrop_must_close = ev.button;
-      // avoid display:none, the dialog still needs to receive events
-      dialog.style.setProperty ('visibility', 'hidden', 'important');
       // prevent bubbling back up to cause clicks
       prevent_event (ev);
     }
@@ -1283,8 +1273,6 @@ function dialog_backdrop_mouseup (ev)
   if (dialog.__dialog_backdrop_must_close !== ev.button)
     return;
   dialog.__dialog_backdrop_must_close = undefined;
-  // restore visibility to make the dialog reusable
-  dialog.style.removeProperty ('visibility');
   // really close dialog due to backdrop click
   dialog.close();
   // prevent bubbling back up to cause clicks

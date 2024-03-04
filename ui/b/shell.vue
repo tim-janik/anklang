@@ -269,7 +269,7 @@ class ShellClass extends Envue.Component {
       return this.$vm.show_about_dialog_;
     onof = !!onof;
     if (onof != this.$vm.show_about_dialog_)
-      start_view_transition (() => {
+      document.startViewTransition (() => {
 	this.$vm.show_about_dialog_ = onof;
 	this.$vm.$forceUpdate();
       }, !onof);

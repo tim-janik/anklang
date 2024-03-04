@@ -13,70 +13,65 @@ import { hex, basename, dirname, displayfs, displaybasename, displaydirname } fr
 
 // <STYLE/>
 JsExtract.scss`
-.b-menubar {
-  margin: 5px;
-  .-stack {
-    display: inline-block;
+b-menubar {
+  push-button {
+    @apply button-down-within size-10;
     position: relative;
-    vertical-align: middle;
-    width: 1em; height: 1em;
-    & :not(:first-child) { position: absolute; top: 0; left: 0; }
   }
-  b-buttonbar.-menubar {
-    button, push-button {
-      padding: 3px 1em
-    }
+  .b-menubar-icon {
+    position: absolute; inset: 0;
+    display: inline-flex; justify-content: center;
+    & [ic] { inset: 0; position: absolute; vertical-align: middle; } // display: inline-block;
+    & [ic="bc-menumore"] { position: absolute; top: unset; left: unset; }
   }
 }`;
 
 // <HTML/>
 const HTML = (t, d) =>  html`
-  <h-flex class="b-menubar" style="justify-content: space-between" >
+  <h-flex class="b-menubar m-2" style="justify-content: space-between" >
     <!-- main menu & controlbar -->
 
     <!-- menubar left -->
     <b-buttonbar class="-menubar" >
       <!-- File Menu -->
-      <push-button data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click=${e => t.filemenu.popup (e)} @mousedown=${e => t.filemenu.popup (e)} >
-	<div class="-stack" >
-	  <b-icon ic="bc-folder"></icon>
-	  <b-icon ic="bc-menumore"></icon>
+      <push-button class="button-dim" data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click=${e => t.filemenu.popup (e)} @mousedown=${e => t.filemenu.popup (e)} >
+	<div class="b-menubar-icon" >
+	  <b-icon ic="bc-folder" ></b-icon>
+	  <b-icon ic="bc-menumore" ></b-icon>
 	</div>
 	<b-contextmenu ${ref (h => t.filemenu = h)} id="g-filemenu" .activate=${activate} .isactive=${isactive} startfocus1 >
-	  <b-menuitem ic="fa-file-o"	kbd="Ctrl+N"		uri="loadnew" >	New Project		</b-menuitem>
-	  <b-menuitem ic="fa-file-audio-o" kbd="Ctrl+O"		uri="load"    >	Open Project…		</b-menuitem>
-	  <b-menuitem ic="mi-save_alt"     kbd="Ctrl+S"		uri="save"    >	Save Project		</b-menuitem>
-	  <b-menuitem ic="fa-save"	   kbd="Shift+Ctrl+S"	uri="saveas"  >	Save As…		</b-menuitem>
+	  <button ic="fa-file-o"	kbd="Ctrl+N"		uri="loadnew" >	New Project		</button>
+	  <button ic="fa-file-audio-o" 	kbd="Ctrl+O"		uri="load"    >	Open Project…		</button>
+	  <button ic="mi-save_alt"     	kbd="Ctrl+S"		uri="save"    >	Save Project		</button>
+	  <button ic="fa-save"	   	kbd="Shift+Ctrl+S"	uri="saveas"  >	Save As…		</button>
 	  <b-menuseparator></b-menuseparator>
-	  <b-menuitem ic="fa-cog"          kbd="Ctrl+RawComma"	uri="prefs"   >	Preferences		</b-menuitem>
+	  <button ic="fa-cog"          	kbd="Ctrl+RawComma"	uri="prefs"   >	Preferences		</button>
 	  <b-menuseparator></b-menuseparator>
-	  <b-menuitem ic="mi-close"        kbd="Shift+Ctrl+Q" uri="quit">	Quit			</b-menuitem>
+	  <button ic="mi-close"        	kbd="Shift+Ctrl+Q" 	uri="quit"    >	Quit			</button>
 	</b-contextmenu>
       </push-button>
 
       <!-- Edit Menu -->
-      <push-button data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click=${e => t.editmenu.popup (e)} @mousedown=${e => t.editmenu.popup (e)} >
-	<div class="-stack" >
+      <push-button class="button-dim" data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click=${e => t.editmenu.popup (e)} @mousedown=${e => t.editmenu.popup (e)} >
+	<div class="b-menubar-icon" >
 	  <b-icon ic="mi-draw" ></b-icon>
 	  <b-icon ic="bc-menumore" ></b-icon>
 	</div>
 	<b-contextmenu ${ref (h => t.editmenu = h)} id="g-editmenu" .activate=${activate} .isactive=${isactive} startfocus >
-	  <b-menuitem ic="mi-undo" .disabled=${!true}
-		      kbd="Ctrl+Z" uri="undo">	Undo	</b-menuitem>
-	  <b-menuitem ic="mi-redo" .disabled=${!true}
-		      kbd="Shift+Ctrl+Z" uri="redo">	Redo	</b-menuitem>
+	  <button ic="mi-undo" .disabled=${!true} kbd="Ctrl+Z"       uri="undo">	Undo	</button>
+	  <button ic="mi-redo" .disabled=${!true} kbd="Shift+Ctrl+Z" uri="redo">	Redo	</button>
 	</b-contextmenu>
       </push-button>
 
       <!-- View Menu -->
-      <push-button data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @click=${e => t.viewmenu.popup (e)} @mousedown=${e => t.viewmenu.popup (e)} >
-	<div class="-stack" >
+      <push-button class="button-dim" data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @click=${e => t.viewmenu.popup (e)} @mousedown=${e => t.viewmenu.popup (e)} >
+	<div class="b-menubar-icon" >
 	  <b-icon ic="fa-eye" ></b-icon>
 	  <b-icon ic="bc-menumore" ></b-icon>
 	</div>
 	<b-contextmenu ${ref (h => t.viewmenu = h)} id="g-viewmenu" .activate=${activate} .isactive=${isactive} startfocus >
-	  <b-menuitem ic="mi-fullscreen" .disabled=${!document.fullscreenEnabled}
-		      kbd="F11" uri="fullscreen">	Toggle Fullscreen	</b-menuitem>
+	  <button ic="mi-fullscreen" .disabled=${!document.fullscreenEnabled}
+		  kbd="F11" uri="fullscreen">	Toggle Fullscreen	</button>
 	  ${ELECTRON_MENUITEMS (t)}
 	</b-contextmenu>
       </push-button>
@@ -92,16 +87,16 @@ const HTML = (t, d) =>  html`
     <!-- menubar right -->
     <b-buttonbar class="-menubar" >
       <!-- Help Menu -->
-      <push-button data-tip="**CLICK** Help Menu" data-hotkey="Alt+H" @click=${e => t.helpmenu.popup (e)} @mousedown=${e => t.helpmenu.popup (e)} >
-	<div class="-stack" >
+      <push-button class="button-dim" data-tip="**CLICK** Help Menu" data-hotkey="Alt+H" @click=${e => t.helpmenu.popup (e)} @mousedown=${e => t.helpmenu.popup (e)} >
+	<div class="b-menubar-icon" >
 	  <b-icon ic="fa-life-ring" ></b-icon>
 	  <b-icon ic="bc-menumore" ></b-icon>
 	</div>
 	<b-contextmenu ${ref (h => t.helpmenu = h)} id="g-helpmenu" .activate=${activate} .isactive=${isactive} startfocus >
-	  <b-menuitem ic="mi-chrome_reader_mode"	uri="user-manual">	Anklang Manual…		</b-menuitem>
-	  <b-menuitem ic="mi-chrome_reader_mode"	uri="dev-manual">	Development Reference…	</b-menuitem>
+	  <button ic="mi-chrome_reader_mode"	uri="user-manual">	Anklang Manual…		</button>
+	  <button ic="mi-chrome_reader_mode"	uri="dev-manual">	Development Reference…	</button>
 	  <b-menuseparator></b-menuseparator>
-	  <b-menuitem ic="fa-id-card-o"		uri="about">	About…			</b-menuitem>
+	  <button ic="fa-id-card-o"		uri="about">		About…			</button>
 	</b-contextmenu>
       </push-button>
     </b-buttonbar>
@@ -109,9 +104,9 @@ const HTML = (t, d) =>  html`
   </h-flex>
 `;
 const ELECTRON_MENUITEMS = (t) => window['Electron'] && html`
-  <b-menuitem ic="mi-zoom_in"   kbd="Ctrl++" uri="zoom-in">			Zoom In		</b-menuitem>
-  <b-menuitem ic="mi-zoom_out"  kbd="Ctrl+-" uri="zoom-out">			Zoom Out	</b-menuitem>
-  <b-menuitem ic="—"            kbd="Ctrl+0" uri="zoom-reset">			Reset Zoom	</b-menuitem>
+  <button ic="mi-zoom_in"   kbd="Ctrl++" uri="zoom-in">			Zoom In		</button>
+  <button ic="mi-zoom_out"  kbd="Ctrl+-" uri="zoom-out">		Zoom Out	</button>
+  <button ic="—"            kbd="Ctrl+0" uri="zoom-reset">		Reset Zoom	</button>
 `;
 
 // == SCRIPT ==

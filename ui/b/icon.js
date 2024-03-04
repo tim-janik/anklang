@@ -20,8 +20,6 @@ import * as Dom from "../dom.js";
  * : The 'bc-' prefix indicates an icon from the "AnklangIcons Font" symbols.
  * : The 'fa-' prefix indicates an icon from the "Fork Awesome" collection (compatible with "Font Awesome 4"), see the [Fork Awesome Icons](https://forkaweso.me/Fork-Awesome/cheatsheet/).
  * : The 'mi-' prefix indicates an icon from the "Material Icons" collection, see the [Material Design Icons](https://material.io/tools/icons/).
- * *nosize*
- * : Prevent the element from applying default size constraints.
  * *fw*
  * : Apply fixed-width sizing.
  * *lg*
@@ -35,26 +33,20 @@ import * as Dom from "../dom.js";
 // == STYLE ==
 JsExtract.scss`
 b-icon { // not using shadow-root here
-  display: inline-flex; justify-content: center;
-  margin: 0; padding: 0; line-height: 1;
-  &[fw]			{ height: 1em; width: 1.28571429em; text-align: center; }
-  &[lg]			{ font-size: 1.33333333em; }
+  display: inline-flex !important;
+  justify-content: center;
+  align-content: center;
+  flex-wrap: wrap; /* needed for align-content:center */
   &[hflip]		{ transform: scaleX(-1); }
   &[vflip]		{ transform: scaleY(-1); }
   &[hflip][vflip]	{ transform: scaleX(-1) scaleY(-1); }
-  &[nosize]		{ height: 1em; width: 1em; }
-  &[ic^="mi-"][nosize]	{ font-size: 1em; }
-  .material-icons       { font-size: 1.28em; }
+  &[ic^="mi-"]		{ font-size: 1.28em; }
 }`;
-
-// == HTML ==
-const HTML = (iconclasses, innertext) => html`
-  <i class="${iconclasses}" role="icon" aria-hidden="true" >${innertext}</i>
-`;
 
 // == SCRIPT ==
 const BOOL_ATTRIBUTE = { type: Boolean, reflect: true };  // sync attribute with property
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
+const STRING_PROPERTY = { type: String, state: true };
 
 class BIcon extends LitComponent {
   createRenderRoot()
@@ -67,14 +59,21 @@ class BIcon extends LitComponent {
   render()
   {
     const { iconclasses, mi_, uc_ } = this;
-    let inner = mi_ || uc_;
-    return HTML (iconclasses, inner);
+    this.innerText = mi_ || uc_;
+    for (let c of this.lastclass_.split (' '))
+      !!c && this.classList.remove (c);
+    this.lastclass_ = iconclasses;
+    for (let c of this.lastclass_.split (' '))
+      !!c && this.classList.add (c);
+    return null;
   }
   static properties = {
-    iconclass: STRING_ATTRIBUTE, ic: STRING_ATTRIBUTE,
-    hflip: BOOL_ATTRIBUTE, vflip: BOOL_ATTRIBUTE,
-    fw: BOOL_ATTRIBUTE, lg: BOOL_ATTRIBUTE,
-    nosize: undefined,
+    iconclass: STRING_PROPERTY,
+    hflip: BOOL_ATTRIBUTE,
+    vflip: BOOL_ATTRIBUTE,
+    ic: STRING_ATTRIBUTE,
+    fw: BOOL_ATTRIBUTE,
+    lg: BOOL_ATTRIBUTE,
   };
   constructor()
   {
@@ -84,15 +83,20 @@ class BIcon extends LitComponent {
     this.lg = false;
     this.hflip = false;
     this.vflip = false;
-    this.nosize = false;
     this.iconclass = "";
+    this.lastclass_ = '';
+  }
+  connectedCallback()
+  {
+    super.connectedCallback();
+    this.role = "icon";
+    this.setAttribute ('aria-hidden', 'true');
   }
   get iconclasses()
   {
     let classes = (this.iconclass || '').split (/ +/);
     if (this.mi_)
       {
-	classes.push ('mi');
 	classes.push ('material-icons');
       }
     else if (this.fa_)
@@ -102,20 +106,19 @@ class BIcon extends LitComponent {
       }
     else if (this.bc_)
       {
-	classes.push ('bc');
 	classes.push ('AnklangIcons-' + this.bc_);
       }
     else
       classes.push ('uc');
     return classes.join (' ');
   }
-  get bc_() { return this.ic.startsWith ('bc-') ? this.ic.substr (3) : undefined; }
-  get fa_() { return this.ic.startsWith ('fa-') ? this.ic.substr (3) : undefined; }
-  get mi_() { return this.ic.startsWith ('mi-') ? this.ic.substr (3) : undefined; }
+  get bc_() { return this.ic.startsWith ('bc-') ? this.ic.substr (3) : ''; }
+  get fa_() { return this.ic.startsWith ('fa-') ? this.ic.substr (3) : ''; }
+  get mi_() { return this.ic.startsWith ('mi-') ? this.ic.substr (3) : ''; }
   get uc_()
   {
     if (this.ic.startsWith ('bc-') || this.ic.startsWith ('fa-') || this.ic.startsWith ('mi-'))
-      return undefined;
+      return '';
     let icon = this.ic;
     if (icon.startsWith ('uc-'))
       icon = icon.substr (3);

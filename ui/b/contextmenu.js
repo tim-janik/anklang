@@ -30,7 +30,7 @@
  * : Consider a taller area than the context menu height for popup positioning.
  * ### Events:
  * *click (event)*
- * : Event signaling activation of a menu item, the `uri` can be found via `event.target.uri`.
+ * : Event signaling activation of a menu item, the `uri` can be found via `get_uri (event.target)`.
  * *close (event)*
  * : Event signaling closing of the menu, regardless of whether menu item activation occoured or not.
  * ### Methods:
@@ -38,7 +38,7 @@
  * : Popup the contextmenu, propagation of `event` is halted and the event coordinates or target is
  * : used for positioning unless `origin` is given.
  * : The `origin` is a reference DOM element to use for drop-down positioning.
- * : The `focus_uri` is a <b-menuitem/> URI to receive focus after popup.
+ * : The `focus_uri` is a <button/> menu item URI to receive focus after popup.
  * : The `data-contextmenu` element (or `origin`) has the `data-contextmenu=true` attribute assigned during popup.
  * *close()*
  * : Hide the contextmenu.
@@ -49,6 +49,7 @@
 import { LitComponent, html, render, noChange, JsExtract, docs, ref } from '../little.js';
 import * as Util from "../util.js";
 import * as Kbd from '../kbd.js';
+import { text_content, get_uri, valid_uri, has_uri } from '../dom.js';
 
 // == STYLE ==
 JsExtract.scss`
@@ -59,8 +60,7 @@ dialog.b-contextmenu {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  margin: 0;
-  padding: $b-menu-padding 0;
+  @apply m-0 p-2;
   color: $b-menu-foreground;
   background-color: $b-menu-background; border: 1px outset zmod($b-menu-background, Jz-=20%);
   box-shadow: $b-menu-box-shadow;
@@ -73,6 +73,42 @@ dialog.b-contextmenu::backdrop {
   /* Menu backdrop must be transparent, for one a popup menu is different from a modal dialog,
    * and second, showing a modal dialog via menu item would result in bad flickernig. */
   background: transparent;
+}
+b-contextmenu button {
+  @apply hflex flex-nowrap items-stretch px-4 py-1 text-left;
+  background: transparent; color: $b-menu-foreground; border: 1px solid transparent;
+  cursor: pointer; user-select: none; outline: none;
+  kbd { flex-grow: 1; color: zmod($b-menu-foreground, Jz-=15); }
+  > b-icon:first-child {
+    margin: 0 0.75rem 0 0;
+    width: 2rem; height: 1rem;
+    align-self: center;
+    color: $b-menu-fill;
+  }
+  kbd { font-family: inherit; text-align: right; margin-left: 2.5em; }
+  kbd[data-can-remap] { font-style: italic; }
+
+  &[turn] {
+    flex-direction: column; align-items: center;
+    & > b-icon:first-child { margin: 0 0 $b-menu-spacing 0; }
+  }
+}
+b-contextmenu b-menurow button {
+  @apply px-1;
+  min-width: 5rem; //* this aligns blocks of 2-digit numbers */
+  > b-icon:first-child { @apply m-0 mb-1; }
+}
+b-contextmenu button:focus {
+  background-color: $b-menu-focus-bg; color: $b-menu-focus-fg; outline: none;
+  kbd { color: inherit; }
+  border: 1px solid zmod($b-menu-focus-bg, Jz-=50%);
+  b-icon { color: $b-menu-focus-fg; }
+}
+b-contextmenu :is(button.active, button:focus.active, button:focus:active, button:active) {
+  background-color: $b-menu-active-bg; color: $b-menu-active-fg; outline: none;
+  kbd { color: inherit; }
+  b-icon { color: $b-menu-active-fg; }
+  border: 1px solid zmod($b-menu-active-bg, Jz-=50%);
 }`;
 
 // == HTML ==
@@ -83,15 +119,12 @@ const HTML = (t, d) => html`
 `;
 
 // == SCRIPT ==
-export function valid_uri (uri) {
-  return !(uri === '' || uri === undefined || uri === null); // allow uri=0
-}
-
 /** @this{any} */
 function menuitem_isdisabled ()
 {
-  if (valid_uri (this.uri) && undefined !== this.menudata.checkeduris[this.uri])
-    return !this.menudata.checkeduris[this.uri];
+  const uri = get_uri (this);
+  if (valid_uri (uri)  && undefined !== this.menudata.checkeduris[uri])
+    return !this.menudata.checkeduris[uri];
   if (Object.hasOwnProperty.call (this, 'disabled') &&
       (this.disabled === "" || !!this.disabled))
     return true;
@@ -117,7 +150,7 @@ export function provide_menudata (element)
     return b_contextmenu.menudata;
   // fallback
   return { close: () => undefined,
-	   isactive: (uri) => true,
+	   isactive: uri => true,
 	   menu_stamp: 0,	// deduplicating frame_stamp() for contextmenu
 	   item_stamp: 0,	// deduplicating frame_stamp() for menuitem
 	   mapname: '',
@@ -160,6 +193,7 @@ class BContextMenu extends LitComponent {
     this.reposition = false;
     this.isdisabled = menuitem_isdisabled;
     this.keymap_ = [];
+    this.keymap_active = false;
     this.dialog_ = null;
     this.activate = null;
     this.isactive = null;
@@ -185,23 +219,48 @@ class BContextMenu extends LitComponent {
     if (this.dialog_)
       {
 	this.dialog_.onclose = this.menudata.close;
-	this.dialog_.onkeydown = ev => {
-	  if (ev.keyCode === 27 && // Escape
-	      dialog.open && dialog.matches ('[open]:modal'))
-	    ev.stopPropagation(); // stop bubbling
-	};
+	this.dialog_.onkeydown = this.dialog_keydown.bind (this);
 	this.dialog_.onanimationend = ev => {
 	  dialog.classList.remove ('animating');
 	};
 	Util.dialog_backdrop_autoclose (this.dialog_, true);
       }
   }
-  connectedCallback() {
-    super.connectedCallback();
+  dialog_keydown (event)
+  {
+    if (event.keyCode === 27 && // Escape
+	this.dialog.open && this.dialog.matches ('[open]:modal'))
+      return true;  // bubble up to browser // Util.prevent_event (event);
+    if (Util.keydown_move_focus (event))
+      return false; // handled, no-default
   }
-  disconnectedCallback() {
-    super.disconnectedCallback();
+  connectedCallback()
+  {
+    this.integrate_children();
+    super.connectedCallback();
+    const observe = () => this._observer.observe (this, { childList: true, subtree: true });
+    this._observer = new MutationObserver (Util.debounce (() => {
+      this._observer.disconnect();
+      this.integrate_children();
+      observe();
+    }));
+    observe();
+  }
+  disconnectedCallback()
+  {
+    this._observer.disconnect();
+    this._observer = null;
     this.map_kbd_hotkeys (false);
+    super.disconnectedCallback();
+  }
+  integrate_children()
+  {
+    for (let b of this.querySelectorAll ('button,push-button')) {
+      /**@type{any}*/ const any = b;
+      integrate_button.call (any, this);
+    }
+    // rebuild keymap
+    this.map_kbd_hotkeys (this.keymap_active);
   }
   updated()
   {
@@ -259,7 +318,7 @@ class BContextMenu extends LitComponent {
     while ( (e = w.nextNode()) ) {
       /**@type{any}*/ const any = e;
       if (any.check_isactive) {
-	if (any.uri === finduri)
+	if (get_uri (any) === finduri)
 	  hasuri = any;
 	a.push (any.check_isactive());
       }
@@ -279,13 +338,14 @@ class BContextMenu extends LitComponent {
       return;
     // turn bubbled click into menu activation
     const target = event.target;
-    if (target && valid_uri (target.uri) && target.check_isactive)
+    const uri = get_uri (target);
+    if (target && valid_uri (uri))
       {
-	const isactive = target.check_isactive (false);
+	const isactive = !target.check_isactive ? true : target.check_isactive (false);
 	if (isactive instanceof Promise)
-	  return (async () => (await isactive) && this.click (target.uri)) ();
+	  return (async () => (await isactive) && this.click (uri)) ();
 	if (isactive)
-	  return this.click (target.uri);
+	  return this.click (uri);
       }
   }
   click (uri)
@@ -337,13 +397,14 @@ class BContextMenu extends LitComponent {
       this.keymap_.length = 0;
       Util.remove_keymap (this.keymap_);
     }
-    if (!active)
+    this.keymap_active = !!active;
+    if (!this.keymap_active)
       return;
     const w = document.createTreeWalker (this, NodeFilter.SHOW_ELEMENT);
     let e;
     while ( (e = w.nextNode()) ) {
       /**@type{any}*/ const any = e;
-      const keymap_entry = any.keymap_entry;
+      const keymap_entry = any._keymap_entry;
       if (keymap_entry instanceof Util.KeymapEntry)
 	this.keymap_.push (keymap_entry);
     }
@@ -357,10 +418,62 @@ class BContextMenu extends LitComponent {
     let e;
     while ( (e = w.nextNode()) ) {
       /**@type{any}*/ const any = e;
-      if (any.uri == uri)
+      if (get_uri (any) == uri)
 	return e;
     }
     return null;
   }
 }
 customElements.define ('b-contextmenu', BContextMenu);
+
+
+/** Integrate `b-contextmenu button` into contextmenu handling.
+ * @this{HTMLElement}
+ */
+function integrate_button (contextmenu)
+{
+  // click & focus
+  if (!this.onclick)
+    this.onclick = contextmenu.onclick;
+  if (!this.onmouseenter)
+    /**@ts-ignore*/
+    this.onmouseenter = this.focus.bind (this);
+  // <b-icon ic/>
+  const ic = this.getAttribute ('ic');
+  if (ic) {
+    const icon = this.querySelector ('b-icon') || document.createElement ('b-icon');
+    if (!icon.parentElement) {
+      icon.className = "pointer-events-none";
+      this.prepend (icon);
+    }
+    icon.setAttribute ('ic', ic);
+  } else
+    this.querySelector ('b-icon')?.remove();
+  // aria-label
+  const aria_label = text_content (this, false).trim();
+  this.setAttribute ('aria-label', aria_label);
+  // menurow children
+  const turn = !!Util.closest (this, 'b-menurow:not([noturn])');
+  this.toggleAttribute ("turn", turn);
+  const noturn = !!Util.closest (this, 'b-menurow[noturn]');
+  this.toggleAttribute ("noturn", noturn);
+  // <kbd/>
+  const kbds = this.getAttribute ('kbd');
+  if (kbds) {
+    const kbd = this.querySelector ('kbd') || document.createElement ('kbd');
+    if (!kbd.parentElement) {
+      kbd.className = "pointer-events-none";
+      this.appendChild (kbd);
+      kbd.innerText = kbds;
+    }
+    // hotkey
+    if (!this._keymap_entry)
+      this._keymap_entry = new Util.KeymapEntry ('', this.click.bind (this), this);
+    const menudata = provide_menudata (this);
+    const shortcut = Kbd.shortcut_lookup (menudata.mapname, aria_label, kbds);
+    if (shortcut != this._keymap_entry.key)
+      this._keymap_entry.key = shortcut;
+    kbd.innerText = Util.display_keyname (shortcut);
+  } else
+    this.querySelector ('kbd')?.remove();
+}

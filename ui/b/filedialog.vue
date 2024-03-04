@@ -78,24 +78,24 @@
     </template>
 
     <c-grid class="-browser" style="grid-template-columns: auto 1fr; grid-template-rows: auto auto 1fr" >
-      <span class="-col1 -row1 -dir"> Directory: </span>
-      <span class="-col2 -row1 -dir"> {{ directory() }} </span>
+      <span class="-dir col-start-1 row-start-1"> Directory: </span>
+      <span class="-dir col-start-2 row-start-1"> {{ directory() }} </span>
 
-      <span  class="-col1 -row2 -file" > File: </span>
-      <input class="-col2 -row2 -file" ref="fileentry" type="text" :value="r.filename"
+      <span  class="-file col-start-1 row-start-2" > File: </span>
+      <input class="-file col-start-2 row-start-2" ref="fileentry" type="text" :value="r.filename"
 	     @keydown.enter="fileentry_enter ($event)" @change="fileentry_change()"
 	     @keydown.down="Util.keydown_move_focus ($event)" autofocus >
 
-      <span class="-col1 -row3 -places" > Places </span>
-      <b-folderview class="-col2 -row3" ref="folderview" :entries="r.entries"
+      <span class="col-start-1 row-start-3" > Places </span>
+      <b-folderview class="col-start-2 row-start-3" ref="folderview" :entries="r.entries"
 		    @select="entry_select ($event)" @click="entry_click ($event)" />
     </c-grid>
 
     <slot></slot>
     <template v-slot:footer>
       <h-flex>
-	<button v-if="button" @click="emit_select()" > {{ button }} </button>
-	<button @click="emit_close()" > Close </button>
+	<button class="button-xl" v-if="button" @click="emit_select()" > {{ button }} </button>
+	<button class="button-xl" @click="emit_close()" > Close </button>
       </h-flex>
     </template>
   </b-dialog>
@@ -104,13 +104,14 @@
 <script>
 import * as Envue from './envue.js';
 import * as Util from "../util.js";
+import { get_uri } from '../dom.js';
 import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
 
 function enhance_entries (origentries)
 {
   const entries = [];
   for (let oentry of origentries) {
-    const entry = Object.create (oentry, { label: { value: displaybasename (oentry.uri) }, });
+    const entry = Object.create (oentry, { label: { value: displaybasename (get_uri (oentry)) }, });
     entries.push (entry);
   }
   return Object.freeze (entries);
@@ -147,7 +148,7 @@ class FileDialog extends Envue.Component {
   }
   ctrl_l = "Ctrl+KeyL";
   directory() {
-    let path = this.r?.folder?.uri || '/';
+    let path = get_uri (this.r?.folder) || '/';
     path = path.replace (/^file:\/+/, '/');
     return displayfs (path);
   }
@@ -155,11 +156,11 @@ class FileDialog extends Envue.Component {
     // strip file:/// prefix if any
     let path = pathfragment.replace (/^file:\/+/, '/'); // strip protocol
     // canonify and make absolute
-    const root = (this.r.folder?.uri || "/").replace (/^file:\/+/, '/'); // strip protocol
+    const root = (get_uri (this.r.folder) || "/").replace (/^file:\/+/, '/'); // strip protocol
     if (this.select_dir && path && !path.endsWith ("/"))
       path += "/";
     const res = await this.crawler.canonify (root, path, constraindirs, false);
-    path = res.uri.replace (/^file:\/+/, "/");
+    path = get_uri (res).replace (/^file:\/+/, "/");
     // handle directory vs file path
     if (!path.endsWith ('/') && // path is file (maybe notexisting)
 	this.$vm.ext)           // ensure extension
@@ -184,10 +185,10 @@ class FileDialog extends Envue.Component {
     await this.crawler.assign (path);
   }
   file_navigate (newpath) {
-    // force Vue to update <input/> even if r.folder.uri stays the same
+    // force Vue to update <input/> even if get_uri (r.folder) stays the same
     if (this.$vm.$refs?.folderview)
       this.$vm.$refs?.folderview.clear_entries(); // performance hack
-    this.r.entries = []; // this.r.folder.uri = '⥁';
+    this.r.entries = []; // get_uri (this.r.folder) = '⥁';
     // update paths
     return this.assign_path (newpath); // async
   }
@@ -205,12 +206,12 @@ class FileDialog extends Envue.Component {
       await this.file_navigate (this.$vm.$refs.fileentry.value);
   }
   async entry_select (entry) {
-    if (entry.type == Ase.ResourceType.FILE && entry?.uri)
-      this.r.filename = entry?.uri.replace (/^.*\//, ''); // basename
+    if (entry.type == Ase.ResourceType.FILE && get_uri (entry))
+      this.r.filename = get_uri (entry).replace (/^.*\//, ''); // basename
   }
   async entry_click (entry) {
-    if (entry?.uri)
-      await this.emit_select (() => this.canonify_input (entry.uri), true);
+    if (get_uri (entry))
+      await this.emit_select (() => this.canonify_input (get_uri (entry)), true);
   }
   emit_select (pathfunc = undefined, navigate_to_dir = false) {
     if (this.in_async_select)

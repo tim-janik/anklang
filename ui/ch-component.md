@@ -26,6 +26,22 @@ which always extends [HTMLElement](https://developer.mozilla.org/en-US/docs/Web/
 [HTML element interfaces](https://developer.mozilla.org/en-US/docs/Web/API/HTML_DOM_API#html_element_interfaces_2).
 
 
+## Guidelines for Web Components
+
+Guidelines capturing past experiences:
+
+- Create a component to encapsulate possible state and specific UI/UX behavior or API functionality.
+
+- Avoid adding components purely for layout or style reasons. Horizontal or vertical [flex](https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Flexbox) boxes, [grid](https://developer.mozilla.org/en-US/docs/Learn/CSS/CSS_layout/Flexbox) layout, dialog and menu styling are much better addressed with CSS classes and are more often subject to change than encapsulated behavior.
+
+- Use CSS utility classes instead of custom or adhoc styles that have to be given a dedicated name. [TailwindCSS](https://tailwindcss.com/docs/utility-first#maintainability-concerns) gives good guidance here.
+
+- Use simple custom element components if that suffices, components that do not expect external children can get away without a shadow DOM.
+
+- Components with external children need [`<slot/>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/slot) elements, these require shadow DOM handling as provided by LitElement, use it via our [LitComponent](https://tim-janik.github.io/docs/anklang/little_8js.html#LitComponent) class.
+
+- Focussable elements **MUST NOT** be buried inside the shadow DOM tree. It is perfectly fine to add focussable elements as (external) children to a ready-made web component that has a shadow DOM with `<slot/>` elements, but proper focus handling, focus related styling, keyboard and focus chain handling is not reliably possible when focussable elements are **inside the shadow DOM**, instead of staying part of the light DOM by adding them into `<slot/>` elements.
+
 ## Legacy Vue Components
 
 Some components are still implemented via Vue and are slowly phased out.

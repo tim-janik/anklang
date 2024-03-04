@@ -22,10 +22,32 @@ import * as Colors from './colors.js';
 // == TailwindCSS ==
 const tailwind_config = {
   content: [
-    'ui/*.html', 'ui/*.js', 'ui/*.css', 'ui/*.scss',
-    'ui/b/*.js', 'ui/b/*.vue',
+    'ui/*.html', 'ui/*.*js', 'ui/*.*css',
+    'ui/b/*.*js', 'ui/b/*.vue',
   ],
-  theme: {},
+  theme: {
+    borderColor: ({ theme }) => ({
+      ...theme ('colors'),
+      DEFAULT: 'var(--tw-border-default-color)', // theme ('colors.gray.200', 'currentColor'),
+    }),
+    extend: {
+      colors: {
+        dim: {
+	  50:  '#f9f9ff',
+	  100: '#f3f3fe',
+	  200: '#e3e3ef',
+	  300: '#c7c7d2',
+	  400: '#a0a0aa',
+	  500: '#76767f',
+	  600: '#515159',
+	  700: '#36363e',
+	  800: '#26262e',
+	  900: '#16161e',
+	  950: '#07060f',
+	},
+      },
+    },
+  },
 };
 
 // == Plugins ==
@@ -222,7 +244,7 @@ async function test_css (verbose)
   test_rules[`--text-color: ${'#ABCDEF'};`] = '--text-color:#ABCDEF;';
   const input = Object.keys (test_rules).join ('\n');
   console.log ('  CHECK   ', __filename);
-  const result = await postcss_process (input, 'test_css()');
+  const result = await postcss_process (input, 'test.css');
   if (verbose >= 2)
     console.log (__filename + ': result:', '\n' + result);
   let last = -1, errors = 0;

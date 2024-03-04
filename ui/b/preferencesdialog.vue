@@ -22,7 +22,7 @@
     <b-objecteditor class="b-preferencesdialog-fed" ref="fedobject" :value="proplist" :augment="augment" >
     </b-objecteditor>
     <template v-slot:footer>
-      <div><button autofocus @click="close_button_click" > Close </button></div>
+      <div><button class="button-xl" autofocus @click="close_button_click" > Close </button></div>
     </template>
   </b-dialog>
 </template>

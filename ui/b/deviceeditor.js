@@ -48,9 +48,9 @@ const HTML = (t, d) => html`
 </c-grid>
 <b-contextmenu ${ref (h => t.deviceeditorcmenu = h)} id="g-deviceeditorcmenu" .activate=${t.activate.bind (t)} .isactive=${t.isactive.bind (t)} >
   <b-menutitle> Device </b-menutitle>
-  <b-menuitem fa="plus-circle"      uri="add-device" >      Add Device		</b-menuitem>
-  <b-menuitem fa="times-circle"     uri="delete-device" >   Delete Device		</b-menuitem>
-  <b-menuitem mi="video_settings"   uri="toggle-gui" >      Toggle GUI		</b-menuitem>
+  <button fa="plus-circle"      uri="add-device" >      Add Device		</button>
+  <button fa="times-circle"     uri="delete-device" >   Delete Device		</button>
+  <button mi="video_settings"   uri="toggle-gui" >      Toggle GUI		</button>
 </b-contextmenu>
 `;
 

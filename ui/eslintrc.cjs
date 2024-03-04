@@ -29,7 +29,6 @@ module.exports = {
     assert: false,
     log: false,
     host: false,
-    start_view_transition: false,
     sfc_template: false },
 
   rules: {
@@ -79,6 +78,7 @@ module.exports = {
     'vue/no-v-html': OFF,
     'vue/multi-word-component-names': OFF,
     'vue/first-attribute-linebreak': OFF,
+    'tailwindcss/no-custom-classname': OFF,
     quotes: [ OFF, "single" ]
   },
 

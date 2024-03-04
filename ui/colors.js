@@ -6,7 +6,7 @@ const require = globalThis.require || (await import ("module")).createRequire (i
 
 const CssColor = require ('css-color-converter'); // browserified or node_modules
 
-import * as Z from './zcam-js.mjs';
+import * as Z from 'zcam-js';
 const { clamp } = Z;
 
 export const color_names = {
