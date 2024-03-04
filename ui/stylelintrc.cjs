@@ -1,32 +1,53 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 module.exports = {
-  "rules": {
-    "alpha-value-notation": null,
-    "at-rule-empty-line-before": null,
-    "block-no-empty": null,
-    "color-function-notation": null,
-    "color-hex-length": null,
-    "custom-property-empty-line-before": null,
-    "declaration-block-no-shorthand-property-overrides": null,
-    "declaration-block-single-line-max-declarations": null,
-    "declaration-empty-line-before": null,
-    "font-family-name-quotes": null,
-    "length-zero-no-unit": null,
-    "no-descending-specificity": null,
-    "no-duplicate-selectors": null,
-    "no-irregular-whitespace": null,
-    "number-max-precision": null,
-    "property-no-vendor-prefix": null,
-    "rule-empty-line-before": null,
-    "shorthand-property-no-redundant-values": null,
-    "selector-class-pattern": [
-      "^([a-z-][a-z0-9]*)(-[a-z0-9]+)*$",
-      {
-	"message": "Expected class selector to be kebab-case alike"
-      }
-    ]
+  extends: [
+    "stylelint-config-standard-scss", // "stylelint-config-standard",
+  ],
+  plugins: ["stylelint-scss"],
+  overrides: [ {
+    files: ["*.*css", "**/*.*css"],
+    customSyntax: "postcss-scss",
+    } ],
+  rules: {
+    'alpha-value-notation': null,
+    'at-rule-empty-line-before': null,
+    'at-rule-no-unknown': null, // [ true, { ignoreAtRules: [ 'tailwind', 'apply', 'variants', 'responsive', 'screen' ] },
+    'block-no-empty': null,
+    'color-function-notation': null,
+    'color-hex-length': null,
+    'comment-empty-line-before': null,
+    'comment-whitespace-inside': null,
+    'custom-property-empty-line-before': null,
+    'declaration-block-no-shorthand-property-overrides': null,
+    'declaration-block-single-line-max-declarations': null,
+    'declaration-empty-line-before': null,
+    'font-family-name-quotes': null,
+    'import-notation': null,
+    'length-zero-no-unit': null,
+    'no-descending-specificity': null,
+    'no-duplicate-selectors': null,
+    'no-invalid-position-at-import-rule': null,
+    'no-irregular-whitespace': null,
+    'number-max-precision': null,
+    'property-no-vendor-prefix': null,
+    'rule-empty-line-before': null,
+    'scss/at-if-closing-brace-newline-after': null,
+    'scss/at-if-closing-brace-space-after': null,
+    'scss/at-import-partial-extension': null,
+    'scss/at-mixin-argumentless-call-parentheses': null,
+    'scss/at-rule-no-unknown':     [ true, { ignoreAtRules: [ 'tailwind', 'apply', 'variants', 'responsive', 'screen' ] } ],
+    'scss/dollar-variable-colon-space-after': null,
+    'scss/dollar-variable-empty-line-before': null,
+    'scss/dollar-variable-empty-line-before': null,
+    'scss/dollar-variable-pattern': null,
+    'scss/double-slash-comment-empty-line-before': null,
+    'scss/double-slash-comment-whitespace-inside': null,
+    'scss/no-global-function-names': null,
+    'scss/operator-no-unspaced': null,
+    'scss/selector-no-redundant-nesting-selector': true,
+    'selector-class-pattern': [ "^([a-z\\][a-z\\0-9]*)(-[a-z\\0-9]+)*$", { message: 'Expected class selector to be kebab-case alike' } ],
+    'shorthand-property-no-redundant-values': null,
+    'value-keyword-case': null,
   },
-  "extends": "stylelint-config-standard"
 };
-
