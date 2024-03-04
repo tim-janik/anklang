@@ -188,7 +188,7 @@ export function list_focusables (element)
 class FocusGuard {
   defaults() { return {
     updown_focus: true,
-    updown_cycling: false,
+    updown_cycling: true,
     focus_root_list: [],
     last_focus: undefined,
   }; }
