@@ -128,7 +128,7 @@ $>/.ui-reload-stamp: $(ui/b/vuejs.targets)
 # == vue-styles.css ==
 ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.vuecss)
 $(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
-$>/ui/vue-styles.css: $(ui/b/vuecss.targets) ui/Makefile.mk
+$>/ui/vue-styles.css: $(ui/b/vuecss.targets) ui/stylelintrc.cjs ui/Makefile.mk
 	$(QGEN)
 	$Q echo '@charset "UTF-8";'					>  $@.vuecss
 	$Q echo "@import 'mixins.scss';"				>> $@.vuecss
@@ -137,6 +137,8 @@ $>/ui/vue-styles.css: $(ui/b/vuecss.targets) ui/Makefile.mk
 		|| exit 1 ; done
 	$Q node ui/postcss.js --test $V # CHECK transformations
 	$Q cd $>/ui/ && node $(abspath ui/postcss.js) --map -Dthemename_scss=dark.scss -I ../../ui/ -i $(@F).vuecss $(@F).tmp
+	-$Q cd $>/ && $(abspath node_modules/.bin/stylelint) $${INSIDE_EMACS:+-f unix} -c $(abspath ui/stylelintrc.cjs) ui/b/*.vuecss \
+	|& sed -r 's|/[^ :]*/(ui/b/[^ /:]+)\.vuecss:|\1.vue:|'
 	$Q $(RM) $@.vuecss && mv $@.tmp $@
 $>/.ui-reload-stamp: $>/ui/vue-styles.css
 
@@ -185,7 +187,7 @@ UI/GLOBALSCSS_IMPORTS += $>/ui/spinner.scss
 # == ui/global.css ==
 ui/b/js.files := $(wildcard ui/b/*.js)
 ui/tailwind.inputs := $(wildcard ui/*.html ui/*.css ui/*.scss ui/*.js ui/b/*.js ui/b/*.vue $(ui/b/js.files))
-$>/ui/global.css: ui/global.scss $(ui/tailwind.inputs) ui/jsextract.js $(UI/GLOBALSCSS_IMPORTS)
+$>/ui/global.css: ui/global.scss $(ui/tailwind.inputs) ui/jsextract.js ui/stylelintrc.cjs $(UI/GLOBALSCSS_IMPORTS)
 	$(QGEN)
 	$Q $(CP) $< $>/ui/global.scss
 	$Q node ui/jsextract.js -O $>/ui/b/ $(ui/b/js.files)		# do node ui/jsextract.js $$f -O "$>/$${f%/*}"
@@ -193,21 +195,12 @@ $>/ui/global.css: ui/global.scss $(ui/tailwind.inputs) ui/jsextract.js $(UI/GLOB
 		echo "@import '../$$f""css';" >> $>/ui/global.scss || exit 1 ; done
 	$Q node ui/postcss.js --test $V # CHECK transformations
 	$Q node ui/postcss.js --map -Dthemename_scss=dark.scss -I ui/ $>/ui/global.scss $@.tmp
+	-$Q node_modules/.bin/stylelint $${INSIDE_EMACS:+-f unix} -c ui/stylelintrc.cjs $(wildcard ui/*.*css)
+	-$Q cd $>/ && $(abspath node_modules/.bin/stylelint) $${INSIDE_EMACS:+-f unix} -c $(abspath ui/stylelintrc.cjs) ui/b/*.jscss \
+	|& sed -r 's|/[^ :]*/(ui/b/[^ /:]+)\.jscss:|\1.js:|'
 	$Q rm -f $>/ui/*.jscss $>/ui/b/*.jscss $>/ui/global.scss
 	$Q mv $@.tmp $@
 $>/.ui-reload-stamp: $>/ui/global.css
-
-# == stylelint ==
-ui/stylelint.files = $(ui/b/scss2css.targets) $(ui/b/css.targets) $>/ui/global.css $>/ui/vue-styles.css
-$>/.stylelint.done: $(ui/stylelint.files) ui/stylelintrc.cjs node_modules/.npm.done
-	$(QECHO) RUN stylelint
-	-$Q cd $>/ && ../node_modules/.bin/stylelint $${INSIDE_EMACS:+-f unix} -c ../ui/stylelintrc.cjs $(ui/stylelint.files:$>/%=%) \
-	&& touch $@
-$>/.ui-reload-stamp: $>/.stylelint.done
-stylelint: node_modules/.npm.done
-	$Q rm -f $>/.stylelint.done
-	$Q $(MAKE) $>/.stylelint.done
-.PHONY: stylelint
 
 # == all-components.js ==
 $>/ui/all-components.js: ui/Makefile.mk $(ui/b/vuejs.targets) $(wildcard ui/b/*)	| $>/ui/
@@ -312,8 +305,11 @@ $>/.ui-reload-stamp: $>/.tscheck.done
 CLEANDIRS += $>/tscheck/
 
 # == ui/lint ==
-ui/lint: tscheck eslint stylelint
+ui/lint: 									| node_modules/.npm.done
 	$(QGEN)
+	$(MAKE) --no-print-directory NPMBLOCK=y -j1 \
+		tscheck eslint $>/ui/global.css
+	-$Q node_modules/.bin/stylelint $${INSIDE_EMACS:+-f unix} -c ui/stylelintrc.cjs $(wildcard ui/*.*css ui/b/*.*css)
 	-$Q { TCOLOR=--color=always ; tty -s <&1 || TCOLOR=; } \
 	&& grep $$TCOLOR -nE '(/[*/]+[*/ ]*)?(FI[X]ME).*' -r ui/ --exclude '*.js'
 	$Q misc/synsmell.py --separate-body=0 ui/*js ui/b/*.js
