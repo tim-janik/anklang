@@ -53,6 +53,7 @@ class BTextInput extends LitComponent {
   {
     super();
     this.value = '';
+    this.prop = null;
     this.placeholder = '';
     this.readonly = false;
   }
