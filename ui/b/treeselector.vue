@@ -84,6 +84,7 @@ export default {
   provide: Util.fwdprovide ('b-treeselector.treedata',  // context for treeselector descendants
 			    [ 'defaultcollapse', ]),
   methods: {
+    get_uri (e) { return get_uri (e); }, // allow get_uri() in <template/>
     dummy (method, e) {
     },
     focus_updown (event) {
