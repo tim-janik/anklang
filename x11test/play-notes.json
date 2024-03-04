@@ -256,10 +256,10 @@
             "target": "main",
             "selectors": [
                 [
-                    "push-button:nth-of-type(4) i"
+                    "push-button:nth-of-type(4) b-icon"
                 ],
                 [
-                    "xpath///*[@id=\"b-app\"]/c-grid/h-flex[1]/h-flex/b-playcontrols/b-buttonbar/push-button[4]/b-icon/i"
+                    "xpath///*[@id=\"b-app\"]/c-grid/h-flex[1]/h-flex/b-playcontrols/b-buttonbar/push-button[4]/b-icon"
                 ],
                 [
                     "pierce/push-button:nth-of-type(4) i"
