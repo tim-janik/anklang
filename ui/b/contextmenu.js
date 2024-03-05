@@ -237,7 +237,7 @@ class BContextMenu extends LitComponent {
   {
     this.integrate_children();
     super.connectedCallback();
-    const observe = () => this._observer.observe (this, { childList: true, subtree: true });
+    const observe = () => this._observer.observe (this, { childList: true, subtree: true, attributes: true });
     this._observer = new MutationObserver (Util.debounce (() => {
       this._observer.disconnect();
       this.integrate_children();
@@ -403,7 +403,7 @@ class BContextMenu extends LitComponent {
     let e;
     while ( (e = w.nextNode()) ) {
       /**@type{any}*/ const any = e;
-      const keymap_entry = any._keymap_entry;
+      const keymap_entry = any['_keymap_entry'];
       if (keymap_entry instanceof Util.KeymapEntry)
 	this.keymap_.push (keymap_entry);
     }
@@ -466,12 +466,12 @@ function integrate_button (contextmenu)
       kbd.innerText = kbds;
     }
     // hotkey
-    if (!this._keymap_entry)
-      this._keymap_entry = new Util.KeymapEntry ('', this.click.bind (this), this);
+    if (!this['_keymap_entry'])
+      this['_keymap_entry'] = new Util.KeymapEntry ('', this.click.bind (this), this);
     const menudata = provide_menudata (this);
     const shortcut = Kbd.shortcut_lookup (menudata.mapname, aria_label, kbds);
-    if (shortcut != this._keymap_entry.key)
-      this._keymap_entry.key = shortcut;
+    if (shortcut != this['_keymap_entry'].key)
+      this['_keymap_entry'].key = shortcut;
     kbd.innerText = Util.display_keyname (shortcut);
   } else
     this.querySelector ('kbd')?.remove();
