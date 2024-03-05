@@ -12,15 +12,13 @@ import * as Util from "../util.js";
 // == STYLE ==
 JsExtract.scss`
 b-statusbar {
-  display: flex; justify-content: space-between; white-space: nowrap;
-  margin: 0; padding: 0 $b-statusbar-field-spacing;
-  user-select: none;
+  @apply hflex m-0 h-6 select-none justify-between whitespace-nowrap px-4 py-0;
   .b-statusbar-field {
     display: flex; flex-wrap: nowrap; flex-shrink: 0; flex-grow: 0; white-space: nowrap;
   }
   .b-statusbar-text {
-    display: inline-block; overflow-y: visible; //* avoid scrolling */
-    overflow-x: hidden; white-space: nowrap;
+    display: inline-block; overflow: hidden visible; //* avoid scrolling */
+    white-space: nowrap;
     flex-shrink: 1; flex-grow: 1;
     margin-left: calc($b-statusbar-field-spacing * 2);
   }
