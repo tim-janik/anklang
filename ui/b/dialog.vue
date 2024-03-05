@@ -92,7 +92,7 @@ $duration: 0.3s;
     }
   }
   &.-fade-enter-from, &.-fade-leave-to {
-    & { opacity: 0; }
+    opacity: 0;
     .b-dialog { transform: scale(0.1); }
   }
 }
