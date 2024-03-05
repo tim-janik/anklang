@@ -18,9 +18,8 @@ import { LitComponent, html, JsExtract, docs } from '../little.js';
 // == STYLE ==
 JsExtract.scss`
 b-menurow {
-  display: inline-flex; flex: 0 0 auto; flex-flow: row nowrap;
-  text-align: center; justify-content: center; align-items: baseline;
-  @apply m-0;
+  @apply m-0 flex flex-initial items-baseline justify-center text-center;
+  flex-flow: row nowrap;
 }`;
 
 // == SCRIPT ==
