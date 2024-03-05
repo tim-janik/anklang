@@ -1432,7 +1432,7 @@ static void
 host_rescan (const clap_host_t *host, uint32_t flag)
 {
   CDEBUG ("%s: %s", clapid (host), __func__);
-  // FIXME: implement host_rescan, this is a shorthand for all-params-changed
+  // TODO: implement host_rescan, this is a shorthand for all-params-changed
 }
 
 static const clap_host_audio_ports host_ext_audio_ports = {
