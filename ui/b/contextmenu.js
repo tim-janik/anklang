@@ -64,8 +64,7 @@ dialog.b-contextmenu {
   color: $b-menu-foreground;
   background-color: $b-menu-background; border: 1px outset zmod($b-menu-background, Jz-=20%);
   box-shadow: $b-menu-box-shadow;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden auto;
   &[open], &.animating { display: flex; }
   [disabled], [disabled] * { pointer-events: none; }
 }
@@ -90,7 +89,7 @@ b-contextmenu button {
 
   &[turn] {
     flex-direction: column; align-items: center;
-    & > b-icon:first-child { margin: 0 0 $b-menu-spacing 0; }
+    > b-icon:first-child { margin: 0 0 $b-menu-spacing 0; }
   }
 }
 b-contextmenu b-menurow button {
