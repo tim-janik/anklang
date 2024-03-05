@@ -425,6 +425,38 @@ class BContextMenu extends LitComponent {
 }
 customElements.define ('b-contextmenu', BContextMenu);
 
+/// Render and return a cached reusable <b-contextmenu/> from `make_lithtml(target,data)`.
+export function render_contextmenu (b_contextmenu, make_lithtml, target = undefined, data = undefined)
+{
+  let cm = !b_contextmenu ? null : b_contextmenu['.cm'];
+  if (!cm) {
+    cm = { target, contextmenu: null, proxy: null, div: document.createElement ('div') };
+    cm.proxy = new Proxy (cm, {
+      get (cm, prop, receiver) // bind methods to latest render target
+      {
+	const value = cm.target[prop];
+	return value instanceof Function ? value.bind (cm.target) : value;
+      },
+    });
+    cm.div.setAttribute ('style', "position:absolute;width:0;height:0;border:0;visibility:hidden;");
+    cm.div.toggleAttribute ('inert', true);
+  } else {
+    b_contextmenu['.cm'] = null;
+    delete b_contextmenu['.cm'];
+    cm.contextmenu = null;
+    cm.target = target;
+  }
+  // https://lit.dev/docs/libraries/standalone-templates/#render-options
+  render (make_lithtml.apply (cm.proxy, [ cm.proxy, data ]), cm.div, { host: cm.proxy });
+  cm.contextmenu = cm.div.querySelector ('b-contextmenu');
+  if (cm.contextmenu) {
+    cm.contextmenu['.cm'] = cm;
+    if (!cm.div.parentElement)
+      document.body.appendChild (cm.div);
+    return cm.contextmenu;
+  }
+  throw new ReferenceError ("lit-html construct failed to create <b-contextmenu/>");
+}
 
 /** Integrate `b-contextmenu button` into contextmenu handling.
  * @this{HTMLElement}
