@@ -46,7 +46,7 @@ b-knob {
   .b-knob-trf {
     will-change: transform; /* request GPU texture for fast transforms */
   }
-  & svg.b-knob-sizer {
+  svg.b-knob-sizer {
     //* empty SVG element, used by .b-knob to determine width from height from viewBox */
     position: relative; //* participate in layout space allocation */
   }
