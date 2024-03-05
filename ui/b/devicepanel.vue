@@ -41,7 +41,7 @@
       align-self: stretch;
       padding-top: $scrollbar-height;
       padding-bottom: 0;
-      & > * {
+      > * {
 	flex-grow: 0;
       }
       .b-more {
