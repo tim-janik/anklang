@@ -66,23 +66,21 @@ $b-boxshadow-color:		fade(#000000, 30%) !default;
 
 // == Scrollbars ==
 @mixin firefox-scrollbars() {
-  & { scrollbar-color: $b-scrollbar-dd $b-scrollbar-bg; }
-  & :hover,
+  scrollbar-color: $b-scrollbar-dd $b-scrollbar-bg;
+  :hover,
   &:hover { scrollbar-color: $b-scrollbar-fg $b-scrollbar-bg; }
 }
 @mixin chrome-scrollbars() {
-  & {
-    ::-webkit-scrollbar-button { display: none; }
-    ::-webkit-scrollbar-track, &::-webkit-scrollbar-track-piece, ::-webkit-scrollbar-corner,
-    ::-webkit-scrollbar {
-      border: none; box-shadow: none;
-      background: #000;
-    }
+  ::-webkit-scrollbar-button { display: none; }
+  ::-webkit-scrollbar-track, &::-webkit-scrollbar-track-piece, ::-webkit-scrollbar-corner,
+  ::-webkit-scrollbar {
+    border: none; box-shadow: none;
+    background: #000;
   }
-  & ::-webkit-scrollbar-thumb {
+  ::-webkit-scrollbar-thumb {
     background: $b-scrollbar-dd; border-radius: 5px;
   }
-  & :hover,
+  :hover,
   &:hover {
     ::-webkit-scrollbar-thumb {
       background: $b-scrollbar-fg; background: linear-gradient(zmod($b-scrollbar-fg, Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%));
@@ -90,10 +88,10 @@ $b-boxshadow-color:		fade(#000000, 30%) !default;
   }
 }
 @mixin scrollbar-hover-area() {
-  & ::-webkit-scrollbar-thumb {
+  ::-webkit-scrollbar-thumb {
     background: $b-scrollbar-dd; border-radius: 5px;
   }
-  & :hover,
+  :hover,
   &:hover {
     ::-webkit-scrollbar-thumb {
       background: $b-scrollbar-fg;
@@ -109,7 +107,6 @@ $b-boxshadow-color:		fade(#000000, 30%) !default;
     background: rgb(0 0 0 / 0%);
     border: none; box-shadow: none;
   }
-  & { // firefox
-    scrollbar-color: $b-scrollbar-dd rgb(0 0 0 / 0%);
-  }
+  // firefox
+  scrollbar-color: $b-scrollbar-dd rgb(0 0 0 / 0%);
 }
