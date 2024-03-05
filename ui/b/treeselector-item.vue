@@ -8,7 +8,7 @@
 <style lang="scss">
   .b-treeselector-item {
     user-select: none;
-    & > span div:focus { outline: $b-focus-outline; }
+    > span div:focus { outline: $b-focus-outline; }
     b-contextmenu & > span div:focus {
       background-color: $b-menu-active-bg; color: $b-menu-active-fg; outline: none;
     }
