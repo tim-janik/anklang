@@ -27,7 +27,7 @@
       height: 45em; max-height: 95%;
       overflow-y: hidden;
     }
-    & > * { //* avoid visible overflow for worst-case resizing */
+    > * { //* avoid visible overflow for worst-case resizing */
       overflow-wrap: break-word;
       min-width: 0; }
     .-body,
@@ -35,8 +35,7 @@
       max-height: 100%; flex-shrink: 1; flex-grow: 1; overflow-y: hidden;
     }
     c-grid {
-      column-gap: 10px;
-      row-gap: 5px;
+      gap: 5px 10px;
     }
     span.-dir {
     }
@@ -57,7 +56,7 @@
 
       &::selection { background: #2d53c4; }
     }
-    & input.-file {
+    input.-file {
       /* Unfortunately chrome <INPUT/> causes re-layout on every value change, which
        * can badly affect editing performance for complex/large document setups:
        *   https://bugs.chromium.org/p/chromium/issues/detail?id=1116001
