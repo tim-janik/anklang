@@ -51,7 +51,7 @@ b-choiceinput {
   }
   b-objecteditor &.b-choice {
     text-align: left;
-    justify-content: left; text-align: left;
+    justify-content: left;
     padding: 0;
     flex: 1 1 auto;
   }
