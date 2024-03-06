@@ -3,11 +3,13 @@
 
 /** @class BMenuRow
  * @description
- * The <b-menurow> element can contain [BMenuItem](menuitem_8js.html#BMenuItem)
- * elements, that are packed horizontally inside a menurow.
+ * The <b-menurow> element can contain `<button/>` menu items of a [BContextMenu](#BContextMenu),
+ * that are packed horizontally inside a menurow.
+ *
  * ### Props:
  * *noturn*
  * : Avoid turning the icon-label direction in menu items to be upside down.
+ *
  * ### Slots:
  * *default*
  * : All contents passed into this slot will be rendered as contents of this element.
