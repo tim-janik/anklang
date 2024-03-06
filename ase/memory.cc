@@ -362,7 +362,7 @@ Arena::allocate (uint32 length, std::nothrow_t) const
   Extent32 ext { 0, length };
   if (fma->alloc_ext (ext))
     return Block { fma->memory() + ext.start, ext.length };
-  // FIXME: try growing
+  // TODO: does it makes sense to try growing here?
   return zeroblock;
 }
 

@@ -1,7 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 'use strict';
 
-// Check if a particular font is present (and deviates from the fallback font)
+/// Check if a particular font is present (and deviates from the fallback font)
 export function font_family_loaded (options = {})
 {
   const defaults = { font_family: 'emoji', text: 'abc_0123' };

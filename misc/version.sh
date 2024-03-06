@@ -28,4 +28,4 @@ read VHASH VDESCRIBE VDATE <<<' $Format: %H %(describe:match=v[0-9]*.[0-9]*.[0-9
 VERSIONNUMBER=$(echo "${VDESCRIBE#v}" |
 		  sed -e 's/-g[0-9a-f]\+$//i' \
 		      -e 's/-\([0-9]\+\)$/.dev\1/')	# strip ^v, -gCOMMIT, enforce .devNN
-echo "$VERSIONNUMBER" "$VHASH" "$VDATE"
+echo "$VERSIONNUMBER" "${VHASH:0:16}" "$VDATE"

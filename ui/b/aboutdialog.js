@@ -6,7 +6,7 @@ import * as Util from "../util.js";
 
 // == HTML ==
 const HTML = (t, d) => html`
-<dialog class="floating-dialog" ${ref (h => t.dialog = h)} @cancel=${t.close_dialog} @pointerdown=${t.backdrop_click}>
+<dialog class="floating-dialog [&:not([open])]:hidden" ${ref (h => t.dialog = h)} @cancel=${t.close_dialog} @pointerdown=${t.backdrop_click}>
   <div class="dialog-header">
     About ANKLANG
   </div>
@@ -19,7 +19,7 @@ const HTML = (t, d) => html`
 </dialog>`;
 const INFOS_HTML = (t, d) =>
   t.info_pairs.map (p => html`
-    <span class="min-w-[15em] col-start-1 pr-2 text-right align-top font-bold"> ${p[0]} </span>
+    <span class="col-start-1 min-w-[15em] pr-2 text-right align-top font-bold"> ${p[0]} </span>
     <span class="col-start-2 whitespace-pre-wrap break-words"> ${p[1]} </span>
   `);
 
@@ -51,15 +51,19 @@ export class BAboutDialog extends LitComponent {
   }
   updated (changed_props)
   {
+    let info_promise;
     if (changed_props.has ('shown') && this.shown) {
       const load_infos = async () => {
 	this.info_pairs = await about_pairs();
 	this.requestUpdate(); // showModal with info_pairs
       };
-      load_infos();
+      info_promise = load_infos();
     }
     if (this.shown && !this.dialog.open && this.info_pairs.length > 0) {
-      this.dialog.showModal();
+      document.startViewTransition (async () => {
+	this.dialog.showModal();
+	await Promise.all ([this.updateComplete, info_promise]);
+      });
     }
     if (!this.shown && this.dialog.open)
       this.close_dialog();

@@ -3,11 +3,13 @@
 
 /** @class BMenuRow
  * @description
- * The <b-menurow> element can contain [BMenuItem](menuitem_8js.html#BMenuItem)
- * elements, that are packed horizontally inside a menurow.
+ * The <b-menurow> element can contain `<button/>` menu items of a [BContextMenu](#BContextMenu),
+ * that are packed horizontally inside a menurow.
+ *
  * ### Props:
  * *noturn*
  * : Avoid turning the icon-label direction in menu items to be upside down.
+ *
  * ### Slots:
  * *default*
  * : All contents passed into this slot will be rendered as contents of this element.
@@ -18,9 +20,8 @@ import { LitComponent, html, JsExtract, docs } from '../little.js';
 // == STYLE ==
 JsExtract.scss`
 b-menurow {
-  display: inline-flex; flex: 0 0 auto; flex-flow: row nowrap;
-  text-align: center; justify-content: center; align-items: baseline;
-  @apply m-0;
+  @apply m-0 flex flex-initial items-baseline justify-center text-center;
+  flex-flow: row nowrap;
 }`;
 
 // == SCRIPT ==

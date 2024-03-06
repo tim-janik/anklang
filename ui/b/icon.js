@@ -34,8 +34,7 @@ import * as Dom from "../dom.js";
 JsExtract.scss`
 b-icon { // not using shadow-root here
   display: inline-flex !important;
-  justify-content: center;
-  align-content: center;
+  place-content: center center;
   flex-wrap: wrap; /* needed for align-content:center */
   &[hflip]		{ transform: scaleX(-1); }
   &[vflip]		{ transform: scaleY(-1); }

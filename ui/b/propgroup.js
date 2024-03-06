@@ -39,10 +39,10 @@ b-propgroup {
       }
     }
     //* emulate: .b-propgroup-row { gap: ...; } */
-    & > *:not(:last-child) { margin-right: 7px; }
+    > *:not(:last-child) { margin-right: 7px; }
   }
   //* emulate: .b-propgroup { gap: ...; } */
-  & > *:not(:last-child) { margin-bottom: 5px; }
+  > *:not(:last-child) { margin-bottom: 5px; }
   .b-propgroup-big {
     /*max-height: 2em;*/
   }

@@ -92,7 +92,7 @@ $duration: 0.3s;
     }
   }
   &.-fade-enter-from, &.-fade-leave-to {
-    & { opacity: 0; }
+    opacity: 0;
     .b-dialog { transform: scale(0.1); }
   }
 }
@@ -102,7 +102,7 @@ $duration: 0.3s;
 <template>
   <transition name="-fade">
     <div class="b-dialog-modalshield" v-if='shown' v-show='done_resizing()' @keydown="keydown" >
-      <v-flex class="b-dialog" @click.stop ref='dialog' >
+      <v-flex class="b-dialog floating-dialog" @click.stop ref='dialog' >
 
 	<h-flex class="-header">
 	  <slot name="header">

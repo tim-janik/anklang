@@ -4,13 +4,20 @@
 /** @class BContextMenu
  * @description
  * The <b-contextmenu> element implements a modal popup that displays contextmenu choices,
- * see [BMenuItem](menuitem_8js.html#BMenuItem), [BMenuRow](menurow_8js.html#BMenuRow),
- * [BMenuTitle](menutitle_8js.html#BMenuTitle) and [BMenuSeparator](menuseparator_8js.html#BMenuSeparator).
- * Using the `popup()` method, the menu can be popped up from the parent component,
- * and setting up a `.activate` handler can be used to handle menuitem actions. Example:
+ * based on `<button uri=... ic=... kbd=.../>` elements, see also [BMenuRow](#BMenuRow),
+ * [BMenuTitle](#BMenuTitle) and [BMenuSeparator](#BMenuSeparator).
+ * Menu actions are identified via URI attributes, they can be activated by calling a handler
+ * which is assigned via the `.activate` property, or the actions can be checked for being disabled
+ * by calling a handler which is assigned via the `.isactivate` property.
+ * The `ic` attribute on buttons embeds a `<b-icon ic=.../>` inside the buttons that are children of a <b-contextmenu>.
+ * Using the `popup()` method, the menu can be popped up via
+ * [HTMLDialogElement.showModal](https://developer.mozilla.org/en-US/docs/Web/API/HTMLDialogElement/showModal).
+ * Example:
  * ```html
  * <div @contextmenu="e => querySelector('b-contextmenu').popup (e)">
- *   <b-contextmenu .activate="menuactivation">...</b-contextmenu>
+ *   <b-contextmenu .activate="menuactivation">
+ *     <button ic="mi-close" kbd="Shift+Ctrl+Q" uri="quit" > Quit </button>
+ *   </b-contextmenu>
  * </div>
  * ```
  * Note that keyboard presses, mouse clicks, drag selections and event bubbling can
@@ -19,31 +26,36 @@
  * *one* popup request and *one* click activation is processed per animation frame.
  *
  * ### Properties:
- * *.activate(uri)*
- * : Property callback which is called once a menu item is activated.
- * *.isactive (uri)* -> bool
- * : Property callback used to check if a particular menu item should stay active or be disabled.
+ * *.activate (uri)*
+ * : Callback handler which is called with a menu item URI once a menu item is activated.
+ * : Note, this handler can be called with an URI for which `.isactive` previously returned `false`, in particular via hotkeys.
+ * *.isactive (uri)* -> Promise<bool>
+ * : Async callback used to check for a particular menu item by URI to stay active or be disabled, called during popup().
+ *
  * ### Attributes:
  * *xscale*
  * : Consider a wider area than the context menu width for popup positioning.
  * *yscale*
  * : Consider a taller area than the context menu height for popup positioning.
+ *
  * ### Events:
  * *click (event)*
  * : Event signaling activation of a menu item, the `uri` can be found via `get_uri (event.target)`.
  * *close (event)*
  * : Event signaling closing of the menu, regardless of whether menu item activation occoured or not.
+ *
  * ### Methods:
  * *popup (event, { origin, focus_uri, data-contextmenu })*
  * : Popup the contextmenu, propagation of `event` is halted and the event coordinates or target is
  * : used for positioning unless `origin` is given.
  * : The `origin` is a reference DOM element to use for drop-down positioning.
- * : The `focus_uri` is a <button/> menu item URI to receive focus after popup.
+ * : The `focus_uri` is a `<button uri.../>` menu item URI to receive focus after popup.
  * : The `data-contextmenu` element (or `origin`) has the `data-contextmenu=true` attribute assigned during popup.
  * *close()*
  * : Hide the contextmenu.
  * *map_kbd_hotkeys (active)*
- * : Activate (deactivate) the `kbd=...` hotkeys specified in menu items.
+ * : Activate/deactivate a global hotkey map containing the `<button kbd=.../>` hotkeys specified in menu items.
+ * : For hotkeys, no prior `.isactive` check is carried out.
  */
 
 import { LitComponent, html, render, noChange, JsExtract, docs, ref } from '../little.js';
@@ -64,16 +76,15 @@ dialog.b-contextmenu {
   color: $b-menu-foreground;
   background-color: $b-menu-background; border: 1px outset zmod($b-menu-background, Jz-=20%);
   box-shadow: $b-menu-box-shadow;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden auto;
   &[open], &.animating { display: flex; }
-  [disabled], [disabled] * { pointer-events: none; }
 }
 dialog.b-contextmenu::backdrop {
   /* Menu backdrop must be transparent, for one a popup menu is different from a modal dialog,
    * and second, showing a modal dialog via menu item would result in bad flickernig. */
   background: transparent;
 }
+b-contextmenu push-button,
 b-contextmenu button {
   @apply hflex flex-nowrap items-stretch px-4 py-1 text-left;
   background: transparent; color: $b-menu-foreground; border: 1px solid transparent;
@@ -87,10 +98,15 @@ b-contextmenu button {
   }
   kbd { font-family: inherit; text-align: right; margin-left: 2.5em; }
   kbd[data-can-remap] { font-style: italic; }
-
   &[turn] {
     flex-direction: column; align-items: center;
-    & > b-icon:first-child { margin: 0 0 $b-menu-spacing 0; }
+    > b-icon:first-child { margin: 0 0 $b-menu-spacing 0; }
+  }
+  &[disabled], &[disabled] * {
+    pointer-events: none;
+    color: $b-menu-disabled;
+    b-icon { color: $b-menu-disabled-fill; }
+    kbd { color: $b-menu-disabled-fill; }
   }
 }
 b-contextmenu b-menurow button {
@@ -187,7 +203,6 @@ class BContextMenu extends LitComponent {
     this.xscale = 1;
     this.yscale = 1;
     this.origin = null;
-    this.focus_uri = '';
     this.data_contextmenu = null;
     this.checkuri = () => true;
     this.reposition = false;
@@ -234,22 +249,32 @@ class BContextMenu extends LitComponent {
     if (Util.keydown_move_focus (event))
       return false; // handled, no-default
   }
+  start_observer()
+  {
+    if (this._observer || !document.body.contains (this)) return;
+    this._observer = new MutationObserver (Util.debounce (() => {
+      this.stop_observer();
+      this.integrate_children();
+      this.start_observer();
+    }));
+    this._observer.observe (this, { childList: true, subtree: true, attributes: true });
+  }
+  stop_observer()
+  {
+    if (!this._observer) return;
+    this._observer.disconnect();
+    this._observer = null;
+  }
   connectedCallback()
   {
     this.integrate_children();
     super.connectedCallback();
-    const observe = () => this._observer.observe (this, { childList: true, subtree: true });
-    this._observer = new MutationObserver (Util.debounce (() => {
-      this._observer.disconnect();
-      this.integrate_children();
-      observe();
-    }));
-    observe();
+    this.toggle_force_children (true);
+    this.start_observer();
   }
   disconnectedCallback()
   {
-    this._observer.disconnect();
-    this._observer = null;
+    this.stop_observer();
     this.map_kbd_hotkeys (false);
     super.disconnectedCallback();
   }
@@ -262,12 +287,44 @@ class BContextMenu extends LitComponent {
     // rebuild keymap
     this.map_kbd_hotkeys (this.keymap_active);
   }
+  async toggle_active_children()
+  {
+    const isactive = async uri => !uri || !this.isactive || await this.isactive (uri);
+    const proms = [];
+    for (let b of this.querySelectorAll ('button,push-button')) {
+      /**@type{any}*/ const any = b;
+      const uri = any.getAttribute ('uri');
+      if (uri === null) continue;
+      const promise = isactive (uri);
+      promise['element'] = any;
+      proms.push (promise);
+    }
+    const toggles = await Promise.all (proms);
+    this.stop_observer();
+    for (let i = 0; i < proms.length; i++) {
+      const element = proms[i]['element'], toggle = !!toggles[i];
+      element.toggleAttribute ('disabled', !toggle);
+    }
+    this.start_observer();
+    proms.length = 0;
+  }
+  toggle_force_children (enabled)
+  {
+    this.stop_observer();
+    for (let b of this.querySelectorAll ('button,push-button')) {
+      /**@type{any}*/ const any = b;
+      const uri = any.getAttribute ('uri');
+      if (uri === null) continue;
+      any.toggleAttribute ('disabled', !enabled);
+    }
+    this.start_observer();
+  }
   updated()
   {
     if (this.reposition)
       {
 	this.reposition = false;
-	const p = Util.popup_position (this.dialog, { origin: this.origin, focus_uri: this.focus_uri,
+	const p = Util.popup_position (this.dialog, { origin: this.origin,
 						      x: this.page_x, y: this.page_y, xscale: this.xscale, yscale: this.yscale, });
 	this.dialog.style.left = p.x + "px";
 	this.dialog.style.top = p.y + "px";
@@ -279,16 +336,17 @@ class BContextMenu extends LitComponent {
   {
     // stop other user actions following modal popup
     Util.prevent_event (event);
+    if (this.dialog?.open || Util.frame_stamp() == this.menudata.menu_stamp)
+      return false;     				// duplicate popup request, only popup once per frame
     if (!popup_options)
       popup_options = { origin: null };
-    if (this.dialog?.open || Util.frame_stamp() == this.menudata.menu_stamp)
-      return false;     // duplicate popup request, only popup once per frame
     const origin = popup_options.origin === null ? null : popup_options.origin?.$el || popup_options.origin || event?.currentTarget;
     if (origin instanceof Element && Util.inside_display_none (origin))
-      return false;     // cannot popup around hidden origin
-    this.focus_uri = popup_options.focus_uri || '';
+      return false;     				// cannot popup around hidden origin
+    this.toggle_force_children (false);			// add [disabled] attribute to chldren
+    const toggles = this.toggle_active_children();	// concurrently, enable active children
     this.origin = origin instanceof Element ? origin : null;
-    this.menudata.menu_stamp = Util.frame_stamp();  // allows one popup per frame
+    this.menudata.menu_stamp = Util.frame_stamp();  	// allows one popup per frame
     if (event && event.pageX && event.pageY)
       {
 	this.page_x = event.pageX;
@@ -299,16 +357,20 @@ class BContextMenu extends LitComponent {
     this.data_contextmenu = popup_options['data-contextmenu'] || this.origin;
     this.data_contextmenu?.setAttribute ('data-contextmenu', 'true');
     this.emit_close_++;
+    // auto-focus a specific child, or the first child with uri
+    const furi = popup_options.focus_uri ? 'uri="' + popup_options.focus_uri + '"' : 'uri';
     return (async () => {
       await this.updateComplete; // needed to access this.dialog
       this.reposition = true;
       this.dialog.showModal();
+      this.blur();
       App.zmove(); // force changes to be picked up
       // check items (and this used to handle auto-focus)
-      const focussable = await this.check_isactive (this.focus_uri);
-      this.focus_uri = '';
-      if (focussable)
-	focussable.focus();
+      await toggles;
+      const qse = this.querySelector (`button[${furi}],push-button[${furi}]`);
+      const focus_child = /**@type{HTMLElement}*/ (qse);
+      if (focus_child && !focus_child.getAttribute ('disabled'))
+	focus_child.focus();
     }) ();
   }
   async check_isactive (finduri = null)
@@ -381,8 +443,8 @@ class BContextMenu extends LitComponent {
       // this.dialog.classList.add ('animating');
       this.dialog.close();
     }
+    this.toggle_force_children (true);
     this.origin = null;
-    this.focus_uri = '';
     this.data_contextmenu?.removeAttribute ('data-contextmenu', 'true');
     this.data_contextmenu = null;
     App.zmove(); // force changes to be picked up
@@ -404,14 +466,14 @@ class BContextMenu extends LitComponent {
     let e;
     while ( (e = w.nextNode()) ) {
       /**@type{any}*/ const any = e;
-      const keymap_entry = any._keymap_entry;
+      const keymap_entry = any['_keymap_entry'];
       if (keymap_entry instanceof Util.KeymapEntry)
 	this.keymap_.push (keymap_entry);
     }
     if (this.keymap_.length)
       Util.add_keymap (this.keymap_);
   }
-  /// Find a menuitem via its `uri`.
+  /// Find a menuitem via its URI.
   find_menuitem (uri)
   {
     const w = document.createTreeWalker (this, NodeFilter.SHOW_ELEMENT);
@@ -426,6 +488,38 @@ class BContextMenu extends LitComponent {
 }
 customElements.define ('b-contextmenu', BContextMenu);
 
+/// Render and return a cached reusable <b-contextmenu/> from `make_lithtml(target,data)`.
+export function render_contextmenu (b_contextmenu, make_lithtml, target = undefined, data = undefined)
+{
+  let cm = !b_contextmenu ? null : b_contextmenu['.cm'];
+  if (!cm) {
+    cm = { target, contextmenu: null, proxy: null, div: document.createElement ('div') };
+    cm.proxy = new Proxy (cm, {
+      get (cm, prop, receiver) // bind methods to latest render target
+      {
+	const value = cm.target[prop];
+	return value instanceof Function ? value.bind (cm.target) : value;
+      },
+    });
+    cm.div.setAttribute ('style', "position:absolute;width:0;height:0;border:0;visibility:hidden;");
+    cm.div.toggleAttribute ('inert', true);
+  } else {
+    b_contextmenu['.cm'] = null;
+    delete b_contextmenu['.cm'];
+    cm.contextmenu = null;
+    cm.target = target;
+  }
+  // https://lit.dev/docs/libraries/standalone-templates/#render-options
+  render (make_lithtml.apply (cm.proxy, [ cm.proxy, data ]), cm.div, { host: cm.proxy });
+  cm.contextmenu = cm.div.querySelector ('b-contextmenu');
+  if (cm.contextmenu) {
+    cm.contextmenu['.cm'] = cm;
+    if (!cm.div.parentElement)
+      document.body.appendChild (cm.div);
+    return cm.contextmenu;
+  }
+  throw new ReferenceError ("lit-html construct failed to create <b-contextmenu/>");
+}
 
 /** Integrate `b-contextmenu button` into contextmenu handling.
  * @this{HTMLElement}
@@ -467,12 +561,12 @@ function integrate_button (contextmenu)
       kbd.innerText = kbds;
     }
     // hotkey
-    if (!this._keymap_entry)
-      this._keymap_entry = new Util.KeymapEntry ('', this.click.bind (this), this);
+    if (!this['_keymap_entry'])
+      this['_keymap_entry'] = new Util.KeymapEntry ('', this.click.bind (this), this);
     const menudata = provide_menudata (this);
     const shortcut = Kbd.shortcut_lookup (menudata.mapname, aria_label, kbds);
-    if (shortcut != this._keymap_entry.key)
-      this._keymap_entry.key = shortcut;
+    if (shortcut != this['_keymap_entry'].key)
+      this['_keymap_entry'].key = shortcut;
     kbd.innerText = Util.display_keyname (shortcut);
   } else
     this.querySelector ('kbd')?.remove();

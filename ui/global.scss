@@ -82,7 +82,7 @@ dialog.b-dialog {
     border-top: 2px solid $b-dialog-border-colors;
     @include h-flex();
     justify-content: space-between;   // left-aligns only-child
-    & > :only-child { margin: auto; } // center only-child
+    > :only-child { margin: auto; } // center only-child
     button { padding: 0.25rem 1rem; }
   }
   // :not([open])
@@ -105,8 +105,7 @@ dialog.b-dialog[open] {
     height: 1em;
     padding: 1em;
     display: flex;
-    justify-content: center;
-    align-content: center;
+    place-content: center center;
     flex-direction: column;
     text-align: center;
     background: #000;

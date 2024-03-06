@@ -12,6 +12,7 @@
 
 import { LitComponent, html, render, JsExtract, docs, ref } from '../little.js';
 import { get_uri } from '../dom.js';
+import { render_contextmenu } from './contextmenu.js';
 
 // == STYLE ==
 JsExtract.scss`
@@ -82,9 +83,8 @@ const HTML = (t, d) => html`
     </div>
   </div>
 `;
-const HTML_CMENU = (t, d) => html`
-  <b-contextmenu ${ref (h => t.htmlcmenu_ = h)} id="g-trackviewcmenu"
-    @activate=${t.menu_click} .isactive=${t.menu_check} @close=${t.menu_close} >
+const HTML_CONTEXTMENU = (t, d) => html`
+  <b-contextmenu @activate=${t.menu_click} .isactive=${t.menu_check} @close=${t.menu_close} @cancel=${t.menu_close} >
     <b-menutitle>                                         Track             </b-menutitle>
     <button ic="fa-plus-circle"    uri="add-track" >      Add Track             </button>
     <button ic="fa-i-cursor"       uri="rename-track" >   Rename Track          </button>
@@ -103,7 +103,7 @@ const HTML_CMENU = (t, d) => html`
     <button ic="uc-Ｓ"             uri="solo-track" >     Solo Track            </button>
     <b-menuseparator></b-menuseparator>
     <b-menutitle> MIDI Channel </b-menutitle>
-    <button                  uri="mc-0"  ic=${t.mcc (0)}  > Internal Channel </button>
+    <button   uri="mc-0"  ic=${t.mcc (0)}  > Internal Channel </button>
     <b-menurow noturn>
       <button uri="mc-1"  ic=${t.mcc (1)}  >  1 </button>
       <button uri="mc-2"  ic=${t.mcc (2)}  >  2 </button>
@@ -139,6 +139,7 @@ const DBOFFSET = Math.abs (MINDB) * 1.5;
 const DIV_DBRANGE = 1.0 / (MAXDB - MINDB);
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 const OBJECT_PROPERTY = { attribute: false };
+let trackview_contextmenu = null;
 
 class BTrackView extends LitComponent {
   createRenderRoot() { return this; }
@@ -156,7 +157,6 @@ class BTrackView extends LitComponent {
     super();
     this.track = null;
     this.trackviewcontrol_ = null;
-    this.htmlcmenu_ = null;
     this.trackindex = -1;
     this.wtrack_ = { name: '   ' };
     this.dbtip0_ = MINDB;
@@ -170,7 +170,15 @@ class BTrackView extends LitComponent {
     this.covermid1_ = null;
     this.covertip1_ = null;
   }
-  disconnectedCallback() {
+  connectedCallback()
+  {
+    super.connectedCallback();
+    // ensure ContextMenu is ready when needed, *without* Chrome reloading styles and causing flicker
+    if (!trackview_contextmenu)
+      trackview_contextmenu = render_contextmenu (trackview_contextmenu, HTML_CONTEXTMENU, { mcc: () => ' ' });
+  }
+  disconnectedCallback()
+  {
     super.disconnectedCallback();
     this.telemetry = null;
     Util.telemetry_unsubscribe (this.teleobj);
@@ -206,10 +214,7 @@ class BTrackView extends LitComponent {
   }
   mcc (n) // midi_channel character
   {
-    if (n == this.wtrack_.midi_channel)
-      return '√';
-    else
-      return ' ';
+    return n == this.wtrack_.midi_channel ? '√' : ' ';
   }
   track_click0 (event)
   {
@@ -217,15 +222,18 @@ class BTrackView extends LitComponent {
     if (event.button == 0 && this.track)
       App.current_track = this.track;
   }
+  menu_close()
+  {
+    trackview_contextmenu.close();
+  }
   menu_open (event)
   {
     App.current_track = this.track;
-    // create trackview menu for popup
-    if (!this.htmlcmenu_) // this.trackviewcontrol_ is not otherwise rendered by lit-html
-      render (HTML_CMENU (this), this.trackviewcontrol_, { host: this });
+    // update trackview menu for popup
+    trackview_contextmenu = render_contextmenu (trackview_contextmenu, HTML_CONTEXTMENU, this);
     // popup menu at mouse coords
-    this.htmlcmenu_.popup (event, { origin: 'none' });
-    event.stopPropagation();
+    trackview_contextmenu.popup (event, { origin: 'none' });
+    return Util.prevent_event (event);
   }
   async menu_check (uri)
   {
@@ -239,17 +247,11 @@ class BTrackView extends LitComponent {
       return true;
     return false;
   }
-  async menu_close (event)
-  {
-    // remove menu nodes
-    render (html``, this.trackviewcontrol_, { host: this });
-    console.assert (!this.htmlcmenu_);
-  }
   async menu_click (event)
   {
     const uri = get_uri (event.detail);
     // close popup to remove focus guards
-    this.htmlcmenu_.close();
+    this.menu_close();
     if (uri == 'add-track')
       {
 	const track = await Data.project.create_track ('Track');

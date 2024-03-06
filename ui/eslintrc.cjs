@@ -46,6 +46,7 @@ module.exports = {
     "no-debugger": [ "warn" ],
     indent: [ OFF, 2 ],
     "linebreak-style": [ "error", "unix" ],
+    "lit/attribute-value-entities": OFF,
     "no-mixed-spaces-and-tabs": [ OFF ],
     'no-irregular-whitespace': OFF, /* ["error", { 'skipStrings': true, 'skipComments': true, 'skipTemplates': true, 'skipRegExps':true } ], */
     'no-useless-escape': OFF,

@@ -189,10 +189,9 @@ $b-softbutton-lg-down: linear-gradient(to top, $b-softbutton-bgd, $b-softbutton-
 }
 @mixin b-softbuttonbar() {
   display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
-  justify-items: stretch;
-  align-content: stretch;
   user-select: none; text-align: center;
-  align-items: center; justify-content: center;
+  place-items: center stretch;
+  place-content: stretch center;
   border: 1px inset $b-softbutton-border-color;
 }
 // singlebutton is a seperately standing button wich clearly looks clickable
