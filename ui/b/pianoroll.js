@@ -98,6 +98,27 @@ const HTML = (t, d) => html`
     <canvas class="-notes_canvas col-start-2 row-start-2" ${ref (h => t.notes_canvas = h)}
       @pointermove=${Util.debounce (t.notes_canvas_pointermove.bind (t))}
       @pointerdown=${t.notes_canvas_pointerdown} ></canvas>
+    <div class="-col1 -row3" style="text-align: center" @click=${e => t.pianogridmenu.popup (e)} @mousedown=${e => t.pianogridmenu.popup (e)}>
+      ${t.grid_label}
+      <b-contextmenu ${ref (h => t.pianogridmenu = h)} @activate=${e => t.setgrid (e.detail.uri)}>
+        <b-menutitle>Tuplet</b-menutitle>
+        <b-menuitem uri="2"      ic=${t.gchecked (2)} > straight   </b-menuitem>
+        <b-menuitem uri="3"      ic=${t.gchecked (3)} > triplet    </b-menuitem>
+        <b-menuitem uri="5"      ic=${t.gchecked (5)} > quintuplet </b-menuitem>
+        <b-menuitem uri="7"      ic=${t.gchecked (7)} > septuplet  </b-menuitem>
+        <b-menutitle>Grid Quantization</b-menutitle>
+        <b-menuitem uri="auto"   ic=${t.gchecked ('auto')}  > auto </b-menuitem>
+        <b-menuitem uri="2/1"    ic=${t.gchecked ('2/1')}   > 2/1  </b-menuitem>
+        <b-menuitem uri="1/1"    ic=${t.gchecked ('1/1')}   > 1/1  </b-menuitem>
+        <b-menuitem uri="1/2"    ic=${t.gchecked ('1/2')}   > 1/2  </b-menuitem>
+        <b-menuitem uri="1/4"    ic=${t.gchecked ('1/4')}   > 1/4  </b-menuitem>
+        <b-menuitem uri="1/8"    ic=${t.gchecked ('1/8')}   > 1/8  </b-menuitem>
+        <b-menuitem uri="1/16"   ic=${t.gchecked ('1/16')}  > 1/16 </b-menuitem>
+        <b-menuitem uri="1/32"   ic=${t.gchecked ('1/32')}  > 1/32 </b-menuitem>
+        <b-menuitem uri="1/64"   ic=${t.gchecked ('1/64')}  > 1/64 </b-menuitem>
+        <b-menuitem uri="1/128"  ic=${t.gchecked ('1/128')} > 1/128 </b-menuitem>
+      </b-contextmenu>
+    </div>
 
     <div class="col-start-3 row-start-2" style="overflow: hidden scroll; min-width: 17px; background: #000" ${ref (h => t.vscrollbar = h)} >
       <div class="-vextend" style="height: 151vh" ${ref (h => t.vscrollbar_extend = h)} >
@@ -135,6 +156,7 @@ class BPianoRoll extends LitComponent {
   }
   static properties = {
     clip: PRIVATE_PROPERTY,		///< The clip with notes to be edited.
+    grid_label: {}
   };
   constructor()
   {
@@ -147,6 +169,10 @@ class BPianoRoll extends LitComponent {
     this.cgrid = null;
     this.menu_btn = null;
     this.menu_icon = null;
+    this.grid_label = "auto";
+    this.grid_tuplet = 2;
+    this.grid_length = "auto"; // either "auto" or length (like "1/16")
+    this.grid_stepping = 0;
     this.pianotoolmenu = null;
     this.pianorollmenu = null;
     this.notes_canvas = null;
@@ -343,6 +369,46 @@ class BPianoRoll extends LitComponent {
     if (!this.notes_canvas_pointermove_zmovedel)
       this.notes_canvas_pointermove_zmovedel = App.zmoves_add (this.notes_canvas_pointermove.bind (this));
     App.zmove(); // trigger move / hover
+  }
+  setgrid (uri)
+  {
+    if (uri == 2 || uri == 3 || uri == 5 || uri == 7)
+      this.grid_tuplet = parseInt (uri);
+    else
+      this.grid_length = uri;
+
+    this.grid_stepping = Math.round (Util.PPQN * 4 / this.grid_length_factor());
+
+    let grid_label = this.grid_length;
+    if (this.grid_tuplet == 3) grid_label += "T";
+    if (this.grid_tuplet == 5) grid_label += "Q";
+    if (this.grid_tuplet == 7) grid_label += "S";
+
+    this.setAttribute ("grid_label", grid_label);
+  }
+  grid_length_factor()
+  {
+    const tuplet_scale = this.grid_tuplet / 2;
+    switch (this.grid_length)
+      {
+        case "2/1":   return tuplet_scale * 0.5;
+        case "1/1":   return tuplet_scale;
+        case "1/2":   return tuplet_scale * 2;
+        case "1/4":   return tuplet_scale * 4;
+        case "1/8":   return tuplet_scale * 8;
+        case "1/16":  return tuplet_scale * 16;
+        case "1/32":  return tuplet_scale * 32;
+        case "1/64":  return tuplet_scale * 64;
+        case "1/128": return tuplet_scale * 128;
+        default:      return 1; // should never happen
+      }
+  }
+  gchecked (g)
+  {
+    if (g == this.grid_length || g == this.grid_tuplet)
+      return '√';
+    else
+      return ' ';
   }
   piano_current_tick (current_clip, current_tick)
   {
@@ -798,15 +864,32 @@ function paint_timegrid (canvas, with_labels)
 
   // determine stepping granularity
   let stepping; // [ ticks_per_step, steps_per_mainline, steps_per_midline ]
-  const mingap = th * 17;
-  if (denominator_pixels / 16 >= mingap)
-    stepping = [ TPD / 16, 16, 4 ];
-  else if (denominator_pixels / 4 >= mingap)
-    stepping = [ TPD / 4, 4 * signature[0], 4 ];
-  else if (denominator_pixels >= mingap)
-    stepping = [ TPD, signature[0], 0 ];
-  else // just use bars
-    stepping = [ bar_ticks, 0, 0 ];
+  let mingap = th * 17;
+
+  let div;
+  if (this.grid_length == "auto")
+    {
+      div = this.grid_tuplet * 4096;
+      mingap *= 2;
+    }
+  else
+    div = this.grid_length_factor() / signature[0];
+
+  while (denominator_pixels / div < mingap) // ensure that grid lines are not too close to each other
+    div /= 2;
+  let steps_per_mainline, steps_per_midline;
+  if (this.grid_tuplet == 2)
+    {
+      steps_per_mainline = Math.max (Math.round (div), 1);
+      steps_per_midline = Math.max (Math.round (div * 4), 1);
+    }
+  else
+    {
+      steps_per_mainline = Math.max (Math.round (div), this.grid_tuplet);
+      steps_per_midline = Math.max (Math.round (div * 4), this.grid_tuplet);
+    }
+  stepping = [ Math.round (TPD / div), steps_per_midline, steps_per_mainline ];
+
   this.stepping = stepping;
 
   // first 2^x aligned bar tick before/at xposition

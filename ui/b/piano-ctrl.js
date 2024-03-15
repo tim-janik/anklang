@@ -41,8 +41,15 @@ let piano_clipboard = "[]";
 
 function quantization (piano_roll)
 {
-  const stepping = piano_roll.stepping ? piano_roll.stepping[0] : Util.PPQN;
-  return Math.min (stepping, Util.PPQN);
+  if (piano_roll.grid_length == "auto")
+    {
+      const stepping = piano_roll.stepping ? piano_roll.stepping[0] : Util.PPQN;
+      return Math.min (stepping, Util.PPQN);
+    }
+  else
+    {
+      return piano_roll.grid_stepping;
+    }
 }
 
 function quantize (piano_roll, tick, nearest = true)
@@ -63,8 +70,7 @@ export class PianoCtrl {
   }
   quantization ()
   {
-    const roll = this.piano_roll, stepping = roll.stepping ? roll.stepping[0] : Util.PPQN;
-    return Math.min (stepping, Util.PPQN);
+    return quantization (this.piano_roll);
   }
   quantize (tick, nearest = true)
   {
