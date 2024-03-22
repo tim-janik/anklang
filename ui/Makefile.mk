@@ -308,7 +308,7 @@ CLEANDIRS += $>/tscheck/
 ui/lint: 									| node_modules/.npm.done
 	$(QGEN)
 	$(MAKE) --no-print-directory NPMBLOCK=y -j1 \
-		tscheck eslint $>/ui/global.css
+		eslint tscheck $>/ui/global.css
 	-$Q node_modules/.bin/stylelint $${INSIDE_EMACS:+-f unix} -c ui/stylelintrc.cjs $(wildcard ui/*.*css ui/b/*.*css)
 	-$Q { TCOLOR=--color=always ; tty -s <&1 || TCOLOR=; } \
 	&& grep $$TCOLOR -nE '(/[*/]+[*/ ]*)?(FI[X]ME).*' -r ui/ --exclude '*.js'
