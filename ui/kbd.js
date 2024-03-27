@@ -336,6 +336,7 @@ export function move_focus (dir = 0, subfocus = null) {
       if (idx >= 0)
 	{
 	  focuslist[idx].focus();
+	  document.activeElement.scrollIntoView();
 	  return true;
 	}
     }
@@ -381,6 +382,7 @@ export function move_focus (dir = 0, subfocus = null) {
   if (next >= 0 && next < focuslist.length)
     {
       focuslist[next].focus();
+      document.activeElement.scrollIntoView();
       return true;
     }
   return false;

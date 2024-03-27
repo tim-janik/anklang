@@ -29,7 +29,7 @@ class AseCachingWrapper {
 			/**@type{Array<function>}*/ callbacks: [] };
       // debug helper
       if (typeof aseobj[prop] !== 'function')
-	throw new TypeError (`property getter not callable: [${aseobj.constructor.name} ${aseobj.$id}].${prop}: ` + aseobj[prop]);
+	throw new TypeError (`property getter not callable: ${aseobj.constructor.name}($id=${aseobj.$id})['${prop}']==` + aseobj[prop]);
       // add reactive value getter
       wrapper.get_value = () =>
 	{

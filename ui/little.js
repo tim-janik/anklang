@@ -39,7 +39,13 @@ export class LitComponent extends LitElement {
     adopt_component_styles (render_root);
     return render_root;
   }
+  get weak_this()
+  {
+    let wt = this[sym_weak_this];
+    return wt || (this[sym_weak_this] = new WeakRef (this));
+  }
 }
+const sym_weak_this = Symbol ('weak_this');
 
 // == lit_update_all ==
 /** Call requestUpdate() on all `LitElement`s */

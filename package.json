@@ -57,6 +57,7 @@
     "postcss-scss": "^4.0.9",
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.5.11",
+    "printf-ts": "^2.0.1",
     "puppeteer-core": "^22.3.0",
     "puppeteer-in-electron": "^3.0.5",
     "rollup": "^4.12.0",
