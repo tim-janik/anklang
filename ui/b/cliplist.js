@@ -84,7 +84,8 @@ export class BClipList extends LitComponent {
   {
     if (changed_props.has ('track'))
       {
-	const weakthis = new WeakRef (this); // avoid strong wtrack->this refs for automatic cleanup
+	const weakthis = this.weak_this; // avoid strong wtrack->this refs for automatic cleanup
+	console.assert (weakthis);
 	this.wtrack = Wrapper.wrap_ase_object (this.track, { launcher_clips: [] }, () => weakthis.deref()?.requestUpdate());
 	Util.telemetry_unsubscribe (this.teleobj);
 	this.teleobj = null;
