@@ -136,13 +136,13 @@ CLEANFILES += $>/lib/libsndfile.*
 ase/sndfile.cc: $>/lib/libsndfile.so # includes $>/sndfile/src/config.h
 
 # == AnklangSynthEngine ==
-ASE_EXTERNAL_INCLUDES := $(strip	\
-	-Iexternal/clap/include		\
-	-Iexternal/libsndfile/include	\
-	-Iexternal/liquidsfz/lib	\
-	-Iexternal/pandaresampler/lib	\
-	-Iexternal/rapidjson/include	\
-	-Iexternal/websocketpp		\
+ASE_EXTERNAL_INCLUDES := $(strip		\
+	-Iexternal/clap/include			\
+	-Iexternal/libsndfile/include		\
+	-Iexternal/liquidsfz/lib		\
+	-Iexternal/pandaresampler/include	\
+	-Iexternal/rapidjson/include		\
+	-Iexternal/websocketpp			\
 ) # also used by clang-tidy
 $(ase/AnklangSynthEngine.objects): $(ase/include.deps) $(ase/libase.deps)
 $(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
