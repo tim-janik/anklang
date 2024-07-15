@@ -254,7 +254,8 @@ doc/all: $(doc/install.files)
 
 # == mkdocs ==
 doc/mkdocs.mdlist ::= $(doc/manual-chapters) $(doc/internals-chapters)
-$>/site/search/search_index.js: doc/mkdocs.yml $(doc/mkdocs.mdlist) $>/mkdocs/cxx-api.md
+$>/site/search/search_index.js: # $>/mkdocs/anklang-cxx.pdf $>/mkdocs/anklang-cxx.html
+$>/site/search/search_index.js: doc/mkdocs.yml $(doc/mkdocs.mdlist)	| $>/mkdocs/
 	@$(QECHO) RUN mkdocs
 	$Q rm -rf $>/site/
 	$Q cp $< $>/mkdocs.yml && cp $(doc/mkdocs.mdlist) $>/mkdocs/
@@ -282,7 +283,6 @@ define doc_doxygen_xmlcfg
 	HTML_COLORSTYLE_SAT    = 60
 	HTML_DYNAMIC_MENUS     = NO
 	GENERATE_HTML	       = NO
-	GENERATE_LATEX	       = NO
 	GENERATE_XML           = YES
 	XML_PROGRAMLISTING     = NO
 	PREDEFINED             = "ASE_CLASS_DECLS(x)="
@@ -294,14 +294,22 @@ define doc_doxygen_xmlcfg
 	GRAPHICAL_HIERARCHY    = NO
 	DIRECTORY_GRAPH        = NO
 	DOT_IMAGE_FORMAT       = svg
+	LATEX_CMD_NAME         = xelatex
+	COMPACT_LATEX          = YES
+	LATEX_HIDE_INDICES     = YES
 endef
 export doc_doxygen_xmlcfg
-$>/doxygen/xml/index.xml:
+$>/doxygen/latex/refman.tex: doc/Makefile.mk
 	@$(QECHO) RUN doxygen
 	$Q cat > $>/Doxyfile  <<<$$doc_doxygen_xmlcfg
 	$Q rm -rf $>/doxygen/ && doxygen $>/Doxyfile
-doxygen-xml: $>/doxygen/xml/index.xml
-$>/mkdocs/cxx-api.md: $>/doxygen/xml/index.xml		| $>/mkdocs/
-	@$(QECHO) RUN moxygen
-	$Q node_modules/.bin/moxygen -h -n -o $@ $>/doxygen/xml/
+$>/doxygen/xml/index.xml: $>/doxygen/latex/refman.tex
+$>/mkdocs/anklang-cxx.pdf: $>/doxygen/latex/refman.tex	| $>/mkdocs/
+	@$(QGEN)
+	$Q cd $>/doxygen/latex/ && $(MAKE)
+	$Q cp $>/doxygen/latex/refman.pdf $@
+$>/mkdocs/anklang-cxx.html: $>/doxygen/xml/index.xml	| $>/mkdocs/
+	@$(QGEN)
+	$Q node_modules/.bin/moxygen -h -n -o $>/anklang-cxx.md $>/doxygen/xml/
+	$Q pandoc $>/anklang-cxx.md -o $@ && rm -f $>/anklang-cxx.md
 
