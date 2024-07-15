@@ -1,0 +1,105 @@
+site_name: Anklang Documentation
+site_url: https://mydomain.org/mysite
+site_dir: site
+docs_dir: mkdocs
+
+# docker run --rm -it -v${PWD}:/docs -p 127.0.0.1:8001:8000 ghcr.io/tim-janik/anklang-ci:mkdocs-latest
+# docker run --rm -it -v${PWD}:/docs --entrypoint '' squidfunk/mkdocs-material sudo chown 1000:1000 -R /docs/.
+
+repo_url: https://github.com/tim-janik/anklang
+repo_name: Anklang.git
+
+
+plugins:
+  - search
+  - privacy
+  - offline
+  - tags
+  #- blog
+  #- git-revision-date-localized:
+  #    type: timeago
+  #    fallback_to_build_date: true
+  #    enable_creation_date: true
+
+  - mkdoxy:
+      projects:
+        AnklangCxx: # name of project must be alphanumeric + numbers (without spaces)
+          src-dirs: ../ase/ ../devices/  # path to source code (support multiple paths separated by space) => INPUT
+          full-doc: True # if you want to generate full documentation
+          doxy-cfg: # standard doxygen configuration (key: value)
+            FILE_PATTERNS: "*.c .h *.cc *.hh *.js *.md *.dox" # specify file patterns to filter out
+            RECURSIVE: True # recursive search in source directories
+
+nav:
+  - Introduction: ch-intro.md
+  - Installation: ch-install.md
+  - Using Anklang:
+    - Anklang Overview: ch-editing.md
+    - User Interface:
+      - Clip-List: cliplist.md
+      - Piano-Ctrl: piano-ctrl.md
+      - Piano-Roll: pianoroll.md
+    - Manual Pages: ch-man-pages.md
+  - Development:
+    - Development Overview: ch-development.md
+    - UI Development:
+      - JS Scripting: scripting-docs.md
+      - Web Components: ch-component.md
+      - Component API: jsdocs.md
+    - AnklangCxx:
+      - C++ Class-Tree: class-tree.md
+      - 'Links': 'AnklangCxx/links.md'
+      - 'Class List': 'AnklangCxx/annotated.md'
+      - 'Class Members': 'AnklangCxx/class_members.md'
+      - 'Namespace List': 'AnklangCxx/namespaces.md'
+      - 'Namespace Members': 'AnklangCxx/namespace_members.md'
+      - 'Files': 'AnklangCxx/files.md'
+    - Internals:
+      - Making Releases: ch-releasing.md
+      - Interpolation Notes: ch-appendix.md
+
+# TODO: Piano-Ctrl lacks tools icons
+
+
+theme:
+  name: material
+  language: 'en'
+  #features:
+  #  - navigation.footer
+  features:
+    - search.suggest
+    - search.highlight
+    - search.share
+    - toc.integrate
+    - navigation.tracking
+    #- navigation.tabs
+    - navigation.sections
+    #- navigation.expand
+    - navigation.path
+
+  # taken from https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/#system-preference
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to system preference
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to dark mode
+
+
+
+copyright: Copyright &copy; 2024 Anklang Project
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/mastodon
+      link: https://social.tchncs.de/@timj
