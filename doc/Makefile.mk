@@ -250,3 +250,58 @@ doc/uninstall: FORCE uninstall--doc/style/install.files
 uninstall: doc/uninstall
 
 doc/all: $(doc/install.files)
+
+
+# == mkdocs ==
+doc/mkdocs.mdlist ::= $(doc/manual-chapters) $(doc/internals-chapters)
+$>/site/search/search_index.js: doc/mkdocs.yml $(doc/mkdocs.mdlist) $>/mkdocs/cxx-api.md
+	@$(QECHO) RUN mkdocs
+	$Q rm -rf $>/site/
+	$Q cp $< $>/mkdocs.yml && cp $(doc/mkdocs.mdlist) $>/mkdocs/
+	$Q ( cd $> && mkdocs build )
+mkdocs:
+	rm -rf $>/mkdocs/
+	$(MAKE) $>/site/search/search_index.js
+define doc_doxygen_xmlcfg
+	PROJECT_NAME           = "Anklang C++ API"
+	PROJECT_NUMBER         = $(version_short)
+	OUTPUT_DIRECTORY       = $>/doxygen/
+	ALLOW_UNICODE_NAMES    = YES
+	EXTRACT_LOCAL_CLASSES  = NO
+	HIDE_UNDOC_MEMBERS     = YES
+	HIDE_UNDOC_CLASSES     = YES
+	HIDE_FRIEND_COMPOUNDS  = YES
+	INTERNAL_DOCS          = YES
+	HIDE_COMPOUND_REFERENCE= YES
+	SHOW_INCLUDE_FILES     = NO
+	INLINE_INFO            = NO
+	SHOW_USED_FILES        = NO
+	SHOW_FILES             = NO
+	INPUT                  = ase/ devices/
+	VERBATIM_HEADERS       = NO
+	HTML_COLORSTYLE_SAT    = 60
+	HTML_DYNAMIC_MENUS     = NO
+	GENERATE_HTML	       = NO
+	GENERATE_LATEX	       = NO
+	GENERATE_XML           = YES
+	XML_PROGRAMLISTING     = NO
+	PREDEFINED             = "ASE_CLASS_DECLS(x)="
+	HIDE_UNDOC_RELATIONS   = YES
+	COLLABORATION_GRAPH    = NO
+	GROUP_GRAPHS           = NO
+	INCLUDE_GRAPH          = NO
+	INCLUDED_BY_GRAPH      = NO
+	GRAPHICAL_HIERARCHY    = NO
+	DIRECTORY_GRAPH        = NO
+	DOT_IMAGE_FORMAT       = svg
+endef
+export doc_doxygen_xmlcfg
+$>/doxygen/xml/index.xml:
+	@$(QECHO) RUN doxygen
+	$Q cat > $>/Doxyfile  <<<$$doc_doxygen_xmlcfg
+	$Q rm -rf $>/doxygen/ && doxygen $>/Doxyfile
+doxygen-xml: $>/doxygen/xml/index.xml
+$>/mkdocs/cxx-api.md: $>/doxygen/xml/index.xml		| $>/mkdocs/
+	@$(QECHO) RUN moxygen
+	$Q node_modules/.bin/moxygen -h -n -o $@ $>/doxygen/xml/
+
