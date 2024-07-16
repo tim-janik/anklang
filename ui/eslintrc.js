@@ -33,6 +33,7 @@ export default [
       "@html-eslint/quotes": OFF, // TODO: "warn",
       "@html-eslint/indent": OFF,
       "@html-eslint/no-extra-spacing-attrs": OFF,
+      "@html-eslint/attrs-newline": OFF,
     }
   },
 
