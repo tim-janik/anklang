@@ -253,7 +253,7 @@ doc/all: $(doc/install.files)
 
 
 # == mkdocs ==
-doc/mkdocs.mdlist ::= $(doc/manual-chapters) $(doc/internals-chapters)
+doc/mkdocs.mdlist ::= $(doc/manual-chapters) $(doc/internals-chapters) doc/index.md
 $>/site/search/search_index.js: # $>/mkdocs/anklang-cxx.pdf $>/mkdocs/anklang-cxx.html
 $>/site/search/search_index.js: doc/mkdocs.yml $(doc/mkdocs.mdlist)	| $>/mkdocs/
 	@$(QECHO) RUN mkdocs

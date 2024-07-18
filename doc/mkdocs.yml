@@ -31,6 +31,7 @@ plugins:
             RECURSIVE: True # recursive search in source directories
 
 nav:
+  - Home: index.md
   - Introduction: ch-intro.md
   - Installation: ch-install.md
   - Using Anklang:
