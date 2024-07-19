@@ -32,34 +32,34 @@ plugins:
 
 nav:
   - Home: index.md
-  - Introduction: ch-intro.md
-  - Installation: ch-install.md
-  - Tutorials:
-    - "Tutorial 1: Starting to Play Notes": tut-play.md
-  - Howtos:
-    - "Howto: Setting Up Audio (Linux)": how-audio.md
-  - Using Anklang:
+  - "Get Started: Intro & Tutorials":
+    - Introduction: ch-intro.md
+    - Installation: ch-install.md
     - Anklang Overview: ch-editing.md
-    - User Interface:
+    - "Tutorial 1: Starting to Play Notes": tut-play.md
+  - "Howto Guides":
+    - "Howto: Setting Up Audio (Linux)": how-audio.md
+  - "Reference":
+    - "ANKLANG(1) Manual Page": ch-man-pages.md
+    - "User Interface":
       - Clip-List: cliplist.md
       - Piano-Ctrl: piano-ctrl.md
       - Piano-Roll: pianoroll.md
-    - Manual Pages: ch-man-pages.md
-  - Development:
+    - JS Scripting: scripting-docs.md
+    - "Anklang C++ API":
+      - 'C++ Class-Tree':       class-tree.md
+      - 'C++ API Links':        AnklangCxx/links.md
+      - 'Class List':           AnklangCxx/annotated.md
+      - 'Class Members':        AnklangCxx/class_members.md
+      - 'Namespace List':       AnklangCxx/namespaces.md
+      - 'Namespace Members':    AnklangCxx/namespace_members.md
+      - 'Files':                AnklangCxx/files.md
+  - "Design & Development":
     - Development Overview: ch-development.md
     - UI Development:
-      - JS Scripting: scripting-docs.md
       - Web Components: ch-component.md
       - Component API: jsdocs.md
-    - AnklangCxx:
-      - C++ Class-Tree: class-tree.md
-      - 'Links': 'AnklangCxx/links.md'
-      - 'Class List': 'AnklangCxx/annotated.md'
-      - 'Class Members': 'AnklangCxx/class_members.md'
-      - 'Namespace List': 'AnklangCxx/namespaces.md'
-      - 'Namespace Members': 'AnklangCxx/namespace_members.md'
-      - 'Files': 'AnklangCxx/files.md'
-    - Internals:
+    - Implementation Details:
       - Making Releases: ch-releasing.md
       - Interpolation Notes: ch-appendix.md
 
