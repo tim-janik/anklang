@@ -34,6 +34,8 @@ nav:
   - Home: index.md
   - Introduction: ch-intro.md
   - Installation: ch-install.md
+  - Tutorials:
+    - "Tutorial 1: Starting to Play Notes": tut-play.md
   - Using Anklang:
     - Anklang Overview: ch-editing.md
     - User Interface:
