@@ -36,6 +36,8 @@ nav:
   - Installation: ch-install.md
   - Tutorials:
     - "Tutorial 1: Starting to Play Notes": tut-play.md
+  - Howtos:
+    - "Howto: Setting Up Audio (Linux)": how-audio.md
   - Using Anklang:
     - Anklang Overview: ch-editing.md
     - User Interface:
