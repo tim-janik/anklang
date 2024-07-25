@@ -56,9 +56,6 @@ extra_javascript:
 nav:
   - Home: index.md
   - "Get Started: Intro & Tutorials":
-    - Introduction: ch-intro.md
-    - Installation: ch-install.md
-    - Anklang Overview: ch-editing.md
     - "Tutorial 1: Starting to Play Notes": tut-play.md
   - "Howto Guides":
     - "Howto: Setting Up Audio (Linux)": how-audio.md
