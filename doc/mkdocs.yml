@@ -1,11 +1,9 @@
 site_name: Anklang Documentation
 site_url: https://mydomain.org/mysite
-site_dir: site
-docs_dir: mkdocs
-
 repo_url: https://github.com/tim-janik/anklang
 repo_name: Anklang.git
-
+docs_dir: mkdocs
+site_dir: site
 
 plugins:
   - search
@@ -20,12 +18,31 @@ plugins:
 
   - mkdoxy:
       projects:
-        AnklangCxx: # name of project must be alphanumeric + numbers (without spaces)
-          src-dirs: ../ase/ ../devices/  # path to source code (support multiple paths separated by space) => INPUT
-          full-doc: True # if you want to generate full documentation
-          doxy-cfg: # standard doxygen configuration (key: value)
-            FILE_PATTERNS: "*.c .h *.cc *.hh *.js *.md *.dox" # specify file patterns to filter out
-            RECURSIVE: True # recursive search in source directories
+        AnklangCxx:
+          src-dirs: ../ase/ ../devices/
+          doxy-cfg:
+            FILE_PATTERNS: "*.c .h *.cc *.hh *.js *.md *.dox"
+            INTERNAL_DOCS: YES
+            RECURSIVE: NO
+            EXTRACT_LOCAL_CLASSES: NO
+            HIDE_UNDOC_MEMBERS: YES
+            HIDE_UNDOC_CLASSES: YES
+            HIDE_FRIEND_COMPOUNDS: YES
+            HIDE_COMPOUND_REFERENCE: YES
+            SHOW_INCLUDE_FILES: NO
+            INLINE_INFO: NO
+            SHOW_USED_FILES: NO
+            VERBATIM_HEADERS: NO
+            XML_PROGRAMLISTING: NO
+            COLLABORATION_GRAPH: NO
+            GROUP_GRAPHS: NO
+            INCLUDE_GRAPH: NO
+            INCLUDED_BY_GRAPH: NO
+            GRAPHICAL_HIERARCHY: NO
+            DIRECTORY_GRAPH: NO
+            DOT_IMAGE_FORMAT: svg
+            EXTRACT_ALL: NO
+            EXTRACT_ANON_NSPACES: NO
 
 extra_javascript:
   - javascript/mathjax.js

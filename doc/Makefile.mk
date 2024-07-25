@@ -261,6 +261,9 @@ $>/site/search/search_index.js: doc/mkdocs.yml $(doc/mkdocs.mdlist)	| $>/mkdocs/
 	$Q cp $< $>/mkdocs.yml && cp $(doc/mkdocs.mdlist) $>/mkdocs/
 	$Q cp -r doc/javascript $>/mkdocs/
 	$Q ( cd $> && mkdocs build )
+	$Q # remove useless listing of anonymous namespaces
+	$Q sed 's|<li><strong>namespace</strong> *<a[^>]*><strong>@[0-9]+</strong></a> *</li>||' \
+		-r -i $>/site/AnklangCxx/namespaces.html $>/site/AnklangCxx/annotated.html
 mkdocs:
 	rm -rf $>/mkdocs/
 	$(MAKE) $>/site/search/search_index.js
