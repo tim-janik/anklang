@@ -259,6 +259,7 @@ $>/site/search/search_index.js: doc/mkdocs.yml $(doc/mkdocs.mdlist)	| $>/mkdocs/
 	@$(QECHO) RUN mkdocs
 	$Q rm -rf $>/site/
 	$Q cp $< $>/mkdocs.yml && cp $(doc/mkdocs.mdlist) $>/mkdocs/
+	$Q cp -r doc/javascript $>/mkdocs/
 	$Q ( cd $> && mkdocs build )
 mkdocs:
 	rm -rf $>/mkdocs/

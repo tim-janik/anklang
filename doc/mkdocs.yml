@@ -3,9 +3,6 @@ site_url: https://mydomain.org/mysite
 site_dir: site
 docs_dir: mkdocs
 
-# docker run --rm -it -v${PWD}:/docs -p 127.0.0.1:8001:8000 ghcr.io/tim-janik/anklang-ci:mkdocs-latest
-# docker run --rm -it -v${PWD}:/docs --entrypoint '' squidfunk/mkdocs-material sudo chown 1000:1000 -R /docs/.
-
 repo_url: https://github.com/tim-janik/anklang
 repo_name: Anklang.git
 
@@ -29,6 +26,12 @@ plugins:
           doxy-cfg: # standard doxygen configuration (key: value)
             FILE_PATTERNS: "*.c .h *.cc *.hh *.js *.md *.dox" # specify file patterns to filter out
             RECURSIVE: True # recursive search in source directories
+
+extra_javascript:
+  - javascript/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+
 
 nav:
   - Home: index.md
@@ -110,6 +113,8 @@ extra:
       link: https://social.tchncs.de/@timj
 
 markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
   - pymdownx.critic
   - pymdownx.caret
   - pymdownx.keys
@@ -119,3 +124,7 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+
+# docker run --rm -it -v${PWD}:/docs -p 127.0.0.1:8001:8000 ghcr.io/tim-janik/anklang-ci:mkdocs-latest
+# docker run --rm -it -v${PWD}:/docs --entrypoint '' squidfunk/mkdocs-material sudo chown 1000:1000 -R /docs/.
