@@ -1,9 +1,13 @@
+# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+
+# https://www.mkdocs.org/getting-started/
 site_name: Anklang Documentation
-site_url: https://mydomain.org/mysite
+site_url: https://tim-janik.github.io/anklang
 repo_url: https://github.com/tim-janik/anklang
 repo_name: Anklang.git
 docs_dir: mkdocs
 site_dir: site
+copyright: Copyright &copy; 2024 Anklang Project
 
 plugins:
   - search
@@ -13,12 +17,7 @@ plugins:
     #   target: _blank
   - offline
   - tags
-  #- blog
-  #- git-revision-date-localized:
-  #    type: timeago
-  #    fallback_to_build_date: true
-  #    enable_creation_date: true
-
+  # https://mkdoxy.kubaandrysek.cz/
   - mkdoxy:
       projects:
         AnklangCxx:
@@ -46,20 +45,22 @@ plugins:
             DOT_IMAGE_FORMAT: svg
             EXTRACT_ALL: NO
             EXTRACT_ANON_NSPACES: NO
+  #- git-revision-date-localized:
+  #    type: timeago
+  #    fallback_to_build_date: true
+  #    enable_creation_date: true
 
 extra_javascript:
   - javascript/mathjax.js
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
-
-
 nav:
-  - Home: index.md
-  - "Get Started: Intro & Tutorials":
+  - "About Anklang": index.md
+  - "Introductionary Tutorials":
     - "Tutorial 1: Starting to Play Notes": tut-play.md
   - "Howto Guides":
     - "Howto: Setting Up Audio (Linux)": how-audio.md
-  - "Reference":
+  - "References":
     - "ANKLANG(1) Manual Page": ch-man-pages.md
     - "User Interface":
       - Clip-List: cliplist.md
@@ -83,9 +84,7 @@ nav:
       - Making Releases: ch-releasing.md
       - Interpolation Notes: ch-appendix.md
 
-# TODO: Piano-Ctrl lacks tools icons
-
-
+# https://squidfunk.github.io/mkdocs-material/getting-started/
 theme:
   name: material
   language: 'en'
@@ -101,7 +100,6 @@ theme:
     - navigation.sections
     #- navigation.expand
     - navigation.path
-
   # taken from https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/#system-preference
   palette:
     - media: "(prefers-color-scheme)"
@@ -118,17 +116,13 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to dark mode
-
-
-
-copyright: Copyright &copy; 2024 Anklang Project
-
 extra:
   generator: false
   social:
     - icon: fontawesome/brands/mastodon
       link: https://social.tchncs.de/@timj
 
+# https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/
 markdown_extensions:
   - pymdownx.arithmatex:
       generic: true
