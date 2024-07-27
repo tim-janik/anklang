@@ -8,6 +8,9 @@ site_dir: site
 plugins:
   - search
   - privacy
+    # https://squidfunk.github.io/mkdocs-material/plugins/privacy/?h=blank#config.links_attr_map
+    # links_attr_map:
+    #   target: _blank
   - offline
   - tags
   #- blog
