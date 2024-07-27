@@ -258,12 +258,15 @@ $>/site/search/search_index.js: # $>/mkdocs/anklang-cxx.pdf $>/mkdocs/anklang-cx
 $>/site/search/search_index.js: doc/mkdocs.yml $(doc/mkdocs.mdlist)	| $>/mkdocs/
 	@$(QECHO) RUN mkdocs
 	$Q rm -rf $>/site/
+	$Q # prepare mkdocs inputs
 	$Q cp $< $>/mkdocs.yml && cp $(doc/mkdocs.mdlist) $>/mkdocs/
 	$Q cp -r doc/javascript $>/mkdocs/
-	$Q ( cd $> && mkdocs build )
+	$Q # mkdocs build to $>/site/
+	$Q cd $> && mkdocs build
 	$Q # remove useless listing of anonymous namespaces
 	$Q sed 's|<li><strong>namespace</strong> *<a[^>]*><strong>@[0-9]+</strong></a> *</li>||' \
 		-r -i $>/site/AnklangCxx/namespaces.html $>/site/AnklangCxx/annotated.html
+	$Q # TODO: Section on Piano-Ctrl needs SVG tools icons
 mkdocs:
 	rm -rf $>/mkdocs/
 	$(MAKE) $>/site/search/search_index.js
