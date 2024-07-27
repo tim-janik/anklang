@@ -1,8 +1,10 @@
-# Sample workflow for building and deploying a mdBook site to GitHub Pages
+# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+#
+# Workflow for mkdocs building and deploying to GitHub Pages
 #
 # Linting: xclip -sel c <.github/workflows/pages.yml # https://rhysd.github.io/actionlint/
 #
-name: Deploy site to Pages
+name: Deploy mkdocs site to Pages
 
 on:
   # Runs on pushes targeting the default branch
