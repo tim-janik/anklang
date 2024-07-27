@@ -266,6 +266,9 @@ $>/site/search/search_index.js: doc/mkdocs.yml $(doc/mkdocs.mdlist)	| $>/mkdocs/
 	$Q # remove useless listing of anonymous namespaces
 	$Q sed 's|<li><strong>namespace</strong> *<a[^>]*><strong>@[0-9]+</strong></a> *</li>||' \
 		-r -i $>/site/AnklangCxx/namespaces.html $>/site/AnklangCxx/annotated.html
+	$Q # use new tab for external links
+	$Q sed -r '/http[^ ]*github.io\/anklang/!s|<a (href="https?://[^">]+")>|<a \1 target="_blank">|g' \
+		-i out/site/*.html
 	$Q # TODO: Section on Piano-Ctrl needs SVG tools icons
 mkdocs:
 	rm -rf $>/mkdocs/
