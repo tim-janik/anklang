@@ -9,8 +9,7 @@ misc/subdirs_mk/subdir_prefix ::= $(patsubst $(misc/subdirs_mk/topdir)/%,%, $(ab
 
 # Read default config, in particular $(builddir)
 -include $(misc/subdirs_mk/topdir)/config-defaults.mk
-builddir ?= $(O)
-builddir ?= out
+builddir ?= $(if $(O),$(O),out)
 
 # Fallback to 'make all' in topdir if MAKECMDGOALS is empty
 MAKECMDGOALS ?= all

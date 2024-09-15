@@ -7,9 +7,6 @@ doc/all:
 
 # == doc/ files ==
 doc/manual-chapters ::= $(strip		\
-	doc/ch-intro.md			\
-	doc/ch-install.md		\
-	doc/ch-editing.md		\
 	$>/doc/b/cliplist.md		\
 	$>/doc/b/pianoroll.md		\
 	$>/doc/b/piano-ctrl.md		\
@@ -250,3 +247,76 @@ doc/uninstall: FORCE uninstall--doc/style/install.files
 uninstall: doc/uninstall
 
 doc/all: $(doc/install.files)
+
+
+# == mkdocs ==
+doc/mkdocs.mdlist ::= $(doc/manual-chapters) $(doc/internals-chapters) doc/index.md doc/tut-play.md doc/how-audio.md
+$>/site/search/search_index.js: # $>/mkdocs/anklang-cxx.pdf $>/mkdocs/anklang-cxx.html
+$>/site/search/search_index.js: doc/mkdocs.yml $(doc/mkdocs.mdlist)	| $>/mkdocs/
+	@$(QECHO) RUN mkdocs
+	$Q rm -rf $>/site/
+	$Q # prepare mkdocs inputs
+	$Q cp $< $>/mkdocs.yml && cp $(doc/mkdocs.mdlist) $>/mkdocs/
+	$Q cp -r doc/javascript $>/mkdocs/
+	$Q # mkdocs build to $>/site/
+	$Q cd $> && mkdocs build
+	$Q # remove useless listing of anonymous namespaces
+	$Q sed 's|<li><strong>namespace</strong> *<a[^>]*><strong>@[0-9]+</strong></a> *</li>||' \
+		-r -i $>/site/AnklangCxx/namespaces.html $>/site/AnklangCxx/annotated.html
+	$Q # use new tab for external links
+	$Q sed -r '/http[^ ]*github.io\/anklang/!s|<a (href="https?://[^">]+")>|<a \1 target="_blank">|g' \
+		-i out/site/*.html
+	$Q # TODO: Section on Piano-Ctrl needs SVG tools icons
+mkdocs:
+	rm -rf $>/mkdocs/
+	$(MAKE) $>/site/search/search_index.js
+define doc_doxygen_xmlcfg
+	PROJECT_NAME           = "Anklang C++ API"
+	PROJECT_NUMBER         = $(version_short)
+	OUTPUT_DIRECTORY       = $>/doxygen/
+	ALLOW_UNICODE_NAMES    = YES
+	EXTRACT_LOCAL_CLASSES  = NO
+	HIDE_UNDOC_MEMBERS     = YES
+	HIDE_UNDOC_CLASSES     = YES
+	HIDE_FRIEND_COMPOUNDS  = YES
+	INTERNAL_DOCS          = YES
+	HIDE_COMPOUND_REFERENCE= YES
+	SHOW_INCLUDE_FILES     = NO
+	INLINE_INFO            = NO
+	SHOW_USED_FILES        = NO
+	SHOW_FILES             = NO
+	INPUT                  = ase/ devices/
+	VERBATIM_HEADERS       = NO
+	HTML_COLORSTYLE_SAT    = 60
+	HTML_DYNAMIC_MENUS     = NO
+	GENERATE_HTML	       = NO
+	GENERATE_XML           = YES
+	XML_PROGRAMLISTING     = NO
+	PREDEFINED             = "ASE_CLASS_DECLS(x)="
+	HIDE_UNDOC_RELATIONS   = YES
+	COLLABORATION_GRAPH    = NO
+	GROUP_GRAPHS           = NO
+	INCLUDE_GRAPH          = NO
+	INCLUDED_BY_GRAPH      = NO
+	GRAPHICAL_HIERARCHY    = NO
+	DIRECTORY_GRAPH        = NO
+	DOT_IMAGE_FORMAT       = svg
+	LATEX_CMD_NAME         = xelatex
+	COMPACT_LATEX          = YES
+	LATEX_HIDE_INDICES     = YES
+endef
+export doc_doxygen_xmlcfg
+$>/doxygen/latex/refman.tex: doc/Makefile.mk
+	@$(QECHO) RUN doxygen
+	$Q cat > $>/Doxyfile  <<<$$doc_doxygen_xmlcfg
+	$Q rm -rf $>/doxygen/ && doxygen $>/Doxyfile
+$>/doxygen/xml/index.xml: $>/doxygen/latex/refman.tex
+$>/mkdocs/anklang-cxx.pdf: $>/doxygen/latex/refman.tex	| $>/mkdocs/
+	@$(QGEN)
+	$Q cd $>/doxygen/latex/ && $(MAKE)
+	$Q cp $>/doxygen/latex/refman.pdf $@
+$>/mkdocs/anklang-cxx.html: $>/doxygen/xml/index.xml	| $>/mkdocs/
+	@$(QGEN)
+	$Q node_modules/.bin/moxygen -h -n -o $>/anklang-cxx.md $>/doxygen/xml/
+	$Q pandoc $>/anklang-cxx.md -o $@ && rm -f $>/anklang-cxx.md
+

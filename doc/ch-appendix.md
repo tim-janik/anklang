@@ -1,124 +1,115 @@
-\appendix
-
 # Appendix
-
-&nbsp;
 
 ## One-dimensional Cubic Interpolation
 
-\def\V#1{V_{#1}}
-
-\def\W#1{W_{#1}}
-
-\def\w#1{w_{#1}}
-
-With four sample values $\V0$, $\V1$, $\V2$ and $\V3$, cubic interpolation approximates
-the curve segment connecting $\V1$ and $\V2$, by using the beginning and ending
+With four sample values $V_0$, $V_1$, $V_2$ and $V_3$, cubic interpolation approximates
+the curve segment connecting $V_1$ and $V_2$, by using the beginning and ending
 slope, the curvature and the rate of curvature change to construct a cubic
 polynomial.
 
 
 The cubic polynomial starts out as:
 
-(@a)	$f(x) = \w3 x^3 + \w2 x^2 + \w1 x + \w0$
+* a)	$f(x) = w_3 x^3 + w_2 x^2 + w_1 x + w_0$
 
 Where $0 <= x <= 1$, specifying the sample value of the curve segment between
-$\V1$ and $\V2$ to obtain.
+$V_1$ and $V_2$ to obtain.
 
-To calculate the coefficients $\w0,…,\w3$, we set out the following conditions:
+To calculate the coefficients $w_0…w_3$, we set out the following conditions:
 
-(@b)	$f(0)  = \V1$
-(@c)	$f(1)  = \V2$
-(@d)	$f'(0) = \V1'$
-(@e)	$f'(1) = \V2'$
+* b)	$f(0)  = V_1$
+* c)	$f(1)  = V_2$
+* d)	$f'(0) = V_1'$
+* e)	$f'(1) = V_2'$
 
-We obtain $\V1'$ and $\V2'$ from the respecting slope triangles:
+We obtain $V_1'$ and $V_2'$ from the respecting slope triangles:
 
-(@f)	$\V1' = \frac {\V2 - \V0} {2}$
-(@g)	$\V2' = \frac {\V3 - \V1} {2}$
+* f)	$V_1' = \frac {V_2 - V_0} {2}$
+* g)	$V_2' = \frac {V_3 - V_1} {2}$
 
-With (@f) →  (@d) and (@g) →  (@e) we get:
+With (f)→(d) and (g)→(e) we get:
 
-(@h)	$f'(0) = \frac {\V2 - \V0} {2}$
-(@i)	$f'(1) = \frac {\V3 - \V1} {2}$
+* h)	$f'(0) = \frac {V_2 - V_0} {2}$
+* i)	$f'(1) = \frac {V_3 - V_1} {2}$
 
 The derivation of $f(x)$ is:
 
-(@j)	$f'(x)  = 3 \w3 x^2 + 2 \w2 x + \w1$
+* j)	$f'(x)  = 3 w_3 x^2 + 2 w_2 x + w_1$
 
-From $x=0$ → (@a), i.e. (@b), we obtain $\w0$ and from $x=0$ →  (@j),
-i.e. (@h), we obtain $\w1$. With $\w0$ and $\w1$ we can solve the
-linear equation system formed by (@c) →  (@a) and (@e) →  (@j)
-to obtain $\w2$ and $\w3$.
+From $x=0$ →(a), i.e. (b), we obtain $w_0$ and from $x=0$ →(j),
+i.e. (h), we obtain $w_1$. With $w_0$ and $w_1$ we can solve the
+linear equation system formed by (c)→(a) and (e)→(j)
+to obtain $w_2$ and $w_3$.
 
-(@c_a_)	  (@c) →  (@a):	  	$\w3 +   \w2 + \frac {\V2 - \V0} {2} + \V1 = \V2$
-(@e_j_)	  (@e) →  (@j):	  	$3 \w3 + 2 \w2 + \frac {\V2 - \V0} {2}    = \frac {\V3 - \V1} {2}$
+$(c)→(a):	 	w_3 +   w_2 + \frac {V_2 - V_0} {2} + V_1 = V_2$
+
+$(e)→(j):	 	3 w_3 + 2 w_2 + \frac {V_2 - V_0} {2}    = \frac {V_3 - V_1} {2}$
 
 With the resulting coefficients:
 
 $$
 \begin{aligned}
-    \w0 &= \V1 &                                        &(initial\:value)           \\
-    \w1 &= \frac{\V2 - \V0} {2} &                       &(initial\:slope)           \\
-    \w2 &= \frac{-\V3 + 4 \V2 - 5 \V1 + 2 \V0} {2} &    &(initial\:curvature)       \\
-    \w3 &= \frac{\V3 - 3 \V2 + 3 \V1 - \V0} {2} &       &(rate\:change\:of\:curvature)
+    w_0 &= V_1 &                                        &(initial\:value)           \\
+    w_1 &= \frac{V_2 - V_0} {2} &                       &(initial\:slope)           \\
+    w_2 &= \frac{-V_3 + 4 V_2 - 5 V_1 + 2 V_0} {2} &    &(initial\:curvature)       \\
+    w_3 &= \frac{V_3 - 3 V_2 + 3 V_1 - V_0} {2} &       &(rate\:change\:of\:curvature)
 \end{aligned}
 $$
 
-Reformulating (@a) to involve just multiplications and additions (eliminating power), we get:
+Reformulating (a) to involve just multiplications and additions (eliminating power), we get:
 
-(@k)	$f(x) = ((\w3 x + \w2) x + \w1) x + \w0$
+* k)	$f(x) = ((w_3 x + w_2) x + w_1) x + w_0$
 
-Based on $\V0,…,\V3$, $\w0,…,\w3$ and (@k), we can now approximate all values of the
-curve segment between $\V1$ and $\V2$.
+Based on $V_0…V_3$, $w_0…w_3$ and (k), we can now approximate all values of the
+curve segment between $V_1$ and $V_2$.
 
 However, for practical resampling applications where only a specific
 precision is required, the number of points we need out of the curve
 segment can be reduced to a finite amount.
 Lets assume we require $n$ equally spread values of the curve segment,
-then we can precalculate $n$ sets of $\W{0,…,3}[i]$, $i=[0,…,n]$, coefficients
+then we can precalculate $n$ sets of $W_{0…3}[i]$, $i=[0…n]$, coefficients
 to speed up the resampling calculation, trading memory for
-computational performance. With $\w{0,…,3}$ in (@a):
+computational performance. With $w_{0…3}$ in (a):
 
 $$
 \begin{alignedat} {2}
-	f(x) \  &= &   \frac{\V3 - 3 \V2 + 3 \V1 - \V0} 2 x^3 \  +	& \\
-		    &  & \frac{-\V3 + 4 \V2 - 5 \V1 + 2 \V0} 2 x^2 \ +	& \\
-		    &  &                     \frac{\V2 - \V0} 2 x \  +	& \\
-		    &  &                                   V1   \ \ 	&
+	f(x) \  &= &   \frac{V_3 - 3 V_2 + 3 V_1 - V_0} 2 x^3 \  +	& \\
+		    &  & \frac{-V_3 + 4 V_2 - 5 V_1 + 2 V_0} 2 x^2 \ +	& \\
+		    &  &                     \frac{V_2 - V_0} 2 x \  +	& \\
+		    &  &                                   V1 \ \ \ \ 	&
 \end{alignedat}
 $$
 
-sorted for $\V0,…,\V4$, we have:
+sorted for $V_0…V_4$, we have:
 
-(@l) $$\begin{aligned}
- f(x) \  = \  & \V3 \  (0.5 x^3 - 0.5 x^2) \  +		& \\
-	          & \V2 \  (-1.5 x^3 + 2 x^2 + 0.5 x) \  +	& \\
-			  & \V1 \  (1.5 x^3 - 2.5 x^2 + 1) \  +	& \\
-			  & \V0 \  (-0.5 x^3 + x^2 - 0.5 x)		&
-\end{aligned}$$
+* l) $\begin{aligned}
+ f(x) \  = \  & V_3 \  (0.5 x^3 - 0.5 x^2) \  +		& \\
+	          & V_2 \  (-1.5 x^3 + 2 x^2 + 0.5 x) \  +	& \\
+			  & V_1 \  (1.5 x^3 - 2.5 x^2 + 1) \  +	& \\
+			  & V_0 \  (-0.5 x^3 + x^2 - 0.5 x)		&
+\end{aligned}$
 
-With (@l) we can solve $f(x)$ for all $x = \frac i n$, where $i = [0, 1, 2, …, n]$ by
+With (l) we can solve $f(x)$ for all $x = \frac i n$, where $i = [0, 1, 2, …, n]$ by
 substituting $g(i) = f(\frac i n)$ with
 
-(@m)	$g(i) = \V3 \W3[i] + \V2 \W2[i] + \V1 \W1[i] + \V0 \W0[i]$
+* m)	$g(i) = V_3 W_3[i] + V_2 W_2[i] + V_1 W_1[i] + V_0 W_0[i]$
 
-and using $n$ precalculated coefficients $\W{0,…,3}$ according to:
+and using $n$ precalculated coefficients $W_{0…3}$ according to:
 
 $$
 \begin{alignedat}{4}
         m      &= \frac i n                                \\
-        \W3[i] &=&  0.5 m^3 & - & 0.5 m^2 &         &      \\
-        \W2[i] &=& -1.5 m^3 & + &   2 m^2 & + 0.5 m &      \\
-        \W1[i] &=&  1.5 m^3 & - & 2.5 m^2 &         & + 1  \\
-        \W0[i] &=& -0.5 m^3 & + &     m^2 & - 0.5 m &
+        W_3[i] &=&  0.5 m^3 & - & 0.5 m^2 &         &      \\
+        W_2[i] &=& -1.5 m^3 & + &   2 m^2 & + 0.5 m &      \\
+        W_1[i] &=&  1.5 m^3 & - & 2.5 m^2 &         & + 1  \\
+        W_0[i] &=& -0.5 m^3 & + &     m^2 & - 0.5 m &
 \end{alignedat}
 $$
 
-We now need to setup $\W{0,…,3}[0,…,n]$ only once, and are then able to
+We now need to setup $W_{0…3}[0…n]$ only once, and are then able to
 obtain up to $n$ approximation values of the curve segment between
-$\V1$ and $\V2$ with four multiplications and three additions using (@m),
-given $\V0,…,\V3$.
+$V_1$ and $V_2$ with four multiplications and three additions using (m),
+given $V_0…V_3$.
 
 
 ## Modifier Keys
@@ -141,7 +132,6 @@ none             →  copy            (else move (else link))
 
 Regarding selections, the following email provides a short summary:
 
-> ~~~
 > From: Tim Janik <timj@gtk.org>
 > To: Hacking Gnomes <Gnome-Hackers@gnome.org>
 > Subject: modifiers for the second selection
@@ -201,4 +191,3 @@ Regarding selections, the following email provides a short summary:
 >
 > ---
 > ciaoTJ
-> ~~~
