@@ -2,6 +2,7 @@
 #include "logging.hh"
 #include "platform.hh"
 #include "path.hh"
+#include "regex.hh"
 #include <cstdarg>
 #include <cstring>
 
@@ -20,11 +21,13 @@ timestamp_now ()
 static uint64 programstart_timestamp = timestamp_now();
 static uint32_t log_flags = 0;
 static int      log_fd = -1;
+static bool     log_colorize = false;
 
 static void
 logstart()
 {
   if (log_flags) [[likely]] return;
+  log_colorize = AnsiColors::colorize_tty();
   if (log_setup) {
     log_flags = log_setup (&log_fd);
     if (log_fd >= 0)
@@ -67,10 +70,24 @@ logmsg (const std::string &msg, const std::source_location &loc)
   }
   if (log_fd == 2 || log_flags & LOG_STDERR)
     fflush (stderr);
-  if (log_flags & LOG_STDERR)
+  if (!log_colorize && log_flags & LOG_STDERR)
     write (2, s.data(), s.size());
   if (log_fd >= 0)
     write (log_fd, s.data(), s.size());
+  if (log_colorize && log_flags & LOG_STDERR) {
+    using namespace AnsiColors;
+    const auto C = color (FG_CYAN), G = color (BOLD, FG_GREEN), B = color (FG_BLUE), Y = color (FG_YELLOW), R = color (RESET);
+    const std::string HEXINT = "0[xX][0-9abcdefABCDEF]+";
+    const std::string FULLFLOAT = "([1-9][0-9]*|0)([.][0-9]*)?([eE][+-]?[0-9]+)?";
+    const std::string FRACTFLOAT = "[.][0-9]+([eE][+-]?[0-9]+)?";
+    const std::string NUMBER = HEXINT + "|" + FULLFLOAT + "|" + FRACTFLOAT;
+    s = Re::sub ("=(" + NUMBER + ")", "=" + Y + "$1" + R, s);
+    s = Re::sub ("=(\"(?:[^\"\\\\]|\\\\.)*\")", "=" + B + "$1" + R, s);
+    s = Re::sub (" (\\w+)=", " " + C + "$1" + R + "=", s);
+    s = Re::sub (": ([a-zA-Z.0-9_:-]+): ", ": " + G + "$1:" + R + " ", s);
+    s = Re::sub ("^(\\d+[.]\\d+):", Y + "$1:" + R, s, Re::M);
+    write (2, s.data(), s.size());
+  }
 }
 
 } // Ase
