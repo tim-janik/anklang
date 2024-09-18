@@ -4,12 +4,10 @@
 #include "path.hh"
 #include <cstdarg>
 #include <cstring>
-#include <dirent.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
 
 namespace Ase {
+
+LogFlags log_setup (int*) __attribute__ ((__weak__));
 
 uint64_t
 timestamp_now ()
@@ -20,13 +18,19 @@ timestamp_now ()
 }
 
 static uint64 programstart_timestamp = timestamp_now();
-static bool log_started = false;
+static uint32_t log_flags = 0;
+static int      log_fd = -1;
 
 static void
 logstart()
 {
-  if (log_started) [[likely]] return;
-  log_started = timestamp_now();
+  if (log_flags) [[likely]] return;
+  if (log_setup) {
+    log_flags = log_setup (&log_fd);
+    if (log_fd >= 0)
+      log_flags |= LOG_FILE;
+  } else
+    log_flags |= LOG_STDERR;
   const time_t now = programstart_timestamp / 1000000;
   struct tm stm{};
   localtime_r (&now, &stm);
@@ -35,7 +39,9 @@ logstart()
   const std::string exec = executable_path();
   const char *bexec = strrchr (exec.c_str(), '/');
   bexec = bexec ? bexec+1 : exec.c_str();
-  std::string msg = std::string (bexec) + ": programstart=\"" + tbuf + "\" executable=\"" + executable_path() + "\"";
+  char pidbuf[64] = { 0, };
+  snprintf (pidbuf, sizeof (pidbuf) - 1, " pid=%u", getpid());
+  std::string msg = std::string (bexec) + ": programstart=\"" + tbuf + "\"" + pidbuf + " executable=\"" + executable_path() + "\"";
   logmsg (msg, {});
 }
 
@@ -59,14 +65,12 @@ logmsg (const std::string &msg, const std::source_location &loc)
     snprintf (linein, sizeof (linein) - 1, ":%u:%u: execution at: ", loc.line(), loc.column());
     s = filename + std::string (linein) + loc.function_name() + "\n" + s;
   }
-  fflush (stderr);
-  write (2, s.data(), s.size());
-  // fdatasync (2);
-}
-
-void
-log_setup (bool inf2stderr, bool log2file)
-{
+  if (log_fd == 2 || log_flags & LOG_STDERR)
+    fflush (stderr);
+  if (log_flags & LOG_STDERR)
+    write (2, s.data(), s.size());
+  if (log_fd >= 0)
+    write (log_fd, s.data(), s.size());
 }
 
 } // Ase

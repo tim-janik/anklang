@@ -28,8 +28,10 @@ template<class... A> void       log             (const char *format, const A &..
 /// Write a log message to the log with source code location.
 template<class... A> void       logex           (const LString &format, const A &...args) __attribute__ ((__noinline__));
 
-/// Open log file.
-void                            log_setup       (bool inf2stderr, bool log2file);
+enum LogFlags { LOG_FILE = 1, LOG_STDERR = 2, LOG_LOCATIONS = 4, };
+
+/// Configurable handler to open log files
+LogFlags                        log_setup       (int *logfd);
 
 #ifdef _MATH_H
 using ::log;
