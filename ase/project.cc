@@ -476,7 +476,7 @@ ProjectImpl::match_serialized (const String &regex, int group)
   String json;
   Error error = snapshot_project (json);
   if (!!error) {
-    logerr ("failed to serialize project: %s\n", ase_error_blurb (error));
+    logex ("Project: failed to serialize project: %s\n", ase_error_blurb (error));
     return "";
   }
   return Re::grep (regex, json, group);

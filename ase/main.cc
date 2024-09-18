@@ -326,7 +326,7 @@ handle_autostop (const LoopState &state)
     case LoopState::PREPARE:    return seen_autostop;
     case LoopState::CHECK:      return seen_autostop;
     case LoopState::DISPATCH:
-      loginf ("stopping playback (auto)");
+      log ("Main: stopping playback (auto)");
       atquit_run (0);
       return true; // keep alive
     default: ;
@@ -535,7 +535,7 @@ main (int argc, char *argv[])
       Error error = Error::NO_MEMORY;
       if (preload_project)
         error = preload_project->load_project (filename);
-      loginf ("load project: %s: %s", filename, ase_error_blurb (error));
+      log ("Main: load project: %s: %s", filename, ase_error_blurb (error));
       if (!!error)
         warning ("%s: failed to load project: %s", filename, ase_error_blurb (error));
     }
@@ -554,7 +554,7 @@ main (int argc, char *argv[])
   if (main_config.mode == MainConfig::SYNTHENGINE) {
     const char *host = "127.0.0.1";
     wss->listen (host, xport, [] () { main_loop->quit (-1); });
-    loginf ("listen on: %s:%u", host, xport);
+    log ("Main: listen on: %s:%u", host, xport);
   }
   const String url = wss->url() + (subprotocol.empty() ? "" : "?subprotocol=" + subprotocol);
   if (embedding_fd < 0 && !url.empty())
@@ -563,7 +563,7 @@ main (int argc, char *argv[])
   // run atquit handler on SIGHUP SIGINT
   for (int sigid : { SIGHUP, SIGINT }) {
     main_loop->exec_usignal (sigid, [] (int8 sig) {
-      loginf ("got signal %d: aborting", sig);
+      log ("Main: got signal %d: aborting", sig);
       atquit_run (-1);
       return false;
     });
@@ -572,7 +572,7 @@ main (int argc, char *argv[])
 
   // catch SIGUSR2 to close sockets
   main_loop->exec_usignal (SIGUSR2, [wss] (int8 sig) {
-    loginf ("got signal %d: reset WebSocket", sig);
+    log ("Main: got signal %d: reset WebSocket", sig);
     wss->reset();
     return true;
   });
@@ -587,7 +587,7 @@ main (int argc, char *argv[])
           {
             ssize_t n = read (embedding_fd, &msg[0], msg.size()); // flush input
             msg.resize (n > 0 ? n : 0);
-            loginf ("Embedder Msg: %s", msg);
+            log ("Main: Embedder Msg: %s", msg);
           }
         if (string_strip (msg) == "QUIT" || (pfd.revents & (PollFD::ERR | PollFD::HUP | PollFD::NVAL)))
           wss->shutdown();
@@ -606,7 +606,7 @@ main (int argc, char *argv[])
   if (config.outputfile)
     {
       std::shared_ptr<CallbackS> callbacks = std::make_shared<CallbackS>();
-      loginf ("Start caputure: %s", config.outputfile);
+      log ("Main: Start caputure: %s", config.outputfile);
       config.engine->queue_capture_start (*callbacks, config.outputfile, true);
       auto job = [callbacks] () {
         for (const auto &callback : *callbacks)
@@ -618,7 +618,7 @@ main (int argc, char *argv[])
   // start auto play
   if (config.play_autostart && preload_project)
     main_loop->exec_idle ([preload_project] () {
-      loginf ("starting playback (auto)");
+      log ("Main: starting playback (auto)");
       preload_project->start_playback (config.play_autostop);
     });
   // handle automatic shutdown
@@ -631,7 +631,7 @@ main (int argc, char *argv[])
   // run main event loop and catch SIGUSR2
   const int exitcode = main_loop->run();
   assert_return (main_loop, -1); // ptr must be kept around
-  logtxt ("main loop quit (code=%d)", exitcode);
+  log ("Main: event loop quit (code=%d)", exitcode);
 
   // cleanup
   wss->shutdown(); // close socket, allow no more calls
@@ -644,7 +644,7 @@ main (int argc, char *argv[])
   main_loop->iterate_pending();
   main_config_.engine = nullptr;
 
-  logtxt ("exiting: %d", exitcode);
+  logex ("Main: exiting: %d", exitcode);
   return exitcode;
 }
 

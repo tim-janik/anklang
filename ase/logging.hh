@@ -1,41 +1,53 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #pragma once
 
-#include <ase/strings.hh>
+#include <ase/formatter.hh>
+#include <source_location>
 
 namespace Ase {
 
-/// Write a string_format() message to the log file (or possibly stderr), using the POSIX/C locale.
-template<class... A> void loginf    (const char *format, const A &...args) ASE_PRINTF (1, 0);
+/// Wrap a string together with its source code location
+struct LString : public std::string {
+  std::source_location location;
+  LString (const std::string &s, std::source_location l = std::source_location::current()) :
+    std::string (s),
+    location (l)
+  {}
+  LString (const char *s, std::source_location l = std::source_location::current()) :
+    std::string (s),
+    location (l)
+  {}
+};
 
-/// Format and send a log message to the user, stderr and log file, using the POSIX/C locale.
-template<class... A> void logerr    (const String &dept, const char *format, const A &...args) ASE_PRINTF (2, 0);
+// Current time in µseconds.
+uint64_t                        timestamp_now   ();
+
+/// Write a log message to the log file (or possibly stderr), using the POSIX/C locale.
+template<class... A> void       log             (const char *format, const A &...args) __attribute__ ((__noinline__, __format__ (__printf__, 1, 0)));
+
+/// Write a log message to the log with source code location.
+template<class... A> void       logex           (const LString &format, const A &...args) __attribute__ ((__noinline__));
 
 /// Open log file.
-void                      log_setup (bool inf2stderr, bool log2file);
+void                            log_setup       (bool inf2stderr, bool log2file);
 
-// == Impl ==
-void logmsg (const char c, const String &dept, const String &msg);
+#ifdef _MATH_H
+using ::log;
+#endif
 
-/// Log text into logfile only.
-template<class... A> void
-logtxt (const char *format, const A &...args)
+// == implementations ==
+void logmsg (const std::string &msg, const std::source_location &loc);
+
+template<class... A> __attribute__ ((__noinline__)) void
+log (const char *format, const A &...args)
 {
-  logmsg ('T', "", string_format (format, args...).c_str());
+  logmsg (string_format (format, args...), {});
 }
 
-/// Log info to logfile (and stderr for some configs)
-template<class... A> void
-loginf (const char *format, const A &...args)
+template<class... A> __attribute__ ((__noinline__)) void
+logex (const LString &format, const A &...args)
 {
-  logmsg ('I', "", string_format (format, args...).c_str());
-}
-
-/// Log error to stderr and logfile.
-template<class... A> void
-logerr (const String &dept, const char *format, const A &...args)
-{
-  logmsg ('E', dept, string_format (format, args...).c_str());
+  logmsg (string_format (format.c_str(), args...), format.location);
 }
 
 } // Ase

@@ -71,7 +71,7 @@ Re::grep (const String &regex, const String &input, int group, Flags flags)
     | PCRE2_NEVER_BACKSLASH_C;  // prevent matching point in the middle of UTF-8
   pcre2_code *rx = pcre2_compile ((const uint8_t*) regex.c_str(), PCRE2_ZERO_TERMINATED, COMPILE_OPTIONS, &errorcode, &erroroffset, ccontext);
   if (!rx) {
-    logerr ("Re", "failed to compile regex (%d): %s", errorcode, regex);
+    logex ("Re", "failed to compile regex (%d): %s", errorcode, regex);
     return "";
   }
   pcre2_match_data *md = pcre2_match_data_create_from_pattern (rx, NULL);
