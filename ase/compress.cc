@@ -477,7 +477,7 @@ static void
 blake3_tests()
 {
   String h = string_to_hex (blake3_hash_string (""));
-  TASSERT (h == "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262");
+  TCMP (h, ==, "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262");
   h = string_to_hex (blake3_hash_string ("Hello Blake3"));
   TASSERT (h == "6201e8ededb2f1f2b6362119b46b404e822efbd58d7922202408025c5f527c56");
 }

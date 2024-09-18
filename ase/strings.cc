@@ -300,7 +300,7 @@ current_locale_vprintf (const char *format, va_list vargs)
 static inline String
 posix_locale_vprintf (const char *format, va_list vargs)
 {
-  Lib::ScopedPosixLocale posix_locale_scope; // pushes POSIX/C locale for this scope
+  ScopedPosixLocale posix_locale; // use POSIX locale for this scope
   return current_locale_vprintf (format, vargs);
 }
 
@@ -625,7 +625,7 @@ libc_strtold (const char *nptr, char **endptr)
 long double
 posix_locale_strtold (const char *nptr, char **endptr)
 {
-  Lib::ScopedPosixLocale posix_locale_scope; // pushes POSIX/C locale for this scope
+  ScopedPosixLocale posix_locale; // use POSIX locale for this scope
   char *fail_pos = NULL;
   const long double val = libc_strtold (nptr, &fail_pos);
   if (endptr)
@@ -1173,7 +1173,7 @@ string_to_hex (const String &input)
   String s;
   s.reserve (input.size() * 2);
   for (const char &c : input)
-    s += string_format ("%02x", c);
+    s += string_format ("%02x", uint8_t (c));
   return s;
 }
 
@@ -1644,7 +1644,7 @@ strerror (int errno_num)
   const int old_errno = errno;
   const char *result;
   {
-    Lib::ScopedPosixLocale posix_locale_scope; // pushes POSIX/C locale for this scope
+    ScopedPosixLocale posix_locale; // use POSIX locale for this scope
     result = ::strerror (errno_num);
   }
   errno = old_errno;

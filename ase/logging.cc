@@ -79,7 +79,7 @@ log_setup (bool inf2stderr, bool log2file)
 void
 logmsg (const char c, const String &dept, const String &msg)
 {
-  Lib::ScopedPosixLocale posix_locale_scope; // push POSIX locale for this scope
+  ScopedPosixLocale posix_locale; // use POSIX locale for this scope
   if (msg.empty()) return;
   String s = msg;
   if (s[s.size()-1] != '\n')

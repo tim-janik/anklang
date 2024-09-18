@@ -18,8 +18,6 @@ const char*                    strrstr               (const char *haystack, cons
 const char*                    string_find_word      (const char *haystack, const char *word);
 
 // == String Formatting ==
-template<class... Args> String string_format         (const char *format, const Args &...args) ASE_PRINTF (1, 0);
-template<class... Args> String string_locale_format  (const char *format, const Args &...args) ASE_PRINTF (1, 0);
 String                         string_vprintf        (const char *format, va_list vargs);
 String                         string_locale_vprintf (const char *format, va_list vargs);
 
@@ -194,20 +192,6 @@ const char*     strerror ();              // wrapper for strerror (errno)
     __a.push_back (ConstCharArray[__ai]);                               \
   __a; })
 #define ASE_CQUOTE(str)    (Ase::string_to_cquote (str).c_str())
-
-/// Formatted printing ala printf() into a String, using the POSIX/C locale.
-template<class... Args> ASE_NOINLINE String
-string_format (const char *format, const Args &...args)
-{
-  return Lib::StringFormatter::format (NULL, format, args...);
-}
-
-/// Formatted printing ala printf() into a String, using the current locale.
-template<class... Args> ASE_NOINLINE String
-string_locale_format (const char *format, const Args &...args)
-{
-  return Lib::StringFormatter::format<Lib::StringFormatter::CURRENT_LOCALE> (NULL, format, args...);
-}
 
 } // Ase
 

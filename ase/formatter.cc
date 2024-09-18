@@ -3,26 +3,59 @@
 #include <unistd.h>     // isatty
 #include <cstring>
 #include <atomic>
+#include "testing.hh"
+#include "internal.hh"
 
 /** @TODO:
  * - StringFormatter: support directives: %%n %%S %%ls
  * - StringFormatter: support directive flags: I
  */
 
-#ifdef __clang__ // clang++-3.8.0: work around 'variable length array of non-POD element type'
-#define CC_DECLARE_VLA(Type, var, count)        std::vector<Type> var (count)
-#else // sane c++
-#define CC_DECLARE_VLA(Type, var, count)        Type var[count]
-#endif
-
 namespace Ase {
-namespace Lib {
+
+locale_t
+ScopedPosixLocale::posix_locale()
+{
+  static locale_t cached_posix_locale = [] () {
+    locale_t posix_locale = nullptr;
+    if (!posix_locale)
+      posix_locale = newlocale (LC_ALL_MASK, "POSIX.UTF-8", nullptr);
+    if (!posix_locale)
+      posix_locale = newlocale (LC_ALL_MASK, "C.UTF-8", nullptr);
+    if (!posix_locale)
+      posix_locale = newlocale (LC_ALL_MASK, "POSIX", nullptr);
+    if (!posix_locale)
+      posix_locale = newlocale (LC_ALL_MASK, "C", nullptr);
+    if (!posix_locale)
+      posix_locale = newlocale (LC_ALL_MASK, nullptr, nullptr);
+    if (posix_locale == nullptr)
+      fprintf (stderr, "%s: WARNING: newlocale() returned NULL\n", __FILE__);
+    return posix_locale;
+  } ();
+  return cached_posix_locale;
+}
+
+ScopedPosixLocale::ScopedPosixLocale()
+{
+  saved_locale_ = uselocale (posix_locale());
+}
+
+ScopedPosixLocale::~ScopedPosixLocale()
+{
+  uselocale (saved_locale_);
+}
+
+namespace Impl {
 
 template<class... Args> static std::string
 system_string_printf (const char *format, Args... args)
 {
-  char *cstr = NULL;
-  int ret = asprintf (&cstr, format, args...);
+  char *cstr = nullptr;
+  int ret;
+  {
+    ScopedPosixLocale posix_locale;
+    ret = asprintf (&cstr, format, args...);
+  }
   if (ret >= 0 && cstr)
     {
       std::string result = cstr;
@@ -62,278 +95,249 @@ parse_unsigned_integer (const char **stringp, uint64_t *up)
   return true;
 }
 
-static bool
-parse_positional (const char **stringp, uint64_t *ap)
-{ // [0-9]+ '$'
-  const char *p = *stringp;
-  uint64_t ui64 = 0;
-  if (parse_unsigned_integer (&p, &ui64) && *p == '$')
-    {
-      p++;
-      *ap = ui64;
-      *stringp = p;
-      return true;
-    }
-  return false;
-}
-
-const char*
-StringFormatter::parse_directive (const char **stringp, size_t *indexp, Directive *dirp)
-{ // '%' positional? [-+#0 '']* ([0-9]*|[*]positional?) ([.]([0-9]*|[*]positional?))? [hlLjztqZ]* [spmcCdiouXxFfGgEeAa]
-  const char *p = *stringp;
-  size_t index = *indexp;
-  Directive fdir;
-  // '%' directive start
-  if (*p != '%')
-    return "missing '%' at start";
-  p++;
-  // positional argument
-  uint64_t ui64 = -1;
-  if (parse_positional (&p, &ui64))
-    {
-      if (ui64 > 0 && ui64 <= 2147483647)
-        fdir.value_index = ui64;
-      else
-        return "invalid positional specification";
-    }
-  // flags
-  const char *flags = "-+#0 '";
-  while (strchr (flags, *p))
-    switch (*p)
+struct StringFormatDirective {
+  using ll_t = long long;
+  char     conversion = 0;
+  uint32_t adjust_left : 1 = 0, add_sign : 1 = 0, use_width : 1 = 0, use_precision : 1 = 0;
+  uint32_t alternate_form : 1 = 0, zero_padding : 1 = 0, add_space : 1 = 0, locale_grouping : 1 = 0;
+  uint32_t field_width = 0, precision = 0, start = 0, end = 0, value_index = 0, width_index = 0, precision_index = 0;
+  static bool
+  parse_positional (const char **stringp, uint64_t *ap)
+  { // [0-9]+ '$'
+    const char *p = *stringp;
+    uint64_t ui64 = 0;
+    if (parse_unsigned_integer (&p, &ui64) && *p == '$')
       {
-      case '-': fdir.adjust_left = true;        goto default_case;
-      case '+': fdir.add_sign = true;           goto default_case;
-      case '#': fdir.alternate_form = true;     goto default_case;
-      case '0': fdir.zero_padding = true;       goto default_case;
-      case ' ': fdir.add_space = true;          goto default_case;
-      case '\'': fdir.locale_grouping = true;   goto default_case;
-      default: default_case:
         p++;
-        break;
+        *ap = ui64;
+        *stringp = p;
+        return true;
       }
-  // field width
-  ui64 = 0;
-  if (*p == '*')
-    {
-      p++;
-      if (parse_positional (&p, &ui64))
-        {
-          if (ui64 > 0 && ui64 <= 2147483647)
-            fdir.width_index = ui64;
-          else
-            return "invalid positional specification";
-        }
-      else
-        fdir.width_index = index++;
-      fdir.use_width = true;
-    }
-  else if (parse_unsigned_integer (&p, &ui64))
-    {
-      if (ui64 <= 2147483647)
-        fdir.field_width = ui64;
-      else
-        return "invalid field width specification";
-      fdir.use_width = true;
-    }
-  // precision
-  if (*p == '.')
-    {
-      fdir.use_precision = true;
-      p++;
-    }
-  if (*p == '*')
-    {
-      p++;
-      if (parse_positional (&p, &ui64))
-        {
-          if (ui64 > 0 && ui64 <= 2147483647)
-            fdir.precision_index = ui64;
-          else
-            return "invalid positional specification";
-        }
-      else
-        fdir.precision_index = index++;
-    }
-  else if (parse_unsigned_integer (&p, &ui64))
-    {
-      if (ui64 <= 2147483647)
-        fdir.precision = ui64;
-      else
-        return "invalid precision specification";
-    }
-  // modifiers
-  const char *modifiers = "hlLjztqZ";
-  while (strchr (modifiers, *p))
+    return false;
+  }
+  const char*
+  parse_directive (const char **stringp, size_t *indexp)
+  { // '%' positional? [-+#0 '']* ([0-9]*|[*]positional?) ([.]([0-9]*|[*]positional?))? [hlLjztqZ]* [spmcCdiouXxFfGgEeAa]
+    const char *p = *stringp;
+    size_t index = *indexp;
+    // '%' directive start
+    if (*p != '%')
+      return "missing '%' at start";
     p++;
-  // conversion
-  const char *conversion = "dioucCspmXxEeFfGgAa%";
-  if (!strchr (conversion, *p))
-    return "missing conversion specifier";
-  if (fdir.value_index == 0 && !strchr ("m%", *p))
-    fdir.value_index = index++;
-  fdir.conversion = *p++;
-  if (fdir.conversion == 'C')   // %lc in SUSv2
-    fdir.conversion = 'c';
-  // success
-  *dirp = fdir;
-  *indexp = index;
-  *stringp = p;
-  return NULL; // OK
-}
-
-const StringFormatter::FormatArg&
-StringFormatter::format_arg (size_t nth)
-{
-  if (nth && nth <= nargs_)
-    return fargs_[nth-1];
-  static const FormatArg zero_arg = { { 0, }, 0 };
-  return zero_arg;
-}
-
-StringFormatter::LDouble
-StringFormatter::arg_as_ldouble (size_t nth)
-{
-  const FormatArg &farg = format_arg (nth);
-  switch (farg.kind)
-    {
-    case '1':   return farg.i1;
-    case '2':   return farg.i2;
-    case '4':   return farg.i4;
-    case '6':   return farg.i6;
-    case '8':   return farg.i8;
-    case 'f':   return farg.f;
-    case 'd':   return farg.d;
-    case 'p':   return ULLong (farg.p);
-    case 's':   return ULLong (farg.s);
-    default:    return 0;
-    }
-}
-
-const char*
-StringFormatter::arg_as_chars (size_t nth)
-{
-  if (!(nth && nth <= nargs_))
+    // positional argument
+    uint64_t ui64 = -1;
+    if (parse_positional (&p, &ui64))
+      {
+        if (ui64 > 0 && ui64 <= 2147483647)
+          value_index = ui64;
+        else
+          return "invalid positional specification";
+      }
+    // flags
+    const char *flags = "-+#0 '";
+    while (strchr (flags, *p))
+      switch (*p)
+        {
+        case '-': adjust_left = true;        goto default_case;
+        case '+': add_sign = true;           goto default_case;
+        case '#': alternate_form = true;     goto default_case;
+        case '0': zero_padding = true;       goto default_case;
+        case ' ': add_space = true;          goto default_case;
+        case '\'': locale_grouping = true;   goto default_case;
+        default: default_case:
+          p++;
+          break;
+        }
+    // field width
+    ui64 = 0;
+    if (*p == '*')
+      {
+        p++;
+        if (parse_positional (&p, &ui64))
+          {
+            if (ui64 > 0 && ui64 <= 2147483647)
+              width_index = ui64;
+            else
+              return "invalid positional specification";
+          }
+        else
+          width_index = index++;
+        use_width = true;
+      }
+    else if (parse_unsigned_integer (&p, &ui64))
+      {
+        if (ui64 <= 2147483647)
+          field_width = ui64;
+        else
+          return "invalid field width specification";
+        use_width = true;
+      }
+    // precision
+    if (*p == '.')
+      {
+        use_precision = true;
+        p++;
+      }
+    if (*p == '*')
+      {
+        p++;
+        if (parse_positional (&p, &ui64))
+          {
+            if (ui64 > 0 && ui64 <= 2147483647)
+              precision_index = ui64;
+            else
+              return "invalid positional specification";
+          }
+        else
+          precision_index = index++;
+      }
+    else if (parse_unsigned_integer (&p, &ui64))
+      {
+        if (ui64 <= 2147483647)
+          precision = ui64;
+        else
+          return "invalid precision specification";
+      }
+    // modifiers
+    const char *modifiers = "hlLjztqZ";
+    while (strchr (modifiers, *p))
+      p++;
+    // conversion
+    const char *conversion_chars = "dioucCspmXxEeFfGgAa%";
+    if (!strchr (conversion_chars, *p))
+      return "missing conversion specifier";
+    if (value_index == 0 && !strchr ("m%", *p))
+      value_index = index++;
+    conversion = *p++;
+    if (conversion == 'C')   // %lc in SUSv2
+      conversion = 'c';
+    // success
+    *indexp = index;
+    *stringp = p;
+    return nullptr; // OK
+  }
+  std::string
+  render_directive (const size_t N, const StringFormatArg *args) const
+  {
+    switch (conversion)
+      {
+      case 'm':
+        return render_value (N, args, "", int (0)); // dummy arg to silence compiler
+      case 'p':
+        return render_value (N, args, "", arg_as_ptr (N, args, value_index));
+      case 's': // precision
+        return render_value (N, args, "", arg_as_chars (N, args, value_index));
+      case 'c': case 'd': case 'i': case 'o': case 'u': case 'X': case 'x':
+        return render_value (N, args, "ll", arg_as_longlong (N, args, value_index));
+      case 'f': case 'F': case 'e': case 'E': case 'g': case 'G': case 'a': case 'A':
+        return render_value (N, args, "", arg_as_double (N, args, value_index));
+      case '%':
+        return "%";
+      }
+    return std::string ("%") + conversion;
+  }
+  static const StringFormatArg&
+  format_arg (const size_t N, const StringFormatArg *args, size_t nth)
+  {
+    if (nth && nth <= N)
+      return args[nth-1];
+    static const StringFormatArg zero_arg;
+    return zero_arg;
+  }
+  static const char*
+  arg_as_chars (const size_t N, const StringFormatArg *args, size_t nth)
+  {
+    if (!(nth && nth <= N))
+      return "";
+    const StringFormatArg &arg = format_arg (N, args, nth);
+    if (auto *p = std::get_if<const char*> (&arg))
+      return *p ? *p : "(null)";
+    if (auto *p = std::get_if<uint64_t> (&arg); *p == 0)
+      return "(null)";
     return "";
-  if ((fargs_[nth-1].kind == 's' || fargs_[nth-1].kind == 'p') && fargs_[nth-1].p == NULL)
-    return "(null)";
-  return (fargs_[nth-1].kind != 's' && fargs_[nth-1].kind != 'p') ? "" : fargs_[nth-1].s;
-}
+  }
+  static void*
+  arg_as_ptr (const size_t N, const StringFormatArg *args, size_t nth)
+  {
+    return (void*) ptrdiff_t (arg_as_longlong (N, args, nth));
+  }
+  static uint32_t
+  arg_as_width (const size_t N, const StringFormatArg *args, size_t nth)
+  {
+    int32_t w = arg_as_longlong (N, args, nth);
+    w = std::abs (w);
+    return w < 0 ? std::abs (w + 1) : w; // turn -2147483648 into +2147483647
+  }
+  static uint32_t
+  arg_as_precision (const size_t N, const StringFormatArg *args, size_t nth)
+  {
+    const int32_t precision = arg_as_longlong (N, args, nth);
+    return std::max (0, precision);
+  }
+  static ll_t
+  arg_as_longlong (const size_t N, const StringFormatArg *args, size_t nth)
+  {
+    const StringFormatArg &arg = format_arg (N, args, nth);
+    switch (arg.index())
+      {
+      case 0:   return std::get<uint64_t> (arg);
+      case 1:   return ll_t (std::get<double> (arg));
+      case 2:   return ll_t (std::get<const char*> (arg));
+      }
+    return 0;
+  }
+  static double
+  arg_as_double (const size_t N, const StringFormatArg *args, size_t nth)
+  {
+    const StringFormatArg &arg = format_arg (N, args, nth);
+    switch (arg.index())
+      {
+      case 0:   return std::get<uint64_t> (arg);
+      case 1:   return std::get<double> (arg);
+      case 2:   return double (ptrdiff_t (std::get<const char*> (arg)));
+      }
+    return 0.0;
+  }
+  template<class Value> std::string
+  render_value (const size_t N, const StringFormatArg *args, const char *modifier, Value value) const
+  {
+    std::string format;
+    const int field_width = !use_width || !width_index ? this->field_width : arg_as_width (N, args, width_index);
+    const int field_precision = !use_precision || !precision_index ? std::max (uint32_t (0), precision) : arg_as_precision (N, args, precision_index);
+    // format directive
+    format += '%';
+    if (adjust_left)
+      format += '-';
+    if (add_sign)
+      format += '+';
+    if (add_space)
+      format += ' ';
+    if (zero_padding && !adjust_left && strchr ("diouXx" "FfGgEeAa", conversion))
+      format += '0';
+    if (alternate_form && strchr ("oXx" "FfGgEeAa", conversion))
+      format += '#';
+    if (locale_grouping && strchr ("idu" "FfGg", conversion))
+      format += '\'';
+    if (use_width)
+      format += '*';
+    if (use_precision && strchr ("sm" "diouXx" "FfGgEeAa", conversion)) // !cp
+      format += ".*";
+    if (modifier)
+      format += modifier;
+    format += conversion;
+    // printf formatting
+    if (use_width && use_precision)
+      return system_string_printf (format.c_str(), field_width, field_precision, value);
+    else if (use_precision)
+      return system_string_printf (format.c_str(), field_precision, value);
+    else if (use_width)
+      return system_string_printf (format.c_str(), field_width, value);
+    else
+      return system_string_printf (format.c_str(), value);
+  }
+};
 
-void*
-StringFormatter::arg_as_ptr (size_t nth)
-{
-  if (!(nth && nth <= nargs_))
-    return NULL;
-  return fargs_[nth-1].p;
-}
-
-StringFormatter::LLong
-StringFormatter::arg_as_longlong (size_t nth)
-{
-  const FormatArg &farg = format_arg (nth);
-  switch (farg.kind)
-    {
-    case '1':   return farg.i1;
-    case '2':   return farg.i2;
-    case '4':   return farg.i4;
-    case '6':   return farg.i6;
-    case '8':   return farg.i8;
-    case 'f':   return farg.f;
-    case 'd':   return farg.d;
-    case 'p':   return LLong (farg.p);
-    case 's':   return LLong (farg.s);
-    default:    return 0;
-    }
-}
-
-uint32_t
-StringFormatter::arg_as_width (size_t nth)
-{
-  int32_t w = arg_as_longlong (nth);
-  w = std::abs (w);
-  return w < 0 ? std::abs (w + 1) : w; // turn -2147483648 into +2147483647
-}
-
-uint32_t
-StringFormatter::arg_as_precision (size_t nth)
-{
-  const int32_t precision = arg_as_longlong (nth);
-  return std::max (0, precision);
-}
-
-template<class Arg> std::string
-StringFormatter::render_arg (const Directive &dir, const char *modifier, Arg arg)
-{
-  std::string format;
-  const int field_width = !dir.use_width || !dir.width_index ? dir.field_width : arg_as_width (dir.width_index);
-  const int field_precision = !dir.use_precision || !dir.precision_index ? std::max (uint32_t (0), dir.precision) : arg_as_precision (dir.precision_index);
-  // format directive
-  format += '%';
-  if (dir.adjust_left)
-    format += '-';
-  if (dir.add_sign)
-    format += '+';
-  if (dir.add_space)
-    format += ' ';
-  if (dir.zero_padding && !dir.adjust_left&& strchr ("diouXx" "FfGgEeAa", dir.conversion))
-    format += '0';
-  if (dir.alternate_form && strchr ("oXx" "FfGgEeAa", dir.conversion))
-    format += '#';
-  if (dir.locale_grouping && strchr ("idu" "FfGg", dir.conversion))
-    format += '\'';
-  if (dir.use_width)
-    format += '*';
-  if (dir.use_precision && strchr ("sm" "diouXx" "FfGgEeAa", dir.conversion)) // !cp
-    format += ".*";
-  if (modifier)
-    format += modifier;
-  format += dir.conversion;
-  // printf formatting
-  if (dir.use_width && dir.use_precision)
-    return system_string_printf (format.c_str(), field_width, field_precision, arg);
-  else if (dir.use_precision)
-    return system_string_printf (format.c_str(), field_precision, arg);
-  else if (dir.use_width)
-    return system_string_printf (format.c_str(), field_width, arg);
-  else
-    return system_string_printf (format.c_str(), arg);
-}
-
-std::string
-StringFormatter::render_directive (const Directive &dir)
-{
-  switch (dir.conversion)
-    {
-    case 'm':
-      return render_arg (dir, "", int (0)); // dummy arg to silence compiler
-    case 'p':
-      return render_arg (dir, "", arg_as_ptr (dir.value_index));
-    case 's': // precision
-      return render_arg (dir, "", arg_as_chars (dir.value_index));
-    case 'c': case 'd': case 'i': case 'o': case 'u': case 'X': case 'x':
-      switch (format_arg (dir.value_index).kind)
-        {
-        case '1':       return render_arg (dir, "hh", format_arg (dir.value_index).i1);
-        case '2':       return render_arg (dir, "h", format_arg (dir.value_index).i2);
-        case '4':       return render_arg (dir, "", format_arg (dir.value_index).i4);
-        case '6':       return render_arg (dir, "l", format_arg (dir.value_index).i6);
-        case '8':       return render_arg (dir, "ll", format_arg (dir.value_index).i8);
-        default:        return render_arg (dir, "ll", arg_as_longlong (dir.value_index));
-        }
-    case 'f': case 'F': case 'e': case 'E': case 'g': case 'G': case 'a': case 'A':
-      switch (format_arg (dir.value_index).kind)
-        {
-        case 'f':       return render_arg (dir, "", format_arg (dir.value_index).f);
-        case 'd':
-        default:        return render_arg (dir, "L", arg_as_ldouble (dir.value_index));
-        }
-    case '%':
-      return "%";
-    }
-  return std::string ("%") + dir.conversion;
-}
-
-static inline size_t
+static size_t
 upper_directive_count (const char *format)
 {
   size_t n = 0;
@@ -347,92 +351,8 @@ upper_directive_count (const char *format)
   return n;
 }
 
-std::string
-StringFormatter::render_format (const size_t last, const char *format)
-{
-  if (last != nargs_)
-    { // should never be reached
-      fputs (__FILE__ ": template argument list unpacking failed\n", stderr);
-      return "";
-    }
-  // allocate enough space to hold all directives possibly contained in format
-  const size_t max_dirs = 1 + upper_directive_count (format);
-  CC_DECLARE_VLA (Directive, fdirs, max_dirs); // Directive fdirs[max_dirs];
-  // parse format into Directive stack
-  size_t nextarg = 1, ndirs = 0;
-  const char *p = format;
-  while (*p)
-    {
-      do
-        {
-          if (p[0] == '%')
-            break;
-          p++;
-        }
-      while (*p);
-      if (*p == 0)
-        break;
-      const size_t start = p - format;
-      const char *err = parse_directive (&p, &nextarg, &fdirs[ndirs]);
-      if (err)
-        return format_error (err, format, ndirs + 1);
-      fdirs[ndirs].start = start;
-      fdirs[ndirs].end = p - format;
-      ndirs++;
-      if (!(ndirs < max_dirs))
-        { // should never be reached
-          fputs (__FILE__ ": invalid result from upper_directive_count()", stderr);
-          return "";
-        }
-    }
-  const size_t argcounter = nextarg - 1;
-  fdirs[ndirs].end = fdirs[ndirs].start = p - format;
-  // check maximum argument reference and argument count
-  size_t argmaxref = argcounter;
-  for (size_t i = 0; i < ndirs; i++)
-    {
-      const Directive &fdir = fdirs[i];
-      argmaxref = std::max (argmaxref, size_t (fdir.value_index));
-      argmaxref = std::max (argmaxref, size_t (fdir.width_index));
-      argmaxref = std::max (argmaxref, size_t (fdir.precision_index));
-    }
-  if (argmaxref > last)
-    return format_error ("too few arguments for format", format, 0);
-  if (argmaxref < last)
-    return format_error ("too many arguments for format", format, 0);
-  // format pieces
-  std::string result;
-  p = format;
-  for (size_t i = 0; i <= ndirs; i++)
-    {
-      const Directive &fdir = fdirs[i];
-      result += std::string (p, fdir.start - (p - format));
-      if (fdir.conversion)
-        {
-          std::string rendered_arg = render_directive (fdir);
-          if (arg_transform_)
-            rendered_arg = arg_transform_ (rendered_arg);
-          result += rendered_arg;
-        }
-      p = format + fdir.end;
-    }
-  return result;
-}
-
-std::string
-StringFormatter::locale_format (const size_t last, const char *format)
-{
-  if (locale_context_ == CURRENT_LOCALE)
-    return render_format (last, format);
-  else
-    {
-      ScopedPosixLocale posix_locale_scope; // pushes POSIX locale for this scope
-      return render_format (last, format);
-    }
-}
-
-std::string
-StringFormatter::format_error (const char *err, const char *format, size_t directive)
+static std::string
+format_error (const char *err, const char *format, size_t directive)
 {
   const char *cyan = "", *cred = "", *cyel = "", *crst = "";
   if (isatty (fileno (stderr)))
@@ -453,66 +373,71 @@ StringFormatter::format_error (const char *err, const char *format, size_t direc
   return format;
 }
 
-ScopedLocale::ScopedLocale (locale_t scope_locale) :
-  locale_ (NULL)
+std::string
+StringFormatArg::string_format_args (const char *format, const size_t N, const StringFormatArg *args)
 {
-  if (!scope_locale)
-    locale_ = uselocale (LC_GLOBAL_LOCALE);     // use process locale
-  else
-    locale_ = uselocale (scope_locale);         // use custom locale
-  if (locale_ == NULL)
-    fprintf (stderr, "%s: WARNING: uselocale() returned NULL\n", __FILE__);
+  if (!format)
+    return format_error ("format is nullptr", "<nullptr>", 0);
+  // allocate enough space to hold all directives possibly contained in format
+  const size_t max_dirs = 1 + upper_directive_count (format);
+  StringFormatDirective fdirs[max_dirs];
+  // parse format into Directive stack
+  size_t nextarg = 1, ndirs = 0;
+  const char *p = format;
+  while (*p)
+    {
+      do
+        {
+          if (p[0] == '%')
+            break;
+          p++;
+        }
+      while (*p);
+      if (*p == 0)
+        break;
+      const size_t start = p - format;
+      const char *err = fdirs[ndirs].parse_directive (&p, &nextarg);
+      if (err)
+        return format_error (err, format, ndirs + 1);
+      fdirs[ndirs].start = start;
+      fdirs[ndirs].end = p - format;
+      ndirs++;
+      TASSERT (ndirs < max_dirs);
+    }
+  const size_t argcounter = nextarg - 1;
+  fdirs[ndirs].end = fdirs[ndirs].start = p - format;
+  // check maximum argument reference and argument count
+  size_t argmaxref = argcounter;
+  for (size_t i = 0; i < ndirs; i++)
+    {
+      const StringFormatDirective &fdir = fdirs[i];
+      argmaxref = std::max (argmaxref, size_t (fdir.value_index));
+      argmaxref = std::max (argmaxref, size_t (fdir.width_index));
+      argmaxref = std::max (argmaxref, size_t (fdir.precision_index));
+    }
+  if (argmaxref > N)
+    return format_error ("too few arguments for format", format, 0);
+  if (argmaxref < N)
+    return format_error ("too many arguments for format", format, 0);
+  // format pieces
+  std::string result;
+  p = format;
+  for (size_t i = 0; i <= ndirs; i++)
+    {
+      const StringFormatDirective &fdir = fdirs[i];
+      result += std::string (p, fdir.start - (p - format));
+      if (fdir.conversion)
+        result += fdir.render_directive (N, args);
+      p = format + fdir.end;
+    }
+  return result;
 }
 
-ScopedLocale::~ScopedLocale ()
-{
-  uselocale (locale_);                          // restore locale
-}
+} // Impl
 
-#if 0
-ScopedLocale::ScopedLocale (const String &locale_name = "")
-{
-  /* this constructor should:
-   * - uselocale (LC_GLOBAL_LOCALE) if locale_name == "",
-   * - create newlocale from locale_name, use it and later delete it, but:
-   * - freelocale(newlocale()) seems buggy on glibc-2.7 (crashes)
-   */
-}
-#endif
-
-ScopedPosixLocale::ScopedPosixLocale () :
-  ScopedLocale (posix_locale())
-{}
-
-locale_t
-ScopedPosixLocale::posix_locale ()
-{
-  static locale_t cached_posix_locale = [] () {
-    locale_t posix_locale = nullptr;
-    if (!posix_locale)
-      posix_locale = newlocale (LC_ALL_MASK, "POSIX.UTF-8", NULL);
-    if (!posix_locale)
-      posix_locale = newlocale (LC_ALL_MASK, "C.UTF-8", NULL);
-    if (!posix_locale)
-      posix_locale = newlocale (LC_ALL_MASK, "POSIX", NULL);
-    if (!posix_locale)
-      posix_locale = newlocale (LC_ALL_MASK, "C", NULL);
-    if (!posix_locale)
-      posix_locale = newlocale (LC_ALL_MASK, NULL, NULL);
-    if (posix_locale == NULL)
-      fprintf (stderr, "%s: WARNING: newlocale() returned NULL\n", __FILE__);
-    return posix_locale;
-  } ();
-  return cached_posix_locale;
-}
-
-} // Lib
 } // Ase
 
 // == Testing ==
-#include "testing.hh"
-#include "internal.hh"
-
 namespace { // Anon
 struct UncopyablePoint {
   double x, y;
@@ -529,8 +454,12 @@ ase_string_format()
   using namespace Ase;
   std::atomic<bool> boolean = 1;
   // string_format
+  TCMP (string_format ("%d", bool (1)), ==, "1");
+  TCMP (string_format ("%d", char (-17)), ==, "-17");
+  TCMP (string_format ("%s", nullptr), ==, "(null)");
   TCMP (string_format ("%s", boolean), ==, "1");
-  TCMP (string_format ("%s", (void*) "FOO"), ==, "FOO");
+  TCMP (string_format ("%s", (char*) "FOO"), ==, "FOO");
+  TCMP (string_format ("%s", (void*) "FOO"), ==, "");
   TCMP (string_format ("%d %s", -9223372036854775808uLL, "FOO"), ==, "-9223372036854775808 FOO");
   TCMP (string_format ("0x%08x", 0xc0ffee), ==, "0x00c0ffee");
   enum { TEST17 = 17 };
