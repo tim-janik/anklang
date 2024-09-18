@@ -29,8 +29,6 @@ public:
 };
 extern constexpr inline Re::Flags operator| (Re::Flags a, Re::Flags b) { return Re::Flags (int32_t (a) | int32_t (b)); }
 
-extern constexpr inline class Re Re = {};
-
 } // Ase
 
 #endif // __ASE_REGEX_HH__
