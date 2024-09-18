@@ -3,6 +3,7 @@
 #include "path.hh"
 #include "platform.hh"
 #include "datautils.hh"
+#include "strings.hh"
 #include "internal.hh"
 #include <algorithm>
 

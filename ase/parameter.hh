@@ -39,8 +39,8 @@ struct Param {
   ExtraVals  extras;      ///< Min, max, stepping for double ranges or array of choices to select from.
   String     hints;       ///< Hints for parameter handling.
   StringS    metadata;    ///< Array of "key=value" pairs.
-  String     fetch        (const String &key) const             { return kvpairs_fetch (metadata, key); }
-  void       store        (const String &key, const String &v)  { kvpairs_assign (metadata, key + '=' + v); }
+  String     fetch        (const String &key) const;
+  void       store        (const String &key, const String &v);
   static inline const String STORAGE = ":r:w:S:";
   static inline const String STANDARD = ":r:w:S:G:";
 };

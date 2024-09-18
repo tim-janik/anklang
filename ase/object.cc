@@ -3,6 +3,7 @@
 #include "internal.hh"
 #include "utils.hh"
 #include "unicode.hh"
+#include "strings.hh"
 #include "main.hh"
 
 namespace Ase {

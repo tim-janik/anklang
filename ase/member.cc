@@ -2,8 +2,19 @@
 #include "member.hh"
 #include "api.hh"
 #include "regex.hh"
+#include "strings.hh"
 #include "internal.hh"
 #include "testing.hh"
+
+namespace Ase::Lib {
+bool
+kvpairs_assign (StringS &kvs, const String &key_value_pair)
+{
+  const bool casesensitive = true;
+  return Ase::kvpairs_assign (kvs, key_value_pair, casesensitive);
+}
+
+} // Ase::Lib
 
 // == tests ==
 namespace {

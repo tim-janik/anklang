@@ -2,6 +2,7 @@
 #include "ase/midievent.hh"
 #include "internal.hh"
 #include "sortnet.hh"
+#include <cstring>
 
 #define EDEBUG(...)     Ase::debug ("event", __VA_ARGS__)
 

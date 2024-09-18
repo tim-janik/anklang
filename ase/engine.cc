@@ -10,6 +10,7 @@
 #include "project.hh"
 #include "wave.hh"
 #include "main.hh"      // main_loop_autostop_mt
+#include "strings.hh"
 #include "memory.hh"
 #include "internal.hh"
 

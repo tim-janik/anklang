@@ -4,6 +4,7 @@
 #include "path.hh"
 #include "platform.hh"
 #include "unicode.hh"
+#include "strings.hh"
 #include "internal.hh"
 #include <dirent.h>
 #include <fcntl.h>      // AT_NO_AUTOMOUNT

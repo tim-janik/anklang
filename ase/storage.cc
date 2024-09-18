@@ -6,6 +6,7 @@
 #include "compress.hh"
 #include "platform.hh"
 #include "minizip.h"
+#include "strings.hh"
 #include "compress.hh"
 #include "internal.hh"
 #include <stdlib.h>     // mkdtemp

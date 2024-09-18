@@ -4,6 +4,7 @@
 #include "device.hh"
 #include "main.hh"      // feature_toggle_find
 #include "utils.hh"
+#include "strings.hh"
 #include "engine.hh"
 #include "internal.hh"
 #include <shared_mutex>
