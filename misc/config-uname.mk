@@ -74,7 +74,7 @@ MODEFLAGS	 += -fno-finite-math-only $(if $(HAVE_GCC), -fno-cx-limited-range)
 
 # Enable compiler specific options
 ifdef HAVE_CLANG  # clang++
-  COMMONFLAGS	 += -Wno-tautological-compare -Wno-constant-logical-operand
+  COMMONFLAGS	 += -Wno-tautological-compare -Wno-constant-logical-operand -Wno-vla-cxx-extension
   #COMMONFLAGS	 += -Wno-unused-command-line-argument
 endif
 ifdef HAVE_GCC    # g++
