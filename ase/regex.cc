@@ -3,6 +3,7 @@
 #include "logging.hh"
 #include "internal.hh"
 #include <regex>
+#include <cstring>
 
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
@@ -47,15 +48,11 @@ pcre2compilecontext ()
   return ccontext;
 }
 
-/// Find `regex` in `input` and return matching string.
-String
-Re::grep (const String &regex, const String &input, int group, Flags flags)
+// use PCRE2_NO_UTF_CHECK if regex is validated
+static uint32_t
+flags_to_pcre2_compile_options (Re::Flags flags)
 {
-  pcre2_compile_context *const ccontext = pcre2compilecontext();
-  int errorcode = 0;
-  size_t erroroffset = -1;
-  // use PCRE2_NO_UTF_CHECK if regex is validated
-  const uint32_t COMPILE_OPTIONS =
+  uint32_t o =
     0
     | PCRE2_UTF                 // UTF-8 Unicode mode
     | PCRE2_UCP                 // Unicode properties for \d \s \w
@@ -69,9 +66,70 @@ Re::grep (const String &regex, const String &input, int group, Flags flags)
     | (flags & Re::U ? PCRE2_UNGREEDY : 0)
     | PCRE2_ALT_BSUX            // allow \x22 \u4444
     | PCRE2_NEVER_BACKSLASH_C;  // prevent matching point in the middle of UTF-8
-  pcre2_code *rx = pcre2_compile ((const uint8_t*) regex.c_str(), PCRE2_ZERO_TERMINATED, COMPILE_OPTIONS, &errorcode, &erroroffset, ccontext);
+  return o;
+}
+
+struct PcRe2 {
+  pcre2_code *prcode = nullptr;
+  int errorcode = 0;
+  explicit
+  PcRe2 (const std::string &pattern, Re::Flags flags)
+  {
+    pcre2_compile_context *const ccontext = pcre2compilecontext();
+    size_t erroroffset = -1;
+    prcode = pcre2_compile ((const uint8_t*) pattern.c_str(), PCRE2_ZERO_TERMINATED, flags_to_pcre2_compile_options (flags), &errorcode, &erroroffset, ccontext);
+    if (!prcode)
+      dprintf (2, "Re: failed to compile regex (%d): %s", errorcode, pattern.c_str());
+  }
+  ~PcRe2()
+  {
+    pcre2_code_free (prcode);
+  }
+  std::string
+  sub (const std::string &substitution, const std::string &input, ssize_t maxsubst = SSIZE_MAX)
+  {
+    pcre2_match_data *md = pcre2_match_data_create_from_pattern (prcode, nullptr);
+    pcre2_match_context *mc = pcre2_match_context_create (nullptr);
+    const uint32_t MATCH_OPTIONS =
+      PCRE2_SUBSTITUTE_OVERFLOW_LENGTH |
+      PCRE2_SUBSTITUTE_GLOBAL |
+      0; // PCRE2_ANCHORED PCRE2_ENDANCHORED PCRE2_NOTEMPTY etc
+    struct CalloutData {
+      ssize_t max_substitutions = SSIZE_MAX;
+    } callout_data;
+    callout_data.max_substitutions = maxsubst;
+    auto callout_function = [] (pcre2_substitute_callout_block*, void *callout_data_ptr) -> int {
+      CalloutData &callout_data = *(CalloutData*) callout_data_ptr;
+      return callout_data.max_substitutions-- >= 1 ? 0 : -1;
+    };
+    if (callout_data.max_substitutions < SSIZE_MAX)
+      pcre2_set_substitute_callout (mc, callout_function, &callout_data);
+    std::string result (input.size() + 4096, 0);
+    PCRE2_SIZE outlength = result.size() - 1;
+    int ret = pcre2_substitute (prcode, (const uint8_t*) input.c_str(), PCRE2_ZERO_TERMINATED, 0 /*startoffset*/, MATCH_OPTIONS, md, mc,
+                                (const uint8_t*) substitution.c_str(), PCRE2_ZERO_TERMINATED, (uint8_t*) result.data(), &outlength);
+    if (ret == PCRE2_ERROR_NOMEMORY) {
+      result.resize (outlength + 128);
+      ret = pcre2_substitute (prcode, (const uint8_t*) input.c_str(), PCRE2_ZERO_TERMINATED, 0 /*startoffset*/, MATCH_OPTIONS, md, mc,
+                              (const uint8_t*) substitution.c_str(), PCRE2_ZERO_TERMINATED, (uint8_t*) result.data(), &outlength);
+    }
+    result.resize (strlen (result.data()));
+    pcre2_match_data_free (md); md = nullptr;
+    pcre2_match_context_free (mc); mc = nullptr;
+    return result;
+  }
+};
+
+/// Find `regex` in `input` and return matching string.
+String
+Re::grep (const String &regex, const String &input, int group, Flags flags)
+{
+  pcre2_compile_context *const ccontext = pcre2compilecontext();
+  int errorcode = 0;
+  size_t erroroffset = -1;
+  pcre2_code *rx = pcre2_compile ((const uint8_t*) regex.c_str(), PCRE2_ZERO_TERMINATED, flags_to_pcre2_compile_options (flags), &errorcode, &erroroffset, ccontext);
   if (!rx) {
-    logex ("Re", "failed to compile regex (%d): %s", errorcode, regex);
+    logex ("Re: failed to compile regex (%d): %s", errorcode, regex);
     return "";
   }
   pcre2_match_data *md = pcre2_match_data_create_from_pattern (rx, NULL);
@@ -114,36 +172,18 @@ Re::findall (const String &regex, const String &input, Flags flags)
 
 /// Substitute `regex` in `input` with `subst` up to `count` times.
 String
-Re::subn (const String &regex, const String &subst, const String &input, uint count, Flags flags)
+Re::sub (const String &regex, const String &subst, const String &input, uint count, Flags flags)
 {
-  const std::sregex_iterator end = std::sregex_iterator();
-  std::regex rex (regex, regex_flags (flags));
-  std::sregex_iterator matchiter = std::sregex_iterator (input.begin(), input.end(), rex);
-  const size_t n = std::distance (matchiter, end); // number of matches
-  return_unless (n, input);
-  std::string result;
-  auto out = std::back_inserter (result);
-  std::sub_match<std::string::const_iterator> tail;
-  for (std::sregex_iterator it = matchiter; it != end; it++)
-    {
-      // std::smatch match = *it;
-      std::sub_match<std::string::const_iterator> prefix = it->prefix();
-      out = std::copy (prefix.first, prefix.second, out);
-      out = std::copy (subst.begin(), subst.end(), out);
-      tail = it->suffix();
-      if (count-- == 1)
-        break;
-    }
-  out = std::copy (tail.first, tail.second, out);
-  return result;
+  PcRe2 rx (regex, flags);
+  return rx.sub (subst, input, count);
 }
 
 /// Substitute `regex` in `input` by `sbref` with backreferences `$00…$99` or `$&`.
 String
-Re::sub (const String &regex, const String &sbref, const String &input, Flags flags)
+Re::sub (const String &regex, const String &subst, const String &input, Flags flags)
 {
-  std::regex rex (regex, regex_flags (flags, true));
-  return std::regex_replace (input, rex, sbref);
+  PcRe2 rx (regex, flags);
+  return rx.sub (subst, input);
 }
 
 } // Ase
@@ -164,15 +204,15 @@ regex_tests()
   String u, v;
   StringS ss;
   u = "abc abc abc Abc"; v = Re::sub ("xyz", "ABC", u);                  TCMP (v, ==, "abc abc abc Abc");
-  u = "abc abc abc Abc"; v = Re::subn ("xyz", "ABC", u);                 TCMP (v, ==, "abc abc abc Abc");
+  u = "abc abc abc Abc"; v = Re::sub ("xyz", "ABC", u, 2);               TCMP (v, ==, "abc abc abc Abc");
   u = "abc abc abc Abc"; v = Re::sub ("abc", "ABC", u);                  TCMP (v, ==, "ABC ABC ABC Abc");
-  u = "abc abc abc Abc"; v = Re::subn ("abc", "ABC", u);                 TCMP (v, ==, "ABC ABC ABC Abc");
-  u = "abc abc abc Abc"; v = Re::subn ("abc", "ABC", u, 2);              TCMP (v, ==, "ABC ABC abc Abc");
-  u = "abc abc abc Abc"; v = Re::subn ("abc", "ABC", u, 0, Re::I);       TCMP (v, ==, "ABC ABC ABC ABC");
+  u = "abc abc abc Abc"; v = Re::sub ("abc", "ABC", u, 2);               TCMP (v, ==, "ABC ABC abc Abc");
+  u = "abc abc abc Abc"; v = Re::sub ("abc", "ABC", u, 999);             TCMP (v, ==, "ABC ABC ABC Abc");
+  u = "abc abc abc Abc"; v = Re::sub ("abc", "ABC", u, 4, Re::I);        TCMP (v, ==, "ABC ABC ABC ABC");
   u = "abc abc abc Abc"; v = Re::sub (R"(\bA)", "-", u);                 TCMP (v, ==, "abc abc abc -bc");
-  u = "abc abc abc Abc"; v = Re::subn (R"(\bA)", "-", u);                TCMP (v, ==, "abc abc abc -bc");
-  u = "abc abc abc Abc"; v = Re::subn (R"(\bA\b)", "-", u);              TCMP (v, ==, "abc abc abc Abc");
-  u = "a 1 0 2 b 3n 4 Z";  v = Re::sub (R"(([a-zA-Z]) ([0-9]+\b))", "$1$2", u);  TCMP (v, ==, "a1 0 2 b 3n4 Z");
+  u = "abc abc abc Abc"; v = Re::sub (R"(\ba)", "-", u, 1);              TCMP (v, ==, "-bc abc abc Abc");
+  u = "abc abc abc Abc"; v = Re::sub (R"(\bA\b)", "-", u);               TCMP (v, ==, "abc abc abc Abc");
+  u = "a 1 0 2 b 3n 4 Z"; v = Re::sub (R"(([a-zA-Z]) ([0-9]+\b))", "$1$2", u);  TCMP (v, ==, "a1 0 2 b 3n4 Z");
   u = "abc 123 abc Abc"; ss = Re::findall (R"(\b\w)", u); TCMP (ss, ==, cstrings_to_vector ("a", "1", "a", "A", nullptr));
 }
 
