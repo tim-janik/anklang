@@ -17,6 +17,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <malloc.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #undef B0 // undo pollution from termios.h
 
@@ -109,7 +111,6 @@ print_usage (bool help)
   printout ("  --jsipc          Print Javascript IPC messages\n");
   printout ("  --list-drivers   Print PCM and MIDI drivers\n");
   printout ("  --list-tests     List all test names\n");
-  printout ("  --log2file       Enable logging to ~/.cache/anklang/ instead of stderr\n");
   printout ("  --norc           Prevent loading of any rc files\n");
   printout ("  --play-autostart Automatically start playback of `project.anklang`\n");
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
@@ -119,6 +120,34 @@ print_usage (bool help)
   printout ("  -P pcmdriver     Force use of <pcmdriver>\n");
   printout ("  -o wavfile       Capture output to OPUS/FLAC/WAV file\n");
   printout ("  -t <time>        Automatically play and stop after <time> has passed\n"); // -t <time>[{,|;}tailtime]
+  printout ("Options set via $ASE_DEBUG:\n");
+  printout ("  :no-logfile:     Disable logging to ~/.cache/anklang/ instead of stderr\n");
+}
+
+LogFlags
+log_setup (int *logfd)
+{
+  int flags = LOG_STDERR;
+  const char *asedebug = getenv ("ASE_DEBUG");
+  if (!asedebug || !strstr (asedebug, "no-log2file")) {
+    const String logdir = Path::join (Path::xdg_dir ("CACHE"), "anklang");
+    if (Path::mkdirs (logdir)) {
+      const String fname = string_format ("%s/%s-%08x.log", logdir, program_alias(), gethostid());
+      const int OFLAGS = O_CREAT | O_EXCL | O_WRONLY | O_NOCTTY | O_NOFOLLOW | O_CLOEXEC; // O_TRUNC
+      const int OMODE = 0640;
+      errno = EBUSY;
+      *logfd = open (fname.c_str(), OFLAGS, OMODE);
+      if (*logfd < 0 && errno == EEXIST) {
+        const String oldname = fname + ".old";
+        if (rename (fname.c_str(), oldname.c_str()) < 0)
+          perror (string_format ("%s: failed to rename \"%s\"", program_alias(), oldname.c_str()).c_str());
+        *logfd = open (fname.c_str(), OFLAGS, OMODE);
+        if (*logfd < 0)
+          perror (string_format ("%s: failed to open log file \"%s\"", program_alias(), fname.c_str()).c_str());
+      }
+    }
+  }
+  return LogFlags (flags);
 }
 
 // 1:ERROR 2:FAILED+REJECT 4:IO 8:MESSAGE 16:GET 256:BINARY
@@ -151,8 +180,6 @@ parse_args (int *argcp, char **argv)
         config.allow_randomization = false;
       else if (strcmp ("--norc", argv[i]) == 0)
         config.norc = true;
-      else if (strcmp ("--log2file", argv[i]) == 0)
-        config.log2file = true;
       else if (strcmp ("--rand64", argv[i]) == 0)
         {
           FastRng prng;
@@ -446,8 +473,6 @@ main (int argc, char *argv[])
   // parse args and config (needs main_loop)
   main_config_ = parse_args (&argc, argv);
   const MainConfig &config = main_config_;
-  // configure logging
-  log_setup (!config.log2file, config.log2file);
 
   // load preferences unless --norc was given
   if (!config.norc)
