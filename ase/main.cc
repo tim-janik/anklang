@@ -669,12 +669,24 @@ main (int argc, char *argv[])
   main_loop->iterate_pending();
   main_config_.engine = nullptr;
 
-  logex ("Main: exiting: %d", exitcode);
+  log ("Main: exiting: %d", exitcode);
   return exitcode;
 }
 
 namespace { // Anon
 using namespace Ase;
+
+extern "C" __attribute__ ((__noinline__)) void
+tlog1 (const char *s)
+{
+  log ("foo: %s+%d", s, 0x11111111);
+}
+
+extern "C" __attribute__ ((__noinline__)) void
+tlog2 (const char *s)
+{
+  log ("foo: %s+%d", s, 0x11111111);
+}
 
 TEST_INTEGRITY (job_queue_tests);
 static void

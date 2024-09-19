@@ -53,7 +53,7 @@ struct PcRe2 {
     size_t erroroffset = -1;
     prcode = pcre2_compile ((const uint8_t*) pattern.c_str(), PCRE2_ZERO_TERMINATED, flags_to_pcre2_compile_options (flags), &errorcode, &erroroffset, ccontext);
     if (!prcode)
-      logex ("Re: failed to compile regex, error=%d: %s", errorcode, pattern);
+      log ("Re: failed to compile regex, error=%d: %s", errorcode, pattern);
   }
   ~PcRe2()
   {
@@ -113,7 +113,7 @@ struct PcRe2 {
     if (ret < 1 || ovector[0] > ovector[1]) {
       errorcode = ret < 0 ? ret : ret == 0 ? PCRE2_ERROR_NOMEMORY : PCRE2_ERROR_BACKSLASH_K_IN_LOOKAROUND;
       if (ret != PCRE2_ERROR_NOMATCH)
-        logex ("Re: findall matching error, error=%d", errorcode);
+        log ("Re: findall matching error, error=%d", errorcode);
       pcre2_match_data_free (md); md = nullptr;
       return result;
     }
@@ -168,7 +168,7 @@ struct PcRe2 {
         if (ret < 1 || ovector[0] > ovector[1]) {
           // guard against patterns such as /(?=.\K)/ that use \K to set match start>end, see pcre2pattern(3)
           errorcode = ret < 0 ? ret : ret == 0 ? PCRE2_ERROR_NOMEMORY : PCRE2_ERROR_BACKSLASH_K_IN_LOOKAROUND;
-          logex ("Re: findall matching error, error=%d", errorcode);
+          log ("Re: findall matching error, error=%d", errorcode);
           break;
         }
         // collect matched substring

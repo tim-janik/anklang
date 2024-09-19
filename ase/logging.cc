@@ -45,12 +45,13 @@ logstart()
   char pidbuf[64] = { 0, };
   snprintf (pidbuf, sizeof (pidbuf) - 1, " pid=%u", getpid());
   std::string msg = std::string (bexec) + ": programstart=\"" + tbuf + "\"" + pidbuf + " executable=\"" + executable_path() + "\"";
-  logmsg (msg, {});
+  logmsg (msg, "", 0, "");
 }
 
 void
-logmsg (const std::string &msg, const std::source_location &loc)
+logmsg (const std::string &msg, const char *const filename, const uint64_t columnline, const char *const function_name)
 {
+  const uint32_t line = uint32_t (columnline), column = columnline >> 32;
   logstart();
   ScopedPosixLocale posix_locale; // use POSIX locale for this scope
   if (msg.empty()) return;
@@ -62,11 +63,10 @@ logmsg (const std::string &msg, const std::source_location &loc)
     snprintf (tstamp, sizeof (tstamp) - 1, "%.6f: ", 0.000001 * (timestamp_now() - programstart_timestamp));
     s = tstamp + s;
   }
-  const char *const filename = loc.file_name();
   if (filename && filename[0]) {
     char linein[128] = { 0, };
-    snprintf (linein, sizeof (linein) - 1, ":%u:%u: execution at: ", loc.line(), loc.column());
-    s = filename + std::string (linein) + loc.function_name() + "\n" + s;
+    snprintf (linein, sizeof (linein) - 1, ":%u:%u: execution at: ", line, column);
+    s = filename + std::string (linein) + function_name + "\n" + s;
   }
   if (log_fd == 2 || log_flags & LOG_STDERR)
     fflush (stderr);

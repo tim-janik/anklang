@@ -734,7 +734,7 @@ AudioEngine::update_drivers (const String &pcm_name, uint latency_ms, const Stri
                       PcmDriver::open (dset.pcm_name, Driver::WRITEONLY, Driver::WRITEONLY, pcm_config, &er);
     if (!dset.pcm_driver || er != 0) {
       dset.pcm_driver = dset.null_pcm_driver;
-      logex ("Audio Driver: Failed to open audio device: %s: %s", dset.pcm_name, ase_error_blurb (er));
+      log ("Audio Driver: Failed to open audio device: %s: %s", dset.pcm_name, ase_error_blurb (er));
       const String errmsg = string_format ("# Audio I/O Error\n" "Failed to open audio device:\n" "%s:\n" "%s",
                                            dset.pcm_name, ase_error_blurb (er));
       engine_thread.queue_user_note ("driver.pcm", UserNote::CLEAR, errmsg);
