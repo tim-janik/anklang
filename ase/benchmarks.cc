@@ -1,9 +1,9 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#include "../testing.hh"
-#include "../unicode.hh"
-#include "../memory.hh"
-#include "../loft.hh"
-#include "../internal.hh"
+#include "testing.hh"
+#include "unicode.hh"
+#include "memory.hh"
+#include "loft.hh"
+#include "internal.hh"
 #include <cmath>
 
 #include <glib.h>
