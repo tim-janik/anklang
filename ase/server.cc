@@ -168,8 +168,8 @@ Server::dir_crawler (const String &cwd)
 ResourceCrawlerP
 Server::url_crawler (const String &url)
 {
-  if (main_config.web_socket_server) {
-    String dir = main_config.web_socket_server->map_url (url);
+  if (App.web_socket_server) {
+    String dir = App.web_socket_server->map_url (url);
     if (!dir.empty())
       return FileCrawler::make_shared (dir, false, false);
   }
@@ -179,7 +179,7 @@ Server::url_crawler (const String &url)
 String
 Server::engine_stats ()
 {
-  const String s = main_config.engine->engine_stats (0);
+  const String s = App.engine->engine_stats (0);
   printerr ("Server::engine_stats:\n%s\n", s);
   return s;
 }

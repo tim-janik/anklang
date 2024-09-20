@@ -30,9 +30,16 @@ static void print_class_tree ();
 
 namespace Ase {
 
+struct MainAppImpl : MainApp {
+  MainAppImpl ();
+};
+MainAppImpl main_app;
+const MainApp &App = main_app;
+
+MainAppImpl::MainAppImpl()
+{}
+
 MainLoopP          main_loop;
-MainConfig         main_config_;
-const MainConfig  &main_config = main_config_;
 static int         embedding_fd = -1;
 static bool        arg_js_api = false;
 static bool        arg_class_tree = false;
@@ -156,11 +163,9 @@ static constexpr int jsbin_logflags = 1 | 256;
 
 static StringS check_test_names;
 
-static MainConfig
-parse_args (int *argcp, char **argv)
+static void
+parse_args (int *argcp, char **argv, MainAppImpl &config)
 {
-  MainConfig config;
-
   if (0) // allow jsipc logging via ASE_DEBUG ?
     {
       config.jsonapi_logflags |= debug_key_enabled ("jsbin") ? jsbin_logflags : 0;
@@ -194,7 +199,7 @@ parse_args (int *argcp, char **argv)
         }
       else if (strcmp ("--check", argv[i]) == 0)
         {
-          config.mode = MainConfig::CHECK_INTEGRITY_TESTS;
+          config.mode = MainApp::CHECK_INTEGRITY_TESTS;
           ase_fatal_warnings = assertion_failed_fatal = true;
           printerr ("CHECK_INTEGRITY_TESTS…\n");
         }
@@ -208,7 +213,7 @@ parse_args (int *argcp, char **argv)
         {
           const char *eq = strchr (argv[i], '=');
           const char *arg = eq ? eq + 1 : i+1 < argc ? argv[++i] : nullptr;
-          config.mode = MainConfig::CHECK_INTEGRITY_TESTS;
+          config.mode = MainApp::CHECK_INTEGRITY_TESTS;
           ase_fatal_warnings = assertion_failed_fatal = true;
           if (arg)
             check_test_names.push_back (arg);
@@ -294,7 +299,6 @@ parse_args (int *argcp, char **argv)
           }
       *argcp = e;
     }
-  return config;
 }
 
 static String
@@ -360,8 +364,6 @@ handle_autostop (const LoopState &state)
     }
   return false;
 }
-
-} // Ase
 
 static void
 init_sigpipe()
@@ -441,6 +443,8 @@ prefault_pages (size_t stacksize, size_t heapsize)
       stack[i] = 1;
 }
 
+} // Ase
+
 int
 main (int argc, char *argv[])
 {
@@ -465,17 +469,16 @@ main (int argc, char *argv[])
   if (!setlocale (LC_ALL, ""))
     perror ("setlocale: locale not supported by libc");
 
+  // parse args and config
+  parse_args (&argc, argv, main_app);
+
   // prepare main event loop (needed before parse_args)
   main_loop = MainLoop::create();
   // handle loft preallocation needs
   main_loop->exec_dispatcher (dispatch_loft_lowmem, EventLoop::PRIORITY_CEILING);
 
-  // parse args and config (needs main_loop)
-  main_config_ = parse_args (&argc, argv);
-  const MainConfig &config = main_config_;
-
   // load preferences unless --norc was given
-  if (!config.norc)
+  if (!App.norc)
     Preference::load_preferences (true);
 
   const auto B1 = color (BOLD);
@@ -495,7 +498,7 @@ main (int argc, char *argv[])
 
   // load drivers and dump device list
   load_registered_drivers();
-  if (config.list_drivers)
+  if (App.list_drivers)
     {
       Ase::Driver::EntryVec entries;
       printout ("%s", _("Available PCM drivers:\n"));
@@ -533,7 +536,7 @@ main (int argc, char *argv[])
 
   // start audio engine
   AudioEngine &audio_engine = make_audio_engine (main_loop_wakeup, 48000, SpeakerArrangement::STEREO);
-  main_config_.engine = &audio_engine;
+  main_app.engine = &audio_engine;
   audio_engine.start_threads ();
   /*const uint loopdispatcherid =*/
   main_loop->exec_dispatcher ([&audio_engine] (const LoopState &state) -> bool {
@@ -554,7 +557,7 @@ main (int argc, char *argv[])
 
   // load projects
   ProjectImplP preload_project;
-  for (const auto &filename : config.args)
+  for (const auto &filename : App.args)
     {
       preload_project = ProjectImpl::create (Path::basename (filename));
       Error error = Error::NO_MEMORY;
@@ -566,8 +569,8 @@ main (int argc, char *argv[])
     }
 
   // open Jsonapi socket
-  auto wss = WebSocketServer::create (jsonapi_make_connection, config.jsonapi_logflags);
-  main_config_.web_socket_server = &*wss;
+  auto wss = WebSocketServer::create (jsonapi_make_connection, App.jsonapi_logflags);
+  main_app.web_socket_server = &*wss;
   wss->http_dir (anklang_runpath (RPath::INSTALLDIR, "/ui/"));
   wss->http_alias ("/User/Controller", anklang_home_dir ("/Controller"));
   wss->http_alias ("/Builtin/Controller", anklang_runpath (RPath::INSTALLDIR, "/Controller"));
@@ -576,7 +579,7 @@ main (int argc, char *argv[])
   const int xport = embedding_fd >= 0 ? 0 : 1777;
   const String subprotocol = xport ? "" : make_auth_string();
   jsonapi_require_auth (subprotocol);
-  if (main_config.mode == MainConfig::SYNTHENGINE) {
+  if (App.mode == MainApp::SYNTHENGINE) {
     const char *host = "127.0.0.1";
     wss->listen (host, xport, [] () { main_loop->quit (-1); });
     log ("Main: listen on: %s:%u", host, xport);
@@ -628,29 +631,29 @@ main (int argc, char *argv[])
     }
 
   // start output capturing
-  if (config.outputfile)
+  if (App.outputfile)
     {
       std::shared_ptr<CallbackS> callbacks = std::make_shared<CallbackS>();
-      log ("Main: Start caputure: %s", config.outputfile);
-      config.engine->queue_capture_start (*callbacks, config.outputfile, true);
+      log ("Main: Start caputure: %s", App.outputfile);
+      App.engine->queue_capture_start (*callbacks, App.outputfile, true);
       auto job = [callbacks] () {
         for (const auto &callback : *callbacks)
           callback();
       };
-      config.engine->async_jobs += job;
+      App.engine->async_jobs += job;
     }
 
   // start auto play
-  if (config.play_autostart && preload_project)
+  if (App.play_autostart && preload_project)
     main_loop->exec_idle ([preload_project] () {
       log ("Main: starting playback (auto)");
-      preload_project->start_playback (config.play_autostop);
+      preload_project->start_playback (App.play_autostop);
     });
   // handle automatic shutdown
   main_loop->exec_dispatcher (handle_autostop);
 
   // run test suite
-  if (main_config.mode == MainConfig::CHECK_INTEGRITY_TESTS)
+  if (App.mode == MainApp::CHECK_INTEGRITY_TESTS)
     main_loop->exec_now (run_tests_and_quit);
 
   // run main event loop and catch SIGUSR2
@@ -660,14 +663,14 @@ main (int argc, char *argv[])
 
   // cleanup
   wss->shutdown(); // close socket, allow no more calls
-  main_config_.web_socket_server = nullptr;
+  main_app.web_socket_server = nullptr;
   wss = nullptr;
 
   // halt audio engine, join its threads, dispatch cleanups
   audio_engine.set_project (nullptr);
   audio_engine.stop_threads();
   main_loop->iterate_pending();
-  main_config_.engine = nullptr;
+  main_app.engine = nullptr;
 
   log ("Main: exiting: %d", exitcode);
   return exitcode;
@@ -694,7 +697,7 @@ job_queue_tests()
 {
   bool seen_engine_job = false, seen_deleter = false;
   // enqueue job with deleter into engine
-  AudioEngine *e = main_config_.engine;
+  AudioEngine *e = App.engine;
   std::shared_ptr<void> vp = { nullptr, [e,&seen_deleter] (void*) {
     printerr ("  job_queue_tests: Run Deleter (in_engine=%d)\n", e->thread_id == std::this_thread::get_id());
     seen_deleter = true;

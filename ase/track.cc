@@ -87,7 +87,7 @@ TrackImpl::_set_parent (GadgetImpl *parent)
   DeviceImpl::_set_parent (project);
   if (project)
     {
-      AudioEngine *engine = main_config.engine;
+      AudioEngine *engine = App.engine;
       assert_return (!midi_prod_);
       midi_prod_ = create_processor_device (*engine, "Ase::MidiLib::MidiProducerImpl", true);
       assert_return (midi_prod_);

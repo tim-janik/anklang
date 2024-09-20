@@ -742,8 +742,8 @@ void
 ProjectImpl::start_playback (double autostop)
 {
   assert_return (!discarded_);
-  assert_return (main_config.engine);
-  AudioEngine &engine = *main_config.engine;
+  assert_return (App.engine);
+  AudioEngine &engine = *App.engine;
   ProjectImplP selfp = shared_ptr_cast<ProjectImpl> (this);     // keep alive while engine changes refcounts
   ProjectImplP oldp = engine.get_project();                     // keep alive while engine changes refs
   if (oldp != selfp)
