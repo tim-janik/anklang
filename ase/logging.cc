@@ -21,7 +21,7 @@ timestamp_now ()
 static uint64 programstart_timestamp = timestamp_now();
 static uint32_t log_flags = 0;
 static int      log_fd = -1;
-static bool     log_colorize = false;
+static bool     log_colorize = true;
 
 static void
 logstart()
