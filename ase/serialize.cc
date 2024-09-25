@@ -9,11 +9,11 @@ namespace Ase {
 
 // == Writ::InstanceMap ==
 Jsonipc::JsonValue
-Writ::InstanceMap::wrapper_to_json (Wrapper *wrapper, const size_t thisid, const std::string &wraptype, Jsonipc::JsonAllocator &allocator)
+Writ::InstanceMap::wrapper_to_json (Wrapper *wrapper, const size_t thisid, Jsonipc::JsonAllocator &allocator)
 {
-  warning ("Ase::Writ: object pointer is not persistent: (%s*) {\"$id\":%d}", wraptype, thisid);
+  warning ("Ase::Writ: object pointer is not persistent: (%s*) {\"$id\":%d}", wrapper->classname(), thisid);
   //return Jsonipc::JsonValue(); // null
-  return this->Jsonipc::InstanceMap::wrapper_to_json (wrapper, thisid, wraptype, allocator);
+  return this->Jsonipc::InstanceMap::wrapper_to_json (wrapper, thisid, allocator);
 }
 
 Jsonipc::InstanceMap::Wrapper*
