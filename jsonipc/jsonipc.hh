@@ -25,6 +25,16 @@
 
 namespace Jsonipc {
 
+#ifdef  JSONIPC_CUSTOM_SHARED_BASE
+using SharedBase = JSONIPC_CUSTOM_SHARED_BASE;
+#else
+/// Common base type for polymorphic classes managed by `std::shared_ptr<>`.
+struct JsonipcSharedBase : public virtual std::enable_shared_from_this<JsonipcSharedBase> {
+  virtual ~JsonipcSharedBase() {}
+};
+using SharedBase = JsonipcSharedBase;
+#endif
+
 // == Json types ==
 using JsonValue = rapidjson::GenericValue<rapidjson::UTF8<char>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator> >;
 using JsonAllocator = rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>;
@@ -546,7 +556,13 @@ public:
     virtual void        try_upcast     (const std::string &baseclass, void *sptrB) = 0;
     virtual std::string classname      () = 0;
   };
-private:
+  using CreateWrapper = Wrapper* (*) (const std::shared_ptr<SharedBase> &sptr, size_t &basedepth);
+  static std::vector<CreateWrapper>& wrapper_creators() { static std::vector<CreateWrapper> wrapper_creators_; return wrapper_creators_; }
+  static void
+  register_wrapper (CreateWrapper createwrapper)
+  {
+    wrapper_creators().push_back (createwrapper);
+  }
   template<typename T>
   class InstanceWrapper : public Wrapper {
     std::shared_ptr<T> sptr_;
@@ -686,7 +702,19 @@ public:
         if (it == imap->typeid_map_.end())
           {
             thisid = next_counter();
-            wrapper = new InstanceWrapper<T> (sptr);
+            if constexpr (std::is_base_of_v<SharedBase, T>) {
+              std::vector<CreateWrapper> &wcreators = wrapper_creators(); //  using CreateWrapper = Wrapper* (*) (const std::shared_ptr<SharedBase> &sptr, size_t &basedepth);
+              size_t basedepth = 0;
+              for (size_t i = 0; i < wcreators.size(); i++) {
+                Wrapper *w = wcreators[i] (sptr, basedepth);
+                if (w) {
+                  delete wrapper;
+                  wrapper = w;
+                }
+              }
+            }
+            if (!wrapper)
+              wrapper = new InstanceWrapper<T> (sptr);
             imap->wmap_[thisid] = wrapper;
             imap->typeid_map_[tkey] = thisid;
           }
@@ -1353,7 +1381,27 @@ can_wrap_object_from_base (const std::string &rttiname, WrapObjectFromBase *hand
 // == Class ==
 template<typename T>
 struct Class final : TypeInfo {
-  Class () : TypeInfo (ClassPrinter::create<T> (ClassPrinter::CLASSES)) {}
+  Class () :
+    TypeInfo (ClassPrinter::create<T> (ClassPrinter::CLASSES))
+  {
+    auto create_wrapper = [] (const std::shared_ptr<SharedBase> &sptr, size_t &basedepth) -> InstanceMap::Wrapper*
+    {
+      /* This is an exhaustive search for the best (most derived) wrapper type for
+       * an object. We currently use a linear search that can involve as many
+       * dynamic casts as the inheritance depth of the registered wrappers.
+       */
+      const size_t class_depth = Class::base_depth();
+      if (class_depth > basedepth) {
+        std::shared_ptr<T> derived_sptr = std::dynamic_pointer_cast<T> (sptr);
+        if (derived_sptr.get()) {
+          basedepth = class_depth;
+          return new InstanceMap::InstanceWrapper<T> (derived_sptr);
+        }
+      }
+      return nullptr;
+    };
+    InstanceMap::register_wrapper (create_wrapper);
+  }
   // Inherit base class `B`
   template<typename B> Class&
   inherit()
@@ -1637,7 +1685,7 @@ struct Convert<std::shared_ptr<T>, REQUIRESv< IsWrappableClass<T>::value >> {
       {
         // try to call the most derived wrapper Class from the RTTI type of sptr
         const std::string impltype = rtti_typename (*sptr);
-        WrapObjectFromBase *wrap_object_from_base = can_wrap_object_from_base (impltype);
+        WrapObjectFromBase *wrap_object_from_base = nullptr; // FIXME: can_wrap_object_from_base (impltype);
         JsonValue result;
         if (wrap_object_from_base)
           result = wrap_object_from_base (rtti_typename<ClassType>(), const_cast<std::shared_ptr<ClassType>*> (&sptr), allocator);
