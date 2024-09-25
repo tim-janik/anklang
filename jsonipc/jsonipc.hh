@@ -680,13 +680,13 @@ public:
     JSONIPC_ASSERT_RETURN (typeid_map_.size() == 0); // deleters shouldn't re-add
   }
   virtual JsonValue
-  wrapper_to_json (Wrapper *wrapper, const size_t thisid, const std::string &wraptype, JsonAllocator &allocator)
+  wrapper_to_json (Wrapper *wrapper, const size_t thisid, JsonAllocator &allocator)
   {
     if (!wrapper)
       return JsonValue(); // null
     JsonValue jobject (rapidjson::kObjectType);
     jobject.AddMember ("$id", thisid, allocator);
-    jobject.AddMember ("$class", JsonValue (wraptype.c_str(), allocator), allocator);
+    jobject.AddMember ("$class", JsonValue (wrapper->classname().c_str(), allocator), allocator);
     return jobject;
   }
   template<typename T> static JsonValue
@@ -733,7 +733,7 @@ public:
      * Class<MostDerived> is unregisterd. In this case, ptr0x123 can be wrapped multiple
      * times through different base classes.
      */
-    return imap->wrapper_to_json (wrapper, thisid, rtti_typename<T>(), allocator);
+    return imap->wrapper_to_json (wrapper, thisid, allocator);
   }
   virtual Wrapper*
   wrapper_from_json (const JsonValue &value)
