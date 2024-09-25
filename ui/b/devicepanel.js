@@ -124,7 +124,7 @@ class BDevicePanel extends LitComponent {
     let info_promise;
     if (changed_props.has ('track')) {
       this.chain_ = null;
-      const track_fecth_device = async () => {
+      const track_fetch_device = async () => {
 	const chain = await this.track.access_device();
 	const devicetypes = await list_device_types (chain);
 	this.devicetypes = devicetypes;
@@ -132,7 +132,7 @@ class BDevicePanel extends LitComponent {
 	this.request_update();
       };
       if (this.track)
-	track_fecth_device();
+	track_fetch_device();
     }
   }
   async activate (uri)
