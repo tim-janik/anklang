@@ -1361,23 +1361,6 @@ private:
   static SerializeToJson&   serialize_to_json_   () { static SerializeToJson impl; return impl; }
 };
 
-// == Helper for known derived classes by RTTI typename ==
-using WrapObjectFromBase = JsonValue (const std::string&, void*, JsonAllocator&);
-
-// This *MUST* use `extern inline` for the ODR to apply to its `static` variable
-extern inline WrapObjectFromBase*
-can_wrap_object_from_base (const std::string &rttiname, WrapObjectFromBase *handler = nullptr)
-{
-  static std::map<std::string, WrapObjectFromBase*> downcastwrappers;
-  if (handler)
-    {
-      downcastwrappers[rttiname] = handler;
-      return handler;
-    }
-  auto it = downcastwrappers.find (rttiname);
-  return it != downcastwrappers.end() ? it->second : nullptr;
-}
-
 // == Class ==
 template<typename T>
 struct Class final : TypeInfo {
@@ -1544,7 +1527,6 @@ private:
     std::string basetypename;
     size_t    (*base_depth)     ();
     bool      (*upcast_impl)    (const std::shared_ptr<T>&, const std::string&, void*) = NULL;
-    bool      (*downcast_impl)  (const std::string&, void*, std::shared_ptr<T>*) = NULL;
     Closure*  (*lookup_closure) (const char*) = NULL;
   };
   using BaseVec   = std::vector<BaseInfo>;
@@ -1552,29 +1534,15 @@ private:
   add_base ()
   {
     BaseVec &bvec = basevec();
-    BaseInfo binfo { typename_of<B>(), Class<B>::base_depth, &upcast_impl<B>, &Class<B>::template downcast_impl<T>, &Class<B>::lookup_closure, };
+    BaseInfo binfo { typename_of<B>(), Class<B>::base_depth, &upcast_impl<B>, &Class<B>::lookup_closure, };
     for (const auto &it : bvec)
       if (it.basetypename == binfo.basetypename)
         throw std::runtime_error ("duplicate base registration: " + binfo.basetypename);
-    if (bvec.empty())
-      can_wrap_object_from_base (classname(), wrap_object_from_base);
     bvec.push_back (binfo);
     Class<B> bclass;
     printer_->set_depth_func (this->base_depth);
   }
   static BaseVec&   basevec  () { static BaseVec basevec_;     return basevec_; }
-  static JsonValue
-  wrap_object_from_base (const std::string &baseclass, void *sptrB, JsonAllocator &allocator)
-  {
-    std::shared_ptr<T> sptr;
-    downcast_impl<T> (baseclass, sptrB, &sptr);
-    if (sptr)
-      {
-        JSONIPC_ASSERT_RETURN (rtti_typename (*sptr) == rtti_typename<T>(), JsonValue()); // null
-        return InstanceMap::scope_wrap_object<T> (sptr, allocator);
-      }
-    return JsonValue(); // null
-  }
   template<typename B> static bool
   upcast_impl (const std::shared_ptr<T> &sptr, const std::string &baseclass, void *sptrB)
   {
@@ -1626,27 +1594,6 @@ public:
         return true;
     return false;
   }
-  template<typename D> static bool
-  downcast_impl (const std::string &baseclass, void *sptrB, std::shared_ptr<D> *sptrD)
-  {
-    if (classname() == baseclass)
-      {
-        std::shared_ptr<T> *bptr = static_cast<std::shared_ptr<T>*> (sptrB);
-        *sptrD = std::dynamic_pointer_cast<D> (*bptr);
-        return true;
-      }
-    BaseVec &bvec = basevec();
-    for (const auto &it : bvec)
-      {
-        std::shared_ptr<T> sptr;
-        if (it.downcast_impl (baseclass, sptrB, &sptr))
-          {
-            *sptrD = std::dynamic_pointer_cast<D> (sptr);
-            return true;
-          }
-      }
-    return false;
-  }
 };
 
 /// Template class to identify wrappable classes
@@ -1683,15 +1630,9 @@ struct Convert<std::shared_ptr<T>, REQUIRESv< IsWrappableClass<T>::value >> {
       return sptr ? Serializable<ClassType>::serialize_to_json (*sptr, allocator) : JsonValue (rapidjson::kObjectType);
     if (sptr)
       {
-        // try to call the most derived wrapper Class from the RTTI type of sptr
+        // Wrap sptr, determine most derived wrapper via dynamic casts
         const std::string impltype = rtti_typename (*sptr);
-        WrapObjectFromBase *wrap_object_from_base = nullptr; // FIXME: can_wrap_object_from_base (impltype);
-        JsonValue result;
-        if (wrap_object_from_base)
-          result = wrap_object_from_base (rtti_typename<ClassType>(), const_cast<std::shared_ptr<ClassType>*> (&sptr), allocator);
-        // fallback to wrap sptr as baseclass T
-        if (result.IsNull())
-          result = InstanceMap::scope_wrap_object<ClassType> (sptr, allocator);
+        JsonValue result = InstanceMap::scope_wrap_object<ClassType> (sptr, allocator);
         return result;
       }
     return JsonValue(); // null
