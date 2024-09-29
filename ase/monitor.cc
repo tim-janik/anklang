@@ -7,8 +7,6 @@
 namespace Ase {
 
 // == MonitorImpl ==
-JSONIPC_INHERIT (MonitorImpl, Monitor);
-
 MonitorImpl::MonitorImpl()
 {}
 

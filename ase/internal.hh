@@ -73,11 +73,6 @@ using Ase::String;
 /// Create a Ase::StringVector, from a const char* C-style array.
 #define STRING_VECTOR_FROM_ARRAY(ConstCharArray)        ASE_STRING_VECTOR_FROM_ARRAY(ConstCharArray)
 
-/// Register `IMPL` with Jsonipc and indicate it inherits from `INTERFACE`.
-#define JSONIPC_INHERIT(IMPL, INTERFACE)        \
-  [[maybe_unused]] static bool ASE_CPP_PASTE2 (ase_inherit__, __COUNTER__) =   \
-    ( Jsonipc::Class< IMPL >().inherit< INTERFACE >() , 0 )
-
 /// Register `func` as an integrity test.
 #define TEST_INTEGRITY(FUNC)        static void FUNC() __attribute__ ((__cold__, __unused__)); \
   static ::Ase::Test::IntegrityCheck ASE_CPP_PASTE2 (__Ase__Test__IntegrityCheck__line, __LINE__) { #FUNC, FUNC, 'I' }

@@ -14,8 +14,6 @@
 namespace Ase {
 
 // == TrackImpl ==
-JSONIPC_INHERIT (TrackImpl, Track);
-
 TrackImpl::TrackImpl (ProjectImpl &project, bool masterflag)
 {
   gadget_flags (masterflag ? MASTER_TRACK : 0);

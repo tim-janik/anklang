@@ -36,8 +36,6 @@ ClipNote::operator== (const ClipNote &o) const
 }
 
 // == ClipImpl ==
-JSONIPC_INHERIT (ClipImpl, Clip);
-
 ClipImpl::ClipImpl (TrackImpl &parent)
 {
   track_ = &parent;

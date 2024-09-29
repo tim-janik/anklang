@@ -104,8 +104,6 @@ public:
 };
 
 // == ClapDeviceImpl ==
-JSONIPC_INHERIT (ClapDeviceImpl, Device);
-
 ClapDeviceImpl::ClapDeviceImpl (ClapPluginHandleP claphandle) :
   handle_ (claphandle)
 {
