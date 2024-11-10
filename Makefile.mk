@@ -385,6 +385,8 @@ $>/TAGS: $>/ls-tree.lst $(GITCOMMITDEPS)
 	&& sed -r '0,/Warning: ignoring null tag/b; /Warning: ignoring null tag/d' < $>tags.log && $(RM) $>tags.log
 # use sed to compress flood of "Warning: ignoring null tag"
 ALL_TARGETS += $>/TAGS
+TAGS: $>/TAGS
+	ln -sf $>/TAGS TAGS
 
 # == compile_commands.json ==
 compile_commands.json: Makefile.mk
