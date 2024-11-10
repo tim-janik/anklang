@@ -9,18 +9,18 @@ from datetime import datetime
 
 # Licenses as found in source code comments
 licenses = {
-  'MPL-2.0':    [ 'This Source Code Form is licensed MPL-2\.0',
-                  'This Source Code Form is licensed MPL-2\.0: http://mozilla.org/MPL/2\.0' ],
+  'MPL-2.0':    [ r'This Source Code Form is licensed MPL-2\.0',
+                  r'This Source Code Form is licensed MPL-2\.0: http://mozilla.org/MPL/2\.0' ],
   'CC0-1.0':    [ 'Licensed CC0 Public Domain',
-                  'CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1\.0/',
-                  'Licensed CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1\.0' ],
+                  r'CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1\.0/',
+                  r'Licensed CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1\.0' ],
   'MIT':        [ 'MIT [Ll]icensed?', ],
   'Unlicense':  [ '([Dd]edicated to|[Ii]n) the Public Domain under the Unlicense([: ]*http.*)?',
                   'Licensed Public Domain' ],
 }
 
 # Comment suffix to ignore
-suffixes = '([.,;:]?\s*([Bb]ased on|[Dd]erived from)\s*[:]?\s*http[^ \t]*)?'
+suffixes = r'([.,;:]?\s*([Bb]ased on|[Dd]erived from)\s*[:]?\s*http[^ \t]*)?'
 
 # Comment patterns
 comments = (
