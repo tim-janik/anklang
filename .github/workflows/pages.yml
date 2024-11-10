@@ -39,7 +39,7 @@ jobs:
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v5
-      - run: echo -e ' prefix=/ \n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
+      - run: echo 'prefix=/ CC=clang CXX=clang++ CLANG_TIDY=clang-tidy' | tr ' ' '\n' > config-defaults.mk
       - run: make mkdocs -j`nproc`
         # (cd out/site/ && python3 -m http.server 8003 )
       - run: ls -al out/site/
