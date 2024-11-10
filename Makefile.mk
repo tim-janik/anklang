@@ -381,7 +381,9 @@ $>/ChangeLog: $(GITCOMMITDEPS) Makefile.mk			| $>/
 # ctags --print-language `git ls-tree -r --name-only HEAD`
 $>/TAGS: $>/ls-tree.lst $(GITCOMMITDEPS) Makefile.mk
 	$(QGEN)
-	$Q etags -o $@ $$(< $<)
+	$Q ctags --version 2>/dev/null | grep -qE 'Exuberant|Universal' || exit 0 >$@ ; \
+	   ctags -o $@ -L - < $< 2> >(grep -vF 'Warning: ignoring null tag in')
+
 # use sed to compress flood of "Warning: ignoring null tag"
 ALL_TARGETS += $>/TAGS
 TAGS: $>/TAGS
