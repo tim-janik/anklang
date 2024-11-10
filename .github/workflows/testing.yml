@@ -11,9 +11,9 @@ on:
 
 jobs:
 
-  FocalAssets:
+  NobleAssets:
     runs-on: ubuntu-latest
-    container: { image: 'ghcr.io/tim-janik/anklang-ci:focal-latest' }
+    container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest' }
     steps:
     - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive } }
     - name: 'Fetch all tags'
@@ -34,7 +34,7 @@ jobs:
   UploadDocs:
     if: ${{ github.repository == 'tim-janik/anklang' && github.ref == 'refs/heads/trunk' }}
     runs-on: ubuntu-latest
-    container: { image: 'ghcr.io/tim-janik/anklang-ci:focal-latest' }
+    container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest' }
     steps:
     - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive } }
     - name: 'Fetch all tags'
@@ -76,10 +76,10 @@ jobs:
       if: ${{ always() }}
       with: { name: "x11test", path: "out/x11test/" }
 
-  FocalClangTidy:
+  NobleClangTidy:
     if: ${{ ! contains(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
-    container: { image: 'ghcr.io/tim-janik/anklang-ci:focal-latest' }
+    container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest' }
     steps:
     - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive } }
     - name: 'Fetch all tags'
@@ -106,18 +106,18 @@ jobs:
         make branch-check BRANCH_CHECK_EXIT=$BRANCH_CHECK_EXIT
 
   Ping-IRC:
-    needs: [FocalAssets, UploadDocs, ArchReplay, FocalClangTidy]
+    needs: [NobleAssets, UploadDocs, ArchReplay, NobleClangTidy]
     runs-on: ubuntu-latest
     steps:
     - { uses: actions/checkout@v4.1.1,	with: { fetch-depth: 0 } } # Fix actions/checkout#290
     - run: git fetch -f --tags && git submodule update --init --recursive && git describe
     - name: Check Jobs
       run: |
-        echo '${{ needs.FocalAssets.result }}' '${{ needs.UploadDocs.result }}' '${{ needs.ArchReplay.result }}' '${{ needs.FocalClangTidy.result }}'
-        [[ ${{ needs.FocalAssets.result }}    =~ success|skipped ]]
+        echo '${{ needs.NobleAssets.result }}' '${{ needs.UploadDocs.result }}' '${{ needs.ArchReplay.result }}' '${{ needs.NobleClangTidy.result }}'
+        [[ ${{ needs.NobleAssets.result }}    =~ success|skipped ]]
         [[ ${{ needs.UploadDocs.result }}     =~ success|skipped ]]
         [[ ${{ needs.ArchReplay.result }}     =~ success|skipped ]]
-        [[ ${{ needs.FocalClangTidy.result }} =~ success|skipped ]]
+        [[ ${{ needs.NobleClangTidy.result }} =~ success|skipped ]]
     - name: Ping IRC
       if: ${{ always() && !env.ACT }}
       run: |
