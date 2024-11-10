@@ -13,7 +13,7 @@ jobs:
 
   NobleAssets:
     runs-on: ubuntu-latest
-    container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest' }
+    container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest', options: --user runner }
     steps:
     - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive } }
     - name: 'Fetch all tags'
@@ -34,7 +34,7 @@ jobs:
   UploadDocs:
     if: ${{ github.repository == 'tim-janik/anklang' && github.ref == 'refs/heads/trunk' }}
     runs-on: ubuntu-latest
-    container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest' }
+    container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest', options: --user runner }
     steps:
     - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive } }
     - name: 'Fetch all tags'
@@ -79,7 +79,7 @@ jobs:
   NobleClangTidy:
     if: ${{ ! contains(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
-    container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest' }
+    container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest', options: --user runner }
     steps:
     - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive } }
     - name: 'Fetch all tags'
