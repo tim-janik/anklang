@@ -77,4 +77,4 @@ RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ubuntu
 USER ubuntu
 
 # docker build -t ghcr.io/tim-janik/anklang-ci:noble-latest -f misc/Dockerfile.noble misc
-# docker run -ti --rm -v $PWD:/hostwd ghcr.io/tim-janik/anklang-ci:noble-latest
+# docker run -ti --rm -v $PWD:/hostwd -w /hostwd ghcr.io/tim-janik/anklang-ci:noble-latest
