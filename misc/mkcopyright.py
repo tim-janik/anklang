@@ -9,18 +9,18 @@ from datetime import datetime
 
 # Licenses as found in source code comments
 licenses = {
-  'MPL-2.0':    [ 'This Source Code Form is licensed MPL-2\.0',
-                  'This Source Code Form is licensed MPL-2\.0: http://mozilla.org/MPL/2\.0' ],
+  'MPL-2.0':    [ r'This Source Code Form is licensed MPL-2\.0',
+                  r'This Source Code Form is licensed MPL-2\.0: http://mozilla.org/MPL/2\.0' ],
   'CC0-1.0':    [ 'Licensed CC0 Public Domain',
-                  'CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1\.0/',
-                  'Licensed CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1\.0' ],
+                  r'CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1\.0/',
+                  r'Licensed CC0 Public Domain: http://creativecommons.org/publicdomain/zero/1\.0' ],
   'MIT':        [ 'MIT [Ll]icensed?', ],
   'Unlicense':  [ '([Dd]edicated to|[Ii]n) the Public Domain under the Unlicense([: ]*http.*)?',
                   'Licensed Public Domain' ],
 }
 
 # Comment suffix to ignore
-suffixes = '([.,;:]?\s*([Bb]ased on|[Dd]erived from)\s*[:]?\s*http[^ \t]*)?'
+suffixes = r'([.,;:]?\s*([Bb]ased on|[Dd]erived from)\s*[:]?\s*http[^ \t]*)?'
 
 # Comment patterns
 comments = (
@@ -188,7 +188,7 @@ def print_help (arg0, exit = None):
   h += "OPTIONS:\n"
   h += "  -b            Display brief license list\n"
   h += "  -c<inifile>   Read config file in INI format\n"
-  h += "  -e            Exit with a non-zero status if any files are unlicensed\n"
+  h += "  -e            Exit with an error if any files are unlicensed\n"
   h += "  -h, --help    Show command help\n"
   h += "  -l            List licensed files only\n"
   h += "  -u            List unlicensed files only\n"
@@ -209,8 +209,8 @@ default_config = {
   'max_header_lines': 10,
   'max_xml_lines': 999,
   'sections': { 'debian/copyright': {}, },
-  'with_license': True,
-  'without_license': True,
+  'list_licensed': True,
+  'list_unlicensed': True,
 }
 def parse_options (sysargv, dfltconfig = default_config):
   class Config (object): pass
@@ -231,11 +231,11 @@ def parse_options (sysargv, dfltconfig = default_config):
       print_spdx_licenses()
       sys.exit (0)
     elif k == '-l':
-      config.with_license = True
-      config.without_license = False
+      config.list_licensed = True
+      config.list_unlicensed = False
     elif k == '-u':
-      config.with_license = False
-      config.without_license = True
+      config.list_licensed = False
+      config.list_unlicensed = True
     elif k == '-C':
       upstream_headers['Upstream-Contact'] = v
     elif k == '-N':
@@ -269,8 +269,12 @@ def mkcopyright (sysargv):
     # detect license
     license = find_license (filename, config)
     count_unlicensed += not license
-    if ((license and not config.with_license) or
-        (not license and not config.without_license)):
+    if count_unlicensed and config.error_unlicensed:
+      print ('\n%-16s %s' % (license or '?', filename))
+      print ('%s: error: missing license in file: %s' % (sysargv[0], filename), file = sys.stderr)
+      sys.exit (1)
+    if ((license and not config.list_licensed) or
+        (not license and not config.list_unlicensed)):
       continue
     if config.brief:
       print ('%-16s %s' % (license or '?', filename))

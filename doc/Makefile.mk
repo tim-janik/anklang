@@ -50,7 +50,7 @@ $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/d
 $>/doc/copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst	| $>/doc/
 	$(QGEN)
 	$Q if test -r .git ; then				\
-	     misc/mkcopyright.py -c doc/copyright.ini		\
+	     misc/mkcopyright.py -e -c doc/copyright.ini	\
 		$$(cat $>/ls-tree.lst) > $@.tmp ;		\
 	   else							\
 	     $(CP) doc/copyright $@.tmp ;			\
