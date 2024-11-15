@@ -15,11 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest', options: --user runner }
     steps:
-    - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive } }
-    - name: 'Fetch all tags'
-      run: |
-        sed 's,git@github.com:,https://github.com/,' -i .git/config	; # fetch without ssh creds
-        git fetch -f --tags && git describe --always --long		; # Fix actions/checkout#290
+    - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive, github-server-url: 'https://github.com' } }
+    - run: git fetch -f --tags          # Fix actions/checkout#290
+    - run: git describe --always --long
     - name: 'Configure build presets'
       run: |
         echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
@@ -36,11 +34,9 @@ jobs:
     runs-on: ubuntu-latest
     container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest', options: --user runner }
     steps:
-    - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive } }
-    - name: 'Fetch all tags'
-      run: |
-        sed 's,git@github.com:,https://github.com/,' -i .git/config	; # fetch without ssh creds
-        git fetch -f --tags && git describe --always --long		; # Fix actions/checkout#290
+    - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive, github-server-url: 'https://github.com' } }
+    - run: git fetch -f --tags          # Fix actions/checkout#290
+    - run: git describe --always --long
     - name: 'Configure build presets'
       run: |
         echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
@@ -55,11 +51,9 @@ jobs:
     runs-on: ubuntu-latest
     container: { image: 'ghcr.io/tim-janik/anklang-ci:arch-latest' }
     steps:
-    - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive } }
-    - name: 'Fetch all tags'
-      run: |
-        sed 's,git@github.com:,https://github.com/,' -i .git/config	; # fetch without ssh creds
-        git fetch -f --tags && git describe --always --long		; # Fix actions/checkout#290
+    - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive, github-server-url: 'https://github.com' } }
+    - run: git fetch -f --tags          # Fix actions/checkout#290
+    - run: git describe --always --long
     - name: 'Configure build presets'
       run: |
         echo 'prefix=/' > config-defaults.mk	;# reset any previous config-defaults.mk
@@ -82,11 +76,9 @@ jobs:
     runs-on: ubuntu-latest
     container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest', options: --user runner }
     steps:
-    - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive } }
-    - name: 'Fetch all tags'
-      run: |
-        sed 's,git@github.com:,https://github.com/,' -i .git/config	; # fetch without ssh creds
-        git fetch -f --tags && git describe --always --long		; # Fix actions/checkout#290
+    - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive, github-server-url: 'https://github.com' } }
+    - run: git fetch -f --tags          # Fix actions/checkout#290
+    - run: git describe --always --long
     - name: 'Configure build presets'
       run: |
         echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
