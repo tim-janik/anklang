@@ -2,6 +2,7 @@
 #include "inifile.hh"
 #include "unicode.hh"
 #include "utils.hh"
+#include "strings.hh"
 #include <cstring>
 
 #define IDEBUG(...)     Ase::debug ("inifile", __VA_ARGS__)

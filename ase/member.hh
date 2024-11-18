@@ -76,6 +76,9 @@ host_member_offset (ptrdiff_t *hmoffsetp, const M *member, C *host)
   }
   return host;
 }
+
+bool kvpairs_assign  (StringS &kvs, const String &key_value_pair);
+
 } // Lib
 
 /// Implement C++ member field API with a 0-sized class from setter and getter, maybe combined with `[[no_unique_address]]`.
@@ -107,7 +110,7 @@ public:
     MemberDetails meta;
     meta.infos = s;
     if (!n.empty())
-      kvpairs_assign (meta.infos, "ident=" + n);
+      Lib::kvpairs_assign (meta.infos, "ident=" + n);
     meta_ (&meta);
     host_ (this, o);
     constexpr bool has_register_parameter = requires (Class *o, Member *m) { o->_register_parameter (o, m, ev); };
@@ -160,7 +163,7 @@ public:
     MemberDetails meta;
     meta.infos = s;
     if (!n.empty())
-      kvpairs_assign (meta.infos, "ident=" + n);
+      Lib::kvpairs_assign (meta.infos, "ident=" + n);
     meta_ (&meta);
     host_ (this, o);
     constexpr bool has_register_parameter = requires (Class *o, Member *m) { o->_register_parameter (o, m, ev); };

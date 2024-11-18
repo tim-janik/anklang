@@ -3,6 +3,7 @@
 #define __ASE_TESTING_HH__
 
 #include <ase/utils.hh>
+#include <ase/strings.hh>
 
 namespace Ase {
 

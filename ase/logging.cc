@@ -2,99 +2,91 @@
 #include "logging.hh"
 #include "platform.hh"
 #include "path.hh"
-#include <stdarg.h>
-#include <dirent.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/stat.h>
+#include "regex.hh"
+#include <cstdarg>
+#include <cstring>
 
 namespace Ase {
 
-static uint64 logstart_timestamp = 0;
-static constexpr double USEC2SEC = 1.0 / 1000000;
-static bool info2stderr = true;
-static int log_fd = -1;
+LogFlags log_setup (int*) __attribute__ ((__weak__));
 
-static std::array<int,2>
-log_fds (bool iserror)
+uint64_t
+timestamp_now ()
 {
-  if (!logstart_timestamp)
-    logstart_timestamp = timestamp_startup();
-  return { info2stderr || iserror ? 2 : -1, log_fd };
+  struct timeval tv = { 0, 0 };
+  gettimeofday (&tv, nullptr);
+  return tv.tv_sec * 1000000ULL + tv.tv_usec;
 }
 
-static char*
-sntime (char *buffer, size_t bsize)
-{
-  buffer[0] = 0;
-  snprintf (buffer, bsize, "[%+11.6f] ", USEC2SEC * (timestamp_realtime() - logstart_timestamp));
-  return buffer + strlen (buffer);
-}
+static uint64 programstart_timestamp = timestamp_now();
+static uint32_t log_flags = 0;
+static int      log_fd = -1;
+static bool     log_colorize = true;
 
-static String
-ilog_dir (bool mkdirs = false)
+static void
+logstart()
 {
-  const String ilogdir = Path::join (Path::xdg_dir ("CACHE"), "anklang");
-  if (mkdirs)
-    Path::mkdirs (ilogdir);
-  return ilogdir;
-}
-
-void
-log_setup (bool inf2stderr, bool log2file)
-{
-  if (log_fd >= 0) return;
-  info2stderr = inf2stderr;
-  if (log2file) {
-    const String dir = ilog_dir (true);
-    const String fname = string_format ("%s/%s-%08x.log", dir, program_alias(), gethostid());
-    errno = EBUSY;
-    const int OFLAGS = O_CREAT | O_EXCL | O_WRONLY | O_NOCTTY | O_NOFOLLOW | O_CLOEXEC; // O_TRUNC
-    const int OMODE = 0640;
-    int fd = open (fname.c_str(), OFLAGS, OMODE);
-    if (fd < 0 && errno == EEXIST) {
-      const String oldname = fname + ".old";
-      if (rename (fname.c_str(), oldname.c_str()) < 0)
-        perror (string_format ("%s: failed to rename \"%s\"", program_alias(), oldname.c_str()).c_str());
-      fd = open (fname.c_str(), OFLAGS, OMODE);
-    }
-    if (fd < 0)
-      perror (string_format ("%s: failed to open log file \"%s\"", program_alias(), fname.c_str()).c_str());
-    else {
-      log_fd = fd;
-      const auto lfds = log_fds (false); // does on demand setup
-      if (lfds[1] >= 0) {
-        constexpr const int MAXBUFFER = 1024;
-        char buffer[MAXBUFFER] = { 0, }, *b = sntime (buffer, MAXBUFFER);
-        snprintf (b, MAXBUFFER - (b - buffer),
-                  "%s %s: pid=%u startup=%.6f\n",
-                  program_alias().c_str(), ase_build_id(),
-                  getpid(), USEC2SEC * logstart_timestamp);
-        write (lfds[1], buffer, strlen (buffer));
-      }
-    }
-  }
+  if (log_flags) [[likely]] return;
+  log_colorize = AnsiColors::colorize_tty();
+  if (log_setup) {
+    log_flags = log_setup (&log_fd);
+    if (log_fd >= 0)
+      log_flags |= LOG_FILE;
+  } else
+    log_flags |= LOG_STDERR;
+  const time_t now = programstart_timestamp / 1000000;
+  struct tm stm{};
+  localtime_r (&now, &stm);
+  char tbuf[128] = { 0, };
+  strftime (tbuf, sizeof (tbuf) - 1, "%Y-%m-%d %H:%M:%S %z", &stm);
+  const std::string exec = executable_path();
+  const char *bexec = strrchr (exec.c_str(), '/');
+  bexec = bexec ? bexec+1 : exec.c_str();
+  char pidbuf[64] = { 0, };
+  snprintf (pidbuf, sizeof (pidbuf) - 1, " pid=%u", getpid());
+  std::string msg = std::string (bexec) + ": programstart=\"" + tbuf + "\"" + pidbuf + " executable=\"" + executable_path() + "\"";
+  logmsg (msg, "", 0, "");
 }
 
 void
-logmsg (const char c, const String &dept, const String &msg)
+logmsg (const std::string &msg, const char *const filename, const uint64_t columnline, const char *const function_name)
 {
-  Lib::ScopedPosixLocale posix_locale_scope; // push POSIX locale for this scope
+  const uint32_t line = uint32_t (columnline), column = columnline >> 32;
+  logstart();
+  ScopedPosixLocale posix_locale; // use POSIX locale for this scope
   if (msg.empty()) return;
   String s = msg;
   if (s[s.size()-1] != '\n')
     s += "\n";
-  if (c == 'E')
-    s = dept + (dept.empty() ? "" : " ") + "Error: " + s;
-  else if (!dept.empty())
-    s = dept + ": " + s;
-  for (auto fd : log_fds (c == 'E')) {
-    if (fd == 1) fflush (stdout);
-    if (fd == 2) fflush (stderr);
-    if (c == 'T' && fd <= 2)
-      continue;
-    write (fd, s.data(), s.size());
-    // fdatasync (fd);
+  {
+    char tstamp[64] = { 0, };
+    snprintf (tstamp, sizeof (tstamp) - 1, "%.6f: ", 0.000001 * (timestamp_now() - programstart_timestamp));
+    s = tstamp + s;
+  }
+  if (filename && filename[0]) {
+    char linein[128] = { 0, };
+    snprintf (linein, sizeof (linein) - 1, ":%u:%u: execution at: ", line, column);
+    s = filename + std::string (linein) + function_name + "\n" + s;
+  }
+  if (log_fd == 2 || log_flags & LOG_STDERR)
+    fflush (stderr);
+  if (!log_colorize && log_flags & LOG_STDERR)
+    write (2, s.data(), s.size());
+  if (log_fd >= 0)
+    write (log_fd, s.data(), s.size());
+  if (log_colorize && log_flags & LOG_STDERR) {
+    using namespace AnsiColors;
+    const auto C = color (FG_CYAN), G = color (BOLD, FG_GREEN), B = color (FG_BLUE), Y = color (FG_YELLOW), R = color (RESET);
+    const std::string HEXINT = "0[xX][0-9abcdefABCDEF]+";
+    const std::string FULLFLOAT = "([1-9][0-9]*|0)([.][0-9]*)?([eE][+-]?[0-9]+)?";
+    const std::string FRACTFLOAT = "[.][0-9]+([eE][+-]?[0-9]+)?";
+    const std::string NUMBER = HEXINT + "|" + FULLFLOAT + "|" + FRACTFLOAT;
+    s = Re::sub ("=(" + NUMBER + ")", "=" + Y + "$1" + R, s);
+    s = Re::sub ("=(\"(?:[^\"\\\\]|\\\\.)*\")", "=" + B + "$1" + R, s);
+    s = Re::sub (" (\\w+)=", " " + C + "$1" + R + "=", s);
+    s = Re::sub (": ([a-zA-Z.0-9_:-]+): ", ": " + G + "$1:" + R + " ", s);
+    s = Re::sub ("^(\\d+[.]\\d+):", Y + "$1:" + R, s, Re::M);
+    write (2, s.data(), s.size());
   }
 }
 

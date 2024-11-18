@@ -4,12 +4,26 @@
 #include "levenshtein.hh"
 #include "unicode.hh"
 #include "regex.hh"
+#include "strings.hh"
 #include "mathutils.hh"
 #include "internal.hh"
 
 namespace Ase {
 
 // == Param ==
+String
+Param::fetch (const String &key) const
+{
+  return kvpairs_fetch (metadata, key);
+}
+
+void
+Param::store (const String &key, const String &v)
+{
+  kvpairs_assign (metadata, key + '=' + v);
+}
+
+// == ParamExtraVals ==
 ParamExtraVals::ParamExtraVals (double vmin, double vmax, double step)
 {
   using Base = std::variant<MinMaxStep,ChoiceS,ChoicesFunc>;

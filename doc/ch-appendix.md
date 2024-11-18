@@ -121,6 +121,8 @@ and drag and drop behaviour.
 According to the Gtk+ implementation, modifiers relate to DND operations
 according to the following list:
 
+<!--# TODO: fix modifier table -->
+
 Table: GDK drag-and-drop modifier keys
 
 Modifier            Operation       Note / X-Cursor

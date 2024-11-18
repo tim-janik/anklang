@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "path.hh"
 #include "platform.hh"
+#include "strings.hh"
 #include "utils.hh"
 #include "inifile.hh"
 #include "internal.hh"

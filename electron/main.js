@@ -156,7 +156,6 @@ function start_sound_engine (config, datacb)
       }
   const { spawn, spawnSync } = require ('child_process');
   const args = [ '--embed', '3', ...config.args ];
-  args.push ('--log2file');
   if (config.verbose)
     args.push ('--verbose');
   if (config.binary)

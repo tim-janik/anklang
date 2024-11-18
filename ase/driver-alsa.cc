@@ -2,6 +2,7 @@
 #include "driver.hh"
 #include "datautils.hh"
 #include "platform.hh"
+#include "strings.hh"
 #include "internal.hh"
 #include <limits.h> // LONG_MAX
 #include <atomic>

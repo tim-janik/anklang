@@ -3,6 +3,7 @@
 #include "datautils.hh"
 #include "platform.hh"
 #include "internal.hh"
+#include "strings.hh"
 #include <unistd.h>
 #include <atomic>
 

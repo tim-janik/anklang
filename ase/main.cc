@@ -17,6 +17,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <malloc.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #undef B0 // undo pollution from termios.h
 
@@ -109,7 +111,6 @@ print_usage (bool help)
   printout ("  --jsipc          Print Javascript IPC messages\n");
   printout ("  --list-drivers   Print PCM and MIDI drivers\n");
   printout ("  --list-tests     List all test names\n");
-  printout ("  --log2file       Enable logging to ~/.cache/anklang/ instead of stderr\n");
   printout ("  --norc           Prevent loading of any rc files\n");
   printout ("  --play-autostart Automatically start playback of `project.anklang`\n");
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
@@ -119,6 +120,34 @@ print_usage (bool help)
   printout ("  -P pcmdriver     Force use of <pcmdriver>\n");
   printout ("  -o wavfile       Capture output to OPUS/FLAC/WAV file\n");
   printout ("  -t <time>        Automatically play and stop after <time> has passed\n"); // -t <time>[{,|;}tailtime]
+  printout ("Options set via $ASE_DEBUG:\n");
+  printout ("  :no-logfile:     Disable logging to ~/.cache/anklang/ instead of stderr\n");
+}
+
+LogFlags
+log_setup (int *logfd)
+{
+  int flags = LOG_STDERR;
+  const char *asedebug = getenv ("ASE_DEBUG");
+  if (!asedebug || !strstr (asedebug, "no-log2file")) {
+    const String logdir = Path::join (Path::xdg_dir ("CACHE"), "anklang");
+    if (Path::mkdirs (logdir)) {
+      const String fname = string_format ("%s/%s-%08x.log", logdir, program_alias(), gethostid());
+      const int OFLAGS = O_CREAT | O_EXCL | O_WRONLY | O_NOCTTY | O_NOFOLLOW | O_CLOEXEC; // O_TRUNC
+      const int OMODE = 0640;
+      errno = EBUSY;
+      *logfd = open (fname.c_str(), OFLAGS, OMODE);
+      if (*logfd < 0 && errno == EEXIST) {
+        const String oldname = fname + ".old";
+        if (rename (fname.c_str(), oldname.c_str()) < 0)
+          perror (string_format ("%s: failed to rename \"%s\"", program_alias(), oldname.c_str()).c_str());
+        *logfd = open (fname.c_str(), OFLAGS, OMODE);
+        if (*logfd < 0)
+          perror (string_format ("%s: failed to open log file \"%s\"", program_alias(), fname.c_str()).c_str());
+      }
+    }
+  }
+  return LogFlags (flags);
 }
 
 // 1:ERROR 2:FAILED+REJECT 4:IO 8:MESSAGE 16:GET 256:BINARY
@@ -151,8 +180,6 @@ parse_args (int *argcp, char **argv)
         config.allow_randomization = false;
       else if (strcmp ("--norc", argv[i]) == 0)
         config.norc = true;
-      else if (strcmp ("--log2file", argv[i]) == 0)
-        config.log2file = true;
       else if (strcmp ("--rand64", argv[i]) == 0)
         {
           FastRng prng;
@@ -326,7 +353,7 @@ handle_autostop (const LoopState &state)
     case LoopState::PREPARE:    return seen_autostop;
     case LoopState::CHECK:      return seen_autostop;
     case LoopState::DISPATCH:
-      loginf ("stopping playback (auto)");
+      log ("Main: stopping playback (auto)");
       atquit_run (0);
       return true; // keep alive
     default: ;
@@ -446,8 +473,6 @@ main (int argc, char *argv[])
   // parse args and config (needs main_loop)
   main_config_ = parse_args (&argc, argv);
   const MainConfig &config = main_config_;
-  // configure logging
-  log_setup (!config.log2file, config.log2file);
 
   // load preferences unless --norc was given
   if (!config.norc)
@@ -535,7 +560,7 @@ main (int argc, char *argv[])
       Error error = Error::NO_MEMORY;
       if (preload_project)
         error = preload_project->load_project (filename);
-      loginf ("load project: %s: %s", filename, ase_error_blurb (error));
+      log ("Main: load project: %s: %s", filename, ase_error_blurb (error));
       if (!!error)
         warning ("%s: failed to load project: %s", filename, ase_error_blurb (error));
     }
@@ -554,7 +579,7 @@ main (int argc, char *argv[])
   if (main_config.mode == MainConfig::SYNTHENGINE) {
     const char *host = "127.0.0.1";
     wss->listen (host, xport, [] () { main_loop->quit (-1); });
-    loginf ("listen on: %s:%u", host, xport);
+    log ("Main: listen on: %s:%u", host, xport);
   }
   const String url = wss->url() + (subprotocol.empty() ? "" : "?subprotocol=" + subprotocol);
   if (embedding_fd < 0 && !url.empty())
@@ -563,7 +588,7 @@ main (int argc, char *argv[])
   // run atquit handler on SIGHUP SIGINT
   for (int sigid : { SIGHUP, SIGINT }) {
     main_loop->exec_usignal (sigid, [] (int8 sig) {
-      loginf ("got signal %d: aborting", sig);
+      log ("Main: got signal %d: aborting", sig);
       atquit_run (-1);
       return false;
     });
@@ -572,7 +597,7 @@ main (int argc, char *argv[])
 
   // catch SIGUSR2 to close sockets
   main_loop->exec_usignal (SIGUSR2, [wss] (int8 sig) {
-    loginf ("got signal %d: reset WebSocket", sig);
+    log ("Main: got signal %d: reset WebSocket", sig);
     wss->reset();
     return true;
   });
@@ -587,7 +612,7 @@ main (int argc, char *argv[])
           {
             ssize_t n = read (embedding_fd, &msg[0], msg.size()); // flush input
             msg.resize (n > 0 ? n : 0);
-            loginf ("Embedder Msg: %s", msg);
+            log ("Main: Embedder Msg: %s", msg);
           }
         if (string_strip (msg) == "QUIT" || (pfd.revents & (PollFD::ERR | PollFD::HUP | PollFD::NVAL)))
           wss->shutdown();
@@ -606,7 +631,7 @@ main (int argc, char *argv[])
   if (config.outputfile)
     {
       std::shared_ptr<CallbackS> callbacks = std::make_shared<CallbackS>();
-      loginf ("Start caputure: %s", config.outputfile);
+      log ("Main: Start caputure: %s", config.outputfile);
       config.engine->queue_capture_start (*callbacks, config.outputfile, true);
       auto job = [callbacks] () {
         for (const auto &callback : *callbacks)
@@ -618,7 +643,7 @@ main (int argc, char *argv[])
   // start auto play
   if (config.play_autostart && preload_project)
     main_loop->exec_idle ([preload_project] () {
-      loginf ("starting playback (auto)");
+      log ("Main: starting playback (auto)");
       preload_project->start_playback (config.play_autostop);
     });
   // handle automatic shutdown
@@ -631,7 +656,7 @@ main (int argc, char *argv[])
   // run main event loop and catch SIGUSR2
   const int exitcode = main_loop->run();
   assert_return (main_loop, -1); // ptr must be kept around
-  logtxt ("main loop quit (code=%d)", exitcode);
+  log ("Main: event loop quit (code=%d)", exitcode);
 
   // cleanup
   wss->shutdown(); // close socket, allow no more calls
@@ -644,12 +669,24 @@ main (int argc, char *argv[])
   main_loop->iterate_pending();
   main_config_.engine = nullptr;
 
-  logtxt ("exiting: %d", exitcode);
+  log ("Main: exiting: %d", exitcode);
   return exitcode;
 }
 
 namespace { // Anon
 using namespace Ase;
+
+extern "C" __attribute__ ((__noinline__)) void
+tlog1 (const char *s)
+{
+  log ("foo: %s+%d", s, 0x11111111);
+}
+
+extern "C" __attribute__ ((__noinline__)) void
+tlog2 (const char *s)
+{
+  log ("foo: %s+%d", s, 0x11111111);
+}
 
 TEST_INTEGRITY (job_queue_tests);
 static void

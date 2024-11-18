@@ -3,6 +3,7 @@
 #include "utils.hh"
 #include "platform.hh"
 #include "internal.hh"
+#include "strings.hh"
 #include <sys/poll.h>
 #include <errno.h>
 #include <atomic>
@@ -13,7 +14,6 @@
 #include <signal.h>
 #include <algorithm>
 #include <list>
-#include <cstring>
 
 namespace Ase {
 
