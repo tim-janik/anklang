@@ -11,8 +11,8 @@
 
 namespace Ase {
 
-// == MainConfig ==
-struct MainConfig {
+// == MainApp ==
+struct MainApp {
   AudioEngine *engine = nullptr;
   String pcm_override, midi_override;
   WebSocketServer *web_socket_server = nullptr;
@@ -28,7 +28,7 @@ struct MainConfig {
   enum ModeT { SYNTHENGINE, CHECK_INTEGRITY_TESTS };
   ModeT  mode = SYNTHENGINE;
 };
-extern const MainConfig &main_config;
+extern const MainApp &App;
 
 // == Jobs & main loop ==
 extern MainLoopP main_loop;

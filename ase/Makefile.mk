@@ -2,74 +2,32 @@
 include $(wildcard $>/ase/*.d)
 CLEANDIRS     += $(wildcard $>/ase/ $>/lib/)
 
-include ase/tests/Makefile.mk
-
 # == ase/ *.cc file sets ==
+ase/AnklangSynthEngine.sources	::= ase/main.cc
 ase/jackdriver.sources		::= ase/driver-jack.cc
 ase/gtk2wrap.sources		::= ase/gtk2wrap.cc
-ase/noglob.cc			::= ase/main.cc $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
-ase/libsources.cc		::= $(filter-out $(ase/noglob.cc), $(wildcard ase/*.cc))
-ase/libsources.c		::= $(wildcard ase/*.c)
-ase/include.deps		::= $>/ase/sysconfig.h
-
-# == AnklangSynthEngine definitions ==
-lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine
-ase/AnklangSynthEngine.sources	::= ase/main.cc $(ase/libsources.cc) $(ase/libsources.c)
-ase/AnklangSynthEngine.gensrc	::= $(strip \
-	$>/ase/api.jsonipc.cc		\
-	$>/ase/blake3impl.c		\
-	$>/ase/blake3avx512.c		\
-	$>/ase/blake3avx2.c		\
-	$>/ase/blake3sse41.c		\
-	$>/ase/blake3sse2.c		\
-)
-ase/AnklangSynthEngine.objects	::= $(sort \
-	$(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources)) \
-	$(call SOURCE2_O, $(ase/AnklangSynthEngine.gensrc))   \
-	$(ase/tests/objects) \
-)
-ase/AnklangSynthEngine.objects	 += $(devices/4ase.objects)
-ALL_TARGETS += $(lib/AnklangSynthEngine)
-
-# == AnklangSynthEngine-fma ==
-$(lib/AnklangSynthEngine)-fma:
-	$(QGEN)
-	$Q $(MAKE) INSN=fma builddir=$>/fma $>/fma/lib/AnklangSynthEngine
-	$Q $(CP) -v $>/fma/lib/AnklangSynthEngine.map $@.map
-	$Q $(CP) -v $>/fma/lib/AnklangSynthEngine $@
-ifeq ($(MODE)+$(INSN),production+sse)
-ALL_TARGETS += $(lib/AnklangSynthEngine)-fma
-# Iff MODE=production and INSN=sse (i.e. release builds),
-# also build an FMA variant of the sound engine.
-endif
+ase/noglob.sources		::= $(ase/AnklangSynthEngine.sources) $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
+ase/common.ccsources		::= $(filter-out $(ase/noglob.sources), $(wildcard ase/*.cc))
+ase/common.csources		::= $(wildcard ase/*.c)
+ase/sysconfig.dep		::= $>/ase/sysconfig.h
+ASE_EXTERNAL_INCLUDES := $(strip		\
+	-Iexternal/clap/include			\
+	-Iexternal/libsndfile/include		\
+	-Iexternal/liquidsfz/lib		\
+	-Iexternal/pandaresampler/include	\
+	-Iexternal/rapidjson/include		\
+	-Iexternal/websocketpp			\
+) # also used by clang-tidy
+ase/object.includes		::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
 
 # == ase/api.jsonipc.cc ==
-$>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/include.deps) | $>/ase/ # ase/Makefile.mk
+$>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/sysconfig.dep) | $>/ase/ # ase/Makefile.mk
 	$(QGEN)
 	$Q echo '#include <ase/jsonapi.hh>'							>  $@.tmp
 	$Q echo '#include <ase/api.hh>'								>> $@.tmp
 	$Q $(PYTHON3) jsonipc/cxxjip.py $< -N Ase -I. -I$>/ -Iout/external/			>> $@.tmp
 	$Q echo '[[maybe_unused]] static bool init_jsonipc = (jsonipc_4_api_hh(), 0);'		>> $@.tmp
 	$Q mv $@.tmp $@
-
-# == ase/buildversion-$(version_short).cc ==
-ase/buildsum != echo '$(sharedir)' | sha256sum - | sed -r 's/(.{12}).*/$(version_short).mk\1/'
-ase/buildversion.cc := $>/ase/buildversion-$(ase/buildsum).cc
-$(ase/buildversion.cc):								| $>/ase/ # $(GITCOMMITDEPS)
-	$(QGEN)
-	$Q echo '// make $@'							> $@.tmp
-	$Q echo '#include <ase/platform.hh>'					>>$@.tmp
-	$Q echo 'namespace Ase {'						>>$@.tmp
-	$Q echo 'const int         ase_major_version = $(version_major);'	>>$@.tmp
-	$Q echo 'const int         ase_minor_version = $(version_minor);'	>>$@.tmp
-	$Q echo 'const int         ase_micro_version = $(version_micro);'	>>$@.tmp
-	$Q echo 'const char *const ase_version_long = "$(version_short)+g$(version_hash) ($(INSN))";'	>>$@.tmp
-	$Q echo 'const char *const ase_version_short = "$(version_short)";'	>>$@.tmp
-	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_short)";' >>$@.tmp
-	$Q echo 'const char *const ase_sharedir = "$(sharedir)";'		>>$@.tmp
-	$Q echo '} // Ase'							>>$@.tmp
-	$Q mv $@.tmp $@
-ase/AnklangSynthEngine.objects += $(ase/buildversion.cc:.cc=.o)
 
 # == ase/sysconfig.h ==
 $>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk
@@ -135,17 +93,57 @@ CLEANDIRS += $>/sndfile/
 CLEANFILES += $>/lib/libsndfile.*
 ase/sndfile.cc: $>/lib/libsndfile.so # includes $>/sndfile/src/config.h
 
+# == Common Sources ==
+ase/common.sources	::= $(ase/common.ccsources) $(ase/common.csources)
+ase/generated.sources	::= $(strip \
+	$>/ase/api.jsonipc.cc		\
+	$>/ase/blake3impl.c		\
+	$>/ase/blake3avx512.c		\
+	$>/ase/blake3avx2.c		\
+	$>/ase/blake3sse41.c		\
+	$>/ase/blake3sse2.c		\
+)
+
+# == ase/buildversion-$(version_short).cc ==
+ase/buildsum != echo '$(sharedir)' | sha256sum - | sed -r 's/(.{12}).*/$(version_short).mk\1/'
+ase/buildversion.cc := $>/ase/buildversion-$(ase/buildsum).cc
+$(ase/buildversion.cc):								| $>/ase/ # $(GITCOMMITDEPS)
+	$(QGEN)
+	$Q echo '// make $@'							> $@.tmp
+	$Q echo '#include <ase/platform.hh>'					>>$@.tmp
+	$Q echo 'namespace Ase {'						>>$@.tmp
+	$Q echo 'const int         ase_major_version = $(version_major);'	>>$@.tmp
+	$Q echo 'const int         ase_minor_version = $(version_minor);'	>>$@.tmp
+	$Q echo 'const int         ase_micro_version = $(version_micro);'	>>$@.tmp
+	$Q echo 'const char *const ase_version_long = "$(version_short)+g$(version_hash) ($(INSN))";'	>>$@.tmp
+	$Q echo 'const char *const ase_version_short = "$(version_short)";'	>>$@.tmp
+	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_short)";' >>$@.tmp
+	$Q echo 'const char *const ase_sharedir = "$(sharedir)";'		>>$@.tmp
+	$Q echo '} // Ase'							>>$@.tmp
+	$Q mv $@.tmp $@
+ase/generated.sources += $(ase/buildversion.cc)
+
+# == object deps ==
+ase/object.deps      = $(ase/sysconfig.dep) $(ase/libase.deps)
+ase/common.objects ::= $(sort \
+	$(call BUILDDIR_O, $(ase/common.sources)) \
+	$(call SOURCE2_O, $(ase/generated.sources))   \
+)
+$(ase/common.objects): $(ase/object.deps)
+$(ase/common.objects): EXTRA_INCLUDES ::= $(ase/object.includes)
+$(devices/4ase.objects): $(ase/object.deps)
+$(devices/4ase.objects): EXTRA_INCLUDES ::= $(ase/object.includes)
+# Work around legacy code in external/websocketpp/*.hpp
+ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec -Wno-sign-promo
+# Allow tests in mathutils.cc
+ase/mathutils.cc.CTIDY_FLAGS = --checks=-clang-analyzer-security.FloatLoopCounter
+
 # == AnklangSynthEngine ==
-ASE_EXTERNAL_INCLUDES := $(strip		\
-	-Iexternal/clap/include			\
-	-Iexternal/libsndfile/include		\
-	-Iexternal/liquidsfz/lib		\
-	-Iexternal/pandaresampler/include	\
-	-Iexternal/rapidjson/include		\
-	-Iexternal/websocketpp			\
-) # also used by clang-tidy
-$(ase/AnklangSynthEngine.objects): $(ase/include.deps) $(ase/libase.deps)
-$(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
+lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine
+ase/AnklangSynthEngine.objects	::= $(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources))
+$(ase/AnklangSynthEngine.objects): $(ase/object.deps)
+$(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= $(ase/object.includes)
+ase/AnklangSynthEngine.objects	 += $(ase/common.objects) $(devices/4ase.objects)
 $(lib/AnklangSynthEngine): $>/lib/libsndfile.so					| $>/lib/
 $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
@@ -153,15 +151,24 @@ $(call BUILD_PROGRAM, \
 	$(lib/libase.so), \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl $>/lib/libsndfile.so, \
 	../lib)
-# Work around legacy code in external/websocketpp/*.hpp
-ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec -Wno-sign-promo
-# Allow tests in mathutils.cc
-ase/mathutils.cc.CTIDY_FLAGS = --checks=-clang-analyzer-security.FloatLoopCounter
+ALL_TARGETS += $(lib/AnklangSynthEngine)
+
+# == AnklangSynthEngine-fma ==
+$(lib/AnklangSynthEngine)-fma:
+	$(QGEN)
+	$Q $(MAKE) INSN=fma builddir=$>/fma $>/fma/lib/AnklangSynthEngine
+	$Q $(CP) -v $>/fma/lib/AnklangSynthEngine.map $@.map
+	$Q $(CP) -v $>/fma/lib/AnklangSynthEngine $@
+ifeq ($(MODE)+$(INSN),production+sse)
+  # Iff MODE=production and INSN=sse (i.e. release builds),
+  # also build an FMA variant of the sound engine.
+  ALL_TARGETS += $(lib/AnklangSynthEngine)-fma
+endif
 
 # == jackdriver.so ==
 lib/jackdriver.so	     ::= $>/lib/jackdriver.so
 ase/jackdriver.objects	     ::= $(call BUILDDIR_O, $(ase/jackdriver.sources))
-$(ase/jackdriver.objects):   $(ase/include.deps)
+$(ase/jackdriver.objects):   $(ase/sysconfig.dep)
 $(ase/jackdriver.objects):   EXTRA_INCLUDES ::= -I$>
 $(lib/jackdriver.so).LDFLAGS ::= -Wl,--unresolved-symbols=ignore-in-object-files
 ifneq ('','$(ANKLANG_JACK_LIBS)')
@@ -180,7 +187,7 @@ lib/gtk2wrap.so         ::= $>/lib/gtk2wrap.so
 ase/gtk2wrap.objects    ::= $(call BUILDDIR_O, $(ase/gtk2wrap.sources))
 $(ase/gtk2wrap.objects): EXTRA_INCLUDES ::= -I$> $(GTK2_CFLAGS)
 $(ase/gtk2wrap.objects): EXTRA_CXXFLAGS ::= -Wno-deprecated -Wno-deprecated-declarations
-$(ase/gtk2wrap.objects): $(ase/include.deps)
+$(ase/gtk2wrap.objects): $(ase/sysconfig.dep)
 $(call BUILD_SHARED_LIB, \
 	$(lib/gtk2wrap.so), \
 	$(ase/gtk2wrap.objects), \
