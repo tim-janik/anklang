@@ -4,6 +4,8 @@
 
 #include <ase/websocket.hh>
 #include <ase/value.hh>
+
+#define JSONIPC_CUSTOM_SHARED_BASE ::Ase::SharedBase
 #include <jsonipc/jsonipc.hh>
 
 namespace Ase {

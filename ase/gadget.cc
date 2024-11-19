@@ -15,8 +15,6 @@ Gadget::Gadget() :
 {}
 
 // == GadgetImpl ==
-JSONIPC_INHERIT (GadgetImpl, Gadget);
-
 GadgetImpl::~GadgetImpl()
 {}
 

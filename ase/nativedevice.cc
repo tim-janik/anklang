@@ -10,8 +10,6 @@
 namespace Ase {
 
 // == NativeDeviceImpl ==
-JSONIPC_INHERIT (NativeDeviceImpl, NativeDevice);
-
 NativeDeviceImpl::NativeDeviceImpl (const String &aseid, AudioProcessor::StaticInfo static_info, AudioProcessorP aproc) :
   proc_ (aproc), combo_ (std::dynamic_pointer_cast<AudioCombo> (aproc)), info_ (extract_info (aseid, static_info))
 {

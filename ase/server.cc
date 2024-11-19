@@ -18,8 +18,6 @@
 namespace Ase {
 
 // == ServerImpl ==
-JSONIPC_INHERIT (ServerImpl, Server);
-
 static constexpr size_t telemetry_size = 4 * 1024 * 1024;
 
 ServerImpl *SERVER = nullptr;

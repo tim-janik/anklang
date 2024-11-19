@@ -73,7 +73,7 @@ class Writ {
   bool in_load_ = false, in_save_ = false, skip_zero_ = false, skip_emptystring_ = false, relaxed_ = false;
   ValueP dummy_;
   struct InstanceMap : Jsonipc::InstanceMap {
-    Jsonipc::JsonValue wrapper_to_json   (Wrapper*, size_t, const std::string&, Jsonipc::JsonAllocator&) override;
+    Jsonipc::JsonValue wrapper_to_json   (Wrapper*, size_t, Jsonipc::JsonAllocator&) override;
     Wrapper*           wrapper_from_json (const Jsonipc::JsonValue&) override;
   }      instance_map_;
   struct LinkEntry { ValueP value; Serializable *sp = nullptr; int64 id = 0; };

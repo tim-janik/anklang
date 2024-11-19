@@ -25,8 +25,6 @@ ResourceCrawler::ResourceCrawler() :
 {}
 
 // == FileCrawler ==
-JSONIPC_INHERIT (FileCrawler, ResourceCrawler);
-
 FileCrawler::FileCrawler (const String &cwd, bool constraindir, bool constrainfile) :
   cwd_ ("/"), constraindir_ (constraindir), constrainfile_ (constrainfile)
 {

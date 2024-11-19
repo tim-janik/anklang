@@ -41,8 +41,6 @@ Project::last_project()
 }
 
 // == ProjectImpl ==
-JSONIPC_INHERIT (ProjectImpl, Project);
-
 using StringPairS = std::vector<std::tuple<String,String>>;
 
 struct ProjectImpl::PStorage {
