@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Dedicated to the Public Domain under the Unlicense: https://unlicense.org/UNLICENSE
 
-import sys, os, re, subprocess, getopt
+import sys, os, re, subprocess, getopt, itertools
 from datetime import datetime
 
 # TODO:
@@ -112,8 +112,8 @@ def find_copyrights (filename):
       m = crpattern.match (line.strip())
       if m:
         a, b = m.group (1).strip(), m.group (2).strip()
-        if a[0] not in '0123456789':
-          if b[0] not in '0123456789':
+        if len (a) < 1 or a[0] not in '0123456789':
+          if len (b) < 1 or b[0] not in '0123456789':
             continue
           b, a = a, b
         copyrights[b] = copyrights.get (b, []) + parse_years (a)
@@ -187,14 +187,15 @@ def print_help (arg0, exit = None):
   h  = "Scan FILES for licenses and list copyrights from Git(1) authors.\n"
   h += "OPTIONS:\n"
   h += "  -b            Display brief license list\n"
-  h += "  -c<inifile>   Read config file in INI format\n"
+  h += "  -c<INIFILE>   Read config file in INI format\n"
   h += "  -e            Exit with an error if any files are unlicensed\n"
+  h += "  -f<FILE>      Read paths from FILE, one per line\n"
   h += "  -h, --help    Show command help\n"
   h += "  -l            List licensed files only\n"
   h += "  -u            List unlicensed files only\n"
-  h += "  -C<contact>   Add Upstream-Contact field\n"
-  h += "  -N<name>      Add Upstream-Name field\n"
-  h += "  -S<source>    Add Source field\n"
+  h += "  -C<CONTACT>   Add Upstream-Contact field\n"
+  h += "  -N<NAME>      Add Upstream-Name field\n"
+  h += "  -S<SOURCE>    Add Source field\n"
   if exit: # != 0
     print (u, file = sys.stderr)
     sys.exit (exit)
@@ -205,6 +206,7 @@ def print_help (arg0, exit = None):
 
 default_config = {
   'brief': False,
+  'filelist': None,
   'error_unlicensed': False,
   'max_header_lines': 10,
   'max_xml_lines': 999,
@@ -216,7 +218,7 @@ def parse_options (sysargv, dfltconfig = default_config):
   class Config (object): pass
   config = Config()
   config.__dict__.update (dfltconfig)
-  opts, argv = getopt.getopt (sysargv[1:], 'blueh' + 'c:C:N:S:', [ 'help', 'spdx-licenses' ])
+  opts, argv = getopt.getopt (sysargv[1:], 'blueh' + 'c:C:f:N:S:', [ 'help', 'spdx-licenses' ])
   upstream_headers = {}
   for k, v in opts:
     if k == '-b':
@@ -225,6 +227,8 @@ def parse_options (sysargv, dfltconfig = default_config):
       load_config_sections (v, config)
     elif k == '-e':
       config.error_unlicensed = True
+    elif k == '-f':
+      config.filelist = v
     elif k == '-h' or k == '--help':
       print_help (sysargv[0], 0)
     elif k == '--spdx-licenses':
@@ -249,7 +253,10 @@ def parse_options (sysargv, dfltconfig = default_config):
 def mkcopyright (sysargv):
   # parse options and check inputs
   config = parse_options (sysargv)
-  if len (config.argv) == 0:
+  fileiter = ()
+  if config.filelist:
+    fileiter = open (config.filelist, 'rt').read().splitlines()
+  if len (config.argv) == 0 and not config.filelist:
     print_help (sysargv[0], 7)
   # print debian/copyright header
   if not config.brief and config.sections['debian/copyright']:
@@ -262,7 +269,7 @@ def mkcopyright (sysargv):
   # gather copyrights and licenses
   count_unlicensed = 0
   used_licenses = set()
-  for filename in config.argv:
+  for filename in itertools.chain (config.argv, fileiter):
     # ignore files
     if match_section (filename, config, 'ignore'):
       continue

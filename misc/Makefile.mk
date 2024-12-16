@@ -121,7 +121,7 @@ uninstall: misc/uninstall
 # == Check Copyright Notices ==
 check-copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst
 	$(QGEN)
-	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini $$(cat $>/ls-tree.lst)
+	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini -f $>/ls-tree.lst
 CHECK_TARGETS += $(if $(HAVE_GIT), check-copyright)
 
 # == appimagetools/appimage-runtime-zstd ==
