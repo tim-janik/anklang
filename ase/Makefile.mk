@@ -10,9 +10,12 @@ ase/anklang.sources		:= $(filter-out $(ase/not-anklang.sources), $(wildcard ase/
 lib/AnklangSynthEngine		:= $>/lib/AnklangSynthEngine
 ase/generated.sources		:=
 ASE_EXTRA_INCLUDES := $(strip			\
+	-Itrkn				\
 	-Iexternal				\
 	-Iexternal/clap/include			\
+	-Iexternal/crill/include		\
 	-Iexternal/libsndfile/include		\
+	-Iexternal/libsamplerate/include	\
 	-Iexternal/liquidsfz/lib		\
 	-Iexternal/nlohmann-json/include	\
 	-Iexternal/pandaresampler/include	\
@@ -162,6 +165,28 @@ $>/ase/buildversion-$(version_hash).cc:						| $>/ase/
 	$Q mv $@.tmp $@
 ase/generated.sources += $>/ase/buildversion-$(version_hash).cc
 
+# == Tracktion Engine Objects ==
+include trkn/trkn.g.mk
+TRKN_OBJECTS ::=
+TRKN_DEFS  = -pthread -Oz -ffast-math -fvisibility=hidden
+TRKN_DEFS += $(patsubst -I%, -Itrkn/%, $(TRACKTION_INTERNAL_INCLUDES))
+TRKN_DEFS += $(ASE_EXTRA_INCLUDES) # $(TRACKTION_EXTERNAL_INCLUDES)
+TRKN_DEFS += -Iexternal/soundtouch/include/
+TRKN_DEFS += -D JUCE_APP_CONFIG_HEADER='"trkn/config.hh"' # $(TRACKTION_HEADER_DEFINES)
+TRKN_DEFS += $(TRACKTION_CCBODY_DEFINES)
+TRKN_DEFS += -DJUCE_INCLUDE_OGGVORBIS_CODE=0
+TRKN_DEFS += -DJUCE_INCLUDE_PNGLIB_CODE=0 -DJUCE_INCLUDE_JPEGLIB_CODE=0
+TRKN_DEFS += -DJUCE_INCLUDE_ZLIB_CODE=0 -DJUCE_ZLIB_INCLUDE_PATH='<zlib.h>'
+define TRKN_CXXOBJECT_RULE
+$$>/trkn/$$(notdir $(1:.cpp=.o)): $1	| $$>/trkn/
+	$$(QECHO) CXX $$@
+	$$(Q) $$(CCACHE) $$(CXX) $$(CXXSTD) $$(TRKN_DEFS) -fPIC $$(compiledefs) $$(compilecxxflags) -c $$< -o $$@
+TRKN_OBJECTS += $$>/trkn/$$(notdir $(1:.cpp=.o))
+endef	# $$(compilecxxflags)
+$(foreach F, $(filter %.cpp, $(JUCE_SOURCES) $(TRACKTION_SOURCES)), $(eval $(call TRKN_CXXOBJECT_RULE, trkn/$F)))
+$(TRKN_OBJECTS): $(EXTERNAL_CXX_STAMPS)
+include $(wildcard $>/trkn/*.d)
+
 # == cpptrace ==
 ifeq ($(MODE),cpptrace)
 LIBCPPTRACE_HEADERS := $>/cpptrace/include/cpptrace/cpptrace.hpp $>/cpptrace/include/cpptrace/from_current.hpp
@@ -193,7 +218,7 @@ ase/mathutils.cc.CTIDY_FLAGS = --checks=-clang-analyzer-security.FloatLoopCounte
 $(lib/AnklangSynthEngine): $(lib/libsndfile.so)				| $>/lib/
 $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
-	$(ase/anklang.objects) $(devices/4ase.objects), \
+	$(ase/anklang.objects) $(devices/4ase.objects) $(TRKN_OBJECTS), \
 	$(lib/libase.so), \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl $(lib/libsndfile.so), \
 	../lib)
