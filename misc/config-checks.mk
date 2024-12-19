@@ -52,7 +52,8 @@ conftest_require_lib = { $(call conftest_lib,$1,$2,$3) && $$CONFTEST \
 config-checks.require.pkgconfig ::= $(strip	\
 	alsa			>= 1.0.5	\
 	flac			>= 1.2.1	\
-	ogg			>= 1.3.4	\
+	ogg			>= 1.3.5	\
+	vorbis			>= 1.3.7	\
 	opus			>= 1.3.1	\
 	glib-2.0        	>= 2.32.3	\
 	gmodule-no-export-2.0	>= 2.32.3	\
@@ -68,8 +69,10 @@ config-checks.require.pkgconfig ::= $(strip	\
 # use for Gtk+2 X11 Window embedding
 GTK2_PACKAGES	 ::= gtk+-2.0
 # used for ASEDEPS_CFLAGS ASEDEPS_LIBS
-ASEDEPS_PACKAGES ::= libpcre2-8 zlib ogg opus flac dbus-1 \
-		     glib-2.0 gobject-2.0 gmodule-no-export-2.0
+ASEDEPS_PACKAGES ::= libpcre2-8 zlib opus flac dbus-1 \
+		     ogg vorbis vorbisenc vorbisfile \
+		     glib-2.0 gobject-2.0 gmodule-no-export-2.0 \
+		     libpng libjpeg freetype2
 # used for ANKLANG_JACK_LIBS
 ANKLANGDEP_JACK  ::= jack >= 0.125.0
 
