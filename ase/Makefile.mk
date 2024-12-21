@@ -187,6 +187,27 @@ $(foreach F, $(filter %.cpp, $(JUCE_SOURCES) $(TRACKTION_SOURCES)), $(eval $(cal
 $(TRKN_OBJECTS): $(EXTERNAL_CXX_STAMPS)
 include $(wildcard $>/trkn/*.d)
 
+# == check-pch-list ==
+.PHONY: check-pch-list
+# Check: ase/PchList.mk
+check-pch-list: $(lib/AnklangSynthEngine)	| $>/ase/tests/
+	$(QGEN)
+	$Q echo 'ASE_PCH_FILES := '\\	> $>/ase/PchList.mk
+	$Q grep -l '^#include "trkn/tracktion.hh"' ase/*.cc | sort \
+	| sed -r 's/(.*)/  \1 \\/'	>>$>/ase/PchList.mk
+	$Q echo				>>$>/ase/PchList.mk
+	$Q if cmp -s ase/PchList.mk $>/ase/PchList.mk ; then rm $>/ase/PchList.mk ; else \
+	( diff -u ase/PchList.mk $>/ase/PchList.mk || : ) \
+	&& test -t 0 && ( read -p "? Update ase/PchList.mk? [y/N] " ANS ; test "$$ANS" = "y" && mv $>/ase/PchList.mk ase/PchList.mk ) \
+	&& ( echo 'ase/PchList.mk: test list updated, restart make' ; false ) \
+	fi
+check-ase-tests: check-pch-list
+# Precompiled Headers for trkn/tracktion.hh
+include ase/PchList.mk	# ASE_PCH_FILES
+$(addprefix $>/, $(ASE_PCH_FILES:.cc=.o)): $(call INCLUDE_PCH, trkn/tracktion.hh )
+# Precompiled Headers for JUCE
+$>/ase/juce-linux.o:	$(call INCLUDE_PCH, trkn/juce.hh )
+
 # == cpptrace ==
 ifeq ($(MODE),cpptrace)
 LIBCPPTRACE_HEADERS := $>/cpptrace/include/cpptrace/cpptrace.hpp $>/cpptrace/include/cpptrace/from_current.hpp
