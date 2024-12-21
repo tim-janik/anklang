@@ -112,7 +112,7 @@ $>/codegen/ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts $(lib/Anklang
 	$Q echo 'Jsonipc.classes["Ase::SharedBase"] = SharedBase;'			>> $@.tmp
 	$Q echo										>> $@.tmp
 	$Q ASAN_OPTIONS=detect_leaks=0 ASE_JSONTS=1 \
-	$(lib/AnklangSynthEngine) --norc -P null -M null --jsonts			>> $@.tmp
+	$(lib/AnklangSynthEngine) --norc --no-devices --jsonts				>> $@.tmp
 	$Q echo '/**@type{ServerImpl}*/'						>> $@.tmp
 	$Q echo -n 'export let server: Promise<Server> | Server ='			>> $@.tmp
 	$Q echo 'Jsonipc.setup_promise_type (Server, s => server = s);'			>> $@.tmp
@@ -347,7 +347,7 @@ check-ase-tests: check-test-list
 define ASE_TEST_CHECK
 check-$1: $$(lib/AnklangSynthEngine)
 	$$(QECHO) CHECK '$1'
-	$$Q $$(lib/AnklangSynthEngine) --norc -P null -M null --test '$1'
+	$$Q $$(lib/AnklangSynthEngine) --norc --no-devices --test '$1'
 .PHONY: check-$1
 check-ase-tests: check-$1
 endef
