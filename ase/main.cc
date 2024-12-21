@@ -24,6 +24,8 @@
 #include <cpptrace/from_current.hpp>
 #endif
 
+#include "trkn.hh"
+
 #undef B0 // undo pollution from termios.h
 
 #define MDEBUG(...)             Ase::debug ("memory", __VA_ARGS__)
@@ -39,9 +41,9 @@ const MainApp &App = main_app;
 MainAppImpl::MainAppImpl()
 {}
 
-MainLoopP          main_loop;
-static String      arg_ui_mode;
-static int         arg_unauth_port = 0;
+MainLoopP       main_loop;
+static String   arg_ui_mode;
+static int      arg_unauth_port = 0;
 
 // == JobQueue ==
 static void
@@ -251,6 +253,10 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
         {
           argv[i++]  = nullptr;
           config.pcm_override  = argv[i];
+        }
+      else if (strcmp ("--no-devices", argv[i]) == 0)
+        {
+          config.no_devices = true;
         }
       else if (strcmp ("-h", argv[i]) == 0 ||
                strcmp ("--help", argv[i]) == 0)
@@ -497,6 +503,10 @@ main (int argc, char *argv[])
   if (!App.norc)
     Preference::load_preferences (true);
 
+  // tracktion initialisation
+  if (!trkn_init (argc, argv, App.no_devices))
+    fatal_error ("Main: failed to initialize tracktion engine");
+
   const auto B1 = color (BOLD);
   const auto B0 = color (BOLD_OFF);
 
@@ -656,11 +666,17 @@ main (int argc, char *argv[])
   main_app.web_socket_server = nullptr;
   wss = nullptr;
 
+  // deactivate any projects, releases Audio resources
+  ProjectImpl::force_shutdown_all();
+
   // halt audio engine, join its threads, dispatch cleanups
   audio_engine.set_project (nullptr);
   audio_engine.stop_threads();
   main_loop->iterate_pending();
   main_app.engine = nullptr;
+
+  // shutdown tracktion *after* main loop stopped
+  trkn_shutdown ();
 
   diag ("Main: exiting: %d", exitcode);
   return exitcode;
