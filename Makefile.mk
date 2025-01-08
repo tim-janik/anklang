@@ -335,7 +335,7 @@ int main (int argc, char *argv[])
 endef
 
 # == dist ==
-extradist ::= ChangeLog doc/copyright TAGS ls-tree.lst # doc/README
+extradist ::= ChangeLog TAGS ls-tree.lst # doc/README
 dist_exclude := $(strip			\
 	external/rapidjson/bin		\
 	external/rapidjson/doc		\

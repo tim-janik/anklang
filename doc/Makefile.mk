@@ -29,7 +29,7 @@ doc/install.files ::= $(strip		\
 	$>/doc/NEWS.html		\
 	$>/doc/README.md		\
 	$>/doc/README.html		\
-	$>/doc/copyright		\
+	doc/copyright			\
 )
 doc/pdf.files := $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
 
@@ -45,17 +45,6 @@ assets/pdf: pdf
 $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/doc/
 	$(QECHO) COPY $<
 	$Q $(CP) $< $@
-
-# == doc/copyright ==
-$>/doc/copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst	| $>/doc/
-	$(QGEN)
-	$Q if test -r .git ; then				\
-	     misc/mkcopyright.py -e -c doc/copyright.ini	\
-		-f $>/ls-tree.lst > $@.tmp ;			\
-	   else							\
-	     $(CP) doc/copyright $@.tmp ;			\
-	   fi
-	$Q mv $@.tmp $@
 
 # == doc/jsdocs.md ==
 doc/jsdocs_js := $(wildcard ui/*.js ui/b/*.js)
