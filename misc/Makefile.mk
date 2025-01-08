@@ -119,10 +119,14 @@ misc/uninstall: FORCE
 uninstall: misc/uninstall
 
 # == Check Copyright Notices ==
-check-copyright: misc/mkcopyright.py doc/copyright.ini $>/ls-tree.lst
+check-copyright: doc/copyright misc/checkcrlist.py $>/ls-tree.lst
 	$(QGEN)
-	$Q misc/mkcopyright.py -b -u -e -c doc/copyright.ini -f $>/ls-tree.lst
-CHECK_TARGETS += $(if $(HAVE_GIT), check-copyright)
+	$Q misc/checkcrlist.py -e $>/ls-tree.lst $<
+CHECK_TARGETS += check-copyright
+check-copyright-verbose: doc/copyright misc/checkcrlist.py $>/ls-tree.lst
+	$(QGEN)
+	misc/checkcrlist.py --git $>/ls-tree.lst $<
+	# misc/mkcopyright.py -c doc/copyright.ini -f $>/ls-tree.lst
 
 # == appimagetools/appimage-runtime-zstd ==
 $>/appimagetools/appimage-runtime-zstd:			| $>/appimagetools/
