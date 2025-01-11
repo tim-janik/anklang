@@ -1,0 +1,112 @@
+Upstream-Name: anklang
+Upstream-Contact: Tim Janik <timj@gnu.org>
+Source: https://github.com/tim-janik/anklang/
+
+Files:
+ trkn/copyright
+ trkn/*.*
+Copyright: Copyright (C) 2020-Present The Anklang Project Contributors
+License: MPL-2.0
+
+Files: trkn/*.md
+Copyright: Copyright (C) 2024 Tracktion Software Corporation
+License: GPL-3.0+
+
+Files: trkn/juce_*/**
+Copyright: Copyright (c) 2022 - Raw Material Software Limited
+License: GPL-3.0
+
+Files:
+ trkn/tracktion_core/**
+ trkn/tracktion_engine/**
+ trkn/tracktion_graph/**
+Copyright: Copyright © 2025 Tracktion Software Corporation
+License: GPL-3.0+
+
+Files: trkn/tracktion_engine/3rd_party/soundtouch/**
+Copyright: Copyright (c) Olli Parviainen
+License: LGPL-2.1+
+
+Files: trkn/3rd_party/choc/**
+Copyright: Copyright (C)2022 Tracktion Corporation
+License: ISC
+
+Files: trkn/3rd_party/crill/*.*
+Copyright: Copyright (c) 2022 - Timur Doumler and Fabian Renn-Giles
+License: BSL-1.0
+
+Files: trkn/3rd_party/expected/*.*
+Copyright: Copyright 2017 by Sy Brand
+License: Unlicense
+
+Files: trkn/3rd_party/libsamplerate/*.*
+Copyright: Copyright (c) 2007-2016, Erik de Castro Lopo
+License: BSD-2-Clause
+
+Files: trkn/3rd_party/magic_enum/*.*
+Copyright: Copyright (c) 2019 - 2023 Daniil Goncharov
+License: MIT
+
+Files: trkn/3rd_party/nanorange/*.*
+Copyright: Copyright (c) 2018 Tristan Brindle
+License: BSL-1.0
+
+Files: trkn/3rd_party/rigtorp/*.*
+Copyright: Copyright (C) 2020 Erik Rigtorp <erik@rigtorp.se>
+License: MIT
+
+Files:
+ trkn/tracktion_graph/3rd_party/farbot/**
+Copyright: Copyright (c) 2019 Fabian Renn
+License: MIT
+
+License: MPL-2.0
+ Mozilla Public License 2.0
+ https://www.mozilla.org/MPL/2.0/
+ https://opensource.org/licenses/MPL-2.0
+
+License: BSD-2-Clause
+ BSD 2-Clause "Simplified" License
+ https://spdx.org/licenses/BSD-2-Clause.html
+ https://opensource.org/licenses/BSD-2-Clause
+
+License: BSL-1.0
+ Boost Software License 1.0
+ https://spdx.org/licenses/BSL-1.0.html
+ http://www.boost.org/LICENSE_1_0.txt
+ https://opensource.org/licenses/BSL-1.0
+
+License: GPL-3.0
+ GNU General Public License v3.0 only
+ https://spdx.org/licenses/GPL-3.0.html
+ https://www.gnu.org/licenses/gpl-3.0-standalone.html
+ https://opensource.org/licenses/GPL-3.0
+
+License: GPL-3.0+
+ GNU General Public License v3.0 or later
+ https://spdx.org/licenses/GPL-3.0+.html
+ https://www.gnu.org/licenses/gpl-3.0-standalone.html
+ https://opensource.org/licenses/GPL-3.0
+
+License: ISC
+ ISC License
+ https://spdx.org/licenses/ISC.html
+ https://www.isc.org/licenses/
+ https://www.isc.org/downloads/software-support-policy/isc-license/
+ https://opensource.org/licenses/ISC
+
+License: LGPL-2.1+
+ GNU Library General Public License v2.1 or later
+ https://spdx.org/licenses/LGPL-2.1+.html
+ https://www.gnu.org/licenses/old-licenses/lgpl-2.1-standalone.html
+ https://opensource.org/licenses/LGPL-2.1
+
+License: MIT
+ MIT License
+ https://spdx.org/licenses/MIT.html
+ https://opensource.org/licenses/MIT
+
+License: Unlicense
+ The Unlicense
+ https://spdx.org/licenses/Unlicense.html
+ https://unlicense.org/
