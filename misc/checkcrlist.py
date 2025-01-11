@@ -52,7 +52,7 @@ def parse_options (sysargv):
     elif k == '--git':
       global GIT_COPYRIGHT
       GIT_COPYRIGHT = True
-  if len (argv) != 2:
+  if len (argv) < 2:
     die ("at least two input files are required: <FILELIST> <COPYRIGHTFILE>")
   global COPYRIGHTFILES, FILELIST
   FILELIST = argv[0]
