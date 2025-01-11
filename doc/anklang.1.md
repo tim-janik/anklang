@@ -1,6 +1,4 @@
 % ANKLANG(1)	anklang-0 | Anklang Manual
-%
-% @FILE_REVISION@
 
 # NAME
 anklang - Music composition and modular synthesis application

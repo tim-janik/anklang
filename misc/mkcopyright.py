@@ -2,6 +2,7 @@
 # Dedicated to the Public Domain under the Unlicense: https://unlicense.org/UNLICENSE
 
 import sys, os, re, subprocess, getopt, itertools
+import fnmatch
 from datetime import datetime
 
 # TODO:
@@ -37,15 +38,18 @@ ccontinuations = (
 
 # Patterns for Copyright notices, expects year range in one of two groups
 copyrights = (
-  r'([0-9, \t-]+)\s+Copyright\s+(.+)',
-  r'([0-9, \t-]+)\s+Copyright\s*ⓒ\s+(.+)',
   r'([0-9, \t-]+)\s+Copyright\s*\([Cc]\)\s+(.+)',
-  r'Copyright\s*([0-9, \t-]+)\s+(.+)',
-  r'Copyright\s*ⓒ\s*([0-9, \t-]+)\s+(.+)',
+  r'([0-9, \t-]+)\s+Copyright\s*[©ⓒ]\s+(.+)',
+  r'([0-9, \t-]+)\s+Copyright\s+(.+)',
   r'Copyright\s*\([cC]\)\s*([0-9, \t-]+)\s+(.+)',
+  r'Copyright\s*[©ⓒ]\s*([0-9, \t-]+)\s+(.+)',
+  r'Copyright\s*([0-9, \t-]+)\s+(.+)',
 )
+copyright_prefilter = re.compile ('^.*Copyright.*$', re.MULTILINE)
 
 re_MSI = re.M | re.S | re.I
+
+glob_patterns = []
 
 # Match <cc:license resource=""/> from ccREL specification
 rdf_xmlnscc_license = re.compile (r'<rdf:RDF\b.*\bxmlns:cc="https?://.*<cc:license\b[^>]*\bresource="([^"]+)"', re_MSI)
@@ -105,11 +109,51 @@ def open_as_utf8 (filename):
     except:     string = None
     if string != None: yield string
 
+def glob_translate (inputstr):
+  """Translate pathname with wildcards to regexp."""
+  # TODO: use glob.translate from Python 3.13
+  pat = ''
+  for part in re.split (r'(\*\*|\*|\?)', inputstr):
+    if   part == r'**': pat += r'.*'
+    elif part == r'*':  pat += r'[^/]*'
+    elif part == r'?':  pat += r'.'
+    elif part:          pat += re.escape (part)
+  return fr'(?s:{pat})\Z'
+
+def prepare_globs (config):
+  patterns = []
+  # construct: [ (string, { fields...}),... ]
+  for k, v in config.sections.items():
+    if k.find ('?') >= 0 or k.find ('*') >= 0:
+      pat = k
+      patterns.append ([pat, k, v])
+  # sort, longer matches come first
+  patterns = sorted (patterns, key = lambda sf: -len (sf[0]))
+  # compile: [ (regex, { fields...}),... ]
+  for pair in patterns:
+    pair[0] = re.compile (glob_translate (pair[0]), 0)
+  return patterns
+
+def match_glob (config, filename, used_globs):
+  for tp, k, dct in glob_patterns:
+    if re.match (tp, filename):
+      used_globs.add (k)
+      return True
+  return False
+
 def find_copyrights (filename):
+  try: # read file
+    ofile = open (filename, 'rb')
+  except IsADirectoryError: return # ignore dirs
+  utxt = ofile.read().decode ('utf-8')
+  # pre filter relevant lines
+  lines = copyright_prefilter.findall (utxt)
+  # extract specific copyright patterns
   copyrights = {}
-  for line in open_as_utf8 (filename):
+  for line in lines:
+    line = line.strip()
     for crpattern in copyright_patterns():
-      m = crpattern.match (line.strip())
+      m = crpattern.match (str (line).strip())
       if m:
         a, b = m.group (1).strip(), m.group (2).strip()
         if len (a) < 1 or a[0] not in '0123456789':
@@ -117,6 +161,7 @@ def find_copyrights (filename):
             continue
           b, a = a, b
         copyrights[b] = copyrights.get (b, []) + parse_years (a)
+        break
   return copyrights
 
 def license_patterns():
@@ -253,6 +298,8 @@ def parse_options (sysargv, dfltconfig = default_config):
 def mkcopyright (sysargv):
   # parse options and check inputs
   config = parse_options (sysargv)
+  global glob_patterns
+  glob_patterns = prepare_globs (config)
   fileiter = ()
   if config.filelist:
     fileiter = open (config.filelist, 'rt').read().splitlines()
@@ -269,9 +316,15 @@ def mkcopyright (sysargv):
   # gather copyrights and licenses
   count_unlicensed = 0
   used_licenses = set()
+  used_globs = set()
   for filename in itertools.chain (config.argv, fileiter):
     # ignore files
     if match_section (filename, config, 'ignore'):
+      continue
+    # filter globs
+    if match_glob (config, filename, used_globs):
+      continue
+    if os.path.isdir (filename):
       continue
     # detect license
     license = find_license (filename, config)
@@ -327,6 +380,18 @@ def mkcopyright (sysargv):
     print ('License:', license or '?')
     if license:
       used_licenses.add (license)
+  # print copyright globs
+  sorted_globs = sorted (sorted (used_globs), key = lambda k: -len (k))
+  for glob_x in sorted_globs:
+    print ('\nFiles:', glob_x.rstrip ('*'))
+    ts = config.sections[glob_x]
+    print ('Copyright:', ts['Copyright'])
+    license = ts['License']
+    if not license in spdx_licenses:
+      print ('%s: %s: error: unknown license ID: %s' % (sysargv[0], glob_x, license), file = sys.stderr)
+      sys.exit (1)
+    print ('License:', license or '?')
+    used_licenses.add (license)
   # Print license identifiers
   for l in sorted (used_licenses):
     name, links = spdx_licenses.get (l, ('',''))
