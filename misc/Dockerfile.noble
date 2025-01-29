@@ -49,6 +49,7 @@ RUN \
        --install /usr/bin/clang         clang           /usr/bin/clang-20 0 \
        --slave   /usr/bin/clang++       clang++         /usr/bin/clang++-20  \
        --slave   /usr/bin/clang-tidy    clang-tidy      /usr/bin/clang-tidy-20 \
+       --slave   /usr/bin/ld.lld        ld.lld          /usr/bin/ld.lld-20 \
   && apt-get autoremove -y
 
 # Nodejs - https://github.com/nodesource/distributions#nodejs
