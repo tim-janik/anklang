@@ -199,8 +199,22 @@ endef
 BUILD_STATIC_LIB = $(eval $(call BUILD_STATIC_LIB.impl, $1, $2, $3))
 
 # == BUILD_PROGRAM ==
+define BUILD_PROGRAM.impl
+ALL_TARGETS += $1
+# split debug info, using the --add-gnu-debuglink samedir logic
+$1: LINKER.xdbg-hook ::= \
+	$$Q $(if $(filter xdbg, $6), \
+		cd $(dir $1) \
+		&& objcopy --only-keep-debug $(notdir $1) $(notdir $1).debug \
+		&& objcopy --strip-debug --add-gnu-debuglink=$(notdir $1).debug $(notdir $1) \
+		&& mkdir -p .debug/ && mv $(notdir $1).debug .debug/ \
+		|| { echo "$$0: objcopy failed for:" $1 >&2; exit 2; } \
+)
+$(call LINKER, $1, $2, $3, $4, $5)
+endef
 # $(call BUILD_PROGRAM, executable, objects, deps, libs, rpath)
-BUILD_PROGRAM = $(eval $(call LINKER, $1, $2, $3, $4, $5))	$(eval ALL_TARGETS += $1)
+BUILD_PROGRAM = $(eval $(call BUILD_PROGRAM.impl, $1, $2, $3, $4, $5))
+BUILD_PROGRAM_XDBG = $(eval $(call BUILD_PROGRAM.impl, $1, $2, $3, $4, $5, xdbg))
 
 # == BUILD_TEST ==
 # $(call BUILD_TEST, executable, objects, deps, libs, rpath)
