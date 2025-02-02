@@ -169,9 +169,8 @@ $1: LINKER.solink-hook ::= \
 $1: LINKER.xdbg-hook ::= \
 	$$Q $(if $(filter xdbg, $6), \
 		cd $(dir $1) \
-		&& objcopy --only-keep-debug $(notdir $1) $(notdir $1).debug \
-		&& objcopy --strip-debug --add-gnu-debuglink=$(notdir $1).debug $(notdir $1) \
-		&& mkdir -p .debug/ && mv $(notdir $1).debug .debug/ \
+		&& objcopy --only-keep-debug $(notdir $1) $(notdir $1).dbg \
+		&& objcopy --strip-debug --add-gnu-debuglink=$(notdir $1).dbg $(notdir $1) \
 		|| { echo "$$0: objcopy failed for:" $1 >&2; exit 2; } \
 )
 # apply generic linker rule
@@ -205,9 +204,8 @@ ALL_TARGETS += $1
 $1: LINKER.xdbg-hook ::= \
 	$$Q $(if $(filter xdbg, $6), \
 		cd $(dir $1) \
-		&& objcopy --only-keep-debug $(notdir $1) $(notdir $1).debug \
-		&& objcopy --strip-debug --add-gnu-debuglink=$(notdir $1).debug $(notdir $1) \
-		&& mkdir -p .debug/ && mv $(notdir $1).debug .debug/ \
+		&& objcopy --only-keep-debug $(notdir $1) $(notdir $1).dbg \
+		&& objcopy --strip-debug --add-gnu-debuglink=$(notdir $1).dbg $(notdir $1) \
 		|| { echo "$$0: objcopy failed for:" $1 >&2; exit 2; } \
 )
 $(call LINKER, $1, $2, $3, $4, $5)
@@ -234,17 +232,17 @@ install--$(strip $1): $3 # mkdir $2, avoid EBUSY by deleting first, add link ali
 	      && rm -f $$L && ln -s $$T $$L) )
 	$$Q $4 $$^ '$(strip $2)'
 	$$Q $$(foreach D, $$(if $$(filter xdbg, $5), \
-				$$(wildcard $$(addsuffix .debug, $$^))), \
+				$$(wildcard $$(addsuffix .dbg, $$^))), \
 		$4 $$D '$(strip $2)')
 	$$Q $$(foreach D, $$(if $$(filter xdbg, $5), \
-				$$(wildcard $$(join $$(dir $$^), $$(patsubst %, .debug/%.debug, $$(notdir $$^))))), \
-		$4 $$D -D '$(strip $2)'/.debug/$$(notdir $$D))
+				$$(wildcard $$(join $$(dir $$^), $$(patsubst %, %.dbg, $$(notdir $$^))))), \
+		$4 $$D -D '$(strip $2)'/$$(notdir $$D))
 	$$(call INSTALL_RULE.post-hook,$@)
 install: install--$(strip $1)
 uninstall--$(strip $1): # delete target T and possible link aliases L
 	$$(QECHO) REMOVE '$(strip $2)/.'
 	$$Q if cd '$(strip $2)' 2>/dev/null ; then \
-	      rm -f	$$(foreach T, $(notdir $3), $$T $$T.debug .debug/$$T.debug \
+	      rm -f	$$(foreach T, $(notdir $3), $$T $$T.dbg .debug/$$T.debug \
 			   $$(foreach L, $$(call BUILD_SHARED_LIB_SOLINKS, $$T), $$L) ) ; \
 	    fi
 	$$Q rmdir -p '$(strip $2)' >/dev/null 2>&1 ; :
