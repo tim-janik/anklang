@@ -28,7 +28,7 @@ CXXONLYFLAGS	::= -Woverloaded-virtual -Wsign-promo -fvisibility-inlines-hidden
 #CXXONLYFLAGS	 += -Wnon-virtual-dtor -Wempty-body -Wignored-qualifiers -Wunreachable-code -Wtype-limits
 OPTIMIZE	::= -funroll-loops -ftree-vectorize -ffunction-sections -fdata-sections
 SANITIZECC	::= -fno-strict-overflow -fno-strict-aliasing # sane C / C++
-LDOPTIMIZE	::= -O1 -Wl,--hash-style=both -Wl,--compress-debug-sections=zlib
+LDOPTIMIZE	::= -Wl,-znow # see also $(ld_options)
 LDMODEFLAGS	  =
 LTOFLAGS	::=
 __DEV__		::= 1

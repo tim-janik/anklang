@@ -26,17 +26,15 @@ UPDATE_MIME_DATABASE	:= /usr/bin/update-mime-database
 
 # Find a fast linker. Generally, ld.lld is usable from version 7 onwards and faster than
 # ld.bfd, but it cannot handle gcc lto. Using ld.gold is faster than ld.bfd but deprecated.
-# Also, ld.lld 6.0.0 has a bug that causes deletion of [abi:cxx11] symbols in combination
-# with certain --version-script uses: https://bugs.llvm.org/show_bug.cgi?id=36777
-# So avoid ld.lld <= 6 if --version-script is used.
-useld_lld		!= ld.lld --version 2>&1 | grep -qE '\bLLD ' && echo '-fuse-ld=lld -Wl,--icf=safe -Wl,--lto-O3 -Wl,-O2 -Wl,--gc-sections -Wl,-znow'
+ld_options		:= -Wl,-O3,--gc-sections,--build-id,--hash-style=both,--compress-debug-sections=zstd
+useld_lld		!= ld.lld --version 2>&1 | grep -qE '\bLLD ' && echo '-fuse-ld=lld -Wl,--icf=safe,--lto-O3'
 ifneq ($(filter quick devel,$(MODE)),)
 useld_gold		!= ld.gold --version 2>&1 | grep -q '^GNU gold' && echo '-fuse-ld=gold'
-useld_fast		:= $(or $(useld_lld), $(useld_gold))
-useld_fast+vs		:= # keep default linker for --version-script
+useld_fast		:= $(ld_options) $(or $(useld_lld), $(useld_gold))
+useld_fast+vs		:= $(ld_options) # keep default linker for --version-script
 else
-useld_fast		:= $(if $(HAVE_CLANG), $(useld_lld)) # ld.lld only supports llvm lto
-useld_fast+vs		:= # keep default linker for production
+useld_fast		:= $(ld_options) $(or $(if $(HAVE_CLANG), $(useld_lld))) # ld.lld only supports llvm lto
+useld_fast+vs		:= $(ld_options) # keep default linker for production
 endif
 
 # == Cache downloads in ABSPATH_DLCACHE ==
