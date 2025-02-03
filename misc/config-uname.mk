@@ -26,7 +26,7 @@ COMMONFLAGS	::= -Wall -Wdeprecated -Werror=format-security -Wredundant-decls -Wp
 CONLYFLAGS	::= -Werror=incompatible-pointer-types -Werror-implicit-function-declaration -Wmissing-prototypes -Wnested-externs -Wno-pointer-sign
 CXXONLYFLAGS	::= -Woverloaded-virtual -Wsign-promo -fvisibility-inlines-hidden
 #CXXONLYFLAGS	 += -Wnon-virtual-dtor -Wempty-body -Wignored-qualifiers -Wunreachable-code -Wtype-limits
-OPTIMIZE	::= -funroll-loops -ftree-vectorize
+OPTIMIZE	::= -funroll-loops -ftree-vectorize -ffunction-sections -fdata-sections
 SANITIZECC	::= -fno-strict-overflow -fno-strict-aliasing # sane C / C++
 LDOPTIMIZE	::= -O1 -Wl,--hash-style=both -Wl,--compress-debug-sections=zlib
 LDMODEFLAGS	  =
