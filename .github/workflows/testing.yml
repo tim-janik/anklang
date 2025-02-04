@@ -43,7 +43,6 @@ jobs:
       run: |
         make -j`nproc` all
         (umask 0077 && cat <<< "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > .git/.ssh_id_ghdocs4anklang)
-        (cd / && sudo patch -t -p0) <doc/poxy-0.19.1.diff
         doc/poxy.sh -b -u
 
   ArchReplay:
@@ -98,11 +97,12 @@ jobs:
         make branch-check BRANCH_CHECK_EXIT=$BRANCH_CHECK_EXIT
 
   Ping-IRC:
+    if: always()
     needs: [NobleAssets, UploadDocs, ArchReplay, NobleClangTidy]
     runs-on: ubuntu-latest
     steps:
     - { uses: actions/checkout@v4.1.1,	with: { fetch-depth: 0 } } # Fix actions/checkout#290
-    - run: git fetch -f --tags && git submodule update --init --recursive && git describe
+    - run: git fetch -f --tags && git submodule update --init --recursive && git describe --long
     - name: Check Jobs
       run: |
         echo '${{ needs.NobleAssets.result }}' '${{ needs.UploadDocs.result }}' '${{ needs.ArchReplay.result }}' '${{ needs.NobleClangTidy.result }}'

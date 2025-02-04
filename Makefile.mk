@@ -93,7 +93,7 @@ ALL_TARGETS	::=
 ALL_TESTS	::=
 CHECK_TARGETS	::=
 CLEANFILES	::=
-CLEANDIRS	::=
+CLEANDIRS	::= .cache
 
 # == Defaults ==
 INCLUDES	::= -I.
