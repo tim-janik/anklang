@@ -289,36 +289,58 @@ $>/ui/favicon.ico: $>/ui/anklang.png
 	$Q ln -fs $(<F) $@
 $>/.ui-build-stamp: $>/ui/favicon.ico
 
-# == eslint ==
-x11test.js ::= $(wildcard x11test/*.*js)
-ui/eslint.files ::= $(wildcard ui/*.html ui/*.js ui/b/*.js)
-$>/.eslint.done: ui/eslintrc.js $(ui/eslint.files) ui/Makefile.mk node_modules/.npm.done	| $>/ui/
-	$(QECHO) RUN eslint
-	$Q node_modules/.bin/eslint -c ui/eslintrc.js -f unix --cache --cache-location $>/.eslintcache \
-		$(abspath $(ui/eslint.files) jsonipc/jsonipc.js $(x11test.js)) \
-	|& ./misc/colorize.sh
-	$Q touch $@
-$>/.ui-reload-stamp: $>/.eslint.done
-eslint: node_modules/.npm.done
-	$Q rm -f $>/.eslint.done
-	$Q $(MAKE) $>/.eslint.done
-.PHONY: eslint
-CLEANFILES += .eslintcache
-
-# == tscheck ==
-ui/tscheck.deps ::= $(wildcard ui/*.js ui/*/*.js) $(wildcard $>/ui/*.js $>/ui/*/*.js)
-tscheck $>/.tscheck.done: ui/types.d.ts ui/tsconfig.json $(ui/tscheck.deps) node_modules/.npm.done | $>/.ui-build-stamp $>/tscheck/
-	$(QECHO) RUN tscheck
+# == uitscheck ==
+ui/uitscheck.deps ::= $(wildcard ui/*.js ui/*/*.js) $(wildcard $>/ui/*.js $>/ui/*/*.js)
+$>/.uitscheck.done: ui/types.d.ts ui/tsconfig.json $(ui/uitscheck.deps) node_modules/.npm.done | $>/.ui-build-stamp
+	$(QECHO) RUN uitscheck
 	@ # tsc *.js needs to find node_modules/ in the directory hierarchy ("moduleResolution": "node")
 	$Q cp ui/tsconfig.json ui/types.d.ts $>/
-	-$Q (cd $>/ && ../node_modules/.bin/tsc -p tsconfig.json $${INSIDE_EMACS:+--pretty false}) \
-	&& touch $>/.tscheck.done
-$>/.ui-reload-stamp: $>/.tscheck.done
-.PHONY: tscheck
-CLEANDIRS += $>/tscheck/
+	-$Q (cd $>/ && ../node_modules/.bin/tsc -p tsconfig.json --noEmit --erasableSyntaxOnly $${INSIDE_EMACS:+--pretty false}) \
+	&& touch $@
+$>/.ui-reload-stamp: $>/.uitscheck.done
+# force 'make check uitscheck' to always include '$>/.uitscheck.done'
+ifneq ($(filter uitscheck check,$(MAKECMDGOALS)),)
+.PHONY: $>/.uitscheck.done
+endif
+uitscheck: $>/.uitscheck.done
+.PHONY: uitscheck
+check: uitscheck
+
+# == eslint ==
+x11test.js      := $(wildcard x11test/*.*js)
+ui/eslint.files := $(wildcard ui/*.html ui/*.js ui/b/*.js)
+$>/.eslint.done: ui/eslintrc.js $(ui/eslint.files) ui/Makefile.mk node_modules/.npm.done	| $>/ui/ node_modules/.npm.done
+	$(QECHO) RUN eslint
+	-$Q node_modules/.bin/eslint -c ui/eslintrc.js $${INSIDE_EMACS:+ -f unix } --cache --cache-location $>/.eslintcache \
+		$(abspath $(ui/eslint.files) jsonipc/jsonipc.js $(x11test.js)) \
+	&& touch $@
+$>/.ui-reload-stamp: $>/.eslint.done
+CLEANFILES += $>/.eslintcache
+# force 'make check eslint' to always include '$>/.eslint.done'
+ifneq ($(filter check eslint,$(MAKECMDGOALS)),)
+.PHONY: $>/.eslint.done
+endif
+eslint: $>/.eslint.done
+.PHONY: eslint
+check: eslint
+
+# == stylelint ==
+ui/stylelint.files := $(wildcard ui/*.*css ui/b/*.*css)
+$>/.stylelint.done: ui/stylelintrc.cjs $(ui/stylelint.files)	| $>/ui/ node_modules/.npm.done
+	$(QECHO) RUN stylelint
+	-$Q node_modules/.bin/stylelint -c ui/stylelintrc.cjs $${INSIDE_EMACS:+ -f unix } $(ui/stylelint.files) \
+	&& touch $@
+$>/.ui-reload-stamp: $>/.stylelint.done
+# force 'make check stylelint' to always include '$>/.stylelint.done'
+ifneq ($(filter check stylelint,$(MAKECMDGOALS)),)
+.PHONY: $>/.stylelint.done
+endif
+stylelint: $>/.stylelint.done
+.PHONY: stylelint
+check: stylelint
 
 # == ui/lint ==
-ui/lint: 									| node_modules/.npm.done
+ui/lint: eslint uitscheck								| node_modules/.npm.done
 	$(QGEN)
 	$(MAKE) --no-print-directory NPMBLOCK=y -j1 eslint tscheck
 	-$Q node_modules/.bin/stylelint $${INSIDE_EMACS:+-f unix} -c ui/stylelintrc.cjs $(wildcard ui/*.*css ui/b/*.*css)
