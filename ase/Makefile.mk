@@ -204,7 +204,7 @@ $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgd
 # == ase/lint ==
 ase/lint:
 	$(QGEN)
-	$Q misc/synsmell.py $(wildcard ase/*.[hc] ase/*.*[hc] ase/*/*.*[hc] jsonipc/*.hh)
+	$Q $(RUNTS) misc/synsmell.ts $(wildcard ase/*.[hc] ase/*.*[hc] ase/*/*.*[hc] jsonipc/*.hh)
 .PHONY: ase/lint
 lint: ase/lint
 

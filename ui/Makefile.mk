@@ -322,7 +322,7 @@ ui/lint: 									| node_modules/.npm.done
 	$(QGEN)
 	$(MAKE) --no-print-directory NPMBLOCK=y -j1 eslint tscheck
 	-$Q node_modules/.bin/stylelint $${INSIDE_EMACS:+-f unix} -c ui/stylelintrc.cjs $(wildcard ui/*.*css ui/b/*.*css)
-	$Q misc/synsmell.py --separate-body=0 ui/*.* ui/b/*.*
+	$Q $(RUNTS) misc/synsmell.ts --separate-body=0 ui/*.* ui/b/*.*
 .PHONY: ui/lint
 lint: ui/lint
 

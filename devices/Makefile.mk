@@ -26,6 +26,6 @@ include $(wildcard $(devices/4ase.objects:.o=.o.d))
 # == devices/lint ==
 devices/lint:
 	$(QGEN)
-	$Q misc/synsmell.py $(wildcard devices/*.*[hc] devices/*/*.*[hc])
+	$Q $(RUNTS) misc/synsmell.ts $(wildcard devices/*.*[hc] devices/*/*.*[hc])
 .PHONY: devices/lint
 lint: devices/lint
