@@ -42,6 +42,7 @@ module.exports = {
     'scss/dollar-variable-pattern': null,
     'scss/double-slash-comment-empty-line-before': null,
     'scss/double-slash-comment-whitespace-inside': null,
+    'scss/load-partial-extension': null,
     'scss/no-global-function-names': null,
     'scss/operator-no-unspaced': null,
     'scss/selector-no-redundant-nesting-selector': true,
