@@ -115,6 +115,9 @@ $>/config-cache.mk: misc/config-checks.mk misc/version.sh $(GITCOMMITDEPS) | $>/
 	  || { pnpm --version 2>&1 | grep -qE '^([89]|[1-9]+[0-9]+)\.[0-9]+\.[0-9]+$$' \
 	       && echo 'XNPM ::= pnpm'				>>$@.tmp ; } \
 	  || echo 'XNPM ::= npm'				>>$@.tmp
+	$Q bun --version 2>&1 | grep -qE '^[1-9]+[0-9]*\.[0-9]+' \
+	  && echo 'RUNTS := bun run'				>>$@.tmp \
+	  || echo 'RUNTS := node --experimental-strip-types'	>>$@.tmp
 	$Q GTK2_CFLAGS=$$($(PKG_CONFIG) --cflags $(GTK2_PACKAGES)) \
 	  && echo "GTK2_CFLAGS ::= $$GTK2_CFLAGS"		>>$@.tmp
 	$Q GTK2_LIBS=$$($(PKG_CONFIG) --libs $(GTK2_PACKAGES)) \
