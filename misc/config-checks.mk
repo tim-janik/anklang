@@ -24,22 +24,19 @@ XGETTEXT		:= /usr/bin/xgettext
 UPDATE_DESKTOP_DATABASE	:= /usr/bin/update-desktop-database
 UPDATE_MIME_DATABASE	:= /usr/bin/update-mime-database
 
-# Check for fast linker
-ifeq ($(MODE),quick)
-# Generally, ld.gold is faster than ld.bfd, and ld.lld is often faster than ld.gold for linking
-# executables. But ld.lld 6.0.0 has a bug that causes deletion of [abi:cxx11] symbols in
-# combination with certain --version-script uses: https://bugs.llvm.org/show_bug.cgi?id=36777
-# So avoid ld.lld <= 6 if --version-script is used.
+# Find a fast linker. Generally, ld.lld is usable from version 7 onwards and faster than
+# ld.bfd, but it cannot handle gcc lto. Using ld.gold is faster than ld.bfd but deprecated.
+# Using ld.mold should be fastest, but ld.mold versions 2.3[013] cause segfaults.
+ld_options		:= -Wl,-O3,--gc-sections,--build-id,--hash-style=both,--compress-debug-sections=zstd
+useld_lld		!= ld.lld --version 2>&1 | grep -qE '\bLLD ' && echo '-fuse-ld=lld -Wl,--icf=safe,--lto-O3'
+useld_mold		!= ld.mold --version 2>&1 | grep -qE '\bmold (2\.3[6-9]|2\.[4-9][0-9]|[3-9]).*GNU ld' && echo '-fuse-ld=mold -Wl,--icf=safe,--lto-O3,--separate-debug-file'
+ifneq ($(filter quick devel,$(MODE)),)
 useld_gold		!= ld.gold --version 2>&1 | grep -q '^GNU gold' && echo '-fuse-ld=gold'
-useld_lld		!= ld.lld --version 2>&1 | grep -q '^LLD ' && echo '-fuse-ld=lld'
-useld_fast		:= $(or $(useld_lld), $(useld_gold))
-useld_lld+vs		!= ld.lld --version 2>&1 | grep -v '^LLD [0123456]\.' | grep -q '^LLD ' && echo '-fuse-ld=lld'
-useld_fast+vs		:= $(or $(useld_lld+vs), $(useld_gold))
+useld_fast		:= $(ld_options) $(or $(useld_mold), $(useld_lld), $(useld_gold))
+useld_fast+vs		:= $(ld_options) # keep default linker for --version-script
 else
-useld_fast		::= # keep default linker
-useld_fast+vs		::= # keep default linker
-# Keep the default linker for production mode, as usually, bfd optimizes better than lld,
-# and lld optimizes better than gold in terms of resulting binary size.
+useld_fast		:= $(ld_options) $(or $(useld_mold), $(if $(HAVE_CLANG), $(useld_lld))) # ld.lld only supports llvm lto
+useld_fast+vs		:= $(ld_options) # keep default linker for production
 endif
 
 # == Cache downloads in ABSPATH_DLCACHE ==
