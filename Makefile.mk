@@ -93,7 +93,7 @@ ALL_TARGETS	::=
 ALL_TESTS	::=
 CHECK_TARGETS	::=
 CLEANFILES	::=
-CLEANDIRS	::= .cache
+CLEANDIRS	::= .cache $(builddir)
 
 # == Defaults ==
 INCLUDES	::= -I.
