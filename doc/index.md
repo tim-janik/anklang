@@ -1,9 +1,9 @@
 Welcome to Anklang, a free and open-source digital audio synthesizer and music creation software.
 
-## Anklang: Craft Your Audio, Live and Free
+## Anklang: Craft Your Own Audio, Live and Free
 
 Anklang is a music synthesis and composition program designed to help you create and shape your sounds,
-released under the Mozilla Public License 2.0 ([MPL-2.0 summary](https://choosealicense.com/licenses/mpl-2.0/)).
+released under the Mozilla Public License 2.0 ([MPL-2.0](https://choosealicense.com/licenses/mpl-2.0/)).
 Join us in collaborating on Anklang, an experimental, digital audio workstation for live music composition and audio synthesis.
 Join the journey, contribute, and help us improve it.
 
