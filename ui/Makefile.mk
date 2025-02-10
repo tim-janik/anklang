@@ -2,7 +2,7 @@
 include $(wildcard $>/ui/*.d)
 ALL_TARGETS       += $>/.ui-build-stamp $>/.ui-reload-stamp
 $>/.ui-build-stamp:	# essential targets without live reload
-$>/.ui-reload-stamp:	# live reload targets
+$>/.ui-reload-stamp: $>/.eslint.done	# live reload targets
 
 # This Makefile creates the web UI in $>/ui/.
 # * make run - Build UI, start electron app
@@ -191,22 +191,6 @@ $>/ext/spinner.scss: ui/assets/spinner.svg				| $>/ext/ui/assets/
 	$Q sed -rn '/@keyframe/,$${ p; /^\s*}\s*$$/q; }' $< > $@
 $>/ui/global.css: $>/ext/spinner.scss
 
-# == ext/ui/b/*.js ==
-ui/b/js.files     := $(wildcard ui/b/*.js)
-ext/ui/b/js.files := $(ui/b/js.files:%=$>/ext/%)
-$(ext/ui/b/js.files): $>/ext/ui/b/.jsstamp
-$>/ext/ui/b/.jsstamp: $(ui/b/js.files) ui/jsextract.js			| $>/ext/ui/b/
-	$(QECHO) EXTRACT 'ext/ui/b/*.js'
-	$Q node ui/jsextract.js -O $>/ext/ui/b/ $(ui/b/js.files)
-	$Q touch $@
-ext/ui/lint: $>/ext/ui/b/.jsstamp
-	-$Q cd $>/ext/ \
-	&& $(abspath node_modules/.bin/stylelint) -c $(abspath ui/stylelintrc.cjs) \
-		$${INSIDE_EMACS:+-f unix} $(ext/ui/b/js.files:$>/ext/%=%) |& \
-		sed -r 's|^/[^ :]*/(ui/b/)|\1|'
-.PHONY: ext/ui/lint
-ui/lint: ext/ui/lint
-
 # == ui/global.css ==
 ui/b/vuecss.targets ::= $(ui/vue.wildcards:%.vue=$>/%.vuecss)
 $(ui/b/vuecss.targets): $(ui/b/vuejs.targets) ;
@@ -298,55 +282,47 @@ $>/.uitscheck.done: ui/types.d.ts ui/tsconfig.json $(ui/uitscheck.deps) node_mod
 	-$Q (cd $>/ && ../node_modules/.bin/tsc -p tsconfig.json --noEmit --erasableSyntaxOnly $${INSIDE_EMACS:+--pretty false}) \
 	&& touch $@
 $>/.ui-reload-stamp: $>/.uitscheck.done
-# force 'make check uitscheck' to always include '$>/.uitscheck.done'
-ifneq ($(filter uitscheck check,$(MAKECMDGOALS)),)
-.PHONY: $>/.uitscheck.done
-endif
-uitscheck: $>/.uitscheck.done
-.PHONY: uitscheck
-check: uitscheck
+$>/.uitscheck.done: $(if $(filter check tscheck uitscheck,$(MAKECMDGOALS)), FORCE) # force on 'make uitscheck'
+uitscheck: $>/.uitscheck.done FORCE
+tscheck: uitscheck
 
-# == eslint ==
-x11test.js      := $(wildcard x11test/*.*js)
-ui/eslint.files := $(wildcard ui/*.html ui/*.js ui/b/*.js)
-$>/.eslint.done: ui/eslintrc.js $(ui/eslint.files) ui/Makefile.mk node_modules/.npm.done	| $>/ui/ node_modules/.npm.done
-	$(QECHO) RUN eslint
-	-$Q node_modules/.bin/eslint -c ui/eslintrc.js $${INSIDE_EMACS:+ -f unix } --cache --cache-location $>/.eslintcache \
-		$(abspath $(ui/eslint.files) jsonipc/jsonipc.js $(x11test.js)) \
-	&& touch $@
-$>/.ui-reload-stamp: $>/.eslint.done
-CLEANFILES += $>/.eslintcache
-# force 'make check eslint' to always include '$>/.eslint.done'
-ifneq ($(filter check eslint,$(MAKECMDGOALS)),)
-.PHONY: $>/.eslint.done
-endif
-eslint: $>/.eslint.done
-.PHONY: eslint
-check: eslint
-
-# == stylelint ==
+# == uistylelint ==
 ui/stylelint.files := $(wildcard ui/*.*css ui/b/*.*css)
-$>/.stylelint.done: ui/stylelintrc.cjs $(ui/stylelint.files)	| $>/ui/ node_modules/.npm.done
-	$(QECHO) RUN stylelint
+$>/.uistylelint.done: ui/stylelintrc.cjs $(ui/stylelint.files)	| $>/ui/ node_modules/.npm.done
+	$(QECHO) RUN 'stylelint (ui/)'
 	-$Q node_modules/.bin/stylelint -c ui/stylelintrc.cjs $${INSIDE_EMACS:+ -f unix } $(ui/stylelint.files) \
 	&& touch $@
-$>/.ui-reload-stamp: $>/.stylelint.done
-# force 'make check stylelint' to always include '$>/.stylelint.done'
-ifneq ($(filter check stylelint,$(MAKECMDGOALS)),)
-.PHONY: $>/.stylelint.done
-endif
-stylelint: $>/.stylelint.done
-.PHONY: stylelint
-check: stylelint
+$>/.uistylelint.done: $(if $(filter check stylelint,$(MAKECMDGOALS)), FORCE) # force on 'make stylelint'
+stylelint $>/.ui-reload-stamp: $>/.uistylelint.done
 
-# == ui/lint ==
-ui/lint: eslint uitscheck								| node_modules/.npm.done
-	$(QGEN)
-	$(MAKE) --no-print-directory NPMBLOCK=y -j1 eslint tscheck
-	-$Q node_modules/.bin/stylelint $${INSIDE_EMACS:+-f unix} -c ui/stylelintrc.cjs $(wildcard ui/*.*css ui/b/*.*css)
-	$Q $(RUNTS) misc/synsmell.ts --separate-body=0 ui/*.* ui/b/*.*
-.PHONY: ui/lint
-lint: ui/lint
+# == ext/ui/b/*.js ==
+ui/b/js.files := $(filter ui/b/%.js, $(LS_TREE_LST))
+ext/ui/b/js.files := $(ui/b/js.files:%=$>/ext/%)
+$(ext/ui/b/js.files): $>/.extjs.done
+$>/.extjs.done: ui/jsextract.js $(ui/b/js.files)			| $>/ext/ui/b/
+	$(QECHO) EXTRACT 'ui/b/*.js'
+	$Q node $< -O $>/ext/ui/b/ $(ui/b/js.files)
+	$Q touch $@
+
+# == extstylelint ==
+$>/.extstylelint.done: ui/stylelintrc.cjs $(ext/ui/b/js.files)	| node_modules/.npm.done
+	$(QECHO) CHECK 'stylelint (ext/)'
+	$Q cd $>/ext/ \
+	    && $(abspath node_modules/.bin/stylelint) -c $(abspath ui/stylelintrc.cjs) \
+		-f unix $(ext/ui/b/js.files:$>/ext/%=%) |& \
+		sed -r 's|^/[^ :]*/(ui/b/)|\1|'
+	$Q touch $@
+$>/.extstylelint.done: $(if $(filter check stylelint,$(MAKECMDGOALS)), FORCE) # force on 'make stylelint'
+stylelint $>/.ui-reload-stamp: $>/.extstylelint.done
+
+# == ui/synsmell ==
+ui/synsmell.files: $(filter ui/%. ui/b/%, $(LS_TREE_LST)))
+$>/.uisynsmell.done: misc/synsmell.ts $(ui/synsmell.files)				| node_modules/.npm.done
+	$(QECHO) CHECK 'synsmell (ui/)'
+	$Q $(RUNTS) $< --separate-body=0 $(ui/synsmell.files)
+	$Q touch $@
+$>/.uisynsmell.done: $(if $(filter check,$(MAKECMDGOALS)), FORCE) # force on 'make check'
+check $>/.ui-reload-stamp: $>/.uisynsmell.done
 
 # == $>/doc/b/*.md ==
 $>/doc/b/.doc-stamp: $(wildcard ui/b/*.js) ui/xbcomments.js ui/Makefile.mk node_modules/.npm.done	| $>/doc/b/
