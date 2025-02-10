@@ -286,7 +286,7 @@ $>/.ui-build-stamp: $>/ui/anklang.png
 # == $>/ui/favicon.ico ==
 $>/ui/favicon.ico: $>/ui/anklang.png
 	$(QGEN)
-	$Q ln -s $(<F) $@
+	$Q ln -fs $(<F) $@
 $>/.ui-build-stamp: $>/ui/favicon.ico
 
 # == eslint ==
