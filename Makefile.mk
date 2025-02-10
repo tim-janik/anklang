@@ -93,7 +93,7 @@ ALL_TARGETS	::=
 ALL_TESTS	::=
 CHECK_TARGETS	::=
 CLEANFILES	::=
-CLEANDIRS	::= .cache $(builddir)
+CLEANDIRS	::=
 
 # == Defaults ==
 INCLUDES	::= -I.
@@ -172,7 +172,7 @@ run: FORCE all
 clean: FORCE
 	@test -z "$(strip $(CLEANFILES))" || (set -x; rm -f $(CLEANFILES) )
 	@test -z "$(strip $(CLEANDIRS))" || (set -x; rm -fr $(CLEANDIRS) )
-CLEANDIRS += poxy/ html/ assets/
+CLEANDIRS += $(builddir) .cache poxy/ html/ assets/
 
 # == help rules ==
 help: FORCE
@@ -284,7 +284,6 @@ x11test x11test-v: $(x11test/files.json) $(lib/AnklangSynthEngine)
 		echo "$$json" \
 		&& $(abspath x11test/replay.sh) $$OPT $$json || exit $$? \
 	 ; done
-CLEANDIRS += $>/x11test/
 .PHONY: x11test x11test-v
 
 # == check rules ==
@@ -404,6 +403,3 @@ $>/.grep-reminders: $(wildcard $(LS_TREE_LST))
 	$Q test -r .git && git -P grep -nE '(/[*/]+[*/ ]*|[#*]+ *)?(FI[X]ME).*' || true
 	$Q touch $@
 all: $>/.grep-reminders
-
-# Clean non-directories in $>/
-CLEANFILES += $(filter-out $(patsubst %/,%,$(wildcard $>/*/)), $(wildcard $>/* $>/.[^.]* $>/..?* ))

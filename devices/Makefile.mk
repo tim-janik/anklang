@@ -23,9 +23,6 @@ $(devices/4ase.objects):	| $(sort $(dir $(devices/4ase.objects)))
 # include object dependencies
 include $(wildcard $(devices/4ase.objects:.o=.o.d))
 
-# clean build directory
-CLEANDIRS += $>/devices/
-
 # == devices/lint ==
 devices/lint:
 	$(QGEN)

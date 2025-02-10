@@ -1,7 +1,5 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 include $(wildcard $>/ui/*.d)
-ui/cleandirs ::= $(wildcard $>/ui/ $>/dist/)
-CLEANDIRS         += $(ui/cleandirs)
 ALL_TARGETS       += $>/.ui-build-stamp $>/.ui-reload-stamp
 $>/.ui-build-stamp:	# essential targets without live reload
 $>/.ui-reload-stamp:	# live reload targets

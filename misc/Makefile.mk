@@ -1,14 +1,7 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 include $(wildcard $>/misc/*.d)
-misc/cleandirs ::= $(wildcard $>/misc/)
-CLEANDIRS       += $(misc/cleandirs)
 ALL_TARGETS     += misc/all
 misc/all:
-
-# == clean-misc ==
-clean-misc:
-	rm -rf $(misc/cleandirs)
-.PHONY: clean-misc
 
 # == lint-cppcheck ==
 CPPCHECK ?= cppcheck
@@ -49,8 +42,7 @@ $>/clang-tidy/%.log: % $(GITCOMMITDEPS)					| $>/clang-tidy/
 CLANG_TIDY_DEFS := -I. -I$> -isystem external/ -isystem $>/external/ -DASE_COMPILATION $(ASEDEPS_CFLAGS) $(GTK2_CFLAGS)
 # File specific LINT_FLAGS, example:		ase/jsonapi.cc.LINT_FLAGS ::= --checks=-clang-analyzer-core.NullDereference
 jsonipc/testjsonipc.cc.CTIDY_DEFS ::= -D__JSONIPC_NULL_REFERENCE_THROWS__
-.PHONY: clang-tid clang-tidy-clean
-CLEANDIRS += $>/clang-tidy/
+.PHONY: clang-tid
 
 # == scan-build ==
 scan-build:								| $>/misc/scan-build/
@@ -140,11 +132,9 @@ $>/appimagetools/appimage-runtime-zstd:			| $>/appimagetools/
 	|| ( curl -sfSL https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd -o .dlcache/appimage-runtime-zstd.tmp \
 	     && mv .dlcache/appimage-runtime-zstd.tmp .dlcache/appimage-runtime-zstd )
 	$Q $(CP) .dlcache/linuxdeploy-x86_64.AppImage .dlcache/appimage-runtime-zstd $(@D)
-CLEANDIRS += $>/appimagetools/
 
 # == mkassets ==
 # Let misc/mkassets.sh do the work, just pre-cache needed downloads
 mkassets: $>/appimagetools/appimage-runtime-zstd
 	+$Q exec misc/mkassets.sh
 .PHONY: mkassets
-CLEANDIRS += $>/mkdeb/

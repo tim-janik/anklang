@@ -146,7 +146,6 @@ $>/config-cache.mk: misc/config-checks.mk misc/version.sh $(GITCOMMITDEPS) | $>/
 	$Q mv $>/config-cache.mk $>/config-cache.old 2>/dev/null || true
 	$Q mv $@.tmp $@
 $>/config-stamps.sha256: $>/config-cache.mk
-CLEANFILES += $>/config-stamps.sha256 $>/config-cache.mk $>/config-cache.old
 # About config-stamps.sha256: For a variety of reasons, config-cache.mk may be
 # often regenerated. To efficiently detect changes in the build configuration,
 # use $(config-stamps) as dependency.
