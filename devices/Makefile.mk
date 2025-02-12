@@ -23,12 +23,9 @@ $(devices/4ase.objects):	| $(sort $(dir $(devices/4ase.objects)))
 # include object dependencies
 include $(wildcard $(devices/4ase.objects:.o=.o.d))
 
-# clean build directory
-CLEANDIRS += $>/devices/
-
 # == devices/lint ==
 devices/lint:
 	$(QGEN)
-	$Q misc/synsmell.py $(wildcard devices/*.*[hc] devices/*/*.*[hc])
+	$Q $(RUNTS) misc/synsmell.ts $(wildcard devices/*.*[hc] devices/*/*.*[hc])
 .PHONY: devices/lint
 lint: devices/lint

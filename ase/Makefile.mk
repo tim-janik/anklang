@@ -1,6 +1,5 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 include $(wildcard $>/ase/*.d)
-CLEANDIRS     += $(wildcard $>/ase/ $>/lib/)
 
 # == ase/ *.cc file sets ==
 ase/AnklangSynthEngine.sources	::= ase/main.cc
@@ -89,8 +88,6 @@ $>/lib/libsndfile.so: external/libsndfile/include/sndfile.hh		| $>/lib/ .submodu
 		-DBUILD_PROGRAMS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON
 	$Q $(MAKE) -C $>/sndfile/
 	$Q $(CP) -P $>/sndfile/libsndfile.so* $>/lib/
-CLEANDIRS += $>/sndfile/
-CLEANFILES += $>/lib/libsndfile.*
 ase/sndfile.cc: $>/lib/libsndfile.so # includes $>/sndfile/src/config.h
 
 # == Common Sources ==
@@ -207,7 +204,7 @@ $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgd
 # == ase/lint ==
 ase/lint:
 	$(QGEN)
-	$Q misc/synsmell.py $(wildcard ase/*.[hc] ase/*.*[hc] ase/*/*.*[hc] jsonipc/*.hh)
+	$Q $(RUNTS) misc/synsmell.ts $(wildcard ase/*.[hc] ase/*.*[hc] ase/*/*.*[hc] jsonipc/*.hh)
 .PHONY: ase/lint
 lint: ase/lint
 

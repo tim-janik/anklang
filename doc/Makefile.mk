@@ -1,7 +1,5 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 include $(wildcard $>/doc/*.d)
-doc/cleandirs ::= $(wildcard $>/doc/)
-CLEANDIRS         += $(doc/cleandirs)
 ALL_TARGETS       += doc/all
 doc/all:
 

@@ -93,7 +93,7 @@ ALL_TARGETS	::=
 ALL_TESTS	::=
 CHECK_TARGETS	::=
 CLEANFILES	::=
-CLEANDIRS	::= .cache
+CLEANDIRS	::=
 
 # == Defaults ==
 INCLUDES	::= -I.
@@ -172,7 +172,7 @@ run: FORCE all
 clean: FORCE
 	@test -z "$(strip $(CLEANFILES))" || (set -x; rm -f $(CLEANFILES) )
 	@test -z "$(strip $(CLEANDIRS))" || (set -x; rm -fr $(CLEANDIRS) )
-CLEANDIRS += poxy/ html/ assets/
+CLEANDIRS += $(builddir) .cache poxy/ html/ assets/
 
 # == help rules ==
 help: FORCE
@@ -284,8 +284,31 @@ x11test x11test-v: $(x11test/files.json) $(lib/AnklangSynthEngine)
 		echo "$$json" \
 		&& $(abspath x11test/replay.sh) $$OPT $$json || exit $$? \
 	 ; done
-CLEANDIRS += $>/x11test/
 .PHONY: x11test x11test-v
+
+# == tscheck ==
+check: tscheck
+# run tsc on all JS + TS files, except for ui/ x11test/
+tscheck.files := $(filter-out ui/% x11test/%, $(filter %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(LS_TREE_LST)))
+$>/.tscheck.done: $(tscheck.files)	| node_modules/.npm.done
+	$(QGEN)
+	$Q node_modules/.bin/tsc --noEmit --allowJs --moduleResolution bundler -m esnext --erasableSyntaxOnly $(tscheck.files)
+$>/.tscheck.done: $(if $(filter check tscheck,$(MAKECMDGOALS)), FORCE) # force on 'make tscheck'
+tscheck: $>/.tscheck.done FORCE
+
+# == eslint ==
+check: eslint
+eslint.files := $(filter %.htm %.html %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(LS_TREE_LST))
+$>/.eslint.done: ui/eslintrc.js $(eslint.files) Makefile.mk	| node_modules/.npm.done
+	$(QECHO) RUN eslint
+	-$Q node_modules/.bin/eslint -c $< $${INSIDE_EMACS:+ -f unix} --cache --cache-location $>/.eslintcache $(abspath $(eslint.files)) \
+	&& touch $@
+$>/.eslint.done: $(if $(filter check eslint,$(MAKECMDGOALS)), FORCE) # force on 'make eslint'
+eslint: $>/.eslint.done FORCE
+
+# == stylelint ==
+stylelint: FORCE
+check: stylelint
 
 # == check rules ==
 # Macro to generate test runs as 'check' dependencies
@@ -404,6 +427,3 @@ $>/.grep-reminders: $(wildcard $(LS_TREE_LST))
 	$Q test -r .git && git -P grep -nE '(/[*/]+[*/ ]*|[#*]+ *)?(FI[X]ME).*' || true
 	$Q touch $@
 all: $>/.grep-reminders
-
-# Clean non-directories in $>/
-CLEANFILES += $(filter-out $(patsubst %/,%,$(wildcard $>/*/)), $(wildcard $>/* $>/.[^.]* $>/..?* ))

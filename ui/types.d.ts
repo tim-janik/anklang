@@ -10,15 +10,15 @@ declare global {
   var Data: any;
   var Shell: any;
   var CONFIG: any;
-  var __DEV__: bool;
+  var __DEV__: Boolean;
   var debug: Function;
   var assert: Function;
   var _: Function;
 
   interface ViewTransition {
-    finished: Promise<void>;
-    ready: Promise<void>;
-    updateCallbackDone: Promise<void>;
+    readonly finished: Promise<void>;
+    readonly ready: Promise<void>;
+    readonly updateCallbackDone: Promise<void>;
   }
   interface Document {
     startViewTransition(setupPromise: () => Promise<void> | void): ViewTransition;

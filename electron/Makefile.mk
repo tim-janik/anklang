@@ -1,7 +1,5 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 include $(wildcard $>/electron/*.d)
-electron/cleandirs ::= $(wildcard $>/electron/)
-CLEANDIRS         += $(electron/cleandirs)
 ALL_TARGETS       += electron/all
 electron/all:
 
