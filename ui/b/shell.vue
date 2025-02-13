@@ -142,11 +142,10 @@ html.b-shell-during-drag .b-app {
 
     <!-- Modal Dialogs -->
     <b-aboutdialog :shown.prop="show_about_dialog_" @close="show_about_dialog(0)" v-if="show_about_dialog_" />
+    <b-preferencesdialog :shown.prop="Data.show_preferences_dialog" @close="$event => (Data.show_preferences_dialog = false)" />
     <b-crawlerdialog v-if="!!fs.resolve" :shown.prop="true" :title="fs.title" :filters="fs.filters" :button="fs.button"
 		     :existing.prop="fs.existing" :cwd="fs.cwd" @close="fs.resolve()" @select="fs.resolve($event.detail?.uri)" />
     <div class="-fullcoverage" style="z-index: 90" id="b-app-shell-modaldialogs" >
-      <b-preferencesdialog v-model:shown="Data.show_preferences_dialog" />
-
       <!-- Modal Message Popups -->
       <b-dialog class="-modal-message" v-for="d in m.modal_dialogs"
 		:id="'MDialog_' + d.dialogid" :class="d.class" :key="d.dialogid"
