@@ -28,7 +28,7 @@ const INFOS_HTML = (t, d) =>
 
 /** @class BAboutDialog
  * @description
- * The <b-aboutdialog> element is a modal [b-dialog] that displays version information about Anklang.
+ * The <b-aboutdialog> element is a modal [dialog] that displays version information about Anklang.
  * ### Events:
  * *close*
  * : A *close* event is emitted once the "Close" button activated.
