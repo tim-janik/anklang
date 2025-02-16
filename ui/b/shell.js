@@ -1,18 +1,27 @@
-<!-- This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 -->
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// @ts-check
 
-<docs>
-  # B-SHELL
-  User interface shell for editing and display of a Ase.Project.
-  Instance access is provided via the global `Shell` constant.
-  ## Props:
-  *project*
-  : Implicit *Ase.Project*, using App.project().
-</docs>
+/** @class B-SHELL
+ * User interface shell for editing and display of a Ase.Project.
+ * Instance access is provided via the global `Shell` constant.
+ *
+ * ### Properties:
+ * *project*
+ * : Implicit *Ase.Project*, using App.project().
+ */
 
-<style lang="scss">
+import { LitComponent, html, css, ref, repeat, JsExtract } from '../little.js';
+import * as Util from "../util.js";
+import * as Ase from '../aseapi.js';
+import * as Dom from "../dom.js";
+import DataBubbleIface from '../b/databubble.js';
+
+// == STYLE ==
+JsExtract.scss`
 /* global.scss includes @import 'spinner.scss'; */
 
-.b-shell {
+b-shell {
+  display: grid;
   position: relative;
   --b-resize-handle-thickness: #{$b-resize-handle-thickness};
   --b-transition-fast-slide: #{$b-transition-fast-slide};
@@ -39,7 +48,7 @@ html.b-shell-during-drag .b-app {
   * { cursor: col-resize !important; user-select: none !important; }
 }
 
-.b-shell .-modal-message {
+b-shell .-modal-message {
   .-hfooter {
     justify-content: space-between;
     button, push-button {
@@ -56,7 +65,7 @@ html.b-shell-during-drag .b-app {
   }
 }
 
-.b-shell {
+b-shell {
   .-fullcoverage {
     position: fixed; inset: 0;
     width: 100%; height: 100%;
@@ -74,9 +83,9 @@ html.b-shell-during-drag .b-app {
   }
 }
 
-  .b-shell {
-    grid-template-columns: min(10em,12%) 1fr min(10em,12%);
-    grid-template-rows:
+b-shell {
+  grid-template-columns: min(10em,12%) 1fr min(10em,12%);
+  grid-template-rows:
       [menubar] 0fr
       [tracklist] 1fr
       [devices] min-content
@@ -86,142 +95,157 @@ html.b-shell-during-drag .b-app {
       [row7] 0fr
       [row8] 0fr
       [statusbar] 0fr;
-    place-items: stretch;
-    place-content: space-between;
-    .-col123		{ grid-column: 1/4; }
-    .-col12		{ grid-column: 1/3; }
-    .-col1		{ grid-column: 1/2; }
-    .-col2		{ grid-column: 2/3; }
-    .-col3		{ grid-column: 3/4; }
-    .-row1 		{ grid-row: 1/2; }
-    .-row2 		{ grid-row: 2/3; }
-    .-row3 		{ grid-row: 3/4; }
-    .-row4 		{ grid-row: 4/5; }
-    .-row5 		{ grid-row: 5/6; }
-    .-row6 		{ grid-row: 6/7; }
-    .-row7 		{ grid-row: 7/8; }
-    .-row8 		{ grid-row: 8/9; }
-    .-row9 		{ grid-row: 9/10; }
-    .-row28 		{ grid-row: 2/9; }
-    .-small		{ max-height: 10em; }
-  }
-</style>
+  place-items: stretch;
+  place-content: space-between;
+  .-col123		{ grid-column: 1/4; }
+  .-col12		{ grid-column: 1/3; }
+  .-col1		{ grid-column: 1/2; }
+  .-col2		{ grid-column: 2/3; }
+  .-col3		{ grid-column: 3/4; }
+  .-row1 		{ grid-row: 1/2; }
+  .-row2 		{ grid-row: 2/3; }
+  .-row3 		{ grid-row: 3/4; }
+  .-row4 		{ grid-row: 4/5; }
+  .-row5 		{ grid-row: 5/6; }
+  .-row6 		{ grid-row: 6/7; }
+  .-row7 		{ grid-row: 7/8; }
+  .-row8 		{ grid-row: 8/9; }
+  .-row9 		{ grid-row: 9/10; }
+  .-row28 		{ grid-row: 2/9; }
+  .-small		{ max-height: 10em; }
+}
+`;
 
-<template>
-  <c-grid class="b-shell" >
+// == HTML ==
+const HTML = (t, m, fs) => [ html`
+  <!-- Menus and Transport -->
+  <b-menubar class="-row1 -col123" .project=${Data.project} ></b-menubar>
 
-    <!-- Menus and Transport -->
-    <b-menubar class="-row1 -col123" :project="Data.project" />
+  <!-- tracks and clips -->
+  <b-tracklist class="-row2 -col2" style="overflow: hidden" .project=${Data.project}></b-tracklist>
 
-    <!-- tracks and clips -->
-    <b-tracklist class="-row2 -col2" style="overflow: hidden" :project="Data.project"></b-tracklist>
+  <!-- devices -->
+  <b-devicepanel class="-row3 -col2" ?hidden=${Data.panel2 == 'd'} .track=${App.current_track}></b-devicepanel>
 
-    <!-- devices -->
-    <b-devicepanel class="-row3 -col2" v-show="Data.panel2 == 'd'" :track="App.current_track" />
+  <!-- piano roll -->
+  <b-piano-roll class="-row4 -col2" style="overflow: hidden; height:50vh" .clip=${Data.piano_roll_source}
+    ${ref (h => t.piano_roll_ = h)} ?hidden=${Data.panel2 == 'p'}></b-piano-roll>
 
-    <!-- piano roll -->
-    <b-piano-roll class="-row4 -col2" style="overflow: hidden; height:50vh" :clip="Data.piano_roll_source"
-		  ref="piano_roll" v-show="Data.panel2 == 'p'" ></b-piano-roll>
+  <!-- browser -->
+  <v-flex class="b-shell-sidebar -row28 -col1" style="width:10em">
+    Browser <br />
+    <b-treebrowser .tree=${m.filetree} ?hidden=${Data.panel3 == 'b'}></b-treebrowser>
+    <span ?hidden=${Data.panel3 == 'i'}><a href="">Info Panel</a></span>
+  </v-flex>
 
-    <!-- browser -->
-    <v-flex class="b-shell-sidebar -row28 -col1" style="width:10em" >
-      Browser <br />
-      <b-treebrowser :tree="m.filetree" v-show="Data.panel3 == 'b'" ></b-treebrowser>
-      <span v-show="Data.panel3 == 'i'" ><a href="">Info Panel</a></span>
-    </v-flex>
+  <!-- Inspector -->
+  <v-flex class="-row28 -col3" style="margin-left: 3em">
+    ||| <br />
+    Editor <br />
+    ||| <br />
+  </v-flex>
 
-    <!-- Inspector -->
-    <v-flex class="-row28 -col3" style="margin-left: 3em" >
-      ||| <br />
-      Editor <br />
-      ||| <br />
-    </v-flex>
+  <!-- status bar -->
+  <b-statusbar class="-row9 -col123" ></b-statusbar>
 
-    <!-- status bar -->
-    <b-statusbar class="-row9 -col123" />
+  <!-- Modal Dialogs -->
+`, html`
+  <b-aboutdialog ${ref (h => t.aboutdialog_ = h)} ?shown=${t.show_about_dialog_} @close=${ev => t.show_about_dialog (0)}></b-aboutdialog>
+`, html`
+  <b-preferencesdialog ?shown=${Data.show_preferences_dialog} @close=${ev => (Data.show_preferences_dialog = false)} ></b-preferencesdialog>
+  <b-crawlerdialog ?shown=${!!fs.resolve} .title=${fs.title} .filters=${fs.filters} .button=${fs.button}
+    ?existing="fs.existing" .cwd=${fs.cwd} @close=${ev => fs.resolve()} @select=${event => fs.resolve (event.detail?.uri)} ></b-crawlerdialog>
+  <div class="-fullcoverage" style="z-index: 90" id="b-app-shell-modaldialogs">
+    <!-- Modal Message Popups -->
+    ${ DIALOGS_HTML (t) }
+  </div>
 
-    <!-- Modal Dialogs -->
-    <b-aboutdialog :shown.prop="show_about_dialog_" @close="show_about_dialog(0)" v-if="show_about_dialog_" />
-    <b-preferencesdialog :shown.prop="Data.show_preferences_dialog" @close="$event => (Data.show_preferences_dialog = false)" />
-    <b-crawlerdialog v-if="!!fs.resolve" :shown.prop="true" :title="fs.title" :filters="fs.filters" :button="fs.button"
-		     :existing.prop="fs.existing" :cwd="fs.cwd" @close="fs.resolve()" @select="fs.resolve($event.detail?.uri)" />
-    <div class="-fullcoverage" style="z-index: 90" id="b-app-shell-modaldialogs" >
-      <!-- Modal Message Popups -->
-      <b-dialog class="-modal-message" v-for="d in m.modal_dialogs"
-		:id="'MDialog_' + d.dialogid" :class="d.class" :key="d.dialogid"
-		:shown="d.visible.value" @update:shown="d.input ($event)"
-		:exclusive="true" bwidth="9em" style="z-index: 93" >
-	<template v-slot:header>
-	  {{ d.header }}
-	</template>
-	<template v-slot:default>
-	  <h-flex style="justify-content: flex-start; align-items: center;">
-	    <b-icon v-bind="d.icon" />
-	    <div style="flex-grow: 1; white-space: pre-line;" >{{ d.body }}</div>
-	    <div style="flex-grow: 1; white-space: pre-line;" v-html="d.vhtml" ></div>
-	  </h-flex>
-	  <b-fed-object class="-modal-fed" ref="fedobject" v-if="d.proplist" :value="d.proplist" />
-	  <div class="-div-handler" v-if="d.div_handler"></div>
-	</template>
-	<template v-slot:footer>
-	  <h-flex class="-hfooter" :class="d.footerclass">
-	    <component v-for="(b, i) in d.buttons" :key="i" @click="d.click (i)" :disabled="b.disabled"
-		       :is="b.canfocus ? 'button' : 'push-button'" :autofocus="b.autofocus" >{{ b.label }}</component>
-	  </h-flex>
-	</template>
-      </b-dialog>
-    </div>
+  <!-- Noticeboard -->
+  <b-noticeboard style="z-index: 95" ></b-noticeboard>
 
-    <!-- Noticeboard -->
-    <b-noticeboard ref="noticeboard" style="z-index: 95" />
+  <!-- Bubbles -->
+  <div class="-fullcoverage" style="z-index: 96" id="b-shell-bubble-layer"></div>
 
-    <!-- Bubbles -->
-    <div class="-fullcoverage" style="z-index: 96" id="b-shell-bubble-layer" ></div>
+  <!-- Spinners (busy indicator) -->
+  <div class="-fullcoverage" style="z-index: 98" id="b-shell-spinner-layer" ?hidden=${m.show_spinner_count > 0}>
+    <img src="assets/spinner.svg" />
+  </div>
+` ];
+// ^^^ FIXME: ref @update:shown v-html autofocus  :*props*  .prop  v-*
+const DIALOGS_HTML = (t) =>
+  t.m.modal_dialogs.map (d => html`
+    <dialog class="-modal-message"
+	      .id=${'MDialog_' + d.dialogid} .class=${d.class} .key=${d.dialogid}
+	      .shown=${d.visible.value} @close=${event => d.input (event)}
+	      .exclusive=${true} bwidth="9em" style="z-index: 93">
+      <template v-slot:header>
+	{{ d.header }}
+      </template>
+      <template v-slot:default>
+	<h-flex style="justify-content: flex-start; align-items: center;">
+	  <b-icon v-bind="d.icon" ></b-icon>
+	  <div style="flex-grow: 1; white-space: pre-line;">{{ d.body }}</div>
+	  <div style="flex-grow: 1; white-space: pre-line;" v-html="d.vhtml"></div>
+	</h-flex>
+	<b-fed-object class="-modal-fed" ?shown=${d.proplist} .value=${d.proplist} ></b-fed-object>
+	<div class="-div-handler" ?shown=${d.div_handler}></div>
+      </template>
+      <template v-slot:footer>
+	<h-flex class="-hfooter" .class=${d.footerclass}>
+	  <component v-for="(b, i) in d.buttons" .key=${i} @click=${ev => d.click(i)} .disabled=${b.disabled}
+	    .is=${b.canfocus ? 'button' : 'push-button'} .autofocus=${b.autofocus}>{{ b.label }}</component>
+	</h-flex>
+      </template>
+    </dialog>
+  `);
 
-    <!-- Spinners (busy indicator) -->
-    <div class="-fullcoverage" style="z-index: 98" id="b-shell-spinner-layer" v-show="m.show_spinner_count > 0" >
-      <img ref="spinner" src="assets/spinner.svg" >
-    </div>
-
-  </c-grid>
-</template>
-
-<script>
-import * as Util from '../util.js';
-import * as Envue from './envue.js';
-import DataBubbleIface from '../b/databubble.js';
-
+// == SCRIPT ==
 async function list_sample_files() {
   // TODO: const crawler = await Ase.server.resource_crawler();
   const entries = []; // TODO: await crawler.list_files ('wave', 'user-downloads');
   return Object.freeze ({ entries: entries });
 }
 
-function observable_project_data () { // yields reactive Proxy object
-  const data = {
-    filetree:	     { default: {}, getter: c => list_sample_files(), },
-    usernotehook:    { notify: n => Ase.server.on ("usernote", this.usernote), },
-    observable_force_update: Util.observable_force_update,
+class BShell extends LitComponent {
+  static properties = {
+    fs: 		{ state: true },
+    m: 			{ state: true },
+    note_cache: 	{ state: true },
+    piano_current_clip: { state: true },
+    piano_current_tick: { state: true },
+    show_about_dialog_: { state: true },
   };
-  return this.observable_from_getters (data, () => Data.project);
-}
-
-/// The global `Shell` singleton carries all current UI and Ase.Project context
-class ShellClass extends Envue.Component {
-  data_bubble = null;
-  constructor (vm) {
-    super (vm);
-    this.fs = Vue.reactive ({ title: 'File Selector', button: 'Select', cwd: '~MUSIC', filters: [], resolve: null });
-    this.m = observable_project_data.call (vm);
+  render()
+  {
+    return HTML (this, this.m, this.fs);
+  }
+  createRenderRoot()
+  {
+    this.classList.add ("b-shell");
+    return this;
+  }
+  constructor (input_m = {})
+  {
+    super();
+    this.data_bubble = null;
+    this.aboutdialog_ = null;
+    this.switch_panel2 = null;
+    this.switch_panel3 = null;
+    this.f1_help_ = null;
+    this.fs = { title: 'File Selector', button: 'Select', cwd: '~MUSIC', filters: [], resolve: null };
+    this.m = input_m;
     this.m.modal_dialogs = [];
     this.m.show_spinner_count = 0;
+    this.m.filetree = list_sample_files();
+    this.m.usernotehook = Ase.server.on ("usernote", this.usernote); // FIXME
     this.note_cache = {};
     this.piano_current_clip = null;
     this.piano_current_tick = null;
-    this.$vm.show_about_dialog_ = false;
+    this.m.show_about_dialog_ = false; // FIXME
+    this.piano_roll_ = null;
   }
   /// Access PianoRoll component
-  get piano_roll() { return Shell.$refs.piano_roll; }
+  get piano_roll() { return Shell.piano_roll_; }
   /// Show spinner to indicate "busy" state (increment reason)
   show_spinner()
   {
@@ -233,11 +257,9 @@ class ShellClass extends Envue.Component {
     console.assert (this.m.show_spinner_count > 0);
     this.m.show_spinner_count--;
   }
-  created() {
-    this.m.observable_force_update();
-  }
-  mounted() {
-    this.data_bubble = new DataBubbleIface();
+  firstUpdated()
+  {
+    super.firstUpdated();
     this.switch_panel2 = App.switch_panel2.bind (App);
     Util.add_hotkey ('RawBackquote', this.switch_panel2);
     this.switch_panel3 = App.switch_panel3.bind (App);
@@ -245,35 +267,49 @@ class ShellClass extends Envue.Component {
     this.f1_help_ = this.f1_help.bind (this);
     Util.add_key_filter (112, this.f1_help_); // F1
   }
-  unmounted() {
+  connectedCallback()
+  {
+    super.connectedCallback();
+  }
+  disconnectedCallback()
+  {
+    super.disconnectedCallback();
     Util.remove_hotkey ('RawBackquote', this.switch_panel2);
     Util.remove_hotkey ('I', this.switch_panel3);
     Util.remove_key_filter (112, this.f1_help_); // F1
     App.shell_unmounted();
   }
-  updated() {
+  updated (changedprops)
+  {
+    if (!this.data_bubble) {
+      this.data_bubble = new DataBubbleIface (this);
+    }
     for (const d of this.m.modal_dialogs)
       if (d.div_handler) {
-	const dialog = this.$vm.$el.querySelector (`#MDialog_${d.dialogid}`);
-	if (dialog) {
-	  const div = dialog.querySelector (`.-div-handler`);
-	  if (div)
+        const dialog = this.shadowRoot.querySelector(`#MDialog_${d.dialogid}`); // FIXME
+        if (dialog) {
+          const div = dialog.querySelector (`.-div-handler`);
+          if (div)
 	    d.div_handler (div, dialog);
-	}
+        }
       }
   }
   show_about_dialog (onof = undefined)
   {
     if (undefined === onof)
-      return this.$vm.show_about_dialog_;
+      return this.show_about_dialog_;
     onof = !!onof;
-    if (onof != this.$vm.show_about_dialog_)
-      document.startViewTransition (() => {
-	this.$vm.show_about_dialog_ = onof;
-	this.$vm.$forceUpdate();
-      }, !onof);
+    if (onof !== this.show_about_dialog_) {
+      document.startViewTransition (async () => {
+	this.show_about_dialog_ = onof;
+	const aboutdialog_promise = onof ? null : this.aboutdialog_?.close_dialog();
+	this.requestUpdate();
+	await Promise.all ([ this.updateComplete, aboutdialog_promise ]);
+      });
+    }
   }
-  usernote (user_note_event) {
+  usernote (user_note_event)
+  {
     App.show_notice (user_note_event.text);
   }
   f1_help (event)
@@ -291,7 +327,8 @@ class ShellClass extends Envue.Component {
   }
   sidebar_mouse (e)
   {
-    const sidebar = this.$refs.sidebarcontainer;
+    const sidebar = this.shadowRoot.querySelector('.b-shell-sidebar'); // FIXME
+    // const sidebar = this.$refs.sidebarcontainer; // FIXME
     console.assert (sidebar);
     const html_classes = document.documentElement.classList;
     if (e.type == 'mousedown' && !this.listening)
@@ -341,9 +378,9 @@ class ShellClass extends Envue.Component {
     };
     return await fileselector_promise;
   }
-  async_modal_dialog = async_modal_dialog;
   // == note_cache ==
-  async _update_note_cache (clip) {
+  async _update_note_cache (clip)
+  {
     const cache = this.note_cache[clip.$id];
     while (cache.dirty) {
       cache.dirty = 0;
@@ -355,12 +392,14 @@ class ShellClass extends Envue.Component {
     }
     cache.promise = null;
   }
-  get_note_cache (clip) {
+  get_note_cache (clip)
+  {
     if (!this.note_cache[clip.$id]) {
-      const cache = { rgen: Vue.ref (1), // generational counter, Vue reactive
-		      destroynotify: null, promise: null, dirty: 0,
-		      callbacks_: [],
-		      notes: Object.freeze ([]) };
+      const cache = {
+	rgen: Vue.ref (1),/*FIXME*/ // generational counter, Vue reactive
+	destroynotify: null, promise: null, dirty: 0,
+	callbacks_: [],
+	notes: Object.freeze ([]) };
       const update_note_cache = () => {
 	cache.dirty++;
 	if (!cache.promise)
@@ -383,21 +422,26 @@ class ShellClass extends Envue.Component {
       del_callback (cb) { return Util.array_remove (cache.callbacks_, cb); },
     });
   }
-  async note_cache_notes (clip) {
+  async note_cache_notes (clip)
+  {
     this.get_note_cache (clip);
     const cache = this.note_cache[clip.$id];
     await cache.promise;
     return cache.rgen.value && cache.notes;
   }
-  old_cache_notes (clip) {
+  old_cache_notes (clip)
+  {
     return this.get_note_cache (clip).notes;
   }
+  // == async_modal_dialog ==
+  async_modal_dialog = async_modal_dialog;
 }
-export default ShellClass.vue_export ({ sfc_template });
+customElements.define ('b-shell', BShell);
 
 // == modal dialog creation ==
 let modal_dialog_counter = 1;
-function async_modal_dialog (dialog_setup) {
+function async_modal_dialog (dialog_setup)
+{
   const shell = this;
   let resolve;
   const promise = new Promise (r => resolve = r);
@@ -452,4 +496,3 @@ const dialog_emblems = {
   ERROR:	{ fa: "times-circle",		style: "font-size: 300%; padding-right: 1rem; float: left; color: #cc2f2a" },
   KEYBOARD:	{ mi: "keyboard",		style: "font-size: 300%; padding-right: 1rem; float: left; color: #538cc1" },
 };
-</script>
