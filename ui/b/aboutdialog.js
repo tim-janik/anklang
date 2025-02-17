@@ -94,7 +94,6 @@ async function about_pairs() {
     [ 'FLAC:',		        await Ase.server.get_flac_version() ],
     [ 'Opus:',		        await Ase.server.get_opus_version() ],
     [ 'Lit:',			CONFIG.lit_version ],
-    [ 'Vuejs:',			Vue.version ],
     [ 'User Agent:',		user_agent ],
   ];
   const Electron = window['Electron'];
