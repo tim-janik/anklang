@@ -173,7 +173,7 @@ async function bootup () {
 
   // mount in DOM and create component hierarchy
   await document.fonts.ready; // Fonts - wait for fonts before Vue components are mounted and compute sizes
-  App.mount ('#b-app');
+  App.mount ('b-app');
   console.assert (app === globalThis.App);
   console.bootlog (`Vue App mounted...`);
 
