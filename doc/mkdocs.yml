@@ -107,5 +107,6 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 
-# docker run --rm -it -v${PWD}:/docs -p 127.0.0.1:8001:8000 ghcr.io/tim-janik/anklang-ci:mkdocs-latest
-# docker run --rm -it -v${PWD}:/docs --entrypoint '' squidfunk/mkdocs-material sudo chown 1000:1000 -R /docs/.
+# uv venv --python 3.12 # .venv
+# uv pip install mkdocs mkdocs-material mkdocs-file-filter-plugin mkdocs-literate-nav git+https://github.com/tim-janik/mkdocs-live-edit-plugin
+# uv run mkdocs serve -a localhost:2223
