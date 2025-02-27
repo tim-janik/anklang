@@ -17,38 +17,6 @@ plugins:
     #   target: _blank
   - offline
   - tags
-  # https://mkdoxy.kubaandrysek.cz/
-  - mkdoxy:
-      projects:
-        AnklangCxx:
-          src-dirs: ../ase/ ../devices/
-          doxy-cfg:
-            FILE_PATTERNS: "*.c .h *.cc *.hh *.js *.md *.dox"
-            INTERNAL_DOCS: YES
-            RECURSIVE: NO
-            EXTRACT_LOCAL_CLASSES: NO
-            HIDE_UNDOC_MEMBERS: YES
-            HIDE_UNDOC_CLASSES: YES
-            HIDE_FRIEND_COMPOUNDS: YES
-            HIDE_COMPOUND_REFERENCE: YES
-            SHOW_INCLUDE_FILES: NO
-            INLINE_INFO: NO
-            SHOW_USED_FILES: NO
-            VERBATIM_HEADERS: NO
-            XML_PROGRAMLISTING: NO
-            COLLABORATION_GRAPH: NO
-            GROUP_GRAPHS: NO
-            INCLUDE_GRAPH: NO
-            INCLUDED_BY_GRAPH: NO
-            GRAPHICAL_HIERARCHY: NO
-            DIRECTORY_GRAPH: NO
-            DOT_IMAGE_FORMAT: svg
-            EXTRACT_ALL: NO
-            EXTRACT_ANON_NSPACES: NO
-  #- git-revision-date-localized:
-  #    type: timeago
-  #    fallback_to_build_date: true
-  #    enable_creation_date: true
 
 extra_javascript:
   - javascript/mathjax.js
