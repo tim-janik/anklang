@@ -170,9 +170,9 @@ run: FORCE all
 
 # == clean rules ==
 clean: FORCE
-	@test -z "$(strip $(CLEANFILES))" || (set -x; rm -f $(CLEANFILES) )
-	@test -z "$(strip $(CLEANDIRS))" || (set -x; rm -fr $(CLEANDIRS) )
-CLEANDIRS += $(builddir) .cache poxy/ html/ assets/
+	rm -fr $(builddir)/* $(builddir)/.[^.]* $(builddir)/..?* $(CLEANDIRS)
+	rm -f $(CLEANFILES)
+CLEANDIRS += .cache poxy/ html/ assets/
 
 # == help rules ==
 help: FORCE

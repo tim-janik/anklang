@@ -129,7 +129,9 @@ $>/ui/.aseignore:					| $>/ui/
 $>/.ui-build-stamp: $>/ui/.aseignore
 
 # == ui/aseapi.js ==
-$>/ui/aseapi.js: jsonipc/jsonipc.js ase/api.hh $(lib/AnklangSynthEngine) ui/Makefile.mk	| $>/ui/
+ui/aseapi.outdated != test $>/ui/aseapi.js -nt ase/api.hh || echo OUTDATED
+# only wait for lib/AnklangSynthEngine if ui/aseapi.js must be re-generated
+$>/ui/aseapi.js: jsonipc/jsonipc.js ase/api.hh ui/Makefile.mk $(if $(ui/aseapi.outdated), $(lib/AnklangSynthEngine)) | $>/ui/
 	$(QGEN)
 	$Q $(CP) $< $@.tmp
 	$Q ASAN_OPTIONS=detect_leaks=0 \
