@@ -2,19 +2,20 @@
 
 # https://www.mkdocs.org/getting-started/
 site_name: Anklang Documentation
+copyright: Copyright &copy; 2025 Anklang Project
 site_url: https://tim-janik.github.io/anklang
 repo_url: https://github.com/tim-janik/anklang
 repo_name: Anklang.git
-docs_dir: mkdocs
-site_dir: site
-copyright: Copyright &copy; 2024 Anklang Project
+# Note, mkdocs.yml is used in the build dir, with source dirs as symlink
+docs_dir: mkdocs/doc
+site_dir: site/
 
 plugins:
+  - live-edit
   - search
-  - privacy
-    # https://squidfunk.github.io/mkdocs-material/plugins/privacy/?h=blank#config.links_attr_map
-    # links_attr_map:
-    #   target: _blank
+  - privacy:
+      # https://squidfunk.github.io/mkdocs-material/plugins/privacy/?h=blank#config.links_attr_map
+      #links_attr_map: target: _blank	# <- https://github.com/squidfunk/mkdocs-material/issues/6601
   - offline
   - tags
 
@@ -94,17 +95,35 @@ extra:
 
 # https://squidfunk.github.io/mkdocs-material/setup/extensions/python-markdown-extensions/
 markdown_extensions:
+  - attr_list
   - pymdownx.arithmatex:
       generic: true
-  - pymdownx.critic
+  - pymdownx.betterem
   - pymdownx.caret
-  - pymdownx.keys
-  - pymdownx.mark
-  - pymdownx.tilde
-  - attr_list
+  - pymdownx.critic
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: false
+      use_pygments: true
+      pygments_lang_class: true
+      auto_title: false
+      linenums: true
+      line_spans: __span
+      linenums_style: pymdownx-inline
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+  - markdown.extensions.tables
+  - pymdownx.fancylists
+  - pymdownx.saneheaders
+
 
 
 # uv venv --python 3.12 # .venv
