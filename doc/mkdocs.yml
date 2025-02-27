@@ -28,52 +28,25 @@ extra_javascript:
   - javascript/mathjax.js
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
-nav:
-  - "About Anklang": index.md
-  - "Introductionary Tutorials":
-    - "Tutorial 1: Starting to Play Notes": tut-play.md
-  - "Howto Guides":
-    - "Howto: Setting Up Audio (Linux)": how-audio.md
-  - "References":
-    - "ANKLANG(1) Manual Page": ch-man-pages.md
-    - "User Interface":
-      - Clip-List: cliplist.md
-      - Piano-Ctrl: piano-ctrl.md
-      - Piano-Roll: pianoroll.md
-    - JS Scripting: scripting-docs.md
-    - "Anklang C++ API":
-      - 'C++ Class-Tree':       class-tree.md
-      - 'C++ API Links':        AnklangCxx/links.md
-      - 'Class List':           AnklangCxx/annotated.md
-      - 'Class Members':        AnklangCxx/class_members.md
-      - 'Namespace List':       AnklangCxx/namespaces.md
-      - 'Namespace Members':    AnklangCxx/namespace_members.md
-      - 'Files':                AnklangCxx/files.md
-  - "Design & Development":
-    - Development Overview: ch-development.md
-    - UI Development:
-      - Web Components: ch-component.md
-      - Component API: jsdocs.md
-    - Implementation Details:
-      - Making Releases: ch-releasing.md
-      - Interpolation Notes: ch-appendix.md
-
 # https://squidfunk.github.io/mkdocs-material/getting-started/
 theme:
   name: material
   language: 'en'
-  #features:
-  #  - navigation.footer
   features:
     - search.suggest
     - search.highlight
     - search.share
-    - toc.integrate
+    - navigation.instant
+    - navigation.prune
+    #- toc.integrate
+    - toc.follow
     - navigation.tracking
     #- navigation.tabs
+    #- navigation.tabs.sticky
     - navigation.sections
     #- navigation.expand
     - navigation.path
+  #  - navigation.footer
   # taken from https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/#system-preference
   palette:
     - media: "(prefers-color-scheme)"
@@ -127,7 +100,7 @@ markdown_extensions:
   - pymdownx.fancylists
   - pymdownx.saneheaders
 
-
+# nav: see NAV.md
 
 # uv venv --python 3.12 # .venv
 # uv pip install mkdocs mkdocs-material mkdocs-file-filter-plugin mkdocs-literate-nav git+https://github.com/tim-janik/mkdocs-live-edit-plugin
