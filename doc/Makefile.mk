@@ -257,3 +257,20 @@ $>/site/search/search_index.js: doc/mkdocs.yml $(doc/mkdocs.mdlist)	| $>/mkdocs/
 mkdocs:
 	rm -rf $>/mkdocs/
 	$(MAKE) $>/site/search/search_index.js
+
+.PHONY: $>/.mkdocs.prep
+$>/.mkdocs.prep: $>/doxygen/index.html doc/Makefile.mk
+	rm -rf $>/site $>/mkdocs* && mkdir -p $>/mkdocs/doc && ln -s $(abspath doc/mkdocs.yml) $>/
+	ln -s $(abspath misc) $>/mkdocs/.
+	ln -s $(abspath $(wildcard doc/*)) ../../doxygen $>/mkdocs/doc/
+		mkdocs mkdocs-material mkdocs-file-filter-plugin \
+	cd $>/ && uv venv --python 3.12 && uv pip install \
+		git+https://github.com/tim-janik/mkdocs-live-edit-plugin
+	ls -al $>/mkdocs/
+	@touch $@
+.PHONY: $>/.mkdocs.prep
+mkdocs-serve: $>/.mkdocs.prep
+	cd $>/ && uv run mkdocs serve -a localhost:2222
+mkdocs-build: $>/.mkdocs.prep
+	cd $>/ && uv run mkdocs build
+
