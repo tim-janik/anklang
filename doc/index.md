@@ -18,6 +18,11 @@ You can choose from a variety of binary packages for GNU/Linux, including AppIma
 If you want to try out the latest features and bug fixes, you can use our nightly release builds.
 Keep in mind that these builds might be less stable than the regular release builds.
 
+In case you need help, you can find the Anklang community here:
+
+* **Chat**: [Libera IRC #Anklang](https://web.libera.chat/#Anklang)
+* **Issues**: [Report Bugs](https://github.com/tim-janik/anklang/issues) | [Feature Requests](https://github.com/tim-janik/anklang/discussions/52)
+
 ### Installing Anklang
 
 #### Using the AppImage Package
