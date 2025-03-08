@@ -18,6 +18,9 @@ plugins:
       #links_attr_map: target: _blank	# <- https://github.com/squidfunk/mkdocs-material/issues/6601
   - offline
   - tags
+  - literate-nav:
+      nav_file: NAV.md
+      tab_length: 2
 
 extra_css:
   - style/mkdocs.css

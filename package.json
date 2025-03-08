@@ -42,6 +42,7 @@
     "globals": "^15.8.0",
     "jsdoc": "^4.0.3",
     "jsdoc-api": "^8.0.0",
+    "jsdoc-to-markdown": "^9.1.1",
     "jsdoc-tsimport-plugin": "^1.0.5",
     "lit": "^3.1.4",
     "markdown-it": "^14.1.0",
