@@ -237,34 +237,14 @@ doc/all: $(doc/install.files)
 
 
 # == mkdocs ==
-doc/mkdocs.mdlist ::= $(doc/manual-chapters) $(doc/internals-chapters) doc/index.md doc/tut-play.md doc/how-audio.md
-$>/site/search/search_index.js:
-$>/site/search/search_index.js: doc/mkdocs.yml $(doc/mkdocs.mdlist)	| $>/mkdocs/
-	@$(QECHO) RUN mkdocs
-	$Q rm -rf $>/site/
-	$Q # prepare mkdocs inputs
-	$Q cp $< $>/mkdocs.yml && cp $(doc/mkdocs.mdlist) $>/mkdocs/
-	$Q cp -r doc/javascript $>/mkdocs/
-	$Q # mkdocs build to $>/site/
-	$Q cd $> && mkdocs build
-	$Q # remove useless listing of anonymous namespaces
-	$Q sed 's|<li><strong>namespace</strong> *<a[^>]*><strong>@[0-9]+</strong></a> *</li>||' \
-		-r -i $>/site/AnklangCxx/namespaces.html $>/site/AnklangCxx/annotated.html
-	$Q # use new tab for external links
-	$Q sed -r '/http[^ ]*github.io\/anklang/!s|<a (href="https?://[^">]+")>|<a \1 target="_blank">|g' \
-		-i out/site/*.html
-	$Q # TODO: Section on Piano-Ctrl needs SVG tools icons
-mkdocs:
-	rm -rf $>/mkdocs/
-	$(MAKE) $>/site/search/search_index.js
-
-.PHONY: $>/.mkdocs.prep
-$>/.mkdocs.prep: $>/doxygen/index.html doc/Makefile.mk
+doc/mkdocs.mdlist := ui/ch-component.md
+doc/mkdocs.mdlist += $>/doc/jsdocsmd/ $>/doc/jsdocs.md $>/doc/class-tree.md $>/doc/scripting-docs.md
+$>/.mkdocs.prep: $>/doxygen/index.html $(doc/mkdocs.mdlist) doc/Makefile.mk
 	rm -rf $>/site $>/mkdocs* && mkdir -p $>/mkdocs/doc && ln -s $(abspath doc/mkdocs.yml) $>/
 	ln -s $(abspath misc) $>/mkdocs/.
-	ln -s $(abspath $(wildcard doc/*)) ../../doxygen $>/mkdocs/doc/
-		mkdocs mkdocs-material mkdocs-file-filter-plugin \
+	ln -s $(abspath $(wildcard doc/*) $(doc/mkdocs.mdlist)) ../../doxygen $>/mkdocs/doc/
 	cd $>/ && uv venv --python 3.12 && uv pip install \
+		mkdocs mkdocs-material mkdocs-file-filter-plugin mkdocs-literate-nav \
 		git+https://github.com/tim-janik/mkdocs-live-edit-plugin
 	ls -al $>/mkdocs/
 	@touch $@
