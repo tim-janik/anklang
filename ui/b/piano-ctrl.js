@@ -4,7 +4,8 @@ import * as Util from '../util.js';
 
 import { START, STOP, CANCEL, MOVE, SCROLL } from '../util.js';
 
-/* Many operations on clip events involve all or many events of a clip, e.g. select-all, move.
+/** @file piano-ctrl.js
+ * Many operations on clip events involve all or many events of a clip, e.g. select-all, move.
  * Clips can potentially have many events (e.g. hundreds or thausands of notes), the time
  * needed for IPC calls to modify events increases linearly with the number of events involved
  * (change_batch() call arguments and fetching updates via list_all_notes()).
