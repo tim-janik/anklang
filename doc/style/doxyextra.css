@@ -1,0 +1,165 @@
+/* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
+
+/* re-instate some font settings that we removed from doxygen */
+html {
+--font-family-normal:	Roboto,sans-serif;
+--font-family-nav:	Roboto,sans-serif;
+--font-family-title:	Roboto,sans-serif;
+--font-family-toc:	Roboto,sans-serif;
+--font-family-search:	Roboto,sans-serif;
+--font-family-tooltip:	Roboto,sans-serif;
+--font-family-icon:	Arial,Helvetica;
+--font-family-monospace: 'JetBrains Mono',Consolas,Monaco,'Andale Mono','Ubuntu Mono',monospace,fixed;
+/*--search-magnification-select-image: none;*/
+
+--primary: #5373B4; /* sync with HTML HUE */
+}
+#projectname		{ font-size: 200%; }
+.icon			{ font-family: var(--font-family-icon); font-size: 75%; }
+.title			{ font-size: 150%; }
+div.toc li		{ font-family: var(--font-family-toc); --fixme-font-size: 80%; }
+div.toc h3		{ font-family: var(--font-family-toc); --fixme-font-size: 90%; }
+#nav-tree .label	{ font-family: var(--font-family-nav); --fixme-font-size: 90%; }
+.SelectItem /*search*/	{ font-family: var(--font-family-search); }
+input			{ font-size: inherit; }
+#MSearchField		{ width: unset; height: unset; background-image: none; }
+#MSearchSelect		{ width: unset; padding-left: 16px; }
+#MSearchBox .left	{ height: 1.6em; }
+
+/* Monospace elements */
+pre.fragment, div.line, .paramname .paramdefval, .params .paramdir, .tparams .paramdir,
+.overload {
+  font-family: var(--font-family-monospace);
+}
+
+/* Remove line coloring in function list */
+table.memberdecls .memItemLeft, table.memberdecls .memItemRight, table.memberdecls .memTemplItemLeft, table.memberdecls .memTemplItemRight, table.memberdecls .memTemplParams {
+  transition: none;
+  padding-top: 0;
+  padding-bottom: 0;
+  border: none;
+  background: none;
+}
+
+/* Remove bg on function desc */
+body div.memitem div,
+body .memtitle {
+  box-shadow: none;
+  -webkit-box-shadow: none;
+  border: none;
+  background: none;
+}
+/* Adjust spacing in function desc */
+div.memitem div.memdoc {
+  p { max-width: 74ch; text-align: justify; }
+  p:first-of-type { margin-block-start: 0; }
+}
+/* Remove grey block in function desc */
+h2.memtitle {
+  &:after { display: none; }
+  border-bottom: 1px dotted lightgrey;
+  position: relative;
+  .permalink {
+    position: absolute;
+    left: -1ch;
+    margin-top: 0.2em;
+    display: none;
+  }
+  &:hover .permalink {
+    display: inline;
+  }
+}
+
+/* Eliminate various ugly background colors/shades/bulges */
+.ui-resizable-e,
+.navpath ul {
+  background: none;
+}
+.ui-resizable-e {
+  border-left: 1px solid var(--primary);
+}
+
+
+/* organize member list into one line per method */
+FIXME XXX div#doc-content div.contents div.memberdecls {
+  /* FORCE BREAK: & span[class*="memitem"] + span[class*="separator"] { display: table; } */
+  display: table;
+  table-layout: auto;
+  & span[class*="memitem:"] {
+    display: table-row;
+    & > * {
+      display: table-cell;
+      width: auto;
+    }
+  }
+}
+
+/* shrink return type column in brief desc member table */
+.memItemLeft, .memTemplItemLeft {
+  white-space: break-spaces;
+}
+
+table.memberdecls {
+  border-spacing: revert;
+  padding: unset;
+  .memSeparator { border: none; }
+}
+
+.mdescLeft, .mdescRight, .memItemLeft, .memItemRight, .memTemplItemLeft, .memTemplItemRight, .memTemplParams
+{ background: none; }
+
+.directory tr.odd,
+.classindex dl.odd { background: none; }
+
+
+/* widen single letter navigation links */
+#nav-tree .label a {
+  display: inline-flex;
+  min-width: 3em;
+}
+
+/* Avoid 90ties area bulging tabs around function doc */
+div#doc-content div.contents {
+  div.memberdoc.memtitle {
+    border: none;
+    background: none;
+    font-size: inherit;
+    font-weight: bold;
+    border-bottom: 1px dotted lightgray;
+    padding-bottom: 0;
+    margin-bottom: 0.25em;
+    width: -webkit-fill-available;
+  }
+  div.memitem {
+    border: none;
+    background: none;
+    box-shadow: none;
+    div.memproto {
+      border: none;
+      width: max-content;
+      .mlabels-right {
+	margin: 0;
+	position: unset;
+      }
+      .mlabel {
+	background: none;
+	border: none;
+	color: inherit;
+	font-style: italic;
+	font-size: 80%;
+	margin: 0 0 0 1ch;
+	padding: 0;
+	&:first-of-type {
+	  margin-left: 2em;
+	}
+      }
+    }
+  }
+}
+
+body, table, div, p, dl {
+  font-weight: unset;
+  font-size: unset;
+  font-family: sans;
+  line-height: unset;
+}

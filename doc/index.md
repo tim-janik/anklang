@@ -1,9 +1,9 @@
 Welcome to Anklang, a free and open-source digital audio synthesizer and music creation software.
 
-## Anklang: Craft Your Audio, Live and Free
+## Anklang: Craft Your Own Audio, Live and Free
 
 Anklang is a music synthesis and composition program designed to help you create and shape your sounds,
-released under the Mozilla Public License 2.0 ([MPL-2.0 summary](https://choosealicense.com/licenses/mpl-2.0/)).
+released under the Mozilla Public License 2.0 ([MPL-2.0](https://choosealicense.com/licenses/mpl-2.0/)).
 Join us in collaborating on Anklang, an experimental, digital audio workstation for live music composition and audio synthesis.
 Join the journey, contribute, and help us improve it.
 
@@ -17,6 +17,11 @@ You can choose from a variety of binary packages for GNU/Linux, including AppIma
 
 If you want to try out the latest features and bug fixes, you can use our nightly release builds.
 Keep in mind that these builds might be less stable than the regular release builds.
+
+In case you need help, you can find the Anklang community here:
+
+* **Chat**: [Libera IRC #Anklang](https://web.libera.chat/#Anklang)
+* **Issues**: [Report Bugs](https://github.com/tim-janik/anklang/issues) | [Feature Requests](https://github.com/tim-janik/anklang/discussions/52)
 
 ### Installing Anklang
 

@@ -3,6 +3,13 @@ include $(wildcard $>/misc/*.d)
 ALL_TARGETS     += misc/all
 misc/all:
 
+# == doxygen reference ==
+$>/doxygen/index.html: misc/doxygen.py misc/Makefile.mk
+	$(QGEN)
+	$Q rm -rf $>/doxygen/
+	$Q misc/doxygen.py $(if $(findstring 1, $(V)),, --quiet) $>/doxygen/
+	$Q mv $>/doxygen $>/doxygen.tmp && mv $>/doxygen.tmp/html $>/doxygen && rm -r $>/doxygen.tmp
+
 # == lint-cppcheck ==
 CPPCHECK ?= cppcheck
 CPPCHECK_CCENABLE := warning,style,performance,portability

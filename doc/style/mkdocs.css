@@ -1,0 +1,16 @@
+/* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
+
+/* Use indentation to show nav titles */
+main.md-main .md-sidebar nav.md-nav > ul {
+  margin-left: 0.5em;
+}
+/* Darken greyish nav titles */
+body:not([data-md-color-media*='dark'])
+main.md-main .md-sidebar nav.md-nav
+label { color: black; }
+
+/* Hide mkdocs-live-edit-plugin buttons, use Shift+Ctrl+E */
+.md-content article .live-edit-controls:not(.live-edit-editing) {
+  width: 0; height: 0; overflow: hidden;
+  border: 0; margin: 0; padding: 0;
+}

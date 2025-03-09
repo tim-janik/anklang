@@ -106,7 +106,7 @@ struct Choice {
   Choice (String ident, String label, String blurb = "", String notice = "", String warning = "");
 };
 
-/// Convenience ChoiceS construciton helper.
+/// Convenience ChoiceS construction helper.
 ChoiceS& operator+= (ChoiceS &choices, Choice &&newchoice);
 
 /// Telemetry segment location.
