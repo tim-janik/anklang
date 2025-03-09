@@ -11,20 +11,20 @@ docs_dir: mkdocs/doc
 site_dir: site/
 
 plugins:
-  - live-edit
-  - search
-  - privacy:
-      # https://squidfunk.github.io/mkdocs-material/plugins/privacy/?h=blank#config.links_attr_map
-      #links_attr_map: target: _blank	# <- https://github.com/squidfunk/mkdocs-material/issues/6601
-  - offline
-  - tags
-  - literate-nav:
-      nav_file: NAV.md
-      tab_length: 2
   - file-filter:
       exclude_glob:
         - '*akefile*'
         - copyright.ini
+  - literate-nav:
+      nav_file: NAV.md
+      tab_length: 2
+  - search
+  - tags
+  - offline
+  - privacy:
+      # https://squidfunk.github.io/mkdocs-material/plugins/privacy/?h=blank#config.links_attr_map
+      #links_attr_map: target: _blank	# <- https://github.com/squidfunk/mkdocs-material/issues/6601
+  - live-edit
 
 extra_css:
   - style/mkdocs.css
