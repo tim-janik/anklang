@@ -63,9 +63,19 @@ RUN \
   && apt-get install -y nodejs \
   && apt-get autoremove -y
 
-# Install mkdocs for documentation builds
-ENV PIP_BREAK_SYSTEM_PACKAGES 1
-RUN pip install mkdocs-material mkdoxy poxy
+# Install uv
+RUN \
+  cd /tmp/ \
+  && wget https://github.com/astral-sh/uv/releases/download/0.6.5/uv-i686-unknown-linux-gnu.tar.gz \
+  && tar xvf uv-i686-unknown-linux-gnu.tar.gz -C /usr/local/bin/ --strip-components=1 \
+  && rm uv-i686-unknown-linux-gnu.tar.gz
+
+# Install bun
+RUN \
+  cd /tmp/ \
+  && wget -c https://github.com/oven-sh/bun/releases/download/bun-v1.2.4/bun-linux-x64.zip \
+  && unzip -j -o bun-linux-x64.zip -d /usr/local/bin/ \
+  && rm bun-linux-x64.zip
 
 # Support `--user runner` for the Github action VM user: uid=1001(runner) gid=127(docker)
 RUN : \
