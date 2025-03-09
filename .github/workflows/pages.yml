@@ -40,8 +40,8 @@ jobs:
         id: pages
         uses: actions/configure-pages@v5
       - run: echo 'prefix=/ CC=clang CXX=clang++ CLANG_TIDY=clang-tidy' | tr ' ' '\n' > config-defaults.mk
-      - run: make mkdocs -j`nproc`
-        # (cd out/site/ && python3 -m http.server 8003 )
+      - run: make mkdocs-build -j`nproc`
+        # (cd out/site/ && python3 -m http.server 2222 )
       - run: ls -al out/site/
       - uses: actions/upload-pages-artifact@v3
         with: { path: ./out/site/ }
