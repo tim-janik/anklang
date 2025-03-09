@@ -21,6 +21,10 @@ plugins:
   - literate-nav:
       nav_file: NAV.md
       tab_length: 2
+  - file-filter:
+      exclude_glob:
+        - '*akefile*'
+        - copyright.ini
 
 extra_css:
   - style/mkdocs.css
