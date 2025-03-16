@@ -19,7 +19,7 @@ import * as Util from './util.js';
 Object.defineProperty (globalThis, 'Util', { value: Util });
 
 // Import Ase, connecting is done asynchronously
-import * as Ase from './aseapi.js';
+import * as Ase from '/gen/aseapi.js';
 
 // Global Theme
 import { create_app } from './b/app.js';
