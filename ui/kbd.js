@@ -706,7 +706,7 @@ export async function shortcut_dialog (mapname, label, shortcut) {
   return true;
 }
 
-import * as Ase from '../aseapi.js';
+import * as Ase from '/gen/aseapi.js';
 (async () => {
   await Ase.server;
   const mapjson = await Ase.server.get_data ('shortcuts.json');

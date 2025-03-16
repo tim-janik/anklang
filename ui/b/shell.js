@@ -12,13 +12,14 @@
 
 import { LitComponent, html, css, ref, repeat, JsExtract } from '../little.js';
 import * as Util from "../util.js";
-import * as Ase from '../aseapi.js';
+import * as Ase from '/gen/aseapi.js';
 import * as Dom from "../dom.js";
 import DataBubbleIface from '../b/databubble.js';
+import spinner_svg from '/gen/assets/spinner.svg'
 
 // == STYLE ==
 Extra_css`
-/* global.scss includes @import 'spinner.scss'; */
+/* global.scss includes @import 'spinner.css'; */
 
 b-shell {
   display: grid;
@@ -168,7 +169,7 @@ const HTML = (t, m, fs) => [ html`
 
   <!-- Spinners (busy indicator) -->
   <div class="-fullcoverage" style="z-index: 98" id="b-shell-spinner-layer" ?hidden=${m.show_spinner_count > 0}>
-    <img src="assets/spinner.svg" />
+    <img src="${spinner_svg}" />
   </div>
 ` ];
 // ^^^ FIXME: ref @update:shown v-html autofocus  :*props*  .prop  v-*

@@ -22,7 +22,7 @@ b-editable {
 
 
 // == SCRIPT ==
-import * as Ase from '../aseapi.js';
+import * as Ase from '/gen/aseapi.js';
 
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
