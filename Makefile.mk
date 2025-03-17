@@ -166,7 +166,7 @@ include doc/Makefile.mk
 
 # == run ==
 run: FORCE all
-	$>/electron/anklang --no-sandbox
+	$>/lib/AnklangSynthEngine
 
 # == clean rules ==
 clean: FORCE
@@ -193,7 +193,7 @@ help: FORCE
 	@echo '  check-bench     - Run the benchmark tests'
 	@echo '  check-loading   - Check all distributed Anklang files load properly'
 	@echo '  check-suite     - Run the unit test suite'
-	@echo '  serve           - Start SoundEngine, serve and auto-rebuild ui/ sources'
+	@echo '  serve           - Start Anklang and serve assets with HMR'
 	@echo '  viewdocs        - Build and browser the manual'
 	@echo '  run             - Start Anklang without installation'
 	@echo 'Invocation:'
@@ -247,6 +247,13 @@ $>/config.sh: $(wildcard config-defaults.mk)				| $>/
 	$Q echo 'mode="$(MODE)"'					>> $@.tmp
 	$Q mv $@.tmp $@
 ALL_TARGETS += $>/config.sh
+
+# == version.json ==
+$>/version.json:							| $>/
+	$(QGEN)
+	$Q echo '{ $(strip $(PACKAGE_VERSIONS)) }'			> $@.tmp
+	$Q mv $@.tmp $@
+ALL_TARGETS += $>/version.json
 
 # == npm.done ==
 node_modules/.npm.done: $(if $(NPMBLOCK),, package.json Makefile.mk)		| $>/
