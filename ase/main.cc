@@ -43,7 +43,7 @@ MainLoopP          main_loop;
 static int         embedding_fd = -1;
 static bool        arg_js_api = false;
 static bool        arg_class_tree = false;
-static int         config_websocket_port = 0;
+static int         arg_unauth_port = 0;
 
 // == JobQueue ==
 static void
@@ -123,6 +123,7 @@ print_usage (bool help)
   printout ("  --play-autostart Automatically start playback of `project.anklang`\n");
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
   printout ("  --test[=test]    Run specific tests\n");
+  printout ("  --unauth-dev=NUM Open an unauthenticated websocket port for testing\n");
   printout ("  --version        Print program version\n");
   printout ("  -M mididriver    Force use of <mididriver>\n");
   printout ("  -P pcmdriver     Force use of <pcmdriver>\n");
@@ -130,6 +131,26 @@ print_usage (bool help)
   printout ("  -t <time>        Automatically play and stop after <time> has passed\n"); // -t <time>[{,|;}tailtime]
   printout ("Options set via $ASE_DEBUG:\n");
   printout ("  :no-logfile:     Disable logging to ~/.cache/anklang/ instead of stderr\n");
+}
+
+/// Parse CLI option with argument, sets argv[*ith]=nullptr
+static bool
+parse_option_arg (const char *option, char **argv, unsigned *ith, const char **argp)
+{
+  const size_t l = strlen (option);
+  if (strncmp (option, argv[*ith], l) == 0) {
+    *argp = argv[*ith] + l;
+    argv[*ith] = nullptr;
+    if ((*argp)[0] == '=')
+      *argp += 1;
+    else if ((*argp)[0] == 0) {
+      *ith += 1;
+      *argp = argv[*ith] ? argv[*ith] : "";
+      argv[*ith] = nullptr;
+    }
+    return true;
+  }
+  return false;
 }
 
 LogFlags
@@ -178,6 +199,7 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
   const uint argc = *argcp;
   for (uint i = 1; i < argc; i++)
     {
+      const char *optarg = nullptr;
       if (sep)
         config.args.push_back (argv[i]);
       else if (strcmp (argv[i], "--fatal-warnings") == 0 || strcmp (argv[i], "--g-fatal-warnings") == 0)
@@ -274,6 +296,8 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
         {
           config.play_autostart = true;
         }
+      else if (parse_option_arg ("--unauth-dev", argv, &i, &optarg))
+        arg_unauth_port = string_to_int (optarg);
       else if (argv[i] == String ("-t") && i + 1 < size_t (argc))
         {
           config.play_autostart = true;
@@ -570,7 +594,7 @@ main (int argc, char *argv[])
     }
 
   // open Jsonapi socket
-  const String auth_token = make_auth_string();
+  const String auth_token = arg_unauth_port > 0 ? "" : make_auth_string();
   auto wss = WebSocketServer::create (jsonapi_make_connection, App.jsonapi_logflags, auth_token);
   main_app.web_socket_server = &*wss;
   wss->http_dir (anklang_runpath (RPath::INSTALLDIR, "/ui/"));
@@ -578,17 +602,21 @@ main (int argc, char *argv[])
   wss->http_alias ("/Builtin/Controller", anklang_runpath (RPath::INSTALLDIR, "/Controller"));
   // wss->http_alias ("/User/Scripts", anklang_home_dir ("/Scripts"));
   wss->http_alias ("/Builtin/Scripts", anklang_runpath (RPath::INSTALLDIR,"/Scripts"));
-  const int xport = embedding_fd >= 0 ? 0 : (config_websocket_port > 0 ? config_websocket_port : 0);
-  const String subprotocol = xport ? "" : make_auth_string();
+  const int xport = embedding_fd >= 0 ? 0 : (arg_unauth_port > 0 ? arg_unauth_port : 0);
+  const String subprotocol = ""; // make_auth_string()
   jsonapi_set_subprotocol (subprotocol);
   if (App.mode == MainApp::SYNTHENGINE) {
     const char *host = "127.0.0.1";
     wss->listen (host, xport, [] () { main_loop->quit (-1); });
-    const String redirecthtml = create_auth_redirect ("anklang", wss->listen_port(), auth_token);
-    if (errno)
-      perror_die (redirecthtml + ": failed to create html redirect file in $HOME");
-    wss->see_other ("file://" + redirecthtml);
-    log ("Main: WebUI redirect: file://%s", redirecthtml);
+    if (xport)
+      log ("Main: WebUI port: %s", wss->url());
+    else {
+      const String redirecthtml = create_auth_redirect ("anklang", wss->listen_port(), auth_token);
+      if (errno)
+        perror_die (redirecthtml + ": failed to create html redirect file in $HOME");
+      wss->see_other ("file://" + redirecthtml);
+      log ("Main: WebUI redirect: file://%s", redirecthtml);
+    }
   }
   const String url = wss->url() + (subprotocol.empty() ? "" : "?subprotocol=" + subprotocol);
   if (embedding_fd < 0 && !url.empty())
