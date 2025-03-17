@@ -2,6 +2,7 @@
 #include "websocket.hh"
 #include "platform.hh"
 #include "strings.hh"
+#include "formatter.hh"
 #include "path.hh"
 #include "blob.hh"
 #include "utils.hh"
@@ -40,18 +41,20 @@ struct WebSocketServerImpl : public WebSocketServer {
   using RegexVector = std::vector<std::regex>;
   std::thread   *initialized_thread_ = nullptr;
   WppServer      wppserver_;
-  String         server_url_, dir_;
+  String         server_url_, dir_, token_, see_other_;
   std::vector<std::pair<String,String>> aliases_;
   ConVec         opencons_;
   RegexVector    ignores_;
   MakeConnection make_con_;
   int            logflags_ = 0;
+  int            listen_port_ = 0;
   void   setup        (const String &host, int port);
   void   run          ();
   WebSocketConnectionP make_connection (WppHdl hdl);
   WebSocketConnection* force_con (WppHdl);
   friend class WebSocketServer;
 public:
+  int            listen_port () const override   { return listen_port_; }
   String         url      () const override      { return server_url_; }
   WppConnectionP wppconp  (WppHdl hdl)           { return wppserver_.get_con_from_hdl (hdl); }
   void
@@ -123,6 +126,12 @@ public:
     });
   }
   void
+  see_other (const String &uri) override
+  {
+    // TODO: not thread-safe
+    see_other_ = uri;
+  }
+  void
   shutdown () override
   {
     if (initialized_thread_)
@@ -136,8 +145,8 @@ public:
   void ws_opened (WebSocketConnectionP);
   void ws_closed (WebSocketConnectionP);
   void reset         () override;
-  WebSocketServerImpl (const MakeConnection &make_con, int logflags) :
-    make_con_ (make_con), logflags_ (logflags)
+  WebSocketServerImpl (const MakeConnection &make_con, int logflags, const std::string &token) :
+    token_ (token), make_con_ (make_con), logflags_ (logflags)
   {}
 };
 
@@ -150,19 +159,23 @@ WebSocketServerImpl::setup (const String &host, int port)
     WebSocketConnectionP conp = make_connection (hdl);
     WppConnectionP cp = this->wppconp (hdl);
     return_unless (conp && cp, false);
-    const int index = conp->validate();
-    if (index >= 0)
-      {
-        const std::vector<std::string> &subprotocols = cp->get_requested_subprotocols();
-        if (size_t (index) < subprotocols.size())
-          {
-            cp->select_subprotocol (subprotocols[index]);
+    const bool is_authenticated = conp->authenticated (token_);
+    if (is_authenticated) {
+      const int index = conp->validate();
+      if (index >= 0)
+        {
+          const std::vector<std::string> &subprotocols = cp->get_requested_subprotocols();
+          if (size_t (index) < subprotocols.size())
+            {
+              cp->select_subprotocol (subprotocols[index]);
+              return true;
+            }
+          else if (subprotocols.size() == 0 && index == 0)
             return true;
-          }
-        else if (subprotocols.size() == 0 && index == 0)
-          return true;
-      }
+        }
+    }
     cp->set_status (websocketpp::http::status_code::forbidden);
+    conp->log_status (cp->get_response_code());
     return false;
   });
   wppserver_.set_http_handler ([this] (WppHdl hdl) {
@@ -182,12 +195,13 @@ WebSocketServerImpl::setup (const String &host, int port)
   wppserver_.listen (endpoint_local, ec);
   if (ec)
     fatal_error ("failed to listen on socket: %s:%d: %s", host, port, ec.message());
-  if (port == 0)
-    {
-      websocketpp::lib::asio::error_code ac;
-      port = wppserver_.get_local_endpoint (ac).port();
-    }
-  String fullurl = string_format ("http://%s:%d/", host, port);
+  if (port)
+    listen_port_ = port;
+  else { // port == 0
+    websocketpp::lib::asio::error_code ac;
+    listen_port_ = wppserver_.get_local_endpoint (ac).port();
+  }
+  String fullurl = string_format ("http://%s:%d/", host, listen_port_);
   server_url_ = fullurl;
 }
 
@@ -208,6 +222,25 @@ struct WebSocketConnection::Internals {
   WppConnectionP       wppconp()        { return server->wppconp (hdl); }
   friend struct WebSocketServerImpl;
 };
+
+void
+WebSocketConnection::log_status (int intstatus, const String &filepath)
+{
+  const auto status = websocketpp::http::status_code::value (intstatus);
+  WppConnectionP cp = internals_.wppconp();
+  if (!cp || !(logflags_ & 16))
+    return;
+  using namespace AnsiColors;
+  const bool rejected = (status >= 400 && status <= 499) || status == 303;
+  const String C1 = rejected ? color (FG_RED) : "";
+  const String C0 = rejected ? color (RESET) : "";
+  String resource = cp->get_resource();
+  resource = Re::sub ("\\btoken=[^;?]+", "token=<………>", resource);
+  log (string_format ("%s%d %s %s%s%s",
+                      C1, status,
+                      cp->get_request().get_method(), resource, C0,
+                      filepath.empty() ? "" : " [" + filepath + "]"));
+}
 
 WebSocketConnection::WebSocketConnection (Internals &internals, int logflags) :
   internals_ (*new (internals_mem_) Internals (internals)), logflags_ (logflags)
@@ -348,11 +381,24 @@ WebSocketConnection::nickname ()
 }
 
 int  WebSocketConnection::validate ()                           { return -1; }
-void WebSocketConnection::failed ()                             { if (logflags_ & 2) log (__func__); }
+void WebSocketConnection::failed ()                             { /*if (logflags_ & 2) log (__func__);*/ }
 void WebSocketConnection::opened ()                             { if (logflags_ & 4) log (__func__); }
 void WebSocketConnection::message (const String &message)       { if (logflags_ & 8) log (__func__); }
 void WebSocketConnection::closed ()                             { if (logflags_ & 4) log (__func__); }
 void WebSocketConnection::log (const String &message)           { printerr ("%s\n", message);}
+
+bool
+WebSocketConnection::authenticated (const String &token)
+{
+  WppConnectionP cp = internals_.wppconp();
+  if (!cp)
+    return false;
+  if (token.empty())
+    return true;
+  const String cookie_header = cp->get_request().get_header ("Cookie");
+  const String cookie_token = Re::grep ("\\bsession_auth=([^;?]+)", cookie_header, 1);
+  return cookie_token == token;
+}
 
 enum CacheType {
   CACHE_NEVER,
@@ -366,73 +412,109 @@ WebSocketConnection::http_request ()
 {
   if (internals_.server->dir_.empty())
     return;
-  Info info = get_info();
   WppConnectionP cp = internals_.wppconp();
   const auto &parts = string_split (cp->get_resource(), "?");
+  const String query = cp->get_uri()->get_query();
+  String filepath;
+
+  // Helpers
+  auto set_response = [] (WppConnectionP cp, websocketpp::http::status_code::value status, const String &title, const String &msg) {
+    const String body =
+      string_format ("<!DOCTYPE html>\n"
+                     "<html><head><title>%u %s</title></head>\n<body>\n"
+                     "<h1>%s</h1>\n\n"
+                     "%s\n"
+                     "<hr><address>%s</address>\n"
+                     "<hr></body></html>\n", status, title, title,
+                     msg.size() ? "<p>" + msg + "</p>" : "",
+                     WebSocketServer::user_agent());
+    cp->set_body (body);
+    cp->replace_header ("Content-Type", "text/html; charset=utf-8");
+    cp->set_status (status);
+  };
+
+  // GET ~auth
+  if (cp->get_request().get_method() == "GET" && parts[0] == "/~auth" &&
+      (authenticated (internals_.server->token_) ||
+       Re::search ("\\btoken=" + internals_.server->token_ + "\\b", query) >= 0)) {
+    const std::string target = string_format ("http://localhost:%u/", cp->get_port());
+    cp->replace_header ("Set-Cookie", "session_auth=" + internals_.server->token_ + "; Path=/; HttpOnly");
+    cp->replace_header ("Location", target);
+    set_response (cp, websocketpp::http::status_code::found, // 302 Found
+                  "Found", "Redirecting to: <tt>" + target + "</tt>");
+    log_status (cp->get_response_code());
+    return;
+  }
+
+  // Validate Cookie session_auth
+  if (!authenticated (internals_.server->token_)) {
+    const std::string see_other = internals_.server->see_other_;
+    if (see_other.empty())
+      set_response (cp, websocketpp::http::status_code::method_not_allowed, // 405 Method Not Allowed
+                    "Method Not Allowed", "Authentication required.");
+    else {
+      if (string_startswith (see_other, "http"))
+        cp->replace_header ("Location", see_other);
+      set_response (cp, websocketpp::http::status_code::see_other, // 303 See Other
+                    "See Other", "<a href=\"" + see_other + "\">" + see_other + "</a>");
+    }
+    log_status (cp->get_response_code());
+    return;
+  }
 
   // find file for URL
-  String filepath = internals_.server->map_url (parts[0]);
+  filepath = internals_.server->map_url (parts[0]);
 
   // map directories to index.html
   if (!filepath.empty() && Path::check (filepath, "dx"))
     filepath = Path::join (filepath, "index.html");
 
-  // serve existing files
-  const bool canzip = nullptr != string_find_word (info.header ("Accept-Encoding").c_str(), "gzip");
-  websocketpp::http::status_code::value status;
-  bool fp = false, fz = false;
-  if (!filepath.empty() && ((fp = Path::check (filepath, "fr")) || (fz = canzip && Path::check (filepath + ".gz", "fr"))))
-    {
-      const char *ext = strrchr (filepath.c_str(), '.');
-      const String mimetype = WebSocketServer::mime_type (ext ? ext + 1 : "", true);
-      cp->append_header ("Content-Type", mimetype);
-      // Use CACHE_FOREVER for text/css to reduce FOUC (flashing of unstyled content)
-      // with shadowRoot stylesheet links in Chrome-115. CACHE_AUTO worsens FOUC.
-      const CacheType caching = mimetype == "text/css" ? CACHE_FOREVER : CACHE_AUTO;
-      switch (caching) {
-      case CACHE_NEVER:         // response must not be stored in cache
-        cp->append_header ("Cache-Control", "no-store");
-        break;
-      case CACHE_AUTO:          // force response revalidation if content stored in cache
-        cp->append_header ("Cache-Control", "no-cache"); // max-age=0, must-revalidate
-        break;
-      case CACHE_BRIEFLY:       // needs validation support: https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests
-        cp->append_header ("Cache-Control", "max-age=7, stale-while-revalidate=31536000");
-        break;
-      case CACHE_FOREVER:       // keep content forever in cache
-        cp->append_header ("Cache-Control", "max-age=31536000, public, immutable");
-        break;
+  // GET
+  if (cp->get_request().get_method() == "GET") {
+    // serve existing files
+    const String accept_encoding = cp->get_request().get_header ("Accept-Encoding");
+    const bool canzip = nullptr != string_find_word (accept_encoding.c_str(), "gzip");
+    bool fp = false, fz = false;
+    if (!filepath.empty() && ((fp = Path::check (filepath, "fr")) || (fz = canzip && Path::check (filepath + ".gz", "fr"))))
+      {
+        const char *ext = strrchr (filepath.c_str(), '.');
+        const String mimetype = WebSocketServer::mime_type (ext ? ext + 1 : "", true);
+        cp->append_header ("Content-Type", mimetype);
+        // Use CACHE_FOREVER for text/css to reduce FOUC (flashing of unstyled content)
+        // with shadowRoot stylesheet links in Chrome-115. CACHE_AUTO worsens FOUC.
+        const CacheType caching = mimetype == "text/css" ? CACHE_FOREVER : CACHE_AUTO;
+        switch (caching) {
+        case CACHE_NEVER:         // response must not be stored in cache
+          cp->append_header ("Cache-Control", "no-store");
+          break;
+        case CACHE_AUTO:          // force response revalidation if content stored in cache
+          cp->append_header ("Cache-Control", "no-cache"); // max-age=0, must-revalidate
+          break;
+        case CACHE_BRIEFLY:       // needs validation support: https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests
+          cp->append_header ("Cache-Control", "max-age=7, stale-while-revalidate=31536000");
+          break;
+        case CACHE_FOREVER:       // keep content forever in cache
+          cp->append_header ("Cache-Control", "max-age=31536000, public, immutable");
+          break;
+        }
+        if (fz) {
+          filepath = filepath + ".gz";
+          cp->append_header ("Content-Encoding", "gzip");
+        }
+        Blob blob = Blob::from_file (filepath);
+        cp->set_body (blob.string());
+        cp->set_status (websocketpp::http::status_code::ok); // 200 OK
       }
-      if (fz) {
-        filepath = filepath + ".gz";
-        cp->append_header ("Content-Encoding", "gzip");
-      }
-      Blob blob = Blob::from_file (filepath);
-      cp->set_body (blob.string());
-      status = websocketpp::http::status_code::ok;
-    }
-  else // 404
-    {
-      cp->append_header ("Content-Type", "text/html; charset=utf-8");
-      cp->set_body ("<!DOCTYPE html>\n"
-                    "<html><head><title>404 Not Found</title></head><body>\n"
-                    "<h1>Not Found</h1>\n"
-                    "<p>The requested URL was not found: <tt>" + cp->get_uri()->str() + "</tt></p>\n"
-                    "<hr><address>" + WebSocketServer::user_agent() + "</address>\n"
-                    "<hr></body></html>\n");
-      status = websocketpp::http::status_code::not_found;
-    }
-  cp->set_status (status);
-  if (logflags_ & 16)
-    {
-      using namespace AnsiColors;
-      String C1 = status >= 400 && status <= 499 ? color (FG_RED) : "";
-      String C0 = status >= 400 && status <= 499 ? color (RESET) : "";
-      log (string_format ("%s%d %s %s%s%s",
-                          C1, int (status),
-                          cp->get_request().get_method(), cp->get_resource(), C0,
-                          filepath.empty() ? " [IGNORE]" : ""));
-    }
+    else // 404
+      set_response (cp, websocketpp::http::status_code::not_found, // 404 Not Found
+                    "Not Found",
+                    "The requested URL was not found: <tt>" + cp->get_uri()->str() + "</tt>");
+  }
+  else // 405
+    set_response (cp, websocketpp::http::status_code::method_not_allowed, // 405 Method Not Allowed
+                  "Method Not Allowed", "");
+
+  log_status (cp->get_response_code());
 }
 
 // == WebSocketServerImpl ==
@@ -519,9 +601,9 @@ WebSocketServer::~WebSocketServer()
 {}
 
 WebSocketServerP
-WebSocketServer::create (const MakeConnection &make, int logflags)
+WebSocketServer::create (const MakeConnection &make, int logflags, const std::string &session_token)
 {
-  return std::make_shared<WebSocketServerImpl> (make, logflags);
+  return std::make_shared<WebSocketServerImpl> (make, logflags, session_token);
 }
 
 String
