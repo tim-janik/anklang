@@ -7,14 +7,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style> @font-face { font-family: "InterVariable"; font-display: swap; src: url("InterVariable.woff2") format("woff2-variations"); } </style>
   <style type="text/css" data-4litcomponent>@import url("global.css?csshash=@--CSSHASH--@");</style>
-  <script type='application/json' id='--EMBEDD-config_json'>
-  </script>
   <script> { "use strict"; // Early globals
-    const packagejson = JSON.parse (document.getElementById ('--EMBEDD-config_json').innerHTML);
     Object.defineProperty (globalThis, '_', { value: t9n => t9n });
-    Object.defineProperty (globalThis, 'CONFIG', { value: packagejson.config });
-    Object.defineProperty (globalThis, '__DEV__', { value: CONFIG.mode !== 'production' });
-    Object.defineProperty (globalThis, 'debug', { value: __DEV__ ? console.log : _ => undefined });
+    Object.defineProperty (globalThis, 'CONFIG', { value: __VITE_CONFIG__ });
+    Object.defineProperty (globalThis, '__DEV__', { value: !!CONFIG.__DEV__ });
+    Object.defineProperty (globalThis, 'debug', { value: __DEV__ ? console.log : () => undefined });
     Object.defineProperty (globalThis, 'assert', { value: console.assert });
     Object.defineProperty (globalThis, 'Extra_css', { value: () => undefined });
     Object.defineProperty (document, 'skipViewTransition', { value: func => func() });
