@@ -12,7 +12,7 @@ namespace Ase {
 static String subprotocol_authentication;
 
 void
-jsonapi_require_auth (const String &subprotocol)
+jsonapi_set_subprotocol (const String &subprotocol)
 {
   subprotocol_authentication = subprotocol;
 }
@@ -26,20 +26,7 @@ static JsonapiConnectionP current_message_conection;
 static bool
 is_localhost (const String &url, int port)
 {
-  const char *p = url.c_str();
-  if (strncmp (p, "http://", 7) == 0)
-    p += 7;
-  else if (strncmp (p, "https://", 8) == 0)
-    p += 8;
-  else
-    return false;
-  const String localhost = port > 0 ? string_format ("localhost:%u/", port) : "localhost/";
-  const String local_127 = port > 0 ? string_format ("127.0.0.1:%u/", port) : "127.0.0.1/";
-  if (strncmp (p, localhost.c_str(), localhost.size()) == 0)
-    return true;
-  if (strncmp (p, local_127.c_str(), local_127.size()) == 0)
-    return true;
-  return false;
+  return Re::search ("^https?://(localhost|127\\.0\\.0\\.1)(:[0-9]+)?/", url, Re::I) >= 0;
 }
 
 class JsonapiConnection : public WebSocketConnection, public CustomDataContainer {
