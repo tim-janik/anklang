@@ -1,7 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 'use strict';
 
-import MarkdownIt from '/markdown-it.mjs';
+import MarkdownIt from 'markdown-it';
 
 /** Generate `element.innerHTML` from `markdown_text` */
 export function markdown_to_html (element, markdown_text) {
