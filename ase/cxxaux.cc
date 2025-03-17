@@ -90,6 +90,18 @@ has_debug_key (const char *const debugkeys, const char *const key)
   return d && (d == debugkeys || d[-1] == ':') && (d[l] == 0 || d[l] == ':');
 }
 
+void
+perror_die (const std::string &msg) noexcept
+{
+  assertion_failed_fatal = true;
+  std::string message = msg;
+  if (errno)
+    message += std::string (": ") + strerror (errno);
+  assertion_failed (message.c_str(), nullptr, 0, nullptr);
+  for (;;)
+    abort();
+}
+
 /// Global flag to force aborting on assertion warnings.
 bool assertion_failed_fatal = false;
 
