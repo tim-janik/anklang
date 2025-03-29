@@ -248,7 +248,7 @@ $>/.mkdocs.prep: $>/doxygen/index.html $(doc/mkdocs.mdlist) doc/Makefile.mk
 		git+https://github.com/tim-janik/mkdocs-live-edit-plugin
 	ls -al $>/mkdocs/
 	@touch $@
-.PHONY: $>/.mkdocs.prep
+ALL_TARGETS += $>/.mkdocs.prep
 mkdocs-serve: $>/.mkdocs.prep
 	cd $>/ && uv run mkdocs serve -a localhost:2222
 mkdocs-build: $>/.mkdocs.prep
