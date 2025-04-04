@@ -1,14 +1,15 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
-@import "tailwindcss";
+/* Tailwind classes, components, reset. */
+@import './tailwind.css';
 
-@import 'theme.css'; /* Legacy definitions */
+@import './theme.css'; /* Legacy definitions */
 
 /* Provide cursor CSS variables on :root */
-@import 'cursors/cursors.css';
+@import './cursors/cursors.css';
 
 /* Import theme and color definitions */
-@import 'mixins.css';
+@import './mixins.css';
 
 /* Provide icon collections, using fonts is most resource friendly */
 @import '/gen/assets/material-icons.css';
@@ -17,9 +18,6 @@
 
 /* Keyframes for rotating spinner.svg */
 @import '/gen/assets/spinner.css';
-
-/* Tailwind classes, components, reset. */
-@import 'tailwind.css';
 
 /* Full viewport sizing */
 html, body {

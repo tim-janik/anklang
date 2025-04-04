@@ -1,6 +1,6 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
-@import 'palette.css';
+@import './palette.css';
 
 /* Useful font stacks, see modernfontstacks.com */
 $b-font-stack-grotesque: "Inter", "Roboto", "Helvetica Neue", "Arial Nova", "Nimbus Sans", "Arial", sans-serif;
