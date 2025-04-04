@@ -1,21 +1,20 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
-// Provide icon collections, using fonts is most resource friendly
-@import url('material-icons.css');
-@import url('assets/AnklangIcons.css');
-@import url('assets/fork-awesome.css');
+@import 'theme.scss'; // Legacy definitions
 
 // Provide cursor CSS variables on :root
-@import url('cursors/cursors.css');
-
-// Keyframes for rotating spinner.svg
-@import 'spinner.scss';
-
-// Legacy definitions
-@import 'theme.scss';
+@import 'cursors/cursors.css';
 
 // Import theme and color definitions
 @import 'mixins.scss';
+
+// Provide icon collections, using fonts is most resource friendly
+@import '/gen/assets/material-icons.css';
+@import '/gen/assets/AnklangIcons.css';
+@import '/gen/assets/fork-awesome.css';
+
+// Keyframes for rotating spinner.svg
+@import '/gen/assets/spinner.css';
 
 // Tailwind classes, components, reset.
 @import 'tailwind.scss';
