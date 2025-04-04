@@ -9,7 +9,7 @@ $b-font-stack-mono-code: "DejaVu Sans Mono", ui-monospace, "Cascadia Code", "Sou
 $b-font-stack-kbd-mono: $b-font-stack-mono-code;
 
 /* Fonts */
-$b-canvas-font: normal 9px "InterVariable", $b-font-stack-grotesque;	// the '9px' part is dynamically resized
+$b-canvas-font: normal 9px "InterVariable", $b-font-stack-grotesque;	/* the '9px' part is dynamically resized */
 @mixin b-ui-font() {
   font-family: "InterVariable", $b-font-stack-grotesque;
   font-size: 15.5px;
@@ -23,16 +23,16 @@ $b-canvas-font: normal 9px "InterVariable", $b-font-stack-grotesque;	// the '9px
 			 "liga", "calt", "ccmp", "kern";
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
   @include b-font-weight-normal();
-  // Note, combining font-variation-settings with var()/slot/shadowRoot tends to lack support for live updates in Chrome and FF
-  // Also, specifying font-variation-settings in @font-face has no effect in Chrome 114
-  font-variation-settings: "opsz" 28; // 14=Inter, 28=InterDisplay
+  /* Note, combining font-variation-settings with var()/slot/shadowRoot tends to lack support for live updates in Chrome and FF
+   *  Also, specifying font-variation-settings in @font-face has no effect in Chrome 114 */
+  font-variation-settings: "opsz" 28; /* 14=Inter, 28=InterDisplay */
 }
 @mixin b-font-weight-normal() {
-  // Inter may be too thin at regular weight (font-weight=400) for low contrast scenarios, so use 500.
-  // @media (prefers-color-scheme: light) { font-weight: 500; }
-  // However, in dark-mode fonts can appear thicker, which is why fonts like [Darkmode On](fonts.adobe.com/fonts/darkmode-on)
-  // reduce thickness in dark mode compared to light mode to ca 90%. For Inter weights, a stepping from 400 -> 500 equates
-  // roughly a thickness increases of 20%. So for dark mode, we use 450.
+  /* Inter may be too thin at regular weight (font-weight=400) for low contrast scenarios, so use 500.
+   *  @media (prefers-color-scheme: light) { font-weight: 500; }
+   *  However, in dark-mode fonts can appear thicker, which is why fonts like [Darkmode On](fonts.adobe.com/fonts/darkmode-on)
+   *  reduce thickness in dark mode compared to light mode to ca 90%. For Inter weights, a stepping from 400 -> 500 equates
+   *  roughly a thickness increases of 20%. So for dark mode, we use 450. */
   font-weight: 450;
 }
 @mixin b-font-weight-bold()   { font-weight: 700; }
@@ -49,7 +49,7 @@ $b-color-scheme: dark;	/* only normal light dark */
 }
 $b-body-colors-inactive: zmod($b-grey80, a=80%);
 
-$b-color-tone: $b-grey50; // deprecated, use palette colors
+$b-color-tone: $b-grey50; /* deprecated, use palette colors */
 $b-grey-tone: oklch(from $b-color-tone 50% 20% h);
 
 $b-dialog-border-colors: $b-grey31;
@@ -84,33 +84,33 @@ $b-track-meter-gap: 1px;
 $b-lcdscreen-fg: #71cff2;
 $b-lcdscreen-bg: #001417;
 
-// == Color Theme ==
+/* == Color Theme == */
 $b-main-foreground: 	#f3f1f5;
 $b-main-background: 	lgrey(13%);
-$b-color-active:	#00e5ea; // #ff8811;
+$b-color-active:	#00e5ea; /* #ff8811; */
 $b-panel-foreground:	$b-main-foreground;
-$b-panel-background:	lgrey(36%); // also panel border
-$b-panel-focus:		lgrey(50%); // focused panel border
+$b-panel-background:	lgrey(36%); /* also panel border */
+$b-panel-focus:		lgrey(50%); /* focused panel border */
 $b-panel-borderwidth:	2px;
 $b-panel-border:	$b-panel-borderwidth solid $b-panel-background;
 $b-panel-spacing:	$b-panel-borderwidth;
 $b-devicepanel-bg:	lgrey(3%);
 $b-device-bg:		$b-panel-background;
-$b-device-handle:	lgrey(26%); // or, device-handle
+$b-device-handle:	lgrey(26%); /* or, device-handle */
 $b-device-area1:	lgrey(24%);
 $b-device-area2:	lgrey(28%);
 $b-choice-0-bg:		lgrey(50%);
-$b-choice-0-bh:		oklch(from $b-choice-0-bg calc(l + 0.125) c h); // highlight
-$b-choice-0-bl:		oklch(from $b-choice-0-bg calc(l + 0.08) c h); // light
-$b-choice-0-bd:		oklch(from $b-choice-0-bg calc(l - 0.075) c h);  // dark
+$b-choice-0-bh:		oklch(from $b-choice-0-bg calc(l + 0.125) c h); /* highlight */
+$b-choice-0-bl:		oklch(from $b-choice-0-bg calc(l + 0.08) c h); /* light */
+$b-choice-0-bd:		oklch(from $b-choice-0-bg calc(l - 0.075) c h);  /* dark */
 $b-toggle-0-bg:		$b-choice-0-bg;
 $b-toggle-0-bh:		$b-choice-0-bh;
 $b-toggle-0-bl:		$b-choice-0-bl;
 $b-toggle-0-bd:		$b-choice-0-bd;
 $b-toggle-1-bg:		oklch(from $b-color-active 63% c h);
-$b-toggle-1-bh:		oklch(from $b-toggle-1-bg calc(l + 0.115) c h); // highlight
-$b-toggle-1-bl:		oklch(from $b-toggle-1-bg calc(l + 0.07845) c h); // light
-$b-toggle-1-bd:		oklch(from $b-toggle-1-bg calc(l - 0.08) c h);  // dark
+$b-toggle-1-bh:		oklch(from $b-toggle-1-bg calc(l + 0.115) c h); /* highlight */
+$b-toggle-1-bl:		oklch(from $b-toggle-1-bg calc(l + 0.07845) c h); /* light */
+$b-toggle-1-bd:		oklch(from $b-toggle-1-bg calc(l - 0.08) c h);  /* dark */
 $b-trackrow-height:	3em;
 $b-tracklist-bg:	$b-device-area1;
 $b-tracklist-parts-bg:	$b-device-area2;
@@ -121,12 +121,12 @@ $b-clip-play-bg:	#0003;
 $b-modal-foreground:	lgrey(98.7%);
 $b-modal-background:	lgrey(18%);
 $b-modal-bordercol:	lgrey(36%);
-$b-scrollbar-size:      13px; // tweaked to match supported Firefox scrollbar size
-$b-scrollbar-bg:	#111; // track
-$b-scrollbar-dd:	#222; // inactive slider
-$b-scrollbar-fg:	#777; // hovered slider
+$b-scrollbar-size:      13px; /* tweaked to match supported Firefox scrollbar size */
+$b-scrollbar-bg:	#111; /* track */
+$b-scrollbar-dd:	#222; /* inactive slider */
+$b-scrollbar-fg:	#777; /* hovered slider */
 
-// == Basic Colors ==
+/* == Basic Colors == */
 $b-base-foreground: 		#f0f0f0 !default;
 $b-base-background: 		#202020 !default;
 $b-menu-foreground: 		#fcfcfc !default;
@@ -140,28 +140,28 @@ $b-menu-focus-fg: 		$b-menu-background !default;
 $b-menu-active-bg: 		$b-menu-foreground !default;
 $b-menu-active-fg: 		$b-menu-background !default;
 $b-menu-padding: 		0.3em;
-$b-menu-spacing: 		0.75em;	// icon spacing
-$b-menu-tightspace: 		0.3em;	// icon spacing when packed
+$b-menu-spacing: 		0.75em;	/* icon spacing */
+$b-menu-tightspace: 		0.3em;	/* icon spacing when packed */
 $b-menu-box-shadow: 		0 0 13px 1px #0005;
-$b-menu-vpad:			5px;	// vertical border/margin around a menuitem
-$b-menu-hpad:			1em;	// horizontal border/margin around a menuitem
+$b-menu-vpad:			5px;	/* vertical border/margin around a menuitem */
+$b-menu-hpad:			1em;	/* horizontal border/margin around a menuitem */
 $b-style-focus-color:		#0080ff !default;
 $b-style-light-foreground:	$b-main-foreground !default;
 $b-style-dark-outline:		#181818 !default;
 $b-style-modal-overlay:		#0000008c;
 
-$b-style-fg-secondary: #ccc !default;			// secondary foreground, for details / fineprint
+$b-style-fg-secondary: #ccc !default;			/* secondary foreground, for details / fineprint */
 $b-style-fg-warning:   #f80 !default;
 $b-style-fg-notice:    #fc0 !default;
-$b-style-fg-filter:    brightness(66%) !default;	// adjust style-fg in inverted focus/active contexts
+$b-style-fg-filter:    brightness(66%) !default;	/* adjust style-fg in inverted focus/active contexts */
 
-// == BrowserWindow Defaults ==
-$b-default-background-color:	$b-main-background;	// #rrggbb needed
+/* == BrowserWindow Defaults == */
+$b-default-background-color:	$b-main-background;	/* #rrggbb needed */
 
-// theme basics
+/* theme basics */
 $b-theme-foreground: 		$b-main-foreground;
 $b-theme-background: 		$b-main-background;
-$b-main-border-light:		oklch(from $b-base-background calc(l * 1.09) c h) !default;	// used for modal border
+$b-main-border-light:		oklch(from $b-base-background calc(l * 1.09) c h) !default;	/* used for modal border */
 $b-main-border-dark:		oklch(from $b-base-background calc(l * 0.91) c h) !default;
 $b-toolbar-background:		#606060 !default;
 $b-toolbar-background-lg:	linear-gradient(to bottom, #666666 0%, #5a5a5a 100%) !default;

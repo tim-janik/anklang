@@ -1,9 +1,9 @@
-// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+/* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
-// == Variables ==
-// Only put *!default* definitions here, so `theme.scss` takes precedence.
+/* == Variables ==
+ *  Only put *!default* definitions here, so `theme.scss` takes precedence. */
 
-// == h-flex ==
+/* == h-flex == */
 @mixin h-flex() {
   display: flex; flex-basis: auto; flex-flow: row nowrap;
   align-items: stretch; align-content: stretch;
@@ -13,29 +13,29 @@
   align-items: stretch; align-content: stretch;
 }
 
-// == Hotkey ==
+/* == Hotkey == */
 @mixin b-kbd-hotkey($border: true) {
   font-family: $b-font-stack-kbd-mono;
   font-weight: 600;
   font-size: calc(1em - 2px);
   letter-spacing: 1px;
-  //* text-transform: uppercase; text-transform: lowercase; font-variant: small-caps; */
+  /* text-transform: uppercase; text-transform: lowercase; font-variant: small-caps; */
   border-radius: 0.5em;
   @if not $border {}
   @else {
-    background: lgrey(30%); border: 1px outset lgrey(50%); color: lgrey(95%); // #3 #5 #e
+    background: lgrey(30%); border: 1px outset lgrey(50%); color: lgrey(95%); /* #3 #5 #e */
   }
 }
 
-// == Markdown Styling ==
+/* == Markdown Styling == */
 @mixin b-markdown-it-inlined($maywrap: true)	{
-  // avoid all margins and padding, make elements suitable for 'inline' layouts
+  /* avoid all margins and padding, make elements suitable for 'inline' layouts */
   h1,h2,h3,h4,h5,h6 { font-size: inherit; padding: 0; margin: 0; }
   p { margin: 0; }
   ul { padding-left: 1em; }
 }
 
-// == Scrollbars ==
+/* == Scrollbars == */
 @mixin firefox-scrollbars() {
   scrollbar-color: $b-scrollbar-dd $b-scrollbar-bg;
   :hover,
@@ -72,12 +72,12 @@
   @include firefox-scrollbars();
 }
 @mixin transparent-scrollbars() {
-  // chrome
+  /* chrome */
   &::-webkit-scrollbar-button { display: none; }
   &::-webkit-scrollbar-track, &::-webkit-scrollbar-track-piece, &::-webkit-scrollbar-corner, &::-webkit-scrollbar {
     background: rgb(0 0 0 / 0%);
     border: none; box-shadow: none;
   }
-  // firefox
+  /* firefox */
   scrollbar-color: $b-scrollbar-dd rgb(0 0 0 / 0%);
 }

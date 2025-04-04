@@ -1,15 +1,15 @@
-// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+/* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
 @import 'dark.css';
 
-// == Status Bar ==
+/* == Status Bar == */
 $b-statusbar-bg: $b-main-background;
 $b-statusbar-field-spacing: 0.5em;
 $b-statusbar-text-color: $b-main-foreground;
 $b-statusbar-text-shade: oklch(from $b-statusbar-text-color calc(l * 0.75) c h);
 $b-statusbar-separator-shade: oklch(from $b-statusbar-text-color calc(l * 0.5) c h);
-$b-statusbar-icon-brightness: 0.9; // dim non-active
-$b-statusbar-icon-scaleup: 1.1;    // enlarge active
+$b-statusbar-icon-brightness: 0.9; /* dim non-active */
+$b-statusbar-icon-scaleup: 1.1;    /* enlarge active */
 @mixin b-statusbar-vseparator {
   $groove-tint:  oklch(from $b-statusbar-bg calc(l + 0.593) c h);
   $groove-shade: oklch(from $groove-tint calc(l - 0.33) c h);
@@ -17,19 +17,19 @@ $b-statusbar-icon-scaleup: 1.1;    // enlarge active
   border-right: 1px solid $groove-tint;
 }
 
-// == Animations ==
+/* == Animations == */
 $b-transition-fast-slide: 0.15s !default;
 
-// == Handles ==
+/* == Handles == */
 $b-resize-handle-thickness: 5px !default;
 $b-resize-handle-bgcolor:   #555 !default;
 $b-resize-handle-hvcolor:   #bbb !default;
 $b-resize-handle-border:    1.5px solid #111 !default;
 
-// == focus ==
+/* == focus == */
 $b-focus-outline-width: 1px !default;
 $b-focus-outline:       $b-focus-outline-width solid $b-style-focus-color !default;
-$b-focus-box-shadow:    0 0 0 1px $b-style-focus-color !default; // suitable for rounded outlines
+$b-focus-box-shadow:    0 0 0 1px $b-style-focus-color !default; /* suitable for rounded outlines */
 @mixin b-focus-outline($asborder: false)  {
   outline: 0 none;
   margin: 1px;
@@ -46,7 +46,7 @@ $b-focus-box-shadow:    0 0 0 1px $b-style-focus-color !default; // suitable for
   }
 }
 
-// == Outset / Inset ==
+/* == Outset / Inset == */
 $b-style-inset-background-1:  #1b1b1b !default;
 $b-style-inset-background-2:  #202020 !default;
 $b-style-inset-background-0:  mix($b-style-inset-background-1, $b-style-inset-background-2) !default;
@@ -54,12 +54,12 @@ $b-style-inset-background:    linear-gradient(to bottom, $b-style-inset-backgrou
 $b-style-inset-glint-1:       $b-style-inset-background-1 !default;
 $b-style-inset-glint-2:       #383838 !default;
 @mixin b-style-inset {
-  //* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
+  /* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
   border-color: $b-style-inset-background-1 $b-style-inset-background-0 $b-style-inset-background-2 $b-style-inset-background-0;
   border-left: 0px !important; border-right: 0px !important; border-radius: $b-button-radius;
-  color: $b-style-light-foreground; outline: none; //* focus is handled via box-shadow */
+  color: $b-style-light-foreground; outline: none; /* focus is handled via box-shadow */
   background-color: $b-style-inset-background-0; background: $b-style-inset-background;
-  //* The inset is implemented similarly to b-style-outset */
+  /* The inset is implemented similarly to b-style-outset */
   box-shadow: 0px -1px 0 0px $b-style-inset-glint-1, 0px -1px 0 1px $b-style-dark-outline, 0 0px 0 1px $b-style-dark-outline, 0px 2px 0px 0px $b-style-inset-glint-2;
   &:focus { box-shadow: 0px -1px 0 0px $b-style-inset-glint-1, 0px -1px 0 1px $b-style-focus-color, 0 0px 0 1px $b-style-focus-color, 0px 2px 0px 0px $b-style-inset-glint-2; }
 }
@@ -75,12 +75,12 @@ $b-style-outset-activebg-0:     mix($b-style-outset-activebg-1, $b-style-outset-
 $b-style-outset-activebg:       linear-gradient(to bottom, $b-style-outset-activebg-1, $b-style-outset-activebg-2);
 $b-style-outset-activebg-glint: $b-style-outset-activebg-2 !default;
 @mixin b-style-outset {
-  //* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
+  /* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
   border-color: $b-style-outset-background-1 $b-style-outset-background-0 $b-style-outset-background-2 $b-style-outset-background-0;
   border-left: 0px !important; border-right: 0px !important; border-radius: $b-button-radius;
-  color: $b-style-light-foreground; outline: none; //* focus is handled via box-shadow */
+  color: $b-style-light-foreground; outline: none; /* focus is handled via box-shadow */
   background-color: $b-style-outset-background-0; background: $b-style-outset-background;
-  //* The outset is implemented by adding a dark shadow around, and light shadows above and below */
+  /* The outset is implemented by adding a dark shadow around, and light shadows above and below */
   box-shadow: 0px -1px 0 0px $b-style-outset-glint-1, 0px -1px 0 1px $b-style-dark-outline, 0 0px 0 1px $b-style-dark-outline, 0px 2px 0px 0px $b-style-outset-glint-2;
   &:focus { box-shadow: 0px -1px 0 0px $b-style-outset-glint-1, 0px -1px 0 1px $b-style-focus-color, 0 0px 0 1px $b-style-focus-color, 0px 2px 0px 0px $b-style-outset-glint-2; }
   &.active, &:active, &[data-contextmenu="true"] {
@@ -90,9 +90,9 @@ $b-style-outset-activebg-glint: $b-style-outset-activebg-2 !default;
   }
 }
 
-// == Buttons ==
+/* == Buttons == */
 $b-buttonbar-height: 1em;
-// softbutton is an almost flat button with subtle outlines
+/* softbutton is an almost flat button with subtle outlines */
 $b-softbutton-bg: #585858;
 $b-softbutton-border-color: oklch(from $b-softbutton-bg calc(l + 0.135) c h);
 $b-softbutton-bgl: oklch(from $b-softbutton-bg calc(l + 0.017) c h);
@@ -122,7 +122,7 @@ $b-softbutton-lg-down: linear-gradient(to top, $b-softbutton-bgd, $b-softbutton-
   place-content: stretch center;
   border: 1px inset $b-softbutton-border-color;
 }
-// singlebutton is a seperately standing button wich clearly looks clickable
+/* singlebutton is a seperately standing button wich clearly looks clickable */
 $b-singlebutton-fg:   $b-modal-foreground;
 $b-singlebutton-fgd:  oklch(from $b-singlebutton-fg calc(l - 0.035) c h);
 $b-singlebutton-bg:   lgrey(42.6%);
@@ -161,41 +161,41 @@ $focus-outline-col: $b-glow-control;
   }
 }
 
-// == Timeline ==
+/* == Timeline == */
 $b-timeline-outer-height: 3em;
 
-// == piano roll ==
-$b-scrollboundary-color: #111;	// dark boundary next to scrollable areas, should be (nearly) black
+/* == piano roll == */
+$b-scrollboundary-color: #111;	/* dark boundary next to scrollable areas, should be (nearly) black */
 $b-piano-roll-num-color:	#eeeeee !default;
-$b-piano-roll-white-base:   	#bbbbbb;			// base color for white piano key
-$b-piano-roll-black-base:   	#181818;			// base color for black piano key
-$b-piano-roll-dark-row:     	lgrey(16%);   			// background row color for notes
-$b-piano-roll-light-row:    	lgrey(20%);   			// background row color for notes
-$b-piano-roll-note-color:	#88cc88b0;			// color(15,65%,25%);
+$b-piano-roll-white-base:   	#bbbbbb;			/* base color for white piano key */
+$b-piano-roll-black-base:   	#181818;			/* base color for black piano key */
+$b-piano-roll-dark-row:     	lgrey(16%);   			/* background row color for notes */
+$b-piano-roll-light-row:    	lgrey(20%);   			/* background row color for notes */
+$b-piano-roll-note-color:	#88cc88b0;			/* color(15,65%,25%); */
 $b-piano-roll-note-focus-color:	 #aaf8;
 $b-piano-roll-note-focus-border: #f0f0f0;
-$b-piano-roll-indicator:	 #bbfc;				// color for play position indicator
+$b-piano-roll-indicator:	 #bbfc;				/* color for play position indicator */
 
-// == input[type='number'] ==
+/* == input[type='number'] == */
 @mixin b-style-number-input() {
   @include b-style-inset();
-  // Assign webkit spin-button arrows that fit the theme
+  /* Assign webkit spin-button arrows that fit the theme */
   &::-webkit-inner-spin-button {
-    -webkit-appearance: none; // allow customizations
+    -webkit-appearance: none; /* allow customizations */
     width: 9px; margin-left: 5px; margin-right: $b-button-radius;
     background: transparent url('../assets/spin-arrows.svg') no-repeat center center !important;
     background-size: 100% 100% !important;
     opacity: .5;
     &:hover { opacity: .99; }
   }
-  // Mozilla spin button arrows are ugly in dark themes
+  /* Mozilla spin button arrows are ugly in dark themes */
   html[gecko] & {
     padding-right: 3px;
     -moz-appearance: textfield;
   }
 }
 
-// == input[type=range] ==
+/* == input[type=range] == */
 @mixin b-style-hrange-track() {
   -webkit-appearance: none;
   width: 100%; height: 7px; cursor: pointer;

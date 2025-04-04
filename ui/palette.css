@@ -1,6 +1,6 @@
-// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+/* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
-// Palette of greys & colors with slightly lighter and darker variants
+/* Palette of greys & colors with slightly lighter and darker variants */
 $b-grey100: #ffffff; $b-grey100l: #ffffff; $b-grey100d: #fdfdfd;
 $b-grey95: #f0f0f0; $b-grey95l: #f3f2f2; $b-grey95d: #eeeeed;
 $b-grey90: #e2e1e1; $b-grey90l: #e4e3e3; $b-grey90d: #e0dfdf;
