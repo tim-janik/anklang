@@ -34,7 +34,7 @@ $fsf: 1.05; //* font size factor */
     white-space: normal; margin: 0;
     max-width: 40em; border-radius: 3px;
     // border: dppx(2) solid zmod($b-data-bubble-bg2, Jz+=5%);
-    box-shadow: 0 0 0 1px fade($b-data-bubble-br, 0.8), 0px 0px 2px 1px black;
+    box-shadow: 0 0 0 1px oklab(from $b-data-bubble-br l a b / 0.8), 0px 0px 2px 1px black;
     color: $b-data-bubble-fg; padding: 0.5em 0.5em 0.4em;
     background: $b-data-bubble-bg;
     background-image: linear-gradient(to bottom right, $b-data-bubble-bg, $b-data-bubble-bg2);
