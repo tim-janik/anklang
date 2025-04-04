@@ -4,13 +4,13 @@
 $b-statusbar-bg: $b-main-background;
 $b-statusbar-field-spacing: 0.5em;
 $b-statusbar-text-color: $b-main-foreground;
-$b-statusbar-text-shade: zmod($b-statusbar-text-color, Jz-=25%);
-$b-statusbar-separator-shade: zmod($b-statusbar-text-color, Jz-=50%);
+$b-statusbar-text-shade: oklch(from $b-statusbar-text-color calc(l * 0.75) c h);
+$b-statusbar-separator-shade: oklch(from $b-statusbar-text-color calc(l * 0.5) c h);
 $b-statusbar-icon-brightness: 0.9; // dim non-active
 $b-statusbar-icon-scaleup: 1.1;    // enlarge active
 @mixin b-statusbar-vseparator {
-  $groove-tint:  zmod($b-statusbar-bg, Jz+=59.3);
-  $groove-shade: zmod($groove-tint, Jz-=33);
+  $groove-tint:  oklch(from $b-statusbar-bg calc(l + 0.593) c h);
+  $groove-shade: oklch(from $groove-tint calc(l - 0.33) c h);
   border-left:  1px solid $groove-shade;
   border-right: 1px solid $groove-tint;
 }
@@ -92,9 +92,9 @@ $b-style-outset-activebg-glint: $b-style-outset-activebg-2 !default;
 $b-buttonbar-height: 1em;
 // softbutton is an almost flat button with subtle outlines
 $b-softbutton-bg: #585858;
-$b-softbutton-border-color: zmod($b-softbutton-bg, Jz+=13.5);
-$b-softbutton-bgl: zmod($b-softbutton-bg, Jz+=1.7);
-$b-softbutton-bgd: zmod($b-softbutton-bg, Jz-=1.7);
+$b-softbutton-border-color: oklch(from $b-softbutton-bg calc(l + 0.135) c h);
+$b-softbutton-bgl: oklch(from $b-softbutton-bg calc(l + 0.017) c h);
+$b-softbutton-bgd: oklch(from $b-softbutton-bg calc(l - 0.017) c h);
 $b-softbutton-lg-up: linear-gradient(to bottom, $b-softbutton-bgd, $b-softbutton-bgl);
 $b-softbutton-lg-down: linear-gradient(to top, $b-softbutton-bgd, $b-softbutton-bgl);
 @mixin b-softbutton() {
@@ -122,13 +122,13 @@ $b-softbutton-lg-down: linear-gradient(to top, $b-softbutton-bgd, $b-softbutton-
 }
 // singlebutton is a seperately standing button wich clearly looks clickable
 $b-singlebutton-fg:   $b-modal-foreground;
-$b-singlebutton-fgd:  zmod($b-singlebutton-fg, Jz-=3.5);
+$b-singlebutton-fgd:  oklch(from $b-singlebutton-fg calc(l - 0.035) c h);
 $b-singlebutton-bg:   lgrey(42.6%);
-$b-singlebutton-bgl:  zmod($b-singlebutton-bg, Jz+=7.2);
-$b-singlebutton-bgd:  zmod($b-singlebutton-bg, Jz-=7.2);
+$b-singlebutton-bgl:  oklch(from $b-singlebutton-bg calc(l + 0.072) c h);
+$b-singlebutton-bgd:  oklch(from $b-singlebutton-bg calc(l - 0.072) c h);
 $b-singlebutton-lg:   linear-gradient(to top, $b-singlebutton-bgd, $b-singlebutton-bgl);
-$b-singlebutton-dark: linear-gradient(to bottom, zmod($b-singlebutton-bgd, Jz-=1.7), $b-singlebutton-bgd);
-$b-singlebutton-border-color: zmod($b-singlebutton-bg, Jz-=32.5);
+$b-singlebutton-dark: linear-gradient(to bottom, oklch(from $b-singlebutton-bgd calc(l - 0.017) c h), $b-singlebutton-bgd);
+$b-singlebutton-border-color: oklch(from $b-singlebutton-bg calc(l - 0.325) c h);
 $focus-outline-col: $b-glow-control;
 @mixin b-singlebutton($vpad: 5px, $hpad: 5px) {
   background: $b-singlebutton-lg;
@@ -141,7 +141,7 @@ $focus-outline-col: $b-glow-control;
   &.active, &:active, &[data-contextmenu="true"] {
     background: $b-singlebutton-dark;
     color: $b-singlebutton-fgd;
-    border-color: zmod($b-singlebutton-border-color, Jz+=3.7);
+    border-color: oklch(from $b-singlebutton-border-color calc(l + 0.037) c h);
     /*border-style: solid;*/
     box-shadow: inset 500px 500px rgba(0, 0, 0, 0.05);
   }
@@ -150,7 +150,7 @@ $focus-outline-col: $b-glow-control;
     box-shadow: 0 0 0 1px $focus-outline-col;
     &.active, &:active, &[data-contextmenu="true"] {
       outline: none;
-      box-shadow: 0 0 0 1px zmod($focus-outline-col, Jz-=3);
+      box-shadow: 0 0 0 1px oklch(from $focus-outline-col calc(l - 0.03) c h);
     }
   }
   &[disabled] {

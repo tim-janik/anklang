@@ -62,7 +62,7 @@ b-trackview {
   }
 }
 b-trackview[current-track] .b-trackview-control {
-  background-color: zmod($b-button-border, Jz+=25%);
+  background-color: oklch(from $b-button-border calc(l * 1.25) c h);
 }`;
 
 // == HTML ==

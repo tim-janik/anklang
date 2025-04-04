@@ -17,15 +17,15 @@ b-positionview { @include h-flex(); }
 b-positionview {
   $b-positionview-fg: $b-lcdscreen-fg;
   $b-positionview-bg: $b-lcdscreen-bg;
-  $b-positionview-b0: zmod($b-positionview-bg,Jz-=1);
-  $b-positionview-b1: zmod($b-positionview-bg,Jz+=1);
+  $b-positionview-b0: oklch(from $b-positionview-bg calc(l - 0.01) c h);
+  $b-positionview-b1: oklch(from $b-positionview-bg calc(l + 0.01) c h);
   margin: 0; padding: 5px 1em;
   letter-spacing: 0.05em;
   border-radius: $b-button-radius; align-items: baseline;
-  border-top:    1px solid zmod($b-positionview-bg, Jz-=3%);
-  border-left:   1px solid zmod($b-positionview-bg, Jz-=3%);
-  border-right:  1px solid zmod($b-positionview-bg, Jz+=3%);
-  border-bottom: 1px solid zmod($b-positionview-bg, Jz+=3%);
+  border-top:    1px solid oklch(from $b-positionview-bg calc(l * 0.97) c h);
+  border-left:   1px solid oklch(from $b-positionview-bg calc(l * 0.97) c h);
+  border-right:  1px solid oklch(from $b-positionview-bg calc(l * 1.03) c h);
+  border-bottom: 1px solid oklch(from $b-positionview-bg calc(l * 1.03) c h);
   background-color: $b-positionview-bg;
   background: linear-gradient(to bottom, $b-positionview-b0 0%, $b-positionview-b1 100%);
   color: $b-positionview-fg;

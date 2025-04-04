@@ -74,7 +74,7 @@ dialog.b-contextmenu {
   @apply flex-col items-stretch justify-start overflow-y-auto overflow-x-hidden p-2;
   color: $b-menu-foreground;
   background-color: $b-menu-background;
-  border: 1px outset zmod($b-menu-background, Jz-=20%);
+  border: 1px outset oklch(from $b-menu-background calc(l * 0.8) c h);
   box-shadow: $b-menu-box-shadow;
   display: flex;
   &:not([open]) { display: none; }
@@ -88,7 +88,7 @@ b-contextmenu :is(button, push-button, summary) {
   @apply hflex flex-nowrap items-stretch px-4 py-1 text-left;
   background: transparent; color: $b-menu-foreground; border: 1px solid transparent;
   cursor: pointer; user-select: none; outline: none;
-  kbd { flex-grow: 1; color: zmod($b-menu-foreground, Jz-=15); }
+  kbd { flex-grow: 1; color: oklch(from $b-menu-foreground calc(l - 0.15) c h); }
   > b-icon:first-child {
     margin: 0 0.75rem 0 0;
     width: 2rem; height: 1rem;
@@ -116,14 +116,14 @@ b-contextmenu b-menurow button {
 b-contextmenu button:focus {
   background-color: $b-menu-focus-bg; color: $b-menu-focus-fg; outline: none;
   kbd { color: inherit; }
-  border: 1px solid zmod($b-menu-focus-bg, Jz-=50%);
+  border: 1px solid oklch(from $b-menu-focus-bg calc(l * 0.5) c h);
   b-icon { color: $b-menu-focus-fg; }
 }
 b-contextmenu :is(button.active, button:focus.active, button:focus:active, button:active) {
   background-color: $b-menu-active-bg; color: $b-menu-active-fg; outline: none;
   kbd { color: inherit; }
   b-icon { color: $b-menu-active-fg; }
-  border: 1px solid zmod($b-menu-active-bg, Jz-=50%);
+  border: 1px solid oklch(from $b-menu-active-bg calc(l * 0.5) c h);
 }`;
 
 // == HTML ==

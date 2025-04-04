@@ -54,7 +54,7 @@
   :hover,
   &:hover {
     ::-webkit-scrollbar-thumb {
-      background: $b-scrollbar-fg; background: linear-gradient(zmod($b-scrollbar-fg, Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%));
+      background: $b-scrollbar-fg; background: linear-gradient(oklch(from $b-scrollbar-fg calc(l * 1.1) c h), oklch(from $b-scrollbar-fg calc(l * 0.9) c h));
     }
   }
 }
@@ -66,7 +66,7 @@
   &:hover {
     ::-webkit-scrollbar-thumb {
       background: $b-scrollbar-fg;
-      background: linear-gradient(zmod($b-scrollbar-fg, Jz+=10%), zmod($b-scrollbar-fg, Jz-=10%));
+      background: linear-gradient(oklch(from $b-scrollbar-fg calc(l * 1.1) c h), oklch(from $b-scrollbar-fg calc(l * 0.9) c h));
     }
   }
   @include firefox-scrollbars();
