@@ -5,8 +5,25 @@
   <meta charset="UTF-8">
   <title>Anklang - Music Synthesizer and Composer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="favicon.ico">
   <style> @font-face { font-family: "InterVariable"; font-display: swap; src: url("InterVariable.woff2") format("woff2-variations"); } </style>
-  <style type="text/css" data-4litcomponent>@import url("global.css?csshash=@--CSSHASH--@");</style>
+  <script type="module">
+  /* Avoid nested CSS imports, b/c stylelint under vite & postcss gets confused about locations.
+   * Instead, move all CSS imports here and use `@reference "./tailwind.css";` when the TW config
+   * must be known for `@apply`.
+   */
+  import './tailwind.css';
+  import './palette.css';
+  import './dark.css';
+  import './theme.css';
+  import './cursors/cursors.css';
+  import '/gen/assets/material-icons.css';
+  import '/gen/assets/AnklangIcons.css';
+  import '/gen/assets/fork-awesome.css';
+  import '/gen/assets/spinner.css';
+  import './mixins.css';
+  import './global.css';
+  </script>
   <script> { "use strict"; // Early globals
     Object.defineProperty (globalThis, '_', { value: t9n => t9n });
     Object.defineProperty (globalThis, 'CONFIG', { value: __VITE_CONFIG__ });
