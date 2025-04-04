@@ -1,15 +1,21 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
 /* == TailwindCSS reset, components, utils == */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* Note, Tailwind is run and configured via PostCSS.
- * The rules in here assume a dark color alias or scheme named "dim" is provided.
- * The values are accesible as theme('colors.dim.*').
- */
-
+@theme {
+  --color-dim-50:  #f9f9ff;
+  --color-dim-100: #f3f3fe;
+  --color-dim-200: #e3e3ef;
+  --color-dim-300: #c7c7d2;
+  --color-dim-400: #a0a0aa;
+  --color-dim-500: #76767f;
+  --color-dim-600: #515159;
+  --color-dim-700: #36363e;
+  --color-dim-800: #26262e;
+  --color-dim-900: #16161e;
+  --color-dim-950: #07060f;
+}
 
 /* == Reset and Basics == */
 @layer base {
@@ -31,144 +37,126 @@ p		{ user-select: text; }
 /* Default focus outline */
 html {
   --focus-outline-width: 2px;
-  --focus-outline-color: theme('colors.cyan.500');	/* #0080cc #0080ff */
+  --focus-outline-color: var(--color-cyan-500);	/* #0080cc #0080ff */
 }
-.focus-outline	{ outline: var(--focus-outline-width) solid var(--focus-outline-color); }
 :focus,
-:focus-visible	{ @apply focus-outline; }
+:focus-visible,
+.focus-outline	{ outline: var(--focus-outline-width) solid var(--focus-outline-color); }
 
-/* == Components (functional classes) == */
-@layer components {
-
-/* Horizontal & vertical flexbox */
-.hflex { @apply flex flex-row; }
-.vflex { @apply flex flex-col; }
-
-/* Backdrop useful for modal dialogs, lightens up to make shadows visible in dark mode. */
-.modal-backdrop {
+/* == Utilities (CSS classes) == */
+@utility hflex {
+  /* Horizontal flexbox */
+  @apply flex flex-row;
+}
+@utility vflex {
+  /* Vertical flexbox */
+  @apply flex flex-col;
+}
+@utility modal-backdrop {
+  /* Backdrop useful for modal dialogs, lightens up to make shadows visible in dark mode. */
   @apply backdrop:bg-gray-500/30 backdrop:backdrop-brightness-50;
 }
-
-/* Backdrop for modal dialogs, with XL shadow. */
-.backdrop\+shadow-xl {
+@utility backdrop-and-shadow-xl {
+  /* Backdrop for modal dialogs, with XL shadow. */
   @apply modal-backdrop;
   box-shadow: 0 25px 50px 0px #000000cc;
 }
-
-/* Styling for floating modal dialogs with colors, backdrop, rounded, etc. */
-.floating-dialog {
+@utility floating-dialog {
+  /* Styling for floating modal dialogs with colors, backdrop, rounded, etc. */
   @apply
-    backdrop+shadow-xl
-    vflex border-b-dim-900 border-l-dim-800/50 border-r-dim-800/50 border-t-dim-700 bg-dim-800 text-dim-300
+    backdrop-and-shadow-xl
+    vflex border-b-[var(--color-dim-900)] border-l-[var(--color-dim-800/50)] border-r-[var(--color-dim-800/50)] border-t-[var(--color-dim-700)] bg-[var(--color-dim-800)] text-[var(--color-dim-300)]
     rounded-2xl border-2 px-4 backdrop:bg-gray-500/30 backdrop:backdrop-brightness-50;
 }
-
-/* Use `::after` pseudo element to simulate an indented <hr/> groove at the bottom. */
-.groove-below {
+@utility groove-below {
+  /* Use `::after` pseudo element to simulate an indented <hr/> groove at the bottom. */
   @apply
-    after:border-b-dim-700 after:border-t-dim-900 relative after:pointer-events-none
+    after:border-b-[var(--color-dim-700)] after:border-t-[var(--color-dim-900)] relative after:pointer-events-none
     after:absolute after:inset-x-[15%] after:bottom-[0] after:h-0 after:border-b-2 after:border-t-2;
 }
-
-/* Use `::before` pseudo element to simulate an indented <hr/> groove at the top. */
-.groove-above {
+@utility groove-above {
+  /* Use `::before` pseudo element to simulate an indented <hr/> groove at the top. */
   @apply
-    before:border-b-dim-700 before:border-t-dim-900 relative before:pointer-events-none
+    before:border-b-[var(--color-dim-700)] before:border-t-[var(--color-dim-900)] relative before:pointer-events-none
     before:absolute before:inset-x-[15%] before:top-[0] before:h-0 before:border-b-2 before:border-t-2;
 }
-
-/* Style for dialog header containers. */
-.dialog-header {
+@utility dialog-header {
+  /* Style for dialog header containers. */
   @apply groove-below mb-8 py-6 text-center text-2xl font-bold leading-6;
 }
-
-/* Style for dialog footer containers. */
-.dialog-footer {
+@utility dialog-footer {
+  /* Style for dialog footer containers. */
   @apply groove-above mt-8 flex justify-center py-6 text-center leading-6;
   > button { margin: 0 1em; }
 }
-
-/* Style for buttons with hover, disabled, potentially focussable, see also .button-down. */
-.button-dim {
+@utility button-dim {
+  /* Style for buttons with hover, disabled, potentially focussable, see also .button-down. */
   /* button shading */
   box-shadow:    0 0 0 2px #00000088;
-  border-top:    1px solid color-mix(in oklab, theme('colors.dim.600'), #fff 25%);
-  border-left:   1px solid color-mix(in oklab, theme('colors.dim.600'), #fff 25%);
-  border-bottom: 1px solid color-mix(in oklab, theme('colors.dim.600'), #000 20%);
-  border-right:  1px solid color-mix(in oklab, theme('colors.dim.600'), #000 20%);
+  border-top:    1px solid color-mix(in oklab, var(--color-dim-600), #fff 25%);
+  border-left:   1px solid color-mix(in oklab, var(--color-dim-600), #fff 25%);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-dim-600), #000 20%);
+  border-right:  1px solid color-mix(in oklab, var(--color-dim-600), #000 20%);
   background-image:
     linear-gradient(to bottom,
-		    color-mix(in oklab, theme('colors.dim.600'), #fff 5%) 0%,
-		    color-mix(in oklab, theme('colors.dim.600'), #000 9%) 100%);
+		    color-mix(in oklab, var(--color-dim-600), #fff 5%) 0%,
+		    color-mix(in oklab, var(--color-dim-600), #000 9%) 100%);
   &:hover { box-shadow: 0 0 0 2px #00000088, inset 500px 500px #ffffff08; }
   &:focus { outline: 1px solid #0080cc; }
   &[disabled], &[inert] {
     box-shadow: 0 0 0 2px #00000044;
-    border: 1px solid color-mix(in oklab, theme('colors.dim.600'), #fff 5%);
+    border: 1px solid color-mix(in oklab, var(--color-dim-600), #fff 5%);
     background-image:
       linear-gradient(to bottom,
-		      color-mix(in oklab, theme('colors.dim.700'), #fff 9%) 0%,
-		      color-mix(in oklab, theme('colors.dim.700'), #fff 9%) 100%);
-    color: theme('colors.dim.500');
+		      color-mix(in oklab, var(--color-dim-700), #fff 9%) 0%,
+		      color-mix(in oklab, var(--color-dim-700), #fff 9%) 100%);
+    color: var(--color-dim-500);
     pointer-events: none;
   }
 }
-
-/* Style for buttons to look active. */
-.button-active {
+@utility button-active {
+  /* Style for buttons to look active. */
   box-shadow: 0 0 0 2px #00000088;
-  border-bottom: 1px solid color-mix(in oklab, theme('colors.dim.700'), #fff 15%);
-  border-right:  1px solid color-mix(in oklab, theme('colors.dim.700'), #fff 15%);
-  border-top:    1px solid color-mix(in oklab, theme('colors.dim.700'), #000 20%);
-  border-left:   1px solid color-mix(in oklab, theme('colors.dim.700'), #000 20%);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-dim-700), #fff 15%);
+  border-right:  1px solid color-mix(in oklab, var(--color-dim-700), #fff 15%);
+  border-top:    1px solid color-mix(in oklab, var(--color-dim-700), #000 20%);
+  border-left:   1px solid color-mix(in oklab, var(--color-dim-700), #000 20%);
   background-image:
     linear-gradient(to bottom,
-		    color-mix(in oklab, theme('colors.dim.600'), #000 9%) 0%,
-		    color-mix(in oklab, theme('colors.dim.600'), #fff 4%) 100%);
+		    color-mix(in oklab, var(--color-dim-600), #000 9%) 0%,
+		    color-mix(in oklab, var(--color-dim-600), #fff 4%) 100%);
 }
-
-/* Style for buttons with hover .active, disabled, potentially focussable. */
-.button-down {
+@utility button-down {
+  /* Style for buttons with hover .active, disabled, potentially focussable. */
   @apply button-dim active:button-active;
   &.active { /* Adding class="active" allows buttons during click() to simulate being pressed */
     @apply button-active;
   }
 }
-
-/* Style for buttons to appear active in state focus-within. */
-.button-down-within {
+@utility button-down-within {
+  /* Style for buttons to appear active in state focus-within. */
   @apply button-down focus-within:button-active;
 }
-
-/* Style for buttons in dialogs, potentially focussable. */
-.button-xl {
+@utility button-xl {
+  /* Style for buttons in dialogs, potentially focussable. */
   @apply hflex button-down m-0 justify-center px-1 py-1 align-middle;
   min-width: 7rem;
 }
-
-} /* @layer components */
-
-
-/* == Utilities (small CSS helpers) == */
-@layer utilities {
-
-/* Utility for a 1px border. */
-.border-1	{ border-width: 1px; }
-
-/** The <h-flex> element is a horizontal [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
- * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
- */
-.hflex {
+@utility border-1 {
+  /* Utility for a 1px border. */
+  border-width: 1px;
+}
+@utility hflex {
+  /** The <h-flex> element is a horizontal [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
+   * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
+   */
   @apply flex basis-auto flex-row flex-nowrap items-stretch;
   align-content: stretch;
 }
-
-/** The <v-flex> element is a vertical [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
- * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
- */
-.vflex {
+@utility vflex {
+  /** The <v-flex> element is a vertical [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
+   * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
+   */
   @apply flex basis-auto flex-col flex-nowrap items-stretch;
   align-content: stretch;
 }
-
-} /* @layer utilities */
