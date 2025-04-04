@@ -58,7 +58,6 @@ export default [
 	Data: false,
 	Shell: false,
 	CONFIG: false,
-	Vue: false,
 	__DEV__: false,
 	debug: false,
 	assert: false,

@@ -21,7 +21,8 @@ import { Signal, State, Computed, Watcher, tracking_wrapper } from "../signal.js
 export class AppClass {
   panel2_types = [ 'd' /*devices*/, 'p' /*pianoroll*/ ];
   panel3_types = [ 'i' /*info*/, 'b' /*browser*/ ];
-  constructor (vue_app) {
+  constructor ()
+  {
     // super();
     { // mimick familiar LitComponent API
       let update_queued = false;
@@ -35,8 +36,6 @@ export class AppClass {
       };
       this.updated = tracking_wrapper (this.request_update, this.updated.bind (this));
     }
-    // legacy (mostly for Vue interop compat), Data should become App once Vue is gone
-    this.vue_app = vue_app;
     const data = {
       project: null,
       mtrack: null, // master track
@@ -49,8 +48,6 @@ export class AppClass {
     this.data = Vue.reactive (data);
     Object.defineProperty (globalThis, 'App', { value: this });
     Object.defineProperty (globalThis, 'Data', { value: this.data });
-    this.vue_app.config.globalProperties.App = App;   // global App, export methods
-    this.vue_app.config.globalProperties.Data = Data; // global Data, reactive
     this.request_update();
   }
   #project = new Signal.State (undefined);
@@ -139,7 +136,7 @@ export class AppClass {
 	// TODO: App.open_piano_roll (undefined);
 	need_reload = true;
       }
-    // replace project & master track without await, to synchronously trigger Vue updates for both
+    // replace project & master track without await, to synchronously trigger updates for both
     App.project = newproject; // assigns Data.project
     Data.mtrack = mtrack;
     App.current_track = tracks[0];
@@ -193,10 +190,6 @@ export class AppClass {
 export async function create_app() {
   if (globalThis.App)
     return globalThis.App;
-  // create and configure Vue App
-  const vue_app = Vue.createApp ({}); // must have Shell.template
-  vue_app.config.compilerOptions.isCustomElement = tag => !!window.customElements.get (tag);
-  vue_app.config.compilerOptions.whitespace = 'preserve';
   // common globals
   const global_properties = {
     CONFIG: globalThis.CONFIG,
@@ -205,16 +198,9 @@ export async function create_app() {
     Ase: globalThis.Ase,
     window: globalThis.window,
     document: globalThis.document,
-    observable_from_getters: Util.observable_from_getters,
   };
-  Object.assign (vue_app.config.globalProperties, global_properties);
-  // register directives, mixins, components
-  for (let directivename in Util.vue_directives) // register all utility directives
-    vue_app.directive (directivename, Util.vue_directives[directivename]);
-  for (let mixinname in Util.vue_mixins)         // register all utility mixins
-    vue_app.mixin (Util.vue_mixins[mixinname]);
   // create main App instance
-  const app = new AppClass (vue_app);
+  const app = new AppClass ();
   console.assert (app === globalThis.App);
   return globalThis.App;
 }
