@@ -16,6 +16,7 @@
     Object.defineProperty (globalThis, '__DEV__', { value: CONFIG.mode !== 'production' });
     Object.defineProperty (globalThis, 'debug', { value: __DEV__ ? console.log : _ => undefined });
     Object.defineProperty (globalThis, 'assert', { value: console.assert });
+    Object.defineProperty (globalThis, 'Extra_css', { value: () => undefined });
     Object.defineProperty (document, 'skipViewTransition', { value: func => func() });
     document.startViewTransition || Object.defineProperty (document, 'document.startViewTransition', { value: document.skipViewTransition });
   } </script>
