@@ -30,10 +30,11 @@ import * as Kbd from "../kbd.js";
 import * as Dom from "../dom.js";
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
+@reference "../tailwind.css";
 b-crawlerdialog {
   dialog {
-    width: unset; //* <- leave width to INPUT.-file, see below */
+    width: unset; /* <- leave width to INPUT.-file, see below */
     max-width: 95%;
     height: 45em; max-height: 95%;
     overflow-y: hidden;
@@ -41,17 +42,17 @@ b-crawlerdialog {
   input.-direntry {
     @apply outline-0 rounded-[$b-button-radius] text-left pl-[$b-button-radius] pr-[$b-button-radius] border-[none];
     &::selection { background: #2d53c4; }
-    z-index: 1;	//* push onto its own layer */
+    z-index: 1;	/* push onto its own layer */
     @include b-style-inset;
-    // @include b-focus-outline;
+    /* @include b-focus-outline; */
   }
   input.-pathentry {
     @apply outline-0 rounded-[$b-button-radius] text-left pl-[$b-button-radius] pr-[$b-button-radius] border-[none];
     &::selection { background: #2d53c4; }
     /* <INPUT/> change causes re-layout: https://bugs.chromium.org/p/chromium/issues/detail?id=1116001 */
-    z-index: 1;	//* push onto its own layer */
+    z-index: 1;	/* push onto its own layer */
     @include b-style-inset;
-    // @include b-focus-outline;
+    /* @include b-focus-outline; */
   }
   .-entry-grid {
     @apply grid grow grid-flow-col justify-start justify-items-start gap-0.5 border border-solid border-[#222] text-[#eee];

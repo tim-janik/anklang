@@ -31,7 +31,7 @@ import * as Dom from "../dom.js";
  */
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-icon.material-icons,
 b-icon.fa,
 b-icon {

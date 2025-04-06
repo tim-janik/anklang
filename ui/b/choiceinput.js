@@ -30,7 +30,8 @@ import * as Util from '../util.js';
 import { get_uri } from '../dom.js';
 
 // <STYLE/>
-JsExtract.css`
+Extra_css`
+@reference "../tailwind.css";
 b-choiceinput {
   display: flex;
   flex-basis: auto;
@@ -93,7 +94,7 @@ b-choiceinput {
   button {
     &:focus, &.active, &:active {
       .b-choice-line1, .b-choice-line2, .b-choice-line3,
-      .b-choice-line4 { filter: $b-style-fg-filter; } //* adjust to inverted menuitem */
+      .b-choice-line4 { filter: $b-style-fg-filter; } /* adjust to inverted menuitem */
     } }
   button {
     white-space: pre-line;

@@ -10,7 +10,7 @@ import * as Util from '../util.js';
  */
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-partlist {
   display: flex;
   position: relative;

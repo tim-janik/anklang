@@ -7,7 +7,7 @@ import * as Ase from '../aseapi.js';
 import * as Dom from "../dom.js";
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 .b-preferencesdialog {
   /* max-width: 70em; */
 }

@@ -12,7 +12,7 @@ import { LitComponent, html, JsExtract, docs } from '../little.js';
  */
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-buttonbar {
   display: inline-flex; background-color: $b-button-border;
   border: 1px solid $b-button-border;

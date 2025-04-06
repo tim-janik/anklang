@@ -19,7 +19,7 @@ import { Signal, State, Computed, Watcher, tracking_wrapper } from "../signal.js
 const floor = Math.floor, round = Math.round;
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-piano-roll {
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;

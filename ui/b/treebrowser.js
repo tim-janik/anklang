@@ -8,7 +8,9 @@ import * as Kbd from '../kbd.js';
 import { get_uri } from '../dom.js';
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
+@reference "../tailwind.css";
+
 b-treebrowser {
   margin: 0 $b-menu-hpad;
   @apply inline-flex flex-col;
@@ -23,7 +25,7 @@ b-treebrowser details {
 }
 
 b-treebrowser details > summary {
-  @apply bold relative;
+  @apply font-bold relative;
   list-style: none;
 }
 b-treebrowser details > summary::before {

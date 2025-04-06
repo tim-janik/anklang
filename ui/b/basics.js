@@ -5,7 +5,7 @@ import { JsExtract } from '../little.js';
 import * as Util from '../util.js';
 
 // <STYLE/>
-JsExtract.css`
+Extra_css`
 h-flex { @include h-flex(); }
 h-flex[inline] { display: inline-flex; }
 

@@ -14,7 +14,7 @@ import { LitComponent, html, JsExtract, docs } from '../little.js';
 import * as Util from "../util.js";
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-menutitle {
   display: inline-flex; flex: 0 0 auto; flex-flow: row nowrap;
   align-items: baseline;      //* distribute extra cross-axis space */

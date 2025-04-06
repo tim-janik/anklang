@@ -13,7 +13,7 @@
 import { LitComponent, html, render, noChange, JsExtract, docs, ref } from '../little.js';
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-deviceeditor {
   display: flex;
   flex-basis: auto;

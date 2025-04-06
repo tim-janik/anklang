@@ -12,7 +12,7 @@ import * as Ase from '../aseapi.js';
  */
 
 // <STYLE/>
-JsExtract.css`
+Extra_css`
 b-positionview { @include h-flex(); }
 b-positionview {
   $b-positionview-fg: $b-lcdscreen-fg;

@@ -12,7 +12,7 @@ import * as Dom from "../dom.js";
  */
 
 // <STYLE/>
-JsExtract.css`
+Extra_css`
 /* Bubble color setup */
 $b-data-bubble-hue: 52deg;
 $b-data-bubble-fg:  hsl($b-data-bubble-hue, 100%, 1%);

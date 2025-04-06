@@ -9,7 +9,7 @@
 import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 $b-clipview-font-color: rgba(255, 255, 255, 0.7) !default;
 $b-clipview-note-color: rgba(255, 255, 255, 0.7) !default;
 $b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;

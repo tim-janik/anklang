@@ -20,12 +20,12 @@ import * as Util from '../util.js';
  */
 
 // <STYLE/>
-JsExtract.css`
+Extra_css`
 b-objecteditor {
   display: grid;
   grid-gap: 0.6em 0.5em;
   .b-objecteditor-clear {
-    -font-size: 1.1em; // @include b-font-weight-bolder();
+    -font-size: 1.1em; /* @include b-font-weight-bolder(); */
     color: #888; background: none; padding: 0 0 0 0.5em; margin: 0;
     outline: none; border: 1px solid rgba(0,0,0,0); border-radius: $b-button-radius;
     &:hover			{ color: #eb4; }

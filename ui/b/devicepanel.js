@@ -15,8 +15,9 @@ import * as Kbd from '../kbd.js';
 import { text_content, get_uri, valid_uri, has_uri } from '../dom.js';
 
 // == STYLE ==
-JsExtract.css`
-$scrollbar-height: 6px; //* Should match Firefox 'scrollbar-width:thin' */
+Extra_css`
+@reference "../tailwind.css";
+$scrollbar-height: 6px; /* Should match Firefox 'scrollbar-width:thin' */
 b-devicepanel {
   @apply hflex;
   padding: 0 0 3px 0;
@@ -41,10 +42,10 @@ b-devicepanel {
     border-top-right-radius: inherit;
     border-bottom-right-radius: inherit;
     align-self: stretch;
-    //* Add slight shadow to the right for a soft scroll boundary */
+    /* Add slight shadow to the right for a soft scroll boundary */
     box-shadow: -2px 0 $b-scroll-shadow-blur 0px #000;
     background: #000000ef;
-    z-index: 9; //* raise above scrolled siblings */
+    z-index: 9; /* raise above scrolled siblings */
   }
   .b-devicepanel-hstack {
     align-self: stretch;
@@ -56,7 +57,7 @@ b-devicepanel {
   position: relative;
   &::after {
     @apply absolute pointer-events-none inset-0;
-    content: ' '; z-index: 9; //* raise above scrolled siblings */
+    content: ' '; z-index: 9; /* raise above scrolled siblings */
     box-shadow: inset -10px 0 7px -7px #000, inset 10px 0 7px -7px #000;
   }
 }`;

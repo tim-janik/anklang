@@ -17,7 +17,7 @@ import * as Dom from "../dom.js";
 import DataBubbleIface from '../b/databubble.js';
 
 // == STYLE ==
-JsExtract.scss`
+Extra_css`
 /* global.scss includes @import 'spinner.scss'; */
 
 b-shell {

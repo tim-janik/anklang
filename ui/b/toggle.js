@@ -22,7 +22,7 @@ import * as Kbd from '../kbd.js';
 import * as ContextMenu from './contextmenu.js';
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-toggle {
   display: flex; position: relative;
   margin: 0; padding: 0; text-align: center;

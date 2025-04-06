@@ -15,7 +15,7 @@ import { get_uri } from '../dom.js';
 import { render_contextmenu } from './contextmenu.js';
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-trackview {
   display: flex;
   align-items: stretch;
@@ -23,10 +23,10 @@ b-trackview {
   border: 1px solid $b-button-border;
   border-top-left-radius: $b-button-radius;
   border-bottom-left-radius: $b-button-radius;
-  .-lvm-main { // level meter
+  .-lvm-main { /* level meter */
     height: calc($b-track-meter-thickness + $b-track-meter-gap + $b-track-meter-thickness);
     position: relative;
-    // push element onto own compositing layer to reduce rendering overhead
+    /* push element onto own compositing layer to reduce rendering overhead */
     will-change: auto;
   }
   .-lvm-levelbg {
@@ -51,7 +51,7 @@ b-trackview {
   }
   .-lvm-covertip1, .-lvm-covermid1 {
     height: calc($b-track-meter-thickness + 1px);
-    // add 1px to cover for rounded coords
+    /* add 1px to cover for rounded coords */
   }
   .b-trackview-control {
     display: flex;

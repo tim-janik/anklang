@@ -20,7 +20,7 @@ import * as Util from '../util.js';
  */
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-textinput input {
   outline-width: 0; border: none; border-radius: $b-button-radius;
   text-align: left;
