@@ -23,8 +23,8 @@ Extra_css`
 b-shell {
   display: grid;
   position: relative;
-  --b-resize-handle-thickness: #{$b-resize-handle-thickness};
-  --b-transition-fast-slide: #{$b-transition-fast-slide};
+  --b-resize-handle-thickness: #{var(--b-resize-handle-thickness)};
+  --b-transition-fast-slide: #{var(--b-transition-fast-slide)};
   width: 100%;
   height: 100%;
   justify-content: space-between;
@@ -38,13 +38,13 @@ b-shell {
 }
 .b-shell-resizer {
   width: var(--b-resize-handle-thickness);
-  background: $b-resize-handle-bgcolor;
-  border-left: $b-resize-handle-border;
-  border-right: $b-resize-handle-border;
+  background: var(--b-resize-handle-bgcolor);
+  border-left: var(--b-resize-handle-border);
+  border-right: var(--b-resize-handle-border);
   cursor: col-resize;
 }
 html.b-shell-during-drag .b-app {
-  .b-shell-resizer { background: $b-resize-handle-hvcolor; }
+  .b-shell-resizer { background: var(--b-resize-handle-hvcolor); }
   * { cursor: col-resize !important; user-select: none !important; }
 }
 
@@ -54,7 +54,7 @@ b-shell .-modal-message {
     button, push-button {
       white-space: nowrap;
       --hpadding: 0.75em;
-      padding-left: $hpadding; padding-right: $hpadding;
+      padding-left: var(--hpadding); padding-right: var(--hpadding);
     }
     &.-manybuttons {
       width: 100%;
@@ -77,7 +77,7 @@ b-shell {
   display: flex;
   img {
     --size: 4em;
-    width: $size; height: $size;
+    width: var(--size); height: var(--size);
     margin: auto; display: inline-block; vertical-align: middle;
     animation: 1.1s linear infinite reverse spinner-svg-rotation-steps;
   }

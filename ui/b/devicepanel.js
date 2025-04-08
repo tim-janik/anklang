@@ -21,7 +21,7 @@ Extra_css`
 b-devicepanel {
   @apply hflex;
   padding: 0 0 3px 0;
-  background: $b-devicepanel-bg;
+  background: var(--b-devicepanel-bg);
   border-radius: inherit;
   overflow: hidden;
 
@@ -43,16 +43,16 @@ b-devicepanel {
     border-bottom-right-radius: inherit;
     align-self: stretch;
     /* Add slight shadow to the right for a soft scroll boundary */
-    box-shadow: -2px 0 $b-scroll-shadow-blur 0px #000;
+    box-shadow: -2px 0 var(--b-scroll-shadow-blur) 0px #000;
     background: #000000ef;
     z-index: 9; /* raise above scrolled siblings */
   }
   .b-devicepanel-hstack {
     align-self: stretch;
-    padding-top: $scrollbar-height;
+    padding-top: var(--scrollbar-height);
     padding-bottom: 0;
     > * { flex-grow: 0; }
-    .b-more { margin-top: $scrollbar-height; }
+    .b-more { margin-top: var(--scrollbar-height); }
   }
   position: relative;
   &::after {

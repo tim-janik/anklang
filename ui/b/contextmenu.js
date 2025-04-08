@@ -73,10 +73,10 @@ b-contextmenu {
 }
 dialog.b-contextmenu {
   @apply flex-col items-stretch justify-start overflow-y-auto overflow-x-hidden p-2;
-  color: $b-menu-foreground;
-  background-color: $b-menu-background;
-  border: 1px outset oklch(from $b-menu-background calc(l * 0.8) c h);
-  box-shadow: $b-menu-box-shadow;
+  color: var(--b-menu-foreground);
+  background-color: var(--b-menu-background);
+  border: 1px outset oklch(from var(--b-menu-background) calc(l * 0.8) c h);
+  box-shadow: var(--b-menu-box-shadow);
   display: flex;
   &:not([open]) { display: none; }
 }
@@ -87,26 +87,26 @@ dialog.b-contextmenu::backdrop {
 }
 b-contextmenu :is(button, push-button, summary) {
   @apply hflex flex-nowrap items-stretch px-4 py-1 text-left;
-  background: transparent; color: $b-menu-foreground; border: 1px solid transparent;
+  background: transparent; color: var(--b-menu-foreground); border: 1px solid transparent;
   cursor: pointer; user-select: none; outline: none;
-  kbd { flex-grow: 1; color: oklch(from $b-menu-foreground calc(l - 0.15) c h); }
+  kbd { flex-grow: 1; color: oklch(from var(--b-menu-foreground) calc(l - 0.15) c h); }
   > b-icon:first-child {
     margin: 0 0.75rem 0 0;
     width: 2rem; height: 1rem;
     align-self: center;
-    color: $b-menu-fill;
+    color: var(--b-menu-fill);
   }
   kbd { font-family: inherit; text-align: right; margin-left: 2.5em; }
   kbd[data-can-remap] { font-style: italic; }
   &[turn] {
     flex-direction: column; align-items: center;
-    > b-icon:first-child { margin: 0 0 $b-menu-spacing 0; }
+    > b-icon:first-child { margin: 0 0 var(--b-menu-spacing) 0; }
   }
   &[disabled], &[disabled] * {
     pointer-events: none;
-    color: $b-menu-disabled;
-    b-icon { color: $b-menu-disabled-fill; }
-    kbd { color: $b-menu-disabled-fill; }
+    color: var(--b-menu-disabled);
+    b-icon { color: var(--b-menu-disabled-fill); }
+    kbd { color: var(--b-menu-disabled-fill); }
   }
 }
 b-contextmenu b-menurow button {
@@ -115,16 +115,16 @@ b-contextmenu b-menurow button {
   > b-icon:first-child { @apply m-0 mb-1; }
 }
 b-contextmenu button:focus {
-  background-color: $b-menu-focus-bg; color: $b-menu-focus-fg; outline: none;
+  background-color: var(--b-menu-focus-bg); color: var(--b-menu-focus-fg); outline: none;
   kbd { color: inherit; }
-  border: 1px solid oklch(from $b-menu-focus-bg calc(l * 0.5) c h);
-  b-icon { color: $b-menu-focus-fg; }
+  border: 1px solid oklch(from var(--b-menu-focus-bg) calc(l * 0.5) c h);
+  b-icon { color: var(--b-menu-focus-fg); }
 }
 b-contextmenu :is(button.active, button:focus.active, button:focus:active, button:active) {
-  background-color: $b-menu-active-bg; color: $b-menu-active-fg; outline: none;
+  background-color: var(--b-menu-active-bg); color: var(--b-menu-active-fg); outline: none;
   kbd { color: inherit; }
-  b-icon { color: $b-menu-active-fg; }
-  border: 1px solid oklch(from $b-menu-active-bg calc(l * 0.5) c h);
+  b-icon { color: var(--b-menu-active-fg); }
+  border: 1px solid oklch(from var(--b-menu-active-bg) calc(l * 0.5) c h);
 }`;
 
 // == HTML ==

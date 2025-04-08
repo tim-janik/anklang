@@ -16,7 +16,7 @@ b-partlist {
   position: relative;
   b-clipview {
     margin: 0 1px;
-    width: calc(5 * $b-clipthumb-width);
+    width: calc(5 * var(--b-clipthumb-width));
     flex-shrink: 0; flex-grow: 0;
   }
 }`;

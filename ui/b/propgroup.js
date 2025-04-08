@@ -16,10 +16,10 @@ b-propgroup {
   @include v-flex();
   padding: 5px;
   justify-content: space-evenly;
-  border-radius: $b-button-radius;
-  background: $b-device-area1;
+  border-radius: var(--b-button-radius);
+  background: var(--b-device-area1);
   &:nth-child(2n) {
-    background: $b-device-area2;
+    background: var(--b-device-area2);
   }
   .b-propgroup-title {
     @apply flex grow justify-center text-center;

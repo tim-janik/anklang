@@ -14,14 +14,14 @@ import { LitComponent, html, JsExtract, docs } from '../little.js';
 // == STYLE ==
 Extra_css`
 b-buttonbar {
-  display: inline-flex; background-color: $b-button-border;
-  border: 1px solid $b-button-border;
-  border-radius: $b-button-radius;
+  display: inline-flex; background-color: var(--b-button-border);
+  border: 1px solid var(--b-button-border);
+  border-radius: var(--b-button-radius);
   > button, > push-button {
     margin: 0 0 0 1px;
     &:first-of-type	{ margin-left: 0; }
-    &:first-of-type	{ border-top-left-radius: $b-button-radius; border-bottom-left-radius: $b-button-radius; }
-    &:last-of-type	{ border-top-right-radius: $b-button-radius; border-bottom-right-radius: $b-button-radius; }
+    &:first-of-type	{ border-top-left-radius: var(--b-button-radius); border-bottom-left-radius: var(--b-button-radius); }
+    &:last-of-type	{ border-top-right-radius: var(--b-button-radius); border-bottom-right-radius: var(--b-button-radius); }
   }
 }`;
 

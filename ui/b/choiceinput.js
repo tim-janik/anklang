@@ -75,7 +75,7 @@ b-choiceinput {
     .b-choice-big & {
       flex-grow: 1;
       justify-content: space-between;
-      padding: $b-button-radius 0 $b-button-radius .5em;
+      padding: var(--b-button-radius) 0 var(--b-button-radius) .5em;
     }
     .b-choice-small & {
       width: 100%; height: 1.33em;
@@ -88,13 +88,13 @@ b-choiceinput {
 .b-choiceinput-contextmenu {
   .b-choice-label { display: block; white-space: pre-line; }
   .b-choice-line1,
-  .b-choice-line2 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-secondary; }
-  .b-choice-line3 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-notice; }
-  .b-choice-line4 { display: block; white-space: pre-line; font-size: 90%; color: $b-style-fg-warning; }
+  .b-choice-line2 { display: block; white-space: pre-line; font-size: 90%; color: var(--b-style-fg-secondary); }
+  .b-choice-line3 { display: block; white-space: pre-line; font-size: 90%; color: var(--b-style-fg-notice); }
+  .b-choice-line4 { display: block; white-space: pre-line; font-size: 90%; color: var(--b-style-fg-warning); }
   button {
     &:focus, &.active, &:active {
       .b-choice-line1, .b-choice-line2, .b-choice-line3,
-      .b-choice-line4 { filter: $b-style-fg-filter; } /* adjust to inverted menuitem */
+      .b-choice-line4 { filter: var(--b-style-fg-filter); } /* adjust to inverted menuitem */
     } }
   button {
     white-space: pre-line;

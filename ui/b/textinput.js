@@ -22,9 +22,9 @@ import * as Util from '../util.js';
 // == STYLE ==
 Extra_css`
 b-textinput input {
-  outline-width: 0; border: none; border-radius: $b-button-radius;
+  outline-width: 0; border: none; border-radius: var(--b-button-radius);
   text-align: left;
-  padding-left: $b-button-radius; padding-right: $b-button-radius;
+  padding-left: var(--b-button-radius); padding-right: var(--b-button-radius);
   @include b-style-inset;
 }
 `;

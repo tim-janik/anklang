@@ -21,7 +21,7 @@ b-menutitle {
   margin: 0; padding: 5px 1em; text-align: left;
   background: transparent; cursor: pointer; user-select: none;
   border: 1px solid transparent;
-  color: $b-menu-foreground;
+  color: var(--b-menu-foreground);
   font-variant: small-caps; @include b-font-weight-bolder();
   /* InterVariable-4.0beta9 has broken c2sc (small-caps), so for now use drop-caps */
   /* https://github.com/rsms/inter/issues/556#issuecomment-1598010623 */

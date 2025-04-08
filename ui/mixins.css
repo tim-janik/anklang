@@ -12,13 +12,13 @@
 
 /* == Hotkey == */
 @mixin b-kbd-hotkey(--border: true) {
-  font-family: $b-font-stack-kbd-mono;
+  font-family: var(--b-font-stack-kbd-mono);
   font-weight: 600;
   font-size: calc(1em - 2px);
   letter-spacing: 1px;
   /* text-transform: uppercase; text-transform: lowercase; font-variant: small-caps; */
   border-radius: 0.5em;
-  @if not $border {}
+  @if not var(--border) {}
   @else {
     background: lgrey(30%); border: 1px outset lgrey(50%); color: lgrey(95%); /* #3 #5 #e */
   }
@@ -34,9 +34,9 @@
 
 /* == Scrollbars == */
 @mixin firefox-scrollbars() {
-  scrollbar-color: $b-scrollbar-dd $b-scrollbar-bg;
+  scrollbar-color: var(--b-scrollbar-dd) var(--b-scrollbar-bg);
   :hover,
-  &:hover { scrollbar-color: $b-scrollbar-fg $b-scrollbar-bg; }
+  &:hover { scrollbar-color: var(--b-scrollbar-fg) var(--b-scrollbar-bg); }
 }
 @mixin chrome-scrollbars() {
   ::-webkit-scrollbar-button { display: none; }
@@ -46,24 +46,24 @@
     background: #000;
   }
   ::-webkit-scrollbar-thumb {
-    background: $b-scrollbar-dd; border-radius: 5px;
+    background: var(--b-scrollbar-dd); border-radius: 5px;
   }
   :hover,
   &:hover {
     ::-webkit-scrollbar-thumb {
-      background: $b-scrollbar-fg; background: linear-gradient(oklch(from $b-scrollbar-fg calc(l * 1.1) c h), oklch(from $b-scrollbar-fg calc(l * 0.9) c h));
+      background: var(--b-scrollbar-fg); background: linear-gradient(oklch(from var(--b-scrollbar-fg) calc(l * 1.1) c h), oklch(from var(--b-scrollbar-fg) calc(l * 0.9) c h));
     }
   }
 }
 @mixin scrollbar-hover-area() {
   ::-webkit-scrollbar-thumb {
-    background: $b-scrollbar-dd; border-radius: 5px;
+    background: var(--b-scrollbar-dd); border-radius: 5px;
   }
   :hover,
   &:hover {
     ::-webkit-scrollbar-thumb {
-      background: $b-scrollbar-fg;
-      background: linear-gradient(oklch(from $b-scrollbar-fg calc(l * 1.1) c h), oklch(from $b-scrollbar-fg calc(l * 0.9) c h));
+      background: var(--b-scrollbar-fg);
+      background: linear-gradient(oklch(from var(--b-scrollbar-fg) calc(l * 1.1) c h), oklch(from var(--b-scrollbar-fg) calc(l * 0.9) c h));
     }
   }
   @include firefox-scrollbars();
@@ -76,5 +76,5 @@
     border: none; box-shadow: none;
   }
   /* firefox */
-  scrollbar-color: $b-scrollbar-dd rgb(0 0 0 / 0%);
+  scrollbar-color: var(--b-scrollbar-dd) rgb(0 0 0 / 0%);
 }

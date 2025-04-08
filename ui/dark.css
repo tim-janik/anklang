@@ -6,12 +6,12 @@
 --b-font-stack-grotesque: "Inter", "Roboto", "Helvetica Neue", "Arial Nova", "Nimbus Sans", "Arial", sans-serif;
 --b-font-stack-mono-serif: "Nimbus Mono PS", "Courier New", monospace;
 --b-font-stack-mono-code: "DejaVu Sans Mono", ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
---b-font-stack-kbd-mono: $b-font-stack-mono-code;
+--b-font-stack-kbd-mono: var(--b-font-stack-mono-code);
 
 /* Fonts */
---b-canvas-font: normal 9px "InterVariable", $b-font-stack-grotesque;	/* the '9px' part is dynamically resized */
+--b-canvas-font: normal 9px "InterVariable", var(--b-font-stack-grotesque);	/* the '9px' part is dynamically resized */
 @mixin b-ui-font() {
-  font-family: "InterVariable", $b-font-stack-grotesque;
+  font-family: "InterVariable", var(--b-font-stack-grotesque);
   font-size: 15.5px;
   letter-spacing: 0.03em;
   text-decoration: none;
@@ -44,34 +44,34 @@
 /* Colors */
 --b-color-scheme: dark;	/* only normal light dark */
 @mixin b-body-colors() {
-  color: $b-grey80;
-  background: $b-grey00;
+  color: var(--b-grey80);
+  background: var(--b-grey00);
 }
---b-body-colors-inactive: zmod($b-grey80, a=80%);
+--b-body-colors-inactive: zmod(var(--b-grey80), a=80%);
 
---b-color-tone: $b-grey50; /* deprecated, use palette colors */
---b-grey-tone: oklch(from $b-color-tone 50% 20% h);
+--b-color-tone: var(--b-grey50); /* deprecated, use palette colors */
+--b-grey-tone: oklch(from var(--b-color-tone) 50% 20% h);
 
---b-dialog-border-colors: $b-grey31;
+--b-dialog-border-colors: var(--b-grey31);
 @mixin b-dialog-colors() {
-  color: $b-grey90; background-color: $b-grey16;
-  background: linear-gradient(to bottom, $b-grey16l, $b-grey16d);
-  border-color: $b-dialog-border-colors;
-  &::backdrop { background: oklab(from $b-grey02 l a b / 0.5); }
+  color: var(--b-grey90); background-color: var(--b-grey16);
+  background: linear-gradient(to bottom, var(--b-grey16l), var(--b-grey16d));
+  border-color: var(--b-dialog-border-colors);
+  &::backdrop { background: oklab(from var(--b-grey02) l a b / 0.5); }
 }
 
---b-panel-foreground: oklch(from $b-grey-tone 96% c h);
---b-panel-background: oklch(from $b-grey-tone 36% c h);
---b-panel-focus: oklch(from $b-grey-tone 50% c h);
+--b-panel-foreground: oklch(from var(--b-grey-tone) 96% c h);
+--b-panel-background: oklch(from var(--b-grey-tone) 36% c h);
+--b-panel-focus: oklch(from var(--b-grey-tone) 50% c h);
 --b-active-color: #00e5ea;
 --b-devicepanel:  lgrey(3%);
---b-device-bg:    $b-panel-background;
+--b-device-bg:    var(--b-panel-background);
 --b-device-handle: lgrey(26%);
 --b-device-area1:  lgrey(24%);
 --b-device-area2:  lgrey(28%);
---b-dialog-foreground: oklch(from $b-color-tone 98.7% c h);
---b-dialog-background: oklch(from $b-color-tone 18% c h);
---b-dialog-bordercol:  oklch(from $b-color-tone 36% c h);
+--b-dialog-foreground: oklch(from var(--b-color-tone) 98.7% c h);
+--b-dialog-background: oklch(from var(--b-color-tone) 18% c h);
+--b-dialog-bordercol:  oklch(from var(--b-color-tone) 36% c h);
 
 /* Spacings and Sizes */
 --b-panel-border: 2px;
@@ -88,32 +88,32 @@
 --b-main-foreground: 	#f3f1f5;
 --b-main-background: 	lgrey(13%);
 --b-color-active:	#00e5ea; /* #ff8811; */
---b-panel-foreground:	$b-main-foreground;
+--b-panel-foreground:	var(--b-main-foreground);
 --b-panel-background:	lgrey(36%); /* also panel border */
 --b-panel-focus:		lgrey(50%); /* focused panel border */
 --b-panel-borderwidth:	2px;
---b-panel-border:	$b-panel-borderwidth solid $b-panel-background;
---b-panel-spacing:	$b-panel-borderwidth;
+--b-panel-border:	var(--b-panel-borderwidth) solid var(--b-panel-background);
+--b-panel-spacing:	var(--b-panel-borderwidth);
 --b-devicepanel-bg:	lgrey(3%);
---b-device-bg:		$b-panel-background;
+--b-device-bg:		var(--b-panel-background);
 --b-device-handle:	lgrey(26%); /* or, device-handle */
 --b-device-area1:	lgrey(24%);
 --b-device-area2:	lgrey(28%);
 --b-choice-0-bg:		lgrey(50%);
---b-choice-0-bh:		oklch(from $b-choice-0-bg calc(l + 0.125) c h); /* highlight */
---b-choice-0-bl:		oklch(from $b-choice-0-bg calc(l + 0.08) c h); /* light */
---b-choice-0-bd:		oklch(from $b-choice-0-bg calc(l - 0.075) c h);  /* dark */
---b-toggle-0-bg:		$b-choice-0-bg;
---b-toggle-0-bh:		$b-choice-0-bh;
---b-toggle-0-bl:		$b-choice-0-bl;
---b-toggle-0-bd:		$b-choice-0-bd;
---b-toggle-1-bg:		oklch(from $b-color-active 63% c h);
---b-toggle-1-bh:		oklch(from $b-toggle-1-bg calc(l + 0.115) c h); /* highlight */
---b-toggle-1-bl:		oklch(from $b-toggle-1-bg calc(l + 0.07845) c h); /* light */
---b-toggle-1-bd:		oklch(from $b-toggle-1-bg calc(l - 0.08) c h);  /* dark */
+--b-choice-0-bh:		oklch(from var(--b-choice-0-bg) calc(l + 0.125) c h); /* highlight */
+--b-choice-0-bl:		oklch(from var(--b-choice-0-bg) calc(l + 0.08) c h); /* light */
+--b-choice-0-bd:		oklch(from var(--b-choice-0-bg) calc(l - 0.075) c h);  /* dark */
+--b-toggle-0-bg:		var(--b-choice-0-bg);
+--b-toggle-0-bh:		var(--b-choice-0-bh);
+--b-toggle-0-bl:		var(--b-choice-0-bl);
+--b-toggle-0-bd:		var(--b-choice-0-bd);
+--b-toggle-1-bg:		oklch(from var(--b-color-active) 63% c h);
+--b-toggle-1-bh:		oklch(from var(--b-toggle-1-bg) calc(l + 0.115) c h); /* highlight */
+--b-toggle-1-bl:		oklch(from var(--b-toggle-1-bg) calc(l + 0.07845) c h); /* light */
+--b-toggle-1-bd:		oklch(from var(--b-toggle-1-bg) calc(l - 0.08) c h);  /* dark */
 --b-trackrow-height:	3em;
---b-tracklist-bg:	$b-device-area1;
---b-tracklist-parts-bg:	$b-device-area2;
+--b-tracklist-bg:	var(--b-device-area1);
+--b-tracklist-parts-bg:	var(--b-device-area2);
 --b-scroll-shadow-blur:  3px;
 --b-clipthumb-width:	6em;
 --b-clip-play-fg:	#bbbd;
@@ -130,15 +130,15 @@
 --b-base-foreground: 		#f0f0f0;
 --b-base-background: 		#202020;
 --b-menu-foreground: 		#fcfcfc;
---b-menu-fill:	 		oklch(from $b-menu-foreground calc(l * 0.85) c h);
+--b-menu-fill:	 		oklch(from var(--b-menu-foreground) calc(l * 0.85) c h);
 --b-menu-background: 		#333333;
 --b-menu-disabled: 		#808080;
---b-menu-disabled-fill: 		oklch(from $b-menu-disabled calc(l * 0.9) c h);
+--b-menu-disabled-fill: 		oklch(from var(--b-menu-disabled) calc(l * 0.9) c h);
 --b-menu-separator: 		#909090;
 --b-menu-focus-bg: 		#dddddd;
---b-menu-focus-fg: 		$b-menu-background;
---b-menu-active-bg: 		$b-menu-foreground;
---b-menu-active-fg: 		$b-menu-background;
+--b-menu-focus-fg: 		var(--b-menu-background);
+--b-menu-active-bg: 		var(--b-menu-foreground);
+--b-menu-active-fg: 		var(--b-menu-background);
 --b-menu-padding: 		0.3em;
 --b-menu-spacing: 		0.75em;	/* icon spacing */
 --b-menu-tightspace: 		0.3em;	/* icon spacing when packed */
@@ -146,7 +146,7 @@
 --b-menu-vpad:			5px;	/* vertical border/margin around a menuitem */
 --b-menu-hpad:			1em;	/* horizontal border/margin around a menuitem */
 --b-style-focus-color:		#0080ff;
---b-style-light-foreground:	$b-main-foreground;
+--b-style-light-foreground:	var(--b-main-foreground);
 --b-style-dark-outline:		#181818;
 --b-style-modal-overlay:		#0000008c;
 
@@ -156,13 +156,13 @@
 --b-style-fg-filter:    brightness(66%);	/* adjust style-fg in inverted focus/active contexts */
 
 /* == BrowserWindow Defaults == */
---b-default-background-color:	$b-main-background;	/* #rrggbb needed */
+--b-default-background-color:	var(--b-main-background);	/* #rrggbb needed */
 
 /* theme basics */
---b-theme-foreground: 		$b-main-foreground;
---b-theme-background: 		$b-main-background;
---b-main-border-light:		oklch(from $b-base-background calc(l * 1.09) c h);	/* used for modal border */
---b-main-border-dark:		oklch(from $b-base-background calc(l * 0.91) c h);
+--b-theme-foreground: 		var(--b-main-foreground);
+--b-theme-background: 		var(--b-main-background);
+--b-main-border-light:		oklch(from var(--b-base-background) calc(l * 1.09) c h);	/* used for modal border */
+--b-main-border-dark:		oklch(from var(--b-base-background) calc(l * 0.91) c h);
 --b-toolbar-background:		#606060;
 --b-toolbar-background-lg:	linear-gradient(to bottom, #666666 0%, #5a5a5a 100%);
 --b-button-foreground:   	#dddddd;
@@ -175,9 +175,9 @@
 --b-button-active-fg:		#bbbbbb;
 --b-button-active-lg:     	linear-gradient(to bottom, #606060 0%, #707070 50%, #606060 100%);
 --b-button-active-border:	#555555;
---b-glow-control:		$b-style-focus-color;
+--b-glow-control:		var(--b-style-focus-color);
 --b-switch-inactive:		#999999;
 --b-switch-active:		#2080f0;
---b-switch-knob:		$b-button-foreground;
+--b-switch-knob:		var(--b-button-foreground);
 --b-boxshadow-color:		oklab(from #000000 l a b / 0.3);
 

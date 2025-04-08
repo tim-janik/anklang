@@ -17,13 +17,13 @@ b-cliplist {
   position: relative;
   .-indicator {
     position: absolute; top: 0; bottom: 0; left: 0; width: 1px; height: 100%;
-    background: $b-piano-roll-indicator;
+    background: var(--b-piano-roll-indicator);
     z-index: 2;
     transform: translateX(-9999px);
   }
   b-clipview {
     margin: 0 1px;
-    width: $b-clipthumb-width;
+    width: var(--b-clipthumb-width);
     flex-shrink: 0; flex-grow: 0;
   }
 }`;

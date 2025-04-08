@@ -20,18 +20,18 @@ b-deviceeditor {
   flex-flow: row nowrap;
   align-items: stretch;
   .b-deviceeditor-sw {
-    background: $b-device-handle;
-    border-radius: $b-button-radius; border-top-left-radius: 0; border-bottom-left-radius: 0;
+    background: var(--b-device-handle);
+    border-radius: var(--b-button-radius); border-top-left-radius: 0; border-bottom-left-radius: 0;
     padding: 0 5px;
     text-align: center;
     /* FF: writing-mode: sideways-rl; */
     writing-mode: vertical-rl; transform: rotate(180deg);
   }
   .b-deviceeditor-areas {
-    background: $b-device-bg;
+    background: var(--b-device-bg);
     grid-gap: 3px;
-    border: $b-panel-border; /*DEBUG: border-color: #333;*/
-    border-radius: $b-button-radius; border-top-left-radius: 0; border-bottom-left-radius: 0;
+    border: var(--b-panel-border); /*DEBUG: border-color: #333;*/
+    border-radius: var(--b-button-radius); border-top-left-radius: 0; border-bottom-left-radius: 0;
     justify-content: flex-start;
   }
 }`;

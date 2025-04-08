@@ -40,14 +40,14 @@ b-crawlerdialog {
     overflow-y: hidden;
   }
   input.-direntry {
-    @apply outline-0 rounded-[$b-button-radius] text-left pl-[$b-button-radius] pr-[$b-button-radius] border-[none];
+    @apply outline-0 rounded-[var(--b-button-radius)] text-left pl-[var(--b-button-radius)] pr-[var(--b-button-radius)] border-[none];
     &::selection { background: #2d53c4; }
     z-index: 1;	/* push onto its own layer */
     @include b-style-inset;
     /* @include b-focus-outline; */
   }
   input.-pathentry {
-    @apply outline-0 rounded-[$b-button-radius] text-left pl-[$b-button-radius] pr-[$b-button-radius] border-[none];
+    @apply outline-0 rounded-[var(--b-button-radius)] text-left pl-[var(--b-button-radius)] pr-[var(--b-button-radius)] border-[none];
     &::selection { background: #2d53c4; }
     /* <INPUT/> change causes re-layout: https://bugs.chromium.org/p/chromium/issues/detail?id=1116001 */
     z-index: 1;	/* push onto its own layer */

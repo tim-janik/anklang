@@ -15,10 +15,10 @@ import * as Dom from "../dom.js";
 Extra_css`
 /* Bubble color setup */
 --b-data-bubble-hue: 52deg;
---b-data-bubble-fg:  hsl($b-data-bubble-hue, 100%, 1%);
---b-data-bubble-bg:  hsl($b-data-bubble-hue, 100%, 90%);
---b-data-bubble-bg2: oklch(from $b-data-bubble-bg calc(l * 1.03) c h);
---b-data-bubble-br:  $b-data-bubble-bg2;
+--b-data-bubble-fg:  hsl(var(--b-data-bubble-hue), 100%, 1%);
+--b-data-bubble-bg:  hsl(var(--b-data-bubble-hue), 100%, 90%);
+--b-data-bubble-bg2: oklch(from var(--b-data-bubble-bg) calc(l * 1.03) c h);
+--b-data-bubble-br:  var(--b-data-bubble-bg2);
 --fsf: 1.05; /* font size factor */
 
 /* Tooltips via CSS, using the data-bubble="" attribute */
@@ -33,11 +33,11 @@ Extra_css`
     display: block; overflow: hidden; position: relative;
     white-space: normal; margin: 0;
     max-width: 40em; border-radius: 3px;
-    // border: dppx(2) solid oklch(from $b-data-bubble-bg2 calc(l * 1.05) c h);
-    box-shadow: 0 0 0 1px oklab(from $b-data-bubble-br l a b / 0.8), 0px 0px 2px 1px black;
-    color: $b-data-bubble-fg; padding: 0.5em 0.5em 0.4em;
-    background: $b-data-bubble-bg;
-    background-image: linear-gradient(to bottom right, $b-data-bubble-bg, $b-data-bubble-bg2);
+    /* border: dppx(2) solid oklch(from var(--b-data-bubble-bg2) calc(l * 1.05) c h); */
+    box-shadow: 0 0 0 1px oklab(from var(--b-data-bubble-br) l a b / 0.8), 0px 0px 2px 1px black;
+    color: var(--b-data-bubble-fg); padding: 0.5em 0.5em 0.4em;
+    background: var(--b-data-bubble-bg);
+    background-image: linear-gradient(to bottom right, var(--b-data-bubble-bg), var(--b-data-bubble-bg2));
     font-variant-numeric: tabular-nums;
   }
   &.b-data-bubble-visible {
@@ -47,19 +47,19 @@ Extra_css`
   &::after {
     position: absolute; bottom: calc(5px - 2); /* room below triangle: 5px */
     left: calc(50% - 5px); width: 0; height: 0; content: "";
-    border-top: 5px solid $b-data-bubble-br;
+    border-top: 5px solid var(--b-data-bubble-br);
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
   }
   /* markdown styling for data-bubble */
   .b-markdown-it-outer {
     @include b-markdown-it-inlined;
-    h1 { font-size: calc(pow($fsf, 6) * 1em); }
-    h2 { font-size: calc(pow($fsf, 5) * 1em); }
-    h3 { font-size: calc(pow($fsf, 4) * 1em); }
-    h4 { font-size: calc(pow($fsf, 3) * 1em); }
-    h5 { font-size: calc(pow($fsf, 2) * 1em); }
-    h6 { font-size: calc(pow($fsf, 1) * 1em); }
+    h1 { font-size: calc(pow(var(--fsf), 6) * 1em); }
+    h2 { font-size: calc(pow(var(--fsf), 5) * 1em); }
+    h3 { font-size: calc(pow(var(--fsf), 4) * 1em); }
+    h4 { font-size: calc(pow(var(--fsf), 3) * 1em); }
+    h5 { font-size: calc(pow(var(--fsf), 2) * 1em); }
+    h6 { font-size: calc(pow(var(--fsf), 1) * 1em); }
   }
 }`;
 

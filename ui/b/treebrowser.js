@@ -12,7 +12,7 @@ Extra_css`
 @reference "../tailwind.css";
 
 b-treebrowser {
-  margin: 0 $b-menu-hpad;
+  margin: 0 var(--b-menu-hpad);
   @apply inline-flex flex-col;
   --b-treebrowser-indent: 1.5rem;
   user-select: none;
@@ -21,7 +21,7 @@ b-treebrowser {
 b-treebrowser details {
   @apply inline-flex flex-col;
   padding-left: var(--b-treebrowser-indent);
-  &[disabled], &[disabled] * { color: $b-menu-disabled; }
+  &[disabled], &[disabled] * { color: var(--b-menu-disabled); }
 }
 
 b-treebrowser details > summary {

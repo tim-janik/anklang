@@ -40,10 +40,10 @@ input:-webkit-autofill-strong-password,
 .tabular-nums.slashed-zero		{ font-variant-numeric: tabular-nums slashed-zero; }
 
 /* Color scheme and default colors */
-html { color-scheme: $b-color-scheme; }
+html { color-scheme: var(--b-color-scheme); }
 body {
   @include b-body-colors();
-  &:-moz-window-inactive { color: $b-body-colors-inactive; }
+  &:-moz-window-inactive { color: var(--b-body-colors-inactive); }
 }
 
 /* Scrollbar styling */
@@ -54,7 +54,7 @@ html, :host {
 
 /* Animations */
 ::view-transition-group(*) {
-  animation-duration: $b-animation-duration;
+  animation-duration: var(--b-animation-duration);
   animation-timing-function: linear;
   /* on the linux desktop, view-transitions are fairly janky on Chrome-114, 'linear' helps a bit */
 }
@@ -71,7 +71,7 @@ dialog.b-dialog {
   .b-dialog-header {
     font-size: 1.5rem; font-weight: bold; text-align: center;
     margin-bottom: 1rem; padding: 1rem;
-    border-bottom: 2px solid $b-dialog-border-colors;
+    border-bottom: 2px solid var(--b-dialog-border-colors);
     @include h-flex();
     justify-content: center;
   }
@@ -81,7 +81,7 @@ dialog.b-dialog {
   .b-dialog-footer {
     text-align: center;
     margin-top: 1rem; padding: 1rem;
-    border-top: 2px solid $b-dialog-border-colors;
+    border-top: 2px solid var(--b-dialog-border-colors);
     @include h-flex();
     justify-content: space-between;   /* left-aligns only-child */
     > :only-child { margin: auto; } /* center only-child */
@@ -94,7 +94,7 @@ dialog.b-dialog {
 }
 dialog.b-dialog[open] {
   opacity: 1; /* b-keyframe-to-scale0 */
-  animation: b-keyframe-from-scale0 $b-animation-duration ease normal;
+  animation: b-keyframe-from-scale0 var(--b-animation-duration) ease normal;
 }
 /* dialog closing supports view-transitions */
 ::view-transition-new(b-dialog-inflight) { animation-name: b-keyframe-from-scale0; }
