@@ -23,8 +23,8 @@ Extra_css`
 b-shell {
   display: grid;
   position: relative;
-  --b-resize-handle-thickness: #{var(--b-resize-handle-thickness)};
-  --b-transition-fast-slide: #{var(--b-transition-fast-slide)};
+  --b-resize-handle-thickness: var(--b-resize-handle-thickness);
+  --b-transition-fast-slide: var(--b-transition-fast-slide);
   width: 100%;
   height: 100%;
   justify-content: space-between;

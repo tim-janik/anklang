@@ -22,8 +22,8 @@ b-clipview {
     border: 0;
     .-canvas {
       display: inline; position: absolute; inset: 0;
-      --clipview-font-color: #{var(--b-clipview-font-color)}; --clipview-font: #{var(--b-canvas-font)};
-      --clipview-note-color: #{var(--b-clipview-note-color)};
+      --clipview-font-color: var(--b-clipview-font-color); --clipview-font: var(--b-canvas-font);
+      --clipview-note-color: var(--b-clipview-note-color);
       --clipview-color-hues: var(--b-clipview-color-hues);
       box-shadow: inset 0px 0 1px #fff9, inset -1px 0 1px #000;
       border-radius: var(--b-button-radius);
