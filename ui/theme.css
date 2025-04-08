@@ -2,14 +2,88 @@
 
 @import './dark.css';
 
-/* == Status Bar == */
---b-statusbar-bg: var(--b-main-background);
---b-statusbar-field-spacing: 0.5em;
---b-statusbar-text-color: var(--b-main-foreground);
---b-statusbar-text-shade: oklch(from var(--b-statusbar-text-color) calc(l * 0.75) c h);
---b-statusbar-separator-shade: oklch(from var(--b-statusbar-text-color) calc(l * 0.5) c h);
---b-statusbar-icon-brightness: 0.9; /* dim non-active */
---b-statusbar-icon-scaleup: 1.1;    /* enlarge active */
+:root {
+  /* == Status Bar == */
+  --b-statusbar-bg: var(--b-main-background);
+  --b-statusbar-field-spacing: 0.5em;
+  --b-statusbar-text-color: var(--b-main-foreground);
+  --b-statusbar-text-shade: oklch(from var(--b-statusbar-text-color) calc(l * 0.75) c h);
+  --b-statusbar-separator-shade: oklch(from var(--b-statusbar-text-color) calc(l * 0.5) c h);
+  --b-statusbar-icon-brightness: 0.9; /* dim non-active */
+  --b-statusbar-icon-scaleup: 1.1;    /* enlarge active */
+
+  /* == Animations == */
+  --b-transition-fast-slide: 0.15s;
+
+  /* == Handles == */
+  --b-resize-handle-thickness: 5px;
+  --b-resize-handle-bgcolor:   #555;
+  --b-resize-handle-hvcolor:   #bbb;
+  --b-resize-handle-border:    1.5px solid #111;
+
+  /* == focus == */
+  --b-focus-outline-width: 1px;
+  --b-focus-outline:       var(--b-focus-outline-width) solid var(--b-style-focus-color);
+  --b-focus-box-shadow:    0 0 0 1px var(--b-style-focus-color); /* suitable for rounded outlines */
+
+  /* == Outset / Inset == */
+  --b-style-inset-background-1:  #1b1b1b;
+  --b-style-inset-background-2:  #202020;
+  --b-style-inset-background-0:  mix(var(--b-style-inset-background-1), var(--b-style-inset-background-2));
+  --b-style-inset-background:    linear-gradient(to bottom, var(--b-style-inset-background-1), var(--b-style-inset-background-2));
+  --b-style-inset-glint-1:       var(--b-style-inset-background-1);
+  --b-style-inset-glint-2:       #383838;
+
+  --b-style-outset-glint-1:        #777;
+  --b-style-outset-glint-2:        #444;
+  --b-style-outset-background-1:   #606060;
+  --b-style-outset-background-2:   #505050;
+  --b-style-outset-background-0:   mix(var(--b-style-outset-background-1), var(--b-style-outset-background-2));
+  --b-style-outset-background:     linear-gradient(to bottom, var(--b-style-outset-background-1), var(--b-style-outset-background-2));
+  --b-style-outset-activebg-1:     #404040;
+  --b-style-outset-activebg-2:     #303030;
+  --b-style-outset-activebg-0:     mix(var(--b-style-outset-activebg-1), var(--b-style-outset-activebg-2));
+  --b-style-outset-activebg:       linear-gradient(to bottom, var(--b-style-outset-activebg-1), var(--b-style-outset-activebg-2));
+  --b-style-outset-activebg-glint: var(--b-style-outset-activebg-2);
+
+  /* == Buttons == */
+  --b-buttonbar-height: 1em;
+  /* softbutton is an almost flat button with subtle outlines */
+  --b-softbutton-bg: #585858;
+  --b-softbutton-border-color: oklch(from var(--b-softbutton-bg) calc(l + 0.135) c h);
+  --b-softbutton-bgl: oklch(from var(--b-softbutton-bg) calc(l + 0.017) c h);
+  --b-softbutton-bgd: oklch(from var(--b-softbutton-bg) calc(l - 0.017) c h);
+  --b-softbutton-lg-up: linear-gradient(to bottom, var(--b-softbutton-bgd), var(--b-softbutton-bgl));
+  --b-softbutton-lg-down: linear-gradient(to top, var(--b-softbutton-bgd), var(--b-softbutton-bgl));
+
+  /* singlebutton is a seperately standing button wich clearly looks clickable */
+  --b-singlebutton-fg:   var(--b-modal-foreground);
+  --b-singlebutton-fgd:  oklch(from var(--b-singlebutton-fg) calc(l - 0.035) c h);
+  --b-singlebutton-bg:   lgrey(42.6%);
+  --b-singlebutton-bgl:  oklch(from var(--b-singlebutton-bg) calc(l + 0.072) c h);
+  --b-singlebutton-bgd:  oklch(from var(--b-singlebutton-bg) calc(l - 0.072) c h);
+  --b-singlebutton-lg:   linear-gradient(to top, var(--b-singlebutton-bgd), var(--b-singlebutton-bgl));
+  --b-singlebutton-dark: linear-gradient(to bottom, oklch(from var(--b-singlebutton-bgd) calc(l - 0.017) c h), var(--b-singlebutton-bgd));
+  --b-singlebutton-border-color: oklch(from var(--b-singlebutton-bg) calc(l - 0.325) c h);
+  --focus-outline-col: var(--b-glow-control);
+
+  /* == Timeline == */
+  --b-timeline-outer-height: 3em;
+
+  /* == piano roll == */
+  --b-scrollboundary-color: #111;	/* dark boundary next to scrollable areas, should be (nearly) black */
+  --b-piano-roll-num-color:	#eeeeee;
+  --b-piano-roll-white-base:   	#bbbbbb;			/* base color for white piano key */
+  --b-piano-roll-black-base:   	#181818;			/* base color for black piano key */
+  --b-piano-roll-dark-row:     	lgrey(16%);   			/* background row color for notes */
+  --b-piano-roll-light-row:    	lgrey(20%);   			/* background row color for notes */
+  --b-piano-roll-note-color:	#88cc88b0;			/* color(15,65%,25%); */
+  --b-piano-roll-note-focus-color:	 #aaf8;
+  --b-piano-roll-note-focus-border: #f0f0f0;
+  --b-piano-roll-indicator:	 #bbfc;				/* color for play position indicator */
+
+}
+
 @mixin b-statusbar-vseparator {
   --groove-tint:  oklch(from var(--b-statusbar-bg) calc(l + 0.593) c h);
   --groove-shade: oklch(from var(--groove-tint) calc(l - 0.33) c h);
@@ -17,19 +91,6 @@
   border-right: 1px solid var(--groove-tint);
 }
 
-/* == Animations == */
---b-transition-fast-slide: 0.15s;
-
-/* == Handles == */
---b-resize-handle-thickness: 5px;
---b-resize-handle-bgcolor:   #555;
---b-resize-handle-hvcolor:   #bbb;
---b-resize-handle-border:    1.5px solid #111;
-
-/* == focus == */
---b-focus-outline-width: 1px;
---b-focus-outline:       var(--b-focus-outline-width) solid var(--b-style-focus-color);
---b-focus-box-shadow:    0 0 0 1px var(--b-style-focus-color); /* suitable for rounded outlines */
 @mixin b-focus-outline(--asborder: false)  {
   outline: 0 none;
   margin: 1px;
@@ -46,13 +107,6 @@
   }
 }
 
-/* == Outset / Inset == */
---b-style-inset-background-1:  #1b1b1b;
---b-style-inset-background-2:  #202020;
---b-style-inset-background-0:  mix(var(--b-style-inset-background-1), var(--b-style-inset-background-2));
---b-style-inset-background:    linear-gradient(to bottom, var(--b-style-inset-background-1), var(--b-style-inset-background-2));
---b-style-inset-glint-1:       var(--b-style-inset-background-1);
---b-style-inset-glint-2:       #383838;
 @mixin b-style-inset {
   /* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
   border-color: var(--b-style-inset-background-1) var(--b-style-inset-background-0) var(--b-style-inset-background-2) var(--b-style-inset-background-0);
@@ -63,17 +117,7 @@
   box-shadow: 0px -1px 0 0px var(--b-style-inset-glint-1), 0px -1px 0 1px var(--b-style-dark-outline), 0 0px 0 1px var(--b-style-dark-outline), 0px 2px 0px 0px var(--b-style-inset-glint-2);
   &:focus { box-shadow: 0px -1px 0 0px var(--b-style-inset-glint-1), 0px -1px 0 1px var(--b-style-focus-color), 0 0px 0 1px var(--b-style-focus-color), 0px 2px 0px 0px var(--b-style-inset-glint-2); }
 }
---b-style-outset-glint-1:        #777;
---b-style-outset-glint-2:        #444;
---b-style-outset-background-1:   #606060;
---b-style-outset-background-2:   #505050;
---b-style-outset-background-0:   mix(var(--b-style-outset-background-1), var(--b-style-outset-background-2));
---b-style-outset-background:     linear-gradient(to bottom, var(--b-style-outset-background-1), var(--b-style-outset-background-2));
---b-style-outset-activebg-1:     #404040;
---b-style-outset-activebg-2:     #303030;
---b-style-outset-activebg-0:     mix(var(--b-style-outset-activebg-1), var(--b-style-outset-activebg-2));
---b-style-outset-activebg:       linear-gradient(to bottom, var(--b-style-outset-activebg-1), var(--b-style-outset-activebg-2));
---b-style-outset-activebg-glint: var(--b-style-outset-activebg-2);
+
 @mixin b-style-outset {
   /* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
   border-color: var(--b-style-outset-background-1) var(--b-style-outset-background-0) var(--b-style-outset-background-2) var(--b-style-outset-background-0);
@@ -90,15 +134,6 @@
   }
 }
 
-/* == Buttons == */
---b-buttonbar-height: 1em;
-/* softbutton is an almost flat button with subtle outlines */
---b-softbutton-bg: #585858;
---b-softbutton-border-color: oklch(from var(--b-softbutton-bg) calc(l + 0.135) c h);
---b-softbutton-bgl: oklch(from var(--b-softbutton-bg) calc(l + 0.017) c h);
---b-softbutton-bgd: oklch(from var(--b-softbutton-bg) calc(l - 0.017) c h);
---b-softbutton-lg-up: linear-gradient(to bottom, var(--b-softbutton-bgd), var(--b-softbutton-bgl));
---b-softbutton-lg-down: linear-gradient(to top, var(--b-softbutton-bgd), var(--b-softbutton-bgl));
 @mixin b-softbutton() {
   background: var(--b-softbutton-lg-down);
   border: 1px outset var(--b-softbutton-border-color);
@@ -122,16 +157,6 @@
   place-content: stretch center;
   border: 1px inset var(--b-softbutton-border-color);
 }
-/* singlebutton is a seperately standing button wich clearly looks clickable */
---b-singlebutton-fg:   var(--b-modal-foreground);
---b-singlebutton-fgd:  oklch(from var(--b-singlebutton-fg) calc(l - 0.035) c h);
---b-singlebutton-bg:   lgrey(42.6%);
---b-singlebutton-bgl:  oklch(from var(--b-singlebutton-bg) calc(l + 0.072) c h);
---b-singlebutton-bgd:  oklch(from var(--b-singlebutton-bg) calc(l - 0.072) c h);
---b-singlebutton-lg:   linear-gradient(to top, var(--b-singlebutton-bgd), var(--b-singlebutton-bgl));
---b-singlebutton-dark: linear-gradient(to bottom, oklch(from var(--b-singlebutton-bgd) calc(l - 0.017) c h), var(--b-singlebutton-bgd));
---b-singlebutton-border-color: oklch(from var(--b-singlebutton-bg) calc(l - 0.325) c h);
---focus-outline-col: var(--b-glow-control);
 @mixin b-singlebutton(--vpad: 5px, --hpad: 5px) {
   background: var(--b-singlebutton-lg);
   color: var(--b-singlebutton-fg);
@@ -160,21 +185,6 @@
     pointer-events: none;
   }
 }
-
-/* == Timeline == */
---b-timeline-outer-height: 3em;
-
-/* == piano roll == */
---b-scrollboundary-color: #111;	/* dark boundary next to scrollable areas, should be (nearly) black */
---b-piano-roll-num-color:	#eeeeee;
---b-piano-roll-white-base:   	#bbbbbb;			/* base color for white piano key */
---b-piano-roll-black-base:   	#181818;			/* base color for black piano key */
---b-piano-roll-dark-row:     	lgrey(16%);   			/* background row color for notes */
---b-piano-roll-light-row:    	lgrey(20%);   			/* background row color for notes */
---b-piano-roll-note-color:	#88cc88b0;			/* color(15,65%,25%); */
---b-piano-roll-note-focus-color:	 #aaf8;
---b-piano-roll-note-focus-border: #f0f0f0;
---b-piano-roll-indicator:	 #bbfc;				/* color for play position indicator */
 
 /* == input[type='number'] == */
 @mixin b-style-number-input() {
