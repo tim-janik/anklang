@@ -10,9 +10,9 @@ import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
 
 // == STYLE ==
 Extra_css`
-$b-clipview-font-color: rgba(255, 255, 255, 0.7) !default;
-$b-clipview-note-color: rgba(255, 255, 255, 0.7) !default;
-$b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;
+--b-clipview-font-color: rgba(255, 255, 255, 0.7);
+--b-clipview-note-color: rgba(255, 255, 255, 0.7);
+--b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;
 b-clipview {
   display: inline-grid;
   margin: 0 0 0 2px;

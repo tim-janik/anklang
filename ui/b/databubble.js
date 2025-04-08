@@ -14,12 +14,12 @@ import * as Dom from "../dom.js";
 // <STYLE/>
 Extra_css`
 /* Bubble color setup */
-$b-data-bubble-hue: 52deg;
-$b-data-bubble-fg:  hsl($b-data-bubble-hue, 100%, 1%);
-$b-data-bubble-bg:  hsl($b-data-bubble-hue, 100%, 90%);
-$b-data-bubble-bg2: oklch(from $b-data-bubble-bg calc(l * 1.03) c h);
-$b-data-bubble-br:  $b-data-bubble-bg2;
-$fsf: 1.05; /* font size factor */
+--b-data-bubble-hue: 52deg;
+--b-data-bubble-fg:  hsl($b-data-bubble-hue, 100%, 1%);
+--b-data-bubble-bg:  hsl($b-data-bubble-hue, 100%, 90%);
+--b-data-bubble-bg2: oklch(from $b-data-bubble-bg calc(l * 1.03) c h);
+--b-data-bubble-br:  $b-data-bubble-bg2;
+--fsf: 1.05; /* font size factor */
 
 /* Tooltips via CSS, using the data-bubble="" attribute */
 .b-data-bubble {

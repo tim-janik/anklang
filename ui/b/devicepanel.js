@@ -17,7 +17,7 @@ import { text_content, get_uri, valid_uri, has_uri } from '../dom.js';
 // == STYLE ==
 Extra_css`
 @reference "../tailwind.css";
-$scrollbar-height: 6px; /* Should match Firefox 'scrollbar-width:thin' */
+--scrollbar-height: 6px; /* Should match Firefox 'scrollbar-width:thin' */
 b-devicepanel {
   @apply hflex;
   padding: 0 0 3px 0;

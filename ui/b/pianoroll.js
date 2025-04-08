@@ -24,7 +24,7 @@ b-piano-roll {
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;
   // Make scss variables available to JS via getComputedStyle()
-  $b-piano-roll-key-length: 64px;
+  --b-piano-roll-key-length: 64px;
   --piano-roll-light-row:    $b-piano-roll-light-row;
   --piano-roll-dark-row:     $b-piano-roll-dark-row;
   --piano-roll-grid-main:    oklch(from $b-piano-roll-light-row calc(l + 0.225) c h);   // bar separator

@@ -53,7 +53,7 @@ b-shell .-modal-message {
     justify-content: space-between;
     button, push-button {
       white-space: nowrap;
-      $hpadding: 0.75em;
+      --hpadding: 0.75em;
       padding-left: $hpadding; padding-right: $hpadding;
     }
     &.-manybuttons {
@@ -76,7 +76,7 @@ b-shell {
 #b-shell-spinner-layer {
   display: flex;
   img {
-    $size: 4em;
+    --size: 4em;
     width: $size; height: $size;
     margin: auto; display: inline-block; vertical-align: middle;
     animation: 1.1s linear infinite reverse spinner-svg-rotation-steps;

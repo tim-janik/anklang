@@ -15,10 +15,10 @@ import * as Ase from '../aseapi.js';
 Extra_css`
 b-positionview { @include h-flex(); }
 b-positionview {
-  $b-positionview-fg: $b-lcdscreen-fg;
-  $b-positionview-bg: $b-lcdscreen-bg;
-  $b-positionview-b0: oklch(from $b-positionview-bg calc(l - 0.01) c h);
-  $b-positionview-b1: oklch(from $b-positionview-bg calc(l + 0.01) c h);
+  --b-positionview-fg: $b-lcdscreen-fg;
+  --b-positionview-bg: $b-lcdscreen-bg;
+  --b-positionview-b0: oklch(from $b-positionview-bg calc(l - 0.01) c h);
+  --b-positionview-b1: oklch(from $b-positionview-bg calc(l + 0.01) c h);
   margin: 0; padding: 5px 1em;
   letter-spacing: 0.05em;
   border-radius: $b-button-radius; align-items: baseline;

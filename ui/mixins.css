@@ -1,8 +1,5 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
-/* == Variables ==
- *  Only put *!default* definitions here, so `theme.scss` takes precedence. */
-
 /* == h-flex == */
 @mixin h-flex() {
   display: flex; flex-basis: auto; flex-flow: row nowrap;
@@ -14,7 +11,7 @@
 }
 
 /* == Hotkey == */
-@mixin b-kbd-hotkey($border: true) {
+@mixin b-kbd-hotkey(--border: true) {
   font-family: $b-font-stack-kbd-mono;
   font-weight: 600;
   font-size: calc(1em - 2px);
@@ -28,7 +25,7 @@
 }
 
 /* == Markdown Styling == */
-@mixin b-markdown-it-inlined($maywrap: true)	{
+@mixin b-markdown-it-inlined(--maywrap: true)	{
   /* avoid all margins and padding, make elements suitable for 'inline' layouts */
   h1,h2,h3,h4,h5,h6 { font-size: inherit; padding: 0; margin: 0; }
   p { margin: 0; }
