@@ -19,7 +19,7 @@ b-statusbar {
     display: flex; flex-wrap: nowrap; flex-shrink: 0; flex-grow: 0; white-space: nowrap;
   }
   .b-statusbar-text {
-    display: inline-block; overflow: hidden visible; //* avoid scrolling */
+    display: inline-block; overflow: hidden visible; /* avoid scrolling */
     white-space: nowrap;
     flex-shrink: 1; flex-grow: 1;
     margin-left: calc($b-statusbar-field-spacing * 2);
@@ -49,7 +49,7 @@ b-statusbar {
     @include b-markdown-it-inlined;
     color: $b-statusbar-text-shade;
     * {
-      display: inline-block; overflow-y: visible; //* avoids scrolling */
+      display: inline-block; overflow-y: visible; /* avoids scrolling */
       padding: 0; margin: 0; font-size: inherit; white-space: nowrap;
     }
     strong { color: $b-main-foreground; padding: 0 0.5em; @include b-font-weight-normal(); }

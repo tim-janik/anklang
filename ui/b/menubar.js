@@ -22,7 +22,7 @@ b-menubar {
   .b-menubar-icon {
     position: absolute; inset: 0;
     display: inline-flex; justify-content: center;
-    [ic] { inset: 0; position: absolute; vertical-align: middle; } // display: inline-block;
+    [ic] { inset: 0; position: absolute; vertical-align: middle; } /* display: inline-block; */
     [ic="bc-menumore"] { position: absolute; top: unset; left: unset; }
   }
 }`;

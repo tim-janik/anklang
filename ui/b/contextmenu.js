@@ -111,7 +111,7 @@ b-contextmenu :is(button, push-button, summary) {
 }
 b-contextmenu b-menurow button {
   @apply px-1;
-  min-width: 5rem; //* this aligns blocks of 2-digit numbers */
+  min-width: 5rem; /* this aligns blocks of 2-digit numbers */
   > b-icon:first-child { @apply m-0 mb-1; }
 }
 b-contextmenu button:focus {

@@ -31,11 +31,11 @@ b-treebrowser details > summary {
 b-treebrowser details > summary::before {
   @apply absolute inline;
   left: calc(-1 * var(--b-treebrowser-indent) + 2px);
-  content: '►'; // ▸
+  content: '►'; /* ▸ */
   transition: all .1s ease;
 }
 b-treebrowser details[open] > summary::before {
-  content: '▷'; // ▹ ▼
+  content: '▷'; /* ▹ ▼ */
   transform: rotate(90deg);
 }
 
