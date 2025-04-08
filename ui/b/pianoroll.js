@@ -23,23 +23,23 @@ Extra_css`
 b-piano-roll {
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;
-  // Make scss variables available to JS via getComputedStyle()
+  /* Make scss variables available to JS via getComputedStyle() */
   --b-piano-roll-key-length: 64px;
   --piano-roll-light-row:    var(--b-piano-roll-light-row);
   --piano-roll-dark-row:     var(--b-piano-roll-dark-row);
-  --piano-roll-grid-main:    oklch(from var(--b-piano-roll-light-row) calc(l + 0.225) c h);   // bar separator
-  --piano-roll-grid-sub:     oklch(from var(--b-piano-roll-light-row) calc(l + 0.135) c h);   // quarter note separator
-  --piano-roll-semitone12:   oklch(from var(--b-piano-roll-light-row) calc(l + 0.225) c h);   // separator per octave
-  --piano-roll-semitone6:    oklch(from var(--b-piano-roll-light-row) calc(l + 0.225) c h);   // separator after 6 semitones
+  --piano-roll-grid-main:    oklch(from var(--b-piano-roll-light-row) calc(l + 0.225) c h);   /* bar separator */
+  --piano-roll-grid-sub:     oklch(from var(--b-piano-roll-light-row) calc(l + 0.135) c h);   /* quarter note separator */
+  --piano-roll-semitone12:   oklch(from var(--b-piano-roll-light-row) calc(l + 0.225) c h);   /* separator per octave */
+  --piano-roll-semitone6:    oklch(from var(--b-piano-roll-light-row) calc(l + 0.225) c h);   /* separator after 6 semitones */
 
   --piano-roll-white-base:   var(--b-piano-roll-white-base);
-  --piano-roll-white-border: var(--b-scrollboundary-color);                   // border around piano key
-  --piano-roll-white-glint:  oklch(from var(--b-piano-roll-white-base) calc(l + 0.065) c h);   // highlight on piano key
+  --piano-roll-white-border: var(--b-scrollboundary-color);                   /* border around piano key */
+  --piano-roll-white-glint:  oklch(from var(--b-piano-roll-white-base) calc(l + 0.065) c h);   /* highlight on piano key */
   --piano-roll-key-color:    var(--b-scrollboundary-color);
   --piano-roll-black-base:   var(--b-piano-roll-black-base);
-  --piano-roll-black-border: oklch(from var(--b-piano-roll-black-base) calc(l + 0.038) c h);   // border around piano key
-  --piano-roll-black-glint:  oklch(from var(--b-piano-roll-black-base) calc(l + 0.143) c h);  // highlight on piano key
-  --piano-roll-black-shine:  oklch(from var(--b-piano-roll-black-base) calc(l + 0.335) c h);  // reflection on piano key
+  --piano-roll-black-border: oklch(from var(--b-piano-roll-black-base) calc(l + 0.038) c h);   /* border around piano key */
+  --piano-roll-black-glint:  oklch(from var(--b-piano-roll-black-base) calc(l + 0.143) c h);  /* highlight on piano key */
+  --piano-roll-black-shine:  oklch(from var(--b-piano-roll-black-base) calc(l + 0.335) c h);  /* reflection on piano key */
 
   --piano-roll-font:                  var(--b-canvas-font);
   --piano-roll-num-color:             var(--b-piano-roll-num-color);
@@ -54,7 +54,7 @@ b-piano-roll {
     grid-template-columns: min-content 1fr min-content;
     grid-template-rows:    min-content 1fr min-content;
     canvas { background: black; object-fit: contain;
-      min-width: 0; min-height: 0; // https://www.w3.org/TR/css3-grid-layout/#min-size-auto
+      min-width: 0; min-height: 0; /* https://www.w3.org/TR/css3-grid-layout/#min-size-auto */
     }
     .-indicator {
       position: absolute; top: 0; bottom: 0; left: 0; width: 1px; height: 100%;
@@ -66,12 +66,12 @@ b-piano-roll {
     .-hextend {
       background: #0000; opacity: 0; visibility: hidden;
       margin-top: 0; height: 1px;
-      // height: 16px; margin-top: -8px; background: #0f0;
+      /* height: 16px; margin-top: -8px; background: #0f0; */
     }
     .-vextend {
       background: #0000; opacity: 0; visibility: hidden;
       margin-left: 0; width: 1px;
-      // width: 16px; margin-left: -3px; background: #00f;
+      /* width: 16px; margin-left: -3px; background: #00f; */
     }
   }
 }`;
