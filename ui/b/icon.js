@@ -60,13 +60,13 @@ class BIcon extends LitComponent {
   render()
   {
     const { iconclasses, mi_, uc_ } = this;
-    this.innerText = mi_ || uc_;
+    const inner_text = mi_ || uc_;
     for (let c of this.lastclass_.split (' '))
       !!c && this.classList.remove (c);
     this.lastclass_ = iconclasses;
     for (let c of this.lastclass_.split (' '))
       !!c && this.classList.add (c);
-    return null;
+    return inner_text;
   }
   static properties = {
     iconclass: STRING_PROPERTY,
