@@ -12,7 +12,9 @@ import { LitComponent, html, JsExtract, docs, ref, repeat } from '../little.js';
 
 // == STYLE ==
 Extra_css`
---scroll-shadow-inset: 7px;
+:root {
+  --scroll-shadow-inset: 7px;
+}
 b-tracklist {
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;
