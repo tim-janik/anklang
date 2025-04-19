@@ -33,9 +33,9 @@ b-statusbar {
   .b-icon {
     align-items: center;
     padding: 0 var(--b-statusbar-field-spacing);
-    filter: brightness(asfactor(var(--b-statusbar-icon-brightness)));
+    filter: brightness(var(--b-statusbar-icon-brightness));
     &:hover:not(.b-active) {
-      filter: brightness(div(1.0, asfactor(var(--b-statusbar-icon-brightness))));
+      filter: brightness(calc(1.0 / var(--b-statusbar-icon-brightness)));
       transform: scale(var(--b-statusbar-icon-scaleup));
     }
     &.b-active {
