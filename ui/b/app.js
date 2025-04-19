@@ -14,7 +14,27 @@ import '/gen/all-components.js';
 import * as Util from '../util.js';
 import * as Mouse from '../mouse.js';
 import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
-import { Signal, State, Computed, Watcher, tracking_wrapper } from "../signal.js";
+import { Signal, createSignal, State, Computed, Watcher, tracking_wrapper } from "../signal.js";
+
+function make_reactive (tmpl)
+{
+  const signals = {};
+  for (const key in tmpl)
+    Object.defineProperty (signals, key, { value: createSignal (tmpl[key]), enumerable: true, configurable: false, writable: true });
+  const handler = {
+    get (target, prop, receiver) {
+      const gs = Reflect.get (target, prop); // receiver
+      return Array.isArray (gs) ? gs[0]() : undefined;
+    },
+    set (target, prop, value, receiver) {
+      const gs = Reflect.get (target, prop); // receiver
+      Array.isArray (gs) && gs[1] (value);
+      return true; // success
+    }
+  };
+  return new Proxy (signals, handler);
+}
+window.make_reactive = make_reactive;
 
 // == App ==
 export class AppClass {
@@ -44,7 +64,7 @@ export class AppClass {
       current_track: undefined,
       show_preferences_dialog: false,
     };
-    this.data = Vue.reactive (data);
+    this.data = make_reactive (data);
     Object.defineProperty (globalThis, 'App', { value: this });
     Object.defineProperty (globalThis, 'Data', { value: this.data });
     this.request_update();
