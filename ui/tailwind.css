@@ -153,6 +153,7 @@ html {
   @apply flex basis-auto flex-row flex-nowrap items-stretch;
   align-content: stretch;
 }
+.hflex[inline] { display: inline-flex; }
 @utility vflex {
   /** The <v-flex> element is a vertical [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
    * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
@@ -160,3 +161,4 @@ html {
   @apply flex basis-auto flex-col flex-nowrap items-stretch;
   align-content: stretch;
 }
+.vflex[inline] { display: inline-flex; }
