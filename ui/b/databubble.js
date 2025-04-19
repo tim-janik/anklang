@@ -16,8 +16,8 @@ Extra_css`
 /* Bubble color setup */
 :root {
   --b-data-bubble-hue: 52deg;
-  --b-data-bubble-fg:  hsl(var(--b-data-bubble-hue), 100%, 1%);
-  --b-data-bubble-bg:  hsl(var(--b-data-bubble-hue), 100%, 90%);
+  --b-data-bubble-fg:  hsl(var(--b-data-bubble-hue) 100% 1%);
+  --b-data-bubble-bg:  hsl(var(--b-data-bubble-hue) 100% 90%);
   --b-data-bubble-bg2: oklch(from var(--b-data-bubble-bg) calc(l * 1.03) c h);
   --b-data-bubble-br:  var(--b-data-bubble-bg2);
   --fsf: 1.05; /* font size factor */

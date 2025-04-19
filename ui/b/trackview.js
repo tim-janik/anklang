@@ -40,11 +40,11 @@ b-trackview {
   .-lvm-coverspace                     { top: calc(var(--b-track-meter-thickness) - 0.25px); height: calc(var(--b-track-meter-gap) + 0.5px); }
   .-lvm-covertip1, .-lvm-covermid1     { top: calc(var(--b-track-meter-thickness) + var(--b-track-meter-gap)); }
   .-lvm-coverspace {
-    background-color: rgba( 0, 0, 0, .80);
+    background-color: rgba( 0 0 0 / .80);
   }
   .-lvm-covertip0, .-lvm-covermid0, .-lvm-covertip1, .-lvm-covermid1 {
     height: var(--b-track-meter-thickness);
-    background-color: rgba( 0, 0, 0, .75);
+    background-color: rgba( 0 0 0 / .75);
     transform-origin: center right;
     will-change: transform;
     transform: scaleX(1);
