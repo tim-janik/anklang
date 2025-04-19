@@ -29,7 +29,7 @@ b-menubar {
 
 // <HTML/>
 const HTML = (t, d) =>  html`
-  <h-flex class="b-menubar m-2" style="justify-content: space-between" >
+  <div class="hflex b-menubar m-2" style="justify-content: space-between" >
     <!-- main menu & controlbar -->
 
     <!-- menubar left -->
@@ -83,10 +83,10 @@ const HTML = (t, d) =>  html`
     </b-buttonbar>
 
     <!-- playcontrols -->
-    <h-flex>
+    <div class="hflex">
       <b-playcontrols></b-playcontrols>
       <b-positionview></b-positionview>
-    </h-flex>
+    </div>
 
     <!-- menubar right -->
     <b-buttonbar class="-menubar" >
@@ -106,7 +106,7 @@ const HTML = (t, d) =>  html`
       </push-button>
     </b-buttonbar>
 
-  </h-flex>
+  </div>
 `;
 const ELECTRON_MENUITEMS = (t) => window['Electron'] && html`
   <button ic="mi-zoom_in"   kbd="Ctrl++" uri="zoom-in">			Zoom In		</button>

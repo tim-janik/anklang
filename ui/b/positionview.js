@@ -13,7 +13,8 @@ import * as Ase from '../aseapi.js';
 
 // <STYLE/>
 Extra_css`
-b-positionview { @include h-flex(); }
+@reference "../tailwind.css";
+b-positionview { @apply hflex; }
 b-positionview {
   --b-positionview-fg: var(--b-lcdscreen-fg);
   --b-positionview-bg: var(--b-lcdscreen-bg);

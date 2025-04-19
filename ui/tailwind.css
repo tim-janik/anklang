@@ -146,18 +146,24 @@ html {
   /* Utility for a 1px border. */
   border-width: 1px;
 }
+
+/** @class hflex
+ * @description
+ * The .hflex class is a horizontal [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
+ * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
+ */
 @utility hflex {
-  /** The <h-flex> element is a horizontal [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
-   * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
-   */
   @apply flex basis-auto flex-row flex-nowrap items-stretch;
   align-content: stretch;
 }
 .hflex[inline] { display: inline-flex; }
+
+/** @class vflex
+ * @description
+ * The .vflex class is a vertical [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
+ * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
+ */
 @utility vflex {
-  /** The <v-flex> element is a vertical [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
-   * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
-   */
   @apply flex basis-auto flex-col flex-nowrap items-stretch;
   align-content: stretch;
 }

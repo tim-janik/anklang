@@ -83,7 +83,7 @@ const HTML = (t, d) => html`
     @keydown=${e => t.piano_ctrl.keydown (e)}
     @wheel=${{handleEvent: e => t.wheel_event (e), passive: false}} >
 
-    <v-flex class="-toolbutton col-start-1 row-start-1" style="height: 1.7em; align-items: end; padding-right: 4px;" ${ref (h => t.menu_btn = h)}
+    <div class="vflex -toolbutton col-start-1 row-start-1" style="height: 1.7em; align-items: end; padding-right: 4px;" ${ref (h => t.menu_btn = h)}
       id="g-pianoroll-toolbutton" @click=${e => t.pianotoolmenu.popup (e)} @mousedown=${e => t.pianotoolmenu.popup (e)} >
       <b-icon style="width: 1.2em; height: 1.2em" ${ref (h => t.menu_icon = h)}></b-icon>
       <b-contextmenu ${ref (h => t.pianotoolmenu = h)} id="g-pianotoolmenu" class="-pianotoolmenu" @activate=${e => t.usetool (get_uri (e.detail))} >
@@ -92,7 +92,7 @@ const HTML = (t, d) => html`
 	<button ic="fa-pencil"        uri="P" kbd="3" > Pen                    </button>
 	<button ic="fa-eraser"        uri="E" kbd="4" > Eraser                 </button>
       </b-contextmenu>
-    </v-flex>
+    </div>
 
     <canvas class="-time_canvas col-start-2 row-start-1"  ${ref (h => t.time_canvas = h)} ></canvas>
     <canvas class="-piano_canvas col-start-1 row-start-2" ${ref (h => t.piano_canvas = h)} ></canvas>

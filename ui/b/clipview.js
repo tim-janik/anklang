@@ -46,12 +46,12 @@ b-clipview {
 
 // == HTML ==
 const HTML = (t, d) => html`
-<h-flex class="b-clipview"
+<div class="b-clipview hflex"
   @click=${t.click}
   >
   <canvas class="-canvas" ${ref (h => t.canvas = h)} ></canvas>
   <span class="-play" @click.stop="click_play" >▶</span>
-</h-flex>
+</div>
 `;
 
 // == SCRIPT ==

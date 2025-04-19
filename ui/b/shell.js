@@ -132,18 +132,18 @@ const HTML = (t, m, fs) => [ html`
     ${ref (h => t.piano_roll_ = h)} ?hidden=${Data.panel2 == 'p'}></b-piano-roll>
 
   <!-- browser -->
-  <v-flex class="b-shell-sidebar -row28 -col1" style="width:10em">
+  <div class="b-shell-sidebar vflex -row28 -col1" style="width:10em">
     Browser <br />
     <b-treebrowser .tree=${m.filetree} ?hidden=${Data.panel3 == 'b'}></b-treebrowser>
     <span ?hidden=${Data.panel3 == 'i'}><a href="">Info Panel</a></span>
-  </v-flex>
+  </div>
 
   <!-- Inspector -->
-  <v-flex class="-row28 -col3" style="margin-left: 3em">
+  <div class="vflex -row28 -col3" style="margin-left: 3em">
     ||| <br />
     Editor <br />
     ||| <br />
-  </v-flex>
+  </div>
 
   <!-- status bar -->
   <b-statusbar class="-row9 -col123" ></b-statusbar>
@@ -182,19 +182,19 @@ const DIALOGS_HTML = (t) =>
 	{{ d.header }}
       </template>
       <template v-slot:default>
-	<h-flex style="justify-content: flex-start; align-items: center;">
+	<div class="hflex" style="justify-content: flex-start; align-items: center;">
 	  <b-icon v-bind="d.icon" ></b-icon>
 	  <div style="flex-grow: 1; white-space: pre-line;">{{ d.body }}</div>
 	  <div style="flex-grow: 1; white-space: pre-line;" v-html="d.vhtml"></div>
-	</h-flex>
+	</div>
 	<b-fed-object class="-modal-fed" ?shown=${d.proplist} .value=${d.proplist} ></b-fed-object>
 	<div class="-div-handler" ?shown=${d.div_handler}></div>
       </template>
       <template v-slot:footer>
-	<h-flex class="-hfooter" .class=${d.footerclass}>
+	<div class="hflex -hfooter" .class=${d.footerclass}>
 	  <component v-for="(b, i) in d.buttons" .key=${i} @click=${ev => d.click(i)} .disabled=${b.disabled}
 	    .is=${b.canfocus ? 'button' : 'push-button'} .autofocus=${b.autofocus}>{{ b.label }}</component>
-	</h-flex>
+	</div>
       </template>
     </dialog>
   `);

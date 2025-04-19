@@ -56,7 +56,7 @@ b-devicepanel {
   }
   position: relative;
   &::after {
-    @apply absolute pointer-events-none inset-0;
+    @apply pointer-events-none absolute inset-0;
     content: ' '; z-index: 9; /* raise above scrolled siblings */
     box-shadow: inset -10px 0 7px -7px #000, inset 10px 0 7px -7px #000;
   }
@@ -71,7 +71,7 @@ const DEVICE_HTML = (t, dev) => html`
 const HTML = (t) => html`
   <div class="b-devicepanel-scroller" >
     <span class="b-devicepanel-vtitle"> Device Panel </span>
-    <h-flex class="b-devicepanel-hstack" >
+    <div class="b-devicepanel-hstack hflex" >
       ${repeat (t.chain_?.devs || [], dev => dev.$id, dev => DEVICE_HTML (t, dev))}
       <b-more @mousedown=${e => t.menuopen (e)}
 	data-tip="**CLICK** Add New Elements" ></b-more>
@@ -80,7 +80,7 @@ const HTML = (t) => html`
 	<b-menutitle> Devices </b-menutitle>
 	<b-treebrowser .tree=${t.devicetypes} ?expandall="false"> </b-treebrowser>
       </b-contextmenu>
-    </h-flex>
+    </div>
   </div>
 `;
 

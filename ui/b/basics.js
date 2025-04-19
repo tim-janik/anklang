@@ -6,14 +6,10 @@ import * as Util from '../util.js';
 
 // <STYLE/>
 Extra_css`
-h-flex { @include h-flex(); }
-h-flex[inline] { display: inline-flex; }
-
-v-flex { @include v-flex(); }
-v-flex[inline] { display: inline-flex; }
 
 c-grid { display: grid; }
 c-grid[inline] { display: inline-grid; }
+
 `;
 
 /** @class BPushButton
@@ -23,22 +19,6 @@ c-grid[inline] { display: inline-grid; }
  */
 class BPushButton extends HTMLElement {}
 customElements.define ('push-button', BPushButton);
-
-/** @class BHFlex
- * @description
- * The <h-flex> element is a horizontal [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
- * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
- */
-class BHFlex extends HTMLElement {}
-customElements.define ('h-flex', BHFlex);
-
-/** @class BVFlex
- * @description
- * The <v-flex> element is a vertical [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
- * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
- */
-class BVFlex extends HTMLElement {}
-customElements.define ('v-flex', BVFlex);
 
 /** @class BGrid
  * @description

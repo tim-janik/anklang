@@ -40,14 +40,14 @@ b-crawlerdialog {
     overflow-y: hidden;
   }
   input.-direntry {
-    @apply outline-0 rounded-[var(--b-button-radius)] text-left pl-[var(--b-button-radius)] pr-[var(--b-button-radius)] border-[none];
+    @apply rounded-[var(--b-button-radius)] border-[none] pl-[var(--b-button-radius)] pr-[var(--b-button-radius)] text-left outline-0;
     &::selection { background: #2d53c4; }
     z-index: 1;	/* push onto its own layer */
     @include b-style-inset;
     /* @include b-focus-outline; */
   }
   input.-pathentry {
-    @apply outline-0 rounded-[var(--b-button-radius)] text-left pl-[var(--b-button-radius)] pr-[var(--b-button-radius)] border-[none];
+    @apply rounded-[var(--b-button-radius)] border-[none] pl-[var(--b-button-radius)] pr-[var(--b-button-radius)] text-left outline-0;
     &::selection { background: #2d53c4; }
     /* <INPUT/> change causes re-layout: https://bugs.chromium.org/p/chromium/issues/detail?id=1116001 */
     z-index: 1;	/* push onto its own layer */
@@ -64,7 +64,7 @@ b-crawlerdialog {
     color: #eee;
   }
   .-entry-grid > button {
-    @apply m-0 inline-block cursor-pointer inline-flex flex-col truncate rounded-none border-[none] p-0 pr-1 text-[unset] no-underline;
+    @apply m-0 inline-block inline-flex cursor-pointer flex-col truncate rounded-none border-[none] p-0 pr-1 text-[unset] no-underline;
     flex-flow: row nowrap;
     min-width: 10em;
     cursor: pointer;
@@ -86,16 +86,16 @@ const HTML = (t, d) => html`
 <dialog class="floating-dialog [&:not([open])]:hidden" ${ref (h => t.dialog = h)} @close=${t.close_click} style="overflow: hidden">
   <div class="dialog-header">${t.title}</div>
 
-  <input class="-direntry mb-4 outline outline-2 outline-offset-2 select-none pointer-events-none" ${ref (h => t.direntry = h)} .value="${t.folder}"
+  <input class="-direntry pointer-events-none mb-4 select-none outline outline-2 outline-offset-2" ${ref (h => t.direntry = h)} .value="${t.folder}"
 	 tabindex='-1' readonly @focus=${e => t.pathentry.focus()} inert
 	 type="text" @select=${Util.prevent_event} >
 
   <c-grid data-subfocus="*" class="-entry-grid" ${ref (h => t.entrygrid = h)}
     @keydown=${t.entrygrid_keydown} >
     ${repeat (d.entries, e => e.uri, e => ENTRY_HTML (t, e))}
-    <h-flex class="-spin-wrapper"
+    <div class="-spin-wrapper hflex"
       style="height: 100%; width: 100%; text-align: center; align-items: center; justify-content: center">
-      <div style="text-align: center" > ⥁ </div> </h-flex>
+      <div style="text-align: center" > ⥁ </div> </div>
   </c-grid>
 
   <input class="-pathentry mt-4 outline outline-2 outline-offset-2" ${ref (h => t.pathentry = h)} .value=""

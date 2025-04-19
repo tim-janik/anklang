@@ -112,10 +112,10 @@ b-choiceinput {
 
 // <HTML/>
 const HTML = (t, d) =>  html`
-  <h-flex class="b-choice-current" ${ref (h => t.pophere = h)} tabindex="0" >
+  <div class="b-choice-current hflex" ${ref (h => t.pophere = h)} tabindex="0" >
     <span class="-current">${t.current_span()}</span>
     <span class="-arrow" > ⬍ <!-- ▼ ▽ ▾ ▿ ⇕ ⬍ ⇳ --> </span>
-  </h-flex>
+  </div>
 `;
 const CONTEXTMENU_HTML = (t) =>  html`
   <b-contextmenu class="b-choiceinput-contextmenu" ${ref (h => t.cmenu = h)}

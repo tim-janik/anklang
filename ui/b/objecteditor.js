@@ -64,19 +64,19 @@ b-objecteditor {
 
 // <HTML/>
 const GROUP_HTML = (t, group) =>  html`
-<h-flex class="b-objecteditor-group" style="grid-column: 1 / span 3" >
+<div class="hflex b-objecteditor-group" style="grid-column: 1 / span 3" >
   <span class="b-objecteditor-label" style="flex-grow: 0;" >${group.name}</span>
   <hr style="flex-grow: 1; margin-left: 0.5em; min-width: 5em"></hr>
-</h-flex>
+</div>
 `;
 const PROP_HTML = (t, prop, INPUT_TAG) =>  html`
 <span class="b-objecteditor-flabel" style="grid-column: 1" data-bubble=${prop.descr_ || prop.blurb_} >${prop.label_}</span>
-<h-flex class="b-objecteditor-field" style="grid-column: 2 / span 2" >
+<div class="hflex b-objecteditor-field" style="grid-column: 2 / span 2" >
   <span class="b-objecteditor-value" data-bubble=${prop.blurb_ || prop.descr_} style="text-align: right" >
     ${INPUT_TAG}
   </span>
   <span><span class="b-objecteditor-clear" @click=${e => prop.reset()} data-bubble=${"Reset " + prop.label_} > ⊗  </span></span>
-</h-flex>
+</div>
 `;
 const NUMBER_HTML = (t, prop) => html`
   <b-numberinput class=${'b-objecteditor--' + prop.ident_}

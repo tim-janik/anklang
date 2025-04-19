@@ -33,9 +33,9 @@ b-more { /* b-more */
 
 // == HTML ==
 const HTML = html`
-  <v-flex class="-plus" >
+  <div class="vflex -plus" >
     +
-  </v-flex>
+  </div>
 `;
 
 // == SCRIPT ==

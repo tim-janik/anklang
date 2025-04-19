@@ -12,8 +12,9 @@ import * as Util from '../util.js';
 
 // == STYLE ==
 Extra_css`
+@reference "../tailwind.css";
 b-propgroup {
-  @include v-flex();
+  @apply vflex;
   padding: 5px;
   justify-content: space-evenly;
   border-radius: var(--b-button-radius);
