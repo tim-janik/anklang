@@ -2,6 +2,9 @@
 
 module.exports = {
   extends: [ "stylelint-config-standard" ],
+  ignoreFiles: [
+    "../**/gen/**/*.css",
+  ],
   plugins: [
     { // https://github.com/stylelint/stylelint/issues/8524
       ruleName: 'my/no-standalone-custom-properties',
@@ -23,6 +26,7 @@ module.exports = {
     },
   ],
   rules: {
+    'hue-degree-notation': null,
     'selector-pseudo-element-colon-notation': null,
     'my/no-standalone-custom-properties': true,
     "selector-type-no-unknown": [ true, { "ignoreTypes": [ /b-.*/ ] }],
