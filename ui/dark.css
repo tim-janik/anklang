@@ -21,19 +21,13 @@
   --b-grey-tone: oklch(from var(--b-color-tone) 50% 20% h);
   --b-dialog-border-colors: var(--b-grey31);
 
-  --b-panel-focus: oklch(from var(--b-grey-tone) 50% c h);
   --b-active-color: #00e5ea;
   --b-devicepanel:  oklch(3% 0 0);
-  --b-device-bg:    var(--b-panel-background);
-  --b-device-handle: oklch(26% 0 0);
-  --b-device-area1:  oklch(24% 0 0);
-  --b-device-area2:  oklch(28% 0 0);
   --b-dialog-foreground: oklch(from var(--b-color-tone) 98.7% c h);
   --b-dialog-background: oklch(from var(--b-color-tone) 18% c h);
   --b-dialog-bordercol:  oklch(from var(--b-color-tone) 36% c h);
 
   /* Spacings and Sizes */
-  --b-panel-border: 2px;
   --b-button-radius: 3px;
   --b-device-radius: 3px;
   --b-panel-radius: 3px;
@@ -50,7 +44,7 @@
 
   --b-panel-foreground: oklch(from var(--b-grey-tone) 96% c h);
   --b-panel-background: oklch(from var(--b-grey-tone) 36% c h);
-  --b-panel-focus:		oklch(50% 0 0); /* focused panel border */
+  --b-panel-focus: oklch(from var(--b-grey-tone) 50% c h); /* focused panel border */
   --b-panel-borderwidth:	2px;
   --b-panel-border:	var(--b-panel-borderwidth) solid var(--b-panel-background);
   --b-panel-spacing:	var(--b-panel-borderwidth);
