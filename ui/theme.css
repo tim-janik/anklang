@@ -105,43 +105,16 @@
   }
 }
 
-@mixin b-style-inset {
-  /* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
-  border-color: var(--b-style-inset-background-1) var(--b-style-inset-background-0) var(--b-style-inset-background-2) var(--b-style-inset-background-0);
-  border-left: 0px !important; border-right: 0px !important; border-radius: var(--b-button-radius);
-  color: var(--b-style-light-foreground); outline: none; /* focus is handled via box-shadow */
-  background-color: var(--b-style-inset-background-0); background: var(--b-style-inset-background);
-  /* The inset is implemented similarly to b-style-outset */
-  box-shadow: 0px -1px 0 0px var(--b-style-inset-glint-1), 0px -1px 0 1px var(--b-style-dark-outline), 0 0px 0 1px var(--b-style-dark-outline), 0px 2px 0px 0px var(--b-style-inset-glint-2);
-  &:focus { box-shadow: 0px -1px 0 0px var(--b-style-inset-glint-1), 0px -1px 0 1px var(--b-style-focus-color), 0 0px 0 1px var(--b-style-focus-color), 0px 2px 0px 0px var(--b-style-inset-glint-2); }
-}
-
-@mixin b-style-outset {
-  /* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
-  border-color: var(--b-style-outset-background-1) var(--b-style-outset-background-0) var(--b-style-outset-background-2) var(--b-style-outset-background-0);
-  border-left: 0px !important; border-right: 0px !important; border-radius: var(--b-button-radius);
-  color: var(--b-style-light-foreground); outline: none; /* focus is handled via box-shadow */
-  background-color: var(--b-style-outset-background-0); background: var(--b-style-outset-background);
-  /* The outset is implemented by adding a dark shadow around, and light shadows above and below */
-  box-shadow: 0px -1px 0 0px var(--b-style-outset-glint-1), 0px -1px 0 1px var(--b-style-dark-outline), 0 0px 0 1px var(--b-style-dark-outline), 0px 2px 0px 0px var(--b-style-outset-glint-2);
-  &:focus { box-shadow: 0px -1px 0 0px var(--b-style-outset-glint-1), 0px -1px 0 1px var(--b-style-focus-color), 0 0px 0 1px var(--b-style-focus-color), 0px 2px 0px 0px var(--b-style-outset-glint-2); }
-  &.active, &:active, &[data-contextmenu="true"] {
-	background-color: var(--b-style-outset-activebg-0); background: var(--b-style-outset-activebg);
-	box-shadow: 0px -1px 0 0px var(--b-style-outset-activebg-glint), 0px -1px 0 1px var(--b-style-dark-outline), 0 0px 0 1px var(--b-style-dark-outline), 0px 2px 0px 0px var(--b-style-outset-glint-2);
-	&:focus { box-shadow: 0px -1px 0 0px var(--b-style-outset-activebg-glint), 0px -1px 0 1px var(--b-style-focus-color), 0 0px 0 1px var(--b-style-focus-color), 0px 2px 0px 0px var(--b-style-outset-glint-2); }
-  }
-}
-
 @mixin b-softbutton() {
   background: var(--b-softbutton-lg-down);
   border: 1px outset var(--b-softbutton-border-color);
   border-top-color: transparent; border-bottom-color: transparent;
   &:focus { outline: var(--b-focus-outline); }
-  &.hover, &:hover   { box-shadow: inset 500px 500px rgba(255, 255, 255, 0.035); }
+  &.hover, &:hover   { box-shadow: inset 500px 500px rgba(255 255 255 / 0.035); }
   &.active, &:active, &[data-contextmenu="true"] {
     background: var(--b-softbutton-lg-up);
     border-color: var(--b-softbutton-bg); border-style: solid;
-    box-shadow: inset 500px 500px rgba(0, 0, 0, 0.05);
+    box-shadow: inset 500px 500px rgba(0 0 0 / 0.05);
   }
   &[disabled] {
     filter: saturate(80%) brightness(80%);
@@ -162,13 +135,13 @@
   justify-content: center;
   border: 1px outset var(--b-singlebutton-border-color);
   padding: var(--vpad) var(--hpad) var(--vpad) var(--hpad);
-  &.hover, &:hover   { box-shadow: inset 500px 500px rgba(255, 255, 255, 0.035); }
+  &.hover, &:hover   { box-shadow: inset 500px 500px rgba(255 255 255 / 0.035); }
   &.active, &:active, &[data-contextmenu="true"] {
     background: var(--b-singlebutton-dark);
     color: var(--b-singlebutton-fgd);
     border-color: oklch(from var(--b-singlebutton-border-color) calc(l + 0.037) c h);
     /*border-style: solid;*/
-    box-shadow: inset 500px 500px rgba(0, 0, 0, 0.05);
+    box-shadow: inset 500px 500px rgba(0 0 0 / 0.05);
   }
   &:focus {
     outline: none;
@@ -209,7 +182,7 @@
   width: 100%; height: 7px; cursor: pointer;
   border-radius: calc(var(--b-button-radius) * 0.5);
   box-shadow: inset 0 1px 0 0px var(--b-style-dark-outline), inset 0px -1px 0px 0px var(--b-style-inset-glint-2);
-  background-color: var(--b-style-inset-background-0); background: var(--b-style-inset-background);
+  background: var(--b-style-inset-background);
 }
 @mixin b-style-hrange-thumb-bg(--center: var(--b-style-outset-glint-1)) {
   background: radial-gradient(

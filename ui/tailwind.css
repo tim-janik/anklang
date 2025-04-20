@@ -58,7 +58,7 @@ html {
   /* Backdrop useful for modal dialogs, lightens up to make shadows visible in dark mode. */
   @apply backdrop:bg-gray-500/30 backdrop:backdrop-brightness-50;
 }
-@utility backdrop-and-shadow-xl {
+@utility backdrop-and-xlshadow {
   /* Backdrop for modal dialogs, with XL shadow. */
   @apply modal-backdrop;
   box-shadow: 0 25px 50px 0px #000000cc;
@@ -66,7 +66,7 @@ html {
 @utility floating-dialog {
   /* Styling for floating modal dialogs with colors, backdrop, rounded, etc. */
   @apply
-    backdrop-and-shadow-xl
+    backdrop-and-xlshadow
     vflex border-b-[var(--color-dim-900)] border-l-[var(--color-dim-800/50)] border-r-[var(--color-dim-800/50)] border-t-[var(--color-dim-700)] bg-[var(--color-dim-800)] text-[var(--color-dim-300)]
     rounded-2xl border-2 px-4 backdrop:bg-gray-500/30 backdrop:backdrop-brightness-50;
 }
@@ -180,3 +180,41 @@ html {
   align-content: stretch;
 }
 .vflex[inline] { display: inline-flex; }
+
+
+
+@utility b-style-inset {
+  /* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
+  border-color: var(--b-style-inset-background-1) var(--b-style-inset-background-0) var(--b-style-inset-background-2) var(--b-style-inset-background-0);
+  border-left: 0px !important;
+  border-right: 0px !important;
+  border-radius: var(--b-button-radius);
+  color: var(--b-style-light-foreground);
+  outline: none; /* focus is handled via box-shadow */
+  background-color: var(--b-style-inset-background-0);
+  background: var(--b-style-inset-background);
+  /* The inset is implemented similarly to b-style-outset */
+  box-shadow: 0px -1px 0 0px var(--b-style-inset-glint-1), 0px -1px 0 1px var(--b-style-dark-outline), 0 0px 0 1px var(--b-style-dark-outline), 0px 2px 0px 0px var(--b-style-inset-glint-2);
+  &:focus { box-shadow: 0px -1px 0 0px var(--b-style-inset-glint-1), 0px -1px 0 1px var(--b-style-focus-color), 0 0px 0 1px var(--b-style-focus-color), 0px 2px 0px 0px var(--b-style-inset-glint-2); }
+}
+
+@utility b-style-outset {
+  /* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
+  border-color: var(--b-style-outset-background-1) var(--b-style-outset-background-0) var(--b-style-outset-background-2) var(--b-style-outset-background-0);
+  border-left: 0px !important;
+  border-right: 0px !important;
+  border-radius: var(--b-button-radius);
+  color: var(--b-style-light-foreground);
+  outline: none; /* focus is handled via box-shadow */
+  background-color: var(--b-style-outset-background-0);
+  background: var(--b-style-outset-background);
+  /* The outset is implemented by adding a dark shadow around, and light shadows above and below */
+  box-shadow: 0px -1px 0 0px var(--b-style-outset-glint-1), 0px -1px 0 1px var(--b-style-dark-outline), 0 0px 0 1px var(--b-style-dark-outline), 0px 2px 0px 0px var(--b-style-outset-glint-2);
+  &:focus { box-shadow: 0px -1px 0 0px var(--b-style-outset-glint-1), 0px -1px 0 1px var(--b-style-focus-color), 0 0px 0 1px var(--b-style-focus-color), 0px 2px 0px 0px var(--b-style-outset-glint-2); }
+  &.active, &:active, &[data-contextmenu="true"] {
+	background-color: var(--b-style-outset-activebg-0); background: var(--b-style-outset-activebg);
+	box-shadow: 0px -1px 0 0px var(--b-style-outset-activebg-glint), 0px -1px 0 1px var(--b-style-dark-outline), 0 0px 0 1px var(--b-style-dark-outline), 0px 2px 0px 0px var(--b-style-outset-glint-2);
+	&:focus { box-shadow: 0px -1px 0 0px var(--b-style-outset-activebg-glint), 0px -1px 0 1px var(--b-style-focus-color), 0 0px 0 1px var(--b-style-focus-color), 0px 2px 0px 0px var(--b-style-outset-glint-2); }
+  }
+}
+
