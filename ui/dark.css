@@ -16,7 +16,7 @@
 
   /* Colors */
   --b-color-scheme: dark;	/* only normal light dark */
-  --b-body-colors-inactive: zmod(var(--b-grey80), a=80%);
+  --b-body-colors-inactive: oklab(from var(--b-grey80) l a b / 0.8);
   --b-color-tone: var(--b-grey50); /* deprecated, use palette colors */
   --b-grey-tone: oklch(from var(--b-color-tone) 50% 20% h);
   --b-dialog-border-colors: var(--b-grey31);
@@ -79,7 +79,7 @@
   --b-clipthumb-width:	6em;
   --b-clip-play-fg:	#bbbd;
   --b-clip-play-bg:	#0003;
-  --b-modal-foreground:	lgrey(98.7%);
+  --b-modal-foreground:	oklch(98.7% 0 0);
   --b-modal-background:	oklch(18% 0 0);
   --b-modal-bordercol:	oklch(36% 0 0);
   --b-scrollbar-size:      13px; /* tweaked to match supported Firefox scrollbar size */
@@ -177,7 +177,7 @@
   background: var(--b-grey00);
 }
 @mixin b-dialog-colors() {
-  color: var(--b-grey90); background-color: var(--b-grey16);
+  color: var(--b-grey90);
   background: linear-gradient(to bottom, var(--b-grey16l), var(--b-grey16d));
   border-color: var(--b-dialog-border-colors);
   &::backdrop { background: oklab(from var(--b-grey02) l a b / 0.5); }
