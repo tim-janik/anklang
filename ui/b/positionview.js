@@ -27,7 +27,7 @@ b-positionview {
   border-left:   1px solid oklch(from var(--b-positionview-bg) calc(l * 0.97) c h);
   border-right:  1px solid oklch(from var(--b-positionview-bg) calc(l * 1.03) c h);
   border-bottom: 1px solid oklch(from var(--b-positionview-bg) calc(l * 1.03) c h);
-  background-color: var(--b-positionview-bg);
+  background: var(--b-positionview-bg);
   background: linear-gradient(to bottom, var(--b-positionview-b0) 0%, var(--b-positionview-b1) 100%);
   color: var(--b-positionview-fg);
   .b-positionview-counter,

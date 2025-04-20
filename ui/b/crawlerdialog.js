@@ -40,22 +40,22 @@ b-crawlerdialog {
     overflow-y: hidden;
   }
   input.-direntry {
-    @apply rounded-[var(--b-button-radius)] border-[none] pl-[var(--b-button-radius)] pr-[var(--b-button-radius)] text-left outline-0;
+    @apply rounded-[var(--b-button-radius)] pl-[var(--b-button-radius)] pr-[var(--b-button-radius)] text-left outline-0;
     &::selection { background: #2d53c4; }
     z-index: 1;	/* push onto its own layer */
-    @include b-style-inset;
+    @apply b-style-inset;
     /* @include b-focus-outline; */
   }
   input.-pathentry {
-    @apply rounded-[var(--b-button-radius)] border-[none] pl-[var(--b-button-radius)] pr-[var(--b-button-radius)] text-left outline-0;
+    @apply rounded-[var(--b-button-radius)] pl-[var(--b-button-radius)] pr-[var(--b-button-radius)] text-left outline-0;
     &::selection { background: #2d53c4; }
     /* <INPUT/> change causes re-layout: https://bugs.chromium.org/p/chromium/issues/detail?id=1116001 */
     z-index: 1;	/* push onto its own layer */
-    @include b-style-inset;
+    @apply b-style-inset;
     /* @include b-focus-outline; */
   }
   .-entry-grid {
-    @apply grid grow grid-flow-col justify-start justify-items-start gap-0.5 border border-solid border-[#222] text-[#eee];
+    @apply grid grow grid-flow-col justify-start justify-items-start border border-solid border-[#222] text-[#eee];
     gap: 5px 10px;
     overflow: scroll hidden;
     grid-template-rows: repeat(auto-fit, 1.5em);
@@ -67,7 +67,6 @@ b-crawlerdialog {
     @apply m-0 inline-block inline-flex cursor-pointer flex-col truncate rounded-none border-[none] p-0 pr-1 text-[unset] no-underline;
     flex-flow: row nowrap;
     min-width: 10em;
-    cursor: pointer;
     background: unset; font: unset;
     -webkit-appearance: none; -moz-appearance: none;
     &:active { border: none; }

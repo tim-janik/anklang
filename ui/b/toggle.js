@@ -41,7 +41,7 @@ b-toggle {
     &.b-toggle-press:hover  	{ filter: brightness(90%); }
   }
   .b-toggle-on {
-    background-color: var(--b-toggle-1-bg);
+    background: var(--b-toggle-1-bg);
     background: linear-gradient(177deg, var(--b-toggle-1-bh), var(--b-toggle-1-bl) 20%, var(--b-toggle-1-bd));
     &.b-toggle-press:hover	{ filter: brightness(95%); }
   }

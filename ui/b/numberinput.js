@@ -35,7 +35,6 @@ b-numberinput {
     flex-grow: 1;
   }
   input[type='range'] {
-    flex-grow: 1;
     margin: auto 1em auto 0;
     @include b-style-hrange-input;
     flex: 1 1 auto;  /* grow beyond minimum width */
