@@ -15,7 +15,7 @@ import { hex, basename, dirname, displayfs, displaybasename, displaydirname } fr
 Extra_css`
 @reference "../tailwind.css";
 b-menubar {
-  push-button {
+  .asbutton {
     @apply button-down-within size-10;
     position: relative;
   }
@@ -35,7 +35,7 @@ const HTML = (t, d) =>  html`
     <!-- menubar left -->
     <b-buttonbar class="-menubar" >
       <!-- File Menu -->
-      <push-button class="button-dim" data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click=${e => t.filemenu.popup (e)} @mousedown=${e => t.filemenu.popup (e)}
+      <div class="asbutton button-dim" data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click=${e => t.filemenu.popup (e)} @mousedown=${e => t.filemenu.popup (e)}
 	   id="g-filemenu" >
 	<div class="b-menubar-icon" >
 	  <b-icon ic="bc-folder" ></b-icon>
@@ -51,10 +51,10 @@ const HTML = (t, d) =>  html`
 	  <b-menuseparator></b-menuseparator>
 	  <button ic="mi-close"        	kbd="Shift+Ctrl+Q" 	uri="quit"    >	Quit			</button>
 	</b-contextmenu>
-      </push-button>
+      </div>
 
       <!-- Edit Menu -->
-      <push-button class="button-dim" data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click=${e => t.editmenu.popup (e)} @mousedown=${e => t.editmenu.popup (e)}
+      <div class="asbutton button-dim" data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click=${e => t.editmenu.popup (e)} @mousedown=${e => t.editmenu.popup (e)}
 	   id="g-editmenu" >
 	<div class="b-menubar-icon" >
 	  <b-icon ic="mi-draw" ></b-icon>
@@ -64,10 +64,10 @@ const HTML = (t, d) =>  html`
 	  <button ic="mi-undo" .disabled=${!true} kbd="Ctrl+Z"       uri="undo">	Undo	</button>
 	  <button ic="mi-redo" .disabled=${!true} kbd="Shift+Ctrl+Z" uri="redo">	Redo	</button>
 	</b-contextmenu>
-      </push-button>
+      </div>
 
       <!-- View Menu -->
-      <push-button class="button-dim" data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @click=${e => t.viewmenu.popup (e)} @mousedown=${e => t.viewmenu.popup (e)}
+      <div class="asbutton button-dim" data-tip="**CLICK** View Menu" data-hotkey="Alt+V" @click=${e => t.viewmenu.popup (e)} @mousedown=${e => t.viewmenu.popup (e)}
 	   id="g-viewmenu" >
 	<div class="b-menubar-icon" >
 	  <b-icon ic="fa-eye" ></b-icon>
@@ -78,7 +78,7 @@ const HTML = (t, d) =>  html`
 		  kbd="F11" uri="fullscreen">	Toggle Fullscreen	</button>
 	  ${ELECTRON_MENUITEMS (t)}
 	</b-contextmenu>
-      </push-button>
+      </div>
 
     </b-buttonbar>
 
@@ -91,7 +91,7 @@ const HTML = (t, d) =>  html`
     <!-- menubar right -->
     <b-buttonbar class="-menubar" >
       <!-- Help Menu -->
-      <push-button class="button-dim" data-tip="**CLICK** Help Menu" data-hotkey="Alt+H" @click=${e => t.helpmenu.popup (e)} @mousedown=${e => t.helpmenu.popup (e)}
+      <div class="asbutton button-dim" data-tip="**CLICK** Help Menu" data-hotkey="Alt+H" @click=${e => t.helpmenu.popup (e)} @mousedown=${e => t.helpmenu.popup (e)}
 	   id="g-helpmenu" >
 	<div class="b-menubar-icon" >
 	  <b-icon ic="fa-life-ring" ></b-icon>
@@ -103,7 +103,7 @@ const HTML = (t, d) =>  html`
 	  <b-menuseparator></b-menuseparator>
 	  <button ic="fa-id-card-o"		uri="about">		About…			</button>
 	</b-contextmenu>
-      </push-button>
+      </div>
     </b-buttonbar>
 
   </div>

@@ -51,14 +51,14 @@ html.b-shell-during-drag .b-app {
 b-shell .-modal-message {
   .-hfooter {
     justify-content: space-between;
-    button, push-button {
+    button, .asbutton {
       white-space: nowrap;
       --hpadding: 0.75em;
       padding-left: var(--hpadding); padding-right: var(--hpadding);
     }
     &.-manybuttons {
       width: 100%;
-      button, push-button {
+      button, .asbutton {
 	width: 100%;
       }
     }
@@ -193,7 +193,7 @@ const DIALOGS_HTML = (t) =>
       <template v-slot:footer>
 	<div class="hflex -hfooter" .class=${d.footerclass}>
 	  <component v-for="(b, i) in d.buttons" .key=${i} @click=${ev => d.click(i)} .disabled=${b.disabled}
-	    .is=${b.canfocus ? 'button' : 'push-button'} .autofocus=${b.autofocus}>{{ b.label }}</component>
+	    .is=${b.canfocus ? 'button' : 'asbutton'} .autofocus=${b.autofocus}>{{ b.label }}</component>
 	</div>
       </template>
     </dialog>

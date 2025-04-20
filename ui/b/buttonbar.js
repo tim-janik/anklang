@@ -17,7 +17,7 @@ b-buttonbar {
   display: inline-flex; background-color: var(--b-button-border);
   border: 1px solid var(--b-button-border);
   border-radius: var(--b-button-radius);
-  > button, > push-button {
+  > button, > .asbutton {
     margin: 0 0 0 1px;
     &:first-of-type	{ margin-left: 0; }
     &:first-of-type	{ border-top-left-radius: var(--b-button-radius); border-bottom-left-radius: var(--b-button-radius); }

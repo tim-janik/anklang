@@ -6,7 +6,7 @@ import * as Util from '../util.js';
 
 /** @class BPushButton
  * @description
- * The <push-button> element is a wrapper for an ordinary HTMLElement. It is styled
+ * The .asbutton class is a wrapper for an ordinary HTMLElement. It is styled
  * like a <button> and can behave like it, but cannot become a focus element.
  */
 class BPushButton extends HTMLElement {}

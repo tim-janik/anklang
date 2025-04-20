@@ -89,6 +89,16 @@ html {
   @apply groove-above mt-8 flex justify-center py-6 text-center leading-6;
   > button { margin: 0 1em; }
 }
+
+/** @class Asbutton
+ * @description
+ * The .asbutton class can be used to style elements like a <button>
+ * and would be used if the element cannot become a focused.
+ */
+@utility asbutton {
+  display: flex;
+  place-content: center;
+}
 @utility button-dim {
   /* Style for buttons with hover, disabled, potentially focussable, see also .button-down. */
   /* button shading */

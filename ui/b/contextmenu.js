@@ -85,7 +85,7 @@ dialog.b-contextmenu::backdrop {
    * and second, showing a modal dialog via menu item would result in bad flickernig. */
   background: transparent;
 }
-b-contextmenu :is(button, push-button, summary) {
+b-contextmenu :is(button, .asbutton, summary) {
   @apply hflex flex-nowrap items-stretch px-4 py-1 text-left;
   background: transparent; color: var(--b-menu-foreground); border: 1px solid transparent;
   cursor: pointer; user-select: none; outline: none;
@@ -280,7 +280,7 @@ class BContextMenu extends LitComponent {
   }
   integrate_children()
   {
-    for (let b of this.querySelectorAll ('button,push-button')) {
+    for (let b of this.querySelectorAll ('button, .asbutton')) {
       /**@type{any}*/ const any = b;
       integrate_button.call (any, this);
     }
@@ -292,7 +292,7 @@ class BContextMenu extends LitComponent {
     const this_isactive = this.isactive; // fetch function property *not* bound to contextmenu
     const isactive = async uri => !uri || !this_isactive || await this_isactive (uri);
     const proms = [];
-    for (let b of this.querySelectorAll ('button,push-button')) {
+    for (let b of this.querySelectorAll ('button, .asbutton')) {
       /**@type{any}*/ const any = b;
       const uri = any.getAttribute ('uri');
       if (uri === null) continue;
@@ -312,7 +312,7 @@ class BContextMenu extends LitComponent {
   toggle_force_children (enabled)
   {
     this.stop_observer();
-    for (let b of this.querySelectorAll ('button,push-button')) {
+    for (let b of this.querySelectorAll ('button, .asbutton')) {
       /**@type{any}*/ const any = b;
       const uri = any.getAttribute ('uri');
       if (uri === null) continue;
@@ -374,7 +374,7 @@ class BContextMenu extends LitComponent {
       App.zmove(); // force changes to be picked up
       // check items (and this used to handle auto-focus)
       await toggles;
-      const qse = this.querySelector (`button[${furi}],push-button[${furi}]`);
+      const qse = this.querySelector (`button[${furi}], .asbutton[${furi}]`);
       const focus_child = /**@type{HTMLElement}*/ (qse);
       if (focus_child && !focus_child.getAttribute ('disabled'))
 	focus_child.focus();
