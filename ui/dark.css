@@ -21,8 +21,6 @@
   --b-grey-tone: oklch(from var(--b-color-tone) 50% 20% h);
   --b-dialog-border-colors: var(--b-grey31);
 
-  --b-panel-foreground: oklch(from var(--b-grey-tone) 96% c h);
-  --b-panel-background: oklch(from var(--b-grey-tone) 36% c h);
   --b-panel-focus: oklch(from var(--b-grey-tone) 50% c h);
   --b-active-color: #00e5ea;
   --b-devicepanel:  lgrey(3%);
@@ -49,12 +47,14 @@
   --b-main-foreground: 	#f3f1f5;
   --b-main-background: 	lgrey(13%);
   --b-color-active:	#00e5ea; /* #ff8811; */
-  --b-panel-foreground:	var(--b-main-foreground);
-  --b-panel-background:	lgrey(36%); /* also panel border */
+
+  --b-panel-foreground: oklch(from var(--b-grey-tone) 96% c h);
+  --b-panel-background: oklch(from var(--b-grey-tone) 36% c h);
   --b-panel-focus:		lgrey(50%); /* focused panel border */
   --b-panel-borderwidth:	2px;
   --b-panel-border:	var(--b-panel-borderwidth) solid var(--b-panel-background);
   --b-panel-spacing:	var(--b-panel-borderwidth);
+
   --b-devicepanel-bg:	lgrey(3%);
   --b-device-bg:		var(--b-panel-background);
   --b-device-handle:	lgrey(26%); /* or, device-handle */
