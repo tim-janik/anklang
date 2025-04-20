@@ -43,9 +43,9 @@ const GROUP_HTML = (t, group) => html`
 const HTML = (t, d) => html`
 <span class="b-deviceeditor-sw" @contextmenu=${e => t.deviceeditorcmenu.popup (e, null)}
   > ${ t.device_info.name } </span>
-<c-grid class="b-deviceeditor-areas" >
+<div class="b-deviceeditor-areas grid" >
   ${ t.gprops.map (group => GROUP_HTML (t, group)) }
-</c-grid>
+</div>
 <b-contextmenu ${ref (h => t.deviceeditorcmenu = h)} id="g-deviceeditorcmenu" .activate=${t.activate.bind (t)} .isactive=${t.isactive.bind (t)} >
   <b-menutitle> Device </b-menutitle>
   <button fa="plus-circle"      uri="add-device" >      Add Device		</button>

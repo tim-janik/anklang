@@ -47,7 +47,7 @@ b-piano-roll {
   --piano-roll-note-focus-color:      var(--b-piano-roll-note-focus-color);
   --piano-roll-note-focus-border:     var(--b-piano-roll-note-focus-border);
   --piano-roll-key-length:            var(--b-piano-roll-key-length);
-  c-grid {
+  b-pianoroll {
     background: var(--b-piano-roll-black-base);
     position: absolute; inset: 0;
     align-items: stretch;
@@ -78,7 +78,7 @@ b-piano-roll {
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <c-grid tabindex="-1" ${ref (h => t.cgrid = h)} data-f1="#piano-roll"
+  <div class="b-pianoroll grid" tabindex="-1" ${ref (h => t.cgrid = h)} data-f1="#piano-roll"
     @pointerenter=${t.pointerenter} @pointerleave=${t.pointerleave} @focus=${t.focuschange} @blur=${t.focuschange}
     @keydown=${e => t.piano_ctrl.keydown (e)}
     @wheel=${{handleEvent: e => t.wheel_event (e), passive: false}} >
@@ -115,7 +115,7 @@ const HTML = (t, d) => html`
       <b-menutitle> Piano-Roll </b-menutitle>
       ${t.pianorollmenu_actions().map (ac => CONTEXTITEM (ac))}
     </b-contextmenu>
-  </c-grid>
+  </div>
 `;
 // key=${ac.weakid}
 const CONTEXTITEM = ac => html`

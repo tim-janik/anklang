@@ -90,13 +90,13 @@ const HTML = (t, d) => html`
 	 tabindex='-1' readonly @focus=${e => t.pathentry.focus()} inert
 	 type="text" @select=${Util.prevent_event} >
 
-  <c-grid data-subfocus="*" class="-entry-grid" ${ref (h => t.entrygrid = h)}
+  <div data-subfocus="*" class="-entry-grid grid" ${ref (h => t.entrygrid = h)}
     @keydown=${t.entrygrid_keydown} >
     ${repeat (d.entries, e => e.uri, e => ENTRY_HTML (t, e))}
     <div class="-spin-wrapper hflex"
       style="height: 100%; width: 100%; text-align: center; align-items: center; justify-content: center">
       <div style="text-align: center" > ⥁ </div> </div>
-  </c-grid>
+  </div>
 
   <input class="-pathentry mt-4 outline outline-2 outline-offset-2" ${ref (h => t.pathentry = h)} .value=""
 	 type="text" @keydown=${t.pathentry_keydown} @select=${Util.prevent_event} >
