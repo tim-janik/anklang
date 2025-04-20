@@ -10,21 +10,114 @@ import babelParser from "@babel/eslint-parser";
 
 import jsdoc from "eslint-plugin-jsdoc";
 
-// TODO: add eslint-plugin-unused-imports for eslint-9
 // TODO: validate tailwindcss checks in html and js
+// TODO: fix config errors when enabling eslint-plugin-unused-imports@4.1.4
 
 import { FlatCompat } from '@eslint/eslintrc';
 const compat = new FlatCompat();
-
 const OFF = 'off';
+
+// Plugins for both CJS and ESM files
+const common_js_plugins = {
+  jsdoc,
+};
+
+// Rules for both CJS and ESM files
+const common_js_rules = {
+  indent: [ OFF, 2 ],
+  quotes: [ OFF, "single" ],
+  semi: [ "warn", "always" ],
+  "@html-eslint/attrs-newline": OFF,
+  "@html-eslint/element-newline": OFF,
+  "@html-eslint/indent": OFF,
+  "@html-eslint/no-extra-spacing-attrs": OFF,
+  "@html-eslint/require-closing-tags": OFF,
+  "@html-eslint/require-img-alt": OFF,
+  "linebreak-style": [ "error", "unix" ],
+  "lit/attribute-value-entities": OFF,
+  "no-console": [ OFF ],
+  "no-constant-binary-expression": OFF,
+  "no-constant-condition": [ OFF ],
+  "no-debugger": [ "warn" ],
+  "no-empty": OFF,
+  "no-extra-semi": [ "warn" ],
+  "no-loss-of-precision": OFF,
+  "no-mixed-spaces-and-tabs": [ OFF ],
+  "no-restricted-globals": ["warn", "event", /*"error"*/ ],
+  "no-unreachable": [ "warn" ],
+  "no-unused-vars": OFF, // [ "warn" ],
+  'no-inner-declarations': OFF,
+  'no-irregular-whitespace': OFF, /* ["error", { 'skipStrings': true, 'skipComments': true, 'skipTemplates': true, 'skipRegExps':true } ], */
+  'no-useless-escape': OFF,
+  // 'prefer-const': [ 'warn' ],
+  // 'tailwindcss/no-custom-classname': OFF,
+};
 
 /** @type {import('eslint').Linter.FlatConfig[]} */
 export default [
   eslint_js.configs.recommended,
   html.configs["flat/recommended"],
   ...compat.extends ('plugin:lit/recommended'),
-  ...compat.extends ('plugin:tailwindcss/recommended'),
+  ...compat.extends ('plugin:better-tailwindcss/recommended'),
+  {
+    ignores: [ "**/*.ts", "**/*.cts", "**/*.mts", ],
+  },
 
+  // CJS files with node globals
+  {
+    files: [ "**/*.cjs",
+	     "doc/jsdoc2md.js",
+	     "electron/*.js",
+	     "ui/jsextract.js",
+	     "ui/sfc-compile.js",
+	     "ui/xbcomments.js",
+	     "x11test/epuppeteer.mjs",
+    ],
+    plugins: common_js_plugins,
+    rules: common_js_rules,
+    languageOptions: {
+      ecmaVersion: 2025,
+      sourceType: "commonjs",
+      globals: {
+        ...imported_globals.node, // exports, require, module, process
+      },
+    },
+  },
+
+  // ESM files with browser globals
+  {
+    files: [ "**/*.js",
+	     "**/*.mjs",
+    ],
+    plugins: common_js_plugins,
+    rules: common_js_rules,
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module", // Correct for ESM
+      parser: babelParser,
+      parserOptions: {
+	requireConfigFile: false,
+      },
+      globals: {
+        ...imported_globals.browser,
+        // custom application globals
+        _: false,
+        App: false,
+        Ase: false,
+        Data: false,
+        Extra_css: false,
+        Shell: false,
+        CONFIG: false,
+        __DEV__: false,
+        debug: false,
+        assert: false,
+        log: false,
+        host: false,
+      },
+    },
+  },
+
+  // HTML files
   {
     files: ["**/*.html"],
     languageOptions:		{ parser: htmlParser },
@@ -37,61 +130,12 @@ export default [
     }
   },
 
+  // CSS - tailwindcss settings
   {
-    files: [ "**/*.js", "**/*.cjs", "**/*.mjs", ],
-    plugins: {
-      jsdoc,
-    },
-
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "module",
-      parser: babelParser,
-      parserOptions: {
-	requireConfigFile: false,
+    settings: {
+      tailwindcss: {
+        // whitelist: [/^b-/], // Regex for custom classes
       },
-      globals: {
-	...imported_globals.browser,
-	_: false,
-	App: false,
-	Ase: false,
-	Data: false,
-	Shell: false,
-	CONFIG: false,
-	__DEV__: false,
-	debug: false,
-	assert: false,
-	log: false,
-	host: false,
-	module: false,
-	process: false,
-	require: false, // TODO: remove
-      },
-    },
-    rules: {
-    "no-restricted-globals": ["warn", "event", /*"error"*/ ],
-    "no-empty": [ 'warn' ],
-    "no-loss-of-precision": OFF,
-    "no-unused-vars": OFF, // see unused-imports/no-unused-vars
-    //"unused-imports/no-unused-vars": [ "warn", { args: "none", varsIgnorePattern: "^_.*" } ],
-    //"unused-imports/no-unused-imports": OFF,
-    "no-unreachable": [ "warn" ],
-    semi: [ "warn", "always" ],
-    "no-extra-semi": [ "warn" ],
-    "no-console": [ OFF ],
-    "no-constant-condition": [ OFF ],
-    "no-constant-binary-expression": OFF,
-    "no-debugger": [ "warn" ],
-    indent: [ OFF, 2 ],
-    "linebreak-style": [ "error", "unix" ],
-     "lit/attribute-value-entities": OFF,
-    "no-mixed-spaces-and-tabs": [ OFF ],
-    'no-irregular-whitespace': OFF, /* ["error", { 'skipStrings': true, 'skipComments': true, 'skipTemplates': true, 'skipRegExps':true } ], */
-    'no-useless-escape': OFF,
-    'no-inner-declarations': OFF,
-    // 'prefer-const': [ 'warn' ],
-    // 'tailwindcss/no-custom-classname': OFF,
-    quotes: [ OFF, "single" ],
     },
   },
 ];
