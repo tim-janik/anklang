@@ -23,11 +23,11 @@
 
   --b-panel-focus: oklch(from var(--b-grey-tone) 50% c h);
   --b-active-color: #00e5ea;
-  --b-devicepanel:  lgrey(3%);
+  --b-devicepanel:  oklch(3% 0 0);
   --b-device-bg:    var(--b-panel-background);
-  --b-device-handle: lgrey(26%);
-  --b-device-area1:  lgrey(24%);
-  --b-device-area2:  lgrey(28%);
+  --b-device-handle: oklch(26% 0 0);
+  --b-device-area1:  oklch(24% 0 0);
+  --b-device-area2:  oklch(28% 0 0);
   --b-dialog-foreground: oklch(from var(--b-color-tone) 98.7% c h);
   --b-dialog-background: oklch(from var(--b-color-tone) 18% c h);
   --b-dialog-bordercol:  oklch(from var(--b-color-tone) 36% c h);
@@ -45,22 +45,22 @@
 
   /* == Color Theme == */
   --b-main-foreground: 	#f3f1f5;
-  --b-main-background: 	lgrey(13%);
+  --b-main-background: 	oklch(13% 0 0);
   --b-color-active:	#00e5ea; /* #ff8811; */
 
   --b-panel-foreground: oklch(from var(--b-grey-tone) 96% c h);
   --b-panel-background: oklch(from var(--b-grey-tone) 36% c h);
-  --b-panel-focus:		lgrey(50%); /* focused panel border */
+  --b-panel-focus:		oklch(50% 0 0); /* focused panel border */
   --b-panel-borderwidth:	2px;
   --b-panel-border:	var(--b-panel-borderwidth) solid var(--b-panel-background);
   --b-panel-spacing:	var(--b-panel-borderwidth);
 
-  --b-devicepanel-bg:	lgrey(3%);
+  --b-devicepanel-bg:	oklch(3% 0 0);
   --b-device-bg:		var(--b-panel-background);
-  --b-device-handle:	lgrey(26%); /* or, device-handle */
-  --b-device-area1:	lgrey(24%);
-  --b-device-area2:	lgrey(28%);
-  --b-choice-0-bg:		lgrey(50%);
+  --b-device-handle:	oklch(26% 0 0); /* or, device-handle */
+  --b-device-area1:	oklch(24% 0 0);
+  --b-device-area2:	oklch(28% 0 0);
+  --b-choice-0-bg:		oklch(50% 0 0);
   --b-choice-0-bh:		oklch(from var(--b-choice-0-bg) calc(l + 0.125) c h); /* highlight */
   --b-choice-0-bl:		oklch(from var(--b-choice-0-bg) calc(l + 0.08) c h); /* light */
   --b-choice-0-bd:		oklch(from var(--b-choice-0-bg) calc(l - 0.075) c h);  /* dark */
@@ -80,8 +80,8 @@
   --b-clip-play-fg:	#bbbd;
   --b-clip-play-bg:	#0003;
   --b-modal-foreground:	lgrey(98.7%);
-  --b-modal-background:	lgrey(18%);
-  --b-modal-bordercol:	lgrey(36%);
+  --b-modal-background:	oklch(18% 0 0);
+  --b-modal-bordercol:	oklch(36% 0 0);
   --b-scrollbar-size:      13px; /* tweaked to match supported Firefox scrollbar size */
   --b-scrollbar-bg:	#111; /* track */
   --b-scrollbar-dd:	#222; /* inactive slider */

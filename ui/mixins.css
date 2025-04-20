@@ -12,7 +12,7 @@
   border-radius: 0.5em;
   @if not var(--border) {}
   @else {
-    background: lgrey(30%); border: 1px outset lgrey(50%); color: lgrey(95%); /* #3 #5 #e */
+    background: oklch(30% 0 0); border: 1px outset oklch(50% 0 0); color: oklch(95% 0 0); /* #3 #5 #e */
   }
 }
 
