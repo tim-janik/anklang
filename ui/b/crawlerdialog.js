@@ -40,7 +40,7 @@ b-crawlerdialog {
     overflow-y: hidden;
   }
   input.-direntry {
-    @apply rounded-[var(--b-button-radius)] pl-[var(--b-button-radius)] pr-[var(--b-button-radius)] text-left outline-0;
+    @apply pl-[var(--b-button-radius)] pr-[var(--b-button-radius)] text-left outline-0;
     &::selection { background: #2d53c4; }
     z-index: 1;	/* push onto its own layer */
     @apply b-style-inset;
