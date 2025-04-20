@@ -1,7 +1,5 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
-@import './dark.css';
-
 :root {
   /* == Status Bar == */
   --b-statusbar-bg: var(--b-main-background);

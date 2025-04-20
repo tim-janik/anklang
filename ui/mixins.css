@@ -1,5 +1,6 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
 
+/* Theme and color definitions */
 
 /* == Hotkey == */
 @mixin b-kbd-hotkey(--border: true) {
