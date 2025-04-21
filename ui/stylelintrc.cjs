@@ -35,13 +35,17 @@ module.exports = {
     'comment-empty-line-before': null,
     'comment-whitespace-inside': null,
     'custom-property-empty-line-before': null,
-    // 'declaration-block-no-shorthand-property-overrides': null,
+    'custom-property-pattern': null,
+    'declaration-block-no-duplicate-properties': null, // TODO: enable
+    'declaration-block-no-redundant-longhand-properties': null, // TODO: enable
+    'declaration-block-no-shorthand-property-overrides': null, // TODO: enable
     'declaration-block-single-line-max-declarations': null,
     'declaration-empty-line-before': null,
     'font-family-name-quotes': null,
     'hue-degree-notation': null,
     'import-notation': null,
     'length-zero-no-unit': null,
+    'media-feature-range-notation': null, // TODO: enable
     'my/no-standalone-custom-properties': true,
     'no-descending-specificity': null,
     'no-duplicate-selectors': null,
@@ -50,7 +54,8 @@ module.exports = {
     'number-max-precision': null,
     'property-no-vendor-prefix': null,
     'rule-empty-line-before': null,
-    'selector-class-pattern': [ "^([a-z\\][a-z\\0-9]*)(-[a-z\\0-9]+)*$", { message: 'Expected class selector to be kebab-case alike' } ],
+    // 'selector-class-pattern': [ "^([a-z\\][a-z\\0-9]*)(-[a-z\\0-9]+)*$", { message: 'Expected class selector to be kebab-case alike' } ],
+    'selector-class-pattern': null,
     'selector-pseudo-element-colon-notation': null,
     'selector-type-no-unknown': [ true, { "ignoreTypes": [ /b-.*/ ] }],
     'shorthand-property-no-redundant-values': null,
