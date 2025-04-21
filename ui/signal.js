@@ -31,7 +31,7 @@ SignalF.State = function (v = undefined) {
     this.get = get;
     this.set = set;
   });
-}
+};
 export { SignalF as Signal };
 function solidjs_tracking_wrapper (queue_rerun, callback)	// -> tracked_callback
 {
