@@ -126,11 +126,11 @@ const HTML = (t, m, fs) => [ html`
   <b-tracklist class="-row2 -col2" style="overflow: hidden" .project=${Data.project}></b-tracklist>
 
   <!-- devices -->
-  <b-devicepanel class="-row3 -col2" ?hidden=${Data.panel2 == 'd'} .track=${App.current_track}></b-devicepanel>
+  <b-devicepanel class="-row3 -col2" ?hidden=${Data.panel2 !== 'd'} .track=${App.current_track}></b-devicepanel>
 
   <!-- piano roll -->
   <b-piano-roll class="-row4 -col2" style="overflow: hidden; height:50vh" .clip=${Data.piano_roll_source}
-    ${ref (h => t.piano_roll_ = h)} ?hidden=${Data.panel2 == 'p'}></b-piano-roll>
+    ${ref (h => t.piano_roll_ = h)} ?hidden=${Data.panel2 !== 'p'}></b-piano-roll>
 
   <!-- browser -->
   <div class="b-shell-sidebar vflex -row28 -col1" style="width:10em">
@@ -168,7 +168,7 @@ const HTML = (t, m, fs) => [ html`
   <div class="-fullcoverage" style="z-index: 96" id="b-shell-bubble-layer"></div>
 
   <!-- Spinners (busy indicator) -->
-  <div class="-fullcoverage" style="z-index: 98" id="b-shell-spinner-layer" ?hidden=${m.show_spinner_count > 0}>
+  <div class="-fullcoverage" style="z-index: 98" id="b-shell-spinner-layer" ?hidden=${m.show_spinner_count <= 0}>
     <img src="${spinner_svg}" />
   </div>
 ` ];
@@ -244,6 +244,7 @@ class BShell extends LitComponent {
     this.piano_current_tick = null;
     this.m.show_about_dialog_ = false; // FIXME
     this.piano_roll_ = null;
+    this.m = make_reactive (this.m);
   }
   /// Access PianoRoll component
   get piano_roll() { return Shell.piano_roll_; }
