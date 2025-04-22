@@ -47,38 +47,39 @@ b-piano-roll {
   --piano-roll-note-focus-color:      var(--b-piano-roll-note-focus-color);
   --piano-roll-note-focus-border:     var(--b-piano-roll-note-focus-border);
   --piano-roll-key-length:            var(--b-piano-roll-key-length);
-  b-pianoroll {
-    background: var(--b-piano-roll-black-base);
-    position: absolute; inset: 0;
-    align-items: stretch;
-    grid-template-columns: min-content 1fr min-content;
-    grid-template-rows:    min-content 1fr min-content;
-    canvas { background: black; object-fit: contain;
-      min-width: 0; min-height: 0; /* https://www.w3.org/TR/css3-grid-layout/#min-size-auto */
-    }
-    .-indicator {
-      position: absolute; top: 0; bottom: 0; left: 0; width: 1px; height: 100%;
-      background: var(--b-piano-roll-indicator);
-      z-index: 2; backface-visibility: hidden; will-change: transform;
-      transform: translateX(-9999px);
-      pointer-events: none;
-    }
-    .-hextend {
-      background: #0000; opacity: 0; visibility: hidden;
-      margin-top: 0; height: 1px;
-      /* height: 16px; margin-top: -8px; background: #0f0; */
-    }
-    .-vextend {
-      background: #0000; opacity: 0; visibility: hidden;
-      margin-left: 0; width: 1px;
-      /* width: 16px; margin-left: -3px; background: #00f; */
-    }
+}
+.b-pianoroll-grid {
+  display: grid;
+  background: var(--b-piano-roll-black-base);
+  position: absolute; inset: 0;
+  align-items: stretch;
+  grid-template-columns: min-content 1fr min-content;
+  grid-template-rows:    min-content 1fr min-content;
+  canvas { background: black; object-fit: contain;
+    min-width: 0; min-height: 0; /* https://www.w3.org/TR/css3-grid-layout/#min-size-auto */
+  }
+  .-indicator {
+    position: absolute; top: 0; bottom: 0; left: 0; width: 1px; height: 100%;
+    background: var(--b-piano-roll-indicator);
+    z-index: 2; backface-visibility: hidden; will-change: transform;
+    transform: translateX(-9999px);
+    pointer-events: none;
+  }
+  .-hextend {
+    background: #0000; opacity: 0; visibility: hidden;
+    margin-top: 0; height: 1px;
+    /* height: 16px; margin-top: -8px; background: #0f0; */
+  }
+  .-vextend {
+    background: #0000; opacity: 0; visibility: hidden;
+    margin-left: 0; width: 1px;
+    /* width: 16px; margin-left: -3px; background: #00f; */
   }
 }`;
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <div class="b-pianoroll grid" tabindex="-1" ${ref (h => t.cgrid = h)} data-f1="#piano-roll"
+  <div class="b-pianoroll-grid" tabindex="-1" ${ref (h => t.cgrid = h)} data-f1="#piano-roll"
     @pointerenter=${t.pointerenter} @pointerleave=${t.pointerleave} @focus=${t.focuschange} @blur=${t.focuschange}
     @keydown=${e => t.piano_ctrl.keydown (e)}
     @wheel=${{handleEvent: e => t.wheel_event (e), passive: false}} >
