@@ -2,8 +2,6 @@
 // @ts-check
 
 import { Signal } from "signal-polyfill";
-if (!window['Signal'])
-  Object.defineProperty (window, 'Signal', { enumerable: true, value: Signal }); // !configurable
 
 import * as Solid from "solid-js";
 Object.defineProperty (window, 'Solid', { enumerable: true, value: Solid }); // !configurable
@@ -33,6 +31,9 @@ SignalF.State = function (v = undefined) {
   });
 };
 export { SignalF as Signal };
+if (!window['Signal'])
+  Object.defineProperty (window, 'Signal', { enumerable: true, value: SignalF }); // !configurable
+
 function solidjs_tracking_wrapper (queue_rerun, callback)	// -> tracked_callback
 {
   init_solid_global();
