@@ -18,6 +18,8 @@ function init_solid_global()
   return solid_global;
 }
 
+const solidCreateSignal = Solid.createSignal;
+export { solidCreateSignal as createSignal };
 export const State = () => { console.error ("signal.js: State() should be unused"); };
 export const Computed = () => { console.error ("signal.js: Computed() should be unused"); };
 export const Watcher = () => { console.error ("signal.js: Watcher() should be unused"); };
