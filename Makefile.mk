@@ -249,7 +249,7 @@ $>/config.sh: $(wildcard config-defaults.mk)				| $>/
 ALL_TARGETS += $>/config.sh
 
 # == npm.done ==
-node_modules/.npm.done: $(if $(NPMBLOCK),, package.json)		| $>/
+node_modules/.npm.done: $(if $(NPMBLOCK),, package.json Makefile.mk)		| $>/
 	$(QGEN)
 	$Q rm -f -r node_modules/
 	@: # Install all node_modules and anonymize build path
@@ -258,6 +258,13 @@ node_modules/.npm.done: $(if $(NPMBLOCK),, package.json)		| $>/
 	  && $(NPM_INSTALL) $$POFFLINE
 	@: # Anonymize build paths in node_modules
 	$Q find node_modules/ -name package.json -print0 | xargs -0 sed -r "\|$$PWD|s|^(\s*(\"_where\":\s*)?)\"$$PWD|\1\"/...|" -i
+	@: # Silence annoying warnings
+	$Q for f in ./node_modules/lit-html/development/lit-html.js ./node_modules/lit-html/node/development/lit-html.js \
+		./node_modules/@lit/reactive-element/development/reactive-element.js ./node_modules/@lit/reactive-element/node/development/reactive-element.js \
+		; do \
+	  test -e "$$f" || continue; \
+	  sed -r 's/(\bissueWarning..dev-mode., *.Lit is in dev mode. Not recommended)/if(0)\1/' -i "$$f" || break ; \
+	done
 	@: # Fix bun installation, see: https://github.com/oven-sh/bun/pull/5077
 	$Q test ! -d node_modules/sharp/ -o -d node_modules/sharp/build/Release/ || (cd node_modules/sharp/ && $(NPM_INSTALL))
 	$Q test -d node_modules/electron/dist/ || (cd node_modules/electron/ && $(NPM_INSTALL))
