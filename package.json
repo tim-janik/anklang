@@ -9,7 +9,6 @@
     "ui/rebuild": "exec make ui/rebuild -j`nproc`"
   },
   "dependencies": {
-    "vue": "=3.4.31"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.24.8",
