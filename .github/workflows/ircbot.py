@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-import sys, os, re, socket, select, time
+import sys, os, re, socket, select, time, unicodedata
 
 # https://datatracker.ietf.org/doc/html/rfc1459
 
@@ -84,10 +84,18 @@ def readall (milliseconds = timeout):
           gotline (l.rstrip())
   return gotlines
 
+def is_printable(c):
+  # Catch control sequences like:
+  # c29f → U+009F (C1 control character: "Next Line").
+  # c290 → U+0090 (C1 control character: "Cancel Line").
+  # c287 → U+0087 (C0 control character: "Cancel Character").
+  return unicodedata.category(c)[0] != 'C'
+
 def gotline (msg):
   global args
   if not args.quiet:
-    print (msg, flush = True)
+    filtered_msg = ''.join (c for c in msg if is_printable (c))
+    print (filtered_msg, flush = True)
   cmdargs = re.split (' +', msg)
   if cmdargs:
     prefix = ''
