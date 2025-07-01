@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-import sys, os, re, socket, select, time, unicodedata
+import sys, os, re, socket, select, time, unicodedata, json
 
 # https://datatracker.ietf.org/doc/html/rfc1459
 
@@ -11,6 +11,7 @@ nickname = "YYBOT"
 ircsock = None
 timeout = 150
 wait_timeout = 15000
+github_event_data = None
 
 def colors (how):
   E = '\u001b['
@@ -148,6 +149,8 @@ def parse_args (sysargs):
                        help = 'Port to connect to [' + str (port) + ']')
   parser.add_argument ('-l', action = "store_true",
                        help = 'List channels')
+  parser.add_argument ('-G', action = "store_true",
+                       help = 'Read notification bits from $GITHUB_EVENT_PATH')
   parser.add_argument ('-R', metavar = 'REPOSITORY', default = '',
                        help = 'Initiating repository name')
   parser.add_argument ('-U', metavar = 'NAME', default = '',
@@ -165,6 +168,33 @@ def parse_args (sysargs):
   return args
 
 args = parse_args (sys.argv[1:])
+
+if args.G:
+  event_path = os.getenv ('GITHUB_EVENT_PATH')
+  if event_path and os.path.exists (event_path):
+    with open (event_path, 'r') as f:
+      github_event_data = json.load(f)
+  # print (f"github_event_data: {json.dumps(github_event_data, indent=2)}", file = sys.stderr)
+
+# Pick metadata and URL from github.*
+if github_event_data:
+  R = github_event_data.get ('repository', {}).get ('full_name', '')
+  args.R = R if R else args.R
+  U = github_event_data.get ('pusher', {}).get ('name', '')
+  args.U = U if U else args.U
+  if github_event_data.get ('ref', None):
+    args.D = github_event_data.get ('ref')
+    args.D = re.sub (r'^refs/(heads/)?', '', args.D)
+  print ("REPOSITORY", args.R, file = sys.stderr)
+  print ("NAME", args.U, file = sys.stderr)
+  print ("DEPARTMENT", args.D, file = sys.stderr)
+  URL = github_event_data.get ('head_commit', {}).get ('url', '')
+  print ("URL", URL, file = sys.stderr)
+  if URL:
+    if args.message: args.message += [ '-' ]
+    args.message += [ URL ]
+    # print ("MESSAGE", repr (args.message), file = sys.stderr)
+
 if args.message and not args.quiet:
   print (format_msg (args, 1))
 connect (args.s, args.p)
