@@ -166,7 +166,7 @@ include doc/Makefile.mk
 
 # == run ==
 run: FORCE all
-	$>/electron/anklang
+	$>/electron/anklang --no-sandbox
 
 # == clean rules ==
 clean: FORCE
