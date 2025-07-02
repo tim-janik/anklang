@@ -103,19 +103,14 @@ jobs:
     steps:
     - { uses: actions/checkout@v4.1.1,	with: { fetch-depth: 0 } } # Fix actions/checkout#290
     - run: git fetch -f --tags && git submodule update --init --recursive && git describe --long
-    - name: Check Jobs
+    - name: Check-Jobs
       run: |
         echo '${{ needs.NobleAssets.result }}' '${{ needs.UploadDocs.result }}' '${{ needs.ArchReplay.result }}' '${{ needs.NobleClangTidy.result }}'
         [[ ${{ needs.NobleAssets.result }}    =~ success|skipped ]]
         [[ ${{ needs.UploadDocs.result }}     =~ success|skipped ]]
         [[ ${{ needs.ArchReplay.result }}     =~ success|skipped ]]
         [[ ${{ needs.NobleClangTidy.result }} =~ success|skipped ]]
-    - name: Ping IRC
+    - name: Ping-IRC
       if: ${{ always() && !env.ACT }}
       run: |
-        R='${{ github.repository }}' && R=${R#*/}
-        B='${{ github.ref }}' && B=${B#refs/heads/}
-        S='${{ job.status }}' && URL='${{ github.event.head_commit.url }}'
-        A='${{ github.actor }}' && B="$(git branch --show-current)"
-        MSG=$(git log -1 --format='%s')
-        .github/workflows/ircbot.py -q -j "#Anklang" -R "$R" -U "$A" -D "$B" -S "$S" "$MSG" "$URL"
+        .github/workflows/ircbot.py -q -j "#Anklang" -G -S '${{ job.status }}' "$(git log -1 --format=%s)"

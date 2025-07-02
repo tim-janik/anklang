@@ -265,7 +265,7 @@ node_modules/.npm.done: $(if $(NPMBLOCK),, package.json)		| $>/
 NODE_PATH ::= $(abspath node_modules/)
 export NODE_PATH
 CLEANDIRS += node_modules/
-CLEANFILES += bun.lockb package-lock.json
+CLEANFILES += bun.lock bun.lockb package-lock.json
 
 # == uninstall ==
 uninstall:
