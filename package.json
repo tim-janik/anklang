@@ -29,7 +29,7 @@
     "colorjs.io": "^0.5.2",
     "css-color-converter": "^2.0.0",
     "csstree-validator": "^3.0.0",
-    "electron": "^31.2.1",
+    "electron": "^37.1.0",
     "eslint": "^9.7.0",
     "eslint-formatter-unix": "^8.40.0",
     "eslint-plugin-html": "^8.1.1",
