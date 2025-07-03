@@ -7,7 +7,7 @@ import * as Dom from "../dom.js";
 
 // == HTML ==
 const HTML = (t, d) => html`
-<dialog class="floating-dialog [&:not([open])]:hidden" ${ref (h => t.dialog = h)} @close=${t.close_dialog}>
+<dialog class="floating-dialog [&:not([open])]:hidden" ${ref (h => t.dialog = h)}>
   <div class="dialog-header">
     About ANKLANG
   </div>
@@ -15,7 +15,7 @@ const HTML = (t, d) => html`
     ${INFOS_HTML (t, d)}
   </c-grid>
   <div class="dialog-footer">
-    <button class="button-xl" autofocus @click=${e => t.dialog.close()} > Close </button>
+    <button class="button-xl" autofocus @click=${e => t.emit_close()} > Close </button>
   </div>
 </dialog>`;
 const INFOS_HTML = (t, d) =>
@@ -35,11 +35,7 @@ const INFOS_HTML = (t, d) =>
  */
 export class BAboutDialog extends LitComponent {
   createRenderRoot() { return this; }
-  render()
-  {
-    const d = {};
-    return HTML (this, d);
-  }
+  render() { return HTML (this, {}); }
   static properties = {
     shown:	{ type: Boolean },
   };
@@ -49,6 +45,7 @@ export class BAboutDialog extends LitComponent {
     this.shown = false;
     this.info_pairs = [];
     this.dialog = null;
+    this.completed_promise = null;
   }
   updated (changed_props)
   {
@@ -61,20 +58,33 @@ export class BAboutDialog extends LitComponent {
       info_promise = load_infos();
     }
     if (this.shown && !this.dialog.open && this.info_pairs.length > 0) {
-      document.startViewTransition (async () => {
-	Dom.show_modal (this.dialog);
-	await Promise.all ([this.updateComplete, info_promise]);
-      });
+      Dom.show_modal (this.dialog, () => this.emit_close());
+      const old_completed_promise = this.completed_promise;
+      this.completed_promise = (async () => {
+	await Promise.all ([old_completed_promise, info_promise, this.updateComplete]);
+	this.completed_promise = null;
+      }) ();
     }
-    if (!this.shown && this.dialog.open)
+    if (!this.shown && this.dialog.open) {
       this.close_dialog();
+      this.requestUpdate();
+    }
   }
   close_dialog (event = null)
   {
     Util.prevent_event (event);
-    document.startViewTransition (() => {
-      this.dispatchEvent (new CustomEvent ('close', { detail: {} }));
-    });
+    this.dialog.close();
+    const old_completed_promise = this.completed_promise;
+    this.completed_promise = (async () => {
+      await Promise.all ([old_completed_promise, this.updateComplete]);
+      this.completed_promise = null;
+    }) ();
+    return this.completed_promise;
+  }
+  emit_close (event = null)
+  {
+    Util.prevent_event (event);
+    this.dispatchEvent (new CustomEvent ('close', { detail: {} }));
   }
   disconnectedCallback()
   {
@@ -94,7 +104,6 @@ async function about_pairs() {
     [ 'FLAC:',		        await Ase.server.get_flac_version() ],
     [ 'Opus:',		        await Ase.server.get_opus_version() ],
     [ 'Lit:',			CONFIG.lit_version ],
-    [ 'Vuejs:',			Vue.version ],
     [ 'User Agent:',		user_agent ],
   ];
   const Electron = window['Electron'];

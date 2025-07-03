@@ -21,14 +21,12 @@
     <link rel="modulepreload" href="./all-components.js">
     <link rel="modulepreload" href="./browserified.js">
     <link rel="modulepreload" href="./util.js">
-    <link rel="modulepreload" href="./vue.js">
     <link rel="modulepreload" href="./aseapi.js">
     <link rel="modulepreload" href="./little.js">
     <link rel="modulepreload" href="./lit.js">
     <link rel="modulepreload" href="./b/app.js">
     <link rel="modulepreload" href="./b/shell.js">
-    <link rel="modulepreload" href="./b/piano-ctrl.js">
-    <link rel="modulepreload" href="./b/envue.js"> -->
+    <link rel="modulepreload" href="./b/piano-ctrl.js"> -->
   <link rel="preload" as="style" href="global.css?csshash=@--CSSHASH--@">
   <link rel="preload" as="style" href="assets/AnklangIcons.css">
   <link rel="preload" as="style" href="material-icons.css">
@@ -49,19 +47,8 @@
     Object.defineProperty (globalThis, '__DEV__', { value: CONFIG.mode !== 'production' });
     Object.defineProperty (globalThis, 'debug', { value: __DEV__ ? console.log : _ => undefined });
     Object.defineProperty (globalThis, 'assert', { value: console.assert });
-    const document_startViewTransition = document.startViewTransition ? document.startViewTransition.bind (document) : null;
-    Object.defineProperty (document, 'startViewTransition', { value: (func, want_transition = true) => {
-      const async_updater = () => {
-	const promises = [func()];
-	/* Sync with possibly pending Vue changes */
-	window.Vue?.nextTick && promises.push (new Promise (r => window.Vue.nextTick (r)));
-	return Promise.all (promises);
-      };
-      if (want_transition && document_startViewTransition)
-	document_startViewTransition (async_updater);
-      else
-	async_updater();
-    }, });
+    Object.defineProperty (document, 'skipViewTransition', { value: func => func() });
+    document.startViewTransition || Object.defineProperty (document, 'document.startViewTransition', { value: document.skipViewTransition });
   } </script>
   <script type="module" src="./signal.js"></script>
 </head>

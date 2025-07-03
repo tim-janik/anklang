@@ -10,8 +10,8 @@
  * notifications for pointer movements, including 0-distance moves after significant UI changes.
  */
 
-import VueComponents from '../all-components.js';
-import ShellClass from '../b/shell.js';
+import '../all-components.js';
+import '../b/shell.js';
 import * as Util from '../util.js';
 import * as Mouse from '../mouse.js';
 import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
@@ -70,11 +70,15 @@ export class AppClass {
     const name = this.project?.name;
     document.title = Util.format_title ('Anklang', name);
   }
-  mount (id) {
-    this.shell = this.vue_app.mount (id);
-    Object.defineProperty (globalThis, 'Shell', { value: this.shell });
+  mount (id)
+  {
+    console.assert (!this.shell);
+    document.getElementById (id).innerHTML = '';
+    this.shell = document.createElement ('b-shell');
     if (!this.shell)
       throw Error (`failed to mount App at: ${id}`);
+    document.getElementById (id).appendChild (this.shell);
+    Object.defineProperty (globalThis, 'Shell', { value: this.shell });
   }
   shell_unmounted() {
   }
@@ -189,15 +193,8 @@ export class AppClass {
 export async function create_app() {
   if (globalThis.App)
     return globalThis.App;
-  // prepare Vue component templates
-  for (const [__name, vcomponent] of Object.entries (VueComponents)) {
-    /**@type{any}*/
-    const component = vcomponent;
-    if (component.sfc_template) // also constructs Shell.template
-      component.template = component.sfc_template.call (null, Util.tmplstr, null);
-  }
   // create and configure Vue App
-  const vue_app = Vue.createApp (ShellClass); // must have Shell.template
+  const vue_app = Vue.createApp ({}); // must have Shell.template
   vue_app.config.compilerOptions.isCustomElement = tag => !!window.customElements.get (tag);
   vue_app.config.compilerOptions.whitespace = 'preserve';
   // common globals
@@ -216,9 +213,6 @@ export async function create_app() {
     vue_app.directive (directivename, Util.vue_directives[directivename]);
   for (let mixinname in Util.vue_mixins)         // register all utility mixins
     vue_app.mixin (Util.vue_mixins[mixinname]);
-  for (const [name, component] of Object.entries (VueComponents))
-    if (component !== ShellClass)
-      vue_app.component (name, component);
   // create main App instance
   const app = new AppClass (vue_app);
   console.assert (app === globalThis.App);

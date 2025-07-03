@@ -148,13 +148,6 @@ async function bootup () {
   // Ensure APP rerenders when the browser window changes
   const rerender_all = () => {
     lit_update_all();
-    const vue_force_update = vm => {
-      vm.$forceUpdate();
-      for (const cv of vm.$children)
-	vue_force_update (cv);
-    };
-    if (window.Shell)
-      vue_force_update (Shell);
   };
   window.addEventListener ('resize', rerender_all);
   document.fonts.addEventListener ("loadingdone", rerender_all);
@@ -173,7 +166,7 @@ async function bootup () {
 
   // mount in DOM and create component hierarchy
   await document.fonts.ready; // Fonts - wait for fonts before Vue components are mounted and compute sizes
-  App.mount ('#b-app');
+  App.mount ('b-app');
   console.assert (app === globalThis.App);
   console.bootlog (`Vue App mounted...`);
 

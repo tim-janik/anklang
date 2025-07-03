@@ -65,13 +65,17 @@ $fsf: 1.05; //* font size factor */
 
 /** A mechanism to display data-bubble="" tooltip popups */
 class DataBubbleImpl {
-  bubble_layer() {
+  bubble_layer()
+  {
     const bubble_layer_id = '#b-shell-bubble-layer';
-    const el = document.body.querySelectorAll (bubble_layer_id);
+    const el = this.bubblelayerparent.querySelectorAll (bubble_layer_id);
     console.assert (el.length > 0, "Missing container:", bubble_layer_id);
     return el[0];
   }
-  constructor() {
+  constructor (bubblelayerparent)
+  {
+    console.assert (!!bubblelayerparent);
+    this.bubblelayerparent = bubblelayerparent;
     // create one toplevel div.data-bubble element to deal with all popups
     this.bubble = document.createElement ('div');
     this.bubble.classList.add ('b-data-bubble');
@@ -223,8 +227,10 @@ class DataBubbleImpl {
 const UNSET = Symbol ('UNSET');
 
 class DataBubbleIface {
-  constructor() {
-    this.data_bubble = new DataBubbleImpl();
+  constructor (bubblelayerparent)
+  {
+    console.assert (!!bubblelayerparent);
+    this.data_bubble = new DataBubbleImpl (bubblelayerparent);
   }
   /// Set the `data-bubble` attribute of `element` to `text` or force its callback
   update (element, text = UNSET) {
