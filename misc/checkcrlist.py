@@ -109,6 +109,13 @@ def git_copyright (filename):
     clines.append ('Copyright (C) ' + years + ' ' + n)
   return clines
 
+def print_matches (filename, pattern):
+  regex = re.compile (pattern)
+  with open (filename, 'r') as file:
+    for line_num, line in enumerate (file, start = 1):
+      if regex.search (line):
+        print (f"\t{filename}:{line_num}:{line.rstrip('\n')}", file = sys.stderr)
+
 def crpathcheck (sysargv):
   # parse options and check inputs
   parse_options (sysargv)
@@ -117,25 +124,30 @@ def crpathcheck (sysargv):
     parse_copyrightfile (crf)
   # sort patterns by specificity, i.e. length and absence of wildcards
   FILE_PATTERNS[:] = sorted (FILE_PATTERNS, key = lambda tup: (tup[4].count ('**'), tup[4].count ('*'), tup[4].count ('?'), -len (tup[4]), tup[4]))
-  #print ('\n'.join (str (e) for e in FILE_PATTERNS))
+  #print ('\n'.join (str (e) for e in FILE_PATTERNS), file = sys.stderr)
   # read input file or stdin
   inputstream = sys.stdin if FILELIST == '-' else open (FILELIST, 'rt')
   # check all files for matching pattern
   fileerrors = 0
-  for fileline in inputstream.read().splitlines():
+  for filename in inputstream.read().splitlines():
     fmatch = False
     for tup in FILE_PATTERNS:
-      if tup[0].match (fileline):
+      if tup[0].match (filename):
         tup[1][0] += 1
         fmatch = True
         break
     if not fmatch:
-      print (sys.argv[0] + ':', 'UNKNOWN-COYPRIGHT:', fileline, file = sys.stderr)
+      print (sys.argv[0] + ':', 'MISSING-COYPRIGHT', 'from ' + crf if crf else '', 'for:', filename, file = sys.stderr)
+      print ('\tFiles:', filename, file = sys.stderr)
+      print ('\tCopyright:', file = sys.stderr)
+      print_matches (filename, r'\bCopyright\b.+')
+      print ('\tLicense:', file = sys.stderr)
+      print_matches (filename, r'(?i)\blicensed?\b.+')
       fileerrors += 1
     if not fmatch and GIT_COPYRIGHT:
-      clines = git_copyright (fileline)
+      clines = git_copyright (filename)
       if len (clines) > 0:
-        print ('Files:', fileline)
+        print ('Files:', filename)
         if len (clines) == 1: print ('Copyright:', clines[0])
         else:
           print ('Copyright:')
