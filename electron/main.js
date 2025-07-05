@@ -259,8 +259,10 @@ function parse_args (argv)
       switch (arg) {
 	case '--help': case '-h':
 	  usage ('help', 0);
+	  break;
 	case '--version':
 	  usage ('version', 0);
+	  break;
 	case '--verbose': case '-v':
 	  c.verbose = true;
 	  break;
