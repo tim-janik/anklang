@@ -86,7 +86,7 @@ const HTML = (t, d) => html`
   <div class="dialog-header">${t.title}</div>
 
   <input class="-direntry pointer-events-none mb-4 select-none outline outline-2 outline-offset-2" ${ref (h => t.direntry = h)} .value="${t.folder}"
-	 tabindex='-1' readonly @focus=${e => t.pathentry.focus()} inert
+	 tabindex="-1" readonly @focus=${e => t.pathentry.focus()} inert
 	 type="text" @select=${Util.prevent_event} >
 
   <div data-subfocus="*" class="-entry-grid grid" ${ref (h => t.entrygrid = h)}
