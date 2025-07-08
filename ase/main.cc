@@ -43,6 +43,7 @@ MainLoopP          main_loop;
 static int         embedding_fd = -1;
 static bool        arg_js_api = false;
 static bool        arg_class_tree = false;
+static int         config_websocket_port = 0;
 
 // == JobQueue ==
 static void
@@ -312,8 +313,8 @@ make_auth_string()
    *    must be cryptographically-secure.
    */
   KeccakCryptoRng csprng;
-  String auth;
-  for (size_t i = 0; i < 8; ++i)
+  String auth = "sessC";
+  for (size_t i = 0; i < 23; ++i)
     auth += c52[csprng.random() % 52];  // each step adds 5.7 bits
   return auth;
 }
@@ -569,20 +570,25 @@ main (int argc, char *argv[])
     }
 
   // open Jsonapi socket
-  auto wss = WebSocketServer::create (jsonapi_make_connection, App.jsonapi_logflags);
+  const String auth_token = make_auth_string();
+  auto wss = WebSocketServer::create (jsonapi_make_connection, App.jsonapi_logflags, auth_token);
   main_app.web_socket_server = &*wss;
   wss->http_dir (anklang_runpath (RPath::INSTALLDIR, "/ui/"));
-  wss->http_alias ("/User/Controller", anklang_home_dir ("/Controller"));
+  // wss->http_alias ("/User/Controller", anklang_home_dir ("/Controller"));
   wss->http_alias ("/Builtin/Controller", anklang_runpath (RPath::INSTALLDIR, "/Controller"));
-  wss->http_alias ("/User/Scripts", anklang_home_dir ("/Scripts"));
+  // wss->http_alias ("/User/Scripts", anklang_home_dir ("/Scripts"));
   wss->http_alias ("/Builtin/Scripts", anklang_runpath (RPath::INSTALLDIR,"/Scripts"));
-  const int xport = embedding_fd >= 0 ? 0 : 1777;
+  const int xport = embedding_fd >= 0 ? 0 : (config_websocket_port > 0 ? config_websocket_port : 0);
   const String subprotocol = xport ? "" : make_auth_string();
-  jsonapi_require_auth (subprotocol);
+  jsonapi_set_subprotocol (subprotocol);
   if (App.mode == MainApp::SYNTHENGINE) {
     const char *host = "127.0.0.1";
     wss->listen (host, xport, [] () { main_loop->quit (-1); });
-    log ("Main: listen on: %s:%u", host, xport);
+    const String redirecthtml = create_auth_redirect ("anklang", wss->listen_port(), auth_token);
+    if (errno)
+      perror_die (redirecthtml + ": failed to create html redirect file in $HOME");
+    wss->see_other ("file://" + redirecthtml);
+    log ("Main: WebUI redirect: file://%s", redirecthtml);
   }
   const String url = wss->url() + (subprotocol.empty() ? "" : "?subprotocol=" + subprotocol);
   if (embedding_fd < 0 && !url.empty())
