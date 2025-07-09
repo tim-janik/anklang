@@ -1,14 +1,19 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 'use strict';
+
+// == Imports & Globals ==
 const package_json = require ('./package.json');
-const fs = require ('fs');
-Object.defineProperty (globalThis, '__DEV__', { value: package_json.mode !== 'production' });
-let devtools_option = false;
+Object.defineProperty (globalThis, '__DEV__', { value: package_json.__DEV__ });
 const Electron = require ('electron');
 const Eapp = Electron.app;
-const Eshell = Electron.shell;
 const os = require ('os');
-const ELECTRON_CONFIG = { quitstartup: false, files: [] };
+// Processes
+let browser_window;
+
+// == Config & Defaults ==
+const ELECTRON_CONFIG = { quitstartup: false, };
+const cli_args = [];
+let devtools_option = false;
 
 // CSS Defaults
 const defaults = {
@@ -17,31 +22,28 @@ const defaults = {
   defaultMonospaceFontSize: 13,
 };
 
-// Processes
-let win, ase_proc;
-
+// == Exit Handling ==
 // End process and main_exit all dependent processes
-function main_exit (exitcode, ...errmsgs) {
+function main_exit (exitcode, ...errmsgs)
+{
   if (main_exit.exit_code !== undefined)
     return; // recursion, might be in late destruction where await + setTimeout does *NOT* work anymore
   main_exit.exit_code = 0 | exitcode;
   if (errmsgs.length)
     console.error (...errmsgs);
-  if (win)
+  if (browser_window)
     {
-      win.destroy();
-      win = null;
+      browser_window.destroy();
+      browser_window = null;
     }
-  if (ase_proc)
-    ase_proc.kill();
   if (main_exit.exit_code < 0)
     process.abort();
-  Eapp.exit (main_exit.exit_code);
+  Eapp.exit (5); // calls process.exit()
 }
-
-// Handle Electron application 'quit()' method
 Eapp.once ('will-quit', e => {
-  /* Note, Electron hijacks SIGINT, SIGHUP, SIGTERM to trigger app.quit()
+  /* Handle Electron application 'quit()' method.
+   *
+   * Note, Electron hijacks SIGINT, SIGHUP, SIGTERM to trigger app.quit()
    * which has a 0 exit status. We simply don't use quit() and force a
    * non-0 status if it's used. See also:
    * https://github.com/electron/electron/issues/5273
@@ -51,35 +53,55 @@ Eapp.once ('will-quit', e => {
   main_exit (130);	// assume SIGINT
 });
 
-// Terminate on Promise rejection
 process.on ('unhandledRejection', (reason, promise) => {
-  main_exit (-1, 'Unhandled Rejection at:', promise, 'reason:', reason);
+  // Terminate on Promise rejection
+  main_exit (-1, 'Unhandled Rejection:', promise, 'reason:', reason);
 });
+// new Promise ((resolve, reject) => reject (new Error ('Testing unhandledRejection...')));
 
-// Valid exit
+process.on ('uncaughtException', (error, s, d) => {
+  main_exit (-1, 'Uncaught Exception:', error, error.stack);
+});
+// throw new Error ('Testing uncaughtException');
+
 Eapp.once ('window-all-closed', () => {
-  win = null; // this *may* be emitted before win.closed
+  // Valid exit
+  browser_window = null; // this *may* be emitted before browser_window.closed
   main_exit (0);
 });
+// == URL Policy ==
+/// Check if URL is local and allowed
+function allowed_url (url)
+{
+  const pattern =
+    `^file:///` +
+    `|` +
+    `^(http|ws)s?://localhost` + `(:[1-9][0-9][0-9][0-9]+)?` + `/`;
+  const regex = new RegExp (pattern, 'i');
+  if (url.match (regex))
+    return true;
+  return false;
+}
 
 // == Browser Window ==
 // create the main browser window
 function create_window (onclose)
 {
-  // avoid menu flicker, leave menu construction to the window
-  Electron.Menu.setApplicationMenu (null);
   // window configuraiton
+  const ideal_width = 2048, ideal_ratio = 16 / 10;
+  const xalign = 0.5, yalign = 0;
   const options = {
-    width:                              1820, // calling win.maximize() causes flicker
-    height:                             1365, // using a big initial size avoids flickering
+    width:                              ideal_width,
+    height:                             Math.round (ideal_width / ideal_ratio),
     backgroundColor:                    defaults.backgroundColor,
     autoHideMenuBar:                    false,
-    icon:				__dirname + '/anklang.png',
+    icon:				__dirname + '/htmlgui.svg',
     webPreferences: {
       preload:				__dirname + '/preload.js',
       sandbox:				true,
       contextIsolation:			true,
       nodeIntegration:                  false,
+      nodeIntegrationInWorker:		false,
       enableRemoteModule:               false,
       devTools:                         __DEV__ || devtools_option,
       defaultEncoding:                  'UTF-8',
@@ -97,29 +119,42 @@ function create_window (onclose)
     show: false, // avoid incremental load effect, see 'ready-to-show'
     darkTheme: true,
   };
+  // align to screen
+  const primary_display = Electron.screen.getPrimaryDisplay();
+  const area = primary_display?.workArea;
+  if (area) {
+    options.width = Math.min (options.width, area.width);
+    options.height = Math.min (options.height, area.height);
+    options.x = Math.round (area.x + xalign * (area.width - options.width));
+    options.y = Math.round (area.y + yalign * (area.height - options.height));
+    // console.log ("screen:", primary_display);
+  }
+  // avoid menu flicker, leave menu construction to the window
+  Electron.Menu.setApplicationMenu (null);
   const w = new Electron.BrowserWindow (options);
   w.setMenu (Electron.Menu.buildFromTemplate ([]));
-  w.webContents.once ('crashed', () => main_exit (129)); // crashed is SIGHUP or SIGTERM
+  w.webContents.once ('crashed', () => main_exit (129)); // 'crashed' is SIGHUP or SIGTERM
   if (onclose)
     w.on ('closed', onclose);
   return w;
 }
 
 // asynchronously load URL into window `w`
-async function load_and_show (w, winurl) {
-  w = await w;
+async function load_and_show (w, winurl)
+{
   const win_ready = new Promise (resolve => w.once ('ready-to-show', () => resolve ()));
-  const origin = winurl.replace (/(\w\/).*/g, '$1');
   // allow reloads, disallow navigation
   w.webContents.addListener ('will-navigate', (ev, navurl) => {
-    if (navurl !== winurl)              // not a reload
+    if (!allowed_url (navurl)) {
+      console.warn (`BLOCKING Navigation Attempt: ${winurl} -> ${navurl}`);
       ev.preventDefault();
+    }
   });
   // handle subwindow creation (via target=_blank or window.open)
   w.webContents.setWindowOpenHandler (({ url }) => {                    // Electron-12
-    if (url.startsWith (origin))        // Anklang content
-      ; // return { action: 'allow' };
-    Eshell.openExternal (url);          // use xdg-open or similar
+    if (allowed_url (url))
+      return { action: 'allow' };
+    Electron.shell.openExternal (url);          // use xdg-open or similar
     return { action: 'deny' };
   });
   // customize child windows
@@ -135,61 +170,6 @@ async function load_and_show (w, winurl) {
   if (devtools_option)
     w.toggleDevTools(); // start with DevTools enabled
   return w.show();
-}
-
-// == Sound Engine ==
-function start_sound_engine (config, datacb)
-{
-  let sound_engine = __dirname + '/../../../lib/AnklangSynthEngine';
-  let cpuinfo = '';
-  try 		{ cpuinfo = fs.readFileSync ('/proc/cpuinfo', { encoding: 'utf8', flag: 'r' }); }
-  catch (err)	{}
-  for (const suffix of [ 'fma', 'sse' ])
-    if (cpuinfo.search (new RegExp (`^flags\\s*:.*\\b${suffix}\\b`, 'm')) >= 0)
-      try {
-	const sound_engine_insn = sound_engine + '-' + suffix;
-	fs.accessSync (sound_engine_insn, fs.constants.X_OK);
-	sound_engine = sound_engine_insn;
-	break;
-      } catch (err) {
-	// console.error (__filename + ':', `missing "${suffix}" variant of AnklangSynthEngine`);
-      }
-  const { spawn, spawnSync } = require ('child_process');
-  const args = [ '--embed', '3', ...config.args ];
-  if (config.verbose)
-    args.push ('--verbose');
-  if (config.binary)
-    args.push ('--binary');
-  const subproc = spawn (sound_engine, args, { stdio: [ 'pipe', 'inherit', 'inherit', 'pipe' ] });
-  if (config.gdb)
-    {
-      console.log ('DEBUGGING:\n  gdb --pid', subproc.pid, '#', sound_engine);
-      spawnSync ('/usr/bin/sleep', [ 5 ]);
-    }
-  subproc.stdio[3].once ('data', (bytes) => datacb (bytes.toString()));
-  // handle errors and exit
-  const prefix = sound_engine.split ('/').pop() + ':';
-  subproc.on ('exit', async (code, sig) => {
-    // NOTE: await + setTimeout might *NOT* work at this point
-    const reason = sig || subproc.signalCode || code || subproc.exitCode;
-    if (reason)
-      main_exit (143, prefix, 'exit:', reason);
-    else
-      main_exit (0);
-  });
-  subproc.stdio[3].once ('end', async (x) => {
-    setTimeout (() => { // fallback, other handlers should exit earlier
-      console.error (prefix, 'connection closed');
-      main_exit (-1);
-    }, 444);
-  });
-  subproc.stdio[3].once ('error', (err) => {
-    main_exit (-1, prefix, 'io-error:', err);
-  });
-  subproc.once ('error', (err) => {
-    main_exit (-1, prefix, 'error:', err);
-  });
-  return subproc;
 }
 
 // == IPC Messages ==
@@ -213,29 +193,19 @@ for (const func in ipc_handler)
   Electron.ipcMain.handle (func, async (event, args) => await ipc_handler[func] (event.sender, ...args));
 
 // == Usage ==
-let cmdname = Eapp.getName();
 function usage (what, exitcode = false) {
-  const name = cmdname.replace (/.*\//, '');
+  const name = Eapp.getName();
   if (what === 'version')
-    console.log (name + ' ' + package_json.version); // Eapp.getVersion();
+    console.log (name + ' ' + Eapp.getVersion());
   if (what === 'usage' || what === 'help')
-    console.log (`Usage: ${name} [OPTIONS] [--] [ProjectFiles...]`);
+    console.log (`Usage: ${name} [OPTIONS] [--] <WEBUI-URL>`);
   let o = [
     'Options:',
     '--version         Print program version',
     '-h, --help        Print command line option help',
     '-v, --verbose     Print runtime information',
-    '--binary          Print binary IPC messages',
-    '--gdb             Print command to debug sound engine',
     '--dev             Start with DevTools (for developers)',
-    '--norc            Skip reading of anklangrc',
-    '-U <ASEURL>       Run with URL of external sound engine',
   ];
-  const d = [
-    '--inspect         Open nodejs debugging port',
-  ];
-  if (__DEV__)
-    o = o.concat (d);
   if (what === 'help')
     console.log (o.join ('\n  '));
   if (exitcode !== false)
@@ -246,16 +216,15 @@ function usage (what, exitcode = false) {
 function parse_args (argv)
 {
   argv = argv.slice (1); // take [1,...]
-  const c = { verbose: false, binary: false, gdb: false, norc: false, args: [] };
+  const c = { verbose: false, args: [] };
   let sep = false;
   while (argv.length)
     {
       const arg = argv.splice (0, 1)[0];
-      if (sep)
-	{
-	  ELECTRON_CONFIG.files.push (arg);
-	  continue;
-	}
+      if (sep) {
+	cli_args.push (arg);
+	continue;
+      }
       switch (arg) {
 	case '--help': case '-h':
 	  usage ('help', 0);
@@ -272,33 +241,14 @@ function parse_args (argv)
 	case '--quitstartup':
 	  ELECTRON_CONFIG.quitstartup = true;
 	  break;
-	case '--binary':
-	  c.binary = true;
-	  break;
-	case '--gdb':
-	  c.gdb = true;
-	  break;
-	case '--norc':
-	  c.norc = true;
-	  c.args.push (arg);
-	  break;
-	case '-P':
-	case '-M':
-	  if (argv.length) {
-	    c.args.push (arg);
-	    c.args.push (argv.splice (0, 1)[0]);
-	  }
-	  break;
-	case '-U':
-	  c.xurl = argv.splice (0, 1)[0];
-	  break;
-	case '--inspect':	// nodejs debugging option
-	  break;		// open chrome://inspect/
+	case '--no-sandbox':	// fall-through
+	case '--inspect':	// open chrome://inspect/
+	  break;		// nodejs debugging options
 	case '--':
 	  sep = true;
 	  break;
 	default:
-	  ELECTRON_CONFIG.files.push (arg);
+	  cli_args.push (arg);
 	  break;
       }
     }
@@ -309,24 +259,16 @@ function parse_args (argv)
 // Create SoundEngine and BrowserWindow once everything is loaded
 async function startup_components (config) {
   // start rendering process
-  const onclose = () => win = null;
-  win = create_window (onclose);
+  const onclose = () => browser_window = null;
+  browser_window = create_window (onclose);
   // start sound engine
-  let winurl = config.xurl; // external URL?
-  if (!winurl)
-    {
-      const sndmsg = new Promise (resolve => ase_proc = start_sound_engine (config, msg => resolve (msg)));
-      // retrieve sound engine URL
-      const auth = JSON.parse (await sndmsg); // yields { "url": "http://127.0.0.1:<PORT>/?subprotocol=<STRING>" }
-      if (!auth.url)
-	main_exit (-1, 'Failed to launch sound engine');
-      winurl = auth.url;
-    }
+  let winurl = cli_args && cli_args[0];
+  if (!winurl || !allowed_url (winurl))
+    main_exit (-1, Eapp.getName() + ': Missing valid URL for GUI');
   // load URL in renderer
-  await load_and_show (win, winurl);
+  await load_and_show (browser_window, winurl);
 }
 
 // == Run ==
-cmdname = process.argv[0];
 const config = parse_args (process.argv);
-Eapp.once ('ready', _ => startup_components (config));
+Eapp.once ('ready', () => startup_components (config));
