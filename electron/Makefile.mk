@@ -1,46 +1,48 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-include $(wildcard $>/electron/*.d)
-ALL_TARGETS       += electron/all
-electron/all:
 
-electron/js.sources ::= electron/main.js electron/preload.js $>/gen/public/anklang.png
+# ELECTRON_PKG_NAME determines the ~/.config/... storage directory
+ELECTRON_PKG_NAME	:= anklang/electron/htmlgui
+ELECTRON_VERSION	:= $(version_short)
+ELECTRON_DEV		:= false
+ELECTRON_SOURCES	:= electron/main.js electron/preload.js electron/htmlgui.svg
+ELECTRON_DEPS		:= node_modules/.npm.done
+ELECTRON_INSTALLDIR	:= $(pkgdir)/electron
+ELECTRON_EXECUTABLE	:= $>/electron/$(notdir $(ELECTRON_PKG_NAME))
+ALL_TARGETS		+= $(ELECTRON_EXECUTABLE)
 
-# == electron/anklang ==
-$>/electron/anklang: $(electron/js.sources) electron/Makefile.mk node_modules/.npm.done
+# == electron/executable ==
+$(ELECTRON_EXECUTABLE): electron/Makefile.mk $(ELECTRON_SOURCES) $(ELECTRON_DEPS)
 	$(QGEN)
 	$Q rm -f -r $(@D)
 	$Q $(CP) -r node_modules/electron/dist/ $(@D)
 	$Q chmod -x $>/electron/lib*.so*
 	$Q rm $(@D)/resources/default_app.asar
 	$Q mkdir -p $(@D)/resources/app
-	$Q $(CP) $(electron/js.sources) $(@D)/resources/app/
-	$Q echo '{ "private": true,'					>  $(@D)/resources/app/package.json
-	$Q echo '  "name": "anklang/electron",'				>> $(@D)/resources/app/package.json
-	$Q echo '  "version": "$(version_short)",'			>> $(@D)/resources/app/package.json
-	$Q echo '  "main": "main.js",'					>> $(@D)/resources/app/package.json
-	$Q echo '  "mode": "$(MODE)" }'					>> $(@D)/resources/app/package.json
+	$Q $(CP) $(ELECTRON_SOURCES) $(@D)/resources/app/
+	$Q echo '{ "private": true,'				>  $(@D)/resources/app/package.json
+	$Q echo '  "name": "$(ELECTRON_PKG_NAME)",'		>> $(@D)/resources/app/package.json
+	$Q echo '  "version": "$(ELECTRON_VERSION)",'		>> $(@D)/resources/app/package.json
+	$Q echo '  "__DEV__": "$(ELECTRON_DEV)",'		>> $(@D)/resources/app/package.json
+	$Q echo '  "main": "main.js" }'				>> $(@D)/resources/app/package.json
 	$Q chmod g-w -R $>/electron/
+	$Q test ! -x node_modules/.bin/asar || ( cd $(@D) \
+		&& $(abspath node_modules/.bin/asar) pack resources/app resources/app.asar \
+		&& rm -f -r resources/app )
 	$Q mv $(@D)/electron $@
-electron/all: $>/electron/anklang
+# node_modules/.bin/asar list $>/electron/resources/app.asar
 
-# == installation ==
-electron/installdir ::= $(pkgdir)/electron
+# == install ==
+electron/install: $(ELECTRON_EXECUTABLE)
+	@$(QECHO) INSTALL '$(DESTDIR)$(ELECTRON_INSTALLDIR)/'
+	$Q rm -f -r '$(DESTDIR)$(ELECTRON_INSTALLDIR)'
+	$Q $(INSTALL) -d $(DESTDIR)$(ELECTRON_INSTALLDIR)/
+	$Q $(CP) -Rp $>/electron/* $(DESTDIR)$(ELECTRON_INSTALLDIR)
 .PHONY: electron/install
-electron/install: $>/electron/anklang
-	@$(QECHO) INSTALL '$(DESTDIR)$(electron/installdir)/.'
-	$Q rm -f -r '$(DESTDIR)$(electron/installdir)'
-	$Q $(INSTALL) -d $(DESTDIR)$(electron/installdir)/
-	$Q $(CP) -Rp $>/electron/* $(DESTDIR)$(electron/installdir)
-	$Q $(call INSTALL_SYMLINK, '../electron/anklang', '$(DESTDIR)$(pkgdir)/bin/anklang')
-	$Q $(INSTALL) -d '$(DESTDIR)$(bindir)/'
-	$Q rm -f '$(DESTDIR)$(bindir)/anklang'
-	$Q ln -s -r '$(DESTDIR)$(pkgdir)/bin/anklang' '$(DESTDIR)$(bindir)/anklang'
 install: electron/install
-.PHONY: electron/uninstall
+
+# == uninstall ==
 electron/uninstall:
-	@$(QECHO) REMOVE '$(DESTDIR)$(electron/installdir)/.'
-	$Q rm -f -r '$(DESTDIR)$(electron/installdir)'
-	$Q rm -f '$(DESTDIR)$(pkgdir)/bin/anklang'
-	$Q $(RMDIR_P) '$(DESTDIR)$(pkgdir)/bin' || true
-	$Q rm -f '$(DESTDIR)$(bindir)/anklang'
+	@$(QECHO) REMOVE '$(DESTDIR)$(ELECTRON_INSTALLDIR)/'
+	$Q rm -f -r '$(DESTDIR)$(ELECTRON_INSTALLDIR)'
+.PHONY: electron/uninstall
 uninstall: electron/uninstall
