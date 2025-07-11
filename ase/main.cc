@@ -501,10 +501,12 @@ main (int argc, char *argv[])
 
   // SIGPIPE init: needs to be done before any child thread is created
   init_sigpipe();
+  if (setpgid (0, 0) < 0)
+    log ("Main: setpgid failed: %s", ::strerror (errno));
 
   // apply user locale
   if (!setlocale (LC_ALL, ""))
-    perror ("setlocale: locale not supported by libc");
+    fatal_error ("setlocale: locale not supported by libc: %s", ::strerror (errno));
 
   // parse args and config
   parse_args (&argc, argv, main_app);
@@ -635,10 +637,11 @@ main (int argc, char *argv[])
   }
 
   // run atquit handler on SIGHUP SIGINT
-  for (int sigid : { SIGHUP, SIGINT }) {
+  for (int sigid : { SIGHUP, SIGINT, SIGQUIT, SIGABRT, SIGTERM, SIGSYS }) {
     main_loop->exec_usignal (sigid, [] (int8 sig) {
       log ("Main: got signal %d: aborting", sig);
-      atquit_terminate (-1);
+      const pid_t pgid = getpgrp();
+      atquit_terminate (-1, pgid);
       return false;
     });
     USignalSource::install_sigaction (sigid);
