@@ -182,6 +182,12 @@ Server::engine_stats ()
   return s;
 }
 
+void
+Server::exit_program (int status)
+{
+  main_loop->quit (status);
+}
+
 // == Choice ==
 Choice::Choice (String ident_, String label_, String blurb_, String notice_, String warning_) :
   ident (ident_.empty() ? string_to_identifier (label_) : ident_),
