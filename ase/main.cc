@@ -383,7 +383,7 @@ handle_autostop (const LoopState &state)
     case LoopState::CHECK:      return seen_autostop;
     case LoopState::DISPATCH:
       log ("Main: stopping playback (auto)");
-      atquit_run (0);
+      main_loop->quit (0);
       return true; // keep alive
     default: ;
     }
@@ -626,7 +626,7 @@ main (int argc, char *argv[])
   for (int sigid : { SIGHUP, SIGINT }) {
     main_loop->exec_usignal (sigid, [] (int8 sig) {
       log ("Main: got signal %d: aborting", sig);
-      atquit_run (-1);
+      atquit_terminate (-1);
       return false;
     });
     USignalSource::install_sigaction (sigid);
@@ -693,7 +693,7 @@ main (int argc, char *argv[])
   // run main event loop and catch SIGUSR2
   const int exitcode = main_loop->run();
   assert_return (main_loop, -1); // ptr must be kept around
-  log ("Main: event loop quit (code=%d)", exitcode);
+  log ("Main: event loop quit: code=%d", exitcode);
 
   // cleanup
   wss->shutdown(); // close socket, allow no more calls
