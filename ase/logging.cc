@@ -63,9 +63,10 @@ logmsg (const std::string &msg, const char *const filename, const uint64_t colum
     snprintf (tstamp, sizeof (tstamp) - 1, "%.6f: ", 0.000001 * (timestamp_now() - programstart_timestamp));
     s = tstamp + s;
   }
-  if (filename && filename[0] && function_name) {
+  if ((log_flags & LOG_LOCATIONS) &&
+      filename && filename[0] && function_name) {
     char linein[128] = { 0, };
-    snprintf (linein, sizeof (linein) - 1, ":%u:%u: execution at: ", line, column);
+    snprintf (linein, sizeof (linein) - 1, ":%u:%u: logging at: ", line, column);
     s = filename + std::string (linein) + function_name + ":\n" + s;
   }
   if (log_fd == 2 || log_flags & LOG_STDERR)
