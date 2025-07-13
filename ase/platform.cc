@@ -67,6 +67,7 @@ anklang_runpath (RPath rpath, const String &segment)
     case RPath::INSTALLDIR:     return Path::join (libexec_installdir, segment);
     case RPath::LOCALEDIR:      return Path::join (libexec_installdir + "/locale", segment);
     case RPath::LIBDIR:         return Path::join (libexec_installdir + "/lib" + objdir, segment);
+    case RPath::ELECTRONDIR:    return Path::join (libexec_installdir + "/electron", segment);
     case RPath::DEMODIR:        return Path::join (libexec_installdir + "/media/Demos", segment);
     case RPath::LADSPADIRS:     return Path::join (construct_ladspa_path(), segment);
     }
