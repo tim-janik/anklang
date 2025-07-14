@@ -5,11 +5,11 @@ doc/all:
 
 # == doc/ files ==
 doc/manual-chapters ::= $(strip		\
-	$>/doc/b/cliplist.md		\
-	$>/doc/b/pianoroll.md		\
-	$>/doc/b/piano-ctrl.md		\
-	$>/doc/ch-man-pages.md		\
-	$>/doc/scripting-docs.md	\
+	$>/gen/b/cliplist.md		\
+	$>/gen/b/pianoroll.md		\
+	$>/gen/b/piano-ctrl.md		\
+	$>/gen/ch-man-pages.md		\
+	$>/gen/scripting-docs.md	\
 )
 doc/internals-chapters ::= $(strip	\
 	doc/ch-development.md		\
@@ -64,7 +64,7 @@ $>/doc/jsdocs.md: $(doc/jsdocs_md) doc/Makefile.mk
 	$Q mv $@.tmp2 $@
 
 # == doc/scripting-docs.md ==
-$>/doc/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) doc/Makefile.mk node_modules/.npm.done	| $>/doc/
+$>/gen/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) doc/Makefile.mk node_modules/.npm.done	| $>/doc/
 	$(QGEN)
 	$Q cat doc/ch-scripting.md				>  $@.tmp
 	$Q echo -e '\n## Reference for $<'			>> $@.tmp
@@ -108,7 +108,7 @@ $>/doc/%.1: doc/%.1.md doc/Makefile.mk					| $>/doc/
 
 # == ch-man-pages.md ==
 doc/manual-man-pages ::= doc/anklang.1.md
-$>/doc/ch-man-pages.md: $(doc/manual-man-pages) doc/filt-man.py doc/Makefile.mk	| $>/doc/
+$>/gen/ch-man-pages.md: $(doc/manual-man-pages) doc/filt-man.py doc/Makefile.mk	| $>/doc/
 	$(QGEN)
 	$Q echo '# Manual Pages'			>  $@.tmp
 	$Q echo ''					>> $@.tmp
@@ -136,13 +136,12 @@ $>/doc/template.html: doc/template.diff doc/style/onload.html doc/Makefile.mk		|
 	  && cd $>/doc/ && patch < $(abspath doc/template.diff)
 
 # == doc/cursors/ ==
-$>/doc/cursors/cursors.css:			| $>/doc/
+$>/doc/cursors/cursors.css: $>/gen/cursors/cursors.css			| $>/doc/
 	$(QGEN)
-	$Q $(RM) $>/doc/cursors
-	$Q ln -s ../ui/cursors $>/doc/
+	$Q $(RM) -r -f $>/doc/cursors
+	$Q $(CP) -r -p $>/gen/cursors/ $>/doc/cursors/
 
 # == anklang-manual.html ==
-$(doc/manual-chapters): $>/doc/b/.doc-stamp
 $>/doc/anklang-manual.html: $>/doc/template.html $(doc/manual-chapters) $>/doc/cursors/cursors.css $(doc/style/install.files)	| $>/doc/
 	$(QGEN)
 	$Q $(PANDOC) $(doc/markdown-flavour) \
@@ -169,7 +168,7 @@ $>/doc/anklang-internals.html: $>/doc/template.html $(doc/internals-chapters) $(
 
 # == anklang-manual.pdf ==
 # REQUIRES: python3-pandocfilters texlive-xetex pandoc2
-doc/manual-hafix-chapters := $(subst $>/doc/scripting-docs.md, $>/doc/scripting-docs.hafix.md, $(doc/manual-chapters))
+doc/manual-hafix-chapters := $(subst $>/gen/scripting-docs.md, $>/doc/scripting-docs.hafix.md, $(doc/manual-chapters))
 $>/doc/anklang-manual.pdf: doc/pandoc-pdf.tex $(doc/manual-hafix-chapters) $>/doc/cursors/cursors.css		| $>/doc/
 	$(QGEN)
 	$Q xelatex --version 2>&1 | grep -q '^XeTeX 3.14159265' \
@@ -235,10 +234,9 @@ uninstall: doc/uninstall
 
 doc/all: $(doc/install.files)
 
-
 # == mkdocs ==
 doc/mkdocs.mdlist := ui/ch-component.md
-doc/mkdocs.mdlist += $>/doc/jsdocsmd/ $>/doc/jsdocs.md $>/doc/class-tree.md $>/doc/scripting-docs.md
+doc/mkdocs.mdlist += $>/doc/jsdocsmd/ $>/doc/jsdocs.md $>/doc/class-tree.md $>/gen/scripting-docs.md
 $>/.mkdocs.prep: $>/doxygen/index.html $(doc/mkdocs.mdlist) doc/Makefile.mk
 	rm -rf $>/site $>/mkdocs* && mkdir -p $>/mkdocs/doc && ln -s $(abspath doc/mkdocs.yml) $>/
 	ln -s $(abspath misc) $>/mkdocs/.
