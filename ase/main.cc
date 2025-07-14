@@ -41,7 +41,6 @@ MainAppImpl::MainAppImpl()
 {}
 
 MainLoopP          main_loop;
-static int         embedding_fd = -1;
 static bool        arg_js_api = false;
 static bool        arg_class_tree = false;
 static String      arg_ui_mode;
@@ -113,7 +112,6 @@ print_usage (bool help)
   printout ("  --check          Run integrity tests\n");
   printout ("  --class-tree     Print exported class tree\n");
   printout ("  --disable-randomization Test mode for deterministic tests\n");
-  printout ("  --embed <fd>     Parent process socket for embedding\n");
   printout ("  --fatal-warnings Abort on warnings and failing assertions\n");
   printout ("  --help           Print program usage and options\n");
   printout ("  --js-api         Print Javascript bindings\n");
@@ -289,11 +287,6 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
         {
           print_usage (false);
           exit (0);
-        }
-      else if (argv[i] == String ("--embed") && i + 1 < size_t (argc))
-        {
-          argv[i++] = nullptr;
-          embedding_fd = string_to_int (argv[i]);
         }
       else if (argv[i] == String ("-o") && i + 1 < size_t (argc))
         {
@@ -621,7 +614,7 @@ main (int argc, char *argv[])
   wss->http_alias ("/Builtin/Controller", anklang_runpath (RPath::INSTALLDIR, "/Controller"));
   // wss->http_alias ("/User/Scripts", anklang_home_dir ("/Scripts"));
   wss->http_alias ("/Builtin/Scripts", anklang_runpath (RPath::INSTALLDIR,"/Scripts"));
-  const int xport = embedding_fd >= 0 ? 0 : (arg_unauth_port > 0 ? arg_unauth_port : 0);
+  const int xport = arg_unauth_port > 0 ? arg_unauth_port : 0;
   const String subprotocol = ""; // make_auth_string()
   jsonapi_set_subprotocol (subprotocol);
   if (App.mode == MainApp::SYNTHENGINE && arg_ui_mode != "none") {
@@ -640,9 +633,6 @@ main (int argc, char *argv[])
     if (ereason.error)
       fatal_error ("Main: failed to run WebUI: %s: %s", ereason.what, ::strerror (ereason.error));
   }
-  const String url = wss->url() + (subprotocol.empty() ? "" : "?subprotocol=" + subprotocol);
-  if (embedding_fd < 0 && !url.empty())
-    printout ("%sLISTEN:%s %s\n", B1, B0, url);
 
   // run atquit handler on SIGHUP SIGINT
   for (int sigid : { SIGHUP, SIGINT }) {
@@ -661,30 +651,6 @@ main (int argc, char *argv[])
     return true;
   });
   USignalSource::install_sigaction (SIGUSR2);
-
-  // monitor and allow auth over keep-alive-fd
-  if (embedding_fd >= 0)
-    {
-      const uint ioid = main_loop->exec_io_handler ([wss] (PollFD &pfd) {
-        String msg (512, 0);
-        if (pfd.revents & PollFD::IN)
-          {
-            ssize_t n = read (embedding_fd, &msg[0], msg.size()); // flush input
-            msg.resize (n > 0 ? n : 0);
-            log ("Main: Embedder Msg: %s", msg);
-          }
-        if (string_strip (msg) == "QUIT" || (pfd.revents & (PollFD::ERR | PollFD::HUP | PollFD::NVAL)))
-          wss->shutdown();
-        return true;
-      }, embedding_fd, "rB");
-      (void) ioid;
-
-      const String jsonurl = "{ \"url\": \"" + url + "\" }";
-      ssize_t n;
-      do
-        n = write (embedding_fd, jsonurl.data(), jsonurl.size());
-      while (n < 0 && errno == EINTR);
-    }
 
   // start output capturing
   if (App.outputfile)
