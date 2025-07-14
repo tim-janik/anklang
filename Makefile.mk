@@ -313,9 +313,11 @@ tscheck: $>/.tscheck.done FORCE
 # == eslint ==
 check: eslint
 eslint.files := $(filter %.htm %.html %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(LS_TREE_LST))
+eslint.skip  := %/javascript/mathjax.js %/style/mathjax-config.js
 $>/.eslint.done: ui/eslintrc.js $(eslint.files) Makefile.mk	| node_modules/.npm.done
 	$(QECHO) RUN eslint
-	-$Q node_modules/.bin/eslint -c $< --no-warn-ignored $${INSIDE_EMACS:+ -f unix} --cache --cache-location $>/.eslintcache $(abspath $(eslint.files)) \
+	-$Q node_modules/.bin/eslint -c $< --no-warn-ignored $${INSIDE_EMACS+-f unix} --cache --cache-location $>/.eslintcache \
+		$(abspath $(filter-out $(eslint.skip), $(eslint.files))) \
 	&& touch $@
 $>/.eslint.done: $(if $(filter check eslint,$(MAKECMDGOALS)), FORCE) # force on 'make eslint'
 eslint: $>/.eslint.done FORCE
