@@ -59,17 +59,6 @@ $>/ui/signal-polyfill.js: ui/Makefile.mk node_modules/.npm.done					| $>/ui/
 	$Q $(RM) $>/ui/signal-all.js
 $>/.ui-build-stamp: $>/ui/signal-polyfill.js
 
-# == ui/vue.js ==
-$>/ui/vue.js:	node_modules/.npm.done				| $>/ui/
-	$(QGEN)
-	$Q rm -f $>/ui/vue.js
-	$Q $(CP) node_modules/vue/dist/$(UI/VUE-VARIANT.js) $>/ui/vue.js
-	$Q sed -i $>/ui/vue.js \
-		-e 's/^\s*\(console\.info(.You are running a development build of Vue\)/if(0) \1/' \
-		-e 's/\b\(warn(`[^`]* was accessed during render\)/if(0) \1/'
-$>/.ui-build-stamp: $>/ui/vue.js
-UI/VUE-VARIANT.js ::= $(if $(__UIDEBUG__),vue.esm-browser.js,vue.esm-browser.prod.js)
-
 # == ui/zcam-js.mjs ==
 $>/ui/zcam-js.mjs: node_modules/.npm.done				| $>/ui/
 	$(QGEN)

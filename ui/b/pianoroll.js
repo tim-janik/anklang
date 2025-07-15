@@ -330,7 +330,6 @@ class BPianoRoll extends LitComponent {
       if (action.func instanceof Function)
 	return action.func (action, this, this.clip, event);
     }
-    console.trace ("piano-roll.vue:", uri, event);
   }
   usetool (uri)
   {

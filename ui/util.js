@@ -112,28 +112,6 @@ export function coalesced_events (event) {
   return pevents;
 }
 
-/** Get Vue component handle from `element` or its ancestors */
-export function vue_component (element) {
-  let el = element;
-  while (el)
-    {
-      if (el.__vueParentComponent?.proxy)
-	return el.__vueParentComponent.proxy; // Vue3
-      if (el.__vue__)
-	return el.__vue__;                    // Vue2
-      el = el.parentNode;
-    }
-  return undefined;
-}
-
-/** Get Envue `$object` from element or its ancestors */
-export function envue_object (element) {
-  if (element?.$el && element?.$object)
-    return element.$object;	// element is Vue component already
-  const vm = vue_component (element);
-  return vm?.$object;
-}
-
 export const START = "START";
 export const STOP = "STOP";
 export const CANCEL = "CANCEL";
@@ -143,8 +121,8 @@ export const SCROLL = "SCROLL";
 /** Meld all pointer drag handling functions into a single `drag_event(event,MODE)` method */
 export class PointerDrag {
   /** @param{String|Function} method */
-  constructor (vuecomponent, event, method = 'drag_event', cleanup = null) {
-    this.vm = vuecomponent;
+  constructor (component, event, method = 'drag_event', cleanup = null) {
+    this.vm = component;
     this.cleanup = cleanup;
     if (typeof (method) === 'function')
       this.drag_method = method;
@@ -256,13 +234,6 @@ export class PointerDrag {
 /** Start `drag_event (event)` handling on a Vue component's element, use `@pointerdown="drag_event"` */
 export function drag_event (event) {
   console.assert (event.type == "pointerdown" && event.pointerId);
-  const vuecomponent = vue_component (event.target);
-  if (vuecomponent && vuecomponent.$el &&
-      vuecomponent.drag_event)			// ignore request if we got wrong vue component (child)
-  {
-    const pdrag = new PointerDrag (vuecomponent, event);
-    return _ => pdrag.destroy();
-  }
   return _ => undefined;
 }
 
@@ -382,10 +353,6 @@ export function add_style_sheet (element, url)
   link.setAttribute ("href", url);
   root.append (link);
 }
-
-// == Vue Helpers ==
-export const vue_mixins = {};
-export const vue_directives = {};
 
 /** Retrieve CSS scope selector for vm_scope_style() */
 export function vm_scope_selector (vm) {
@@ -620,48 +587,6 @@ export function fwdprovide (injectname, keys) {
   };
 }
 
-/** Provide `$children` (and `$vue_parent`) on every component */
-vue_mixins.vuechildren = {
-  provide() {
-    return { '$vue_parent': this };
-  },
-  inject: {
-    '$vue_parent': { from: '$vue_parent', default: null, },
-  },
-  beforeCreate () {
-    console.assert (this.$children === undefined);
-    this.$children = [];
-  },
-  created() {
-    // using $parent breaks for transitions, https://github.com/vuejs/docs-next/issues/454
-    if (this.$vue_parent)
-      this.$vue_parent.$children.push (this);
-  },
-  unmounted() {
-    if (!this.$vue_parent)
-      return;
-    const pos = this.$vue_parent.$children.indexOf (this);
-    if (pos < 0)
-      throw Error ("failed to locate this in $vue_parent.$children:", this);
-    this.$vue_parent.$children.splice (pos, 1);
-  },
-};
-
-/** Automatically add `$attrs['data-*']` to `$el` */
-vue_mixins.autodataattrs = {
-  mounted: function () {
-    autodataattrs_apply.call (this);
-  },
-  updated: function () {
-    autodataattrs_apply.call (this);
-  },
-};
-function autodataattrs_apply () {
-  for (let datakey in this.$attrs)
-    if (datakey.startsWith ('data-'))
-      this.$el.setAttribute (datakey, this.$attrs[datakey]);
-}
-
 function call_unwatch (unwatch_cb) {
   // Work around: https://github.com/vuejs/vue-next/issues/2381
   try {
@@ -743,69 +668,6 @@ function dom_dispatch (before_unmount) {
     this.$dom_data.unwatch2 = call_unwatch (this.$dom_data.unwatch2);
   }
 }
-
-/** Vue mixin to provide DOM handling hooks.
- * This mixin adds instance method callbacks to handle dynamic DOM changes
- * such as drawing into a `<canvas/>`.
- * Reactive callback methods have their data dependencies tracked, so future
- * changes to data dependencies of reactive methods will queue future updates.
- * However reactive dependency tracking only works for non-async methods.
- *
- * - dom_create() - Called after `this.$el` has been created
- * - dom_change() - Called after `this.$el` has been reassigned or changed.
- *   Note, may also be called for `v-if="false"` cases.
- * - dom_update() - Reactive callback method, called with a valid `this.$el` and
- *   after Vue component updates. Dependency changes result in `this.$forceUpdate()`.
- * - dom_draw() - Reactive callback method, called during an animation frame, requested
- *   via `dom_queue_draw()`. Dependency changes result in `this.dom_queue_draw()`.
- * - dom_queue_draw() - Cause `this.dom_draw()` to be called during the next animation frame.
- * - dom_destroy() - Callback method, called once `this.$el` is removed.
- */
-vue_mixins.dom_updates = {
-  beforeCreate: function () {
-    console.assert (this.$dom_data == undefined);
-    // install $dom_data helper on Vue instance
-    this.$dom_data = {
-      state: 0,
-      destroying: false,
-      unwatch1: null,
-      unwatch2: null,
-      rafid: undefined,
-    };
-    // Vue3 mixins are fragile, so that mixin.beforeUnmount() is *only* called if the instance
-    // does not define beforeUnmount() itself. onBeforeUnmount() seems more reliable
-    Vue.onMounted (() => this.$forceUpdate()); // ensure updated()
-    Vue.onUpdated (() => dom_dispatch.call (this, false));
-    Vue.onBeforeUnmount (() => dom_dispatch.call (this, true));
-    function dom_queue_draw () {
-      if (this.$dom_data.rafid !== undefined)
-	return;
-      function dom_draw_frame () {
-	this.$dom_data.rafid = undefined;
-	if (!this.$dom_data.destroying && this.$el instanceof Element)
-	  {
-	    this.$dom_data.unwatch2 = call_unwatch (this.$dom_data.unwatch2);
-	    let once = 0;
-	    const dom_draw_reactive = vm => {
-	      if (once++ == 0 && this.dom_draw() instanceof Promise)
-		console.warn ('dom_draw() returned Promise, async functions are not reactive', this);
-	      return once;  // always change return value and guard against subsequent calls
-	    };
-	    this.$dom_data.unwatch2 = this.$watch (dom_draw_reactive, this.dom_queue_draw);
-	  }
-      }
-      this.$dom_data.rafid = requestAnimationFrame (dom_draw_frame.bind (this));
-    }
-    this.dom_queue_draw = dom_queue_draw;
-  }, // beforeCreate
-  unmounted: function () {
-    if (this.$dom_data.rafid !== undefined)
-      {
-	cancelAnimationFrame (this.$dom_data.rafid);
-	this.$dom_data.rafid = undefined;
-      }
-  },
-};
 
 const weakmaps = { ids: new WeakMap, objs: new Array, counter: 1001 };
 
@@ -990,30 +852,6 @@ export function compile_expression (expression, context) {
   }
   cache.set (expression, mkfunc);
   return mkfunc;
-}
-
-/** VueifyObject - turn a regular object into a Vue instance.
- * The *object* passed in is used as the Vue `data` object. Properties
- * with a getter (and possibly setter) are turned into Vue `computed`
- * properties, methods are carried over as `methods` on the Vue() instance.
- */
-export function VueifyObject (object = {}, vue_options = {}) {
-  let voptions = Object.assign ({}, vue_options);
-  voptions.methods = vue_options.methods || {};
-  voptions.computed = vue_options.computed || {};
-  voptions.data = voptions.data || object;
-  const proto = object.__proto__;
-  for (const pname of Object.getOwnPropertyNames (proto)) {
-    if (typeof proto[pname] == 'function' && pname != 'constructor')
-      voptions.methods[pname] = proto[pname];
-    else
-      {
-	const pd = Object.getOwnPropertyDescriptor (proto, pname);
-	if (pd.get)
-	  voptions.computed[pname] = pd;
-      }
-  }
-  return new Vue (voptions);
 }
 
 /** Copy PropertyDescriptors from source to target, optionally binding handlers against closure */
@@ -1818,134 +1656,6 @@ export function assign_async_cleanup (map, key, cleaner) {
     }
   if (oldcleaner && !(oldcleaner instanceof Promise))
     oldcleaner();
-}
-
-/** Method to be added to a `observable_from_getters()` result to force updates */
-export function observable_force_update () {
-  // This method works as a tag for observable_from_getters()
-}
-
-/** Create a reactive dict from the fields in `tmpl` with async callbacks.
- *
- * Once the resolved result from `predicate()` changes and becomes true-ish, the
- * `getter()` of each field in `tmpl` is called, resolved and assigned to the
- * corresponding field in the observable binding returned from this function.
- * Optionally, fields may provide a `notify` setup handler to install a
- * notification callback that re-invokes the `getter`.
- * A destructor can be returned from `notify()` once resolved, that is executed
- * during cleanup phases.
- * The `default` of each field in `tmpl` may provide an initial value before
- * `getter` is called the first time and in case `predicate()` becomes false-ish.
- * The first argument to `getter()` is a function that can be used to register
- * cleanup code for the getter result.
- *
- * ```js
- * const data = {
- *   val: { getter: c => async_fetch(), notify: n => add_listener (n), },
- * };
- * dict = this.observable_from_getters (data, () => this.predicate());
- * // use dict.val
- * ```
- *
- * When the `n()` callback is called, a new *getter* call is scheduled.
- * A handler can be registered with `c (cleanup);` to cleanup resources
- * left over from an `async_fetch()` call.
- */
-export function observable_from_getters (tmpl, predicate) {
-  const monitoring_getters = [];
-  const getter_cleanups = {};
-  const notify_cleanups = {};
-  let add_functions = false;
-  let rdata; // Vue.reactive
-  for (const key in tmpl)
-    {
-      if (tmpl[key] instanceof Function)
-	{
-	  add_functions = true;
-	  continue;
-	}
-      else if (!(tmpl[key] instanceof Object))
-	continue;
-      const async_getter = tmpl[key].getter, async_notify = tmpl[key].notify, default_value = tmpl[key].default;
-      tmpl[key] = default_value;
-      if (!async_getter && !async_notify)
-	continue;
-      const assign_getter_cleanup = (c) => assign_async_cleanup (getter_cleanups, key, c);
-      const getter = async () => {
-	const had_cleanup = !!getter_cleanups[key];
-	const result = !async_getter ? default_value :
-		       await async_getter (assign_getter_cleanup);
-	if (had_cleanup || getter_cleanups[key])
-	  rdata[key] = result; // always reassign if cleanups are involved
-	else if (!equals_recursively (rdata[key], result))
-	  rdata[key] = result; // compare to reduce Vue updates
-      };
-      const getter_and_listen = (reset) => {
-	if (reset) // if reset==true, getter() might not be callable
-	  {
-	    if (async_notify)
-	      assign_async_cleanup (notify_cleanups, key, undefined);
-	    if (getter_cleanups[key])
-	      assign_async_cleanup (getter_cleanups, key, undefined);
-	    rdata[key] = default_value;
-	  }
-	else
-	  {
-	    if (async_notify) { // sets up listener
-	      let getter_pending = null;
-	      const debounced_getter = async () => {
-		if (getter_pending)
-		  return; // debug ("debouncing async getter:", key);
-		await new Promise (r => getter_pending = setTimeout (() => r(), 17));
-		getter_pending = null;
-		getter();
-	      };
-	      assign_async_cleanup (notify_cleanups, key, async_notify (debounced_getter));
-	    }
-	    getter ();
-	  }
-      };
-      monitoring_getters.push (getter_and_listen);
-    }
-  // make all fields observable
-  rdata = Vue.reactive (tmpl);
-  // cleanup notifiers and getter results on `unmounted`
-  const run_cleanups = () => {
-    for (const key in notify_cleanups)
-      assign_async_cleanup (notify_cleanups, key, undefined);
-    for (const key in getter_cleanups)
-      assign_async_cleanup (getter_cleanups, key, undefined);
-  };
-  Vue.onUnmounted (run_cleanups); // TODO: check invocation
-  // create trigger for forced updates
-  let ucount;
-  // install tmpl functions
-  if (add_functions)
-    {
-      let updater;
-      for (const key in tmpl)
-	{
-	  if (tmpl[key] == observable_force_update)
-	    {
-	      if (!updater)
-		{
-		  ucount = Vue.reactive ({ c: 1 }); // reactive update counter
-		  updater = function () { ucount.c += 1; }; // forces observable update
-		}
-	      rdata[key] = updater;      // add method to force updates
-	    }
-	  else if (tmpl[key] instanceof Function)
-	    rdata[key] = tmpl[key];
-	}
-    }
-  // create watch, triggering the getters if predicate turns true
-  //const dummy = [undefined];
-  Vue.watchEffect (async () => {
-    const r = (ucount ? ucount.c : 1) && await predicate.call (this);
-    const reset = !r;
-    monitoring_getters.forEach (getter_and_listen => getter_and_listen (reset));
-  });
-  return rdata;
 }
 
 /** Join template literal arguments into a String */

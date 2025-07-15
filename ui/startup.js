@@ -21,9 +21,7 @@ Object.defineProperty (globalThis, 'Util', { value: Util });
 // Import Ase, connecting is done asynchronously
 import * as Ase from './aseapi.js';
 
-// Global Vue and Theme
-import * as Vue from './vue.js';
-Object.defineProperty (globalThis, 'Vue', { value: Vue });
+// Global Theme
 import { create_app } from './b/app.js';
 
 // load Script host
@@ -165,10 +163,9 @@ async function bootup () {
   await App.load_project_checked ((await Ase.server.last_project()) || '');
 
   // mount in DOM and create component hierarchy
-  await document.fonts.ready; // Fonts - wait for fonts before Vue components are mounted and compute sizes
+  await document.fonts.ready; // Fonts - wait for fonts before components are mounted and compute sizes
   App.mount ('b-app');
   console.assert (app === globalThis.App);
-  console.bootlog (`Vue App mounted...`);
 
   // Load external plugins
   if (CONFIG.mainjs)

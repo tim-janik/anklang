@@ -176,7 +176,7 @@ const DIALOGS_HTML = (t) =>
   t.m.modal_dialogs.map (d => html`
     <dialog class="-modal-message"
 	      .id=${'MDialog_' + d.dialogid} .class=${d.class} .key=${d.dialogid}
-	      .shown=${d.visible.value} @close=${event => d.input (event)}
+	      .shown=${d.visible} @close=${event => d.input (event)}
 	      .exclusive=${true} bwidth="9em" style="z-index: 93">
       <template v-slot:header>
 	{{ d.header }}
@@ -396,7 +396,7 @@ class BShell extends LitComponent {
   {
     if (!this.note_cache[clip.$id]) {
       const cache = {
-	rgen: Vue.ref (1),/*FIXME*/ // generational counter, Vue reactive
+	rgen: { value: 1 }, // TODO: RM, was generational counter, Vue reactive
 	destroynotify: null, promise: null, dirty: 0,
 	callbacks_: [],
 	notes: Object.freeze ([]) };
@@ -445,16 +445,18 @@ function async_modal_dialog (dialog_setup)
   const shell = this;
   let resolve;
   const promise = new Promise (r => resolve = r);
+  const [get_visible, set_visible] = Signal.createSignal (false);
   const m = {
     dialogid: modal_dialog_counter++,
     div_handler: dialog_setup.div_handler,
     class: dialog_setup.class,
     proplist: dialog_setup.proplist || [],
-    visible: Vue.reactive ({ value: false }),
+    get visible() { return get_visible(); },
+    set visible (v) { set_visible (v); },
     input (v) {
-      if (!this.visible.value || v)
+      if (!this.visible || v)
 	return;
-      this.visible.value = false;
+      this.visible = false;
       if (dialog_setup.destroy)
 	dialog_setup.destroy();
       resolve (this.result);
@@ -487,7 +489,7 @@ function async_modal_dialog (dialog_setup)
   if (m.buttons.length >= 2)
     m.footerclass = '-manybuttons';
   shell.m.modal_dialogs.push (m);
-  setTimeout (_ => m.visible.value = true, 0); // changing value triggers animation
+  setTimeout (_ => m.visible = true, 0); // changing value triggers animation
   return promise;
 }
 const dialog_emblems = {
