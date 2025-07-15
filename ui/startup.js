@@ -87,33 +87,25 @@ async function bootup () {
       // Shift+Ctrl+I for devTools
       if (window.Electron.config.files)
 	console.log ("LOAD:", window.Electron.config.files);
-      if (window.Electron.config.files.length)
+      if (window.Electron.config.files)
 	CONFIG.files.push (...window.Electron.config.files);
     }
   document.addEventListener ("keydown", window_keydown);
   // Reload page on Websocket connection loss
-  const url = window.location.href.replace ('http', 'ws');
-  const reconnect = async () => {
-    const timeout = ms => new Promise (resolve => setTimeout (resolve, ms));
-    let polltime = 150;
-    while (polltime) {
-      fetch ('/').then (() => location.reload()).catch (() => 0);
-      await timeout (polltime);
-      polltime += 150; // backoff
-    }
-  };
-  const want_reconnect = __DEV__ ? reconnect : undefined;
-  if (want_reconnect)
-    console.log ("__DEV__: watching:", url);
+  let url = window.location.href.replace ('http', 'ws');
+  if (__DEV__ && CONFIG.ws_port > 0)
+    url = url.replace (/:\d+/, `:${CONFIG.ws_port}`);
+
   // prepare remote GC
   Ase.Jsonipc.finalization_registration = jsonapi_finalization_registration;
   // connect to Ase.server
   let error;
   try {
-    const cururl = new URL (window.location);
-    const connected = await Ase.Jsonipc.open (url,
-					      cururl.searchParams.get ('subprotocol') || undefined,
-					      { onclose: want_reconnect });
+    const onclose = event => {
+      console.error (`Ase.Jsonipc: Websocket closed, code=${event.code}:`, event.reason || "gone", event.wasClean ? "" : "(unclean)");
+      // window.close();
+    };
+    const connected = await Ase.Jsonipc.open (url, undefined, { onclose });
     const initresult = connected ? await Ase.Jsonipc.send ("Jsonapi/initialize", []) : null;
     if (initresult instanceof Ase.Server)
       {
@@ -189,7 +181,7 @@ async function bootup () {
   if (CONFIG.mainjs && CONFIG.uiscript)
     {
       console.bootlog ("Loading '" + CONFIG.uiscript + "'...");
-      window.uiscript = await import (CONFIG.uiscript);
+      window.uiscript = await import (/*@vite-ignore*/ CONFIG.uiscript);
       try {
         await window.uiscript.run();
       } catch (e) {

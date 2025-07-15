@@ -2,7 +2,7 @@
 "use strict";
 
 import * as fs from 'fs';
-import * as jsdoc from 'jsdoc-api';
+import jsdoc from 'jsdoc-api';
 
 function usage (full = false) {
   const prog = process.argv[1].replace (/.*\//, '');
@@ -318,7 +318,7 @@ for (let filename of arg_config.files)
     global_vars = {};
     global_overview = '';
     const configure = 'doc/jsdocrc.json';
-    const jsdocast = jsdoc.explainSync ({ configure, files: [ filename ] })
+    const jsdocast = await jsdoc.explain ({ configure, files: [ filename ] });
     if (arg_config.debug)
       console.error (filename + ": AST:", jsdocast);
     const cfg = Object.assign ({ filename }, arg_config);

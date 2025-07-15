@@ -5,48 +5,32 @@
   <meta charset="UTF-8">
   <title>Anklang - Music Synthesizer and Composer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script type="importmap">
-  {
-    "imports": {
-      "lit": "./lit.js",
-      "lit/directives/ref": "./lit.js",
-      "lit/directives/live": "./lit.js",
-      "lit/directives/repeat": "./lit.js",
-      "signal": "./signal.js"
-    }
-  }
-  </script>
-  <!-- modulepreload triggers a race in Firefox-122 that causes ES6 module loading error
-    <link rel="modulepreload" href="./startup.js">
-    <link rel="modulepreload" href="./all-components.js">
-    <link rel="modulepreload" href="./browserified.js">
-    <link rel="modulepreload" href="./util.js">
-    <link rel="modulepreload" href="./aseapi.js">
-    <link rel="modulepreload" href="./little.js">
-    <link rel="modulepreload" href="./lit.js">
-    <link rel="modulepreload" href="./b/app.js">
-    <link rel="modulepreload" href="./b/shell.js">
-    <link rel="modulepreload" href="./b/piano-ctrl.js"> -->
-  <link rel="preload" as="style" href="global.css?csshash=@--CSSHASH--@">
-  <link rel="preload" as="style" href="assets/AnklangIcons.css">
-  <link rel="preload" as="style" href="material-icons.css">
-  <link rel="preload" as="style" href="assets/fork-awesome.css">
-  <link rel="preload" as="image" href="assets/spinner.svg">
-  <link rel="preload" as="font" href="assets/AnklangIcons.woff2" type="font/woff2" crossorigin>
-  <link rel="preload" as="font" href="assets/forkawesome-webfont.woff2" type="font/woff2" crossorigin>
-  <link rel="preload" as="font" href="material-icons.woff2" type="font/woff2" crossorigin>
-  <link rel="preload" as="font" href="InterVariable.woff2" type="font/woff2" crossorigin>
+  <link rel="icon" href="favicon.ico">
   <style> @font-face { font-family: "InterVariable"; font-display: swap; src: url("InterVariable.woff2") format("woff2-variations"); } </style>
-  <style type="text/css" data-4litcomponent>@import url("global.css?csshash=@--CSSHASH--@");</style>
-  <script type='application/json' id='--EMBEDD-config_json'>
+  <script type="module">
+  /* Avoid nested CSS imports, b/c stylelint under vite & postcss gets confused about locations.
+   * Instead, move all CSS imports here and use `@reference "./tailwind.css";` when the TW config
+   * must be known for `@apply`.
+   */
+  import './tailwind.css';
+  import './palette.css';
+  import './dark.css';
+  import './theme.css';
+  import './cursors/cursors.css';
+  import '/gen/assets/material-icons.css';
+  import '/gen/assets/AnklangIcons.css';
+  import '/gen/assets/fork-awesome.css';
+  import '/gen/assets/spinner.css';
+  import './mixins.css';
+  import './global.css';
   </script>
   <script> { "use strict"; // Early globals
-    const packagejson = JSON.parse (document.getElementById ('--EMBEDD-config_json').innerHTML);
     Object.defineProperty (globalThis, '_', { value: t9n => t9n });
-    Object.defineProperty (globalThis, 'CONFIG', { value: packagejson.config });
-    Object.defineProperty (globalThis, '__DEV__', { value: CONFIG.mode !== 'production' });
-    Object.defineProperty (globalThis, 'debug', { value: __DEV__ ? console.log : _ => undefined });
+    Object.defineProperty (globalThis, 'CONFIG', { value: __VITE_CONFIG__ });
+    Object.defineProperty (globalThis, '__DEV__', { value: !!CONFIG.__DEV__ });
+    Object.defineProperty (globalThis, 'debug', { value: __DEV__ ? console.log : () => undefined });
     Object.defineProperty (globalThis, 'assert', { value: console.assert });
+    Object.defineProperty (globalThis, 'Extra_css', { value: () => undefined });
     Object.defineProperty (document, 'skipViewTransition', { value: func => func() });
     document.startViewTransition || Object.defineProperty (document, 'document.startViewTransition', { value: document.skipViewTransition });
   } </script>

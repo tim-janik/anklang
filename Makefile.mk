@@ -166,7 +166,7 @@ include doc/Makefile.mk
 
 # == run ==
 run: FORCE all
-	$>/electron/anklang --no-sandbox
+	$>/lib/AnklangSynthEngine
 
 # == clean rules ==
 clean: FORCE
@@ -193,7 +193,7 @@ help: FORCE
 	@echo '  check-bench     - Run the benchmark tests'
 	@echo '  check-loading   - Check all distributed Anklang files load properly'
 	@echo '  check-suite     - Run the unit test suite'
-	@echo '  serve           - Start SoundEngine, serve and auto-rebuild ui/ sources'
+	@echo '  serve           - Start Anklang and serve assets with HMR'
 	@echo '  viewdocs        - Build and browser the manual'
 	@echo '  run             - Start Anklang without installation'
 	@echo 'Invocation:'
@@ -248,8 +248,15 @@ $>/config.sh: $(wildcard config-defaults.mk)				| $>/
 	$Q mv $@.tmp $@
 ALL_TARGETS += $>/config.sh
 
+# == version.json ==
+$>/version.json:							| $>/
+	$(QGEN)
+	$Q echo '{ $(strip $(PACKAGE_VERSIONS)) }'			> $@.tmp
+	$Q mv $@.tmp $@
+ALL_TARGETS += $>/version.json
+
 # == npm.done ==
-node_modules/.npm.done: $(if $(NPMBLOCK),, package.json)		| $>/
+node_modules/.npm.done: $(if $(NPMBLOCK),, package.json Makefile.mk)		| $>/
 	$(QGEN)
 	$Q rm -f -r node_modules/
 	@: # Install all node_modules and anonymize build path
@@ -258,6 +265,13 @@ node_modules/.npm.done: $(if $(NPMBLOCK),, package.json)		| $>/
 	  && $(NPM_INSTALL) $$POFFLINE
 	@: # Anonymize build paths in node_modules
 	$Q find node_modules/ -name package.json -print0 | xargs -0 sed -r "\|$$PWD|s|^(\s*(\"_where\":\s*)?)\"$$PWD|\1\"/...|" -i
+	@: # Silence annoying warnings
+	$Q for f in ./node_modules/lit-html/development/lit-html.js ./node_modules/lit-html/node/development/lit-html.js \
+		./node_modules/@lit/reactive-element/development/reactive-element.js ./node_modules/@lit/reactive-element/node/development/reactive-element.js \
+		; do \
+	  test -e "$$f" || continue; \
+	  sed -r 's/(\bissueWarning..dev-mode., *.Lit is in dev mode. Not recommended)/if(0)\1/' -i "$$f" || break ; \
+	done
 	@: # Fix bun installation, see: https://github.com/oven-sh/bun/pull/5077
 	$Q test ! -d node_modules/sharp/ -o -d node_modules/sharp/build/Release/ || (cd node_modules/sharp/ && $(NPM_INSTALL))
 	$Q test -d node_modules/electron/dist/ || (cd node_modules/electron/ && $(NPM_INSTALL))
@@ -301,7 +315,7 @@ check: eslint
 eslint.files := $(filter %.htm %.html %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(LS_TREE_LST))
 $>/.eslint.done: ui/eslintrc.js $(eslint.files) Makefile.mk	| node_modules/.npm.done
 	$(QECHO) RUN eslint
-	-$Q node_modules/.bin/eslint -c $< $${INSIDE_EMACS:+ -f unix} --cache --cache-location $>/.eslintcache $(abspath $(eslint.files)) \
+	-$Q node_modules/.bin/eslint -c $< --no-warn-ignored $${INSIDE_EMACS:+ -f unix} --cache --cache-location $>/.eslintcache $(abspath $(eslint.files)) \
 	&& touch $@
 $>/.eslint.done: $(if $(filter check eslint,$(MAKECMDGOALS)), FORCE) # force on 'make eslint'
 eslint: $>/.eslint.done FORCE

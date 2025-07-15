@@ -391,6 +391,8 @@ xdg_dir (const String &xdgdir)
     return runtime_dir();
   static const StringStringM defs = xdg_user_dirs();
   const auto it = defs.find ("XDG_" + string_toupper (xdgdir) + "_DIR");
+  if (it == defs.end())
+    warning ("%s: unknown XDG dir: %s", __func__, xdgdir);
   return it != defs.end() ? it->second : "";
 }
 
@@ -969,16 +971,26 @@ memfree (char *memread_mem)
 }
 
 bool
-memwrite (const String &filename, size_t len, const uint8 *bytes, bool append)
+memwrite (const String &filename, size_t len, const uint8 *bytes, bool append, int perms)
 {
   FILE *file = fopen (filename.c_str(), append ? "a" : "w");
   if (!file)
     return false;
+  if (perms != -1 && fchmod (fileno (file), perms) != 0) {
+    const int err = errno;
+    fclose (file);
+    unlink (filename.c_str());
+    errno = err;
+    return false;
+  }
   const size_t nbytes = fwrite (bytes, 1, len, file);
   bool success = ferror (file) == 0 && nbytes == len;
   success = fclose (file) == 0 && success;
-  if (!success)
+  if (!success) {
+    const int err = errno;
     unlink (filename.c_str());
+    errno = err;
+  }
   return success;
 }
 
@@ -1001,19 +1013,19 @@ stringread (const String &filename, ssize_t maxlength)
 
 // Write `data` into `filename`, check `errno` for false returns.
 bool
-stringwrite (const String &filename, const String &data, bool mkdirs_)
+stringwrite (const String &filename, const String &data, bool mkdirs_, int perms)
 {
   if (mkdirs_)
     mkdirs (dirname (filename), 0750);
-  return memwrite (filename, data.size(), (const uint8*) data.data());
+  return memwrite (filename, data.size(), (const uint8*) data.data(), false, perms);
 }
 
 bool
-stringappend (const String &filename, const String &data, bool mkdirs_)
+stringappend (const String &filename, const String &data, bool mkdirs_, int perms)
 {
   if (mkdirs_)
     mkdirs (dirname (filename), 0750);
-  return memwrite (filename, data.size(), (const uint8*) data.data(), true);
+  return memwrite (filename, data.size(), (const uint8*) data.data(), true, perms);
 }
 
 } // Path

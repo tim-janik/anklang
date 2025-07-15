@@ -12,7 +12,7 @@ namespace Ase {
 
 using JsonapiBinarySender = std::function<bool(const String&)>;
 
-void                 jsonapi_require_auth      (const String &subprotocol);
+void                 jsonapi_set_subprotocol   (const String &subprotocol);
 WebSocketConnectionP jsonapi_make_connection   (WebSocketConnection::Internals&, int logflags);
 CustomDataContainer* jsonapi_connection_data   ();
 JsonapiBinarySender  jsonapi_connection_sender ();

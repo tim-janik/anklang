@@ -18,10 +18,12 @@ protected:
 public:
   bool           is_open       () const;
   String         nickname      ();
+  void           log_status    (int status, const String &filepath = "");
+  virtual void   http_request  ();                              ///< Independent of socket ops.
+  virtual bool   authenticated (const std::string &token);      ///< Return true to allow validate().
   virtual int    validate      ();                              ///< Return true to allow opened().
   virtual void   failed        ();                              ///< Never folloed by opened().
   virtual void   opened        ();                              ///< Pairs with closed().
-  virtual void   http_request  ();                              ///< Only if opened.
   virtual void   message       (const String &message);         ///< Only if opened.
   virtual void   closed        ();                              ///< Pairs with opened().
   virtual void   log           (const String &message);
@@ -47,11 +49,13 @@ public:
   virtual void            http_dir      (const String &path) = 0;
   virtual void            http_alias    (const String &webdir, const String &path) = 0;
   virtual String          map_url       (const String &urlpath) = 0;
+  virtual int             listen_port   () const = 0;
   virtual std::string     url           () const = 0;
   virtual void            listen        (const String &host = "", int port = 0, const UnlistenCB& = {}) = 0;
   virtual void            reset         () = 0;
   virtual void            shutdown      () = 0;
-  static WebSocketServerP create        (const MakeConnection &make, int logflags = 0);
+  virtual void            see_other     (const String &uri) = 0;
+  static WebSocketServerP create        (const MakeConnection &make, int logflags = 0, const std::string &session_token = "");
   static String           user_agent    ();
   static String           mime_type     (const String &ext, bool utf8);
   static bool             utf8_validate (const std::string &utf8string);
