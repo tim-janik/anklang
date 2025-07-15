@@ -19,71 +19,72 @@ import { Signal, State, Computed, Watcher, tracking_wrapper } from "../signal.js
 const floor = Math.floor, round = Math.round;
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-piano-roll {
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;
-  // Make scss variables available to JS via getComputedStyle()
-  $b-piano-roll-key-length: 64px;
-  --piano-roll-light-row:    $b-piano-roll-light-row;
-  --piano-roll-dark-row:     $b-piano-roll-dark-row;
-  --piano-roll-grid-main:    zmod($b-piano-roll-light-row, Jz+=22.5);   // bar separator
-  --piano-roll-grid-sub:     zmod($b-piano-roll-light-row, Jz+=13.5);   // quarter note separator
-  --piano-roll-semitone12:   zmod($b-piano-roll-light-row, Jz+=22.5);   // separator per octave
-  --piano-roll-semitone6:    zmod($b-piano-roll-light-row, Jz+=22.5);   // separator after 6 semitones
+  /* Make scss variables available to JS via getComputedStyle() */
+  --b-piano-roll-key-length: 64px;
+  --piano-roll-light-row:    var(--b-piano-roll-light-row);
+  --piano-roll-dark-row:     var(--b-piano-roll-dark-row);
+  --piano-roll-grid-main:    oklch(from var(--b-piano-roll-light-row) calc(l + 0.225) c h);   /* bar separator */
+  --piano-roll-grid-sub:     oklch(from var(--b-piano-roll-light-row) calc(l + 0.135) c h);   /* quarter note separator */
+  --piano-roll-semitone12:   oklch(from var(--b-piano-roll-light-row) calc(l + 0.225) c h);   /* separator per octave */
+  --piano-roll-semitone6:    oklch(from var(--b-piano-roll-light-row) calc(l + 0.225) c h);   /* separator after 6 semitones */
 
-  --piano-roll-white-base:   $b-piano-roll-white-base;
-  --piano-roll-white-border: $b-scrollboundary-color;                   // border around piano key
-  --piano-roll-white-glint:  zmod($b-piano-roll-white-base, Jz+=6.5);   // highlight on piano key
-  --piano-roll-key-color:    $b-scrollboundary-color;
-  --piano-roll-black-base:   $b-piano-roll-black-base;
-  --piano-roll-black-border: zmod($b-piano-roll-black-base, Jz+=3.8);   // border around piano key
-  --piano-roll-black-glint:  zmod($b-piano-roll-black-base, Jz+=14.3);  // highlight on piano key
-  --piano-roll-black-shine:  zmod($b-piano-roll-black-base, Jz+=33.5);  // reflection on piano key
+  --piano-roll-white-base:   var(--b-piano-roll-white-base);
+  --piano-roll-white-border: var(--b-scrollboundary-color);                   /* border around piano key */
+  --piano-roll-white-glint:  oklch(from var(--b-piano-roll-white-base) calc(l + 0.065) c h);   /* highlight on piano key */
+  --piano-roll-key-color:    var(--b-scrollboundary-color);
+  --piano-roll-black-base:   var(--b-piano-roll-black-base);
+  --piano-roll-black-border: oklch(from var(--b-piano-roll-black-base) calc(l + 0.038) c h);   /* border around piano key */
+  --piano-roll-black-glint:  oklch(from var(--b-piano-roll-black-base) calc(l + 0.143) c h);  /* highlight on piano key */
+  --piano-roll-black-shine:  oklch(from var(--b-piano-roll-black-base) calc(l + 0.335) c h);  /* reflection on piano key */
 
-  --piano-roll-font:                  $b-canvas-font;
-  --piano-roll-num-color:             $b-piano-roll-num-color;
-  --piano-roll-note-color:            $b-piano-roll-note-color;
-  --piano-roll-note-focus-color:      $b-piano-roll-note-focus-color;
-  --piano-roll-note-focus-border:     $b-piano-roll-note-focus-border;
-  --piano-roll-key-length:            $b-piano-roll-key-length;
-  c-grid {
-    background: $b-piano-roll-black-base;
-    position: absolute; inset: 0;
-    align-items: stretch;
-    grid-template-columns: min-content 1fr min-content;
-    grid-template-rows:    min-content 1fr min-content;
-    canvas { background: black; object-fit: contain;
-      min-width: 0; min-height: 0; // https://www.w3.org/TR/css3-grid-layout/#min-size-auto
-    }
-    .-indicator {
-      position: absolute; top: 0; bottom: 0; left: 0; width: 1px; height: 100%;
-      background: $b-piano-roll-indicator;
-      z-index: 2; backface-visibility: hidden; will-change: transform;
-      transform: translateX(-9999px);
-      pointer-events: none;
-    }
-    .-hextend {
-      background: #0000; opacity: 0; visibility: hidden;
-      margin-top: 0; height: 1px;
-      // height: 16px; margin-top: -8px; background: #0f0;
-    }
-    .-vextend {
-      background: #0000; opacity: 0; visibility: hidden;
-      margin-left: 0; width: 1px;
-      // width: 16px; margin-left: -3px; background: #00f;
-    }
+  --piano-roll-font:                  var(--b-canvas-font);
+  --piano-roll-num-color:             var(--b-piano-roll-num-color);
+  --piano-roll-note-color:            var(--b-piano-roll-note-color);
+  --piano-roll-note-focus-color:      var(--b-piano-roll-note-focus-color);
+  --piano-roll-note-focus-border:     var(--b-piano-roll-note-focus-border);
+  --piano-roll-key-length:            var(--b-piano-roll-key-length);
+}
+.b-pianoroll-grid {
+  display: grid;
+  background: var(--b-piano-roll-black-base);
+  position: absolute; inset: 0;
+  align-items: stretch;
+  grid-template-columns: min-content 1fr min-content;
+  grid-template-rows:    min-content 1fr min-content;
+  canvas { background: black; object-fit: contain;
+    min-width: 0; min-height: 0; /* https://www.w3.org/TR/css3-grid-layout/#min-size-auto */
+  }
+  .-indicator {
+    position: absolute; top: 0; bottom: 0; left: 0; width: 1px; height: 100%;
+    background: var(--b-piano-roll-indicator);
+    z-index: 2; backface-visibility: hidden; will-change: transform;
+    transform: translateX(-9999px);
+    pointer-events: none;
+  }
+  .-hextend {
+    background: #0000; opacity: 0; visibility: hidden;
+    margin-top: 0; height: 1px;
+    /* height: 16px; margin-top: -8px; background: #0f0; */
+  }
+  .-vextend {
+    background: #0000; opacity: 0; visibility: hidden;
+    margin-left: 0; width: 1px;
+    /* width: 16px; margin-left: -3px; background: #00f; */
   }
 }`;
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <c-grid tabindex="-1" ${ref (h => t.cgrid = h)} data-f1="#piano-roll"
+  <div class="b-pianoroll-grid" tabindex="-1" ${ref (h => t.cgrid = h)} data-f1="#piano-roll"
     @pointerenter=${t.pointerenter} @pointerleave=${t.pointerleave} @focus=${t.focuschange} @blur=${t.focuschange}
     @keydown=${e => t.piano_ctrl.keydown (e)}
     @wheel=${{handleEvent: e => t.wheel_event (e), passive: false}} >
 
-    <v-flex class="-toolbutton col-start-1 row-start-1" style="height: 1.7em; align-items: end; padding-right: 4px;" ${ref (h => t.menu_btn = h)}
+    <div class="vflex -toolbutton col-start-1 row-start-1" style="height: 1.7em; align-items: end; padding-right: 4px;" ${ref (h => t.menu_btn = h)}
       id="g-pianoroll-toolbutton" @click=${e => t.pianotoolmenu.popup (e)} @mousedown=${e => t.pianotoolmenu.popup (e)} >
       <b-icon style="width: 1.2em; height: 1.2em" ${ref (h => t.menu_icon = h)}></b-icon>
       <b-contextmenu ${ref (h => t.pianotoolmenu = h)} id="g-pianotoolmenu" class="-pianotoolmenu" @activate=${e => t.usetool (get_uri (e.detail))} >
@@ -92,7 +93,7 @@ const HTML = (t, d) => html`
 	<button ic="fa-pencil"        uri="P" kbd="3" > Pen                    </button>
 	<button ic="fa-eraser"        uri="E" kbd="4" > Eraser                 </button>
       </b-contextmenu>
-    </v-flex>
+    </div>
 
     <canvas class="-time_canvas col-start-2 row-start-1"  ${ref (h => t.time_canvas = h)} ></canvas>
     <canvas class="-piano_canvas col-start-1 row-start-2" ${ref (h => t.piano_canvas = h)} ></canvas>
@@ -115,7 +116,7 @@ const HTML = (t, d) => html`
       <b-menutitle> Piano-Roll </b-menutitle>
       ${t.pianorollmenu_actions().map (ac => CONTEXTITEM (ac))}
     </b-contextmenu>
-  </c-grid>
+  </div>
 `;
 // key=${ac.weakid}
 const CONTEXTITEM = ac => html`

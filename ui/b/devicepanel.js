@@ -15,12 +15,13 @@ import * as Kbd from '../kbd.js';
 import { text_content, get_uri, valid_uri, has_uri } from '../dom.js';
 
 // == STYLE ==
-JsExtract.css`
-$scrollbar-height: 6px; //* Should match Firefox 'scrollbar-width:thin' */
+Extra_css`
+@reference "../tailwind.css";
+--scrollbar-height: 6px; /* Should match Firefox 'scrollbar-width:thin' */
 b-devicepanel {
   @apply hflex;
   padding: 0 0 3px 0;
-  background: $b-devicepanel-bg;
+  background: var(--b-devicepanel-bg);
   border-radius: inherit;
   overflow: hidden;
 
@@ -41,22 +42,22 @@ b-devicepanel {
     border-top-right-radius: inherit;
     border-bottom-right-radius: inherit;
     align-self: stretch;
-    //* Add slight shadow to the right for a soft scroll boundary */
-    box-shadow: -2px 0 $b-scroll-shadow-blur 0px #000;
+    /* Add slight shadow to the right for a soft scroll boundary */
+    box-shadow: -2px 0 var(--b-scroll-shadow-blur) 0px #000;
     background: #000000ef;
-    z-index: 9; //* raise above scrolled siblings */
+    z-index: 9; /* raise above scrolled siblings */
   }
   .b-devicepanel-hstack {
     align-self: stretch;
-    padding-top: $scrollbar-height;
+    padding-top: var(--scrollbar-height);
     padding-bottom: 0;
     > * { flex-grow: 0; }
-    .b-more { margin-top: $scrollbar-height; }
+    .b-more { margin-top: var(--scrollbar-height); }
   }
   position: relative;
   &::after {
-    @apply absolute pointer-events-none inset-0;
-    content: ' '; z-index: 9; //* raise above scrolled siblings */
+    @apply pointer-events-none absolute inset-0;
+    content: ' '; z-index: 9; /* raise above scrolled siblings */
     box-shadow: inset -10px 0 7px -7px #000, inset 10px 0 7px -7px #000;
   }
 }`;
@@ -70,7 +71,7 @@ const DEVICE_HTML = (t, dev) => html`
 const HTML = (t) => html`
   <div class="b-devicepanel-scroller" >
     <span class="b-devicepanel-vtitle"> Device Panel </span>
-    <h-flex class="b-devicepanel-hstack" >
+    <div class="b-devicepanel-hstack hflex" >
       ${repeat (t.chain_?.devs || [], dev => dev.$id, dev => DEVICE_HTML (t, dev))}
       <b-more @mousedown=${e => t.menuopen (e)}
 	data-tip="**CLICK** Add New Elements" ></b-more>
@@ -79,7 +80,7 @@ const HTML = (t) => html`
 	<b-menutitle> Devices </b-menutitle>
 	<b-treebrowser .tree=${t.devicetypes} ?expandall="false"> </b-treebrowser>
       </b-contextmenu>
-    </h-flex>
+    </div>
   </div>
 `;
 

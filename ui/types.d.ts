@@ -14,6 +14,7 @@ declare global {
   var debug: Function;
   var assert: Function;
   var _: Function;
+  var Extra_css: (...args: any[]) => undefined;
 
   interface ViewTransition {
     readonly finished: Promise<void>;

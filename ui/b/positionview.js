@@ -12,23 +12,24 @@ import * as Ase from '../aseapi.js';
  */
 
 // <STYLE/>
-JsExtract.css`
-b-positionview { @include h-flex(); }
+Extra_css`
+@reference "../tailwind.css";
+b-positionview { @apply hflex; }
 b-positionview {
-  $b-positionview-fg: $b-lcdscreen-fg;
-  $b-positionview-bg: $b-lcdscreen-bg;
-  $b-positionview-b0: zmod($b-positionview-bg,Jz-=1);
-  $b-positionview-b1: zmod($b-positionview-bg,Jz+=1);
+  --b-positionview-fg: var(--b-lcdscreen-fg);
+  --b-positionview-bg: var(--b-lcdscreen-bg);
+  --b-positionview-b0: oklch(from var(--b-positionview-bg) calc(l - 0.01) c h);
+  --b-positionview-b1: oklch(from var(--b-positionview-bg) calc(l + 0.01) c h);
   margin: 0; padding: 5px 1em;
   letter-spacing: 0.05em;
-  border-radius: $b-button-radius; align-items: baseline;
-  border-top:    1px solid zmod($b-positionview-bg, Jz-=3%);
-  border-left:   1px solid zmod($b-positionview-bg, Jz-=3%);
-  border-right:  1px solid zmod($b-positionview-bg, Jz+=3%);
-  border-bottom: 1px solid zmod($b-positionview-bg, Jz+=3%);
-  background-color: $b-positionview-bg;
-  background: linear-gradient(to bottom, $b-positionview-b0 0%, $b-positionview-b1 100%);
-  color: $b-positionview-fg;
+  border-radius: var(--b-button-radius); align-items: baseline;
+  border-top:    1px solid oklch(from var(--b-positionview-bg) calc(l * 0.97) c h);
+  border-left:   1px solid oklch(from var(--b-positionview-bg) calc(l * 0.97) c h);
+  border-right:  1px solid oklch(from var(--b-positionview-bg) calc(l * 1.03) c h);
+  border-bottom: 1px solid oklch(from var(--b-positionview-bg) calc(l * 1.03) c h);
+  background: var(--b-positionview-bg);
+  background: linear-gradient(to bottom, var(--b-positionview-b0) 0%, var(--b-positionview-b1) 100%);
+  color: var(--b-positionview-fg);
   .b-positionview-counter,
   .b-positionview-timer	{ font-size: 110%; margin-right: .5em; }
   .b-positionview-counter { width: 7em; } /* fixed size reduces layouting during updates */

@@ -37,18 +37,18 @@ import * as Util from "../util.js";
 import * as Mouse from '../mouse.js';
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-knob {
   display: flex; position: relative;
   margin: 0; padding: 0; text-align: center;
-  &.b-knob-h4w svg { position: absolute; width:  100%; } //* height for width */
-  &.b-knob-w4h svg { position: absolute; height: 100%; } //* width for height */
+  &.b-knob-h4w svg { position: absolute; width:  100%; } /* height for width */
+  &.b-knob-w4h svg { position: absolute; height: 100%; } /* width for height */
   .b-knob-trf {
     will-change: transform; /* request GPU texture for fast transforms */
   }
   svg.b-knob-sizer {
-    //* empty SVG element, used by .b-knob to determine width from height from viewBox */
-    position: relative; //* participate in layout space allocation */
+    /* empty SVG element, used by .b-knob to determine width from height from viewBox */
+    position: relative; /* participate in layout space allocation */
   }
   #sprite {
     display: inline-block;

@@ -9,8 +9,8 @@ import { LitComponent, html, JsExtract, docs } from '../little.js';
  */
 
 // == STYLE ==
-JsExtract.css`
-b-more { // b-more
+Extra_css`
+b-more { /* b-more */
   display: flex;
   align-items: center;
   justify-content: space-evenly;
@@ -33,9 +33,9 @@ b-more { // b-more
 
 // == HTML ==
 const HTML = html`
-  <v-flex class="-plus" >
+  <div class="vflex -plus" >
     +
-  </v-flex>
+  </div>
 `;
 
 // == SCRIPT ==

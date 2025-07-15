@@ -1,0 +1,220 @@
+/* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
+
+/* Tailwind config, classes, components, reset */
+
+/* == TailwindCSS reset, components, utils == */
+@import "tailwindcss";
+
+@theme {
+  --color-dim-50:  #f9f9ff;
+  --color-dim-100: #f3f3fe;
+  --color-dim-200: #e3e3ef;
+  --color-dim-300: #c7c7d2;
+  --color-dim-400: #a0a0aa;
+  --color-dim-500: #76767f;
+  --color-dim-600: #515159;
+  --color-dim-700: #36363e;
+  --color-dim-800: #26262e;
+  --color-dim-900: #16161e;
+  --color-dim-950: #07060f;
+}
+
+/* == Reset and Basics == */
+@layer base {
+
+/* Inherit font family. */
+.text-inherit	{ font-family: inherit; letter-spacing: inherit; text-align: inherit; }
+
+} /* @layer base */
+
+/* Default border color per Tailwind config. */
+html		{ --tw-border-default-color: #77777777; }
+
+/* For apps that are not word processors, text selection is best to be enables sparingly. */
+html		{ user-select: none; }
+
+/* Per default, allow text selection in text paragraphs. */
+p		{ user-select: text; }
+
+/* Default focus outline */
+html {
+  --focus-outline-width: 2px;
+  --focus-outline-color: var(--color-cyan-500);	/* #0080cc #0080ff */
+}
+:focus,
+:focus-visible,
+.focus-outline	{ outline: var(--focus-outline-width) solid var(--focus-outline-color); }
+
+/* == Utilities (CSS classes) == */
+@utility hflex {
+  /* Horizontal flexbox */
+  @apply flex flex-row;
+}
+@utility vflex {
+  /* Vertical flexbox */
+  @apply flex flex-col;
+}
+@utility modal-backdrop {
+  /* Backdrop useful for modal dialogs, lightens up to make shadows visible in dark mode. */
+  @apply backdrop:bg-gray-500/30 backdrop:backdrop-brightness-50;
+}
+@utility backdrop-and-xlshadow {
+  /* Backdrop for modal dialogs, with XL shadow. */
+  @apply modal-backdrop;
+  box-shadow: 0 25px 50px 0px #000000cc;
+}
+@utility floating-dialog {
+  /* Styling for floating modal dialogs with colors, backdrop, rounded, etc. */
+  @apply
+    backdrop-and-xlshadow
+    vflex border-b-[var(--color-dim-900)] border-l-[var(--color-dim-800/50)] border-r-[var(--color-dim-800/50)] border-t-[var(--color-dim-700)] bg-[var(--color-dim-800)] text-[var(--color-dim-300)]
+    rounded-2xl border-2 px-4 backdrop:bg-gray-500/30 backdrop:backdrop-brightness-50;
+}
+@utility groove-below {
+  /* Use `::after` pseudo element to simulate an indented <hr/> groove at the bottom. */
+  @apply
+    after:border-b-[var(--color-dim-700)] after:border-t-[var(--color-dim-900)] relative after:pointer-events-none
+    after:absolute after:inset-x-[15%] after:bottom-[0] after:h-0 after:border-b-2 after:border-t-2;
+}
+@utility groove-above {
+  /* Use `::before` pseudo element to simulate an indented <hr/> groove at the top. */
+  @apply
+    before:border-b-[var(--color-dim-700)] before:border-t-[var(--color-dim-900)] relative before:pointer-events-none
+    before:absolute before:inset-x-[15%] before:top-[0] before:h-0 before:border-b-2 before:border-t-2;
+}
+@utility dialog-header {
+  /* Style for dialog header containers. */
+  @apply groove-below mb-8 py-6 text-center text-2xl font-bold leading-6;
+}
+@utility dialog-footer {
+  /* Style for dialog footer containers. */
+  @apply groove-above mt-8 flex justify-center py-6 text-center leading-6;
+  > button { margin: 0 1em; }
+}
+
+/** @class Asbutton
+ * @description
+ * The .asbutton class can be used to style elements like a <button>
+ * and would be used if the element cannot become a focused.
+ */
+@utility asbutton {
+  display: flex;
+  place-content: center;
+}
+@utility button-dim {
+  /* Style for buttons with hover, disabled, potentially focussable, see also .button-down. */
+  /* button shading */
+  box-shadow:    0 0 0 2px #00000088;
+  border-top:    1px solid color-mix(in oklab, var(--color-dim-600), #fff 25%);
+  border-left:   1px solid color-mix(in oklab, var(--color-dim-600), #fff 25%);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-dim-600), #000 20%);
+  border-right:  1px solid color-mix(in oklab, var(--color-dim-600), #000 20%);
+  background-image:
+    linear-gradient(to bottom,
+		    color-mix(in oklab, var(--color-dim-600), #fff 5%) 0%,
+		    color-mix(in oklab, var(--color-dim-600), #000 9%) 100%);
+  &:hover { box-shadow: 0 0 0 2px #00000088, inset 500px 500px #ffffff08; }
+  &:focus { outline: 1px solid #0080cc; }
+  &[disabled], &[inert] {
+    box-shadow: 0 0 0 2px #00000044;
+    border: 1px solid color-mix(in oklab, var(--color-dim-600), #fff 5%);
+    background-image:
+      linear-gradient(to bottom,
+		      color-mix(in oklab, var(--color-dim-700), #fff 9%) 0%,
+		      color-mix(in oklab, var(--color-dim-700), #fff 9%) 100%);
+    color: var(--color-dim-500);
+    pointer-events: none;
+  }
+}
+@utility button-active {
+  /* Style for buttons to look active. */
+  box-shadow: 0 0 0 2px #00000088;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-dim-700), #fff 15%);
+  border-right:  1px solid color-mix(in oklab, var(--color-dim-700), #fff 15%);
+  border-top:    1px solid color-mix(in oklab, var(--color-dim-700), #000 20%);
+  border-left:   1px solid color-mix(in oklab, var(--color-dim-700), #000 20%);
+  background-image:
+    linear-gradient(to bottom,
+		    color-mix(in oklab, var(--color-dim-600), #000 9%) 0%,
+		    color-mix(in oklab, var(--color-dim-600), #fff 4%) 100%);
+}
+@utility button-down {
+  /* Style for buttons with hover .active, disabled, potentially focussable. */
+  @apply button-dim active:button-active;
+  &.active { /* Adding class="active" allows buttons during click() to simulate being pressed */
+    @apply button-active;
+  }
+}
+@utility button-down-within {
+  /* Style for buttons to appear active in state focus-within. */
+  @apply button-down focus-within:button-active;
+}
+@utility button-xl {
+  /* Style for buttons in dialogs, potentially focussable. */
+  @apply hflex button-down m-0 justify-center px-1 py-1 align-middle;
+  min-width: 7rem;
+}
+@utility border-1 {
+  /* Utility for a 1px border. */
+  border-width: 1px;
+}
+
+/** @class hflex
+ * @description
+ * The .hflex class is a horizontal [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
+ * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
+ */
+@utility hflex {
+  @apply flex basis-auto flex-row flex-nowrap items-stretch;
+  align-content: stretch;
+}
+.hflex[inline] { display: inline-flex; }
+
+/** @class vflex
+ * @description
+ * The .vflex class is a vertical [flex](https://developer.mozilla.org/en-US/docs/Web/CSS/flex) container element.
+ * See also the [Flex visual cheatsheet](https://flexbox.malven.co/).
+ */
+@utility vflex {
+  @apply flex basis-auto flex-col flex-nowrap items-stretch;
+  align-content: stretch;
+}
+.vflex[inline] { display: inline-flex; }
+
+
+
+@utility b-style-inset {
+  /* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
+  border-color: var(--b-style-inset-background-1) var(--b-style-inset-background-0) var(--b-style-inset-background-2) var(--b-style-inset-background-0);
+  border-left: 0px !important;
+  border-right: 0px !important;
+  border-radius: var(--b-button-radius);
+  color: var(--b-style-light-foreground);
+  outline: none; /* focus is handled via box-shadow */
+  background-color: var(--b-style-inset-background-0);
+  background: var(--b-style-inset-background);
+  /* The inset is implemented similarly to b-style-outset */
+  box-shadow: 0px -1px 0 0px var(--b-style-inset-glint-1), 0px -1px 0 1px var(--b-style-dark-outline), 0 0px 0 1px var(--b-style-dark-outline), 0px 2px 0px 0px var(--b-style-inset-glint-2);
+  &:focus { box-shadow: 0px -1px 0 0px var(--b-style-inset-glint-1), 0px -1px 0 1px var(--b-style-focus-color), 0 0px 0 1px var(--b-style-focus-color), 0px 2px 0px 0px var(--b-style-inset-glint-2); }
+}
+
+@utility b-style-outset {
+  /* Because we have box-shadows at top/bottom but not left/right, this style must not use left/right borders */
+  border-color: var(--b-style-outset-background-1) var(--b-style-outset-background-0) var(--b-style-outset-background-2) var(--b-style-outset-background-0);
+  border-left: 0px !important;
+  border-right: 0px !important;
+  border-radius: var(--b-button-radius);
+  color: var(--b-style-light-foreground);
+  outline: none; /* focus is handled via box-shadow */
+  background-color: var(--b-style-outset-background-0);
+  background: var(--b-style-outset-background);
+  /* The outset is implemented by adding a dark shadow around, and light shadows above and below */
+  box-shadow: 0px -1px 0 0px var(--b-style-outset-glint-1), 0px -1px 0 1px var(--b-style-dark-outline), 0 0px 0 1px var(--b-style-dark-outline), 0px 2px 0px 0px var(--b-style-outset-glint-2);
+  &:focus { box-shadow: 0px -1px 0 0px var(--b-style-outset-glint-1), 0px -1px 0 1px var(--b-style-focus-color), 0 0px 0 1px var(--b-style-focus-color), 0px 2px 0px 0px var(--b-style-outset-glint-2); }
+  &.active, &:active, &[data-contextmenu="true"] {
+	background-color: var(--b-style-outset-activebg-0); background: var(--b-style-outset-activebg);
+	box-shadow: 0px -1px 0 0px var(--b-style-outset-activebg-glint), 0px -1px 0 1px var(--b-style-dark-outline), 0 0px 0 1px var(--b-style-dark-outline), 0px 2px 0px 0px var(--b-style-outset-glint-2);
+	&:focus { box-shadow: 0px -1px 0 0px var(--b-style-outset-activebg-glint), 0px -1px 0 1px var(--b-style-focus-color), 0 0px 0 1px var(--b-style-focus-color), 0px 2px 0px 0px var(--b-style-outset-glint-2); }
+  }
+}
+

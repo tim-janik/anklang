@@ -99,6 +99,30 @@ export function text_content (element, with_children = true)
   return s;
 }
 
+/// Get RGBA values from CSS color function.
+function rgba_from_css (color)
+{
+  if (!rgba_from_css.ctx) {
+    const offscreen = new OffscreenCanvas (1, 1);
+    rgba_from_css.ctx = offscreen.getContext ('2d');
+    if (!rgba_from_css.ctx)
+      throw new Error ('2d context for OffscreenCanvas not supported');
+  }
+  const ctx = rgba_from_css.ctx;
+  ctx.fillStyle = color;
+  ctx.fillRect (0, 0, 1, 1);
+  const data = ctx.getImageData (0, 0, 1, 1).data;
+  return { r: data[0], g: data[1], b: data[2], a: data[3] };
+}
+
+/// Get RGB hex value from CSS color function.
+function rgbhex_from_css (color)
+{
+  const { r, g, b } = rgba_from_css (color);
+  const hex2 = v => v.toString (16).padStart (2, '0');
+  return `#${hex2 (r)}${hex2 (g)}${hex2 (b)}`;
+}
+
 /// Show a `dialog` via showModal() and close it on backdrop clicks.
 export function show_modal (dialog, closefunc = null)
 {

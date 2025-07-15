@@ -22,7 +22,7 @@ import * as Kbd from '../kbd.js';
 import * as ContextMenu from './contextmenu.js';
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-toggle {
   display: flex; position: relative;
   margin: 0; padding: 0; text-align: center;
@@ -33,16 +33,16 @@ b-toggle {
     &.b-toggle-empty { width: 2.2em; }
     align-self: center;
     border-radius: 3px;
-    background-color: $b-toggle-0-bg;
+    background-color: var(--b-toggle-0-bg);
     box-shadow: 0 0 3px #00000077;
   }
   .b-toggle-off {
-    background: linear-gradient(177deg, $b-toggle-0-bh, $b-toggle-0-bl 20%, $b-toggle-0-bd);
+    background: linear-gradient(177deg, var(--b-toggle-0-bh), var(--b-toggle-0-bl) 20%, var(--b-toggle-0-bd));
     &.b-toggle-press:hover  	{ filter: brightness(90%); }
   }
   .b-toggle-on {
-    background-color: $b-toggle-1-bg;
-    background: linear-gradient(177deg, $b-toggle-1-bh, $b-toggle-1-bl 20%, $b-toggle-1-bd);
+    background: var(--b-toggle-1-bg);
+    background: linear-gradient(177deg, var(--b-toggle-1-bh), var(--b-toggle-1-bl) 20%, var(--b-toggle-1-bd));
     &.b-toggle-press:hover	{ filter: brightness(95%); }
   }
 }`;

@@ -15,18 +15,18 @@ import { get_uri } from '../dom.js';
 import { render_contextmenu } from './contextmenu.js';
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-trackview {
   display: flex;
   align-items: stretch;
-  background-color: $b-button-border;
-  border: 1px solid $b-button-border;
-  border-top-left-radius: $b-button-radius;
-  border-bottom-left-radius: $b-button-radius;
-  .-lvm-main { // level meter
-    height: calc($b-track-meter-thickness + $b-track-meter-gap + $b-track-meter-thickness);
+  background-color: var(--b-button-border);
+  border: 1px solid var(--b-button-border);
+  border-top-left-radius: var(--b-button-radius);
+  border-bottom-left-radius: var(--b-button-radius);
+  .-lvm-main { /* level meter */
+    height: calc(var(--b-track-meter-thickness) + var(--b-track-meter-gap) + var(--b-track-meter-thickness));
     position: relative;
-    // push element onto own compositing layer to reduce rendering overhead
+    /* push element onto own compositing layer to reduce rendering overhead */
     will-change: auto;
   }
   .-lvm-levelbg {
@@ -37,21 +37,21 @@ b-trackview {
   .-lvm-covertip0, .-lvm-covermid0, .-lvm-covertip1, .-lvm-covermid1,
   .-lvm-levelbg, .-lvm-coverspace      { position: absolute; width: 100%; }
   .-lvm-covertip0, .-lvm-covermid0     { top: 0px; }
-  .-lvm-coverspace                     { top: calc($b-track-meter-thickness - 0.25px); height: calc($b-track-meter-gap + 0.5px); }
-  .-lvm-covertip1, .-lvm-covermid1     { top: calc($b-track-meter-thickness + $b-track-meter-gap); }
+  .-lvm-coverspace                     { top: calc(var(--b-track-meter-thickness) - 0.25px); height: calc(var(--b-track-meter-gap) + 0.5px); }
+  .-lvm-covertip1, .-lvm-covermid1     { top: calc(var(--b-track-meter-thickness) + var(--b-track-meter-gap)); }
   .-lvm-coverspace {
-    background-color: rgba( 0, 0, 0, .80);
+    background-color: rgba( 0 0 0 / .80);
   }
   .-lvm-covertip0, .-lvm-covermid0, .-lvm-covertip1, .-lvm-covermid1 {
-    height: $b-track-meter-thickness;
-    background-color: rgba( 0, 0, 0, .75);
+    height: var(--b-track-meter-thickness);
+    background-color: rgba( 0 0 0 / .75);
     transform-origin: center right;
     will-change: transform;
     transform: scaleX(1);
   }
   .-lvm-covertip1, .-lvm-covermid1 {
-    height: calc($b-track-meter-thickness + 1px);
-    // add 1px to cover for rounded coords
+    height: calc(var(--b-track-meter-thickness) + 1px);
+    /* add 1px to cover for rounded coords */
   }
   .b-trackview-control {
     display: flex;
@@ -62,7 +62,7 @@ b-trackview {
   }
 }
 b-trackview[current-track] .b-trackview-control {
-  background-color: zmod($b-button-border, Jz+=25%);
+  background-color: oklch(from var(--b-button-border) calc(l * 1.25) c h);
 }`;
 
 // == HTML ==

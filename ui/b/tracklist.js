@@ -11,28 +11,30 @@ import { LitComponent, html, JsExtract, docs, ref, repeat } from '../little.js';
  */
 
 // == STYLE ==
-JsExtract.css`
-$scroll-shadow-inset: 7px;
+Extra_css`
+:root {
+  --scroll-shadow-inset: 7px;
+}
 b-tracklist {
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;
   .grid {
     display: grid; flex-grow: 1;
     position: relative; inset: 0;
-    padding: 0 3px; // 0.5*$scroll-shadow-inset
+    padding: 0 3px; /* 0.5*var(--scroll-shadow-inset) */
     align-items: stretch;
     grid-template-columns: min-content 3fr 2fr;
     grid-template-rows: min-content 1fr min-content;
-    background-color: $b-tracklist-bg;
+    background-color: var(--b-tracklist-bg);
     overflow: hidden;
-    // for :before box-shadow
+    /* for :before box-shadow */
   }
   .trackviews,
   .partlists,
   .cliplists {
     display: flex; flex-flow: column nowrap;
-    align-items: flex-start; // needed for scroll-x
-    padding: $scroll-shadow-inset 0;
+    align-items: flex-start; /* needed for scroll-x */
+    padding: var(--scroll-shadow-inset) 0;
     min-height: 0;
     > * { height: 46px; box-sizing: border-box; overflow: hidden; flex-grow: 0; flex-shrink: 0; }
   }
@@ -52,9 +54,9 @@ b-tracklist {
     grid-area: 2/1 / 3/4;
     position: absolute; top: 0; left: 0; height: 200%;
     width: calc(100% + 200px); margin-left: -100px;
-    // add inner box-shadow to indicate scrolling borders
+    /* add inner box-shadow to indicate scrolling borders */
     z-index: 1; pointer-events: none; user-select: none;
-    box-shadow: black 0 0 $scroll-shadow-inset 0px inset;
+    box-shadow: black 0 0 var(--scroll-shadow-inset) 0px inset;
   }
 }`;
 

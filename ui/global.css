@@ -1,26 +1,7 @@
 /* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
+@reference "./tailwind.css";
 
-// Provide icon collections, using fonts is most resource friendly
-@import url('material-icons.css');
-@import url('assets/AnklangIcons.css');
-@import url('assets/fork-awesome.css');
-
-// Provide cursor CSS variables on :root
-@import url('cursors/cursors.css');
-
-// Keyframes for rotating spinner.svg
-@import 'spinner.scss';
-
-// Legacy definitions
-@import 'theme.scss';
-
-// Import theme and color definitions
-@import 'mixins.scss';
-
-// Tailwind classes, components, reset.
-@import 'tailwind.scss';
-
-// Full viewport sizing
+/* Full viewport sizing */
 html, body {
   margin: 0; padding: 0;
   max-width: 100vw; max-height: 100vh;
@@ -28,7 +9,7 @@ html, body {
 }
 body { width: 100vw; height: 100vh; }
 
-// Font adjustments
+/* Font adjustments */
 html, :host				{ @include b-ui-font(); }
 h1, h2, h3, h4, h5, h6, th,
 ::-webkit-validation-bubble-heading,
@@ -40,14 +21,14 @@ plaintext, listing, xmp, tt, pre, code, kbd, samp, .tnum, .code,
 input:-webkit-autofill-strong-password,
 .tabular-nums.slashed-zero		{ font-variant-numeric: tabular-nums slashed-zero; }
 
-// Color scheme and default colors
-html { color-scheme: $b-color-scheme; }
+/* Color scheme and default colors */
+html { color-scheme: var(--b-color-scheme); }
 body {
   @include b-body-colors();
-  &:-moz-window-inactive { color: $b-body-colors-inactive; }
+  &:-moz-window-inactive { color: var(--b-body-colors-inactive); }
 }
 
-// Scrollbar styling
+/* Scrollbar styling */
 html, :host {
   @include firefox-scrollbars();
   @include chrome-scrollbars();
@@ -55,9 +36,9 @@ html, :host {
 
 /* Animations */
 ::view-transition-group(*) {
-  animation-duration: $b-animation-duration;
+  animation-duration: var(--b-animation-duration);
   animation-timing-function: linear;
-  // on the linux desktop, view-transitions are fairly janky on Chrome-114, 'linear' helps a bit
+  /* on the linux desktop, view-transitions are fairly janky on Chrome-114, 'linear' helps a bit */
 }
 @keyframes b-keyframe-from-scale0 { from { transform: scale(0.01); opacity: 0.01; } }
 @keyframes b-keyframe-to-scale0   { to   { transform: scale(0.01); opacity: 0.01; } }
@@ -67,42 +48,42 @@ html, :host {
 dialog.b-dialog {
   border-radius: 0.5em;
   padding: 0;
-  @include v-flex();
+  @apply vflex;
   @include b-dialog-colors();
   .b-dialog-header {
+    @apply hflex;
     font-size: 1.5rem; font-weight: bold; text-align: center;
     margin-bottom: 1rem; padding: 1rem;
-    border-bottom: 2px solid $b-dialog-border-colors;
-    @include h-flex();
+    border-bottom: 2px solid var(--b-dialog-border-colors);
     justify-content: center;
   }
   .b-dialog-body {
     margin: 1rem; padding: 0;
   }
   .b-dialog-footer {
+    @apply hflex;
     text-align: center;
     margin-top: 1rem; padding: 1rem;
-    border-top: 2px solid $b-dialog-border-colors;
-    @include h-flex();
-    justify-content: space-between;   // left-aligns only-child
-    > :only-child { margin: auto; } // center only-child
+    border-top: 2px solid var(--b-dialog-border-colors);
+    justify-content: space-between;   /* left-aligns only-child */
+    > :only-child { margin: auto; } /* center only-child */
     button { padding: 0.25rem 1rem; }
   }
-  // :not([open])
-  opacity: 0; // b-keyframe-from-scale0
-  // enable view-transitions to help with fade-out
+  /* :not([open]) */
+  opacity: 0; /* b-keyframe-from-scale0
+   *  enable view-transitions to help with fade-out */
   view-transition-name: b-dialog-inflight;
 }
 dialog.b-dialog[open] {
-  opacity: 1; // b-keyframe-to-scale0
-  animation: b-keyframe-from-scale0 $b-animation-duration ease normal;
+  opacity: 1; /* b-keyframe-to-scale0 */
+  animation: b-keyframe-from-scale0 var(--b-animation-duration) ease normal;
 }
-// dialog closing supports view-transitions
+/* dialog closing supports view-transitions */
 ::view-transition-new(b-dialog-inflight) { animation-name: b-keyframe-from-scale0; }
 ::view-transition-old(b-dialog-inflight) { animation-name: b-keyframe-to-scale0; }
 
 
-// B-Shortcut-Dialog
+/* B-Shortcut-Dialog */
 .b-shortcut-dialog {
   .-div-handler {
     height: 1em;

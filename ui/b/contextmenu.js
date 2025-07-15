@@ -65,17 +65,18 @@ import { text_content, get_uri, valid_uri, has_uri } from '../dom.js';
 import * as Dom from "../dom.js";
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
+@reference "../tailwind.css";
 b-contextmenu {
   /* avoid interfering when inside a flexbox with justify-content:space-between */
   display: contents;
 }
 dialog.b-contextmenu {
   @apply flex-col items-stretch justify-start overflow-y-auto overflow-x-hidden p-2;
-  color: $b-menu-foreground;
-  background-color: $b-menu-background;
-  border: 1px outset zmod($b-menu-background, Jz-=20%);
-  box-shadow: $b-menu-box-shadow;
+  color: var(--b-menu-foreground);
+  background-color: var(--b-menu-background);
+  border: 1px outset oklch(from var(--b-menu-background) calc(l * 0.8) c h);
+  box-shadow: var(--b-menu-box-shadow);
   display: flex;
   &:not([open]) { display: none; }
 }
@@ -84,46 +85,46 @@ dialog.b-contextmenu::backdrop {
    * and second, showing a modal dialog via menu item would result in bad flickernig. */
   background: transparent;
 }
-b-contextmenu :is(button, push-button, summary) {
+b-contextmenu :is(button, .asbutton, summary) {
   @apply hflex flex-nowrap items-stretch px-4 py-1 text-left;
-  background: transparent; color: $b-menu-foreground; border: 1px solid transparent;
+  background: transparent; color: var(--b-menu-foreground); border: 1px solid transparent;
   cursor: pointer; user-select: none; outline: none;
-  kbd { flex-grow: 1; color: zmod($b-menu-foreground, Jz-=15); }
+  kbd { flex-grow: 1; color: oklch(from var(--b-menu-foreground) calc(l - 0.15) c h); }
   > b-icon:first-child {
     margin: 0 0.75rem 0 0;
     width: 2rem; height: 1rem;
     align-self: center;
-    color: $b-menu-fill;
+    color: var(--b-menu-fill);
   }
   kbd { font-family: inherit; text-align: right; margin-left: 2.5em; }
   kbd[data-can-remap] { font-style: italic; }
   &[turn] {
     flex-direction: column; align-items: center;
-    > b-icon:first-child { margin: 0 0 $b-menu-spacing 0; }
+    > b-icon:first-child { margin: 0 0 var(--b-menu-spacing) 0; }
   }
   &[disabled], &[disabled] * {
     pointer-events: none;
-    color: $b-menu-disabled;
-    b-icon { color: $b-menu-disabled-fill; }
-    kbd { color: $b-menu-disabled-fill; }
+    color: var(--b-menu-disabled);
+    b-icon { color: var(--b-menu-disabled-fill); }
+    kbd { color: var(--b-menu-disabled-fill); }
   }
 }
 b-contextmenu b-menurow button {
   @apply px-1;
-  min-width: 5rem; //* this aligns blocks of 2-digit numbers */
+  min-width: 5rem; /* this aligns blocks of 2-digit numbers */
   > b-icon:first-child { @apply m-0 mb-1; }
 }
 b-contextmenu button:focus {
-  background-color: $b-menu-focus-bg; color: $b-menu-focus-fg; outline: none;
+  background-color: var(--b-menu-focus-bg); color: var(--b-menu-focus-fg); outline: none;
   kbd { color: inherit; }
-  border: 1px solid zmod($b-menu-focus-bg, Jz-=50%);
-  b-icon { color: $b-menu-focus-fg; }
+  border: 1px solid oklch(from var(--b-menu-focus-bg) calc(l * 0.5) c h);
+  b-icon { color: var(--b-menu-focus-fg); }
 }
 b-contextmenu :is(button.active, button:focus.active, button:focus:active, button:active) {
-  background-color: $b-menu-active-bg; color: $b-menu-active-fg; outline: none;
+  background-color: var(--b-menu-active-bg); color: var(--b-menu-active-fg); outline: none;
   kbd { color: inherit; }
-  b-icon { color: $b-menu-active-fg; }
-  border: 1px solid zmod($b-menu-active-bg, Jz-=50%);
+  b-icon { color: var(--b-menu-active-fg); }
+  border: 1px solid oklch(from var(--b-menu-active-bg) calc(l * 0.5) c h);
 }`;
 
 // == HTML ==
@@ -279,7 +280,7 @@ class BContextMenu extends LitComponent {
   }
   integrate_children()
   {
-    for (let b of this.querySelectorAll ('button,push-button')) {
+    for (let b of this.querySelectorAll ('button, .asbutton')) {
       /**@type{any}*/ const any = b;
       integrate_button.call (any, this);
     }
@@ -291,7 +292,7 @@ class BContextMenu extends LitComponent {
     const this_isactive = this.isactive; // fetch function property *not* bound to contextmenu
     const isactive = async uri => !uri || !this_isactive || await this_isactive (uri);
     const proms = [];
-    for (let b of this.querySelectorAll ('button,push-button')) {
+    for (let b of this.querySelectorAll ('button, .asbutton')) {
       /**@type{any}*/ const any = b;
       const uri = any.getAttribute ('uri');
       if (uri === null) continue;
@@ -311,7 +312,7 @@ class BContextMenu extends LitComponent {
   toggle_force_children (enabled)
   {
     this.stop_observer();
-    for (let b of this.querySelectorAll ('button,push-button')) {
+    for (let b of this.querySelectorAll ('button, .asbutton')) {
       /**@type{any}*/ const any = b;
       const uri = any.getAttribute ('uri');
       if (uri === null) continue;
@@ -373,7 +374,7 @@ class BContextMenu extends LitComponent {
       App.zmove(); // force changes to be picked up
       // check items (and this used to handle auto-focus)
       await toggles;
-      const qse = this.querySelector (`button[${furi}],push-button[${furi}]`);
+      const qse = this.querySelector (`button[${furi}], .asbutton[${furi}]`);
       const focus_child = /**@type{HTMLElement}*/ (qse);
       if (focus_child && !focus_child.getAttribute ('disabled'))
 	focus_child.focus();

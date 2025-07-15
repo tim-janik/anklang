@@ -1,0 +1,211 @@
+/* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
+
+:root {
+  /* == Status Bar == */
+  --b-statusbar-bg: var(--b-main-background);
+  --b-statusbar-field-spacing: 0.5em;
+  --b-statusbar-text-color: var(--b-main-foreground);
+  --b-statusbar-text-shade: oklch(from var(--b-statusbar-text-color) calc(l * 0.75) c h);
+  --b-statusbar-separator-shade: oklch(from var(--b-statusbar-text-color) calc(l * 0.5) c h);
+  --b-statusbar-icon-brightness: 0.9; /* dim non-active */
+  --b-statusbar-icon-scaleup: 1.1;    /* enlarge active */
+
+  /* == Animations == */
+  --b-transition-fast-slide: 0.15s;
+
+  /* == Handles == */
+  --b-resize-handle-thickness: 5px;
+  --b-resize-handle-bgcolor:   #555;
+  --b-resize-handle-hvcolor:   #bbb;
+  --b-resize-handle-border:    1.5px solid #111;
+
+  /* == focus == */
+  --b-focus-outline-width: 1px;
+  --b-focus-outline:       var(--b-focus-outline-width) solid var(--b-style-focus-color);
+  --b-focus-box-shadow:    0 0 0 1px var(--b-style-focus-color); /* suitable for rounded outlines */
+
+  /* == Outset / Inset == */
+  --b-style-inset-background-1:  #1b1b1b;
+  --b-style-inset-background-2:  #202020;
+  --b-style-inset-background-0:  color-mix(in oklab, var(--b-style-inset-background-1), var(--b-style-inset-background-2));
+  --b-style-inset-background:    linear-gradient(to bottom, var(--b-style-inset-background-1), var(--b-style-inset-background-2));
+  --b-style-inset-glint-1:       var(--b-style-inset-background-1);
+  --b-style-inset-glint-2:       #383838;
+
+  --b-style-outset-glint-1:        #777;
+  --b-style-outset-glint-2:        #444;
+  --b-style-outset-background-1:   #606060;
+  --b-style-outset-background-2:   #505050;
+  --b-style-outset-background-0:   color-mix(in oklab, var(--b-style-outset-background-1), var(--b-style-outset-background-2));
+  --b-style-outset-background:     linear-gradient(to bottom, var(--b-style-outset-background-1), var(--b-style-outset-background-2));
+  --b-style-outset-activebg-1:     #404040;
+  --b-style-outset-activebg-2:     #303030;
+  --b-style-outset-activebg-0:     color-mix(in oklab, var(--b-style-outset-activebg-1), var(--b-style-outset-activebg-2));
+  --b-style-outset-activebg:       linear-gradient(to bottom, var(--b-style-outset-activebg-1), var(--b-style-outset-activebg-2));
+  --b-style-outset-activebg-glint: var(--b-style-outset-activebg-2);
+
+  /* == Buttons == */
+  --b-buttonbar-height: 1em;
+  /* softbutton is an almost flat button with subtle outlines */
+  --b-softbutton-bg: #585858;
+  --b-softbutton-border-color: oklch(from var(--b-softbutton-bg) calc(l + 0.135) c h);
+  --b-softbutton-bgl: oklch(from var(--b-softbutton-bg) calc(l + 0.017) c h);
+  --b-softbutton-bgd: oklch(from var(--b-softbutton-bg) calc(l - 0.017) c h);
+  --b-softbutton-lg-up: linear-gradient(to bottom, var(--b-softbutton-bgd), var(--b-softbutton-bgl));
+  --b-softbutton-lg-down: linear-gradient(to top, var(--b-softbutton-bgd), var(--b-softbutton-bgl));
+
+  /* singlebutton is a seperately standing button wich clearly looks clickable */
+  --b-singlebutton-fg:   var(--b-modal-foreground);
+  --b-singlebutton-fgd:  oklch(from var(--b-singlebutton-fg) calc(l - 0.035) c h);
+  --b-singlebutton-bg:   oklch(42.6% 0 0);
+  --b-singlebutton-bgl:  oklch(from var(--b-singlebutton-bg) calc(l + 0.072) c h);
+  --b-singlebutton-bgd:  oklch(from var(--b-singlebutton-bg) calc(l - 0.072) c h);
+  --b-singlebutton-lg:   linear-gradient(to top, var(--b-singlebutton-bgd), var(--b-singlebutton-bgl));
+  --b-singlebutton-dark: linear-gradient(to bottom, oklch(from var(--b-singlebutton-bgd) calc(l - 0.017) c h), var(--b-singlebutton-bgd));
+  --b-singlebutton-border-color: oklch(from var(--b-singlebutton-bg) calc(l - 0.325) c h);
+  --focus-outline-col: var(--b-glow-control);
+
+  /* == Timeline == */
+  --b-timeline-outer-height: 3em;
+
+  /* == piano roll == */
+  --b-scrollboundary-color: #111;	/* dark boundary next to scrollable areas, should be (nearly) black */
+  --b-piano-roll-num-color:	#eeeeee;
+  --b-piano-roll-white-base:   	#bbbbbb;			/* base color for white piano key */
+  --b-piano-roll-black-base:   	#181818;			/* base color for black piano key */
+  --b-piano-roll-dark-row:     	oklch(16% 0 0);			/* background row color for notes */
+  --b-piano-roll-light-row:    	oklch(20% 0 0);			/* background row color for notes */
+  --b-piano-roll-note-color:	#88cc88b0;			/* color(15,65%,25%); */
+  --b-piano-roll-note-focus-color:	 #aaf8;
+  --b-piano-roll-note-focus-border: #f0f0f0;
+  --b-piano-roll-indicator:	 #bbfc;				/* color for play position indicator */
+
+}
+
+@mixin b-statusbar-vseparator {
+  --groove-tint:  oklch(from var(--b-statusbar-bg) calc(l + 0.593) c h);
+  --groove-shade: oklch(from var(--groove-tint) calc(l - 0.33) c h);
+  border-left:  1px solid var(--groove-shade);
+  border-right: 1px solid var(--groove-tint);
+}
+
+@mixin b-focus-outline(--asborder: false)  {
+  outline: 0 none;
+  margin: 1px;
+  border-radius: var(--b-button-radius);
+  @if var(--asborder) {
+    border: 1px solid transparent;
+  }
+  &:focus {
+    @if var(--asborder) {
+      border: 1px solid var(--b-style-focus-color);
+    } @else {
+      box-shadow: var(--b-focus-box-shadow);
+    }
+  }
+}
+
+@mixin b-softbutton() {
+  background: var(--b-softbutton-lg-down);
+  border: 1px outset var(--b-softbutton-border-color);
+  border-top-color: transparent; border-bottom-color: transparent;
+  &:focus { outline: var(--b-focus-outline); }
+  &.hover, &:hover   { box-shadow: inset 500px 500px rgba(255 255 255 / 0.035); }
+  &.active, &:active, &[data-contextmenu="true"] {
+    background: var(--b-softbutton-lg-up);
+    border-color: var(--b-softbutton-bg); border-style: solid;
+    box-shadow: inset 500px 500px rgba(0 0 0 / 0.05);
+  }
+  &[disabled] {
+    filter: saturate(80%) brightness(80%);
+    pointer-events: none;
+  }
+}
+@mixin b-softbuttonbar() {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  user-select: none; text-align: center;
+  place-items: center stretch;
+  place-content: stretch center;
+  border: 1px inset var(--b-softbutton-border-color);
+}
+@mixin b-singlebutton(--vpad: 5px, --hpad: 5px) {
+  background: var(--b-singlebutton-lg);
+  color: var(--b-singlebutton-fg);
+  text-align: center;
+  justify-content: center;
+  border: 1px outset var(--b-singlebutton-border-color);
+  padding: var(--vpad) var(--hpad) var(--vpad) var(--hpad);
+  &.hover, &:hover   { box-shadow: inset 500px 500px rgba(255 255 255 / 0.035); }
+  &.active, &:active, &[data-contextmenu="true"] {
+    background: var(--b-singlebutton-dark);
+    color: var(--b-singlebutton-fgd);
+    border-color: oklch(from var(--b-singlebutton-border-color) calc(l + 0.037) c h);
+    /*border-style: solid;*/
+    box-shadow: inset 500px 500px rgba(0 0 0 / 0.05);
+  }
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 1px var(--focus-outline-col);
+    &.active, &:active, &[data-contextmenu="true"] {
+      outline: none;
+      box-shadow: 0 0 0 1px oklch(from var(--focus-outline-col) calc(l - 0.03) c h);
+    }
+  }
+  &[disabled] {
+    filter: saturate(80%) brightness(80%);
+    pointer-events: none;
+  }
+}
+
+/* == input[type='number'] == */
+@mixin b-style-number-input() {
+  @include b-style-inset();
+  /* Assign webkit spin-button arrows that fit the theme */
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none; /* allow customizations */
+    width: 9px; margin-left: 5px; margin-right: $b-button-radius;
+    background: transparent url('../assets/spin-arrows.svg') no-repeat center center !important;
+    background-size: 100% 100% !important;
+    opacity: .5;
+    &:hover { opacity: .99; }
+  }
+  /* Mozilla spin button arrows are ugly in dark themes */
+  html[gecko] & {
+    padding-right: 3px;
+    -moz-appearance: textfield;
+  }
+}
+
+/* == input[type=range] == */
+@mixin b-style-hrange-track() {
+  -webkit-appearance: none;
+  width: 100%; height: 7px; cursor: pointer;
+  border-radius: calc(var(--b-button-radius) * 0.5);
+  box-shadow: inset 0 1px 0 0px var(--b-style-dark-outline), inset 0px -1px 0px 0px var(--b-style-inset-glint-2);
+  background: var(--b-style-inset-background);
+}
+@mixin b-style-hrange-thumb-bg(--center: var(--b-style-outset-glint-1)) {
+  background: radial-gradient(
+    var(--center) 10%, var(--b-style-outset-glint-1) 20%,
+    var(--b-style-inset-background-2) 25%, var(--b-style-inset-background-2) 35%,
+    color-mix(in oklab, var(--b-style-inset-background-2), var(--b-style-outset-glint-2)) 40%, var(--b-style-outset-glint-2) 50%);
+}
+@mixin b-style-hrange-thumb {
+  width: 15px; height: 15px; cursor: pointer;
+  border-radius: 50%; border: none;
+  box-shadow:
+	0px 0px 0 1px var(--b-style-dark-outline), inset 0 3px 2px -2px var(--b-style-outset-glint-1),
+	inset 0 -3px 2px -2px var(--b-style-inset-background-2);
+  @include b-style-hrange-thumb-bg;
+}
+@mixin b-style-hrange-input {
+  -webkit-appearance: none;
+  background-color: transparent;
+  &::-moz-range-track              { @include b-style-hrange-track(); }
+  &::-moz-range-thumb		   { @include b-style-hrange-thumb(); }
+  &:hover::-moz-range-thumb	   { @include b-style-hrange-thumb-bg(#ffc); }
+  &::-webkit-slider-runnable-track { @include b-style-hrange-track(); }
+  &::-webkit-slider-thumb          { @include b-style-hrange-thumb();
+				     margin-top: -4px; -webkit-appearance: none; }
+  &:hover::-webkit-slider-thumb    { @include b-style-hrange-thumb-bg(#ffc); }
+}

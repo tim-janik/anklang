@@ -11,7 +11,7 @@ import * as Dom from "../dom.js";
  */
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-noticeboard {
   position: fixed; inset: 0;
   display: flex; flex-flow: column wrap-reverse;
@@ -26,7 +26,7 @@ b-noticeboard {
     pointer-events: all;
     padding: var(--note-board-padding); margin: 0 0 var(--note-board-padding) var(--note-board-padding);
     border-radius: calc(var(--note-board-padding) / 2);
-    transition: all 0.233s ease-in-out; // see Util.Noticeboard.FADING
+    transition: all 0.233s ease-in-out; /* see Util.Noticeboard.FADING */
     overflow: hidden; max-height: 100vh;
     &.note-board-fadein {
       transform: translateY(100vh);
@@ -37,28 +37,28 @@ b-noticeboard {
        * cover up artefacts with transition and color fading.
        */
       padding-top: 0; padding-bottom: 0; margin-top: 0;
-      max-height: 0; min-height: 0; // vertical shrinking, to allow siblings to flow up
-      color: transparent;           // hide text reflow artefacts
-      z-index: -1;                  // transition *behind* siblings
-      transform: translateY(-33vh); // visual slide-up effect
-      transition: all 0.283s ease-out 0.05s, transform 0.233s ease-in; // see Util.Noticeboard.FADING
+      max-height: 0; min-height: 0; /* vertical shrinking, to allow siblings to flow up */
+      color: transparent;           /* hide text reflow artefacts */
+      z-index: -1;                  /* transition *behind* siblings */
+      transform: translateY(-33vh); /* visual slide-up effect */
+      transition: all 0.283s ease-out 0.05s, transform 0.233s ease-in; /* see Util.Noticeboard.FADING */
     }
-    // style close button
+    /* style close button */
     .note-board-note-close {
       position: absolute; top: var(--note-board-padding); right: var(--note-board-padding);
       display: flex; margin-top: -0.2em;
       &:hover { color: #f88; }
     }
-    // make room for .note-board-note-close
+    /* make room for .note-board-note-close */
     &::before { float: right; content: ' '; padding: 1px; }
   }
-  // markdown styling for notes
+  /* markdown styling for notes */
   .note-board-markdown {
     @include b-markdown-it-inlined;
-    h1 { color: #a00; } //* Error */
-    h2 { color: #a80; } //* Warning */
-    h3 { color: #090; } //* Info */
-    h4 { color: #09b; } //* Debug */
+    h1 { color: #a00; } /* Error */
+    h2 { color: #a80; } /* Warning */
+    h3 { color: #090; } /* Info */
+    h4 { color: #09b; } /* Debug */
     p { margin-top: 0.5em; }
   }
 }`;

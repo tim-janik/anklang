@@ -10,24 +10,24 @@ import * as Util from "../util.js";
  */
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-playcontrols {
-  button, push-button	{ padding: 5px; text-align: center; }
+  button, .asbutton	{ padding: 5px; text-align: center; }
 }
 `;
 
 // == HTML ==
 const HTML = (t, D) => html`
 <b-buttonbar class="b-playcontrols" >
-  <push-button class="button-down" @click="${D ('-todo-Last')}" disabled >      <b-icon fw lg ic="fa-fast-backward"></b-icon></push-button>
-  <push-button class="button-down" @click="${D ('-todo-Backwards')}" disabled > <b-icon fw lg ic="fa-backward"     ></b-icon></push-button>
-  <push-button class="button-down" @click="${D ('stop_playback')}" data-hotkey="S"
-                data-tip="**CLICK** Stop playback" >        <b-icon fw lg ic="fa-stop"         ></b-icon></push-button>
-  <push-button class="button-down" @click="${t.toggle_play}" data-hotkey="RawSpace"
-                data-tip="**CLICK** Start/stop playback" >  <b-icon fw lg ic="fa-play" hi="ho" ></b-icon></push-button>
-  <push-button class="button-down" @click="${D ('-todo-Record')}" disabled >    <b-icon fw lg ic="fa-circle"       ></b-icon></push-button>
-  <push-button class="button-down" @click="${D ('-todo-Forwards')}" disabled >  <b-icon fw lg ic="fa-forward"      ></b-icon></push-button>
-  <push-button class="button-down" @click="${D ('-todo-Next')}" disabled >      <b-icon fw lg ic="fa-fast-forward" ></b-icon></push-button>
+  <div class="asbutton button-down" @click="${D ('-todo-Last')}" disabled >      <b-icon fw lg ic="fa-fast-backward"></b-icon></div>
+  <div class="asbutton button-down" @click="${D ('-todo-Backwards')}" disabled > <b-icon fw lg ic="fa-backward"     ></b-icon></div>
+  <div class="asbutton button-down" @click="${D ('stop_playback')}" data-hotkey="S"
+                data-tip="**CLICK** Stop playback" >        <b-icon fw lg ic="fa-stop"         ></b-icon></div>
+  <div class="asbutton button-down" @click="${t.toggle_play}" data-hotkey="RawSpace"
+                data-tip="**CLICK** Start/stop playback" >  <b-icon fw lg ic="fa-play" hi="ho" ></b-icon></div>
+  <div class="asbutton button-down" @click="${D ('-todo-Record')}" disabled >    <b-icon fw lg ic="fa-circle"       ></b-icon></div>
+  <div class="asbutton button-down" @click="${D ('-todo-Forwards')}" disabled >  <b-icon fw lg ic="fa-forward"      ></b-icon></div>
+  <div class="asbutton button-down" @click="${D ('-todo-Next')}" disabled >      <b-icon fw lg ic="fa-fast-forward" ></b-icon></div>
 </b-buttonbar>
 `;
 

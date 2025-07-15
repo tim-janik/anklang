@@ -9,10 +9,12 @@
 import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
 
 // == STYLE ==
-JsExtract.css`
-$b-clipview-font-color: rgba(255, 255, 255, 0.7) !default;
-$b-clipview-note-color: rgba(255, 255, 255, 0.7) !default;
-$b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;
+Extra_css`
+:root {
+  --b-clipview-font-color: rgba(255 255 255 / 0.7);
+  --b-clipview-note-color: rgba(255 255 255 / 0.7);
+  --b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;
+}
 b-clipview {
   display: inline-grid;
   margin: 0 0 0 2px;
@@ -22,11 +24,11 @@ b-clipview {
     border: 0;
     .-canvas {
       display: inline; position: absolute; inset: 0;
-      --clipview-font-color: #{$b-clipview-font-color}; --clipview-font: #{$b-canvas-font};
-      --clipview-note-color: #{$b-clipview-note-color};
-      --clipview-color-hues: $b-clipview-color-hues;
+      --clipview-font-color: var(--b-clipview-font-color); --clipview-font: var(--b-canvas-font);
+      --clipview-note-color: var(--b-clipview-note-color);
+      --clipview-color-hues: var(--b-clipview-color-hues);
       box-shadow: inset 0px 0 1px #fff9, inset -1px 0 1px #000;
-      border-radius: $b-button-radius;
+      border-radius: var(--b-button-radius);
     }
     .-play {
       display: inline;
@@ -35,21 +37,21 @@ b-clipview {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      color: $b-clip-play-fg;
-      background: $b-clip-play-bg;
-      border-radius: calc($b-button-radius * 0.66);
+      color: var(--b-clip-play-fg);
+      background: var(--b-clip-play-bg);
+      border-radius: calc(var(--b-button-radius) * 0.66);
     }
   }
 }`;
 
 // == HTML ==
 const HTML = (t, d) => html`
-<h-flex class="b-clipview"
+<div class="b-clipview hflex"
   @click=${t.click}
   >
   <canvas class="-canvas" ${ref (h => t.canvas = h)} ></canvas>
   <span class="-play" @click.stop="click_play" >▶</span>
-</h-flex>
+</div>
 `;
 
 // == SCRIPT ==

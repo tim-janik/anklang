@@ -18,27 +18,27 @@ import * as Util from '../util.js';
  */
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-switchinput label {
   position: relative; display: inline-block; width: 2.6em; height: 1.4em;
   input {
     opacity: 0; width: 0; height: 0;
-    &:focus   + .b-switchinput-trough                     { box-shadow: $b-focus-box-shadow; }
-    &:checked + .b-switchinput-trough                     { background-color: $b-switch-active; /*cursor: ew-resize;*/ }
+    &:focus   + .b-switchinput-trough                     { box-shadow: var(--b-focus-box-shadow); }
+    &:checked + .b-switchinput-trough                     { background-color: var(--b-switch-active); /*cursor: ew-resize;*/ }
     &:checked + .b-switchinput-trough::before             { opacity: 1; /* checkmark */ }
     &:checked + .b-switchinput-trough .b-switchinput-knob { transform: translateX(1.2em); }
   }
   .b-switchinput-knob {
     position: absolute; height: 1em; width: 1em; left: 0.2em; bottom: 0.2em;
-    content: ""; transition: .3s; background-color: $b-switch-knob; border-radius: $b-button-radius;
+    content: ""; transition: .3s; background-color: var(--b-switch-knob); border-radius: var(--b-button-radius);
   }
   .b-switchinput-trough {
     position: absolute; inset: 0;
-    transition: .3s; background-color: $b-switch-inactive; border-radius: $b-button-radius;
+    transition: .3s; background-color: var(--b-switch-inactive); border-radius: var(--b-button-radius);
     &::before {
       position: absolute; top: 0.1em; left: 0.3em;
       font-size: 1em; text-transform: none; text-decoration: none !important; speak: none;
-      content: "\2713"; transition: .3s; color: $b-switch-knob; opacity: 0;
+      content: "\2713"; transition: .3s; color: var(--b-switch-knob); opacity: 0;
     }
   }
 }`;

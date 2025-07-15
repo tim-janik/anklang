@@ -11,9 +11,9 @@ const HTML = (t, d) => html`
   <div class="dialog-header">
     About ANKLANG
   </div>
-  <c-grid class="max-w-full">
+  <div class="grid max-w-full">
     ${INFOS_HTML (t, d)}
-  </c-grid>
+  </div>
   <div class="dialog-footer">
     <button class="button-xl" autofocus @click=${e => t.emit_close()} > Close </button>
   </div>

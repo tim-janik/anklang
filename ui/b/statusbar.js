@@ -11,47 +11,48 @@ import * as Util from "../util.js";
 import * as Dom from "../dom.js";
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
+@reference "../tailwind.css";
 b-statusbar {
   @apply hflex m-0 h-6 select-none justify-between whitespace-nowrap px-4 py-0;
   .b-statusbar-field {
     display: flex; flex-wrap: nowrap; flex-shrink: 0; flex-grow: 0; white-space: nowrap;
   }
   .b-statusbar-text {
-    display: inline-block; overflow: hidden visible; //* avoid scrolling */
+    display: inline-block; overflow: hidden visible; /* avoid scrolling */
     white-space: nowrap;
     flex-shrink: 1; flex-grow: 1;
-    margin-left: calc($b-statusbar-field-spacing * 2);
+    margin-left: calc(var(--b-statusbar-field-spacing) * 2);
   }
   .b-statusbar-spacer {
     display: inline; flex-shrink: 1; flex-grow: 0; white-space: nowrap;
     text-align: center;
-    margin: 0 $b-statusbar-field-spacing;
+    margin: 0 var(--b-statusbar-field-spacing);
     @include b-statusbar-vseparator;
   }
   .b-icon {
     align-items: center;
-    padding: 0 $b-statusbar-field-spacing;
-    filter: brightness(asfactor($b-statusbar-icon-brightness));
+    padding: 0 var(--b-statusbar-field-spacing);
+    filter: brightness(var(--b-statusbar-icon-brightness));
     &:hover:not(.b-active) {
-      filter: brightness(div(1.0, asfactor($b-statusbar-icon-brightness)));
-      transform: scale($b-statusbar-icon-scaleup);
+      filter: brightness(calc(1.0 / var(--b-statusbar-icon-brightness)));
+      transform: scale(var(--b-statusbar-icon-scaleup));
     }
     &.b-active {
-      color: $b-color-active;
-      transform: scale($b-statusbar-icon-scaleup);
+      color: var(--b-color-active);
+      transform: scale(var(--b-statusbar-icon-scaleup));
     }
   }
 
   /* markdown styling for statusbar */
   .b-statusbar-text { /* .b-markdown-it-outer */
     @include b-markdown-it-inlined;
-    color: $b-statusbar-text-shade;
+    color: var(--b-statusbar-text-shade);
     * {
-      display: inline-block; overflow-y: visible; //* avoids scrolling */
+      display: inline-block; overflow-y: visible; /* avoids scrolling */
       padding: 0; margin: 0; font-size: inherit; white-space: nowrap;
     }
-    strong { color: $b-main-foreground; padding: 0 0.5em; @include b-font-weight-normal(); }
+    strong { color: var(--b-main-foreground); padding: 0 0.5em; @include b-font-weight-normal(); }
     kbd {
       padding: 0 0.4em 1px;
       @include b-kbd-hotkey(true);

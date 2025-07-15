@@ -10,13 +10,13 @@ import * as Util from '../util.js';
  */
 
 // == STYLE ==
-JsExtract.css`
+Extra_css`
 b-partlist {
   display: flex;
   position: relative;
   b-clipview {
     margin: 0 1px;
-    width: calc(5 * $b-clipthumb-width);
+    width: calc(5 * var(--b-clipthumb-width));
     flex-shrink: 0; flex-grow: 0;
   }
 }`;

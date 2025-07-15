@@ -17,14 +17,14 @@ import * as Dom from "../dom.js";
 import DataBubbleIface from '../b/databubble.js';
 
 // == STYLE ==
-JsExtract.scss`
+Extra_css`
 /* global.scss includes @import 'spinner.scss'; */
 
 b-shell {
   display: grid;
   position: relative;
-  --b-resize-handle-thickness: #{$b-resize-handle-thickness};
-  --b-transition-fast-slide: #{$b-transition-fast-slide};
+  --b-resize-handle-thickness: var(--b-resize-handle-thickness);
+  --b-transition-fast-slide: var(--b-transition-fast-slide);
   width: 100%;
   height: 100%;
   justify-content: space-between;
@@ -38,27 +38,27 @@ b-shell {
 }
 .b-shell-resizer {
   width: var(--b-resize-handle-thickness);
-  background: $b-resize-handle-bgcolor;
-  border-left: $b-resize-handle-border;
-  border-right: $b-resize-handle-border;
+  background: var(--b-resize-handle-bgcolor);
+  border-left: var(--b-resize-handle-border);
+  border-right: var(--b-resize-handle-border);
   cursor: col-resize;
 }
 html.b-shell-during-drag .b-app {
-  .b-shell-resizer { background: $b-resize-handle-hvcolor; }
+  .b-shell-resizer { background: var(--b-resize-handle-hvcolor); }
   * { cursor: col-resize !important; user-select: none !important; }
 }
 
 b-shell .-modal-message {
   .-hfooter {
     justify-content: space-between;
-    button, push-button {
+    button, .asbutton {
       white-space: nowrap;
-      $hpadding: 0.75em;
-      padding-left: $hpadding; padding-right: $hpadding;
+      --hpadding: 0.75em;
+      padding-left: var(--hpadding); padding-right: var(--hpadding);
     }
     &.-manybuttons {
       width: 100%;
-      button, push-button {
+      button, .asbutton {
 	width: 100%;
       }
     }
@@ -76,8 +76,8 @@ b-shell {
 #b-shell-spinner-layer {
   display: flex;
   img {
-    $size: 4em;
-    width: $size; height: $size;
+    --size: 4em;
+    width: var(--size); height: var(--size);
     margin: auto; display: inline-block; vertical-align: middle;
     animation: 1.1s linear infinite reverse spinner-svg-rotation-steps;
   }
@@ -132,18 +132,18 @@ const HTML = (t, m, fs) => [ html`
     ${ref (h => t.piano_roll_ = h)} ?hidden=${Data.panel2 == 'p'}></b-piano-roll>
 
   <!-- browser -->
-  <v-flex class="b-shell-sidebar -row28 -col1" style="width:10em">
+  <div class="b-shell-sidebar vflex -row28 -col1" style="width:10em">
     Browser <br />
     <b-treebrowser .tree=${m.filetree} ?hidden=${Data.panel3 == 'b'}></b-treebrowser>
     <span ?hidden=${Data.panel3 == 'i'}><a href="">Info Panel</a></span>
-  </v-flex>
+  </div>
 
   <!-- Inspector -->
-  <v-flex class="-row28 -col3" style="margin-left: 3em">
+  <div class="vflex -row28 -col3" style="margin-left: 3em">
     ||| <br />
     Editor <br />
     ||| <br />
-  </v-flex>
+  </div>
 
   <!-- status bar -->
   <b-statusbar class="-row9 -col123" ></b-statusbar>
@@ -182,19 +182,19 @@ const DIALOGS_HTML = (t) =>
 	{{ d.header }}
       </template>
       <template v-slot:default>
-	<h-flex style="justify-content: flex-start; align-items: center;">
+	<div class="hflex" style="justify-content: flex-start; align-items: center;">
 	  <b-icon v-bind="d.icon" ></b-icon>
 	  <div style="flex-grow: 1; white-space: pre-line;">{{ d.body }}</div>
 	  <div style="flex-grow: 1; white-space: pre-line;" v-html="d.vhtml"></div>
-	</h-flex>
+	</div>
 	<b-fed-object class="-modal-fed" ?shown=${d.proplist} .value=${d.proplist} ></b-fed-object>
 	<div class="-div-handler" ?shown=${d.div_handler}></div>
       </template>
       <template v-slot:footer>
-	<h-flex class="-hfooter" .class=${d.footerclass}>
+	<div class="hflex -hfooter" .class=${d.footerclass}>
 	  <component v-for="(b, i) in d.buttons" .key=${i} @click=${ev => d.click(i)} .disabled=${b.disabled}
-	    .is=${b.canfocus ? 'button' : 'push-button'} .autofocus=${b.autofocus}>{{ b.label }}</component>
-	</h-flex>
+	    .is=${b.canfocus ? 'button' : 'asbutton'} .autofocus=${b.autofocus}>{{ b.label }}</component>
+	</div>
       </template>
     </dialog>
   `);
