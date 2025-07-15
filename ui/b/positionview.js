@@ -3,7 +3,7 @@
 
 import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
 import * as Util from '../util.js';
-import * as Ase from '../aseapi.js';
+import * as Ase from '/gen/aseapi.js';
 
 /** @class BPositionView
  * @description

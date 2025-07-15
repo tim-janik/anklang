@@ -3,7 +3,7 @@ include $(wildcard $>/electron/*.d)
 ALL_TARGETS       += electron/all
 electron/all:
 
-electron/js.sources ::= electron/main.js electron/preload.js $>/ui/anklang.png
+electron/js.sources ::= electron/main.js electron/preload.js $>/gen/public/anklang.png
 
 # == electron/anklang ==
 $>/electron/anklang: $(electron/js.sources) electron/Makefile.mk node_modules/.npm.done

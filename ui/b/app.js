@@ -10,8 +10,7 @@
  * notifications for pointer movements, including 0-distance moves after significant UI changes.
  */
 
-import '../all-components.js';
-import '../b/shell.js';
+import '/gen/all-components.js';
 import * as Util from '../util.js';
 import * as Mouse from '../mouse.js';
 import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';

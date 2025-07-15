@@ -2,7 +2,7 @@
 
 import './b/basics.js';		// Register basic components first
 import { LitComponent, html, css, docs, lit_update_all } from './little.js';
-import * as String from './strings.js';
+import * as Strings from './strings.js';
 
 // Global CONFIG
 console.bootlog = console.log;
@@ -19,7 +19,7 @@ import * as Util from './util.js';
 Object.defineProperty (globalThis, 'Util', { value: Util });
 
 // Import Ase, connecting is done asynchronously
-import * as Ase from './aseapi.js';
+import * as Ase from '/gen/aseapi.js';
 
 // Global Theme
 import { create_app } from './b/app.js';

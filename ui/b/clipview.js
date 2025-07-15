@@ -56,7 +56,7 @@ const HTML = (t, d) => html`
 
 // == SCRIPT ==
 import * as Util from '../util.js';
-import * as Ase from '../aseapi.js';
+import * as Ase from '/gen/aseapi.js';
 const tick_quant = Util.PPQN;
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 const PRIVATE_PROPERTY = { state: true };
@@ -113,7 +113,7 @@ export class BClipView extends LitComponent {
 }
 customElements.define ('b-clipview', BClipView);
 
-import * as Z from '../zcam-js.mjs';
+import * as Z from 'zcam-js';
 
 const sRGB_viewing_conditions = {
   Fs: Z.ZCAM_DIM,       // DIM comes closest to CIELAB L* in ZCAM and CIECAM97

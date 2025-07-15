@@ -3,7 +3,7 @@
 
 import { LitComponent, html, css, ref, repeat, JsExtract } from '../little.js';
 import * as Util from "../util.js";
-import * as Ase from '../aseapi.js';
+import * as Ase from '/gen/aseapi.js';
 import * as Dom from "../dom.js";
 
 // == STYLE ==

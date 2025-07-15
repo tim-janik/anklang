@@ -5,9 +5,9 @@ import * as Wrapper from './wrapper.js';
 
 // Export supported Lit constructs
 export { noChange, nothing, render, html, css, unsafeCSS } from 'lit';
-export { ref } from 'lit/directives/ref';
-export { live } from 'lit/directives/live';
-export { repeat } from 'lit/directives/repeat';
+export { ref } from 'lit/directives/ref.js';
+export { live } from 'lit/directives/live.js';
+export { repeat } from 'lit/directives/repeat.js';
 import { LitElement, css, unsafeCSS } from 'lit';
 import { Signal, State, Computed, Watcher, tracking_wrapper } from "./signal.js";
 

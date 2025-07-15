@@ -1,7 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { Signal } from "./signal-polyfill.js";
+import { Signal } from "signal-polyfill";
 
 if (!window['Signal'])
   Object.defineProperty (window, 'Signal', { enumerable: true, value: Signal }); // !configurable
