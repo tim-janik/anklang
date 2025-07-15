@@ -1,52 +1,63 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 module.exports = {
-  extends: [
-    "stylelint-config-standard-scss", // "stylelint-config-standard",
+  extends: [ "stylelint-config-standard" ],
+  ignoreFiles: [
+    "../**/gen/**/*.css",
   ],
-  plugins: ["stylelint-scss"],
-  overrides: [ {
-    files: ["*.*css", "**/*.*css"],
-    customSyntax: "postcss-scss",
-    } ],
+  plugins: [
+    { // https://github.com/stylelint/stylelint/issues/8524
+      ruleName: 'my/no-standalone-custom-properties',
+      rule: function (primaryOption, secondaryOptions) {
+        return function (root, result) {
+          root.walkDecls (decl => {
+	    if (decl.prop && decl.prop.startsWith ('--') && // CSS var
+		! ['rule', 'atrule'].includes (decl.parent.type)) // outside CSS rule
+	      {
+		if (0) console.error (`CSS custom property must be declared inside a selector: ${decl.prop}\ndecl.parent.type: ${JSON.stringify (decl.parent.type)}`);
+		result.warn (`CSS custom property must be declared inside a selector: ${decl.prop}`, {
+                  node: decl,
+                  message: `Encountered standalone custom property: ${decl.prop}: ${decl.value}`
+		});
+              }
+          });
+        };
+      }
+    },
+  ],
   rules: {
     'alpha-value-notation': null,
     'at-rule-empty-line-before': null,
-    'at-rule-no-unknown': null, // [ true, { ignoreAtRules: [ 'tailwind', 'apply', 'variants', 'responsive', 'screen' ] },
+    'at-rule-no-unknown': null, // true, // [ true, { ignoreAtRules: [ 'tailwind', 'apply', 'variants', 'responsive', 'screen' ] },
     'block-no-empty': null,
-    'color-function-notation': null,
+    // 'color-function-notation': null,
     'color-hex-length': null,
     'comment-empty-line-before': null,
     'comment-whitespace-inside': null,
     'custom-property-empty-line-before': null,
-    'declaration-block-no-shorthand-property-overrides': null,
+    'custom-property-pattern': null,
+    'declaration-block-no-duplicate-properties': null, // TODO: enable
+    'declaration-block-no-redundant-longhand-properties': null, // TODO: enable
+    'declaration-block-no-shorthand-property-overrides': null, // TODO: enable
     'declaration-block-single-line-max-declarations': null,
     'declaration-empty-line-before': null,
     'font-family-name-quotes': null,
+    'hue-degree-notation': null,
     'import-notation': null,
     'length-zero-no-unit': null,
+    'media-feature-range-notation': null, // TODO: enable
+    'my/no-standalone-custom-properties': true,
     'no-descending-specificity': null,
     'no-duplicate-selectors': null,
-    'no-invalid-position-at-import-rule': null,
+    // 'no-invalid-position-at-import-rule': null,
     'no-irregular-whitespace': null,
     'number-max-precision': null,
     'property-no-vendor-prefix': null,
     'rule-empty-line-before': null,
-    'scss/at-if-closing-brace-newline-after': null,
-    'scss/at-if-closing-brace-space-after': null,
-    'scss/at-import-partial-extension': null,
-    'scss/at-mixin-argumentless-call-parentheses': null,
-    'scss/at-rule-no-unknown':     [ true, { ignoreAtRules: [ 'tailwind', 'apply', 'variants', 'responsive', 'screen' ] } ],
-    'scss/dollar-variable-colon-space-after': null,
-    'scss/dollar-variable-empty-line-before': null,
-    'scss/dollar-variable-pattern': null,
-    'scss/double-slash-comment-empty-line-before': null,
-    'scss/double-slash-comment-whitespace-inside': null,
-    'scss/load-partial-extension': null,
-    'scss/no-global-function-names': null,
-    'scss/operator-no-unspaced': null,
-    'scss/selector-no-redundant-nesting-selector': true,
-    'selector-class-pattern': [ "^([a-z\\][a-z\\0-9]*)(-[a-z\\0-9]+)*$", { message: 'Expected class selector to be kebab-case alike' } ],
+    // 'selector-class-pattern': [ "^([a-z\\][a-z\\0-9]*)(-[a-z\\0-9]+)*$", { message: 'Expected class selector to be kebab-case alike' } ],
+    'selector-class-pattern': null,
+    'selector-pseudo-element-colon-notation': null,
+    'selector-type-no-unknown': [ true, { "ignoreTypes": [ /b-.*/ ] }],
     'shorthand-property-no-redundant-values': null,
     'value-keyword-case': null,
   },
