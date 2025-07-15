@@ -417,8 +417,10 @@ public:
   virtual ProjectP last_project   () = 0;       ///< Retrieve the last created project.
   virtual ProjectP create_project (String projectname) = 0; ///< Create a new project (name is modified to be unique if necessary.
   // Browsing
-  ResourceCrawlerP dir_crawler    (const String &cwd = "");  ///< Create crawler to navigate directories.
-  ResourceCrawlerP url_crawler    (const String &url = "/"); ///< Create crawler to navigate URL contents.
+  /// Create crawler to navigate directories.
+  ResourceCrawlerP dir_crawler    (const String &cwd = "");
+  /// Create crawler to navigate URL contents.
+  ResourceCrawlerP url_crawler    (const String &url = "/");
 };
 #define ASE_SERVER      (::Ase::Server::instance())
 

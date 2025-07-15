@@ -22,9 +22,8 @@ const HTML = (t) => html`
       <button class="button-xl" autofocus @click=${e => t.close_button_click (e)}>Close</button>
     </div>
   </dialog>
-`;
-// FIXME: use close callback
-// FIXME: use <dialog />
+`; // FIXME: use close callback and use <dialog />
+
 /** # B-PREFERENCESDIALOG
  * A modal [dialog] to edit preferences.
  * ## Events:
@@ -132,7 +131,7 @@ class BPreferencesDialog extends LitComponent {
     }
     return result;
   }
-};
+}
 customElements.define ('b-preferencesdialog', BPreferencesDialog);
 
 

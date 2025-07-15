@@ -14,7 +14,27 @@ import '/gen/all-components.js';
 import * as Util from '../util.js';
 import * as Mouse from '../mouse.js';
 import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
-import { Signal, State, Computed, Watcher, tracking_wrapper } from "../signal.js";
+import { Signal, createSignal, State, Computed, Watcher, tracking_wrapper } from "../signal.js";
+
+function make_reactive (tmpl)
+{
+  const signals = {};
+  for (const key in tmpl)
+    Object.defineProperty (signals, key, { value: createSignal (tmpl[key]), enumerable: true, configurable: false, writable: true });
+  const handler = {
+    get (target, prop, receiver) {
+      const gs = Reflect.get (target, prop); // receiver
+      return Array.isArray (gs) ? gs[0]() : undefined;
+    },
+    set (target, prop, value, receiver) {
+      const gs = Reflect.get (target, prop); // receiver
+      Array.isArray (gs) && gs[1] (value);
+      return true; // success
+    }
+  };
+  return new Proxy (signals, handler);
+}
+window.make_reactive = make_reactive;
 
 // == App ==
 export class AppClass {
@@ -35,7 +55,8 @@ export class AppClass {
       };
       this.updated = tracking_wrapper (this.request_update, this.updated.bind (this));
     }
-    const data = {
+    Object.defineProperty (globalThis, 'App', { value: this });
+    let data = {
       project: null,
       mtrack: null, // master track
       panel3: 'i',
@@ -44,21 +65,18 @@ export class AppClass {
       current_track: undefined,
       show_preferences_dialog: false,
     };
-    this.data = Vue.reactive (data);
-    Object.defineProperty (globalThis, 'App', { value: this });
-    Object.defineProperty (globalThis, 'Data', { value: this.data });
+    Object.defineProperty (globalThis, 'Data', { value: make_reactive (data) });
     this.request_update();
   }
-  #project = new Signal.State (undefined);
-  get project ()  { return this.#project.get(); }
-  set project (p) { this.#project.set (this.data.project = p); }
-  get current_track () { return this.data.current_track; }
+  get project ()  { return Data.project; }
+  set project (p) { Data.project = p; }
+  get current_track () { return Data.current_track; }
   set current_track (t)
   {
-    if (this.data.current_track === t) return;
-    this.data.current_track = t;
+    if (Data.current_track === t) return;
+    Data.current_track = t;
     if (this.shell)
-      for (const tv of this.shell.$el.querySelectorAll ('b-trackview'))
+      for (const tv of this.shell.$el.querySelectorAll ('b-trackview')) // TODO: remove explicit notifies
 	tv.notify_current_track(); // see trackview.js
   }
   updated (changed_props)
