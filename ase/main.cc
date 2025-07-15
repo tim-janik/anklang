@@ -9,6 +9,7 @@
 #include "project.hh"
 #include "loft.hh"
 #include "compress.hh"
+#include "webui.hh"
 #include "internal.hh"
 #include "testing.hh"
 
@@ -40,9 +41,9 @@ MainAppImpl::MainAppImpl()
 {}
 
 MainLoopP          main_loop;
-static int         embedding_fd = -1;
 static bool        arg_js_api = false;
 static bool        arg_class_tree = false;
+static String      arg_ui_mode;
 static int         arg_unauth_port = 0;
 
 // == JobQueue ==
@@ -111,7 +112,6 @@ print_usage (bool help)
   printout ("  --check          Run integrity tests\n");
   printout ("  --class-tree     Print exported class tree\n");
   printout ("  --disable-randomization Test mode for deterministic tests\n");
-  printout ("  --embed <fd>     Parent process socket for embedding\n");
   printout ("  --fatal-warnings Abort on warnings and failing assertions\n");
   printout ("  --help           Print program usage and options\n");
   printout ("  --js-api         Print Javascript bindings\n");
@@ -124,6 +124,8 @@ print_usage (bool help)
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
   printout ("  --test[=test]    Run specific tests\n");
   printout ("  --unauth-dev=NUM Open an unauthenticated websocket port for testing\n");
+  printout ("  --ui <none|chromium|google-chrome|htmlgui>\n");
+  printout ("                   Open GUI in web browser [htmlgui]\n");
   printout ("  --version        Print program version\n");
   printout ("  -M mididriver    Force use of <mididriver>\n");
   printout ("  -P pcmdriver     Force use of <pcmdriver>\n");
@@ -196,6 +198,7 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
 
   config.norc = false;
   bool sep = false; // -- separator
+  std::string default_ui_mode = "htmlgui";
   const uint argc = *argcp;
   for (uint i = 1; i < argc; i++)
     {
@@ -219,12 +222,14 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
                 buffer[i] = prng.next();
               fwrite (buffer, sizeof (buffer[0]), N, stdout);
             }
+          exit (0);
         }
       else if (strcmp ("--check", argv[i]) == 0)
         {
           config.mode = MainApp::CHECK_INTEGRITY_TESTS;
           ase_fatal_warnings = assertion_failed_fatal = true;
           printerr ("CHECK_INTEGRITY_TESTS…\n");
+          default_ui_mode = "none";
         }
       else if (strcmp ("--list-tests", argv[i]) == 0)
         {
@@ -240,6 +245,7 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
           ase_fatal_warnings = assertion_failed_fatal = true;
           if (arg)
             check_test_names.push_back (arg);
+          default_ui_mode = "none";
         }
       else if (argv[i] == String ("--blake3") && i + 1 < size_t (argc))
         {
@@ -282,11 +288,6 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
           print_usage (false);
           exit (0);
         }
-      else if (argv[i] == String ("--embed") && i + 1 < size_t (argc))
-        {
-          argv[i++] = nullptr;
-          embedding_fd = string_to_int (argv[i]);
-        }
       else if (argv[i] == String ("-o") && i + 1 < size_t (argc))
         {
           argv[i++] = nullptr;
@@ -295,14 +296,23 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
       else if (argv[i] == String ("--play-autostart"))
         {
           config.play_autostart = true;
+          default_ui_mode = "none";
         }
       else if (parse_option_arg ("--unauth-dev", argv, &i, &optarg))
-        arg_unauth_port = string_to_int (optarg);
+        {
+          arg_unauth_port = string_to_int (optarg);
+          default_ui_mode = "wait";
+        }
       else if (argv[i] == String ("-t") && i + 1 < size_t (argc))
         {
           config.play_autostart = true;
           argv[i++] = nullptr;
           config.play_autostop = string_to_seconds (argv[i]);
+          default_ui_mode = "none";
+        }
+      else if (parse_option_arg ("--ui", argv, &i, &optarg))
+        {
+          arg_ui_mode = optarg;
         }
       else if (argv[i] == String ("--") && !sep)
         sep = true;
@@ -312,6 +322,8 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
         config.args.push_back (argv[i]);
       argv[i] = nullptr;
     }
+  if (arg_ui_mode.empty())
+    arg_ui_mode = default_ui_mode;
   if (*argcp > 1)
     {
       uint e = 1;
@@ -383,7 +395,7 @@ handle_autostop (const LoopState &state)
     case LoopState::CHECK:      return seen_autostop;
     case LoopState::DISPATCH:
       log ("Main: stopping playback (auto)");
-      atquit_run (0);
+      main_loop->quit (0);
       return true; // keep alive
     default: ;
     }
@@ -489,10 +501,12 @@ main (int argc, char *argv[])
 
   // SIGPIPE init: needs to be done before any child thread is created
   init_sigpipe();
+  if (setpgid (0, 0) < 0)
+    log ("Main: setpgid failed: %s", ::strerror (errno));
 
   // apply user locale
   if (!setlocale (LC_ALL, ""))
-    perror ("setlocale: locale not supported by libc");
+    fatal_error ("setlocale: locale not supported by libc: %s", ::strerror (errno));
 
   // parse args and config
   parse_args (&argc, argv, main_app);
@@ -602,31 +616,32 @@ main (int argc, char *argv[])
   wss->http_alias ("/Builtin/Controller", anklang_runpath (RPath::INSTALLDIR, "/Controller"));
   // wss->http_alias ("/User/Scripts", anklang_home_dir ("/Scripts"));
   wss->http_alias ("/Builtin/Scripts", anklang_runpath (RPath::INSTALLDIR,"/Scripts"));
-  const int xport = embedding_fd >= 0 ? 0 : (arg_unauth_port > 0 ? arg_unauth_port : 0);
+  const int xport = arg_unauth_port > 0 ? arg_unauth_port : 0;
   const String subprotocol = ""; // make_auth_string()
   jsonapi_set_subprotocol (subprotocol);
-  if (App.mode == MainApp::SYNTHENGINE) {
+  if (App.mode == MainApp::SYNTHENGINE && arg_ui_mode != "none") {
     const char *host = "127.0.0.1";
     wss->listen (host, xport, [] () { main_loop->quit (-1); });
-    if (xport)
-      log ("Main: WebUI port: %s", wss->url());
-    else {
-      const String redirecthtml = create_auth_redirect ("anklang", wss->listen_port(), auth_token);
+    std::string webui_url = wss->url();
+    if (!xport) {
+      String redirecthtml = webui_create_auth_redirect ("anklang", wss->listen_port(), auth_token, arg_ui_mode);
       if (errno)
-        perror_die (redirecthtml + ": failed to create html redirect file in $HOME");
-      wss->see_other ("file://" + redirecthtml);
-      log ("Main: WebUI redirect: file://%s", redirecthtml);
+        fatal_error ("%s: failed to create html redirect file in $HOME", redirecthtml);
+      webui_url = "file://" + redirecthtml;
+      wss->see_other (webui_url);
     }
+    log ("Main: WebUI address: %s", webui_url);
+    auto ereason = webui_start_browser (arg_ui_mode, main_loop, webui_url, [] () { main_loop->quit (0); });
+    if (ereason.error)
+      fatal_error ("Main: failed to run WebUI: %s: %s", ereason.what, ::strerror (ereason.error));
   }
-  const String url = wss->url() + (subprotocol.empty() ? "" : "?subprotocol=" + subprotocol);
-  if (embedding_fd < 0 && !url.empty())
-    printout ("%sLISTEN:%s %s\n", B1, B0, url);
 
   // run atquit handler on SIGHUP SIGINT
-  for (int sigid : { SIGHUP, SIGINT }) {
+  for (int sigid : { SIGHUP, SIGINT, SIGQUIT, SIGABRT, SIGTERM, SIGSYS }) {
     main_loop->exec_usignal (sigid, [] (int8 sig) {
       log ("Main: got signal %d: aborting", sig);
-      atquit_run (-1);
+      const pid_t pgid = getpgrp();
+      atquit_terminate (-1, pgid);
       return false;
     });
     USignalSource::install_sigaction (sigid);
@@ -639,30 +654,6 @@ main (int argc, char *argv[])
     return true;
   });
   USignalSource::install_sigaction (SIGUSR2);
-
-  // monitor and allow auth over keep-alive-fd
-  if (embedding_fd >= 0)
-    {
-      const uint ioid = main_loop->exec_io_handler ([wss] (PollFD &pfd) {
-        String msg (512, 0);
-        if (pfd.revents & PollFD::IN)
-          {
-            ssize_t n = read (embedding_fd, &msg[0], msg.size()); // flush input
-            msg.resize (n > 0 ? n : 0);
-            log ("Main: Embedder Msg: %s", msg);
-          }
-        if (string_strip (msg) == "QUIT" || (pfd.revents & (PollFD::ERR | PollFD::HUP | PollFD::NVAL)))
-          wss->shutdown();
-        return true;
-      }, embedding_fd, "rB");
-      (void) ioid;
-
-      const String jsonurl = "{ \"url\": \"" + url + "\" }";
-      ssize_t n;
-      do
-        n = write (embedding_fd, jsonurl.data(), jsonurl.size());
-      while (n < 0 && errno == EINTR);
-    }
 
   // start output capturing
   if (App.outputfile)
@@ -693,7 +684,7 @@ main (int argc, char *argv[])
   // run main event loop and catch SIGUSR2
   const int exitcode = main_loop->run();
   assert_return (main_loop, -1); // ptr must be kept around
-  log ("Main: event loop quit (code=%d)", exitcode);
+  log ("Main: event loop quit: code=%d", exitcode);
 
   // cleanup
   wss->shutdown(); // close socket, allow no more calls

@@ -39,6 +39,8 @@ class DispatcherSource;
 typedef std::shared_ptr<DispatcherSource> DispatcherSourceP;
 class USignalSource;
 typedef std::shared_ptr<USignalSource> USignalSourceP;
+class SigchldSource;
+typedef std::shared_ptr<SigchldSource> SigchldSourceP;
 class EventLoop;
 typedef std::shared_ptr<EventLoop> EventLoopP;
 class MainLoop;
@@ -82,6 +84,7 @@ public:
   typedef std::function<bool (PollFD&)>          BPfdSlot;
   typedef std::function<bool (const LoopState&)> DispatcherSlot;
   typedef std::function<bool (int8)>             USignalSlot;
+  typedef std::function<void (int,int)>          SigchldSlot;
   static const int16 PRIORITY_CEILING = 999; ///< Internal upper limit, don't use.
   static const int16 PRIORITY_NOW     = 900; ///< Most important, used for immediate async execution.
   static const int16 PRIORITY_ASCENT  = 800; ///< Threshold for priorization across different loops.
@@ -113,6 +116,8 @@ public:
                         = PRIORITY_NORMAL);     /// Execute a single dispatcher callback for prepare, check, dispatch.
   uint exec_usignal    (int8 signum, const USignalSlot &sl, int priority
                         = PRIORITY_NOW -1);     /// Execute a signal callback for prepare, check, dispatch.
+  uint exec_sigchld    (int64_t pid, const SigchldSlot &vfunc, int priority
+                        = PRIORITY_NORMAL);     /// Execute a callback once on SIGCHLD for `pid`.
   bool exec_once       (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priority
                         = PRIORITY_NORMAL);     ///< Execute a callback once, re-schedules the callback if `0 != *once_id`.
   /// Execute a callback after a specified timeout with adjustable initial timeout, returning true repeats callback.
@@ -231,7 +236,7 @@ class USignalSource : public virtual EventSource /// EventLoop source for handle
 {
   typedef EventLoop::USignalSlot USignalSlot;
   USignalSlot slot_;
-  int8           signum_ = 0, index_ = 0, shift_ = 0;
+  int8        signum_ = 0, index_ = 0, shift_ = 0;
   ASE_DEFINE_MAKE_SHARED (USignalSource);
 protected:
   virtual     ~USignalSource  ();
@@ -245,6 +250,26 @@ public:
   static USignalSourceP create (int8 signum, const USignalSlot &slot)
   { return make_shared (signum, slot); }
   static void install_sigaction (int8);
+};
+
+// === SigchldSource ===
+class SigchldSource : public virtual EventSource /// EventLoop source for handler execution.
+{
+  ASE_DEFINE_MAKE_SHARED (SigchldSource);
+  typedef EventLoop::SigchldSlot SigchldSlot;
+  SigchldSlot slot_;
+  uint64_t    sigchld_counter_ = 0;
+  int64_t     pid_ = 0;
+protected:
+  virtual     ~SigchldSource   ();
+  virtual bool prepare         (const LoopState &state, int64 *timeout_usecs_p);
+  virtual bool check           (const LoopState &state);
+  virtual bool dispatch        (const LoopState &state);
+  virtual void destroy         ();
+  explicit     SigchldSource   (int64_t pid, const SigchldSlot &slot);
+public:
+  static SigchldSourceP create (int64_t pid, const SigchldSlot &slot)
+  { return make_shared (pid, slot); }
 };
 
 // === TimedSource ===
@@ -342,6 +367,12 @@ inline uint
 EventLoop::exec_usignal (int8 signum, const USignalSlot &slot, int priority)
 {
   return add (USignalSource::create (signum, slot), priority);
+}
+
+inline uint
+EventLoop::exec_sigchld (int64_t pid, const SigchldSlot &slot, int priority)
+{
+  return add (SigchldSource::create (pid, slot), priority);
 }
 
 template<class BoolVoidFunctor> uint

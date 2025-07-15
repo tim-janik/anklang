@@ -5,6 +5,7 @@
 #include "internal.hh"
 #include "strings.hh"
 #include <sys/poll.h>
+#include <sys/wait.h>
 #include <errno.h>
 #include <atomic>
 #include <unistd.h>
@@ -1113,18 +1114,89 @@ USignalSource::install_sigaction (int8 signum)
 {
   struct sigaction action;
   action.sa_handler = [] (int signum) {
-    constexpr size_t N = 1024;
-    char buf[N] = __FILE__ ":";
-    strncat (buf, &write_uint (__LINE__)[0], N);
-    strncat (buf, ": sa_handler: signal=", N);
-    strncat (buf, &write_uint (signum)[0], N);
-    strncat (buf, "\n", N);
-    ::write (2, buf, strlen (buf));
+    if (0) { // DEBUG
+      constexpr size_t N = 1024;
+      char buf[N] = __FILE__ ":";
+      strncat (buf, &write_uint (__LINE__)[0], N);
+      strncat (buf, ": sa_handler: signal=", N);
+      strncat (buf, &write_uint (signum)[0], N);
+      strncat (buf, "\n", N);
+      ::write (2, buf, strlen (buf));
+    }
     USignalSource::raise (signum);
   };
   sigemptyset (&action.sa_mask);
   action.sa_flags = SA_NOMASK;
   sigaction (signum, &action, nullptr);
+}
+
+// === SigchldSource ===
+static std::atomic<uint64_t> sigchld_counter = 0;
+
+SigchldSource::SigchldSource (int64_t pid, const SigchldSlot &slot) :
+  slot_ (slot), pid_ (pid)
+{
+  if (uint64_t unused = 0; sigchld_counter.compare_exchange_strong (unused, 1)) {
+    struct sigaction action;
+    action.sa_handler = [] (int signum) {
+      sigchld_counter++;
+    };
+    sigemptyset (&action.sa_mask);
+    action.sa_flags = SA_NOMASK;
+    sigaction (SIGCHLD, &action, nullptr);
+  }
+}
+
+SigchldSource::~SigchldSource()
+{}
+
+bool
+SigchldSource::prepare (const LoopState &state, int64 *timeout_usecs_p)
+{
+  return pid_ && sigchld_counter_ != sigchld_counter;
+}
+
+bool
+SigchldSource::check (const LoopState &state)
+{
+  return pid_ && sigchld_counter_ != sigchld_counter;
+}
+
+bool
+SigchldSource::dispatch (const LoopState &state)
+{
+  if (pid_) {
+    sigchld_counter_ = sigchld_counter;
+    // Use pid_ to avoid reaping unknown children
+    int status = 0;
+    const pid_t child_pid = wait4 (pid_, &status, WNOHANG, nullptr);
+    if (child_pid > 0) {
+      slot_ (pid_, status);
+#if 0
+      struct rusage ru {}; // wait4 (..., &ru);
+      printf ("  Child Pid %d user time: %ld.%06ld sec\n", child_pid, ru.ru_utime.tv_sec, ru.ru_utime.tv_usec);
+      printf ("  System time: %ld.%06ld sec\n", ru.ru_stime.tv_sec, ru.ru_stime.tv_usec);
+      printf ("  Max RSS: %ld KB\n", ru.ru_maxrss);
+      printf ("  Page faults: %ld\n", ru.ru_minflt);
+      printf ("  I/O operations: %ld\n", ru.ru_inblock + ru.ru_oublock);
+      printf ("  Voluntary context switches: %ld\n", ru.ru_nvcsw);
+      printf ("  Involuntary context switches: %ld\n", ru.ru_nivcsw);
+      printf ("\n");
+#endif
+      if (WIFEXITED (status) || WIFSIGNALED (status)) {
+        // Child exited
+        pid_ = 0;
+        return false; // destroy
+      }
+    }
+  }
+  return true; // keep_alive
+}
+
+void
+SigchldSource::destroy ()
+{
+  pid_ = 0;
 }
 
 // == TimedSource ==

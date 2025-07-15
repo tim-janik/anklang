@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "engine.hh"
+#include "atquit.hh"
 #include "processor.hh"
 #include "utils.hh"
 #include "loop.hh"
