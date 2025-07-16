@@ -123,8 +123,7 @@ class BTrackList extends LitComponent {
   }
   list_dblclick (event)
   {
-    if (event.path[0] === this ||
-	event.path[0].classList.contains ('trackviews'))
+    if (event.target == this.trackviews)
       this.project.create_track();
   }
 }
