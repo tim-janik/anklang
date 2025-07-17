@@ -76,7 +76,7 @@ export class AppClass {
     if (Data.current_track === t) return;
     Data.current_track = t;
     if (this.shell)
-      for (const tv of this.shell.$el.querySelectorAll ('b-trackview')) // TODO: remove explicit notifies
+      for (const tv of this.shell.querySelectorAll ('b-trackview')) // TODO: remove explicit notifies
 	tv.notify_current_track(); // see trackview.js
   }
   updated (changed_props)

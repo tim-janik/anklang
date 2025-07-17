@@ -134,7 +134,7 @@ const HTML = (t, m, fs) => [ html`
     ${ref (h => t.piano_roll_ = h)} ?hidden=${Data.panel2 !== 'p'}></b-piano-roll>
 
   <!-- browser -->
-  <div class="b-shell-sidebar vflex -row28 -col1" style="width:10em">
+  <div class="b-shell-sidebar vflex -row28 -col1">
     Browser <br />
     <b-treebrowser .tree=${m.filetree} ?hidden=${Data.panel3 == 'b'}></b-treebrowser>
     <span ?hidden=${Data.panel3 == 'i'}><a href="">Info Panel</a></span>

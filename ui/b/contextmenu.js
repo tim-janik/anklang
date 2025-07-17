@@ -346,7 +346,7 @@ class BContextMenu extends LitComponent {
       return false;     				// duplicate popup request, only popup once per frame
     if (!popup_options)
       popup_options = { origin: null };
-    const origin = popup_options.origin === null ? null : popup_options.origin?.$el || popup_options.origin || event?.currentTarget;
+    const origin = popup_options.origin === null ? null : popup_options.origin || event?.currentTarget;
     if (origin instanceof Element && !Util.check_visibility (origin))
       return false;     				// cannot popup around hidden origin
     this.toggle_force_children (false);			// add [disabled] attribute to chldren
