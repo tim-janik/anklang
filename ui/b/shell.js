@@ -182,7 +182,19 @@ const DialogComponent = (props) => {
 
 // == JSX TEMPLATE ==
 const ShellTemplate = (props) => {
-  const { shell, m, fs, pianoRollRef } = props;
+  const { m, fs, pianoRollRef, aboutdialogRef, show_about_dialog_, setShowAboutDialog } = props;
+  
+  const show_about_dialog = (onof = undefined) => {
+    if (undefined === onof)
+      return show_about_dialog_();
+    onof = !!onof;
+    if (onof !== show_about_dialog_()) {
+      document.startViewTransition(async () => {
+        setShowAboutDialog(onof);
+        // In SolidJS, updates are automatic, no need for requestUpdate
+      });
+    }
+  };
   
   return (
     <>
@@ -229,7 +241,7 @@ const ShellTemplate = (props) => {
 
       {/* Modal Dialogs */}
       <b-aboutdialog 
-        ref={(el) => aboutdialog_ = el} 
+        ref={aboutdialogRef} 
         shown={show_about_dialog_()} 
         onClose={(ev) => show_about_dialog(0)}>
       </b-aboutdialog>
@@ -480,6 +492,41 @@ function BShell(input_m = {}) {
     // Setup user note hook
     m.usernotehook = Ase.server.on("usernote", usernote);
     
+    // Create shell API object for global access
+    const shellAPI = {
+      // Properties
+      get piano_roll() { return piano_roll_; },
+      get fs() { return fs(); },
+      m,
+      get note_cache() { return note_cache(); },
+      get piano_current_clip() { return piano_current_clip(); },
+      get piano_current_tick() { return piano_current_tick(); },
+      
+      // Methods
+      show_spinner,
+      hide_spinner,
+      show_about_dialog,
+      usernote,
+      f1_help,
+      sidebar_mouse,
+      select_file,
+      get_note_cache,
+      note_cache_notes,
+      old_cache_notes,
+      async_modal_dialog: function(dialog_setup) {
+        return async_modal_dialog.call(this, dialog_setup);
+      }
+    };
+    
+    // Make shell globally accessible
+    if (!window.Shell) {
+      Object.defineProperty(window, 'Shell', { 
+        value: shellAPI, 
+        enumerable: true, 
+        configurable: true 
+      });
+    }
+    
     // Cleanup function
     onCleanup(() => {
       Util.remove_hotkey('RawBackquote', switch_panel2);
@@ -503,66 +550,38 @@ function BShell(input_m = {}) {
     }
   });
   
-  // Create shell object with all public methods for global access
-  const shellInstance = {
-    // Properties
-    get piano_roll() { return piano_roll_; },
-    fs: fs(),
-    m,
-    note_cache: note_cache(),
-    piano_current_clip: piano_current_clip(),
-    piano_current_tick: piano_current_tick(),
-    
-    // Methods
-    show_spinner,
-    hide_spinner,
-    show_about_dialog,
-    usernote,
-    f1_help,
-    sidebar_mouse,
-    select_file,
-    get_note_cache,
-    note_cache_notes,
-    old_cache_notes,
-    async_modal_dialog: function(dialog_setup) {
-      return async_modal_dialog.call(this, dialog_setup);
-    }
-  };
-  
   return (
-    <div class="b-shell">
-      <ShellTemplate 
-        shell={shellInstance}
-        m={m}
-        fs={fs()}
-        pianoRollRef={(el) => piano_roll_ = el}
-      />
-    </div>
+    <ShellTemplate 
+      m={m}
+      fs={fs()}
+      pianoRollRef={(el) => piano_roll_ = el}
+      aboutdialogRef={(el) => aboutdialog_ = el}
+      show_about_dialog_={show_about_dialog_}
+      setShowAboutDialog={setShowAboutDialog}
+    />
   );
 }
 // Custom element registration for SolidJS component
 customElements.define('b-shell', class extends HTMLElement {
   constructor() {
     super();
-    this.shellInstance = null;
+    this.dispose = null;
   }
   
   connectedCallback() {
     // Create a SolidJS root and render the component
     this.classList.add("b-shell");
-    this.shellInstance = render(() => BShell(), this);
-    // Make shell globally accessible
-    if (!window.Shell) {
-      Object.defineProperty(window, 'Shell', { 
-        value: this.shellInstance, 
-        enumerable: true, 
-        configurable: true 
-      });
-    }
+    
+    // Render the shell component
+    this.dispose = render(() => BShell(), this);
   }
   
   disconnectedCallback() {
-    // Cleanup is handled by SolidJS onCleanup
+    // Cleanup SolidJS component
+    if (this.dispose) {
+      this.dispose();
+      this.dispose = null;
+    }
   }
 });
 
