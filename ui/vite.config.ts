@@ -11,7 +11,7 @@
 import process from "node:process";
 import path from "node:path";
 import fs from 'node:fs';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, PluginOption } from 'vite';
 import solidPlugin from "vite-plugin-solid";
 import tailwindcss from "@tailwindcss/vite";
 import extra_css from './extra-css.ts';
@@ -38,6 +38,19 @@ const html_inject_vite_config = (__DEV__: Boolean) => {
   }
 };
 const build_config_json = JSON.parse (fs.readFileSync (path.resolve (__dirname, BUILDDIR + "/version.json")), 'utf8');
+
+// Plugin to force full reloads if anything changed
+const full_reload_always: PluginOption = {
+  name: 'full-reload-always',
+  handleHotUpdate ({ server }) {
+    server.ws.send ({ type: "full-reload" });
+    return [];
+  },
+} as PluginOption;
+const maybe_full_reload_always = [];
+// force full reloads
+if (false)
+  maybe_full_reload_always.push (full_reload_always);
 
 // Try to improve CSS error messages for Extra_css``
 function postcss_formatter (input)
@@ -102,6 +115,7 @@ function vite_config ({ mode })
       extra_css(),
       solidPlugin(),
       html_inject_vite_config (__DEV__),
+      ...maybe_full_reload_always,
     ],
   });
 }
