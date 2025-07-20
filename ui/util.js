@@ -1629,7 +1629,7 @@ export function find_element_from_point (root, x, y, predicate, visited = new Se
 
 /** Show a notification popup, with adequate default timeout */
 export function create_note (text, timeout = undefined) {
-  return App.shell.create_note (text, timeout);
+  return Shell.create_note (text, timeout);
 }
 
 /** Assign `map[key] = cleaner`, while awaiting and calling any previously existing cleanup function */

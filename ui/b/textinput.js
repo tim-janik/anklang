@@ -112,7 +112,7 @@ class BTextInput extends LitComponent {
       cwd:    "~MUSIC",
       // TODO: filter by extensions
     };
-    const filename = await App.shell.select_file (opt);
+    const filename = await Shell.select_file (opt);
     if (!filename)
       return;
     this.prop.value = filename;

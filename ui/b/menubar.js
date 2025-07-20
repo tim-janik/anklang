@@ -266,7 +266,7 @@ async function open_file() {
 	       { name: 'Audio Files', extensions: [ 'anklang', 'mid', 'wav', 'mp3', 'ogg' ] },
 	       { name: 'All Files', extensions: [ '*' ] }, ],
   };
-  const filename = await App.shell.select_file (opt);
+  const filename = await Shell.select_file (opt);
   if (!filename)
     return;
   open_file_last_dir = dirname (filename);
@@ -289,7 +289,7 @@ async function save_project (asnew = false) {
   let filename = await Data.project.saved_filename();
   let replace = asnew ? 0 : !!filename;
   if (asnew || !filename)
-    filename = await App.shell.select_file (opt);
+    filename = await Shell.select_file (opt);
   if (!filename)
     return false;
   save_project_last_dir = dirname (filename);
@@ -317,7 +317,7 @@ async function save_project (asnew = false) {
     msg += 'Failed to save project:\n\n';
     msg += '`' + displayfs (filename) + ": " + await errblurb + '`';
   }
-  App.show_notice (msg);
+  Shell.show_notice (msg);
   return err === Ase.Error.NONE;
 }
 let save_project_last_dir = "~MUSIC";
