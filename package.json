@@ -57,7 +57,7 @@
     "tailwindcss-children": "^2.1.0",
     "terser": "^5.43.1",
     "typescript": "^5.8.3",
-    "vite": "^7.0.3",
+    "vite": "^7.0.6",
     "vite-plugin-solid": "^2.11.7",
     "zcam-js": "^0.0.9"
   }
