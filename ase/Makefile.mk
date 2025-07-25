@@ -201,6 +201,26 @@ $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgd
 	$(lib/gtk2wrap.so)		\
   ))
 
+# == install ==
+ase/install: $(lib/AnklangSynthEngine)
+	@$(QECHO) INSTALL '$(DESTDIR)$(bindir)/anklang'
+	$Q rm -f '$(DESTDIR)$(pkgdir)/bin/anklang'
+	$Q rm -f '$(DESTDIR)$(bindir)/anklang' && mkdir -p '$(DESTDIR)$(bindir)' \
+	&& ln -s -r '$(DESTDIR)$(pkgdir)/bin/anklang' '$(DESTDIR)$(bindir)/anklang'
+	$Q mkdir -p '$(DESTDIR)$(pkgdir)/bin' \
+	&& ln -s '../lib/AnklangSynthEngine' '$(DESTDIR)$(pkgdir)/bin/anklang'
+install: ase/install
+.PHONY: ase/install
+
+# == uninstall ==
+ase/uninstall:
+	@$(QECHO) REMOVE '$(DESTDIR)$(bindir)/anklang'
+	$Q rm -f '$(DESTDIR)$(pkgdir)/bin/anklang'
+	$Q $(RMDIR_P) '$(DESTDIR)$(pkgdir)/bin' || true
+	$Q rm -f '$(DESTDIR)$(bindir)/anklang'
+.PHONY: ase/uninstall
+uninstall: ase/uninstall
+
 # == ase/lint ==
 ase/lint:
 	$(QGEN)
