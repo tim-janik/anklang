@@ -51,7 +51,7 @@ LD_LIBRARY_PATH=$APPIMAGEPKGDIR/lib \
   DISABLE_COPYRIGHT_FILES_DEPLOYMENT=1 \
   $APPTOOLS/linuxdeploy-x86_64.AppImage -v1 --appimage-extract-and-run \
   --appdir=$APPBASE \
-  --deploy-deps-only $APPIMAGEPKGDIR/bin/anklang \
+  --deploy-deps-only $APPIMAGEPKGDIR/electron/htmlgui \
   --deploy-deps-only $APPIMAGEPKGDIR/lib/AnklangSynthEngine \
   --deploy-deps-only $APPIMAGEPKGDIR/lib/gtk2wrap.so \
   --deploy-deps-only $APPIMAGEPKGDIR/lib/jackdriver.so \
@@ -65,7 +65,7 @@ LD_LIBRARY_PATH=$APPIMAGEPKGDIR/lib \
 # skip jackdriver.so, it is loaded only if the target system has all dependencies
 
 # Provide /usr/bin/anklang entry
-ln -v -s -r $APPIMAGEPKGDIR/bin/anklang $APPBASE/usr/bin/
+ln -v -s -r $APPIMAGEPKGDIR/lib/AnklangSynthEngine $APPBASE/usr/bin/anklang
 test -x $APPBASE/usr/bin/anklang || die "$APPBASE/usr/bin/anklang: file is not executable"
 
 # Create AppImage executable
