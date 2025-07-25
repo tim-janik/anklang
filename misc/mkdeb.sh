@@ -10,9 +10,11 @@ BUILDDIR="${BUILDDIR:-out}"
 DROOT=$BUILDDIR/mkdeb/
 DEBIAN=$DROOT/DEBIAN
 PKGDIR=$(source out/config.sh && echo "$pkgdir")
+PKGDIR=opt/${PKGDIR##*/}
 PKGDOCDIR=$DROOT/$PKGDIR/doc
 ANKLANGSYNTHENGINE=$PKGDIR/lib/AnklangSynthEngine
 MAKE="make -w V=${V:-}"
+SHAREDIR=/usr/share
 
 # config for /opt/:
 : $MAKE default prefix=/opt pkgprefix=/opt sharedir=/usr/share bindir=/usr/bin
@@ -25,12 +27,10 @@ umask 022
 
 # install into $DROOT
 rm -f -r "$DROOT"
-$MAKE install "DESTDIR=$DROOT"
-ls "$DROOT"/$PKGDIR >/dev/null # check dir
-
-# find prefix dir for MIME and .desktop files
-PREFIXDIR=/$(realpath --relative-to="$DROOT" "$DROOT"/$PKGDIR/../../)
-ls "$DROOT"$PREFIXDIR >/dev/null # check dir
+$MAKE install "DESTDIR=$DROOT" \
+      prefix=/opt pkgprefix=/opt sharedir=$SHAREDIR bindir=/usr/bin
+echo "PKGDIR=$PKGDIR"
+ls -d "$DROOT"/$PKGDIR # check dir
 
 # Meta info
 NAME="anklang"
@@ -40,13 +40,13 @@ DUSIZE=$(cd $DROOT && du -k -s .)
 ARCH=$(dpkg --print-architecture)
 
 # Dependencies
-D="libc6 (>= 2.31)"
-D="$D, libstdc++6:amd64 (>= 10.2.0)"
+D="libc6 (>= 2.39)"
+D="$D, libstdc++6:amd64 (>= 13.3.0)"
 D="$D, zlib1g, libzstd1:amd64, python3"
-D="$D, libasound2, libflac8 (>= 1.3.3), libmpg123-0"
+D="$D, libasound2, libflac12t64 (>= 1.4.0), libmpg123-0"
 D="$D, libogg0, libvorbis0a, libvorbisenc2, libvorbisfile3 (>= 1.3.5)"
-D="$D, libglib2.0-0 (>= 2.64.6), libgtk2.0-0 (>= 2.24.32)"
-D="$D, libgtk-3-0 (>= 3.24.18), libnss3 (>= 2:3.49)"
+D="$D, libglib2.0-0 (>= 2.72.4), libgtk2.0-0 (>= 2.24.33)"
+D="$D, libgtk-3-0 (>= 3.24.33), libnss3 (>= 2:3.87.1)"
 # libfluidsynth2 (>= 2.1.1)
 
 # DEBIAN/
@@ -114,14 +114,14 @@ if [ "$1" = configure ] ; then
    # https://www.debian.org/doc/debian-policy/ch-sharedlibs.html#s-ldconfig
    #ldconfig
    which update-mime-database >/dev/null 2>&1 &&
-	update-mime-database @PREFIXDIR@/share/mime/
+	update-mime-database @SHAREDIR@/mime/
    which update-desktop-database >/dev/null 2>&1 &&
-	update-desktop-database @PREFIXDIR@/share/applications/
+	update-desktop-database @SHAREDIR@/applications/
 fi
 
 exit 0
 __EOF
-sed "s|@ANKLANGSYNTHENGINE@|$ANKLANGSYNTHENGINE|g; s|@PREFIXDIR@|$PREFIXDIR|g" > $DEBIAN/postinst
+sed "s|@ANKLANGSYNTHENGINE@|$ANKLANGSYNTHENGINE|g; s|@SHAREDIR@|$SHAREDIR|g" > $DEBIAN/postinst
 chmod +x $DEBIAN/postinst
 
 # DEBIAN/postrm
@@ -130,11 +130,11 @@ cat <<\__EOF |
 #!/usr/bin/env bash
 set -e -o pipefail
 which update-mime-database >/dev/null 2>&1 && {
-	mkdir -p @PREFIXDIR@/share/mime/packages  # required by update-mime-database
-	update-mime-database @PREFIXDIR@/share/mime/
+	mkdir -p @SHAREDIR@/mime/packages  # required by update-mime-database
+	update-mime-database @SHAREDIR@/mime/
 }
 __EOF
-sed "s|@ANKLANGSYNTHENGINE@|$ANKLANGSYNTHENGINE|g; s|@PREFIXDIR@|$PREFIXDIR|g" > $DEBIAN/postrm
+sed "s|@ANKLANGSYNTHENGINE@|$ANKLANGSYNTHENGINE|g; s|@SHAREDIR@|$SHAREDIR|g" > $DEBIAN/postrm
 chmod +x $DEBIAN/postrm
 
 # https://wiki.debian.org/ReleaseGoals/LAFileRemoval
@@ -144,6 +144,7 @@ find $DEBIAN/../ -name '*.la' -delete
 find $DEBIAN/../ -name '*.py[co]' -delete
 
 # create binary deb
-fakeroot dpkg-deb -Zzstd -z9 -b $DROOT assets/
-ls -al assets/$NAME''_$VERSION''_$ARCH.deb
-# lintian -i --no-tag-display-limit assets/$NAME''_$VERSION''_$ARCH.deb
+mkdir -p artifacts/
+fakeroot dpkg-deb -Zzstd -z9 -b $DROOT artifacts/
+ls -al artifacts/$NAME''_$VERSION''_$ARCH.deb
+# lintian -i --no-tag-display-limit artifacts/$NAME''_$VERSION''_$ARCH.deb
