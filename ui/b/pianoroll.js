@@ -192,8 +192,7 @@ class BPianoRoll extends LitComponent {
   disconnectedCallback()
   {
     super.disconnectedCallback();
-    Shell.piano_current_tick = null;
-    Shell.piano_current_clip = null;
+    Shell.piano_current (null, null);
     if (this.notes_canvas_pointermove_zmovedel)
       {
 	this.notes_canvas_pointermove_zmovedel();
@@ -225,8 +224,7 @@ class BPianoRoll extends LitComponent {
 	  this.indicator_bar.style.transform = "translateX(-9999px)";
       }
     // indicator_bar setup
-    Shell.piano_current_tick = this.piano_current_tick.bind (this);
-    Shell.piano_current_clip = this.clip;
+    Shell.piano_current (this.clip, this.piano_current_tick.bind (this));
     // trigger layout, track layout deps from updated()
     this.piano_layout_();
     if (this.vscroll_must_center && this.vscrollbar.clientHeight)

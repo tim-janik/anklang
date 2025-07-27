@@ -299,6 +299,7 @@ export class PianoCtrl {
     if (event.target == piano_roll.notes_canvas) {
       const tick = layout.tick_from_x (event.offsetX);
       const midinote = layout.midinote_from_y (event.offsetY);
+      // FIXME: there is no piano_roll.note_cache
       const idx = find_note (piano_roll.note_cache.notes,
 			     n => tick >= n.tick && tick < n.tick + n.duration && n.key == midinote);
       piano_roll.notes_canvas.setAttribute ('data-notehover', idx >= 0);

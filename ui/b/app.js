@@ -10,17 +10,25 @@
  * notifications for pointer movements, including 0-distance moves after significant UI changes.
  */
 
+import { render } from 'solid-js/web';
+import { ShellTemplate } from './shell';
+
 import '/gen/all-components.js';
 import * as Util from '../util.js';
 import * as Mouse from '../mouse.js';
 import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
 import { Signal, createSignal, State, Computed, Watcher, tracking_wrapper } from "../signal.js";
 
+/// Create a new reactive proxy with Solid.js signals from the fields in `tmpl`
 function make_reactive (tmpl)
 {
   const signals = {};
-  for (const key in tmpl)
-    Object.defineProperty (signals, key, { value: createSignal (tmpl[key]), enumerable: true, configurable: false, writable: true });
+  for (const key in tmpl) {
+    const options = {}, value = tmpl[key];
+    if (Array.isArray (value))
+      options.equals = false; // always re-render on Array reassignment
+    Object.defineProperty (signals, key, { value: createSignal (value, options), enumerable: true, configurable: false, writable: true });
+  }
   const handler = {
     get (target, prop, receiver) {
       const gs = Reflect.get (target, prop); // receiver
@@ -28,7 +36,7 @@ function make_reactive (tmpl)
     },
     set (target, prop, value, receiver) {
       const gs = Reflect.get (target, prop); // receiver
-      Array.isArray (gs) && gs[1] (value);
+      Array.isArray (gs) && gs[1] (() => value);
       return true; // success
     }
   };
@@ -86,13 +94,11 @@ export class AppClass {
   }
   mount (id)
   {
-    console.assert (!this.shell);
-    document.getElementById (id).innerHTML = '';
-    this.shell = document.createElement ('b-shell');
-    if (!this.shell)
-      throw Error (`failed to mount App at: ${id}`);
-    document.getElementById (id).appendChild (this.shell);
-    Object.defineProperty (globalThis, 'Shell', { value: this.shell });
+    console.assert (!globalThis.Shell);
+    const shell_parent = document.getElementById (id);
+    shell_parent.innerHTML = '';
+    const solid_render_dispose = render (() => ShellTemplate ({}), shell_parent);
+    console.assert (globalThis.Shell);
   }
   shell_unmounted() {
   }
@@ -122,7 +128,7 @@ export class AppClass {
       let msg = '# File IO Error\n  \n  \n';
       msg += 'Failed to load project:\n\n';
       msg += '`' + displayfs (project_or_path) + ": " + await errblurb + '`';
-      App.show_notice (msg);
+      Shell.show_notice (msg);
     }
     return err;
   }
@@ -190,13 +196,6 @@ export class AppClass {
       emblem,
     };
     return this.shell.async_modal_dialog (dialog_setup);
-  }
-  /** Show a notification notice, with adequate default timeout */
-  show_notice (text, timeout = undefined) {
-     /**@type{any}*/
-    const b_noticeboard = document.body.querySelector ('b-noticeboard');
-    console.assert (b_noticeboard);
-    b_noticeboard.create_note (text, timeout);
   }
   zmoves_add = Mouse.zmove_add;
   zmove = Mouse.zmove_trigger;

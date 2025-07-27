@@ -306,7 +306,7 @@ check: tscheck
 tscheck.files := $(filter-out ui/% x11test/%, $(filter %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(LS_TREE_LST)))
 $>/.tscheck.done: $(tscheck.files)	| node_modules/.npm.done
 	$(QGEN)
-	$Q node_modules/.bin/tsc --noEmit --allowJs --moduleResolution bundler -m esnext --erasableSyntaxOnly $(tscheck.files)
+	$Q node_modules/.bin/tsc --noEmit --allowJs --moduleResolution bundler -m esnext --target esnext --erasableSyntaxOnly $(tscheck.files)
 $>/.tscheck.done: $(if $(filter check tscheck,$(MAKECMDGOALS)), FORCE) # force on 'make tscheck'
 tscheck: $>/.tscheck.done FORCE
 

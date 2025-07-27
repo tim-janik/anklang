@@ -124,9 +124,9 @@ export class BClipList extends LitComponent {
 	this.indicator_bar.style.transform = "translateX(" + u + "px)";
 	this.last_pos = u;
       }
-    if (Shell.piano_current_tick &&
-	Shell.piano_current_clip == this.wtrack.launcher_clips[current])
-      Shell.piano_current_tick (this.wtrack.launcher_clips[current], tick);
+    const [clip, tickfn] = Shell.piano_current();
+    if (tickfn && clip == this.wtrack.launcher_clips[current])
+      tickfn (this.wtrack.launcher_clips[current], tick);
   }
 }
 customElements.define ('b-cliplist', BClipList);
