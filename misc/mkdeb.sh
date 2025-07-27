@@ -148,3 +148,10 @@ mkdir -p artifacts/
 fakeroot dpkg-deb -Zzstd -z9 -b $DROOT artifacts/
 ls -al artifacts/$NAME''_$VERSION''_$ARCH.deb
 # lintian -i --no-tag-display-limit artifacts/$NAME''_$VERSION''_$ARCH.deb
+
+# create RPM from deb
+echo "$0: alien: converting $NAME""_$VERSION""_$ARCH.deb to RPM"
+(cd artifacts/ && fakeroot alien -v --scripts -r $NAME''_$VERSION''_$ARCH.deb)
+
+# show result
+ls -al artifacts/$NAME*$VERSION*.deb artifacts/$NAME*$VERSION*.rpm
