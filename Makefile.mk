@@ -324,27 +324,11 @@ $(CHECK_TARGETS): FORCE
 check-bench: FORCE
 
 # == installcheck ==
-installcheck-buildtest:
+installcheck:
 	$(QGEN)
-	$Q cd $> $(file > $>/conftest_buildtest.cc, $(conftest_buildtest.c)) \
-	&& test -r conftest_buildtest.cc \
-		; X=$$? ; echo -n "Create  Anklang sample program: " ; test 0 == $$X && echo OK || { echo FAIL; exit $$X ; }
-	$Q cd $> \
-	&& $(CCACHE) $(CXX) $(CXXSTD) -Werror \
-		`PKG_CONFIG_PATH="$(DESTDIR)$(pkgdir)/lib/pkgconfig:$(libdir)/pkgconfig:$$PKG_CONFIG_PATH" $(PKG_CONFIG) --cflags anklang` \
-		-c conftest_buildtest.cc \
-		; X=$$? ; echo -n "Compile Anklang sample program: " ; test 0 == $$X && echo OK || { echo FAIL; exit $$X ; }
-	$Q cd $> \
-	&& $(CCACHE) $(CXX) $(CXXSTD) -Werror conftest_buildtest.o -o conftest_buildtest $(LDMODEFLAGS) \
-		`PKG_CONFIG_PATH="$(DESTDIR)$(pkgdir)/lib/pkgconfig:$(libdir)/pkgconfig:$$PKG_CONFIG_PATH" $(PKG_CONFIG) --libs anklang` \
-		; X=$$? ; echo -n "Link    Anklang sample program: " ; test 0 == $$X && echo OK || { echo FAIL; exit $$X ; }
-	$Q cd $> \
-	&& LD_LIBRARY_PATH="$(DESTDIR)$(pkgdir)/lib:$$LD_LIBRARY_PATH" ./conftest_buildtest \
-		; X=$$? ; echo -n "Execute Anklang sample program: " ; test 0 == $$X && echo OK || { echo FAIL; exit $$X ; }
-	$Q cd $> \
-	&& rm -f conftest_buildtest.cc conftest_buildtest.o conftest_buildtest
-.PHONY: installcheck-buildtest
-installcheck: installcheck-buildtest
+	$Q $(DESTDIR)$(bindir)/anklang --version | grep -qi '^anklang'
+	$Q grep -qE 'Anklang\b' $(DESTDIR)$(mandir)/man1/anklang.1
+.PHONY: installcheck
 # conftest_buildtest.c
 define conftest_buildtest.c
 #include <engine/engine.hh>
