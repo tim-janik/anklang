@@ -33,6 +33,17 @@ external/minizip-ng/.sha-$(minizip-ng/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/minizip-ng/.sha-$(minizip-ng/sha) # external/minizip-ng/mz_zip.h
 
+# == external/pandaresampler/ ==
+pandaresampler/sha := cda9d81463b1b30e3c835bc2725d20685236b30081423e286262e7937318a565
+external/pandaresampler/.sha-$(pandaresampler/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/pandaresampler.tar.gz, $(pandaresampler/sha), \
+		https://github.com/swesterfeld/pandaresampler/archive/0.2.1/develop.tar.gz)
+	$Q rm -rf external/pandaresampler && mkdir external/pandaresampler
+	$Q tar xf external/pandaresampler.tar.gz --strip-components=1 -C external/pandaresampler/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/pandaresampler/.sha-$(pandaresampler/sha)
+
 # == external/rapidjson/ ==
 rapidjson/sha := 2b521dba5c22eaae6e6e7d4d304cb317e2cf8c687c70046b02792c02f78c127e
 external/rapidjson/.sha-$(rapidjson/sha):
