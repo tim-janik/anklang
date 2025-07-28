@@ -1,5 +1,6 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+EXTERNAL_BLOBS4ANKLANG_STAMPS :=
 EXTERNAL_CXX_STAMPS :=
 
 # == fetch-and-check ==
@@ -21,6 +22,17 @@ external/blake3/.sha-$(blake3/sha):
 	$Q tar xf external/blake3.tar.gz --strip-components=1 -C external/blake3/
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/blake3/.sha-$(blake3/sha)
+
+# == external/blobs4anklang/ ==
+blobs4anklang/sha := 855de5461002326a47ecf85b51e3a7102e3a90e523a4424f5c8e13660c3eee09
+external/blobs4anklang/.sha-$(blobs4anklang/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/blobs4anklang.tar.gz, $(blobs4anklang/sha), \
+		https://github.com/tim-janik/blobs4anklang/archive/7b0a4a68a1e9efbe68fc9761bef080995f4b4d6b/develop.tar.gz)
+	$Q rm -rf external/blobs4anklang && mkdir external/blobs4anklang
+	$Q tar xf external/blobs4anklang.tar.gz --strip-components=1 -C external/blobs4anklang/
+	$Q touch $@
+EXTERNAL_BLOBS4ANKLANG_STAMPS += external/blobs4anklang/.sha-$(blobs4anklang/sha)
 
 # == external/clap/ ==
 clap/sha := eef67a38df6c20fd4cb79698772d35d30aefc2e1a8d5275a5169f58cd530333e
