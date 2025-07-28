@@ -81,7 +81,7 @@ $>/ase/blake3impl.c:		| $>/ase/
 $>/ase/blake3avx512.c $>/ase/blake3avx2.c $>/ase/blake3sse41.c $>/ase/blake3sse2.c: $>/ase/blake3impl.c
 
 # == libsndfile ==
-$>/lib/libsndfile.so: external/libsndfile/include/sndfile.hh		| $>/lib/ .submodule-stamp
+$>/lib/libsndfile.so: $(EXTERNAL_CXX_STAMPS)
 	$(QGEN)
 	$Q cmake \
 		-B $>/sndfile/ -S external/libsndfile/ -DCMAKE_BUILD_TYPE=MINSIZEREL \
@@ -121,7 +121,7 @@ $(ase/buildversion.cc):								| $>/ase/ # $(GITCOMMITDEPS)
 ase/generated.sources += $(ase/buildversion.cc)
 
 # == object deps ==
-ase/object.deps      = $(ase/sysconfig.dep) $(ase/libase.deps)
+ase/object.deps      = $(ase/sysconfig.dep) $(ase/libase.deps) $(EXTERNAL_CXX_STAMPS)
 ase/common.objects ::= $(sort \
 	$(call BUILDDIR_O, $(ase/common.sources)) \
 	$(call SOURCE2_O, $(ase/generated.sources))   \
