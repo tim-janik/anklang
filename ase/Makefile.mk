@@ -150,18 +150,6 @@ $(call BUILD_PROGRAM, \
 	../lib)
 ALL_TARGETS += $(lib/AnklangSynthEngine)
 
-# == AnklangSynthEngine-fma ==
-$(lib/AnklangSynthEngine)-fma:
-	$(QGEN)
-	$Q $(MAKE) INSN=fma builddir=$>/fma $>/fma/lib/AnklangSynthEngine
-	$Q $(CP) -v $>/fma/lib/AnklangSynthEngine.map $@.map
-	$Q $(CP) -v $>/fma/lib/AnklangSynthEngine $@
-ifeq ($(MODE)+$(INSN),production+sse)
-  # Iff MODE=production and INSN=sse (i.e. release builds),
-  # also build an FMA variant of the sound engine.
-  ALL_TARGETS += $(lib/AnklangSynthEngine)-fma
-endif
-
 # == jackdriver.so ==
 lib/jackdriver.so	     ::= $>/lib/jackdriver.so
 ase/jackdriver.objects	     ::= $(call BUILDDIR_O, $(ase/jackdriver.sources))
@@ -196,7 +184,6 @@ $(ALL_TARGETS) += $(lib/gtk2wrap.so)
 # == install binaries ==
 $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
 	$(lib/AnklangSynthEngine)	\
-	$(lib/AnklangSynthEngine)-fma	\
 	$(lib/jackdriver.so.MAYBE)	\
 	$(lib/gtk2wrap.so)		\
   ))

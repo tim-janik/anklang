@@ -19,7 +19,7 @@ jobs:
     - run: git describe --always --long
     - name: 'Configure build presets'
       run: |
-        echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
+        echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n INSN=fma ' > config-defaults.mk
     - name: 'Build Dist Assets'
       run: |
         make mkassets

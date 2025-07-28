@@ -184,6 +184,7 @@ help: FORCE
 	@echo '  make O=DIR      - Create all output files in DIR, see also config-defaults.mk'
 	@echo '                    for related variables like CXXFLAGS'
 	@echo '  make DESTDIR=/  - Absolute path prepended to all install/uninstall locations'
+	@echo '  make INSN=...   - Optimize instructions: sse (ca 2008), fma (ca 2015), [native]'
 	@echo "  make MODE=...   - Run 'quick' build or make 'production' mode binaries."
 	@echo '                    Other modes: debug, devel, asan, lsan, tsan, ubsan'
 
