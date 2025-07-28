@@ -1,6 +1,3 @@
 [submodule "blobs4anklang"]
 	path = external/blobs4anklang
 	url = https://github.com/tim-janik/blobs4anklang.git
-[submodule "clap"]
-	path = external/clap
-	url = https://github.com/free-audio/clap.git

@@ -22,6 +22,17 @@ external/blake3/.sha-$(blake3/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/blake3/.sha-$(blake3/sha)
 
+# == external/clap/ ==
+clap/sha := eef67a38df6c20fd4cb79698772d35d30aefc2e1a8d5275a5169f58cd530333e
+external/clap/.sha-$(clap/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/clap.tar.gz, $(clap/sha), \
+		https://github.com/free-audio/clap/archive/1.1.1/develop.tar.gz)
+	$Q rm -rf external/clap && mkdir external/clap
+	$Q tar xf external/clap.tar.gz --strip-components=1 -C external/clap/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/clap/.sha-$(clap/sha)
+
 # == external/libsndfile/ ==
 libsndfile/sha := 1227bc78df8eece089e6b984ba7c32e74e210f146d2bac1b76bd218baaf35ce5
 external/libsndfile/.sha-$(libsndfile/sha):
