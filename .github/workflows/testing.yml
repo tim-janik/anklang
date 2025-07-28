@@ -12,7 +12,7 @@ jobs:
 
   ReleaseArtifacts:
     runs-on: ubuntu-latest
-    container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest', options: --user runner }
+    container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
     steps:
     - { uses: actions/checkout@v4, with: { fetch-depth: 0 } }
     - run: git fetch -f --tags	# Fix actions/checkout#290
@@ -50,7 +50,7 @@ jobs:
   NobleClangTidy:
     if: ${{ ! contains(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
-    container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest', options: --user runner }
+    container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
     steps:
     - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive, github-server-url: 'https://github.com' } }
     - run: git fetch -f --tags          # Fix actions/checkout#290
