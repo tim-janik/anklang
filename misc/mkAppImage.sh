@@ -53,7 +53,6 @@ LD_LIBRARY_PATH=$APPIMAGEPKGDIR/lib \
   --appdir=$APPBASE \
   --deploy-deps-only $APPIMAGEPKGDIR/bin/anklang \
   --deploy-deps-only $APPIMAGEPKGDIR/lib/AnklangSynthEngine \
-  --deploy-deps-only $APPIMAGEPKGDIR/lib/AnklangSynthEngine-fma \
   --deploy-deps-only $APPIMAGEPKGDIR/lib/gtk2wrap.so \
   --deploy-deps-only $APPIMAGEPKGDIR/lib/jackdriver.so \
   -i $APPIMAGEPKGDIR/ui/anklang.png \
@@ -71,15 +70,15 @@ test -x $APPBASE/usr/bin/anklang || die "$APPBASE/usr/bin/anklang: file is not e
 
 # Create AppImage executable
 echo '  BUILD   ' appimage-runtime...
-mkdir -p assets/
+mkdir -p artifacts/
 mksquashfs $APPBASE $BUILDDIR/Anklang-x86_64.sqfs \
 	   -root-owned -noappend -mkfs-time 0 \
 	   -no-exports -no-recovery -noI \
 	   -always-use-fragments -b 1048576 \
 	   -comp zstd -Xcompression-level 22
-cat $APPTOOLS/appimage-runtime-zstd $BUILDDIR/Anklang-x86_64.sqfs > assets/anklang-$VERSION-x64.AppImage
-chmod +x assets/anklang-$VERSION-x64.AppImage
+cat $APPTOOLS/appimage-runtime-zstd $BUILDDIR/Anklang-x86_64.sqfs > artifacts/anklang-$VERSION-x64.AppImage
+chmod +x artifacts/anklang-$VERSION-x64.AppImage
 
 # done
-ls -l -h assets/anklang-$VERSION-x64.AppImage
+ls -l -h artifacts/anklang-$VERSION-x64.AppImage
 
