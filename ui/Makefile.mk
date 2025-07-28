@@ -101,6 +101,13 @@ $>/gen/public/anklang.png: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/public/
 	$Q mv $>/gen/tmpanklangpng/favicon.png $@.tmp && rm -r $>/gen/tmpanklangpng/ && mv $@.tmp $@
 VITE_DEPS += $>/gen/public/anklang.png
 
+# == $>/gen/public/assets/favicon.svg ==
+# Used by binary packages: $prefix/anklang-*/ui/assets/favicon.svg
+$>/gen/public/assets/favicon.svg: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/public/assets/
+	$(QGEN)
+	$Q cp $< $@
+VITE_DEPS += $>/gen/public/assets/favicon.svg
+
 # == Inter Typeface ==
 $>/gen/InterVariable.woff2: $(EXTERNAL_BLOBS4ANKLANG_STAMPS)	| $>/gen/
 	$(QGEN)

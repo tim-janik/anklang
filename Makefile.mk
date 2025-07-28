@@ -184,6 +184,7 @@ help: FORCE
 	@echo '  make O=DIR      - Create all output files in DIR, see also config-defaults.mk'
 	@echo '                    for related variables like CXXFLAGS'
 	@echo '  make DESTDIR=/  - Absolute path prepended to all install/uninstall locations'
+	@echo '  make INSN=...   - Optimize instructions: sse (ca 2008), fma (ca 2015), [native]'
 	@echo "  make MODE=...   - Run 'quick' build or make 'production' mode binaries."
 	@echo '                    Other modes: debug, devel, asan, lsan, tsan, ubsan'
 
@@ -324,27 +325,11 @@ $(CHECK_TARGETS): FORCE
 check-bench: FORCE
 
 # == installcheck ==
-installcheck-buildtest:
+installcheck:
 	$(QGEN)
-	$Q cd $> $(file > $>/conftest_buildtest.cc, $(conftest_buildtest.c)) \
-	&& test -r conftest_buildtest.cc \
-		; X=$$? ; echo -n "Create  Anklang sample program: " ; test 0 == $$X && echo OK || { echo FAIL; exit $$X ; }
-	$Q cd $> \
-	&& $(CCACHE) $(CXX) $(CXXSTD) -Werror \
-		`PKG_CONFIG_PATH="$(DESTDIR)$(pkgdir)/lib/pkgconfig:$(libdir)/pkgconfig:$$PKG_CONFIG_PATH" $(PKG_CONFIG) --cflags anklang` \
-		-c conftest_buildtest.cc \
-		; X=$$? ; echo -n "Compile Anklang sample program: " ; test 0 == $$X && echo OK || { echo FAIL; exit $$X ; }
-	$Q cd $> \
-	&& $(CCACHE) $(CXX) $(CXXSTD) -Werror conftest_buildtest.o -o conftest_buildtest $(LDMODEFLAGS) \
-		`PKG_CONFIG_PATH="$(DESTDIR)$(pkgdir)/lib/pkgconfig:$(libdir)/pkgconfig:$$PKG_CONFIG_PATH" $(PKG_CONFIG) --libs anklang` \
-		; X=$$? ; echo -n "Link    Anklang sample program: " ; test 0 == $$X && echo OK || { echo FAIL; exit $$X ; }
-	$Q cd $> \
-	&& LD_LIBRARY_PATH="$(DESTDIR)$(pkgdir)/lib:$$LD_LIBRARY_PATH" ./conftest_buildtest \
-		; X=$$? ; echo -n "Execute Anklang sample program: " ; test 0 == $$X && echo OK || { echo FAIL; exit $$X ; }
-	$Q cd $> \
-	&& rm -f conftest_buildtest.cc conftest_buildtest.o conftest_buildtest
-.PHONY: installcheck-buildtest
-installcheck: installcheck-buildtest
+	$Q $(DESTDIR)$(bindir)/anklang --version | grep -qi '^anklang'
+	$Q grep -qE 'Anklang\b' $(DESTDIR)$(mandir)/man1/anklang.1
+.PHONY: installcheck
 # conftest_buildtest.c
 define conftest_buildtest.c
 #include <engine/engine.hh>
@@ -357,7 +342,6 @@ int main (int argc, char *argv[])
 endef
 
 # == dist ==
-extradist ::= ChangeLog TAGS # doc/README
 dist_exclude := $(strip			\
 	external/rapidjson/bin		\
 	external/rapidjson/doc		\
@@ -366,48 +350,32 @@ dist_exclude := $(strip			\
 	external/minizip-ng/test	\
 	external/minizip-ng/lib		\
 )
-dist: $(extradist:%=$>/%)
-	@$(eval distname := anklang-$(version_short))
+dist: TAGS
+	$(eval distversion != git describe --match='v[0-9]*.[0-9]*.[0-9]*' | sed 's/\b-\b/.dev/ ; s/^v//')
+	$(eval distname := anklang-$(distversion))
 	$(QECHO) MAKE $(distname).tar.zst
 	$Q git describe --dirty | grep -qve -dirty || echo -e "#\n# $@: WARNING: working tree is dirty\n#"
-	$Q rm -rf $>/dist/$(distname)/ && mkdir -p $>/dist/$(distname)/ assets/
-	$Q $(CP) $>/ChangeLog assets/ChangeLog-$(version_short).txt
-	$Q git archive -o assets/$(distname).tar --prefix=$(distname)/ HEAD
-	$Q tar f assets/$(distname).tar --delete $(dist_exclude:%=$(distname)/%)
-	$Q cd $>/ && $(CP) --parents $(extradist) $(abspath $>/dist/$(distname))
-	$Q tar f assets/$(distname).tar --delete $(distname)/NEWS.md \
-	&& misc/mknews.sh				>  $>/dist/$(distname)/NEWS.md \
-	&& cat NEWS.md					>> $>/dist/$(distname)/NEWS.md
-	$Q tar xf assets/$(distname).tar -C $>/dist/ $(distname)/misc/version.sh	# fetch archived version.sh
-	$Q tar f assets/$(distname).tar --delete $(distname)/misc/version.sh	# delete, make room for replacement
-	$Q sed "s/^ *VDESCRIBE=.*\bmake *dist\b.*/  VDESCRIBE='$(version_short)'/" \
-		-i $>/dist/$(distname)/misc/version.sh	# support lightweight tags and fix git-2.25.1 which cannot describe:match
-	$Q cd $>/dist/ && tar uhf $(abspath assets/$(distname).tar) $(distname)	# update (replace) files in tarball
-	$Q rm -rf assets/$(distname).tar.zst && zstd --ultra -22 --rm assets/$(distname).tar && ls -lh assets/$(distname).tar.zst
-	$Q echo "Archive ready: assets/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
-.PHONY: dist
-
-# == ChangeLog ==
-$>/ChangeLog: $(GITCOMMITDEPS) Makefile.mk			| $>/
-	$(QGEN)
+	$Q rm -r -f artifacts/ && mkdir -p artifacts/
+	$Q # Generate ChangeLog with ^^-prefixed records. Tab-indent commit bodies.
+	$Q # Kill trailing whitespaces. Compress multiple newlines.
 	$Q git log --abbrev=13 --date=short --first-parent HEAD	\
-		--pretty='^^%ad  %an 	# %h%n%n%B%n'		 > $@.tmp	# Generate ChangeLog with ^^-prefixed records
-	$Q sed 's/^/	/; s/^	^^// ; s/[[:space:]]\+$$// '    -i $@.tmp	# Tab-indent commit bodies, kill trailing whitespaces
-	$Q sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i $@.tmp	# Compress multiple newlines
-	$Q mv $@.tmp $@
-	$Q test -s $@ || { mv $@ $@.empty ; ls -al --full-time $@.empty ; exit 1 ; }
+		--pretty='^^%ad  %an 	# %h%n%n%B%n'		>  artifacts/ChangeLog \
+	&& sed 's/^/	/; s/^	^^// ; s/[[:space:]]\+$$// '	-i artifacts/ChangeLog \
+	&& sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i artifacts/ChangeLog
+	$Q # Generate and compress artifacts/anklang-*.tar.zst
+	$Q git archive --prefix=$(distname)/ --add-file artifacts/ChangeLog --add-file TAGS -o artifacts/$(distname).tar HEAD
+	$Q rm -f artifacts/$(distname).tar.zst && zstd --ultra -22 --rm artifacts/$(distname).tar && ls -lh artifacts/$(distname).tar.zst
+	$Q echo "Archive ready: artifacts/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
+CLEANDIRS += artifacts/
+.PHONY: dist
 
 # == TAGS ==
 # ctags --print-language `git ls-tree -r --name-only HEAD`
-$>/TAGS: Makefile.mk $(GITCOMMITDEPS)
+TAGS: $(GITCOMMITDEPS)
 	$(QGEN)
-	$Q test -r .git && ctags --version 2>/dev/null | grep -qE 'Exuberant|Universal' || exit 0 >$@ ; true \
-	&& git ls-tree -r --name-only HEAD > $@.tmp \
-	&& ctags -o $@ -L - < $@.tmp 2> >(grep -vF 'Warning: ignoring null tag in')
-# use sed to compress flood of "Warning: ignoring null tag"
-ALL_TARGETS += $>/TAGS
-TAGS: $>/TAGS
-	ln -sf $>/TAGS TAGS
+	$Q test -r .git && etags --version 2>/dev/null | grep -qE 'Exuberant|Universal' || exit 0 >$@ ; true \
+	&& git ls-tree -r --name-only HEAD | etags -o $@ -L - 2> >(grep -vF 'Warning: ignoring null tag in')
+ALL_TARGETS += TAGS
 
 # == compile_commands.json ==
 compile_commands.json: Makefile.mk

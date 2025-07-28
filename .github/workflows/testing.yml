@@ -10,23 +10,35 @@ on:
 
 jobs:
 
-  NobleAssets:
+  ReleaseArtifacts:
     runs-on: ubuntu-latest
     container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest', options: --user runner }
     steps:
-    - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive, github-server-url: 'https://github.com' } }
-    - run: git fetch -f --tags          # Fix actions/checkout#290
-    - run: git describe --always --long
-    - name: 'Configure build presets'
-      run: |
-        echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
-    - name: 'Build Dist Assets'
-      run: |
-        make mkassets
+    - { uses: actions/checkout@v4, with: { fetch-depth: 0 } }
+    - run: git fetch -f --tags	# Fix actions/checkout#290
+    - run: |
+        make -w dist
+        mkdir /tmp/anklang && tar xf artifacts/anklang-*.tar.zst -C /tmp/anklang --strip-components=1
+        cd /tmp/anklang
+        echo -e ' prefix=/tmp/inst\n CC=clang \n CXX=clang++ \n INSN=fma ' > config-defaults.mk
     - uses: actions/upload-artifact@v4
-      with: { name: assets, path: assets/ }
+      with: { name: AnklangTarball, path: artifacts/ }
+    - run: |
+        make -w all -j`nproc`
+    - run: |
+        make -w check -j`nproc`
+    - run: |
+        make -w install
+    - run: |
+        make -w installcheck -j`nproc`
+    - run: |
+        make -w uninstall
+    - run: |
+        misc/mkdeb.sh
+    - run: |
+        misc/mkAppImage.sh
     - uses: actions/upload-artifact@v4
-      with: { name: dist-tarball, path: assets/*.tar* }
+      with: { name: AnklangBinaries, path: artifacts/ }
 
   UploadDocs:
     if: ${{ github.repository == 'tim-janik/anklang' && github.ref == 'refs/heads/trunk' }}
@@ -98,15 +110,15 @@ jobs:
 
   Ping-IRC:
     if: always()
-    needs: [NobleAssets, UploadDocs, ArchReplay, NobleClangTidy]
+    needs: [ ReleaseArtifacts, UploadDocs, ArchReplay, NobleClangTidy ]
     runs-on: ubuntu-latest
     steps:
     - { uses: actions/checkout@v4.1.1,	with: { fetch-depth: 0 } } # Fix actions/checkout#290
     - run: git fetch -f --tags && git submodule update --init --recursive && git describe --long
     - name: Check-Jobs
       run: |
-        echo '${{ needs.NobleAssets.result }}' '${{ needs.UploadDocs.result }}' '${{ needs.ArchReplay.result }}' '${{ needs.NobleClangTidy.result }}'
-        [[ ${{ needs.NobleAssets.result }}    =~ success|skipped ]]
+        echo '${{ needs.ReleaseArtifacts.result }}' '${{ needs.UploadDocs.result }}' '${{ needs.ArchReplay.result }}' '${{ needs.NobleClangTidy.result }}'
+        [[ ${{ needs.ReleaseArtifacts.result }}    =~ success|skipped ]]
         [[ ${{ needs.UploadDocs.result }}     =~ success|skipped ]]
         [[ ${{ needs.ArchReplay.result }}     =~ success|skipped ]]
         [[ ${{ needs.NobleClangTidy.result }} =~ success|skipped ]]

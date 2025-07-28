@@ -150,18 +150,6 @@ $(call BUILD_PROGRAM, \
 	../lib)
 ALL_TARGETS += $(lib/AnklangSynthEngine)
 
-# == AnklangSynthEngine-fma ==
-$(lib/AnklangSynthEngine)-fma:
-	$(QGEN)
-	$Q $(MAKE) INSN=fma builddir=$>/fma $>/fma/lib/AnklangSynthEngine
-	$Q $(CP) -v $>/fma/lib/AnklangSynthEngine.map $@.map
-	$Q $(CP) -v $>/fma/lib/AnklangSynthEngine $@
-ifeq ($(MODE)+$(INSN),production+sse)
-  # Iff MODE=production and INSN=sse (i.e. release builds),
-  # also build an FMA variant of the sound engine.
-  ALL_TARGETS += $(lib/AnklangSynthEngine)-fma
-endif
-
 # == jackdriver.so ==
 lib/jackdriver.so	     ::= $>/lib/jackdriver.so
 ase/jackdriver.objects	     ::= $(call BUILDDIR_O, $(ase/jackdriver.sources))
@@ -196,10 +184,29 @@ $(ALL_TARGETS) += $(lib/gtk2wrap.so)
 # == install binaries ==
 $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
 	$(lib/AnklangSynthEngine)	\
-	$(lib/AnklangSynthEngine)-fma	\
 	$(lib/jackdriver.so.MAYBE)	\
 	$(lib/gtk2wrap.so)		\
   ))
+
+# == install ==
+ase/install: $(lib/AnklangSynthEngine)
+	@$(QECHO) INSTALL '$(DESTDIR)$(bindir)/anklang'
+	$Q rm -f '$(DESTDIR)$(pkgdir)/bin/anklang'
+	$Q rm -f '$(DESTDIR)$(bindir)/anklang' && mkdir -p '$(DESTDIR)$(bindir)' \
+	&& ln -s -r '$(DESTDIR)$(pkgdir)/bin/anklang' '$(DESTDIR)$(bindir)/anklang'
+	$Q mkdir -p '$(DESTDIR)$(pkgdir)/bin' \
+	&& ln -s '../lib/AnklangSynthEngine' '$(DESTDIR)$(pkgdir)/bin/anklang'
+install: ase/install
+.PHONY: ase/install
+
+# == uninstall ==
+ase/uninstall:
+	@$(QECHO) REMOVE '$(DESTDIR)$(bindir)/anklang'
+	$Q rm -f '$(DESTDIR)$(pkgdir)/bin/anklang'
+	$Q $(RMDIR_P) '$(DESTDIR)$(pkgdir)/bin' || true
+	$Q rm -f '$(DESTDIR)$(bindir)/anklang'
+.PHONY: ase/uninstall
+uninstall: ase/uninstall
 
 # == ase/lint ==
 ase/lint:

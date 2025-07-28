@@ -6,6 +6,7 @@
 /BACKLOG.md
 /OUTLINE.md
 /TAGS
+/artifacts/
 /bun.lock*
 /compile_commands.json
 /config-defaults.mk
