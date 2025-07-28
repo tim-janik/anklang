@@ -22,6 +22,17 @@ external/blake3/.sha-$(blake3/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/blake3/.sha-$(blake3/sha)
 
+# == external/liquidsfz/ ==
+liquidsfz/sha := 7718fbf707100b87dbfd3987e4a1b75d12e65685f0f6cf88573d00032459f8fc
+external/liquidsfz/.sha-$(liquidsfz/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/liquidsfz.tar.gz, $(liquidsfz/sha), \
+		https://github.com/swesterfeld/liquidsfz/archive/590149ea8c83588c17833d7b9b6653f0f6aab6fb/develop.tar.gz)
+	$Q rm -rf external/liquidsfz && mkdir external/liquidsfz
+	$Q tar xf external/liquidsfz.tar.gz --strip-components=1 -C external/liquidsfz/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/liquidsfz/.sha-$(liquidsfz/sha)
+
 # == external/minizip-ng/ ==
 minizip-ng/sha := 80d745e1c8caf6f81f6457403b0d9212e8a138b2badd6060e8a5da8583da2551
 external/minizip-ng/.sha-$(minizip-ng/sha):
