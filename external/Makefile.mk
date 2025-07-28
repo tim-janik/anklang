@@ -33,6 +33,17 @@ external/minizip-ng/.sha-$(minizip-ng/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/minizip-ng/.sha-$(minizip-ng/sha) # external/minizip-ng/mz_zip.h
 
+# == external/rapidjson/ ==
+rapidjson/sha := 2b521dba5c22eaae6e6e7d4d304cb317e2cf8c687c70046b02792c02f78c127e
+external/rapidjson/.sha-$(rapidjson/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/rapidjson.tar.gz, $(rapidjson/sha), \
+		https://github.com/Tencent/rapidjson/archive/f9d53419e912910fd8fa57d5705fa41425428c35/develop.tar.gz)
+	$Q rm -rf external/rapidjson && mkdir external/rapidjson
+	$Q tar xf external/rapidjson.tar.gz --strip-components=1 -C external/rapidjson/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/rapidjson/.sha-$(rapidjson/sha)
+
 # == external/websocketpp/ ==
 websocketpp/sha := 6ce889d85ecdc2d8fa07408d6787e7352510750daa66b5ad44aacb47bea76755
 external/websocketpp/.sha-$(websocketpp/sha):
