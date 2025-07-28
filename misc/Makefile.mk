@@ -13,21 +13,21 @@ $>/doxygen/index.html: misc/doxygen.py misc/Makefile.mk
 # == lint-cppcheck ==
 CPPCHECK ?= cppcheck
 CPPCHECK_CCENABLE := warning,style,performance,portability
-lint-cppcheck: $>/ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
-	$Q egrep "^(ase|devices|jsonipc|ui)/.*\.(cc|hh)$$" < $<		> $>/misc/$@.lst
+lint-cppcheck: misc/Makefile.mk		| $>/misc/cppcheck/
+	$Q git ls-tree -r --name-only HEAD | egrep "^(ase|devices|jsonipc|ui)/.*\.(cc|hh)$$" 	> $>/misc/$@.lst
 	$Q $(CPPCHECK) --enable=$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) $$(cat $>/misc/$@.lst) $(wildcard $>/ase/*.cc)
 CPPCHECK_DEFS := -D__SIZEOF_LONG__=8 -D__SIZEOF_WCHAR_T__=4 -D__linux__ -U_SC_NPROCESSORS_ONLN -U_WIN32 -U__clang__
 .PHONY: lint-cppcheck
 
 # == lint-unused ==
-lint-unused: $>/ls-tree.lst misc/Makefile.mk		| $>/misc/cppcheck/
-	$Q egrep "^(ase|devices|jsonipc|ui)/.*\.(cc|hh)$$" < $<		> $>/misc/$@.lst
+lint-unused: misc/Makefile.mk		| $>/misc/cppcheck/
+	$Q git ls-tree -r --name-only HEAD | egrep "^(ase|devices|jsonipc|ui)/.*\.(cc|hh)$$" 	> $>/misc/$@.lst
 	$Q $(CPPCHECK) --enable=unusedFunction,$(CPPCHECK_CCENABLE) $(CPPCHECK_DEFS) $$(cat $>/misc/$@.lst) $(wildcard $>/ase/*.cc) \
 	|& grep --color=auto -E '(\b(un)?use|\bnever\b|\b(un)?reach)\w*'
 .PHONY: lint-unused
 
 # == clang-tidy ==
-CLANG_TIDY_FILES = $(filter %.c %.cc %.C %.cpp %.cxx, $(LS_TREE_LST))
+CLANG_TIDY_FILES = $(filter %.c %.cc %.C %.cpp %.cxx, $(WILDCARD_FILES))
 CLANG_TIDY_LOGS  = $(patsubst %, $>/clang-tidy/%.log, $(CLANG_TIDY_FILES))
 clang-tidy clang-tidy-check: $(CLANG_TIDY_LOGS)
 	$(QGEN)
@@ -118,14 +118,22 @@ misc/uninstall: FORCE
 uninstall: misc/uninstall
 
 # == Check Copyright Notices ==
-check-copyright: doc/copyright misc/checkcrlist.py $>/ls-tree.lst
+$>/.copyright.check: doc/copyright misc/checkcrlist.py $(GITCOMMITDEPS)
 	$(QGEN)
-	$Q misc/checkcrlist.py -e $>/ls-tree.lst $<
-CHECK_TARGETS += check-copyright
-check-copyright-verbose: doc/copyright misc/checkcrlist.py $>/ls-tree.lst
+	$Q test -r .git || exit 0 ; true \
+	&& git ls-tree -r --name-only HEAD > $@.tmp \
+	&& misc/checkcrlist.py -e $@.tmp $<
+	$Q rm -f $@.tmp && touch $@
+all: $>/.copyright.check
+check-copyright: doc/copyright misc/checkcrlist.py
 	$(QGEN)
-	misc/checkcrlist.py --git $>/ls-tree.lst $<
-	# misc/mkcopyright.py -c doc/copyright.ini -f $>/ls-tree.lst
+	$Q test -r .git || exit 0 ; true \
+	&& git ls-tree -r --name-only HEAD > $>/$(@F).lst \
+	&& misc/checkcrlist.py --git $>/$(@F).lst $< \
+	&& rm -f $>/$(@F).lst
+.PHONY: check-copyright
+check: check-copyright
+# misc/mkcopyright.py -c doc/copyright.ini -f <FILELIST>
 
 # == appimagetools/appimage-runtime-zstd ==
 $>/appimagetools/appimage-runtime-zstd:			| $>/appimagetools/

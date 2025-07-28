@@ -108,7 +108,7 @@ $>/gen/InterVariable.woff2: $(EXTERNAL_BLOBS4ANKLANG_STAMPS)	| $>/gen/
 VITE_DEPS += $>/gen/InterVariable.woff2
 
 # == ui/synsmell ==
-ui/synsmell.files: $(filter ui/%. ui/b/%, $(LS_TREE_LST)))
+ui/synsmell.files: $(filter ui/%. ui/b/%, $(WILDCARD_FILES)))
 $>/.uisynsmell.done: misc/synsmell.ts $(ui/synsmell.files)				| node_modules/.npm.done
 	$(QECHO) CHECK 'synsmell (ui/)'
 	$Q $(RUNTS) $< --separate-body=0 $(ui/synsmell.files)

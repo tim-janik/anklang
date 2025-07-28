@@ -130,6 +130,8 @@ def crpathcheck (sysargv):
   # check all files for matching pattern
   fileerrors = 0
   for filename in inputstream.read().splitlines():
+    if os.path.isdir (filename):
+      continue
     fmatch = False
     for tup in FILE_PATTERNS:
       if tup[0].match (filename):

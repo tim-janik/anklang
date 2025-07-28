@@ -116,26 +116,17 @@ include external/Makefile.mk
 NPM_INSTALL ?= $(XNPM) install
 .config.defaults += CC CFLAGS CXX CLANG_TIDY CXXFLAGS LDFLAGS LDLIBS NPM_INSTALL
 
-# == ls-tree.lst ==
-# Requires either git or a pre-packaged `ls-tree.lst` file
-$>/ls-tree.lst: ; $(MAKE) $>/ls-tree.d
-# Note, GITCOMMITDEPS needs misc/config-utils.mk to be included
-# Read ls-tree.lst into $(LS_TREE_LST)
-LS_TREE_LST ::= # added to by ls-tree.d
-$>/ls-tree.d: $(GITCOMMITDEPS)						| $>/
+# == WILDCARD_FILES ==
+WILDCARD_TOPDIRS  := .github/ ase/ devices/ doc/ electron/ images/ jsonipc/ misc/ ui/ x11test/
+WILDCARD_SUBDIRS  := $(wildcard $(WILDCARD_TOPDIRS) $(WILDCARD_TOPDIRS:%=%*/) $(WILDCARD_TOPDIRS:%=%*/*/) $(WILDCARD_TOPDIRS:%=%*/*/*/))
+WILDCARD_FILES	  != find $(WILDCARD_SUBDIRS) . -maxdepth 1 -type f | sed 's|^\./||' | sort
+check-WILDCARD_FILES:
 	$(QGEN)
-	$Q if test -r .git ; then					\
-		git ls-tree -r --name-only HEAD				\
-		| grep -v '^external/' > $>/ls-tree.lst.tmp ;		\
-	   else								\
-		$(CP) ./ls-tree.lst $>/ls-tree.lst.tmp ;		\
-	   fi
-	$Q cmp -s $>/ls-tree.lst.tmp $>/ls-tree.lst			\
-	&& $(RM) $>/ls-tree.lst.tmp					\
-	|| mv $>/ls-tree.lst.tmp $>/ls-tree.lst
-	$Q ( echo 'LS_TREE_LST += $$(strip '\\ 				\
-	     && sed 's/$$/ \\/' $>/ls-tree.lst && echo ')' ) > $@
--include $>/ls-tree.d
+	$Q (test ! -r .git || git ls-tree -r --name-only HEAD) | sort | grep -v -E '^external/|^rand/' > $>/flist-g.txt || true
+	$Q echo "$(WILDCARD_FILES)" | tr ' ' '\n' > $>/flist-w.txt
+	$Q ! grep -vFxf $>/flist-w.txt $>/flist-g.txt || (echo "ERROR: WILDCARD_FILES misses some files tracked by Git"; false ) >&2
+	$Q rm $>/flist-w.txt $>/flist-g.txt
+check: check-WILDCARD_FILES
 
 # == enduser targets ==
 all: FORCE
@@ -295,7 +286,7 @@ x11test x11test-v: $(x11test/files.json) $(lib/AnklangSynthEngine)
 # == tscheck ==
 check: tscheck
 # run tsc on all JS + TS files, except for ui/ x11test/
-tscheck.files := $(filter-out ui/% x11test/%, $(filter %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(LS_TREE_LST)))
+tscheck.files := $(filter-out ui/% x11test/%, $(filter %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(WILDCARD_FILES)))
 $>/.tscheck.done: $(tscheck.files)	| node_modules/.npm.done
 	$(QGEN)
 	$Q node_modules/.bin/tsc --noEmit --allowJs --moduleResolution bundler -m esnext --target esnext --erasableSyntaxOnly $(tscheck.files)
@@ -304,7 +295,7 @@ tscheck: $>/.tscheck.done FORCE
 
 # == eslint ==
 check: eslint
-eslint.files := $(filter %.htm %.html %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(LS_TREE_LST))
+eslint.files := $(filter %.htm %.html %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(WILDCARD_FILES))
 eslint.skip  := %/javascript/mathjax.js %/style/mathjax-config.js
 $>/.eslint.done: ui/eslintrc.js $(eslint.files) Makefile.mk	| node_modules/.npm.done
 	$(QECHO) RUN eslint
@@ -366,7 +357,7 @@ int main (int argc, char *argv[])
 endef
 
 # == dist ==
-extradist ::= ChangeLog TAGS ls-tree.lst # doc/README
+extradist ::= ChangeLog TAGS # doc/README
 dist_exclude := $(strip			\
 	external/rapidjson/bin		\
 	external/rapidjson/doc		\
@@ -408,11 +399,11 @@ $>/ChangeLog: $(GITCOMMITDEPS) Makefile.mk			| $>/
 
 # == TAGS ==
 # ctags --print-language `git ls-tree -r --name-only HEAD`
-$>/TAGS: $>/ls-tree.lst $(GITCOMMITDEPS) Makefile.mk
+$>/TAGS: Makefile.mk $(GITCOMMITDEPS)
 	$(QGEN)
-	$Q ctags --version 2>/dev/null | grep -qE 'Exuberant|Universal' || exit 0 >$@ ; \
-	   ctags -o $@ -L - < $< 2> >(grep -vF 'Warning: ignoring null tag in')
-
+	$Q test -r .git && ctags --version 2>/dev/null | grep -qE 'Exuberant|Universal' || exit 0 >$@ ; true \
+	&& git ls-tree -r --name-only HEAD > $@.tmp \
+	&& ctags -o $@ -L - < $@.tmp 2> >(grep -vF 'Warning: ignoring null tag in')
 # use sed to compress flood of "Warning: ignoring null tag"
 ALL_TARGETS += $>/TAGS
 TAGS: $>/TAGS
@@ -429,7 +420,7 @@ CLEANFILES += compile_commands.json
 all: $(ALL_TARGETS) $(ALL_TESTS)
 
 # == grep-reminders ==
-$>/.grep-reminders: $(wildcard $(LS_TREE_LST))
-	$Q test -r .git && git -P grep -nE '(/[*/]+[*/ ]*|[#*]+ *)?(FI[X]ME).*' || true
+$>/.grep-reminders: $(WILDCARD_FILES)
+	$Q git -P grep -n -E '(/[*/]+[*/ ]*|[#*]+ *)?(FI[X]ME).*' $(WILDCARD_FILES) || true
 	$Q touch $@
 all: $>/.grep-reminders
