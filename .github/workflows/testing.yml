@@ -23,22 +23,29 @@ jobs:
         echo -e ' prefix=/tmp/inst\n CC=clang \n CXX=clang++ \n INSN=fma ' > config-defaults.mk
     - uses: actions/upload-artifact@v4
       with: { name: AnklangTarball, path: artifacts/ }
-    - run: |
+    - working-directory: /tmp/anklang
+      run: |
         make -w all -j`nproc`
-    - run: |
+    - working-directory: /tmp/anklang
+      run: |
         make -w check -j`nproc`
-    - run: |
+    - working-directory: /tmp/anklang
+      run: |
         make -w install
-    - run: |
+    - working-directory: /tmp/anklang
+      run: |
         make -w installcheck -j`nproc`
-    - run: |
+    - working-directory: /tmp/anklang
+      run: |
         make -w uninstall
-    - run: |
+    - working-directory: /tmp/anklang
+      run: |
         misc/mkdeb.sh
-    - run: |
+    - working-directory: /tmp/anklang
+      run: |
         misc/mkAppImage.sh
     - uses: actions/upload-artifact@v4
-      with: { name: AnklangBinaries, path: artifacts/ }
+      with: { name: AnklangBinaries, path: /tmp/anklang/artifacts/ }
 
   UploadDocs:
     if: ${{ github.repository == 'tim-janik/anklang' && github.ref == 'refs/heads/trunk' }}
