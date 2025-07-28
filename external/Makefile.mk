@@ -22,6 +22,17 @@ external/blake3/.sha-$(blake3/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/blake3/.sha-$(blake3/sha)
 
+# == external/libsndfile/ ==
+libsndfile/sha := 1227bc78df8eece089e6b984ba7c32e74e210f146d2bac1b76bd218baaf35ce5
+external/libsndfile/.sha-$(libsndfile/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/libsndfile.tar.gz, $(libsndfile/sha), \
+		https://github.com/libsndfile/libsndfile/archive/e486f20fd4b1c7490cde84f22635e1c267ae882b/develop.tar.gz)
+	$Q rm -rf external/libsndfile && mkdir external/libsndfile
+	$Q tar xf external/libsndfile.tar.gz --strip-components=1 -C external/libsndfile/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/libsndfile/.sha-$(libsndfile/sha)
+
 # == external/liquidsfz/ ==
 liquidsfz/sha := 7718fbf707100b87dbfd3987e4a1b75d12e65685f0f6cf88573d00032459f8fc
 external/liquidsfz/.sha-$(liquidsfz/sha):

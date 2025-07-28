@@ -4,6 +4,3 @@
 [submodule "clap"]
 	path = external/clap
 	url = https://github.com/free-audio/clap.git
-[submodule "libsndfile"]
-	path = external/libsndfile
-	url = https://github.com/libsndfile/libsndfile.git
