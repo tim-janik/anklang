@@ -111,7 +111,7 @@ CLANG_TIDY	 ?= clang-tidy
 include misc/config-utils.mk
 include misc/config-uname.mk
 include misc/config-checks.mk
-include misc/config-external.mk
+include external/Makefile.mk
 
 NPM_INSTALL ?= $(XNPM) install
 .config.defaults += CC CFLAGS CXX CLANG_TIDY CXXFLAGS LDFLAGS LDLIBS NPM_INSTALL
