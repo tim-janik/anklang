@@ -25,6 +25,7 @@ Files:
  doc/javascript/*.*
  doc/style/*.*
  electron/*.*
+ external/*.*
  images/*.*
  images/icons/*.*
  images/knobs/*.*
