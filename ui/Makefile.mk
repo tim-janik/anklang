@@ -23,7 +23,7 @@ $>/gen/aseapi.js: jsonipc/jsonipc.js ase/api.hh ui/Makefile.mk $(if $(ui/aseapi.
 VITE_DEPS += $>/gen/aseapi.js
 
 # == ui/assets/AnklangIcons.css ==
-$>/gen/assets/AnklangIcons.css: ui/Makefile.mk			| $>/gen/assets/
+$>/gen/assets/AnklangIcons.css: ui/Makefile.mk $(EXTERNAL_BLOBS4ANKLANG_STAMPS)	| $>/gen/assets/
 	$(QGEN)
 	$Q rm -fr $>/gen/anklangicons/ && tar xf external/blobs4anklang/icons/anklangicons-201123.1.tgz -C $>/gen/
 	$Q cd $>/gen/anklangicons/ && $(CP) AnklangIcons.woff2 ../assets/ && $(CP) AnklangIcons.css ../assets/AnklangIcons.css.tmp
@@ -102,7 +102,7 @@ $>/gen/public/anklang.png: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/public/
 VITE_DEPS += $>/gen/public/anklang.png
 
 # == Inter Typeface ==
-$>/gen/InterVariable.woff2: external/blobs4anklang/fonts/InterVariable.woff2	| $>/gen/
+$>/gen/InterVariable.woff2: $(EXTERNAL_BLOBS4ANKLANG_STAMPS)	| $>/gen/
 	$(QGEN)
 	$Q $(CP) $< $@
 VITE_DEPS += $>/gen/InterVariable.woff2
