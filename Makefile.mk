@@ -137,14 +137,6 @@ $>/ls-tree.d: $(GITCOMMITDEPS)						| $>/
 	     && sed 's/$$/ \\/' $>/ls-tree.lst && echo ')' ) > $@
 -include $>/ls-tree.d
 
-# == .submodule-stamp ==
-.submodule-stamp: $(GITCOMMITDEPS)
-	$(QGEN)
-	$Q test ! -e .git || git submodule update --init --recursive
-	$Q touch $@
-Makefile.mk: .submodule-stamp
-CLEANFILES += .submodule-stamp
-
 # == enduser targets ==
 all: FORCE
 check: FORCE
@@ -390,8 +382,6 @@ dist: $(extradist:%=$>/%)
 	$Q rm -rf $>/dist/$(distname)/ && mkdir -p $>/dist/$(distname)/ assets/
 	$Q $(CP) $>/ChangeLog assets/ChangeLog-$(version_short).txt
 	$Q git archive -o assets/$(distname).tar --prefix=$(distname)/ HEAD
-	$Q git submodule foreach \
-	  'git archive --prefix="$(distname)/$${displaypath}/" -o tmp~.tar HEAD && tar Af "$(abspath assets/$(distname).tar)" tmp~.tar && rm tmp~.tar'
 	$Q tar f assets/$(distname).tar --delete $(dist_exclude:%=$(distname)/%)
 	$Q cd $>/ && $(CP) --parents $(extradist) $(abspath $>/dist/$(distname))
 	$Q tar f assets/$(distname).tar --delete $(distname)/NEWS.md \
