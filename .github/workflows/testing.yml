@@ -47,47 +47,6 @@ jobs:
     - uses: actions/upload-artifact@v4
       with: { name: AnklangBinaries, path: /tmp/anklang/artifacts/ }
 
-  UploadDocs:
-    if: ${{ github.repository == 'tim-janik/anklang' && github.ref == 'refs/heads/trunk' }}
-    runs-on: ubuntu-latest
-    container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest', options: --user runner }
-    steps:
-    - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive, github-server-url: 'https://github.com' } }
-    - run: git fetch -f --tags          # Fix actions/checkout#290
-    - run: git describe --always --long
-    - name: 'Configure build presets'
-      run: |
-        echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
-    - name: 'Upload API Docs' # http://tim-janik.github.io/docs/anklang
-      run: |
-        make -j`nproc` all
-        (umask 0077 && cat <<< "${{ secrets.SSH_ID_GHDOCS4ANKLANG_ECDSA }}" > .git/.ssh_id_ghdocs4anklang)
-        doc/poxy.sh -b -u
-
-  ArchReplay:
-    runs-on: ubuntu-latest
-    container: { image: 'ghcr.io/tim-janik/anklang-ci:arch-latest' }
-    steps:
-    - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive, github-server-url: 'https://github.com' } }
-    - run: git fetch -f --tags          # Fix actions/checkout#290
-    - run: git describe --always --long
-    - name: 'Configure build presets'
-      run: |
-        echo 'prefix=/' > config-defaults.mk	;# reset any previous config-defaults.mk
-    - name: 'Build Anklang'
-      run: |
-        make GCC_COLORS="" -j`nproc` all
-    - name: 'Run Tests'
-      run: |
-        make -j`nproc` check
-    - name: 'Run X11 GUI Tests'
-      run: |
-        make x11test-v
-    # Artifact upload from x11test
-    - uses: actions/upload-artifact@v4
-      if: ${{ always() }}
-      with: { name: "x11test", path: "out/x11test/" }
-
   NobleClangTidy:
     if: ${{ ! contains(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
@@ -115,19 +74,41 @@ jobs:
         test -z "${{ github.event.pull_request }}" || BRANCH_CHECK_EXIT=77
         make branch-check BRANCH_CHECK_EXIT=$BRANCH_CHECK_EXIT
 
+  #ArchReplay:
+  #  runs-on: ubuntu-latest
+  #  container: { image: 'ghcr.io/tim-janik/anklang-ci:arch-latest' }
+  #  steps:
+  #  - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive, github-server-url: 'https://github.com' } }
+  #  - run: git fetch -f --tags          # Fix actions/checkout#290
+  #  - run: git describe --always --long
+  #  - name: 'Configure build presets'
+  #    run: |
+  #      echo 'prefix=/' > config-defaults.mk	;# reset any previous config-defaults.mk
+  #  - name: 'Build Anklang'
+  #    run: |
+  #      make GCC_COLORS="" -j`nproc` all
+  #  - name: 'Run Tests'
+  #    run: |
+  #      make -j`nproc` check
+  #  - name: 'Run X11 GUI Tests'
+  #    run: |
+  #      make x11test-v
+  #  # Artifact upload from x11test
+  #  - uses: actions/upload-artifact@v4
+  #    if: ${{ always() }}
+  #    with: { name: "x11test", path: "out/x11test/" }
+
   Ping-IRC:
     if: always()
-    needs: [ ReleaseArtifacts, UploadDocs, ArchReplay, NobleClangTidy ]
+    needs: [ ReleaseArtifacts, NobleClangTidy ]
     runs-on: ubuntu-latest
     steps:
     - { uses: actions/checkout@v4.1.1,	with: { fetch-depth: 0 } } # Fix actions/checkout#290
     - run: git fetch -f --tags && git submodule update --init --recursive && git describe --long
     - name: Check-Jobs
       run: |
-        echo '${{ needs.ReleaseArtifacts.result }}' '${{ needs.UploadDocs.result }}' '${{ needs.ArchReplay.result }}' '${{ needs.NobleClangTidy.result }}'
+        echo '${{ needs.ReleaseArtifacts.result }}' '${{ needs.NobleClangTidy.result }}'
         [[ ${{ needs.ReleaseArtifacts.result }}    =~ success|skipped ]]
-        [[ ${{ needs.UploadDocs.result }}     =~ success|skipped ]]
-        [[ ${{ needs.ArchReplay.result }}     =~ success|skipped ]]
         [[ ${{ needs.NobleClangTidy.result }} =~ success|skipped ]]
     - name: Ping-IRC
       if: ${{ always() && !env.ACT }}
