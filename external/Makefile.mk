@@ -33,6 +33,17 @@ external/minizip-ng/.sha-$(minizip-ng/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/minizip-ng/.sha-$(minizip-ng/sha) # external/minizip-ng/mz_zip.h
 
+# == external/websocketpp/ ==
+websocketpp/sha := 6ce889d85ecdc2d8fa07408d6787e7352510750daa66b5ad44aacb47bea76755
+external/websocketpp/.sha-$(websocketpp/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/websocketpp.tar.gz, $(websocketpp/sha), \
+		https://github.com/zaphoyd/websocketpp/archive/0.8.2/develop.tar.gz)
+	$Q rm -rf external/websocketpp && mkdir external/websocketpp
+	$Q tar xf external/websocketpp.tar.gz --strip-components=1 -C external/websocketpp/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/websocketpp/.sha-$(websocketpp/sha)
+
 # == external/clean ==
 external/clean:
 	rm -r -f external/*/

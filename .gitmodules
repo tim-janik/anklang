@@ -16,6 +16,3 @@
 [submodule "rapidjson"]
 	path = external/rapidjson
 	url = https://github.com/Tencent/rapidjson.git
-[submodule "websocketpp"]
-	path = external/websocketpp
-	url = https://github.com/zaphoyd/websocketpp.git
