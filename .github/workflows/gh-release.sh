@@ -22,13 +22,28 @@ test -d $ARTIFACTS || die "missing release artifacts"
 VV=$(git describe --tags --match='v[0-9]*.[0-9]*.[0-9]*' --exact-match 2>/dev/null ||
        git describe --match='v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null) || die "missing current version tag"
 V="${VV#v}"
+TITLE="$TITLE $V"
 
 # NEWS, extract first entry
 F_NOTES=
-grep -s -m1 '^#' NEWS.md | grep -qE "\bv?${V//./\\.}($|[^a-z0-9-])" && {
-  sed -rn '/^##? / { p; :BEGIN ; n ; /^##? /q ; p ; bBEGIN ; }' NEWS.md >$ARTIFACTS/.notes
+if grep -s -m1 '^#' NEWS.md | grep -qE "\bv?${V//./\\.}($|[^a-z0-9-])" ; then
+  sed -rn '/^##? / { p; :BEGIN ; n ; /^##? /q ; p ; bBEGIN ; }' NEWS.md > $ARTIFACTS/.notes
   F_NOTES="-F $ARTIFACTS/.notes"
-}
+else # grab recent git log
+  LAST=$(git describe --match='v[0-9]*.[0-9]*.[0-9]*' HEAD^ | sed 's/-[0-9]\+-g[0-9a-f]\+$//') && (
+    echo "# $TITLE"
+    echo
+    echo 'Development version - may contain bugs or compatibility issues.'
+    echo
+    echo '``````````````````````````````````````````````````````````````````````````````````````'
+    git log --pretty='%s    # %cd %an %h%n%w(0,4,4)%b' \
+	--first-parent --date=short "$LAST..HEAD" |
+      sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' |
+      sed '/^\s*$/{ N; /^\s*\n\s*$/D }'
+    echo '``````````````````````````````````````````````````````````````````````````````````````'
+    echo ) > $ARTIFACTS/.notes &&
+    F_NOTES="-F $ARTIFACTS/.notes"
+fi
 
 # PRERELEASE for lightweight tag
 KIND=--prerelease
@@ -40,7 +55,6 @@ git tag -l --format='%(objecttype)' "$VV" | grep -q '^tag' && {
 }
 
 # INFO
-TITLE="$TITLE $V"
 echo "TITLE: $TITLE"
 echo "CURRENT_TAG: $VV"
 echo "VERSION: $V"
