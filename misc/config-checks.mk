@@ -11,10 +11,6 @@ CP			?= cp --reflink=auto
 .config.defaults	+= CP PERL PYTHON3 PKG_CONFIG GDK_PIXBUF_CSOURCE PANDOC IMAGEMAGICK_CONVERT
 HAVE_PANDOC1		 = $(shell $(PANDOC) --version | grep -q '^pandoc 1\.' && echo 1)
 
-ABSPATH_DLCACHE		?= $(abspath ./.dlcache)
-npm_config_cache        ?= $(abspath ./.dlcache/npm)
-export ABSPATH_DLCACHE npm_config_cache
-
 INSTALL 		:= /usr/bin/install -c
 INSTALL_DATA 		:= $(INSTALL) -m 644
 RMDIR_P			:= rmdir -p >/dev/null 2>&1
@@ -38,17 +34,6 @@ else
 useld_fast		:= $(ld_options) $(or $(useld_mold), $(if $(HAVE_CLANG), $(useld_lld))) # ld.lld only supports llvm lto
 useld_fast+vs		:= $(ld_options) # keep default linker for production
 endif
-
-# == Cache downloads in ABSPATH_DLCACHE ==
-# $(call AND_DOWNLOAD_SHAURL, sha256sum, url, filename) - Download and cache file via `url`, verify `sha256sum`
-AND_DOWNLOAD_SHAURL = && ( : \
-	&& ( test ! -e "$(ABSPATH_DLCACHE)/$(strip $(or $3,$(notdir $2)))" || $(CP) "$(ABSPATH_DLCACHE)/$(strip $(or $3,$(notdir $2)))" . ) \
-	&& ( echo "$(strip $1) $(or $3,$(notdir $2))" | sha256sum -c - >/dev/null 2>&1 || curl -sfSL "$(strip $2)" -o "$(strip $(or $3,$(notdir $2)))" ) \
-	&& ( echo "$(strip $1) $(or $3,$(notdir $2))" | sha256sum -c - || { echo "sha256sum $$PWD/$(strip $3)" && false; }) \
-	&& ( test ! -x "$(ABSPATH_DLCACHE)/" \
-	   || ( mkdir -p "$(ABSPATH_DLCACHE)/" \
-	      && ( cmp -s "$(strip $(or $3,$(notdir $2)))" "$(ABSPATH_DLCACHE)/$(strip $(or $3,$(notdir $2)))" \
-		 || $(CP) "$(strip $(or $3,$(notdir $2)))" "$(ABSPATH_DLCACHE)/" ) ) ) )
 
 # == conftest_lib & conftest_require_lib ==
 # $(call conftest_lib, header, symbol, lib) -> $CONFTEST
