@@ -1,0 +1,80 @@
+# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+
+# Electron builds on ubuntu:22.04: https://github.com/electron/build-images/blob/main/Dockerfile
+# We would build on gcc or debian images, but we need libstdc++-14-dev
+FROM ubuntu:24.04
+# ENV DEBIAN_FRONTEND=noninteractive # ENV persists in interactive sessions
+
+# Use BASH(1) as shell, affects the RUN commands below
+RUN ln -sf bash /bin/sh && ls -al /bin/sh
+
+# Upgrade packages, cache /var/cache/apt instead of "apt clean"
+RUN \
+  --mount=type=cache,target=/var/cache/apt : \
+  && apt-get update \
+  && apt-get -y upgrade \
+  && apt-get autoremove -y
+
+# Add libXss.so, libgtk-3-0 for Electron
+RUN \
+  --mount=type=cache,target=/var/cache/apt : \
+  && apt-get install -y \
+	     sudo lsb-release software-properties-common gnupg alien curl wget \
+	     imagemagick unzip squashfs-tools libxml2-utils zstd \
+	     pandoc python3-pandocfilters python3 python3-pip graphviz doxygen \
+	     build-essential cmake pkg-config gettext git ccache universal-ctags \
+	     cppcheck castxml python3-lxml libboost-system-dev \
+	     libzstd-dev librsvg2-bin libxml2-dev \
+	     libasound2-dev libflac-dev libopus-dev libjack-dev \
+	     libvorbis-dev libmpg123-dev libmp3lame-dev \
+	     libgtk2.0-dev libgtk-3-dev \
+	     libgtk-3-0 libxss1 libgbm1 libnss3 \
+	     xvfb twm ffmpeg \
+  && apt-get autoremove -y
+
+# Install uv, bun, Nodejs - https://github.com/nodesource/distributions#nodejs
+RUN \
+  --mount=type=cache,target=/var/cache/apt : \
+  cd /tmp/ \
+  && wget -nv https://github.com/astral-sh/uv/releases/download/0.8.3/uv-i686-unknown-linux-gnu.tar.gz \
+  && tar xvf uv-i686-unknown-linux-gnu.tar.gz -C /usr/local/bin/ --strip-components=1 \
+  && rm uv-i686-unknown-linux-gnu.tar.gz \
+  && wget -nv https://github.com/oven-sh/bun/releases/download/bun-v1.2.19/bun-linux-x64.zip \
+  && unzip -j -o bun-linux-x64.zip -d /usr/local/bin/ \
+  && rm bun-linux-x64.zip \
+  && mkdir -p /etc/apt/keyrings \
+  && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+  && rm -f nodesource-repo.gpg.key \
+  && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list \
+  && apt-get update \
+  && apt-get install -y nodejs \
+  && apt-get autoremove -y
+
+# Install recent clang++
+RUN \
+  --mount=type=cache,target=/var/cache/apt : \
+  && curl -fsSLO https://apt.llvm.org/llvm.sh && chmod +x llvm.sh \
+  && yes | ./llvm.sh 20 && rm -f ./llvm.sh \
+  && apt-get install -y clang-tidy-20 libclang-20-dev \
+  && update-alternatives \
+       --install /usr/bin/clang         clang           /usr/bin/clang-20 0 \
+       --slave   /usr/bin/clang++       clang++         /usr/bin/clang++-20  \
+       --slave   /usr/bin/clang-tidy    clang-tidy      /usr/bin/clang-tidy-20 \
+       --slave   /usr/bin/ld.lld        ld.lld          /usr/bin/ld.lld-20 \
+  && apt-get autoremove -y
+
+# Support 1000:1000 for normal developer setups, and for
+# Github CI support runner:runner, both with sudo enabled
+RUN : \
+  && mkdir -p /github /etc/skel \
+  && echo -e "alias ll='ls -alF'\nalias la='ls -A'\nalias l='ls -CF'" > /etc/skel/.bashrc \
+  && userdel -r ubuntu \
+  && groupadd -g 1000 run1000 && useradd -u 1000 -g run1000 -m -d /github/home1000 -s /bin/bash run1000 \
+  && echo "run1000 ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/run1000 \
+  && groupadd -g 127 runner && useradd -u 1001 -g runner -G 1000 -m -d /github/home -s /bin/bash runner \
+  && echo "runner ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/runner
+USER run1000
+
+# docker build -t ghcr.io/tim-janik/anklang-ci:ci-latest -f .github/workflows/Dockerfile.ci .github/workflows/
+#   docker push ghcr.io/tim-janik/anklang-ci:ci-latest   # Make-Public: https://github.com/users/tim-janik/packages/container/<IMAGE>/settings
+# docker run -ti --rm -v $PWD:/anklang-ci -w /anklang-ci ghcr.io/tim-janik/anklang-ci:ci-latest
