@@ -30,21 +30,23 @@ jobs:
   BuildPages:
     if: ${{ github.repository == 'tim-janik/anklang' }}
     runs-on: ubuntu-latest
-    container: { image: 'ghcr.io/tim-janik/anklang-ci:noble-latest', options: --user runner }
+    container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
     steps:
-      - name: Checkout Anklang
-        run: |
-          pwd && ls -al && rm -rf * .[^.]* ..?*
-          git clone --recurse-submodules https://github.com/tim-janik/anklang.git .
-      - name: Setup Pages
-        id: pages
-        uses: actions/configure-pages@v5
-      - run: echo 'prefix=/ CC=clang CXX=clang++ CLANG_TIDY=clang-tidy' | tr ' ' '\n' > config-defaults.mk
-      - run: make mkdocs-build -j`nproc`
+    - { uses: actions/checkout@v4, with: { fetch-depth: 0 } }
+    - run: git fetch -f --tags	# Fix actions/checkout#290
+    - uses: actions/configure-pages@v5
+    - name: 'Configure build presets'
+      run: |
+        echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
+    - run: |
+        make -w -j`nproc` all
+    - run: |
+        make -w mkdocs-build -j`nproc`
         # (cd out/site/ && python3 -m http.server 2222 )
-      - run: ls -al out/site/
-      - uses: actions/upload-pages-artifact@v3
-        with: { path: ./out/site/ }
+    - run: |
+        ls -al out/site/
+    - uses: actions/upload-pages-artifact@v3
+      with: { path: ./out/site/ }
 
   DeployPages:
     needs: BuildPages
