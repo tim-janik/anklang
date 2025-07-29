@@ -52,8 +52,8 @@ jobs:
     runs-on: ubuntu-latest
     container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
     steps:
-    - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive, github-server-url: 'https://github.com' } }
-    - run: git fetch -f --tags          # Fix actions/checkout#290
+    - { uses: actions/checkout@v4, with: { fetch-depth: 0 } }
+    - run: git fetch -f --tags	# Fix actions/checkout#290
     - run: git describe --always --long
     - name: 'Configure build presets'
       run: |
@@ -78,8 +78,8 @@ jobs:
   #  runs-on: ubuntu-latest
   #  container: { image: 'ghcr.io/tim-janik/anklang-ci:arch-latest' }
   #  steps:
-  #  - { uses: actions/checkout@v4.1.1, with: { fetch-depth: 0, submodules: recursive, github-server-url: 'https://github.com' } }
-  #  - run: git fetch -f --tags          # Fix actions/checkout#290
+  #  - { uses: actions/checkout@v4, with: { fetch-depth: 0 } }
+  #  - run: git fetch -f --tags	# Fix actions/checkout#290
   #  - run: git describe --always --long
   #  - name: 'Configure build presets'
   #    run: |
@@ -103,8 +103,8 @@ jobs:
     needs: [ ReleaseArtifacts, NobleClangTidy ]
     runs-on: ubuntu-latest
     steps:
-    - { uses: actions/checkout@v4.1.1,	with: { fetch-depth: 0 } } # Fix actions/checkout#290
-    - run: git fetch -f --tags && git submodule update --init --recursive && git describe --long
+    - { uses: actions/checkout@v4, with: { fetch-depth: 0 } }
+    - run: git fetch -f --tags	# Fix actions/checkout#290
     - name: Check-Jobs
       run: |
         echo '${{ needs.ReleaseArtifacts.result }}' '${{ needs.NobleClangTidy.result }}'
