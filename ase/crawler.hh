@@ -10,6 +10,7 @@ namespace Ase {
 class FileCrawler final : public ObjectImpl, public virtual ResourceCrawler {
   String cwd_;
   const uint constraindir_ : 1;
+  [[maybe_unused]]
   const uint constrainfile_ : 1;
   FileCrawler (const String &cwd, bool constraindir = false, bool constrainfile = false);
 protected:
