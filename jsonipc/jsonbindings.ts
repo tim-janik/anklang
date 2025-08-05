@@ -222,12 +222,10 @@ function generateClassRegistration (classes: { [name: string]: StructureDetails 
     const details = classes[name];
     const fullyQualifiedName = `::${details.pathComponents.join ('::')}`;
     const variableName = `class__${details.pathComponents.join ('_')}`;
-
+    // New Class
     let block = `  ::Jsonipc::Class< ${fullyQualifiedName} > ${variableName};\n`;
     block += `  ${variableName}\n`;
-
     const registrationLines: string[] = [];
-
     // Inheritance
     const parentId = navigator.inheritanceMap.get (details.preciseId);
     if (parentId) {
@@ -235,32 +233,53 @@ function generateClassRegistration (classes: { [name: string]: StructureDetails 
       if (parentSymbol)
         registrationLines.push (`.inherit< ::${parentSymbol.pathComponents.join ('::')} >()`);
     }
-
     // Fields
     details.fields.forEach (field => {
       // registrationLines.push (`.set ("${field.names.title}", &${fullyQualifiedName}::${field.names.title})`);
     });
-
     // Methods
-    const methods2symbol = new Map<string, Symbol[]>();
+    const processedMethods = new Set<string>();
+    // Pass 1: Detect get_*/set_* pairs
+    const potentialGetters = new Map<string, Symbol>();
+    const potentialSetters = new Map<string, Symbol>();
     for (const method of details.methods) {
-      if (!methods2symbol.has (method.names.title)) {
-        methods2symbol.set (method.names.title, []);
-      }
-      methods2symbol.get (method.names.title)!.push (method);
+      const signature = method.functionSignature;
+      if (!signature) continue;
+      const isGetter = !signature.parameters || signature.parameters.length === 0;
+      const isSetter = signature.parameters && signature.parameters.length === 1;
+      if (isGetter && method.names.title.startsWith ('get_') && method.names.title.length > 4)
+        potentialGetters.set (method.names.title.substring (4), method);
+      else if (isSetter && method.names.title.startsWith ('set_') && method.names.title.length > 4)
+	potentialSetters.set (method.names.title.substring (4), method);
     }
-
-    for (const [methodName, symbols] of methods2symbol.entries()) {
-      if (symbols.length === 1)
+    // Generate getter+setter registrations
+    for (const [baseName, getterSymbol] of potentialGetters.entries()) {
+      const setterSymbol = potentialSetters.get (baseName);
+      if (!setterSymbol) continue; // TODO: future feature
+      registrationLines.push (`.set ("${baseName}", &${fullyQualifiedName}::${getterSymbol.names.title}, &${fullyQualifiedName}::${setterSymbol.names.title})`);
+      processedMethods.add (getterSymbol.names.title);
+      processedMethods.add (setterSymbol.names.title);
+    }
+    // Pass 2: Handle overloaded and regular methods
+    const methodsByName = new Map<string, Symbol[]>();
+    for (const method of details.methods) {
+      // TODO: skip? if (processedMethods.has (method.names.title)) continue;
+      if (!methodsByName.has (method.names.title))
+        methodsByName.set (method.names.title, []);
+      methodsByName.get (method.names.title)!.push (method);
+    }
+    // Generate single_method or getter+setter registrations
+    for (const [methodName, symbols] of methodsByName.entries()) {
+      if (symbols.length === 1) // simple method
         registrationLines.push (`.set ("${methodName}", &${fullyQualifiedName}::${methodName})`);
       else if (symbols.length === 2) {
+        // Overloaded method, check for getter/setter
         const getter = symbols.find (s => s.functionSignature && !s.functionSignature.parameters?.length);
         const setter = symbols.find (s => s.functionSignature && s.functionSignature.parameters?.length === 1);
         if (getter && setter)
           registrationLines.push (`.set ("${methodName}", &${fullyQualifiedName}::${methodName}, &${fullyQualifiedName}::${methodName})`);
       }
     }
-
     if (registrationLines.length > 0) {
       block += '    ' + registrationLines.join ('\n    ') + '\n    ;';
       outputLines.push (block);
