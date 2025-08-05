@@ -54,9 +54,9 @@ struct Widget : BaseRegistry {
   int bit_;
   int bit_g ()                      { tlog += string_format ("realgetter=%d\n", bit_); return bit_; }
   int bit_s (const int &bit)        { tlog += string_format ("realsetter=%d\n", bit);  return bit_ = bit; }
-  Ase::Member<&Widget::bit_s, &Widget::bit_g> bit [[no_unique_address]];
+  Ase::Member<&Widget::bit_g, &Widget::bit_s> bit [[no_unique_address]];
   Ase::Member<&Widget::f_a> f [[no_unique_address]];
-  Ase::Member<&Widget::g_s, &Widget::g_g> g [[no_unique_address]];
+  Ase::Member<&Widget::g_g, &Widget::g_s> g [[no_unique_address]];
   Widget (const std::string &foo = "") :
     bit (this),
     f (this, "f", { "blurb=_f_property", "" }),

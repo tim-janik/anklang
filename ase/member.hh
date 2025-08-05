@@ -82,7 +82,7 @@ bool kvpairs_assign  (StringS &kvs, const String &key_value_pair);
 } // Lib
 
 /// Implement C++ member field API with a 0-sized class from setter and getter, maybe combined with `[[no_unique_address]]`.
-template<auto setter, auto getter = nullptr>
+template<auto getter, auto setter = nullptr>
 class Member {
 public:
   using GetterTraits = Lib::MemberFunctionTraits<getter>;
