@@ -1402,9 +1402,10 @@ struct Class final : TypeInfo {
     return *this;
   }
   /// Add a member object accessors
-  template<typename R, typename A, typename C> Class&
-  set (const char *name, R (C::*get) () const, void (C::*set) (A))
+  template<typename R, typename A, typename C, typename VB> Class&
+  set (const char *name, R (C::*get) () const, VB (C::*set) (A))
   {
+    static_assert (std::is_same_v<void, VB> || std::is_same_v<bool, VB>);
     JSONIPC_ASSERT_RETURN (get && set, *this);
     add_member_function_closure (std::string ("get/") + name, make_closure (get));
     add_member_function_closure (std::string ("set/") + name, make_closure (set));
