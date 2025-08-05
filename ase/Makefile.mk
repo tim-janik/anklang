@@ -8,6 +8,8 @@ ase/gtk2wrap.sources		::= ase/gtk2wrap.cc
 ase/noglob.sources		::= $(ase/AnklangSynthEngine.sources) $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
 ase/common.ccsources		::= $(filter-out $(ase/noglob.sources), $(wildcard ase/*.cc))
 ase/common.csources		::= $(wildcard ase/*.c)
+ase/generated.sources		:=
+ase/object.deps			:=
 ase/sysconfig.dep		::= $>/ase/sysconfig.h
 ASE_EXTERNAL_INCLUDES := $(strip		\
 	-Iexternal/clap/include			\
@@ -93,7 +95,7 @@ ase/sndfile.cc: $>/lib/libsndfile.so # includes $>/sndfile/src/config.h
 
 # == Common Sources ==
 ase/common.sources	::= $(ase/common.ccsources) $(ase/common.csources)
-ase/generated.sources	::= $(strip \
+ase/generated.sources	+= $(strip	\
 	$>/ase/api.jsonipc.cc		\
 	$>/ase/blake3impl.c		\
 	$>/ase/blake3avx512.c		\
@@ -122,8 +124,8 @@ $(ase/buildversion.cc):								| $>/ase/ # $(GITCOMMITDEPS)
 ase/generated.sources += $(ase/buildversion.cc)
 
 # == object deps ==
-ase/object.deps      = $(ase/sysconfig.dep) $(ase/libase.deps) $(EXTERNAL_CXX_STAMPS)
-ase/common.objects ::= $(sort \
+ase/object.deps	+= $(ase/sysconfig.dep) $(ase/libase.deps) $(EXTERNAL_CXX_STAMPS)
+ase/common.objects := $(sort \
 	$(call BUILDDIR_O, $(ase/common.sources)) \
 	$(call SOURCE2_O, $(ase/generated.sources))   \
 )
