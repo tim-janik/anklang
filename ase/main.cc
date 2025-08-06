@@ -117,6 +117,7 @@ print_usage (bool help)
   printout ("  --js-api         Print Javascript bindings\n");
   printout ("  --jsbin          Print Javascript IPC & binary messages\n");
   printout ("  --jsipc          Print Javascript IPC messages\n");
+  printout ("  --jsonts         Print TypeScript bindings\n");
   printout ("  --list-drivers   Print PCM and MIDI drivers\n");
   printout ("  --list-tests     List all test names\n");
   printout ("  --norc           Prevent loading of any rc files\n");
@@ -257,7 +258,12 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
             printout ("%s\n", string_to_hex (hash));
           exit (hash == "");
         }
-      else if (strcmp ("--js-api", argv[i]) == 0)
+      else if (strcmp ("--jsonts", argv[i]) == 0) {
+        if (getenv ("ASE_JSONTS") == nullptr)
+          fatal_error ("%s: environment must contain ASE_JSONTS for --jsonts", argv[0]);
+        printout ("%s\n", Jsonipc::g_binding_printer->finish());
+        exit (0);
+      } else if (strcmp ("--js-api", argv[i]) == 0)
         arg_js_api = true;
       else if (strcmp ("--class-tree", argv[i]) == 0)
         arg_class_tree = true;

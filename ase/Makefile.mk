@@ -33,7 +33,12 @@ $>/codegen/ase/gen/api-jsonipc.g.cc: $>/codegen/ase/gen/api-jsonipc.json jsonipc
 	$Q echo '#include <ase/jsonapi.hh>'						>> $@.tmp
 	$Q echo '#include <ase/api.hh>'							>> $@.tmp
 	$Q $(RUNTS) jsonipc/jsonbindings.ts $<						>> $@.tmp
-	$Q echo '[[maybe_unused]] static bool init_jsonipc = (jsonipc_for_api_jsonipc_json(), 0);'	>> $@.tmp
+	$Q echo '[[maybe_unused]] static bool init_jsonipc = [] {'			>> $@.tmp
+	$Q echo '  if (getenv ("ASE_JSONTS"))'						>> $@.tmp
+	$Q echo '    Jsonipc::g_binding_printer = new Jsonipc::BindingPrinter();'	>> $@.tmp
+	$Q echo '  jsonipc_for_api_jsonipc_json();'					>> $@.tmp
+	$Q echo '  return 0;'								>> $@.tmp
+	$Q echo '} ();'									>> $@.tmp
 	$Q mv $@.tmp $@
 CODEGEN.FILES += ase/gen/api-jsonipc.g.cc
 # DEV_TARGETS - checks & helpers for development
@@ -53,8 +58,8 @@ $>/codegen/ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts $(lib/Anklang
 	$Q echo '// Generated from: $(notdir $^)'						>  $@.tmp
 	$Q echo '// @ts-nocheck'								>> $@.tmp
 	$Q cat jsonipc/jsonipc.ts								>> $@.tmp
-	$Q ASAN_OPTIONS=detect_leaks=0 \
-	$(lib/AnklangSynthEngine) --norc  -P null -M null --js-api				>> $@.tmp
+	$Q ASAN_OPTIONS=detect_leaks=0 ASE_JSONTS=1 \
+	$(lib/AnklangSynthEngine) --norc  -P null -M null --jsonts				>> $@.tmp
 	$Q echo '/**@type{ServerImpl}*/'							>> $@.tmp
 	$Q echo -n 'export let server: Promise<Server> | Server ='				>> $@.tmp
 	$Q echo 'Jsonipc.setup_promise_type (Server, s => server = s);'				>> $@.tmp

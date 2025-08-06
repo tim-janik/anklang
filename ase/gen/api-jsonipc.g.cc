@@ -346,4 +346,9 @@ jsonipc_for_api_jsonipc_json()
     .set ("url_crawler", &::Ase::Server::url_crawler)
     ;
 }
-[[maybe_unused]] static bool init_jsonipc = (jsonipc_for_api_jsonipc_json(), 0);
+[[maybe_unused]] static bool init_jsonipc = [] {
+  if (getenv ("ASE_JSONTS"))
+    Jsonipc::g_binding_printer = new Jsonipc::BindingPrinter();
+  jsonipc_for_api_jsonipc_json();
+  return 0;
+} ();
