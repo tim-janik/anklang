@@ -13,6 +13,7 @@ ASE_EXTERNAL_INCLUDES := $(strip		\
 	-Iexternal/clap/include			\
 	-Iexternal/libsndfile/include		\
 	-Iexternal/liquidsfz/lib		\
+	-Iexternal/nlohmann-json/include	\
 	-Iexternal/pandaresampler/include	\
 	-Iexternal/rapidjson/include		\
 	-Iexternal/websocketpp			\

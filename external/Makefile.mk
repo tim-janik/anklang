@@ -45,6 +45,17 @@ external/clap/.sha-$(clap/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/clap/.sha-$(clap/sha)
 
+# == external/nlohmann-json/ ==
+nlohmann-json/sha := 42f6e95cad6ec532fd372391373363b62a14af6d771056dbfc86160e6dfff7aa
+external/nlohmann-json/.sha-$(nlohmann-json/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/nlohmann-json.tar.gz, $(nlohmann-json/sha), \
+		https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz)
+	$Q rm -rf external/nlohmann-json && mkdir external/nlohmann-json
+	$Q tar xf external/nlohmann-json.tar.gz --strip-components=1 -C external/nlohmann-json/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/nlohmann-json/.sha-$(nlohmann-json/sha)
+
 # == external/libsndfile/ ==
 libsndfile/sha := 1227bc78df8eece089e6b984ba7c32e74e210f146d2bac1b76bd218baaf35ce5
 external/libsndfile/.sha-$(libsndfile/sha):
