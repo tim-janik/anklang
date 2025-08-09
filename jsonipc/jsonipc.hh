@@ -2,9 +2,7 @@
 #ifndef __JSONIPC_JSONIPC_HH__
 #define __JSONIPC_JSONIPC_HH__
 
-#include <rapidjson/document.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
+#include <nlohmann/json.hpp>
 #include <stdarg.h>
 #include <cxxabi.h> // abi::__cxa_demangle
 #include <algorithm>
@@ -36,15 +34,11 @@ using SharedBase = JsonipcSharedBase;
 #endif
 
 // == Json types ==
-using JsonValue = rapidjson::GenericValue<rapidjson::UTF8<char>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator> >;
-using JsonAllocator = rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>;
-using StringBufferWriter = rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<>, rapidjson::UTF8<>, rapidjson::CrtAllocator, rapidjson::kWriteNanAndInfNullFlag>;
-static constexpr const unsigned  rapidjson_parse_flags =
-  rapidjson::kParseFullPrecisionFlag |
-  rapidjson::kParseCommentsFlag |
-  rapidjson::kParseTrailingCommasFlag |
-  rapidjson::kParseNanAndInfFlag |
-  rapidjson::kParseEscapedApostropheFlag;
+using Json = nlohmann::json;
+using JsonValue = Json;
+using JsonAllocator = Json; // Not needed for nlohmann::json, but keeping for API compatibility
+// StringBufferWriter not needed for nlohmann::json - using dump() instead
+// rapidjson parsing flags are handled internally by nlohmann::json
 
 // == C++ Utilities ==
 /// Construct a std::string with printf-like syntax, ignoring locale settings.
@@ -218,13 +212,11 @@ struct Convert<T, REQUIRESv< std::is_integral<T>::value > > {
   static T
   from_json (const JsonValue &value, T fallback = T())
   {
-    if      (value.IsBool())    return value.GetBool();
-    else if (value.IsInt())     return value.GetInt();
-    else if (value.IsUint())    return value.GetUint();
-    else if (value.IsInt64())   return value.GetInt64();
-    else if (value.IsUint64())  return value.GetUint64();
-    else if (value.IsDouble())  return value.GetDouble();
-    else                        return fallback;        // !IsNumber()
+    if      (value.is_boolean())        return value.get<bool>();
+    else if (value.is_number_integer()) return value.get<T>();
+    else if (value.is_number_unsigned()) return value.get<T>();
+    else if (value.is_number_float())   return static_cast<T>(value.get<double>());
+    else                                return fallback;        // !is_number()
   }
   static JsonValue
   to_json (T i, JsonAllocator &allocator)
@@ -254,13 +246,11 @@ struct Convert<T, REQUIRESv< std::is_floating_point<T>::value >> {
   static T
   from_json (const JsonValue &value, T fallback = T())
   {
-    if      (value.IsBool())    return value.GetBool();
-    else if (value.IsInt())     return value.GetInt();
-    else if (value.IsUint())    return value.GetUint();
-    else if (value.IsInt64())   return value.GetInt64();
-    else if (value.IsUint64())  return value.GetUint64();
-    else if (value.IsDouble())  return value.GetDouble();
-    else                        return fallback;        // !IsNumber()
+    if      (value.is_boolean())        return value.get<bool>();
+    else if (value.is_number_integer()) return value.get<T>();
+    else if (value.is_number_unsigned()) return value.get<T>();
+    else if (value.is_number_float())   return value.get<T>();
+    else                                return fallback;        // !is_number()
   }
   static JsonValue
   to_json (T f, JsonAllocator &allocator)
@@ -275,17 +265,21 @@ struct Convert<const char*> {
   static const char*
   from_json (const JsonValue &value, const char *fallback = "")
   {
-    return value.IsString() ? value.GetString() : fallback;
+    if (!value.is_string()) return fallback;
+    // Note: This stores the string in a thread-local cache to return a valid pointer
+    static thread_local std::string temp_string;
+    temp_string = value.get<std::string>();
+    return temp_string.c_str();
   }
   static JsonValue
   to_json (const char *str, size_t l, JsonAllocator &allocator)
   {
-    return str ? JsonValue (str, l, allocator) : JsonValue();
+    return str ? JsonValue (std::string(str, l)) : JsonValue();
   }
   static JsonValue
   to_json (const char *str, JsonAllocator &allocator)
   {
-    return str ? JsonValue (str, strlen (str), allocator) : JsonValue();
+    return str ? JsonValue (std::string(str)) : JsonValue();
   }
 };
 
@@ -295,12 +289,12 @@ struct Convert<std::string> {
   static std::string
   from_json (const JsonValue &value, const std::string &fallback = std::string())
   {
-    return value.IsString() ? std::string (value.GetString(), value.GetStringLength()) : fallback;
+    return value.is_string() ? value.get<std::string>() : fallback;
   }
   static JsonValue
   to_json (const std::string &s, JsonAllocator &allocator)
   {
-    return JsonValue (s.data(), s.size(), allocator);
+    return JsonValue (s);
   }
 };
 
@@ -323,10 +317,10 @@ struct Convert<T, REQUIRESv< DerivesVector<T>::value >> {
   from_json (const JsonValue &jarray)
   {
     T vec;
-    if (jarray.IsArray())
+    if (jarray.is_array())
       {
-        vec.reserve (jarray.Size());
-        for (size_t i = 0; i < jarray.Size(); i++)
+        vec.reserve (jarray.size());
+        for (size_t i = 0; i < jarray.size(); i++)
           vec.emplace_back (Convert<typename T::value_type>::from_json (jarray[i]));
       }
     return vec;
@@ -334,10 +328,9 @@ struct Convert<T, REQUIRESv< DerivesVector<T>::value >> {
   static JsonValue
   to_json (const T &vec, JsonAllocator &allocator)
   {
-    JsonValue jarray (rapidjson::kArrayType);
-    jarray.Reserve (vec.size(), allocator);
+    JsonValue jarray = Json::array();
     for (size_t i = 0; i < vec.size(); ++i)
-      jarray.PushBack (Convert<typename T::value_type>::to_json (vec[i], allocator).Move(), allocator);
+      jarray.push_back (Convert<typename T::value_type>::to_json (vec[i], allocator));
     return jarray;
   }
 };
@@ -349,7 +342,7 @@ struct Convert<T, REQUIRESv< DerivesPair<T>::value >> {
   from_json (const JsonValue &jarray)
   {
     T pair = {};
-    if (jarray.IsArray() && jarray.Size() >= 2)
+    if (jarray.is_array() && jarray.size() >= 2)
       {
         pair.first  = Convert<typename T::first_type >::from_json (jarray[0]);
         pair.second = Convert<typename T::second_type>::from_json (jarray[1]);
@@ -359,10 +352,9 @@ struct Convert<T, REQUIRESv< DerivesPair<T>::value >> {
   static JsonValue
   to_json (const T &pair, JsonAllocator &allocator)
   {
-    JsonValue jarray (rapidjson::kArrayType);
-    jarray.Reserve (2, allocator);
-    jarray.PushBack (Convert<typename T::first_type >::to_json (pair.first,  allocator).Move(), allocator);
-    jarray.PushBack (Convert<typename T::second_type>::to_json (pair.second, allocator).Move(), allocator);
+    JsonValue jarray = Json::array();
+    jarray.push_back (Convert<typename T::first_type >::to_json (pair.first,  allocator));
+    jarray.push_back (Convert<typename T::second_type>::to_json (pair.second, allocator));
     return jarray;
   }
 };
@@ -421,11 +413,7 @@ to_json (const char (&c)[N], size_t l, JsonAllocator &allocator)
 static inline std::string
 jsonvalue_to_string (const JsonValue &value)
 {
-  rapidjson::StringBuffer buffer;
-  StringBufferWriter writer (buffer);
-  value.Accept (writer);
-  const std::string output { buffer.GetString(), buffer.GetSize() };
-  return output;
+  return value.dump();
 }
 
 /// Generate a string from a simple JsonValue object with up to 4 members.
@@ -433,12 +421,12 @@ template<class T1, class T2 = bool, class T3 = bool, class T4 = bool> static inl
 jsonobject_to_string (const char *m1, T1 &&v1, const char *m2 = 0, T2 &&v2 = {},
                       const char *m3 = 0, T3 &&v3 = {}, const char *m4 = 0, T4 &&v4 = {})
 {
-  rapidjson::Document doc (rapidjson::kObjectType);
-  auto &a = doc.GetAllocator();
-  if (m1 && m1[0]) doc.AddMember (JsonValue (m1, a), to_json (v1, a), a);
-  if (m2 && m2[0]) doc.AddMember (JsonValue (m2, a), to_json (v2, a), a);
-  if (m3 && m3[0]) doc.AddMember (JsonValue (m3, a), to_json (v3, a), a);
-  if (m4 && m4[0]) doc.AddMember (JsonValue (m4, a), to_json (v4, a), a);
+  Json doc = Json::object();
+  JsonAllocator allocator; // Dummy allocator for API compatibility
+  if (m1 && m1[0]) doc[m1] = to_json (v1, allocator);
+  if (m2 && m2[0]) doc[m2] = to_json (v2, allocator);
+  if (m3 && m3[0]) doc[m3] = to_json (v3, allocator);
+  if (m4 && m4[0]) doc[m4] = to_json (v4, allocator);
   return jsonvalue_to_string (doc);
 }
 
@@ -449,22 +437,23 @@ using Closure = std::function<void (CallbackInfo&)>;
 /// Context for calling C++ functions from Json
 struct CallbackInfo final {
   explicit CallbackInfo (const JsonValue &args, JsonAllocator *allocator = nullptr) :
-    args_ (args), doc_ (allocator)
+    args_ (args), doc_ (Json::object())
   {}
-  const JsonValue& ntharg       (size_t index) const { static JsonValue j0; return index < args_.Size() ? args_[index] : j0; }
-  size_t           n_args       () const                { return args_.Size(); }
+  const JsonValue& ntharg       (size_t index) const { static JsonValue j0; return index < args_.size() ? args_[index] : j0; }
+  size_t           n_args       () const                { return args_.size(); }
   Closure*         find_closure (const char *methodname);
   std::string      classname    (const std::string &fallback) const;
-  JsonAllocator&   allocator    ()                      { return doc_.GetAllocator(); }
+  JsonAllocator&   allocator    ()                      { return dummy_allocator_; }
   void             set_result   (JsonValue &result)     { result_ = result; have_result_ = true; } // move-semantic!
   JsonValue&       get_result   ()                      { return result_; }
   bool             have_result  () const                { return have_result_; }
-  rapidjson::Document& document ()                      { return doc_; }
+  Json&            document     ()                      { return doc_; }
 private:
   const JsonValue &args_;
   JsonValue    result_;
   bool         have_result_ = false;
-  rapidjson::Document doc_;
+  Json         doc_;
+  JsonAllocator dummy_allocator_; // For API compatibility
 };
 
 // == FunctionTraits ==

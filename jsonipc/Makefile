@@ -11,7 +11,7 @@ OBJECTS  = testjsonipc.o
 DEFS     = -DSTANDALONE
 DEPS     = jsonipc.hh Makefile
 
-INCLUDES = -I../external/rapidjson/include/
+INCLUDES = -I../external/nlohmann-json/include/
 
 $(OBJECTS): %.o: %.cc $(DEPS)
 	$(CXX) $(DEFS) $(CXXFLAGS) $(INCLUDES) -c $<
