@@ -3,7 +3,8 @@
 all: testjsonipc
 
 builddir ?= out
-CXX	 = ccache clang++
+CXX	 = g++
+#CXX	 = ccache clang++
 #CXX	 = ccache g++ -Wno-nonnull-compare -Wno-address
 CXXFLAGS = -std=gnu++17 -Wall -O0 -g
 OBJECTS  = testjsonipc.o
