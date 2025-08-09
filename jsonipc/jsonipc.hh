@@ -367,48 +367,10 @@ struct Convert<T&> : Convert<T> {};
 template<typename T>
 struct Convert<T const&> : Convert<T> {};
 
-/// Convert JsonValue to C++ value
-template<typename T> static inline auto
-from_json (const JsonValue &value)
-  -> decltype (Convert<T>::from_json (value))
-{
-  return Convert<T>::from_json (value);
-}
-
-/// Convert JsonValue to C++ value with fallback for failed conversions
-template<typename T> static inline auto
-from_json (const JsonValue &value, const T &fallback)
-  -> decltype (Convert<T>::from_json (value, fallback))
-{
-  return Convert<T>::from_json (value, fallback);
-}
-
-/// Convert C++ value to JsonValue
-template<typename T> static inline JsonValue
-to_json (const T &value, JsonAllocator &allocator)
-{
-  return Convert<T>::to_json (value, allocator);
-}
-
-/// Convert C++ value to JsonValue
-template<> inline JsonValue
-to_json<const char*> (const char *const &value, JsonAllocator &allocator)
-{
-  return Convert<const char*>::to_json (value, allocator);
-}
+/// Convert JsonValue to C++ value - use Convert<T>::from_json directly
+/// Convert C++ value to JsonValue - use Convert<T>::to_json directly
 
 /// Convert C++ char array to JsonValue
-template<size_t N> static inline auto
-to_json (const char (&c)[N], JsonAllocator &allocator)
-{
-  return Convert<const char*>::to_json (c, N - 1, allocator);
-}
-template<size_t N> static inline auto
-to_json (const char (&c)[N], size_t l, JsonAllocator &allocator)
-{
-  return Convert<const char*>::to_json (c, l, allocator);
-}
-
 /// Simple way to generate a string from a JsonValue
 static inline std::string
 jsonvalue_to_string (const JsonValue &value)
@@ -423,10 +385,10 @@ jsonobject_to_string (const char *m1, T1 &&v1, const char *m2 = 0, T2 &&v2 = {},
 {
   Json doc = Json::object();
   JsonAllocator allocator; // Dummy allocator for API compatibility
-  if (m1 && m1[0]) doc[m1] = to_json (v1, allocator);
-  if (m2 && m2[0]) doc[m2] = to_json (v2, allocator);
-  if (m3 && m3[0]) doc[m3] = to_json (v3, allocator);
-  if (m4 && m4[0]) doc[m4] = to_json (v4, allocator);
+  if (m1 && m1[0]) doc[m1] = Convert<T1>::to_json (v1, allocator);
+  if (m2 && m2[0]) doc[m2] = Convert<T2>::to_json (v2, allocator);
+  if (m3 && m3[0]) doc[m3] = Convert<T3>::to_json (v3, allocator);
+  if (m4 && m4[0]) doc[m4] = Convert<T4>::to_json (v4, allocator);
   return jsonvalue_to_string (doc);
 }
 
@@ -673,9 +635,9 @@ public:
   {
     if (!wrapper)
       return JsonValue(); // null
-    JsonValue jobject (rapidjson::kObjectType);
-    jobject.AddMember ("$id", thisid, allocator);
-    jobject.AddMember ("$class", JsonValue (wrapper->classname().c_str(), allocator), allocator);
+    JsonValue jobject = Json::object();
+    jobject["$id"] = thisid;
+    jobject["$class"] = wrapper->classname();
     return jobject;
   }
   template<typename T> static JsonValue
@@ -727,12 +689,12 @@ public:
   virtual Wrapper*
   wrapper_from_json (const JsonValue &value)
   {
-    if (value.IsObject())
+    if (value.is_object())
       {
-        auto it = value.FindMember ("$id");
-        if (it != value.MemberEnd())
+        auto it = value.find ("$id");
+        if (it != value.end())
           {
-            const size_t thisid = Convert<size_t>::from_json (it->value);
+            const size_t thisid = Convert<size_t>::from_json (it.value());
             if (thisid)
               {
                 auto tit = wmap_.find (thisid);
@@ -1248,7 +1210,7 @@ struct Convert<T, REQUIRESv< std::is_enum<T>::value > > {
   static T
   from_json (const JsonValue &value, T fallback = T())
   {
-    if (value.IsString())
+    if (value.is_string())
       {
         using EnumType = Enum<T>;
         const std::string string = Convert<std::string>::from_json (value);
@@ -1286,8 +1248,8 @@ struct Serializable final : TypeInfo {
   {
     using SetterAttributeType = typename FunctionTraits<A>::ReturnType;
     Accessors accessors;
-    accessors.setter = [attribute] (T &obj, const JsonValue &value) -> void      { obj.*attribute = from_json<SetterAttributeType> (value); };
-    accessors.getter = [attribute] (const T &obj, JsonAllocator &a) -> JsonValue { return to_json (obj.*attribute, a); };
+    accessors.setter = [attribute] (T &obj, const JsonValue &value) -> void      { obj.*attribute = Convert<SetterAttributeType>::from_json (value); };
+    accessors.getter = [attribute] (const T &obj, JsonAllocator &a) -> JsonValue { return Convert<SetterAttributeType>::to_json (obj.*attribute, a); };
     AccessorMap &amap = accessormap();
     auto it = amap.find (name);
     if (it != amap.end())
@@ -1317,9 +1279,9 @@ private:
       if (!obj)
         return obj;
       AccessorMap &amap = accessormap();
-      for (const auto &field : value.GetObject())
+      for (const auto &field : value.items())
         {
-          const std::string field_name = field.name.GetString();
+          const std::string field_name = field.key();
           auto it = amap.find (field_name);
           if (it == amap.end())
             continue;
@@ -1331,14 +1293,14 @@ private:
     serialize_from_json_() = sfj;
     // implement serialize_to_json by calling all getters
     SerializeToJson stj = [] (const T &object, JsonAllocator &allocator) -> JsonValue {
-      JsonValue jobject (rapidjson::kObjectType);               // serialized result
+      JsonValue jobject = Json::object();               // serialized result
       AccessorMap &amap = accessormap();
       for (auto &it : amap)
         {
           const std::string field_name = it.first;
           Accessors &accessors = it.second;
           JsonValue result = accessors.getter (object, allocator);
-          jobject.AddMember (JsonValue (field_name.c_str(), allocator), result, allocator);
+          jobject[field_name] = result;
         }
       return jobject;
     };
@@ -1607,7 +1569,7 @@ struct Convert<std::shared_ptr<T>, REQUIRESv< IsWrappableClass<T>::value >> {
   static std::shared_ptr<T>
   from_json (const JsonValue &value)
   {
-    if (Serializable<ClassType>::is_serializable() && value.IsObject())
+    if (Serializable<ClassType>::is_serializable() && value.is_object())
       return Serializable<ClassType>::serialize_from_json (value);
     else
       return Class<ClassType>::object_from_json (value);
@@ -1616,7 +1578,7 @@ struct Convert<std::shared_ptr<T>, REQUIRESv< IsWrappableClass<T>::value >> {
   to_json (const std::shared_ptr<T> &sptr, JsonAllocator &allocator)
   {
     if (Serializable<ClassType>::is_serializable())
-      return sptr ? Serializable<ClassType>::serialize_to_json (*sptr, allocator) : JsonValue (rapidjson::kObjectType);
+      return sptr ? Serializable<ClassType>::serialize_to_json (*sptr, allocator) : Json::object();
     if (sptr)
       {
         // Wrap sptr, determine most derived wrapper via dynamic casts
@@ -1648,7 +1610,7 @@ struct Convert<T*, REQUIRESv< IsWrappableClass<T>::value >> {
   to_json (const T *obj, JsonAllocator &allocator)
   {
     if (Serializable<ClassType>::is_serializable())
-      return obj ? Serializable<ClassType>::serialize_to_json (*obj, allocator) : JsonValue (rapidjson::kObjectType);
+      return obj ? Serializable<ClassType>::serialize_to_json (*obj, allocator) : Json::object();
     // Caveat: Jsonipc will only auto-convert to most-derived-type iff it is registered and when looking at a shared_ptr<BaseType>
     std::shared_ptr<T> sptr;
     if constexpr (Has_shared_from_this<T>::value)
@@ -1691,22 +1653,24 @@ struct IpcDispatcher {
   std::string
   dispatch_message (const std::string &message)
   {
-    rapidjson::Document document;
-    document.Parse<rapidjson_parse_flags> (message.data(), message.size());
+    Json document;
     size_t id = 0;
     try {
-      if (document.HasParseError())
-        return create_error (id, -32700, "Parse error");
+      document = Json::parse (message);
+    } catch (const Json::parse_error &e) {
+      return create_error (id, -32700, "Parse error");
+    }
+    try {
       const char *methodname = nullptr;
       const JsonValue *args = nullptr;
-      for (const auto &m : document.GetObject())
-        if (m.name == "id")
-          id = from_json<size_t> (m.value, 0);
-        else if (m.name == "method")
-          methodname = from_json<const char*> (m.value);
-        else if (m.name == "params" && m.value.IsArray())
-          args = &m.value;
-      if (!id || !methodname || !args || !args->IsArray())
+      for (const auto &m : document.items())
+        if (m.key() == "id")
+          id = Convert<size_t>::from_json (m.value(), 0);
+        else if (m.key() == "method")
+          methodname = Convert<const char*>::from_json (m.value());
+        else if (m.key() == "params" && m.value().is_array())
+          args = &m.value();
+      if (!id || !methodname || !args || !args->is_array())
         return create_error (id, -32600, "Invalid Request");
       CallbackInfo cbi (*args);
       Closure *closure = cbi.find_closure (methodname);
@@ -1732,38 +1696,29 @@ struct IpcDispatcher {
 private:
   std::map<std::string, Closure> extra_methods;
   std::string
-  create_reply (size_t id, JsonValue &result, bool skip_result, rapidjson::Document &d)
+  create_reply (size_t id, JsonValue &result, bool skip_result, Json &d)
   {
-    auto &a = d.GetAllocator();
-    d.SetObject();
-    d.AddMember ("id", id, a);
-    d.AddMember ("result", result, a); // move-semantics!
-    rapidjson::StringBuffer buffer;
-    StringBufferWriter writer (buffer);
-    d.Accept (writer);
-    std::string output { buffer.GetString(), buffer.GetSize() };
-    return output;
+    d = Json::object();
+    d["id"] = id;
+    d["result"] = result; // move-semantics!
+    return d.dump();
   }
   std::string
   create_error (size_t id, int errorcode, const std::string &message)
   {
-    rapidjson::Document d (rapidjson::kObjectType);
-    auto &a = d.GetAllocator();
-    d.AddMember ("id", id ? JsonValue (id) : JsonValue(), a);
-    JsonValue error (rapidjson::kObjectType);
-    error.AddMember ("code", errorcode, a);
-    error.AddMember ("message", JsonValue (message.c_str(), a).Move(), a);
-    d.AddMember ("error", error, a); // moves error to null
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer (buffer);
-    d.Accept (writer);
-    std::string output { buffer.GetString(), buffer.GetSize() };
-    return output;
+    Json d = Json::object();
+    d["id"] = id ? Json(id) : Json();
+    Json error = Json::object();
+    error["code"] = errorcode;
+    error["message"] = message;
+    d["error"] = error;
+    return d.dump();
   }
   static std::string*
   jsonipc_initialize (CallbackInfo &cbi)
   {
-    cbi.set_result (to_json (0x00000001, cbi.allocator()).Move());
+    JsonValue result = Convert<int>::to_json (0x00000001, cbi.allocator());
+    cbi.set_result (result);
     return nullptr; // no error
   }
 };

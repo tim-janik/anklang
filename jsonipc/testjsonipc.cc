@@ -63,11 +63,11 @@ struct Derived : Base, Base2, std::enable_shared_from_this<Derived> {
 static size_t
 json_objectid (const Jsonipc::JsonValue &value)
 {
-  if (value.IsObject())
+  if (value.is_object())
     {
-      auto it = value.FindMember ("$id");
-      if (it != value.MemberEnd())
-        return Jsonipc::from_json<size_t> (it->value);
+      auto it = value.find ("$id");
+      if (it != value.end())
+        return Jsonipc::Convert<size_t>::from_json (it.value());
     }
   return 0;
 }
@@ -75,20 +75,21 @@ json_objectid (const Jsonipc::JsonValue &value)
 template<typename R> R
 parse_result (size_t id, const std::string json_reply)
 {
-  rapidjson::Document document;
-  document.Parse<Jsonipc::rapidjson_parse_flags> (json_reply.data(), json_reply.size());
-  if (!document.HasParseError())
-    {
-      size_t id_ = 0;
-      const Jsonipc::JsonValue *result = NULL;
-      for (const auto &m : document.GetObject())
-        if (m.name == "id")
-          id_ = Jsonipc::from_json<size_t> (m.value, 0);
-        else if (m.name == "result")
-          result = &m.value;
-      if (id_ == id && result)
-        return Jsonipc::from_json<R> (*result);
-    }
+  Jsonipc::Json document;
+  try {
+    document = Jsonipc::Json::parse (json_reply);
+    size_t id_ = 0;
+    const Jsonipc::JsonValue *result = NULL;
+    for (const auto &m : document.items())
+      if (m.key() == "id")
+        id_ = Jsonipc::Convert<size_t>::from_json (m.value(), 0);
+      else if (m.key() == "result")
+        result = &m.value();
+    if (id_ == id && result)
+      return Jsonipc::Convert<R>::from_json (*result);
+  } catch (const Jsonipc::Json::parse_error &e) {
+    // Parse error, return default value
+  }
   return R();
 }
 
@@ -96,18 +97,18 @@ static void
 test_jsonipc (bool dispatcher_shell, bool printer)
 {
   using namespace Jsonipc;
-  rapidjson::Document doc;
-  auto &a = doc.GetAllocator();
+  Json doc = Json::object();
+  JsonAllocator a; // Dummy allocator
 
   // test basics
-  JSONIPC_ASSERT_RETURN (false == from_json<bool> (JsonValue()));
-  JSONIPC_ASSERT_RETURN (true == from_json<bool> (JsonValue (true)));
-  JSONIPC_ASSERT_RETURN (true == from_json<bool> (JsonValue(), true));
-  JSONIPC_ASSERT_RETURN (false == from_json<bool> (JsonValue(), false));
-  JSONIPC_ASSERT_RETURN (from_json<bool> (to_json (true, a)) == true);
-  JSONIPC_ASSERT_RETURN (from_json<bool> (to_json (false, a)) == false);
-  JSONIPC_ASSERT_RETURN (from_json<size_t> (to_json (1337, a)) == 1337);
-  JSONIPC_ASSERT_RETURN (from_json<ssize_t> (to_json (-1337, a)) == -1337);
+  JSONIPC_ASSERT_RETURN (false == Convert<bool>::from_json (JsonValue()));
+  JSONIPC_ASSERT_RETURN (true == Convert<bool>::from_json (JsonValue (true)));
+  JSONIPC_ASSERT_RETURN (true == Convert<bool>::from_json (JsonValue(), true));
+  JSONIPC_ASSERT_RETURN (false == Convert<bool>::from_json (JsonValue(), false));
+  JSONIPC_ASSERT_RETURN (Convert<bool>::from_json (Convert<bool>::to_json (true, a)) == true);
+  JSONIPC_ASSERT_RETURN (Convert<bool>::from_json (Convert<bool>::to_json (false, a)) == false);
+  JSONIPC_ASSERT_RETURN (Convert<size_t>::from_json (Convert<size_t>::to_json (1337, a)) == 1337);
+  JSONIPC_ASSERT_RETURN (Convert<ssize_t>::from_json (Convert<ssize_t>::to_json (-1337, a)) == -1337);
   JSONIPC_ASSERT_RETURN (from_json<float> (to_json (-0.5, a)) == -0.5);
   JSONIPC_ASSERT_RETURN (from_json<double> (to_json (1e20, a)) == 1e20);
   JSONIPC_ASSERT_RETURN (from_json<const char*> (to_json ("Om", a)) == std::string ("Om"));
