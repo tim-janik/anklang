@@ -3,7 +3,7 @@
 #include "jsonapi.hh"
 #include "utils.hh"
 #include "internal.hh"
-#include <rapidjson/prettywriter.h>
+#include <nlohmann/json.hpp>
 
 namespace Ase {
 
@@ -19,7 +19,7 @@ Writ::InstanceMap::wrapper_to_json (Wrapper *wrapper, const size_t thisid, Jsoni
 Jsonipc::InstanceMap::Wrapper*
 Writ::InstanceMap::wrapper_from_json (const Jsonipc::JsonValue &value)
 {
-  if (!value.IsNull())
+  if (!value.is_null())
     warning ("Ase::Writ: non persistent object cannot resolve: %s*", Jsonipc::jsonvalue_to_string (value));
   //return nullptr;
   return this->Jsonipc::InstanceMap::wrapper_from_json (value);
@@ -61,26 +61,14 @@ String
 Writ::to_json()
 {
   Jsonipc::Scope scope (instance_map_);
-  rapidjson::Document document (rapidjson::kNullType);
-  Jsonipc::JsonValue &docroot = document;
-  Jsonipc::JsonAllocator &allocator = document.GetAllocator();
-  docroot = Jsonipc::to_json (root_.value_, allocator); // move semantics!
-  rapidjson::StringBuffer buffer;
+  Jsonipc::Json document;
+  Jsonipc::JsonAllocator allocator; // Dummy allocator for API compatibility
+  document = Jsonipc::Convert<Value>::to_json (root_.value_, allocator);
+  
   if (relaxed_)
-    {
-      constexpr unsigned FLAGS = rapidjson::kWriteNanAndInfFlag;
-      rapidjson::PrettyWriter<rapidjson::StringBuffer, rapidjson::UTF8<>, rapidjson::UTF8<>, rapidjson::CrtAllocator, FLAGS> writer (buffer);
-      writer.SetIndent (' ', 2);
-      writer.SetFormatOptions (rapidjson::kFormatSingleLineArray);
-      document.Accept (writer);
-    }
+    return document.dump(2); // Pretty print with 2-space indentation
   else
-    {
-      rapidjson::Writer<rapidjson::StringBuffer> writer (buffer);
-      document.Accept (writer);
-    }
-  const String output { buffer.GetString(), buffer.GetSize() };
-  return output;
+    return document.dump();  // Compact output
 }
 
 bool
@@ -88,22 +76,15 @@ Writ::from_json (const String &jsonstring)
 {
   reset (1);
   Jsonipc::Scope scope (instance_map_);
-  rapidjson::Document document;
-  Jsonipc::JsonValue &docroot = document;
-  constexpr unsigned PARSE_FLAGS =
-    rapidjson::kParseFullPrecisionFlag |
-    rapidjson::kParseCommentsFlag |
-    rapidjson::kParseTrailingCommasFlag |
-    rapidjson::kParseNanAndInfFlag |
-    rapidjson::kParseEscapedApostropheFlag;
-  document.Parse<PARSE_FLAGS> (jsonstring.data(), jsonstring.size());
-  if (document.HasParseError())
-    {
-      // printerr ("%s: JSON-ERROR: %s\n", __func__, jsonstring);
-      return false;
-    }
-  root_.value_ = Jsonipc::from_json<Value> (docroot);
-  return true;
+  Jsonipc::Json document;
+  try {
+    document = Jsonipc::Json::parse (jsonstring);
+    root_.value_ = Jsonipc::Convert<Value>::from_json (document);
+    return true;
+  } catch (const Jsonipc::Json::parse_error &e) {
+    // printerr ("%s: JSON-ERROR: %s\n", __func__, jsonstring);
+    return false;
+  }
 }
 
 void

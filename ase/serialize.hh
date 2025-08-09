@@ -473,10 +473,10 @@ struct WritConverter<T, REQUIRESv< !std::is_base_of<Serializable,T>::value &&
         Writ::not_serializable (typeid_name<T>());
         return false;
       }
-    rapidjson::Document document (rapidjson::kNullType);
-    Jsonipc::JsonValue &docroot = document;
-    docroot = Jsonipc::Serializable<T>::serialize_to_json (obj, document.GetAllocator()); // move semantics!
-    node.value() = Jsonipc::from_json<Value> (docroot);
+    Jsonipc::Json document;
+    Jsonipc::JsonAllocator allocator; // Dummy allocator for API compatibility
+    document = Jsonipc::Serializable<T>::serialize_to_json (obj, allocator);
+    node.value() = Jsonipc::Convert<Value>::from_json (document);
     node.purge_value();
     return true;
   }
@@ -494,11 +494,11 @@ struct WritConverter<T, REQUIRESv< !std::is_base_of<Serializable,T>::value &&
         Writ::not_serializable (typeid_name<T>());
         return false;
       }
-    rapidjson::Document document (rapidjson::kNullType);
-    Jsonipc::JsonValue &docroot = document;
-    docroot = Jsonipc::to_json<Value> (node.value(), document.GetAllocator()); // move semantics!
+    Jsonipc::Json document;
+    Jsonipc::JsonAllocator allocator; // Dummy allocator for API compatibility
+    document = Jsonipc::Convert<Value>::to_json (node.value(), allocator);
     std::shared_ptr<T> target { &obj, [] (T*) {} }; // dummy shared_ptr with NOP deleter
-    if (Jsonipc::Serializable<T>::serialize_from_json (docroot, target))
+    if (Jsonipc::Serializable<T>::serialize_from_json (document, target))
       return true;
     return false;
   }

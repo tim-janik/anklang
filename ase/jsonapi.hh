@@ -23,34 +23,22 @@ struct ConvertValue {
   from_json (const Jsonipc::JsonValue &v)
   {
     Value val;
-    switch (v.GetType())
-      {
-      case rapidjson::kNullType:
+    if (v.is_null())
         val = Value{}; // NONE
-        break;
-      case rapidjson::kFalseType:
-        val = false;
-        break;
-      case rapidjson::kTrueType:
-        val = true;
-        break;
-      case rapidjson::kStringType:
-        val = Jsonipc::from_json<std::string> (v);
-        break;
-      case rapidjson::kNumberType:
-        if      (v.IsInt())     val = v.GetInt();
-        else if (v.IsUint())    val = v.GetUint();
-        else if (v.IsInt64())   val = v.GetInt64();
-        else if (v.IsUint64())  val = int64 (v.GetUint64());
-        else                    val = v.GetDouble();
-        break;
-      case rapidjson::kArrayType:
+    else if (v.is_boolean())
+        val = v.get<bool>();
+    else if (v.is_string())
+        val = Jsonipc::Convert<std::string>::from_json (v);
+    else if (v.is_number_integer())
+        val = v.get<int64>();
+    else if (v.is_number_unsigned())
+        val = int64 (v.get<uint64>());
+    else if (v.is_number_float())
+        val = v.get<double>();
+    else if (v.is_array())
         sequence_from_json_array (val, v);
-        break;
-      case rapidjson::kObjectType: // RECORD + INSTANCE
+    else if (v.is_object()) // RECORD + INSTANCE
         value_from_json_object (val, v);
-        break;
-    };
     return val;
   }
   static Jsonipc::JsonValue
@@ -62,10 +50,10 @@ struct ConvertValue {
       case Value::BOOL:     return JsonValue (std::get<bool> (val));
       case Value::INT64:    return JsonValue (std::get<int64> (val));
       case Value::DOUBLE:   return JsonValue (std::get<double> (val));
-      case Value::STRING:   return Jsonipc::to_json (std::get<String> (val), allocator);
+      case Value::STRING:   return Convert<String>::to_json (std::get<String> (val), allocator);
       case Value::ARRAY:    return sequence_to_json_array (std::get<ValueS> (val), allocator);
       case Value::RECORD:   return record_to_json_object (std::get<ValueR> (val), allocator);
-      case Value::INSTANCE: return Jsonipc::to_json (std::get<InstanceP> (val), allocator);
+      case Value::INSTANCE: return Convert<InstanceP>::to_json (std::get<InstanceP> (val), allocator);
       case Value::NONE:     return JsonValue(); // null
       }
     return JsonValue(); // null
@@ -73,7 +61,7 @@ struct ConvertValue {
   static void
   sequence_from_json_array (Value &val, const Jsonipc::JsonValue &v)
   {
-    const size_t l = v.Size();
+    const size_t l = v.size();
     ValueS s;
     s.reserve (l);
     for (size_t i = 0; i < l; ++i)
@@ -84,39 +72,36 @@ struct ConvertValue {
   sequence_to_json_array (const ValueS &seq, Jsonipc::JsonAllocator &allocator)
   {
     const size_t l = seq.size();
-    Jsonipc::JsonValue jarray (rapidjson::kArrayType);
-    jarray.Reserve (l, allocator);
+    Jsonipc::JsonValue jarray = Jsonipc::Json::array();
     for (size_t i = 0; i < l; ++i)
       if (seq[i])
-        jarray.PushBack (ConvertValue::to_json (*seq[i], allocator).Move(), allocator);
+        jarray.push_back (ConvertValue::to_json (*seq[i], allocator));
     return jarray;
   }
   static void
   value_from_json_object (Value &val, const Jsonipc::JsonValue &v)
   {
     ValueR rec;
-    rec.reserve (v.MemberCount());
-    for (const auto &field : v.GetObject())
+    rec.reserve (v.size());
+    for (const auto &field : v.items())
       {
-        const std::string key = field.name.GetString();
+        const std::string key = field.key();
         if (key == "$class" || key == "$id") // actually INSTANCE
           {
-            val = Jsonipc::from_json<InstanceP> (v);
+            val = Jsonipc::Convert<InstanceP>::from_json (v);
             return;
           }
-        rec[key] = ConvertValue::from_json (field.value);
+        rec[key] = ConvertValue::from_json (field.value());
       }
     val = std::move (rec);
   }
   static Jsonipc::JsonValue
   record_to_json_object (const ValueR &rec, Jsonipc::JsonAllocator &allocator)
   {
-    Jsonipc::JsonValue jobject (rapidjson::kObjectType);
-    jobject.MemberReserve (rec.size(), allocator);
+    Jsonipc::JsonValue jobject = Jsonipc::Json::object();
     for (auto const &field : rec)
       if (field.value)
-        jobject.AddMember (Jsonipc::JsonValue (field.name.c_str(), allocator),
-                           ConvertValue::to_json (*field.value, allocator).Move(), allocator);
+        jobject[field.name] = ConvertValue::to_json (*field.value, allocator);
     return jobject;
   }
 };
@@ -145,13 +130,13 @@ struct ConvertValueR {
   from_json (const Jsonipc::JsonValue &v)
   {
     ValueR rec;
-    if (v.IsObject())
+    if (v.is_object())
       {
-        rec.reserve (v.MemberCount());
-        for (const auto &field : v.GetObject())
+        rec.reserve (v.size());
+        for (const auto &field : v.items())
           {
-            const std::string key = field.name.GetString();
-            rec[key] = ConvertValue::from_json (field.value);
+            const std::string key = field.key();
+            rec[key] = ConvertValue::from_json (field.value());
           }
       }
     return rec;
@@ -159,12 +144,10 @@ struct ConvertValueR {
   static Jsonipc::JsonValue
   to_json (const ValueR &rec, Jsonipc::JsonAllocator &allocator)
   {
-    Jsonipc::JsonValue jobject (rapidjson::kObjectType);
-    jobject.MemberReserve (rec.size(), allocator);
+    Jsonipc::JsonValue jobject = Jsonipc::Json::object();
     for (auto const &field : rec)
       if (field.value)
-        jobject.AddMember (Jsonipc::JsonValue (field.name.c_str(), allocator),
-                           ConvertValue::to_json (*field.value, allocator).Move(), allocator);
+        jobject[field.name] = ConvertValue::to_json (*field.value, allocator);
     return jobject;
   }
 };
