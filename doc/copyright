@@ -14,6 +14,7 @@ Files:
  ase/*.h
  ase/*.hh
  ase/Makefile.mk
+ ase/gen/*.*
  devices/*
  devices/blepsynth/*
  devices/freeverb/Makefile.mk
