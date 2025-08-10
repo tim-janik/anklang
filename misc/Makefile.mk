@@ -134,22 +134,3 @@ check-copyright: doc/copyright misc/checkcrlist.py
 .PHONY: check-copyright
 check: check-copyright
 # misc/mkcopyright.py -c doc/copyright.ini -f <FILELIST>
-
-# == appimagetools/appimage-runtime-zstd ==
-$>/appimagetools/appimage-runtime-zstd:			| $>/appimagetools/
-	$(QECHO) FETCH linuxdeploy, appimage-runtime-zstd
-	$Q mkdir -p .dlcache/
-	$Q test -e .dlcache/linuxdeploy-x86_64.AppImage \
-	|| ( curl -sfSL https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage -o .dlcache/linuxdeploy-x86_64.AppImage.tmp \
-	     && chmod +x .dlcache/linuxdeploy-x86_64.AppImage.tmp \
-	     && mv .dlcache/linuxdeploy-x86_64.AppImage.tmp .dlcache/linuxdeploy-x86_64.AppImage )
-	$Q test -e .dlcache/appimage-runtime-zstd \
-	|| ( curl -sfSL https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd -o .dlcache/appimage-runtime-zstd.tmp \
-	     && mv .dlcache/appimage-runtime-zstd.tmp .dlcache/appimage-runtime-zstd )
-	$Q $(CP) .dlcache/linuxdeploy-x86_64.AppImage .dlcache/appimage-runtime-zstd $(@D)
-
-# == mkassets ==
-# Let misc/mkassets.sh do the work, just pre-cache needed downloads
-mkassets: $>/appimagetools/appimage-runtime-zstd
-	+$Q exec misc/mkassets.sh
-.PHONY: mkassets

@@ -389,6 +389,6 @@ all: $(ALL_TARGETS) $(ALL_TESTS)
 
 # == grep-reminders ==
 $>/.grep-reminders: $(WILDCARD_FILES)
-	$Q git -P grep -n -E '(/[*/]+[*/ ]*|[#*]+ *)?(FI[X]ME).*' $(WILDCARD_FILES) || true
+	$Q grep --color=auto -n -E '(/[*/]+[*/ ]*|[#*]+ *)?(FI[X]ME).*' $(WILDCARD_FILES) || true
 	$Q touch $@
 all: $>/.grep-reminders

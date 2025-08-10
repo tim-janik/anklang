@@ -13,6 +13,7 @@ ASE_EXTERNAL_INCLUDES := $(strip		\
 	-Iexternal/clap/include			\
 	-Iexternal/libsndfile/include		\
 	-Iexternal/liquidsfz/lib		\
+	-Iexternal/nlohmann-json/include	\
 	-Iexternal/pandaresampler/include	\
 	-Iexternal/rapidjson/include		\
 	-Iexternal/websocketpp			\
@@ -81,7 +82,7 @@ $>/ase/blake3impl.c:		| $>/ase/
 $>/ase/blake3avx512.c $>/ase/blake3avx2.c $>/ase/blake3sse41.c $>/ase/blake3sse2.c: $>/ase/blake3impl.c
 
 # == libsndfile ==
-$>/lib/libsndfile.so: $(EXTERNAL_CXX_STAMPS)
+$>/lib/libsndfile.so: $(EXTERNAL_CXX_STAMPS)	| $>/lib/
 	$(QGEN)
 	$Q cmake \
 		-B $>/sndfile/ -S external/libsndfile/ -DCMAKE_BUILD_TYPE=MINSIZEREL \

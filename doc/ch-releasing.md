@@ -5,7 +5,7 @@ A release encompasses a distribution tarball that has the release version number
 
 ## Versioning
 
-The Anklang project uses **`MAJOR.MINOR.MICRO[.DEVEL][-SUFFIX]`** version numbers with the folloing uses:
+The Anklang project uses **`MAJOR.MINOR.MICRO[.DEVEL][-SUFFIX]`** version numbers with the following uses:
 - **`MAJOR`** - The major number is currently 0, so all bets are off. It is planned to signify major changes to users.
 - **`MINOR`** - The minor number indicates significant changes, often these are user visible improvements.
 - **`MICRO`** - The micro number increases with every release.
@@ -19,6 +19,7 @@ The current version can always be obtained by invoking `misc/version.sh`.
 
 ## Release Assets
 
-The script `misc/mkassets.sh` can be used to create and clean up a release build directory and it triggers the necessary rules to
-create a distribution tarball and to build the release assets. All assets are built from the distribution tarball without any
-Git dependency. Producing a distribution tarball depends on Git however.
+The scripts `misc/mkdeb.sh` and `misc/mkAppImage.sh` can be used to build binary packages after a successful build.
+Ideally, these packages should be built from a distribution tarball, created with `make dist`.
+Built the project from a distribution tarball must work without any Git dependency.
+Producing a distribution tarball depends on Git however, to create the correct versioning information.
