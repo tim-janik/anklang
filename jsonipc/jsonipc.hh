@@ -20,6 +20,7 @@
 // Much of the API and some implementation ideas are influenced by https://github.com/pmed/v8pp/ and https://www.jsonrpc.org/.
 
 #define JSONIPC_ISLIKELY(expr)          __builtin_expect (bool (expr), 1)
+#define JSONIPC_UNLIKELY(expr)          __builtin_expect (bool (expr), 0)
 #define JSONIPC_WARNING(fmt,...)        do { fprintf (stderr, "%s:%d: warning: ", __FILE__, __LINE__); fprintf (stderr, fmt, __VA_ARGS__); fputs ("\n", stderr); } while (0)
 #define JSONIPC_ASSERT_RETURN(expr,...) do { if (JSONIPC_ISLIKELY (expr)) break; fprintf (stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #expr); return __VA_ARGS__; } while (0)
 
@@ -834,6 +835,7 @@ js_initializer_index ()
   if constexpr (std::is_floating_point<T>::value)                       return 2;
   if constexpr (std::is_convertible<const char*const, T>::value)        return 4;
   if constexpr (std::is_convertible<const std::string, T>::value)       return 4;
+  if constexpr (std::is_enum<T>::value)                                 return 4; // [4]='' [1]=0
   if constexpr (DerivesVector<T>::value)                                return 5;
   if constexpr (DerivesPair<T>::value)                                  return 5;
   if constexpr (!IsSharedPtr<T>::value && std::is_class<T>::value)      return 6;
@@ -1172,6 +1174,227 @@ private:
   }
 };
 
+// == TypeScript Type Mapping ==
+inline std::string
+short_name (const std::string &full_name)
+{
+  const size_t last_colon = full_name.rfind ("::");
+  return last_colon == std::string::npos ? full_name : full_name.substr (last_colon + 2);
+}
+template<typename T> struct typescript_name {
+  static std::string name() { return short_name (rtti_typename<T>()); }
+};
+template<typename T> struct typescript_name<T&> : typescript_name<T> {};
+template<typename T> struct typescript_name<const T&> : typescript_name<T> {};
+template<typename T> struct typescript_name<std::shared_ptr<T>> : typescript_name<T> {};
+template<typename T>
+struct typescript_name<T*> {
+  static std::string name() { return typescript_name<T>::name() + " | null"; }
+};
+template<typename T1, typename T2>
+struct typescript_name<std::pair<T1, T2>> {
+  static std::string name() { return "[" + typescript_name<T1>::name() + ", " + typescript_name<T2>::name() + "]"; }
+};
+template<typename T>
+struct typescript_name<std::vector<T>> {
+  static std::string name() { return typescript_name<T>::name() + "[]"; }
+};
+template<typename T>
+struct typescript_name<std::map<std::string, T>> {
+  static std::string name() { return "{ [key: string]: " + typescript_name<T>::name() + " }"; }
+};
+template<typename T>
+struct typescript_name<std::unordered_map<std::string, T>> {
+  static std::string name() { return "{ [key: string]: " + typescript_name<T>::name() + " }"; }
+};
+#define JSONIPC_MAP_TO_TYPESCRIPT(CXXTYPE,TSTYPE)                       \
+  template<> struct ::Jsonipc::typescript_name< CXXTYPE >  { static std::string name() { return TSTYPE; } }
+
+template<typename... Args> std::string
+typescript_arg_list()
+{
+  std::string s;
+  int i = 0;
+  auto print_one_arg = [&] (const std::string &type_name) {
+    if (i > 0) s += ", ";
+    s += string_format ("arg%d: %s", ++i, type_name.c_str());
+  };
+  (print_one_arg (typescript_name<Args>::name()), ...); // C++17 fold expr
+  return s;
+}
+template<typename... Args> std::string
+typescript_arg_names_list()
+{
+  std::string s;
+  int i = 0;
+  auto append_arg_name = [&] (const std::string &type_name) {
+    s += string_format (", arg%d", ++i);
+  };
+  (append_arg_name (typescript_name<Args>::name()), ...); // C++17 fold expr
+  return s;
+}
+template<typename C, typename R, typename... Args> std::string
+typescript_call_impl (const std::string &method_name)
+{
+  std::string s;
+  s += string_format ("  %s (", method_name.c_str());
+  s += typescript_arg_list<Args...>();
+  s += string_format ("): Promise<%s>\n", typescript_name<R>::name().c_str());
+  s += string_format ("  { return Jsonipc.send (\"%s\", [this%s]); }\n",
+                      method_name.c_str(), typescript_arg_names_list<Args...>().c_str());
+  return s;
+}
+template<typename T, typename Ret, typename... Args> std::string
+typescript_call (const std::string &method_name, Ret (T::*func) (Args...))
+{
+  return typescript_call_impl<T, Ret, Args...> (method_name);
+}
+template<typename T, typename Ret, typename... Args> std::string // const overload
+typescript_call (const std::string &method_name, Ret (T::*func) (Args...) const)
+{
+  return typescript_call_impl<T, Ret, Args...> (method_name);
+}
+
+// == BindingPrinter ==
+class BindingPrinter {
+  enum Kind { ANY, ENUM, VALUE, RECORD, FIELD, CLASS, METHOD };
+  std::string b_;
+  std::string open_enum_, open_record_, open_class_;
+  std::vector<std::tuple<std::string, std::string, std::string, std::string>> record_fields_;
+  size_t class_inherit_pos_ = 0;
+  void
+  close()
+  {
+    if (open_enum_.size())
+      close_enum();
+    if (open_record_.size())
+      close_record();
+    if (open_class_.size())
+      close_class();
+  }
+  template<class, class = void> struct has_nested_T : std::false_type {}; // Check for nested ::T type
+  template<typename U>          struct has_nested_T<U, std::void_t<typename U::T>> : std::true_type {};
+  template<typename M>  struct typescript_call_from_type; // Typescript signature from member function pointer
+  template<typename C, typename R, typename... Args>
+  struct typescript_call_from_type<R (C::*)(Args...)> {
+    static std::string
+    generate (const std::string &method_name)
+    {
+      return typescript_call_impl<C, R, Args...> (method_name);
+    }
+  };
+  template<typename C, typename R, typename... Args>
+  struct typescript_call_from_type<R (C::*)(Args...) const> {
+    static std::string
+    generate (const std::string &method_name)
+    {
+      return typescript_call_impl<C, R, Args...>(method_name);
+    }
+  };
+public:
+  std::string finish() { close(); return b_; }
+  template<typename T> void
+  enum_type()
+  {
+    close();
+    open_enum_ = rtti_typename<typename std::decay<T>::type>();
+    b_ += "export const " + short_name (open_enum_) + " = { // " + open_enum_ + "\n";
+  }
+  template<typename T> void
+  enum_value (const std::string &name, T v)
+  {
+    const std::string full_js_name = ClassPrinter::normalize_typename (open_enum_) + "." + name;
+    using underlying = typename std::underlying_type<T>::type;
+    b_ += "  " + name + ": \"" + full_js_name + "\", // " + std::to_string(static_cast<underlying>(v)) + "\n";
+  }
+  void
+  close_enum()
+  {
+    b_ += "} as const;\n";
+    const std::string shortname = short_name (open_enum_);
+    b_ += "export type " + shortname + " = typeof " + shortname + "[keyof typeof " + shortname + "];\n";
+    b_ += "Jsonipc.classes[\"" + open_enum_ + "\"] = " + shortname + ";\n\n";
+    open_enum_.clear();
+  }
+  template<typename T> void
+  record_type()
+  {
+    close();
+    open_record_ = rtti_typename<typename std::decay<T>::type>();
+    b_ += "export class " + short_name (open_record_) + " { // " + open_record_ + "\n";
+  }
+  template<typename T, typename A> void
+  field_member (const std::string &name)
+  {
+    const std::string ts_type_name = typescript_name<A>::name();
+    const std::string default_value = js_initializers[js_initializer_index<A>()];
+    const std::string as_cast = std::is_enum<A>::value ? ts_type_name : "";
+    record_fields_.emplace_back (name, ts_type_name, default_value, as_cast);
+  }
+  void
+  close_record()
+  {
+    for (const auto &[field_name, ts_type_name, default_value, as_cast] : record_fields_)
+      b_ += "  " + field_name + ": " + ts_type_name + ";\n";
+    b_ += "  constructor (";
+    for (size_t i = 0; i < record_fields_.size(); i++) {
+      const auto &[field_name, ts_type_name, default_value, as_cast] = record_fields_[i];
+      b_ += (i ? ", " : "") + field_name + ": " + ts_type_name + " = " + default_value;
+      if (as_cast.size())
+        b_ += " as " + as_cast;
+    }
+    b_ += ")\n  {\n";
+    for (const auto &[field_name, ts_type_name, default_value, as_cast] : record_fields_)
+      b_ += "    this." + field_name + " = " + field_name + ";\n";
+    b_ += "  }\n";
+    b_ += "};\n";
+    const std::string shortname = short_name (open_record_);
+    b_ += "Jsonipc.classes[\"" + open_record_ + "\"] = " + shortname + ";\n\n";
+    record_fields_.clear();
+    open_record_.clear();
+  }
+  template<typename T> void
+  class_type()
+  {
+    close();
+    open_class_ = rtti_typename<typename std::decay<T>::type>();
+    const std::string shortname = short_name (open_class_);
+    b_ += "export class " + shortname + " // " + open_class_ + "\n";
+    class_inherit_pos_ = b_.size();
+    b_ += "{\n";
+    b_ += "  constructor ($id)\n";
+    b_ += "  { super ($id); if (new.target === " + shortname + ") Jsonipc.ofreeze (this); }\n";
+  }
+  template<typename B> void
+  inherit_type()
+  {
+    const std::string base_class_ = rtti_typename<typename std::decay<B>::type>();
+    b_.insert (class_inherit_pos_, "  extends Jsonipc.classes[\"" + base_class_ + "\"]\n");
+  }
+  template<typename T, typename M> void
+  method_member (const std::string &name)
+  {
+    b_ += typescript_call_from_type<M>::generate (name);
+  }
+  template<typename T, typename R, typename A> void
+  field_accessor (const std::string &name)
+  {
+    b_ += "  get " + name + " (): " + typescript_name<R>::name() + "\n";
+    b_ += "  { return Jsonipc.get_reactive_prop.call (this, \"" + name + "\", " + js_initializers[js_initializer_index<R>()] + "); }\n";
+    b_ += "  set " + name + " (v: " + typescript_name<R>::name() + ")\n";
+    b_ += "  { Jsonipc.send ('set/' + '" + name + "', [this, v]); }\n";
+  }
+  void
+  close_class()
+  {
+    b_ += "};\n";
+    const std::string shortname = short_name (open_class_);
+    b_ += "Jsonipc.classes[\"" + open_class_ + "\"] = " + shortname + ";\n\n";
+    open_class_.clear();
+  }
+};
+inline BindingPrinter *g_binding_printer = nullptr;
+
 // == TypeInfo ==
 class TypeInfo {
 protected:
@@ -1189,16 +1412,24 @@ protected:
 template<typename T>
 struct Enum final : TypeInfo {
   static_assert (std::is_enum<T>::value, "");
-  Enum () : TypeInfo (ClassPrinter::create<T> (ClassPrinter::ENUMS)) {}
+  Enum () :
+    TypeInfo (ClassPrinter::create<T> (ClassPrinter::ENUMS))
+  {
+    if (JSONIPC_UNLIKELY (g_binding_printer))
+      g_binding_printer->enum_type<T> ();
+  }
   using UnderlyingType = typename std::underlying_type<T>::type;
   Enum&
   set (T v, const char *valuename)
   {
     const std::string class_name = typename_of<T>();
     auto &entries_ = entries();
-    Entry e { ClassPrinter::normalize_typename (class_name + "." + valuename), v };
+    auto normalized_typename = ClassPrinter::normalize_typename (class_name + "." + valuename);
+    Entry e { normalized_typename, v };
     entries_.push_back (e);
     print (ClassPrinter::ENUMVALUE, valuename, UnderlyingType (v));
+    if (JSONIPC_UNLIKELY (g_binding_printer))
+      g_binding_printer->enum_value<T> (valuename, v);
     return *this;
   }
   static bool
@@ -1290,6 +1521,8 @@ struct Serializable final : TypeInfo {
     TypeInfo (ClassPrinter::create<T> (ClassPrinter::SERIALIZABLE))
   {
     make_serializable<T>();
+    if (JSONIPC_UNLIKELY (g_binding_printer))
+      g_binding_printer->record_type<T>();
   }
   /// Add a member object pointer
   template<typename A, REQUIRES< std::is_member_object_pointer<A>::value > = true> Serializable&
@@ -1306,6 +1539,8 @@ struct Serializable final : TypeInfo {
     amap.insert (std::make_pair<std::string, Accessors> (name, std::move (accessors)));
     const std::string class_name = rtti_typename<T>();
     print (ClassPrinter::ATTRIBUTE, name, 0);
+    if (JSONIPC_UNLIKELY (g_binding_printer))
+      g_binding_printer->field_member<T,SetterAttributeType> (name);
     return *this;
   }
   static bool               is_serializable     ()                              { return serialize_from_json_() && serialize_to_json_(); }
@@ -1364,7 +1599,7 @@ private:
 // == Class ==
 template<typename T>
 struct Class final : TypeInfo {
-  Class () :
+  Class (bool internal = false) :
     TypeInfo (ClassPrinter::create<T> (ClassPrinter::CLASSES))
   {
     auto create_wrapper = [] (const std::shared_ptr<SharedBase> &sptr, size_t &basedepth) -> InstanceMap::Wrapper*
@@ -1384,6 +1619,8 @@ struct Class final : TypeInfo {
       return nullptr;
     };
     InstanceMap::register_wrapper (create_wrapper);
+    if (!internal && JSONIPC_UNLIKELY (g_binding_printer))
+      g_binding_printer->class_type<T>();
   }
   // Inherit base class `B`
   template<typename B> Class&
@@ -1391,6 +1628,8 @@ struct Class final : TypeInfo {
   {
     add_base<B>();
     print (ClassPrinter::INHERIT, rtti_typename<B>(), 0);
+    if (JSONIPC_UNLIKELY (g_binding_printer))
+      g_binding_printer->inherit_type<B>();
     return *this;
   }
   /// Add a member function pointer
@@ -1399,7 +1638,9 @@ struct Class final : TypeInfo {
   {
     add_member_function_closure (name, make_closure (method));
     print (ClassPrinter::METHOD, name, CallTraits<F>::N_ARGS);
-    return *this;
+     if (JSONIPC_UNLIKELY (g_binding_printer))
+      g_binding_printer->method_member<T,F> (name);
+   return *this;
   }
   /// Add a member object accessors
   template<typename R, typename A, typename C, typename VB> Class&
@@ -1410,6 +1651,8 @@ struct Class final : TypeInfo {
     add_member_function_closure (std::string ("get/") + name, make_closure (get));
     add_member_function_closure (std::string ("set/") + name, make_closure (set));
     print (ClassPrinter::GETSET, name, js_initializer_index<R>());
+    if (JSONIPC_UNLIKELY (g_binding_printer))
+      g_binding_printer->field_accessor<T,R,A> (name);
     return *this;
   }
   template<typename F, REQUIRES< std::is_member_function_pointer<F>::value > = true> Class&
@@ -1419,6 +1662,8 @@ struct Class final : TypeInfo {
     JSONIPC_ASSERT_RETURN (dflts.size() <= N_ARGS, *this);
     add_member_function_closure (name, make_closure (method));
     print (ClassPrinter::METHOD, name, N_ARGS, dflts);
+    if (JSONIPC_UNLIKELY (g_binding_printer))
+      g_binding_printer->method_member<T,F> (name);
     return *this;
   }
   static std::string
@@ -1503,7 +1748,7 @@ private:
       if (it.basetypename == binfo.basetypename)
         throw std::runtime_error ("duplicate base registration: " + binfo.basetypename);
     bvec.push_back (binfo);
-    Class<B> bclass;
+    Class<B> bclass (true); // internal=true; force registration for base_depth
     printer_->set_depth_func (this->base_depth);
   }
   static BaseVec&   basevec  () { static BaseVec basevec_;     return basevec_; }
@@ -1744,5 +1989,17 @@ private:
 };
 
 } // Jsonipc
+JSONIPC_MAP_TO_TYPESCRIPT (void,          "void");
+JSONIPC_MAP_TO_TYPESCRIPT (bool,          "boolean");
+JSONIPC_MAP_TO_TYPESCRIPT (::int8_t,      "number");
+JSONIPC_MAP_TO_TYPESCRIPT (::uint8_t,     "number");
+JSONIPC_MAP_TO_TYPESCRIPT (::int32_t,     "number");
+JSONIPC_MAP_TO_TYPESCRIPT (::uint32_t,    "number");
+JSONIPC_MAP_TO_TYPESCRIPT (::int64_t,     "number");
+JSONIPC_MAP_TO_TYPESCRIPT (::uint64_t,    "number");
+JSONIPC_MAP_TO_TYPESCRIPT (float,         "number");
+JSONIPC_MAP_TO_TYPESCRIPT (double,        "number");
+JSONIPC_MAP_TO_TYPESCRIPT (const char*,   "string");
+JSONIPC_MAP_TO_TYPESCRIPT (::std::string, "string");
 
 #endif // __JSONIPC_JSONIPC_HH__
