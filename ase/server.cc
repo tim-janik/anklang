@@ -403,7 +403,7 @@ ServerImpl::user_note (const String &text, const String &channel, UserNote::Flag
 {
   UserNote unote { user_note_id++, flags, channel.empty() ? "misc" : channel, text, rest };
   ValueR vrec;
-  json_parse (json_stringify (unote, Writ::SKIP_EMPTYSTRING), vrec);
+  json_parse (json_stringify (unote), vrec);
   this->emit_event ("usernote", "", vrec);
   String s;
   s += string_format ("%s: usernote[%04x]: %s: %s", program_alias(), unote.noteid, unote.channel, unote.text);
