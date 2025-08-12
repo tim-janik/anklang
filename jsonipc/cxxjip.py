@@ -263,7 +263,7 @@ def generate_jsonipc (cctree, namespaces, absfile = None):
           p ('.set', '("%s", &%s::%s, &%s::%s)' % (mname, fqclname, mname, fqclname, mname))
         elif kind in ('f', 's', 'g'):
           sdflts, dflts = '', cctree.find_method_defaults (mf) # Method Argument default values
-          if dflts:
+          if dflts and False: # halt default value support
             sdflts = [str (v) for v in dflts]
             p ('.set_d', '("%s", &%s::%s, { %s })' % (mname, fqclname, mname, ', '.join (sdflts)))
           else:
