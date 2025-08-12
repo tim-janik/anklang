@@ -104,24 +104,28 @@ FileCrawler::current_folder ()
   return r;
 }
 
-bool
-FileCrawler::folder_ (const Resource *n, Resource *q)
+Resource
+FileCrawler::get_folder() const
 {
-  if (n)
-    assign_ (n->uri, false);
-  if (q)
-    *q = current_folder();
-  return true;
+  return const_cast<FileCrawler&> (*this).current_folder();
 }
 
-bool
-FileCrawler::entries_ (const ResourceS *n, ResourceS *q)
+void
+FileCrawler::set_folder (const Resource &newfolder)
 {
-  if (n)
-    ; // assignment not supported
-  if (q)
-    *q = list_entries();
-  return true;
+  assign_ (newfolder.uri, false);
+}
+
+ResourceS
+FileCrawler::get_entries() const
+{
+  return const_cast<FileCrawler&> (*this).list_entries();
+}
+
+void
+FileCrawler::set_entries (const ResourceS &newentries)
+{
+  // assignment not supported for FileCrawler
 }
 
 /// Open a new folder and make it the current folder.

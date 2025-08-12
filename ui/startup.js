@@ -170,7 +170,7 @@ async function bootup () {
   if (true) {
     for (const url of ['/Builtin/Controller', '/Builtin/Scripts', '/User/Controller', '/User/Scripts']) {
       const crawler = await Ase.server.url_crawler (url);
-      const centries = await crawler.list_entries();
+      const centries = await crawler.get_entries();
       for (const e of centries)
 	if (e.type == Ase.ResourceType.FILE && e.label.endsWith ('.js'))
 	  Script.load_script (url + '/' + e.label);
