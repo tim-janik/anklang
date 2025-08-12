@@ -211,7 +211,6 @@ struct DeviceInfo {
 
 /// Interface to access Device instances.
 class Device : public virtual Gadget {
-  virtual bool devs_  (const DeviceS *n, DeviceS *q);
 protected:
   explicit     Device ();
 public:
@@ -225,13 +224,14 @@ public:
   // exported
   virtual bool       is_active     () = 0;      ///< Check whether this is the active synthesis engine project.
   virtual DeviceInfo device_info   () = 0;      ///< Describe this Device type.
-  virtual DeviceS    list_devices  () = 0;      ///< List devices in order of processing, notified via "devs".
+  virtual DeviceS    get_devices   () const = 0; ///< List devices in order of processing, notified via "devs".
+  virtual void       set_devices   (const DeviceS &devices) = 0; ///< Set the list of devices.
   void               remove_self   ();          ///< Remove device from its container.
   // GUI handling
   virtual void       gui_toggle    () = 0;      ///< Toggle GUI display.
   virtual bool       gui_supported () = 0;      ///< Has GUI display facilities.
   virtual bool       gui_visible   () = 0;      ///< Is GUI currently visible.
-  Member<&Device::devs_> devs [[no_unique_address]];
+  Member<&Device::get_devices,&Device::set_devices> devices [[no_unique_address]];
 };
 
 /// Interface to access NativeDevice instances.

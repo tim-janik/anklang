@@ -72,7 +72,7 @@ const HTML = (t) => html`
   <div class="b-devicepanel-scroller" >
     <span class="b-devicepanel-vtitle"> Device Panel </span>
     <div class="b-devicepanel-hstack hflex" >
-      ${repeat (t.chain_?.devs || [], dev => dev.$id, dev => DEVICE_HTML (t, dev))}
+      ${repeat (t.chain_?.devices || [], dev => dev.$id, dev => DEVICE_HTML (t, dev))}
       <b-more @mousedown=${e => t.menuopen (e)}
 	data-tip="**CLICK** Add New Elements" ></b-more>
       <b-contextmenu ${ref (h => t.devicepanelcmenu = h)}

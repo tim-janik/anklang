@@ -131,7 +131,7 @@ ClapDeviceImpl::get_device_path ()
   NativeDevice *parent = dynamic_cast<NativeDevice*> (this->_parent());
   for (Device *dev = this; parent; dev = parent, parent = dynamic_cast<NativeDevice*> (dev->_parent()))
     {
-      ssize_t index = Aux::index_of (parent->list_devices(),
+      ssize_t index = Aux::index_of (parent->get_devices(),
                                      [dev] (const DeviceP &e) { return dev == &*e; });
       if (index >= 0)
         nums.insert (nums.begin(), string_from_int (index));
