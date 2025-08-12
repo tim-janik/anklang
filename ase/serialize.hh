@@ -91,7 +91,7 @@ class Writ {
   void                   assign_links ();
   friend class WritNode;
 public:
-  enum Flags { RELAXED = 1, SKIP_ZERO = 2, SKIP_EMPTYSTRING = 4, SKIP_DEFAULTS = SKIP_ZERO | SKIP_EMPTYSTRING };
+  enum Flags { NONE = 0, RELAXED = 1, SKIP_ZERO = 2, SKIP_EMPTYSTRING = 4, SKIP_DEFAULTS = SKIP_ZERO | SKIP_EMPTYSTRING };
   friend Flags operator| (Flags a, Flags b) { return Flags (uint64_t (a) | b); }
   explicit               Writ         (Flags flags = Flags (0));
   template<class T> void save         (T &source);
