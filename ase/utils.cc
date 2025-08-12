@@ -37,8 +37,7 @@ getenv_ase_debug()
 bool
 debug_key_enabled (const char *conditional)
 {
-  const std::string_view sv = string_option_find_value (getenv_ase_debug(), conditional, "0", "0", true);
-  return string_to_bool (String (sv));
+  return string_to_bool (String (string_option_find_value (getenv_ase_debug(), conditional, "0", "0", true)));
 }
 
 /// Check if `conditional` is enabled by $ASE_DEBUG.
@@ -52,8 +51,7 @@ debug_key_enabled (const ::std::string &conditional)
 ::std::string
 debug_key_value (const char *conditional)
 {
-  const std::string_view sv = string_option_find_value (getenv_ase_debug(), conditional, "", "", true);
-  return String (sv);
+  return String (string_option_find_value (getenv_ase_debug(), conditional, "", "", true));
 }
 
 /// Print a debug message, called from ::Ase::debug().
