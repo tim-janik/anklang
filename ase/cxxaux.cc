@@ -17,7 +17,7 @@ VirtualBase::~VirtualBase() noexcept
 const char*
 string_demangle_cxx (const char *mangled_identifier) noexcept
 {
-  static std::unordered_map<const char*, const char*> m2d;
+  static auto &m2d = *new std::unordered_map<const char*, const char*>();
   static std::mutex mtx;
   { std::lock_guard<std::mutex> locker (mtx);
     auto it = m2d.find (mangled_identifier);
