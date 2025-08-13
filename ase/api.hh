@@ -177,13 +177,14 @@ public:
 class Gadget : public virtual Object {
 protected:
   explicit            Gadget            ();
-  virtual bool        name_             (const std::string *n, std::string *q) = 0;
 public:
   // Hierarchical parenting.
   virtual GadgetImpl* _parent           () const = 0;             ///< Retrieve parent container.
   virtual void        _set_parent       (GadgetImpl *parent) = 0; ///< Assign parent container.
   ProjectImpl*        _project          () const;                 ///< Find Project in parent ancestry.
   // Naming
+  virtual String      get_name          () const = 0;
+  virtual void        set_name          (const std::string &n) = 0;
   virtual String      type_nick         () const = 0;
   // Properties
   virtual StringS     list_properties   ();                 ///< List all property identifiers.
@@ -195,7 +196,7 @@ public:
   virtual bool        set_data          (const String &key, const Value &v) = 0;
   /// Retrieve session data.
   virtual Value       get_data          (const String &key) const = 0;
-  Member<&Gadget::name_> name [[no_unique_address]];
+  Member<&Gadget::get_name,&Gadget::set_name> name [[no_unique_address]];
 };
 
 /// Info for device types.
