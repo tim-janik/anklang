@@ -1421,43 +1421,6 @@ struct Class final : TypeInfo {
     print (ClassPrinter::METHOD, name, N_ARGS, dflts);
     return *this;
   }
-  /// Add a field member
-  template<typename M, REQUIRES< Has_setget<M>::value > = true> Class&
-  set (const char *name, M T::*const memb)
-  {
-    static_assert (M::is_unique_per_member); // allows indexing per typeid, instead of per instance
-    // static_assert(std::is_same_v<void, M >);
-    JSONIPC_ASSERT_RETURN (memb, *this);
-    Closure getter_closure = [memb] (CallbackInfo &cbi) {
-      const bool HAS_THIS = true;
-      if (HAS_THIS + 0 != cbi.n_args())
-        throw Jsonipc::bad_invocation (-32602, "Invalid params: wrong number of arguments");
-      std::shared_ptr<T> instance = object_from_json (cbi.ntharg (0));
-      if (!instance)
-        throw Jsonipc::bad_invocation (-32603, "Internal error: closure without this");
-      T *obj = &*instance;
-      M &m = obj->*memb;
-      JsonValue rv;
-      rv = to_json (m.get(), cbi.allocator());
-      cbi.set_result (rv);
-    };
-    add_member_function_closure (std::string ("get/") + name, std::move (getter_closure));
-    Closure setter_closure = [memb] (const CallbackInfo &cbi) {
-      const bool HAS_THIS = true;
-      if (HAS_THIS + 1 != cbi.n_args())
-        throw Jsonipc::bad_invocation (-32602, "Invalid params: wrong number of arguments");
-      std::shared_ptr<T> instance = object_from_json (cbi.ntharg (0));
-      if (!instance)
-        throw Jsonipc::bad_invocation (-32603, "Internal error: closure without this");
-      T *obj = &*instance;
-      M &m = obj->*memb;
-      m.set (Convert<typename M::T>::from_json (cbi.ntharg (HAS_THIS + 0)));
-    };
-    add_member_function_closure (std::string ("set/") + name, std::move (setter_closure));
-    using ValueType = typename M::T;
-    print (ClassPrinter::GETSET, name, js_initializer_index<ValueType>());
-    return *this;
-  }
   static std::string
   classname ()
   {
