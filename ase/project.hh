@@ -37,13 +37,16 @@ class ProjectImpl final : public DeviceImpl, public virtual Project {
   friend class UndoScope;
   UndoScope           add_undo_scope (const String &scopename);
 protected:
-  explicit            ProjectImpl    ();
-  virtual            ~ProjectImpl    ();
-  virtual bool        bpm_           (const double *n, double *q) override;
-  virtual bool        numerator_     (const double *n, double *q) override;
-  virtual bool        denominator_   (const double *n, double *q) override;
-  void                serialize      (WritNode &xs) override;
-  void                update_tempo   ();
+  explicit            ProjectImpl     ();
+  virtual            ~ProjectImpl     ();
+  void                set_bpm         (double bpm) override;
+  double              get_bpm         () const override;
+  void                set_numerator   (double num) override;
+  double              get_numerator   () const override;
+  void                set_denominator (double den) override;
+  double              get_denominator () const override;
+  void                serialize       (WritNode &xs) override;
+  void                update_tempo    ();
   Error               snapshot_project (String &json);
   String              match_serialized (const String &regex, int group) override;
 public:

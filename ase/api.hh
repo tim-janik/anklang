@@ -317,10 +317,13 @@ public:
 class Project : public virtual Device {
 protected:
   explicit                Project        ();
-  virtual bool            bpm_           (const double *n, double *q) = 0;
-  virtual bool            numerator_     (const double *n, double *q) = 0;
-  virtual bool            denominator_   (const double *n, double *q) = 0;
 public:
+  virtual void            set_bpm        (double bpm) = 0;
+  virtual double          get_bpm        () const = 0;
+  virtual void            set_numerator  (double num) = 0;
+  virtual double          get_numerator  () const = 0;
+  virtual void            set_denominator(double den) = 0;
+  virtual double          get_denominator() const = 0;
   virtual void            discard        () = 0;       ///< Discard project and associated resources.
   virtual void            start_playback () = 0;       ///< Start playback of a project, requires active sound engine.
   virtual void            stop_playback  () = 0;       ///< Stop project playback.
@@ -341,9 +344,9 @@ public:
   virtual bool            can_redo       () = 0;       ///< Check if any redo steps have been recorded.
   virtual String          match_serialized (const String &regex,
                                             int group = 0) = 0; ///< Match `regex` against the serialized project state.
-  Member<&Project::bpm_>         bpm [[no_unique_address]];
-  Member<&Project::numerator_>   numerator [[no_unique_address]];
-  Member<&Project::denominator_> denominator [[no_unique_address]];
+  Member<&Project::get_bpm,&Project::set_bpm> bpm [[no_unique_address]];
+  Member<&Project::get_numerator,&Project::set_numerator> numerator [[no_unique_address]];
+  Member<&Project::get_denominator,&Project::set_denominator> denominator [[no_unique_address]];
   static ProjectP         last_project   ();
 };
 

@@ -676,51 +676,54 @@ ProjectImpl::master_processor () const
   return proc;
 }
 
-bool
-ProjectImpl::bpm_ (const double *n, double *q)
+void
+ProjectImpl::set_bpm (double newbpm)
 {
-  if (n) {
-    const double nbpm = CLAMP (*n, MIN_BPM, MAX_BPM);
-    return_unless (tick_sig_.bpm() != nbpm, false);
+  const double nbpm = CLAMP (newbpm, MIN_BPM, MAX_BPM);
+  if (tick_sig_.bpm() != nbpm) {
     tick_sig_.set_bpm (nbpm);
     update_tempo();
+  }
+  if (newbpm != tick_sig_.bpm())
     bpm.notify();
-  }
-  if (q)
-    *q = tick_sig_.bpm();
-  return true;
 }
 
-bool
-ProjectImpl::numerator_ (const double *n, double *q)
+double
+ProjectImpl::get_bpm () const
 {
-  bool changed = true;
-  if (n) {
-    changed = tick_sig_.set_signature (*n, tick_sig_.beat_unit());
-    if (changed) {
-      update_tempo();
-      numerator.notify();
-    }
-  }
-  if (q)
-    *q = tick_sig_.beats_per_bar();
-  return true; // might notify invalid setter attempt
+  return tick_sig_.bpm();
 }
 
-bool
-ProjectImpl::denominator_ (const double *n, double *q)
+void
+ProjectImpl::set_numerator (double num)
 {
-  bool changed = true;
-  if (n) {
-    changed = tick_sig_.set_signature (tick_sig_.beats_per_bar(), *n);
-    if (changed) {
-      update_tempo();
-      denominator.notify();
-    }
+  const bool changed = tick_sig_.set_signature (num, tick_sig_.beat_unit());
+  if (changed) {
+    update_tempo();
+    numerator.notify();
   }
-  if (q)
-    *q = tick_sig_.beat_unit();
-  return true; // might notify invalid setter attempt
+}
+
+double
+ProjectImpl::get_numerator () const
+{
+  return tick_sig_.beats_per_bar();
+}
+
+void
+ProjectImpl::set_denominator (double den)
+{
+  const bool changed = tick_sig_.set_signature (tick_sig_.beats_per_bar(), den);
+  if (changed) {
+    update_tempo();
+    denominator.notify();
+  }
+}
+
+double
+ProjectImpl::get_denominator () const
+{
+  return tick_sig_.beat_unit();
 }
 
 void
