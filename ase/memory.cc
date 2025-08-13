@@ -578,7 +578,7 @@ public:
   uint                 add    (const String &s) noexcept;
   uint                 find   (const String &s) noexcept;
   const String&        lookup (uint quark) noexcept;
-  static CStringTable& the    () noexcept       { static CStringTable g; return g; }
+  static CStringTable& the    () noexcept { static auto &g = *new CStringTable; return g; }
 };
 
 uint

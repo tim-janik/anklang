@@ -1394,9 +1394,9 @@ string_option_find_value (const char *string, const char *feature, const char *f
 
 /// Low level option search, avoids dynamic allocations.
 std::string_view
-string_option_find_value (const char *string, const char *feature, const String &fallback, const String &denied, bool matchallnone)
+string_option_find_value (const char *string, const char *feature, const char *fallback, const char *denied, bool matchallnone)
 {
-  return string_option_find_value (string, feature, fallback.c_str(), denied.c_str(), matchallnone ? 3 : 2);
+  return string_option_find_value (string, feature, fallback, denied, matchallnone ? 3 : 2);
 }
 
 /// Retrieve the option value from an options list separated by ':' or ';' or `fallback`.

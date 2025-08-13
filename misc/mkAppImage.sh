@@ -17,10 +17,24 @@ MAKE="make -w V=${V:-}"
 PKGDIR=$(source out/config.sh && echo "$pkgdir")
 
 # AppImage tooling
-echo 'AppImage tooling...'
-$MAKE out/appimagetools/appimage-runtime-zstd
-test -f $APPTOOLS/appimage-runtime-zstd || die "missing appimage-runtime-zstd"
+mkdir -p $APPTOOLS/
+echo '  CHECK     linuxdeploy-x86_64.AppImage'
+if ! test -f $APPTOOLS/linuxdeploy-x86_64.AppImage ; then
+  curl -fSL \
+       https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
+       -o $APPTOOLS/linuxdeploy-x86_64.AppImage.tmp
+  chmod +x $APPTOOLS/linuxdeploy-x86_64.AppImage.tmp
+  mv $APPTOOLS/linuxdeploy-x86_64.AppImage.tmp $APPTOOLS/linuxdeploy-x86_64.AppImage
+fi
 test -x $APPTOOLS/linuxdeploy-x86_64.AppImage || die "missing linuxdeploy-x86_64.AppImage"
+echo '  CHECK     appimage-runtime-zstd'
+if ! test -f $APPTOOLS/appimage-runtime-zstd ; then
+  curl -fSL \
+       https://github.com/tim-janik/appimage-runtime/releases/download/21.6.0/appimage-runtime-zstd \
+       -o $APPTOOLS/appimage-runtime-zstd.tmp
+  mv $APPTOOLS/appimage-runtime-zstd.tmp $APPTOOLS/appimage-runtime-zstd
+fi
+test -f $APPTOOLS/appimage-runtime-zstd || die "missing appimage-runtime-zstd"
 
 # make install
 echo 'Installing...'
