@@ -127,12 +127,17 @@ public:
   }
   using value_type = T;
   T                     get        () const             { return (host_ (this)->*getter) (); }
-  bool                  set        (const T &value)     { if constexpr (!std::is_same_v<S,void>) return !!(host_ (this)->*setter) (value);
-                                                          else return (host_ (this)->*setter) (value), true; }
+  bool                  set        (const T &value)
+  {
+    if constexpr (!std::is_same_v<S,void>)
+      return !!(host_ (this)->*setter) (std::forward<const T&> (value));
+    else
+      return (host_ (this)->*setter) (std::forward<const T&> (value)), true;
+  }
   T                     operator() () const             { return get(); }
-  bool                  operator() (const T &value)     { return set (value); }
+  bool                  operator() (const T &value)     { return set (std::forward<const T&> (value)); }
   /**/                  operator T () const             { return get (); }
-  bool                  operator=  (const T &value)     { return set (value); }
+  bool                  operator=  (const T &value)     { return set (std::forward<const T&> (value)); }
   void                  notify     () const             { host_ (this)->emit_notify (info ("ident")); }
   static constexpr bool is_unique_per_member = true; // typeid will uniquely identify a member, due to <setter> arg
   static uint64_t       hints    ()                        { return meta_().flags; }
