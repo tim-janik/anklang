@@ -140,49 +140,4 @@ public:
   static String         info     (const String &key)       { return meta_().info (key); }
 };
 
-/// Member accessor class based on a single accessor, maybe combined with `[[no_unique_address]]`.
-template<auto accessor>
-class Member<accessor,nullptr> {
-public:
-  using SetterTraits = Lib::MemberFunctionTraits<accessor>;
-  using R = typename std::decay<typename SetterTraits::ReturnType>::type;
-  static_assert (std::is_same_v<R, void> || std::is_same_v<R, bool>);
-  using Class = typename SetterTraits::ClassType;
-  using T = typename std::decay<std::remove_pointer_t<typename std::tuple_element<1, typename SetterTraits::Arguments>::type>>::type;
-  static_assert (std::is_same_v<typename SetterTraits::FuncType, R (Class::*) (const T*, T*)>);
-  /// Resolve (or assign) `host->Member` distance (may be 0).
-  static Class* host_ (const Member *m, Class *o = nullptr) { static ptrdiff_t d = -1; return Lib::host_member_offset (&d, m, o); }
-  /// Retrieve or assign property meta infos.
-  static const MemberDetails& meta_ (const MemberDetails *n = nullptr) { static MemberDetails m; return m.assign1 (n); }
-public:
-  Member (Class *o, const String &n = "", const StringS &s = {}) : Member (o, n, {}, MemberDetails::FLAGS_DEFAULT, s) {}
-  Member (Class *o, const String &n, const ParamExtraVals &ev, const StringS &s = {}) : Member (o, n, ev, MemberDetails::FLAGS_DEFAULT, s) {}
-  Member (Class *o, const String &n, const ParamExtraVals &ev, uint64_t hints, const StringS &s)
-  {
-    ASE_ASSERT (o);
-    MemberDetails meta;
-    meta.infos = s;
-    if (!n.empty())
-      Lib::kvpairs_assign (meta.infos, "ident=" + n);
-    meta_ (&meta);
-    host_ (this, o);
-    constexpr bool has_register_parameter = requires (Class *o, Member *m) { o->_register_parameter (o, m, ev); };
-    if constexpr (has_register_parameter)
-      o->_register_parameter (o, this, ev);
-  }
-  using value_type = T;
-  T                     get        () const             { T t {}; (host_ (this)->*accessor) (nullptr, &t); return t; }
-  bool                  set        (const T &value)     { if constexpr (!std::is_same_v<R,void>) return !!(host_ (this)->*accessor) (&value, nullptr);
-                                                          else return (host_ (this)->*accessor) (&value, nullptr), true; }
-  T                     operator() () const             { return get(); }
-  bool                  operator() (const T &value)     { return set (value); }
-  /**/                  operator T () const             { return get (); }
-  bool                  operator=  (const T &value)     { return set (value); }
-  void                  notify     () const             { host_ (this)->emit_notify (info ("ident")); }
-  static constexpr bool is_unique_per_member = true; // typeid will uniquely identify a member, due to <accessor> arg
-  static uint64_t       hints ()                        { return meta_().flags; }
-  static const StringS& infos ()                        { return meta_().infos; }
-  static String         info  (const String &key)       { return meta_().info (key); }
-};
-
 } // Ase
