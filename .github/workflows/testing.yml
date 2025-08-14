@@ -69,11 +69,12 @@ jobs:
     # Artifact upload from clang-tidy
     - uses: actions/upload-artifact@v4
       with: { name: clang-tidy, path: out/clang-tidy/ }
-    - name: 'Make branch-check'
-      # Use non-0 exit status for a failing branch-check on PRs
-      run: |
-        test -z "${{ github.event.pull_request }}" || BRANCH_CHECK_EXIT=77
-        make branch-check BRANCH_CHECK_EXIT=$BRANCH_CHECK_EXIT
+    #- name: 'Make branch-check'
+    #  # Use non-0 exit status for a failing branch-check on PRs
+    #  run: |
+    #    test -z "${{ github.event.pull_request }}" || BRANCH_CHECK_EXIT=77
+    #    make branch-check BRANCH_CHECK_EXIT=$BRANCH_CHECK_EXIT
+    #^^^ NOte, `make branch-check` does another clang-tidy run
 
   #ArchReplay:
   #  runs-on: ubuntu-latest
