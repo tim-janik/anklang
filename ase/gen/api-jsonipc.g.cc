@@ -105,7 +105,7 @@ jsonipc_4_api_hh()
   ::Jsonipc::Class< ::Ase::Emittable > class_1008;
   class_1008
     .inherit< ::Ase::SharedBase >()
-    .set_d ("emit_event", &::Ase::Emittable::emit_event, { {} })
+    .set ("emit_event", &::Ase::Emittable::emit_event)
     .set ("on_event", &::Ase::Emittable::on_event)
     .set ("emit_notify", &::Ase::Emittable::emit_notify)
     .set ("js_trigger", &::Ase::Emittable::js_trigger)
@@ -204,7 +204,7 @@ jsonipc_4_api_hh()
     .set ("start_tick", &::Ase::Clip::start_tick)
     .set ("stop_tick", &::Ase::Clip::stop_tick)
     .set ("assign_range", &::Ase::Clip::assign_range)
-    .set_d ("change_batch", &::Ase::Clip::change_batch, { "" })
+    .set ("change_batch", &::Ase::Clip::change_batch)
     .set ("list_all_notes", &::Ase::Clip::list_all_notes)
     ;
   ::Jsonipc::Class< ::Ase::Track > class_1017;
@@ -256,7 +256,7 @@ jsonipc_4_api_hh()
     .set ("can_undo", &::Ase::Project::can_undo)
     .set ("redo", &::Ase::Project::redo)
     .set ("can_redo", &::Ase::Project::can_redo)
-    .set_d ("match_serialized", &::Ase::Project::match_serialized, { 0 })
+    .set ("match_serialized", &::Ase::Project::match_serialized)
     ;
   ::Jsonipc::Serializable< ::Ase::Resource > serializable_1021;
   serializable_1021
@@ -273,7 +273,7 @@ jsonipc_4_api_hh()
     .set ("entries", &::Ase::ResourceCrawler::entries)
     .set ("list_entries", &::Ase::ResourceCrawler::list_entries)
     .set ("current_folder", &::Ase::ResourceCrawler::current_folder)
-    .set_d ("assign", &::Ase::ResourceCrawler::assign, { false })
+    .set ("assign", &::Ase::ResourceCrawler::assign)
     .set ("canonify", &::Ase::ResourceCrawler::canonify)
     ;
   ::Jsonipc::Serializable< ::Ase::UserNote > serializable_1023;
@@ -301,17 +301,17 @@ jsonipc_4_api_hh()
     .set ("error_blurb", &::Ase::Server::error_blurb)
     .set ("musical_tuning_label", &::Ase::Server::musical_tuning_label)
     .set ("musical_tuning_blurb", &::Ase::Server::musical_tuning_blurb)
-    .set_d ("user_note", &::Ase::Server::user_note, { "misc", Ase::UserNote::TRANSIENT, "" })
+    .set ("user_note", &::Ase::Server::user_note)
     .set ("user_reply", &::Ase::Server::user_reply)
     .set ("broadcast_telemetry", &::Ase::Server::broadcast_telemetry)
     .set ("list_preferences", &::Ase::Server::list_preferences)
     .set ("access_preference", &::Ase::Server::access_preference)
     .set ("engine_stats", &::Ase::Server::engine_stats)
-    .set_d ("exit_program", &::Ase::Server::exit_program, { 0 })
+    .set ("exit_program", &::Ase::Server::exit_program)
     .set ("last_project", &::Ase::Server::last_project)
     .set ("create_project", &::Ase::Server::create_project)
-    .set_d ("dir_crawler", &::Ase::Server::dir_crawler, { "" })
-    .set_d ("url_crawler", &::Ase::Server::url_crawler, { "/" })
+    .set ("dir_crawler", &::Ase::Server::dir_crawler)
+    .set ("url_crawler", &::Ase::Server::url_crawler)
     ;
 }
 [[maybe_unused]] static bool init_jsonipc = (jsonipc_4_api_hh(), 0);

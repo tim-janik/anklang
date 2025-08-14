@@ -419,9 +419,9 @@ public:
   virtual ProjectP create_project (String projectname) = 0; ///< Create a new project (name is modified to be unique if necessary.
   // Browsing
   /// Create crawler to navigate directories.
-  ResourceCrawlerP dir_crawler    (const String &cwd = "");
+  ResourceCrawlerP dir_crawler    (const String &cwd);
   /// Create crawler to navigate URL contents.
-  ResourceCrawlerP url_crawler    (const String &url = "/");
+  ResourceCrawlerP url_crawler    (const String &url);
 };
 #define ASE_SERVER      (::Ase::Server::instance())
 
