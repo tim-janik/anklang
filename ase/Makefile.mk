@@ -8,6 +8,8 @@ ase/gtk2wrap.sources		::= ase/gtk2wrap.cc
 ase/noglob.sources		::= $(ase/AnklangSynthEngine.sources) $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
 ase/common.ccsources		::= $(filter-out $(ase/noglob.sources), $(wildcard ase/*.cc))
 ase/common.csources		::= $(wildcard ase/*.c)
+ase/generated.sources		:=
+ase/object.deps			:=
 ase/sysconfig.dep		::= $>/ase/sysconfig.h
 ASE_EXTERNAL_INCLUDES := $(strip		\
 	-Iexternal/clap/include			\
@@ -20,14 +22,16 @@ ASE_EXTERNAL_INCLUDES := $(strip		\
 ) # also used by clang-tidy
 ase/object.includes		::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
 
-# == ase/api.jsonipc.cc ==
-$>/ase/api.jsonipc.cc: ase/api.hh jsonipc/cxxjip.py $(ase/sysconfig.dep) | $>/ase/ # ase/Makefile.mk
+# == ase/gen/api-jsonipc.g.cc ==
+$>/codegen/ase/gen/api-jsonipc.g.cc: ase/api.hh jsonipc/cxxjip.py ase/Makefile.mk
 	$(QGEN)
-	$Q echo '#include <ase/jsonapi.hh>'							>  $@.tmp
-	$Q echo '#include <ase/api.hh>'								>> $@.tmp
-	$Q $(PYTHON3) jsonipc/cxxjip.py $< -N Ase -I. -I$>/ -Iout/external/			>> $@.tmp
-	$Q echo '[[maybe_unused]] static bool init_jsonipc = (jsonipc_4_api_hh(), 0);'		>> $@.tmp
+	$Q echo '// Generated file, inputs: $^'						>  $@.tmp
+	$Q echo '#include <ase/jsonapi.hh>'						>> $@.tmp
+	$Q echo '#include <ase/api.hh>'							>> $@.tmp
+	$Q $(PYTHON3) jsonipc/cxxjip.py $< -N Ase -I. -I$>/ -Iout/external/		>> $@.tmp
+	$Q echo '[[maybe_unused]] static bool init_jsonipc = (jsonipc_4_api_hh(), 0);'	>> $@.tmp
 	$Q mv $@.tmp $@
+CODEGEN.FILES += ase/gen/api-jsonipc.g.cc
 
 # == ase/sysconfig.h ==
 $>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk
@@ -93,8 +97,7 @@ ase/sndfile.cc: $>/lib/libsndfile.so # includes $>/sndfile/src/config.h
 
 # == Common Sources ==
 ase/common.sources	::= $(ase/common.ccsources) $(ase/common.csources)
-ase/generated.sources	::= $(strip \
-	$>/ase/api.jsonipc.cc		\
+ase/generated.sources	+= $(strip	\
 	$>/ase/blake3impl.c		\
 	$>/ase/blake3avx512.c		\
 	$>/ase/blake3avx2.c		\
@@ -122,8 +125,8 @@ $(ase/buildversion.cc):								| $>/ase/ # $(GITCOMMITDEPS)
 ase/generated.sources += $(ase/buildversion.cc)
 
 # == object deps ==
-ase/object.deps      = $(ase/sysconfig.dep) $(ase/libase.deps) $(EXTERNAL_CXX_STAMPS)
-ase/common.objects ::= $(sort \
+ase/object.deps	+= $(ase/sysconfig.dep) $(ase/libase.deps) $(EXTERNAL_CXX_STAMPS)
+ase/common.objects := $(sort \
 	$(call BUILDDIR_O, $(ase/common.sources)) \
 	$(call SOURCE2_O, $(ase/generated.sources))   \
 )

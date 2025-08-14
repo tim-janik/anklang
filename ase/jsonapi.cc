@@ -383,6 +383,9 @@ jsonapi_connection_sender ()
 
 } // Ase
 
+// Build generated bindings
+#include "ase/gen/api-jsonipc.g.cc"
+
 #include "testing.hh"
 
 namespace { // Anon

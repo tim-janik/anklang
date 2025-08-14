@@ -5,6 +5,9 @@ all:		# Default Rule
 MAKEFLAGS      += -r
 SHELL         ::= /bin/bash -o pipefail
 PARALLEL_MAKE   = $(filter JOBSERVER, $(subst -j, JOBSERVER , $(MFLAGS)))
+CODEGEN.FILES	:=
+WITH_CODEGEN	:= $(filter codegen,$(MAKECMDGOALS))
+
 S ::= # Variable containing 1 space
 S +=
 
@@ -130,6 +133,7 @@ check: check-WILDCARD_FILES
 
 # == enduser targets ==
 all: FORCE
+codegen: all FORCE
 check: FORCE
 check-audio: FORCE
 install: FORCE
@@ -162,6 +166,7 @@ help: FORCE
 	@echo 'Make targets:'
 	@: #   12345678911234567892123456789312345678941234567895123456789612345678971234567898
 	@echo '  all             - Build all targets, uses config-defaults.mk if present.'
+	@echo '  codegen         - Force code regeneration and build all targets.'
 	@echo '  clean           - Remove build directory, but keeps config-defaults.mk.'
 	@echo '  install         - Install binaries and data files under $$(prefix)'
 	@echo '  uninstall       - Uninstall binaries, aliases and data files'
@@ -175,8 +180,7 @@ help: FORCE
 	@echo '  check-audio     - Validate Anklang rendering against reference files'
 	@echo '  check-bench     - Run the benchmark tests'
 	@echo '  check-loading   - Check all distributed Anklang files load properly'
-	@echo '  check-suite     - Run the unit test suite'
-	@echo '  serve           - Start Anklang and serve assets with HMR'
+	@echo '  serve           - Start Anklang and serve assets via Vite with hot-reloading'
 	@echo '  viewdocs        - Build and browser the manual'
 	@echo '  run             - Start Anklang without installation'
 	@echo 'Invocation:'
@@ -187,6 +191,9 @@ help: FORCE
 	@echo '  make INSN=...   - Optimize instructions: sse (ca 2008), fma (ca 2015), [native]'
 	@echo "  make MODE=...   - Run 'quick' build or make 'production' mode binaries."
 	@echo '                    Other modes: debug, devel, asan, lsan, tsan, ubsan'
+	@echo 'Notes:'
+	@echo '  ./.git          - Building in a Git repo triggers additional checks for e.g.'
+	@echo '                    copyright checks or codegen'
 
 # == 'default' settings ==
 # Allow value defaults to be adjusted via: make default builddir=... CXX=...
@@ -212,6 +219,31 @@ $>/%/:
 # == FORCE rules ==
 # Use FORCE to mark phony targets via a dependency
 .PHONY:	FORCE
+
+# == make codegen ==
+# Considerations for `make codegen`:
+# 1. Keep codegen sources in Git to simplify tarball builds, track history and monitor changes.
+# 2. For development builds (if ./.git is present), validate correctness of generated code.
+# 3. During `make codegen` builds, force-update generated code.
+define CODEGEN_CHECK
+$2: | $$(dir $2)/	# Create $>/codegen/ subdirs
+$2.check: $2		# Check or force-update generated file
+	$Q cmp -s $1 $2 && touch $$@ && echo "  KEEP    $1" && exit; \
+	echo '**WARNING**: detected codegen changes: $$(strip $1)'; \
+	$(if $(HAVE_GIT), git -P diff --no-index, diff -u) $1 $2; \
+	if test -n "$(WITH_CODEGEN)" ; \
+	then mv $2 $1 && echo "  CODEGEN  $$(strip $1) !!FORCED-UPDATE!!  "; \
+	else echo '**ERROR**: outdated target (need `make codegen`): $$(strip $1)'; false; \
+	fi
+ifneq (,$(HAVE_GIT)$(WITH_CODEGEN))
+$1: $2.check		# Touch $1 if check (or regeneration) was ok
+	$Q touch $1
+endif
+.PHONY: $(if $(WITH_CODEGEN), $2.check $2)
+ALL_TARGETS += $1
+endef
+$(foreach F, $(CODEGEN.FILES), $(eval $(call CODEGEN_CHECK, $F, $>/codegen/$F)))
+CLEANDIRS += $>/codegen/
 
 # == PACKAGE_VERSIONS ==
 define PACKAGE_VERSIONS
