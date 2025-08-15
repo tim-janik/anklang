@@ -133,7 +133,7 @@ check: check-WILDCARD_FILES
 
 # == enduser targets ==
 all: FORCE
-codegen: all FORCE
+codegen: FORCE
 check: FORCE
 check-audio: FORCE
 install: FORCE
@@ -166,7 +166,7 @@ help: FORCE
 	@echo 'Make targets:'
 	@: #   12345678911234567892123456789312345678941234567895123456789612345678971234567898
 	@echo '  all             - Build all targets, uses config-defaults.mk if present.'
-	@echo '  codegen         - Force code regeneration and build all targets.'
+	@echo '  codegen         - Force code regeneration.'
 	@echo '  clean           - Remove build directory, but keeps config-defaults.mk.'
 	@echo '  install         - Install binaries and data files under $$(prefix)'
 	@echo '  uninstall       - Uninstall binaries, aliases and data files'
@@ -224,7 +224,7 @@ $>/%/:
 # Considerations for `make codegen`:
 # 1. Keep codegen sources in Git to simplify tarball builds, track history and monitor changes.
 # 2. For development builds (if ./.git is present), validate correctness of generated code.
-# 3. During `make codegen` builds, force-update generated code.
+# 3. Use `make codegen` builds to force-update generated code.
 define CODEGEN_CHECK
 $2: | $$(dir $2)/	# Create $>/codegen/ subdirs
 $2.check: $2		# Check or force-update generated file
@@ -240,6 +240,7 @@ $1: $2.check		# Touch $1 if check (or regeneration) was ok
 	$Q touch $1
 endif
 .PHONY: $(if $(WITH_CODEGEN), $2.check $2)
+codegen: $1
 ALL_TARGETS += $1
 endef
 $(foreach F, $(CODEGEN.FILES), $(eval $(call CODEGEN_CHECK, $F, $>/codegen/$F)))
