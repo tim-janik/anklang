@@ -1,12 +1,12 @@
-// Generated file, inputs: ase/api.hh jsonipc/cxxjip.py ase/Makefile.mk
+// Generated file, inputs: api-jsonipc.json jsonbindings.ts Makefile.mk
 #include <ase/jsonapi.hh>
 #include <ase/api.hh>
+
 static void
-jsonipc_4_api_hh()
+jsonipc_for_api_jsonipc_json()
 {
-  // namespace Ase
-  ::Jsonipc::Enum< ::Ase::Error > enum_1001;
-  enum_1001
+  ::Jsonipc::Enum< ::Ase::Error > enum__Ase_Error;
+  enum__Ase_Error
     .set (::Ase::Error::NONE, "NONE")
     .set (::Ase::Error::PERMS, "PERMS")
     .set (::Ase::Error::IO, "IO")
@@ -54,8 +54,8 @@ jsonipc_4_api_hh()
     .set (::Ase::Error::INVALID_MIDI_CONTROL, "INVALID_MIDI_CONTROL")
     .set (::Ase::Error::OPERATION_BUSY, "OPERATION_BUSY")
     ;
-  ::Jsonipc::Enum< ::Ase::MusicalTuning > enum_1002;
-  enum_1002
+  ::Jsonipc::Enum< ::Ase::MusicalTuning > enum__Ase_MusicalTuning;
+  enum__Ase_MusicalTuning
     .set (::Ase::MusicalTuning::OD_12_TET, "OD_12_TET")
     .set (::Ase::MusicalTuning::OD_7_TET, "OD_7_TET")
     .set (::Ase::MusicalTuning::OD_5_TET, "OD_5_TET")
@@ -74,20 +74,20 @@ jsonipc_4_api_hh()
     .set (::Ase::MusicalTuning::KIRNBERGER_3, "KIRNBERGER_3")
     .set (::Ase::MusicalTuning::YOUNG, "YOUNG")
     ;
-  ::Jsonipc::Enum< ::Ase::ResourceType > enum_1003;
-  enum_1003
+  ::Jsonipc::Enum< ::Ase::ResourceType > enum__Ase_ResourceType;
+  enum__Ase_ResourceType
     .set (::Ase::ResourceType::FOLDER, "FOLDER")
     .set (::Ase::ResourceType::FILE, "FILE")
     ;
-  ::Jsonipc::Enum< ::Ase::LogFlags > enum_1004;
-  enum_1004
-    .set (::Ase::LogFlags::LOG_FILE, "LOG_FILE")
-    .set (::Ase::LogFlags::LOG_STDERR, "LOG_STDERR")
-    .set (::Ase::LogFlags::LOG_LOCATIONS, "LOG_LOCATIONS")
+  ::Jsonipc::Enum< ::Ase::UserNote::Flags > enum__Ase_UserNote_Flags;
+  enum__Ase_UserNote_Flags
+    .set (::Ase::UserNote::Flags::APPEND, "APPEND")
+    .set (::Ase::UserNote::Flags::CLEAR, "CLEAR")
+    .set (::Ase::UserNote::Flags::TRANSIENT, "TRANSIENT")
     ;
-  ::Jsonipc::Class< ::Ase::SharedBase > class_1005;
-  ::Jsonipc::Serializable< ::Ase::Choice > serializable_1006;
-  serializable_1006
+
+  ::Jsonipc::Serializable< ::Ase::Choice > serializable__Ase_Choice;
+  serializable__Ase_Choice
     .set ("ident", &::Ase::Choice::ident)
     .set ("icon", &::Ase::Choice::icon)
     .set ("label", &::Ase::Choice::label)
@@ -95,27 +95,79 @@ jsonipc_4_api_hh()
     .set ("notice", &::Ase::Choice::notice)
     .set ("warning", &::Ase::Choice::warning)
     ;
-  ::Jsonipc::Serializable< ::Ase::TelemetryField > serializable_1007;
-  serializable_1007
+  ::Jsonipc::Serializable< ::Ase::TelemetryField > serializable__Ase_TelemetryField;
+  serializable__Ase_TelemetryField
     .set ("name", &::Ase::TelemetryField::name)
     .set ("type", &::Ase::TelemetryField::type)
     .set ("offset", &::Ase::TelemetryField::offset)
     .set ("length", &::Ase::TelemetryField::length)
     ;
-  ::Jsonipc::Class< ::Ase::Emittable > class_1008;
-  class_1008
+  ::Jsonipc::Serializable< ::Ase::DeviceInfo > serializable__Ase_DeviceInfo;
+  serializable__Ase_DeviceInfo
+    .set ("uri", &::Ase::DeviceInfo::uri)
+    .set ("name", &::Ase::DeviceInfo::name)
+    .set ("category", &::Ase::DeviceInfo::category)
+    .set ("description", &::Ase::DeviceInfo::description)
+    .set ("website_url", &::Ase::DeviceInfo::website_url)
+    .set ("creator_name", &::Ase::DeviceInfo::creator_name)
+    .set ("creator_url", &::Ase::DeviceInfo::creator_url)
+    ;
+  ::Jsonipc::Serializable< ::Ase::ClipNote > serializable__Ase_ClipNote;
+  serializable__Ase_ClipNote
+    .set ("id", &::Ase::ClipNote::id)
+    .set ("channel", &::Ase::ClipNote::channel)
+    .set ("key", &::Ase::ClipNote::key)
+    .set ("selected", &::Ase::ClipNote::selected)
+    .set ("tick", &::Ase::ClipNote::tick)
+    .set ("duration", &::Ase::ClipNote::duration)
+    .set ("velocity", &::Ase::ClipNote::velocity)
+    .set ("fine_tune", &::Ase::ClipNote::fine_tune)
+    ;
+  ::Jsonipc::Serializable< ::Ase::ProbeFeatures > serializable__Ase_ProbeFeatures;
+  serializable__Ase_ProbeFeatures
+    .set ("probe_range", &::Ase::ProbeFeatures::probe_range)
+    .set ("probe_energy", &::Ase::ProbeFeatures::probe_energy)
+    .set ("probe_samples", &::Ase::ProbeFeatures::probe_samples)
+    .set ("probe_fft", &::Ase::ProbeFeatures::probe_fft)
+    ;
+  ::Jsonipc::Serializable< ::Ase::Resource > serializable__Ase_Resource;
+  serializable__Ase_Resource
+    .set ("type", &::Ase::Resource::type)
+    .set ("label", &::Ase::Resource::label)
+    .set ("uri", &::Ase::Resource::uri)
+    .set ("size", &::Ase::Resource::size)
+    .set ("mtime", &::Ase::Resource::mtime)
+    ;
+  ::Jsonipc::Serializable< ::Ase::UserNote > serializable__Ase_UserNote;
+  serializable__Ase_UserNote
+    .set ("noteid", &::Ase::UserNote::noteid)
+    .set ("flags", &::Ase::UserNote::flags)
+    .set ("channel", &::Ase::UserNote::channel)
+    .set ("text", &::Ase::UserNote::text)
+    .set ("rest", &::Ase::UserNote::rest)
+    ;
+  ::Jsonipc::Serializable< ::Ase::TelemetrySegment > serializable__Ase_TelemetrySegment;
+  serializable__Ase_TelemetrySegment
+    .set ("offset", &::Ase::TelemetrySegment::offset)
+    .set ("length", &::Ase::TelemetrySegment::length)
+    ;
+
+  ::Jsonipc::Class< ::Ase::Emittable > class__Ase_Emittable;
+  class__Ase_Emittable
     .inherit< ::Ase::SharedBase >()
     .set ("emit_event", &::Ase::Emittable::emit_event)
-    .set ("on_event", &::Ase::Emittable::on_event)
     .set ("emit_notify", &::Ase::Emittable::emit_notify)
     .set ("js_trigger", &::Ase::Emittable::js_trigger)
     ;
-  ::Jsonipc::Class< ::Ase::Property > class_1009;
-  class_1009
+
+  ::Jsonipc::Class< ::Ase::Property > class__Ase_Property;
+  class__Ase_Property
     .inherit< ::Ase::Emittable >()
-    .set ("name", &::Ase::Property::name)
-    .set ("value", &::Ase::Property::value)
-    .set ("metadata", &::Ase::Property::metadata)
+    .set ("name", &::Ase::Property::get_name, &::Ase::Property::set_name)
+    .set ("metadata", &::Ase::Property::get_metadata, &::Ase::Property::set_metadata)
+    .set ("value", &::Ase::Property::get_value, &::Ase::Property::set_value)
+    .set ("normalized", &::Ase::Property::get_normalized, &::Ase::Property::set_normalized)
+    .set ("text", &::Ase::Property::get_text, &::Ase::Property::set_text)
     .set ("get_name", &::Ase::Property::get_name)
     .set ("set_name", &::Ase::Property::set_name)
     .set ("get_metadata", &::Ase::Property::get_metadata)
@@ -141,14 +193,16 @@ jsonipc_4_api_hh()
     .set ("descr", &::Ase::Property::descr)
     .set ("group", &::Ase::Property::group)
     ;
-  ::Jsonipc::Class< ::Ase::Object > class_1010;
-  class_1010
+
+  ::Jsonipc::Class< ::Ase::Object > class__Ase_Object;
+  class__Ase_Object
     .inherit< ::Ase::Emittable >()
     ;
-  ::Jsonipc::Class< ::Ase::Gadget > class_1011;
-  class_1011
+
+  ::Jsonipc::Class< ::Ase::Gadget > class__Ase_Gadget;
+  class__Ase_Gadget
     .inherit< ::Ase::Object >()
-    .set ("name", &::Ase::Gadget::name)
+    .set ("name", &::Ase::Gadget::get_name, &::Ase::Gadget::set_name)
     .set ("get_name", &::Ase::Gadget::get_name)
     .set ("set_name", &::Ase::Gadget::set_name)
     .set ("type_nick", &::Ase::Gadget::type_nick)
@@ -160,20 +214,11 @@ jsonipc_4_api_hh()
     .set ("set_data", &::Ase::Gadget::set_data)
     .set ("get_data", &::Ase::Gadget::get_data)
     ;
-  ::Jsonipc::Serializable< ::Ase::DeviceInfo > serializable_1012;
-  serializable_1012
-    .set ("uri", &::Ase::DeviceInfo::uri)
-    .set ("name", &::Ase::DeviceInfo::name)
-    .set ("category", &::Ase::DeviceInfo::category)
-    .set ("description", &::Ase::DeviceInfo::description)
-    .set ("website_url", &::Ase::DeviceInfo::website_url)
-    .set ("creator_name", &::Ase::DeviceInfo::creator_name)
-    .set ("creator_url", &::Ase::DeviceInfo::creator_url)
-    ;
-  ::Jsonipc::Class< ::Ase::Device > class_1013;
-  class_1013
+
+  ::Jsonipc::Class< ::Ase::Device > class__Ase_Device;
+  class__Ase_Device
     .inherit< ::Ase::Gadget >()
-    .set ("devices", &::Ase::Device::devices)
+    .set ("devices", &::Ase::Device::get_devices, &::Ase::Device::set_devices)
     .set ("is_active", &::Ase::Device::is_active)
     .set ("device_info", &::Ase::Device::device_info)
     .set ("get_devices", &::Ase::Device::get_devices)
@@ -183,8 +228,9 @@ jsonipc_4_api_hh()
     .set ("gui_supported", &::Ase::Device::gui_supported)
     .set ("gui_visible", &::Ase::Device::gui_visible)
     ;
-  ::Jsonipc::Class< ::Ase::NativeDevice > class_1014;
-  class_1014
+
+  ::Jsonipc::Class< ::Ase::NativeDevice > class__Ase_NativeDevice;
+  class__Ase_NativeDevice
     .inherit< ::Ase::Device >()
     .set ("is_combo_device", &::Ase::NativeDevice::is_combo_device)
     .set ("list_device_types", &::Ase::NativeDevice::list_device_types)
@@ -192,22 +238,12 @@ jsonipc_4_api_hh()
     .set ("append_device", &::Ase::NativeDevice::append_device)
     .set ("insert_device", &::Ase::NativeDevice::insert_device)
     ;
-  ::Jsonipc::Serializable< ::Ase::ClipNote > serializable_1015;
-  serializable_1015
-    .set ("id", &::Ase::ClipNote::id)
-    .set ("channel", &::Ase::ClipNote::channel)
-    .set ("key", &::Ase::ClipNote::key)
-    .set ("selected", &::Ase::ClipNote::selected)
-    .set ("tick", &::Ase::ClipNote::tick)
-    .set ("duration", &::Ase::ClipNote::duration)
-    .set ("velocity", &::Ase::ClipNote::velocity)
-    .set ("fine_tune", &::Ase::ClipNote::fine_tune)
-    ;
-  ::Jsonipc::Class< ::Ase::Clip > class_1016;
-  class_1016
+
+  ::Jsonipc::Class< ::Ase::Clip > class__Ase_Clip;
+  class__Ase_Clip
     .inherit< ::Ase::Gadget >()
-    .set ("all_notes", &::Ase::Clip::all_notes)
-    .set ("end_tick", &::Ase::Clip::end_tick)
+    .set ("all_notes", &::Ase::Clip::get_all_notes, &::Ase::Clip::set_all_notes)
+    .set ("end_tick", &::Ase::Clip::get_end_tick, &::Ase::Clip::set_end_tick)
     .set ("get_all_notes", &::Ase::Clip::get_all_notes)
     .set ("set_all_notes", &::Ase::Clip::set_all_notes)
     .set ("get_end_tick", &::Ase::Clip::get_end_tick)
@@ -218,8 +254,9 @@ jsonipc_4_api_hh()
     .set ("change_batch", &::Ase::Clip::change_batch)
     .set ("list_all_notes", &::Ase::Clip::list_all_notes)
     ;
-  ::Jsonipc::Class< ::Ase::Track > class_1017;
-  class_1017
+
+  ::Jsonipc::Class< ::Ase::Track > class__Ase_Track;
+  class__Ase_Track
     .inherit< ::Ase::Device >()
     .set ("midi_channel", &::Ase::Track::midi_channel, &::Ase::Track::midi_channel)
     .set ("is_master", &::Ase::Track::is_master)
@@ -228,27 +265,22 @@ jsonipc_4_api_hh()
     .set ("create_monitor", &::Ase::Track::create_monitor)
     .set ("telemetry", &::Ase::Track::telemetry)
     ;
-  ::Jsonipc::Serializable< ::Ase::ProbeFeatures > serializable_1018;
-  serializable_1018
-    .set ("probe_range", &::Ase::ProbeFeatures::probe_range)
-    .set ("probe_energy", &::Ase::ProbeFeatures::probe_energy)
-    .set ("probe_samples", &::Ase::ProbeFeatures::probe_samples)
-    .set ("probe_fft", &::Ase::ProbeFeatures::probe_fft)
-    ;
-  ::Jsonipc::Class< ::Ase::Monitor > class_1019;
-  class_1019
+
+  ::Jsonipc::Class< ::Ase::Monitor > class__Ase_Monitor;
+  class__Ase_Monitor
     .inherit< ::Ase::Gadget >()
     .set ("get_output", &::Ase::Monitor::get_output)
     .set ("get_ochannel", &::Ase::Monitor::get_ochannel)
     .set ("get_mix_freq", &::Ase::Monitor::get_mix_freq)
     .set ("get_frame_duration", &::Ase::Monitor::get_frame_duration)
     ;
-  ::Jsonipc::Class< ::Ase::Project > class_1020;
-  class_1020
+
+  ::Jsonipc::Class< ::Ase::Project > class__Ase_Project;
+  class__Ase_Project
     .inherit< ::Ase::Device >()
-    .set ("bpm", &::Ase::Project::bpm)
-    .set ("numerator", &::Ase::Project::numerator)
-    .set ("denominator", &::Ase::Project::denominator)
+    .set ("bpm", &::Ase::Project::get_bpm, &::Ase::Project::set_bpm)
+    .set ("numerator", &::Ase::Project::get_numerator, &::Ase::Project::set_numerator)
+    .set ("denominator", &::Ase::Project::get_denominator, &::Ase::Project::set_denominator)
     .set ("set_bpm", &::Ase::Project::set_bpm)
     .set ("get_bpm", &::Ase::Project::get_bpm)
     .set ("set_numerator", &::Ase::Project::set_numerator)
@@ -275,19 +307,12 @@ jsonipc_4_api_hh()
     .set ("can_redo", &::Ase::Project::can_redo)
     .set ("match_serialized", &::Ase::Project::match_serialized)
     ;
-  ::Jsonipc::Serializable< ::Ase::Resource > serializable_1021;
-  serializable_1021
-    .set ("type", &::Ase::Resource::type)
-    .set ("label", &::Ase::Resource::label)
-    .set ("uri", &::Ase::Resource::uri)
-    .set ("size", &::Ase::Resource::size)
-    .set ("mtime", &::Ase::Resource::mtime)
-    ;
-  ::Jsonipc::Class< ::Ase::ResourceCrawler > class_1022;
-  class_1022
+
+  ::Jsonipc::Class< ::Ase::ResourceCrawler > class__Ase_ResourceCrawler;
+  class__Ase_ResourceCrawler
     .inherit< ::Ase::Object >()
-    .set ("folder", &::Ase::ResourceCrawler::folder)
-    .set ("entries", &::Ase::ResourceCrawler::entries)
+    .set ("folder", &::Ase::ResourceCrawler::get_folder, &::Ase::ResourceCrawler::set_folder)
+    .set ("entries", &::Ase::ResourceCrawler::get_entries, &::Ase::ResourceCrawler::set_entries)
     .set ("get_folder", &::Ase::ResourceCrawler::get_folder)
     .set ("set_folder", &::Ase::ResourceCrawler::set_folder)
     .set ("get_entries", &::Ase::ResourceCrawler::get_entries)
@@ -295,21 +320,9 @@ jsonipc_4_api_hh()
     .set ("assign", &::Ase::ResourceCrawler::assign)
     .set ("canonify", &::Ase::ResourceCrawler::canonify)
     ;
-  ::Jsonipc::Serializable< ::Ase::UserNote > serializable_1023;
-  serializable_1023
-    .set ("noteid", &::Ase::UserNote::noteid)
-    .set ("flags", &::Ase::UserNote::flags)
-    .set ("channel", &::Ase::UserNote::channel)
-    .set ("text", &::Ase::UserNote::text)
-    .set ("rest", &::Ase::UserNote::rest)
-    ;
-  ::Jsonipc::Serializable< ::Ase::TelemetrySegment > serializable_1024;
-  serializable_1024
-    .set ("offset", &::Ase::TelemetrySegment::offset)
-    .set ("length", &::Ase::TelemetrySegment::length)
-    ;
-  ::Jsonipc::Class< ::Ase::Server > class_1025;
-  class_1025
+
+  ::Jsonipc::Class< ::Ase::Server > class__Ase_Server;
+  class__Ase_Server
     .inherit< ::Ase::Gadget >()
     .set ("shutdown", &::Ase::Server::shutdown)
     .set ("get_version", &::Ase::Server::get_version)
@@ -333,4 +346,4 @@ jsonipc_4_api_hh()
     .set ("url_crawler", &::Ase::Server::url_crawler)
     ;
 }
-[[maybe_unused]] static bool init_jsonipc = (jsonipc_4_api_hh(), 0);
+[[maybe_unused]] static bool init_jsonipc = (jsonipc_for_api_jsonipc_json(), 0);
