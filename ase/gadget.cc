@@ -136,24 +136,23 @@ GadgetImpl::type_nick () const
 
 static CustomDataKey<String> gadget_name_key;
 
-bool
-GadgetImpl::name_ (const std::string *n, std::string *q)
+String
+GadgetImpl::get_name () const
 {
-  if (n) {
-    String newname = string_strip (*n);
-    if (newname.empty())
-      del_custom_data (&gadget_name_key);
-    else
-      set_custom_data (&gadget_name_key, newname);
-    name.notify();
-  }
-  if (q) {
-    if (!has_custom_data (&gadget_name_key))
-      *q = fallback_name();
-    else
-      *q = get_custom_data (&gadget_name_key);
-  }
-  return true;
+  if (!has_custom_data (&gadget_name_key))
+    return fallback_name();
+  return get_custom_data (&gadget_name_key);
+}
+
+void
+GadgetImpl::set_name (const std::string &n)
+{
+  String newname = string_strip (n);
+  if (newname.empty())
+    del_custom_data (&gadget_name_key);
+  else
+    set_custom_data (&gadget_name_key, newname);
+  name.notify();
 }
 
 PropertyS

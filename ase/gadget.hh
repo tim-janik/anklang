@@ -21,10 +21,11 @@ protected:
   static String  canonify_key      (const String &input);
   virtual       ~GadgetImpl        ();
   virtual String fallback_name     () const;
-  virtual bool   name_             (const std::string *n, std::string *q) override;
   void           serialize         (WritNode &xs) override;
   virtual void   create_properties ();
 public:
+  String         get_name          () const override;
+  void           set_name          (const std::string &n) override;
   void           _set_parent       (GadgetImpl *parent) override;
   GadgetImpl*    _parent           () const override    { return parent_; }
   String         type_nick         () const override;

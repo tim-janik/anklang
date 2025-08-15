@@ -22,31 +22,22 @@ Property::Property() :
 Property::~Property()
 {}
 
-bool
-Property::name_ (const String *n, String *q)
+String
+Property::get_name () const
 {
-  if (q)
-    *q = ident();
-  return false;
+  return ident();
 }
 
-bool
-Property::value_ (const Value *n, Value *q)
+void
+Property::set_name (const String &n)
 {
-  bool changed = false;
-  if (n)
-    changed = set_value (*n);
-  if (q)
-    *q = get_value();
-  return changed;
+  // not implemented
 }
 
-bool
-Property::metadata_ (const StringS *n, StringS *q)
+void
+Property::set_metadata (const StringS &md)
 {
-  if (q)
-    *q = get_metadata();
-  return false;
+  // not implemented
 }
 
 // == PropertyImpl ==

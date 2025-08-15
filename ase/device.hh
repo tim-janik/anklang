@@ -12,10 +12,12 @@ class DeviceImpl : public GadgetImpl, public virtual Device {
 protected:
   explicit        DeviceImpl           () {} // abstract base
   void            _set_parent          (GadgetImpl *parent) override;
+  virtual DeviceS list_devices         () { return {}; }
 public:
   void            _activate            () override;
   void            _deactivate          () override;
-  DeviceS         list_devices         () override { return {}; }
+  DeviceS         get_devices          () const override { return const_cast<DeviceImpl&> (*this).list_devices(); }
+  void            set_devices          (const DeviceS &newdevices) override { devices.notify(); }
   bool            is_active            () override { return activated_; }
   bool            gui_supported        () override { return false; }
   bool            gui_visible          () override { return false; }

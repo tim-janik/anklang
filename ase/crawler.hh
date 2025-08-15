@@ -10,16 +10,19 @@ namespace Ase {
 class FileCrawler final : public ObjectImpl, public virtual ResourceCrawler {
   String cwd_;
   const uint constraindir_ : 1;
+  [[maybe_unused]]
   const uint constrainfile_ : 1;
   FileCrawler (const String &cwd, bool constraindir = false, bool constrainfile = false);
 protected:
   String2   assign_         (const String &utf8path, bool existingfile, bool notify = true);
-  bool      folder_         (const Resource *n, Resource *q) override;
-  bool      entries_        (const ResourceS *n, ResourceS *q) override;
+  Resource  get_folder      () const override;
+  void      set_folder      (const Resource &newfolder) override;
+  ResourceS get_entries     () const override;
+  void      set_entries     (const ResourceS &newentries) override;
 public:
   ASE_DEFINE_MAKE_SHARED (FileCrawler);
-  ResourceS list_entries    () override;
-  Resource  current_folder  () override;
+  ResourceS list_entries    ();
+  Resource  current_folder  ();
   String2   assign          (const String &utf8path,
                              bool existingfile) override { return assign_ (utf8path, existingfile, true); }
   Resource  canonify        (const String &utf8cwd, const String &utf8fragment, bool constraindir, bool constrainfile) override;

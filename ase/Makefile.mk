@@ -23,15 +23,28 @@ ASE_EXTERNAL_INCLUDES := $(strip		\
 ase/object.includes		::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
 
 # == ase/gen/api-jsonipc.g.cc ==
-$>/codegen/ase/gen/api-jsonipc.g.cc: ase/api.hh jsonipc/cxxjip.py ase/Makefile.mk
+$>/codegen/ase/gen/api-jsonipc.json: ase/api.hh $(ase/sysconfig.dep) ase/Makefile.mk
 	$(QGEN)
-	$Q echo '// Generated file, inputs: $^'						>  $@.tmp
+	$Q clang-20 -std=gnu++23 -I . -I out/ -extract-api $< -o $@
+$>/codegen/ase/gen/api-jsonipc.g.cc: $>/codegen/ase/gen/api-jsonipc.json jsonipc/jsonbindings.ts ase/Makefile.mk
+	$(QGEN)
+	$Q echo '// Generated file, inputs: $(notdir $^)'				>  $@.tmp
 	$Q echo '#include <ase/jsonapi.hh>'						>> $@.tmp
 	$Q echo '#include <ase/api.hh>'							>> $@.tmp
-	$Q $(PYTHON3) jsonipc/cxxjip.py $< -N Ase -I. -I$>/ -Iout/external/		>> $@.tmp
-	$Q echo '[[maybe_unused]] static bool init_jsonipc = (jsonipc_4_api_hh(), 0);'	>> $@.tmp
+	$Q $(RUNTS) jsonipc/jsonbindings.ts $<						>> $@.tmp
+	$Q echo '[[maybe_unused]] static bool init_jsonipc = (jsonipc_for_api_jsonipc_json(), 0);'	>> $@.tmp
 	$Q mv $@.tmp $@
 CODEGEN.FILES += ase/gen/api-jsonipc.g.cc
+# DEV_TARGETS - checks & helpers for development
+$>/codegen/.jsonbindings.tscheck: jsonipc/jsonbindings.ts ase/Makefile.mk	| $>/ase/ node_modules/.npm.done
+	$(QGEN)
+	$Q node_modules/.bin/tsc --noEmit --allowJs --moduleResolution bundler -m esnext --target esnext --erasableSyntaxOnly $<
+	$Q touch $@
+ALL_TARGETS += $>/codegen/.jsonbindings.tscheck
+$>/codegen/ase/gen/api-jsonipc.pretty.json: $>/codegen/ase/gen/api-jsonipc.json ase/Makefile.mk
+	$(QGEN) # JSON formatted for human inspection
+	$Q python3 -m json.tool < $< > $@
+ALL_TARGETS += $>/codegen/ase/gen/api-jsonipc.pretty.json
 
 # == ase/sysconfig.h ==
 $>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk

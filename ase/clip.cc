@@ -140,30 +140,33 @@ ClipImpl::list_all_notes ()
   return cnotes;
 }
 
-bool
-ClipImpl::all_notes_ (const ClipNoteS *n, ClipNoteS *q)
+void
+ClipImpl::set_all_notes (const ClipNoteS &notes)
 {
-  if (n) {
-    // TODO: implement setter
-    all_notes.notify();
-  }
-  if (q) {
-    auto events = tick_events();
-    q->assign (events->begin(), events->end());
-  }
-  return true;
+  // TODO: implement setter
+  all_notes.notify();
 }
 
-bool
-ClipImpl::end_tick_ (const int64 *n, int64 *q)
+ClipNoteS
+ClipImpl::get_all_notes () const
 {
-  if (n) {
-    endtick_ = *n;
-    end_tick.notify();
-  }
-  if (q)
-    *q = endtick_;
-  return true;
+  auto events = tick_events();
+  ClipNoteS notes;
+  notes.assign (events->begin(), events->end());
+  return notes;
+}
+
+int64
+ClipImpl::get_end_tick () const
+{
+  return endtick_;
+}
+
+void
+ClipImpl::set_end_tick (int64 etick)
+{
+  endtick_ = etick;
+  end_tick.notify();
 }
 
 /// Retrieve const vector with all notes ordered by tick.

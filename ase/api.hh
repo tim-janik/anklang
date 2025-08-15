@@ -133,14 +133,14 @@ public:
 
 /// A Property allows querying, setting and monitoring of an object property.
 class Property : public virtual Emittable {
-  bool            name_          (const String *n, String *q);
-  bool            value_         (const Value *n, Value *q);
-  bool            metadata_      (const StringS *n, StringS *q);
 protected:
   explicit        Property       ();
-  virtual StringS get_metadata   () const = 0;
   virtual        ~Property       () = 0;
 public:
+  virtual String  get_name       () const;
+  virtual void    set_name       (const String &n);
+  virtual StringS get_metadata   () const = 0;
+  virtual void    set_metadata   (const StringS &md);
   virtual String  ident          () const = 0;         ///< Unique name (per owner) of this Property.
   virtual String  label          () const = 0;         ///< Preferred user interface name.
   virtual String  nick           () const = 0;         ///< Abbreviated user interface name, usually not more than 6 characters.
@@ -161,9 +161,9 @@ public:
   String          blurb          () const;             ///< Short description for user interface tooltips (metadata).
   String          descr          () const;             ///< Elaborate description, e.g. for help dialogs (metadata).
   String          group          () const;             ///< Group name for parameters of similar function (metadata).
-  Member<&Property::name_>     name [[no_unique_address]];
-  Member<&Property::value_>    value [[no_unique_address]];
-  Member<&Property::metadata_> metadata [[no_unique_address]];
+  Member<&Property::get_name,&Property::set_name> name [[no_unique_address]];
+  Member<&Property::get_value,&Property::set_value> value [[no_unique_address]];
+  Member<&Property::get_metadata,&Property::set_metadata> metadata [[no_unique_address]];
 };
 
 /// Base type for classes with Property interfaces.
@@ -177,13 +177,14 @@ public:
 class Gadget : public virtual Object {
 protected:
   explicit            Gadget            ();
-  virtual bool        name_             (const std::string *n, std::string *q) = 0;
 public:
   // Hierarchical parenting.
   virtual GadgetImpl* _parent           () const = 0;             ///< Retrieve parent container.
   virtual void        _set_parent       (GadgetImpl *parent) = 0; ///< Assign parent container.
   ProjectImpl*        _project          () const;                 ///< Find Project in parent ancestry.
   // Naming
+  virtual String      get_name          () const = 0;
+  virtual void        set_name          (const std::string &n) = 0;
   virtual String      type_nick         () const = 0;
   // Properties
   virtual StringS     list_properties   ();                 ///< List all property identifiers.
@@ -195,7 +196,7 @@ public:
   virtual bool        set_data          (const String &key, const Value &v) = 0;
   /// Retrieve session data.
   virtual Value       get_data          (const String &key) const = 0;
-  Member<&Gadget::name_> name [[no_unique_address]];
+  Member<&Gadget::get_name,&Gadget::set_name> name [[no_unique_address]];
 };
 
 /// Info for device types.
@@ -211,7 +212,6 @@ struct DeviceInfo {
 
 /// Interface to access Device instances.
 class Device : public virtual Gadget {
-  virtual bool devs_  (const DeviceS *n, DeviceS *q);
 protected:
   explicit     Device ();
 public:
@@ -225,13 +225,14 @@ public:
   // exported
   virtual bool       is_active     () = 0;      ///< Check whether this is the active synthesis engine project.
   virtual DeviceInfo device_info   () = 0;      ///< Describe this Device type.
-  virtual DeviceS    list_devices  () = 0;      ///< List devices in order of processing, notified via "devs".
+  virtual DeviceS    get_devices   () const = 0; ///< List devices in order of processing, notified via "devs".
+  virtual void       set_devices   (const DeviceS &devices) = 0; ///< Set the list of devices.
   void               remove_self   ();          ///< Remove device from its container.
   // GUI handling
   virtual void       gui_toggle    () = 0;      ///< Toggle GUI display.
   virtual bool       gui_supported () = 0;      ///< Has GUI display facilities.
   virtual bool       gui_visible   () = 0;      ///< Is GUI currently visible.
-  Member<&Device::devs_> devs [[no_unique_address]];
+  Member<&Device::get_devices,&Device::set_devices> devices [[no_unique_address]];
 };
 
 /// Interface to access NativeDevice instances.
@@ -263,9 +264,11 @@ struct ClipNote {
 class Clip : public virtual Gadget {
 protected:
   explicit          Clip           ();
-  virtual bool      all_notes_     (const ClipNoteS *n, ClipNoteS *q) = 0;
-  virtual bool      end_tick_      (const int64 *n, int64 *q) = 0;
 public:
+  virtual ClipNoteS get_all_notes  () const = 0;
+  virtual void      set_all_notes  (const ClipNoteS &notes) = 0;
+  virtual int64     get_end_tick   () const = 0;
+  virtual void      set_end_tick   (int64 etick) = 0;
   virtual int64     start_tick     () const = 0; ///< Get the first tick intended for playback (this is >= 0), changes on `notify:start_tick`.
   virtual int64     stop_tick      () const = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
   virtual void      assign_range   (int64 starttick, int64 stoptick) = 0; ///< Change start_tick() and stop_tick(); emits `notify:start_tick`, `notify:stop_tick`.
@@ -273,9 +276,9 @@ public:
   virtual int32     change_batch   (const ClipNoteS &notes, const String &undogroup = "") = 0; ///< Insert, change, delete in a batch.
   virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
   /// Access all notes of this clip, changes on `notify:all_notes`.
-  Member<&Clip::all_notes_> all_notes [[no_unique_address]];
+  Member<&Clip::get_all_notes,&Clip::set_all_notes> all_notes [[no_unique_address]];
   /// The end tick is past any event ticks, changes on `notify:end_tick`.
-  Member<&Clip::end_tick_>  end_tick [[no_unique_address]];
+  Member<&Clip::get_end_tick,&Clip::set_end_tick> end_tick [[no_unique_address]];
 };
 
 /// Container for Clip objects and sequencing information.
@@ -314,10 +317,13 @@ public:
 class Project : public virtual Device {
 protected:
   explicit                Project        ();
-  virtual bool            bpm_           (const double *n, double *q) = 0;
-  virtual bool            numerator_     (const double *n, double *q) = 0;
-  virtual bool            denominator_   (const double *n, double *q) = 0;
 public:
+  virtual void            set_bpm        (double bpm) = 0;
+  virtual double          get_bpm        () const = 0;
+  virtual void            set_numerator  (double num) = 0;
+  virtual double          get_numerator  () const = 0;
+  virtual void            set_denominator(double den) = 0;
+  virtual double          get_denominator() const = 0;
   virtual void            discard        () = 0;       ///< Discard project and associated resources.
   virtual void            start_playback () = 0;       ///< Start playback of a project, requires active sound engine.
   virtual void            stop_playback  () = 0;       ///< Stop project playback.
@@ -338,9 +344,9 @@ public:
   virtual bool            can_redo       () = 0;       ///< Check if any redo steps have been recorded.
   virtual String          match_serialized (const String &regex,
                                             int group = 0) = 0; ///< Match `regex` against the serialized project state.
-  Member<&Project::bpm_>         bpm [[no_unique_address]];
-  Member<&Project::numerator_>   numerator [[no_unique_address]];
-  Member<&Project::denominator_> denominator [[no_unique_address]];
+  Member<&Project::get_bpm,&Project::set_bpm> bpm [[no_unique_address]];
+  Member<&Project::get_numerator,&Project::set_numerator> numerator [[no_unique_address]];
+  Member<&Project::get_denominator,&Project::set_denominator> denominator [[no_unique_address]];
   static ProjectP         last_project   ();
 };
 
@@ -362,18 +368,18 @@ struct Resource {
 class ResourceCrawler : public virtual Object {
 protected:
   explicit          ResourceCrawler ();
-  virtual bool      folder_         (const Resource *n, Resource *q) = 0;
-  virtual bool      entries_        (const ResourceS *n, ResourceS *q) = 0;
 public:
-  virtual ResourceS list_entries    () = 0;                             ///< List entries of a folder.
-  virtual Resource  current_folder  () = 0;                             ///< Describe current folder.
+  virtual Resource  get_folder      () const = 0;                       ///< Describe current folder.
+  virtual void      set_folder      (const Resource &newfolder) = 0;
+  virtual ResourceS get_entries     () const = 0;                       ///< List entries of a folder.
+  virtual void      set_entries     (const ResourceS &newentries) = 0;
   using String2 = std::pair<String,String>;
   virtual String2   assign          (const String &utf8path,
                                      bool existingfile = false) = 0;    ///< Move to a different path.
   /// Return absolute path, slash-terminated if directory, constrain to existing paths.
   virtual Resource  canonify        (const String &utf8cwd, const String &utf8fragment, bool constraindir, bool constrainfile) = 0;
-  Member<&ResourceCrawler::folder_>  folder [[no_unique_address]];      ///< The folder currently being browsed, UTF-8 encoded.
-  Member<&ResourceCrawler::entries_> entries [[no_unique_address]];     ///< The entries in the current folder, UTF-8 encoded.
+  Member<&ResourceCrawler::get_folder,&ResourceCrawler::set_folder>  folder [[no_unique_address]]; ///< The folder currently being browsed, UTF-8 encoded.
+  Member<&ResourceCrawler::get_entries,&ResourceCrawler::set_entries> entries [[no_unique_address]]; ///< The entries in the current folder, UTF-8 encoded.
 };
 
 /// Contents of user interface notifications.
