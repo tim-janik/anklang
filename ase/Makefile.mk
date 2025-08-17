@@ -2,15 +2,16 @@
 include $(wildcard $>/ase/*.d)
 
 # == ase/ *.cc file sets ==
-ase/AnklangSynthEngine.sources	::= ase/main.cc
-ase/jackdriver.sources		::= ase/driver-jack.cc
-ase/gtk2wrap.sources		::= ase/gtk2wrap.cc
-ase/noglob.sources		::= $(ase/AnklangSynthEngine.sources) $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
-ase/common.ccsources		::= $(filter-out $(ase/noglob.sources), $(wildcard ase/*.cc))
-ase/common.csources		::= $(wildcard ase/*.c)
+ase/AnklangSynthEngine.sources	:= ase/main.cc
+ase/jackdriver.sources		:= ase/driver-jack.cc
+ase/gtk2wrap.sources		:= ase/gtk2wrap.cc
+ase/noglob.sources		:= $(ase/AnklangSynthEngine.sources) $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
+ase/common.ccsources		:= $(filter-out $(ase/noglob.sources), $(wildcard ase/*.cc))
+ase/common.csources		:= $(wildcard ase/*.c)
+lib/AnklangSynthEngine		:= $>/lib/AnklangSynthEngine
 ase/generated.sources		:=
 ase/object.deps			:=
-ase/sysconfig.dep		::= $>/ase/sysconfig.h
+ase/sysconfig.dep		:= $>/ase/sysconfig.h
 ASE_EXTERNAL_INCLUDES := $(strip		\
 	-Iexternal/clap/include			\
 	-Iexternal/libsndfile/include		\
@@ -36,7 +37,7 @@ $>/codegen/ase/gen/api-jsonipc.g.cc: $>/codegen/ase/gen/api-jsonipc.json jsonipc
 	$Q mv $@.tmp $@
 CODEGEN.FILES += ase/gen/api-jsonipc.g.cc
 # DEV_TARGETS - checks & helpers for development
-$>/codegen/.jsonbindings.tscheck: jsonipc/jsonbindings.ts ase/Makefile.mk	| $>/ase/ node_modules/.npm.done
+$>/codegen/.jsonbindings.tscheck: jsonipc/jsonbindings.ts ase/Makefile.mk	| $>/codegen/ node_modules/.npm.done
 	$(QGEN)
 	$Q node_modules/.bin/tsc --noEmit --allowJs --moduleResolution bundler -m esnext --target esnext --erasableSyntaxOnly $<
 	$Q touch $@
@@ -45,6 +46,25 @@ $>/codegen/ase/gen/api-jsonipc.pretty.json: $>/codegen/ase/gen/api-jsonipc.json 
 	$(QGEN) # JSON formatted for human inspection
 	$Q python3 -m json.tool < $< > $@
 ALL_TARGETS += $>/codegen/ase/gen/api-jsonipc.pretty.json
+
+# == ase/gen/api-jsonipc.g.ts ==
+$>/codegen/ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts $(lib/AnklangSynthEngine) ase/Makefile.mk
+	$(QGEN)
+	$Q echo '// Generated from: $(notdir $^)'						>  $@.tmp
+	$Q echo '// @ts-nocheck'								>> $@.tmp
+	$Q cat jsonipc/jsonipc.ts								>> $@.tmp
+	$Q ASAN_OPTIONS=detect_leaks=0 \
+	$(lib/AnklangSynthEngine) --norc  -P null -M null --js-api				>> $@.tmp
+	$Q echo '/**@type{ServerImpl}*/'							>> $@.tmp
+	$Q echo -n 'export let server: Promise<Server> | Server ='				>> $@.tmp
+	$Q echo 'Jsonipc.setup_promise_type (Server, s => server = s);'				>> $@.tmp
+	$Q mv $@.tmp $@
+CODEGEN.FILES += ase/gen/api-jsonipc.g.ts
+# DEV_TARGETS - checks & helpers for development
+$>/codegen/.api-jsonipc.tscheck: ase/gen/api-jsonipc.g.ts ase/Makefile.mk		| $>/codegen/ node_modules/.npm.done
+	$(QGEN)
+	$Q node_modules/.bin/tsc --noEmit --allowJs --moduleResolution bundler -m esnext --target esnext --erasableSyntaxOnly $<
+	$Q touch $@
 
 # == ase/sysconfig.h ==
 $>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk
@@ -153,7 +173,6 @@ ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec -Wno-sign-promo
 ase/mathutils.cc.CTIDY_FLAGS = --checks=-clang-analyzer-security.FloatLoopCounter
 
 # == AnklangSynthEngine ==
-lib/AnklangSynthEngine		::= $>/lib/AnklangSynthEngine
 ase/AnklangSynthEngine.objects	::= $(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources))
 $(ase/AnklangSynthEngine.objects): $(ase/object.deps)
 $(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= $(ase/object.includes)

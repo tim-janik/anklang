@@ -9,19 +9,6 @@ VITE_DEPS :=	# (intermediate) targets required by vite
 # * make serve - Run build server for ui/.
 # * DevTools can be activated with Shft+Ctrl+I when run from the devleopment tree.
 
-# == gen/aseapi.js ==
-ui/aseapi.outdated != test $>/gen/aseapi.js -nt ase/api.hh || echo OUTDATED
-# only wait for lib/AnklangSynthEngine if gen/aseapi.js must be re-generated
-$>/gen/aseapi.js: jsonipc/jsonipc.js ase/api.hh ui/Makefile.mk $(if $(ui/aseapi.outdated), $(lib/AnklangSynthEngine)) | $>/gen/
-	$(QGEN)
-	$Q $(CP) $< $@.tmp
-	$Q ASAN_OPTIONS=detect_leaks=0 \
-	$(lib/AnklangSynthEngine) --norc  -P null -M null --js-api				>> $@.tmp
-	$Q echo '/**@type{ServerImpl}*/'							>> $@.tmp
-	$Q echo 'export let server = Jsonipc.setup_promise_type (Server, s => server = s);'	>> $@.tmp
-	$Q mv $@.tmp $@
-VITE_DEPS += $>/gen/aseapi.js
-
 # == ui/assets/AnklangIcons.css ==
 $>/gen/assets/AnklangIcons.css: ui/Makefile.mk $(EXTERNAL_BLOBS4ANKLANG_STAMPS)	| $>/gen/assets/
 	$(QGEN)
@@ -67,6 +54,12 @@ $>/gen/assets/spinner.css: ui/assets/spinner.svg				| $>/ext/ui/assets/
 	$(QGEN)
 	$Q sed -rn '/@keyframe/,$${ p; /^\s*}\s*$$/q; }' $< > $@
 VITE_DEPS += $>/gen/assets/spinner.css
+
+# == gen/api-jsonipc.g.ts ==
+$>/gen/api-jsonipc.g.ts: ase/gen/api-jsonipc.g.ts
+	$(QGEN)
+	$Q $(CP) $< $@
+VITE_DEPS += $>/gen/api-jsonipc.g.ts
 
 # == all-components.js ==
 $>/gen/all-components.js: ui/Makefile.mk $(wildcard ui/b/*)	| $>/gen/
