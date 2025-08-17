@@ -55,7 +55,7 @@ const HTML = (t, d) => html`
 `;
 
 // == SCRIPT ==
-import * as Ase from '/gen/aseapi.js';
+import * as Ase from '/gen/api-jsonipc.g.ts';
 import * as Util from "../util.js";
 
 function guess_layout_rows (number_of_properties) {
