@@ -7,6 +7,10 @@
 
 #define JSONIPC_CUSTOM_SHARED_BASE ::Ase::SharedBase
 #include <jsonipc/jsonipc.hh>
+JSONIPC_MAP_TO_TYPESCRIPT (::Ase::Value,  "any");
+JSONIPC_MAP_TO_TYPESCRIPT (::Ase::ValueS, "any[]");
+JSONIPC_MAP_TO_TYPESCRIPT (::Ase::ValueR, "{ [key: string]: any }");
+JSONIPC_MAP_TO_TYPESCRIPT (::Ase::JsTrigger, "any");
 
 namespace Ase {
 
