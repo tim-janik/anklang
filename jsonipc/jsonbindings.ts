@@ -288,14 +288,30 @@ function generateClassRegistration (classes: { [name: string]: StructureDetails 
   return outputLines.join ('\n\n');
 }
 
+function die (...args: any[])
+{
+  const script = path.basename (process.argv[1]);
+  console.error (`${script}:`, ...args);
+  process.exit (1);
+}
+
 // Main Script
 function main()
 {
-  const filePath = process.argv[2];
-  if (!filePath) {
-    console.error ("Error: Please provide a path to the symbol graph JSON file.");
-    process.exit (1);
+  const args = process.argv.slice (2); // skip node-exe and script-file
+  let filePath = '';
+  let cxx_gen = false;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--cxx')
+      cxx_gen = true;
+    else if (!filePath)
+      filePath = arg;
+    else
+      die (`Error: Unknown argument:`, arg);
   }
+  if (!filePath)
+    die ("Error: Missing JSON file");
 
   const fileContent = fs.readFileSync (filePath, 'utf-8');
   const symbolGraph: SymbolGraph = JSON.parse (fileContent);
@@ -322,29 +338,23 @@ function main()
     }
   }
 
-  // 3. GENERATE & PRINT
-  const input_file = path.basename (filePath);
-  const functionName = `jsonipc_for_${input_file.replace (/[^a-zA-Z0-9]/g, '_')}`;
-
-  console.log ('');
-  console.log (`static void\n${functionName}()\n{`);
-
-  const enumCode = generateEnumRegistration (foundEnums);
-  if (enumCode) {
-    console.log (enumCode);
+  // 3. GENERATE & PRINT CXX
+  if (cxx_gen) {
+    const input_file = path.basename (filePath);
+    const functionName = `jsonipc_for_${input_file.replace (/[^a-zA-Z0-9]/g, '_')}`;
+    const enumCode = generateEnumRegistration (foundEnums);
+    const recordCode = generateRecordRegistration (records);
+    const classCode = generateClassRegistration (classes, navigator);
+    console.log ('');
+    console.log (`static void\n${functionName}()\n{`);
+    if (enumCode)
+      console.log (enumCode);
+    if (recordCode)
+      console.log ('\n' + recordCode);
+    if (classCode)
+      console.log ('\n' + classCode);
+    console.log ("}");
   }
-
-  const recordCode = generateRecordRegistration (records);
-  if (recordCode) {
-    console.log ('\n' + recordCode);
-  }
-
-  const classCode = generateClassRegistration (classes, navigator);
-  if (classCode) {
-    console.log ('\n' + classCode);
-  }
-
-  console.log ("}");
 }
 
 main();
