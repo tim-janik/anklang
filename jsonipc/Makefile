@@ -20,7 +20,12 @@ testjsonipc: $(OBJECTS) Makefile
 	$(CXX) $(CXXFLAGS) -o $@ $(OBJECTS) -lboost_system
 .INTERMEDIATE: testjsonipc
 
-check: testjsonipc
+checkts:
+	../node_modules/.bin/tsc --noEmit --allowJs -m esnext --target esnext \
+		--moduleResolution bundler --erasableSyntaxOnly \
+		jsonbindings.ts jsonipc.ts
+
+check: testjsonipc checkts
 	./testjsonipc
 
 clean:
