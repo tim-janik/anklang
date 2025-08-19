@@ -41,7 +41,6 @@ MainAppImpl::MainAppImpl()
 {}
 
 MainLoopP          main_loop;
-static bool        arg_js_api = false;
 static bool        arg_class_tree = false;
 static String      arg_ui_mode;
 static int         arg_unauth_port = 0;
@@ -114,7 +113,6 @@ print_usage (bool help)
   printout ("  --disable-randomization Test mode for deterministic tests\n");
   printout ("  --fatal-warnings Abort on warnings and failing assertions\n");
   printout ("  --help           Print program usage and options\n");
-  printout ("  --js-api         Print Javascript bindings\n");
   printout ("  --jsbin          Print Javascript IPC & binary messages\n");
   printout ("  --jsipc          Print Javascript IPC messages\n");
   printout ("  --jsonts         Print TypeScript bindings\n");
@@ -263,9 +261,7 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
           fatal_error ("%s: environment must contain ASE_JSONTS for --jsonts", argv[0]);
         printout ("%s\n", Jsonipc::g_binding_printer->finish());
         exit (0);
-      } else if (strcmp ("--js-api", argv[i]) == 0)
-        arg_js_api = true;
-      else if (strcmp ("--class-tree", argv[i]) == 0)
+      } else if (strcmp ("--class-tree", argv[i]) == 0)
         arg_class_tree = true;
       else if (strcmp ("--jsipc", argv[i]) == 0)
         config.jsonapi_logflags |= jsipc_logflags;
@@ -530,11 +526,6 @@ main (int argc, char *argv[])
   const auto B0 = color (BOLD_OFF);
 
   // CLI printout commands
-  if (arg_js_api)
-    {
-      printout ("%s\n", Jsonipc::ClassPrinter::to_string());
-      return 0;
-    }
   if (arg_class_tree)
     {
       print_class_tree();
