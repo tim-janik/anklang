@@ -98,6 +98,8 @@ static void
 test_jsonipc (bool dispatcher_shell, bool printer)
 {
   using namespace Jsonipc;
+  if (printer)
+    g_binding_printer = new BindingPrinter();
   rapidjson::Document doc;
   auto &a = doc.GetAllocator();
 
@@ -153,9 +155,6 @@ test_jsonipc (bool dispatcher_shell, bool printer)
     .set ("randomize", &Derived::randomize)
     ;
   Derived::set_dflt (class_Derived);
-  if (Jsonipc::g_binding_printer) {
-    dprintf (1, "%s\n", Jsonipc::g_binding_printer->finish().c_str());
-  }
 
   // Provide scope and instance ownership during dispatch_message()
   InstanceMap imap;
@@ -225,10 +224,9 @@ test_jsonipc (bool dispatcher_shell, bool printer)
   const Copyable *c5 = parse_result<Copyable*> (111, result);
   JSONIPC_ASSERT_RETURN (c5 && (c5->i != c4->i || c5->f != c4->f));
 
-  if (printer)
-    {
-      printf ("%s\n", Jsonipc::ClassPrinter::to_string().c_str());
-    }
+  if (printer && Jsonipc::g_binding_printer) {
+    dprintf (1, "%s\n", Jsonipc::g_binding_printer->finish().c_str());
+  }
 
   // CLI test server
   if (dispatcher_shell)
