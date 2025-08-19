@@ -80,16 +80,9 @@ $>/%.hafix.md: $>/%.md
 	$Q sed <$< >$@		-r 's/^(#+\s*)\[([^]]+)\]\{.*\}/\1\2/'
 
 # == doc/class-tree.md ==
-$>/doc/class-tree.md: $(lib/AnklangSynthEngine) doc/Makefile.mk
+$>/doc/class-tree.md: ase/gen/class-tree.g.md doc/Makefile.mk
 	$(QGEN)
-	$Q echo '## Ase Class Inheritance Tree'			>  $@.tmp
-	$Q echo ''						>> $@.tmp
-	$Q echo '```'						>> $@.tmp
-	$Q ASAN_OPTIONS=detect_leaks=0 \
-	   $(lib/AnklangSynthEngine) --norc -P null -M null \
-						--class-tree	>> $@.tmp
-	$Q echo '```'						>> $@.tmp
-	$Q mv $@.tmp $@
+	$Q $(CP) $< $@
 
 # == pandoc ==
 doc/markdown-flavour	::= -f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart

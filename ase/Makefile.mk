@@ -23,10 +23,19 @@ ASE_EXTERNAL_INCLUDES := $(strip		\
 ) # also used by clang-tidy
 ase/object.includes		::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
 
-# == ase/gen/api-jsonipc.g.cc ==
+# == codegen/ase/gen/api-jsonipc.json ==
 $>/codegen/ase/gen/api-jsonipc.json: ase/api.hh $(ase/sysconfig.dep) ase/Makefile.mk
 	$(QGEN)
 	$Q clang-20 -std=gnu++23 -I . -I out/ -extract-api $< -o $@
+
+# == ase/gen/class-tree.g.md ==
+$>/codegen/ase/gen/class-tree.g.md: $>/codegen/ase/gen/api-jsonipc.json jsonipc/jsonbindings.ts ase/Makefile.mk
+	$(QGEN)
+	$Q $(RUNTS) jsonipc/jsonbindings.ts --class-tree $<				>  $@.tmp
+	$Q mv $@.tmp $@
+CODEGEN.FILES += ase/gen/class-tree.g.md
+
+# == ase/gen/api-jsonipc.g.cc ==
 $>/codegen/ase/gen/api-jsonipc.g.cc: $>/codegen/ase/gen/api-jsonipc.json jsonipc/jsonbindings.ts ase/Makefile.mk
 	$(QGEN)
 	$Q echo '// Generated file, inputs: $(notdir $^)'				>  $@.tmp
