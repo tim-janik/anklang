@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __JSONIPC_JSONIPC_HH__
-#define __JSONIPC_JSONIPC_HH__
+#pragma once
 
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
@@ -49,7 +48,7 @@ static constexpr const unsigned  rapidjson_parse_flags =
 
 // == C++ Utilities ==
 /// Construct a std::string with printf-like syntax, ignoring locale settings.
-static std::string
+static inline std::string
 string_format (const char *format, ...)
 {
   va_list vargs;
@@ -811,18 +810,25 @@ struct DefaultConstant : DefaultConstantVariant {
 };
 using DefaultsList = std::initializer_list<DefaultConstant>;
 
-// == ClassWalker ==
-class ClassWalker {
-public:
-  virtual void new_enum         (const std::string &enumname)           {}
-  virtual void new_serializable (const std::string &structname)         {}
-  virtual void new_class        (const std::string &classname,
-                                 const std::string &base)               {}
-  virtual void attribute        (const std::string &attributename)      {}
-  virtual void method           (const std::string &methodname)         {}
-  virtual void accessor         (const std::string &accessor)           {}
-  virtual void enumvalue        (const std::string &enumvalue)          {}
-};
+// == normalize_typename ==
+/// Yield the Javascript identifier name by substituting ':+' with '.'
+inline std::string
+normalize_typename (const std::string &string)
+{
+  std::string normalized;
+  auto is_identifier_char = [] (int ch) {
+    return ( (ch >= 'A' && ch <= 'Z') ||
+             (ch >= 'a' && ch <= 'z') ||
+             (ch >= '0' && ch <= '9') ||
+             ch == '_' || ch == '$' );
+  };
+  for (size_t i = 0; i < string.size() && string[i]; ++i)
+    if (is_identifier_char (string[i]))
+      normalized += string[i];
+    else if (normalized.size() && normalized[normalized.size() - 1] != '.')
+      normalized += '.';
+  return normalized;
+}
 
 // == JavaScript Helpers ==
 /// JS initializer from C++ type
@@ -842,337 +848,6 @@ js_initializer_index ()
   return 0;
 }
 static constexpr const char *const js_initializers[] = { "null", "0", "0.0", "false", "''", "[]", "{}" };
-
-// == ClassPrinter ==
-class ClassPrinter {
-  using DepthFunc = size_t (*) ();
-  DepthFunc depth_func_ = nullptr;
-public:
-  enum Op { NEW = 1, INHERIT, BODY, ATTRIBUTE, METHOD, GETSET, ENUMVALUE, DONE };
-  enum Entity { ENUMS = 1, CLASSES, SERIALIZABLE };
-  template<class T> static ClassPrinter*
-  create (Entity entity)
-  {
-    const std::string classname = rtti_typename<T>();
-    for (auto &p : printers_())
-      if (entity == p->entity_ && classname == p->classname_)
-        return p;
-    return new ClassPrinter (classname, entity);
-  }
-  /// Yield the Javascript identifier name by substituting ':+' with '.'
-  static std::string
-  normalize_typename (const std::string &string)
-  {
-    std::string normalized;
-    auto is_identifier_char = [] (int ch) {
-      return ( (ch >= 'A' && ch <= 'Z') ||
-               (ch >= 'a' && ch <= 'z') ||
-               (ch >= '0' && ch <= '9') ||
-               ch == '_' || ch == '$' );
-    };
-    for (size_t i = 0; i < string.size() && string[i]; ++i)
-      if (is_identifier_char (string[i]))
-        normalized += string[i];
-      else if (normalized.size() && normalized[normalized.size() - 1] != '.')
-        normalized += '.';
-    return normalized;
-  }
-  void
-  print (const Op op, const std::string &name, uint32_t count, const DefaultsList &dflts)
-  {
-    JSONIPC_ASSERT_RETURN (ssize_t (dflts.size()) <= count);
-    operations_.push_back ({ name, op, count, dflts });
-  }
-  void
-  set_depth_func (DepthFunc depth_func)
-  {
-    depth_func_ = depth_func;
-  }
-  static std::string
-  to_string()
-  {
-    std::string all;
-    sort_printers();
-    for (auto &pr : printers_())
-      all += pr->ops_to_string();
-    return all;
-  }
-  static void
-  walk (ClassWalker &cwalk)
-  {
-    sort_printers();
-    for (auto &pr : printers_())
-      pr->walker (cwalk);
-  }
-private:
-  static void
-  sort_printers()
-  {
-    auto &printers = printers_();
-    auto printers_cmp = [] (const ClassPrinter *a, const ClassPrinter *b) {
-      const size_t adepth = a->depth_func_ ? a->depth_func_() : 1;
-      const size_t bdepth = b->depth_func_ ? b->depth_func_() : 1;
-      return adepth < bdepth;
-    };
-    std::stable_sort (printers.begin(), printers.end(), printers_cmp);
-    // for (const auto &p : printers) dprintf (2, "%s < ", p->classname_.c_str()); dprintf (2, "∞\n");
-  }
-  struct Operation { std::string name; Op op = DONE; uint32_t count = 0; std::vector<DefaultConstant> dflts; };
-  void
-  walker (ClassWalker &walk)
-  {
-    // ensure NEW
-    if (operations_.empty() || operations_[0].op != NEW)
-      operations_.insert (operations_.begin(), { "", NEW, 0 });
-    const auto &operations = operations_;
-    // process OPS
-    for (const auto &p : operations)
-      switch (p.op)
-        {
-        case NEW:
-          if (entity_ == ENUMS)
-            walk.new_enum (classname_);
-          else if (entity_ == SERIALIZABLE)
-            walk.new_serializable (classname_);
-          else if (entity_ == CLASSES)
-            {
-              std::string base;
-              for (const auto &b : operations)
-                if (b.op == INHERIT)
-                  {
-                    base = b.name;
-                    break;
-                  }
-              walk.new_class (classname_, base);
-            }
-          break;
-        case METHOD:
-          walk.method (p.name);
-          break;
-        case GETSET:
-          walk.accessor (p.name);
-          break;
-        case ATTRIBUTE:
-          walk.attribute (p.name);
-          break;
-        case ENUMVALUE:
-          walk.enumvalue (p.name);
-          break;
-        case INHERIT:
-        case BODY:
-        case DONE:
-        default:
-          break;
-        }
-  }
-  std::string
-  ops_to_string()
-  {
-    // ensure NEW, BODY, DONE
-    if (operations_.empty() || operations_[0].op != NEW)
-      operations_.insert (operations_.begin(), { "", NEW, 0 });
-    auto it = operations_.begin();
-    while (it != operations_.end() && (it->op == NEW || it->op == INHERIT))
-      it++;
-    if (it == operations_.end() || it->op != BODY)
-      operations_.insert (it, { "", BODY, 0 });
-    if (operations_.back().op != DONE)
-      operations_.insert (operations_.end(), { "", DONE, 0 });
-    const auto &operations = operations_;
-    // context
-    const char *lastcolon = strrchr (classname_.c_str(), ':');
-    const std::string jsclass = canonify (lastcolon ? lastcolon + 1 : classname_);
-    std::vector<std::string> serializable_attributes;
-    bool inherits = false;
-    std::string out;
-    // process OPS
-    for (const auto &p : operations)
-      switch (p.op)
-        {
-        case NEW:
-          if (entity_ == ENUMS)
-            out += "\nexport const " + jsclass + " = ";
-          else
-            out += "\nexport class " + jsclass;
-          if (jsclass != classname_)
-            out += " // " + classname_;
-          out += "\n";
-          break;
-        case INHERIT:
-          if (inherits)
-            out += " /* extends " + p.name + " */\n";
-          else
-            out += "  extends Jsonipc.classes['" + p.name + "']\n";
-          inherits = true;
-          break;
-        case BODY:
-          if (entity_ == CLASSES)
-            {
-              if (!inherits)
-                out += "  extends Jsonipc.Jsonipc_prototype\n";
-              out += "{\n  constructor ($id) { ";
-              out += "super ($id); ";
-              out += "if (new.target === " + jsclass + ") Jsonipc.ofreeze (this); ";
-              out += "}\n";
-            }
-          else
-            {
-              if (entity_ == ENUMS)
-                out += "Jsonipc.ofreeze (";
-              out += "{\n";
-            }
-          break;
-        case METHOD: {
-          std::string args, dargs;
-          for (size_t i = 0; i < p.count; i++)
-            {
-              const std::string arg = (i ? ", " : "") + string_format ("a%d", i + 1);
-              args += arg;
-              if (i >= p.count - p.dflts.size())
-                {
-                  const std::string dflt = default_str (p.dflts.at (i - (p.count - p.dflts.size())));
-                  dargs += (i ? ", " : "") + string_format ("a%d = %s", i + 1, dflt.c_str());
-                }
-              else
-                dargs += arg;
-            }
-          out += string_format ("  %s (%s) { return Jsonipc.send ('%s', [this%s%s]); }\n",
-                                p.name.c_str(), dargs.c_str(), p.name.c_str(), args.empty() ? "" : ", ", args.c_str());
-          break; }
-        case GETSET: {
-          const unsigned jsinit_index = p.count;        // js_initializer_index
-          out += string_format ("  get %s ()  { return Jsonipc.get_reactive_prop.call (this, '%s', %s); }\n",
-                                p.name.c_str(), p.name.c_str(), js_initializers[jsinit_index]);
-          out += string_format ("  set %s (v) { return Jsonipc.send ('set/' + '%s', [this, v]); }\n",
-                                p.name.c_str(), p.name.c_str());
-          break; }
-        case ATTRIBUTE:
-          serializable_attributes.push_back (p.name);
-          break;
-        case ENUMVALUE: {
-          std::string jsname = normalize_typename (classname_ + "." + p.name);
-          out += string_format ("  %s: \"%s\", // %d\n", p.name.c_str(), jsname.c_str(), p.count);
-          break; }
-        case DONE:
-          if (entity_ == SERIALIZABLE)       // close serializable_
-            {
-              out += "  constructor (";
-              uint n = 0;
-              for (auto &prop : serializable_attributes)
-                out += (n++ ? ", " : "") + prop;
-              out += ") {\n";
-              if (inherits)
-                out += "    super ();\n";
-              for (auto &prop : serializable_attributes)  // attributes are defined *inside* the constructor
-                out += string_format ("    this.%s = %s;\n", prop.c_str(), prop.c_str());
-              out += "  }\n";
-            }
-          if (entity_ == ENUMS)
-            out += "});\n";
-          else
-            out += "}\n";
-          // support '$class' lookups
-          out += "Jsonipc.classes['" + classname_ + "'] = " + jsclass + ";\n";
-          break;
-        }
-    return out;
-  }
-  /// Stringify argument default value for Javascript.
-  static std::string
-  default_str (const DefaultConstantVariant &dflt)
-  {
-    if (auto *d = std::get_if<double> (&dflt))
-      return string_format ("%.17g", *d);
-    else if (auto *u = std::get_if<uint64_t> (&dflt))
-      return string_format ("%llu", (unsigned long long) *u);
-    else if (auto *i = std::get_if<int64_t> (&dflt))
-      return string_format ("%lld", (signed long long) *i);
-    else if (auto *s = std::get_if<std::string> (&dflt))
-      return cquote (*s);
-    else if (auto *n = std::get_if<std::nullptr_t> (&dflt))
-      return (void) n, "null";
-    else // std::monostate
-      return "undefined"; // normally unreached
-  }
-  /// Quote C string.
-  static std::string
-  cquote (const std::string &str)
-  {
-    std::string buffer = "\"";
-    for (const char c : str)
-      if      (c == '"')        buffer += "\\\"";
-      else if (c == '\\')       buffer += "\\\\";
-      else if (c < 32 || c > 126)
-        buffer += string_format ("\\%03o", c);
-      else                      buffer += c;
-    return buffer + '"';
-  }
-  /// Enforce a canonical charset for a string.
-  static std::string
-  canonify (const std::string &string)
-  {
-    const char *const valids = "abcdefghijklmnopqrstuvwxyz" "0123456789" "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "_$";
-    const char *const substitute = "_";
-    const size_t l = string.size();
-    const char *p = string.c_str();
-    for (size_t i = 0; i < l; i++)
-      if (!strchr (valids, p[i]))
-        {
-          // rewrite_string:
-          std::string d = string.substr (0, i);
-          bool collapse = true; // collapse substitutions
-          d += substitute;
-          for (++i; i < l; i++)
-            if (strchr (valids, p[i]))
-              {
-                d += p[i];
-                collapse = false;
-              }
-            else if (!collapse)
-              {
-                d += substitute;
-                collapse = true;
-              }
-          return d;
-        }
-    // else, pass through
-    return string;
-  }
-  ClassPrinter (const std::string &classname, Entity entity) :
-    classname_ (classname), entity_ (entity)
-  {
-    auto &printers = printers_();
-    if (entity == ENUMS)
-      {
-        auto it = printers.begin();
-        while (it != printers.end() && (*it)->entity_ == ENUMS)
-          it++;
-        printers.insert (it, this);
-      }
-    else
-      printers.push_back (this);
-  }
-  std::vector<Operation> operations_;
-  std::string classname_;
-  Entity entity_ = Entity (0);
-  static std::vector<ClassPrinter*>&
-  printers_()
-  {
-    struct ClassPrinterV : std::vector<ClassPrinter*> {
-      ~ClassPrinterV()
-      {
-        while (!empty())
-          {
-            ClassPrinter *p = back();
-            pop_back();
-            delete p;
-          }
-      }
-    };
-    static ClassPrinterV printers;
-    return printers;
-  }
-};
 
 // == TypeScript Type Mapping ==
 inline std::string
@@ -1303,7 +978,7 @@ public:
   template<typename T> void
   enum_value (const std::string &name, T v)
   {
-    const std::string full_js_name = ClassPrinter::normalize_typename (open_enum_) + "." + name;
+    const std::string full_js_name = normalize_typename (open_enum_) + "." + name;
     using underlying = typename std::underlying_type<T>::type;
     b_ += "  " + name + ": \"" + full_js_name + "\", // " + std::to_string(static_cast<underlying>(v)) + "\n";
   }
@@ -1398,22 +1073,15 @@ inline BindingPrinter *g_binding_printer = nullptr;
 // == TypeInfo ==
 class TypeInfo {
 protected:
-  ClassPrinter *printer_ = nullptr;
   virtual ~TypeInfo() {}
-  explicit TypeInfo (ClassPrinter *printer) : printer_ (printer) {}
-  void
-  print (ClassPrinter::Op op, const std::string &name, int32_t count = 0, const DefaultsList &dflts = {})
-  {
-    printer_->print (op, name, count, dflts);
-  }
+  explicit TypeInfo() {}
 };
 
 // == Enum ==
 template<typename T>
 struct Enum final : TypeInfo {
   static_assert (std::is_enum<T>::value, "");
-  Enum () :
-    TypeInfo (ClassPrinter::create<T> (ClassPrinter::ENUMS))
+  Enum ()
   {
     if (JSONIPC_UNLIKELY (g_binding_printer))
       g_binding_printer->enum_type<T> ();
@@ -1424,10 +1092,9 @@ struct Enum final : TypeInfo {
   {
     const std::string class_name = typename_of<T>();
     auto &entries_ = entries();
-    auto normalized_typename = ClassPrinter::normalize_typename (class_name + "." + valuename);
+    auto normalized_typename = normalize_typename (class_name + "." + valuename);
     Entry e { normalized_typename, v };
     entries_.push_back (e);
-    print (ClassPrinter::ENUMVALUE, valuename, UnderlyingType (v));
     if (JSONIPC_UNLIKELY (g_binding_printer))
       g_binding_printer->enum_value<T> (valuename, v);
     return *this;
@@ -1444,7 +1111,7 @@ struct Enum final : TypeInfo {
     for (const auto &e : entries_)
       if (v == e.value)
         return e.name;
-    static std::string empty;
+    static const std::string empty;
     return empty;
   }
   static T
@@ -1517,8 +1184,7 @@ struct Convert<T, REQUIRESv< std::is_enum<T>::value > > {
 template<typename T>
 struct Serializable final : TypeInfo {
   /// Allow object handles to be streamed to/from Javascript, needs a Scope for temporaries.
-  Serializable() :
-    TypeInfo (ClassPrinter::create<T> (ClassPrinter::SERIALIZABLE))
+  Serializable()
   {
     make_serializable<T>();
     if (JSONIPC_UNLIKELY (g_binding_printer))
@@ -1538,7 +1204,6 @@ struct Serializable final : TypeInfo {
       throw std::runtime_error ("duplicate attribute registration: " + std::string (name));
     amap.insert (std::make_pair<std::string, Accessors> (name, std::move (accessors)));
     const std::string class_name = rtti_typename<T>();
-    print (ClassPrinter::ATTRIBUTE, name, 0);
     if (JSONIPC_UNLIKELY (g_binding_printer))
       g_binding_printer->field_member<T,SetterAttributeType> (name);
     return *this;
@@ -1599,8 +1264,7 @@ private:
 // == Class ==
 template<typename T>
 struct Class final : TypeInfo {
-  Class (bool internal = false) :
-    TypeInfo (ClassPrinter::create<T> (ClassPrinter::CLASSES))
+  Class (bool internal = false)
   {
     auto create_wrapper = [] (const std::shared_ptr<SharedBase> &sptr, size_t &basedepth) -> InstanceMap::Wrapper*
     {
@@ -1627,7 +1291,6 @@ struct Class final : TypeInfo {
   inherit()
   {
     add_base<B>();
-    print (ClassPrinter::INHERIT, rtti_typename<B>(), 0);
     if (JSONIPC_UNLIKELY (g_binding_printer))
       g_binding_printer->inherit_type<B>();
     return *this;
@@ -1637,7 +1300,6 @@ struct Class final : TypeInfo {
   set (const char *name, const F &method)
   {
     add_member_function_closure (name, make_closure (method));
-    print (ClassPrinter::METHOD, name, CallTraits<F>::N_ARGS);
      if (JSONIPC_UNLIKELY (g_binding_printer))
       g_binding_printer->method_member<T,F> (name);
    return *this;
@@ -1650,7 +1312,6 @@ struct Class final : TypeInfo {
     JSONIPC_ASSERT_RETURN (get && set, *this);
     add_member_function_closure (std::string ("get/") + name, make_closure (get));
     add_member_function_closure (std::string ("set/") + name, make_closure (set));
-    print (ClassPrinter::GETSET, name, js_initializer_index<R>());
     if (JSONIPC_UNLIKELY (g_binding_printer))
       g_binding_printer->field_accessor<T,R,A> (name);
     return *this;
@@ -1661,7 +1322,6 @@ struct Class final : TypeInfo {
     constexpr const size_t N_ARGS = CallTraits<F>::N_ARGS;
     JSONIPC_ASSERT_RETURN (dflts.size() <= N_ARGS, *this);
     add_member_function_closure (name, make_closure (method));
-    print (ClassPrinter::METHOD, name, N_ARGS, dflts);
     if (JSONIPC_UNLIKELY (g_binding_printer))
       g_binding_printer->method_member<T,F> (name);
     return *this;
@@ -1749,7 +1409,6 @@ private:
         throw std::runtime_error ("duplicate base registration: " + binfo.basetypename);
     bvec.push_back (binfo);
     Class<B> bclass (true); // internal=true; force registration for base_depth
-    printer_->set_depth_func (this->base_depth);
   }
   static BaseVec&   basevec  () { static BaseVec basevec_;     return basevec_; }
   template<typename B> static bool
@@ -1989,6 +1648,7 @@ private:
 };
 
 } // Jsonipc
+
 JSONIPC_MAP_TO_TYPESCRIPT (void,          "void");
 JSONIPC_MAP_TO_TYPESCRIPT (bool,          "boolean");
 JSONIPC_MAP_TO_TYPESCRIPT (::int8_t,      "number");
@@ -2001,5 +1661,3 @@ JSONIPC_MAP_TO_TYPESCRIPT (float,         "number");
 JSONIPC_MAP_TO_TYPESCRIPT (double,        "number");
 JSONIPC_MAP_TO_TYPESCRIPT (const char*,   "string");
 JSONIPC_MAP_TO_TYPESCRIPT (::std::string, "string");
-
-#endif // __JSONIPC_JSONIPC_HH__
