@@ -25,10 +25,6 @@
 
 #define MDEBUG(...)             Ase::debug ("memory", __VA_ARGS__)
 
-namespace { // Anon
-static void print_class_tree ();
-} // Anon
-
 namespace Ase {
 
 struct MainAppImpl : MainApp {
@@ -41,7 +37,6 @@ MainAppImpl::MainAppImpl()
 {}
 
 MainLoopP          main_loop;
-static bool        arg_class_tree = false;
 static String      arg_ui_mode;
 static int         arg_unauth_port = 0;
 
@@ -109,7 +104,6 @@ print_usage (bool help)
     }
   printout ("Usage: %s [OPTIONS] [project.anklang]\n", executable_name());
   printout ("  --check          Run integrity tests\n");
-  printout ("  --class-tree     Print exported class tree\n");
   printout ("  --disable-randomization Test mode for deterministic tests\n");
   printout ("  --fatal-warnings Abort on warnings and failing assertions\n");
   printout ("  --help           Print program usage and options\n");
@@ -261,9 +255,7 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
           fatal_error ("%s: environment must contain ASE_JSONTS for --jsonts", argv[0]);
         printout ("%s\n", Jsonipc::g_binding_printer->finish());
         exit (0);
-      } else if (strcmp ("--class-tree", argv[i]) == 0)
-        arg_class_tree = true;
-      else if (strcmp ("--jsipc", argv[i]) == 0)
+      } else if (strcmp ("--jsipc", argv[i]) == 0)
         config.jsonapi_logflags |= jsipc_logflags;
       else if (strcmp ("--jsbin", argv[i]) == 0)
         config.jsonapi_logflags |= jsbin_logflags;
@@ -525,13 +517,6 @@ main (int argc, char *argv[])
   const auto B1 = color (BOLD);
   const auto B0 = color (BOLD_OFF);
 
-  // CLI printout commands
-  if (arg_class_tree)
-    {
-      print_class_tree();
-      return 0;
-    }
-
   // load drivers and dump device list
   load_registered_drivers();
   if (App.list_drivers)
@@ -743,50 +728,6 @@ job_queue_tests()
   } while (timestamp_realtime() < start_usecs + 1871 * 1000 && !seen_deleter);
   assert_return (seen_engine_job == true);
   assert_return (seen_deleter == true);
-}
-
-struct JWalker : Jsonipc::ClassWalker {
-  struct Class { String name; int depth = 0; Class *base = nullptr; StringS derived; };
-  std::map<std::string,Class> classmap;
-  void
-  new_class (const std::string &classname, const std::string &base)
-  {
-    Class *basep = nullptr;
-    int depth = 0;
-    if (!base.empty())
-      {
-        Class &b = classmap[base];
-        depth = b.depth + 1;
-        b.derived.push_back (classname);
-        basep = &b;
-      }
-    classmap[classname] = { classname, depth, basep };
-  }
-  void
-  print_class (const Class &c, bool sibling, const std::string &indent)
-  {
-    if (c.depth)
-      printout ("%s|\n", indent);
-    printout ("%s%s\n", c.depth ? indent + "+" : indent, c.name);
-    for (size_t i = 0; i < c.derived.size(); i++)
-      print_class (classmap[c.derived[i]], i + 1 < c.derived.size(),
-                   sibling ? indent + "|  " : indent + "   ");
-  }
-  void
-  print_recursive()
-  {
-    for (const auto &c : classmap)
-      if (c.second.depth == 0)
-        print_class (c.second, 0, "");
-  }
-};
-
-static void
-print_class_tree()
-{
-  JWalker walk;
-  Jsonipc::ClassPrinter::walk (walk);
-  walk.print_recursive();
 }
 
 } // Anon
