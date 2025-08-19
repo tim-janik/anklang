@@ -28,5 +28,8 @@ checkts:
 check: testjsonipc checkts
 	./testjsonipc
 
+print: testjsonipc
+	./testjsonipc --print
+
 clean:
 	rm -f $(OBJECTS) testjsonipc
