@@ -29,6 +29,10 @@ sndfile_tests()
 } // Anon
 
 // Check libsndfile configuration in local build
-#include "sndfile/src/config.h"
-static_assert (HAVE_EXTERNAL_XIPH_LIBS, "libsndfile requires Ogg/Vorbis and Opus");
-static_assert (HAVE_MPEG, "libsndfile requires libmpg123 and libmp3lame");
+#include "libsndfile/config.h"
+#ifndef HAVE_EXTERNAL_XIPH_LIBS
+#error "libsndfile requires Flac, Ogg, Vorbis, Opus headers"
+#endif
+#ifndef HAVE_MPEG
+#error "libsndfile requires libmpg123 and libmp3lame"
+#endif
