@@ -103,6 +103,7 @@ async function about_pairs() {
     [ 'CLAP:',			await Ase.server.get_clap_version() ],
     [ 'FLAC:',		        await Ase.server.get_flac_version() ],
     [ 'Opus:',		        await Ase.server.get_opus_version() ],
+    [ 'Sndfile:',	        await Ase.server.get_sndfile_version() ],
     [ 'Lit:',			CONFIG.lit_version ],
     [ 'User Agent:',		user_agent ],
   ];
