@@ -111,18 +111,24 @@ misc/uninstall: FORCE
 uninstall: misc/uninstall
 
 # == Check Copyright Notices ==
-$>/.copyright.check: doc/copyright misc/checkcrlist.py $(GITCOMMITDEPS)
+# files containing copyright declarations
+misc/copyright_files := $(strip \
+	doc/copyright		\
+)
+# verify copyright entries on every build during development (in repos with .git)
+$>/.copyright.check: misc/checkcrlist.py $(misc/copyright_files) $(GITCOMMITDEPS)
 	$(QGEN)
 	$Q test -r .git || exit 0 ; true \
 	&& git ls-tree -r --name-only HEAD > $@.tmp \
-	&& misc/checkcrlist.py -e $@.tmp $<
+	&& misc/checkcrlist.py -e $@.tmp $(misc/copyright_files)
 	$Q rm -f $@.tmp && touch $@
 all: $>/.copyright.check
-check-copyright: doc/copyright misc/checkcrlist.py
+# explicit copyright check (only active in repos with .git)
+check-copyright: misc/checkcrlist.py $(misc/copyright_files)
 	$(QGEN)
 	$Q test -r .git || exit 0 ; true \
 	&& git ls-tree -r --name-only HEAD > $>/$(@F).lst \
-	&& misc/checkcrlist.py --git $>/$(@F).lst $< \
+	&& misc/checkcrlist.py --git $>/$(@F).lst $(misc/copyright_files) \
 	&& rm -f $>/$(@F).lst
 .PHONY: check-copyright
 check: check-copyright
