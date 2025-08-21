@@ -85,7 +85,7 @@ const HTML = (t) => html`
 `;
 
 // == SCRIPT ==
-import * as Ase from '/gen/aseapi.js';
+import * as Ase from '/gen/api-jsonipc.g.ts';
 
 /**
  * @param {Ase.Device} [device] - Track device.

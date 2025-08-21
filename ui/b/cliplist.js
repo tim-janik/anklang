@@ -37,7 +37,7 @@ const HTML = (t, d) => [
 ];
 
 // == SCRIPT ==
-import * as Ase from '/gen/aseapi.js';
+import * as Ase from '/gen/api-jsonipc.g.ts';
 
 const OBJECT_PROPERTY = { attribute: false };
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property

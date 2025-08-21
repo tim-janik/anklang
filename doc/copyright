@@ -50,7 +50,7 @@ Files:
  GNUmakefile
  ase/mime-types.hh
  devices/freeverb/*
- jsonipc/jsonipc.js
+ jsonipc/jsonipc.ts
  jsonipc/testjsonipc.cc
  misc/checkcrlist.py
  x11test/*.json
