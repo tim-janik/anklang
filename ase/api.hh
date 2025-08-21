@@ -409,6 +409,7 @@ public:
   virtual String get_opus_version   () = 0;     ///< Retrieve Opus handler version.
   virtual String get_flac_version   () = 0;     ///< Retrieve FLAC handler version.
   virtual String get_clap_version   () = 0;     ///< Retrieve CLAP support version.
+  virtual String get_sndfile_version() = 0;     ///< Retrieve libsndfile support version.
   virtual String error_blurb          (Error error) const = 0;
   virtual String musical_tuning_label (MusicalTuning musicaltuning) const = 0;
   virtual String musical_tuning_blurb (MusicalTuning musicaltuning) const = 0;

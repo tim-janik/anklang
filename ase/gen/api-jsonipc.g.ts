@@ -875,6 +875,8 @@ export class Server // Ase::Server
   { return Jsonipc.send ("get_flac_version", [this]); }
   get_clap_version (): Promise<string>
   { return Jsonipc.send ("get_clap_version", [this]); }
+  get_sndfile_version (): Promise<string>
+  { return Jsonipc.send ("get_sndfile_version", [this]); }
   error_blurb (arg1: Error): Promise<string>
   { return Jsonipc.send ("error_blurb", [this, arg1]); }
   musical_tuning_label (arg1: MusicalTuning): Promise<string>
