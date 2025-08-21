@@ -288,14 +288,93 @@ function generateClassRegistration (classes: { [name: string]: StructureDetails 
   return outputLines.join ('\n\n');
 }
 
+/** Generate Markdown representing the class inheritance tree */
+function generateClassTreeMarkdown (classes: { [name: string]: StructureDetails }, navigator: SymbolGraphNavigator): string
+{
+  const parent2children = new Map<string, string[]>();
+  const all_children = new Set<string>();
+  const class_ids = new Set (Object.values (classes).map (c => c.preciseId));
+  // Build parent-to-child relationships only for the classes we are processing
+  for (const [childId, parentId] of navigator.inheritanceMap.entries()) {
+    if (class_ids.has (childId) && class_ids.has (parentId)) {
+      if (!parent2children.has (parentId))
+        parent2children.set (parentId, []);
+      parent2children.get (parentId)!.push (childId);
+      all_children.add (childId);
+    }
+  }
+  // Identify root classes (those that don't inherit from any other class in the list)
+  const root_ids = Object.values (classes)
+			 .map (c => c.preciseId)
+			 .filter (id => !all_children.has (id));
+  const lines: string[] = [];
+  // Recursively builds the tree structure for a given class and its descendants
+  function buildSubtree (classId: string, hasMoreSiblings: boolean, prefix: string)
+  {
+    const classSymbol = navigator.symbolMap.get (classId);
+    if (!classSymbol) return;
+    lines.push (`${prefix}│`);
+    const connector = hasMoreSiblings ? '├─' : '╰─';
+    lines.push (`${prefix}${connector}${classSymbol.pathComponents.join ('::')}`);
+    const children = parent2children.get (classId) || [];
+    const childPrefix = prefix + (hasMoreSiblings ? '│  ' : '   ');
+    children.forEach ((childId, index) => {
+      const childHasMoreSiblings = index < children.length - 1;
+      buildSubtree (childId, childHasMoreSiblings, childPrefix);
+    });
+  }
+  // Generate the tree for each root class found
+  root_ids.forEach (rootId => {
+    const rootSymbol = navigator.symbolMap.get (rootId);
+    if (rootSymbol) {
+      lines.push (rootSymbol.pathComponents.join ('::'));
+      const children = parent2children.get (rootId) || [];
+      children.forEach ((childId, index) => {
+        const childHasMoreSiblings = index < children.length - 1;
+        buildSubtree (childId, childHasMoreSiblings, ' ');
+      });
+    }
+  });
+
+  // Determine the title dynamically
+  let title = '## Class Inheritance Tree';
+  if (root_ids.length > 0) {
+    const firstRootSymbol = navigator.symbolMap.get (root_ids[0]);
+    if (firstRootSymbol && firstRootSymbol.pathComponents.length > 0) {
+      const namespace = firstRootSymbol.pathComponents[0];
+      title = `## ${namespace} Class Inheritance Tree`;
+    }
+  }
+  return title + '\n\n```\n' + lines.join ('\n') + '\n```\n';
+}
+
+function die (...args: any[])
+{
+  const script = path.basename (process.argv[1]);
+  console.error (`${script}:`, ...args);
+  process.exit (1);
+}
+
 // Main Script
 function main()
 {
-  const filePath = process.argv[2];
-  if (!filePath) {
-    console.error ("Error: Please provide a path to the symbol graph JSON file.");
-    process.exit (1);
+  const args = process.argv.slice (2); // skip node-exe and script-file
+  let filePath = '';
+  let cxx_gen = false;
+  let classtree_md = false;
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--cxx')
+      cxx_gen = true;
+    else if (arg === '--class-tree')
+      classtree_md = true;
+    else if (!filePath)
+      filePath = arg;
+    else
+      die (`Error: Unknown argument:`, arg);
   }
+  if (!filePath)
+    die ("Error: Missing JSON file");
 
   const fileContent = fs.readFileSync (filePath, 'utf-8');
   const symbolGraph: SymbolGraph = JSON.parse (fileContent);
@@ -322,29 +401,29 @@ function main()
     }
   }
 
-  // 3. GENERATE & PRINT
-  const input_file = path.basename (filePath);
-  const functionName = `jsonipc_for_${input_file.replace (/[^a-zA-Z0-9]/g, '_')}`;
-
-  console.log ('');
-  console.log (`static void\n${functionName}()\n{`);
-
-  const enumCode = generateEnumRegistration (foundEnums);
-  if (enumCode) {
-    console.log (enumCode);
+  // 3. GENERATE & PRINT CXX
+  if (cxx_gen) {
+    const input_file = path.basename (filePath);
+    const functionName = `jsonipc_for_${input_file.replace (/[^a-zA-Z0-9]/g, '_')}`;
+    const enumCode = generateEnumRegistration (foundEnums);
+    const recordCode = generateRecordRegistration (records);
+    const classCode = generateClassRegistration (classes, navigator);
+    console.log ('');
+    console.log (`static void\n${functionName}()\n{`);
+    if (enumCode)
+      console.log (enumCode);
+    if (recordCode)
+      console.log ('\n' + recordCode);
+    if (classCode)
+      console.log ('\n' + classCode);
+    console.log ("}");
   }
 
-  const recordCode = generateRecordRegistration (records);
-  if (recordCode) {
-    console.log ('\n' + recordCode);
+  // 4. PRINT CLASS TREE
+  if (classtree_md) {
+    const markdown_content = generateClassTreeMarkdown (classes, navigator);
+    console.log (markdown_content);
   }
-
-  const classCode = generateClassRegistration (classes, navigator);
-  if (classCode) {
-    console.log ('\n' + classCode);
-  }
-
-  console.log ("}");
 }
 
 main();

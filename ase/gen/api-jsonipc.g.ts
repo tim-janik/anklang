@@ -1,5 +1,4 @@
 // Generated from: api.hh jsonipc.ts AnklangSynthEngine Makefile.mk
-// @ts-nocheck
 // Dedicated to the Public Domain under the Unlicense: https://unlicense.org/UNLICENSE
 
 // For Callback handling, this assumes `Signal` is available in the global scope
@@ -280,9 +279,14 @@ export const Jsonipc = {
 };
 
 // ----- End of jsonipc/jsonipc.ts -----
+export class SharedBase // Ase::SharedBase
+  extends Jsonipc.Jsonipc_prototype {
+  constructor (d) { super (d);
+ if (new.target === SharedBase) Jsonipc.ofreeze (this); }
+};
+Jsonipc.classes["Ase::SharedBase"] = SharedBase;
 
-export const Error =  // Ase::Error
-Jsonipc.ofreeze ({
+export const Error = { // Ase::Error
   NONE: "Ase.Error.NONE", // 0
   PERMS: "Ase.Error.PERMS", // 1
   IO: "Ase.Error.IO", // 5
@@ -329,11 +333,11 @@ Jsonipc.ofreeze ({
   INVALID_PROPERTY: "Ase.Error.INVALID_PROPERTY", // 805322753
   INVALID_MIDI_CONTROL: "Ase.Error.INVALID_MIDI_CONTROL", // 805322754
   OPERATION_BUSY: "Ase.Error.OPERATION_BUSY", // 805322755
-});
-Jsonipc.classes['Ase::Error'] = Error;
+} as const;
+export type Error = typeof Error[keyof typeof Error];
+Jsonipc.classes["Ase::Error"] = Error;
 
-export const MusicalTuning =  // Ase::MusicalTuning
-Jsonipc.ofreeze ({
+export const MusicalTuning = { // Ase::MusicalTuning
   OD_12_TET: "Ase.MusicalTuning.OD_12_TET", // 0
   OD_7_TET: "Ase.MusicalTuning.OD_7_TET", // 1
   OD_5_TET: "Ase.MusicalTuning.OD_5_TET", // 2
@@ -351,27 +355,34 @@ Jsonipc.ofreeze ({
   WERCKMEISTER_6: "Ase.MusicalTuning.WERCKMEISTER_6", // 14
   KIRNBERGER_3: "Ase.MusicalTuning.KIRNBERGER_3", // 15
   YOUNG: "Ase.MusicalTuning.YOUNG", // 16
-});
-Jsonipc.classes['Ase::MusicalTuning'] = MusicalTuning;
+} as const;
+export type MusicalTuning = typeof MusicalTuning[keyof typeof MusicalTuning];
+Jsonipc.classes["Ase::MusicalTuning"] = MusicalTuning;
 
-export const ResourceType =  // Ase::ResourceType
-Jsonipc.ofreeze ({
+export const ResourceType = { // Ase::ResourceType
   FOLDER: "Ase.ResourceType.FOLDER", // 1
   FILE: "Ase.ResourceType.FILE", // 2
-});
-Jsonipc.classes['Ase::ResourceType'] = ResourceType;
+} as const;
+export type ResourceType = typeof ResourceType[keyof typeof ResourceType];
+Jsonipc.classes["Ase::ResourceType"] = ResourceType;
 
-export const Flags =  // Ase::UserNote::Flags
-Jsonipc.ofreeze ({
+export const Flags = { // Ase::UserNote::Flags
   APPEND: "Ase.UserNote.Flags.APPEND", // 0
   CLEAR: "Ase.UserNote.Flags.CLEAR", // 1
   TRANSIENT: "Ase.UserNote.Flags.TRANSIENT", // 2
-});
-Jsonipc.classes['Ase::UserNote::Flags'] = Flags;
+} as const;
+export type Flags = typeof Flags[keyof typeof Flags];
+Jsonipc.classes["Ase::UserNote::Flags"] = Flags;
 
-export class Choice // Ase::Choice
-{
-  constructor (ident, icon, label, blurb, notice, warning) {
+export class Choice { // Ase::Choice
+  ident: string;
+  icon: string;
+  label: string;
+  blurb: string;
+  notice: string;
+  warning: string;
+  constructor (ident: string = '', icon: string = '', label: string = '', blurb: string = '', notice: string = '', warning: string = '')
+  {
     this.ident = ident;
     this.icon = icon;
     this.label = label;
@@ -379,23 +390,34 @@ export class Choice // Ase::Choice
     this.notice = notice;
     this.warning = warning;
   }
-}
-Jsonipc.classes['Ase::Choice'] = Choice;
+};
+Jsonipc.classes["Ase::Choice"] = Choice;
 
-export class TelemetryField // Ase::TelemetryField
-{
-  constructor (name, type, offset, length) {
+export class TelemetryField { // Ase::TelemetryField
+  name: string;
+  type: string;
+  offset: number;
+  length: number;
+  constructor (name: string = '', type: string = '', offset: number = 0, length: number = 0)
+  {
     this.name = name;
     this.type = type;
     this.offset = offset;
     this.length = length;
   }
-}
-Jsonipc.classes['Ase::TelemetryField'] = TelemetryField;
+};
+Jsonipc.classes["Ase::TelemetryField"] = TelemetryField;
 
-export class DeviceInfo // Ase::DeviceInfo
-{
-  constructor (uri, name, category, description, website_url, creator_name, creator_url) {
+export class DeviceInfo { // Ase::DeviceInfo
+  uri: string;
+  name: string;
+  category: string;
+  description: string;
+  website_url: string;
+  creator_name: string;
+  creator_url: string;
+  constructor (uri: string = '', name: string = '', category: string = '', description: string = '', website_url: string = '', creator_name: string = '', creator_url: string = '')
+  {
     this.uri = uri;
     this.name = name;
     this.category = category;
@@ -404,12 +426,20 @@ export class DeviceInfo // Ase::DeviceInfo
     this.creator_name = creator_name;
     this.creator_url = creator_url;
   }
-}
-Jsonipc.classes['Ase::DeviceInfo'] = DeviceInfo;
+};
+Jsonipc.classes["Ase::DeviceInfo"] = DeviceInfo;
 
-export class ClipNote // Ase::ClipNote
-{
-  constructor (id, channel, key, selected, tick, duration, velocity, fine_tune) {
+export class ClipNote { // Ase::ClipNote
+  id: number;
+  channel: number;
+  key: number;
+  selected: boolean;
+  tick: number;
+  duration: number;
+  velocity: number;
+  fine_tune: number;
+  constructor (id: number = 0, channel: number = 0, key: number = 0, selected: boolean = false, tick: number = 0, duration: number = 0, velocity: number = 0.0, fine_tune: number = 0.0)
+  {
     this.id = id;
     this.channel = channel;
     this.key = key;
@@ -419,292 +449,463 @@ export class ClipNote // Ase::ClipNote
     this.velocity = velocity;
     this.fine_tune = fine_tune;
   }
-}
-Jsonipc.classes['Ase::ClipNote'] = ClipNote;
+};
+Jsonipc.classes["Ase::ClipNote"] = ClipNote;
 
-export class ProbeFeatures // Ase::ProbeFeatures
-{
-  constructor (probe_range, probe_energy, probe_samples, probe_fft) {
+export class ProbeFeatures { // Ase::ProbeFeatures
+  probe_range: boolean;
+  probe_energy: boolean;
+  probe_samples: boolean;
+  probe_fft: boolean;
+  constructor (probe_range: boolean = false, probe_energy: boolean = false, probe_samples: boolean = false, probe_fft: boolean = false)
+  {
     this.probe_range = probe_range;
     this.probe_energy = probe_energy;
     this.probe_samples = probe_samples;
     this.probe_fft = probe_fft;
   }
-}
-Jsonipc.classes['Ase::ProbeFeatures'] = ProbeFeatures;
+};
+Jsonipc.classes["Ase::ProbeFeatures"] = ProbeFeatures;
 
-export class Resource // Ase::Resource
-{
-  constructor (type, label, uri, size, mtime) {
+export class Resource { // Ase::Resource
+  type: ResourceType;
+  label: string;
+  uri: string;
+  size: number;
+  mtime: number;
+  constructor (type: ResourceType = '' as ResourceType, label: string = '', uri: string = '', size: number = 0, mtime: number = 0)
+  {
     this.type = type;
     this.label = label;
     this.uri = uri;
     this.size = size;
     this.mtime = mtime;
   }
-}
-Jsonipc.classes['Ase::Resource'] = Resource;
+};
+Jsonipc.classes["Ase::Resource"] = Resource;
 
-export class UserNote // Ase::UserNote
-{
-  constructor (noteid, flags, channel, text, rest) {
+export class UserNote { // Ase::UserNote
+  noteid: number;
+  flags: Flags;
+  channel: string;
+  text: string;
+  rest: string;
+  constructor (noteid: number = 0, flags: Flags = '' as Flags, channel: string = '', text: string = '', rest: string = '')
+  {
     this.noteid = noteid;
     this.flags = flags;
     this.channel = channel;
     this.text = text;
     this.rest = rest;
   }
-}
-Jsonipc.classes['Ase::UserNote'] = UserNote;
+};
+Jsonipc.classes["Ase::UserNote"] = UserNote;
 
-export class TelemetrySegment // Ase::TelemetrySegment
-{
-  constructor (offset, length) {
+export class TelemetrySegment { // Ase::TelemetrySegment
+  offset: number;
+  length: number;
+  constructor (offset: number = 0, length: number = 0)
+  {
     this.offset = offset;
     this.length = length;
   }
-}
-Jsonipc.classes['Ase::TelemetrySegment'] = TelemetrySegment;
-
-export class SharedBase // Ase::SharedBase
-  extends Jsonipc.Jsonipc_prototype
-{
-  constructor ($id) { super ($id); if (new.target === SharedBase) Jsonipc.ofreeze (this); }
-}
-Jsonipc.classes['Ase::SharedBase'] = SharedBase;
+};
+Jsonipc.classes["Ase::TelemetrySegment"] = TelemetrySegment;
 
 export class Emittable // Ase::Emittable
-  extends Jsonipc.classes['Ase::SharedBase']
+  extends Jsonipc.classes["Ase::SharedBase"]
 {
-  constructor ($id) { super ($id); if (new.target === Emittable) Jsonipc.ofreeze (this); }
-  emit_event (a1, a2, a3) { return Jsonipc.send ('emit_event', [this, a1, a2, a3]); }
-  emit_notify (a1) { return Jsonipc.send ('emit_notify', [this, a1]); }
-  js_trigger (a1, a2) { return Jsonipc.send ('js_trigger', [this, a1, a2]); }
-}
-Jsonipc.classes['Ase::Emittable'] = Emittable;
+  constructor ($id)
+  { super ($id); if (new.target === Emittable) Jsonipc.ofreeze (this); }
+  emit_event (arg1: string, arg2: string, arg3: { [key: string]: any }): Promise<void>
+  { return Jsonipc.send ("emit_event", [this, arg1, arg2, arg3]); }
+  emit_notify (arg1: string): Promise<void>
+  { return Jsonipc.send ("emit_notify", [this, arg1]); }
+  js_trigger (arg1: string, arg2: any): Promise<void>
+  { return Jsonipc.send ("js_trigger", [this, arg1, arg2]); }
+};
+Jsonipc.classes["Ase::Emittable"] = Emittable;
 
 export class Property // Ase::Property
-  extends Jsonipc.classes['Ase::Emittable']
+  extends Jsonipc.classes["Ase::Emittable"]
 {
-  constructor ($id) { super ($id); if (new.target === Property) Jsonipc.ofreeze (this); }
-  get name ()  { return Jsonipc.get_reactive_prop.call (this, 'name', ''); }
-  set name (v) { return Jsonipc.send ('set/' + 'name', [this, v]); }
-  get metadata ()  { return Jsonipc.get_reactive_prop.call (this, 'metadata', []); }
-  set metadata (v) { return Jsonipc.send ('set/' + 'metadata', [this, v]); }
-  get value ()  { return Jsonipc.get_reactive_prop.call (this, 'value', ''); }
-  set value (v) { return Jsonipc.send ('set/' + 'value', [this, v]); }
-  get normalized ()  { return Jsonipc.get_reactive_prop.call (this, 'normalized', 0.0); }
-  set normalized (v) { return Jsonipc.send ('set/' + 'normalized', [this, v]); }
-  get text ()  { return Jsonipc.get_reactive_prop.call (this, 'text', ''); }
-  set text (v) { return Jsonipc.send ('set/' + 'text', [this, v]); }
-  get_name () { return Jsonipc.send ('get_name', [this]); }
-  set_name (a1) { return Jsonipc.send ('set_name', [this, a1]); }
-  get_metadata () { return Jsonipc.send ('get_metadata', [this]); }
-  set_metadata (a1) { return Jsonipc.send ('set_metadata', [this, a1]); }
-  ident () { return Jsonipc.send ('ident', [this]); }
-  label () { return Jsonipc.send ('label', [this]); }
-  nick () { return Jsonipc.send ('nick', [this]); }
-  unit () { return Jsonipc.send ('unit', [this]); }
-  get_min () { return Jsonipc.send ('get_min', [this]); }
-  get_max () { return Jsonipc.send ('get_max', [this]); }
-  get_step () { return Jsonipc.send ('get_step', [this]); }
-  reset () { return Jsonipc.send ('reset', [this]); }
-  get_value () { return Jsonipc.send ('get_value', [this]); }
-  set_value (a1) { return Jsonipc.send ('set_value', [this, a1]); }
-  get_normalized () { return Jsonipc.send ('get_normalized', [this]); }
-  set_normalized (a1) { return Jsonipc.send ('set_normalized', [this, a1]); }
-  get_text () { return Jsonipc.send ('get_text', [this]); }
-  set_text (a1) { return Jsonipc.send ('set_text', [this, a1]); }
-  is_numeric () { return Jsonipc.send ('is_numeric', [this]); }
-  choices () { return Jsonipc.send ('choices', [this]); }
-  hints () { return Jsonipc.send ('hints', [this]); }
-  blurb () { return Jsonipc.send ('blurb', [this]); }
-  descr () { return Jsonipc.send ('descr', [this]); }
-  group () { return Jsonipc.send ('group', [this]); }
-}
-Jsonipc.classes['Ase::Property'] = Property;
+  constructor ($id)
+  { super ($id); if (new.target === Property) Jsonipc.ofreeze (this); }
+  get name (): string
+  { return Jsonipc.get_reactive_prop.call (this, "name", ''); }
+  set name (v: string)
+  { Jsonipc.send ('set/' + 'name', [this, v]); }
+  get metadata (): string[]
+  { return Jsonipc.get_reactive_prop.call (this, "metadata", []); }
+  set metadata (v: string[])
+  { Jsonipc.send ('set/' + 'metadata', [this, v]); }
+  get value (): any
+  { return Jsonipc.get_reactive_prop.call (this, "value", ''); }
+  set value (v: any)
+  { Jsonipc.send ('set/' + 'value', [this, v]); }
+  get normalized (): number
+  { return Jsonipc.get_reactive_prop.call (this, "normalized", 0.0); }
+  set normalized (v: number)
+  { Jsonipc.send ('set/' + 'normalized', [this, v]); }
+  get text (): string
+  { return Jsonipc.get_reactive_prop.call (this, "text", ''); }
+  set text (v: string)
+  { Jsonipc.send ('set/' + 'text', [this, v]); }
+  get_name (): Promise<string>
+  { return Jsonipc.send ("get_name", [this]); }
+  set_name (arg1: string): Promise<void>
+  { return Jsonipc.send ("set_name", [this, arg1]); }
+  get_metadata (): Promise<string[]>
+  { return Jsonipc.send ("get_metadata", [this]); }
+  set_metadata (arg1: string[]): Promise<void>
+  { return Jsonipc.send ("set_metadata", [this, arg1]); }
+  ident (): Promise<string>
+  { return Jsonipc.send ("ident", [this]); }
+  label (): Promise<string>
+  { return Jsonipc.send ("label", [this]); }
+  nick (): Promise<string>
+  { return Jsonipc.send ("nick", [this]); }
+  unit (): Promise<string>
+  { return Jsonipc.send ("unit", [this]); }
+  get_min (): Promise<number>
+  { return Jsonipc.send ("get_min", [this]); }
+  get_max (): Promise<number>
+  { return Jsonipc.send ("get_max", [this]); }
+  get_step (): Promise<number>
+  { return Jsonipc.send ("get_step", [this]); }
+  reset (): Promise<void>
+  { return Jsonipc.send ("reset", [this]); }
+  get_value (): Promise<any>
+  { return Jsonipc.send ("get_value", [this]); }
+  set_value (arg1: any): Promise<boolean>
+  { return Jsonipc.send ("set_value", [this, arg1]); }
+  get_normalized (): Promise<number>
+  { return Jsonipc.send ("get_normalized", [this]); }
+  set_normalized (arg1: number): Promise<boolean>
+  { return Jsonipc.send ("set_normalized", [this, arg1]); }
+  get_text (): Promise<string>
+  { return Jsonipc.send ("get_text", [this]); }
+  set_text (arg1: string): Promise<boolean>
+  { return Jsonipc.send ("set_text", [this, arg1]); }
+  is_numeric (): Promise<boolean>
+  { return Jsonipc.send ("is_numeric", [this]); }
+  choices (): Promise<Choice[]>
+  { return Jsonipc.send ("choices", [this]); }
+  hints (): Promise<string>
+  { return Jsonipc.send ("hints", [this]); }
+  blurb (): Promise<string>
+  { return Jsonipc.send ("blurb", [this]); }
+  descr (): Promise<string>
+  { return Jsonipc.send ("descr", [this]); }
+  group (): Promise<string>
+  { return Jsonipc.send ("group", [this]); }
+};
+Jsonipc.classes["Ase::Property"] = Property;
 
 export class Object // Ase::Object
-  extends Jsonipc.classes['Ase::Emittable']
+  extends Jsonipc.classes["Ase::Emittable"]
 {
-  constructor ($id) { super ($id); if (new.target === Object) Jsonipc.ofreeze (this); }
-}
-Jsonipc.classes['Ase::Object'] = Object;
+  constructor ($id)
+  { super ($id); if (new.target === Object) Jsonipc.ofreeze (this); }
+};
+Jsonipc.classes["Ase::Object"] = Object;
 
 export class Gadget // Ase::Gadget
-  extends Jsonipc.classes['Ase::Object']
+  extends Jsonipc.classes["Ase::Object"]
 {
-  constructor ($id) { super ($id); if (new.target === Gadget) Jsonipc.ofreeze (this); }
-  get name ()  { return Jsonipc.get_reactive_prop.call (this, 'name', ''); }
-  set name (v) { return Jsonipc.send ('set/' + 'name', [this, v]); }
-  get_name () { return Jsonipc.send ('get_name', [this]); }
-  set_name (a1) { return Jsonipc.send ('set_name', [this, a1]); }
-  type_nick () { return Jsonipc.send ('type_nick', [this]); }
-  list_properties () { return Jsonipc.send ('list_properties', [this]); }
-  access_property (a1) { return Jsonipc.send ('access_property', [this, a1]); }
-  access_properties () { return Jsonipc.send ('access_properties', [this]); }
-  get_value (a1) { return Jsonipc.send ('get_value', [this, a1]); }
-  set_value (a1, a2) { return Jsonipc.send ('set_value', [this, a1, a2]); }
-  set_data (a1, a2) { return Jsonipc.send ('set_data', [this, a1, a2]); }
-  get_data (a1) { return Jsonipc.send ('get_data', [this, a1]); }
-}
-Jsonipc.classes['Ase::Gadget'] = Gadget;
-
-export class ResourceCrawler // Ase::ResourceCrawler
-  extends Jsonipc.classes['Ase::Object']
-{
-  constructor ($id) { super ($id); if (new.target === ResourceCrawler) Jsonipc.ofreeze (this); }
-  get folder ()  { return Jsonipc.get_reactive_prop.call (this, 'folder', {}); }
-  set folder (v) { return Jsonipc.send ('set/' + 'folder', [this, v]); }
-  get entries ()  { return Jsonipc.get_reactive_prop.call (this, 'entries', []); }
-  set entries (v) { return Jsonipc.send ('set/' + 'entries', [this, v]); }
-  get_folder () { return Jsonipc.send ('get_folder', [this]); }
-  set_folder (a1) { return Jsonipc.send ('set_folder', [this, a1]); }
-  get_entries () { return Jsonipc.send ('get_entries', [this]); }
-  set_entries (a1) { return Jsonipc.send ('set_entries', [this, a1]); }
-  assign (a1, a2) { return Jsonipc.send ('assign', [this, a1, a2]); }
-  canonify (a1, a2, a3, a4) { return Jsonipc.send ('canonify', [this, a1, a2, a3, a4]); }
-}
-Jsonipc.classes['Ase::ResourceCrawler'] = ResourceCrawler;
+  constructor ($id)
+  { super ($id); if (new.target === Gadget) Jsonipc.ofreeze (this); }
+  get name (): string
+  { return Jsonipc.get_reactive_prop.call (this, "name", ''); }
+  set name (v: string)
+  { Jsonipc.send ('set/' + 'name', [this, v]); }
+  get_name (): Promise<string>
+  { return Jsonipc.send ("get_name", [this]); }
+  set_name (arg1: string): Promise<void>
+  { return Jsonipc.send ("set_name", [this, arg1]); }
+  type_nick (): Promise<string>
+  { return Jsonipc.send ("type_nick", [this]); }
+  list_properties (): Promise<string[]>
+  { return Jsonipc.send ("list_properties", [this]); }
+  access_property (arg1: string): Promise<Property>
+  { return Jsonipc.send ("access_property", [this, arg1]); }
+  access_properties (): Promise<Property[]>
+  { return Jsonipc.send ("access_properties", [this]); }
+  get_value (arg1: string): Promise<any>
+  { return Jsonipc.send ("get_value", [this, arg1]); }
+  set_value (arg1: string, arg2: any): Promise<boolean>
+  { return Jsonipc.send ("set_value", [this, arg1, arg2]); }
+  set_data (arg1: string, arg2: any): Promise<boolean>
+  { return Jsonipc.send ("set_data", [this, arg1, arg2]); }
+  get_data (arg1: string): Promise<any>
+  { return Jsonipc.send ("get_data", [this, arg1]); }
+};
+Jsonipc.classes["Ase::Gadget"] = Gadget;
 
 export class Device // Ase::Device
-  extends Jsonipc.classes['Ase::Gadget']
+  extends Jsonipc.classes["Ase::Gadget"]
 {
-  constructor ($id) { super ($id); if (new.target === Device) Jsonipc.ofreeze (this); }
-  get devices ()  { return Jsonipc.get_reactive_prop.call (this, 'devices', []); }
-  set devices (v) { return Jsonipc.send ('set/' + 'devices', [this, v]); }
-  is_active () { return Jsonipc.send ('is_active', [this]); }
-  device_info () { return Jsonipc.send ('device_info', [this]); }
-  get_devices () { return Jsonipc.send ('get_devices', [this]); }
-  set_devices (a1) { return Jsonipc.send ('set_devices', [this, a1]); }
-  remove_self () { return Jsonipc.send ('remove_self', [this]); }
-  gui_toggle () { return Jsonipc.send ('gui_toggle', [this]); }
-  gui_supported () { return Jsonipc.send ('gui_supported', [this]); }
-  gui_visible () { return Jsonipc.send ('gui_visible', [this]); }
-}
-Jsonipc.classes['Ase::Device'] = Device;
-
-export class Clip // Ase::Clip
-  extends Jsonipc.classes['Ase::Gadget']
-{
-  constructor ($id) { super ($id); if (new.target === Clip) Jsonipc.ofreeze (this); }
-  get all_notes ()  { return Jsonipc.get_reactive_prop.call (this, 'all_notes', []); }
-  set all_notes (v) { return Jsonipc.send ('set/' + 'all_notes', [this, v]); }
-  get end_tick ()  { return Jsonipc.get_reactive_prop.call (this, 'end_tick', 0); }
-  set end_tick (v) { return Jsonipc.send ('set/' + 'end_tick', [this, v]); }
-  get_all_notes () { return Jsonipc.send ('get_all_notes', [this]); }
-  set_all_notes (a1) { return Jsonipc.send ('set_all_notes', [this, a1]); }
-  get_end_tick () { return Jsonipc.send ('get_end_tick', [this]); }
-  set_end_tick (a1) { return Jsonipc.send ('set_end_tick', [this, a1]); }
-  start_tick () { return Jsonipc.send ('start_tick', [this]); }
-  stop_tick () { return Jsonipc.send ('stop_tick', [this]); }
-  assign_range (a1, a2) { return Jsonipc.send ('assign_range', [this, a1, a2]); }
-  change_batch (a1, a2) { return Jsonipc.send ('change_batch', [this, a1, a2]); }
-  list_all_notes () { return Jsonipc.send ('list_all_notes', [this]); }
-}
-Jsonipc.classes['Ase::Clip'] = Clip;
-
-export class Monitor // Ase::Monitor
-  extends Jsonipc.classes['Ase::Gadget']
-{
-  constructor ($id) { super ($id); if (new.target === Monitor) Jsonipc.ofreeze (this); }
-  get_output () { return Jsonipc.send ('get_output', [this]); }
-  get_ochannel () { return Jsonipc.send ('get_ochannel', [this]); }
-  get_mix_freq () { return Jsonipc.send ('get_mix_freq', [this]); }
-  get_frame_duration () { return Jsonipc.send ('get_frame_duration', [this]); }
-}
-Jsonipc.classes['Ase::Monitor'] = Monitor;
-
-export class Server // Ase::Server
-  extends Jsonipc.classes['Ase::Gadget']
-{
-  constructor ($id) { super ($id); if (new.target === Server) Jsonipc.ofreeze (this); }
-  shutdown () { return Jsonipc.send ('shutdown', [this]); }
-  get_version () { return Jsonipc.send ('get_version', [this]); }
-  get_build_id () { return Jsonipc.send ('get_build_id', [this]); }
-  get_opus_version () { return Jsonipc.send ('get_opus_version', [this]); }
-  get_flac_version () { return Jsonipc.send ('get_flac_version', [this]); }
-  get_clap_version () { return Jsonipc.send ('get_clap_version', [this]); }
-  error_blurb (a1) { return Jsonipc.send ('error_blurb', [this, a1]); }
-  musical_tuning_label (a1) { return Jsonipc.send ('musical_tuning_label', [this, a1]); }
-  musical_tuning_blurb (a1) { return Jsonipc.send ('musical_tuning_blurb', [this, a1]); }
-  user_note (a1, a2, a3, a4) { return Jsonipc.send ('user_note', [this, a1, a2, a3, a4]); }
-  user_reply (a1, a2) { return Jsonipc.send ('user_reply', [this, a1, a2]); }
-  broadcast_telemetry (a1, a2) { return Jsonipc.send ('broadcast_telemetry', [this, a1, a2]); }
-  list_preferences () { return Jsonipc.send ('list_preferences', [this]); }
-  access_preference (a1) { return Jsonipc.send ('access_preference', [this, a1]); }
-  engine_stats () { return Jsonipc.send ('engine_stats', [this]); }
-  exit_program (a1) { return Jsonipc.send ('exit_program', [this, a1]); }
-  last_project () { return Jsonipc.send ('last_project', [this]); }
-  create_project (a1) { return Jsonipc.send ('create_project', [this, a1]); }
-  dir_crawler (a1) { return Jsonipc.send ('dir_crawler', [this, a1]); }
-  url_crawler (a1) { return Jsonipc.send ('url_crawler', [this, a1]); }
-}
-Jsonipc.classes['Ase::Server'] = Server;
+  constructor ($id)
+  { super ($id); if (new.target === Device) Jsonipc.ofreeze (this); }
+  get devices (): Device[]
+  { return Jsonipc.get_reactive_prop.call (this, "devices", []); }
+  set devices (v: Device[])
+  { Jsonipc.send ('set/' + 'devices', [this, v]); }
+  is_active (): Promise<boolean>
+  { return Jsonipc.send ("is_active", [this]); }
+  device_info (): Promise<DeviceInfo>
+  { return Jsonipc.send ("device_info", [this]); }
+  get_devices (): Promise<Device[]>
+  { return Jsonipc.send ("get_devices", [this]); }
+  set_devices (arg1: Device[]): Promise<void>
+  { return Jsonipc.send ("set_devices", [this, arg1]); }
+  remove_self (): Promise<void>
+  { return Jsonipc.send ("remove_self", [this]); }
+  gui_toggle (): Promise<void>
+  { return Jsonipc.send ("gui_toggle", [this]); }
+  gui_supported (): Promise<boolean>
+  { return Jsonipc.send ("gui_supported", [this]); }
+  gui_visible (): Promise<boolean>
+  { return Jsonipc.send ("gui_visible", [this]); }
+};
+Jsonipc.classes["Ase::Device"] = Device;
 
 export class NativeDevice // Ase::NativeDevice
-  extends Jsonipc.classes['Ase::Device']
+  extends Jsonipc.classes["Ase::Device"]
 {
-  constructor ($id) { super ($id); if (new.target === NativeDevice) Jsonipc.ofreeze (this); }
-  is_combo_device () { return Jsonipc.send ('is_combo_device', [this]); }
-  list_device_types () { return Jsonipc.send ('list_device_types', [this]); }
-  remove_device (a1) { return Jsonipc.send ('remove_device', [this, a1]); }
-  append_device (a1) { return Jsonipc.send ('append_device', [this, a1]); }
-  insert_device (a1, a2) { return Jsonipc.send ('insert_device', [this, a1, a2]); }
-}
-Jsonipc.classes['Ase::NativeDevice'] = NativeDevice;
+  constructor ($id)
+  { super ($id); if (new.target === NativeDevice) Jsonipc.ofreeze (this); }
+  is_combo_device (): Promise<boolean>
+  { return Jsonipc.send ("is_combo_device", [this]); }
+  list_device_types (): Promise<DeviceInfo[]>
+  { return Jsonipc.send ("list_device_types", [this]); }
+  remove_device (arg1: Device): Promise<void>
+  { return Jsonipc.send ("remove_device", [this, arg1]); }
+  append_device (arg1: string): Promise<Device>
+  { return Jsonipc.send ("append_device", [this, arg1]); }
+  insert_device (arg1: string, arg2: Device): Promise<Device>
+  { return Jsonipc.send ("insert_device", [this, arg1, arg2]); }
+};
+Jsonipc.classes["Ase::NativeDevice"] = NativeDevice;
+
+export class Clip // Ase::Clip
+  extends Jsonipc.classes["Ase::Gadget"]
+{
+  constructor ($id)
+  { super ($id); if (new.target === Clip) Jsonipc.ofreeze (this); }
+  get all_notes (): ClipNote[]
+  { return Jsonipc.get_reactive_prop.call (this, "all_notes", []); }
+  set all_notes (v: ClipNote[])
+  { Jsonipc.send ('set/' + 'all_notes', [this, v]); }
+  get end_tick (): number
+  { return Jsonipc.get_reactive_prop.call (this, "end_tick", 0); }
+  set end_tick (v: number)
+  { Jsonipc.send ('set/' + 'end_tick', [this, v]); }
+  get_all_notes (): Promise<ClipNote[]>
+  { return Jsonipc.send ("get_all_notes", [this]); }
+  set_all_notes (arg1: ClipNote[]): Promise<void>
+  { return Jsonipc.send ("set_all_notes", [this, arg1]); }
+  get_end_tick (): Promise<number>
+  { return Jsonipc.send ("get_end_tick", [this]); }
+  set_end_tick (arg1: number): Promise<void>
+  { return Jsonipc.send ("set_end_tick", [this, arg1]); }
+  start_tick (): Promise<number>
+  { return Jsonipc.send ("start_tick", [this]); }
+  stop_tick (): Promise<number>
+  { return Jsonipc.send ("stop_tick", [this]); }
+  assign_range (arg1: number, arg2: number): Promise<void>
+  { return Jsonipc.send ("assign_range", [this, arg1, arg2]); }
+  change_batch (arg1: ClipNote[], arg2: string): Promise<number>
+  { return Jsonipc.send ("change_batch", [this, arg1, arg2]); }
+  list_all_notes (): Promise<ClipNote[]>
+  { return Jsonipc.send ("list_all_notes", [this]); }
+};
+Jsonipc.classes["Ase::Clip"] = Clip;
 
 export class Track // Ase::Track
-  extends Jsonipc.classes['Ase::Device']
+  extends Jsonipc.classes["Ase::Device"]
 {
-  constructor ($id) { super ($id); if (new.target === Track) Jsonipc.ofreeze (this); }
-  get midi_channel ()  { return Jsonipc.get_reactive_prop.call (this, 'midi_channel', 0); }
-  set midi_channel (v) { return Jsonipc.send ('set/' + 'midi_channel', [this, v]); }
-  is_master () { return Jsonipc.send ('is_master', [this]); }
-  launcher_clips () { return Jsonipc.send ('launcher_clips', [this]); }
-  access_device () { return Jsonipc.send ('access_device', [this]); }
-  create_monitor (a1) { return Jsonipc.send ('create_monitor', [this, a1]); }
-  telemetry () { return Jsonipc.send ('telemetry', [this]); }
-}
-Jsonipc.classes['Ase::Track'] = Track;
+  constructor ($id)
+  { super ($id); if (new.target === Track) Jsonipc.ofreeze (this); }
+  get midi_channel (): number
+  { return Jsonipc.get_reactive_prop.call (this, "midi_channel", 0); }
+  set midi_channel (v: number)
+  { Jsonipc.send ('set/' + 'midi_channel', [this, v]); }
+  is_master (): Promise<boolean>
+  { return Jsonipc.send ("is_master", [this]); }
+  launcher_clips (): Promise<Clip[]>
+  { return Jsonipc.send ("launcher_clips", [this]); }
+  access_device (): Promise<Device>
+  { return Jsonipc.send ("access_device", [this]); }
+  create_monitor (arg1: number): Promise<Monitor>
+  { return Jsonipc.send ("create_monitor", [this, arg1]); }
+  telemetry (): Promise<TelemetryField[]>
+  { return Jsonipc.send ("telemetry", [this]); }
+};
+Jsonipc.classes["Ase::Track"] = Track;
+
+export class Monitor // Ase::Monitor
+  extends Jsonipc.classes["Ase::Gadget"]
+{
+  constructor ($id)
+  { super ($id); if (new.target === Monitor) Jsonipc.ofreeze (this); }
+  get_output (): Promise<Device>
+  { return Jsonipc.send ("get_output", [this]); }
+  get_ochannel (): Promise<number>
+  { return Jsonipc.send ("get_ochannel", [this]); }
+  get_mix_freq (): Promise<number>
+  { return Jsonipc.send ("get_mix_freq", [this]); }
+  get_frame_duration (): Promise<number>
+  { return Jsonipc.send ("get_frame_duration", [this]); }
+};
+Jsonipc.classes["Ase::Monitor"] = Monitor;
 
 export class Project // Ase::Project
-  extends Jsonipc.classes['Ase::Device']
+  extends Jsonipc.classes["Ase::Device"]
 {
-  constructor ($id) { super ($id); if (new.target === Project) Jsonipc.ofreeze (this); }
-  get bpm ()  { return Jsonipc.get_reactive_prop.call (this, 'bpm', 0.0); }
-  set bpm (v) { return Jsonipc.send ('set/' + 'bpm', [this, v]); }
-  get numerator ()  { return Jsonipc.get_reactive_prop.call (this, 'numerator', 0.0); }
-  set numerator (v) { return Jsonipc.send ('set/' + 'numerator', [this, v]); }
-  get denominator ()  { return Jsonipc.get_reactive_prop.call (this, 'denominator', 0.0); }
-  set denominator (v) { return Jsonipc.send ('set/' + 'denominator', [this, v]); }
-  set_bpm (a1) { return Jsonipc.send ('set_bpm', [this, a1]); }
-  get_bpm () { return Jsonipc.send ('get_bpm', [this]); }
-  set_numerator (a1) { return Jsonipc.send ('set_numerator', [this, a1]); }
-  get_numerator () { return Jsonipc.send ('get_numerator', [this]); }
-  set_denominator (a1) { return Jsonipc.send ('set_denominator', [this, a1]); }
-  get_denominator () { return Jsonipc.send ('get_denominator', [this]); }
-  discard () { return Jsonipc.send ('discard', [this]); }
-  start_playback () { return Jsonipc.send ('start_playback', [this]); }
-  stop_playback () { return Jsonipc.send ('stop_playback', [this]); }
-  is_playing () { return Jsonipc.send ('is_playing', [this]); }
-  create_track () { return Jsonipc.send ('create_track', [this]); }
-  remove_track (a1) { return Jsonipc.send ('remove_track', [this, a1]); }
-  all_tracks () { return Jsonipc.send ('all_tracks', [this]); }
-  master_track () { return Jsonipc.send ('master_track', [this]); }
-  save_project (a1, a2) { return Jsonipc.send ('save_project', [this, a1, a2]); }
-  saved_filename () { return Jsonipc.send ('saved_filename', [this]); }
-  load_project (a1) { return Jsonipc.send ('load_project', [this, a1]); }
-  telemetry () { return Jsonipc.send ('telemetry', [this]); }
-  group_undo (a1) { return Jsonipc.send ('group_undo', [this, a1]); }
-  ungroup_undo () { return Jsonipc.send ('ungroup_undo', [this]); }
-  undo () { return Jsonipc.send ('undo', [this]); }
-  can_undo () { return Jsonipc.send ('can_undo', [this]); }
-  redo () { return Jsonipc.send ('redo', [this]); }
-  can_redo () { return Jsonipc.send ('can_redo', [this]); }
-  match_serialized (a1, a2) { return Jsonipc.send ('match_serialized', [this, a1, a2]); }
-}
-Jsonipc.classes['Ase::Project'] = Project;
+  constructor ($id)
+  { super ($id); if (new.target === Project) Jsonipc.ofreeze (this); }
+  get bpm (): number
+  { return Jsonipc.get_reactive_prop.call (this, "bpm", 0.0); }
+  set bpm (v: number)
+  { Jsonipc.send ('set/' + 'bpm', [this, v]); }
+  get numerator (): number
+  { return Jsonipc.get_reactive_prop.call (this, "numerator", 0.0); }
+  set numerator (v: number)
+  { Jsonipc.send ('set/' + 'numerator', [this, v]); }
+  get denominator (): number
+  { return Jsonipc.get_reactive_prop.call (this, "denominator", 0.0); }
+  set denominator (v: number)
+  { Jsonipc.send ('set/' + 'denominator', [this, v]); }
+  set_bpm (arg1: number): Promise<void>
+  { return Jsonipc.send ("set_bpm", [this, arg1]); }
+  get_bpm (): Promise<number>
+  { return Jsonipc.send ("get_bpm", [this]); }
+  set_numerator (arg1: number): Promise<void>
+  { return Jsonipc.send ("set_numerator", [this, arg1]); }
+  get_numerator (): Promise<number>
+  { return Jsonipc.send ("get_numerator", [this]); }
+  set_denominator (arg1: number): Promise<void>
+  { return Jsonipc.send ("set_denominator", [this, arg1]); }
+  get_denominator (): Promise<number>
+  { return Jsonipc.send ("get_denominator", [this]); }
+  discard (): Promise<void>
+  { return Jsonipc.send ("discard", [this]); }
+  start_playback (): Promise<void>
+  { return Jsonipc.send ("start_playback", [this]); }
+  stop_playback (): Promise<void>
+  { return Jsonipc.send ("stop_playback", [this]); }
+  is_playing (): Promise<boolean>
+  { return Jsonipc.send ("is_playing", [this]); }
+  create_track (): Promise<Track>
+  { return Jsonipc.send ("create_track", [this]); }
+  remove_track (arg1: Track): Promise<boolean>
+  { return Jsonipc.send ("remove_track", [this, arg1]); }
+  all_tracks (): Promise<Track[]>
+  { return Jsonipc.send ("all_tracks", [this]); }
+  master_track (): Promise<Track>
+  { return Jsonipc.send ("master_track", [this]); }
+  save_project (arg1: string, arg2: boolean): Promise<Error>
+  { return Jsonipc.send ("save_project", [this, arg1, arg2]); }
+  saved_filename (): Promise<string>
+  { return Jsonipc.send ("saved_filename", [this]); }
+  load_project (arg1: string): Promise<Error>
+  { return Jsonipc.send ("load_project", [this, arg1]); }
+  telemetry (): Promise<TelemetryField[]>
+  { return Jsonipc.send ("telemetry", [this]); }
+  group_undo (arg1: string): Promise<void>
+  { return Jsonipc.send ("group_undo", [this, arg1]); }
+  ungroup_undo (): Promise<void>
+  { return Jsonipc.send ("ungroup_undo", [this]); }
+  undo (): Promise<void>
+  { return Jsonipc.send ("undo", [this]); }
+  can_undo (): Promise<boolean>
+  { return Jsonipc.send ("can_undo", [this]); }
+  redo (): Promise<void>
+  { return Jsonipc.send ("redo", [this]); }
+  can_redo (): Promise<boolean>
+  { return Jsonipc.send ("can_redo", [this]); }
+  match_serialized (arg1: string, arg2: number): Promise<string>
+  { return Jsonipc.send ("match_serialized", [this, arg1, arg2]); }
+};
+Jsonipc.classes["Ase::Project"] = Project;
+
+export class ResourceCrawler // Ase::ResourceCrawler
+  extends Jsonipc.classes["Ase::Object"]
+{
+  constructor ($id)
+  { super ($id); if (new.target === ResourceCrawler) Jsonipc.ofreeze (this); }
+  get folder (): Resource
+  { return Jsonipc.get_reactive_prop.call (this, "folder", {}); }
+  set folder (v: Resource)
+  { Jsonipc.send ('set/' + 'folder', [this, v]); }
+  get entries (): Resource[]
+  { return Jsonipc.get_reactive_prop.call (this, "entries", []); }
+  set entries (v: Resource[])
+  { Jsonipc.send ('set/' + 'entries', [this, v]); }
+  get_folder (): Promise<Resource>
+  { return Jsonipc.send ("get_folder", [this]); }
+  set_folder (arg1: Resource): Promise<void>
+  { return Jsonipc.send ("set_folder", [this, arg1]); }
+  get_entries (): Promise<Resource[]>
+  { return Jsonipc.send ("get_entries", [this]); }
+  set_entries (arg1: Resource[]): Promise<void>
+  { return Jsonipc.send ("set_entries", [this, arg1]); }
+  assign (arg1: string, arg2: boolean): Promise<[string, string]>
+  { return Jsonipc.send ("assign", [this, arg1, arg2]); }
+  canonify (arg1: string, arg2: string, arg3: boolean, arg4: boolean): Promise<Resource>
+  { return Jsonipc.send ("canonify", [this, arg1, arg2, arg3, arg4]); }
+};
+Jsonipc.classes["Ase::ResourceCrawler"] = ResourceCrawler;
+
+export class Server // Ase::Server
+  extends Jsonipc.classes["Ase::Gadget"]
+{
+  constructor ($id)
+  { super ($id); if (new.target === Server) Jsonipc.ofreeze (this); }
+  shutdown (): Promise<void>
+  { return Jsonipc.send ("shutdown", [this]); }
+  get_version (): Promise<string>
+  { return Jsonipc.send ("get_version", [this]); }
+  get_build_id (): Promise<string>
+  { return Jsonipc.send ("get_build_id", [this]); }
+  get_opus_version (): Promise<string>
+  { return Jsonipc.send ("get_opus_version", [this]); }
+  get_flac_version (): Promise<string>
+  { return Jsonipc.send ("get_flac_version", [this]); }
+  get_clap_version (): Promise<string>
+  { return Jsonipc.send ("get_clap_version", [this]); }
+  error_blurb (arg1: Error): Promise<string>
+  { return Jsonipc.send ("error_blurb", [this, arg1]); }
+  musical_tuning_label (arg1: MusicalTuning): Promise<string>
+  { return Jsonipc.send ("musical_tuning_label", [this, arg1]); }
+  musical_tuning_blurb (arg1: MusicalTuning): Promise<string>
+  { return Jsonipc.send ("musical_tuning_blurb", [this, arg1]); }
+  user_note (arg1: string, arg2: string, arg3: Flags, arg4: string): Promise<number>
+  { return Jsonipc.send ("user_note", [this, arg1, arg2, arg3, arg4]); }
+  user_reply (arg1: number, arg2: number): Promise<boolean>
+  { return Jsonipc.send ("user_reply", [this, arg1, arg2]); }
+  broadcast_telemetry (arg1: TelemetrySegment[], arg2: number): Promise<boolean>
+  { return Jsonipc.send ("broadcast_telemetry", [this, arg1, arg2]); }
+  list_preferences (): Promise<string[]>
+  { return Jsonipc.send ("list_preferences", [this]); }
+  access_preference (arg1: string): Promise<Property>
+  { return Jsonipc.send ("access_preference", [this, arg1]); }
+  engine_stats (): Promise<string>
+  { return Jsonipc.send ("engine_stats", [this]); }
+  exit_program (arg1: number): Promise<void>
+  { return Jsonipc.send ("exit_program", [this, arg1]); }
+  last_project (): Promise<Project>
+  { return Jsonipc.send ("last_project", [this]); }
+  create_project (arg1: string): Promise<Project>
+  { return Jsonipc.send ("create_project", [this, arg1]); }
+  dir_crawler (arg1: string): Promise<ResourceCrawler>
+  { return Jsonipc.send ("dir_crawler", [this, arg1]); }
+  url_crawler (arg1: string): Promise<ResourceCrawler>
+  { return Jsonipc.send ("url_crawler", [this, arg1]); }
+};
+Jsonipc.classes["Ase::Server"] = Server;
+
 
 /**@type{ServerImpl}*/
 export let server: Promise<Server> | Server =Jsonipc.setup_promise_type (Server, s => server = s);

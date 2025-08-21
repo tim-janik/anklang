@@ -30,14 +30,16 @@ struct Base2 {
   virtual ~Base2() {}
   Copyable randomize()  { Copyable c; c.i = rand(); c.f = rand() / 10.0; return c; }
 };
+using KVInts = std::map<std::string,int>;
+using KVFloats = std::unordered_map<std::string,double>;
 struct Derived : Base, Base2, std::enable_shared_from_this<Derived> {
   const std::string name_;
   using Pair = std::pair<int, BaseP>;
   Derived (const std::string &name) : name_ (name) {}
   void   dummy0 ()                                { printf ("dummy0: NOP\n"); }
-  bool   dummy1 (bool b)                          { printf ("dummy1: b=%s\n", b ? "true" : "false"); return b; }
+  bool   dummy1 (bool b, KVInts kvi)              { printf ("dummy1: b=%s kvi=%zd\n", b ? "true" : "false", kvi.size()); return b; }
   Pair   dummy2 (std::string s, int i)            { printf ("dummy2: s=\"%s\" i=%d\n", s.c_str(), i); return {}; }
-  size_t dummy3 (Derived &d) const                { printf ("dummy3: Derived=%p this=%p\n", &d, this); return size_t (&d); }
+  size_t dummy3 (Derived &d, KVFloats kvf) const  { printf ("dummy3: Derived=%p this=%p kvf=%zd\n", &d, this, kvf.size()); return size_t (&d); }
   bool   dummy4 (float f, std::string s, long l)  { printf ("dummy4: this=%s %f '%s' %ld\n", name_.c_str(), f, s.c_str(), l); return 1; }
   void   dummy5 (const char *c, double d, Pair p) { printf ("dummy5: this=%s %d '%s' %f\n", name_.c_str(), p.first, c, d); }
   std::string dummy6 (int, const std::string &)   { return ""; }
@@ -47,9 +49,9 @@ struct Derived : Base, Base2, std::enable_shared_from_this<Derived> {
   void defaults (bool a1 = true, ErrorType a2 = ErrorType::FATAL, std::string a3 = std::string ("a3"),
                  signed a4 = -4, float a5 = -0.5, const char *a6 = "a6", double a7 = 0.7,
                  size_t a8 = 8, Copyable *a9 = nullptr,
-                 Base *b = nullptr) {} // see .set_d()
+                 Base *b = nullptr) {} // see .set_dflt()
   template<class C> static void
-  set_d (C &c) // see .defaults()
+  set_dflt (C &c) // see .defaults()
   {
     c.set_d ("defaults", &Derived::defaults, {
         true, ErrorType::FATAL, std::string ("a3"),
@@ -96,6 +98,8 @@ static void
 test_jsonipc (bool dispatcher_shell, bool printer)
 {
   using namespace Jsonipc;
+  if (printer)
+    g_binding_printer = new BindingPrinter();
   rapidjson::Document doc;
   auto &a = doc.GetAllocator();
 
@@ -150,7 +154,7 @@ test_jsonipc (bool dispatcher_shell, bool printer)
     .set ("dummy9", &Derived::dummy9)
     .set ("randomize", &Derived::randomize)
     ;
-  Derived::set_d (class_Derived);
+  Derived::set_dflt (class_Derived);
 
   // Provide scope and instance ownership during dispatch_message()
   InstanceMap imap;
@@ -220,10 +224,9 @@ test_jsonipc (bool dispatcher_shell, bool printer)
   const Copyable *c5 = parse_result<Copyable*> (111, result);
   JSONIPC_ASSERT_RETURN (c5 && (c5->i != c4->i || c5->f != c4->f));
 
-  if (printer)
-    {
-      printf ("%s\n", Jsonipc::ClassPrinter::to_string().c_str());
-    }
+  if (printer && Jsonipc::g_binding_printer) {
+    dprintf (1, "%s\n", Jsonipc::g_binding_printer->finish().c_str());
+  }
 
   // CLI test server
   if (dispatcher_shell)

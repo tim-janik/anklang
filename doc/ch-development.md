@@ -7,13 +7,13 @@ keywords:   Anklang, Linux, ALSA, JavaScript, Scripting, IPC
 
 # ANKLANG Development Details
 
-Technically, Anklang consists of a user interface front-end based on web technologies (HTML, DOM, CSS, JavaScript, Lit)
-and a synthesis engine backend written in C++.
+Technically, Anklang consists of a user interface front-end based on web technologies
+(HTML, DOM, CSS, JavaScript, Lit, SolidJS) and a synthesis engine backend written in C++.
 
 ## ASE - Anklang synthesis engine
 
 The `ase/` subdirectory contains the C++ implementation of the `AnklangSynthEngine` executable
-which contains the core component for audio data processing and audio plugin handling.
+which contains the core components for audio data processing and audio plugin handling.
 It interfaces with the HTML DOM based user interface via an IPC layer with JSON messages that reflect the C++ API.
 
 The synthesis engine can load various audio rendering plugins which are executed in audio rendering
@@ -48,8 +48,11 @@ In the above examples, `Ase::Error::IO` can be serialized because it is register
 `Jsonipc::Enum<Ase::Error>` with its enum values. The same works for serializable
 classes registered through `Jsonipc::Serializable<SomeClass>`.
 
-[_] Serialization of class instances will have to depend on the Scope/InstanceMap, so
-instance pointers in copyable classes registered as `Jsonipc::Serializable<>` can be
+Serialization of "record" instances (classes with public data fields) are registered
+as `Jsonipc::Serializable<>` and are serialized as JSON objects.
+
+Serialization of class instances (with methods) depends on the Scope & InstanceMap,
+so instance pointers in copyable classes registered as `Jsonipc::Class<>` can be
 marshalled into a JsonValue (as `{$id,$class}` pair), then be resolved into an
 InstanceP stored in an Ase::Value and from there be marshalled into a persistent
 relative object link for project data storage.
@@ -60,19 +63,19 @@ Jsonipc is a header-only IPC layer that marshals C++ calls to JSON messages defi
 [jsonipc/jsonipc.hh](https://github.com/tim-janik/anklang/blob/master/jsonipc/jsonipc.hh).
 The needed registration code is very straight forward to write manually, but can also be
 auto-genrated by using
-[jsonipc/cxxjip.py](https://github.com/tim-janik/anklang/blob/master/jsonipc/cxxjip.py) which
-parses the exported API using
-[CastXML](https://github.com/CastXML/CastXML).
+[jsonipc/jsonbindings.ts](https://github.com/tim-janik/anklang/blob/trunk/jsonipc/jsonbindings.ts) 
+which parses API descriptions from JSON that can be generated with
+[`clang -extract-api`](https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-extract-api).
 
 The Anklang API for remote method calls is defined in
-[api.hh](https://github.com/tim-janik/anklang/blob/master/ase/api.hh).
-Each class with its methods, struct with its fields and enum with its values is registered
+[api.hh](https://github.com/tim-janik/anklang/blob/trunk/ase/api.hh).
+Each class with its methods, records with fields and enum with values are registered
 as a Jsonipc interface using conscise C++ code that utilizes templates to derive the needed type information.
 
-The corresponding Javascript code to use `api.hh` via
+The corresponding TypeScript code to use `api.hh` via
 [async](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/async_function)
-remote method calls is generated via `Jsonipc::ClassPrinter::to_string()` by
-`AnklangSynthEngine --js-api`.
+remote method calls is generated with the `Jsonipc::g_binding_printer` class by
+`AnklangSynthEngine --jsonts`. Completed:
 
 * [√] `shared_ptr<Class> from_json()` - lookup by id in InstanceMap or use `Scope::make_shared` for Serializable.
 * [√] `to_json (const shared_ptr<Class> &p)` - marshal Serializable or {id} from InstanceMap.
@@ -83,11 +86,13 @@ remote method calls is generated via `Jsonipc::ClassPrinter::to_string()` by
 * [√] No uses are made of copy-ctor implementations.
 * [√] Need virtual ID serialization API on InstanceMap.
 * [√] Add `jsonvalue_as_string()` for debugging purposes.
+* [√] Type-safe Jsonipc bindings by migrating the JavaScript bindings to TypeScript.
 
 ### Callback Handling
 
-Javascript can register/unregister remote Callbacks with *create* and *remove*.
-C++ sends events to inform about a remote Callback being *called* or unregistered *killed*.
+By using special trigger functions, JavaScript can register/unregister the existence of remote
+Callbacks with a specific identifier via `/create` and `/remove`.
+C++ in turn sends events to inform about a remote Callback being called via `/_<id>` or unregistered via `/killed`.
 
 ```cxx
 void 	Jsonapi/Trigger/create (id);     // JS->C++

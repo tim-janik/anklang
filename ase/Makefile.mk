@@ -23,17 +23,31 @@ ASE_EXTERNAL_INCLUDES := $(strip		\
 ) # also used by clang-tidy
 ase/object.includes		::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
 
-# == ase/gen/api-jsonipc.g.cc ==
+# == codegen/ase/gen/api-jsonipc.json ==
 $>/codegen/ase/gen/api-jsonipc.json: ase/api.hh $(ase/sysconfig.dep) ase/Makefile.mk
 	$(QGEN)
 	$Q clang-20 -std=gnu++23 -I . -I out/ -extract-api $< -o $@
+
+# == ase/gen/class-tree.g.md ==
+$>/codegen/ase/gen/class-tree.g.md: $>/codegen/ase/gen/api-jsonipc.json jsonipc/jsonbindings.ts ase/Makefile.mk
+	$(QGEN)
+	$Q $(RUNTS) jsonipc/jsonbindings.ts --class-tree $<				>  $@.tmp
+	$Q mv $@.tmp $@
+CODEGEN.FILES += ase/gen/class-tree.g.md
+
+# == ase/gen/api-jsonipc.g.cc ==
 $>/codegen/ase/gen/api-jsonipc.g.cc: $>/codegen/ase/gen/api-jsonipc.json jsonipc/jsonbindings.ts ase/Makefile.mk
 	$(QGEN)
 	$Q echo '// Generated file, inputs: $(notdir $^)'				>  $@.tmp
 	$Q echo '#include <ase/jsonapi.hh>'						>> $@.tmp
 	$Q echo '#include <ase/api.hh>'							>> $@.tmp
-	$Q $(RUNTS) jsonipc/jsonbindings.ts $<						>> $@.tmp
-	$Q echo '[[maybe_unused]] static bool init_jsonipc = (jsonipc_for_api_jsonipc_json(), 0);'	>> $@.tmp
+	$Q $(RUNTS) jsonipc/jsonbindings.ts --cxx $<					>> $@.tmp
+	$Q echo '[[maybe_unused]] static bool init_jsonipc = [] {'			>> $@.tmp
+	$Q echo '  if (getenv ("ASE_JSONTS"))'						>> $@.tmp
+	$Q echo '    Jsonipc::g_binding_printer = new Jsonipc::BindingPrinter();'	>> $@.tmp
+	$Q echo '  jsonipc_for_api_jsonipc_json();'					>> $@.tmp
+	$Q echo '  return 0;'								>> $@.tmp
+	$Q echo '} ();'									>> $@.tmp
 	$Q mv $@.tmp $@
 CODEGEN.FILES += ase/gen/api-jsonipc.g.cc
 # DEV_TARGETS - checks & helpers for development
@@ -50,14 +64,20 @@ ALL_TARGETS += $>/codegen/ase/gen/api-jsonipc.pretty.json
 # == ase/gen/api-jsonipc.g.ts ==
 $>/codegen/ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts $(lib/AnklangSynthEngine) ase/Makefile.mk
 	$(QGEN)
-	$Q echo '// Generated from: $(notdir $^)'						>  $@.tmp
-	$Q echo '// @ts-nocheck'								>> $@.tmp
-	$Q cat jsonipc/jsonipc.ts								>> $@.tmp
-	$Q ASAN_OPTIONS=detect_leaks=0 \
-	$(lib/AnklangSynthEngine) --norc  -P null -M null --js-api				>> $@.tmp
-	$Q echo '/**@type{ServerImpl}*/'							>> $@.tmp
-	$Q echo -n 'export let server: Promise<Server> | Server ='				>> $@.tmp
-	$Q echo 'Jsonipc.setup_promise_type (Server, s => server = s);'				>> $@.tmp
+	$Q echo '// Generated from: $(notdir $^)'					>  $@.tmp
+	$Q cat jsonipc/jsonipc.ts							>> $@.tmp
+	$Q echo 'export class SharedBase // Ase::SharedBase'				>> $@.tmp
+	$Q echo '  extends Jsonipc.Jsonipc_prototype {'					>> $@.tmp
+	$Q echo '  constructor ($id) { super ($id);'					>> $@.tmp
+	$Q echo ' if (new.target === SharedBase) Jsonipc.ofreeze (this); }'		>> $@.tmp
+	$Q echo '};'									>> $@.tmp
+	$Q echo 'Jsonipc.classes["Ase::SharedBase"] = SharedBase;'			>> $@.tmp
+	$Q echo										>> $@.tmp
+	$Q ASAN_OPTIONS=detect_leaks=0 ASE_JSONTS=1 \
+	$(lib/AnklangSynthEngine) --norc  -P null -M null --jsonts			>> $@.tmp
+	$Q echo '/**@type{ServerImpl}*/'						>> $@.tmp
+	$Q echo -n 'export let server: Promise<Server> | Server ='			>> $@.tmp
+	$Q echo 'Jsonipc.setup_promise_type (Server, s => server = s);'			>> $@.tmp
 	$Q mv $@.tmp $@
 CODEGEN.FILES += ase/gen/api-jsonipc.g.ts
 # DEV_TARGETS - checks & helpers for development
