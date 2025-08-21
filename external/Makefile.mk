@@ -58,6 +58,7 @@ EXTERNAL_CXX_STAMPS += external/nlohmann-json/.sha-$(nlohmann-json/sha)
 
 # == external/libsndfile/ ==
 libsndfile/version := 1.2.2-51-g52b803f5
+libsndfile/lt_current.lt_age.lt_revision := 1.0.37
 libsndfile/sha := edb98c8fdba810768a95ba99b9c8f5fe38451ab35f3329564e0ff85b16d40220
 external/libsndfile/.sha-$(libsndfile/sha):
 	$(QGEN)
