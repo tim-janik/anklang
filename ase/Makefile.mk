@@ -3,7 +3,7 @@ include $(wildcard $>/ase/*.d)
 
 # == ase/ *.cc file sets ==
 ase/AnklangSynthEngine.sources	:= ase/main.cc
-lib/libsndfile.so		:= $>/lib/libsndfile.so
+lib/libsndfile.so		:= $>/lib/libsndfile.so.$(libsndfile/lt_current.lt_age.lt_revision)
 ase/jackdriver.sources		:= ase/driver-jack.cc
 ase/gtk2wrap.sources		:= ase/gtk2wrap.cc
 ase/noglob.sources		:= $(ase/AnklangSynthEngine.sources) $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
@@ -232,6 +232,7 @@ $(ALL_TARGETS) += $(lib/gtk2wrap.so)
 $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
 	$(lib/AnklangSynthEngine)	\
 	$(lib/jackdriver.so.MAYBE)	\
+	$(lib/libsndfile.so)		\
 	$(lib/gtk2wrap.so)		\
   ))
 
