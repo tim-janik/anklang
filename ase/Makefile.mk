@@ -3,6 +3,7 @@ include $(wildcard $>/ase/*.d)
 
 # == ase/ *.cc file sets ==
 ase/AnklangSynthEngine.sources	:= ase/main.cc
+lib/libsndfile.so		:= $>/lib/libsndfile.so
 ase/jackdriver.sources		:= ase/driver-jack.cc
 ase/gtk2wrap.sources		:= ase/gtk2wrap.cc
 ase/noglob.sources		:= $(ase/AnklangSynthEngine.sources) $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
@@ -138,16 +139,6 @@ $>/ase/blake3impl.c:		| $>/ase/
 	$Q echo -e '#include "external/blake3/c/blake3_dispatch.c"'                          >> $>/ase/blake3impl.c
 $>/ase/blake3avx512.c $>/ase/blake3avx2.c $>/ase/blake3sse41.c $>/ase/blake3sse2.c: $>/ase/blake3impl.c
 
-# == libsndfile ==
-$>/lib/libsndfile.so: $(EXTERNAL_CXX_STAMPS)	| $>/lib/
-	$(QGEN)
-	$Q cmake \
-		-B $>/sndfile/ -S external/libsndfile/ -DCMAKE_BUILD_TYPE=MINSIZEREL \
-		-DBUILD_PROGRAMS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON
-	$Q $(MAKE) -C $>/sndfile/
-	$Q $(CP) -P $>/sndfile/libsndfile.so* $>/lib/
-ase/sndfile.cc: $>/lib/libsndfile.so # includes $>/sndfile/src/config.h
-
 # == Common Sources ==
 ase/common.sources	::= $(ase/common.ccsources) $(ase/common.csources)
 ase/generated.sources	+= $(strip	\
@@ -197,12 +188,12 @@ ase/AnklangSynthEngine.objects	::= $(call BUILDDIR_O, $(ase/AnklangSynthEngine.s
 $(ase/AnklangSynthEngine.objects): $(ase/object.deps)
 $(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= $(ase/object.includes)
 ase/AnklangSynthEngine.objects	 += $(ase/common.objects) $(devices/4ase.objects)
-$(lib/AnklangSynthEngine): $>/lib/libsndfile.so					| $>/lib/
+$(lib/AnklangSynthEngine): $(lib/libsndfile.so)				| $>/lib/
 $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
 	$(ase/AnklangSynthEngine.objects), \
 	$(lib/libase.so), \
-	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl $>/lib/libsndfile.so, \
+	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl $(lib/libsndfile.so), \
 	../lib)
 ALL_TARGETS += $(lib/AnklangSynthEngine)
 
@@ -282,3 +273,176 @@ check-ase-tests: $(lib/AnklangSynthEngine)
 	&& $(lib/AnklangSynthEngine) --list-tests \
 	|  $(xargs_parallel) $(lib/AnklangSynthEngine) --norc -P null -M null --test
 CHECK_TARGETS += check-ase-tests
+
+
+# == libsndfile ==
+# cmake -B out/sndfile/ -S external/libsndfile/ -DBUILD_SHARED_LIBS=ON -DBUILD_PROGRAMS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=MINSIZEREL
+# (cd out/sndfile/ && bear -- make -j)
+# sed -nr '/"file":/{ s/.* "//; s/", */ \\/; s|/src/anklang/external/libsndfile/src/|\t|; p }' out/sndfile/compile_commands.json
+LIBSNDFILE_CFILES := $(strip \
+	ALAC/ALACBitUtilities.c \
+	ALAC/ag_dec.c \
+	ALAC/ag_enc.c \
+	ALAC/alac_decoder.c \
+	ALAC/alac_encoder.c \
+	ALAC/dp_dec.c \
+	ALAC/dp_enc.c \
+	ALAC/matrix_dec.c \
+	ALAC/matrix_enc.c \
+	G72x/g721.c \
+	G72x/g723_16.c \
+	G72x/g723_24.c \
+	G72x/g723_40.c \
+	G72x/g72x.c \
+	GSM610/add.c \
+	GSM610/code.c \
+	GSM610/decode.c \
+	GSM610/gsm_create.c \
+	GSM610/gsm_decode.c \
+	GSM610/gsm_destroy.c \
+	GSM610/gsm_encode.c \
+	GSM610/gsm_option.c \
+	GSM610/long_term.c \
+	GSM610/lpc.c \
+	GSM610/preprocess.c \
+	GSM610/rpe.c \
+	GSM610/short_term.c \
+	GSM610/table.c \
+	aiff.c \
+	alac.c \
+	alaw.c \
+	au.c \
+	audio_detect.c \
+	avr.c \
+	broadcast.c \
+	caf.c \
+	cart.c \
+	chanmap.c \
+	chunk.c \
+	command.c \
+	common.c \
+	dither.c \
+	double64.c \
+	dwd.c \
+	dwvw.c \
+	file_io.c \
+	flac.c \
+	float32.c \
+	g72x.c \
+	gsm610.c \
+	htk.c \
+	id3.c \
+	ima_adpcm.c \
+	ima_oki_adpcm.c \
+	interleave.c \
+	ircam.c \
+	macos.c \
+	mat4.c \
+	mat5.c \
+	mpc2k.c \
+	mpeg.c \
+	mpeg_decode.c \
+	mpeg_l3_encode.c \
+	ms_adpcm.c \
+	nist.c \
+	nms_adpcm.c \
+	ogg.c \
+	ogg_opus.c \
+	ogg_pcm.c \
+	ogg_speex.c \
+	ogg_vcomment.c \
+	ogg_vorbis.c \
+	paf.c \
+	pcm.c \
+	pvf.c \
+	raw.c \
+	rf64.c \
+	rx2.c \
+	sd2.c \
+	sds.c \
+	sndfile.c \
+	strings.c \
+	svx.c \
+	txw.c \
+	ulaw.c \
+	voc.c \
+	vox_adpcm.c \
+	w64.c \
+	wav.c \
+	wavlike.c \
+	wve.c \
+	xi.c \
+)
+LIBSNDFILE_SOURCES := $(LIBSNDFILE_CFILES:%=external/libsndfile/src/%)
+
+# == libsndfile/config.h ==
+$>/libsndfile/config.h: ase/Makefile.mk $(EXTERNAL_CXX_STAMPS)		| $>/libsndfile/
+	$(QGEN)
+	$Q echo ''									>  $@.tmp
+	$Q echo '#define PACKAGE_NAME "libsndfile"'					>> $@.tmp
+	$Q echo '#define PACKAGE_VERSION "$(libsndfile/version)"'			>> $@.tmp
+	$Q echo '#define CPU_IS_BIG_ENDIAN 0'						>> $@.tmp
+	$Q echo '#define CPU_IS_LITTLE_ENDIAN 1'					>> $@.tmp
+	$Q echo '#define COMPILER_IS_GCC	__GNUC__'				>> $@.tmp
+	$Q echo '#define OS_IS_OPENBSD			0'				>> $@.tmp
+	$Q echo '#define OS_IS_WIN32			0'				>> $@.tmp
+	$Q echo '#define OS_IS_LINUX			1'				>> $@.tmp
+	$Q echo '#define _MINIX				0'				>> $@.tmp
+	$Q echo '#define SIZEOF_INT64_T			8'				>> $@.tmp
+	$Q echo '#define SIZEOF_OFF_T		__SIZEOF_SIZE_T__'			>> $@.tmp
+	$Q echo '#define SIZEOF_VOIDP		__SIZEOF_SIZE_T__'			>> $@.tmp
+	$Q echo '#define SIZEOF_WCHAR_T		__SIZEOF_WCHAR_T__'			>> $@.tmp
+	$Q echo '#define HAVE_ALSA_ASOUNDLIB_H	__has_include(<alsa/asoundlib.h>)'	>> $@.tmp
+	$Q echo '#define HAVE_BYTESWAP_H	__has_include(<byteswap.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_DLFCN_H		__has_include(<dlfcn.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_ENDIAN_H		__has_include(<endian.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_IMMINTRIN_H	__has_include(<immintrin.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_INTTYPES_H	__has_include(<inttypes.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_LOCALE_H		__has_include(<locale.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_SNDIO_H		__has_include(<sndio.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_STDBOOL_H		__has_include(<stdbool.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_STDINT_H		__has_include(<stdint.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_SYS_TIME_H	__has_include(<sys/time.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_SYS_TIME_H	__has_include(<sys/time.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_SYS_TYPES_H	__has_include(<sys/types.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_UNISTD_H		__has_include(<unistd.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_DECL_S_IRGRP	__has_include(<sys/stat.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_FSTAT			1'				>> $@.tmp
+	$Q echo '#define HAVE_FSTAT64			1'				>> $@.tmp
+	$Q echo '#define HAVE_FSYNC			1'				>> $@.tmp
+	$Q echo '#define HAVE_FTRUNCATE			1'				>> $@.tmp
+	$Q echo '#define HAVE_GETPAGESIZE	__has_include(<unistd.h>)'		>> $@.tmp
+	$Q echo '#define HAVE_GETTIMEOFDAY		1'				>> $@.tmp
+	$Q echo '#define HAVE_GMTIME			1'				>> $@.tmp
+	$Q echo '#define HAVE_GMTIME_R		OS_IS_LINUX'				>> $@.tmp
+	$Q echo '#define HAVE_LRINT			1'				>> $@.tmp
+	$Q echo '#define HAVE_LRINTF			1'				>> $@.tmp
+	$Q echo '#define HAVE_LSEEK			1'				>> $@.tmp
+	$Q echo '#define HAVE_OPEN			1'				>> $@.tmp
+	$Q echo '#define HAVE_READ			1'				>> $@.tmp
+	$Q echo '#define HAVE_WRITE			1'				>> $@.tmp
+	$Q echo "#define HAVE_MPEG		( __has_include(<lame/lame.h>) && \\"	>> $@.tmp
+	$Q echo "				  __has_include(<mpg123.h>) )"		>> $@.tmp
+	$Q echo "#define HAVE_EXTERNAL_XIPH_LIBS	( \\"				>> $@.tmp
+	$Q echo "				__has_include(<flac.h>) && \\"		>> $@.tmp
+	$Q echo "				__has_include(<ogg.h>) && \\"		>> $@.tmp
+	$Q echo "				__has_include(<vorbisfile.h>) && \\"	>> $@.tmp
+	$Q echo "				__has_include(<vorbisenc.h>) && \\"	>> $@.tmp
+	$Q echo "				__has_include(<opus.h>) )"		>> $@.tmp
+	$Q mv $@.tmp $@
+$(LIBSNDFILE_SOURCES): $>/libsndfile/config.h
+
+# == lib/libsndfile.so ==
+LIBSNDFILE_OBJECTS := $(LIBSNDFILE_SOURCES:external/libsndfile/src/%.c=$>/libsndfile/%.o)
+$>/libsndfile/%.o: external/libsndfile/src/%.c		| $(dir $(sort $(LIBSNDFILE_OBJECTS)))
+	$(QGEN)
+	$Q $(CCACHE) $(CC) -fPIC $(compiledefs) $(compilecxxflags) \
+		-I external/libsndfile/include -I external/libsndfile/src -I $>/libsndfile/ \
+		-Dsndfile_EXPORTS -DNDEBUG -c $< -o $@
+$(call BUILD_SHARED_LIB,			\
+	$(lib/libsndfile.so),			\
+	$(LIBSNDFILE_OBJECTS),			\
+	ase/Makefile.mk | $>/lib/,		\
+	-lmpg123 -lmp3lame,			\
+	../lib)
+ase/sndfile.cc: $>/libsndfile/config.h	# includes libsndfile/config.h

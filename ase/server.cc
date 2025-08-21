@@ -11,6 +11,7 @@
 #include "project.hh"
 #include "path.hh"
 #include "clapdevice.hh"
+#include "sndfile.hh"
 #include "wave.hh"
 #include "internal.hh"
 #include <atomic>
@@ -75,6 +76,12 @@ String
 ServerImpl::get_clap_version()
 {
   return ClapDeviceImpl::clap_version();
+}
+
+String
+ServerImpl::get_sndfile_version ()
+{
+  return libsndfile_version();
 }
 
 void
