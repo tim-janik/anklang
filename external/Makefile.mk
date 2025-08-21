@@ -57,11 +57,12 @@ external/nlohmann-json/.sha-$(nlohmann-json/sha):
 EXTERNAL_CXX_STAMPS += external/nlohmann-json/.sha-$(nlohmann-json/sha)
 
 # == external/libsndfile/ ==
-libsndfile/sha := 1227bc78df8eece089e6b984ba7c32e74e210f146d2bac1b76bd218baaf35ce5
+libsndfile/version := 1.2.2-51-g52b803f5
+libsndfile/sha := edb98c8fdba810768a95ba99b9c8f5fe38451ab35f3329564e0ff85b16d40220
 external/libsndfile/.sha-$(libsndfile/sha):
 	$(QGEN)
 	$Q $(call fetch-and-check, external/libsndfile.tar.gz, $(libsndfile/sha), \
-		https://github.com/libsndfile/libsndfile/archive/e486f20fd4b1c7490cde84f22635e1c267ae882b/develop.tar.gz)
+		https://github.com/libsndfile/libsndfile/archive/52b803f57a1f4d23471f5c5f77e1a21e0721ea0e/develop.tar.gz)
 	$Q rm -rf external/libsndfile && mkdir external/libsndfile
 	$Q tar xf external/libsndfile.tar.gz --strip-components=1 -C external/libsndfile/
 	$Q touch $@
