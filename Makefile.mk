@@ -142,7 +142,7 @@ $>/WILDCARD_FILES.mk: $(REPOCOMMITDEPS)	| $>/
 	$(QGEN)
 	@ # List files via find for builds without jj/git repo info
 	$Q ( echo $(WILDCARD_SPECIAL) | tr ' ' '\n' ; \
-	     find $(WILDCARD_SUBDIRS) . -maxdepth 1 -type f | sed 's|^\./||' ) \
+	     find $(WILDCARD_SUBDIRS) trkn/ . -maxdepth 1 -type f | sed 's|^\./||' ) \
 	   | sort > $@.find
 	@ # List files via jj/git, validate that WILDCARD_SUBDIRS finds a superset
 	$Q rm -f $@.repo ; \
@@ -151,6 +151,7 @@ $>/WILDCARD_FILES.mk: $(REPOCOMMITDEPS)	| $>/
 	   elif git rev-parse --is-inside-work-tree >/dev/null 2>&1 ; \
 	   then git ls-tree -r --name-only HEAD | sort > $@.repo ; \
 	   fi
+	$Q test -r $@.repo || exit 0; grep -vE '^trkn/.*/' < $@.repo > $@.filt ; mv $@.filt $@.repo
 	$Q test -r $@.repo && grep -vFxf $@.find $@.repo || exit 0 && \
 	     ( echo "ERROR: WILDCARD_SUBDIRS misses some files tracked by Git" ; false ) >&2
 	@ # Use most accurate file list for WILDCARD_FILES.mk
