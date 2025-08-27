@@ -113,6 +113,7 @@ uninstall: misc/uninstall
 # == Check Copyright Notices ==
 # files containing copyright declarations
 misc/copyright_files := $(strip \
+	trkn/copyright		\
 	doc/copyright		\
 )
 # verify copyright entries on every build within Git or JJ repos
