@@ -69,6 +69,18 @@ external/libsndfile/.sha-$(libsndfile/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/libsndfile/.sha-$(libsndfile/sha)
 
+# == external/libsamplerate/ ==
+libsamplerate/version := 0.2.2-18-g15c392d
+libsamplerate/sha := 2172280f3427504571a7888f28dc02f276ce6b3ccb57d0c74094f87709a7b237
+external/libsamplerate/.sha-$(libsamplerate/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/libsamplerate.tar.gz, $(libsamplerate/sha), \
+		https://github.com/libsndfile/libsamplerate/archive/15c392d47e71b9395a759544b3818a1235fe1a1d/develop.tar.gz)
+	$Q rm -rf external/libsamplerate && mkdir external/libsamplerate
+	$Q tar xf external/libsamplerate.tar.gz --strip-components=1 -C external/libsamplerate/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/libsamplerate/.sha-$(libsamplerate/sha)
+
 # == external/liquidsfz/ ==
 liquidsfz/sha := 7718fbf707100b87dbfd3987e4a1b75d12e65685f0f6cf88573d00032459f8fc
 external/liquidsfz/.sha-$(liquidsfz/sha):
