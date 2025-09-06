@@ -208,6 +208,18 @@ external/rapidjson/.sha-$(rapidjson/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/rapidjson/.sha-$(rapidjson/sha)
 
+# == external/soundtouch/ ==
+soundtouch/version := 2.4.0
+soundtouch/sha := 3dda3c9ab1e287f15028c010a66ab7145fa855dfa62763538f341e70b4d10abd
+external/soundtouch/.sha-$(soundtouch/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/soundtouch.tar.gz, $(soundtouch/sha), \
+		https://www.surina.net/soundtouch/soundtouch-2.4.0.tar.gz)
+	$Q rm -rf external/soundtouch && mkdir external/soundtouch
+	$Q tar xf external/soundtouch.tar.gz --strip-components=1 -C external/soundtouch/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/soundtouch/.sha-$(soundtouch/sha)
+
 # == external/websocketpp/ ==
 websocketpp/sha := 6ce889d85ecdc2d8fa07408d6787e7352510750daa66b5ad44aacb47bea76755
 external/websocketpp/.sha-$(websocketpp/sha):
