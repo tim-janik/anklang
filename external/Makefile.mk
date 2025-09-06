@@ -34,6 +34,18 @@ external/blobs4anklang/.sha-$(blobs4anklang/sha):
 	$Q touch $@
 EXTERNAL_BLOBS4ANKLANG_STAMPS += external/blobs4anklang/.sha-$(blobs4anklang/sha)
 
+# == external/crill/ ==
+crill/version := 20230208.142844-0-gbedcf27
+crill/sha := 7f54d046fbf1839c68a4de0d07886b977527867cb6c89cb7d2c0f0cdcc9c89e4
+external/crill/.sha-$(crill/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/crill.tar.gz, $(crill/sha), \
+		https://github.com/crill-dev/crill/archive/bedcf278625ffbe6ebfcd2d71aed20d78fd838ce/develop.tar.gz)
+	$Q rm -rf external/crill && mkdir external/crill
+	$Q tar xf external/crill.tar.gz --strip-components=1 -C external/crill/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/crill/.sha-$(crill/sha)
+
 # == external/clap/ ==
 clap/sha := eef67a38df6c20fd4cb79698772d35d30aefc2e1a8d5275a5169f58cd530333e
 external/clap/.sha-$(clap/sha):
