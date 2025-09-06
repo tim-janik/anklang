@@ -57,6 +57,18 @@ external/clap/.sha-$(clap/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/clap/.sha-$(clap/sha)
 
+# == external/mpmcqueue/ ==
+mpmcqueue/version := v1.0-8-gb9808ed
+mpmcqueue/sha := bdfcf2429aebe892eb7b4a2edbc2d889365fa52264bf9501d937e8484166ec6a
+external/mpmcqueue/.sha-$(mpmcqueue/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/mpmcqueue.tar.gz, $(mpmcqueue/sha), \
+		https://github.com/rigtorp/MPMCQueue/archive/b9808ede08f26fa9df4df4e081d19cace8f6c6ea/develop.tar.gz)
+	$Q rm -rf external/mpmcqueue && mkdir external/mpmcqueue
+	$Q tar xf external/mpmcqueue.tar.gz --strip-components=1 -C external/mpmcqueue/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/mpmcqueue/.sha-$(mpmcqueue/sha)
+
 # == external/nanorange/ ==
 nanorange/version := 20200706.105018-0-gbf32251
 nanorange/sha := 28cf187174b3097c00aa12cc2a3b554f8f768a3b50a9703174af03ee99c3397c
