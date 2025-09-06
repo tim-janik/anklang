@@ -69,6 +69,18 @@ external/clap/.sha-$(clap/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/clap/.sha-$(clap/sha)
 
+# == external/expected/ ==
+expected/version := v1.1.0
+expected/sha := fe3b18aecb849029b6af94922be0c25eee1b7b86565b1c8350692ed776cf42fb
+external/expected/.sha-$(expected/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/expected.tar.gz, $(expected/sha), \
+		https://github.com/TartanLlama/expected/archive/292eff8bd8ee230a7df1d6a1c00c4ea0eb2f0362/develop.tar.gz)
+	$Q rm -rf external/expected && mkdir external/expected
+	$Q tar xf external/expected.tar.gz --strip-components=1 -C external/expected/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/expected/.sha-$(expected/sha)
+
 # == external/mpmcqueue/ ==
 mpmcqueue/version := v1.0-8-gb9808ed
 mpmcqueue/sha := bdfcf2429aebe892eb7b4a2edbc2d889365fa52264bf9501d937e8484166ec6a
