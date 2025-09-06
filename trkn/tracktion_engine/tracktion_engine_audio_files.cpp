@@ -54,6 +54,7 @@ extern "C"
 #include <tracktion_graph/tracktion_graph.h> //#include "audio_files/tracktion_AudioFile.test.cpp"
 #include "audio_files/tracktion_AudioFileUtils.cpp"
 #include "audio_files/tracktion_AudioFormatManager.cpp"
+#include <tracktion_graph/tracktion_graph.h>
 #include "audio_files/tracktion_BufferedAudioReader.cpp"
 
 #include "midi/tracktion_MidiList.cpp"
