@@ -34,6 +34,18 @@ external/blobs4anklang/.sha-$(blobs4anklang/sha):
 	$Q touch $@
 EXTERNAL_BLOBS4ANKLANG_STAMPS += external/blobs4anklang/.sha-$(blobs4anklang/sha)
 
+# == external/choc/ ==
+choc/version := 20240625.114431-0-g426c7ae
+choc/sha := 3664bc1ff8268271ff69f19dca6355dd53bf069c02a30698ac12e2132d66d31d
+external/choc/.sha-$(choc/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/choc.tar.gz, $(choc/sha), \
+		https://github.com/Tracktion/choc/archive/426c7ae538f8a4709bb381c6727a83812c262962/develop.tar.gz)
+	$Q rm -rf external/choc && mkdir external/choc
+	$Q tar xf external/choc.tar.gz --strip-components=1 -C external/choc/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/choc/.sha-$(choc/sha)
+
 # == external/crill/ ==
 crill/version := 20230208.142844-0-gbedcf27
 crill/sha := 7f54d046fbf1839c68a4de0d07886b977527867cb6c89cb7d2c0f0cdcc9c89e4
