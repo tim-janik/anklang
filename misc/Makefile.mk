@@ -122,7 +122,7 @@ $>/.copyright.check: misc/checkcrlist.py $(misc/copyright_files) $(GITCOMMITDEPS
 	&& git ls-tree -r --name-only HEAD > $@.tmp \
 	&& misc/checkcrlist.py -e $@.tmp $(misc/copyright_files)
 	$Q rm -f $@.tmp && touch $@
-all: $>/.copyright.check
+LATE_TARGETS += $>/.copyright.check
 # explicit copyright check (only active in repos with .git)
 check-copyright: misc/checkcrlist.py $(misc/copyright_files)
 	$(QGEN)
