@@ -45,6 +45,18 @@ external/clap/.sha-$(clap/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/clap/.sha-$(clap/sha)
 
+# == external/nanorange/ ==
+nanorange/version := 20200706.105018-0-gbf32251
+nanorange/sha := 28cf187174b3097c00aa12cc2a3b554f8f768a3b50a9703174af03ee99c3397c
+external/nanorange/.sha-$(nanorange/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/nanorange.tar.gz, $(nanorange/sha), \
+		https://github.com/tcbrindle/NanoRange/archive/bf32251d65673fe170d602777c087786c529ead8/develop.tar.gz)
+	$Q rm -rf external/nanorange && mkdir external/nanorange
+	$Q tar xf external/nanorange.tar.gz --strip-components=1 -C external/nanorange/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/nanorange/.sha-$(nanorange/sha)
+
 # == external/nlohmann-json/ ==
 nlohmann-json/sha := 42f6e95cad6ec532fd372391373363b62a14af6d771056dbfc86160e6dfff7aa
 external/nlohmann-json/.sha-$(nlohmann-json/sha):
