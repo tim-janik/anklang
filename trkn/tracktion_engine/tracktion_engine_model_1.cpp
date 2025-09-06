@@ -22,12 +22,12 @@ using namespace std::literals;
  #pragma GCC diagnostic ignored "-Wfloat-equal"
 #endif
 
-#include "../../modules/tracktion_graph/tracktion_graph.h"
-#include "../../modules/tracktion_core/utilities/tracktion_Benchmark.h"
+#include "tracktion_graph/tracktion_graph.h"
+#include "tracktion_core/utilities/tracktion_Benchmark.h"
 
 #include "tracktion_engine.h"
 
-#include "../../modules/tracktion_graph/tracktion_graph/tracktion_TestUtilities.h"
+#include "tracktion_graph/tracktion_graph/tracktion_TestUtilities.h"
 
 #include "timestretch/tracktion_TempoDetect.h"
 #include "model/automation/modifiers/tracktion_ModifierInternal.h"
