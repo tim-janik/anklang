@@ -152,6 +152,8 @@ namespace FlacNamespace
   #define NDEBUG // (some flac code prints cpu info if this isn't defined)
  #endif
 
+#include <FLAC/all.h>␍
+#if 0
  #include "flac/all.h"
  #include "flac/libFLAC/bitmath.c"
  #include "flac/libFLAC/bitreader.c"
@@ -169,6 +171,7 @@ namespace FlacNamespace
  #include "flac/libFLAC/stream_encoder.c"
  #include "flac/libFLAC/stream_encoder_framing.c"
  #include "flac/libFLAC/window_flac.c"
+#endif
 
  #pragma pop_macro ("DEBUG")
  #pragma pop_macro ("NDEBUG")
