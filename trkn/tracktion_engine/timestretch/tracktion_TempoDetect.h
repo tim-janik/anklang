@@ -37,7 +37,7 @@ namespace tracktion { inline namespace engine
  #pragma GCC diagnostic ignored "-Wunknown-pragmas"
 #endif
 
-#include "../3rd_party/soundtouch/include/BPMDetect.h"
+#include "soundtouch/include/BPMDetect.h"
 
 #ifdef __clang__
  #pragma clang diagnostic pop

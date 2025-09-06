@@ -474,7 +474,7 @@ private:
 //==============================================================================
 #if TRACKTION_ENABLE_TIMESTRETCH_SOUNDTOUCH
 
-#include "../3rd_party/soundtouch/include/SoundTouch.h"
+#include "soundtouch/include/SoundTouch.h"
 
 struct SoundTouchStretcher  : public TimeStretcher::Stretcher,
                               private soundtouch::SoundTouch
