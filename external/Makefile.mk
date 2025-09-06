@@ -152,6 +152,18 @@ external/liquidsfz/.sha-$(liquidsfz/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/liquidsfz/.sha-$(liquidsfz/sha)
 
+# == external/magic_enum/ ==
+magic_enum/version := v0.9.7
+magic_enum/sha := a06b11989a7802de62a405c373b23c3fcc4caca27e0a0df5f9905bc322a14a40
+external/magic_enum/.sha-$(magic_enum/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/magic_enum.tar.gz, $(magic_enum/sha), \
+		https://github.com/Neargye/magic_enum/archive/e046b69a3736d314fad813e159b1c192eaef92cd/develop.tar.gz)
+	$Q rm -rf external/magic_enum && mkdir external/magic_enum
+	$Q tar xf external/magic_enum.tar.gz --strip-components=1 -C external/magic_enum/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/magic_enum/.sha-$(magic_enum/sha)
+
 # == external/minizip-ng/ ==
 minizip-ng/sha := 80d745e1c8caf6f81f6457403b0d9212e8a138b2badd6060e8a5da8583da2551
 external/minizip-ng/.sha-$(minizip-ng/sha):
