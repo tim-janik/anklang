@@ -5,6 +5,7 @@ all:		# Default Rule
 MAKEFLAGS      += -r
 SHELL         ::= /bin/bash -o pipefail
 PARALLEL_MAKE   = $(filter JOBSERVER, $(subst -j, JOBSERVER , $(MFLAGS)))
+LATE_EVAL	:=
 CODEGEN.FILES	:=
 WITH_CODEGEN	:= $(filter codegen,$(MAKECMDGOALS))
 
@@ -97,6 +98,7 @@ ALL_TESTS	::=
 CHECK_TARGETS	::=
 CLEANFILES	::=
 CLEANDIRS	::=
+MAKE_HELP	:=
 
 # == Defaults ==
 INCLUDES	::= -I.
@@ -160,40 +162,6 @@ clean: FORCE
 	rm -fr $(builddir)/* $(builddir)/.[^.]* $(builddir)/..?* $(CLEANDIRS)
 	rm -f $(CLEANFILES)
 CLEANDIRS += .cache poxy/ html/ assets/
-
-# == help rules ==
-help: FORCE
-	@echo 'Make targets:'
-	@: #   12345678911234567892123456789312345678941234567895123456789612345678971234567898
-	@echo '  all             - Build all targets, uses config-defaults.mk if present.'
-	@echo '  codegen         - Force code regeneration.'
-	@echo '  clean           - Remove build directory, but keeps config-defaults.mk.'
-	@echo '  install         - Install binaries and data files under $$(prefix)'
-	@echo '  uninstall       - Uninstall binaries, aliases and data files'
-	@echo '  installcheck    - Run checks on the installed project files.'
-	@echo '  default         - Create config-defaults.mk with variables set via the MAKE'
-	@echo '                    command line. Inspect the file for a list of variables to'
-	@echo '                    be customized. Deleting it will undo any customizations.'
-	@echo '  check           - Run selfttests and unit tests'
-	@echo '  x11test         - Replay all JSON recordings from x11test/ in Electron.'
-	@echo '  x11test-v       - Run "x11test" in virtual XServer (headless).'
-	@echo '  check-audio     - Validate Anklang rendering against reference files'
-	@echo '  check-bench     - Run the benchmark tests'
-	@echo '  check-loading   - Check all distributed Anklang files load properly'
-	@echo '  serve           - Start Anklang and serve assets via Vite with hot-reloading'
-	@echo '  viewdocs        - Build and browser the manual'
-	@echo '  run             - Start Anklang without installation'
-	@echo 'Invocation:'
-	@echo '  make V=1        - Enable verbose output from MAKE and subcommands'
-	@echo '  make O=DIR      - Create all output files in DIR, see also config-defaults.mk'
-	@echo '                    for related variables like CXXFLAGS'
-	@echo '  make DESTDIR=/  - Absolute path prepended to all install/uninstall locations'
-	@echo '  make INSN=...   - Optimize instructions: sse (ca 2008), fma (ca 2015), [native]'
-	@echo "  make MODE=...   - Run 'quick' build or make 'production' mode binaries."
-	@echo '                    Other modes: debug, devel, asan, lsan, tsan, ubsan'
-	@echo 'Notes:'
-	@echo '  ./.git          - Building in a Git repo triggers additional checks for e.g.'
-	@echo '                    copyright checks or codegen'
 
 # == 'default' settings ==
 # Allow value defaults to be adjusted via: make default builddir=... CXX=...
@@ -417,11 +385,47 @@ compile_commands.json: Makefile.mk
 	bear -- $(MAKE) CC=clang CXX=clang++ -j
 CLEANFILES += compile_commands.json
 
-# == all rules ==
-all: $(ALL_TARGETS) $(ALL_TESTS)
-
 # == grep-reminders ==
 $>/.grep-reminders: $(WILDCARD_FILES)
 	$Q grep --color=auto -n -E '(/[*/]+[*/ ]*|[#*]+ *)?(FI[X]ME).*' $(WILDCARD_FILES) || true
 	$Q touch $@
 all: $>/.grep-reminders
+
+# == help rules ==
+help: FORCE
+	@echo 'Make targets:'
+	@: #   12345678911234567892123456789312345678941234567895123456789612345678971234567898
+	@echo '  all             - Build all targets, uses config-defaults.mk if present.'
+	@echo '  codegen         - Force code regeneration.'
+	@echo '  clean           - Remove build directory, but keeps config-defaults.mk.'
+	@echo '  install         - Install binaries and data files under $$(prefix)'
+	@echo '  uninstall       - Uninstall binaries, aliases and data files'
+	@echo '  installcheck    - Run checks on the installed project files.'
+	@echo '  default         - Create config-defaults.mk with variables set via the MAKE'
+	@echo '                    command line. Inspect the file for a list of variables to'
+	@echo '                    be customized. Deleting it will undo any customizations.'
+	@echo '  check           - Run selfttests and unit tests'
+	@echo '  x11test         - Replay all JSON recordings from x11test/ in Electron.'
+	@echo '  x11test-v       - Run "x11test" in virtual XServer (headless).'
+	@echo '  check-audio     - Validate Anklang rendering against reference files'
+	@echo '  check-bench     - Run the benchmark tests'
+	@echo '  check-loading   - Check all distributed Anklang files load properly'
+	@echo '  serve           - Start Anklang and serve assets via Vite with hot-reloading'
+	@echo '  viewdocs        - Build and browser the manual'
+	@echo '  run             - Start Anklang without installation'
+	@echo -e ' '$(MAKE_HELP)
+	@echo 'Invocation:'
+	@echo '  make V=1        - Enable verbose output from MAKE and subcommands'
+	@echo '  make O=DIR      - Create all output files in DIR, see also config-defaults.mk'
+	@echo '                    for related variables like CXXFLAGS'
+	@echo '  make DESTDIR=/  - Absolute path prepended to all install/uninstall locations'
+	@echo '  make INSN=...   - Optimize instructions: sse (ca 2008), fma (ca 2015), [native]'
+	@echo "  make MODE=...   - Run 'quick' build or make 'production' mode binaries."
+	@echo '                    Other modes: debug, devel, asan, lsan, tsan, ubsan'
+	@echo 'Notes:'
+	@echo '  ./.git          - Building in a Git repo triggers additional checks for e.g.'
+	@echo '                    copyright checks or codegen'
+
+# == all rules ==
+$(eval $(LATE_EVAL))
+all: $(ALL_TARGETS) $(ALL_TESTS)
