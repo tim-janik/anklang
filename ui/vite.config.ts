@@ -85,6 +85,15 @@ function vite_config ({ mode })
     // publicDir: "../public",
     server: {
       // open: "index.html",
+      proxy: {
+	'/anklang/': {
+          target: 'http://localhost:' + String (DEVPORT_MKDOCS) + '/',
+          changeOrigin: true,               			// Adjusts the origin header
+          // rewrite: (path) => path.replace (/^\/anklang\//, ''),	// Strip prefix if needed
+          secure: false,                    			// For self-signed certificates
+          ws: true,                         			// Enable WebSocket proxying
+	},
+      },
       watch: {
 	ignored: [ BUILDDIR.replace (/\/*$/, '/**') ],
       },
