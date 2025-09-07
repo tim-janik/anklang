@@ -21,14 +21,19 @@ import postcssReporter from "postcss-reporter";
 
 const BUILDDIR = path.resolve (process.env.BUILDDIR || 'out/');
 const gen_path = path.resolve (__dirname, BUILDDIR + "/gen/");
+// Note: For development, ports are hard coded, synchronize port numbers with serve.sh
+const DEVPORT_ANKLANG = process.env.DEVPORT_ANKLANG || 1776;
+const DEVPORT_VITE = process.env.DEVPORT_VITE || 1777;
+const DEVPORT_MKDOCS = process.env.DEVPORT_MKDOCS || 1778;
+
+// Debug Info:
 console.log (`VITE: CWD=${process.cwd()} BUILDDIR=${BUILDDIR} gen_path=${gen_path}`);
 
 // Plugin to inject __VITE_CONFIG__ into html
 const html_inject_vite_config = (__DEV__: Boolean) => {
   build_config_json.__DEV__ = __DEV__;
   if (__DEV__) {
-    // Note1: For development, ports are hard coded, synchronize port numbers with serve.sh
-    build_config_json.ws_port = 1776;
+    build_config_json.ws_port = DEVPORT_ANKLANG;
   }
   return {
     name: 'html_inject_vite_config',
@@ -117,6 +122,7 @@ function vite_config ({ mode })
       html_inject_vite_config (__DEV__),
       ...maybe_full_reload_always,
     ],
+
   });
 }
 export default vite_config;
