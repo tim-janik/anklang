@@ -121,7 +121,6 @@ check: $>/.uisynsmell.done
 $>/gen/%.md: ui/%.js								| $>/gen/b/ node_modules/.npm.done
 	$(QGEN)
 	$Q node ui/xbcomments.js $< -O $(@D)
-VITE_DEPS += $>/doc/anklang-manual.html $>/doc/anklang-internals.html
 
 # == ui dist build ==
 VITE_DEPS += $>/version.json
@@ -130,9 +129,11 @@ $>/gen/.vite.done: ui/vite.config.ts ui/Makefile.mk $(VITE_DEPS)	| node_modules/
 	$Q BUILDDIR='$(abspath $>)' node_modules/.bin/vite -c ui/vite.config.ts build -l warn --emptyOutDir
 	$Q ln -fs anklang.png $>/ui/favicon.ico
 	$Q gzip -f -9 $>/ui/assets/*.map
+	$Q rm -rf $>/ui/anklang && cp -RL $>/mkdocs/anklang $>/ui/
 	$Q echo '.*/[.].*'		>> $>/ui/.aseignore
 	$Q touch $@
 ALL_TARGETS += $>/gen/.vite.done
+LATE_EVAL += $$(eval $>/gen/.vite.done: $${doc/mkdocs/anklang.stamp})	# doc/mkdocs/anklang.stamp is assigned later
 
 # == serve ==
 serve: all
