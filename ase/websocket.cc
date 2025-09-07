@@ -508,7 +508,7 @@ WebSocketConnection::http_request ()
     else // 404
       set_response (cp, websocketpp::http::status_code::not_found, // 404 Not Found
                     "Not Found",
-                    "The requested URL was not found: <tt>" + cp->get_uri()->str() + "</tt>");
+                    "The requested URL was not found: <br /> <tt>" + cp->get_uri()->str() + "</tt>");
   }
   else // 405
     set_response (cp, websocketpp::http::status_code::method_not_allowed, // 405 Method Not Allowed
