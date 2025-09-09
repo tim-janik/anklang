@@ -7,10 +7,30 @@ main.md-main .md-sidebar nav.md-nav > ul {
 /* Darken greyish nav titles */
 body:not([data-md-color-media*='dark'])
 main.md-main .md-sidebar nav.md-nav
-label { color: black; }
 
 /* Hide mkdocs-live-edit-plugin buttons, use Shift+Ctrl+E */
 .md-content article .live-edit-controls:not(.live-edit-editing) {
   width: 0; height: 0; overflow: hidden;
   border: 0; margin: 0; padding: 0;
 }
+
+/* primary: custom */
+:root > * {
+  /* https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/assets/stylesheets/main/_colors.scss */
+  --md-primary-fg-color:        #19aefe;
+  --md-primary-fg-color--light: #19aefe;
+  --md-primary-fg-color--dark:  #19aefe;
+
+  --md-accent-fg-color:         #febb1f;
+  --md-accent-fg-color--light:  #fde2b9;
+  --md-accent-fg-color--dark:   #a77a11;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-hue: 201;
+
+  --md-default-bg-color:  hsla(0, 0%, 3%, 0.7);
+  --md-code-fg-color:     hsla(var(--md-hue), 18%, 97%, 1);
+  --md-code-bg-color:     hsla(var(--md-hue), 0%, 7%, 1);
+}
+

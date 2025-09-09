@@ -96,25 +96,28 @@ theme:
     - navigation.path
   #  - navigation.footer
   # taken from https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/#system-preference
+  # primary: #0091eb
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: yellow
-      accent: light blue
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: yellow
-      accent: light blue
+      primary: custom
+      accent: custom
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
-    - media: "(prefers-color-scheme)"
-      toggle:
-        icon: material/brightness-auto
-        name: Switch to system preference
+#    - media: "(prefers-color-scheme)"
+#      primary: custom # #2ba4fe
+#      accent: custom
+#      toggle:
+#        icon: material/brightness-auto
+#        name: Switch to system preference
 
 # uv venv --python 3.12 # .venv
 # uv pip install mkdocs mkdocs-material mkdocs-file-filter-plugin mkdocs-literate-nav git+https://github.com/tim-janik/mkdocs-live-edit-plugin
