@@ -14,6 +14,7 @@ html {
 
 --primary: #5373B4; /* sync with HTML HUE */
 }
+
 #projectname		{ font-size: 200%; }
 .icon			{ font-family: var(--font-family-icon); font-size: 75%; }
 .title			{ font-size: 150%; }
@@ -25,6 +26,13 @@ input			{ font-size: inherit; }
 #MSearchField		{ width: unset; height: unset; background-image: none; }
 #MSearchSelect		{ width: unset; padding-left: 16px; }
 #MSearchBox .left	{ height: 1.6em; }
+
+body, table, div, p, dl {
+  font-weight: unset;
+  font-size: unset;
+  font-family: sans;
+  line-height: unset;
+}
 
 /* Monospace elements */
 pre.fragment, div.line, .paramname .paramdefval, .params .paramdir, .tparams .paramdir,
@@ -155,11 +163,4 @@ div#doc-content div.contents {
       }
     }
   }
-}
-
-body, table, div, p, dl {
-  font-weight: unset;
-  font-size: unset;
-  font-family: sans;
-  line-height: unset;
 }
