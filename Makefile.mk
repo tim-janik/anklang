@@ -411,7 +411,6 @@ help: FORCE
 	@echo '  check-bench     - Run the benchmark tests'
 	@echo '  check-loading   - Check all distributed Anklang files load properly'
 	@echo '  serve           - Start Anklang and serve assets via Vite with hot-reloading'
-	@echo '  viewdocs        - Build and browser the manual'
 	@echo '  run             - Start Anklang without installation'
 	@echo -e ' '$(MAKE_HELP)
 	@echo 'Invocation:'

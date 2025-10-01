@@ -196,12 +196,6 @@ $>/doc/anklang-internals.pdf: doc/pandoc-pdf.tex $(doc/internals-hafix-chapters)
 		-V fontsize=11pt -V papersize:a4 -V geometry:margin=2cm \
 		$(doc/internals-hafix-chapters) -o $@
 
-# == viewdocs ==
-viewdocs: $>/doc/anklang-manual.html $>/doc/anklang-internals.html $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
-	$Q for B in firefox google-chrome ; do \
-	     command -v $$B && exec $$B $^ ; done ; \
-	   for U in $^ ; do xdg-open "$$U" & done
-
 # == installation ==
 pkgdocdir ::= $(pkgdir)/doc
 doc/install: $(doc/install.files) install--doc/style/install.files
