@@ -25,7 +25,7 @@ fi
 # Note2: Anklang uses an authentication token, stored under $HOME to restrict WebUI access
 # to one user. For development, we could read the ~/.../anklang*.html redirect, fetch the
 # auth URL and copy the set-cookie reply into the vite server headers.
-# It is just pointless as it still leaves vite open, so we just use --no-auth instead.
+# It is just pointless as it still leaves vite open, so we just use --unauth-dev instead.
 
 # Anklang
 echo -e "\n+ $BUILDDIR/lib/AnklangSynthEngine --unauth-dev=$DEVPORT_ANKLANG $*" >&2
@@ -40,7 +40,7 @@ sleep 0.5
 # MkDocs
 cd $BUILDDIR/mkdocs/
 echo -e "\n+ uv run mkdocs serve -a localhost:$DEVPORT_MKDOCS" >&2
-uv run mkdocs serve -a localhost:$DEVPORT_MKDOCS &
+uv run mkdocs serve --livereload -a localhost:$DEVPORT_MKDOCS &
 cd - 2>/dev/null
 #sleep 1
 

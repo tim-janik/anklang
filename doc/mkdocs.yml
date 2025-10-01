@@ -24,6 +24,8 @@ extra_javascript:
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
 plugins:
+  - live-edit:
+      websockets_port: 1779
   - file-filter:
       exclude_glob:
         - '*akefile*'
@@ -37,7 +39,6 @@ plugins:
   - privacy:
       # https://squidfunk.github.io/mkdocs-material/plugins/privacy/?h=blank#config.links_attr_map
       #links_attr_map: target: _blank	# <- https://github.com/squidfunk/mkdocs-material/issues/6601
-  - live-edit
 
 extra:
   generator: false

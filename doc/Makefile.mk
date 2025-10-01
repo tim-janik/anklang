@@ -247,7 +247,8 @@ $>/mkdocs/.prepared: $(doc/mkdocs.symlinks) doc/Makefile.mk	| $>/mkdocs/ $>/doxy
 	$Q rm -rf $>/mkdocs/* && mkdir -p $>/mkdocs/doc
 	$Q ln -s $(abspath doc/mkdocs.yml) $>/mkdocs/
 	$Q ln -s $(abspath $(doc/mkdocs.symlinks)) ../../doxygen $>/mkdocs/doc/
-	$Q cd $>/mkdocs/ && uv venv --python 3.12 && uv pip install \
+	$Q cd $>/mkdocs/ && uv venv --python 3.13 \
+	&& UV_LINK_MODE=copy uv pip install \
 		mkdocs mkdocs-material mkdocs-file-filter-plugin mkdocs-literate-nav \
 		git+https://github.com/tim-janik/mkdocs-live-edit-plugin
 	$Q @touch $@
@@ -258,7 +259,7 @@ $(doc/mkdocs/anklang.stamp): $>/mkdocs/.prepared
 ALL_TARGETS += $(doc/mkdocs/anklang.stamp)
 mkdocs-serve: $>/mkdocs/.prepared
 	$(QECHO) SERVE mkdocs at localhost:1778
-	$Q cd $>/mkdocs/ && uv run mkdocs serve # -a localhost:1778
+	$Q cd $>/mkdocs/ && uv run mkdocs serve --livereload # -a localhost:1778
 clean-mkdocs:
 	rm -rf $>/mkdocs/
 mkdocs-site: $(doc/mkdocs/anklang.stamp)
