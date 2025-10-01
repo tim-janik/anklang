@@ -5,11 +5,9 @@ main.md-main .md-sidebar nav.md-nav > ul {
   margin-left: 0.5em;
 }
 /* Darken greyish nav titles */
-body:not([data-md-color-media*='dark'])
-main.md-main .md-sidebar nav.md-nav
 
 /* Hide mkdocs-live-edit-plugin buttons, use Shift+Ctrl+E */
-.md-content article .live-edit-controls:not(.live-edit-editing) {
+.md-main .md-content .live-edit-controls:not(.live-edit-editing) {
   width: 0; height: 0; overflow: hidden;
   border: 0; margin: 0; padding: 0;
 }
