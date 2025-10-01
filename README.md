@@ -12,12 +12,10 @@ ANKLANG
 
 → Audio Synthesizer and MIDI Composer ←
 
-[Website](https://anklang.testbit.eu/) · [Github](https://github.com/tim-janik/anklang/) ·
-[Manual](https://tim-janik.github.io/docs/anklang/anklang-manual.html) [PDF](https://tim-janik.github.io/docs/anklang/anklang-manual.pdf) ·
-[Internals](https://tim-janik.github.io/docs/anklang/anklang-internals.html) [PDF](https://tim-janik.github.io/docs/anklang/anklang-internals.pdf) ·
-[API](https://tim-janik.github.io/docs/anklang/files.html#search) ·
-[IRC](https://web.libera.chat/#Anklang) ·
-[Issues](https://github.com/tim-janik/anklang/issues)
+[Documentation](https://tim-janik.github.io/anklang/) ·
+[Github](https://github.com/tim-janik/anklang/) ·
+[Issues](https://github.com/tim-janik/anklang/issues) ·
+[IRC](https://web.libera.chat/#Anklang)
 
 <!-- ABOUT -->
 ## About the Anklang project
