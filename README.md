@@ -1,12 +1,8 @@
 <!-- BADGES -->
-[![License][mpl2-badge]][mpl2-url]
-[![Commits][commits-badge]][commits-url]
-[![Contributors][contributors-badge]][contributors-url]
-[![Issues][issues-badge]][issues-url]
-[![Test Build][testing-badge]][testing-url]
 [![Version][version-badge]][version-url]
+[![License][mpl2-badge]][mpl2-url]
+[![Test Build][testing-badge]][testing-url]
 [![Downloads][downloads-badge]][downloads-url]
-[![Watchers][watchers-badge]][watchers-url]
 [![Live Chat][irc-badge]][irc-url]
 <!-- [![Stargazers][stars-badge]][stars-url] [![Forks][forks-badge]][forks-url] -->
 
@@ -16,12 +12,10 @@ ANKLANG
 
 → Audio Synthesizer and MIDI Composer ←
 
-[Website](https://anklang.testbit.eu/) · [Github](https://github.com/tim-janik/anklang/) ·
-[Manual](https://tim-janik.github.io/docs/anklang/anklang-manual.html) [PDF](https://tim-janik.github.io/docs/anklang/anklang-manual.pdf) ·
-[Internals](https://tim-janik.github.io/docs/anklang/anklang-internals.html) [PDF](https://tim-janik.github.io/docs/anklang/anklang-internals.pdf) ·
-[API](https://tim-janik.github.io/docs/anklang/files.html#search) ·
-[IRC](https://web.libera.chat/#Anklang) ·
-[Issues](https://github.com/tim-janik/anklang/issues)
+[Documentation](https://tim-janik.github.io/anklang/) ·
+[Github](https://github.com/tim-janik/anklang/) ·
+[Issues](https://github.com/tim-janik/anklang/issues) ·
+[IRC](https://web.libera.chat/#Anklang)
 
 <!-- ABOUT -->
 ## About the Anklang project
@@ -94,7 +88,7 @@ GPLv3 or proprietary licenses.
 [contributors-badge]: https://img.shields.io/github/contributors/tim-janik/anklang.svg?style=for-the-badge&color=green
 [contributors-url]: https://github.com/tim-janik/anklang/graphs/contributors
 [coverity-badge]: https://img.shields.io/coverity/scan/23262.svg?style=for-the-badge
-[downloads-badge]: https://img.shields.io/github/downloads/tim-janik/anklang/total?style=for-the-badge&color=blue
+[downloads-badge]: https://img.shields.io/github/downloads/tim-janik/anklang/total?style=for-the-badge
 [downloads-url]: https://github.com/tim-janik/anklang/releases
 [drivers-badge]: https://img.shields.io/badge/Drivers-MIDI%20|%20ALSA%20|%20%20Pulse%20|%20Jack-999?style=for-the-badge
 [fix\me-badge]: https://img.shields.io/github/search/tim-janik/anklang/fix%6De?label=FIX%4DE&style=for-the-badge
@@ -111,8 +105,8 @@ GPLv3 or proprietary licenses.
 [stars-url]: https://github.com/tim-janik/anklang/stargazers
 [testing-badge]: https://img.shields.io/github/actions/workflow/status/tim-janik/anklang/testing.yml?style=for-the-badge
 [testing-url]: https://github.com/tim-janik/anklang/actions
-[version-badge]: https://img.shields.io/github/v/release/tim-janik/anklang?label=version&style=for-the-badge
-[version-url]: https://github.com/tim-janik/anklang/tags
+[version-badge]: https://img.shields.io/github/v/release/tim-janik/anklang?label=version&style=for-the-badge&color=blue
+[version-url]: https://github.com/tim-janik/anklang/releases/latest
 [watchers-badge]: https://img.shields.io/github/watchers/tim-janik/anklang?style=for-the-badge
 [watchers-url]: https://github.com/tim-janik/anklang/graphs/traffic
 <!-- https://github.com/othneildrew/Best-README-Template -->

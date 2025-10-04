@@ -1,16 +1,31 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-# https://www.mkdocs.org/getting-started/
+# https://www.mkdocs.org/user-guide/configuration/
 site_name: Anklang Documentation
-copyright: Copyright &copy; 2025 Anklang Project
+copyright: Copyright © 2025 Anklang Project
 site_url: https://tim-janik.github.io/anklang
 repo_url: https://github.com/tim-janik/anklang
 repo_name: Anklang.git
-# Note, mkdocs.yml is used in the build dir, with source dirs as symlink
-docs_dir: mkdocs/doc
-site_dir: site/
+# Note, mkdocs.yml is symlink-ed from $>/mkdocs/mkdocs.yml
+docs_dir: doc
+site_dir: anklang/
+dev_addr: 127.0.0.1:1778
+use_directory_urls: false
+
+# == NAV ==
+# nav: see NAV.md
+# draft_docs: TODO.md
+
+extra_css:
+  - style/mkdocs.css
+
+extra_javascript:
+  - javascript/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
 plugins:
+  - live-edit:
+      websockets_port: 1779
   - file-filter:
       exclude_glob:
         - '*akefile*'
@@ -24,49 +39,7 @@ plugins:
   - privacy:
       # https://squidfunk.github.io/mkdocs-material/plugins/privacy/?h=blank#config.links_attr_map
       #links_attr_map: target: _blank	# <- https://github.com/squidfunk/mkdocs-material/issues/6601
-  - live-edit
 
-extra_css:
-  - style/mkdocs.css
-extra_javascript:
-  - javascript/mathjax.js
-  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
-
-# https://squidfunk.github.io/mkdocs-material/getting-started/
-theme:
-  name: material
-  language: 'en'
-  features:
-    - search.suggest
-    - search.highlight
-    - search.share
-    - navigation.instant
-    - navigation.prune
-    #- toc.integrate
-    - toc.follow
-    - navigation.tracking
-    #- navigation.tabs
-    #- navigation.tabs.sticky
-    - navigation.sections
-    #- navigation.expand
-    - navigation.path
-  #  - navigation.footer
-  # taken from https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/#system-preference
-  palette:
-    - media: "(prefers-color-scheme)"
-      toggle:
-        icon: material/brightness-auto
-        name: Switch to system preference
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      toggle:
-        icon: material/brightness-7
-        name: Switch to light mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      toggle:
-        icon: material/brightness-4
-        name: Switch to dark mode
 extra:
   generator: false
   social:
@@ -104,8 +77,49 @@ markdown_extensions:
   - pymdownx.fancylists
   - pymdownx.saneheaders
 
-# nav: see NAV.md
+# https://squidfunk.github.io/mkdocs-material/getting-started/
+theme:
+  name: material
+  language: 'en'
+  features:
+    - search.suggest
+    - search.highlight
+    - search.share
+    - navigation.instant
+    - navigation.prune
+    #- toc.integrate
+    - toc.follow
+    - navigation.tracking
+    #- navigation.tabs
+    #- navigation.tabs.sticky
+    - navigation.sections
+    #- navigation.expand
+    - navigation.path
+  #  - navigation.footer
+  # taken from https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/#system-preference
+  # primary: #0091eb
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+#    - media: "(prefers-color-scheme)"
+#      primary: custom # #2ba4fe
+#      accent: custom
+#      toggle:
+#        icon: material/brightness-auto
+#        name: Switch to system preference
 
 # uv venv --python 3.12 # .venv
 # uv pip install mkdocs mkdocs-material mkdocs-file-filter-plugin mkdocs-literate-nav git+https://github.com/tim-janik/mkdocs-live-edit-plugin
-# uv run mkdocs serve -a localhost:2223
+# uv run mkdocs serve

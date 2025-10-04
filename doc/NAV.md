@@ -11,16 +11,17 @@
     * jsdocsmd/*.md
   * JS Component Files
     * jsdocsmd/b/*.md
-  * C++ API
-    * [C++ Class-Tree](class-tree.md)
-    * [C++ Classes](doxygen/classes.html)
-    * [C++ Files](doxygen/files.html)
-    * [C++ Functions](doxygen/namespace_ase.html#func-members)
 * Design & Development
   * [Development Overview](ch-development.md)
   * UI Development
     * [Web Components](ch-component.md)
     * [JS UI Components](jsdocs.md)
+  * Ase C++ API
+    * [Ase C++ Class-Tree](class-tree.md)
+    * [Ase C++ Classes ↗](doxygen/ase/classes.html)
+    * [Ase C++ Files ↗](doxygen/ase/files.html)
+    * [Ase C++ Functions ↗](doxygen/ase/namespaceAse.html)
   * Implementation Details
     * [Making Releases](ch-releasing.md)
     * [Interpolation Notes](ch-appendix.md)
+    * [TODO](TODO.md)

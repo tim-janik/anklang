@@ -206,7 +206,7 @@ async function activate (uri, event)
       window.open (u, '_blank');
       break;
     case 'dev-manual':
-      u = location.origin + '/doc/anklang-internals.html';
+      u = location.origin + '/anklang/index.html';
       window.open (u, '_blank');
       break;
     case 'prefs':

@@ -196,12 +196,6 @@ $>/doc/anklang-internals.pdf: doc/pandoc-pdf.tex $(doc/internals-hafix-chapters)
 		-V fontsize=11pt -V papersize:a4 -V geometry:margin=2cm \
 		$(doc/internals-hafix-chapters) -o $@
 
-# == viewdocs ==
-viewdocs: $>/doc/anklang-manual.html $>/doc/anklang-internals.html $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
-	$Q for B in firefox google-chrome ; do \
-	     command -v $$B && exec $$B $^ ; done ; \
-	   for U in $^ ; do xdg-open "$$U" & done
-
 # == installation ==
 pkgdocdir ::= $(pkgdir)/doc
 doc/install: $(doc/install.files) install--doc/style/install.files
@@ -227,21 +221,49 @@ uninstall: doc/uninstall
 
 doc/all: $(doc/install.files)
 
-# == mkdocs ==
-doc/mkdocs.mdlist := ui/ch-component.md
-doc/mkdocs.mdlist += $>/doc/jsdocsmd/ $>/doc/jsdocs.md $>/doc/class-tree.md $>/gen/scripting-docs.md
-$>/.mkdocs.prep: $>/doxygen/index.html $(doc/mkdocs.mdlist) doc/Makefile.mk
-	rm -rf $>/site $>/mkdocs* && mkdir -p $>/mkdocs/doc && ln -s $(abspath doc/mkdocs.yml) $>/
-	ln -s $(abspath misc) $>/mkdocs/.
-	ln -s $(abspath $(wildcard doc/*) $(doc/mkdocs.mdlist)) ../../doxygen $>/mkdocs/doc/
-	cd $>/ && uv venv --python 3.12 && uv pip install \
+# == doxygen/ ==
+$>/doxygen/.done: $(wildcard doc/*.*) doc/style/doxyextra.css doc/Makefile.mk	| $>/doxygen/
+	$(QGEN)
+	$Q rm -rf $>/doxygen/
+	$Q doc/doxygen.sh $(if $(findstring 1, $(V)),, --quiet)
+	$Q @touch $@
+doxygen: $>/doxygen/.done
+	ls -l $>/doxygen/
+clean-doxygen:
+	rm -fr $>/doxygen/
+.PHONY: doxygen clean-doxygen
+MAKE_HELP += ' doxygen         - Build (large) C++ documentation in $>/doxygen/*/\n'
+MAKE_HELP += ' clean-doxygen   - Remove $>/doxygen/\n'
+
+# == mkdocs/ ==
+$>/mkdocs/.prepared: $(filter doxygen $>/doxygen/.done, $(MAKECMDGOALS))  # let mkdocs pickup doxygen/ if both are built
+doc/doxygen/.done != test -e $>/doxygen/.done && echo $>/doxygen/.done
+$>/mkdocs/.prepared: $(doc/doxygen/.done)				  # rebuild if doxygen exists and changed
+doc/mkdocs.symlinks := ui/ch-component.md
+doc/mkdocs.symlinks += $>/doc/jsdocsmd/ $>/doc/jsdocs.md $>/doc/class-tree.md $>/gen/scripting-docs.md
+doc/mkdocs.symlinks += doc/javascript doc/style $(wildcard doc/*.md)
+$>/mkdocs/.prepared: $(doc/mkdocs.symlinks) doc/Makefile.mk	| $>/mkdocs/ $>/doxygen/
+	$(QGEN)
+	$Q rm -rf $>/mkdocs/* && mkdir -p $>/mkdocs/doc
+	$Q ln -s $(abspath doc/mkdocs.yml) $>/mkdocs/
+	$Q ln -s $(abspath $(doc/mkdocs.symlinks)) ../../doxygen $>/mkdocs/doc/
+	$Q cd $>/mkdocs/ && uv venv --python 3.13 \
+	&& UV_LINK_MODE=copy uv pip install \
 		mkdocs mkdocs-material mkdocs-file-filter-plugin mkdocs-literate-nav \
 		git+https://github.com/tim-janik/mkdocs-live-edit-plugin
-	ls -al $>/mkdocs/
-	@touch $@
-ALL_TARGETS += $>/.mkdocs.prep
-mkdocs-serve: $>/.mkdocs.prep
-	cd $>/ && uv run mkdocs serve -a localhost:2222
-mkdocs-build: $>/.mkdocs.prep
-	cd $>/ && uv run mkdocs build
-
+	$Q @touch $@
+doc/mkdocs/anklang.stamp := $>/mkdocs/anklang/search/search_index.js
+$(doc/mkdocs/anklang.stamp): $>/mkdocs/.prepared
+	$(QECHO) BUILD $>/mkdocs/anklang/
+	$Q cd $>/mkdocs/ && uv run mkdocs build
+ALL_TARGETS += $(doc/mkdocs/anklang.stamp)
+mkdocs-serve: $>/mkdocs/.prepared
+	$(QECHO) SERVE mkdocs at localhost:1778
+	$Q cd $>/mkdocs/ && uv run mkdocs serve --livereload # -a localhost:1778
+clean-mkdocs:
+	rm -rf $>/mkdocs/
+mkdocs-site: $(doc/mkdocs/anklang.stamp)
+.PHONY: mkdocs-serve mkdocs-site clean-mkdocs
+MAKE_HELP += ' mkdocs-serve    - Serve documentation at localhost:1778 with hot reload\n'
+MAKE_HELP += ' mkdocs-site     - Build documentation in $>/mkdocs/anklang/\n'
+MAKE_HELP += ' clean-mkdocs    - Remove $>/mkdocs/anklang/\n'
