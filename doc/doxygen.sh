@@ -7,10 +7,14 @@ SCRIPTPATH="$(readlink -f "$0")" && SCRIPTDIR=${SCRIPTPATH%/*}
 BUILDDIR=$(readlink -f "${BUILDDIR:-out}")
 DOXYDIR="$BUILDDIR"/doxygen/
 QUIET=false
+WITH_JUCE=false
+WITH_TRKN=false
 WITH_ASE=false
 while test $# -ne 0 ; do
   case "$1" in
     --quiet)		QUIET=true ;;
+    --juce)		WITH_JUCE=true ;;
+    --trkn)		WITH_TRKN=true ;;
     --ase)		WITH_ASE=true ;;
     *)                  die "unknown argument: '$1'" ;;
   esac
@@ -164,6 +168,30 @@ run_doxygen() # run_doxygen NAME NUMBER BRIEF OUTDIR
   replace_backlink html/
   mv -v html "$OUTPUT"
 )
+
+# == Juce Docs ==
+if $WITH_JUCE ; then
+  rm -rf $DOXYDIR/doxy && mkdir -p $DOXYDIR/doxy
+  cp -a trkn/juce_* $DOXYDIR/doxy/
+  rm -rf $DOXYDIR/doxy/*/3rd_party
+  JUCE_VERSION=JUCE-7.0.12-0-g4f43011b96
+  JUCE_BRIEF="JUCE — C++ application framework with suport for VST, VST3, LV2 audio plug-ins"
+  run_doxygen +cc "${JUCE_VERSION%-v*}" "${JUCE_VERSION#*-v}" "$JUCE_BRIEF" $DOXYDIR/juce/
+fi
+test -r "$DOXYDIR/juce/tagfile.xml" &&
+  echo "TAGFILES += \"$DOXYDIR/juce/tagfile.xml=../juce/\"" >> $DOXYDIR/Doxyfile
+
+# == Tracktion_Engine Docs ==
+if $WITH_TRKN ; then
+  rm -rf $DOXYDIR/doxy && mkdir -p $DOXYDIR/doxy
+  cp -a trkn/tracktion_* $DOXYDIR/doxy/
+  rm -rf $DOXYDIR/doxy/*/3rd_party
+  TRKN_VERSION=tracktion-engine-v3.0-10-g034fdde4aa5
+  TRKN_BRIEF="Tracktion Engine — High level data model for audio applications"
+  run_doxygen +cc "${TRKN_VERSION%-v*}" "${TRKN_VERSION#*-v}" "$TRKN_BRIEF" $DOXYDIR/trkn/
+fi
+test -r "$DOXYDIR/trkn/tagfile.xml" &&
+  echo "TAGFILES += \"$DOXYDIR/trkn/tagfile.xml=../trkn/\"" >> $DOXYDIR/Doxyfile
 
 # == Ase Docs ==
 if $WITH_ASE ; then
