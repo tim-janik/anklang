@@ -129,5 +129,5 @@ external/clean:
 	rm -r -f external/*/
 .PHONY: external/clean
 clean: external/clean
-
+$(EXTERNAL_CXX_STAMPS): external/Makefile.mk
 

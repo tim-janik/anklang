@@ -94,6 +94,7 @@ endif
 
 # == Target Collections ==
 ALL_TARGETS	::=
+LATE_TARGETS	::=
 ALL_TESTS	::=
 CHECK_TARGETS	::=
 CLEANFILES	::=
@@ -389,7 +390,7 @@ CLEANFILES += compile_commands.json
 $>/.grep-reminders: $(WILDCARD_FILES)
 	$Q grep --color=auto -n -E '(/[*/]+[*/ ]*|[#*]+ *)?(FI[X]ME).*' $(WILDCARD_FILES) || true
 	$Q touch $@
-all: $>/.grep-reminders
+LATE_TARGETS += $>/.grep-reminders
 
 # == help rules ==
 help: FORCE
@@ -427,4 +428,4 @@ help: FORCE
 
 # == all rules ==
 $(eval $(LATE_EVAL))
-all: $(ALL_TARGETS) $(ALL_TESTS)
+all: $(ALL_TARGETS) $(ALL_TESTS) $(LATE_TARGETS)
