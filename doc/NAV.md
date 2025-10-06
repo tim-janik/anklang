@@ -23,6 +23,12 @@
     * [Ase Namespace ↗](doxygen/ase/namespaceAse.html)
     * [Ase C++ Files ↗](doxygen/ase/files.html)
     * [Ase Classes ↗](doxygen/ase/classes.html)
+    * [Tracktion Namespace ↗](doxygen/trkn/namespacetracktion.html)
+    * [Tracktion C++ Files ↗](doxygen/trkn/files.html)
+    * [Tracktion Classes ↗](doxygen/trkn/classes.html)
+    * [JUCE Namespace ↗](doxygen/juce/namespacejuce.html)
+    * [JUCE C++ Files ↗](doxygen/juce/files.html)
+    * [JUCE Classes ↗](doxygen/juce/classes.html)
   * Implementation Details
     * [Making Releases](ch-releasing.md)
     * [Interpolation Notes](ch-appendix.md)
