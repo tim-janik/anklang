@@ -4,7 +4,6 @@ set -Eeuo pipefail && SCRIPTNAME=${0##*/} && die() { [ -z "$*" ] || echo "$SCRIP
 SCRIPTPATH="$(readlink -f "$0")" && SCRIPTDIR=${SCRIPTPATH%/*}
 
 # == Options, Setup ==
-ASE_VERSION=anklang-$(git describe)
 BUILDDIR=$(readlink -f "${BUILDDIR:-out}")
 DOXYDIR="$BUILDDIR"/doxygen/
 mkdir -p $DOXYDIR/doxy/ && rm -rf $DOXYDIR/*/ # leaves parent dir + files
@@ -158,8 +157,11 @@ run_doxygen() # run_doxygen NAME NUMBER BRIEF OUTDIR
 # == Ase Docs ==
 rm -rf $DOXYDIR/doxy && mkdir -p $DOXYDIR/doxy
 cp -a ase devices jsonipc $DOXYDIR/doxy/
-PROJECT_NAME="${ASE_VERSION%-v*}" && PROJECT_NAME="${PROJECT_NAME^}"
-PROJECT_NUMBER="${ASE_VERSION#*-v}" # && PROJECT_NUMBER="${PROJECT_NUMBER%%-*}"
-PROJECT_BRIEF="ASE — Anklang Sound Engine (C++)"
-run_doxygen "$PROJECT_NAME" "$PROJECT_NUMBER" "$PROJECT_BRIEF" $DOXYDIR/ase/
-echo "TAGFILES += \"$BUILDDIR/docs/ase/tagfile.xml=../ase/\"" >> $DOXYDIR/Doxyfile
+ASE_VERSION=anklang-$(git describe)
+ASE_NAME="${ASE_VERSION%-v*}" && ASE_NAME="${ASE_NAME^}"
+ASE_BRIEF="ASE — Anklang Sound Engine (C++)"
+run_doxygen +dot +ref +cc "$ASE_NAME" "${ASE_VERSION#*-v}" "$ASE_BRIEF" $DOXYDIR/ase/
+echo "TAGFILES += \"$DOXYDIR/ase/tagfile.xml=../ase/\"" >> $DOXYDIR/Doxyfile
+
+# == Cleanup ==
+rm -rf $DOXYDIR/doxy

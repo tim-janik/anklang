@@ -18,9 +18,9 @@
     * [JS UI Components](jsdocs.md)
   * Ase C++ API
     * [Ase C++ Class-Tree](class-tree.md)
-    * [Ase C++ Classes ↗](doxygen/ase/classes.html)
+    * [Ase Namespace ↗](doxygen/ase/namespaceAse.html)
     * [Ase C++ Files ↗](doxygen/ase/files.html)
-    * [Ase C++ Functions ↗](doxygen/ase/namespaceAse.html)
+    * [Ase Classes ↗](doxygen/ase/classes.html)
   * Implementation Details
     * [Making Releases](ch-releasing.md)
     * [Interpolation Notes](ch-appendix.md)
