@@ -202,7 +202,7 @@
 #endif
 
 #include "system/juce_StandardHeader.h"
-
+/// JUCE Namespace
 namespace juce
 {
     class StringRef;
