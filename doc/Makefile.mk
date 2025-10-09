@@ -222,10 +222,12 @@ uninstall: doc/uninstall
 doc/all: $(doc/install.files)
 
 # == doxygen/ ==
-$>/doxygen/.done: $(wildcard doc/*.*) doc/style/doxyextra.css doc/Makefile.mk	| $>/doxygen/
+DOC_DOXYGEN_DEPS := doc/doxygen.sh doc/style/doxyextra.css doc/doxyheader.htm doc/doxyfooter.htm doc/Makefile.mk
+$>/doxygen/.ase: $(DOC_DOXYGEN_DEPS) $(wildcard ase/*[hcd] ase/*/*[hcd])
 	$(QGEN)
-	$Q rm -rf $>/doxygen/
-	$Q doc/doxygen.sh $(if $(findstring 1, $(V)),, --quiet)
+	$Q doc/doxygen.sh --ase $(if $(findstring 1, $(V)),, --quiet)
+	$Q @touch $@
+$>/doxygen/.done: $>/doxygen/.ase
 	$Q @touch $@
 doxygen: $>/doxygen/.done
 	ls -l $>/doxygen/
