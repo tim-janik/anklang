@@ -9,7 +9,6 @@ IMAGEMAGICK_CONVERT	?= convert
 PANDOC			?= pandoc
 CP			?= cp --reflink=auto
 .config.defaults	+= CP PERL PYTHON3 PKG_CONFIG GDK_PIXBUF_CSOURCE PANDOC IMAGEMAGICK_CONVERT
-HAVE_PANDOC1		 = $(shell $(PANDOC) --version | grep -q '^pandoc 1\.' && echo 1)
 
 INSTALL 		:= /usr/bin/install -c
 INSTALL_DATA 		:= $(INSTALL) -m 644

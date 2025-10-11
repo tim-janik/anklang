@@ -29,15 +29,6 @@ doc/install.files ::= $(strip		\
 	$>/doc/README.html		\
 	doc/copyright			\
 )
-doc/pdf.files := $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
-
-# == PDF rule (Latex dependency) ==
-pdf: $(doc/pdf.files)
-assets/pdf: pdf
-	mkdir -p assets/
-	$(CP) $>/doc/anklang-manual.pdf assets/anklang-manual-$(version_short).pdf
-	$(CP) $>/doc/anklang-internals.pdf assets/anklang-internals-$(version_short).pdf
-.PHONY: pdf assets/pdf
 
 # == Copy files ==
 $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/doc/
@@ -72,13 +63,6 @@ $>/gen/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) doc/M
 	$Q mv $@.tmp $@
 doc/jsdoc.deps ::= doc/jsdocrc.json doc/jsdoc-slashes.js doc/jsdoc2md.js
 
-# == *.hafix.md ==
-# Pandoc-1.3.9 generates broken Latex for PDFs on `# [Heading]{#anchor}`, so we strip them out
-# https://github.com/jgm/pandoc/issues/9209
-$>/%.hafix.md: $>/%.md
-	$(QGEN)
-	$Q sed <$< >$@		-r 's/^(#+\s*)\[([^]]+)\]\{.*\}/\1\2/'
-
 # == doc/class-tree.md ==
 $>/doc/class-tree.md: ase/gen/class-tree.g.md doc/Makefile.mk
 	$(QGEN)
@@ -86,7 +70,6 @@ $>/doc/class-tree.md: ase/gen/class-tree.g.md doc/Makefile.mk
 
 # == pandoc ==
 doc/markdown-flavour	::= -f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart
-doc/pdf_flags		::= --highlight-style doc/highlights.theme
 doc/html_flags		::= --highlight-style doc/highlights.theme --html-q-tags --section-divs --email-obfuscation=references
 doc/html-style		::= 'body { max-width: 52em; margin: auto; }'
 
@@ -159,52 +142,13 @@ $>/doc/anklang-internals.html: $>/doc/template.html $(doc/internals-chapters) $(
 		--mathjax='style/mathjax-tex-svg.js' \
 		$(doc/internals-chapters) -o $@
 
-# == anklang-manual.pdf ==
-# REQUIRES: python3-pandocfilters texlive-xetex pandoc2
-doc/manual-hafix-chapters := $(subst $>/gen/scripting-docs.md, $>/doc/scripting-docs.hafix.md, $(doc/manual-chapters))
-$>/doc/anklang-manual.pdf: doc/pandoc-pdf.tex $(doc/manual-hafix-chapters) $>/doc/cursors/cursors.css		| $>/doc/
-	$(QGEN)
-	$Q xelatex --version 2>&1 | grep -q '^XeTeX 3.14159265' \
-	   || { echo '$@: missing xelatex, required version: XeTeX >= 3.14159265' >&2 ; false ; }
-	$Q $(PANDOC) $(doc/markdown-flavour) \
-		--resource-path $>/doc/ --resource-path . \
-		$(doc/pdf_flags) \
-		--toc --number-sections \
-		--variable=subparagraph \
-		-V date="$(version_to_month)" \
-		--variable=lot \
-		-H $< \
-		--pdf-engine=xelatex -V mainfont='Charis SIL' -V mathfont=Asana-Math -V monofont=inconsolata \
-		-V fontsize=11pt -V papersize:a4 -V geometry:margin=2cm \
-		$(doc/manual-hafix-chapters) -o $@
-# == anklang-internals.pdf ==
-# REQUIRES: python3-pandocfilters texlive-xetex pandoc2
-doc/internals-hafix-chapters := $(subst $>/doc/jsdocs.md, $>/doc/jsdocs.hafix.md, $(doc/internals-chapters))
-$>/doc/anklang-internals.pdf: doc/pandoc-pdf.tex $(doc/internals-hafix-chapters)					| $>/doc/
-	$(QGEN)
-	$Q xelatex --version 2>&1 | grep -q '^XeTeX 3.14159265' \
-	   || { echo '$@: missing xelatex, required version: XeTeX >= 3.14159265' >&2 ; false ; }
-	$Q $(PANDOC) $(doc/markdown-flavour) \
-		--resource-path $>/ui/ --resource-path . \
-		$(doc/pdf_flags) \
-		--toc --number-sections \
-		--variable=subparagraph \
-		-V date="$(version_to_month)" \
-		--variable=lot \
-		-H $< \
-		--pdf-engine=xelatex -V mainfont='Charis SIL' -V mathfont=Asana-Math -V monofont=inconsolata \
-		-V fontsize=11pt -V papersize:a4 -V geometry:margin=2cm \
-		$(doc/internals-hafix-chapters) -o $@
-
 # == installation ==
 pkgdocdir ::= $(pkgdir)/doc
 doc/install: $(doc/install.files) install--doc/style/install.files
-	@ $(eval doc/install.pdf.files := $(wildcard $(doc/pdf.files)))
 	@$(QECHO) INSTALL '$(DESTDIR)$(pkgdocdir)/.'
 	$Q rm -f '$(DESTDIR)$(pkgdocdir)'/* 2>/dev/null ; true
 	$Q $(INSTALL)      -d $(DESTDIR)$(pkgdocdir)/ $(DESTDIR)$(mandir)/man1/
 	$Q $(CP) $(doc/install.files) $(DESTDIR)$(pkgdocdir)/
-	$Q test -z "$(doc/install.pdf.files)" || $(CP) $(doc/install.pdf.files) $(DESTDIR)$(pkgdocdir)/
 	$Q $(INSTALL) -d $(DESTDIR)$(mandir)/man1/ && ln -fs -r $(DESTDIR)$(pkgdir)/doc/anklang.1 $(DESTDIR)$(mandir)/man1/anklang.1
 	$Q $(INSTALL) -d '$(DESTDIR)$(docdir)/'
 	$Q rm -f '$(DESTDIR)$(docdir)/anklang'
