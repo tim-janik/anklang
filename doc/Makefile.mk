@@ -127,9 +127,17 @@ doc/all: $(doc/install.files)
 
 # == doxygen/ ==
 DOC_DOXYGEN_DEPS := doc/doxygen.sh doc/style/doxyextra.css doc/doxyheader.htm doc/doxyfooter.htm doc/Makefile.mk
-$>/doxygen/.ase: $(DOC_DOXYGEN_DEPS) $(wildcard ase/*[hcd] ase/*/*[hcd])
+$>/doxygen/.juce: $(DOC_DOXYGEN_DEPS) $(wildcard trkn/juce_* trkn/juce_*/*[hcd] trkn/juce_*/*/*[hcd])
 	$(QGEN)
-	$Q mkdir -p $>/doxygen/ && rm -rf $>/doxygen/*/ # clear subdirs
+	$Q mkdir -p $>/doxygen/ && rm -rf $>/doxygen/*/	# clear subdirs
+	$Q doc/doxygen.sh --juce $(if $(findstring 1, $(V)),, --quiet)
+	$Q @touch $@
+$>/doxygen/.trkn: $(DOC_DOXYGEN_DEPS) $(wildcard trkn/tracktion_* trkn/tracktion_*/*[hcd] trkn/tracktion_*/*/*[hcd]) $>/doxygen/.juce
+	$(QGEN)
+	$Q doc/doxygen.sh --trkn $(if $(findstring 1, $(V)),, --quiet)
+	$Q @touch $@
+$>/doxygen/.ase: $(DOC_DOXYGEN_DEPS) $(wildcard ase/*[hcd] ase/*/*[hcd]) $>/doxygen/.trkn
+	$(QGEN)
 	$Q doc/doxygen.sh --ase $(if $(findstring 1, $(V)),, --quiet)
 	$Q @touch $@
 $>/doxygen/.done: $>/doxygen/.ase
