@@ -236,17 +236,14 @@ MAKE_HELP += ' doxygen         - Build (large) C++ documentation in $>/doxygen/*
 MAKE_HELP += ' clean-doxygen   - Remove $>/doxygen/\n'
 
 # == mkdocs/ ==
-$>/mkdocs/.prepared: $(filter doxygen $>/doxygen/.done, $(MAKECMDGOALS))  # let mkdocs pickup doxygen/ if both are built
-doc/doxygen/.done != test -e $>/doxygen/.done && echo $>/doxygen/.done
-$>/mkdocs/.prepared: $(doc/doxygen/.done)				  # rebuild if doxygen exists and changed
 doc/mkdocs.symlinks := ui/ch-component.md
 doc/mkdocs.symlinks += $>/doc/jsdocsmd/ $>/doc/jsdocs.md $>/doc/class-tree.md $>/gen/scripting-docs.md
 doc/mkdocs.symlinks += doc/javascript doc/style $(wildcard doc/*.md)
-$>/mkdocs/.prepared: $(doc/mkdocs.symlinks) doc/Makefile.mk	| $>/mkdocs/ $>/doxygen/
+$>/mkdocs/.prepared: $(doc/mkdocs.symlinks) doc/Makefile.mk	| $>/mkdocs/
 	$(QGEN)
 	$Q rm -rf $>/mkdocs/* && mkdir -p $>/mkdocs/doc
 	$Q ln -s $(abspath doc/mkdocs.yml) $>/mkdocs/
-	$Q ln -s $(abspath $(doc/mkdocs.symlinks)) ../../doxygen $>/mkdocs/doc/
+	$Q ln -s $(abspath $(doc/mkdocs.symlinks)) $>/mkdocs/doc/
 	$Q cd $>/mkdocs/ && uv venv --python 3.12 \
 	&& UV_LINK_MODE=copy uv pip install \
 		mkdocs mkdocs-material mkdocs-file-filter-plugin mkdocs-literate-nav \
@@ -255,10 +252,14 @@ $>/mkdocs/.prepared: $(doc/mkdocs.symlinks) doc/Makefile.mk	| $>/mkdocs/ $>/doxy
 doc/mkdocs/anklang.stamp := $>/mkdocs/anklang/search/search_index.js
 $(doc/mkdocs/anklang.stamp): $>/mkdocs/.prepared
 	$(QECHO) BUILD $>/mkdocs/anklang/
+	$Q test -r $>/doxygen/.done && ln -sf ../../doxygen $>/mkdocs/doc/ || rm -f $>/mkdocs/doc/doxygen
 	$Q cd $>/mkdocs/ && uv run mkdocs build
+$(doc/mkdocs/anklang.stamp): $(filter doxygen $>/doxygen/.done, $(MAKECMDGOALS))	# let mkdocs pickup doxygen/ if both are built
+$(doc/mkdocs/anklang.stamp): $(wildcard $>/doxygen/.done)				# rebuild doxygen first, if it exists
 ALL_TARGETS += $(doc/mkdocs/anklang.stamp)
 mkdocs-serve: $>/mkdocs/.prepared
 	$(QECHO) SERVE mkdocs at localhost:1778
+	$Q test -r $>/doxygen/.done && ln -sf ../../doxygen $>/mkdocs/doc/ || rm -f $>/mkdocs/doc/doxygen
 	$Q cd $>/mkdocs/ && uv run mkdocs serve --livereload # -a localhost:1778
 clean-mkdocs:
 	rm -rf $>/mkdocs/
@@ -266,4 +267,5 @@ mkdocs-site: $(doc/mkdocs/anklang.stamp)
 .PHONY: mkdocs-serve mkdocs-site clean-mkdocs
 MAKE_HELP += ' mkdocs-serve    - Serve documentation at localhost:1778 with hot reload\n'
 MAKE_HELP += ' mkdocs-site     - Build documentation in $>/mkdocs/anklang/\n'
+MAKE_HELP += '                   Reuses $>/doxygen/ iff it exists\n'
 MAKE_HELP += ' clean-mkdocs    - Remove $>/mkdocs/anklang/\n'
