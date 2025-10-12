@@ -6,13 +6,6 @@ doc/style/all:
 doc/style/install.files ::=
 doc/style/faketex.css   ::= $>/doc/style/faketex.css
 
-# == doc/style/mathjax ==
-$>/doc/style/mathjax-tex-svg.js: doc/style/mathjax-config.js node_modules/.npm.done	| $>/doc/style/
-	$(QGEN)
-	$Q cat $< node_modules/mathjax/es5/tex-svg-full.js		> $@.tmp
-	$Q mv $@.tmp $@
-doc/style/install.files += $>/doc/style/mathjax-tex-svg.js
-
 # == doc/style/faketex.css ==
 $(doc/style/faketex.css): doc/style/faketex.scss doc/style/features.scss node_modules/.npm.done  | $>/doc/style/
 	$(QGEN)
