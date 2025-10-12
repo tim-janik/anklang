@@ -256,10 +256,10 @@ class BShell extends Object {
     const zlast = App.zmove_last();
     const el_f1 = Util.find_element_from_point (document, zlast.pageX, zlast.pageY, el => {
       const str = el.getAttribute ('data-f1');
-      return str && str[0] === '#'; // treat as anchor into manual
+      return /(#|\.htm)/.test (str); // check for documentation links / anchors
     });
     const data_f1 = el_f1 && el_f1.getAttribute ('data-f1') || '#using-anklang';
-    const u = location.origin + '/doc/anklang-manual.html' + data_f1;
+    const u = location.origin + '/anklang/' + data_f1;
     window.open (u, '_blank');
     Util.prevent_event (event);
     return true;

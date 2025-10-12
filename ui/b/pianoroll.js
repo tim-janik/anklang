@@ -79,7 +79,7 @@ b-piano-roll {
 
 // == HTML ==
 const HTML = (t, d) => html`
-  <div class="b-pianoroll-grid" tabindex="-1" ${ref (h => t.cgrid = h)} data-f1="#piano-roll"
+  <div class="b-pianoroll-grid" tabindex="-1" ${ref (h => t.cgrid = h)} data-f1="the-piano-roll.html"
     @pointerenter=${t.pointerenter} @pointerleave=${t.pointerleave} @focus=${t.focuschange} @blur=${t.focuschange}
     @keydown=${e => t.piano_ctrl.keydown (e)}
     @wheel=${{handleEvent: e => t.wheel_event (e), passive: false}} >
