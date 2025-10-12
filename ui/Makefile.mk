@@ -146,18 +146,15 @@ serve: all
 .PHONY: serve
 
 # == installation ==
-ui/installdir ::= $(DESTDIR)$(pkgdir)/ui
 ui/install: $>/gen/.ui.done
-	@$(QECHO) INSTALL '$(ui/installdir)/'
-	$Q rm -f -r '$(ui/installdir)'
-	$Q $(INSTALL) -d $(ui/installdir)/ $(ui/installdir)/assets
-	$Q $(INSTALL_DATA) -p $>/ui/*.* $(ui/installdir)/
-	$Q $(INSTALL_DATA) -p $>/ui/assets/*.* $(ui/installdir)/assets/
-	$Q ln -s ../doc $(ui/installdir)/doc
+	@$(QECHO) INSTALL '$(DESTDIR)$(pkgdir)/ui'
+	$Q rm -rf '$(DESTDIR)$(pkgdir)/ui'
+	$Q $(INSTALL) -d $(DESTDIR)$(pkgdir)/ui
+	$Q cp -RP $>/ui $(DESTDIR)$(pkgdir)/
 .PHONY: ui/install
 install: ui/install
 ui/uninstall: FORCE
-	@$(QECHO) UNINSTALL '$(ui/installdir)/'
-	$Q rm -f -r '$(ui/installdir)'
+	@$(QECHO) REMOVE '$(DESTDIR)$(pkgdir)/ui'
+	$Q rm -rf '$(DESTDIR)$(pkgdir)/ui'
 .PHONY: ui/uninstall
 uninstall: ui/uninstall
