@@ -225,6 +225,7 @@ doc/all: $(doc/install.files)
 DOC_DOXYGEN_DEPS := doc/doxygen.sh doc/style/doxyextra.css doc/doxyheader.htm doc/doxyfooter.htm doc/Makefile.mk
 $>/doxygen/.ase: $(DOC_DOXYGEN_DEPS) $(wildcard ase/*[hcd] ase/*/*[hcd])
 	$(QGEN)
+	$Q mkdir -p $>/doxygen/ && rm -rf $>/doxygen/*/ # clear subdirs
 	$Q doc/doxygen.sh --ase $(if $(findstring 1, $(V)),, --quiet)
 	$Q @touch $@
 $>/doxygen/.done: $>/doxygen/.ase

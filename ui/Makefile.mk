@@ -125,15 +125,20 @@ $>/gen/%.md: ui/%.js								| $>/gen/b/ node_modules/.npm.done
 # == ui dist build ==
 VITE_DEPS += $>/version.json
 $>/gen/.vite.done: ui/vite.config.ts ui/Makefile.mk $(VITE_DEPS)	| node_modules/.npm.done
-	@$(QECHO) BUILD "dist/ (vite build)"
+	@$(QECHO) BUILD "Vite Output"
 	$Q BUILDDIR='$(abspath $>)' node_modules/.bin/vite -c ui/vite.config.ts build -l warn --emptyOutDir
 	$Q ln -fs anklang.png $>/ui/favicon.ico
 	$Q gzip -f -9 $>/ui/assets/*.map
-	$Q rm -rf $>/ui/anklang && cp -RL $>/mkdocs/anklang $>/ui/
 	$Q echo '.*/[.].*'		>> $>/ui/.aseignore
 	$Q touch $@
-ALL_TARGETS += $>/gen/.vite.done
-LATE_EVAL += $$(eval $>/gen/.vite.done: $${doc/mkdocs/anklang.stamp})	# doc/mkdocs/anklang.stamp is assigned later
+
+# == ui dist build ==
+LATE_EVAL += $$(eval $$>/gen/.ui.done: $${doc/mkdocs/anklang.stamp})	# doc/mkdocs/anklang.stamp is assigned later
+$>/gen/.ui.done: $>/gen/.vite.done
+	@$(QECHO) BUILD "$>/ui/"
+	$Q rm -rf $>/ui/anklang && cp -RL $>/mkdocs/anklang $>/ui/
+	$Q touch $@
+ALL_TARGETS += $>/gen/.ui.done
 
 # == serve ==
 serve: all
@@ -142,7 +147,7 @@ serve: all
 
 # == installation ==
 ui/installdir ::= $(DESTDIR)$(pkgdir)/ui
-ui/install: $>/gen/.vite.done
+ui/install: $>/gen/.ui.done
 	@$(QECHO) INSTALL '$(ui/installdir)/'
 	$Q rm -f -r '$(ui/installdir)'
 	$Q $(INSTALL) -d $(ui/installdir)/ $(ui/installdir)/assets
