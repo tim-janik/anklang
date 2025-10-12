@@ -3,25 +3,16 @@ include $(wildcard $>/doc/*.d)
 ALL_TARGETS       += doc/all
 doc/all:
 
-# == doc/ files ==
-doc/manual-chapters ::= $(strip		\
-	$>/gen/b/cliplist.md		\
-	$>/gen/b/pianoroll.md		\
-	$>/gen/b/piano-ctrl.md		\
-	$>/gen/ch-man-pages.md		\
-	$>/gen/scripting-docs.md	\
-)
-doc/internals-chapters ::= $(strip	\
-	doc/ch-development.md		\
-	$>/doc/class-tree.md		\
+# == Chapters for mkdocs ==
+doc/mkdocs-chapters := $(strip		\
+	$(wildcard doc/*.md)		\
+	ase/gen/class-tree.g.md		\
 	ui/ch-component.md		\
-	$>/doc/jsdocs.md		\
-	doc/ch-releasing.md		\
-	doc/ch-appendix.md		\
+	$>/gen/b/cliplist.md		\
 )
+
+# == doc/ files ==
 doc/install.files ::= $(strip		\
-	$>/doc/anklang-manual.html	\
-	$>/doc/anklang-internals.html	\
 	$>/doc/anklang.1		\
 	$>/doc/NEWS.md			\
 	$>/doc/NEWS.html		\
@@ -30,7 +21,7 @@ doc/install.files ::= $(strip		\
 	doc/copyright			\
 )
 
-# == Copy files ==
+# == Copy doc/install.files ==
 $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/doc/
 	$(QECHO) COPY $<
 	$Q $(CP) $< $@
@@ -53,8 +44,20 @@ $>/doc/jsdocs.md: $(doc/jsdocs_md) doc/Makefile.mk
 	$Q pandoc -p -f markdown+compact_definition_lists+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart-raw_html-raw_tex \
 		-t markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart		$@.tmp > $@.tmp2
 	$Q mv $@.tmp2 $@
+doc/mkdocs-chapters += $>/doc/jsdocs.md
 
-# == doc/scripting-docs.md ==
+# == gen/piano-roll.md ==
+$>/gen/the-piano-roll.md: $>/gen/b/piano-ctrl.md $>/gen/b/pianoroll.md
+	$(QGEN)
+	$Q echo				>  $@.tmp
+	$Q cat $>/gen/b/pianoroll.md	>> $@.tmp
+	$Q echo				>> $@.tmp
+	$Q cat $>/gen/b/piano-ctrl.md	>> $@.tmp
+	$Q mv $@.tmp $@
+doc/mkdocs-chapters += $>/gen/the-piano-roll.md
+
+# == gen/scripting-docs.md ==
+doc/mkdocs-chapters := $(filter-out doc/ch-scripting.md, $(doc/mkdocs-chapters)) $>/gen/scripting-docs.md
 $>/gen/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) doc/Makefile.mk node_modules/.npm.done	| $>/doc/
 	$(QGEN)
 	$Q cat doc/ch-scripting.md				>  $@.tmp
@@ -62,11 +65,6 @@ $>/gen/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) doc/M
 	$Q node doc/jsdoc2md.js -d 2 -e 'Host' $<		>> $@.tmp
 	$Q mv $@.tmp $@
 doc/jsdoc.deps ::= doc/jsdocrc.json doc/jsdoc-slashes.js doc/jsdoc2md.js
-
-# == doc/class-tree.md ==
-$>/doc/class-tree.md: ase/gen/class-tree.g.md doc/Makefile.mk
-	$(QGEN)
-	$Q $(CP) $< $@
 
 # == pandoc ==
 doc/markdown-flavour	::= -f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart
@@ -80,19 +78,6 @@ $>/doc/%.1: doc/%.1.md doc/Makefile.mk					| $>/doc/
 		-M date="$(version_date)" \
 		-M footer="anklang-$(version_short)" \
 		-t man $< -o $@.tmp
-	$Q mv $@.tmp $@
-
-# == ch-man-pages.md ==
-doc/manual-man-pages ::= doc/anklang.1.md
-$>/gen/ch-man-pages.md: $(doc/manual-man-pages) doc/filt-man.py doc/Makefile.mk	| $>/doc/
-	$(QGEN)
-	$Q echo '# Manual Pages'			>  $@.tmp
-	$Q echo ''					>> $@.tmp
-	$Q for m in $(doc/manual-man-pages) ; do		\
-		n="$${m%%.md}" ; u="$${n^^}" ; n="$${u##*/}" ;	\
-		echo "## $${n/\./(})" ; echo ;			\
-		$(PANDOC) -t markdown -F doc/filt-man.py "$$m"	\
-		|| exit $$? ; echo ; done		>> $@.tmp
 	$Q mv $@.tmp $@
 
 # == html from markdown ==
@@ -116,31 +101,6 @@ $>/doc/cursors/cursors.css: $>/gen/cursors/cursors.css			| $>/doc/
 	$(QGEN)
 	$Q $(RM) -r -f $>/doc/cursors
 	$Q $(CP) -r -p $>/gen/cursors/ $>/doc/cursors/
-
-# == anklang-manual.html ==
-$>/doc/anklang-manual.html: $>/doc/template.html $(doc/manual-chapters) $>/doc/cursors/cursors.css $(doc/style/install.files)	| $>/doc/
-	$(QGEN)
-	$Q $(PANDOC) $(doc/markdown-flavour) \
-		-s $(doc/html_flags) \
-		--toc --number-sections \
-		--variable=subparagraph \
-		--variable date="$(version_to_month)" \
-		--template=$< \
-		-c style/$(notdir $(doc/style/faketex.css)) \
-		--mathjax='style/mathjax-tex-svg.js' \
-		$(doc/manual-chapters) -o $@
-# == anklang-internals.html ==
-$>/doc/anklang-internals.html: $>/doc/template.html $(doc/internals-chapters) $(doc/style/install.files)	| $>/doc/
-	$(QGEN)
-	$Q $(PANDOC) $(doc/markdown-flavour) \
-		-s $(doc/html_flags) \
-		--toc --number-sections \
-		--variable=subparagraph \
-		--variable date="$(version_to_month)" \
-		--template=$< \
-		-c style/$(notdir $(doc/style/faketex.css)) \
-		--mathjax='style/mathjax-tex-svg.js' \
-		$(doc/internals-chapters) -o $@
 
 # == installation ==
 pkgdocdir ::= $(pkgdir)/doc
@@ -183,14 +143,14 @@ MAKE_HELP += ' doxygen         - Build (large) C++ documentation in $>/doxygen/*
 MAKE_HELP += ' clean-doxygen   - Remove $>/doxygen/\n'
 
 # == mkdocs/ ==
-doc/mkdocs.symlinks := ui/ch-component.md
-doc/mkdocs.symlinks += $>/doc/jsdocsmd/ $>/doc/jsdocs.md $>/doc/class-tree.md $>/gen/scripting-docs.md
-doc/mkdocs.symlinks += doc/javascript doc/style $(wildcard doc/*.md)
+doc/mkdocs.symlinks := $(doc/mkdocs-chapters)
+doc/mkdocs.symlinks += doc/javascript doc/style $>/doc/jsdocsmd/
 $>/mkdocs/.prepared: $(doc/mkdocs.symlinks) doc/Makefile.mk	| $>/mkdocs/
 	$(QGEN)
 	$Q rm -rf $>/mkdocs/* && mkdir -p $>/mkdocs/doc
 	$Q ln -s $(abspath doc/mkdocs.yml) $>/mkdocs/
 	$Q ln -s $(abspath $(doc/mkdocs.symlinks)) $>/mkdocs/doc/
+	$Q ln -s $(abspath ui/cursors) $>/mkdocs/doc/
 	$Q cd $>/mkdocs/ && uv venv --python 3.12 \
 	&& UV_LINK_MODE=copy uv pip install \
 		mkdocs mkdocs-material mkdocs-file-filter-plugin mkdocs-literate-nav \

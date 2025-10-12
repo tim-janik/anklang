@@ -6,18 +6,20 @@
   * [Howto: Setting Up Audio (Linux)](how-audio.md)
 * References
   * [ANKLANG(1) Manual Page](anklang.1.md)
+  * [The Clip List](cliplist.md)
+  * [The Piano Roll](the-piano-roll.md)
   * [JS Scripting](scripting-docs.md)
   * JS Utils
     * jsdocsmd/*.md
-  * JS Component Files
-    * jsdocsmd/b/*.md
 * Design & Development
   * [Development Overview](ch-development.md)
   * UI Development
     * [Web Components](ch-component.md)
     * [JS UI Components](jsdocs.md)
+    * JS Component Files
+      * jsdocsmd/b/*.md
   * Ase C++ API
-    * [Ase C++ Class-Tree](class-tree.md)
+    * [Ase C++ Class-Tree](class-tree.g.md)
     * [Ase Namespace ↗](doxygen/ase/namespaceAse.html)
     * [Ase C++ Files ↗](doxygen/ase/files.html)
     * [Ase Classes ↗](doxygen/ase/classes.html)
