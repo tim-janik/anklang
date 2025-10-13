@@ -151,7 +151,6 @@ include images/knobs/Makefile.mk
 include ui/Makefile.mk
 include electron/Makefile.mk
 include misc/Makefile.mk
-include doc/style/Makefile.mk
 include doc/Makefile.mk
 
 # == run ==

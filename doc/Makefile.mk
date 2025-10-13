@@ -104,7 +104,7 @@ $>/doc/cursors/cursors.css: $>/gen/cursors/cursors.css			| $>/doc/
 
 # == installation ==
 pkgdocdir ::= $(pkgdir)/doc
-doc/install: $(doc/install.files) install--doc/style/install.files
+doc/install: $(doc/install.files)
 	@$(QECHO) INSTALL '$(DESTDIR)$(pkgdocdir)/.'
 	$Q rm -f '$(DESTDIR)$(pkgdocdir)'/* 2>/dev/null ; true
 	$Q $(INSTALL)      -d $(DESTDIR)$(pkgdocdir)/ $(DESTDIR)$(mandir)/man1/
@@ -115,7 +115,7 @@ doc/install: $(doc/install.files) install--doc/style/install.files
 	$Q ln -s -r '$(DESTDIR)$(pkgdir)/doc' '$(DESTDIR)$(docdir)/anklang'
 .PHONY: doc/install
 install: doc/install
-doc/uninstall: FORCE uninstall--doc/style/install.files
+doc/uninstall: FORCE
 	@$(QECHO) REMOVE '$(DESTDIR)$(pkgdocdir)/.'
 	$Q rm -f -r '$(DESTDIR)$(pkgdocdir)'
 	$Q rm -f '$(DESTDIR)$(mandir)/man1/anklang.1'
