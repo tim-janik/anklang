@@ -24,8 +24,44 @@ ASE_EXTERNAL_INCLUDES := $(strip		\
 ) # also used by clang-tidy
 ase/object.includes		::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
 
+# == ase/sysconfig.h ==
+$>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk
+	$(QGEN)
+	$Q : $(file > $>/ase/conftest_sysconfigh.cc, $(ase/conftest_sysconfigh.cc)) \
+	&& $(CXX) -Wall $>/ase/conftest_sysconfigh.cc -pthread -o $>/ase/conftest_sysconfigh \
+	&& (cd $> && ./ase/conftest_sysconfigh)
+	$Q echo '// make $@'				> $@.tmp
+	$Q cat $>/ase/conftest_sysconfigh.txt		>>$@.tmp
+	$Q mv $@.tmp $@
+# ase/conftest_sysconfigh.cc
+define ase/conftest_sysconfigh.cc
+// #define _GNU_SOURCE
+#include <sys/types.h>
+#include <stdio.h>
+#include <poll.h>
+#include <string.h>
+#include <pthread.h>
+#include <assert.h>
+struct Spin { pthread_spinlock_t dummy1, s1, dummy2, s2, dummy3; };
+int main (int argc, const char *argv[]) {
+  FILE *f = fopen ("ase/conftest_sysconfigh.txt", "w");
+  assert (f);
+  struct Spin spin;
+  memset (&spin, 0xffffffff, sizeof (spin));
+  if (pthread_spin_init (&spin.s1, 0) == 0 && pthread_spin_init (&spin.s2, 0) == 0 &&
+      sizeof (pthread_spinlock_t) == 4 && spin.s1 == spin.s2)
+    { // # sizeof==4 and location-independence are current implementation assumption
+      fprintf (f, "#define ASE_SPINLOCK_INITIALIZER  0x%04x \n", *(int*) &spin.s1);
+    }
+  fprintf (f, "#define ASE_SYSVAL_POLLINIT  ((const uint32_t[]) ");
+  fprintf (f, "{ 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x } )\n",
+           POLLIN, POLLPRI, POLLOUT, POLLRDNORM, POLLRDBAND, POLLWRNORM, POLLWRBAND, POLLERR, POLLHUP, POLLNVAL);
+  return ferror (f) || fclose (f) != 0;
+}
+endef
+
 # == codegen/ase/gen/api-jsonipc.json ==
-$>/codegen/ase/gen/api-jsonipc.json: ase/api.hh $(ase/sysconfig.dep) ase/Makefile.mk
+$>/codegen/ase/gen/api-jsonipc.json: ase/api.hh $>/ase/sysconfig.h ase/Makefile.mk
 	$(QGEN)
 	$Q clang-20 -std=gnu++23 -I . -I out/ -extract-api $< -o $@
 
@@ -86,42 +122,6 @@ $>/codegen/.api-jsonipc.tscheck: ase/gen/api-jsonipc.g.ts ase/Makefile.mk		| $>/
 	$(QGEN)
 	$Q node_modules/.bin/tsc --noEmit --allowJs --moduleResolution bundler -m esnext --target esnext --erasableSyntaxOnly $<
 	$Q touch $@
-
-# == ase/sysconfig.h ==
-$>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk
-	$(QGEN)
-	$Q : $(file > $>/ase/conftest_sysconfigh.cc, $(ase/conftest_sysconfigh.cc)) \
-	&& $(CXX) -Wall $>/ase/conftest_sysconfigh.cc -pthread -o $>/ase/conftest_sysconfigh \
-	&& (cd $> && ./ase/conftest_sysconfigh)
-	$Q echo '// make $@'				> $@.tmp
-	$Q cat $>/ase/conftest_sysconfigh.txt		>>$@.tmp
-	$Q mv $@.tmp $@
-# ase/conftest_sysconfigh.cc
-define ase/conftest_sysconfigh.cc
-// #define _GNU_SOURCE
-#include <sys/types.h>
-#include <stdio.h>
-#include <poll.h>
-#include <string.h>
-#include <pthread.h>
-#include <assert.h>
-struct Spin { pthread_spinlock_t dummy1, s1, dummy2, s2, dummy3; };
-int main (int argc, const char *argv[]) {
-  FILE *f = fopen ("ase/conftest_sysconfigh.txt", "w");
-  assert (f);
-  struct Spin spin;
-  memset (&spin, 0xffffffff, sizeof (spin));
-  if (pthread_spin_init (&spin.s1, 0) == 0 && pthread_spin_init (&spin.s2, 0) == 0 &&
-      sizeof (pthread_spinlock_t) == 4 && spin.s1 == spin.s2)
-    { // # sizeof==4 and location-independence are current implementation assumption
-      fprintf (f, "#define ASE_SPINLOCK_INITIALIZER  0x%04x \n", *(int*) &spin.s1);
-    }
-  fprintf (f, "#define ASE_SYSVAL_POLLINIT  ((const uint32_t[]) ");
-  fprintf (f, "{ 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x } )\n",
-           POLLIN, POLLPRI, POLLOUT, POLLRDNORM, POLLRDBAND, POLLWRNORM, POLLWRBAND, POLLERR, POLLHUP, POLLNVAL);
-  return ferror (f) || fclose (f) != 0;
-}
-endef
 
 # == blake3impl.c ==
 $>/ase/blake3impl.c:		| $>/ase/
@@ -200,8 +200,8 @@ ALL_TARGETS += $(lib/AnklangSynthEngine)
 # == jackdriver.so ==
 lib/jackdriver.so	     ::= $>/lib/jackdriver.so
 ase/jackdriver.objects	     ::= $(call BUILDDIR_O, $(ase/jackdriver.sources))
-$(ase/jackdriver.objects):   $(ase/sysconfig.dep)
-$(ase/jackdriver.objects):   EXTRA_INCLUDES ::= -I$>
+$(ase/jackdriver.objects):   $>/ase/sysconfig.h
+$(ase/jackdriver.objects):   EXTRA_INCLUDES += -I$>
 $(lib/jackdriver.so).LDFLAGS ::= -Wl,--unresolved-symbols=ignore-in-object-files
 ifneq ('','$(ANKLANG_JACK_LIBS)')
 lib/jackdriver.so.MAYBE ::= $(lib/jackdriver.so)
@@ -217,9 +217,9 @@ ALL_TARGETS += $(lib/jackdriver.so.MAYBE)
 # == gtk2wrap.so ==
 lib/gtk2wrap.so         ::= $>/lib/gtk2wrap.so
 ase/gtk2wrap.objects    ::= $(call BUILDDIR_O, $(ase/gtk2wrap.sources))
-$(ase/gtk2wrap.objects): EXTRA_INCLUDES ::= -I$> $(GTK2_CFLAGS)
-$(ase/gtk2wrap.objects): EXTRA_CXXFLAGS ::= -Wno-deprecated -Wno-deprecated-declarations
-$(ase/gtk2wrap.objects): $(ase/sysconfig.dep)
+$(ase/gtk2wrap.objects): EXTRA_INCLUDES += -I$> $(GTK2_CFLAGS)
+$(ase/gtk2wrap.objects): EXTRA_CXXFLAGS += -Wno-deprecated -Wno-deprecated-declarations
+$(ase/gtk2wrap.objects): $>/ase/sysconfig.h
 $(call BUILD_SHARED_LIB, \
 	$(lib/gtk2wrap.so), \
 	$(ase/gtk2wrap.objects), \
