@@ -2,18 +2,15 @@
 include $(wildcard $>/ase/*.d)
 
 # == ase/ *.cc file sets ==
-ase/AnklangSynthEngine.sources	:= ase/main.cc
 lib/libsndfile.so		:= $>/lib/libsndfile.so.$(libsndfile/lt_current.lt_age.lt_revision)
 ase/jackdriver.sources		:= ase/driver-jack.cc
 ase/gtk2wrap.sources		:= ase/gtk2wrap.cc
-ase/noglob.sources		:= $(ase/AnklangSynthEngine.sources) $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
-ase/common.ccsources		:= $(filter-out $(ase/noglob.sources), $(wildcard ase/*.cc))
-ase/common.csources		:= $(wildcard ase/*.c)
+ase/not-anklang.sources		:= $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
+ase/anklang.sources		:= $(filter-out $(ase/not-anklang.sources), $(wildcard ase/*.cc)) $(wildcard ase/*.c)
 lib/AnklangSynthEngine		:= $>/lib/AnklangSynthEngine
 ase/generated.sources		:=
-ase/object.deps			:=
-ase/sysconfig.dep		:= $>/ase/sysconfig.h
-ASE_EXTERNAL_INCLUDES := $(strip		\
+ASE_EXTRA_INCLUDES := $(strip			\
+	-Iexternal				\
 	-Iexternal/clap/include			\
 	-Iexternal/libsndfile/include		\
 	-Iexternal/liquidsfz/lib		\
@@ -21,8 +18,8 @@ ASE_EXTERNAL_INCLUDES := $(strip		\
 	-Iexternal/pandaresampler/include	\
 	-Iexternal/rapidjson/include		\
 	-Iexternal/websocketpp			\
+	$(ASEDEPS_CFLAGS)			\
 ) # also used by clang-tidy
-ase/object.includes		::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
 
 # == ase/sysconfig.h ==
 $>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk
@@ -140,7 +137,6 @@ $>/ase/blake3impl.c:		| $>/ase/
 $>/ase/blake3avx512.c $>/ase/blake3avx2.c $>/ase/blake3sse41.c $>/ase/blake3sse2.c: $>/ase/blake3impl.c
 
 # == Common Sources ==
-ase/common.sources	::= $(ase/common.ccsources) $(ase/common.csources)
 ase/generated.sources	+= $(strip	\
 	$>/ase/blake3impl.c		\
 	$>/ase/blake3avx512.c		\
@@ -165,30 +161,22 @@ $>/ase/buildversion-$(version_hash).cc:						| $>/ase/
 	$Q mv $@.tmp $@
 ase/generated.sources += $>/ase/buildversion-$(version_hash).cc
 
-# == object deps ==
-ase/object.deps	+= $(ase/sysconfig.dep) $(ase/libase.deps) $(EXTERNAL_CXX_STAMPS)
-ase/common.objects := $(sort \
-	$(call BUILDDIR_O, $(ase/common.sources)) \
-	$(call SOURCE2_O, $(ase/generated.sources))   \
+# == AnklangSynthEngine ==
+ase/anklang.ccobjects := $(call BUILDDIR_O, $(filter %.cc, $(ase/anklang.sources)))
+ase/anklang.objects := $(sort \
+	$(call BUILDDIR_O, $(ase/anklang.sources))	\
+	$(call SOURCE2_O, $(ase/generated.sources))	\
 )
-$(ase/common.objects): $(ase/object.deps)
-$(ase/common.objects): EXTRA_INCLUDES ::= $(ase/object.includes)
-$(devices/4ase.objects): $(ase/object.deps)
-$(devices/4ase.objects): EXTRA_INCLUDES ::= $(ase/object.includes)
+$(ase/anklang.objects) $(devices/4ase.objects): $>/ase/sysconfig.h $(EXTERNAL_CXX_STAMPS)
+$(ase/anklang.objects) $(devices/4ase.objects): EXTRA_INCLUDES += $(ASE_EXTRA_INCLUDES) -I$>
 # Work around legacy code in external/websocketpp/*.hpp
 ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec -Wno-sign-promo
 # Allow tests in mathutils.cc
 ase/mathutils.cc.CTIDY_FLAGS = --checks=-clang-analyzer-security.FloatLoopCounter
-
-# == AnklangSynthEngine ==
-ase/AnklangSynthEngine.objects	::= $(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources))
-$(ase/AnklangSynthEngine.objects): $(ase/object.deps)
-$(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= $(ase/object.includes)
-ase/AnklangSynthEngine.objects	 += $(ase/common.objects) $(devices/4ase.objects)
 $(lib/AnklangSynthEngine): $(lib/libsndfile.so)				| $>/lib/
 $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
-	$(ase/AnklangSynthEngine.objects), \
+	$(ase/anklang.objects) $(devices/4ase.objects), \
 	$(lib/libase.so), \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl $(lib/libsndfile.so), \
 	../lib)
