@@ -9,7 +9,7 @@ define fetch-and-check
 ( sha256sum -c --status <<<'$(strip $2)  $(strip $1)' 2>/dev/null || \
     curl --retry 2 -# -fSL '$(strip $3)' -o $(strip $1) ) && \
 sha256sum -c <<<'$(strip $2)  $(strip $1)' || \
-  { echo '$(strip $1): ERROR: failed to fetch: $(strip $3)' >&2 ; exit 1 ; }
+  { sha256sum "$(strip $1)"; echo '$(strip $1): ERROR: failed to fetch: $(strip $3)' >&2 ; exit 1 ; }
 endef
 
 # == external/blake3/ ==
