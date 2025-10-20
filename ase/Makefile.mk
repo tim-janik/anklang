@@ -221,6 +221,32 @@ $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgd
 	$(lib/gtk2wrap.so)		\
   ))
 
+# == build media/Samples ==
+# See: platform.cc:SAMPLEDIR
+$>/.media.done: $(EXTERNAL_BLOBS4ANKLANG_STAMPS) $>/media/Samples/
+	$(QGEN)
+	$Q rm -rf $>/media/Samples/freepats-vorbis/
+	$Q mkdir -p $>/media/Samples/freepats-vorbis/Drum/ $>/media/Samples/freepats-vorbis/Tone/
+	$Q ln -s $(abspath external/freepats-vorbis/Drum/*.ogg) $>/media/Samples/freepats-vorbis/Drum/
+	$Q ln -s $(abspath external/freepats-vorbis/Tone/*.ogg) $>/media/Samples/freepats-vorbis/Tone/
+	$Q touch $@
+ALL_TARGETS += $>/.media.done
+
+# == install media/Samples ==
+media/install:
+	@$(QECHO) INSTALL '$(DESTDIR)$(pkgmediadir)'
+	$Q rm -rf '$(DESTDIR)$(pkgmediadir)' && mkdir -p '$(DESTDIR)$(pkgmediadir)'
+	$Q cp -RL $>/media/Samples '$(DESTDIR)$(pkgmediadir)'
+install: media/install
+.PHONY: media/install
+
+# == uninstall media/Samples ==
+media/uninstall:
+	@$(QECHO) UNINSTALL '$(DESTDIR)$(pkgmediadir)'
+	$Q rm -rf '$(DESTDIR)$(pkgmediadir)'
+uninstall: media/uninstall
+.PHONY: media/uninstall
+
 # == install ==
 ase/install: $(lib/AnklangSynthEngine)
 	@$(QECHO) INSTALL '$(DESTDIR)$(bindir)/anklang'
