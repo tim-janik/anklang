@@ -212,7 +212,7 @@ $(call BUILD_SHARED_LIB,		\
 	$(ANKLANG_JACK_LIBS) $(lib/libase.so), \
 	../lib)
 endif
-$(ALL_TARGETS) += $(lib/jackdriver.so.MAYBE)
+ALL_TARGETS += $(lib/jackdriver.so.MAYBE)
 
 # == gtk2wrap.so ==
 lib/gtk2wrap.so         ::= $>/lib/gtk2wrap.so
@@ -226,7 +226,7 @@ $(call BUILD_SHARED_LIB, \
 	$(lib/libase.so) | $>/lib/, \
 	$(GTK2_LIBS), \
 	../lib)
-$(ALL_TARGETS) += $(lib/gtk2wrap.so)
+ALL_TARGETS += $(lib/gtk2wrap.so)
 
 # == install binaries ==
 $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
