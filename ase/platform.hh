@@ -30,8 +30,9 @@ enum class RPath {
   LOCALEDIR,
   LIBDIR,
   ELECTRONDIR,
-  DEMODIR,
   LADSPADIRS,
+  SAMPLEDIR,
+  DEMODIR,
 };
 std::string anklang_runpath  (RPath rpath, const String &segment = "");
 String      anklang_home_dir (const String &subdir = "");
