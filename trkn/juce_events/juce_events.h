@@ -96,7 +96,7 @@
 #include "native/juce_ScopedLowPowerModeDisabler.h"
 
 #if JUCE_LINUX || JUCE_BSD
- #include "native/juce_EventLoop_linux.h"
+#include <ase/juce-linux.hh>    // #include "native/juce_EventLoop_linux.h"
 #endif
 
 #if JUCE_WINDOWS

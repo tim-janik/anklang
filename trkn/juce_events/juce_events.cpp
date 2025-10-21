@@ -90,8 +90,8 @@
  #endif
 
 #elif JUCE_LINUX || JUCE_BSD
- #include "native/juce_EventLoopInternal_linux.h"
- #include "native/juce_Messaging_linux.cpp"
+ // #include "native/juce_EventLoopInternal_linux.h"
+ // #include "native/juce_Messaging_linux.cpp"
 
 #elif JUCE_ANDROID
  #include "native/juce_Messaging_android.cpp"
