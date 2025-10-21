@@ -87,7 +87,7 @@ void JUCEApplicationBase::sendUnhandledException (const std::exception* const e,
 
 //==============================================================================
 #if ! (JUCE_IOS || JUCE_ANDROID)
- #define JUCE_HANDLE_MULTIPLE_INSTANCES 1
+// #define JUCE_HANDLE_MULTIPLE_INSTANCES 1
 #endif
 
 #if JUCE_HANDLE_MULTIPLE_INSTANCES

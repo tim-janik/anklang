@@ -184,7 +184,7 @@ public:
     /** @internal */
     bool perform (const InvocationInfo&) override;
 
-private:
+private: public:
     bool initialiseApp() override;
 
     JUCE_DECLARE_NON_COPYABLE (JUCEApplication)
