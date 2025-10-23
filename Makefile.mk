@@ -368,7 +368,7 @@ dist_exclude := $(strip			\
 	external/minizip-ng/lib		\
 )
 dist: TAGS
-	$(eval distversion != git describe --match='v[0-9]*.[0-9]*.[0-9]*' | sed 's/\b-\b/.dev/ ; s/^v//')
+	$(eval distversion != misc/version.sh | sed 's/[+ -].*//')
 	$(eval distname := anklang-$(distversion))
 	$(QECHO) MAKE $(distname).tar.zst
 	$Q git describe --dirty | grep -qve -dirty || echo -e "#\n# $@: WARNING: working tree is dirty\n#"
