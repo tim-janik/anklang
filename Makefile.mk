@@ -14,18 +14,20 @@ S +=
 
 # == Version ==
 version_full    != misc/version.sh
-version_short  ::= $(word 1, $(version_full))
-version_hash   ::= $(word 2, $(version_full))
-version_date   ::= $(wordlist 3, 999, $(version_full))
-version_bits   ::= $(subst _, , $(subst -, , $(subst ., , $(version_short))))
-version_major  ::= $(word 1, $(version_bits))
-version_minor  ::= $(word 2, $(version_bits))
-version_micro  ::= $(word 3, $(version_bits))
+version_long	:= $(word 1, $(version_full))
+version_short	:= $(word 1, $(subst +, , $(version_long)))
+version_hash	:= $(word 2, $(version_full))
+version_date	:= $(wordlist 3, 999, $(version_full))
+version_bits	:= $(subst _, , $(subst -, , $(subst ., , $(version_short))))
+version_major	:= $(word 1, $(version_bits))
+version_minor	:= $(word 2, $(version_bits))
+version_micro	:= $(word 3, $(version_bits))
 version_to_month = $(shell echo "$(version_date)" | sed -r -e 's/^([2-9][0-9][0-9][0-9])-([0-9][0-9])-.*/m\2 \1/' \
-			-e 's/m01/January/ ; s/m02/February/ ; s/m03/March/ ; s/m04/April/ ; s/m05/May/ ; s/m06/June/' \
-			-e 's/m07/July/ ; s/m08/August/ ; s/m09/September/ ; s/m10/October/ ; s/m11/November/ ; s/m12/December/')
+		     -e 's/m01/January/ ; s/m02/February/ ; s/m03/March/ ; s/m04/April/ ; s/m05/May/ ; s/m06/June/' \
+		     -e 's/m07/July/ ; s/m08/August/ ; s/m09/September/ ; s/m10/October/ ; s/m11/November/ ; s/m12/December/')
 version-info:
 	@echo version_full: $(version_full)
+	@echo version_long: $(version_long)
 	@echo version_short: $(version_short)
 	@echo version_hash: $(version_hash)
 	@echo version_date: $(version_date)
