@@ -149,10 +149,8 @@ ase/generated.sources	+= $(strip	\
 	$>/ase/blake3sse2.c		\
 )
 
-# == ase/buildversion-$(version_short).cc ==
-ase/buildsum != echo '$(sharedir)' | sha256sum - | sed -r 's/(.{12}).*/$(version_short).mk\1/'
-ase/buildversion.cc := $>/ase/buildversion-$(ase/buildsum).cc
-$(ase/buildversion.cc):								| $>/ase/ # $(GITCOMMITDEPS)
+# == ase/buildversion-*.cc ==
+$>/ase/buildversion-$(version_hash).cc:						| $>/ase/
 	$(QGEN)
 	$Q echo '// make $@'							> $@.tmp
 	$Q echo '#include <ase/platform.hh>'					>>$@.tmp
@@ -163,10 +161,9 @@ $(ase/buildversion.cc):								| $>/ase/ # $(GITCOMMITDEPS)
 	$Q echo 'const char *const ase_version_long = "$(version_short)+g$(version_hash) ($(INSN))";'	>>$@.tmp
 	$Q echo 'const char *const ase_version_short = "$(version_short)";'	>>$@.tmp
 	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_short)";' >>$@.tmp
-	$Q echo 'const char *const ase_sharedir = "$(sharedir)";'		>>$@.tmp
 	$Q echo '} // Ase'							>>$@.tmp
 	$Q mv $@.tmp $@
-ase/generated.sources += $(ase/buildversion.cc)
+ase/generated.sources += $>/ase/buildversion-$(version_hash).cc
 
 # == object deps ==
 ase/object.deps	+= $(ase/sysconfig.dep) $(ase/libase.deps) $(EXTERNAL_CXX_STAMPS)
@@ -436,7 +433,7 @@ $(LIBSNDFILE_SOURCES): $>/libsndfile/config.h
 # == lib/libsndfile.so ==
 LIBSNDFILE_OBJECTS := $(LIBSNDFILE_SOURCES:external/libsndfile/src/%.c=$>/libsndfile/%.o)
 $>/libsndfile/%.o: external/libsndfile/src/%.c		| $(dir $(sort $(LIBSNDFILE_OBJECTS)))
-	$(QGEN)
+	$(QECHO) CC $@
 	$Q $(CCACHE) $(CC) -fPIC $(compiledefs) $(compilecxxflags) \
 		-I external/libsndfile/include -I external/libsndfile/src -I $>/libsndfile/ \
 		-Dsndfile_EXPORTS -DNDEBUG -c $< -o $@
