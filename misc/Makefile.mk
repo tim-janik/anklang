@@ -31,7 +31,7 @@ clang-tidy clang-tidy-check: $(CLANG_TIDY_LOGS)
 		  sed "s|^$$PWD/||" < $$log | misc/colorize.sh >&2 ; \
 	   done \
 	&& test $@ != clang-tidy-check || $$OK
-$>/clang-tidy/%.log: % $(GITCOMMITDEPS)					| $>/clang-tidy/
+$>/clang-tidy/%.log: % $(REPOCOMMITDEPS)					| $>/clang-tidy/
 	$(QECHO) CLANG-TIDY $@
 	$Q mkdir -p $(dir $@) && rm -f $>/clang-tidy/$<.*
 	$Q set +o pipefail \
@@ -115,21 +115,25 @@ uninstall: misc/uninstall
 misc/copyright_files := $(strip \
 	doc/copyright		\
 )
-# verify copyright entries on every build during development (in repos with .git)
-$>/.copyright.check: misc/checkcrlist.py $(misc/copyright_files) $(GITCOMMITDEPS)
+# verify copyright entries on every build within Git repos
+$>/.copyright.check: misc/checkcrlist.py $(misc/copyright_files) $(REPOCOMMITDEPS)
+	$(file > $>/copyright.lst, $(WILDCARD_FILES))
 	$(QGEN)
-	$Q test -r .git || exit 0 ; true \
-	&& git ls-tree -r --name-only HEAD > $@.tmp \
-	&& misc/checkcrlist.py -e $@.tmp $(misc/copyright_files)
-	$Q rm -f $@.tmp && touch $@
+	$Q tr ' ' '\n' < $>/copyright.lst > $>/copyright.tmp && \
+	   mv $>/copyright.tmp $>/copyright.lst
+	$Q test -n "$(REPOCOMMITDEPS)" || exit 0 \
+	&& misc/checkcrlist.py -e $>/copyright.lst $(misc/copyright_files)
+	$Q rm -f $>/copyright.lst && touch $@
 LATE_TARGETS += $>/.copyright.check
-# explicit copyright check (only active in repos with .git)
+# explicit copyright check, metadata fetching requires Git
 check-copyright: misc/checkcrlist.py $(misc/copyright_files)
+	$(file > $>/copyright.lst, $(WILDCARD_FILES))
 	$(QGEN)
-	$Q test -r .git || exit 0 ; true \
-	&& git ls-tree -r --name-only HEAD > $>/$(@F).lst \
-	&& misc/checkcrlist.py --git $>/$(@F).lst $(misc/copyright_files) \
-	&& rm -f $>/$(@F).lst
+	$Q tr ' ' '\n' < $>/copyright.lst > $>/copyright.tmp && \
+	   mv $>/copyright.tmp $>/copyright.lst
+	$Q test -n "$(GITCOMMITDEPS)" || exit 0 \
+	&& misc/checkcrlist.py --git $>/copyright.lst $(misc/copyright_files) \
+	&& rm -f $>/copyright.lst
 .PHONY: check-copyright
 check: check-copyright
 # misc/mkcopyright.py -c doc/copyright.ini -f <FILELIST>
