@@ -21,5 +21,5 @@ The current version can always be obtained by invoking `misc/version.sh`.
 
 The scripts `misc/mkdeb.sh` and `misc/mkAppImage.sh` can be used to build binary packages after a successful build.
 Ideally, these packages should be built from a distribution tarball, created with `make dist`.
-Built the project from a distribution tarball must work without any Git dependency.
-Producing a distribution tarball depends on Git however, to create the correct versioning information.
+Building the project from a distribution tarball must work without any Git or Jujutsu dependency.
+Producing a distribution tarball depends on Git however, for versioning, ChangeLog and archiving.
