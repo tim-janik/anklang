@@ -207,19 +207,19 @@ $>/%/:
 # == make codegen ==
 # Considerations for `make codegen`:
 # 1. Keep codegen sources in Git to simplify tarball builds, track history and monitor changes.
-# 2. For development builds (if ./.git is present), validate correctness of generated code.
+# 2. For development builds, validate correctness of generated code.
 # 3. Use `make codegen` builds to force-update generated code.
 define CODEGEN_CHECK
 $2: | $$(dir $2)/	# Create $>/codegen/ subdirs
 $2.check: $2		# Check or force-update generated file
 	$Q cmp -s $1 $2 && touch $$@ && echo "  KEEP    $1" && exit; \
 	echo '**WARNING**: detected codegen changes: $$(strip $1)'; \
-	$(if $(HAVE_GIT), git -P diff --no-index, diff -u) $1 $2; \
+	git -P diff --no-index -- $1 $2; \
 	if test -n "$(WITH_CODEGEN)" ; \
 	then mv $2 $1 && echo "  CODEGEN  $$(strip $1) !!FORCED-UPDATE!!  "; \
 	else echo '**ERROR**: outdated target (need `make codegen`): $$(strip $1)'; false; \
 	fi
-ifneq (,$(HAVE_GIT)$(WITH_CODEGEN))
+ifneq (,$(REPOCOMMITDEPS)$(WITH_CODEGEN))
 $1: $2.check		# Touch $1 if check (or regeneration) was ok
 	$Q touch $1
 endif
@@ -388,10 +388,12 @@ CLEANDIRS += artifacts/
 
 # == TAGS ==
 # ctags --print-language `git ls-tree -r --name-only HEAD`
-TAGS: $(GITCOMMITDEPS)
+TAGS: $(REPOCOMMITDEPS)
+	$(file > $>/tags.lst, $(WILDCARD_FILES))
 	$(QGEN)
-	$Q test -r .git && etags --version 2>/dev/null | grep -qE 'Exuberant|Universal' || exit 0 >$@ ; true \
-	&& git ls-tree -r --name-only HEAD | etags -o $@ -L - 2> >(grep -vF 'Warning: ignoring null tag in')
+	$Q etags --version 2>/dev/null | grep -qE 'Exuberant|Universal' || exit 0 >$@ \
+	&& tr ' ' '\n' < $>/tags.lst | etags -o $@ -L - 2> >(grep -vF 'Warning: ignoring null tag in')
+	$Q rm -f $>/tags.lst
 ALL_TARGETS += TAGS
 
 # == compile_commands.json ==
@@ -438,8 +440,8 @@ help: FORCE
 	@echo "  make MODE=...   - Run 'quick' build or make 'production' mode binaries."
 	@echo '                    Other modes: debug, devel, asan, lsan, tsan, ubsan'
 	@echo 'Notes:'
-	@echo '  ./.git          - Building in a Git repo triggers additional checks for e.g.'
-	@echo '                    copyright checks or codegen'
+	@echo '  .git            - Building in a Git (or Jujutsu) repo triggers additional'
+	@echo '                    checks for e.g. copyright attribution or codegen'
 
 # == all rules ==
 $(eval $(LATE_EVAL))
