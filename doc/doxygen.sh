@@ -167,7 +167,7 @@ run_doxygen() # run_doxygen NAME NUMBER BRIEF OUTDIR
 if $WITH_ASE ; then
   rm -rf $DOXYDIR/doxy && mkdir -p $DOXYDIR/doxy
   cp -a ase devices jsonipc $DOXYDIR/doxy/
-  ASE_VERSION=anklang-$(git describe)
+  ASE_VERSION=anklang-$(misc/version.sh | (read v h d && echo $v))
   ASE_NAME="${ASE_VERSION%-v*}" && ASE_NAME="${ASE_NAME^}"
   ASE_BRIEF="ASE — Anklang Sound Engine (C++)"
   run_doxygen +dot +ref +cc "$ASE_NAME" "${ASE_VERSION#*-v}" "$ASE_BRIEF" $DOXYDIR/ase/
