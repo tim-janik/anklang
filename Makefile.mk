@@ -125,16 +125,30 @@ NPM_INSTALL ?= $(XNPM) install
 .config.defaults += CC CFLAGS CXX CLANG_TIDY CXXFLAGS LDFLAGS LDLIBS NPM_INSTALL
 
 # == WILDCARD_FILES ==
-WILDCARD_TOPDIRS  := .github/ ase/ devices/ doc/ electron/ images/ jsonipc/ misc/ ui/ x11test/
-WILDCARD_SUBDIRS  := $(wildcard $(WILDCARD_TOPDIRS) $(WILDCARD_TOPDIRS:%=%*/) $(WILDCARD_TOPDIRS:%=%*/*/) $(WILDCARD_TOPDIRS:%=%*/*/*/))
-WILDCARD_FILES	  != find $(WILDCARD_SUBDIRS) . -maxdepth 1 -type f | sed 's|^\./||' | sort
-check-WILDCARD_FILES:
+# WILDCARD_FILES.mk: defines WILDCARD_FILES as a list of repository files that aren't mirrored from external sources
+WILDCARD_TOPDIRS := .github/ ase/ devices/ doc/ electron/ images/ jsonipc/ misc/ rand/ ui/ x11test/
+WILDCARD_SUBDIRS := $(wildcard $(WILDCARD_TOPDIRS) $(WILDCARD_TOPDIRS:%=%*/) $(WILDCARD_TOPDIRS:%=%*/*/) $(WILDCARD_TOPDIRS:%=%*/*/*/))
+WILDCARD_SPECIAL := external/Makefile.mk
+# Special case files in subdirs where we want to avoid deep crawling
+$>/WILDCARD_FILES.mk: $(REPOCOMMITDEPS)	| $>/
 	$(QGEN)
-	$Q (test ! -r .git || git ls-tree -r --name-only HEAD) | sort | grep -v -E '^external/|^rand/' > $>/flist-g.txt || true
-	$Q echo "$(WILDCARD_FILES)" | tr ' ' '\n' > $>/flist-w.txt
-	$Q ! grep -vFxf $>/flist-w.txt $>/flist-g.txt || (echo "ERROR: WILDCARD_FILES misses some files tracked by Git"; false ) >&2
-	$Q rm $>/flist-w.txt $>/flist-g.txt
-check: check-WILDCARD_FILES
+	@ # List files via find for builds without jj/git repo info
+	$Q ( echo $(WILDCARD_SPECIAL) | tr ' ' '\n' ; \
+	     find $(WILDCARD_SUBDIRS) . -maxdepth 1 -type f | sed 's|^\./||' ) \
+	   | sort > $@.find
+	@ # List files via jj/git, validate that WILDCARD_SUBDIRS finds a superset
+	$Q rm -f $@.repo ; \
+	   if   jj workspace root >/dev/null 2>&1 ; \
+	   then jj --no-pager file list | sort > $@.repo ; \
+	   elif git rev-parse --is-inside-work-tree >/dev/null 2>&1 ; \
+	   then git ls-tree -r --name-only HEAD | sort > $@.repo ; \
+	   fi
+	$Q test -r $@.repo && grep -vFxf $@.find $@.repo || exit 0 && \
+	     ( echo "ERROR: WILDCARD_SUBDIRS misses some files tracked by Git" ; false ) >&2
+	@ # Use most accurate file list for WILDCARD_FILES.mk
+	$Q test -r $@.repo && mv $@.repo $@.find
+	$Q sed -r '1s/^/WILDCARD_FILES := /; s/$$/ \\/' < $@.find > $@ && rm -f $@.find
+include $>/WILDCARD_FILES.mk	# define WILDCARD_FILES
 
 # == enduser targets ==
 all: FORCE
