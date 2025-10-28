@@ -3,25 +3,16 @@ include $(wildcard $>/doc/*.d)
 ALL_TARGETS       += doc/all
 doc/all:
 
-# == doc/ files ==
-doc/manual-chapters ::= $(strip		\
-	$>/gen/b/cliplist.md		\
-	$>/gen/b/pianoroll.md		\
-	$>/gen/b/piano-ctrl.md		\
-	$>/gen/ch-man-pages.md		\
-	$>/gen/scripting-docs.md	\
-)
-doc/internals-chapters ::= $(strip	\
-	doc/ch-development.md		\
-	$>/doc/class-tree.md		\
+# == Chapters for mkdocs ==
+doc/mkdocs-chapters := $(strip		\
+	$(wildcard doc/*.md)		\
+	ase/gen/class-tree.g.md		\
 	ui/ch-component.md		\
-	$>/doc/jsdocs.md		\
-	doc/ch-releasing.md		\
-	doc/ch-appendix.md		\
+	$>/gen/b/cliplist.md		\
 )
+
+# == doc/ files ==
 doc/install.files ::= $(strip		\
-	$>/doc/anklang-manual.html	\
-	$>/doc/anklang-internals.html	\
 	$>/doc/anklang.1		\
 	$>/doc/NEWS.md			\
 	$>/doc/NEWS.html		\
@@ -29,17 +20,8 @@ doc/install.files ::= $(strip		\
 	$>/doc/README.html		\
 	doc/copyright			\
 )
-doc/pdf.files := $>/doc/anklang-manual.pdf $>/doc/anklang-internals.pdf
 
-# == PDF rule (Latex dependency) ==
-pdf: $(doc/pdf.files)
-assets/pdf: pdf
-	mkdir -p assets/
-	$(CP) $>/doc/anklang-manual.pdf assets/anklang-manual-$(version_short).pdf
-	$(CP) $>/doc/anklang-internals.pdf assets/anklang-internals-$(version_short).pdf
-.PHONY: pdf assets/pdf
-
-# == Copy files ==
+# == Copy doc/install.files ==
 $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/doc/
 	$(QECHO) COPY $<
 	$Q $(CP) $< $@
@@ -62,8 +44,20 @@ $>/doc/jsdocs.md: $(doc/jsdocs_md) doc/Makefile.mk
 	$Q pandoc -p -f markdown+compact_definition_lists+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart-raw_html-raw_tex \
 		-t markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart		$@.tmp > $@.tmp2
 	$Q mv $@.tmp2 $@
+doc/mkdocs-chapters += $>/doc/jsdocs.md
 
-# == doc/scripting-docs.md ==
+# == gen/piano-roll.md ==
+$>/gen/the-piano-roll.md: $>/gen/b/piano-ctrl.md $>/gen/b/pianoroll.md
+	$(QGEN)
+	$Q echo				>  $@.tmp
+	$Q cat $>/gen/b/pianoroll.md	>> $@.tmp
+	$Q echo				>> $@.tmp
+	$Q cat $>/gen/b/piano-ctrl.md	>> $@.tmp
+	$Q mv $@.tmp $@
+doc/mkdocs-chapters += $>/gen/the-piano-roll.md
+
+# == gen/scripting-docs.md ==
+doc/mkdocs-chapters := $(filter-out doc/ch-scripting.md, $(doc/mkdocs-chapters)) $>/gen/scripting-docs.md
 $>/gen/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) doc/Makefile.mk node_modules/.npm.done	| $>/doc/
 	$(QGEN)
 	$Q cat doc/ch-scripting.md				>  $@.tmp
@@ -72,21 +66,8 @@ $>/gen/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) doc/M
 	$Q mv $@.tmp $@
 doc/jsdoc.deps ::= doc/jsdocrc.json doc/jsdoc-slashes.js doc/jsdoc2md.js
 
-# == *.hafix.md ==
-# Pandoc-1.3.9 generates broken Latex for PDFs on `# [Heading]{#anchor}`, so we strip them out
-# https://github.com/jgm/pandoc/issues/9209
-$>/%.hafix.md: $>/%.md
-	$(QGEN)
-	$Q sed <$< >$@		-r 's/^(#+\s*)\[([^]]+)\]\{.*\}/\1\2/'
-
-# == doc/class-tree.md ==
-$>/doc/class-tree.md: ase/gen/class-tree.g.md doc/Makefile.mk
-	$(QGEN)
-	$Q $(CP) $< $@
-
 # == pandoc ==
 doc/markdown-flavour	::= -f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart
-doc/pdf_flags		::= --highlight-style doc/highlights.theme
 doc/html_flags		::= --highlight-style doc/highlights.theme --html-q-tags --section-divs --email-obfuscation=references
 doc/html-style		::= 'body { max-width: 52em; margin: auto; }'
 
@@ -97,19 +78,6 @@ $>/doc/%.1: doc/%.1.md doc/Makefile.mk					| $>/doc/
 		-M date="$(version_date)" \
 		-M footer="anklang-$(version_short)" \
 		-t man $< -o $@.tmp
-	$Q mv $@.tmp $@
-
-# == ch-man-pages.md ==
-doc/manual-man-pages ::= doc/anklang.1.md
-$>/gen/ch-man-pages.md: $(doc/manual-man-pages) doc/filt-man.py doc/Makefile.mk	| $>/doc/
-	$(QGEN)
-	$Q echo '# Manual Pages'			>  $@.tmp
-	$Q echo ''					>> $@.tmp
-	$Q for m in $(doc/manual-man-pages) ; do		\
-		n="$${m%%.md}" ; u="$${n^^}" ; n="$${u##*/}" ;	\
-		echo "## $${n/\./(})" ; echo ;			\
-		$(PANDOC) -t markdown -F doc/filt-man.py "$$m"	\
-		|| exit $$? ; echo ; done		>> $@.tmp
 	$Q mv $@.tmp $@
 
 # == html from markdown ==
@@ -134,84 +102,20 @@ $>/doc/cursors/cursors.css: $>/gen/cursors/cursors.css			| $>/doc/
 	$Q $(RM) -r -f $>/doc/cursors
 	$Q $(CP) -r -p $>/gen/cursors/ $>/doc/cursors/
 
-# == anklang-manual.html ==
-$>/doc/anklang-manual.html: $>/doc/template.html $(doc/manual-chapters) $>/doc/cursors/cursors.css $(doc/style/install.files)	| $>/doc/
-	$(QGEN)
-	$Q $(PANDOC) $(doc/markdown-flavour) \
-		-s $(doc/html_flags) \
-		--toc --number-sections \
-		--variable=subparagraph \
-		--variable date="$(version_to_month)" \
-		--template=$< \
-		-c style/$(notdir $(doc/style/faketex.css)) \
-		--mathjax='style/mathjax-tex-svg.js' \
-		$(doc/manual-chapters) -o $@
-# == anklang-internals.html ==
-$>/doc/anklang-internals.html: $>/doc/template.html $(doc/internals-chapters) $(doc/style/install.files)	| $>/doc/
-	$(QGEN)
-	$Q $(PANDOC) $(doc/markdown-flavour) \
-		-s $(doc/html_flags) \
-		--toc --number-sections \
-		--variable=subparagraph \
-		--variable date="$(version_to_month)" \
-		--template=$< \
-		-c style/$(notdir $(doc/style/faketex.css)) \
-		--mathjax='style/mathjax-tex-svg.js' \
-		$(doc/internals-chapters) -o $@
-
-# == anklang-manual.pdf ==
-# REQUIRES: python3-pandocfilters texlive-xetex pandoc2
-doc/manual-hafix-chapters := $(subst $>/gen/scripting-docs.md, $>/doc/scripting-docs.hafix.md, $(doc/manual-chapters))
-$>/doc/anklang-manual.pdf: doc/pandoc-pdf.tex $(doc/manual-hafix-chapters) $>/doc/cursors/cursors.css		| $>/doc/
-	$(QGEN)
-	$Q xelatex --version 2>&1 | grep -q '^XeTeX 3.14159265' \
-	   || { echo '$@: missing xelatex, required version: XeTeX >= 3.14159265' >&2 ; false ; }
-	$Q $(PANDOC) $(doc/markdown-flavour) \
-		--resource-path $>/doc/ --resource-path . \
-		$(doc/pdf_flags) \
-		--toc --number-sections \
-		--variable=subparagraph \
-		-V date="$(version_to_month)" \
-		--variable=lot \
-		-H $< \
-		--pdf-engine=xelatex -V mainfont='Charis SIL' -V mathfont=Asana-Math -V monofont=inconsolata \
-		-V fontsize=11pt -V papersize:a4 -V geometry:margin=2cm \
-		$(doc/manual-hafix-chapters) -o $@
-# == anklang-internals.pdf ==
-# REQUIRES: python3-pandocfilters texlive-xetex pandoc2
-doc/internals-hafix-chapters := $(subst $>/doc/jsdocs.md, $>/doc/jsdocs.hafix.md, $(doc/internals-chapters))
-$>/doc/anklang-internals.pdf: doc/pandoc-pdf.tex $(doc/internals-hafix-chapters)					| $>/doc/
-	$(QGEN)
-	$Q xelatex --version 2>&1 | grep -q '^XeTeX 3.14159265' \
-	   || { echo '$@: missing xelatex, required version: XeTeX >= 3.14159265' >&2 ; false ; }
-	$Q $(PANDOC) $(doc/markdown-flavour) \
-		--resource-path $>/ui/ --resource-path . \
-		$(doc/pdf_flags) \
-		--toc --number-sections \
-		--variable=subparagraph \
-		-V date="$(version_to_month)" \
-		--variable=lot \
-		-H $< \
-		--pdf-engine=xelatex -V mainfont='Charis SIL' -V mathfont=Asana-Math -V monofont=inconsolata \
-		-V fontsize=11pt -V papersize:a4 -V geometry:margin=2cm \
-		$(doc/internals-hafix-chapters) -o $@
-
 # == installation ==
 pkgdocdir ::= $(pkgdir)/doc
-doc/install: $(doc/install.files) install--doc/style/install.files
-	@ $(eval doc/install.pdf.files := $(wildcard $(doc/pdf.files)))
+doc/install: $(doc/install.files)
 	@$(QECHO) INSTALL '$(DESTDIR)$(pkgdocdir)/.'
 	$Q rm -f '$(DESTDIR)$(pkgdocdir)'/* 2>/dev/null ; true
 	$Q $(INSTALL)      -d $(DESTDIR)$(pkgdocdir)/ $(DESTDIR)$(mandir)/man1/
 	$Q $(CP) $(doc/install.files) $(DESTDIR)$(pkgdocdir)/
-	$Q test -z "$(doc/install.pdf.files)" || $(CP) $(doc/install.pdf.files) $(DESTDIR)$(pkgdocdir)/
 	$Q $(INSTALL) -d $(DESTDIR)$(mandir)/man1/ && ln -fs -r $(DESTDIR)$(pkgdir)/doc/anklang.1 $(DESTDIR)$(mandir)/man1/anklang.1
 	$Q $(INSTALL) -d '$(DESTDIR)$(docdir)/'
 	$Q rm -f '$(DESTDIR)$(docdir)/anklang'
 	$Q ln -s -r '$(DESTDIR)$(pkgdir)/doc' '$(DESTDIR)$(docdir)/anklang'
 .PHONY: doc/install
 install: doc/install
-doc/uninstall: FORCE uninstall--doc/style/install.files
+doc/uninstall: FORCE
 	@$(QECHO) REMOVE '$(DESTDIR)$(pkgdocdir)/.'
 	$Q rm -f -r '$(DESTDIR)$(pkgdocdir)'
 	$Q rm -f '$(DESTDIR)$(mandir)/man1/anklang.1'
@@ -222,10 +126,13 @@ uninstall: doc/uninstall
 doc/all: $(doc/install.files)
 
 # == doxygen/ ==
-$>/doxygen/.done: $(wildcard doc/*.*) doc/style/doxyextra.css doc/Makefile.mk	| $>/doxygen/
+DOC_DOXYGEN_DEPS := doc/doxygen.sh doc/style/doxyextra.css doc/doxyheader.htm doc/doxyfooter.htm doc/Makefile.mk
+$>/doxygen/.ase: $(DOC_DOXYGEN_DEPS) $(wildcard ase/*[hcd] ase/*/*[hcd])
 	$(QGEN)
-	$Q rm -rf $>/doxygen/
-	$Q doc/doxygen.sh $(if $(findstring 1, $(V)),, --quiet)
+	$Q mkdir -p $>/doxygen/ && rm -rf $>/doxygen/*/ # clear subdirs
+	$Q doc/doxygen.sh --ase $(if $(findstring 1, $(V)),, --quiet)
+	$Q @touch $@
+$>/doxygen/.done: $>/doxygen/.ase
 	$Q @touch $@
 doxygen: $>/doxygen/.done
 	ls -l $>/doxygen/
@@ -236,17 +143,14 @@ MAKE_HELP += ' doxygen         - Build (large) C++ documentation in $>/doxygen/*
 MAKE_HELP += ' clean-doxygen   - Remove $>/doxygen/\n'
 
 # == mkdocs/ ==
-$>/mkdocs/.prepared: $(filter doxygen $>/doxygen/.done, $(MAKECMDGOALS))  # let mkdocs pickup doxygen/ if both are built
-doc/doxygen/.done != test -e $>/doxygen/.done && echo $>/doxygen/.done
-$>/mkdocs/.prepared: $(doc/doxygen/.done)				  # rebuild if doxygen exists and changed
-doc/mkdocs.symlinks := ui/ch-component.md
-doc/mkdocs.symlinks += $>/doc/jsdocsmd/ $>/doc/jsdocs.md $>/doc/class-tree.md $>/gen/scripting-docs.md
-doc/mkdocs.symlinks += doc/javascript doc/style $(wildcard doc/*.md)
-$>/mkdocs/.prepared: $(doc/mkdocs.symlinks) doc/Makefile.mk	| $>/mkdocs/ $>/doxygen/
+doc/mkdocs.symlinks := $(doc/mkdocs-chapters)
+doc/mkdocs.symlinks += doc/javascript doc/style $>/doc/jsdocsmd/
+$>/mkdocs/.prepared: $(doc/mkdocs.symlinks) doc/Makefile.mk	| $>/mkdocs/
 	$(QGEN)
 	$Q rm -rf $>/mkdocs/* && mkdir -p $>/mkdocs/doc
 	$Q ln -s $(abspath doc/mkdocs.yml) $>/mkdocs/
-	$Q ln -s $(abspath $(doc/mkdocs.symlinks)) ../../doxygen $>/mkdocs/doc/
+	$Q ln -s $(abspath $(doc/mkdocs.symlinks)) $>/mkdocs/doc/
+	$Q ln -s $(abspath ui/cursors) $>/mkdocs/doc/
 	$Q cd $>/mkdocs/ && uv venv --python 3.12 \
 	&& UV_LINK_MODE=copy uv pip install \
 		mkdocs mkdocs-material mkdocs-file-filter-plugin mkdocs-literate-nav \
@@ -255,10 +159,14 @@ $>/mkdocs/.prepared: $(doc/mkdocs.symlinks) doc/Makefile.mk	| $>/mkdocs/ $>/doxy
 doc/mkdocs/anklang.stamp := $>/mkdocs/anklang/search/search_index.js
 $(doc/mkdocs/anklang.stamp): $>/mkdocs/.prepared
 	$(QECHO) BUILD $>/mkdocs/anklang/
+	$Q test -r $>/doxygen/.done && ln -sf ../../doxygen $>/mkdocs/doc/ || rm -f $>/mkdocs/doc/doxygen
 	$Q cd $>/mkdocs/ && uv run mkdocs build
+$(doc/mkdocs/anklang.stamp): $(filter doxygen $>/doxygen/.done, $(MAKECMDGOALS))	# let mkdocs pickup doxygen/ if both are built
+$(doc/mkdocs/anklang.stamp): $(wildcard $>/doxygen/.done)				# rebuild doxygen first, if it exists
 ALL_TARGETS += $(doc/mkdocs/anklang.stamp)
 mkdocs-serve: $>/mkdocs/.prepared
 	$(QECHO) SERVE mkdocs at localhost:1778
+	$Q test -r $>/doxygen/.done && ln -sf ../../doxygen $>/mkdocs/doc/ || rm -f $>/mkdocs/doc/doxygen
 	$Q cd $>/mkdocs/ && uv run mkdocs serve --livereload # -a localhost:1778
 clean-mkdocs:
 	rm -rf $>/mkdocs/
@@ -266,4 +174,5 @@ mkdocs-site: $(doc/mkdocs/anklang.stamp)
 .PHONY: mkdocs-serve mkdocs-site clean-mkdocs
 MAKE_HELP += ' mkdocs-serve    - Serve documentation at localhost:1778 with hot reload\n'
 MAKE_HELP += ' mkdocs-site     - Build documentation in $>/mkdocs/anklang/\n'
+MAKE_HELP += '                   Reuses $>/doxygen/ iff it exists\n'
 MAKE_HELP += ' clean-mkdocs    - Remove $>/mkdocs/anklang/\n'

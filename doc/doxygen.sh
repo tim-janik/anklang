@@ -4,10 +4,18 @@ set -Eeuo pipefail && SCRIPTNAME=${0##*/} && die() { [ -z "$*" ] || echo "$SCRIP
 SCRIPTPATH="$(readlink -f "$0")" && SCRIPTDIR=${SCRIPTPATH%/*}
 
 # == Options, Setup ==
-ASE_VERSION=anklang-$(git describe)
 BUILDDIR=$(readlink -f "${BUILDDIR:-out}")
 DOXYDIR="$BUILDDIR"/doxygen/
-mkdir -p $DOXYDIR/doxy/ && rm -rf $DOXYDIR/*/ # leaves parent dir + files
+QUIET=false
+WITH_ASE=false
+while test $# -ne 0 ; do
+  case "$1" in
+    --quiet)		QUIET=true ;;
+    --ase)		WITH_ASE=true ;;
+    *)                  die "unknown argument: '$1'" ;;
+  esac
+  shift
+done
 
 # == Tagfile ==
 ( cd $DOXYDIR
@@ -32,7 +40,6 @@ FILE_PATTERNS = *.c *.h *.cc *.hh *.cpp *.hpp *.tcc *.thh *.md *.mm *.js *.dox
 RECURSIVE = YES
 STRIP_FROM_PATH = $DOXYDIR/doxy
 ALLOW_UNICODE_NAMES = YES
-VERBATIM_HEADERS = YES
 MARKDOWN_SUPPORT = YES
 MARKDOWN_ID_STYLE = GITHUB
 AUTOLINK_SUPPORT = YES
@@ -58,13 +65,7 @@ GENERATE_LATEX = NO
 
 # ALPHABETICAL_INDEX = NO
 # SHOW_USED_FILES = NO
-SOURCE_BROWSER = NO
-INLINE_SOURCES = NO
-REFERENCED_BY_RELATION = YES
-REFERENCES_RELATION = YES
-REFERENCES_LINK_SOURCE = NO
 
-HAVE_DOT = YES
 DOT_WRAP_THRESHOLD = 32
 DOT_GRAPH_MAX_NODES = 64
 DOT_COMMON_ATTR = fontname=Helvetica,fontsize=14
@@ -111,8 +112,13 @@ __EOF
 # == Helper ==
 mark_doxygen_inputs()
 (
+  FIND_ARGS=( -name '*.h*' )
+  test "${1-}" == +cc && {
+    shift
+    FIND_ARGS+=( -o -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.tcc' )
+  }
   cd "$1"
-  mapfile -d $'\0' -t SOURCES < <(find . -type f -name '*.h*' -print0)
+  mapfile -d $'\0' -t SOURCES < <(find . -type f \( "${FIND_ARGS[@]}" \) -print0)
   for file in "${SOURCES[@]}"; do
     sed "1,+0s,^,/** @file $file */ ," -i "$file"
   done
@@ -124,15 +130,32 @@ replace_backlink()
   find "$DIR" -type f -print0 |
     xargs -0 sed 's|_project_brief_a_href_backlink_|<a href="../../index.html">« « « Anklang Documentation</a>|' -i
 )
-run_doxygen()
+# Run doxygen in $DOXYDIR/doxy, using $DOXYDIR/Doxyfile
+run_doxygen() # run_doxygen NAME NUMBER BRIEF OUTDIR
 (
-  OUTPUT=$(readlink -f "$4")
   cd $DOXYDIR/doxy
-  mark_doxygen_inputs .
   cp ../Doxyfile .
-  echo "PROJECT_NAME = \"$1\""   >> Doxyfile
-  echo "PROJECT_NUMBER = \"$2\"" >> Doxyfile
-  echo "PROJECT_BRIEF = \"$3\""  >> Doxyfile
+  INPUTS= HAVE_DOT=NO SRC=NO REF=NO
+  while test $# -ne 0 ; do
+    case "$1" in \
+      +cc)	INPUTS=+cc ; SRC=YES ; shift ;;
+      +ref)	REF=YES ; shift ;;
+      +dot)	HAVE_DOT=YES ; shift ;;
+      *)        break ;;
+    esac
+  done
+  echo "PROJECT_NAME = \"$1\""		>> Doxyfile
+  echo "PROJECT_NUMBER = \"$2\""	>> Doxyfile
+  echo "PROJECT_BRIEF = \"$3\""		>> Doxyfile
+  echo "HAVE_DOT = $HAVE_DOT"		>> Doxyfile
+  echo "VERBATIM_HEADERS = YES"		>> Doxyfile
+  echo "SOURCE_BROWSER = $SRC"		>> Doxyfile
+  echo "INLINE_SOURCES = NO"		>> Doxyfile
+  echo "REFERENCED_BY_RELATION = $REF"	>> Doxyfile
+  echo "REFERENCES_RELATION = $REF"	>> Doxyfile
+  echo "REFERENCES_LINK_SOURCE = NO"	>> Doxyfile
+  mark_doxygen_inputs $INPUTS .
+  OUTPUT=$(readlink -f "$4")
   rm -rf html/
   doxygen
   mkdir -p "$OUTPUT" && rm -rf "$OUTPUT" # leaves parent dir
@@ -141,10 +164,16 @@ run_doxygen()
 )
 
 # == Ase Docs ==
-rm -rf $DOXYDIR/doxy && mkdir -p $DOXYDIR/doxy
-cp -a ase devices jsonipc $DOXYDIR/doxy/
-PROJECT_NAME="${ASE_VERSION%-v*}" && PROJECT_NAME="${PROJECT_NAME^}"
-PROJECT_NUMBER="${ASE_VERSION#*-v}" # && PROJECT_NUMBER="${PROJECT_NUMBER%%-*}"
-PROJECT_BRIEF="ASE — Anklang Sound Engine (C++)"
-run_doxygen "$PROJECT_NAME" "$PROJECT_NUMBER" "$PROJECT_BRIEF" $DOXYDIR/ase/
-echo "TAGFILES += \"$BUILDDIR/docs/ase/tagfile.xml=../ase/\"" >> $DOXYDIR/Doxyfile
+if $WITH_ASE ; then
+  rm -rf $DOXYDIR/doxy && mkdir -p $DOXYDIR/doxy
+  cp -a ase devices jsonipc $DOXYDIR/doxy/
+  ASE_VERSION=anklang-$(git describe)
+  ASE_NAME="${ASE_VERSION%-v*}" && ASE_NAME="${ASE_NAME^}"
+  ASE_BRIEF="ASE — Anklang Sound Engine (C++)"
+  run_doxygen +dot +ref +cc "$ASE_NAME" "${ASE_VERSION#*-v}" "$ASE_BRIEF" $DOXYDIR/ase/
+fi
+test -r "$DOXYDIR/ase/tagfile.xml" &&
+  echo "TAGFILES += \"$DOXYDIR/ase/tagfile.xml=../ase/\"" >> $DOXYDIR/Doxyfile
+
+# == Cleanup ==
+rm -rf $DOXYDIR/doxy

@@ -1,3 +1,4 @@
+// https://squidfunk.github.io/mkdocs-material/reference/math/#mathjax-docsjavascriptsmathjaxjs
 
 window.MathJax = {
   tex: {
@@ -12,8 +13,8 @@ window.MathJax = {
   }
 };
 
-document$.subscribe (() => { 
-  MathJax.startup.output.clearCache()
+document$.subscribe (() => {
+  MathJax.startup.output.clearCache?.();
   MathJax.typesetClear()
   MathJax.texReset()
   MathJax.typesetPromise()

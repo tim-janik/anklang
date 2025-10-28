@@ -67,7 +67,7 @@ export class BClipList extends LitComponent {
     this.ratiodiv = 1.0 / this.ratiomul;
     /**@type{HTMLElement}*/
     this.indicator_bar = null;
-    this.setAttribute ('data-f1', "#clip-list");
+    this.setAttribute ('data-f1', "cliplist.html");
   }
   connectedCallback() {
     super.connectedCallback();

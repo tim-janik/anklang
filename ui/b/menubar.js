@@ -98,8 +98,7 @@ const HTML = (t, d) =>  html`
 	  <b-icon ic="bc-menumore" ></b-icon>
 	</div>
 	<b-contextmenu ${ref (h => t.helpmenu = h)} .activate=${activate} .isactive=${isactive} >
-	  <button ic="mi-chrome_reader_mode"	uri="user-manual">	Anklang Manual…		</button>
-	  <button ic="mi-chrome_reader_mode"	uri="dev-manual">	Development Reference…	</button>
+	  <button ic="mi-chrome_reader_mode"	uri="anklang-docu">	Anklang Documentation…	</button>
 	  <b-menuseparator></b-menuseparator>
 	  <button ic="fa-id-card-o"		uri="about">		About…			</button>
 	</b-contextmenu>
@@ -201,11 +200,7 @@ async function activate (uri, event)
     case 'about':
       Shell.show_about_dialog (true);
       break;
-    case 'user-manual':
-      u = location.origin + '/doc/anklang-manual.html';
-      window.open (u, '_blank');
-      break;
-    case 'dev-manual':
+    case 'anklang-docu':
       u = location.origin + '/anklang/index.html';
       window.open (u, '_blank');
       break;

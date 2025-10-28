@@ -151,7 +151,6 @@ include images/knobs/Makefile.mk
 include ui/Makefile.mk
 include electron/Makefile.mk
 include misc/Makefile.mk
-include doc/style/Makefile.mk
 include doc/Makefile.mk
 
 # == run ==
@@ -299,7 +298,7 @@ tscheck: $>/.tscheck.done FORCE
 # == eslint ==
 check: eslint
 eslint.files := $(filter %.htm %.html %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(WILDCARD_FILES))
-eslint.skip  := %/javascript/mathjax.js %/style/mathjax-config.js
+eslint.skip  := %/javascript/mathjax.js
 $>/.eslint.done: ui/eslintrc.js $(eslint.files) Makefile.mk	| node_modules/.npm.done
 	$(QECHO) RUN eslint
 	-$Q node_modules/.bin/eslint -c $< --no-warn-ignored $${INSIDE_EMACS+-f unix} --cache --cache-location $>/.eslintcache \
