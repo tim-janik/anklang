@@ -79,10 +79,14 @@ def parse_copyrightfile (filename):
 def git_copyright (filename):
   copyrights = {}
   # gather copyright history
-  for l in shcmd ('git', 'log', '--follow',
-                  '--dense', '-b', '-w', '--ignore-blank-lines',
-                  '--pretty=%as %an', # 2021-02-03 Author Name
-                  '--', filename).split ('\n'):
+  status, out, err = \
+    shcmd ('git', 'log', '--follow',
+           '--dense', '-b', '-w', '--ignore-blank-lines',
+           '--pretty=%as %an', # 2021-02-03 Author Name
+           '--', filename)
+  if status:
+    return [ f"ERROR-Missing-Git-History (git: failed with status {status})" ]
+  for l in out.split ('\n'):
     if len (l) > 10 and l[10] == ' ':
       year = int (l[0:4])
       name = l[11:].strip()
@@ -130,7 +134,7 @@ def crpathcheck (sysargv):
   # check all files for matching pattern
   fileerrors = 0
   for filename in inputstream.read().splitlines():
-    if os.path.isdir (filename):
+    if not filename.strip() or os.path.isdir (filename):
       continue
     fmatch = False
     for tup in FILE_PATTERNS:
@@ -173,9 +177,8 @@ def crpathcheck (sysargv):
 def shcmd (*args):
   process = subprocess.Popen (args, stdout = subprocess.PIPE)
   out, err = process.communicate()
-  if process.returncode:
-    raise Exception ('%s: failed with status (%d), full command:\n  %s' % (args[0], process.returncode, ' '.join (args)))
-  return out.decode ('utf-8')
+  # raise Exception ('%s: failed with status (%d), full command:\n  %s' % (args[0], process.returncode, ' '.join (args)))
+  return (process.returncode, out.decode ('utf-8'), err.decode ('utf-8') if err else '')
 
 if __name__ == '__main__':
   crpathcheck (sys.argv)
