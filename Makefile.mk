@@ -368,8 +368,7 @@ dist_exclude := $(strip			\
 	external/minizip-ng/lib		\
 )
 dist: TAGS
-	$(eval distversion != misc/version.sh | sed 's/[+ -].*//')
-	$(eval distname := anklang-$(distversion))
+	$(eval distname := anklang-$(version_short))
 	$(QECHO) MAKE $(distname).tar.zst
 	$Q git describe --dirty | grep -qve -dirty || echo -e "#\n# $@: WARNING: working tree is dirty\n#"
 	$Q rm -r -f artifacts/ && mkdir -p artifacts/
