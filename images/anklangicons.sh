@@ -35,6 +35,7 @@ rm -fr anklangicons/
 test "${1:-}" != clean || exit
 mkdir -p anklangicons/
 pandoc README.md -t markdown -o anklangicons/README
+# TODO: use misc/version.sh
 ANKLANGVERSION=$(git describe --match 'v[0-9]*.[0-9]*.*[0-9a]' --abbrev=8 --long)
 echo >> anklangicons/README
 echo "Build with anklangicons.sh from anklang-$ANKLANGVERSION" >> anklangicons/README
