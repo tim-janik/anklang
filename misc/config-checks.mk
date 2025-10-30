@@ -83,7 +83,7 @@ ifeq ('','$(wildcard $>/config-cache.mk)')
 endif
 include $>/config-cache.mk
 # Rule for the actual checks:
-$>/config-cache.mk: misc/config-checks.mk misc/version.sh $(GITCOMMITDEPS) | $>/./
+$>/config-cache.mk: misc/config-checks.mk $(REPOCOMMITDEPS) | $>/./
 	$(QECHO) CHECK    Configuration dependencies...
 	$Q $(PKG_CONFIG) --exists --print-errors '$(config-checks.require.pkgconfig)'
 	$Q $(IMAGEMAGICK_CONVERT) --version 2>&1 | grep -q 'Version:.*\bImageMagick\b' \

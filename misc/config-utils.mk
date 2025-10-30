@@ -12,13 +12,10 @@ QGEN	  = @$(QSKIP)echo '  GEN     ' $@
 QECHO	  = @QECHO() { Q1="$$1"; shift; QR="$$*"; QOUT=$$(printf '  %-8s ' "$$Q1" ; echo "$$QR") && $(QSKIP) echo "$$QOUT"; }; QECHO
 QDIE	  = bash -c 'echo "  ERROR    $@: $$@" >&2 ; exit 127' _
 
-# == GIT ==
-# Toplevel .git/ directory or empty if this is not a git repository
-DOTGIT	 ::= $(abspath $(shell git rev-parse --git-dir 2>/dev/null))
-# If ./.git is present then HAVE_GIT=true
-HAVE_GIT ::= $(DOTGIT:%=true)
-# Dependencies that are updated with each Git commit
-GITCOMMITDEPS ::= $(wildcard $(DOTGIT:%=%/logs/HEAD) $(DOTGIT:%=%/packed-refs) $(DOTGIT:%=%/refs/tags/*) )
+# == GIT / JJ ==
+# Dependencies that are updated with a new git / jj commit
+GITCOMMITDEPS  := $(wildcard .git/logs/HEAD)
+REPOCOMMITDEPS := $(GITCOMMITDEPS) $(wildcard .jj/working_copy/checkout)
 
 # == MULTIOUTPUT ==
 # Macro to call for the output targets of a recipe with multiple side-effect outputs.
