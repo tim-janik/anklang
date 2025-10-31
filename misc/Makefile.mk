@@ -115,7 +115,7 @@ uninstall: misc/uninstall
 misc/copyright_files := $(strip \
 	doc/copyright		\
 )
-# verify copyright entries on every build within Git repos
+# verify copyright entries on every build within Git or JJ repos
 $>/.copyright.check: misc/checkcrlist.py $(misc/copyright_files) $(REPOCOMMITDEPS)
 	$(file > $>/copyright.lst, $(WILDCARD_FILES))
 	$(QGEN)
@@ -131,8 +131,8 @@ check-copyright: misc/checkcrlist.py $(misc/copyright_files)
 	$(QGEN)
 	$Q tr ' ' '\n' < $>/copyright.lst > $>/copyright.tmp && \
 	   mv $>/copyright.tmp $>/copyright.lst
-	$Q test -n "$(GITCOMMITDEPS)" || exit 0 \
-	&& misc/checkcrlist.py --git $>/copyright.lst $(misc/copyright_files) \
+	$Q test -n "$(REPOCOMMITDEPS)" || exit 0 \
+	&& misc/checkcrlist.py $(if $(GITCOMMITDEPS),--git) -e -p $>/copyright.lst $(misc/copyright_files) \
 	&& rm -f $>/copyright.lst
 .PHONY: check-copyright
 check: check-copyright
