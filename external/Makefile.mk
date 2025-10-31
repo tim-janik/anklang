@@ -91,6 +91,17 @@ external/minizip-ng/.sha-$(minizip-ng/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/minizip-ng/.sha-$(minizip-ng/sha) # external/minizip-ng/mz_zip.h
 
+# == external/freepats-vorbis/ ==
+freepats-vorbis/sha := 70ebb56aec0ac41def988f25be451c2836a95980c00c46b46da90b975f5a6b28
+external/freepats-vorbis/.sha-$(freepats-vorbis/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/freepats-vorbis.tar.gz, $(freepats-vorbis/sha), \
+		https://github.com/tim-janik/blobs4anklang/releases/download/v25.10.0/freepats-vorbis-25.10.0.tar.zst)
+	$Q rm -rf external/freepats-vorbis && mkdir external/freepats-vorbis
+	$Q tar xf external/freepats-vorbis.tar.gz --strip-components=1 -C external/freepats-vorbis/
+	$Q touch $@
+EXTERNAL_BLOBS4ANKLANG_STAMPS += external/freepats-vorbis/.sha-$(freepats-vorbis/sha)
+
 # == external/pandaresampler/ ==
 pandaresampler/sha := cda9d81463b1b30e3c835bc2725d20685236b30081423e286262e7937318a565
 external/pandaresampler/.sha-$(pandaresampler/sha):

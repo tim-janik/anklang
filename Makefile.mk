@@ -90,6 +90,7 @@ pkgdir		 ?= $(pkgprefix)/anklang-$(version_major)-$(version_minor)
 pkgsharedir	 ?= $(pkgdir)/share
 .config.defaults += prefix bindir sharedir mandir docdir libdir pkgprefix pkgdir
 pkgdocdir	 ?= $(pkgdir)/doc
+pkgmediadir	 ?= $(pkgdir)/media
 ifneq (1,$(words [$(prefix)])) # guard against `prefix := / / ` etc which will confuse `rm -rf`
 $(error Variable `prefix` must expand to a single directory name, current value: `prefix:=$(prefix)`)
 endif
