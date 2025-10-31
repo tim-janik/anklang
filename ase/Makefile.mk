@@ -2,18 +2,15 @@
 include $(wildcard $>/ase/*.d)
 
 # == ase/ *.cc file sets ==
-ase/AnklangSynthEngine.sources	:= ase/main.cc
 lib/libsndfile.so		:= $>/lib/libsndfile.so.$(libsndfile/lt_current.lt_age.lt_revision)
 ase/jackdriver.sources		:= ase/driver-jack.cc
 ase/gtk2wrap.sources		:= ase/gtk2wrap.cc
-ase/noglob.sources		:= $(ase/AnklangSynthEngine.sources) $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
-ase/common.ccsources		:= $(filter-out $(ase/noglob.sources), $(wildcard ase/*.cc))
-ase/common.csources		:= $(wildcard ase/*.c)
+ase/not-anklang.sources		:= $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
+ase/anklang.sources		:= $(filter-out $(ase/not-anklang.sources), $(wildcard ase/*.cc)) $(wildcard ase/*.c)
 lib/AnklangSynthEngine		:= $>/lib/AnklangSynthEngine
 ase/generated.sources		:=
-ase/object.deps			:=
-ase/sysconfig.dep		:= $>/ase/sysconfig.h
-ASE_EXTERNAL_INCLUDES := $(strip		\
+ASE_EXTRA_INCLUDES := $(strip			\
+	-Iexternal				\
 	-Iexternal/clap/include			\
 	-Iexternal/libsndfile/include		\
 	-Iexternal/liquidsfz/lib		\
@@ -21,11 +18,47 @@ ASE_EXTERNAL_INCLUDES := $(strip		\
 	-Iexternal/pandaresampler/include	\
 	-Iexternal/rapidjson/include		\
 	-Iexternal/websocketpp			\
+	$(ASEDEPS_CFLAGS)			\
 ) # also used by clang-tidy
-ase/object.includes		::= $(ASE_EXTERNAL_INCLUDES) -I$> -I$>/external/ $(ASEDEPS_CFLAGS)
+
+# == ase/sysconfig.h ==
+$>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk
+	$(QGEN)
+	$Q : $(file > $>/ase/conftest_sysconfigh.cc, $(ase/conftest_sysconfigh.cc)) \
+	&& $(CXX) -Wall $>/ase/conftest_sysconfigh.cc -pthread -o $>/ase/conftest_sysconfigh \
+	&& (cd $> && ./ase/conftest_sysconfigh)
+	$Q echo '// make $@'				> $@.tmp
+	$Q cat $>/ase/conftest_sysconfigh.txt		>>$@.tmp
+	$Q mv $@.tmp $@
+# ase/conftest_sysconfigh.cc
+define ase/conftest_sysconfigh.cc
+// #define _GNU_SOURCE
+#include <sys/types.h>
+#include <stdio.h>
+#include <poll.h>
+#include <string.h>
+#include <pthread.h>
+#include <assert.h>
+struct Spin { pthread_spinlock_t dummy1, s1, dummy2, s2, dummy3; };
+int main (int argc, const char *argv[]) {
+  FILE *f = fopen ("ase/conftest_sysconfigh.txt", "w");
+  assert (f);
+  struct Spin spin;
+  memset (&spin, 0xffffffff, sizeof (spin));
+  if (pthread_spin_init (&spin.s1, 0) == 0 && pthread_spin_init (&spin.s2, 0) == 0 &&
+      sizeof (pthread_spinlock_t) == 4 && spin.s1 == spin.s2)
+    { // # sizeof==4 and location-independence are current implementation assumption
+      fprintf (f, "#define ASE_SPINLOCK_INITIALIZER  0x%04x \n", *(int*) &spin.s1);
+    }
+  fprintf (f, "#define ASE_SYSVAL_POLLINIT  ((const uint32_t[]) ");
+  fprintf (f, "{ 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x } )\n",
+           POLLIN, POLLPRI, POLLOUT, POLLRDNORM, POLLRDBAND, POLLWRNORM, POLLWRBAND, POLLERR, POLLHUP, POLLNVAL);
+  return ferror (f) || fclose (f) != 0;
+}
+endef
 
 # == codegen/ase/gen/api-jsonipc.json ==
-$>/codegen/ase/gen/api-jsonipc.json: ase/api.hh $(ase/sysconfig.dep) ase/Makefile.mk
+$>/codegen/ase/gen/api-jsonipc.json: ase/api.hh $>/ase/sysconfig.h ase/Makefile.mk
 	$(QGEN)
 	$Q clang-20 -std=gnu++23 -I . -I out/ -extract-api $< -o $@
 
@@ -87,42 +120,6 @@ $>/codegen/.api-jsonipc.tscheck: ase/gen/api-jsonipc.g.ts ase/Makefile.mk		| $>/
 	$Q node_modules/.bin/tsc --noEmit --allowJs --moduleResolution bundler -m esnext --target esnext --erasableSyntaxOnly $<
 	$Q touch $@
 
-# == ase/sysconfig.h ==
-$>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk
-	$(QGEN)
-	$Q : $(file > $>/ase/conftest_sysconfigh.cc, $(ase/conftest_sysconfigh.cc)) \
-	&& $(CXX) -Wall $>/ase/conftest_sysconfigh.cc -pthread -o $>/ase/conftest_sysconfigh \
-	&& (cd $> && ./ase/conftest_sysconfigh)
-	$Q echo '// make $@'				> $@.tmp
-	$Q cat $>/ase/conftest_sysconfigh.txt		>>$@.tmp
-	$Q mv $@.tmp $@
-# ase/conftest_sysconfigh.cc
-define ase/conftest_sysconfigh.cc
-// #define _GNU_SOURCE
-#include <sys/types.h>
-#include <stdio.h>
-#include <poll.h>
-#include <string.h>
-#include <pthread.h>
-#include <assert.h>
-struct Spin { pthread_spinlock_t dummy1, s1, dummy2, s2, dummy3; };
-int main (int argc, const char *argv[]) {
-  FILE *f = fopen ("ase/conftest_sysconfigh.txt", "w");
-  assert (f);
-  struct Spin spin;
-  memset (&spin, 0xffffffff, sizeof (spin));
-  if (pthread_spin_init (&spin.s1, 0) == 0 && pthread_spin_init (&spin.s2, 0) == 0 &&
-      sizeof (pthread_spinlock_t) == 4 && spin.s1 == spin.s2)
-    { // # sizeof==4 and location-independence are current implementation assumption
-      fprintf (f, "#define ASE_SPINLOCK_INITIALIZER  0x%04x \n", *(int*) &spin.s1);
-    }
-  fprintf (f, "#define ASE_SYSVAL_POLLINIT  ((const uint32_t[]) ");
-  fprintf (f, "{ 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x, 0x%04x } )\n",
-           POLLIN, POLLPRI, POLLOUT, POLLRDNORM, POLLRDBAND, POLLWRNORM, POLLWRBAND, POLLERR, POLLHUP, POLLNVAL);
-  return ferror (f) || fclose (f) != 0;
-}
-endef
-
 # == blake3impl.c ==
 $>/ase/blake3impl.c:		| $>/ase/
 	$(QGEN)
@@ -140,7 +137,6 @@ $>/ase/blake3impl.c:		| $>/ase/
 $>/ase/blake3avx512.c $>/ase/blake3avx2.c $>/ase/blake3sse41.c $>/ase/blake3sse2.c: $>/ase/blake3impl.c
 
 # == Common Sources ==
-ase/common.sources	::= $(ase/common.ccsources) $(ase/common.csources)
 ase/generated.sources	+= $(strip	\
 	$>/ase/blake3impl.c		\
 	$>/ase/blake3avx512.c		\
@@ -149,10 +145,8 @@ ase/generated.sources	+= $(strip	\
 	$>/ase/blake3sse2.c		\
 )
 
-# == ase/buildversion-$(version_short).cc ==
-ase/buildsum != echo '$(sharedir)' | sha256sum - | sed -r 's/(.{12}).*/$(version_short).mk\1/'
-ase/buildversion.cc := $>/ase/buildversion-$(ase/buildsum).cc
-$(ase/buildversion.cc):								| $>/ase/ # $(GITCOMMITDEPS)
+# == ase/buildversion-*.cc ==
+$>/ase/buildversion-$(version_hash).cc:						| $>/ase/
 	$(QGEN)
 	$Q echo '// make $@'							> $@.tmp
 	$Q echo '#include <ase/platform.hh>'					>>$@.tmp
@@ -163,35 +157,26 @@ $(ase/buildversion.cc):								| $>/ase/ # $(GITCOMMITDEPS)
 	$Q echo 'const char *const ase_version_long = "$(version_short)+g$(version_hash) ($(INSN))";'	>>$@.tmp
 	$Q echo 'const char *const ase_version_short = "$(version_short)";'	>>$@.tmp
 	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_short)";' >>$@.tmp
-	$Q echo 'const char *const ase_sharedir = "$(sharedir)";'		>>$@.tmp
 	$Q echo '} // Ase'							>>$@.tmp
 	$Q mv $@.tmp $@
-ase/generated.sources += $(ase/buildversion.cc)
+ase/generated.sources += $>/ase/buildversion-$(version_hash).cc
 
-# == object deps ==
-ase/object.deps	+= $(ase/sysconfig.dep) $(ase/libase.deps) $(EXTERNAL_CXX_STAMPS)
-ase/common.objects := $(sort \
-	$(call BUILDDIR_O, $(ase/common.sources)) \
-	$(call SOURCE2_O, $(ase/generated.sources))   \
+# == AnklangSynthEngine ==
+ase/anklang.ccobjects := $(call BUILDDIR_O, $(filter %.cc, $(ase/anklang.sources)))
+ase/anklang.objects := $(sort \
+	$(call BUILDDIR_O, $(ase/anklang.sources))	\
+	$(call SOURCE2_O, $(ase/generated.sources))	\
 )
-$(ase/common.objects): $(ase/object.deps)
-$(ase/common.objects): EXTRA_INCLUDES ::= $(ase/object.includes)
-$(devices/4ase.objects): $(ase/object.deps)
-$(devices/4ase.objects): EXTRA_INCLUDES ::= $(ase/object.includes)
+$(ase/anklang.objects) $(devices/4ase.objects): $>/ase/sysconfig.h $(EXTERNAL_CXX_STAMPS)
+$(ase/anklang.objects) $(devices/4ase.objects): EXTRA_INCLUDES += $(ASE_EXTRA_INCLUDES) -I$>
 # Work around legacy code in external/websocketpp/*.hpp
 ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec -Wno-sign-promo
 # Allow tests in mathutils.cc
 ase/mathutils.cc.CTIDY_FLAGS = --checks=-clang-analyzer-security.FloatLoopCounter
-
-# == AnklangSynthEngine ==
-ase/AnklangSynthEngine.objects	::= $(call BUILDDIR_O, $(ase/AnklangSynthEngine.sources))
-$(ase/AnklangSynthEngine.objects): $(ase/object.deps)
-$(ase/AnklangSynthEngine.objects): EXTRA_INCLUDES ::= $(ase/object.includes)
-ase/AnklangSynthEngine.objects	 += $(ase/common.objects) $(devices/4ase.objects)
 $(lib/AnklangSynthEngine): $(lib/libsndfile.so)				| $>/lib/
 $(call BUILD_PROGRAM, \
 	$(lib/AnklangSynthEngine), \
-	$(ase/AnklangSynthEngine.objects), \
+	$(ase/anklang.objects) $(devices/4ase.objects), \
 	$(lib/libase.so), \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl $(lib/libsndfile.so), \
 	../lib)
@@ -200,8 +185,8 @@ ALL_TARGETS += $(lib/AnklangSynthEngine)
 # == jackdriver.so ==
 lib/jackdriver.so	     ::= $>/lib/jackdriver.so
 ase/jackdriver.objects	     ::= $(call BUILDDIR_O, $(ase/jackdriver.sources))
-$(ase/jackdriver.objects):   $(ase/sysconfig.dep)
-$(ase/jackdriver.objects):   EXTRA_INCLUDES ::= -I$>
+$(ase/jackdriver.objects):   $>/ase/sysconfig.h
+$(ase/jackdriver.objects):   EXTRA_INCLUDES += -I$>
 $(lib/jackdriver.so).LDFLAGS ::= -Wl,--unresolved-symbols=ignore-in-object-files
 ifneq ('','$(ANKLANG_JACK_LIBS)')
 lib/jackdriver.so.MAYBE ::= $(lib/jackdriver.so)
@@ -212,21 +197,21 @@ $(call BUILD_SHARED_LIB,		\
 	$(ANKLANG_JACK_LIBS) $(lib/libase.so), \
 	../lib)
 endif
-$(ALL_TARGETS) += $(lib/jackdriver.so.MAYBE)
+ALL_TARGETS += $(lib/jackdriver.so.MAYBE)
 
 # == gtk2wrap.so ==
 lib/gtk2wrap.so         ::= $>/lib/gtk2wrap.so
 ase/gtk2wrap.objects    ::= $(call BUILDDIR_O, $(ase/gtk2wrap.sources))
-$(ase/gtk2wrap.objects): EXTRA_INCLUDES ::= -I$> $(GTK2_CFLAGS)
-$(ase/gtk2wrap.objects): EXTRA_CXXFLAGS ::= -Wno-deprecated -Wno-deprecated-declarations
-$(ase/gtk2wrap.objects): $(ase/sysconfig.dep)
+$(ase/gtk2wrap.objects): EXTRA_INCLUDES += -I$> $(GTK2_CFLAGS)
+$(ase/gtk2wrap.objects): EXTRA_CXXFLAGS += -Wno-deprecated -Wno-deprecated-declarations
+$(ase/gtk2wrap.objects): $>/ase/sysconfig.h
 $(call BUILD_SHARED_LIB, \
 	$(lib/gtk2wrap.so), \
 	$(ase/gtk2wrap.objects), \
 	$(lib/libase.so) | $>/lib/, \
 	$(GTK2_LIBS), \
 	../lib)
-$(ALL_TARGETS) += $(lib/gtk2wrap.so)
+ALL_TARGETS += $(lib/gtk2wrap.so)
 
 # == install binaries ==
 $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
@@ -436,7 +421,7 @@ $(LIBSNDFILE_SOURCES): $>/libsndfile/config.h
 # == lib/libsndfile.so ==
 LIBSNDFILE_OBJECTS := $(LIBSNDFILE_SOURCES:external/libsndfile/src/%.c=$>/libsndfile/%.o)
 $>/libsndfile/%.o: external/libsndfile/src/%.c		| $(dir $(sort $(LIBSNDFILE_OBJECTS)))
-	$(QGEN)
+	$(QECHO) CC $@
 	$Q $(CCACHE) $(CC) -fPIC $(compiledefs) $(compilecxxflags) \
 		-I external/libsndfile/include -I external/libsndfile/src -I $>/libsndfile/ \
 		-Dsndfile_EXPORTS -DNDEBUG -c $< -o $@

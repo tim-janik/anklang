@@ -57,7 +57,7 @@ VITE_DEPS += $>/gen/assets/spinner.css
 
 # == gen/api-jsonipc.g.ts ==
 $>/gen/api-jsonipc.g.ts: ase/gen/api-jsonipc.g.ts
-	$(QGEN)
+	$(QECHO) COPY $@
 	$Q $(CP) $< $@
 VITE_DEPS += $>/gen/api-jsonipc.g.ts
 
