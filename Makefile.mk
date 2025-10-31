@@ -146,7 +146,7 @@ $>/WILDCARD_FILES.mk: $(REPOCOMMITDEPS)	| $>/
 	$Q test -r $@.repo && grep -vFxf $@.find $@.repo || exit 0 && \
 	     ( echo "ERROR: WILDCARD_SUBDIRS misses some files tracked by Git" ; false ) >&2
 	@ # Use most accurate file list for WILDCARD_FILES.mk
-	$Q test -r $@.repo && mv $@.repo $@.find
+	$Q test ! -r $@.repo || mv $@.repo $@.find
 	$Q sed -r '1s/^/WILDCARD_FILES := /; s/$$/ \\/' < $@.find > $@ && rm -f $@.find
 include $>/WILDCARD_FILES.mk	# define WILDCARD_FILES
 

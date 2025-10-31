@@ -15,7 +15,7 @@ QDIE	  = bash -c 'echo "  ERROR    $@: $$@" >&2 ; exit 127' _
 # == GIT / JJ ==
 # Dependencies that are updated with a new git / jj commit
 GITCOMMITDEPS  := $(wildcard .git/logs/HEAD)
-REPOCOMMITDEPS := $(GITCOMMITDEPS) $(wildcard .jj/working_copy/checkout)
+REPOCOMMITDEPS := $(strip $(GITCOMMITDEPS) $(wildcard .jj/working_copy/checkout))
 
 # == MULTIOUTPUT ==
 # Macro to call for the output targets of a recipe with multiple side-effect outputs.

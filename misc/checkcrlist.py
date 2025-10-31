@@ -24,7 +24,8 @@ def print_help (arg0, exit = None):
   u  = "Usage: %s [OPTIONS] <FILELIST> [COPYRIGHTFILES...]" % arg0
   h  = "Check `Files:` patterns from COPYRIGHTFILES against lines in FILELIST.\n"
   h += "OPTIONS:\n"
-  h += "  -e            Exit with an error if patterns mismatch\n"
+  h += "  -e            Exit with an error if files are unmatched\n"
+  h += "  -p            Exit with an error if patterns mismatch\n"
   h += "  --git         Print Copyright info from Git\n"
   h += "  -h, --help    Show command help\n"
   if exit: # != 0
@@ -38,15 +39,19 @@ def print_help (arg0, exit = None):
 FILE_PATTERNS = []      # [ ( regex, [ COUNT ], COPYRIGHTFILE, LINE, pstr )... ]
 COPYRIGHTFILES = []
 FILELIST = None
-ERROR_ON_MISMATCH = False
+ERROR_ON_PATTERNMISS = False
+ERROR_ON_UNMATCHED_FILE = False
 GIT_COPYRIGHT = False
 
 def parse_options (sysargv):
-  opts, argv = getopt.getopt (sysargv[1:], 'eh', [ 'help', 'git' ])
+  opts, argv = getopt.getopt (sysargv[1:], 'eph', [ 'help', 'git' ])
   for k, v in opts:
-    if k == '-e':
-      global ERROR_ON_MISMATCH
-      ERROR_ON_MISMATCH = True
+    if k == '-p':
+      global ERROR_ON_PATTERNMISS
+      ERROR_ON_PATTERNMISS = True
+    elif k == '-e':
+      global ERROR_ON_UNMATCHED_FILE
+      ERROR_ON_UNMATCHED_FILE = True
     elif k == '-h' or k == '--help':
       print_help (sysargv[0], 0)
     elif k == '--git':
@@ -165,13 +170,13 @@ def crpathcheck (sysargv):
   patternerrors = 0
   for tup in FILE_PATTERNS:
     if tup[1][0] == 0:
-      print ('%s:%u:' % (tup[2], tup[3]), 'UNUSED-ENTRY:', tup[4])
+      print ('%s:%u:' % (tup[2], tup[3]), 'UNUSED-ENTRY:', tup[4], file = sys.stderr)
       patternerrors += 1
-  # error out on -e
-  if ERROR_ON_MISMATCH and patternerrors:
-    die ("failed to match copyright entry in %u cases" % patternerrors)
-  if ERROR_ON_MISMATCH and fileerrors:
+  # error out on -e, -p
+  if ERROR_ON_UNMATCHED_FILE and fileerrors:
     die ("failed to match file to copyright entry in %u cases" % fileerrors)
+  if ERROR_ON_PATTERNMISS and patternerrors:
+    die ("failed to match copyright entry in %u cases" % patternerrors)
   sys.exit (0)
 
 def shcmd (*args):
