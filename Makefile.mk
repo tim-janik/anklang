@@ -116,7 +116,7 @@ EXTRA_INCLUDES	::= # target private defs, lesser precedence than CXXFLAGS
 EXTRA_FLAGS	::= # target private flags, precedence over CXXFLAGS
 CLANG_TIDY	 ?= clang-tidy
 
-# == Utilities & Checks ==
+# == Dependency Checks & Build Config ==
 include misc/config-utils.mk
 include misc/config-uname.mk
 include misc/config-checks.mk
@@ -124,6 +124,10 @@ include external/Makefile.mk
 
 NPM_INSTALL ?= $(XNPM) install
 .config.defaults += CC CFLAGS CXX CLANG_TIDY CXXFLAGS LDFLAGS LDLIBS NPM_INSTALL
+
+ifdef CCACHE	# sloppiness required for pre-compiled headers
+export CCACHE_SLOPPINESS := $(CCACHE_SLOPPINESS),pch_defines,time_macros
+endif
 
 # == WILDCARD_FILES ==
 # WILDCARD_FILES.mk: defines WILDCARD_FILES as a list of repository files that aren't mirrored from external sources

@@ -113,6 +113,18 @@ pkgldflags	::= $(strip $(LDOPTIMIZE) $(LDMODEFLAGS)) -Wl,-export-dynamic -Wl,--a
 compiledefs     = $(DEFS) $(EXTRA_DEFS) $($<.DEFS) $($@.DEFS) $(INCLUDES) $(EXTRA_INCLUDES) $($<.INCLUDES) $($@.INCLUDES)
 compilecflags   = $(pkgcflags) $(EXTRA_FLAGS) $(EXTRA_CFLAGS) $($<.FLAGS) $($@.FLAGS) -MQ '$@' -MMD -MF '$@'.d
 compilecxxflags = $(pkgcxxflags) $(EXTRA_FLAGS) $(EXTRA_CXXFLAGS) $($<.FLAGS) $($@.FLAGS) -MQ '$@' -MMD -MF '$@'.d
+ifdef HAVE_CLANG
+# Generate clang precompiled hreaders `.pch` files from `.hh` header files
+$>/%.pch: %
+	$(QGEN)
+	$(Q) $(CXX) $(CXXSTD) -fPIC $(compiledefs) $(compilecxxflags) -x c++-header -o $@ $<
+# Compile with precompiled headers that are listed as target dependencies
+compiledefs += $(patsubst %, -include-pch %, $(filter %.pch, $^))
+# Function to conditionally expand to a clang precompiled header name
+INCLUDE_PCH = $>/$(strip $1).pch
+else
+INCLUDE_PCH :=
+endif
 $>/%.o: %.c
 	$(QECHO) CC $@
 	$(Q) $(CCACHE) $(CC) $(CSTD) -fPIC $(compiledefs) $(compilecflags) -o $@ -c $<
