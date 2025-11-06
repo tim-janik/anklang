@@ -117,6 +117,7 @@ ifdef HAVE_CLANG
 # Generate clang precompiled hreaders `.pch` files from `.hh` header files
 $>/%.pch: %
 	$(QGEN)
+	$(Q) mkdir -p $(@D)
 	$(Q) $(CXX) $(CXXSTD) -fPIC $(compiledefs) $(compilecxxflags) -x c++-header -o $@ $<
 # Compile with precompiled headers that are listed as target dependencies
 compiledefs += $(patsubst %, -include-pch %, $(filter %.pch, $^))
