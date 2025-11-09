@@ -38,7 +38,7 @@ b-switchinput label {
     &::before {
       position: absolute; top: 0.1em; left: 0.3em;
       font-size: 1em; text-transform: none; text-decoration: none !important; speak: none;
-      content: "\2713"; transition: .3s; color: var(--b-switch-knob); opacity: 0;
+      content: "✓"; transition: .3s; color: var(--b-switch-knob); opacity: 0;
     }
   }
 }`;
