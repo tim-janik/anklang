@@ -99,6 +99,7 @@ public:
   uint add             (EventSourceP loop_source, int priority
                         = PRIORITY_NORMAL);     ///< Adds a new source to the loop with custom priority.
   void remove          (uint            id);    ///< Removes a source from loop, the source must be present.
+  void remove          (uint           *idp);   ///< Removes a source by id if present, resets id.
   bool try_remove      (uint            id);    ///< Tries to remove a source, returns if successfull.
   bool clear_source    (uint *id_pointer);      ///< Remove source if `id_pointer` and `*id_pointer` are valid.
   void destroy_loop    (void);
