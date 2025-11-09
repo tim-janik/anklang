@@ -117,21 +117,25 @@ misc/copyright_files := $(strip \
 )
 # verify copyright entries on every build within Git or JJ repos
 $>/.copyright.check: misc/checkcrlist.py $(misc/copyright_files) $(REPOCOMMITDEPS)
-	$(file > $>/copyright.lst, $(WILDCARD_FILES))
 	$(QGEN)
-	$Q tr ' ' '\n' < $>/copyright.lst > $>/copyright.tmp && \
-	   mv $>/copyright.tmp $>/copyright.lst
 	$Q test -n "$(REPOCOMMITDEPS)" || exit 0 \
+	&& if   jj workspace root >/dev/null 2>&1 ; \
+	   then jj --no-pager file list ; \
+	   elif git rev-parse --is-inside-work-tree >/dev/null 2>&1 ; \
+	   then git ls-tree -r --name-only HEAD ; \
+	   fi > $>/copyright.lst \
 	&& misc/checkcrlist.py -e $>/copyright.lst $(misc/copyright_files)
 	$Q rm -f $>/copyright.lst && touch $@
 LATE_TARGETS += $>/.copyright.check
 # explicit copyright check, metadata fetching requires Git
 check-copyright: misc/checkcrlist.py $(misc/copyright_files)
-	$(file > $>/copyright.lst, $(WILDCARD_FILES))
 	$(QGEN)
-	$Q tr ' ' '\n' < $>/copyright.lst > $>/copyright.tmp && \
-	   mv $>/copyright.tmp $>/copyright.lst
 	$Q test -n "$(REPOCOMMITDEPS)" || exit 0 \
+	&& if   jj workspace root >/dev/null 2>&1 ; \
+	   then jj --no-pager file list ; \
+	   elif git rev-parse --is-inside-work-tree >/dev/null 2>&1 ; \
+	   then git ls-tree -r --name-only HEAD ; \
+	   fi > $>/copyright.lst \
 	&& misc/checkcrlist.py $(if $(GITCOMMITDEPS),--git) -e -p $>/copyright.lst $(misc/copyright_files) \
 	&& rm -f $>/copyright.lst
 .PHONY: check-copyright

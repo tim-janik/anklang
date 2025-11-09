@@ -396,7 +396,9 @@ TAGS: $(REPOCOMMITDEPS)
 	$(file > $>/tags.lst, $(WILDCARD_FILES))
 	$(QGEN)
 	$Q etags --version 2>/dev/null | grep -qE 'Exuberant|Universal' || exit 0 >$@ \
-	&& tr ' ' '\n' < $>/tags.lst | etags -o $@ -L - 2> >(grep -vF 'Warning: ignoring null tag in')
+	&& tr ' ' '\n' < $>/tags.lst \
+	| grep -E '\.([mc]?jsx?|tsx?|py|go|hh|cc|[HChc]|[HChc]pp)$$' \
+	| etags -o $@ -L - 2> >(grep -vF 'Warning: ignoring null tag in')
 	$Q rm -f $>/tags.lst
 ALL_TARGETS += TAGS
 
