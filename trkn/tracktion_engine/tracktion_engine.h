@@ -378,6 +378,8 @@ namespace tracktion { inline namespace engine
     class BufferedAudioFileManager;
 }} // namespace tracktion { inline namespace engine
 
+#include <trkn/tracktion_decls.hh>      // Forward Decls for Ase
+
 #ifdef __GNUC__
  #pragma GCC diagnostic push
  #pragma GCC diagnostic ignored "-Wfloat-equal"

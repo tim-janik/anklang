@@ -17,6 +17,7 @@ class Selectable;
 class SelectionManager;
 
 //==============================================================================
+#if 0 // -> ./trkn/tracktion_decls.hh
 class SelectableListener
 {
 public:
@@ -25,6 +26,7 @@ public:
     virtual void selectableObjectChanged (Selectable*) = 0;
     virtual void selectableObjectAboutToBeDeleted (Selectable*) = 0;
 };
+#endif // -> ./trkn/tracktion_decls.hh
 
 //==============================================================================
 /**
