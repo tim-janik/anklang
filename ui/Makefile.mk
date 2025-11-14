@@ -25,28 +25,6 @@ $>/gen/.ui.fonts: $(EXTERNAL_BLOBS4ANKLANG_STAMPS)
 	$Q touch $@
 VITE_DEPS += $>/gen/.ui.fonts
 
-# == /gen/assets/fork-awesome.css ==
-$>/gen/assets/fork-awesome.css: ui/Makefile.mk			| node_modules/.npm.done $>/gen/assets/
-	$(QGEN)
-	$Q $(CP) node_modules/fork-awesome/fonts/forkawesome-webfont.woff2 $>/gen/assets/
-	$Q sed  -e "/^ *src: *url/s,src: *url(.*);,src: url('forkawesome-webfont.woff2');," \
-		-e 's|@font-face *{|@font-face { font-display: block; |' \
-		node_modules/fork-awesome/css/fork-awesome.css > $@.tmp
-	$Q mv $@.tmp $@
-VITE_DEPS += $>/gen/assets/fork-awesome.css
-
-# == /gen/assets/material-icons.css ==
-# Providing icon collections via fonts is most resource friendly */
-$>/gen/assets/material-icons.css: ui/Makefile.mk			| node_modules/.npm.done $>/gen/assets/
-	$(QGEN)
-	$Q grep -q '/material-icons.woff2' node_modules/material-icons/iconfont/filled.css || \
-		{ echo "$<: failed to find font in node_modules/material-icons/iconfont/" >&2 ; false ; }
-	$Q cp node_modules/material-icons/iconfont/material-icons.woff2 $>/gen/assets/material-icons.woff2
-	$Q sed -re 's|\boptimizeLegibility\b|optimizelegibility|g' \
-		node_modules/material-icons/iconfont/filled.css > $@.tmp
-	$Q mv $@.tmp $@
-VITE_DEPS += $>/gen/assets/material-icons.css
-
 # == /gen/cursors/cursors.css ==
 $>/gen/cursors/cursors.css: $(wildcard ui/cursors/*) Makefile.mk		| $>/gen/cursors/
 	$(QECHO) COPY $<
