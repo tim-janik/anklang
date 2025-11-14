@@ -18,6 +18,13 @@ $>/gen/assets/AnklangIcons.css: ui/Makefile.mk $(EXTERNAL_BLOBS4ANKLANG_STAMPS)	
 	$Q rm -r $>/gen/anklangicons/ && mv $@.tmp $@
 VITE_DEPS += $>/gen/assets/AnklangIcons.css
 
+# == /gen/assets/ fonts ==
+$>/gen/.ui.fonts: $(EXTERNAL_BLOBS4ANKLANG_STAMPS)
+	$(QGEN)
+	$Q $(CP) $(external/font_files) $>/gen/assets/
+	$Q touch $@
+VITE_DEPS += $>/gen/.ui.fonts
+
 # == /gen/assets/fork-awesome.css ==
 $>/gen/assets/fork-awesome.css: ui/Makefile.mk			| node_modules/.npm.done $>/gen/assets/
 	$(QGEN)
@@ -124,7 +131,7 @@ $>/gen/%.md: ui/%.js								| $>/gen/b/ node_modules/.npm.done
 
 # == ui dist build ==
 VITE_DEPS += $>/version.json
-$>/gen/.vite.done: ui/vite.config.ts ui/Makefile.mk $(VITE_DEPS)	| node_modules/.npm.done
+$>/gen/.vite.done: ui/vite.config.ts ui/index.html ui/Makefile.mk $(VITE_DEPS)	| node_modules/.npm.done
 	@$(QECHO) BUILD "Vite Output"
 	$Q BUILDDIR='$(abspath $>)' node_modules/.bin/vite -c ui/vite.config.ts build -l warn --emptyOutDir
 	$Q ln -fs anklang.png $>/ui/favicon.ico
