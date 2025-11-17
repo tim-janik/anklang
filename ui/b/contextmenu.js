@@ -16,7 +16,7 @@
  * ```html
  * <div @contextmenu="e => querySelector('b-contextmenu').popup (e)">
  *   <b-contextmenu .activate="menuactivation">
- *     <button ic="mi-close" kbd="Shift+Ctrl+Q" uri="quit" > Quit </button>
+ *     <button ic="md-close" kbd="Shift+Ctrl+Q" uri="quit" > Quit </button>
  *   </b-contextmenu>
  * </div>
  * ```

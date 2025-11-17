@@ -38,18 +38,17 @@ const HTML = (t, d) =>  html`
       <div class="asbutton button-dim" data-tip="**CLICK** File Menu" data-hotkey="Alt+F" @click=${e => t.filemenu.popup (e)} @mousedown=${e => t.filemenu.popup (e)}
 	   id="g-filemenu" >
 	<div class="b-menubar-icon" >
-	  <b-icon ic="bc-folder" ></b-icon>
-	  <b-icon ic="bc-menumore" ></b-icon>
+	  <b-icon ic="md-folder" ></b-icon>
 	</div>
 	<b-contextmenu ${ref (h => t.filemenu = h)} .activate=${activate} .isactive=${isactive} >
-	  <button ic="fa-file-o"	kbd="Ctrl+N"		uri="loadnew" >	New Project		</button>
-	  <button ic="fa-file-audio-o" 	kbd="Ctrl+O"		uri="load"    >	Open Project…		</button>
-	  <button ic="mi-save_alt"     	kbd="Ctrl+S"		uri="save"    >	Save Project		</button>
+	  <button ic="fa-file_o"	kbd="Ctrl+N"		uri="loadnew" >	New Project		</button>
+	  <button ic="fa-file_audio_o" 	kbd="Ctrl+O"		uri="load"    >	Open Project…		</button>
+	  <button ic="fa-save"     	kbd="Ctrl+S"		uri="save"    >	Save Project		</button>
 	  <button ic="fa-save"	   	kbd="Shift+Ctrl+S"	uri="saveas"  >	Save As…		</button>
 	  <b-menuseparator></b-menuseparator>
 	  <button ic="fa-cog"          	kbd="Ctrl+RawComma"	uri="prefs"   >	Preferences		</button>
 	  <b-menuseparator></b-menuseparator>
-	  <button ic="mi-close"        	kbd="Shift+Ctrl+Q" 	uri="quit"    >	Quit			</button>
+	  <button ic="md-close"        	kbd="Shift+Ctrl+Q" 	uri="quit"    >	Quit			</button>
 	</b-contextmenu>
       </div>
 
@@ -57,12 +56,11 @@ const HTML = (t, d) =>  html`
       <div class="asbutton button-dim" data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E" @click=${e => t.editmenu.popup (e)} @mousedown=${e => t.editmenu.popup (e)}
 	   id="g-editmenu" >
 	<div class="b-menubar-icon" >
-	  <b-icon ic="mi-draw" ></b-icon>
-	  <b-icon ic="bc-menumore" ></b-icon>
+	  <b-icon ic="md-playlist_edit" ></b-icon>
 	</div>
 	<b-contextmenu ${ref (h => t.editmenu = h)}  .activate=${activate} .isactive=${isactive} >
-	  <button ic="mi-undo" .disabled=${!true} kbd="Ctrl+Z"       uri="undo">	Undo	</button>
-	  <button ic="mi-redo" .disabled=${!true} kbd="Shift+Ctrl+Z" uri="redo">	Redo	</button>
+	  <button ic="md-undo" .disabled=${!true} kbd="Ctrl+Z"       uri="undo">	Undo	</button>
+	  <button ic="md-redo" .disabled=${!true} kbd="Shift+Ctrl+Z" uri="redo">	Redo	</button>
 	</b-contextmenu>
       </div>
 
@@ -71,10 +69,9 @@ const HTML = (t, d) =>  html`
 	   id="g-viewmenu" >
 	<div class="b-menubar-icon" >
 	  <b-icon ic="fa-eye" ></b-icon>
-	  <b-icon ic="bc-menumore" ></b-icon>
 	</div>
 	<b-contextmenu ${ref (h => t.viewmenu = h)} .activate=${activate} .isactive=${isactive} >
-	  <button ic="mi-fullscreen" .disabled=${!document.fullscreenEnabled}
+	  <button ic="md-fullscreen" .disabled=${!document.fullscreenEnabled}
 		  kbd="F11" uri="fullscreen">	Toggle Fullscreen	</button>
 	  ${ELECTRON_MENUITEMS (t)}
 	</b-contextmenu>
@@ -94,13 +91,12 @@ const HTML = (t, d) =>  html`
       <div class="asbutton button-dim" data-tip="**CLICK** Help Menu" data-hotkey="Alt+H" @click=${e => t.helpmenu.popup (e)} @mousedown=${e => t.helpmenu.popup (e)}
 	   id="g-helpmenu" >
 	<div class="b-menubar-icon" >
-	  <b-icon ic="fa-life-ring" ></b-icon>
-	  <b-icon ic="bc-menumore" ></b-icon>
+	  <b-icon ic="fa-life_ring" ></b-icon>
 	</div>
 	<b-contextmenu ${ref (h => t.helpmenu = h)} .activate=${activate} .isactive=${isactive} >
-	  <button ic="mi-chrome_reader_mode"	uri="anklang-docu">	Anklang Documentation…	</button>
+	  <button ic="fa-book_open"	uri="anklang-docu">	Anklang Documentation…	</button>
 	  <b-menuseparator></b-menuseparator>
-	  <button ic="fa-id-card-o"		uri="about">		About…			</button>
+	  <button ic="oct-id_badge"		uri="about">		About…			</button>
 	</b-contextmenu>
       </div>
     </b-buttonbar>
@@ -108,9 +104,9 @@ const HTML = (t, d) =>  html`
   </div>
 `;
 const ELECTRON_MENUITEMS = (t) => window['Electron'] && html`
-  <button ic="mi-zoom_in"   kbd="Ctrl++" uri="zoom-in">			Zoom In		</button>
-  <button ic="mi-zoom_out"  kbd="Ctrl+-" uri="zoom-out">		Zoom Out	</button>
-  <button ic="—"            kbd="Ctrl+0" uri="zoom-reset">		Reset Zoom	</button>
+  <button ic="cod-zoom_in"  kbd="Ctrl++" uri="zoom-in">			Zoom In		</button>
+  <button ic="cod-zoom_out" kbd="Ctrl+-" uri="zoom-out">		Zoom Out	</button>
+  <button ic="cod-screen_full" kbd="Ctrl+0" uri="zoom-reset">		Reset Zoom	</button>
 `;
 
 // == SCRIPT ==

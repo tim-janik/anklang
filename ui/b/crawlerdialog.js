@@ -75,7 +75,7 @@ b-crawlerdialog {
       width: 1.9rem;
       vertical-align: middle;
       @include b-font-weight-bold();
-      &[ic="mi-folder"] { color: #bba460; }
+      &[ic="md-folder"] { color: #bba460; }
     }
   }
 }`;
@@ -110,7 +110,7 @@ const HTML = (t, d) => html`
 const ENTRY_HTML = (t, e) => html`
 <button
   @focus=${ev => t.entry_event (ev, e)} @click=${ev => t.entry_event (ev, e)} @dblclick=${ev => t.entry_event (ev, e)} >
-  <b-icon ic=${e.type == Ase.ResourceType.FOLDER && "mi-folder" || "fa-file-o"} ></b-icon>
+  <b-icon ic=${e.type == Ase.ResourceType.FOLDER && "md-folder" || "fa-file_o"} ></b-icon>
   ${e.label}
 </button>
 `;

@@ -86,15 +86,15 @@ const HTML = (t, d) => html`
 const HTML_CONTEXTMENU = (t, d) => html`
   <b-contextmenu @activate=${t.menu_click} .isactive=${t.menu_check} @close=${t.menu_close} @cancel=${t.menu_close} >
     <b-menutitle>                                         Track             </b-menutitle>
-    <button ic="fa-plus-circle"    uri="add-track" >      Add Track             </button>
-    <button ic="fa-i-cursor"       uri="rename-track" >   Rename Track          </button>
-    <button ic="fa-toggle-down"    uri="bounce-track" >   Bounce Track          </button>
-    <button ic="mi-visibility_off" uri="track-details" >  Show / Hide Track Details </button>
+    <button ic="fa-plus_circle"    uri="add-track" >      Add Track             </button>
+    <button ic="fa-i_cursor"       uri="rename-track" >   Rename Track          </button>
+    <button ic="fa-toggle_down"    uri="bounce-track" >   Bounce Track          </button>
+    <button ic="md-eye_off" uri="track-details" >  Show / Hide Track Details </button>
     <b-menuseparator></b-menuseparator>
     <b-menurow> <!-- ic="fa-clone" uri="clone-track" >    Dupl.                 -->
-      <button ic="fa-times-circle" uri="delete-track" >   Delete                </button>
+      <button ic="fa-times_circle" uri="delete-track" >   Delete                </button>
       <button ic="fa-scissors"     uri="cut-track" >      Cut                   </button>
-      <button ic="fa-files-o"      uri="copy-track" >     Copy                  </button>
+      <button ic="fa-files_o"      uri="copy-track" >     Copy                  </button>
       <button ic="fa-clipboard"    uri="paste-track" >    Paste                 </button>
     </b-menurow>
     <b-menuseparator></b-menuseparator>
