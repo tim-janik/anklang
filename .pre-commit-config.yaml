@@ -21,5 +21,24 @@ repos:
     exclude: ^doc/mkdocs\.yml$
   - id: trailing-whitespace
 
+- repo: local
+  hooks:
+  - id: check-unfinished-work
+    name: Check Unfinished Work
+    entry: misc/check-unfinished.sh
+    language: system
+    types: [file]	# Run for all file types
+    pass_filenames: true
+    exclude: |
+      (?x)^(
+        ase/atquit\.cc|
+        doc/style/doxyextra\.css|
+        ui/b/piano-ctrl\.js|
+        ui/b/preferencesdialog\.js|
+        ui/b/shell\.jsx|
+        ui/extra-css\.ts|
+        ui/vite\.config\.ts|
+      )$
+
 # Should always pass:
 # uvx pre-commit run --hook-stage pre-push --all-files
