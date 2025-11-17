@@ -19,11 +19,24 @@ b-menubar {
     @apply button-down-within size-10;
     position: relative;
   }
-  .b-menubar-icon {
-    position: absolute; inset: 0;
-    display: inline-flex; justify-content: center;
-    [ic] { inset: 0; position: absolute; vertical-align: middle; } /* display: inline-block; */
-    [ic="bc-menumore"] { position: absolute; top: unset; left: unset; }
+}
+.b-menubar-icon {
+  position: absolute; inset: 0;
+  display: inline-flex; justify-content: center;
+  [ic] { inset: 0; position: absolute; vertical-align: middle; } /* display: inline-block; */
+
+  &::after {
+    content: '';		/* force rendering */
+    position: absolute; width: 0; height: 0;
+    right: 0px;			/* Position at the right */
+    bottom: 0px;		/* Position at the bottom */
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid white; /* Create a downward-pointing arrow */
+    border-bottom: 0;
+    transform: rotate(-45deg);	/* Rotate to point into corner */
+    transform-origin: 100% 100%;
+    transform: rotate(-45deg) translate(6px, -2px);
   }
 }`;
 
