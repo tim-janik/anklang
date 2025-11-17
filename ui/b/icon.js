@@ -126,24 +126,4 @@ class BIcon extends LitComponent {
     return icon;
   }
 }
-customElements.define ('b-icon', BIcon);
-
-function verify_font_family (testnow = false)
-{
-  if (verify_font_family_status === undefined) {
-    verify_font_family_status = setTimeout (() => verify_font_family (true), 3 * 1000);
-    return undefined;
-  } else if (!testnow)
-    return undefined;
-  const Material_Icons_loaded = Dom.font_family_loaded ({ font_family: 'Material Icons' });
-  console.assert (Material_Icons_loaded, 'Failed to verify loaded font: "Material Icons"');
-
-  const AnklangIcons_loaded = Dom.font_family_loaded ({ font_family: 'AnklangIcons', text: '\uea01\uea02\uea03\uea04\uea05\uea06' });
-  console.assert (AnklangIcons_loaded, 'Failed to verify loaded font: AnklangIcons');
-
-  const ForkAwesome_loaded = Dom.font_family_loaded ({ font_family: 'ForkAwesome', text: '\uf011\uf040\uf05a' });
-  console.assert (ForkAwesome_loaded, 'Failed to verify loaded font: ForkAwesome');
-
-  verify_font_family_status = !!(Material_Icons_loaded && AnklangIcons_loaded && ForkAwesome_loaded);
-}
-let verify_font_family_status = undefined;
+customElements.define ("b-icon", BIcon);
