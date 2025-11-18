@@ -141,7 +141,7 @@ struct CrashStackTracer::CrashTraceThreads
     juce::Array<CrashStackTracer*, juce::SpinLock, 100> entries;
 };
 
-static CrashStackTracer::CrashTraceThreads crashStack;
+static CrashStackTracer::CrashTraceThreads &crashStack = *new CrashStackTracer::CrashTraceThreads();
 
 CrashStackTracer::CrashStackTracer (const char* f, const char* fn, int l, const char* plugin)
     : file (f), function (fn), pluginName (plugin), line (l), threadID (juce::Thread::getCurrentThreadId())
