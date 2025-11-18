@@ -54,7 +54,7 @@ class BEditable extends LitComponent {
     this.input_.inert = true;
     this.input_.onkeydown = this.input_keydown.bind (this);
     this.input_.onchange = e => Util.prevent_event (e);
-    this.input_.onblur = this.input_blur.bind (this);
+    this.input_.onblur = () => this.input_blur.bind (this, false);
   }
   updated (changed_props)
   {
@@ -99,6 +99,7 @@ class BEditable extends LitComponent {
       this.dispatchEvent (new CustomEvent ('change', {
 	detail: { value: this.input_.value }
       }));
+      this.input_.value = this.value;
     }
   }
 }
