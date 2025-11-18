@@ -63,7 +63,7 @@ public:
 
     static auto& get()
     {
-        static MidiDeviceListConnectionBroadcaster result;
+        static MidiDeviceListConnectionBroadcaster &result = *new MidiDeviceListConnectionBroadcaster();
         return result;
     }
 
