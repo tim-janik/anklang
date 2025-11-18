@@ -5,6 +5,7 @@ Source: https://github.com/tim-janik/anklang/
 Files:
  .git*
  .github/workflows/*.*
+ .pre-commit-config.yaml
  LICENSE
  Makefile.mk
  NEWS.md
