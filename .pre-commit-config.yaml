@@ -28,7 +28,7 @@ repos:
     name: Check Copyright Attribution
     entry: misc/check-copyright.sh
     language: system
-    args: [doc/copyright]
+    args: [doc/copyright, trkn/copyright]
     pass_filenames: false
   - id: check-unfinished-work
     name: Check Unfinished Work
