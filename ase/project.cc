@@ -96,6 +96,11 @@ ProjectImpl::~ProjectImpl()
 }
 
 
+void
+ProjectImpl::force_shutdown_all ()
+{
+}
+
 ProjectImplP
 ProjectImpl::create (const String &projectname)
 {
