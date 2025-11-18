@@ -2,6 +2,7 @@
 // @ts-check
 
 import { LitComponent, html, JsExtract, docs } from '../little.js';
+import { tracking_wrapper, create_computed } from '../signal.js';
 import * as Util from "../util.js";
 
 /** @class BPlayControls
@@ -40,6 +41,9 @@ class BPlayControls extends LitComponent {
       (ev) => this.dispatch (method, ev);
     return HTML (this, dispatcher);
   }
+  constructor() {
+    super();
+  }
   async dispatch (method, ev)
   {
     const project = Data.project;
@@ -57,8 +61,20 @@ class BPlayControls extends LitComponent {
   async toggle_play()
   {
     const project = Data.project;
-    const playing = await project.is_playing();
-    this.dispatch (playing ? 'stop_playback' : 'start_playback');
+    const playing = project.is_playing;
+    this.dispatch (playing ? 'pause_playback' : 'start_playback');
+  }
+  playback_changed()
+  {
+    console.log("is_playing:", Data.project.is_playing);
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    this.playback_changed_listener_ = create_computed (() => this.playback_changed());
+  }
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.playback_changed_listener_.dispose();
   }
 }
 customElements.define ('b-playcontrols', BPlayControls);
