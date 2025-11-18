@@ -8,9 +8,6 @@
   --b-font-stack-mono-code: "DejaVu Sans Mono", ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
   --b-font-stack-kbd-mono: var(--b-font-stack-mono-code);
 
-  /* Fonts */
-  --b-canvas-font: normal 9px "InterVariable", var(--b-font-stack-grotesque);	/* the '9px' part is dynamically resized */
-
   /* Animations */
   --b-animation-duration: 0.2s;
 
@@ -139,13 +136,13 @@
 }
 
 @mixin b-ui-font() {
-  font-family: "InterVariable", var(--b-font-stack-grotesque);
+  font-family: var(--default-font-family);
   font-size: 15.5px;
   letter-spacing: 0.03em;
   text-decoration: none;
   text-transform: none;
-  font-variant-numeric: tabular-nums slashed-zero;
-  font-feature-settings: "case", "cpsp", "dlig" 0, "frac" 0, "dnom" 0, "numr" 0, "salt" 0, "subs" 0, "sups" 0,
+  --font-variant-numeric: tabular-nums slashed-zero;
+  --font-feature-settings: "case", "cpsp", "dlig" 0, "frac" 0, "dnom" 0, "numr" 0, "salt" 0, "subs" 0, "sups" 0,
 			 "tnum", "zero", "ss01", "ss02", "ss03" 0, "ss04" 0,
 			 "cv01" 0, "cv02" 0, "cv03" 0, "cv04" 0, "cv05" 0, "cv06", "cv07" 0, "cv08" 0, "cv09" 0, "cv10" 0, "cv11" 0,
 			 "liga", "calt", "ccmp", "kern";

@@ -17,6 +17,13 @@
   --color-dim-800: #26262e;
   --color-dim-900: #16161e;
   --color-dim-950: #07060f;
+
+  --default-font-family: "MonaspaceXenon", var(--font-sans);
+  --default-font-family: "MonaspaceKrypton", var(--font-sans);
+  --default-font-family: "Inter", var(--font-sans);
+  --default-font-family: "Recursive", var(--font-sans);
+
+  --b-canvas-font: normal 9px var(--default-font-family);   /* the '9px' part is dynamically resized */
 }
 
 /* == Reset and Basics == */
