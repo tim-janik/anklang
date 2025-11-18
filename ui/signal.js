@@ -43,3 +43,16 @@ function solidjs_tracking_wrapper (queue_rerun, callback)	// -> tracked_callback
   });
 }
 export { solidjs_tracking_wrapper as tracking_wrapper };
+
+function solidjs_create_computed (callback)	// -> { destroy() }
+{
+  const handle = { dispose: undefined };
+  let owner;
+  Solid.createRoot (dispose => {
+    owner = Solid.getOwner();
+    handle.dispose = dispose;
+  });
+  Solid.runWithOwner (owner, () => Solid.createComputed (callback));
+  return handle;
+}
+export { solidjs_create_computed as create_computed };
