@@ -1,0 +1,50 @@
+# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+
+# See https://pre-commit.com for more information
+default_stages: [pre-push]	# only run on push
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v6.0.0
+  # See https://pre-commit.com/hooks.html for more hooks
+  hooks:
+  # id: end-of-file-fixer
+  - id: forbid-new-submodules
+  - id: check-merge-conflict
+  - id: check-added-large-files
+  - id: check-symlinks
+  - id: check-executables-have-shebangs
+  - id: check-json
+    exclude: ^ui/tsconfig\.json$
+  - id: check-toml
+  - id: check-xml
+  - id: check-yaml
+    exclude: ^doc/mkdocs\.yml$
+  - id: trailing-whitespace
+
+- repo: local
+  hooks:
+  - id: check-copyright
+    name: Check Copyright Attribution
+    entry: misc/check-copyright.sh
+    language: system
+    args: [doc/copyright]
+    pass_filenames: false
+  - id: check-unfinished-work
+    name: Check Unfinished Work
+    entry: misc/check-unfinished.sh
+    language: system
+    types: [file]	# Run for all file types
+    pass_filenames: true
+    exclude: |
+      (?x)^(
+        ase/atquit\.cc|
+        doc/style/doxyextra\.css|
+        ui/b/piano-ctrl\.js|
+        ui/b/preferencesdialog\.js|
+        ui/b/shell\.jsx|
+        ui/extra-css\.ts|
+        ui/vite\.config\.ts|
+      )$
+
+# Should always pass:
+# uvx pre-commit run --hook-stage pre-push --all-files

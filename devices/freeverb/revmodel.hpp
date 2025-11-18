@@ -42,7 +42,7 @@ private:
 	float	width;
 	float	mode;
 
-	// The following are all declared inline 
+	// The following are all declared inline
 	// to remove the need for dynamic allocation
 	// with its subsequent error-checking messiness
 

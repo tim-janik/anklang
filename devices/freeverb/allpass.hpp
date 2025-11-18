@@ -31,10 +31,10 @@ inline float allpass::process(float input)
 {
 	float output;
 	float bufout;
-	
+
 	bufout = buffer[bufidx];
 	undenormalise(bufout);
-	
+
 	output = -input + bufout;
 	buffer[bufidx] = input + (bufout*feedback);
 

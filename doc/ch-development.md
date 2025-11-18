@@ -63,7 +63,7 @@ Jsonipc is a header-only IPC layer that marshals C++ calls to JSON messages defi
 [jsonipc/jsonipc.hh](https://github.com/tim-janik/anklang/blob/master/jsonipc/jsonipc.hh).
 The needed registration code is very straight forward to write manually, but can also be
 auto-genrated by using
-[jsonipc/jsonbindings.ts](https://github.com/tim-janik/anklang/blob/trunk/jsonipc/jsonbindings.ts) 
+[jsonipc/jsonbindings.ts](https://github.com/tim-janik/anklang/blob/trunk/jsonipc/jsonbindings.ts)
 which parses API descriptions from JSON that can be generated with
 [`clang -extract-api`](https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-extract-api).
 

@@ -37,7 +37,7 @@ Imagine if we rewrote the English language to conform to coding conventions. Aft
 Background
 ----------
 
-Why is the Freeverb code now public domain? Simple. I only intended to create Freeverb to provide me and my friends with studio-quality reverb for free. I never intended to make any money out of it. However, I simply do not have the time to develop it any further. I'm working on a "concept album" at the moment, and I'll never finish it if I spend any more time programming. 
+Why is the Freeverb code now public domain? Simple. I only intended to create Freeverb to provide me and my friends with studio-quality reverb for free. I never intended to make any money out of it. However, I simply do not have the time to develop it any further. I'm working on a "concept album" at the moment, and I'll never finish it if I spend any more time programming.
 
 In any case, I make more far money as a contract programmer - making Mobile Internet products - than I ever could writing plugins, so it simply doesn't make financial sense for me to spend any more time on it.
 
