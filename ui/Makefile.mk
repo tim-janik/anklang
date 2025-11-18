@@ -86,12 +86,6 @@ $>/gen/public/assets/favicon.svg: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/
 	$Q cp $< $@
 VITE_DEPS += $>/gen/public/assets/favicon.svg
 
-# == Inter Typeface ==
-$>/gen/InterVariable.woff2: $(EXTERNAL_BLOBS4ANKLANG_STAMPS)	| $>/gen/
-	$(QGEN)
-	$Q $(CP) $< $@
-VITE_DEPS += $>/gen/InterVariable.woff2
-
 # == ui/synsmell ==
 ui/synsmell.files: $(filter ui/%. ui/b/%, $(WILDCARD_FILES)))
 $>/.uisynsmell.done: misc/synsmell.ts $(ui/synsmell.files)				| node_modules/.npm.done
