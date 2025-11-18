@@ -1109,6 +1109,7 @@ TaskRegistry::setup_ase (const String &name16chars)
 }
 
 std::thread::id TaskRegistry::ase_thread_id = {};
+std::thread::id TaskRegistry::main_thread_id = std::this_thread::get_id();
 
 // == Thread Info ==
 ThreadId

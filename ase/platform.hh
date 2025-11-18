@@ -154,7 +154,7 @@ struct TaskStatus {
 
 /// The task registry keeps track of runtime threads for profiling and statistical purposes.
 class TaskRegistry {
-  static std::thread::id ase_thread_id;
+  static std::thread::id ase_thread_id, main_thread_id;
 public:
   typedef std::vector<Ase::TaskStatus> List;
   static void add       (const std::string &name, int pid,
@@ -164,6 +164,7 @@ public:
   static List list      ();              ///< Retrieve a copy to the list of all tasks in registry.
   static void setup_ase (const String &name16chars);
   static bool is_ase    () { return std::this_thread::get_id() == ase_thread_id; }
+  static bool is_main   () { return std::this_thread::get_id() == main_thread_id; }
 };
 
 // == Thread Info ==
@@ -175,6 +176,7 @@ int         this_thread_getpid      ();
 int         this_thread_gettid      ();
 int         this_thread_online_cpus ();
 inline bool this_thread_is_ase      () { return TaskRegistry::is_ase(); }
+inline bool this_thread_is_main     () { return TaskRegistry::is_ase(); }
 
 // == Debugging Aids ==
 extern inline void breakpoint               () ASE_ALWAYS_INLINE;       ///< Cause a debugging breakpoint, for development only.
