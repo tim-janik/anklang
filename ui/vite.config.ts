@@ -80,6 +80,7 @@ function vite_config ({ mode })
     publicDir: gen_path + '/public',
     resolve: { alias: {
       "/gen": gen_path,
+      "/assets": gen_path + "/assets",
       "/ui": path.resolve (__dirname, "../ui/"),
     }, },
     // publicDir: "../public",

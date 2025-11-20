@@ -6,7 +6,10 @@ const package_json = require ('./package.json');
 Object.defineProperty (globalThis, '__DEV__', { value: package_json.__DEV__ });
 const Electron = require ('electron');
 const Eapp = Electron.app;
+const Esession = Electron.session;
 const os = require ('os');
+const fs = require ('fs');
+const path = require ('path');
 // Processes
 let browser_window;
 
@@ -14,6 +17,37 @@ let browser_window;
 const ELECTRON_CONFIG = { quitstartup: false, };
 const cli_args = [];
 let devtools_option = false;
+Eapp.commandLine.appendSwitch ('disk-cache-size', '0');
+Eapp.commandLine.appendSwitch ('disable-http-cache'); // disk cache for HTTP
+
+// == Helpers ==
+const trycatch = async fn => { try { return [ fn(), null ]; } catch (e) { return [undefined, e]; } };
+const trynext = async (ev, fn) => { try { return (fn || ev) (); } catch (e) { return ev; } };
+
+// == Caches ==
+const xdg_cache_dir = process.env.XDG_CACHE_HOME || path.join (os.homedir(), '.cache');
+const anklang_cache_root = path.join (xdg_cache_dir, 'anklang'); // path.join (os.tmpdir(), 'anklang-' + os.userInfo().uid);
+const cache_dir = path.join (anklang_cache_root, "" + process.pid);
+// Move cache out of ~/.config and clean up regularly
+Eapp.setPath ('appData', cache_dir);
+Eapp.setAppLogsPath (path.join (cache_dir, 'logs'));
+Eapp.setPath ('userData', path.join (cache_dir, 'userData'));
+Eapp.setPath ('userCache', path.join (cache_dir, 'userCache'));
+Eapp.setPath ('crashDumps', path.join (cache_dir, 'crashDumps'));
+// Clean up caches regularly
+async function cleanup_cache_dirs()
+{
+  for (const entry of await trynext ([], () => fs.promises.readdir (anklang_cache_root))) {
+    const pid = parseInt (entry, 10);
+    if (isNaN (pid)) continue;
+    const pidpath = path.join (anklang_cache_root, entry);
+    const stat = await trynext (null, () => fs.promises.stat (pidpath));
+    if (!stat?.isDirectory()) continue;
+    if ("NoPID" == await trynext ("NoPID", () => process.kill (pid, 0)))
+      await trynext (() => fs.promises.rm (pidpath, { recursive: true, force: true }));
+  }
+}
+setTimeout (cleanup_cache_dirs, 3779);
 
 // CSS Defaults
 const defaults = {
@@ -36,6 +70,8 @@ function main_exit (exitcode, ...errmsgs)
       browser_window.destroy();
       browser_window = null;
     }
+  // remove excessive electron caches
+  trynext (() => fs.rmSync (cache_dir, { recursive: true, force: true }));
   if (main_exit.exit_code < 0)
     process.abort();
   Eapp.exit (5); // calls process.exit()
@@ -258,6 +294,7 @@ function parse_args (argv)
 // == Start Components ==
 // Create SoundEngine and BrowserWindow once everything is loaded
 async function startup_components (config) {
+  Esession.defaultSession.clearCache();
   // start rendering process
   const onclose = () => browser_window = null;
   browser_window = create_window (onclose);

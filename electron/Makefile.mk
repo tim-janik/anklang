@@ -1,17 +1,16 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-# ELECTRON_PKG_NAME determines the ~/.config/... storage directory
-ELECTRON_PKG_NAME	:= anklang/electron/htmlgui
+# ELECTRON_PKG_NAME determines the default name of app.getPath('appData')
+ELECTRON_PKG_NAME	:= Anklang
 ELECTRON_VERSION	:= $(version_short)
 ELECTRON_DEV		:= false
 ELECTRON_SOURCES	:= electron/main.js electron/preload.js electron/htmlgui.svg
 ELECTRON_DEPS		:= node_modules/.npm.done
 ELECTRON_INSTALLDIR	:= $(pkgdir)/electron
-ELECTRON_EXECUTABLE	:= $>/electron/$(notdir $(ELECTRON_PKG_NAME))
-ALL_TARGETS		+= $(ELECTRON_EXECUTABLE)
+ALL_TARGETS		+= $>/electron/htmlgui
 
 # == electron/executable ==
-$(ELECTRON_EXECUTABLE): electron/Makefile.mk $(ELECTRON_SOURCES) $(ELECTRON_DEPS)
+$>/electron/htmlgui: electron/Makefile.mk $(ELECTRON_SOURCES) $(ELECTRON_DEPS)
 	$(QGEN)
 	$Q rm -f -r $(@D)
 	$Q $(CP) -r node_modules/electron/dist/ $(@D)
@@ -32,7 +31,7 @@ $(ELECTRON_EXECUTABLE): electron/Makefile.mk $(ELECTRON_SOURCES) $(ELECTRON_DEPS
 # node_modules/.bin/asar list $>/electron/resources/app.asar
 
 # == install ==
-electron/install: $(ELECTRON_EXECUTABLE)
+electron/install: $>/electron/htmlgui
 	@$(QECHO) INSTALL '$(DESTDIR)$(ELECTRON_INSTALLDIR)/'
 	$Q rm -f -r '$(DESTDIR)$(ELECTRON_INSTALLDIR)'
 	$Q $(INSTALL) -d $(DESTDIR)$(ELECTRON_INSTALLDIR)/
