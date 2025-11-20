@@ -1030,7 +1030,7 @@ async function action_copy_notes (action, piano_roll, clip, event)
   };
   await queue_modify_notes (clip, copy_notes, action.label);
 }
-action ("fa-files-o", _("Copy Notes"), action_copy_notes, "Ctrl+C");
+action ("fa-files_o", _("Copy Notes"), action_copy_notes, "Ctrl+C");
 
 async function action_paste_notes (action, piano_roll, clip, event)
 {
@@ -1058,7 +1058,7 @@ async function action_delete_notes (action, piano_roll, clip, event)
 {
   await queue_modify_notes (clip, delete_note_batch, action.label);
 }
-action ("fa-times-circle", _("Delete Notes"), action_delete_notes, "Delete");
+action ("fa-times_circle", _("Delete Notes"), action_delete_notes, "Delete");
 
 // register menu action
 function action (icon, label, func, kbd) {

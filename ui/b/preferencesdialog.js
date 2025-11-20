@@ -163,7 +163,7 @@ function augment_choice_entry (c, devicetype)
     return;
   const is_pcm = devicetype == 'pcm';
   if (c.ident.startsWith ("null"))
-    c.icon = "mi-not_interested"; // "fa-deaf";
+    c.icon = "md-not_interested"; // "fa-deaf";
   else if (c.ident.startsWith ("auto"))
     c.icon = "fa-cog";
   else if (is_midi) {
@@ -177,13 +177,13 @@ function augment_choice_entry (c, devicetype)
     const is_rec  = c.blurb.match (/\d\*captur/i);
     const is_play = c.blurb.match (/\d\*play/i);
     if (c.ident.startsWith ("jack="))
-      c.icon = "mi-graphic_eq";
+      c.icon = "md-graphic_eq";
     else if (c.ident.startsWith ("alsa=pulse"))
-      c.icon = "mi-speaker_group";
+      c.icon = "md-speaker_group";
     else if (c.label.startsWith ("HDMI"))
       c.icon = "fa-tv";
     else if (icon_hints.includes ("headset"))
-      c.icon = "mi-headset_mic";
+      c.icon = "md-headset_mic";
     else if (icon_hints.includes ("recorder"))
       c.icon = "uc-🎙";
     else if (is_usb)
@@ -191,11 +191,11 @@ function augment_choice_entry (c, devicetype)
     else if (c.blurb.match (/\bModem\b/))
       c.icon = "uc-☎ ";
     else if (is_rec && !is_play)
-      c.icon = "mi-mic";
+      c.icon = "md-mic";
     else if (is_play && !is_rec)
-      c.icon = "fa-volume-up";
+      c.icon = "fa-volume_up";
     else
       c.icon = "uc-💻";
   } else
-    c.icon = "mi-not_interested";
+    c.icon = "md-not_interested";
 }

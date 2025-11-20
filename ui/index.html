@@ -6,7 +6,7 @@
   <title>Anklang - Music Synthesizer and Composer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="favicon.ico">
-  <style> @font-face { font-family: "InterVariable"; font-display: swap; src: url("InterVariable.woff2") format("woff2-variations"); } </style>
+  <link href="fonts.css" rel="stylesheet">
   <script type="module">
   /* Avoid nested CSS imports, b/c stylelint under vite & postcss gets confused about locations.
    * Instead, move all CSS imports here and use `@reference "./tailwind.css";` when the TW config
@@ -17,9 +17,7 @@
   import './dark.css';
   import './theme.css';
   import './cursors/cursors.css';
-  import '/gen/assets/material-icons.css';
   import '/gen/assets/AnklangIcons.css';
-  import '/gen/assets/fork-awesome.css';
   import '/gen/assets/spinner.css';
   import './mixins.css';
   import './global.css';

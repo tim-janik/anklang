@@ -18,27 +18,12 @@ $>/gen/assets/AnklangIcons.css: ui/Makefile.mk $(EXTERNAL_BLOBS4ANKLANG_STAMPS)	
 	$Q rm -r $>/gen/anklangicons/ && mv $@.tmp $@
 VITE_DEPS += $>/gen/assets/AnklangIcons.css
 
-# == /gen/assets/fork-awesome.css ==
-$>/gen/assets/fork-awesome.css: ui/Makefile.mk			| node_modules/.npm.done $>/gen/assets/
+# == /gen/assets/ fonts ==
+$>/gen/.ui.fonts: $(EXTERNAL_BLOBS4ANKLANG_STAMPS)
 	$(QGEN)
-	$Q $(CP) node_modules/fork-awesome/fonts/forkawesome-webfont.woff2 $>/gen/assets/
-	$Q sed  -e "/^ *src: *url/s,src: *url(.*);,src: url('forkawesome-webfont.woff2');," \
-		-e 's|@font-face *{|@font-face { font-display: block; |' \
-		node_modules/fork-awesome/css/fork-awesome.css > $@.tmp
-	$Q mv $@.tmp $@
-VITE_DEPS += $>/gen/assets/fork-awesome.css
-
-# == /gen/assets/material-icons.css ==
-# Providing icon collections via fonts is most resource friendly */
-$>/gen/assets/material-icons.css: ui/Makefile.mk			| node_modules/.npm.done $>/gen/assets/
-	$(QGEN)
-	$Q grep -q '/material-icons.woff2' node_modules/material-icons/iconfont/filled.css || \
-		{ echo "$<: failed to find font in node_modules/material-icons/iconfont/" >&2 ; false ; }
-	$Q cp node_modules/material-icons/iconfont/material-icons.woff2 $>/gen/assets/material-icons.woff2
-	$Q sed -re 's|\boptimizeLegibility\b|optimizelegibility|g' \
-		node_modules/material-icons/iconfont/filled.css > $@.tmp
-	$Q mv $@.tmp $@
-VITE_DEPS += $>/gen/assets/material-icons.css
+	$Q $(CP) $(external/font_files) $>/gen/assets/
+	$Q touch $@
+VITE_DEPS += $>/gen/.ui.fonts
 
 # == /gen/cursors/cursors.css ==
 $>/gen/cursors/cursors.css: $(wildcard ui/cursors/*) Makefile.mk		| $>/gen/cursors/
@@ -101,12 +86,6 @@ $>/gen/public/assets/favicon.svg: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/
 	$Q cp $< $@
 VITE_DEPS += $>/gen/public/assets/favicon.svg
 
-# == Inter Typeface ==
-$>/gen/InterVariable.woff2: $(EXTERNAL_BLOBS4ANKLANG_STAMPS)	| $>/gen/
-	$(QGEN)
-	$Q $(CP) $< $@
-VITE_DEPS += $>/gen/InterVariable.woff2
-
 # == ui/synsmell ==
 ui/synsmell.files: $(filter ui/%. ui/b/%, $(WILDCARD_FILES)))
 $>/.uisynsmell.done: misc/synsmell.ts $(ui/synsmell.files)				| node_modules/.npm.done
@@ -124,7 +103,7 @@ $>/gen/%.md: ui/%.js								| $>/gen/b/ node_modules/.npm.done
 
 # == ui dist build ==
 VITE_DEPS += $>/version.json
-$>/gen/.vite.done: ui/vite.config.ts ui/Makefile.mk $(VITE_DEPS)	| node_modules/.npm.done
+$>/gen/.vite.done: ui/vite.config.ts ui/index.html ui/Makefile.mk $(VITE_DEPS)	| node_modules/.npm.done
 	@$(QECHO) BUILD "Vite Output"
 	$Q BUILDDIR='$(abspath $>)' node_modules/.bin/vite -c ui/vite.config.ts build -l warn --emptyOutDir
 	$Q ln -fs anklang.png $>/ui/favicon.ico

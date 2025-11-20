@@ -23,8 +23,7 @@ b-menutitle {
   border: 1px solid transparent;
   color: var(--b-menu-foreground);
   font-variant: small-caps; @include b-font-weight-bolder();
-  /* InterVariable-4.0beta9 has broken c2sc (small-caps), so for now use drop-caps */
-  /* https://github.com/rsms/inter/issues/556#issuecomment-1598010623 */
+  /* InterVariable-4.0 has broken c2sc (small-caps), https://github.com/rsms/inter/issues/556#issuecomment-1598010623 */
   text-transform: uppercase; font-size: 80%;
   ::first-letter {
     font-size: 130%;

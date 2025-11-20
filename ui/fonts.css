@@ -1,0 +1,86 @@
+/* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
+
+@import "/assets/nerd-fonts-3.4.0.css";
+
+@font-face {
+  src: url("/assets/Recursive_VF.woff2") format("woff2-variations");
+  font-family: "Recursive"; font-weight: 300 1000; font-style: oblique 0deg 15deg;
+  /* https://www.recursive.design/#toolbar https://github.com/arrowtype/recursive#advanced-design-recommendations */
+  font-variation-settings:
+    "CASL" 0.1,	/* 0.0 is very strict, 1.0 looks sloppy */
+    "MONO" 0.501,	/* serif-'i' needs MONO>0.5 */
+    /* "wght" 400,	// fixed weight */
+    /* "slnt" -15,	// italic: 0…13 */
+    "CRSV" 0;		/* toggle 'cursive' variant */
+}
+
+/* The Monaspace NerdFont icons are individually centered, so hopefully
+ * baseline alignment should work out of the box. Including one NerdFont
+ * allows us to replace ForkAwesome, MaterialIcons, etc.
+ * https://github.com/githubnext/monaspace?tab=readme-ov-file#nerd-fonts
+ */
+@font-face {
+  src: url("/assets/MonaspaceKrypton_NF.woff2") format("woff2");
+  font-family: "MonaspaceKrypton";  font-weight: 400; font-style: normal;
+  font-feature-settings:
+    /* OpenType features: */
+    "liga" 1,	/* standard ligatures enabled */
+    "calt" 1,	/* contextual alternates enabled */
+    /* Stylistic sets */
+    "ss01" 1,	/* ligatures related to the equals glyph like != and === */
+    "ss02" 1,	/* ligatures for greater/less or equal (<=, >=) */
+    "ss03" 1,	/* ligatures related to arrows like -> and ~> */
+    "ss04" 1,	/* ligatures related to markup, like </ and /> */
+    "ss05" 1,	/* ligatures related to the F# programming language, like |> */
+    "ss06" 1,	/* ligatures related to repeated uses of #, +, and & */
+    "ss07" 1,	/* ligatures related to colons like :: or =:= */
+    "ss08" 1,	/* ligatures related to combinations of periods with other glyphs like ..= or .- */
+    "ss09" 1,	/* ligatures related to combinations of the greater/less than and equals signs, like <=>,>>, and =<< */
+    "ss10" 1;	/* other tags, like #[ and #( */
+}
+
+@font-face {
+  src: url("/assets/MonaspaceXenon_VF.woff2") format("woff2");
+  font-family: "MonaspaceXenon";  font-weight: 400; font-style: normal;
+  /* https://github.com/githubnext/monaspace */
+  font-variation-settings:
+    /* Variable font axes: */
+    "wght" 450,   /* ~midway between light (200) and bold (800) */
+    "slnt" -4,    /* gentle oblique */
+    "wdth" 100;   /* slightly wider than default (100–125) */
+  font-feature-settings:
+    /* OpenType features: */
+    "liga" 1,	/* standard ligatures enabled */
+    "calt" 1,	/* contextual alternates enabled */
+    /* Stylistic sets */
+    "ss01" 1,	/* ligatures related to the equals glyph like != and === */
+    "ss02" 1,	/* ligatures for greater/less or equal (<=, >=) */
+    "ss03" 1,	/* ligatures related to arrows like -> and ~> */
+    "ss04" 1,	/* ligatures related to markup, like </ and /> */
+    "ss05" 1,	/* ligatures related to the F# programming language, like |> */
+    "ss06" 1,	/* ligatures related to repeated uses of #, +, and & */
+    "ss07" 1,	/* ligatures related to colons like :: or =:= */
+    "ss08" 1,	/* ligatures related to combinations of periods with other glyphs like ..= or .- */
+    "ss09" 1,	/* ligatures related to combinations of the greater/less than and equals signs, like <=>,>>, and =<< */
+    "ss10" 1,	/* other tags, like #[ and #( */
+    /* Character variants: figures, letters, symbols, ligatures */
+    "cv01" 0,	/* 0 alternates: 1-plain 2-slash 3-reverse-slash 4-cut-out-slash */
+    "cv02" 0,	/* 1 alternate (no serif) */
+    "cv10" 0,	/* l i alternates (Neon, Argon, Xenon, Radon) */
+    "cv11" 0;	/* j f r t alternates (Neon, Argon) */
+}
+
+@font-face {
+  src: url("/assets/Inter_VF.woff2") format("woff2-variations");
+  /* https://github.com/rsms/inter */
+  font-family: "Inter"; font-weight: 500; font-style: oblique 0deg 15deg;
+  ---letter-spacing: 0.03em;
+  text-decoration: none; text-transform: none;
+  /* font-variant-numeric: tabular-nums slashed-zero; */
+  font-feature-settings:
+    "case" 1, "cpsp", "dlig" 1, "frac" 1, "dnom" 0, "numr" 0, "salt" 0, "subs" 0, "sups" 0,
+    "tnum" 1, "zero" 1, "ss01" 1, "ss02", "ss03" 0, "ss04" 0,
+    "cv01" 0, "cv02" 0, "cv03" 0, "cv04" 0, "cv05" 0, "cv06", "cv07" 0, "cv08" 0, "cv09" 0, "cv10" 0, "cv11" 0,
+    "liga" 0, "calt" 1, "ccmp" 1, "kern";
+  font-variation-settings: "opsz" 14; /* 14=Inter, 28=InterDisplay */
+}

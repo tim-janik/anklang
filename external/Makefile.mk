@@ -135,6 +135,31 @@ external/websocketpp/.sha-$(websocketpp/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/websocketpp/.sha-$(websocketpp/sha)
 
+# == fonts ==
+external/font_files :=
+external/font_list  := \
+	693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3 external/Inter_VF.woff2 \
+	https://raw.githubusercontent.com/tim-janik/blobs4anklang/refs/heads/trunk/fonts/InterVF-4.1.woff2 \
+	145e9fc086d13403528384bdace7f2a4d5ecef72a2b10a749e99382dbecfce79 external/Recursive_VF.woff2 \
+	https://raw.githubusercontent.com/arrowtype/recursive/refs/heads/main/fonts/ArrowType-Recursive-1.085/Recursive_Web/woff2_variable/Recursive_VF_1.085.woff2 \
+	1b6c62cd7678d4efd1a37e3ed79c293735415b85be12b50b9311191e9de4da6a external/MonaspaceKrypton_NF.woff2 \
+	https://raw.githubusercontent.com/githubnext/monaspace/refs/heads/main/fonts/Web%20Fonts/NerdFonts%20Web%20Fonts/Monaspace%20Krypton/MonaspaceKryptonNF-Medium.woff2 \
+	1f0fae614197cac4175537dd02eabdd535ca3beaab652a36bd81534f664c0815 external/nerd-fonts-3.4.0.css \
+	https://github.com/tim-janik/blobs4anklang/raw/8f357c02c8412555f1bd3ffda38721d284aaa9d9/fonts/nerd-fonts-3.4.0.css \
+	3c8f81b3e44b6e8ee4dc5cd928544124fc9e28580cd280dae343bbf54e66b2d8 external/nerd-fonts-3.4.0.woff2 \
+	https://github.com/tim-janik/blobs4anklang/raw/8f357c02c8412555f1bd3ffda38721d284aaa9d9/fonts/nerd-fonts-3.4.0.woff2 \
+	cabfe4a71855141c3c3b0fac5435ad75497f4a03a222a4e364c6fd778872220d external/MonaspaceXenon_VF.woff2 \
+	https://raw.githubusercontent.com/githubnext/monaspace/refs/heads/main/fonts/Web%20Fonts/Variable%20Web%20Fonts/Monaspace%20Xenon/Monaspace%20Xenon%20Var.woff2
+external/font_files_add = $(eval external/font_files += $2)	# build external/font_files
+$(call triplewise, external/font_files_add, $(external/font_list))
+external/font_fetch_and_check = && { $(call fetch-and-check,$2,$1,$3) ; }
+external/fonts/.done: external/Makefile.mk
+	$(QGEN)
+	$Q rm -rf external/fonts/ && mkdir external/fonts/
+	$Q : $(call triplewise, external/font_fetch_and_check, $(external/font_list))
+	$Q touch $@
+EXTERNAL_BLOBS4ANKLANG_STAMPS += external/fonts/.done
+
 # == external/clean ==
 external/clean:
 	rm -r -f external/*/

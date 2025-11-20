@@ -66,17 +66,15 @@ MULTIOUTPUTSANITIZE = $(subst /,∕,$(subst $(SPACE),·,$(strip $1)))
 # $(call MATCH, REGEX, wordlist)
 MATCH = $(shell set -o pipefail; echo ' $2 ' | tr ' ' '\n' | grep -E '$1' | tr '\n' ' ')
 
-# == Word list helpers ==
-# $(call first, list...) - Extract the first word from list...
-first  = $(word 1,$1)
-# $(call second, list...) - Extract the second word from list...
-second = $(word 2,$1)
-# $(call rest, list...) - Retrieve list... with the first word removed
-rest   = $(wordlist 2,$(words $1),$1)
-# $(call rest2, list...) - Retrieve list... with the first two words removed
-rest2  = $(wordlist 3,$(words $1),$1)
-# $(call foreachpair, func, listofpairs, else) - Call func for each pair in listofpairs, terminate with else
-foreachpair = $(if $2,$(call $1,$(call first,$2),$(call second,$2)) $(call foreachpair,$1,$(call rest2,$2),$3),$3)
+# == $(call pairwise, func, list) ==
+# Given a function and a list, $(call func,word1,word2) with two words at
+# a time; recurse on the rest list after splitting off the first pair.
+pairwise = $(if $2, $(call $1,$(word 1,$2),$(word 2,$2))$(call pairwise,$1,$(wordlist 3,$(words $2),$2)),$3)
+
+# == $(call triplewise, func, list) ==
+# Given a function and a list, $(call func,word1,word2,word3) with 3 words
+# at a time; recurse on the rest list after splitting off the first triple.
+triplewise = $(if $2, $(call $1,$(word 1,$2),$(word 2,$2),$(word 3,$2))$(call triplewise,$1,$(wordlist 4,$(words $2),$2)),$3)
 
 # == Recursive Wildcard ==
 # Add a slash to $1 if it is not empty and does not end in a slash
