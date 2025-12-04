@@ -24,7 +24,7 @@ const HTML = (t, D) => html`
   <div class="asbutton button-down" @click="${D ('stop_playback')}" data-hotkey="S"
                 data-tip="**CLICK** Stop playback" >        <b-icon fw lg ic="fa-stop"         ></b-icon></div>
   <div class="asbutton button-down" @click="${t.toggle_play}" data-hotkey="RawSpace"
-                data-tip="**CLICK** Start/stop playback" >  <b-icon fw lg ic="fa-play" hi="ho" ></b-icon></div>
+                data-tip="**CLICK** Start/pause playback" >  <b-icon fw lg ic="fa-play" hi="ho" ></b-icon></div>
   <div class="asbutton button-down" @click="${D ('-todo-Record')}" disabled >    <b-icon fw lg ic="fa-circle"       ></b-icon></div>
   <div class="asbutton button-down" @click="${D ('-todo-Forwards')}" disabled >  <b-icon fw lg ic="fa-forward"      ></b-icon></div>
   <div class="asbutton button-down" @click="${D ('-todo-Next')}" disabled >      <b-icon fw lg ic="fa-fast_forward" ></b-icon></div>

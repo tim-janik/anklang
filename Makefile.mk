@@ -7,7 +7,7 @@ SHELL         ::= /bin/bash -o pipefail
 PARALLEL_MAKE   = $(filter JOBSERVER, $(subst -j, JOBSERVER , $(MFLAGS)))
 LATE_EVAL	:=
 CODEGEN.FILES	:=
-WITH_CODEGEN	:= $(filter codegen,$(MAKECMDGOALS))
+WITH_CODEGEN	?= $(filter codegen,$(MAKECMDGOALS))
 
 S ::= # Variable containing 1 space
 S +=

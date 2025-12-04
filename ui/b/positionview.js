@@ -72,19 +72,18 @@ class BPositionView extends LitComponent {
   async connectedCallback()
   {
     super.connectedCallback();
-    this.telemetry = Object.freeze (await App.project.telemetry());
-    if (this.telemetry) {
+    const telemetry_fields = Object.freeze (await App.project.telemetry());
+    if (telemetry_fields) {
       const telefields = [ 'current_bar', 'current_beat', 'current_sixteenth', 'current_minutes', 'current_seconds' ];
-      const subscribefields = this.telemetry.filter (field => telefields.includes (field.name));
-      this.teleobj = Util.telemetry_subscribe (this.recv_telemetry.bind (this), subscribefields);
+      const subscribefields = telemetry_fields.filter (field => telefields.includes (field.name));
+      this.tsub = Util.telemetry_subscribe (this.recv_telemetry.bind (this), subscribefields);
     }
   }
   disconnectedCallback()
   {
     super.disconnectedCallback();
-    this.teleobj && Util.telemetry_unsubscribe (this.teleobj);
-    this.teleobj = null;
-    this.telemetry = null;
+    this.tsub && Util.telemetry_unsubscribe (this.tsub);
+    this.tsub = null;
     this.counter_text = null;
     this.timer_text = null;
   }
@@ -99,7 +98,7 @@ class BPositionView extends LitComponent {
       }
     }
   }
-  recv_telemetry (teleobj, arrays)
+  recv_telemetry (tsub, arrays)
   {
     if (!this.timer_text) return;
     const ds = "\u2007"; // FIGURE SPACE - "Tabular width", the width of digits
@@ -107,13 +106,13 @@ class BPositionView extends LitComponent {
     const s2 = n => (n >= 10 ? "" : ds) + n;
     const z2 = n => (n >= 10 ? "" : "0") + n;
     const ff = (n, d = 2) => Number.parseFloat (n).toFixed (d);
-    // const tick = arrays[teleobj.current_tick.type][teleobj.current_tick.index];
-    // const bpm = arrays[teleobj.current_bpm.type][teleobj.current_bpm.index];
-    const bar = arrays[teleobj.current_bar.type][teleobj.current_bar.index];
-    const beat = arrays[teleobj.current_beat.type][teleobj.current_beat.index];
-    const sixteenth = arrays[teleobj.current_sixteenth.type][teleobj.current_sixteenth.index];
-    const minutes = arrays[teleobj.current_minutes.type][teleobj.current_minutes.index];
-    const seconds = arrays[teleobj.current_seconds.type][teleobj.current_seconds.index];
+    // const tick = arrays[tsub.current_tick.type][tsub.current_tick.index];
+    // const bpm = arrays[tsub.current_bpm.type][tsub.current_bpm.index];
+    const bar = arrays[tsub.current_bar.type][tsub.current_bar.index];
+    const beat = arrays[tsub.current_beat.type][tsub.current_beat.index];
+    const sixteenth = arrays[tsub.current_sixteenth.type][tsub.current_sixteenth.index];
+    const minutes = arrays[tsub.current_minutes.type][tsub.current_minutes.index];
+    const seconds = arrays[tsub.current_seconds.type][tsub.current_seconds.index];
     const barpos = s3 (1 + bar) + "." + s2 (1 + beat) + "." + (1 + sixteenth).toFixed (2);
     const timepos = z2 (minutes) + ":" + z2 (ff (seconds, 3));
     if (this.counter_text.nodeValue != barpos)
