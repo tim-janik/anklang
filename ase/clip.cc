@@ -1,4 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+#include "trkn/tracktion.hh"   // PCH include must come first
+
 #include "clip.hh"
 #include "track.hh"
 #include "jsonipc/jsonipc.hh"
@@ -12,6 +14,8 @@
 
 #define CDEBUG(...)     Ase::debug ("ClipNote", __VA_ARGS__)
 #define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)
+
+namespace te = tracktion::engine;
 
 namespace Ase {
 
@@ -35,18 +39,73 @@ ClipNote::operator== (const ClipNote &o) const
           fine_tune == o.fine_tune);
 }
 
+// == ClipStateListener ==
+class ClipImpl::ClipStateListener : public juce::ValueTree::Listener {
+  ClipImpl &aseclip_;
+  juce::ValueTree clip_state_;
+public:
+  ClipStateListener (ClipImpl &aseclip) :
+    aseclip_ (aseclip), clip_state_ (aseclip_.clip_->state)
+  {
+    clip_state_.addListener (this);
+  }
+  ~ClipStateListener() override
+  {
+    clip_state_.removeListener (this);
+  }
+  void
+  valueTreePropertyChanged (juce::ValueTree &tree, const juce::Identifier &property) override
+  {
+    assert_return (tree == clip_state_);
+    if (property == tracktion::engine::IDs::name)
+      aseclip_.emit_notify ("name");
+    else if (property == tracktion::engine::IDs::start ||
+             property == tracktion::engine::IDs::length ||
+             property == tracktion::engine::IDs::offset)
+      {
+        aseclip_.emit_notify ("start_tick");
+        aseclip_.emit_notify ("stop_tick");
+        aseclip_.emit_notify ("end_tick");
+      }
+    else
+        aseclip_.emit_notify ("notes"); // Simplistic change detection for notes within state
+  }
+  void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override {}
+  void valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree&, int) override {}
+  void valueTreeParentChanged (juce::ValueTree&) override {}
+  void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override {}
+};
+
+
 // == ClipImpl ==
 ClipImpl::ClipImpl (TrackImpl &parent)
 {
+  // Fallback for non-tracktion clips
   track_ = &parent;
-  notifytrack_ = on_event ("notify", [this] (const Event &event) {
-    if (track_)
-      track_->update_clips();
-  });
+}
+
+ClipImpl::ClipImpl (tracktion::Clip &clip) :
+  clip_ (&clip)
+{
+  state_listener_ = std::make_unique<ClipStateListener> (*this);
+  if (auto timpl = SelectableHandle::find_selectable_handle<TrackImpl> (*clip.getTrack()))
+    track_ = timpl;
+}
+
+ClipImplP
+ClipImpl::from_trkn (tracktion::Clip &c)
+{
+  ClipImpl *clip = SelectableHandle::find_selectable_handle<ClipImpl> (c);
+  if (clip)
+    return shared_ptr_cast<ClipImpl> (clip);
+  ClipImplP clipp = ClipImpl::make_shared (c);
+  return clipp;
 }
 
 ClipImpl::~ClipImpl()
-{}
+{
+  state_listener_ = nullptr;
+}
 
 ProjectImpl*
 ClipImpl::project () const
@@ -57,53 +116,13 @@ ClipImpl::project () const
 bool
 ClipImpl::needs_serialize() const
 {
-  return notes_.size() > 0;
+  return false;
 }
-
-static std::atomic<uint> next_noteid { MIDI_NOTE_ID_FIRST };
 
 void
 ClipImpl::serialize (WritNode &xs)
 {
   GadgetImpl::serialize (xs);
-
-  // save notes, along with their quantization
-  if (xs.in_save())
-    {
-      xs["ppq"] << TRANSPORT_PPQN;
-      OrderedEventsP event_vector = notes_.ordered_events<OrderedEventsV>();
-      for (ClipNote cnote : *event_vector)
-        {
-          WritNode xn = xs["notes"].push();
-          xn & cnote;
-          xn.value().filter ([] (const ValueField &field) {
-            if (field.name == "id" || field.name == "selected")
-              return true;
-            return false;
-          });
-        }
-    }
-  // load notes, re-quantize, re-assign ids
-  if (xs.in_load())
-    {
-      int64 ppq = TRANSPORT_PPQN;
-      xs["ppq"] >> ppq;
-      std::vector<ClipNote> cnotes;
-      xs["notes"] & cnotes;
-      long double ppqfactor = TRANSPORT_PPQN / (long double) ppq;
-      for (const auto &cnote : cnotes)
-        {
-          ClipNote note = cnote;
-          note.id = next_noteid++; // automatic id allocation for new notes
-          note.tick = llrintl (note.tick * ppqfactor);
-          note.duration = llrintl (note.duration * ppqfactor);
-          note.selected = false;
-          notes_.insert (note);
-        }
-      emit_notify ("notes");
-      all_notes.notify();
-      // TODO: serialize range
-    }
 }
 
 ssize_t
@@ -115,65 +134,111 @@ ClipImpl::clip_index () const
 void
 ClipImpl::assign_range (int64 starttick, int64 stoptick)
 {
-  assert_return (starttick >= 0);
-  assert_return (stoptick >= starttick);
-  const auto last_starttick_ = starttick_;
-  const auto last_stoptick_ = stoptick_;
-  const auto last_endtick_ = endtick_;
-  starttick_ = starttick;
-  stoptick_ = stoptick;
-  endtick_ = std::max (starttick_, stoptick_);
-  if (last_endtick_ != endtick_)
-    emit_notify ("end_tick");
-  if (last_stoptick_ != stoptick_)
-    emit_notify ("stop_tick");
-  if (last_starttick_ != starttick_)
-    emit_notify ("start_tick");
+  assert_return (clip_.get());
+  auto &ts = clip_->edit.tempoSequence;
+  double start_beats = double (starttick) / TRANSPORT_PPQN;
+  double end_beats = double (stoptick) / TRANSPORT_PPQN;
+  double duration_beats = end_beats - start_beats;
+
+  if (duration_beats > 0)
+    {
+      auto start_time = ts.toTime (tracktion::BeatPosition::fromBeats (start_beats));
+      auto duration_time = ts.toTime (tracktion::BeatPosition::fromBeats (duration_beats));
+      // Note: duration in time might depend on tempo changes *during* the clip if we map strictly.
+      // But setLength expects TimeDuration.
+      // If we want to preserve BEAT duration, we might need setLength(BeatDuration)? No, setLength takes TimeDuration.
+      // But MidiClip is usually beat based.
+      // However, for assigning range on timeline, we convert beats to time.
+
+      clip_->setStart (start_time, false, true);
+      clip_->setLength (tracktion::TimeDuration::fromSeconds(duration_time.inSeconds()), true);
+      // Simplistic conversion. Proper way: find time of end beat - time of start beat.
+      auto end_time = ts.toTime (tracktion::BeatPosition::fromBeats (end_beats));
+      clip_->setLength (end_time - start_time, true);
+    }
 }
 
 ClipNoteS
 ClipImpl::list_all_notes ()
 {
-  ClipNoteS cnotes;
-  auto events = tick_events();
-  cnotes.assign (events->begin(), events->end());
-  return cnotes;
+  return get_all_notes();
 }
 
 void
 ClipImpl::set_all_notes (const ClipNoteS &notes)
 {
-  // TODO: implement setter
-  all_notes.notify();
+  ClipNoteS current = get_all_notes();
+  // Mark all for deletion
+  for (auto &n : current) n.duration = 0;
+
+  ClipNoteS batch = current;
+  batch.insert (batch.end(), notes.begin(), notes.end());
+  change_batch (batch, "Set All Notes");
 }
 
 ClipNoteS
 ClipImpl::get_all_notes () const
 {
-  auto events = tick_events();
   ClipNoteS notes;
-  notes.assign (events->begin(), events->end());
+  if (!clip_.get()) return notes;
+  auto mclip = dynamic_cast<te::MidiClip*> (clip_.get());
+  if (!mclip) return notes;
+
+  // Assuming single channel clip
+  int channel = mclip->getMidiChannel().getChannelNumber() - 1;
+
+  for (auto n : mclip->getSequence().getNotes())
+    {
+      ClipNote cn;
+      cn.id = 1;
+      cn.channel = channel;
+      cn.key = n->getNoteNumber();
+      cn.velocity = n->getVelocity() / 127.0f;
+      cn.tick = n->getStartBeat().inBeats() * TRANSPORT_PPQN;
+      cn.duration = n->getLengthBeats().inBeats() * TRANSPORT_PPQN;
+      cn.selected = false;
+      cn.fine_tune = 0;
+      notes.push_back (cn);
+    }
   return notes;
 }
 
 int64
 ClipImpl::get_end_tick () const
 {
-  return endtick_;
+  if (!clip_.get()) return 0;
+  return stop_tick();
 }
 
 void
 ClipImpl::set_end_tick (int64 etick)
 {
-  endtick_ = etick;
-  end_tick.notify();
+  if (!clip_.get()) return;
+  assign_range (start_tick(), etick);
+}
+
+int64
+ClipImpl::start_tick () const
+{
+  if (!clip_.get()) return 0;
+  auto &ts = clip_->edit.tempoSequence;
+  return ts.toBeats (clip_->getPosition().getStart()).inBeats() * TRANSPORT_PPQN;
+}
+
+int64
+ClipImpl::stop_tick () const
+{
+  if (!clip_.get()) return 0;
+  auto &ts = clip_->edit.tempoSequence;
+  return ts.toBeats (clip_->getPosition().getEnd()).inBeats() * TRANSPORT_PPQN;
 }
 
 /// Retrieve const vector with all notes ordered by tick.
 ClipImpl::OrderedEventsP
 ClipImpl::tick_events () const
 {
-  return const_cast<ClipImpl*> (this)->notes_.ordered_events<OrderedEventsV> ();
+  static const auto empty_list = std::make_shared<OrderedEventsV>(std::vector<ClipNote>{});
+  return empty_list;
 }
 
 ClipImpl::EventImage::EventImage (const ClipNoteS &clipnotes)
@@ -246,6 +311,7 @@ ClipImpl::collapse_notes (EventsById &inotes, const bool preserve_selected)
 int32
 ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
 {
+#if 0 // TODO: clean up
   bool changes = false, selections = false;
   // save undo image
   const ClipNoteS orig_notes = notes_.copy();
@@ -293,6 +359,40 @@ ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
     emit_notify ("notes");
     all_notes.notify();
   }
+#endif
+  if (!clip_.get()) return -1;
+  auto mclip = dynamic_cast<te::MidiClip*> (clip_.get());
+  assert_return (mclip, -1);
+
+  for (const auto &note : batch)
+    {
+      if (note.duration == 0) // Delete
+        {
+          auto &seq = mclip->getSequence();
+          for (auto n : seq.getNotes())
+            {
+              if (std::abs(n->getStartBeat().inBeats() * TRANSPORT_PPQN - note.tick) < 1 &&
+                  n->getNoteNumber() == note.key)
+                {
+                  seq.removeNote (*n, nullptr);
+                  break;
+                }
+            }
+        }
+      else if (note.id <= 0) // Insert
+        {
+          mclip->getSequence().addNote (note.key,
+                                        tracktion::BeatPosition::fromBeats (double (note.tick) / TRANSPORT_PPQN),
+                                        tracktion::BeatDuration::fromBeats (double (note.duration) / TRANSPORT_PPQN),
+                                        note.velocity * 127,
+                                        note.channel,
+                                        nullptr);
+        }
+      else // Modify
+        {
+          // Modification logic skipped for now as simplistic ID mapping prevents reliable update
+        }
+    }
   return 0;
 }
 

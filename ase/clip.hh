@@ -2,6 +2,7 @@
 #ifndef __ASE_CLIP_HH__
 #define __ASE_CLIP_HH__
 
+#include <ase/trkn-utils.hh>
 #include <ase/project.hh>
 #include <ase/eventlist.hh>
 #include <ase/midievent.hh>
@@ -19,9 +20,10 @@ public:
   struct CmpNoteIds   { int operator() (const ClipNote &a, const ClipNote &b) const; };
   using EventsById = EventList<ClipNote,CmpNoteIds>;
 private:
-  int64 starttick_ = 0, stoptick_ = 0, endtick_ = 0;
+  SelectableWeakref<tracktion::Clip> clip_;
+  class ClipStateListener;
+  std::unique_ptr<ClipStateListener> state_listener_;
   EventsById notes_;
-  Connection notifytrack_;
   using OrderedEventsV = OrderedEventList<ClipNote,CmpNoteTicks>;
   struct EventImage {
     String cbuffer;
@@ -38,6 +40,7 @@ protected:
   TrackImpl *track_ = nullptr;
   Connection ontrackchange_;
   explicit ClipImpl         (TrackImpl &parent);
+  explicit ClipImpl         (tracktion::Clip &clip);
   virtual ~ClipImpl         ();
   void     serialize        (WritNode &xs) override;
   ssize_t  clip_index       () const;
@@ -51,12 +54,13 @@ public:
   ProjectImpl*   project        () const;
   void           push_undo      (const ClipNoteS &clipnotes, const String &undogroup);
   UndoScope      undo_scope     (const String &scopename) { return project()->undo_scope (scopename); }
-  int64          start_tick     () const override { return starttick_; }
-  int64          stop_tick      () const override { return stoptick_; }
+  int64          start_tick     () const override;
+  int64          stop_tick      () const override;
   void           assign_range   (int64 starttick, int64 stoptick) override;
   ClipNoteS      list_all_notes () override;
   bool           needs_serialize() const;
   int32          change_batch   (const ClipNoteS &notes, const String &undogroup) override;
+  static ClipImplP from_trkn    (tracktion::Clip&);
   ASE_DEFINE_MAKE_SHARED (ClipImpl);
 };
 
