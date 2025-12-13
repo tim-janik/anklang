@@ -44,7 +44,6 @@ public:
   ClipS           launcher_clips    () override;
   DeviceP         access_device     () override;
   MonitorP        create_monitor    (int32 ochannel) override;
-  void            update_clips      ();
   ssize_t         clip_index        (const ClipImpl &clip) const;
   int             clip_succession   (const ClipImpl &clip) const;
   TelemetryFieldS telemetry         () const override;
@@ -52,6 +51,7 @@ public:
   void            queue_cmd         (CallbackS&, Cmd cmd, double arg = 0);
   void            queue_cmd         (DCallbackS&, Cmd cmd);
   enum { NONE = -1 };
+  ClipImplP       create_midi_clip  (const String &name, double start, double length);
   static TrackImplP from_trkn (tracktion::Track&);
 };
 
