@@ -1,12 +1,12 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-include $(wildcard $>/ase/*.d)
+include $(wildcard $>/ase/*.d $>/ase/tests/*.d)
 
 # == ase/ *.cc file sets ==
 lib/libsndfile.so		:= $>/lib/libsndfile.so.$(libsndfile/lt_current.lt_age.lt_revision)
 ase/jackdriver.sources		:= ase/driver-jack.cc
 ase/gtk2wrap.sources		:= ase/gtk2wrap.cc
 ase/not-anklang.sources		:= $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
-ase/anklang.sources		:= $(filter-out $(ase/not-anklang.sources), $(wildcard ase/*.cc)) $(wildcard ase/*.c)
+ase/anklang.sources		:= $(filter-out $(ase/not-anklang.sources), $(wildcard ase/*.cc)) $(wildcard ase/*.c ase/tests/*.cc)
 lib/AnklangSynthEngine		:= $>/lib/AnklangSynthEngine
 ase/generated.sources		:=
 ASE_EXTRA_INCLUDES := $(strip			\
@@ -22,7 +22,7 @@ ASE_EXTRA_INCLUDES := $(strip			\
 ) # also used by clang-tidy
 
 # == ase/sysconfig.h ==
-$>/ase/sysconfig.h: $(config-stamps)			| $>/ase/ # ase/Makefile.mk
+$>/ase/sysconfig.h: $(config-stamps)			| $>/ase/tests/ # ase/Makefile.mk
 	$(QGEN)
 	$Q : $(file > $>/ase/conftest_sysconfigh.cc, $(ase/conftest_sysconfigh.cc)) \
 	&& $(CXX) -Wall $>/ase/conftest_sysconfigh.cc -pthread -o $>/ase/conftest_sysconfigh \
@@ -306,18 +306,19 @@ endif
 include ase/tests/TestList.mk	# ASE_TEST_LIST
 
 # == check-test-list ==
-.PHONY: check-ase-tests
+.PHONY: check-test-list
 # Check: ase/tests/TestList.mk
 check-test-list: $(lib/AnklangSynthEngine)	| $>/ase/tests/
 	$(QGEN)
-	$Q echo 'ASE_TEST_LIST := '\\			>  $>/ase/tests/TestList.mk
+	$Q echo 'ASE_TEST_LIST := '\\			>  $>/ase-tests-TestList.mk
 	$Q $(lib/AnklangSynthEngine) --list-tests | \
-		sed 's/^/  /; s/$$/ \\/' | sort		>> $>/ase/tests/TestList.mk
-	$Q if cmp -s ase/tests/TestList.mk $>/ase/tests/TestList.mk ; then rm $>/ase/tests/TestList.mk ; else \
-	  diff -u ase/tests/TestList.mk $>/ase/tests/TestList.mk ; fi
+		sed 's/^/  /; s/$$/ \\/' | sort		>> $>/ase-tests-TestList.mk
+	$Q if cmp -s ase/tests/TestList.mk $>/ase-tests-TestList.mk ; then rm $>/ase-tests-TestList.mk ; else \
+	  diff -u ase/tests/TestList.mk $>/ase-tests-TestList.mk ; fi
 check-ase-tests: check-test-list
 
 # == check-ase-tests ==
+.PHONY: check-ase-tests
 define ASE_TEST_CHECK
 check-$1: $$(lib/AnklangSynthEngine)
 	$$(QECHO) CHECK '$1'
