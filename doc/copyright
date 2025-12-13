@@ -4,6 +4,7 @@ Source: https://github.com/tim-janik/anklang/
 
 Files:
  .git*
+ **/.git*
  .github/workflows/*.*
  .pre-commit-config.yaml
  LICENSE
@@ -16,6 +17,7 @@ Files:
  ase/*.hh
  ase/Makefile.mk
  ase/gen/*.*
+ ase/tests/*.cc
  ase/tests/TestList.mk
  devices/*
  devices/blepsynth/*
