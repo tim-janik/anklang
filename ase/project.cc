@@ -1052,12 +1052,11 @@ ProjectImpl::is_playing (bool play)
 TrackP
 ProjectImpl::create_track ()
 {
-  assert_return (!discarded_, nullptr);
-  const bool havemaster = tracks_.size() != 0;
-  TrackImplP track = TrackImpl::make_shared (*this, !havemaster);
-  tracks_.insert (tracks_.end() - int (havemaster), track);
+  return_unless (edit_ && !discarded_, nullptr);
+  auto t = edit_->insertNewAudioTrack (tracktion::TrackInsertPoint (nullptr, nullptr), nullptr);
+  if (!t) return nullptr;
+  TrackImplP track = TrackImpl::from_trkn (*t);
   emit_event ("track", "insert", { { "track", track }, });
-  track->_set_parent (this);
   emit_notify ("all_tracks");
   return track;
 }
