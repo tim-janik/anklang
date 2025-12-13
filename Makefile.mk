@@ -98,6 +98,7 @@ endif
 
 # == Target Collections ==
 ALL_TARGETS	::=
+CXX_TARGETS	::=
 LATE_TARGETS	::=
 ALL_TESTS	::=
 CHECK_TARGETS	::=
@@ -453,5 +454,6 @@ help: FORCE
 	@echo '                    checks for e.g. copyright attribution or codegen'
 
 # == all rules ==
+cxx-all: $(CXX_TARGETS)
 $(eval $(LATE_EVAL))
-all: $(ALL_TARGETS) $(ALL_TESTS) $(LATE_TARGETS)
+all: cxx-all $(ALL_TARGETS) $(ALL_TESTS) $(LATE_TARGETS)

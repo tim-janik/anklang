@@ -196,7 +196,7 @@ $(call BUILD_PROGRAM, \
 	$(lib/libase.so), \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl $(lib/libsndfile.so), \
 	../lib)
-ALL_TARGETS += $(lib/AnklangSynthEngine)
+CXX_TARGETS += $(lib/AnklangSynthEngine)
 
 # == jackdriver.so ==
 lib/jackdriver.so	     ::= $>/lib/jackdriver.so
@@ -213,7 +213,7 @@ $(call BUILD_SHARED_LIB,		\
 	$(ANKLANG_JACK_LIBS) $(lib/libase.so), \
 	../lib)
 endif
-ALL_TARGETS += $(lib/jackdriver.so.MAYBE)
+CXX_TARGETS += $(lib/jackdriver.so.MAYBE)
 
 # == gtk2wrap.so ==
 lib/gtk2wrap.so         ::= $>/lib/gtk2wrap.so
@@ -227,7 +227,7 @@ $(call BUILD_SHARED_LIB, \
 	$(lib/libase.so) | $>/lib/, \
 	$(GTK2_LIBS), \
 	../lib)
-ALL_TARGETS += $(lib/gtk2wrap.so)
+CXX_TARGETS += $(lib/gtk2wrap.so)
 
 # == install binaries ==
 $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
@@ -246,7 +246,7 @@ $>/.media.done: $(EXTERNAL_BLOBS4ANKLANG_STAMPS) $>/media/Samples/
 	$Q ln -s $(abspath external/freepats-vorbis/Drum/*.ogg) $>/media/Samples/freepats-vorbis/Drum/
 	$Q ln -s $(abspath external/freepats-vorbis/Tone/*.ogg) $>/media/Samples/freepats-vorbis/Tone/
 	$Q touch $@
-ALL_TARGETS += $>/.media.done
+CXX_TARGETS += $>/.media.done
 
 # == install media/Samples ==
 media/install:
