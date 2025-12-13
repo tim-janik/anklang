@@ -24,7 +24,13 @@ UPDATE_MIME_DATABASE	:= /usr/bin/update-mime-database
 # Using ld.mold should be fastest, but ld.mold versions 2.3[013] cause segfaults.
 ld_options		:= -Wl,-O3,--gc-sections,--build-id,--hash-style=both,--compress-debug-sections=zstd
 useld_lld		!= ld.lld --version 2>&1 | grep -qE '\bLLD ' && echo '-fuse-ld=lld -Wl,--icf=safe,--lto-O3'
-useld_mold		!= ld.mold --version 2>&1 | grep -qE '\bmold (2\.3[6-9]|2\.[4-9][0-9]|[3-9]).*GNU ld' && echo '-fuse-ld=mold -Wl,--icf=safe,--lto-O3,--separate-debug-file'
+ifeq ($(MODE),cpptrace)
+# cpptrace ignores symbols in separate debug files
+mold_options		:= --icf=safe,--lto-O3
+else
+mold_options		:= --icf=safe,--lto-O3,--separate-debug-file
+endif
+useld_mold		!= ld.mold --version 2>&1 | grep -qE '\bmold (2\.3[6-9]|2\.[4-9][0-9]|[3-9]).*GNU ld' && echo '-fuse-ld=mold -Wl,$(mold_options)'
 ifneq ($(filter quick devel,$(MODE)),)
 useld_gold		!= ld.gold --version 2>&1 | grep -q '^GNU gold' && echo '-fuse-ld=gold'
 useld_fast		:= $(ld_options) $(or $(useld_mold), $(useld_lld), $(useld_gold))
