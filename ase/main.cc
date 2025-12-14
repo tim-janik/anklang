@@ -20,6 +20,9 @@
 #include <malloc.h>
 #include <unistd.h>
 #include <fcntl.h>
+#ifdef ASE_WITH_CPPTRACE
+#include <cpptrace/from_current.hpp>
+#endif
 
 #undef B0 // undo pollution from termios.h
 
@@ -148,32 +151,6 @@ parse_option_arg (const char *option, char **argv, unsigned *ith, const char **a
   return false;
 }
 
-LogFlags
-log_setup (int *logfd)
-{
-  int flags = LOG_STDERR;
-  const char *asedebug = getenv ("ASE_DEBUG");
-  if (!asedebug || !strstr (asedebug, "no-log2file")) {
-    const String logdir = Path::join (Path::xdg_dir ("CACHE"), "anklang");
-    if (Path::mkdirs (logdir)) {
-      const String fname = string_format ("%s/%s-%08x.log", logdir, program_alias(), gethostid());
-      const int OFLAGS = O_CREAT | O_EXCL | O_WRONLY | O_NOCTTY | O_NOFOLLOW | O_CLOEXEC; // O_TRUNC
-      const int OMODE = 0640;
-      errno = EBUSY;
-      *logfd = open (fname.c_str(), OFLAGS, OMODE);
-      if (*logfd < 0 && errno == EEXIST) {
-        const String oldname = fname + ".old";
-        if (rename (fname.c_str(), oldname.c_str()) < 0)
-          perror (string_format ("%s: failed to rename \"%s\"", program_alias(), oldname.c_str()).c_str());
-        *logfd = open (fname.c_str(), OFLAGS, OMODE);
-        if (*logfd < 0)
-          perror (string_format ("%s: failed to open log file \"%s\"", program_alias(), fname.c_str()).c_str());
-      }
-    }
-  }
-  return LogFlags (flags);
-}
-
 // 1:ERROR 2:FAILED+REJECT 4:IO 8:MESSAGE 16:GET 256:BINARY
 static constexpr int jsipc_logflags = 1 | 2 | 4 | 8 | 16;
 static constexpr int jsbin_logflags = 1 | 256;
@@ -199,7 +176,7 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
       if (sep)
         config.args.push_back (argv[i]);
       else if (strcmp (argv[i], "--fatal-warnings") == 0 || strcmp (argv[i], "--g-fatal-warnings") == 0)
-        ase_fatal_warnings = assertion_failed_fatal = true;
+        logging_fatal_warnings = true;
       else if (strcmp ("--disable-randomization", argv[i]) == 0)
         config.allow_randomization = false;
       else if (strcmp ("--norc", argv[i]) == 0)
@@ -220,7 +197,7 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
       else if (strcmp ("--check", argv[i]) == 0)
         {
           config.mode = MainApp::CHECK_INTEGRITY_TESTS;
-          ase_fatal_warnings = assertion_failed_fatal = true;
+          logging_fatal_warnings = true;
           printerr ("CHECK_INTEGRITY_TESTS…\n");
           default_ui_mode = "none";
         }
@@ -235,7 +212,7 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
           const char *eq = strchr (argv[i], '=');
           const char *arg = eq ? eq + 1 : i+1 < argc ? argv[++i] : nullptr;
           config.mode = MainApp::CHECK_INTEGRITY_TESTS;
-          ase_fatal_warnings = assertion_failed_fatal = true;
+          logging_fatal_warnings = true;
           if (arg)
             check_test_names.push_back (arg);
           default_ui_mode = "none";
@@ -388,7 +365,7 @@ handle_autostop (const LoopState &state)
     case LoopState::PREPARE:    return seen_autostop;
     case LoopState::CHECK:      return seen_autostop;
     case LoopState::DISPATCH:
-      log ("Main: stopping playback (auto)");
+      info ("Main: stopping playback (auto)");
       main_loop->quit (0);
       return true; // keep alive
     default: ;
@@ -474,9 +451,7 @@ prefault_pages (size_t stacksize, size_t heapsize)
       stack[i] = 1;
 }
 
-} // Ase
-
-int
+static int
 main (int argc, char *argv[])
 {
   using namespace Ase;
@@ -493,10 +468,13 @@ main (int argc, char *argv[])
   // preallocate memory for lock-free allocator
   preallocate_loft (64 * 1024 * 1024);
 
+  // print stack trace for uncaught exceptions
+  logging_handle_terminate();
+
   // SIGPIPE init: needs to be done before any child thread is created
   init_sigpipe();
   if (setpgid (0, 0) < 0)
-    log ("Main: setpgid failed: %s", ::strerror (errno));
+    diag ("Main: setpgid failed: %s", ::strerror (errno));
 
   // apply user locale
   if (!setlocale (LC_ALL, ""))
@@ -504,6 +482,7 @@ main (int argc, char *argv[])
 
   // parse args and config
   parse_args (&argc, argv, main_app);
+  logging_configure_file (arg_ui_mode != "none");
 
   // prepare main event loop (needed before parse_args)
   main_loop = MainLoop::create();
@@ -584,7 +563,7 @@ main (int argc, char *argv[])
       Error error = Error::NO_MEMORY;
       if (preload_project)
         error = preload_project->load_project (filename);
-      log ("Main: load project: %s: %s", filename, ase_error_blurb (error));
+      diag ("Main: load project: %s: %s", filename, ase_error_blurb (error));
       if (!!error)
         warning ("%s: failed to load project: %s", filename, ase_error_blurb (error));
     }
@@ -612,7 +591,7 @@ main (int argc, char *argv[])
       webui_url = "file://" + redirecthtml;
       wss->see_other (webui_url);
     }
-    log ("Main: WebUI address: %s", webui_url);
+    info ("Main: WebUI address: %s", webui_url);
     auto ereason = webui_start_browser (arg_ui_mode, main_loop, webui_url, [] () { main_loop->quit (0); });
     if (ereason.error)
       fatal_error ("Main: failed to run WebUI: %s: %s", ereason.what, ::strerror (ereason.error));
@@ -621,7 +600,7 @@ main (int argc, char *argv[])
   // run atquit handler on SIGHUP SIGINT
   for (int sigid : { SIGHUP, SIGINT, SIGQUIT, SIGABRT, SIGTERM, SIGSYS }) {
     main_loop->exec_usignal (sigid, [] (int8 sig) {
-      log ("Main: got signal %d: aborting", sig);
+      info ("Main: got signal %d: terminate", sig);
       const pid_t pgid = getpgrp();
       atquit_terminate (-1, pgid);
       return false;
@@ -631,7 +610,7 @@ main (int argc, char *argv[])
 
   // catch SIGUSR2 to close sockets
   main_loop->exec_usignal (SIGUSR2, [wss] (int8 sig) {
-    log ("Main: got signal %d: reset WebSocket", sig);
+    info ("Main: got signal %d: reset WebSocket", sig);
     wss->reset();
     return true;
   });
@@ -641,7 +620,7 @@ main (int argc, char *argv[])
   if (App.outputfile)
     {
       std::shared_ptr<CallbackS> callbacks = std::make_shared<CallbackS>();
-      log ("Main: Start caputure: %s", App.outputfile);
+      info ("Main: Start caputure: %s", App.outputfile);
       App.engine->queue_capture_start (*callbacks, App.outputfile, true);
       auto job = [callbacks] () {
         for (const auto &callback : *callbacks)
@@ -653,7 +632,7 @@ main (int argc, char *argv[])
   // start auto play
   if (App.play_autostart && preload_project)
     main_loop->exec_idle ([preload_project] () {
-      log ("Main: starting playback (auto)");
+      info ("Main: starting playback (auto)");
       preload_project->start_playback (App.play_autostop);
     });
   // handle automatic shutdown
@@ -666,7 +645,7 @@ main (int argc, char *argv[])
   // run main event loop and catch SIGUSR2
   const int exitcode = main_loop->run();
   assert_return (main_loop, -1); // ptr must be kept around
-  log ("Main: event loop quit: code=%d", exitcode);
+  diag ("Main: event loop quit: code=%d", exitcode);
 
   // cleanup
   wss->shutdown(); // close socket, allow no more calls
@@ -679,8 +658,31 @@ main (int argc, char *argv[])
   main_loop->iterate_pending();
   main_app.engine = nullptr;
 
-  log ("Main: exiting: %d", exitcode);
+  diag ("Main: exiting: %d", exitcode);
   return exitcode;
+}
+
+} // Ase
+
+int
+main (int argc, char *argv[])
+{
+  int r = -128;
+#ifdef ASE_WITH_CPPTRACE
+  CPPTRACE_TRY { r = Ase::main (argc, argv); }
+  CPPTRACE_CATCH (const std::exception& e) {
+    std::string msg = "Exception: ";
+    msg += e.what();
+    msg += "\n";
+    fflush (stdout);
+    fputs (msg.c_str(), stderr);
+    fflush (stderr);
+    cpptrace::from_current_exception().print();
+  }
+#else
+  r =  Ase::main (argc, argv);
+#endif
+  return r;
 }
 
 namespace { // Anon
@@ -689,13 +691,13 @@ using namespace Ase;
 extern "C" __attribute__ ((__noinline__)) void
 tlog1 (const char *s)
 {
-  log ("foo: %s+%d", s, 0x11111111);
+  debug ("foo: %s+%d", s, 0x11111111);
 }
 
 extern "C" __attribute__ ((__noinline__)) void
 tlog2 (const char *s)
 {
-  log ("foo: %s+%d", s, 0x11111111);
+  debug ("foo: %s+%d", s, 0x11111111);
 }
 
 TEST_INTEGRITY (job_queue_tests);
