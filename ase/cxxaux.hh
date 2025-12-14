@@ -54,7 +54,7 @@ using VoidF = std::function<void()>;
 #define ASE_ALIGNED16(pointer)   (!ALIGNMENT16 (pointer))
 
 // Ase macro shorthands for <a href="https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html">GCC Attributes</a>.
-#define ASE_ALWAYS_INLINE       __attribute__ ((always_inline))
+#define ASE_ALWAYS_INLINE       __attribute__ ((__always_inline__))
 #define ASE_COLD                __attribute__ ((__cold__))
 #define ASE_CONST               __attribute__ ((__const__))
 #define ASE_CONSTRUCTOR	        __attribute__ ((constructor,used))      // gcc-3.3 also needs "used" to emit code
@@ -236,14 +236,14 @@ constexpr_equals (const char *a, const char *b, size_t n)
 }
 
 /// Call inplace new operator by automatically inferring the Type.
-template<class Type, class ...Ts> __attribute__ ((always_inline)) inline void
+template<class Type, class ...Ts> ASE_ALWAYS_INLINE inline void
 new_inplace (Type &typemem, Ts &&... args)
 {
   new (&typemem) Type (std::forward<Ts> (args)...);
 }
 
 /// Call inplace delete operator by automatically inferring the Type.
-template<class Type> __attribute__ ((always_inline)) inline void
+template<class Type> ASE_ALWAYS_INLINE inline void
 delete_inplace (Type &typemem)
 {
   typemem.~Type();
