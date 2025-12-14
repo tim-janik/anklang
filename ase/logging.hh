@@ -1,11 +1,20 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #pragma once
 
+#include <ase/cxxaux.hh>
 #include <ase/formatter.hh>
 #include <source_location>
 
 namespace Ase {
 
+// == stdio ==
+template<class... A> void printout          (const char *format, const A &...args) ASE_PRINTF (1, 0);
+template<class... A> void printerr          (const char *format, const A &...args) ASE_PRINTF (1, 0);
+
+/// Current time in µseconds.
+uint64_t                  timestamp_now   ();
+
+// == Sincere Messages ==
 /// Wrap a string together with its source code location
 struct LogFormat {
   std::source_location location;
@@ -16,39 +25,95 @@ struct LogFormat {
   {}
 };
 
-/// Current time in µseconds.
-uint64_t                  timestamp_now   ();
+template<class ...A> void fatal_error (const LogFormat &format, const A &...args) ASE_NORETURN;
+template<class ...A> void warning     (const char *format, const A &...args);
+template<class ...A> void diag        (const char *format, const A &...args) ASE_ALWAYS_INLINE;
 
-/// Write a log message to the log file (or possibly stderr), using the POSIX/C locale.
-template<class... A> void log (const LogFormat &format, const A &...args);
+// == Debugging ==
+void                      logging_handle_terminate ();
+template<class ...A> void debug             (const char *cond, const char *format, const A &...args) ASE_ALWAYS_INLINE;
+inline bool               debug_enabled     () ASE_ALWAYS_INLINE ASE_PURE;
+bool                      debug_key_enabled (const char *conditional) noexcept ASE_PURE;
+const char*               getenv_ase_debug  ();
+extern bool ase_debugging_enabled;      ///< Global boolean to reduce debugging penalty where possible
 
-/// Flags to configure logging behaviour
-enum LogFlags { LOG_FILE = 1, LOG_STDERR = 2, LOG_LOCATIONS = 4, };
+// == Implementations ==
+[[noreturn]]
+void    logging_abort (char code, const std::string &message, const char *file, uint32_t line, const char *func) noexcept;
+void    logging       (char code, const std::string &message, const char *file, uint32_t line, const char *func) noexcept;
+void    logging_debug (const char *cond, const std::string &message) noexcept;
+bool    logging_configure_file (bool to_file);
+void    stdio_flush   (uint8 code, const String &txt) noexcept;
+extern bool logging_fatal_warnings;
 
-/// Configurable handler to open log files
-LogFlags                  log_setup       (int *logfd);
+/// Check if any kind of debugging is enabled by $ASE_DEBUG.
+inline bool ASE_ALWAYS_INLINE ASE_PURE
+debug_enabled()
+{
+  return ASE_UNLIKELY (ase_debugging_enabled);
+}
 
-// Keep natural logarithmic function available
-#ifdef _MATH_H
-using ::log;
+/// Issue a printf-like debugging message if `cond` is enabled by $ASE_DEBUG.
+template<class ...Args> inline void ASE_ALWAYS_INLINE
+debug (const char *cond, const char *format, const Args &...args)
+{
+#ifndef NDEBUG
+  if (debug_enabled())
+    {
+      if (ASE_UNLIKELY (debug_key_enabled (cond)))
+        logging_debug (cond, string_format (format, args...));
+    }
 #endif
-
-// == implementations ==
-void logmsg (const std::string &msg, const char *file, uint64_t columnline, const char *func);
-
-template<class... A> __attribute__ ((__noinline__)) void
-logfmt (const char *file, uint64_t columnline, const char *func, const char *format, const A &...args)
-{
-  logmsg (string_format (format, args...), file, columnline, func);
 }
 
+/// Issue a printf-like diagnostics message unless debugging is disabled.
+template<class ...Args> inline void ASE_ALWAYS_INLINE
+diag (const char *format, const Args &...args)
+{
+#ifndef NDEBUG
+  logging_debug (nullptr, string_format (format, args...));
+#endif
+}
+
+/// Issue a printf-like message and abort the program.
+template<class ...Args> void
+fatal_error (const LogFormat &format, const Args &...args)
+{
+  logging_abort ('F', string_format (format.cstr, args...),
+                 format.location.file_name(), format.location.line(), format.location.function_name());
+}
+
+/// Warn about unexpected / internal error, usually detached from the cause
+template<class ...Args> void
+warning (const char *format, const Args &...args)
+{
+  logging ('W', string_format (format, args...), nullptr, -1, nullptr);
+}
+
+/// Print a message on stdout (and flush stdout) ala printf(), using the POSIX/C locale.
+template<class... Args> void
+printout (const char *format, const Args &...args)
+{
+  stdio_flush ('o', string_format (format, args...));
+}
+
+/// Print a message on stderr (and flush stderr) ala printf(), using the POSIX/C locale.
+template<class... Args> void
+printerr (const char *format, const Args &...args)
+{
+  stdio_flush ('e', string_format (format, args...));
+}
+
+// FIXME: remove log()
 template<class... A> __attribute__ ((__always_inline__)) inline void
-log (const LogFormat &format, const A &...args)
+log (const char *format, const A &...args)
 {
-  logfmt (format.location.file_name(),
-          uint64_t (format.location.column()) << 32 | uint32_t (format.location.line()),
-          format.location.function_name(),
-          format.cstr, args...);
+#ifndef NDEBUG
+  logging_debug (nullptr, string_format (format, args...));
+#endif
 }
+#ifdef _MATH_H
+using ::log;    // Keep natural logarithmic function available
+#endif
 
 } // Ase

@@ -2,14 +2,34 @@
 #include "logging.hh"
 #include "platform.hh"
 #include "path.hh"
+#include "strings.hh"
 #include "regex.hh"
+#include <fcntl.h>
 #include <cstdarg>
 #include <cstring>
+#ifndef NDEBUG
+#include <execinfo.h>
+#endif
+#ifdef ASE_WITH_CPPTRACE
+#include <cpptrace/cpptrace.hpp>
+#endif
+#include "internal.hh"
 
 namespace Ase {
 
-LogFlags log_setup (int*) __attribute__ ((__weak__));
+[[noreturn]] static void abort_debug_friendly (const char *msg, const char *file, int line, const char *func) noexcept;
 
+// == stdout stderr ==
+/// Handle stdout and stderr printing with flushing.
+void
+stdio_flush (uint8 code, const String &txt) noexcept
+{
+  fflush (code != 'e' ? stderr : stdout);       // preserve output ordering
+  fputs (txt.c_str(), code == 'e' ? stderr : stdout);
+  fflush (code == 'e' ? stderr : stdout);
+}
+
+// == Timestamp ==
 uint64_t
 timestamp_now ()
 {
@@ -18,77 +38,454 @@ timestamp_now ()
   return tv.tv_sec * 1000000ULL + tv.tv_usec;
 }
 
-static uint64 programstart_timestamp = timestamp_now();
-static uint32_t log_flags = 0;
-static int      log_fd = -1;
-static bool     log_colorize = true;
+struct StartupStats {
+  uint64_t      timestamp = 0;
+};
+
+static const StartupStats&
+logging_startup_stats()
+{
+  static StartupStats stats = {
+    .timestamp = timestamp_now(),
+  };
+  return stats;
+}
+static bool init_startup_stats = [] { logging_startup_stats(); return 1; } ();
+
+static std::string
+logging_timestamp (uint64_t stamp)
+{
+  const unsigned long long secs = stamp / 1000000ULL;
+  const unsigned long long usec = stamp - (secs * 1000000ULL);
+  return string_format ("%llu.%06llu", secs, usec);
+}
+
+// == Log File ==
+static std::mutex logging_buffer_mutex;
+static std::vector<std::string> *logging_buffer = nullptr;
+static int logging_fd = -2;
 
 static void
-logstart()
+loging_setup()
 {
-  if (log_flags) [[likely]] return;
-  log_colorize = AnsiColors::colorize_tty();
-  if (log_setup) {
-    log_flags = log_setup (&log_fd);
-    if (log_fd >= 0)
-      log_flags |= LOG_FILE;
+  if (logging_fd >= -1)
+    return;
+  std::lock_guard<std::mutex> locker (logging_buffer_mutex);
+  if (logging_fd >= -1)
+    return;
+  const uint64 programstart_timestamp = logging_startup_stats().timestamp;
+  if (!logging_buffer) {
+    logging_buffer = new std::vector<std::string>();
+    const time_t now = programstart_timestamp / 1000000;
+    struct tm stm{};
+    localtime_r (&now, &stm);
+    char tbuf[128] = { 0, };
+    strftime (tbuf, sizeof (tbuf) - 1, "%Y-%m-%d %H:%M:%S %z", &stm);
+    char pidbuf[64] = { 0, };
+    snprintf (pidbuf, sizeof (pidbuf) - 1, " pid=%u", getpid());
+    auto start_msg = logging_timestamp (programstart_timestamp) + " " + executable_name() + ": programstart=\"" + tbuf + "\"" + pidbuf + " executable=\"" + executable_path() + "\"\n";
+    logging_buffer->push_back (start_msg);
+  }
+  logging_fatal_warnings |= string_to_bool (String (string_option_find_value (getenv_ase_debug(), "fatal-warnings", "0", "0", true)));
+  // sigquit_on_abort = string_to_bool (String (string_option_find_value (d, "sigquit-on-abort", "0", "0", true)));
+}
+
+static void
+logging_to_file (const std::string &lines)
+{
+  loging_setup();
+  if (logging_fd == -1)
+    return;
+  if (logging_fd >= 0) {
+    long r;
+    do
+      r = write (logging_fd, lines.data(), lines.size());
+    while (r < 0 && (errno == EINTR || errno == EAGAIN));
+    return;
+  }
+  std::lock_guard<std::mutex> locker (logging_buffer_mutex);
+  if (logging_buffer)
+    logging_buffer->push_back (lines);
+}
+
+bool
+logging_configure_file (bool to_file)
+{
+  loging_setup();
+  if (!to_file) {
+    std::lock_guard<std::mutex> locker (logging_buffer_mutex);
+    if (logging_fd >= 0)
+      return false;     // logging file already configured
+    logging_fd = -1;
+    if (logging_buffer) {
+      delete logging_buffer;
+      logging_buffer = nullptr;
+    }
+    return true;
+  }
+  const String logdir = Path::join (Path::xdg_dir ("CACHE"), "anklang");
+  const String fname = string_format ("%s/%s-%08x.log", logdir, program_alias(), gethostid());
+  const int OFLAGS = O_CREAT | O_EXCL | O_WRONLY | O_NOCTTY | O_NOFOLLOW | O_CLOEXEC; // O_TRUNC
+  const int OMODE = 0640;
+  std::lock_guard<std::mutex> locker (logging_buffer_mutex);
+  if (logging_fd >= 0)
+    return false;       // logging file already configured
+  errno = EBUSY;
+  if (!Path::mkdirs (logdir)) {
+    perror (string_format ("%s: failed to open log dir \"%s\"", program_alias(), logdir.c_str()).c_str());
+    return false;
+  }
+  logging_fd = open (fname.c_str(), OFLAGS, OMODE);
+  if (logging_fd < 0 && errno == EEXIST) {
+    const String oldname = fname + ".old";
+    if (rename (fname.c_str(), oldname.c_str()) < 0) {
+      perror (string_format ("%s: failed to rename \"%s\"", program_alias(), oldname.c_str()).c_str());
+      return false;
+    }
+    logging_fd = open (fname.c_str(), OFLAGS, OMODE);
+  }
+  if (logging_fd < 0) {
+    perror (string_format ("%s: failed to open log file \"%s\"", program_alias(), fname.c_str()).c_str());
+    return false;
+  }
+  // flush buffered messages
+  if (logging_buffer) {
+    long r;
+    for (const auto &lines : *logging_buffer)
+      do
+        r = write (logging_fd, lines.data(), lines.size());
+      while (r < 0 && (errno == EINTR || errno == EAGAIN));
+    delete logging_buffer;
+    logging_buffer = nullptr;
+  }
+  return true;
+}
+
+// == Stacktrace ==
+/// Find GDB and construct command line
+static std::string
+backtrace_command (const char *dbgr)
+{
+#if 0 && defined (__linux__)
+  bool allow_ptrace = true;
+  // disabling this check, so the debugger can show an appropriate error message
+  const char *const ptrace_scope = "/proc/sys/kernel/yama/ptrace_scope";
+  int fd = open (ptrace_scope, 0);
+  char b[8] = { 0 };
+  if (read (fd, b, 8) > 0)
+    allow_ptrace = b[0] == '0';
+  close (fd);
+  if (!allow_ptrace)
+    return "";
+#endif
+  char cmd[3192];
+  const char *const usr_bin_lldb = "/usr/bin/lldb";
+  if ((!dbgr || strcmp (dbgr, "lldb") == 0) &&
+      access (usr_bin_lldb, X_OK) == 0) {
+    snprintf (cmd, sizeof (cmd),
+              "%s -Q -x --batch -p %u "
+              "-o 'bt'", // 'bt all'
+              usr_bin_lldb, gettid());
+    return cmd;
+  }
+  const char *const usr_bin_gdb = "/usr/bin/gdb";
+  if ((!dbgr || strcmp (dbgr, "gdb") == 0) &&
+      access (usr_bin_gdb, X_OK) == 0) {
+    snprintf (cmd, sizeof (cmd),
+              "%s -q -n --nx -p %u --batch "
+              "-iex 'set auto-load python-scripts off' "
+              "-iex 'set script-extension off' "
+              "-ex 'set print address off' "
+              // "-ex 'set print frame-arguments none' "
+              "-ex 'backtrace 99' " // "-ex 'thread apply all backtrace 99' "
+              ">&2 2>/dev/null",
+              usr_bin_gdb, gettid());
+    return cmd;
+  }
+  return "";
+}
+
+// == Debugging ==
+/// Flag to optimize checks for debugging.
+bool ase_debugging_enabled = true;
+
+/// Global flag to cause the program to abort on warnings.
+bool logging_fatal_warnings = false;
+
+const char*
+getenv_ase_debug()
+{
+  // cache $ASE_DEBUG and setup debug_any_enabled;
+  static const char *const ase_debug = [] {
+    const char *const d = getenv ("ASE_DEBUG");
+    ase_debugging_enabled = d && d[0];
+    return d ? d : "";
+  }();
+  return ase_debug;
+}
+
+/// Check if `conditional` is enabled by $ASE_DEBUG.
+bool
+debug_key_enabled (const char *conditional) noexcept
+{
+  const std::string_view sv = string_option_find_value (getenv_ase_debug(), conditional, "0", "0", true);
+  return string_to_bool (String (sv));
+}
+
+/// Retrieve the value assigned to debug key `conditional` in $ASE_DEBUG.
+::std::string
+debug_key_value (const char *conditional)
+{
+  const std::string_view sv = string_option_find_value (getenv_ase_debug(), conditional, "", "", true);
+  return String (sv);
+}
+
+static void
+print_stacktrace (FILE *stdio, const std::vector<void*> &frames)
+{
+  using namespace AnsiColors;
+  const auto G = color (FG_GREEN), U = color (FG_BLUE), E = color (FG_RED), R = color (RESET);
+  const std::size_t n = frames.size();
+  char **symbols = backtrace_symbols (&frames[0], n);
+  if (!symbols) return;
+  static constexpr size_t MAXLEN = 4096;
+  char exe[MAXLEN], symb[MAXLEN], addr[MAXLEN];
+  bool indots = false;
+  for (std::size_t i = 0; i < n; i++) {
+    if (strlen (symbols[i]) <= MAXLEN) {
+      // scan: /bin/executable(_ZMangled+0x123) [0x456]
+      if (sscanf (symbols[i], "%[^(](%[^)]) [%[^]]", exe, symb, addr) == 3) {
+        char *offs = strchr (symb, '+');
+        if (offs)
+          *offs = 0;
+        std::string demangled = symb[0] ? cxx_demangle (symb) : "";
+        if (demangled.size()) {
+          if (demangled == symb)
+            demangled += "()";
+          fprintf (stdio, "#%zu%s %s in %s%s%s from %s\n", i, i < 10 ? " " : "", (U + addr + R).c_str(), (E + demangled + R).c_str(), offs[0] ? "+" : "", offs, (G + exe + R).c_str());
+          indots = false;
+          continue;
+        }
+      }
+    }
+    if (0) { // ugly fallback
+      fprintf (stdio, "#%zu%s %s\n", i, i < 10 ? " " : "", symbols[i]);
+      continue;
+    }
+    if (!indots) {
+      fprintf (stdio, "      ...\n");
+      indots = true;
+    }
+  }
+  free (symbols);
+}
+
+/// Handle std::terminate() and print stack trace for uncaught exceptions
+[[noreturn]] static void
+logging_terminate_handler()
+{
+  String msg, what;
+  if (auto eptr = std::current_exception()) {
+    try {
+      std::rethrow_exception (eptr);
+    } catch (const std::exception &e) {
+      msg = "Uncaught exception";
+      what = cxx_demangle (typeid (e).name());
+      if (e.what())
+        what += std::string (": ") + e.what();
+    } catch (...) {
+      msg = "Uncaught non-std exception";
+    }
   } else
-    log_flags |= LOG_STDERR;
-  const time_t now = programstart_timestamp / 1000000;
-  struct tm stm{};
-  localtime_r (&now, &stm);
-  char tbuf[128] = { 0, };
-  strftime (tbuf, sizeof (tbuf) - 1, "%Y-%m-%d %H:%M:%S %z", &stm);
-  const std::string exec = executable_path();
-  const char *bexec = strrchr (exec.c_str(), '/');
-  bexec = bexec ? bexec+1 : exec.c_str();
-  char pidbuf[64] = { 0, };
-  snprintf (pidbuf, sizeof (pidbuf) - 1, " pid=%u", getpid());
-  std::string msg = std::string (bexec) + ": programstart=\"" + tbuf + "\"" + pidbuf + " executable=\"" + executable_path() + "\"";
-  logmsg (msg, "", 0, "");
+    msg = "Terminate called without exception";
+  {
+    using namespace AnsiColors;
+    const auto R = color (FG_RED), B = color (BOLD), S = color (RESET);
+    ScopedPosixLocale posix_locale; // use POSIX locale for this scope
+    msg = B + executable_name() + ":" + S + " " + R + msg;
+    if (what.size())
+      msg += ":" + S + " " + what;
+    else
+      msg += S;
+  }
+  fflush (stdout);
+  fputs (string_format ("%s\n", msg).c_str(), stderr);
+  fflush (stderr);      // some platforms (_WIN32) don't properly flush on '\n'
+  const char *asedebug = getenv ("ASE_DEBUG"), *btr = asedebug ? strstr (asedebug, "backtrace") : nullptr;
+  std::string xdb_cmd;
+  if (btr) {
+    const char *xdb = !strncmp (&btr[9], "=lldb", 5) ? "lldb" : !strncmp (&btr[9], "=gdb", 4) ? "gdb" : nullptr;
+    xdb_cmd = backtrace_command (xdb);
+  }
+  if (!xdb_cmd.empty())
+    (void) system (xdb_cmd.c_str());
+  else {
+    std::vector<void*> addrs (128);
+    const int n = backtrace (&addrs[0], addrs.size());
+    addrs.resize (n);
+    fprintf (stderr, "Stack Trace (most recent call first):\n");
+    print_stacktrace (stderr, addrs);
+  }
+  for (;;)
+    abort();
 }
 
 void
-logmsg (const std::string &msg, const char *const filename, const uint64_t columnline, const char *const function_name)
+logging_handle_terminate ()
 {
-  const uint32_t line = uint32_t (columnline), column = columnline >> 32;
-  logstart();
+#ifdef ASE_WITH_CPPTRACE
+  cpptrace::register_terminate_handler();
+#else
+  std::set_terminate (logging_terminate_handler);
+#endif
+}
+
+static void
+logging (char code, const std::string &cond, std::string message, const char *filename, uint32_t line, const char *function_name) noexcept
+{
+  loging_setup();
+  using namespace AnsiColors;
+  const auto C = color (FG_CYAN), G = color (BOLD, FG_GREEN), U = color (FG_BLUE), Y = color (FG_YELLOW);
+  const auto R = color (FG_RED), B = color (BOLD), S = color (RESET);
   ScopedPosixLocale posix_locale; // use POSIX locale for this scope
-  if (msg.empty()) return;
-  String s = msg;
-  if (s[s.size()-1] != '\n')
-    s += "\n";
-  {
-    char tstamp[64] = { 0, };
-    snprintf (tstamp, sizeof (tstamp) - 1, "%.6f: ", 0.000001 * (timestamp_now() - programstart_timestamp));
-    s = tstamp + s;
-  }
-  if ((log_flags & LOG_LOCATIONS) &&
-      filename && filename[0] && function_name) {
-    char linein[128] = { 0, };
-    snprintf (linein, sizeof (linein) - 1, ":%u:%u: logging at: ", line, column);
-    s = filename + std::string (linein) + function_name + ":\n" + s;
-  }
-  if (log_fd == 2 || log_flags & LOG_STDERR)
-    fflush (stderr);
-  if (!log_colorize && log_flags & LOG_STDERR)
-    write (2, s.data(), s.size());
-  if (log_fd >= 0)
-    write (log_fd, s.data(), s.size());
-  if (log_colorize && log_flags & LOG_STDERR) {
-    using namespace AnsiColors;
-    const auto C = color (FG_CYAN), G = color (BOLD, FG_GREEN), B = color (FG_BLUE), Y = color (FG_YELLOW), R = color (RESET);
+  auto location = [&] {
+    String s;
+    if (filename) {
+      s = B + filename;
+      s += ":" + string_from_uint (line) + ":" + S;
+      if (function_name)
+        s += function_name + String (":");
+    } else
+      s = B + executable_name() + ":" + S;
+    return s;
+  };
+  bool pabort = false;
+  String printprefix, kind, logprefix = logging_timestamp (timestamp_now());
+  switch (code)
+    {
+    case 'P':
+      printprefix = location();
+      kind = B + R + "panic:" + S;
+      pabort = true;
+      break;
+    case 'F':
+      printprefix = location();
+      kind = B + R + "fatal:" + S;
+      pabort = true;
+      break;
+    case 'A':
+      printprefix = location();
+      kind = B + R + "assertion failed:" + S;
+      if (message.empty())
+        message = R + "code unreached" + S;
+      pabort = logging_fatal_warnings;
+      break;
+    case 'E':
+      printprefix = location();
+      kind = R + "error:" + S;
+      pabort = logging_fatal_warnings;
+      break;
+    case 'W':
+      printprefix = location();
+      kind = Y + "warning:" + S;
+      pabort = logging_fatal_warnings;
+      break;
+    default:
+    case 'D':
+      printprefix = C + logprefix + S;
+      logprefix = "";
+      kind = cond.empty() ? executable_name() + ':' : U + cond + ':' + S;
+      break;
+    }
+  String sout = printprefix.empty() ? "" : printprefix + ' ';
+  if (kind.size())
+    sout += kind + ' ';
+  if (AnsiColors::colorize_tty()) {
     const std::string HEXINT = "0[xX][0-9abcdefABCDEF]+";
     const std::string FULLFLOAT = "([1-9][0-9]*|0)([.][0-9]*)?([eE][+-]?[0-9]+)?";
     const std::string FRACTFLOAT = "[.][0-9]+([eE][+-]?[0-9]+)?";
     const std::string NUMBER = HEXINT + "|" + FULLFLOAT + "|" + FRACTFLOAT;
-    s = Re::sub ("=(" + NUMBER + ")", "=" + Y + "$1" + R, s);
-    s = Re::sub ("=(\"(?:[^\"\\\\]|\\\\.)*\")", "=" + B + "$1" + R, s);
-    s = Re::sub (" (\\w+)=", " " + C + "$1" + R + "=", s);
-    s = Re::sub (": ([a-zA-Z.0-9_:-]+): ", ": " + G + "$1:" + R + " ", s);
-    s = Re::sub ("^(\\d+[.]\\d+):", Y + "$1:" + R, s, Re::M);
-    write (2, s.data(), s.size());
+    std::string w = message;
+    w = Re::sub ("=(" + NUMBER + ")", "=" + Y + "$1" + S, w);
+    w = Re::sub ("=(\"(?:[^\"\\\\]|\\\\.)*\")", "=" + U + "$1" + S, w);
+    w = Re::sub (" (\\w+)=", " " + C + "$1" + S + "=", w);
+    w = Re::sub (": ([a-zA-Z.0-9_:-]+): ", ": " + G + "$1:" + S + " ", w);
+    w = Re::sub ("^(\\d+[.]\\d+):", Y + "$1:" + S, w, Re::M);
+    sout += w;
+  } else
+    sout += message;
+  if (sout.size() && sout[sout.size()-1] != '\n')
+    sout += '\n';
+  if (logging_fatal_warnings && code == 'W')
+    sout += "Aborting... (fatal-warnings)\n";
+  fflush (stdout);      // preserve output ordering
+  fputs (sout.c_str(), stderr);
+  fflush (stderr);      // some platforms (_WIN32) don't properly flush on '\n'
+  if (logprefix.size())
+    sout = logprefix + ' ' + sout;
+  sout = Re::sub ("\\x1b\\[[0-9;]*[mK]", "", sout, Re::M);
+  // strip ansi-colors
+  logging_to_file (pabort ? sout + logging_timestamp (timestamp_now()) + ' ' + executable_name() + ": Aborting...\n" : sout);
+  if (pabort) {
+#ifndef NDEBUG
+    const char *asedebug = getenv ("ASE_DEBUG"), *btr = asedebug ? strstr (asedebug, "backtrace") : nullptr;
+    std::string xdb_cmd;
+    if (btr) {
+      const char *xdb = !strncmp (&btr[9], "=lldb", 5) ? "lldb" : !strncmp (&btr[9], "=gdb", 4) ? "gdb" : nullptr;
+      xdb_cmd = backtrace_command (xdb);
+    }
+    if (!xdb_cmd.empty())
+      (void) system (xdb_cmd.c_str());
+    else if (1) {
+      std::vector<void*> addrs (128);
+      const int n = backtrace (&addrs[0], addrs.size());
+      addrs.resize (n);
+      fprintf (stderr, "Stack Trace (most recent call first):\n");
+      print_stacktrace (stderr, addrs);
+    } else {
+      //cpptrace::generate_trace().print(); // FIXME
+    }
+#endif
+    abort_debug_friendly (message.c_str(), filename, line, function_name);
   }
 }
 
+void
+logging (char code, const std::string &message, const char *filename, uint32_t line, const char *function_name) noexcept
+{
+  logging (code, "", message, filename, line, function_name);
+}
+
+/// Print a debug/diag message, called from ::Ase::debug().
+void
+logging_debug (const char *cond, const std::string &message) noexcept
+{
+  return_unless (!cond || debug_key_enabled (cond));
+  logging ('D', cond ? cond : "", message, nullptr, 0, nullptr);
+}
+
+void
+logging_abort (char code, const std::string &message, const char *file, uint32_t line, const char *func) noexcept
+{
+  logging (code, "", message, file, line, func);
+  for (;;)
+    abort();
+}
+
+} // Ase
+
+
+#undef NDEBUG // enable __GLIBC__ __assert_fail()
+#include <cassert>
+namespace Ase {
+static void
+abort_debug_friendly (const char *msg, const char *file, int line, const char *func) noexcept
+{
+#if defined (_ASSERT_H_DECLS) && defined(__GLIBC__)
+  // abort via GLIBC if possible, which allows 'print __abort_msg->msg' from apport/gdb
+  __assert_fail (msg && msg[0] ? msg : "assertion unreachable\n", file, line, func);
+#endif
+  for (;;)
+    abort();
+}
 } // Ase
