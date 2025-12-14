@@ -224,7 +224,6 @@ void assertion_failed (const char *msg = nullptr, const char *file = __builtin_F
                        int line = __builtin_LINE(), const char *func = __builtin_FUNCTION()) noexcept;
 void assertion_fatal  (const char *msg = nullptr, const char *file = __builtin_FILE(),
                        int line = __builtin_LINE(), const char *func = __builtin_FUNCTION()) noexcept ASE_NORETURN;
-extern bool assertion_failed_fatal;
 
 /// Command to start external debugger for a backtrace.
 std::string     backtrace_command ();

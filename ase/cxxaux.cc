@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "cxxaux.hh"
+#include "logging.hh"
 #include <cxxabi.h>             // abi::__cxa_demangle
 #include <unistd.h>
 #include <fcntl.h>
@@ -107,7 +108,6 @@ has_debug_key (const char *const debugkeys, const char *const key)
 void
 perror_die (const std::string &msg) noexcept
 {
-  assertion_failed_fatal = true;
   std::string message = msg;
   if (errno)
     message += std::string (": ") + strerror (errno);
@@ -116,78 +116,18 @@ perror_die (const std::string &msg) noexcept
     abort();
 }
 
-/// Global flag to force aborting on assertion warnings.
-bool assertion_failed_fatal = false;
-
 /// Print a debug message via assertion_failed() and abort the program.
 void
 assertion_fatal (const char *msg, const char *file, int line, const char *func) noexcept
 {
-  assertion_failed_fatal = true;
-  assertion_failed (msg, file, line, func);
-  for (;;)
-    abort();
+  logging_abort ('A', msg ? msg : "", file, line, func);
 }
-
-static void assertion_abort (const char *msg, const char *file, int line, const char *func) noexcept ASE_NORETURN;
 
 /// Print instructive message, handle "breakpoint", "backtrace" and "fatal-warnings" in $ASE_DEBUG.
 void
 assertion_failed (const char *msg, const char *file, int line, const char *func) noexcept
 {
-  std::string m;
-  if (file && line > 0 && func)
-    m += std::string (file) + ":" + std::to_string (unsigned (line)) + ":" + func + ": ";
-  else if (file && line > 0)
-    m += std::string (file) + ":" + std::to_string (unsigned (line)) + ": ";
-  else if (file || func)
-    m += std::string (file ? file : func) + ": ";
-  if (!msg || !msg[0])
-    m += "assertion unreachable\n";
-  else {
-    if (line >= 0)
-      m += "assertion failed: ";
-    m += msg;
-    if (!m.empty() && m.back() != '\n')
-      m += "\n";
-  }
-  fflush (stdout);      // preserve output ordering
-  fputs (m.c_str(), stderr);
-  fflush (stderr);      // some platforms (_WIN32) don't properly flush on '\n'
-  const char *const d = getenv ("ASE_DEBUG");
-  if (!assertion_failed_fatal && has_debug_key (d, "fatal-warnings"))
-    assertion_failed_fatal = true;
-  if (assertion_failed_fatal || has_debug_key (d, "breakpoint")) {
-#if (defined __i386__ || defined __x86_64__)
-    __asm__ __volatile__ ("int $03");
-#else
-    __builtin_trap();
-#endif
-  } else if (has_debug_key (d, "backtrace")) {
-    const std::string gdb_cmd = backtrace_command();
-    if (!gdb_cmd.empty()) {
-      const auto res = system (gdb_cmd.c_str());
-      (void) res;
-    }
-  }
-  if (assertion_failed_fatal)
-    assertion_abort (msg, file, line, func);
+  return logging ('A', msg ? msg : "", file, line, func);
 }
 
-} // Ase
-
-#undef NDEBUG           // enable __GLIBC__ __assert_fail()
-#include <cassert>
-namespace Ase {
-static void
-assertion_abort (const char *msg, const char *file, int line, const char *func) noexcept
-{
-#if defined (_ASSERT_H_DECLS) && defined(__GLIBC__)
-  // abort via GLIBC if possible, which allows 'print __abort_msg->msg' from apport/gdb
-  __assert_fail (msg && msg[0] ? msg : "assertion unreachable\n", file, line, func);
-#else
-  for (;;)
-    abort();
-#endif
-}
 } // Ase
