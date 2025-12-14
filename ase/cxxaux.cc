@@ -15,10 +15,11 @@ VirtualBase::~VirtualBase() noexcept
  * which works for g++, libstdc++, clang++, libc++.
  */
 const char*
-string_demangle_cxx (const char *mangled_identifier) noexcept
+cxx_demangle (const std::type_info &typeinfo) noexcept
 {
   static auto &m2d = *new std::unordered_map<const char*, const char*>();
   static std::mutex mtx;
+  const char *mangled_identifier = typeinfo.name();
   { std::lock_guard<std::mutex> locker (mtx);
     auto it = m2d.find (mangled_identifier);
     if (it != m2d.end())
@@ -37,6 +38,19 @@ string_demangle_cxx (const char *mangled_identifier) noexcept
     return malloced_result;
   }
   return mangled_identifier;
+}
+
+std::string
+cxx_demangle (const char *mangled_identifier) noexcept
+{
+  int status = 0;
+  char *malloced_result = abi::__cxa_demangle (mangled_identifier, NULL, NULL, &status);
+  std::string result;
+  if (malloced_result && !status) {
+    result = malloced_result;
+    free (malloced_result);
+  }
+  return result.empty() ? mangled_identifier : result;
 }
 
 /// Find GDB and construct command line

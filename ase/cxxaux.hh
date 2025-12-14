@@ -186,20 +186,21 @@ divmod (T dividend, T divisor, T *reminderp)
 }
 
 /// Demangle identifier via libcc.
-const char* string_demangle_cxx (const char *mangled_identifier) noexcept;
+const char* cxx_demangle (const std::type_info &typeinfo) noexcept;
+std::string cxx_demangle (const char *mangled_identifier) noexcept;
 
 /// Provide demangled stringified name for type `T`.
 template<class T> ASE_PURE static inline const char*
 typeid_name()
 {
-  return string_demangle_cxx (typeid (T).name());
+  return cxx_demangle (typeid (T));
 }
 
 /// Provide demangled stringified name for object `obj`.
 template<class T> ASE_PURE static inline const char*
 typeid_name (T &obj)
 {
-  return string_demangle_cxx (typeid (obj).name());
+  return cxx_demangle (typeid (obj));
 }
 
 /// Force compiler to forget the origin of a possibly aliasing pointer.
