@@ -147,7 +147,7 @@ doc/mkdocs.symlinks := $(doc/mkdocs-chapters)
 doc/mkdocs.symlinks += doc/javascript doc/style $>/doc/jsdocsmd/
 $>/mkdocs/.prepared: $(doc/mkdocs.symlinks) doc/Makefile.mk	| $>/mkdocs/
 	$(QGEN)
-	$Q rm -rf $>/mkdocs/* && mkdir -p $>/mkdocs/doc
+	$Q rm -rf $>/mkdocs/* $>/mkdocs/.venv && mkdir -p $>/mkdocs/doc
 	$Q ln -s $(abspath doc/mkdocs.yml) $>/mkdocs/
 	$Q ln -s $(abspath $(doc/mkdocs.symlinks)) $>/mkdocs/doc/
 	$Q ln -s $(abspath ui/cursors) $>/mkdocs/doc/
