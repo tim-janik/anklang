@@ -310,9 +310,11 @@ x11test x11test-v: $(x11test/files.json) $(lib/AnklangSynthEngine)
 check: tscheck
 # run tsc on all JS + TS files, except for ui/ x11test/
 tscheck.files := $(filter-out ui/% x11test/%, $(filter %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(WILDCARD_FILES)))
+# --skipLibCheck: electron-39.2.7 node_modules/electron/electron.d.ts:noDeprecation?:boolean conflicts with node_modules/@types/node/process.d.ts
+TSC_CHECK_FLAGS := --allowJs --skipLibCheck
 $>/.tscheck.done: $(tscheck.files)	| node_modules/.npm.done
 	$(QGEN)
-	$Q node_modules/.bin/tsc --noEmit --allowJs --moduleResolution bundler -m esnext --target esnext --erasableSyntaxOnly $(tscheck.files)
+	$Q node_modules/.bin/tsc --noEmit --moduleResolution bundler -m esnext --target esnext --erasableSyntaxOnly $(TSC_CHECK_FLAGS) $(tscheck.files)
 $>/.tscheck.done: $(if $(filter check tscheck,$(MAKECMDGOALS)), FORCE) # force on 'make tscheck'
 tscheck: $>/.tscheck.done FORCE
 
