@@ -168,7 +168,7 @@ ase/generated.sources += $>/ase/buildversion-$(version_hash).cc
 # == Tracktion Engine Objects ==
 include trkn/trkn.g.mk
 TRKN_OBJECTS ::=
-TRKN_DEFS  = -pthread -Oz -ffast-math -fvisibility=hidden
+# TRKN_DEFS  = -pthread -Oz -ffast-math -fvisibility=hidden
 TRKN_DEFS += $(patsubst -I%, -Itrkn/%, $(TRACKTION_INTERNAL_INCLUDES))
 TRKN_DEFS += $(ASE_EXTRA_INCLUDES) # $(TRACKTION_EXTERNAL_INCLUDES)
 TRKN_DEFS += -Iexternal/soundtouch/include/
