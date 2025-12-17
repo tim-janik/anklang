@@ -201,10 +201,16 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
           printerr ("CHECK_INTEGRITY_TESTS…\n");
           default_ui_mode = "none";
         }
-      else if (strcmp ("--list-tests", argv[i]) == 0)
+      else if (strncmp ("--list-tests", argv[i], 12) == 0)
         {
+          const char *sep = strlen (argv[i]) >= 14 && argv[i][12] == '=' ? argv[i] + 13 : "\n";
+          std::vector<std::string> ids;
           for (const auto &t : Test::list_tests())
-            printout ("%s\n", t.ident);
+            ids.push_back (t.ident);
+          std::sort (ids.begin(), ids.end());
+          for (const auto &t : ids)
+            printout ("%s%s", sep, t);
+          printout ("\n");
           exit (0);
         }
       else if (strcmp ("--test", argv[i]) == 0 || strncmp ("--test=", argv[i], 7) == 0)
