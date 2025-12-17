@@ -227,7 +227,9 @@ struct StringFormatDirective {
         return render_value (N, args, "", arg_as_ptr (N, args, value_index));
       case 's': // precision
         return render_value (N, args, "", arg_as_chars (N, args, value_index));
-      case 'c': case 'd': case 'i': case 'o': case 'u': case 'X': case 'x':
+      case 'c':
+        return render_value (N, args, "", arg_as_char (N, args, value_index));
+      case 'd': case 'i': case 'o': case 'u': case 'X': case 'x':
         return render_value (N, args, "ll", arg_as_longlong (N, args, value_index));
       case 'f': case 'F': case 'e': case 'E': case 'g': case 'G': case 'a': case 'A':
         return render_value (N, args, "", arg_as_double (N, args, value_index));
@@ -273,6 +275,11 @@ struct StringFormatDirective {
   {
     const int32_t precision = arg_as_longlong (N, args, nth);
     return std::max (0, precision);
+  }
+  static char
+  arg_as_char (const size_t N, const StringFormatArg *args, size_t nth)
+  {
+    return arg_as_longlong (N, args, nth);
   }
   static ll_t
   arg_as_longlong (const size_t N, const StringFormatArg *args, size_t nth)
