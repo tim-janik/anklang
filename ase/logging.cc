@@ -241,7 +241,7 @@ debug_key_value (const char *conditional)
 }
 
 static void
-print_stacktrace (FILE *stdio, const std::vector<void*> &frames)
+print_backtrace (FILE *stdio, const std::vector<void*> &frames)
 {
   using namespace AnsiColors;
   const auto G = color (FG_GREEN), U = color (FG_BLUE), E = color (FG_RED), R = color (RESET);
@@ -280,6 +280,48 @@ print_stacktrace (FILE *stdio, const std::vector<void*> &frames)
   free (symbols);
 }
 
+/// Print confiogurable stack trace.
+static void
+logging_print_backtrace (const char *func)
+{
+  fflush (stdout);
+  fflush (stderr);
+#ifndef NDEBUG
+  const char *asedebug = getenv ("ASE_DEBUG"), *btr = asedebug ? strstr (asedebug, "backtrace") : nullptr;
+  std::string xdb_cmd;
+  if (btr) {
+    const char *xdb = !strncmp (&btr[9], "=lldb", 5) ? "lldb" : !strncmp (&btr[9], "=gdb", 4) ? "gdb" : nullptr;
+    xdb_cmd = backtrace_command (xdb);
+  }
+  if (!xdb_cmd.empty()) {
+    (void) system (xdb_cmd.c_str());
+    return;
+  }
+#ifdef ASE_WITH_CPPTRACE
+  cpptrace::generate_trace().print();
+  fflush (stdout);
+  fflush (stderr);
+  return;
+#endif // ASE_WITH_CPPTRACE
+  {
+    std::vector<void*> addrs (128);
+    const int n = backtrace (&addrs[0], addrs.size());
+    addrs.resize (n);
+    if (n) {
+      fprintf (stderr, "Stack Trace (most recent call first):\n");
+      print_backtrace (stderr, addrs);
+      fflush (stdout);
+      fflush (stderr);
+      return;
+    }
+  }
+#endif // NDEBUG
+  fprintf (stderr, "Stack Trace:\n");
+  fprintf (stderr, "#0 %p in %s\n", __builtin_return_address (0), func);
+  fprintf (stderr, "      ...\n");
+  fflush (stderr);
+}
+
 /// Handle std::terminate() and print stack trace for uncaught exceptions
 [[noreturn]] static void
 logging_terminate_handler()
@@ -310,33 +352,16 @@ logging_terminate_handler()
   }
   fflush (stdout);
   fputs (string_format ("%s\n", msg).c_str(), stderr);
-  fflush (stderr);      // some platforms (_WIN32) don't properly flush on '\n'
-  const char *asedebug = getenv ("ASE_DEBUG"), *btr = asedebug ? strstr (asedebug, "backtrace") : nullptr;
-  std::string xdb_cmd;
-  if (btr) {
-    const char *xdb = !strncmp (&btr[9], "=lldb", 5) ? "lldb" : !strncmp (&btr[9], "=gdb", 4) ? "gdb" : nullptr;
-    xdb_cmd = backtrace_command (xdb);
-  }
-  if (!xdb_cmd.empty())
-    (void) system (xdb_cmd.c_str());
-  else {
-    std::vector<void*> addrs (128);
-    const int n = backtrace (&addrs[0], addrs.size());
-    addrs.resize (n);
-    fprintf (stderr, "Stack Trace (most recent call first):\n");
-    print_stacktrace (stderr, addrs);
-  }
-  for (;;)
-    abort();
+  logging_print_backtrace (__func__);
+  abort();
 }
 
 void
 logging_handle_terminate ()
 {
+  std::set_terminate (logging_terminate_handler);
 #ifdef ASE_WITH_CPPTRACE
   cpptrace::register_terminate_handler();
-#else
-  std::set_terminate (logging_terminate_handler);
 #endif
 }
 
@@ -427,25 +452,7 @@ logging (char code, const std::string &cond, std::string message, const char *fi
   // strip ansi-colors
   logging_to_file (pabort ? sout + logging_timestamp (timestamp_now()) + ' ' + executable_name() + ": Aborting...\n" : sout);
   if (pabort) {
-#ifndef NDEBUG
-    const char *asedebug = getenv ("ASE_DEBUG"), *btr = asedebug ? strstr (asedebug, "backtrace") : nullptr;
-    std::string xdb_cmd;
-    if (btr) {
-      const char *xdb = !strncmp (&btr[9], "=lldb", 5) ? "lldb" : !strncmp (&btr[9], "=gdb", 4) ? "gdb" : nullptr;
-      xdb_cmd = backtrace_command (xdb);
-    }
-    if (!xdb_cmd.empty())
-      (void) system (xdb_cmd.c_str());
-    else if (1) {
-      std::vector<void*> addrs (128);
-      const int n = backtrace (&addrs[0], addrs.size());
-      addrs.resize (n);
-      fprintf (stderr, "Stack Trace (most recent call first):\n");
-      print_stacktrace (stderr, addrs);
-    } else {
-      //cpptrace::generate_trace().print(); // FIXME
-    }
-#endif
+    logging_print_backtrace (__func__);
     abort_debug_friendly (message.c_str(), filename, line, function_name);
   }
 }
