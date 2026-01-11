@@ -151,7 +151,7 @@ $>/mkdocs/.prepared: $(doc/mkdocs.symlinks) doc/Makefile.mk	| $>/mkdocs/
 	$Q ln -s $(abspath doc/mkdocs.yml) $>/mkdocs/
 	$Q ln -s $(abspath $(doc/mkdocs.symlinks)) $>/mkdocs/doc/
 	$Q ln -s $(abspath ui/cursors) $>/mkdocs/doc/
-	$Q cd $>/mkdocs/ && uv venv --python 3.12 \
+	$Q cd $>/mkdocs/ && uv venv --python 3 \
 	&& UV_LINK_MODE=copy uv pip install \
 		mkdocs mkdocs-material mkdocs-file-filter-plugin mkdocs-literate-nav \
 		git+https://github.com/tim-janik/mkdocs-live-edit-plugin
