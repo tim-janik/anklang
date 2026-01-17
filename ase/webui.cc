@@ -116,13 +116,13 @@ webui_start_browser (const std::string &mode, MainLoopP loop, const std::string 
                         else if (WIFSIGNALED (status))
                           state = string_format ("signal=%d", WTERMSIG (status));
                         if (state.size()) {
-                          log ("WebUI: child process pid=%d exited: %s", pid, state);
+                          info ("WebUI: child process pid=%d exited: %s", pid, state);
                           atquit_del_killl_pid (pid);
                         }
                         if (onclose)
                           onclose();
                       });
-  log ("WebUI: started %s pid=%d: %s", browser_name, child_pid, url);
+  info ("WebUI: started %s pid=%d: %s", browser_name, child_pid, url);
   return { 0, "" }; // Success
 }
 

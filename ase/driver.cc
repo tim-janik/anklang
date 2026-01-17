@@ -183,10 +183,10 @@ PcmDriver::open (const String &devid, IODir desired, IODir required, const PcmDr
             !(entry.priority & 0x0000ffff))     // ignore secondary devices during auto-selection
           {
             PcmDriverP pcm_driver = RegisteredDriver<PcmDriverP>::open (entry.devid, desired, ep, opener);
-            log ("PcmDriver::open: devid=%s: %s\n", entry.devid, ase_error_blurb (*ep));
+            diag ("PcmDriver::open: devid=%s: %s\n", entry.devid, ase_error_blurb (*ep));
             if (!pcm_driver && required && desired != required) {
               pcm_driver = RegisteredDriver<PcmDriverP>::open (entry.devid, required, ep, opener);
-              log ("PcmDriver::open: devid=%s: %s\n", entry.devid, ase_error_blurb (*ep));
+              diag ("PcmDriver::open: devid=%s: %s\n", entry.devid, ase_error_blurb (*ep));
             }
             if (pcm_driver)
               return pcm_driver;
@@ -243,7 +243,7 @@ MidiDriver::open (const String &devid, IODir iodir, Error *ep)
         if (entry.priority < PSEUDO)    // ignore pseudo devices during auto-selection
           {
             MidiDriverP midi_driver = RegisteredDriver<MidiDriverP>::open (entry.devid, iodir, ep, opener);
-            log ("MidiDriver::open: devid=%s: %s\n", entry.devid, ase_error_blurb (*ep));
+            diag ("MidiDriver::open: devid=%s: %s\n", entry.devid, ase_error_blurb (*ep));
             if (midi_driver)
               return midi_driver;
           }
