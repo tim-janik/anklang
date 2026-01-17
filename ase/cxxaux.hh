@@ -93,8 +93,13 @@ using VoidF = std::function<void()>;
 /// Issue an assertion warning if `expr` evaluates to false.
 #define ASE_ASSERT_WARN(expr)            do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); } while (0)
 
-/// Like ASE_ASSERT_WARN(), enabled if expensive `expr` are allowed.
-#define ASE_ASSERT_PARANOID(expr)        do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); } while (0)
+#ifndef NDEBUG
+/// Assert `expr`, evaluation may be slow, conditionally compiled.
+#define ASE_PARANOID(expr)              do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); } while (0)
+#else
+#define ASE_PARANOID(expr)              do { break; } while (expr)
+#endif
+
 
 /// Abort the program with an error message.
 #define ASE_DIE(msg)                    do { errno = 0; ::Ase::perror_die (msg); } while (0)

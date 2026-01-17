@@ -35,6 +35,8 @@ using Ase::String;
 #define assert_paranoid(expr)           do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); } while (0)
 /// Explicitely mark unreachable code locations.
 #define assert_unreached()              __builtin_unreachable()
+/// Assert `expr`, evaluation may be slow, conditionally compiled.
+#define paranoid(expr)                  ASE_PARANOID (expr)
 
 /// Indentation helper for editors that cannot (yet) decipher `if constexpr`
 #define	if_constexpr	if constexpr
