@@ -69,14 +69,14 @@ perror_die (const std::string &msg) noexcept
 void
 assertion_fatal (const char *msg, const char *file, int line, const char *func) noexcept
 {
-  logging_abort ('A', msg ? msg : "", file, line, func);
+  logging_abort (ASSERTION, msg ? msg : "", file, line, func);
 }
 
 /// Print instructive message, handle "breakpoint", "backtrace" and "fatal-warnings" in $ASE_DEBUG.
 void
 assertion_failed (const char *msg, const char *file, int line, const char *func) noexcept
 {
-  return logging ('A', msg ? msg : "", file, line, func);
+  return logging (ASSERTION, msg ? msg : "", file, line, func);
 }
 
 } // Ase

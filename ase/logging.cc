@@ -15,6 +15,35 @@
 #endif
 #include "internal.hh"
 
+/** Logging levels
+ *
+ * | Type          |  A  |  V  |  L  |  C  | Notes                            |
+ * |---------------|-----|-----|-----|-----|----------------------------------|
+ * | **NONE**      |  -  |  -  |  -  |  -  | Logging disabled                 |
+ * | **DEBUG**     |  -  |  -  |  ✲  |  ◌  | Developer decisions              |
+ * | **TRACE**     |  -  |  -  | 📍  |  ◌  | Flow tracing, light              |
+ * | **DIAG**      |  -  |  -  |  -  |  ✔  | State dumps, actions taken       |
+ * | **INFO**      |  -  | 📢  |  -  |  ✔  | Normal lifecycle events          |
+ * | **HINT**      |  -  | 📢  |  -  |  ✔  | Guidance / suggestions           |
+ * | **WARNING**   | ⚠️   | 📢  |  -  |  ✔  | Unexpected but handled           |
+ * | **PARANOID**  | ⚠️   | 📢  | 📍  |  ◌  | Slow assertions; only in debug   |
+ * | **ASSERTION** | ⚠️   | 📢  | 📍  |  ✔  | Runtime assertions               |
+ * | **FATAL**     | 🚨  | 📢  | 📍  |  ✔  | Immediate termination            |
+ *
+ * Notes:
+ * - T: Temporal: execution-flow; "Where / why did this code run?"
+ * - S: Spatial: state-oriented; "What does the system look like right now?"
+ * - V: Verbosity; 📢: Included in default log level
+ * - A: Abort program: never, configurable (fatal-warnings) or always;
+ *   🚨: Always abort, ⚠️ : Only abort on fatal-warnings
+ * - L: Location; 📍: Show source code location, ✲: conditional location
+ * - C: Compilation; ◌: Compiled unless NDEBUG
+ * - UNREACHABLE: Variant of ASSERTION
+ * - CRITICAL: Variant of WARNING
+ * - ERROR: Variant of WARNING (or FATAL if non-recoverable)
+ * - PANIC: Variant of FATAL
+ */
+
 namespace Ase {
 
 [[noreturn]] static void abort_debug_friendly (const char *msg, const char *file, int line, const char *func) noexcept;
@@ -108,9 +137,39 @@ logging_to_file (const std::string &lines)
     logging_buffer->push_back (lines);
 }
 
-bool
-logging_configure_file (bool to_file)
+const char*
+rfind_debug_value (const char *kvlist, const char *key, const char *fallback)
 {
+  const std::string_view sv = string_option_find_value (kvlist, key, fallback, fallback, false);
+  return sv.data();
+}
+
+static Logging logging_level = TRACE;
+
+static Logging
+parse_log_level (const char *lvl, Logging fallback)
+{
+  static const struct { const char *name; Logging level; } levels[] = {
+    { "FATAL",     FATAL     },
+    { "ASSERTION", ASSERTION },
+    { "HINT",      HINT      },
+    { "INFO",      INFO      },
+    { "DIAG",      DIAG      },
+    { "TRACE",     TRACE     },
+    { "DEBUGALL",  DEBUGALL  },
+  };
+  for (int i = 0; i < sizeof (levels) / sizeof (levels[0]); i++)
+    if (strncasecmp (lvl, levels[i].name, strlen (levels[i].name)) == 0)
+      return levels[i].level;
+  return fallback;
+}
+
+bool
+logging_configure (bool to_file, Logging level)
+{
+  logging_level = level;
+  if (logging_level < FATAL)
+    logging_level = parse_log_level (rfind_debug_value (getenv_ase_debug(), "loglevel", ""), INFO);
   loging_setup();
   if (!to_file) {
     std::lock_guard<std::mutex> locker (logging_buffer_mutex);
@@ -366,8 +425,11 @@ logging_handle_terminate ()
 }
 
 static void
-logging (char code, const std::string &cond, std::string message, const char *filename, uint32_t line, const char *function_name) noexcept
+logging (Logging level, const std::string &cond, std::string message, const char *filename, uint32_t line, const char *function_name) noexcept
 {
+  const bool pabort = level == FATAL || (logging_fatal_warnings && level <= WARN);
+  if (!pabort && level > logging_level)
+    return;
   loging_setup();
   using namespace AnsiColors;
   const auto C = color (FG_CYAN), G = color (BOLD, FG_GREEN), U = color (FG_BLUE), Y = color (FG_YELLOW);
@@ -384,42 +446,38 @@ logging (char code, const std::string &cond, std::string message, const char *fi
       s = B + executable_name() + ":" + S;
     return s;
   };
-  bool pabort = false;
-  String printprefix, kind, logprefix = logging_timestamp (timestamp_now());
-  switch (code)
+  String logprefix = logging_timestamp (timestamp_now()) + ':', printprefix = Y + logprefix + S, kind;
+  switch (level)
     {
-    case 'P':
-      printprefix = location();
-      kind = B + R + "panic:" + S;
-      pabort = true;
+    case FATAL:
+      printprefix = "";
+      kind = location() + ' ' + B + R + "fatal:" + S;
       break;
-    case 'F':
-      printprefix = location();
-      kind = B + R + "fatal:" + S;
-      pabort = true;
-      break;
-    case 'A':
-      printprefix = location();
-      kind = B + R + "assertion failed:" + S;
+    case ASSERTION:
+      printprefix = "";
+      kind = location() + ' ' + B + R + "assertion failed:" + S;
       if (message.empty())
         message = R + "code unreached" + S;
-      pabort = logging_fatal_warnings;
       break;
-    case 'E':
-      printprefix = location();
-      kind = R + "error:" + S;
-      pabort = logging_fatal_warnings;
-      break;
-    case 'W':
-      printprefix = location();
+    case WARN:
+      printprefix = executable_name() + ':';
       kind = Y + "warning:" + S;
-      pabort = logging_fatal_warnings;
       break;
-    default:
-    case 'D':
-      printprefix = C + logprefix + S;
-      logprefix = "";
-      kind = cond.empty() ? executable_name() + ':' : U + cond + ':' + S;
+    case HINT:
+      printprefix = "";
+      kind = C + "Hint:" + S;
+      break;
+    case INFO:
+      kind = executable_name() + ':';
+      break;
+    case DIAG:
+      kind = executable_name() + ':';
+      break;
+    case TRACE:
+      kind = location();
+      break;
+    case DEBUGALL:
+      kind = cond.empty() ? location() : U + cond + ':' + S;
       break;
     }
   String sout = printprefix.empty() ? "" : printprefix + ' ';
@@ -441,15 +499,14 @@ logging (char code, const std::string &cond, std::string message, const char *fi
     sout += message;
   if (sout.size() && sout[sout.size()-1] != '\n')
     sout += '\n';
-  if (logging_fatal_warnings && code == 'W')
+  if (pabort && level > FATAL)
     sout += "Aborting... (fatal-warnings)\n";
   fflush (stdout);      // preserve output ordering
   fputs (sout.c_str(), stderr);
   fflush (stderr);      // some platforms (_WIN32) don't properly flush on '\n'
   if (logprefix.size())
     sout = logprefix + ' ' + sout;
-  sout = Re::sub ("\\x1b\\[[0-9;]*[mK]", "", sout, Re::M);
-  // strip ansi-colors
+  sout = Re::sub ("\\x1b\\[[0-9;]*[mK]", "", sout, Re::M);      // strip ansi-colors
   logging_to_file (pabort ? sout + logging_timestamp (timestamp_now()) + ' ' + executable_name() + ": Aborting...\n" : sout);
   if (pabort) {
     logging_print_backtrace (__func__);
@@ -458,9 +515,9 @@ logging (char code, const std::string &cond, std::string message, const char *fi
 }
 
 void
-logging (char code, const std::string &message, const char *filename, uint32_t line, const char *function_name) noexcept
+logging (Logging level, const std::string &message, const char *file, uint32_t line, const char *func) noexcept
 {
-  logging (code, "", message, filename, line, function_name);
+  logging (level, "", message, file, line, func);
 }
 
 /// Print a debug/diag message, called from ::Ase::debug().
@@ -468,13 +525,13 @@ void
 logging_debug (const char *cond, const std::string &message) noexcept
 {
   return_unless (!cond || debug_key_enabled (cond));
-  logging ('D', cond ? cond : "", message, nullptr, 0, nullptr);
+  logging (cond ? DEBUGALL : DIAG, cond ? cond : "", message, nullptr, 0, nullptr);
 }
 
 void
-logging_abort (char code, const std::string &message, const char *file, uint32_t line, const char *func) noexcept
+logging_abort (Logging level, const std::string &message, const char *file, uint32_t line, const char *func) noexcept
 {
-  logging (code, "", message, file, line, func);
+  logging (level, "", message, file, line, func);
   for (;;)
     abort();
 }

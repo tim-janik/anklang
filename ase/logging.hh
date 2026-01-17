@@ -27,6 +27,7 @@ struct LogFormat {
 
 template<class ...A> void fatal_error (const LogFormat &format, const A &...args) ASE_NORETURN;
 template<class ...A> void warning     (const char *format, const A &...args);
+template<class ...A> void info        (const char *format, const A &...args) ASE_ALWAYS_INLINE;
 template<class ...A> void diag        (const char *format, const A &...args) ASE_ALWAYS_INLINE;
 
 // == Debugging ==
@@ -38,13 +39,15 @@ const char*               getenv_ase_debug  ();
 extern bool ase_debugging_enabled;      ///< Global boolean to reduce debugging penalty where possible
 
 // == Implementations ==
+enum Logging : int { FATAL, ASSERTION, WARN, HINT, INFO, DIAG, TRACE, DEBUGALL, };
 [[noreturn]]
-void    logging_abort (char code, const std::string &message, const char *file, uint32_t line, const char *func) noexcept;
-void    logging       (char code, const std::string &message, const char *file, uint32_t line, const char *func) noexcept;
+void    logging_abort (Logging level, const std::string &message, const char *file, uint32_t line, const char *func) noexcept;
+void    logging       (Logging level, const std::string &message, const char *file, uint32_t line, const char *func) noexcept;
 void    logging_debug (const char *cond, const std::string &message) noexcept;
-bool    logging_configure_file (bool to_file);
 void    stdio_flush   (uint8 code, const String &txt) noexcept;
 extern bool logging_fatal_warnings;
+
+bool    logging_configure (bool to_file, Logging level = Logging (-1));
 
 /// Check if any kind of debugging is enabled by $ASE_DEBUG.
 inline bool ASE_ALWAYS_INLINE ASE_PURE
@@ -66,7 +69,14 @@ debug (const char *cond, const char *format, const Args &...args)
 #endif
 }
 
-/// Issue a printf-like diagnostics message unless debugging is disabled.
+/// Issue a printf-like diagnostics message, usually enabled.
+template<class ...Args> inline void ASE_ALWAYS_INLINE
+info (const char *format, const Args &...args)
+{
+  logging (INFO, string_format (format, args...), nullptr, -1, nullptr);
+}
+
+/// Issue a printf-like diagnostics message, usually below verbosity threshold.
 template<class ...Args> inline void ASE_ALWAYS_INLINE
 diag (const char *format, const Args &...args)
 {
@@ -79,7 +89,7 @@ diag (const char *format, const Args &...args)
 template<class ...Args> void
 fatal_error (const LogFormat &format, const Args &...args)
 {
-  logging_abort ('F', string_format (format.cstr, args...),
+  logging_abort (FATAL, string_format (format.cstr, args...),
                  format.location.file_name(), format.location.line(), format.location.function_name());
 }
 
@@ -87,7 +97,7 @@ fatal_error (const LogFormat &format, const Args &...args)
 template<class ...Args> void
 warning (const char *format, const Args &...args)
 {
-  logging ('W', string_format (format, args...), nullptr, -1, nullptr);
+  logging (WARN, string_format (format, args...), nullptr, -1, nullptr);
 }
 
 /// Print a message on stdout (and flush stdout) ala printf(), using the POSIX/C locale.
@@ -103,17 +113,5 @@ printerr (const char *format, const Args &...args)
 {
   stdio_flush ('e', string_format (format, args...));
 }
-
-// FIXME: remove log()
-template<class... A> __attribute__ ((__always_inline__)) inline void
-log (const char *format, const A &...args)
-{
-#ifndef NDEBUG
-  logging_debug (nullptr, string_format (format, args...));
-#endif
-}
-#ifdef _MATH_H
-using ::log;    // Keep natural logarithmic function available
-#endif
 
 } // Ase

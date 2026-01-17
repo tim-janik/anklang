@@ -482,7 +482,7 @@ main (int argc, char *argv[])
 
   // parse args and config
   parse_args (&argc, argv, main_app);
-  logging_configure_file (arg_ui_mode != "none");
+  logging_configure (arg_ui_mode != "none");
 
   // prepare main event loop (needed before parse_args)
   main_loop = MainLoop::create();
