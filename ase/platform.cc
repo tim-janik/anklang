@@ -734,20 +734,16 @@ get_executable_path()
 std::string
 executable_path()
 {
-  static std::string cached_executable_path = get_executable_path();
-  return cached_executable_path;
+  return get_executable_path();
 }
 
 //// Retrieve the name part of executable_path().
 std::string
 executable_name()
 {
-  static std::string cached_executable_name = [] () {
-    std::string path = executable_path();
-    const char *slash = strrchr (path.c_str(), '/');
-    return slash ? slash + 1 : path;
-  } ();
-  return cached_executable_name;
+  std::string path = executable_path();
+  const char *slash = strrchr (path.c_str(), '/');
+  return slash ? slash + 1 : path;
 }
 
 void fatal_system_error (const char *file, uint line, const char *format, ...) __attribute__ ((__format__ (printf, 3, 4), __noreturn__));
