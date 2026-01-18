@@ -46,6 +46,17 @@ external/choc/.sha-$(choc/sha):
 	$Q touch $@
 EXTERNAL_CXX_STAMPS += external/choc/.sha-$(choc/sha)
 
+# == external/cpptrace/ ==
+cpptrace/sha := 5c9f5b301e903714a4d01f1057b9543fa540f7bfcc5e3f8bd1748e652e24f9ea
+external/cpptrace/.sha-$(cpptrace/sha):
+	$(QGEN)
+	$Q $(call fetch-and-check, external/cpptrace.tar.gz, $(cpptrace/sha), \
+		https://github.com/jeremy-rifkin/cpptrace/archive/refs/tags/v1.0.4.tar.gz)
+	$Q rm -rf external/cpptrace && mkdir external/cpptrace
+	$Q tar xf external/cpptrace.tar.gz --strip-components=1 -C external/cpptrace/
+	$Q touch $@
+EXTERNAL_CXX_STAMPS += external/cpptrace/.sha-$(cpptrace/sha)
+
 # == external/crill/ ==
 crill/version := 20230208.142844-0-gbedcf27
 crill/sha := 7f54d046fbf1839c68a4de0d07886b977527867cb6c89cb7d2c0f0cdcc9c89e4

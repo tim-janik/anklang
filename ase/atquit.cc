@@ -45,7 +45,7 @@ cleanup_orphaned_tempfiles (const std::string &directory)
           if (access (procpath, F_OK) != 0) {
             if (unlink (fullpath) == 0)
               errno = 0;
-            log ("AtQuit: %s: remove \"%s\": %s", __func__, fullpath, strerror (errno));
+            diag ("AtQuit: %s: remove \"%s\": %s", __func__, fullpath, strerror (errno));
           }
         }
       }
@@ -92,7 +92,7 @@ struct PendingRemovals final {
       std::error_code ec;
       std::filesystem::remove_all (tentry, ec);
       errno = ec.value();
-      log ("AtQuit: %s: remove \"%s\": %s", __func__, tentry, strerror (errno));
+      diag ("AtQuit: %s: remove \"%s\": %s", __func__, tentry, strerror (errno));
     }
   }
 private:
@@ -150,7 +150,7 @@ struct KillPids final {
     while (pids.size()) {
       const pid_t pid = pids.back();
       pids.pop_back();
-      log ("AtQuit: %s: pid=%d signal=%d", __func__, pid, sig);
+      diag ("AtQuit: %s: pid=%d signal=%d", __func__, pid, sig);
       kill (pid, sig);
     }
   }
@@ -299,7 +299,7 @@ atquit_terminate (int exitcode, int pgroup)
     sigemptyset (&sa.sa_mask);
     sa.sa_flags = 0;
     sigaction (SIGTERM, &sa, nullptr);
-    log ("AtQuit: killing process group: pid=%d signal=%d", pgroup, SIGTERM);
+    diag ("AtQuit: killing process group: pid=%d signal=%d", pgroup, SIGTERM);
     kill (-pgroup, SIGTERM);
   }
   _Exit (exitcode); // ends all threads with exit_group()

@@ -45,8 +45,8 @@ __DEV__		::=
 else ifeq ($(MODE),devel)
 MODEFLAGS	::= -g -O2
 LDMODEFLAGS	 += -Wl,--no-undefined -g
-else ifeq ($(MODE),debug)
-MODEFLAGS	::= -gdwarf-4 -Og -fno-omit-frame-pointer -fno-inline -fstack-protector-all -fverbose-asm
+else ifneq ($(filter debug cpptrace,$(MODE)),)
+MODEFLAGS	::= -gdwarf -Og -fno-omit-frame-pointer -fno-inline -fstack-protector-all -fverbose-asm
 LDMODEFLAGS	 += -Wl,--no-undefined -g
 __UIDEBUG__	::= 1
 else ifeq ($(MODE),ubsan)

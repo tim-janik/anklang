@@ -161,6 +161,22 @@ $>/ase/buildversion-$(version_hash).cc:						| $>/ase/
 	$Q mv $@.tmp $@
 ase/generated.sources += $>/ase/buildversion-$(version_hash).cc
 
+# == cpptrace ==
+ifeq ($(MODE),cpptrace)
+LIBCPPTRACE_HEADERS := $>/cpptrace/include/cpptrace/cpptrace.hpp $>/cpptrace/include/cpptrace/from_current.hpp
+ASE_CPPTRACE_OBJ := $>/ase/logging.o $>/ase/main.o
+$(ASE_CPPTRACE_OBJ): ASE_EXTRA_INCLUDES += -I$>/cpptrace/include -DASE_WITH_CPPTRACE=1  # also provides addiotnal zstd.h
+$(ASE_CPPTRACE_OBJ): $(LIBCPPTRACE_HEADERS)
+$(LIBCPPTRACE_HEADERS): $>/cpptrace/lib/libcpptrace.a
+$>/cpptrace/lib/libcpptrace.a:		| $(EXTERNAL_CXX_STAMPS)
+	$(QGEN)
+	$Q rm -rf $>/cpptrace/ && mkdir -p $>/cpptrace/
+	$Q cd $>/cpptrace/ && cmake ../../external/cpptrace -DCMAKE_INSTALL_PREFIX="$$PWD" -DCMAKE_BUILD_TYPE=Release
+	$Q cd $>/cpptrace/ && $(MAKE) -j`nproc`
+	$Q cd $>/cpptrace/ && $(MAKE) install
+ASEDEPS_LIBS += -L$>/cpptrace/lib -lcpptrace -ldwarf
+endif
+
 # == AnklangSynthEngine ==
 ase/anklang.ccobjects := $(call BUILDDIR_O, $(filter %.cc, $(ase/anklang.sources)))
 ase/anklang.objects := $(sort \

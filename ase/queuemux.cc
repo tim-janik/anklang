@@ -13,7 +13,7 @@ struct SomeValue {
   int i;
 };
 
-static __attribute__ ((always_inline)) inline long
+static ASE_ALWAYS_INLINE inline long
 QueueMultiplexer_priority (const SomeValue &o)
 {
   return o.i;

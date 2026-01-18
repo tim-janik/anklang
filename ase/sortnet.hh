@@ -9,7 +9,7 @@ namespace Ase {
 
 namespace SortingNetworks {
 
-template<class RandomIt, class Compare> inline __attribute__ ((always_inline)) void
+template<class RandomIt, class Compare> inline __attribute__ ((__always_inline__)) void
 srt (RandomIt &v1, RandomIt &v2, Compare lesser)
 {
   // optimize for *not* needing to swap

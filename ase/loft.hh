@@ -116,7 +116,7 @@ loft_make_unique (Args &&...args)
   T *const t = new (vp.get()) T (std::forward<Args> (args)...);
   LoftFree lfree = vp.get_deleter();
   void *vptr = vp.release();
-  ASE_ASSERT_WARN (t == vptr); // require T* == void*
+  ASE_ASSERT (t == vptr); // require T* == void*
   lfree.dtor_ = [] (void *p) {
     T *const t = static_cast<T*> (p);
     t->~T();

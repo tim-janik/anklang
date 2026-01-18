@@ -54,7 +54,7 @@ using VoidF = std::function<void()>;
 #define ASE_ALIGNED16(pointer)   (!ALIGNMENT16 (pointer))
 
 // Ase macro shorthands for <a href="https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html">GCC Attributes</a>.
-#define ASE_ALWAYS_INLINE       __attribute__ ((always_inline))
+#define ASE_ALWAYS_INLINE       __attribute__ ((__always_inline__))
 #define ASE_COLD                __attribute__ ((__cold__))
 #define ASE_CONST               __attribute__ ((__const__))
 #define ASE_CONSTRUCTOR	        __attribute__ ((constructor,used))      // gcc-3.3 also needs "used" to emit code
@@ -93,8 +93,13 @@ using VoidF = std::function<void()>;
 /// Issue an assertion warning if `expr` evaluates to false.
 #define ASE_ASSERT_WARN(expr)            do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); } while (0)
 
-/// Like ASE_ASSERT_WARN(), enabled if expensive `expr` are allowed.
-#define ASE_ASSERT_PARANOID(expr)        do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); } while (0)
+#ifndef NDEBUG
+/// Assert `expr`, evaluation may be slow, conditionally compiled.
+#define ASE_PARANOID(expr)              do { if (expr) [[likely]] break; ::Ase::assertion_failed (#expr); } while (0)
+#else
+#define ASE_PARANOID(expr)              do { break; } while (expr)
+#endif
+
 
 /// Abort the program with an error message.
 #define ASE_DIE(msg)                    do { errno = 0; ::Ase::perror_die (msg); } while (0)
@@ -186,20 +191,21 @@ divmod (T dividend, T divisor, T *reminderp)
 }
 
 /// Demangle identifier via libcc.
-const char* string_demangle_cxx (const char *mangled_identifier) noexcept;
+const char* cxx_demangle (const std::type_info &typeinfo) noexcept;
+std::string cxx_demangle (const char *mangled_identifier) noexcept;
 
 /// Provide demangled stringified name for type `T`.
 template<class T> ASE_PURE static inline const char*
 typeid_name()
 {
-  return string_demangle_cxx (typeid (T).name());
+  return cxx_demangle (typeid (T));
 }
 
 /// Provide demangled stringified name for object `obj`.
 template<class T> ASE_PURE static inline const char*
 typeid_name (T &obj)
 {
-  return string_demangle_cxx (typeid (obj).name());
+  return cxx_demangle (typeid (obj));
 }
 
 /// Force compiler to forget the origin of a possibly aliasing pointer.
@@ -223,10 +229,6 @@ void assertion_failed (const char *msg = nullptr, const char *file = __builtin_F
                        int line = __builtin_LINE(), const char *func = __builtin_FUNCTION()) noexcept;
 void assertion_fatal  (const char *msg = nullptr, const char *file = __builtin_FILE(),
                        int line = __builtin_LINE(), const char *func = __builtin_FUNCTION()) noexcept ASE_NORETURN;
-extern bool assertion_failed_fatal;
-
-/// Command to start external debugger for a backtrace.
-std::string     backtrace_command ();
 
 /// Test string equality at compile time.
 extern inline constexpr bool
@@ -236,14 +238,14 @@ constexpr_equals (const char *a, const char *b, size_t n)
 }
 
 /// Call inplace new operator by automatically inferring the Type.
-template<class Type, class ...Ts> __attribute__ ((always_inline)) inline void
+template<class Type, class ...Ts> ASE_ALWAYS_INLINE inline void
 new_inplace (Type &typemem, Ts &&... args)
 {
   new (&typemem) Type (std::forward<Ts> (args)...);
 }
 
 /// Call inplace delete operator by automatically inferring the Type.
-template<class Type> __attribute__ ((always_inline)) inline void
+template<class Type> ASE_ALWAYS_INLINE inline void
 delete_inplace (Type &typemem)
 {
   typemem.~Type();

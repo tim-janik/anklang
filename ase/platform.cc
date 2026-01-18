@@ -746,35 +746,6 @@ executable_name()
   return slash ? slash + 1 : path;
 }
 
-void fatal_system_error (const char *file, uint line, const char *format, ...) __attribute__ ((__format__ (printf, 3, 4), __noreturn__));
-
-void
-fatal_system_error (const char *file, uint line, const char *format, ...)
-{
-  const int maxbuffer = 8 * 1024;
-  char buffer[maxbuffer + 2] = { 0, }, *b = buffer, *e = b + maxbuffer;
-  if (file && line)
-    snprintf (b, e - b, "%s:%u: fatal: ", file, line);
-  else if (file)
-    snprintf (b, e - b, "%s: fatal: ", file);
-  else
-    snprintf (b, e - b, "fatal: ");
-  b += strlen (b);
-  va_list argv;
-  va_start (argv, format);
-  const int plen = vsnprintf (b, e - b, format, argv);
-  (void) plen;
-  va_end (argv);
-  b += strlen (b);
-  if (b > buffer && b[-1] != '\n')
-    *b++ = '\n';
-  fflush (stdout);
-  fputs (buffer, stderr);
-  fflush (stderr);
-  kill (getpid(), SIGTERM);      // try to avoid apport, which is triggered by SIGABRT
-  abort();
-}
-
 /// Find the binary file containing the runtime symbol at `symbol_address`.
 static std::string
 find_text_file (ptrdiff_t symbol_address)
@@ -824,7 +795,7 @@ determine_anklangsynthengine_installdir (bool *using_objdir)
   if (string_endswith (pathname, "/lib") || string_endswith (pathname, "/bin"))
     pathname = pathname.substr (0, pathname.size() - 4);
   if (pathname.empty())
-    fatal_system_error ("AnklangSynthEngine", 0, "failed to find executable for symbol: %p", (void*) address);
+    fatal_error ("Failed to find executable for symbol: %p", (void*) address);
   return pathname;
 }
 

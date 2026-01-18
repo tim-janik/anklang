@@ -9,17 +9,6 @@
 
 namespace Ase {
 
-// == Debugging ==
-inline bool               debug_enabled     () ASE_ALWAYS_INLINE ASE_PURE;
-bool                      debug_key_enabled (const char *conditional) ASE_PURE;
-bool                      debug_key_enabled (const std::string &conditional) ASE_PURE;
-std::string               debug_key_value   (const char *conditional) ASE_PURE;
-template<class ...A> void debug             (const char *cond, const char *format, const A &...args) ASE_ALWAYS_INLINE;
-template<class ...A> void fatal_error       (const char *format, const A &...args) ASE_NORETURN;
-template<class ...A> void warning           (const char *format, const A &...args);
-template<class... A> void printout          (const char *format, const A &...args) ASE_PRINTF (1, 0);
-template<class... A> void printerr          (const char *format, const A &...args) ASE_PRINTF (1, 0);
-
 // == misc ==
 const char*                                ase_gettext (const String &untranslated);
 template<class A0, class... Ar> const char* ase_gettext (const char *format, const A0 &a0, const Ar &...restargs) ASE_PRINTF (1, 0);
@@ -159,64 +148,6 @@ uint64_swap_le_be (uint64_t v)
            ((v & 0x0000ff0000000000UL) >> 24) |
            ((v & 0x00ff000000000000UL) >> 40) |
            ((v & 0xff00000000000000UL) >> 56) );
-}
-
-void   debug_message (const char *cond, const std::string &message);
-void   diag_flush (uint8 code, const String &txt);
-String diag_prefix (uint8 code);
-
-/// Global boolean to reduce debugging penalty where possible
-extern bool ase_debugging_enabled;
-/// Global boolean to cause the program to abort on warnings.
-extern bool ase_fatal_warnings;
-
-/// Check if any kind of debugging is enabled by $ASE_DEBUG.
-inline bool ASE_ALWAYS_INLINE ASE_PURE
-debug_enabled()
-{
-  return ASE_UNLIKELY (ase_debugging_enabled);
-}
-
-/// Issue a printf-like debugging message if `cond` is enabled by $ASE_DEBUG.
-template<class ...Args> inline void ASE_ALWAYS_INLINE
-debug (const char *cond, const char *format, const Args &...args)
-{
-  if (debug_enabled())
-    {
-      if (ASE_UNLIKELY (debug_key_enabled (cond)))
-        debug_message (cond, string_format (format, args...));
-    }
-}
-
-/** Issue a printf-like message and abort the program, this function will not return.
- * Avoid using this in library code, aborting may take precious user data with it,
- * library code should instead use warning(), info() or assert_return().
- */
-template<class ...Args> void ASE_NORETURN
-fatal_error (const char *format, const Args &...args)
-{
-  assertion_fatal ((diag_prefix ('F') + string_format (format, args...)).c_str(), nullptr, -1, nullptr);
-}
-
-/// Issue a printf-like warning message.
-template<class ...Args> void
-warning (const char *format, const Args &...args)
-{
-  assertion_failed ((diag_prefix ('W') + string_format (format, args...)).c_str(), nullptr, -1, nullptr);
-}
-
-/// Print a message on stdout (and flush stdout) ala printf(), using the POSIX/C locale.
-template<class... Args> void
-printout (const char *format, const Args &...args)
-{
-  diag_flush ('o', string_format (format, args...));
-}
-
-/// Print a message on stderr (and flush stderr) ala printf(), using the POSIX/C locale.
-template<class... Args> void
-printerr (const char *format, const Args &...args)
-{
-  diag_flush ('e', string_format (format, args...));
 }
 
 /// Translate a string, using the ASE locale.

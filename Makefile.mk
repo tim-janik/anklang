@@ -64,6 +64,7 @@ override MODE !=  case "$(MODE)" in \
 		    p*|pr*|pro*|prod*|produ*|produc*|product*)		MODE=production ;; \
 		    producti*|productio*|production)			MODE=production ;; \
 		    r*|re*|rel*|rele*|relea*|releas*|release)		MODE=production ;; \
+		    cppt*|cpptr*|cpptra*|cpptrac*|cpptrace)		MODE=cpptrace ;; \
 		    dev*|deve*|devel*|develo*|develop*|developm*)	MODE=devel ;; \
 		    developme*|developmen*|development)			MODE=devel ;; \
 		    d*|de*|deb*|debu*|debug|dbg)			MODE=debug ;; \
@@ -446,7 +447,7 @@ help: FORCE
 	@echo '  make DESTDIR=/  - Absolute path prepended to all install/uninstall locations'
 	@echo '  make INSN=...   - Optimize instructions: sse (ca 2008), fma (ca 2015), [native]'
 	@echo "  make MODE=...   - Run 'quick' build or make 'production' mode binaries."
-	@echo '                    Other modes: debug, devel, asan, lsan, tsan, ubsan'
+	@echo '                    Other modes: cpptrace, debug, devel, asan, lsan, tsan, ubsan'
 	@echo 'Notes:'
 	@echo '  .git            - Building in a Git (or Jujutsu) repo triggers additional'
 	@echo '                    checks for e.g. copyright attribution or codegen'
