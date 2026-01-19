@@ -108,7 +108,7 @@ $>/codegen/ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts $(lib/Anklang
 	$Q echo 'Jsonipc.classes["Ase::SharedBase"] = SharedBase;'			>> $@.tmp
 	$Q echo										>> $@.tmp
 	$Q ASAN_OPTIONS=detect_leaks=0 ASE_JSONTS=1 \
-	$(lib/AnklangSynthEngine) --norc  -P null -M null --jsonts			>> $@.tmp
+	$(lib/AnklangSynthEngine) --norc -P null -M null --jsonts			>> $@.tmp
 	$Q echo '/**@type{ServerImpl}*/'						>> $@.tmp
 	$Q echo -n 'export let server: Promise<Server> | Server ='			>> $@.tmp
 	$Q echo 'Jsonipc.setup_promise_type (Server, s => server = s);'			>> $@.tmp
@@ -196,7 +196,7 @@ $(call BUILD_PROGRAM, \
 	$(lib/libase.so), \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl $(lib/libsndfile.so), \
 	../lib)
-ALL_TARGETS += $(lib/AnklangSynthEngine)
+CXX_TARGETS += $(lib/AnklangSynthEngine)
 
 # == jackdriver.so ==
 lib/jackdriver.so	     ::= $>/lib/jackdriver.so
@@ -213,7 +213,7 @@ $(call BUILD_SHARED_LIB,		\
 	$(ANKLANG_JACK_LIBS) $(lib/libase.so), \
 	../lib)
 endif
-ALL_TARGETS += $(lib/jackdriver.so.MAYBE)
+CXX_TARGETS += $(lib/jackdriver.so.MAYBE)
 
 # == gtk2wrap.so ==
 lib/gtk2wrap.so         ::= $>/lib/gtk2wrap.so
@@ -227,7 +227,7 @@ $(call BUILD_SHARED_LIB, \
 	$(lib/libase.so) | $>/lib/, \
 	$(GTK2_LIBS), \
 	../lib)
-ALL_TARGETS += $(lib/gtk2wrap.so)
+CXX_TARGETS += $(lib/gtk2wrap.so)
 
 # == install binaries ==
 $(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
@@ -246,7 +246,7 @@ $>/.media.done: $(EXTERNAL_BLOBS4ANKLANG_STAMPS) $>/media/Samples/
 	$Q ln -s $(abspath external/freepats-vorbis/Drum/*.ogg) $>/media/Samples/freepats-vorbis/Drum/
 	$Q ln -s $(abspath external/freepats-vorbis/Tone/*.ogg) $>/media/Samples/freepats-vorbis/Tone/
 	$Q touch $@
-ALL_TARGETS += $>/.media.done
+CXX_TARGETS += $>/.media.done
 
 # == install media/Samples ==
 media/install:
@@ -290,18 +290,31 @@ ase/lint:
 .PHONY: ase/lint
 lint: ase/lint
 
-# == Check Integrity Tests ==
-check-ase-tests: $(lib/AnklangSynthEngine)
-	$(eval xargs_parallel != P=`parallel --help 2>/dev/null` && \
-	  [[ $$$$P =~ GNU.[Pp]arallel ]] && echo 'parallel --ungroup' || \
-	  { echo 'xargs -n1'; echo "$$$$0: missing 'GNU parallel', falling back to 'xargs'" >&2; } )
+# == check-test-list ==
+.PHONY: check-ase-tests
+# Check: ase/tests/TestList.mk
+check-test-list: $(lib/AnklangSynthEngine)	| $>/ase/tests/
 	$(QGEN)
-	$Q : $(lib/AnklangSynthEngine) --check
-	$Q set -Eeuo pipefail \
-	&& $(lib/AnklangSynthEngine) --list-tests \
-	|  $(xargs_parallel) $(lib/AnklangSynthEngine) --norc -P null -M null --test
-CHECK_TARGETS += check-ase-tests
+	$Q echo -n 'ASE_TEST_LIST := '				>  $>/ase/tests/TestList.mk
+	$Q $(lib/AnklangSynthEngine) --list-tests=$$' \\\n'	>> $>/ase/tests/TestList.mk
+	$Q if cmp -s ase/tests/TestList.mk $>/ase/tests/TestList.mk ; then rm $>/ase/tests/TestList.mk ; else \
+	( diff -u ase/tests/TestList.mk $>/ase/tests/TestList.mk || : ) \
+	&& test -t 0 && ( read -p "? Update ase/tests/TestList.mk? [y/N] " ANS ; test "$$ANS" = "y" && mv $>/ase/tests/TestList.mk ase/tests/TestList.mk ) \
+	&& ( echo 'ase/tests/TestList.mk: test list updated, restart make' ; false ) \
+	fi
+check-ase-tests: check-test-list
 
+# == check-ase-tests ==
+include ase/tests/TestList.mk	# ASE_TEST_LIST
+define ASE_TEST_CHECK
+check-$1: $$(lib/AnklangSynthEngine)
+	$$(QECHO) CHECK '$1'
+	$$Q $$(lib/AnklangSynthEngine) --norc -P null -M null --test '$1'
+.PHONY: check-$1
+check-ase-tests: check-$1
+endef
+$(foreach T, $(ASE_TEST_LIST), $(eval $(call ASE_TEST_CHECK,$T)))
+CHECK_TARGETS += check-ase-tests
 
 # == libsndfile ==
 # cmake -B out/sndfile/ -S external/libsndfile/ -DBUILD_SHARED_LIBS=ON -DBUILD_PROGRAMS=OFF -DBUILD_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=MINSIZEREL

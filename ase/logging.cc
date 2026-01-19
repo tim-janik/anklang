@@ -222,7 +222,7 @@ logging_configure (bool to_file, Logging level)
 
 // == Stacktrace ==
 /// Find GDB and construct command line
-static std::string
+[[maybe_unused]] static std::string
 backtrace_command (const char *dbgr)
 {
 #if 0 && defined (__linux__)
@@ -299,6 +299,7 @@ debug_key_value (const char *conditional)
   return String (sv);
 }
 
+#ifndef NDEBUG
 static void
 print_backtrace (FILE *stdio, const std::vector<void*> &frames)
 {
@@ -338,6 +339,7 @@ print_backtrace (FILE *stdio, const std::vector<void*> &frames)
   }
   free (symbols);
 }
+#endif // NDEBUG
 
 /// Print confiogurable stack trace.
 static void
