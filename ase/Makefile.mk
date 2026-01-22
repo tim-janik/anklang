@@ -23,6 +23,7 @@ ASE_EXTRA_INCLUDES := $(strip			\
 	-Iexternal/websocketpp			\
 	$(ASEDEPS_CFLAGS)			\
 ) # also used by clang-tidy
+PROMPT := prompt() ( test "$${CODEGEN-}" == y && return 0; read -p "$$1 [y/N] " A && test "$$A" == y ; ) && prompt
 
 # == ase/sysconfig.h ==
 $>/ase/sysconfig.h: $(config-stamps)			| $>/ase/tests/ # ase/Makefile.mk
@@ -198,7 +199,7 @@ check-pch-list: $(lib/AnklangSynthEngine)	| $>/ase/tests/
 	$Q echo				>>$>/ase/PchList.mk
 	$Q if cmp -s ase/PchList.mk $>/ase/PchList.mk ; then rm $>/ase/PchList.mk ; else \
 	( diff -u ase/PchList.mk $>/ase/PchList.mk || : ) \
-	&& test -t 0 && ( read -p "? Update ase/PchList.mk? [y/N] " ANS ; test "$$ANS" = "y" && mv $>/ase/PchList.mk ase/PchList.mk ) \
+	&& test -t 0 && ( $(PROMPT) "? Update ase/PchList.mk?" && mv $>/ase/PchList.mk ase/PchList.mk ) \
 	&& ( echo 'ase/PchList.mk: test list updated, restart make' ; false ) \
 	fi
 check-ase-tests: check-pch-list
