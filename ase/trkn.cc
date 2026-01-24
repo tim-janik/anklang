@@ -12,6 +12,19 @@ namespace te = tracktion::engine;
 
 namespace Ase {
 
+void // see tracktion_engine.h
+trkn_tracktion_log_msg (const juce::String &msg)
+{
+  diag ("TRACKTION: %s", msg.toStdString());
+}
+
+void // see tracktion_engine.h
+trkn_tracktion_log_error (const juce::String &errmsg)
+{
+  // TRACKTION_LOG_ERROR is mostly used for IO or exec errors
+  warning ("TRACKTION: error: %s", errmsg.toStdString());
+}
+
 struct EngineBehaviour : te::EngineBehaviour {
   bool nodevs = false;
   bool autoInitialiseDeviceManager () override          { return !nodevs; }
