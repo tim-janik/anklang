@@ -152,7 +152,7 @@ namespace FlacNamespace
   #define NDEBUG // (some flac code prints cpu info if this isn't defined)
  #endif
 
-#include <FLAC/all.h>␍
+#include <FLAC/all.h>
 #if 0
  #include "flac/all.h"
  #include "flac/libFLAC/bitmath.c"
