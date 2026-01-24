@@ -251,8 +251,14 @@
 #endif
 
 #if TRACKTION_LOG_ENABLED
- #define TRACKTION_LOG(a)        juce::Logger::writeToLog(a)
- #define TRACKTION_LOG_ERROR(a)  juce::Logger::writeToLog (juce::String ("*** ERROR: ") + a);
+namespace Ase {
+  void trkn_tracktion_log_msg   (const juce::String&);
+  void trkn_tracktion_log_error (const juce::String&);
+} // Ase
+  #define TRACKTION_LOG(a)        Ase::trkn_tracktion_log_msg (a)
+  #define TRACKTION_LOG_ERROR(a)  Ase::trkn_tracktion_log_error (a)
+// #define TRACKTION_LOG(a)        juce::Logger::writeToLog(a)
+// #define TRACKTION_LOG_ERROR(a)  juce::Logger::writeToLog (juce::String ("*** ERROR: ") + a);
 #else
  #define TRACKTION_LOG(a)        {}
  #define TRACKTION_LOG_ERROR(a)  {}
