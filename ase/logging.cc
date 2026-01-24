@@ -168,8 +168,17 @@ bool
 logging_configure (bool to_file, Logging level)
 {
   logging_level = level;
-  if (logging_level < FATAL)
-    logging_level = parse_log_level (rfind_debug_value (getenv_ase_debug(), "loglevel", ""), INFO);
+  if (logging_level < FATAL) {
+    // ASE_DEBUG={all|trace|diag|loglevel=<level>} for logging
+    if (strcmp ("0", rfind_debug_value (getenv_ase_debug(), "all", "0")) != 0)
+      logging_level = TRACE;
+    else if (strcmp ("0", rfind_debug_value (getenv_ase_debug(), "trace", "0")) != 0)
+      logging_level = TRACE;
+    else if (strcmp ("0", rfind_debug_value (getenv_ase_debug(), "diag", "0")) != 0)
+      logging_level = DIAG;
+    else
+      logging_level = parse_log_level (rfind_debug_value (getenv_ase_debug(), "loglevel", ""), INFO);
+  }
   loging_setup();
   if (!to_file) {
     std::lock_guard<std::mutex> locker (logging_buffer_mutex);
