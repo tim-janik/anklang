@@ -81,6 +81,14 @@ trkn_shutdown ()
   trkn_app->shutdownApp();
 }
 
+struct AseLogger : public juce::Logger {
+  void
+  logMessage (const juce::String &msg) override
+  {
+    diag ("JUCE: %s", msg.toStdString());
+  }
+};
+
 /** Setup @ref tracktion and @ref tracktion::engine.
  * Initializes juce::JUCEApplication, creates tracktion::engine::Engine, tracktion::engine::DeviceManager,
  * scans for Audio and MIDI devices to preapre for playback. Interesting tracktion classes:
@@ -91,6 +99,8 @@ bool
 trkn_init (int argc, char *argv[], bool nodevs)
 {
   assert_return (!trkn_app && main_loop, false);
+  static AseLogger *logger = new AseLogger();
+  juce::Logger::setCurrentLogger (logger);
   // juce requires a JUCEApplicationBase instance
   trkn_app = new TrknApp();
   if (!trkn_app->initialiseApp()) {
