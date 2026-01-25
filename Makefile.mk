@@ -105,6 +105,7 @@ CHECK_TARGETS	::=
 CLEANFILES	::=
 CLEANDIRS	::=
 MAKE_HELP	:=
+NONBUILD_RULES	:= clean help
 
 # == Defaults ==
 INCLUDES	::= -I.
@@ -155,7 +156,9 @@ $>/WILDCARD_FILES.mk: $(REPOCOMMITDEPS)	| $>/
 	@ # Use most accurate file list for WILDCARD_FILES.mk
 	$Q test ! -r $@.repo || mv $@.repo $@.find
 	$Q sed -r '1s/^/WILDCARD_FILES := /; s/$$/ \\/' < $@.find > $@ && rm -f $@.find
+ifeq ($(filter $(NONBUILD_RULES),$(MAKECMDGOALS)),)
 include $>/WILDCARD_FILES.mk	# define WILDCARD_FILES
+endif
 
 # == enduser targets ==
 all: FORCE
