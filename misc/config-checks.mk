@@ -83,14 +83,6 @@ ASEDEPS_PACKAGES ::= libpcre2-8 zlib opus flac dbus-1 \
 ANKLANGDEP_JACK  ::= jack >= 0.125.0
 
 # == config-cache.mk ==
-# Note, using '-include config-cache.mk' will ignore errors during config-cache.mk creation,
-# e.g. due to missing pkg-config requirements. So we have to use 'include config-cache.mk'
-# and then need to work around the file not existing initially by creating a dummy and
-# forcing a remake via 'FORCE'.
-ifeq ('','$(wildcard $>/config-cache.mk)')
-  $(shell mkdir -p $>/ && echo '$>/config-cache.mk: FORCE' > $>/config-cache.mk)
-endif
-include $>/config-cache.mk
 # Rule for the actual checks:
 $>/config-cache.mk: misc/config-checks.mk $(REPOCOMMITDEPS) | $>/./
 	$(QECHO) CHECK    Configuration dependencies...
@@ -141,7 +133,13 @@ $>/config-cache.mk: misc/config-checks.mk $(REPOCOMMITDEPS) | $>/./
 		   ; } )
 	$Q mv $>/config-cache.mk $>/config-cache.old 2>/dev/null || true
 	$Q mv $@.tmp $@
+ifeq ($(filter $(NONBUILD_RULES),$(MAKECMDGOALS)),)
+# Note, using '-include config-cache.mk' will ignore errors during config-cache.mk creation,
+# e.g. due to missing pkg-config requirements. So we have to use 'include config-cache.mk'
+# conditionally.
+include $>/config-cache.mk
 $>/config-stamps.sha256: $>/config-cache.mk
+endif	# avoid rebuils for `make clean` etc
 # About config-stamps.sha256: For a variety of reasons, config-cache.mk may be
 # often regenerated. To efficiently detect changes in the build configuration,
 # use $(config-stamps) as dependency.
