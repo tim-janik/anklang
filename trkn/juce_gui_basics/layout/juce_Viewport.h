@@ -342,10 +342,7 @@ private:
     class AccessibilityIgnoredComponent : public Component
     {
     public:
-        std::unique_ptr<AccessibilityHandler> createAccessibilityHandler() override
-        {
-            return createIgnoredAccessibilityHandler (*this);
-        }
+        std::unique_ptr<AccessibilityHandler> createAccessibilityHandler() override;
     };
 
     std::unique_ptr<ScrollBar> verticalScrollBar, horizontalScrollBar;
