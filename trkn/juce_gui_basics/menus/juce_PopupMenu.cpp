@@ -1830,6 +1830,13 @@ void PopupMenu::addItem (int itemResultID, String itemText, bool isActive,
 
 void PopupMenu::addCommandItem (ApplicationCommandManager* commandManager,
                                 const CommandID commandID,
+                                String displayName)
+{
+  addCommandItem (commandManager, commandID, displayName, nullptr);
+}
+
+void PopupMenu::addCommandItem (ApplicationCommandManager* commandManager,
+                                const CommandID commandID,
                                 String displayName,
                                 std::unique_ptr<Drawable> iconToUse)
 {

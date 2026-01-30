@@ -298,8 +298,12 @@ public:
     */
     void addCommandItem (ApplicationCommandManager* commandManager,
                          CommandID commandID,
-                         String displayName = {},
-                         std::unique_ptr<Drawable> iconToUse = {});
+                         String displayName,
+                         std::unique_ptr<Drawable> iconToUse);
+
+    void addCommandItem (ApplicationCommandManager* commandManager,
+                         CommandID commandID,
+                         String displayName = {});
 
     /** Appends a text item with a special colour.
 
