@@ -104,10 +104,12 @@ void MidiInputCallback::handlePartialSysexMessage ([[maybe_unused]] MidiInput* s
                                                    [[maybe_unused]] double timestamp) {}
 
 //==============================================================================
+#if 0 // moved to trkn/juce_audio_devices/native/juce_Midi_linux.cpp
 MidiOutput::MidiOutput (const String& deviceName, const String& deviceIdentifier)
     : Thread ("midi out"), deviceInfo (deviceName, deviceIdentifier)
 {
 }
+#endif
 
 void MidiOutput::sendBlockOfMessagesNow (const MidiBuffer& buffer)
 {
