@@ -657,44 +657,6 @@ private:
 
 
 //==============================================================================
-static juce::Array<TransportControl*, juce::CriticalSection> activeTransportControls;
-
-//==============================================================================
-TransportControl::TransportControl (Edit& ed, const juce::ValueTree& v)
-    : engine (ed.engine), edit (ed), state (v)
-{
-    jassert (state.hasType (IDs::TRANSPORT));
-    juce::UndoManager* um = nullptr;
-    startPosition.referTo (state, IDs::start, um);
-    position.referTo (state, IDs::position, um);
-    loopPoint1.referTo (state, IDs::loopPoint1, um);
-    loopPoint2.referTo (state, IDs::loopPoint2, um);
-    snapToTimecode.referTo (state, IDs::snapToTimecode, um, true);
-    looping.referTo (state, IDs::looping, um);
-    scrubInterval.referTo (state, IDs::scrubInterval, um, 0.1s);
-
-    playHeadWrapper = std::make_unique<PlayHeadWrapper> (*this);
-    transportState = std::make_unique<TransportState> (*this, state);
-
-    rwRepeater = std::make_unique<ButtonRepeater> (*this, true);
-    ffRepeater = std::make_unique<ButtonRepeater> (*this, false);
-
-    fileFlushTimer = std::make_unique<FileFlushTimer> (*this);
-
-    activeTransportControls.add (this);
-    startTimerHz (50);
-}
-
-TransportControl::~TransportControl()
-{
-    activeTransportControls.removeAllInstancesOf (this);
-    fileFlushTimer = nullptr;
-
-    CRASH_TRACER
-    stop (false, true);
-}
-
-//==============================================================================
 juce::Array<TransportControl*> TransportControl::getAllActiveTransports (Engine& engine)
 {
     juce::Array<TransportControl*> controls;
@@ -876,6 +838,44 @@ struct TransportControl::ScreenSaverDefeater
         juce::Desktop::setScreenSaverEnabled (numScreenSaverDefeaters == 0);
     }
 };
+
+//==============================================================================
+static juce::Array<TransportControl*, juce::CriticalSection> activeTransportControls;
+
+//==============================================================================
+TransportControl::TransportControl (Edit& ed, const juce::ValueTree& v)
+    : engine (ed.engine), edit (ed), state (v)
+{
+    jassert (state.hasType (IDs::TRANSPORT));
+    juce::UndoManager* um = nullptr;
+    startPosition.referTo (state, IDs::start, um);
+    position.referTo (state, IDs::position, um);
+    loopPoint1.referTo (state, IDs::loopPoint1, um);
+    loopPoint2.referTo (state, IDs::loopPoint2, um);
+    snapToTimecode.referTo (state, IDs::snapToTimecode, um, true);
+    looping.referTo (state, IDs::looping, um);
+    scrubInterval.referTo (state, IDs::scrubInterval, um, 0.1s);
+
+    playHeadWrapper = std::make_unique<PlayHeadWrapper> (*this);
+    transportState = std::make_unique<TransportState> (*this, state);
+
+    rwRepeater = std::make_unique<ButtonRepeater> (*this, true);
+    ffRepeater = std::make_unique<ButtonRepeater> (*this, false);
+
+    fileFlushTimer = std::make_unique<FileFlushTimer> (*this);
+
+    activeTransportControls.add (this);
+    startTimerHz (50);
+}
+
+TransportControl::~TransportControl()
+{
+    activeTransportControls.removeAllInstancesOf (this);
+    fileFlushTimer = nullptr;
+
+    CRASH_TRACER
+    stop (false, true);
+}
 
 //==============================================================================
 void TransportControl::play (bool justSendMMCIfEnabled)
