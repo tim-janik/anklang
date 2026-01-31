@@ -1,3 +1,7 @@
+## Anklang NEXT
+
+* Switched to C++23, improved various build system automations.
+
 ## Anklang 0.3.0
 
 **Full Changelog**: [https://github.com/tim-janik/anklang/compare/v0.2.0...v0.3.0](https://github.com/tim-janik/anklang/compare/v0.2.0...v0.3.0)

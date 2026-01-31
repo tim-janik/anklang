@@ -36,7 +36,7 @@ $>/clang-tidy/%.log: % $(REPOCOMMITDEPS)					| $>/clang-tidy/
 	$Q mkdir -p $(dir $@) && rm -f $>/clang-tidy/$<.*
 	$Q set +o pipefail \
 	&& CTIDY_DEFS=( $(ASE_EXTERNAL_INCLUDES) $(CLANG_TIDY_DEFS) $($<.CTIDY_DEFS) -march=x86-64-v2 ) \
-	&& [[ $< = @(*.[hc]) ]] || CTIDY_DEFS+=( -std=gnu++20 ) \
+	&& [[ $< = @(*.[hc]) ]] || CTIDY_DEFS+=( -std=gnu++23 ) \
 	&& (set -x ; $(CLANG_TIDY) --export-fixes=$>/clang-tidy/$<.yaml $< $($<.CTIDY_FLAGS) -- "$${CTIDY_DEFS[@]}" ) >$@~ 2>&1 || :
 	$Q mv $@~ $@
 CLANG_TIDY_DEFS := -I. -I$> -isystem external/ -isystem $>/external/ -DASE_COMPILATION $(ASEDEPS_CFLAGS) $(GTK2_CFLAGS)

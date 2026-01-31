@@ -598,20 +598,27 @@ Pcg32Rng::seed (uint64_t offset, uint64_t sequence)
 static uint64_t
 global_random64()
 {
-  static KeccakRng *global_rng = NULL;
-  static std::mutex mtx;
-  std::unique_lock<std::mutex> lock (mtx);
-  if (UNLIKELY (!global_rng))
+  struct Rng {
+    std::mutex mtx_;
+    KeccakRng keccak_;
+    Rng() :
+      keccak_ (256, 8)
     {
-      uint64 entropy[32];
-      collect_runtime_entropy (entropy, ARRAY_SIZE (entropy));
-      static std::aligned_storage<sizeof (KeccakRng), alignof (KeccakRng)>::type mem;
       // 8 rounds provide good statistical shuffling, and
       // 256 hidden bits make the generator state unguessable
-      global_rng = new (&mem) KeccakRng (256, 8);
-      global_rng->seed (entropy, ARRAY_SIZE (entropy));
+      uint64 entropy[32];
+      collect_runtime_entropy (entropy, ARRAY_SIZE (entropy));
+      keccak_.seed (entropy, ARRAY_SIZE (entropy));
     }
-  return global_rng->random();
+  };
+  static Rng &rng = * []
+  {
+    struct alignas (Rng) RngMem { char data[sizeof (Rng)]; };
+    static RngMem mem;
+    return new (&mem) Rng {};
+  } ();
+  std::unique_lock<std::mutex> guard (rng.mtx_);
+  return rng.keccak_.random();
 }
 
 /** Generate a non-deterministic, uniformly distributed 64 bit pseudo-random number.

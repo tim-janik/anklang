@@ -112,7 +112,7 @@ INCLUDES	::= -I.
 DEFS		::=
 
 # == Compiler Setup ==
-CXXSTD		::= -std=gnu++20 -pthread -pipe
+CXXSTD		::= -std=gnu++23 -pthread -pipe
 CSTD		::= -std=gnu11 -pthread -pipe
 EXTRA_DEFS	::= # target private defs, lesser precedence than CXXFLAGS
 EXTRA_INCLUDES	::= # target private defs, lesser precedence than CXXFLAGS
@@ -206,8 +206,8 @@ default: FORCE
 
 # == output directory rules ==
 # rule to create output directories from order only dependencies, trailing slash required
-$>/%/:
-	$Q mkdir -p $@
+$>/: ; $Q mkdir -p $@
+$>/%/: ; $Q mkdir -p $@
 .PRECIOUS: $>/%/ # prevent MAKE's 'rm ...' for automatically created dirs
 
 # == FORCE rules ==

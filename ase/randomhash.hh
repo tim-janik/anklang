@@ -17,7 +17,7 @@ namespace Ase {
  */
 template<size_t SIZE>
 struct alignas (16) AlignedPOD {
-  typename std::aligned_storage<SIZE, 16>::type mem;
+  alignas (16) unsigned char mem[SIZE];
   /* malloc() aligns to 2 * sizeof (size_t), i.e. 16 on 64bit, max_align_t is
    * usually aligned to long double, i.e. 16, and most SIMD code also needs at
    * least 16 byte alignment.
