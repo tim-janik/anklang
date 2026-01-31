@@ -819,22 +819,6 @@ private:
 };
 
 //==============================================================================
-TreeView::TreeView (const String& name)  : Component (name)
-{
-    viewport = std::make_unique<TreeViewport> (*this);
-    addAndMakeVisible (viewport.get());
-    viewport->setViewedComponent (new ContentComponent (*this));
-
-    setWantsKeyboardFocus (true);
-    setFocusContainerType (FocusContainerType::focusContainer);
-}
-
-TreeView::~TreeView()
-{
-    if (rootItem != nullptr)
-        rootItem->setOwnerView (nullptr);
-}
-
 void TreeView::setRootItem (TreeViewItem* const newRootItem)
 {
     if (rootItem != newRootItem)
@@ -1357,6 +1341,23 @@ public:
 private:
     JUCE_DECLARE_NON_COPYABLE (TargetGroupHighlight)
 };
+
+//==============================================================================
+TreeView::TreeView (const String& name)  : Component (name)
+{
+    viewport = std::make_unique<TreeViewport> (*this);
+    addAndMakeVisible (viewport.get());
+    viewport->setViewedComponent (new ContentComponent (*this));
+
+    setWantsKeyboardFocus (true);
+    setFocusContainerType (FocusContainerType::focusContainer);
+}
+
+TreeView::~TreeView()
+{
+    if (rootItem != nullptr)
+        rootItem->setOwnerView (nullptr);
+}
 
 //==============================================================================
 void TreeView::showDragHighlight (const InsertPoint& insertPos) noexcept
