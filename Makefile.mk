@@ -206,8 +206,8 @@ default: FORCE
 
 # == output directory rules ==
 # rule to create output directories from order only dependencies, trailing slash required
-$>/%/:
-	$Q mkdir -p $@
+$>/: ; $Q mkdir -p $@
+$>/%/: ; $Q mkdir -p $@
 .PRECIOUS: $>/%/ # prevent MAKE's 'rm ...' for automatically created dirs
 
 # == FORCE rules ==
