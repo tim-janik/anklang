@@ -290,22 +290,33 @@ ase/lint:
 .PHONY: ase/lint
 lint: ase/lint
 
+# == ase/tests/TestList.mk ==
+ase/tests/TestList.INPUTS := $(wildcard ase/*.cc ase/*/*.cc devices/*.cc devices/*/*.cc)
+ase/tests/TestList.mk:	# any deps here are forced to be rebuilt during Makefile parsing
+	$(QGEN)
+	$Q echo 'ASE_TEST_LIST := '\\			> $@.tmp
+	$Q cat $(ase/tests/TestList.INPUTS) | \
+		grep -Eo 'TEST_\w+ ?\((\w+)\)' | \
+		sed 's/.*(/  /; s/)/ \\/' | sort	>>$@.tmp
+	$Q mv $@.tmp $@
+ifneq (,$(shell find $(ase/tests/TestList.INPUTS) -newer ase/tests/TestList.mk))
+.PHONY: ase/tests/TestList.mk	# update TestList.mk without forcing rebuild of INPUTS
+endif
+include ase/tests/TestList.mk	# ASE_TEST_LIST
+
 # == check-test-list ==
 .PHONY: check-ase-tests
 # Check: ase/tests/TestList.mk
 check-test-list: $(lib/AnklangSynthEngine)	| $>/ase/tests/
 	$(QGEN)
-	$Q echo -n 'ASE_TEST_LIST := '				>  $>/ase/tests/TestList.mk
-	$Q $(lib/AnklangSynthEngine) --list-tests=$$' \\\n'	>> $>/ase/tests/TestList.mk
+	$Q echo 'ASE_TEST_LIST := '\\			>  $>/ase/tests/TestList.mk
+	$Q $(lib/AnklangSynthEngine) --list-tests | \
+		sed 's/^/  /; s/$$/ \\/' | sort		>> $>/ase/tests/TestList.mk
 	$Q if cmp -s ase/tests/TestList.mk $>/ase/tests/TestList.mk ; then rm $>/ase/tests/TestList.mk ; else \
-	( diff -u ase/tests/TestList.mk $>/ase/tests/TestList.mk || : ) \
-	&& test -t 0 && ( read -p "? Update ase/tests/TestList.mk? [y/N] " ANS ; test "$$ANS" = "y" && mv $>/ase/tests/TestList.mk ase/tests/TestList.mk ) \
-	&& ( echo 'ase/tests/TestList.mk: test list updated, restart make' ; false ) \
-	fi
+	  diff -u ase/tests/TestList.mk $>/ase/tests/TestList.mk ; fi
 check-ase-tests: check-test-list
 
 # == check-ase-tests ==
-include ase/tests/TestList.mk	# ASE_TEST_LIST
 define ASE_TEST_CHECK
 check-$1: $$(lib/AnklangSynthEngine)
 	$$(QECHO) CHECK '$1'
