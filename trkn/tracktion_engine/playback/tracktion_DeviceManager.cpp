@@ -172,25 +172,6 @@ struct DeviceManager::PrepareToStartCaller  : public juce::AsyncUpdater
 
 //==============================================================================
 //==============================================================================
-DeviceManager::DeviceManager (Engine& e) : engine (e)
-{
-    CRASH_TRACER
-
-    prepareToStartCaller = std::make_unique<PrepareToStartCaller> (*this);
-
-    deviceManager.addChangeListener (this);
-
-    gDeviceManager = &deviceManager;
-}
-
-DeviceManager::~DeviceManager()
-{
-    gDeviceManager = nullptr;
-
-    CRASH_TRACER
-    deviceManager.removeChangeListener (this);
-}
-
 void DeviceManager::initialise (int defaultNumInputs, int defaultNumOutputs)
 {
     defaultNumInputChannelsToOpen = defaultNumInputs;
@@ -206,30 +187,6 @@ void DeviceManager::initialise (int defaultNumInputs, int defaultNumOutputs)
 
     midiRescanIntervalSeconds = engine.getPropertyStorage().getProperty (SettingID::midiScanIntervalSeconds, 4);
     restartMidiCheckTimer();
-}
-
-void DeviceManager::closeDevices()
-{
-    CRASH_TRACER
-    TRACKTION_ASSERT_MESSAGE_THREAD
-
-    lastMIDIDeviceList.reset();
-    lastAvailableWaveDeviceList.reset();
-
-    jassert (activeContexts.isEmpty());
-    clearAllContextDevices();
-
-    deviceManager.removeAudioCallback (this);
-
-    midiOutputs.clear();
-
-    {
-        const std::unique_lock sl (midiInputsMutex);
-        midiInputs.clear();
-    }
-
-    waveInputs.clear();
-    waveOutputs.clear();
 }
 
 void DeviceManager::resetToDefaults (bool deviceSettings, bool resetInputDevices,
@@ -1654,6 +1611,49 @@ void DeviceManager::setGlobalOutputAudioProcessor (std::unique_ptr<juce::AudioPr
     }
 
     newProcessor.reset();
+}
+
+DeviceManager::DeviceManager (Engine& e) : engine (e)
+{
+    CRASH_TRACER
+
+    prepareToStartCaller = std::make_unique<PrepareToStartCaller> (*this);
+
+    deviceManager.addChangeListener (this);
+
+    gDeviceManager = &deviceManager;
+}
+
+DeviceManager::~DeviceManager()
+{
+    gDeviceManager = nullptr;
+
+    CRASH_TRACER
+    deviceManager.removeChangeListener (this);
+}
+
+void DeviceManager::closeDevices()
+{
+    CRASH_TRACER
+    TRACKTION_ASSERT_MESSAGE_THREAD
+
+    lastMIDIDeviceList.reset();
+    lastAvailableWaveDeviceList.reset();
+
+    jassert (activeContexts.isEmpty());
+    clearAllContextDevices();
+
+    deviceManager.removeAudioCallback (this);
+
+    midiOutputs.clear();
+
+    {
+        const std::unique_lock sl (midiInputsMutex);
+        midiInputs.clear();
+    }
+
+    waveInputs.clear();
+    waveOutputs.clear();
 }
 
 }} // namespace tracktion { inline namespace engine
