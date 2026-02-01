@@ -1377,7 +1377,7 @@ host_register_timer (const clap_host *host, uint32_t period_ms, clap_id *timer_i
   auto timeridp = std::make_shared<uint> (0);
   *timeridp = main_loop->exec_timer ([handlep, timeridp] () {
     return host_call_on_timer (handlep, *timeridp);
-  }, period_ms, period_ms, EventLoop::PRIORITY_UPDATE);
+  }, period_ms, period_ms);
   *timer_id = *timeridp;
   handlep->timers_.push_back (*timeridp);
   CDEBUG ("%s: %s: ms=%u: id=%u", clapid (host), __func__, period_ms, *timer_id);

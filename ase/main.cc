@@ -497,7 +497,7 @@ main (int argc, char *argv[])
   // prepare main event loop (needed before parse_args)
   main_loop = MainLoop::create();
   // handle loft preallocation needs
-  main_loop->exec_dispatcher (dispatch_loft_lowmem, EventLoop::PRIORITY_CEILING);
+  main_loop->exec_dispatcher (dispatch_loft_lowmem, EventLoop::PRIORITY_SYSALLOC);
 
   // load preferences unless --norc was given
   if (!App.norc)
@@ -654,7 +654,7 @@ main (int argc, char *argv[])
 
   // run test suite
   if (App.mode == MainApp::CHECK_INTEGRITY_TESTS)
-    main_loop->exec_now (run_tests_and_quit);
+    main_loop->exec_callback (run_tests_and_quit);
 
   // run main event loop and catch SIGUSR2
   const int exitcode = main_loop->run();

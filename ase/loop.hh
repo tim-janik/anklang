@@ -85,16 +85,16 @@ public:
   typedef std::function<bool (const LoopState&)> DispatcherSlot;
   typedef std::function<bool (int8)>             USignalSlot;
   typedef std::function<void (int,int)>          SigchldSlot;
-  static const int16 PRIORITY_CEILING = 999; ///< Internal upper limit, don't use.
-  static const int16 PRIORITY_NOW     = 900; ///< Most important, used for immediate async execution.
-  static const int16 PRIORITY_ASCENT  = 800; ///< Threshold for priorization across different loops.
-  static const int16 PRIORITY_HIGH    = 700; ///< Very important, used for timers or IO handlers.
-  static const int16 PRIORITY_NEXT    = 600; ///< Important, used for async operations and callbacks.
-  static const int16 PRIORITY_NORMAL  = 500; ///< Normal importantance, GUI event processing, RPC.
-  static const int16 PRIORITY_UPDATE  = 400; ///< Mildly important, used for GUI updates or user information.
-  static const int16 PRIORITY_IDLE    = 200; ///< Mildly important, used for background tasks.
-  static const int16 PRIORITY_LOW     = 100; ///< Unimportant, used when everything else done.
-  void wakeup   ();                          ///< Wakeup loop from polling.
+  static const int16 PRIORITY_SYSALLOC = 900; ///< Internal maintenance, don't use.
+  static const int16 PRIORITY_RTAUDIO  = 800; ///< Threshold for priorization across different loops.
+  static const int16 PRIORITY_USIGNAL  = 700; ///< Used for unix signal delivery.
+  static const int16 PRIORITY_COAWAIT  = 600; ///< Used for coroutines, continuations of functions.
+  static const int16 PRIORITY_NOTIFY   = 500; ///< For async notification, delivery of change notifications.
+  static const int16 PRIORITY_AFRAME   = 400; ///< Animation frame timers, prioritized over normal event processing.
+  static const int16 PRIORITY_NORMAL   = 300; ///< Normal importantance, GUI event processing, RPC.
+  static const int16 PRIORITY_IDLE     = 200; ///< Mildly important, used for background tasks.
+  static const int16 PRIORITY_LOW      = 100; ///< Unimportant, used when everything else done.
+  void wakeup   ();                           ///< Wakeup loop from polling.
   // source handling
   uint add             (EventSourceP loop_source, int priority
                         = PRIORITY_NORMAL);     ///< Adds a new source to the loop with custom priority.
@@ -107,8 +107,6 @@ public:
   bool flag_primary    (bool            on);
   MainLoop* main_loop  () const;                ///< Get the main loop for this loop.
   template<class BoolVoidFunctor>
-  uint exec_now        (BoolVoidFunctor &&bvf); ///< Execute a callback as primary source with priority "now" (highest), returning true repeats callback.
-  template<class BoolVoidFunctor>
   uint exec_callback   (BoolVoidFunctor &&bvf, int priority
                         = PRIORITY_NORMAL);     ///< Execute a callback at user defined priority returning true repeats callback.
   template<class BoolVoidFunctor>
@@ -116,7 +114,7 @@ public:
   uint exec_dispatcher (const DispatcherSlot &sl, int priority
                         = PRIORITY_NORMAL);     /// Execute a single dispatcher callback for prepare, check, dispatch.
   uint exec_usignal    (int8 signum, const USignalSlot &sl, int priority
-                        = PRIORITY_NOW -1);     /// Execute a signal callback for prepare, check, dispatch.
+                        = PRIORITY_USIGNAL);     /// Execute a signal callback for prepare, check, dispatch.
   uint exec_sigchld    (int64_t pid, const SigchldSlot &vfunc, int priority
                         = PRIORITY_NORMAL);     /// Execute a callback once on SIGCHLD for `pid`.
   bool exec_once       (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priority
@@ -333,16 +331,6 @@ public:
 
 // === EventLoop methods ===
 template<class BoolVoidFunctor> uint
-EventLoop::exec_now (BoolVoidFunctor &&bvf)
-{
-  typedef decltype (bvf()) ReturnType;
-  std::function<ReturnType()> slot (bvf);
-  TimedSourceP tsource = TimedSource::create (slot);
-  tsource->primary (true);
-  return add (tsource, PRIORITY_NOW);
-}
-
-template<class BoolVoidFunctor> uint
 EventLoop::exec_callback (BoolVoidFunctor &&bvf, int priority)
 {
   typedef decltype (bvf()) ReturnType;
@@ -355,7 +343,9 @@ EventLoop::exec_idle (BoolVoidFunctor &&bvf)
 {
   typedef decltype (bvf()) ReturnType;
   std::function<ReturnType()> slot (bvf);
-  return add (TimedSource::create (slot), PRIORITY_IDLE);
+  TimedSourceP sourcep = TimedSource::create (slot);
+  sourcep->primary (false);
+  return add (sourcep, PRIORITY_IDLE);
 }
 
 inline uint

@@ -109,7 +109,7 @@ queue_notify_preference_listeners (const CString &cident)
   const bool need_enqueue = notify_preference_queue.empty();
   notify_preference_queue.push_back (cident);
   if (need_enqueue)
-    main_loop->exec_now (notify_preference_listeners);
+    main_loop->exec_callback (notify_preference_listeners, EventLoop::PRIORITY_NOTIFY);
 }
 
 Preference::Preference (ParameterC parameter)

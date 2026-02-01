@@ -86,7 +86,7 @@ juce_loop_dispatcher (const Ase::LoopState &state)
 void
 MessageManager::doPlatformSpecificInitialisation()
 {
-  Ase::main_loop->exec_dispatcher (juce_loop_dispatcher, Ase::EventLoop::PRIORITY_NOW - 50);
+  Ase::main_loop->exec_dispatcher (juce_loop_dispatcher, Ase::EventLoop::PRIORITY_RTAUDIO);
 }
 
 void

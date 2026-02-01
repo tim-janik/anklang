@@ -24,6 +24,8 @@ enum {
   NEEDS_DISPATCH,
 };
 
+static constexpr auto PRIORITY_CEILING = EventLoop::PRIORITY_SYSALLOC;
+
 // == PollFD invariants ==
 static_assert (PollFD::IN     == POLLIN);
 static_assert (PollFD::PRI    == POLLPRI);
@@ -842,7 +844,7 @@ MainLoop::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
       max_dispatch_priority = std::max (max_dispatch_priority, loops[i]->dispatch_priority_);
     }
   bool priority_ascension = false;      // flag for priority elevation between loops
-  if (UNLIKELY (max_dispatch_priority >= PRIORITY_ASCENT) && any_dispatchable)
+  if (UNLIKELY (max_dispatch_priority >= PRIORITY_COAWAIT) && any_dispatchable)
     priority_ascension = true;
   // check GLib
   if (ASE_UNLIKELY (gcontext_))
@@ -921,7 +923,7 @@ EventSource::EventSource () :
   may_recurse_ (0),
   dispatching_ (0),
   was_dispatching_ (0),
-  primary_ (0)
+  primary_ (true)
 {}
 
 uint
