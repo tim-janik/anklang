@@ -56,6 +56,31 @@ struct CoTaskAux {
     void unhandled_exception() noexcept { exception_ = std::current_exception(); }
     // Always create + return CoTask, before starting/resuming execution
     constexpr std::suspend_always initial_suspend() noexcept { return {}; }
+#if 0   // universal co_await
+    template<typename T>
+    struct ConstantAwaiter {
+      T value_;
+      constexpr bool await_ready() const noexcept { return true; }
+      void await_suspend (std::coroutine_handle<>) const noexcept {}
+      T await_resume() noexcept { return std::move (value_); }
+    };
+    template<typename T> decltype(auto) // Accepts anything: Tasks, Awaiters, Integers, Strings…
+    await_transform (T &&value)
+    {
+      if constexpr (IsAwaitable<T>)
+        // raw Awaiter that has await_ready/suspend/resume
+        return std::forward<T> (value);
+      else if constexpr (requires { value.operator co_await(); })
+        // T has a member `operator co_await`
+        return std::forward<T> (value).operator co_await();
+      else if constexpr (requires { operator co_await (std::forward<T> (value)); })
+        // T has a global `operator co_await`
+        return operator co_await (std::forward<T> (value));
+      else
+        // T is a plain value like int, string
+        return ConstantAwaiter<std::remove_cvref_t<T>> { std::forward<T>(value) };
+    }
+#endif
   };
 };
 
