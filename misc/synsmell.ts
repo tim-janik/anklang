@@ -31,7 +31,7 @@ function lineMatcher (code: string,
   // ban-printf
   if (checks['ban-printf'] && (m = code.match (/\bd?printf\s*\(/))) {
     offset = m.index;
-    error = 'invalid call to printf';
+    warning = 'invalid call to printf, use printout()';
   }
   // whitespace-before-parenthesis
   else if (checks['whitespace-before-parenthesis'] && code.indexOf ('#') < 0 &&
