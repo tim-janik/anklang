@@ -296,7 +296,7 @@ ase/tests/TestList.mk:	# any deps here are forced to be rebuilt during Makefile 
 	$(QGEN)
 	$Q echo 'ASE_TEST_LIST := '\\			> $@.tmp
 	$Q cat $(ase/tests/TestList.INPUTS) | \
-		grep -Eo 'TEST_\w+ ?\((\w+)\)' | \
+		grep -Eo '^\s*TEST_\w+ ?\((\w+)\)' | \
 		sed 's/.*(/  /; s/)/ \\/' | sort	>>$@.tmp
 	$Q mv $@.tmp $@
 ifneq (,$(shell find $(ase/tests/TestList.INPUTS) -newer ase/tests/TestList.mk))
