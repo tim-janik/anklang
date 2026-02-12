@@ -88,7 +88,7 @@ void
 ServerImpl::shutdown ()
 {
   // defer quit() slightly, so remote calls are still completed
-  main_loop->exec_timer ([] () { main_loop->quit (0); }, 5, -1, EventLoop::PRIORITY_NORMAL);
+  main_loop->exec_timer ([] () { main_loop->quit (0); }, 5, -1, Loop::PRIORITY_NORMAL);
 }
 
 ProjectP

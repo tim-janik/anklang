@@ -24,7 +24,7 @@ enum {
   NEEDS_DISPATCH,
 };
 
-static constexpr auto PRIORITY_CEILING = EventLoop::PRIORITY_SYSALLOC;
+static constexpr auto PRIORITY_CEILING = Loop::PRIORITY_SYSALLOC;
 
 // == PollFD invariants ==
 static_assert (PollFD::IN     == POLLIN);
@@ -52,7 +52,7 @@ alloc_id ()
 {
   uint id = __sync_fetch_and_add (&global_id_counter, +1);
   if (!id)
-    fatal_error ("EventLoop: id counter overflow, please report"); // TODO: use global ID allcoator?
+    fatal_error ("Loop: id counter overflow, please report"); // TODO: use global ID allcoator?
   return id;
 }
 
@@ -120,15 +120,15 @@ public:
     n_elements_ = n;
   }
 };
-struct EventLoop::QuickPfdArray : public QuickArray<PollFD> {
+struct Loop::QuickPfdArray : public QuickArray<PollFD> {
   QuickPfdArray (uint n_reserved, PollFD *reserved) : QuickArray (n_reserved, reserved) {}
 };
 struct QuickSourcePArray : public QuickArray<EventSourceP*> {
   QuickSourcePArray (uint n_reserved, EventSourceP **reserved) : QuickArray (n_reserved, reserved) {}
 };
 
-// === EventLoop ===
-EventLoop::EventLoop (MainLoop &main) :
+// === Loop ===
+Loop::Loop (MainLoop &main) :
   main_loop_ (&main), dispatch_priority_ (0), primary_ (false)
 {
   poll_sources_.reserve (7);
@@ -136,21 +136,21 @@ EventLoop::EventLoop (MainLoop &main) :
   assert_return (main_loop_ && main_loop_->main_loop_); // sanity checks
 }
 
-EventLoop::~EventLoop ()
+Loop::~Loop ()
 {
   unpoll_sources_U();
   // we cannot *use* main_loop_ anymore, because we might be called from within MainLoop::MainLoop(), see ~SubLoop()
 }
 
 inline EventSourceP&
-EventLoop::find_first_L()
+Loop::find_first_L()
 {
   static EventSourceP null_source;
   return sources_.empty() ? null_source : sources_[0];
 }
 
 inline EventSourceP&
-EventLoop::find_source_L (uint id)
+Loop::find_source_L (uint id)
 {
   for (SourceList::iterator lit = sources_.begin(); lit != sources_.end(); lit++)
     if (id == (*lit)->id_)
@@ -160,7 +160,7 @@ EventLoop::find_source_L (uint id)
 }
 
 bool
-EventLoop::has_primary_L()
+Loop::has_primary_L()
 {
   if (primary_)
     return true;
@@ -171,14 +171,14 @@ EventLoop::has_primary_L()
 }
 
 bool
-EventLoop::has_primary()
+Loop::has_primary()
 {
   std::lock_guard<std::mutex> locker (main_loop_->mutex());
   return has_primary_L();
 }
 
 bool
-EventLoop::flag_primary (bool on)
+Loop::flag_primary (bool on)
 {
   std::lock_guard<std::mutex> locker (main_loop_->mutex());
   const bool was_primary = primary_;
@@ -189,7 +189,7 @@ EventLoop::flag_primary (bool on)
 }
 
 MainLoop*
-EventLoop::main_loop () const
+Loop::main_loop () const
 {
   return main_loop_;
 }
@@ -197,7 +197,7 @@ EventLoop::main_loop () const
 static const int16 UNDEFINED_PRIORITY = -32768;
 
 uint
-EventLoop::add (EventSourceP source, int priority)
+Loop::add (EventSourceP source, int priority)
 {
   static_assert (UNDEFINED_PRIORITY < 1, "");
   assert_return (priority >= 1 && priority <= PRIORITY_CEILING, 0);
@@ -216,7 +216,7 @@ EventLoop::add (EventSourceP source, int priority)
 }
 
 void
-EventLoop::remove_source_Lm (EventSourceP source)
+Loop::remove_source_Lm (EventSourceP source)
 {
   std::mutex &LOCK = main_loop_->mutex();
   assert_return (source->loop_ == this);
@@ -233,7 +233,7 @@ EventLoop::remove_source_Lm (EventSourceP source)
 }
 
 bool
-EventLoop::try_remove (uint id)
+Loop::try_remove (uint id)
 {
   {
     std::lock_guard<std::mutex> locker (main_loop_->mutex());
@@ -247,7 +247,7 @@ EventLoop::try_remove (uint id)
 }
 
 void
-EventLoop::remove (uint *idp)
+Loop::remove (uint *idp)
 {
   if (idp) {
     if (*idp)
@@ -257,7 +257,7 @@ EventLoop::remove (uint *idp)
 }
 
 bool
-EventLoop::clear_source (uint *id_pointer)
+Loop::clear_source (uint *id_pointer)
 {
   return_unless (id_pointer, false);
   const bool removal = try_remove (*id_pointer);
@@ -266,14 +266,14 @@ EventLoop::clear_source (uint *id_pointer)
 }
 
 void
-EventLoop::remove (uint id)
+Loop::remove (uint id)
 {
   if (!try_remove (id))
     warning ("%s: failed to remove loop source: %u", __func__, id);
 }
 
 bool
-EventLoop::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priority)
+Loop::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priority)
 {
   assert_return (once_id != nullptr, false);
   assert_return (priority >= 1 && priority <= PRIORITY_CEILING, false);
@@ -306,7 +306,7 @@ EventLoop::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int p
   return true;
 }
 
-/* void EventLoop::change_priority (EventSource *source, int priority) {
+/* void Loop::change_priority (EventSource *source, int priority) {
  * // ensure that source belongs to this
  * // reset all source->pfds[].idx = UINT_MAX
  * // unlink source
@@ -315,7 +315,7 @@ EventLoop::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int p
  */
 
 void
-EventLoop::kill_sources_Lm()
+Loop::kill_sources_Lm()
 {
   for (;;)
     {
@@ -332,7 +332,7 @@ EventLoop::kill_sources_Lm()
 
 /** Remove all sources from a loop and prevent any further execution.
  * The destroy_loop() method removes all sources from a loop and in
- * case of a sub EventLoop (see create_sub_loop()) removes it from its
+ * case of a sub Loop (see create_sub_loop()) removes it from its
  * associated main loop. Calling destroy_loop() on a main loop also
  * calls destroy_loop() for all its sub loops.
  * Note that MainLoop objects are artificially kept alive until
@@ -341,11 +341,11 @@ EventLoop::kill_sources_Lm()
  * This method must be called only once on a loop.
  */
 void
-EventLoop::destroy_loop()
+Loop::destroy_loop()
 {
   assert_return (main_loop_ != NULL);
   // guard main_loop_ pointer *before* locking, so dtor is called after unlock
-  EventLoopP main_loop_guard = shared_ptr_cast<EventLoop*> (main_loop_);
+  EventLoopP main_loop_guard = shared_ptr_cast<Loop*> (main_loop_);
   std::lock_guard<std::mutex> locker (main_loop_->mutex());
   if (this != main_loop_)
     main_loop_->kill_loop_Lm (*this);
@@ -355,7 +355,7 @@ EventLoop::destroy_loop()
 }
 
 void
-EventLoop::wakeup ()
+Loop::wakeup ()
 {
   // this needs to work unlocked
   main_loop_->wakeup_poll();
@@ -363,7 +363,7 @@ EventLoop::wakeup ()
 
 // === MainLoop ===
 MainLoop::MainLoop() :
-  EventLoop (*this), // sets *this as MainLoop on self
+  Loop (*this), // sets *this as MainLoop on self
   rr_index_ (0), running_ (false), has_quit_ (false), quit_code_ (0), gcontext_ (NULL)
 {
   std::lock_guard<std::mutex> locker (main_loop_->mutex());
@@ -403,15 +403,15 @@ MainLoop::wakeup_poll()
 }
 
 void
-MainLoop::add_loop_L (EventLoop &loop)
+MainLoop::add_loop_L (Loop &loop)
 {
   assert_return (this == loop.main_loop_);
-  loops_.push_back (shared_ptr_cast<EventLoop> (&loop));
+  loops_.push_back (shared_ptr_cast<Loop> (&loop));
   wakeup_poll();
 }
 
 void
-MainLoop::kill_loop_Lm (EventLoop &loop)
+MainLoop::kill_loop_Lm (Loop &loop)
 {
   assert_return (this == loop.main_loop_);
   loop.kill_sources_Lm();
@@ -447,7 +447,7 @@ MainLoop::kill_loops_Lm()
 int
 MainLoop::run ()
 {
-  EventLoopP main_loop_guard = shared_ptr_cast<EventLoop> (this);
+  EventLoopP main_loop_guard = shared_ptr_cast<Loop> (this);
   std::lock_guard<std::mutex> locker (mutex_);
   LoopState state;
   running_ = !has_quit_;
@@ -508,7 +508,7 @@ MainLoop::finishable()
 bool
 MainLoop::iterate (bool may_block)
 {
-  EventLoopP main_loop_guard = shared_ptr_cast<EventLoop> (this);
+  EventLoopP main_loop_guard = shared_ptr_cast<Loop> (this);
   std::lock_guard<std::mutex> locker (mutex_);
   LoopState state;
   const bool was_running = running_;    // guard for recursion
@@ -521,7 +521,7 @@ MainLoop::iterate (bool may_block)
 void
 MainLoop::iterate_pending()
 {
-  EventLoopP main_loop_guard = shared_ptr_cast<EventLoop> (this);
+  EventLoopP main_loop_guard = shared_ptr_cast<Loop> (this);
   std::lock_guard<std::mutex> locker (mutex_);
   LoopState state;
   const bool was_running = running_;    // guard for recursion
@@ -537,7 +537,7 @@ MainLoop::pending()
 {
   std::lock_guard<std::mutex> locker (mutex_);
   LoopState state;
-  EventLoopP main_loop_guard = shared_ptr_cast<EventLoop> (this);
+  EventLoopP main_loop_guard = shared_ptr_cast<Loop> (this);
   return iterate_loops_Lm (state, false, false);
 }
 
@@ -594,14 +594,14 @@ mk_gpollfd (PollFD *pfd)
 #endif
 
 void
-EventLoop::unpoll_sources_U() // must be unlocked!
+Loop::unpoll_sources_U() // must be unlocked!
 {
   // clear poll sources
   poll_sources_.resize (0);
 }
 
 void
-EventLoop::collect_sources_Lm (LoopState &state)
+Loop::collect_sources_Lm (LoopState &state)
 {
   // enforce clean slate
   if (UNLIKELY (!poll_sources_.empty()))
@@ -648,7 +648,7 @@ EventLoop::collect_sources_Lm (LoopState &state)
 }
 
 bool
-EventLoop::prepare_sources_Lm (LoopState &state, QuickPfdArray &pfda)
+Loop::prepare_sources_Lm (LoopState &state, QuickPfdArray &pfda)
 {
   std::mutex &LOCK = main_loop_->mutex();
   // prepare sources, up to NEEDS_DISPATCH priority
@@ -688,7 +688,7 @@ EventLoop::prepare_sources_Lm (LoopState &state, QuickPfdArray &pfda)
 }
 
 bool
-EventLoop::check_sources_Lm (LoopState &state, const QuickPfdArray &pfda)
+Loop::check_sources_Lm (LoopState &state, const QuickPfdArray &pfda)
 {
   std::mutex &LOCK = main_loop_->mutex();
   // check polled sources
@@ -725,7 +725,7 @@ EventLoop::check_sources_Lm (LoopState &state, const QuickPfdArray &pfda)
 }
 
 void
-EventLoop::dispatch_source_Lm (LoopState &state)
+Loop::dispatch_source_Lm (LoopState &state)
 {
   std::mutex &LOCK = main_loop_->mutex();
   // find a source to dispatch at dispatch_priority_
@@ -893,10 +893,10 @@ MainLoop::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
   return any_dispatchable; // need to dispatch or recheck
 }
 
-class SubLoop : public EventLoop {
+class SubLoop : public Loop {
 public:
   SubLoop (MainLoopP main) :
-    EventLoop (*main)
+    Loop (*main)
   {}
   ~SubLoop()
   {
@@ -1377,8 +1377,8 @@ PollFDSource::~PollFDSource ()
   Ase <a href="http://en.wikipedia.org/wiki/Event_loop">event loops</a>
   are a programming facility to execute callback handlers (dispatch event sources) according to expiring Timers,
   IO events or arbitrary other conditions.
-  A Ase::EventLoop is created with Ase::MainLoop::_new() or Ase::MainLoop::create_sub_loop(). Callbacks or other
-  event sources are added to it via Ase::EventLoop::add(), Ase::EventLoop::exec_normal() and related functions.
+  A Ase::Loop is created with Ase::MainLoop::_new() or Ase::MainLoop::create_sub_loop(). Callbacks or other
+  event sources are added to it via Ase::Loop::add(), Ase::Loop::exec_normal() and related functions.
   Once a main loop is created and its callbacks are added, it can be run as: @code
   * while (!loop.finishable())
   *   loop.iterate (true);
@@ -1386,13 +1386,13 @@ PollFDSource::~PollFDSource ()
   Ase::MainLoop::iterate() finds a source that immediately need dispatching and starts to dispatch it.
   If no source was found, it monitors the source list's PollFD descriptors for events, and finds dispatchable
   sources based on newly incoming events on the descriptors.
-  If multiple sources need dispatching, they are handled according to their priorities (see Ase::EventLoop::add())
+  If multiple sources need dispatching, they are handled according to their priorities (see Ase::Loop::add())
   and at the same priority, sources are dispatched in round-robin fashion.
   Calling Ase::MainLoop::iterate() also iterates over its sub loops, which allows to handle sources
   on several independently running loops within the same thread, usually used to associate one event loop with one window.
 
-  Traits of the Ase::EventLoop class:
-  @li The main loop and its sub loops are handled in round-robin fahsion, priorities below Ase::EventLoop::PRIORITY_ASCENT only apply internally to a loop.
+  Traits of the Ase::Loop class:
+  @li The main loop and its sub loops are handled in round-robin fahsion, priorities below Ase::Loop::PRIORITY_ASCENT only apply internally to a loop.
   @li Loops are thread safe, so any thready may add or remove sources to a loop at any time, regardless of which thread
   is currently running the loop.
   @li Sources added to a loop may be flagged as "primary" (see Ase::EventSource::primary()),

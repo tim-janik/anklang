@@ -41,8 +41,8 @@ class USignalSource;
 typedef std::shared_ptr<USignalSource> USignalSourceP;
 class SigchldSource;
 typedef std::shared_ptr<SigchldSource> SigchldSourceP;
-class EventLoop;
-typedef std::shared_ptr<EventLoop> EventLoopP;
+class Loop;
+typedef std::shared_ptr<Loop> EventLoopP;
 class MainLoop;
 typedef std::shared_ptr<MainLoop> MainLoopP;
 struct LoopState;
@@ -52,9 +52,9 @@ typedef ::GMainContext GlibGMainContext;
 struct GlibGMainContext; // dummy type
 #endif
 
-// === EventLoop ===
+// === Loop ===
 /// Loop object, polling for events and executing callbacks in accordance.
-class EventLoop : public virtual std::enable_shared_from_this<EventLoop>
+class Loop : public virtual std::enable_shared_from_this<Loop>
 {
   struct QuickPfdArray;         // pseudo vector<PollFD>
   friend class MainLoop;
@@ -65,8 +65,8 @@ protected:
   std::vector<EventSourceP> poll_sources_;
   int16         dispatch_priority_;
   bool          primary_;
-  explicit      EventLoop           (MainLoop&);
-  virtual      ~EventLoop           ();
+  explicit      Loop           (MainLoop&);
+  virtual      ~Loop           ();
   EventSourceP& find_first_L        ();
   EventSourceP& find_source_L       (uint id);
   bool          has_primary_L       (void);
@@ -128,10 +128,10 @@ public:
 };
 
 // === MainLoop ===
-/// An EventLoop implementation that offers public API for running the loop.
-class MainLoop : public EventLoop
+/// An Loop implementation that offers public API for running the loop.
+class MainLoop : public Loop
 {
-  friend                class EventLoop;
+  friend                class Loop;
   friend                class SubLoop;
   std::mutex            mutex_;
   uint                  rr_index_;
@@ -143,8 +143,8 @@ class MainLoop : public EventLoop
   GlibGMainContext     *gcontext_;
   bool                  finishable_L        ();
   void                  wakeup_poll         ();                 ///< Wakeup main loop from polling.
-  void                  add_loop_L          (EventLoop &loop);  ///< Adds a sub loop to this main loop.
-  void                  kill_loop_Lm        (EventLoop &loop);  ///< Destroy a sub loop and all its sources.
+  void                  add_loop_L          (Loop &loop);  ///< Adds a sub loop to this main loop.
+  void                  kill_loop_Lm        (Loop &loop);  ///< Destroy a sub loop and all its sources.
   void                  kill_loops_Lm       ();                 ///< Destroy this loop and all sub loops.
   bool                  iterate_loops_Lm    (LoopState&, bool b, bool d);
   explicit              MainLoop            ();
@@ -174,12 +174,12 @@ struct LoopState {
 };
 
 // === EventSource ===
-class EventSource /// EventLoop source for callback execution.
+class EventSource /// Loop source for callback execution.
 {
-  friend       class EventLoop;
+  friend       class Loop;
   ASE_CLASS_NON_COPYABLE (EventSource);
 protected:
-  EventLoop   *loop_;
+  Loop   *loop_;
   struct {
     PollFD    *pfd;
     uint       idx;
@@ -213,9 +213,9 @@ public:
 };
 
 // === DispatcherSource ===
-class DispatcherSource : public virtual EventSource /// EventLoop source for handler execution.
+class DispatcherSource : public virtual EventSource /// Loop source for handler execution.
 {
-  typedef EventLoop::DispatcherSlot DispatcherSlot;
+  typedef Loop::DispatcherSlot DispatcherSlot;
   DispatcherSlot slot_;
   ASE_DEFINE_MAKE_SHARED (DispatcherSource);
 protected:
@@ -231,9 +231,9 @@ public:
 };
 
 // === USignalSource ===
-class USignalSource : public virtual EventSource /// EventLoop source for handler execution.
+class USignalSource : public virtual EventSource /// Loop source for handler execution.
 {
-  typedef EventLoop::USignalSlot USignalSlot;
+  typedef Loop::USignalSlot USignalSlot;
   USignalSlot slot_;
   int8        signum_ = 0, index_ = 0, shift_ = 0;
   ASE_DEFINE_MAKE_SHARED (USignalSource);
@@ -252,10 +252,10 @@ public:
 };
 
 // === SigchldSource ===
-class SigchldSource : public virtual EventSource /// EventLoop source for handler execution.
+class SigchldSource : public virtual EventSource /// Loop source for handler execution.
 {
   ASE_DEFINE_MAKE_SHARED (SigchldSource);
-  typedef EventLoop::SigchldSlot SigchldSlot;
+  typedef Loop::SigchldSlot SigchldSlot;
   SigchldSlot slot_;
   uint64_t    sigchld_counter_ = 0;
   int64_t     pid_ = 0;
@@ -272,10 +272,10 @@ public:
 };
 
 // === TimedSource ===
-class TimedSource : public virtual EventSource /// EventLoop source for timer execution.
+class TimedSource : public virtual EventSource /// Loop source for timer execution.
 {
-  typedef EventLoop::BoolSlot BoolSlot;
-  typedef EventLoop::VoidSlot VoidSlot;
+  typedef Loop::BoolSlot BoolSlot;
+  typedef Loop::VoidSlot VoidSlot;
   uint64     expiration_usecs_;
   uint       interval_msecs_;
   bool       first_interval_;
@@ -300,10 +300,10 @@ public:
 };
 
 // === PollFDSource ===
-class PollFDSource : public virtual EventSource /// EventLoop source for IO callbacks.
+class PollFDSource : public virtual EventSource /// Loop source for IO callbacks.
 {
-  typedef EventLoop::BPfdSlot BPfdSlot;
-  typedef EventLoop::VPfdSlot VPfdSlot;
+  typedef Loop::BPfdSlot BPfdSlot;
+  typedef Loop::VPfdSlot VPfdSlot;
 protected:
   void          construct       (const String &mode);
   virtual      ~PollFDSource    ();
@@ -329,9 +329,9 @@ public:
   { return make_shared (slot, fd, mode); }
 };
 
-// === EventLoop methods ===
+// === Loop methods ===
 template<class BoolVoidFunctor> uint
-EventLoop::exec_callback (BoolVoidFunctor &&bvf, int priority)
+Loop::exec_callback (BoolVoidFunctor &&bvf, int priority)
 {
   typedef decltype (bvf()) ReturnType;
   std::function<ReturnType()> slot (bvf);
@@ -339,7 +339,7 @@ EventLoop::exec_callback (BoolVoidFunctor &&bvf, int priority)
 }
 
 template<class BoolVoidFunctor> uint
-EventLoop::exec_idle (BoolVoidFunctor &&bvf)
+Loop::exec_idle (BoolVoidFunctor &&bvf)
 {
   typedef decltype (bvf()) ReturnType;
   std::function<ReturnType()> slot (bvf);
@@ -349,25 +349,25 @@ EventLoop::exec_idle (BoolVoidFunctor &&bvf)
 }
 
 inline uint
-EventLoop::exec_dispatcher (const DispatcherSlot &slot, int priority)
+Loop::exec_dispatcher (const DispatcherSlot &slot, int priority)
 {
   return add (DispatcherSource::create (slot), priority);
 }
 
 inline uint
-EventLoop::exec_usignal (int8 signum, const USignalSlot &slot, int priority)
+Loop::exec_usignal (int8 signum, const USignalSlot &slot, int priority)
 {
   return add (USignalSource::create (signum, slot), priority);
 }
 
 inline uint
-EventLoop::exec_sigchld (int64_t pid, const SigchldSlot &slot, int priority)
+Loop::exec_sigchld (int64_t pid, const SigchldSlot &slot, int priority)
 {
   return add (SigchldSource::create (pid, slot), priority);
 }
 
 template<class BoolVoidFunctor> uint
-EventLoop::exec_timer (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms, int priority)
+Loop::exec_timer (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms, int priority)
 {
   typedef decltype (bvf()) ReturnType;
   std::function<ReturnType()> slot (bvf);
@@ -375,7 +375,7 @@ EventLoop::exec_timer (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms, in
 }
 
 template<class BoolVoidPollFunctor> uint
-EventLoop::exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, int priority)
+Loop::exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, int priority)
 {
   using ReturnType = decltype (bvf (*std::declval<PollFD*>()));
   std::function<ReturnType (PollFD&)> slot (bvf);

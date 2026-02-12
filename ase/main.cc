@@ -497,7 +497,7 @@ main (int argc, char *argv[])
   // prepare main event loop (needed before parse_args)
   main_loop = MainLoop::create();
   // handle loft preallocation needs
-  main_loop->exec_dispatcher (dispatch_loft_lowmem, EventLoop::PRIORITY_SYSALLOC);
+  main_loop->exec_dispatcher (dispatch_loft_lowmem, Loop::PRIORITY_SYSALLOC);
 
   // load preferences unless --norc was given
   if (!App.norc)
