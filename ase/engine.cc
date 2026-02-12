@@ -65,7 +65,7 @@ public:
   AtomicIntrusiveStack<EngineJobImpl> async_jobs_, const_jobs_, trash_jobs_;
   const VoidF                  owner_wakeup_;
   std::thread                 *thread_ = nullptr;
-  MainLoopP                    event_loop_ = MainLoop::create();
+  LoopP                        event_loop_ = Loop::create();
   AudioProcessorS              oprocs_;
   ProjectImplP                 project_;
   WaveWriterP                  wwriter_;

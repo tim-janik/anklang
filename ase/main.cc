@@ -41,7 +41,7 @@ const MainApp &App = main_app;
 MainAppImpl::MainAppImpl()
 {}
 
-MainLoopP       main_loop;
+LoopP       main_loop;
 static String   arg_ui_mode;
 static int      arg_unauth_port = 0;
 
@@ -349,7 +349,7 @@ run_tests_and_quit ()
 void
 main_loop_wakeup ()
 {
-  MainLoopP loop = main_loop;
+  LoopP loop = main_loop;
   if (loop)
     loop->wakeup();
 }
@@ -495,7 +495,7 @@ main (int argc, char *argv[])
   logging_configure (arg_ui_mode != "none");
 
   // prepare main event loop (needed before parse_args)
-  main_loop = MainLoop::create();
+  main_loop = Loop::create();
   // handle loft preallocation needs
   main_loop->exec_dispatcher (dispatch_loft_lowmem, Loop::PRIORITY_SYSALLOC);
 

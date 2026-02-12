@@ -42,9 +42,7 @@ typedef std::shared_ptr<USignalSource> USignalSourceP;
 class SigchldSource;
 typedef std::shared_ptr<SigchldSource> SigchldSourceP;
 class Loop;
-typedef std::shared_ptr<Loop> EventLoopP;
-class MainLoop;
-typedef std::shared_ptr<MainLoop> MainLoopP;
+typedef std::shared_ptr<Loop> LoopP;
 struct LoopState;
 #if     defined __G_LIB_H__ || defined DOXYGEN
 typedef ::GMainContext GlibGMainContext;
@@ -57,16 +55,16 @@ struct GlibGMainContext; // dummy type
 class Loop : public virtual std::enable_shared_from_this<Loop>
 {
   struct QuickPfdArray;         // pseudo vector<PollFD>
-  friend class MainLoop;
+  friend class LoopImpl;
+  ASE_CLASS_NON_COPYABLE (Loop);
 protected:
   typedef std::vector<EventSourceP> SourceList;
-  MainLoop     *main_loop_;
   SourceList    sources_;
   std::vector<EventSourceP> poll_sources_;
   int16         dispatch_priority_;
   bool          primary_;
-  explicit      Loop           (MainLoop&);
-  virtual      ~Loop           ();
+  explicit      Loop                ();
+  virtual      ~Loop                ();
   EventSourceP& find_first_L        ();
   EventSourceP& find_source_L       (uint id);
   bool          has_primary_L       (void);
@@ -77,6 +75,7 @@ protected:
   bool          prepare_sources_Lm  (LoopState&, QuickPfdArray&);
   bool          check_sources_Lm    (LoopState&, const QuickPfdArray&);
   void          dispatch_source_Lm  (LoopState&);
+  virtual void  destroy_loop        () = 0;
 public:
   typedef std::function<void (void)>             VoidSlot;
   typedef std::function<bool (void)>             BoolSlot;
@@ -94,7 +93,7 @@ public:
   static const int16 PRIORITY_NORMAL   = 300; ///< Normal importantance, GUI event processing, RPC.
   static const int16 PRIORITY_IDLE     = 200; ///< Mildly important, used for background tasks.
   static const int16 PRIORITY_LOW      = 100; ///< Unimportant, used when everything else done.
-  void wakeup   ();                           ///< Wakeup loop from polling.
+  virtual void wakeup  () = 0;                ///< Wakeup loop from polling.
   // source handling
   uint add             (EventSourceP loop_source, int priority
                         = PRIORITY_NORMAL);     ///< Adds a new source to the loop with custom priority.
@@ -102,10 +101,8 @@ public:
   void remove          (uint           *idp);   ///< Removes a source by id if present, resets id.
   bool try_remove      (uint            id);    ///< Tries to remove a source, returns if successfull.
   bool clear_source    (uint *id_pointer);      ///< Remove source if `id_pointer` and `*id_pointer` are valid.
-  void destroy_loop    (void);
   bool has_primary     (void);                  ///< Indicates whether loop contains primary sources.
   bool flag_primary    (bool            on);
-  MainLoop* main_loop  () const;                ///< Get the main loop for this loop.
   template<class BoolVoidFunctor>
   uint exec_callback   (BoolVoidFunctor &&bvf, int priority
                         = PRIORITY_NORMAL);     ///< Execute a callback at user defined priority returning true repeats callback.
@@ -125,43 +122,17 @@ public:
   /// Execute a callback after polling for mode on fd, returning true repeats callback.
   template<class BoolVoidPollFunctor>
   uint exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, int priority = PRIORITY_NORMAL);
-};
-
-// === MainLoop ===
-/// An Loop implementation that offers public API for running the loop.
-class MainLoop : public Loop
-{
-  friend                class Loop;
-  friend                class SubLoop;
-  std::mutex            mutex_;
-  uint                  rr_index_;
-  std::vector<EventLoopP> loops_;
-  EventFd               eventfd_;
-  int8                  running_;
-  int8                  has_quit_;
-  int16                 quit_code_;
-  GlibGMainContext     *gcontext_;
-  bool                  finishable_L        ();
-  void                  wakeup_poll         ();                 ///< Wakeup main loop from polling.
-  void                  add_loop_L          (Loop &loop);  ///< Adds a sub loop to this main loop.
-  void                  kill_loop_Lm        (Loop &loop);  ///< Destroy a sub loop and all its sources.
-  void                  kill_loops_Lm       ();                 ///< Destroy this loop and all sub loops.
-  bool                  iterate_loops_Lm    (LoopState&, bool b, bool d);
-  explicit              MainLoop            ();
-  virtual              ~MainLoop            ();
-  ASE_DEFINE_MAKE_SHARED (MainLoop);
-public:
-  int        run             (); ///< Run loop iterations until a call to quit() or finishable becomes true.
-  bool       running         (); ///< Indicates if quit() has been called already.
-  bool       finishable      (); ///< Indicates wether this loop has no primary sources left to process.
-  void       quit            (int quit_code = 0);    ///< Cause run() to return with @a quit_code.
-  bool       pending         ();                     ///< Check if iterate() needs to be called for dispatching.
-  bool       iterate         (bool block);           ///< Perform one loop iteration and return whether more iterations are needed.
-  void       iterate_pending (); ///< Call iterate() until no immediate dispatching is needed.
-  EventLoopP create_sub_loop (); ///< Creates a new event loop that is run as part of this main loop.
-  inline std::mutex& mutex   () { return mutex_; } ///< Provide access to the mutex associated with this main loop.
-  static MainLoopP   create  (); ///< Create a MainLoop shared pointer handle.
-  bool    set_g_main_context (GlibGMainContext *glib_main_context); ///< Set context to integrate with a GLib @a GMainContext loop.
+  // Event processing
+  virtual int  run           () = 0; ///< Run loop iterations until a call to quit() or finishable becomes true.
+  virtual bool running       () = 0; ///< Indicates if quit() has been called already.
+  virtual bool finishable    () = 0; ///< Indicates wether this loop has no primary sources left to process.
+  virtual void quit          (int quit_code = 0) = 0; ///< Cause run() to return with @a quit_code.
+  virtual bool pending       () = 0; ///< Check if iterate() needs to be called for dispatching.
+  virtual bool iterate       (bool block) = 0; ///< Perform one loop iteration and return whether more iterations are needed.
+  virtual void iterate_pending () = 0; ///< Call iterate() until no immediate dispatching is needed.
+  virtual std::mutex& mutex    () = 0; ///< Provide access to the mutex associated with this main loop.
+  static LoopP       create  (); ///< Create a MainLoop shared pointer handle.
+  virtual bool set_g_main_context (GlibGMainContext *glib_main_context) = 0; ///< Set context to integrate with a GLib @a GMainContext loop.
 };
 
 // === LoopState ===
@@ -209,7 +180,7 @@ public:
   void         add_poll    (PollFD * const pfd);            ///< Add a PollFD descriptors for poll(2) and check().
   void         remove_poll (PollFD * const pfd);            ///< Remove a previously added PollFD.
   void         loop_remove ();                              ///< Remove this source from its event loop if any.
-  MainLoop*    main_loop   () const { return loop_ ? loop_->main_loop() : NULL; } ///< Get the main loop for this source.
+  Loop*        loop        () const { return loop_; }       ///< Get the main loop for this source.
 };
 
 // === DispatcherSource ===

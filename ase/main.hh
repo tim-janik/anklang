@@ -32,7 +32,7 @@ struct MainApp {
 extern const MainApp &App;
 
 // == Jobs & main loop ==
-extern MainLoopP main_loop;
+extern LoopP main_loop;
 void             main_loop_wakeup      ();
 void             main_loop_autostop_mt ();
 
