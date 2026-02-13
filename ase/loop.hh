@@ -57,23 +57,8 @@ class Loop : public virtual std::enable_shared_from_this<Loop>
   friend class LoopImpl;
   ASE_CLASS_NON_COPYABLE (Loop);
 protected:
-  typedef std::vector<LoopSourceP> SourceList;
-  SourceList    sources_;
-  std::vector<LoopSourceP> poll_sources_;
-  int16         dispatch_priority_;
-  bool          primary_;
   explicit      Loop                ();
   virtual      ~Loop                ();
-  LoopSourceP& find_first_L        ();
-  LoopSourceP& find_source_L       (uint id);
-  bool          has_primary_L       (void);
-  void          remove_source_Lm    (LoopSourceP source);
-  void          kill_sources_Lm     (void);
-  void          unpoll_sources_U    ();
-  void          collect_sources_Lm  (LoopState&);
-  bool          prepare_sources_Lm  (LoopState&, QuickPfdArray&);
-  bool          check_sources_Lm    (LoopState&, const QuickPfdArray&);
-  void          dispatch_source_Lm  (LoopState&);
   virtual void  destroy_loop        () = 0;
 public:
   typedef std::function<void (void)>             VoidSlot;
@@ -94,14 +79,14 @@ public:
   static const int16 PRIORITY_LOW      = 100; ///< Unimportant, used when everything else done.
   virtual void wakeup  () = 0;                ///< Wakeup loop from polling.
   // source handling
-  uint add             (LoopSourceP loop_source, int priority
-                        = PRIORITY_NORMAL);     ///< Adds a new source to the loop with custom priority.
-  void remove          (uint            id);    ///< Removes a source from loop, the source must be present.
-  void remove          (uint           *idp);   ///< Removes a source by id if present, resets id.
-  bool try_remove      (uint            id);    ///< Tries to remove a source, returns if successfull.
-  bool clear_source    (uint *id_pointer);      ///< Remove source if `id_pointer` and `*id_pointer` are valid.
-  bool has_primary     (void);                  ///< Indicates whether loop contains primary sources.
-  bool flag_primary    (bool            on);
+  virtual uint add             (LoopSourceP loop_source, int priority
+                                = PRIORITY_NORMAL) = 0;     ///< Adds a new source to the loop with custom priority.
+  virtual void remove          (uint            id) = 0;    ///< Removes a source from loop, the source must be present.
+  virtual void remove          (uint           *idp) = 0;   ///< Removes a source by id if present, resets id.
+  virtual bool try_remove      (uint            id) = 0;    ///< Tries to remove a source, returns if successfull.
+  virtual bool clear_source    (uint *id_pointer) = 0;      ///< Remove source if `id_pointer` and `*id_pointer` are valid.
+  virtual bool has_primary     (void) = 0;                  ///< Indicates whether loop contains primary sources.
+  virtual bool flag_primary    (bool            on) = 0;
   template<class BoolVoidFunctor>
   uint exec_callback   (BoolVoidFunctor &&bvf, int priority
                         = PRIORITY_NORMAL);     ///< Execute a callback at user defined priority returning true repeats callback.
@@ -111,10 +96,10 @@ public:
                         = PRIORITY_NORMAL);     /// Execute a single dispatcher callback for prepare, check, dispatch.
   uint exec_usignal    (int8 signum, const USignalSlot &sl, int priority
                         = PRIORITY_USIGNAL);     /// Execute a signal callback for prepare, check, dispatch.
-  uint exec_sigchld    (int64_t pid, const SigchldSlot &vfunc, int priority
-                        = PRIORITY_NORMAL);     /// Execute a callback once on SIGCHLD for `pid`.
-  bool exec_once       (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priority
-                        = PRIORITY_NORMAL);     ///< Execute a callback once, re-schedules the callback if `0 != *once_id`.
+  virtual uint exec_sigchld    (int64_t pid, const SigchldSlot &vfunc, int priority
+                                = PRIORITY_NORMAL) = 0;     /// Execute a callback once on SIGCHLD for `pid`.
+  virtual bool exec_once       (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priority
+                                = PRIORITY_NORMAL) = 0;     ///< Execute a callback once, re-schedules the callback if `0 != *once_id`.
   /// Execute a callback after a specified timeout with adjustable initial timeout, returning true repeats callback.
   template<class BoolVoidFunctor>
   uint exec_timer      (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms = -1, int priority = PRIORITY_NORMAL);
@@ -147,6 +132,7 @@ struct LoopState {
 class LoopSource /// Loop source for callback execution.
 {
   friend       class Loop;
+  friend       class LoopImpl;
   ASE_CLASS_NON_COPYABLE (LoopSource);
 protected:
   Loop   *loop_;
@@ -328,12 +314,6 @@ inline uint
 Loop::exec_usignal (int8 signum, const USignalSlot &slot, int priority)
 {
   return add (USignalSource::create (signum, slot), priority);
-}
-
-inline uint
-Loop::exec_sigchld (int64_t pid, const SigchldSlot &slot, int priority)
-{
-  return add (SigchldSource::create (pid, slot), priority);
 }
 
 template<class BoolVoidFunctor> uint

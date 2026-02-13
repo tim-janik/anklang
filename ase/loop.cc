@@ -127,58 +127,75 @@ struct QuickSourcePArray : public QuickArray<LoopSourceP*> {
   QuickSourcePArray (uint n_reserved, LoopSourceP **reserved) : QuickArray (n_reserved, reserved) {}
 };
 
+// === Loop ==
+Loop::Loop() {}
+Loop::~Loop() {}
+
 // === LoopImpl ===
-/// An Loop implementation that offers public API for running the loop.
+/// Loop implementation with internal state.
 class LoopImpl : public Loop
 {
   ASE_CLASS_NON_COPYABLE (LoopImpl);
 public:
   ASE_DEFINE_MAKE_SHARED (LoopImpl);
-  std::mutex            mutex_;
-  uint                  rr_index_;
-  EventFd               eventfd_;
-  int8                  running_;
-  int8                  has_quit_;
-  int16                 quit_code_;
-  GlibGMainContext     *gcontext_;
-  bool                  finishable_L        ();
-  int                   run                 () override;
-  bool                  running             () override;
-  void                  wakeup              () override;
-  void                  quit                (int quit_code) override;
-  bool                  finishable          () override;
-  bool                  iterate             (bool may_block) override;
-  void                  iterate_pending     () override;
-  bool                  pending             () override;
-  bool                  set_g_main_context  (GlibGMainContext *glib_main_context) override;
-  std::mutex&           mutex               () override;
-  bool                  iterate_loops_Lm    (LoopState&, bool b, bool d);
-  void                  destroy_loop        () override;
-  explicit              LoopImpl            ();
-  virtual              ~LoopImpl            ();
+  typedef std::vector<LoopSourceP> SourceList;
+  SourceList              sources_;
+  std::vector<LoopSourceP> poll_sources_;
+  int16                   dispatch_priority_;
+  bool                    primary_;
+  std::mutex              mutex_;
+  uint                    rr_index_;
+  EventFd                 eventfd_;
+  int8                    running_;
+  int8                    has_quit_;
+  int16                   quit_code_;
+  GlibGMainContext       *gcontext_;
+  bool                    finishable_L        ();
+  int                     run                 () override;
+  bool                    running             () override;
+  void                    wakeup              () override;
+  void                    quit                (int quit_code) override;
+  bool                    finishable          () override;
+  bool                    iterate             (bool may_block) override;
+  void                    iterate_pending     () override;
+  bool                    pending             () override;
+  bool                    set_g_main_context  (GlibGMainContext *glib_main_context) override;
+  std::mutex&             mutex               () override;
+  bool                    iterate_loops_Lm    (LoopState&, bool b, bool d);
+  void                    destroy_loop        () override;
+  LoopSourceP&            find_first_L        ();
+  LoopSourceP&            find_source_L       (uint id);
+  bool                    has_primary_L       (void);
+  void                    remove_source_Lm    (LoopSourceP source);
+  void                    kill_sources_Lm     (void);
+  void                    unpoll_sources_U    ();
+  void                    collect_sources_Lm  (LoopState&);
+  bool                    prepare_sources_Lm  (LoopState&, QuickPfdArray&);
+  bool                    check_sources_Lm    (LoopState&, const QuickPfdArray&);
+  void                    dispatch_source_Lm  (LoopState&);
+  uint                    add                 (LoopSourceP loop_source, int priority) override;
+  void                    remove              (uint id) override;
+  void                    remove              (uint *idp) override;
+  bool                    try_remove          (uint id) override;
+  bool                    clear_source        (uint *id_pointer) override;
+  bool                    has_primary         () override;
+  bool                    flag_primary        (bool on) override;
+  uint                    exec_sigchld        (int64_t pid, const SigchldSlot &vfunc, int priority) override;
+  bool                    exec_once           (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priority) override;
+  explicit                LoopImpl            ();
+  virtual                ~LoopImpl            ();
 };
 
-// === Loop ===
-Loop::Loop() :
-  dispatch_priority_ (0), primary_ (false)
-{
-  poll_sources_.reserve (7);
-}
-
-Loop::~Loop ()
-{
-  unpoll_sources_U();
-}
-
+// === LoopImpl ===
 inline LoopSourceP&
-Loop::find_first_L()
+LoopImpl::find_first_L()
 {
   static LoopSourceP null_source;
   return sources_.empty() ? null_source : sources_[0];
 }
 
 inline LoopSourceP&
-Loop::find_source_L (uint id)
+LoopImpl::find_source_L (uint id)
 {
   for (SourceList::iterator lit = sources_.begin(); lit != sources_.end(); lit++)
     if (id == (*lit)->id_)
@@ -188,7 +205,7 @@ Loop::find_source_L (uint id)
 }
 
 bool
-Loop::has_primary_L()
+LoopImpl::has_primary_L()
 {
   if (primary_)
     return true;
@@ -199,16 +216,16 @@ Loop::has_primary_L()
 }
 
 bool
-Loop::has_primary()
+LoopImpl::has_primary()
 {
-  std::lock_guard<std::mutex> locker (mutex());
+  std::lock_guard<std::mutex> locker (mutex_);
   return has_primary_L();
 }
 
 bool
-Loop::flag_primary (bool on)
+LoopImpl::flag_primary (bool on)
 {
-  std::lock_guard<std::mutex> locker (mutex());
+  std::lock_guard<std::mutex> locker (mutex_);
   const bool was_primary = primary_;
   primary_ = on;
   if (primary_ != was_primary)
@@ -219,7 +236,7 @@ Loop::flag_primary (bool on)
 static const int16 UNDEFINED_PRIORITY = -32768;
 
 uint
-Loop::add (LoopSourceP source, int priority)
+LoopImpl::add (LoopSourceP source, int priority)
 {
   static_assert (UNDEFINED_PRIORITY < 1, "");
   assert_return (priority >= 1 && priority <= PRIORITY_CEILING, 0);
@@ -230,7 +247,7 @@ Loop::add (LoopSourceP source, int priority)
   source->loop_state_ = WAITING;
   source->priority_ = priority;
   {
-    std::lock_guard<std::mutex> locker (mutex());
+    std::lock_guard<std::mutex> locker (mutex_);
     sources_.push_back (source);
   }
   wakeup();
@@ -238,7 +255,7 @@ Loop::add (LoopSourceP source, int priority)
 }
 
 void
-Loop::remove_source_Lm (LoopSourceP source)
+LoopImpl::remove_source_Lm (LoopSourceP source)
 {
   std::mutex &LOCK = mutex();
   assert_return (source->loop_ == this);
@@ -255,10 +272,10 @@ Loop::remove_source_Lm (LoopSourceP source)
 }
 
 bool
-Loop::try_remove (uint id)
+LoopImpl::try_remove (uint id)
 {
   {
-    std::lock_guard<std::mutex> locker (mutex());
+    std::lock_guard<std::mutex> locker (mutex_);
     LoopSourceP &source = find_source_L (id);
     if (!source)
       return false;
@@ -269,7 +286,7 @@ Loop::try_remove (uint id)
 }
 
 void
-Loop::remove (uint *idp)
+LoopImpl::remove (uint *idp)
 {
   if (idp) {
     if (*idp)
@@ -279,7 +296,7 @@ Loop::remove (uint *idp)
 }
 
 bool
-Loop::clear_source (uint *id_pointer)
+LoopImpl::clear_source (uint *id_pointer)
 {
   return_unless (id_pointer, false);
   const bool removal = try_remove (*id_pointer);
@@ -288,14 +305,14 @@ Loop::clear_source (uint *id_pointer)
 }
 
 void
-Loop::remove (uint id)
+LoopImpl::remove (uint id)
 {
   if (!try_remove (id))
     warning ("%s: failed to remove loop source: %u", __func__, id);
 }
 
 bool
-Loop::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priority)
+LoopImpl::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priority)
 {
   assert_return (once_id != nullptr, false);
   assert_return (priority >= 1 && priority <= PRIORITY_CEILING, false);
@@ -311,7 +328,7 @@ Loop::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priori
   source->priority_ = priority;
   uint warn_id = 0;
   {
-    std::lock_guard<std::mutex> locker (mutex());
+    std::lock_guard<std::mutex> locker (mutex_);
     if (*once_id) {
       LoopSourceP &source = find_source_L (*once_id);
       if (source)
@@ -328,6 +345,12 @@ Loop::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priori
   return true;
 }
 
+uint
+LoopImpl::exec_sigchld (int64_t pid, const SigchldSlot &slot, int priority)
+{
+  return add (SigchldSource::create (pid, slot), priority);
+}
+
 /* void Loop::change_priority (LoopSource *source, int priority) {
  * // ensure that source belongs to this
  * // reset all source->pfds[].idx = UINT_MAX
@@ -337,7 +360,7 @@ Loop::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priori
  */
 
 void
-Loop::kill_sources_Lm()
+LoopImpl::kill_sources_Lm()
 {
   for (;;)
     {
@@ -561,14 +584,14 @@ mk_gpollfd (PollFD *pfd)
 #endif
 
 void
-Loop::unpoll_sources_U() // must be unlocked!
+LoopImpl::unpoll_sources_U() // must be unlocked!
 {
   // clear poll sources
   poll_sources_.resize (0);
 }
 
 void
-Loop::collect_sources_Lm (LoopState &state)
+LoopImpl::collect_sources_Lm (LoopState &state)
 {
   // enforce clean slate
   if (UNLIKELY (!poll_sources_.empty()))
@@ -615,7 +638,7 @@ Loop::collect_sources_Lm (LoopState &state)
 }
 
 bool
-Loop::prepare_sources_Lm (LoopState &state, QuickPfdArray &pfda)
+LoopImpl::prepare_sources_Lm (LoopState &state, QuickPfdArray &pfda)
 {
   std::mutex &LOCK = mutex();
   // prepare sources, up to NEEDS_DISPATCH priority
@@ -655,7 +678,7 @@ Loop::prepare_sources_Lm (LoopState &state, QuickPfdArray &pfda)
 }
 
 bool
-Loop::check_sources_Lm (LoopState &state, const QuickPfdArray &pfda)
+LoopImpl::check_sources_Lm (LoopState &state, const QuickPfdArray &pfda)
 {
   std::mutex &LOCK = mutex();
   // check polled sources
@@ -692,7 +715,7 @@ Loop::check_sources_Lm (LoopState &state, const QuickPfdArray &pfda)
 }
 
 void
-Loop::dispatch_source_Lm (LoopState &state)
+LoopImpl::dispatch_source_Lm (LoopState &state)
 {
   std::mutex &LOCK = mutex();
   // find a source to dispatch at dispatch_priority_
