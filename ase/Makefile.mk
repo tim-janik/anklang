@@ -60,7 +60,8 @@ endef
 # == codegen/ase/gen/api-jsonipc.json ==
 $>/codegen/ase/gen/api-jsonipc.json: ase/api.hh $>/ase/sysconfig.h ase/Makefile.mk
 	$(QGEN)
-	$Q clang-20 -std=gnu++23 -I . -I out/ -extract-api $< -o $@
+	$Q CLANG=clang-20; command -v $$CLANG >/dev/null || CLANG=clang-21; \
+		$$CLANG -std=gnu++23 -I . -I out/ -extract-api $< -o $@
 
 # == ase/gen/class-tree.g.md ==
 $>/codegen/ase/gen/class-tree.g.md: $>/codegen/ase/gen/api-jsonipc.json jsonipc/jsonbindings.ts ase/Makefile.mk
