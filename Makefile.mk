@@ -161,14 +161,7 @@ include $>/WILDCARD_FILES.mk	# define WILDCARD_FILES
 endif
 
 # == enduser targets ==
-all: FORCE
-codegen: FORCE
-check: FORCE
-check-audio: FORCE
-install: FORCE
-uninstall: FORCE
-installcheck: FORCE
-lint: FORCE
+.PHONY: all codegen check check-audio install uninstall installcheck lint strict
 
 # == subdirs ==
 include devices/Makefile.mk
@@ -339,7 +332,10 @@ eslint: $>/.eslint.done FORCE
 stylelint: FORCE
 check: stylelint
 
-# == check rules ==
+# == strict ==
+strict: check
+
+# == check ==
 # Macro to generate test runs as 'check' dependencies
 define CHECK_ALL_TESTS_TEST
 CHECK_TARGETS += $$(dir $1)check-$$(notdir $1)
@@ -436,6 +432,7 @@ help: FORCE
 	@echo '                    command line. Inspect the file for a list of variables to'
 	@echo '                    be customized. Deleting it will undo any customizations.'
 	@echo '  check           - Run selfttests and unit tests'
+	@echo '  strict          - Run `make check` and additional CI test'
 	@echo '  x11test         - Replay all JSON recordings from x11test/ in Electron.'
 	@echo '  x11test-v       - Run "x11test" in virtual XServer (headless).'
 	@echo '  check-audio     - Validate Anklang rendering against reference files'

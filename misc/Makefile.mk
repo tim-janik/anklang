@@ -126,7 +126,8 @@ $>/.copyright.check: misc/checkcrlist.py $(misc/copyright_files) $(REPOCOMMITDEP
 	   fi > $>/copyright.lst \
 	&& misc/checkcrlist.py -e $>/copyright.lst $(misc/copyright_files)
 	$Q rm -f $>/copyright.lst && touch $@
-LATE_TARGETS += $>/.copyright.check
+# LATE_TARGETS += $>/.copyright.check
+strict: $>/.copyright.check
 # explicit copyright check, metadata fetching requires Git
 check-copyright: misc/checkcrlist.py $(misc/copyright_files)
 	$(QGEN)
@@ -139,5 +140,5 @@ check-copyright: misc/checkcrlist.py $(misc/copyright_files)
 	&& misc/checkcrlist.py $(if $(GITCOMMITDEPS),--git) -e -p $>/copyright.lst $(misc/copyright_files) \
 	&& rm -f $>/copyright.lst
 .PHONY: check-copyright
-check: check-copyright
+strict: check-copyright
 # misc/mkcopyright.py -c doc/copyright.ini -f <FILELIST>
