@@ -123,8 +123,8 @@ public:
 struct Loop::QuickPfdArray : public QuickArray<PollFD> {
   QuickPfdArray (uint n_reserved, PollFD *reserved) : QuickArray (n_reserved, reserved) {}
 };
-struct QuickSourcePArray : public QuickArray<EventSourceP*> {
-  QuickSourcePArray (uint n_reserved, EventSourceP **reserved) : QuickArray (n_reserved, reserved) {}
+struct QuickSourcePArray : public QuickArray<LoopSourceP*> {
+  QuickSourcePArray (uint n_reserved, LoopSourceP **reserved) : QuickArray (n_reserved, reserved) {}
 };
 
 // === LoopImpl ===
@@ -170,20 +170,20 @@ Loop::~Loop ()
   unpoll_sources_U();
 }
 
-inline EventSourceP&
+inline LoopSourceP&
 Loop::find_first_L()
 {
-  static EventSourceP null_source;
+  static LoopSourceP null_source;
   return sources_.empty() ? null_source : sources_[0];
 }
 
-inline EventSourceP&
+inline LoopSourceP&
 Loop::find_source_L (uint id)
 {
   for (SourceList::iterator lit = sources_.begin(); lit != sources_.end(); lit++)
     if (id == (*lit)->id_)
       return *lit;
-  static EventSourceP null_source;
+  static LoopSourceP null_source;
   return null_source;
 }
 
@@ -219,7 +219,7 @@ Loop::flag_primary (bool on)
 static const int16 UNDEFINED_PRIORITY = -32768;
 
 uint
-Loop::add (EventSourceP source, int priority)
+Loop::add (LoopSourceP source, int priority)
 {
   static_assert (UNDEFINED_PRIORITY < 1, "");
   assert_return (priority >= 1 && priority <= PRIORITY_CEILING, 0);
@@ -238,7 +238,7 @@ Loop::add (EventSourceP source, int priority)
 }
 
 void
-Loop::remove_source_Lm (EventSourceP source)
+Loop::remove_source_Lm (LoopSourceP source)
 {
   std::mutex &LOCK = mutex();
   assert_return (source->loop_ == this);
@@ -259,7 +259,7 @@ Loop::try_remove (uint id)
 {
   {
     std::lock_guard<std::mutex> locker (mutex());
-    EventSourceP &source = find_source_L (id);
+    LoopSourceP &source = find_source_L (id);
     if (!source)
       return false;
     remove_source_Lm (source);
@@ -304,7 +304,7 @@ Loop::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priori
     return false;
   }
   auto once_handler = [vfunc,once_id]() { *once_id = 0; vfunc(); };
-  EventSourceP source = TimedSource::create (once_handler, delay_ms, 0);
+  LoopSourceP source = TimedSource::create (once_handler, delay_ms, 0);
   source->loop_ = this;
   source->id_ = alloc_id();
   source->loop_state_ = WAITING;
@@ -313,7 +313,7 @@ Loop::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priori
   {
     std::lock_guard<std::mutex> locker (mutex());
     if (*once_id) {
-      EventSourceP &source = find_source_L (*once_id);
+      LoopSourceP &source = find_source_L (*once_id);
       if (source)
         remove_source_Lm (source);
       else
@@ -328,7 +328,7 @@ Loop::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priori
   return true;
 }
 
-/* void Loop::change_priority (EventSource *source, int priority) {
+/* void Loop::change_priority (LoopSource *source, int priority) {
  * // ensure that source belongs to this
  * // reset all source->pfds[].idx = UINT_MAX
  * // unlink source
@@ -341,7 +341,7 @@ Loop::kill_sources_Lm()
 {
   for (;;)
     {
-      EventSourceP &source = find_first_L();
+      LoopSourceP &source = find_first_L();
       if (source == NULL)
         break;
       remove_source_Lm (source);
@@ -581,13 +581,13 @@ Loop::collect_sources_Lm (LoopState &state)
     }
   if (UNLIKELY (!state.seen_primary && primary_))
     state.seen_primary = true;
-  EventSourceP* arraymem[7]; // using a vector+malloc here shows up in the profiles
+  LoopSourceP* arraymem[7]; // using a vector+malloc here shows up in the profiles
   QuickSourcePArray poll_candidates (ARRAY_SIZE (arraymem), arraymem);
   // determine dispatch priority & collect sources for preparing
   dispatch_priority_ = UNDEFINED_PRIORITY; // initially, consider sources at *all* priorities
   for (SourceList::iterator lit = sources_.begin(); lit != sources_.end(); lit++)
     {
-      EventSource &source = **lit;
+      LoopSource &source = **lit;
       if (UNLIKELY (!state.seen_primary && source.primary_))
         state.seen_primary = true;
       if (source.loop_ != this ||                               // ignore destroyed and
@@ -621,7 +621,7 @@ Loop::prepare_sources_Lm (LoopState &state, QuickPfdArray &pfda)
   // prepare sources, up to NEEDS_DISPATCH priority
   for (auto lit = poll_sources_.begin(); lit != poll_sources_.end(); lit++)
     {
-      EventSource &source = **lit;
+      LoopSource &source = **lit;
       if (source.loop_ != this) // test undestroyed
         continue;
       int64 timeout = -1;
@@ -661,7 +661,7 @@ Loop::check_sources_Lm (LoopState &state, const QuickPfdArray &pfda)
   // check polled sources
   for (auto lit = poll_sources_.begin(); lit != poll_sources_.end(); lit++)
     {
-      EventSource &source = **lit;
+      LoopSource &source = **lit;
       if (source.loop_ != this && // test undestroyed
           source.loop_state_ != PREPARED)
         continue; // only check prepared sources
@@ -696,10 +696,10 @@ Loop::dispatch_source_Lm (LoopState &state)
 {
   std::mutex &LOCK = mutex();
   // find a source to dispatch at dispatch_priority_
-  EventSourceP dispatch_source = NULL;                  // shared_ptr to keep alive even if everything else is destroyed
+  LoopSourceP dispatch_source = NULL;                  // shared_ptr to keep alive even if everything else is destroyed
   for (auto lit = poll_sources_.begin(); lit != poll_sources_.end(); lit++)
     {
-      EventSourceP &source = *lit;
+      LoopSourceP &source = *lit;
       if (source->loop_ == this &&                      // test undestroyed
           source->priority_ == dispatch_priority_ &&    // only dispatch at dispatch priority
           source->loop_state_ == NEEDS_DISPATCH)
@@ -827,8 +827,8 @@ LoopImpl::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
   return any_dispatchable; // need to dispatch or recheck
 }
 
-// === EventSource ===
-EventSource::EventSource () :
+// === LoopSource ===
+LoopSource::LoopSource () :
   loop_ (NULL),
   pfds_ (NULL),
   id_ (0),
@@ -841,7 +841,7 @@ EventSource::EventSource () :
 {}
 
 uint
-EventSource::n_pfds ()
+LoopSource::n_pfds ()
 {
   uint i = 0;
   if (pfds_)
@@ -851,43 +851,43 @@ EventSource::n_pfds ()
 }
 
 void
-EventSource::may_recurse (bool may_recurse)
+LoopSource::may_recurse (bool may_recurse)
 {
   may_recurse_ = may_recurse;
 }
 
 bool
-EventSource::may_recurse () const
+LoopSource::may_recurse () const
 {
   return may_recurse_;
 }
 
 bool
-EventSource::primary () const
+LoopSource::primary () const
 {
   return primary_;
 }
 
 void
-EventSource::primary (bool is_primary)
+LoopSource::primary (bool is_primary)
 {
   primary_ = is_primary;
 }
 
 bool
-EventSource::recursion () const
+LoopSource::recursion () const
 {
   return dispatching_ && was_dispatching_;
 }
 
 void
-EventSource::add_poll (PollFD *const pfd)
+LoopSource::add_poll (PollFD *const pfd)
 {
   const uint idx = n_pfds();
   uint npfds = idx + 1;
   pfds_ = (typeof (pfds_)) realloc (pfds_, sizeof (pfds_[0]) * (npfds + 1));
   if (!pfds_)
-    fatal_error ("EventSource: out of memory");
+    fatal_error ("LoopSource: out of memory");
   pfds_[npfds].idx = 4294967295U; // UINT_MAX
   pfds_[npfds].pfd = NULL;
   pfds_[idx].idx = 4294967295U; // UINT_MAX
@@ -895,7 +895,7 @@ EventSource::add_poll (PollFD *const pfd)
 }
 
 void
-EventSource::remove_poll (PollFD *const pfd)
+LoopSource::remove_poll (PollFD *const pfd)
 {
   uint idx, npfds = n_pfds();
   for (idx = 0; idx < npfds; idx++)
@@ -910,21 +910,21 @@ EventSource::remove_poll (PollFD *const pfd)
       pfds_[npfds - 1].pfd = NULL;
     }
   else
-    warning ("EventSource: unremovable PollFD: %p (fd=%d)", pfd, pfd->fd);
+    warning ("LoopSource: unremovable PollFD: %p (fd=%d)", pfd, pfd->fd);
 }
 
 void
-EventSource::destroy ()
+LoopSource::destroy ()
 {}
 
 void
-EventSource::loop_remove ()
+LoopSource::loop_remove ()
 {
   if (loop_)
     loop_->try_remove (source_id());
 }
 
-EventSource::~EventSource ()
+LoopSource::~LoopSource ()
 {
   assert_return (loop_ == NULL);
   if (pfds_)
@@ -1309,15 +1309,15 @@ PollFDSource::~PollFDSource ()
   @li The main loop and its sub loops are handled in round-robin fahsion, priorities below Ase::Loop::PRIORITY_ASCENT only apply internally to a loop.
   @li Loops are thread safe, so any thready may add or remove sources to a loop at any time, regardless of which thread
   is currently running the loop.
-  @li Sources added to a loop may be flagged as "primary" (see Ase::EventSource::primary()),
+  @li Sources added to a loop may be flagged as "primary" (see Ase::LoopSource::primary()),
   to keep the loop from exiting. This is used to distinguish background jobs, e.g. updating a window's progress bar,
   from primary jobs, like processing events on the main window.
   Sticking with the example, a window's event loop should be exited if the window vanishes, but not when it's
   progress bar stoped updating.
 
-  Loop integration of a Ase::EventSource class:
+  Loop integration of a Ase::LoopSource class:
   @li First, prepare() is called on a source, returning true here flags the source to be ready for immediate dispatching.
-  @li Second, poll(2) monitors all PollFD file descriptors of the source (see Ase::EventSource::add_poll()).
+  @li Second, poll(2) monitors all PollFD file descriptors of the source (see Ase::LoopSource::add_poll()).
   @li Third, check() is called for the source to check whether dispatching is needed depending on PollFD states.
   @li Fourth, the source is dispatched if it returened true from either prepare() or check(). If multiple sources are
   ready to be dispatched, the entire process may be repeated several times (after dispatching other sources),

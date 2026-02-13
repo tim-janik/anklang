@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_LOOP_HH__
-#define __ASE_LOOP_HH__
+#pragma once
 
 #include <ase/utils.hh>
 
@@ -29,8 +28,8 @@ struct PollFD   /// Mirrors struct pollfd for poll(3posix)
 };
 
 // === Prototypes ===
-class EventSource;
-typedef std::shared_ptr<EventSource> EventSourceP;
+class LoopSource;
+typedef std::shared_ptr<LoopSource> LoopSourceP;
 class TimedSource;
 typedef std::shared_ptr<TimedSource> TimedSourceP;
 class PollFDSource;
@@ -58,17 +57,17 @@ class Loop : public virtual std::enable_shared_from_this<Loop>
   friend class LoopImpl;
   ASE_CLASS_NON_COPYABLE (Loop);
 protected:
-  typedef std::vector<EventSourceP> SourceList;
+  typedef std::vector<LoopSourceP> SourceList;
   SourceList    sources_;
-  std::vector<EventSourceP> poll_sources_;
+  std::vector<LoopSourceP> poll_sources_;
   int16         dispatch_priority_;
   bool          primary_;
   explicit      Loop                ();
   virtual      ~Loop                ();
-  EventSourceP& find_first_L        ();
-  EventSourceP& find_source_L       (uint id);
+  LoopSourceP& find_first_L        ();
+  LoopSourceP& find_source_L       (uint id);
   bool          has_primary_L       (void);
-  void          remove_source_Lm    (EventSourceP source);
+  void          remove_source_Lm    (LoopSourceP source);
   void          kill_sources_Lm     (void);
   void          unpoll_sources_U    ();
   void          collect_sources_Lm  (LoopState&);
@@ -95,7 +94,7 @@ public:
   static const int16 PRIORITY_LOW      = 100; ///< Unimportant, used when everything else done.
   virtual void wakeup  () = 0;                ///< Wakeup loop from polling.
   // source handling
-  uint add             (EventSourceP loop_source, int priority
+  uint add             (LoopSourceP loop_source, int priority
                         = PRIORITY_NORMAL);     ///< Adds a new source to the loop with custom priority.
   void remove          (uint            id);    ///< Removes a source from loop, the source must be present.
   void remove          (uint           *idp);   ///< Removes a source by id if present, resets id.
@@ -144,11 +143,11 @@ struct LoopState {
   int64    timeout_usecs = 0;      ///< Maximum timeout for poll, queried during prepare().
 };
 
-// === EventSource ===
-class EventSource /// Loop source for callback execution.
+// === LoopSource ===
+class LoopSource /// Loop source for callback execution.
 {
   friend       class Loop;
-  ASE_CLASS_NON_COPYABLE (EventSource);
+  ASE_CLASS_NON_COPYABLE (LoopSource);
 protected:
   Loop   *loop_;
   struct {
@@ -163,9 +162,9 @@ protected:
   uint         was_dispatching_ : 1;
   uint         primary_ : 1;
   uint         n_pfds      ();
-  explicit     EventSource ();
+  explicit     LoopSource ();
   uint         source_id   () { return loop_ ? id_ : 0; }
-  virtual     ~EventSource ();
+  virtual     ~LoopSource ();
 public:
   virtual bool prepare     (const LoopState &state,
                             int64 *timeout_usecs_p) = 0;    ///< Prepare the source for dispatching (true return) or polling (false).
@@ -184,7 +183,7 @@ public:
 };
 
 // === DispatcherSource ===
-class DispatcherSource : public virtual EventSource /// Loop source for handler execution.
+class DispatcherSource : public virtual LoopSource /// Loop source for handler execution.
 {
   typedef Loop::DispatcherSlot DispatcherSlot;
   DispatcherSlot slot_;
@@ -202,7 +201,7 @@ public:
 };
 
 // === USignalSource ===
-class USignalSource : public virtual EventSource /// Loop source for handler execution.
+class USignalSource : public virtual LoopSource /// Loop source for handler execution.
 {
   typedef Loop::USignalSlot USignalSlot;
   USignalSlot slot_;
@@ -223,7 +222,7 @@ public:
 };
 
 // === SigchldSource ===
-class SigchldSource : public virtual EventSource /// Loop source for handler execution.
+class SigchldSource : public virtual LoopSource /// Loop source for handler execution.
 {
   ASE_DEFINE_MAKE_SHARED (SigchldSource);
   typedef Loop::SigchldSlot SigchldSlot;
@@ -243,7 +242,7 @@ public:
 };
 
 // === TimedSource ===
-class TimedSource : public virtual EventSource /// Loop source for timer execution.
+class TimedSource : public virtual LoopSource /// Loop source for timer execution.
 {
   typedef Loop::BoolSlot BoolSlot;
   typedef Loop::VoidSlot VoidSlot;
@@ -271,7 +270,7 @@ public:
 };
 
 // === PollFDSource ===
-class PollFDSource : public virtual EventSource /// Loop source for IO callbacks.
+class PollFDSource : public virtual LoopSource /// Loop source for IO callbacks.
 {
   typedef Loop::BPfdSlot BPfdSlot;
   typedef Loop::VPfdSlot VPfdSlot;
@@ -354,5 +353,3 @@ Loop::exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, in
 }
 
 } // Ase
-
-#endif  /* __ASE_LOOP_HH__ */
