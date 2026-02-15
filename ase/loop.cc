@@ -63,69 +63,6 @@ release_id (uint id)
   // TODO: use global ID allcoator?
 }
 
-// === QuickArray ===
-template<class Data>
-class QuickArray {
-  Data  *data_;
-  uint   n_elements_;
-  uint   n_reserved_;
-  Data  *reserved_;
-  template<class D> void swap (D &a, D &b) { D t = a; a = b; b = t; }
-public:
-  typedef Data* iterator;
-  QuickArray (uint n_reserved, Data *reserved) : data_ (reserved), n_elements_ (0), n_reserved_ (n_reserved), reserved_ (reserved) {}
-  ~QuickArray()                         { if (ISLIKELY (data_) && UNLIKELY (data_ != reserved_)) free (data_); }
-  uint        size       () const       { return n_elements_; }
-  uint        capacity   () const       { return std::max (n_elements_, n_reserved_); }
-  bool        empty      () const       { return n_elements_ == 0; }
-  Data*       data       () const       { return data_; }
-  Data&       operator[] (uint n)       { return data_[n]; }
-  const Data& operator[] (uint n) const { return data_[n]; }
-  iterator    begin      ()             { return &data_[0]; }
-  iterator    end        ()             { return &data_[n_elements_]; }
-  void        shrink     (uint n)       { n_elements_ = std::min (n_elements_, n); }
-  void        swap       (QuickArray &o)
-  {
-    swap (data_,       o.data_);
-    swap (n_elements_, o.n_elements_);
-    swap (n_reserved_, o.n_reserved_);
-    swap (reserved_,   o.reserved_);
-  }
-  void        push       (const Data &d)
-  {
-    const uint idx = n_elements_;
-    resize (idx + 1);
-    data_[idx] = d;
-  }
-  void        resize     (uint n)
-  {
-    if (n <= capacity())
-      {
-        n_elements_ = n;
-        return;
-      }
-    // n > n_reserved_ && n > n_elements_
-    const size_t sz = n * sizeof (Data);
-    const bool migrate_reserved = UNLIKELY (data_ == reserved_);        // migrate from reserved to malloced
-    Data *mem = (Data*) (migrate_reserved ? malloc (sz) : realloc (data_, sz));
-    if (UNLIKELY (!mem))
-      fatal_error ("OOM");
-    if (migrate_reserved)
-      {
-        memcpy (mem, data_, n_elements_ * sizeof (Data));
-        reserved_ = NULL;
-        n_reserved_ = 0;
-      }
-    data_ = mem;
-    n_elements_ = n;
-  }
-};
-struct Loop::QuickPfdArray : public QuickArray<PollFD> {
-  QuickPfdArray (uint n_reserved, PollFD *reserved) : QuickArray (n_reserved, reserved) {}
-};
-struct QuickSourcePArray : public QuickArray<LoopSourceP*> {
-  QuickSourcePArray (uint n_reserved, LoopSourceP **reserved) : QuickArray (n_reserved, reserved) {}
-};
 
 // === Loop ==
 Loop::Loop() {}
@@ -136,6 +73,8 @@ Loop::~Loop() {}
 class LoopImpl : public Loop
 {
   ASE_CLASS_NON_COPYABLE (LoopImpl);
+  std::vector<PollFD>       cached_pollfd_vector_;
+  std::vector<LoopSourceP*> cached_poll_candidates_;
 public:
   ASE_DEFINE_MAKE_SHARED (LoopImpl);
   typedef std::vector<LoopSourceP> SourceList;
@@ -170,8 +109,8 @@ public:
   void                    kill_sources_Lm     (void);
   void                    unpoll_sources_U    ();
   void                    collect_sources_Lm  (LoopState&);
-  bool                    prepare_sources_Lm  (LoopState&, QuickPfdArray&);
-  bool                    check_sources_Lm    (LoopState&, const QuickPfdArray&);
+  bool                    prepare_sources_Lm  (LoopState&, std::vector<PollFD>&);
+  bool                    check_sources_Lm    (LoopState&, const std::vector<PollFD>&);
   void                    dispatch_source_Lm  (LoopState&);
   uint                    add                 (LoopSourceP loop_source, int priority) override;
   void                    remove              (uint id) override;
@@ -390,6 +329,8 @@ Loop::create ()
 LoopImpl::LoopImpl() :
   rr_index_ (0), running_ (false), has_quit_ (false), quit_code_ (0), gcontext_ (NULL)
 {
+  cached_pollfd_vector_.reserve (1);
+  cached_poll_candidates_.reserve (1);
   std::lock_guard<std::mutex> locker (mutex());
   const int err = eventfd_.open();
   if (err < 0)
@@ -604,8 +545,9 @@ LoopImpl::collect_sources_Lm (LoopState &state)
     }
   if (UNLIKELY (!state.seen_primary && primary_))
     state.seen_primary = true;
-  LoopSourceP* arraymem[7]; // using a vector+malloc here shows up in the profiles
-  QuickSourcePArray poll_candidates (ARRAY_SIZE (arraymem), arraymem);
+  // cache vector, otherwise malloc shows up in the profiles
+  std::vector<LoopSourceP*> &poll_candidates = cached_poll_candidates_;
+  poll_candidates.resize (0);
   // determine dispatch priority & collect sources for preparing
   dispatch_priority_ = UNDEFINED_PRIORITY; // initially, consider sources at *all* priorities
   for (SourceList::iterator lit = sources_.begin(); lit != sources_.end(); lit++)
@@ -622,7 +564,7 @@ LoopImpl::collect_sources_Lm (LoopState &state)
       if (source.priority_ > dispatch_priority_ ||              // add source if it is an eligible
           (source.priority_ == dispatch_priority_ &&            // candidate, baring future raises
            source.loop_state_ == NEEDS_DISPATCH))               // of dispatch_priority_...
-        poll_candidates.push (&*lit);                           // collect only, adding ref() later
+        poll_candidates.push_back (&*lit);                      // collect only, adding ref() later
     }
   // ensure ref counts on all prepare sources
   assert_return (poll_sources_.empty());
@@ -638,7 +580,7 @@ LoopImpl::collect_sources_Lm (LoopState &state)
 }
 
 bool
-LoopImpl::prepare_sources_Lm (LoopState &state, QuickPfdArray &pfda)
+LoopImpl::prepare_sources_Lm (LoopState &state, std::vector<PollFD> &pfda)
 {
   std::mutex &LOCK = mutex();
   // prepare sources, up to NEEDS_DISPATCH priority
@@ -668,7 +610,7 @@ LoopImpl::prepare_sources_Lm (LoopState &state, QuickPfdArray &pfda)
           {
             uint idx = pfda.size();
             source.pfds_[i].idx = idx;
-            pfda.push (*source.pfds_[i].pfd);
+            pfda.push_back (*source.pfds_[i].pfd);
             pfda[idx].revents = 0;
           }
         else
@@ -678,7 +620,7 @@ LoopImpl::prepare_sources_Lm (LoopState &state, QuickPfdArray &pfda)
 }
 
 bool
-LoopImpl::check_sources_Lm (LoopState &state, const QuickPfdArray &pfda)
+LoopImpl::check_sources_Lm (LoopState &state, const std::vector<PollFD> &pfda)
 {
   std::mutex &LOCK = mutex();
   // check polled sources
@@ -754,12 +696,12 @@ LoopImpl::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
 {
   assert_return (state.phase == state.NONE, false);
   std::mutex &LOCK = mutex();
-  PollFD reserved_pfd_mem[7];   // store PollFD array in stack memory, to reduce malloc overhead
-  QuickPfdArray pfda (ARRAY_SIZE (reserved_pfd_mem), reserved_pfd_mem); // pfda.size() == 0
+  std::vector<PollFD> &pfda = cached_pollfd_vector_;
+  pfda.resize (0); // cache array between iterations, to reduce malloc overhead
   // allow poll wakeups
   const PollFD wakeup = { eventfd_.inputfd(), PollFD::IN, 0 };
   const uint wakeup_idx = 0; // wakeup_idx = pfda.size();
-  pfda.push (wakeup);
+  pfda.push_back (wakeup);
   // collect
   state.phase = state.COLLECT;
   state.seen_primary = false;
@@ -782,7 +724,6 @@ LoopImpl::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
       gdispatchable = g_main_context_prepare (gcontext_, &gpriority) != 0;
       any_dispatchable |= gdispatchable;
       int gtimeout = INT32_MAX;
-      pfda.resize (pfda.capacity());
       int gnfds = g_main_context_query (gcontext_, gpriority, &gtimeout, mk_gpollfd (&pfda[gfirstfd]), pfda.size() - gfirstfd);
       while (gnfds >= 0 && size_t (gnfds) != pfda.size() - gfirstfd)
         {

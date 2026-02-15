@@ -53,7 +53,6 @@ struct GlibGMainContext; // dummy type
 /// Loop object, polling for events and executing callbacks in accordance.
 class Loop : public virtual std::enable_shared_from_this<Loop>
 {
-  struct QuickPfdArray;         // pseudo vector<PollFD>
   friend class LoopImpl;
   ASE_CLASS_NON_COPYABLE (Loop);
 protected:
