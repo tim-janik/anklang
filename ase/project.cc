@@ -819,6 +819,8 @@ ProjectImpl::create_track ()
   tracks_.insert (tracks_.end() - int (havemaster), track);
   emit_event ("track", "insert", { { "track", track }, });
   track->_set_parent (this);
+  if (is_active())
+    track->_activate();
   emit_notify ("all_tracks");
   return track;
 }
