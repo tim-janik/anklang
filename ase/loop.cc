@@ -113,10 +113,8 @@ public:
   bool                    check_sources_Lm    (LoopState&, const std::vector<PollFD>&);
   void                    dispatch_source_Lm  (LoopState&);
   uint                    add                 (LoopSourceP loop_source, int priority) override;
-  void                    remove              (uint id) override;
-  void                    remove              (uint *idp) override;
-  bool                    try_remove          (uint id) override;
-  bool                    clear_source        (uint *id_pointer) override;
+  void                    cancel              (uint id) override;
+  void                    cancel              (uint *idp) override;
   bool                    has_primary         () override;
   bool                    flag_primary        (bool on) override;
   uint                    exec_sigchld        (int64_t pid, const SigchldSlot &vfunc, int priority) override;
@@ -210,44 +208,25 @@ LoopImpl::remove_source_Lm (LoopSourceP source)
   LOCK.lock();
 }
 
-bool
-LoopImpl::try_remove (uint id)
+void
+LoopImpl::cancel (uint id)
 {
-  {
-    std::lock_guard<std::mutex> locker (mutex_);
-    LoopSourceP &source = find_source_L (id);
-    if (!source)
-      return false;
+  std::lock_guard<std::mutex> locker (mutex_);
+  LoopSourceP &source = find_source_L (id);
+  if (source) {
     remove_source_Lm (source);
+    wakeup();
   }
-  wakeup();
-  return true;
 }
 
 void
-LoopImpl::remove (uint *idp)
+LoopImpl::cancel (uint *idp)
 {
   if (idp) {
     if (*idp)
-      try_remove (*idp);
+      cancel (*idp);
     *idp = 0;
   }
-}
-
-bool
-LoopImpl::clear_source (uint *id_pointer)
-{
-  return_unless (id_pointer, false);
-  const bool removal = try_remove (*id_pointer);
-  *id_pointer = 0;
-  return removal;
-}
-
-void
-LoopImpl::remove (uint id)
-{
-  if (!try_remove (id))
-    warning ("%s: failed to remove loop source: %u", __func__, id);
 }
 
 bool
@@ -256,7 +235,7 @@ LoopImpl::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int pr
   assert_return (once_id != nullptr, false);
   assert_return (priority >= 1 && priority <= PRIORITY_CEILING, false);
   if (!vfunc) {
-    clear_source (once_id);
+    cancel (once_id);
     return false;
   }
   auto once_handler = [vfunc,once_id]() { *once_id = 0; vfunc(); };
@@ -885,7 +864,7 @@ void
 LoopSource::loop_remove ()
 {
   if (loop_)
-    loop_->try_remove (source_id());
+    loop_->cancel (source_id());
 }
 
 LoopSource::~LoopSource ()

@@ -1391,7 +1391,7 @@ host_unregister_timer (const clap_host *host, clap_id timer_id)
   ClapPluginHandleImpl *handle = handle_ptr (host);
   const bool deleted = Aux::erase_first (handle->timers_, [timer_id] (uint id) { return id == timer_id; });
   if (deleted)
-    main_loop->remove (timer_id);
+    main_loop->cancel (timer_id);
   CDEBUG ("%s: %s: deleted=%u: id=%u", clapid (host), __func__, deleted, timer_id);
   return deleted;
 }
@@ -1479,13 +1479,13 @@ host_unregister_fd (const clap_host_t *host, int fd)
   ClapPluginHandleImplP handlep = handle_sptr (host);
   for (size_t i = 0; i < handlep->fd_polls_.size(); i++)
     if (handlep->fd_polls_[i].fd == fd) {
-      const bool deleted = main_loop->try_remove (handlep->fd_polls_[i].source);
-      CDEBUG ("%s: %s: fd=%d id=%u (nfds=%u): deleted=%u", clapid (host), __func__, fd, handlep->fd_polls_[i].source,
-              handlep->fd_polls_.size(), deleted);
+      main_loop->cancel (handlep->fd_polls_[i].source);
+      CDEBUG ("%s: %s: fd=%d deleting source_id=%u (nfds=%u)", clapid (host), __func__, fd, handlep->fd_polls_[i].source,
+              handlep->fd_polls_.size());
       handlep->fd_polls_.erase (handlep->fd_polls_.begin() + i);
       return true;
     }
-  CDEBUG ("%s: %s: fd=%d: deleted=0", clapid (host), __func__, fd);
+  CDEBUG ("%s: %s: fd=%d: nothing to delete", clapid (host), __func__, fd);
   return false;
 }
 

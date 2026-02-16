@@ -174,7 +174,7 @@ public:
   stopVideo () override
   {
     transport_changed ("stop-video");
-    main_loop->remove (&ppt);
+    main_loop->cancel (&ppt);
   }
   void
   transport_changed (const std::string &what)

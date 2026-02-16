@@ -509,7 +509,7 @@ TelemetryPlan::setup (const char *start, size_t payloadlength, const TelemetrySe
   if (timerid_ == 0 || interval_ms_ != interval_ms)
     {
       if (timerid_)
-        main_loop->remove (timerid_);
+        main_loop->cancel (timerid_);
       auto send_telemetry = [this] () { this->send_telemetry(); return true; };
       interval_ms_ = interval_ms;
       timerid_ = interval_ms <= 0 || segments.empty() ? 0 : main_loop->exec_timer (send_telemetry, interval_ms, interval_ms);
@@ -545,7 +545,7 @@ TelemetryPlan::~TelemetryPlan()
 {
   if (timerid_)
     {
-      main_loop->remove (timerid_);
+      main_loop->cancel (timerid_);
       timerid_ = 0;
     }
 }

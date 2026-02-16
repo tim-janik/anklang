@@ -73,7 +73,7 @@ static uint timerid_maybe_save_preferences = 0;
 static void
 maybe_save_preferences()
 {
-  main_loop->clear_source (&timerid_maybe_save_preferences);
+  main_loop->cancel (&timerid_maybe_save_preferences);
   if (preferences_autosave && notify_preference_queue.empty())
     Preference::save_preferences();
 }
@@ -98,7 +98,7 @@ notify_preference_listeners ()
   if (preferences_autosave)
     main_loop->exec_once (577, &timerid_maybe_save_preferences, maybe_save_preferences);
   else
-    main_loop->clear_source (&timerid_maybe_save_preferences);
+    main_loop->cancel (&timerid_maybe_save_preferences);
 }
 
 static void

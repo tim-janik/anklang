@@ -80,10 +80,8 @@ public:
   // source handling
   virtual uint add             (LoopSourceP loop_source, int priority
                                 = PRIORITY_NORMAL) = 0;     ///< Adds a new source to the loop with custom priority.
-  virtual void remove          (uint            id) = 0;    ///< Removes a source from loop, the source must be present.
-  virtual void remove          (uint           *idp) = 0;   ///< Removes a source by id if present, resets id.
-  virtual bool try_remove      (uint            id) = 0;    ///< Tries to remove a source, returns if successfull.
-  virtual bool clear_source    (uint *id_pointer) = 0;      ///< Remove source if `id_pointer` and `*id_pointer` are valid.
+  virtual void cancel          (uint            id) = 0;    ///< Cancel a source and remove it from the  loop.
+  virtual void cancel          (uint           *idp) = 0;   ///< Cancel a source by id if present and resets the id.
   virtual bool has_primary     (void) = 0;                  ///< Indicates whether loop contains primary sources.
   virtual bool flag_primary    (bool            on) = 0;
   template<class BoolVoidFunctor>

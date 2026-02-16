@@ -92,7 +92,7 @@ ProjectImpl::ProjectImpl()
 
 ProjectImpl::~ProjectImpl()
 {
-  main_loop->clear_source (&autoplay_timer_);
+  main_loop->cancel (&autoplay_timer_);
 }
 
 
@@ -763,7 +763,7 @@ ProjectImpl::start_playback (double autostop)
     }
   assert_return (this == &*engine.get_project());
 
-  main_loop->clear_source (&autoplay_timer_);
+  main_loop->cancel (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
   std::shared_ptr<CallbackS> queuep = std::make_shared<CallbackS>();
@@ -787,7 +787,7 @@ ProjectImpl::start_playback (double autostop)
 void
 ProjectImpl::stop_playback ()
 {
-  main_loop->clear_source (&autoplay_timer_);
+  main_loop->cancel (&autoplay_timer_);
   AudioProcessorP proc = master_processor();
   return_unless (proc);
   auto stop_queuep = std::make_shared<DCallbackS>();
