@@ -92,8 +92,6 @@ public:
   template<class BoolVoidFunctor>
   LoopID exec_callback   (BoolVoidFunctor &&bvf, LoopPriority priority
                          = LoopPriority::NORMAL);     ///< Execute a callback at user defined priority returning true repeats callback.
-  template<class BoolVoidFunctor>
-  LoopID exec_idle       (BoolVoidFunctor &&bvf); ///< Execute a callback with priority "idle", returning true repeats callback.
   LoopID exec_dispatcher (const DispatcherSlot &sl, LoopPriority priority
                          = LoopPriority::NORMAL);     /// Execute a single dispatcher callback for prepare, check, dispatch.
   LoopID exec_usignal    (int8 signum, const USignalSlot &sl, LoopPriority priority
@@ -295,16 +293,6 @@ Loop::exec_callback (BoolVoidFunctor &&bvf, LoopPriority priority)
   typedef decltype (bvf()) ReturnType;
   std::function<ReturnType()> slot (bvf);
   return add_source (TimedSource::create (slot), priority);
-}
-
-template<class BoolVoidFunctor> LoopID
-Loop::exec_idle (BoolVoidFunctor &&bvf)
-{
-  typedef decltype (bvf()) ReturnType;
-  std::function<ReturnType()> slot (bvf);
-  TimedSourceP sourcep = TimedSource::create (slot);
-  sourcep->primary (false);
-  return add_source (sourcep, LoopPriority::IDLE);
 }
 
 inline LoopID

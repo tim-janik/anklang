@@ -645,10 +645,11 @@ main (int argc, char *argv[])
 
   // start auto play
   if (App.play_autostart && preload_project)
-    main_loop->exec_idle ([preload_project] () {
+    main_loop->add ([preload_project] ()
+    {
       info ("Main: starting playback (auto)");
       preload_project->start_playback (App.play_autostop);
-    });
+    }, LoopPriority::IDLE);
   // handle automatic shutdown
   main_loop->exec_dispatcher (handle_autostop);
 
