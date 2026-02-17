@@ -4,6 +4,7 @@
 #include "utils.hh"
 #include "main.hh"
 #include "internal.hh"
+#include "loop.hh"
 
 /* Linux support for Juce. Notes on the original juce-linux setup.
  * JUCEApplicationBase::main() does:
@@ -86,7 +87,7 @@ juce_loop_dispatcher (const Ase::LoopState &state)
 void
 MessageManager::doPlatformSpecificInitialisation()
 {
-  Ase::main_loop->exec_dispatcher (juce_loop_dispatcher, Ase::EventLoop::PRIORITY_RTAUDIO);
+  Ase::main_loop->exec_dispatcher (juce_loop_dispatcher, Ase::LoopPriority::RTAUDIO);
 }
 
 void

@@ -24,7 +24,7 @@ enum {
   NEEDS_DISPATCH,
 };
 
-static constexpr auto PRIORITY_CEILING = Loop::PRIORITY_SYSALLOC;
+static constexpr auto PRIORITY_CEILING = LoopPriority::SYSALLOC;
 
 // == PollFD invariants ==
 static_assert (PollFD::IN     == POLLIN);
@@ -111,13 +111,13 @@ public:
   bool                    prepare_sources_Lm  (LoopState&, std::vector<PollFD>&);
   bool                    check_sources_Lm    (LoopState&, const std::vector<PollFD>&);
   void                    dispatch_source_Lm  (LoopState&);
-  LoopID                  add                 (LoopSourceP loop_source, int priority) override;
+  LoopID                  add                 (LoopSourceP loop_source, LoopPriority priority) override;
   void                    cancel              (LoopID id) override;
   void                    cancel              (LoopID *idp) override;
   bool                    has_primary         () override;
   bool                    flag_primary        (bool on) override;
-  LoopID                  exec_sigchld        (int64_t pid, const SigchldSlot &vfunc, int priority) override;
-  bool                    exec_once           (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, int priority) override;
+  LoopID                  exec_sigchld        (int64_t pid, const SigchldSlot &vfunc, LoopPriority priority) override;
+  bool                    exec_once           (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, LoopPriority priority) override;
   explicit                LoopImpl            ();
   virtual                ~LoopImpl            ();
 };
@@ -172,16 +172,16 @@ LoopImpl::flag_primary (bool on)
 static const int16 UNDEFINED_PRIORITY = -32768;
 
 LoopID
-LoopImpl::add (LoopSourceP source, int priority)
+LoopImpl::add (LoopSourceP source, LoopPriority priority)
 {
   static_assert (UNDEFINED_PRIORITY < 1, "");
-  assert_return (priority >= 1 && priority <= PRIORITY_CEILING, LoopID::INVALID);
+  assert_return (static_cast<uint16_t> (priority) >= 1 && priority <= PRIORITY_CEILING, LoopID::INVALID);
   assert_return (source != NULL, LoopID::INVALID);
   assert_return (source->loop_ == NULL, LoopID::INVALID);
   source->loop_ = this;
   source->id_ = alloc_id();
   source->loop_state_ = WAITING;
-  source->priority_ = priority;
+  source->priority_ = static_cast<uint16_t> (priority);
   {
     std::lock_guard<std::mutex> locker (mutex_);
     sources_.push_back (source);
@@ -228,10 +228,10 @@ LoopImpl::cancel (LoopID *idp)
 }
 
 bool
-LoopImpl::exec_once (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, int priority)
+LoopImpl::exec_once (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, LoopPriority priority)
 {
   assert_return (once_id != nullptr, false);
-  assert_return (priority >= 1 && priority <= PRIORITY_CEILING, false);
+  assert_return (static_cast<uint16_t> (priority) >= 1 && priority <= PRIORITY_CEILING, false);
   if (!vfunc) {
     cancel (once_id);
     return false;
@@ -241,7 +241,7 @@ LoopImpl::exec_once (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, int 
   source->loop_ = this;
   source->id_ = alloc_id();
   source->loop_state_ = WAITING;
-  source->priority_ = priority;
+  source->priority_ = static_cast<uint16_t> (priority);
   LoopID warn_id = LoopID::INVALID;
   {
     std::lock_guard<std::mutex> locker (mutex_);
@@ -262,7 +262,7 @@ LoopImpl::exec_once (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, int 
 }
 
 LoopID
-LoopImpl::exec_sigchld (int64_t pid, const SigchldSlot &slot, int priority)
+LoopImpl::exec_sigchld (int64_t pid, const SigchldSlot &slot, LoopPriority priority)
 {
   return add (SigchldSource::create (pid, slot), priority);
 }
