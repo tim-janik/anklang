@@ -88,7 +88,7 @@ void
 ServerImpl::shutdown ()
 {
   // defer quit() slightly, so remote calls are still completed
-  main_loop->exec_timer ([] () { main_loop->quit (0); }, 5, -1, LoopPriority::NORMAL);
+  main_loop->add ([] () { main_loop->quit (0); }, std::chrono::milliseconds (5), LoopPriority::NORMAL);
 }
 
 ProjectP
@@ -512,7 +512,7 @@ TelemetryPlan::setup (const char *start, size_t payloadlength, const TelemetrySe
         main_loop->cancel (timerid_);
       auto send_telemetry = [this] () { this->send_telemetry(); return true; };
       interval_ms_ = interval_ms;
-      timerid_ = interval_ms <= 0 || segments.empty() ? LoopID::INVALID : main_loop->exec_timer (send_telemetry, interval_ms, interval_ms);
+      timerid_ = interval_ms <= 0 || segments.empty() ? LoopID::INVALID : main_loop->add (send_telemetry, std::chrono::milliseconds (interval_ms));
     }
   if (timerid_ != LoopID::INVALID)
     {

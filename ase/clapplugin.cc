@@ -1375,9 +1375,9 @@ host_register_timer (const clap_host *host, uint32_t period_ms, clap_id *timer_i
   ClapPluginHandleImplP handlep = handle_sptr (host);
   period_ms = MAX (30, period_ms);
   auto timeridp = std::make_shared<LoopID> (LoopID::INVALID);
-  *timeridp = main_loop->exec_timer ([handlep, timeridp] () {
+  *timeridp = main_loop->add ([handlep, timeridp] () {
     return host_call_on_timer (handlep, *timeridp);
-  }, period_ms, period_ms);
+  }, std::chrono::milliseconds (period_ms));
   *timer_id = static_cast<clap_id> (*timeridp);
   handlep->timers_.push_back (*timeridp);
   CDEBUG ("%s: %s: ms=%u: id=%u", clapid (host), __func__, period_ms, *timer_id);
@@ -1552,7 +1552,7 @@ host_gui_create_x11_window (ClapPluginHandleImplP handlep, int width, int height
   Gtk2WindowSetup wsetup {
     .title = handlep->clapid(), .width = width, .height = height,
     .deleterequest_mt = [handlep] () {
-      main_loop->exec_callback ([handlep]() {
+      main_loop->add ([handlep]() {
         host_gui_delete_request (handlep);
       });
     },
@@ -1795,7 +1795,7 @@ host_request_callback_mt (const clap_host *host)
 {
   CDEBUG ("%s: %s", clapid (host), __func__);
   ClapPluginHandleImplP handlep = handle_sptr (host);
-  main_loop->exec_callback ([handlep] () {
+  main_loop->add ([handlep] () {
     if (handlep->plugin_) {
       // gui_threads_enter();
       handlep->plugin_->on_main_thread (handlep->plugin_);

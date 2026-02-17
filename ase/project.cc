@@ -71,13 +71,13 @@ ProjectImpl::ProjectImpl()
   denominator = 4;
 
   if (0)
-    autoplay_timer_ = main_loop->exec_timer ([this] () {
+    autoplay_timer_ = main_loop->add ([this] () {
       return_unless (autoplay_timer_ != LoopID::INVALID, false);
       autoplay_timer_ = LoopID::INVALID;
       if (!is_playing())
         start_playback();
       return false;
-    }, 500);
+    }, std::chrono::milliseconds (500));
 
   /* TODO: MusicalTuning
    * group = _("Tuning");

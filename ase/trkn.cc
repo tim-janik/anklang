@@ -168,7 +168,7 @@ public:
   {
     transport_changed ("start-video");
     if (ppt == LoopID::INVALID)
-      ppt = main_loop->exec_timer ([this] { this->poll_position(); return true; }, 200);
+      ppt = main_loop->add ([this] { this->poll_position(); return true; }, std::chrono::milliseconds (200));
   }
   void
   stopVideo () override

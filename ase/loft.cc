@@ -759,7 +759,7 @@ loft_shuffle_thread_allocs()
       tdata[t].thread = std::thread (thread_shuffle_allocs, &tdata[t]);
     }
   // effectively assigns a timeout for main_loop->iterate()
-  main_loop->exec_timer ([] () { return !thread_shuffle_done; }, 50);
+  main_loop->add ([] () { return !thread_shuffle_done; }, std::chrono::milliseconds (50));
   // recurse into main loop for concurrent preallocations
   while (!thread_shuffle_done)  // wati until *any* thread is done
     main_loop->iterate (true);  // only allowed in unit tests

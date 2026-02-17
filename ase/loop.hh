@@ -89,20 +89,14 @@ public:
   virtual void cancel          (LoopID           *idp) = 0;   ///< Cancel a source by id if present and resets the id.
   virtual bool has_primary     (void) = 0;                  ///< Indicates whether loop contains primary sources.
   virtual bool flag_primary    (bool            on) = 0;
-  template<class BoolVoidFunctor>
-  LoopID exec_callback   (BoolVoidFunctor &&bvf, LoopPriority priority
-                         = LoopPriority::NORMAL);     ///< Execute a callback at user defined priority returning true repeats callback.
   LoopID exec_dispatcher (const DispatcherSlot &sl, LoopPriority priority
                          = LoopPriority::NORMAL);     /// Execute a single dispatcher callback for prepare, check, dispatch.
   LoopID exec_usignal    (int8 signum, const USignalSlot &sl, LoopPriority priority
                          = LoopPriority::USIGNAL);     /// Execute a signal callback for prepare, check, dispatch.
   virtual LoopID exec_sigchld    (int64_t pid, const SigchldSlot &vfunc, LoopPriority priority
-                                 = LoopPriority::NORMAL) = 0;     /// Execute a callback once on SIGCHLD for `pid`.
+                                  = LoopPriority::NORMAL) = 0;     /// Execute a callback once on SIGCHLD for `pid`.
   virtual bool exec_once       (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, LoopPriority priority
-                                 = LoopPriority::NORMAL) = 0;     ///< Execute a callback once, re-schedules the callback if `0 != *once_id`.
-  /// Execute a callback after a specified timeout with adjustable initial timeout, returning true repeats callback.
-  template<class BoolVoidFunctor>
-  LoopID exec_timer      (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms = -1, LoopPriority priority = LoopPriority::NORMAL);
+                                  = LoopPriority::NORMAL) = 0;     ///< Execute a callback once, re-schedules the callback if `0 != *once_id`.
   LoopID add             (auto &&func, std::chrono::milliseconds interval = std::chrono::milliseconds (0), LoopPriority priority = LoopPriority::NORMAL);
   LoopID add             (auto &&func, LoopPriority priority);
   /// Execute a callback after polling for mode on fd, returning true repeats callback.
@@ -287,14 +281,6 @@ public:
 };
 
 // === Loop methods ===
-template<class BoolVoidFunctor> LoopID
-Loop::exec_callback (BoolVoidFunctor &&bvf, LoopPriority priority)
-{
-  typedef decltype (bvf()) ReturnType;
-  std::function<ReturnType()> slot (bvf);
-  return add_source (TimedSource::create (slot), priority);
-}
-
 inline LoopID
 Loop::exec_dispatcher (const DispatcherSlot &slot, LoopPriority priority)
 {
@@ -307,19 +293,13 @@ Loop::exec_usignal (int8 signum, const USignalSlot &slot, LoopPriority priority)
   return add_source (USignalSource::create (signum, slot), priority);
 }
 
-template<class BoolVoidFunctor> LoopID
-Loop::exec_timer (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms, LoopPriority priority)
-{
-  typedef decltype (bvf()) ReturnType;
-  std::function<ReturnType()> slot (bvf);
-  return add_source (TimedSource::create (slot, delay_ms, repeat_ms < 0 ? delay_ms : repeat_ms), priority);
-}
-
 LoopID
 Loop::add (auto &&func, std::chrono::milliseconds interval, LoopPriority priority)
 {
+  using ReturnType = decltype (func());
+  std::function<ReturnType()> slot (std::forward<decltype (func)> (func));
   const uint interval_ms = interval.count();
-  return exec_timer (std::forward<decltype (func)> (func), interval_ms, interval_ms, priority);
+  return add_source (TimedSource::create (std::move (slot), interval_ms, interval_ms), priority);
 }
 
 LoopID

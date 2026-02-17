@@ -49,7 +49,7 @@ static int      arg_unauth_port = 0;
 static void
 call_main_loop (const std::function<void()> &fun)
 {
-  main_loop->exec_callback (fun);
+  main_loop->add (fun);
 }
 JobQueue main_jobs (call_main_loop);
 
@@ -655,7 +655,7 @@ main (int argc, char *argv[])
 
   // run test suite
   if (App.mode == MainApp::CHECK_INTEGRITY_TESTS)
-    main_loop->exec_callback (run_tests_and_quit);
+    main_loop->add (run_tests_and_quit);
 
   // run main event loop and catch SIGUSR2
   const int exitcode = main_loop->run();
