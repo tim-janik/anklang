@@ -22,6 +22,7 @@ static constexpr int64_t  AUDIO_BLOCK_MAX_RENDER_SIZE = 2048;
 
 // == Forward Declarations ==
 enum class Error;
+enum class LoopID : uint64_t { INVALID = 0 };
 
 // == Struct Forward Declarations ==
 ASE_STRUCT_DECLS (AudioProcessorInfo);

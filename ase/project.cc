@@ -72,8 +72,8 @@ ProjectImpl::ProjectImpl()
 
   if (0)
     autoplay_timer_ = main_loop->exec_timer ([this] () {
-      return_unless (autoplay_timer_, false);
-      autoplay_timer_ = 0;
+      return_unless (autoplay_timer_ != LoopID::INVALID, false);
+      autoplay_timer_ = LoopID::INVALID;
       if (!is_playing())
         start_playback();
       return false;

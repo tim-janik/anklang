@@ -47,19 +47,19 @@ static_assert (sizeof (((PollFD*) 0)->revents) == sizeof (((struct pollfd*) 0)->
 
 // === Stupid ID allocator ===
 static volatile int global_id_counter = 65536;
-static uint
+static LoopID
 alloc_id ()
 {
-  uint id = __sync_fetch_and_add (&global_id_counter, +1);
+  uint64_t id = __sync_fetch_and_add (&global_id_counter, +1);
   if (!id)
     fatal_error ("Loop: id counter overflow, please report"); // TODO: use global ID allcoator?
-  return id;
+  return static_cast<LoopID> (id);
 }
 
 static void
-release_id (uint id)
+release_id (LoopID id)
 {
-  assert_return (id != 0);
+  assert_return (id != LoopID::INVALID);
   // TODO: use global ID allcoator?
 }
 
@@ -102,7 +102,7 @@ public:
   bool                    iterate_loops_Lm    (LoopState&, bool b, bool d);
   void                    destroy_loop        () override;
   LoopSourceP&            find_first_L        ();
-  LoopSourceP&            find_source_L       (uint id);
+  LoopSourceP&            find_source_L       (LoopID id);
   bool                    has_primary_L       (void);
   void                    remove_source_Lm    (LoopSourceP source);
   void                    kill_sources_Lm     (void);
@@ -111,13 +111,13 @@ public:
   bool                    prepare_sources_Lm  (LoopState&, std::vector<PollFD>&);
   bool                    check_sources_Lm    (LoopState&, const std::vector<PollFD>&);
   void                    dispatch_source_Lm  (LoopState&);
-  uint                    add                 (LoopSourceP loop_source, int priority) override;
-  void                    cancel              (uint id) override;
-  void                    cancel              (uint *idp) override;
+  LoopID                  add                 (LoopSourceP loop_source, int priority) override;
+  void                    cancel              (LoopID id) override;
+  void                    cancel              (LoopID *idp) override;
   bool                    has_primary         () override;
   bool                    flag_primary        (bool on) override;
-  uint                    exec_sigchld        (int64_t pid, const SigchldSlot &vfunc, int priority) override;
-  bool                    exec_once           (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priority) override;
+  LoopID                  exec_sigchld        (int64_t pid, const SigchldSlot &vfunc, int priority) override;
+  bool                    exec_once           (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, int priority) override;
   explicit                LoopImpl            ();
   virtual                ~LoopImpl            ();
 };
@@ -131,7 +131,7 @@ LoopImpl::find_first_L()
 }
 
 inline LoopSourceP&
-LoopImpl::find_source_L (uint id)
+LoopImpl::find_source_L (LoopID id)
 {
   for (SourceList::iterator lit = sources_.begin(); lit != sources_.end(); lit++)
     if (id == (*lit)->id_)
@@ -171,13 +171,13 @@ LoopImpl::flag_primary (bool on)
 
 static const int16 UNDEFINED_PRIORITY = -32768;
 
-uint
+LoopID
 LoopImpl::add (LoopSourceP source, int priority)
 {
   static_assert (UNDEFINED_PRIORITY < 1, "");
-  assert_return (priority >= 1 && priority <= PRIORITY_CEILING, 0);
-  assert_return (source != NULL, 0);
-  assert_return (source->loop_ == NULL, 0);
+  assert_return (priority >= 1 && priority <= PRIORITY_CEILING, LoopID::INVALID);
+  assert_return (source != NULL, LoopID::INVALID);
+  assert_return (source->loop_ == NULL, LoopID::INVALID);
   source->loop_ = this;
   source->id_ = alloc_id();
   source->loop_state_ = WAITING;
@@ -200,14 +200,14 @@ LoopImpl::remove_source_Lm (LoopSourceP source)
   assert_return (pos != sources_.end());
   sources_.erase (pos);
   release_id (source->id_);
-  source->id_ = 0;
+  source->id_ = LoopID::INVALID;
   mutex_.unlock();
   source->destroy();
   mutex_.lock();
 }
 
 void
-LoopImpl::cancel (uint id)
+LoopImpl::cancel (LoopID id)
 {
   std::lock_guard<std::mutex> locker (mutex_);
   LoopSourceP &source = find_source_L (id);
@@ -218,17 +218,17 @@ LoopImpl::cancel (uint id)
 }
 
 void
-LoopImpl::cancel (uint *idp)
+LoopImpl::cancel (LoopID *idp)
 {
   if (idp) {
-    if (*idp)
+    if (*idp != LoopID::INVALID)
       cancel (*idp);
-    *idp = 0;
+    *idp = LoopID::INVALID;
   }
 }
 
 bool
-LoopImpl::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priority)
+LoopImpl::exec_once (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, int priority)
 {
   assert_return (once_id != nullptr, false);
   assert_return (priority >= 1 && priority <= PRIORITY_CEILING, false);
@@ -236,16 +236,16 @@ LoopImpl::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int pr
     cancel (once_id);
     return false;
   }
-  auto once_handler = [vfunc,once_id]() { *once_id = 0; vfunc(); };
+  auto once_handler = [vfunc,once_id]() { *once_id = LoopID::INVALID; vfunc(); };
   LoopSourceP source = TimedSource::create (once_handler, delay_ms, 0);
   source->loop_ = this;
   source->id_ = alloc_id();
   source->loop_state_ = WAITING;
   source->priority_ = priority;
-  uint warn_id = 0;
+  LoopID warn_id = LoopID::INVALID;
   {
     std::lock_guard<std::mutex> locker (mutex_);
-    if (*once_id) {
+    if (*once_id != LoopID::INVALID) {
       LoopSourceP &source = find_source_L (*once_id);
       if (source)
         remove_source_Lm (source);
@@ -255,13 +255,13 @@ LoopImpl::exec_once (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int pr
     sources_.push_back (source);
     *once_id = source->id_;
   }
-  if (warn_id)
-    warning ("%s: failed to remove loop source: %u", __func__, once_id);
+  if (warn_id != LoopID::INVALID)
+    warning ("%s: failed to remove loop source: %lu", __func__, static_cast<uint64_t> (warn_id));
   wakeup();
   return true;
 }
 
-uint
+LoopID
 LoopImpl::exec_sigchld (int64_t pid, const SigchldSlot &slot, int priority)
 {
   return add (SigchldSource::create (pid, slot), priority);
@@ -760,7 +760,7 @@ LoopImpl::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
 LoopSource::LoopSource () :
   loop_ (NULL),
   pfds_ (NULL),
-  id_ (0),
+  id_ (LoopID::INVALID),
   priority_ (UNDEFINED_PRIORITY),
   loop_state_ (0),
   may_recurse_ (0),

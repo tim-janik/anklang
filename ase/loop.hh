@@ -78,31 +78,31 @@ public:
   static const int16 PRIORITY_LOW      = 100; ///< Unimportant, used when everything else done.
   virtual void wakeup  () = 0;                ///< Wakeup loop from polling.
   // source handling
-  virtual uint add             (LoopSourceP loop_source, int priority
-                                = PRIORITY_NORMAL) = 0;     ///< Adds a new source to the loop with custom priority.
-  virtual void cancel          (uint            id) = 0;    ///< Cancel a source and remove it from the  loop.
-  virtual void cancel          (uint           *idp) = 0;   ///< Cancel a source by id if present and resets the id.
+  virtual LoopID add             (LoopSourceP loop_source, int priority
+                                 = PRIORITY_NORMAL) = 0;     ///< Adds a new source to the loop with custom priority.
+  virtual void cancel          (LoopID            id) = 0;    ///< Cancel a source and remove it from the  loop.
+  virtual void cancel          (LoopID           *idp) = 0;   ///< Cancel a source by id if present and resets the id.
   virtual bool has_primary     (void) = 0;                  ///< Indicates whether loop contains primary sources.
   virtual bool flag_primary    (bool            on) = 0;
   template<class BoolVoidFunctor>
-  uint exec_callback   (BoolVoidFunctor &&bvf, int priority
+  LoopID exec_callback   (BoolVoidFunctor &&bvf, int priority
                         = PRIORITY_NORMAL);     ///< Execute a callback at user defined priority returning true repeats callback.
   template<class BoolVoidFunctor>
-  uint exec_idle       (BoolVoidFunctor &&bvf); ///< Execute a callback with priority "idle", returning true repeats callback.
-  uint exec_dispatcher (const DispatcherSlot &sl, int priority
+  LoopID exec_idle       (BoolVoidFunctor &&bvf); ///< Execute a callback with priority "idle", returning true repeats callback.
+  LoopID exec_dispatcher (const DispatcherSlot &sl, int priority
                         = PRIORITY_NORMAL);     /// Execute a single dispatcher callback for prepare, check, dispatch.
-  uint exec_usignal    (int8 signum, const USignalSlot &sl, int priority
+  LoopID exec_usignal    (int8 signum, const USignalSlot &sl, int priority
                         = PRIORITY_USIGNAL);     /// Execute a signal callback for prepare, check, dispatch.
-  virtual uint exec_sigchld    (int64_t pid, const SigchldSlot &vfunc, int priority
+  virtual LoopID exec_sigchld    (int64_t pid, const SigchldSlot &vfunc, int priority
                                 = PRIORITY_NORMAL) = 0;     /// Execute a callback once on SIGCHLD for `pid`.
-  virtual bool exec_once       (uint delay_ms, uint *once_id, const VoidSlot &vfunc, int priority
+  virtual bool exec_once       (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, int priority
                                 = PRIORITY_NORMAL) = 0;     ///< Execute a callback once, re-schedules the callback if `0 != *once_id`.
   /// Execute a callback after a specified timeout with adjustable initial timeout, returning true repeats callback.
   template<class BoolVoidFunctor>
-  uint exec_timer      (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms = -1, int priority = PRIORITY_NORMAL);
+  LoopID exec_timer      (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms = -1, int priority = PRIORITY_NORMAL);
   /// Execute a callback after polling for mode on fd, returning true repeats callback.
   template<class BoolVoidPollFunctor>
-  uint exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, int priority = PRIORITY_NORMAL);
+  LoopID exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, int priority = PRIORITY_NORMAL);
   // Event processing
   virtual int  run           () = 0; ///< Run loop iterations until a call to quit() or finishable becomes true.
   virtual bool running       () = 0; ///< Indicates if quit() has been called already.
@@ -136,7 +136,7 @@ protected:
     PollFD    *pfd;
     uint       idx;
   }           *pfds_;
-  uint         id_;
+  LoopID       id_;
   int16        priority_;
   uint8        loop_state_;
   uint         may_recurse_ : 1;
@@ -145,7 +145,7 @@ protected:
   uint         primary_ : 1;
   uint         n_pfds      ();
   explicit     LoopSource ();
-  uint         source_id   () { return loop_ ? id_ : 0; }
+  LoopID       source_id   () { return loop_ ? id_ : LoopID::INVALID; }
   virtual     ~LoopSource ();
 public:
   virtual bool prepare     (const LoopState &state,
@@ -282,7 +282,7 @@ public:
 };
 
 // === Loop methods ===
-template<class BoolVoidFunctor> uint
+template<class BoolVoidFunctor> LoopID
 Loop::exec_callback (BoolVoidFunctor &&bvf, int priority)
 {
   typedef decltype (bvf()) ReturnType;
@@ -290,7 +290,7 @@ Loop::exec_callback (BoolVoidFunctor &&bvf, int priority)
   return add (TimedSource::create (slot), priority);
 }
 
-template<class BoolVoidFunctor> uint
+template<class BoolVoidFunctor> LoopID
 Loop::exec_idle (BoolVoidFunctor &&bvf)
 {
   typedef decltype (bvf()) ReturnType;
@@ -300,19 +300,19 @@ Loop::exec_idle (BoolVoidFunctor &&bvf)
   return add (sourcep, PRIORITY_IDLE);
 }
 
-inline uint
+inline LoopID
 Loop::exec_dispatcher (const DispatcherSlot &slot, int priority)
 {
   return add (DispatcherSource::create (slot), priority);
 }
 
-inline uint
+inline LoopID
 Loop::exec_usignal (int8 signum, const USignalSlot &slot, int priority)
 {
   return add (USignalSource::create (signum, slot), priority);
 }
 
-template<class BoolVoidFunctor> uint
+template<class BoolVoidFunctor> LoopID
 Loop::exec_timer (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms, int priority)
 {
   typedef decltype (bvf()) ReturnType;
@@ -320,7 +320,7 @@ Loop::exec_timer (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms, int pri
   return add (TimedSource::create (slot, delay_ms, repeat_ms < 0 ? delay_ms : repeat_ms), priority);
 }
 
-template<class BoolVoidPollFunctor> uint
+template<class BoolVoidPollFunctor> LoopID
 Loop::exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, int priority)
 {
   using ReturnType = decltype (bvf (*std::declval<PollFD*>()));

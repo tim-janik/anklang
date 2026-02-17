@@ -167,7 +167,7 @@ public:
   startVideo () override
   {
     transport_changed ("start-video");
-    if (!ppt)
+    if (ppt == LoopID::INVALID)
       ppt = main_loop->exec_timer ([this] { this->poll_position(); return true; }, 200);
   }
   void
@@ -190,7 +190,7 @@ public:
   }
   private:
   tracktion::TransportControl &transport;
-  uint ppt = 0;
+  LoopID ppt = LoopID::INVALID;
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TransportListener)
 };
 

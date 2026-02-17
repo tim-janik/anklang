@@ -718,8 +718,8 @@ public:
   bool gui_visible_ = false;
   bool gui_canresize = false;
   ulong gui_windowid = 0;
-  std::vector<uint> timers_;
-  struct FdPoll { int fd = -1; uint source = 0; uint flags = 0; };
+  std::vector<LoopID> timers_;
+  struct FdPoll { int fd = -1; LoopID source = LoopID::INVALID; uint flags = 0; };
   std::vector<FdPoll> fd_polls_;
   std::vector<ClapParamInfoImpl> param_infos_;
   ClapParamInfoMap param_ids_;
@@ -1009,7 +1009,7 @@ public:
     while (fd_polls_.size())
       host_unregister_fd (&phost, fd_polls_.back().fd);
     while (timers_.size())
-      host_unregister_timer (&phost, timers_.back());
+      host_unregister_timer (&phost, static_cast<clap_id> (timers_.back()));
     if (plugin_)
       plugin_->destroy (plugin_);
     plugin_ = nullptr;
@@ -1359,11 +1359,11 @@ static const clap_host_log host_ext_log = { .log = host_log };
 
 // == clap_host_timer_support ==
 static bool
-host_call_on_timer (ClapPluginHandleImplP handlep, clap_id timer_id)
+host_call_on_timer (ClapPluginHandleImplP handlep, LoopID timer_id)
 {
   // gui_threads_enter();
   if (handlep->plugin_timer_support) // register_timer() runs too early for this check
-    handlep->plugin_timer_support->on_timer (handlep->plugin_, timer_id);
+    handlep->plugin_timer_support->on_timer (handlep->plugin_, static_cast<clap_id> (timer_id));
   // gui_threads_leave();
   return true; // keep-alive
 }
@@ -1374,11 +1374,11 @@ host_register_timer (const clap_host *host, uint32_t period_ms, clap_id *timer_i
   // Note, plugins (JUCE) may call this method during init(), when plugin_timer_support==NULL
   ClapPluginHandleImplP handlep = handle_sptr (host);
   period_ms = MAX (30, period_ms);
-  auto timeridp = std::make_shared<uint> (0);
+  auto timeridp = std::make_shared<LoopID> (LoopID::INVALID);
   *timeridp = main_loop->exec_timer ([handlep, timeridp] () {
     return host_call_on_timer (handlep, *timeridp);
   }, period_ms, period_ms);
-  *timer_id = *timeridp;
+  *timer_id = static_cast<clap_id> (*timeridp);
   handlep->timers_.push_back (*timeridp);
   CDEBUG ("%s: %s: ms=%u: id=%u", clapid (host), __func__, period_ms, *timer_id);
   return true;
@@ -1389,9 +1389,10 @@ host_unregister_timer (const clap_host *host, clap_id timer_id)
 {
   // NOTE: plugin_ might be destroying here
   ClapPluginHandleImpl *handle = handle_ptr (host);
-  const bool deleted = Aux::erase_first (handle->timers_, [timer_id] (uint id) { return id == timer_id; });
+  const LoopID lid = static_cast<LoopID> (timer_id);
+  const bool deleted = Aux::erase_first (handle->timers_, [lid] (LoopID id) { return id == lid; });
   if (deleted)
-    main_loop->cancel (timer_id);
+    main_loop->cancel (lid);
   CDEBUG ("%s: %s: deleted=%u: id=%u", clapid (host), __func__, deleted, timer_id);
   return deleted;
 }
@@ -1466,11 +1467,11 @@ host_register_fd (const clap_host_t *host, int fd, clap_posix_fd_flags_t flags)
     .source = main_loop->exec_io_handler (plugin_on_fd, fd, mode),
     .flags = flags,
   };
-  if (fdpoll.source)
+  if (fdpoll.source != LoopID::INVALID)
     handlep->fd_polls_.push_back (fdpoll);
-  CDEBUG ("%s: %s: fd=%d flags=%u mode=\"%s\" (nfds=%u): id=%u", clapid (host), __func__, fd, flags, mode,
-          handlep->fd_polls_.size(), fdpoll.source);
-  return fdpoll.source != 0;
+  CDEBUG ("%s: %s: fd=%d flags=%u mode=\"%s\" (nfds=%u): id=%lu", clapid (host), __func__, fd, flags, mode,
+          handlep->fd_polls_.size(), static_cast<uint64_t> (fdpoll.source));
+  return fdpoll.source != LoopID::INVALID;
 }
 
 static bool
@@ -1480,7 +1481,7 @@ host_unregister_fd (const clap_host_t *host, int fd)
   for (size_t i = 0; i < handlep->fd_polls_.size(); i++)
     if (handlep->fd_polls_[i].fd == fd) {
       main_loop->cancel (handlep->fd_polls_[i].source);
-      CDEBUG ("%s: %s: fd=%d deleting source_id=%u (nfds=%u)", clapid (host), __func__, fd, handlep->fd_polls_[i].source,
+      CDEBUG ("%s: %s: fd=%d deleting source_id=%lu (nfds=%u)", clapid (host), __func__, fd, static_cast<uint64_t> (handlep->fd_polls_[i].source),
               handlep->fd_polls_.size());
       handlep->fd_polls_.erase (handlep->fd_polls_.begin() + i);
       return true;

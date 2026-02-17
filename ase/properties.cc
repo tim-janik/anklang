@@ -68,7 +68,7 @@ prefs_map()
 }
 
 static bool preferences_autosave = false;
-static uint timerid_maybe_save_preferences = 0;
+static LoopID timerid_maybe_save_preferences = LoopID::INVALID;
 
 static void
 maybe_save_preferences()

@@ -24,7 +24,7 @@ class ProjectImpl final : public DeviceImpl, public virtual Project {
   ASE_DEFINE_MAKE_SHARED (ProjectImpl);
   TickSignature tick_sig_;
   MusicalTuning musical_tuning_ = MusicalTuning::OD_12_TET;
-  uint autoplay_timer_ = 0;
+  LoopID autoplay_timer_ = LoopID::INVALID;
   uint undo_scopes_open_ = 0;
   uint undo_groups_open_ = 0;
   String undo_group_name_;

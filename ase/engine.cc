@@ -950,7 +950,7 @@ static Preference midi4_driver_pref =
 static void
 apply_driver_preferences ()
 {
-  static uint engine_driver_set_timerid = 0;
+  static LoopID engine_driver_set_timerid = LoopID::INVALID;
   main_loop->exec_once (97, &engine_driver_set_timerid,
                         []() {
                           String pcm_driver = pcm_driver_pref.gets();

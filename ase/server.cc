@@ -466,7 +466,7 @@ ASE_CLASS_DECLS (TelemetryPlan);
 class TelemetryPlan {
 public:
   int32               interval_ms_ = -1;
-  uint                timerid_ = 0;
+  LoopID              timerid_ = LoopID::INVALID;
   JsonapiBinarySender send_blob_;
   TelemetrySegmentS   segments_;
   const char         *telemem_ = nullptr;
@@ -506,15 +506,15 @@ ServerImpl::broadcast_telemetry (const TelemetrySegmentS &segments, int32 interv
 void
 TelemetryPlan::setup (const char *start, size_t payloadlength, const TelemetrySegmentS &segments, int32 interval_ms)
 {
-  if (timerid_ == 0 || interval_ms_ != interval_ms)
+  if (timerid_ == LoopID::INVALID || interval_ms_ != interval_ms)
     {
-      if (timerid_)
+      if (timerid_ != LoopID::INVALID)
         main_loop->cancel (timerid_);
       auto send_telemetry = [this] () { this->send_telemetry(); return true; };
       interval_ms_ = interval_ms;
-      timerid_ = interval_ms <= 0 || segments.empty() ? 0 : main_loop->exec_timer (send_telemetry, interval_ms, interval_ms);
+      timerid_ = interval_ms <= 0 || segments.empty() ? LoopID::INVALID : main_loop->exec_timer (send_telemetry, interval_ms, interval_ms);
     }
-  if (timerid_)
+  if (timerid_ != LoopID::INVALID)
     {
       telemem_ = start;
       segments_ = segments;
@@ -543,10 +543,10 @@ TelemetryPlan::send_telemetry ()
 
 TelemetryPlan::~TelemetryPlan()
 {
-  if (timerid_)
+  if (timerid_ != LoopID::INVALID)
     {
       main_loop->cancel (timerid_);
-      timerid_ = 0;
+      timerid_ = LoopID::INVALID;
     }
 }
 
