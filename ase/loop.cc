@@ -99,7 +99,6 @@ public:
   void                    iterate_pending     () override;
   bool                    pending             () override;
   bool                    set_g_main_context  (GlibGMainContext *glib_main_context) override;
-  std::mutex&             mutex               () override;
   bool                    iterate_loops_Lm    (LoopState&, bool b, bool d);
   void                    destroy_loop        () override;
   LoopSourceP&            find_first_L        ();
@@ -194,7 +193,6 @@ LoopImpl::add (LoopSourceP source, int priority)
 void
 LoopImpl::remove_source_Lm (LoopSourceP source)
 {
-  std::mutex &LOCK = mutex();
   assert_return (source->loop_ == this);
   source->loop_ = NULL;
   source->loop_state_ = WAITING;
@@ -203,9 +201,9 @@ LoopImpl::remove_source_Lm (LoopSourceP source)
   sources_.erase (pos);
   release_id (source->id_);
   source->id_ = 0;
-  LOCK.unlock();
+  mutex_.unlock();
   source->destroy();
-  LOCK.lock();
+  mutex_.lock();
 }
 
 void
@@ -287,10 +285,9 @@ LoopImpl::kill_sources_Lm()
         break;
       remove_source_Lm (source);
     }
-  std::mutex &LOCK = mutex();
-  LOCK.unlock();
+  mutex_.unlock();
   unpoll_sources_U(); // unlocked
-  LOCK.lock();
+  mutex_.lock();
 }
 
 /** Create a new main loop object, users can run or iterate this loop directly.
@@ -310,7 +307,7 @@ LoopImpl::LoopImpl() :
 {
   cached_pollfd_vector_.reserve (1);
   cached_poll_candidates_.reserve (1);
-  std::lock_guard<std::mutex> locker (mutex());
+  std::lock_guard<std::mutex> locker (mutex_);
   const int err = eventfd_.open();
   if (err < 0)
     fatal_error ("LoopImpl: failed to create wakeup pipe: %s", strerror (-err));
@@ -340,7 +337,7 @@ LoopImpl::destroy_loop()
   set_g_main_context (NULL); // acquires mutex_
   // guard main_loop_ pointer *before* locking, so dtor is called after unlock
   LoopP main_loop_guard = shared_ptr_cast<Loop*> (this);
-  std::lock_guard<std::mutex> locker (mutex());
+  std::lock_guard<std::mutex> locker (mutex_);
   kill_sources_Lm();
 }
 
@@ -471,12 +468,6 @@ LoopImpl::set_g_main_context (GlibGMainContext *glib_main_context)
 #endif
 }
 
-std::mutex&
-LoopImpl::mutex ()
-{
-  return mutex_;
-}
-
 #ifdef  __G_LIB_H__
 static GPollFD*
 mk_gpollfd (PollFD *pfd)
@@ -516,10 +507,9 @@ LoopImpl::collect_sources_Lm (LoopState &state)
   // enforce clean slate
   if (UNLIKELY (!poll_sources_.empty()))
     {
-      std::mutex &LOCK = mutex();
-      LOCK.unlock();
+      mutex_.unlock();
       unpoll_sources_U(); // unlocked
-      LOCK.lock();
+      mutex_.lock();
       assert_return (poll_sources_.empty());
     }
   if (UNLIKELY (!state.seen_primary && primary_))
@@ -561,7 +551,6 @@ LoopImpl::collect_sources_Lm (LoopState &state)
 bool
 LoopImpl::prepare_sources_Lm (LoopState &state, std::vector<PollFD> &pfda)
 {
-  std::mutex &LOCK = mutex();
   // prepare sources, up to NEEDS_DISPATCH priority
   for (auto lit = poll_sources_.begin(); lit != poll_sources_.end(); lit++)
     {
@@ -569,9 +558,9 @@ LoopImpl::prepare_sources_Lm (LoopState &state, std::vector<PollFD> &pfda)
       if (source.loop_ != this) // test undestroyed
         continue;
       int64 timeout = -1;
-      LOCK.unlock();
+      mutex_.unlock();
       const bool need_dispatch = source.prepare (state, &timeout);
-      LOCK.lock();
+      mutex_.lock();
       if (source.loop_ != this)
         continue; // ignore newly destroyed sources
       if (need_dispatch)
@@ -601,7 +590,6 @@ LoopImpl::prepare_sources_Lm (LoopState &state, std::vector<PollFD> &pfda)
 bool
 LoopImpl::check_sources_Lm (LoopState &state, const std::vector<PollFD> &pfda)
 {
-  std::mutex &LOCK = mutex();
   // check polled sources
   for (auto lit = poll_sources_.begin(); lit != poll_sources_.end(); lit++)
     {
@@ -619,9 +607,9 @@ LoopImpl::check_sources_Lm (LoopState &state, const std::vector<PollFD> &pfda)
           else
             source.pfds_[i].idx = 4294967295U; // UINT_MAX
         }
-      LOCK.unlock();
+      mutex_.unlock();
       bool need_dispatch = source.check (state);
-      LOCK.lock();
+      mutex_.lock();
       if (source.loop_ != this)
         continue; // ignore newly destroyed sources
       if (need_dispatch)
@@ -638,7 +626,6 @@ LoopImpl::check_sources_Lm (LoopState &state, const std::vector<PollFD> &pfda)
 void
 LoopImpl::dispatch_source_Lm (LoopState &state)
 {
-  std::mutex &LOCK = mutex();
   // find a source to dispatch at dispatch_priority_
   LoopSourceP dispatch_source = NULL;                  // shared_ptr to keep alive even if everything else is destroyed
   for (auto lit = poll_sources_.begin(); lit != poll_sources_.end(); lit++)
@@ -660,9 +647,9 @@ LoopImpl::dispatch_source_Lm (LoopState &state)
       const bool old_was_dispatching = dispatch_source->was_dispatching_;
       dispatch_source->was_dispatching_ = dispatch_source->dispatching_;
       dispatch_source->dispatching_ = true;
-      LOCK.unlock();
+      mutex_.unlock();
       const bool keep_alive = dispatch_source->dispatch (state);
-      LOCK.lock();
+      mutex_.lock();
       dispatch_source->dispatching_ = dispatch_source->was_dispatching_;
       dispatch_source->was_dispatching_ = old_was_dispatching;
       if (dispatch_source->loop_ == this && !keep_alive)
@@ -674,7 +661,6 @@ bool
 LoopImpl::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
 {
   assert_return (state.phase == state.NONE, false);
-  std::mutex &LOCK = mutex();
   std::vector<PollFD> &pfda = cached_pollfd_vector_;
   pfda.resize (0); // cache array between iterations, to reduce malloc overhead
   // allow poll wakeups
@@ -721,12 +707,12 @@ LoopImpl::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
   if (!may_block || any_dispatchable)
     timeout_msecs = 0;
   state.timeout_usecs = 0;
-  LOCK.unlock();
+  mutex_.unlock();
   int presult;
   do
     presult = poll ((struct pollfd*) &pfda[0], pfda.size(), std::min (timeout_msecs, int64 (2147483647))); // INT_MAX
   while (presult < 0 && errno == EAGAIN); // EINTR may indicate a signal
-  LOCK.lock();
+  mutex_.lock();
   if (presult < 0 && errno != EINTR)
     warning ("LoopImpl: poll() failed: %s", strerror());
   else if (pfda[wakeup_idx].revents)
@@ -764,9 +750,9 @@ LoopImpl::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
     }
   // cleanup
   state.phase = state.NONE;
-  LOCK.unlock();
+  mutex_.unlock();
   unpoll_sources_U(); // unlocked
-  LOCK.lock();
+  mutex_.lock();
   return any_dispatchable; // need to dispatch or recheck
 }
 
