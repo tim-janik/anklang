@@ -290,15 +290,18 @@ LoopImpl::kill_sources_Lm()
   mutex_.lock();
 }
 
-/** Create a new main loop object, users can run or iterate this loop directly.
- * Note that LoopImpl objects have special lifetime semantics that keep them
- * alive until they are explicitely destroyed with destroy_loop().
+/** Return the thread-local singleton loop, created on first call.
+ * Each thread gets its own independent loop instance that lives for the
+ * duration of the thread. The loop is created lazily on first access and
+ * is kept alive by the thread_local storage. Calling current() from
+ * different threads returns different loop instances; calling it multiple
+ * times from the same thread always returns the same instance.
  */
 LoopP
-Loop::create ()
+Loop::current ()
 {
-  std::shared_ptr<LoopImpl> event_loop = LoopImpl::make_shared();
-  return event_loop;
+  static thread_local LoopP thread_loop = LoopImpl::make_shared();
+  return thread_loop;
 }
 
 // === LoopImpl ===

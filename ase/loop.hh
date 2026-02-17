@@ -111,7 +111,7 @@ public:
   virtual bool iterate       (bool block) = 0; ///< Perform one loop iteration and return whether more iterations are needed.
   virtual void iterate_pending () = 0; ///< Call iterate() until no immediate dispatching is needed.
   virtual bool set_g_main_context (GlibGMainContext *glib_main_context) = 0; ///< Set context to integrate with a GLib @a GMainContext loop.
-  static LoopP create        (); ///< Create a MainLoop shared pointer handle.
+  static LoopP current       ();
 };
 
 // === LoopState ===
