@@ -2,6 +2,7 @@
 #pragma once
 
 #include <ase/utils.hh>
+#include <chrono>
 
 namespace Ase {
 
@@ -82,7 +83,7 @@ public:
   typedef std::function<void (int,int)>          SigchldSlot;
   virtual void wakeup  () = 0;                ///< Wakeup loop from polling.
   // source handling
-  virtual LoopID add             (LoopSourceP loop_source, LoopPriority priority
+  virtual LoopID add_source    (LoopSourceP loop_source, LoopPriority priority
                                   = LoopPriority::NORMAL) = 0;     ///< Adds a new source to the loop with custom priority.
   virtual void cancel          (LoopID            id) = 0;    ///< Cancel a source and remove it from the  loop.
   virtual void cancel          (LoopID           *idp) = 0;   ///< Cancel a source by id if present and resets the id.
@@ -104,6 +105,8 @@ public:
   /// Execute a callback after a specified timeout with adjustable initial timeout, returning true repeats callback.
   template<class BoolVoidFunctor>
   LoopID exec_timer      (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms = -1, LoopPriority priority = LoopPriority::NORMAL);
+  LoopID add             (auto &&func, std::chrono::milliseconds interval = std::chrono::milliseconds (0), LoopPriority priority = LoopPriority::NORMAL);
+  LoopID add             (auto &&func, LoopPriority priority);
   /// Execute a callback after polling for mode on fd, returning true repeats callback.
   template<class BoolVoidPollFunctor>
   LoopID exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, LoopPriority priority = LoopPriority::NORMAL);
@@ -291,7 +294,7 @@ Loop::exec_callback (BoolVoidFunctor &&bvf, LoopPriority priority)
 {
   typedef decltype (bvf()) ReturnType;
   std::function<ReturnType()> slot (bvf);
-  return add (TimedSource::create (slot), priority);
+  return add_source (TimedSource::create (slot), priority);
 }
 
 template<class BoolVoidFunctor> LoopID
@@ -301,19 +304,19 @@ Loop::exec_idle (BoolVoidFunctor &&bvf)
   std::function<ReturnType()> slot (bvf);
   TimedSourceP sourcep = TimedSource::create (slot);
   sourcep->primary (false);
-  return add (sourcep, LoopPriority::IDLE);
+  return add_source (sourcep, LoopPriority::IDLE);
 }
 
 inline LoopID
 Loop::exec_dispatcher (const DispatcherSlot &slot, LoopPriority priority)
 {
-  return add (DispatcherSource::create (slot), priority);
+  return add_source (DispatcherSource::create (slot), priority);
 }
 
 inline LoopID
 Loop::exec_usignal (int8 signum, const USignalSlot &slot, LoopPriority priority)
 {
-  return add (USignalSource::create (signum, slot), priority);
+  return add_source (USignalSource::create (signum, slot), priority);
 }
 
 template<class BoolVoidFunctor> LoopID
@@ -321,7 +324,20 @@ Loop::exec_timer (BoolVoidFunctor &&bvf, uint delay_ms, int64 repeat_ms, LoopPri
 {
   typedef decltype (bvf()) ReturnType;
   std::function<ReturnType()> slot (bvf);
-  return add (TimedSource::create (slot, delay_ms, repeat_ms < 0 ? delay_ms : repeat_ms), priority);
+  return add_source (TimedSource::create (slot, delay_ms, repeat_ms < 0 ? delay_ms : repeat_ms), priority);
+}
+
+LoopID
+Loop::add (auto &&func, std::chrono::milliseconds interval, LoopPriority priority)
+{
+  const uint interval_ms = interval.count();
+  return exec_timer (std::forward<decltype (func)> (func), interval_ms, interval_ms, priority);
+}
+
+LoopID
+Loop::add (auto &&func, LoopPriority priority)
+{
+  return add (std::forward<decltype (func)> (func), std::chrono::milliseconds (0), priority);
 }
 
 template<class BoolVoidPollFunctor> LoopID
@@ -329,7 +345,7 @@ Loop::exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, Lo
 {
   using ReturnType = decltype (bvf (*std::declval<PollFD*>()));
   std::function<ReturnType (PollFD&)> slot (bvf);
-  return add (PollFDSource::create (slot, fd, mode), priority);
+  return add_source (PollFDSource::create (slot, fd, mode), priority);
 }
 
 } // Ase

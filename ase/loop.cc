@@ -111,7 +111,7 @@ public:
   bool                    prepare_sources_Lm  (LoopState&, std::vector<PollFD>&);
   bool                    check_sources_Lm    (LoopState&, const std::vector<PollFD>&);
   void                    dispatch_source_Lm  (LoopState&);
-  LoopID                  add                 (LoopSourceP loop_source, LoopPriority priority) override;
+  LoopID                  add_source          (LoopSourceP loop_source, LoopPriority priority) override;
   void                    cancel              (LoopID id) override;
   void                    cancel              (LoopID *idp) override;
   bool                    has_primary         () override;
@@ -172,7 +172,7 @@ LoopImpl::flag_primary (bool on)
 static const int16 UNDEFINED_PRIORITY = -32768;
 
 LoopID
-LoopImpl::add (LoopSourceP source, LoopPriority priority)
+LoopImpl::add_source (LoopSourceP source, LoopPriority priority)
 {
   static_assert (UNDEFINED_PRIORITY < 1, "");
   assert_return (static_cast<uint16_t> (priority) >= 1 && priority <= PRIORITY_CEILING, LoopID::INVALID);
@@ -264,7 +264,7 @@ LoopImpl::exec_once (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, Loop
 LoopID
 LoopImpl::exec_sigchld (int64_t pid, const SigchldSlot &slot, LoopPriority priority)
 {
-  return add (SigchldSource::create (pid, slot), priority);
+  return add_source (SigchldSource::create (pid, slot), priority);
 }
 
 /* void Loop::change_priority (LoopSource *source, int priority) {
@@ -1251,4 +1251,4 @@ PollFDSource::~PollFDSource ()
   @li Fourth, the source is dispatched if it returened true from either prepare() or check(). If multiple sources are
   ready to be dispatched, the entire process may be repeated several times (after dispatching other sources),
   starting with a new call to prepare() before a particular source is finally dispatched.
- */
+*/
