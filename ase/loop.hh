@@ -88,7 +88,6 @@ public:
   virtual void cancel          (LoopID            id) = 0;    ///< Cancel a source and remove it from the  loop.
   virtual void cancel          (LoopID           *idp) = 0;   ///< Cancel a source by id if present and resets the id.
   virtual bool has_primary     (void) = 0;                  ///< Indicates whether loop contains primary sources.
-  virtual bool flag_primary    (bool            on) = 0;
   LoopID exec_dispatcher (const DispatcherSlot &sl, LoopPriority priority
                          = LoopPriority::NORMAL);     /// Execute a single dispatcher callback for prepare, check, dispatch.
   LoopID exec_usignal    (int8 signum, const USignalSlot &sl, LoopPriority priority
@@ -111,6 +110,7 @@ public:
   virtual bool iterate       (bool block) = 0; ///< Perform one loop iteration and return whether more iterations are needed.
   virtual void iterate_pending () = 0; ///< Call iterate() until no immediate dispatching is needed.
   virtual bool set_g_main_context (GlibGMainContext *glib_main_context) = 0; ///< Set context to integrate with a GLib @a GMainContext loop.
+  virtual bool has_quit      () = 0; ///< Check if quit() has been called.
   static LoopP current       ();
 };
 

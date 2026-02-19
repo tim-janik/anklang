@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "loop.hh"
+#include "atomics.hh"
 #include "utils.hh"
 #include "platform.hh"
 #include "internal.hh"
@@ -24,7 +25,10 @@ enum {
   NEEDS_DISPATCH,
 };
 
-static constexpr auto PRIORITY_CEILING = LoopPriority::SYSALLOC;
+static constexpr int16_t WILLQUIT = 0x8000;     // quit() called before or during run()
+static constexpr int16_t HASQUIT = 0x4000;      // last run() or iterate() was quit
+static constexpr int16_t UNDEFINED_PRIORITY = -32768;
+static constexpr auto    PRIORITY_CEILING = LoopPriority::SYSALLOC;
 
 // == PollFD invariants ==
 static_assert (PollFD::IN     == POLLIN);
@@ -46,23 +50,20 @@ static_assert (offsetof (PollFD, revents)      == offsetof (struct pollfd, reven
 static_assert (sizeof (((PollFD*) 0)->revents) == sizeof (((struct pollfd*) 0)->revents));
 
 // === Stupid ID allocator ===
-static volatile int global_id_counter = 65536;
+static std::atomic<uint64_t> global_id_counter { 101000000 };
 static LoopID
 alloc_id ()
 {
-  uint64_t id = __sync_fetch_and_add (&global_id_counter, +1);
-  if (!id)
-    fatal_error ("Loop: id counter overflow, please report"); // TODO: use global ID allcoator?
-  return static_cast<LoopID> (id);
+  const uint64_t id = global_id_counter.fetch_add (+1, std::memory_order_relaxed);
+  assert_return (id != 0, {});
+  return LoopID (id);
 }
 
 static void
 release_id (LoopID id)
 {
   assert_return (id != LoopID::INVALID);
-  // TODO: use global ID allcoator?
 }
-
 
 // === Loop ==
 Loop::Loop() {}
@@ -80,14 +81,13 @@ public:
   typedef std::vector<LoopSourceP> SourceList;
   SourceList              sources_;
   std::vector<LoopSourceP> poll_sources_;
-  int16                   dispatch_priority_;
-  bool                    primary_;
-  std::mutex              mutex_;
-  uint                    rr_index_;
+  AtomicStack<LoopSourceP> pending_add_stack_;
+  AtomicStack<LoopID>      pending_cancel_stack_;
+  std::atomic<int16_t>    quit_code_ = 0;
+  uint                    running_ = 0;
+  uint                    rr_index_ = 0;
+  int16                   dispatch_priority_ = 0;
   EventFd                 eventfd_;
-  int8                    running_;
-  int8                    has_quit_;
-  int16                   quit_code_;
   GlibGMainContext       *gcontext_;
   bool                    finishable_L        ();
   int                     run                 () override;
@@ -99,6 +99,7 @@ public:
   void                    iterate_pending     () override;
   bool                    pending             () override;
   bool                    set_g_main_context  (GlibGMainContext *glib_main_context) override;
+  bool                    has_quit            () override;
   bool                    iterate_loops_Lm    (LoopState&, bool b, bool d);
   void                    destroy_loop        () override;
   LoopSourceP&            find_first_L        ();
@@ -111,11 +112,11 @@ public:
   bool                    prepare_sources_Lm  (LoopState&, std::vector<PollFD>&);
   bool                    check_sources_Lm    (LoopState&, const std::vector<PollFD>&);
   void                    dispatch_source_Lm  (LoopState&);
+  void                    process_atomic_stacks ();
   LoopID                  add_source          (LoopSourceP loop_source, LoopPriority priority) override;
   void                    cancel              (LoopID id) override;
   void                    cancel              (LoopID *idp) override;
   bool                    has_primary         () override;
-  bool                    flag_primary        (bool on) override;
   LoopID                  exec_sigchld        (int64_t pid, const SigchldSlot &vfunc, LoopPriority priority) override;
   bool                    exec_once           (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, LoopPriority priority) override;
   explicit                LoopImpl            ();
@@ -143,34 +144,43 @@ LoopImpl::find_source_L (LoopID id)
 bool
 LoopImpl::has_primary_L()
 {
-  if (primary_)
-    return true;
   for (SourceList::iterator lit = sources_.begin(); lit != sources_.end(); lit++)
     if ((*lit)->primary())
       return true;
   return false;
 }
 
+void
+LoopImpl::process_atomic_stacks ()
+{
+  LoopSourceP source;
+  while (pending_add_stack_.pop (source))
+    sources_.push_back (source);
+  LoopID cancel_id;
+  while (pending_cancel_stack_.pop (cancel_id))
+    {
+      LoopSourceP &src = find_source_L (cancel_id);
+      if (src)
+        remove_source_Lm (src);
+    }
+}
+
 bool
 LoopImpl::has_primary()
 {
-  std::lock_guard<std::mutex> locker (mutex_);
   return has_primary_L();
 }
 
-bool
-LoopImpl::flag_primary (bool on)
-{
-  std::lock_guard<std::mutex> locker (mutex_);
-  const bool was_primary = primary_;
-  primary_ = on;
-  if (primary_ != was_primary)
-    wakeup();
-  return was_primary;
-}
-
-static const int16 UNDEFINED_PRIORITY = -32768;
-
+/** Add an event source to the loop.
+ * This method adds a `LoopSource` to the event loop with a specified priority.
+ * The source will be monitored and dispatched according to its implementation
+ * and the loop's iteration logic.
+ * This method is thread-safe and can be called from any thread. If the loop is
+ * currently blocked in a poll() call, it will be woken up to process the new source.
+ * @param source   The event source to add.
+ * @param priority The priority at which the source should be dispatched.
+ * @return A unique `LoopID` for the added source, or `LoopID::INVALID` on failure.
+ */
 LoopID
 LoopImpl::add_source (LoopSourceP source, LoopPriority priority)
 {
@@ -179,15 +189,12 @@ LoopImpl::add_source (LoopSourceP source, LoopPriority priority)
   assert_return (source != NULL, LoopID::INVALID);
   assert_return (source->loop_ == NULL, LoopID::INVALID);
   source->loop_ = this;
-  source->id_ = alloc_id();
+  const auto source_id = source->id_ = alloc_id();
   source->loop_state_ = WAITING;
   source->priority_ = static_cast<uint16_t> (priority);
-  {
-    std::lock_guard<std::mutex> locker (mutex_);
-    sources_.push_back (source);
-  }
-  wakeup();
-  return source->id_;
+  if (pending_add_stack_.push (source))
+    wakeup();
+  return source_id;
 }
 
 void
@@ -201,22 +208,31 @@ LoopImpl::remove_source_Lm (LoopSourceP source)
   sources_.erase (pos);
   release_id (source->id_);
   source->id_ = LoopID::INVALID;
-  mutex_.unlock();
   source->destroy();
-  mutex_.lock();
 }
 
+/** Cancel an event source.
+ * This method removes a source from the loop using its unique `LoopID`.
+ * If the source is currently being dispatched, it will be removed after
+ * the dispatch callback returns.
+ * This method is thread-safe.
+ * @param id The unique ID of the source to cancel.
+ */
 void
 LoopImpl::cancel (LoopID id)
 {
-  std::lock_guard<std::mutex> locker (mutex_);
-  LoopSourceP &source = find_source_L (id);
-  if (source) {
-    remove_source_Lm (source);
+  return_unless (id != LoopID::INVALID);
+  if (pending_cancel_stack_.push (id))
     wakeup();
-  }
 }
 
+/** Cancel an event source.
+ * This method removes a source from the loop using its unique `LoopID`.
+ * If the source is currently being dispatched, it will be removed after
+ * the dispatch callback returns.
+ * This method is thread-safe.
+ * @param idp Pointer to the unique ID of the source to cancel. The ID will be reset to INVALID (0).
+ */
 void
 LoopImpl::cancel (LoopID *idp)
 {
@@ -244,7 +260,6 @@ LoopImpl::exec_once (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, Loop
   source->priority_ = static_cast<uint16_t> (priority);
   LoopID warn_id = LoopID::INVALID;
   {
-    std::lock_guard<std::mutex> locker (mutex_);
     if (*once_id != LoopID::INVALID) {
       LoopSourceP &source = find_source_L (*once_id);
       if (source)
@@ -267,14 +282,6 @@ LoopImpl::exec_sigchld (int64_t pid, const SigchldSlot &slot, LoopPriority prior
   return add_source (SigchldSource::create (pid, slot), priority);
 }
 
-/* void Loop::change_priority (LoopSource *source, int priority) {
- * // ensure that source belongs to this
- * // reset all source->pfds[].idx = UINT_MAX
- * // unlink source
- * // poke priority
- * // re-add source
- */
-
 void
 LoopImpl::kill_sources_Lm()
 {
@@ -285,9 +292,7 @@ LoopImpl::kill_sources_Lm()
         break;
       remove_source_Lm (source);
     }
-  mutex_.unlock();
   unpoll_sources_U(); // unlocked
-  mutex_.lock();
 }
 
 /** Return the thread-local singleton loop, created on first call.
@@ -306,15 +311,14 @@ Loop::current ()
 
 // === LoopImpl ===
 LoopImpl::LoopImpl() :
-  rr_index_ (0), running_ (false), has_quit_ (false), quit_code_ (0), gcontext_ (NULL)
+  gcontext_ (nullptr)
 {
   cached_pollfd_vector_.reserve (1);
   cached_poll_candidates_.reserve (1);
-  std::lock_guard<std::mutex> locker (mutex_);
   const int err = eventfd_.open();
   if (err < 0)
     fatal_error ("LoopImpl: failed to create wakeup pipe: %s", strerror (-err));
-  // has_quit_ and eventfd_ need to be setup here, so calling quit() before run() works
+  // eventfd_ must work upfront for wakeup() to work
 }
 
 LoopImpl::~LoopImpl()
@@ -331,58 +335,76 @@ LoopImpl::~LoopImpl()
  * Note that LoopImpl objects are artificially kept alive until
  * LoopImpl::destroy_loop() is called, so calling destroy_loop() is
  * mandatory for LoopImpl objects to prevent object leaks.
- * This method must be called only once on a loop.
- */
+  */
 void
 LoopImpl::destroy_loop()
 {
-  // FIXME: assert that this is not the main threrad loop
-  set_g_main_context (NULL); // acquires mutex_
-  // guard main_loop_ pointer *before* locking, so dtor is called after unlock
+  set_g_main_context (NULL);
+  // guard main_loop_ pointer across callbacks
   LoopP main_loop_guard = shared_ptr_cast<Loop*> (this);
-  std::lock_guard<std::mutex> locker (mutex_);
+  process_atomic_stacks();
   kill_sources_Lm();
 }
 
+/** Wake up the event loop.
+ * This method wakes up the event loop if it is currently blocked waiting
+ * for events. It is safe to call from any thread.
+ */
 void
 LoopImpl::wakeup()
 {
-  // FIXME: cannot work when another thread is destroying this
   if (eventfd_.opened())
     eventfd_.wakeup();
 }
 
+/** Run the event loop.
+ *
+ * This method starts the event loop and continues to process events until
+ * `quit()` is called. It returns the exit code provided to `quit()`.
+ * @return The exit code passed to `quit()`.
+ */
 int
 LoopImpl::run ()
 {
   LoopP main_loop_guard = shared_ptr_cast<Loop> (this);
-  std::lock_guard<std::mutex> locker (mutex_);
   LoopState state;
-  running_ = !has_quit_;
-  while (ISLIKELY (running_))
+  quit_code_ &= ~HASQUIT;               // reset old quit code, from former run()
+  running_ += 1;
+  while (ISLIKELY (!(WILLQUIT & quit_code_)))
     iterate_loops_Lm (state, true, true);
-  const int last_quit_code = quit_code_;
-  running_ = false;
-  has_quit_ = false;    // allow loop resumption
-  quit_code_ = 0;       // allow loop resumption
-  return last_quit_code;
+  running_ -= 1;
+  if (quit_code_ & WILLQUIT)            // apply quit code from this run()
+    quit_code_ = HASQUIT | (quit_code_ & ~WILLQUIT);
+  return quit_code_;
 }
 
 bool
 LoopImpl::running ()
 {
-  std::lock_guard<std::mutex> locker (mutex_);
-  return running_;
+  return running_ > 0;
 }
 
+bool
+LoopImpl::has_quit ()
+{
+  return HASQUIT & quit_code_;          // last run() was quit
+}
+
+/** Stop the event loop.
+ *
+ * This method signals the event loop to stop processing events and exit
+ * its `run()` method. The provided `quit_code` will be the return value
+ * of `Loop::run()`.
+ * This method is safe to call from any thread.
+ * @param quit_code The exit code for the loop to return.
+ */
 void
 LoopImpl::quit (int quit_code)
 {
-  std::lock_guard<std::mutex> locker (mutex_);
-  quit_code_ = quit_code;
-  has_quit_ = true;     // cancel run() upfront, or
-  running_ = false;     // interrupt current iteration
-  wakeup();
+  if (!(WILLQUIT & quit_code_)) {
+    quit_code_ = quit_code | WILLQUIT;
+    wakeup ();
+  }
 }
 
 bool
@@ -395,61 +417,68 @@ LoopImpl::finishable_L()
 bool
 LoopImpl::finishable()
 {
-  std::lock_guard<std::mutex> locker (mutex_);
   return finishable_L();
 }
 
-/**
- * @param may_block     If true, iterate() will wait for events occour.
+/** Iterate the main loop once.
  *
  * LoopImpl::iterate() is the heart of the main event loop. For loop iteration,
- * all event sources are polled for incoming events. Then dispatchable sources are
- * picked one per iteration and dispatched in round-robin fashion.
- * If no sources need immediate dispatching and @a may_block is true, iterate() will
+ * all event sources are polled for incoming events. Then dispatchable sources
+ * are picked one per iteration and dispatched in round-robin fashion. If no
+ * sources need immediate dispatching and `may_block` is true, iterate() will
  * wait for events to become available.
+ * @param may_block     If true, iterate() will wait for events occour.
  * @returns Whether more sources need immediate dispatching.
  */
 bool
 LoopImpl::iterate (bool may_block)
 {
-  LoopP main_loop_guard = shared_ptr_cast<Loop> (this);
-  std::lock_guard<std::mutex> locker (mutex_);
+  LoopP     main_loop_guard = shared_ptr_cast<Loop> (this);
   LoopState state;
-  const bool was_running = running_;    // guard for recursion
-  running_ = true;
+  running_ += 1;
   const bool sources_pending = iterate_loops_Lm (state, may_block, true);
-  running_ = was_running && !has_quit_;
+  running_ -= 1;
   return sources_pending;
 }
 
+/** Iterate pending sources.
+ *
+ * This method is used to iterate pending sources, when called after quit()
+ * it will continue to iterate until all sources are dispatched, unless
+ * the loop is quit again.
+ */
 void
-LoopImpl::iterate_pending()
+LoopImpl::iterate_pending ()
 {
-  LoopP main_loop_guard = shared_ptr_cast<Loop> (this);
-  std::lock_guard<std::mutex> locker (mutex_);
-  LoopState state;
-  const bool was_running = running_;    // guard for recursion
-  running_ = true;
-  while (ISLIKELY (running_))
+  LoopP          main_loop_guard = shared_ptr_cast<Loop> (this);
+  LoopState      state;
+  const uint16_t saved_quit_code_ = quit_code_; // save former quit code
+  running_ += 1;
+  while (ISLIKELY (!(WILLQUIT & quit_code_)))   // abort on quitting twice
     if (!iterate_loops_Lm (state, false, true))
       break;
-  running_ = was_running && !has_quit_;
+  running_ -= 1;
+  if (saved_quit_code_ & HASQUIT)               // preserve former quit code
+    quit_code_ = saved_quit_code_ & ~WILLQUIT;
+  else if (quit_code_ & WILLQUIT)               // or apply recent quit code
+    quit_code_ = HASQUIT | (quit_code_ & ~WILLQUIT);
 }
 
 bool
 LoopImpl::pending()
 {
-  std::lock_guard<std::mutex> locker (mutex_);
   LoopState state;
   LoopP main_loop_guard = shared_ptr_cast<Loop> (this);
-  return iterate_loops_Lm (state, false, false);
+  running_ += 1;
+  const bool more = iterate_loops_Lm (state, false, false);
+  running_ -= 1;
+  return more;
 }
 
 bool
 LoopImpl::set_g_main_context (GlibGMainContext *glib_main_context)
 {
 #ifdef  __G_LIB_H__
-  std::lock_guard<std::mutex> locker (mutex_);
   if (glib_main_context)
     {
       if (gcontext_)
@@ -510,12 +539,10 @@ LoopImpl::collect_sources_Lm (LoopState &state)
   // enforce clean slate
   if (UNLIKELY (!poll_sources_.empty()))
     {
-      mutex_.unlock();
       unpoll_sources_U(); // unlocked
-      mutex_.lock();
       assert_return (poll_sources_.empty());
     }
-  if (UNLIKELY (!state.seen_primary && primary_))
+  if (UNLIKELY (!state.seen_primary))
     state.seen_primary = true;
   // cache vector, otherwise malloc shows up in the profiles
   std::vector<LoopSourceP*> &poll_candidates = cached_poll_candidates_;
@@ -561,9 +588,7 @@ LoopImpl::prepare_sources_Lm (LoopState &state, std::vector<PollFD> &pfda)
       if (source.loop_ != this) // test undestroyed
         continue;
       int64 timeout = -1;
-      mutex_.unlock();
       const bool need_dispatch = source.prepare (state, &timeout);
-      mutex_.lock();
       if (source.loop_ != this)
         continue; // ignore newly destroyed sources
       if (need_dispatch)
@@ -610,9 +635,7 @@ LoopImpl::check_sources_Lm (LoopState &state, const std::vector<PollFD> &pfda)
           else
             source.pfds_[i].idx = 4294967295U; // UINT_MAX
         }
-      mutex_.unlock();
       bool need_dispatch = source.check (state);
-      mutex_.lock();
       if (source.loop_ != this)
         continue; // ignore newly destroyed sources
       if (need_dispatch)
@@ -650,9 +673,7 @@ LoopImpl::dispatch_source_Lm (LoopState &state)
       const bool old_was_dispatching = dispatch_source->was_dispatching_;
       dispatch_source->was_dispatching_ = dispatch_source->dispatching_;
       dispatch_source->dispatching_ = true;
-      mutex_.unlock();
       const bool keep_alive = dispatch_source->dispatch (state);
-      mutex_.lock();
       dispatch_source->dispatching_ = dispatch_source->was_dispatching_;
       dispatch_source->was_dispatching_ = old_was_dispatching;
       if (dispatch_source->loop_ == this && !keep_alive)
@@ -664,6 +685,7 @@ bool
 LoopImpl::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
 {
   assert_return (state.phase == state.NONE, false);
+  process_atomic_stacks ();
   std::vector<PollFD> &pfda = cached_pollfd_vector_;
   pfda.resize (0); // cache array between iterations, to reduce malloc overhead
   // allow poll wakeups
@@ -710,12 +732,10 @@ LoopImpl::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
   if (!may_block || any_dispatchable)
     timeout_msecs = 0;
   state.timeout_usecs = 0;
-  mutex_.unlock();
   int presult;
   do
     presult = poll ((struct pollfd*) &pfda[0], pfda.size(), std::min (timeout_msecs, int64 (2147483647))); // INT_MAX
   while (presult < 0 && errno == EAGAIN); // EINTR may indicate a signal
-  mutex_.lock();
   if (presult < 0 && errno != EINTR)
     warning ("LoopImpl: poll() failed: %s", strerror());
   else if (pfda[wakeup_idx].revents)
@@ -753,9 +773,7 @@ LoopImpl::iterate_loops_Lm (LoopState &state, bool may_block, bool may_dispatch)
     }
   // cleanup
   state.phase = state.NONE;
-  mutex_.unlock();
   unpoll_sources_U(); // unlocked
-  mutex_.lock();
   return any_dispatchable; // need to dispatch or recheck
 }
 
@@ -1223,35 +1241,36 @@ PollFDSource::~PollFDSource ()
   Ase <a href="http://en.wikipedia.org/wiki/Event_loop">event loops</a>
   are a programming facility to execute callback handlers (dispatch event sources) according to expiring Timers,
   IO events or arbitrary other conditions.
-  A Ase::Loop is created with Ase::LoopImpl::_new() or Ase::LoopImpl::create_sub_loop(). Callbacks or other
-  event sources are added to it via Ase::Loop::add(), Ase::Loop::exec_normal() and related functions.
-  Once a main loop is created and its callbacks are added, it can be run as: @code
+  A Ase::Loop is retrieved via Ase::Loop::current(), which returns a thread-local singleton loop. Callbacks or other
+  event sources are added to it via Ase::Loop::add_source() and related functions like Ase::Loop::exec_once().
+  Once a main loop is created and its callbacks are added, it can be run via Ase::Loop::run(): @code
+  int exit_code = loop.run();
+  @endcode
+  Alternatively, for manual control, the loop can be iterated: @code
   * while (!loop.finishable())
   *   loop.iterate (true);
   @endcode
-  Ase::LoopImpl::iterate() finds a source that immediately need dispatching and starts to dispatch it.
+  Ase::Loop::iterate() finds a source that needs immediate dispatching and dispatches it.
   If no source was found, it monitors the source list's PollFD descriptors for events, and finds dispatchable
   sources based on newly incoming events on the descriptors.
-  If multiple sources need dispatching, they are handled according to their priorities (see Ase::Loop::add())
+  If multiple sources need dispatching, they are handled according to their priorities (see Ase::Loop::add_source())
   and at the same priority, sources are dispatched in round-robin fashion.
-  Calling Ase::LoopImpl::iterate() also iterates over its sub loops, which allows to handle sources
-  on several independently running loops within the same thread, usually used to associate one event loop with one window.
 
   Traits of the Ase::Loop class:
-  @li The main loop and its sub loops are handled in round-robin fahsion, priorities below Ase::Loop::PRIORITY_ASCENT only apply internally to a loop.
-  @li Loops are thread safe, so any thready may add or remove sources to a loop at any time, regardless of which thread
+  @li Loops are thread safe, so any thread may add or remove sources to a loop at any time, regardless of which thread
   is currently running the loop.
   @li Sources added to a loop may be flagged as "primary" (see Ase::LoopSource::primary()),
-  to keep the loop from exiting. This is used to distinguish background jobs, e.g. updating a window's progress bar,
+  to keep the loop from exiting when using manual iteration with `finishable()`. This is used to distinguish background jobs,
+  e.g. updating a window's progress bar,
   from primary jobs, like processing events on the main window.
   Sticking with the example, a window's event loop should be exited if the window vanishes, but not when it's
-  progress bar stoped updating.
+  progress bar stopped updating.
 
   Loop integration of a Ase::LoopSource class:
-  @li First, prepare() is called on a source, returning true here flags the source to be ready for immediate dispatching.
+  @li First, prepare() is called on a source. Returning true flags the source as ready for immediate dispatching.
   @li Second, poll(2) monitors all PollFD file descriptors of the source (see Ase::LoopSource::add_poll()).
-  @li Third, check() is called for the source to check whether dispatching is needed depending on PollFD states.
-  @li Fourth, the source is dispatched if it returened true from either prepare() or check(). If multiple sources are
-  ready to be dispatched, the entire process may be repeated several times (after dispatching other sources),
-  starting with a new call to prepare() before a particular source is finally dispatched.
+  @li Third, check() is called for the source to determine if dispatching is needed based on PollFD states.
+  @li Fourth, the source's dispatch() method is called if it returned true from either prepare() or check(). If multiple sources are
+  ready to be dispatched, the entire process may be repeated several times for other sources before a particular source is finally dispatched,
+  starting with a new call to prepare().
 */
