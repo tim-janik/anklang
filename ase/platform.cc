@@ -849,6 +849,7 @@ program_cwd ()
 }
 
 // == ScopedSemaphore ==
+/// A RAII wrapper around POSIX unnamed semaphores for thread synchronization
 ScopedSemaphore::ScopedSemaphore () noexcept
 {
   static_assert (sizeof (mem_) >= sizeof (sem_t), "");
@@ -857,6 +858,7 @@ ScopedSemaphore::ScopedSemaphore () noexcept
   assert_return (ret == 0);
 }
 
+/// Post (increment) the semaphore value, @returns 0 on success
 int
 ScopedSemaphore::post () noexcept
 {
@@ -866,6 +868,7 @@ ScopedSemaphore::post () noexcept
   return ret ? errno : 0;
 }
 
+/// Wait indefinitely for the semaphore to become available, @returns 0 on success
 int
 ScopedSemaphore::wait () noexcept
 {
@@ -875,6 +878,25 @@ ScopedSemaphore::wait () noexcept
   return ret ? errno : 0;
 }
 
+/// Wait for the semaphore with a timeout in µseconds, @returns 0 on success
+int
+ScopedSemaphore::wait_for (uint64_t useconds) noexcept
+{
+  sem_t &sem = *(sem_t*) mem_;
+  errno = 0;
+  // Calculate absolute timeout time from current monotonic time
+  // sem_timedwait() requires an absolute timeout, not a relative duration
+  struct timespec timeout;
+  const uint64_t now_usecs = timestamp_realtime();
+  timeout.tv_sec = (time_t) ((now_usecs + useconds) / 1000000);
+  timeout.tv_nsec = (long) (((now_usecs + useconds) % 1000000) * 1000);
+  // sem_timedwait() returns 0 on success, or errno on timeout/error
+  // We convert errno to return value for consistency with wait()/post()
+  const int ret = sem_timedwait (&sem, &timeout);
+  return ret ? errno : 0;
+}
+
+/// Release associated semaphore resources
 ScopedSemaphore::~ScopedSemaphore () noexcept
 {
   sem_t &sem = *(sem_t*) mem_;
