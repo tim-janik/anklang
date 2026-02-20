@@ -56,6 +56,9 @@ void   loft_get_config       (LoftConfig &config);
 /// Install obstruction free callback to notify about watermark underrun.
 void   loft_set_notifier     (const std::function<void()> &lowmem);
 
+/// Install callback to notify about forced growth.
+void   loft_set_growth_notifier (const std::function<void(size_t total,size_t needed)> &willgrow);
+
 /// Grow the preallocated arena, issues syscalls.
 size_t loft_grow_preallocate (size_t preallocation_amount = 0);
 

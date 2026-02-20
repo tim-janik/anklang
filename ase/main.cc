@@ -477,6 +477,11 @@ main (int argc, char *argv[])
   prefault_pages ((1024 + 768) * 1024, 64 * 1024 * 1024);
   // preallocate memory for lock-free allocator
   preallocate_loft (64 * 1024 * 1024);
+  // warn if preallocation is not sufficient
+  loft_set_growth_notifier ([] (size_t total, size_t needed)
+  {
+    warning ("Loft.BumpAllocator: growing beyond preallocation: totalmem=%u needed=%d\n", total, needed);
+  });
 
   // print stack trace for uncaught exceptions
   logging_handle_terminate();
