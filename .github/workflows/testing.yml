@@ -29,7 +29,7 @@ jobs:
         make -w all -j`nproc`
     - working-directory: /tmp/anklang
       run: |
-        make -w check -j`nproc`
+        make -w strict -j`nproc`
     - working-directory: /tmp/anklang
       run: |
         make -w install

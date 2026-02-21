@@ -108,7 +108,8 @@ class ScopedSemaphore {
 public:
   explicit  ScopedSemaphore () noexcept;  ///< Create a process-local semaphore.
   int       post            () noexcept;  ///< Unlock ScopedSemaphore.
-  int       wait            () noexcept;  ///< Unlock ScopedSemaphore.
+  int       wait            () noexcept;  ///< Wait indefinitely for ScopedSemaphore.
+  int       wait_for        (uint64_t useconds) noexcept;  ///< Wait for ScopedSemaphore with timeout (microseconds).
   /*dtor*/ ~ScopedSemaphore () noexcept;
 };
 
