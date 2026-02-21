@@ -252,7 +252,7 @@ backtrace_command (const char *dbgr)
       access (usr_bin_lldb, X_OK) == 0) {
     snprintf (cmd, sizeof (cmd),
               "%s -Q -x --batch -p %u "
-              "-o 'bt'", // 'bt all'
+              "-o 'bt' -o kill", // 'bt all'
               usr_bin_lldb, gettid());
     return cmd;
   }

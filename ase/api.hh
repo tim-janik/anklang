@@ -322,7 +322,7 @@ public:
   virtual double          get_bpm        () const = 0;
   virtual void            set_numerator  (double num) = 0;
   virtual double          get_numerator  () const = 0;
-  virtual void            set_denominator(double den) = 0;
+  virtual void            set_denominator (double den) = 0;
   virtual double          get_denominator() const = 0;
   virtual void            discard        () = 0;       ///< Discard project and associated resources.
   virtual void            start_playback () = 0;       ///< Start playback of a project, requires active sound engine.

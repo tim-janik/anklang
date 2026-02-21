@@ -60,7 +60,8 @@ endef
 # == codegen/ase/gen/api-jsonipc.json ==
 $>/codegen/ase/gen/api-jsonipc.json: ase/api.hh $>/ase/sysconfig.h ase/Makefile.mk
 	$(QGEN)
-	$Q clang-20 -std=gnu++23 -I . -I out/ -extract-api $< -o $@
+	$Q CLANG=clang-20; command -v $$CLANG >/dev/null || CLANG=clang-21; \
+		$$CLANG -std=gnu++23 -I . -I out/ -extract-api $< -o $@
 
 # == ase/gen/class-tree.g.md ==
 $>/codegen/ase/gen/class-tree.g.md: $>/codegen/ase/gen/api-jsonipc.json jsonipc/jsonbindings.ts ase/Makefile.mk
@@ -296,7 +297,7 @@ ase/tests/TestList.mk:	# any deps here are forced to be rebuilt during Makefile 
 	$(QGEN)
 	$Q echo 'ASE_TEST_LIST := '\\			> $@.tmp
 	$Q cat $(ase/tests/TestList.INPUTS) | \
-		grep -Eo 'TEST_\w+ ?\((\w+)\)' | \
+		grep -Eo '^\s*TEST_\w+ ?\((\w+)\)' | \
 		sed 's/.*(/  /; s/)/ \\/' | sort	>>$@.tmp
 	$Q mv $@.tmp $@
 ifneq (,$(shell find $(ase/tests/TestList.INPUTS) -newer ase/tests/TestList.mk))

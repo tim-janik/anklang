@@ -51,7 +51,7 @@ cleanup_orphaned_tempfiles (const std::string &directory)
       }
     }
   }
-  closedir(dir);
+  closedir (dir);
 }
 
 /// Cleanup list of temporary files/dirs to be removed at exit
