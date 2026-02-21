@@ -105,35 +105,6 @@ struct FontStyleHelpers
 };
 
 //==============================================================================
-Typeface::Typeface (const String& faceName, const String& styleName) noexcept
-    : name (faceName), style (styleName)
-{
-}
-
-Typeface::~Typeface() = default;
-
-Typeface::Ptr Typeface::getFallbackTypeface()
-{
-    const Font fallbackFont (Font::getFallbackFontName(), Font::getFallbackFontStyle(), 10.0f);
-    return fallbackFont.getTypefacePtr();
-}
-
-EdgeTable* Typeface::getEdgeTableForGlyph (int glyphNumber, const AffineTransform& transform, float fontHeight)
-{
-    Path path;
-
-    if (getOutlineForGlyph (glyphNumber, path) && ! path.isEmpty())
-    {
-        applyVerticalHintingTransform (fontHeight, path);
-
-        return new EdgeTable (path.getBoundsTransformed (transform).getSmallestIntegerContainer().expanded (1, 0),
-                              path, transform);
-    }
-
-    return nullptr;
-}
-
-//==============================================================================
 struct Typeface::HintingParams
 {
     HintingParams (Typeface& t)
@@ -258,6 +229,35 @@ void Typeface::applyVerticalHintingTransform (float fontSize, Path& path)
 
         return hintingParams->applyVerticalHintingTransform (fontSize, path);
     }
+}
+
+//==============================================================================
+Typeface::Typeface (const String& faceName, const String& styleName) noexcept
+    : name (faceName), style (styleName)
+{
+}
+
+Typeface::~Typeface() = default;
+
+Typeface::Ptr Typeface::getFallbackTypeface()
+{
+    const Font fallbackFont (Font::getFallbackFontName(), Font::getFallbackFontStyle(), 10.0f);
+    return fallbackFont.getTypefacePtr();
+}
+
+EdgeTable* Typeface::getEdgeTableForGlyph (int glyphNumber, const AffineTransform& transform, float fontHeight)
+{
+    Path path;
+
+    if (getOutlineForGlyph (glyphNumber, path) && ! path.isEmpty())
+    {
+        applyVerticalHintingTransform (fontHeight, path);
+
+        return new EdgeTable (path.getBoundsTransformed (transform).getSmallestIntegerContainer().expanded (1, 0),
+                              path, transform);
+    }
+
+    return nullptr;
 }
 
 } // namespace juce

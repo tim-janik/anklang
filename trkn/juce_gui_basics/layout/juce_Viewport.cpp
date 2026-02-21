@@ -628,6 +628,11 @@ ScrollBar* Viewport::createScrollBarComponent (bool isVertical)
     return new ScrollBar (isVertical);
 }
 
+std::unique_ptr<AccessibilityHandler> Viewport::AccessibilityIgnoredComponent::createAccessibilityHandler()
+{
+    return createIgnoredAccessibilityHandler (*this);
+}
+
 void Viewport::setScrollBarPosition (bool verticalScrollbarOnRight,
                                      bool horizontalScrollbarAtBottom)
 {

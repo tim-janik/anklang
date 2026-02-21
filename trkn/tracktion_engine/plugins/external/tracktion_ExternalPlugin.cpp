@@ -514,32 +514,6 @@ namespace
 }
 
 //==============================================================================
-ExternalPlugin::ExternalPlugin (PluginCreationInfo info)  : Plugin (info)
-{
-    CRASH_TRACER
-
-    auto um = getUndoManager();
-
-    dryGain = new PluginWetDryAutomatableParam ("dry level", TRANS("Dry Level"), *this);
-    wetGain = new PluginWetDryAutomatableParam ("wet level", TRANS("Wet Level"), *this);
-
-    dryValue.referTo (state, IDs::dry, um);
-    wetValue.referTo (state, IDs::wet, um, 1.0f);
-
-    dryGain->attachToCurrentValue (dryValue);
-    wetGain->attachToCurrentValue (wetValue);
-
-    desc.uniqueId = (int) state[IDs::uniqueId].toString().getHexValue64();
-    desc.deprecatedUid = (int) state[IDs::uid].toString().getHexValue64();
-    desc.fileOrIdentifier = state[IDs::filename];
-    setEnabled (state.getProperty (IDs::enabled, true));
-    desc.name = state[IDs::name];
-    desc.manufacturerName = state[IDs::manufacturer];
-    identiferString = createIdentifierString (desc);
-
-    initialiseFully();
-}
-
 juce::ValueTree ExternalPlugin::create (Engine& e, const juce::PluginDescription& desc)
 {
     auto v = createValueTree (IDs::PLUGIN,
@@ -877,21 +851,6 @@ void ExternalPlugin::trackPropertiesChanged()
 }
 
 //==============================================================================
-ExternalPlugin::~ExternalPlugin()
-{
-    TRACKTION_ASSERT_MESSAGE_THREAD
-    CRASH_TRACER_PLUGIN (getDebugName());
-    notifyListenersOfDeletion();
-    windowState->hideWindowForShutdown();
-    deinitialise();
-
-    dryGain->detachFromCurrentValue();
-    wetGain->detachFromCurrentValue();
-
-    const juce::ScopedLock sl (lock);
-    deletePluginInstance();
-}
-
 void ExternalPlugin::selectableAboutToBeDeleted()
 {
     for (auto param : autoParamForParamNumbers)
@@ -1115,6 +1074,48 @@ struct ExternalPlugin::MPEChannelRemapper
         return false;
     }
 };
+
+//==============================================================================
+ExternalPlugin::ExternalPlugin (PluginCreationInfo info)  : Plugin (info)
+{
+    CRASH_TRACER
+
+    auto um = getUndoManager();
+
+    dryGain = new PluginWetDryAutomatableParam ("dry level", TRANS("Dry Level"), *this);
+    wetGain = new PluginWetDryAutomatableParam ("wet level", TRANS("Wet Level"), *this);
+
+    dryValue.referTo (state, IDs::dry, um);
+    wetValue.referTo (state, IDs::wet, um, 1.0f);
+
+    dryGain->attachToCurrentValue (dryValue);
+    wetGain->attachToCurrentValue (wetValue);
+
+    desc.uniqueId = (int) state[IDs::uniqueId].toString().getHexValue64();
+    desc.deprecatedUid = (int) state[IDs::uid].toString().getHexValue64();
+    desc.fileOrIdentifier = state[IDs::filename];
+    setEnabled (state.getProperty (IDs::enabled, true));
+    desc.name = state[IDs::name];
+    desc.manufacturerName = state[IDs::manufacturer];
+    identiferString = createIdentifierString (desc);
+
+    initialiseFully();
+}
+
+ExternalPlugin::~ExternalPlugin()
+{
+    TRACKTION_ASSERT_MESSAGE_THREAD
+    CRASH_TRACER_PLUGIN (getDebugName());
+    notifyListenersOfDeletion();
+    windowState->hideWindowForShutdown();
+    deinitialise();
+
+    dryGain->detachFromCurrentValue();
+    wetGain->detachFromCurrentValue();
+
+    const juce::ScopedLock sl (lock);
+    deletePluginInstance();
+}
 
 //==============================================================================
 void ExternalPlugin::initialise (const PluginInitialisationInfo& info)

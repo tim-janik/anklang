@@ -731,6 +731,12 @@ MidiDeviceListConnection MidiDeviceListConnection::make (std::function<void()> c
                                             }) };
 }
 
+// moved here from trkn/juce_audio_devices/midi_io/juce_MidiDevices.cpp
+MidiOutput::MidiOutput (const String& deviceName, const String& deviceIdentifier)
+    : Thread ("midi out"), deviceInfo (deviceName, deviceIdentifier)
+{
+}
+
 //==============================================================================
 #else
 

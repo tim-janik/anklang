@@ -148,7 +148,6 @@
 #include "misc/juce_ConsoleApplication.cpp"
 #include "misc/juce_ScopeGuard.cpp"
 #include "network/juce_MACAddress.cpp"
-#include "network/juce_NamedPipe.cpp"
 #include "network/juce_Socket.cpp"
 #include "network/juce_IPAddress.cpp"
 #include "streams/juce_BufferedInputStream.cpp"
@@ -262,6 +261,8 @@
  #include "native/juce_SystemStats_wasm.cpp"
  #include "native/juce_PlatformTimer_generic.cpp"
 #endif
+
+#include "network/juce_NamedPipe.cpp"
 
 #include "files/juce_common_MimeTypes.h"
 #include "files/juce_common_MimeTypes.cpp"
