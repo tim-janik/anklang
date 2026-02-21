@@ -23,6 +23,7 @@ ASE_EXTRA_INCLUDES := $(strip			\
 	-Iexternal/websocketpp			\
 	$(ASEDEPS_CFLAGS)			\
 ) # also used by clang-tidy
+PROMPT := prompt() ( test "$${CODEGEN-}" == y && return 0; read -p "$$1 [y/N] " A && test "$$A" == y ; ) && prompt
 
 # == ase/sysconfig.h ==
 $>/ase/sysconfig.h: $(config-stamps)			| $>/ase/tests/ # ase/Makefile.mk
@@ -112,7 +113,7 @@ $>/codegen/ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts $(lib/Anklang
 	$Q echo 'Jsonipc.classes["Ase::SharedBase"] = SharedBase;'			>> $@.tmp
 	$Q echo										>> $@.tmp
 	$Q ASAN_OPTIONS=detect_leaks=0 ASE_JSONTS=1 \
-	$(lib/AnklangSynthEngine) --norc -P null -M null --jsonts			>> $@.tmp
+	$(lib/AnklangSynthEngine) --norc --no-devices --jsonts				>> $@.tmp
 	$Q echo '/**@type{ServerImpl}*/'						>> $@.tmp
 	$Q echo -n 'export let server: Promise<Server> | Server ='			>> $@.tmp
 	$Q echo 'Jsonipc.setup_promise_type (Server, s => server = s);'			>> $@.tmp
@@ -186,6 +187,27 @@ endef	# $$(compilecxxflags)
 $(foreach F, $(filter %.cpp, $(JUCE_SOURCES) $(TRACKTION_SOURCES)), $(eval $(call TRKN_CXXOBJECT_RULE, trkn/$F)))
 $(TRKN_OBJECTS): $(EXTERNAL_CXX_STAMPS)
 include $(wildcard $>/trkn/*.d)
+
+# == check-pch-list ==
+.PHONY: check-pch-list
+# Check: ase/PchList.mk
+check-pch-list: $(lib/AnklangSynthEngine)	| $>/ase/tests/
+	$(QGEN)
+	$Q echo 'ASE_PCH_FILES := '\\	> $>/ase/PchList.mk
+	$Q grep -l '^#include "trkn/tracktion.hh"' ase/*.cc | sort \
+	| sed -r 's/(.*)/  \1 \\/'	>>$>/ase/PchList.mk
+	$Q echo				>>$>/ase/PchList.mk
+	$Q if cmp -s ase/PchList.mk $>/ase/PchList.mk ; then rm $>/ase/PchList.mk ; else \
+	( diff -u ase/PchList.mk $>/ase/PchList.mk || : ) \
+	&& test -t 0 && ( $(PROMPT) "? Update ase/PchList.mk?" && mv $>/ase/PchList.mk ase/PchList.mk ) \
+	&& ( echo 'ase/PchList.mk: test list updated, restart make' ; false ) \
+	fi
+check-ase-tests: check-pch-list
+# Precompiled Headers for trkn/tracktion.hh
+include ase/PchList.mk	# ASE_PCH_FILES
+$(addprefix $>/, $(ASE_PCH_FILES:.cc=.o)): $(call INCLUDE_PCH, trkn/tracktion.hh )
+# Precompiled Headers for JUCE
+$>/ase/juce-linux.o:	$(call INCLUDE_PCH, trkn/juce.hh )
 
 # == cpptrace ==
 ifeq ($(MODE),cpptrace)
@@ -347,7 +369,7 @@ check-ase-tests: check-test-list
 define ASE_TEST_CHECK
 check-$1: $$(lib/AnklangSynthEngine)
 	$$(QECHO) CHECK '$1'
-	$$Q $$(lib/AnklangSynthEngine) --norc -P null -M null --test '$1'
+	$$Q $$(lib/AnklangSynthEngine) --norc --no-devices --test '$1'
 .PHONY: check-$1
 check-ase-tests: check-$1
 endef

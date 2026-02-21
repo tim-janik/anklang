@@ -86,6 +86,7 @@ public:
   TelemetryFieldS      telemetry         () const override;
   AudioProcessorP      master_processor  () const;
   ssize_t              track_index       (const Track &child) const;
+  static void          force_shutdown_all ();
   static ProjectImplP  create            (const String &projectname);
   static size_t undo_mem_counter;
 };
