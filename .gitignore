@@ -17,3 +17,7 @@
 /poxy/
 /rand/
 /inst/
+*bak
+*orig
+*.tmp*
+*~
