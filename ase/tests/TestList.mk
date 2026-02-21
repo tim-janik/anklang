@@ -24,6 +24,8 @@ ASE_TEST_LIST := \
   queuemux_test \
   randomhash_tests \
   regex_tests \
+  semaphore_concurrent_test \
+  semaphore_multiple_test \
   signalutils_tests \
   sndfile_tests \
   sortnet_tests \
