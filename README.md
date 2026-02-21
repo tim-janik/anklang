@@ -66,6 +66,30 @@ Roadmap Discussions: Feedback & Ideas: [#52](https://github.com/tim-janik/anklan
 
 ☐  Implement a quality MIDI file importer with mappings into the audio library
 
+
+<!-- DEVELOPMENT -->
+## Development
+
+### Project Structure
+- `ase/` - C++23 backend sources (`*.c`, `*.h`, `*.cc`, `*.hh`)
+- `ase/api.hh` - Public API for backend <-> frontend IPC
+- `trkn/` - Vendor sources (tracktion_engine, JUCE)
+- `ui/` - Web UI (Vite, Tailwind, SolidJS)
+- `jsonipc/` - IPC for JSON messages between backend and browser
+
+### Building & Testing
+- Build: `make`
+- Run all tests: `make check`
+- Run specific test: `make check-<test_name>` (e.g., `make check-string_funcs`)
+- Direct test execution: `out/lib/AnklangSynthEngine --test <test_name>`
+- List available tests: `out/lib/AnklangSynthEngine --list-tests`
+
+### Test Guidelines
+- New code requires proper tests
+- Avoid tests for what the type system already guarantees
+- Only use methods available on the interface (extend `*.hh` files if needed)
+
+
 <!-- LICENSE.txt -->
 ## License
 
