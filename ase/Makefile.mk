@@ -209,13 +209,21 @@ $(addprefix $>/, $(ASE_PCH_FILES:.cc=.o)): $(call INCLUDE_PCH, trkn/tracktion.hh
 # Precompiled Headers for JUCE
 $>/ase/juce-linux.o:	$(call INCLUDE_PCH, trkn/juce.hh )
 
+# == ase/anklang.objects ==
+ase/anklang.ccobjects := $(call BUILDDIR_O, $(filter %.cc, $(ase/anklang.sources)))
+ase/anklang.objects := $(sort \
+	$(call BUILDDIR_O, $(ase/anklang.sources))	\
+	$(call SOURCE2_O, $(ase/generated.sources))	\
+)
+$(ase/anklang.objects) $(devices/4ase.objects): $>/ase/sysconfig.h $(EXTERNAL_CXX_STAMPS)
+$(ase/anklang.objects) $(devices/4ase.objects): EXTRA_INCLUDES += $(ASE_EXTRA_INCLUDES) -I$>
+
 # == cpptrace ==
 ifeq ($(MODE),cpptrace)
 LIBCPPTRACE_HEADERS := $>/cpptrace/include/cpptrace/cpptrace.hpp $>/cpptrace/include/cpptrace/from_current.hpp
-ASE_CPPTRACE_OBJ := $>/ase/logging.o $>/ase/main.o
-$(ASE_CPPTRACE_OBJ): ASE_EXTRA_INCLUDES += -I$>/cpptrace/include -DASE_WITH_CPPTRACE=1  # also provides addiotnal zstd.h
-$(ASE_CPPTRACE_OBJ): $(LIBCPPTRACE_HEADERS)
 $(LIBCPPTRACE_HEADERS): $>/cpptrace/lib/libcpptrace.a
+$(ase/anklang.objects): $(LIBCPPTRACE_HEADERS)
+$(ase/anklang.objects): EXTRA_INCLUDES += -I$>/cpptrace/include -DASE_WITH_CPPTRACE=1  # also provides addiotnal zstd.h
 $>/cpptrace/lib/libcpptrace.a:		| $(EXTERNAL_CXX_STAMPS)
 	$(QGEN)
 	$Q rm -rf $>/cpptrace/ && mkdir -p $>/cpptrace/
@@ -226,13 +234,6 @@ ASEDEPS_LIBS += -L$>/cpptrace/lib -lcpptrace -ldwarf
 endif
 
 # == AnklangSynthEngine ==
-ase/anklang.ccobjects := $(call BUILDDIR_O, $(filter %.cc, $(ase/anklang.sources)))
-ase/anklang.objects := $(sort \
-	$(call BUILDDIR_O, $(ase/anklang.sources))	\
-	$(call SOURCE2_O, $(ase/generated.sources))	\
-)
-$(ase/anklang.objects) $(devices/4ase.objects): $>/ase/sysconfig.h $(EXTERNAL_CXX_STAMPS)
-$(ase/anklang.objects) $(devices/4ase.objects): EXTRA_INCLUDES += $(ASE_EXTRA_INCLUDES) -I$>
 # Work around legacy code in external/websocketpp/*.hpp
 ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec -Wno-sign-promo
 # Allow tests in mathutils.cc
