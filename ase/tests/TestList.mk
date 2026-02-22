@@ -12,6 +12,7 @@ ASE_TEST_LIST := \
   cotask_string_result_test \
   cotask_void_test \
   crawler_tests \
+  delay_promise_test \
   event_list_tests \
   job_queue_tests \
   jsonapi_tests \

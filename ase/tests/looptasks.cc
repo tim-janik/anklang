@@ -386,4 +386,29 @@ promise_already_resolved_test()
 }
 TEST_ADD (promise_already_resolved_test);
 
+static void
+delay_promise_test()
+{
+  auto loop = Ase::Loop::current();
+  auto elapsed_ms = std::make_shared<std::atomic<int64_t>> (-1);
+
+  auto coroutine = [=]() -> Ase::CoTaskVoid
+  {
+    *elapsed_ms = co_await loop->delay (std::chrono::milliseconds (50));
+    co_return;
+  };
+
+  loop->add (coroutine);
+
+  for (int i = 0; i < 500 && -1 == *elapsed_ms; i++) {
+    usleep (1000);
+    while (loop->pending())
+      loop->iterate (true);
+  }
+  TCHECK (*elapsed_ms >= 0, "delay promise should resolve");
+  TCHECK (*elapsed_ms >= 50 - 1, "delay should wait at least 50ms");
+  TCHECK (*elapsed_ms < 1000, "delay should last less than a second");
+}
+TEST_ADD (delay_promise_test);
+
 } // Anon
