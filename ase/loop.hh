@@ -1,7 +1,8 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #pragma once
 
-#include <ase/utils.hh>
+#include <ase/defs.hh>
+#include <ase/cotask.hh>
 #include <chrono>
 
 namespace Ase {
@@ -98,6 +99,8 @@ public:
                                   = LoopPriority::NORMAL) = 0;     ///< Execute a callback once, re-schedules the callback if `0 != *once_id`.
   LoopID add             (auto &&func, std::chrono::milliseconds interval = std::chrono::milliseconds (0), LoopPriority priority = LoopPriority::NORMAL);
   LoopID add             (auto &&func, LoopPriority priority);
+  template<class Coroutine> requires IsAwaitable<std::invoke_result_t<Coroutine>>
+  LoopID add             (Coroutine &&coroutine, LoopPriority priority = LoopPriority::NORMAL);
   /// Execute a callback after polling for mode on fd, returning true repeats callback.
   template<class BoolVoidPollFunctor>
   LoopID exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, LoopPriority priority = LoopPriority::NORMAL);
@@ -293,6 +296,14 @@ Loop::exec_usignal (int8 signum, const USignalSlot &slot, LoopPriority priority)
   return add_source (USignalSource::create (signum, slot), priority);
 }
 
+template<class BoolVoidPollFunctor> LoopID
+Loop::exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, LoopPriority priority)
+{
+  using ReturnType = decltype (bvf (*std::declval<PollFD*>()));
+  std::function<ReturnType (PollFD&)> slot (bvf);
+  return add_source (PollFDSource::create (slot, fd, mode), priority);
+}
+
 LoopID
 Loop::add (auto &&func, std::chrono::milliseconds interval, LoopPriority priority)
 {
@@ -308,12 +319,30 @@ Loop::add (auto &&func, LoopPriority priority)
   return add (std::forward<decltype (func)> (func), std::chrono::milliseconds (0), priority);
 }
 
-template<class BoolVoidPollFunctor> LoopID
-Loop::exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, LoopPriority priority)
+template<class Coroutine> requires IsAwaitable<std::invoke_result_t<Coroutine>> LoopID
+Loop::add (Coroutine &&coroutine, LoopPriority priority)
 {
-  using ReturnType = decltype (bvf (*std::declval<PollFD*>()));
-  std::function<ReturnType (PollFD&)> slot (bvf);
-  return add_source (PollFDSource::create (slot, fd, mode), priority);
+  using CoroutineType = std::decay_t<Coroutine>;
+  if constexpr (std::is_convertible_v<CoroutineType, bool>)
+    ASE_ASSERT_RETURN (coroutine, LoopID::INVALID);
+  // Keep Coroutine and parameters alive until after co_return
+  auto coroutine_ptr = std::make_shared<CoroutineType> (std::forward<Coroutine> (coroutine));
+  // Guarantee: coroutine will be started as a loop callback
+  auto start_coroutine = [coroutine_ptr] ()
+  {
+    dprintf (2, "%s: start loop_coawait…\n", "start_coroutine");
+    static auto loop_coawait = [] (auto coroutine_ptr) -> DetachedTask
+    {
+      dprintf (2, "%s: co_await…\n", "loop_coawait");
+      co_await (*coroutine_ptr) ();
+      dprintf (2, "%s: co_return…\n", "loop_coawait");
+      co_return;
+    };
+    loop_coawait (coroutine_ptr);
+    dprintf (2, "%s: done, return false\n", "start_coroutine");
+    return false;
+  };
+  return this->add (start_coroutine, std::chrono::milliseconds (0), priority);
 }
 
 } // Ase
