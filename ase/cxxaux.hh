@@ -230,6 +230,9 @@ void assertion_failed (const char *msg = nullptr, const char *file = __builtin_F
 void assertion_fatal  (const char *msg = nullptr, const char *file = __builtin_FILE(),
                        int line = __builtin_LINE(), const char *func = __builtin_FUNCTION()) noexcept ASE_NORETURN;
 
+/// Helper to trace rethrown exceptions
+void ase_rethrow (std::exception_ptr exception = std::current_exception());
+
 /// Test string equality at compile time.
 extern inline constexpr bool
 constexpr_equals (const char *a, const char *b, size_t n)
