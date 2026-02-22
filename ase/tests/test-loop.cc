@@ -1,11 +1,15 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include <cstdio>
 #include <atomic>
+#include <chrono>
+#include <coroutine>
 #include <exception>
 #include <functional>
 #include <memory>
 #include <string>
 #include <thread>
+#include <type_traits>
+#include <variant>
 #include <vector>
 #include <ase/loop.hh>
 #include "../testing.hh"
@@ -83,5 +87,303 @@ loop_add_timer_test()
   TCHECK (counter == 1, "add_timer() callback should be called once");
 }
 TEST_ADD (loop_add_timer_test);
+
+// === CoTask tests ===
+
+static void
+cotask_void_test()
+{
+  auto loop = Ase::Loop::current();
+  auto completedp = std::make_shared<std::atomic<bool>> (false);
+
+  auto cotask_factory = [=]() -> Ase::CoTaskVoid
+  {
+    auto promise = loop->make_promise ([=] (std::function<void()> resolve)
+    {
+      // resolve asynchrnously via event loop
+      loop->add ([=]() { resolve(); return false; });
+    });
+    co_await promise;
+    *completedp = true;
+    co_return;
+  };
+  loop->add (cotask_factory);
+
+  for (int i = 0; i < 500 && !*completedp; i++) {
+    usleep (1000);
+    while (loop->pending())
+      loop->iterate (false);
+  }
+  TCHECK (*completedp, "CoTask<void> should complete");
+}
+TEST_ADD (cotask_void_test);
+
+static void
+cotask_int64_result_test()
+{
+  auto loop = Ase::Loop::current();
+  auto result = std::make_shared<std::atomic<int64_t>> (0);
+
+  auto cotask_factory = [=]() -> Ase::CoTaskVoid
+  {
+    auto promise = loop->make_promise<int64_t> ([=] (std::function<void(int64_t)> resolve) {
+      loop->add ([=]() { resolve (42); return false; });
+    });
+    *result = co_await promise;
+    co_return;
+  };
+
+  loop->add (cotask_factory, Ase::LoopPriority::COAWAIT);
+
+  for (int i = 0; i < 500 && *result == 0; i++) {
+    usleep (1000);
+    while (loop->pending())
+      loop->iterate (false);
+  }
+  TCHECK (*result == 42, "CoTask<int64_t> should return 42");
+}
+TEST_ADD (cotask_int64_result_test);
+
+static void
+cotask_string_result_test()
+{
+  auto loop = Ase::Loop::current();
+  auto result = std::make_shared<std::string>();
+
+  auto cotask_factory = [=]() -> Ase::CoTaskVoid {
+    auto promise = loop->make_promise<std::string> ([=] (std::function<void(std::string)> resolve) {
+      loop->add ([=]() { resolve (std::string {"hello"}); return false; });
+    });
+    *result = co_await promise;
+    co_return;
+  };
+
+  loop->add (cotask_factory, Ase::LoopPriority::COAWAIT);
+
+  for (int i = 0; i < 500 && result->empty(); i++) {
+    usleep (1000);
+    while (loop->pending())
+      loop->iterate (false);
+  }
+  TCHECK (*result == "hello", "CoTask<std::string> should return 'hello'");
+}
+TEST_ADD (cotask_string_result_test);
+
+static void
+promise_void_test()
+{
+  auto loop = Ase::Loop::current();
+  auto completed = std::make_shared<std::atomic<bool>> (false);
+
+  auto promise = loop->make_promise ([=] (std::function<void()> resolve)
+  {
+    loop->add ([=]() { resolve(); return false; });
+  });
+
+  auto cotask_factory = [=]() -> Ase::CoTaskVoid
+  {
+    co_await promise;
+    *completed = true;
+    co_return;
+  };
+
+  loop->add (cotask_factory, Ase::LoopPriority::COAWAIT);
+
+  for (int i = 0; i < 500 && !*completed; i++) {
+    usleep (1000);
+    while (loop->pending())
+      loop->iterate (false);
+  }
+  TCHECK (*completed, "Promise<void> should resolve");
+}
+TEST_ADD (promise_void_test);
+
+static void
+promise_int64_test()
+{
+  auto loop = Ase::Loop::current();
+  auto result = std::make_shared<std::atomic<int64_t>> (0);
+
+  auto promise = loop->make_promise<int64_t> ([=] (std::function<void(int64_t)> resolve)
+  {
+    loop->add ([=]() { resolve (123); return false; });
+  });
+
+  auto cotask_factory = [=]() -> Ase::CoTaskVoid
+  {
+    *result = co_await promise;
+    co_return;
+  };
+
+  loop->add (cotask_factory, Ase::LoopPriority::COAWAIT);
+
+  for (int i = 0; i < 500 && *result == 0; i++) {
+    usleep (1000);
+    while (loop->pending())
+      loop->iterate (false);
+  }
+  TCHECK (*result == 123, "Promise<int64_t> should resolve with 123");
+}
+TEST_ADD (promise_int64_test);
+
+static void
+promise_string_test()
+{
+  auto loop = Ase::Loop::current();
+  auto result = std::make_shared<std::string>();
+
+  auto promise = loop->make_promise<std::string> ([=] (std::function<void(std::string)> resolve)
+  {
+    loop->add ([=]() { resolve (std::string {"world"}); return false; });
+  });
+
+  auto cotask_factory = [=]() -> Ase::CoTaskVoid
+  {
+    *result = co_await promise;
+    co_return;
+  };
+
+  loop->add (cotask_factory, Ase::LoopPriority::COAWAIT);
+
+  for (int i = 0; i < 500 && result->empty(); i++) {
+    usleep (1000);
+    while (loop->pending())
+      loop->iterate (false);
+  }
+  TCHECK (*result == "world", "Promise<std::string> should resolve with 'world'");
+}
+TEST_ADD (promise_string_test);
+
+static void
+promise_multi_waiter_test()
+{
+  auto loop = Ase::Loop::current();
+  auto promise = loop->make_promise<int64_t> ([] (std::function<void(int64_t)>) {});
+  auto waiter1_done = std::make_shared<std::atomic<int>> (0);
+  auto waiter2_done = std::make_shared<std::atomic<int>> (0);
+
+  auto cotask1 = [=]() -> Ase::CoTaskVoid
+  {
+    *waiter1_done = co_await promise;
+    co_return;
+  };
+
+  auto cotask2 = [=]() -> Ase::CoTaskVoid
+  {
+    *waiter2_done = co_await promise;
+    co_return;
+  };
+
+  loop->add (cotask1, Ase::LoopPriority::COAWAIT);
+  loop->add (cotask2, Ase::LoopPriority::COAWAIT);
+  loop->add ([=]() { promise->resolve (99); return false; });
+
+  for (int i = 0; i < 500 && (*waiter1_done == 0 || *waiter2_done == 0); i++) {
+    usleep (1000);
+    while (loop->pending())
+      loop->iterate (false);
+  }
+  TCHECK (*waiter1_done == 99, "First waiter should get 99");
+  TCHECK (*waiter2_done == 99, "Second waiter should get 99");
+}
+TEST_ADD (promise_multi_waiter_test);
+
+static void
+promise_exception_test()
+{
+  auto loop = Ase::Loop::current();
+  auto caught_exception = std::make_shared<std::atomic<bool>> (false);
+
+  auto promise = loop->make_promise<int64_t> ([] (std::function<void(int64_t)>) {});
+  loop->add ([=]()
+  {
+    promise->reject (std::make_exception_ptr (std::runtime_error ("test error")));
+    return false;
+  });
+
+  auto cotask_factory = [=]() -> Ase::CoTaskVoid
+  {
+    try {
+      co_await promise;
+    } catch (const std::runtime_error &) {
+      *caught_exception = true;
+    }
+    co_return;
+  };
+
+  loop->add (cotask_factory, Ase::LoopPriority::COAWAIT);
+
+  for (int i = 0; i < 500 && !*caught_exception; i++) {
+    usleep (1000);
+    while (loop->pending())
+      loop->iterate (false);
+  }
+  TCHECK (*caught_exception, "Promise rejection should propagate exception");
+}
+TEST_ADD (promise_exception_test);
+
+static Ase::CoTask<int64_t>
+inner_int64_task (Ase::LoopP loop, int64_t value)
+{
+  auto promise = loop->make_promise<int64_t> ([loop, value] (std::function<void(int64_t)> resolve)
+  {
+    loop->add ([resolve, value]() { resolve (value * 2); return false; });
+  });
+  co_return co_await promise;
+}
+
+static void
+nested_cotask_test()
+{
+  auto loop = Ase::Loop::current();
+  auto result = std::make_shared<std::atomic<int64_t>> (0);
+
+  auto cotask_factory = [=]() -> Ase::CoTaskVoid
+  {
+    auto v1 = co_await inner_int64_task (loop, 10);
+    TCHECK (v1 == 20, "Nested CoTask should chain results: 10 -> 20");
+    auto v2 = co_await inner_int64_task (loop, v1);
+    *result = v2;
+    co_return;
+  };
+
+  loop->add (cotask_factory, Ase::LoopPriority::COAWAIT);
+
+  for (int i = 0; i < 500 && *result == 0; i++) {
+    usleep (1000);
+    while (loop->pending())
+      loop->iterate (false);
+  }
+  TCHECK (*result == 40, "Nested CoTask should chain results: 10 -> 20 -> 40");
+}
+TEST_ADD (nested_cotask_test);
+
+static void
+promise_already_resolved_test()
+{
+  auto loop = Ase::Loop::current();
+  auto result = std::make_shared<std::atomic<int64_t>> (0);
+
+  auto promise = loop->make_promise<int64_t> ([=] (std::function<void(int64_t)> resolve)
+  {
+    resolve (77);
+  });
+
+  auto cotask_factory = [=]() -> Ase::CoTaskVoid
+  {
+    *result = co_await promise;
+    co_return;
+  };
+
+  loop->add (cotask_factory, Ase::LoopPriority::COAWAIT);
+
+  for (int i = 0; i < 500 && *result == 0; i++) {
+    usleep (1000);
+    while (loop->pending())
+      loop->iterate (false);
+  }
+  TCHECK (*result == 77, "Already-resolved promise should return value immediately");
+}
+TEST_ADD (promise_already_resolved_test);
 
 } // Anon
