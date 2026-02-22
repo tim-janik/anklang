@@ -309,6 +309,24 @@ Loop::current ()
   return thread_loop;
 }
 
+/// Create a promise that resolves after `ms` milliseconds and returns the elapsed delay.
+std::shared_ptr<Loop::Promise<uint64_t>>
+Loop::delay (std::chrono::milliseconds ms)
+{
+  const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+  auto promise = this->make_promise<uint64_t> ([&] (auto resolve) // std::function<void(uint64_t)>
+  {
+    this->add ([resolve, start]()
+    {
+      const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+      const uint64_t elapsed = std::chrono::duration_cast<std::chrono::milliseconds> (end - start).count();
+      resolve (elapsed);
+      return false;
+    }, ms);
+  });
+  return promise;
+}
+
 // === LoopImpl ===
 LoopImpl::LoopImpl() :
   gcontext_ (nullptr)
