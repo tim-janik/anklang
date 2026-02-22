@@ -65,7 +65,7 @@ public:
   AtomicIntrusiveStack<EngineJobImpl> async_jobs_, const_jobs_, trash_jobs_;
   const VoidF                  owner_wakeup_;
   std::thread                 *thread_ = nullptr;
-  MainLoopP                    event_loop_ = MainLoop::create();
+  LoopP                        event_loop_;
   AudioProcessorS              oprocs_;
   ProjectImplP                 project_;
   WaveWriterP                  wwriter_;
@@ -297,6 +297,7 @@ AudioEngineThread::run (StartQueue *sq)
   this_thread_set_name ("AudioEngine-0"); // max 16 chars
   audio_engine_thread_id = std::this_thread::get_id();
   sched_fast_priority (this_thread_gettid());
+  event_loop_ = Loop::current();
   event_loop_->exec_dispatcher (std::bind (&AudioEngineThread::driver_dispatcher, this, std::placeholders::_1));
   sq->push ('R'); // StartQueue becomes invalid after this call
   sq = nullptr;
@@ -950,7 +951,7 @@ static Preference midi4_driver_pref =
 static void
 apply_driver_preferences ()
 {
-  static uint engine_driver_set_timerid = 0;
+  static LoopID engine_driver_set_timerid = LoopID::INVALID;
   main_loop->exec_once (97, &engine_driver_set_timerid,
                         []() {
                           String pcm_driver = pcm_driver_pref.gets();

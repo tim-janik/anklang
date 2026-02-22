@@ -23,6 +23,7 @@ static std::atomic<size_t> config_watermark = MINIMUM_HUGEPAGE;
 static std::atomic<size_t> config_preallocate = 2 * MINIMUM_HUGEPAGE;
 static std::atomic<std::function<void()>*> config_lowmem_cb = nullptr;
 static std::atomic<size_t> config_lowmem_notified = 0;
+static std::atomic<std::function<void(size_t, size_t)>*> config_willgrow = nullptr;
 
 struct ArenaSpan { uintptr_t addr, offset, size; };
 using ArenaList = std::vector<ArenaSpan>;
@@ -82,8 +83,6 @@ BumpAllocator::grow_spans (size_t needed, bool preallocating)
   std::lock_guard<std::mutex> locker (mutex_);
   if (entry_total < totalmem_)
     return 0; // another thread grew the spans meanwhile
-  if (!preallocating)
-    warning ("BumpAllocator: growing from within loft_alloc (total=%u): need=%d bytes\n", totalmem_ + 0, needed);
   static const size_t PAGESIZE = sysconf (_SC_PAGESIZE);
   size_t totalmem = 0;
   // try growing the last span
@@ -252,7 +251,12 @@ BumpAllocator::bump_alloc (size_t size)
     next_span: ;
     }
   // no span could satisfy the request
+  const size_t old_totalmem_ = totalmem_;
   grow_spans (size, false);
+  if (config_willgrow) {
+    std::function<void(size_t, size_t)> *willgrow = config_willgrow;
+    (*willgrow) (old_totalmem_, size);
+  }
   // retry
   return bump_alloc (size);
 }
@@ -539,6 +543,14 @@ loft_set_notifier (const std::function<void()> &lowmem)
 }
 
 void
+loft_set_growth_notifier (const std::function<void(size_t total,size_t needed)> &willgrow)
+{
+  assert_return (config_willgrow == nullptr);
+  config_willgrow = new std::function<void(size_t, size_t)> (willgrow);
+  // can be installed only once
+}
+
+void
 loft_set_config (const LoftConfig &config)
 {
   // disable watermark to avoid spurious notifications during config updates
@@ -759,7 +771,7 @@ loft_shuffle_thread_allocs()
       tdata[t].thread = std::thread (thread_shuffle_allocs, &tdata[t]);
     }
   // effectively assigns a timeout for main_loop->iterate()
-  main_loop->exec_timer ([] () { return !thread_shuffle_done; }, 50);
+  main_loop->add ([] () { return !thread_shuffle_done; }, std::chrono::milliseconds (50));
   // recurse into main loop for concurrent preallocations
   while (!thread_shuffle_done)  // wati until *any* thread is done
     main_loop->iterate (true);  // only allowed in unit tests

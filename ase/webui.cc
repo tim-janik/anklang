@@ -66,7 +66,7 @@ webui_create_auth_redirect (const std::string &executable, unsigned port, const 
 }
 
 ErrorReason
-webui_start_browser (const std::string &mode, MainLoopP loop, const std::string &url, const std::function<void()> &onclose)
+webui_start_browser (const std::string &mode, LoopP loop, const std::string &url, const std::function<void()> &onclose)
 {
   std::vector<std::string> argv;
   std::string browser_name;

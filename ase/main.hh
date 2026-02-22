@@ -32,7 +32,7 @@ struct MainApp {
 extern const MainApp &App;
 
 // == Jobs & main loop ==
-extern MainLoopP main_loop;
+extern LoopP main_loop;
 void             main_loop_wakeup      ();
 void             main_loop_autostop_mt ();
 
@@ -41,7 +41,7 @@ extern JobQueue main_jobs;
 
 /// Add a simple callback to the main event loop, without using malloc (obstruction free).
 struct RtJobQueue { void operator+= (const RtCall&); };
-/// Queue a callback for the `main_loop` without invoking malloc(), addition is obstruction free.
+/// Queue a callback for the main loop without invoking malloc(), addition is obstruction free.
 extern RtJobQueue main_rt_jobs;
 
 } // Ase

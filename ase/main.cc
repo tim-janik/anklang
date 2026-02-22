@@ -41,7 +41,7 @@ const MainApp &App = main_app;
 MainAppImpl::MainAppImpl()
 {}
 
-MainLoopP       main_loop;
+LoopP       main_loop = Loop::current();
 static String   arg_ui_mode;
 static int      arg_unauth_port = 0;
 
@@ -49,7 +49,7 @@ static int      arg_unauth_port = 0;
 static void
 call_main_loop (const std::function<void()> &fun)
 {
-  main_loop->exec_callback (fun);
+  main_loop->add (fun);
 }
 JobQueue main_jobs (call_main_loop);
 
@@ -349,7 +349,7 @@ run_tests_and_quit ()
 void
 main_loop_wakeup ()
 {
-  MainLoopP loop = main_loop;
+  LoopP loop = main_loop;
   if (loop)
     loop->wakeup();
 }
@@ -477,6 +477,11 @@ main (int argc, char *argv[])
   prefault_pages ((1024 + 768) * 1024, 64 * 1024 * 1024);
   // preallocate memory for lock-free allocator
   preallocate_loft (64 * 1024 * 1024);
+  // warn if preallocation is not sufficient
+  loft_set_growth_notifier ([] (size_t total, size_t needed)
+  {
+    warning ("Loft.BumpAllocator: growing beyond preallocation: totalmem=%u needed=%d\n", total, needed);
+  });
 
   // print stack trace for uncaught exceptions
   logging_handle_terminate();
@@ -494,10 +499,8 @@ main (int argc, char *argv[])
   parse_args (&argc, argv, main_app);
   logging_configure (arg_ui_mode != "none");
 
-  // prepare main event loop (needed before parse_args)
-  main_loop = MainLoop::create();
   // handle loft preallocation needs
-  main_loop->exec_dispatcher (dispatch_loft_lowmem, EventLoop::PRIORITY_CEILING);
+  main_loop->exec_dispatcher (dispatch_loft_lowmem, LoopPriority::SYSALLOC);
 
   // load preferences unless --norc was given
   if (!App.norc)
@@ -645,16 +648,17 @@ main (int argc, char *argv[])
 
   // start auto play
   if (App.play_autostart && preload_project)
-    main_loop->exec_idle ([preload_project] () {
+    main_loop->add ([preload_project] ()
+    {
       info ("Main: starting playback (auto)");
       preload_project->start_playback (App.play_autostop);
-    });
+    }, LoopPriority::IDLE);
   // handle automatic shutdown
   main_loop->exec_dispatcher (handle_autostop);
 
   // run test suite
   if (App.mode == MainApp::CHECK_INTEGRITY_TESTS)
-    main_loop->exec_now (run_tests_and_quit);
+    main_loop->add (run_tests_and_quit);
 
   // run main event loop and catch SIGUSR2
   const int exitcode = main_loop->run();

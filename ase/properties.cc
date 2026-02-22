@@ -68,12 +68,12 @@ prefs_map()
 }
 
 static bool preferences_autosave = false;
-static uint timerid_maybe_save_preferences = 0;
+static LoopID timerid_maybe_save_preferences = LoopID::INVALID;
 
 static void
 maybe_save_preferences()
 {
-  main_loop->clear_source (&timerid_maybe_save_preferences);
+  main_loop->cancel (&timerid_maybe_save_preferences);
   if (preferences_autosave && notify_preference_queue.empty())
     Preference::save_preferences();
 }
@@ -98,7 +98,7 @@ notify_preference_listeners ()
   if (preferences_autosave)
     main_loop->exec_once (577, &timerid_maybe_save_preferences, maybe_save_preferences);
   else
-    main_loop->clear_source (&timerid_maybe_save_preferences);
+    main_loop->cancel (&timerid_maybe_save_preferences);
 }
 
 static void
@@ -109,7 +109,7 @@ queue_notify_preference_listeners (const CString &cident)
   const bool need_enqueue = notify_preference_queue.empty();
   notify_preference_queue.push_back (cident);
   if (need_enqueue)
-    main_loop->exec_now (notify_preference_listeners);
+    main_loop->add (notify_preference_listeners, LoopPriority::NOTIFY);
 }
 
 Preference::Preference (ParameterC parameter)

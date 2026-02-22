@@ -5,7 +5,7 @@
 
 namespace Ase {
 
-ErrorReason     webui_start_browser (const std::string &mode, MainLoopP loop, const std::string &url, const std::function<void()> &onclose);
+ErrorReason     webui_start_browser (const std::string &mode, LoopP loop, const std::string &url, const std::function<void()> &onclose);
 // check errno
 String          webui_create_auth_redirect (const std::string &executable, unsigned port, const std::string &token, const std::string &snapmode = "");
 
