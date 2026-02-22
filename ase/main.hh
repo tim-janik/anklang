@@ -33,15 +33,18 @@ extern const MainApp &App;
 
 // == Jobs & main loop ==
 extern LoopP main_loop;
+
+/// Wake up the event loop.
 void             main_loop_wakeup      ();
+/// Stop the event loop after a timeout.
 void             main_loop_autostop_mt ();
 
-/// Execute a job callback in the Ase main loop.
+/// Execute a job callback in the event loop.
 extern JobQueue main_jobs;
 
-/// Add a simple callback to the main event loop, without using malloc (obstruction free).
+/// Add a simple callback to the event loop, without using malloc (obstruction free).
 struct RtJobQueue { void operator+= (const RtCall&); };
-/// Queue a callback for the main loop without invoking malloc(), addition is obstruction free.
+/// Queue a callback for the event loop without invoking malloc(), addition is obstruction free.
 extern RtJobQueue main_rt_jobs;
 
 } // Ase

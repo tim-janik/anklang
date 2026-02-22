@@ -1,6 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "webui.hh"
-#include "atquit.hh"
+#include "logging.hh"
 #include "platform.hh"
 #include "strings.hh"
 #include <cerrno>

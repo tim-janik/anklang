@@ -8,6 +8,9 @@ ASE_TEST_LIST := \
   atomic_valuestack_test \
   blake3_tests \
   callback_list_test \
+  cotask_int64_result_test \
+  cotask_string_result_test \
+  cotask_void_test \
   crawler_tests \
   event_list_tests \
   job_queue_tests \
@@ -16,11 +19,21 @@ ASE_TEST_LIST := \
   loft_allocator_tests \
   loft_shuffle_thread_allocs \
   loft_simple_tests \
+  loop_add_timer_test \
+  loop_current_multithread_test \
+  loop_current_test \
   mathutils_tests \
   member_tmpl_tests \
   memory_cstring_tests \
   mpmc_stack_test \
+  nested_cotask_test \
   path_tests \
+  promise_already_resolved_test \
+  promise_exception_test \
+  promise_int64_test \
+  promise_multi_waiter_test \
+  promise_string_test \
+  promise_void_test \
   queuemux_test \
   randomhash_tests \
   regex_tests \

@@ -1,8 +1,11 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #pragma once
 
-#include <ase/utils.hh>
+#include <ase/defs.hh>
+#include <ase/cotask.hh>
 #include <chrono>
+#include <mutex>
+#include <variant>
 
 namespace Ase {
 
@@ -63,6 +66,11 @@ typedef ::GMainContext GlibGMainContext;
 struct GlibGMainContext; // dummy type
 #endif
 
+// === Concepts ===
+template<typename Func>
+concept IsLoopCallback = ( std::is_void_v<std::invoke_result_t<Func>> ||
+                           std::is_same_v<std::invoke_result_t<Func>, bool> );
+
 // === Loop ===
 /// Loop object, polling for events and executing callbacks in accordance.
 class Loop : public virtual std::enable_shared_from_this<Loop>
@@ -81,6 +89,7 @@ public:
   typedef std::function<bool (const LoopState&)> DispatcherSlot;
   typedef std::function<bool (int8)>             USignalSlot;
   typedef std::function<void (int,int)>          SigchldSlot;
+  template<typename Result> struct Promise;
   virtual void wakeup  () = 0;                ///< Wakeup loop from polling.
   // source handling
   virtual LoopID add_source    (LoopSourceP loop_source, LoopPriority priority
@@ -96,8 +105,12 @@ public:
                                   = LoopPriority::NORMAL) = 0;     /// Execute a callback once on SIGCHLD for `pid`.
   virtual bool exec_once       (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, LoopPriority priority
                                   = LoopPriority::NORMAL) = 0;     ///< Execute a callback once, re-schedules the callback if `0 != *once_id`.
-  LoopID add             (auto &&func, std::chrono::milliseconds interval = std::chrono::milliseconds (0), LoopPriority priority = LoopPriority::NORMAL);
-  LoopID add             (auto &&func, LoopPriority priority);
+  template<IsLoopCallback Func>
+  LoopID add             (Func &&func, std::chrono::milliseconds interval = std::chrono::milliseconds (0), LoopPriority priority = LoopPriority::NORMAL);
+  template<IsLoopCallback Func>
+  LoopID add             (Func &&func, LoopPriority priority);
+  template<class Coroutine> requires IsAwaitable<std::invoke_result_t<Coroutine>>
+  LoopID add             (Coroutine &&coroutine, LoopPriority priority = LoopPriority::NORMAL);
   /// Execute a callback after polling for mode on fd, returning true repeats callback.
   template<class BoolVoidPollFunctor>
   LoopID exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, LoopPriority priority = LoopPriority::NORMAL);
@@ -112,6 +125,9 @@ public:
   virtual bool set_g_main_context (GlibGMainContext *glib_main_context) = 0; ///< Set context to integrate with a GLib @a GMainContext loop.
   virtual bool has_quit      () = 0; ///< Check if quit() has been called.
   static LoopP current       ();
+  template<typename Result>
+  std::shared_ptr<Promise<Result>> make_promise (const std::function<void(std::function<void(Result)>)> &executor);
+  std::shared_ptr<Promise<void>>   make_promise (const std::function<void(std::function<void()>)> &executor);
 };
 
 // === LoopState ===
@@ -293,8 +309,16 @@ Loop::exec_usignal (int8 signum, const USignalSlot &slot, LoopPriority priority)
   return add_source (USignalSource::create (signum, slot), priority);
 }
 
-LoopID
-Loop::add (auto &&func, std::chrono::milliseconds interval, LoopPriority priority)
+template<class BoolVoidPollFunctor> LoopID
+Loop::exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, LoopPriority priority)
+{
+  using ReturnType = decltype (bvf (*std::declval<PollFD*>()));
+  std::function<ReturnType (PollFD&)> slot (bvf);
+  return add_source (PollFDSource::create (slot, fd, mode), priority);
+}
+
+template<IsLoopCallback Func> LoopID
+Loop::add (Func &&func, std::chrono::milliseconds interval, LoopPriority priority)
 {
   using ReturnType = decltype (func());
   std::function<ReturnType()> slot (std::forward<decltype (func)> (func));
@@ -302,18 +326,176 @@ Loop::add (auto &&func, std::chrono::milliseconds interval, LoopPriority priorit
   return add_source (TimedSource::create (std::move (slot), interval_ms, interval_ms), priority);
 }
 
-LoopID
-Loop::add (auto &&func, LoopPriority priority)
+template<IsLoopCallback Func> LoopID
+Loop::add (Func &&func, LoopPriority priority)
 {
   return add (std::forward<decltype (func)> (func), std::chrono::milliseconds (0), priority);
 }
 
-template<class BoolVoidPollFunctor> LoopID
-Loop::exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, LoopPriority priority)
+template<class Coroutine> requires IsAwaitable<std::invoke_result_t<Coroutine>> LoopID
+Loop::add (Coroutine &&coroutine, LoopPriority priority)
 {
-  using ReturnType = decltype (bvf (*std::declval<PollFD*>()));
-  std::function<ReturnType (PollFD&)> slot (bvf);
-  return add_source (PollFDSource::create (slot, fd, mode), priority);
+  using CoroutineType = std::decay_t<Coroutine>;
+  if constexpr (std::is_convertible_v<CoroutineType, bool>)
+    ASE_ASSERT_RETURN (coroutine, LoopID::INVALID);
+  // Keep Coroutine and parameters alive until after co_return
+  auto coroutine_ptr = std::make_shared<CoroutineType> (std::forward<Coroutine> (coroutine));
+  // Guarantee: coroutine will be started as a loop callback
+  auto start_coroutine = [coroutine_ptr] ()
+  {
+    dprintf (2, "%s: start loop_coawait…\n", "start_coroutine");
+    static auto loop_coawait = [] (auto coroutine_ptr) -> DetachedTask
+    {
+      dprintf (2, "%s: co_await…\n", "loop_coawait");
+      co_await (*coroutine_ptr) ();
+      dprintf (2, "%s: co_return…\n", "loop_coawait");
+      co_return;
+    };
+    loop_coawait (coroutine_ptr);
+    dprintf (2, "%s: done, return false\n", "start_coroutine");
+    return false;
+  };
+  return this->add (start_coroutine, std::chrono::milliseconds (0), priority);
+}
+
+// === Loop::Promise ===
+template<typename Result>
+struct Loop::Promise : std::enable_shared_from_this<Promise<Result>> {
+  // If Result is void, we store std::monostate in the 'Resolved' slot
+  using StorageType = std::conditional_t<std::is_void_v<Result>, std::monostate, Result>;
+  // The State Variant: { Pending | Resolved | Rejected }
+  using StateVariant = std::variant<std::monostate, StorageType, std::exception_ptr>;
+  /// Helper to capture shared_ptr<Promise> to allow co_await on temporary Promise instances
+  struct PromiseAwaiter {
+    std::shared_ptr<Promise> promise_;
+    bool
+    await_ready() const noexcept
+    {
+      // No lock, state_ is stable once not 0
+      return promise_->state_.index() > 0;
+    }
+    bool
+    await_suspend (std::coroutine_handle<> waiter) noexcept
+    {
+      std::unique_lock lock (promise_->mtx_);
+      if (promise_->state_.index() > 0)
+        return false; // already resolved
+      promise_->waiters_.push_back (waiter);  // caller to resume on resolve()
+      return true;    // caller suspended
+    }
+    Result
+    await_resume()
+    {
+      ASE_ASSERT_WARN (promise_->state_.index() > 0);
+      // No lock, state_ is stable once not 0
+      if (auto *ex = std::get_if<2> (&promise_->state_))
+        ase_rethrow (*ex);
+      if constexpr (std::is_void_v<Result>)
+        return; // Nothing to return
+      else
+        // move-only results are empty after first awaiter
+        return std::move (std::get<1> (promise_->state_));
+    }
+  };
+  /// Keeps shared_ptr<Promise> alive during co_await
+  PromiseAwaiter
+  operator co_await() noexcept
+  {
+    return PromiseAwaiter (this->shared_from_this());
+  }
+
+  /// Resolve Promise with value.
+  template<typename T = Result> requires (!std::is_void_v<T>) void
+  resolve (T &&value)
+  {
+    resolve_impl (StateVariant (std::in_place_index<1>, std::forward<T> (value)));
+  }
+  /// Resolve Promise<void>
+  template<typename T = Result> requires (std::is_void_v<T>) void
+  resolve()
+  {
+    resolve_impl (StateVariant (std::in_place_index<1>, std::monostate{}));
+  }
+  /// Reject promise with exception
+  void
+  reject (std::exception_ptr exc = nullptr)
+  {
+    if (!exc)
+      exc = std::make_exception_ptr (std::runtime_error ("Promise rejected"));
+    resolve_impl (StateVariant {std::in_place_index<2>, exc});
+  }
+  ~Promise() {}
+private:
+  friend class Loop;
+  std::mutex mtx_;
+  StateVariant state_;
+  Loop *loop_;
+  std::vector<std::coroutine_handle<>> waiters_;
+  explicit Promise (Loop &loop) : loop_ (&loop) {}
+  // State transition to non-pending with new std::variant
+  void
+  resolve_impl (StateVariant &&new_state)
+  {
+    std::vector<std::coroutine_handle<>> waiters_to_notify;
+    {
+      std::lock_guard lock (mtx_);
+      if (state_.index() != 0) return;        // Already resolved/rejected
+      state_ = std::move (new_state);
+      waiters_to_notify.swap (waiters_);
+    } // guard released
+    auto keep_alive = this->shared_from_this();
+    for (auto h : waiters_to_notify)
+      if (h && !h.done())
+        loop_->add ([h, keep_alive]
+        {
+          if (!h.done())
+            h.resume();
+          return false; // one-shot
+        }, LoopPriority::COAWAIT);
+  }
+};
+
+template<typename Result>
+using LoopPromiseP = std::shared_ptr<Loop::Promise<Result>>;
+
+template<typename T> auto
+operator co_await (LoopPromiseP<T> p)
+{
+  return p->operator co_await();
+}
+
+/// Create promise and immediately run executor.
+template<typename Result> std::shared_ptr<Loop::Promise<Result>>
+Loop::make_promise (const std::function<void(std::function<void(Result)>)> &executor)
+{
+  struct EnableMakeShared : Promise<Result> {
+    EnableMakeShared (Loop &l) : Promise<Result> (l) {}
+  };
+  auto promisep = std::make_shared<EnableMakeShared> (*this);
+  auto resolver = [promisep] (Result value) { promisep->resolve (value); };
+  try {
+    executor (resolver);
+  } catch (...) {
+    promisep->reject (std::current_exception());
+  }
+  return promisep;
+}
+
+/// Create promise and immediately run executor.
+inline std::shared_ptr<Loop::Promise<void>>
+Loop::make_promise (const std::function<void(std::function<void()>)> &executor)
+{
+  struct EnableMakeShared : Promise<void> {
+    EnableMakeShared (Loop &l) : Promise<void> (l) {}
+  };
+  auto promisep = std::make_shared<EnableMakeShared> (*this);
+  auto resolver = [promisep] () { promisep->resolve(); };
+  try {
+    executor (resolver);
+  } catch (...) {
+    promisep->reject (std::current_exception());
+  }
+  return promisep;
 }
 
 } // Ase

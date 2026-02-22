@@ -6,6 +6,10 @@
 #include <fcntl.h>
 #include <cstring>
 
+#ifdef ASE_WITH_CPPTRACE
+#include <cpptrace/from_current.hpp>
+#endif
+
 namespace Ase {
 
 VirtualBase::~VirtualBase() noexcept
@@ -77,6 +81,15 @@ void
 assertion_failed (const char *msg, const char *file, int line, const char *func) noexcept
 {
   return logging (ASSERTION, msg ? msg : "", file, line, func);
+}
+
+void
+ase_rethrow (std::exception_ptr exception)
+{
+#ifdef ASE_WITH_CPPTRACE
+  cpptrace::rethrow (exception);
+#endif
+  std::rethrow_exception (exception);
 }
 
 } // Ase
