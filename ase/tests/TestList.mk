@@ -16,6 +16,9 @@ ASE_TEST_LIST := \
   loft_allocator_tests \
   loft_shuffle_thread_allocs \
   loft_simple_tests \
+  loop_add_timer_test \
+  loop_current_multithread_test \
+  loop_current_test \
   mathutils_tests \
   member_tmpl_tests \
   memory_cstring_tests \
