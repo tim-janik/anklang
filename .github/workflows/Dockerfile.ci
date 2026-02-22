@@ -1,8 +1,8 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 # Electron builds on ubuntu:22.04: https://github.com/electron/build-images/blob/main/Dockerfile
-# We would build on gcc or debian images, but we need libstdc++-14-dev
-FROM ubuntu:24.04
+# But we need libstdc++-14-dev
+FROM debian:stable-slim
 # ENV DEBIAN_FRONTEND=noninteractive # ENV persists in interactive sessions
 
 # Use BASH(1) as shell, affects the RUN commands below
@@ -15,17 +15,17 @@ RUN \
   && apt-get update \
   && apt-get -y upgrade \
   && apt-get install -y \
-	     sudo lsb-release software-properties-common gnupg alien curl wget \
-	     imagemagick unzip squashfs-tools libxml2-utils zstd nano \
-	     pandoc python3-pandocfilters python3 python3-pip graphviz doxygen \
-	     build-essential cmake pkg-config gettext git ccache universal-ctags \
-	     cppcheck castxml python3-lxml libboost-system-dev \
-	     libzstd-dev librsvg2-bin libxml2-dev \
-	     libasound2-dev libflac-dev libopus-dev libjack-dev \
-	     libvorbis-dev libmpg123-dev libmp3lame-dev ladspa-sdk \
-	     libgtk2.0-dev libgtk-3-dev \
-	     libgtk-3-0 libxss1 libgbm1 libnss3 \
-	     xvfb twm ffmpeg \
+	     sudo lsb-release gnupg alien curl wget \
+             imagemagick unzip squashfs-tools libxml2-utils zstd nano joe \
+             pandoc python3-pandocfilters python3 python3-pip graphviz doxygen \
+             build-essential cmake pkg-config gettext git ccache universal-ctags \
+             cppcheck castxml python3-lxml libboost-system-dev \
+             libzstd-dev librsvg2-bin libxml2-dev \
+             libasound2-dev libflac-dev libopus-dev libjack-dev \
+             libvorbis-dev libmpg123-dev libmp3lame-dev ladspa-sdk \
+             libgtk2.0-dev libgtk-3-dev \
+             libgtk-3-0 libxss1 libgbm1 libnss3 \
+             xvfb twm ffmpeg \
 	     joe bash-completion busybox bear ripgrep \
   && apt-get autoremove -y
 
@@ -70,12 +70,11 @@ RUN \
 RUN : \
   && mkdir -p /github /etc/skel \
   && echo -e "alias ll='ls -alF'\nalias la='ls -A'\nalias l='ls -CF'" > /etc/skel/.bashrc \
-  && userdel -r ubuntu \
-  && groupadd -g 1000 run1000 && useradd -u 1000 -g run1000 -m -d /github/home1000 -s /bin/bash run1000 \
-  && echo "run1000 ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/run1000 \
+  && groupadd -g 1000 user && useradd -u 1000 -g user -m -s /bin/bash user \
+  && echo "user ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/user \
   && groupadd -g 127 runner && useradd -u 1001 -g runner -G 1000 -m -d /github/home -s /bin/bash runner \
   && echo "runner ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/runner
-USER run1000
+USER user
 
 # docker build -t ghcr.io/tim-janik/anklang-ci:ci-latest -f .github/workflows/Dockerfile.ci .github/workflows/
 #   docker push ghcr.io/tim-janik/anklang-ci:ci-latest   # Make-Public: https://github.com/users/tim-janik/packages/container/<IMAGE>/settings
