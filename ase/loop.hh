@@ -64,6 +64,11 @@ typedef ::GMainContext GlibGMainContext;
 struct GlibGMainContext; // dummy type
 #endif
 
+// === Concepts ===
+template<typename Func>
+concept IsLoopCallback = ( std::is_void_v<std::invoke_result_t<Func>> ||
+                           std::is_same_v<std::invoke_result_t<Func>, bool> );
+
 // === Loop ===
 /// Loop object, polling for events and executing callbacks in accordance.
 class Loop : public virtual std::enable_shared_from_this<Loop>
@@ -97,8 +102,10 @@ public:
                                   = LoopPriority::NORMAL) = 0;     /// Execute a callback once on SIGCHLD for `pid`.
   virtual bool exec_once       (uint delay_ms, LoopID *once_id, const VoidSlot &vfunc, LoopPriority priority
                                   = LoopPriority::NORMAL) = 0;     ///< Execute a callback once, re-schedules the callback if `0 != *once_id`.
-  LoopID add             (auto &&func, std::chrono::milliseconds interval = std::chrono::milliseconds (0), LoopPriority priority = LoopPriority::NORMAL);
-  LoopID add             (auto &&func, LoopPriority priority);
+  template<IsLoopCallback Func>
+  LoopID add             (Func &&func, std::chrono::milliseconds interval = std::chrono::milliseconds (0), LoopPriority priority = LoopPriority::NORMAL);
+  template<IsLoopCallback Func>
+  LoopID add             (Func &&func, LoopPriority priority);
   template<class Coroutine> requires IsAwaitable<std::invoke_result_t<Coroutine>>
   LoopID add             (Coroutine &&coroutine, LoopPriority priority = LoopPriority::NORMAL);
   /// Execute a callback after polling for mode on fd, returning true repeats callback.
@@ -304,8 +311,8 @@ Loop::exec_io_handler (BoolVoidPollFunctor &&bvf, int fd, const String &mode, Lo
   return add_source (PollFDSource::create (slot, fd, mode), priority);
 }
 
-LoopID
-Loop::add (auto &&func, std::chrono::milliseconds interval, LoopPriority priority)
+template<IsLoopCallback Func> LoopID
+Loop::add (Func &&func, std::chrono::milliseconds interval, LoopPriority priority)
 {
   using ReturnType = decltype (func());
   std::function<ReturnType()> slot (std::forward<decltype (func)> (func));
@@ -313,8 +320,8 @@ Loop::add (auto &&func, std::chrono::milliseconds interval, LoopPriority priorit
   return add_source (TimedSource::create (std::move (slot), interval_ms, interval_ms), priority);
 }
 
-LoopID
-Loop::add (auto &&func, LoopPriority priority)
+template<IsLoopCallback Func> LoopID
+Loop::add (Func &&func, LoopPriority priority)
 {
   return add (std::forward<decltype (func)> (func), std::chrono::milliseconds (0), priority);
 }
