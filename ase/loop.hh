@@ -126,8 +126,9 @@ public:
   virtual bool has_quit      () = 0; ///< Check if quit() has been called.
   static LoopP current       ();
   template<typename Result>
-  std::shared_ptr<Promise<Result>> make_promise (const std::function<void(std::function<void(Result)>)> &executor);
-  std::shared_ptr<Promise<void>>   make_promise (const std::function<void(std::function<void()>)> &executor);
+  std::shared_ptr<Promise<Result>>   make_promise (const std::function<void(std::function<void(Result)>)> &executor);
+  std::shared_ptr<Promise<void>>     make_promise (const std::function<void(std::function<void()>)> &executor);
+  std::shared_ptr<Promise<uint64_t>> delay        (std::chrono::milliseconds ms);
 };
 
 // === LoopState ===
