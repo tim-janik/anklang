@@ -343,16 +343,16 @@ Loop::add (Coroutine &&coroutine, LoopPriority priority)
   // Guarantee: coroutine will be started as a loop callback
   auto start_coroutine = [coroutine_ptr] ()
   {
-    dprintf (2, "%s: start loop_coawait…\n", "start_coroutine");
+    // dprintf (2, "%s: start loop_coawait…\n", "start_coroutine");
     static auto loop_coawait = [] (auto coroutine_ptr) -> DetachedTask
     {
-      dprintf (2, "%s: co_await…\n", "loop_coawait");
+      // dprintf (2, "%s: co_await…\n", "loop_coawait");
       co_await (*coroutine_ptr) ();
-      dprintf (2, "%s: co_return…\n", "loop_coawait");
+      // dprintf (2, "%s: co_return…\n", "loop_coawait");
       co_return;
     };
     loop_coawait (coroutine_ptr);
-    dprintf (2, "%s: done, return false\n", "start_coroutine");
+    // dprintf (2, "%s: done, return false\n", "start_coroutine");
     return false;
   };
   return this->add (start_coroutine, std::chrono::milliseconds (0), priority);
