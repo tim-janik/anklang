@@ -9,18 +9,14 @@ FROM ubuntu:24.04
 RUN ln -sf bash /bin/sh && ls -al /bin/sh
 
 # Upgrade packages, cache /var/cache/apt instead of "apt clean"
+# Add libXss.so, libgtk-3-0 for Electron and a few shell helpers
 RUN \
   --mount=type=cache,target=/var/cache/apt : \
   && apt-get update \
   && apt-get -y upgrade \
-  && apt-get autoremove -y
-
-# Add libXss.so, libgtk-3-0 for Electron
-RUN \
-  --mount=type=cache,target=/var/cache/apt : \
   && apt-get install -y \
 	     sudo lsb-release software-properties-common gnupg alien curl wget \
-	     imagemagick unzip squashfs-tools libxml2-utils zstd nano joe \
+	     imagemagick unzip squashfs-tools libxml2-utils zstd nano \
 	     pandoc python3-pandocfilters python3 python3-pip graphviz doxygen \
 	     build-essential cmake pkg-config gettext git ccache universal-ctags \
 	     cppcheck castxml python3-lxml libboost-system-dev \
@@ -30,6 +26,7 @@ RUN \
 	     libgtk2.0-dev libgtk-3-dev \
 	     libgtk-3-0 libxss1 libgbm1 libnss3 \
 	     xvfb twm ffmpeg \
+	     joe bash-completion busybox bear ripgrep \
   && apt-get autoremove -y
 
 # Install uv, bun, Nodejs - https://github.com/nodesource/distributions#nodejs
@@ -54,13 +51,18 @@ RUN \
 RUN \
   --mount=type=cache,target=/var/cache/apt : \
   && curl -fsSLO https://apt.llvm.org/llvm.sh && chmod +x llvm.sh \
-  && yes | ./llvm.sh 20 && rm -f ./llvm.sh \
-  && apt-get install -y clang-tidy-20 libclang-20-dev \
+  && yes | ./llvm.sh 21 && rm -f ./llvm.sh \
+  && apt-get install -y clang-tidy-21 libclang-21-dev \
   && update-alternatives \
-       --install /usr/bin/clang         clang           /usr/bin/clang-20 0 \
-       --slave   /usr/bin/clang++       clang++         /usr/bin/clang++-20  \
-       --slave   /usr/bin/clang-tidy    clang-tidy      /usr/bin/clang-tidy-20 \
-       --slave   /usr/bin/ld.lld        ld.lld          /usr/bin/ld.lld-20 \
+       --install /usr/bin/clang         clang           /usr/bin/clang-21 0 \
+       --slave   /usr/bin/clang++       clang++         /usr/bin/clang++-21  \
+       --slave   /usr/bin/clangd        clangd          /usr/bin/clangd-21  \
+       --slave   /usr/bin/clang-cpp     clang-cpp       /usr/bin/clang-cpp-21 \
+       --slave   /usr/bin/clang-doc     clang-doc       /usr/bin/clang-doc-21 \
+       --slave   /usr/bin/clang-tidy    clang-tidy      /usr/bin/clang-tidy-21 \
+       --slave   /usr/bin/ld.lld        ld.lld          /usr/bin/ld.lld-21 \
+       --slave   /usr/bin/lldb          lldb            /usr/bin/lldb-21 \
+       --slave   /usr/bin/lldb-server   lldb-server     /usr/bin/lldb-server-21 \
   && apt-get autoremove -y
 
 # Support 1000:1000 for normal developer setups, and for
