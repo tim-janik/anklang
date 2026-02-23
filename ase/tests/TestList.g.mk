@@ -29,6 +29,7 @@ ASE_TEST_LIST := \
   mpmc_stack_test \
   nested_cotask_test \
   path_tests \
+  project_creation \
   promise_already_resolved_test \
   promise_exception_test \
   promise_int64_test \

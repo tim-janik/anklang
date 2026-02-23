@@ -166,6 +166,21 @@ $>/ase/buildversion-$(version_hash).cc:						| $>/ase/
 	$Q mv $@.tmp $@
 ase/generated.sources += $>/ase/buildversion-$(version_hash).cc
 
+# == ase/tests/TestList.g.mk ==
+ase/tests/TestList.g.INPUTS := $(wildcard ase/*.cc ase/*/*.cc devices/*.cc devices/*/*.cc)
+ase/tests/TestList.g.mk:	# any deps here are forced to be rebuilt during Makefile parsing
+	$(QGEN)
+	$Q echo 'ASE_TEST_LIST := '\\			> $@.tmp
+	$Q cat $(ase/tests/TestList.g.INPUTS) | \
+		grep -Eo '^\s*TEST_\w+ ?\((\w+)\)' | \
+		sed 's/.*(/  /; s/)/ \\/' | \
+		sort	>>$@.tmp
+	$Q mv $@.tmp $@
+ifneq (,$(shell find $(ase/tests/TestList.g.INPUTS) -newer ase/tests/TestList.g.mk))
+.PHONY: ase/tests/TestList.g.mk		# update generated file without forcing rebuild of INPUTS
+endif
+include ase/tests/TestList.g.mk		# ASE_TEST_LIST
+
 # == Tracktion Engine Objects ==
 include trkn/trkn.g.mk
 TRKN_OBJECTS ::=
@@ -336,32 +351,6 @@ ase/lint:
 	$Q $(RUNTS) misc/synsmell.ts $(wildcard ase/*.[hc] ase/*.*[hc] ase/*/*.*[hc] jsonipc/*.hh)
 .PHONY: ase/lint
 lint: ase/lint
-
-# == ase/tests/TestList.mk ==
-ase/tests/TestList.INPUTS := $(wildcard ase/*.cc ase/*/*.cc devices/*.cc devices/*/*.cc)
-ase/tests/TestList.mk:	# any deps here are forced to be rebuilt during Makefile parsing
-	$(QGEN)
-	$Q echo 'ASE_TEST_LIST := '\\			> $@.tmp
-	$Q cat $(ase/tests/TestList.INPUTS) | \
-		grep -Eo '^\s*TEST_\w+ ?\((\w+)\)' | \
-		sed 's/.*(/  /; s/)/ \\/' | sort	>>$@.tmp
-	$Q mv $@.tmp $@
-ifneq (,$(shell find $(ase/tests/TestList.INPUTS) -newer ase/tests/TestList.mk))
-.PHONY: ase/tests/TestList.mk	# update TestList.mk without forcing rebuild of INPUTS
-endif
-include ase/tests/TestList.mk	# ASE_TEST_LIST
-
-# == check-test-list ==
-.PHONY: check-test-list
-# Check: ase/tests/TestList.mk
-check-test-list: $(lib/AnklangSynthEngine)	| $>/ase/tests/
-	$(QGEN)
-	$Q echo 'ASE_TEST_LIST := '\\			>  $>/ase-tests-TestList.mk
-	$Q $(lib/AnklangSynthEngine) --list-tests | \
-		sed 's/^/  /; s/$$/ \\/' | sort		>> $>/ase-tests-TestList.mk
-	$Q if cmp -s ase/tests/TestList.mk $>/ase-tests-TestList.mk ; then rm $>/ase-tests-TestList.mk ; else \
-	  diff -u ase/tests/TestList.mk $>/ase-tests-TestList.mk ; fi
-check-ase-tests: check-test-list
 
 # == check-ase-tests ==
 .PHONY: check-ase-tests

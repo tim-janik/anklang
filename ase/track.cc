@@ -34,7 +34,7 @@ public:
   void
   valueTreePropertyChanged (juce::ValueTree &tree, const juce::Identifier &property) override
   {
-    assert_return (tree == track_state_);
+    return_unless (tree == track_state_);
     if (property == tracktion::engine::IDs::name)
       asetrack_.emit_notify ("name");
   }
@@ -311,7 +311,7 @@ TrackImpl::launcher_clips ()
       clips_.reserve (max_clips);
       while (clips_.size() < max_clips)
         clips_.push_back (ClipImpl::make_shared (*this));
-      update_clips();
+      // update_clips();
     }
   return Aux::container_copy<ClipS> (clips_);
 }
@@ -335,27 +335,6 @@ TrackImpl::clip_succession (const ClipImpl &clip) const
   if (index >= clips_.size())
     index = 0;
   return clips_[index] ? index : NONE;
-}
-
-void
-TrackImpl::update_clips ()
-{
-  return_unless (midi_prod_);
-  MidiLib::MidiProducerIfaceP midi_iface = std::dynamic_pointer_cast<MidiLib::MidiProducerIface> (midi_prod_->_audio_processor());
-  MidiLib::MidiFeedP feedp = std::make_shared<MidiLib::MidiFeed>();
-  MidiLib::MidiFeed &feed = *feedp;
-  feed.generators.resize (clips_.size());
-  for (size_t i = 0; i < clips_.size(); i++)
-    feed.generators[i].setup (*clips_[i]);
-  std::vector<int> scout_indices (clips_.size());
-  for (size_t i = 0; i < clips_.size(); i++)
-    scout_indices[i] = clips_[i] ? clip_succession (*clips_[i]) : NONE;
-  feed.scout.setup (scout_indices);
-  auto job = [midi_iface, feedp] () mutable {
-    midi_iface->update_feed (feedp);
-    // swap MidiFeedP copy to defer dtor to user thread
-  };
-  midi_iface->engine().async_jobs += job;
 }
 
 DeviceP
@@ -443,6 +422,28 @@ void
 TrackImpl::ClipScout::update (const ClipScout &other)
 {
   indices_ = other.indices_;
+}
+
+ClipImplP
+TrackImpl::create_midi_clip (const String &name, double start, double length)
+{
+  if (auto t = track_.get())
+    {
+       if (auto at = dynamic_cast<tracktion::AudioTrack*> (t))
+       {
+           const tracktion::TimeRange range (tracktion::TimePosition::fromSeconds(start), tracktion::TimeDuration::fromSeconds(length));
+           auto clip = at->insertMIDIClip (juce::String(name), range, nullptr);
+           if (clip)
+             return ClipImpl::from_trkn (*clip);
+           else
+             warning ("insertMIDIClip returned null");
+       }
+       else
+         warning ("dynamic_cast<AudioTrack*> failed for track type: %s", trkn_track_type(*t).c_str());
+    }
+  else
+    warning ("track_.get() returned null");
+  return nullptr;
 }
 
 } // Ase
