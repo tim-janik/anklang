@@ -18,7 +18,7 @@ Files:
  ase/*.mk
  ase/gen/*.*
  ase/tests/*.cc
- ase/tests/TestList.mk
+ ase/tests/TestList.g.mk
  devices/*
  devices/blepsynth/*
  devices/freeverb/Makefile.mk
