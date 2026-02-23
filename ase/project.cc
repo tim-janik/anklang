@@ -29,7 +29,7 @@ static Preference synth_latency_pref =
       {}, STANDARD, {
         String ("descr=") + _("Default LICENSE to apply in the project properties."), } });
 
-static std::vector<ProjectImplP> &all_projects = *new std::vector<ProjectImplP>();
+static std::vector<ProjectImplP> &g_projects = *new std::vector<ProjectImplP>();
 
 // == Project ==
 Project::Project() :
@@ -41,7 +41,7 @@ Project::Project() :
 ProjectP
 Project::last_project()
 {
-  return all_projects.empty() ? nullptr : all_projects.back();
+  return g_projects.empty() ? nullptr : g_projects.back();
 }
 
 // == TransportListener ==
@@ -220,26 +220,23 @@ private:
   PStorage **const ptrp_ = nullptr;
 };
 
-tracktion::WaveAudioClip::Ptr
-loadAudioFileAsClip (tracktion::Edit &edit, const juce::File &file)
+static tracktion::WaveAudioClip::Ptr
+load_audio_file_as_clip (tracktion::Edit &edit, const juce::File &file)
 {
   edit.ensureNumberOfAudioTracks (1);
-  // Find the first track and delete all clips from it
   if (auto track = tracktion::getAudioTracks (edit)[0]) {
-    // Add a new clip to this track
     tracktion::AudioFile audioFile (edit.engine, file);
-
     if (audioFile.isValid())
-      if (auto newClip = track->insertWaveClip (file.getFileNameWithoutExtension(), file,
-    { { {}, tracktion::TimeDuration::fromSeconds (audioFile.getLength()) }, {} }, false))
-    return newClip;
+      if (auto newClip =
+          track->insertWaveClip (file.getFileNameWithoutExtension(), file,
+                                 { { {}, tracktion::TimeDuration::fromSeconds (audioFile.getLength()) }, {} }, false))
+        return newClip;
   }
-
   return {};
 }
 
-template<typename ClipType> typename ClipType::Ptr
-loopAroundClip (ClipType &clip)
+template<typename ClipType> static typename ClipType::Ptr
+loop_around_clip (ClipType &clip)
 {
   using namespace std::literals;
   auto &transport = clip.edit.getTransport();
@@ -254,18 +251,15 @@ test_setup (tracktion::Edit &edit)
 {
   const std::string sample01 = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
   juce::File sampleFile (sample01);
-  auto clip = loadAudioFileAsClip (edit, sampleFile);
+  auto clip = load_audio_file_as_clip (edit, sampleFile);
   assert_return (clip != nullptr, false);
-  loopAroundClip (*clip);
+  loop_around_clip (*clip);
   edit.getTransport().ensureContextAllocated();
   return true;
 }
 
-static std::vector<ProjectImpl*> &g_projects = *new std::vector<ProjectImpl*>();
-
 ProjectImpl::ProjectImpl()
 {
-  g_projects.push_back (this);
   bpm = 120;
   numerator = 4;
   denominator = 4;
@@ -306,7 +300,6 @@ ProjectImpl::~ProjectImpl()
   deactivate_edit();
   transport_listener_ = nullptr;
   edit_ = nullptr;
-  Aux::erase_first (g_projects, [&] (auto ptr) { return ptr == this; });
 }
 
 
@@ -340,8 +333,7 @@ ProjectImpl::telemetry () const
 void
 ProjectImpl::foreach_track (const std::function<bool(Track&,int)> &cb)
 {
-  // Recursive lambda to handle folder nesting
-  std::function<bool(te::Track&,int)> process_track = [&] (te::Track &t, int depth)
+  std::function<bool(te::Track&,int)> foreach_track = [&] (te::Track &t, int depth)
   {
     const TrackImplP trackp = TrackImpl::from_trkn (t);
     if (!trackp || !cb (*trackp, depth))
@@ -349,19 +341,18 @@ ProjectImpl::foreach_track (const std::function<bool(Track&,int)> &cb)
     if (trackp->is_folder())
       for (auto subtrack : dynamic_cast<te::FolderTrack*> (&t)->getAllSubTracks (false /*recursive*/))
         if (subtrack &&
-            false == process_track (*subtrack, depth + 1))
+            false == foreach_track (*subtrack, depth + 1))
           return false;
     return true;
   };
-  // Traverse tracks
-  edit_->visitAllTopLevelTracks ([&] (te::Track &t) { return process_track (t, 0); });
+  edit_->visitAllTopLevelTracks ([&] (te::Track &t) { return foreach_track (t, 0); });
 }
 
 ProjectImplP
 ProjectImpl::create (const String &projectname)
 {
   ProjectImplP project = ProjectImpl::make_shared();
-  all_projects.push_back (project);
+  g_projects.push_back (project);
   project->name (projectname);
   return project;
 }
@@ -371,9 +362,9 @@ ProjectImpl::discard ()
 {
   return_unless (!discarded_);
   stop_playback();
-  const size_t nerased = Aux::erase_first (all_projects, [this] (auto ptr) { return ptr.get() == this; });
+  const size_t nerased = Aux::erase_first (g_projects, [this] (auto ptr) { return ptr.get() == this; });
   if (nerased)
-    {} // resource cleanups...
+    {} // resource cleanups
   discarded_ = true;
 }
 
