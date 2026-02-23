@@ -54,6 +54,8 @@ protected:
   String              match_serialized (const String &regex, int group) override;
   void                deactivate_edit ();
 public:
+  String               get_name          () const override;
+  void                 set_name          (const std::string &n) override;
   void                 _activate         () override;
   void                 _deactivate       () override;
   const TickSignature& signature         () const       { return tick_sig_; }

@@ -45,7 +45,7 @@ Project::last_project()
 }
 
 // == TransportListener ==
-class ProjectImpl::TransportListener : public juce::ChangeListener, public tracktion::TransportControl::Listener
+class ProjectImpl::TransportListener : juce::ChangeListener, tracktion::TransportControl::Listener, juce::ValueTree::Listener
 {
   tracktion::TransportControl &transport;
   ProjectImpl &project_;
@@ -53,6 +53,7 @@ class ProjectImpl::TransportListener : public juce::ChangeListener, public track
   LoopID ppt = LoopID::INVALID;
   FastMemory::Block transport_block_;
   std::list<std::function<void()>> stopped_callbacks_;
+  te::Edit *edit_ = nullptr;
 public:
   struct Position {
     int    fps = 0, frame = 0;
@@ -65,19 +66,34 @@ public:
   TransportListener (tracktion::TransportControl &tc, ProjectImpl &project) :
     transport (tc), project_ (project),
     transport_block_ (SERVER->telemem_allocate (sizeof (Position))),
+    edit_ (project.edit_.get()),
     pos (*new (transport_block_.block_start) Position{})
   {
     assert_return (this_thread_is_ase());
     transport.addChangeListener (this); // for ChangeListener
     transport.addListener (this);       // for TransportControl::Listener
+    if (edit_)
+      edit_->state.addListener (this);
   }
   ~TransportListener() override
   {
     assert_return (this_thread_is_ase());
+    if (edit_)
+      edit_->state.removeListener (this);
     transport.removeListener (this);
     transport.removeChangeListener (this);
     SERVER->telemem_release (transport_block_);
   }
+  void
+  valueTreePropertyChanged (juce::ValueTree &vtree, const juce::Identifier &id) override
+  {
+    if (edit_ && vtree == edit_->state && id == tracktion_engine::IDs::name)
+      project_.emit_notify ("name");
+  }
+  void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override {}
+  void valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree&, int) override {}
+  void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override {}
+  void valueTreeParentChanged (juce::ValueTree&) override {}
   void
   changeListenerCallback (juce::ChangeBroadcaster *source) override
   {
@@ -312,6 +328,21 @@ ProjectImpl::force_shutdown_all ()
       g_projects[i]->deactivate_edit();
       goto rescan; // callbacks can change anything
     }
+}
+
+String
+ProjectImpl::get_name() const
+{
+  // Edit.getName() requires af ProjectItem, which we dont use
+  return edit_ ? edit_->state.getProperty (tracktion_engine::IDs::name).toString().toStdString() : "";
+}
+
+void
+ProjectImpl::set_name (const std::string &nm)
+{
+  return_unless (!!edit_);
+  // tracktion_engine::getProjectItemForEdit (*edit_)->setName (nm, tracktion_engine::ProjectItem::SetNameMode::doDefault);
+  edit_->state.setProperty (tracktion_engine::IDs::name, juce::String (nm), &edit_->getUndoManager());
 }
 
 TelemetryFieldS
