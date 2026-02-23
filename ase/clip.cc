@@ -241,47 +241,6 @@ ClipImpl::tick_events () const
   return empty_list;
 }
 
-ClipImpl::EventImage::EventImage (const ClipNoteS &clipnotes)
-{
-  const size_t clipnotes_bytes = clipnotes.size() * sizeof (clipnotes[0]);
-  cbuffer = zstd_compress (clipnotes.data(), clipnotes_bytes, 4);
-  assert_return (cbuffer.size() > 0);
-  ProjectImpl::undo_mem_counter += sizeof (*this) + cbuffer.size();
-  UDEBUG ("ClipImpl: store undo (notes=%d): %d->%d (%f%%)", clipnotes.size(),
-          clipnotes_bytes, cbuffer.size(), cbuffer.size() * 100.0 / clipnotes_bytes);
-}
-
-ClipImpl::EventImage::~EventImage()
-{
-  ProjectImpl::undo_mem_counter -= sizeof (*this) + cbuffer.size();
-  UDEBUG ("ClipImpl: free undo mem: %d\n", sizeof (*this) + cbuffer.size());
-}
-
-void
-ClipImpl::push_undo (const ClipNoteS &clipnotes, const String &undogroup)
-{
-  auto thisp = shared_ptr_from (this);
-  EventImageP imagep = std::make_shared<EventImage> (clipnotes);
-  undo_scope (undogroup) += [thisp, imagep, undogroup] () { thisp->apply_undo (*imagep, undogroup); };
-}
-
-void
-ClipImpl::apply_undo (const EventImage &image, const String &undogroup)
-{
-  push_undo (notes_.copy(), undogroup);
-  ClipNoteS onotes;
-  const ssize_t osize = zstd_target_size (image.cbuffer);
-  assert_return (osize >= 0 && osize == sizeof (onotes[0]) * (osize / sizeof (onotes[0])));
-  onotes.resize (osize / sizeof (onotes[0]));
-  const ssize_t rsize = zstd_uncompress (image.cbuffer, onotes.data(), osize);
-  assert_return (rsize == osize);
-  notes_.clear_silently();
-  for (const ClipNote &note : onotes)
-    notes_.insert (note);
-  emit_notify ("notes");
-  all_notes.notify();
-}
-
 size_t
 ClipImpl::collapse_notes (EventsById &inotes, const bool preserve_selected)
 {
