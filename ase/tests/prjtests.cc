@@ -147,4 +147,93 @@ project_playback_state()
 }
 TEST_ADD (project_playback_state);
 
+static void
+track_mute_solo()
+{
+  ProjectImplP project = ProjectImpl::create ("TrackMuteSoloTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  // Test initial mute/solo state
+  TASSERT (!track->is_muted());
+  TASSERT (!track->is_solo());
+
+  // Test mute
+  track->set_muted (true);
+  TASSERT (track->is_muted());
+  track->set_muted (false);
+  TASSERT (!track->is_muted());
+
+  // Test solo
+  track->set_solo (true);
+  TASSERT (track->is_solo());
+  track->set_solo (false);
+  TASSERT (!track->is_solo());
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (track_mute_solo);
+
+static void
+track_volume_pan()
+{
+  ProjectImplP project = ProjectImpl::create ("TrackVolumePanTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  // Test initial volume
+  double initial_vol = track->get_volume();
+  TASSERT (initial_vol >= -100.0 && initial_vol <= 20.0);
+
+  // Test setting volume
+  track->set_volume (-6.0);
+  TASSERT (std::abs (track->get_volume() - (-6.0)) < 0.01);
+
+  track->set_volume (0.0);
+  TASSERT (std::abs (track->get_volume()) < 0.01);
+
+  // Test pan
+  double initial_pan = track->get_pan();
+  TASSERT (initial_pan >= -1.0 && initial_pan <= 1.0);
+
+  track->set_pan (0.5);
+  TASSERT (std::abs (track->get_pan() - 0.5) < 0.01);
+
+  track->set_pan (-0.5);
+  TASSERT (std::abs (track->get_pan() - (-0.5)) < 0.01);
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (track_volume_pan);
+
+static void
+track_name()
+{
+  ProjectImplP project = ProjectImpl::create ("TrackNameTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  // Set and get track name
+  track->set_name ("MyTrack");
+  TASSERT (track->name() == "MyTrack");
+
+  track->set_name ("AnotherName");
+  TASSERT (track->name() == "AnotherName");
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (track_name);
+
 } // Anon

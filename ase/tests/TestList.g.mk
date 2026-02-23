@@ -51,6 +51,9 @@ ASE_TEST_LIST := \
   sortnet_tests \
   string_tests \
   test_serializable_hierarchy \
+  track_mute_solo \
+  track_name \
+  track_volume_pan \
   transport_tests \
   unicode_displayfs_tests \
   unicode_tests \

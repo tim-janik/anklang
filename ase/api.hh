@@ -287,6 +287,14 @@ public:
   virtual int32           midi_channel        () const = 0;          ///< Midi channel assigned to this track, 0 uses internal per-track channel.
   virtual void            midi_channel        (int32 midichannel) = 0;
   virtual bool            is_master           () const = 0;          ///< Flag set on the main output track.
+  virtual bool            is_muted            () const = 0;          ///< Check if track is muted.
+  virtual void            set_muted           (bool muted) = 0;      ///< Set track muted state.
+  virtual bool            is_solo             () const = 0;          ///< Check if track is soloed.
+  virtual void            set_solo            (bool solo) = 0;       ///< Set track solo state.
+  virtual double          get_volume          () const = 0;          ///< Get track volume in dB.
+  virtual void            set_volume          (double db) = 0;       ///< Set track volume in dB.
+  virtual double          get_pan             () const = 0;          ///< Get track pan (-1.0 to 1.0).
+  virtual void            set_pan             (double pan) = 0;      ///< Set track pan (-1.0 to 1.0).
   virtual ClipS           launcher_clips      () = 0;                ///< Retrieve the list of clips that can be directly played.
   virtual DeviceP         access_device       () = 0;                ///< Retrieve Device handle for this track.
   virtual MonitorP        create_monitor      (int32 ochannel) = 0;  /// Create signal monitor for an output channel.
