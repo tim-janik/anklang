@@ -20,11 +20,13 @@ public:
 };
 
 class ProjectImpl final : public DeviceImpl, public virtual Project {
+  class TransportListener;
+  std::unique_ptr<tracktion::Edit> edit_;
+  std::unique_ptr<TransportListener> transport_listener_;
   std::vector<TrackImplP> tracks_;
   ASE_DEFINE_MAKE_SHARED (ProjectImpl);
   TickSignature tick_sig_;
   MusicalTuning musical_tuning_ = MusicalTuning::OD_12_TET;
-  LoopID autoplay_timer_ = LoopID::INVALID;
   uint undo_scopes_open_ = 0;
   uint undo_groups_open_ = 0;
   String undo_group_name_;
@@ -39,6 +41,7 @@ class ProjectImpl final : public DeviceImpl, public virtual Project {
 protected:
   explicit            ProjectImpl     ();
   virtual            ~ProjectImpl     ();
+  void                foreach_track   (const std::function<bool(Track&,int)> &cb);
   void                set_bpm         (double bpm) override;
   double              get_bpm         () const override;
   void                set_numerator   (double num) override;
@@ -49,6 +52,7 @@ protected:
   void                update_tempo    ();
   Error               snapshot_project (String &json);
   String              match_serialized (const String &regex, int group) override;
+  void                deactivate_edit ();
 public:
   void                 _activate         () override;
   void                 _deactivate       () override;
