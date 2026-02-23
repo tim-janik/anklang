@@ -38,18 +38,18 @@ protected:
   explicit            ProjectImpl     ();
   virtual            ~ProjectImpl     ();
   void                foreach_track   (const std::function<bool(Track&,int)> &cb);
-  void                set_bpm         (double bpm) override;
-  double              get_bpm         () const override;
-  void                set_numerator   (double num) override;
-  double              get_numerator   () const override;
-  void                set_denominator (double den) override;
-  double              get_denominator () const override;
   void                serialize       (WritNode &xs) override;
   void                update_tempo    ();
   Error               snapshot_project (String &json);
   String              match_serialized (const String &regex, int group) override;
   void                deactivate_edit ();
 public:
+  void                 set_bpm           (double bpm) override;
+  double               get_bpm           () const override;
+  void                 set_numerator     (double num) override;
+  double               get_numerator     () const override;
+  void                 set_denominator   (double den) override;
+  double               get_denominator   () const override;
   String               get_name          () const override;
   void                 set_name          (const std::string &n) override;
   void                 _activate         () override;

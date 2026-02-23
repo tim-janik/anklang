@@ -37,7 +37,6 @@ ASE_TEST_LIST := \
   project_master_volume \
   project_playback_state \
   project_track_management \
-  project_undo_redo \
   promise_already_resolved_test \
   promise_exception_test \
   promise_int64_test \

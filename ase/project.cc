@@ -906,7 +906,9 @@ ProjectImpl::set_bpm (double newbpm)
 double
 ProjectImpl::get_bpm () const
 {
-  return tick_sig_.bpm();
+  return_unless (!!edit_, tick_sig_.bpm());
+  auto *tempo = edit_->tempoSequence.getTempo (0);
+  return tempo ? tempo->getBpm() : tick_sig_.bpm();
 }
 
 void
