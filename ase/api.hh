@@ -344,6 +344,9 @@ public:
   virtual bool            can_undo       () = 0;       ///< Check if any undo steps have been recorded.
   virtual void            redo           () = 0;       ///< Redo the last undo modification.
   virtual bool            can_redo       () = 0;       ///< Check if any redo steps have been recorded.
+  virtual double          get_length     () const = 0; ///< Get the end time of the last clip in seconds.
+  virtual double          get_master_volume () const = 0; ///< Get master volume in dB.
+  virtual void            set_master_volume (double db) = 0; ///< Set master volume in dB.
   virtual String          match_serialized (const String &regex,
                                             int group = 0) = 0; ///< Match `regex` against the serialized project state.
   Member<&Project::get_bpm,&Project::set_bpm> bpm [[no_unique_address]];

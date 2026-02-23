@@ -69,6 +69,9 @@ public:
   bool                 can_undo          () override;
   void                 redo              () override;
   bool                 can_redo          () override;
+  double               get_length        () const override;
+  double               get_master_volume () const override;
+  void                 set_master_volume (double db) override;
   void                 group_undo        (const String &undoname) override;
   void                 ungroup_undo      () override;
   void                 clear_undo        ();

@@ -777,6 +777,10 @@ export class Project // Ase::Project
   { return Jsonipc.get_reactive_prop.call (this, "denominator", 0.0); }
   set denominator (v: number)
   { Jsonipc.send ('set/' + 'denominator', [this, v]); }
+  get master_volume (): number
+  { return Jsonipc.get_reactive_prop.call (this, "master_volume", 0.0); }
+  set master_volume (v: number)
+  { Jsonipc.send ('set/' + 'master_volume', [this, v]); }
   set_bpm (arg1: number): Promise<void>
   { return Jsonipc.send ("set_bpm", [this, arg1]); }
   get_bpm (): Promise<number>
@@ -829,6 +833,12 @@ export class Project // Ase::Project
   { return Jsonipc.send ("redo", [this]); }
   can_redo (): Promise<boolean>
   { return Jsonipc.send ("can_redo", [this]); }
+  get_length (): Promise<number>
+  { return Jsonipc.send ("get_length", [this]); }
+  get_master_volume (): Promise<number>
+  { return Jsonipc.send ("get_master_volume", [this]); }
+  set_master_volume (arg1: number): Promise<void>
+  { return Jsonipc.send ("set_master_volume", [this, arg1]); }
   match_serialized (arg1: string, arg2: number): Promise<string>
   { return Jsonipc.send ("match_serialized", [this, arg1, arg2]); }
 };
