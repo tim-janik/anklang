@@ -111,10 +111,10 @@ ChoiceS& operator+= (ChoiceS &choices, Choice &&newchoice);
 
 /// Telemetry segment location.
 struct TelemetryField {
-  String name;          ///< Names like "bpm", etc
-  String type;          ///< Types like "i32", "f32", "f64"
-  int32  offset = 0;    ///< Position in bytes.
-  int32  length = 0;    ///< Length in bytes.
+  String  name;         ///< Names like "bpm", etc
+  String  type;         ///< Types like "i32", "f32", "f64"
+  int64_t offset = 0;   ///< Position in bytes.
+  int32   length = 0;   ///< Length in bytes.
 };
 
 /// Base type for classes with Event subscription.
@@ -326,8 +326,10 @@ public:
   virtual double          get_denominator() const = 0;
   virtual void            discard        () = 0;       ///< Discard project and associated resources.
   virtual void            start_playback () = 0;       ///< Start playback of a project, requires active sound engine.
+  virtual void            pause_playback () = 0;       ///< Pause playback at the current position.
   virtual void            stop_playback  () = 0;       ///< Stop project playback.
-  virtual bool            is_playing     () = 0;       ///< Check whether a project is currently playing (song sequencing).
+  virtual bool            is_playing     () const = 0; ///< Check whether a project is currently playing (song sequencing).
+  virtual void            is_playing     (bool) = 0;   ///< Set whether a project is currently playing (song sequencing).
   virtual TrackP          create_track   () = 0;       ///< Create and append a new Track.
   virtual bool            remove_track   (Track&) = 0; ///< Remove a track owned by this Project.
   virtual TrackS          all_tracks     () = 0;       ///< List all tracks of the project.

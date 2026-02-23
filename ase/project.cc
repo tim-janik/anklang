@@ -1,4 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+#include "trkn/tracktion.hh"   // PCH include must come first
+
 #include "project.hh"
 #include "jsonipc/jsonipc.hh"
 #include "main.hh"
@@ -10,10 +12,12 @@
 #include "storage.hh"
 #include "server.hh"
 #include "internal.hh"
+#include <list>
 
 #define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)
 
 using namespace std::literals;
+namespace te = tracktion::engine;
 
 namespace Ase {
 
@@ -25,7 +29,7 @@ static Preference synth_latency_pref =
       {}, STANDARD, {
         String ("descr=") + _("Default LICENSE to apply in the project properties."), } });
 
-static std::vector<ProjectImplP> &all_projects = *new std::vector<ProjectImplP>();
+static std::vector<ProjectImplP> &g_projects = *new std::vector<ProjectImplP>();
 
 // == Project ==
 Project::Project() :
@@ -37,8 +41,178 @@ Project::Project() :
 ProjectP
 Project::last_project()
 {
-  return all_projects.empty() ? nullptr : all_projects.back();
+  return g_projects.empty() ? nullptr : g_projects.back();
 }
+
+// == TransportListener ==
+class ProjectImpl::TransportListener : juce::ChangeListener, tracktion::TransportControl::Listener, juce::ValueTree::Listener
+{
+  tracktion::TransportControl &transport;
+  ProjectImpl &project_;
+  ASE_CLASS_NON_COPYABLE (TransportListener);
+  LoopID ppt = LoopID::INVALID;
+  FastMemory::Block transport_block_;
+  std::list<std::function<void()>> stopped_callbacks_;
+  te::Edit *edit_ = nullptr;
+public:
+  struct Position {
+    int    fps = 0, frame = 0;
+    int    bar = 0, beat = 0;
+    int    sxth = 0, tick = 0;
+    int    snum = 0, sden = 0;
+    double bpm = 0, sec = 0;
+    int    min = 0;
+  } &pos;
+  TransportListener (tracktion::TransportControl &tc, ProjectImpl &project) :
+    transport (tc), project_ (project),
+    transport_block_ (SERVER->telemem_allocate (sizeof (Position))),
+    edit_ (project.edit_.get()),
+    pos (*new (transport_block_.block_start) Position{})
+  {
+    assert_return (this_thread_is_ase());
+    transport.addChangeListener (this); // for ChangeListener
+    transport.addListener (this);       // for TransportControl::Listener
+    if (edit_)
+      edit_->state.addListener (this);
+  }
+  ~TransportListener() override
+  {
+    assert_return (this_thread_is_ase());
+    if (edit_)
+      edit_->state.removeListener (this);
+    transport.removeListener (this);
+    transport.removeChangeListener (this);
+    SERVER->telemem_release (transport_block_);
+  }
+  void
+  valueTreePropertyChanged (juce::ValueTree &vtree, const juce::Identifier &id) override
+  {
+    if (edit_ && vtree == edit_->state && id == tracktion_engine::IDs::name)
+      project_.emit_notify ("name");
+  }
+  void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override {}
+  void valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree&, int) override {}
+  void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override {}
+  void valueTreeParentChanged (juce::ValueTree&) override {}
+  void
+  changeListenerCallback (juce::ChangeBroadcaster *source) override
+  {
+    if (source == &transport) {
+      transport_changed ("change");
+    }
+  }
+  void autoSaveNow             () override {}
+  void setAllLevelMetersActive (bool become_inactive) override {}
+  void setVideoPosition        (tracktion::TimePosition pos, bool force_jump) override {}
+  void recordingStarted        (tracktion::SyncPoint start, std::optional<tracktion::TimeRange> punch_range) override {}
+  void recordingStopped        (tracktion::SyncPoint sync_point, bool discard_recordings) override {}
+  void recordingAboutToStart   (tracktion::InputDeviceInstance &device, tracktion::EditItemID target) override {}
+  void recordingAboutToStop    (tracktion::InputDeviceInstance &device, tracktion::EditItemID target) override {}
+  void recordingFinished       (tracktion::InputDeviceInstance &device, tracktion::EditItemID target,
+                                const juce::ReferenceCountedArray<tracktion::Clip> &recording) override {}
+  void
+  playbackContextChanged () override
+  {
+    tracktion::EditPlaybackContext *context = transport.getCurrentPlaybackContext();
+    Ase::diag ("PlaybackContextChanged: context=%p graph=%d playing=%d position=%.3fsecs\n", context,
+               context ? context->isPlaybackGraphAllocated() : 0,
+               context ? context->isPlaying() : 0,
+               context ? context->getPosition().inSeconds() : 0);
+  }
+  void
+  startVideo () override
+  {
+    assert_return (this_thread_is_ase());
+    poll_position();
+    if (ppt == LoopID::INVALID) // TODO: can we optimize telemetry form trkn?
+      ppt = main_loop->add ([this] { this->poll_position(); return true; }, std::chrono::milliseconds (16));
+    project_.emit_notify ("is_playing");
+    transport_changed ("start-video");
+  }
+  void
+  stopVideo () override
+  {
+    assert_return (this_thread_is_ase());
+    main_loop->cancel (&ppt);
+    poll_position();
+    project_.emit_notify ("is_playing");
+    transport_changed ("stop-video");
+    while (!stopped_callbacks_.empty()) {
+      const auto f = stopped_callbacks_.front();
+      stopped_callbacks_.pop_front();
+      f();
+    }
+  }
+  void
+  run_when_stopped (const std::function<void()> &f)
+  {
+    if (transport.isPlaying())
+      stopped_callbacks_.push_back (f);
+    else
+      f();
+  }
+  void
+  transport_changed (const std::string &what)
+  {
+    auto position = transport.getPosition();
+    Ase::printerr ("Transport: playing=%d position=%.3fsecs (%s)\n",
+                   transport.isPlaying(), position.inSeconds(), what.c_str());
+  }
+  void
+  poll_position()
+  {
+    auto context = transport.getCurrentPlaybackContext();
+    return_unless (!!context);
+
+    auto &transport = project_.edit_->getTransport();
+    auto &tempoSeq = project_.edit_->tempoSequence;
+
+    // Get Current Time - getPosition() is the cursor position.
+    // Use edit->getCurrentPlaybackContext()->getAudibleTimelineTime() for compensating for latency
+    const tracktion::TimePosition currentPos = transport.getPosition();
+    const double totalSeconds = currentPos.inSeconds();
+
+    // Calculate Minutes / Seconds / Millis
+    // We use std::abs to handle potential negative times (pre-roll) safely
+    const double absSeconds = std::abs (totalSeconds);
+    const int intSeconds = int (absSeconds);
+    pos.min = intSeconds / 60;
+    pos.sec = absSeconds - pos.min * 60;
+
+    // Calculate Musical Position (Bars & Beats)
+    tracktion::tempo::BarsAndBeats bab = tempoSeq.toBarsAndBeats (currentPos);
+
+    // Tracktion uses 0-based indexing for Bars and Beats internally.
+    pos.bar = bab.bars;
+    pos.beat = bab.getWholeBeats();
+
+    // Calculate Sub-beat divisions (Sixteenths and Ticks)
+    // bab.getFractionalBeats() returns the remainder of the beat (0.0 to 0.999...)
+    double fractionalBeat = bab.getFractionalBeats().inBeats();
+
+    // Sixteenths: There are 4 sixteenths in a beat
+    pos.sxth = int (fractionalBeat * 4.0);
+
+    // Ticks: Tracktion standard is 960 PPQ (Pulses Per Quarter note)
+    pos.tick = int (fractionalBeat * 960.0);
+
+    // Get Tempo and Time Signature at this specific moment
+    // (Tempo can change during the song, so we ask for the value *at* currentPos)
+    pos.bpm = tempoSeq.getBpmAt (currentPos);
+    auto &timesig = tempoSeq.getTimeSigAt (currentPos);
+    pos.snum = timesig.numerator;
+    pos.sden = timesig.denominator;
+
+    // Calculate Frames (SMPTE)
+    const te::TimecodeDisplayFormat tdf = project_.edit_->getTimecodeFormat();
+    pos.fps = tdf.getFPS();
+
+    // Simple frame calculation: seconds * fps
+    // (Note: This is a basic calculation. For Drop-frame SMPTE, use tdf.toFullTimecode(...))
+    pos.frame = int (absSeconds * pos.fps) % int (pos.fps);
+  }
+};
+
 
 // == ProjectImpl ==
 using StringPairS = std::vector<std::tuple<String,String>>;
@@ -62,22 +236,57 @@ private:
   PStorage **const ptrp_ = nullptr;
 };
 
+static tracktion::WaveAudioClip::Ptr
+load_audio_file_as_clip (tracktion::Edit &edit, const juce::File &file)
+{
+  edit.ensureNumberOfAudioTracks (1);
+  if (auto track = tracktion::getAudioTracks (edit)[0]) {
+    tracktion::AudioFile audioFile (edit.engine, file);
+    if (audioFile.isValid())
+      if (auto newClip =
+          track->insertWaveClip (file.getFileNameWithoutExtension(), file,
+                                 { { {}, tracktion::TimeDuration::fromSeconds (audioFile.getLength()) }, {} }, false))
+        return newClip;
+  }
+  return {};
+}
+
+template<typename ClipType> static typename ClipType::Ptr
+loop_around_clip (ClipType &clip)
+{
+  using namespace std::literals;
+  auto &transport = clip.edit.getTransport();
+  transport.setLoopRange (clip.getEditTimeRange());
+  transport.looping = true;
+  transport.setPosition (0s);
+  return clip;
+}
+
+static bool
+test_setup (tracktion::Edit &edit)
+{
+  const std::string sample01 = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+  juce::File sampleFile (sample01);
+  auto clip = load_audio_file_as_clip (edit, sampleFile);
+  assert_return (clip != nullptr, false);
+  loop_around_clip (*clip);
+  edit.getTransport().ensureContextAllocated();
+  return true;
+}
+
 ProjectImpl::ProjectImpl()
 {
-  if (tracks_.empty())
-    create_track (); // ensure Master track
   bpm = 120;
   numerator = 4;
   denominator = 4;
+  edit_ = std::make_unique<te::Edit> (*trkn_engine(), te::Edit::forEditing);
+  if (edit_)
+    transport_listener_ = std::make_unique<TransportListener> (edit_->getTransport(), *this);
+  if (!edit_ || !transport_listener_ || !test_setup (*edit_))
+    fatal_error ("failed to create tracktion::engine::edit");
 
-  if (0)
-    autoplay_timer_ = main_loop->add ([this] () {
-      return_unless (autoplay_timer_ != LoopID::INVALID, false);
-      autoplay_timer_ = LoopID::INVALID;
-      if (!is_playing())
-        start_playback();
-      return false;
-    }, std::chrono::milliseconds (500));
+  if (tracks_.empty())
+    create_track (); // ensure Master track
 
   /* TODO: MusicalTuning
    * group = _("Tuning");
@@ -90,22 +299,91 @@ ProjectImpl::ProjectImpl()
    */
 }
 
+void
+ProjectImpl::deactivate_edit()
+{
+  return_unless (!!edit_);
+  auto &transport = edit_->getTransport();
+  if (transport.isPlaying() || transport.isRecording())
+    transport.stop (true, true);
+  transport.freePlaybackContext();
+  edit_->cancelAnyPendingUpdates();
+  edit_ = nullptr;
+}
+
 ProjectImpl::~ProjectImpl()
 {
-  main_loop->cancel (&autoplay_timer_);
+  deactivate_edit();
+  transport_listener_ = nullptr;
+  edit_ = nullptr;
 }
 
 
 void
 ProjectImpl::force_shutdown_all ()
 {
+ rescan:
+  for (size_t i = 0; i < g_projects.size(); i++)
+    if (g_projects[i]->edit_) {
+      g_projects[i]->deactivate_edit();
+      goto rescan; // callbacks can change anything
+    }
+}
+
+String
+ProjectImpl::get_name() const
+{
+  // Edit.getName() requires af ProjectItem, which we dont use
+  return edit_ ? edit_->state.getProperty (tracktion_engine::IDs::name).toString().toStdString() : "";
+}
+
+void
+ProjectImpl::set_name (const std::string &nm)
+{
+  return_unless (!!edit_);
+  // tracktion_engine::getProjectItemForEdit (*edit_)->setName (nm, tracktion_engine::ProjectItem::SetNameMode::doDefault);
+  edit_->state.setProperty (tracktion_engine::IDs::name, juce::String (nm), &edit_->getUndoManager());
+}
+
+TelemetryFieldS
+ProjectImpl::telemetry () const
+{
+  TelemetryFieldS v;
+  v.push_back (telemetry_field ("current_tick", &transport_listener_->pos.tick));
+  v.push_back (telemetry_field ("current_bar", &transport_listener_->pos.bar));
+  v.push_back (telemetry_field ("current_beat", &transport_listener_->pos.beat));
+  v.push_back (telemetry_field ("current_sixteenth", &transport_listener_->pos.sxth));
+  v.push_back (telemetry_field ("current_bpm", &transport_listener_->pos.bpm));
+  v.push_back (telemetry_field ("current_numerator", &transport_listener_->pos.snum));
+  v.push_back (telemetry_field ("current_denominator", &transport_listener_->pos.sden));
+  v.push_back (telemetry_field ("current_minutes", &transport_listener_->pos.min));
+  v.push_back (telemetry_field ("current_seconds", &transport_listener_->pos.sec));
+  return v;
+}
+
+void
+ProjectImpl::foreach_track (const std::function<bool(Track&,int)> &cb)
+{
+  std::function<bool(te::Track&,int)> foreach_track = [&] (te::Track &t, int depth)
+  {
+    const TrackImplP trackp = TrackImpl::from_trkn (t);
+    if (!trackp || !cb (*trackp, depth))
+      return false;
+    if (trackp->is_folder())
+      for (auto subtrack : dynamic_cast<te::FolderTrack*> (&t)->getAllSubTracks (false /*recursive*/))
+        if (subtrack &&
+            false == foreach_track (*subtrack, depth + 1))
+          return false;
+    return true;
+  };
+  edit_->visitAllTopLevelTracks ([&] (te::Track &t) { return foreach_track (t, 0); });
 }
 
 ProjectImplP
 ProjectImpl::create (const String &projectname)
 {
   ProjectImplP project = ProjectImpl::make_shared();
-  all_projects.push_back (project);
+  g_projects.push_back (project);
   project->name (projectname);
   return project;
 }
@@ -115,9 +393,9 @@ ProjectImpl::discard ()
 {
   return_unless (!discarded_);
   stop_playback();
-  const size_t nerased = Aux::erase_first (all_projects, [this] (auto ptr) { return ptr.get() == this; });
+  const size_t nerased = Aux::erase_first (g_projects, [this] (auto ptr) { return ptr.get() == this; });
   if (nerased)
-    {} // resource cleanups...
+    {} // resource cleanups
   discarded_ = true;
 }
 
@@ -651,23 +929,6 @@ ProjectImpl::undo_size_guess () const
   return count * item + undo_mem_counter;
 }
 
-TelemetryFieldS
-ProjectImpl::telemetry () const
-{
-  TelemetryFieldS v;
-  AudioProcessorP proc = master_processor ();
-  assert_return (proc, v);
-  const AudioTransport &transport = proc->transport();
-  v.push_back (telemetry_field ("current_tick", &transport.current_tick_d));
-  v.push_back (telemetry_field ("current_bar", &transport.current_bar));
-  v.push_back (telemetry_field ("current_beat", &transport.current_beat));
-  v.push_back (telemetry_field ("current_sixteenth", &transport.current_semiquaver));
-  v.push_back (telemetry_field ("current_bpm", &transport.current_bpm));
-  v.push_back (telemetry_field ("current_minutes", &transport.current_minutes));
-  v.push_back (telemetry_field ("current_seconds", &transport.current_seconds));
-  return v;
-}
-
 AudioProcessorP
 ProjectImpl::master_processor () const
 {
@@ -748,71 +1009,44 @@ void
 ProjectImpl::start_playback (double autostop)
 {
   assert_return (!discarded_);
-  assert_return (App.engine);
-  AudioEngine &engine = *App.engine;
-  ProjectImplP selfp = shared_ptr_cast<ProjectImpl> (this);     // keep alive while engine changes refcounts
-  ProjectImplP oldp = engine.get_project();                     // keep alive while engine changes refs
-  if (oldp != selfp)
-    {
-      if (oldp)
-        {
-          oldp->stop_playback();
-          engine.set_project (nullptr);
-        }
-      engine.set_project (selfp);
-    }
-  assert_return (this == &*engine.get_project());
+  edit_->getTransport().ensureContextAllocated();
+  if (edit_->getTransport().isPlayContextActive())
+    edit_->getTransport().play (false);
+}
 
-  main_loop->cancel (&autoplay_timer_);
-  AudioProcessorP proc = master_processor();
-  return_unless (proc);
-  std::shared_ptr<CallbackS> queuep = std::make_shared<CallbackS>();
-  for (auto track : tracks_)
-    track->queue_cmd (*queuep, track->START);
-  const TickSignature tsig (tick_sig_);
-  auto job = [proc, queuep, tsig, autostop] () {
-    AudioEngine &engine = proc->engine();
-    const double udmax = 18446744073709549568.0; // max double exactly matching an uint64_t
-    const uint64_t s = autostop > udmax ? udmax : autostop * engine.sample_rate();
-    engine.set_autostop (s);
-    AudioTransport &transport = const_cast<AudioTransport&> (engine.transport());
-    transport.tempo (tsig);
-    transport.running (true);
-    for (const auto &cmd : *queuep)
-      cmd();
-  };
-  proc->engine().async_jobs += job;
+void
+ProjectImpl::pause_playback ()
+{
+  if (edit_->getTransport().isPlaying())
+    edit_->getTransport().stop (false, false);
 }
 
 void
 ProjectImpl::stop_playback ()
 {
-  main_loop->cancel (&autoplay_timer_);
-  AudioProcessorP proc = master_processor();
-  return_unless (proc);
-  auto stop_queuep = std::make_shared<DCallbackS>();
-  for (auto track : tracks_)
-    track->queue_cmd (*stop_queuep, track->STOP);
-  auto job = [proc, stop_queuep] () {
-    AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
-    const bool wasrunning = transport.running();
-    transport.running (false);
-    if (!wasrunning)
-      transport.set_tick (-AUDIO_BLOCK_MAX_RENDER_SIZE / 2 * transport.tick_sig.ticks_per_sample());
-    for (const auto &stop : *stop_queuep)
-      stop (!wasrunning); // restart = !wasrunning
-    if (!wasrunning)
-      transport.set_tick (0); // adjust transport and track positions
-  };
-  proc->engine().async_jobs += job;
+  edit_->getTransport().stop (false, true);
+  transport_listener_->run_when_stopped ([this] {
+    // wait until stopped, so the new position persists
+    edit_->getTransport().setPosition (tracktion::TimePosition::fromSeconds (0.0));
+    transport_listener_->poll_position();
+  });
 }
 
 bool
-ProjectImpl::is_playing ()
+ProjectImpl::is_playing () const
 {
-  AudioProcessorP proc = master_processor();
-  return_unless (proc, false);
-  return proc->engine().transport().current_bpm > 0.0;
+  return edit_->getTransport().isPlaying();
+}
+
+void
+ProjectImpl::is_playing (bool play)
+{
+  if (is_playing() == play)
+    return;
+  if (is_playing())
+    pause_playback();
+  else
+    start_playback();
 }
 
 TrackP
@@ -847,8 +1081,13 @@ ProjectImpl::remove_track (Track &child)
 TrackS
 ProjectImpl::all_tracks ()
 {
-  TrackS tracks (tracks_.size());
-  std::copy (tracks_.begin(), tracks_.end(), tracks.begin());
+  TrackS tracks;
+  auto tf = [&] (Track &track, int depth)
+  {
+    tracks.push_back (shared_ptr_cast<TrackImpl> (&track));
+    return true;
+  };
+  foreach_track (tf);
   return tracks;
 }
 

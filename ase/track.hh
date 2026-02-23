@@ -2,15 +2,22 @@
 #ifndef __ASE_TRACK_HH__
 #define __ASE_TRACK_HH__
 
+#include <ase/trkn-utils.hh>
 #include <ase/device.hh>
 
 namespace Ase {
 
 /// Ase::Track implementation.
 class TrackImpl : public DeviceImpl, public virtual Track {
+  class TrackStateListener;
+  ProjectImpl *project_ = nullptr;
+  SelectableWeakref<tracktion::Track> track_;
+  std::unique_ptr<TrackStateListener> state_listener_;
+  std::string  te_type_;
   DeviceP      chain_, midi_prod_;
   ClipImplS    clips_;
   uint         midi_channel_ = 0;
+  uint         is_folder_ : 1;
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
   virtual         ~TrackImpl        ();
@@ -20,6 +27,10 @@ protected:
 public:
   class ClipScout;
   explicit        TrackImpl         (ProjectImpl&, bool masterflag);
+  explicit        TrackImpl         (tracktion::Track &track);
+  bool            is_folder         () const    { return "Folder" == te_type_; }
+  String          get_name          () const override;
+  void            set_name          (const std::string &n) override;
   void            _activate         () override;
   void            _deactivate       () override;
   AudioProcessorP _audio_processor  () const override;
@@ -41,6 +52,7 @@ public:
   void            queue_cmd         (CallbackS&, Cmd cmd, double arg = 0);
   void            queue_cmd         (DCallbackS&, Cmd cmd);
   enum { NONE = -1 };
+  static TrackImplP from_trkn (tracktion::Track&);
 };
 
 /// MIDI clip playback succession generator.

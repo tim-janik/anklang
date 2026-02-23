@@ -793,10 +793,14 @@ export class Project // Ase::Project
   { return Jsonipc.send ("discard", [this]); }
   start_playback (): Promise<void>
   { return Jsonipc.send ("start_playback", [this]); }
+  pause_playback (): Promise<void>
+  { return Jsonipc.send ("pause_playback", [this]); }
   stop_playback (): Promise<void>
   { return Jsonipc.send ("stop_playback", [this]); }
-  is_playing (): Promise<boolean>
-  { return Jsonipc.send ("is_playing", [this]); }
+  get is_playing (): boolean
+  { return Jsonipc.get_reactive_prop.call (this, "is_playing", false); }
+  set is_playing (v: boolean)
+  { Jsonipc.send ('set/' + 'is_playing', [this, v]); }
   create_track (): Promise<Track>
   { return Jsonipc.send ("create_track", [this]); }
   remove_track (arg1: Track): Promise<boolean>

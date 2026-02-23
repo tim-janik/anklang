@@ -1,4 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+#include "trkn/tracktion.hh"   // PCH include must come first
+
 #include "track.hh"
 #include "combo.hh"
 #include "project.hh"
@@ -11,17 +13,149 @@
 #include "jsonipc/jsonipc.hh"
 #include "internal.hh"
 
+namespace te = tracktion::engine;
+
 namespace Ase {
 
+// == TrackStateListener ==
+class TrackImpl::TrackStateListener : public juce::ValueTree::Listener {
+  TrackImpl &asetrack_;
+  juce::ValueTree track_state_; // similar to a *shared_ptr
+public:
+  TrackStateListener (TrackImpl &asetrack) :
+    asetrack_ (asetrack), track_state_ (asetrack_.track_->state)
+  {
+    track_state_.addListener (this);
+  }
+  ~TrackStateListener() override
+  {
+    track_state_.removeListener (this);
+  }
+  void
+  valueTreePropertyChanged (juce::ValueTree &tree, const juce::Identifier &property) override
+  {
+    assert_return (tree == track_state_);
+    if (property == tracktion::engine::IDs::name)
+      asetrack_.emit_notify ("name");
+  }
+  void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override {}
+  void valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree&, int) override {}
+  void valueTreeParentChanged (juce::ValueTree&) override {}
+  void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override {}
+};
+
 // == TrackImpl ==
-TrackImpl::TrackImpl (ProjectImpl &project, bool masterflag)
+static std::string
+trkn_track_type (tracktion::Track &track)
+{
+  if (dynamic_cast<te::FolderTrack*> (&track))
+    return "Folder";
+  if (dynamic_cast<te::AudioTrack*> (&track))
+    return "Audio/Midi";
+  if (track.isTempoTrack())
+    return "Tempo";
+  if (track.isMarkerTrack())
+    return "Marker";
+  if (track.isChordTrack())
+    return "Chord";
+  if (track.isArrangerTrack())
+    return "Arranger";
+  if (track.isMasterTrack())
+    return "Master";
+  return "Unknown";
+}
+
+TrackImplP
+TrackImpl::from_trkn (tracktion::Track &t)
+{
+  TrackImpl *track = SelectableHandle::find_selectable_handle<TrackImpl> (t);
+  if (track)
+    return shared_ptr_cast<TrackImpl> (track);
+  TrackImplP trackp = TrackImpl::make_shared (t);
+  return trackp;
+}
+
+#if 0 // TODO: cleanup
+// Helper struct to hold UI data for your rendering engine
+struct TrackUIData
+{
+  juce::String name;
+  juce::String type;
+  juce::Colour colour;
+  int depth;
+  bool isFolder;
+  bool isMuted;
+  bool isSoloed;
+
+  // Audio specific (optional)
+  float volumeDb = 0.0f;
+  float pan = 0.0f;
+  juce::String inputName;
+  juce::String outputName;
+  void dummy()
+  {
+    TrackUIData data;
+    data.depth = depth;
+    data.name = t.getName();
+    data.colour = t.getColour();
+    data.isMuted = t.isMuted (true); // includeMutingByDestination
+    data.isSoloed = t.isSolo (true); // includeIndirectSolo
+    // Folder tracks might have a VCA plugin or Volume plugin
+    if (auto vol = ft->getVolumePlugin())
+      {
+        data.volumeDb = vol->getVolumeDb();
+        data.pan = vol->getPan();
+      }
+    // Access Volume/Pan via the VolumeAndPanPlugin
+    if (auto vol = at->getVolumePlugin())
+      {
+        data.volumeDb = vol->getVolumeDb();
+        data.pan = vol->getPan();
+      }
+    // Input Device Name
+    auto& waveIn = at->getWaveInputDevice();
+    if (waveIn.isEnabled())
+      data.inputName = waveIn.getName();
+    else
+      data.inputName = "No Input";
+    // Output Name
+    data.outputName = at->getOutput().getOutputName();
+  }
+};
+#endif
+
+TrackImpl::TrackImpl (tracktion::Track &track) :
+  project_ (SelectableHandle::find_selectable_handle<ProjectImpl> (track.edit)),
+  track_ (&track), te_type_ (trkn_track_type (track))
+{
+  state_listener_ = std::make_unique<TrackStateListener> (*this);
+}
+
+TrackImpl::TrackImpl (ProjectImpl &project, bool masterflag) :
+  project_ (&project)
 {
   gadget_flags (masterflag ? MASTER_TRACK : 0);
 }
 
 TrackImpl::~TrackImpl()
 {
+  state_listener_ = nullptr;
   assert_return (_parent() == nullptr);
+}
+
+String
+TrackImpl::get_name () const
+{
+  if (auto trackp = track_.get())
+    return trackp->getName().toStdString();
+  return "";
+}
+
+void
+TrackImpl::set_name (const std::string &n)
+{
+  if (auto trackp = track_.get())
+    trackp->setName (juce::String (n));
 }
 
 ProjectImpl*
@@ -239,6 +373,7 @@ TrackImpl::create_monitor (int32 ochannel) // TODO: implement
 TelemetryFieldS
 TrackImpl::telemetry () const
 {
+  return {}; // TODO: implement telemtry from trkn for tracks
   MidiLib::MidiProducerIfaceP midi_prod = std::dynamic_pointer_cast<MidiLib::MidiProducerIface> (midi_prod_->_audio_processor());
   Ase::AudioChain *audio_chain = dynamic_cast<Ase::AudioChain*> (&*chain_->_audio_processor());
   AudioChain::ProbeArray *probes = audio_chain->run_probes (true);
