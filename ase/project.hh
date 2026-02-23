@@ -69,8 +69,10 @@ public:
   size_t               undo_size_guess   () const;
   void                 start_playback    (double autostop);
   void                 start_playback    () override    { start_playback (D64MAX); }
+  void                 pause_playback    () override;
   void                 stop_playback     () override;
-  bool                 is_playing        () override;
+  bool                 is_playing        () const override;
+  void                 is_playing        (bool play) override;
   TrackP               create_track      () override;
   bool                 remove_track      (Track &child) override;
   TrackS               all_tracks        () override;

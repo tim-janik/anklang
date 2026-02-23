@@ -808,11 +808,27 @@ ProjectImpl::stop_playback ()
 }
 
 bool
-ProjectImpl::is_playing ()
+ProjectImpl::is_playing () const
 {
   AudioProcessorP proc = master_processor();
   return_unless (proc, false);
   return proc->engine().transport().current_bpm > 0.0;
+}
+
+void
+ProjectImpl::is_playing (bool play)
+{
+  if (is_playing() == play)
+    return;
+  if (is_playing())
+    stop_playback();
+  else
+    start_playback();
+}
+
+void
+ProjectImpl::pause_playback ()
+{
 }
 
 TrackP
