@@ -8,6 +8,9 @@ ASE_TEST_LIST := \
   atomic_valuestack_test \
   blake3_tests \
   callback_list_test \
+  clip_creation \
+  clip_notes \
+  clip_range \
   cotask_int64_result_test \
   cotask_string_result_test \
   cotask_void_test \

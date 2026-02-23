@@ -1,5 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include <ase/project.hh>
+#include <ase/clip.hh>
+#include <ase/track.hh>
 #include <ase/testing.hh>
 
 namespace { // Anon
@@ -235,5 +237,95 @@ track_name()
   project->discard();
 }
 TEST_ADD (track_name);
+
+static void
+clip_creation()
+{
+  ProjectImplP project = ProjectImpl::create ("ClipTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
+  TASSERT (trackimpl);
+
+  ClipImplP clip = trackimpl->create_midi_clip ("TestClip", 0.0, 4.0);
+  TASSERT (clip);
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (clip_creation);
+
+static void
+clip_notes()
+{
+  ProjectImplP project = ProjectImpl::create ("ClipNotesTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
+  TASSERT (trackimpl);
+
+  ClipImplP clip = trackimpl->create_midi_clip ("NotesClip", 0.0, 4.0);
+  TASSERT (clip);
+
+  ClipNoteS notes = clip->list_all_notes();
+  TASSERT (notes.empty());
+
+  ClipNote note;
+  note.id = -1;
+  note.key = 60;
+  note.channel = 0;
+  note.tick = 0;
+  note.duration = 960;
+  note.velocity = 0.8f;
+
+  ClipNoteS batch;
+  batch.push_back (note);
+  clip->change_batch (batch, "Add Note");
+
+  notes = clip->list_all_notes();
+  TASSERT (notes.size() == 1);
+  TASSERT (notes[0].key == 60);
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (clip_notes);
+
+static void
+clip_range()
+{
+  ProjectImplP project = ProjectImpl::create ("ClipRangeTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
+  TASSERT (trackimpl);
+
+  ClipImplP clip = trackimpl->create_midi_clip ("RangeClip", 0.0, 4.0);
+  TASSERT (clip);
+
+  int64 start = clip->start_tick();
+  int64 stop = clip->stop_tick();
+  TASSERT (start >= 0);
+  TASSERT (stop > start);
+
+  clip->assign_range (start + 960, stop + 960);
+  TASSERT (clip->start_tick() == start + 960);
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (clip_range);
 
 } // Anon

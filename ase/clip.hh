@@ -17,15 +17,11 @@ constexpr const uint MIDI_NOTE_ID_LAST = 0xfffffffe;
 class ClipImpl : public GadgetImpl, public virtual Clip {
 public:
   struct CmpNoteTicks { int operator() (const ClipNote &a, const ClipNote &b) const; };
-  struct CmpNoteIds   { int operator() (const ClipNote &a, const ClipNote &b) const; };
-  using EventsById = EventList<ClipNote,CmpNoteIds>;
+  using OrderedEventsV = OrderedEventList<ClipNote,CmpNoteTicks>;
 private:
   SelectableWeakref<tracktion::Clip> clip_;
   class ClipStateListener;
   std::unique_ptr<ClipStateListener> state_listener_;
-  EventsById notes_;
-  using OrderedEventsV = OrderedEventList<ClipNote,CmpNoteTicks>;
-  static size_t collapse_notes (EventsById &notes, bool preserve_selected);
 public:
   class Generator;
 protected:
@@ -96,12 +92,6 @@ using ClipImplGeneratorS = std::vector<ClipImpl::Generator>;
 
 
 // == Implementation Details ==
-inline int
-ClipImpl::CmpNoteIds::operator () (const ClipNote &a, const ClipNote &b) const
-{
-  return Aux::compare_lesser (a.id, b.id);
-}
-
 inline int
 ClipImpl::CmpNoteTicks::operator() (const ClipNote &a, const ClipNote &b) const
 {

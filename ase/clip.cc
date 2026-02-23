@@ -3,17 +3,9 @@
 
 #include "clip.hh"
 #include "track.hh"
-#include "jsonipc/jsonipc.hh"
 #include "project.hh"
 #include "serialize.hh"
-#include "platform.hh"
-#include "compress.hh"
-#include "path.hh"
 #include "internal.hh"
-#include <atomic>
-
-#define CDEBUG(...)     Ase::debug ("ClipNote", __VA_ARGS__)
-#define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)
 
 namespace te = tracktion::engine;
 
@@ -237,91 +229,19 @@ ClipImpl::stop_tick () const
 ClipImpl::OrderedEventsP
 ClipImpl::tick_events () const
 {
-  static const auto empty_list = std::make_shared<OrderedEventsV>(std::vector<ClipNote>{});
-  return empty_list;
-}
-
-size_t
-ClipImpl::collapse_notes (EventsById &inotes, const bool preserve_selected)
-{
-  ClipNoteS copies = inotes.copy();
-  size_t collapsed = 0;
-  // sort notes by tick, keep order; delete from lhs, preserve newer entries on rhs
-  std::stable_sort (copies.begin(), copies.end(), [] (const ClipNote &a, const ClipNote &b) {
-    return a.tick < b.tick;
-  });
-  // remove duplicates at the same tick
-  for (size_t i = 0; i < copies.size(); i++) {
-    const ClipNote &note = copies[i];
-    for (size_t j = i + 1; j < copies.size(); j++) {
-      if (note.tick != copies[j].tick)
-        break;
-      if (note.key == copies[j].key && note.channel == copies[j].channel) {
-        if (note.selected != copies[j].selected && preserve_selected)
-          continue;
-        // note has a successor at same tick, with same key, channel
-        collapsed += inotes.remove (note);
-      }
-    }
-  }
-  return collapsed;
+  ClipNoteS notes = get_all_notes();
+  return std::make_shared<const OrderedEventsV> (notes);
 }
 
 int32
 ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
 {
-#if 0 // TODO: clean up
-  bool changes = false, selections = false;
-  // save undo image
-  const ClipNoteS orig_notes = notes_.copy();
-  // delete existing notes
-  for (const auto &note : batch)
-    if (note.id > 0 && (note.duration == 0 || note.channel < 0)) {
-      changes |= notes_.remove (note);
-      CDEBUG ("%s: delete notes: %d\n", __func__, note.id);
-    }
-  // modify *existing* notes
-  for (const auto &note : batch)
-    if (note.id > 0 && note.duration > 0 && note.channel >= 0) {
-      ClipNote replaced;
-      if (notes_.replace (note, &replaced) && !(note == replaced)) {
-        replaced.selected = !replaced.selected;
-        if (note == replaced)
-          selections = true; // only selection changed
-        else
-          changes = true;
-        CDEBUG ("%s: %s %d: new=%s old=%s\n", __func__, note == replaced ? "toggle" : "replace", note.id,
-                stringify_clip_note (note), stringify_clip_note (replaced));
-      }
-    }
-  // insert new notes
-  for (const auto &note : batch)
-    if (note.id <= 0 && note.duration > 0 && note.channel >= 0) {
-      ClipNote ev = note;
-      ev.id = next_noteid++;    // automatic id allocation for new notes
-      assert_warn (ev.id >= MIDI_NOTE_ID_FIRST && ev.id <= MIDI_NOTE_ID_LAST);
-      const bool replaced = notes_.insert (ev);
-      changes |= !replaced;
-      CDEBUG ("%s: insert: %s%s\n", __func__, stringify_clip_note (ev), replaced ? " (REPLACED?)" : "");
-    }
-  // collapse overlapping notes
-  if (changes || selections) {
-    const size_t collapsed = collapse_notes (notes_, true);
-    changes = changes || collapsed;
-    if (collapsed) CDEBUG ("%s: collapsed=%d\n", __func__, collapsed);
-  }
-  // queue undo
-  if (!notes_.equals (orig_notes)) {
-    if (changes)
-      push_undo (orig_notes, undogroup.empty() ? "Change Notes" : undogroup);
-    if (changes) CDEBUG ("%s: notes=%d undo_size: %fMB\n", __func__, notes_.size(), project()->undo_size_guess() / (1024. * 1024));
-    emit_notify ("notes");
-    all_notes.notify();
-  }
-#endif
   if (!clip_.get()) return -1;
   auto mclip = dynamic_cast<te::MidiClip*> (clip_.get());
   assert_return (mclip, -1);
+
+  auto &um = clip_->edit.getUndoManager();
+  um.beginNewTransaction (juce::String (undogroup.empty() ? "Change Notes" : undogroup));
 
   for (const auto &note : batch)
     {
@@ -333,7 +253,7 @@ ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
               if (std::abs(n->getStartBeat().inBeats() * TRANSPORT_PPQN - note.tick) < 1 &&
                   n->getNoteNumber() == note.key)
                 {
-                  seq.removeNote (*n, nullptr);
+                  seq.removeNote (*n, &um);
                   break;
                 }
             }
@@ -345,13 +265,28 @@ ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
                                         tracktion::BeatDuration::fromBeats (double (note.duration) / TRANSPORT_PPQN),
                                         note.velocity * 127,
                                         note.channel,
-                                        nullptr);
+                                        &um);
         }
       else // Modify
         {
-          // Modification logic skipped for now as simplistic ID mapping prevents reliable update
+          auto &seq = mclip->getSequence();
+          for (auto n : seq.getNotes())
+            {
+              if (std::abs(n->getStartBeat().inBeats() * TRANSPORT_PPQN - note.tick) < 1 &&
+                  n->getNoteNumber() == note.key)
+                {
+                  n->setStartAndLength (tracktion::BeatPosition::fromBeats (double (note.tick) / TRANSPORT_PPQN),
+                                        tracktion::BeatDuration::fromBeats (double (note.duration) / TRANSPORT_PPQN),
+                                        &um);
+                  n->setVelocity (note.velocity * 127, &um);
+                  n->setNoteNumber (note.key, &um);
+                  break;
+                }
+            }
         }
     }
+  emit_notify ("notes");
+  all_notes.notify();
   return 0;
 }
 
