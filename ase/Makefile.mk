@@ -188,23 +188,21 @@ $(foreach F, $(filter %.cpp, $(JUCE_SOURCES) $(TRACKTION_SOURCES)), $(eval $(cal
 $(TRKN_OBJECTS): $(EXTERNAL_CXX_STAMPS)
 include $(wildcard $>/trkn/*.d)
 
-# == check-pch-list ==
-.PHONY: check-pch-list
-# Check: ase/PchList.mk
-check-pch-list: $(lib/AnklangSynthEngine)	| $>/ase/tests/
+# == ase/PchList.g.mk ==
+ase/PchList.g.INPUTS := $(wildcard ase/*.cc)
+ase/PchList.g.mk:	# any deps here are forced to be rebuilt during Makefile parsing
 	$(QGEN)
-	$Q echo 'ASE_PCH_FILES := '\\	> $>/ase/PchList.mk
-	$Q grep -l '^#include "trkn/tracktion.hh"' ase/*.cc | sort \
-	| sed -r 's/(.*)/  \1 \\/'	>>$>/ase/PchList.mk
-	$Q echo				>>$>/ase/PchList.mk
-	$Q if cmp -s ase/PchList.mk $>/ase/PchList.mk ; then rm $>/ase/PchList.mk ; else \
-	( diff -u ase/PchList.mk $>/ase/PchList.mk || : ) \
-	&& test -t 0 && ( $(PROMPT) "? Update ase/PchList.mk?" && mv $>/ase/PchList.mk ase/PchList.mk ) \
-	&& ( echo 'ase/PchList.mk: test list updated, restart make' ; false ) \
-	fi
-check-ase-tests: check-pch-list
+	$Q echo 'ASE_PCH_FILES := '\\			> $@.tmp
+	$Q grep -l '^#include "trkn/tracktion.hh"' \
+		$(ase/PchList.g.INPUTS) | \
+		sed -r 's/(.*)/  \1 \\/' | \
+		sort	>> $@.tmp
+	$Q mv $@.tmp $@
+ifneq (,$(shell find $(ase/PchList.g.INPUTS) -newer ase/PchList.g.mk))
+.PHONY: ase/PchList.g.mk	# update generated file without forcing rebuild of INPUTS
+endif
+include ase/PchList.g.mk	# ASE_PCH_FILES
 # Precompiled Headers for trkn/tracktion.hh
-include ase/PchList.mk	# ASE_PCH_FILES
 $(addprefix $>/, $(ASE_PCH_FILES:.cc=.o)): $(call INCLUDE_PCH, trkn/tracktion.hh )
 # Precompiled Headers for JUCE
 $>/ase/juce-linux.o:	$(call INCLUDE_PCH, trkn/juce.hh )
