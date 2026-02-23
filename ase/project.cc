@@ -288,6 +288,8 @@ ProjectImpl::ProjectImpl()
   if (tracks_.empty())
     create_track (); // ensure Master track
 
+  edit_->getUndoManager().clearUndoHistory();
+
   /* TODO: MusicalTuning
    * group = _("Tuning");
    * Prop ("musical_tuning", _("Musical Tuning"), _("Tuning"), MusicalTuning::OD_12_TET, {
@@ -385,6 +387,7 @@ ProjectImpl::create (const String &projectname)
   ProjectImplP project = ProjectImpl::make_shared();
   g_projects.push_back (project);
   project->name (projectname);
+  project->edit_->getUndoManager().clearUndoHistory();
   return project;
 }
 
@@ -763,170 +766,114 @@ ProjectImpl::match_serialized (const String &regex, int group)
   return Re::grep (regex, json, group);
 }
 
-UndoScope::UndoScope (ProjectImplP projectp) :
-  projectp_ (projectp)
+UndoScope::UndoScope (ProjectImplP projectp, const String &scopename) :
+  projectp_ (projectp),
+  scopename_ (scopename)
 {
   assert_return (projectp);
-  projectp->undo_scopes_open_++;
+  assert_return (projectp->edit_);
+  projectp->edit_->getUndoManager().beginNewTransaction (juce::String (scopename));
 }
 
 UndoScope::~UndoScope()
 {
-  assert_return (projectp_->undo_scopes_open_);
-  projectp_->undo_scopes_open_--;
-}
-
-void
-UndoScope::operator+= (const VoidF &func)
-{
-  projectp_->push_undo (func);
+  assert_return (projectp_);
+  assert_return (projectp_->edit_);
+  projectp_->edit_->getUndoManager().beginNewTransaction();
 }
 
 UndoScope
 ProjectImpl::undo_scope (const String &scopename)
 {
   assert_warn (scopename != "");
-  const size_t old_undo = undostack_.size();
-  const size_t old_redo = redostack_.size();
-  UndoScope undoscope = add_undo_scope (scopename);
-  if (undostack_.size() > old_undo && redostack_.size())
-    redostack_.clear();
-  if ((!old_undo ^ !undostack_.size()) || (!old_redo ^ !redostack_.size()))
-    emit_notify ("dirty");
-  return undoscope;
+  return UndoScope (shared_ptr_cast<ProjectImpl> (this), scopename);
 }
 
 UndoScope
 ProjectImpl::add_undo_scope (const String &scopename)
 {
-  UndoScope undoscope (shared_ptr_cast<ProjectImpl> (this)); // undo_scopes_open_ += 1
-  assert_return (scopename != "", undoscope);
-  if (undo_scopes_open_ == 1 && (undo_groups_open_ == 0 || undo_group_name_.size()))
-    {
-      undostack_.push_back ({ nullptr, undo_group_name_.empty() ? scopename : undo_group_name_ });
-      undo_group_name_ = "";
-    }
-  return undoscope;
-}
-
-void
-ProjectImpl::push_undo (const VoidF &func)
-{
-  undostack_.push_back ({ func, "" });
-  if (undostack_.size() == 1)
-    emit_notify ("dirty");
+  return UndoScope (shared_ptr_cast<ProjectImpl> (this), scopename);
 }
 
 void
 ProjectImpl::undo ()
 {
-  assert_return (undo_scopes_open_ == 0 && undo_groups_open_ == 0);
-  return_unless (!undostack_.empty());
-  std::vector<VoidF> funcs;
-  while (!undostack_.empty() && undostack_.back().func)
-    {
-      funcs.push_back (undostack_.back().func);
-      undostack_.pop_back();
-    }
-  assert_return (!undostack_.empty() && undostack_.back().func == nullptr); // must contain scope name
-  const String scopename = undostack_.back().name;
-  UDEBUG ("Undo: steps=%d scope: %s\n", funcs.size(), scopename);
-  undostack_.pop_back(); // pop scope name
-  // swap undo/redo stacks, run undo steps and scope redo
-  const bool redostack_was_empty = redostack_.empty();
-  undostack_.swap (redostack_);
-  {
-    auto undoscope = add_undo_scope (scopename); // preserves redostack_
-    for (const auto &func : funcs)
-      func();
-  }
-  undostack_.swap (redostack_);
-  if (redostack_was_empty || undostack_.empty())
+  return_unless (!!edit_);
+  const bool had_undo = edit_->getUndoManager().canUndo();
+  edit_->getUndoManager().undo();
+  if (had_undo)
     emit_notify ("dirty");
 }
 
 bool
 ProjectImpl::can_undo ()
 {
-  return undostack_.size() > 0;
+  return_unless (!!edit_, false);
+  return edit_->getUndoManager().canUndo();
 }
 
 void
 ProjectImpl::redo ()
 {
-  assert_return (undo_scopes_open_ == 0 && undo_groups_open_ == 0);
-  return_unless (!redostack_.empty());
-  std::vector<VoidF> funcs;
-  while (!redostack_.empty() && redostack_.back().func)
-    {
-      funcs.push_back (redostack_.back().func);
-      redostack_.pop_back();
-    }
-  assert_return (!redostack_.empty() && redostack_.back().func == nullptr); // must contain scope name
-  const String scopename = redostack_.back().name;
-  UDEBUG ("Undo: steps=%d scope: %s\n", funcs.size(), scopename);
-  redostack_.pop_back(); // pop scope name
-  // run redo steps with undo scope
-  const bool undostack_was_empty = undostack_.empty();
-  {
-    auto undoscope = add_undo_scope (scopename); // preserves redostack_
-    for (const auto &func : funcs)
-      func();
-  }
-  if (undostack_was_empty || redostack_.empty())
+  return_unless (!!edit_);
+  const bool had_redo = edit_->getUndoManager().canRedo();
+  edit_->getUndoManager().redo();
+  if (had_redo)
     emit_notify ("dirty");
 }
 
 bool
 ProjectImpl::can_redo ()
 {
-  return redostack_.size() > 0;
+  return_unless (!!edit_, false);
+  return edit_->getUndoManager().canRedo();
+}
+
+double
+ProjectImpl::get_length () const
+{
+  return_unless (!!edit_, 0.0);
+  return edit_->getLength().inSeconds();
+}
+
+double
+ProjectImpl::get_master_volume () const
+{
+  return_unless (!!edit_, 0.0);
+  auto volPlugin = edit_->getMasterVolumePlugin();
+  return_unless (!!volPlugin, 0.0);
+  return volPlugin->getVolumeDb();
+}
+
+void
+ProjectImpl::set_master_volume (double db)
+{
+  return_unless (!!edit_);
+  auto volPlugin = edit_->getMasterVolumePlugin();
+  return_unless (!!volPlugin);
+  volPlugin->setVolumeDb (db);
 }
 
 void
 ProjectImpl::group_undo (const String &undoname)
 {
-  assert_return (undoname != "");
-  undo_groups_open_++;
-  if (undo_groups_open_ == 1)
-    undo_group_name_ = undoname;
-  /* Opened undo groups cause:
-   * a) rename of the first opened undo scope
-   * b) merging of undo scopes
-   * c) block undo(), redo() calls
-   * We avoid group state tracking through IPC boundaries.
-   */
+  return_unless (!!edit_);
+  edit_->getUndoManager().beginNewTransaction (juce::String (undoname));
 }
 
 void
 ProjectImpl::ungroup_undo ()
 {
-  assert_return (undo_groups_open_ > 0);
-  undo_groups_open_--;
-  if (!undo_groups_open_)
-    undo_group_name_ = "";
+  return_unless (!!edit_);
+  edit_->getUndoManager().beginNewTransaction();
 }
 
 void
 ProjectImpl::clear_undo ()
 {
-  assert_warn (undo_scopes_open_ == 0 && undo_groups_open_ == 0);
-  undostack_.clear();
-  redostack_.clear();
+  return_unless (!!edit_);
+  edit_->getUndoManager().clearUndoHistory();
   emit_notify ("dirty");
-}
-
-size_t ProjectImpl::undo_mem_counter = 0;
-
-size_t
-ProjectImpl::undo_size_guess () const
-{
-  size_t count = undostack_.size();
-  count += redostack_.size();
-  size_t item = sizeof (UndoFunc);
-  item += sizeof (std::shared_ptr<void>); // undofunc selfp
-  item += 4 * sizeof (uint64);            // undofunc arguments: double ClipNote struct
-  return count * item + undo_mem_counter;
 }
 
 AudioProcessorP
@@ -945,13 +892,15 @@ ProjectImpl::master_processor () const
 void
 ProjectImpl::set_bpm (double newbpm)
 {
+  return_unless (!!edit_);
   const double nbpm = CLAMP (newbpm, MIN_BPM, MAX_BPM);
-  if (tick_sig_.bpm() != nbpm) {
+  auto &tempoSeq = edit_->tempoSequence;
+  auto *tempo = tempoSeq.getTempo (0);
+  if (tempo && tempo->getBpm() != nbpm) {
+    tempo->setBpm (nbpm);
     tick_sig_.set_bpm (nbpm);
-    update_tempo();
-  }
-  if (newbpm != tick_sig_.bpm())
     bpm.notify();
+  }
 }
 
 double

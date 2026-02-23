@@ -39,6 +39,14 @@ public:
   DeviceInfo      device_info       () override;
   ProjectImpl*    project           () const;
   bool            is_master         () const override      { return MASTER_TRACK & gadget_flags(); }
+  bool            is_muted          () const override;
+  void            set_muted         (bool muted) override;
+  bool            is_solo           () const override;
+  void            set_solo          (bool solo) override;
+  double          get_volume        () const override;
+  void            set_volume        (double db) override;
+  double          get_pan           () const override;
+  void            set_pan           (double pan) override;
   int32           midi_channel      () const override      { return midi_channel_; }
   void            midi_channel      (int32 midichannel) override;
   ClipS           launcher_clips    () override;

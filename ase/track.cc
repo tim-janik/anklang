@@ -300,6 +300,74 @@ TrackImpl::midi_channel (int32 midichannel) // TODO: implement
   emit_notify ("midi_channel");
 }
 
+bool
+TrackImpl::is_muted () const
+{
+  if (auto t = track_.get())
+    return t->isMuted (false);
+  return false;
+}
+
+void
+TrackImpl::set_muted (bool muted)
+{
+  if (auto t = track_.get())
+    t->setMute (muted);
+}
+
+bool
+TrackImpl::is_solo () const
+{
+  if (auto t = track_.get())
+    return t->isSolo (false);
+  return false;
+}
+
+void
+TrackImpl::set_solo (bool solo)
+{
+  if (auto t = track_.get())
+    t->setSolo (solo);
+}
+
+double
+TrackImpl::get_volume () const
+{
+  if (auto t = track_.get())
+    if (auto at = dynamic_cast<te::AudioTrack*> (t))
+      if (auto vol = at->getVolumePlugin())
+        return vol->getVolumeDb();
+  return 0.0;
+}
+
+void
+TrackImpl::set_volume (double db)
+{
+  if (auto t = track_.get())
+    if (auto at = dynamic_cast<te::AudioTrack*> (t))
+      if (auto vol = at->getVolumePlugin())
+        vol->setVolumeDb (db);
+}
+
+double
+TrackImpl::get_pan () const
+{
+  if (auto t = track_.get())
+    if (auto at = dynamic_cast<te::AudioTrack*> (t))
+      if (auto vol = at->getVolumePlugin())
+        return vol->getPan();
+  return 0.0;
+}
+
+void
+TrackImpl::set_pan (double pan)
+{
+  if (auto t = track_.get())
+    if (auto at = dynamic_cast<te::AudioTrack*> (t))
+      if (auto vol = at->getVolumePlugin())
+        vol->setPan (pan);
+}
+
 static constexpr const uint MAX_LAUNCHER_CLIPS = 8;
 
 ClipS

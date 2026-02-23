@@ -30,6 +30,11 @@ ASE_TEST_LIST := \
   nested_cotask_test \
   path_tests \
   project_creation \
+  project_length \
+  project_master_volume \
+  project_playback_state \
+  project_track_management \
+  project_undo_redo \
   promise_already_resolved_test \
   promise_exception_test \
   promise_int64_test \
@@ -46,6 +51,9 @@ ASE_TEST_LIST := \
   sortnet_tests \
   string_tests \
   test_serializable_hierarchy \
+  track_mute_solo \
+  track_name \
+  track_volume_pan \
   transport_tests \
   unicode_displayfs_tests \
   unicode_tests \

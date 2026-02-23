@@ -727,12 +727,36 @@ export class Track // Ase::Track
 {
   constructor ($id)
   { super ($id); if (new.target === Track) Jsonipc.ofreeze (this); }
+  get volume (): number
+  { return Jsonipc.get_reactive_prop.call (this, "volume", 0.0); }
+  set volume (v: number)
+  { Jsonipc.send ('set/' + 'volume', [this, v]); }
+  get pan (): number
+  { return Jsonipc.get_reactive_prop.call (this, "pan", 0.0); }
+  set pan (v: number)
+  { Jsonipc.send ('set/' + 'pan', [this, v]); }
   get midi_channel (): number
   { return Jsonipc.get_reactive_prop.call (this, "midi_channel", 0); }
   set midi_channel (v: number)
   { Jsonipc.send ('set/' + 'midi_channel', [this, v]); }
   is_master (): Promise<boolean>
   { return Jsonipc.send ("is_master", [this]); }
+  is_muted (): Promise<boolean>
+  { return Jsonipc.send ("is_muted", [this]); }
+  set_muted (arg1: boolean): Promise<void>
+  { return Jsonipc.send ("set_muted", [this, arg1]); }
+  is_solo (): Promise<boolean>
+  { return Jsonipc.send ("is_solo", [this]); }
+  set_solo (arg1: boolean): Promise<void>
+  { return Jsonipc.send ("set_solo", [this, arg1]); }
+  get_volume (): Promise<number>
+  { return Jsonipc.send ("get_volume", [this]); }
+  set_volume (arg1: number): Promise<void>
+  { return Jsonipc.send ("set_volume", [this, arg1]); }
+  get_pan (): Promise<number>
+  { return Jsonipc.send ("get_pan", [this]); }
+  set_pan (arg1: number): Promise<void>
+  { return Jsonipc.send ("set_pan", [this, arg1]); }
   launcher_clips (): Promise<Clip[]>
   { return Jsonipc.send ("launcher_clips", [this]); }
   access_device (): Promise<Device>
@@ -777,6 +801,10 @@ export class Project // Ase::Project
   { return Jsonipc.get_reactive_prop.call (this, "denominator", 0.0); }
   set denominator (v: number)
   { Jsonipc.send ('set/' + 'denominator', [this, v]); }
+  get master_volume (): number
+  { return Jsonipc.get_reactive_prop.call (this, "master_volume", 0.0); }
+  set master_volume (v: number)
+  { Jsonipc.send ('set/' + 'master_volume', [this, v]); }
   set_bpm (arg1: number): Promise<void>
   { return Jsonipc.send ("set_bpm", [this, arg1]); }
   get_bpm (): Promise<number>
@@ -829,6 +857,12 @@ export class Project // Ase::Project
   { return Jsonipc.send ("redo", [this]); }
   can_redo (): Promise<boolean>
   { return Jsonipc.send ("can_redo", [this]); }
+  get_length (): Promise<number>
+  { return Jsonipc.send ("get_length", [this]); }
+  get_master_volume (): Promise<number>
+  { return Jsonipc.send ("get_master_volume", [this]); }
+  set_master_volume (arg1: number): Promise<void>
+  { return Jsonipc.send ("set_master_volume", [this, arg1]); }
   match_serialized (arg1: string, arg2: number): Promise<string>
   { return Jsonipc.send ("match_serialized", [this, arg1, arg2]); }
 };

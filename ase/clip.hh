@@ -25,14 +25,6 @@ private:
   std::unique_ptr<ClipStateListener> state_listener_;
   EventsById notes_;
   using OrderedEventsV = OrderedEventList<ClipNote,CmpNoteTicks>;
-  struct EventImage {
-    String cbuffer;
-    static_assert (std::is_trivially_copyable<ClipNoteS::value_type>::value);
-    EventImage (const ClipNoteS &clipnotes);
-    ~EventImage();
-  };
-  using EventImageP = std::shared_ptr<EventImage>;
-  void          apply_undo     (const EventImage &image, const String &undogroup);
   static size_t collapse_notes (EventsById &notes, bool preserve_selected);
 public:
   class Generator;
@@ -52,8 +44,6 @@ public:
   using OrderedEventsP = OrderedEventsV::ConstP;
   OrderedEventsP tick_events    () const;
   ProjectImpl*   project        () const;
-  void           push_undo      (const ClipNoteS &clipnotes, const String &undogroup);
-  UndoScope      undo_scope     (const String &scopename) { return project()->undo_scope (scopename); }
   int64          start_tick     () const override;
   int64          stop_tick      () const override;
   void           assign_range   (int64 starttick, int64 stoptick) override;
