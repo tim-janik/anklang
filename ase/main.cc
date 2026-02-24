@@ -10,6 +10,7 @@
 #include "loft.hh"
 #include "compress.hh"
 #include "webui.hh"
+#include "server.hh"
 #include "internal.hh"
 #include "testing.hh"
 
@@ -505,6 +506,9 @@ main (int argc, char *argv[])
   // load preferences unless --norc was given
   if (!App.norc)
     Preference::load_preferences (true);
+
+  // Ensure Ase server exists
+  ServerImpl::instancep();
 
   // tracktion initialisation
   if (!trkn_init (argc, argv, App.no_devices))
