@@ -86,8 +86,11 @@ public:
   void
   valueTreePropertyChanged (juce::ValueTree &vtree, const juce::Identifier &id) override
   {
-    if (edit_ && vtree == edit_->state && id == tracktion_engine::IDs::name)
+    return_unless (project_.edit_);
+    if (id == tracktion_engine::IDs::name) // vtree == edit_->state
       project_.emit_notify ("name");
+    if (id == tracktion_engine::IDs::bpm) // vtree == edit_->tempoSequence.getTempo (0)->state
+      project_.emit_notify ("bpm");
   }
   void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override {}
   void valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree&, int) override {}
