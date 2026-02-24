@@ -174,7 +174,7 @@ ase/tests/TestList.g.mk:	# any deps here are forced to be rebuilt during Makefil
 	$Q cat $(ase/tests/TestList.g.INPUTS) | \
 		grep -Eo '^\s*TEST_\w+ ?\((\w+)\)' | \
 		sed 's/.*(/  /; s/)/ \\/' | \
-		sort	>>$@.tmp
+		sort -d		>>$@.tmp
 	$Q mv $@.tmp $@
 ifneq (,$(shell find $(ase/tests/TestList.g.INPUTS) -newer ase/tests/TestList.g.mk))
 .PHONY: ase/tests/TestList.g.mk		# update generated file without forcing rebuild of INPUTS
@@ -211,7 +211,7 @@ ase/PchList.g.mk:	# any deps here are forced to be rebuilt during Makefile parsi
 	$Q grep -l '^#include "trkn/tracktion.hh"' \
 		$(ase/PchList.g.INPUTS) | \
 		sed -r 's/(.*)/  \1 \\/' | \
-		sort	>> $@.tmp
+		sort -d		>> $@.tmp
 	$Q mv $@.tmp $@
 ifneq (,$(shell find $(ase/PchList.g.INPUTS) -newer ase/PchList.g.mk))
 .PHONY: ase/PchList.g.mk	# update generated file without forcing rebuild of INPUTS

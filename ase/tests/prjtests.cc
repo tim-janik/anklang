@@ -1,5 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include <ase/project.hh>
+#include <ase/clip.hh>
+#include <ase/track.hh>
 #include <ase/testing.hh>
 
 namespace { // Anon
@@ -13,11 +15,49 @@ project_creation()
   TASSERT (project);
   project->_activate();
 
-  // Verify basic properties (mapping to te::Edit)
+  // Test BPM undo/redo
+  const double initial_bpm = project->bpm.get();
+  TASSERT (initial_bpm >= 10.0 && initial_bpm <= 999.0);
+  // printerr ("%s:%u: bpm=%f\n", __FILE__, __LINE__, project->get_bpm());
+
   // Verify basic properties (mapping to te::Edit)
   project->bpm.set (130.0);
   TASSERT (std::abs (project->bpm.get() - 130.0) < 0.001);
   TASSERT (project->name() == "TestProject");
+
+  // Perform an undoable operation using undo_scope
+  project->bpm.set (123.0);
+
+  // Verify BPM was changed
+  TASSERT (std::abs (project->bpm.get() - 123.0) < 0.001);
+
+  // Now undo should be available
+  TASSERT (project->can_undo());
+  TASSERT (!project->can_redo());
+
+  // Perform undo
+  project->undo();
+  TASSERT (!project->can_undo());
+  TASSERT (project->can_redo());
+
+  // Verify BPM was restored to initial value
+  TASSERT (std::abs (project->bpm.get() - initial_bpm) < 0.001);
+
+  // Perform redo
+  project->redo();
+  TASSERT (project->can_undo());
+  TASSERT (!project->can_redo());
+
+  // Verify BPM was restored to 123
+  TASSERT (std::abs (project->bpm.get() - 123.0) < 0.001);
+
+  // Perform undo again
+  project->undo();
+  TASSERT (!project->can_undo());
+  TASSERT (project->can_redo());
+
+  // Verify BPM is back to initial value
+  TASSERT (std::abs (project->bpm.get() - initial_bpm) < 0.001);
 
   // Clean up
   project->_deactivate();
@@ -95,42 +135,6 @@ project_track_management()
   project->discard();
 }
 TEST_ADD (project_track_management);
-
-static void
-project_undo_redo()
-{
-  ProjectImplP project = ProjectImpl::create ("UndoTest");
-  TASSERT (project);
-  project->_activate();
-
-  // Initially, no undo/redo should be available
-  TASSERT (!project->can_undo());
-  TASSERT (!project->can_redo());
-
-  // Perform an undoable operation using undo_scope
-  {
-    auto scope = project->undo_scope ("Change BPM");
-    project->bpm.set (140.0);
-  }
-
-  // Now undo should be available
-  TASSERT (project->can_undo());
-  TASSERT (!project->can_redo());
-
-  // Perform undo
-  project->undo();
-  TASSERT (!project->can_undo());
-  TASSERT (project->can_redo());
-
-  // Perform redo
-  project->redo();
-  TASSERT (project->can_undo());
-  TASSERT (!project->can_redo());
-
-  project->_deactivate();
-  project->discard();
-}
-TEST_ADD (project_undo_redo);
 
 static void
 project_playback_state()
@@ -235,5 +239,95 @@ track_name()
   project->discard();
 }
 TEST_ADD (track_name);
+
+static void
+clip_creation()
+{
+  ProjectImplP project = ProjectImpl::create ("ClipTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
+  TASSERT (trackimpl);
+
+  ClipImplP clip = trackimpl->create_midi_clip ("TestClip", 0.0, 4.0);
+  TASSERT (clip);
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (clip_creation);
+
+static void
+clip_notes()
+{
+  ProjectImplP project = ProjectImpl::create ("ClipNotesTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
+  TASSERT (trackimpl);
+
+  ClipImplP clip = trackimpl->create_midi_clip ("NotesClip", 0.0, 4.0);
+  TASSERT (clip);
+
+  ClipNoteS notes = clip->list_all_notes();
+  TASSERT (notes.empty());
+
+  ClipNote note;
+  note.id = -1;
+  note.key = 60;
+  note.channel = 0;
+  note.tick = 0;
+  note.duration = 960;
+  note.velocity = 0.8f;
+
+  ClipNoteS batch;
+  batch.push_back (note);
+  clip->change_batch (batch, "Add Note");
+
+  notes = clip->list_all_notes();
+  TASSERT (notes.size() == 1);
+  TASSERT (notes[0].key == 60);
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (clip_notes);
+
+static void
+clip_range()
+{
+  ProjectImplP project = ProjectImpl::create ("ClipRangeTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
+  TASSERT (trackimpl);
+
+  ClipImplP clip = trackimpl->create_midi_clip ("RangeClip", 0.0, 4.0);
+  TASSERT (clip);
+
+  int64 start = clip->start_tick();
+  int64 stop = clip->stop_tick();
+  TASSERT (start >= 0);
+  TASSERT (stop > start);
+
+  clip->assign_range (start + 960, stop + 960);
+  TASSERT (clip->start_tick() == start + 960);
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (clip_range);
 
 } // Anon

@@ -8,6 +8,9 @@ ASE_TEST_LIST := \
   atomic_valuestack_test \
   blake3_tests \
   callback_list_test \
+  clip_creation \
+  clip_notes \
+  clip_range \
   cotask_int64_result_test \
   cotask_string_result_test \
   cotask_void_test \
@@ -34,7 +37,6 @@ ASE_TEST_LIST := \
   project_master_volume \
   project_playback_state \
   project_track_management \
-  project_undo_redo \
   promise_already_resolved_test \
   promise_exception_test \
   promise_int64_test \

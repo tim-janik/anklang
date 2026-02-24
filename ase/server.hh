@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_SERVER_HH__
-#define __ASE_SERVER_HH__
+#pragma once
 
 #include <ase/gadget.hh>
 #include <ase/memory.hh>
@@ -56,5 +55,3 @@ telemetry_field (const String &name, const T *field)
 }
 
 } // Ase
-
-#endif // __ASE_SERVER_HH__
