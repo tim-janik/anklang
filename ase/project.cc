@@ -809,7 +809,7 @@ ProjectImpl::get_master_volume () const
   return_unless (!!edit_, 0.0);
   auto volPlugin = edit_->getMasterVolumePlugin();
   return_unless (!!volPlugin, 0.0);
-  return volPlugin->getVolumeDb();
+  return te::volumeFaderPositionToDB (volPlugin->volume.get());
 }
 
 void
@@ -818,7 +818,9 @@ ProjectImpl::set_master_volume (double db)
   return_unless (!!edit_);
   auto volPlugin = edit_->getMasterVolumePlugin();
   return_unless (!!volPlugin);
-  volPlugin->setVolumeDb (db);
+  const float sliderPos = te::decibelsToVolumeFaderPosition (db);
+  volPlugin->volume = sliderPos;
+  volPlugin->volParam->updateFromAttachedValue();
 }
 
 void
