@@ -10,7 +10,6 @@
 #include "utils.hh"
 #include "project.hh"
 #include "path.hh"
-#include "clapdevice.hh"
 #include "sndfile.hh"
 #include "wave.hh"
 #include "internal.hh"
@@ -70,12 +69,6 @@ String
 ServerImpl::get_flac_version ()
 {
   return wave_writer_flac_version();
-}
-
-String
-ServerImpl::get_clap_version()
-{
-  return ClapDeviceImpl::clap_version();
 }
 
 String
@@ -184,7 +177,7 @@ Server::url_crawler (const String &url)
 String
 Server::engine_stats ()
 {
-  const String s = App.engine->engine_stats (0);
+  const String s = "Unused"; // TODO: get stats from trkn
   printerr ("Server::engine_stats:\n%s\n", s);
   return s;
 }

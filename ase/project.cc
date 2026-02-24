@@ -4,7 +4,6 @@
 #include "project.hh"
 #include "jsonipc/jsonipc.hh"
 #include "main.hh"
-#include "processor.hh"
 #include "compress.hh"
 #include "path.hh"
 #include "unicode.hh"
@@ -285,9 +284,6 @@ ProjectImpl::ProjectImpl()
   if (!edit_ || !transport_listener_ || !test_setup (*edit_))
     fatal_error ("failed to create tracktion::engine::edit");
 
-  if (tracks_.empty())
-    create_track (); // ensure Master track
-
   edit_->getUndoManager().clearUndoHistory();
 
   /* TODO: MusicalTuning
@@ -407,16 +403,14 @@ ProjectImpl::_activate ()
 {
   assert_return (!is_active());
   DeviceImpl::_activate();
-  for (auto &track : tracks_)
-    track->_activate();
+  // TODO: still needed for trkn?
 }
 
 void
 ProjectImpl::_deactivate ()
 {
   assert_return (is_active());
-  for (auto trackit = tracks_.rbegin(); trackit != tracks_.rend(); ++trackit)
-    (*trackit)->_deactivate();
+  // TODO: still needed for trkn?
   DeviceImpl::_deactivate();
 }
 
@@ -724,34 +718,7 @@ ProjectImpl::loader_resolve (const String &hexhash)
 void
 ProjectImpl::serialize (WritNode &xs)
 {
-  // provide asset_hashes early on
-  if (xs.in_load() && storage_ && storage_->asset_hashes.empty())
-    xs["filehashes"] & storage_->asset_hashes;
-  // serrialize children
-  DeviceImpl::serialize (xs);
-  // load tracks
-  if (xs.in_load())
-    for (auto &xc : xs["tracks"].to_nodes())
-      {
-        TrackImplP trackp = tracks_.back();     // master_track
-        if (!xc["mastertrack"].as_int())
-          trackp = shared_ptr_cast<TrackImpl> (create_track());
-        xc & *trackp;
-      }
-  // save tracks
-  if (xs.in_save())
-    {
-      for (auto &trackp : tracks_)
-        {
-          WritNode xc = xs["tracks"].push();
-          xc & *trackp;
-          if (trackp == tracks_.back())           // master_track
-            xc.front ("mastertrack") << true;
-        }
-      // store external reference hashes *after* all other objects
-      if (storage_ && storage_->asset_hashes.size())
-        xs["filehashes"] & storage_->asset_hashes;
-    }
+  // TODO: use tracktion_engine saving & loading
 }
 
 String
@@ -876,19 +843,6 @@ ProjectImpl::clear_undo ()
   emit_notify ("dirty");
 }
 
-AudioProcessorP
-ProjectImpl::master_processor () const
-{
-  return_unless (!tracks_.empty(), nullptr);
-  TrackP master = const_cast<ProjectImpl*> (this)->master_track();
-  return_unless (master, nullptr);
-  DeviceP device = master->access_device();
-  return_unless (device, nullptr);
-  AudioProcessorP proc = device->_audio_processor();
-  return_unless (proc, nullptr);
-  return proc;
-}
-
 void
 ProjectImpl::set_bpm (double newbpm)
 {
@@ -918,7 +872,6 @@ ProjectImpl::set_numerator (double num)
   auto *timeSig = tempoSeq.getTimeSig (0);
   if (timeSig && timeSig->numerator != num) {
     timeSig->numerator = num;
-    update_tempo();
     numerator.notify();
   }
 }
@@ -939,7 +892,6 @@ ProjectImpl::set_denominator (double den)
   auto *timeSig = tempoSeq.getTimeSig (0);
   if (timeSig && timeSig->denominator != den) {
     timeSig->denominator = den;
-    update_tempo();
     denominator.notify();
   }
 }
@@ -950,27 +902,6 @@ ProjectImpl::get_denominator () const
   return_unless (!!edit_, 4.0);
   auto *timeSig = edit_->tempoSequence.getTimeSig (0);
   return timeSig ? timeSig->denominator : 4.0;
-}
-
-void
-ProjectImpl::update_tempo ()
-{
-  AudioProcessorP proc = master_processor();
-  return_unless (proc && edit_);
-
-  auto &tempoSeq = edit_->tempoSequence;
-  auto *tempo = tempoSeq.getTempo (0);
-  auto *timeSig = tempoSeq.getTimeSig (0);
-
-  double bpm = tempo ? tempo->getBpm() : 120.0;
-  int numerator = timeSig ? timeSig->numerator : 4;
-  int denominator = timeSig ? timeSig->denominator : 4;
-
-  auto job = [proc, bpm, numerator, denominator] () {
-    AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
-    transport.tempo (bpm, numerator, denominator);
-  };
-  proc->engine().async_jobs += job;
 }
 
 void
@@ -1035,9 +966,6 @@ ProjectImpl::remove_track (Track &child)
   assert_return (child._parent() == this, false);
   TrackImplP track = shared_ptr_cast<TrackImpl> (&child);
   return_unless (track && !track->is_master(), false);
-  clear_undo(); // TODO: implement undo for remove_track
-  if (!Aux::erase_first (tracks_, [track] (TrackP t) { return t == track; }))
-    return false;
   // destroy Track
   track->_set_parent (nullptr);
   emit_event ("track", "remove");
@@ -1061,10 +989,8 @@ ProjectImpl::all_tracks ()
 ssize_t
 ProjectImpl::track_index (const Track &child) const
 {
-  for (size_t i = 0; i < tracks_.size(); i++)
-    if (&child == tracks_[i].get())
-      return i;
-  return -1;
+  // OLD: for (size_t i = 0; i < tracks_.size(); i++) if (&child == tracks_[i].get()) return i; return -1;
+  return {};    // TODO: use trkn to find out
 }
 
 int64_t
@@ -1091,26 +1017,13 @@ ProjectImpl::bar_ticks () const
 TrackP
 ProjectImpl::master_track ()
 {
-  assert_return (!tracks_.empty(), nullptr);
-  return tracks_.back();
+  return {};    // TODO: use trkn to implement this
 }
 
 DeviceInfo
 ProjectImpl::device_info ()
 {
   return {}; // TODO: DeviceInfo
-}
-
-AudioProcessorP
-ProjectImpl::_audio_processor () const
-{
-  return {}; // TODO: AudioProcessorP
-}
-
-void
-ProjectImpl::_set_event_source (AudioProcessorP esource)
-{
-  // TODO: _set_event_source
 }
 
 } // Ase

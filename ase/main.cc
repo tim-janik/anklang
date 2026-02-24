@@ -5,7 +5,6 @@
 #include "utils.hh"
 #include "jsonapi.hh"
 #include "driver.hh"
-#include "engine.hh"
 #include "project.hh"
 #include "loft.hh"
 #include "compress.hh"
@@ -53,50 +52,6 @@ call_main_loop (const std::function<void()> &fun)
   main_loop->add (fun);
 }
 JobQueue main_jobs (call_main_loop);
-
-// == RtCall::Callable ==
-struct RtCallJob {
-  explicit RtCallJob (const RtCall &ucall) : call (ucall) {}
-  LoftPtr<RtCallJob>      loftptr;
-  std::atomic<RtCallJob*> next = nullptr;
-  RtCall                  call;
-};
-static inline std::atomic<RtCallJob*>&
-atomic_next_ptrref (RtCallJob *j)
-{
-  return j->next;
-}
-
-static AtomicIntrusiveStack<RtCallJob> main_rt_jobs_;
-RtJobQueue main_rt_jobs;
-
-void
-RtJobQueue::operator+= (const RtCall &call)
-{
-  LoftPtr<RtCallJob> loftptr = loft_make_unique<RtCallJob> (call);
-  RtCallJob *const calljob = &*loftptr;
-  calljob->loftptr = std::move (loftptr); // keeps itself alive
-  const bool was_empty = main_rt_jobs_.push (calljob);
-  if (was_empty)
-    main_loop_wakeup();
-}
-
-static bool
-main_rt_jobs_pending()
-{
-  return !main_rt_jobs_.empty();
-}
-
-static void
-main_rt_jobs_process()
-{
-  RtCallJob *calljob = main_rt_jobs_.pop_reversed();
-  while (calljob) {
-    LoftPtr<RtCallJob> loftptr = std::move (calljob->loftptr); // assume ownership
-    calljob = calljob->next;
-    loftptr->call.invoke();
-  }
-}
 
 // == MainConfig and arguments ==
 static void
@@ -555,27 +510,6 @@ main (int argc, char *argv[])
       return 0;
     }
 
-  // start audio engine
-  AudioEngine &audio_engine = make_audio_engine (main_loop_wakeup, 48000, SpeakerArrangement::STEREO);
-  main_app.engine = &audio_engine;
-  audio_engine.start_threads ();
-  /*const uint loopdispatcherid =*/
-  main_loop->exec_dispatcher ([&audio_engine] (const LoopState &state) -> bool {
-    switch (state.phase)
-      {
-      case LoopState::PREPARE:
-        return main_rt_jobs_pending() || audio_engine.ipc_pending();
-      case LoopState::CHECK:
-        return main_rt_jobs_pending() || audio_engine.ipc_pending();
-      case LoopState::DISPATCH:
-        audio_engine.ipc_dispatch();
-        main_rt_jobs_process();
-        return true;
-      default:
-        return false;
-      }
-  });
-
   // load projects
   ProjectImplP preload_project;
   for (const auto &filename : App.args)
@@ -639,16 +573,7 @@ main (int argc, char *argv[])
 
   // start output capturing
   if (App.outputfile)
-    {
-      std::shared_ptr<CallbackS> callbacks = std::make_shared<CallbackS>();
-      info ("Main: Start caputure: %s", App.outputfile);
-      App.engine->queue_capture_start (*callbacks, App.outputfile, true);
-      auto job = [callbacks] () {
-        for (const auto &callback : *callbacks)
-          callback();
-      };
-      App.engine->async_jobs += job;
-    }
+    ; // TODO: implement capturing
 
   // start auto play
   if (App.play_autostart && preload_project)
@@ -678,10 +603,7 @@ main (int argc, char *argv[])
   ProjectImpl::force_shutdown_all();
 
   // halt audio engine, join its threads, dispatch cleanups
-  audio_engine.set_project (nullptr);
-  audio_engine.stop_threads();
   main_loop->iterate_pending();
-  main_app.engine = nullptr;
 
   // shutdown tracktion *after* main loop stopped
   trkn_shutdown ();
@@ -712,52 +634,3 @@ main (int argc, char *argv[])
 #endif
   return r;
 }
-
-namespace { // Anon
-using namespace Ase;
-
-extern "C" __attribute__ ((__noinline__)) void
-tlog1 (const char *s)
-{
-  debug ("foo: %s+%d", s, 0x11111111);
-}
-
-extern "C" __attribute__ ((__noinline__)) void
-tlog2 (const char *s)
-{
-  debug ("foo: %s+%d", s, 0x11111111);
-}
-
-TEST_INTEGRITY (job_queue_tests);
-static void
-job_queue_tests()
-{
-  bool seen_engine_job = false, seen_deleter = false;
-  // enqueue job with deleter into engine
-  AudioEngine *e = App.engine;
-  std::shared_ptr<void> vp = { nullptr, [e,&seen_deleter] (void*) {
-    printerr ("  job_queue_tests: Run Deleter (in_engine=%d)\n", e->thread_id == std::this_thread::get_id());
-    seen_deleter = true;
-  } };
-  e->async_jobs += [e,vp,&seen_engine_job] () {
-    printerr ("  job_queue_tests: Run Handler (in_engine=%d)\n", e->thread_id == std::this_thread::get_id());
-    seen_engine_job = true;
-  };
-  vp.reset(); // required to allow deleter execution further down
-  // enqueue jobs into main loop
-  main_rt_jobs += RtCall ([]() { printerr ("  job_queue_tests: Hello %s!\n", "void()"); });
-  main_rt_jobs += RtCall ((void(*)(const char*)) [] (const char *a) { printerr ("  job_queue_tests: Hello %s!\n", a); }, "RtJobQueue");
-  struct Test1 { const char *a_; void print() { printerr ("  job_queue_tests: Hello %s!\n", a_); } };
-  static Test1 test1 { "MemFn" };
-  main_rt_jobs += RtCall (test1, &Test1::print);
-  // lame busy looping to give the engine a chance at the job queue
-  uint64 start_usecs = timestamp_realtime();
-  do {
-    usleep (1500);      // give the audio engine some time
-    main_loop->iterate (false);
-  } while (timestamp_realtime() < start_usecs + 1871 * 1000 && !seen_deleter);
-  assert_return (seen_engine_job == true);
-  assert_return (seen_deleter == true);
-}
-
-} // Anon

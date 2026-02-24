@@ -25,9 +25,6 @@ private:
 public:
   class Generator;
 protected:
-  TrackImpl *track_ = nullptr;
-  Connection ontrackchange_;
-  explicit ClipImpl         (TrackImpl &parent);
   explicit ClipImpl         (tracktion::Clip &clip);
   virtual ~ClipImpl         ();
   void     serialize        (WritNode &xs) override;

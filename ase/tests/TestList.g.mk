@@ -17,7 +17,6 @@ ASE_TEST_LIST := \
   crawler_tests \
   delay_promise_test \
   event_list_tests \
-  job_queue_tests \
   jsonapi_tests \
   levenshtein_tests \
   loft_allocator_tests \

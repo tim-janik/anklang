@@ -4,15 +4,15 @@
 devices/4ase.ccfiles ::=
 
 # subdir Makefiles add to devices/4ase.ccfiles
-include devices/blepsynth/Makefile.mk
-include devices/freeverb/Makefile.mk
-include devices/liquidsfz/Makefile.mk
-include devices/saturation/Makefile.mk
+# TODO: include devices/blepsynth/Makefile.mk
+# TODO: include devices/freeverb/Makefile.mk
+# TODO: include devices/liquidsfz/Makefile.mk
+# TODO: include devices/saturation/Makefile.mk
 
 # local sources
 devices/4ase.ccfiles += $(strip		\
-        devices/colorednoise.cc		\
 )
+# TODO: devices/colorednoise.cc
 
 # derive object files
 devices/4ase.objects ::= $(call BUILDDIR_O, $(devices/4ase.ccfiles))

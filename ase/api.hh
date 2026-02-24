@@ -217,8 +217,6 @@ protected:
 public:
   // internal
   Track*                  _track             () const;          ///< Find Track in parent ancestry.
-  virtual AudioProcessorP _audio_processor   () const = 0;      ///< Retrieve the corresponding AudioProcessor.
-  virtual void            _set_event_source  (AudioProcessorP esource) = 0;
   virtual void            _activate          () = 0;            ///< Add AudioProcessor to the Engine and start processing.
   virtual void            _deactivate        () = 0;            ///< Stop processing the corresponding AudioProcessor.
   virtual void            _disconnect_remove () = 0;            ///< Disconnect the device and remove all object references.
@@ -233,18 +231,6 @@ public:
   virtual bool       gui_supported () = 0;      ///< Has GUI display facilities.
   virtual bool       gui_visible   () = 0;      ///< Is GUI currently visible.
   Member<&Device::get_devices,&Device::set_devices> devices [[no_unique_address]];
-};
-
-/// Interface to access NativeDevice instances.
-class NativeDevice : public virtual Device {
-public:
-  // subdevice handling
-  virtual bool        is_combo_device   () = 0;                      ///< Retrieve wether this NativeDevice handles sub devices.
-  DeviceInfoS         list_device_types ();                          ///< List registered Device types with their unique uri.
-  virtual void        remove_device     (Device &sub) = 0;           ///< Remove a directly contained device.
-  virtual DeviceP     append_device     (const String &uri) = 0;     ///< Append a new device, see list_device_types().
-  virtual DeviceP     insert_device     (const String &uri,
-                                         Device &beforesibling) = 0; ///< Insert a new device, before `beforesibling`.
 };
 
 /// Part specific note event representation.
@@ -421,7 +407,6 @@ public:
   virtual String get_build_id       () = 0;     ///< Retrieve ASE build id.
   virtual String get_opus_version   () = 0;     ///< Retrieve Opus handler version.
   virtual String get_flac_version   () = 0;     ///< Retrieve FLAC handler version.
-  virtual String get_clap_version   () = 0;     ///< Retrieve CLAP support version.
   virtual String get_sndfile_version() = 0;     ///< Retrieve libsndfile support version.
   virtual String error_blurb          (Error error) const = 0;
   virtual String musical_tuning_label (MusicalTuning musicaltuning) const = 0;

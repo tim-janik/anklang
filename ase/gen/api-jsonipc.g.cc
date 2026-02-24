@@ -229,16 +229,6 @@ jsonipc_for_api_jsonipc_json()
     .set ("gui_visible", &::Ase::Device::gui_visible)
     ;
 
-  ::Jsonipc::Class< ::Ase::NativeDevice > class__Ase_NativeDevice;
-  class__Ase_NativeDevice
-    .inherit< ::Ase::Device >()
-    .set ("is_combo_device", &::Ase::NativeDevice::is_combo_device)
-    .set ("list_device_types", &::Ase::NativeDevice::list_device_types)
-    .set ("remove_device", &::Ase::NativeDevice::remove_device)
-    .set ("append_device", &::Ase::NativeDevice::append_device)
-    .set ("insert_device", &::Ase::NativeDevice::insert_device)
-    ;
-
   ::Jsonipc::Class< ::Ase::Clip > class__Ase_Clip;
   class__Ase_Clip
     .inherit< ::Ase::Gadget >()
@@ -344,7 +334,6 @@ jsonipc_for_api_jsonipc_json()
     .set ("get_build_id", &::Ase::Server::get_build_id)
     .set ("get_opus_version", &::Ase::Server::get_opus_version)
     .set ("get_flac_version", &::Ase::Server::get_flac_version)
-    .set ("get_clap_version", &::Ase::Server::get_clap_version)
     .set ("get_sndfile_version", &::Ase::Server::get_sndfile_version)
     .set ("error_blurb", &::Ase::Server::error_blurb)
     .set ("musical_tuning_label", &::Ase::Server::musical_tuning_label)
