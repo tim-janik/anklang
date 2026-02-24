@@ -60,8 +60,6 @@ DeviceImpl::extract_info (const String &aseid)
 void
 Device::remove_self ()
 {
-  Gadget *parent = _parent();
-  // TODO: device->remove_device (*this);
 }
 
 Track*

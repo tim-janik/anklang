@@ -25,7 +25,6 @@ class ProjectImpl final : public DeviceImpl, public virtual Project {
   std::unique_ptr<tracktion::Edit> edit_;
   std::unique_ptr<TransportListener> transport_listener_;
   ASE_DEFINE_MAKE_SHARED (ProjectImpl);
-  MusicalTuning musical_tuning_ = MusicalTuning::OD_12_TET;
   struct PStorage;
   PStorage *storage_ = nullptr;
   String saved_filename_;

@@ -14,9 +14,7 @@ class TrackImpl : public DeviceImpl, public virtual Track {
   SelectableWeakref<tracktion::Track> track_;
   std::unique_ptr<TrackStateListener> state_listener_;
   std::string  te_type_;
-  DeviceP      chain_, midi_prod_;
   uint         midi_channel_ = 0;
-  uint         is_folder_ : 1;
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
   virtual         ~TrackImpl        ();

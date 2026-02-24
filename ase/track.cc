@@ -72,55 +72,6 @@ TrackImpl::from_trkn (tracktion::Track &t)
   return trackp;
 }
 
-#if 0 // TODO: cleanup
-// Helper struct to hold UI data for your rendering engine
-struct TrackUIData
-{
-  juce::String name;
-  juce::String type;
-  juce::Colour colour;
-  int depth;
-  bool isFolder;
-  bool isMuted;
-  bool isSoloed;
-
-  // Audio specific (optional)
-  float volumeDb = 0.0f;
-  float pan = 0.0f;
-  juce::String inputName;
-  juce::String outputName;
-  void dummy()
-  {
-    TrackUIData data;
-    data.depth = depth;
-    data.name = t.getName();
-    data.colour = t.getColour();
-    data.isMuted = t.isMuted (true); // includeMutingByDestination
-    data.isSoloed = t.isSolo (true); // includeIndirectSolo
-    // Folder tracks might have a VCA plugin or Volume plugin
-    if (auto vol = ft->getVolumePlugin())
-      {
-        data.volumeDb = vol->getVolumeDb();
-        data.pan = vol->getPan();
-      }
-    // Access Volume/Pan via the VolumeAndPanPlugin
-    if (auto vol = at->getVolumePlugin())
-      {
-        data.volumeDb = vol->getVolumeDb();
-        data.pan = vol->getPan();
-      }
-    // Input Device Name
-    auto& waveIn = at->getWaveInputDevice();
-    if (waveIn.isEnabled())
-      data.inputName = waveIn.getName();
-    else
-      data.inputName = "No Input";
-    // Output Name
-    data.outputName = at->getOutput().getOutputName();
-  }
-};
-#endif
-
 TrackImpl::TrackImpl (tracktion::Track &track) :
   project_ (SelectableHandle::find_selectable_handle<ProjectImpl> (track.edit)),
   track_ (&track), te_type_ (trkn_track_type (track))
@@ -177,7 +128,6 @@ TrackImpl::fallback_name () const
 void
 TrackImpl::serialize (WritNode &xs)
 {
-  // TODO: use trkn
 }
 
 void
@@ -185,21 +135,17 @@ TrackImpl::_activate ()
 {
   assert_return (!is_active() && _parent());
   DeviceImpl::_activate();
-  midi_prod_->_activate();
-  chain_->_activate();
 }
 
 void
 TrackImpl::_deactivate ()
 {
   assert_return (is_active());
-  chain_->_deactivate();
-  midi_prod_->_deactivate();
   DeviceImpl::_deactivate();
 }
 
 void
-TrackImpl::midi_channel (int32 midichannel) // TODO: implement
+TrackImpl::midi_channel (int32 midichannel)
 {
   midichannel = CLAMP (midichannel, 0, 16);
   return_unless (midichannel != midi_channel_);
@@ -296,11 +242,11 @@ TrackImpl::clip_succession (const ClipImpl &clip) const
 DeviceP
 TrackImpl::access_device ()
 {
-  return chain_;
+  return nullptr;
 }
 
 MonitorP
-TrackImpl::create_monitor (int32 ochannel) // TODO: implement
+TrackImpl::create_monitor (int32 ochannel)
 {
   return nullptr;
 }
@@ -308,26 +254,13 @@ TrackImpl::create_monitor (int32 ochannel) // TODO: implement
 TelemetryFieldS
 TrackImpl::telemetry () const
 {
-#if 0  // TODO: implement telemtry from trkn for tracks
-  MidiLib::MidiProducerIfaceP midi_prod = std::dynamic_pointer_cast<MidiLib::MidiProducerIface> (midi_prod_->_audio_processor());
-  AudioChain::ProbeArray *probes = audio_chain->run_probes (true);
-  TelemetryFieldS v;
-  assert_return (midi_prod, v);
-  const MidiLib::MidiProducerIface::Position *const position = midi_prod->position();
-  v.push_back (telemetry_field ("current_clip", &position->current));
-  v.push_back (telemetry_field ("current_tick", &position->tick));
-  v.push_back (telemetry_field ("next_clip", &position->next));
-  v.push_back (telemetry_field ("dbspl0", &(*probes)[0].dbspl));
-  v.push_back (telemetry_field ("dbspl1", &(*probes)[1].dbspl));
-  return v;
-#endif
   return {};
 }
 
 DeviceInfo
 TrackImpl::device_info ()
 {
-  return {}; // TODO: DeviceInfo
+  return {};
 }
 
 // == TrackImpl::ClipScout ==
