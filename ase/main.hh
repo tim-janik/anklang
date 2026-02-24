@@ -13,7 +13,6 @@ namespace Ase {
 
 // == MainApp ==
 struct MainApp {
-  AudioEngine *engine = nullptr;
   String pcm_override, midi_override;
   WebSocketServer *web_socket_server = nullptr;
   const char         *outputfile = nullptr;
@@ -41,11 +40,6 @@ void             main_loop_autostop_mt ();
 
 /// Execute a job callback in the event loop.
 extern JobQueue main_jobs;
-
-/// Add a simple callback to the event loop, without using malloc (obstruction free).
-struct RtJobQueue { void operator+= (const RtCall&); };
-/// Queue a callback for the event loop without invoking malloc(), addition is obstruction free.
-extern RtJobQueue main_rt_jobs;
 
 } // Ase
 

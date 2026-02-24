@@ -24,7 +24,6 @@ class ProjectImpl final : public DeviceImpl, public virtual Project {
   class TransportListener;
   std::unique_ptr<tracktion::Edit> edit_;
   std::unique_ptr<TransportListener> transport_listener_;
-  std::vector<TrackImplP> tracks_;
   ASE_DEFINE_MAKE_SHARED (ProjectImpl);
   MusicalTuning musical_tuning_ = MusicalTuning::OD_12_TET;
   struct PStorage;
@@ -38,7 +37,6 @@ protected:
   virtual            ~ProjectImpl     ();
   void                foreach_track   (const std::function<bool(Track&,int)> &cb);
   void                serialize       (WritNode &xs) override;
-  void                update_tempo    ();
   Error               snapshot_project (String &json);
   String              match_serialized (const String &regex, int group) override;
   void                deactivate_edit ();
@@ -54,8 +52,6 @@ public:
   void                 _activate         () override;
   void                 _deactivate       () override;
   void                 discard           () override;
-  AudioProcessorP      _audio_processor  () const override;
-  void                 _set_event_source (AudioProcessorP esource) override;
   DeviceInfo           device_info       () override;
   UndoScope            undo_scope        (const String &scopename);
   void                 undo              () override;
@@ -87,7 +83,6 @@ public:
   Error                writer_add_file   (const String &fspath);
   Error                writer_collect    (const String &fspath, String *hexhashp);
   TelemetryFieldS      telemetry         () const override;
-  AudioProcessorP      master_processor  () const;
   ssize_t              track_index       (const Track &child) const;
   int64_t              bar_ticks         () const;
   static void          force_shutdown_all ();

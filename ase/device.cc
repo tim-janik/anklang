@@ -43,33 +43,16 @@ find_shared_by_ref (const std::vector<std::shared_ptr<E> > &v, const E &e)
 void
 DeviceImpl::_disconnect_remove ()
 {
-  AudioProcessorP proc = _audio_processor();
-  return_unless (proc);
-  AudioEngine *engine = &proc->engine();
-  auto job = [proc] () {
-    proc->enable_engine_output (false);
-    proc->disconnect_ibuses();
-    proc->disconnect_obuses();
-    proc->disconnect_event_input();
-    // TODO: do we need to remove this from parent container (combo)?
-  };
-  engine->async_jobs += job;
+  // to be removed
 }
 
 DeviceInfo
-DeviceImpl::extract_info (const String &aseid, const AudioProcessor::StaticInfo &static_info)
+DeviceImpl::extract_info (const String &aseid)
 {
-  AudioProcessorInfo pinfo;
-  static_info (pinfo);
   DeviceInfo info = {
     .uri          = aseid,
-    .name         = pinfo.label,
-    .category     = pinfo.category,
-    .description  = pinfo.description,
-    .website_url  = pinfo.website_url,
-    .creator_name = pinfo.creator_name,
-    .creator_url  = pinfo.creator_url,
   };
+  // to be removed
   return info;
 }
 
@@ -78,9 +61,7 @@ void
 Device::remove_self ()
 {
   Gadget *parent = _parent();
-  NativeDevice *device = dynamic_cast<NativeDevice*> (parent);
-  if (device)
-    device->remove_device (*this);
+  // TODO: device->remove_device (*this);
 }
 
 Track*

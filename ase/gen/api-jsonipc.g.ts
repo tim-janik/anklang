@@ -670,24 +670,6 @@ export class Device // Ase::Device
 };
 Jsonipc.classes["Ase::Device"] = Device;
 
-export class NativeDevice // Ase::NativeDevice
-  extends Jsonipc.classes["Ase::Device"]
-{
-  constructor ($id)
-  { super ($id); if (new.target === NativeDevice) Jsonipc.ofreeze (this); }
-  is_combo_device (): Promise<boolean>
-  { return Jsonipc.send ("is_combo_device", [this]); }
-  list_device_types (): Promise<DeviceInfo[]>
-  { return Jsonipc.send ("list_device_types", [this]); }
-  remove_device (arg1: Device): Promise<void>
-  { return Jsonipc.send ("remove_device", [this, arg1]); }
-  append_device (arg1: string): Promise<Device>
-  { return Jsonipc.send ("append_device", [this, arg1]); }
-  insert_device (arg1: string, arg2: Device): Promise<Device>
-  { return Jsonipc.send ("insert_device", [this, arg1, arg2]); }
-};
-Jsonipc.classes["Ase::NativeDevice"] = NativeDevice;
-
 export class Clip // Ase::Clip
   extends Jsonipc.classes["Ase::Gadget"]
 {
@@ -911,8 +893,6 @@ export class Server // Ase::Server
   { return Jsonipc.send ("get_opus_version", [this]); }
   get_flac_version (): Promise<string>
   { return Jsonipc.send ("get_flac_version", [this]); }
-  get_clap_version (): Promise<string>
-  { return Jsonipc.send ("get_clap_version", [this]); }
   get_sndfile_version (): Promise<string>
   { return Jsonipc.send ("get_sndfile_version", [this]); }
   error_blurb (arg1: Error): Promise<string>
