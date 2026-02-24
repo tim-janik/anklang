@@ -70,18 +70,10 @@ public:
 
 
 // == ClipImpl ==
-ClipImpl::ClipImpl (TrackImpl &parent)
-{
-  // Fallback for non-tracktion clips
-  track_ = &parent;
-}
-
 ClipImpl::ClipImpl (tracktion::Clip &clip) :
   clip_ (&clip)
 {
   state_listener_ = std::make_unique<ClipStateListener> (*this);
-  if (auto timpl = SelectableHandle::find_selectable_handle<TrackImpl> (*clip.getTrack()))
-    track_ = timpl;
 }
 
 ClipImplP
@@ -102,7 +94,11 @@ ClipImpl::~ClipImpl()
 ProjectImpl*
 ClipImpl::project () const
 {
-  return track_ ? track_->project() : nullptr;
+  if (auto c = clip_.get())
+    if (auto t = c->getTrack())
+      if (auto timpl = SelectableHandle::find_selectable_handle<TrackImpl> (*t))
+        return timpl->project();
+  return nullptr;
 }
 
 bool
@@ -120,7 +116,11 @@ ClipImpl::serialize (WritNode &xs)
 ssize_t
 ClipImpl::clip_index () const
 {
-  return track_ ? track_->clip_index (*this) : -1;
+  if (auto c = clip_.get())
+    if (auto t = c->getTrack())
+      if (auto timpl = SelectableHandle::find_selectable_handle<TrackImpl> (*t))
+        return timpl->clip_index (*this);
+  return -1;
 }
 
 void
