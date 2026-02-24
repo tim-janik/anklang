@@ -32,7 +32,7 @@ public:
   void            _deactivate       () override;
   DeviceInfo      device_info       () override;
   ProjectImpl*    project           () const;
-  bool            is_master         () const override      { return MASTER_TRACK & gadget_flags(); }
+  bool            is_master         () const override;
   bool            is_muted          () const override;
   void            set_muted         (bool muted) override;
   bool            is_solo           () const override;

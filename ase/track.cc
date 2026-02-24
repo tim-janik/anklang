@@ -183,6 +183,14 @@ TrackImpl::set_solo (bool solo)
     t->setSolo (solo);
 }
 
+bool
+TrackImpl::is_master () const
+{
+  if (auto t = track_.get())
+    return t->isMasterTrack();
+  return false;
+}
+
 double
 TrackImpl::get_volume () const
 {
