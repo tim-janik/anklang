@@ -991,8 +991,20 @@ ProjectImpl::all_tracks ()
 ssize_t
 ProjectImpl::track_index (const Track &child) const
 {
-  // OLD: for (size_t i = 0; i < tracks_.size(); i++) if (&child == tracks_[i].get()) return i; return -1;
-  return {};    // TODO: use trkn to find out
+  ssize_t index = 0;
+  ssize_t found = -1;
+  auto tf = [&] (Track &track, int depth)
+  {
+    if (&track == &child)
+      {
+        found = index;
+        return false;
+      }
+    index++;
+    return true;
+  };
+  const_cast<ProjectImpl*> (this)->foreach_track (tf);
+  return found;
 }
 
 int64_t
@@ -1019,7 +1031,10 @@ ProjectImpl::bar_ticks () const
 TrackP
 ProjectImpl::master_track ()
 {
-  return {};    // TODO: use trkn to implement this
+  return_unless (!!edit_, nullptr);
+  auto *masterTrack = edit_->getMasterTrack();
+  return_unless (masterTrack, nullptr);
+  return TrackImpl::from_trkn (*masterTrack);
 }
 
 DeviceInfo
