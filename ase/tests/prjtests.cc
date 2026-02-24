@@ -10,19 +10,28 @@ using namespace Ase;
 static void
 project_creation()
 {
-  // Create Project
   ProjectImplP project = ProjectImpl::create ("TestProject");
   TASSERT (project);
   project->_activate();
   TASSERT (project->name() == "TestProject");
 
-  // Test BPM notify/undo/redo
   const double initial_bpm = project->bpm.get();
   TASSERT (initial_bpm >= 10.0 && initial_bpm <= 999.0);
-  project->bpm.set (130.0);
-  TASSERT (std::abs (project->bpm.get() - 130.0) < 0.001);
   uint64_t bpm_notifications = 0;
   auto bpm_connection = project->on_event ("notify:bpm", [&bpm_notifications] (const Event &event) { bpm_notifications++; });
+
+  uint64_t name_notifications = 0;
+  auto name_connection = project->on_event ("notify:name", [&name_notifications] (const Event &event) { name_notifications++; });
+
+  uint64_t volume_notifications = 0;
+  auto volume_connection = project->on_event ("notify:master_volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
+
+  const double initial_vol = project->get_master_volume();
+  TASSERT (initial_vol >= -100.0 && initial_vol <= 20.0);
+
+  // Test BPM notify/undo/redo
+  project->bpm.set (130.0);
+  TASSERT (std::abs (project->bpm.get() - 130.0) < 0.001);
   uint64_t last_bpm_notifications = bpm_notifications;
   project->set_bpm (123.0);
   TASSERT (std::abs (project->bpm.get() - 123.0) < 0.001);
@@ -45,13 +54,49 @@ project_creation()
   TASSERT (std::abs (project->bpm.get() - 123.0) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
 
-  // Perform undo again, verify BPM is back to initial value
   project->undo();
   TASSERT (!project->can_undo());
   TASSERT (project->can_redo());
   TASSERT (std::abs (project->bpm.get() - initial_bpm) < 0.001);
 
-  // Clean up
+  // Test name notify/undo/redo
+  const String initial_name = project->name();
+  TASSERT (initial_name == "TestProject");
+  uint64_t last_name_notifications = name_notifications;
+  project->set_name ("NewName");
+  TASSERT (project->name() == "NewName");
+  TASSERT (name_notifications > last_name_notifications);
+
+  TASSERT (project->can_undo());
+  last_name_notifications = name_notifications;
+  project->undo();
+  TASSERT (project->name() == initial_name);
+  TASSERT (project->can_redo());
+  TASSERT (name_notifications > last_name_notifications);
+
+  last_name_notifications = name_notifications;
+  project->redo();
+  TASSERT (project->name() == "NewName");
+  TASSERT (name_notifications > last_name_notifications);
+
+  // Test master_volume notify/undo/redo
+  uint64_t last_volume_notifications = volume_notifications;
+  project->set_master_volume (-6.0);
+  TASSERT (std::abs (project->get_master_volume() - (-6.0)) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
+
+  TASSERT (project->can_undo());
+  last_volume_notifications = volume_notifications;
+  project->undo();
+  TASSERT (std::abs (project->get_master_volume() - initial_vol) < 0.01);
+  TASSERT (project->can_redo());
+  TASSERT (volume_notifications > last_volume_notifications);
+
+  last_volume_notifications = volume_notifications;
+  project->redo();
+  TASSERT (std::abs (project->get_master_volume() - (-6.0)) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
+
   project->_deactivate();
   project->discard();
 
@@ -64,58 +109,6 @@ project_creation()
   project2->discard();
 }
 TEST_ADD (project_creation);
-
-static void
-project_name_undo()
-{
-  ProjectImplP project = ProjectImpl::create ("NameTest");
-  TASSERT (project);
-  project->_activate();
-
-  const String initial_name = project->name();
-  TASSERT (initial_name == "NameTest");
-
-  project->set_name ("NewName");
-  TASSERT (project->name() == "NewName");
-
-  TASSERT (project->can_undo());
-  project->undo();
-  TASSERT (project->name() == initial_name);
-  TASSERT (project->can_redo());
-
-  project->redo();
-  TASSERT (project->name() == "NewName");
-
-  project->_deactivate();
-  project->discard();
-}
-TEST_ADD (project_name_undo);
-
-static void
-project_master_volume()
-{
-  ProjectImplP project = ProjectImpl::create ("VolumeTest");
-  TASSERT (project);
-  project->_activate();
-
-  double initial_vol = project->get_master_volume();
-  TASSERT (initial_vol >= -100.0 && initial_vol <= 20.0);
-
-  project->set_master_volume (-6.0);
-  TASSERT (std::abs (project->get_master_volume() - (-6.0)) < 0.01);
-
-  TASSERT (project->can_undo());
-  project->undo();
-  TASSERT (std::abs (project->get_master_volume() - initial_vol) < 0.01);
-  TASSERT (project->can_redo());
-
-  project->redo();
-  TASSERT (std::abs (project->get_master_volume() - (-6.0)) < 0.01);
-
-  project->_deactivate();
-  project->discard();
-}
-TEST_ADD (project_master_volume);
 
 static void
 project_length()

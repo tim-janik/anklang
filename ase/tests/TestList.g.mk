@@ -33,8 +33,6 @@ ASE_TEST_LIST := \
   path_tests \
   project_creation \
   project_length \
-  project_master_volume \
-  project_name_undo \
   project_playback_state \
   project_track_management \
   promise_already_resolved_test \
