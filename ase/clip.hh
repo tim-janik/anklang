@@ -15,6 +15,7 @@ constexpr const uint MIDI_NOTE_ID_FIRST = 0x10000001;
 constexpr const uint MIDI_NOTE_ID_LAST = 0xfffffffe;
 
 class ClipImpl : public GadgetImpl, public virtual Clip {
+  friend class TrackImpl;
 public:
   struct CmpNoteTicks { int operator() (const ClipNote &a, const ClipNote &b) const; };
   using OrderedEventsV = OrderedEventList<ClipNote,CmpNoteTicks>;
