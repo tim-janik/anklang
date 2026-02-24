@@ -74,25 +74,51 @@ project_creation()
 TEST_ADD (project_creation);
 
 static void
+project_name_undo()
+{
+  ProjectImplP project = ProjectImpl::create ("NameTest");
+  TASSERT (project);
+  project->_activate();
+
+  const String initial_name = project->name();
+  TASSERT (initial_name == "NameTest");
+
+  project->set_name ("NewName");
+  TASSERT (project->name() == "NewName");
+
+  TASSERT (project->can_undo());
+  project->undo();
+  TASSERT (project->name() == initial_name);
+  TASSERT (project->can_redo());
+
+  project->redo();
+  TASSERT (project->name() == "NewName");
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (project_name_undo);
+
+static void
 project_master_volume()
 {
   ProjectImplP project = ProjectImpl::create ("VolumeTest");
   TASSERT (project);
   project->_activate();
 
-  // Test initial master volume (should be around 0dB)
   double initial_vol = project->get_master_volume();
   TASSERT (initial_vol >= -100.0 && initial_vol <= 20.0);
 
-  // Test setting master volume
   project->set_master_volume (-6.0);
   TASSERT (std::abs (project->get_master_volume() - (-6.0)) < 0.01);
 
-  project->set_master_volume (0.0);
-  TASSERT (std::abs (project->get_master_volume()) < 0.01);
+  TASSERT (project->can_undo());
+  project->undo();
+  TASSERT (std::abs (project->get_master_volume() - initial_vol) < 0.01);
+  TASSERT (project->can_redo());
 
-  project->set_master_volume (3.5);
-  TASSERT (std::abs (project->get_master_volume() - 3.5) < 0.01);
+  project->redo();
+  TASSERT (std::abs (project->get_master_volume() - (-6.0)) < 0.01);
 
   project->_deactivate();
   project->discard();

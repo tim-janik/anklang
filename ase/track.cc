@@ -183,6 +183,14 @@ TrackImpl::set_solo (bool solo)
     t->setSolo (solo);
 }
 
+bool
+TrackImpl::is_master () const
+{
+  if (auto t = track_.get())
+    return t->isMasterTrack();
+  return false;
+}
+
 double
 TrackImpl::get_volume () const
 {
@@ -224,19 +232,43 @@ TrackImpl::set_pan (double pan)
 ClipS
 TrackImpl::launcher_clips ()
 {
-  return {}; // TODO: implement via trkn clips
+  ClipS clips;
+  if (auto t = track_.get())
+    if (auto ct = dynamic_cast<te::ClipTrack*> (t))
+      for (auto *clip : ct->getClips())
+        if (auto clipimpl = ClipImpl::from_trkn (*clip))
+          clips.push_back (clipimpl);
+  return clips;
 }
 
 ssize_t
 TrackImpl::clip_index (const ClipImpl &clip) const
 {
-  return {}; // TODO: implement via trkn clips
+  if (auto t = track_.get())
+    if (auto ct = dynamic_cast<te::ClipTrack*> (t))
+      {
+        auto &clips = ct->getClips();
+        for (int i = 0; i < clips.size(); i++)
+          if (clips[i] == clip.clip_.get())
+            return i;
+      }
+  return -1;
 }
 
 int
 TrackImpl::clip_succession (const ClipImpl &clip) const
 {
-  return {}; // TODO: implement via trkn clips
+  ssize_t idx = clip_index (clip);
+  if (idx < 0)
+    return NONE;
+  if (auto t = track_.get())
+    if (auto ct = dynamic_cast<te::ClipTrack*> (t))
+      {
+        auto &clips = ct->getClips();
+        if (idx + 1 < clips.size())
+          return idx + 1;
+      }
+  return NONE;
 }
 
 DeviceP
