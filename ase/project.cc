@@ -898,7 +898,6 @@ ProjectImpl::set_bpm (double newbpm)
   auto *tempo = tempoSeq.getTempo (0);
   if (tempo && tempo->getBpm() != nbpm) {
     tempo->setBpm (nbpm);
-    tick_sig_.set_bpm (nbpm);
     bpm.notify();
   }
 }
@@ -906,16 +905,19 @@ ProjectImpl::set_bpm (double newbpm)
 double
 ProjectImpl::get_bpm () const
 {
-  return_unless (!!edit_, tick_sig_.bpm());
+  return_unless (!!edit_, 120.0);
   auto *tempo = edit_->tempoSequence.getTempo (0);
-  return tempo ? tempo->getBpm() : tick_sig_.bpm();
+  return tempo ? tempo->getBpm() : 120.0;
 }
 
 void
 ProjectImpl::set_numerator (double num)
 {
-  const bool changed = tick_sig_.set_signature (num, tick_sig_.beat_unit());
-  if (changed) {
+  return_unless (!!edit_);
+  auto &tempoSeq = edit_->tempoSequence;
+  auto *timeSig = tempoSeq.getTimeSig (0);
+  if (timeSig && timeSig->numerator != num) {
+    timeSig->numerator = num;
     update_tempo();
     numerator.notify();
   }
@@ -924,14 +926,19 @@ ProjectImpl::set_numerator (double num)
 double
 ProjectImpl::get_numerator () const
 {
-  return tick_sig_.beats_per_bar();
+  return_unless (!!edit_, 4.0);
+  auto *timeSig = edit_->tempoSequence.getTimeSig (0);
+  return timeSig ? timeSig->numerator : 4.0;
 }
 
 void
 ProjectImpl::set_denominator (double den)
 {
-  const bool changed = tick_sig_.set_signature (tick_sig_.beats_per_bar(), den);
-  if (changed) {
+  return_unless (!!edit_);
+  auto &tempoSeq = edit_->tempoSequence;
+  auto *timeSig = tempoSeq.getTimeSig (0);
+  if (timeSig && timeSig->denominator != den) {
+    timeSig->denominator = den;
     update_tempo();
     denominator.notify();
   }
@@ -940,18 +947,28 @@ ProjectImpl::set_denominator (double den)
 double
 ProjectImpl::get_denominator () const
 {
-  return tick_sig_.beat_unit();
+  return_unless (!!edit_, 4.0);
+  auto *timeSig = edit_->tempoSequence.getTimeSig (0);
+  return timeSig ? timeSig->denominator : 4.0;
 }
 
 void
 ProjectImpl::update_tempo ()
 {
   AudioProcessorP proc = master_processor();
-  return_unless (proc);
-  const TickSignature tsig (tick_sig_);
-  auto job = [proc, tsig] () {
+  return_unless (proc && edit_);
+
+  auto &tempoSeq = edit_->tempoSequence;
+  auto *tempo = tempoSeq.getTempo (0);
+  auto *timeSig = tempoSeq.getTimeSig (0);
+
+  double bpm = tempo ? tempo->getBpm() : 120.0;
+  int numerator = timeSig ? timeSig->numerator : 4;
+  int denominator = timeSig ? timeSig->denominator : 4;
+
+  auto job = [proc, bpm, numerator, denominator] () {
     AudioTransport &transport = const_cast<AudioTransport&> (proc->engine().transport());
-    transport.tempo (tsig);
+    transport.tempo (bpm, numerator, denominator);
   };
   proc->engine().async_jobs += job;
 }
@@ -1048,6 +1065,27 @@ ProjectImpl::track_index (const Track &child) const
     if (&child == tracks_[i].get())
       return i;
   return -1;
+}
+
+int64_t
+ProjectImpl::bar_ticks () const
+{
+  return_unless (!!edit_, 0);
+  auto &tempoSeq = edit_->tempoSequence;
+  auto *timeSig = tempoSeq.getTimeSig (0);
+  if (!timeSig)
+    return 0;
+
+  const int beats_per_bar = timeSig->numerator;
+  const int beat_unit = timeSig->denominator;
+
+  // Calculate beat ticks: SEMIQUAVER_TICKS * (16 / beat_unit)
+  // SEMIQUAVER_TICKS = TRANSPORT_PPQN / 4 = 1209600
+  const int64 SEMIQUAVER_TICKS = 1209600;
+  const int semiquavers_per_beat = 16 / beat_unit;
+  const int64 beat_ticks = SEMIQUAVER_TICKS * semiquavers_per_beat;
+
+  return beat_ticks * beats_per_bar;
 }
 
 TrackP

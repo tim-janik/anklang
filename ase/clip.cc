@@ -296,14 +296,12 @@ void
 ClipImpl::Generator::setup (const ClipImpl &clip)
 {
   ProjectImpl *p = clip.project();
-  TickSignature tsig;
-  if (p)
-    tsig = p->signature();
+  int64_t bar_ticks = p ? p->bar_ticks() : 0;
   events_ = clip.tick_events();
   muted_ = false;
   start_offset_ = 0;
   loop_start_ = 0;
-  loop_end_ = tsig.bar_ticks() * 2;
+  loop_end_ = bar_ticks * 2;
   const int LOOPS = 2;
   last_ = loop_end_ - start_offset_ + LOOPS * (loop_end_ - loop_start_);
   if (true) // keep looping

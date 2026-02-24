@@ -26,7 +26,6 @@ class ProjectImpl final : public DeviceImpl, public virtual Project {
   std::unique_ptr<TransportListener> transport_listener_;
   std::vector<TrackImplP> tracks_;
   ASE_DEFINE_MAKE_SHARED (ProjectImpl);
-  TickSignature tick_sig_;
   MusicalTuning musical_tuning_ = MusicalTuning::OD_12_TET;
   struct PStorage;
   PStorage *storage_ = nullptr;
@@ -54,7 +53,6 @@ public:
   void                 set_name          (const std::string &n) override;
   void                 _activate         () override;
   void                 _deactivate       () override;
-  const TickSignature& signature         () const       { return tick_sig_; }
   void                 discard           () override;
   AudioProcessorP      _audio_processor  () const override;
   void                 _set_event_source (AudioProcessorP esource) override;
@@ -91,6 +89,7 @@ public:
   TelemetryFieldS      telemetry         () const override;
   AudioProcessorP      master_processor  () const;
   ssize_t              track_index       (const Track &child) const;
+  int64_t              bar_ticks         () const;
   static void          force_shutdown_all ();
   static ProjectImplP  create            (const String &projectname);
 };
