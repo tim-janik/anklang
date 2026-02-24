@@ -176,17 +176,36 @@ track_mute_solo()
   TASSERT (!track->is_muted());
   TASSERT (!track->is_solo());
 
-  // Test mute
+  // Test mute notifications
+  uint64_t muted_notifications = 0;
+  auto muted_connection = track->on_event ("notify:muted", [&muted_notifications] (const Event &event) { muted_notifications++; });
+
+  uint64_t solo_notifications = 0;
+  auto solo_connection = track->on_event ("notify:solo", [&solo_notifications] (const Event &event) { solo_notifications++; });
+
+  // Test mute with notification
+  uint64_t last_muted_notifications = muted_notifications;
   track->set_muted (true);
   TASSERT (track->is_muted());
+  TASSERT (muted_notifications > last_muted_notifications);
+
+  // Reset mute
+  last_muted_notifications = muted_notifications;
   track->set_muted (false);
   TASSERT (!track->is_muted());
+  TASSERT (muted_notifications > last_muted_notifications);
 
-  // Test solo
+  // Test solo with notification
+  uint64_t last_solo_notifications = solo_notifications;
   track->set_solo (true);
   TASSERT (track->is_solo());
+  TASSERT (solo_notifications > last_solo_notifications);
+
+  // Reset solo
+  last_solo_notifications = solo_notifications;
   track->set_solo (false);
   TASSERT (!track->is_solo());
+  TASSERT (solo_notifications > last_solo_notifications);
 
   project->_deactivate();
   project->discard();
@@ -207,22 +226,40 @@ track_volume_pan()
   double initial_vol = track->get_volume();
   TASSERT (initial_vol >= -100.0 && initial_vol <= 20.0);
 
-  // Test setting volume
+  // Test volume notifications
+  uint64_t volume_notifications = 0;
+  auto volume_connection = track->on_event ("notify:volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
+
+  uint64_t pan_notifications = 0;
+  auto pan_connection = track->on_event ("notify:pan", [&pan_notifications] (const Event &event) { pan_notifications++; });
+
+  // Test setting volume with notification
+  uint64_t last_volume_notifications = volume_notifications;
   track->set_volume (-6.0);
   TASSERT (std::abs (track->get_volume() - (-6.0)) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
 
+  // Reset volume
+  last_volume_notifications = volume_notifications;
   track->set_volume (0.0);
   TASSERT (std::abs (track->get_volume()) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
 
   // Test pan
   double initial_pan = track->get_pan();
   TASSERT (initial_pan >= -1.0 && initial_pan <= 1.0);
 
+  // Test setting pan with notification
+  uint64_t last_pan_notifications = pan_notifications;
   track->set_pan (0.5);
   TASSERT (std::abs (track->get_pan() - 0.5) < 0.01);
+  TASSERT (pan_notifications > last_pan_notifications);
 
+  // Reset pan
+  last_pan_notifications = pan_notifications;
   track->set_pan (-0.5);
   TASSERT (std::abs (track->get_pan() - (-0.5)) < 0.01);
+  TASSERT (pan_notifications > last_pan_notifications);
 
   project->_deactivate();
   project->discard();

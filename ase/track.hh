@@ -17,10 +17,12 @@ class TrackImpl : public DeviceImpl, public virtual Track {
   uint         midi_channel_ = 0;
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
+  friend class TrackStateListener;
   virtual         ~TrackImpl        ();
 protected:
   String          fallback_name     () const override;
   void            serialize         (WritNode &xs) override;
+  void            update_telemetry  ();
 public:
   class ClipScout;
   explicit        TrackImpl         (ProjectImpl&, bool masterflag);
