@@ -14,49 +14,41 @@ project_creation()
   ProjectImplP project = ProjectImpl::create ("TestProject");
   TASSERT (project);
   project->_activate();
-
-  // Test BPM undo/redo
-  const double initial_bpm = project->bpm.get();
-  TASSERT (initial_bpm >= 10.0 && initial_bpm <= 999.0);
-  // printerr ("%s:%u: bpm=%f\n", __FILE__, __LINE__, project->get_bpm());
-
-  // Verify basic properties (mapping to te::Edit)
-  project->bpm.set (130.0);
-  TASSERT (std::abs (project->bpm.get() - 130.0) < 0.001);
   TASSERT (project->name() == "TestProject");
 
-  // Perform an undoable operation using undo_scope
-  project->bpm.set (123.0);
-
-  // Verify BPM was changed
+  // Test BPM notify/undo/redo
+  const double initial_bpm = project->bpm.get();
+  TASSERT (initial_bpm >= 10.0 && initial_bpm <= 999.0);
+  project->bpm.set (130.0);
+  TASSERT (std::abs (project->bpm.get() - 130.0) < 0.001);
+  uint64_t bpm_notifications = 0;
+  auto bpm_connection = project->on_event ("notify:bpm", [&bpm_notifications] (const Event &event) { bpm_notifications++; });
+  uint64_t last_bpm_notifications = bpm_notifications;
+  project->set_bpm (123.0);
   TASSERT (std::abs (project->bpm.get() - 123.0) < 0.001);
+  TASSERT (bpm_notifications > last_bpm_notifications);
 
-  // Now undo should be available
+  // Test undo
   TASSERT (project->can_undo());
   TASSERT (!project->can_redo());
-
-  // Perform undo
+  last_bpm_notifications = bpm_notifications;
   project->undo();
   TASSERT (!project->can_undo());
   TASSERT (project->can_redo());
-
-  // Verify BPM was restored to initial value
   TASSERT (std::abs (project->bpm.get() - initial_bpm) < 0.001);
-
-  // Perform redo
+  TASSERT (bpm_notifications > last_bpm_notifications);
+  // Test redo
+  last_bpm_notifications = bpm_notifications;
   project->redo();
   TASSERT (project->can_undo());
   TASSERT (!project->can_redo());
-
-  // Verify BPM was restored to 123
   TASSERT (std::abs (project->bpm.get() - 123.0) < 0.001);
+  TASSERT (bpm_notifications > last_bpm_notifications);
 
-  // Perform undo again
+  // Perform undo again, verify BPM is back to initial value
   project->undo();
   TASSERT (!project->can_undo());
   TASSERT (project->can_redo());
-
-  // Verify BPM is back to initial value
   TASSERT (std::abs (project->bpm.get() - initial_bpm) < 0.001);
 
   // Clean up
