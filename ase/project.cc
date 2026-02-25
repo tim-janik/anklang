@@ -88,6 +88,10 @@ public:
       project_.emit_notify ("name");
     if (id == tracktion_engine::IDs::bpm) // vtree == edit_->tempoSequence.getTempo (0)->state
       project_.emit_notify ("bpm");
+    if (id == tracktion_engine::IDs::numerator)
+      project_.emit_notify ("numerator");
+    if (id == tracktion_engine::IDs::denominator)
+      project_.emit_notify ("denominator");
     if (id == tracktion_engine::IDs::volume) {
       auto mvp = project_.edit_->getMasterVolumePlugin();
       if (mvp && vtree == mvp->state)
@@ -857,10 +861,8 @@ ProjectImpl::set_bpm (double newbpm)
   const double nbpm = CLAMP (newbpm, MIN_BPM, MAX_BPM);
   auto &tempoSeq = edit_->tempoSequence;
   auto *tempo = tempoSeq.getTempo (0);
-  if (tempo && tempo->getBpm() != nbpm) {
+  if (tempo && tempo->getBpm() != nbpm)
     tempo->setBpm (nbpm);
-    emit_notify ("bpm");
-  }
 }
 
 double
@@ -877,10 +879,8 @@ ProjectImpl::set_numerator (double num)
   return_unless (!!edit_);
   auto &tempoSeq = edit_->tempoSequence;
   auto *timeSig = tempoSeq.getTimeSig (0);
-  if (timeSig && timeSig->numerator != num) {
+  if (timeSig && timeSig->numerator != num)
     timeSig->numerator = num;
-    emit_notify ("numerator");
-  }
 }
 
 double
@@ -897,10 +897,8 @@ ProjectImpl::set_denominator (double den)
   return_unless (!!edit_);
   auto &tempoSeq = edit_->tempoSequence;
   auto *timeSig = tempoSeq.getTimeSig (0);
-  if (timeSig && timeSig->denominator != den) {
+  if (timeSig && timeSig->denominator != den)
     timeSig->denominator = den;
-    emit_notify ("denominator");
-  }
 }
 
 double
