@@ -31,10 +31,7 @@ static Preference synth_latency_pref =
 static std::vector<ProjectImplP> &g_projects = *new std::vector<ProjectImplP>();
 
 // == Project ==
-Project::Project() :
-  bpm (this, "bpm", MinMaxStep { 10., 999., 0 }, { "label="s + _("Beats Per Minute"), "nick=BPM" }),
-  numerator (this, "numerator", MinMaxStep { 1., 63., 0 }, { "label="s + _("Signature Numerator"), "nick=Num" }),
-  denominator (this, "denominator", MinMaxStep { 1, 16, 0 }, { "label="s + _("Signature Denominator"), "nick=Den" })
+Project::Project()
 {}
 
 ProjectP
@@ -283,9 +280,9 @@ test_setup (tracktion::Edit &edit)
 
 ProjectImpl::ProjectImpl()
 {
-  bpm = 120;
-  numerator = 4;
-  denominator = 4;
+  set_bpm (120);
+  set_numerator (4);
+  set_denominator (4);
   edit_ = std::make_unique<te::Edit> (*trkn_engine(), te::Edit::forEditing);
   if (edit_)
     transport_listener_ = std::make_unique<TransportListener> (edit_->getTransport(), *this);
@@ -862,7 +859,7 @@ ProjectImpl::set_bpm (double newbpm)
   auto *tempo = tempoSeq.getTempo (0);
   if (tempo && tempo->getBpm() != nbpm) {
     tempo->setBpm (nbpm);
-    bpm.notify();
+    emit_notify ("bpm");
   }
 }
 
@@ -882,7 +879,7 @@ ProjectImpl::set_numerator (double num)
   auto *timeSig = tempoSeq.getTimeSig (0);
   if (timeSig && timeSig->numerator != num) {
     timeSig->numerator = num;
-    numerator.notify();
+    emit_notify ("numerator");
   }
 }
 
@@ -902,7 +899,7 @@ ProjectImpl::set_denominator (double den)
   auto *timeSig = tempoSeq.getTimeSig (0);
   if (timeSig && timeSig->denominator != den) {
     timeSig->denominator = den;
-    denominator.notify();
+    emit_notify ("denominator");
   }
 }
 

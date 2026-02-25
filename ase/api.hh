@@ -343,9 +343,6 @@ public:
   virtual void            set_master_volume (double db) = 0; ///< Set master volume in dB.
   virtual String          match_serialized (const String &regex,
                                             int group = 0) = 0; ///< Match `regex` against the serialized project state.
-  Member<&Project::get_bpm,&Project::set_bpm> bpm [[no_unique_address]];
-  Member<&Project::get_numerator,&Project::set_numerator> numerator [[no_unique_address]];
-  Member<&Project::get_denominator,&Project::set_denominator> denominator [[no_unique_address]];
   static ProjectP         last_project   ();
 };
 

@@ -15,7 +15,7 @@ project_creation()
   project->_activate();
   TASSERT (project->name() == "TestProject");
 
-  const double initial_bpm = project->bpm.get();
+  const double initial_bpm = project->get_bpm();
   TASSERT (initial_bpm >= 10.0 && initial_bpm <= 999.0);
   uint64_t bpm_notifications = 0;
   auto bpm_connection = project->on_event ("notify:bpm", [&bpm_notifications] (const Event &event) { bpm_notifications++; });
@@ -30,11 +30,11 @@ project_creation()
   TASSERT (initial_vol >= -100.0 && initial_vol <= 20.0);
 
   // Test BPM notify/undo/redo
-  project->bpm.set (130.0);
-  TASSERT (std::abs (project->bpm.get() - 130.0) < 0.001);
+  project->set_bpm (130.0);
+  TASSERT (std::abs (project->get_bpm() - 130.0) < 0.001);
   uint64_t last_bpm_notifications = bpm_notifications;
   project->set_bpm (123.0);
-  TASSERT (std::abs (project->bpm.get() - 123.0) < 0.001);
+  TASSERT (std::abs (project->get_bpm() - 123.0) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
 
   // Test undo
@@ -44,20 +44,20 @@ project_creation()
   project->undo();
   TASSERT (!project->can_undo());
   TASSERT (project->can_redo());
-  TASSERT (std::abs (project->bpm.get() - initial_bpm) < 0.001);
+  TASSERT (std::abs (project->get_bpm() - initial_bpm) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
   // Test redo
   last_bpm_notifications = bpm_notifications;
   project->redo();
   TASSERT (project->can_undo());
   TASSERT (!project->can_redo());
-  TASSERT (std::abs (project->bpm.get() - 123.0) < 0.001);
+  TASSERT (std::abs (project->get_bpm() - 123.0) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
 
   project->undo();
   TASSERT (!project->can_undo());
   TASSERT (project->can_redo());
-  TASSERT (std::abs (project->bpm.get() - initial_bpm) < 0.001);
+  TASSERT (std::abs (project->get_bpm() - initial_bpm) < 0.001);
 
   // Test name notify/undo/redo
   const String initial_name = project->name();
