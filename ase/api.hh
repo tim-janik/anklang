@@ -246,6 +246,12 @@ class Clip : public virtual Gadget {
 protected:
   explicit          Clip           ();
 public:
+  virtual bool      is_muted       () const = 0;                  ///< Check if clip is muted.
+  virtual void      set_muted      (bool muted) = 0;              ///< Set clip muted state, emits `notify:muted`.
+  virtual double    volume         () const = 0;                  ///< Get clip volume in dB.
+  virtual void      volume         (double db) = 0;              ///< Set clip volume in dB, emits `notify:volume`.
+  virtual double    pan            () const = 0;                  ///< Get clip pan (-1.0 to 1.0).
+  virtual void      pan            (double pan) = 0;             ///< Set clip pan (-1.0 to 1.0), emits `notify:pan`.
   virtual ClipNoteS all_notes      () const = 0;
   virtual void      all_notes      (const ClipNoteS &notes) = 0;
   virtual int64     end_tick       () const = 0;
@@ -256,6 +262,7 @@ public:
   /// Change note `id` according to the arguments or add a new note if `id` < 0; emits `notify:notes`.
   virtual int32     change_batch   (const ClipNoteS &notes, const String &undogroup = "") = 0; ///< Insert, change, delete in a batch.
   virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
+  virtual TelemetryFieldS telemetry () const = 0; ///< Retrieve clip telemetry locations.
 };
 
 /// Container for Clip objects and sequencing information.

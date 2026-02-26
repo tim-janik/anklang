@@ -9,6 +9,7 @@ ASE_TEST_LIST := \
   blake3_tests \
   callback_list_test \
   clip_creation \
+  clip_mute_volume_pan \
   clip_notes \
   clip_range \
   cotask_int64_result_test \

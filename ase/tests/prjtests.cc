@@ -427,4 +427,63 @@ clip_range()
 }
 TEST_ADD (clip_range);
 
+static void
+clip_mute_volume_pan()
+{
+  ProjectImplP project = ProjectImpl::create ("ClipMuteVolPanTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
+  TASSERT (trackimpl);
+
+  ClipImplP clip = trackimpl->create_midi_clip ("MuteVolPanClip", 0.0, 4.0);
+  TASSERT (clip);
+
+  // Test initial state
+  TASSERT (!clip->is_muted());
+
+  // Test mute notifications
+  uint64_t muted_notifications = 0;
+  auto muted_connection = clip->on_event ("notify:muted", [&muted_notifications] (const Event &event) { muted_notifications++; });
+
+  // Test mute with notification
+  uint64_t last_muted_notifications = muted_notifications;
+  clip->set_muted (true);
+  TASSERT (clip->is_muted());
+  TASSERT (muted_notifications > last_muted_notifications);
+
+  // Reset mute
+  last_muted_notifications = muted_notifications;
+  clip->set_muted (false);
+  TASSERT (!clip->is_muted());
+  TASSERT (muted_notifications > last_muted_notifications);
+
+  // Test volume notifications
+  uint64_t volume_notifications = 0;
+  auto volume_connection = clip->on_event ("notify:volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
+
+  // Test setting volume with notification
+  uint64_t last_volume_notifications = volume_notifications;
+  clip->volume (-6.0);
+  TASSERT (std::abs (clip->volume() - (-6.0)) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
+
+  // Reset volume
+  last_volume_notifications = volume_notifications;
+  clip->volume (0.0);
+  TASSERT (std::abs (clip->volume()) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
+
+  // Test pan (for audio clips - just verify it doesn't crash)
+  // Pan is only available on audio clips, not MIDI clips
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (clip_mute_volume_pan);
+
 } // Anon

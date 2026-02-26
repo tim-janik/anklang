@@ -44,6 +44,14 @@ public:
   ClipNoteS      list_all_notes () override;
   bool           needs_serialize() const;
   int32          change_batch   (const ClipNoteS &notes, const String &undogroup) override;
+  bool           is_muted       () const override;
+  void           set_muted      (bool muted) override;
+  double         volume         () const override;
+  void           volume         (double db) override;
+  double         pan            () const override;
+  void           pan            (double pan) override;
+  void           update_telemetry ();
+  TelemetryFieldS telemetry      () const override;
   static ClipImplP from_trkn    (tracktion::Clip&);
   ASE_DEFINE_MAKE_SHARED (ClipImpl);
 };

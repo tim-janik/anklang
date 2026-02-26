@@ -224,6 +224,10 @@ jsonipc_for_api_jsonipc_json()
   ::Jsonipc::Class< ::Ase::Clip > class__Ase_Clip;
   class__Ase_Clip
     .inherit< ::Ase::Gadget >()
+    .set ("is_muted", &::Ase::Clip::is_muted)
+    .set ("set_muted", &::Ase::Clip::set_muted)
+    .set ("volume", &::Ase::Clip::volume, &::Ase::Clip::volume)
+    .set ("pan", &::Ase::Clip::pan, &::Ase::Clip::pan)
     .set ("all_notes", &::Ase::Clip::all_notes, &::Ase::Clip::all_notes)
     .set ("end_tick", &::Ase::Clip::end_tick, &::Ase::Clip::end_tick)
     .set ("start_tick", &::Ase::Clip::start_tick)
@@ -231,6 +235,7 @@ jsonipc_for_api_jsonipc_json()
     .set ("assign_range", &::Ase::Clip::assign_range)
     .set ("change_batch", &::Ase::Clip::change_batch)
     .set ("list_all_notes", &::Ase::Clip::list_all_notes)
+    .set ("telemetry", &::Ase::Clip::telemetry)
     ;
 
   ::Jsonipc::Class< ::Ase::Track > class__Ase_Track;

@@ -659,6 +659,18 @@ export class Clip // Ase::Clip
 {
   constructor ($id)
   { super ($id); if (new.target === Clip) Jsonipc.ofreeze (this); }
+  is_muted (): Promise<boolean>
+  { return Jsonipc.send ("is_muted", [this]); }
+  set_muted (arg1: boolean): Promise<void>
+  { return Jsonipc.send ("set_muted", [this, arg1]); }
+  get volume (): number
+  { return Jsonipc.get_reactive_prop.call (this, "volume", 0.0); }
+  set volume (v: number)
+  { Jsonipc.send ('set/' + 'volume', [this, v]); }
+  get pan (): number
+  { return Jsonipc.get_reactive_prop.call (this, "pan", 0.0); }
+  set pan (v: number)
+  { Jsonipc.send ('set/' + 'pan', [this, v]); }
   get all_notes (): ClipNote[]
   { return Jsonipc.get_reactive_prop.call (this, "all_notes", []); }
   set all_notes (v: ClipNote[])
@@ -677,6 +689,8 @@ export class Clip // Ase::Clip
   { return Jsonipc.send ("change_batch", [this, arg1, arg2]); }
   list_all_notes (): Promise<ClipNote[]>
   { return Jsonipc.send ("list_all_notes", [this]); }
+  telemetry (): Promise<TelemetryField[]>
+  { return Jsonipc.send ("telemetry", [this]); }
 };
 Jsonipc.classes["Ase::Clip"] = Clip;
 

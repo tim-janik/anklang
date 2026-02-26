@@ -57,6 +57,12 @@ public:
         aseclip_.emit_notify ("stop_tick");
         aseclip_.emit_notify ("end_tick");
       }
+    else if (property == tracktion::engine::IDs::mute)
+      aseclip_.emit_notify ("muted");
+    else if (property == tracktion::engine::IDs::volDb)
+      aseclip_.emit_notify ("volume");
+    else if (property == tracktion::engine::IDs::pan)
+      aseclip_.emit_notify ("pan");
     else
         aseclip_.emit_notify ("notes"); // Simplistic change detection for notes within state
   }
@@ -221,6 +227,88 @@ ClipImpl::stop_tick () const
   if (!clip_.get()) return 0;
   auto &ts = clip_->edit.tempoSequence;
   return ts.toBeats (clip_->getPosition().getEnd()).inBeats() * TRANSPORT_PPQN;
+}
+
+bool
+ClipImpl::is_muted () const
+{
+  if (!clip_.get()) return false;
+  return clip_->isMuted();
+}
+
+void
+ClipImpl::set_muted (bool muted)
+{
+  if (!clip_.get()) return;
+  auto &um = clip_->edit.getUndoManager();
+  um.beginNewTransaction ("Set Clip Muted");
+  clip_->setMuted (muted);
+  emit_notify ("muted");
+}
+
+double
+ClipImpl::volume () const
+{
+  if (!clip_.get()) return 0.0;
+  auto mclip = dynamic_cast<te::MidiClip*> (clip_.get());
+  if (mclip)
+    return mclip->getVolumeDb();
+  auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
+  if (aclip)
+    return aclip->getGainDB();
+  return 0.0;
+}
+
+void
+ClipImpl::volume (double db)
+{
+  if (!clip_.get()) return;
+  auto &um = clip_->edit.getUndoManager();
+  um.beginNewTransaction ("Set Clip Volume");
+  auto mclip = dynamic_cast<te::MidiClip*> (clip_.get());
+  if (mclip)
+    mclip->setVolumeDb (float (db));
+  else
+    {
+      auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
+      if (aclip)
+        aclip->setGainDB (float (db));
+    }
+  emit_notify ("volume");
+}
+
+double
+ClipImpl::pan () const
+{
+  if (!clip_.get()) return 0.0;
+  auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
+  if (aclip)
+    return aclip->getPan();
+  return 0.0;
+}
+
+void
+ClipImpl::pan (double panval)
+{
+  if (!clip_.get()) return;
+  auto &um = clip_->edit.getUndoManager();
+  um.beginNewTransaction ("Set Clip Pan");
+  auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
+  if (aclip)
+    aclip->setPan (float (panval));
+  emit_notify ("pan");
+}
+
+TelemetryFieldS
+ClipImpl::telemetry () const
+{
+  TelemetryFieldS v;
+  return v;
+}
+
+void
+ClipImpl::update_telemetry ()
+{
 }
 
 /// Retrieve const vector with all notes ordered by tick.
