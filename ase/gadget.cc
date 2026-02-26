@@ -10,8 +10,7 @@
 namespace Ase {
 
 // == Gadget ==
-Gadget::Gadget() :
-  name (this, "name")
+Gadget::Gadget()
 {}
 
 // == GadgetImpl ==
@@ -72,7 +71,7 @@ void
 GadgetImpl::serialize (WritNode &xs)
 {
   // name
-  String current_name = name();
+  String current_name = get_name();
   if (xs.in_save() && current_name != fallback_name())
     xs["name"] & current_name;
   if (xs.in_load() && xs.has ("name"))
@@ -80,7 +79,7 @@ GadgetImpl::serialize (WritNode &xs)
       String new_name;
       xs["name"] & new_name;
       if (current_name != new_name)     // avoid fixating a fallback
-        name (new_name);
+        set_name (new_name);
     }
   // Serializable
   Serializable::serialize (xs);
@@ -152,7 +151,7 @@ GadgetImpl::set_name (const std::string &n)
     del_custom_data (&gadget_name_key);
   else
     set_custom_data (&gadget_name_key, newname);
-  name.notify();
+  emit_notify ("name");
 }
 
 PropertyS

@@ -12,9 +12,7 @@ namespace te = tracktion::engine;
 namespace Ase {
 
 // == Clip ==
-Clip::Clip () :
-  all_notes (this, "all_notes"),
-  end_tick (this, "end_tick")
+Clip::Clip ()
 {}
 
 // == ClipNote ==
@@ -286,7 +284,7 @@ ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
         }
     }
   emit_notify ("notes");
-  all_notes.notify();
+  emit_notify ("all_notes");
   return 0;
 }
 

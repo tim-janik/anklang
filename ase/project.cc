@@ -391,7 +391,7 @@ ProjectImpl::create (const String &projectname)
 {
   ProjectImplP project = ProjectImpl::make_shared();
   g_projects.push_back (project);
-  project->name (projectname);
+  project->set_name (projectname);
   project->edit_->getUndoManager().clearUndoHistory();
   return project;
 }

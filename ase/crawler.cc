@@ -19,9 +19,7 @@ namespace Fs = std::filesystem;
 namespace Ase {
 
 // == ResourceCrawler ==
-ResourceCrawler::ResourceCrawler() :
-  folder (this, "folder"),
-  entries (this, "entries")
+ResourceCrawler::ResourceCrawler()
 {}
 
 // == FileCrawler ==
@@ -178,8 +176,8 @@ FileCrawler::assign_ (const String &utf8path, bool existingfile, bool notify)
     cwd_.resize (cwd_.size() - 1);
   if (notify)
     {
-      folder.notify();
-      entries.notify();
+      emit_notify ("folder");
+      emit_notify ("entries");
       emit_notify ("current");
       emit_notify ("entries");
     }

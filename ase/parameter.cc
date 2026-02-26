@@ -454,25 +454,25 @@ ParameterMap::Entry::operator= (const Param &param)
 String
 Property::hints () const
 {
-  return kvpairs_fetch (metadata, "hints");
+  return kvpairs_fetch (get_metadata(), "hints");
 }
 
 String
 Property::blurb () const
 {
-  return kvpairs_fetch (metadata, "blurb");
+  return kvpairs_fetch (get_metadata(), "blurb");
 }
 
 String
 Property::descr () const
 {
-  return kvpairs_fetch (metadata, "descr");
+  return kvpairs_fetch (get_metadata(), "descr");
 }
 
 String
 Property::group () const
 {
-  return kvpairs_fetch (metadata, "group");
+  return kvpairs_fetch (get_metadata(), "group");
 }
 
 // == guess_nick ==

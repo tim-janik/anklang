@@ -13,7 +13,7 @@ project_creation()
   ProjectImplP project = ProjectImpl::create ("TestProject");
   TASSERT (project);
   project->_activate();
-  TASSERT (project->name() == "TestProject");
+  TASSERT (project->get_name() == "TestProject");
 
   const double initial_bpm = project->get_bpm();
   TASSERT (initial_bpm >= 10.0 && initial_bpm <= 999.0);
@@ -60,23 +60,23 @@ project_creation()
   TASSERT (std::abs (project->get_bpm() - initial_bpm) < 0.001);
 
   // Test name notify/undo/redo
-  const String initial_name = project->name();
+  const String initial_name = project->get_name();
   TASSERT (initial_name == "TestProject");
   uint64_t last_name_notifications = name_notifications;
   project->set_name ("NewName");
-  TASSERT (project->name() == "NewName");
+  TASSERT (project->get_name() == "NewName");
   TASSERT (name_notifications > last_name_notifications);
 
   TASSERT (project->can_undo());
   last_name_notifications = name_notifications;
   project->undo();
-  TASSERT (project->name() == initial_name);
+  TASSERT (project->get_name() == initial_name);
   TASSERT (project->can_redo());
   TASSERT (name_notifications > last_name_notifications);
 
   last_name_notifications = name_notifications;
   project->redo();
-  TASSERT (project->name() == "NewName");
+  TASSERT (project->get_name() == "NewName");
   TASSERT (name_notifications > last_name_notifications);
 
   // Test master_volume notify/undo/redo
@@ -102,10 +102,10 @@ project_creation()
 
   // Test create second project
   ProjectImplP project2 = ProjectImpl::create ("TestProject2");
-  project2->name ("foo");
-  TASSERT (project2->name() == "foo");
-  project2->name ("bar");
-  TASSERT (project2->name() == "bar");
+  project2->set_name ("foo");
+  TASSERT (project2->get_name() == "foo");
+  project2->set_name ("bar");
+  TASSERT (project2->get_name() == "bar");
   project2->discard();
 }
 TEST_ADD (project_creation);
@@ -278,10 +278,10 @@ track_name()
 
   // Set and get track name
   track->set_name ("MyTrack");
-  TASSERT (track->name() == "MyTrack");
+  TASSERT (track->get_name() == "MyTrack");
 
   track->set_name ("AnotherName");
-  TASSERT (track->name() == "AnotherName");
+  TASSERT (track->get_name() == "AnotherName");
 
   project->_deactivate();
   project->discard();

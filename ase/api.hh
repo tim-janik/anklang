@@ -161,9 +161,6 @@ public:
   String          blurb          () const;             ///< Short description for user interface tooltips (metadata).
   String          descr          () const;             ///< Elaborate description, e.g. for help dialogs (metadata).
   String          group          () const;             ///< Group name for parameters of similar function (metadata).
-  Member<&Property::get_name,&Property::set_name> name [[no_unique_address]];
-  Member<&Property::get_value,&Property::set_value> value [[no_unique_address]];
-  Member<&Property::get_metadata,&Property::set_metadata> metadata [[no_unique_address]];
 };
 
 /// Base type for classes with Property interfaces.
@@ -196,7 +193,6 @@ public:
   virtual bool        set_data          (const String &key, const Value &v) = 0;
   /// Retrieve session data.
   virtual Value       get_data          (const String &key) const = 0;
-  Member<&Gadget::get_name,&Gadget::set_name> name [[no_unique_address]];
 };
 
 /// Info for device types.
@@ -230,7 +226,6 @@ public:
   virtual void       gui_toggle    () = 0;      ///< Toggle GUI display.
   virtual bool       gui_supported () = 0;      ///< Has GUI display facilities.
   virtual bool       gui_visible   () = 0;      ///< Is GUI currently visible.
-  Member<&Device::get_devices,&Device::set_devices> devices [[no_unique_address]];
 };
 
 /// Part specific note event representation.
@@ -261,10 +256,6 @@ public:
   /// Change note `id` according to the arguments or add a new note if `id` < 0; emits `notify:notes`.
   virtual int32     change_batch   (const ClipNoteS &notes, const String &undogroup = "") = 0; ///< Insert, change, delete in a batch.
   virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
-  /// Access all notes of this clip, changes on `notify:all_notes`.
-  Member<&Clip::get_all_notes,&Clip::set_all_notes> all_notes [[no_unique_address]];
-  /// The end tick is past any event ticks, changes on `notify:end_tick`.
-  Member<&Clip::get_end_tick,&Clip::set_end_tick> end_tick [[no_unique_address]];
 };
 
 /// Container for Clip objects and sequencing information.
@@ -374,8 +365,6 @@ public:
                                      bool existingfile = false) = 0;    ///< Move to a different path.
   /// Return absolute path, slash-terminated if directory, constrain to existing paths.
   virtual Resource  canonify        (const String &utf8cwd, const String &utf8fragment, bool constraindir, bool constrainfile) = 0;
-  Member<&ResourceCrawler::get_folder,&ResourceCrawler::set_folder>  folder [[no_unique_address]]; ///< The folder currently being browsed, UTF-8 encoded.
-  Member<&ResourceCrawler::get_entries,&ResourceCrawler::set_entries> entries [[no_unique_address]]; ///< The entries in the current folder, UTF-8 encoded.
 };
 
 /// Contents of user interface notifications.

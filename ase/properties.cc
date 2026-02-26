@@ -13,10 +13,7 @@
 namespace Ase {
 
 // == Property ==
-Property::Property() :
-  name (this, "name"),
-  value (this, "value"),
-  metadata (this, "metadata")
+Property::Property()
 {}
 
 Property::~Property()
@@ -168,7 +165,7 @@ Preference::set_value (const Value &v)
   const bool changed = next == pv.value;
   pv.value = std::move (next);
   queue_notify_preference_listeners (parameter_->cident); // delayed
-  this->value.notify();
+  emit_notify ("value");
   return changed;
 }
 
