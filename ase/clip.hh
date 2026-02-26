@@ -30,10 +30,10 @@ protected:
   virtual ~ClipImpl         ();
   void     serialize        (WritNode &xs) override;
   ssize_t  clip_index       () const;
-  ClipNoteS get_all_notes   () const override;
-  void      set_all_notes   (const ClipNoteS &notes) override;
-  int64     get_end_tick    () const override;
-  void      set_end_tick    (int64 etick) override;
+  ClipNoteS all_notes   () const override;
+  void      all_notes   (const ClipNoteS &notes) override;
+  int64     end_tick    () const override;
+  void      end_tick    (int64 etick) override;
 public:
   using OrderedEventsP = OrderedEventsV::ConstP;
   OrderedEventsP tick_events    () const;

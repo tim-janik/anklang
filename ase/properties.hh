@@ -12,7 +12,7 @@ namespace Ase {
 class ParameterProperty : public EmittableImpl, public virtual Property {
 protected:
   ParameterC parameter_;
-  StringS    get_metadata   () const override     { return parameter_->metadata(); }
+  StringS    metadata       () const override     { return parameter_->metadata(); }
 public:
   String     ident          () const override     { return parameter_->cident; }
   String     label          () const override     { return parameter_->label(); }
@@ -23,17 +23,18 @@ public:
   double     get_step       () const override     { return std::get<2> (parameter_->range()); }
   bool       is_numeric     () const override     { return parameter_->is_numeric(); }
   ChoiceS    choices        () const override     { return parameter_->choices(); }
-  void       reset          () override           { set_value (parameter_->initial()); }
-  double     get_normalized () const override     { return !is_numeric() ? 0 : parameter_->normalize (get_double()); }
-  bool       set_normalized (double v) override   { return is_numeric() && set_value (parameter_->rescale (v)); }
-  String     get_text       () const override     { return parameter_->value_to_text (get_value()); }
-  bool       set_text       (String txt) override { set_value (parameter_->value_from_text (txt)); return !txt.empty(); }
-  Value      get_value      () const override = 0;
-  bool       set_value      (const Value &v) override = 0;
-  double     get_double     () const              { return !is_numeric() ? 0 : get_value().as_double(); }
+  void       reset          () override           { value (parameter_->initial()); }
+  double     get_normalized () const override     { return !is_numeric() ? 0 : parameter_->normalize (value_as_double()); }
+  bool       set_normalized (double v) override   { return is_numeric() && value (parameter_->rescale (v)); }
+  String     get_text       () const override     { return parameter_->value_to_text (value()); }
+  bool       set_text       (String txt) override { value (parameter_->value_from_text (txt)); return !txt.empty(); }
+  Value      value          () const override = 0;
+  bool       value          (const Value &v) override = 0;
+  double     get_double     () const              { return !is_numeric() ? 0 : value().as_double(); }
   ParameterC parameter      () const              { return parameter_; }
   Value      initial        () const              { return parameter_->initial(); }
   MinMaxStep range          () const              { return parameter_->range(); }
+  double     value_as_double () const             { return value().as_double(); }
 };
 
 /// Class for preference parameters (global settings)
@@ -44,15 +45,15 @@ public:
   using StringValueF = std::function<void(const String&, const Value&)>;
   virtual   ~Preference ();
   /*ctor*/   Preference (const Param&, const StringValueF& = nullptr);
-  String     gets       () const               { return const_cast<Preference*> (this)->get_value().as_string(); }
-  bool       getb       () const               { return const_cast<Preference*> (this)->get_value().as_int(); }
-  int64      getn       () const               { return const_cast<Preference*> (this)->get_value().as_int(); }
-  uint64     getu       () const               { return const_cast<Preference*> (this)->get_value().as_int(); }
-  double     getd       () const               { return const_cast<Preference*> (this)->get_value().as_double(); }
-  bool       set        (const Value &value)   { return set_value (value); }
-  bool       set        (const String &string) { return set_value (string); }
-  Value      get_value  () const override;
-  bool       set_value  (const Value &v) override;
+  String     gets       () const               { return const_cast<Preference*> (this)->value().as_string(); }
+  bool       getb       () const               { return const_cast<Preference*> (this)->value().as_int(); }
+  int64      getn       () const               { return const_cast<Preference*> (this)->value().as_int(); }
+  uint64     getu       () const               { return const_cast<Preference*> (this)->value().as_int(); }
+  double     getd       () const               { return const_cast<Preference*> (this)->value().as_double(); }
+  bool       set        (const Value &v)       { return value (v); }
+  bool       set        (const String &s)      { return value (s); }
+  Value      value      () const override;
+  bool       value      (const Value &v) override;
   static Value       get    (const String &ident);
   static PreferenceP find   (const String &ident);
   static CStringS    list   ();
@@ -80,8 +81,8 @@ class PropertyImpl : public ParameterProperty {
   PropertyImpl (const Param&, const PropertyGetter&, const PropertySetter&, const PropertyLister&);
 public:
   ASE_DEFINE_MAKE_SHARED (PropertyImpl);
-  Value   get_value () const override           { Value v; getter_ (v); return v; }
-  bool    set_value (const Value &v) override   { return setter_ (v); }
+  Value   value () const override           { Value v; getter_ (v); return v; }
+  bool    value (const Value &v) override   { return setter_ (v); }
   ChoiceS choices   () const override           { return lister_ ? lister_ (*this) : parameter_->choices(); }
 };
 

@@ -28,8 +28,8 @@ public:
   explicit        TrackImpl         (ProjectImpl&, bool masterflag);
   explicit        TrackImpl         (tracktion::Track &track);
   bool            is_folder         () const    { return "Folder" == te_type_; }
-  String          get_name          () const override;
-  void            set_name          (const std::string &n) override;
+  String          name              () const override;
+  void            name              (const std::string &n) override;
   void            _activate         () override;
   void            _deactivate       () override;
   DeviceInfo      device_info       () override;
@@ -39,10 +39,10 @@ public:
   void            set_muted         (bool muted) override;
   bool            is_solo           () const override;
   void            set_solo          (bool solo) override;
-  double          get_volume        () const override;
-  void            set_volume        (double db) override;
-  double          get_pan           () const override;
-  void            set_pan           (double pan) override;
+  double          volume            () const override;
+  void            volume            (double db) override;
+  double          pan               () const override;
+  void            pan               (double pan) override;
   int32           midi_channel      () const override      { return midi_channel_; }
   void            midi_channel      (int32 midichannel) override;
   ClipS           launcher_clips    () override;

@@ -20,19 +20,19 @@ Property::~Property()
 {}
 
 String
-Property::get_name () const
+Property::name () const
 {
   return ident();
 }
 
 void
-Property::set_name (const String &n)
+Property::name (const String &n)
 {
   // not implemented
 }
 
 void
-Property::set_metadata (const StringS &md)
+Property::metadata (const StringS &md)
 {
   // not implemented
 }
@@ -132,7 +132,7 @@ Preference::Preference (const Param &param, const StringValueF &cb)
   sigh_ = pv.callbacks->add_delcb ([this] (const String &ident, const Value &value) { emit_event ("notify", ident); });
   queue_notify_preference_listeners (parameter_->cident);
   if (cb) {
-    Connection connection = on_event ("notify", [this,cb] (const Event &event) { cb (this->parameter_->cident, this->get_value()); });
+    Connection connection = on_event ("notify", [this,cb] (const Event &event) { cb (this->parameter_->cident, this->value()); });
     connection_ = new Connection (connection);
   }
 }
@@ -149,7 +149,7 @@ Preference::~Preference()
 }
 
 Value
-Preference::get_value () const
+Preference::value () const
 {
   PrefsMap &prefsmap = prefs_map();
   PrefsValue &pv = prefsmap[parameter_->cident];
@@ -157,7 +157,7 @@ Preference::get_value () const
 }
 
 bool
-Preference::set_value (const Value &v)
+Preference::value (const Value &v)
 {
   PrefsMap &prefsmap = prefs_map();
   PrefsValue &pv = prefsmap[parameter_->cident];
@@ -226,7 +226,7 @@ Preference::load_preferences (bool autosave)
     PreferenceP pref = find (vf.name);
     PDEBUG ("%s: %s %s=%s\n", __func__, pref ? "loading" : "ignoring", vf.name, vf.value->repr());
     if (pref)
-      pref->set_value (*vf.value);
+      pref->value (*vf.value);
   }
   preferences_autosave = autosave;
 }

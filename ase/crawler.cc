@@ -103,25 +103,25 @@ FileCrawler::current_folder ()
 }
 
 Resource
-FileCrawler::get_folder() const
+FileCrawler::folder() const
 {
   return const_cast<FileCrawler&> (*this).current_folder();
 }
 
 void
-FileCrawler::set_folder (const Resource &newfolder)
+FileCrawler::folder (const Resource &newfolder)
 {
   assign_ (newfolder.uri, false);
 }
 
 ResourceS
-FileCrawler::get_entries() const
+FileCrawler::entries() const
 {
   return const_cast<FileCrawler&> (*this).list_entries();
 }
 
 void
-FileCrawler::set_entries (const ResourceS &newentries)
+FileCrawler::entries (const ResourceS &newentries)
 {
   // assignment not supported for FileCrawler
 }

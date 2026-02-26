@@ -13,9 +13,9 @@ project_creation()
   ProjectImplP project = ProjectImpl::create ("TestProject");
   TASSERT (project);
   project->_activate();
-  TASSERT (project->get_name() == "TestProject");
+  TASSERT (project->name() == "TestProject");
 
-  const double initial_bpm = project->get_bpm();
+  const double initial_bpm = project->bpm();
   TASSERT (initial_bpm >= 10.0 && initial_bpm <= 999.0);
   uint64_t bpm_notifications = 0;
   auto bpm_connection = project->on_event ("notify:bpm", [&bpm_notifications] (const Event &event) { bpm_notifications++; });
@@ -26,15 +26,15 @@ project_creation()
   uint64_t volume_notifications = 0;
   auto volume_connection = project->on_event ("notify:master_volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
 
-  const double initial_vol = project->get_master_volume();
+  const double initial_vol = project->master_volume();
   TASSERT (initial_vol >= -100.0 && initial_vol <= 20.0);
 
   // Test BPM notify/undo/redo
-  project->set_bpm (130.0);
-  TASSERT (std::abs (project->get_bpm() - 130.0) < 0.001);
+  project->bpm (130.0);
+  TASSERT (std::abs (project->bpm() - 130.0) < 0.001);
   uint64_t last_bpm_notifications = bpm_notifications;
-  project->set_bpm (123.0);
-  TASSERT (std::abs (project->get_bpm() - 123.0) < 0.001);
+  project->bpm (123.0);
+  TASSERT (std::abs (project->bpm() - 123.0) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
 
   // Test undo
@@ -44,57 +44,57 @@ project_creation()
   project->undo();
   TASSERT (!project->can_undo());
   TASSERT (project->can_redo());
-  TASSERT (std::abs (project->get_bpm() - initial_bpm) < 0.001);
+  TASSERT (std::abs (project->bpm() - initial_bpm) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
   // Test redo
   last_bpm_notifications = bpm_notifications;
   project->redo();
   TASSERT (project->can_undo());
   TASSERT (!project->can_redo());
-  TASSERT (std::abs (project->get_bpm() - 123.0) < 0.001);
+  TASSERT (std::abs (project->bpm() - 123.0) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
 
   project->undo();
   TASSERT (!project->can_undo());
   TASSERT (project->can_redo());
-  TASSERT (std::abs (project->get_bpm() - initial_bpm) < 0.001);
+  TASSERT (std::abs (project->bpm() - initial_bpm) < 0.001);
 
   // Test name notify/undo/redo
-  const String initial_name = project->get_name();
+  const String initial_name = project->name();
   TASSERT (initial_name == "TestProject");
   uint64_t last_name_notifications = name_notifications;
-  project->set_name ("NewName");
-  TASSERT (project->get_name() == "NewName");
+  project->name ("NewName");
+  TASSERT (project->name() == "NewName");
   TASSERT (name_notifications > last_name_notifications);
 
   TASSERT (project->can_undo());
   last_name_notifications = name_notifications;
   project->undo();
-  TASSERT (project->get_name() == initial_name);
+  TASSERT (project->name() == initial_name);
   TASSERT (project->can_redo());
   TASSERT (name_notifications > last_name_notifications);
 
   last_name_notifications = name_notifications;
   project->redo();
-  TASSERT (project->get_name() == "NewName");
+  TASSERT (project->name() == "NewName");
   TASSERT (name_notifications > last_name_notifications);
 
   // Test master_volume notify/undo/redo
   uint64_t last_volume_notifications = volume_notifications;
-  project->set_master_volume (-6.0);
-  TASSERT (std::abs (project->get_master_volume() - (-6.0)) < 0.01);
+  project->master_volume (-6.0);
+  TASSERT (std::abs (project->master_volume() - (-6.0)) < 0.01);
   TASSERT (volume_notifications > last_volume_notifications);
 
   TASSERT (project->can_undo());
   last_volume_notifications = volume_notifications;
   project->undo();
-  TASSERT (std::abs (project->get_master_volume() - initial_vol) < 0.01);
+  TASSERT (std::abs (project->master_volume() - initial_vol) < 0.01);
   TASSERT (project->can_redo());
   TASSERT (volume_notifications > last_volume_notifications);
 
   last_volume_notifications = volume_notifications;
   project->redo();
-  TASSERT (std::abs (project->get_master_volume() - (-6.0)) < 0.01);
+  TASSERT (std::abs (project->master_volume() - (-6.0)) < 0.01);
   TASSERT (volume_notifications > last_volume_notifications);
 
   project->_deactivate();
@@ -102,10 +102,10 @@ project_creation()
 
   // Test create second project
   ProjectImplP project2 = ProjectImpl::create ("TestProject2");
-  project2->set_name ("foo");
-  TASSERT (project2->get_name() == "foo");
-  project2->set_name ("bar");
-  TASSERT (project2->get_name() == "bar");
+  project2->name ("foo");
+  TASSERT (project2->name() == "foo");
+  project2->name ("bar");
+  TASSERT (project2->name() == "bar");
   project2->discard();
 }
 TEST_ADD (project_creation);
@@ -117,7 +117,7 @@ project_length()
   TASSERT (project);
   project->_activate();
 
-  double len = project->get_length();
+  double len = project->length();
   TASSERT (len >= 0.0);
 
   project->_deactivate();
@@ -223,7 +223,7 @@ track_volume_pan()
   TASSERT (track);
 
   // Test initial volume
-  double initial_vol = track->get_volume();
+  double initial_vol = track->volume();
   TASSERT (initial_vol >= -100.0 && initial_vol <= 20.0);
 
   // Test volume notifications
@@ -235,30 +235,30 @@ track_volume_pan()
 
   // Test setting volume with notification
   uint64_t last_volume_notifications = volume_notifications;
-  track->set_volume (-6.0);
-  TASSERT (std::abs (track->get_volume() - (-6.0)) < 0.01);
+  track->volume (-6.0);
+  TASSERT (std::abs (track->volume() - (-6.0)) < 0.01);
   TASSERT (volume_notifications > last_volume_notifications);
 
   // Reset volume
   last_volume_notifications = volume_notifications;
-  track->set_volume (0.0);
-  TASSERT (std::abs (track->get_volume()) < 0.01);
+  track->volume (0.0);
+  TASSERT (std::abs (track->volume()) < 0.01);
   TASSERT (volume_notifications > last_volume_notifications);
 
   // Test pan
-  double initial_pan = track->get_pan();
+  double initial_pan = track->pan();
   TASSERT (initial_pan >= -1.0 && initial_pan <= 1.0);
 
   // Test setting pan with notification
   uint64_t last_pan_notifications = pan_notifications;
-  track->set_pan (0.5);
-  TASSERT (std::abs (track->get_pan() - 0.5) < 0.01);
+  track->pan (0.5);
+  TASSERT (std::abs (track->pan() - 0.5) < 0.01);
   TASSERT (pan_notifications > last_pan_notifications);
 
   // Reset pan
   last_pan_notifications = pan_notifications;
-  track->set_pan (-0.5);
-  TASSERT (std::abs (track->get_pan() - (-0.5)) < 0.01);
+  track->pan (-0.5);
+  TASSERT (std::abs (track->pan() - (-0.5)) < 0.01);
   TASSERT (pan_notifications > last_pan_notifications);
 
   project->_deactivate();
@@ -277,11 +277,11 @@ track_name()
   TASSERT (track);
 
   // Set and get track name
-  track->set_name ("MyTrack");
-  TASSERT (track->get_name() == "MyTrack");
+  track->name ("MyTrack");
+  TASSERT (track->name() == "MyTrack");
 
-  track->set_name ("AnotherName");
-  TASSERT (track->get_name() == "AnotherName");
+  track->name ("AnotherName");
+  TASSERT (track->name() == "AnotherName");
 
   project->_deactivate();
   project->discard();

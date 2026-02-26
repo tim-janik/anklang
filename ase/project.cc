@@ -284,9 +284,9 @@ test_setup (tracktion::Edit &edit)
 
 ProjectImpl::ProjectImpl()
 {
-  set_bpm (120);
-  set_numerator (4);
-  set_denominator (4);
+  bpm (120);
+  numerator (4);
+  denominator (4);
   edit_ = std::make_unique<te::Edit> (*trkn_engine(), te::Edit::forEditing);
   if (edit_)
     transport_listener_ = std::make_unique<TransportListener> (edit_->getTransport(), *this);
@@ -338,14 +338,14 @@ ProjectImpl::force_shutdown_all ()
 }
 
 String
-ProjectImpl::get_name() const
+ProjectImpl::name() const
 {
   // Edit.getName() requires af ProjectItem, which we dont use
   return edit_ ? edit_->state.getProperty (tracktion_engine::IDs::name).toString().toStdString() : "";
 }
 
 void
-ProjectImpl::set_name (const std::string &nm)
+ProjectImpl::name (const std::string &nm)
 {
   return_unless (!!edit_);
   // tracktion_engine::getProjectItemForEdit (*edit_)->setName (nm, tracktion_engine::ProjectItem::SetNameMode::doDefault);
@@ -391,7 +391,7 @@ ProjectImpl::create (const String &projectname)
 {
   ProjectImplP project = ProjectImpl::make_shared();
   g_projects.push_back (project);
-  project->set_name (projectname);
+  project->name (projectname);
   project->edit_->getUndoManager().clearUndoHistory();
   return project;
 }
@@ -806,14 +806,14 @@ ProjectImpl::can_redo ()
 }
 
 double
-ProjectImpl::get_length () const
+ProjectImpl::length () const
 {
   return_unless (!!edit_, 0.0);
   return edit_->getLength().inSeconds();
 }
 
 double
-ProjectImpl::get_master_volume () const
+ProjectImpl::master_volume () const
 {
   return_unless (!!edit_, 0.0);
   auto volPlugin = edit_->getMasterVolumePlugin();
@@ -822,7 +822,7 @@ ProjectImpl::get_master_volume () const
 }
 
 void
-ProjectImpl::set_master_volume (double db)
+ProjectImpl::master_volume (double db)
 {
   return_unless (!!edit_);
   auto volPlugin = edit_->getMasterVolumePlugin();
@@ -855,7 +855,7 @@ ProjectImpl::clear_undo ()
 }
 
 void
-ProjectImpl::set_bpm (double newbpm)
+ProjectImpl::bpm (double newbpm)
 {
   return_unless (!!edit_);
   const double nbpm = CLAMP (newbpm, MIN_BPM, MAX_BPM);
@@ -866,7 +866,7 @@ ProjectImpl::set_bpm (double newbpm)
 }
 
 double
-ProjectImpl::get_bpm () const
+ProjectImpl::bpm () const
 {
   return_unless (!!edit_, 120.0);
   auto *tempo = edit_->tempoSequence.getTempo (0);
@@ -874,7 +874,7 @@ ProjectImpl::get_bpm () const
 }
 
 void
-ProjectImpl::set_numerator (double num)
+ProjectImpl::numerator (double num)
 {
   return_unless (!!edit_);
   auto &tempoSeq = edit_->tempoSequence;
@@ -884,7 +884,7 @@ ProjectImpl::set_numerator (double num)
 }
 
 double
-ProjectImpl::get_numerator () const
+ProjectImpl::numerator () const
 {
   return_unless (!!edit_, 4.0);
   auto *timeSig = edit_->tempoSequence.getTimeSig (0);
@@ -892,7 +892,7 @@ ProjectImpl::get_numerator () const
 }
 
 void
-ProjectImpl::set_denominator (double den)
+ProjectImpl::denominator (double den)
 {
   return_unless (!!edit_);
   auto &tempoSeq = edit_->tempoSequence;
@@ -902,7 +902,7 @@ ProjectImpl::set_denominator (double den)
 }
 
 double
-ProjectImpl::get_denominator () const
+ProjectImpl::denominator () const
 {
   return_unless (!!edit_, 4.0);
   auto *timeSig = edit_->tempoSequence.getTimeSig (0);

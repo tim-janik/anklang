@@ -141,7 +141,7 @@ TrackImpl::~TrackImpl()
 }
 
 String
-TrackImpl::get_name () const
+TrackImpl::name() const
 {
   if (auto trackp = track_.get())
     return trackp->getName().toStdString();
@@ -149,7 +149,7 @@ TrackImpl::get_name () const
 }
 
 void
-TrackImpl::set_name (const std::string &n)
+TrackImpl::name (const std::string &n)
 {
   if (auto trackp = track_.get())
     trackp->setName (juce::String (n));
@@ -241,7 +241,7 @@ TrackImpl::is_master () const
 }
 
 double
-TrackImpl::get_volume () const
+TrackImpl::volume() const
 {
   if (auto t = track_.get())
     if (auto at = dynamic_cast<te::AudioTrack*> (t))
@@ -251,7 +251,7 @@ TrackImpl::get_volume () const
 }
 
 void
-TrackImpl::set_volume (double db)
+TrackImpl::volume (double db)
 {
   if (auto t = track_.get())
     if (auto at = dynamic_cast<te::AudioTrack*> (t))
@@ -260,7 +260,7 @@ TrackImpl::set_volume (double db)
 }
 
 double
-TrackImpl::get_pan () const
+TrackImpl::pan() const
 {
   if (auto t = track_.get())
     if (auto at = dynamic_cast<te::AudioTrack*> (t))
@@ -270,7 +270,7 @@ TrackImpl::get_pan () const
 }
 
 void
-TrackImpl::set_pan (double pan)
+TrackImpl::pan (double pan)
 {
   if (auto t = track_.get())
     if (auto at = dynamic_cast<te::AudioTrack*> (t))

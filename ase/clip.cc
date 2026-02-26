@@ -151,13 +151,13 @@ ClipImpl::assign_range (int64 starttick, int64 stoptick)
 ClipNoteS
 ClipImpl::list_all_notes ()
 {
-  return get_all_notes();
+  return all_notes();
 }
 
 void
-ClipImpl::set_all_notes (const ClipNoteS &notes)
+ClipImpl::all_notes (const ClipNoteS &notes)
 {
-  ClipNoteS current = get_all_notes();
+  ClipNoteS current = all_notes();
   // Mark all for deletion
   for (auto &n : current) n.duration = 0;
 
@@ -167,7 +167,7 @@ ClipImpl::set_all_notes (const ClipNoteS &notes)
 }
 
 ClipNoteS
-ClipImpl::get_all_notes () const
+ClipImpl::all_notes () const
 {
   ClipNoteS notes;
   if (!clip_.get()) return notes;
@@ -194,14 +194,14 @@ ClipImpl::get_all_notes () const
 }
 
 int64
-ClipImpl::get_end_tick () const
+ClipImpl::end_tick () const
 {
   if (!clip_.get()) return 0;
   return stop_tick();
 }
 
 void
-ClipImpl::set_end_tick (int64 etick)
+ClipImpl::end_tick (int64 etick)
 {
   if (!clip_.get()) return;
   assign_range (start_tick(), etick);
@@ -227,7 +227,7 @@ ClipImpl::stop_tick () const
 ClipImpl::OrderedEventsP
 ClipImpl::tick_events () const
 {
-  ClipNoteS notes = get_all_notes();
+  ClipNoteS notes = all_notes();
   return std::make_shared<const OrderedEventsV> (notes);
 }
 

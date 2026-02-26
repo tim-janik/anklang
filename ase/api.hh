@@ -137,10 +137,10 @@ protected:
   explicit        Property       ();
   virtual        ~Property       () = 0;
 public:
-  virtual String  get_name       () const;
-  virtual void    set_name       (const String &n);
-  virtual StringS get_metadata   () const = 0;
-  virtual void    set_metadata   (const StringS &md);
+  virtual String  name           () const;
+  virtual void    name           (const String &n);
+  virtual StringS metadata       () const = 0;
+  virtual void    metadata       (const StringS &md);
   virtual String  ident          () const = 0;         ///< Unique name (per owner) of this Property.
   virtual String  label          () const = 0;         ///< Preferred user interface name.
   virtual String  nick           () const = 0;         ///< Abbreviated user interface name, usually not more than 6 characters.
@@ -149,8 +149,8 @@ public:
   virtual double  get_max        () const = 0;         ///< Get the maximum property value, converted to double.
   virtual double  get_step       () const = 0;         ///< Get the property value stepping, converted to double.
   virtual void    reset          () = 0;               ///< Assign default as normalized property value.
-  virtual Value   get_value      () const = 0;         ///< Get the native property value.
-  virtual bool    set_value      (const Value &v) = 0; ///< Set the native property value.
+  virtual Value   value          () const = 0;         ///< Get the native property value.
+  virtual bool    value          (const Value &v) = 0; ///< Set the native property value.
   virtual double  get_normalized () const = 0;         ///< Get the normalized property value, converted to double.
   virtual bool    set_normalized (double v) = 0;       ///< Set the normalized property value as double.
   virtual String  get_text       () const = 0;         ///< Get the current property value, converted to a text String.
@@ -180,8 +180,8 @@ public:
   virtual void        _set_parent       (GadgetImpl *parent) = 0; ///< Assign parent container.
   ProjectImpl*        _project          () const;                 ///< Find Project in parent ancestry.
   // Naming
-  virtual String      get_name          () const = 0;
-  virtual void        set_name          (const std::string &n) = 0;
+  virtual String      name              () const = 0;
+  virtual void        name              (const std::string &n) = 0;
   virtual String      type_nick         () const = 0;
   // Properties
   virtual StringS     list_properties   ();                 ///< List all property identifiers.
@@ -246,10 +246,10 @@ class Clip : public virtual Gadget {
 protected:
   explicit          Clip           ();
 public:
-  virtual ClipNoteS get_all_notes  () const = 0;
-  virtual void      set_all_notes  (const ClipNoteS &notes) = 0;
-  virtual int64     get_end_tick   () const = 0;
-  virtual void      set_end_tick   (int64 etick) = 0;
+  virtual ClipNoteS all_notes      () const = 0;
+  virtual void      all_notes      (const ClipNoteS &notes) = 0;
+  virtual int64     end_tick       () const = 0;
+  virtual void      end_tick       (int64 etick) = 0;
   virtual int64     start_tick     () const = 0; ///< Get the first tick intended for playback (this is >= 0), changes on `notify:start_tick`.
   virtual int64     stop_tick      () const = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
   virtual void      assign_range   (int64 starttick, int64 stoptick) = 0; ///< Change start_tick() and stop_tick(); emits `notify:start_tick`, `notify:stop_tick`.
@@ -268,10 +268,10 @@ public:
   virtual void            set_muted           (bool muted) = 0;      ///< Set track muted state.
   virtual bool            is_solo             () const = 0;          ///< Check if track is soloed.
   virtual void            set_solo            (bool solo) = 0;       ///< Set track solo state.
-  virtual double          get_volume          () const = 0;          ///< Get track volume in dB.
-  virtual void            set_volume          (double db) = 0;       ///< Set track volume in dB.
-  virtual double          get_pan             () const = 0;          ///< Get track pan (-1.0 to 1.0).
-  virtual void            set_pan             (double pan) = 0;      ///< Set track pan (-1.0 to 1.0).
+  virtual double          volume              () const = 0;          ///< Get track volume in dB.
+  virtual void            volume              (double db) = 0;       ///< Set track volume in dB.
+  virtual double          pan                 () const = 0;          ///< Get track pan (-1.0 to 1.0).
+  virtual void            pan                 (double pan) = 0;      ///< Set track pan (-1.0 to 1.0).
   virtual ClipS           launcher_clips      () = 0;                ///< Retrieve the list of clips that can be directly played.
   virtual DeviceP         access_device       () = 0;                ///< Retrieve Device handle for this track.
   virtual MonitorP        create_monitor      (int32 ochannel) = 0;  /// Create signal monitor for an output channel.
@@ -303,12 +303,12 @@ class Project : public virtual Device {
 protected:
   explicit                Project        ();
 public:
-  virtual void            set_bpm        (double bpm) = 0;
-  virtual double          get_bpm        () const = 0;
-  virtual void            set_numerator  (double num) = 0;
-  virtual double          get_numerator  () const = 0;
-  virtual void            set_denominator (double den) = 0;
-  virtual double          get_denominator() const = 0;
+  virtual void            bpm            (double bpm) = 0;
+  virtual double          bpm            () const = 0;
+  virtual void            numerator      (double num) = 0;
+  virtual double          numerator      () const = 0;
+  virtual void            denominator    (double den) = 0;
+  virtual double          denominator    () const = 0;
   virtual void            discard        () = 0;       ///< Discard project and associated resources.
   virtual void            start_playback () = 0;       ///< Start playback of a project, requires active sound engine.
   virtual void            pause_playback () = 0;       ///< Pause playback at the current position.
@@ -329,9 +329,9 @@ public:
   virtual bool            can_undo       () = 0;       ///< Check if any undo steps have been recorded.
   virtual void            redo           () = 0;       ///< Redo the last undo modification.
   virtual bool            can_redo       () = 0;       ///< Check if any redo steps have been recorded.
-  virtual double          get_length     () const = 0; ///< Get the end time of the last clip in seconds.
-  virtual double          get_master_volume () const = 0; ///< Get master volume in dB.
-  virtual void            set_master_volume (double db) = 0; ///< Set master volume in dB.
+  virtual double          length         () const = 0; ///< Get the end time of the last clip in seconds.
+  virtual double          master_volume  () const = 0; ///< Get master volume in dB.
+  virtual void            master_volume  (double db) = 0; ///< Set master volume in dB.
   virtual String          match_serialized (const String &regex,
                                             int group = 0) = 0; ///< Match `regex` against the serialized project state.
   static ProjectP         last_project   ();
@@ -356,10 +356,10 @@ class ResourceCrawler : public virtual Object {
 protected:
   explicit          ResourceCrawler ();
 public:
-  virtual Resource  get_folder      () const = 0;                       ///< Describe current folder.
-  virtual void      set_folder      (const Resource &newfolder) = 0;
-  virtual ResourceS get_entries     () const = 0;                       ///< List entries of a folder.
-  virtual void      set_entries     (const ResourceS &newentries) = 0;
+  virtual Resource  folder          () const = 0;                       ///< Describe current folder.
+  virtual void      folder          (const Resource &newfolder) = 0;
+  virtual ResourceS entries         () const = 0;                       ///< List entries of a folder.
+  virtual void      entries         (const ResourceS &newentries) = 0;
   using String2 = std::pair<String,String>;
   virtual String2   assign          (const String &utf8path,
                                      bool existingfile = false) = 0;    ///< Move to a different path.

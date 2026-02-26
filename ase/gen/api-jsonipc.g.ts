@@ -531,18 +531,6 @@ export class Property // Ase::Property
 {
   constructor ($id)
   { super ($id); if (new.target === Property) Jsonipc.ofreeze (this); }
-  get name (): string
-  { return Jsonipc.get_reactive_prop.call (this, "name", ''); }
-  set name (v: string)
-  { Jsonipc.send ('set/' + 'name', [this, v]); }
-  get metadata (): string[]
-  { return Jsonipc.get_reactive_prop.call (this, "metadata", []); }
-  set metadata (v: string[])
-  { Jsonipc.send ('set/' + 'metadata', [this, v]); }
-  get value (): any
-  { return Jsonipc.get_reactive_prop.call (this, "value", ''); }
-  set value (v: any)
-  { Jsonipc.send ('set/' + 'value', [this, v]); }
   get normalized (): number
   { return Jsonipc.get_reactive_prop.call (this, "normalized", 0.0); }
   set normalized (v: number)
@@ -551,14 +539,14 @@ export class Property // Ase::Property
   { return Jsonipc.get_reactive_prop.call (this, "text", ''); }
   set text (v: string)
   { Jsonipc.send ('set/' + 'text', [this, v]); }
-  get_name (): Promise<string>
-  { return Jsonipc.send ("get_name", [this]); }
-  set_name (arg1: string): Promise<void>
-  { return Jsonipc.send ("set_name", [this, arg1]); }
-  get_metadata (): Promise<string[]>
-  { return Jsonipc.send ("get_metadata", [this]); }
-  set_metadata (arg1: string[]): Promise<void>
-  { return Jsonipc.send ("set_metadata", [this, arg1]); }
+  get name (): string
+  { return Jsonipc.get_reactive_prop.call (this, "name", ''); }
+  set name (v: string)
+  { Jsonipc.send ('set/' + 'name', [this, v]); }
+  get metadata (): string[]
+  { return Jsonipc.get_reactive_prop.call (this, "metadata", []); }
+  set metadata (v: string[])
+  { Jsonipc.send ('set/' + 'metadata', [this, v]); }
   ident (): Promise<string>
   { return Jsonipc.send ("ident", [this]); }
   label (): Promise<string>
@@ -575,10 +563,10 @@ export class Property // Ase::Property
   { return Jsonipc.send ("get_step", [this]); }
   reset (): Promise<void>
   { return Jsonipc.send ("reset", [this]); }
-  get_value (): Promise<any>
-  { return Jsonipc.send ("get_value", [this]); }
-  set_value (arg1: any): Promise<boolean>
-  { return Jsonipc.send ("set_value", [this, arg1]); }
+  get value (): any
+  { return Jsonipc.get_reactive_prop.call (this, "value", ''); }
+  set value (v: any)
+  { Jsonipc.send ('set/' + 'value', [this, v]); }
   get_normalized (): Promise<number>
   { return Jsonipc.send ("get_normalized", [this]); }
   set_normalized (arg1: number): Promise<boolean>
@@ -619,10 +607,6 @@ export class Gadget // Ase::Gadget
   { return Jsonipc.get_reactive_prop.call (this, "name", ''); }
   set name (v: string)
   { Jsonipc.send ('set/' + 'name', [this, v]); }
-  get_name (): Promise<string>
-  { return Jsonipc.send ("get_name", [this]); }
-  set_name (arg1: string): Promise<void>
-  { return Jsonipc.send ("set_name", [this, arg1]); }
   type_nick (): Promise<string>
   { return Jsonipc.send ("type_nick", [this]); }
   list_properties (): Promise<string[]>
@@ -683,14 +667,6 @@ export class Clip // Ase::Clip
   { return Jsonipc.get_reactive_prop.call (this, "end_tick", 0); }
   set end_tick (v: number)
   { Jsonipc.send ('set/' + 'end_tick', [this, v]); }
-  get_all_notes (): Promise<ClipNote[]>
-  { return Jsonipc.send ("get_all_notes", [this]); }
-  set_all_notes (arg1: ClipNote[]): Promise<void>
-  { return Jsonipc.send ("set_all_notes", [this, arg1]); }
-  get_end_tick (): Promise<number>
-  { return Jsonipc.send ("get_end_tick", [this]); }
-  set_end_tick (arg1: number): Promise<void>
-  { return Jsonipc.send ("set_end_tick", [this, arg1]); }
   start_tick (): Promise<number>
   { return Jsonipc.send ("start_tick", [this]); }
   stop_tick (): Promise<number>
@@ -709,14 +685,6 @@ export class Track // Ase::Track
 {
   constructor ($id)
   { super ($id); if (new.target === Track) Jsonipc.ofreeze (this); }
-  get volume (): number
-  { return Jsonipc.get_reactive_prop.call (this, "volume", 0.0); }
-  set volume (v: number)
-  { Jsonipc.send ('set/' + 'volume', [this, v]); }
-  get pan (): number
-  { return Jsonipc.get_reactive_prop.call (this, "pan", 0.0); }
-  set pan (v: number)
-  { Jsonipc.send ('set/' + 'pan', [this, v]); }
   get midi_channel (): number
   { return Jsonipc.get_reactive_prop.call (this, "midi_channel", 0); }
   set midi_channel (v: number)
@@ -731,14 +699,14 @@ export class Track // Ase::Track
   { return Jsonipc.send ("is_solo", [this]); }
   set_solo (arg1: boolean): Promise<void>
   { return Jsonipc.send ("set_solo", [this, arg1]); }
-  get_volume (): Promise<number>
-  { return Jsonipc.send ("get_volume", [this]); }
-  set_volume (arg1: number): Promise<void>
-  { return Jsonipc.send ("set_volume", [this, arg1]); }
-  get_pan (): Promise<number>
-  { return Jsonipc.send ("get_pan", [this]); }
-  set_pan (arg1: number): Promise<void>
-  { return Jsonipc.send ("set_pan", [this, arg1]); }
+  get volume (): number
+  { return Jsonipc.get_reactive_prop.call (this, "volume", 0.0); }
+  set volume (v: number)
+  { Jsonipc.send ('set/' + 'volume', [this, v]); }
+  get pan (): number
+  { return Jsonipc.get_reactive_prop.call (this, "pan", 0.0); }
+  set pan (v: number)
+  { Jsonipc.send ('set/' + 'pan', [this, v]); }
   launcher_clips (): Promise<Clip[]>
   { return Jsonipc.send ("launcher_clips", [this]); }
   access_device (): Promise<Device>
@@ -783,22 +751,6 @@ export class Project // Ase::Project
   { return Jsonipc.get_reactive_prop.call (this, "denominator", 0.0); }
   set denominator (v: number)
   { Jsonipc.send ('set/' + 'denominator', [this, v]); }
-  get master_volume (): number
-  { return Jsonipc.get_reactive_prop.call (this, "master_volume", 0.0); }
-  set master_volume (v: number)
-  { Jsonipc.send ('set/' + 'master_volume', [this, v]); }
-  set_bpm (arg1: number): Promise<void>
-  { return Jsonipc.send ("set_bpm", [this, arg1]); }
-  get_bpm (): Promise<number>
-  { return Jsonipc.send ("get_bpm", [this]); }
-  set_numerator (arg1: number): Promise<void>
-  { return Jsonipc.send ("set_numerator", [this, arg1]); }
-  get_numerator (): Promise<number>
-  { return Jsonipc.send ("get_numerator", [this]); }
-  set_denominator (arg1: number): Promise<void>
-  { return Jsonipc.send ("set_denominator", [this, arg1]); }
-  get_denominator (): Promise<number>
-  { return Jsonipc.send ("get_denominator", [this]); }
   discard (): Promise<void>
   { return Jsonipc.send ("discard", [this]); }
   start_playback (): Promise<void>
@@ -839,12 +791,12 @@ export class Project // Ase::Project
   { return Jsonipc.send ("redo", [this]); }
   can_redo (): Promise<boolean>
   { return Jsonipc.send ("can_redo", [this]); }
-  get_length (): Promise<number>
-  { return Jsonipc.send ("get_length", [this]); }
-  get_master_volume (): Promise<number>
-  { return Jsonipc.send ("get_master_volume", [this]); }
-  set_master_volume (arg1: number): Promise<void>
-  { return Jsonipc.send ("set_master_volume", [this, arg1]); }
+  length (): Promise<number>
+  { return Jsonipc.send ("length", [this]); }
+  get master_volume (): number
+  { return Jsonipc.get_reactive_prop.call (this, "master_volume", 0.0); }
+  set master_volume (v: number)
+  { Jsonipc.send ('set/' + 'master_volume', [this, v]); }
   match_serialized (arg1: string, arg2: number): Promise<string>
   { return Jsonipc.send ("match_serialized", [this, arg1, arg2]); }
 };
@@ -863,14 +815,6 @@ export class ResourceCrawler // Ase::ResourceCrawler
   { return Jsonipc.get_reactive_prop.call (this, "entries", []); }
   set entries (v: Resource[])
   { Jsonipc.send ('set/' + 'entries', [this, v]); }
-  get_folder (): Promise<Resource>
-  { return Jsonipc.send ("get_folder", [this]); }
-  set_folder (arg1: Resource): Promise<void>
-  { return Jsonipc.send ("set_folder", [this, arg1]); }
-  get_entries (): Promise<Resource[]>
-  { return Jsonipc.send ("get_entries", [this]); }
-  set_entries (arg1: Resource[]): Promise<void>
-  { return Jsonipc.send ("set_entries", [this, arg1]); }
   assign (arg1: string, arg2: boolean): Promise<[string, string]>
   { return Jsonipc.send ("assign", [this, arg1, arg2]); }
   canonify (arg1: string, arg2: string, arg3: boolean, arg4: boolean): Promise<Resource>
