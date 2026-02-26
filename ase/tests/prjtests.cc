@@ -213,6 +213,55 @@ track_mute_solo()
 TEST_ADD (track_mute_solo);
 
 static void
+track_undo_redo()
+{
+  ProjectImplP project = ProjectImpl::create ("TrackUndoRedoTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  // Test track volume/pan notifications
+  const double initial_vol = track->volume();
+  const double initial_pan = track->pan();
+
+  uint64_t volume_notifications = 0;
+  auto volume_connection = track->on_event ("notify:volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
+
+  uint64_t pan_notifications = 0;
+  auto pan_connection = track->on_event ("notify:pan", [&pan_notifications] (const Event &event) { pan_notifications++; });
+
+  // Change volume
+  uint64_t last_volume_notifications = volume_notifications;
+  track->volume (-6.0);
+  TASSERT (std::abs (track->volume() - (-6.0)) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
+
+  // Change volume back
+  last_volume_notifications = volume_notifications;
+  track->volume (0.0);
+  TASSERT (std::abs (track->volume()) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
+
+  // Change pan
+  uint64_t last_pan_notifications = pan_notifications;
+  track->pan (0.5);
+  TASSERT (std::abs (track->pan() - 0.5) < 0.01);
+  TASSERT (pan_notifications > last_pan_notifications);
+
+  // Change pan back
+  last_pan_notifications = pan_notifications;
+  track->pan (-0.5);
+  TASSERT (std::abs (track->pan() - (-0.5)) < 0.01);
+  TASSERT (pan_notifications > last_pan_notifications);
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (track_undo_redo);
+
+static void
 track_volume_pan()
 {
   ProjectImplP project = ProjectImpl::create ("TrackVolumePanTest");

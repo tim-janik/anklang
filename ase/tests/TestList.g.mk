@@ -53,6 +53,7 @@ ASE_TEST_LIST := \
   test_serializable_hierarchy \
   track_mute_solo \
   track_name \
+  track_undo_redo \
   track_volume_pan \
   transport_tests \
   unicode_displayfs_tests \
