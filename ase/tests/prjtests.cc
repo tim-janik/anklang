@@ -223,9 +223,6 @@ track_undo_redo()
   TASSERT (track);
 
   // Test track volume/pan notifications
-  const double initial_vol = track->volume();
-  const double initial_pan = track->pan();
-
   uint64_t volume_notifications = 0;
   auto volume_connection = track->on_event ("notify:volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
 
@@ -440,46 +437,76 @@ clip_mute_volume_pan()
   TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
   TASSERT (trackimpl);
 
-  ClipImplP clip = trackimpl->create_midi_clip ("MuteVolPanClip", 0.0, 4.0);
-  TASSERT (clip);
+  // Test MIDI clip
+  ClipImplP mclip = trackimpl->create_midi_clip ("MidiClip", 0.0, 4.0);
+  TASSERT (mclip);
 
   // Test initial state
-  TASSERT (!clip->is_muted());
+  TASSERT (!mclip->is_muted());
 
   // Test mute notifications
   uint64_t muted_notifications = 0;
-  auto muted_connection = clip->on_event ("notify:muted", [&muted_notifications] (const Event &event) { muted_notifications++; });
+  auto muted_connection = mclip->on_event ("notify:muted", [&muted_notifications] (const Event &event) { muted_notifications++; });
 
   // Test mute with notification
   uint64_t last_muted_notifications = muted_notifications;
-  clip->set_muted (true);
-  TASSERT (clip->is_muted());
+  mclip->set_muted (true);
+  TASSERT (mclip->is_muted());
   TASSERT (muted_notifications > last_muted_notifications);
 
   // Reset mute
   last_muted_notifications = muted_notifications;
-  clip->set_muted (false);
-  TASSERT (!clip->is_muted());
+  mclip->set_muted (false);
+  TASSERT (!mclip->is_muted());
   TASSERT (muted_notifications > last_muted_notifications);
 
   // Test volume notifications
   uint64_t volume_notifications = 0;
-  auto volume_connection = clip->on_event ("notify:volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
+  auto volume_connection = mclip->on_event ("notify:volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
 
   // Test setting volume with notification
   uint64_t last_volume_notifications = volume_notifications;
-  clip->volume (-6.0);
-  TASSERT (std::abs (clip->volume() - (-6.0)) < 0.01);
+  mclip->volume (-6.0);
+  TASSERT (std::abs (mclip->volume() - (-6.0)) < 0.01);
   TASSERT (volume_notifications > last_volume_notifications);
 
   // Reset volume
   last_volume_notifications = volume_notifications;
-  clip->volume (0.0);
-  TASSERT (std::abs (clip->volume()) < 0.01);
+  mclip->volume (0.0);
+  TASSERT (std::abs (mclip->volume()) < 0.01);
   TASSERT (volume_notifications > last_volume_notifications);
 
-  // Test pan (for audio clips - just verify it doesn't crash)
-  // Pan is only available on audio clips, not MIDI clips
+  // Test audio clip (pan is only available on audio clips)
+  ClipImplP aclip = trackimpl->create_audio_clip ("AudioClip", 0.0, 4.0);
+  TASSERT (aclip);
+
+  // Test pan notifications for audio clip
+  uint64_t pan_notifications = 0;
+  auto pan_connection = aclip->on_event ("notify:pan", [&pan_notifications] (const Event &event) { pan_notifications++; });
+
+  // Initial pan should be 0
+  TASSERT (std::abs (aclip->pan()) < 0.01);
+
+  // Test setting pan with notification
+  uint64_t last_pan_notifications = pan_notifications;
+  aclip->pan (0.5);
+  TASSERT (std::abs (aclip->pan() - 0.5) < 0.01);
+  TASSERT (pan_notifications > last_pan_notifications);
+
+  // Reset pan
+  last_pan_notifications = pan_notifications;
+  aclip->pan (-0.5);
+  TASSERT (std::abs (aclip->pan() - (-0.5)) < 0.01);
+  TASSERT (pan_notifications > last_pan_notifications);
+
+  // Test audio clip volume
+  uint64_t audio_volume_notifications = 0;
+  auto audio_volume_connection = aclip->on_event ("notify:volume", [&audio_volume_notifications] (const Event &event) { audio_volume_notifications++; });
+
+  last_volume_notifications = audio_volume_notifications;
+  aclip->volume (-3.0);
+  TASSERT (std::abs (aclip->volume() - (-3.0)) < 0.01);
+  TASSERT (audio_volume_notifications > last_volume_notifications);
 
   project->_deactivate();
   project->discard();

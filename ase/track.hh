@@ -53,6 +53,7 @@ public:
   TelemetryFieldS telemetry         () const override;
   enum { NONE = -1 };
   ClipImplP       create_midi_clip  (const String &name, double start, double length);
+  ClipImplP       create_audio_clip (const String &name, double start, double length);
   static TrackImplP from_trkn (tracktion::Track&);
 };
 

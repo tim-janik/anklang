@@ -162,15 +162,14 @@ TrackImpl::project () const
 }
 
 String
-TrackImpl::fallback_name () const
+TrackImpl::fallback_name() const
 {
   if (is_master())
     return "Master";
-  if (auto project_ = project())
-    {
-      ssize_t i = project_->track_index (*this);
-      return string_format ("Track %u", i >= 0 ? i + 1 : i);
-    }
+  if (auto project_ = project()) {
+    ssize_t i = project_->track_index (*this);
+    return string_format ("Track %u", i >= 0 ? i + 1 : i);
+  }
   return DeviceImpl::fallback_name();
 }
 
@@ -180,14 +179,14 @@ TrackImpl::serialize (WritNode &xs)
 }
 
 void
-TrackImpl::_activate ()
+TrackImpl::_activate()
 {
   assert_return (!is_active() && _parent());
   DeviceImpl::_activate();
 }
 
 void
-TrackImpl::_deactivate ()
+TrackImpl::_deactivate()
 {
   assert_return (is_active());
   DeviceImpl::_deactivate();
@@ -203,7 +202,7 @@ TrackImpl::midi_channel (int32 midichannel)
 }
 
 bool
-TrackImpl::is_muted () const
+TrackImpl::is_muted() const
 {
   if (auto t = track_.get())
     return t->isMuted (false);
@@ -218,7 +217,7 @@ TrackImpl::set_muted (bool muted)
 }
 
 bool
-TrackImpl::is_solo () const
+TrackImpl::is_solo() const
 {
   if (auto t = track_.get())
     return t->isSolo (false);
@@ -233,7 +232,7 @@ TrackImpl::set_solo (bool solo)
 }
 
 bool
-TrackImpl::is_master () const
+TrackImpl::is_master() const
 {
   if (auto t = track_.get())
     return t->isMasterTrack();
@@ -279,7 +278,7 @@ TrackImpl::pan (double pan)
 }
 
 ClipS
-TrackImpl::launcher_clips ()
+TrackImpl::launcher_clips()
 {
   ClipS clips;
   if (auto t = track_.get())
@@ -294,13 +293,12 @@ ssize_t
 TrackImpl::clip_index (const ClipImpl &clip) const
 {
   if (auto t = track_.get())
-    if (auto ct = dynamic_cast<te::ClipTrack*> (t))
-      {
-        auto &clips = ct->getClips();
-        for (int i = 0; i < clips.size(); i++)
-          if (clips[i] == clip.clip_.get())
-            return i;
-      }
+    if (auto ct = dynamic_cast<te::ClipTrack *> (t)) {
+      auto &clips = ct->getClips();
+      for (int i = 0; i < clips.size(); i++)
+        if (clips[i] == clip.clip_.get())
+          return i;
+    }
   return -1;
 }
 
@@ -311,17 +309,16 @@ TrackImpl::clip_succession (const ClipImpl &clip) const
   if (idx < 0)
     return NONE;
   if (auto t = track_.get())
-    if (auto ct = dynamic_cast<te::ClipTrack*> (t))
-      {
-        auto &clips = ct->getClips();
-        if (idx + 1 < clips.size())
-          return idx + 1;
-      }
+    if (auto ct = dynamic_cast<te::ClipTrack *> (t)) {
+      auto &clips = ct->getClips();
+      if (idx + 1 < clips.size())
+        return idx + 1;
+    }
   return NONE;
 }
 
 DeviceP
-TrackImpl::access_device ()
+TrackImpl::access_device()
 {
   return nullptr;
 }
@@ -333,7 +330,7 @@ TrackImpl::create_monitor (int32 ochannel)
 }
 
 TelemetryFieldS
-TrackImpl::telemetry () const
+TrackImpl::telemetry() const
 {
   TelemetryFieldS v;
   return_unless (state_listener_, v);
@@ -354,7 +351,7 @@ TrackImpl::update_telemetry()
 }
 
 DeviceInfo
-TrackImpl::device_info ()
+TrackImpl::device_info()
 {
   return {};
 }
@@ -376,17 +373,16 @@ TrackImpl::ClipScout::setup (const std::vector<int> &indices)
 int
 TrackImpl::ClipScout::advance (int previous)
 {
-  if (previous >= 0 && previous < indices_.size())
-    {
-      last_ = previous;
-      return indices_[last_];
-    }
+  if (previous >= 0 && previous < indices_.size()) {
+    last_ = previous;
+    return indices_[last_];
+  }
   return NONE;
 }
 
 /// Reset state (history), preserves succession order.
 void
-TrackImpl::ClipScout::reset ()
+TrackImpl::ClipScout::reset()
 {
   last_ = -1;
 }
@@ -401,20 +397,38 @@ TrackImpl::ClipScout::update (const ClipScout &other)
 ClipImplP
 TrackImpl::create_midi_clip (const String &name, double start, double length)
 {
-  if (auto t = track_.get())
-    {
-       if (auto at = dynamic_cast<tracktion::AudioTrack*> (t))
-       {
-           const tracktion::TimeRange range (tracktion::TimePosition::fromSeconds(start), tracktion::TimeDuration::fromSeconds(length));
-           auto clip = at->insertMIDIClip (juce::String(name), range, nullptr);
-           if (clip)
-             return ClipImpl::from_trkn (*clip);
-           else
-             warning ("insertMIDIClip returned null");
-       }
-       else
-         warning ("dynamic_cast<AudioTrack*> failed for track type: %s", trkn_track_type(*t).c_str());
+  if (auto t = track_.get()) {
+    if (auto at = dynamic_cast<tracktion::AudioTrack *> (t)) {
+      const tracktion::TimeRange range (tracktion::TimePosition::fromSeconds (start), tracktion::TimeDuration::fromSeconds (length));
+      auto                       clip = at->insertMIDIClip (juce::String (name), range, nullptr);
+      if (clip)
+        return ClipImpl::from_trkn (*clip);
+      else
+        warning ("insertMIDIClip returned null");
     }
+    else
+      warning ("dynamic_cast<AudioTrack*> failed for track type: %s", trkn_track_type (*t).c_str());
+  }
+  else
+    warning ("track_.get() returned null");
+  return nullptr;
+}
+
+ClipImplP
+TrackImpl::create_audio_clip (const String &name, double start, double length)
+{
+  if (auto t = track_.get()) {
+    if (auto ct = dynamic_cast<tracktion::ClipTrack *> (t)) {
+      const tracktion::TimeRange range (tracktion::TimePosition::fromSeconds (start), tracktion::TimeDuration::fromSeconds (length));
+      auto                       clip = ct->insertNewClip (tracktion::TrackItem::Type::wave, juce::String (name), range, nullptr);
+      if (clip)
+        return ClipImpl::from_trkn (*clip);
+      else
+        warning ("insertNewClip returned null");
+    }
+    else
+      warning ("dynamic_cast<ClipTrack*> failed for track type: %s", trkn_track_type (*t).c_str());
+  }
   else
     warning ("track_.get() returned null");
   return nullptr;
