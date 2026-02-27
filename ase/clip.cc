@@ -59,7 +59,7 @@ public:
       }
     else if (property == tracktion::engine::IDs::mute)
       aseclip_.emit_notify ("muted");
-    else if (property == tracktion::engine::IDs::volDb)
+    else if (property == tracktion::engine::IDs::volDb || property == tracktion::engine::IDs::gain)
       aseclip_.emit_notify ("volume");
     else if (property == tracktion::engine::IDs::pan)
       aseclip_.emit_notify ("pan");
@@ -243,7 +243,6 @@ ClipImpl::set_muted (bool muted)
   auto &um = clip_->edit.getUndoManager();
   um.beginNewTransaction ("Set Clip Muted");
   clip_->setMuted (muted);
-  emit_notify ("muted");
 }
 
 double
@@ -274,7 +273,6 @@ ClipImpl::volume (double db)
       if (aclip)
         aclip->setGainDB (float (db));
     }
-  emit_notify ("volume");
 }
 
 double
@@ -296,7 +294,6 @@ ClipImpl::pan (double panval)
   auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
   if (aclip)
     aclip->setPan (float (panval));
-  emit_notify ("pan");
 }
 
 TelemetryFieldS
