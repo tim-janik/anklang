@@ -174,7 +174,9 @@ ase/tests/TestList.g.mk:	# any deps here are forced to be rebuilt during Makefil
 	$Q cat $(ase/tests/TestList.g.INPUTS) | \
 		grep -Eo '^\s*TEST_\w+ ?\((\w+)\)' | \
 		sed 's/.*(/  /; s/)/ \\/' | \
-		sort -d		>>$@.tmp
+		sort -d		>> $@.tmp
+	$Q uniq $@.tmp > $@.uniq.tmp && diff -u $@.uniq.tmp $@.tmp && rm $@.uniq.tmp || \
+		{ echo "$@: error: test functions are not unique" >&2 ; false ; }
 	$Q mv $@.tmp $@
 ifneq (,$(shell find $(ase/tests/TestList.g.INPUTS) -newer ase/tests/TestList.g.mk))
 .PHONY: ase/tests/TestList.g.mk		# update generated file without forcing rebuild of INPUTS
