@@ -12,6 +12,7 @@ ASE_TEST_LIST := \
   clip_mute_volume_pan \
   clip_notes \
   clip_range \
+  clip_undo_redo \
   cotask_int64_result_test \
   cotask_string_result_test \
   cotask_void_test \
