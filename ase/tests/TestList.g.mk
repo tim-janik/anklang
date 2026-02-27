@@ -9,6 +9,7 @@ ASE_TEST_LIST := \
   blake3_tests \
   callback_list_test \
   clip_creation \
+  clip_mute_volume_pan \
   clip_notes \
   clip_range \
   cotask_int64_result_test \
@@ -53,6 +54,7 @@ ASE_TEST_LIST := \
   test_serializable_hierarchy \
   track_mute_solo \
   track_name \
+  track_undo_redo \
   track_volume_pan \
   transport_tests \
   unicode_displayfs_tests \

@@ -10,8 +10,7 @@
 namespace Ase {
 
 // == Gadget ==
-Gadget::Gadget() :
-  name (this, "name")
+Gadget::Gadget()
 {}
 
 // == GadgetImpl ==
@@ -92,14 +91,14 @@ GadgetImpl::serialize (WritNode &xs)
         continue;
       if (xs.in_save() && string_option_check (hints, "r"))
         {
-          Value v = p->get_value();
+          Value v = p->value();
           xs[p->ident()] & v;
         }
       if (xs.in_load() && string_option_check (hints, "w") && xs.has (p->ident()))
         {
           Value v;
           xs[p->ident()] & v;
-          p->set_value (v);
+          p->value (v);
         }
     }
   // data
@@ -137,7 +136,7 @@ GadgetImpl::type_nick () const
 static CustomDataKey<String> gadget_name_key;
 
 String
-GadgetImpl::get_name () const
+GadgetImpl::name () const
 {
   if (!has_custom_data (&gadget_name_key))
     return fallback_name();
@@ -145,14 +144,14 @@ GadgetImpl::get_name () const
 }
 
 void
-GadgetImpl::set_name (const std::string &n)
+GadgetImpl::name (const std::string &n)
 {
   String newname = string_strip (n);
   if (newname.empty())
     del_custom_data (&gadget_name_key);
   else
     set_custom_data (&gadget_name_key, newname);
-  name.notify();
+  emit_notify ("name");
 }
 
 PropertyS
@@ -197,14 +196,14 @@ Value
 Gadget::get_value (String ident)
 {
   PropertyP prop = access_property (ident);
-  return prop ? prop->get_value() : Value {};
+  return prop ? prop->value() : Value {};
 }
 
 bool
 Gadget::set_value (String ident, const Value &v)
 {
   PropertyP prop = access_property (ident);
-  return prop && prop->set_value (v);
+  return prop && prop->value (v);
 }
 
 struct MemberAccessor {

@@ -24,8 +24,8 @@ protected:
   void           serialize         (WritNode &xs) override;
   virtual void   create_properties ();
 public:
-  String         get_name          () const override;
-  void           set_name          (const std::string &n) override;
+  String         name              () const override;
+  void           name              (const std::string &n) override;
   void           _set_parent       (GadgetImpl *parent) override;
   GadgetImpl*    _parent           () const override    { return parent_; }
   String         type_nick         () const override;

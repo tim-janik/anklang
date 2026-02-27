@@ -15,10 +15,10 @@ class FileCrawler final : public ObjectImpl, public virtual ResourceCrawler {
   FileCrawler (const String &cwd, bool constraindir = false, bool constrainfile = false);
 protected:
   String2   assign_         (const String &utf8path, bool existingfile, bool notify = true);
-  Resource  get_folder      () const override;
-  void      set_folder      (const Resource &newfolder) override;
-  ResourceS get_entries     () const override;
-  void      set_entries     (const ResourceS &newentries) override;
+  Resource  folder          () const override;
+  void      folder          (const Resource &newfolder) override;
+  ResourceS entries         () const override;
+  void      entries         (const ResourceS &newentries) override;
 public:
   ASE_DEFINE_MAKE_SHARED (FileCrawler);
   ResourceS list_entries    ();

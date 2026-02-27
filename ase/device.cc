@@ -5,8 +5,7 @@
 namespace Ase {
 
 // == Device ==
-Device::Device() :
-  devices (this, "devices")
+Device::Device()
 {}
 
 // == DeviceImpl ==

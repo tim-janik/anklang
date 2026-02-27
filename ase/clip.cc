@@ -12,9 +12,7 @@ namespace te = tracktion::engine;
 namespace Ase {
 
 // == Clip ==
-Clip::Clip () :
-  all_notes (this, "all_notes"),
-  end_tick (this, "end_tick")
+Clip::Clip ()
 {}
 
 // == ClipNote ==
@@ -59,6 +57,12 @@ public:
         aseclip_.emit_notify ("stop_tick");
         aseclip_.emit_notify ("end_tick");
       }
+    else if (property == tracktion::engine::IDs::mute)
+      aseclip_.emit_notify ("muted");
+    else if (property == tracktion::engine::IDs::volDb)
+      aseclip_.emit_notify ("volume");
+    else if (property == tracktion::engine::IDs::pan)
+      aseclip_.emit_notify ("pan");
     else
         aseclip_.emit_notify ("notes"); // Simplistic change detection for notes within state
   }
@@ -153,13 +157,13 @@ ClipImpl::assign_range (int64 starttick, int64 stoptick)
 ClipNoteS
 ClipImpl::list_all_notes ()
 {
-  return get_all_notes();
+  return all_notes();
 }
 
 void
-ClipImpl::set_all_notes (const ClipNoteS &notes)
+ClipImpl::all_notes (const ClipNoteS &notes)
 {
-  ClipNoteS current = get_all_notes();
+  ClipNoteS current = all_notes();
   // Mark all for deletion
   for (auto &n : current) n.duration = 0;
 
@@ -169,7 +173,7 @@ ClipImpl::set_all_notes (const ClipNoteS &notes)
 }
 
 ClipNoteS
-ClipImpl::get_all_notes () const
+ClipImpl::all_notes () const
 {
   ClipNoteS notes;
   if (!clip_.get()) return notes;
@@ -196,14 +200,14 @@ ClipImpl::get_all_notes () const
 }
 
 int64
-ClipImpl::get_end_tick () const
+ClipImpl::end_tick () const
 {
   if (!clip_.get()) return 0;
   return stop_tick();
 }
 
 void
-ClipImpl::set_end_tick (int64 etick)
+ClipImpl::end_tick (int64 etick)
 {
   if (!clip_.get()) return;
   assign_range (start_tick(), etick);
@@ -225,11 +229,93 @@ ClipImpl::stop_tick () const
   return ts.toBeats (clip_->getPosition().getEnd()).inBeats() * TRANSPORT_PPQN;
 }
 
+bool
+ClipImpl::is_muted () const
+{
+  if (!clip_.get()) return false;
+  return clip_->isMuted();
+}
+
+void
+ClipImpl::set_muted (bool muted)
+{
+  if (!clip_.get()) return;
+  auto &um = clip_->edit.getUndoManager();
+  um.beginNewTransaction ("Set Clip Muted");
+  clip_->setMuted (muted);
+  emit_notify ("muted");
+}
+
+double
+ClipImpl::volume () const
+{
+  if (!clip_.get()) return 0.0;
+  auto mclip = dynamic_cast<te::MidiClip*> (clip_.get());
+  if (mclip)
+    return mclip->getVolumeDb();
+  auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
+  if (aclip)
+    return aclip->getGainDB();
+  return 0.0;
+}
+
+void
+ClipImpl::volume (double db)
+{
+  if (!clip_.get()) return;
+  auto &um = clip_->edit.getUndoManager();
+  um.beginNewTransaction ("Set Clip Volume");
+  auto mclip = dynamic_cast<te::MidiClip*> (clip_.get());
+  if (mclip)
+    mclip->setVolumeDb (float (db));
+  else
+    {
+      auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
+      if (aclip)
+        aclip->setGainDB (float (db));
+    }
+  emit_notify ("volume");
+}
+
+double
+ClipImpl::pan () const
+{
+  if (!clip_.get()) return 0.0;
+  auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
+  if (aclip)
+    return aclip->getPan();
+  return 0.0;
+}
+
+void
+ClipImpl::pan (double panval)
+{
+  if (!clip_.get()) return;
+  auto &um = clip_->edit.getUndoManager();
+  um.beginNewTransaction ("Set Clip Pan");
+  auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
+  if (aclip)
+    aclip->setPan (float (panval));
+  emit_notify ("pan");
+}
+
+TelemetryFieldS
+ClipImpl::telemetry () const
+{
+  TelemetryFieldS v;
+  return v;
+}
+
+void
+ClipImpl::update_telemetry ()
+{
+}
+
 /// Retrieve const vector with all notes ordered by tick.
 ClipImpl::OrderedEventsP
 ClipImpl::tick_events () const
 {
-  ClipNoteS notes = get_all_notes();
+  ClipNoteS notes = all_notes();
   return std::make_shared<const OrderedEventsV> (notes);
 }
 
@@ -286,7 +372,7 @@ ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
         }
     }
   emit_notify ("notes");
-  all_notes.notify();
+  emit_notify ("all_notes");
   return 0;
 }
 

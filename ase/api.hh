@@ -137,10 +137,10 @@ protected:
   explicit        Property       ();
   virtual        ~Property       () = 0;
 public:
-  virtual String  get_name       () const;
-  virtual void    set_name       (const String &n);
-  virtual StringS get_metadata   () const = 0;
-  virtual void    set_metadata   (const StringS &md);
+  virtual String  name           () const;
+  virtual void    name           (const String &n);
+  virtual StringS metadata       () const = 0;
+  virtual void    metadata       (const StringS &md);
   virtual String  ident          () const = 0;         ///< Unique name (per owner) of this Property.
   virtual String  label          () const = 0;         ///< Preferred user interface name.
   virtual String  nick           () const = 0;         ///< Abbreviated user interface name, usually not more than 6 characters.
@@ -149,8 +149,8 @@ public:
   virtual double  get_max        () const = 0;         ///< Get the maximum property value, converted to double.
   virtual double  get_step       () const = 0;         ///< Get the property value stepping, converted to double.
   virtual void    reset          () = 0;               ///< Assign default as normalized property value.
-  virtual Value   get_value      () const = 0;         ///< Get the native property value.
-  virtual bool    set_value      (const Value &v) = 0; ///< Set the native property value.
+  virtual Value   value          () const = 0;         ///< Get the native property value.
+  virtual bool    value          (const Value &v) = 0; ///< Set the native property value.
   virtual double  get_normalized () const = 0;         ///< Get the normalized property value, converted to double.
   virtual bool    set_normalized (double v) = 0;       ///< Set the normalized property value as double.
   virtual String  get_text       () const = 0;         ///< Get the current property value, converted to a text String.
@@ -161,9 +161,6 @@ public:
   String          blurb          () const;             ///< Short description for user interface tooltips (metadata).
   String          descr          () const;             ///< Elaborate description, e.g. for help dialogs (metadata).
   String          group          () const;             ///< Group name for parameters of similar function (metadata).
-  Member<&Property::get_name,&Property::set_name> name [[no_unique_address]];
-  Member<&Property::get_value,&Property::set_value> value [[no_unique_address]];
-  Member<&Property::get_metadata,&Property::set_metadata> metadata [[no_unique_address]];
 };
 
 /// Base type for classes with Property interfaces.
@@ -183,8 +180,8 @@ public:
   virtual void        _set_parent       (GadgetImpl *parent) = 0; ///< Assign parent container.
   ProjectImpl*        _project          () const;                 ///< Find Project in parent ancestry.
   // Naming
-  virtual String      get_name          () const = 0;
-  virtual void        set_name          (const std::string &n) = 0;
+  virtual String      name              () const = 0;
+  virtual void        name              (const std::string &n) = 0;
   virtual String      type_nick         () const = 0;
   // Properties
   virtual StringS     list_properties   ();                 ///< List all property identifiers.
@@ -196,7 +193,6 @@ public:
   virtual bool        set_data          (const String &key, const Value &v) = 0;
   /// Retrieve session data.
   virtual Value       get_data          (const String &key) const = 0;
-  Member<&Gadget::get_name,&Gadget::set_name> name [[no_unique_address]];
 };
 
 /// Info for device types.
@@ -230,7 +226,6 @@ public:
   virtual void       gui_toggle    () = 0;      ///< Toggle GUI display.
   virtual bool       gui_supported () = 0;      ///< Has GUI display facilities.
   virtual bool       gui_visible   () = 0;      ///< Is GUI currently visible.
-  Member<&Device::get_devices,&Device::set_devices> devices [[no_unique_address]];
 };
 
 /// Part specific note event representation.
@@ -251,20 +246,23 @@ class Clip : public virtual Gadget {
 protected:
   explicit          Clip           ();
 public:
-  virtual ClipNoteS get_all_notes  () const = 0;
-  virtual void      set_all_notes  (const ClipNoteS &notes) = 0;
-  virtual int64     get_end_tick   () const = 0;
-  virtual void      set_end_tick   (int64 etick) = 0;
+  virtual bool      is_muted       () const = 0;                  ///< Check if clip is muted.
+  virtual void      set_muted      (bool muted) = 0;              ///< Set clip muted state, emits `notify:muted`.
+  virtual double    volume         () const = 0;                  ///< Get clip volume in dB.
+  virtual void      volume         (double db) = 0;              ///< Set clip volume in dB, emits `notify:volume`.
+  virtual double    pan            () const = 0;                  ///< Get clip pan (-1.0 to 1.0).
+  virtual void      pan            (double pan) = 0;             ///< Set clip pan (-1.0 to 1.0), emits `notify:pan`.
+  virtual ClipNoteS all_notes      () const = 0;
+  virtual void      all_notes      (const ClipNoteS &notes) = 0;
+  virtual int64     end_tick       () const = 0;
+  virtual void      end_tick       (int64 etick) = 0;
   virtual int64     start_tick     () const = 0; ///< Get the first tick intended for playback (this is >= 0), changes on `notify:start_tick`.
   virtual int64     stop_tick      () const = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
   virtual void      assign_range   (int64 starttick, int64 stoptick) = 0; ///< Change start_tick() and stop_tick(); emits `notify:start_tick`, `notify:stop_tick`.
   /// Change note `id` according to the arguments or add a new note if `id` < 0; emits `notify:notes`.
   virtual int32     change_batch   (const ClipNoteS &notes, const String &undogroup = "") = 0; ///< Insert, change, delete in a batch.
   virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
-  /// Access all notes of this clip, changes on `notify:all_notes`.
-  Member<&Clip::get_all_notes,&Clip::set_all_notes> all_notes [[no_unique_address]];
-  /// The end tick is past any event ticks, changes on `notify:end_tick`.
-  Member<&Clip::get_end_tick,&Clip::set_end_tick> end_tick [[no_unique_address]];
+  virtual TelemetryFieldS telemetry () const = 0; ///< Retrieve clip telemetry locations.
 };
 
 /// Container for Clip objects and sequencing information.
@@ -277,10 +275,10 @@ public:
   virtual void            set_muted           (bool muted) = 0;      ///< Set track muted state.
   virtual bool            is_solo             () const = 0;          ///< Check if track is soloed.
   virtual void            set_solo            (bool solo) = 0;       ///< Set track solo state.
-  virtual double          get_volume          () const = 0;          ///< Get track volume in dB.
-  virtual void            set_volume          (double db) = 0;       ///< Set track volume in dB.
-  virtual double          get_pan             () const = 0;          ///< Get track pan (-1.0 to 1.0).
-  virtual void            set_pan             (double pan) = 0;      ///< Set track pan (-1.0 to 1.0).
+  virtual double          volume              () const = 0;          ///< Get track volume in dB.
+  virtual void            volume              (double db) = 0;       ///< Set track volume in dB.
+  virtual double          pan                 () const = 0;          ///< Get track pan (-1.0 to 1.0).
+  virtual void            pan                 (double pan) = 0;      ///< Set track pan (-1.0 to 1.0).
   virtual ClipS           launcher_clips      () = 0;                ///< Retrieve the list of clips that can be directly played.
   virtual DeviceP         access_device       () = 0;                ///< Retrieve Device handle for this track.
   virtual MonitorP        create_monitor      (int32 ochannel) = 0;  /// Create signal monitor for an output channel.
@@ -312,12 +310,12 @@ class Project : public virtual Device {
 protected:
   explicit                Project        ();
 public:
-  virtual void            set_bpm        (double bpm) = 0;
-  virtual double          get_bpm        () const = 0;
-  virtual void            set_numerator  (double num) = 0;
-  virtual double          get_numerator  () const = 0;
-  virtual void            set_denominator (double den) = 0;
-  virtual double          get_denominator() const = 0;
+  virtual void            bpm            (double bpm) = 0;
+  virtual double          bpm            () const = 0;
+  virtual void            numerator      (double num) = 0;
+  virtual double          numerator      () const = 0;
+  virtual void            denominator    (double den) = 0;
+  virtual double          denominator    () const = 0;
   virtual void            discard        () = 0;       ///< Discard project and associated resources.
   virtual void            start_playback () = 0;       ///< Start playback of a project, requires active sound engine.
   virtual void            pause_playback () = 0;       ///< Pause playback at the current position.
@@ -338,14 +336,11 @@ public:
   virtual bool            can_undo       () = 0;       ///< Check if any undo steps have been recorded.
   virtual void            redo           () = 0;       ///< Redo the last undo modification.
   virtual bool            can_redo       () = 0;       ///< Check if any redo steps have been recorded.
-  virtual double          get_length     () const = 0; ///< Get the end time of the last clip in seconds.
-  virtual double          get_master_volume () const = 0; ///< Get master volume in dB.
-  virtual void            set_master_volume (double db) = 0; ///< Set master volume in dB.
+  virtual double          length         () const = 0; ///< Get the end time of the last clip in seconds.
+  virtual double          master_volume  () const = 0; ///< Get master volume in dB.
+  virtual void            master_volume  (double db) = 0; ///< Set master volume in dB.
   virtual String          match_serialized (const String &regex,
                                             int group = 0) = 0; ///< Match `regex` against the serialized project state.
-  Member<&Project::get_bpm,&Project::set_bpm> bpm [[no_unique_address]];
-  Member<&Project::get_numerator,&Project::set_numerator> numerator [[no_unique_address]];
-  Member<&Project::get_denominator,&Project::set_denominator> denominator [[no_unique_address]];
   static ProjectP         last_project   ();
 };
 
@@ -368,17 +363,15 @@ class ResourceCrawler : public virtual Object {
 protected:
   explicit          ResourceCrawler ();
 public:
-  virtual Resource  get_folder      () const = 0;                       ///< Describe current folder.
-  virtual void      set_folder      (const Resource &newfolder) = 0;
-  virtual ResourceS get_entries     () const = 0;                       ///< List entries of a folder.
-  virtual void      set_entries     (const ResourceS &newentries) = 0;
+  virtual Resource  folder          () const = 0;                       ///< Describe current folder.
+  virtual void      folder          (const Resource &newfolder) = 0;
+  virtual ResourceS entries         () const = 0;                       ///< List entries of a folder.
+  virtual void      entries         (const ResourceS &newentries) = 0;
   using String2 = std::pair<String,String>;
   virtual String2   assign          (const String &utf8path,
                                      bool existingfile = false) = 0;    ///< Move to a different path.
   /// Return absolute path, slash-terminated if directory, constrain to existing paths.
   virtual Resource  canonify        (const String &utf8cwd, const String &utf8fragment, bool constraindir, bool constrainfile) = 0;
-  Member<&ResourceCrawler::get_folder,&ResourceCrawler::set_folder>  folder [[no_unique_address]]; ///< The folder currently being browsed, UTF-8 encoded.
-  Member<&ResourceCrawler::get_entries,&ResourceCrawler::set_entries> entries [[no_unique_address]]; ///< The entries in the current folder, UTF-8 encoded.
 };
 
 /// Contents of user interface notifications.

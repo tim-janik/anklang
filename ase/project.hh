@@ -40,14 +40,14 @@ protected:
   String              match_serialized (const String &regex, int group) override;
   void                deactivate_edit ();
 public:
-  void                 set_bpm           (double bpm) override;
-  double               get_bpm           () const override;
-  void                 set_numerator     (double num) override;
-  double               get_numerator     () const override;
-  void                 set_denominator   (double den) override;
-  double               get_denominator   () const override;
-  String               get_name          () const override;
-  void                 set_name          (const std::string &n) override;
+  void                 bpm              (double bpm) override;
+  double               bpm              () const override;
+  void                 numerator        (double num) override;
+  double               numerator        () const override;
+  void                 denominator      (double den) override;
+  double               denominator      () const override;
+  String               name             () const override;
+  void                 name             (const std::string &n) override;
   void                 _activate         () override;
   void                 _deactivate       () override;
   void                 discard           () override;
@@ -57,9 +57,9 @@ public:
   bool                 can_undo          () override;
   void                 redo              () override;
   bool                 can_redo          () override;
-  double               get_length        () const override;
-  double               get_master_volume () const override;
-  void                 set_master_volume (double db) override;
+  double               length           () const override;
+  double               master_volume    () const override;
+  void                 master_volume    (double db) override;
   void                 group_undo        (const String &undoname) override;
   void                 ungroup_undo      () override;
   void                 clear_undo        ();

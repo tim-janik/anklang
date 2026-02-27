@@ -16,7 +16,7 @@ public:
   void            _activate            () override;
   void            _deactivate          () override;
   DeviceS         get_devices          () const override { return const_cast<DeviceImpl&> (*this).list_devices(); }
-  void            set_devices          (const DeviceS &newdevices) override { devices.notify(); }
+  void            set_devices          (const DeviceS &newdevices) override { emit_notify ("devices"); }
   bool            is_active            () override { return activated_; }
   bool            gui_supported        () override { return false; }
   bool            gui_visible          () override { return false; }

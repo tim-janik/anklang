@@ -15,7 +15,7 @@ project_creation()
   project->_activate();
   TASSERT (project->name() == "TestProject");
 
-  const double initial_bpm = project->bpm.get();
+  const double initial_bpm = project->bpm();
   TASSERT (initial_bpm >= 10.0 && initial_bpm <= 999.0);
   uint64_t bpm_notifications = 0;
   auto bpm_connection = project->on_event ("notify:bpm", [&bpm_notifications] (const Event &event) { bpm_notifications++; });
@@ -26,15 +26,15 @@ project_creation()
   uint64_t volume_notifications = 0;
   auto volume_connection = project->on_event ("notify:master_volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
 
-  const double initial_vol = project->get_master_volume();
+  const double initial_vol = project->master_volume();
   TASSERT (initial_vol >= -100.0 && initial_vol <= 20.0);
 
   // Test BPM notify/undo/redo
-  project->bpm.set (130.0);
-  TASSERT (std::abs (project->bpm.get() - 130.0) < 0.001);
+  project->bpm (130.0);
+  TASSERT (std::abs (project->bpm() - 130.0) < 0.001);
   uint64_t last_bpm_notifications = bpm_notifications;
-  project->set_bpm (123.0);
-  TASSERT (std::abs (project->bpm.get() - 123.0) < 0.001);
+  project->bpm (123.0);
+  TASSERT (std::abs (project->bpm() - 123.0) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
 
   // Test undo
@@ -44,26 +44,26 @@ project_creation()
   project->undo();
   TASSERT (!project->can_undo());
   TASSERT (project->can_redo());
-  TASSERT (std::abs (project->bpm.get() - initial_bpm) < 0.001);
+  TASSERT (std::abs (project->bpm() - initial_bpm) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
   // Test redo
   last_bpm_notifications = bpm_notifications;
   project->redo();
   TASSERT (project->can_undo());
   TASSERT (!project->can_redo());
-  TASSERT (std::abs (project->bpm.get() - 123.0) < 0.001);
+  TASSERT (std::abs (project->bpm() - 123.0) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
 
   project->undo();
   TASSERT (!project->can_undo());
   TASSERT (project->can_redo());
-  TASSERT (std::abs (project->bpm.get() - initial_bpm) < 0.001);
+  TASSERT (std::abs (project->bpm() - initial_bpm) < 0.001);
 
   // Test name notify/undo/redo
   const String initial_name = project->name();
   TASSERT (initial_name == "TestProject");
   uint64_t last_name_notifications = name_notifications;
-  project->set_name ("NewName");
+  project->name ("NewName");
   TASSERT (project->name() == "NewName");
   TASSERT (name_notifications > last_name_notifications);
 
@@ -81,20 +81,20 @@ project_creation()
 
   // Test master_volume notify/undo/redo
   uint64_t last_volume_notifications = volume_notifications;
-  project->set_master_volume (-6.0);
-  TASSERT (std::abs (project->get_master_volume() - (-6.0)) < 0.01);
+  project->master_volume (-6.0);
+  TASSERT (std::abs (project->master_volume() - (-6.0)) < 0.01);
   TASSERT (volume_notifications > last_volume_notifications);
 
   TASSERT (project->can_undo());
   last_volume_notifications = volume_notifications;
   project->undo();
-  TASSERT (std::abs (project->get_master_volume() - initial_vol) < 0.01);
+  TASSERT (std::abs (project->master_volume() - initial_vol) < 0.01);
   TASSERT (project->can_redo());
   TASSERT (volume_notifications > last_volume_notifications);
 
   last_volume_notifications = volume_notifications;
   project->redo();
-  TASSERT (std::abs (project->get_master_volume() - (-6.0)) < 0.01);
+  TASSERT (std::abs (project->master_volume() - (-6.0)) < 0.01);
   TASSERT (volume_notifications > last_volume_notifications);
 
   project->_deactivate();
@@ -117,7 +117,7 @@ project_length()
   TASSERT (project);
   project->_activate();
 
-  double len = project->get_length();
+  double len = project->length();
   TASSERT (len >= 0.0);
 
   project->_deactivate();
@@ -176,22 +176,87 @@ track_mute_solo()
   TASSERT (!track->is_muted());
   TASSERT (!track->is_solo());
 
-  // Test mute
+  // Test mute notifications
+  uint64_t muted_notifications = 0;
+  auto muted_connection = track->on_event ("notify:muted", [&muted_notifications] (const Event &event) { muted_notifications++; });
+
+  uint64_t solo_notifications = 0;
+  auto solo_connection = track->on_event ("notify:solo", [&solo_notifications] (const Event &event) { solo_notifications++; });
+
+  // Test mute with notification
+  uint64_t last_muted_notifications = muted_notifications;
   track->set_muted (true);
   TASSERT (track->is_muted());
+  TASSERT (muted_notifications > last_muted_notifications);
+
+  // Reset mute
+  last_muted_notifications = muted_notifications;
   track->set_muted (false);
   TASSERT (!track->is_muted());
+  TASSERT (muted_notifications > last_muted_notifications);
 
-  // Test solo
+  // Test solo with notification
+  uint64_t last_solo_notifications = solo_notifications;
   track->set_solo (true);
   TASSERT (track->is_solo());
+  TASSERT (solo_notifications > last_solo_notifications);
+
+  // Reset solo
+  last_solo_notifications = solo_notifications;
   track->set_solo (false);
   TASSERT (!track->is_solo());
+  TASSERT (solo_notifications > last_solo_notifications);
 
   project->_deactivate();
   project->discard();
 }
 TEST_ADD (track_mute_solo);
+
+static void
+track_undo_redo()
+{
+  ProjectImplP project = ProjectImpl::create ("TrackUndoRedoTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  // Test track volume/pan notifications
+  uint64_t volume_notifications = 0;
+  auto volume_connection = track->on_event ("notify:volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
+
+  uint64_t pan_notifications = 0;
+  auto pan_connection = track->on_event ("notify:pan", [&pan_notifications] (const Event &event) { pan_notifications++; });
+
+  // Change volume
+  uint64_t last_volume_notifications = volume_notifications;
+  track->volume (-6.0);
+  TASSERT (std::abs (track->volume() - (-6.0)) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
+
+  // Change volume back
+  last_volume_notifications = volume_notifications;
+  track->volume (0.0);
+  TASSERT (std::abs (track->volume()) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
+
+  // Change pan
+  uint64_t last_pan_notifications = pan_notifications;
+  track->pan (0.5);
+  TASSERT (std::abs (track->pan() - 0.5) < 0.01);
+  TASSERT (pan_notifications > last_pan_notifications);
+
+  // Change pan back
+  last_pan_notifications = pan_notifications;
+  track->pan (-0.5);
+  TASSERT (std::abs (track->pan() - (-0.5)) < 0.01);
+  TASSERT (pan_notifications > last_pan_notifications);
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (track_undo_redo);
 
 static void
 track_volume_pan()
@@ -204,25 +269,43 @@ track_volume_pan()
   TASSERT (track);
 
   // Test initial volume
-  double initial_vol = track->get_volume();
+  double initial_vol = track->volume();
   TASSERT (initial_vol >= -100.0 && initial_vol <= 20.0);
 
-  // Test setting volume
-  track->set_volume (-6.0);
-  TASSERT (std::abs (track->get_volume() - (-6.0)) < 0.01);
+  // Test volume notifications
+  uint64_t volume_notifications = 0;
+  auto volume_connection = track->on_event ("notify:volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
 
-  track->set_volume (0.0);
-  TASSERT (std::abs (track->get_volume()) < 0.01);
+  uint64_t pan_notifications = 0;
+  auto pan_connection = track->on_event ("notify:pan", [&pan_notifications] (const Event &event) { pan_notifications++; });
+
+  // Test setting volume with notification
+  uint64_t last_volume_notifications = volume_notifications;
+  track->volume (-6.0);
+  TASSERT (std::abs (track->volume() - (-6.0)) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
+
+  // Reset volume
+  last_volume_notifications = volume_notifications;
+  track->volume (0.0);
+  TASSERT (std::abs (track->volume()) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
 
   // Test pan
-  double initial_pan = track->get_pan();
+  double initial_pan = track->pan();
   TASSERT (initial_pan >= -1.0 && initial_pan <= 1.0);
 
-  track->set_pan (0.5);
-  TASSERT (std::abs (track->get_pan() - 0.5) < 0.01);
+  // Test setting pan with notification
+  uint64_t last_pan_notifications = pan_notifications;
+  track->pan (0.5);
+  TASSERT (std::abs (track->pan() - 0.5) < 0.01);
+  TASSERT (pan_notifications > last_pan_notifications);
 
-  track->set_pan (-0.5);
-  TASSERT (std::abs (track->get_pan() - (-0.5)) < 0.01);
+  // Reset pan
+  last_pan_notifications = pan_notifications;
+  track->pan (-0.5);
+  TASSERT (std::abs (track->pan() - (-0.5)) < 0.01);
+  TASSERT (pan_notifications > last_pan_notifications);
 
   project->_deactivate();
   project->discard();
@@ -240,10 +323,10 @@ track_name()
   TASSERT (track);
 
   // Set and get track name
-  track->set_name ("MyTrack");
+  track->name ("MyTrack");
   TASSERT (track->name() == "MyTrack");
 
-  track->set_name ("AnotherName");
+  track->name ("AnotherName");
   TASSERT (track->name() == "AnotherName");
 
   project->_deactivate();
@@ -340,5 +423,94 @@ clip_range()
   project->discard();
 }
 TEST_ADD (clip_range);
+
+static void
+clip_mute_volume_pan()
+{
+  ProjectImplP project = ProjectImpl::create ("ClipMuteVolPanTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
+  TASSERT (trackimpl);
+
+  // Test MIDI clip
+  ClipImplP mclip = trackimpl->create_midi_clip ("MidiClip", 0.0, 4.0);
+  TASSERT (mclip);
+
+  // Test initial state
+  TASSERT (!mclip->is_muted());
+
+  // Test mute notifications
+  uint64_t muted_notifications = 0;
+  auto muted_connection = mclip->on_event ("notify:muted", [&muted_notifications] (const Event &event) { muted_notifications++; });
+
+  // Test mute with notification
+  uint64_t last_muted_notifications = muted_notifications;
+  mclip->set_muted (true);
+  TASSERT (mclip->is_muted());
+  TASSERT (muted_notifications > last_muted_notifications);
+
+  // Reset mute
+  last_muted_notifications = muted_notifications;
+  mclip->set_muted (false);
+  TASSERT (!mclip->is_muted());
+  TASSERT (muted_notifications > last_muted_notifications);
+
+  // Test volume notifications
+  uint64_t volume_notifications = 0;
+  auto volume_connection = mclip->on_event ("notify:volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
+
+  // Test setting volume with notification
+  uint64_t last_volume_notifications = volume_notifications;
+  mclip->volume (-6.0);
+  TASSERT (std::abs (mclip->volume() - (-6.0)) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
+
+  // Reset volume
+  last_volume_notifications = volume_notifications;
+  mclip->volume (0.0);
+  TASSERT (std::abs (mclip->volume()) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
+
+  // Test audio clip (pan is only available on audio clips)
+  ClipImplP aclip = trackimpl->create_audio_clip ("AudioClip", 0.0, 4.0);
+  TASSERT (aclip);
+
+  // Test pan notifications for audio clip
+  uint64_t pan_notifications = 0;
+  auto pan_connection = aclip->on_event ("notify:pan", [&pan_notifications] (const Event &event) { pan_notifications++; });
+
+  // Initial pan should be 0
+  TASSERT (std::abs (aclip->pan()) < 0.01);
+
+  // Test setting pan with notification
+  uint64_t last_pan_notifications = pan_notifications;
+  aclip->pan (0.5);
+  TASSERT (std::abs (aclip->pan() - 0.5) < 0.01);
+  TASSERT (pan_notifications > last_pan_notifications);
+
+  // Reset pan
+  last_pan_notifications = pan_notifications;
+  aclip->pan (-0.5);
+  TASSERT (std::abs (aclip->pan() - (-0.5)) < 0.01);
+  TASSERT (pan_notifications > last_pan_notifications);
+
+  // Test audio clip volume
+  uint64_t audio_volume_notifications = 0;
+  auto audio_volume_connection = aclip->on_event ("notify:volume", [&audio_volume_notifications] (const Event &event) { audio_volume_notifications++; });
+
+  last_volume_notifications = audio_volume_notifications;
+  aclip->volume (-3.0);
+  TASSERT (std::abs (aclip->volume() - (-3.0)) < 0.01);
+  TASSERT (audio_volume_notifications > last_volume_notifications);
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (clip_mute_volume_pan);
 
 } // Anon
