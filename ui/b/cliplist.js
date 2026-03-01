@@ -92,7 +92,7 @@ export class BClipList extends LitComponent {
 	const async_updates = async () => {
 	  this.telemetry = await Object.freeze (this.track.telemetry());
 	  if (!this.teleobj && this.telemetry)
-	    this.teleobj = Util.telemetry_subscribe (this.recv_telemetry.bind (this), this.telemetry);
+	    ; // TODO: re-enable: this.teleobj = Util.telemetry_subscribe (this.recv_telemetry.bind (this), this.telemetry);
 	};
 	async_updates();
       }
