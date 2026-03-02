@@ -1054,9 +1054,10 @@ public:
   template<typename T, typename R, typename A> void
   field_accessor (const std::string &name)
   {
-    b_ += "  get " + name + " (): " + typescript_name<R>::name() + "\n";
-    b_ += "  { return Jsonipc.get_reactive_prop.call (this, \"" + name + "\", " + js_initializers[js_initializer_index<R>()] + "); }\n";
-    b_ += "  set " + name + " (v: " + typescript_name<R>::name() + ")\n";
+    const std::string ts_type = typescript_name<R>::name();
+    b_ += "  get " + name + " (): " + ts_type + "\n";
+    b_ += "  { return Jsonipc.get_reactive_prop.call (this, \"" + name + "\", " + js_initializers[js_initializer_index<R>()] + ") as " + ts_type + "; }\n";
+    b_ += "  set " + name + " (v: " + ts_type + ")\n";
     b_ += "  { Jsonipc.send ('set/' + '" + name + "', [this, v]); }\n";
   }
   void
