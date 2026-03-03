@@ -7,6 +7,7 @@
     "noImplicitAny": false,
     "skipLibCheck": true,
     "strictNullChecks": false,
+    "erasableSyntaxOnly": true,
     "noEmit": true,
     "strict": true,                                    // Enable all strict type-checking options.
     "target": "ESNext",

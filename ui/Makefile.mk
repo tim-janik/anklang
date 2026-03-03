@@ -103,21 +103,9 @@ VITE_DEPS += $>/version.json $(wildcard ui/* ui/b/*)
 
 
 # == ui/tscheck ==
-ui/tscheck: $>/tsconfig.json
+ui/tscheck: tsconfig.json
 	$(QECHO) CHECK $@
-	$Q node_modules/.bin/tsc --erasableSyntaxOnly --skipLibCheck -p $<
-$>/tsconfig.json: ui/Makefile.mk
-	@$(file > $>/tsconfig.json, $(TSCONFIG_JSON))
-define TSCONFIG_JSON
-{
-  "extends": "../tsconfig.json",
-  "compilerOptions": {
-    "paths": {
-      "/gen/*": ["../ase/gen/*"],
-    },
-  },
-}
-endef
+	$Q node_modules/.bin/tsc -p $<
 check: ui/tscheck
 
 # == ui dist build ==
