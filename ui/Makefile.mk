@@ -102,8 +102,8 @@ $>/gen/%.md: ui/%.js								| $>/gen/b/ node_modules/.npm.done
 	$Q node ui/xbcomments.js $< -O $(@D)
 
 # == ui dist build ==
-VITE_DEPS += $>/version.json
 $>/gen/.vite.done: ui/vite.config.ts ui/index.html ui/Makefile.mk $(VITE_DEPS)	| node_modules/.npm.done
+VITE_DEPS += $>/version.json $(wildcard ui/* ui/b/*)
 	@$(QECHO) BUILD "Vite Output"
 	$Q BUILDDIR='$(abspath $>)' node_modules/.bin/vite -c ui/vite.config.ts build -l warn --emptyOutDir
 	$Q ln -fs anklang.png $>/ui/favicon.ico
