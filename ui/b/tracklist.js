@@ -85,7 +85,6 @@ const HTML = (t, d) => html`
 `;
 
 // == SCRIPT ==
-import * as Ase from '/gen/api-jsonipc.g.ts';
 import * as Util from '../util.js';
 
 const OBJECT_PROPERTY = { attribute: false };

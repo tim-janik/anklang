@@ -3,7 +3,7 @@
 
 import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
 import * as Util from '../util.js';
-import * as Ase from '/gen/api-jsonipc.g.ts';
+import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
 
 /** @class BMenuBar

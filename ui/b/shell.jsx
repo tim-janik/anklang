@@ -14,10 +14,10 @@ import { createSignal, createEffect, onMount, onCleanup, For, Show } from 'solid
 
 import * as Signal from "../signal.js";
 import * as Util from "../util.js";
-import * as Ase from '/gen/api-jsonipc.g.ts';
+import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import * as Dom from "../dom.js";
 import DataBubbleIface from '../b/databubble.js';
-import spinner_svg from '/gen/assets/spinner.svg'
+import spinner_svg from '/assets/spinner.svg'
 import { ModalDialogs } from './modals.jsx';
 
 // == STYLE ==

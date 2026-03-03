@@ -3,7 +3,6 @@
 
 import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
 import * as Util from '../util.js';
-import * as Ase from '/gen/api-jsonipc.g.ts';
 
 /** @class BPositionView
  * @description

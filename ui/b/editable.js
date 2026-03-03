@@ -22,8 +22,6 @@ b-editable {
 
 
 // == SCRIPT ==
-import * as Ase from '/gen/api-jsonipc.g.ts';
-
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
 const PRIVATE_PROPERTY = { state: true };
