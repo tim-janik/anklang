@@ -226,7 +226,8 @@ class BPianoRoll extends LitComponent {
     // indicator_bar setup
     Shell.piano_current (this.clip, this.piano_current_tick.bind (this));
     // trigger layout, track layout deps from updated()
-    this.piano_layout_();
+    if (this.clip)
+      this.piano_layout_();
     if (this.vscroll_must_center && this.vscrollbar.clientHeight)
       this.vscroll_must_center = (this.vscroll_to (0.5), false);
     // trigger repaint, but avoid tracking paint deps in updated()
