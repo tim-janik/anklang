@@ -1,5 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-import type { Plugin, ResolvedConfig } from 'vite';
+import type { Plugin, ResolvedConfig, ModuleNode, ViteDevServer } from 'vite';
 import { normalizePath, createFilter } from 'vite';
 import * as babel from '@babel/core';
 import * as t from '@babel/types';
@@ -103,8 +103,8 @@ export default function extraCssPlugin (options: ExtraCssOptions = {}): Plugin
                 const quasis = path.node.quasi.quasis;
                 let cssContent = '';
 		const { start } = quasis[0].loc; // || path.node.loc || { start: {} }
-		if (start.line > 1)
-		  ; // cssContent += '\n'.repeat (start.line - 1);
+		// if (start.line > 1)
+		//   cssContent += '\n'.repeat (start.line - 1);
                 for (let i = 0; i < quasis.length; i++) {
 		  cssContent += quasis[i].value.raw;
                   if (i < quasis.length - 1)
