@@ -13,7 +13,9 @@
 import { render } from 'solid-js/web';
 import { ShellTemplate } from './shell';
 
-import '/gen/all-components.js';
+const component_modules = import.meta.glob (['../b/*.js', '../b/*.jsx'], { eager: true });
+// Object.entries (component_modules).map (([path, mod]) => console.log ("IMPORT:", path, !!mod.default));
+
 import * as Util from '../util.js';
 import * as Mouse from '../mouse.js';
 import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
