@@ -61,23 +61,27 @@ int main (int argc, const char *argv[]) {
 }
 endef
 
-# == codegen/ase/gen/api-jsonipc.json ==
-$>/codegen/ase/gen/api-jsonipc.json: ase/api.hh $>/ase/sysconfig.h ase/Makefile.mk
+# == $>/ase/api-jsonipc.json ==
+$>/ase/api-jsonipc.json: ase/api.hh $>/ase/sysconfig.h ase/Makefile.mk
 	$(QGEN)
 	$Q CLANG=clang-20; command -v $$CLANG >/dev/null || CLANG=clang-21; \
 		$$CLANG -std=gnu++23 -I . -I out/ -extract-api $< -o $@
+$>/ase/api-jsonipc.pretty.json: $>/ase/api-jsonipc.json ase/Makefile.mk
+	$(QGEN)		# JSON formatted for human inspection
+	$Q python3 -m json.tool < $< > $@
+ALL_TARGETS += $>/ase/api-jsonipc.pretty.json
 
-# == ase/gen/class-tree.g.md ==
-$>/codegen/ase/gen/class-tree.g.md: $>/codegen/ase/gen/api-jsonipc.json jsonipc/jsonbindings.ts ase/Makefile.mk
+# == check-jsonipc/jsonbindings.ts ==
+check-jsonipc/jsonbindings.ts: jsonipc/jsonbindings.ts			| node_modules/.npm.done
 	$(QGEN)
-	$Q $(RUNTS) jsonipc/jsonbindings.ts --class-tree $<				>  $@.tmp
-	$Q mv $@.tmp $@
-CODEGEN.FILES += ase/gen/class-tree.g.md
+	$Q node_modules/.bin/tsc --noEmit --allowJs --moduleResolution bundler -m esnext --target esnext --erasableSyntaxOnly $<
+.PHONY: check-jsonipc/jsonbindings.ts
+check: check-jsonipc/jsonbindings.ts
 
 # == ase/gen/api-jsonipc.g.cc ==
-$>/codegen/ase/gen/api-jsonipc.g.cc: $>/codegen/ase/gen/api-jsonipc.json jsonipc/jsonbindings.ts ase/Makefile.mk
-	$(QGEN)
-	$Q echo '// Generated file, inputs: $(notdir $^)'				>  $@.tmp
+ase/gen/api-jsonipc.g.cc: $>/ase/api-jsonipc.json jsonipc/jsonbindings.ts ase/Makefile.mk
+	$(QECHO) REGEN $@
+	$Q echo '// Generated from: $(notdir $<)'					>  $@.tmp
 	$Q echo '#include <ase/jsonapi.hh>'						>> $@.tmp
 	$Q echo '#include <ase/api.hh>'							>> $@.tmp
 	$Q $(RUNTS) jsonipc/jsonbindings.ts --cxx $<					>> $@.tmp
@@ -87,23 +91,13 @@ $>/codegen/ase/gen/api-jsonipc.g.cc: $>/codegen/ase/gen/api-jsonipc.json jsonipc
 	$Q echo '  jsonipc_for_api_jsonipc_json();'					>> $@.tmp
 	$Q echo '  return 0;'								>> $@.tmp
 	$Q echo '} ();'									>> $@.tmp
+	$Q cmp -s $@ $@.tmp || { git -P diff --no-index -- $@ $@.tmp ; echo "  UPDATING" $@ ; }
 	$Q mv $@.tmp $@
-CODEGEN.FILES += ase/gen/api-jsonipc.g.cc
-# DEV_TARGETS - checks & helpers for development
-$>/codegen/.jsonbindings.tscheck: jsonipc/jsonbindings.ts ase/Makefile.mk	| $>/codegen/ node_modules/.npm.done
-	$(QGEN)
-	$Q node_modules/.bin/tsc --noEmit --allowJs --moduleResolution bundler -m esnext --target esnext --erasableSyntaxOnly $<
-	$Q touch $@
-ALL_TARGETS += $>/codegen/.jsonbindings.tscheck
-$>/codegen/ase/gen/api-jsonipc.pretty.json: $>/codegen/ase/gen/api-jsonipc.json ase/Makefile.mk
-	$(QGEN) # JSON formatted for human inspection
-	$Q python3 -m json.tool < $< > $@
-ALL_TARGETS += $>/codegen/ase/gen/api-jsonipc.pretty.json
 
 # == ase/gen/api-jsonipc.g.ts ==
-$>/codegen/ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts $(lib/AnklangSynthEngine) ase/Makefile.mk
-	$(QGEN)
-	$Q echo '// Generated from: $(notdir $^)'					>  $@.tmp
+ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts ase/Makefile.mk $(lib/AnklangSynthEngine)
+	$(QECHO) REGEN $@
+	$Q echo '// Generated from: $(notdir $<)'					>  $@.tmp
 	$Q cat jsonipc/jsonipc.ts							>> $@.tmp
 	$Q echo 'export class SharedBase // Ase::SharedBase'				>> $@.tmp
 	$Q echo '  extends Jsonipc.Jsonipc_prototype {'					>> $@.tmp
@@ -117,13 +111,21 @@ $>/codegen/ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts $(lib/Anklang
 	$Q echo '/**@type{ServerImpl}*/'						>> $@.tmp
 	$Q echo -n 'export let server: Promise<Server> | Server ='			>> $@.tmp
 	$Q echo 'Jsonipc.setup_promise_type (Server, s => server = s);'			>> $@.tmp
+	$Q cmp -s $@ $@.tmp || { git -P diff --no-index -- $@ $@.tmp ; echo "  UPDATING" $@ ; }
 	$Q mv $@.tmp $@
-CODEGEN.FILES += ase/gen/api-jsonipc.g.ts
-# DEV_TARGETS - checks & helpers for development
-$>/codegen/.api-jsonipc.tscheck: ase/gen/api-jsonipc.g.ts ase/Makefile.mk		| $>/codegen/ node_modules/.npm.done
+check-ase/gen/api-jsonipc.g.ts: ase/gen/api-jsonipc.g.ts		| node_modules/.npm.done
 	$(QGEN)
 	$Q node_modules/.bin/tsc --noEmit --allowJs --moduleResolution bundler -m esnext --target esnext --erasableSyntaxOnly $<
-	$Q touch $@
+PHONY: check-ase/gen/api-jsonipc.g.ts
+check: check-ase/gen/api-jsonipc.g.ts
+
+# == ase/gen/class-tree.g.md ==
+ase/gen/class-tree.g.md: $>/ase/api-jsonipc.json jsonipc/jsonbindings.ts ase/Makefile.mk
+	$(QECHO) REGEN $@
+	$Q $(RUNTS) jsonipc/jsonbindings.ts --class-tree $<				>  $@.tmp
+	$Q cmp -s $@ $@.tmp || { git -P diff --no-index -- $@ $@.tmp ; echo "  UPDATING" $@ ; }
+	$Q mv $@.tmp $@
+# for doc/Makefile.mk
 
 # == blake3impl.c ==
 $>/ase/blake3impl.c:		| $>/ase/
@@ -175,8 +177,9 @@ ase/tests/TestList.g.mk:	# any deps here are forced to be rebuilt during Makefil
 		grep -Eo '^\s*TEST_\w+ ?\((\w+)\)' | \
 		sed 's/.*(/  /; s/)/ \\/' | \
 		sort -d		>> $@.tmp
-	$Q uniq $@.tmp > $@.uniq.tmp && diff -u $@.uniq.tmp $@.tmp && rm $@.uniq.tmp || \
-		{ echo "$@: error: test functions are not unique" >&2 ; false ; }
+	$Q uniq $@.tmp > $@.uniq.tmp && cmp -s $@.uniq.tmp $@.tmp && rm $@.uniq.tmp || \
+		{ git -P diff --no-index -- $@.uniq.tmp $@.tmp ; \
+		  echo "$@: error: test functions are not unique" >&2 ; false ; }
 	$Q mv $@.tmp $@
 ifneq (,$(shell find $(ase/tests/TestList.g.INPUTS) -newer ase/tests/TestList.g.mk))
 .PHONY: ase/tests/TestList.g.mk		# update generated file without forcing rebuild of INPUTS

@@ -1,4 +1,4 @@
-// Generated from: api.hh jsonipc.ts AnklangSynthEngine Makefile.mk
+// Generated from: api.hh
 // Dedicated to the Public Domain under the Unlicense: https://unlicense.org/UNLICENSE
 
 // For Callback handling, this assumes `Signal` is available in the global scope
