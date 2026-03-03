@@ -734,6 +734,8 @@ function note_hover_head (coords, tick, key, notes)
 export function notes_canvas_tool_from_hover (piano_roll, pointerevent)
 {
   const layout = piano_roll.layout;
+  if (!layout)
+    return { drag_start: (p) => ({ drag_event: (e,m) => debug ("DRAG no layout", m, e.offsetX, e.offsetY) }), cursor: 'default' };
   // coords for tool predicate
   const coords = target_coords (pointerevent, piano_roll.notes_canvas);
   const event_tick = layout.tick_from_x (coords.x);
