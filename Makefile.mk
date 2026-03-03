@@ -175,7 +175,8 @@ include doc/Makefile.mk
 
 # == run ==
 run: FORCE all
-	$>/lib/AnklangSynthEngine
+	export ELECTRON_ENABLE_LOGGING=1 && \
+	  $>/lib/AnklangSynthEngine
 
 # == clean rules ==
 clean: FORCE
