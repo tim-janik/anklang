@@ -9,6 +9,7 @@ QSKIP   ::= $(if $(findstring s,$(MAKEFLAGS)),: )
 QSTDOUT ::= $(if $(findstring 1, $(V)),, 1>/dev/null)
 QSTDERR ::= $(if $(findstring 1, $(V)),, 2>/dev/null)
 QGEN	  = @$(QSKIP)echo '  GEN     ' $@
+QCHECK	  = @$(QSKIP)echo '  CHECK   ' $@
 QECHO	  = @QECHO() { Q1="$$1"; shift; QR="$$*"; QOUT=$$(printf '  %-8s ' "$$Q1" ; echo "$$QR") && $(QSKIP) echo "$$QOUT"; }; QECHO
 QDIE	  = bash -c 'echo "  ERROR    $@: $$@" >&2 ; exit 127' _
 
