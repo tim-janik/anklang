@@ -11,6 +11,7 @@ Files:
  Makefile.mk
  NEWS.md
  README.md
+ tsconfig.json
  ase/*.c
  ase/*.cc
  ase/*.h
