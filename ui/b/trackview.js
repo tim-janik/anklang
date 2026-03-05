@@ -129,7 +129,6 @@ const HTML_CONTEXTMENU = (t, d) => html`
 `;
 
 // == SCRIPT ==
-import * as Ase from '/gen/api-jsonipc.g.ts';
 import * as Util from '../util.js';
 import { clamp } from '../util.js';
 

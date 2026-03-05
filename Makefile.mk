@@ -133,33 +133,35 @@ export CCACHE_SLOPPINESS := $(CCACHE_SLOPPINESS),pch_defines,time_macros
 endif
 
 # == WILDCARD_FILES ==
-# WILDCARD_FILES.mk: defines WILDCARD_FILES as a list of repository files that aren't mirrored from external sources
-WILDCARD_TOPDIRS := .github/ ase/ devices/ doc/ electron/ images/ jsonipc/ misc/ rand/ ui/ x11test/
-WILDCARD_SUBDIRS := $(wildcard $(WILDCARD_TOPDIRS) $(WILDCARD_TOPDIRS:%=%*/) $(WILDCARD_TOPDIRS:%=%*/*/) $(WILDCARD_TOPDIRS:%=%*/*/*/))
-WILDCARD_SPECIAL := external/Makefile.mk
-# Special case files in subdirs where we want to avoid deep crawling
-$>/WILDCARD_FILES.mk: $(REPOCOMMITDEPS)	| $>/
-	$(QGEN)
-	@ # List files via find for builds without jj/git repo info
-	$Q ( echo $(WILDCARD_SPECIAL) | tr ' ' '\n' ; \
-	     find $(WILDCARD_SUBDIRS) trkn/ . -maxdepth 1 -type f | sed 's|^\./||' ) \
-	   | sort > $@.find
-	@ # List files via jj/git, validate that WILDCARD_SUBDIRS finds a superset
-	$Q rm -f $@.repo ; \
+# WILDCARD_FILES contains a list of repository files that aren't mirrored from external sources
+WILDCARD_SUBDIRS := .github/ $(filter-out external/ node_modules/ out/ trkn/ $>/ $(wildcard *tmp*/), $(wildcard */)) # toplevel subdirs
+WILDCARD_SUBDIRS := $(wildcard $(WILDCARD_SUBDIRS) $(WILDCARD_SUBDIRS:%=%*/) $(WILDCARD_SUBDIRS:%=%*/*/) $(WILDCARD_SUBDIRS:%=%*/*/*/))
+WILDCARD_IGNORE  := $(wildcard *tmp* *LOG* TODO* *lock* config-defaults.mk TAGS .jj .git .cache trkn/*all.hh trkn/x*.hh *.gz)
+WILDCARD_FILES   := $(filter-out $(WILDCARD_IGNORE), $(wildcard external/Makefile.mk trkn/* $(WILDCARD_SUBDIRS:%=%.[^.]*) $(WILDCARD_SUBDIRS:%=%*) .[^.]* *)) # glob
+WILDCARD_FILES   := $(filter-out $(patsubst %/./,%, $(wildcard $(WILDCARD_FILES:%=%/./))), $(WILDCARD_FILES)) # remove subdir names
+WILDCARD_FILES   := $(sort $(WILDCARD_FILES))
+WILDCARD_FILES:
+	@echo $(WILDCARD_FILES)
+	@echo WILDCARD_IGNORE:  $(WILDCARD_IGNORE)
+	@echo XDIRS: $(wildcard trkn/3rd_party/./ trkn/config.hh/./ )
+check-WILDCARD_FILES:
+	$(QCHECK)
+	$Q echo $(WILDCARD_FILES) | tr ' ' '\n' | sort > $@.tmpfind
+	@ # List files via jj/git, validate that WILDCARD_FILES contains a superset
+	$Q rm -f $@.tmprepo ; \
 	   if   jj workspace root >/dev/null 2>&1 ; \
-	   then jj --no-pager file list | sort > $@.repo ; \
+	   then jj --no-pager file list | sort > $@.tmprepo ; \
 	   elif git rev-parse --is-inside-work-tree >/dev/null 2>&1 ; \
-	   then git ls-tree -r --name-only HEAD | sort > $@.repo ; \
+	   then git ls-tree -r --name-only HEAD | sort > $@.tmprepo ; \
 	   fi
-	$Q test -r $@.repo || exit 0; grep -vE '^trkn/.*/' < $@.repo > $@.filt ; mv $@.filt $@.repo
-	$Q test -r $@.repo && grep -vFxf $@.find $@.repo || exit 0 && \
-	     ( echo "ERROR: WILDCARD_SUBDIRS misses some files tracked by Git" ; false ) >&2
-	@ # Use most accurate file list for WILDCARD_FILES.mk
-	$Q test ! -r $@.repo || mv $@.repo $@.find
-	$Q sed -r '1s/^/WILDCARD_FILES := /; s/$$/ \\/' < $@.find > $@ && rm -f $@.find
-ifeq ($(filter $(NONBUILD_RULES),$(MAKECMDGOALS)),)
-include $>/WILDCARD_FILES.mk	# define WILDCARD_FILES
-endif
+	$Q test -r $@.tmprepo || exit 0; grep -vE '^trkn/.*/' < $@.tmprepo > $@.tmpfilt ; mv $@.tmpfilt $@.tmprepo
+	$Q test -r $@.tmprepo && grep -vFxf $@.tmpfind $@.tmprepo || exit 0 && \
+	     ( echo "ERROR: WILDCARD_FILES misses some files tracked by Git" ; false ) >&2
+	$Q test -r $@.tmprepo && grep -vFxf $@.tmprepo $@.tmpfind || exit 0 && echo "WARNING: WILDCARD_FILES contains files not tracked by Git" >&2
+	$Q rm -f $@.tmprepo $@.tmpfilt $@.tmpfind
+.PHONY: WILDCARD_FILES check-WILDCARD_FILES
+check: check-WILDCARD_FILES
+# WILDCARD_FILES
 
 # == enduser targets ==
 .PHONY: all codegen check check-audio install uninstall installcheck lint strict

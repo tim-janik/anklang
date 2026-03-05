@@ -14,13 +14,13 @@ import fs from 'node:fs';
 import { defineConfig, loadEnv, PluginOption } from 'vite';
 import solidPlugin from "vite-plugin-solid";
 import tailwindcss from "@tailwindcss/vite";
-import extra_css from './extra-css.ts';
+import extra_css from './ui/extra-css';
 import stylelint from 'stylelint';
-import stylelintrc from './stylelintrc.cjs';
+import stylelintrc from './ui/stylelintrc.cjs';
 import postcssReporter from "postcss-reporter";
 
 const BUILDDIR = path.resolve (process.env.BUILDDIR || 'out/');
-const gen_path = path.resolve (__dirname, BUILDDIR + "/gen/");
+const gen_path = path.resolve (BUILDDIR + "/gen/");
 // Note: For development, ports are hard coded, synchronize port numbers with serve.sh
 const DEVPORT_ANKLANG = process.env.DEVPORT_ANKLANG || 1776;
 const DEVPORT_VITE = process.env.DEVPORT_VITE || 1777;
@@ -42,7 +42,7 @@ const html_inject_vite_config = (__DEV__: Boolean) => {
     },
   }
 };
-const build_config_json = JSON.parse (fs.readFileSync (path.resolve (__dirname, BUILDDIR + "/version.json")), 'utf8');
+const build_config_json = JSON.parse (fs.readFileSync (path.resolve (BUILDDIR + "/version.json"), 'utf8'));
 
 // Plugin to force full reloads if anything changed
 const full_reload_always: PluginOption = {
@@ -79,9 +79,7 @@ function vite_config ({ mode })
     root: "ui/",
     publicDir: gen_path + '/public',
     resolve: { alias: {
-      "/gen": gen_path,
       "/assets": gen_path + "/assets",
-      "/ui": path.resolve (__dirname, "../ui/"),
     }, },
     // publicDir: "../public",
     server: {
@@ -104,7 +102,7 @@ function vite_config ({ mode })
       devSourcemap: true,
       postcss: {
 	plugins: [
-          // FIXME: stylelint (stylelintrc),
+          // TODO: enable stylelint (stylelintrc),
 	  postcssReporter ({
 	    clearReportedMessages: true,
 	    formatter: postcss_formatter,

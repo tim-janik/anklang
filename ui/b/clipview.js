@@ -56,7 +56,6 @@ const HTML = (t, d) => html`
 
 // == SCRIPT ==
 import * as Util from '../util.js';
-import * as Ase from '/gen/api-jsonipc.g.ts';
 const tick_quant = Util.PPQN;
 const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
 const PRIVATE_PROPERTY = { state: true };
