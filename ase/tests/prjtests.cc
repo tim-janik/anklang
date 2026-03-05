@@ -513,4 +513,141 @@ clip_mute_volume_pan()
 }
 TEST_ADD (clip_mute_volume_pan);
 
+static void
+clip_undo_redo()
+{
+  ProjectImplP project = ProjectImpl::create ("ClipUndoRedoTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
+  TASSERT (trackimpl);
+
+  // Test MIDI clip mute undo/redo
+  ClipImplP mclip = trackimpl->create_midi_clip ("UndoMidiClip", 0.0, 4.0);
+  TASSERT (mclip);
+
+  uint64_t muted_notifications = 0;
+  auto muted_connection = mclip->on_event ("notify:muted", [&muted_notifications] (const Event &event) { muted_notifications++; });
+
+  // Set muted
+  mclip->set_muted (true);
+  TASSERT (mclip->is_muted());
+  uint64_t last_muted_notifications = muted_notifications;
+
+  // Undo mute
+  TASSERT (project->can_undo());
+  project->undo();
+  TASSERT (!mclip->is_muted());
+
+  // Redo mute
+  TASSERT (project->can_redo());
+  project->redo();
+  TASSERT (mclip->is_muted());
+
+  // Test MIDI clip volume undo/redo
+  uint64_t volume_notifications = 0;
+  auto volume_connection = mclip->on_event ("notify:volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
+
+  // Set volume
+  double initial_vol = mclip->volume();
+  uint64_t last_volume_notifications = volume_notifications;
+  mclip->volume (-12.0);
+  TASSERT (std::abs (mclip->volume() - (-12.0)) < 0.01);
+
+  // Undo volume
+  TASSERT (project->can_undo());
+  project->undo();
+  TASSERT (std::abs (mclip->volume() - initial_vol) < 0.01);
+
+  // Redo volume
+  TASSERT (project->can_redo());
+  project->redo();
+  TASSERT (std::abs (mclip->volume() - (-12.0)) < 0.01);
+
+  // Test audio clip pan undo/redo
+  ClipImplP aclip = trackimpl->create_audio_clip ("UndoAudioClip", 0.0, 4.0);
+  TASSERT (aclip);
+
+  uint64_t pan_notifications = 0;
+  auto pan_connection = aclip->on_event ("notify:pan", [&pan_notifications] (const Event &event) { pan_notifications++; });
+
+  // Set pan
+  double initial_pan = aclip->pan();
+  uint64_t last_pan_notifications = pan_notifications;
+  aclip->pan (0.8);
+  TASSERT (std::abs (aclip->pan() - 0.8) < 0.01);
+
+  // Undo pan
+  TASSERT (project->can_undo());
+  project->undo();
+  TASSERT (std::abs (aclip->pan() - initial_pan) < 0.01);
+
+  // Redo pan
+  TASSERT (project->can_redo());
+  project->redo();
+  TASSERT (std::abs (aclip->pan() - 0.8) < 0.01);
+
+  // Test MIDI clip notes undo/redo
+  ClipNoteS batch;
+  ClipNote note;
+  note.id = -1;
+  note.key = 60;
+  note.channel = 0;
+  note.tick = 0;
+  note.duration = 960;
+  note.velocity = 0.8f;
+  batch.push_back (note);
+
+  uint64_t notes_notifications = 0;
+  auto notes_connection = mclip->on_event ("notify:notes", [&notes_notifications] (const Event &event) { notes_notifications++; });
+
+  // Add notes
+  uint64_t last_notes_notifications = notes_notifications;
+  mclip->change_batch (batch, "Add Note");
+  TASSERT (mclip->list_all_notes().size() == 1);
+
+  // Undo notes
+  TASSERT (project->can_undo());
+  project->undo();
+  TASSERT (mclip->list_all_notes().empty());
+
+  // Redo notes
+  TASSERT (project->can_redo());
+  project->redo();
+  TASSERT (mclip->list_all_notes().size() == 1);
+
+  // Test MIDI clip range undo/redo
+  int64 initial_start = mclip->start_tick();
+  int64 initial_stop = mclip->stop_tick();
+
+  // Assign new range
+  uint64_t range_notifications = 0;
+  auto range_connection = mclip->on_event ("notify:start_tick", [&range_notifications] (const Event &event) { range_notifications++; });
+
+  uint64_t last_range_notifications = range_notifications;
+  mclip->assign_range (initial_start + 960, initial_stop + 960);
+  TASSERT (mclip->start_tick() == initial_start + 960);
+  TASSERT (range_notifications > last_range_notifications);
+
+  // Undo range
+  TASSERT (project->can_undo());
+  project->undo();
+  TASSERT (mclip->start_tick() == initial_start);
+  TASSERT (mclip->stop_tick() == initial_stop);
+
+  // Redo range
+  TASSERT (project->can_redo());
+  project->redo();
+  TASSERT (mclip->start_tick() == initial_start + 960);
+  TASSERT (mclip->stop_tick() == initial_stop + 960);
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (clip_undo_redo);
+
 } // Anon

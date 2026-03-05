@@ -1,4 +1,4 @@
-// Generated file, inputs: api-jsonipc.json jsonbindings.ts Makefile.mk
+// Generated from: api-jsonipc.json
 #include <ase/jsonapi.hh>
 #include <ase/api.hh>
 

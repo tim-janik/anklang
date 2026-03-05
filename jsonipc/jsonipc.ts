@@ -63,7 +63,7 @@ export const Jsonipc = {
   }),
 
   /// Install auto-fetching for prop and get its value
-  get_reactive_prop<T> (this: JsonipcPrototype, prop: string, dflt: T): T
+  get_reactive_prop<T> (this: any, prop: string, dflt: T): T
   {
     const this_props = this.$props;
     // install prop if needed
@@ -186,7 +186,7 @@ export const Jsonipc = {
   },
 
   /// Send a Jsonipc request
-  send (method: string, params: any[]): Promise<any>
+  send (this: any, method: string, params: any[]): Promise<any>
   {
     if (!this.web_socket)
       throw globalThis.Error ("Jsonipc: connection closed");

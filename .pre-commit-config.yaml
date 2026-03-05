@@ -14,7 +14,7 @@ repos:
   - id: check-symlinks
   - id: check-executables-have-shebangs
   - id: check-json
-    exclude: ^ui/tsconfig\.json$
+    exclude: ^tsconfig\.json$
   - id: check-toml
   - id: check-xml
   - id: check-yaml

@@ -185,7 +185,7 @@ EmittableImpl::on_event (const String &eventselector, const EventHandler &eventh
     ed_ = new EventDispatcher();
   EventConnectionP cptr = std::make_shared<EventConnection> (*ed_, eventselector, eventhandler);
   ed_->connections.push_back (cptr);
-  return *static_cast<Connection*> (&cptr);
+  return Connection (cptr);
 }
 
 void

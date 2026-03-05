@@ -111,6 +111,25 @@ $>/gen/.vite.done: ui/vite.config.ts ui/index.html ui/Makefile.mk $(VITE_DEPS)	|
 	$Q echo '.*/[.].*'		>> $>/ui/.aseignore
 	$Q touch $@
 
+
+# == ui/tscheck ==
+ui/tscheck: $>/tsconfig.json
+	$(QECHO) CHECK $@
+	$Q node_modules/.bin/tsc --erasableSyntaxOnly --skipLibCheck -p $<
+$>/tsconfig.json: ui/Makefile.mk
+	@$(file > $>/tsconfig.json, $(TSCONFIG_JSON))
+define TSCONFIG_JSON
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "/gen/*": ["../ase/gen/*"],
+    },
+  },
+}
+endef
+check: ui/tscheck
+
 # == ui dist build ==
 LATE_EVAL += $$(eval $$>/gen/.ui.done: $${doc/mkdocs/anklang.stamp})	# doc/mkdocs/anklang.stamp is assigned later
 $>/gen/.ui.done: $>/gen/.vite.done

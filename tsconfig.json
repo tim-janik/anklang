@@ -4,24 +4,28 @@
   "compilerOptions": {
     "allowJs": true,                                    // Allow JavaScript files to be a part of your program. Use the 'checkJS' option to get errors from these files.
     "checkJs": false,                                   // ATM, add this to js files:   // @ts-check
-    "noEmit": true,
     "noImplicitAny": false,
-    "module": "esnext",
-    "target": "esnext",
     "skipLibCheck": true,
-    "moduleResolution": "node",
     "strictNullChecks": false,
+    "noEmit": true,
     "strict": true,                                    // Enable all strict type-checking options.
+    "target": "ESNext",
+    "module": "ESNext",
+    "allowImportingTsExtensions": true,
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "jsx": "preserve",
   },
 
   // Files that must be present
   "files": [
-    "types.d.ts"
+    "ui/types.d.ts"
   ],
 
   // Globs that may be present
   "include": [
-    "ui/*.js",
-    "ui/b/*.js"
+    // TODO: "ui/*.js",
+    "ui/tests/*.ts",
+    // TODO: "ui/b/*.js",
   ]
 }
