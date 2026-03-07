@@ -17,6 +17,7 @@ let browser_window;
 const ELECTRON_CONFIG = { quitstartup: false, };
 const cli_args = [];
 let devtools_option = false;
+let headless_mode = false;
 Eapp.commandLine.appendSwitch ('disk-cache-size', '0');
 Eapp.commandLine.appendSwitch ('disable-http-cache'); // disk cache for HTTP
 
@@ -205,7 +206,9 @@ async function load_and_show (w, winurl)
   // reset zoom: w.webContents.zoomFactor = 1;
   if (devtools_option)
     w.toggleDevTools(); // start with DevTools enabled
-  return w.show();
+  if (!headless_mode)
+    w.show();
+  return w;
 }
 
 // == IPC Messages ==
@@ -273,6 +276,9 @@ function parse_args (argv)
 	  break;
 	case '--dev':
 	  devtools_option = true;
+	  break;
+	case '--headless':
+	  headless_mode = true;
 	  break;
 	case '--quitstartup':
 	  ELECTRON_CONFIG.quitstartup = true;
