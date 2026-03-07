@@ -47,6 +47,7 @@ Files:
  ui/assets/*.*
  ui/b/*.*
  ui/cursors/*.*
+ ui/tests/*.*
  x11test/*.*
 Copyright: Copyright (C) 2020-Present The Anklang Project Contributors
 License: MPL-2.0
