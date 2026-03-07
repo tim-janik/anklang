@@ -80,6 +80,7 @@ function vite_config ({ mode })
     publicDir: gen_path + '/public',
     resolve: { alias: {
       "/assets": gen_path + "/assets",
+      "/gen": gen_path,
     }, },
     // publicDir: "../public",
     server: {
@@ -119,7 +120,10 @@ function vite_config ({ mode })
       sourcemap: true,
       cssCodeSplit: true,
       rollupOptions: {
-	// input: { app: 'index.html', },
+	input: {
+	  app: 'ui/index.html',
+	  testcalls: BUILDDIR + "/gen/testcalls.g.ts",
+	},
       },
     },
 
