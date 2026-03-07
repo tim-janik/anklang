@@ -17,6 +17,7 @@ struct MainApp {
   WebSocketServer *web_socket_server = nullptr;
   const char         *outputfile = nullptr;
   std::vector<String> args;
+  std::vector<String> ui_tests;
   uint16 websocket_port = 0;
   int    jsonapi_logflags = 1;
   bool   norc = true;

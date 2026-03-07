@@ -75,6 +75,7 @@ print_usage (bool help)
   printout ("  --list-tests     List all test names\n");
   printout ("  --list-ui-tests  List all TypeScript UI test function names\n");
   printout ("  --norc           Prevent loading of any rc files\n");
+  printout ("  --ui-test=test   Specify a TypeScript UI test function to run\n");
   printout ("  --play-autostart Automatically start playback of `project.anklang`\n");
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
   printout ("  --test[=test]    Run specific tests\n");
@@ -115,6 +116,7 @@ static constexpr int jsipc_logflags = 1 | 2 | 4 | 8 | 16;
 static constexpr int jsbin_logflags = 1 | 256;
 
 static StringS check_test_names;
+static StringS ui_test_names;
 
 static void
 parse_args (int *argcp, char **argv, MainAppImpl &config)
@@ -181,6 +183,15 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
             if (!line.empty () || string_startswith (line, "#"))
               printout ("%s\n", line);
           exit (0);
+        }
+      else if (strcmp ("--ui-test", argv[i]) == 0 || strncmp ("--ui-test=", argv[i], 9) == 0)
+        {
+          const char *eq = strchr (argv[i], '=');
+          const char *arg = eq ? eq + 1 : i+1 < argc ? argv[++i] : nullptr;
+          if (arg)
+            ui_test_names.push_back (arg);
+          else
+            ui_test_names.push_back ("all");
         }
       else if (strcmp ("--test", argv[i]) == 0 || strncmp ("--test=", argv[i], 7) == 0)
         {
@@ -466,6 +477,8 @@ main (int argc, char *argv[])
 
   // parse args and config
   parse_args (&argc, argv, main_app);
+  // copy ui_test_names to App.ui_tests
+  main_app.ui_tests = ui_test_names;
   logging_configure (arg_ui_mode != "none");
 
   // handle loft preallocation needs

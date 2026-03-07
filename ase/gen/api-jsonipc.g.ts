@@ -869,6 +869,8 @@ export class Server // Ase::Server
   { return Jsonipc.send ("list_preferences", [this]); }
   access_preference (arg1: string): Promise<Property>
   { return Jsonipc.send ("access_preference", [this, arg1]); }
+  get_ui_tests (): Promise<string[]>
+  { return Jsonipc.send ("get_ui_tests", [this]); }
   engine_stats (): Promise<string>
   { return Jsonipc.send ("engine_stats", [this]); }
   exit_program (arg1: number): Promise<void>

@@ -109,6 +109,12 @@ ServerImpl::access_preference (const String &ident)
   return Preference::find (ident);
 }
 
+StringS
+ServerImpl::get_ui_tests ()
+{
+  return App.ui_tests;
+}
+
 ServerImplP
 ServerImpl::instancep ()
 {

@@ -410,6 +410,7 @@ public:
                                        int32 interval_ms) = 0;   ///< Broadcast telemetry memory segments to the current Jsonipc connection.
   virtual StringS   list_preferences  () = 0;                    ///< Retrieve a list of all preference identifiers.
   virtual PropertyP access_preference (const String &ident) = 0; ///< Retrieve property handle for a Preference identifier.
+  virtual StringS get_ui_tests () = 0;                             ///< List UI test function names to run.
   String            engine_stats      ();                        ///< Print engine state.
   void              exit_program      (int status = 0);          ///< End program (without saving).
   // projects
