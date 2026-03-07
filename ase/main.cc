@@ -73,6 +73,7 @@ print_usage (bool help)
   printout ("  --jsonts         Print TypeScript bindings\n");
   printout ("  --list-drivers   Print PCM and MIDI drivers\n");
   printout ("  --list-tests     List all test names\n");
+  printout ("  --list-ui-tests  List all TypeScript UI test function names\n");
   printout ("  --norc           Prevent loading of any rc files\n");
   printout ("  --play-autostart Automatically start playback of `project.anklang`\n");
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
@@ -167,6 +168,18 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
           std::sort (ids.begin(), ids.end());
           for (const auto &t : ids)
             printout ("%s\n", t);
+          exit (0);
+        }
+      else if (strcmp ("--list-ui-tests", argv[i]) == 0)
+        {
+          const String testfile = anklang_runpath (RPath::INSTALLDIR, "/ui/assets/testcalls-list.txt");
+          if (!Path::check (testfile, "e"))
+            fatal_error ("missing UI test list: %s", testfile);
+          const String content = Path::stringread (testfile);
+          StringS lines = string_split (content, "\n");
+          for (const String &line : lines)
+            if (!line.empty () || string_startswith (line, "#"))
+              printout ("%s\n", line);
           exit (0);
         }
       else if (strcmp ("--test", argv[i]) == 0 || strncmp ("--test=", argv[i], 7) == 0)
