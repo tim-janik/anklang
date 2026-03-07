@@ -217,6 +217,13 @@ async function bootup () {
   // Test integrity
   if (__DEV__)
     await self_tests();
+
+  // UI testing
+  if (Ase.server) {
+    const config = await Ase.server.ui_config();
+    if (config.has_ui_tests)
+      setTimeout (() => run_ui_tests(), 17);
+  }
 }
 
 const jsonapi_finalization_registry = new FinalizationRegistry (jsonapi_finalization_gc);
@@ -276,7 +283,8 @@ function browser_config() {
 }
 
 // test basic functionality
-async function self_tests() {
+async function self_tests()
+{
   // test Ase::Value and server
   const ukey = "_AseTest" + Util.hash53 ("" + Math.random() + Math.random() + Math.random());
   const obj = { 5: 5, a: [false, true, 2, "3", { a: [], o: {}, f: -0.17 }], mm: ["STRING", 7e42, null] };
@@ -284,6 +292,36 @@ async function self_tests() {
   const r = await Ase.server.get_data (ukey);
   console.assert (Util.equals_recursively (obj, r));
   Ase.server.set_data (ukey, undefined);
+}
+
+async function run_ui_tests ()
+{
+  // Import testcalls module only on demand
+  const { testcalls_find, testcalls_names } = await import ('/gen/testcalls.g.ts');
+  // console.log ("ui_tests:", testcalls_names);
+
+  // Fetch tests from C++ engine one at a time
+  do {
+    const test_name = await Ase.server.ui_test_fetch();
+    if (!test_name)
+      break; // No more tests
+
+    console.error ("  RUN      ", test_name);
+    const test_func = await testcalls_find (test_name);
+    try {
+      if (!test_func)
+        throw new Error (`Test unknown: ${test_name}`);
+      const result = await test_func();
+      if (! (result === undefined || result === true || result === 0))
+        throw new Error (`Test failed: ${test_name} (result=${result})`);
+      await Ase.server.ui_test_report (test_name, true);
+    } catch (e) {
+      console.error ("  ERROR    ", test_name, "exception:", e.message || e);
+      await Ase.server.ui_test_report (test_name, false);
+    }
+  } while (true);
+
+  window.close();
 }
 
 // Boot after onload
