@@ -23,6 +23,6 @@ void    atquit_del_killl_pid    (int pid);
 
 std::string     create_tempfile_dir             (const std::string &basename = "");
 void            cleanup_orphaned_tempfiles      (const std::string &directory);
-ErrorReason     spawn_process                   (const std::vector<std::string> &argv, pid_t *child_pid, int pdeathsig = -1);
+ErrorReason     spawn_process                   (const std::vector<std::string> &argv, pid_t *child_pid, int pdeathsig = -1, int stdio_fd = -1);
 
 } // Ase
