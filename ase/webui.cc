@@ -66,7 +66,7 @@ webui_create_auth_redirect (const std::string &executable, unsigned port, const 
 }
 
 ErrorReason
-webui_start_browser (const std::string &mode, LoopP loop, const std::string &url, const std::function<void()> &onclose)
+webui_start_browser (const std::string &mode, LoopP loop, const std::string &url, const std::function<void()> &onclose, bool headless)
 {
   std::vector<std::string> argv;
   std::string browser_name;
@@ -95,6 +95,8 @@ webui_start_browser (const std::string &mode, LoopP loop, const std::string &url
       browser_name = mode;
       argv.push_back (anklang_runpath (RPath::ELECTRONDIR, "htmlgui"));
       argv.push_back ("--no-sandbox");
+      if (headless)
+        argv.push_back ("--headless");
       argv.push_back (url);
     }
   else if (mode == "none" or mode == "" or mode == "wait")

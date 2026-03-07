@@ -573,7 +573,7 @@ main (int argc, char *argv[])
       wss->see_other (webui_url);
     }
     info ("Main: WebUI address: %s", webui_url);
-    auto ereason = webui_start_browser (arg_ui_mode, main_loop, webui_url, [] () { main_loop->quit (0); });
+    auto ereason = webui_start_browser (arg_ui_mode, main_loop, webui_url, [] () { main_loop->quit (0); }, !main_app.ui_tests.empty());
     if (ereason.error)
       fatal_error ("Main: failed to run WebUI: %s: %s", ereason.what, ::strerror (ereason.error));
   }
