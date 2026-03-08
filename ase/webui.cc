@@ -72,6 +72,7 @@ webui_start_browser (const std::string &mode, LoopP loop, const std::string &url
   std::vector<std::string> argv;
   std::string browser_name;
   int stdio_fd = -1;
+  std::vector<int> keep_fds;
 
   if (!! (flags & WebuiFlags::STDIO_REDIRECT)) {
     const String logdir = Path::cache_home() + "/anklang";
@@ -81,6 +82,21 @@ webui_start_browser (const std::string &mode, LoopP loop, const std::string &url
     stdio_fd = open (logfile.c_str(), O_RDWR | O_CREAT | O_TRUNC | O_NOFOLLOW, 0640);
     if (stdio_fd < 0)
       return { errno, "open " + logfile };
+  }
+
+  // Duplicate current stdout/stderr file descriptors for htmlgui console output
+  int console_stdout_fd = -1, console_stderr_fd = -1;
+  if (!! (flags & WebuiFlags::CONSOLE_LOGS)) {
+    console_stdout_fd = dup (STDOUT_FILENO);
+    if (console_stdout_fd < 0)
+      return { errno, "dup stdout" };
+    console_stderr_fd = dup (STDERR_FILENO);
+    if (console_stderr_fd < 0) {
+      close (console_stdout_fd);
+      return { errno, "dup stderr" };
+    }
+    keep_fds.push_back (console_stdout_fd);
+    keep_fds.push_back (console_stderr_fd);
   }
 
   if (mode == "chromium" || mode == "google-chrome")
@@ -111,6 +127,8 @@ webui_start_browser (const std::string &mode, LoopP loop, const std::string &url
       argv.push_back ("--no-sandbox");
       if (!! (flags & WebuiFlags::HEADLESS))
         argv.push_back ("--headless");
+      if (console_stdout_fd >= 0 && console_stderr_fd >= 0)
+        argv.push_back (string_format ("--console-logs=%d,%d", console_stdout_fd, console_stderr_fd));
       argv.push_back (url);
     }
   else if (mode == "none" or mode == "" or mode == "wait")
@@ -119,8 +137,11 @@ webui_start_browser (const std::string &mode, LoopP loop, const std::string &url
     return { EINVAL, string_format ("unknown webui: %s", mode) };
 
   pid_t child_pid = 0;
-  ErrorReason ereason = spawn_process (argv, &child_pid, SIGTERM, stdio_fd);
+  ErrorReason ereason = spawn_process (argv, &child_pid, SIGTERM, stdio_fd, keep_fds);
   close (stdio_fd);
+  for (int fd : keep_fds)
+    if (fd >= 0)
+      close (fd);
   if (ereason.error)
     return ereason;
   atquit_add_killl_pid (child_pid);

@@ -10,6 +10,7 @@ enum class WebuiFlags : uint32_t {
   NONE = 0,
   HEADLESS = 1 << 0,
   STDIO_REDIRECT = 1 << 1,
+  CONSOLE_LOGS = 1 << 2,
 };
 ASE_DEFINE_FLAGS_ARITHMETIC (WebuiFlags);
 
