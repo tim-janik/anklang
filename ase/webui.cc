@@ -66,7 +66,7 @@ webui_create_auth_redirect (const std::string &executable, unsigned port, const 
 }
 
 ErrorReason
-webui_start_browser (const std::string &mode, LoopP loop, const std::string &url, const std::function<void()> &onclose, bool headless)
+webui_start_browser (const std::string &mode, LoopP loop, const std::string &url, const std::function<void()> &onclose, WebuiFlags flags)
 {
   std::vector<std::string> argv;
   std::string browser_name;
@@ -87,6 +87,8 @@ webui_start_browser (const std::string &mode, LoopP loop, const std::string &url
           // "--auto-open-devtools-for-tabs",
           "--bwsi", "--new-window" })
         argv.push_back (arg);
+      if (!! (flags & WebuiFlags::HEADLESS))
+        argv.push_back ("--headless");
       argv.push_back (user_data_dir_arg);
       argv.push_back (app);
     }
@@ -95,7 +97,7 @@ webui_start_browser (const std::string &mode, LoopP loop, const std::string &url
       browser_name = mode;
       argv.push_back (anklang_runpath (RPath::ELECTRONDIR, "htmlgui"));
       argv.push_back ("--no-sandbox");
-      if (headless)
+      if (!! (flags & WebuiFlags::HEADLESS))
         argv.push_back ("--headless");
       argv.push_back (url);
     }
