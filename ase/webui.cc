@@ -4,6 +4,7 @@
 #include "platform.hh"
 #include "strings.hh"
 #include <cerrno>
+#include <fcntl.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
@@ -70,6 +71,17 @@ webui_start_browser (const std::string &mode, LoopP loop, const std::string &url
 {
   std::vector<std::string> argv;
   std::string browser_name;
+  int stdio_fd = -1;
+
+  if (!! (flags & WebuiFlags::STDIO_REDIRECT)) {
+    const String logdir = Path::cache_home() + "/anklang";
+    const String logfile = string_format ("%s/%s-%08x.log", logdir, "webui", gethostid());
+    if (!Path::mkdirs (logdir))
+      return { errno, "mkdirs " + logdir };
+    stdio_fd = open (logfile.c_str(), O_RDWR | O_CREAT | O_TRUNC | O_NOFOLLOW, 0640);
+    if (stdio_fd < 0)
+      return { errno, "open " + logfile };
+  }
 
   if (mode == "chromium" || mode == "google-chrome")
     {
@@ -107,7 +119,8 @@ webui_start_browser (const std::string &mode, LoopP loop, const std::string &url
     return { EINVAL, string_format ("unknown webui: %s", mode) };
 
   pid_t child_pid = 0;
-  ErrorReason ereason = spawn_process (argv, &child_pid, SIGTERM);
+  ErrorReason ereason = spawn_process (argv, &child_pid, SIGTERM, stdio_fd);
+  close (stdio_fd);
   if (ereason.error)
     return ereason;
   atquit_add_killl_pid (child_pid);
