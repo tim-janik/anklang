@@ -25,6 +25,7 @@ struct MainApp {
   bool   list_drivers = false;
   bool   play_autostart = false;
   bool   no_devices = false;
+  bool   headless = false;
   double play_autostop = D64MAX;
   enum ModeT { SYNTHENGINE, CHECK_INTEGRITY_TESTS };
   ModeT  mode = SYNTHENGINE;

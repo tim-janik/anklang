@@ -80,6 +80,7 @@ print_usage (bool help)
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
   printout ("  --test[=test]    Run specific tests\n");
   printout ("  --unauth-dev=NUM Open an unauthenticated websocket port for testing\n");
+  printout ("  --headless[=bool]  Run browser in headless mode (default for --ui-test)\n");
   printout ("  --ui <none|chromium|google-chrome|htmlgui>\n");
   printout ("                   Open GUI in web browser [htmlgui]\n");
   printout ("  --version        Print program version\n");
@@ -192,6 +193,12 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
             ui_test_names.push_back (arg);
           else
             ui_test_names.push_back ("all");
+          config.headless = true;
+        }
+      else if (strcmp ("--headless", argv[i]) == 0 || strncmp ("--headless=", argv[i], 10) == 0)
+        {
+          const char *eq = strchr (argv[i], '=');
+          config.headless = eq ? string_to_bool (eq + 1) : true;
         }
       else if (strcmp ("--test", argv[i]) == 0 || strncmp ("--test=", argv[i], 7) == 0)
         {
@@ -573,7 +580,12 @@ main (int argc, char *argv[])
       wss->see_other (webui_url);
     }
     info ("Main: WebUI address: %s", webui_url);
-    auto ereason = webui_start_browser (arg_ui_mode, main_loop, webui_url, [] () { main_loop->quit (0); }, !main_app.ui_tests.empty());
+
+    WebuiFlags webui_flags = main_app.headless ? WebuiFlags::HEADLESS : WebuiFlags::NONE;
+    if (main_app.ui_tests.size())
+      webui_flags = webui_flags | WebuiFlags::STDIO_REDIRECT;
+    auto ereason = webui_start_browser (arg_ui_mode, main_loop, webui_url, [] () { main_loop->quit (0); }, webui_flags);
+
     if (ereason.error)
       fatal_error ("Main: failed to run WebUI: %s: %s", ereason.what, ::strerror (ereason.error));
   }
