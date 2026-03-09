@@ -171,6 +171,24 @@ function create_window (onclose)
   const w = new Electron.BrowserWindow (options);
   w.setMenu (Electron.Menu.buildFromTemplate ([]));
   w.webContents.once ('crashed', () => main_exit (129)); // 'crashed' is SIGHUP or SIGTERM
+  w.webContents.on ('console-message', (event) => {
+    // https://www.electronjs.org/docs/latest/api/web-contents
+    const sourceId = event.sourceId.replace (/^[^ ]*\//, '');
+    const message = event.message;
+    const lineNumber = event.lineNumber;
+    let prefix = `${sourceId}:${lineNumber}: `;
+    switch (event._level) {
+    case 0: // VERBOSE
+    case 1: // INFO
+    default:
+      process.stdout.write (`${prefix}${message}\n`);
+      break;
+    case 2: // WARNING
+    case 3: // ERROR
+      process.stderr.write (`${prefix}${message}\n`);
+      break;
+    }
+  });
   if (onclose)
     w.on ('closed', onclose);
   return w;
