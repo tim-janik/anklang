@@ -18,6 +18,8 @@ const ELECTRON_CONFIG = { quitstartup: false, };
 const cli_args = [];
 let devtools_option = false;
 let headless_mode = false;
+let console_stdout_fd = null;
+let console_stderr_fd = null;
 Eapp.commandLine.appendSwitch ('disk-cache-size', '0');
 Eapp.commandLine.appendSwitch ('disable-http-cache'); // disk cache for HTTP
 
@@ -181,11 +183,19 @@ function create_window (onclose)
     case 0: // VERBOSE
     case 1: // INFO
     default:
-      process.stdout.write (`${prefix}${message}\n`);
+      if (console_stdout_fd !== null) {
+	fs.writeSync (console_stdout_fd, `${prefix}${message}\n`);
+      } else {
+	process.stdout.write (`${prefix}${message}\n`);
+      }
       break;
     case 2: // WARNING
     case 3: // ERROR
-      process.stderr.write (`${prefix}${message}\n`);
+      if (console_stderr_fd !== null) {
+	fs.writeSync (console_stderr_fd, `${prefix}${message}\n`);
+      } else {
+	process.stderr.write (`${prefix}${message}\n`);
+      }
       break;
     }
   });
@@ -282,7 +292,12 @@ function parse_args (argv)
 	cli_args.push (arg);
 	continue;
       }
-      switch (arg) {
+      // Split at = to normalize --opt=value to --opt value
+      const eq_index = arg.indexOf ('=');
+      let value = undefined;
+      if (eq_index >= 0)
+	value = arg.slice (eq_index + 1);
+      switch (eq_index >= 0 ? arg.slice (0, eq_index) : arg) {
 	case '--help': case '-h':
 	  usage ('help', 0);
 	  break;
@@ -291,6 +306,17 @@ function parse_args (argv)
 	  break;
 	case '--verbose': case '-v':
 	  c.verbose = true;
+	  break;
+	case '--console-logs':
+	  if (eq_index < 0 && argv.length)
+	    value = argv.shift ();
+	  if (value !== undefined) {
+	    const fds = value.split (',');
+	    if (fds.length === 2) {
+	      console_stdout_fd = parseInt (fds[0], 10);
+	      console_stderr_fd = parseInt (fds[1], 10);
+	    }
+	  }
 	  break;
 	case '--dev':
 	  devtools_option = true;
