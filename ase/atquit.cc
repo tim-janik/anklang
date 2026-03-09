@@ -177,7 +177,7 @@ atquit_del_killl_pid (int pid)
 
 /// Span a child process after cleaning up the environment
 ErrorReason
-spawn_process (const std::vector<std::string> &argv, pid_t *child_pid, int pdeathsig, int stdio_fd)
+spawn_process (const std::vector<std::string> &argv, pid_t *child_pid, int pdeathsig, int stdio_fd, const std::vector<int> &keep_fds)
 {
   std::vector<const char*> argvptr;
   for (const auto &arg : argv)
@@ -198,8 +198,17 @@ spawn_process (const std::vector<std::string> &argv, pid_t *child_pid, int pdeat
   if (max_fd < 0)
     max_fd = 1024; // fallback
   for (int i = 3; i < max_fd; i++)
-    if (i != stdio_fd)
-      close (i);
+    {
+      bool keep = (i == stdio_fd);
+      for (int kfd : keep_fds)
+        if (i == kfd)
+          {
+            keep = true;
+            break;
+          }
+      if (!keep)
+        close (i);
+    }
   ErrorReason ereason;
   const char *const home = getenv ("HOME");
   if (false && home && chdir (home) < 0) {
