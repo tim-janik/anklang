@@ -60,21 +60,21 @@ $(ui/gen/targets): $>/gen/%: ui/%			| $>/gen/assets/
 	$Q cd ui/ && $(CP) $(<:ui/%=%) --parents $(abspath $>/)/gen/
 VITE_DEPS += $(ui/gen/targets)
 
-# == $>/gen/public/anklang.png ==
-$>/gen/public/anklang.png: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/public/
+# == $>/gen/ui/anklang.png ==
+$>/gen/ui/anklang.png: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/ui/
 	$(QGEN)
 	$Q mkdir -p $>/gen/tmpanklangpng/
 	$Q mogrify -density 600 -background transparent -resize 128x128 -format png -path $>/gen/tmpanklangpng/ $<
-	$Q cp $>/gen/tmpanklangpng/favicon.png $>/gen/public/favicon.ico
+	$Q cp $>/gen/tmpanklangpng/favicon.png $>/gen/ui/favicon.ico
 	$Q mv $>/gen/tmpanklangpng/favicon.png $@.tmp && rm -r $>/gen/tmpanklangpng/ && mv $@.tmp $@
-VITE_DEPS += $>/gen/public/anklang.png
+VITE_DEPS += $>/gen/ui/anklang.png
 
-# == $>/gen/public/assets/favicon.svg ==
+# == $>/gen/ui/assets/favicon.svg ==
 # Used by binary packages: $prefix/anklang-*/ui/assets/favicon.svg
-$>/gen/public/assets/favicon.svg: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/public/assets/
+$>/gen/ui/assets/favicon.svg: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/ui/assets/
 	$(QGEN)
 	$Q cp $< $@
-VITE_DEPS += $>/gen/public/assets/favicon.svg
+VITE_DEPS += $>/gen/ui/assets/favicon.svg
 
 # == ui/synsmell ==
 ui/synsmell.files: $(filter ui/%. ui/b/%, $(WILDCARD_FILES)))
