@@ -411,6 +411,8 @@ public:
   virtual StringS   list_preferences  () = 0;                    ///< Retrieve a list of all preference identifiers.
   virtual PropertyP access_preference (const String &ident) = 0; ///< Retrieve property handle for a Preference identifier.
   virtual StringS get_ui_tests () = 0;                             ///< List UI test function names to run.
+  virtual String  ui_test_fetch   () = 0;                          ///< Fetch next UI test name to run (empty if none).
+  virtual void    ui_test_report  (const String &testname, bool success) = 0; ///< Report UI test result.
   String            engine_stats      ();                        ///< Print engine state.
   void              exit_program      (int status = 0);          ///< End program (without saving).
   // projects

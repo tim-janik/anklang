@@ -871,6 +871,10 @@ export class Server // Ase::Server
   { return Jsonipc.send ("access_preference", [this, arg1]); }
   get_ui_tests (): Promise<string[]>
   { return Jsonipc.send ("get_ui_tests", [this]); }
+  ui_test_fetch (): Promise<string>
+  { return Jsonipc.send ("ui_test_fetch", [this]); }
+  ui_test_report (arg1: string, arg2: boolean): Promise<void>
+  { return Jsonipc.send ("ui_test_report", [this, arg1, arg2]); }
   engine_stats (): Promise<string>
   { return Jsonipc.send ("engine_stats", [this]); }
   exit_program (arg1: number): Promise<void>
