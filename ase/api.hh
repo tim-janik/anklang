@@ -388,6 +388,12 @@ struct TelemetrySegment {
   int32 length = 0;     ///< Length in bytes.
 };
 
+/// Configuration values for the UI.
+struct UiConfig {
+  bool has_ui_tests = false;    ///< Whether any UI tests are pending.
+  bool auto_exit = false;       ///< Whether to auto-exit after tests complete.
+};
+
 /// Central singleton, serves as API entry point.
 class Server : public virtual Gadget {
 public:
@@ -410,9 +416,9 @@ public:
                                        int32 interval_ms) = 0;   ///< Broadcast telemetry memory segments to the current Jsonipc connection.
   virtual StringS   list_preferences  () = 0;                    ///< Retrieve a list of all preference identifiers.
   virtual PropertyP access_preference (const String &ident) = 0; ///< Retrieve property handle for a Preference identifier.
-  virtual StringS get_ui_tests () = 0;                             ///< List UI test function names to run.
-  virtual String  ui_test_fetch   () = 0;                          ///< Fetch next UI test name to run (empty if none).
-  virtual void    ui_test_report  (const String &testname, bool success) = 0; ///< Report UI test result.
+  virtual UiConfig  ui_config         () = 0;                    ///< Retrieve UI configuration values.
+  virtual String    ui_test_fetch     () = 0;                    ///< Fetch next UI test name to run (empty if none).
+  virtual void      ui_test_report    (const String &testname, bool success) = 0; ///< Report UI test result.
   String            engine_stats      ();                        ///< Print engine state.
   void              exit_program      (int status = 0);          ///< End program (without saving).
   // projects

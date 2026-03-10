@@ -30,7 +30,7 @@ public:
   ProjectP     create_project       (String projectname) override;
   PropertyP    access_preference    (const String &ident) override;
   StringS      list_preferences     () override;
-  StringS      get_ui_tests         () override;
+  UiConfig     ui_config            () override;
   String       ui_test_fetch        () override;
   void         ui_test_report       (const String &testname, bool success) override;
   using Block = FastMemory::Block;

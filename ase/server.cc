@@ -109,10 +109,13 @@ ServerImpl::access_preference (const String &ident)
   return Preference::find (ident);
 }
 
-StringS
-ServerImpl::get_ui_tests ()
+UiConfig
+ServerImpl::ui_config ()
 {
-  return App.ui_tests;
+  UiConfig config;
+  config.has_ui_tests = !App.ui_tests.empty();
+  config.auto_exit = config.has_ui_tests; // Auto-exit when UI tests are present
+  return config;
 }
 
 // UI test state tracking
