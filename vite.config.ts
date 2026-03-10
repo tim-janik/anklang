@@ -77,12 +77,11 @@ function vite_config ({ mode })
   console.log (`VITE: mode=${mode}`);
   return defineConfig ({
     root: "ui/",
-    publicDir: gen_path + '/public',
+    publicDir: gen_path + '/ui',
     resolve: { alias: {
       "/assets": gen_path + "/assets",
       "/gen": gen_path,
     }, },
-    // publicDir: "../public",
     server: {
       // open: "index.html",
       proxy: {
@@ -136,5 +135,6 @@ function vite_config ({ mode })
     ],
 
   });
-}
+};
+
 export default vite_config;
