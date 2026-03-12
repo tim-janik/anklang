@@ -81,34 +81,16 @@ class JsonapiConnection : public WebSocketConnection, public CustomDataContainer
   {
     JsonapiConnectionP conp = std::dynamic_pointer_cast<JsonapiConnection> (shared_from_this());
     assert_return (conp);
-    struct MessageData { // keep arguments alive, even after __func__ returns
-      ScopedSemaphore sem;
-      String message, reply;
-      JsonapiConnectionP conp;
-      MessageData (JsonapiConnectionP c, const String &m) : message (m), conp (c) {}
-    };
-    auto data = std::make_shared<MessageData> (conp, message);
-    main_jobs += [data, this] () {
-      if (main_loop->has_quit())
-        return;
-      current_message_conection = data->conp;
-      data->reply = this->handle_jsonipc (data->message);
+    String reply;
+    if (!main_loop->has_quit()) {
+      current_message_conection = conp;
+      reply = this->handle_jsonipc (message);
       current_message_conection = nullptr;
-      data->sem.post();
-    };
-    nickname(); // cache socket nickname for use during errors
-    // wait with timeout, checking if main loop has quit to avoid deadlock on shutdown
-    const uint64_t timeout_us = 50 * 1000;
-    do {
-      const int ret = data->sem.wait_for (timeout_us);
-      if (ret == 0)
-        break; // semaphore was posted, job completed successfully
-      if (data->reply.empty() && main_loop->has_quit())
-        data->reply = "{id:0,error:{code:-32601,message:\"Method not found: endpoint shutting down\"}}\n";
-    } while (data->reply.empty());
-    // when queueing asynchronously, we have to use WebSocketConnectionP
-    if (!data->reply.empty())
-      send_text (data->reply);
+    }
+    else
+      reply = "{id:0,error:{code:-32601,message:\"Method not found: endpoint shutting down\"}}\n";
+    if (!reply.empty())
+      send_text (reply);
   }
   String handle_jsonipc (const std::string &message);
   std::vector<JsTrigger> triggers_; // HINT: use unordered_map if this becomes slow
