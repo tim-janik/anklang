@@ -1,4 +1,9 @@
 UI_TEST_LIST := \
+  clip_test.test_clip_volume \
+  clip_test.test_clip_mute \
+  clip_test.test_clip_pan \
+  clip_test.test_clip_notes \
+  clip_test.test_clip_range \
   project_test.test_project_basic \
   project_test.test_project_master_volume \
   project_test.test_project_track_management \
