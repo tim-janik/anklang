@@ -75,10 +75,10 @@ print_usage (bool help)
   printout ("  --list-tests     List all test names\n");
   printout ("  --list-ui-tests  List all TypeScript UI test function names\n");
   printout ("  --norc           Prevent loading of any rc files\n");
-  printout ("  --ui-test=test   Specify a TypeScript UI test function to run\n");
+  printout ("  --ui-test=test   Specify TypeScript UI test(s) to run (comma-separated)\n");
   printout ("  --play-autostart Automatically start playback of `project.anklang`\n");
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
-  printout ("  --test[=test]    Run specific tests\n");
+  printout ("  --test[=test]    Run specific test(s) (comma-separated)\n");
   printout ("  --unauth-dev=NUM Open an unauthenticated websocket port for testing\n");
   printout ("  --headless[=bool]  Run browser in headless mode (default for --ui-test)\n");
   printout ("  --ui <none|chromium|google-chrome|htmlgui>\n");
@@ -189,9 +189,11 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
         {
           const char *eq = strchr (argv[i], '=');
           const char *arg = eq ? eq + 1 : i+1 < argc ? argv[++i] : nullptr;
-          if (arg)
-            ui_test_names.push_back (arg);
-          else
+          if (arg) {
+            const auto tests = string_split (arg, ",");
+            for (const auto &t : tests)
+              ui_test_names.push_back (t);
+          } else
             ui_test_names.push_back ("all");
           config.headless = true;
         }
@@ -206,8 +208,11 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
           const char *arg = eq ? eq + 1 : i+1 < argc ? argv[++i] : nullptr;
           config.mode = MainApp::CHECK_INTEGRITY_TESTS;
           logging_fatal_warnings = true;
-          if (arg)
-            check_test_names.push_back (arg);
+          if (arg) {
+            const auto tests = string_split (arg, ",");
+            for (const auto &t : tests)
+              check_test_names.push_back (t);
+          }
           default_ui_mode = "none";
         }
       else if (argv[i] == String ("--blake3") && i + 1 < size_t (argc))
