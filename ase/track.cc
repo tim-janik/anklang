@@ -394,7 +394,7 @@ TrackImpl::ClipScout::update (const ClipScout &other)
   indices_ = other.indices_;
 }
 
-ClipImplP
+ClipP
 TrackImpl::create_midi_clip (const String &name, double start, double length)
 {
   if (auto t = track_.get()) {
@@ -414,7 +414,7 @@ TrackImpl::create_midi_clip (const String &name, double start, double length)
   return nullptr;
 }
 
-ClipImplP
+ClipP
 TrackImpl::create_audio_clip (const String &name, double start, double length)
 {
   if (auto t = track_.get()) {

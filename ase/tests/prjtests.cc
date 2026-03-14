@@ -347,7 +347,7 @@ clip_creation()
   TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
   TASSERT (trackimpl);
 
-  ClipImplP clip = trackimpl->create_midi_clip ("TestClip", 0.0, 4.0);
+  ClipP clip = trackimpl->create_midi_clip ("TestClip", 0.0, 4.0);
   TASSERT (clip);
 
   project->_deactivate();
@@ -368,7 +368,7 @@ clip_notes()
   TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
   TASSERT (trackimpl);
 
-  ClipImplP clip = trackimpl->create_midi_clip ("NotesClip", 0.0, 4.0);
+  ClipP clip = trackimpl->create_midi_clip ("NotesClip", 0.0, 4.0);
   TASSERT (clip);
 
   ClipNoteS notes = clip->list_all_notes();
@@ -408,7 +408,7 @@ clip_range()
   TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
   TASSERT (trackimpl);
 
-  ClipImplP clip = trackimpl->create_midi_clip ("RangeClip", 0.0, 4.0);
+  ClipP clip = trackimpl->create_midi_clip ("RangeClip", 0.0, 4.0);
   TASSERT (clip);
 
   int64 start = clip->start_tick();
@@ -438,7 +438,7 @@ clip_mute_volume_pan()
   TASSERT (trackimpl);
 
   // Test MIDI clip
-  ClipImplP mclip = trackimpl->create_midi_clip ("MidiClip", 0.0, 4.0);
+  ClipP mclip = trackimpl->create_midi_clip ("MidiClip", 0.0, 4.0);
   TASSERT (mclip);
 
   // Test initial state
@@ -477,7 +477,7 @@ clip_mute_volume_pan()
   TASSERT (volume_notifications > last_volume_notifications);
 
   // Test audio clip (pan is only available on audio clips)
-  ClipImplP aclip = trackimpl->create_audio_clip ("AudioClip", 0.0, 4.0);
+  ClipP aclip = trackimpl->create_audio_clip ("AudioClip", 0.0, 4.0);
   TASSERT (aclip);
 
   // Test pan notifications for audio clip
@@ -527,7 +527,7 @@ clip_undo_redo()
   TASSERT (trackimpl);
 
   // Test MIDI clip mute undo/redo
-  ClipImplP mclip = trackimpl->create_midi_clip ("UndoMidiClip", 0.0, 4.0);
+  ClipP mclip = trackimpl->create_midi_clip ("UndoMidiClip", 0.0, 4.0);
   TASSERT (mclip);
 
   uint64_t muted_notifications = 0;
@@ -571,7 +571,7 @@ clip_undo_redo()
   TASSERT (std::abs (mclip->volume() - (-12.0)) < 0.01);
 
   // Test audio clip pan undo/redo
-  ClipImplP aclip = trackimpl->create_audio_clip ("UndoAudioClip", 0.0, 4.0);
+  ClipP aclip = trackimpl->create_audio_clip ("UndoAudioClip", 0.0, 4.0);
   TASSERT (aclip);
 
   uint64_t pan_notifications = 0;

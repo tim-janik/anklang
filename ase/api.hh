@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_API_HH__
-#define __ASE_API_HH__
+#pragma once
 
 #include <ase/member.hh>
 #include <ase/value.hh>
@@ -280,6 +279,8 @@ public:
   virtual double          pan                 () const = 0;          ///< Get track pan (-1.0 to 1.0).
   virtual void            pan                 (double pan) = 0;      ///< Set track pan (-1.0 to 1.0).
   virtual ClipS           launcher_clips      () = 0;                ///< Retrieve the list of clips that can be directly played.
+  virtual ClipP           create_midi_clip    (const String &name, double start, double length) = 0; ///< Create a new MIDI clip on this track.
+  virtual ClipP           create_audio_clip   (const String &name, double start, double length) = 0; ///< Create a new audio clip on this track.
   virtual DeviceP         access_device       () = 0;                ///< Retrieve Device handle for this track.
   virtual MonitorP        create_monitor      (int32 ochannel) = 0;  /// Create signal monitor for an output channel.
   virtual TelemetryFieldS telemetry           () const = 0;          ///< Retrieve track telemetry locations.
@@ -433,5 +434,3 @@ public:
 #define ASE_SERVER      (::Ase::Server::instance())
 
 } // Ase
-
-#endif // __ASE_API_HH__
