@@ -393,7 +393,7 @@ LoopImpl::run ()
   running_ -= 1;
   if (quit_code_ & WILLQUIT)            // apply quit code from this run()
     quit_code_ = HASQUIT | (quit_code_ & ~WILLQUIT);
-  return quit_code_;
+  return quit_code_ & ~HASQUIT;         // return actual exit code, not internal flag
 }
 
 bool

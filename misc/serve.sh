@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 test "${1-}" == -x && { shift; set -x; }
 
-# Dir to find Anklang, run mkdocs, used by ui/vite.config.ts
+# Dir to find Anklang, run mkdocs, used by vite.config.ts
 export BUILDDIR=out/
 # Note1: For development, TCP ports are hard coded, keep in sync with vite.config.ts
 export DEVPORT_ANKLANG=1776
@@ -33,8 +33,8 @@ $BUILDDIR/lib/AnklangSynthEngine --unauth-dev=$DEVPORT_ANKLANG "$@" &	# does set
 sleep 0.5
 
 # Vite
-echo -e "\n+ node_modules/.bin/vite --strictPort --host localhost --port $DEVPORT_VITE -c ui/vite.config.ts -l info" >&2
-node_modules/.bin/vite --strictPort --host localhost --port $DEVPORT_VITE -c ui/vite.config.ts -l info &
+echo -e "\n+ node_modules/.bin/vite --strictPort --host localhost --port $DEVPORT_VITE -c vite.config.ts -l info" >&2
+node_modules/.bin/vite --strictPort --host localhost --port $DEVPORT_VITE -c vite.config.ts -l info &
 sleep 0.5
 
 # MkDocs
