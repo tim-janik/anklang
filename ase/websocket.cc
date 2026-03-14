@@ -9,20 +9,35 @@
 #include "regex.hh"
 #include "randomhash.hh"
 #include "internal.hh"
+#include "main.hh"
 #include <regex>
 #include <fstream>
+#include <map>
+#include <vector>
 
-#include <websocketpp/config/asio_no_tls.hpp>
+// POSIX Network Headers
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <unistd.h>
+
+#include <websocketpp/config/core.hpp>
 #include <websocketpp/server.hpp>
+
+#define IODEBUG(...)    while (0) { printerr (__VA_ARGS__); break; }
 
 namespace Ase {
 
 struct WebSocketServerImpl;
 using WebSocketServerImplP = std::shared_ptr<WebSocketServerImpl>;
 
-struct CustomServerConfig : public websocketpp::config::asio {
+// Use core config with sync concurrency so send() is thread-safe
+struct CustomServerConfig : public websocketpp::config::core {
   static const size_t connection_read_buffer_size = 16384;
 };
+
 using WppServer = websocketpp::server<CustomServerConfig>;
 using WppConnectionP = WppServer::connection_ptr;
 using WppConnection = WppConnectionP::element_type;
@@ -35,11 +50,22 @@ operator!= (const WppHdl &a, const WppHdl &b)
 }
 static inline bool operator== (const WppHdl &a, const WppHdl &b) { return !(a != b); }
 
+// State for main_loop integration
+struct ClientState {
+  int fd;
+  WppConnectionP con;
+  std::string out_buffer;
+  std::string local_ip;
+  int local_port = 0;
+  std::string remote_ip;
+  int remote_port = 0;
+  Ase::LoopID source_id = Ase::LoopID::INVALID;
+};
+
 // == WebSocketServerImpl ==
 struct WebSocketServerImpl : public WebSocketServer {
   using ConVec = std::vector<WebSocketConnectionP>;
   using RegexVector = std::vector<std::regex>;
-  std::thread   *initialized_thread_ = nullptr;
   WppServer      wppserver_;
   String         server_url_, dir_, token_, see_other_;
   std::vector<std::pair<String,String>> aliases_;
@@ -48,6 +74,13 @@ struct WebSocketServerImpl : public WebSocketServer {
   MakeConnection make_con_;
   int            logflags_ = 0;
   int            listen_port_ = 0;
+  std::map<int, ClientState> clients_;
+  int                        listen_fd_ = -1;
+  Ase::LoopID                listen_source_id_ = Ase::LoopID::INVALID;
+
+  void update_client_sources();
+  bool io_handler (PollFD &pfd);
+
   void   setup        (const String &host, int port);
   void   run          ();
   WebSocketConnectionP make_connection (WppHdl hdl);
@@ -56,11 +89,15 @@ struct WebSocketServerImpl : public WebSocketServer {
 public:
   int            listen_port () const override   { return listen_port_; }
   String         url      () const override      { return server_url_; }
-  WppConnectionP wppconp  (WppHdl hdl)           { return wppserver_.get_con_from_hdl (hdl); }
+  WppConnectionP wppconp  (WppHdl hdl)
+  {
+    websocketpp::lib::error_code ec;
+    return wppserver_.get_con_from_hdl (hdl, ec); // nullptr if (ec)
+  }
   void
   http_dir (const String &path) override
   {
-    assert_return (!initialized_thread_);
+    assert_return (listen_fd_ < 0);
     dir_ = Path::normalize (path);
     aliases_.clear();
     ignores_.clear();
@@ -116,14 +153,51 @@ public:
   void
   listen (const String &host, int port, const UnlistenCB &ulcb) override
   {
-    assert_return (!initialized_thread_);
+    assert_return (listen_fd_ < 0);
     setup (host, port);
-    initialized_thread_ = new std::thread ([this, ulcb] () {
-      this_thread_set_name ("AsioWebSocket");
-      this->run();
-      if (ulcb)
-        ulcb();
-    });
+    // Register listen fd with main_loop
+    listen_source_id_ = main_loop->exec_io_handler ([this] (PollFD &pfd) {
+      // Handle new connections
+      if (pfd.revents & PollFD::IN) {
+        sockaddr_in client_addr;
+        socklen_t client_len = sizeof (client_addr);
+        int client_fd = accept (listen_fd_, (sockaddr*) &client_addr, &client_len);
+        if (client_fd >= 0) {
+          fcntl (client_fd, F_SETFL, O_NONBLOCK);
+          sockaddr_in local_addr;
+          socklen_t local_len = sizeof (local_addr);
+          getsockname (client_fd, (sockaddr*) &local_addr, &local_len);
+          WppConnectionP con = wppserver_.get_connection();
+          ClientState cs;
+          cs.fd = client_fd;
+          cs.con = con;
+          char ip_str[INET_ADDRSTRLEN];
+          inet_ntop (AF_INET, &(local_addr.sin_addr), ip_str, INET_ADDRSTRLEN);
+          cs.local_ip = ip_str;
+          cs.local_port = ntohs (local_addr.sin_port);
+          inet_ntop (AF_INET, &(client_addr.sin_addr), ip_str, INET_ADDRSTRLEN);
+          cs.remote_ip = ip_str;
+          cs.remote_port = ntohs (client_addr.sin_port);
+          // Wire up the iostream transport's write handler
+          con->set_write_handler ([this, client_fd] (WppHdl hdl, char const *data, size_t len)
+          {
+            auto it = clients_.find (client_fd);
+            if (it != clients_.end()) {
+              it->second.out_buffer.append (data, len);
+              main_loop->wakeup();
+            }
+            IODEBUG ("%s:%u:%s: fd=%d write_handler: len=%d\n", __FILE__, __LINE__, __func__, it != clients_.end() ? it->first : -1, len);
+            return websocketpp::lib::error_code();
+          });
+          clients_[client_fd] = cs;
+          IODEBUG ("%s:%u:%s: accept(%d)\n", __FILE__, __LINE__, __func__, client_fd);
+          con->start();
+          // Update client sources to include the new connection
+          update_client_sources();
+        }
+      }
+      return true; // keep handler active
+    }, listen_fd_, "r", LoopPriority::NORMAL);
   }
   void
   see_other (const String &uri) override
@@ -134,13 +208,11 @@ public:
   void
   shutdown () override
   {
-    if (initialized_thread_)
-      {
-        wppserver_.stop();
-        initialized_thread_->join();
-        initialized_thread_ = nullptr;
-      }
+    // Cancel loop sources
     reset();
+    main_loop->cancel (&listen_source_id_);
+    ::close (listen_fd_);
+    listen_fd_ = -1;
   }
   void ws_opened (WebSocketConnectionP);
   void ws_closed (WebSocketConnectionP);
@@ -153,63 +225,135 @@ public:
 void
 WebSocketServerImpl::setup (const String &host, int port)
 {
-  // setup websocket and run asio loop
   wppserver_.set_user_agent (user_agent());
-  wppserver_.set_validate_handler ([this] (WppHdl hdl) {
+  wppserver_.set_validate_handler ([this] (WppHdl hdl)
+  {
     WebSocketConnectionP conp = make_connection (hdl);
     WppConnectionP cp = this->wppconp (hdl);
     return_unless (conp && cp, false);
     const bool is_authenticated = conp->authenticated (token_);
     if (is_authenticated) {
       const int index = conp->validate();
-      if (index >= 0)
-        {
-          const std::vector<std::string> &subprotocols = cp->get_requested_subprotocols();
-          if (size_t (index) < subprotocols.size())
-            {
-              cp->select_subprotocol (subprotocols[index]);
-              return true;
-            }
-          else if (subprotocols.size() == 0 && index == 0)
+      if (index >= 0) {
+        const std::vector<std::string> &subprotocols = cp->get_requested_subprotocols();
+        if (size_t (index) < subprotocols.size())
+          {
+            cp->select_subprotocol (subprotocols[index]);
             return true;
-        }
+          }
+        else if (subprotocols.size() == 0 && index == 0)
+          return true;
+      }
     }
     cp->set_status (websocketpp::http::status_code::forbidden);
     conp->log_status (cp->get_response_code());
     return false;
   });
-  wppserver_.set_http_handler ([this] (WppHdl hdl) {
+  wppserver_.set_http_handler ([this] (WppHdl hdl)
+  {
     WebSocketConnectionP conp = make_connection (hdl);
     if (conp)
       conp->http_request();
   });
-  wppserver_.init_asio();
   wppserver_.clear_access_channels (websocketpp::log::alevel::all);
   wppserver_.clear_error_channels (websocketpp::log::elevel::all);
-  wppserver_.set_reuse_addr (true);
 
-  // listen on localhost
-  namespace IP = boost::asio::ip;
-  IP::tcp::endpoint endpoint_local = IP::tcp::endpoint (IP::address::from_string (host), port);
-  websocketpp::lib::error_code ec;
-  wppserver_.listen (endpoint_local, ec);
-  if (ec)
-    fatal_error ("failed to listen on socket: %s:%d: %s", host, port, ec.message());
-  if (port)
+  // Setup POSIX listening socket
+  listen_fd_ = socket (AF_INET, SOCK_STREAM, 0);
+  if (listen_fd_ < 0)
+    fatal_error ("failed to create socket for: %s:%d: %s", host, port);
+  int opt = 1;
+  setsockopt (listen_fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof (opt));
+
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  if (host.empty())
+    addr.sin_addr.s_addr = htonl (INADDR_ANY);
+  else
+    {
+      addr.sin_addr.s_addr = inet_addr (host.c_str());
+      if (addr.sin_addr.s_addr == INADDR_NONE)
+        addr.sin_addr.s_addr = htonl (INADDR_LOOPBACK);
+    }
+  addr.sin_port = htons (port);
+
+  if (bind (listen_fd_, (sockaddr*) &addr, sizeof (addr)) < 0)
+    fatal_error ("failed to bind to %s:%d", host, port);
+
+  if (::listen (listen_fd_, 128) < 0)
+    fatal_error ("failed to listen on: %s:%d: %s", host, port);
+  fcntl (listen_fd_, F_SETFL, O_NONBLOCK);
+
+  if (port == 0) {
+    socklen_t len = sizeof (addr);
+    if (getsockname (listen_fd_, (sockaddr*) &addr, &len) == 0)
+      listen_port_ = ntohs (addr.sin_port);
+  } else
     listen_port_ = port;
-  else { // port == 0
-    websocketpp::lib::asio::error_code ac;
-    listen_port_ = wppserver_.get_local_endpoint (ac).port();
-  }
-  String fullurl = string_format ("http://%s:%d/", host, listen_port_);
+  String fullurl = string_format ("http://%s:%d/", host.empty() ? "127.0.0.1" : host.c_str(), listen_port_);
   server_url_ = fullurl;
 }
 
-void
-WebSocketServerImpl::run ()
+bool
+WebSocketServerImpl::io_handler (PollFD &pfd)
 {
-  wppserver_.start_accept();
-  wppserver_.run();
+  const int fd = pfd.fd;
+  IODEBUG ("%s:%u:%s: io-ready(%d): r=%d w=%d other=0x%x\n", __FILE__, __LINE__, __func__, fd,
+           pfd.revents & PollFD::IN, pfd.revents & PollFD::OUT,
+           pfd.revents & ~(PollFD::IN | PollFD::OUT));
+  auto it = clients_.find (fd);
+  if (it == clients_.end())
+    return false; // client gone
+  auto &client = it->second;
+  if (client.out_buffer.size()) {
+    ssize_t n = ::send (fd, client.out_buffer.data(), client.out_buffer.size(), 0);
+    IODEBUG ("%s:%u:%s: send(%d,%d)\n", __FILE__, __LINE__, __func__, fd, n);
+    if (n > 0)
+      client.out_buffer.erase (0, n);
+    else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
+      client.con->fatal_error();
+  }
+  if ((pfd.revents & PollFD::IN) &&
+      client.con->get_state() != websocketpp::session::state::closed) {
+    char buf[8192];
+    ssize_t n = ::recv (fd, buf, sizeof (buf), 0);
+    IODEBUG ("%s:%u:%s: recv(%d)=%d\n", __FILE__, __LINE__, __func__, fd, n);
+    if (n > 0) {
+      try {
+        client.con->read_all (buf, n);
+      } catch (...) {
+        client.con->fatal_error();  // websocketpp error
+      }
+    }
+    else if (n == 0)
+      client.con->eof();
+    else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+      client.con->fatal_error();    // read EIO
+    }
+  }
+  if (pfd.revents & (PollFD::ERR | PollFD::HUP | PollFD::NVAL)) // 0x8 0x10 0x20
+    client.con->fatal_error();    // fd EIO
+  if (client.con->get_state() == websocketpp::session::state::closed)
+    IODEBUG ("%s:%u:%s: closed fd=%d ob=%d io_errors=0x%x\n", __FILE__, __LINE__, __func__, fd, client.out_buffer.size(), pfd.revents & (PollFD::ERR | PollFD::HUP | PollFD::NVAL));
+  if (client.out_buffer.size())
+    pfd.events |= PollFD::OUT;
+  else
+    pfd.events &= ~PollFD::OUT;
+  const bool closed = client.out_buffer.empty() && client.con->get_state() == websocketpp::session::state::closed;
+  return !closed; // keep handler if not closed
+}
+
+// Update client sources when clients connect/disconnect
+void
+WebSocketServerImpl::update_client_sources()
+{
+  // Register missing client fds
+  for (auto &[fd, client] : clients_)
+    if (client.source_id == Ase::LoopID::INVALID)
+      client.source_id = main_loop->exec_io_handler ([this] (PollFD &pfd)
+      {
+        return this->io_handler (pfd);
+      }, fd, "r", LoopPriority::NORMAL);
 }
 
 // == WebSocketConnection ==
@@ -267,6 +411,12 @@ WebSocketConnection::send_text (const String &message)
   WppConnectionP cp = internals_.wppconp();
   return_unless (cp, false);
   websocketpp::lib::error_code ec;
+  // Find client fd for debug logging
+  int fd = -1;
+  for (const auto &[f, client] : internals_.server->clients_)
+    if (client.con == cp)
+      { fd = f; break; }
+  IODEBUG ("%s:%u:%s: fd=%d message=%d\n", __FILE__, __LINE__, __func__, fd, message.size());
   internals_.wppserver.send (internals_.hdl, message, websocketpp::frame::opcode::text, ec);
   if (ec)
     {
@@ -285,8 +435,7 @@ WebSocketConnection::send_binary (const String &blob)
   WppConnectionP cp = internals_.wppconp();
   return_unless (cp, false);
   websocketpp::lib::error_code ec;
-  // See "Sending Messages" about `endpoint::send` in utility_client.md
-  internals_.wppserver.send (internals_.hdl, blob, websocketpp::frame::opcode::binary, ec); // MT-Safe, locks mutex
+  internals_.wppserver.send (internals_.hdl, blob, websocketpp::frame::opcode::binary, ec);
   if (ec)
     {
       if (logflags_ > 0)
@@ -324,16 +473,17 @@ WebSocketConnection::get_info ()
   };
   if (0)
     for (auto it : *headers)
-      printerr ("%s: %s\n", it.first, it.second);
-  // https://github.com/zaphoyd/websocketpp/issues/694#issuecomment-454623641
-  const auto &socket = cp->get_raw_socket();
-  boost::system::error_code ec;
-  const auto &laddress = socket.local_endpoint (ec).address();
-  info.local = laddress.to_string();
-  info.lport = socket.local_endpoint (ec).port();
-  const auto &raddress = socket.remote_endpoint (ec).address();
-  info.remote = raddress.to_string();
-  info.rport = socket.remote_endpoint (ec).port();
+      IODEBUG ("%s: %s\n", it.first, it.second);
+
+  // Lookup IP/Port from our manual ClientState map
+  for (const auto &[fd, client] : internals_.server->clients_)
+    if (client.con == cp) {
+      info.local = client.local_ip;
+      info.lport = client.local_port;
+      info.remote = client.remote_ip;
+      info.rport = client.remote_port;
+      break;
+    }
   info.subs = cp->get_requested_subprotocols();
   return info;
 }
@@ -418,7 +568,8 @@ WebSocketConnection::http_request ()
   String filepath;
 
   // Helpers
-  auto set_response = [] (WppConnectionP cp, websocketpp::http::status_code::value status, const String &title, const String &msg) {
+  auto set_response = [] (WppConnectionP cp, websocketpp::http::status_code::value status, const String &title, const String &msg)
+  {
     const String body =
       string_format ("<!DOCTYPE html>\n"
                      "<html><head><title>%u %s</title></head>\n<body>\n"
@@ -564,6 +715,8 @@ WebSocketServerImpl::ws_opened (WebSocketConnectionP conp)
   WebSocketConnection::Internals &internals_ = WebSocketServer::internals (*conp);
   internals_.opened = true;
   opencons_.push_back (conp);
+  // Update client sources to include the new connection
+  update_client_sources();
   conp->opened ();
 }
 
@@ -571,20 +724,31 @@ void
 WebSocketServerImpl::ws_closed (WebSocketConnectionP conp)
 {
   WebSocketConnection::Internals &internals_ = WebSocketServer::internals (*conp);
-  if (internals_.opened)
-    {
-      internals_.opened = false;
-      auto it = std::find (opencons_.begin(), opencons_.end(), conp);
-      if (it != opencons_.end())
-        opencons_.erase (it);
-      conp->closed ();
+  WppConnectionP wppconp = internals_.wppconp();
+  if (internals_.opened) {
+    internals_.opened = false;
+    auto it = std::find (opencons_.begin(), opencons_.end(), conp);
+    if (it != opencons_.end())
+      opencons_.erase (it);
+    // Find and remove the client from clients_
+    for (auto client_it = clients_.begin(); client_it != clients_.end(); ) {
+      if (client_it->second.con == wppconp) {
+        auto &[fd, client] = *client_it;
+        ::close (fd);
+        main_loop->cancel (&client.source_id);
+        IODEBUG ("%s:%u:%s: closed fd=%d ob=%d\n", __FILE__, __LINE__, __func__, fd, client.out_buffer.size());
+        client_it = clients_.erase (client_it);
+      } else
+        ++client_it;
     }
+    conp->closed();
+  }
 }
 
 void
 WebSocketServerImpl::reset()
 {
-  // stop open asio connections
+  // stop open connections
   for (ssize_t i = ssize_t (opencons_.size()) - 1; i >= 0; i--)
     {
       WebSocketConnectionP conp = opencons_[i];
@@ -592,8 +756,15 @@ WebSocketServerImpl::reset()
       WppConnectionP cp = internals_.wppconp();
       websocketpp::lib::error_code ec;
       cp->close (websocketpp::close::status::going_away, "", ec); // omit_handshake
-      (void) ec;
     }
+
+  // cancel client sources and close raw sockets
+  for (auto &[fd, client] : clients_) {
+    ::close (fd);
+    main_loop->cancel (&client.source_id);
+    IODEBUG ("%s:%u:%s: closed fd=%d ob=%d\n", __FILE__, __LINE__, __func__, fd, client.out_buffer.size());
+  }
+  clients_.clear();
 }
 
 // == WebSocketServer ==
@@ -625,7 +796,8 @@ String
 WebSocketServer::mime_type (const String &ext, bool utf8)
 {
   using MimeMap = std::unordered_map<String, String>;
-  static MimeMap mime_map = [] () {
+  static MimeMap mime_map = [] ()
+  {
     MimeMap mime_map;
     // mime_types, list of "mime/type ext ext2\n" lines
     for (const String &line : string_split (mime_types, "\n"))

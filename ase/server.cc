@@ -456,7 +456,7 @@ validate_telemetry_segments (const TelemetrySegmentS &segments, size_t *payloadl
 }
 
 ASE_CLASS_DECLS (TelemetryPlan);
-class TelemetryPlan {
+class TelemetryPlan : public std::enable_shared_from_this<TelemetryPlan> {
 public:
   int32               interval_ms_ = -1;
   LoopID              timerid_ = LoopID::INVALID;
@@ -503,7 +503,8 @@ TelemetryPlan::setup (const char *start, size_t payloadlength, const TelemetrySe
     {
       if (timerid_ != LoopID::INVALID)
         main_loop->cancel (timerid_);
-      auto send_telemetry = [this] () { this->send_telemetry(); return true; };
+      auto tplan = shared_from_this();
+      auto send_telemetry = [tplan] () { tplan->send_telemetry(); return true; };
       interval_ms_ = interval_ms;
       timerid_ = interval_ms <= 0 || segments.empty() ? LoopID::INVALID : main_loop->add (send_telemetry, std::chrono::milliseconds (interval_ms));
     }
@@ -524,6 +525,9 @@ TelemetryPlan::setup (const char *start, size_t payloadlength, const TelemetrySe
 void
 TelemetryPlan::send_telemetry ()
 {
+  // Safety check: don't send if telemetry memory or segments are invalid
+  if (!telemem_ || segments_.empty() || payload_.empty())
+    return;
   char *data = &payload_[0];
   size_t datapos = 0;
   for (const auto &seg : segments_)     // offsets and lengths were validated earlier
@@ -531,14 +535,17 @@ TelemetryPlan::send_telemetry ()
       memcpy (data + datapos, telemem_ + seg.offset, seg.length);
       datapos += seg.length;
     }
-  send_blob_ (payload_);
+  // send_blob_ handles the case where the connection is closed (returns false)
+  (void) send_blob_ (payload_);
 }
 
 TelemetryPlan::~TelemetryPlan()
 {
   if (timerid_ != LoopID::INVALID)
     {
-      main_loop->cancel (timerid_);
+      // Only cancel if the loop is still running
+      if (!main_loop->has_quit())
+        main_loop->cancel (timerid_);
       timerid_ = LoopID::INVALID;
     }
 }
