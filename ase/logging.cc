@@ -165,7 +165,7 @@ parse_log_level (const char *lvl, Logging fallback)
 }
 
 bool
-logging_configure (bool to_file, Logging level)
+logging_configure (const std::string &log_file_ident, Logging level)
 {
   logging_level = level;
   if (logging_level < FATAL) {
@@ -180,7 +180,7 @@ logging_configure (bool to_file, Logging level)
       logging_level = parse_log_level (rfind_debug_value (getenv_ase_debug(), "loglevel", ""), INFO);
   }
   loging_setup();
-  if (!to_file) {
+  if (log_file_ident.empty()) {
     std::lock_guard<std::mutex> locker (logging_buffer_mutex);
     if (logging_fd >= 0)
       return false;     // logging file already configured
@@ -192,7 +192,7 @@ logging_configure (bool to_file, Logging level)
     return true;
   }
   const String logdir = Path::cache_home() + "/anklang";
-  const String fname = string_format ("%s/%s-%08x.log", logdir, program_alias(), gethostid());
+  const String fname = string_format ("%s/%s-%s.log", logdir, program_alias(), log_file_ident);
   const int OFLAGS = O_CREAT | O_EXCL | O_WRONLY | O_NOCTTY | O_NOFOLLOW | O_CLOEXEC; // O_TRUNC
   const int OMODE = 0640;
   std::lock_guard<std::mutex> locker (logging_buffer_mutex);

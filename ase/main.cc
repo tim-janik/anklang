@@ -489,9 +489,11 @@ main (int argc, char *argv[])
 
   // parse args and config
   parse_args (&argc, argv, main_app);
-  // copy ui_test_names to App.ui_tests
   main_app.ui_tests = ui_test_names;
-  logging_configure (arg_ui_mode != "none");
+  const int socket_port = arg_unauth_port > 0 ? arg_unauth_port : 0;
+  const char *socket_host = "127.0.0.1";
+  const auto socket_info = WebSocketServer::bind_port (socket_host, socket_port);
+  logging_configure (arg_ui_mode != "none" ? string_format ("%u", socket_info.port) : "");
 
   // handle loft preallocation needs
   main_loop->exec_dispatcher (dispatch_loft_lowmem, LoopPriority::SYSALLOC);
@@ -570,15 +572,12 @@ main (int argc, char *argv[])
   wss->http_alias ("/Builtin/Controller", anklang_runpath (RPath::INSTALLDIR, "/Controller"));
   // wss->http_alias ("/User/Scripts", anklang_home_dir ("/Scripts"));
   wss->http_alias ("/Builtin/Scripts", anklang_runpath (RPath::INSTALLDIR,"/Scripts"));
-  const int xport = arg_unauth_port > 0 ? arg_unauth_port : 0;
   const String subprotocol = ""; // make_auth_string()
   jsonapi_set_subprotocol (subprotocol);
   if (App.mode == MainApp::SYNTHENGINE && arg_ui_mode != "none") {
-    const char *host = "127.0.0.1";
-    const auto socket_info = WebSocketServer::bind_port (host, xport);
     wss->listen (socket_info, [] () { main_loop->quit (-1); });
     std::string webui_url = wss->url();
-    if (!xport) {
+    if (!socket_port) {
       String redirecthtml = webui_create_auth_redirect ("anklang", wss->listen_port(), auth_token, arg_ui_mode);
       if (errno)
         fatal_error ("%s: failed to create html redirect file in $HOME", redirecthtml);

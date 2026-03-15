@@ -47,7 +47,7 @@ void    logging_debug (const char *cond, const std::string &message) noexcept;
 void    stdio_flush   (uint8 code, const String &txt) noexcept;
 extern bool logging_fatal_warnings;
 
-bool    logging_configure (bool to_file, Logging level = Logging (-1));
+bool    logging_configure (const std::string &log_file_ident, Logging level = Logging (-1));
 
 /// Check if any kind of debugging is enabled by $ASE_DEBUG.
 inline bool ASE_ALWAYS_INLINE ASE_PURE
