@@ -34,7 +34,7 @@ Eapp.setAppLogsPath (path.join (cache_dir, 'logs'));
 Eapp.setPath ('userData', path.join (cache_dir, 'userData'));
 Eapp.setPath ('userCache', path.join (cache_dir, 'userCache'));
 Eapp.setPath ('crashDumps', path.join (cache_dir, 'crashDumps'));
-// Clean up caches regularly
+// Clean up caches under ~/.cache/anklang/<PID> regularly
 async function cleanup_cache_dirs()
 {
   for (const entry of await trynext ([], () => fs.promises.readdir (anklang_cache_root))) {
