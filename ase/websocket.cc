@@ -81,8 +81,7 @@ struct WebSocketServerImpl : public WebSocketServer {
   void update_client_sources();
   bool io_handler (PollFD &pfd);
 
-  void   setup        (const String &host, int port);
-  void   run          ();
+  void   setup        ();
   WebSocketConnectionP make_connection (WppHdl hdl);
   WebSocketConnection* force_con (WppHdl);
   friend class WebSocketServer;
@@ -151,10 +150,17 @@ public:
     return Path::join (dir_, absurl);
   }
   void
-  listen (const String &host, int port, const UnlistenCB &ulcb) override
+  listen (const SocketInfo &sinfo, const UnlistenCB &ulcb) override
   {
     assert_return (listen_fd_ < 0);
-    setup (host, port);
+    listen_fd_ = sinfo.fd;
+    listen_port_ = sinfo.port;
+    if (::listen (listen_fd_, 128) < 0)
+      fatal_error ("failed to listen on %s:%d, fd=%d: %s", sinfo.host, sinfo.port, listen_fd_, strerror (errno));
+    fcntl (listen_fd_, F_SETFL, O_NONBLOCK);
+    String fullurl = string_format ("http://%s:%d/", sinfo.host.empty() ? "127.0.0.1" : sinfo.host, listen_port_);
+    server_url_ = fullurl;
+    setup();
     // Register listen fd with main_loop
     listen_source_id_ = main_loop->exec_io_handler ([this] (PollFD &pfd) {
       // Handle new connections
@@ -223,7 +229,7 @@ public:
 };
 
 void
-WebSocketServerImpl::setup (const String &host, int port)
+WebSocketServerImpl::setup ()
 {
   wppserver_.set_user_agent (user_agent());
   wppserver_.set_validate_handler ([this] (WppHdl hdl)
@@ -257,41 +263,6 @@ WebSocketServerImpl::setup (const String &host, int port)
   });
   wppserver_.clear_access_channels (websocketpp::log::alevel::all);
   wppserver_.clear_error_channels (websocketpp::log::elevel::all);
-
-  // Setup POSIX listening socket
-  listen_fd_ = socket (AF_INET, SOCK_STREAM, 0);
-  if (listen_fd_ < 0)
-    fatal_error ("failed to create socket for: %s:%d: %s", host, port);
-  int opt = 1;
-  setsockopt (listen_fd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof (opt));
-
-  sockaddr_in addr{};
-  addr.sin_family = AF_INET;
-  if (host.empty())
-    addr.sin_addr.s_addr = htonl (INADDR_ANY);
-  else
-    {
-      addr.sin_addr.s_addr = inet_addr (host.c_str());
-      if (addr.sin_addr.s_addr == INADDR_NONE)
-        addr.sin_addr.s_addr = htonl (INADDR_LOOPBACK);
-    }
-  addr.sin_port = htons (port);
-
-  if (bind (listen_fd_, (sockaddr*) &addr, sizeof (addr)) < 0)
-    fatal_error ("failed to bind to %s:%d", host, port);
-
-  if (::listen (listen_fd_, 128) < 0)
-    fatal_error ("failed to listen on: %s:%d: %s", host, port);
-  fcntl (listen_fd_, F_SETFL, O_NONBLOCK);
-
-  if (port == 0) {
-    socklen_t len = sizeof (addr);
-    if (getsockname (listen_fd_, (sockaddr*) &addr, &len) == 0)
-      listen_port_ = ntohs (addr.sin_port);
-  } else
-    listen_port_ = port;
-  String fullurl = string_format ("http://%s:%d/", host.empty() ? "127.0.0.1" : host.c_str(), listen_port_);
-  server_url_ = fullurl;
 }
 
 bool
@@ -770,6 +741,36 @@ WebSocketServerImpl::reset()
 // == WebSocketServer ==
 WebSocketServer::~WebSocketServer()
 {}
+
+WebSocketServer::SocketInfo
+WebSocketServer::bind_port (const String &host, int port)
+{
+  SocketInfo sinfo { -1, host, port };
+  sinfo.fd = socket (AF_INET, SOCK_STREAM, 0);
+  if (sinfo.fd < 0)
+    fatal_error ("failed to create socket for: %s:%d: %s", host, port, strerror (errno));
+  sockaddr_in addr{};
+  int opt = 1;
+  if (port > 0) {
+    setsockopt (sinfo.fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof (opt));
+    addr.sin_port = htons (port);
+  }
+  addr.sin_family = AF_INET;
+  if (host == "0.0.0.0")
+    addr.sin_addr.s_addr = htonl (INADDR_ANY);
+  else
+    {
+      addr.sin_addr.s_addr = inet_addr (host.c_str());
+      if (addr.sin_addr.s_addr == INADDR_NONE)
+        addr.sin_addr.s_addr = htonl (INADDR_LOOPBACK);
+    }
+  if (bind (sinfo.fd, (sockaddr*) &addr, sizeof (addr)) < 0)
+    fatal_error ("failed to bind to %s:%d, fd=%d: %s", host, port, sinfo.fd, strerror (errno));
+  socklen_t len = sizeof (addr);
+  if (getsockname (sinfo.fd, (sockaddr*) &addr, &len) == 0)
+    sinfo.port = ntohs (addr.sin_port);
+  return sinfo;
+}
 
 WebSocketServerP
 WebSocketServer::create (const MakeConnection &make, int logflags, const std::string &session_token)

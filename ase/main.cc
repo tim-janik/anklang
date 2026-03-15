@@ -575,7 +575,8 @@ main (int argc, char *argv[])
   jsonapi_set_subprotocol (subprotocol);
   if (App.mode == MainApp::SYNTHENGINE && arg_ui_mode != "none") {
     const char *host = "127.0.0.1";
-    wss->listen (host, xport, [] () { main_loop->quit (-1); });
+    const auto socket_info = WebSocketServer::bind_port (host, xport);
+    wss->listen (socket_info, [] () { main_loop->quit (-1); });
     std::string webui_url = wss->url();
     if (!xport) {
       String redirecthtml = webui_create_auth_redirect ("anklang", wss->listen_port(), auth_token, arg_ui_mode);
