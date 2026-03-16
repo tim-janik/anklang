@@ -628,6 +628,12 @@ main (int argc, char *argv[])
   // handle automatic shutdown
   main_loop->exec_dispatcher (handle_autostop);
 
+  // prune old log files after some time
+  main_loop->add ([] ()
+  {
+    logging_prune_old_logs (3.0 * 24.0 * 60.0 * 60.0);
+  }, std::chrono::milliseconds (5000), LoopPriority::IDLE);
+
   // run test suite
   if (App.mode == MainApp::CHECK_INTEGRITY_TESTS)
     main_loop->add (run_tests_and_quit);
