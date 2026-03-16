@@ -229,6 +229,29 @@ logging_configure (const std::string &log_file_ident, Logging level)
   return true;
 }
 
+void
+logging_prune_old_logs (double age_seconds)
+{
+  const String logdir = Path::cache_home() + "/anklang";
+  const String logfile_glob = string_format ("%s/%s-%s.log", logdir, program_alias(), "*");
+  const StringS old_logs = Path::list_old_files (logfile_glob, age_seconds);
+  size_t ndeleted = 0;
+  for (const auto &anklang_log : old_logs) {
+    unlink (anklang_log.c_str());
+    ndeleted++;
+    const String stem = Path::glob_stem (logfile_glob, anklang_log);
+    if (!stem.empty()) {
+      const String webui_log = Path::join (logdir, "webui-" + stem + ".log");
+      if (Path::check (webui_log, "e")) {
+        unlink (webui_log.c_str());
+        ndeleted++;
+      }
+    }
+  }
+  if (ndeleted > 0)
+    diag ("prune-logs: deleted %zu log files older than %.0f seconds", ndeleted, age_seconds);
+}
+
 // == Stacktrace ==
 /// Find GDB and construct command line
 [[maybe_unused]] static std::string

@@ -49,6 +49,9 @@ extern bool logging_fatal_warnings;
 
 bool    logging_configure (const std::string &log_file_ident, Logging level = Logging (-1));
 
+/// Delete log files older than `age` seconds.
+void    logging_prune_old_logs (double age_seconds);
+
 /// Check if any kind of debugging is enabled by $ASE_DEBUG.
 inline bool ASE_ALWAYS_INLINE ASE_PURE
 debug_enabled()
