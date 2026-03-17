@@ -191,7 +191,7 @@ logging_configure (bool to_file, Logging level)
     }
     return true;
   }
-  const String logdir = Path::join (Path::xdg_dir ("CACHE"), "anklang");
+  const String logdir = Path::cache_home() + "/anklang";
   const String fname = string_format ("%s/%s-%08x.log", logdir, program_alias(), gethostid());
   const int OFLAGS = O_CREAT | O_EXCL | O_WRONLY | O_NOCTTY | O_NOFOLLOW | O_CLOEXEC; // O_TRUNC
   const int OMODE = 0640;

@@ -77,11 +77,11 @@ function vite_config ({ mode })
   console.log (`VITE: mode=${mode}`);
   return defineConfig ({
     root: "ui/",
-    publicDir: gen_path + '/public',
+    publicDir: gen_path + '/ui',
     resolve: { alias: {
       "/assets": gen_path + "/assets",
+      "/gen": gen_path,
     }, },
-    // publicDir: "../public",
     server: {
       // open: "index.html",
       proxy: {
@@ -119,7 +119,10 @@ function vite_config ({ mode })
       sourcemap: true,
       cssCodeSplit: true,
       rollupOptions: {
-	// input: { app: 'index.html', },
+	input: {
+	  app: 'ui/index.html',
+	  testcalls: BUILDDIR + "/gen/testcalls.g.ts",
+	},
       },
     },
 
@@ -132,5 +135,6 @@ function vite_config ({ mode })
     ],
 
   });
-}
+};
+
 export default vite_config;

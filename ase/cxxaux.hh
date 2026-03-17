@@ -143,6 +143,7 @@ using VoidF = std::function<void()>;
   constexpr int64_t operator&  (Enum v, int64_t n) { return int64_t (v) & n; } \
   constexpr int64_t operator&  (int64_t n, Enum v) { return n & int64_t (v); } \
   constexpr Enum    operator&  (Enum v, Enum w)    { return Enum (int64_t (v) & w); } \
+  constexpr bool    operator!  (Enum e) noexcept   { return static_cast<std::underlying_type_t<Enum>> (e) == 0; } \
   constexpr int64_t operator~  (Enum v)            { return ~int64_t (v); } \
   constexpr int64_t operator+  (Enum v)            { return +int64_t (v); } \
   constexpr int64_t operator-  (Enum v)            { return -int64_t (v); } \

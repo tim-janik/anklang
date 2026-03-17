@@ -512,6 +512,17 @@ export class TelemetrySegment { // Ase::TelemetrySegment
 };
 Jsonipc.classes["Ase::TelemetrySegment"] = TelemetrySegment;
 
+export class UiConfig { // Ase::UiConfig
+  has_ui_tests: boolean;
+  auto_exit: boolean;
+  constructor (has_ui_tests: boolean = false, auto_exit: boolean = false)
+  {
+    this.has_ui_tests = has_ui_tests;
+    this.auto_exit = auto_exit;
+  }
+};
+Jsonipc.classes["Ase::UiConfig"] = UiConfig;
+
 export class Emittable // Ase::Emittable
   extends Jsonipc.classes["Ase::SharedBase"]
 {
@@ -869,6 +880,12 @@ export class Server // Ase::Server
   { return Jsonipc.send ("list_preferences", [this]); }
   access_preference (arg1: string): Promise<Property>
   { return Jsonipc.send ("access_preference", [this, arg1]); }
+  ui_config (): Promise<UiConfig>
+  { return Jsonipc.send ("ui_config", [this]); }
+  ui_test_fetch (): Promise<string>
+  { return Jsonipc.send ("ui_test_fetch", [this]); }
+  ui_test_report (arg1: string, arg2: boolean): Promise<void>
+  { return Jsonipc.send ("ui_test_report", [this, arg1, arg2]); }
   engine_stats (): Promise<string>
   { return Jsonipc.send ("engine_stats", [this]); }
   exit_program (arg1: number): Promise<void>

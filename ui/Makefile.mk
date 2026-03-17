@@ -9,6 +9,43 @@ VITE_DEPS :=	# (intermediate) targets required by vite
 # * make serve - Run build server for ui/.
 # * DevTools can be activated with Shft+Ctrl+I when run from the devleopment tree.
 
+# == $>/gen/testcalls.g.ts ==
+UI_TESTS_FILES := $(wildcard ui/tests/*ts)
+$>/gen/testcalls.g.ts: ui/gen-testcalls.ts ui/Makefile.mk $(UI_TESTS_FILES)		| $>/gen/
+	$(QGEN)
+	$Q $(RUNTS) $< --out $@ $(UI_TESTS_FILES)
+VITE_DEPS += $>/gen/testcalls.g.ts
+
+# == $>/gen/ui/assets/testcalls-list.txt ==
+$>/gen/ui/assets/testcalls-list.txt: ui/gen-testcalls.ts ui/Makefile.mk $(UI_TESTS_FILES)	| $>/gen/ui/assets/
+	$(QGEN)
+	$Q $(RUNTS) $< --list $(UI_TESTS_FILES) > $@.tmp
+	$Q mv $@.tmp $@
+VITE_DEPS += $>/gen/ui/assets/testcalls-list.txt
+
+# == ui/tests/TestList.g.mk ==
+ui/tests/TestList.g.mk: ui/gen-testcalls.ts ui/Makefile.mk $(UI_TESTS_FILES)
+	$(QGEN)
+	$Q echo 'UI_TEST_LIST := '\\			> $@.tmp
+	$Q $(RUNTS) $< --list $(UI_TESTS_FILES) | sed 's/^/  /; s/$$/ \\/' >> $@.tmp
+	$Q mv $@.tmp $@
+ifneq (,$(shell find $(UI_TESTS_FILES) -newer ui/tests/TestList.g.mk))
+.PHONY: ui/tests/TestList.g.mk		# update generated file without forcing rebuild of INPUTS
+endif
+include ui/tests/TestList.g.mk		# UI_TEST_LIST
+
+# == check-ui-tests ==
+.PHONY: check-ui-tests
+define UI_TEST_CHECK
+check-$1: $$>/gen/.vite.done $$(lib/AnklangSynthEngine)
+	$$(QECHO) TEST '$1'
+	$$Q $$(lib/AnklangSynthEngine) --norc --no-devices --ui-test '$1'
+.PHONY: check-$1
+check-ui-tests: check-$1
+endef
+$(foreach T, $(UI_TEST_LIST), $(eval $(call UI_TEST_CHECK,$T)))
+CHECK_TARGETS += check-ui-tests
+
 # == ui/assets/AnklangIcons.css ==
 $>/gen/assets/AnklangIcons.css: ui/Makefile.mk $(EXTERNAL_BLOBS4ANKLANG_STAMPS)	| $>/gen/assets/
 	$(QGEN)
@@ -60,21 +97,21 @@ $(ui/gen/targets): $>/gen/%: ui/%			| $>/gen/assets/
 	$Q cd ui/ && $(CP) $(<:ui/%=%) --parents $(abspath $>/)/gen/
 VITE_DEPS += $(ui/gen/targets)
 
-# == $>/gen/public/anklang.png ==
-$>/gen/public/anklang.png: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/public/
+# == $>/gen/ui/anklang.png ==
+$>/gen/ui/anklang.png: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/ui/
 	$(QGEN)
 	$Q mkdir -p $>/gen/tmpanklangpng/
 	$Q mogrify -density 600 -background transparent -resize 128x128 -format png -path $>/gen/tmpanklangpng/ $<
-	$Q cp $>/gen/tmpanklangpng/favicon.png $>/gen/public/favicon.ico
+	$Q cp $>/gen/tmpanklangpng/favicon.png $>/gen/ui/favicon.ico
 	$Q mv $>/gen/tmpanklangpng/favicon.png $@.tmp && rm -r $>/gen/tmpanklangpng/ && mv $@.tmp $@
-VITE_DEPS += $>/gen/public/anklang.png
+VITE_DEPS += $>/gen/ui/anklang.png
 
-# == $>/gen/public/assets/favicon.svg ==
+# == $>/gen/ui/assets/favicon.svg ==
 # Used by binary packages: $prefix/anklang-*/ui/assets/favicon.svg
-$>/gen/public/assets/favicon.svg: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/public/assets/
+$>/gen/ui/assets/favicon.svg: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/ui/assets/
 	$(QGEN)
 	$Q cp $< $@
-VITE_DEPS += $>/gen/public/assets/favicon.svg
+VITE_DEPS += $>/gen/ui/assets/favicon.svg
 
 # == ui/synsmell ==
 ui/synsmell.files: $(filter ui/%. ui/b/%, $(WILDCARD_FILES)))

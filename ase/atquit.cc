@@ -177,7 +177,7 @@ atquit_del_killl_pid (int pid)
 
 /// Span a child process after cleaning up the environment
 ErrorReason
-spawn_process (const std::vector<std::string> &argv, pid_t *child_pid, int pdeathsig)
+spawn_process (const std::vector<std::string> &argv, pid_t *child_pid, int pdeathsig, int stdio_fd, const std::vector<int> &keep_fds)
 {
   std::vector<const char*> argvptr;
   for (const auto &arg : argv)
@@ -198,12 +198,34 @@ spawn_process (const std::vector<std::string> &argv, pid_t *child_pid, int pdeat
   if (max_fd < 0)
     max_fd = 1024; // fallback
   for (int i = 3; i < max_fd; i++)
-    close (i);
+    {
+      bool keep = (i == stdio_fd);
+      for (int kfd : keep_fds)
+        if (i == kfd)
+          {
+            keep = true;
+            break;
+          }
+      if (!keep)
+        close (i);
+    }
   ErrorReason ereason;
   const char *const home = getenv ("HOME");
-  if (home && chdir (home) < 0) {
+  if (false && home && chdir (home) < 0) {
     ereason = { errno, "chdir" };
     goto exec_error;
+  }
+  // Redirect stdout/stderr to stdio_fd if provided
+  if (stdio_fd >= 0) {
+    if (dup2 (stdio_fd, STDOUT_FILENO) < 0) {
+      ereason = { errno, "dup2 stdout" };
+      goto exec_error;
+    }
+    if (dup2 (stdio_fd, STDERR_FILENO) < 0) {
+      ereason = { errno, "dup2 stderr" };
+      goto exec_error;
+    }
+    close (stdio_fd);
   }
   if (unsetenv ("GTK_MODULES") < 0) {
     ereason = { errno, "unsetenv" };

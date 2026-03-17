@@ -151,6 +151,11 @@ jsonipc_for_api_jsonipc_json()
     .set ("offset", &::Ase::TelemetrySegment::offset)
     .set ("length", &::Ase::TelemetrySegment::length)
     ;
+  ::Jsonipc::Serializable< ::Ase::UiConfig > serializable__Ase_UiConfig;
+  serializable__Ase_UiConfig
+    .set ("has_ui_tests", &::Ase::UiConfig::has_ui_tests)
+    .set ("auto_exit", &::Ase::UiConfig::auto_exit)
+    ;
 
   ::Jsonipc::Class< ::Ase::Emittable > class__Ase_Emittable;
   class__Ase_Emittable
@@ -320,6 +325,9 @@ jsonipc_for_api_jsonipc_json()
     .set ("broadcast_telemetry", &::Ase::Server::broadcast_telemetry)
     .set ("list_preferences", &::Ase::Server::list_preferences)
     .set ("access_preference", &::Ase::Server::access_preference)
+    .set ("ui_config", &::Ase::Server::ui_config)
+    .set ("ui_test_fetch", &::Ase::Server::ui_test_fetch)
+    .set ("ui_test_report", &::Ase::Server::ui_test_report)
     .set ("engine_stats", &::Ase::Server::engine_stats)
     .set ("exit_program", &::Ase::Server::exit_program)
     .set ("last_project", &::Ase::Server::last_project)

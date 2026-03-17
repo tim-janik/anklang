@@ -73,11 +73,14 @@ print_usage (bool help)
   printout ("  --jsonts         Print TypeScript bindings\n");
   printout ("  --list-drivers   Print PCM and MIDI drivers\n");
   printout ("  --list-tests     List all test names\n");
+  printout ("  --list-ui-tests  List all TypeScript UI test function names\n");
   printout ("  --norc           Prevent loading of any rc files\n");
+  printout ("  --ui-test=test   Specify TypeScript UI test(s) to run (comma-separated)\n");
   printout ("  --play-autostart Automatically start playback of `project.anklang`\n");
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
-  printout ("  --test[=test]    Run specific tests\n");
+  printout ("  --test[=test]    Run specific test(s) (comma-separated)\n");
   printout ("  --unauth-dev=NUM Open an unauthenticated websocket port for testing\n");
+  printout ("  --headless[=bool]  Run browser in headless mode (default for --ui-test)\n");
   printout ("  --ui <none|chromium|google-chrome|htmlgui>\n");
   printout ("                   Open GUI in web browser [htmlgui]\n");
   printout ("  --version        Print program version\n");
@@ -114,6 +117,7 @@ static constexpr int jsipc_logflags = 1 | 2 | 4 | 8 | 16;
 static constexpr int jsbin_logflags = 1 | 256;
 
 static StringS check_test_names;
+static StringS ui_test_names;
 
 static void
 parse_args (int *argcp, char **argv, MainAppImpl &config)
@@ -169,14 +173,46 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
             printout ("%s\n", t);
           exit (0);
         }
+      else if (strcmp ("--list-ui-tests", argv[i]) == 0)
+        {
+          const String testfile = anklang_runpath (RPath::INSTALLDIR, "/ui/assets/testcalls-list.txt");
+          if (!Path::check (testfile, "e"))
+            fatal_error ("missing UI test list: %s", testfile);
+          const String content = Path::stringread (testfile);
+          StringS lines = string_split (content, "\n");
+          for (const String &line : lines)
+            if (!line.empty () || string_startswith (line, "#"))
+              printout ("%s\n", line);
+          exit (0);
+        }
+      else if (strcmp ("--ui-test", argv[i]) == 0 || strncmp ("--ui-test=", argv[i], 9) == 0)
+        {
+          const char *eq = strchr (argv[i], '=');
+          const char *arg = eq ? eq + 1 : i+1 < argc ? argv[++i] : nullptr;
+          if (arg) {
+            const auto tests = string_split (arg, ",");
+            for (const auto &t : tests)
+              ui_test_names.push_back (t);
+          } else
+            ui_test_names.push_back ("all");
+          config.headless = true;
+        }
+      else if (strcmp ("--headless", argv[i]) == 0 || strncmp ("--headless=", argv[i], 10) == 0)
+        {
+          const char *eq = strchr (argv[i], '=');
+          config.headless = eq ? string_to_bool (eq + 1) : true;
+        }
       else if (strcmp ("--test", argv[i]) == 0 || strncmp ("--test=", argv[i], 7) == 0)
         {
           const char *eq = strchr (argv[i], '=');
           const char *arg = eq ? eq + 1 : i+1 < argc ? argv[++i] : nullptr;
           config.mode = MainApp::CHECK_INTEGRITY_TESTS;
           logging_fatal_warnings = true;
-          if (arg)
-            check_test_names.push_back (arg);
+          if (arg) {
+            const auto tests = string_split (arg, ",");
+            for (const auto &t : tests)
+              check_test_names.push_back (t);
+          }
           default_ui_mode = "none";
         }
       else if (argv[i] == String ("--blake3") && i + 1 < size_t (argc))
@@ -453,6 +489,8 @@ main (int argc, char *argv[])
 
   // parse args and config
   parse_args (&argc, argv, main_app);
+  // copy ui_test_names to App.ui_tests
+  main_app.ui_tests = ui_test_names;
   logging_configure (arg_ui_mode != "none");
 
   // handle loft preallocation needs
@@ -547,7 +585,12 @@ main (int argc, char *argv[])
       wss->see_other (webui_url);
     }
     info ("Main: WebUI address: %s", webui_url);
-    auto ereason = webui_start_browser (arg_ui_mode, main_loop, webui_url, [] () { main_loop->quit (0); });
+
+    WebuiFlags webui_flags = main_app.headless ? WebuiFlags::HEADLESS : WebuiFlags::NONE;
+    if (main_app.ui_tests.size())
+      webui_flags = webui_flags | WebuiFlags::STDIO_REDIRECT | WebuiFlags::CONSOLE_LOGS;
+    auto ereason = webui_start_browser (arg_ui_mode, main_loop, webui_url, [] () { main_loop->quit (0); }, webui_flags);
+
     if (ereason.error)
       fatal_error ("Main: failed to run WebUI: %s: %s", ereason.what, ::strerror (ereason.error));
   }

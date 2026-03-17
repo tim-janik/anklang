@@ -17,6 +17,9 @@ let browser_window;
 const ELECTRON_CONFIG = { quitstartup: false, };
 const cli_args = [];
 let devtools_option = false;
+let headless_mode = false;
+let console_stdout_fd = null;
+let console_stderr_fd = null;
 Eapp.commandLine.appendSwitch ('disk-cache-size', '0');
 Eapp.commandLine.appendSwitch ('disable-http-cache'); // disk cache for HTTP
 
@@ -34,7 +37,7 @@ Eapp.setAppLogsPath (path.join (cache_dir, 'logs'));
 Eapp.setPath ('userData', path.join (cache_dir, 'userData'));
 Eapp.setPath ('userCache', path.join (cache_dir, 'userCache'));
 Eapp.setPath ('crashDumps', path.join (cache_dir, 'crashDumps'));
-// Clean up caches regularly
+// Clean up caches under ~/.cache/anklang/<PID> regularly
 async function cleanup_cache_dirs()
 {
   for (const entry of await trynext ([], () => fs.promises.readdir (anklang_cache_root))) {
@@ -170,6 +173,32 @@ function create_window (onclose)
   const w = new Electron.BrowserWindow (options);
   w.setMenu (Electron.Menu.buildFromTemplate ([]));
   w.webContents.once ('crashed', () => main_exit (129)); // 'crashed' is SIGHUP or SIGTERM
+  w.webContents.on ('console-message', (event) => {
+    // https://www.electronjs.org/docs/latest/api/web-contents
+    const sourceId = event.sourceId.replace (/^[^ ]*\//, '');
+    const message = event.message;
+    const lineNumber = event.lineNumber;
+    let prefix = `${sourceId}:${lineNumber}: `;
+    switch (event._level) {
+    case 0: // VERBOSE
+    case 1: // INFO
+    default:
+      if (console_stdout_fd !== null) {
+	fs.writeSync (console_stdout_fd, `${prefix}${message}\n`);
+      } else {
+	process.stdout.write (`${prefix}${message}\n`);
+      }
+      break;
+    case 2: // WARNING
+    case 3: // ERROR
+      if (console_stderr_fd !== null) {
+	fs.writeSync (console_stderr_fd, `${prefix}${message}\n`);
+      } else {
+	process.stderr.write (`${prefix}${message}\n`);
+      }
+      break;
+    }
+  });
   if (onclose)
     w.on ('closed', onclose);
   return w;
@@ -205,7 +234,9 @@ async function load_and_show (w, winurl)
   // reset zoom: w.webContents.zoomFactor = 1;
   if (devtools_option)
     w.toggleDevTools(); // start with DevTools enabled
-  return w.show();
+  if (!headless_mode)
+    w.show();
+  return w;
 }
 
 // == IPC Messages ==
@@ -261,7 +292,12 @@ function parse_args (argv)
 	cli_args.push (arg);
 	continue;
       }
-      switch (arg) {
+      // Split at = to normalize --opt=value to --opt value
+      const eq_index = arg.indexOf ('=');
+      let value = undefined;
+      if (eq_index >= 0)
+	value = arg.slice (eq_index + 1);
+      switch (eq_index >= 0 ? arg.slice (0, eq_index) : arg) {
 	case '--help': case '-h':
 	  usage ('help', 0);
 	  break;
@@ -271,8 +307,22 @@ function parse_args (argv)
 	case '--verbose': case '-v':
 	  c.verbose = true;
 	  break;
+	case '--console-logs':
+	  if (eq_index < 0 && argv.length)
+	    value = argv.shift ();
+	  if (value !== undefined) {
+	    const fds = value.split (',');
+	    if (fds.length === 2) {
+	      console_stdout_fd = parseInt (fds[0], 10);
+	      console_stderr_fd = parseInt (fds[1], 10);
+	    }
+	  }
+	  break;
 	case '--dev':
 	  devtools_option = true;
+	  break;
+	case '--headless':
+	  headless_mode = true;
 	  break;
 	case '--quitstartup':
 	  ELECTRON_CONFIG.quitstartup = true;

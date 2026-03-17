@@ -30,6 +30,9 @@ public:
   ProjectP     create_project       (String projectname) override;
   PropertyP    access_preference    (const String &ident) override;
   StringS      list_preferences     () override;
+  UiConfig     ui_config            () override;
+  String       ui_test_fetch        () override;
+  void         ui_test_report       (const String &testname, bool success) override;
   using Block = FastMemory::Block;
   Block        telemem_allocate     (uint32 length) const;
   void         telemem_release      (Block telememblock) const;

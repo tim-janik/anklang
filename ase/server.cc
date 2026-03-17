@@ -109,6 +109,56 @@ ServerImpl::access_preference (const String &ident)
   return Preference::find (ident);
 }
 
+UiConfig
+ServerImpl::ui_config ()
+{
+  UiConfig config;
+  config.has_ui_tests = !App.ui_tests.empty();
+  config.auto_exit = config.has_ui_tests; // Auto-exit when UI tests are present
+  return config;
+}
+
+// UI test state tracking
+static struct {
+  StringS  tests;               // All requested test names
+  ssize_t  current = -1;        // Index of next test to run
+  bool     has_failed = false;  // True if any test failed
+} ui_test_state;
+
+String
+ServerImpl::ui_test_fetch ()
+{
+  // Initialize tests on first call
+  if (ui_test_state.tests.empty() && !App.ui_tests.empty()) {
+    ui_test_state.tests = App.ui_tests;
+    ui_test_state.current = -1;
+    ui_test_state.has_failed = false;
+  }
+  // Keep running tests only as long they pass
+  if (ui_test_state.has_failed || ui_test_state.current + 1 >= ui_test_state.tests.size())
+    return "";
+  // Yield current test name
+  const String testname = ui_test_state.tests[++ui_test_state.current];
+  printerr ("%s %s\n", "  CHECKING ", testname);
+  return testname;
+}
+
+void
+ServerImpl::ui_test_report (const String &testname, bool success)
+{
+  if (success && ui_test_state.current >= 0 &&
+      ui_test_state.current < ui_test_state.tests.size() &&
+      testname == ui_test_state.tests[ui_test_state.current])
+    printerr ("%s %s\n", "  PASS     ", testname);
+  else {
+    printerr ("%s %s\n", "  FAIL     ", testname);
+    ui_test_state.has_failed = true;
+  }
+  // Exit if all tests completed or failed
+  if (ui_test_state.current >= ui_test_state.tests.size() || ui_test_state.has_failed)
+    main_loop->add ([] () { main_loop->quit (ui_test_state.has_failed ? 1 : 0); });
+}
+
 ServerImplP
 ServerImpl::instancep ()
 {
