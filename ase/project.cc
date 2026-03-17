@@ -11,6 +11,7 @@
 #include "storage.hh"
 #include "server.hh"
 #include "internal.hh"
+#include "devices/liquidsfz/liquidsfzplugin.hh"
 #include <list>
 
 #define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)
@@ -254,6 +255,53 @@ private:
   PStorage **const ptrp_ = nullptr;
 };
 
+static void
+test_sfz (ProjectImpl *project, te::Edit *edit, const String &filename)
+{
+  TrackP track = project->create_track();
+  assert (track);
+  track->name ("LiquidSFZTest");
+
+  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
+  assert (trackimpl);
+
+  double start = 0;
+  double duration = 4;
+  ClipP clip = trackimpl->create_midi_clip ("NotesClip", start, duration);
+  assert (clip);
+
+  ClipNoteS batch;
+  auto add_note = [&] (int start, int key, int duration)
+    {
+      ClipNote note;
+      note.id = -1;
+      note.key = key;
+      note.channel = 0;
+      note.tick = start * TRANSPORT_PPQN;
+      note.duration = duration * TRANSPORT_PPQN;
+      note.velocity = 0.8f;
+      batch.push_back (note);
+    };
+  add_note (0, 60, 1);
+  add_note (1, 64, 1);
+  add_note (2, 67, 1);
+  clip->change_batch (batch, "Add Note");
+
+  auto& engine = edit->engine;
+  engine.getPluginManager().createBuiltInType<LiquidSFZPlugin>();
+
+  auto plugin = trackimpl->create_plugin (LiquidSFZPlugin::xmlTypeName);
+  assert (plugin);
+
+  if (auto liquidsfz = dynamic_cast<LiquidSFZPlugin *> (plugin))
+    liquidsfz->load (filename);
+
+  auto &transport = edit->getTransport();
+  transport.setLoopRange({ tracktion::TimePosition::fromSeconds (start), tracktion::TimeDuration::fromSeconds (duration) });
+  transport.looping = true;
+  transport.setPosition (tracktion::TimePosition::fromSeconds (start));
+}
+
 ProjectImpl::ProjectImpl()
 {
   bpm (120);
@@ -266,6 +314,9 @@ ProjectImpl::ProjectImpl()
   }
   if (!edit_ || !transport_listener_)
     fatal_error ("failed to create tracktion::engine::edit");
+
+  if (auto filename = getenv ("SFZ"))
+    test_sfz (this, edit_.get(), filename);
 
   edit_->getUndoManager().clearUndoHistory();
 
