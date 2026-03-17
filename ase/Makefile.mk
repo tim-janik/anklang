@@ -518,11 +518,11 @@ $>/libsndfile/config.h: ase/Makefile.mk $(EXTERNAL_CXX_STAMPS)		| $>/libsndfile/
 	$Q echo "#define HAVE_MPEG		( __has_include(<lame/lame.h>) && \\"	>> $@.tmp
 	$Q echo "				  __has_include(<mpg123.h>) )"		>> $@.tmp
 	$Q echo "#define HAVE_EXTERNAL_XIPH_LIBS	( \\"				>> $@.tmp
-	$Q echo "				__has_include(<flac.h>) && \\"		>> $@.tmp
-	$Q echo "				__has_include(<ogg.h>) && \\"		>> $@.tmp
-	$Q echo "				__has_include(<vorbisfile.h>) && \\"	>> $@.tmp
-	$Q echo "				__has_include(<vorbisenc.h>) && \\"	>> $@.tmp
-	$Q echo "				__has_include(<opus.h>) )"		>> $@.tmp
+	$Q echo "				__has_include(<FLAC/all.h>) && \\"	>> $@.tmp
+	$Q echo "				__has_include(<ogg/ogg.h>) && \\"	>> $@.tmp
+	$Q echo "				__has_include(<vorbis/vorbisfile.h>) && \\"	>> $@.tmp
+	$Q echo "				__has_include(<vorbis/vorbisenc.h>) && \\"	>> $@.tmp
+	$Q echo "				__has_include(<opus/opus.h>) )"		>> $@.tmp
 	$Q mv $@.tmp $@
 $(LIBSNDFILE_SOURCES): $>/libsndfile/config.h
 
@@ -537,6 +537,8 @@ $(call BUILD_SHARED_LIB,			\
 	$(lib/libsndfile.so),			\
 	$(LIBSNDFILE_OBJECTS),			\
 	ase/Makefile.mk | $>/lib/,		\
-	-lmpg123 -lmp3lame,			\
+	$(shell $(PKG_CONFIG) --libs		\
+		libmpg123 lame			\
+		vorbis vorbisenc flac ogg opus),\
 	../lib)
 ase/sndfile.cc: $>/libsndfile/config.h	# includes libsndfile/config.h
