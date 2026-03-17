@@ -11,11 +11,13 @@
 #include "storage.hh"
 #include "server.hh"
 #include "internal.hh"
+#include "liquidsfzplugin.hh"
 #include <list>
 
 #define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)
 
 using namespace std::literals;
+using namespace tracktion::literals;
 namespace te = tracktion::engine;
 
 namespace Ase {
@@ -253,6 +255,36 @@ struct ProjectImpl::PStorage {
 private:
   PStorage **const ptrp_ = nullptr;
 };
+
+static tracktion::MidiClip::Ptr
+test_sfz_clip (tracktion::Edit &edit, const String& filename)
+{
+  edit.ensureNumberOfAudioTracks (1);
+  if (auto track = tracktion::getAudioTracks (edit)[0]) {
+    auto& ts = edit.tempoSequence;
+    auto newClip = track->insertMIDIClip ("SFZ", ts.toTime ({ 0_bp, 16_bp }), nullptr);
+    auto& seq = newClip->getSequence();
+
+    auto um = &edit.getUndoManager();
+
+    // Add some notes
+    seq.addNote (60, 0_bp, 4_bd, 100, 0, um); // C4
+    seq.addNote (64, 4_bp, 4_bd, 100, 0, um); // E4
+    seq.addNote (67, 8_bp, 4_bd, 100, 0, um); // G4
+
+    auto& engine = edit.engine;
+    engine.getPluginManager().createBuiltInType<LiquidSFZPlugin>();
+
+    auto synth = track->edit.getPluginCache().createNewPlugin (LiquidSFZPlugin::xmlTypeName, {});
+    track->pluginList.insertPlugin (synth, 0, nullptr);
+
+    if (auto liquidsfz = dynamic_cast<LiquidSFZPlugin *> (synth.get()))
+      liquidsfz->load (filename);
+
+    return newClip;
+  }
+  return {};
+}
 
 ProjectImpl::ProjectImpl()
 {
