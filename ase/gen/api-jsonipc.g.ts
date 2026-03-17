@@ -32,6 +32,7 @@ interface JsonipcPrototype {
     $unwatchers?: CleanupCallback[];
   };
   toJSON(): { $id: number };
+  $asyncs(): Promise<void>;	// Wait for all pending async operations to complete
   // Mixin method for classes with event handling
   on (event: string, callback: (...args: any[]) => void): () => void;
 };
@@ -57,55 +58,92 @@ export const Jsonipc = {
   idmap: {} as { [key: number]: (msg: JsonipcMessage) => void },
 
   /// Registry to run cleanup callbacks once an instance was garbage collected
-  cleanup_array_registry: new FinalizationRegistry<CleanupCallback[]> ((callback_array: CleanupCallback[]) => {
+  cleanup_array_registry: new FinalizationRegistry<CleanupCallback[]> ((callback_array: CleanupCallback[]) =>
+  {
     while (callback_array.length)
       callback_array.pop().call (undefined);
     // Note, verify this is called when altering $props.$weakthis & co
   }),
 
+  /// Set a reactive property remotely and return promise for completion
+  set_reactive_prop<T> (this: any, prop: string, val: T): Promise<any>
+  {
+    const promise = Jsonipc.send ('set/' + prop, [this, val]);
+    Jsonipc.add_prop_promise.call (this, promise);
+    return promise;
+  },
+
+  /// Chain a new promise to the object's async operation queue
+  add_prop_promise<T> (this: any, nextpromise: Promise<any>)
+  {
+    if (!this.$props.$promise) {
+      this.$props.$promise = nextpromise;
+      return this.$props.$promise;
+    }
+    // Create a WeakRef to the object so it can be GC'd even if promises hold references
+    const weakthis = Jsonipc.ensure_props.call (this).$weakthis;
+    // Chain the existing promise with the new one
+    const wrapperpromise = Promise.all ([this.$props.$promise, nextpromise]);
+    wrapperpromise.then (([_, nextresult]) =>
+      {
+        // Dereference the object - may be null if GC'd
+        const obj = weakthis.deref();
+        if (obj?.$props?.$promise === wrapperpromise)
+	  obj.$props.$promise = null;	// breaks references for GC
+        return nextresult;
+      });
+    wrapperpromise.catch (exc => {
+      const obj = weakthis.deref();
+      if (obj?.$props?.$promise === wrapperpromise)
+        obj.$props.$promise = null;
+      throw exc;
+    });
+    // assign synchronization point
+    this.$props.$promise = wrapperpromise;
+    return this.$props.$promise;
+  },
+
+  /// Install auto-fetching for prop and get its value
+  ensure_props (this: any): any
+  {
+    const this_props = this.$props;
+    if (!this_props.$weakthis) {
+      // install $props system
+      this_props.$weakthis = new WeakRef (this);	// helper to not keep `this` alive
+      this_props.$promise = null;			// present if $promise !== undefined
+      //this_props.$id = this.$id;			// DEBUG $id GC
+      const clean_this_props = (): void => {
+        //console.log ("GC: $id=" + this_props.$id, "delete $props");	// DEBUG $id GC
+        for (const k of Jsonipc.okeys (this_props))
+          delete this_props[k];				// allow GC for all fields
+      };
+      this_props.$unwatchers = [ clean_this_props ];
+      Jsonipc.cleanup_array_registry.register (this, this_props.$unwatchers, this_props.$unwatchers);
+      // We use this_props + $weakthis instead of `this` as object/data handle,
+      // to allow GC of `this`, which in turn calls all $props.$unwatchers[].
+    }
+    return this_props;
+  },
+
   /// Install auto-fetching for prop and get its value
   get_reactive_prop<T> (this: any, prop: string, dflt: T): T
   {
-    const this_props = this.$props;
+    const this_props = Jsonipc.ensure_props.call (this);
     // install prop if needed
     if (!this_props[prop]) {
-      // install $props system if needed
-      if (!this_props.$unwatchers) {
-        this_props.$weakthis = new WeakRef (this);	// helper to not keep `this` alive
-        this_props.$promise = null;			// present if $promise !== undefined
-        const clean_this_props = (): void => {
-          //console.log ("GC: $id=" + this_props.$id, "delete $props");  // DEBUG $id GC
-          for (const k of Jsonipc.okeys (this_props))
-            delete this_props[k];			// allow GC for all fields
-        };
-        this_props.$unwatchers = [ clean_this_props ];
-        Jsonipc.cleanup_array_registry.register (this, this_props.$unwatchers, this_props.$unwatchers);
-        //this_props.$id = this.$id;                                     // DEBUG $id GC
-
-        // We use this_props + $weakthis instead of `this` as object/data handle, to allow GC
-        // of `this`, which in turn calls all $props.$unwatchers[].
-      }
       this_props[prop] = new globalThis.Signal.State (dflt); // cached state
-      // refetch, maintain $promise while waiting
-      const refetch_prop = (): Promise<void> => {	// async, returns Promise, avoid keeping `this` alive
-        let fetch_promise: Promise<void>;
-        const last_promise = this_props.$promise;
-        const async_fetch_prop = async (): Promise<void> => {
+      const refetch_prop = (): Promise<T> =>
+      {
+        const async_fetch_prop = async (): Promise<void> =>
+	{
           const self = this_props.$weakthis?.deref();
           if (!self) return;
-          const result_promise = Jsonipc.send ('get/' + prop, [self]); // `this`
-          if (last_promise)
-            await last_promise;				// sync with last, before $promise reset
+          const result_promise = Jsonipc.send ('get/' + prop, [self]);
           const result = await result_promise;
-          if (this_props.$promise === fetch_promise) {
-            this_props.$promise = null;			// reset, this call is just being resolved
-          }
           const signal_state = this_props[prop] as SignalState<T>;
-	  signal_state.set (result);			// assign new value after reset, otherwise callbacks might see stale promise
+	  signal_state.set (result);			// assign new value
         };
-        // start fetching and remember call promise
-        this_props.$promise = fetch_promise = async_fetch_prop();
-        return fetch_promise;
+        return Jsonipc.add_prop_promise.call (this, async_fetch_prop());
       };
       const delnotifier = this.on ("notify:" + prop, refetch_prop);
       this_props.$unwatchers.push (delnotifier);
@@ -167,6 +205,19 @@ export const Jsonipc = {
     toJSON(): { $id: number }
     {
       return { $id: this.$id };
+    }
+    // Wait for all pending async operations to complete
+    async $asyncs()
+    {
+      const last_promise = this.$props.$promise;
+      // NOP if no async operation is pending
+      if (!last_promise)
+	return;
+      // await completion of any running async modifiocations
+      await last_promise;
+      // a new promise likely indicates the refetch() of a past modification
+      if (this.$props.$promise && last_promise !== this.$props.$promise)
+	await this.$props.$promise;
     }
     // JSON.parse reviver
     static fromJSON (key: string, value: any): any
@@ -545,19 +596,19 @@ export class Property // Ase::Property
   get normalized (): number
   { return Jsonipc.get_reactive_prop.call (this, "normalized", 0.0) as number; }
   set normalized (v: number)
-  { Jsonipc.send ('set/' + 'normalized', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "normalized", v); }
   get text (): string
   { return Jsonipc.get_reactive_prop.call (this, "text", '') as string; }
   set text (v: string)
-  { Jsonipc.send ('set/' + 'text', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "text", v); }
   get name (): string
   { return Jsonipc.get_reactive_prop.call (this, "name", '') as string; }
   set name (v: string)
-  { Jsonipc.send ('set/' + 'name', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "name", v); }
   get metadata (): string[]
   { return Jsonipc.get_reactive_prop.call (this, "metadata", []) as string[]; }
   set metadata (v: string[])
-  { Jsonipc.send ('set/' + 'metadata', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "metadata", v); }
   ident (): Promise<string>
   { return Jsonipc.send ("ident", [this]); }
   label (): Promise<string>
@@ -577,7 +628,7 @@ export class Property // Ase::Property
   get value (): any
   { return Jsonipc.get_reactive_prop.call (this, "value", '') as any; }
   set value (v: any)
-  { Jsonipc.send ('set/' + 'value', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "value", v); }
   get_normalized (): Promise<number>
   { return Jsonipc.send ("get_normalized", [this]); }
   set_normalized (arg1: number): Promise<boolean>
@@ -617,7 +668,7 @@ export class Gadget // Ase::Gadget
   get name (): string
   { return Jsonipc.get_reactive_prop.call (this, "name", '') as string; }
   set name (v: string)
-  { Jsonipc.send ('set/' + 'name', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "name", v); }
   type_nick (): Promise<string>
   { return Jsonipc.send ("type_nick", [this]); }
   list_properties (): Promise<string[]>
@@ -645,7 +696,7 @@ export class Device // Ase::Device
   get devices (): Device[]
   { return Jsonipc.get_reactive_prop.call (this, "devices", []) as Device[]; }
   set devices (v: Device[])
-  { Jsonipc.send ('set/' + 'devices', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "devices", v); }
   is_active (): Promise<boolean>
   { return Jsonipc.send ("is_active", [this]); }
   device_info (): Promise<DeviceInfo>
@@ -677,19 +728,19 @@ export class Clip // Ase::Clip
   get volume (): number
   { return Jsonipc.get_reactive_prop.call (this, "volume", 0.0) as number; }
   set volume (v: number)
-  { Jsonipc.send ('set/' + 'volume', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "volume", v); }
   get pan (): number
   { return Jsonipc.get_reactive_prop.call (this, "pan", 0.0) as number; }
   set pan (v: number)
-  { Jsonipc.send ('set/' + 'pan', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "pan", v); }
   get all_notes (): ClipNote[]
   { return Jsonipc.get_reactive_prop.call (this, "all_notes", []) as ClipNote[]; }
   set all_notes (v: ClipNote[])
-  { Jsonipc.send ('set/' + 'all_notes', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "all_notes", v); }
   get end_tick (): number
   { return Jsonipc.get_reactive_prop.call (this, "end_tick", 0) as number; }
   set end_tick (v: number)
-  { Jsonipc.send ('set/' + 'end_tick', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "end_tick", v); }
   start_tick (): Promise<number>
   { return Jsonipc.send ("start_tick", [this]); }
   stop_tick (): Promise<number>
@@ -713,7 +764,7 @@ export class Track // Ase::Track
   get midi_channel (): number
   { return Jsonipc.get_reactive_prop.call (this, "midi_channel", 0) as number; }
   set midi_channel (v: number)
-  { Jsonipc.send ('set/' + 'midi_channel', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "midi_channel", v); }
   is_master (): Promise<boolean>
   { return Jsonipc.send ("is_master", [this]); }
   is_muted (): Promise<boolean>
@@ -727,11 +778,11 @@ export class Track // Ase::Track
   get volume (): number
   { return Jsonipc.get_reactive_prop.call (this, "volume", 0.0) as number; }
   set volume (v: number)
-  { Jsonipc.send ('set/' + 'volume', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "volume", v); }
   get pan (): number
   { return Jsonipc.get_reactive_prop.call (this, "pan", 0.0) as number; }
   set pan (v: number)
-  { Jsonipc.send ('set/' + 'pan', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "pan", v); }
   launcher_clips (): Promise<Clip[]>
   { return Jsonipc.send ("launcher_clips", [this]); }
   access_device (): Promise<Device>
@@ -767,15 +818,15 @@ export class Project // Ase::Project
   get bpm (): number
   { return Jsonipc.get_reactive_prop.call (this, "bpm", 0.0) as number; }
   set bpm (v: number)
-  { Jsonipc.send ('set/' + 'bpm', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "bpm", v); }
   get numerator (): number
   { return Jsonipc.get_reactive_prop.call (this, "numerator", 0.0) as number; }
   set numerator (v: number)
-  { Jsonipc.send ('set/' + 'numerator', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "numerator", v); }
   get denominator (): number
   { return Jsonipc.get_reactive_prop.call (this, "denominator", 0.0) as number; }
   set denominator (v: number)
-  { Jsonipc.send ('set/' + 'denominator', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "denominator", v); }
   discard (): Promise<void>
   { return Jsonipc.send ("discard", [this]); }
   start_playback (): Promise<void>
@@ -787,7 +838,7 @@ export class Project // Ase::Project
   get is_playing (): boolean
   { return Jsonipc.get_reactive_prop.call (this, "is_playing", false) as boolean; }
   set is_playing (v: boolean)
-  { Jsonipc.send ('set/' + 'is_playing', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "is_playing", v); }
   create_track (): Promise<Track>
   { return Jsonipc.send ("create_track", [this]); }
   remove_track (arg1: Track): Promise<boolean>
@@ -821,7 +872,7 @@ export class Project // Ase::Project
   get master_volume (): number
   { return Jsonipc.get_reactive_prop.call (this, "master_volume", 0.0) as number; }
   set master_volume (v: number)
-  { Jsonipc.send ('set/' + 'master_volume', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "master_volume", v); }
   match_serialized (arg1: string, arg2: number): Promise<string>
   { return Jsonipc.send ("match_serialized", [this, arg1, arg2]); }
 };
@@ -835,11 +886,11 @@ export class ResourceCrawler // Ase::ResourceCrawler
   get folder (): Resource
   { return Jsonipc.get_reactive_prop.call (this, "folder", {}) as Resource; }
   set folder (v: Resource)
-  { Jsonipc.send ('set/' + 'folder', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "folder", v); }
   get entries (): Resource[]
   { return Jsonipc.get_reactive_prop.call (this, "entries", []) as Resource[]; }
   set entries (v: Resource[])
-  { Jsonipc.send ('set/' + 'entries', [this, v]); }
+  { Jsonipc.set_reactive_prop.call (this, "entries", v); }
   assign (arg1: string, arg2: boolean): Promise<[string, string]>
   { return Jsonipc.send ("assign", [this, arg1, arg2]); }
   canonify (arg1: string, arg2: string, arg3: boolean, arg4: boolean): Promise<Resource>
