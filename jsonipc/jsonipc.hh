@@ -916,7 +916,7 @@ typescript_call_impl (const std::string &method_name)
   s += string_format ("  %s (", method_name.c_str());
   s += typescript_arg_list<Args...>();
   s += string_format ("): Promise<%s>\n", typescript_name<R>::name().c_str());
-  s += string_format ("  { return Jsonipc.send (\"%s\", [this%s]); }\n",
+  s += string_format ("  { return this.$rpc (\"%s\", [this%s]); }\n",
                       method_name.c_str(), typescript_arg_names_list<Args...>().c_str());
   return s;
 }

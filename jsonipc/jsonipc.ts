@@ -31,6 +31,7 @@ interface JsonipcPrototype {
     $unwatchers?: CleanupCallback[];
   };
   toJSON(): { $id: number };
+  $rpc (method: string, params: any[]): Promise<any>;
   $asyncs(): Promise<void>;	// Wait for all pending async operations to complete
   // Mixin method for classes with event handling
   on (event: string, callback: (...args: any[]) => void): () => void;
@@ -205,6 +206,14 @@ export const Jsonipc = {
     {
       return { $id: this.$id };
     }
+    // Send a Jsonipc request and await notifications
+    async $rpc (method: string, params: any[]): Promise<any>
+    {
+      const result = await Jsonipc.send (method, params);
+      if (this.$props.$promise)	// pending notifications
+	await this.$asyncs();	// await delivery
+      return result;
+    }
     // Wait for all pending async operations to complete
     async $asyncs()
     {
@@ -237,7 +246,7 @@ export const Jsonipc = {
   },
 
   /// Send a Jsonipc request
-  send (this: any, method: string, params: any[]): Promise<any>
+  send (method: string, params: any[]): Promise<any>
   {
     if (!this.web_socket)
       throw globalThis.Error ("Jsonipc: connection closed");
