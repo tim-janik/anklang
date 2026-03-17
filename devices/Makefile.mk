@@ -4,9 +4,9 @@
 devices/4ase.ccfiles ::=
 
 # subdir Makefiles add to devices/4ase.ccfiles
+include devices/liquidsfz/Makefile.mk
 # TODO: include devices/blepsynth/Makefile.mk
 # TODO: include devices/freeverb/Makefile.mk
-# TODO: include devices/liquidsfz/Makefile.mk
 # TODO: include devices/saturation/Makefile.mk
 
 # local sources
