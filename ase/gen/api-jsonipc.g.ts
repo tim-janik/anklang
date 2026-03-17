@@ -903,4 +903,4 @@ Jsonipc.classes["Ase::Server"] = Server;
 
 
 /**@type{ServerImpl}*/
-export let server: Promise<Server> | Server =Jsonipc.setup_promise_type (Server, s => server = s);
+export let server: Server =Jsonipc.setup_promise_type (Server, s => server = s) as unknown as Server;
