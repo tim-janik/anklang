@@ -82,6 +82,8 @@ void         glob                (const String &pathpattern, StringS &matches);
 void         glob                (const String &pathpattern, StringS &dirs, StringS &files);
 void         rglob               (const String &basedir, const String &pattern, StringS &matches);
 void         unique_realpaths    (StringS &pathnames);
+StringS      list_old_files      (const String &abspath_glob, double min_age_seconds);
+String       glob_stem           (const String &abspath_glob, const String &matched_path);
 
 // == implementations ==
 String join_with (const String &head, char joiner, const String &tail);
