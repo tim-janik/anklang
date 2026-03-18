@@ -1057,9 +1057,9 @@ public:
   {
     const std::string ts_type = typescript_name<R>::name();
     b_ += "  get " + name + " (): " + ts_type + "\n";
-    b_ += "  { return Jsonipc.get_reactive_prop.call (this, \"" + name + "\", " + js_initializers[js_initializer_index<R>()] + ") as " + ts_type + "; }\n";
+    b_ += "  { return this.$get (\"" + name + "\", " + js_initializers[js_initializer_index<R>()] + ") as " + ts_type + "; }\n";
     b_ += "  set " + name + " (v: " + ts_type + ")\n";
-    b_ += "  { Jsonipc.set_reactive_prop.call (this, \"" + name + "\", v); }\n";
+    b_ += "  { this.$set (\"" + name + "\", v); }\n";
   }
   void
   close_class()

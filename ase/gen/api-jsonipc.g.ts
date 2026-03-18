@@ -215,6 +215,16 @@ export const Jsonipc = {
 	await this.$asyncs();	// await delivery
       return result;
     }
+    /// Get a reactive property value (fetches if needed)
+    $get<T> (prop: string, dflt: T): T
+    {
+      return Jsonipc.get_reactive_prop.call (this, prop, dflt) as T;
+    }
+    /// Set a reactive property remotely and await completion
+    async $set<T> (prop: string, val: T): Promise<any>
+    {
+      return await Jsonipc.set_reactive_prop.call (this, prop, val);
+    }
     // Wait for all pending async operations to complete
     async $asyncs()
     {
@@ -603,21 +613,21 @@ export class Property // Ase::Property
   constructor ($id)
   { super ($id); if (new.target === Property) Jsonipc.ofreeze (this); }
   get normalized (): number
-  { return Jsonipc.get_reactive_prop.call (this, "normalized", 0.0) as number; }
+  { return this.$get ("normalized", 0.0) as number; }
   set normalized (v: number)
-  { Jsonipc.set_reactive_prop.call (this, "normalized", v); }
+  { this.$set ("normalized", v); }
   get text (): string
-  { return Jsonipc.get_reactive_prop.call (this, "text", '') as string; }
+  { return this.$get ("text", '') as string; }
   set text (v: string)
-  { Jsonipc.set_reactive_prop.call (this, "text", v); }
+  { this.$set ("text", v); }
   get name (): string
-  { return Jsonipc.get_reactive_prop.call (this, "name", '') as string; }
+  { return this.$get ("name", '') as string; }
   set name (v: string)
-  { Jsonipc.set_reactive_prop.call (this, "name", v); }
+  { this.$set ("name", v); }
   get metadata (): string[]
-  { return Jsonipc.get_reactive_prop.call (this, "metadata", []) as string[]; }
+  { return this.$get ("metadata", []) as string[]; }
   set metadata (v: string[])
-  { Jsonipc.set_reactive_prop.call (this, "metadata", v); }
+  { this.$set ("metadata", v); }
   ident (): Promise<string>
   { return this.$rpc ("ident", [this]); }
   label (): Promise<string>
@@ -635,9 +645,9 @@ export class Property // Ase::Property
   reset (): Promise<void>
   { return this.$rpc ("reset", [this]); }
   get value (): any
-  { return Jsonipc.get_reactive_prop.call (this, "value", '') as any; }
+  { return this.$get ("value", '') as any; }
   set value (v: any)
-  { Jsonipc.set_reactive_prop.call (this, "value", v); }
+  { this.$set ("value", v); }
   get_normalized (): Promise<number>
   { return this.$rpc ("get_normalized", [this]); }
   set_normalized (arg1: number): Promise<boolean>
@@ -675,9 +685,9 @@ export class Gadget // Ase::Gadget
   constructor ($id)
   { super ($id); if (new.target === Gadget) Jsonipc.ofreeze (this); }
   get name (): string
-  { return Jsonipc.get_reactive_prop.call (this, "name", '') as string; }
+  { return this.$get ("name", '') as string; }
   set name (v: string)
-  { Jsonipc.set_reactive_prop.call (this, "name", v); }
+  { this.$set ("name", v); }
   type_nick (): Promise<string>
   { return this.$rpc ("type_nick", [this]); }
   list_properties (): Promise<string[]>
@@ -703,9 +713,9 @@ export class Device // Ase::Device
   constructor ($id)
   { super ($id); if (new.target === Device) Jsonipc.ofreeze (this); }
   get devices (): Device[]
-  { return Jsonipc.get_reactive_prop.call (this, "devices", []) as Device[]; }
+  { return this.$get ("devices", []) as Device[]; }
   set devices (v: Device[])
-  { Jsonipc.set_reactive_prop.call (this, "devices", v); }
+  { this.$set ("devices", v); }
   is_active (): Promise<boolean>
   { return this.$rpc ("is_active", [this]); }
   device_info (): Promise<DeviceInfo>
@@ -735,21 +745,21 @@ export class Clip // Ase::Clip
   set_muted (arg1: boolean): Promise<void>
   { return this.$rpc ("set_muted", [this, arg1]); }
   get volume (): number
-  { return Jsonipc.get_reactive_prop.call (this, "volume", 0.0) as number; }
+  { return this.$get ("volume", 0.0) as number; }
   set volume (v: number)
-  { Jsonipc.set_reactive_prop.call (this, "volume", v); }
+  { this.$set ("volume", v); }
   get pan (): number
-  { return Jsonipc.get_reactive_prop.call (this, "pan", 0.0) as number; }
+  { return this.$get ("pan", 0.0) as number; }
   set pan (v: number)
-  { Jsonipc.set_reactive_prop.call (this, "pan", v); }
+  { this.$set ("pan", v); }
   get all_notes (): ClipNote[]
-  { return Jsonipc.get_reactive_prop.call (this, "all_notes", []) as ClipNote[]; }
+  { return this.$get ("all_notes", []) as ClipNote[]; }
   set all_notes (v: ClipNote[])
-  { Jsonipc.set_reactive_prop.call (this, "all_notes", v); }
+  { this.$set ("all_notes", v); }
   get end_tick (): number
-  { return Jsonipc.get_reactive_prop.call (this, "end_tick", 0) as number; }
+  { return this.$get ("end_tick", 0) as number; }
   set end_tick (v: number)
-  { Jsonipc.set_reactive_prop.call (this, "end_tick", v); }
+  { this.$set ("end_tick", v); }
   start_tick (): Promise<number>
   { return this.$rpc ("start_tick", [this]); }
   stop_tick (): Promise<number>
@@ -771,9 +781,9 @@ export class Track // Ase::Track
   constructor ($id)
   { super ($id); if (new.target === Track) Jsonipc.ofreeze (this); }
   get midi_channel (): number
-  { return Jsonipc.get_reactive_prop.call (this, "midi_channel", 0) as number; }
+  { return this.$get ("midi_channel", 0) as number; }
   set midi_channel (v: number)
-  { Jsonipc.set_reactive_prop.call (this, "midi_channel", v); }
+  { this.$set ("midi_channel", v); }
   is_master (): Promise<boolean>
   { return this.$rpc ("is_master", [this]); }
   is_muted (): Promise<boolean>
@@ -785,13 +795,13 @@ export class Track // Ase::Track
   set_solo (arg1: boolean): Promise<void>
   { return this.$rpc ("set_solo", [this, arg1]); }
   get volume (): number
-  { return Jsonipc.get_reactive_prop.call (this, "volume", 0.0) as number; }
+  { return this.$get ("volume", 0.0) as number; }
   set volume (v: number)
-  { Jsonipc.set_reactive_prop.call (this, "volume", v); }
+  { this.$set ("volume", v); }
   get pan (): number
-  { return Jsonipc.get_reactive_prop.call (this, "pan", 0.0) as number; }
+  { return this.$get ("pan", 0.0) as number; }
   set pan (v: number)
-  { Jsonipc.set_reactive_prop.call (this, "pan", v); }
+  { this.$set ("pan", v); }
   launcher_clips (): Promise<Clip[]>
   { return this.$rpc ("launcher_clips", [this]); }
   access_device (): Promise<Device>
@@ -825,17 +835,17 @@ export class Project // Ase::Project
   constructor ($id)
   { super ($id); if (new.target === Project) Jsonipc.ofreeze (this); }
   get bpm (): number
-  { return Jsonipc.get_reactive_prop.call (this, "bpm", 0.0) as number; }
+  { return this.$get ("bpm", 0.0) as number; }
   set bpm (v: number)
-  { Jsonipc.set_reactive_prop.call (this, "bpm", v); }
+  { this.$set ("bpm", v); }
   get numerator (): number
-  { return Jsonipc.get_reactive_prop.call (this, "numerator", 0.0) as number; }
+  { return this.$get ("numerator", 0.0) as number; }
   set numerator (v: number)
-  { Jsonipc.set_reactive_prop.call (this, "numerator", v); }
+  { this.$set ("numerator", v); }
   get denominator (): number
-  { return Jsonipc.get_reactive_prop.call (this, "denominator", 0.0) as number; }
+  { return this.$get ("denominator", 0.0) as number; }
   set denominator (v: number)
-  { Jsonipc.set_reactive_prop.call (this, "denominator", v); }
+  { this.$set ("denominator", v); }
   discard (): Promise<void>
   { return this.$rpc ("discard", [this]); }
   start_playback (): Promise<void>
@@ -845,9 +855,9 @@ export class Project // Ase::Project
   stop_playback (): Promise<void>
   { return this.$rpc ("stop_playback", [this]); }
   get is_playing (): boolean
-  { return Jsonipc.get_reactive_prop.call (this, "is_playing", false) as boolean; }
+  { return this.$get ("is_playing", false) as boolean; }
   set is_playing (v: boolean)
-  { Jsonipc.set_reactive_prop.call (this, "is_playing", v); }
+  { this.$set ("is_playing", v); }
   create_track (): Promise<Track>
   { return this.$rpc ("create_track", [this]); }
   remove_track (arg1: Track): Promise<boolean>
@@ -879,9 +889,9 @@ export class Project // Ase::Project
   length (): Promise<number>
   { return this.$rpc ("length", [this]); }
   get master_volume (): number
-  { return Jsonipc.get_reactive_prop.call (this, "master_volume", 0.0) as number; }
+  { return this.$get ("master_volume", 0.0) as number; }
   set master_volume (v: number)
-  { Jsonipc.set_reactive_prop.call (this, "master_volume", v); }
+  { this.$set ("master_volume", v); }
   match_serialized (arg1: string, arg2: number): Promise<string>
   { return this.$rpc ("match_serialized", [this, arg1, arg2]); }
 };
@@ -893,13 +903,13 @@ export class ResourceCrawler // Ase::ResourceCrawler
   constructor ($id)
   { super ($id); if (new.target === ResourceCrawler) Jsonipc.ofreeze (this); }
   get folder (): Resource
-  { return Jsonipc.get_reactive_prop.call (this, "folder", {}) as Resource; }
+  { return this.$get ("folder", {}) as Resource; }
   set folder (v: Resource)
-  { Jsonipc.set_reactive_prop.call (this, "folder", v); }
+  { this.$set ("folder", v); }
   get entries (): Resource[]
-  { return Jsonipc.get_reactive_prop.call (this, "entries", []) as Resource[]; }
+  { return this.$get ("entries", []) as Resource[]; }
   set entries (v: Resource[])
-  { Jsonipc.set_reactive_prop.call (this, "entries", v); }
+  { this.$set ("entries", v); }
   assign (arg1: string, arg2: boolean): Promise<[string, string]>
   { return this.$rpc ("assign", [this, arg1, arg2]); }
   canonify (arg1: string, arg2: string, arg3: boolean, arg4: boolean): Promise<Resource>

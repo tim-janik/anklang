@@ -214,6 +214,16 @@ export const Jsonipc = {
 	await this.$asyncs();	// await delivery
       return result;
     }
+    /// Get a reactive property value (fetches if needed)
+    $get<T> (prop: string, dflt: T): T
+    {
+      return Jsonipc.get_reactive_prop.call (this, prop, dflt) as T;
+    }
+    /// Set a reactive property remotely and await completion
+    async $set<T> (prop: string, val: T): Promise<any>
+    {
+      return await Jsonipc.set_reactive_prop.call (this, prop, val);
+    }
     // Wait for all pending async operations to complete
     async $asyncs()
     {
