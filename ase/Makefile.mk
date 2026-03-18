@@ -109,8 +109,8 @@ ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts ase/Makefile.mk $(lib/An
 	$Q ASAN_OPTIONS=detect_leaks=0 ASE_JSONTS=1 \
 	$(lib/AnklangSynthEngine) --norc --no-devices --jsonts				>> $@.tmp
 	$Q echo '/**@type{ServerImpl}*/'						>> $@.tmp
-	$Q echo -n 'export let server: Promise<Server> | Server ='			>> $@.tmp
-	$Q echo 'Jsonipc.setup_promise_type (Server, s => server = s);'			>> $@.tmp
+	$Q echo -n 'export let server: Server ='				>> $@.tmp
+	$Q echo 'Jsonipc.setup_promise_type (Server, s => server = s) as unknown as Server;'	>> $@.tmp
 	$Q cmp -s $@ $@.tmp || { git -P diff --no-index -- $@ $@.tmp ; echo "  UPDATING" $@ ; }
 	$Q mv $@.tmp $@
 check-ase/gen/api-jsonipc.g.ts: ase/gen/api-jsonipc.g.ts		| node_modules/.npm.done

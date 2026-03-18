@@ -535,6 +535,7 @@ call_from_json (T &obj, const F &func, const CallbackInfo &args)
 }
 
 // == InstanceMap ==
+/// Maps C++ shared_ptr instances to JSON-wrapped objects with unique IDs, supporting polymorphic upcasting.
 class InstanceMap {
   friend class Scope;
   struct TypeidKey {
@@ -915,7 +916,7 @@ typescript_call_impl (const std::string &method_name)
   s += string_format ("  %s (", method_name.c_str());
   s += typescript_arg_list<Args...>();
   s += string_format ("): Promise<%s>\n", typescript_name<R>::name().c_str());
-  s += string_format ("  { return Jsonipc.send (\"%s\", [this%s]); }\n",
+  s += string_format ("  { return this.$rpc (\"%s\", [this%s]); }\n",
                       method_name.c_str(), typescript_arg_names_list<Args...>().c_str());
   return s;
 }
@@ -1056,9 +1057,9 @@ public:
   {
     const std::string ts_type = typescript_name<R>::name();
     b_ += "  get " + name + " (): " + ts_type + "\n";
-    b_ += "  { return Jsonipc.get_reactive_prop.call (this, \"" + name + "\", " + js_initializers[js_initializer_index<R>()] + ") as " + ts_type + "; }\n";
+    b_ += "  { return this.$get (\"" + name + "\", " + js_initializers[js_initializer_index<R>()] + ") as " + ts_type + "; }\n";
     b_ += "  set " + name + " (v: " + ts_type + ")\n";
-    b_ += "  { Jsonipc.send ('set/' + '" + name + "', [this, v]); }\n";
+    b_ += "  { this.$set (\"" + name + "\", v); }\n";
   }
   void
   close_class()
@@ -1072,6 +1073,7 @@ public:
 inline BindingPrinter *g_binding_printer = nullptr;
 
 // == TypeInfo ==
+/// Base class for type registration (Enum, Serializable, Class) that optionally generates TypeScript bindings.
 class TypeInfo {
 protected:
   virtual ~TypeInfo() {}
@@ -1079,6 +1081,7 @@ protected:
 };
 
 // == Enum ==
+/// Registers C++ enum values with string names for JSON serialization and TypeScript binding generation.
 template<typename T>
 struct Enum final : TypeInfo {
   static_assert (std::is_enum<T>::value, "");

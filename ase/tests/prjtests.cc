@@ -534,9 +534,10 @@ clip_undo_redo()
   auto muted_connection = mclip->on_event ("notify:muted", [&muted_notifications] (const Event &event) { muted_notifications++; });
 
   // Set muted
+  uint64_t last_muted_notifications = muted_notifications;
   mclip->set_muted (true);
   TASSERT (mclip->is_muted());
-  uint64_t last_muted_notifications = muted_notifications;
+  TASSERT (muted_notifications > last_muted_notifications);
 
   // Undo mute
   TASSERT (project->can_undo());
@@ -557,6 +558,7 @@ clip_undo_redo()
   uint64_t last_volume_notifications = volume_notifications;
   mclip->volume (-12.0);
   TASSERT (std::abs (mclip->volume() - (-12.0)) < 0.01);
+  TASSERT (volume_notifications > last_volume_notifications);
 
   // Undo volume
   TASSERT (project->can_undo());
@@ -580,6 +582,7 @@ clip_undo_redo()
   uint64_t last_pan_notifications = pan_notifications;
   aclip->pan (0.8);
   TASSERT (std::abs (aclip->pan() - 0.8) < 0.01);
+  TASSERT (pan_notifications > last_pan_notifications);
 
   // Undo pan
   TASSERT (project->can_undo());
@@ -609,6 +612,7 @@ clip_undo_redo()
   uint64_t last_notes_notifications = notes_notifications;
   mclip->change_batch (batch, "Add Note");
   TASSERT (mclip->list_all_notes().size() == 1);
+  TASSERT (notes_notifications > last_notes_notifications);
 
   // Undo notes
   TASSERT (project->can_undo());

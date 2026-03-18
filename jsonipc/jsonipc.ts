@@ -31,6 +31,8 @@ interface JsonipcPrototype {
     $unwatchers?: CleanupCallback[];
   };
   toJSON(): { $id: number };
+  $rpc (method: string, params: any[]): Promise<any>;
+  $asyncs(): Promise<void>;	// Wait for all pending async operations to complete
   // Mixin method for classes with event handling
   on (event: string, callback: (...args: any[]) => void): () => void;
 };
@@ -56,55 +58,92 @@ export const Jsonipc = {
   idmap: {} as { [key: number]: (msg: JsonipcMessage) => void },
 
   /// Registry to run cleanup callbacks once an instance was garbage collected
-  cleanup_array_registry: new FinalizationRegistry<CleanupCallback[]> ((callback_array: CleanupCallback[]) => {
+  cleanup_array_registry: new FinalizationRegistry<CleanupCallback[]> ((callback_array: CleanupCallback[]) =>
+  {
     while (callback_array.length)
       callback_array.pop().call (undefined);
     // Note, verify this is called when altering $props.$weakthis & co
   }),
 
+  /// Set a reactive property remotely and return promise for completion
+  set_reactive_prop<T> (this: any, prop: string, val: T): Promise<any>
+  {
+    const promise = Jsonipc.send ('set/' + prop, [this, val]);
+    Jsonipc.add_prop_promise.call (this, promise);
+    return promise;
+  },
+
+  /// Chain a new promise to the object's async operation queue
+  add_prop_promise<T> (this: any, nextpromise: Promise<any>)
+  {
+    if (!this.$props.$promise) {
+      this.$props.$promise = nextpromise;
+      return this.$props.$promise;
+    }
+    // Create a WeakRef to the object so it can be GC'd even if promises hold references
+    const weakthis = Jsonipc.ensure_props.call (this).$weakthis;
+    // Chain the existing promise with the new one
+    const wrapperpromise = Promise.all ([this.$props.$promise, nextpromise]);
+    wrapperpromise.then (([_, nextresult]) =>
+      {
+        // Dereference the object - may be null if GC'd
+        const obj = weakthis.deref();
+        if (obj?.$props?.$promise === wrapperpromise)
+	  obj.$props.$promise = null;	// breaks references for GC
+        return nextresult;
+      });
+    wrapperpromise.catch (exc => {
+      const obj = weakthis.deref();
+      if (obj?.$props?.$promise === wrapperpromise)
+        obj.$props.$promise = null;
+      throw exc;
+    });
+    // assign synchronization point
+    this.$props.$promise = wrapperpromise;
+    return this.$props.$promise;
+  },
+
+  /// Install auto-fetching for prop and get its value
+  ensure_props (this: any): any
+  {
+    const this_props = this.$props;
+    if (!this_props.$weakthis) {
+      // install $props system
+      this_props.$weakthis = new WeakRef (this);	// helper to not keep `this` alive
+      this_props.$promise = null;			// present if $promise !== undefined
+      //this_props.$id = this.$id;			// DEBUG $id GC
+      const clean_this_props = (): void => {
+        //console.log ("GC: $id=" + this_props.$id, "delete $props");	// DEBUG $id GC
+        for (const k of Jsonipc.okeys (this_props))
+          delete this_props[k];				// allow GC for all fields
+      };
+      this_props.$unwatchers = [ clean_this_props ];
+      Jsonipc.cleanup_array_registry.register (this, this_props.$unwatchers, this_props.$unwatchers);
+      // We use this_props + $weakthis instead of `this` as object/data handle,
+      // to allow GC of `this`, which in turn calls all $props.$unwatchers[].
+    }
+    return this_props;
+  },
+
   /// Install auto-fetching for prop and get its value
   get_reactive_prop<T> (this: any, prop: string, dflt: T): T
   {
-    const this_props = this.$props;
+    const this_props = Jsonipc.ensure_props.call (this);
     // install prop if needed
     if (!this_props[prop]) {
-      // install $props system if needed
-      if (!this_props.$unwatchers) {
-        this_props.$weakthis = new WeakRef (this);	// helper to not keep `this` alive
-        this_props.$promise = null;			// present if $promise !== undefined
-        const clean_this_props = (): void => {
-          //console.log ("GC: $id=" + this_props.$id, "delete $props");  // DEBUG $id GC
-          for (const k of Jsonipc.okeys (this_props))
-            delete this_props[k];			// allow GC for all fields
-        };
-        this_props.$unwatchers = [ clean_this_props ];
-        Jsonipc.cleanup_array_registry.register (this, this_props.$unwatchers, this_props.$unwatchers);
-        //this_props.$id = this.$id;                                     // DEBUG $id GC
-
-        // We use this_props + $weakthis instead of `this` as object/data handle, to allow GC
-        // of `this`, which in turn calls all $props.$unwatchers[].
-      }
       this_props[prop] = new globalThis.Signal.State (dflt); // cached state
-      // refetch, maintain $promise while waiting
-      const refetch_prop = (): Promise<void> => {	// async, returns Promise, avoid keeping `this` alive
-        let fetch_promise: Promise<void>;
-        const last_promise = this_props.$promise;
-        const async_fetch_prop = async (): Promise<void> => {
+      const refetch_prop = (): Promise<T> =>
+      {
+        const async_fetch_prop = async (): Promise<void> =>
+	{
           const self = this_props.$weakthis?.deref();
           if (!self) return;
-          const result_promise = Jsonipc.send ('get/' + prop, [self]); // `this`
-          if (last_promise)
-            await last_promise;				// sync with last, before $promise reset
+          const result_promise = Jsonipc.send ('get/' + prop, [self]);
           const result = await result_promise;
-          if (this_props.$promise === fetch_promise) {
-            this_props.$promise = null;			// reset, this call is just being resolved
-          }
           const signal_state = this_props[prop] as SignalState<T>;
-	  signal_state.set (result);			// assign new value after reset, otherwise callbacks might see stale promise
+	  signal_state.set (result);			// assign new value
         };
-        // start fetching and remember call promise
-        this_props.$promise = fetch_promise = async_fetch_prop();
-        return fetch_promise;
+        return Jsonipc.add_prop_promise.call (this, async_fetch_prop());
       };
       const delnotifier = this.on ("notify:" + prop, refetch_prop);
       this_props.$unwatchers.push (delnotifier);
@@ -167,6 +206,37 @@ export const Jsonipc = {
     {
       return { $id: this.$id };
     }
+    // Send a Jsonipc request and await notifications
+    async $rpc (method: string, params: any[]): Promise<any>
+    {
+      const result = await Jsonipc.send (method, params);
+      if (this.$props.$promise)	// pending notifications
+	await this.$asyncs();	// await delivery
+      return result;
+    }
+    /// Get a reactive property value (fetches if needed)
+    $get<T> (prop: string, dflt: T): T
+    {
+      return Jsonipc.get_reactive_prop.call (this, prop, dflt) as T;
+    }
+    /// Set a reactive property remotely and await completion
+    async $set<T> (prop: string, val: T): Promise<any>
+    {
+      return await Jsonipc.set_reactive_prop.call (this, prop, val);
+    }
+    // Wait for all pending async operations to complete
+    async $asyncs()
+    {
+      const last_promise = this.$props.$promise;
+      // NOP if no async operation is pending
+      if (!last_promise)
+	return;
+      // await completion of any running async modifiocations
+      await last_promise;
+      // a new promise likely indicates the refetch() of a past modification
+      if (this.$props.$promise && last_promise !== this.$props.$promise)
+	await this.$props.$promise;
+    }
     // JSON.parse reviver
     static fromJSON (key: string, value: any): any
     {
@@ -186,7 +256,7 @@ export const Jsonipc = {
   },
 
   /// Send a Jsonipc request
-  send (this: any, method: string, params: any[]): Promise<any>
+  send (method: string, params: any[]): Promise<any>
   {
     if (!this.web_socket)
       throw globalThis.Error ("Jsonipc: connection closed");
