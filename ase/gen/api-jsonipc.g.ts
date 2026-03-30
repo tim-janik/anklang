@@ -198,9 +198,8 @@ export const Jsonipc = {
       Jsonipc.pdefine (this, '$id', { value: $id });
       Jsonipc.pdefine (this, '$props', { value: {} });
       Jsonipc.finalization_registration (this);
-      // Note that Vue recursively invades *all* objects used in a Vue component,
-      // which ultimately leads to Signal.get choking on being called on a Proxy.
-      // Thus, for the time being, we have to freeze `this`.
+      // Freeze `this`, because otherwise frameworks like Vue recursively invade all
+      // objects and ultimately lead to Signal.get choking when `this` is a Proxy.
     }
     // JSON.stringify replacer
     toJSON(): { $id: number }
