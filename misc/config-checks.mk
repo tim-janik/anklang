@@ -102,7 +102,7 @@ $>/config-cache.mk: misc/config-checks.mk $(REPOCOMMITDEPS) | $>/./
 	  || echo 'XNPM ::= npm'				>>$@.tmp
 	$Q bun --version 2>&1 | grep -qE '^[1-9]+[0-9]*\.[0-9]+' \
 	  && echo 'RUNTS := bun run'				>>$@.tmp \
-	  || echo 'RUNTS := node --experimental-strip-types'	>>$@.tmp
+	  || true
 	$Q GTK2_CFLAGS=$$($(PKG_CONFIG) --cflags $(GTK2_PACKAGES)) \
 	  && echo "GTK2_CFLAGS ::= $$GTK2_CFLAGS"		>>$@.tmp
 	$Q GTK2_LIBS=$$($(PKG_CONFIG) --libs $(GTK2_PACKAGES)) \
