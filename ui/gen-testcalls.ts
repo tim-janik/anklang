@@ -2,17 +2,36 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import ts from "typescript";
 
+/**
+ * Extract exported function names from TypeScript source using regex.
+ * For Makefile generation, this needs to work without any node_modules.
+ *
+ * DESIGN PRINCIPLE: Never silently skip potential test functions (no false negatives).
+ * Better to throw an error than miss a test, test export code can easily be adapted.
+ *
+ * SUPPORTED PATTERNS (detected as tests):
+ * - export function name() {} (including async, generator)
+ * - export const/let/var name = ... (arrow functions, values, function expressions)
+ * - export default function name() {}
+ * - export { foo, bar as baz }
+ *
+ * SKIPPED SILENTLY (TypeScript-only, never runtime):
+ * - export interface/type/class/enum
+ *
+ * THROWS ERROR (patterns that need explicit handling - rewrite or skip):
+ * - export default () => {} (arrow function default) - rewrite as named function
+ * - export namespace NS { ... }
+ * - export declare function foo() {}
+ * - export import Foo = require("foo")
+ * - Any unrecognized export pattern
+ */
 function get_exported_functions (file_path: string)
 {
   const source_text = fs.readFileSync (file_path, "utf8");
-  const source = ts.createSourceFile (
-    file_path,
-    source_text,
-    ts.ScriptTarget.Latest,
-    true
-  );
+
+  // Remove all comments FIRST, but preserve newlines to keep line numbers stable
+  const clean_text = source_text.replace (/\/\*[\s\S]*?\*\/|\/\/.*/g, match => match.replace (/[^\n]/g, ""))
 
   const exports: { name: string; local: string }[] = [];
 
@@ -21,64 +40,63 @@ function get_exported_functions (file_path: string)
     exports.push ({ name, local });
   }
 
-  ts.forEachChild (source, node => {
-    // export function foo() {}
-    if (
-      ts.isFunctionDeclaration (node) &&
-	node.name &&
-	node.modifiers?.some (m => m.kind === ts.SyntaxKind.ExportKeyword)
-    ) {
-      add (node.name.text);
+  // Use regex with exec to find all 'export' lines
+  const export_regex = /^(\s*)(export\b.*)$/gm;
+  let match: RegExpExecArray | null;
+  while ((match = export_regex.exec (clean_text)) !== null) {
+    // Position of the actual "export" keyword (after leading whitespace)
+    const export_pos = match.index! + match[1].length;
+    const line_number = (clean_text.substring (0, export_pos).match (/\n/g) || []).length + 1;
+    const export_statement = match[2];
+
+    // Pattern 1: export [async] function [ * ] name(...)
+    const func_match = export_statement.match (/^export\s+(?:async\s+)?function\s*\*?\s*([a-zA-Z0-9_$]+)/);
+    if (func_match) {
+      add (func_match[1]);
+      continue;
     }
 
-    // export const foo = () => {}
-    if (
-      ts.isVariableStatement (node) &&
-	node.modifiers?.some (m => m.kind === ts.SyntaxKind.ExportKeyword)
-    ) {
-      for (const decl of node.declarationList.declarations) {
-        if (ts.isIdentifier (decl.name)) {
-          // Only include if initializer is a function or arrow function
-          if (
-            decl.initializer &&
-              (ts.isFunctionExpression (decl.initializer) ||
-               ts.isArrowFunction (decl.initializer))
-          ) {
-            add (decl.name.text);
-          }
-        }
+    // Pattern 2: export const/let/var name = ...
+    const const_match = export_statement.match (/^export\s+(?:const|let|var)\s+([a-zA-Z0-9_$]+)\s*=/);
+    if (const_match) {
+      add (const_match[1]);
+      continue;
+    }
+
+    // Pattern 3: export default function ... (only functions)
+    const default_func = export_statement.match (/^export\s+default\s+(?:async\s+)?function\s*\*?\s*(?:([a-zA-Z0-9_$]+))?/);
+    if (default_func) {
+      add ("default", default_func[1] ?? "default");
+      continue;
+    }
+
+    // Pattern 4: export { foo, bar as baz } (single-line only)
+    const named_block_match = export_statement.match (/^export\s*\{([^}]*)\}/m);
+    if (named_block_match && !named_block_match[1].includes ("\n")) {
+      // Match each export: name or "name as alias"
+      const element_regex = /([a-zA-Z0-9_$]+)(?:\s+as\s+([a-zA-Z0-9_$]+))?/g;
+      let elem_match;
+      while ((elem_match = element_regex.exec (named_block_match[1])) !== null) {
+        add (elem_match[2] ?? elem_match[1], elem_match[1]);
       }
+      continue;
     }
 
-    // export default function foo() {}
-    if (
-      ts.isFunctionDeclaration (node) &&
-	node.modifiers?.some (m => m.kind === ts.SyntaxKind.DefaultKeyword)
-    ) {
-      const name = node.name ? node.name.text : "default";
-      add ("default", name);
+    // Pattern 5: export let/var name = ... (could be function expressions)
+    const letvar_match = export_statement.match (/^export\s+(?:let|var)\s+([a-zA-Z0-9_$]+)\s*=/);
+    if (letvar_match) {
+      add (letvar_match[1]);
+      continue;
     }
 
-    // export default () => {}
-    if (
-      ts.isExportAssignment (node) &&
-	(ts.isArrowFunction (node.expression) ||
-	 ts.isFunctionExpression (node.expression))
-    ) {
-      add ("default", "default");
+    // Pattern 6: TypeScript-only exports - skip silently (never runtime)
+    if (/^export\s+(?:class|interface|type|enum)\s/.test (export_statement)) {
+      continue;
     }
 
-    // export { foo, bar as baz }
-    if (ts.isExportDeclaration (node) && node.exportClause) {
-      if (ts.isNamedExports (node.exportClause)) {
-        for (const spec of node.exportClause.elements) {
-          const exported = spec.name.text;
-          const local = spec.propertyName?.text ?? exported;
-          add (exported, local);
-        }
-      }
-    }
-  });
+    // UNHANDLED: Throw error for any export we don't understand
+    throw new Error (`Unrecognized export pattern at ${file_path}:${line_number}: "${export_statement}"`);
+  }
 
   return exports;
 }
