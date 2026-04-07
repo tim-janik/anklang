@@ -4,6 +4,7 @@
 all:		# Default Rule
 MAKEFLAGS      += -r
 SHELL         ::= /bin/bash -o pipefail
+RUNTS		?= node --experimental-strip-types
 PARALLEL_MAKE   = $(filter JOBSERVER, $(subst -j, JOBSERVER , $(MFLAGS)))
 LATE_EVAL	:=
 CODEGEN.FILES	:=
