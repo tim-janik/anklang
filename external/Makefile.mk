@@ -225,7 +225,7 @@ soundtouch/sha := 3dda3c9ab1e287f15028c010a66ab7145fa855dfa62763538f341e70b4d10a
 external/soundtouch/.sha-$(soundtouch/sha):
 	$(QGEN)
 	$Q $(call fetch-and-check, external/soundtouch.tar.gz, $(soundtouch/sha), \
-		https://www.surina.net/soundtouch/soundtouch-2.4.0.tar.gz)
+		https://github.com/tim-janik/blobs4anklang/releases/download/soundtouch-v2.4.0/soundtouch-2.4.0.tar.gz)
 	$Q rm -rf external/soundtouch && mkdir external/soundtouch
 	$Q tar xf external/soundtouch.tar.gz --strip-components=1 -C external/soundtouch/
 	$Q touch $@
