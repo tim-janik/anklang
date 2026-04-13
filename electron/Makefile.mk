@@ -4,7 +4,7 @@
 ELECTRON_PKG_NAME	:= Anklang
 ELECTRON_VERSION	:= $(version_short)
 ELECTRON_DEV		:= false
-ELECTRON_SOURCES	:= electron/main.js electron/preload.js electron/htmlgui.svg
+ELECTRON_SOURCES	:= electron/main.js electron/sourcemapping.js electron/preload.js electron/htmlgui.svg
 ELECTRON_DEPS		:= node_modules/.npm.done
 ELECTRON_INSTALLDIR	:= $(pkgdir)/electron
 ALL_TARGETS		+= $>/electron/htmlgui
@@ -18,6 +18,8 @@ $>/electron/htmlgui: electron/Makefile.mk $(ELECTRON_SOURCES) $(ELECTRON_DEPS)
 	$Q rm $(@D)/resources/default_app.asar
 	$Q mkdir -p $(@D)/resources/app
 	$Q $(CP) $(ELECTRON_SOURCES) $(@D)/resources/app/
+	$Q mkdir -p $(@D)/resources/app/node_modules/@jridgewell && \
+	   $(CP) -r node_modules/@jridgewell/trace-mapping node_modules/@jridgewell/resolve-uri node_modules/@jridgewell/sourcemap-codec $(@D)/resources/app/node_modules/@jridgewell
 	$Q echo '{ "private": true,'				>  $(@D)/resources/app/package.json
 	$Q echo '  "name": "$(ELECTRON_PKG_NAME)",'		>> $(@D)/resources/app/package.json
 	$Q echo '  "version": "$(ELECTRON_VERSION)",'		>> $(@D)/resources/app/package.json
