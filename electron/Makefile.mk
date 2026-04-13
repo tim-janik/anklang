@@ -3,7 +3,8 @@
 # ELECTRON_PKG_NAME determines the default name of app.getPath('appData')
 ELECTRON_PKG_NAME	:= Anklang
 ELECTRON_VERSION	:= $(version_short)
-ELECTRON_DEV		:= false
+ELECTRON_REVDATE	:= $(version_date)
+ELECTRON_DEV		:= $(__DEV__)
 ELECTRON_SOURCES	:= electron/main.js electron/sourcemapping.js electron/preload.js electron/htmlgui.svg
 ELECTRON_DEPS		:= node_modules/.npm.done
 ELECTRON_INSTALLDIR	:= $(pkgdir)/electron
@@ -23,6 +24,7 @@ $>/electron/htmlgui: electron/Makefile.mk $(ELECTRON_SOURCES) $(ELECTRON_DEPS)
 	$Q echo '{ "private": true,'				>  $(@D)/resources/app/package.json
 	$Q echo '  "name": "$(ELECTRON_PKG_NAME)",'		>> $(@D)/resources/app/package.json
 	$Q echo '  "version": "$(ELECTRON_VERSION)",'		>> $(@D)/resources/app/package.json
+	$Q echo '  "revdate": "$(ELECTRON_REVDATE)",'		>> $(@D)/resources/app/package.json
 	$Q echo '  "__DEV__": "$(ELECTRON_DEV)",'		>> $(@D)/resources/app/package.json
 	$Q echo '  "main": "main.js" }'				>> $(@D)/resources/app/package.json
 	$Q chmod g-w -R $>/electron/
