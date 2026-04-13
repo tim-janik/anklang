@@ -197,7 +197,7 @@ export class AppClass {
       buttons,
       emblem,
     };
-    return this.shell.async_modal_dialog (dialog_setup);
+    return Shell.async_modal_dialog (dialog_setup);
   }
   zmoves_add = Mouse.zmove_add;
   zmove = Mouse.zmove_trigger;
