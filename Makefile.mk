@@ -79,6 +79,7 @@ override MODE !=  case "$(MODE)" in \
 .config.defaults += MODE
 $(info $S  MODE     $(MODE))
 .config.defaults += INSN
+__DEV__		 := $(if $(filter production,$(MODE)),false,true)
 
 # == Dirctories ==
 prefix		 ?= /usr/local
@@ -242,7 +243,7 @@ CLEANDIRS += $>/codegen/
 define PACKAGE_VERSIONS
   "version": "$(version_short)",
   "revdate": "$(version_date)",
-  "mode": "$(MODE)"
+  "__DEV__": $(__DEV__)
 endef
 
 # == config.sh ==
@@ -251,9 +252,6 @@ $>/config.sh: $(wildcard config-defaults.mk)				| $>/
 	$Q echo 'srcdir="$(abspath .)"'					>  $@.tmp
 	$Q echo 'outdir="$(abspath $>)"'				>> $@.tmp
 	$Q echo 'pkgdir="$(abspath $(pkgdir))"'				>> $@.tmp
-	$Q echo 'version="$(version_short)"'				>> $@.tmp
-	$Q echo 'revdate="$(version_date)"'				>> $@.tmp
-	$Q echo 'mode="$(MODE)"'					>> $@.tmp
 	$Q mv $@.tmp $@
 ALL_TARGETS += $>/config.sh
 
