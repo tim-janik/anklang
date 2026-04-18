@@ -370,10 +370,18 @@ TrackImpl::device_info()
 void
 TrackImpl::remove_self ()
 {
-  if (auto *proj = project())
-    proj->remove_track (*this);
-  else
-    GadgetImpl::remove_self();
+  return_unless (!is_master());
+  auto *track = track_.get();
+  if (track) {
+    // Remove from edit's track list
+    if (auto *proj = project())
+      if (auto *e = proj->edit_.get())
+        e->deleteTrack (track);
+    // Clear references
+    track_ = SelectableWeakref<tracktion::Track>{};
+    state_listener_ = nullptr;
+  }
+  GadgetImpl::remove_self();
 }
 
 // == TrackImpl::ClipScout ==
