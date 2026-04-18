@@ -325,7 +325,6 @@ public:
   virtual bool            is_playing     () const = 0; ///< Check whether a project is currently playing (song sequencing).
   virtual void            is_playing     (bool) = 0;   ///< Set whether a project is currently playing (song sequencing).
   virtual TrackP          create_track   () = 0;       ///< Create and append a new Track.
-  virtual bool            remove_track   (Track&) = 0; ///< Remove a track owned by this Project.
   virtual TrackS          all_tracks     () = 0;       ///< List all tracks of the project.
   virtual TrackP          master_track   () = 0;       ///< Retrieve the master track.
   virtual Error           save_project   (const String &utf8filename, bool collect) = 0; ///< Store Project and collect external files.
