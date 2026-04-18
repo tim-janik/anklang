@@ -71,6 +71,7 @@ public:
   void                 is_playing        (bool play) override;
   TrackP               create_track      () override;
   bool                 remove_track      (Track &child) override;
+  void                 remove_self       () override;
   TrackS               all_tracks        () override;
   TrackP               master_track      () override;
   Error                load_project      (const String &utf8filename) override;

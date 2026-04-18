@@ -308,6 +308,23 @@ ClipImpl::update_telemetry ()
 {
 }
 
+void
+ClipImpl::remove_self ()
+{
+  auto *clip = clip_.get();
+  if (clip) {
+    // Remove from te::Track's clip collection
+    if (auto *t = clip->getTrack())
+      if (auto *ct = dynamic_cast<te::ClipTrack*> (t))
+        if (auto *collection = ct->getCollectionClip (clip))
+          collection->removeClip (clip);
+    // Clear references
+    clip_ = SelectableWeakref<tracktion::Clip>{};
+    state_listener_ = nullptr;
+  }
+  GadgetImpl::remove_self();
+}
+
 /// Retrieve const vector with all notes ordered by tick.
 ClipImpl::OrderedEventsP
 ClipImpl::tick_events () const

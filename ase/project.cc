@@ -418,6 +418,13 @@ ProjectImpl::discard ()
 }
 
 void
+ProjectImpl::remove_self ()
+{
+  // Project has no parent; just emit the `removed` event
+  GadgetImpl::remove_self();
+}
+
+void
 ProjectImpl::_activate ()
 {
   assert_return (!is_active());

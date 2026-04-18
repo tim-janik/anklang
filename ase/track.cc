@@ -367,6 +367,15 @@ TrackImpl::device_info()
   return {};
 }
 
+void
+TrackImpl::remove_self ()
+{
+  if (auto *proj = project())
+    proj->remove_track (*this);
+  else
+    GadgetImpl::remove_self();
+}
+
 // == TrackImpl::ClipScout ==
 TrackImpl::ClipScout::ClipScout() noexcept
 {
