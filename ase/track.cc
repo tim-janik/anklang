@@ -83,8 +83,18 @@ public:
     }
     asetrack_.update_telemetry();
   }
-  void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override {}
-  void valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree&, int) override {}
+  void
+  valueTreeChildAdded (juce::ValueTree &parent, juce::ValueTree &child) override
+  {
+    if (parent == track_state_ && te::Clip::isClipState (child))
+      asetrack_.emit_notify ("launcher_clips");
+  }
+  void
+  valueTreeChildRemoved (juce::ValueTree &parent, juce::ValueTree &child, int) override
+  {
+    if (parent == track_state_ && te::Clip::isClipState (child))
+      asetrack_.emit_notify ("launcher_clips");
+  }
   void valueTreeParentChanged (juce::ValueTree&) override {}
   void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override {}
 };
