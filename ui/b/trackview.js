@@ -87,6 +87,7 @@ const HTML_CONTEXTMENU = (t, d) => html`
   <b-contextmenu @activate=${t.menu_click} .isactive=${t.menu_check} @close=${t.menu_close} @cancel=${t.menu_close} >
     <b-menutitle>                                         Track             </b-menutitle>
     <button ic="fa-plus_circle"    uri="add-track" >      Add Track             </button>
+    <button ic="fa-music"          uri="add-midi-clip">   Add MIDI Clip         </button>
     <button ic="fa-i_cursor"       uri="rename-track" >   Rename Track          </button>
     <button ic="fa-toggle_down"    uri="bounce-track" >   Bounce Track          </button>
     <button ic="md-eye_off" uri="track-details" >  Show / Hide Track Details </button>
@@ -236,7 +237,8 @@ class BTrackView extends LitComponent {
   {
     switch (uri)
     {
-      case 'add-track':    return true;
+      case 'add-track':
+      case 'add-midi-clip': return true;
       case 'delete-track': return App.current_track && !await App.current_track.is_master();
       case 'rename-track': return true;
     }
@@ -254,6 +256,16 @@ class BTrackView extends LitComponent {
 	const track = await Data.project.create_track ('Track');
 	if (track)
 	  App.current_track = track;
+      }
+    if (uri == 'add-midi-clip')
+      {
+	const track = App.current_track;
+	if (track && !await track.is_master())
+	  {
+	    const clip = await track.create_midi_clip ('MIDI Clip', 0.0, 4.0);
+	    if (clip)
+	      App.open_piano_roll (clip);
+	  }
       }
     if (uri == 'delete-track')
       {
