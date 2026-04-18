@@ -162,6 +162,14 @@ GadgetImpl::access_properties ()
   return { begin (props_), end (props_) };
 }
 
+// == GadgetImpl ==
+void
+GadgetImpl::remove_self ()
+{
+  parent_ = nullptr;
+  emit_event ("object", "removed");
+}
+
 // == Gadget ==
 ProjectImpl*
 Gadget::_project() const

@@ -51,6 +51,7 @@ public:
   double         pan            () const override;
   void           pan            (double pan) override;
   void           update_telemetry ();
+  void           remove_self     () override;
   TelemetryFieldS telemetry      () const override;
   static ClipImplP from_trkn    (tracktion::Clip&);
   ASE_DEFINE_MAKE_SHARED (ClipImpl);

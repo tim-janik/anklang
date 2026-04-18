@@ -55,12 +55,6 @@ DeviceImpl::extract_info (const String &aseid)
   return info;
 }
 
-// == Device ==
-void
-Device::remove_self ()
-{
-}
-
 Track*
 Device::_track () const
 {

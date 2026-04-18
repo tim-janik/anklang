@@ -192,6 +192,8 @@ public:
   virtual bool        set_data          (const String &key, const Value &v) = 0;
   /// Retrieve session data.
   virtual Value       get_data          (const String &key) const = 0;
+  /// Remove self from parent container.
+  virtual void        remove_self       () = 0;
 };
 
 /// Info for device types.
@@ -220,7 +222,6 @@ public:
   virtual DeviceInfo device_info   () = 0;      ///< Describe this Device type.
   virtual DeviceS    get_devices   () const = 0; ///< List devices in order of processing, notified via "devs".
   virtual void       set_devices   (const DeviceS &devices) = 0; ///< Set the list of devices.
-  void               remove_self   ();          ///< Remove device from its container.
   // GUI handling
   virtual void       gui_toggle    () = 0;      ///< Toggle GUI display.
   virtual bool       gui_supported () = 0;      ///< Has GUI display facilities.

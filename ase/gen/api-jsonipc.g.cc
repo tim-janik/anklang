@@ -210,6 +210,7 @@ jsonipc_for_api_jsonipc_json()
     .set ("set_value", &::Ase::Gadget::set_value)
     .set ("set_data", &::Ase::Gadget::set_data)
     .set ("get_data", &::Ase::Gadget::get_data)
+    .set ("remove_self", &::Ase::Gadget::remove_self)
     ;
 
   ::Jsonipc::Class< ::Ase::Device > class__Ase_Device;
@@ -220,7 +221,6 @@ jsonipc_for_api_jsonipc_json()
     .set ("device_info", &::Ase::Device::device_info)
     .set ("get_devices", &::Ase::Device::get_devices)
     .set ("set_devices", &::Ase::Device::set_devices)
-    .set ("remove_self", &::Ase::Device::remove_self)
     .set ("gui_toggle", &::Ase::Device::gui_toggle)
     .set ("gui_supported", &::Ase::Device::gui_supported)
     .set ("gui_visible", &::Ase::Device::gui_visible)
