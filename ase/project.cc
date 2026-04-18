@@ -988,10 +988,7 @@ ProjectImpl::remove_track (Track &child)
   assert_return (child._parent() == this, false);
   TrackImplP track = shared_ptr_cast<TrackImpl> (&child);
   return_unless (track && !track->is_master(), false);
-  // destroy Track
-  track->_set_parent (nullptr);
-  emit_event ("track", "remove");
-  emit_notify ("all_tracks");
+  track->remove_self ();
   return true;
 }
 

@@ -29,6 +29,7 @@ class ProjectImpl final : public DeviceImpl, public virtual Project {
   PStorage *storage_ = nullptr;
   String saved_filename_;
   bool discarded_ = false;
+  friend class TrackImpl;
   friend class UndoScope;
   UndoScope           add_undo_scope (const String &scopename);
 protected:
