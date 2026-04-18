@@ -98,8 +98,18 @@ public:
         project_.emit_notify ("master_volume");
     }
   }
-  void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override {}
-  void valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree&, int) override {}
+  void
+  valueTreeChildAdded (juce::ValueTree &parent, juce::ValueTree &child) override
+  {
+    if (parent == edit_->state && te::TrackList::isTrack (child))
+      project_.emit_notify ("all_tracks");
+  }
+  void
+  valueTreeChildRemoved (juce::ValueTree &parent, juce::ValueTree &child, int) override
+  {
+    if (parent == edit_->state && te::TrackList::isTrack (child))
+      project_.emit_notify ("all_tracks");
+  }
   void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override {}
   void valueTreeParentChanged (juce::ValueTree&) override {}
   void
