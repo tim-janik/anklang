@@ -254,44 +254,6 @@ private:
   PStorage **const ptrp_ = nullptr;
 };
 
-static tracktion::WaveAudioClip::Ptr
-load_audio_file_as_clip (tracktion::Edit &edit, const juce::File &file)
-{
-  edit.ensureNumberOfAudioTracks (1);
-  if (auto track = tracktion::getAudioTracks (edit)[0]) {
-    tracktion::AudioFile audioFile (edit.engine, file);
-    if (audioFile.isValid())
-      if (auto newClip =
-          track->insertWaveClip (file.getFileNameWithoutExtension(), file,
-                                 { { {}, tracktion::TimeDuration::fromSeconds (audioFile.getLength()) }, {} }, false))
-        return newClip;
-  }
-  return {};
-}
-
-template<typename ClipType> static typename ClipType::Ptr
-loop_around_clip (ClipType &clip)
-{
-  using namespace std::literals;
-  auto &transport = clip.edit.getTransport();
-  transport.setLoopRange (clip.getEditTimeRange());
-  transport.looping = true;
-  transport.setPosition (0s);
-  return clip;
-}
-
-static bool
-test_setup (tracktion::Edit &edit)
-{
-  const std::string sample01 = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
-  juce::File sampleFile (sample01);
-  auto clip = load_audio_file_as_clip (edit, sampleFile);
-  assert_return (clip != nullptr, false);
-  loop_around_clip (*clip);
-  edit.getTransport().ensureContextAllocated();
-  return true;
-}
-
 ProjectImpl::ProjectImpl()
 {
   bpm (120);
@@ -300,7 +262,7 @@ ProjectImpl::ProjectImpl()
   edit_ = std::make_unique<te::Edit> (*trkn_engine(), te::Edit::forEditing);
   if (edit_)
     transport_listener_ = std::make_unique<TransportListener> (edit_->getTransport(), *this);
-  if (!edit_ || !transport_listener_ || !test_setup (*edit_))
+  if (!edit_ || !transport_listener_)
     fatal_error ("failed to create tracktion::engine::edit");
 
   edit_->getUndoManager().clearUndoHistory();

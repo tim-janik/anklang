@@ -31,6 +31,7 @@ class ProjectImpl final : public DeviceImpl, public virtual Project {
   bool discarded_ = false;
   friend class TrackImpl;
   friend class UndoScope;
+  friend void test_audio_sample_load();
   UndoScope           add_undo_scope (const String &scopename);
 protected:
   explicit            ProjectImpl     ();
