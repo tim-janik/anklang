@@ -982,16 +982,6 @@ ProjectImpl::create_track ()
   return track;
 }
 
-bool
-ProjectImpl::remove_track (Track &child)
-{
-  assert_return (child._parent() == this, false);
-  TrackImplP track = shared_ptr_cast<TrackImpl> (&child);
-  return_unless (track && !track->is_master(), false);
-  track->remove_self ();
-  return true;
-}
-
 TrackS
 ProjectImpl::all_tracks ()
 {

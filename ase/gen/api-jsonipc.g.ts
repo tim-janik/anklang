@@ -863,8 +863,6 @@ export class Project // Ase::Project
   { this.$set ("is_playing", v); }
   create_track (): Promise<Track>
   { return this.$rpc ("create_track", [this]); }
-  remove_track (arg1: Track): Promise<boolean>
-  { return this.$rpc ("remove_track", [this, arg1]); }
   all_tracks (): Promise<Track[]>
   { return this.$rpc ("all_tracks", [this]); }
   master_track (): Promise<Track>

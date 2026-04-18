@@ -71,7 +71,6 @@ public:
   bool                 is_playing        () const override;
   void                 is_playing        (bool play) override;
   TrackP               create_track      () override;
-  bool                 remove_track      (Track &child) override;
   void                 remove_self       () override;
   TrackS               all_tracks        () override;
   TrackP               master_track      () override;
