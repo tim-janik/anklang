@@ -64,4 +64,35 @@ function resolve_source_location (source_id, line_number)
   return null;
 }
 
-module.exports = { resolve_source_location };
+// Resolve a single V8 stack-frame line to original source via sourcemap.
+function resolve_single_frame (line)
+{
+  // Match: " at [async] funcName (url:line:col)"
+  const m = line.match (/^\s*at\b([^()]*)\((.+\/.+\..+?):(\d+):(\d+)\)$/);
+  if (m) {
+    const funcName = m[1].trim ();
+    const url = m[2];
+    const frameLine = parseInt (m[3], 10);
+    const frameCol = parseInt (m[4], 10);
+    const resolved = resolve_source_location (url, frameLine);
+    if (resolved) {
+      let loc;
+      if (resolved.column > 0)
+        loc = `${resolved.source}:${resolved.line}:${resolved.column}`;
+      else
+        loc = `${resolved.source}:${resolved.line}`;
+      return `    at ${funcName} (${loc})`;
+    }
+  }
+  return null; // not a resolvable stack frame
+}
+
+// Returns the message with resolved frames
+function resolve_stack_frames (message)
+{
+  const lines = message.split ('\n');
+  const resolved = lines.map (line => resolve_single_frame (line) || line);
+  return resolved.join ('\n');
+}
+
+module.exports = { resolve_source_location, resolve_stack_frames };

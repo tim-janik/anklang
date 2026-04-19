@@ -22,7 +22,6 @@ const Esession = Electron.session;
 const os = require ('os');
 const fs = require ('fs');
 const path = require ('path');
-const { resolve_source_location } = require ('./sourcemapping');
 
 // == Config & Defaults ==
 const ELECTRON_CONFIG = { quitstartup: false, };
@@ -171,8 +170,9 @@ function create_window (onclose)
   w.webContents.once ('crashed', () => main_exit (129)); // 'crashed' is SIGHUP or SIGTERM
   w.webContents.on ('console-message', (event) => {
     // https://www.electronjs.org/docs/latest/api/web-contents
+    const { resolve_source_location, resolve_stack_frames } = require ('./sourcemapping');
     const source_id = event.sourceId;
-    const message = event.message;
+    let message = event.message;
     const line_number = event.lineNumber;
     let prefix = `${source_id}:${line_number}: `;
 
@@ -184,6 +184,7 @@ function create_window (onclose)
 	prefix = `${pathname}:${resolved.line}:${resolved.column}: `;
       else
 	prefix = `${pathname}:${resolved.line}: `;
+      message = resolve_stack_frames (message);
     }
 
     switch (event._level) {
