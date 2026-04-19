@@ -1,5 +1,12 @@
 #pragma once
 
+// tracktion_decls.hh is included by tracktion_engine/tracktion_engine.h
+
+namespace Ase {
+// Ase common base type to allow casting between polymorphic classes.
+struct VirtualBase; // for tracktion_engine/selection/tracktion_Selectable.h
+} // Ase
+
 // Forward declarations of tracktion namespace
 namespace tracktion {
 
