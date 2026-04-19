@@ -168,7 +168,7 @@ TrackImpl::name (const std::string &n)
 ProjectImpl*
 TrackImpl::project () const
 {
-  return static_cast<ProjectImpl*> (_parent());
+  return project_;
 }
 
 String
@@ -374,9 +374,7 @@ TrackImpl::remove_self ()
   auto *track = track_.get();
   if (track) {
     // Remove from edit's track list
-    if (auto *proj = project())
-      if (auto *e = proj->edit_.get())
-        e->deleteTrack (track);
+    track_->edit.deleteTrack (track);
     // Clear references
     track_ = SelectableWeakref<tracktion::Track>{};
     state_listener_ = nullptr;
