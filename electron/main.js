@@ -5,8 +5,22 @@
 let browser_window;
 
 // == Helpers ==
-const trycatch = async fn => { try { return [ fn(), null ]; } catch (e) { return [undefined, e]; } };
-const trynext = async (ev, fn) => { try { return (fn || ev) (); } catch (e) { return ev; } };
+// Wrap fn() to return [result, error], handle both sync throws and async rejections.
+const trycatch = fn => {
+  try { const pr = fn();
+    if (pr && typeof pr.then === 'function')
+      return pr.then (v => [v, null], ex => [undefined, ex]);
+    else return [pr, null];
+  } catch (ex) { return [undefined, ex]; }
+};
+// Attempt to execute fn(), silently catch errors or async rejections and return fallback.
+const tryelse = (ev, fn) => {
+  try { const pr = (fn || ev)();
+    if (pr && typeof pr.then === 'function')
+      return pr.catch (() => ev);
+    else return pr;
+  } catch (ex) { return ev; }
+};
 // Avoid any hangs, install handlers *before* imports
 process.on ('unhandledRejection', (reason, promise) => main_exit (-1, 'Unhandled Rejection:', promise, 'reason:', reason));
 // unhandledRejection: new Promise ((resolve, reject) => reject (new Error ('Testing unhandledRejection...')));
@@ -46,14 +60,14 @@ Eapp.setPath ('crashDumps', path.join (cache_dir, 'crashDumps'));
 // Clean up caches under ~/.cache/anklang/<PID> regularly
 async function cleanup_cache_dirs()
 {
-  for (const entry of await trynext ([], () => fs.promises.readdir (anklang_cache_root))) {
+  for (const entry of await tryelse ([], () => fs.promises.readdir (anklang_cache_root))) {
     const pid = parseInt (entry, 10);
     if (isNaN (pid)) continue;
     const pidpath = path.join (anklang_cache_root, entry);
-    const stat = await trynext (null, () => fs.promises.stat (pidpath));
+    const stat = await tryelse (null, () => fs.promises.stat (pidpath));
     if (!stat?.isDirectory()) continue;
-    if ("NoPID" == await trynext ("NoPID", () => process.kill (pid, 0)))
-      await trynext (() => fs.promises.rm (pidpath, { recursive: true, force: true }));
+    if ("NoPID" == await tryelse ("NoPID", () => process.kill (pid, 0)))
+      await trycatch (() => fs.promises.rm (pidpath, { recursive: true, force: true }));
   }
 }
 setTimeout (cleanup_cache_dirs, 3779);
@@ -80,7 +94,7 @@ function main_exit (exitcode, ...errmsgs)
       browser_window = null;
     }
   // remove excessive electron caches
-  trynext (() => fs.rmSync (cache_dir, { recursive: true, force: true }));
+  tryelse (() => fs.rmSync (cache_dir, { recursive: true, force: true }));
   if (main_exit.exit_code < 0)
     process.abort();
   Eapp.exit (5); // calls process.exit()
