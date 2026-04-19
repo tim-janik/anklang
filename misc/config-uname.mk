@@ -31,17 +31,14 @@ SANITIZECC	::= -fno-strict-overflow -fno-strict-aliasing # sane C / C++
 LDOPTIMIZE	::= -Wl,-znow # see also $(ld_options)
 LDMODEFLAGS	  =
 LTOFLAGS	::=
-__DEV__		::= 1
 __UIDEBUG__	::=
 
 ifeq ($(MODE),quick)
 MODEFLAGS	::= -O0
-__DEV__		::=
 else ifeq ($(MODE),production)
 MODEFLAGS	::= -O3 -DNDEBUG
 LDMODEFLAGS	 += -Wl,--no-undefined
 LTOFLAGS	 += $(if $(HAVE_CLANG), -flto=thin, -flto)
-__DEV__		::=
 else ifeq ($(MODE),devel)
 MODEFLAGS	::= -g -O2
 LDMODEFLAGS	 += -Wl,--no-undefined -g
@@ -62,7 +59,7 @@ else ifeq ($(MODE),lsan)
 MODEFLAGS	::= -Og -fno-omit-frame-pointer -fstack-protector-all -fno-inline -g -fsanitize=leak
 LDMODEFLAGS	 += -g -fsanitize=leak
 endif
-MODEFLAGS        += $(if $(__DEV__),-DASE_ENABLE_DEBUG -DG_ENABLE_DEBUG)
+MODEFLAGS        += $(if $(filter true,$(__DEV__)),-DASE_ENABLE_DEBUG -DG_ENABLE_DEBUG)
 
 # Beware, -ffast-math disables errno from math functions, math traps and signaling NaNs.
 # It adds: -fno-math-errno -fno-rounding-math -fno-signaling-nans -fno-trapping-math

@@ -38,33 +38,91 @@ and run it.
 ## Roadmap
 Roadmap Discussions: Feedback & Ideas: [#52](https://github.com/tim-janik/anklang/issues/52)
 
-☑  Implement the application core in C++20 and the GUI as a web front-end, utilizing web browsers or Electron
+Phase 1: Foundation & Architecture (Completed)
 
-☑  Implement separate audio synthesis threads with MIDI device support
+☑  Application Core in C++20, with WebUI (HTML, CSS, JS based front-end GUI)
 
-☑  Support third-party plugins via [CLAP](https://github.com/free-audio/clap) [🗩 ](https://www.kvraudio.com/forum/viewtopic.php?t=574861)
+☑  Electron based WebUI & Vite-based UI build system
 
-☑  Pianoroll editing and ☐ MIDI note scripting
+☑  Migrate Vue2 → Vue3; migrate Vue3 → Lit
 
-☑  Add clip launcher with ☐ play order configuration
+☑  Use Hybrid Architecture (C++23 Backend → Lit Frontend)
 
-☑  Add devices for synthesis: BlepSynth
+☑  Reactive TypeScript IPC bindings
 
-☐  Add effects (and more devices): Chorus Delays Distortions LiquidSFZ Reverberation
+☑  Migrate Lit Frontend → SolidJS (partial)
 
-☐  Add arranger for clips and (stereo) samples
+☑  Replace old internal DSP engine with Tracktion Engine (regressions)
 
-☐  Add automation lanes with automation event recording
+☑  Tracktion Engine integration as primary audio/MIDI framework (partial)
 
-☐  Add mixer to adjust solo, mute, panning, volume per track
+Phase 2: Engine Migration (Current Focus)
 
-☐  Add mixer side chains or effect tracks
+☐  Project Save/Load integration with Tracktion Engine, self-contained file copies
 
-☐  Support third-party plugins via [LV2](https://en.wikipedia.org/wiki/LV2)
+☐  Migration of Project, Track, and Clip models to Tracktion architecture
+
+☐  Implement test sound generation and playback
+
+☐  Add JACK audio support via trkn
+
+☐  Adaptation of synthesis devices & effects (BlepSynth LiquidSFZ Freeverb Saturation)
+
+☐  Implement file selection UI for liquidsfz
+
+☐  Add effects (and more devices): Chorus Delays Distortions Reverberation FluidSynth
+
+☐  Adjust Settings dialog to new engine
+
+☑  Real-time audio/synthesis monitoring (uses outdated term "Telemetry")
+
+☐  Revamp Audio Device selection for new engine
+
+Phase 3: Core DAW Features
+
+☑  Pianoroll editing and timeline navigation
+
+☐  UI Polish (Electron lifecycle, focus trapping, and JS → TS migration)
+
+☐  Implement device editor (add/remove/trkn-devices)
+
+☐  Device management and property UIs
+
+☐  MIDI note scripting
+
+☐  MIDI file importer for multiple tracks
+
+Phase 4: Production Suite
+
+☐  Advanced Clip Launcher (play order, duration configuration)
+
+☐  Full Mixer (Solo, Mute, Pan, Volume), stereo bus routing, per-drum effects
+
+☐  Automation lanes with real-time event recording and modulation
+
+☐  Per-device modulators / LFOs / envelopes / step sequencers
+
+☐  Effect chains and preset management with macro parameters
+
+☐  Add sample downloader and sound library integration
 
 ☐  Add standard audio library for various instrument types
 
-☐  Implement a quality MIDI file importer with mappings into the audio library
+☐  Convenient audio track support (WAV via drag-and-drop)
+
+☐  Map MIDI file imports to the audio library
+
+Phase 5: Plugin Ecosystem & Beyond
+
+☐  Third-party plugin hosting (VST2, VST3)
+
+☐  Support third-party plugins via [LV2](https://en.wikipedia.org/wiki/LV2)
+
+☐  Support third-party plugins via [CLAP](https://github.com/free-audio/clap) [🗩 ](https://www.kvraudio.com/forum/viewtopic.php?t=574861)
+
+☐  AI-assisted composition and generative synthesis tools
+
+☐  Advanced spectral synthesis and granular sampling
 
 
 <!-- DEVELOPMENT -->
