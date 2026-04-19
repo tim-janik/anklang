@@ -260,8 +260,10 @@ ProjectImpl::ProjectImpl()
   numerator (4);
   denominator (4);
   edit_ = std::make_unique<te::Edit> (*trkn_engine(), te::Edit::forEditing);
-  if (edit_)
+  if (edit_) {
+    register_ase_obj (this, *edit_);
     transport_listener_ = std::make_unique<TransportListener> (edit_->getTransport(), *this);
+  }
   if (!edit_ || !transport_listener_)
     fatal_error ("failed to create tracktion::engine::edit");
 
@@ -292,6 +294,7 @@ ProjectImpl::deactivate_edit()
 
 ProjectImpl::~ProjectImpl()
 {
+  unregister_ase_obj (this, edit_.get());
   deactivate_edit();
   transport_listener_ = nullptr;
   edit_ = nullptr;
