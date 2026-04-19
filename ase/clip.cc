@@ -77,13 +77,14 @@ public:
 ClipImpl::ClipImpl (tracktion::Clip &clip) :
   clip_ (&clip)
 {
+  register_ase_obj (this, clip);
   state_listener_ = std::make_unique<ClipStateListener> (*this);
 }
 
 ClipImplP
 ClipImpl::from_trkn (tracktion::Clip &c)
 {
-  ClipImpl *clip = SelectableHandle::find_selectable_handle<ClipImpl> (c);
+  ClipImpl *clip = find_ase_obj<ClipImpl> (c);
   if (clip)
     return shared_ptr_cast<ClipImpl> (clip);
   ClipImplP clipp = ClipImpl::make_shared (c);
@@ -92,6 +93,7 @@ ClipImpl::from_trkn (tracktion::Clip &c)
 
 ClipImpl::~ClipImpl()
 {
+  unregister_ase_obj (this, clip_.get());
   state_listener_ = nullptr;
 }
 
@@ -99,9 +101,8 @@ ProjectImpl*
 ClipImpl::project () const
 {
   if (auto c = clip_.get())
-    if (auto t = c->getTrack())
-      if (auto timpl = SelectableHandle::find_selectable_handle<TrackImpl> (*t))
-        return timpl->project();
+    if (auto timpl = find_ase_obj<TrackImpl> (c->getTrack()))
+      return timpl->project();
   return nullptr;
 }
 
@@ -121,9 +122,8 @@ ssize_t
 ClipImpl::clip_index () const
 {
   if (auto c = clip_.get())
-    if (auto t = c->getTrack())
-      if (auto timpl = SelectableHandle::find_selectable_handle<TrackImpl> (*t))
-        return timpl->clip_index (*this);
+    if (auto timpl = find_ase_obj<TrackImpl> (c->getTrack()))
+      return timpl->clip_index (*this);
   return -1;
 }
 

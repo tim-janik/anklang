@@ -42,23 +42,23 @@ public:
   bool               operator!= (const SelectableWeakref &ref) const noexcept { return base_.get() != ref.base_.get(); }
 };
 
-/// Ase handle object for tracktion engine objects
-class SelectableHandle : public virtual VirtualBase, private tracktion::SelectableListener {
-  SelectableWeakref<tracktion::Selectable> selectable_;
-  static SelectableHandle* find_base_handle (tracktion::Selectable &selectable_obj);
-  void discard_selectable ();
-  void selectableObjectAboutToBeDeleted (tracktion::Selectable *object) override;
-  void selectableObjectChanged (tracktion::Selectable *object) override;
-public:
-  SelectableHandle (tracktion::Selectable &selectable_obj);
-  virtual ~SelectableHandle();
-  virtual void discarded ();
-  template<typename AseType> static AseType*
-  find_selectable_handle (tracktion::Selectable &selectable_obj)
-  {
-    SelectableHandle *handle = find_base_handle (selectable_obj);
-    return dynamic_cast<AseType*> (handle);
-  }
-};
+/// Helper: register AseImpl with a tracktion Selectable via ase_obj_
+void register_ase_obj (VirtualBase *ase_impl, tracktion::Selectable &selectable);
+/// Helper: unregister AseImpl from a tracktion Selectable (selectable may be nullptr)
+void unregister_ase_obj (VirtualBase *ase_impl, tracktion::Selectable *selectable);
+/// Helper: lookup Ase::VirtualBase from tracktion Selectable via ase_obj_
+VirtualBase* find_ase_obj_virtual_base (tracktion::Selectable *selectable);
+/// Helper: lookup AseType from tracktion Selectable via ase_obj_
+template<typename AseType> inline AseType*
+find_ase_obj (tracktion::Selectable &selectable)
+{
+  return dynamic_cast<AseType*> (find_ase_obj_virtual_base (&selectable));
+}
+/// Helper: lookup AseType from tracktion Selectable* via ase_obj_
+template<typename AseType> inline AseType*
+find_ase_obj (tracktion::Selectable *selectable)
+{
+  return selectable ? find_ase_obj<AseType> (*selectable) : nullptr;
+}
 
 } // Ase
