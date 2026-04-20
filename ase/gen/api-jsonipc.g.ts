@@ -703,6 +703,8 @@ export class Gadget // Ase::Gadget
   { return this.$rpc ("set_data", [this, arg1, arg2]); }
   get_data (arg1: string): Promise<any>
   { return this.$rpc ("get_data", [this, arg1]); }
+  remove_self (): Promise<void>
+  { return this.$rpc ("remove_self", [this]); }
 };
 Jsonipc.classes["Ase::Gadget"] = Gadget;
 
@@ -723,8 +725,6 @@ export class Device // Ase::Device
   { return this.$rpc ("get_devices", [this]); }
   set_devices (arg1: Device[]): Promise<void>
   { return this.$rpc ("set_devices", [this, arg1]); }
-  remove_self (): Promise<void>
-  { return this.$rpc ("remove_self", [this]); }
   gui_toggle (): Promise<void>
   { return this.$rpc ("gui_toggle", [this]); }
   gui_supported (): Promise<boolean>
@@ -863,8 +863,6 @@ export class Project // Ase::Project
   { this.$set ("is_playing", v); }
   create_track (): Promise<Track>
   { return this.$rpc ("create_track", [this]); }
-  remove_track (arg1: Track): Promise<boolean>
-  { return this.$rpc ("remove_track", [this, arg1]); }
   all_tracks (): Promise<Track[]>
   { return this.$rpc ("all_tracks", [this]); }
   master_track (): Promise<Track>

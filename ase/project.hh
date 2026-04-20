@@ -29,7 +29,9 @@ class ProjectImpl final : public DeviceImpl, public virtual Project {
   PStorage *storage_ = nullptr;
   String saved_filename_;
   bool discarded_ = false;
+  friend class TrackImpl;
   friend class UndoScope;
+  friend void test_audio_sample_load();
   UndoScope           add_undo_scope (const String &scopename);
 protected:
   explicit            ProjectImpl     ();
@@ -70,7 +72,7 @@ public:
   bool                 is_playing        () const override;
   void                 is_playing        (bool play) override;
   TrackP               create_track      () override;
-  bool                 remove_track      (Track &child) override;
+  void                 remove_self       () override;
   TrackS               all_tracks        () override;
   TrackP               master_track      () override;
   Error                load_project      (const String &utf8filename) override;

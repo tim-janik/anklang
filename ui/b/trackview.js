@@ -271,7 +271,7 @@ class BTrackView extends LitComponent {
       {
 	const del_track = this.track;
 	let tracks = App.project.all_tracks();
-	Data.project.remove_track (del_track);
+	del_track.remove_self ();
 	tracks = await tracks;
 	const index = Util.array_index_equals (tracks, del_track);
 	tracks.splice (index, 1);

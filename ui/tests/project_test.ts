@@ -115,3 +115,54 @@ export async function test_project_track_management (): Promise<boolean>
 
   return true;
 }
+
+/// Test that removing a track emits all_tracks notification
+export async function test_project_track_removal_notification (): Promise<boolean>
+{
+  const server = Ase.server;
+  const project = await server.create_project ("TrackRemovalNotificationTest");
+  if (!project)
+    throw new Error ("Failed to create project");
+
+  // Get initial track count
+  const tracks_before = await project.all_tracks();
+  const count_before = tracks_before.length;
+  if (count_before < 1)
+    throw new Error (`Expected at least 1 initial track, got: ${count_before}`);
+
+  // Create a new track
+  const new_track = await project.create_track();
+  if (!new_track)
+    throw new Error ("Failed to create track");
+  await project.$asyncs();
+
+  // Verify track count increased
+  const tracks_after_create = await project.all_tracks();
+  if (tracks_after_create.length !== count_before + 1)
+    throw new Error (`Track count not correct after create: expected ${count_before + 1}, got ${tracks_after_create.length}`);
+
+  // Listen for all_tracks notifications
+  let notification_count = 0;
+  const remove_listener = project.on ("notify:all_tracks", () => { notification_count++; });
+
+  // Remove the track
+  await new_track.remove_self();
+  await project.$asyncs();
+
+  // Verify the track is gone
+  const tracks_final = await project.all_tracks();
+  if (tracks_final.length !== count_before)
+    throw new Error (`Track count not correct after removal: expected ${count_before}, got ${tracks_final.length}`);
+
+  // Verify notification was emitted
+  if (notification_count <= 0)
+    throw new Error (`Expected all_tracks notification, got: ${notification_count}`);
+
+  // Clean up listener
+  remove_listener();
+
+  // Cleanup
+  await project.discard();
+
+  return true;
+}
