@@ -83,8 +83,18 @@ public:
     }
     asetrack_.update_telemetry();
   }
-  void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override {}
-  void valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree&, int) override {}
+  void
+  valueTreeChildAdded (juce::ValueTree &parent, juce::ValueTree &child) override
+  {
+    if (parent == track_state_ && te::Clip::isClipState (child))
+      asetrack_.emit_notify ("launcher_clips");
+  }
+  void
+  valueTreeChildRemoved (juce::ValueTree &parent, juce::ValueTree &child, int) override
+  {
+    if (parent == track_state_ && te::Clip::isClipState (child))
+      asetrack_.emit_notify ("launcher_clips");
+  }
   void valueTreeParentChanged (juce::ValueTree&) override {}
   void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override {}
 };
@@ -284,8 +294,9 @@ TrackImpl::launcher_clips()
   if (auto t = track_.get())
     if (auto ct = dynamic_cast<te::ClipTrack*> (t))
       for (auto *clip : ct->getClips())
-        if (auto clipimpl = ClipImpl::from_trkn (*clip))
-          clips.push_back (clipimpl);
+        if (dynamic_cast<te::MidiClip*> (clip))
+          if (auto clipimpl = ClipImpl::from_trkn (*clip))
+            clips.push_back (clipimpl);
   return clips;
 }
 

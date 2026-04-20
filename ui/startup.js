@@ -316,7 +316,7 @@ async function run_ui_tests ()
         throw new Error (`Test failed: ${test_name} (result=${result})`);
       await Ase.server.ui_test_report (test_name, true);
     } catch (e) {
-      console.error ("  ERROR    ", test_name, "exception:", e.message || e);
+      console.error ("  ERROR    ", test_name, "exception:", (e.message || e) + (e.stack ? '\n' + e.stack : ''));
       await Ase.server.ui_test_report (test_name, false);
     }
   } while (true);
