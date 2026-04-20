@@ -56,81 +56,27 @@ SelectableBaseref::set (const SelectableBaseref &other) noexcept
   weakref = otherref;
 }
 
-// == SelectableHandle ==
-using SelectableHandleMap = std::unordered_map<tracktion::Selectable*, SelectableHandle*>;
+// == ase_obj_ helpers ==
 
-static SelectableHandleMap&
-selectable_handle_map()
+void
+register_ase_obj (VirtualBase *ase_impl, tracktion::Selectable &selectable)
 {
-  static SelectableHandleMap *map = [] { return new SelectableHandleMap(); } ();
-  return *map;
-}
-
-SelectableHandle*
-SelectableHandle::find_base_handle (tracktion::Selectable &selectable_obj)
-{
-  SelectableHandleMap &map = selectable_handle_map();
-  auto it = map.find (&selectable_obj);
-  return it != map.end() ? it->second : nullptr;
-}
-
-SelectableHandle::SelectableHandle (tracktion::Selectable &selectable_obj)
-{
-  SelectableHandleMap &map = selectable_handle_map();
-  if (tracktion::Selectable::isSelectableValid (&selectable_obj)) {
-    selectable_ = &selectable_obj;
-    selectable_obj.addListener (this);
-    map[&selectable_obj] = this;
-  }
-}
-
-SelectableHandle::~SelectableHandle()
-{
-  discard_selectable();
+  assert_return (ase_impl != nullptr);
+  return_unless (selectable.ase_obj_ == nullptr);
+  selectable.ase_obj_ = ase_impl;
 }
 
 void
-SelectableHandle::discard_selectable()
+unregister_ase_obj (VirtualBase *ase_impl, tracktion::Selectable *selectable)
 {
-  tracktion::Selectable *selectable = selectable_.get();
-  return_unless (selectable != nullptr);
-  SelectableHandleMap &map = selectable_handle_map();
-  auto it = map.find (selectable);
-  if (it != map.end()) {
-    map.erase (it);
-    if (tracktion::Selectable::isSelectableValid (selectable))
-      selectable->removeListener (this);
-  }
-  selectable_ = nullptr;
+  if (selectable && selectable->ase_obj_ == ase_impl)
+    selectable->ase_obj_ = nullptr;
 }
 
-void
-SelectableHandle::selectableObjectAboutToBeDeleted (tracktion::Selectable *selectable)
+VirtualBase*
+find_ase_obj_virtual_base (tracktion::Selectable *selectable)
 {
-  if (this_thread_is_main()) {
-    warning ("TODO: verify this branch is reached");
-    discard_selectable();
-  } else {
-    // not in main thread, `this` could be in dtor in main thread
-    const SelectableHandle *handle = this; // save to re-check association
-    main_jobs += [selectable, handle] {
-      warning ("TODO: verify this lambda is reached");
-      // main thread
-      SelectableHandleMap &map = selectable_handle_map();
-      auto it = map.find (selectable);
-      if (it != map.end() &&  // selectable_ still valid
-          it->second == handle)                 // prevent ABA
-        const_cast<SelectableHandle*> (handle)->discard_selectable();
-    };
-  }
+  return selectable ? selectable->ase_obj_ : nullptr;
 }
-
-void
-SelectableHandle::selectableObjectChanged (tracktion::Selectable *object)
-{}
-
-void
-SelectableHandle::discarded ()
-{}
 
 } // Ase

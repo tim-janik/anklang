@@ -123,7 +123,7 @@ trkn_track_type (tracktion::Track &track)
 TrackImplP
 TrackImpl::from_trkn (tracktion::Track &t)
 {
-  TrackImpl *track = SelectableHandle::find_selectable_handle<TrackImpl> (t);
+  TrackImpl *track = find_ase_obj<TrackImpl> (t);
   if (track)
     return shared_ptr_cast<TrackImpl> (track);
   TrackImplP trackp = TrackImpl::make_shared (t);
@@ -131,9 +131,10 @@ TrackImpl::from_trkn (tracktion::Track &t)
 }
 
 TrackImpl::TrackImpl (tracktion::Track &track) :
-  project_ (SelectableHandle::find_selectable_handle<ProjectImpl> (track.edit)),
+  project_ (find_ase_obj<ProjectImpl> (track.edit)),
   track_ (&track), te_type_ (trkn_track_type (track))
 {
+  register_ase_obj (this, track);
   state_listener_ = std::make_unique<TrackStateListener> (*this);
   update_telemetry();
 }
@@ -146,6 +147,7 @@ TrackImpl::TrackImpl (ProjectImpl &project, bool masterflag) :
 
 TrackImpl::~TrackImpl()
 {
+  unregister_ase_obj (this, track_.get());
   state_listener_ = nullptr;
   assert_return (_parent() == nullptr);
 }
@@ -168,7 +170,7 @@ TrackImpl::name (const std::string &n)
 ProjectImpl*
 TrackImpl::project () const
 {
-  return static_cast<ProjectImpl*> (_parent());
+  return project_;
 }
 
 String
@@ -365,6 +367,21 @@ DeviceInfo
 TrackImpl::device_info()
 {
   return {};
+}
+
+void
+TrackImpl::remove_self ()
+{
+  return_unless (!is_master());
+  auto *track = track_.get();
+  if (track) {
+    // Remove from edit's track list
+    track_->edit.deleteTrack (track);
+    // Clear references
+    track_ = SelectableWeakref<tracktion::Track>{};
+    state_listener_ = nullptr;
+  }
+  GadgetImpl::remove_self();
 }
 
 // == TrackImpl::ClipScout ==
