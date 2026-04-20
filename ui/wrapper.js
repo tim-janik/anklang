@@ -113,8 +113,94 @@ class AseCachingWrapper {
 
 const aseobj_weakmap = new WeakMap();
 
-/** Wrap AseObject to cache properties and support __add__, __cleanup__ and auto cleanup.
- * @param {function|undefined} callback
+/** Wrap an ASE (C++ backend) object to cache async property/method results and react to
+ * backend notifications, enabling reactive UI updates without polling.
+ *
+ * ### What it does
+ * Wraps an ASE object (e.g., Track, Clip, Project) into a facade that lazily fetches and
+ * caches values from the C++ backend. When the backend emits a `notify:<prop>` event, the
+ * wrapper re-fetches the value and triggers UI re-renders.
+ *
+ * ### How it works
+ * 1. Creates a singleton `AseCachingWrapper` per ASE object (shared via WeakMap to avoid
+ *    duplicates when multiple UI components wrap the same object).
+ * 2. For each field name in `fields`, calls `__add__(prop, defaultvalue, callback)`:
+ *    a. Stores the current value in `wrapper.value` (fetched asynchronously via
+ *       `aseobj[prop]()` — works for both methods like `list_children()` and
+ *       async getters like `some_prop()`).
+ *    b. Registers a notification listener: `aseobj.on("notify:" + prop, refetch)`.
+ *       When the C++ backend calls `emit_notify("some_prop")`, this fires.
+ *    c. On refetch: compares old vs new value; if changed, calls callbacks and
+ *       `reactive_notify()` to trigger LitComponent re-renders.
+ *    d. Exposes a getter that tracks reactive dependencies for fine-grained reactivity.
+ * 3. Returns a facade object with `__aseobj__`, `__cleanup__()`, `__add__()`, and
+ *    `__promise__` (for awaiting pending async operations).
+ * 4. The facade's property getters delegate to `cwrapper?.[prop]?.get_value?.()`.
+ *
+ * ### Why it works (even for methods, not just properties)
+ * The wrapper treats all fields uniformly — it calls `aseobj[prop]()` regardless of
+ * whether the backend defines it as a property or a method. In the C++ API (api.hh),
+ * methods like `list_children()` return values just like property getters do. The
+ * notification system is separate: the C++ code calls `emit_notify("some_prop")`
+ * after `create_midi_clip()` modifies the track, which triggers the refetch. This means
+ * UI components can react to structural changes (new clips, new tracks) just as easily
+ * as to value changes (volume, pan, mute state).
+ *
+ * ### Usage pattern
+ * ```javascript
+ * // In a LitComponent's updated() method:
+ * updated (changed_props) {
+ *   if (changed_props.has ('track')) {
+ *     const weakthis = new WeakRef (this);
+ *     this.wtrack = wrap_ase_object (this.track, {
+ *       some_prop: []   // default value for initial render
+ *     }, () => weakthis.deref()?.requestUpdate());
+ *   }
+ * }
+ * // In render():
+ * render() {
+ *   return this.wtrack.some_prop.map(clip => html`<b-clipview .clip=${clip} />`);
+ * }
+ * ```
+ *
+ * ### What to watch out for
+ *
+ * **Array mutation**: Due to the nature of the bridging code, getters will always
+ * return a new array object.
+ *
+ * **WeakRef lifecycle**: The wrapper holds a `WeakRef` to the ASE object. If the C++
+ * object is destroyed (e.g., project discarded), the wrapper detects this in `async_refetch`
+ * and returns early. The facade's `__cleanup__()` is called via FinalizationRegistry when
+ * the facade is GC'd.
+ *
+ * **Component lifecycle**: The wrapper holds a strong reference to the callback. To avoid
+ * callbacks keeping components alive needlessly, pass WeakRef<Component> handles into
+ * callbacks.
+ *
+ * **Promise chaining**: Multiple pending refetches are chained via `this.__promise__`.
+ * When a new notification arrives, the previous in-flight request is awaited before the
+ * new one, preventing race conditions. The `$asyncs()` method can be used to wait for all
+ * pending operations.
+ *
+ * **Shared wrapper per ASE object**: The WeakMap ensures only one `AseCachingWrapper` per
+ * ASE object. Multiple UI components can wrap the same object safely — `__add__` increments
+ * a refcount, and `__del__` decrements it. Cleanup happens when count reaches zero.
+ *
+ * **Avoid freezing returned values**: The wrapper deliberately avoids `Util.freeze_deep()`
+ * on fetched values because downstream code may need to mutate composed values.
+ *
+ * **Notification naming**: The `notify:` prefix is convention. The C++ backend must emit
+ * `emit_notify("some_prop")` (matching the field name) for the UI to react. Without
+ * this, the wrapper will only fetch the initial value and never re-fetch.
+ *
+ * @param {object} aseobj - The ASE backend object to wrap (e.g., Track, Clip, Project).
+ * @param {object} fields - Map of field names to default values. Each key becomes a
+ *   reactive property on the facade. The value is fetched via `aseobj[fieldName]()`. Defaults
+ *   are used for initial render before the first async fetch completes.
+ * @param {function|undefined} callback - Optional shared callback invoked on every value
+ *   change (receives `prop, old, new`). Useful for triggering component re-renders.
+ * @returns {object} A facade object with reactive property getters, `__aseobj__` (raw ASE
+ *   object), `__cleanup__()` (manual cleanup), and `__promise__` (pending async ops).
  */
 export function wrap_ase_object (aseobj, fields = {}, callback = undefined)
 {
