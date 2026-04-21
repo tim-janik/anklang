@@ -532,13 +532,11 @@ $>/libsndfile/%.o: external/libsndfile/src/%.c		| $(dir $(sort $(LIBSNDFILE_OBJE
 	$(QECHO) CC $@
 	$Q $(CCACHE) $(CC) -fPIC $(compiledefs) $(compilecxxflags) \
 		-I external/libsndfile/include -I external/libsndfile/src -I $>/libsndfile/ \
-		-Dsndfile_EXPORTS -DNDEBUG -c $< -o $@
+		$(SNDFILEDEPS_CFLAGS) -Dsndfile_EXPORTS -DNDEBUG -c $< -o $@
 $(call BUILD_SHARED_LIB,			\
 	$(lib/libsndfile.so),			\
 	$(LIBSNDFILE_OBJECTS),			\
 	ase/Makefile.mk | $>/lib/,		\
-	$(shell $(PKG_CONFIG) --libs		\
-		libmpg123 lame			\
-		vorbis vorbisenc flac ogg opus),\
+	$(SNDFILEDEPS_LIBS),				\
 	../lib)
 ase/sndfile.cc: $>/libsndfile/config.h	# includes libsndfile/config.h
