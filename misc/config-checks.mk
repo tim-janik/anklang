@@ -79,6 +79,8 @@ ASEDEPS_PACKAGES ::= libpcre2-8 zlib opus flac dbus-1 \
 		     ogg vorbis vorbisenc vorbisfile \
 		     glib-2.0 gobject-2.0 gmodule-no-export-2.0 \
 		     libpng libjpeg freetype2
+# used for building libsndfile
+SNDFILEDEPS_PACKAGES ::= libmpg123 lame vorbis vorbisenc flac ogg opus
 # used for ANKLANG_JACK_LIBS
 ANKLANGDEP_JACK  ::= jack >= 0.125.0
 
@@ -111,6 +113,10 @@ $>/config-cache.mk: misc/config-checks.mk $(REPOCOMMITDEPS) | $>/./
 	  && echo "ASEDEPS_CFLAGS ::= $$ASEDEPS_CFLAGS"		>>$@.tmp
 	$Q ASEDEPS_LIBS=$$($(PKG_CONFIG) --libs $(ASEDEPS_PACKAGES)) \
 	  && echo "ASEDEPS_LIBS ::= $$ASEDEPS_LIBS"		>>$@.tmp
+	$Q SNDFILEDEPS_CFLAGS=$$($(PKG_CONFIG) --cflags $(SNDFILEDEPS_PACKAGES)) \
+	  && echo "SNDFILEDEPS_CFLAGS ::= $$SNDFILEDEPS_CFLAGS"	>>$@.tmp
+	$Q SNDFILEDEPS_LIBS=$$($(PKG_CONFIG) --libs $(SNDFILEDEPS_PACKAGES)) \
+	  && echo "SNDFILEDEPS_LIBS ::= $$SNDFILEDEPS_LIBS"	>>$@.tmp
 	$Q ALSA_LIBS='-lasound' \
 	  && echo "ALSA_LIBS ::= $$ALSA_LIBS"			>>$@.tmp \
 	  && $(call conftest_require_lib, alsa/asoundlib.h, snd_asoundlib_version, $$ALSA_LIBS)
