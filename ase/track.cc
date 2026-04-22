@@ -462,4 +462,13 @@ TrackImpl::create_audio_clip (const String &name, double start, double length)
   return nullptr;
 }
 
+tracktion::Plugin*
+TrackImpl::create_plugin (const String &type)
+{
+  auto synth = track_.get()->edit.getPluginCache().createNewPlugin (type.c_str(), {});
+  if (synth)
+    track_.get()->pluginList.insertPlugin (synth, 0, nullptr);
+  return synth.get();
+}
+
 } // Ase
