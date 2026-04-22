@@ -153,11 +153,11 @@ external/libsamplerate/.sha-$(libsamplerate/sha):
 EXTERNAL_CXX_STAMPS += external/libsamplerate/.sha-$(libsamplerate/sha)
 
 # == external/liquidsfz/ ==
-liquidsfz/sha := 8c6d6a58042eaeae83f0ea7cc3c9e1785aac2ae030921d442dcc7f18b2aa4254
+liquidsfz/sha := fe779175ee9d992988dfdf94f0a8dd3f4dae69102d221262a5bc98f98f0528e0
 external/liquidsfz/.sha-$(liquidsfz/sha):
 	$(QGEN)
 	$Q $(call fetch-and-check, external/liquidsfz.tar.gz, $(liquidsfz/sha), \
-		https://github.com/swesterfeld/liquidsfz/archive/a52bfb18489a95db88f500507d7aaa62622106fd/develop.tar.gz)
+		https://github.com/swesterfeld/liquidsfz/archive/c695cddcf7626d868fa1503712172b117108ef04/develop.tar.gz)
 	$Q rm -rf external/liquidsfz && mkdir external/liquidsfz
 	$Q tar xf external/liquidsfz.tar.gz --strip-components=1 -C external/liquidsfz/
 	$Q touch $@
