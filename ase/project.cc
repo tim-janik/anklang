@@ -256,34 +256,51 @@ private:
   PStorage **const ptrp_ = nullptr;
 };
 
-static tracktion::MidiClip::Ptr
-test_sfz_clip (tracktion::Edit &edit, const String& filename)
+static void
+test_sfz (ProjectImpl *project, te::Edit *edit, const String &filename)
 {
-  edit.ensureNumberOfAudioTracks (1);
-  if (auto track = tracktion::getAudioTracks (edit)[0]) {
-    auto& ts = edit.tempoSequence;
-    auto newClip = track->insertMIDIClip ("SFZ", ts.toTime ({ 0_bp, 16_bp }), nullptr);
-    auto& seq = newClip->getSequence();
+  TrackP track = project->create_track();
+  assert (track);
+  track->name ("LiquidSFZTest");
 
-    auto um = &edit.getUndoManager();
+  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
+  assert (trackimpl);
 
-    // Add some notes
-    seq.addNote (60, 0_bp, 4_bd, 100, 0, um); // C4
-    seq.addNote (64, 4_bp, 4_bd, 100, 0, um); // E4
-    seq.addNote (67, 8_bp, 4_bd, 100, 0, um); // G4
+  double start = 0;
+  double duration = 4;
+  ClipP clip = trackimpl->create_midi_clip ("NotesClip", start, duration);
+  assert (clip);
 
-    auto& engine = edit.engine;
-    engine.getPluginManager().createBuiltInType<LiquidSFZPlugin>();
+  ClipNoteS batch;
+  auto add_note = [&] (int start, int key, int duration)
+    {
+      ClipNote note;
+      note.id = -1;
+      note.key = key;
+      note.channel = 0;
+      note.tick = start * TRANSPORT_PPQN;
+      note.duration = duration * TRANSPORT_PPQN;
+      note.velocity = 0.8f;
+      batch.push_back (note);
+    };
+  add_note (0, 60, 1);
+  add_note (1, 64, 1);
+  add_note (2, 67, 1);
+  clip->change_batch (batch, "Add Note");
 
-    auto synth = track->edit.getPluginCache().createNewPlugin (LiquidSFZPlugin::xmlTypeName, {});
-    track->pluginList.insertPlugin (synth, 0, nullptr);
+  auto& engine = edit->engine;
+  engine.getPluginManager().createBuiltInType<LiquidSFZPlugin>();
 
-    if (auto liquidsfz = dynamic_cast<LiquidSFZPlugin *> (synth.get()))
-      liquidsfz->load (filename);
+  auto plugin = trackimpl->create_plugin (LiquidSFZPlugin::xmlTypeName);
+  assert (plugin);
 
-    return newClip;
-  }
-  return {};
+  if (auto liquidsfz = dynamic_cast<LiquidSFZPlugin *> (plugin))
+    liquidsfz->load (filename);
+
+  auto &transport = edit->getTransport();
+  transport.setLoopRange({ tracktion::TimePosition::fromSeconds (start), tracktion::TimeDuration::fromSeconds (duration) });
+  transport.looping = true;
+  transport.setPosition (tracktion::TimePosition::fromSeconds (start));
 }
 
 ProjectImpl::ProjectImpl()
@@ -298,6 +315,9 @@ ProjectImpl::ProjectImpl()
   }
   if (!edit_ || !transport_listener_)
     fatal_error ("failed to create tracktion::engine::edit");
+
+  if (auto filename = getenv ("SFZ"))
+    test_sfz (this, edit_.get(), filename);
 
   edit_->getUndoManager().clearUndoHistory();
 
