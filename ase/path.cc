@@ -898,6 +898,48 @@ simplify_abspath (const std::string &abspath_expression)
   return "/" + string_join ("/", dirs);
 }
 
+/// List files matching `abspath_glob` that are older than `min_age_seconds`
+StringS
+list_old_files (const String &abspath_glob, double min_age_seconds)
+{
+  StringS matches;
+  glob (abspath_glob, matches);
+  if (matches.empty())
+    return matches;
+  const double now = time (nullptr);
+  StringS old_files;
+  for (const auto &filepath : matches) {
+    struct stat st;
+    if (stat (filepath.c_str(), &st) == 0) {
+      const double age = now - st.st_mtime;
+      if (age > min_age_seconds)
+        old_files.push_back (filepath);
+    }
+  }
+  return old_files;
+}
+
+/// Extract the stem from the last '*' part of `abspath_glob` when matched against `matched_path`
+String
+glob_stem (const String &abspath_glob, const String &matched_path)
+{
+  const size_t star_pos = abspath_glob.rfind ('*');
+  if (star_pos == String::npos)
+    return "";
+  const size_t prefix_len = star_pos;
+  const size_t suffix_len = abspath_glob.size() - star_pos - 1;
+  if (matched_path.size() < prefix_len + suffix_len)
+    return "";
+  if (std::memcmp (abspath_glob.data(), matched_path.data(), prefix_len) != 0)
+    return "";
+  if (std::memcmp (abspath_glob.data() + star_pos + 1,
+                   matched_path.data() + matched_path.size() - suffix_len,
+                   suffix_len) != 0)
+    return "";
+  return String (matched_path.data() + prefix_len,
+                 matched_path.size() - prefix_len - suffix_len);
+}
+
 static char* // return malloc()-ed buffer containing a full read of FILE
 file_memread (FILE *stream, size_t *lengthp, ssize_t maxlength)
 {

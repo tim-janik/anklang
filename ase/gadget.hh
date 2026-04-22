@@ -32,6 +32,7 @@ public:
   PropertyS      access_properties () override;
   bool           set_data          (const String &key, const Value &v) override;
   Value          get_data          (const String &key) const override;
+  void           remove_self       () override;
   template<class O, class M> void _register_parameter (O*, M*, const Param::ExtraVals&) const;
   using MemberAccessF = std::function<bool(GadgetImpl*,const Value*,Value*)>;
   using MemberInfosP = const StringS& (*) ();

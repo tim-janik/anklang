@@ -489,9 +489,11 @@ main (int argc, char *argv[])
 
   // parse args and config
   parse_args (&argc, argv, main_app);
-  // copy ui_test_names to App.ui_tests
   main_app.ui_tests = ui_test_names;
-  logging_configure (arg_ui_mode != "none");
+  const int socket_port = arg_unauth_port > 0 ? arg_unauth_port : 0;
+  const char *socket_host = "127.0.0.1";
+  const auto socket_info = WebSocketServer::bind_port (socket_host, socket_port);
+  logging_configure (arg_ui_mode != "none" ? string_format ("%u", socket_info.port) : "");
 
   // handle loft preallocation needs
   main_loop->exec_dispatcher (dispatch_loft_lowmem, LoopPriority::SYSALLOC);
@@ -570,14 +572,12 @@ main (int argc, char *argv[])
   wss->http_alias ("/Builtin/Controller", anklang_runpath (RPath::INSTALLDIR, "/Controller"));
   // wss->http_alias ("/User/Scripts", anklang_home_dir ("/Scripts"));
   wss->http_alias ("/Builtin/Scripts", anklang_runpath (RPath::INSTALLDIR,"/Scripts"));
-  const int xport = arg_unauth_port > 0 ? arg_unauth_port : 0;
   const String subprotocol = ""; // make_auth_string()
   jsonapi_set_subprotocol (subprotocol);
   if (App.mode == MainApp::SYNTHENGINE && arg_ui_mode != "none") {
-    const char *host = "127.0.0.1";
-    wss->listen (host, xport, [] () { main_loop->quit (-1); });
+    wss->listen (socket_info, [] () { main_loop->quit (-1); });
     std::string webui_url = wss->url();
-    if (!xport) {
+    if (!socket_port) {
       String redirecthtml = webui_create_auth_redirect ("anklang", wss->listen_port(), auth_token, arg_ui_mode);
       if (errno)
         fatal_error ("%s: failed to create html redirect file in $HOME", redirecthtml);
@@ -588,7 +588,7 @@ main (int argc, char *argv[])
 
     WebuiFlags webui_flags = main_app.headless ? WebuiFlags::HEADLESS : WebuiFlags::NONE;
     if (main_app.ui_tests.size())
-      webui_flags = webui_flags | WebuiFlags::STDIO_REDIRECT | WebuiFlags::CONSOLE_LOGS;
+      webui_flags = webui_flags | WebuiFlags::CONSOLE_LOGS; // WebuiFlags::STDIO_REDIRECT
     auto ereason = webui_start_browser (arg_ui_mode, main_loop, webui_url, [] () { main_loop->quit (0); }, webui_flags);
 
     if (ereason.error)
@@ -627,6 +627,12 @@ main (int argc, char *argv[])
     }, LoopPriority::IDLE);
   // handle automatic shutdown
   main_loop->exec_dispatcher (handle_autostop);
+
+  // prune old log files after some time
+  main_loop->add ([] ()
+  {
+    logging_prune_old_logs (3.0 * 24.0 * 60.0 * 60.0);
+  }, std::chrono::milliseconds (5000), LoopPriority::IDLE);
 
   // run test suite
   if (App.mode == MainApp::CHECK_INTEGRITY_TESTS)

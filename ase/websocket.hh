@@ -46,15 +46,17 @@ protected:
 public:
   using MakeConnection = std::function<WebSocketConnectionP (WebSocketConnection::Internals&, int)>;
   using UnlistenCB = std::function<void ()>;
+  struct SocketInfo { int fd; String host; int port; };
   virtual void            http_dir      (const String &path) = 0;
   virtual void            http_alias    (const String &webdir, const String &path) = 0;
   virtual String          map_url       (const String &urlpath) = 0;
   virtual int             listen_port   () const = 0;
   virtual std::string     url           () const = 0;
-  virtual void            listen        (const String &host = "", int port = 0, const UnlistenCB& = {}) = 0;
+  virtual void            listen        (const SocketInfo &info, const UnlistenCB& = {}) = 0;
   virtual void            reset         () = 0;
   virtual void            shutdown      () = 0;
   virtual void            see_other     (const String &uri) = 0;
+  static SocketInfo       bind_port     (const String &host = "", int port = 0);
   static WebSocketServerP create        (const MakeConnection &make, int logflags = 0, const std::string &session_token = "");
   static String           user_agent    ();
   static String           mime_type     (const String &ext, bool utf8);

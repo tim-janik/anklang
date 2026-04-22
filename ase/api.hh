@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_API_HH__
-#define __ASE_API_HH__
+#pragma once
 
 #include <ase/member.hh>
 #include <ase/value.hh>
@@ -193,6 +192,8 @@ public:
   virtual bool        set_data          (const String &key, const Value &v) = 0;
   /// Retrieve session data.
   virtual Value       get_data          (const String &key) const = 0;
+  /// Remove self from parent container.
+  virtual void        remove_self       () = 0;
 };
 
 /// Info for device types.
@@ -221,7 +222,6 @@ public:
   virtual DeviceInfo device_info   () = 0;      ///< Describe this Device type.
   virtual DeviceS    get_devices   () const = 0; ///< List devices in order of processing, notified via "devs".
   virtual void       set_devices   (const DeviceS &devices) = 0; ///< Set the list of devices.
-  void               remove_self   ();          ///< Remove device from its container.
   // GUI handling
   virtual void       gui_toggle    () = 0;      ///< Toggle GUI display.
   virtual bool       gui_supported () = 0;      ///< Has GUI display facilities.
@@ -280,6 +280,8 @@ public:
   virtual double          pan                 () const = 0;          ///< Get track pan (-1.0 to 1.0).
   virtual void            pan                 (double pan) = 0;      ///< Set track pan (-1.0 to 1.0).
   virtual ClipS           launcher_clips      () = 0;                ///< Retrieve the list of clips that can be directly played.
+  virtual ClipP           create_midi_clip    (const String &name, double start, double length) = 0; ///< Create a new MIDI clip on this track.
+  virtual ClipP           create_audio_clip   (const String &name, double start, double length) = 0; ///< Create a new audio clip on this track.
   virtual DeviceP         access_device       () = 0;                ///< Retrieve Device handle for this track.
   virtual MonitorP        create_monitor      (int32 ochannel) = 0;  /// Create signal monitor for an output channel.
   virtual TelemetryFieldS telemetry           () const = 0;          ///< Retrieve track telemetry locations.
@@ -323,7 +325,6 @@ public:
   virtual bool            is_playing     () const = 0; ///< Check whether a project is currently playing (song sequencing).
   virtual void            is_playing     (bool) = 0;   ///< Set whether a project is currently playing (song sequencing).
   virtual TrackP          create_track   () = 0;       ///< Create and append a new Track.
-  virtual bool            remove_track   (Track&) = 0; ///< Remove a track owned by this Project.
   virtual TrackS          all_tracks     () = 0;       ///< List all tracks of the project.
   virtual TrackP          master_track   () = 0;       ///< Retrieve the master track.
   virtual Error           save_project   (const String &utf8filename, bool collect) = 0; ///< Store Project and collect external files.
@@ -433,5 +434,3 @@ public:
 #define ASE_SERVER      (::Ase::Server::instance())
 
 } // Ase
-
-#endif // __ASE_API_HH__

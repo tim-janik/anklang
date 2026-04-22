@@ -26,7 +26,7 @@
     Object.defineProperty (globalThis, '_', { value: t9n => t9n });
     Object.defineProperty (globalThis, 'CONFIG', { value: __VITE_CONFIG__ });
     Object.defineProperty (globalThis, '__DEV__', { value: !!CONFIG.__DEV__ });
-    Object.defineProperty (globalThis, 'debug', { value: CONFIG.mode != "production" ? console.log : () => undefined });
+    Object.defineProperty (globalThis, 'debug', { value: CONFIG.__DEV__ ? console.log : () => undefined });
     Object.defineProperty (globalThis, 'assert', { value: console.assert });
     Object.defineProperty (globalThis, 'Extra_css', { value: () => undefined });
     Object.defineProperty (document, 'skipViewTransition', { value: func => func() });

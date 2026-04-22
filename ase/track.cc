@@ -83,8 +83,18 @@ public:
     }
     asetrack_.update_telemetry();
   }
-  void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override {}
-  void valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree&, int) override {}
+  void
+  valueTreeChildAdded (juce::ValueTree &parent, juce::ValueTree &child) override
+  {
+    if (parent == track_state_ && te::Clip::isClipState (child))
+      asetrack_.emit_notify ("launcher_clips");
+  }
+  void
+  valueTreeChildRemoved (juce::ValueTree &parent, juce::ValueTree &child, int) override
+  {
+    if (parent == track_state_ && te::Clip::isClipState (child))
+      asetrack_.emit_notify ("launcher_clips");
+  }
   void valueTreeParentChanged (juce::ValueTree&) override {}
   void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override {}
 };
@@ -113,7 +123,7 @@ trkn_track_type (tracktion::Track &track)
 TrackImplP
 TrackImpl::from_trkn (tracktion::Track &t)
 {
-  TrackImpl *track = SelectableHandle::find_selectable_handle<TrackImpl> (t);
+  TrackImpl *track = find_ase_obj<TrackImpl> (t);
   if (track)
     return shared_ptr_cast<TrackImpl> (track);
   TrackImplP trackp = TrackImpl::make_shared (t);
@@ -121,9 +131,10 @@ TrackImpl::from_trkn (tracktion::Track &t)
 }
 
 TrackImpl::TrackImpl (tracktion::Track &track) :
-  project_ (SelectableHandle::find_selectable_handle<ProjectImpl> (track.edit)),
+  project_ (find_ase_obj<ProjectImpl> (track.edit)),
   track_ (&track), te_type_ (trkn_track_type (track))
 {
+  register_ase_obj (this, track);
   state_listener_ = std::make_unique<TrackStateListener> (*this);
   update_telemetry();
 }
@@ -136,6 +147,7 @@ TrackImpl::TrackImpl (ProjectImpl &project, bool masterflag) :
 
 TrackImpl::~TrackImpl()
 {
+  unregister_ase_obj (this, track_.get());
   state_listener_ = nullptr;
   assert_return (_parent() == nullptr);
 }
@@ -158,7 +170,7 @@ TrackImpl::name (const std::string &n)
 ProjectImpl*
 TrackImpl::project () const
 {
-  return static_cast<ProjectImpl*> (_parent());
+  return project_;
 }
 
 String
@@ -284,8 +296,9 @@ TrackImpl::launcher_clips()
   if (auto t = track_.get())
     if (auto ct = dynamic_cast<te::ClipTrack*> (t))
       for (auto *clip : ct->getClips())
-        if (auto clipimpl = ClipImpl::from_trkn (*clip))
-          clips.push_back (clipimpl);
+        if (dynamic_cast<te::MidiClip*> (clip))
+          if (auto clipimpl = ClipImpl::from_trkn (*clip))
+            clips.push_back (clipimpl);
   return clips;
 }
 
@@ -356,6 +369,21 @@ TrackImpl::device_info()
   return {};
 }
 
+void
+TrackImpl::remove_self ()
+{
+  return_unless (!is_master());
+  auto *track = track_.get();
+  if (track) {
+    // Remove from edit's track list
+    track_->edit.deleteTrack (track);
+    // Clear references
+    track_ = SelectableWeakref<tracktion::Track>{};
+    state_listener_ = nullptr;
+  }
+  GadgetImpl::remove_self();
+}
+
 // == TrackImpl::ClipScout ==
 TrackImpl::ClipScout::ClipScout() noexcept
 {
@@ -394,7 +422,7 @@ TrackImpl::ClipScout::update (const ClipScout &other)
   indices_ = other.indices_;
 }
 
-ClipImplP
+ClipP
 TrackImpl::create_midi_clip (const String &name, double start, double length)
 {
   if (auto t = track_.get()) {
@@ -414,7 +442,7 @@ TrackImpl::create_midi_clip (const String &name, double start, double length)
   return nullptr;
 }
 
-ClipImplP
+ClipP
 TrackImpl::create_audio_clip (const String &name, double start, double length)
 {
   if (auto t = track_.get()) {

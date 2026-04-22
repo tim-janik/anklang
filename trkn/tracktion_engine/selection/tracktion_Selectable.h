@@ -110,6 +110,8 @@ public:
     WeakRef::Master masterReference;
     [[ deprecated ("Use makeSafeRef() and SafeSelectable instead") ]] WeakRef getWeakRef() { return { this }; }
 
+    Ase::VirtualBase *ase_obj_ = nullptr;
+
 private:
     //==============================================================================
     juce::ListenerList<SelectableListener> selectableListeners;

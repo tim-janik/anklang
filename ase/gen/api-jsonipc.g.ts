@@ -32,6 +32,8 @@ interface JsonipcPrototype {
     $unwatchers?: CleanupCallback[];
   };
   toJSON(): { $id: number };
+  $rpc (method: string, params: any[]): Promise<any>;
+  $asyncs(): Promise<void>;	// Wait for all pending async operations to complete
   // Mixin method for classes with event handling
   on (event: string, callback: (...args: any[]) => void): () => void;
 };
@@ -57,55 +59,92 @@ export const Jsonipc = {
   idmap: {} as { [key: number]: (msg: JsonipcMessage) => void },
 
   /// Registry to run cleanup callbacks once an instance was garbage collected
-  cleanup_array_registry: new FinalizationRegistry<CleanupCallback[]> ((callback_array: CleanupCallback[]) => {
+  cleanup_array_registry: new FinalizationRegistry<CleanupCallback[]> ((callback_array: CleanupCallback[]) =>
+  {
     while (callback_array.length)
       callback_array.pop().call (undefined);
     // Note, verify this is called when altering $props.$weakthis & co
   }),
 
+  /// Set a reactive property remotely and return promise for completion
+  set_reactive_prop<T> (this: any, prop: string, val: T): Promise<any>
+  {
+    const promise = Jsonipc.send ('set/' + prop, [this, val]);
+    Jsonipc.add_prop_promise.call (this, promise);
+    return promise;
+  },
+
+  /// Chain a new promise to the object's async operation queue
+  add_prop_promise<T> (this: any, nextpromise: Promise<any>)
+  {
+    if (!this.$props.$promise) {
+      this.$props.$promise = nextpromise;
+      return this.$props.$promise;
+    }
+    // Create a WeakRef to the object so it can be GC'd even if promises hold references
+    const weakthis = Jsonipc.ensure_props.call (this).$weakthis;
+    // Chain the existing promise with the new one
+    const wrapperpromise = Promise.all ([this.$props.$promise, nextpromise]);
+    wrapperpromise.then (([_, nextresult]) =>
+      {
+        // Dereference the object - may be null if GC'd
+        const obj = weakthis.deref();
+        if (obj?.$props?.$promise === wrapperpromise)
+	  obj.$props.$promise = null;	// breaks references for GC
+        return nextresult;
+      });
+    wrapperpromise.catch (exc => {
+      const obj = weakthis.deref();
+      if (obj?.$props?.$promise === wrapperpromise)
+        obj.$props.$promise = null;
+      throw exc;
+    });
+    // assign synchronization point
+    this.$props.$promise = wrapperpromise;
+    return this.$props.$promise;
+  },
+
+  /// Install auto-fetching for prop and get its value
+  ensure_props (this: any): any
+  {
+    const this_props = this.$props;
+    if (!this_props.$weakthis) {
+      // install $props system
+      this_props.$weakthis = new WeakRef (this);	// helper to not keep `this` alive
+      this_props.$promise = null;			// present if $promise !== undefined
+      //this_props.$id = this.$id;			// DEBUG $id GC
+      const clean_this_props = (): void => {
+        //console.log ("GC: $id=" + this_props.$id, "delete $props");	// DEBUG $id GC
+        for (const k of Jsonipc.okeys (this_props))
+          delete this_props[k];				// allow GC for all fields
+      };
+      this_props.$unwatchers = [ clean_this_props ];
+      Jsonipc.cleanup_array_registry.register (this, this_props.$unwatchers, this_props.$unwatchers);
+      // We use this_props + $weakthis instead of `this` as object/data handle,
+      // to allow GC of `this`, which in turn calls all $props.$unwatchers[].
+    }
+    return this_props;
+  },
+
   /// Install auto-fetching for prop and get its value
   get_reactive_prop<T> (this: any, prop: string, dflt: T): T
   {
-    const this_props = this.$props;
+    const this_props = Jsonipc.ensure_props.call (this);
     // install prop if needed
     if (!this_props[prop]) {
-      // install $props system if needed
-      if (!this_props.$unwatchers) {
-        this_props.$weakthis = new WeakRef (this);	// helper to not keep `this` alive
-        this_props.$promise = null;			// present if $promise !== undefined
-        const clean_this_props = (): void => {
-          //console.log ("GC: $id=" + this_props.$id, "delete $props");  // DEBUG $id GC
-          for (const k of Jsonipc.okeys (this_props))
-            delete this_props[k];			// allow GC for all fields
-        };
-        this_props.$unwatchers = [ clean_this_props ];
-        Jsonipc.cleanup_array_registry.register (this, this_props.$unwatchers, this_props.$unwatchers);
-        //this_props.$id = this.$id;                                     // DEBUG $id GC
-
-        // We use this_props + $weakthis instead of `this` as object/data handle, to allow GC
-        // of `this`, which in turn calls all $props.$unwatchers[].
-      }
       this_props[prop] = new globalThis.Signal.State (dflt); // cached state
-      // refetch, maintain $promise while waiting
-      const refetch_prop = (): Promise<void> => {	// async, returns Promise, avoid keeping `this` alive
-        let fetch_promise: Promise<void>;
-        const last_promise = this_props.$promise;
-        const async_fetch_prop = async (): Promise<void> => {
+      const refetch_prop = (): Promise<T> =>
+      {
+        const async_fetch_prop = async (): Promise<void> =>
+	{
           const self = this_props.$weakthis?.deref();
           if (!self) return;
-          const result_promise = Jsonipc.send ('get/' + prop, [self]); // `this`
-          if (last_promise)
-            await last_promise;				// sync with last, before $promise reset
+          const result_promise = Jsonipc.send ('get/' + prop, [self]);
           const result = await result_promise;
-          if (this_props.$promise === fetch_promise) {
-            this_props.$promise = null;			// reset, this call is just being resolved
-          }
           const signal_state = this_props[prop] as SignalState<T>;
-	  signal_state.set (result);			// assign new value after reset, otherwise callbacks might see stale promise
+	  signal_state.set (result);			// assign new value
         };
-        // start fetching and remember call promise
-        this_props.$promise = fetch_promise = async_fetch_prop();
-        return fetch_promise;
+        return Jsonipc.add_prop_promise.call (this, async_fetch_prop());
       };
       const delnotifier = this.on ("notify:" + prop, refetch_prop);
       this_props.$unwatchers.push (delnotifier);
@@ -159,14 +198,44 @@ export const Jsonipc = {
       Jsonipc.pdefine (this, '$id', { value: $id });
       Jsonipc.pdefine (this, '$props', { value: {} });
       Jsonipc.finalization_registration (this);
-      // Note that Vue recursively invades *all* objects used in a Vue component,
-      // which ultimately leads to Signal.get choking on being called on a Proxy.
-      // Thus, for the time being, we have to freeze `this`.
+      // Freeze `this`, because otherwise frameworks like Vue recursively invade all
+      // objects and ultimately lead to Signal.get choking when `this` is a Proxy.
     }
     // JSON.stringify replacer
     toJSON(): { $id: number }
     {
       return { $id: this.$id };
+    }
+    // Send a Jsonipc request and await notifications
+    async $rpc (method: string, params: any[]): Promise<any>
+    {
+      const result = await Jsonipc.send (method, params);
+      if (this.$props.$promise)	// pending notifications
+	await this.$asyncs();	// await delivery
+      return result;
+    }
+    /// Get a reactive property value (fetches if needed)
+    $get<T> (prop: string, dflt: T): T
+    {
+      return Jsonipc.get_reactive_prop.call (this, prop, dflt) as T;
+    }
+    /// Set a reactive property remotely and await completion
+    async $set<T> (prop: string, val: T): Promise<any>
+    {
+      return await Jsonipc.set_reactive_prop.call (this, prop, val);
+    }
+    // Wait for all pending async operations to complete
+    async $asyncs()
+    {
+      const last_promise = this.$props.$promise;
+      // NOP if no async operation is pending
+      if (!last_promise)
+	return;
+      // await completion of any running async modifiocations
+      await last_promise;
+      // a new promise likely indicates the refetch() of a past modification
+      if (this.$props.$promise && last_promise !== this.$props.$promise)
+	await this.$props.$promise;
     }
     // JSON.parse reviver
     static fromJSON (key: string, value: any): any
@@ -187,7 +256,7 @@ export const Jsonipc = {
   },
 
   /// Send a Jsonipc request
-  send (this: any, method: string, params: any[]): Promise<any>
+  send (method: string, params: any[]): Promise<any>
   {
     if (!this.web_socket)
       throw globalThis.Error ("Jsonipc: connection closed");
@@ -529,11 +598,11 @@ export class Emittable // Ase::Emittable
   constructor ($id)
   { super ($id); if (new.target === Emittable) Jsonipc.ofreeze (this); }
   emit_event (arg1: string, arg2: string, arg3: { [key: string]: any }): Promise<void>
-  { return Jsonipc.send ("emit_event", [this, arg1, arg2, arg3]); }
+  { return this.$rpc ("emit_event", [this, arg1, arg2, arg3]); }
   emit_notify (arg1: string): Promise<void>
-  { return Jsonipc.send ("emit_notify", [this, arg1]); }
+  { return this.$rpc ("emit_notify", [this, arg1]); }
   js_trigger (arg1: string, arg2: any): Promise<void>
-  { return Jsonipc.send ("js_trigger", [this, arg1, arg2]); }
+  { return this.$rpc ("js_trigger", [this, arg1, arg2]); }
 };
 Jsonipc.classes["Ase::Emittable"] = Emittable;
 
@@ -543,61 +612,61 @@ export class Property // Ase::Property
   constructor ($id)
   { super ($id); if (new.target === Property) Jsonipc.ofreeze (this); }
   get normalized (): number
-  { return Jsonipc.get_reactive_prop.call (this, "normalized", 0.0) as number; }
+  { return this.$get ("normalized", 0.0) as number; }
   set normalized (v: number)
-  { Jsonipc.send ('set/' + 'normalized', [this, v]); }
+  { this.$set ("normalized", v); }
   get text (): string
-  { return Jsonipc.get_reactive_prop.call (this, "text", '') as string; }
+  { return this.$get ("text", '') as string; }
   set text (v: string)
-  { Jsonipc.send ('set/' + 'text', [this, v]); }
+  { this.$set ("text", v); }
   get name (): string
-  { return Jsonipc.get_reactive_prop.call (this, "name", '') as string; }
+  { return this.$get ("name", '') as string; }
   set name (v: string)
-  { Jsonipc.send ('set/' + 'name', [this, v]); }
+  { this.$set ("name", v); }
   get metadata (): string[]
-  { return Jsonipc.get_reactive_prop.call (this, "metadata", []) as string[]; }
+  { return this.$get ("metadata", []) as string[]; }
   set metadata (v: string[])
-  { Jsonipc.send ('set/' + 'metadata', [this, v]); }
+  { this.$set ("metadata", v); }
   ident (): Promise<string>
-  { return Jsonipc.send ("ident", [this]); }
+  { return this.$rpc ("ident", [this]); }
   label (): Promise<string>
-  { return Jsonipc.send ("label", [this]); }
+  { return this.$rpc ("label", [this]); }
   nick (): Promise<string>
-  { return Jsonipc.send ("nick", [this]); }
+  { return this.$rpc ("nick", [this]); }
   unit (): Promise<string>
-  { return Jsonipc.send ("unit", [this]); }
+  { return this.$rpc ("unit", [this]); }
   get_min (): Promise<number>
-  { return Jsonipc.send ("get_min", [this]); }
+  { return this.$rpc ("get_min", [this]); }
   get_max (): Promise<number>
-  { return Jsonipc.send ("get_max", [this]); }
+  { return this.$rpc ("get_max", [this]); }
   get_step (): Promise<number>
-  { return Jsonipc.send ("get_step", [this]); }
+  { return this.$rpc ("get_step", [this]); }
   reset (): Promise<void>
-  { return Jsonipc.send ("reset", [this]); }
+  { return this.$rpc ("reset", [this]); }
   get value (): any
-  { return Jsonipc.get_reactive_prop.call (this, "value", '') as any; }
+  { return this.$get ("value", '') as any; }
   set value (v: any)
-  { Jsonipc.send ('set/' + 'value', [this, v]); }
+  { this.$set ("value", v); }
   get_normalized (): Promise<number>
-  { return Jsonipc.send ("get_normalized", [this]); }
+  { return this.$rpc ("get_normalized", [this]); }
   set_normalized (arg1: number): Promise<boolean>
-  { return Jsonipc.send ("set_normalized", [this, arg1]); }
+  { return this.$rpc ("set_normalized", [this, arg1]); }
   get_text (): Promise<string>
-  { return Jsonipc.send ("get_text", [this]); }
+  { return this.$rpc ("get_text", [this]); }
   set_text (arg1: string): Promise<boolean>
-  { return Jsonipc.send ("set_text", [this, arg1]); }
+  { return this.$rpc ("set_text", [this, arg1]); }
   is_numeric (): Promise<boolean>
-  { return Jsonipc.send ("is_numeric", [this]); }
+  { return this.$rpc ("is_numeric", [this]); }
   choices (): Promise<Choice[]>
-  { return Jsonipc.send ("choices", [this]); }
+  { return this.$rpc ("choices", [this]); }
   hints (): Promise<string>
-  { return Jsonipc.send ("hints", [this]); }
+  { return this.$rpc ("hints", [this]); }
   blurb (): Promise<string>
-  { return Jsonipc.send ("blurb", [this]); }
+  { return this.$rpc ("blurb", [this]); }
   descr (): Promise<string>
-  { return Jsonipc.send ("descr", [this]); }
+  { return this.$rpc ("descr", [this]); }
   group (): Promise<string>
-  { return Jsonipc.send ("group", [this]); }
+  { return this.$rpc ("group", [this]); }
 };
 Jsonipc.classes["Ase::Property"] = Property;
 
@@ -615,25 +684,27 @@ export class Gadget // Ase::Gadget
   constructor ($id)
   { super ($id); if (new.target === Gadget) Jsonipc.ofreeze (this); }
   get name (): string
-  { return Jsonipc.get_reactive_prop.call (this, "name", '') as string; }
+  { return this.$get ("name", '') as string; }
   set name (v: string)
-  { Jsonipc.send ('set/' + 'name', [this, v]); }
+  { this.$set ("name", v); }
   type_nick (): Promise<string>
-  { return Jsonipc.send ("type_nick", [this]); }
+  { return this.$rpc ("type_nick", [this]); }
   list_properties (): Promise<string[]>
-  { return Jsonipc.send ("list_properties", [this]); }
+  { return this.$rpc ("list_properties", [this]); }
   access_property (arg1: string): Promise<Property>
-  { return Jsonipc.send ("access_property", [this, arg1]); }
+  { return this.$rpc ("access_property", [this, arg1]); }
   access_properties (): Promise<Property[]>
-  { return Jsonipc.send ("access_properties", [this]); }
+  { return this.$rpc ("access_properties", [this]); }
   get_value (arg1: string): Promise<any>
-  { return Jsonipc.send ("get_value", [this, arg1]); }
+  { return this.$rpc ("get_value", [this, arg1]); }
   set_value (arg1: string, arg2: any): Promise<boolean>
-  { return Jsonipc.send ("set_value", [this, arg1, arg2]); }
+  { return this.$rpc ("set_value", [this, arg1, arg2]); }
   set_data (arg1: string, arg2: any): Promise<boolean>
-  { return Jsonipc.send ("set_data", [this, arg1, arg2]); }
+  { return this.$rpc ("set_data", [this, arg1, arg2]); }
   get_data (arg1: string): Promise<any>
-  { return Jsonipc.send ("get_data", [this, arg1]); }
+  { return this.$rpc ("get_data", [this, arg1]); }
+  remove_self (): Promise<void>
+  { return this.$rpc ("remove_self", [this]); }
 };
 Jsonipc.classes["Ase::Gadget"] = Gadget;
 
@@ -643,25 +714,23 @@ export class Device // Ase::Device
   constructor ($id)
   { super ($id); if (new.target === Device) Jsonipc.ofreeze (this); }
   get devices (): Device[]
-  { return Jsonipc.get_reactive_prop.call (this, "devices", []) as Device[]; }
+  { return this.$get ("devices", []) as Device[]; }
   set devices (v: Device[])
-  { Jsonipc.send ('set/' + 'devices', [this, v]); }
+  { this.$set ("devices", v); }
   is_active (): Promise<boolean>
-  { return Jsonipc.send ("is_active", [this]); }
+  { return this.$rpc ("is_active", [this]); }
   device_info (): Promise<DeviceInfo>
-  { return Jsonipc.send ("device_info", [this]); }
+  { return this.$rpc ("device_info", [this]); }
   get_devices (): Promise<Device[]>
-  { return Jsonipc.send ("get_devices", [this]); }
+  { return this.$rpc ("get_devices", [this]); }
   set_devices (arg1: Device[]): Promise<void>
-  { return Jsonipc.send ("set_devices", [this, arg1]); }
-  remove_self (): Promise<void>
-  { return Jsonipc.send ("remove_self", [this]); }
+  { return this.$rpc ("set_devices", [this, arg1]); }
   gui_toggle (): Promise<void>
-  { return Jsonipc.send ("gui_toggle", [this]); }
+  { return this.$rpc ("gui_toggle", [this]); }
   gui_supported (): Promise<boolean>
-  { return Jsonipc.send ("gui_supported", [this]); }
+  { return this.$rpc ("gui_supported", [this]); }
   gui_visible (): Promise<boolean>
-  { return Jsonipc.send ("gui_visible", [this]); }
+  { return this.$rpc ("gui_visible", [this]); }
 };
 Jsonipc.classes["Ase::Device"] = Device;
 
@@ -671,37 +740,37 @@ export class Clip // Ase::Clip
   constructor ($id)
   { super ($id); if (new.target === Clip) Jsonipc.ofreeze (this); }
   is_muted (): Promise<boolean>
-  { return Jsonipc.send ("is_muted", [this]); }
+  { return this.$rpc ("is_muted", [this]); }
   set_muted (arg1: boolean): Promise<void>
-  { return Jsonipc.send ("set_muted", [this, arg1]); }
+  { return this.$rpc ("set_muted", [this, arg1]); }
   get volume (): number
-  { return Jsonipc.get_reactive_prop.call (this, "volume", 0.0) as number; }
+  { return this.$get ("volume", 0.0) as number; }
   set volume (v: number)
-  { Jsonipc.send ('set/' + 'volume', [this, v]); }
+  { this.$set ("volume", v); }
   get pan (): number
-  { return Jsonipc.get_reactive_prop.call (this, "pan", 0.0) as number; }
+  { return this.$get ("pan", 0.0) as number; }
   set pan (v: number)
-  { Jsonipc.send ('set/' + 'pan', [this, v]); }
+  { this.$set ("pan", v); }
   get all_notes (): ClipNote[]
-  { return Jsonipc.get_reactive_prop.call (this, "all_notes", []) as ClipNote[]; }
+  { return this.$get ("all_notes", []) as ClipNote[]; }
   set all_notes (v: ClipNote[])
-  { Jsonipc.send ('set/' + 'all_notes', [this, v]); }
+  { this.$set ("all_notes", v); }
   get end_tick (): number
-  { return Jsonipc.get_reactive_prop.call (this, "end_tick", 0) as number; }
+  { return this.$get ("end_tick", 0) as number; }
   set end_tick (v: number)
-  { Jsonipc.send ('set/' + 'end_tick', [this, v]); }
+  { this.$set ("end_tick", v); }
   start_tick (): Promise<number>
-  { return Jsonipc.send ("start_tick", [this]); }
+  { return this.$rpc ("start_tick", [this]); }
   stop_tick (): Promise<number>
-  { return Jsonipc.send ("stop_tick", [this]); }
+  { return this.$rpc ("stop_tick", [this]); }
   assign_range (arg1: number, arg2: number): Promise<void>
-  { return Jsonipc.send ("assign_range", [this, arg1, arg2]); }
+  { return this.$rpc ("assign_range", [this, arg1, arg2]); }
   change_batch (arg1: ClipNote[], arg2: string): Promise<number>
-  { return Jsonipc.send ("change_batch", [this, arg1, arg2]); }
+  { return this.$rpc ("change_batch", [this, arg1, arg2]); }
   list_all_notes (): Promise<ClipNote[]>
-  { return Jsonipc.send ("list_all_notes", [this]); }
+  { return this.$rpc ("list_all_notes", [this]); }
   telemetry (): Promise<TelemetryField[]>
-  { return Jsonipc.send ("telemetry", [this]); }
+  { return this.$rpc ("telemetry", [this]); }
 };
 Jsonipc.classes["Ase::Clip"] = Clip;
 
@@ -711,35 +780,39 @@ export class Track // Ase::Track
   constructor ($id)
   { super ($id); if (new.target === Track) Jsonipc.ofreeze (this); }
   get midi_channel (): number
-  { return Jsonipc.get_reactive_prop.call (this, "midi_channel", 0) as number; }
+  { return this.$get ("midi_channel", 0) as number; }
   set midi_channel (v: number)
-  { Jsonipc.send ('set/' + 'midi_channel', [this, v]); }
+  { this.$set ("midi_channel", v); }
   is_master (): Promise<boolean>
-  { return Jsonipc.send ("is_master", [this]); }
+  { return this.$rpc ("is_master", [this]); }
   is_muted (): Promise<boolean>
-  { return Jsonipc.send ("is_muted", [this]); }
+  { return this.$rpc ("is_muted", [this]); }
   set_muted (arg1: boolean): Promise<void>
-  { return Jsonipc.send ("set_muted", [this, arg1]); }
+  { return this.$rpc ("set_muted", [this, arg1]); }
   is_solo (): Promise<boolean>
-  { return Jsonipc.send ("is_solo", [this]); }
+  { return this.$rpc ("is_solo", [this]); }
   set_solo (arg1: boolean): Promise<void>
-  { return Jsonipc.send ("set_solo", [this, arg1]); }
+  { return this.$rpc ("set_solo", [this, arg1]); }
   get volume (): number
-  { return Jsonipc.get_reactive_prop.call (this, "volume", 0.0) as number; }
+  { return this.$get ("volume", 0.0) as number; }
   set volume (v: number)
-  { Jsonipc.send ('set/' + 'volume', [this, v]); }
+  { this.$set ("volume", v); }
   get pan (): number
-  { return Jsonipc.get_reactive_prop.call (this, "pan", 0.0) as number; }
+  { return this.$get ("pan", 0.0) as number; }
   set pan (v: number)
-  { Jsonipc.send ('set/' + 'pan', [this, v]); }
+  { this.$set ("pan", v); }
   launcher_clips (): Promise<Clip[]>
-  { return Jsonipc.send ("launcher_clips", [this]); }
+  { return this.$rpc ("launcher_clips", [this]); }
+  create_midi_clip (arg1: string, arg2: number, arg3: number): Promise<Clip>
+  { return this.$rpc ("create_midi_clip", [this, arg1, arg2, arg3]); }
+  create_audio_clip (arg1: string, arg2: number, arg3: number): Promise<Clip>
+  { return this.$rpc ("create_audio_clip", [this, arg1, arg2, arg3]); }
   access_device (): Promise<Device>
-  { return Jsonipc.send ("access_device", [this]); }
+  { return this.$rpc ("access_device", [this]); }
   create_monitor (arg1: number): Promise<Monitor>
-  { return Jsonipc.send ("create_monitor", [this, arg1]); }
+  { return this.$rpc ("create_monitor", [this, arg1]); }
   telemetry (): Promise<TelemetryField[]>
-  { return Jsonipc.send ("telemetry", [this]); }
+  { return this.$rpc ("telemetry", [this]); }
 };
 Jsonipc.classes["Ase::Track"] = Track;
 
@@ -749,13 +822,13 @@ export class Monitor // Ase::Monitor
   constructor ($id)
   { super ($id); if (new.target === Monitor) Jsonipc.ofreeze (this); }
   get_output (): Promise<Device>
-  { return Jsonipc.send ("get_output", [this]); }
+  { return this.$rpc ("get_output", [this]); }
   get_ochannel (): Promise<number>
-  { return Jsonipc.send ("get_ochannel", [this]); }
+  { return this.$rpc ("get_ochannel", [this]); }
   get_mix_freq (): Promise<number>
-  { return Jsonipc.send ("get_mix_freq", [this]); }
+  { return this.$rpc ("get_mix_freq", [this]); }
   get_frame_duration (): Promise<number>
-  { return Jsonipc.send ("get_frame_duration", [this]); }
+  { return this.$rpc ("get_frame_duration", [this]); }
 };
 Jsonipc.classes["Ase::Monitor"] = Monitor;
 
@@ -765,65 +838,63 @@ export class Project // Ase::Project
   constructor ($id)
   { super ($id); if (new.target === Project) Jsonipc.ofreeze (this); }
   get bpm (): number
-  { return Jsonipc.get_reactive_prop.call (this, "bpm", 0.0) as number; }
+  { return this.$get ("bpm", 0.0) as number; }
   set bpm (v: number)
-  { Jsonipc.send ('set/' + 'bpm', [this, v]); }
+  { this.$set ("bpm", v); }
   get numerator (): number
-  { return Jsonipc.get_reactive_prop.call (this, "numerator", 0.0) as number; }
+  { return this.$get ("numerator", 0.0) as number; }
   set numerator (v: number)
-  { Jsonipc.send ('set/' + 'numerator', [this, v]); }
+  { this.$set ("numerator", v); }
   get denominator (): number
-  { return Jsonipc.get_reactive_prop.call (this, "denominator", 0.0) as number; }
+  { return this.$get ("denominator", 0.0) as number; }
   set denominator (v: number)
-  { Jsonipc.send ('set/' + 'denominator', [this, v]); }
+  { this.$set ("denominator", v); }
   discard (): Promise<void>
-  { return Jsonipc.send ("discard", [this]); }
+  { return this.$rpc ("discard", [this]); }
   start_playback (): Promise<void>
-  { return Jsonipc.send ("start_playback", [this]); }
+  { return this.$rpc ("start_playback", [this]); }
   pause_playback (): Promise<void>
-  { return Jsonipc.send ("pause_playback", [this]); }
+  { return this.$rpc ("pause_playback", [this]); }
   stop_playback (): Promise<void>
-  { return Jsonipc.send ("stop_playback", [this]); }
+  { return this.$rpc ("stop_playback", [this]); }
   get is_playing (): boolean
-  { return Jsonipc.get_reactive_prop.call (this, "is_playing", false) as boolean; }
+  { return this.$get ("is_playing", false) as boolean; }
   set is_playing (v: boolean)
-  { Jsonipc.send ('set/' + 'is_playing', [this, v]); }
+  { this.$set ("is_playing", v); }
   create_track (): Promise<Track>
-  { return Jsonipc.send ("create_track", [this]); }
-  remove_track (arg1: Track): Promise<boolean>
-  { return Jsonipc.send ("remove_track", [this, arg1]); }
+  { return this.$rpc ("create_track", [this]); }
   all_tracks (): Promise<Track[]>
-  { return Jsonipc.send ("all_tracks", [this]); }
+  { return this.$rpc ("all_tracks", [this]); }
   master_track (): Promise<Track>
-  { return Jsonipc.send ("master_track", [this]); }
+  { return this.$rpc ("master_track", [this]); }
   save_project (arg1: string, arg2: boolean): Promise<Error>
-  { return Jsonipc.send ("save_project", [this, arg1, arg2]); }
+  { return this.$rpc ("save_project", [this, arg1, arg2]); }
   saved_filename (): Promise<string>
-  { return Jsonipc.send ("saved_filename", [this]); }
+  { return this.$rpc ("saved_filename", [this]); }
   load_project (arg1: string): Promise<Error>
-  { return Jsonipc.send ("load_project", [this, arg1]); }
+  { return this.$rpc ("load_project", [this, arg1]); }
   telemetry (): Promise<TelemetryField[]>
-  { return Jsonipc.send ("telemetry", [this]); }
+  { return this.$rpc ("telemetry", [this]); }
   group_undo (arg1: string): Promise<void>
-  { return Jsonipc.send ("group_undo", [this, arg1]); }
+  { return this.$rpc ("group_undo", [this, arg1]); }
   ungroup_undo (): Promise<void>
-  { return Jsonipc.send ("ungroup_undo", [this]); }
+  { return this.$rpc ("ungroup_undo", [this]); }
   undo (): Promise<void>
-  { return Jsonipc.send ("undo", [this]); }
+  { return this.$rpc ("undo", [this]); }
   can_undo (): Promise<boolean>
-  { return Jsonipc.send ("can_undo", [this]); }
+  { return this.$rpc ("can_undo", [this]); }
   redo (): Promise<void>
-  { return Jsonipc.send ("redo", [this]); }
+  { return this.$rpc ("redo", [this]); }
   can_redo (): Promise<boolean>
-  { return Jsonipc.send ("can_redo", [this]); }
+  { return this.$rpc ("can_redo", [this]); }
   length (): Promise<number>
-  { return Jsonipc.send ("length", [this]); }
+  { return this.$rpc ("length", [this]); }
   get master_volume (): number
-  { return Jsonipc.get_reactive_prop.call (this, "master_volume", 0.0) as number; }
+  { return this.$get ("master_volume", 0.0) as number; }
   set master_volume (v: number)
-  { Jsonipc.send ('set/' + 'master_volume', [this, v]); }
+  { this.$set ("master_volume", v); }
   match_serialized (arg1: string, arg2: number): Promise<string>
-  { return Jsonipc.send ("match_serialized", [this, arg1, arg2]); }
+  { return this.$rpc ("match_serialized", [this, arg1, arg2]); }
 };
 Jsonipc.classes["Ase::Project"] = Project;
 
@@ -833,17 +904,17 @@ export class ResourceCrawler // Ase::ResourceCrawler
   constructor ($id)
   { super ($id); if (new.target === ResourceCrawler) Jsonipc.ofreeze (this); }
   get folder (): Resource
-  { return Jsonipc.get_reactive_prop.call (this, "folder", {}) as Resource; }
+  { return this.$get ("folder", {}) as Resource; }
   set folder (v: Resource)
-  { Jsonipc.send ('set/' + 'folder', [this, v]); }
+  { this.$set ("folder", v); }
   get entries (): Resource[]
-  { return Jsonipc.get_reactive_prop.call (this, "entries", []) as Resource[]; }
+  { return this.$get ("entries", []) as Resource[]; }
   set entries (v: Resource[])
-  { Jsonipc.send ('set/' + 'entries', [this, v]); }
+  { this.$set ("entries", v); }
   assign (arg1: string, arg2: boolean): Promise<[string, string]>
-  { return Jsonipc.send ("assign", [this, arg1, arg2]); }
+  { return this.$rpc ("assign", [this, arg1, arg2]); }
   canonify (arg1: string, arg2: string, arg3: boolean, arg4: boolean): Promise<Resource>
-  { return Jsonipc.send ("canonify", [this, arg1, arg2, arg3, arg4]); }
+  { return this.$rpc ("canonify", [this, arg1, arg2, arg3, arg4]); }
 };
 Jsonipc.classes["Ase::ResourceCrawler"] = ResourceCrawler;
 
@@ -853,54 +924,54 @@ export class Server // Ase::Server
   constructor ($id)
   { super ($id); if (new.target === Server) Jsonipc.ofreeze (this); }
   shutdown (): Promise<void>
-  { return Jsonipc.send ("shutdown", [this]); }
+  { return this.$rpc ("shutdown", [this]); }
   get_version (): Promise<string>
-  { return Jsonipc.send ("get_version", [this]); }
+  { return this.$rpc ("get_version", [this]); }
   get_build_id (): Promise<string>
-  { return Jsonipc.send ("get_build_id", [this]); }
+  { return this.$rpc ("get_build_id", [this]); }
   get_opus_version (): Promise<string>
-  { return Jsonipc.send ("get_opus_version", [this]); }
+  { return this.$rpc ("get_opus_version", [this]); }
   get_flac_version (): Promise<string>
-  { return Jsonipc.send ("get_flac_version", [this]); }
+  { return this.$rpc ("get_flac_version", [this]); }
   get_sndfile_version (): Promise<string>
-  { return Jsonipc.send ("get_sndfile_version", [this]); }
+  { return this.$rpc ("get_sndfile_version", [this]); }
   error_blurb (arg1: Error): Promise<string>
-  { return Jsonipc.send ("error_blurb", [this, arg1]); }
+  { return this.$rpc ("error_blurb", [this, arg1]); }
   musical_tuning_label (arg1: MusicalTuning): Promise<string>
-  { return Jsonipc.send ("musical_tuning_label", [this, arg1]); }
+  { return this.$rpc ("musical_tuning_label", [this, arg1]); }
   musical_tuning_blurb (arg1: MusicalTuning): Promise<string>
-  { return Jsonipc.send ("musical_tuning_blurb", [this, arg1]); }
+  { return this.$rpc ("musical_tuning_blurb", [this, arg1]); }
   user_note (arg1: string, arg2: string, arg3: Flags, arg4: string): Promise<number>
-  { return Jsonipc.send ("user_note", [this, arg1, arg2, arg3, arg4]); }
+  { return this.$rpc ("user_note", [this, arg1, arg2, arg3, arg4]); }
   user_reply (arg1: number, arg2: number): Promise<boolean>
-  { return Jsonipc.send ("user_reply", [this, arg1, arg2]); }
+  { return this.$rpc ("user_reply", [this, arg1, arg2]); }
   broadcast_telemetry (arg1: TelemetrySegment[], arg2: number): Promise<boolean>
-  { return Jsonipc.send ("broadcast_telemetry", [this, arg1, arg2]); }
+  { return this.$rpc ("broadcast_telemetry", [this, arg1, arg2]); }
   list_preferences (): Promise<string[]>
-  { return Jsonipc.send ("list_preferences", [this]); }
+  { return this.$rpc ("list_preferences", [this]); }
   access_preference (arg1: string): Promise<Property>
-  { return Jsonipc.send ("access_preference", [this, arg1]); }
+  { return this.$rpc ("access_preference", [this, arg1]); }
   ui_config (): Promise<UiConfig>
-  { return Jsonipc.send ("ui_config", [this]); }
+  { return this.$rpc ("ui_config", [this]); }
   ui_test_fetch (): Promise<string>
-  { return Jsonipc.send ("ui_test_fetch", [this]); }
+  { return this.$rpc ("ui_test_fetch", [this]); }
   ui_test_report (arg1: string, arg2: boolean): Promise<void>
-  { return Jsonipc.send ("ui_test_report", [this, arg1, arg2]); }
+  { return this.$rpc ("ui_test_report", [this, arg1, arg2]); }
   engine_stats (): Promise<string>
-  { return Jsonipc.send ("engine_stats", [this]); }
+  { return this.$rpc ("engine_stats", [this]); }
   exit_program (arg1: number): Promise<void>
-  { return Jsonipc.send ("exit_program", [this, arg1]); }
+  { return this.$rpc ("exit_program", [this, arg1]); }
   last_project (): Promise<Project>
-  { return Jsonipc.send ("last_project", [this]); }
+  { return this.$rpc ("last_project", [this]); }
   create_project (arg1: string): Promise<Project>
-  { return Jsonipc.send ("create_project", [this, arg1]); }
+  { return this.$rpc ("create_project", [this, arg1]); }
   dir_crawler (arg1: string): Promise<ResourceCrawler>
-  { return Jsonipc.send ("dir_crawler", [this, arg1]); }
+  { return this.$rpc ("dir_crawler", [this, arg1]); }
   url_crawler (arg1: string): Promise<ResourceCrawler>
-  { return Jsonipc.send ("url_crawler", [this, arg1]); }
+  { return this.$rpc ("url_crawler", [this, arg1]); }
 };
 Jsonipc.classes["Ase::Server"] = Server;
 
 
 /**@type{ServerImpl}*/
-export let server: Promise<Server> | Server =Jsonipc.setup_promise_type (Server, s => server = s);
+export let server: Server =Jsonipc.setup_promise_type (Server, s => server = s) as unknown as Server;

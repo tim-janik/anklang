@@ -1,6 +1,32 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 'use strict';
 
+// == Variables ==
+let browser_window;
+
+// == Helpers ==
+// Wrap fn() to return [result, error], handle both sync throws and async rejections.
+const trycatch = fn => {
+  try { const pr = fn();
+    if (pr && typeof pr.then === 'function')
+      return pr.then (v => [v, null], ex => [undefined, ex]);
+    else return [pr, null];
+  } catch (ex) { return [undefined, ex]; }
+};
+// Attempt to execute fn(), silently catch errors or async rejections and return fallback.
+const tryelse = (ev, fn) => {
+  try { const pr = (fn || ev)();
+    if (pr && typeof pr.then === 'function')
+      return pr.catch (() => ev);
+    else return pr;
+  } catch (ex) { return ev; }
+};
+// Avoid any hangs, install handlers *before* imports
+process.on ('unhandledRejection', (reason, promise) => main_exit (-1, 'Unhandled Rejection:', promise, 'reason:', reason));
+// unhandledRejection: new Promise ((resolve, reject) => reject (new Error ('Testing unhandledRejection...')));
+process.on ('uncaughtException', (error, s, d) => main_exit (-1, 'Uncaught Exception:', error, error.stack));
+// uncaughtException: throw new Error ('Testing uncaughtException');
+
 // == Imports & Globals ==
 const package_json = require ('./package.json');
 Object.defineProperty (globalThis, '__DEV__', { value: package_json.__DEV__ });
@@ -10,8 +36,6 @@ const Esession = Electron.session;
 const os = require ('os');
 const fs = require ('fs');
 const path = require ('path');
-// Processes
-let browser_window;
 
 // == Config & Defaults ==
 const ELECTRON_CONFIG = { quitstartup: false, };
@@ -22,10 +46,6 @@ let console_stdout_fd = null;
 let console_stderr_fd = null;
 Eapp.commandLine.appendSwitch ('disk-cache-size', '0');
 Eapp.commandLine.appendSwitch ('disable-http-cache'); // disk cache for HTTP
-
-// == Helpers ==
-const trycatch = async fn => { try { return [ fn(), null ]; } catch (e) { return [undefined, e]; } };
-const trynext = async (ev, fn) => { try { return (fn || ev) (); } catch (e) { return ev; } };
 
 // == Caches ==
 const xdg_cache_dir = process.env.XDG_CACHE_HOME || path.join (os.homedir(), '.cache');
@@ -40,14 +60,14 @@ Eapp.setPath ('crashDumps', path.join (cache_dir, 'crashDumps'));
 // Clean up caches under ~/.cache/anklang/<PID> regularly
 async function cleanup_cache_dirs()
 {
-  for (const entry of await trynext ([], () => fs.promises.readdir (anklang_cache_root))) {
+  for (const entry of await tryelse ([], () => fs.promises.readdir (anklang_cache_root))) {
     const pid = parseInt (entry, 10);
     if (isNaN (pid)) continue;
     const pidpath = path.join (anklang_cache_root, entry);
-    const stat = await trynext (null, () => fs.promises.stat (pidpath));
+    const stat = await tryelse (null, () => fs.promises.stat (pidpath));
     if (!stat?.isDirectory()) continue;
-    if ("NoPID" == await trynext ("NoPID", () => process.kill (pid, 0)))
-      await trynext (() => fs.promises.rm (pidpath, { recursive: true, force: true }));
+    if ("NoPID" == await tryelse ("NoPID", () => process.kill (pid, 0)))
+      await trycatch (() => fs.promises.rm (pidpath, { recursive: true, force: true }));
   }
 }
 setTimeout (cleanup_cache_dirs, 3779);
@@ -74,7 +94,7 @@ function main_exit (exitcode, ...errmsgs)
       browser_window = null;
     }
   // remove excessive electron caches
-  trynext (() => fs.rmSync (cache_dir, { recursive: true, force: true }));
+  tryelse (() => fs.rmSync (cache_dir, { recursive: true, force: true }));
   if (main_exit.exit_code < 0)
     process.abort();
   Eapp.exit (5); // calls process.exit()
@@ -91,17 +111,6 @@ Eapp.once ('will-quit', e => {
    */
   main_exit (130);	// assume SIGINT
 });
-
-process.on ('unhandledRejection', (reason, promise) => {
-  // Terminate on Promise rejection
-  main_exit (-1, 'Unhandled Rejection:', promise, 'reason:', reason);
-});
-// new Promise ((resolve, reject) => reject (new Error ('Testing unhandledRejection...')));
-
-process.on ('uncaughtException', (error, s, d) => {
-  main_exit (-1, 'Uncaught Exception:', error, error.stack);
-});
-// throw new Error ('Testing uncaughtException');
 
 Eapp.once ('window-all-closed', () => {
   // Valid exit
@@ -175,10 +184,23 @@ function create_window (onclose)
   w.webContents.once ('crashed', () => main_exit (129)); // 'crashed' is SIGHUP or SIGTERM
   w.webContents.on ('console-message', (event) => {
     // https://www.electronjs.org/docs/latest/api/web-contents
-    const sourceId = event.sourceId.replace (/^[^ ]*\//, '');
-    const message = event.message;
-    const lineNumber = event.lineNumber;
-    let prefix = `${sourceId}:${lineNumber}: `;
+    const { resolve_source_location, resolve_stack_frames } = require ('./sourcemapping');
+    const source_id = event.sourceId;
+    let message = event.message;
+    const line_number = event.lineNumber;
+    let prefix = `${source_id}:${line_number}: `;
+
+    // Try to resolve to original source location via sourcemap
+    const resolved = resolve_source_location (source_id, line_number);
+    if (resolved) {
+      const pathname = 1 ? resolved.source : path.basename (resolved.source);
+      if (resolved.column > 0)
+	prefix = `${pathname}:${resolved.line}:${resolved.column}: `;
+      else
+	prefix = `${pathname}:${resolved.line}: `;
+      message = resolve_stack_frames (message);
+    }
+
     switch (event._level) {
     case 0: // VERBOSE
     case 1: // INFO
