@@ -11,7 +11,7 @@
 #include "storage.hh"
 #include "server.hh"
 #include "internal.hh"
-#include "liquidsfzplugin.hh"
+#include "devices/liquidsfz/liquidsfzplugin.hh"
 #include <list>
 
 #define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)

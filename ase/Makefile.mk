@@ -11,7 +11,6 @@ lib/AnklangSynthEngine		:= $>/lib/AnklangSynthEngine
 ase/generated.sources		:=
 ASE_EXTRA_INCLUDES := $(strip			\
 	-Itrkn					\
-	-Idevices/liquidsfz			\
 	-Iexternal				\
 	-Iexternal/clap/include			\
 	-Iexternal/crill/include		\
