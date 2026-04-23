@@ -10,7 +10,8 @@ ase/anklang.sources		:= $(filter-out $(ase/not-anklang.sources), $(wildcard ase/
 lib/AnklangSynthEngine		:= $>/lib/AnklangSynthEngine
 ase/generated.sources		:=
 ASE_EXTRA_INCLUDES := $(strip			\
-	-Itrkn				\
+	-Itrkn					\
+	-Idevices/liquidsfz			\
 	-Iexternal				\
 	-Iexternal/clap/include			\
 	-Iexternal/crill/include		\
