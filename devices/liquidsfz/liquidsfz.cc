@@ -100,6 +100,7 @@ class LiquidSFZ : public AudioProcessor {
   OBusId stereo_out_;
   Synth synth_;
   bool synth_need_reset_ = false;
+  bool instrument_changed_ = false;
   LiquidSFZLoader loader_;
 
   enum Params {
@@ -150,7 +151,7 @@ class LiquidSFZ : public AudioProcessor {
     switch (tag)
       {
       case INSTRUMENT:
-        loader_.load (text_param_from_quark (INSTRUMENT, irintf (get_param (tag))));
+        instrument_changed_ = true;
         break;
       }
   }
@@ -173,9 +174,14 @@ class LiquidSFZ : public AudioProcessor {
   void
   render (uint n_frames) override
   {
-    // TODO: rework the logic so midi_event_input(), and in particular MidiMessage::PARAM_VALUE are processed unconditionally
-    // See also: https://github.com/tim-janik/anklang/issues/44#issuecomment-2176839260
-    if (loader_.idle())
+    bool loader_idle = loader_.idle();
+    if (instrument_changed_ && loader_idle)
+      {
+        loader_.load (text_param_from_quark (INSTRUMENT, irintf (get_param (INSTRUMENT))));
+        instrument_changed_ = false;
+        loader_idle = loader_.idle(); /* calling load can change idle state */
+      }
+    if (loader_idle)
       {
         if (synth_need_reset_)
           {
@@ -216,6 +222,16 @@ class LiquidSFZ : public AudioProcessor {
       }
     else
       {
+        // loader thread is busy, so we can't access synth_ - ignore all events that affect synth_
+        MidiEventInput evinput = midi_event_input();
+        for (const auto &ev : evinput)
+          {
+            if (ev.message() == MidiMessage::PARAM_VALUE) // still track instrument changes, though
+              {
+                apply_event (ev);
+                adjust_param (ev.param);
+              }
+          }
         float *left_out = oblock (stereo_out_, 0);
         float *right_out = oblock (stereo_out_, 1);
 
