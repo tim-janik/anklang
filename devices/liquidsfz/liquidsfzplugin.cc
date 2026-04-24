@@ -14,6 +14,7 @@ LiquidSFZPlugin::RTMutex::try_lock()
   return !locked_flag.test_and_set();
 }
 
+/* TODO: either get gid of RTMutex or use RAII */
 void
 LiquidSFZPlugin::RTMutex::wait_for_lock()
 {
@@ -22,8 +23,8 @@ LiquidSFZPlugin::RTMutex::wait_for_lock()
       // this doesn't happen very often and we are in a non-RT thread, so we
       // can block it for some time
       //  => wait for less than one frame drawing time until trying again
-      float fps = 240;
-      usleep (1000 * 1000 / fps);
+      constexpr int fps = 240;
+      std::this_thread::sleep_for (std::chrono::microseconds (1000 * 1000 / fps));
     }
 }
 
@@ -48,6 +49,15 @@ LiquidSFZPlugin::load (const String& filename)
     result = synth_.load_bank (filename) && synth_.select_program (0);
   else
     result = synth_.load (filename);
+
+  /* TODO:
+   * - synth_.live_mode() needs to be set for offline rendering
+   * - synth_.set_gain() could be mapped to a property
+   * - synth_.list_programs(), select_program() needs UI and save/restore support
+   * - synth_.list_ccs() needs synthesis and UI support
+   * - synth_.list_keys() needs UI support
+   * - synth_.set_log_function() needs engine support
+   */
 
   rt_mutex_.unlock();
 
@@ -115,6 +125,7 @@ LiquidSFZPlugin::applyToBuffer (const tracktion::PluginRenderContext& fc)
                 {
                   synth_.all_sound_off();    // NOTE: there is no extra "all notes off" in liquidsfz
                 }
+              /* TODO: synth_.add_event_pitch_bend */
             }
         }
       /* TODO: make a decision here how UI parameters (which ought to be automatable) map to CC values
@@ -125,6 +136,14 @@ LiquidSFZPlugin::applyToBuffer (const tracktion::PluginRenderContext& fc)
        *  - should we support per note modulation?
        *
        * synth_.add_event_cc (frame, channel, cc, cc_value);
+       *
+       * What proprietary sforzando SFZ player vst3 seems to do:
+       *
+       *  - it does not maintain different CC state for different midi channels (changing
+       *    CC on midi channel 1 affects notes on midi channel 2)
+       *  - automating a parameter affects all notes, regardless of midi channel
+       *  - CC events affect all notes, regardless of midi channel
+       *  - no support for per-note modulation
        */
 
       float *left = fc.destBuffer->getWritePointer (0, fc.bufferStartSample);
