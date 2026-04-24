@@ -22,6 +22,12 @@ Roadmap Discussions: Feedback & Ideas: [#52](https://github.com/tim-janik/anklan
 
 ## Engine Migration (Current Focus) [0.5.0]
 
+☐  Implement device editor (add/remove/trkn-devices) [timj]
+
+☐  Device management and property UIs
+
+☐  Implement file selection UI for liquidsfz
+
 ☐  Project Save/Load integration with Tracktion Engine, self-contained file copies
 
 ☐  Migration of Project, Track, and Clip models to Tracktion architecture
@@ -31,8 +37,6 @@ Roadmap Discussions: Feedback & Ideas: [#52](https://github.com/tim-janik/anklan
 ☐  Add JACK audio support via trkn
 
 ☐  Adaptation of synthesis devices & effects (BlepSynth LiquidSFZ Freeverb Saturation)
-
-☐  Implement file selection UI for liquidsfz
 
 ☐  Add effects (and more devices): Chorus Delays Distortions Reverberation FluidSynth
 
@@ -48,9 +52,7 @@ Roadmap Discussions: Feedback & Ideas: [#52](https://github.com/tim-janik/anklan
 
 ☐  UI Polish (Electron lifecycle, focus trapping, and JS → TS migration)
 
-☐  Implement device editor (add/remove/trkn-devices)
-
-☐  Device management and property UIs
+☐  Use some Tracktion native devices (check quality, don't use every device)
 
 ☐  MIDI note scripting
 
