@@ -17,7 +17,6 @@
 #define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)
 
 using namespace std::literals;
-using namespace tracktion::literals;
 namespace te = tracktion::engine;
 
 namespace Ase {
