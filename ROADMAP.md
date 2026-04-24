@@ -26,7 +26,7 @@ Roadmap Discussions: Feedback & Ideas: [#52](https://github.com/tim-janik/anklan
 
 ☐  Device management and property UIs
 
-☐  Implement file selection UI for liquidsfz
+☐  Implement file selection UI for LiquidSFZ
 
 ☐  Project Save/Load integration with Tracktion Engine, self-contained file copies
 
