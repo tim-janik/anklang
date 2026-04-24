@@ -462,6 +462,9 @@ TrackImpl::create_audio_clip (const String &name, double start, double length)
   return nullptr;
 }
 
+/* TODO: this should be wrapped properly in a way that UI from JavaScript can create
+ * plugins
+ */
 tracktion::Plugin*
 TrackImpl::create_plugin (const String &type)
 {
