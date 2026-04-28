@@ -12,6 +12,7 @@
 #include "server.hh"
 #include "internal.hh"
 #include "devices/liquidsfz/liquidsfzplugin.hh"
+#include "devices/saturation/saturationplugin.hh"
 #include <list>
 
 #define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)
@@ -289,12 +290,21 @@ test_sfz (ProjectImpl *project, te::Edit *edit, const String &filename)
 
   auto& engine = edit->engine;
   engine.getPluginManager().createBuiltInType<LiquidSFZPlugin>();
+  engine.getPluginManager().createBuiltInType<SaturationPlugin>();
 
   auto plugin = trackimpl->create_plugin (LiquidSFZPlugin::xmlTypeName);
   assert (plugin);
 
   if (auto liquidsfz = dynamic_cast<LiquidSFZPlugin *> (plugin))
     liquidsfz->load (filename);
+
+  /* insert saturation after liquidsfz */
+  auto splugin = trackimpl->create_plugin (SaturationPlugin::xmlTypeName);
+  for (auto* p : splugin->getAutomatableParameters())
+    {
+      if (p->paramID == "drive")
+        p->setParameter (24, juce::sendNotification);
+    }
 
   auto &transport = edit->getTransport();
   transport.setLoopRange({ tracktion::TimePosition::fromSeconds (start), tracktion::TimeDuration::fromSeconds (duration) });
