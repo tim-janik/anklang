@@ -46,6 +46,7 @@ SaturationPlugin::~SaturationPlugin()
 
   drive->detachFromCurrentValue();
   mix->detachFromCurrentValue();
+  mode->detachFromCurrentValue();
 }
 
 void
