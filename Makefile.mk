@@ -135,8 +135,9 @@ export CCACHE_SLOPPINESS := $(CCACHE_SLOPPINESS),pch_defines,time_macros
 endif
 
 # == WILDCARD_FILES ==
-# WILDCARD_FILES contains a list of repository files that aren't mirrored from external sources
-WILDCARD_SUBDIRS := .github/ $(filter-out external/ node_modules/ out/ trkn/ $>/ $(wildcard *tmp*/), $(wildcard */)) # toplevel subdirs
+# WILDCARD_SUBDIRS contains repository subdirs for source files, and
+# WILDCARD_FILES lists all source files not vendored from external sources
+WILDCARD_SUBDIRS := .github/ ase/ devices/ doc/ electron/ images/ jsonipc/ misc/ rand/ ui/ x11test/ # external/ trkn/
 WILDCARD_SUBDIRS := $(wildcard $(WILDCARD_SUBDIRS) $(WILDCARD_SUBDIRS:%=%*/) $(WILDCARD_SUBDIRS:%=%*/*/) $(WILDCARD_SUBDIRS:%=%*/*/*/))
 WILDCARD_IGNORE  := $(wildcard *tmp* *LOG* TODO* *lock* config-defaults.mk TAGS .jj .git .cache trkn/*all.hh trkn/x*.hh *.gz)
 WILDCARD_FILES   := $(filter-out $(WILDCARD_IGNORE), $(wildcard external/Makefile.mk trkn/* $(WILDCARD_SUBDIRS:%=%.[^.]*) $(WILDCARD_SUBDIRS:%=%*) .[^.]* *)) # glob
