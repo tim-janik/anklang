@@ -103,6 +103,8 @@ public:
 
     res_up_left->reset();
     res_up_right->reset();
+    res_down_left->reset();
+    res_down_right->reset();
   }
   float
   lookup_table (float f)
