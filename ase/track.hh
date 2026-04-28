@@ -55,6 +55,7 @@ public:
   enum { NONE = -1 };
   ClipP           create_midi_clip  (const String &name, double start, double length) override;
   ClipP           create_audio_clip (const String &name, double start, double length) override;
+  tracktion::Plugin* create_plugin  (const String &type);
   static TrackImplP from_trkn (tracktion::Track&);
 };
 
