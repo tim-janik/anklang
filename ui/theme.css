@@ -163,7 +163,7 @@
   /* Assign webkit spin-button arrows that fit the theme */
   &::-webkit-inner-spin-button {
     -webkit-appearance: none; /* allow customizations */
-    width: 9px; margin-left: 5px; margin-right: $b-button-radius;
+    width: 9px; margin-left: 5px; margin-right: var(--b-button-radius);
     background: transparent url('gen/assets/spin-arrows.svg') no-repeat center center !important;
     background-size: 100% 100% !important;
     opacity: .5;
