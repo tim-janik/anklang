@@ -9,6 +9,7 @@
 #include "../external/liquidsfz/lib/pugixml.cc"
 #include "../external/liquidsfz/lib/samplecache.cc"
 #include "../external/liquidsfz/lib/sfpool.cc"
+#include "../external/liquidsfz/lib/sfzreader.cc"
 #include "../external/liquidsfz/lib/synth.cc"
 #include "../external/liquidsfz/lib/utils.cc"
 #include "../external/liquidsfz/lib/voice.cc"
