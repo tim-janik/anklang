@@ -470,7 +470,11 @@ TrackImpl::create_plugin (const String &type)
 {
   auto synth = track_.get()->edit.getPluginCache().createNewPlugin (type.c_str(), {});
   if (synth)
-    track_.get()->pluginList.insertPlugin (synth, 0, nullptr);
+    {
+      /* insert new plugin at the end of the plugin list */
+      auto& plugin_list = track_.get()->pluginList;
+      plugin_list.insertPlugin (synth, plugin_list.size(), nullptr);
+    }
   return synth.get();
 }
 
