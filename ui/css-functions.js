@@ -1,7 +1,39 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 import { parse } from "postcss-values-parser";
 
+function to_delta (node)
+{
+  const raw = node.toString().trim();
+  // Percent → convert to absolute delta
+  if (raw.endsWith ("%"))
+    return parseFloat (raw) * 0.01;
+  // If numeric, treat as absolute delta
+  const num = parseFloat (raw);
+  if (!isNaN (num))
+    return num;
+  // Fallback → passthrough (produces invalid CSS, but warn and let browser handle it)
+  console.warn (`css-functions: non-numeric amount "${raw}" in ${node.name}()`);
+  return raw;
+}
+
+// All CSS functions must have test cases in ui/tests/css-tests.css
 const fns = {
+  lighten: (color, amt = 0.05) =>
+    {
+      const delta = to_delta (amt);
+      // toFixed(15) + parseFloat: prevent floating-point drift (e.g. 0.1+0.2 → 0.30000000000000004)
+      return `oklch(from ${color} calc(l + ${parseFloat (delta.toFixed (15))} ) c h)`;
+    },
+  darken: (color, amt = 0.05) =>
+    {
+      const delta = to_delta (amt);
+      return `oklch(from ${color} calc(l - ${parseFloat (delta.toFixed (15))} ) c h)`;
+    },
+  desaturate: (color, amt = 0.05) =>
+    {
+      const factor = 1 - to_delta (amt);
+      return `oklch(from ${color} l calc(c * ${parseFloat (factor.toFixed (15))} ) h)`;
+    },
 };
 
 function evaluate_function (node)
