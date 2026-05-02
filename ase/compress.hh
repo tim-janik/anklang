@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_COMPRESS_HH__
-#define __ASE_COMPRESS_HH__
+#pragma once
 
 #include <ase/defs.hh>
 
@@ -40,4 +39,3 @@ StreamReaderP stream_reader_zstd (StreamReaderP &istream);
 
 } // Ase
 
-#endif  // __ASE_COMPRESS_HH__

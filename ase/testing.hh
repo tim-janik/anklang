@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_TESTING_HH__
-#define __ASE_TESTING_HH__
+#pragma once
 
 #include <ase/utils.hh>
 #include <ase/strings.hh>
@@ -170,4 +169,3 @@ private:
 } // Test
 } // Ase
 
-#endif /* __ASE_TESTING_HH__ */

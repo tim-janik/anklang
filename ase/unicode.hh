@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_UNICODE_HH__
-#define __ASE_UNICODE_HH__
+#pragma once
 
 #include <ase/cxxaux.hh>
 
@@ -87,4 +86,3 @@ unicode_is_private (uint32_t u)
 
 } // Ase
 
-#endif // __ASE_UNICODE_HH__

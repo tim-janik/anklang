@@ -80,8 +80,9 @@ function vite_config ({ mode })
       "/assets": gen_path + "/assets",
       "/gen": gen_path,
     }, },
+    clearScreen: false,
+
     server: {
-      clearScreen: false,
       // open: "index.html",
       proxy: !DEVPORT_MKDOCS ? {} : {
 	'/anklang/': {

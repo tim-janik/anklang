@@ -11,10 +11,6 @@ namespace te = tracktion::engine;
 
 namespace Ase {
 
-// == Clip ==
-Clip::Clip ()
-{}
-
 // == ClipNote ==
 bool
 ClipNote::operator== (const ClipNote &o) const

@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_SERIALIZE_HH__
-#define __ASE_SERIALIZE_HH__
+#pragma once
 
 #include <ase/value.hh>
 #include <ase/strings.hh>
@@ -558,4 +557,3 @@ json_parse (const String &jsonstring)
 
 } // Ase
 
-#endif // __ASE_SERIALIZE_HH__

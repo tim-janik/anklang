@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_LOFT_HH__
-#define __ASE_LOFT_HH__
+#pragma once
 
 #include <ase/cxxaux.hh>
 
@@ -130,4 +129,3 @@ loft_make_unique (Args &&...args)
 
 } // Ase
 
-#endif /* __ASE_LOFT_HH__ */

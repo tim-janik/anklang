@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_UTILS_HH__
-#define __ASE_UTILS_HH__
+#pragma once
 
 #include <ase/defs.hh>
 #include <ase/logging.hh>
@@ -326,4 +325,3 @@ index_of (const IterableContainer &c, const std::function<bool(const typename It
 
 } // Ase
 
-#endif // __ASE_UTILS_HH__

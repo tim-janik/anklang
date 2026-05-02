@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_MONITOR_HH__
-#define __ASE_MONITOR_HH__
+#pragma once
 
 #include <ase/gadget.hh>
 
@@ -21,4 +20,3 @@ using MonitorImplP = std::shared_ptr<MonitorImpl>;
 
 } // Ase
 
-#endif // __ASE_MONITOR_HH__

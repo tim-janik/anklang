@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // Author: 2014, Tim Janik, see http://testbit.eu/
-#ifndef __ASE_RANDOMHASH_HH__
-#define __ASE_RANDOMHASH_HH__
+#pragma once
 
 #include <ase/cxxaux.hh>
 
@@ -606,4 +605,3 @@ string_hash64 (const char *ztdata)
 
 } // Ase
 
-#endif // __ASE_RANDOMHASH_HH__

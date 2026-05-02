@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_ENTROPY_HH__
-#define __ASE_ENTROPY_HH__
+#pragma once
 
 #include <ase/cxxaux.hh>
 
@@ -14,4 +13,3 @@ void collect_system_entropy  (uint64 *data, size_t n);
 
 } // Ase
 
-#endif // __ASE_ENTROPY_HH__

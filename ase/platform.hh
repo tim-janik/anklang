@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_PLATFORM_HH__
-#define __ASE_PLATFORM_HH__
+#pragma once
 
 #include <ase/defs.hh>
 #include <condition_variable>
@@ -245,4 +244,3 @@ AsyncBlockingQueue<Value>::swap (std::list<Value> &list)
 
 } // Ase
 
-#endif // __ASE_PLATFORM_HH__

@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_PROJECT_HH__
-#define __ASE_PROJECT_HH__
+#pragma once
 
 #include <ase/device.hh>
 #include <ase/track.hh>
@@ -93,4 +92,3 @@ using ProjectImplP = std::shared_ptr<ProjectImpl>;
 
 } // Ase
 
-#endif // __ASE_PROJECT_HH__
