@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_DBUS_HH__
-#define __ASE_DBUS_HH__
+#pragma once
 
 #include <ase/defs.hh>
 
@@ -11,4 +10,3 @@ int     rtkit_get_min_nice_level ();
 
 } // Ase::DBus
 
-#endif // __ASE_DBUS_HH__

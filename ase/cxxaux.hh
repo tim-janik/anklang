@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_CXXAUX_HH__
-#define __ASE_CXXAUX_HH__
+#pragma once
 
 #include <ase/sysconfig.h>
 #include <sys/types.h>                  // uint, ssize
@@ -423,4 +422,3 @@ struct Id32 {
 
 } // Ase
 
-#endif // __ASE_CXXAUX_HH__

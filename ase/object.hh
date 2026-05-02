@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_OBJECT_HH__
-#define __ASE_OBJECT_HH__
+#pragma once
 
 #include <ase/api.hh>
 #include <unordered_set>
@@ -47,4 +46,3 @@ using ObjectImplP = std::shared_ptr<ObjectImpl>;
 
 } // Ase
 
-#endif // __ASE_OBJECT_HH__

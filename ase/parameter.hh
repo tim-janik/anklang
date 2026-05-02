@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_PARAMETER_HH__
-#define __ASE_PARAMETER_HH__
+#pragma once
 
 #include <ase/defs.hh>
 #include <ase/memory.hh>
@@ -108,4 +107,3 @@ String parameter_guess_nick (const String &parameter_label);
 
 } // Ase
 
-#endif // __ASE_PARAMETER_HH__

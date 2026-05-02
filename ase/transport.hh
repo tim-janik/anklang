@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_TRANSPORT_HH__
-#define __ASE_TRANSPORT_HH__
+#pragma once
 
 #include <ase/defs.hh>
 
@@ -159,4 +158,3 @@ TickSignature::sample_from_tick (int64 tick) const
 
 } // Ase
 
-#endif // __ASE_TRANSPORT_HH__

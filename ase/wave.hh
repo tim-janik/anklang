@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_WAVE_HH__
-#define __ASE_WAVE_HH__
+#pragma once
 
 #include <ase/defs.hh>
 
@@ -25,4 +24,3 @@ String      wave_writer_flac_version ();
 
 } // Ase
 
-#endif // __ASE_WAVE_HH__

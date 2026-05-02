@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_DATAUTILS_HH__
-#define __ASE_DATAUTILS_HH__
+#pragma once
 
 #include <ase/signalmath.hh>
 
@@ -76,4 +75,3 @@ convert_clip_samples (size_t n, const float *src, int16_t *dst, uint16 byte_orde
 
 } // Ase
 
-#endif // __ASE_DATAUTILS_HH__
