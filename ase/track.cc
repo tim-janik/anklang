@@ -72,6 +72,8 @@ public:
         asetrack_.emit_notify ("name");
       if (property == tracktion::engine::IDs::mute)
         asetrack_.emit_notify ("muted");
+      if (property == tracktion::engine::IDs::hidden)
+        asetrack_.emit_notify ("hidden");
       if (property == tracktion::engine::IDs::solo)
         asetrack_.emit_notify ("solo");
     }
@@ -226,6 +228,21 @@ TrackImpl::set_muted (bool muted)
 {
   if (auto t = track_.get())
     t->setMute (muted);
+}
+
+bool
+TrackImpl::is_hidden() const
+{
+  if (auto t = track_.get())
+    return t->isHidden ();
+  return false;
+}
+
+void
+TrackImpl::set_hidden (bool hidden)
+{
+  if (auto t = track_.get())
+    t->setHidden (hidden);
 }
 
 bool

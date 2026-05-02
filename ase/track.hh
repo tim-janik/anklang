@@ -36,6 +36,8 @@ public:
   bool            is_master         () const override;
   bool            is_muted          () const override;
   void            set_muted         (bool muted) override;
+  bool            is_hidden         () const override;
+  void            set_hidden        (bool hidden) override;
   bool            is_solo           () const override;
   void            set_solo          (bool solo) override;
   double          volume            () const override;
