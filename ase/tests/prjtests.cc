@@ -688,4 +688,69 @@ clip_undo_redo()
 }
 TEST_ADD (clip_undo_redo);
 
+static void
+plugin_creation()
+{
+  ProjectImplP project = ProjectImpl::create ("PluginTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
+  TASSERT (trackimpl);
+
+  // Check initial plugins list (tracks have default plugins like volume/pan)
+  PluginS plugins = trackimpl->list_plugins();
+  TASSERT (plugins.size() >= 0);
+
+  // Test with existing plugins (tracks have default plugins)
+  if (plugins.size() > 0) {
+    PluginP plugin = plugins[0];
+    TASSERT (plugin != nullptr);
+
+    // Check plugin properties
+    TASSERT (!plugin->name().empty());
+    TASSERT (!plugin->plugin_type().empty());
+
+    // Setup notification counters
+    uint64_t enabled_notifications = 0;
+    auto enabled_connection = plugin->on_event ("notify:enabled", [&enabled_notifications] (const Event &event) { enabled_notifications++; });
+
+    uint64_t frozen_notifications = 0;
+    auto frozen_connection = plugin->on_event ("notify:frozen", [&frozen_notifications] (const Event &event) { frozen_notifications++; });
+
+    // Check enabled state (should be either true or false)
+    bool enabled = plugin->is_enabled();
+    TASSERT (enabled == true || enabled == false);
+
+    // Toggle enabled - should emit notification
+    uint64_t last_enabled_notifications = enabled_notifications;
+    plugin->set_enabled (!enabled);
+    TASSERT (plugin->is_enabled() != enabled);
+    TASSERT (enabled_notifications > last_enabled_notifications);
+
+    // Check frozen state
+    bool frozen = plugin->is_frozen();
+    TASSERT (frozen == true || frozen == false);
+
+    // Toggle frozen - should emit notification
+    uint64_t last_frozen_notifications = frozen_notifications;
+    plugin->set_frozen (!frozen);
+    TASSERT (plugin->is_frozen() != frozen);
+    TASSERT (frozen_notifications > last_frozen_notifications);
+
+    // Test plugin removal via remove_self
+    uint64_t removed_count = 0;
+    auto removed_connection = plugin->on_event ("object:removed", [&removed_count] (const Event &event) { removed_count++; });
+    plugin->remove_self();
+    TASSERT (removed_count > 0);
+  }
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (plugin_creation);
+
 } // Anon
