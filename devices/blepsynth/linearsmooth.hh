@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_DEVICES_LINEAR_SMOOTH_HH__
-#define __ASE_DEVICES_LINEAR_SMOOTH_HH__
+#pragma once
 
 /* from liquidsfz utils */
 
@@ -62,4 +61,3 @@ public:
 
 }
 
-#endif /* __ASE_DEVICES_LINEAR_SMOOTH_HH__ */
