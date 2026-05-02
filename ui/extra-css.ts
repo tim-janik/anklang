@@ -133,6 +133,19 @@ export default function extraCssPlugin (options: ExtraCssOptions = {}): Plugin
         // Store the CSS in our map for the resolveId and load hooks
         cssModulesMap.set (virtualCssPath, `${css_prefix}${extractedCss}`);
         // Import the virtual CSS module to trigger Vite's CSS processing pipeline
+	/* We use `?stamp=<timestamp>` (not Vite's `?t=<timestamp>`) for cache busting:
+         * - Vite strips `?t=` via removeTimestampQuery() before module lookup, so all
+         *   `?t=` variants map to the same module and return cached transformResult.
+         *    See: Vite src/node/server/transformRequest.ts (removeTimestampQuery, getModuleByUrl)
+         * - The `?stamp=` is NOT stripped, so each stamp value is a distinct module in
+         *   the module graph, forcing resolveId/load/transform hooks to re-run.
+         * - This is necessary because our virtual CSS lives in memory (cssModulesMap),
+         *   not on disk, when the source .ts file changes, the CSS content changes and
+         *   Vite must re-process it through the plugin pipeline.
+         * - Tradeoff: each stamp creates a new module entry in dev (memory accumulates
+         *   over long sessions). This is dev-only so acceptable. Disable via useStamp:false.
+	 * - See: https://vite.dev/guide/api-plugin#virtual-modules-convention
+	 */
         const importStatement = use_stamp
           ? `\nimport "${virtualCssPath}?stamp=${ Date.now() }";\n`
           : `\nimport "${virtualCssPath}";\n`;
