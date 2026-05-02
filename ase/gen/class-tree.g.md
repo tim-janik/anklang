@@ -13,6 +13,8 @@ Ase::SharedBase
        │  │
        │  ├─Ase::Device
        │  │  │
+       │  │  ├─Ase::Plugin
+       │  │  │
        │  │  ├─Ase::Track
        │  │  │
        │  │  ╰─Ase::Project

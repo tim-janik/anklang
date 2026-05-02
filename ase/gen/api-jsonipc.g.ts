@@ -734,6 +734,24 @@ export class Device // Ase::Device
 };
 Jsonipc.classes["Ase::Device"] = Device;
 
+export class Plugin // Ase::Plugin
+  extends Jsonipc.classes["Ase::Device"]
+{
+  constructor ($id)
+  { super ($id); if (new.target === Plugin) Jsonipc.ofreeze (this); }
+  plugin_type (): Promise<string>
+  { return this.$rpc ("plugin_type", [this]); }
+  is_enabled (): Promise<boolean>
+  { return this.$rpc ("is_enabled", [this]); }
+  set_enabled (arg1: boolean): Promise<void>
+  { return this.$rpc ("set_enabled", [this, arg1]); }
+  is_frozen (): Promise<boolean>
+  { return this.$rpc ("is_frozen", [this]); }
+  set_frozen (arg1: boolean): Promise<void>
+  { return this.$rpc ("set_frozen", [this, arg1]); }
+};
+Jsonipc.classes["Ase::Plugin"] = Plugin;
+
 export class Clip // Ase::Clip
   extends Jsonipc.classes["Ase::Gadget"]
 {
@@ -811,6 +829,10 @@ export class Track // Ase::Track
   { return this.$rpc ("create_midi_clip", [this, arg1, arg2, arg3]); }
   create_audio_clip (arg1: string, arg2: number, arg3: number): Promise<Clip>
   { return this.$rpc ("create_audio_clip", [this, arg1, arg2, arg3]); }
+  create_plugin (arg1: string): Promise<Plugin>
+  { return this.$rpc ("create_plugin", [this, arg1]); }
+  list_plugins (): Promise<Plugin[]>
+  { return this.$rpc ("list_plugins", [this]); }
   access_device (): Promise<Device>
   { return this.$rpc ("access_device", [this]); }
   create_monitor (arg1: number): Promise<Monitor>

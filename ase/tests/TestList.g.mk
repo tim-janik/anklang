@@ -33,6 +33,7 @@ ASE_TEST_LIST := \
   mpmc_stack_test \
   nested_cotask_test \
   path_tests \
+  plugin_creation \
   project_creation \
   project_length \
   project_playback_state \
