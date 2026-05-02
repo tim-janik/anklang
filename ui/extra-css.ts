@@ -17,10 +17,11 @@ function make_css_filename (fname) {
  * Plugin Options
  */
 interface ExtraCssOptions {
-  tagName?: string | string[];	// tagged template function to extract CSS from
+  tagName?: string | string[];		  		// tagged template function to extract CSS from
   include?: string | RegExp | (string | RegExp)[];	// include files for extraction
   exclude?: string | RegExp | (string | RegExp)[];	// exclude files from extraction
-  cssPrefix?: string;		// prefix extracted CSS (e.g. for tailwind)
+  cssPrefix?: string;				  	// prefix extracted CSS (e.g. for tailwind)
+  useStamp?: boolean;				  	// add ?stamp= cache-busting on virtual CSS imports (default: true)
 }
 
 /**
@@ -35,6 +36,7 @@ export default function extraCssPlugin (options: ExtraCssOptions = {}): Plugin
     options.exclude || /node_modules/
   );
   const css_prefix = options.cssPrefix === undefined ? '' : options.cssPrefix; // '@reference "tailwindcss";\n'
+  const use_stamp = options.useStamp !== false; // default true
   // Map to store virtual CSS modules
   const cssModulesMap = new Map<string, string>();
   // Plugin definition
@@ -131,7 +133,9 @@ export default function extraCssPlugin (options: ExtraCssOptions = {}): Plugin
         // Store the CSS in our map for the resolveId and load hooks
         cssModulesMap.set (virtualCssPath, `${css_prefix}${extractedCss}`);
         // Import the virtual CSS module to trigger Vite's CSS processing pipeline
-        const importStatement = `\nimport "${virtualCssPath}?stamp=${ Date.now() }";\n`;
+        const importStatement = use_stamp
+          ? `\nimport "${virtualCssPath}?stamp=${ Date.now() }";\n`
+          : `\nimport "${virtualCssPath}";\n`;
         return {
 	  // modify code to import virtual CSS module
           code: code + importStatement,
