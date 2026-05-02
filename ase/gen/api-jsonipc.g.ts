@@ -789,6 +789,10 @@ export class Track // Ase::Track
   { return this.$rpc ("is_muted", [this]); }
   set_muted (arg1: boolean): Promise<void>
   { return this.$rpc ("set_muted", [this, arg1]); }
+  is_hidden (): Promise<boolean>
+  { return this.$rpc ("is_hidden", [this]); }
+  set_hidden (arg1: boolean): Promise<void>
+  { return this.$rpc ("set_hidden", [this, arg1]); }
   is_solo (): Promise<boolean>
   { return this.$rpc ("is_solo", [this]); }
   set_solo (arg1: boolean): Promise<void>

@@ -269,6 +269,8 @@ public:
   virtual bool            is_master           () const = 0;          ///< Flag set on the main output track.
   virtual bool            is_muted            () const = 0;          ///< Check if track is muted.
   virtual void            set_muted           (bool muted) = 0;      ///< Set track muted state.
+  virtual bool            is_hidden           () const = 0;          ///< Check if track is hidden from view.
+  virtual void            set_hidden          (bool hidden) = 0;     ///< Set track hidden state.
   virtual bool            is_solo             () const = 0;          ///< Check if track is soloed.
   virtual void            set_solo            (bool solo) = 0;       ///< Set track solo state.
   virtual double          volume              () const = 0;          ///< Get track volume in dB.

@@ -54,6 +54,7 @@ ASE_TEST_LIST := \
   string_tests \
   test_audio_sample_load \
   test_serializable_hierarchy \
+  track_hidden \
   track_mute_solo \
   track_name \
   track_undo_redo \

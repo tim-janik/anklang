@@ -213,6 +213,40 @@ track_mute_solo()
 TEST_ADD (track_mute_solo);
 
 static void
+track_hidden()
+{
+  ProjectImplP project = ProjectImpl::create ("TrackHiddenTest");
+  TASSERT (project);
+  project->_activate();
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  // Test initial hidden state
+  TASSERT (!track->is_hidden());
+
+  // Test hidden notifications
+  uint64_t hidden_notifications = 0;
+  auto hidden_connection = track->on_event ("notify:hidden", [&hidden_notifications] (const Event &event) { hidden_notifications++; });
+
+  // Test hide with notification
+  uint64_t last_hidden_notifications = hidden_notifications;
+  track->set_hidden (true);
+  TASSERT (track->is_hidden());
+  TASSERT (hidden_notifications > last_hidden_notifications);
+
+  // Reset hidden
+  last_hidden_notifications = hidden_notifications;
+  track->set_hidden (false);
+  TASSERT (!track->is_hidden());
+  TASSERT (hidden_notifications > last_hidden_notifications);
+
+  project->_deactivate();
+  project->discard();
+}
+TEST_ADD (track_hidden);
+
+static void
 track_undo_redo()
 {
   ProjectImplP project = ProjectImpl::create ("TrackUndoRedoTest");
