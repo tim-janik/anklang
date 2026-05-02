@@ -31,10 +31,6 @@ static Preference synth_latency_pref =
 
 static std::vector<ProjectImplP> &g_projects = *new std::vector<ProjectImplP>();
 
-// == Project ==
-Project::Project()
-{}
-
 ProjectP
 Project::last_project()
 {
