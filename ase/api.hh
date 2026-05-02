@@ -209,8 +209,6 @@ struct DeviceInfo {
 
 /// Interface to access Device instances.
 class Device : public virtual Gadget {
-protected:
-  explicit     Device ();
 public:
   // internal
   Track*                  _track             () const;          ///< Find Track in parent ancestry.
@@ -243,8 +241,6 @@ struct ClipNote {
 
 /// Container for MIDI note and control events.
 class Clip : public virtual Gadget {
-protected:
-  explicit          Clip           ();
 public:
   virtual bool      is_muted       () const = 0;                  ///< Check if clip is muted.
   virtual void      set_muted      (bool muted) = 0;              ///< Set clip muted state, emits `notify:muted`.
@@ -309,8 +305,6 @@ public:
 
 /// Projects support loading, saving, playback and act as containers for all other sound objects.
 class Project : public virtual Device {
-protected:
-  explicit                Project        ();
 public:
   virtual void            bpm            (double bpm) = 0;
   virtual double          bpm            () const = 0;
