@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_STORAGE_HH__
-#define __ASE_STORAGE_HH__
+#pragma once
 
 #include <ase/defs.hh>
 
@@ -75,4 +74,3 @@ void   anklang_cachedir_clean_stale ();
 
 } // Ase
 
-#endif // __ASE_STORAGE_HH__

@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_WEBSOCKET_HH__
-#define __ASE_WEBSOCKET_HH__
+#pragma once
 
 #include <ase/cxxaux.hh>
 
@@ -65,4 +64,3 @@ public:
 
 } // Ase
 
-#endif // __ASE_WEBSOCKET_HH__

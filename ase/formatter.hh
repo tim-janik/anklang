@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_FORMATTER_HH__
-#define __ASE_FORMATTER_HH__
+#pragma once
 
 #include <type_traits>
 #include <clocale>
@@ -73,4 +72,3 @@ string_format (const char *format, const Args &...args)
 
 } // Ase
 
-#endif  // __ASE_FORMATTER_HH__

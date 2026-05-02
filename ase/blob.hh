@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_BLOB_HH__
-#define __ASE_BLOB_HH__
+#pragma once
 
 #include <ase/cxxaux.hh>
 
@@ -33,4 +32,3 @@ void    zintern_free       (uint8 *dc_data);
 
 } // Ase
 
-#endif // __ASE_BLOB_HH__

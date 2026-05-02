@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_PROPERTIES_HH__
-#define __ASE_PROPERTIES_HH__
+#pragma once
 
 #include <ase/api.hh>
 #include <ase/object.hh>
@@ -141,4 +140,3 @@ enum_lister (const ParameterProperty&)
 
 } // Ase
 
-#endif // __ASE_PROPERTIES_HH__
