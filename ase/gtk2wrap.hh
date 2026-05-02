@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_GTK2WRAP_HH__
-#define __ASE_GTK2WRAP_HH__
+#pragma once
 
 #include <string>
 #include <functional>
@@ -29,4 +28,3 @@ extern "C" {
 extern Ase::Gtk2DlWrapEntry Ase__Gtk2__wrapentry;
 }
 
-#endif // __ASE_GTK2WRAP_HH__

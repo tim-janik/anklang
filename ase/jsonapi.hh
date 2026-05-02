@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_JSONAPI_HH__
-#define __ASE_JSONAPI_HH__
+#pragma once
 
 #include <ase/websocket.hh>
 #include <ase/value.hh>
@@ -218,4 +217,3 @@ template<> struct Convert<std::shared_ptr<Ase::ValueR>> : Ase::ConvertValueRP {}
 template<> struct Convert<Ase::JsTrigger> : Ase::ConvertJsTrigger {};
 } // Jsonipc
 
-#endif // __ASE_JSONAPI_HH__

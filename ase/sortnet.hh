@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_SORTNET_HH__
-#define __ASE_SORTNET_HH__
+#pragma once
 
 #include <functional>
 #include <algorithm>
@@ -383,4 +382,3 @@ public:
 
 } // Ase
 
-#endif // __ASE_SORTNET_HH__

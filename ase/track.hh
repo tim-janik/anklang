@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_TRACK_HH__
-#define __ASE_TRACK_HH__
+#pragma once
 
 #include <ase/trkn-utils.hh>
 #include <ase/device.hh>
@@ -76,4 +75,3 @@ public:
 
 } // Ase
 
-#endif // __ASE_TRACK_HH__

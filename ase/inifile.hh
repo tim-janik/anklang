@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_INIFILE_HH__
-#define __ASE_INIFILE_HH__
+#pragma once
 
 #include <ase/blob.hh>
 
@@ -55,4 +54,3 @@ public:
 
 } // Ase
 
-#endif // __ASE_INIFILE_HH__

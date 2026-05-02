@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_INTERNAL_HH__
-#define __ASE_INTERNAL_HH__
+#pragma once
 
 // Import simple ASE types into global scope
 using Ase::uint8;
@@ -112,4 +111,3 @@ private:
 
 } } // Ase::Test
 
-#endif  // __ASE_INTERNAL_HH__

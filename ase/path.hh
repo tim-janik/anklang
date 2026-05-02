@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_PATH_HH__
-#define __ASE_PATH_HH__
+#pragma once
 
 #include <ase/cxxaux.hh>
 
@@ -105,4 +104,3 @@ searchpath_join (String path, const S &...more)
 } // Path
 } // Ase
 
-#endif  // __ASE_PATH_HH__

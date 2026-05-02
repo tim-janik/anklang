@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_EVENTLIST_HH__
-#define __ASE_EVENTLIST_HH__
+#pragma once
 
 #include <ase/utils.hh>
 #include <algorithm>
@@ -221,4 +220,3 @@ OrderedEventList<Event,CompareOrder>::lookup_after (const Event &event) const
 
 } // Ase
 
-#endif // __ASE_EVENTLIST_HH__

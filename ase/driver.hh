@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-#ifndef __ASE_DRIVER_HH__
-#define __ASE_DRIVER_HH__
+#pragma once
 
 #include <ase/api.hh>
 #include <ase/midievent.hh>
@@ -122,4 +121,3 @@ void  load_registered_drivers ();
 
 } // Ase
 
-#endif  // __ASE_DRIVER_HH__

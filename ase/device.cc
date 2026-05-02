@@ -4,10 +4,6 @@
 
 namespace Ase {
 
-// == Device ==
-Device::Device()
-{}
-
 // == DeviceImpl ==
 void
 DeviceImpl::_set_parent (GadgetImpl *parent)
