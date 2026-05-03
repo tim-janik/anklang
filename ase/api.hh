@@ -226,6 +226,16 @@ public:
   virtual bool       gui_visible   () = 0;      ///< Is GUI currently visible.
 };
 
+/// Plugin wrapper for tracktion_engine plugins on tracks.
+class Plugin : public virtual Device {
+public:
+  virtual String  plugin_type   () const = 0; ///< Plugin type identifier.
+  virtual bool    is_enabled    () const = 0; ///< Check if plugin is enabled.
+  virtual void    set_enabled   (bool enabled) = 0; ///< Enable or disable the plugin.
+  virtual bool    is_frozen     () const = 0; ///< Check if plugin is frozen.
+  virtual void    set_frozen    (bool frozen) = 0; ///< Freeze or unfreeze the plugin.
+};
+
 /// Part specific note event representation.
 struct ClipNote {
   int32  id = 0;            /// ID, > 0
@@ -269,6 +279,8 @@ public:
   virtual bool            is_master           () const = 0;          ///< Flag set on the main output track.
   virtual bool            is_muted            () const = 0;          ///< Check if track is muted.
   virtual void            set_muted           (bool muted) = 0;      ///< Set track muted state.
+  virtual bool            is_hidden           () const = 0;          ///< Check if track is hidden from view.
+  virtual void            set_hidden          (bool hidden) = 0;     ///< Set track hidden state.
   virtual bool            is_solo             () const = 0;          ///< Check if track is soloed.
   virtual void            set_solo            (bool solo) = 0;       ///< Set track solo state.
   virtual double          volume              () const = 0;          ///< Get track volume in dB.
@@ -278,6 +290,8 @@ public:
   virtual ClipS           launcher_clips      () = 0;                ///< Retrieve the list of clips that can be directly played.
   virtual ClipP           create_midi_clip    (const String &name, double start, double length) = 0; ///< Create a new MIDI clip on this track.
   virtual ClipP           create_audio_clip   (const String &name, double start, double length) = 0; ///< Create a new audio clip on this track.
+  virtual PluginP         create_plugin       (const String &type) = 0; ///< Create a new plugin on this track by type identifier.
+  virtual PluginS         list_plugins        () = 0;                ///< List plugins on this track.
   virtual DeviceP         access_device       () = 0;                ///< Retrieve Device handle for this track.
   virtual MonitorP        create_monitor      (int32 ochannel) = 0;  /// Create signal monitor for an output channel.
   virtual TelemetryFieldS telemetry           () const = 0;          ///< Retrieve track telemetry locations.

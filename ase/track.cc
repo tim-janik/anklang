@@ -4,6 +4,7 @@
 #include "track.hh"
 #include "project.hh"
 #include "clip.hh"
+#include "plugin.hh"
 #include "server.hh"
 #include "main.hh"
 #include "serialize.hh"
@@ -72,6 +73,8 @@ public:
         asetrack_.emit_notify ("name");
       if (property == tracktion::engine::IDs::mute)
         asetrack_.emit_notify ("muted");
+      if (property == tracktion::engine::IDs::hidden)
+        asetrack_.emit_notify ("hidden");
       if (property == tracktion::engine::IDs::solo)
         asetrack_.emit_notify ("solo");
     }
@@ -226,6 +229,21 @@ TrackImpl::set_muted (bool muted)
 {
   if (auto t = track_.get())
     t->setMute (muted);
+}
+
+bool
+TrackImpl::is_hidden() const
+{
+  if (auto t = track_.get())
+    return t->isHidden ();
+  return false;
+}
+
+void
+TrackImpl::set_hidden (bool hidden)
+{
+  if (auto t = track_.get())
+    t->setHidden (hidden);
 }
 
 bool
@@ -462,16 +480,37 @@ TrackImpl::create_audio_clip (const String &name, double start, double length)
   return nullptr;
 }
 
-/* TODO: this should be wrapped properly in a way that UI from JavaScript can create
- * plugins
- */
-tracktion::Plugin*
+PluginP
 TrackImpl::create_plugin (const String &type)
 {
-  auto synth = track_.get()->edit.getPluginCache().createNewPlugin (type.c_str(), {});
-  if (synth)
-    track_.get()->pluginList.insertPlugin (synth, 0, nullptr);
-  return synth.get();
+  if (auto t = track_.get()) {
+    auto plugin = t->edit.getPluginCache().createNewPlugin (type.c_str(), {});
+    if (plugin) {
+      t->pluginList.insertPlugin (plugin, 0, nullptr);
+      return PluginImpl::from_trkn (*plugin);
+    }
+    else
+      warning ("createNewPlugin returned null");
+  }
+  else
+    warning ("track_.get() returned null");
+  return nullptr;
+}
+
+PluginS
+TrackImpl::list_plugins()
+{
+  PluginS plugins;
+  if (auto t = track_.get()) {
+    auto &pluginList = t->pluginList;
+    for (int i = 0; i < pluginList.size(); i++) {
+      if (auto *plugin = pluginList[i]) {
+        if (auto pluginimpl = PluginImpl::from_trkn (*plugin))
+          plugins.push_back (pluginimpl);
+      }
+    }
+  }
+  return plugins;
 }
 
 } // Ase
