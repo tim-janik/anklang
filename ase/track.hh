@@ -20,7 +20,6 @@ class TrackImpl : public DeviceImpl, public virtual Track {
   virtual         ~TrackImpl        ();
 protected:
   String          fallback_name     () const override;
-  void            serialize         (WritNode &xs) override;
   void            update_telemetry  ();
 public:
   class ClipScout;
@@ -29,8 +28,6 @@ public:
   bool            is_folder         () const    { return "Folder" == te_type_; }
   String          name              () const override;
   void            name              (const std::string &n) override;
-  void            _activate         () override;
-  void            _deactivate       () override;
   DeviceInfo      device_info       () override;
   ProjectImpl*    project           () const;
   bool            is_master         () const override;

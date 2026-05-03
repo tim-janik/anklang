@@ -12,7 +12,6 @@ project_creation()
 {
   ProjectImplP project = ProjectImpl::create ("TestProject");
   TASSERT (project);
-  project->_activate();
   TASSERT (project->name() == "TestProject");
 
   const double initial_bpm = project->bpm();
@@ -97,7 +96,6 @@ project_creation()
   TASSERT (std::abs (project->master_volume() - (-6.0)) < 0.01);
   TASSERT (volume_notifications > last_volume_notifications);
 
-  project->_deactivate();
   project->discard();
 
   // Test create second project
@@ -115,12 +113,10 @@ project_length()
 {
   ProjectImplP project = ProjectImpl::create ("LengthTest");
   TASSERT (project);
-  project->_activate();
 
   double len = project->length();
   TASSERT (len >= 0.0);
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (project_length);
@@ -130,7 +126,6 @@ project_track_management()
 {
   ProjectImplP project = ProjectImpl::create ("TrackTest");
   TASSERT (project);
-  project->_activate();
 
   TrackS tracks = project->all_tracks();
   const size_t initial_count = tracks.size();
@@ -142,7 +137,6 @@ project_track_management()
   tracks = project->all_tracks();
   TASSERT (tracks.size() == initial_count + 1);
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (project_track_management);
@@ -152,12 +146,10 @@ project_playback_state()
 {
   ProjectImplP project = ProjectImpl::create ("PlaybackTest");
   TASSERT (project);
-  project->_activate();
 
   // Initially not playing
   TASSERT (!project->is_playing());
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (project_playback_state);
@@ -167,7 +159,6 @@ track_mute_solo()
 {
   ProjectImplP project = ProjectImpl::create ("TrackMuteSoloTest");
   TASSERT (project);
-  project->_activate();
 
   TrackP track = project->create_track();
   TASSERT (track);
@@ -207,7 +198,6 @@ track_mute_solo()
   TASSERT (!track->is_solo());
   TASSERT (solo_notifications > last_solo_notifications);
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (track_mute_solo);
@@ -217,7 +207,6 @@ track_hidden()
 {
   ProjectImplP project = ProjectImpl::create ("TrackHiddenTest");
   TASSERT (project);
-  project->_activate();
 
   TrackP track = project->create_track();
   TASSERT (track);
@@ -241,7 +230,6 @@ track_hidden()
   TASSERT (!track->is_hidden());
   TASSERT (hidden_notifications > last_hidden_notifications);
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (track_hidden);
@@ -251,7 +239,6 @@ track_undo_redo()
 {
   ProjectImplP project = ProjectImpl::create ("TrackUndoRedoTest");
   TASSERT (project);
-  project->_activate();
 
   TrackP track = project->create_track();
   TASSERT (track);
@@ -287,7 +274,6 @@ track_undo_redo()
   TASSERT (std::abs (track->pan() - (-0.5)) < 0.01);
   TASSERT (pan_notifications > last_pan_notifications);
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (track_undo_redo);
@@ -297,7 +283,6 @@ track_volume_pan()
 {
   ProjectImplP project = ProjectImpl::create ("TrackVolumePanTest");
   TASSERT (project);
-  project->_activate();
 
   TrackP track = project->create_track();
   TASSERT (track);
@@ -341,7 +326,6 @@ track_volume_pan()
   TASSERT (std::abs (track->pan() - (-0.5)) < 0.01);
   TASSERT (pan_notifications > last_pan_notifications);
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (track_volume_pan);
@@ -351,7 +335,6 @@ track_name()
 {
   ProjectImplP project = ProjectImpl::create ("TrackNameTest");
   TASSERT (project);
-  project->_activate();
 
   TrackP track = project->create_track();
   TASSERT (track);
@@ -363,7 +346,6 @@ track_name()
   track->name ("AnotherName");
   TASSERT (track->name() == "AnotherName");
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (track_name);
@@ -373,7 +355,6 @@ clip_creation()
 {
   ProjectImplP project = ProjectImpl::create ("ClipTest");
   TASSERT (project);
-  project->_activate();
 
   TrackP track = project->create_track();
   TASSERT (track);
@@ -384,7 +365,6 @@ clip_creation()
   ClipP clip = trackimpl->create_midi_clip ("TestClip", 0.0, 4.0);
   TASSERT (clip);
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (clip_creation);
@@ -394,7 +374,6 @@ clip_notes()
 {
   ProjectImplP project = ProjectImpl::create ("ClipNotesTest");
   TASSERT (project);
-  project->_activate();
 
   TrackP track = project->create_track();
   TASSERT (track);
@@ -424,7 +403,6 @@ clip_notes()
   TASSERT (notes.size() == 1);
   TASSERT (notes[0].key == 60);
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (clip_notes);
@@ -434,7 +412,6 @@ clip_range()
 {
   ProjectImplP project = ProjectImpl::create ("ClipRangeTest");
   TASSERT (project);
-  project->_activate();
 
   TrackP track = project->create_track();
   TASSERT (track);
@@ -453,7 +430,6 @@ clip_range()
   clip->assign_range (start + 960, stop + 960);
   TASSERT (clip->start_tick() == start + 960);
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (clip_range);
@@ -463,7 +439,6 @@ clip_mute_volume_pan()
 {
   ProjectImplP project = ProjectImpl::create ("ClipMuteVolPanTest");
   TASSERT (project);
-  project->_activate();
 
   TrackP track = project->create_track();
   TASSERT (track);
@@ -542,7 +517,6 @@ clip_mute_volume_pan()
   TASSERT (std::abs (aclip->volume() - (-3.0)) < 0.01);
   TASSERT (audio_volume_notifications > last_volume_notifications);
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (clip_mute_volume_pan);
@@ -552,7 +526,6 @@ clip_undo_redo()
 {
   ProjectImplP project = ProjectImpl::create ("ClipUndoRedoTest");
   TASSERT (project);
-  project->_activate();
 
   TrackP track = project->create_track();
   TASSERT (track);
@@ -683,7 +656,6 @@ clip_undo_redo()
   TASSERT (mclip->start_tick() == initial_start + 960);
   TASSERT (mclip->stop_tick() == initial_stop + 960);
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (clip_undo_redo);
@@ -693,7 +665,6 @@ plugin_creation()
 {
   ProjectImplP project = ProjectImpl::create ("PluginTest");
   TASSERT (project);
-  project->_activate();
 
   TrackP track = project->create_track();
   TASSERT (track);
@@ -748,7 +719,6 @@ plugin_creation()
     TASSERT (removed_count > 0);
   }
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (plugin_creation);

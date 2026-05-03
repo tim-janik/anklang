@@ -27,7 +27,6 @@ public:
 protected:
   explicit ClipImpl         (tracktion::Clip &clip);
   virtual ~ClipImpl         ();
-  void     serialize        (WritNode &xs) override;
   ssize_t  clip_index       () const;
   ClipNoteS all_notes   () const override;
   void      all_notes   (const ClipNoteS &notes) override;
@@ -41,7 +40,6 @@ public:
   int64          stop_tick      () const override;
   void           assign_range   (int64 starttick, int64 stoptick) override;
   ClipNoteS      list_all_notes () override;
-  bool           needs_serialize() const;
   int32          change_batch   (const ClipNoteS &notes, const String &undogroup) override;
   bool           is_muted       () const override;
   void           set_muted      (bool muted) override;
