@@ -40,7 +40,6 @@ test_audio_sample_load()
 {
   ProjectImplP project = ProjectImpl::create ("AudioSampleTest");
   TASSERT (project);
-  project->_activate();
 
   // Verify project was created successfully
   TASSERT (project->name() == "AudioSampleTest");
@@ -54,7 +53,6 @@ test_audio_sample_load()
   loop_around_clip (*clip);
   project->edit_->getTransport().ensureContextAllocated();
 
-  project->_deactivate();
   project->discard();
 }
 TEST_ADD (test_audio_sample_load);

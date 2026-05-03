@@ -717,8 +717,6 @@ export class Device // Ase::Device
   { return this.$get ("devices", []) as Device[]; }
   set devices (v: Device[])
   { this.$set ("devices", v); }
-  is_active (): Promise<boolean>
-  { return this.$rpc ("is_active", [this]); }
   device_info (): Promise<DeviceInfo>
   { return this.$rpc ("device_info", [this]); }
   get_devices (): Promise<Device[]>

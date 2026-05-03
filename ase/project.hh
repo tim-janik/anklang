@@ -49,8 +49,6 @@ public:
   double               denominator      () const override;
   String               name             () const override;
   void                 name             (const std::string &n) override;
-  void                 _activate         () override;
-  void                 _deactivate       () override;
   void                 discard           () override;
   DeviceInfo           device_info       () override;
   UndoScope            undo_scope        (const String &scopename);

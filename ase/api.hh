@@ -212,11 +212,8 @@ class Device : public virtual Gadget {
 public:
   // internal
   Track*                  _track             () const;          ///< Find Track in parent ancestry.
-  virtual void            _activate          () = 0;            ///< Add AudioProcessor to the Engine and start processing.
-  virtual void            _deactivate        () = 0;            ///< Stop processing the corresponding AudioProcessor.
   virtual void            _disconnect_remove () = 0;            ///< Disconnect the device and remove all object references.
   // exported
-  virtual bool       is_active     () = 0;      ///< Check whether this is the active synthesis engine project.
   virtual DeviceInfo device_info   () = 0;      ///< Describe this Device type.
   virtual DeviceS    get_devices   () const = 0; ///< List devices in order of processing, notified via "devs".
   virtual void       set_devices   (const DeviceS &devices) = 0; ///< Set the list of devices.

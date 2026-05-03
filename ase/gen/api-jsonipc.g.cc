@@ -217,7 +217,6 @@ jsonipc_for_api_jsonipc_json()
   class__Ase_Device
     .inherit< ::Ase::Gadget >()
     .set ("devices", &::Ase::Device::get_devices, &::Ase::Device::set_devices)
-    .set ("is_active", &::Ase::Device::is_active)
     .set ("device_info", &::Ase::Device::device_info)
     .set ("get_devices", &::Ase::Device::get_devices)
     .set ("set_devices", &::Ase::Device::set_devices)

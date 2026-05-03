@@ -29,8 +29,6 @@ public:
   bool            is_folder         () const    { return "Folder" == te_type_; }
   String          name              () const override;
   void            name              (const std::string &n) override;
-  void            _activate         () override;
-  void            _deactivate       () override;
   DeviceInfo      device_info       () override;
   ProjectImpl*    project           () const;
   bool            is_master         () const override;

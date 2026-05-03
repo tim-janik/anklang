@@ -88,20 +88,6 @@ PluginImpl::serialize (WritNode &xs)
 {
 }
 
-void
-PluginImpl::_activate()
-{
-  assert_return (!is_active() && _parent());
-  DeviceImpl::_activate();
-}
-
-void
-PluginImpl::_deactivate()
-{
-  assert_return (is_active());
-  DeviceImpl::_deactivate();
-}
-
 String
 PluginImpl::plugin_type() const
 {
