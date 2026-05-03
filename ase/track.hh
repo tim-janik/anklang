@@ -20,7 +20,6 @@ class TrackImpl : public DeviceImpl, public virtual Track {
   virtual         ~TrackImpl        ();
 protected:
   String          fallback_name     () const override;
-  void            serialize         (WritNode &xs) override;
   void            update_telemetry  ();
 public:
   class ClipScout;

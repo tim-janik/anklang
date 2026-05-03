@@ -7,8 +7,8 @@
 #include "main.hh"
 #include "compress.hh"
 #include "path.hh"
+#include "strings.hh"
 #include "unicode.hh"
-#include "serialize.hh"
 #include "storage.hh"
 #include "server.hh"
 #include "internal.hh"
@@ -537,10 +537,8 @@ ProjectImpl::save_project (const String &utf8filename, bool collect)
   Error error = ws.open_with_mimetype (abs_projectfile, "application/x-anklang");
   if (!error)
     {
-      // serialize Project
-      String jsd = json_stringify (*this, Writ::RELAXED);
-      jsd += '\n';
-      error = ws.store_file_data ("project.json", jsd, true);
+      // serialize Project (TODO: use tracktion_engine saving & loading)
+      error = ws.store_file_data ("project.json", "{}\n", true);
     }
   if (!error)
     for (const auto &[path, dest] : storage_->writer_files) {
@@ -572,8 +570,8 @@ ProjectImpl::snapshot_project (String &json)
     return Error::NO_PROJECT_DIR;
   storage_->anklang_dir = storage_->writer_cachedir;
   storage_->asset_hashes.clear();
-  // serialize Project
-  json = json_stringify (*this, Writ::RELAXED) + '\n';
+  // serialize Project (TODO: use tracktion_engine saving & loading)
+  json = "{}";
   // cleanup
   anklang_cachedir_cleanup (storage_->writer_cachedir);
   return Error::NONE;
@@ -712,9 +710,8 @@ ProjectImpl::load_project (const String &utf8filename)
         rs.search_dir (dirname);
     }
 #endif
-  // parse project
-  if (!json_parse (jsd, *this))
-    return Error::PARSE_ERROR;
+  // parse project (TODO: use tracktion_engine loading)
+  // jsd contains project state from tracktion_engine (currently {})
   saved_filename_ = storage_->loading_file;
   return Error::NONE;
 }
@@ -737,12 +734,6 @@ ProjectImpl::loader_resolve (const String &hexhash)
     if (hexhash == hash)
       return Path::join (storage_->anklang_dir, relpath);
   return "";
-}
-
-void
-ProjectImpl::serialize (WritNode &xs)
-{
-  // TODO: use tracktion_engine saving & loading
 }
 
 String

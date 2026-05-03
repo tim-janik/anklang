@@ -7,7 +7,6 @@
 #include "plugin.hh"
 #include "server.hh"
 #include "main.hh"
-#include "serialize.hh"
 #include "jsonipc/jsonipc.hh"
 #include "internal.hh"
 
@@ -186,11 +185,6 @@ TrackImpl::fallback_name() const
     return string_format ("Track %u", i >= 0 ? i + 1 : i);
   }
   return DeviceImpl::fallback_name();
-}
-
-void
-TrackImpl::serialize (WritNode &xs)
-{
 }
 
 void
