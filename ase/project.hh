@@ -36,7 +36,6 @@ protected:
   explicit            ProjectImpl     ();
   virtual            ~ProjectImpl     ();
   void                foreach_track   (const std::function<bool(Track&,int)> &cb);
-  void                serialize       (WritNode &xs) override;
   Error               snapshot_project (String &json);
   String              match_serialized (const String &regex, int group) override;
   void                deactivate_edit ();
@@ -49,8 +48,6 @@ public:
   double               denominator      () const override;
   String               name             () const override;
   void                 name             (const std::string &n) override;
-  void                 _activate         () override;
-  void                 _deactivate       () override;
   void                 discard           () override;
   DeviceInfo           device_info       () override;
   UndoScope            undo_scope        (const String &scopename);

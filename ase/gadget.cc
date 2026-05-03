@@ -1,9 +1,9 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "gadget.hh"
 #include "jsonipc/jsonipc.hh"
+#include "strings.hh"
 #include "utils.hh"
 #include "project.hh"
-#include "serialize.hh"
 #include "internal.hh"
 #include "randomhash.hh"
 
@@ -65,60 +65,6 @@ GadgetImpl::set_data (const String &key, const Value &v)
   session_data_[ckey] = v;
   emit_event ("data", ckey);
   return true;
-}
-
-void
-GadgetImpl::serialize (WritNode &xs)
-{
-  // name
-  String current_name = name();
-  if (xs.in_save() && current_name != fallback_name())
-    xs["name"] & current_name;
-  if (xs.in_load() && xs.has ("name"))
-    {
-      String new_name;
-      xs["name"] & new_name;
-      if (current_name != new_name)     // avoid fixating a fallback
-        name (new_name);
-    }
-  // Serializable
-  Serializable::serialize (xs);
-  // properties
-  for (PropertyP p : access_properties())
-    {
-      const String hints = p->hints();
-      if (!string_option_check (hints, "S"))
-        continue;
-      if (xs.in_save() && string_option_check (hints, "r"))
-        {
-          Value v = p->value();
-          xs[p->ident()] & v;
-        }
-      if (xs.in_load() && string_option_check (hints, "w") && xs.has (p->ident()))
-        {
-          Value v;
-          xs[p->ident()] & v;
-          p->value (v);
-        }
-    }
-  // data
-  if (xs.in_save())
-    {
-      ValueR cdata;
-      for (const ValueField &f : session_data_)
-        if (f.name[0] != '_' && f.value)
-          cdata[f.name] = *f.value;
-      if (cdata.size())
-        xs["custom_data"] & cdata;
-    }
-  if (xs.in_load())
-    {
-      ValueR cdata;
-      xs["custom_data"] & cdata;
-      for (const ValueField &f : cdata)
-        if (f.value)
-          set_data (f.name, *f.value);
-    }
 }
 
 String

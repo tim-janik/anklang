@@ -216,14 +216,7 @@ jsonipc_for_api_jsonipc_json()
   ::Jsonipc::Class< ::Ase::Device > class__Ase_Device;
   class__Ase_Device
     .inherit< ::Ase::Gadget >()
-    .set ("devices", &::Ase::Device::get_devices, &::Ase::Device::set_devices)
-    .set ("is_active", &::Ase::Device::is_active)
     .set ("device_info", &::Ase::Device::device_info)
-    .set ("get_devices", &::Ase::Device::get_devices)
-    .set ("set_devices", &::Ase::Device::set_devices)
-    .set ("gui_toggle", &::Ase::Device::gui_toggle)
-    .set ("gui_supported", &::Ase::Device::gui_supported)
-    .set ("gui_visible", &::Ase::Device::gui_visible)
     ;
 
   ::Jsonipc::Class< ::Ase::Plugin > class__Ase_Plugin;

@@ -3,7 +3,6 @@
 
 #include "plugin.hh"
 #include "server.hh"
-#include "serialize.hh"
 #include "jsonipc/jsonipc.hh"
 #include "internal.hh"
 
@@ -81,25 +80,6 @@ PluginImpl::fallback_name() const
   if (auto pluginp = plugin_.get())
     return pluginp->getName().toStdString();
   return DeviceImpl::fallback_name();
-}
-
-void
-PluginImpl::serialize (WritNode &xs)
-{
-}
-
-void
-PluginImpl::_activate()
-{
-  assert_return (!is_active() && _parent());
-  DeviceImpl::_activate();
-}
-
-void
-PluginImpl::_deactivate()
-{
-  assert_return (is_active());
-  DeviceImpl::_deactivate();
 }
 
 String

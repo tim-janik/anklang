@@ -4,7 +4,6 @@
 #include "clip.hh"
 #include "track.hh"
 #include "project.hh"
-#include "serialize.hh"
 #include "internal.hh"
 
 namespace te = tracktion::engine;
@@ -100,18 +99,6 @@ ClipImpl::project () const
     if (auto timpl = find_ase_obj<TrackImpl> (c->getTrack()))
       return timpl->project();
   return nullptr;
-}
-
-bool
-ClipImpl::needs_serialize() const
-{
-  return false;
-}
-
-void
-ClipImpl::serialize (WritNode &xs)
-{
-  GadgetImpl::serialize (xs);
 }
 
 ssize_t
