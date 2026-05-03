@@ -194,20 +194,6 @@ TrackImpl::serialize (WritNode &xs)
 }
 
 void
-TrackImpl::_activate()
-{
-  assert_return (!is_active() && _parent());
-  DeviceImpl::_activate();
-}
-
-void
-TrackImpl::_deactivate()
-{
-  assert_return (is_active());
-  DeviceImpl::_deactivate();
-}
-
-void
 TrackImpl::midi_channel (int32 midichannel)
 {
   midichannel = CLAMP (midichannel, 0, 16);

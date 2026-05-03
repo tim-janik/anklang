@@ -5,27 +5,6 @@
 namespace Ase {
 
 // == DeviceImpl ==
-void
-DeviceImpl::_set_parent (GadgetImpl *parent)
-{
-  assert_warn (!is_active());
-  GadgetImpl::_set_parent (parent);
-}
-
-void
-DeviceImpl::_activate()
-{
-  assert_return (!activated_);
-  activated_ = true;
-}
-
-void
-DeviceImpl::_deactivate()
-{
-  assert_return (activated_);
-  activated_ = false;
-}
-
 template<typename E> std::pair<std::shared_ptr<E>,ssize_t>
 find_shared_by_ref (const std::vector<std::shared_ptr<E> > &v, const E &e)
 {

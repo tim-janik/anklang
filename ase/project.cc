@@ -438,22 +438,6 @@ ProjectImpl::remove_self ()
   GadgetImpl::remove_self();
 }
 
-void
-ProjectImpl::_activate ()
-{
-  assert_return (!is_active());
-  DeviceImpl::_activate();
-  // TODO: still needed for trkn?
-}
-
-void
-ProjectImpl::_deactivate ()
-{
-  assert_return (is_active());
-  // TODO: still needed for trkn?
-  DeviceImpl::_deactivate();
-}
-
 static bool
 is_anklang_dir (const String &path)
 {
