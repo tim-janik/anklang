@@ -20,6 +20,7 @@ import DataBubbleIface from '../b/databubble.js';
 import spinner_svg from '/assets/spinner.svg'
 import { ModalDialogs } from './modals.jsx';
 import { AboutDialog } from './aboutdialog.jsx';
+import { StatusBar } from './statusbar.jsx';
 
 // == STYLE ==
 Extra_css`
@@ -142,7 +143,7 @@ export function ShellTemplate (props)
       </div>
 
       {/* status bar */}
-      <b-statusbar class="-row9 -col123"></b-statusbar>
+      <StatusBar class="-row9 -col123" />
 
       {/* Other Dialogs */}
       <Show when={r.show_about_dialog_}>
