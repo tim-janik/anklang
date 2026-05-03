@@ -226,6 +226,16 @@ jsonipc_for_api_jsonipc_json()
     .set ("gui_visible", &::Ase::Device::gui_visible)
     ;
 
+  ::Jsonipc::Class< ::Ase::Plugin > class__Ase_Plugin;
+  class__Ase_Plugin
+    .inherit< ::Ase::Device >()
+    .set ("plugin_type", &::Ase::Plugin::plugin_type)
+    .set ("is_enabled", &::Ase::Plugin::is_enabled)
+    .set ("set_enabled", &::Ase::Plugin::set_enabled)
+    .set ("is_frozen", &::Ase::Plugin::is_frozen)
+    .set ("set_frozen", &::Ase::Plugin::set_frozen)
+    ;
+
   ::Jsonipc::Class< ::Ase::Clip > class__Ase_Clip;
   class__Ase_Clip
     .inherit< ::Ase::Gadget >()
@@ -250,6 +260,8 @@ jsonipc_for_api_jsonipc_json()
     .set ("is_master", &::Ase::Track::is_master)
     .set ("is_muted", &::Ase::Track::is_muted)
     .set ("set_muted", &::Ase::Track::set_muted)
+    .set ("is_hidden", &::Ase::Track::is_hidden)
+    .set ("set_hidden", &::Ase::Track::set_hidden)
     .set ("is_solo", &::Ase::Track::is_solo)
     .set ("set_solo", &::Ase::Track::set_solo)
     .set ("volume", &::Ase::Track::volume, &::Ase::Track::volume)
@@ -257,6 +269,8 @@ jsonipc_for_api_jsonipc_json()
     .set ("launcher_clips", &::Ase::Track::launcher_clips)
     .set ("create_midi_clip", &::Ase::Track::create_midi_clip)
     .set ("create_audio_clip", &::Ase::Track::create_audio_clip)
+    .set ("create_plugin", &::Ase::Track::create_plugin)
+    .set ("list_plugins", &::Ase::Track::list_plugins)
     .set ("access_device", &::Ase::Track::access_device)
     .set ("create_monitor", &::Ase::Track::create_monitor)
     .set ("telemetry", &::Ase::Track::telemetry)

@@ -66,6 +66,8 @@ ASE_CLASS_DECLS (StreamReader);
 ASE_CLASS_DECLS (StreamWriter);
 ASE_CLASS_DECLS (Track);
 ASE_CLASS_DECLS (TrackImpl);
+ASE_CLASS_DECLS (Plugin);
+ASE_CLASS_DECLS (PluginImpl);
 
 class AudioEngine;
 class CustomDataContainer;

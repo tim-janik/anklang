@@ -2,6 +2,7 @@
 #include "trkn/tracktion.hh"   // PCH include must come first
 
 #include "project.hh"
+#include "plugin.hh"
 #include "jsonipc/jsonipc.hh"
 #include "main.hh"
 #include "compress.hh"
@@ -289,8 +290,9 @@ test_sfz (ProjectImpl *project, te::Edit *edit, const String &filename)
   auto plugin = trackimpl->create_plugin (LiquidSFZPlugin::xmlTypeName);
   assert (plugin);
 
-  if (auto liquidsfz = dynamic_cast<LiquidSFZPlugin *> (plugin))
-    liquidsfz->load (filename);
+  if (auto pluginimpl = std::dynamic_pointer_cast<PluginImpl> (plugin))
+    if (auto liquidsfz = dynamic_cast<LiquidSFZPlugin *> (pluginimpl->plugin()))
+      liquidsfz->load (filename);
 
   auto &transport = edit->getTransport();
   transport.setLoopRange({ tracktion::TimePosition::fromSeconds (start), tracktion::TimeDuration::fromSeconds (duration) });
