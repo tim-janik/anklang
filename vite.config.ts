@@ -18,6 +18,7 @@ import extra_css from './ui/extra-css';
 import stylelint from 'stylelint';
 import stylelintrc from './ui/stylelintrc.cjs';
 import postcssReporter from "postcss-reporter";
+import css_functions from './ui/css-functions';
 const BUILDDIR = path.resolve (process.env.BUILDDIR || 'out/');
 const gen_path = path.resolve (BUILDDIR + "/gen/");
 const __VITE_CONFIG__ = JSON.parse (fs.readFileSync (path.resolve (BUILDDIR + "/version.json"), 'utf8'));
@@ -103,6 +104,7 @@ function vite_config ({ mode })
       postcss: {
 	plugins: [
           // TODO: enable stylelint (stylelintrc),
+	  css_functions(),
 	  postcssReporter ({
 	    clearReportedMessages: true,
 	    formatter: postcss_formatter,
@@ -122,6 +124,7 @@ function vite_config ({ mode })
 	input: {
 	  app: 'ui/index.html',
 	  testcalls: BUILDDIR + "/gen/testcalls.g.ts",
+	  'css-tests': "ui/tests/css-tests.css",
 	},
       },
     },

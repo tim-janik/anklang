@@ -130,14 +130,25 @@ $>/gen/%.md: ui/%.js								| $>/gen/b/ node_modules/.npm.done
 
 # == ui dist build ==
 VITE_DEPS += $>/version.json $(wildcard ui/* ui/b/*)
-$>/gen/.vite.done: vite.config.ts ui/index.html ui/Makefile.mk $(VITE_DEPS)	| node_modules/.npm.done
+$>/gen/.vite.done: vite.config.ts ui/index.html ui/css-functions.js ui/tests/css-tests.css ui/Makefile.mk $(VITE_DEPS)	| $>/tests/ node_modules/.npm.done
 	@$(QECHO) BUILD "Vite Output"
 	$Q BUILDDIR='$(abspath $>)' node_modules/.bin/vite -c vite.config.ts build -l warn --emptyOutDir
 	$Q ln -fs anklang.png $>/ui/favicon.ico
 	$Q gzip -f -9 $>/ui/assets/*.map
 	$Q echo '.*/[.].*'		>> $>/ui/.aseignore
+	$Q mv $>/ui/assets/css-tests-*.css $>/tests/css-tests.css \
+	&& sed '1s/.*/set -Eeuo pipefail/; t; s/\*\/ *//; s/^ *\/\?\* *grep\b\(.*\)/grep \1 $$1/; /^grep/!s/.*//' \
+		< $>/tests/css-tests.css > $>/tests/css-tests.sh
 	$Q touch $@
 
+# == ui/check-css-tests ==
+ui/check-css-tests: $>/tests/css-tests.sh $>/tests/css-tests.css ui/tests/css-tests.css $>/gen/.vite.done
+	@$(QECHO) CHECK '$@'
+	$Q grep -q 'grep' $>/tests/css-tests.sh || { echo "ui/tests/css-tests.css: error: missing 'grep' assertions" ; false ; }
+	$Q bash -x $>/tests/css-tests.sh $>/tests/css-tests.css > $>/tests/css-tests.out 2>&1 \
+	|| { cat $>/tests/css-tests.out ; false ; } \
+	&& echo '  PASS    ' $@
+check: ui/check-css-tests
 
 # == ui/tscheck ==
 ui/tscheck: tsconfig.json
