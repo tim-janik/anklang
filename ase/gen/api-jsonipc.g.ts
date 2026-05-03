@@ -713,22 +713,8 @@ export class Device // Ase::Device
 {
   constructor ($id)
   { super ($id); if (new.target === Device) Jsonipc.ofreeze (this); }
-  get devices (): Device[]
-  { return this.$get ("devices", []) as Device[]; }
-  set devices (v: Device[])
-  { this.$set ("devices", v); }
   device_info (): Promise<DeviceInfo>
   { return this.$rpc ("device_info", [this]); }
-  get_devices (): Promise<Device[]>
-  { return this.$rpc ("get_devices", [this]); }
-  set_devices (arg1: Device[]): Promise<void>
-  { return this.$rpc ("set_devices", [this, arg1]); }
-  gui_toggle (): Promise<void>
-  { return this.$rpc ("gui_toggle", [this]); }
-  gui_supported (): Promise<boolean>
-  { return this.$rpc ("gui_supported", [this]); }
-  gui_visible (): Promise<boolean>
-  { return this.$rpc ("gui_visible", [this]); }
 };
 Jsonipc.classes["Ase::Device"] = Device;
 

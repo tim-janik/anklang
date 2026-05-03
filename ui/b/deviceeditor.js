@@ -290,7 +290,7 @@ class BDeviceEditor extends LitComponent {
 	this.device.remove_self();
 	break;
       case 'toggle-gui':
-	this.device.gui_toggle();
+	// TODO: this.device.gui_toggle() — needs PluginImpl::gui_toggle() impl
 	break;
     }
   }
@@ -304,7 +304,8 @@ class BDeviceEditor extends LitComponent {
       case 'delete-device':
 	return true;
       case 'toggle-gui':
-	return await this.device.gui_supported();
+	// TODO: return await this.device.gui_supported() — needs PluginImpl::gui_supported() impl
+	return false;
     }
     return false;
   }
