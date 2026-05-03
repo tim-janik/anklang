@@ -124,6 +124,7 @@ function vite_config ({ mode })
 	input: {
 	  app: 'ui/index.html',
 	  testcalls: BUILDDIR + "/gen/testcalls.g.ts",
+	  'css-tests': "ui/tests/css-tests.css",
 	},
       },
     },
