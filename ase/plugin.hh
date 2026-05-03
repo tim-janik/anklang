@@ -18,7 +18,6 @@ class PluginImpl : public DeviceImpl, public virtual Plugin {
   virtual         ~PluginImpl        ();
 protected:
   String          fallback_name     () const override;
-  void            serialize         (WritNode &xs) override;
 public:
   explicit        PluginImpl         (tracktion::Plugin &plugin);
   String          name              () const override;

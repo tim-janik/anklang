@@ -8,7 +8,7 @@
 namespace Ase {
 
 /// Base type for classes that have a Property.
-class GadgetImpl : public ObjectImpl, public CustomDataContainer, public virtual Gadget, public virtual Serializable {
+class GadgetImpl : public ObjectImpl, public CustomDataContainer, public virtual Gadget {
   GadgetImpl *parent_ = nullptr;
   uint64_t    gadget_flags_ = 0;
   ValueR      session_data_;
@@ -20,7 +20,6 @@ protected:
   static String  canonify_key      (const String &input);
   virtual       ~GadgetImpl        ();
   virtual String fallback_name     () const;
-  void           serialize         (WritNode &xs) override;
   virtual void   create_properties ();
 public:
   String         name              () const override;
