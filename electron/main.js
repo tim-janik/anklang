@@ -286,6 +286,18 @@ const ipc_handler = {
       browserwindow.setZoomLevel (newval);
     return browserwindow.getZoomLevel();
   },
+  async screenshot (_browserwindow, seq)
+  {
+    seq = 0 | seq;
+    if (seq < 1 || seq > 99)
+      return;
+    if (!browser_window)
+      return;
+    const filepath = '/tmp/Anklang-screenshot-' + String (seq).padStart (2, '0') + '.png';
+    const image = await browser_window.webContents.capturePage();
+    fs.writeFileSync (filepath, image.toPNG());
+    console.log ('Screenshot saved: ' + filepath);
+  },
 };
 // Dispatch Renderer->Main message events
 for (const func in ipc_handler)
