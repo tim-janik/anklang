@@ -14,32 +14,4 @@ find_shared_by_ref (const std::vector<std::shared_ptr<E> > &v, const E &e)
   return std::make_pair (std::shared_ptr<E>{}, -1);
 }
 
-void
-DeviceImpl::_disconnect_remove ()
-{
-  // to be removed
-}
-
-DeviceInfo
-DeviceImpl::extract_info (const String &aseid)
-{
-  DeviceInfo info = {
-    .uri          = aseid,
-  };
-  // to be removed
-  return info;
-}
-
-Track*
-Device::_track () const
-{
-  for (Gadget *parent = _parent(); parent; parent = parent->_parent())
-    {
-      Track *track = dynamic_cast<Track*> (parent);
-      if (track)
-        return track;
-    }
-  return nullptr;
-}
-
 } // Ase
