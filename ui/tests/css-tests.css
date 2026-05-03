@@ -1,0 +1,45 @@
+/* This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0 */
+
+/* Test the ui/css-functions.js PostCSS plugin. Run `make ui/check-css-tests`
+ * to evaluate the `grep...` comamnds below.
+ */
+
+#__ui_css-functions.js-tests {
+
+  /* -- lighten tests -- */
+  --lighten-percent: lighten(#ff0000, 10%);
+  /* grep -e '--lighten-percent: *oklch(from #ff0000 calc(l + 0.1 ) c h)' */
+
+  --lighten-default: lighten(#888);
+  /* grep -e '--lighten-default: *oklch(from #888 calc(l + 0.05 ) c h)' */
+
+  /* -- darken tests -- */
+  --darken-percent: darken(#00ff00, 5%);
+  /* grep -e '--darken-percent: *oklch(from #00ff00 calc(l - 0.05 ) c h)' */
+
+  --darken-default: darken(#aaa);
+  /* grep -e '--darken-default: *oklch(from #aaa calc(l - 0.05 ) c h)' */
+
+  --darken-decimal: darken(rgb(100, 50, 200), 0.2);
+  /* grep -e '--darken-decimal: *oklch(from rgb(100,50,200) calc(l - 0.2 ) c h)' */
+
+  /* -- desaturate tests -- */
+  --desaturate-percent: desaturate(#0000ff, 20%);
+  /* grep -e '--desaturate-percent: *oklch(from #0000ff l calc(c \* 0.8 ) h)' */
+
+  --desaturate-default: desaturate(hsl(30, 80%, 50%));
+  /* grep -e '--desaturate-default: *oklch(from hsl(30,80%,50%) l calc(c \* 0.95 ) h)' */
+
+  --desaturate-decimal: desaturate(rgb(100,200,50), 0.3);
+  /* grep -e '--desaturate-decimal: *oklch(from rgb(100,200,50) l calc(c \* 0.7 ) h)' */
+
+  /* -- passthrough tests -- */
+  /* unknown function passthrough (should not be touched) */
+  --unknown-fn: notarealfn(#ff0000, 10%);
+  /* grep -e '--unknown-fn: *notarealfn(#ff0000, 10%)' */
+
+  /* plain value passthrough (should not be touched) */
+  --plain-color: #abcdef;
+  /* grep -e '--plain-color: *#abcdef' */
+
+}
