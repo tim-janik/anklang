@@ -9,7 +9,7 @@
  * : Callback invoked when the Close button is activated.
  */
 
-import { createSignal, onMount, For } from 'solid-js';
+import { createSignal, onMount, onCleanup, For } from 'solid-js';
 import * as Util from "../util.js";
 import * as Dom from "../dom.js";
 
@@ -25,12 +25,22 @@ export function AboutDialog (props)
 {
   const [info_pairs, set_info_pairs] = createSignal ([]);
   let dialogRef;
+  let cancelled = false; // guard against showModal() after unmount (solid-dialog pattern)
 
   onMount (async () => {
     const pairs = await about_pairs ();
+    if (cancelled) return; // component unmounted during async load — skip open
     set_info_pairs (pairs);
     if (dialogRef)
       Dom.show_modal (dialogRef, () => props.onClose?.());
+  });
+
+  // onCleanup runs synchronously before DOM removal (SolidJS lifecycle guarantee)
+  // ensures dialogRef.close() fires native 'close' event before element is yanked
+  onCleanup (() => {
+    cancelled = true;   // prevent late onMount from calling showModal()
+    dialogRef?.close(); // close native dialog so 'close' event fires for listener cleanup
+    props.onClose?.();  // sync parent state (controlled-prop pattern, like solid-modal/solid-dialog)
   });
 
   const handleClose = () => {
