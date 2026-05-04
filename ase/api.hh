@@ -415,6 +415,7 @@ public:
   virtual UiConfig  ui_config         () = 0;                    ///< Retrieve UI configuration values.
   virtual String    ui_test_fetch     () = 0;                    ///< Fetch next UI test name to run (empty if none).
   virtual void      ui_test_report    (const String &testname, bool success) = 0; ///< Report UI test result.
+  virtual String    ui_js_fetch       () = 0;                    ///< Fetch UI JS script to run (empty if none).
   String            engine_stats      ();                        ///< Print engine state.
   void              exit_program      (int status = 0);          ///< End program (without saving).
   // projects

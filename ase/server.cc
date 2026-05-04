@@ -159,6 +159,12 @@ ServerImpl::ui_test_report (const String &testname, bool success)
     main_loop->add ([] () { main_loop->quit (ui_test_state.has_failed ? 1 : 0); });
 }
 
+String
+ServerImpl::ui_js_fetch ()
+{
+  return App.ui_js;
+}
+
 ServerImplP
 ServerImpl::instancep ()
 {
