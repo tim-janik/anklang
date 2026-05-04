@@ -90,6 +90,7 @@ export function show_modal (dialog, closefunc = null)
 {
   if (dialog.open) return;
   closefunc = closefunc || (() => dialog.close());
+  let closed = false; // idempotency guard — prevent double closefunc() (onCleanup + native close event)
   // close dialog on backdrop clicks, but:
   // - avoid matching text-select drags that end up on backdrop area
   // - avoid matching Enter-click event coordinates from input-submit with clientX*clientY==0
@@ -104,14 +105,14 @@ export function show_modal (dialog, closefunc = null)
   const escapecloses = event => {
     if (event.key === 'Escape') {
       event.preventDefault();
-      closefunc();
+      if (!closed) { closed = true; closefunc(); }
     }
   };
   const pointerup = event => {
     if (pointer_outside && event.target === dialog && // backdrop as target is dialog
 	(event.offsetX < 0 || event.offsetX >= event.target.offsetWidth ||
 	 event.offsetY < 0 || event.offsetY >= event.target.offsetHeight))
-      closefunc();
+      if (!closed) { closed = true; closefunc(); }
     else
       pointer_outside = false;
   };
