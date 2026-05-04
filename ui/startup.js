@@ -18,6 +18,10 @@ Object.assign (globalThis.CONFIG, fallback_config, browser_config());
 import * as Util from './util.js';
 Object.defineProperty (globalThis, 'Util', { value: Util });
 
+// Global Dom module for headless scripting (ui_find, ui_list, ui_wait_for, ui_click)
+import * as Dom from './dom.js';
+Object.defineProperty (globalThis, 'Dom', { value: Dom });
+
 // Import Ase, connecting is done asynchronously
 import * as Ase from '../ase/gen/api-jsonipc.g.ts';
 
