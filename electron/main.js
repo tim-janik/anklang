@@ -264,14 +264,24 @@ async function load_and_show (w, winurl)
 // == IPC Messages ==
 // IPC calls available to the Renderer
 const ipc_handler = {
-  electron_versions (browserwindow, ...args)   { return { platform: process.platform,
-							  config: ELECTRON_CONFIG,
-	                                                  arch: process.arch,
-                                                          os_release: os.release(),
-	                                                  versions: process.versions, }; },
-  toggle_dev_tools (browserwindow, ...args)	{ browserwindow.toggleDevTools(); },
-  exit (browserwindow, status)			{ Electron.app.exit (0 | status); },
-  zoom_level (browserwindow, newval)		{
+  electron_versions (browserwindow, ...args)
+  {
+    return { platform: process.platform,
+	     config: ELECTRON_CONFIG,
+	     arch: process.arch,
+             os_release: os.release(),
+	     versions: process.versions, };
+  },
+  toggle_dev_tools (browserwindow, ...args)
+  {
+    browserwindow.toggleDevTools();
+  },
+  exit (browserwindow, status)
+  {
+    Electron.app.exit (0 | status);
+  },
+  zoom_level (browserwindow, newval)
+  {
     if (newval >= -9 && newval <= +9)
       browserwindow.setZoomLevel (newval);
     return browserwindow.getZoomLevel();
@@ -282,7 +292,8 @@ for (const func in ipc_handler)
   Electron.ipcMain.handle (func, async (event, args) => await ipc_handler[func] (event.sender, ...args));
 
 // == Usage ==
-function usage (what, exitcode = false) {
+function usage (what, exitcode = false)
+{
   const name = Eapp.getName();
   if (what === 'version')
     console.log (name + ' ' + Eapp.getVersion());
@@ -365,7 +376,8 @@ function parse_args (argv)
 
 // == Start Components ==
 // Create SoundEngine and BrowserWindow once everything is loaded
-async function startup_components (config) {
+async function startup_components (config)
+{
   Esession.defaultSession.clearCache();
   // start rendering process
   const onclose = () => browser_window = null;
