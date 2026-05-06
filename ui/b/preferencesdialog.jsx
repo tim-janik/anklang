@@ -8,8 +8,8 @@ import * as Dom from "../dom.js";
 
 // == STYLE ==
 Extra_css`
-.b-preferencesdialog {
-  /* max-width: 70em; */
+dialog.b-preferencesdialog {
+  margin: auto;
 }
 `;
 
