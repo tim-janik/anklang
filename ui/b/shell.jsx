@@ -26,6 +26,7 @@ import { TreeBrowser } from './treebrowser.jsx';
 import { MenuBar } from './menubar.jsx';
 import { PreferencesDialog } from './preferencesdialog.jsx';
 import { DevicePanel } from './devicepanel.jsx';
+import { TrackList } from './tracklist.jsx';
 
 // == STYLE ==
 Extra_css`
@@ -122,7 +123,7 @@ export function ShellTemplate (props)
       <MenuBar class="-row1 -col123" project={Data.project}></MenuBar>
 
       {/* tracks and clips */}
-      <b-tracklist class="-row2 -col2" style="overflow: hidden" project={Data.project}></b-tracklist>
+      <TrackList class="-row2 -col2" style="overflow: hidden" project={Data.project} />
 
       {/* devices */}
       <Show when={Data.panel2 === 'd'}>

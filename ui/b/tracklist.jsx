@@ -1,14 +1,15 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { LitComponent, html, JsExtract, docs, ref, repeat } from '../little.js';
-
-/** == B-TRACKLIST ==
- * A container for vertical display of Ase.Track instances.
+/** @class B-TrackList
+ * SolidJS component for vertical display of Ase.Track instances.
+ *
  * ### Props:
  * *project*
  * : The *Ase.Project* containing playback tracks.
  */
+
+import { createSignal, createEffect, onCleanup, For } from 'solid-js';
 
 // == STYLE ==
 Extra_css`
@@ -60,70 +61,96 @@ b-tracklist, .b-tracklist {
   }
 }`;
 
-// == HTML ==
-const TRACKVIEW_HTML = (t, track, idx, len) => html`
-  <b-trackview .track=${track} trackindex=${idx} ></b-trackview>
-`;
-const CLIPLIST_HTML = (t, track, idx, len) => html`
-  <b-cliplist .track=${track} trackindex=${idx} ></b-cliplist>
-`;
-const HTML = (t, d) => html`
-  <div class="grid" >
-    <div style="grid-area: 1/1 / 2/4;"> <!--HEADER--> </div>
-    <div class="trackviews" ${ref (h => t.trackviews = h)} >
-      ${repeat (t.wproject_.all_tracks, track => track.$id, (track, idx) => TRACKVIEW_HTML (t, track, idx, t.wproject_.all_tracks.length))}
-    </div>
-    <div class="cliplists" ${ref (h => t.cliplists = h)} >
-      ${repeat (t.wproject_.all_tracks, track => track.$id, (track, idx) => CLIPLIST_HTML (t, track, idx, t.wproject_.all_tracks.length))}
-    </div>
-    <div class="partlists" ${ref (h => t.partlists = h)} >
-      ${repeat (t.wproject_.all_tracks, track => track.$id, (track, idx) => CLIPLIST_HTML (t, track, idx, t.wproject_.all_tracks.length))}
-    </div>
-    <div style="grid-area: 3/1 / 4/4;"> <!--FOOTER--> </div>
-    <div class="scrollshadow"></div>
-  </div>
-`;
+// == Component ==
+export function TrackList (props)
+{
+  const [tracks, set_tracks] = createSignal ([]);
+  let trackviews_ref;
+  let cliplists_ref;
+  let partlists_ref;
 
-// == SCRIPT ==
-import * as Util from '../util.js';
+  // Fetch tracks when project changes and on notifications
+  createEffect (async () => {
+    const project = props.project;
+    if (!project) {
+      set_tracks ([]);
+      return;
+    }
+    const list = await project.all_tracks ();
+    set_tracks (list || []);
+  });
 
-const OBJECT_PROPERTY = { attribute: false };
+  // Listen for track list changes
+  let notify_cleanup;
+  createEffect (() => {
+    const project = props.project;
+    if (notify_cleanup) {
+      notify_cleanup ();
+      notify_cleanup = undefined;
+    }
+    if (project) {
+      notify_cleanup = project.on ("notify:all_tracks", async () => {
+        const list = await project.all_tracks ();
+        set_tracks (list || []);
+      });
+    }
+  });
 
-class BTrackList extends LitComponent {
-  createRenderRoot() { return this; }
-  render()
-  {
-    return HTML (this);
-  }
-  static properties = {
-    project: OBJECT_PROPERTY,
+  onCleanup (() => {
+    if (notify_cleanup) {
+      notify_cleanup ();
+      notify_cleanup = undefined;
+    }
+  });
+
+  // Setup scroll sync after DOM is ready
+  createEffect (() => {
+    if (!cliplists_ref || !trackviews_ref || !partlists_ref)
+      return;
+    const onscroll = (event) => {
+      const st = event.target.scrollTop;
+      trackviews_ref.scrollTop = st;
+      cliplists_ref.scrollTop = st;
+      partlists_ref.scrollTop = st;
+    };
+    cliplists_ref.addEventListener ('scroll', onscroll);
+    partlists_ref.addEventListener ('scroll', onscroll);
+    trackviews_ref.addEventListener ('scroll', onscroll);
+  });
+
+  const list_dblclick = (event) => {
+    if (event.target === trackviews_ref && props.project)
+      props.project.create_track ();
   };
-  constructor()
-  {
-    super();
-    this.trackviews = null;
-    this.cliplists = null;
-    this.partlists = null;
-    this.project = null;
-    this.wproject_ = { all_tracks: [] };
-    this.addEventListener ('dblclick', this.list_dblclick.bind (this));
-  }
-  updated (changed_props)
-  {
-    if (changed_props.has ('project'))
-      {
-	const weakthis = new WeakRef (this); // avoid strong wproject_->this refs for automatic cleanup
-	this.wproject_ = Util.wrap_ase_object (this.project, { all_tracks: [] }, () => weakthis.deref()?.requestUpdate());
-      }
-    if (!this.cliplists.onscroll)
-      this.cliplists.onscroll = event => this.trackviews.scrollTop = this.partlists.scrollTop = this.cliplists.scrollTop;
-    if (!this.partlists.onscroll)
-      this.partlists.onscroll = event => this.trackviews.scrollTop = this.cliplists.scrollTop = this.partlists.scrollTop;
-  }
-  list_dblclick (event)
-  {
-    if (event.target == this.trackviews)
-      this.project.create_track();
-  }
+
+  return (
+    <div class="b-tracklist" onDblclick={list_dblclick}>
+      <div class="grid">
+        <div style="grid-area: 1/1 / 2/4;"> {/* HEADER */} </div>
+        <div class="trackviews" ref={e => trackviews_ref = e}>
+          <For each={tracks ()}>
+            {(track, idx) => (
+              <b-trackview track={track} trackindex={idx ()}></b-trackview>
+            )}
+          </For>
+        </div>
+        <div class="cliplists" ref={e => cliplists_ref = e}>
+          <For each={tracks ()}>
+            {(track, idx) => (
+              <b-cliplist track={track} trackindex={idx ()}></b-cliplist>
+            )}
+          </For>
+        </div>
+        <div class="partlists" ref={e => partlists_ref = e}>
+          <For each={tracks ()}>
+            {(track, idx) => (
+              <b-cliplist track={track} trackindex={idx ()}></b-cliplist>
+            )}
+          </For>
+        </div>
+        <div style="grid-area: 3/1 / 4/4;"> {/* FOOTER */} </div>
+        <div class="scrollshadow"></div>
+      </div>
+    </div>
+  );
 }
-customElements.define ('b-tracklist', BTrackList);
