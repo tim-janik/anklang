@@ -23,6 +23,7 @@ import { AboutDialog } from './aboutdialog.jsx';
 import { StatusBar } from './statusbar.jsx';
 import { Noticeboard, create_note } from './noticeboard.jsx';
 import { TreeBrowser } from './treebrowser.jsx';
+import { MenuBar } from './menubar.jsx';
 
 // == STYLE ==
 Extra_css`
@@ -116,7 +117,7 @@ export function ShellTemplate (props)
   return (
     <div class="b-shell" ref={e => t.setup (e)}>
       {/* Menus and Transport */}
-      <b-menubar class="-row1 -col123" project={Data.project}></b-menubar>
+      <MenuBar class="-row1 -col123" project={Data.project}></MenuBar>
 
       {/* tracks and clips */}
       <b-tracklist class="-row2 -col2" style="overflow: hidden" project={Data.project}></b-tracklist>
