@@ -1,18 +1,17 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/** @class BDevicePanel
- * @description
- * Panel for editing of devices.
- * ## Props:
+/** @class B-DevicePanel
+ * SolidJS component for editing of devices.
+ *
+ * ### Props:
  * *track*
- * : Container for the devices.
+ * : Container for the devices (Ase.Track).
  */
 
-import { LitComponent, html, render, noChange, JsExtract, docs, ref, repeat } from '../little.js';
+import { createSignal, createEffect } from 'solid-js';
 import * as Util from "../util.js";
-import * as Kbd from '../kbd.js';
-import { text_content, get_uri, valid_uri, has_uri } from '../dom.js';
+import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 
 // == STYLE ==
 Extra_css`
@@ -62,37 +61,92 @@ b-devicepanel {
   }
 }`;
 
-// == HTML ==
-const DEVICE_HTML = (t, dev) => html`
-  <b-more @mousedown=${e => t.menuopen (e, dev)}
-    data-tip="**CLICK** Add New Elements" ></b-more>
-  <b-deviceeditor .device=${dev} center ></b-deviceeditor>
-`;
-const HTML = (t) => html`
-  <div class="b-devicepanel-scroller" >
-    <span class="b-devicepanel-vtitle"> Device Panel </span>
-    <div class="b-devicepanel-hstack hflex" >
-      <!-- TODO: $ {repeat (t.chain_?.devices || [], dev => dev.$id, dev => DEVICE_HTML (t, dev))} — needs Device::get_devices() impl -->
-      <b-more @mousedown=${e => t.menuopen (e)}
-	data-tip="**CLICK** Add New Elements" ></b-more>
-      <b-contextmenu ${ref (h => t.devicepanelcmenu = h)}
-	id="g-devicepanelcmenu" .activate=${t.activate.bind (t)} .isactive=${t.isactive.bind (t)} >
-	<b-menutitle> Devices </b-menutitle>
-	<b-treebrowser .tree=${t.devicetypes} ?expandall="false"> </b-treebrowser>
-      </b-contextmenu>
-    </div>
-  </div>
-`;
+// == Component ==
+export function DevicePanel (props)
+{
+  let cmenu_ref;
+  const [chain, set_chain] = createSignal (null);
+  const [devicetypes, set_devicetypes] = createSignal (null);
+  const [menu_sibling, set_menu_sibling] = createSignal (null);
 
-// == SCRIPT ==
-import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
+  // Watch track changes and fetch device info
+  createEffect (async () => {
+    const track = props.track;
+    set_chain (null);
+    set_devicetypes (null);
+    if (!track) return;
+
+    const dev = await track.access_device ();
+    const types = !dev ? null : await list_device_types (dev);
+    set_devicetypes (types);
+    set_chain (dev);
+  });
+
+  const activate = async (uri) => {
+    // close popup to remove focus guards
+    if (!chain () || uri.startsWith ('DevicePanel:')) // assuming b-treebrowser.devicetypes
+      return;
+    const sibling = menu_sibling ();
+    let newdev;
+    if (sibling)
+      newdev = chain ().insert_device (uri, sibling);
+    else
+      newdev = chain ().append_device (uri);
+    set_menu_sibling (null);
+    await newdev;
+    if (!newdev)
+      console.error ("Ase.insert_device failed, got null:", uri);
+  };
+
+  const isactive = (uri) => {
+    if (!props.track)
+      return false;
+    return true;
+  };
+
+  const menuopen = (event, sibling) => {
+    set_menu_sibling (sibling);
+    cmenu_ref?.popup (event, { origin: 'none' });
+    Util.prevent_event (event);
+  };
+
+  return (
+    <div class="b-devicepanel">
+      <div class="b-devicepanel-scroller">
+      <span class="b-devicepanel-vtitle">Device Panel</span>
+      <div class="b-devicepanel-hstack hflex">
+        {/* TODO: render devices in chain — needs Device::get_devices() impl */}
+        <b-more
+          onMousedown={e => menuopen (e)}
+          data-tip="**CLICK** Add New Elements"
+        ></b-more>
+        <b-contextmenu
+          ref={e => {
+            cmenu_ref = e;
+            if (e) {
+              e.activate = activate;
+              e.isactive = isactive;
+            }
+          }}
+          id="g-devicepanelcmenu"
+        >
+          <b-menutitle>Devices</b-menutitle>
+          <b-treebrowser tree={devicetypes ()} expandall={false}></b-treebrowser>
+        </b-contextmenu>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+// == Helper functions (unchanged from Lit version) ==
 
 /**
  * @param {Ase.Device} [device] - Track device.
  */
 async function list_device_types (device)
 {
-  const deviceinfos = await device.list_device_types(); // [{ uri, name, category, },...]
+  const deviceinfos = await device.list_device_types (); // [{ uri, name, category, },...]
   const cats = {};
   for (const e of deviceinfos) {
     const category = e.category || 'Other';
@@ -101,70 +155,7 @@ async function list_device_types (device)
     cats[category].entries.push (e);
   }
   const list = [];
-  for (const c of Object.keys (cats).sort())
+  for (const c of Object.keys (cats).sort ())
     list.push (cats[c]);
   return Object.freeze (list);
 }
-
-class BDevicePanel extends LitComponent {
-  createRenderRoot() { return this; }
-  render() { return HTML (this); }
-  static properties = {
-    track:	{ type: Ase.Track, reflect: true },
-  };
-  constructor()
-  {
-    super();
-    this.track = null;
-    this.chain_ = null;
-    this.menu_sibling = null;
-    this.devicepanelcmenu = null;
-  }
-  updated (changed_props)
-  {
-    let info_promise;
-    if (changed_props.has ('track')) {
-      this.chain_ = null;
-      this.devicetypes = null;
-      const track_fetch_device = async () => {
-	const chain = await this.track.access_device();
-	const devicetypes = !chain ? null : await list_device_types (chain);
-	this.devicetypes = devicetypes;
-	this.chain_ = chain;
-	this.request_update();
-      };
-      if (this.track)
-	track_fetch_device();
-    }
-  }
-  async activate (uri)
-  {
-    // close popup to remove focus guards
-    if (this.chain_ && !uri.startsWith ('DevicePanel:')) // assuming b-treebrowser.devicetypes
-      {
-	const sibling = this.menu_sibling;
-	let newdev;
-	if (sibling)
-	  newdev = this.chain_.insert_device (uri, sibling);
-	else
-	  newdev = this.chain_.append_device (uri);
-	this.menu_sibling = null;
-	newdev = await newdev;
-	if (!newdev)
-	  console.error ("Ase.insert_device failed, got null:", uri);
-      }
-  }
-  isactive (uri)
-  {
-    if (!this.track)
-      return false;
-    return true;
-  }
-  menuopen (event, sibling)
-  {
-    this.menu_sibling = sibling;
-    this.devicepanelcmenu.popup (event, { origin: 'none' });
-    Util.prevent_event (event);
-  }
-}
-customElements.define ('b-devicepanel', BDevicePanel);
