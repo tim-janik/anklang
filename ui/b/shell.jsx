@@ -24,6 +24,7 @@ import { StatusBar } from './statusbar.jsx';
 import { Noticeboard, create_note } from './noticeboard.jsx';
 import { TreeBrowser } from './treebrowser.jsx';
 import { MenuBar } from './menubar.jsx';
+import { PreferencesDialog } from './preferencesdialog.jsx';
 
 // == STYLE ==
 Extra_css`
@@ -153,7 +154,9 @@ export function ShellTemplate (props)
         <AboutDialog onClose={() => r.show_about_dialog_ = false} />
       </Show>
 
-      <b-preferencesdialog shown={Data.show_preferences_dialog} onClose={(ev) => (Data.show_preferences_dialog = false)}></b-preferencesdialog>
+      <Show when={Data.show_preferences_dialog}>
+        <PreferencesDialog onClose={() => (Data.show_preferences_dialog = false)} shown={true} />
+      </Show>
 
       <b-crawlerdialog shown={r.fs_shown} title={fs.title} filters={fs.filters} button={fs.button}
         existing={fs.existing} cwd={fs.cwd} onClose={e => fs.resolve()} onSelect={e => fs.resolve (e.detail?.uri)}></b-crawlerdialog>
