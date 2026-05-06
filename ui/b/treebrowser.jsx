@@ -1,11 +1,19 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { LitComponent, html, repeat, JsExtract, docs } from '../little.js';
-import * as ContextMenu from './contextmenu.js';
+/** @class B-TreeBrowser
+ * SolidJS component that renders tree structures with collapsible branches.
+ *
+ * ### Props:
+ * *tree*
+ * : Array or single entry object to render.
+ * *expandall*
+ * : Expand all entries by default (default: true).
+ */
+
+import { createSignal, For, onMount } from 'solid-js';
 import * as Util from '../util.js';
 import * as Kbd from '../kbd.js';
-import { get_uri } from '../dom.js';
 
 // == STYLE ==
 Extra_css`
@@ -44,73 +52,52 @@ b-treebrowser button {
 }
 `;
 
-// == HTML ==
-const HTML_ENTRY = (tree, e) => [
-  e.entries  ? null : html`
-    <button uri="${e.uri}">
-      ${e.label}
-    </button>`,
-  !e.entries ? null : HTML_BRANCH (tree, e)
-];
-const HTML_BRANCH = (tree, e) =>
-  html`
-    <details ?open=${tree.expandall}>
-      <summary>
-	${e.label}
-      </summary>
-      ${repeat (e.entries, x => x.uri, x => HTML_ENTRY (tree, x))}
-    </details>
-  `;
+// == Recursive Tree Node Component ==
+function TreeNode (props)
+{
+  const has_entries = () => props.entry.entries?.length > 0;
 
-// == SCRIPT ==
-/** @class BTreeBrowser
- * @description
- * This container can render tree structures with collapsible branches.
- * ## Props:
- * *expandall*
- * : Expand all entries by default.
- * ## Events:
- * *close*
- * : A *close* event is emitted once the "Close" button activated.
- */
-class BTreeBrowser extends LitComponent {
-  createRenderRoot() { return this; }
-  render()
-  {
-    return this.entries_.map (e => HTML_ENTRY (this, e));
-  }
-  static properties = {
-    // https://lit.dev/docs/components/properties/#property-options
-    expandall:       { type: Boolean, reflect: true }, // attribute: true
-    tree:            { attribute: false, }, // assign as .tree={...}
-  };
-  constructor()
-  {
-    super();
-    this.expandall = true;
-    this.tree = [];
-    this.addEventListener ("keydown", this.focus_updown.bind (this));
-  }
-  get entries_()
-  {
-    if (Array.isArray (this.tree)) return this.tree;
-    if (this.tree) return [ this.tree ];
-    return  [];
-  }
-  focus_updown (event)
-  {
+  return (
+    <>
+      {has_entries() ? (
+        <details open={props.expandall}>
+          <summary>
+            {props.entry.label}
+          </summary>
+          <For each={props.entry.entries}>
+            {(entry) => <TreeNode entry={entry} expandall={props.expandall} />}
+          </For>
+        </details>
+      ) : (
+        <button uri={props.entry.uri}>{props.entry.label}</button>
+      )}
+    </>
+  );
+}
+
+// == Component ==
+export function TreeBrowser (props)
+{
+  const [expandall, setExpandall] = createSignal (props.expandall ?? true);
+  let container;
+
+  onMount (() => {
+    container?.addEventListener ('keydown', focus_updown);
+  });
+
+  const focus_updown = (event) => {
     const target = event.target;
     // RIGHT opens branch
     if (target.tagName === 'SUMMARY' &&
-	target.parentElement.open === false &&
-	Kbd.match_key_event (event, 'ArrowRight')) {
+        target.parentElement.open === false &&
+        Kbd.match_key_event (event, 'ArrowRight')) {
       target.parentElement.open = true;
       return Util.prevent_event (event);
     }
     // LEFT closes branch
     if (target.tagName === 'SUMMARY' &&
-	target.parentElement.open === true &&
-	Kbd.match_key_event (event, 'ArrowLeft')) {
+        target.parentElement.open === true &&
+        Kbd.match_key_event (event, 'ArrowLeft')) {
       target.parentElement.open = false;
       return Util.prevent_event (event);
     }
@@ -124,9 +111,23 @@ class BTreeBrowser extends LitComponent {
       Util.prevent_event (event);
       return Kbd.move_focus_prev();
     }
-  }
+  };
+
+  const entries = () => {
+    const tree = props.tree;
+    if (Array.isArray (tree)) return tree;
+    if (tree) return [ tree ];
+    return [];
+  };
+
+  return (
+    <b-treebrowser ref={container}>
+      <For each={entries()}>
+        {(entry) => <TreeNode entry={entry} expandall={expandall()} />}
+      </For>
+    </b-treebrowser>
+  );
 }
-customElements.define ('b-treebrowser', BTreeBrowser);
 
 export const example_data = {
   // Example data
@@ -137,24 +138,24 @@ export const example_data = {
     {
       label: 'Expandable Children',
       entries: [
-	{
-	  label: 'Subfolder Stuff',
-	  entries: [
-	    { label: 'A - One' },
-	    { label: 'B - Two' },
-	    { label: 'C - Three' },
-	  ]
-	},
-	{ label: 'Ying' },
-	{
-	  label: '| More Things...',
-	  entries: [
-	    { label: '| Abcdefgh' },
-	    { label: '| ijklmnopq' },
-	    { label: '| rstuvwxyz' },
-	  ]
-	},
-	{ label: 'Yang' },
+        {
+          label: 'Subfolder Stuff',
+          entries: [
+            { label: 'A - One' },
+            { label: 'B - Two' },
+            { label: 'C - Three' },
+          ]
+        },
+        { label: 'Ying' },
+        {
+          label: '| More Things...',
+          entries: [
+            { label: '| Abcdefgh' },
+            { label: '| ijklmnopq' },
+            { label: '| rstuvwxyz' },
+          ]
+        },
+        { label: 'Yang' },
       ]
     }
   ]
