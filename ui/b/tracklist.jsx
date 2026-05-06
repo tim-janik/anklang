@@ -15,7 +15,7 @@ Extra_css`
 :root {
   --scroll-shadow-inset: 7px;
 }
-b-tracklist {
+b-tracklist, .b-tracklist {
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;
   .grid {
