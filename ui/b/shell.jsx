@@ -25,6 +25,8 @@ import { Noticeboard, create_note } from './noticeboard.jsx';
 import { TreeBrowser } from './treebrowser.jsx';
 import { MenuBar } from './menubar.jsx';
 import { PreferencesDialog } from './preferencesdialog.jsx';
+import { DevicePanel } from './devicepanel.jsx';
+import { TrackList } from './tracklist.jsx';
 
 // == STYLE ==
 Extra_css`
@@ -121,10 +123,12 @@ export function ShellTemplate (props)
       <MenuBar class="-row1 -col123" project={Data.project}></MenuBar>
 
       {/* tracks and clips */}
-      <b-tracklist class="-row2 -col2" style="overflow: hidden" project={Data.project}></b-tracklist>
+      <TrackList class="-row2 -col2" style="overflow: hidden" project={Data.project} />
 
       {/* devices */}
-      <b-devicepanel class="-row3 -col2" hidden={Data.panel2 !== 'd'} track={App.current_track}></b-devicepanel>
+      <Show when={Data.panel2 === 'd'}>
+        <DevicePanel class="-row3 -col2" track={App.current_track} />
+      </Show>
 
       {/* piano roll */}
       <b-piano-roll class="-row4 -col2" style="overflow: hidden; height:50vh" clip={Data.piano_roll_source}
