@@ -22,6 +22,7 @@ import { ModalDialogs } from './modals.jsx';
 import { AboutDialog } from './aboutdialog.jsx';
 import { StatusBar } from './statusbar.jsx';
 import { Noticeboard, create_note } from './noticeboard.jsx';
+import { TreeBrowser } from './treebrowser.jsx';
 
 // == STYLE ==
 Extra_css`
@@ -130,7 +131,7 @@ export function ShellTemplate (props)
       {/* browser */}
       <div class="b-shell-sidebar vflex -row28 -col1">
 	Browser <br />
-        <b-treebrowser tree={r.filetree} hidden={Data.panel3 == 'b'}></b-treebrowser>
+        <TreeBrowser tree={r.filetree} hidden={Data.panel3 == 'b'}></TreeBrowser>
         <Show when={Data.panel3 !== 'i'}>
           <span><a href="">Info Panel</a></span>
         </Show>
