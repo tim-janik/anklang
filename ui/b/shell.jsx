@@ -21,6 +21,7 @@ import spinner_svg from '/assets/spinner.svg'
 import { ModalDialogs } from './modals.jsx';
 import { AboutDialog } from './aboutdialog.jsx';
 import { StatusBar } from './statusbar.jsx';
+import { Noticeboard, create_note } from './noticeboard.jsx';
 
 // == STYLE ==
 Extra_css`
@@ -159,7 +160,7 @@ export function ShellTemplate (props)
       <ModalDialogs ref={e => t.modal_dialogs_ = e} />
 
       {/* Noticeboard */}
-      <b-noticeboard style="z-index: 95"></b-noticeboard>
+      <Noticeboard style="z-index: 95"></Noticeboard>
 
       {/* Bubbles */}
       <div class="pointer-events-none fixed inset-0 flex h-full w-full" style="z-index: 96" id="b-shell-bubble-layer"></div>
@@ -248,10 +249,7 @@ class BShell extends Object {
   /// Show a notification notice, with adequate default timeout
   show_notice (text, timeout = undefined)
   {
-    /**@type{any}*/
-    const b_noticeboard = this.shell_element.querySelector ('b-noticeboard');
-    console.assert (b_noticeboard);
-    b_noticeboard.create_note (text, timeout);
+    create_note (text, timeout);
   }
   /// Open related help page in another window on F1
   f1_help (event)
