@@ -1,14 +1,17 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { LitComponent, html, JsExtract, docs } from '../little.js';
+/** @class B-Noticeboard
+ * SolidJS component that displays notification notes for end users.
+ *
+ * ### API:
+ * *create_note(text, timeout?)*
+ * : Post a notification note. Returns a popdown function.
+ */
+
+import { onCleanup } from 'solid-js';
 import * as Util from "../util.js";
 import * as Dom from "../dom.js";
-
-/** @class BNoticeboard
- * @description
- * Noticeboard to post notifications for end users.
- */
 
 // == STYLE ==
 Extra_css`
@@ -50,7 +53,7 @@ b-noticeboard {
       &:hover { color: #f88; }
     }
     /* make room for .note-board-note-close */
-    &::before { float: right; content: ' '; padding: 1px; }
+    &::before { float: right; content: ' '; padding: 1px; }
   }
   /* markdown styling for notes */
   .note-board-markdown {
@@ -63,69 +66,95 @@ b-noticeboard {
   }
 }`;
 
-// == SCRIPT ==
-const POPDOWN = Symbol.for ('b_noticeboard_POPDOWN');
-class BNoticeboard extends LitComponent {
-  createRenderRoot() { return this; }
-  TIMEOUT = 15 * 1000;	// time for note to last
-  FADING = 233;		// fade in/out in milliseconds, see app.scss
-  connectedCallback()
-  {
-    super.connectedCallback();
+// == Module-level state ==
+const POPDOWN = Symbol.for('b_noticeboard_POPDOWN');
+const TIMEOUT = 15 * 1000; // time for note to last
+const FADING = 233;        // fade in/out in milliseconds, see app.scss
+let container;
+const timeouts = new Map();
+
+/**
+ * Create a notification note.
+ * @param {string} text - Note content (supports markdown)
+ * @param {number} [timeout] - Auto-dismiss timeout in ms (default: 15s)
+ * @returns {Function} popdown function to dismiss the note
+ */
+export function create_note (text, timeout)
+{
+  const h53 = Util.hash53 (text);
+  const dupselector = ".note-board-note[data-hash53='" + h53 + "']";
+  for (const dup of container?.querySelectorAll (dupselector) || [])
+    if (dup && dup[POPDOWN]) // deduplicate existing messages
+      dup[POPDOWN]();
+
+  // create note with FADEIN
+  const note = document.createElement ('div');
+  note.setAttribute ('data-hash53', '' + h53);
+  note.setAttribute ('role', 'status');
+  note.classList.add ('note-board-note');
+  note.classList.add ('note-board-fadein');
+
+  // setup content
+  if (Dom.markdown_to_html) {
+    note.classList.add ('note-board-markdown');
+    Dom.markdown_to_html (note, text);
+  } else {
+    note.classList.add ('note-board-plaintext');
+    note.innerText = text;
   }
-  create_note (text, timeout) {
-    const h53 = Util.hash53 (text);
-    const dupselector = ".note-board-note[data-hash53='" + h53 + "']";
-    for (const dup of this.querySelectorAll (dupselector))
-      if (dup && dup[POPDOWN]) // deduplicate existing messages
-	dup[POPDOWN]();
-    // create note with FADEIN
-    const note = document.createElement ('div');
-    note.setAttribute ('data-hash53', '' + h53);
-    note.setAttribute ('role', 'status');
-    note.classList.add ('note-board-note');
-    note.classList.add ('note-board-fadein');
-    // setup content
-    if (Dom.markdown_to_html)
-      {
-	note.classList.add ('note-board-markdown');
-	Dom.markdown_to_html (note, text);
+
+  // setup close button
+  const close = document.createElement ('span');
+  close.classList.add ('note-board-note-close');
+  close.innerText = "\u2716";
+  note.insertBefore (close, note.firstChild);
+
+  const popdown = () => {
+    if (!note.parentNode) return;
+    note.classList.add ('note-board-fadeout');
+    setTimeout (() => {
+      if (note.parentNode)
+        note.parentNode.removeChild (note);
+    }, FADING + 1);
+  };
+  note[POPDOWN] = popdown;
+  close.onclick = popdown;
+
+  // show note with delay and throttling
+  const popup = () => {
+    note.setAttribute ('data-timestamp', '' + Util.now());
+    container?.appendChild (note);
+    const fadeInTimer = setTimeout (() => {
+      note.classList.remove ('note-board-fadein');
+      if (!(timeout < 0)) {
+        const autoHideTimer = setTimeout (popdown, timeout ? timeout : TIMEOUT);
+        timeouts.set (h53, autoHideTimer);
       }
-    else
-      {
-	note.classList.add ('note-board-plaintext');
-	note.innerText = text;
-      }
-    // setup close button
-    const close = document.createElement ('span');
-    close.classList.add ('note-board-note-close');
-    close.innerText = "✖";
-    note.insertBefore (close, note.firstChild);
-    const popdown = () => {
-      if (!note.parentNode)
-	return;
-      note.classList.add ('note-board-fadeout');
-      setTimeout (() => {
-	if (note.parentNode)
-	  note.parentNode.removeChild (note);
-      }, this.FADING + 1);
-    };
-    note[POPDOWN] = popdown;
-    close.onclick = popdown;
-    // show note with delay and throttling
-    const popup = () => {
-      note.setAttribute ('data-timestamp', '' + Util.now());
-      this.appendChild (note);
-      setTimeout (() => {
-	note.classList.remove ('note-board-fadein');
-	if (!(timeout < 0))
-	  setTimeout (popdown, timeout ? timeout : this.TIMEOUT);
-      }, this.FADING);
-    };
-    popup();
-    if (this.nextSibling) // raise noticeboard
-      this.parentNode.insertBefore (this, null);
-    return popdown;
-  }
+    }, FADING);
+    timeouts.set (h53 + '_fadein', fadeInTimer);
+  };
+  popup();
+
+  if (container?.nextSibling) // raise noticeboard
+    container.parentNode?.insertBefore (container, null);
+
+  return popdown;
 }
-customElements.define ('b-noticeboard', BNoticeboard);
+
+// == Component ==
+export function Noticeboard (props)
+{
+  const setContainer = (el) => { container = el; };
+
+  onCleanup (() => {
+    for (const [, tid] of timeouts)
+      clearTimeout (tid);
+    timeouts.clear();
+    while (container?.firstChild)
+      container.removeChild (container.firstChild);
+  });
+
+  return (
+    <b-noticeboard ref={setContainer} style={props.style}></b-noticeboard>
+  );
+}
