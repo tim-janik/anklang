@@ -67,7 +67,7 @@ webui_create_auth_redirect (const std::string &executable, unsigned port, const 
 }
 
 ErrorReason
-webui_start_browser (const std::string &mode, LoopP loop, const std::string &url, const std::function<void()> &onclose, WebuiFlags flags)
+webui_start_browser (const std::string &mode, LoopP loop, const std::string &url, const std::function<void(int)> &onclose, WebuiFlags flags)
 {
   std::vector<std::string> argv;
   std::string browser_name;
@@ -149,16 +149,19 @@ webui_start_browser (const std::string &mode, LoopP loop, const std::string &url
                       [onclose] (pid_t pid, int status)
                       {
                         std::string state;
+                        int exit_code = 0;
                         if (WIFEXITED (status))
-                          state = string_format ("status=%d", WEXITSTATUS (status));
-                        else if (WIFSIGNALED (status))
+                          state = string_format ("status=%d", exit_code = WEXITSTATUS (status));
+                        else if (WIFSIGNALED (status)) {
                           state = string_format ("signal=%d", WTERMSIG (status));
+                          exit_code = 128 + WTERMSIG (status);
+                        }
                         if (state.size()) {
                           info ("WebUI: child process pid=%d exited: %s", pid, state);
                           atquit_del_killl_pid (pid);
                         }
                         if (onclose)
-                          onclose();
+                          onclose (exit_code);
                       });
   info ("WebUI: started %s pid=%d: %s", browser_name, child_pid, url);
   return { 0, "" }; // Success
