@@ -589,7 +589,11 @@ main (int argc, char *argv[])
     WebuiFlags webui_flags = main_app.headless ? WebuiFlags::HEADLESS : WebuiFlags::NONE;
     if (main_app.ui_tests.size())
       webui_flags = webui_flags | WebuiFlags::CONSOLE_LOGS; // WebuiFlags::STDIO_REDIRECT
-    auto ereason = webui_start_browser (arg_ui_mode, main_loop, webui_url, [] () { main_loop->quit (0); }, webui_flags);
+    auto ereason = webui_start_browser (arg_ui_mode, main_loop, webui_url,
+                                        [] (int exit_code)
+                                        {
+                                          main_loop->quit (exit_code);
+                                        }, webui_flags);
 
     if (ereason.error)
       fatal_error ("Main: failed to run WebUI: %s: %s", ereason.what, ::strerror (ereason.error));
