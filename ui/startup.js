@@ -79,6 +79,19 @@ async function bootup () {
   // install window.Electron
   if (window.__Electron__)
     {
+      // Ensure uncaught errors are not silently ignored
+      globalThis.onerror = (message, source, lineno, colno, error) =>
+	{
+	  console.error (`${source}:${lineno}: ${message}`, error?.stack || "", "(exiting...)");
+	  window.Electron.call ('exit', -1);
+	  return true;
+	};
+      globalThis.onunhandledrejection = (event) =>
+	{
+	  event.preventDefault();
+	  console.error (`UNHANDLED REJECTION:`, event.reason?.message || event.reason, event.reason?.stack || "", "(exiting...)");
+	  window.Electron.call ('exit', -1);
+	};
       window.Electron = Object.assign ({}, // setup extensible window.Electron context
 				       await window.__Electron__.call ("electron_versions"),
 				       { call: window.__Electron__.call });
