@@ -335,6 +335,7 @@ eslint: $>/.eslint.done FORCE
 # == stylelint ==
 stylelint: FORCE
 check: stylelint
+	$Q echo "  OK      " "All $(words $^) checks passed"
 
 # == strict ==
 strict: check
@@ -461,3 +462,4 @@ help: FORCE
 cxx-all: $(CXX_TARGETS)
 $(eval $(LATE_EVAL))
 all: cxx-all $(ALL_TARGETS) $(ALL_TESTS) $(LATE_TARGETS)
+	$Q echo "  DONE    " "All targets remade successfully"

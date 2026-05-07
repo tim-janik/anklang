@@ -103,7 +103,8 @@ html.b-shell-during-drag .b-app {
 `;
 
 // == SHELL TEMPLATE ==
-export const ShellTemplate = (props) => {
+export function ShellTemplate (props)
+{
   // Shell global
   const t = new BShell ();
   Object.defineProperty (globalThis, 'Shell', { value: t });
@@ -169,7 +170,7 @@ export const ShellTemplate = (props) => {
       </Show>
     </div>
   );
-};
+}
 
 // == BShell controller ==
 class BShell extends Object {

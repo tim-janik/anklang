@@ -14,7 +14,7 @@ enum class WebuiFlags : uint32_t {
 };
 ASE_DEFINE_FLAGS_ARITHMETIC (WebuiFlags);
 
-ErrorReason     webui_start_browser (const std::string &mode, LoopP loop, const std::string &url, const std::function<void()> &onclose, WebuiFlags flags = WebuiFlags::NONE);
+ErrorReason     webui_start_browser (const std::string &mode, LoopP loop, const std::string &url, const std::function<void(int)> &onclose, WebuiFlags flags = WebuiFlags::NONE);
 // check errno
 String          webui_create_auth_redirect (const std::string &executable, unsigned port, const std::string &token, const std::string &snapmode = "");
 

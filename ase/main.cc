@@ -76,6 +76,7 @@ print_usage (bool help)
   printout ("  --list-ui-tests  List all TypeScript UI test function names\n");
   printout ("  --norc           Prevent loading of any rc files\n");
   printout ("  --ui-test=test   Specify TypeScript UI test(s) to run (comma-separated)\n");
+  printout ("  --ui-js=script   Run JavaScript code after UI startup\n");
   printout ("  --play-autostart Automatically start playback of `project.anklang`\n");
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
   printout ("  --test[=test]    Run specific test(s) (comma-separated)\n");
@@ -118,6 +119,7 @@ static constexpr int jsbin_logflags = 1 | 256;
 
 static StringS check_test_names;
 static StringS ui_test_names;
+static String ui_js_script;
 
 static void
 parse_args (int *argcp, char **argv, MainAppImpl &config)
@@ -196,6 +198,11 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
           } else
             ui_test_names.push_back ("all");
           config.headless = true;
+        }
+      else if (strcmp ("--ui-js", argv[i]) == 0 || strncmp ("--ui-js=", argv[i], 8) == 0)
+        {
+          const char *eq = strchr (argv[i], '=');
+          ui_js_script = eq ? eq + 1 : i+1 < argc ? argv[++i] : "";
         }
       else if (strcmp ("--headless", argv[i]) == 0 || strncmp ("--headless=", argv[i], 10) == 0)
         {
@@ -490,6 +497,7 @@ main (int argc, char *argv[])
   // parse args and config
   parse_args (&argc, argv, main_app);
   main_app.ui_tests = ui_test_names;
+  main_app.ui_js = ui_js_script;
   const int socket_port = arg_unauth_port > 0 ? arg_unauth_port : 0;
   const char *socket_host = "127.0.0.1";
   const auto socket_info = WebSocketServer::bind_port (socket_host, socket_port);
@@ -589,7 +597,11 @@ main (int argc, char *argv[])
     WebuiFlags webui_flags = main_app.headless ? WebuiFlags::HEADLESS : WebuiFlags::NONE;
     if (main_app.ui_tests.size())
       webui_flags = webui_flags | WebuiFlags::CONSOLE_LOGS; // WebuiFlags::STDIO_REDIRECT
-    auto ereason = webui_start_browser (arg_ui_mode, main_loop, webui_url, [] () { main_loop->quit (0); }, webui_flags);
+    auto ereason = webui_start_browser (arg_ui_mode, main_loop, webui_url,
+                                        [] (int exit_code)
+                                        {
+                                          main_loop->quit (exit_code);
+                                        }, webui_flags);
 
     if (ereason.error)
       fatal_error ("Main: failed to run WebUI: %s: %s", ereason.what, ::strerror (ereason.error));
