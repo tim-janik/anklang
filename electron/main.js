@@ -90,14 +90,14 @@ function main_exit (exitcode, ...errmsgs)
     console.error (...errmsgs);
   if (browser_window)
     {
-      browser_window.destroy();
+      browser_window.destroy(); // might re-enter main_exit()
       browser_window = null;
     }
   // remove excessive electron caches
   tryelse (() => fs.rmSync (cache_dir, { recursive: true, force: true }));
   if (main_exit.exit_code < 0)
     process.abort();
-  Eapp.exit (5); // calls process.exit()
+  Eapp.exit (main_exit.exit_code); // calls process.exit()
 }
 Eapp.once ('will-quit', e => {
   /* Handle Electron application 'quit()' method.
@@ -278,7 +278,7 @@ const ipc_handler = {
   },
   exit (browserwindow, status)
   {
-    Electron.app.exit (0 | status);
+    main_exit (0 | status);
   },
   zoom_level (browserwindow, newval)
   {
