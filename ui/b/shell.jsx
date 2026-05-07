@@ -19,6 +19,8 @@ import * as Dom from "../dom.js";
 import DataBubbleIface from '../b/databubble.js';
 import spinner_svg from '/assets/spinner.svg'
 import { ModalDialogs } from './modals.jsx';
+import { AboutDialog } from './aboutdialog.jsx';
+import { StatusBar } from './statusbar.jsx';
 
 // == STYLE ==
 Extra_css`
@@ -141,11 +143,11 @@ export function ShellTemplate (props)
       </div>
 
       {/* status bar */}
-      <b-statusbar class="-row9 -col123"></b-statusbar>
+      <StatusBar class="-row9 -col123" />
 
       {/* Other Dialogs */}
       <Show when={r.show_about_dialog_}>
-        <b-aboutdialog shown={true} onClose={ev => r.show_about_dialog_ = false}></b-aboutdialog>
+        <AboutDialog onClose={() => r.show_about_dialog_ = false} />
       </Show>
 
       <b-preferencesdialog shown={Data.show_preferences_dialog} onClose={(ev) => (Data.show_preferences_dialog = false)}></b-preferencesdialog>
