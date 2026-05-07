@@ -136,3 +136,73 @@ export function show_modal (dialog, closefunc = null)
   dialog.showModal();
   return dialog;
 }
+
+/// Collect text from an element, recursing into shadow DOM.
+/// TODO: remove shadow DOM recursion after Lit→SolidJS migration completes
+function ui_get_text (el)
+{
+  let text = el.textContent;
+  if (el.shadowRoot) {
+    for (const child of el.shadowRoot.children)
+      text += ' ' + ui_get_text (child);
+  }
+  return text.trim ();
+}
+
+/// Build a CSS selector from tag name and attribute filters.
+/// Non-text filters become [attr="value"] selectors.
+/// Text filter is applied in JS (no CSS :contains()).
+function ui_build_selector (tag, filters)
+{
+  const { text, ...attrs } = filters;
+  const selector = tag + Object.entries (attrs)
+    .map (([k, v]) => `[${k}="${String (v).replace (/"/g, '\\"')}"]`)
+    .join ('');
+  return { selector, text };
+}
+
+/// Find the first element matching tag + filters.
+/// Dom.ui_find('button', { uri: 'about' })       — menu item
+/// Dom.ui_find('b-trackview', { text: 'Drums' }) — track by displayed name
+/// Dom.ui_find('button', { text: /close/i })     — button by text (regex)
+export function ui_find (tag, filters = {})
+{
+  const { selector, text } = ui_build_selector (tag, filters);
+  const candidates = Array.from (document.querySelectorAll (selector));
+  if (!text) return candidates[0] || null;
+  const re = text instanceof RegExp ? text : new RegExp (text, 'i');
+  for (const el of candidates) {
+    if (re.test (ui_get_text (el))) return el;
+  }
+  return null;
+}
+
+/// List all elements matching tag + filters.
+export function ui_list (tag, filters = {})
+{
+  const { selector, text } = ui_build_selector (tag, filters);
+  const candidates = Array.from (document.querySelectorAll (selector));
+  if (!text) return candidates;
+  const re = text instanceof RegExp ? text : new RegExp (text, 'i');
+  return candidates.filter (el => re.test (ui_get_text (el)));
+}
+
+/// Poll for an element until found or timeout.
+export async function ui_wait_for (tag, filters = {}, timeout_ms = 5000)
+{
+  const start = Date.now ();
+  while (Date.now () - start < timeout_ms) {
+    const el = ui_find (tag, filters);
+    if (el) return el;
+    await new Promise (r => setTimeout (r, 100));
+  }
+  return null;
+}
+
+/// Find + click convenience.
+export async function ui_click (tag, filters = {})
+{
+  const el = ui_find (tag, filters);
+  if (el) el.click ();
+  return el;
+}

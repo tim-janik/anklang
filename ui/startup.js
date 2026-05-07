@@ -18,6 +18,10 @@ Object.assign (globalThis.CONFIG, fallback_config, browser_config());
 import * as Util from './util.js';
 Object.defineProperty (globalThis, 'Util', { value: Util });
 
+// Global Dom module for headless scripting (ui_find, ui_list, ui_wait_for, ui_click)
+import * as Dom from './dom.js';
+Object.defineProperty (globalThis, 'Dom', { value: Dom });
+
 // Import Ase, connecting is done asynchronously
 import * as Ase from '../ase/gen/api-jsonipc.g.ts';
 
@@ -223,6 +227,19 @@ async function bootup () {
     const config = await Ase.server.ui_config();
     if (config.has_ui_tests)
       setTimeout (() => run_ui_tests(), 17);
+  }
+
+  // Run arbitrary JS script if provided via --ui-js
+  if (Ase.server) {
+    const js = await Ase.server.ui_js_fetch();
+    if (js) {
+      console.error("  RUN      ui-js");
+      try {
+        await new Function(`return (async function ui_js() { ${js} })()`)();
+      } catch (e) {
+        console.error("  ERROR    ui-js", e.message);
+      }
+    }
   }
 }
 

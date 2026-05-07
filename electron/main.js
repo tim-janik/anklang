@@ -90,14 +90,14 @@ function main_exit (exitcode, ...errmsgs)
     console.error (...errmsgs);
   if (browser_window)
     {
-      browser_window.destroy();
+      browser_window.destroy(); // might re-enter main_exit()
       browser_window = null;
     }
   // remove excessive electron caches
   tryelse (() => fs.rmSync (cache_dir, { recursive: true, force: true }));
   if (main_exit.exit_code < 0)
     process.abort();
-  Eapp.exit (5); // calls process.exit()
+  Eapp.exit (main_exit.exit_code); // calls process.exit()
 }
 Eapp.once ('will-quit', e => {
   /* Handle Electron application 'quit()' method.
@@ -264,17 +264,39 @@ async function load_and_show (w, winurl)
 // == IPC Messages ==
 // IPC calls available to the Renderer
 const ipc_handler = {
-  electron_versions (browserwindow, ...args)   { return { platform: process.platform,
-							  config: ELECTRON_CONFIG,
-	                                                  arch: process.arch,
-                                                          os_release: os.release(),
-	                                                  versions: process.versions, }; },
-  toggle_dev_tools (browserwindow, ...args)	{ browserwindow.toggleDevTools(); },
-  exit (browserwindow, status)			{ Electron.app.exit (0 | status); },
-  zoom_level (browserwindow, newval)		{
+  electron_versions (browserwindow, ...args)
+  {
+    return { platform: process.platform,
+	     config: ELECTRON_CONFIG,
+	     arch: process.arch,
+             os_release: os.release(),
+	     versions: process.versions, };
+  },
+  toggle_dev_tools (browserwindow, ...args)
+  {
+    browserwindow.toggleDevTools();
+  },
+  exit (browserwindow, status)
+  {
+    main_exit (0 | status);
+  },
+  zoom_level (browserwindow, newval)
+  {
     if (newval >= -9 && newval <= +9)
       browserwindow.setZoomLevel (newval);
     return browserwindow.getZoomLevel();
+  },
+  async screenshot (_browserwindow, seq)
+  {
+    seq = 0 | seq;
+    if (seq < 1 || seq > 99)
+      return;
+    if (!browser_window)
+      return;
+    const filepath = '/tmp/Anklang-screenshot-' + String (seq).padStart (2, '0') + '.png';
+    const image = await browser_window.webContents.capturePage();
+    fs.writeFileSync (filepath, image.toPNG());
+    console.log ('Screenshot saved: ' + filepath);
   },
 };
 // Dispatch Renderer->Main message events
@@ -282,7 +304,8 @@ for (const func in ipc_handler)
   Electron.ipcMain.handle (func, async (event, args) => await ipc_handler[func] (event.sender, ...args));
 
 // == Usage ==
-function usage (what, exitcode = false) {
+function usage (what, exitcode = false)
+{
   const name = Eapp.getName();
   if (what === 'version')
     console.log (name + ' ' + Eapp.getVersion());
@@ -365,7 +388,8 @@ function parse_args (argv)
 
 // == Start Components ==
 // Create SoundEngine and BrowserWindow once everything is loaded
-async function startup_components (config) {
+async function startup_components (config)
+{
   Esession.defaultSession.clearCache();
   // start rendering process
   const onclose = () => browser_window = null;
