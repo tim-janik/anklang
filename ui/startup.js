@@ -246,12 +246,10 @@ async function bootup () {
   if (Ase.server) {
     const js = await Ase.server.ui_js_fetch();
     if (js) {
-      console.error("  RUN      ui-js");
-      try {
-        await new Function(`return (async function ui_js() { ${js} })()`)();
-      } catch (e) {
-        console.error("  ERROR    ui-js", e.message);
-      }
+      console.error ("  UI-JS    Running...");
+      const ui_js_wrapper = new Function (`return (async function ui_js() { ${js} }) ();`);
+      const result = await ui_js_wrapper ();
+      console.error ("  UI-JS    Result:", result);
     }
   }
 }
