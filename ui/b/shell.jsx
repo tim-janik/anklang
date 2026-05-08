@@ -23,6 +23,8 @@ import { AboutDialog } from './aboutdialog.jsx';
 import { StatusBar } from './statusbar.jsx';
 import { Noticeboard, create_note } from './noticeboard.jsx';
 import { TreeBrowser } from './treebrowser.jsx';
+import { MenuBar } from './menubar.jsx';
+import { PreferencesDialog } from './preferencesdialog.jsx';
 
 // == STYLE ==
 Extra_css`
@@ -116,7 +118,7 @@ export function ShellTemplate (props)
   return (
     <div class="b-shell" ref={e => t.setup (e)}>
       {/* Menus and Transport */}
-      <b-menubar class="-row1 -col123" project={Data.project}></b-menubar>
+      <MenuBar class="-row1 -col123" project={Data.project}></MenuBar>
 
       {/* tracks and clips */}
       <b-tracklist class="-row2 -col2" style="overflow: hidden" project={Data.project}></b-tracklist>
@@ -152,7 +154,9 @@ export function ShellTemplate (props)
         <AboutDialog onClose={() => r.show_about_dialog_ = false} />
       </Show>
 
-      <b-preferencesdialog shown={Data.show_preferences_dialog} onClose={(ev) => (Data.show_preferences_dialog = false)}></b-preferencesdialog>
+      <Show when={Data.show_preferences_dialog}>
+        <PreferencesDialog onClose={() => (Data.show_preferences_dialog = false)} shown={true} />
+      </Show>
 
       <b-crawlerdialog shown={r.fs_shown} title={fs.title} filters={fs.filters} button={fs.button}
         existing={fs.existing} cwd={fs.cwd} onClose={e => fs.resolve()} onSelect={e => fs.resolve (e.detail?.uri)}></b-crawlerdialog>
