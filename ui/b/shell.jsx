@@ -199,7 +199,8 @@ class BShell extends Object {
     this.r = input_r;
     this.r.fs_shown = false;
     this.r.show_spinner_count = 0;
-    this.r.filetree = list_sample_files();
+    this.r.filetree = { entries: [] };
+    list_sample_files ().then (files => { this.r.filetree = files; });
     this.r.show_about_dialog_ = false;
     this.piano_current_clip_tickfn = [null,null];
     this.r = make_reactive (this.r);
