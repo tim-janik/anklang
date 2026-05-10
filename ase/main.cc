@@ -487,8 +487,8 @@ main (int argc, char *argv[])
 
   // SIGPIPE init: needs to be done before any child thread is created
   init_sigpipe();
-  if (setpgid (0, 0) < 0)
-    diag ("Main: setpgid failed: %s", ::strerror (errno));
+  // Enable us to reap and kill any grand child processes
+  atquit_make_subreaper();
 
   // apply user locale
   if (!setlocale (LC_ALL, ""))
@@ -611,8 +611,7 @@ main (int argc, char *argv[])
   for (int sigid : { SIGHUP, SIGINT, SIGQUIT, SIGABRT, SIGTERM, SIGSYS }) {
     main_loop->exec_usignal (sigid, [] (int8 sig) {
       info ("Main: got signal %d: terminate", sig);
-      const pid_t pgid = getpgrp();
-      atquit_terminate (-1, pgid);
+      atquit_terminate (-1);
       return false;
     });
     USignalSource::install_sigaction (sigid);
@@ -670,6 +669,7 @@ main (int argc, char *argv[])
   trkn_shutdown ();
 
   diag ("Main: exiting: %d", exitcode);
+  atquit_terminate (exitcode);
   return exitcode;
 }
 
