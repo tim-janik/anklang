@@ -144,7 +144,7 @@ webui_start_browser (const std::string &mode, LoopP loop, const std::string &url
       close (fd);
   if (ereason.error)
     return ereason;
-  atquit_add_killl_pid (child_pid);
+  atquit_add_kill_pid (child_pid);
   loop->exec_sigchld (child_pid,
                       [onclose] (pid_t pid, int status)
                       {
@@ -158,7 +158,7 @@ webui_start_browser (const std::string &mode, LoopP loop, const std::string &url
                         }
                         if (state.size()) {
                           info ("WebUI: child process pid=%d exited: %s", pid, state);
-                          atquit_del_killl_pid (pid);
+                          atquit_del_kill_pid (pid);
                         }
                         if (onclose)
                           onclose (exit_code);
