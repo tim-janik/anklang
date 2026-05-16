@@ -68,6 +68,8 @@ ASE_CLASS_DECLS (Track);
 ASE_CLASS_DECLS (TrackImpl);
 ASE_CLASS_DECLS (Plugin);
 ASE_CLASS_DECLS (PluginImpl);
+ASE_CLASS_DECLS (LiquidSFZPlugin);
+ASE_CLASS_DECLS (LiquidSFZPluginImpl);
 
 class AudioEngine;
 class CustomDataContainer;

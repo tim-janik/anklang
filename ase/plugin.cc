@@ -5,6 +5,7 @@
 #include "server.hh"
 #include "jsonipc/jsonipc.hh"
 #include "internal.hh"
+#include "devices/liquidsfz/liquidsfzplugin.hh"
 
 namespace te = tracktion::engine;
 
@@ -48,6 +49,8 @@ PluginImpl::from_trkn (tracktion::Plugin &p)
   PluginImpl *plugin = find_ase_obj<PluginImpl> (p);
   if (plugin)
     return shared_ptr_cast<PluginImpl> (plugin);
+  if (auto impl = LiquidSFZPluginImpl::wrap (p))
+    return impl;
   PluginImplP pluginp = PluginImpl::make_shared (p);
   return pluginp;
 }
