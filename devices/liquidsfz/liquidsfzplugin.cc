@@ -9,14 +9,14 @@ namespace Ase
  * try_lock() / unlock() it (depending on how the mutex is implemented)
  */
 bool
-LiquidSFZPlugin::RTMutex::try_lock()
+LiquidSFZTracktionPlugin::RTMutex::try_lock()
 {
   return !locked_flag.test_and_set();
 }
 
 /* TODO: either get gid of RTMutex or use RAII */
 void
-LiquidSFZPlugin::RTMutex::wait_for_lock()
+LiquidSFZTracktionPlugin::RTMutex::wait_for_lock()
 {
   while (!try_lock())
     {
@@ -29,18 +29,18 @@ LiquidSFZPlugin::RTMutex::wait_for_lock()
 }
 
 void
-LiquidSFZPlugin::RTMutex::unlock()
+LiquidSFZTracktionPlugin::RTMutex::unlock()
 {
   locked_flag.clear();
 }
 
-LiquidSFZPlugin::LiquidSFZPlugin (tracktion::PluginCreationInfo info) : Plugin (info)
+LiquidSFZTracktionPlugin::LiquidSFZTracktionPlugin (tracktion::PluginCreationInfo info) : Plugin (info)
 {
 }
 
 /* TODO: should load in worker thread */
 bool
-LiquidSFZPlugin::load (const String& filename)
+LiquidSFZTracktionPlugin::load (const String& filename)
 {
   rt_mutex_.wait_for_lock();
 
@@ -65,7 +65,7 @@ LiquidSFZPlugin::load (const String& filename)
 }
 
 void
-LiquidSFZPlugin::initialise (const tracktion::PluginInitialisationInfo& info)
+LiquidSFZTracktionPlugin::initialise (const tracktion::PluginInitialisationInfo& info)
 {
   rt_mutex_.wait_for_lock();
   synth_.set_sample_rate (info.sampleRate);
@@ -74,7 +74,7 @@ LiquidSFZPlugin::initialise (const tracktion::PluginInitialisationInfo& info)
 }
 
 void
-LiquidSFZPlugin::deinitialise()
+LiquidSFZTracktionPlugin::deinitialise()
 {
   rt_mutex_.wait_for_lock();
   synth_.all_sound_off();
@@ -82,7 +82,7 @@ LiquidSFZPlugin::deinitialise()
 }
 
 void
-LiquidSFZPlugin::applyToBuffer (const tracktion::PluginRenderContext& fc)
+LiquidSFZTracktionPlugin::applyToBuffer (const tracktion::PluginRenderContext& fc)
 {
   if (fc.destBuffer != nullptr)
     {
@@ -156,6 +156,6 @@ LiquidSFZPlugin::applyToBuffer (const tracktion::PluginRenderContext& fc)
     }
 }
 
-const char* LiquidSFZPlugin::xmlTypeName = "liquidsfz";
+const char* LiquidSFZTracktionPlugin::xmlTypeName = "liquidsfz";
 
 }

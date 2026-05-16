@@ -2,11 +2,12 @@
 #include "trkn/tracktion.hh"   // PCH include must come first
 #include "liquidsfz.hh"
 #include <ase/cxxaux.hh>
+#include <ase/plugin.hh>
 
 namespace Ase
 {
 
-class LiquidSFZPlugin : public tracktion::Plugin
+class LiquidSFZTracktionPlugin : public tracktion::Plugin
 {
   class RTMutex
   {
@@ -29,12 +30,35 @@ public:
 
   static const char* xmlTypeName;
 
-  LiquidSFZPlugin (tracktion::PluginCreationInfo info);
+  LiquidSFZTracktionPlugin (tracktion::PluginCreationInfo info);
   void initialise (const tracktion::PluginInitialisationInfo& info) override;
   void deinitialise() override;
   void applyToBuffer (const tracktion::PluginRenderContext& fc) override;
   bool load (const String& filename);
 
+};
+
+class LiquidSFZPluginImpl : public PluginImpl, public virtual LiquidSFZPlugin
+{
+  ASE_DEFINE_MAKE_SHARED (LiquidSFZPluginImpl);
+public:
+  LiquidSFZPluginImpl (tracktion::Plugin& plugin) :
+    PluginImpl (plugin)
+  {
+  }
+  static LiquidSFZPluginImplP
+  wrap (tracktion::Plugin& plugin)
+  {
+    if (dynamic_cast <LiquidSFZTracktionPlugin *> (&plugin))
+      return LiquidSFZPluginImpl::make_shared (plugin);
+    return nullptr;
+  }
+  void
+  load (const String& filename)
+  {
+    /* TODO: this needs to be asynchronous and have some way to report result */
+    dynamic_cast<LiquidSFZTracktionPlugin *> (plugin_.get())->load (filename);
+  }
 };
 
 }
