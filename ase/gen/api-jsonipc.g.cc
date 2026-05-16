@@ -229,6 +229,12 @@ jsonipc_for_api_jsonipc_json()
     .set ("set_frozen", &::Ase::Plugin::set_frozen)
     ;
 
+  ::Jsonipc::Class< ::Ase::LiquidSFZPlugin > class__Ase_LiquidSFZPlugin;
+  class__Ase_LiquidSFZPlugin
+    .inherit< ::Ase::Plugin >()
+    .set ("load", &::Ase::LiquidSFZPlugin::load)
+    ;
+
   ::Jsonipc::Class< ::Ase::Clip > class__Ase_Clip;
   class__Ase_Clip
     .inherit< ::Ase::Gadget >()

@@ -14,6 +14,8 @@ Ase::SharedBase
        │  ├─Ase::Device
        │  │  │
        │  │  ├─Ase::Plugin
+       │  │  │  │
+       │  │  │  ╰─Ase::LiquidSFZPlugin
        │  │  │
        │  │  ├─Ase::Track
        │  │  │
