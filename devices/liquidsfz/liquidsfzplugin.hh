@@ -57,7 +57,8 @@ public:
   load (const String& filename)
   {
     /* TODO: this needs to be asynchronous and have some way to report result */
-    dynamic_cast<LiquidSFZTracktionPlugin *> (plugin_.get())->load (filename);
+    if (auto p = dynamic_cast<LiquidSFZTracktionPlugin *> (plugin_.get()))
+      p->load (filename);
   }
 };
 
