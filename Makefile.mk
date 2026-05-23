@@ -417,11 +417,18 @@ compile_commands.json: Makefile.mk
 	bear -- $(MAKE) CC=clang CXX=clang++ -j
 CLEANFILES += compile_commands.json
 
-# == grep-reminders ==
-$>/.grep-reminders: $(WILDCARD_FILES)
+# == grep-f_i_x_m_e ==
+$>/.grep-f_i_x_m_e: $(WILDCARD_FILES)
 	$Q grep --color=auto -n -E '(/[*/]+[*/ ]*|[#*]+ *)?(FI[X]ME).*' $(WILDCARD_FILES) || true
 	$Q touch $@
-LATE_TARGETS += $>/.grep-reminders
+LATE_TARGETS += $>/.grep-f_i_x_m_e
+
+# == grep-pch ==
+$>/.grep-pch: $(WILDCARD_FILES)
+	$Q grep --color=auto -n -E '\btrkn/tracktion.hh\b|\btrkn/juce.hh\b' $(filter ase/%.hh, $(WILDCARD_FILES)) || exit 0 \
+	&& { echo "$(firstword $(MAKEFILE_LIST)): error: invalid PCH includes in header files"; false; }
+	$Q touch $@
+LATE_TARGETS += $>/.grep-pch
 
 # == help rules ==
 help: FORCE
