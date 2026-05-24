@@ -43,6 +43,24 @@ const html_inject_vite_config = () => {
   }
 };
 
+// Plugin to fail the build on any console.warn() during build
+// (Tailwind's lightningcss emits CSS warnings via console.warn, bypassing Rollup onLog)
+const fail_on_warnings = () => {
+  const original = console.warn;
+  let count = 0;
+  return {
+    name: 'fail-on-warnings',
+    config (_cfg, { command }) {
+      if (command !== 'build') return;
+      console.warn = (...args: unknown[]) => { count++; original.apply (console, args); };
+    },
+    closeBundle () {
+      console.warn = original;
+      if (count > 0) throw new Error (`FAIL: ${count} warning(s) during vite build`);
+    },
+  };
+};
+
 // Plugin to force full reloads if anything changed
 const full_reload_always: PluginOption = {
   name: 'full-reload-always',
@@ -116,6 +134,7 @@ function vite_config ({ mode })
       extra_css(),
       solidPlugin(),
       html_inject_vite_config(),
+      fail_on_warnings(),
       ...maybe_full_reload_always,
     ],
 
