@@ -79,6 +79,19 @@ async function bootup () {
   // install window.Electron
   if (window.__Electron__)
     {
+      // Ensure uncaught errors are not silently ignored
+      globalThis.onerror = (message, source, lineno, colno, error) =>
+	{
+	  console.error (`${source}:${lineno}: ${message}`, error?.stack || "", "(exiting...)");
+	  window.Electron.call ('exit', -1);
+	  return true;
+	};
+      globalThis.onunhandledrejection = (event) =>
+	{
+	  event.preventDefault();
+	  console.error (`UNHANDLED REJECTION:`, event.reason?.message || event.reason, event.reason?.stack || "", "(exiting...)");
+	  window.Electron.call ('exit', -1);
+	};
       window.Electron = Object.assign ({}, // setup extensible window.Electron context
 				       await window.__Electron__.call ("electron_versions"),
 				       { call: window.__Electron__.call });
@@ -233,12 +246,10 @@ async function bootup () {
   if (Ase.server) {
     const js = await Ase.server.ui_js_fetch();
     if (js) {
-      console.error("  RUN      ui-js");
-      try {
-        await new Function(`return (async function ui_js() { ${js} })()`)();
-      } catch (e) {
-        console.error("  ERROR    ui-js", e.message);
-      }
+      console.error ("  UI-JS    Running...");
+      const ui_js_wrapper = new Function (`return (async function ui_js() { ${js} }) ();`);
+      const result = await ui_js_wrapper ();
+      console.error ("  UI-JS    Result:", result);
     }
   }
 }
