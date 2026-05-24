@@ -17,7 +17,6 @@ import tailwindcss from "@tailwindcss/vite";
 import extra_css from './ui/extra-css';
 import stylelint from 'stylelint';
 import stylelintrc from './ui/stylelintrc.cjs';
-import postcssReporter from "postcss-reporter";
 import css_functions from './ui/css-functions';
 const BUILDDIR = path.resolve (process.env.BUILDDIR || 'out/');
 const gen_path = path.resolve (BUILDDIR + "/gen/");
@@ -57,19 +56,6 @@ const maybe_full_reload_always = [];
 if (false)
   maybe_full_reload_always.push (full_reload_always);
 
-// Try to improve CSS error messages for Extra_css``
-function postcss_formatter (input)
-{
-  let filename = input.source, qualify = '';
-  if (input.source.endsWith ('.extra.css')) {
-    filename = input.source.replace (/\.extra\.css$/, '');
-    qualify = ' (.extra.css):';
-  }
-  return input.messages.map (m =>
-    `${filename}:${m.line}:${m.column}:${qualify} ${m}`
-  ).join ('\n');
-}
-
 // Mode dependent vite config
 function vite_config ({ mode })
 {
@@ -105,10 +91,6 @@ function vite_config ({ mode })
 	plugins: [
           // TODO: enable stylelint (stylelintrc),
 	  css_functions(),
-	  postcssReporter ({
-	    clearReportedMessages: true,
-	    formatter: postcss_formatter,
-	  })
 	],
       },
     },
