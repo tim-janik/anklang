@@ -17,7 +17,6 @@ import tailwindcss from "@tailwindcss/vite";
 import extra_css from './ui/extra-css';
 import stylelint from 'stylelint';
 import stylelintrc from './ui/stylelintrc.cjs';
-import postcssReporter from "postcss-reporter";
 import css_functions from './ui/css-functions';
 const BUILDDIR = path.resolve (process.env.BUILDDIR || 'out/');
 const gen_path = path.resolve (BUILDDIR + "/gen/");
@@ -44,6 +43,24 @@ const html_inject_vite_config = () => {
   }
 };
 
+// Plugin to fail the build on any console.warn() during build
+// (Tailwind's lightningcss emits CSS warnings via console.warn, bypassing Rollup onLog)
+const fail_on_warnings = () => {
+  const original = console.warn;
+  let count = 0;
+  return {
+    name: 'fail-on-warnings',
+    config (_cfg, { command }) {
+      if (command !== 'build') return;
+      console.warn = (...args: unknown[]) => { count++; original.apply (console, args); };
+    },
+    closeBundle () {
+      console.warn = original;
+      if (count > 0) throw new Error (`FAIL: ${count} warning(s) during vite build`);
+    },
+  };
+};
+
 // Plugin to force full reloads if anything changed
 const full_reload_always: PluginOption = {
   name: 'full-reload-always',
@@ -56,19 +73,6 @@ const maybe_full_reload_always = [];
 // force full reloads
 if (false)
   maybe_full_reload_always.push (full_reload_always);
-
-// Try to improve CSS error messages for Extra_css``
-function postcss_formatter (input)
-{
-  let filename = input.source, qualify = '';
-  if (input.source.endsWith ('.extra.css')) {
-    filename = input.source.replace (/\.extra\.css$/, '');
-    qualify = ' (.extra.css):';
-  }
-  return input.messages.map (m =>
-    `${filename}:${m.line}:${m.column}:${qualify} ${m}`
-  ).join ('\n');
-}
 
 // Mode dependent vite config
 function vite_config ({ mode })
@@ -105,10 +109,6 @@ function vite_config ({ mode })
 	plugins: [
           // TODO: enable stylelint (stylelintrc),
 	  css_functions(),
-	  postcssReporter ({
-	    clearReportedMessages: true,
-	    formatter: postcss_formatter,
-	  })
 	],
       },
     },
@@ -130,10 +130,14 @@ function vite_config ({ mode })
     },
 
     plugins: [
-      tailwindcss(),
       extra_css(),
+      // Disables Tailwind's internal lightningcss, which can break CSS parsing edge cases
+      // like opacity modifiers for CSS vars. Vite's lightningcss minification still runs.
+      // Ref: https://github.com/tailwindlabs/tailwindcss/discussions/19530
+      tailwindcss ({ optimize: false }),
       solidPlugin(),
       html_inject_vite_config(),
+      fail_on_warnings(),
       ...maybe_full_reload_always,
     ],
 

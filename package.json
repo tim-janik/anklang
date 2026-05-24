@@ -21,7 +21,7 @@
     "colorjs.io": "^0.5.2",
     "css-color-converter": "^2.0.0",
     "csstree-validator": "^4.0.1",
-    "electron": "^39.2.7",
+    "electron": "^42.2.0",
     "eslint": "^9.39.2",
     "eslint-formatter-unix": "^9.0.1",
     "eslint-plugin-better-tailwindcss": "^3.8.0",
