@@ -282,7 +282,7 @@ node_modules/.npm.done: $(if $(NPMBLOCK),, package.json Makefile.mk)		| $>/
 	done
 	@: # Fix bun installation, see: https://github.com/oven-sh/bun/pull/5077
 	$Q test ! -d node_modules/sharp/ -o -d node_modules/sharp/build/Release/ || (cd node_modules/sharp/ && $(NPM_INSTALL))
-	$Q test -d node_modules/electron/dist/ || (cd node_modules/electron/ && $(NPM_INSTALL))
+	$Q test -d node_modules/electron/dist/ || $(XNPM) node_modules/electron/install.js
 	$Q touch $@
 NODE_PATH ::= $(abspath node_modules/)
 export NODE_PATH
