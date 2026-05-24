@@ -3,6 +3,7 @@ import type { Plugin, ResolvedConfig, ModuleNode, ViteDevServer } from 'vite';
 import { normalizePath, createFilter } from 'vite';
 import * as babel from '@babel/core';
 import * as t from '@babel/types';
+import * as fs from 'node:fs';
 
 const PLUGIN_NAME = 'vite-plugin-extra-css';
 
@@ -10,7 +11,7 @@ const debug = (...args) => undefined; // console.log (`${PLUGIN_NAME}:`, ...args
 
 function make_css_filename (fname) {
   const filepath = normalizePath (fname);
-  return filepath + '.extra.css';
+  return filepath + ':.extra.css';
 }
 
 /**
@@ -55,7 +56,7 @@ export default function extraCssPlugin (options: ExtraCssOptions = {}): Plugin
         return id;
       },
       // https://vite.dev/guide/api-plugin#hook-filters
-      filter: { id: /\.extra\.css/ },
+      filter: { id: /:\.extra\.css/ },
     },
 
     /** Load virtual CSS modules */
@@ -70,7 +71,7 @@ export default function extraCssPlugin (options: ExtraCssOptions = {}): Plugin
         }
         return result;
       },
-      filter: { id: /\.extra\.css/ },
+      filter: { id: /:\.extra\.css/ },
     },
 
     /** Extract CSS from JS via AST */
@@ -91,15 +92,21 @@ export default function extraCssPlugin (options: ExtraCssOptions = {}): Plugin
 	let extractedCss = '';
 	const filepath = normalizePath (id);
 	const fileName = filepath.replace (/.*\//, ''); // avoid leaking build paths
+	// Read original source from disk, b/c vite preprocesses JSX files, which shifts lines.
+	const originalCode = fs.readFileSync (filepath, 'utf-8');
+	const parsePlugins = (filepath.endsWith ('.jsx') || filepath.endsWith ('.tsx'))
+			   ? [['@babel/plugin-syntax-jsx', {}]]
+			   : [];
 	// For extraction from AST, use Babel as parser
-	const ast = babel.parse (code, {
+	const ast = babel.parse (originalCode, {
           sourceType: 'module',
           filename: filepath,
+          plugins: parsePlugins,
+          configFile: false,
+          babelrc: false,
 	});
 	// Collect CSS from tagged template expressions
-	const result = babel.transformFromAstSync (ast!, code, {
-          plugins: [ () => ({
-            visitor: {
+	babel.traverse (ast, {
               TaggedTemplateExpression (path)
 	      {
 		// Check if this is our CSS tag
@@ -121,20 +128,14 @@ export default function extraCssPlugin (options: ExtraCssOptions = {}): Plugin
                       cssContent += `/* DYNAMIC_VALUE_${i} */`; // Placeholder for dynamic values
                   }
 		  const extracted_line = (extractedCss.match (/\n/g) || "").length + 1;
-		  // FIXME: console.error (fileName + ':' + start.line + ':', "ADD:", extracted_line - start.line);
+		  // console.error (fileName + ':' + start.line + ':', "ADD:", start.line - extracted_line);
 		  if (start.line > extracted_line)
 		    extractedCss += '\n'.repeat (start.line - extracted_line);
 		  extractedCss += `/*${fileName}:${start.line}:${start.column}: ${tagName}:*/`;
                   extractedCss += cssContent;
 		}
               }
-            }
-          }) ],
-          filename: filepath,
-          sourceMaps: true,
-          configFile: false,
-          babelrc: false,
-	});
+          });
 	if (extractedCss) {
           // Create a unique ID for our virtual CSS module
           const virtualCssPath = make_css_filename (filepath);
