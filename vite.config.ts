@@ -130,8 +130,11 @@ function vite_config ({ mode })
     },
 
     plugins: [
-      tailwindcss(),
       extra_css(),
+      // Disables Tailwind's internal lightningcss, which can break CSS parsing edge cases
+      // like opacity modifiers for CSS vars. Vite's lightningcss minification still runs.
+      // Ref: https://github.com/tailwindlabs/tailwindcss/discussions/19530
+      tailwindcss ({ optimize: false }),
       solidPlugin(),
       html_inject_vite_config(),
       fail_on_warnings(),
