@@ -124,7 +124,10 @@ check: $>/.uisynsmell.done
 
 # == $>/gen/**/*.md - for doc/Makefile.mk ==
 # ui/xbcomments.js ui/Makefile.mk node_modules/.npm.done	| $>/gen/b/
-$>/gen/%.md: ui/%.js								| $>/gen/b/ node_modules/.npm.done
+$>/gen/%.md: ui/%.js						| $>/gen/b/ node_modules/.npm.done
+	$(QGEN)
+	$Q node ui/xbcomments.js $< -O $(@D)
+$>/gen/%.md: ui/%.jsx						| $>/gen/b/ node_modules/.npm.done
 	$(QGEN)
 	$Q node ui/xbcomments.js $< -O $(@D)
 
