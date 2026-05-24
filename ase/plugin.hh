@@ -9,14 +9,14 @@ namespace Ase {
 /// Ase::Plugin implementation wrapping tracktion::Plugin.
 class PluginImpl : public DeviceImpl, public virtual Plugin {
   class PluginStateListener;
-  SelectableWeakref<tracktion::Plugin> plugin_;
   std::unique_ptr<PluginStateListener> state_listener_;
-  std::string  plugin_type_;
   ASE_DEFINE_MAKE_SHARED (PluginImpl);
   friend class TrackImpl;
   friend class PluginStateListener;
-  virtual         ~PluginImpl        ();
 protected:
+  SelectableWeakref<tracktion::Plugin> plugin_;
+  std::string                          plugin_type_;
+  virtual        ~PluginImpl        ();
   String          fallback_name     () const override;
 public:
   explicit        PluginImpl         (tracktion::Plugin &plugin);
