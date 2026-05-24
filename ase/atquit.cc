@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "atquit.hh"
 #include "utils.hh"
+#include <algorithm>
 #include <atomic>
 #include <cstring>
 #include <cerrno>
@@ -15,6 +16,8 @@
 #define QDEBUG(...)             Ase::debug ("AtQuit", __VA_ARGS__)
 
 namespace Ase {
+
+static void atquit_run_terminate_handlers ();
 
 /// Delete all files that contain @@TEMPFILE_PID=%d@@ without a running pid_t %d
 void
@@ -67,6 +70,7 @@ struct PendingRemovals final {
   }
   ~PendingRemovals()
   {
+    atquit_run_terminate_handlers();
     atquit_del (atquit_handler);
     (*atquit_handler) ();
     delete atquit_handler;
@@ -118,64 +122,110 @@ atquit_del_removal (const std::string &filename)
 
 /// Cleanup list of child processes still running at exit
 struct KillPids final {
-  std::function<void()> *atquit_handler = nullptr;
-  KillPids()
-  {
-    atquit_handler = new std::function<void()> ([&] {
-      this->kill_all (SIGTERM);
-    });
-    atquit_add (atquit_handler);
-  }
   ~KillPids()
   {
-    atquit_del (atquit_handler);
-    (*atquit_handler) ();
-    delete atquit_handler;
+    atquit_run_terminate_handlers();
   }
   void
   add (pid_t pid)
   {
-    std::lock_guard<std::mutex> locker (mutex);
-    pids.push_back (pid);
+    std::lock_guard<std::mutex> locker (mutex_);
+    pids_.push_back (pid);
   }
   void
   del (pid_t pid)
   {
-    std::lock_guard<std::mutex> locker (mutex);
-    Aux::erase_first (pids, [&] (pid_t p) { return p == pid; });
+    std::lock_guard<std::mutex> locker (mutex_);
+    Aux::erase_first (pids_, [&] (pid_t p) { return p == pid; });
   }
+  /// Find previously orphaned child processes, optionally send signal
+  void
+  collect_children (int sig)
+  {
+    const auto current = read_children();
+    std::lock_guard<std::mutex> locker (mutex_);
+    for (pid_t pid : current) {
+      if (std::find (pids_.begin(), pids_.end(), pid) == pids_.end()) {
+        pids_.push_back (pid);
+        if (sig > 0) {
+          diag ("AtQuit: found orphan pid=%d, sending signal=%d", pid, sig);
+          kill (pid, sig);
+        }
+      }
+    }
+  }
+  /// Reap zombies and remove dead PIDs from the list.
+  void
+  reap()
+  {
+    int status = 0;
+    pid_t result;
+    while ((result = waitpid (-1, &status, WNOHANG)) > 0) {
+      std::lock_guard<std::mutex> locker (mutex_);
+      Aux::erase_first (pids_, [&] (pid_t p) { return p == result; });
+    }
+  }
+  /// Send signal `sig` to all tracked PIDs. Does NOT clear the list,
+  /// so the same PIDs can be targeted again with an escalated signal.
   void
   kill_all (int sig)
   {
-    std::lock_guard<std::mutex> locker (mutex);
-    while (pids.size()) {
-      const pid_t pid = pids.back();
-      pids.pop_back();
+    std::lock_guard<std::mutex> locker (mutex_);
+    for (pid_t pid : pids_) {
       diag ("AtQuit: %s: pid=%d signal=%d", __func__, pid, sig);
       kill (pid, sig);
     }
   }
+  /// Clear the PID list after both kill phases are complete.
+  void
+  clear()
+  {
+    std::lock_guard<std::mutex> locker (mutex_);
+    pids_.clear();
+  }
+  /// Return true if no PIDs are tracked.
+  bool
+  empty()
+  {
+    std::lock_guard<std::mutex> locker (mutex_);
+    return pids_.empty();
+  }
+  /// Read orphaned grandchildren reparented to this process as subreaper.
+  static std::vector<pid_t>
+  read_children()
+  {
+    std::vector<pid_t> children;
+    char path[64];
+    snprintf (path, sizeof (path), "/proc/self/task/%d/children", getpid());
+    FILE *f = fopen (path, "r");
+    if (!f) return children;
+    pid_t pid;
+    while (fscanf (f, "%d", &pid) == 1 && pid > 0)
+      children.push_back (pid);
+    fclose (f);
+    return children;
+  }
 private:
-  std::vector<pid_t> pids;
-  std::mutex mutex;
+  std::vector<pid_t> pids_;
+  std::mutex mutex_;
 };
 static KillPids g_kill_pids;
 
 /// Kill `pid` when the program terminates.
 void
-atquit_add_killl_pid (int pid)
+atquit_add_kill_pid (int pid)
 {
   g_kill_pids.add (pid);
 }
 
-/// Undo a previous atquit_add_killl_pid() call.
+/// Undo a previous atquit_add_kill_pid() call.
 void
-atquit_del_killl_pid (int pid)
+atquit_del_kill_pid (int pid)
 {
   g_kill_pids.del (pid);
 }
 
-/// Span a child process after cleaning up the environment
+/// Spawn a child process after cleaning up the environment
 ErrorReason
 spawn_process (const std::vector<std::string> &argv, pid_t *child_pid, int pdeathsig, int stdio_fd, const std::vector<int> &keep_fds)
 {
@@ -271,7 +321,7 @@ struct AtquitHandlers {
   ~AtquitHandlers()
   {
     // run atquit handlers also atexit
-    call_hooks();
+    atquit_run_terminate_handlers();
   }
   void call_hooks();
 };
@@ -312,26 +362,60 @@ AtquitHandlers::call_hooks()
 }
 
 void
-atquit_terminate (int exitcode, int pgroup)
+atquit_make_subreaper ()
+{
+  // Reparent orphaned grandchildren (e.g. htmlgui renderers) to this
+  // process, so we can reap or kill them at exit.
+  if (prctl (PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) < 0)
+    warning ("Ase: prctl(PR_SET_CHILD_SUBREAPER) failed: %s\n", strerror (errno));
+}
+
+static void
+atquit_run_terminate_handlers ()
 {
   atquit_triggered_ = true;
+
+  // Terminate immediate child processes
+  g_kill_pids.reap();
+  g_kill_pids.kill_all (SIGTERM);
+
+  // Cleanups, like deleting temporary files
   atquit_handlers.call_hooks();
-  if (pgroup > 1) {
-    struct sigaction sa;
-    sa.sa_handler = SIG_DFL;
-    sigemptyset (&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction (SIGTERM, &sa, nullptr);
-    diag ("AtQuit: killing process group: pid=%d signal=%d", pgroup, SIGTERM);
-    kill (-pgroup, SIGTERM);
+
+  // Wait in steps, reap zombies, kill new orphan processes
+  for (int step = 0; step < 10; step++) {
+    g_kill_pids.reap();
+    // On Linux, we also collect grand children
+    g_kill_pids.collect_children (SIGTERM);
+    if (g_kill_pids.empty())
+      break;
+    usleep (50000);
   }
-  _Exit (exitcode); // ends all threads with exit_group()
+
+  // SIGKILL any surviving processes
+  g_kill_pids.reap();
+  g_kill_pids.kill_all (SIGKILL);
+  g_kill_pids.collect_children (SIGKILL);
+  if (!g_kill_pids.empty()) {
+    usleep (50000);
+    g_kill_pids.reap();
+    /// Last resort: kill any remaining orphans
+    g_kill_pids.clear();
+    g_kill_pids.collect_children (SIGKILL);
+    g_kill_pids.clear();
+  }
+}
+
+void
+atquit_terminate (int exitcode)
+{
+  atquit_run_terminate_handlers();
+  _Exit (exitcode);
 }
 
 bool
 atquit_triggered ()
 {
-  // atquit_tester(); // FIXME
   return atquit_triggered_;
 }
 
