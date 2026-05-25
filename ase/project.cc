@@ -285,14 +285,13 @@ test_sfz (ProjectImpl *project, te::Edit *edit, const String &filename)
   clip->change_batch (batch, "Add Note");
 
   auto& engine = edit->engine;
-  engine.getPluginManager().createBuiltInType<LiquidSFZPlugin>();
+  engine.getPluginManager().createBuiltInType<LiquidSFZTracktionPlugin>();
 
-  auto plugin = trackimpl->create_plugin (LiquidSFZPlugin::xmlTypeName);
+  auto plugin = trackimpl->create_plugin (LiquidSFZTracktionPlugin::xmlTypeName);
   assert (plugin);
 
-  if (auto pluginimpl = std::dynamic_pointer_cast<PluginImpl> (plugin))
-    if (auto liquidsfz = dynamic_cast<LiquidSFZPlugin *> (pluginimpl->plugin()))
-      liquidsfz->load (filename);
+  if (auto liquidsfz = std::dynamic_pointer_cast<LiquidSFZPlugin> (plugin))
+    liquidsfz->load (filename);
 
   auto &transport = edit->getTransport();
   transport.setLoopRange({ tracktion::TimePosition::fromSeconds (start), tracktion::TimeDuration::fromSeconds (duration) });

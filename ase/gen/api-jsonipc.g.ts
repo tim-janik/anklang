@@ -736,6 +736,16 @@ export class Plugin // Ase::Plugin
 };
 Jsonipc.classes["Ase::Plugin"] = Plugin;
 
+export class LiquidSFZPlugin // Ase::LiquidSFZPlugin
+  extends Jsonipc.classes["Ase::Plugin"]
+{
+  constructor ($id)
+  { super ($id); if (new.target === LiquidSFZPlugin) Jsonipc.ofreeze (this); }
+  load (arg1: string): Promise<void>
+  { return this.$rpc ("load", [this, arg1]); }
+};
+Jsonipc.classes["Ase::LiquidSFZPlugin"] = LiquidSFZPlugin;
+
 export class Clip // Ase::Clip
   extends Jsonipc.classes["Ase::Gadget"]
 {

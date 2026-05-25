@@ -223,6 +223,11 @@ public:
   virtual void    set_frozen    (bool frozen) = 0; ///< Freeze or unfreeze the plugin.
 };
 
+class LiquidSFZPlugin : public virtual Plugin {
+public:
+  virtual void load (const String& filename) = 0;
+};
+
 /// Part specific note event representation.
 struct ClipNote {
   int32  id = 0;            /// ID, > 0
