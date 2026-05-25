@@ -82,9 +82,6 @@ export class AppClass {
     let data = {
       project: null,
       mtrack: null, // master track
-      panel3: 'i',
-      panel2: 'p',
-      piano_roll_source: undefined,
       current_track: undefined,
       show_preferences_dialog: false,
     };
@@ -121,22 +118,22 @@ export class AppClass {
   {
     const a = this.panel3_types;
     if ('string' == typeof n)
-      Data.panel3 = n;
+      Shell.r.panel3 = n;
     else
-      Data.panel3 = a[(a.indexOf (Data.panel3) + 1) % a.length];
+      Shell.r.panel3 = a[(a.indexOf (Shell.r.panel3) + 1) % a.length];
   }
   switch_panel2 (n?: string)
   {
     const a = this.panel2_types;
     if ('string' == typeof n)
-      Data.panel2 = n;
+      Shell.r.panel2 = n;
     else
-      Data.panel2 = a[(a.indexOf (Data.panel2) + 1) % a.length];
+      Shell.r.panel2 = a[(a.indexOf (Shell.r.panel2) + 1) % a.length];
   }
   open_piano_roll (midi_source: any)
   {
-    Data.piano_roll_source = midi_source;
-    if (Data.piano_roll_source)
+    Shell.r.piano_roll_source = midi_source;
+    if (Shell.r.piano_roll_source)
       this.switch_panel2 ('p');
   }
   async load_project_checked (project_or_path: any)

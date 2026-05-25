@@ -117,6 +117,9 @@ interface ShellReactive {
   show_spinner_count: number;
   filetree: any;
   show_about_dialog_: boolean;
+  panel2: string;
+  panel3: string;
+  piano_roll_source: any;
 }
 
 interface FileSelector {
@@ -144,19 +147,19 @@ export function ShellTemplate (props: any)
       <TrackList class="-row2 -col2" style="overflow: hidden" project={Data.project} />
 
       {/* devices */}
-      <Show when={Data.panel2 === 'd'}>
+      <Show when={r.panel2 === 'd'}>
         <DevicePanel class="-row3 -col2" track={App.current_track} />
       </Show>
 
       {/* piano roll */}
-      <b-piano-roll class="-row4 -col2" style="overflow: hidden; height:50vh" clip={Data.piano_roll_source}
-		    ref={e => t.piano_roll_ = e} hidden={Data.panel2 !== 'p'}></b-piano-roll>
+      <b-piano-roll class="-row4 -col2" style="overflow: hidden; height:50vh" clip={r.piano_roll_source}
+		    ref={e => t.piano_roll_ = e} hidden={r.panel2 !== 'p'}></b-piano-roll>
 
       {/* browser */}
       <div class="b-shell-sidebar vflex -row28 -col1">
 	Browser <br />
-        <TreeBrowser tree={r.filetree} hidden={Data.panel3 == 'b'}></TreeBrowser>
-        <Show when={Data.panel3 !== 'i'}>
+        <TreeBrowser tree={r.filetree} hidden={r.panel3 == 'b'}></TreeBrowser>
+        <Show when={r.panel3 !== 'i'}>
           <span><a href="">Info Panel</a></span>
         </Show>
       </div>
@@ -220,6 +223,9 @@ class BShell extends Object {
     this.r.filetree = { entries: [] };
     list_sample_files ().then (files => { this.r.filetree = files; });
     this.r.show_about_dialog_ = false;
+    this.r.panel2 = 'p';
+    this.r.panel3 = 'i';
+    this.r.piano_roll_source = undefined;
     this.piano_current_clip_tickfn = [null,null];
     this.r = make_reactive (this.r);
     this.usernotehook_ = Ase.server.on ("usernote", (user_note_event: any) => this.show_notice (user_note_event.text));

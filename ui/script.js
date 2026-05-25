@@ -91,7 +91,7 @@ class ScriptHost {
   }
   _piano_roll_clip_refhandle() {
     // needs release_refhandle
-    return acquire_refhandle (Data.piano_roll_source);
+    return acquire_refhandle (Shell.r.piano_roll_source);
   }
   _release_refhandle (refhandle) {
     release_refhandle (refhandle);
