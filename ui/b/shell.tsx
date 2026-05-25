@@ -18,6 +18,7 @@ import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import * as Dom from "../dom.js";
 import DataBubbleIface from '../b/databubble.js';
 import spinner_svg from '/assets/spinner.svg'
+import { make_reactive } from './app';
 import { ModalDialogs } from './modals.jsx';
 import { AboutDialog } from './aboutdialog.jsx';
 import { StatusBar } from './statusbar.jsx';
@@ -110,8 +111,25 @@ html.b-shell-during-drag .b-app {
 }
 `;
 
+// == Types ==
+interface ShellReactive {
+  fs_shown: boolean;
+  show_spinner_count: number;
+  filetree: any;
+  show_about_dialog_: boolean;
+}
+
+interface FileSelector {
+  title: string;
+  button: string;
+  cwd: string;
+  filters: any[];
+  existing?: boolean;
+  resolve?: (path?: any) => void;
+}
+
 // == SHELL TEMPLATE ==
-export function ShellTemplate (props)
+export function ShellTemplate (props: any)
 {
   // Shell global
   const t = new BShell ();
@@ -163,7 +181,7 @@ export function ShellTemplate (props)
       </Show>
 
       <b-crawlerdialog shown={r.fs_shown} title={fs.title} filters={fs.filters} button={fs.button}
-        existing={fs.existing} cwd={fs.cwd} onClose={e => fs.resolve()} onSelect={e => fs.resolve (e.detail?.uri)}></b-crawlerdialog>
+		       existing={fs.existing} cwd={fs.cwd} onClose={e => fs.resolve()} onSelect={e => fs.resolve (e.detail?.uri)}></b-crawlerdialog>
 
       {/* Modal Message Popups */}
       <ModalDialogs ref={e => t.modal_dialogs_ = e} />
@@ -186,7 +204,7 @@ export function ShellTemplate (props)
 
 // == BShell controller ==
 class BShell extends Object {
-  constructor (input_r = {})
+  constructor (input_r: Partial<ShellReactive> = {})
   {
     super();
     this.piano_roll_ = null;
@@ -196,7 +214,7 @@ class BShell extends Object {
     this.switch_panel3_ = null;
     this.f1_help_ = null;
     this.fs = { title: 'File Selector', button: 'Select', cwd: '~MUSIC', filters: [] };
-    this.r = input_r;
+    this.r = input_r as ShellReactive;
     this.r.fs_shown = false;
     this.r.show_spinner_count = 0;
     this.r.filetree = { entries: [] };
@@ -204,21 +222,21 @@ class BShell extends Object {
     this.r.show_about_dialog_ = false;
     this.piano_current_clip_tickfn = [null,null];
     this.r = make_reactive (this.r);
-    this.usernotehook_ = Ase.server.on ("usernote", user_note_event => this.show_notice (user_note_event.text));
-    onCleanup (this.cleanup.bind (this)); // needs constructor() during render()
+    this.usernotehook_ = Ase.server.on ("usernote", (user_note_event: any) => this.show_notice (user_note_event.text));
+    onCleanup (this.cleanup.bind (this));
   }
   /// Called when ShellTemplate is destroyed
   cleanup()
   {
     Util.remove_hotkey ('RawBackquote', this.switch_panel2_);
     Util.remove_hotkey ('I', this.switch_panel3_);
-    Util.remove_key_filter (112, this.f1_help_); // F1
+    Util.remove_key_filter (112); // F1
     App.shell_unmounted();
     this.usernotehook_();
     this.usernotehook_ = null;
   }
   /// Called when ShellTemplate is instantiated
-  setup (shell_element)
+  setup (shell_element: HTMLElement)
   {
     this.shell_element = shell_element;
     this.switch_panel2_ = App.switch_panel2.bind (App);
@@ -226,12 +244,12 @@ class BShell extends Object {
     this.switch_panel3_ = App.switch_panel3.bind (App);
     Util.add_hotkey ('I', this.switch_panel3_);
     this.f1_help_ = this.f1_help.bind (this);
-    Util.add_key_filter (112, this.f1_help_); // F1
+    Util.add_key_filter (112, this.f1_help_);
     console.assert (!this.data_bubble);
     this.data_bubble = new DataBubbleIface (shell_element);
   }
   /// Helper to refer to the current piano roll clip and tick
-  piano_current (clip = undefined, tickfn = undefined)
+  piano_current (clip: any = undefined, tickfn: any = undefined): [any, any]
   {
     // Called several times per second
     if (clip === undefined)
@@ -257,15 +275,15 @@ class BShell extends Object {
     this.r.show_spinner_count--;
   }
   /// Show a notification notice, with adequate default timeout
-  show_notice (text, timeout = undefined)
+  show_notice (text: string, timeout?: number)
   {
     create_note (text, timeout);
   }
   /// Open related help page in another window on F1
-  f1_help (event)
+  f1_help (event: Event)
   {
     const zlast = App.zmove_last();
-    const el_f1 = Util.find_element_from_point (document, zlast.pageX, zlast.pageY, el => {
+    const el_f1 = Util.find_element_from_point (document, zlast.pageX, zlast.pageY, (el: Element) => {
       const str = el.getAttribute ('data-f1');
       return /(#|\.htm)/.test (str); // check for documentation links / anchors
     });
@@ -276,35 +294,35 @@ class BShell extends Object {
     return true;
   }
   /// Drag and resize sidebar handle
-  sidebar_mouse (e)
+  sidebar_mouse (e: MouseEvent)
   {
-    const sidebar = this.shadowRoot.querySelector('.b-shell-sidebar'); // FIXME
+    const sidebar = (this as any).shadowRoot?.querySelector('.b-shell-sidebar'); // FIXME
     // const sidebar = this.$refs.sidebarcontainer; // FIXME
     console.assert (sidebar);
     const html_classes = document.documentElement.classList;
     if (e.type == 'mousedown' && !this.listening)
       {
-	this.listening = Util.debounce (this.sidebar_mouse.bind (this));
-	document.addEventListener ('mousemove', this.listening);
-	document.addEventListener ('mouseup', this.listening);
-	this.startx = e.clientX; //  - e.offsetX;
-	this.startwidth = sidebar.getBoundingClientRect().width;
-	html_classes.add ('b-shell-during-drag');
+        this.listening = Util.debounce (this.sidebar_mouse.bind (this));
+        document.addEventListener ('mousemove', this.listening);
+        document.addEventListener ('mouseup', this.listening);
+        this.startx = e.clientX; //  - e.offsetX;
+        this.startwidth = sidebar.getBoundingClientRect().width;
+        html_classes.add ('b-shell-during-drag');
       }
     if (this.listening && e.type == 'mouseup')
       {
-	document.removeEventListener ('mousemove', this.listening);
-	document.removeEventListener ('mouseup', this.listening);
-	this.listening = undefined;
-	html_classes.remove ('b-shell-during-drag');
+        document.removeEventListener ('mousemove', this.listening);
+        document.removeEventListener ('mouseup', this.listening);
+        this.listening = undefined;
+        html_classes.remove ('b-shell-during-drag');
       }
     let newwidth = this.startwidth - (e.clientX - this.startx);
     const pwidth = sidebar.parentElement.getBoundingClientRect().width;
     const maxwidth = pwidth * 0.6 |0, minwidth = 120;
     if (newwidth < minwidth / 2)
       {
-	const cs = getComputedStyle (sidebar);
-	newwidth = parseInt (cs.getPropertyValue ('--b-resize-handle-thickness'), 10);
+        const cs = getComputedStyle (sidebar);
+        newwidth = parseInt (cs.getPropertyValue ('--b-resize-handle-thickness'), 10);
       }
     else
       newwidth = Util.clamp (newwidth, minwidth, maxwidth);
@@ -316,30 +334,31 @@ class BShell extends Object {
     e.preventDefault();
   }
   /// Show file selector dialog
-  async select_file (opt = {})
+  async select_file (opt: Partial<FileSelector> = {})
   {
     if (this.r.fs_shown)
       return undefined;
     Object.assign (this.fs, opt);
     this.fs.existing === false || (this.fs.existing = true);
-    return new Promise (resolve => {
-      this.fs.resolve = path => {
-	this.r.fs_shown = false;	// hide file selector
-	resolve (path);
+    return new Promise<any> (resolve => {
+      this.fs.resolve = (path: any) => {
+        this.r.fs_shown = false;	// hide file selector
+        resolve (path);
       };
       this.r.fs_shown = true;		// show file selector
     });
   }
   /// Create dialog via BModalDialogs.async_modal_dialog()
-  async async_modal_dialog (...args)
+  async async_modal_dialog (...args: any[])
   {
     return this.modal_dialogs_.async_modal_dialog (...args);
   }
-};
+}
 
 /// Crawl to find relevant files for the tree browser
-async function list_sample_files() {
+async function list_sample_files()
+{
   // TODO: const crawler = await Ase.server.resource_crawler();
-  const entries = []; // TODO: await crawler.list_files ('wave', 'user-downloads');
+  const entries: any[] = []; // TODO: await crawler.list_files ('wave', 'user-downloads');
   return Object.freeze ({ entries: entries });
 }
