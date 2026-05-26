@@ -116,6 +116,7 @@ export class AppClass {
   shell_unmounted() { }
   switch_panel3 (n?: string)
   {
+    if (!globalThis.Shell) return; // not mounted yet
     const a = this.panel3_types;
     if ('string' == typeof n)
       Shell.r.panel3 = n;
@@ -124,6 +125,7 @@ export class AppClass {
   }
   switch_panel2 (n?: string)
   {
+    if (!globalThis.Shell) return; // not mounted yet
     const a = this.panel2_types;
     if ('string' == typeof n)
       Shell.r.panel2 = n;
@@ -132,6 +134,7 @@ export class AppClass {
   }
   open_piano_roll (midi_source: any)
   {
+    if (!globalThis.Shell) return; // not mounted yet
     Shell.r.piano_roll_source = midi_source;
     if (Shell.r.piano_roll_source)
       this.switch_panel2 ('p');
