@@ -66,6 +66,11 @@ function lineMatcher (code: string,
     ignore   = /\]\s*\(/.test (code);				// ignore lambda
     ignore ||= /\balignas\s*\(/.test (code);			// ignore alignas()
     ignore ||= /do|switch|while|for|if|namespace/.test (code);	// ignore blocks
+    if (!ignore) {						// functions balance parenthesis
+      const openp = (code.match (/\(/g) || []).length;
+      const closep = (code.match (/\)/g) || []).length;
+      ignore ||= openp != closep;
+    }
     if (!ignore)
       warning = 'missing newline before function body';
   }
