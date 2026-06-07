@@ -60,7 +60,7 @@ function lineMatcher (code: string,
     error = 'comment indicates open issues';
   }
   // separate-body (newline before function body)
-  else if (checks['separate-body'] && (m = code.match (/^\s*[\w <:,>]+\s*\((.+\s+.+)?\)[\s\w]*{\s*(\/[/*].*)?$/))) {
+  else if (checks['separate-body'] && (m = code.match (/^\s*[\w <:,>]+\s*\((.+\s+.+)?\)[\s\w]*{\s*(\/\/.*)?$/))) {
     offset = m.index + m[0].indexOf ('{');
     let ignore : boolean;
     ignore   = /\]\s*\(/.test (code);				// ignore lambda
