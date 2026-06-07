@@ -82,7 +82,8 @@ function lineMatcher (code: string,
     msg += error ? `${R}error:${Z}` : `${M}warning:${Z}`;
     msg += ` ${error || warning}${f}`;
     eprint (msg);
-    eprint (`${lcs} | ${text.trimRight()}`);
+    text = text.trimRight().replace (/.*\n/, '');
+    eprint (`${lcs} | ${text}`);
     const indent = text.slice (0, offset).replace (/[^ \t]/g, ' ');
     eprint (`${lcs} | ${indent}${B}${G}^${Z}`);
   }
