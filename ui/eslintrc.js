@@ -104,7 +104,6 @@ export default [
         _: false,
         App: false,
         Ase: false,
-        Data: false,
         Extra_css: false,
         Shell: false,
         CONFIG: false,

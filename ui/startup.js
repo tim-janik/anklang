@@ -168,13 +168,17 @@ async function bootup () {
   };
   dpr_rerender_all();
 
-  // ensure App has an AseProject
-  await App.load_project_checked ((await Ase.server.last_project()) || '');
-
   // mount in DOM and create component hierarchy
   await document.fonts.ready; // Fonts - wait for fonts before components are mounted and compute sizes
-  App.mount ('b-app');
-  console.assert (app === globalThis.App);
+
+  // Setup App from a default project
+  {
+    let project = await Ase.server.last_project();
+    if (!project)
+      project = await Ase.server.create_project ('Untitled');
+    App.assign_project (project, 'b-app');
+    console.assert (app === globalThis.App);
+  }
 
   // Load external plugins
   if (CONFIG.mainjs)

@@ -183,9 +183,9 @@ class BTrackView extends LitComponent {
     Util.telemetry_unsubscribe (this.teleobj);
     this.teleobj = null;
   }
-  notify_current_track() // see app.js
+  notify_current_track()
   {
-    if (this.track === App.current_track)
+    if (this.track === Shell.current_track)
       this.setAttribute ('current-track', '');
     else
       this.removeAttribute ('current-track');
@@ -206,9 +206,11 @@ class BTrackView extends LitComponent {
 	async_updates();
       }
     // setup level gradient based on MINDB..MAXDB
-    this.levelbg_.style.setProperty ('--db-zpc', -MINDB * 100.0 / (MAXDB - MINDB) + '%');
-    // cache level width in pixels to avoid expensive recalculations in fps handler
-    this.level_width_ = this.levelbg_.getBoundingClientRect().width;
+    if (this.levelbg_) {
+      this.levelbg_.style.setProperty ('--db-zpc', -MINDB * 100.0 / (MAXDB - MINDB) + '%');
+      // cache level width in pixels to avoid expensive recalculations in fps handler
+      this.level_width_ = this.levelbg_.getBoundingClientRect().width;
+    }
   }
   mcc (n) // midi_channel character
   {
@@ -218,7 +220,7 @@ class BTrackView extends LitComponent {
   {
     event.stopPropagation();
     if (event.button == 0 && this.track)
-      App.current_track = this.track;
+      Shell.current_track = this.track;
   }
   menu_close()
   {
@@ -226,7 +228,7 @@ class BTrackView extends LitComponent {
   }
   menu_open (event)
   {
-    App.current_track = this.track;
+    Shell.current_track = this.track;
     // update trackview menu for popup
     trackview_contextmenu = render_contextmenu (trackview_contextmenu, HTML_CONTEXTMENU, this);
     // popup menu at mouse coords
@@ -239,7 +241,7 @@ class BTrackView extends LitComponent {
     {
       case 'add-track':
       case 'add-midi-clip': return true;
-      case 'delete-track': return App.current_track && !await App.current_track.is_master();
+      case 'delete-track': return Shell.current_track && !await Shell.current_track.is_master();
       case 'rename-track': return true;
     }
     if (uri.startsWith ('mc-'))
@@ -253,13 +255,13 @@ class BTrackView extends LitComponent {
     this.menu_close();
     if (uri == 'add-track')
       {
-	const track = await Data.project.create_track ('Track');
+	const track = await Shell.project.create_track ('Track');
 	if (track)
-	  App.current_track = track;
+	  Shell.current_track = track;
       }
     if (uri == 'add-midi-clip')
       {
-	const track = App.current_track;
+	const track = Shell.current_track;
 	if (track && !await track.is_master())
 	  {
 	    const clip = await track.create_midi_clip ('MIDI Clip', 0.0, 4.0);
@@ -270,13 +272,13 @@ class BTrackView extends LitComponent {
     if (uri == 'delete-track')
       {
 	const del_track = this.track;
-	let tracks = App.project.all_tracks();
+	let tracks = Shell.project.all_tracks();
 	del_track.remove_self ();
 	tracks = await tracks;
 	const index = Util.array_index_equals (tracks, del_track);
 	tracks.splice (index, 1);
 	if (index < tracks.length) // false if deleting Master
-	  App.current_track = tracks[index];
+	  Shell.current_track = tracks[index];
       }
     if (uri == 'rename-track')
       this.trackname_.activate();

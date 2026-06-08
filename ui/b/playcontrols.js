@@ -46,7 +46,7 @@ class BPlayControls extends LitComponent {
   }
   async dispatch (method, ev)
   {
-    const project = Data.project;
+    const project = Shell.project;
     let func = project[method], message;
     if (func !== undefined) {
       let result = await func.call (project);
@@ -60,13 +60,13 @@ class BPlayControls extends LitComponent {
   }
   async toggle_play()
   {
-    const project = Data.project;
+    const project = Shell.project;
     const playing = project.is_playing;
     this.dispatch (playing ? 'pause_playback' : 'start_playback');
   }
   playback_changed()
   {
-    console.log("is_playing:", Data.project.is_playing);
+    console.log("is_playing:", Shell.project.is_playing);
   }
   connectedCallback() {
     super.connectedCallback();

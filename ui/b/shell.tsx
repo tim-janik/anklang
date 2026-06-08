@@ -113,6 +113,8 @@ html.b-shell-during-drag .b-app {
 
 // == Types ==
 interface ShellReactive {
+  current_track: any;
+  show_preferences_dialog: boolean;
   fs_shown: boolean;
   show_spinner_count: number;
   filetree: any;
@@ -134,17 +136,20 @@ interface FileSelector {
 // == SHELL TEMPLATE ==
 export function ShellTemplate (props: any)
 {
-  // Shell global
-  const t = new BShell ();
-  Object.defineProperty (globalThis, 'Shell', { value: t });
+  // Shell singleton (created once, persists across project swaps)
+  const t = globalThis.Shell ?? new BShell ();
+  if (!globalThis.Shell)
+    Object.defineProperty (globalThis, 'Shell', { value: t });
+  // Reset Shell state for the new project
+  t.reset (props.project, props.current_track);
   const { r, fs } = t;
   return (
     <div class="b-shell" ref={e => t.setup (e)}>
       {/* Menus and Transport */}
-      <MenuBar class="-row1 -col123" project={Data.project}></MenuBar>
+      <MenuBar class="-row1 -col123" project={t.project}></MenuBar>
 
       {/* tracks and clips */}
-      <TrackList class="-row2 -col2" style="overflow: hidden" project={Data.project} />
+      <TrackList class="-row2 -col2" style="overflow: hidden" project={t.project} />
 
       {/* devices */}
       <Show when={r.panel2 === 'd'}>
@@ -179,8 +184,8 @@ export function ShellTemplate (props: any)
         <AboutDialog onClose={() => r.show_about_dialog_ = false} />
       </Show>
 
-      <Show when={Data.show_preferences_dialog}>
-        <PreferencesDialog onClose={() => (Data.show_preferences_dialog = false)} shown={true} />
+      <Show when={r.show_preferences_dialog}>
+        <PreferencesDialog onClose={() => (r.show_preferences_dialog = false)} shown={true} />
       </Show>
 
       <b-crawlerdialog shown={r.fs_shown} title={fs.title} filters={fs.filters} button={fs.button}
@@ -207,9 +212,10 @@ export function ShellTemplate (props: any)
 
 // == BShell controller ==
 class BShell extends Object {
-  constructor (input_r: Partial<ShellReactive> = {})
+  constructor ()
   {
     super();
+    this.project = null;
     this.piano_roll_ = null;
     this.data_bubble = null;
     this.modal_dialogs_ = null;
@@ -217,29 +223,50 @@ class BShell extends Object {
     this.switch_panel3_ = null;
     this.f1_help_ = null;
     this.fs = { title: 'File Selector', button: 'Select', cwd: '~MUSIC', filters: [] };
-    this.r = input_r as ShellReactive;
-    this.r.fs_shown = false;
-    this.r.show_spinner_count = 0;
-    this.r.filetree = { entries: [] };
-    list_sample_files ().then (files => { this.r.filetree = files; });
-    this.r.show_about_dialog_ = false;
-    this.r.panel2 = 'p';
-    this.r.panel3 = 'i';
-    this.r.piano_roll_source = undefined;
     this.piano_current_clip_tickfn = [null,null];
-    this.r = make_reactive (this.r);
+    const rtmpl: ShellReactive = {
+      current_track: null,
+      show_preferences_dialog: false,
+      fs_shown: false,
+      show_spinner_count: 0,
+      filetree: { entries: [] },
+      show_about_dialog_: false,
+      panel2: 'p',
+      panel3: 'i',
+      piano_roll_source: undefined,
+    };
+    this.r = make_reactive (rtmpl);
+    list_sample_files ().then (files => { this.r.filetree = files; });
+    // Registered once; intentionally persistent across project swaps since
+    // Shell is a singleton and Ase.server doesn't change.
     this.usernotehook_ = Ase.server.on ("usernote", (user_note_event: any) => this.show_notice (user_note_event.text));
-    onCleanup (this.cleanup.bind (this));
   }
-  /// Called when ShellTemplate is destroyed
-  cleanup()
+  /// Access current_track (reactive)
+  get current_track () { return this.r.current_track; }
+  set current_track (t: any) { this.r.current_track = t; }
+  /// Reset Shell for a new project (Shell is a persistent singleton)
+  reset (project: any, current_track: any)
   {
-    Util.remove_hotkey ('RawBackquote', this.switch_panel2_);
-    Util.remove_hotkey ('I', this.switch_panel3_);
-    Util.remove_key_filter (112); // F1
-    App.shell_unmounted();
-    this.usernotehook_();
-    this.usernotehook_ = null;
+    // Remove old hotkeys to avoid duplicates on re-setup
+    if (this.switch_panel2_)
+      Util.remove_hotkey ('RawBackquote', this.switch_panel2_);
+    if (this.switch_panel3_)
+      Util.remove_hotkey ('I', this.switch_panel3_);
+    if (this.f1_help_)
+      Util.remove_key_filter (112);
+    this.project = project;
+    this.r.current_track = current_track;
+    this.r.show_preferences_dialog = false;
+    this.r.show_about_dialog_ = false;
+    this.r.piano_roll_source = undefined;
+    this.shell_element = null;
+    this.piano_current_clip_tickfn = [null,null];
+    this.piano_roll_ = null;
+    this.modal_dialogs_ = null;
+    this.data_bubble = null;
+    this.switch_panel2_ = null;
+    this.switch_panel3_ = null;
+    this.f1_help_ = null;
   }
   /// Called when ShellTemplate is instantiated
   setup (shell_element: HTMLElement)

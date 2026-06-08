@@ -23,9 +23,6 @@ import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 
 // == Globals ==
 
-/// Global Data store (set by AppClass constructor)
-declare const Data: any;
-
 /// Global Shell instance (set by ShellTemplate)
 declare const Shell: any;
 
@@ -60,8 +57,8 @@ export function make_reactive<T extends Record<string, any>> (tmpl: T): T
 export class AppClass {
   panel2_types = [ 'd' /*devices*/, 'p' /*pianoroll*/ ];
   panel3_types = [ 'i' /*info*/, 'b' /*browser*/ ];
-  shell: HTMLElement | null = null;
   request_update: () => void;
+  private render_dispose: (() => void) | null = null;
 
   constructor ()
   {
@@ -79,41 +76,38 @@ export class AppClass {
       this.updated = tracking_wrapper (this.request_update, this.updated.bind (this));
     }
     Object.defineProperty (globalThis, 'App', { value: this });
-    let data = {
-      project: null,
-      mtrack: null, // master track
-      current_track: undefined,
-      show_preferences_dialog: false,
-    };
-    Object.defineProperty (globalThis, 'Data', { value: make_reactive (data) });
     this.request_update();
   }
-  get project ()  { return Data.project; }
-  set project (p: any) { Data.project = p; }
-  get current_track () { return Data.current_track; }
-  set current_track (t: any)
-  {
-    if (Data.current_track === t) return;
-    Data.current_track = t;
-    if (this.shell)
-      for (const tv of this.shell.querySelectorAll ('b-trackview')) // TODO: remove explicit notifies
-        (tv as any).notify_current_track();	// see trackview.js
-  }
+  get project ()  { return globalThis.Shell?.project ?? null; }
+  get current_track () { return globalThis.Shell?.r.current_track ?? null; }
   updated (changed_props: Record<string, any>)
   {
     const name = this.project?.name;
     document.title = Util.format_title ('Anklang', name);
   }
-  mount (id: string)
+  async assign_project (project: any, domid: string)
   {
-    console.assert (!globalThis.Shell);
-    const shell_parent = document.getElementById (id);
-    if (!shell_parent) return;
+    // Validate new project
+    if (!(project instanceof Ase.Project))
+      throw Error (`App: invalid Ase.Project: ${project}`);
+    // Determine initial current_track (master track)
+    const current_track = await project.master_track();
+    // Stop playback on old project
+    if (globalThis.Shell?.project)
+      Shell.project.stop_playback();
+    // Dispose old SolidJS tree (children only; Shell persists)
+    if (this.render_dispose) {
+      this.render_dispose();
+      this.render_dispose = null;
+    }
+    // Re-render children for the new project (Shell.reset() called by ShellTemplate)
+    const shell_parent = document.getElementById (domid);
+    if (!shell_parent)
+      throw Error (`App: DOM element '${domid}' not found`);
     shell_parent.innerHTML = '';
-    const solid_render_dispose = render (() => ShellTemplate ({}), shell_parent);
+    this.render_dispose = render (() => ShellTemplate ({ project, current_track }), shell_parent);
     console.assert (globalThis.Shell);
   }
-  shell_unmounted() { }
   switch_panel3 (n?: string)
   {
     if (!globalThis.Shell) return; // not mounted yet
@@ -168,37 +162,19 @@ export class AppClass {
             newproject.name = displaybasename (project_or_path);
           }
       }
-    const mtrack = await newproject.master_track();
+    // Swap Shell for the new project (cleanup stops playback)
+    await this.assign_project (newproject, 'b-app');
+    // Open piano roll for first clip
     const tracks = await newproject.all_tracks();
-    // shut down old project
-    let need_reload = false;
-    const App = globalThis.App as AppClass;
-    if (App.project)
-      {
-        App.project.stop_playback();
-	App.project = null; // TODO: should trigger FinalizationGroup
-	// TODO: App.open_piano_roll (undefined);
-        need_reload = true;
-      }
-    // replace project & master track without await, to synchronously trigger updates for both
-    App.project = newproject; // assigns Data.project
-    Data.mtrack = mtrack;
-    App.current_track = tracks[0];
-    const clips = await App.current_track.launcher_clips();
-    App.open_piano_roll (clips.length ? clips[0] : null);
-    if (this.shell)
-      (this.shell as any).update();
-    if (need_reload) {
-      window.location.reload();
-      // TODO: only reload the UI partially when the project changes, ideally just replacing Shell
-    }
+    const clips = await tracks[0].launcher_clips();
+    this.open_piano_roll (clips.length ? clips[0] : null);
     return Ase.Error.NONE;
   }
   async save_project (projectpath: string, collect = true)
   {
     Shell.show_spinner();
-    let error = !Data.project ? Ase.Error.INTERNAL :
-                Data.project.save_project (projectpath, collect);
+    let error = !this.project ? Ase.Error.INTERNAL :
+                this.project.save_project (projectpath, collect);
     error = await error;
     // await new Promise (r => setTimeout (r, 3 * 1000)); // artificial wait to test spinner
     Shell.hide_spinner();
@@ -210,7 +186,7 @@ export class AppClass {
   }
   async_modal_dialog (dialog_setup: any)
   {
-    return (this.shell as any).async_modal_dialog (dialog_setup);
+    return Shell.async_modal_dialog (dialog_setup);
   }
   async_button_dialog (title: string, text: string, buttons: any[] = [], emblem?: string)
   {
