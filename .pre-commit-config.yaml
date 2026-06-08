@@ -46,6 +46,11 @@ repos:
         ui/extra-css\.ts|
         ui/vite\.config\.ts|
       )$
+  - id: check-emails
+    name: Check Author Email Whitelist
+    entry: misc/check-emails.sh
+    language: system
+    pass_filenames: false
 
 # Should always pass:
 # uvx pre-commit run --hook-stage pre-push --all-files
