@@ -1,256 +1,408 @@
 #!/usr/bin/env node
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// Tree-sitter based code smell detector for C++ and JavaScript/TypeScript
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { getWasmPath, type SupportedLanguage } from 'tree-sitter-wasm';
+import { Parser, Language } from 'web-tree-sitter';
+import type { Node } from 'web-tree-sitter';
 
-const istty = process.stderr.isTTY;
-const oprint = (...args) => process.stdout.write (`${args.join (' ')}\n`);
-const eprint = (...args) => process.stderr.write (`${args.join (' ')}\n`);
+// --- Parser cache (one per grammar) ---
 
-// Configure checks
-interface Checks { [key: string]: boolean; }
-const checks: Checks = {
-  'ban-printf':                    true,
+const parser_cache = new Map<SupportedLanguage, Parser>();
+
+async function get_parser (lang: SupportedLanguage): Promise<Parser>
+{
+  if (parser_cache.has (lang)) return parser_cache.get (lang)!;
+  const p = new Parser ();
+  const wasm_bytes = fs.readFileSync (getWasmPath (lang));
+  p.setLanguage (await Language.load (wasm_bytes));
+  parser_cache.set (lang, p);
+  return p;
+}
+
+// Initialise the WASM runtime once (idempotent)
+await Parser.init();
+
+// --- Language detection ---
+
+function get_language (filename: string): SupportedLanguage
+{
+  const ext = path.extname (filename).slice (1).toLowerCase ();
+  switch (ext) {
+    case 'c':
+      return 'c';
+    case 'cc': case 'cpp': case 'cxx': case 'c++':
+    case 'hh': case 'hpp': case 'h++': case 'h':
+      return 'cpp';
+    case 'tsx':
+      return 'tsx';
+    case 'ts':
+      return 'typescript';
+    case 'jsx':
+      return 'tsx'; // tsx grammar handles JS+JSX (and TS+JSX)
+    case 'js':
+      return 'javascript';
+    default:
+      return 'cpp'; // default fallback
+  }
+}
+
+// --- Checks config ---
+
+const checks: Record<string, boolean> = {
+  'ban-printf':                    true,   // C++ only
   'separate-body':                 true,
   'whitespace-before-parenthesis': true,
-  'whitespace-after-parenthesis':  true,
   'ban-fixme':                     true,
   'ban-todo':                      false,
 };
+let diag_count = 0;
+let strict_mode = false; // treat tree-sitter parse errors as fatal
 
-// Detect various code smells via regexp
-function lineMatcher (code: string,
-		      text: string,
-		      has_comment: boolean,
-		      orig: string,
-		      filename: string)
+// --- Diagnostics ---
+
+const istty = process.stdout.isTTY;
+function emit (filename: string, line: number, column: number,
+               severity: 'error' | 'warning', message: string, source_lines: string[])
 {
-  let error = '', warning = '', offset = 0;
-  let m: RegExpMatchArray | null;
-
-  // ban-printf
-  if (checks['ban-printf'] && (m = code.match (/\bd?printf\s*\(/))) {
-    offset = m.index;
-    warning = 'invalid call to printf, use printout()';
-  }
-  // whitespace-before-parenthesis
-  else if (checks['whitespace-before-parenthesis'] && code.indexOf ('#') < 0 &&
-	   (m = code.match (/\s\w+[a-z0-9]\([^)]/i))) {
-    if (!/\s\.|:\s|@import/.test (code) &&			// ignore funcs in CSS rules
-	!filename.endsWith ('css')) {
-      offset = m.index + m[0].length - 2;
-      warning = 'missing whitespace before parenthesis';
-    }
-  }
-  // whitespace-after-parenthesis
-  else if (checks['whitespace-after-parenthesis'] && (m = code.match (/\)[a-z0-9]/i))) {
-    if (!any_in (['(/', ',/', '/,', '/)'], code)) {		// ignore JS regexp
-      offset = m.index + m[0].length - 2;
-      warning = 'missing whitespace after parenthesis';
-    }
-  }
-  // ban-fixme
-  else if (checks['ban-fixme'] && has_comment && (m = text.match (/\bFI[X]ME\b/i))) {
-    offset = m.index;
-    warning = 'comment indicates unfinished code';
-  }
-  // ban-todo
-  else if (checks['ban-todo'] && has_comment && (m = text.match (/\bTO[D]O\b/i))) {
-    offset = m.index;
-    error = 'comment indicates open issues';
-  }
-  // separate-body (newline before function body)
-  else if (checks['separate-body'] && (m = code.match (/^\s*[\w <:,>]+\s*\((.+\s+.+)?\)[\s\w]*{\s*(\/\/.*)?$/))) {
-    offset = m.index + m[0].indexOf ('{');
-    let ignore : boolean;
-    ignore   = /\]\s*\(/.test (code);				// ignore lambda
-    ignore ||= /\balignas\s*\(/.test (code);			// ignore alignas()
-    ignore ||= /do|switch|while|for|if|namespace/.test (code);	// ignore blocks
-    if (!ignore) {						// functions balance parenthesis
-      const openp = (code.match (/\(/g) || []).length;
-      const closep = (code.match (/\)/g) || []).length;
-      ignore ||= openp != closep;
-    }
-    if (!ignore)
-      warning = 'missing newline before function body';
-  }
-  // print diagnostics
-  if (error || warning) {
-    const lc = count (orig, '\n'), lcs = lc.toString().padStart (5);
-    const B = istty ? '\x1b[1m'  : ''; // bold
-    const f = istty ? '\x1b[22m' : ''; // faint/dim
-    const R = istty ? '\x1b[31m' : ''; // Red
-    const G = istty ? '\x1b[32m' : ''; // Green
-    const M = istty ? '\x1b[35m' : ''; // Magenta
-    const Z = istty ? '\x1b[0m'  : ''; // Reset
-    let msg = `${B}${filename}:${lc}: `;
-    msg += error ? `${R}error:${Z}` : `${M}warning:${Z}`;
-    msg += ` ${error || warning}${f}`;
-    eprint (msg);
-    text = text.trimRight().replace (/.*\n/, '');
-    eprint (`${lcs} | ${text}`);
-    const indent = text.slice (0, offset).replace (/[^ \t]/g, ' ');
-    eprint (`${lcs} | ${indent}${B}${G}^${Z}`);
+  diag_count++;
+  const B = istty ? '\x1b[1m' : '', f = istty ? '\x1b[22m' : '';
+  const R = istty ? '\x1b[31m' : '', M = istty ? '\x1b[35m' : '';
+  const G = istty ? '\x1b[32m' : '', Z = istty ? '\x1b[0m' : '';
+  process.stdout.write (`${B}${filename}:${line}: ${severity === 'error' ? `${R}error:${Z}` : `${M}warning:${Z}`} ${message}${f}\n`);
+  const lcs = line.toString ().padStart (5);
+  if (source_lines.length > line - 1) {
+    process.stdout.write (`${lcs} | ${source_lines[line - 1].trimRight ()}\n`);
+    process.stdout.write (`${lcs} | ${' '.repeat (Math.max (0, column))}${B}${G}^${Z}\n`);
   }
 }
 
-// Count chars in a string
-function count (str: string, w: string): number
+// --- Helpers ---
+
+// Find a token child ('(' or ')') inside an arguments/parameter node
+function find_token (node: Node, tok: '(' | ')'): Node | null
 {
-  let c = 0;
-  for (let i = 0; i < str.length; i++)
-    if (str[i] === w)
-      c++;
-  return c;
+  for (let i = 0; i < node.childCount; i++) {
+    if (node.child (i).type === tok) return node.child (i);
+  }
+  return null;
 }
 
-// True iff `haystack` includes any element of `needles`
-function any_in (needles: string[], haystack: string): boolean {
-  return needles.some (needle => haystack.includes (needle));
-}
-
-// First disguise C strings and comments, then invoke matcher predicate per line
-class CLexer {
-  filename: string;
-  sq = false;
-  dq = false;
-  bs = false;
-  slc = false;
-  mlc = false;
-  orig = '';
-  out = '';
-  last = '';
-  commentline = false;
-  linematcher: typeof lineMatcher;
-  constructor (fname: string, linematcher: typeof lineMatcher)
-  {
-    this.filename = fname;
-    this.linematcher = linematcher;
-  }
-  feed_char (c: string)
-  {
-    this.orig += c;
-    if (this.last === '\\' && (this.sq || this.dq)) {	// backslash inside string
-      this.out += c; this.last = ' '; return;
-    }
-    if (this.sq) {					// single quote string
-      if (c === "'") {
-        this.sq = false;
-        return this.append (c, c);
-      }
-      return this.append ('_', c);
-    }
-    if (this.dq) {					// double quote string
-      if (c === '"') {
-        this.dq = false;
-        return this.append (c, c);
-      }
-      return this.append ('_', c);
-    }
-    if (this.mlc) {					// multi line comment
-      if (c === '/' && this.last === '*') {
-        this.mlc = false;
-        this.out = this.out.slice (0, -1) + '*';
-        return this.append (c, c);
-      }
-      if (c === '\n')
-        return this.append (c, c);
-      return this.append ('_', c);
-    }
-    if (this.slc) {					// single line comment
-      if (c === '\n') {
-        this.slc = false;
-        return this.append (c, c);
-      }
-      return this.append ('_', c);
-    }
-    if (this.last === '/' && c === '/') {		// start single line comment
-      this.slc = true;
-      return this.append (c, c);
-    }
-    if (this.last === '/' && c === '*') {		// start multi line comment
-      this.mlc = true;
-      return this.append (c, ' ');
-    }
-    if (c === '"') {					// start double quote string
-      this.dq = true;
-      return this.append (c, c);
-    }
-    if (c === "'") {					// start single quote string
-      this.sq = true;
-      return this.append (c, c);
-    }
-    if (/\s/.test (c))					// whitespace
-      return this.append (c, c);
-    return this.append (c, c);
-  }
-  feed (txt: string)
-  {
-    for (const c of txt)
-      this.feed_char (c);
-  }
-  append (char: string, last: string, is_commentline = false)
-  {
-    this.commentline = this.commentline || this.mlc || this.slc;
-    if (char === '\n') {
-      const was_commentline = this.commentline;
-      this.commentline = this.mlc || this.slc;
-      const p1 = this.out.lastIndexOf ('\n') + 1;	// BOL
-      this.linematcher (this.out.slice (p1), this.orig.slice (p1), was_commentline, this.orig, this.filename);
-    }
-    this.out += char;
-    this.last = last;
-  }
-}
-
-// CLI help
-function print_help()
+function is_empty_list (node: Node): boolean
 {
-  const prog = path.basename (process.argv[0]);
-  oprint (`Usage: ${prog} [Options] {ccfile}`);
-  oprint ('Check syntax for code smells, based on simple regular expression.');
-  oprint ('Options:');
-  oprint ('  --help, -h                Print this help message');
-  oprint ('  --all                     Enable all checks');
-  oprint ('  --none                    Disable all checks');
-  oprint ('  --list                    Show check configuration');
-  oprint ('  --<check-name>=1          Enable check');
-  oprint ('  --<check-name>=0          Disable check');
+  // Only two children means empty: ( )
+  return node.childCount === 2 && !!find_token (node, '(') && !!find_token (node, ')');
 }
 
-// main program
-function main(): number
+// --- Checks ---
+
+function check_ban_printf (node: Node, fn: string, lines: string[], lang: string): void
 {
-  const checks_arg = (arg: string): [string, number] | null => {
-    if (!arg.startsWith ('--')) return null;
-    const eq = arg.indexOf ('=');
-    if (eq < 3) return null;
-    const check_name = arg.slice (2, eq);
-    if (!(check_name in checks)) return null;
-    return [check_name, parseInt (arg[eq + 1])];
-  };
-  for (const arg of process.argv.slice (2)) {
-    let kv;
-    if (arg === '--help' || arg === '-h') {
-      print_help();
+  if (!checks['ban-printf'] || lang !== 'cpp') return;
+  if (node.type !== 'call_expression') return;
+  const func = node.childForFieldName ('function');
+  if (func && /\b[a-z]?printf$/.test (func.text))
+    emit (fn, node.startPosition.row + 1, node.startPosition.column,
+         'warning', `invalid call to ${func.text}, use printout ()`, lines);
+}
+
+// Unified newline-before-brace check for function bodies (C++ + JS/TS)
+function check_separate_body (node: Node, fn: string, lines: string[], lang: string): void
+{
+  if (!checks['separate-body']) return;
+
+  // NOTE: 'arrow_function' excluded — too noisy for now, will re-enable later
+  const func_types = lang === 'cpp'
+    ? ['function_definition']
+    : ['function_declaration', 'method_definition'];
+  if (!func_types.includes (node.type)) return;
+
+  // C++: skip lambdas
+  if (lang === 'cpp' && node.type === 'function_definition') {
+    let p = node.parent;
+    while (p) { if (p.type === 'lambda_expression') return; p = p.parent; }
+    // Skip macros — real functions have a return type, macros don't
+    if (!node.childForFieldName ('type')) return;
+  }
+
+  const body = node.childForFieldName ('body');
+  if (!body || body.startPosition.row === body.endPosition.row) return;
+
+  const brace_col = lines[body.startPosition.row]?.indexOf ('{');
+  if (brace_col < 0) return;
+
+  const params = node.childForFieldName ('parameters');
+  if (!params) return;
+
+  const close_paren = find_token (params, ')');
+  if (!close_paren) return;
+
+  if (close_paren.startPosition.row === body.startPosition.row)
+    emit (fn, body.startPosition.row + 1, brace_col,
+         'warning', 'missing newline before function body', lines);
+}
+
+
+// Helper: check that the '(' token has a preceding whitespace character
+function check_parenthesis_whitespace (list_node: Node, fn: string, lines: string[]): void
+{
+  const paren = find_token (list_node, '(');
+  if (!paren || paren.startPosition.column === 0) return;
+  const ch = lines[paren.startPosition.row]?.[paren.startPosition.column - 1];
+  if (ch && /[\w]/.test (ch))
+    emit (fn, paren.startPosition.row + 1, paren.startPosition.column - 1,
+         'warning', 'missing whitespace before parenthesis', lines);
+}
+
+// Unified whitespace-before-parenthesis check (C++ + JS/TS)
+// Relaxed for: empty lists, gettext _(), #define macros, C++ casts
+function check_whitespace_before_paren (node: Node, fn: string, lines: string[], lang: string, in_error_zone: boolean): void
+{
+  if (!checks['whitespace-before-parenthesis']) return;
+  // Skip nodes inside tree-sitter ERROR regions (broken macro parsing etc.)
+  if (in_error_zone) return;
+
+  // call_expression - function calls: foo (x) vs foo(x)
+  if (node.type === 'call_expression') {
+    const func = node.childForFieldName ('function');
+    const args = node.childForFieldName ('arguments');
+    if (!func || !args) return;
+
+    // EXCEPTION: gettext _() translation markup - space would break it
+    if (func.text.length == 1) return; // e.g. _("Translate Me")
+    // EXCEPTION: C++ casts static_cast<T>(x), dynamic_cast<T>(x) etc.
+    // tree-sitter parses these as call_expression with template_function callee
+    if (func.type === 'template_function') return;
+    // RELAXED: empty argument lists are OK without preceding space: relaxed ()
+    if (is_empty_list (args)) return;
+
+    check_parenthesis_whitespace (args, fn, lines);
+    return;
+  }
+
+  // Function declarators / definitions - function name (params)
+  // NOTE: #define FOO(a,b,c) is a preproc_function_def - not checked here,
+  // NOTE: macro_invocation so far never appeared in tree-sitter-cpp output
+  const decl_types = lang === 'cpp'
+		   ? ['function_declarator']
+		   : ['function_declaration'];
+  if (!decl_types.includes (node.type)) return;
+
+  const params = node.childForFieldName ('parameters');
+  if (!params) return;
+  // RELAXED: empty parameter lists are OK: function foo ()
+  if (is_empty_list (params)) return;
+  check_parenthesis_whitespace (params, fn, lines);
+}
+
+function check_ban_fixme (node: Node, fn: string, lines: string[]): void
+{
+  if (!checks['ban-fixme'] || node.type !== 'comment') return;
+  if (/\bFI[X]ME\b/i.test (node.text))
+    emit (fn, node.startPosition.row + 1, 0, 'warning', 'comment indicates unfinished code', lines);
+}
+
+function check_ban_todo (node: Node, fn: string, lines: string[]): void
+{
+  if (!checks['ban-todo'] || node.type !== 'comment') return;
+  if (/\bTO[D]O\b/i.test (node.text))
+    emit (fn, node.startPosition.row + 1, 0, 'error', 'comment indicates open issues', lines);
+}
+
+/* --- Macro stripping ---
+ * Since tree-sitter has no preprocessor, we strip macros out, similar to doxygen.
+ * All fixes use whitespace-preserving replacements (char → space, newlines kept)
+ * so line/column offsets stay valid.
+ *
+ * 1. Multi-line #define bodies - continuation lines contain bare expressions.
+ *    Fix: blank out the #define body + usage lines (chars → spaces).
+ *
+ * 2. Macro identifiers in type position (e.g. CONSTEXPR int foo).
+ *    Fix: --macros FILE lists names to strip (space-preserving replacement).
+ */
+
+interface MacroEntry { name: string; func_like: boolean; }
+let macro_list: MacroEntry[] = []; // populated by --macros flag
+
+// Blank out multi-line #define blocks which tree-sitter fails to parse.
+// Returns [stripped_content, detected_macros] so callers can inline-replace usages.
+function strip_multiline_defines (content: string): [string, MacroEntry[]]
+{
+  const lines = content.split ('\n');
+  const blank = new Set<number>(); // line indices to blank out
+  const macros: MacroEntry[] = [];
+
+  // Blank only multi-line #define (body ends with \\); tree-sitter can't parse continuations.
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*#\s*define\s+(\w+)\s*(.*)\\\s*$/.test (lines[i])) {
+      blank.add (i);
+      let j = i + 1;
+      while (j < lines.length && /\\\s*$/.test (lines[j])) { blank.add (j); j++; }
+      if (j < lines.length) blank.add (j); // last continuation, no trailing \\
+    }
+  }
+
+  // Replace marked lines with spaces (preserve length; newlines stay via split/join)
+  for (let i = 0; i < lines.length; i++)
+    if (blank.has (i))
+      lines[i] = ' '.repeat (lines[i].length);
+  return [lines.join ('\n'), macros];
+}
+
+// Load --macros file: one name per line, '#' = comment, blank lines ignored.
+// Lines ending with '()' are function-like (strip name + parens + args),
+// otherwise object-like (strip the word only).
+function load_macros_file (filepath: string): MacroEntry[]
+{
+  let text: string;
+  try { text = fs.readFileSync (filepath, 'utf-8'); }
+  catch (err) { console.error (`error: cannot read macros file '${filepath}': ${err instanceof Error ? err.message : err}`); process.exit (1); }
+  const entries: MacroEntry[] = [];
+  for (const raw of text.split ('\n')) {
+    const line = raw.trim ();
+    if (!line || line.startsWith ('#')) continue;
+    const func_like = line.endsWith ('()');
+    const name = func_like ? line.slice (0, -2) : line;
+    entries.push ({ name, func_like });
+  }
+  return entries;
+}
+
+// Build a space-preserving regex replacer for the macro list.
+// Object-like: \bNAME\b → spaces
+// Function-like: \bNAME\s*\([^)]*\) → spaces (single-level parens)
+function build_macro_replacer (macros: MacroEntry[]): ((text: string) => string) | null
+{
+  if (macros.length === 0) return null;
+
+  // Sort longest name first so partial matches don't win (e.g. NS_CONST before NS)
+  const sorted = [...macros].sort ((a, b) => b.name.length - a.name.length);
+
+  // Build alternation groups: function-like and object-like separately
+  const func_like = sorted.filter (m => m.func_like).map (m => m.name.replace (/[/\\.^*+?${}()|[\]]/g, '\\$&'));
+  const obj_like = sorted.filter (m => !m.func_like).map (m => m.name.replace (/[/\\.^*+?${}()|[\]]/g, '\\$&'));
+
+  const parts: string[] = [];
+  if (func_like.length > 0) parts.push ('\\b(' + func_like.join ('|') + ')\\s*\\([^)]*\\)');
+  if (obj_like.length > 0) parts.push ('\\b(' + obj_like.join ('|') + ')\\b');
+
+  const pattern = new RegExp (parts.join ('|'), 'g');
+  return (text: string) => text.replace (pattern, match => ' '.repeat (match.length));
+}
+
+// --- Main ---
+
+// Walk the AST, yielding (node, in_error_zone) tuples.
+// in_error_zone is true when an ancestor or self is an ERROR node.
+function* walk (node: Node, in_error_zone: boolean): Generator<[Node, boolean]> {
+  if (node.type === 'ERROR') in_error_zone = true;
+  yield [node, in_error_zone];
+  for (let i = 0; i < node.childCount; i++)
+    yield* walk (node.child (i), in_error_zone);
+}
+
+async function analyze_file (filename: string): Promise<void>
+{
+  let content = fs.readFileSync (filename, 'utf-8');
+  const lang = get_language (filename);
+  const parser = await get_parser (lang);
+
+  // Preprocess for tree-sitter compatibility (C++ only).
+  // All replacements are whitespace-preserving - line/column offsets unchanged.
+  if (lang === 'cpp') {
+    const [stripped, detected_macros] = strip_multiline_defines (content);
+    content = stripped;
+    // Merge --macros file entries with auto-detected #define macros.
+    const all_macros = [...macro_list, ...detected_macros];
+    const replacer = build_macro_replacer (all_macros);
+    if (replacer) content = replacer (content);
+  }
+
+  const lines = content.split ('\n');
+  const root = parser.parse (content).rootNode;
+
+  // --strict: refuse to lint files with tree-sitter parse errors
+  // tree-sitter has no preprocessor and struggles with: #define inside blocks,
+  // member-function-pointers, operator co_await (), macros with == in args, etc.
+  if (strict_mode) {
+    const errors = root.descendantsOfType ('ERROR');
+    if (errors.length > 0) {
+      for (const err of errors) {
+        emit (filename, err.startPosition.row + 1, err.startPosition.column,
+              'error', `tree-sitter parse error`, lines);
+      }
+      return;
+    }
+  }
+
+  for (const [node, in_error_zone] of walk (root, false)) {
+    check_ban_printf (node, filename, lines, lang);
+    check_separate_body (node, filename, lines, lang);
+    check_whitespace_before_paren (node, filename, lines, lang, in_error_zone);
+    check_ban_fixme (node, filename, lines);
+    check_ban_todo (node, filename, lines);
+  }
+}
+
+// --- CLI ---
+
+function print_help (): void
+{
+  console.log (`Usage: ${path.basename (process.argv[0])} [Options] file.cc ...`);
+  console.log ('Check source files for code smells using tree-sitter AST analysis.');
+  console.log ('Supports C (.c) C++ (.cc .hh .cpp .hpp .h) and JS/TS (.js .ts .jsx .tsx).');
+  console.log ('  --all / --none        Enable/disable all checks');
+  console.log ('  --list                Show check configuration');
+  console.log ('  --errors              Exit non-zero if any diagnostics found');
+  console.log ('  --strict              Treat tree-sitter parse errors as fatal (default: skip)');
+  console.log ('  --macros FILE         Strip listed macros before parsing (see help)');
+  console.log ('  --<check>=1/0         Toggle individual check');
+}
+
+async function main (): Promise<number>
+{
+  let exit_on_diag = false;
+  const files: string[] = [];
+  const args = process.argv.slice (2);
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '-h' || arg === '--help') {
+      print_help ();
       return 0;
-    } else if (kv = checks_arg (arg)) {
-      checks[kv[0]] = Boolean (kv[1]);
-    } else if (arg === '--all') {
-      for (const k in checks) checks[k] = true;
-    } else if (arg === '--none') {
-      for (const k in checks) checks[k] = false;
-    } else if (arg === '--list') {
-      for (const k in checks)
-        oprint (`  --${k}=${Number (checks[k])}`);
-    } else {
-      const clex = new CLexer (arg, lineMatcher);
-      clex.feed (fs.readFileSync (arg, 'utf-8'));
     }
+
+    // Handle --name=value form
+    const eq = arg.indexOf ('=');
+    if (arg.startsWith ('--') && eq >= 3) {
+      const name = arg.slice (2, eq);
+      const val = arg.slice (eq + 1);
+      if (name in checks) { checks[name] = val !== '0'; continue; }
+      if (name === 'errors') { exit_on_diag = true; continue; }
+      if (name === 'macros') { macro_list = load_macros_file (val); continue; }
+      if (name === 'strict') { strict_mode = val !== '0'; continue; }
+      console.error (`warning: unknown option '${arg}'`);
+      continue;
+    }
+
+    // Handle bare --flag and --flag VALUE forms
+    if (arg === '--errors') { exit_on_diag = true; }
+    else if (arg === '--strict') { strict_mode = true; }
+    else if (arg === '--macros' && i + 1 < args.length) { i++; macro_list = load_macros_file (args[i]); }
+    else if (arg === '--all') { for (const k in checks) checks[k] = true; }
+    else if (arg === '--none') { for (const k in checks) checks[k] = false; }
+    else if (arg === '--list') { for (const k in checks) console.log (`  --${k}=${Number (checks[k])}`); }
+    else if (arg.startsWith ('--')) { console.error (`warning: unknown option '${arg}'`); }
+    else { files.push (arg); }
   }
-  if (process.argv.length <= 2)
-    print_help();
-  return 0;
+  if (files.length === 0) {
+    print_help ();
+    return 0;
+  }
+  for (const f of files)
+    await analyze_file (f);
+  return exit_on_diag && diag_count > 0 ? 1 : 0;
 }
-process.exit (main());
+
+main ().then (exit_status => process.exit (exit_status));
