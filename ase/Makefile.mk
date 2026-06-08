@@ -351,7 +351,7 @@ ase/uninstall:
 uninstall: ase/uninstall
 
 # == ase/lint ==
-ase/lint:
+ase/lint: node_modules/.npm.done
 	$(QGEN)
 	$Q $(RUNTS) misc/synsmell.ts $(wildcard ase/*.[hc] ase/*.*[hc] ase/*/*.*[hc] jsonipc/*.hh)
 .PHONY: ase/lint
