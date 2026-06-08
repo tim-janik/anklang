@@ -68,13 +68,13 @@ const float *const cent_table = cent_table201 + 100;
   scale * (F7), scale * (F8), scale * (F9), scale * (F10), scale * (F11), scale * (F12)
 
 // http://en.wikipedia.org/wiki/Equal_temperament
-static const float semitone_table265_equal_temperament_12_tet[132 + 1 + 132] = {
 #define EQTEMP_12_TET(scale)                                                    \
   SCALED_INTERVAL (scale, 1.0,                                                  \
     1.0594630943592952646, 1.1224620483093729814, 1.1892071150027210667,        \
     1.2599210498948731648, 1.3348398541700343648, 1.4142135623730950488,        \
     1.4983070768766814988, 1.5874010519681994748, 1.6817928305074290861,        \
     1.7817974362806786095, 1.8877486253633869933) /* 2^(1/12*[0..11]) */
+static const float semitone_table265_equal_temperament_12_tet[132 + 1 + 132] = {
   EQTEMP_12_TET (1.0 / 2048.0),         EQTEMP_12_TET (1.0 / 1024.0),           EQTEMP_12_TET (1.0 / 512.0),
   EQTEMP_12_TET (1.0 / 256.0),          EQTEMP_12_TET (1.0 / 128.0),            EQTEMP_12_TET (1.0 / 64.0),
   EQTEMP_12_TET (1.0 / 32.0),           EQTEMP_12_TET (1.0 / 16.0),             EQTEMP_12_TET (1.0 / 8.0),
@@ -84,11 +84,10 @@ static const float semitone_table265_equal_temperament_12_tet[132 + 1 + 132] = {
   EQTEMP_12_TET (16.0),                 EQTEMP_12_TET (32.0),                   EQTEMP_12_TET (64.0),
   EQTEMP_12_TET (128.0),                EQTEMP_12_TET (256.0),                  EQTEMP_12_TET (512.0),
   EQTEMP_12_TET (1024.0),               2048.0, /* 2^11 */
-#undef EQTEMP_12_TET
 };
+#undef EQTEMP_12_TET
 
 // http://en.wikipedia.org/wiki/Equal_temperament
-static const float semitone_table265_equal_temperament_7_tet[132 + 1 + 132] = {
 #define EQTEMP_7_TET(scale)                                                     \
   SCALED_INTERVAL (scale,                                                       \
                    1.0,                               /* 2^(0*171/1200) */      \
@@ -103,6 +102,7 @@ static const float semitone_table265_equal_temperament_7_tet[132 + 1 + 132] = {
                    1.6386412070860804772885357729621, /* 2^(5*171/1200) */      \
                    1.7216000202779154901968996860588, /* 2^(940.5/1200) (NA) */ \
                    1.8087587551221761812432481457391) /* 2^(6*171/1200) */
+static const float semitone_table265_equal_temperament_7_tet[132 + 1 + 132] = {
   EQTEMP_7_TET (1.0 / 2048.0),          EQTEMP_7_TET (1.0 / 1024.0),            EQTEMP_7_TET (1.0 / 512.0),
   EQTEMP_7_TET (1.0 / 256.0),           EQTEMP_7_TET (1.0 / 128.0),             EQTEMP_7_TET (1.0 / 64.0),
   EQTEMP_7_TET (1.0 / 32.0),            EQTEMP_7_TET (1.0 / 16.0),              EQTEMP_7_TET (1.0 / 8.0),
@@ -112,11 +112,10 @@ static const float semitone_table265_equal_temperament_7_tet[132 + 1 + 132] = {
   EQTEMP_7_TET (16.0),                  EQTEMP_7_TET (32.0),                    EQTEMP_7_TET (64.0),
   EQTEMP_7_TET (128.0),                 EQTEMP_7_TET (256.0),                   EQTEMP_7_TET (512.0),
   EQTEMP_7_TET (1024.0),                2048.0, /* 2^11 */
-#undef EQTEMP_7_TET
 };
+#undef EQTEMP_7_TET
 
 // http://en.wikipedia.org/wiki/Equal_temperament
-static const float semitone_table265_equal_temperament_5_tet[132 + 1 + 132] = {
 #define EQTEMP_5_TET(scale)                                                     \
   SCALED_INTERVAL (scale,                                                       \
                    1.0,                               /* 2^(0*240/1200) */      \
@@ -131,6 +130,7 @@ static const float semitone_table265_equal_temperament_5_tet[132 + 1 + 132] = {
                    1.7411011265922482782725400349595, /* 2^(4*240/1200) */      \
                    1.8234449771164336156322101570883, /* 2^(1040./1200) (NA) */ \
                    1.9096832078208331020817981494413) /* 2^(1120./1200) (NA) */
+static const float semitone_table265_equal_temperament_5_tet[132 + 1 + 132] = {
   EQTEMP_5_TET (1.0 / 2048.0),          EQTEMP_5_TET (1.0 / 1024.0),            EQTEMP_5_TET (1.0 / 512.0),
   EQTEMP_5_TET (1.0 / 256.0),           EQTEMP_5_TET (1.0 / 128.0),             EQTEMP_5_TET (1.0 / 64.0),
   EQTEMP_5_TET (1.0 / 32.0),            EQTEMP_5_TET (1.0 / 16.0),              EQTEMP_5_TET (1.0 / 8.0),
@@ -140,15 +140,15 @@ static const float semitone_table265_equal_temperament_5_tet[132 + 1 + 132] = {
   EQTEMP_5_TET (16.0),                  EQTEMP_5_TET (32.0),                    EQTEMP_5_TET (64.0),
   EQTEMP_5_TET (128.0),                 EQTEMP_5_TET (256.0),                   EQTEMP_5_TET (512.0),
   EQTEMP_5_TET (1024.0),                2048.0, /* 2^11 */
-#undef EQTEMP_5_TET
 };
+#undef EQTEMP_5_TET
 
 // http://en.wikipedia.org/wiki/Diatonic_scale
-static const float semitone_table265_diatonic_scale[132 + 1 + 132] = {
 #define DIATONIC_SCALE(scale)                                                   \
   SCALED_INTERVAL (scale, 1.0,                                                  \
     16 / 15.0, 9 / 8.0, 6 / 5.0, 5 / 4.0, 4 / 3.0, 45 / 32.0,                   \
     3 / 2.0, 8 / 5.0, 5 / 3.0, 16 / 9.0, 15 / 8.0)
+static const float semitone_table265_diatonic_scale[132 + 1 + 132] = {
   DIATONIC_SCALE (1.0 / 2048.0),        DIATONIC_SCALE (1.0 / 1024.0),          DIATONIC_SCALE (1.0 / 512.0),
   DIATONIC_SCALE (1.0 / 256.0),         DIATONIC_SCALE (1.0 / 128.0),           DIATONIC_SCALE (1.0 / 64.0),
   DIATONIC_SCALE (1.0 / 32.0),          DIATONIC_SCALE (1.0 / 16.0),            DIATONIC_SCALE (1.0 / 8.0),
@@ -158,15 +158,15 @@ static const float semitone_table265_diatonic_scale[132 + 1 + 132] = {
   DIATONIC_SCALE (16.0),                DIATONIC_SCALE (32.0),                  DIATONIC_SCALE (64.0),
   DIATONIC_SCALE (128.0),               DIATONIC_SCALE (256.0),                 DIATONIC_SCALE (512.0),
   DIATONIC_SCALE (1024.0),              2048.0, /* 2^11 */
-#undef DIATONIC_SCALE
 };
+#undef DIATONIC_SCALE
 
 // http://en.wikipedia.org/wiki/Just_intonation#Indian_scales
-static const float semitone_table265_indian_scale[132 + 1 + 132] = {
 #define INDIAN_SCALE(scale)                                             \
   SCALED_INTERVAL (scale, 1.0,                                          \
     16 / 15.0, 9 / 8.0, 6 / 5.0, 5 / 4.0, 4 / 3.0, 45 / 32.0,           \
     3 / 2.0, 8 / 5.0, 5 / 3.0, 27 / 16.0, 15 / 8.0)
+static const float semitone_table265_indian_scale[132 + 1 + 132] = {
   INDIAN_SCALE (1.0 / 2048.0),          INDIAN_SCALE (1.0 / 1024.0),            INDIAN_SCALE (1.0 / 512.0),
   INDIAN_SCALE (1.0 / 256.0),           INDIAN_SCALE (1.0 / 128.0),             INDIAN_SCALE (1.0 / 64.0),
   INDIAN_SCALE (1.0 / 32.0),            INDIAN_SCALE (1.0 / 16.0),              INDIAN_SCALE (1.0 / 8.0),
@@ -176,15 +176,15 @@ static const float semitone_table265_indian_scale[132 + 1 + 132] = {
   INDIAN_SCALE (16.0),                  INDIAN_SCALE (32.0),                    INDIAN_SCALE (64.0),
   INDIAN_SCALE (128.0),                 INDIAN_SCALE (256.0),                   INDIAN_SCALE (512.0),
   INDIAN_SCALE (1024.0),                2048.0, /* 2^11 */
-#undef INDIAN_SCALE
 };
+#undef INDIAN_SCALE
 
 // http://en.wikipedia.org/wiki/Pythagorean_tuning
-static const float semitone_table265_pythagorean_tuning[132 + 1 + 132] = {
 #define PYTHAGOREAN_TUNING(scale)                                       \
   SCALED_INTERVAL (scale, 1.0,                                          \
     256 / 243.0, 9 / 8.0, 32 / 27.0, 81 / 64.0, 4 / 3.0, 729 / 512.0,   \
     3 / 2.0, 128 / 81.0, 27 / 16.0, 16 / 9.0, 243 / 128.0)
+static const float semitone_table265_pythagorean_tuning[132 + 1 + 132] = {
   PYTHAGOREAN_TUNING (1.0 / 2048.0),    PYTHAGOREAN_TUNING (1.0 / 1024.0),      PYTHAGOREAN_TUNING (1.0 / 512.0),
   PYTHAGOREAN_TUNING (1.0 / 256.0),     PYTHAGOREAN_TUNING (1.0 / 128.0),       PYTHAGOREAN_TUNING (1.0 / 64.0),
   PYTHAGOREAN_TUNING (1.0 / 32.0),      PYTHAGOREAN_TUNING (1.0 / 16.0),        PYTHAGOREAN_TUNING (1.0 / 8.0),
@@ -194,15 +194,15 @@ static const float semitone_table265_pythagorean_tuning[132 + 1 + 132] = {
   PYTHAGOREAN_TUNING (16.0),            PYTHAGOREAN_TUNING (32.0),              PYTHAGOREAN_TUNING (64.0),
   PYTHAGOREAN_TUNING (128.0),           PYTHAGOREAN_TUNING (256.0),             PYTHAGOREAN_TUNING (512.0),
   PYTHAGOREAN_TUNING (1024.0),          2048.0, /* 2^11 */
-#undef PYTHAGOREAN_TUNING
 };
+#undef PYTHAGOREAN_TUNING
 
 // http://en.wikipedia.org/wiki/Pentatonic_scale
-static const float semitone_table265_pentatonic_5_limit[132 + 1 + 132] = {
 #define PENTATONIC_5_LIMIT(scale)                                       \
   SCALED_INTERVAL (scale, 1.0,                                          \
     256 / 243.0, 9 / 8.0, 32 / 27.0, 5 / 4.0, 4 / 3.0, 729 / 512.0,     \
     3 / 2.0, 128 / 81.0, 5 / 3.0, 16 / 9.0, 243 / 128.0)
+static const float semitone_table265_pentatonic_5_limit[132 + 1 + 132] = {
   PENTATONIC_5_LIMIT (1.0 / 2048.0),    PENTATONIC_5_LIMIT (1.0 / 1024.0),      PENTATONIC_5_LIMIT (1.0 / 512.0),
   PENTATONIC_5_LIMIT (1.0 / 256.0),     PENTATONIC_5_LIMIT (1.0 / 128.0),       PENTATONIC_5_LIMIT (1.0 / 64.0),
   PENTATONIC_5_LIMIT (1.0 / 32.0),      PENTATONIC_5_LIMIT (1.0 / 16.0),        PENTATONIC_5_LIMIT (1.0 / 8.0),
@@ -212,15 +212,15 @@ static const float semitone_table265_pentatonic_5_limit[132 + 1 + 132] = {
   PENTATONIC_5_LIMIT (16.0),            PENTATONIC_5_LIMIT (32.0),              PENTATONIC_5_LIMIT (64.0),
   PENTATONIC_5_LIMIT (128.0),           PENTATONIC_5_LIMIT (256.0),             PENTATONIC_5_LIMIT (512.0),
   PENTATONIC_5_LIMIT (1024.0),          2048.0, /* 2^11 */
-#undef PENTATONIC_5_LIMIT
 };
+#undef PENTATONIC_5_LIMIT
 
 // http://en.wikipedia.org/wiki/Pentatonic_scale
-static const float semitone_table265_pentatonic_blues[132 + 1 + 132] = {
 #define PENTATONIC_BLUES(scale)                                         \
   SCALED_INTERVAL (scale, 1.0,                                          \
     256 / 243.0, 9 / 8.0, 7 / 6.0, 21 / 16.0, 4 / 3.0, 7 / 5.0,         \
     3 / 2.0, 128 / 81.0, 7 / 4.0, 16 / 9.0, 243 / 128.0)
+static const float semitone_table265_pentatonic_blues[132 + 1 + 132] = {
   PENTATONIC_BLUES (1.0 / 2048.0),      PENTATONIC_BLUES (1.0 / 1024.0),        PENTATONIC_BLUES (1.0 / 512.0),
   PENTATONIC_BLUES (1.0 / 256.0),       PENTATONIC_BLUES (1.0 / 128.0),         PENTATONIC_BLUES (1.0 / 64.0),
   PENTATONIC_BLUES (1.0 / 32.0),        PENTATONIC_BLUES (1.0 / 16.0),          PENTATONIC_BLUES (1.0 / 8.0),
@@ -230,15 +230,15 @@ static const float semitone_table265_pentatonic_blues[132 + 1 + 132] = {
   PENTATONIC_BLUES (16.0),              PENTATONIC_BLUES (32.0),                PENTATONIC_BLUES (64.0),
   PENTATONIC_BLUES (128.0),             PENTATONIC_BLUES (256.0),               PENTATONIC_BLUES (512.0),
   PENTATONIC_BLUES (1024.0),            2048.0, /* 2^11 */
-#undef PENTATONIC_BLUES
 };
+#undef PENTATONIC_BLUES
 
 // http://en.wikipedia.org/wiki/Pentatonic_scale
-static const float semitone_table265_pentatonic_gogo[132 + 1 + 132] = {
 #define PENTATONIC_GOGO(scale)                                          \
   SCALED_INTERVAL (scale, 1.0,                                          \
     256 / 243.0, 9 / 8.0, 32 / 27.0, 5 / 4.0, 4 / 3.0, 729 / 512.0,     \
     3 / 2.0, 128 / 81.0, 7 / 4.0, 16 / 9.0, 243 / 128.0)
+static const float semitone_table265_pentatonic_gogo[132 + 1 + 132] = {
   PENTATONIC_GOGO (1.0 / 2048.0),       PENTATONIC_GOGO (1.0 / 1024.0),         PENTATONIC_GOGO (1.0 / 512.0),
   PENTATONIC_GOGO (1.0 / 256.0),        PENTATONIC_GOGO (1.0 / 128.0),          PENTATONIC_GOGO (1.0 / 64.0),
   PENTATONIC_GOGO (1.0 / 32.0),         PENTATONIC_GOGO (1.0 / 16.0),           PENTATONIC_GOGO (1.0 / 8.0),
@@ -248,11 +248,10 @@ static const float semitone_table265_pentatonic_gogo[132 + 1 + 132] = {
   PENTATONIC_GOGO (16.0),               PENTATONIC_GOGO (32.0),                 PENTATONIC_GOGO (64.0),
   PENTATONIC_GOGO (128.0),              PENTATONIC_GOGO (256.0),                PENTATONIC_GOGO (512.0),
   PENTATONIC_GOGO (1024.0),             2048.0, /* 2^11 */
-#undef PENTATONIC_GOGO
 };
+#undef PENTATONIC_GOGO
 
 // http://en.wikipedia.org/wiki/Quarter-comma_meantone
-static const float semitone_table265_quarter_comma_meantone[132 + 1 + 132] = {
 #define QCOMMA_MEANTONE(scale)                                                          \
   SCALED_INTERVAL (scale, 1.0,                                                          \
                    1.0449067265256594125050516769666, /* (2187/128)/(81/80)^1.75/16 */  \
@@ -266,6 +265,7 @@ static const float semitone_table265_quarter_comma_meantone[132 + 1 + 132] = {
                    1.6718507624410550600080826831466, /* (27/8)/(81/80)^.75/2 */        \
                    1.7888543819998317571273389349850, /* (4/9)*(81/80)^.5*4 */          \
                    1.8691859765265256773898737426761) /* (243/32)/(81/80)^1.25/4 */
+static const float semitone_table265_quarter_comma_meantone[132 + 1 + 132] = {
   QCOMMA_MEANTONE (1.0 / 2048.0),       QCOMMA_MEANTONE (1.0 / 1024.0),         QCOMMA_MEANTONE (1.0 / 512.0),
   QCOMMA_MEANTONE (1.0 / 256.0),        QCOMMA_MEANTONE (1.0 / 128.0),          QCOMMA_MEANTONE (1.0 / 64.0),
   QCOMMA_MEANTONE (1.0 / 32.0),         QCOMMA_MEANTONE (1.0 / 16.0),           QCOMMA_MEANTONE (1.0 / 8.0),
@@ -275,11 +275,10 @@ static const float semitone_table265_quarter_comma_meantone[132 + 1 + 132] = {
   QCOMMA_MEANTONE (16.0),               QCOMMA_MEANTONE (32.0),                 QCOMMA_MEANTONE (64.0),
   QCOMMA_MEANTONE (128.0),              QCOMMA_MEANTONE (256.0),                QCOMMA_MEANTONE (512.0),
   QCOMMA_MEANTONE (1024.0),             2048.0, /* 2^11 */
-#undef QCOMMA_MEANTONE
 };
+#undef QCOMMA_MEANTONE
 
 // http://de.wikipedia.org/wiki/Silbermann-Sorge-Temperatur
-static const float semitone_table265_silbermann_sorge_temperament[132 + 1 + 132] = {
 #define SILBERMANN_SORGE(scale)                                                 \
   SCALED_INTERVAL (scale, 1.0, /* 2^(0/1200) */                                 \
                    1.0509300646305402574490134498012, /* 2^(86/1200) */         \
@@ -293,6 +292,7 @@ static const float semitone_table265_silbermann_sorge_temperament[132 + 1 + 132]
                    1.6759742693358971625849112463630, /* 2^(894/1200) */        \
                    1.7859190221207644704151890003616, /* 2^(1004/1200) */       \
                    1.8768759933422862606134778581222) /* 2^(1090/1200) */
+static const float semitone_table265_silbermann_sorge_temperament[132 + 1 + 132] = {
   SILBERMANN_SORGE (1.0 / 2048.0),      SILBERMANN_SORGE (1.0 / 1024.0),        SILBERMANN_SORGE (1.0 / 512.0),
   SILBERMANN_SORGE (1.0 / 256.0),       SILBERMANN_SORGE (1.0 / 128.0),         SILBERMANN_SORGE (1.0 / 64.0),
   SILBERMANN_SORGE (1.0 / 32.0),        SILBERMANN_SORGE (1.0 / 16.0),          SILBERMANN_SORGE (1.0 / 8.0),
@@ -302,21 +302,21 @@ static const float semitone_table265_silbermann_sorge_temperament[132 + 1 + 132]
   SILBERMANN_SORGE (16.0),              SILBERMANN_SORGE (32.0),                SILBERMANN_SORGE (64.0),
   SILBERMANN_SORGE (128.0),             SILBERMANN_SORGE (256.0),               SILBERMANN_SORGE (512.0),
   SILBERMANN_SORGE (1024.0),            2048.0, /* 2^11 */
-#undef SILBERMANN_SORGE
 };
+#undef SILBERMANN_SORGE
 
 #define SQRT2_2 1.4142135623730950488016887242097       /* 2^0.5 */
 #define SQRT4_2 1.1892071150027210667174999705605       /* 2^0.25 */
 #define SQRT4_8 1.6817928305074290860622509524664       /* 8^0.25 */
 
 // http://en.wikipedia.org/wiki/Werckmeister_temperament
-static const float semitone_table265_werckmeister3_temperament[132 + 1 + 132] = {
 #define WMEISTER3_TEMPERAMENT(scale)                                            \
   SCALED_INTERVAL (scale, 1.0, /* 2^(0/1200) */                                 \
                    256 / 243.0, 64 * SQRT2_2 / 81.0, 32 / 27.0,                 \
                    256 * SQRT4_2 / 243.0, 4 / 3.0, 1024 / 729.0,                \
                    8 * SQRT4_8 / 9.0, 128 / 81.0, 1024 * SQRT4_2 / 729.0,       \
                    16 / 9.0, 128 * SQRT4_2 / 81.0)
+static const float semitone_table265_werckmeister3_temperament[132 + 1 + 132] = {
   WMEISTER3_TEMPERAMENT (1.0 / 2048.0), WMEISTER3_TEMPERAMENT (1.0 / 1024.0),   WMEISTER3_TEMPERAMENT (1.0 / 512.0),
   WMEISTER3_TEMPERAMENT (1.0 / 256.0),  WMEISTER3_TEMPERAMENT (1.0 / 128.0),    WMEISTER3_TEMPERAMENT (1.0 / 64.0),
   WMEISTER3_TEMPERAMENT (1.0 / 32.0),   WMEISTER3_TEMPERAMENT (1.0 / 16.0),     WMEISTER3_TEMPERAMENT (1.0 / 8.0),
@@ -326,20 +326,20 @@ static const float semitone_table265_werckmeister3_temperament[132 + 1 + 132] = 
   WMEISTER3_TEMPERAMENT (16.0),         WMEISTER3_TEMPERAMENT (32.0),           WMEISTER3_TEMPERAMENT (64.0),
   WMEISTER3_TEMPERAMENT (128.0),        WMEISTER3_TEMPERAMENT (256.0),          WMEISTER3_TEMPERAMENT (512.0),
   WMEISTER3_TEMPERAMENT (1024.0),       2048.0, /* 2^11 */
-#undef WMEISTER3_TEMPERAMENT
 };
+#undef WMEISTER3_TEMPERAMENT
 
 #define SQRT3_2 1.2599210498948731647672106072782       /* 2^(1/3) */
 #define SQRT3_4 1.5874010519681994747517056392723       /* 4^(1/3) */
 
 // http://en.wikipedia.org/wiki/Werckmeister_temperament
-static const float semitone_table265_werckmeister4_temperament[132 + 1 + 132] = {
 #define WMEISTER4_TEMPERAMENT(scale)                                            \
   SCALED_INTERVAL (scale, 1.0, /* 2^(0/1200) */                                 \
                    16384 * SQRT3_2 / 19683.0, 8 * SQRT3_2 / 9.0, 32 / 27.0,     \
                    64 * SQRT3_4 / 81.0, 4 / 3.0, 1024 / 729.0,                  \
                    32 * SQRT3_2 / 27.0, 8192 * SQRT3_2 / 6561.0,                \
                    256 * SQRT3_4 / 243.0, 9 / 8.0 * SQRT3_4, 4096 / 2187.0)
+static const float semitone_table265_werckmeister4_temperament[132 + 1 + 132] = {
   WMEISTER4_TEMPERAMENT (1.0 / 2048.0), WMEISTER4_TEMPERAMENT (1.0 / 1024.0),   WMEISTER4_TEMPERAMENT (1.0 / 512.0),
   WMEISTER4_TEMPERAMENT (1.0 / 256.0),  WMEISTER4_TEMPERAMENT (1.0 / 128.0),    WMEISTER4_TEMPERAMENT (1.0 / 64.0),
   WMEISTER4_TEMPERAMENT (1.0 / 32.0),   WMEISTER4_TEMPERAMENT (1.0 / 16.0),     WMEISTER4_TEMPERAMENT (1.0 / 8.0),
@@ -349,16 +349,16 @@ static const float semitone_table265_werckmeister4_temperament[132 + 1 + 132] = 
   WMEISTER4_TEMPERAMENT (16.0),         WMEISTER4_TEMPERAMENT (32.0),           WMEISTER4_TEMPERAMENT (64.0),
   WMEISTER4_TEMPERAMENT (128.0),        WMEISTER4_TEMPERAMENT (256.0),          WMEISTER4_TEMPERAMENT (512.0),
   WMEISTER4_TEMPERAMENT (1024.0),       2048.0, /* 2^11 */
-#undef WMEISTER4_TEMPERAMENT
 };
+#undef WMEISTER4_TEMPERAMENT
 
 // http://en.wikipedia.org/wiki/Werckmeister_temperament
-static const float semitone_table265_werckmeister5_temperament[132 + 1 + 132] = {
 #define WMEISTER5_TEMPERAMENT(scale)                                            \
   SCALED_INTERVAL (scale, 1.0, /* 2^(0/1200) */                                 \
                    8 * SQRT4_2 / 9.0, 9 / 8.0, SQRT4_2, 8 * SQRT2_2 / 9.0,      \
                    9 / 8.0 * SQRT4_2, SQRT2_2, 3 / 2.0, 128 / 81.0,             \
                    SQRT4_8, 3 / SQRT4_8, 4 * SQRT2_2 / 3.0)
+static const float semitone_table265_werckmeister5_temperament[132 + 1 + 132] = {
   WMEISTER5_TEMPERAMENT (1.0 / 2048.0), WMEISTER5_TEMPERAMENT (1.0 / 1024.0),   WMEISTER5_TEMPERAMENT (1.0 / 512.0),
   WMEISTER5_TEMPERAMENT (1.0 / 256.0),  WMEISTER5_TEMPERAMENT (1.0 / 128.0),    WMEISTER5_TEMPERAMENT (1.0 / 64.0),
   WMEISTER5_TEMPERAMENT (1.0 / 32.0),   WMEISTER5_TEMPERAMENT (1.0 / 16.0),     WMEISTER5_TEMPERAMENT (1.0 / 8.0),
@@ -368,16 +368,16 @@ static const float semitone_table265_werckmeister5_temperament[132 + 1 + 132] = 
   WMEISTER5_TEMPERAMENT (16.0),         WMEISTER5_TEMPERAMENT (32.0),           WMEISTER5_TEMPERAMENT (64.0),
   WMEISTER5_TEMPERAMENT (128.0),        WMEISTER5_TEMPERAMENT (256.0),          WMEISTER5_TEMPERAMENT (512.0),
   WMEISTER5_TEMPERAMENT (1024.0),       2048.0, /* 2^11 */
-#undef WMEISTER5_TEMPERAMENT
 };
+#undef WMEISTER5_TEMPERAMENT
 
 // http://en.wikipedia.org/wiki/Werckmeister_temperament
-static const float semitone_table265_werckmeister6_temperament[132 + 1 + 132] = {
 #define WMEISTER6_TEMPERAMENT(scale)                                            \
   SCALED_INTERVAL (scale, 1.0, /* 2^(0/1200) */                                 \
                    98 / 93.0, 28 / 25.0, 196 / 165.0, 49 / 39.0, 4 / 3.0,       \
                    196 / 139.0, 196 / 131.0, 49 / 31.0, 196 / 117.0,            \
                    98 / 55.0, 49 / 26.0)
+static const float semitone_table265_werckmeister6_temperament[132 + 1 + 132] = {
   WMEISTER6_TEMPERAMENT (1.0 / 2048.0), WMEISTER6_TEMPERAMENT (1.0 / 1024.0),   WMEISTER6_TEMPERAMENT (1.0 / 512.0),
   WMEISTER6_TEMPERAMENT (1.0 / 256.0),  WMEISTER6_TEMPERAMENT (1.0 / 128.0),    WMEISTER6_TEMPERAMENT (1.0 / 64.0),
   WMEISTER6_TEMPERAMENT (1.0 / 32.0),   WMEISTER6_TEMPERAMENT (1.0 / 16.0),     WMEISTER6_TEMPERAMENT (1.0 / 8.0),
@@ -387,16 +387,16 @@ static const float semitone_table265_werckmeister6_temperament[132 + 1 + 132] = 
   WMEISTER6_TEMPERAMENT (16.0),         WMEISTER6_TEMPERAMENT (32.0),           WMEISTER6_TEMPERAMENT (64.0),
   WMEISTER6_TEMPERAMENT (128.0),        WMEISTER6_TEMPERAMENT (256.0),          WMEISTER6_TEMPERAMENT (512.0),
   WMEISTER6_TEMPERAMENT (1024.0),       2048.0, /* 2^11 */
-#undef WMEISTER6_TEMPERAMENT
 };
+#undef WMEISTER6_TEMPERAMENT
 
 // http://en.wikipedia.org/wiki/Johann_Philipp_Kirnberger_temperament
-static const float semitone_table265_kirnberger_temperament[132 + 1 + 132] = {
 #define KBERGER3_TEMPERAMENT(scale)                                             \
   SCALED_INTERVAL (scale, 1.0, /* 2^(0/1200) */                                 \
                    25 / 24.0, 9 / 8.0, 6 / 5.0, 5 / 4.0,                        \
                    4 / 3.0, 45 / 32.0, 3 / 2.0, 25 / 16.0,                      \
                    5 / 3.0, 16 / 9.0, 15 / 8.0)
+static const float semitone_table265_kirnberger_temperament[132 + 1 + 132] = {
   KBERGER3_TEMPERAMENT (1.0 / 2048.0),  KBERGER3_TEMPERAMENT (1.0 / 1024.0),    KBERGER3_TEMPERAMENT (1.0 / 512.0),
   KBERGER3_TEMPERAMENT (1.0 / 256.0),   KBERGER3_TEMPERAMENT (1.0 / 128.0),     KBERGER3_TEMPERAMENT (1.0 / 64.0),
   KBERGER3_TEMPERAMENT (1.0 / 32.0),    KBERGER3_TEMPERAMENT (1.0 / 16.0),      KBERGER3_TEMPERAMENT (1.0 / 8.0),
@@ -406,11 +406,10 @@ static const float semitone_table265_kirnberger_temperament[132 + 1 + 132] = {
   KBERGER3_TEMPERAMENT (16.0),          KBERGER3_TEMPERAMENT (32.0),            KBERGER3_TEMPERAMENT (64.0),
   KBERGER3_TEMPERAMENT (128.0),         KBERGER3_TEMPERAMENT (256.0),           KBERGER3_TEMPERAMENT (512.0),
   KBERGER3_TEMPERAMENT (1024.0),        2048.0, /* 2^11 */
-#undef KBERGER3_TEMPERAMENT
 };
+#undef KBERGER3_TEMPERAMENT
 
 // http://en.wikipedia.org/wiki/Young_temperament
-static const float semitone_table265_young_temperament[132 + 1 + 132] = {
 #define YOUNG_TEMPERAMENT(scale)                                                \
   SCALED_INTERVAL (scale, 1.0, /* 2^(0/1200) */                                 \
                    1.0631412837780103584827404056079, /* 2^(106/1200) */        \
@@ -424,6 +423,7 @@ static const float semitone_table265_young_temperament[132 + 1 + 132] = {
                    1.6798510690641884687069808937168, /* 2^(898/1200) */        \
                    1.7859190221207644704151890003616, /* 2^(1004/1200) */       \
                    1.8899306982642323704825496345032) /* 2^(1102/1200) */
+static const float semitone_table265_young_temperament[132 + 1 + 132] = {
   YOUNG_TEMPERAMENT (1.0 / 2048.0),     YOUNG_TEMPERAMENT (1.0 / 1024.0),       YOUNG_TEMPERAMENT (1.0 / 512.0),
   YOUNG_TEMPERAMENT (1.0 / 256.0),      YOUNG_TEMPERAMENT (1.0 / 128.0),        YOUNG_TEMPERAMENT (1.0 / 64.0),
   YOUNG_TEMPERAMENT (1.0 / 32.0),       YOUNG_TEMPERAMENT (1.0 / 16.0),         YOUNG_TEMPERAMENT (1.0 / 8.0),
@@ -433,8 +433,8 @@ static const float semitone_table265_young_temperament[132 + 1 + 132] = {
   YOUNG_TEMPERAMENT (16.0),             YOUNG_TEMPERAMENT (32.0),               YOUNG_TEMPERAMENT (64.0),
   YOUNG_TEMPERAMENT (128.0),            YOUNG_TEMPERAMENT (256.0),              YOUNG_TEMPERAMENT (512.0),
   YOUNG_TEMPERAMENT (1024.0),           2048.0, /* 2^11 */
-#undef YOUNG_TEMPERAMENT
 };
+#undef YOUNG_TEMPERAMENT
 
 const float *const semitone_tables_265[17] = {
   // Equal Temperament: http://en.wikipedia.org/wiki/Equal_temperament
