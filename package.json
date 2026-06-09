@@ -52,9 +52,11 @@
     "tailwindcss": "^4.1.18",
     "tailwindcss-children": "^2.1.0",
     "terser": "^5.44.1",
+    "tree-sitter-wasm": "^1.0.7",
     "typescript": "^5.9.3",
     "vite": "^7.3.0",
     "vite-plugin-solid": "^2.11.10",
+    "web-tree-sitter": "^0.26.9",
     "zcam-js": "^0.0.9"
   }
 }

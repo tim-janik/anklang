@@ -1,0 +1,25 @@
+# ASE macros to strip (mostly __attribute__ helpers)
+# Lines ending with () are function-like (strip name + parens + args).
+
+ASE_ALWAYS_INLINE
+ASE_COLD
+ASE_CONST
+ASE_CONSTRUCTOR
+ASE_DEPRECATED
+ASE_HOT
+ASE_MALLOC
+ASE_MAY_ALIAS
+ASE_NOINLINE
+ASE_NORETURN
+ASE_NO_INSTRUMENT
+ASE_PURE
+ASE_SENTINEL
+ASE_UNUSED
+ASE_USE_RESULT
+ASE_USED
+ASE_WEAK
+
+# Function-like macros (stripped including parens and args)
+ASE_FORMAT()
+ASE_PRINTF()
+ASE_SCANF()
