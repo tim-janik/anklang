@@ -123,7 +123,8 @@ def print_matches (filename, pattern):
   with open (filename, 'r') as file:
     for line_num, line in enumerate (file, start = 1):
       if regex.search (line):
-        print (f"\t{filename}:{line_num}:{line.rstrip('\n')}", file = sys.stderr)
+        stripped = line.rstrip ('\n')
+        print (f"\t{filename}:{line_num}:{stripped}", file = sys.stderr)
 
 def crpathcheck (sysargv):
   # parse options and check inputs
