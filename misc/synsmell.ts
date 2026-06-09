@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 import * as fs from 'fs';
@@ -60,12 +61,17 @@ function lineMatcher (code: string,
     error = 'comment indicates open issues';
   }
   // separate-body (newline before function body)
-  else if (checks['separate-body'] && (m = code.match (/^\s*[\w <:,>]+\s*\((.+\s+.+)?\)[\s\w]*{\s*(\/[/*].*)?$/))) {
+  else if (checks['separate-body'] && (m = code.match (/^\s*[\w <:,>]+\s*\((.+\s+.+)?\)[\s\w]*{\s*(\/\/.*)?$/))) {
     offset = m.index + m[0].indexOf ('{');
     let ignore : boolean;
     ignore   = /\]\s*\(/.test (code);				// ignore lambda
     ignore ||= /\balignas\s*\(/.test (code);			// ignore alignas()
     ignore ||= /do|switch|while|for|if|namespace/.test (code);	// ignore blocks
+    if (!ignore) {						// functions balance parenthesis
+      const openp = (code.match (/\(/g) || []).length;
+      const closep = (code.match (/\)/g) || []).length;
+      ignore ||= openp != closep;
+    }
     if (!ignore)
       warning = 'missing newline before function body';
   }
@@ -82,7 +88,8 @@ function lineMatcher (code: string,
     msg += error ? `${R}error:${Z}` : `${M}warning:${Z}`;
     msg += ` ${error || warning}${f}`;
     eprint (msg);
-    eprint (`${lcs} | ${text.trimRight()}`);
+    text = text.trimRight().replace (/.*\n/, '');
+    eprint (`${lcs} | ${text}`);
     const indent = text.slice (0, offset).replace (/[^ \t]/g, ' ');
     eprint (`${lcs} | ${indent}${B}${G}^${Z}`);
   }
