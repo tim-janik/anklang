@@ -1,10 +1,8 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
-import * as Wrapper from '../wrapper.js';
+import { createEffect, createMemo, onCleanup, For } from 'solid-js';
 import * as Util from '../util.js';
-/** @typedef {import("../b/clipview.js").BClipView} BClipView */
 
 /** ## Clip-List
  * The Clip-List allows to start playback of individual clips.
@@ -12,7 +10,7 @@ import * as Util from '../util.js';
 
 // == STYLE ==
 Extra_css`
-b-cliplist {
+b-cliplist, .b-cliplist {
   display: flex;
   position: relative;
   .-indicator {
@@ -28,103 +26,91 @@ b-cliplist {
   }
 }`;
 
-// == HTML ==
-const HTML = (t, d) => [
-  t.wtrack.launcher_clips.map ((clip, index) =>
-    html`  <b-clipview .clip=${clip} index=${index} .track=${t.track} trackindex=${t.trackindex} ></b-clipview>`
-  ),
-  html`    <span class="-indicator" ${ref (h => t.indicator_bar = h)}></span> `,
-];
+// == Component ==
+export function ClipList (props)
+{
+  let container_ref;
+  let indicator_bar;
+  let clipviews = [];
+  let last_pos = -9999;
+  const ratiomul = window.devicePixelRatio;
+  const ratiodiv = 1.0 / ratiomul;
+  let mounted = true;
 
-// == SCRIPT ==
-const OBJECT_PROPERTY = { attribute: false };
-const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
+  // Subscribe to track telemetry reactively, re-subscribe when the track changes
+  createEffect (() => {
+    const track = props.track;
+    if (!track) return;
+    let disposed = false;
+    let teleobj = null;
+    track.telemetry().then (data => {
+      if (disposed || !data) return;
+      teleobj = Util.telemetry_subscribe (recv_telemetry, data);
+    });
+    onCleanup (() => {
+      disposed = true;
+      if (teleobj)
+        Util.telemetry_unsubscribe (teleobj);
+    });
+  });
 
-/// The <b-cliplist> element container holds BClipView elements.
-export class BClipList extends LitComponent {
-  createRenderRoot() { return this; }
-  render()
+  // Reactive clip list - launcher_clips is a SolidJS Signal accessor
+  const clips = createMemo (() => props.track?.launcher_clips || []);
+
+  // Measure clipviews positions after render/update
+  createEffect (() => {
+    clips(); // re-measure when launcher_clips change
+    if (!container_ref) return;
+    requestAnimationFrame (() => {
+      if (!mounted || !container_ref) return;
+      clipviews.length = 0;
+      for (const element of container_ref.querySelectorAll ("b-clipview"))
+        clipviews.push ({
+          width: element.getBoundingClientRect().width,
+          tickscale: element.tickscale,
+          x: element.offsetLeft,
+        });
+    });
+  });
+
+  function recv_telemetry (sub, arrays)
   {
-    const d = {};
-    return HTML (this, d);
-  }
-  static properties = {
-    track:	OBJECT_PROPERTY,
-    trackindex:	NUMBER_ATTRIBUTE,
-  };
-  constructor()
-  {
-    super();
-    this.track = null;
-    this.wtrack = { launcher_clips: [] };	// dummy
-    this.trackindex = -1;
-    this.clipviews = [];
-    this.teleobj = null;
-    this.telemetry = null;
-    this.ratiomul = window.devicePixelRatio;
-    this.ratiodiv = 1.0 / this.ratiomul;
-    /**@type{HTMLElement}*/
-    this.indicator_bar = null;
-    this.setAttribute ('data-f1', "cliplist.html");
-  }
-  connectedCallback() {
-    super.connectedCallback();
-    this.ratiomul = window.devicePixelRatio;
-    this.ratiodiv = 1.0 / this.ratiomul;
-  }
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this.telemetry = null;
-    Util.telemetry_unsubscribe (this.teleobj);
-    this.teleobj = null;
-  }
-  updated (changed_props)
-  {
-    if (changed_props.has ('track'))
-      {
-	const weakthis = this.weak_this; // avoid strong wtrack->this refs for automatic cleanup
-	console.assert (weakthis);
-	this.wtrack = Wrapper.wrap_ase_object (this.track, { launcher_clips: [] }, () => weakthis.deref()?.requestUpdate());
-	Util.telemetry_unsubscribe (this.teleobj);
-	this.teleobj = null;
-	const async_updates = async () => {
-	  this.telemetry = await Object.freeze (this.track.telemetry());
-	  if (!this.teleobj && this.telemetry)
-	    ; // TODO: re-enable: this.teleobj = Util.telemetry_subscribe (this.recv_telemetry.bind (this), this.telemetry);
-	};
-	async_updates();
-      }
-    this.clipviews.length = 0;
-    for (const element of this.querySelectorAll ("b-cliplist > b-clipview"))
-      {
-	const clipview = /**@type{BClipView}*/ (element);
-	this.clipviews.push ({ width: clipview.getBoundingClientRect().width,
-			       tickscale: clipview.tickscale,
-			       x: clipview.offsetLeft, });
-      }
-  }
-  recv_telemetry (teleobj, arrays)
-  {
-    const current = arrays[teleobj.current_clip.type][teleobj.current_clip.index];
-    const tick = arrays[teleobj.current_tick.type][teleobj.current_tick.index];
-    // const next = arrays[teleobj.next.type][teleobj.next.index];
+    return; // TODO: re-enable for tracktion_engine
+
+    const clips_arr = props.track?.launcher_clips;
+    const current = arrays[sub.current_clip.type][sub.current_clip.index];
+    const tick = arrays[sub.current_tick.type][sub.current_tick.index];
     let u;
-    if (current >= 0 && current < this.clipviews.length && tick >= 0)
+    if (current >= 0 && current < clipviews.length && tick >= 0)
       {
-	const cv = this.clipviews[current];
-	const t = cv.x + tick * cv.tickscale;
-	u = Math.round (t * this.ratiomul) * this.ratiodiv; // screen pixel alignment
+        const cv = clipviews[current];
+        const t = cv.x + tick * cv.tickscale;
+        u = Math.round (t * ratiomul) * ratiodiv;
       }
     else
       u = -9999;
-    if (u != this.last_pos)
+    if (u != last_pos)
       {
-	this.indicator_bar.style.transform = "translateX(" + u + "px)";
-	this.last_pos = u;
+        indicator_bar.style.transform = "translateX(" + u + "px)";
+        last_pos = u;
       }
     const [clip, tickfn] = Shell.piano_current();
-    if (tickfn && clip == this.wtrack.launcher_clips[current])
-      tickfn (this.wtrack.launcher_clips[current], tick);
+    if (tickfn && clip == clips_arr?.[current])
+      tickfn (clips_arr?.[current], tick);
   }
+
+  onCleanup (() => {
+    mounted = false;
+  });
+
+  return (
+    <div class="b-cliplist" data-f1="cliplist.html" ref={container_ref}>
+      <For each={clips()}>
+        {(clip, index) => (
+          <b-clipview clip={clip} index={index()} track={props.track} trackindex={props.trackindex}></b-clipview>
+        )}
+      </For>
+      <span class="-indicator" ref={indicator_bar}></span>
+    </div>
+  );
 }
-customElements.define ('b-cliplist', BClipList);
