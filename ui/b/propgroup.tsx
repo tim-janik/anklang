@@ -12,6 +12,7 @@ import * as Util from '../util.js';
 import { Toggle } from './toggle.tsx';
 import { TextInput } from './textinput.tsx';
 import { Knob } from './knob.tsx';
+import { ChoiceInput } from './choiceinput.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -81,10 +82,10 @@ function PropHtml (prop, readonly)
         label={''}
         onValueChange={val => prop.set_normalized (!!val)} />;
     case 'C':
-      return <b-choiceinput small="1" indexed="1" disabled={readonly}
+      return <ChoiceInput small={true} indexed="1" disabled={readonly}
         label={prop.label_} title={prop.title_}
         value={prop.value_.val} prop={prop}
-        on:valuechange={e => prop.apply_ (e.target.value)}></b-choiceinput>;
+        on:valuechange={e => prop.apply_ (e.target.value)} />;
     case 'K':
       return <Knob disabled={prop.readonly || readonly} prop={prop} />;
     case 'T':

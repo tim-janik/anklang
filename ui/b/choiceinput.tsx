@@ -25,14 +25,14 @@
  * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */
 
-import { LitComponent, html, nothing, JsExtract, live, docs, ref } from '../little.js';
+import { createEffect, createMemo, createSignal, For, splitProps } from 'solid-js';
 import * as Util from '../util.js';
 import { get_uri } from '../dom.js';
 
 // <STYLE/>
 Extra_css`
 @reference "../tailwind.css";
-b-choiceinput {
+b-choiceinput, .b-choiceinput {
   display: flex;
   flex-basis: auto;
   flex-flow: row nowrap;
@@ -109,167 +109,187 @@ b-choiceinput {
 }
 `;
 
+// == COMPONENT ==
+export function ChoiceInput (props: {
+  value?: string;
+  choices?: any[];
+  title?: string;
+  label?: string;
+  small?: boolean;
+  prop?: any;
+  disabled?: boolean;
+  class?: string;
+  ref?: (el: HTMLElement) => void;
+  'on:valuechange'?: (e: Event) => void;
+  [key: string]: any;
+})
+{
+  let root_el: HTMLElement | undefined;
+  let pophere_el: HTMLElement | undefined;
+  let cmenu_el: any | undefined;
 
-// <HTML/>
-const HTML = (t, d) =>  html`
-  <div class="b-choice-current hflex" ${ref (h => t.pophere = h)} tabindex="0" >
-    <span class="-current">${t.current_span()}</span>
-    <span class="-arrow" > ⬍ <!-- ▼ ▽ ▾ ▿ ⇕ ⬍ ⇳ --> </span>
-  </div>
-`;
-const CONTEXTMENU_HTML = (t) =>  html`
-  <b-contextmenu class="b-choiceinput-contextmenu" ${ref (h => t.cmenu = h)}
-    @activate=${e => t.activate (get_uri (e.detail))} @close=${e => t.need_cmenu = false} >
-    <b-menutitle style=${!t.title ? 'display:none' : ''}> ${t.title} </b-menutitle>
-    ${ t.mchoices.map ((c, index) => MENUITEM_HTML (t, c) )}
-  </b-contextmenu>
-`;
-const MENUITEM_HTML = (t, c) => html`
-  <button class="m-0 grid cursor-pointer select-none auto-rows-auto items-stretch border border-solid text-left"
-	  uri=${c.ident} ic=${c.icon} >
-    <span class="b-choice-label ${c.labelclass}" > ${ c.label } </span>
-    <span class="b-choice-line1 ${c.line1class}" > ${ c.blurb } </span>
-    <span class="b-choice-line2 ${c.line2class}" > ${ c.line2 } </span>
-    <span class="b-choice-line3 ${c.line3class}" > ${ c.notice } </span>
-    <span class="b-choice-line4 ${c.line4class}" > ${ c.warning } </span>
-  </button>
-`;
+  const [local, others] = splitProps (props, [
+    'value', 'choices', 'title', 'label', 'small', 'prop', 'disabled', 'class', 'ref',
+  ]);
+  const merged_class = 'b-choiceinput b-choice-big' + (local.class ? ' ' + local.class : '');
 
-// <SCRIPT/>
-class BChoiceInput extends LitComponent {
-  createRenderRoot() { return this; }
-  render()
-  {
-    return [
-      HTML (this),
-      !this.need_cmenu ? nothing : CONTEXTMENU_HTML (this),
-    ];
-  }
-  static properties = {
-    prop:	{ type: Object, reflect: false },
-    value:	{ type: String, },
-    title:	{ type: String, },
-    label:	{ type: String, },
-    small:	{ type: Boolean, reflect: true },
-    choices:	{ type: Array },
-    choices_:	{ state: true }, // internal
-    need_cmenu: { state: true }, // internal
-  };
-  constructor() {
-    super();
-    Util.define_reactive (this, {
-      value_: { value: '' },	//     this.value_ = '';
-    });
-    this.value = '';
-    this.small = false;
-    this.prop = null;
-    this.label = '';
-    this.choices = [];
-    this.choices_ = [];
-    this.need_cmenu = false;
-    this.cmenu = null;
-    this.pophere = null;
-    const this_popup_menu = this.popup_menu.bind (this);
-    this.addEventListener ('click', this_popup_menu);
-    this.addEventListener ('mousedown', this_popup_menu);
-    this.addEventListener ('keydown', this.keydown.bind (this));
-  }
-  updated (changed_props)
-  {
-    if (changed_props.has ('prop')) {
-      this.choices_ = [];
-      if (this.prop)
-	(async () => {
-	  this.choices_ = await this.prop.choices();
-	}) ();
+  const [value_, set_value_] = createSignal (local.value ?? '');
+  const [choices_, set_choices_] = createSignal<any[]> ([]);
+  const [need_cmenu, set_need_cmenu] = createSignal (false);
+
+  // Sync external value
+  createEffect (() => {
+    set_value_ (local.value ?? '');
+  });
+
+  // Sync prop choices
+  createEffect (() => {
+    if (local.prop) {
+      const p = local.prop;
+      // trigger read for reactivity
+      p.name; p.value; p.metadata;
+      (async () => {
+        set_choices_ (await p.choices());
+      }) ();
     }
-    if (changed_props.has ('small')) {
-      this.classList.remove (this.small ? 'b-choice-big' : 'b-choice-small');
-      this.classList.add (!this.small ? 'b-choice-big' : 'b-choice-small');
-    }
-    if (changed_props.has ('value'))
-      this.value_ = this.value; // may cause re-render
-    this.setAttribute ('data-tip', this.data_tip());
-  }
-  get mchoices()
-  {
-    const mchoices = [];
-    const choices = this.choices?.length ? this.choices : this.choices_;
+  });
+
+  // CSS class for small/big
+  createEffect (() => {
+    if (!root_el) return;
+    root_el.classList.remove (local.small ? 'b-choice-big' : 'b-choice-small');
+    root_el.classList.add (!local.small ? 'b-choice-big' : 'b-choice-small');
+  });
+
+  // Update data-tip
+  createEffect (() => {
+    if (!root_el) return;
+    root_el.setAttribute ('data-tip', data_tip());
+  });
+
+  const mchoices = createMemo (() => {
+    const result: any[] = [];
+    const choices = local.choices?.length ? local.choices : choices_();
     for (let i = 0; i < choices.length; i++) {
-      const c = Object.assign ({}, choices[i]);
-      mchoices.push (c);
+      result.push (Object.assign ({}, choices[i]));
     }
-    return mchoices;
-  }
-  current()
+    return result;
+  });
+
+  function current()
   {
-    const mchoices = this.mchoices;
-    for (let i = 0; i < mchoices.length; i++)
-      if (mchoices[i].ident == this.value_)
-	return mchoices[i];
+    const mc = mchoices();
+    for (let i = 0; i < mc.length; i++)
+      if (mc[i].ident == value_())
+	return mc[i];
     return {};
   }
-  data_tip()
+
+  function data_tip(): string
   {
-    const choice = this.current();
+    const choice = current();
     let tip = "**CLICK** Select Choice";
-    const plabel = this.label || this.prop?.label_;
+    const plabel = local.label || local.prop?.label_;
     if (!plabel || !choice.label)
       return tip;
     let val = "**" + plabel + "** ";
     val += choice.label;
     return val + " " + tip;
   }
-  current_span()
+
+  function current_span(): string
   {
-    const choice = this.current();
-    if (this.small)
+    const choice = current();
+    if (local.small)
       return choice.icon ? choice.icon : choice.label || "";
     else
       return choice.label ? choice.label : choice.icon || "";
   }
-  activate (uri)
+
+  function activate (uri: string)
   {
-    if (this.cmenu) {
+    if (cmenu_el) {
       // close popup to remove focus guards
-      this.cmenu.close();
-      this.need_cmenu = false;
+      cmenu_el.close();
+      set_need_cmenu (false);
     }
-    this.value_ = uri;
-    this.value = this.value_; // becomes Event.target.value
-    this.dispatchEvent (new Event ('valuechange', { composed: true }));
-  }
-  popup_menu (event)
-  {
-    if (!this.cmenu) { // force synchronous rendering to create this.cmenu
-      this.need_cmenu = true; // does this.requestUpdate();
-      this.performUpdate();
+    set_value_ (uri);
+    if (root_el) {
+      (root_el as any).value = uri;
+      root_el.dispatchEvent (new Event ('valuechange', { composed: true }));
     }
-    if (this.cmenu.open) return;
-    this.pophere.focus();
-    this.cmenu.popup (event, { origin: this.pophere, focus_uri: this.value });
   }
-  keydown (event)
+
+  function popup_menu (event: Event)
   {
-    if (this.cmenu?.open)
+    if (!cmenu_el) { // force synchronous rendering to create cmenu ref
+      set_need_cmenu (true);
+    }
+    // Wait for DOM update before accessing cmenu
+    setTimeout (() => {
+      if (!cmenu_el || cmenu_el.open) return;
+      pophere_el?.focus();
+      cmenu_el.popup (event, { origin: pophere_el, focus_uri: value_() });
+    }, 0);
+  }
+
+  function keydown (event: KeyboardEvent)
+  {
+    if (cmenu_el?.open)
       return;
     // allow selection changes with UP/DOWN while menu is closed
     if (event.keyCode == Util.KeyCode.DOWN || event.keyCode == Util.KeyCode.UP)
       {
 	Util.prevent_event (event);
-	const mchoices = this.mchoices;
-	const choice = this.current();
+	const mc = mchoices();
+	const choice = current();
 	if (choice.ident)
-	  for (let i = 0; i < mchoices.length; i++)
-	    if (mchoices[i].ident == choice.ident) {
+	  for (let i = 0; i < mc.length; i++)
+	    if (mc[i].ident == choice.ident) {
 	      const index = i + (event.keyCode == Util.KeyCode.DOWN ? +1 : -1);
-	      if (index >= 0 && index < mchoices.length)
-		this.activate (mchoices[index].ident);
+	      if (index >= 0 && index < mc.length)
+		activate (mc[index].ident);
 	      break;
 	    }
       }
     else if (event.keyCode == Util.KeyCode.ENTER)
-      this.popup_menu (event);
+      popup_menu (event);
   }
+
+  return (
+    <div class="b-choiceinput b-choice-big" ref={el => {
+      root_el = el;
+      local.ref?.(el);
+    }} {...others}
+      onClick={popup_menu}
+      onMouseDown={popup_menu}
+      onKeyDown={keydown}
+    >
+      <div class="b-choice-current hflex" ref={pophere_el} tabindex="0">
+        <span class="-current">{current_span()}</span>
+        <span class="-arrow"> ⬍ </span>
+      </div>
+      {need_cmenu() && (
+        <b-contextmenu class="b-choiceinput-contextmenu" ref={cmenu_el}
+          on:activate={e => activate (get_uri (e.detail))}
+          on:close={e => set_need_cmenu (false)}>
+          <b-menutitle style={!local.title ? 'display:none' : ''}>
+            {local.title}
+          </b-menutitle>
+          <For each={mchoices()}>
+            {(c: any) => (
+              <button class="m-0 grid cursor-pointer select-none auto-rows-auto items-stretch border border-solid text-left"
+                uri={c.ident} ic={c.icon}>
+                <span class="b-choice-label {c.labelclass ?? ''}">{c.label}</span>
+                <span class="b-choice-line1 {c.line1class ?? ''}">{c.blurb}</span>
+                <span class="b-choice-line2 {c.line2class ?? ''}">{c.line2}</span>
+                <span class="b-choice-line3 {c.line3class ?? ''}">{c.notice}</span>
+                <span class="b-choice-line4 {c.line4class ?? ''}">{c.warning}</span>
+              </button>
+            )}
+          </For>
+        </b-contextmenu>
+      )}
+    </div>
+  );
 }
-customElements.define ('b-choiceinput', BChoiceInput);
