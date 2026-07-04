@@ -124,8 +124,8 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
       <span class="-indicator" ref={h => t.indicator_bar = h}></span>
 
       <ContextMenu ref={h => { t.pianorollmenu = h; }}
-                     activate={t.pianorollmenu_click}
-                     isactive={t.pianorollmenu_check}
+                     activate={t.pianorollmenu_click.bind (t)}
+                     isactive={t.pianorollmenu_check.bind (t)}
                      id="g-pianorollmenu" showicons={true}
                      class="-pianorollmenu" mapname="Piano Roll">
         <MenuTitle> Piano-Roll </MenuTitle>
