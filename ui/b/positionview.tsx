@@ -5,6 +5,8 @@
  * transport position pointer and related information.
  */
 
+import { Editable } from './editable';
+
 // <STYLE/>
 Extra_css`
 @reference "../tailwind.css";
@@ -109,11 +111,11 @@ export function PositionView (props: any)
 
   return (
     <div class="b-positionview">
-      <b-editable class="w-16 text-center" onChange={e => apply_sig ((e as CustomEvent).detail.value)} selectall
-	value={project.numerator + '/' + project.denominator}></b-editable>
+      <Editable class="w-16 text-center" onChange={e => apply_sig ((e as CustomEvent).detail.value)} selectall
+	value={project.numerator + '/' + project.denominator} />
       <span class="b-positionview-counter" ref={counter_span}></span>
-      <b-editable class="w-16 text-center" onChange={e => { project.bpm = 0 | (e as CustomEvent).detail.value }} selectall
-	value={project.bpm}></b-editable>
+      <Editable class="w-16 text-center" onChange={e => { project.bpm = 0 | (e as CustomEvent).detail.value }} selectall
+	value={project.bpm} />
       <span class="b-positionview-timer" ref={timer_span}></span>
     </div>
   );

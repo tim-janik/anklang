@@ -1,8 +1,4 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-// @ts-check
-
-import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
-import * as Util from "../util.js";
 
 /** == B-EDITABLE ==
  * Display an editable span.
@@ -10,95 +6,107 @@ import * as Util from "../util.js";
  * - **activate()** - Show input field and start editing.
  * ### Props:
  * - **clicks** - Set to 1 or 2 to activate for single or double click.
+ * - **selectall** - Select all text on activation.
  * ### Events:
  * - **change** - Emitted when an edit ends successfully, text is in `event.detail.value`.
  */
 
-// == STYLE ==
-Extra_css`
-b-editable {
-  @apply inline-flex;
-}`;
+import { createEffect } from 'solid-js';
+import * as Util from "../util.js";
 
+export function Editable (props: {
+  value?: string | number;
+  clicks?: number;
+  class?: string;
+  style?: string;
+  onChange?: (e: CustomEvent) => void;
+  selectall?: boolean;
+  ref?: (el: HTMLInputElement) => void;
+})
+{
+  let input_el: HTMLInputElement | undefined;
 
-// == SCRIPT ==
-const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
-const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
-const PRIVATE_PROPERTY = { state: true };
+  // Coerce the (possibly numeric) value prop to a string for the input element.
+  const value_string = () => String (props.value ?? '');
 
-class BEditable extends LitComponent {
-  static properties = {
-    clicks:	NUMBER_ATTRIBUTE,
-    editable_:	PRIVATE_PROPERTY,
-    value: 	STRING_ATTRIBUTE,
+  const activate = () => {
+    if (!input_el) return;
+    input_el.inert = false;
+    if (document.activeElement !== input_el) {
+      input_el.focus();
+      if (props.selectall) {
+        input_el.select();
+      } else {
+        input_el.selectionEnd = input_el.selectionStart = 0;
+        input_el.setSelectionRange (2**31, 2**31);
+      }
+    }
   };
-  createRenderRoot() { return this; }
-  render()
-  {
-    // Since this.input_ is focussable, we avoid putting it into a shadowRoot
-    return this.input_;
-  }
-  constructor()
-  {
-    super();
-    this.clicks = 1;
-    this.value = '';
-    this.editable_ = false;
-    const input_click = this.input_click.bind (this);
-    this.addEventListener ("click", input_click);
-    this.addEventListener ("dblclick", input_click);
-    this.input_ = document.createElement ('input');
-    this.input_.className = "bg-dim-950 m-[2px] box-content h-min w-full p-0 leading-none text-inherit [&[inert]]:bg-transparent";
-    this.input_.inert = true;
-    this.input_.onkeydown = this.input_keydown.bind (this);
-    this.input_.onchange = e => Util.prevent_event (e);
-    this.input_.onblur = () => this.input_blur.bind (this, false);
-  }
-  updated (changed_props)
-  {
-    if (changed_props.has ('value'))
-      this.input_.value = this.value;
-  }
-  activate()
-  {
-    this.editable_ = true;
-    this.input_.inert = false;
-    if (document.activeElement !== this.input_) {
-      this.input_.focus();
-      this.input_.selectionEnd = this.input_.selectionStart = 0;
-      this.input_.setSelectionRange (2**31, 2**31); // move cursor to end
-    }
-  }
-  input_click (event)
-  {
-    const clicks = 0 | this.clicks;
+
+  const handle_click = (event: MouseEvent) => {
+    const clicks = 0 | (props.clicks ?? 1);
     if ((clicks === 1 && event.type === "click") ||
-	(clicks === 2 && event.type === "dblclick")) {
+        (clicks === 2 && event.type === "dblclick")) {
       Util.prevent_event (event);
-      this.activate();
+      activate();
     }
-  }
-  input_keydown (event)
-  {
+  };
+
+  const handle_keydown = (event: KeyboardEvent) => {
     event.stopPropagation();
     const esc = Util.match_key_event (event, 'Escape');
     const enter = Util.match_key_event (event, 'Enter');
-    if (esc || enter)
-      this.input_blur (null, !esc);
-  }
-  input_blur (event_, confirmed = true)
-  {
-    this.input_.selectionEnd = this.input_.selectionStart = 0;
-    this.input_.inert = true;
-    this.input_.scrollLeft = 0;
-    if (!confirmed)
-      this.input_.value = this.value;
-    else {
-      this.dispatchEvent (new CustomEvent ('change', {
-	detail: { value: this.input_.value }
-      }));
-      this.input_.value = this.value;
+    if (esc || enter) {
+      // Escape cancels (revert), Enter confirms (commit) the edit.
+      handle_blur (null, !esc);
+      // Move focus off the now-inert input; the resulting blur is ignored below.
+      input_el?.blur();
     }
-  }
+  };
+
+  const handle_blur = (_event: FocusEvent | null, confirmed = true) => {
+    if (!input_el) return;
+    // Editing was already finished (via Enter/Escape); ignore the follow-up blur.
+    if (input_el.inert) return;
+    input_el.selectionEnd = input_el.selectionStart = 0;
+    input_el.inert = true;
+    input_el.scrollLeft = 0;
+    if (!confirmed) {
+      input_el.value = value_string();
+    } else {
+      props.onChange?.(new CustomEvent ('change', {
+        detail: { value: input_el.value }
+      }));
+      input_el.value = value_string();
+    }
+  };
+
+  // Sync external value changes when not being edited.
+  createEffect (() => {
+    const val = value_string();
+    if (input_el && input_el.inert)
+      input_el.value = val;
+  });
+
+  return (
+    <span
+      class={(props.class ?? '') + ' inline-flex'}
+      style={props.style}
+      onClick={handle_click}
+      onDblClick={handle_click}
+    >
+      <input
+        ref={el => {
+          input_el = el;
+          (el as any).activate = activate;
+          props.ref?.(el);
+        }}
+        class="bg-dim-950 m-[2px] box-content h-min w-full p-0 leading-none text-inherit [&[inert]]:bg-transparent [&[inert]]:pointer-events-none"
+        inert={true}
+        onKeyDown={handle_keydown}
+        onBlur={handle_blur}
+        onChange={e => Util.prevent_event (e)}
+      />
+    </span>
+  );
 }
-customElements.define ('b-editable', BEditable);
