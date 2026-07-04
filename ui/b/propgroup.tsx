@@ -10,6 +10,7 @@
 import { For } from 'solid-js';
 import * as Util from '../util.js';
 import { Toggle } from './toggle.tsx';
+import { TextInput } from './textinput.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -33,7 +34,7 @@ b-propgroup, .b-propgroup {
   .b-propgroup-row > * + * { margin-left: var(--b-prop-gap); }
   .b-propgroup-row:not(:last-child) { margin-bottom: var(--b-prop-gap); }
 }
-.b-propgroup-row b-textinput {
+.b-propgroup-row b-textinput, .b-propgroup-row .b-textinput {
   width: calc(var(--b-prop-gap) * 4 + 5 * var(--b-prop-width));
 }
 .b-propgroup-row {
@@ -86,9 +87,9 @@ function PropHtml (prop, readonly)
     case 'K':
       return <b-knob disabled={prop.readonly || readonly} prop={prop}></b-knob>;
     case 'T':
-      return <b-textinput disabled={prop.readonly || readonly}
+      return <TextInput disabled={prop.readonly || readonly}
         prop={prop}
-        label={prop.label_} title={prop.title_}></b-textinput>;
+        label={prop.label_} title={prop.title_} />;
     default:
       return <span>{prop.nick_}</span>;
   }

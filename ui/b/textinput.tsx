@@ -1,28 +1,46 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
-import * as Util from '../util.js';
-
-/** @class BTextInput
+/** @class TextInput
  * @description
- * The <b-textinput> element is a field-editor for text input.
+ * The TextInput component is a field-editor for text input.
  *
- * ### Properties:
+ * ### Props:
  * *value*
- * : Contains the text string being edited.
+ * : Contains the text string being edited. Used only when no `prop` is supplied;
+ *   when a `prop` is given the display follows `prop.value_.val` and is kept
+ *   up to date through `prop.addnotify_`/`delnotify_` notifications.
+ * *placeholder*
+ * : Placeholder string shown when the field is empty.
  * *readonly*
  * : Make this component non editable for the user.
+ * *disabled*
+ * : When `true` the field is treated as readonly (mirrored onto the native
+ *   `<input readonly>` attribute and also blocks the file-picker click handler).
+ * *prop*
+ * : An extended property (`extend_property`); edits are forwarded via
+ *   `prop.apply_()` and the display is refreshed on backend notifications.
+ * *label*
+ * : Forwarded onto the `<input>` as `aria-label`.
+ * *title*
+ * : Forwarded onto the root element as the native tooltip attribute.
+ * *class*
+ * : Extra CSS class(es) appended to the root `b-textinput` element.
  *
  * ### Events:
  * *valuechange*
- * : Event emitted whenever the value changes, which is provided as `event.target.value`.
+ * : Event emitted whenever the user edits the text and the value actually
+ *   changes. The new value is provided as `event.target.value` (set on the
+ *   root element before dispatch). When a `prop` is supplied the value is also
+ *   pushed to the backend via `prop.apply_()`.
  */
+
+import { createEffect, onCleanup, splitProps } from 'solid-js';
 
 // == STYLE ==
 Extra_css`
 @reference "../tailwind.css";
-b-textinput input {
+b-textinput input, .b-textinput input {
   outline-width: 0; border: none;
   text-align: left;
   padding-left: var(--b-button-radius); padding-right: var(--b-button-radius);
@@ -30,18 +48,7 @@ b-textinput input {
 }
 `;
 
-// <HTML/>
-const HTML = t =>
-html`
-<label>
-  <input ${ref (h => t.input_element = h)} type="text" ?readonly=${t.readonly}
-	 style="width: 100%; min-width: 2.5em" @input=${t.handle_input}
-         @click=${t.textinput_click}
-	 placeholder=${t.placeholder} .value=${live (t.value)} >
-</label>
-`;
-
-// <SCRIPT/>
+// == Helpers ==
 function prop_info (prop, key) {
   const md = prop?.metadata;
   if (!md || !key) return "";
@@ -53,58 +60,86 @@ function prop_info (prop, key) {
   return "";
 }
 
-class BTextInput extends LitComponent {
-  createRenderRoot() { return this; }
-  render() { return HTML (this); }
-  input_element = null;
-  static properties = {
-    prop:	 { type: Object, reflect: true },
-    placeholder: { type: String, },
-    readonly:	 { type: Boolean, },
+// == COMPONENT ==
+export function TextInput (props: {
+  prop?: any;
+  value?: string;
+  placeholder?: string;
+  readonly?: boolean;
+  disabled?: boolean;
+  label?: string;
+  class?: string;
+  ref?: (el: HTMLElement) => void;
+  'on:valuechange'?: (e: Event) => void;
+  [key: string]: any;
+})
+{
+  let root_el: HTMLElement | undefined;
+  let input_el: HTMLInputElement | undefined;
+  // Last value reflected in the input field; used to emit `valuechange` only
+  // on actual user changes (mirrors the NumberInput/SwitchInput pattern).
+  let last_value = '';
+
+  // `title` is intentionally *not* split out, so it flows through `{...others}`
+  // onto the root element and becomes a native tooltip.
+  const [local, others] = splitProps (props, [
+    'prop', 'value', 'placeholder', 'readonly', 'disabled', 'label', 'class', 'ref',
+  ]);
+
+  const merged_class = 'b-textinput' + (local.class ? ' ' + local.class : '');
+
+  function sync_display (value: string)
+  {
+    if (!input_el || input_el.value === value)
+      return;
+    input_el.value = value;
+    last_value = value;
+  }
+
+  // Sync initial value and parent-supplied `value` prop changes.
+  createEffect (() => {
+    if (!input_el) return;
+    const value = local.prop ? local.prop.value_.val : (local.value ?? '');
+    sync_display (value);
+  });
+
+  // Subscribe to backend property changes so the displayed text stays fresh
+  // (undo/redo, preset loads, the reset button, automation, other views, and
+  // this component's own file picker). `prop.value_` is not Solid-tracked, so
+  // a notify subscription is required. This mirrors the Knob subscription
+  // pattern (knob.tsx); `addnotify_` callbacks fire after `update_()` has
+  // refreshed `value_` (util.js: notify_), so `value_` is current here.
+  createEffect (() => {
+    const prop = local.prop;
+    if (!prop || !prop.addnotify_)
+      return;
+    let cancelled = false;
+    const notify_cb = () => {
+      if (cancelled || !input_el) return;
+      sync_display (prop.value_.val);
+    };
+    prop.addnotify_ (notify_cb);
+    onCleanup (() => {
+      cancelled = true;
+      prop.delnotify_ (notify_cb);
+    });
+  });
+
+  const handle_input = () => {
+    if (!input_el || !root_el) return;
+    const value = input_el.value;
+    if (value === last_value)
+      return;
+    last_value = value;
+    if (local.prop)
+      local.prop.apply_ (value);
+    (root_el as any).value = value;    // becomes Event.target.value
+    root_el.dispatchEvent (new Event ('valuechange', { composed: true, bubbles: true }));
   };
-  constructor()
-  {
-    super();
-    this.value = '';
-    this.prop = null;
-    this.placeholder = '';
-    this.readonly = false;
-  }
-  updated (changed_props)
-  {
-    if (changed_props.has ('prop')) {
-      if (this.prop) {
-	this.prop.name; // access field, we need it later on.
-	this.prop.value; // access field, we need it later on.
-	this.prop.metadata; // access field, we need it later on.
-      }
-    }
-    const value = this.prop ? this.prop.value_.val : "";
-    if (value !== this.value) {
-      this.value = value;
-      this.request_update ('value');
-    }
-  }
-  disconnectedCallback()
-  {
-    super.disconnectedCallback();
-    this.prop && this.prop.delnotify_ (this.request_update);
-  }
-  handle_input (event)  	// emit 'input' with constrained value
-  {
-    const constrainedvalue = this.constrain (this.input_element.value);
-    if (constrainedvalue !== this.value) {
-      this.value = constrainedvalue;
-      this.prop?.apply_ (this.value);
-    }
-  }
-  constrain (txt)
-  {
-    return '' + txt;
-  }
-  async textinput_click (event)
-  {
-    if (!prop_info (this.prop, "extensions"))
+
+  const textinput_click = async (event: MouseEvent) => {
+    if (local.readonly || local.disabled) return;
+    if (!prop_info (local.prop, "extensions"))
       return;
     const opt = {
       title:  _('Select File'),
@@ -115,7 +150,24 @@ class BTextInput extends LitComponent {
     const filename = await Shell.select_file (opt);
     if (!filename)
       return;
-    this.prop.value = filename;
-  }
+    local.prop.value = filename;
+    // rely on the notify roundtrip to refresh the field via sync_display()
+  };
+
+  return (
+    <div class={merged_class} ref={el => {
+      root_el = el;
+      local.ref?.(el);
+    }} {...others}>
+      <label>
+        <input ref={input_el} type="text"
+          readonly={local.readonly || local.disabled}
+          aria-label={local.label}
+          style="width: 100%; min-width: 2.5em"
+          onInput={handle_input}
+          onClick={textinput_click}
+          placeholder={local.placeholder ?? ''} />
+      </label>
+    </div>
+  );
 }
-customElements.define ('b-textinput', BTextInput);
