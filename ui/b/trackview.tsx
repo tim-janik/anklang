@@ -85,18 +85,18 @@ const HTML_CONTEXTMENU = (t, d) => html`
     <button ic="fa-i_cursor"       uri="rename-track" >   Rename Track          </button>
     <button ic="fa-toggle_down"    uri="bounce-track" >   Bounce Track          </button>
     <button ic="md-eye_off" uri="track-details" >  Show / Hide Track Details </button>
-    <b-menuseparator></b-menuseparator>
+    <hr class="b-menuseparator"></hr>
     <b-menurow> <!-- ic="fa-clone" uri="clone-track" >    Dupl.                 -->
       <button ic="fa-times_circle" uri="delete-track" >   Delete                </button>
       <button ic="fa-scissors"     uri="cut-track" >      Cut                   </button>
       <button ic="fa-files_o"      uri="copy-track" >     Copy                  </button>
       <button ic="fa-clipboard"    uri="paste-track" >    Paste                 </button>
     </b-menurow>
-    <b-menuseparator></b-menuseparator>
+    <hr class="b-menuseparator"></hr>
     <b-menutitle> Playback </b-menutitle>
     <button ic="uc-Ｍ"             uri="mute-track" >     Mute Track            </button>
     <button ic="uc-Ｓ"             uri="solo-track" >     Solo Track            </button>
-    <b-menuseparator></b-menuseparator>
+    <hr class="b-menuseparator"></hr>
     <b-menutitle> MIDI Channel </b-menutitle>
     <button   uri="mc-0"  ic=${t.mcc (0)}  > Internal Channel </button>
     <b-menurow noturn>
