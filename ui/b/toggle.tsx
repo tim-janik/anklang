@@ -27,6 +27,7 @@ b-toggle {
   display: flex; position: relative;
   margin: 0; padding: 0; text-align: center;
   user-select: none;
+  &[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
   .b-toggle-label {
     white-space: nowrap; overflow: hidden;
     height: 1.33em;
