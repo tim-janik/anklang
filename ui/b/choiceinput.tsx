@@ -28,6 +28,7 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, splitProps } from 'solid-js';
 import * as Util from '../util.js';
 import { get_uri } from '../dom.js';
+import { ContextMenu } from './contextmenu';
 import { MenuTitle } from './menutitle.tsx';
 
 // <STYLE/>
@@ -293,7 +294,7 @@ export function ChoiceInput (props: {
         <span class="-arrow"> ⬍ </span>
       </div>
       {need_cmenu() && (
-        <b-contextmenu class="b-choiceinput-contextmenu" ref={cmenu_el}
+        <ContextMenu class="b-choiceinput-contextmenu" ref={cmenu_el}
           on:activate={e => activate (get_uri (e.detail))}
           on:close={e => { set_need_cmenu (false); cmenu_el = undefined; }}>
           <MenuTitle style={!local.title ? 'display:none' : ''}>
@@ -311,7 +312,7 @@ export function ChoiceInput (props: {
               </button>
             )}
           </For>
-        </b-contextmenu>
+        </ContextMenu>
       )}
     </div>
   );

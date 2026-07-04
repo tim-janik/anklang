@@ -14,6 +14,7 @@ import * as Util from "../util.js";
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import { More } from './more';
 import { MenuTitle } from './menutitle.tsx';
+import { ContextMenu } from './contextmenu';
 
 // == STYLE ==
 Extra_css`
@@ -122,7 +123,7 @@ export function DevicePanel (props)
           onMousedown={e => menuopen (e)}
           data-tip="**CLICK** Add New Elements"
         />
-        <b-contextmenu
+        <ContextMenu
           ref={e => {
             cmenu_ref = e;
             if (e) {
@@ -134,7 +135,7 @@ export function DevicePanel (props)
         >
           <MenuTitle>Devices</MenuTitle>
           <b-treebrowser tree={devicetypes ()} expandall={false}></b-treebrowser>
-        </b-contextmenu>
+        </ContextMenu>
       </div>
       </div>
     </div>
