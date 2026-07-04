@@ -294,7 +294,7 @@ export function ChoiceInput (props: {
         <span class="-arrow"> ⬍ </span>
       </div>
       {need_cmenu() && (
-        <ContextMenu class="b-choiceinput-contextmenu" ref={cmenu_el}
+        <ContextMenu class="b-choiceinput-contextmenu" ref={h => cmenu_el = h}
           on:activate={e => activate (get_uri (e.detail))}
           on:close={e => { set_need_cmenu (false); cmenu_el = undefined; }}>
           <MenuTitle style={!local.title ? 'display:none' : ''}>
