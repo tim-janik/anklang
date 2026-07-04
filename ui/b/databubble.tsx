@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { JsExtract } from '../little.js';
 import * as Util from '../util.js';
 import * as Dom from "../dom.js";
 

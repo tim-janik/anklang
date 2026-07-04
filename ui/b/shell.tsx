@@ -16,7 +16,7 @@ import * as Signal from "../signal.js";
 import * as Util from "../util.js";
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import * as Dom from "../dom.js";
-import DataBubbleIface from '../b/databubble.js';
+import DataBubbleIface from '../b/databubble';
 import spinner_svg from '/assets/spinner.svg'
 import { make_reactive } from './app';
 import { ModalDialogs } from './modals.jsx';
