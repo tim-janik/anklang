@@ -28,6 +28,7 @@ import { MenuBar } from './menubar.jsx';
 import { PreferencesDialog } from './preferencesdialog.jsx';
 import { DevicePanel } from './devicepanel.jsx';
 import { TrackList } from './tracklist.jsx';
+import { CrawlerDialog } from './crawlerdialog.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -188,8 +189,10 @@ export function ShellTemplate (props: any)
         <PreferencesDialog onClose={() => (r.show_preferences_dialog = false)} shown={true} />
       </Show>
 
-      <b-crawlerdialog shown={r.fs_shown} title={fs.title} filters={fs.filters} button={fs.button}
-		       existing={fs.existing} cwd={fs.cwd} onClose={e => fs.resolve()} onSelect={e => fs.resolve (e.detail?.uri)}></b-crawlerdialog>
+      <Show when={r.fs_shown}>
+        <CrawlerDialog shown={r.fs_shown} title={fs.title} filters={fs.filters} button={fs.button}
+		       existing={fs.existing} cwd={fs.cwd} onClose={() => fs.resolve()} onSelect={uri => fs.resolve (uri)} />
+      </Show>
 
       {/* Modal Message Popups */}
       <ModalDialogs ref={e => t.modal_dialogs_ = e} />

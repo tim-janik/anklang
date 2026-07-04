@@ -14,17 +14,16 @@
  * *filters*
  * : List of file type constraints.
  *
- * ## Events:
- * *select (path)*
- * : This event is emitted when a specific path is selected via clicks or focus activation.
- * *close*
- * : A *close* event is emitted once the "Close" button activated.
+ * ## Callbacks:
+ * *onSelect (uri)*
+ * : Called when a specific path is selected via clicks or focus activation.
+ * *onClose*
+ * : Called when the "Close" button activated.
  */
 
-import { LitComponent, html, render, noChange, JsExtract, docs, ref, repeat } from '../little.js';
+import { createSignal, createEffect, createMemo, onMount, onCleanup, For } from 'solid-js';
+import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
-import { Signal, State, Computed, Watcher, tracking_wrapper } from "../signal.js";
-import { get_uri } from '../dom.js';
 import * as Util from "../util.js";
 import * as Kbd from "../kbd.js";
 import * as Dom from "../dom.js";
@@ -32,7 +31,7 @@ import * as Dom from "../dom.js";
 // == STYLE ==
 Extra_css`
 @reference "../tailwind.css";
-b-crawlerdialog {
+b-crawlerdialog, .b-crawlerdialog {
   dialog {
     width: unset; /* <- leave width to INPUT.-file, see below */
     max-width: 95%;
@@ -71,7 +70,7 @@ b-crawlerdialog {
     -webkit-appearance: none; -moz-appearance: none;
     &:active { border: none; }
     @include b-focus-outline;
-    b-icon {
+    b-icon, .b-icon {
       width: 1.9rem;
       vertical-align: middle;
       @include b-font-weight-bold();
@@ -80,253 +79,296 @@ b-crawlerdialog {
   }
 }`;
 
-// == HTML ==
-const HTML = (t, d) => html`
-<dialog class="floating-dialog [&:not([open])]:hidden" ${ref (h => t.dialog = h)} @close=${t.close_click} style="overflow: hidden">
-  <div class="dialog-header">${t.title}</div>
+// == Component ==
+export function CrawlerDialog (props)
+{
+  let dialogRef: any;
+  let direntryRef: any;
+  let pathentryRef: any;
+  let entrygridRef: any;
 
-  <input class="-direntry pointer-events-none mb-4 select-none outline outline-2 outline-offset-2" ${ref (h => t.direntry = h)} .value="${t.folder}"
-	 tabindex="-1" readonly @focus=${e => t.pathentry.focus()} inert
-	 type="text" @select=${Util.prevent_event} >
+  const [crawler, set_crawler] = createSignal (null);
+  const [promise_state, set_promise_state] = createSignal (null);
+  const [current, set_current] = createSignal ({} as any);
+  const [bump, set_bump] = createSignal (0);
 
-  <div data-subfocus="*" class="-entry-grid grid" ${ref (h => t.entrygrid = h)}
-    @keydown=${t.entrygrid_keydown} >
-    ${repeat (d.entries, e => e.uri, e => ENTRY_HTML (t, e))}
-    <div class="-spin-wrapper hflex"
-      style="height: 100%; width: 100%; text-align: center; align-items: center; justify-content: center">
-      <div style="text-align: center" > ⥁ </div> </div>
-  </div>
+  let last_cwd = props.cwd;
+  let focus_after_refill = true;
+  let cancelled = false;
 
-  <input class="-pathentry mt-4 outline outline-2 outline-offset-2" ${ref (h => t.pathentry = h)} .value=""
-	 type="text" @keydown=${t.pathentry_keydown} @select=${Util.prevent_event} >
-
-  <div class="dialog-footer">
-    <button class="button-xl" @click=${e => t.select_entry (null)} @keydown=${Kbd.keydown_move_focus_up}
-      ?disabled=${t.update_inflight} > ${t.button} </button>
-    <button class="button-xl" @click=${t.close_click}  @keydown=${Kbd.keydown_move_focus_up} > Close </button>
-  </div>
-</dialog>
-`;
-const ENTRY_HTML = (t, e) => html`
-<button
-  @focus=${ev => t.entry_event (ev, e)} @click=${ev => t.entry_event (ev, e)} @dblclick=${ev => t.entry_event (ev, e)} >
-  <b-icon ic=${e.type == Ase.ResourceType.FOLDER && "md-folder" || "fa-file_o"} ></b-icon>
-  ${e.label}
-</button>
-`;
-
-// == SCRIPT ==
-/** Browse Ase::Crawler contents */
-class BCrawlerDialog extends LitComponent {
-  createRenderRoot() { return this; }
-  render()
-  {
-    const d = { entries: this.update_inflight ? [] : this.filtered_entries() };
-    return HTML (this, d);
-  }
-  /// properties - override to declare properties
-  static properties = {
-    title:	{ type: String,  reflect: true }, // sync attribute with property
-    button:	{ type: String,  reflect: true }, // sync attribute with property
-    cwd:	{ type: String,  state:   true }, // private property
-    shown:	{ type: Boolean, reflect: true }, // sync attribute with property
-    existing:	{ type: Boolean, reflect: true }, // sync attribute with property
-    filters:	{ type: Array,   reflect: true }, // sync attribute with property
-    promise:	{ type: Promise, state:   true }, // private property
-  };
   /// Ctrl_L - hotkey for focus on path entry
-  Ctrl_L = "Ctrl+L";
-  constructor()
-  {
-    super();
-    this.title = "File Dialog";
-    this.button = "Select";
-    this.cwd = "~MUSIC";
-    this.shown = false;
-    this.existing = true;
-    this.filters = [];
-    this.dialog = null;
-    this.last_cwd = this.cwd;
-    this.focus_after_refill = true;
-    this.promise = null;
-    // this.mkstate ('promise');
-    this.current = {};
-    this.direntry = null;
-    this.pathentry = null;
-    this.entrygrid = null;
-    // template for reactive Proxy object
-    this.ctrl_l_grab_focus = () => {
-      this.pathentry.focus();
-      this.pathentry.select();
-    };
-    this.crawler = null;
-    (async () => {
-      this.crawler = await Ase.server.dir_crawler (this.cwd);
-      this.request_update();
-    }) ();
-  }
-  /// folder - getter for the current folder without protocol
-  get folder()
-  {
-    let path = this.crawler?.folder?.uri || '/';
-    path = path.replace (/^file:\/+/, '/');	// strip protocol
+  const ctrl_l_grab_focus = () => {
+    pathentryRef?.focus();
+    pathentryRef?.select();
+  };
+
+  onMount (async () => {
+    const c = await Ase.server.dir_crawler (props.cwd || '~MUSIC');
+    if (cancelled) return;
+    set_crawler (c);
+    set_bump (v => v + 1);
+  });
+
+  onCleanup (() => {
+    cancelled = true;
+    Kbd.remove_hotkey ('Ctrl+L', ctrl_l_grab_focus);
+    dialogRef?.close();
+    props.onClose?.();
+  });
+
+  // Setup hotkey when dialog becomes visible
+  createEffect (() => {
+    if (props.shown) {
+      Kbd.add_hotkey ('Ctrl+L', ctrl_l_grab_focus, dialogRef);
+      return () => Kbd.remove_hotkey ('Ctrl+L', ctrl_l_grab_focus);
+    }
+  });
+
+  // Dialog visibility — use show_modal which handles Escape/backdrop
+  createEffect (() => {
+    if (!props.shown && dialogRef?.open) {
+      dialogRef.close();
+    }
+    if (props.shown && !dialogRef?.open) {
+      Dom.show_modal (dialogRef, () => { if (!cancelled) props.onClose?.(); });
+    }
+  });
+
+  // cwd change handling
+  createEffect (() => {
+    const cwd_val = props.cwd;
+    if (last_cwd !== cwd_val && crawler()) {
+      last_cwd = cwd_val;
+      assign_utf8path (cwd_val);
+    }
+  });
+
+  // focus_after_refill handling
+  createEffect (() => {
+    const entries_list = unfiltered_entries();
+    if (entries_list.length === 0) {
+      focus_after_refill = true;
+    }
+    if (focus_after_refill && entries_list.length > 0 &&
+        document.activeElement === document.body) {
+      focus_after_refill = false;
+      pathentryRef?.focus();
+    }
+  });
+
+  /// folder - current folder without protocol
+  const folder = createMemo (() => {
+    bump();
+    const c = crawler();
+    if (!c) return '/';
+    let path = c.folder?.uri || '/';
+    path = path.replace (/^file:\/+/, '/');
     return displayfs (path);
-  }
-  get entries()
-  {
-    return this.crawler?.entries || [];
-  }
+  });
+
+  const unfiltered_entries = createMemo (() => {
+    bump();
+    const c = crawler();
+    return c?.entries || [];
+  });
+
+  /// filtered_entries - filter hidden entries
+  const filtered_entries = createMemo (() => {
+    let e = unfiltered_entries();
+    if (!Array.isArray (e)) e = [];
+    // e = e.slice (0, 500); // limit number of entries
+    e = e.filter ((a: any) => a.label && (a.label == '..' || a.label[0] != '.'));
+    e.sort (function (a: any, b: any) {
+      if (a.type != b.type)
+        return a.type > b.type ? -1 : +1;
+      if (a.mtime != b.mtime)
+        { /* return a.mtime - b.mtime; */ }
+      const al = a.label.toLowerCase(), bl = b.label.toLowerCase();
+      if (al != bl)
+        return al < bl ? -1 : +1;
+      if (a.label != b.label)
+        return a.label < b.label ? -1 : +1;
+      return 0;
+    });
+    return e;
+  });
+
   /// update_inflight - indicates if the crawler is asynchronously updating
-  get update_inflight()
-  {
-    return this.promise || this.crawler?.$props?.$promise;
-  }
-  updated (changed_props)
-  {
-    if (this.last_cwd != this.cwd && this.crawler)
-      this.assign_utf8path (this.last_cwd = this.cwd);
-    if (!this.crawler || !this.crawler.entries.length)
-      this.focus_after_refill = true;
-    if (this.focus_after_refill && this.crawler?.entries.length &&
-	document.activeElement === document.body)
-      {
-	this.focus_after_refill = false;
-	this.pathentry.focus();
-      }
-    if (!this.shown && this.dialog.open)
-      this.dialog.close();
-    if (this.shown && !this.dialog.open)
-      Dom.show_modal (this.dialog);
-  }
-  connectedCallback()
-  {
-    super.connectedCallback();
-    Kbd.add_hotkey (this.Ctrl_L, this.ctrl_l_grab_focus, this);
-  }
-  disconnectedCallback()
-  {
-    Kbd.remove_hotkey (this.Ctrl_L, this.ctrl_l_grab_focus);
-    super.disconnectedCallback();
-  }
+  const update_inflight = createMemo (() => {
+    bump();
+    const c = crawler();
+    return promise_state() || c?.$props?.$promise;
+  });
+
   /// assign_utf8path - assign a path in UTF-8 encoding and possibly select it
-  async assign_utf8path (filepath, pickfile = false)
+  const assign_utf8path = async (filepath: string, pickfile = false) =>
   {
-    if (this.promise) return;
-    const crawler_assign = async displaypath => {
-      const [dir,file] = await this.crawler.assign (displaypath, this.existing);
-      if (this.pathentry.value !== file)
-	this.pathentry.value = file;
-      await this.crawler?.$props?.$promise;
-      this.promise = null;
+    if (promise_state()) return;
+    const c = crawler();
+    if (!c) return;
+    const p = (async () => {
+      const [dir, file] = await c.assign (filepath, props.existing !== false);
+      if (pathentryRef && pathentryRef.value !== file)
+        pathentryRef.value = file;
+      await c.$props?.$promise;
       if (pickfile)
-	this.select_entry (null);
-    };
-    this.promise = crawler_assign (filepath);
-    return this.promise;
-  }
-  entrygrid_keydown (event)
+        select_entry (null);
+      set_bump (v => v + 1);
+    })();
+    set_promise_state (p);
+    try {
+      await p;
+    } finally {
+      set_promise_state (null);
+    }
+  };
+
+  const entrygrid_keydown = (event: KeyboardEvent) =>
   {
     if (Kbd.match_key_event (event, 'Tab')) {
       Util.prevent_event (event);
-      this.pathentry.focus();
+      pathentryRef?.focus();
     } else
       Kbd.keydown_move_focus (event);
-  }
-  pathentry_keydown (event)
+  };
+
+  const pathentry_keydown = (event: KeyboardEvent) =>
   {
     if (Kbd.match_key_event (event, 'Enter'))
-      this.assign_utf8path (event.target.value, true);
+      assign_utf8path ((event.target as HTMLInputElement).value, true);
     else if (Kbd.match_key_event (event, 'Shift+Tab')) {
-      const entries = Kbd.list_focusables (this.entrygrid);
+      const entries = Kbd.list_focusables (entrygridRef);
       if (entries.length) {
-	Util.prevent_event (event);
-	entries[0].focus();
+        Util.prevent_event (event);
+        (entries[0] as HTMLElement).focus();
       }
     }
     //  this.assign_utf8path (event.target.value, false);
     // else Kbd.keydown_move_focus_up (event);
-  }
-  focus_entry (entry)
+  };
+
+  const focus_entry = (entry: any) =>
   {
-    assert (entry.uri && entry.label);
-    this.current = entry;
-    this.pathentry.value = this.current.label;
-  }
-  current_is_dir ()
+    if (!entry.uri || !entry.label) return;
+    set_current (entry);
+    if (pathentryRef)
+      pathentryRef.value = entry.label;
+  };
+
+  const current_is_dir = () =>
   {
-    const uri = this.current?.uri;
+    const uri = current()?.uri;
     return uri && uri[uri.length - 1] === '/';
-  }
+  };
+
   /// entry_event - handle events on the file entries
-  entry_event (event, entry)
+  const entry_event = (event: Event, entry: any) =>
   {
-    if (entry.uri && entry.uri != this.current?.uri)
-      this.focus_entry (entry);
+    if (entry.uri && entry.uri != current()?.uri)
+      focus_entry (entry);
     switch (event.type) {
       case 'focus':
-	// this.focus_entry
-	break;
+        // focus_entry
+        break;
       case 'dblclick':
-	if (!this.promise && this.current?.uri) {
-	  if (this.current_is_dir())
-	    this.assign_utf8path (this.current.uri);
-	  else
-	    this.select_entry (entry);
-	}
-	break;
+        if (!promise_state() && current()?.uri) {
+          if (current_is_dir())
+            assign_utf8path (current().uri);
+          else
+            select_entry (entry);
+        }
+        break;
       case 'click':
-	if (event.detail === 0 && // focus + ENTER causes click with detail=0
-	    !this.promise && this.current?.uri) {
-	  if (this.current_is_dir()) {
-	    this.assign_utf8path (this.current.uri);
-	    this.pathentry.focus();
-	  } else
-	    this.select_entry (entry);
-	}
-	break;
+        if ((event as MouseEvent).detail === 0 && // focus + ENTER causes click with detail=0
+            !promise_state() && current()?.uri) {
+          if (current_is_dir()) {
+            assign_utf8path (current().uri);
+            pathentryRef?.focus();
+          } else
+            select_entry (entry);
+        }
+        break;
     }
-  }
-  /// filtered_entries - filter hidden entries
-  filtered_entries()
-  {
-    let e = this.entries;
-    // e = e.slice (0, 500); // limit number of entries
-    e = e.filter (a => a.label && (a.label == '..' || a.label[0] != '.'));
-    e.sort (function (a, b) {
-      if (a.type != b.type)
-	return a.type > b.type ? -1 : +1;
-      if (a.mtime != b.mtime)
-	{ /* return a.mtime - b.mtime; */ }
-      const al = a.label.toLowerCase(), bl = b.label.toLowerCase();
-      if (al != bl)
-	return al < bl ? -1 : +1;
-      if (a.label != b.label)
-	return a.label < b.label ? -1 : +1;
-      return 0;
-    });
-    return e;
-  }
+  };
+
   /// select_entry  - send 'select' event for `entry` or `pathentry.value`
-  select_entry (entry)
+  const select_entry = (entry: any) =>
   {
-    if (this.update_inflight)
-      return false;					// in async update
+    if (update_inflight())
+      return false;						// in async update
     // select existing entry
     if (entry?.uri) {
       if (entry.uri[entry.uri.length - 1] === '/')
-	return false;					// is_dir
-      return this.dispatchEvent (new CustomEvent ('select', { detail: entry }));
+        return false;						// is_dir
+      props.onSelect?.(entry.uri);
+      return true;
     }
     // select pathentry (pathentry.value==='' iff !this.existing)
-    const pvalue = ('' + this.pathentry.value).trim();
+    const pvalue = ('' + pathentryRef?.value).trim();
     if (pvalue && pvalue.search ('/') < 0)
-      return this.dispatchEvent (new CustomEvent ('select', { detail: { uri: this.folder + '/' + pvalue } }));
-  }
+      props.onSelect?.(folder() + '/' + pvalue);
+    return true;
+  };
+
   /// close_click - send 'close' event for the dialog
-  close_click (ev = null)
+  const close_click = (ev: Event) =>
   {
-    ev && ev.preventDefault();
-    this.dispatchEvent (new CustomEvent ('close'));
-  }
+    ev.preventDefault();
+    props.onClose?.();
+  };
+
+  return (
+    <div class="b-crawlerdialog">
+      <dialog ref={dialogRef}
+        class="floating-dialog [&:not([open])]:hidden">
+        <div class="dialog-header">{props.title || 'File Dialog'}</div>
+
+        <input class="-direntry pointer-events-none mb-4 select-none outline outline-2 outline-offset-2"
+          ref={direntryRef}
+          value={folder()}
+          tabindex="-1" readonly
+          onFocus={() => pathentryRef?.focus()}
+          inert
+          type="text"
+          onSelect={Util.prevent_event} />
+
+        <div data-subfocus="*" class="-entry-grid grid"
+          ref={entrygridRef}
+          onKeyDown={entrygrid_keydown}>
+          <For each={filtered_entries()}>
+            {(entry: any) => (
+              <button
+                onFocus={ev => entry_event (ev, entry)}
+                onClick={ev => entry_event (ev, entry)}
+                onDblClick={ev => entry_event (ev, entry)}>
+                <b-icon ic={entry.type == Ase.ResourceType.FOLDER ? "md-folder" : "fa-file_o"}></b-icon>
+                {entry.label}
+              </button>
+            )}
+          </For>
+          <div class="-spin-wrapper hflex"
+            style="height: 100%; width: 100%; text-align: center; align-items: center; justify-content: center">
+            <div style="text-align: center" > ⥁ </div>
+          </div>
+        </div>
+
+        <input class="-pathentry mt-4 outline outline-2 outline-offset-2"
+          ref={pathentryRef}
+          value=""
+          type="text"
+          onKeyDown={pathentry_keydown}
+          onSelect={Util.prevent_event} />
+
+        <div class="dialog-footer">
+          <button class="button-xl" onClick={() => select_entry (null)} onKeyDown={Kbd.keydown_move_focus_up}
+            disabled={update_inflight() ? true : undefined}>
+            {props.button || 'Select'}
+          </button>
+          <button class="button-xl" onClick={close_click} onKeyDown={Kbd.keydown_move_focus_up}>
+            Close
+          </button>
+        </div>
+      </dialog>
+    </div>
+  );
 }
-customElements.define ('b-crawlerdialog', BCrawlerDialog);
