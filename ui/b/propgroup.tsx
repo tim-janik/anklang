@@ -11,6 +11,7 @@ import { For } from 'solid-js';
 import * as Util from '../util.js';
 import { Toggle } from './toggle.tsx';
 import { TextInput } from './textinput.tsx';
+import { Knob } from './knob.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -85,7 +86,7 @@ function PropHtml (prop, readonly)
         value={prop.value_.val} prop={prop}
         on:valuechange={e => prop.apply_ (e.target.value)}></b-choiceinput>;
     case 'K':
-      return <b-knob disabled={prop.readonly || readonly} prop={prop}></b-knob>;
+      return <Knob disabled={prop.readonly || readonly} prop={prop} />;
     case 'T':
       return <TextInput disabled={prop.readonly || readonly}
         prop={prop}
