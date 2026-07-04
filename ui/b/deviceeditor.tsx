@@ -1,20 +1,20 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-// @ts-check
 
-/** @class BDeviceEditor
+/** @class DeviceEditor
  * @description
-* Editor for audio signal devices.
+ * Editor for audio signal devices.
  *
- * ## Props:
+ * ### Props:
  * *device*
  * : Audio signal processing device.
  */
 
-import { LitComponent, html, render, noChange, JsExtract, docs, ref } from '../little.js';
+import { createEffect, createSignal, For, onCleanup } from 'solid-js';
+import * as Util from "../util.js";
 
 // == STYLE ==
 Extra_css`
-b-deviceeditor {
+b-deviceeditor, .b-deviceeditor {
   display: flex;
   flex-basis: auto;
   flex-flow: row nowrap;
@@ -36,29 +36,8 @@ b-deviceeditor {
   }
 }`;
 
-// == HTML ==
-const GROUP_HTML = (t, group) => html`
-    <b-propgroup style=${t.group_style (group)} name=${group.name} .props=${group.props} ></b-propgroup>
-`;
-const HTML = (t, d) => html`
-<span class="b-deviceeditor-sw" @contextmenu=${e => t.deviceeditorcmenu.popup (e, null)}
-  > ${ t.device_info.name } </span>
-<div class="b-deviceeditor-areas grid" >
-  ${ t.gprops.map (group => GROUP_HTML (t, group)) }
-</div>
-<b-contextmenu ${ref (h => t.deviceeditorcmenu = h)} id="g-deviceeditorcmenu" .activate=${t.activate.bind (t)} .isactive=${t.isactive.bind (t)} >
-  <b-menutitle> Device </b-menutitle>
-  <button ic="fa-plus_circle"      uri="add-device" >      Add Device		</button>
-  <button ic="fa-times_circle"     uri="delete-device" >   Delete Device		</button>
-  <button ic="md-television_guide"   uri="toggle-gui" >      Toggle GUI		</button>
-</b-contextmenu>
-`;
-
-// == SCRIPT ==
-import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
-import * as Util from "../util.js";
-
-function guess_layout_rows (number_of_properties) {
+function guess_layout_rows (number_of_properties)
+{
   let n_lrows = 1;
   if (number_of_properties > 6)
     n_lrows = 2;
@@ -71,7 +50,8 @@ function guess_layout_rows (number_of_properties) {
   return n_lrows;
 }
 
-function assign_layout_rows (props, n_lrows) {
+function assign_layout_rows (props, n_lrows)
+{
   const run = Math.ceil (props.length / n_lrows);
   for (let i = 0; i < props.length; i++)
     {
@@ -80,7 +60,8 @@ function assign_layout_rows (props, n_lrows) {
     }
 }
 
-function prop_visible (prop) {
+function prop_visible (prop)
+{
   const hints = ':' + prop.hints_ + ':';
   if (hints.search (/:G:/) < 0)
     return false;
@@ -88,14 +69,13 @@ function prop_visible (prop) {
 }
 
 /** Determine layout of properties.
- * @this{BDeviceEditor}
  * TODO: handle combinations of 1-unit properties, mixed in with other that may be 2, 3, or 4 units in width.
  */
-async function property_groups (asyncpropertylist)
+async function property_groups (asyncpropertylist, add_destroy_callback)
 {
   asyncpropertylist = await asyncpropertylist;
   for (let i = 0; i < asyncpropertylist.length; i++)
-    asyncpropertylist[i] = Util.extend_property (asyncpropertylist[i], disconnectcallback => Util.add_destroy_callback.call (this, disconnectcallback));
+    asyncpropertylist[i] = Util.extend_property (asyncpropertylist[i], disconnectcallback => add_destroy_callback (disconnectcallback));
   for (let i = 0; i < asyncpropertylist.length; i++)
     asyncpropertylist[i] = await asyncpropertylist[i];
   // split properties into group lists
@@ -103,13 +83,13 @@ async function property_groups (asyncpropertylist)
   for (const p of asyncpropertylist)
     {
       if (!prop_visible (p))
-	continue;
+        continue;
       const groupname = p.group_;
       if (!grouplists[groupname])
-	{
-	  groupnames.push (groupname);
-	  grouplists[groupname] = [];
-	}
+        {
+          groupnames.push (groupname);
+          grouplists[groupname] = [];
+        }
       grouplists[groupname].push (p);
     }
   // split big groups
@@ -119,14 +99,14 @@ async function property_groups (asyncpropertylist)
       const PGCOUNT = Math.trunc (grouplists[group].length / GMAX);
       const pages = [], pagenames = [];
       for (let i = 0; i < PGCOUNT; i++)
-	pages.push (grouplists[group].splice (0, GMAX));
+        pages.push (grouplists[group].splice (0, GMAX));
       if (grouplists[group].length)
-	pages.push (grouplists[group]);
+        pages.push (grouplists[group]);
       delete grouplists[group];
       for (let i = 0; i < pages.length; i++) {
-	const pname = (group + ' Page ' + (1 + i)).trim();
-	pagenames.push (pname);
-	grouplists[pname] = pages[i];
+        const pname = (group + ' Page ' + (1 + i)).trim();
+        pagenames.push (pname);
+        grouplists[pname] = pages[i];
       }
       groupnames.splice (groupnames.indexOf (group), 1, ...pagenames);
     }
@@ -137,11 +117,11 @@ async function property_groups (asyncpropertylist)
       const props = grouplists[name];
       const n_lrows = guess_layout_rows (props.length);
       const group = {
-	name, props, n_lrows,
-	col: undefined,
-	cspan: undefined,
-	row: undefined,
-	rspan: undefined,
+        name, props, n_lrows,
+        col: undefined,
+        cspan: undefined,
+        row: undefined,
+        rspan: undefined,
       };
       grouplist.push (group);
     }
@@ -174,39 +154,39 @@ async function property_groups (asyncpropertylist)
     {
       let rspan = rows_from_lrows (group.n_lrows);
       if (r > 1 && r + rspan > maxrows)
-	{
-	  c += 1;
-	  r = 0;
-	}
+        {
+          c += 1;
+          r = 0;
+        }
       group.col = c;
       group.row = r;
       group.rspan = rspan;
       r += rspan;
       if (!cols[c])
-	cols[c] = [];
+        cols[c] = [];
       cols[c].push (group);
     }
   // distribute excess column space
-  for (const c in cols)  // forall columns
+  for (const c in cols) // forall columns
     {
       const cgroups = cols[c];
       let r = 0;
       for (const g of cgroups) // forall groups in column
-	r += g.rspan;
+        r += g.rspan;
       const extra = Math.trunc ((maxrows - r) / cgroups.length);
       // distribute extra space evenly
       cgroups[0].rspan += extra;
       r = cgroups[0].rspan;
       for (let i = 1; i < cgroups.length; i++)
-	{
-	  const prev = cgroups[i - 1];
-	  cgroups[i].row = prev.row + prev.rspan;
-	  cgroups[i].rspan += extra;
-	  r += cgroups[i].rspan;
-	}
+        {
+          const prev = cgroups[i - 1];
+          cgroups[i].row = prev.row + prev.rspan;
+          cgroups[i].rspan += extra;
+          r += cgroups[i].rspan;
+        }
       // close gap of last row to bottom
       if (r < maxrows)
-	cgroups[cgroups.length - 1].rspan += maxrows - r;
+        cgroups[cgroups.length - 1].rspan += maxrows - r;
     }
   // rspan expansion might have made room for another lrow
   for (const group of grouplist)
@@ -217,97 +197,125 @@ async function property_groups (asyncpropertylist)
   return Object.freeze (grouplist); // list of groups: [ { name, props: [ Prop... ] }... ]
 }
 
-class BDeviceEditor extends LitComponent {
-  createRenderRoot() { return this; }
-  render()
-  {
-    const d = {};
-    return HTML (this, d);
-  }
-  static properties = {
-    gprops: { state: true }, // private property
-    device: { type: Ase.Device, state: true }, // private property
-  };
-  constructor()
-  {
-    super();
-    this.device = null;
-    this.gprops = [];
-    this.device_info = "";
-  }
-  updated (changed_props)
-  {
-    if (changed_props.has ('device')) {
-      this.gprops = [];
-      this.device_info = "";
+// == COMPONENT ==
+export function DeviceEditor (props)
+{
+  const [gprops, set_gprops] = createSignal ([]);
+  const [device_info, set_device_info] = createSignal ({ name: "" });
+  let destroy_callbacks = [];
+  let deviceeditorcmenu_ref;
+  let gen = 0;
+
+  createEffect (() => {
+    const device = props.device;
+    const my_gen = ++gen;
+    // cleanup old destroy callbacks
+    if (destroy_callbacks.length) {
+      while (destroy_callbacks.length)
+        destroy_callbacks.pop().call();
+      destroy_callbacks = [];
     }
-    if (changed_props.has ('device') && this.device) {
+    set_gprops ([]);
+    set_device_info ({ name: "" });
+
+    if (device) {
       const async_fetch_device = async () => {
-	const device = this.device;
-	let device_info = device.device_info(); // TODO: watch "notify:device_info"
-	let gprops = device.access_properties();
-	gprops = await gprops;
-	device_info = Object.freeze (await device_info);
-	if (device === this.device)
-	  gprops = await property_groups.call (this, gprops);
-	if (device === this.device) {
-	  this.gprops = gprops;
-	  this.device_info = device_info;
-	}
+        const device_ = device;
+        const new_destroy_callbacks = [];
+        const info_promise = device_.device_info(); // TODO: watch "notify:device_info"
+        let gprops = await device_.access_properties();
+        const info = Object.freeze (await info_promise);
+        if (my_gen !== gen || device_ !== props.device)
+          return;
+        gprops = await property_groups (gprops, cb => new_destroy_callbacks.push (cb));
+        if (my_gen !== gen || device_ !== props.device) {
+          while (new_destroy_callbacks.length)
+            new_destroy_callbacks.pop().call();
+          return;
+        }
+        destroy_callbacks = new_destroy_callbacks;
+        set_device_info (info);
+        set_gprops (gprops);
       };
       async_fetch_device();
     }
-  }
-  unmounted()
-  {
-    Util.call_destroy_callbacks.call (this);
-    this.gprops = [];
-    this.device_info = "";
-  }
-  group_style (group)
+  });
+
+  onCleanup (() => {
+    gen++; // invalidate pending async
+    if (destroy_callbacks.length) {
+      while (destroy_callbacks.length)
+        destroy_callbacks.pop().call();
+      destroy_callbacks = [];
+    }
+  });
+
+  function group_style (group)
   {
     let s = '';
     if (group.row !== undefined)
       {
-	s += 'grid-row:' + (1 + group.row);
-	if (group.rspan)
-	  s += '/span ' + group.rspan;
-	s += ';';
+        s += 'grid-row:' + (1 + group.row);
+        if (group.rspan)
+          s += '/span ' + group.rspan;
+        s += ';';
       }
     if (group.col !== undefined)
       {
-	s += 'grid-column:' + (1 + group.col);
-	if (group.cspan)
-	  s += '/span ' + group.cspan;
-	s += ';';
+        s += 'grid-column:' + (1 + group.col);
+        if (group.cspan)
+          s += '/span ' + group.cspan;
+        s += ';';
       }
     return s;
   }
-  activate (uri)
+
+  function activate (uri)
   {
     switch (uri) {
       case 'delete-device':
-	this.device.remove_self();
-	break;
+        props.device?.remove_self();
+        break;
       case 'toggle-gui':
-	// TODO: this.device.gui_toggle() — needs PluginImpl::gui_toggle() impl
-	break;
+        // TODO: this.device.gui_toggle() — needs PluginImpl::gui_toggle() impl
+        break;
     }
   }
-  async isactive (uri, component)
+
+  async function isactive (uri, component)
   {
-    if (!this.device)
+    if (!props.device)
       return false;
     switch (uri) {
       case 'add-device':
-	return false;
+        return false;
       case 'delete-device':
-	return true;
+        return true;
       case 'toggle-gui':
-	// TODO: return await this.device.gui_supported() — needs PluginImpl::gui_supported() impl
-	return false;
+        // TODO: return await this.device.gui_supported() — needs PluginImpl::gui_supported() impl
+        return false;
     }
     return false;
   }
+
+  return (
+    <div class="b-deviceeditor">
+      <span class="b-deviceeditor-sw" onContextMenu={e => deviceeditorcmenu_ref?.popup (e)}>
+        {device_info().name}
+      </span>
+      <div class="b-deviceeditor-areas grid">
+        <For each={gprops()}>
+          {(group) => (
+            <b-propgroup style={group_style (group)} name={group.name} props={group.props}></b-propgroup>
+          )}
+        </For>
+      </div>
+      <b-contextmenu ref={h => deviceeditorcmenu_ref = h} id="g-deviceeditorcmenu" activate={activate} isactive={isactive}>
+        <b-menutitle> Device </b-menutitle>
+        <button ic="fa-plus_circle" uri="add-device">Add Device</button>
+        <button ic="fa-times_circle" uri="delete-device">Delete Device</button>
+        <button ic="md-television_guide" uri="toggle-gui">Toggle GUI</button>
+      </b-contextmenu>
+    </div>
+  );
 }
-customElements.define ('b-deviceeditor', BDeviceEditor);
