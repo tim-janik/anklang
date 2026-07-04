@@ -5,17 +5,13 @@
  * @description
  * The <b-menutitle> element can be used as menu title inside a
  * [BContextMenu](contextmenu_8js.html#BContextMenu).
- * ### Slots:
- * *default*
- * : All contents passed into this slot will be rendered as contents of this element.
+ * ### Children:
+ * : All children will be rendered as contents of this element.
  */
-
-import { LitComponent, html, JsExtract, docs } from '../little.js';
-import * as Util from "../util.js";
 
 // == STYLE ==
 Extra_css`
-b-menutitle {
+b-menutitle, .b-menutitle {
   display: inline-flex; flex: 0 0 auto; flex-flow: row nowrap;
   align-items: baseline;      /* distribute extra cross-axis space */
   margin: 0; padding: 5px 1em; text-align: left;
@@ -30,15 +26,15 @@ b-menutitle {
   }
 }`;
 
-// == HTML ==
-const HTML = html`
-<div class="b-menutitle">
-  <span class="menulabel"><slot></slot></span>
-</div>
-`;
-
-// == SCRIPT ==
-class BMenuTitle extends LitComponent {
-  render = () => HTML;
+// == COMPONENT ==
+export function MenuTitle (props: {
+  style?: string;
+  children?: any;
+})
+{
+  return (
+    <div class="b-menutitle" style={props.style}>
+      <span class="menulabel">{props.children}</span>
+    </div>
+  );
 }
-customElements.define ('b-menutitle', BMenuTitle);

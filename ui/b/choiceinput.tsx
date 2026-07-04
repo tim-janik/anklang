@@ -28,6 +28,7 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, splitProps } from 'solid-js';
 import * as Util from '../util.js';
 import { get_uri } from '../dom.js';
+import { MenuTitle } from './menutitle.tsx';
 
 // <STYLE/>
 Extra_css`
@@ -295,9 +296,9 @@ export function ChoiceInput (props: {
         <b-contextmenu class="b-choiceinput-contextmenu" ref={cmenu_el}
           on:activate={e => activate (get_uri (e.detail))}
           on:close={e => { set_need_cmenu (false); cmenu_el = undefined; }}>
-          <b-menutitle style={!local.title ? 'display:none' : ''}>
+          <MenuTitle style={!local.title ? 'display:none' : ''}>
             {local.title}
-          </b-menutitle>
+          </MenuTitle>
           <For each={mchoices()}>
             {(c: any) => (
               <button class="m-0 grid cursor-pointer select-none auto-rows-auto items-stretch border border-solid text-left"
