@@ -107,7 +107,8 @@ b-contextmenu :is(button, .asbutton, summary) {
     kbd { color: var(--b-menu-disabled-fill); }
   }
 }
-b-contextmenu b-menurow button {
+b-contextmenu b-menurow button,
+b-contextmenu .b-menurow button {
   @apply px-1;
   min-width: 5rem; /* this aligns blocks of 2-digit numbers */
   > b-icon:first-child { @apply m-0 mb-1; }
