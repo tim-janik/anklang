@@ -1,29 +1,32 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/** @class BToggle
+/** @class Toggle
  * @description
- * The <b-toggle> element implements a simple toggle button for boolean audio processor
- * input properties. Its `value` can be accessed as a property and `valuechange` is emitted
- * on changes.
+ * The Toggle component is a simple toggle button for boolean audio processor input
+ * properties.
  * ### Props:
  * *value*
  * : Boolean, the toggle value to be displayed, the values are `true` or `false`.
  * *label*
- * : String, label to be displayed inside the toggle button.
+ * : String, label to be displayed inside the toggle button. Defaults to an empty
+ * string (the control renders as a bare nub, via the `b-toggle-empty` class).
+ * *disabled*
+ * : Boolean, disables interaction and visually dims the control.
+ * *onValueChange*
+ * : `onValueChange?: (value: boolean) => void` — callback invoked with the new
+ * boolean value when the user toggles the control.
  * ### Events:
  * *valuechange*
- * : Event emitted whenever the value changes, which is provided as `event.target.value`.
+ * : Event emitted whenever the value changes, which is provided as
+ * `event.target.value`.
  */
 
-import { LitComponent, html, ref, JsExtract, docs } from '../little.js';
-import * as Util from "../util.js";
-import * as Kbd from '../kbd.js';
-import * as ContextMenu from './contextmenu.js';
+import { createEffect, createSignal, splitProps } from 'solid-js';
 
 // == STYLE ==
 Extra_css`
-b-toggle {
+b-toggle, .b-toggle {
   display: flex; position: relative;
   margin: 0; padding: 0; text-align: center;
   user-select: none;
@@ -48,77 +51,79 @@ b-toggle {
   }
 }`;
 
-// == HTML ==
-const HTML = (t, d) => html`
-<div ${ref (h => t.button_ = h)} class="b-toggle-label ${!t.label ? 'b-toggle-empty' : ''}"
-     @pointerdown=${t.pointerdown} @pointerup=${t.pointerup} @dblclick=${t.dblclick} >
-  ${t.label}
-</div>
-`;
+// == COMPONENT ==
+export function Toggle (props: {
+  value?: boolean;
+  label?: string;
+  disabled?: boolean;
+  class?: string;
+  onValueChange?: (value: boolean) => void;
+  'on:valuechange'?: (e: Event) => void;
+  [key: string]: any;
+})
+{
+  let root_el: HTMLDivElement | undefined;
+  let label_el: HTMLDivElement | undefined;
+  let pressed = -1;
 
-// == SCRIPT ==
-const BOOL_ATTRIBUTE = { type: Boolean, reflect: true }; // sync attribute with property
-const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
-const PRIVATE_PROPERTY = { state: true };
+  const [local, others] = splitProps (props, ['value', 'label', 'disabled', 'class', 'onValueChange']);
+  const merged_class = () => local.class ? 'b-toggle ' + local.class : 'b-toggle';
 
-class BToggle extends LitComponent {
-  createRenderRoot() { return this; }
-  render() { return HTML (this, {}); }
-  static properties = {
-    value: BOOL_ATTRIBUTE,
-    label: STRING_ATTRIBUTE,
-    buttondown_: PRIVATE_PROPERTY,
-  };
-  constructor()
-  {
-    super();
-    this.value = false;
-    this.buttondown_ = -1;
-    this.label = 'Toggle';
-    this.button_ = null;
-  }
-  connectedCallback() {
-    super.connectedCallback();
-    this.setAttribute ('data-tip', "**CLICK** Toggle Value");
-  }
-  updated (changed_props)
-  {
-    if (changed_props.has ('value')) {
-      this.button_.classList.remove (this.value ? 'b-toggle-off' : 'b-toggle-on');
-      this.button_.classList.add (this.value ? 'b-toggle-on' : 'b-toggle-off');
+  // Internal state mirrors the external `value` prop and is flipped optimistically
+  // on user interaction, so two rapid clicks toggle twice instead of computing the
+  // next value from a prop that lags a full IPC round-trip (ChoiceInput precedent).
+  const [value_, set_value_] = createSignal (!!local.value);
+  createEffect (() => set_value_ (!!local.value));
+
+  const handle_pointerdown = (event: PointerEvent) => {
+    if (local.disabled) return;
+    if (pressed < 0 && event.buttons === 1) {
+      pressed = event.buttons;
+      label_el?.classList.add ('b-toggle-press');
+      event.preventDefault();
+      event.stopPropagation();
     }
-  }
-  dblclick (event)
-  {
+  };
+
+  const handle_pointerup = (event: PointerEvent) => {
+    if (local.disabled) return;
+    if (pressed >= 0) {
+      pressed = -1;
+      label_el?.classList.remove ('b-toggle-press');
+      event.preventDefault();
+      event.stopPropagation();
+      // pointerup fires on this element only when released over it (no pointer
+      // capture is used), so the old `:hover` guard was redundant and, worse,
+      // never matched under headless/scripted input — hence dropped here.
+      const new_val = !value_();
+      set_value_ (new_val);
+      if (root_el) {
+        (root_el as any).value = new_val;
+        root_el.dispatchEvent (new Event ('valuechange', { composed: true }));
+      }
+      local.onValueChange?.(new_val);
+    }
+  };
+
+  const handle_dblclick = (event: MouseEvent) => {
     // prevent double-clicks from propagating, since we always
     // handled it as single click already
     event.preventDefault();
     event.stopPropagation();
-  }
-  pointerdown (event)
-  {
-    // trigger only on primary button press
-    if (this.buttondown_ < 0 && event.buttons == 1)
-      {
-	this.buttondown_ = event.buttons;
-	this.button_.classList.add ('b-toggle-press');
-	event.preventDefault();
-	event.stopPropagation();
-      }
-  }
-  pointerup (event)
-  {
-    if (this.buttondown_ >= 0)
-      {
-	this.buttondown_ = -1;
-	this.button_.classList.remove ('b-toggle-press');
-	event.preventDefault();
-	event.stopPropagation();
-	if (this.button_.matches (':hover')) {
-	  this.value = !this.value;
-	  this.dispatchEvent (new Event ('valuechange', { composed: true }));
-	}
-      }
-  }
+  };
+
+  return (
+    <div class={merged_class()} ref={el => { root_el = el; }} {...others}
+      onPointerDown={handle_pointerdown}
+      onPointerUp={handle_pointerup}
+      onDblClick={handle_dblclick}
+      data-tip="**CLICK** Toggle Value"
+      aria-disabled={local.disabled || undefined}
+    >
+      <div class="b-toggle-label" ref={label_el}
+        classList={{ 'b-toggle-on': value_(), 'b-toggle-off': !value_(), 'b-toggle-empty': !local.label }}>
+        {local.label ?? ''}
+      </div>
+    </div>
+  );
 }
-customElements.define ('b-toggle', BToggle);

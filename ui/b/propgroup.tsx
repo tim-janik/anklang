@@ -9,6 +9,7 @@
 
 import { For } from 'solid-js';
 import * as Util from '../util.js';
+import { Toggle } from './toggle.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -74,9 +75,9 @@ function PropHtml (prop, readonly)
 {
   switch (prop_case (prop)) {
     case 'B':
-      return <b-toggle disabled={prop.readonly || readonly} value={prop.value_.num}
+      return <Toggle disabled={prop.readonly || readonly} value={!!prop.value_.num}
         label={''}
-        on:valuechange={e => prop.set_normalized (!!e.target.value)}></b-toggle>;
+        onValueChange={val => prop.set_normalized (!!val)} />;
     case 'C':
       return <b-choiceinput small="1" indexed="1" disabled={readonly}
         label={prop.label_} title={prop.title_}
