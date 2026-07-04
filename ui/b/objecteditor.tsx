@@ -18,6 +18,7 @@
 
 import { createSignal, createEffect, onCleanup, For } from 'solid-js';
 import * as Util from '../util.js';
+import { SwitchInput } from './switchinput.tsx';
 
 // <STYLE/>
 Extra_css`
@@ -147,7 +148,7 @@ export function ObjectEditor (props)
       );
     } else if (prop.hints_.search (/:bool:/) >= 0) {
       return (
-        <b-switchinput
+        <SwitchInput
           class={"b-objecteditor--" + prop.ident_}
           value={prop.value_.val}
           on:valuechange={e => prop.apply_ (e.target.value)}

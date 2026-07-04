@@ -1,13 +1,10 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
-import * as Util from '../util.js';
-
-/** @class BSwitchInput
+/** @class SwitchInput
  * @description
- * The <b-switchinput> element is a field-editor switch to change between on and off.
- * ### Properties:
+ * The SwitchInput component is a field-editor switch to change between on and off.
+ * ### Props:
  * *value*
  * : Contains a boolean indicating whether the switch is on or off.
  * *readonly*
@@ -17,9 +14,12 @@ import * as Util from '../util.js';
  * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */
 
+import { createEffect, splitProps } from 'solid-js';
+import * as Util from '../util.js';
+
 // == STYLE ==
 Extra_css`
-b-switchinput label {
+b-switchinput label, .b-switchinput label {
   position: relative; display: inline-block; width: 2.6em; height: 1.4em;
   input {
     opacity: 0; width: 0; height: 0;
@@ -43,73 +43,85 @@ b-switchinput label {
   }
 }`;
 
-// <HTML/>
-const HTML = t =>
-html`
-<label @keydown=${t.keydown} >
-  <input ${ref (h => t.checkboxtype = h)} type="checkbox" ?disabled=${t.readonly}
-         .checked=${!!t.value} @change=${e => t.emit_input_value (e.target.checked)} >
-  <span class="b-switchinput-trough"><span class="b-switchinput-knob"></span></span>
-</label>
-`; // use .checked - https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox#checked
+// == COMPONENT ==
+/**
+ * A toggle switch input for boolean values.
+ */
+export function SwitchInput (props: {
+  value?: boolean;
+  readonly?: boolean;
+  class?: string;
+  'on:valuechange'?: (e: Event) => void;
+})
+{
+  let label_ref: HTMLLabelElement | undefined;
+  let checkbox_ref: HTMLInputElement | undefined;
 
-// <SCRIPT/>
-const BOOL_ATTRIBUTE = { type: Boolean, reflect: true };  // sync attribute with property
-class BSwitchInput extends LitComponent {
-  createRenderRoot() { return this; }
-  render() { return HTML (this); }
-  input_element = null;
-  static properties = {
-    value:	BOOL_ATTRIBUTE,
-    readonly:	{ type: Boolean, },
-  };
-  constructor() {
-    super();
-    this.checkboxtype = null;
-    this.value = false;
-    this.readonly = false;
-  }
-  updated (changed_props)
-  {
-    if (changed_props.has ('value')) {
-      // enforce constrain() on *outside* changes
-      const boolvalue = this.constrain (this.value);
-      if (this.value != boolvalue)
-	this.emit_input_value (boolvalue);
-    }
-  }
-  constrain (v)
+  const [local, others] = splitProps (props, ['value', 'readonly', 'class']);
+  const merged_class = local.class ? 'b-switchinput ' + local.class : 'b-switchinput';
+
+  // Single source of truth: the constrained boolean value, used both for the
+  // checkbox binding and for normalizing externally supplied (e.g. string) values.
+  const value = () => constrain (local.value);
+
+  function constrain (v: any): boolean
   {
     if (typeof (v) === "string") {
       if (v.length < 1 || v[0] == 'f' || v[0] == 'F' || v[0] == 'n' || v[0] == 'N')
-	return false;
+        return false;
       return true;
     }
     return !!v;
   }
-  emit_input_value (inputvalue)           // emit 'input' with constrained value
+
+  function emit_input_value (inputvalue: any)
   {
-    const boolvalue = this.constrain (inputvalue);
-    if (this.value != boolvalue) {
-      this.value = boolvalue; // becomes Event.target.value
-      this.dispatchEvent (new Event ('valuechange', { composed: true }));
+    if (!label_ref) return;
+    const boolvalue = constrain (inputvalue);
+    if (local.value !== boolvalue) {
+      (label_ref as any).value = boolvalue;
+      label_ref.dispatchEvent (new Event ('valuechange', { composed: true, bubbles: true }));
     }
   }
-  keydown (event)
+
+  function keydown (event: KeyboardEvent)
   {
     // allow selection changes with LEFT/RIGHT/UP/DOWN
-    if (event.keyCode == Util.KeyCode.LEFT || event.keyCode == Util.KeyCode.UP)
-      {
-	event.preventDefault();
-	event.stopPropagation();
-	this.checkboxtype.checked == false || this.checkboxtype.click();
-      }
-    else if (event.keyCode == Util.KeyCode.RIGHT || event.keyCode == Util.KeyCode.DOWN)
-      {
-	event.preventDefault();
-	event.stopPropagation();
-	this.checkboxtype.checked == true || this.checkboxtype.click();
-      }
+    if (local.readonly) return;
+    if (event.keyCode == Util.KeyCode.LEFT || event.keyCode == Util.KeyCode.UP) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (checkbox_ref?.checked)
+        checkbox_ref.click();
+    }
+    else if (event.keyCode == Util.KeyCode.RIGHT || event.keyCode == Util.KeyCode.DOWN) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!checkbox_ref?.checked)
+        checkbox_ref.click();
+    }
   }
+
+  const handle_change = (e: Event) => {
+    const checked = (e.target as HTMLInputElement).checked;
+    emit_input_value (checked);
+  };
+
+  // Constrain externally supplied values and notify the parent of the normalized boolean
+  createEffect (() => {
+    const raw = local.value;
+    const v = value ();
+    if (raw !== v)
+      emit_input_value (v);
+  });
+
+  // Note checked - https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox#checked
+  return (
+    <label class={merged_class} ref={label_ref} onKeyDown={keydown} {...others}>
+      <input ref={checkbox_ref} type="checkbox" disabled={local.readonly}
+             checked={value()}
+             onChange={handle_change} />
+      <span class="b-switchinput-trough"><span class="b-switchinput-knob"></span></span>
+    </label>
+  );
 }
-customElements.define ('b-switchinput', BSwitchInput);
