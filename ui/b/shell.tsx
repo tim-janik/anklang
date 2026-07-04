@@ -29,6 +29,7 @@ import { PreferencesDialog } from './preferencesdialog.jsx';
 import { DevicePanel } from './devicepanel.jsx';
 import { TrackList } from './tracklist.jsx';
 import { CrawlerDialog } from './crawlerdialog.tsx';
+import { PianoRoll } from './pianoroll.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -158,8 +159,8 @@ export function ShellTemplate (props: any)
       </Show>
 
       {/* piano roll */}
-      <b-piano-roll class="-row4 -col2" style="overflow: hidden; height:50vh" clip={r.piano_roll_source}
-		    ref={e => t.piano_roll_ = e} hidden={r.panel2 !== 'p'}></b-piano-roll>
+      <PianoRoll class="-row4 -col2" style="overflow: hidden; height:50vh" clip={r.piano_roll_source}
+		 ref={e => t.piano_roll_ = e} hidden={r.panel2 !== 'p'} />
 
       {/* browser */}
       <div class="b-shell-sidebar vflex -row28 -col1">
