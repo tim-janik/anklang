@@ -1,11 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-// @ts-check
 
-import { LitComponent, html, JsExtract, docs } from '../little.js';
-import * as Util from "../util.js";
-import * as Dom from "../dom.js";
-
-/** @class BIcon
+/** @class Icon
  * @description
  * The <b-icon> element displays icons from various icon fonts.
  * In order to style the color of icon font symbols, simply apply the `color` CSS property
@@ -30,10 +25,12 @@ import * as Dom from "../dom.js";
  * : Flip the icon vertically.
  */
 
+import { splitProps } from 'solid-js';
+
 // == STYLE ==
 Extra_css`
-b-icon.nf,
-b-icon {
+b-icon, .b-icon.nf,
+.b-icon {
   display: inline-flex;
   place-content: center center;
   flex-wrap: wrap; /* needed for align-content:center */
@@ -42,90 +39,88 @@ b-icon {
   &[hflip][vflip]	{ transform: scaleX(-1) scaleY(-1); }
 }`;
 
-// == SCRIPT ==
-const BOOL_ATTRIBUTE = { type: Boolean, reflect: true };  // sync attribute with property
-const STRING_ATTRIBUTE = { type: String, reflect: true }; // sync attribute with property
-const STRING_PROPERTY = { type: String, state: true };
+// == Component ==
+export function Icon (props: any)
+{
+  const [local, rest] = splitProps (props, ['class', 'classList']);
+  const ic_val = () => props.ic ?? '';
+  const iconclass_val = () => props.iconclass ?? '';
 
-class BIcon extends LitComponent {
-  createRenderRoot()
-  {
-    // avoid using shadow-root which does not have access to icon fonts
-    return this;
-  }
-  render()
-  {
-    const { iconclasses, md_, uc_ } = this;
-    const inner_text = uc_;
-    for (let c of this.lastclass_.split (' '))
-      !!c && this.classList.remove (c);
-    this.lastclass_ = iconclasses;
-    for (let c of this.lastclass_.split (' '))
-      !!c && this.classList.add (c);
-    return inner_text;
-  }
-  static properties = {
-    iconclass: STRING_PROPERTY,
-    hflip: BOOL_ATTRIBUTE,
-    vflip: BOOL_ATTRIBUTE,
-    ic: STRING_ATTRIBUTE,
-    fw: BOOL_ATTRIBUTE,
-    lg: BOOL_ATTRIBUTE,
+  const all_classes = () => {
+    const parts = ['b-icon', ...iconclasses (ic_val (), iconclass_val ()).split (' ').filter (Boolean)];
+    if (local.class) parts.push (local.class);
+    if (local.classList) {
+      for (const [k, v] of Object.entries (local.classList)) {
+        if (v) parts.push (k);
+      }
+    }
+    return parts.join (' ');
   };
-  constructor()
-  {
-    super();
-    this.ic = "";
-    this.fw = false;
-    this.lg = false;
-    this.hflip = false;
-    this.vflip = false;
-    this.iconclass = "";
-    this.lastclass_ = '';
-  }
-  connectedCallback()
-  {
-    super.connectedCallback();
-    this.role = "icon";
-    this.setAttribute ("aria-hidden", "true");
-  }
-  get iconclasses()
-  {
-    let classes = (this.iconclass || '').split (/ +/);
-    const nf_ = this.nf_;
-    if (nf_) {
-      classes.push ("nf");
-      classes.push (nf_);
-    } else if (this.bc_)
-      classes.push ("AnklangIcons-" + this.bc_);
+
+  const inner = () => inner_text (ic_val ());
+
+  return (
+    <span class={all_classes ()} role={"icon" as any} aria-hidden="true" {...rest}>
+      {inner ()}
+    </span>
+  );
+}
+
+/** Create a <span class="b-icon"> element for imperative DOM use. */
+export function icon_element (ic: string): HTMLSpanElement
+{
+  const el = document.createElement ('span');
+  el.className = 'b-icon ' + iconclasses (ic, '');
+  el.setAttribute ('role', 'icon');
+  el.setAttribute ('aria-hidden', 'true');
+  el.setAttribute ('ic', ic);
+  const text = inner_text (ic);
+  if (text) el.textContent = text;
+  return el;
+}
+
+// == Helpers ==
+const PREFIXES = [
+  "cod-", "dev-", "custom-", "extra-", "fa-", "fae-", "iec-",
+  "indent-", "indentation-", "linux-", "md-", "oct-", "pl-",
+  "ple-", "pom-", "seti-", "weather-"
+];
+
+function nf (ic: string): string
+{
+  const ic_ = ic.startsWith ("nf-") ? ic.substr (3) : ic;
+  if (ic_.startsWith ("mi-"))
+    return "nf-md-" + ic_.substr (3);
+  for (const prefix of PREFIXES)
+    if (ic_.startsWith (prefix))
+      return "nf-" + ic_;
+  return '';
+}
+
+function iconclasses (ic: string, iconclass: string | undefined): string
+{
+  let classes = (iconclass || '').split (/ +/);
+  const nf_ = nf (ic);
+  if (nf_) {
+    classes.push ("nf");
+    classes.push (nf_);
+  } else {
+    const bc_ = ic.startsWith ("bc-") ? ic.substr (3) : '';
+    if (bc_)
+      classes.push ("AnklangIcons-" + bc_);
     else
       classes.push ("uc");
-    return classes.join (" ");
   }
-  get bc_() { return this.ic.startsWith ("bc-") ? this.ic.substr (3) : ''; }
-  get nf_()
-  {
-    const ic_ = this.ic.startsWith ("nf-") ? this.ic.substr (3) : this.ic;
-    if (ic_.startsWith ("mi-"))
-      return "nf-md-" + ic_.substr (3);
-    const prefixes = [
-      "cod-", "dev-", "custom-", "extra-", "fa-", "fae-", "iec-",
-      "indent-", "indentation-", "linux-", "md-", "oct-", "pl-",
-      "ple-", "pom-", "seti-", "weather-"
-    ];
-    for (const prefix of prefixes)
-      if (ic_.startsWith (prefix))
-	return "nf-" + ic_;
-    return '';
-  }
-  get uc_()
-  {
-    const nf = this.nf_;
-    if (nf || this.bc_) return '';
-    let icon = this.ic;
-    if (icon.startsWith ("uc-"))
-      icon = icon.substr (3);
-    return icon;
-  }
+  return classes.join (" ");
 }
-customElements.define ("b-icon", BIcon);
+
+function inner_text (ic: string): string
+{
+  const nf_ = nf (ic);
+  const bc = ic.startsWith ("bc-") ? ic.substr (3) : '';
+  if (nf_ || bc) return '';
+  let icon = ic;
+  if (icon.startsWith ("uc-"))
+    icon = icon.substr (3);
+  return icon;
+}
