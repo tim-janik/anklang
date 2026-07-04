@@ -11,10 +11,11 @@
  * : Callback invoked when the Close button is activated.
  */
 
-import { createSignal, createEffect, onMount, onCleanup } from 'solid-js';
+import { createSignal, createEffect, onCleanup } from 'solid-js';
 import * as Util from "../util.js";
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import * as Dom from "../dom.js";
+import { ObjectEditor } from './objecteditor.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -27,15 +28,8 @@ dialog.b-preferencesdialog {
 export function PreferencesDialog (props)
 {
   let dialogRef;
-  let fedobjectRef;
   const [proplist, set_proplist] = createSignal ([]);
   let cancelled = false; // guard against showModal() after unmount
-
-  onMount (() => {
-    // Set augment function on b-objecteditor (function props don't flow through JSX to web components)
-    if (fedobjectRef)
-      fedobjectRef.augment = augment_prop;
-  });
 
   // Watch shown prop to open/close dialog
   createEffect (() => {
@@ -91,11 +85,10 @@ export function PreferencesDialog (props)
       bwidth="9em"
       style="z-index: 93">
       <div class="dialog-header">Anklang Preferences</div>
-      <b-objecteditor
-        class="b-preferencesdialog-fed"
-        ref={fedobjectRef}
+      <ObjectEditor
         value={proplist ()}
-      ></b-objecteditor>
+        augment={augment_prop}
+      />
       <div class="dialog-footer">
         <button class="button-xl" autofocus onClick={close_button_click}>Close</button>
       </div>

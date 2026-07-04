@@ -1,27 +1,27 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
-import * as Util from '../util.js';
-
-/** @class BObjectEditor
+/** @class ObjectEditor
  * @description
- * The <b-objecteditor> element is a field-editor for object input.
- * A copy of the input value is edited, update notifications are provided via
- * an `input` event.
- * ### Properties:
+ * The ObjectEditor component is a field-editor for object input.
+ * A copy of the input value is edited; changes are applied directly through
+ * each extended property's `apply_` callback (as triggered by `valuechange`
+ * events from the child input widgets).
+ * ### Props:
  * *value*
  * : Object with properties to be edited.
  * *readonly*
  * : Make this component non editable for the user.
- * ### Events:
- * *input*
- * : This event is emitted whenever the value changes through user input or needs to be constrained.
+ * *augment*
+ * : Function to augment each property, called with each extended property.
  */
+
+import { createSignal, createEffect, onCleanup, For } from 'solid-js';
+import * as Util from '../util.js';
 
 // <STYLE/>
 Extra_css`
-b-objecteditor {
+b-objecteditor, .b-objecteditor {
   display: grid;
   grid-gap: 0.6em 0.5em;
   .b-objecteditor-clear {
@@ -62,132 +62,159 @@ b-objecteditor {
   }
 }`;
 
-// <HTML/>
-const GROUP_HTML = (t, group) =>  html`
-<div class="hflex b-objecteditor-group" style="grid-column: 1 / span 3" >
-  <span class="b-objecteditor-label" style="flex-grow: 0;" >${group.name}</span>
-  <hr style="flex-grow: 1; margin-left: 0.5em; min-width: 5em"></hr>
-</div>
-`;
-const PROP_HTML = (t, prop, INPUT_TAG) =>  html`
-<span class="b-objecteditor-flabel" style="grid-column: 1" data-bubble=${prop.descr_ || prop.blurb_} >${prop.label_}</span>
-<div class="hflex b-objecteditor-field" style="grid-column: 2 / span 2" >
-  <span class="b-objecteditor-value" data-bubble=${prop.blurb_ || prop.descr_} style="text-align: right" >
-    ${INPUT_TAG}
-  </span>
-  <span><span class="b-objecteditor-clear" @click=${e => prop.reset()} data-bubble=${"Reset " + prop.label_} > ⊗  </span></span>
-</div>
-`;
-const NUMBER_HTML = (t, prop) => html`
-  <b-numberinput class=${'b-objecteditor--' + prop.ident_}
-    value=${prop.value_.val} @valuechange=${e => prop.apply_ (e.target.value)}
-    min=${prop.min_} max=${prop.max_}
-    ></b-numberinput>`;
-const TEXT_HTML = (t, prop) => html`
-  <b-textinput class=${'b-objecteditor--' + prop.ident_}
-    .prop=${prop} ></b-textinput>`;
-const SWITCH_HTML = (t, prop) => html`
-  <b-switchinput class=${'b-objecteditor--' + prop.ident_}
-    ?value=${prop.value_.val} @valuechange=${e => prop.apply_ (e.target.value)}
-    ></b-switchinput>
-`;
-const CHOICE_HTML = (t, prop) => html`
-  <b-choiceinput class=${'b-objecteditor--' + prop.ident_}
-    value=${prop.value_.val} @valuechange=${e => prop.apply_ (e.target.value)}
-    title=${prop.title_} .choices=${prop.value_.choices} .prop=${prop}
-    ></b-choiceinput>`;
+// <COMPONENT/>
+export function ObjectEditor (props)
+{
+  const [gprops, set_gprops] = createSignal ([]);
+  let gen = 0;
+  let disconnectors = [];
 
-// <SCRIPT/>
-class BObjectEditor extends LitComponent {
-  createRenderRoot() { return this; }
-  render()
-  {
-    const content = [];
-    for (const group of this.gprops) {
-      content.push (GROUP_HTML (this, group));
-      for (const prop of group.props) {
-	const component_html = prop.b_objecteditor_component_html_ (this, prop);
-	content.push (PROP_HTML (this, prop, component_html));
+  createEffect (() => {
+    const val = props.value;
+    const my_gen = ++gen;
+    // cleanup old disconnectors
+    if (disconnectors.length) {
+      while (disconnectors.length)
+        disconnectors.pop().call();
+      disconnectors = [];
+    }
+    if (!val || !val.length) {
+      set_gprops ([]);
+      return;
+    }
+    (async () => {
+      const { grouplist, disconnectors: new_disconnectors } = await list_fields_ (val);
+      if (my_gen !== gen) {
+        new_disconnectors.forEach (cb => cb());
+        return;
       }
+      disconnectors = new_disconnectors;
+      set_gprops (grouplist);
+    })();
+  });
+
+  onCleanup (() => {
+    gen++; // invalidate pending async
+    if (disconnectors.length) {
+      while (disconnectors.length)
+        disconnectors.pop().call();
+      disconnectors = [];
     }
-    return content;
-  }
-  static properties = {
-    readonly:	{ type: Boolean, },
-    augment:    { type: Function, },
-    value:	{ type: Array, },
-    gprops:     { state: true }, // internal
-  };
-  constructor() {
-    super();
-    this.readonly = false;
-    this.augment = null;
-    this.value = [];
-    this.gprops = [];
-  }
-  replace_disconnectors (new_disconnectors)
+  });
+
+  async function list_fields_ (proplist)
   {
-    if (this.disconnectors)
-      while (this.disconnectors.length)
-	this.disconnectors.pop().call();
-    this.disconnectors = new_disconnectors;
-  }
-  updated (changed_props)
-  {
-    if (changed_props.has ('value')) {
-      const async_fetch = async () => {
-	this.gprops = await this.list_fields_ (this.value);
-      };
-      async_fetch();
-    }
-  }
-  async list_fields_ (proplist)
-  {
-    const disconnectors = [];
+    const new_disconnectors = [];
     const groups = {};
     const pending_xprops = [];
-    for (const prop of proplist)
-      {
-	const augment = async xprop => {
-	  if (this.augment)
-	    await this.augment (xprop);
-	};
-	pending_xprops.push (Util.extend_property (prop, cb => disconnectors.push (cb), augment));
-      }
-    for (const pending_prop of pending_xprops)
-      {
-	const xprop = await pending_prop;
-	if (!groups[xprop.group_])
-	  groups[xprop.group_] = [];
-	groups[xprop.group_].push (xprop);
-      }
+
+    for (const prop of proplist) {
+      const augment = async xprop => {
+        if (props.augment)
+          await props.augment (xprop);
+      };
+      pending_xprops.push (Util.extend_property (prop, cb => new_disconnectors.push (cb), augment));
+    }
+
+    for (const pending_prop of pending_xprops) {
+      const xprop = await pending_prop;
+      if (!groups[xprop.group_])
+        groups[xprop.group_] = [];
+      groups[xprop.group_].push (xprop);
+    }
+
     const grouplist = []; // [ { name, props: [richprop, ...] }, ... ]
-    for (const k of Object.keys (groups))
-      {
-	grouplist.push ({ name: k, props: groups[k] });
-	for (const xprop of groups[k])
-	  {
-	    let component_html;	// component type
-	    if (xprop.hints_.search (/:range:/) >= 0)
-	      component_html = NUMBER_HTML;
-	    else if (xprop.hints_.search (/:bool:/) >= 0)
-	      component_html = SWITCH_HTML;
-	    else if (xprop.has_choices_)
-	      component_html = CHOICE_HTML;
-	    else
-	      component_html = TEXT_HTML;
-	    xprop.b_objecteditor_component_html_ = component_html;
-	  }
-	Object.freeze (groups[k]);
-      }
-    this.replace_disconnectors (disconnectors);
-    return grouplist;
+    for (const k of Object.keys (groups)) {
+      grouplist.push ({ name: k, props: groups[k] });
+      Object.freeze (groups[k]);
+    }
+
+    return { grouplist, disconnectors: new_disconnectors };
   }
-  disconnectedCallback()
+
+  function render_input (prop)
   {
-    super.disconnectedCallback();
-    // release property change notifiers
-    this.replace_disconnectors();
+    if (prop.hints_.search (/:range:/) >= 0) {
+      return (
+        <b-numberinput
+          class={"b-objecteditor--" + prop.ident_}
+          value={prop.value_.val}
+          on:valuechange={e => prop.apply_ (e.target.value)}
+          min={prop.min_}
+          max={prop.max_}
+          readonly={props.readonly}
+        />
+      );
+    } else if (prop.hints_.search (/:bool:/) >= 0) {
+      return (
+        <b-switchinput
+          class={"b-objecteditor--" + prop.ident_}
+          value={prop.value_.val}
+          on:valuechange={e => prop.apply_ (e.target.value)}
+          readonly={props.readonly}
+        />
+      );
+    } else if (prop.has_choices_) {
+      return (
+        <b-choiceinput
+          class={"b-objecteditor--" + prop.ident_}
+          value={prop.value_.val}
+          on:valuechange={e => prop.apply_ (e.target.value)}
+          title={prop.title_}
+          choices={prop.value_.choices}
+          prop={prop}
+          disabled={props.readonly}
+        />
+      );
+    } else {
+      return (
+        <b-textinput
+          class={"b-objecteditor--" + prop.ident_}
+          prop={prop}
+          readonly={props.readonly}
+        />
+      );
+    }
   }
+
+  return (
+    <div class="b-objecteditor">
+      <For each={gprops()}>
+        {(group) => (
+          <>
+            <div class="hflex b-objecteditor-group" style="grid-column: 1 / span 3">
+              <span class="b-objecteditor-label" style="flex-grow: 0">
+                {group.name}
+              </span>
+              <hr style="flex-grow: 1; margin-left: 0.5em; min-width: 5em" />
+            </div>
+            <For each={group.props}>
+              {(prop) => (
+                <>
+                  <span class="b-objecteditor-flabel" style="grid-column: 1"
+                        data-bubble={prop.descr_ || prop.blurb_}>
+                    {prop.label_}
+                  </span>
+                  <div class="hflex b-objecteditor-field" style="grid-column: 2 / span 2">
+                    <span class="b-objecteditor-value"
+                          data-bubble={prop.blurb_ || prop.descr_}
+                          style="text-align: right">
+                      {render_input (prop)}
+                    </span>
+                    <span>
+                      <span class="b-objecteditor-clear"
+                            onClick={e => prop.reset()}
+                            data-bubble={"Reset " + prop.label_}>
+                        {' '}⊗{'  '}
+                      </span>
+                    </span>
+                  </div>
+                </>
+              )}
+            </For>
+          </>
+        )}
+      </For>
+    </div>
+  );
 }
-customElements.define ('b-objecteditor', BObjectEditor);
