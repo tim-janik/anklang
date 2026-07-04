@@ -21,6 +21,7 @@ import * as Util from '../util.js';
 import { SwitchInput } from './switchinput.tsx';
 import { NumberInput } from './numberinput.tsx';
 import { TextInput } from './textinput.tsx';
+import { ChoiceInput } from './choiceinput.tsx';
 
 // <STYLE/>
 Extra_css`
@@ -159,7 +160,7 @@ export function ObjectEditor (props)
       );
     } else if (prop.has_choices_) {
       return (
-        <b-choiceinput
+        <ChoiceInput
           class={"b-objecteditor--" + prop.ident_}
           value={prop.value_.val}
           on:valuechange={e => prop.apply_ (e.target.value)}
