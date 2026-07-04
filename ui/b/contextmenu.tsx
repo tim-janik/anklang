@@ -62,6 +62,7 @@ import * as Util from "../util.js";
 import * as Kbd from '../kbd.js';
 import { text_content, get_uri, valid_uri, has_uri } from '../dom.js';
 import * as Dom from "../dom.js";
+import { icon_element } from './icon';
 
 // == STYLE ==
 Extra_css`
@@ -91,7 +92,7 @@ dialog.b-contextmenu::backdrop {
   background: transparent; color: var(--b-menu-foreground); border: 1px solid transparent;
   cursor: pointer; user-select: none; outline: none; width: 100%;
   kbd { flex-grow: 1; color: oklch(from var(--b-menu-foreground) calc(l - 0.15) c h); }
-  > b-icon:first-child {
+  > .b-icon:first-child {
     margin: 0 0.75rem 0 0;
     width: 2rem; height: 1rem;
     align-self: center;
@@ -100,7 +101,7 @@ dialog.b-contextmenu::backdrop {
   kbd[data-can-remap] { font-style: italic; }
   &[turn] {
     flex-direction: column; align-items: center;
-    > b-icon:first-child { margin: 0 0 var(--b-menu-spacing) 0; }
+    > .b-icon:first-child { margin: 0 0 var(--b-menu-spacing) 0; }
   }
   &[disabled], &[disabled] * {
     pointer-events: none;
@@ -112,7 +113,7 @@ dialog.b-contextmenu::backdrop {
 .b-contextmenu .b-menurow button {
   @apply px-1;
   min-width: 5rem; /* this aligns blocks of 2-digit numbers */
-  > b-icon:first-child { @apply m-0 mb-1; }
+  > .b-icon:first-child { @apply m-0 mb-1; }
 }
 .b-contextmenu button:focus {
   background-color: var(--b-menu-focus-bg); color: var(--b-menu-focus-fg); outline: none;
@@ -462,14 +463,14 @@ export function ContextMenu (props: {
     // <b-icon ic/> - preserve existing or create one
     const ic_value = btn.getAttribute ('ic');
     if (ic_value) {
-      const icon = btn.querySelector ('b-icon') || document.createElement ('b-icon');
+      const icon = btn.querySelector ('.b-icon') || icon_element (ic_value);
       if (!icon.parentElement) {
-        icon.className = "pointer-events-none";
+        icon.classList.add ('pointer-events-none');
         btn.prepend (icon);
       }
       icon.setAttribute ('ic', ic_value);
     } else
-      btn.querySelector ('b-icon')?.remove();
+      btn.querySelector ('.b-icon')?.remove();
     // aria-label
     const aria_label = text_content (btn, false).trim();
     btn.setAttribute ('aria-label', aria_label);

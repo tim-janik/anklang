@@ -8,6 +8,7 @@
 import { createSignal, onMount, onCleanup } from 'solid-js';
 import * as Util from "../util.js";
 import * as Dom from "../dom.js";
+import { Icon } from './icon';
 
 // == STYLE ==
 Extra_css`
@@ -93,16 +94,16 @@ export function StatusBar (props)
   return (
     <div class={props.class ? 'b-statusbar ' + props.class : 'b-statusbar'}>
       <span class="b-statusbar-field">
-        <b-icon ic="md-equalizer" style="font-size:110%" hflip
+        <Icon ic="md-equalizer" style="font-size:110%" hflip
 		classList={{ 'b-active': Shell.r.panel2 == 'd' }}
 		onClick={() => App.switch_panel2 ('d')} data-kbd="^"
 		aria-label="Show Device Stack"
-		data-tip="**CLICK** Show Device Stack"></b-icon>
-        <b-icon ic="md-playlist_music" style="font-size:110%"
+		data-tip="**CLICK** Show Device Stack"/>
+        <Icon ic="md-playlist_music" style="font-size:110%"
 		classList={{ 'b-active': Shell.r.panel2 == 'p' }}
 		onClick={() => App.switch_panel2 ('p')} data-kbd="^"
 		aria-label="Show Piano Roll Editor"
-		data-tip="**CLICK** Show Piano Roll Editor"></b-icon>
+		data-tip="**CLICK** Show Piano Roll Editor"/>
       </span>
       <span class="b-statusbar-spacer"></span>
       <span class="b-statusbar-text" ref={statusbar_text}></span>
@@ -112,14 +113,14 @@ export function StatusBar (props)
       </span>
       <span class="b-statusbar-spacer"></span>
       <span class="b-statusbar-field">
-        <b-icon ic="md-info" style="font-size:110%"
+        <Icon ic="md-info" style="font-size:110%"
 		classList={{ 'b-active': Shell.r.panel3 == 'i' }}
 		onClick={() => App.switch_panel3 ('i')} data-kbd="i"
-		data-tip="**CLICK** Show Information View"></b-icon>
-        <b-icon ic="md-folder_open" style="font-size:110%"
+		data-tip="**CLICK** Show Information View"/>
+        <Icon ic="md-folder_open" style="font-size:110%"
 		classList={{ 'b-active': Shell.r.panel3 == 'b' }}
 		onClick={() => App.switch_panel3 ('b')} data-kbd="i"
-		data-tip="**CLICK** Show Browser"></b-icon>
+		data-tip="**CLICK** Show Browser"/>
       </span>
     </div>
   );

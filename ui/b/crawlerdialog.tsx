@@ -27,6 +27,7 @@ import { hex, basename, dirname, displayfs, displaybasename, displaydirname } fr
 import * as Util from "../util.js";
 import * as Kbd from "../kbd.js";
 import * as Dom from "../dom.js";
+import { Icon } from './icon';
 
 // == STYLE ==
 Extra_css`
@@ -341,7 +342,7 @@ export function CrawlerDialog (props)
                 onFocus={ev => entry_event (ev, entry)}
                 onClick={ev => entry_event (ev, entry)}
                 onDblClick={ev => entry_event (ev, entry)}>
-                <b-icon ic={entry.type == Ase.ResourceType.FOLDER ? "md-folder" : "fa-file_o"}></b-icon>
+                <Icon ic={entry.type == Ase.ResourceType.FOLDER ? "md-folder" : "fa-file_o"}/>
                 {entry.label}
               </button>
             )}

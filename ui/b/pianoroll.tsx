@@ -17,6 +17,7 @@ import * as Mouse from '../mouse.js';
 import { tracking_wrapper } from "../signal.js";
 import { MenuTitle } from './menutitle.tsx';
 import { ContextMenu } from './contextmenu';
+import { Icon } from './icon';
 const floor = Math.floor, round = Math.round;
 
 // == STYLE ==
@@ -97,7 +98,7 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
            ref={h => t.menu_btn = h}
            onClick={e => t.pianotoolmenu.popup (e)}
            onMouseDown={e => t.pianotoolmenu.popup (e)}>
-        <b-icon style="width: 1.2em; height: 1.2em" ref={h => t.menu_icon = h}/>
+        <Icon style="width: 1.2em; height: 1.2em" ref={h => t.menu_icon = h}/>
         <ContextMenu ref={h => { t.pianotoolmenu = h; }}
                        activate={t.usetool}
                        id="g-pianotoolmenu" class="-pianotoolmenu">

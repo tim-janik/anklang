@@ -106,7 +106,7 @@ b-choiceinput, .b-choiceinput {
 .b-choiceinput-contextmenu button {
   grid-template-columns: min-content 1fr min-content;
   justify-items: start;
-  b-icon { @apply col-start-1 row-start-1; justify-content: start; }
+  b-icon, .b-icon { @apply col-start-1 row-start-1; justify-content: start; }
   span   { @apply col-start-2; }
   kbd    { @apply col-start-3 row-start-1; }
 }
