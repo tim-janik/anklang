@@ -1,12 +1,12 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-// @ts-check
 
 /** @class BClipView
  * @description
- * The <b-clipview> element displays a small view of a MIDI clip.
+ * Displays a small thumbnail view of a MIDI clip with a canvas showing notes.
  */
 
-import { LitComponent, html, JsExtract, docs, ref } from '../little.js';
+import { createEffect, onCleanup } from 'solid-js';
+import * as Util from '../util.js';
 
 // == STYLE ==
 Extra_css`
@@ -15,102 +15,31 @@ Extra_css`
   --b-clipview-note-color: rgba(255 255 255 / 0.7);
   --b-clipview-color-hues: 75, 177, 320, 225, 45, 111, 5, 259, 165, 290;
 }
-b-clipview {
-  display: inline-grid;
+.b-clipview {
+  display: flex; position: relative;
+  flex-shrink: 0;
+  border: 0;
   margin: 0 0 0 2px;
-  .b-clipview {
-    display: flex; position: relative;
-    flex-shrink: 0;
-    border: 0;
-    .-canvas {
-      display: inline; position: absolute; inset: 0;
-      --clipview-font-color: var(--b-clipview-font-color); --clipview-font: var(--b-canvas-font);
-      --clipview-note-color: var(--b-clipview-note-color);
-      --clipview-color-hues: var(--b-clipview-color-hues);
-      box-shadow: inset 0px 0 1px #fff9, inset -1px 0 1px #000;
-      border-radius: var(--b-button-radius);
-    }
-    .-play {
-      display: inline;
-      position: absolute;
-      padding: 3px;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: var(--b-clip-play-fg);
-      background: var(--b-clip-play-bg);
-      border-radius: calc(var(--b-button-radius) * 0.66);
-    }
+  .-canvas {
+    display: inline; position: absolute; inset: 0;
+    --clipview-font-color: var(--b-clipview-font-color); --clipview-font: var(--b-canvas-font);
+    --clipview-note-color: var(--b-clipview-note-color);
+    --clipview-color-hues: var(--b-clipview-color-hues);
+    box-shadow: inset 0px 0 1px #fff9, inset -1px 0 1px #000;
+    border-radius: var(--b-button-radius);
+  }
+  .-play {
+    display: inline;
+    position: absolute;
+    padding: 3px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--b-clip-play-fg);
+    background: var(--b-clip-play-bg);
+    border-radius: calc(var(--b-button-radius) * 0.66);
   }
 }`;
-
-// == HTML ==
-const HTML = (t, d) => html`
-<div class="b-clipview hflex"
-  @click=${t.click}
-  >
-  <canvas class="-canvas" ${ref (h => t.canvas = h)} ></canvas>
-  <span class="-play" @click.stop="click_play" >▶</span>
-</div>
-`;
-
-// == SCRIPT ==
-import * as Util from '../util.js';
-const tick_quant = Util.PPQN;
-const NUMBER_ATTRIBUTE = { type: Number, reflect: true }; // sync attribute with property
-const PRIVATE_PROPERTY = { state: true };
-const OBJECT_PROPERTY = { attribute: false };
-
-export class BClipView extends LitComponent {
-  createRenderRoot() { return this; }
-  render()
-  {
-    const d = {};
-    return HTML (this, d);
-  }
-  static properties = {
-    clip: OBJECT_PROPERTY,
-    track: OBJECT_PROPERTY,
-    trackindex: NUMBER_ATTRIBUTE,
-    end_tick: PRIVATE_PROPERTY,	// trigger this.requestUpdate()
-  };
-  constructor()
-  {
-    super();
-    this.clip = null;
-    this.canvas = null;
-    this.starttick = 0;
-    this.end_tick = null; // TODO: remove or fetch from ASE
-    this.trackindex = -1;
-    this.tickscale = 10.0 / Util.PPQN; // TODO: adjust hzoom
-    this.notes_changed = () => this.repaint (false);
-  }
-  get pxoffset()	{ return this.starttick * this.tickscale; }
-  get canvas_width()	{ return this.tickscale * Math.floor ((this.end_tick + tick_quant - 1) / tick_quant) * tick_quant; }
-  updated (changed_props)
-  {
-    if (changed_props.has ('clip')) {
-      // force property auto-updating
-      this.clip.name;
-      this.clip.end_tick;
-      this.clip.all_notes;
-    }
-    this.repaint (true);
-  }
-  repaint (layoutchange)
-  {
-    render_canvas.call (this);
-  }
-  click (event)
-  {
-    App.open_piano_roll (this.clip);
-    Util.prevent_event (event);
-  }
-  click_play() {
-    debug ("PLAY: clip:", this.clip.$id);
-  }
-}
-customElements.define ('b-clipview', BClipView);
 
 import * as Z from 'zcam-js';
 
@@ -122,16 +51,13 @@ const sRGB_viewing_conditions = {
 };
 const default_gamut = new Z.Gamut (sRGB_viewing_conditions);
 
-/** @this{BClipView} */
-function render_canvas () {
-  // canvas setup
-  const canvas = this.canvas;
+function render_canvas (canvas, clip, tickscale) {
   const pixelratio = Util.resize_canvas (canvas, canvas.parentElement.clientWidth, canvas.parentElement.clientHeight, true);
   const ctx = canvas.getContext ('2d'), cstyle = getComputedStyle (canvas), csp = cstyle.getPropertyValue.bind (cstyle);
   const width = canvas.width, height = canvas.height;
-  const tickscale = this.tickscale * pixelratio;
   //const width = canvas.clientWidth, height = canvas.clientHeight;
   //canvas.width = width; canvas.height = height;
+  const ts = tickscale * pixelratio;
   ctx.clearRect (0, 0, width, height);
   // color setup
   let cindex;
@@ -160,11 +86,59 @@ function render_canvas () {
   ctx.fillStyle = csp ('--clipview-font-color');
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText (this.clip.name, 1.5, .5);
   // paint notes
+  ctx.fillText (clip.name, 1.5, .5);
   ctx.fillStyle = csp ('--clipview-note-color');
   const noteoffset = 12;
-  const notescale = height / (123.0 - 2 * noteoffset); // MAX_NOTE
-  for (const note of this.clip.all_notes)
-    ctx.fillRect (note.tick * tickscale, height - (note.key - noteoffset) * notescale, note.duration * tickscale, 1 * pixelratio);
+  const notescale = height / (123.0 - 2 * noteoffset);
+  for (const note of clip.all_notes)
+    ctx.fillRect (note.tick * ts, height - (note.key - noteoffset) * notescale, note.duration * ts, 1 * pixelratio);
+}
+
+// == COMPONENT ==
+export function ClipView (props) {
+  let canvas_ref;
+  let root_ref;
+  let pending_raf = 0;
+
+  const tickscale = 10.0 / Util.PPQN;
+
+  // Expose tickscale on DOM element for parent measurement
+  createEffect (() => {
+    if (root_ref)
+      root_ref.tickscale = tickscale;
+  });
+
+  // Re-render canvas when clip properties change
+  onCleanup (() => cancelAnimationFrame (pending_raf));
+  createEffect (() => {
+    // Access clip properties to track reactivity
+    props.clip?.name;
+    props.clip?.end_tick;
+    props.clip?.all_notes;
+
+    if (canvas_ref && props.clip) {
+      cancelAnimationFrame (pending_raf);
+      pending_raf = requestAnimationFrame (() => {
+        render_canvas (canvas_ref, props.clip, tickscale);
+      });
+    }
+  });
+
+  function click (event) {
+    App.open_piano_roll (props.clip);
+    Util.prevent_event (event);
+  }
+
+  function click_play (event) {
+    Util.prevent_event (event);
+    debug ("PLAY: clip:", props.clip?.$id);
+  }
+
+  return (
+    <div class="b-clipview hflex" ref={root_ref} onClick={click}>
+      <canvas class="-canvas" ref={canvas_ref}></canvas>
+      <span class="-play" onClick={click_play}>▶</span>
+    </div>
+  );
 }
