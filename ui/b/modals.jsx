@@ -8,6 +8,7 @@
 import { createSignal, For, Show, onMount } from 'solid-js';
 import * as Signal from "../signal.js";
 import * as Util from "../util.js";
+import { PushButton } from './basics';
 
 // == STYLE ==
 Extra_css`
@@ -43,7 +44,7 @@ function DynamicButton (props)
   return props.canfocus ? (
     <button {...props}>{props.children}</button>
   ) : (
-    <push-button {...props}>{props.children}</push-button>
+    <PushButton {...props}>{props.children}</PushButton>
   );
 }
 

@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-import './b/basics.js';		// Register basic components first
 import { LitComponent, html, css, docs, lit_update_all } from './little.js';
 import * as Strings from './strings.js';
 
