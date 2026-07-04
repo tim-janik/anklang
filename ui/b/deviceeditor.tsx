@@ -11,6 +11,7 @@
 
 import { createEffect, createSignal, For, onCleanup } from 'solid-js';
 import * as Util from "../util.js";
+import { PropGroup } from './propgroup.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -306,7 +307,7 @@ export function DeviceEditor (props)
       <div class="b-deviceeditor-areas grid">
         <For each={gprops()}>
           {(group) => (
-            <b-propgroup style={group_style (group)} name={group.name} props={group.props}></b-propgroup>
+            <PropGroup style={group_style (group)} name={group.name} props={group.props} />
           )}
         </For>
       </div>

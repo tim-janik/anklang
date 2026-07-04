@@ -7,13 +7,13 @@
  * @property {boolean} readonly - Make this component non editable for the user.
  */
 
-import { LitComponent, html, JsExtract, docs, repeat } from '../little.js';
+import { For } from 'solid-js';
 import * as Util from '../util.js';
 
 // == STYLE ==
 Extra_css`
 @reference "../tailwind.css";
-b-propgroup {
+b-propgroup, .b-propgroup {
   @apply vflex;
   padding: 5px;
   justify-content: space-evenly;
@@ -40,90 +40,81 @@ b-propgroup {
   > span { margin-top: calc(2 * 0.125rem); }
 }`;
 
-// == HTML ==
-const GROUP_HTML = (t, prop_rows) => [
-  html`<span class="b-propgroup-title"> ${t.name} </span>`,
-  repeat (prop_rows, (row_props, index) =>
-    html`
-      <div class="b-propgroup-row grid justify-evenly" style="grid-auto-flow: column dense">
-	${repeat (row_props, (prop, i) => PROP_HTML (t, prop, i))}
-      </div>`)
-];
-const PROP_HTML = (t, prop) => {
-  let p;
-  switch (prop_case (prop)) {
-    case 'B': p = html` <b-toggle ?disabled=${prop.readonly} .value=${prop.value_.num}
-			  label="" @valuechange=${e => prop.set_normalized (!!e.target.value)} ></b-toggle> `; break;
-    case 'C': p = html` <b-choiceinput small="1" indexed="1" ?disabled=${t.readonly} .prop="${prop}"
-			  label=${prop.label_} title=${prop.title_}
-			  value=${prop.value_.val} @valuechange=${e => prop.apply_ (e.target.value)} ></b-choiceinput> `; break;
-    case 'K': p = html` <b-knob ?disabled=${prop.readonly} .prop="${prop}" ></b-knob> `; break;
-    case 'T': p = html` <b-textinput ?disabled=${prop.readonly} .prop=${prop}
-			  label=${prop.label_} title=${prop.title_} ></b-textinput> `; break;
-    default:  p = html` <span>${prop.nick_}</span> `; break;
-  }
-  const p_label = html` <span class="text-center text-[90%]" style="grid-row: 2/3"> ${prop.nick_} </span> `;
-  return html` ${p} \n ${p_label} `;
-};
 function prop_case (prop)
 {
   const hints = ':' + prop.hints_ + ':';
   if (hints.search (/:choice:/) >= 0)
-    return 'C';	// choice
+    return 'C';		// choice
   if (hints.search (/:toggle:/) >= 0)
-    return 'B';	// toggle
+    return 'B';		// toggle
   if (hints.search (/:text:/) >= 0)
-    return 'T';	// text
+    return 'T';		// text
   if (prop.is_numeric_)
-    return 'K';	// knob
+    return 'K';		// knob
   return '?';
 }
 
-// == SCRIPT ==
-class BPropGroup extends LitComponent {
-  createRenderRoot() { return this; }
-  render()
-  {
-    const prop_rows = this.assign_layout_rows (this.props);
-    return GROUP_HTML (this, prop_rows);
-  }
-  static properties = {
-    name:     { type: String, reflect: true },
-    props:    { type: Array, reflect: true },
-    readonly: { type: Boolean, reflect: true },
-  };
-  constructor()
-  {
-    super();
-    this.name = '';
-    this.props = [];
-    this.readonly = false;
-  }
-  updated (changed_properties)
-  {
-    if (changed_properties.has ('props'))
-      ; // prop_rows are generated on the fly
-  }
-  prop_class (prop)
-  {
-    const hints = ':' + prop.hints_ + ':';
-    let c = '';
-    return ' ' + c + ' ';
-  }
-  assign_layout_rows (props)
-  {
-    // split properties into rows, according to lrow_
-    const rows = [];
-    for (const prop of props) {
-      console.assert ('number' == typeof prop.lrow_);
-      if (!rows[prop.lrow_]) {
-        rows[prop.lrow_] = [];
-        rows[prop.lrow_].index = prop.lrow_;
-      }
-      rows[prop.lrow_].push (prop);
+function assign_layout_rows (props_array)
+{
+  // split properties into rows, according to lrow_
+  const rows = [];
+  for (const prop of props_array) {
+    console.assert ('number' == typeof prop.lrow_);
+    if (!rows[prop.lrow_]) {
+      rows[prop.lrow_] = [];
+      rows[prop.lrow_].index = prop.lrow_;
     }
-    // freezing avoids watchers
-    return Object.freeze (rows);
+    rows[prop.lrow_].push (prop);
+  }
+  // freezing avoids watchers
+  return Object.freeze (rows);
+}
+
+function PropHtml (prop, readonly)
+{
+  switch (prop_case (prop)) {
+    case 'B':
+      return <b-toggle disabled={prop.readonly || readonly} value={prop.value_.num}
+        label={''}
+        on:valuechange={e => prop.set_normalized (!!e.target.value)}></b-toggle>;
+    case 'C':
+      return <b-choiceinput small="1" indexed="1" disabled={readonly}
+        label={prop.label_} title={prop.title_}
+        value={prop.value_.val} prop={prop}
+        on:valuechange={e => prop.apply_ (e.target.value)}></b-choiceinput>;
+    case 'K':
+      return <b-knob disabled={prop.readonly || readonly} prop={prop}></b-knob>;
+    case 'T':
+      return <b-textinput disabled={prop.readonly || readonly}
+        prop={prop}
+        label={prop.label_} title={prop.title_}></b-textinput>;
+    default:
+      return <span>{prop.nick_}</span>;
   }
 }
-customElements.define ('b-propgroup', BPropGroup);
+
+// == COMPONENT ==
+export function PropGroup (props)
+{
+  const prop_rows = assign_layout_rows (props.props);
+  return (
+    <div class="b-propgroup" style={props.style}>
+      <span class="b-propgroup-title"> {props.name} </span>
+      <For each={prop_rows}>
+        {(row_props) => (
+          <div class="b-propgroup-row grid justify-evenly" style="grid-auto-flow: column dense">
+            <For each={row_props}>
+              {(prop) => (
+                <>
+                  {PropHtml (prop, props.readonly)}
+                  {' '}
+                  <span class="text-center text-[90%]" style="grid-row: 2/3"> {prop.nick_} </span>
+                </>
+              )}
+            </For>
+          </div>
+        )}
+      </For>
+    </div>
+  );
+}
