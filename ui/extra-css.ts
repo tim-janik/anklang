@@ -94,7 +94,9 @@ export default function extraCssPlugin (options: ExtraCssOptions = {}): Plugin
 	const fileName = filepath.replace (/.*\//, ''); // avoid leaking build paths
 	// Read original source from disk, b/c vite preprocesses JSX files, which shifts lines.
 	const originalCode = fs.readFileSync (filepath, 'utf-8');
-	const parsePlugins = (filepath.endsWith ('.jsx') || filepath.endsWith ('.tsx'))
+	const parsePlugins = filepath.endsWith ('.tsx')
+			   ? [['@babel/plugin-syntax-jsx', {}], ['@babel/plugin-syntax-typescript', { isTSX: true }]]
+			   : filepath.endsWith ('.jsx')
 			   ? [['@babel/plugin-syntax-jsx', {}]]
 			   : [];
 	// For extraction from AST, use Babel as parser

@@ -15,7 +15,8 @@
     "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",
     "baseUrl": ".",
-    "jsx": "preserve",
+    "jsx": "react-jsx", // solid-js needs this so TS uses solid-js/jsx-runtime types (e.g. For/Show children prop)
+    "jsxImportSource": "solid-js", // ^ import source for JSX runtime
   },
 
   // Files that must be present

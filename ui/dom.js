@@ -117,8 +117,8 @@ export function show_modal (dialog, closefunc = null)
       pointer_outside = false;
   };
   const mousedown = event => {
-    // prevent focus on the dialog itself
-    if (event.buttons)
+    // prevent focus on the dialog backdrop itself (not its children)
+    if (event.buttons && event.target === dialog)
       event.preventDefault();
   };
   const capture = { capture: true };

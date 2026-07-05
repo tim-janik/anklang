@@ -50,7 +50,7 @@ const block_comments = /(^\s*\/\*\*.*?\*\/)|(^(?:\s*\/\/\/[^\n]*\n)+)/mgis;
 /// Extract and process block comments of a file
 function process_file (filename, config) {
   // determine output file
-  let ofile = path.join (config.odir, path.basename (filename.replace(/\.(vue|sfc|ts|js)$/, '')));
+  let ofile = path.join (config.odir, path.basename (filename.replace(/\.(vue|sfc|tsx|ts|jsx|js)$/, '')));
   // read input file
   const string = String (fs.readFileSync (filename));
   // identify comment blocks
