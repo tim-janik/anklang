@@ -18,7 +18,7 @@ import { ContextMenu } from './contextmenu';
 import { MenuTitle } from './menutitle.tsx';
 import { MenuRow } from './menurow';
 import { MenuSeparator } from './menuseparator';
-import { get_uri } from '../dom.js';
+
 
 // == STYLE ==
 Extra_css`
@@ -140,9 +140,8 @@ export function TrackView (props)
     return false;
   }
 
-  async function menu_click (event)
+  async function menu_click (uri, event)
   {
-    const uri = get_uri (event.detail);
     // close popup to remove focus guards
     menu_close();
     if (uri == 'add-track')
