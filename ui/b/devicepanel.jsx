@@ -128,13 +128,9 @@ export function DevicePanel (props)
           data-tip="**CLICK** Add New Elements"
         />
         <ContextMenu
-          ref={e => {
-            cmenu_ref = e;
-            if (e) {
-              e.activate = activate;
-              e.isactive = isactive;
-            }
-          }}
+          ref={e => { cmenu_ref = e; }}
+          activate={activate}
+          isactive={isactive}
           id="g-devicepanelcmenu"
         >
           <MenuTitle>Devices</MenuTitle>
