@@ -138,6 +138,7 @@ export function TrackView (props)
   let dbtip1_ = MINDB;
   let teleobj = null;
   let telemetry = null;
+  let telemetry_gen = 0;
   let level_width_ = 0;
   let trackview_contextmenu = null;
 
@@ -312,8 +313,10 @@ export function TrackView (props)
     Util.telemetry_unsubscribe (teleobj);
     teleobj = null;
     telemetry = null;
+    const gen = ++telemetry_gen;
     (async () => {
       telemetry = await Object.freeze (track.telemetry());
+      if (gen !== telemetry_gen) return; // stale async, track changed during await
       if (!teleobj && telemetry)
 	teleobj = Util.telemetry_subscribe (recv_telemetry, telemetry);
     })();
