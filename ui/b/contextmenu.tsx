@@ -265,7 +265,16 @@ export function ContextMenu (props: {
     if (inner) {
       const max_h = window.innerHeight - 40;
       dialog_ref.style.maxHeight = max_h + 'px';
-      dialog_ref.style.height = Math.min (inner.scrollHeight, max_h) + 'px';
+      // With box-sizing:border-box (Tailwind preflight), CSS height includes
+      // border+padding, so the content area is reduced. Compensate accordingly.
+      const cs = getComputedStyle (dialog_ref);
+      const extra = cs.boxSizing === 'border-box' ?
+        (parseFloat (cs.borderTopWidth) || 0) +
+        (parseFloat (cs.borderBottomWidth) || 0) +
+        (parseFloat (cs.paddingTop) || 0) +
+        (parseFloat (cs.paddingBottom) || 0) : 0;
+      const h = Math.min (inner.scrollHeight + extra, max_h);
+      dialog_ref.style.height = h + 'px';
     }
     reposition_dialog();
   };
