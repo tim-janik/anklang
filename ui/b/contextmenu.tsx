@@ -143,6 +143,68 @@ function menuitem_isdisabled (this: any)
   return false;
 }
 
+function rects_no_overlap (rects: DOMRect[]): boolean
+{
+  for (let i = 0; i < rects.length; i++)
+    for (let j = i + 1; j < rects.length; j++) {
+      const a = rects[i], b = rects[j];
+      if (a.right > b.left && a.left < b.right && a.bottom > b.top && a.top < b.bottom)
+        return false;
+    }
+  return true;
+}
+
+function assert_geometry (dialog: HTMLDialogElement)
+{
+  if (!__DEV__) return;
+  const CENTER_THRESHOLD = 2;
+  const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+  const b = dialog.getBoundingClientRect();
+  // no unnecessary scrollbars
+  if (b.width < vw && dialog.scrollWidth > dialog.clientWidth)
+    console.error ("ContextMenu assert_geometry: horizontal scrollbar despite fitting viewport");
+  if (b.height < vh && dialog.scrollHeight > dialog.clientHeight)
+    console.error ("ContextMenu assert_geometry: vertical scrollbar despite fitting viewport");
+  // same scrollbar check for visible children
+  for (const child of dialog.querySelectorAll (':scope > .b-contextmenu-inner > *')) {
+    if (!Util.check_visibility (child)) continue;
+    if (b.width < vw && (child as HTMLElement).scrollWidth > (child as HTMLElement).clientWidth)
+      console.error ("ContextMenu assert_geometry: child horizontal scrollbar despite fitting viewport");
+    if (b.height < vh && (child as HTMLElement).scrollHeight > (child as HTMLElement).clientHeight)
+      console.error ("ContextMenu assert_geometry: child vertical scrollbar despite fitting viewport");
+  }
+  // centering check: if it can be centered, it shouldn't be edge-aligned
+  if (b.width + CENTER_THRESHOLD < vw) {
+    if (b.left <= 0) console.error ("ContextMenu assert_geometry: left-aligned despite fitting");
+    if (b.right >= vw) console.error ("ContextMenu assert_geometry: right-aligned despite fitting");
+  }
+  if (b.height + CENTER_THRESHOLD < vh) {
+    if (b.top <= 0) console.error ("ContextMenu assert_geometry: top-aligned despite fitting");
+    if (b.bottom >= vh) console.error ("ContextMenu assert_geometry: bottom-aligned despite fitting");
+  }
+  // no-clipping check
+  if (b.width <= vw && b.height <= vh) {
+    if (b.left < 0 || b.top < 0 || b.right > vw || b.bottom > vh)
+      console.error ("ContextMenu assert_geometry: dialog clipped despite fitting viewport");
+  }
+  // dialog width >= widest visible child
+  let max_child_w = 0;
+  for (const child of dialog.querySelectorAll (':scope > .b-contextmenu-inner > *')) {
+    if (!Util.check_visibility (child)) continue;
+    max_child_w = Math.max (max_child_w, (child as HTMLElement).offsetWidth);
+  }
+  if (dialog.offsetWidth < max_child_w)
+    console.error ("ContextMenu assert_geometry: dialog narrower than widest child");
+  // button rectangles don't overlap
+  const btn_rects: DOMRect[] = [];
+  for (const btn of dialog.querySelectorAll ('button, .asbutton')) {
+    if (!Util.check_visibility (btn)) continue;
+    btn_rects.push (btn.getBoundingClientRect());
+  }
+  if (!rects_no_overlap (btn_rects))
+    console.error ("ContextMenu assert_geometry: button rectangles overlap");
+}
+
 export function provide_menudata (element)
 {
   // find ContextMenu dialog
@@ -252,6 +314,7 @@ export function ContextMenu (props: {
       // check items (and auto-focus)
       await toggles;
       fit_and_reposition_dialog();
+      assert_geometry (dialog_ref!);
       const qse = dialog_ref!.querySelector (`button[${furi}], .asbutton[${furi}]`) as HTMLElement | null;
       if (qse && !qse.getAttribute ('disabled'))
         qse.focus();
