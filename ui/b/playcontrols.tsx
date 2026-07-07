@@ -1,9 +1,4 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-// @ts-check
-
-import { LitComponent, html, JsExtract, docs } from '../little.js';
-import { tracking_wrapper, create_computed } from '../signal.js';
-import * as Util from "../util.js";
 
 /** @class BPlayControls
  * @description
@@ -12,69 +7,68 @@ import * as Util from "../util.js";
 
 // == STYLE ==
 Extra_css`
-b-playcontrols {
+b-playcontrols, .b-playcontrols {
   button, .asbutton	{ padding: 5px; text-align: center; }
 }
 `;
 
-// == HTML ==
-const HTML = (t, D) => html`
-<b-buttonbar class="b-playcontrols" >
-  <div class="asbutton button-down" @click="${D ('-todo-Last')}" disabled >      <b-icon fw lg ic="fa-fast_backward"></b-icon></div>
-  <div class="asbutton button-down" @click="${D ('-todo-Backwards')}" disabled > <b-icon fw lg ic="fa-backward"     ></b-icon></div>
-  <div class="asbutton button-down" @click="${D ('stop_playback')}" data-hotkey="S"
-                data-tip="**CLICK** Stop playback" >        <b-icon fw lg ic="fa-stop"         ></b-icon></div>
-  <div class="asbutton button-down" @click="${t.toggle_play}" data-hotkey="RawSpace"
-                data-tip="**CLICK** Start/pause playback" >  <b-icon fw lg ic="fa-play" hi="ho" ></b-icon></div>
-  <div class="asbutton button-down" @click="${D ('-todo-Record')}" disabled >    <b-icon fw lg ic="fa-circle"       ></b-icon></div>
-  <div class="asbutton button-down" @click="${D ('-todo-Forwards')}" disabled >  <b-icon fw lg ic="fa-forward"      ></b-icon></div>
-  <div class="asbutton button-down" @click="${D ('-todo-Next')}" disabled >      <b-icon fw lg ic="fa-fast_forward" ></b-icon></div>
-</b-buttonbar>
-`;
+// == Component ==
+import { createComputed } from 'solid-js';
 
-// == SCRIPT ==
-class BPlayControls extends LitComponent {
-  createRenderRoot() { return this; }
-  render()
-  {
-    const dispatcher = (method) =>
-      (ev) => this.dispatch (method, ev);
-    return HTML (this, dispatcher);
-  }
-  constructor() {
-    super();
-  }
-  async dispatch (method, ev)
-  {
-    const project = Shell.project;
-    let func = project[method], message;
+export function PlayControls (props: any)
+{
+  /** @param {string} method */
+  const dispatch = async (method: string) => {
+    const project = (window as any).Shell?.project ?? App.project;
+    const func = (project as any)[method];
+    let message: string;
     if (func !== undefined) {
       let result = await func.call (project);
       if (result == undefined)
 	result = 'ok';
       message = method + ': ' + result;
-    }
-    else
+    } else {
       message = method + ': unimplemented';
+    }
     App.status (message);
-  }
-  async toggle_play()
-  {
-    const project = Shell.project;
+  };
+
+  const toggle_play = () => {
+    const project = (window as any).Shell?.project ?? App.project;
     const playing = project.is_playing;
-    this.dispatch (playing ? 'pause_playback' : 'start_playback');
-  }
-  playback_changed()
-  {
-    console.log("is_playing:", Shell.project.is_playing);
-  }
-  connectedCallback() {
-    super.connectedCallback();
-    this.playback_changed_listener_ = create_computed (() => this.playback_changed());
-  }
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this.playback_changed_listener_.dispose();
-  }
+    dispatch (playing ? 'pause_playback' : 'start_playback');
+  };
+
+  // Log playback state changes
+  createComputed (() => {
+    console.log ("is_playing:", App.project.is_playing);
+  });
+
+  return (
+    <b-buttonbar class="b-playcontrols">
+      <div class="asbutton button-down" disabled onClick={() => dispatch ('-todo-Last')}>
+        <b-icon fw lg ic="fa-fast_backward"></b-icon>
+      </div>
+      <div class="asbutton button-down" disabled onClick={() => dispatch ('-todo-Backwards')}>
+        <b-icon fw lg ic="fa-backward"></b-icon>
+      </div>
+      <div class="asbutton button-down" data-hotkey="S" data-tip="**CLICK** Stop playback"
+           onClick={() => dispatch ('stop_playback')}>
+        <b-icon fw lg ic="fa-stop"></b-icon>
+      </div>
+      <div class="asbutton button-down" data-hotkey="RawSpace"
+           data-tip="**CLICK** Start/pause playback" onClick={toggle_play}>
+        <b-icon fw lg ic="fa-play" hi="ho"></b-icon>
+      </div>
+      <div class="asbutton button-down" disabled onClick={() => dispatch ('-todo-Record')}>
+        <b-icon fw lg ic="fa-circle"></b-icon>
+      </div>
+      <div class="asbutton button-down" disabled onClick={() => dispatch ('-todo-Forwards')}>
+        <b-icon fw lg ic="fa-forward"></b-icon>
+      </div>
+      <div class="asbutton button-down" disabled onClick={() => dispatch ('-todo-Next')}>
+        <b-icon fw lg ic="fa-fast_forward"></b-icon>
+      </div>
+    </b-buttonbar>
+  );
 }
-customElements.define ('b-playcontrols', BPlayControls);
