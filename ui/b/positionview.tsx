@@ -1,20 +1,15 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-// @ts-check
 
-import { LitComponent, html, JsExtract, live, docs, ref } from '../little.js';
-import * as Util from '../util.js';
-
-/** @class BPositionView
- * @description
- * The <b-positionview> element displays the project
+/** @class PositionView
+ * SolidJS component that displays the project
  * transport position pointer and related information.
  */
 
 // <STYLE/>
 Extra_css`
 @reference "../tailwind.css";
-b-positionview { @apply hflex; }
-b-positionview {
+b-positionview, .b-positionview { @apply hflex; }
+b-positionview, .b-positionview {
   --b-positionview-fg: var(--b-lcdscreen-fg);
   --b-positionview-bg: var(--b-lcdscreen-bg);
   --b-positionview-b0: oklch(from var(--b-positionview-bg) calc(l - 0.01) c h);
@@ -35,58 +30,67 @@ b-positionview {
   .b-positionview-timer	  { width: 7em; } /* fixed size reduces layouting during updates */
 }`;
 
-// <HTML/>
-const HTML = (t, project) =>  html`
-  <b-editable class="w-16 text-center" @change=${event => t.apply_sig (event.detail.value)} selectall
-    value=${project.numerator + '/' + project.denominator}></b-editable>
-  <span class="b-positionview-counter" ${ref (h => t.counter = h)} ></span>
-  <b-editable class="w-16 text-center" @change=${event => project.bpm = 0 | event.detail.value} selectall
-    value=${project.bpm}></b-editable>
-  <span class="b-positionview-timer" ${ref (h => t.timer = h)}></span>
-`;
-
 // <SCRIPT/>
-class BPositionView extends LitComponent {
-  createRenderRoot() { return this; }
-  render()
-  {
-    return HTML (this, App.project);
-  }
-  constructor()
-  {
-    super();
-    this.fps = 0;
-    this.counter = null;
-    this.timer = null;
-  }
-  updated()
-  {
-    if (!this.counter_text && this.counter) {
-      this.counter_text = document.createTextNode ("");
-      this.counter.appendChild (this.counter_text);
-      this.timer_text = document.createTextNode ("");
-      this.timer.appendChild (this.timer_text);
-    }
-  }
-  async connectedCallback()
-  {
-    super.connectedCallback();
-    const telemetry_fields = Object.freeze (await App.project.telemetry());
+import { onMount, onCleanup } from 'solid-js';
+import * as Util from '../util.js';
+
+export function PositionView (props: any)
+{
+  let counter_span: HTMLSpanElement | undefined;
+  let timer_span: HTMLSpanElement | undefined;
+  let tsub: any = null;
+  let counter_text: Text | null = null;
+  let timer_text: Text | null = null;
+
+  onMount (async () => {
+    const project = App.project;
+    // Create text nodes for telemetry
+    counter_text = document.createTextNode ("");
+    counter_span!.appendChild (counter_text);
+    timer_text = document.createTextNode ("");
+    timer_span!.appendChild (timer_text);
+    // Subscribe to telemetry
+    const telemetry_fields = Object.freeze (await project.telemetry());
     if (telemetry_fields) {
       const telefields = [ 'current_bar', 'current_beat', 'current_sixteenth', 'current_minutes', 'current_seconds' ];
-      const subscribefields = telemetry_fields.filter (field => telefields.includes (field.name));
-      this.tsub = Util.telemetry_subscribe (this.recv_telemetry.bind (this), subscribefields);
+      const subscribefields = telemetry_fields.filter ((field: any) => telefields.includes (field.name));
+      tsub = Util.telemetry_subscribe (recv_telemetry, subscribefields);
     }
-  }
-  disconnectedCallback()
+  });
+
+  onCleanup (() => {
+    if (tsub) {
+      Util.telemetry_unsubscribe (tsub);
+      tsub = null;
+    }
+    counter_text = null;
+    timer_text = null;
+  });
+
+  function recv_telemetry (tsub: any, arrays: any)
   {
-    super.disconnectedCallback();
-    this.tsub && Util.telemetry_unsubscribe (this.tsub);
-    this.tsub = null;
-    this.counter_text = null;
-    this.timer_text = null;
+    if (!timer_text) return;
+    const ds = "\u2007"; // FIGURE SPACE - "Tabular width", the width of digits
+    const s3 = (n: number) => (n >= 100 ? "" : n >= 10 ? ds : ds + ds) + n;
+    const s2 = (n: number) => (n >= 10 ? "" : ds) + n;
+    const z2 = (n: number) => (n >= 10 ? "" : "0") + n;
+    const ff = (n: number, d = 2) => Number.parseFloat (n).toFixed (d);
+    // const tick = arrays[tsub.current_tick.type][tsub.current_tick.index];
+    // const bpm = arrays[tsub.current_bpm.type][tsub.current_bpm.index];
+    const bar = arrays[tsub.current_bar.type][tsub.current_bar.index];
+    const beat = arrays[tsub.current_beat.type][tsub.current_beat.index];
+    const sixteenth = arrays[tsub.current_sixteenth.type][tsub.current_sixteenth.index];
+    const minutes = arrays[tsub.current_minutes.type][tsub.current_minutes.index];
+    const seconds = arrays[tsub.current_seconds.type][tsub.current_seconds.index];
+    const barpos = s3 (1 + bar) + "." + s2 (1 + beat) + "." + (1 + sixteenth).toFixed (2);
+    const timepos = z2 (minutes) + ":" + z2 (ff (seconds, 3));
+    if (counter_text!.nodeValue != barpos)
+      counter_text!.nodeValue = barpos;
+    if (timer_text!.nodeValue != timepos)
+      timer_text!.nodeValue = timepos;
   }
-  apply_sig (v)
+
+  function apply_sig (v: string)
   {
     const parts = ("" + v).split ('/');
     if (parts.length == 2) {
@@ -97,27 +101,17 @@ class BPositionView extends LitComponent {
       }
     }
   }
-  recv_telemetry (tsub, arrays)
-  {
-    if (!this.timer_text) return;
-    const ds = "\u2007"; // FIGURE SPACE - "Tabular width", the width of digits
-    const s3 = n => (n >= 100 ? "" : n >= 10 ? ds : ds + ds) + n;
-    const s2 = n => (n >= 10 ? "" : ds) + n;
-    const z2 = n => (n >= 10 ? "" : "0") + n;
-    const ff = (n, d = 2) => Number.parseFloat (n).toFixed (d);
-    // const tick = arrays[tsub.current_tick.type][tsub.current_tick.index];
-    // const bpm = arrays[tsub.current_bpm.type][tsub.current_bpm.index];
-    const bar = arrays[tsub.current_bar.type][tsub.current_bar.index];
-    const beat = arrays[tsub.current_beat.type][tsub.current_beat.index];
-    const sixteenth = arrays[tsub.current_sixteenth.type][tsub.current_sixteenth.index];
-    const minutes = arrays[tsub.current_minutes.type][tsub.current_minutes.index];
-    const seconds = arrays[tsub.current_seconds.type][tsub.current_seconds.index];
-    const barpos = s3 (1 + bar) + "." + s2 (1 + beat) + "." + (1 + sixteenth).toFixed (2);
-    const timepos = z2 (minutes) + ":" + z2 (ff (seconds, 3));
-    if (this.counter_text.nodeValue != barpos)
-      this.counter_text.nodeValue = barpos;
-    if (this.timer_text.nodeValue != timepos)
-      this.timer_text.nodeValue = timepos;
-  }
+
+  const project = App.project;
+
+  return (
+    <div class="b-positionview">
+      <b-editable class="w-16 text-center" onChange={e => apply_sig ((e as CustomEvent).detail.value)} selectall
+	value={project.numerator + '/' + project.denominator}></b-editable>
+      <span class="b-positionview-counter" ref={counter_span}></span>
+      <b-editable class="w-16 text-center" onChange={e => { project.bpm = 0 | (e as CustomEvent).detail.value }} selectall
+	value={project.bpm}></b-editable>
+      <span class="b-positionview-timer" ref={timer_span}></span>
+    </div>
+  );
 }
-customElements.define ('b-positionview', BPositionView);

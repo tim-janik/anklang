@@ -12,6 +12,7 @@
 import { createSignal, createEffect, onMount, onCleanup } from 'solid-js';
 import * as Util from "../util.js";
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
+import { PositionView } from './positionview';
 import { basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
 
 // == STYLE ==
@@ -141,7 +142,7 @@ export function MenuBar (props)
       {/* playcontrols */}
       <div class="hflex">
         <b-playcontrols></b-playcontrols>
-        <b-positionview></b-positionview>
+        <PositionView />
       </div>
 
       {/* menubar right */}
