@@ -12,7 +12,7 @@
 import { render } from 'solid-js/web';
 import { ShellTemplate } from './shell';
 
-const component_modules = (import.meta as any).glob (['../b/*.js', '../b/*.jsx'], { eager: true });
+const component_modules = (import.meta as any).glob (['../b/*.js', '../b/*.jsx', '../b/*.tsx'], { eager: true });
 // Object.entries (component_modules).map (([path, mod]) => console.log ("IMPORT:", path, !!mod.default));
 
 import * as Util from '../util.js';
