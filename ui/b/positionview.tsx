@@ -38,6 +38,7 @@ export function PositionView (props: any)
 {
   let counter_span: HTMLSpanElement | undefined;
   let timer_span: HTMLSpanElement | undefined;
+  let alive = true;
   let tsub: any = null;
   let counter_text: Text | null = null;
   let timer_text: Text | null = null;
@@ -51,6 +52,7 @@ export function PositionView (props: any)
     timer_span!.appendChild (timer_text);
     // Subscribe to telemetry
     const telemetry_fields = Object.freeze (await project.telemetry());
+    if (!alive) return;
     if (telemetry_fields) {
       const telefields = [ 'current_bar', 'current_beat', 'current_sixteenth', 'current_minutes', 'current_seconds' ];
       const subscribefields = telemetry_fields.filter ((field: any) => telefields.includes (field.name));
@@ -59,6 +61,7 @@ export function PositionView (props: any)
   });
 
   onCleanup (() => {
+    alive = false;
     if (tsub) {
       Util.telemetry_unsubscribe (tsub);
       tsub = null;
