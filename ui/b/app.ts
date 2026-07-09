@@ -166,7 +166,7 @@ export class AppClass {
     await this.assign_project (newproject, 'b-app');
     // Open piano roll for first clip
     const tracks = await newproject.all_tracks();
-    const clips = await tracks[0].launcher_clips();
+    const clips = await tracks[0].$refetch (() => tracks[0].launcher_clips);
     this.open_piano_roll (clips.length ? clips[0] : null);
     return Ase.Error.NONE;
   }
