@@ -274,7 +274,8 @@ public:
   virtual void            volume              (double db) = 0;       ///< Set track volume in dB.
   virtual double          pan                 () const = 0;          ///< Get track pan (-1.0 to 1.0).
   virtual void            pan                 (double pan) = 0;      ///< Set track pan (-1.0 to 1.0).
-  virtual ClipS           launcher_clips      () = 0;                ///< Retrieve the list of clips that can be directly played.
+  virtual ClipS           launcher_clips      () const = 0;          ///< Retrieve the list of clips that can be directly played; changes on `notify:launcher_clips`.
+  virtual void            launcher_clips      (const ClipS &) = 0;   ///< NOP setter, assignments are ignored.
   virtual ClipP           create_midi_clip    (const String &name, double start, double length) = 0; ///< Create a new MIDI clip on this track.
   virtual ClipP           create_audio_clip   (const String &name, double start, double length) = 0; ///< Create a new audio clip on this track.
   virtual PluginP         create_plugin       (const String &type) = 0; ///< Create a new plugin on this track by type identifier.

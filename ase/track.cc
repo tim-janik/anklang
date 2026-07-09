@@ -98,7 +98,13 @@ public:
       asetrack_.emit_notify ("launcher_clips");
   }
   void valueTreeParentChanged (juce::ValueTree&) override {}
-  void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override {}
+  void
+  valueTreeChildOrderChanged (juce::ValueTree &parent, int, int newIndex) override
+  {
+    // Reordering clips changes launcher_clips() return order, so emit like add/remove
+    if (parent == track_state_ && te::Clip::isClipState (parent.getChild (newIndex)))
+      asetrack_.emit_notify ("launcher_clips");
+  }
 };
 
 // == TrackImpl ==
@@ -288,7 +294,7 @@ TrackImpl::pan (double pan)
 }
 
 ClipS
-TrackImpl::launcher_clips()
+TrackImpl::launcher_clips() const
 {
   ClipS clips;
   if (auto t = track_.get())
@@ -298,6 +304,13 @@ TrackImpl::launcher_clips()
           if (auto clipimpl = ClipImpl::from_trkn (*clip))
             clips.push_back (clipimpl);
   return clips;
+}
+
+void
+TrackImpl::launcher_clips (const ClipS &)
+{
+  // NOP setter: assignments are ignored; clip add/remove is driven by the
+  // backend and emits `notify:launcher_clips` via TrackStateListener.
 }
 
 ssize_t
