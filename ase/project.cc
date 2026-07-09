@@ -108,7 +108,13 @@ public:
     if (parent == edit_->state && te::TrackList::isTrack (child))
       project_.emit_notify ("all_tracks");
   }
-  void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override {}
+  void
+  valueTreeChildOrderChanged (juce::ValueTree &parent, int, int newIndex) override
+  {
+    // Reordering tracks changes all_tracks() return order, so emit like add/remove
+    if (parent == edit_->state && te::TrackList::isTrack (parent.getChild (newIndex)))
+      project_.emit_notify ("all_tracks");
+  }
   void valueTreeParentChanged (juce::ValueTree&) override {}
   void
   changeListenerCallback (juce::ChangeBroadcaster *source) override
