@@ -1,8 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-import { LitComponent, html, JsExtract, docs } from '../little.js';
-
 /** @class BMore
  * @description
  * The <b-more> element is an indicator for adding or dropping new UI elements.
@@ -10,7 +8,7 @@ import { LitComponent, html, JsExtract, docs } from '../little.js';
 
 // == STYLE ==
 Extra_css`
-b-more { /* b-more */
+b-more, .b-more { /* b-more */
   display: flex;
   align-items: center;
   justify-content: space-evenly;
@@ -31,16 +29,14 @@ b-more { /* b-more */
   }
 }`;
 
-// == HTML ==
-const HTML = html`
-  <div class="vflex -plus" >
-    +
-  </div>
-`;
-
-// == SCRIPT ==
-class BMore extends LitComponent {
-  createRenderRoot() { return this; }
-  render = () => HTML;
+// == Component ==
+export function More (props: any)
+{
+  return (
+    <div class="b-more" {...props}>
+      <div class="vflex -plus">
+        +
+      </div>
+    </div>
+  );
 }
-customElements.define ('b-more', BMore);

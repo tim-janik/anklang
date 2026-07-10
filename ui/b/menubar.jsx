@@ -12,6 +12,8 @@
 import { createSignal, createEffect, onMount, onCleanup } from 'solid-js';
 import * as Util from "../util.js";
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
+import { PositionView } from './positionview';
+import { PlayControls } from './playcontrols';
 import { basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
 
 // == STYLE ==
@@ -54,7 +56,7 @@ export function MenuBar (props)
 
   onMount (() => {
     // subscribe to project dirty notifications
-    project_cleanup = Data.project.on ("notify:dirty", () => {
+    project_cleanup = Shell.project.on ("notify:dirty", () => {
       check_isactive();
     });
   });
@@ -140,8 +142,8 @@ export function MenuBar (props)
 
       {/* playcontrols */}
       <div class="hflex">
-        <b-playcontrols></b-playcontrols>
-        <b-positionview></b-positionview>
+        <PlayControls />
+        <PositionView />
       </div>
 
       {/* menubar right */}
@@ -184,9 +186,9 @@ async function isactive (uri)
 {
   switch (uri) {
     case 'undo':
-      return Data.project.can_undo();
+      return Shell.project.can_undo();
     case 'redo':
-      return Data.project.can_redo();
+      return Shell.project.can_redo();
     default:
       return true;
   }
@@ -223,7 +225,7 @@ async function activate (uri, event)
       window.open (u, '_blank');
       break;
     case 'prefs':
-      Data.show_preferences_dialog = !Data.show_preferences_dialog;
+      Shell.r.show_preferences_dialog = !Shell.r.show_preferences_dialog;
       break;
     case 'zoom-reset':
       await Electron.call ('zoom_level', 0.0);
@@ -241,10 +243,10 @@ async function activate (uri, event)
         document.body.requestFullscreen();
       break;
     case 'undo':
-      await Data.project.undo();
+      await Shell.project.undo();
       break;
     case 'redo':
-      await Data.project.redo();
+      await Shell.project.redo();
       break;
     case 'loadnew':
       App.load_project_checked();
@@ -298,7 +300,7 @@ async function save_project (asnew = false) {
     existing: false,
     filters: [ { name: 'Projects', extensions: ['anklang'] }, ],
   };
-  let filename = await Data.project.saved_filename();
+  let filename = await Shell.project.saved_filename();
   let replace = asnew ? 0 : !!filename;
   if (asnew || !filename)
     filename = await Shell.select_file (opt);
@@ -318,7 +320,7 @@ async function save_project (asnew = false) {
     }
   let msg, err = await App.save_project (filename);
   if (err === Ase.Error.NONE) {
-    filename = await Data.project.saved_filename(); // get canonicalized form
+    filename = await Shell.project.saved_filename(); // get canonicalized form
     msg = '### Project Saved\n  \n  \n';
     msg += 'Project successfully saved to:\n\n`' + displayfs (filename) + '`\n';
   } else {

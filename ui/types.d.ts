@@ -7,7 +7,6 @@
 declare global {
   var App: any;
   var Ase: any;
-  var Data: any;
   var Shell: any;
   var CONFIG: any;
   var __DEV__: Boolean;

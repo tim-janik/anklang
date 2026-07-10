@@ -12,6 +12,7 @@
 import { createSignal, createEffect } from 'solid-js';
 import * as Util from "../util.js";
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
+import { More } from './more';
 
 // == STYLE ==
 Extra_css`
@@ -116,10 +117,10 @@ export function DevicePanel (props)
       <span class="b-devicepanel-vtitle">Device Panel</span>
       <div class="b-devicepanel-hstack hflex">
         {/* TODO: render devices in chain — needs Device::get_devices() impl */}
-        <b-more
+        <More
           onMousedown={e => menuopen (e)}
           data-tip="**CLICK** Add New Elements"
-        ></b-more>
+        />
         <b-contextmenu
           ref={e => {
             cmenu_ref = e;

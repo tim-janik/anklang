@@ -18,6 +18,7 @@ import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import * as Dom from "../dom.js";
 import DataBubbleIface from '../b/databubble.js';
 import spinner_svg from '/assets/spinner.svg'
+import { make_reactive } from './app';
 import { ModalDialogs } from './modals.jsx';
 import { AboutDialog } from './aboutdialog.jsx';
 import { StatusBar } from './statusbar.jsx';
@@ -110,35 +111,60 @@ html.b-shell-during-drag .b-app {
 }
 `;
 
+// == Types ==
+interface ShellReactive {
+  current_track: any;
+  show_preferences_dialog: boolean;
+  fs_shown: boolean;
+  show_spinner_count: number;
+  filetree: any;
+  show_about_dialog_: boolean;
+  panel2: string;
+  panel3: string;
+  piano_roll_source: any;
+}
+
+interface FileSelector {
+  title: string;
+  button: string;
+  cwd: string;
+  filters: any[];
+  existing?: boolean;
+  resolve?: (path?: any) => void;
+}
+
 // == SHELL TEMPLATE ==
-export function ShellTemplate (props)
+export function ShellTemplate (props: any)
 {
-  // Shell global
-  const t = new BShell ();
-  Object.defineProperty (globalThis, 'Shell', { value: t });
+  // Shell singleton (created once, persists across project swaps)
+  const t = globalThis.Shell ?? new BShell ();
+  if (!globalThis.Shell)
+    Object.defineProperty (globalThis, 'Shell', { value: t });
+  // Reset Shell state for the new project
+  t.reset (props.project, props.current_track);
   const { r, fs } = t;
   return (
     <div class="b-shell" ref={e => t.setup (e)}>
       {/* Menus and Transport */}
-      <MenuBar class="-row1 -col123" project={Data.project}></MenuBar>
+      <MenuBar class="-row1 -col123" project={t.project}></MenuBar>
 
       {/* tracks and clips */}
-      <TrackList class="-row2 -col2" style="overflow: hidden" project={Data.project} />
+      <TrackList class="-row2 -col2" style="overflow: hidden" project={t.project} />
 
       {/* devices */}
-      <Show when={Data.panel2 === 'd'}>
+      <Show when={r.panel2 === 'd'}>
         <DevicePanel class="-row3 -col2" track={App.current_track} />
       </Show>
 
       {/* piano roll */}
-      <b-piano-roll class="-row4 -col2" style="overflow: hidden; height:50vh" clip={Data.piano_roll_source}
-		    ref={e => t.piano_roll_ = e} hidden={Data.panel2 !== 'p'}></b-piano-roll>
+      <b-piano-roll class="-row4 -col2" style="overflow: hidden; height:50vh" clip={r.piano_roll_source}
+		    ref={e => t.piano_roll_ = e} hidden={r.panel2 !== 'p'}></b-piano-roll>
 
       {/* browser */}
       <div class="b-shell-sidebar vflex -row28 -col1">
 	Browser <br />
-        <TreeBrowser tree={r.filetree} hidden={Data.panel3 == 'b'}></TreeBrowser>
-        <Show when={Data.panel3 !== 'i'}>
+        <TreeBrowser tree={r.filetree} hidden={r.panel3 == 'b'}></TreeBrowser>
+        <Show when={r.panel3 !== 'i'}>
           <span><a href="">Info Panel</a></span>
         </Show>
       </div>
@@ -158,12 +184,12 @@ export function ShellTemplate (props)
         <AboutDialog onClose={() => r.show_about_dialog_ = false} />
       </Show>
 
-      <Show when={Data.show_preferences_dialog}>
-        <PreferencesDialog onClose={() => (Data.show_preferences_dialog = false)} shown={true} />
+      <Show when={r.show_preferences_dialog}>
+        <PreferencesDialog onClose={() => (r.show_preferences_dialog = false)} shown={true} />
       </Show>
 
       <b-crawlerdialog shown={r.fs_shown} title={fs.title} filters={fs.filters} button={fs.button}
-        existing={fs.existing} cwd={fs.cwd} onClose={e => fs.resolve()} onSelect={e => fs.resolve (e.detail?.uri)}></b-crawlerdialog>
+		       existing={fs.existing} cwd={fs.cwd} onClose={e => fs.resolve()} onSelect={e => fs.resolve (e.detail?.uri)}></b-crawlerdialog>
 
       {/* Modal Message Popups */}
       <ModalDialogs ref={e => t.modal_dialogs_ = e} />
@@ -186,9 +212,10 @@ export function ShellTemplate (props)
 
 // == BShell controller ==
 class BShell extends Object {
-  constructor (input_r = {})
+  constructor ()
   {
     super();
+    this.project = null;
     this.piano_roll_ = null;
     this.data_bubble = null;
     this.modal_dialogs_ = null;
@@ -196,29 +223,53 @@ class BShell extends Object {
     this.switch_panel3_ = null;
     this.f1_help_ = null;
     this.fs = { title: 'File Selector', button: 'Select', cwd: '~MUSIC', filters: [] };
-    this.r = input_r;
-    this.r.fs_shown = false;
-    this.r.show_spinner_count = 0;
-    this.r.filetree = { entries: [] };
-    list_sample_files ().then (files => { this.r.filetree = files; });
-    this.r.show_about_dialog_ = false;
     this.piano_current_clip_tickfn = [null,null];
-    this.r = make_reactive (this.r);
-    this.usernotehook_ = Ase.server.on ("usernote", user_note_event => this.show_notice (user_note_event.text));
-    onCleanup (this.cleanup.bind (this)); // needs constructor() during render()
+    const rtmpl: ShellReactive = {
+      current_track: null,
+      show_preferences_dialog: false,
+      fs_shown: false,
+      show_spinner_count: 0,
+      filetree: { entries: [] },
+      show_about_dialog_: false,
+      panel2: 'p',
+      panel3: 'i',
+      piano_roll_source: undefined,
+    };
+    this.r = make_reactive (rtmpl);
+    list_sample_files ().then (files => { this.r.filetree = files; });
+    // Registered once; intentionally persistent across project swaps since
+    // Shell is a singleton and Ase.server doesn't change.
+    this.usernotehook_ = Ase.server.on ("usernote", (user_note_event: any) => this.show_notice (user_note_event.text));
   }
-  /// Called when ShellTemplate is destroyed
-  cleanup()
+  /// Access current_track (reactive)
+  get current_track () { return this.r.current_track; }
+  set current_track (t: any) { this.r.current_track = t; }
+  /// Reset Shell for a new project (Shell is a persistent singleton)
+  reset (project: any, current_track: any)
   {
-    Util.remove_hotkey ('RawBackquote', this.switch_panel2_);
-    Util.remove_hotkey ('I', this.switch_panel3_);
-    Util.remove_key_filter (112, this.f1_help_); // F1
-    App.shell_unmounted();
-    this.usernotehook_();
-    this.usernotehook_ = null;
+    // Remove old hotkeys to avoid duplicates on re-setup
+    if (this.switch_panel2_)
+      Util.remove_hotkey ('RawBackquote', this.switch_panel2_);
+    if (this.switch_panel3_)
+      Util.remove_hotkey ('I', this.switch_panel3_);
+    if (this.f1_help_)
+      Util.remove_key_filter (112);
+    this.project = project;
+    this.r.current_track = current_track;
+    this.r.show_preferences_dialog = false;
+    this.r.show_about_dialog_ = false;
+    this.r.piano_roll_source = undefined;
+    this.shell_element = null;
+    this.piano_current_clip_tickfn = [null,null];
+    this.piano_roll_ = null;
+    this.modal_dialogs_ = null;
+    this.data_bubble = null;
+    this.switch_panel2_ = null;
+    this.switch_panel3_ = null;
+    this.f1_help_ = null;
   }
   /// Called when ShellTemplate is instantiated
-  setup (shell_element)
+  setup (shell_element: HTMLElement)
   {
     this.shell_element = shell_element;
     this.switch_panel2_ = App.switch_panel2.bind (App);
@@ -226,12 +277,12 @@ class BShell extends Object {
     this.switch_panel3_ = App.switch_panel3.bind (App);
     Util.add_hotkey ('I', this.switch_panel3_);
     this.f1_help_ = this.f1_help.bind (this);
-    Util.add_key_filter (112, this.f1_help_); // F1
+    Util.add_key_filter (112, this.f1_help_);
     console.assert (!this.data_bubble);
     this.data_bubble = new DataBubbleIface (shell_element);
   }
   /// Helper to refer to the current piano roll clip and tick
-  piano_current (clip = undefined, tickfn = undefined)
+  piano_current (clip: any = undefined, tickfn: any = undefined): [any, any]
   {
     // Called several times per second
     if (clip === undefined)
@@ -257,15 +308,15 @@ class BShell extends Object {
     this.r.show_spinner_count--;
   }
   /// Show a notification notice, with adequate default timeout
-  show_notice (text, timeout = undefined)
+  show_notice (text: string, timeout?: number)
   {
     create_note (text, timeout);
   }
   /// Open related help page in another window on F1
-  f1_help (event)
+  f1_help (event: Event)
   {
     const zlast = App.zmove_last();
-    const el_f1 = Util.find_element_from_point (document, zlast.pageX, zlast.pageY, el => {
+    const el_f1 = Util.find_element_from_point (document, zlast.pageX, zlast.pageY, (el: Element) => {
       const str = el.getAttribute ('data-f1');
       return /(#|\.htm)/.test (str); // check for documentation links / anchors
     });
@@ -276,35 +327,35 @@ class BShell extends Object {
     return true;
   }
   /// Drag and resize sidebar handle
-  sidebar_mouse (e)
+  sidebar_mouse (e: MouseEvent)
   {
-    const sidebar = this.shadowRoot.querySelector('.b-shell-sidebar'); // FIXME
+    const sidebar = (this as any).shadowRoot?.querySelector('.b-shell-sidebar'); // FIXME
     // const sidebar = this.$refs.sidebarcontainer; // FIXME
     console.assert (sidebar);
     const html_classes = document.documentElement.classList;
     if (e.type == 'mousedown' && !this.listening)
       {
-	this.listening = Util.debounce (this.sidebar_mouse.bind (this));
-	document.addEventListener ('mousemove', this.listening);
-	document.addEventListener ('mouseup', this.listening);
-	this.startx = e.clientX; //  - e.offsetX;
-	this.startwidth = sidebar.getBoundingClientRect().width;
-	html_classes.add ('b-shell-during-drag');
+        this.listening = Util.debounce (this.sidebar_mouse.bind (this));
+        document.addEventListener ('mousemove', this.listening);
+        document.addEventListener ('mouseup', this.listening);
+        this.startx = e.clientX; //  - e.offsetX;
+        this.startwidth = sidebar.getBoundingClientRect().width;
+        html_classes.add ('b-shell-during-drag');
       }
     if (this.listening && e.type == 'mouseup')
       {
-	document.removeEventListener ('mousemove', this.listening);
-	document.removeEventListener ('mouseup', this.listening);
-	this.listening = undefined;
-	html_classes.remove ('b-shell-during-drag');
+        document.removeEventListener ('mousemove', this.listening);
+        document.removeEventListener ('mouseup', this.listening);
+        this.listening = undefined;
+        html_classes.remove ('b-shell-during-drag');
       }
     let newwidth = this.startwidth - (e.clientX - this.startx);
     const pwidth = sidebar.parentElement.getBoundingClientRect().width;
     const maxwidth = pwidth * 0.6 |0, minwidth = 120;
     if (newwidth < minwidth / 2)
       {
-	const cs = getComputedStyle (sidebar);
-	newwidth = parseInt (cs.getPropertyValue ('--b-resize-handle-thickness'), 10);
+        const cs = getComputedStyle (sidebar);
+        newwidth = parseInt (cs.getPropertyValue ('--b-resize-handle-thickness'), 10);
       }
     else
       newwidth = Util.clamp (newwidth, minwidth, maxwidth);
@@ -316,30 +367,31 @@ class BShell extends Object {
     e.preventDefault();
   }
   /// Show file selector dialog
-  async select_file (opt = {})
+  async select_file (opt: Partial<FileSelector> = {})
   {
     if (this.r.fs_shown)
       return undefined;
     Object.assign (this.fs, opt);
     this.fs.existing === false || (this.fs.existing = true);
-    return new Promise (resolve => {
-      this.fs.resolve = path => {
-	this.r.fs_shown = false;	// hide file selector
-	resolve (path);
+    return new Promise<any> (resolve => {
+      this.fs.resolve = (path: any) => {
+        this.r.fs_shown = false;	// hide file selector
+        resolve (path);
       };
       this.r.fs_shown = true;		// show file selector
     });
   }
   /// Create dialog via BModalDialogs.async_modal_dialog()
-  async async_modal_dialog (...args)
+  async async_modal_dialog (...args: any[])
   {
     return this.modal_dialogs_.async_modal_dialog (...args);
   }
-};
+}
 
 /// Crawl to find relevant files for the tree browser
-async function list_sample_files() {
+async function list_sample_files()
+{
   // TODO: const crawler = await Ase.server.resource_crawler();
-  const entries = []; // TODO: await crawler.list_files ('wave', 'user-downloads');
+  const entries: any[] = []; // TODO: await crawler.list_files ('wave', 'user-downloads');
   return Object.freeze ({ entries: entries });
 }

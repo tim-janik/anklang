@@ -42,7 +42,7 @@ repos:
         doc/style/doxyextra\.css|
         ui/b/piano-ctrl\.js|
         ui/b/preferencesdialog\.js|
-        ui/b/shell\.jsx|
+        ui/b/shell\.jsx|ui/b/shell\.tsx|
         ui/extra-css\.ts|
         ui/vite\.config\.ts|
       )$
