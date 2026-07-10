@@ -18,23 +18,20 @@ export async function test_clip_volume (): Promise<boolean>
   const clip = await track.create_midi_clip ("TestClip", 0.0, 4.0);
   if (!clip)
     throw new Error ("Failed to create MIDI clip");
-  // Wait for reactive properties to be initialized
-  await clip.$asyncs();
-
-  // Test initial volume
-  const initial_vol = clip.volume;
+  // Test initial volume (also waits for reactive init)
+  const initial_vol = await clip.$refetch (() => clip.volume);
 
   // Test setting volume
   clip.volume = -6.0;
-  await clip.$asyncs();
-  if (Math.abs (clip.volume - (-6.0)) >= 0.01)
-    throw new Error (`Clip volume not set correctly: ${clip.volume}`);
+  const vol = await clip.$refetch (() => clip.volume);
+  if (Math.abs (vol - (-6.0)) >= 0.01)
+    throw new Error (`Clip volume not set correctly: ${vol}`);
 
   // Reset volume
   clip.volume = 0.0;
-  await clip.$asyncs();
-  if (Math.abs (clip.volume) >= 0.01)
-    throw new Error (`Clip volume not reset correctly: ${clip.volume}`);
+  const vol2 = await clip.$refetch (() => clip.volume);
+  if (Math.abs (vol2) >= 0.01)
+    throw new Error (`Clip volume not reset correctly: ${vol2}`);
 
   // Cleanup
   await project.discard();
@@ -96,20 +93,20 @@ export async function test_clip_pan (): Promise<boolean>
   if (!clip)
     throw new Error ("Failed to create audio clip");
 
-  // Test initial pan
-  const initial_pan = clip.pan;
+  // Test initial pan (also waits for reactive init)
+  const initial_pan = await clip.$refetch (() => clip.pan);
 
   // Test setting pan
   clip.pan = 0.5;
-  await clip.$asyncs();
-  if (Math.abs (clip.pan - 0.5) >= 0.01)
-    throw new Error (`Clip pan not set correctly: ${clip.pan}`);
+  const pan = await clip.$refetch (() => clip.pan);
+  if (Math.abs (pan - 0.5) >= 0.01)
+    throw new Error (`Clip pan not set correctly: ${pan}`);
 
   // Reset pan
   clip.pan = -0.5;
-  await clip.$asyncs();
-  if (Math.abs (clip.pan - (-0.5)) >= 0.01)
-    throw new Error (`Clip pan not reset correctly: ${clip.pan}`);
+  const pan2 = await clip.$refetch (() => clip.pan);
+  if (Math.abs (pan2 - (-0.5)) >= 0.01)
+    throw new Error (`Clip pan not reset correctly: ${pan2}`);
 
   // Cleanup
   await project.discard();
@@ -151,9 +148,8 @@ export async function test_clip_notes (): Promise<boolean>
     fine_tune: 0.0
   };
   clip.all_notes = [new_note];
-  await clip.$asyncs();
 
-  const notes = clip.all_notes;
+  const notes = await clip.$refetch (() => clip.all_notes);
   if (notes.length !== 1)
     throw new Error (`Expected 1 note, got: ${notes.length}`);
   if (notes[0].key !== 60)
