@@ -10,6 +10,7 @@
  */
 
 import { createSignal, createEffect, onCleanup, For } from 'solid-js';
+import { ClipList } from './cliplist';
 
 // == STYLE ==
 Extra_css`
@@ -137,14 +138,14 @@ export function TrackList (props)
         <div class="cliplists" ref={e => cliplists_ref = e}>
           <For each={tracks ()}>
             {(track, idx) => (
-              <b-cliplist track={track} trackindex={idx ()}></b-cliplist>
+              <ClipList track={track} trackindex={idx ()} />
             )}
           </For>
         </div>
         <div class="partlists" ref={e => partlists_ref = e}>
           <For each={tracks ()}>
             {(track, idx) => (
-              <b-cliplist track={track} trackindex={idx ()}></b-cliplist>
+              <ClipList track={track} trackindex={idx ()} />
             )}
           </For>
         </div>

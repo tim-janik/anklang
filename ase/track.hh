@@ -44,7 +44,8 @@ public:
   void            remove_self       () override;
   int32           midi_channel      () const override      { return midi_channel_; }
   void            midi_channel      (int32 midichannel) override;
-  ClipS           launcher_clips    () override;
+  ClipS           launcher_clips    () const override;
+  void            launcher_clips    (const ClipS &) override;
   DeviceP         access_device     () override;
   MonitorP        create_monitor    (int32 ochannel) override;
   ssize_t         clip_index        (const ClipImpl &clip) const;

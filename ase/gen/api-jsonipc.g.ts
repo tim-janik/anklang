@@ -809,8 +809,10 @@ export class Track // Ase::Track
   { return this.$get ("pan", 0.0) as number; }
   set pan (v: number)
   { this.$set ("pan", v); }
-  launcher_clips (): Promise<Clip[]>
-  { return this.$rpc ("launcher_clips", [this]); }
+  get launcher_clips (): Clip[]
+  { return this.$get ("launcher_clips", []) as Clip[]; }
+  set launcher_clips (v: Clip[])
+  { this.$set ("launcher_clips", v); }
   create_midi_clip (arg1: string, arg2: number, arg3: number): Promise<Clip>
   { return this.$rpc ("create_midi_clip", [this, arg1, arg2, arg3]); }
   create_audio_clip (arg1: string, arg2: number, arg3: number): Promise<Clip>
