@@ -21,19 +21,18 @@ export async function test_project_basic (): Promise<boolean>
 
   // Test BPM property - set BPM to a valid value
   project.bpm = 120.0;
-  await project.$asyncs();
-  const initial_bpm = project.bpm;
+  const initial_bpm = await project.$refetch (() => project.bpm);
 
   // Test setting BPM to a different value
   project.bpm = 130.0;
-  await project.$asyncs();
-  if (Math.abs (project.bpm - 130.0) >= 0.001)
-    throw new Error (`BPM not set correctly: ${project.bpm}`);
+  const bpm_val = await project.$refetch (() => project.bpm);
+  if (Math.abs (bpm_val - 130.0) >= 0.001)
+    throw new Error (`BPM not set correctly: ${bpm_val}`);
 
   project.bpm = 123.0;
-  await project.$asyncs();
-  if (Math.abs (project.bpm - 123.0) >= 0.001)
-    throw new Error (`BPM not set correctly: ${project.bpm}`);
+  const bpm_val2 = await project.$refetch (() => project.bpm);
+  if (Math.abs (bpm_val2 - 123.0) >= 0.001)
+    throw new Error (`BPM not set correctly: ${bpm_val2}`);
 
   // Test undo
   if (!await project.can_undo())
@@ -62,23 +61,20 @@ export async function test_project_master_volume (): Promise<boolean>
   if (!project)
     throw new Error ("Failed to create project");
 
-  // Wait for project to be fully initialized
-  await project.$asyncs();
-
-  // Test initial master volume
-  const initial_vol = project.master_volume;
+  // Test initial master volume (also waits for project initialization)
+  const initial_vol = await project.$refetch (() => project.master_volume);
 
   // Test setting master volume
   project.master_volume = -6.0;
-  await project.$asyncs();
-  if (Math.abs (project.master_volume - (-6.0)) >= 0.01)
-    throw new Error (`Master volume not set correctly: ${project.master_volume}`);
+  const vol = await project.$refetch (() => project.master_volume);
+  if (Math.abs (vol - (-6.0)) >= 0.01)
+    throw new Error (`Master volume not set correctly: ${vol}`);
 
   // Reset master volume
   project.master_volume = initial_vol;
-  await project.$asyncs();
-  if (Math.abs (project.master_volume - initial_vol) >= 0.01)
-    throw new Error (`Master volume not reset correctly: ${project.master_volume}`);
+  const vol2 = await project.$refetch (() => project.master_volume);
+  if (Math.abs (vol2 - initial_vol) >= 0.01)
+    throw new Error (`Master volume not reset correctly: ${vol2}`);
 
   // Cleanup
   await project.discard();

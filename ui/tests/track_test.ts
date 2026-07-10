@@ -13,23 +13,20 @@ export async function test_track_volume (): Promise<boolean>
   const track = await project.create_track();
   if (!track)
     throw new Error ("Failed to create track");
-  // Wait for reactive properties to be initialized
-  await track.$asyncs();
-
-  // Test initial volume
-  const initial_vol = track.volume;
+  // Test initial volume (also waits for reactive init)
+  const initial_vol = await track.$refetch (() => track.volume);
 
   // Test setting volume
   track.volume = -6.0;
-  await track.$asyncs();
-  if (Math.abs (track.volume - (-6.0)) >= 0.01)
-    throw new Error (`Track volume not set correctly: ${track.volume}`);
+  const vol = await track.$refetch (() => track.volume);
+  if (Math.abs (vol - (-6.0)) >= 0.01)
+    throw new Error (`Track volume not set correctly: ${vol}`);
 
   // Reset volume
   track.volume = 0.0;
-  await track.$asyncs();
-  if (Math.abs (track.volume) >= 0.01)
-    throw new Error (`Track volume not reset correctly: ${track.volume}`);
+  const vol2 = await track.$refetch (() => track.volume);
+  if (Math.abs (vol2) >= 0.01)
+    throw new Error (`Track volume not reset correctly: ${vol2}`);
 
   // Cleanup
   await project.discard();
@@ -48,23 +45,20 @@ export async function test_track_pan (): Promise<boolean>
   const track = await project.create_track();
   if (!track)
     throw new Error ("Failed to create track");
-  // Wait for reactive properties to be initialized
-  await track.$asyncs();
-
-  // Test initial pan
-  const initial_pan = track.pan;
+  // Test initial pan (also waits for reactive init)
+  const initial_pan = await track.$refetch (() => track.pan);
 
   // Test setting pan
   track.pan = 0.5;
-  await track.$asyncs();
-  if (Math.abs (track.pan - 0.5) >= 0.01)
-    throw new Error (`Track pan not set correctly: ${track.pan}`);
+  const pan = await track.$refetch (() => track.pan);
+  if (Math.abs (pan - 0.5) >= 0.01)
+    throw new Error (`Track pan not set correctly: ${pan}`);
 
   // Reset pan
   track.pan = -0.5;
-  await track.$asyncs();
-  if (Math.abs (track.pan - (-0.5)) >= 0.01)
-    throw new Error (`Track pan not reset correctly: ${track.pan}`);
+  const pan2 = await track.$refetch (() => track.pan);
+  if (Math.abs (pan2 - (-0.5)) >= 0.01)
+    throw new Error (`Track pan not reset correctly: ${pan2}`);
 
   // Cleanup
   await project.discard();
@@ -147,17 +141,14 @@ export async function test_track_midi_channel (): Promise<boolean>
   const track = await project.create_track();
   if (!track)
     throw new Error ("Failed to create track");
-  // Wait for reactive properties to be initialized
-  await track.$asyncs();
-
-  // Test initial midi channel
-  const initial_channel = track.midi_channel;
+  // Test initial midi channel (also waits for reactive init)
+  const initial_channel = await track.$refetch (() => track.midi_channel);
 
   // Test setting midi channel
   track.midi_channel = 1;
-  await track.$asyncs();
-  if (track.midi_channel !== 1)
-    throw new Error (`Midi channel not set correctly: ${track.midi_channel}`);
+  const midi_channel = await track.$refetch (() => track.midi_channel);
+  if (midi_channel !== 1)
+    throw new Error (`Midi channel not set correctly: ${midi_channel}`);
 
   // Cleanup
   await project.discard();

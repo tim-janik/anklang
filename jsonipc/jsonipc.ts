@@ -32,7 +32,8 @@ interface JsonipcPrototype {
   };
   toJSON(): { $id: number };
   $rpc (method: string, params: any[]): Promise<any>;
-  $asyncs(): Promise<void>;	// Wait for all pending async operations to complete
+  $asyncs(): Promise<void>;	         // Wait for all pending async operations to complete
+  $refetch<T> (cb: () => T): Promise<T>; // Run cb, await asyncs, maybe re-run cb for fresh cached value
   // Mixin method for classes with event handling
   on (event: string, callback: (...args: any[]) => void): () => void;
 };
@@ -65,33 +66,30 @@ export const Jsonipc = {
     // Note, verify this is called when altering $props.$weakthis & co
   }),
 
-  /// Set a reactive property remotely and return promise for completion
-  set_reactive_prop<T> (this: any, prop: string, val: T): Promise<any>
-  {
-    const promise = Jsonipc.send ('set/' + prop, [this, val]);
-    Jsonipc.add_prop_promise.call (this, promise);
-    return promise;
-  },
-
   /// Chain a new promise to the object's async operation queue
+  /// The returned promise resolves to the result of `nextpromise`, so
+  /// `await add_prop_promise (nextpromise)` yields the same value as `await nextpromise`.
   add_prop_promise<T> (this: any, nextpromise: Promise<any>)
   {
     if (!this.$props.$promise) {
       this.$props.$promise = nextpromise;
-      return this.$props.$promise;
+      return this.$props.$promise;	// resolves to value of nextpromise
     }
     // Create a WeakRef to the object so it can be GC'd even if promises hold references
     const weakthis = Jsonipc.ensure_props.call (this).$weakthis;
     // Chain the existing promise with the new one
-    const wrapperpromise = Promise.all ([this.$props.$promise, nextpromise]);
-    wrapperpromise.then (([_, nextresult]) =>
+    const prevpromise = this.$props.$promise;
+    const wrapperpromise = new Promise (async resolve =>
       {
+	await prevpromise;
+	const nextresult = await nextpromise;
         // Dereference the object - may be null if GC'd
         const obj = weakthis.deref();
         if (obj?.$props?.$promise === wrapperpromise)
 	  obj.$props.$promise = null;	// breaks references for GC
-        return nextresult;
-      });
+        resolve (nextresult);
+      }
+    );
     wrapperpromise.catch (exc => {
       const obj = weakthis.deref();
       if (obj?.$props?.$promise === wrapperpromise)
@@ -100,7 +98,7 @@ export const Jsonipc = {
     });
     // assign synchronization point
     this.$props.$promise = wrapperpromise;
-    return this.$props.$promise;
+    return this.$props.$promise;	// resolves to value of nextpromise
   },
 
   /// Install auto-fetching for prop and get its value
@@ -110,7 +108,8 @@ export const Jsonipc = {
     if (!this_props.$weakthis) {
       // install $props system
       this_props.$weakthis = new WeakRef (this);	// helper to not keep `this` alive
-      this_props.$promise = null;			// present if $promise !== undefined
+      if (!this_props.$promise)
+	this_props.$promise = null;			// present if $promise !== undefined
       //this_props.$id = this.$id;			// DEBUG $id GC
       const clean_this_props = (): void => {
         //console.log ("GC: $id=" + this_props.$id, "delete $props");	// DEBUG $id GC
@@ -134,16 +133,16 @@ export const Jsonipc = {
       this_props[prop] = new globalThis.Signal.State (dflt); // cached state
       const refetch_prop = (): Promise<T> =>
       {
-        const async_fetch_prop = async (): Promise<void> =>
+        const promise_send_and_update = async (): Promise<T> =>
 	{
           const self = this_props.$weakthis?.deref();
           if (!self) return;
-          const result_promise = Jsonipc.send ('get/' + prop, [self]);
-          const result = await result_promise;
+          const result = await Jsonipc.send ('get/' + prop, [self]);
           const signal_state = this_props[prop] as SignalState<T>;
 	  signal_state.set (result);			// assign new value
+	  return result;
         };
-        return Jsonipc.add_prop_promise.call (this, async_fetch_prop());
+        return Jsonipc.add_prop_promise.call (this, promise_send_and_update());
       };
       const delnotifier = this.on ("notify:" + prop, refetch_prop);
       this_props.$unwatchers.push (delnotifier);
@@ -165,11 +164,11 @@ export const Jsonipc = {
     // this.web_socket.onerror = (event) => { throw event; };
     if (options.onclose)
       this.web_socket.onclose = options.onclose;
-    this.web_socket.onmessage = this.socket_message.bind (this);
+    this.web_socket.onmessage = this.socket_onmessage.bind (this);
     const promise = new globalThis.Promise<boolean> ((resolve, reject) => {
       this.web_socket.onopen = (): void => {
-        const psend = this.send ('Jsonipc/handshake', []);
-        psend.then ((result: any) => {
+        const promise_handshake = this.send ('Jsonipc/handshake', []);
+        promise_handshake.then ((result: any) => {
           this.authresult = result;
           const protocol = 0x00000001;
           if (this.authresult === protocol)
@@ -205,15 +204,19 @@ export const Jsonipc = {
     {
       return { $id: this.$id };
     }
-    // Send a Jsonipc request and await notifications
+    // Send a Jsonipc remote call, await result, await cascading notifications
     async $rpc (method: string, params: any[]): Promise<any>
     {
-      const result = await Jsonipc.send (method, params);
-      if (this.$props.$promise)	// pending notifications
-	await this.$asyncs();	// await delivery
+      const promise = Jsonipc.send (method, params);
+      // remote should first send change notification, then RPC result
+      const result = Jsonipc.add_prop_promise.call (this, promise);
+      // here, change notification async callbacks have started, not yet finished
+      if (this.$props.$promise) // pending async callbacks
+	await this.$asyncs();   // await callbacks / property refetch updates
+      // here, RPC is done and properties were refetched
       return result;
     }
-    /// Get a reactive property value (fetches if needed)
+    /// Get a property value via createSignal(), returns dflt on first access and queues refetch
     $get<T> (prop: string, dflt: T): T
     {
       return Jsonipc.get_reactive_prop.call (this, prop, dflt) as T;
@@ -221,20 +224,31 @@ export const Jsonipc = {
     /// Set a reactive property remotely and await completion
     async $set<T> (prop: string, val: T): Promise<any>
     {
-      return await Jsonipc.set_reactive_prop.call (this, prop, val);
+      const promise = Jsonipc.send ('set/' + prop, [this, val]);
+      return await Jsonipc.add_prop_promise.call (this, promise);
     }
-    // Wait for all pending async operations to complete
+    /// Wait for all pending async operations to complete
     async $asyncs()
     {
       const last_promise = this.$props.$promise;
       // NOP if no async operation is pending
       if (!last_promise)
 	return;
-      // await completion of any running async modifiocations
+      // await completion of any running async modifications
       await last_promise;
       // a new promise likely indicates the refetch() of a past modification
       if (this.$props.$promise && last_promise !== this.$props.$promise)
 	await this.$props.$promise;
+    }
+    /// Run cb, await $asyncs(), maybe re-run cb for fresh cached value
+    async $refetch<T> (cb: () => T): Promise<T>
+    {
+      let result = cb();
+      if (this.$props.$promise) {
+	await this.$asyncs();
+	result = cb();
+      }
+      return result;
     }
     // JSON.parse reviver
     static fromJSON (key: string, value: any): any
@@ -254,35 +268,23 @@ export const Jsonipc = {
     }
   },
 
-  /// Send a Jsonipc request
-  send (method: string, params: any[]): Promise<any>
+  /// Send a Jsonipc request, await result
+  async send (method: string, params: any[])
   {
     if (!this.web_socket)
       throw globalThis.Error ("Jsonipc: connection closed");
     const id = ++this.counter;
     let send_promise: Promise<any>;			// promise to sync with this call
-    const this_props = params?.[0]?.$props as JsonipcPrototype['$props'] | undefined; // avoid keeping method's `this` alive
-    const last_promise = this_props?.$promise;
-    const send_async = async (method: string, params: any[]): Promise<any> => {
-      this.web_socket.send (globalThis.JSON.stringify ({ id, method, params }));
-      const msg_promise = new globalThis.Promise<JsonipcMessage> (resolve => this.idmap[id] = resolve);
-      if (last_promise)
-        await last_promise;
-      const resolved_msg = await msg_promise;
-      if (last_promise !== undefined && this_props?.$promise === send_promise)
-        this_props.$promise = null;			// reset, this call has just been resolved
-      if (resolved_msg.error)
-        throw globalThis.Error (
-          `${resolved_msg.error.code}: ${resolved_msg.error.message}\n` +
-          `Request: {"id":${id},"method":"${method}",…}\n` +
-          "Reply: " + globalThis.JSON.stringify (resolved_msg)
-        );
-      return resolved_msg.result;
-    };
-    send_promise = send_async (method, params);
-    if (last_promise !== undefined)
-      this_props.$promise = send_promise;		// chain this call with last promise
-    return send_promise;
+    this.web_socket.send (globalThis.JSON.stringify ({ id, method, params }));
+    const promise_reply = new globalThis.Promise<JsonipcMessage> (handle_reply => this.idmap[id] = handle_reply);
+    const reply = await promise_reply; // resolved in socket_onmessage()
+    if (reply.error)
+      throw globalThis.Error (
+        `${reply.error.code}: ${reply.error.message}\n` +
+        `Request: {"id":${id},"method":"${method}",…}\n` +
+        "Reply: " + globalThis.JSON.stringify (reply)
+      );
+    return reply.result;
   },
 
   /// Observe Jsonipc notifications
@@ -301,13 +303,13 @@ export const Jsonipc = {
   },
 
   /// Handle a Jsonipc message
-  socket_message (event: MessageEvent): void
+  socket_onmessage (event: MessageEvent): void
   {
     // Binary message
     if (event.data instanceof globalThis.ArrayBuffer) {
-      const handler = this.onbinary;
-      if (handler)
-        handler (event.data);
+      const binary_handler = this.onbinary;
+      if (binary_handler)
+        binary_handler (event.data);
       else
         globalThis.console.error ("Unhandled message event:", event);
       return;
@@ -316,10 +318,10 @@ export const Jsonipc = {
     const maybe_prototype = event.data.indexOf ('"$class":"') >= 0;
     const msg: JsonipcMessage = globalThis.JSON.parse (event.data, maybe_prototype ? Jsonipc.Jsonipc_prototype.fromJSON : null);
     if (msg.id) {
-      const handler = this.idmap[msg.id];
+      const handle_reply = this.idmap[msg.id];
       delete this.idmap[msg.id];
-      if (handler)
-        return handler (msg);
+      if (handle_reply)
+        return handle_reply (msg);
     } else if (typeof msg.method === "string" && globalThis.Array.isArray (msg.params)) { // notification
       const receiver = this.receivers[msg.method];
       if (receiver)
