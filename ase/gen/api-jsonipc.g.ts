@@ -33,7 +33,8 @@ interface JsonipcPrototype {
   };
   toJSON(): { $id: number };
   $rpc (method: string, params: any[]): Promise<any>;
-  $asyncs(): Promise<void>;	// Wait for all pending async operations to complete
+  $asyncs(): Promise<void>;	         // Wait for all pending async operations to complete
+  $refetch<T> (cb: () => T): Promise<T>; // Run cb, await asyncs, maybe re-run cb for fresh cached value
   // Mixin method for classes with event handling
   on (event: string, callback: (...args: any[]) => void): () => void;
 };
@@ -216,7 +217,7 @@ export const Jsonipc = {
       // here, RPC is done and properties were refetched
       return result;
     }
-    /// Get a reactive property value (fetches if needed)
+    /// Get a property value via createSignal(), returns dflt on first access and queues refetch
     $get<T> (prop: string, dflt: T): T
     {
       return Jsonipc.get_reactive_prop.call (this, prop, dflt) as T;
@@ -227,7 +228,7 @@ export const Jsonipc = {
       const promise = Jsonipc.send ('set/' + prop, [this, val]);
       return await Jsonipc.add_prop_promise.call (this, promise);
     }
-    // Wait for all pending async operations to complete
+    /// Wait for all pending async operations to complete
     async $asyncs()
     {
       const last_promise = this.$props.$promise;
@@ -239,6 +240,16 @@ export const Jsonipc = {
       // a new promise likely indicates the refetch() of a past modification
       if (this.$props.$promise && last_promise !== this.$props.$promise)
 	await this.$props.$promise;
+    }
+    /// Run cb, await $asyncs(), maybe re-run cb for fresh cached value
+    async $refetch<T> (cb: () => T): Promise<T>
+    {
+      let result = cb();
+      if (this.$props.$promise) {
+	await this.$asyncs();
+	result = cb();
+      }
+      return result;
     }
     // JSON.parse reviver
     static fromJSON (key: string, value: any): any
