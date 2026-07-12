@@ -10,7 +10,7 @@ VITE_DEPS :=	# (intermediate) targets required by vite
 # * DevTools can be activated with Shft+Ctrl+I when run from the devleopment tree.
 
 # == $>/gen/testcalls.g.ts ==
-UI_TESTS_FILES := $(filter-out ui/tests/aux.ts, $(wildcard ui/tests/*ts))
+UI_TESTS_FILES := $(wildcard ui/tests/*ts)
 $>/gen/testcalls.g.ts: ui/gen-testcalls.ts ui/Makefile.mk $(UI_TESTS_FILES)		| $>/gen/
 	$(QGEN)
 	$Q $(RUNTS) $< --out $@ $(UI_TESTS_FILES)

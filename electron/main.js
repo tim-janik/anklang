@@ -163,6 +163,7 @@ function create_window (onclose)
 	cursive:        'Script',       // 'Script',
 	fantasy:        'Impact',       // 'Impact',
       },
+      offscreen: headless_mode,		// Force frame generation without a GUI window
     },
     show: false, // avoid incremental load effect, see 'ready-to-show'
     darkTheme: true,
@@ -180,6 +181,8 @@ function create_window (onclose)
   // avoid menu flicker, leave menu construction to the window
   Electron.Menu.setApplicationMenu (null);
   const w = new Electron.BrowserWindow (options);
+  if (headless_mode)
+    w.webContents.setFrameRate (25);
   w.setMenu (Electron.Menu.buildFromTemplate ([]));
   w.webContents.once ('crashed', () => main_exit (129)); // 'crashed' is SIGHUP or SIGTERM
   w.webContents.on ('console-message', (event) => {

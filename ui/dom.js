@@ -207,3 +207,24 @@ export async function ui_click (tag, filters = {})
   if (el) el.click ();
   return el;
 }
+
+/// Find + click + wait convenience.
+export async function ui_click_wait (tag, filters = {}, wait_ms = 50)
+{
+  const el = ui_click (tag, filters);
+  if (wait_ms > 0)
+    await ui_wait (wait_ms);
+  return el;
+}
+
+/// Wait for the next `requestAnimationFrame` callback to fire.
+export async function ui_next_frame ()
+{
+  await new Promise (r => requestAnimationFrame (() => r ()));
+}
+
+/// Wait for `ms` milliseconds.
+export async function ui_wait (ms)
+{
+  await new Promise (r => setTimeout (r, ms));
+}
