@@ -11,6 +11,7 @@
 
 import { createSignal, createEffect, onCleanup, For } from 'solid-js';
 import { ClipList } from './cliplist';
+import { TrackView } from './trackview.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -131,7 +132,7 @@ export function TrackList (props)
         <div class="trackviews" ref={e => trackviews_ref = e}>
           <For each={tracks ()}>
             {(track, idx) => (
-              <b-trackview track={track} trackindex={idx ()}></b-trackview>
+              <TrackView track={track} trackindex={idx ()} />
             )}
           </For>
         </div>

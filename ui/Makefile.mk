@@ -130,6 +130,9 @@ $>/gen/%.md: ui/%.js						| $>/gen/b/ node_modules/.npm.done
 $>/gen/%.md: ui/%.jsx						| $>/gen/b/ node_modules/.npm.done
 	$(QGEN)
 	$Q node ui/xbcomments.js $< -O $(@D)
+$>/gen/%.md: ui/%.tsx						| $>/gen/b/ node_modules/.npm.done
+	$(QGEN)
+	$Q node ui/xbcomments.js $< -O $(@D)
 
 # == ui dist build ==
 VITE_DEPS += $>/version.json $(wildcard ui/* ui/b/*)
