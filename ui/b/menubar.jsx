@@ -15,7 +15,7 @@ import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import { PositionView } from './positionview';
 import { PlayControls } from './playcontrols';
 import { basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
-import { ButtonBar } from './buttonbar.tsx';
+import { ButtonBar } from './buttonbar';
 import { ContextMenu } from './contextmenu';
 import { Icon } from './icon';
 import { MenuSeparator } from './menuseparator';
