@@ -785,7 +785,7 @@ export async function extend_property (prop, disconnector = undefined, augment =
     has_choices_: false,
     value_: null,		// see define_reactive() below
     clearnotify_: null,		// disables automatic update_() on 'notify'
-    apply_: prop.set_value.bind (prop),
+    apply_: v => { prop.value = v; }, // Property::set_value(v) became value(v) setter (d322a94b)
     fetch_: () => xprop.is_numeric_ ? xprop.value_.num : xprop.value_.text,
     addnotify_: cb => notify_cbs.push (cb),
     delnotify_: cb => array_remove (notify_cbs, cb),
@@ -797,10 +797,13 @@ export async function extend_property (prop, disconnector = undefined, augment =
     update_: () => {
       const last_promise = xprop.promise_;
       const async_update = async () => {
-	await last_promise; // sync with last update
-	const val = xprop.get_value(), text = xprop.get_text();
+	let val = xprop.value;	// triggers refetch if uninitialized
+	await last_promise;	// sync with last update
+	const text_promise = xprop.get_text();
 	const choices = xprop.has_choices_ ? await xprop.choices() : empty_list;
-	const value_ = { val: await val, num: undefined, text: await text, choices };
+	const text = await text_promise;
+	val = xprop.value;	// fetch cached but now-updated value (since we await-ed later $rpc calls)
+	const value_ = { val, num: undefined, text, choices };
 	value_.num = (value_.val - xprop.min_) / (xprop.max_ - xprop.min_);
 	xprop.value_ = value_;
 	if (augment)
