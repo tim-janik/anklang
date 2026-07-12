@@ -408,6 +408,7 @@ TAGS: $(REPOCOMMITDEPS)
 	| grep -E '\.([mc]?jsx?|tsx?|py|go|hh|cc|[HChc]|[HChc]pp)$$' \
 	| etags -o $@ -L - 2> >(grep -vF 'Warning: ignoring null tag in')
 	$Q rm -f $>/tags.lst
+CLEANFILES += TAGS
 ALL_TARGETS += TAGS
 
 # == compile_commands.json ==
