@@ -3,6 +3,7 @@
 
 import { createEffect, createMemo, onCleanup, For } from 'solid-js';
 import * as Util from '../util.js';
+import { ClipView } from './clipview';
 
 /** ## Clip-List
  * The Clip-List allows to start playback of individual clips.
@@ -19,7 +20,7 @@ b-cliplist, .b-cliplist {
     z-index: 2;
     transform: translateX(-9999px);
   }
-  b-clipview {
+  .b-clipview {
     margin: 0 1px;
     width: var(--b-clipthumb-width);
     flex-shrink: 0; flex-grow: 0;
@@ -64,7 +65,7 @@ export function ClipList (props)
     requestAnimationFrame (() => {
       if (!mounted || !container_ref) return;
       clipviews.length = 0;
-      for (const element of container_ref.querySelectorAll ("b-clipview"))
+      for (const element of container_ref.querySelectorAll (".b-clipview"))
         clipviews.push ({
           width: element.getBoundingClientRect().width,
           tickscale: element.tickscale,
@@ -107,7 +108,7 @@ export function ClipList (props)
     <div class="b-cliplist" data-f1="cliplist.html" ref={container_ref}>
       <For each={clips()}>
         {(clip, index) => (
-          <b-clipview clip={clip} index={index()} track={props.track} trackindex={props.trackindex}></b-clipview>
+          <ClipView clip={clip} index={index()} track={props.track} trackindex={props.trackindex} />
         )}
       </For>
       <span class="-indicator" ref={indicator_bar}></span>

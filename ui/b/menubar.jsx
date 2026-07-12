@@ -15,6 +15,7 @@ import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import { PositionView } from './positionview';
 import { PlayControls } from './playcontrols';
 import { basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
+import { ButtonBar } from './buttonbar.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -89,7 +90,7 @@ export function MenuBar (props)
   return (
     <div class={props.class ? 'hflex b-menubar m-2 ' + props.class : 'hflex b-menubar m-2'} style="justify-content: space-between">
       {/* menubar left */}
-      <b-buttonbar class="-menubar">
+      <ButtonBar class="-menubar">
         {/* File Menu */}
         <div class="asbutton button-dim" data-tip="**CLICK** File Menu" data-hotkey="Alt+F"
              onClick={e => filemenu.popup (e)}
@@ -138,7 +139,7 @@ export function MenuBar (props)
             {electron_menuitems()}
           </b-contextmenu>
         </div>
-      </b-buttonbar>
+      </ButtonBar>
 
       {/* playcontrols */}
       <div class="hflex">
@@ -147,7 +148,7 @@ export function MenuBar (props)
       </div>
 
       {/* menubar right */}
-      <b-buttonbar class="-menubar">
+      <ButtonBar class="-menubar">
         {/* Help Menu */}
         <div class="asbutton button-dim" data-tip="**CLICK** Help Menu" data-hotkey="Alt+H"
              onClick={e => helpmenu.popup (e)}
@@ -162,7 +163,7 @@ export function MenuBar (props)
             <button ic="oct-id_badge"    uri="about">         About…                  </button>
           </b-contextmenu>
         </div>
-      </b-buttonbar>
+      </ButtonBar>
     </div>
   );
 };

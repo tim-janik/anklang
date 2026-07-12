@@ -14,6 +14,7 @@ import { createEffect, onMount, onCleanup } from 'solid-js';
 import { html } from '../little.js';
 import * as Util from '../util.js';
 import { clamp } from '../util.js';
+import { Editable } from './editable';
 import { render_contextmenu } from './contextmenu.js';
 import { get_uri } from '../dom.js';
 
@@ -84,18 +85,18 @@ const HTML_CONTEXTMENU = (t, d) => html`
     <button ic="fa-i_cursor"       uri="rename-track" >   Rename Track          </button>
     <button ic="fa-toggle_down"    uri="bounce-track" >   Bounce Track          </button>
     <button ic="md-eye_off" uri="track-details" >  Show / Hide Track Details </button>
-    <b-menuseparator></b-menuseparator>
+    <hr class="b-menuseparator"></hr>
     <b-menurow> <!-- ic="fa-clone" uri="clone-track" >    Dupl.                 -->
       <button ic="fa-times_circle" uri="delete-track" >   Delete                </button>
       <button ic="fa-scissors"     uri="cut-track" >      Cut                   </button>
       <button ic="fa-files_o"      uri="copy-track" >     Copy                  </button>
       <button ic="fa-clipboard"    uri="paste-track" >    Paste                 </button>
     </b-menurow>
-    <b-menuseparator></b-menuseparator>
+    <hr class="b-menuseparator"></hr>
     <b-menutitle> Playback </b-menutitle>
     <button ic="uc-Ｍ"             uri="mute-track" >     Mute Track            </button>
     <button ic="uc-Ｓ"             uri="solo-track" >     Solo Track            </button>
-    <b-menuseparator></b-menuseparator>
+    <hr class="b-menuseparator"></hr>
     <b-menutitle> MIDI Channel </b-menutitle>
     <button   uri="mc-0"  ic=${t.mcc (0)}  > Internal Channel </button>
     <b-menurow noturn>
@@ -347,9 +348,9 @@ export function TrackView (props)
 	onClick={track_click0}
 	onContextMenu={menu_open}
 	ref={e => trackviewcontrol_ref = e}>
-	<b-editable ref={e => trackname_ref = e} clicks="2" style="min-width: 4em; width: 7em"
+	<Editable ref={e => trackname_ref = e} clicks={2} style="min-width: 4em; width: 7em"
 	  selectall onChange={on_editable_change}
-	  value={props.track.name}></b-editable>
+	  value={props.track.name} />
 	<div class="-lvm-main">
 	  <div class="-lvm-levelbg" ref={e => levelbg_ref = e}></div>
 	  <div class="-lvm-covermid0" ref={e => covermid0_ref = e}></div>

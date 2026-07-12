@@ -50,7 +50,7 @@ b-choiceinput {
     justify-content: center; text-align: center;
     padding: 0;
   }
-  b-objecteditor &.b-choice {
+  b-objecteditor &.b-choice, .b-objecteditor &.b-choice {
     text-align: left;
     justify-content: left;
     padding: 0;

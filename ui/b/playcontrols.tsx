@@ -14,6 +14,7 @@ b-playcontrols, .b-playcontrols {
 
 // == Component ==
 import { createComputed } from 'solid-js';
+import { ButtonBar } from './buttonbar.tsx';
 
 export function PlayControls (props: any)
 {
@@ -45,7 +46,7 @@ export function PlayControls (props: any)
   });
 
   return (
-    <b-buttonbar class="b-playcontrols">
+    <ButtonBar class="b-playcontrols">
       <div class="asbutton button-down" disabled onClick={() => dispatch ('-todo-Last')}>
         <b-icon fw lg ic="fa-fast_backward"></b-icon>
       </div>
@@ -69,6 +70,6 @@ export function PlayControls (props: any)
       <div class="asbutton button-down" disabled onClick={() => dispatch ('-todo-Next')}>
         <b-icon fw lg ic="fa-fast_forward"></b-icon>
       </div>
-    </b-buttonbar>
+    </ButtonBar>
   );
 }
