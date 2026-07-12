@@ -12,6 +12,10 @@ UI_TEST_LIST := \
   editable_test.test_editable_escape_cancels \
   editable_test.test_editable_blur_commits \
   editable_test.test_editable_ref_activate \
+  numberinput_test.test_numberinput_clamp_on_input \
+  numberinput_test.test_numberinput_integer_rounding \
+  numberinput_test.test_numberinput_external_enforce \
+  numberinput_test.test_numberinput_no_spurious_emit \
   project_test.test_project_basic \
   project_test.test_project_master_volume \
   project_test.test_project_track_management \
