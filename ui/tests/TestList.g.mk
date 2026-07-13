@@ -16,6 +16,14 @@ UI_TEST_LIST := \
   project_test.test_project_master_volume \
   project_test.test_project_track_management \
   project_test.test_project_track_removal_notification \
+  switchinput_test.test_switchinput_toggle_on \
+  switchinput_test.test_switchinput_toggle_off \
+  switchinput_test.test_switchinput_readonly \
+  switchinput_test.test_switchinput_keyboard \
+  switchinput_test.test_switchinput_keyboard_readonly \
+  switchinput_test.test_switchinput_constrain_strings \
+  switchinput_test.test_switchinput_normalize_emit \
+  switchinput_test.test_switchinput_external_enforce \
   track_test.test_track_volume \
   track_test.test_track_pan \
   track_test.test_track_mute \
