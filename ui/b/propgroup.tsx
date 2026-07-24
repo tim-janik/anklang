@@ -7,8 +7,7 @@
  * @property {boolean} readonly - Make this component non editable for the user.
  */
 
-import { For } from 'solid-js';
-import * as Util from '../util.js';
+import { createMemo, For } from 'solid-js';
 import { Toggle } from './toggle.tsx';
 import { TextInput } from './textinput.tsx';
 import { Knob } from './knob.tsx';
@@ -64,10 +63,8 @@ function assign_layout_rows (props_array)
   const rows = [];
   for (const prop of props_array) {
     console.assert ('number' == typeof prop.lrow_);
-    if (!rows[prop.lrow_]) {
+    if (!rows[prop.lrow_])
       rows[prop.lrow_] = [];
-      rows[prop.lrow_].index = prop.lrow_;
-    }
     rows[prop.lrow_].push (prop);
   }
   // freezing avoids watchers
@@ -82,10 +79,10 @@ function PropHtml (prop, readonly)
         label={''}
         onValueChange={val => prop.set_normalized (!!val)} />;
     case 'C':
-      return <ChoiceInput small={true} indexed="1" disabled={prop.readonly || readonly}
+      return <ChoiceInput small={true} disabled={prop.readonly || readonly}
         label={prop.label_} title={prop.title_}
         value={prop.value_.val} prop={prop}
-        on:valuechange={e => prop.apply_ (e.target.value)} />;
+        onValueChange={uri => prop.apply_ (uri)} />;
     case 'K':
       return <Knob disabled={prop.readonly || readonly} prop={prop} />;
     case 'T':
@@ -100,18 +97,17 @@ function PropHtml (prop, readonly)
 // == COMPONENT ==
 export function PropGroup (props)
 {
-  const prop_rows = assign_layout_rows (props.props);
+  const prop_rows = createMemo (() => assign_layout_rows (props.props ?? []));
   return (
     <div class="b-propgroup" style={props.style}>
       <span class="b-propgroup-title"> {props.name} </span>
-      <For each={prop_rows}>
+      <For each={prop_rows()}>
         {(row_props) => (
           <div class="b-propgroup-row grid justify-evenly" style="grid-auto-flow: column dense">
             <For each={row_props}>
               {(prop) => (
                 <>
                   {PropHtml (prop, props.readonly)}
-                  {' '}
                   <span class="text-center text-[90%]" style="grid-row: 2/3"> {prop.nick_} </span>
                 </>
               )}
