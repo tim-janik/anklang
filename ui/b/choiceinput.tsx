@@ -123,6 +123,7 @@ export function ChoiceInput (props: {
   disabled?: boolean;
   class?: string;
   ref?: (el: HTMLElement) => void;
+  onValueChange?: (uri: string) => void;
   'on:valuechange'?: (e: Event) => void;
   [key: string]: any;
 })
@@ -132,7 +133,7 @@ export function ChoiceInput (props: {
   let cmenu_el: any | undefined;
 
   const [local, others] = splitProps (props, [
-    'value', 'choices', 'title', 'label', 'small', 'prop', 'disabled', 'class', 'ref',
+    'value', 'choices', 'title', 'label', 'small', 'prop', 'disabled', 'class', 'ref', 'onValueChange',
   ]);
   // Reactive class binding: covers small/big layout and caller-supplied `class`.
   const merged_class = () => 'b-choiceinput ' + (local.small ? 'b-choice-small' : 'b-choice-big') +
@@ -232,6 +233,7 @@ export function ChoiceInput (props: {
       set_need_cmenu (false);
     }
     set_value_ (uri);
+    props.onValueChange?.(uri);
     if (root_el) {
       (root_el as any).value = uri;
       root_el.dispatchEvent (new Event ('valuechange', { composed: true }));
@@ -289,7 +291,7 @@ export function ChoiceInput (props: {
       onMouseDown={popup_menu}
       onKeyDown={keydown}
     >
-      <div class="b-choice-current hflex" ref={pophere_el} tabindex="0">
+      <div class="b-choice-current hflex" ref={pophere_el} tabindex={local.disabled ? -1 : 0}>
         <span class="-current">{current_span()}</span>
         <span class="-arrow"> ⬍ </span>
       </div>
