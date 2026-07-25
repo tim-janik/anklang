@@ -20,6 +20,7 @@ import { createSignal, createEffect, onCleanup, For } from 'solid-js';
 import * as Util from '../util.js';
 import { SwitchInput } from './switchinput.tsx';
 import { NumberInput } from './numberinput.tsx';
+import { TextInput } from './textinput.tsx';
 
 // <STYLE/>
 Extra_css`
@@ -170,7 +171,7 @@ export function ObjectEditor (props)
       );
     } else {
       return (
-        <b-textinput
+        <TextInput
           class={"b-objecteditor--" + prop.ident_}
           prop={prop}
           readonly={props.readonly}
