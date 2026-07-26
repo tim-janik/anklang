@@ -44,12 +44,15 @@ function click_checkbox (cb: HTMLInputElement)
  * Tests below respect this design.
  */
 
+// == Test registry ==
+const sub_tests: [string, () => Promise<any>][] = [];
+
 // =============================================================================
 // Toggle tests (each tests one direction to match the controlled semantics)
 // =============================================================================
 
 /// Test that toggling from false to true emits valuechange=true.
-export async function test_switchinput_toggle_on (): Promise<boolean>
+async function test_switchinput_toggle_on (): Promise<boolean>
 {
   let emitted: any = undefined;
   const si = mount_switchinput ({
@@ -71,9 +74,10 @@ export async function test_switchinput_toggle_on (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['toggle_on', test_switchinput_toggle_on]);
 
 /// Test that toggling from true to false emits valuechange=false.
-export async function test_switchinput_toggle_off (): Promise<boolean>
+async function test_switchinput_toggle_off (): Promise<boolean>
 {
   let emitted: any = undefined;
   const si = mount_switchinput ({
@@ -95,13 +99,14 @@ export async function test_switchinput_toggle_off (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['toggle_off', test_switchinput_toggle_off]);
 
 // =============================================================================
 // Readonly tests
 // =============================================================================
 
 /// Test that readonly mode prevents toggling.
-export async function test_switchinput_readonly (): Promise<boolean>
+async function test_switchinput_readonly (): Promise<boolean>
 {
   let emit_count = 0;
   const si = mount_switchinput ({
@@ -125,13 +130,14 @@ export async function test_switchinput_readonly (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['readonly', test_switchinput_readonly]);
 
 // =============================================================================
 // Keyboard tests
 // =============================================================================
 
 /// Test keyboard navigation: RIGHT/DOWN check, LEFT/UP uncheck.
-export async function test_switchinput_keyboard (): Promise<boolean>
+async function test_switchinput_keyboard (): Promise<boolean>
 {
   // Part 1: start unchecked, RIGHT/DOWN should check
   let emitted: any = undefined;
@@ -237,9 +243,10 @@ export async function test_switchinput_keyboard (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['keyboard', test_switchinput_keyboard]);
 
 /// Test that keyboard events are ignored in readonly mode.
-export async function test_switchinput_keyboard_readonly (): Promise<boolean>
+async function test_switchinput_keyboard_readonly (): Promise<boolean>
 {
   let emit_count = 0;
   const si = mount_switchinput ({
@@ -267,13 +274,14 @@ export async function test_switchinput_keyboard_readonly (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['keyboard_readonly', test_switchinput_keyboard_readonly]);
 
 // =============================================================================
 // Constrain / normalization tests
 // =============================================================================
 
 /// Test that the constrain function normalizes string values correctly.
-export async function test_switchinput_constrain_strings (): Promise<boolean>
+async function test_switchinput_constrain_strings (): Promise<boolean>
 {
   // 'f', 'F', 'n', 'N', empty string → false; other strings → true
   const false_strings = ['f', 'F', 'n', 'N', ''];
@@ -317,9 +325,10 @@ export async function test_switchinput_constrain_strings (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['constrain_strings', test_switchinput_constrain_strings]);
 
 /// Test that the createEffect normalizes a raw non-boolean value and emits.
-export async function test_switchinput_normalize_emit (): Promise<boolean>
+async function test_switchinput_normalize_emit (): Promise<boolean>
 {
   let emitted: any = undefined;
   const si = mount_switchinput ({
@@ -340,10 +349,11 @@ export async function test_switchinput_normalize_emit (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['normalize_emit', test_switchinput_normalize_emit]);
 
 /// Test that an external value change via signal emits valuechange when
 /// the constrained value actually changes.
-export async function test_switchinput_external_enforce (): Promise<boolean>
+async function test_switchinput_external_enforce (): Promise<boolean>
 {
   let emitted: any = undefined;
   // Use a signal that produces a string needing normalization
@@ -376,5 +386,25 @@ export async function test_switchinput_external_enforce (): Promise<boolean>
   } finally {
     si.cleanup();
   }
+  return true;
+}
+sub_tests.push (['external_enforce', test_switchinput_external_enforce]);
+
+// == Master runner ==
+/// Single exported entry point runs all sub-tests in sequence.
+export async function test_switchinput (): Promise<boolean>
+{
+  if (!sub_tests.length)
+    throw new Error ('switchinput: no sub-tests registered');
+  const failures: string[] = [];
+  for (const [name, fn] of sub_tests) {
+    try {
+      await fn();
+    } catch (e) {
+      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
+    }
+  }
+  if (failures.length)
+    throw new Error ('switchinput failures:\n  ' + failures.join ('\n  '));
   return true;
 }
