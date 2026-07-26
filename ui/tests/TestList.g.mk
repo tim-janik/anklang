@@ -33,6 +33,4 @@ UI_TEST_LIST := \
   track_test.test_track_mute \
   track_test.test_track_solo \
   track_test.test_track_midi_channel \
-  util_test.test_string_ops \
-  util_test.test_number_ops \
-  util_test.test_array_ops \
+  util_test.test_util \
