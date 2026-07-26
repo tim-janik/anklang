@@ -5,10 +5,7 @@ UI_TEST_LIST := \
   clip_test.test_clip_notes \
   clip_test.test_clip_range \
   editable_test.test_editable \
-  numberinput_test.test_numberinput_clamp_on_input \
-  numberinput_test.test_numberinput_integer_rounding \
-  numberinput_test.test_numberinput_external_enforce \
-  numberinput_test.test_numberinput_no_spurious_emit \
+  numberinput_test.test_numberinput \
   project_test.test_project_basic \
   project_test.test_project_master_volume \
   project_test.test_project_track_management \

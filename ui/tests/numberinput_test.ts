@@ -40,8 +40,11 @@ function send_input (el: HTMLInputElement, value: string)
   el.dispatchEvent (new Event ('input', { bubbles: true, cancelable: true }));
 }
 
+// == Test registry ==
+const sub_tests: [string, () => Promise<any>][] = [];
+
 /// Test that typing beyond `max` is clamped and reported via valuechange.
-export async function test_numberinput_clamp_on_input (): Promise<boolean>
+async function test_numberinput_clamp_on_input (): Promise<boolean>
 {
   let emitted: any = undefined;
   const ni = mount_numberinput ({
@@ -67,9 +70,10 @@ export async function test_numberinput_clamp_on_input (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['clamp_on_input', test_numberinput_clamp_on_input]);
 
 /// Test that integer-only mode rounds and clamps on input.
-export async function test_numberinput_integer_rounding (): Promise<boolean>
+async function test_numberinput_integer_rounding (): Promise<boolean>
 {
   let emitted: any = undefined;
   const ni = mount_numberinput ({
@@ -99,9 +103,10 @@ export async function test_numberinput_integer_rounding (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['integer_rounding', test_numberinput_integer_rounding]);
 
 /// Test that an out-of-range value pushed by the parent is enforced back via valuechange
-export async function test_numberinput_external_enforce (): Promise<boolean>
+async function test_numberinput_external_enforce (): Promise<boolean>
 {
   let emitted: any = undefined;
   const [get_value, set_value] = createSignal<number> (5);
@@ -129,9 +134,10 @@ export async function test_numberinput_external_enforce (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['external_enforce', test_numberinput_external_enforce]);
 
 /// Test that a value already within range does not fire a spurious valuechange.
-export async function test_numberinput_no_spurious_emit (): Promise<boolean>
+async function test_numberinput_no_spurious_emit (): Promise<boolean>
 {
   let emit_count = 0;
   const ni = mount_numberinput ({
@@ -152,5 +158,25 @@ export async function test_numberinput_no_spurious_emit (): Promise<boolean>
   } finally {
     ni.cleanup();
   }
+  return true;
+}
+sub_tests.push (['no_spurious_emit', test_numberinput_no_spurious_emit]);
+
+// == Master runner ==
+/// Single exported entry point runs all sub-tests in sequence.
+export async function test_numberinput (): Promise<boolean>
+{
+  if (!sub_tests.length)
+    throw new Error ('numberinput: no sub-tests registered');
+  const failures: string[] = [];
+  for (const [name, fn] of sub_tests) {
+    try {
+      await fn();
+    } catch (e) {
+      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
+    }
+  }
+  if (failures.length)
+    throw new Error ('numberinput failures:\n  ' + failures.join ('\n  '));
   return true;
 }
