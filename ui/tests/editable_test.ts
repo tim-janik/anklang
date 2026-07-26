@@ -43,8 +43,11 @@ function press_key (el: Element, key: string)
   }));
 }
 
+// == Test registry ==
+const sub_tests: [string, () => Promise<any>][] = [];
+
 /// Test that the initial value is shown and the input is inert (not editing).
-export async function test_editable_initial_value (): Promise<boolean>
+async function test_editable_initial_value (): Promise<boolean>
 {
   const ed = mount_editable ({ value: 'hello', clicks: 1 });
   try {
@@ -67,9 +70,10 @@ export async function test_editable_initial_value (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['initial_value', test_editable_initial_value]);
 
 /// Test that a numeric value is coerced to a string for display.
-export async function test_editable_numeric_value (): Promise<boolean>
+async function test_editable_numeric_value (): Promise<boolean>
 {
   const ed = mount_editable ({ value: 123, clicks: 1 });
   try {
@@ -83,9 +87,10 @@ export async function test_editable_numeric_value (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['numeric_value', test_editable_numeric_value]);
 
 /// Test that a single click activates editing (clicks=1).
-export async function test_editable_activate_click (): Promise<boolean>
+async function test_editable_activate_click (): Promise<boolean>
 {
   const ed = mount_editable ({ value: 'name', clicks: 1 });
   try {
@@ -104,9 +109,10 @@ export async function test_editable_activate_click (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['activate_click', test_editable_activate_click]);
 
 /// Test that a double click activates editing (clicks=2) while single click does not.
-export async function test_editable_activate_dblclick (): Promise<boolean>
+async function test_editable_activate_dblclick (): Promise<boolean>
 {
   const ed = mount_editable ({ value: 'name', clicks: 2 });
   try {
@@ -131,9 +137,10 @@ export async function test_editable_activate_dblclick (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['activate_dblclick', test_editable_activate_dblclick]);
 
 /// Test that pressing Enter commits the edit and emits the change event.
-export async function test_editable_enter_commits (): Promise<boolean>
+async function test_editable_enter_commits (): Promise<boolean>
 {
   let changed_value: string | undefined = undefined;
   const ed = mount_editable ({ value: 'old', clicks: 1, onChange: e => { changed_value = e.detail.value; } });
@@ -158,9 +165,10 @@ export async function test_editable_enter_commits (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['enter_commits', test_editable_enter_commits]);
 
 /// Test that pressing Escape cancels the edit (no change event, value reverted).
-export async function test_editable_escape_cancels (): Promise<boolean>
+async function test_editable_escape_cancels (): Promise<boolean>
 {
   let change_count = 0;
   const ed = mount_editable ({ value: 'keep', clicks: 1, onChange: () => { change_count++; } });
@@ -185,9 +193,10 @@ export async function test_editable_escape_cancels (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['escape_cancels', test_editable_escape_cancels]);
 
 /// Test that blurring the input (clicking away) commits the edit.
-export async function test_editable_blur_commits (): Promise<boolean>
+async function test_editable_blur_commits (): Promise<boolean>
 {
   let changed_value: string | undefined = undefined;
   const ed = mount_editable ({ value: 'orig', clicks: 1, onChange: e => { changed_value = e.detail.value; } });
@@ -214,9 +223,10 @@ export async function test_editable_blur_commits (): Promise<boolean>
   }
   return true;
 }
+sub_tests.push (['blur_commits', test_editable_blur_commits]);
 
 /// Test that the ref callback receives the input element and activate() works.
-export async function test_editable_ref_activate (): Promise<boolean>
+async function test_editable_ref_activate (): Promise<boolean>
 {
   const ed = mount_editable ({ value: 'x', clicks: 2 });
   try {
@@ -236,5 +246,25 @@ export async function test_editable_ref_activate (): Promise<boolean>
   } finally {
     ed.cleanup();
   }
+  return true;
+}
+sub_tests.push (['ref_activate', test_editable_ref_activate]);
+
+// == Master runner ==
+/// Single exported entry point runs all sub-tests in sequence.
+export async function test_editable (): Promise<boolean>
+{
+  if (!sub_tests.length)
+    throw new Error ('editable: no sub-tests registered');
+  const failures: string[] = [];
+  for (const [name, fn] of sub_tests) {
+    try {
+      await fn();
+    } catch (e) {
+      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
+    }
+  }
+  if (failures.length)
+    throw new Error ('editable failures:\n  ' + failures.join ('\n  '));
   return true;
 }

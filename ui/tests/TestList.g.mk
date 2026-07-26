@@ -4,14 +4,7 @@ UI_TEST_LIST := \
   clip_test.test_clip_pan \
   clip_test.test_clip_notes \
   clip_test.test_clip_range \
-  editable_test.test_editable_initial_value \
-  editable_test.test_editable_numeric_value \
-  editable_test.test_editable_activate_click \
-  editable_test.test_editable_activate_dblclick \
-  editable_test.test_editable_enter_commits \
-  editable_test.test_editable_escape_cancels \
-  editable_test.test_editable_blur_commits \
-  editable_test.test_editable_ref_activate \
+  editable_test.test_editable \
   numberinput_test.test_numberinput_clamp_on_input \
   numberinput_test.test_numberinput_integer_rounding \
   numberinput_test.test_numberinput_external_enforce \
