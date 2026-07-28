@@ -1,4 +1,5 @@
 UI_TEST_LIST := \
+  choiceinput_test.test_choiceinput \
   clip_test.test_clip_volume \
   clip_test.test_clip_mute \
   clip_test.test_clip_pan \

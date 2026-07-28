@@ -1,34 +1,38 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/** @class BChoiceInput
+/** @class ChoiceInput
  * @description
- * The <b-choiceinput> element provides a choice popup to choose from a set of options.
- * It supports the Vue
- * [v-model](https://vuejs.org/v2/guide/components-custom-events.html#Customizing-Component-v-model)
- * protocol by emitting an `input` event on value changes and accepting inputs via the `value` prop.
+ * The ChoiceInput function component provides a choice popup to choose from a set of options.
+ * Value changes are reported via the `onValueChange` callback prop and a self-targeted
+ * `valuechange` DOM event, the new value is available via `event.target.value`.
  * ### Props:
  * *value*
- * : The choice value to be displayed.
+ * : The choice value currently displayed.
  * *choices*
- * : List of choices: `[ { icon, label, blurb }... ]`
+ * : List of choices: `[ { icon, label, blurb }... ]`.
  * *title*
  * : Optional title for the popup menu.
  * *label*
  * : A label used to extend the tip attached to the choice component.
  * *small*
- * : Reduce padding and use small layout.
+ * : Reduce padding and use the small layout.
  * *prop*
  * : If `label` is unspecified, it can be fetched from `prop->label` instead.
+ * *disabled*
+ * : Disable interaction and grey out the control.
+ * *onValueChange (uri)*
+ * : Callback invoked with the new choice value once the user activates a menu item.
  * ### Events:
  * *valuechange*
- * : Event emitted whenever the value changes, which is provided as `event.target.value`.
+ * : DOM event emitted on the root element whenever the value changes;
+ * : the new value is available via `event.target.value`.
  */
 
 import { createEffect, createMemo, createSignal, For, onCleanup, splitProps } from 'solid-js';
 import * as Util from '../util.js';
 import { get_uri } from '../dom.js';
-import { ContextMenu } from './contextmenu';
+import { ContextMenu } from './contextmenu.tsx';
 import { MenuTitle } from './menutitle.tsx';
 
 // <STYLE/>
@@ -129,7 +133,7 @@ export function ChoiceInput (props: {
 })
 {
   let root_el: HTMLElement | undefined;
-  let pophere_el: HTMLElement | undefined;
+  let pophere_el: HTMLDivElement | undefined;
   let cmenu_el: any | undefined;
 
   const [local, others] = splitProps (props, [
@@ -163,22 +167,20 @@ export function ChoiceInput (props: {
     });
   });
 
-  // Sync prop choices
+  // Sync prop choices. Recurse only when the property object identity changes; the fetch
+  // is generation-guarded so an in-flight request that resolves after a newer fetch is discarded.
+  let choices_token = 0;
   createEffect (() => {
     if (local.prop) {
       const p = local.prop;
-      // trigger read for reactivity
-      p.name; p.value; p.metadata;
+      p.name; p.metadata;
+      const token = ++choices_token;
       (async () => {
-        set_choices_ (await p.choices());
+        const result = await p.choices();
+        if (token == choices_token)
+          set_choices_ (result);
       }) ();
     }
-  });
-
-  // Update data-tip
-  createEffect (() => {
-    if (!root_el) return;
-    root_el.setAttribute ('data-tip', data_tip());
   });
 
   const mchoices = createMemo (() => {
@@ -202,7 +204,7 @@ export function ChoiceInput (props: {
   function data_tip(): string
   {
     const choice = current();
-    let tip = "**CLICK** Select Choice";
+    const tip = "**CLICK** Select Choice";
     const plabel = local.label || local.prop?.label_;
     if (!plabel || !choice.label)
       return tip;
@@ -244,19 +246,14 @@ export function ChoiceInput (props: {
   {
     if (local.disabled)
       return;
-    // Force re-render if the menu element is missing or detached; Solid refs
-    // are not cleared on unmount, so a stale ref must not be reused.
-    if (!cmenu_el || !cmenu_el.isConnected) {
-      cmenu_el = undefined;
-      set_need_cmenu (true);
-    }
-    // Wait for DOM update before accessing cmenu
-    setTimeout (() => {
-      if (local.disabled || !cmenu_el || !cmenu_el.isConnected || cmenu_el.open)
-        return;
-      pophere_el?.focus();
-      cmenu_el.popup (event, { origin: pophere_el, focus_uri: value_() });
-    }, 0);
+    // Recreate the ContextMenu if it was disposed on a previous close (Solid callback refs
+    // are not null-ed on disposal, so we clear cmenu_el in onclose instead). Setting the
+    // signal is idempotent and renders synchronously, assigning cmenu_el before we use it.
+    set_need_cmenu (true);
+    if (cmenu_el == undefined || cmenu_el.open)
+      return;
+    pophere_el?.focus();
+    cmenu_el.popup (event, { origin: pophere_el, focus_uri: value_() });
   }
 
   function keydown (event: KeyboardEvent)
@@ -283,7 +280,7 @@ export function ChoiceInput (props: {
   }
 
   return (
-    <div class={merged_class()} aria-disabled={local.disabled || undefined} ref={el => {
+    <div class={merged_class()} aria-disabled={local.disabled || undefined} data-tip={data_tip()} ref={el => {
       root_el = el;
       local.ref?.(el);
     }} {...others}
