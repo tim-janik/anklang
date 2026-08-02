@@ -22,7 +22,7 @@ import { TreeBrowser } from './treebrowser.jsx';
 Extra_css`
 @reference "../tailwind.css";
 --scrollbar-height: 6px; /* Should match Firefox 'scrollbar-width:thin' */
-b-devicepanel {
+b-devicepanel, .b-devicepanel {
   @apply hflex;
   padding: 0 0 3px 0;
   background: var(--b-devicepanel-bg);
