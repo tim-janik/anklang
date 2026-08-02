@@ -267,6 +267,7 @@ class BShell extends Object {
     this.piano_current_clip_tickfn = [null,null];
     this.piano_roll_ = null;
     this.modal_dialogs_ = null;
+    this.data_bubble?.dispose();
     this.data_bubble = null;
     this.switch_panel2_ = null;
     this.switch_panel3_ = null;
