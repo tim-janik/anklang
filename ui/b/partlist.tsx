@@ -33,7 +33,7 @@ export function PartList (props)
     if (track && typeof track.arranger_parts === 'function')	// TODO: re-add Ase.Track.arranger_parts()
       wtrack = Util.wrap_ase_object (track, { arranger_parts: [] }, () => set_parts (wtrack.arranger_parts || []));
     set_parts (wtrack.arranger_parts || []);
-    onCleanup (() => wtrack?.__cleanup__?.());
+    onCleanup (() => (wtrack as any)?.__cleanup__?.());
   });
 
   function dblclick (event)

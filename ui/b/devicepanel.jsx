@@ -9,7 +9,7 @@
  * : Container for the devices (Ase.Track).
  */
 
-import { createSignal, createEffect, For } from 'solid-js';
+import { createSignal, createEffect, For, splitProps } from 'solid-js';
 import * as Util from "../util.js";
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import { More } from './more';
@@ -69,6 +69,7 @@ b-devicepanel {
 // == Component ==
 export function DevicePanel (props)
 {
+  const [local, rest] = splitProps (props, ['class', 'track']);
   let cmenu_ref;
   const [chain, set_chain] = createSignal (null);
   const [devicetypes, set_devicetypes] = createSignal (null);
@@ -116,7 +117,7 @@ export function DevicePanel (props)
   };
 
   return (
-    <div class="b-devicepanel">
+    <div {...rest} class={'b-devicepanel' + (local.class ? ' ' + local.class : '')}>
       <div class="b-devicepanel-scroller">
       <span class="b-devicepanel-vtitle">Device Panel</span>
       <div class="b-devicepanel-hstack hflex">
