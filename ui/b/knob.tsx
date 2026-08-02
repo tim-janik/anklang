@@ -316,7 +316,7 @@ export function Knob (props: {
     if (props.disabled)   // let scroll events pass through, no value changes
       return;
     const d = Mouse.wheel_delta (event);
-    if ((root_el as any)?.[SPIN_DRAG]?.captureid === undefined && // not dragging
+    if ((sprite_el as any)?.[SPIN_DRAG]?.captureid === undefined && // not dragging
 	((!props2.hscroll && d.x != 0) ||
 	 (!props2.vscroll && d.y != 0))) // consume scroll iff hscroll/vscroll enabled
       return;	// only consume scroll events if enabled
@@ -364,14 +364,14 @@ export function Knob (props: {
         if (button1date && now - button1date <= 500)
           {
             button1date = 0;
-            spin_drag_stop (root_el);
+            spin_drag_stop (sprite_el);
             props.prop?.reset();
             return;
           }
         else
           button1date = now;
       }
-    spin_drag_start (root_el, event, drag_change);
+    spin_drag_start (sprite_el, event, drag_change);
   }
 
   function drag_change (distance: number)
@@ -388,7 +388,7 @@ export function Knob (props: {
 
   // Cleanup on unmount: release notify subscription and abort any in-flight spin drag
   onCleanup (() => {
-    spin_drag_stop (root_el);
+    spin_drag_stop (sprite_el);
     clear_notify_cb?.();
     clear_notify_cb = undefined;
   });
