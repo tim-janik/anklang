@@ -15,6 +15,7 @@ UI_TEST_LIST := \
   project_test.test_project_master_volume \
   project_test.test_project_track_management \
   project_test.test_project_track_removal_notification \
+  relayout_test.test_relayout \
   shell_test.test_shell \
   switchinput_test.test_switchinput \
   textinput_test.test_textinput \
