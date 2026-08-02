@@ -117,6 +117,38 @@ export class AppClass {
     else
       Shell.r.panel3 = a[(a.indexOf (Shell.r.panel3) + 1) % a.length];
   }
+  /// Re-mount the Shell tree after window/DPR changes so that components which
+  /// compute their pixel sizes once at mount time (level meters, clip canvases)
+  /// recompute them. Unlike assign_project(), playback is not interrupted and
+  /// the current interactive state (selected track, piano roll, dialogs) is
+  /// preserved.
+  relayout ()
+  {
+    const shell = globalThis.Shell;
+    const project = shell?.project ?? null;
+    if (!shell || !(project instanceof Ase.Project))
+      return; // not mounted yet, or no project assigned
+    // State cleared by Shell.reset(); restore it after the re-mount
+    const current_track = shell.r.current_track;
+    const piano_roll_source = shell.r.piano_roll_source;
+    const show_preferences_dialog = shell.r.show_preferences_dialog;
+    const show_about_dialog_ = shell.r.show_about_dialog_;
+    // Re-mount the Shell tree (reset() disposes old refs, setup() re-creates them)
+    const shell_parent = document.getElementById ('b-app');
+    if (!shell_parent)
+      throw Error (`App: DOM element 'b-app' not found`);
+    if (this.render_dispose) {
+      this.render_dispose();
+      this.render_dispose = null;
+    }
+    shell_parent.innerHTML = '';
+    this.render_dispose = render (() => ShellTemplate ({ project, current_track }), shell_parent);
+    // Restore interactive state cleared by reset() (current_track is passed
+    // through ShellTemplate and thus already preserved)
+    shell.r.piano_roll_source = piano_roll_source;
+    shell.r.show_preferences_dialog = show_preferences_dialog;
+    shell.r.show_about_dialog_ = show_about_dialog_;
+  }
   switch_panel2 (n?: string)
   {
     if (!globalThis.Shell) return; // not mounted yet

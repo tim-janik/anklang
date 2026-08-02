@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-import { LitComponent, html, css, docs, lit_update_all } from './little.js';
 import * as Strings from './strings.js';
 
 // Global CONFIG
@@ -151,9 +150,20 @@ async function bootup () {
   const app = await create_app();
   console.assert (app === App);
 
-  // Ensure APP rerenders when the browser window changes
+  // Level meters and clip canvases compute their pixel sizes once at mount
+  // time, so after a window resize or DPR change they keep stale geometry.
+  // Since the SolidJS migration there is no per-component updated() pass to
+  // refresh them; instead, re-mount the Shell tree (App.relayout), which
+  // recomputes all sizes without interrupting playback or user state. Resizes
+  // and DPR changes are rare enough that this coarse approach is acceptable
+  // (per M6 review note). Guarded so the boot-time dpr_rerender_all() call
+  // (before any project is assigned) is a no-op.
+  const relayout_after_resize = Util.debounce (() => {
+    if (App.project)
+      App.relayout();
+  }, { restart: true, wait: 500 });
   const rerender_all = () => {
-    lit_update_all();
+    relayout_after_resize();
   };
   window.addEventListener ('resize', rerender_all);
   document.fonts.addEventListener ("loadingdone", rerender_all);
