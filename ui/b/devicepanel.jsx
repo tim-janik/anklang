@@ -16,6 +16,7 @@ import { More } from './more';
 import { MenuTitle } from './menutitle.tsx';
 import { ContextMenu } from './contextmenu';
 import { DeviceEditor } from './deviceeditor.tsx';
+import { TreeBrowser } from './treebrowser.jsx';
 
 // == STYLE ==
 Extra_css`
@@ -134,7 +135,7 @@ export function DevicePanel (props)
           id="g-devicepanelcmenu"
         >
           <MenuTitle>Devices</MenuTitle>
-          <b-treebrowser tree={devicetypes ()} expandall={false}></b-treebrowser>
+          <TreeBrowser tree={devicetypes ()} expandall={false} />
         </ContextMenu>
       </div>
       </div>

@@ -94,7 +94,7 @@ function spin_drag_granularity (event)
 /** Turn accumulated spin drag motions into actual value changes.
  * @this{any}
  */
-function spin_drag_change ()
+function spin_drag_change (this: any)
 {
   const spin_drag = this, element = spin_drag.element;
   const drag = spin_drag.drag, last = spin_drag.last;
@@ -128,7 +128,7 @@ function spin_drag_change ()
 /** Handle sping drag pointer motion.
  * @this{any}
  */
-function spin_drag_pointermove (event)
+function spin_drag_pointermove (this: any, event)
 {
   console.assert (event.type === 'pointermove');
   const spin_drag = this, element = spin_drag.element;
@@ -152,7 +152,7 @@ function spin_drag_pointermove (event)
 /** Stop sping drag event handlers and pointer grab.
  * @this{any}
  */
-function spin_drag_stop (event_or_element= undefined)
+function spin_drag_stop (this: any, event_or_element = undefined)
 {
   const spin_drag = event_or_element instanceof MouseEvent ? this : event_or_element[SPIN_DRAG];
   if (!spin_drag?.stop)
@@ -189,7 +189,7 @@ export function spin_drag_start (element, event, value_callback)
 	spin_drag_stop (element);
       return false;
     }
-  const spin_drag = {};
+  const spin_drag: any = {};
   Object.assign (spin_drag, {
     element,
     value_callback,
@@ -209,7 +209,7 @@ export function spin_drag_start (element, event, value_callback)
     spin_drag.captureid = event.pointerId;
   } catch (e) {
     // something went wrong, bail out the drag
-    console.warn ('drag_start: error:', /**@type{Error}*/ (e).message);
+    console.warn ('drag_start: error:', (e as Error).message);
     return false;
   }
   // use pointer lock for knob turning
@@ -239,8 +239,8 @@ export function Knob (props: {
 {
   // Restore Lit class defaults: horizontal wheel scrolls the panel, vertical wheel adjusts the knob.
   const props2 = mergeProps ({ hscroll: false, vscroll: true }, props);
-  let root_el: HTMLElement | undefined;
-  let sprite_el: HTMLElement | undefined;
+  let root_el: HTMLDivElement | undefined;
+  let sprite_el: HTMLDivElement | undefined;
   let clear_notify_cb: (() => void) | undefined;
   const setters_inflight = { v: 0 };
   let button1date = 0;
@@ -398,7 +398,7 @@ export function Knob (props: {
 
   return (
     <div class="b-knob" aria-disabled={props.disabled || undefined} ref={root_el}>
-      <div id="sprite" bool:bidir={bidir()} ref={sprite_el}
+      <div id="sprite" {...{ "bool:bidir": bidir() }} ref={sprite_el}
         onWheel={wheel_event}
         onPointerDown={pointerdown}
         onDblClick={Util.prevent_event}

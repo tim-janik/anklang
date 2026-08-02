@@ -79,6 +79,7 @@ function TreeNode (props)
 export function TreeBrowser (props)
 {
   const [expandall, setExpandall] = createSignal (props.expandall ?? true);
+  /** @type {HTMLElement | undefined} */
   let container;
 
   onMount (() => {
