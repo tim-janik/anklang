@@ -8,6 +8,7 @@ UI_TEST_LIST := \
   contextmenu_test.test_contextmenu \
   devicepanel_test.test_devicepanel \
   editable_test.test_editable \
+  knob_test.test_knob \
   numberinput_test.test_numberinput \
   project_test.test_project_basic \
   project_test.test_project_master_volume \
