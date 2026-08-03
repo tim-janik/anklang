@@ -30,13 +30,19 @@ export function PreferencesDialog (props)
   let dialogRef;
   const [proplist, set_proplist] = createSignal ([]);
   let cancelled = false; // guard against showModal() after unmount
+  let close_sent = false; // close at most once
+  const close = () => {
+    if (close_sent) return;
+    close_sent = true;
+    props.onClose?.();
+  };
 
   // Watch shown prop to open/close dialog
   createEffect (() => {
     const shown = props.shown;
     if (shown && !dialogRef?.open) {
       document.startViewTransition (async () => {
-        Dom.show_modal (dialogRef, () => props.onClose?.());
+        Dom.show_modal (dialogRef, close);
         await fetch_preferences ();
       });
     }
@@ -48,11 +54,11 @@ export function PreferencesDialog (props)
   onCleanup (() => {
     cancelled = true;
     dialogRef?.close ();
-    props.onClose?. ();
+    close ();
   });
 
   const handleClose = () => {
-    props.onClose?. ();
+    close ();
   };
 
   const close_button_click = (event) => {
@@ -64,7 +70,7 @@ export function PreferencesDialog (props)
     if (!props.shown) return;
     Util.prevent_event (event);
     document.startViewTransition (() => {
-      props.onClose?. ();
+      close ();
     });
   };
 
