@@ -8,6 +8,7 @@ UI_TEST_LIST := \
   contextmenu_test.test_contextmenu \
   databubble_test.test_databubble \
   devicepanel_test.test_devicepanel \
+  dialog_test.test_dialog \
   editable_test.test_editable \
   knob_test.test_knob \
   numberinput_test.test_numberinput \
