@@ -7,6 +7,7 @@ UI_TEST_LIST := \
   clip_test.test_clip_range \
   contextmenu_test.test_contextmenu \
   databubble_test.test_databubble \
+  deviceeditor_test.test_deviceeditor \
   devicepanel_test.test_devicepanel \
   editable_test.test_editable \
   knob_test.test_knob \
