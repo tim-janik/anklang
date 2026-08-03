@@ -179,7 +179,7 @@ async function bootup () {
     let project = await Ase.server.last_project();
     if (!project)
       project = await Ase.server.create_project ('Untitled');
-    App.assign_project (project, 'b-app');
+    await App.assign_project (project, 'b-app');
     console.assert (app === globalThis.App);
   }
 
