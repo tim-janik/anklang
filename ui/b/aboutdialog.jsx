@@ -24,6 +24,7 @@ dialog.b-about-dialog {
 export function AboutDialog (props)
 {
   const [info_pairs, set_info_pairs] = createSignal ([]);
+  /** @type {HTMLDialogElement | undefined} */
   let dialogRef;
   let cancelled = false; // no showModal() after unmount
   let close_sent = false; // close at most once

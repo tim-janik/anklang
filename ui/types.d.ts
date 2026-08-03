@@ -7,6 +7,10 @@
 // uri/ic/kbd attributes; legacy custom elements are being phased out).
 declare module "solid-js" {
   namespace JSX {
+    interface DialogHtmlAttributes<T> {
+      exclusive?: boolean;
+      bwidth?: string;
+    }
     interface IntrinsicElements {
       /** @deprecated use TreeBrowser component (SolidJS migration) */
       "b-treebrowser": HTMLAttributes<HTMLElement> & {

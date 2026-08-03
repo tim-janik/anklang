@@ -14,11 +14,13 @@ const sub_tests: [string, () => Promise<any>][] = [];
 async function test_aboutdialog_close_once (): Promise<boolean>
 {
   const [shown, set_shown] = createSignal (true);
-  let close_count = 0;
+  let close_count: number = 0;
+  const get_close_count = () => close_count;
   const container = document.createElement ('div');
   document.body.appendChild (container);
   const dispose = render (() => createComponent (Show, {
     get when () { return shown(); },
+    keyed: true,
     children: () => createComponent (AboutDialog, {
       onClose: () => { close_count++; set_shown (false); },
     }),
@@ -33,15 +35,15 @@ async function test_aboutdialog_close_once (): Promise<boolean>
     const button = container.querySelector ('button.button-xl') as HTMLElement;
     if (!button)
       throw new Error ('AboutDialog close button not found');
-    if (close_count !== 0)
-      throw new Error (`onClose fired before close: ${close_count}`);
+    if (get_close_count() !== 0)
+      throw new Error (`onClose fired before close: ${get_close_count()}`);
 
     button.click();
     await Dom.ui_next_frame();
     await Dom.ui_next_frame();
 
-    if (close_count !== 1)
-      throw new Error (`onClose fired ${close_count} times for one close`);
+    if (get_close_count() !== 1)
+      throw new Error (`onClose fired ${get_close_count()} times for one close`);
     if (container.querySelector ('.b-about-dialog'))
       throw new Error ('AboutDialog still mounted after close');
   } finally {
@@ -58,11 +60,13 @@ sub_tests.push (['aboutdialog', test_aboutdialog_close_once]);
 async function test_preferencesdialog_close_once (): Promise<boolean>
 {
   const [shown, set_shown] = createSignal (true);
-  let close_count = 0;
+  let close_count: number = 0;
+  const get_close_count = () => close_count;
   const container = document.createElement ('div');
   document.body.appendChild (container);
   const dispose = render (() => createComponent (Show, {
     get when () { return shown(); },
+    keyed: true,
     children: () => createComponent (PreferencesDialog, {
       shown: false,
       onClose: () => { close_count++; set_shown (false); },
@@ -82,8 +86,8 @@ async function test_preferencesdialog_close_once (): Promise<boolean>
     await Dom.ui_next_frame();
     await Dom.ui_next_frame();
 
-    if (close_count !== 1)
-      throw new Error (`onClose fired ${close_count} times for one close`);
+    if (get_close_count() !== 1)
+      throw new Error (`onClose fired ${get_close_count()} times for one close`);
     if (container.querySelector ('.b-preferencesdialog'))
       throw new Error ('PreferencesDialog still mounted after close');
   } finally {
@@ -99,11 +103,13 @@ sub_tests.push (['preferencesdialog', test_preferencesdialog_close_once]);
 async function test_crawlerdialog_close_once (): Promise<boolean>
 {
   const [shown, set_shown] = createSignal (true);
-  let close_count = 0;
+  let close_count: number = 0;
+  const get_close_count = () => close_count;
   const container = document.createElement ('div');
   document.body.appendChild (container);
   const dispose = render (() => createComponent (Show, {
     get when () { return shown(); },
+    keyed: true,
     children: () => createComponent (CrawlerDialog, {
       shown: true,
       cwd: '~MUSIC',
@@ -125,8 +131,8 @@ async function test_crawlerdialog_close_once (): Promise<boolean>
     await Dom.ui_next_frame();
     await Dom.ui_next_frame();
 
-    if (close_count !== 1)
-      throw new Error (`onClose fired ${close_count} times for one close`);
+    if (get_close_count() !== 1)
+      throw new Error (`onClose fired ${get_close_count()} times for one close`);
     if (container.querySelector ('.b-crawlerdialog'))
       throw new Error ('CrawlerDialog still mounted after close');
   } finally {
@@ -142,11 +148,13 @@ sub_tests.push (['crawlerdialog_close', test_crawlerdialog_close_once]);
 async function test_crawlerdialog_select_suppresses_close (): Promise<boolean>
 {
   const [shown, set_shown] = createSignal (true);
-  let select_count = 0, close_count = 0;
+  let select_count: number = 0, close_count: number = 0;
+  const get_close_count = () => close_count;
   const container = document.createElement ('div');
   document.body.appendChild (container);
   const dispose = render (() => createComponent (Show, {
     get when () { return shown(); },
+    keyed: true,
     children: () => createComponent (CrawlerDialog, {
       shown: true,
       cwd: '~MUSIC',
@@ -183,8 +191,8 @@ async function test_crawlerdialog_select_suppresses_close (): Promise<boolean>
 
     if (select_count !== 1)
       throw new Error (`onSelect fired ${select_count} times for one selection`);
-    if (close_count !== 0)
-      throw new Error (`onClose fired ${close_count} times after selection`);
+    if (get_close_count() !== 0)
+      throw new Error (`onClose fired ${get_close_count()} times after selection`);
     if (container.querySelector ('.b-crawlerdialog'))
       throw new Error ('CrawlerDialog still mounted after selection');
   } finally {
