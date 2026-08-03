@@ -13,7 +13,6 @@ b-playcontrols, .b-playcontrols {
 `;
 
 // == Component ==
-import { createComputed } from 'solid-js';
 import { ButtonBar } from './buttonbar';
 import { Icon } from './icon';
 
@@ -40,11 +39,6 @@ export function PlayControls (props: any)
     const playing = project.is_playing;
     dispatch (playing ? 'pause_playback' : 'start_playback');
   };
-
-  // Log playback state changes
-  createComputed (() => {
-    console.log ("is_playing:", App.project.is_playing);
-  });
 
   return (
     <ButtonBar class="b-playcontrols">
