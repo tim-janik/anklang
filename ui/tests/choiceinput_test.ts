@@ -362,6 +362,50 @@ async function test_choiceinput_data_tip_reactive (): Promise<boolean>
 }
 sub_tests.push (['data_tip_reactive', test_choiceinput_data_tip_reactive]);
 
+/// Regression test for M9: the menu-item span classes must be interpolated,
+/// not contain literal `{...}` brace text from a leftover Lit template.
+async function test_choiceinput_menu_item_classes (): Promise<boolean>
+{
+  const choices = [
+    { ident: 'a', label: 'Aaa', icon: 'Ⓐ', line1class: 'l1x', line2class: 'l2x',
+      line3class: 'l3x', line4class: 'l4x', labelclass: 'lx' },
+  ];
+  const ci = mount_choiceinput ({ value: 'a', choices });
+  try {
+    await Dom.ui_next_frame();
+    const root_el = ci.root()!;
+    open_menu (root_el);
+    await Dom.ui_next_frame();
+    const d = ci.dialog();
+    if (!d || !d.open) throw new Error ('choice menu did not open');
+    const item = d.querySelector ('button[uri="a"]');
+    if (!item) throw new Error ('menu item not found');
+    const label = item.querySelector ('span.b-choice-label');
+    if (!label) throw new Error ('b-choice-label span not found');
+    if (!label.classList.contains ('lx'))
+      throw new Error (`labelclass not interpolated: "${label.className}"`);
+    if (/\{|\}/.test (label.className))
+      throw new Error (`literal braces in class: "${label.className}"`);
+    for (const [cls, extra] of [
+      ['b-choice-line1', 'l1x'],
+      ['b-choice-line2', 'l2x'],
+      ['b-choice-line3', 'l3x'],
+      ['b-choice-line4', 'l4x'],
+    ] as const) {
+      const span = item.querySelector (`span.${cls}`);
+      if (!span) throw new Error (`${cls} span not found`);
+      if (!span.classList.contains (extra))
+        throw new Error (`${cls} extra class missing: "${span.className}"`);
+      if (/\{|\}/.test (span.className))
+        throw new Error (`literal braces in ${cls}: "${span.className}"`);
+    }
+  } finally {
+    ci.cleanup();
+  }
+  return true;
+}
+sub_tests.push (['menu_item_classes', test_choiceinput_menu_item_classes]);
+
 // == Master runner ==
 /// Single exported entry point runs all sub-tests in sequence.
 export async function test_choiceinput (): Promise<boolean>
