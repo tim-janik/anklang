@@ -55,6 +55,7 @@ ASE_TEST_LIST := \
   string_tests \
   test_audio_sample_load \
   test_serializable_hierarchy \
+  track_control_classification \
   track_hidden \
   track_mute_solo \
   track_name \

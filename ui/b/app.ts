@@ -90,8 +90,14 @@ export class AppClass {
     // Validate new project
     if (!(project instanceof Ase.Project))
       throw Error (`App: invalid Ase.Project: ${project}`);
-    // Determine initial current_track (master track)
-    const current_track = await project.master_track();
+    // Select the first editable track; fall back to the first track
+    const tracks = await project.all_tracks();
+    let current_track = null;
+    for (const t of tracks)
+      if (!(await t.is_control_track()))
+        { current_track = t; break; }
+    if (!current_track)
+      current_track = tracks[0] ?? null;
     // Stop playback on old project
     if (globalThis.Shell?.project)
       Shell.project.stop_playback();
@@ -107,6 +113,11 @@ export class AppClass {
     shell_parent.innerHTML = '';
     this.render_dispose = render (() => ShellTemplate ({ project, current_track }), shell_parent);
     console.assert (globalThis.Shell);
+    // Open the piano roll for the first clip
+    const clips = current_track ? await current_track.$refetch (() => current_track.launcher_clips) : [];
+    this.open_piano_roll (clips.length ? clips[0] : null);
+    // Update the window title for the new project
+    this.updated ({});
   }
   switch_panel3 (n?: string)
   {
@@ -189,12 +200,8 @@ export class AppClass {
             newproject.name = displaybasename (project_or_path);
           }
       }
-    // Swap Shell for the new project (cleanup stops playback)
+    // Swap Shell for the new project
     await this.assign_project (newproject, 'b-app');
-    // Open piano roll for first clip
-    const tracks = await newproject.all_tracks();
-    const clips = await tracks[0].$refetch (() => tracks[0].launcher_clips);
-    this.open_piano_roll (clips.length ? clips[0] : null);
     return Ase.Error.NONE;
   }
   async save_project (projectpath: string, collect = true)

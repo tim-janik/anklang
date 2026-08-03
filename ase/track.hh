@@ -31,6 +31,7 @@ public:
   DeviceInfo      device_info       () override;
   ProjectImpl*    project           () const;
   bool            is_master         () const override;
+  bool            is_control_track  () const override;
   bool            is_muted          () const override;
   void            set_muted         (bool muted) override;
   bool            is_hidden         () const override;
