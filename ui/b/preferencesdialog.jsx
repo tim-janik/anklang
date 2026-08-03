@@ -27,6 +27,7 @@ dialog.b-preferencesdialog {
 // == Component ==
 export function PreferencesDialog (props)
 {
+  /** @type {HTMLDialogElement | undefined} */
   let dialogRef;
   const [proplist, set_proplist] = createSignal ([]);
   let cancelled = false; // guard against showModal() after unmount
