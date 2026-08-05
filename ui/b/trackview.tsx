@@ -22,7 +22,7 @@ import { MenuSeparator } from './menuseparator';
 
 // == STYLE ==
 Extra_css`
-b-trackview, .b-trackview {
+.b-trackview {
   display: flex;
   align-items: stretch;
   background-color: var(--b-button-border);

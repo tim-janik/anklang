@@ -38,7 +38,7 @@ import { MenuTitle } from './menutitle.tsx';
 // <STYLE/>
 Extra_css`
 @reference "../tailwind.css";
-b-choiceinput, .b-choiceinput {
+.b-choiceinput {
   display: flex;
   flex-basis: auto;
   flex-flow: row nowrap;
@@ -57,7 +57,7 @@ b-choiceinput, .b-choiceinput {
     justify-content: center; text-align: center;
     padding: 0;
   }
-  b-objecteditor &.b-choice, .b-objecteditor &.b-choice {
+  .b-objecteditor &.b-choice, .b-objecteditor &.b-choice {
     text-align: left;
     justify-content: left;
     padding: 0;
@@ -110,7 +110,7 @@ b-choiceinput, .b-choiceinput {
 .b-choiceinput-contextmenu button {
   grid-template-columns: min-content 1fr min-content;
   justify-items: start;
-  b-icon, .b-icon { @apply col-start-1 row-start-1; justify-content: start; }
+  .b-icon { @apply col-start-1 row-start-1; justify-content: start; }
   span   { @apply col-start-2; }
   kbd    { @apply col-start-3 row-start-1; }
 }

@@ -38,7 +38,7 @@ import * as Mouse from '../mouse.js';
 
 // == STYLE ==
 Extra_css`
-b-knob, .b-knob {
+.b-knob {
   display: flex; position: relative;
   margin: 0; padding: 0; text-align: center;
   &[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; pointer-events: none; }

@@ -10,8 +10,8 @@ import { Editable } from './editable';
 // <STYLE/>
 Extra_css`
 @reference "../tailwind.css";
-b-positionview, .b-positionview { @apply hflex; }
-b-positionview, .b-positionview {
+.b-positionview { @apply hflex; }
+.b-positionview {
   --b-positionview-fg: var(--b-lcdscreen-fg);
   --b-positionview-bg: var(--b-lcdscreen-bg);
   --b-positionview-b0: oklch(from var(--b-positionview-bg) calc(l - 0.01) c h);
