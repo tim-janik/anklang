@@ -2,9 +2,9 @@
 
 /** @class Icon
  * @description
- * The <b-icon> element displays icons from various icon fonts.
+ * The `Icon` component renders a `.b-icon` span displaying icons from various icon fonts.
  * In order to style the color of icon font symbols, simply apply the `color` CSS property
- * to this element (styling `fill` as for SVG elements is not needed).
+ * to the icon span (styling `fill` as for SVG elements is not needed).
  * ### Props:
  * *iconclass*
  * : A CSS class to apply to this icon.

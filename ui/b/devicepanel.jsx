@@ -90,7 +90,7 @@ export function DevicePanel (props)
 
   const activate = async (uri) => {
     // close popup to remove focus guards
-    if (!chain () || uri.startsWith ('DevicePanel:')) // assuming b-treebrowser.devicetypes
+    if (!chain () || uri.startsWith ('DevicePanel:')) // DevicePanel: menu items are panel controls, not devices to insert
       return;
     const sibling = menu_sibling ();
     let newdev;
