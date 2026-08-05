@@ -11,7 +11,7 @@ import { splitProps } from 'solid-js';
 
 // == STYLE ==
 Extra_css`
-b-menuseparator, .b-menuseparator {
+.b-menuseparator {
   margin: calc(1em - 1px) 1em;
   border: 1px solid var(--b-menu-separator);
 }

@@ -8,7 +8,7 @@
 
 // == STYLE ==
 Extra_css`
-b-more, .b-more { /* b-more */
+.b-more { /* b-more */
   display: flex;
   align-items: center;
   justify-content: space-evenly;

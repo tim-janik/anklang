@@ -40,7 +40,7 @@ import { createEffect, onCleanup, splitProps } from 'solid-js';
 // == STYLE ==
 Extra_css`
 @reference "../tailwind.css";
-b-textinput input, .b-textinput input {
+.b-textinput input, .b-textinput input {
   outline-width: 0; border: none;
   text-align: left;
   padding-left: var(--b-button-radius); padding-right: var(--b-button-radius);

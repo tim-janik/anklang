@@ -7,7 +7,7 @@
 
 // == STYLE ==
 Extra_css`
-b-playcontrols, .b-playcontrols {
+.b-playcontrols {
   button, .asbutton	{ padding: 5px; text-align: center; }
 }
 `;

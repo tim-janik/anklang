@@ -19,7 +19,7 @@ import * as Util from '../util.js';
 
 // == STYLE ==
 Extra_css`
-b-switchinput label, .b-switchinput label {
+.b-switchinput label, .b-switchinput label {
   position: relative; display: inline-block; width: 2.6em; height: 1.4em;
   input {
     opacity: 0; width: 0; height: 0;

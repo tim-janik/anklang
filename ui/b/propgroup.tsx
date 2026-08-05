@@ -16,7 +16,7 @@ import { ChoiceInput } from './choiceinput.tsx';
 // == STYLE ==
 Extra_css`
 @reference "../tailwind.css";
-b-propgroup, .b-propgroup {
+.b-propgroup {
   @apply vflex;
   padding: 5px;
   justify-content: space-evenly;
@@ -35,7 +35,7 @@ b-propgroup, .b-propgroup {
   .b-propgroup-row > * + * { margin-left: var(--b-prop-gap); }
   .b-propgroup-row:not(:last-child) { margin-bottom: var(--b-prop-gap); }
 }
-.b-propgroup-row b-textinput, .b-propgroup-row .b-textinput {
+.b-propgroup-row .b-textinput {
   width: calc(var(--b-prop-gap) * 4 + 5 * var(--b-prop-width));
 }
 .b-propgroup-row {

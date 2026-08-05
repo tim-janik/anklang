@@ -11,7 +11,7 @@ import { ClipView } from './clipview';
 
 // == STYLE ==
 Extra_css`
-b-partlist, .b-partlist {
+.b-partlist {
   display: flex;
   position: relative;
   .b-clipview {

@@ -10,7 +10,7 @@ import { ClipView } from './clipview';
 
 // == STYLE ==
 Extra_css`
-b-cliplist, .b-cliplist {
+.b-cliplist {
   display: flex;
   position: relative;
   .-indicator {

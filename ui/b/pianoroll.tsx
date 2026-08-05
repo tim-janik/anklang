@@ -22,7 +22,7 @@ const floor = Math.floor, round = Math.round;
 
 // == STYLE ==
 Extra_css`
-b-piano-roll, .b-piano-roll {
+.b-piano-roll {
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;
   /* Make scss variables available to JS via getComputedStyle() */
