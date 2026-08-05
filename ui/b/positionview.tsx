@@ -78,8 +78,8 @@ export function PositionView (props: any)
     const ds = "\u2007"; // FIGURE SPACE - "Tabular width", the width of digits
     const s3 = (n: number) => (n >= 100 ? "" : n >= 10 ? ds : ds + ds) + n;
     const s2 = (n: number) => (n >= 10 ? "" : ds) + n;
-    const z2 = (n: number) => (n >= 10 ? "" : "0") + n;
-    const ff = (n: number, d = 2) => Number.parseFloat (n).toFixed (d);
+    const z2 = (n: number | string) => (+n >= 10 ? "" : "0") + n;
+    const ff = (n: number, d = 2) => Number.parseFloat (String (n)).toFixed (d);
     // const tick = arrays[tsub.current_tick.type][tsub.current_tick.index];
     // const bpm = arrays[tsub.current_bpm.type][tsub.current_bpm.index];
     const bar = arrays[tsub.current_bar.type][tsub.current_bar.index];
