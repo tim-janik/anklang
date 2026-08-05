@@ -475,7 +475,7 @@ const hscrollbar_proportion = 20, vscrollbar_proportion = 11;
 /** Determine layout in pixels.
  * @this{any}
  */
-function piano_layout()
+function piano_layout (this: any)
 {
   const notes_canvas = this.notes_canvas, timeline_canvas = this.time_canvas;
   const piano_canvas = this.piano_canvas, cstyle = getComputedStyle (this.root);
@@ -509,6 +509,13 @@ function piano_layout()
     label_keys:		1,			// 0=none, 1=roots, 2=whites
     black2midi:         [   1,  3,     6,  8,  10,  ],
     white2midi:         [ 0,  2,  4, 5,  7,  9,  11 ],
+    dpr_height:         0,          // notes_cssheight * DPR, assigned below
+    hpad:               0,          // horizontal padding in device pixels, assigned below
+    yscroll:            undefined,  // y scroll offset ratio, assigned below
+    xposition:          undefined,  // x position in device pixels, assigned below
+    xscroll:            undefined,  // x scroll offset ratio, assigned below
+    tick_from_x:        undefined,  // css x to tick mapping, assigned below
+    midinote_from_y:    undefined,  // css y to midi note mapping, assigned below
   };
   const black_keyspans = [  [7,7], [21,7],     [43,7], [56.5,7], [70,7]   ]; 	// for 84px octave
   const white_offsets  = [ 0,    12,     24, 36,     48,       60,     72 ]; 	// for 84px octave
@@ -616,7 +623,7 @@ function piano_layout()
 /** Assign canvas font to drawing context
  * @this{any}
  */
-function set_canvas_font (ctx: any, size: string)
+function set_canvas_font (this: any, ctx: any, size: string)
 {
   const cstyle = getComputedStyle (this.root);
   const fontstring = cstyle.getPropertyValue ('--piano-roll-font');
@@ -636,7 +643,7 @@ function set_canvas_font (ctx: any, size: string)
 /** Paint piano key canvas
  * @this{any}
  */
-function paint_piano()
+function paint_piano (this: any)
 {
   const canvas = this.piano_canvas, cstyle = getComputedStyle (this.root);
   const ctx = canvas.getContext ('2d'), csp = cstyle.getPropertyValue.bind (cstyle);
@@ -730,7 +737,7 @@ function paint_piano()
 /** Paint piano roll notes
  * @this{any}
  */
-function paint_notes()
+function paint_notes (this: any)
 {
   const canvas = this.notes_canvas, cstyle = getComputedStyle (this.root);
   const ctx = canvas.getContext ('2d'), csp = cstyle.getPropertyValue.bind (cstyle);
@@ -833,7 +840,7 @@ function paint_notes()
 /** Paint timeline digits and indicators
  * @this{any}
  */
-function paint_timeline()
+function paint_timeline (this: any)
 {
   const canvas = this.time_canvas, cstyle = getComputedStyle (this.root);
   const ctx = canvas.getContext ('2d'), csp = cstyle.getPropertyValue.bind (cstyle);
@@ -848,7 +855,7 @@ function paint_timeline()
 /** Paint timegrid into any canvas
  * @this{any}
  */
-function paint_timegrid (canvas: any, with_labels: boolean)
+function paint_timegrid (this: any, canvas: any, with_labels: boolean)
 {
   const signature = [ 4, 4 ]; // 15, 16
   const cstyle = getComputedStyle (this.root), gy1 = 0;

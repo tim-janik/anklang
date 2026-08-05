@@ -13,6 +13,16 @@ declare module "solid-js" {
         tree?: any;
         expandall?: boolean;
       };
+      /** @deprecated legacy element used by modals.jsx for object property display */
+      "b-fed-object": HTMLAttributes<HTMLElement> & {
+        value?: any;
+      };
+      /** @deprecated legacy noticeboard element, see noticeboard.jsx */
+      "b-noticeboard": HTMLAttributes<HTMLElement>;
+      /** divs styled as buttons (.asbutton) carry the disabled attribute for styling */
+      div: HTMLAttributes<HTMLDivElement> & {
+        disabled?: boolean;
+      };
       button: ButtonHTMLAttributes<HTMLButtonElement> & {
         uri?: string;
         ic?: string;
