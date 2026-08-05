@@ -3,7 +3,7 @@
 
 /** @class BMore
  * @description
- * The <b-more> element is an indicator for adding or dropping new UI elements.
+ * The `More` component renders a `.b-more` indicator for adding or dropping new UI elements.
  */
 
 // == STYLE ==

@@ -25,7 +25,7 @@
  * *title*
  * : Forwarded onto the root element as the native tooltip attribute.
  * *class*
- * : Extra CSS class(es) appended to the root `b-textinput` element.
+ * : Extra CSS class(es) appended to the root `.b-textinput` element.
  *
  * ### Events:
  * *valuechange*

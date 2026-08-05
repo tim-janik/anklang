@@ -3,7 +3,7 @@
 
 /** @class BKnob
  * @description
- * The <b-knob> element provides a knob for scalar inputs.
+ * The `Knob` component renders a `.b-knob` element providing a knob for scalar inputs.
  * It supports the Vue
  * [v-model](https://vuejs.org/v2/guide/components-custom-events.html#Customizing-Component-v-model)
  * protocol by emitting an `input` event on value changes and accepting inputs via the `value` prop.
