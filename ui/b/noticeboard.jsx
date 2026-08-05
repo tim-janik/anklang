@@ -15,7 +15,7 @@ import * as Dom from "../dom.js";
 
 // == STYLE ==
 Extra_css`
-b-noticeboard {
+.b-noticeboard {
   position: fixed; inset: 0;
   display: flex; flex-flow: column wrap-reverse;
   align-items: flex-end; align-content: end;
@@ -155,6 +155,6 @@ export function Noticeboard (props)
   });
 
   return (
-    <b-noticeboard ref={setContainer} style={props.style}></b-noticeboard>
+    <div class="b-noticeboard" ref={setContainer} style={props.style}></div>
   );
 }

@@ -8,17 +8,6 @@
 declare module "solid-js" {
   namespace JSX {
     interface IntrinsicElements {
-      /** @deprecated use TreeBrowser component (SolidJS migration) */
-      "b-treebrowser": HTMLAttributes<HTMLElement> & {
-        tree?: any;
-        expandall?: boolean;
-      };
-      /** @deprecated legacy element used by modals.jsx for object property display */
-      "b-fed-object": HTMLAttributes<HTMLElement> & {
-        value?: any;
-      };
-      /** @deprecated legacy noticeboard element, see noticeboard.jsx */
-      "b-noticeboard": HTMLAttributes<HTMLElement>;
       /** divs styled as buttons (.asbutton) carry the disabled attribute for styling */
       div: HTMLAttributes<HTMLDivElement> & {
         disabled?: boolean;

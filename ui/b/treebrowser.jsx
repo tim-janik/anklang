@@ -19,35 +19,35 @@ import * as Kbd from '../kbd.js';
 Extra_css`
 @reference "../tailwind.css";
 
-b-treebrowser {
+.b-treebrowser {
   margin: 0 var(--b-menu-hpad);
   @apply inline-flex flex-col;
   --b-treebrowser-indent: 1.5rem;
   user-select: none;
 }
 
-b-treebrowser details {
+.b-treebrowser details {
   @apply inline-flex flex-col;
   padding-left: var(--b-treebrowser-indent);
   &[disabled], &[disabled] * { color: var(--b-menu-disabled); }
 }
 
-b-treebrowser details > summary {
+.b-treebrowser details > summary {
   @apply font-bold relative;
   list-style: none;
 }
-b-treebrowser details > summary::before {
+.b-treebrowser details > summary::before {
   @apply absolute inline;
   left: calc(-1 * var(--b-treebrowser-indent) + 2px);
   content: '►'; /* ▸ */
   transition: all .1s ease;
 }
-b-treebrowser details[open] > summary::before {
+.b-treebrowser details[open] > summary::before {
   content: '▷'; /* ▹ ▼ */
   transform: rotate(90deg);
 }
 
-b-treebrowser button {
+.b-treebrowser button {
   @apply flex text-left;
 }
 `;
@@ -80,7 +80,7 @@ export function TreeBrowser (props)
 {
   const [local, rest] = splitProps (props, ['class', 'tree', 'expandall']);
   const [expandall, setExpandall] = createSignal (props.expandall ?? true);
-  /** @type {HTMLElement | undefined} */
+  /** @type {HTMLDivElement | undefined} */
   let container;
 
   onMount (() => {
@@ -123,11 +123,11 @@ export function TreeBrowser (props)
   };
 
   return (
-    <b-treebrowser {...rest} ref={container} class={'b-treebrowser' + (local.class ? ' ' + local.class : '')}>
+    <div {...rest} ref={container} class={'b-treebrowser' + (local.class ? ' ' + local.class : '')}>
       <For each={entries()}>
         {(entry) => <TreeNode entry={entry} expandall={expandall()} />}
       </For>
-    </b-treebrowser>
+    </div>
   );
 }
 

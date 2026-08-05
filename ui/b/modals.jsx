@@ -10,6 +10,7 @@ import * as Signal from "../signal.js";
 import * as Util from "../util.js";
 import { PushButton } from './basics';
 import { Icon } from './icon';
+import { ObjectEditor } from './objecteditor';
 
 // == STYLE ==
 Extra_css`
@@ -83,7 +84,7 @@ const DialogComponent = (props) => {
           <div style="flex-grow whitespace-pre-line" innerHTML={d.vhtml}></div>
         </div>
         <Show when={d.proplist}>
-          <b-fed-object class="-modal-fed" value={d.proplist}></b-fed-object>
+          <ObjectEditor value={d.proplist} />
         </Show>
         <Show when={d.div_handler}>
           <div class="-div-handler" ref={divHandlerElement}></div>
