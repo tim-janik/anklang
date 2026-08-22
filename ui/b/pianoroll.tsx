@@ -1,5 +1,4 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
-// @ts-check
 
 /** ## Piano-Roll
  * The piano-roll editor displays notes in a grid where the vertical axis denotes the pitch and the horizontal axis the time line.
@@ -9,18 +8,18 @@
  * A context menu is available with mouse button 3, which provides extended functionality.
  */
 
-import { LitComponent, ref, html, JsExtract, docs } from '../little.js';
+import { createEffect, onMount, onCleanup } from 'solid-js';
 import * as PianoCtrl from "./piano-ctrl.js";
 import * as Util from '../util.js';
 import { clamp } from '../util.js';
-import { text_content, get_uri } from '../dom.js';
+import { text_content } from '../dom.js';
 import * as Mouse from '../mouse.js';
-import { Signal, State, Computed, Watcher, tracking_wrapper } from "../signal.js";
+import { tracking_wrapper } from "../signal.js";
 const floor = Math.floor, round = Math.round;
 
 // == STYLE ==
 Extra_css`
-b-piano-roll {
+b-piano-roll, .b-piano-roll {
   display: flex; flex-direction: column; align-items: stretch;
   position: relative;
   /* Make scss variables available to JS via getComputedStyle() */
@@ -77,340 +76,400 @@ b-piano-roll {
   }
 }`;
 
-// == HTML ==
-const HTML = (t, d) => html`
-  <div class="b-pianoroll-grid" tabindex="-1" ${ref (h => t.cgrid = h)} data-f1="the-piano-roll.html"
-    @pointerenter=${t.pointerenter} @pointerleave=${t.pointerleave} @focus=${t.focuschange} @blur=${t.focuschange}
-    @keydown=${e => t.piano_ctrl.keydown (e)}
-    @wheel=${{handleEvent: e => t.wheel_event (e), passive: false}} >
+// == JSX TEMPLATE ==
+const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidden?: boolean; style?: any; ref?: (el: HTMLElement) => void }) => (
+  <div ref={el => { t.root = el; props.ref?.(el); }}
+       class={['b-piano-roll', props.class].filter(Boolean).join(' ')}
+       hidden={props.hidden}
+       style={props.style}>
 
-    <div class="vflex -toolbutton col-start-1 row-start-1" style="height: 1.7em; align-items: end; padding-right: 4px;" ${ref (h => t.menu_btn = h)}
-      id="g-pianoroll-toolbutton" @click=${e => t.pianotoolmenu.popup (e)} @mousedown=${e => t.pianotoolmenu.popup (e)} >
-      <b-icon style="width: 1.2em; height: 1.2em" ${ref (h => t.menu_icon = h)}></b-icon>
-      <b-contextmenu ${ref (h => t.pianotoolmenu = h)} id="g-pianotoolmenu" class="-pianotoolmenu" @activate=${e => t.usetool (get_uri (e.detail))} >
-	<button ic="md-open_with"     uri="S" kbd="1" > Rectangular Selection  </button>
-	<button ic="md-multiple_stop" uri="H" kbd="2" > Horizontal Selection   </button>
-	<button ic="fa-pencil"        uri="P" kbd="3" > Pen                    </button>
-	<button ic="fa-eraser"        uri="E" kbd="4" > Eraser                 </button>
+    <div class="b-pianoroll-grid" tabindex="-1" ref={h => t.cgrid = h} data-f1="the-piano-roll.html"
+         onPointerEnter={t.pointerenter}
+         onPointerLeave={t.pointerleave}
+         onFocus={t.focuschange}
+         onBlur={t.focuschange}
+         onKeyDown={e => t.piano_ctrl.keydown (e)}>
+
+      <div class="vflex -toolbutton col-start-1 row-start-1" style="height: 1.7em; align-items: end; padding-right: 4px;"
+           id="g-pianoroll-toolbutton"
+           ref={h => t.menu_btn = h}
+           onClick={e => t.pianotoolmenu.popup (e)}
+           onMouseDown={e => t.pianotoolmenu.popup (e)}>
+        <b-icon style="width: 1.2em; height: 1.2em" ref={h => t.menu_icon = h}/>
+        <b-contextmenu ref={h => { t.pianotoolmenu = h; }}
+                       activate={t.usetool}
+                       id="g-pianotoolmenu" class="-pianotoolmenu">
+          <button ic="md-open_with"     uri="S" kbd="1" > Rectangular Selection  </button>
+          <button ic="md-multiple_stop" uri="H" kbd="2" > Horizontal Selection   </button>
+          <button ic="fa-pencil"        uri="P" kbd="3" > Pen                    </button>
+          <button ic="fa-eraser"        uri="E" kbd="4" > Eraser                 </button>
+        </b-contextmenu>
+      </div>
+
+      <canvas class="-time_canvas col-start-2 row-start-1" ref={h => t.time_canvas = h}></canvas>
+      <canvas class="-piano_canvas col-start-1 row-start-2" ref={h => t.piano_canvas = h}></canvas>
+      <canvas class="-notes_canvas col-start-2 row-start-2" ref={h => t.notes_canvas = h}
+              onPointerMove={Util.debounce (t.notes_canvas_pointermove)}
+              onPointerDown={t.notes_canvas_pointerdown}></canvas>
+
+      <div class="col-start-3 row-start-2" style="overflow: hidden scroll; min-width: 17px; background: #000" ref={h => t.vscrollbar = h}>
+        <div class="-vextend" style="height: 151vh" ref={h => t.vscrollbar_extend = h}>
+        </div>
+      </div>
+      <div class="col-start-2 row-start-3" ref={h => t.hscrollbar = h} style="overflow: scroll hidden; min-height: 17px; background: #000">
+        <div class="-hextend" ref={h => t.hscrollbar_extend = h} style="width:999px"></div>
+      </div>
+      <span class="-indicator" ref={h => t.indicator_bar = h}></span>
+
+      <b-contextmenu ref={h => { t.pianorollmenu = h; }}
+                     activate={t.pianorollmenu_click}
+                     isactive={t.pianorollmenu_check}
+                     id="g-pianorollmenu" showicons={true}
+                     class="-pianorollmenu" mapname="Piano Roll">
+        <b-menutitle> Piano-Roll </b-menutitle>
+        {/* key=${ac.weakid} */}
+        {actions.map (ac => (
+          <button uri={ac.weakid} ic={ac.ic} kbd={ac.kbd}>{ac.label}</button>
+        ))}
       </b-contextmenu>
     </div>
-
-    <canvas class="-time_canvas col-start-2 row-start-1"  ${ref (h => t.time_canvas = h)} ></canvas>
-    <canvas class="-piano_canvas col-start-1 row-start-2" ${ref (h => t.piano_canvas = h)} ></canvas>
-    <canvas class="-notes_canvas col-start-2 row-start-2" ${ref (h => t.notes_canvas = h)}
-      @pointermove=${Util.debounce (t.notes_canvas_pointermove.bind (t))}
-      @pointerdown=${t.notes_canvas_pointerdown} ></canvas>
-
-    <div class="col-start-3 row-start-2" style="overflow: hidden scroll; min-width: 17px; background: #000" ${ref (h => t.vscrollbar = h)} >
-      <div class="-vextend" style="height: 151vh" ${ref (h => t.vscrollbar_extend = h)} >
-      </div>
-    </div>
-    <div class="col-start-2 row-start-3" ${ref (h => t.hscrollbar = h)} style="overflow: scroll hidden; min-height: 17px; background: #000" >
-      <div class="-hextend" ${ref (h => t.hscrollbar_extend = h)} style="width:999px" ></div>
-    </div>
-    <span class="-indicator" ${ref (h => t.indicator_bar = h)}></span>
-
-    <b-contextmenu ${ref (h => t.pianorollmenu = h)} id="g-pianorollmenu" :showicons="true"
-      class="-pianorollmenu" mapname="Piano Roll"
-      .activate=${t.pianorollmenu_click.bind (t)} .isactive=${t.pianorollmenu_check.bind (t)} >
-      <b-menutitle> Piano-Roll </b-menutitle>
-      ${t.pianorollmenu_actions().map (ac => CONTEXTITEM (ac))}
-    </b-contextmenu>
   </div>
-`;
-// key=${ac.weakid}
-const CONTEXTITEM = ac => html`
-  <button uri=${ac.weakid} ic=${ac.ic} kbd=${ac.kbd} > ${ac.label} </button>
-`;
+);
 
 // == SCRIPT ==
-const PRIVATE_PROPERTY = { state: true };
 const default_note_length = Util.PPQN / 4;
 
-/** The <b-piano-roll> element allows note editing. */
-class BPianoRoll extends LitComponent {
-  createRenderRoot() { return this; }
-  render()
+/** The PianoRoll component allows note editing. */
+export function PianoRoll (props: {
+  clip?: any;  ///< The clip with notes to be edited.
+  hidden?: boolean;
+  ref?: (el: HTMLElement) => void;
+  class?: string;
+  style?: any;
+})
+{
+  // Internal state container — also used as `piano_roll` by piano-ctrl.js
+  const t: any = {};
+
+  // DOM element refs — set by JSX ref callbacks; t.root is the outer .b-piano-roll div
+  t.root = null;
+  t.cgrid = null;
+  t.menu_btn = null;
+  t.menu_icon = null;
+  t.pianotoolmenu = null;
+  t.pianorollmenu = null;
+  t.notes_canvas = null;
+  t.piano_canvas = null;
+  t.time_canvas = null;
+  t.hscrollbar = null;
+  t.hscrollbar_extend = null;
+  t.vscrollbar = null;
+  t.vscrollbar_extend = null;
+  t.indicator_bar = null;
+
+  // State
+  t.layout = null;
+  t.hzoom = 3;
+  t.vzoom = 1.5;
+  t.pianotool = 'P';
+  t.last_note_length = default_note_length;
+  t.have_focus = false;
+  t.entered = false;
+  t.last_pos = -9.987;
+  t.srect_ = { x: 0, y: 0, w: 0, h: 0, sx: 0, sy: 0 };
+  t.clip = null;
+  t.end_click = 99999;
+  t.auto_scrollto = undefined; // positions to restore scroll & zoom
+  t.stepping = []; // current grid stepping granularity
+  t.vscroll_must_center = true; // flag for initial vertical centering
+  t.pointer_drag = null;
+  t.piano_ctrl = new PianoCtrl.PianoCtrl (t);
+  t.drag_event = t.piano_ctrl.drag_event.bind (t.piano_ctrl);
+  t.notes_canvas_pointermove_zmovedel = null;
+
+  // track repaint dependencies
+  // queue_repaint — microtask-batched repaint scheduling
   {
-    const d = {};
-    return HTML (this, d);
+    let update_queued = false;
+    t.queue_repaint = () => {
+      if (update_queued) return;
+      update_queued = true;
+      queueMicrotask (() => {
+        update_queued = false;
+        t.repaint_tracked();
+      });
+    };
   }
-  static properties = {
-    clip: PRIVATE_PROPERTY,		///< The clip with notes to be edited.
-  };
-  constructor()
-  {
-    super();
-    this.layout = null;
-    this.hzoom = 3;
-    this.vzoom = 1.5;
-    this.pianotool = 'P';
-    this.last_note_length = default_note_length;
-    this.cgrid = null;
-    this.menu_btn = null;
-    this.menu_icon = null;
-    this.pianotoolmenu = null;
-    this.pianorollmenu = null;
-    this.notes_canvas = null;
-    this.piano_canvas = null;
-    this.time_canvas = null;
-    this.hscrollbar = null;
-    this.hscrollbar_extend = null;
-    this.vscrollbar = null;
-    this.vscrollbar_extend = null;
-    this.indicator_bar = null;
-    this.have_focus = false;
-    this.entered = false;
-    this.last_pos = -9.987;
-    this.srect_ = { x: 0, y: 0, w: 0, h: 0, sx: 0, sy: 0 };
-    this.clip = null;
-    this.end_click = 99999;
-    this.auto_scrollto = undefined;	// positions to restore scroll & zoom
-    this.stepping = [];                 // current grid stepping granularity
-    this.vscroll_must_center = true;	// flag for initial vertical centering
-    this.pointer_drag = null;
-    this.piano_ctrl = new PianoCtrl.PianoCtrl (this);
-    this.drag_event = this.piano_ctrl.drag_event.bind (this.piano_ctrl);
-    // track repaint dependencies
-    {
-      let update_queued = false;
-      this.queue_repaint = () => {
-        if (update_queued) return;
-        update_queued = true;
-        queueMicrotask (() => {
-          update_queued = false;
-          this.repaint();
-        });
-      };
-    }
-    this.repaint = tracking_wrapper (this.queue_repaint, this.repaint.bind (this));
-    // trigger layout on resize
-    this.resize_observer = new ResizeObserver (els => this.requestUpdate.bind (this));
-    this.resize_observer.observe (this);
-    this.resize_observer.observe (document.body);
-  }
-  disconnectedCallback()
-  {
-    super.disconnectedCallback();
-    Shell.piano_current (null, null);
-    if (this.notes_canvas_pointermove_zmovedel)
-      {
-	this.notes_canvas_pointermove_zmovedel();
-	this.notes_canvas_pointermove_zmovedel = null;
-      }
-  }
-  firstUpdated()
-  {
-    // ensure DOM tee is complete // await this.updateComplete;
-    // initial menu button update
-    this.usetool (this.pianotool);
-  }
-  updated (changed_props)
-  {
-    if (this.hscrollbar && !this.hscrollbar.onscroll)
-      this.hscrollbar.onscroll = e => this.hvscroll (e);
-    if (this.vscrollbar && !this.vscrollbar.onscroll)
-      this.vscrollbar.onscroll = e => this.hvscroll (e);
-    if (changed_props.has ('clip') && this.clip)
-      {
-	// read out props to force auto-updates
-	this.clip.all_notes.end_tick;
-	this.clip.all_notes.name;
-	this.clip.all_notes;
-	this.hscrollbar.scrollTo ({ left: 0, behavior: 'instant' });
-	this.vscroll_to (0.5);
-	this.last_note_length = default_note_length;
-	if (this.indicator_bar)
-	  this.indicator_bar.style.transform = "translateX(-9999px)";
-      }
-    // indicator_bar setup
-    Shell.piano_current (this.clip, this.piano_current_tick.bind (this));
-    // trigger layout, track layout deps from updated()
-    if (this.clip)
-      this.piano_layout_();
-    if (this.vscroll_must_center && this.vscrollbar.clientHeight)
-      this.vscroll_must_center = (this.vscroll_to (0.5), false);
-    // trigger repaint, but avoid tracking paint deps in updated()
-    this.queue_repaint();
-  }
-  piano_layout_ = piano_layout;
-  get srect ()	{ return Object.assign ({}, this.srect_); }
-  set srect (r)	{ Object.assign (this.srect_, r); this.queue_repaint(); }
-  pointerenter (event)
-  {
-    this.entered = true;
-    if (this.pianotoolmenu)
-      this.pianotoolmenu.map_kbd_hotkeys (this.entered || this.have_focus);
-  }
-  pointerleave (event)
-  {
-    this.entered = false;
-    if (this.pianotoolmenu)
-      this.pianotoolmenu.map_kbd_hotkeys (this.entered || this.have_focus);
-  }
-  focuschange (ev) {
-    if (ev?.type)
-      this.have_focus = ev.type == "focus";
-    if (this.pianotoolmenu)
-      this.pianotoolmenu.map_kbd_hotkeys (this.entered || this.have_focus);
-    if (this.pianorollmenu)
-      this.pianorollmenu.map_kbd_hotkeys (this.have_focus);
-  }
-  notes_canvas_pointermove (event)
-  {
-    if (this.pointer_drag)
+
+  // Repaint implementation
+  const repaint_impl = () => {
+    if (!t.clip || !t.notes_canvas || !t.hscrollbar || !t.vscrollbar)
       return;
-    if (this.notes_canvas_pointermove_zmovedel)
+    paint_notes.call (t);
+    paint_timeline.call (t);
+    paint_piano.call (t);
+  };
+  t.repaint_tracked = tracking_wrapper (t.queue_repaint, repaint_impl);
+
+  // Lifecycle: onMount — after first render
+  onMount (() => {
+    if (!t.root) return;
+    // initial menu button update
+    t.usetool (t.pianotool);
+
+    // setup wheel event (non-passive for preventDefault) ─ the old Lit @wheel was on cgrid,
+    // but attaching to the root div is equivalent (cgrid is its sole child, events bubble)
+    (t.root as HTMLElement).addEventListener ('wheel', t.wheel_event, { passive: false });
+    onCleanup (() => (t.root as HTMLElement).removeEventListener ('wheel', t.wheel_event));
+
+    // setup scroll handlers
+    if (t.hscrollbar)
+      t.hscrollbar.onscroll = e => t.hvscroll (e);
+    if (t.vscrollbar)
+      t.vscrollbar.onscroll = e => t.hvscroll (e);
+
+    // setup resize observer — actually trigger layout + repaint on resize
+    // (the previous Lit version's callback was `els => this.requestUpdate.bind (this)`,
+    //  which never *called* requestUpdate, so resizes were silently ignored)
+    const resize_observer = new ResizeObserver (() => {
+      if (t.clip)
+        piano_layout.call (t);
+      t.queue_repaint();
+    });
+    resize_observer.observe (t.root);
+    resize_observer.observe (document.body);
+
+    onCleanup (() => {
+      resize_observer.disconnect();
+      Shell.piano_current (null, null);
+      if (t.notes_canvas_pointermove_zmovedel)
       {
-	this.notes_canvas_pointermove_zmovedel();
-	this.notes_canvas_pointermove_zmovedel = null;
+        t.notes_canvas_pointermove_zmovedel();
+        t.notes_canvas_pointermove_zmovedel = null;
       }
-    this.notes_canvas_tool = PianoCtrl.notes_canvas_tool_from_hover (this, event);
-    if (this.notes_canvas_tool.cursor != this.notes_canvas.style.cursor)
-      this.notes_canvas.style.cursor = this.notes_canvas_tool.cursor;
-  }
-  notes_canvas_pointerdown (event)
-  {
-    if (this.pointer_drag)
-      {
-	this.pointer_drag.destroy();
-	return false;
-      }
-    if (!this.clip)
-      return false;
-    if (document.activeElement != this.cgrid)
-      this.cgrid.focus();
+    });
+
+    // initial render: scroll handlers, tool, wheel listener — all set up above.
+    // The createEffect below runs before onMount and already performs the initial
+    // layout + repaint, so nothing else to do here.
+  });
+
+  // Re-runs only when the clip *identity* changes (different clip object assigned):
+  // resets scroll position, note-length memory, indicator, and (re)registers the
+  // play-position callback with the Shell. These must NOT run on mere note edits,
+  // otherwise every committed modification yanks the scroll back to the origin.
+  createEffect (() => {
+    const clip = props.clip;
+    if (!t.root) return;
+    t.clip = clip;
+    if (clip)
+    {
+      t.hscrollbar?.scrollTo ({ left: 0, behavior: 'instant' });
+      t.vscroll_to (0.5);
+      t.last_note_length = default_note_length;
+      if (t.indicator_bar)
+        t.indicator_bar.style.transform = "translateX(-9999px)";
+    }
+
+    // indicator_bar setup
+    Shell.piano_current (clip, clip ? t.piano_current_tick : null);
+  });
+
+  // Re-runs on clip property/note changes (clip.all_notes / clip.end_tick are Solid
+  // signals via $get): re-layout (depends on clip.end_tick) and schedule a repaint.
+  // Mirrors the old tracked `updated()` minus the reset block (now above).
+  createEffect (() => {
+    const clip = props.clip;
+    if (!t.root || !clip) return;
+    // read out props to force auto-updates / subscribe to note & length signals
+    clip.all_notes;
+    // piano_layout reads clip.end_tick, subscribing this effect to clip resize
+    piano_layout.call (t);
+    if (t.vscroll_must_center && t.vscrollbar?.clientHeight)
+      t.vscroll_must_center = (t.vscroll_to (0.5), false);
+    t.queue_repaint();
+  });
+
+  // === Methods bound to the t object ===
+
+  t.piano_current_tick = (current_clip: any, current_tick: number) => {
+    if (t.clip != current_clip) return;
+    const offst = t.layout.xscroll();
+    const tpos = -offst + current_tick * t.layout.tickscale * t.layout.DPRDIV;
+    let u = Math.round (tpos * t.layout.DPR) * t.layout.DPRDIV; // screen pixel alignment
+    u = u >= 0 ? u + t.notes_canvas.offsetLeft : -9999;
+    if (u != t.last_pos)
+    {
+      const indicator_transform = "translateX(" + u + "px)";
+      t.last_pos = u;
+      if (t.indicator_bar)
+        t.indicator_bar.style.transform = indicator_transform;
+    }
+  };
+
+  t.vscroll_to = (fraction: number) => {
+    const vrange = t.vscrollbar_extend.clientHeight - t.vscrollbar.clientHeight;
+    t.vscrollbar.scrollTo ({ top: fraction * vrange, behavior: 'instant' });
+  };
+
+  t.hvscroll = (event: Event) => {
+    // scrollbar(s) changed
+    t.queue_repaint();
+    // adjust selection, etc
+    if (t.pointer_drag)
+      t.pointer_drag.scroll (event);
+  };
+
+  Object.defineProperty (t, 'srect', {
+    get: () => Object.assign ({}, t.srect_),
+    set: (r: any) => { Object.assign (t.srect_, r); t.queue_repaint(); },
+  });
+
+  t.pointerenter = (event: PointerEvent) => {
+    t.entered = true;
+    if (t.pianotoolmenu)
+      t.pianotoolmenu.map_kbd_hotkeys (t.entered || t.have_focus);
+  };
+
+  t.pointerleave = (event: PointerEvent) => {
+    t.entered = false;
+    if (t.pianotoolmenu)
+      t.pianotoolmenu.map_kbd_hotkeys (t.entered || t.have_focus);
+  };
+
+  t.focuschange = (ev: FocusEvent) => {
+    if (ev?.type)
+      t.have_focus = ev.type == "focus";
+    if (t.pianotoolmenu)
+      t.pianotoolmenu.map_kbd_hotkeys (t.entered || t.have_focus);
+    if (t.pianorollmenu)
+      t.pianorollmenu.map_kbd_hotkeys (t.have_focus);
+  };
+
+  t.notes_canvas_pointermove = (event: PointerEvent) => {
+    if (t.pointer_drag)
+      return;
+    if (t.notes_canvas_pointermove_zmovedel)
+    {
+      t.notes_canvas_pointermove_zmovedel();
+      t.notes_canvas_pointermove_zmovedel = null;
+    }
+    t.notes_canvas_tool = PianoCtrl.notes_canvas_tool_from_hover (t, event);
+    if (t.notes_canvas_tool.cursor != t.notes_canvas.style.cursor)
+      t.notes_canvas.style.cursor = t.notes_canvas_tool.cursor;
+  };
+
+  t.notes_canvas_pointerdown = (event: PointerEvent) => {
+    if (t.pointer_drag)
+    {
+      t.pointer_drag.destroy();
+      return;
+    }
+    if (!t.clip)
+      return;
+    if (document.activeElement != t.cgrid)
+      t.cgrid.focus();
     if (event.button == 2)
-      {
-	Util.prevent_event (event);
-	this.pianorollmenu.popup (event, { origin: 'none' });
-	return;
-      }
-    if (event.button == 0 && this.notes_canvas_tool)
-      {
-	const ctool_this = this.notes_canvas_tool.drag_start (this);
-	this.pointer_drag = new Util.PointerDrag (this, event,
-						  (event, MODE) => ctool_this.drag_event (event, MODE),
-						  () => this.pointer_drag = null);
-	return;
-      }
+    {
+      Util.prevent_event (event);
+      t.pianorollmenu.popup (event, { origin: 'none' });
+      return;
+    }
+    if (event.button == 0 && t.notes_canvas_tool)
+    {
+      const ctool_this = t.notes_canvas_tool.drag_start (t);
+      t.pointer_drag = new Util.PointerDrag (t, event,
+                                              (event_arg: any, MODE: any) => ctool_this.drag_event (event_arg, MODE),
+                                              () => t.pointer_drag = null);
+      return;
+    }
     debug ('b-pianoroll: pointerdown without tool', event);
-  }
-  pianorollmenu_actions()
-  {
+  };
+
+  t.pianorollmenu_actions = () => {
     const actions = [];
     for (const action of PianoCtrl.list_actions())
+    {
+      if (action.label)
       {
-	if (action.label)
-	  {
-	    const label = action.label;
-	    const kbd = action.kbd;
-	    const ic = action.ic;
-	    actions.push ({ label, weakid: 'weakid:' + Util.weakid (action), kbd, ic });
-	  }
+        const label = action.label;
+        const kbd = action.kbd;
+        const ic = action.ic;
+        actions.push ({ label, weakid: 'weakid:' + Util.weakid (action), kbd, ic });
       }
+    }
     return actions;
-  }
-  pianorollmenu_check (uri)
-  {
-    return !!this.clip;
-  }
-  pianorollmenu_click (uri, event)
-  {
+  };
+
+  t.pianorollmenu_check = (uri: string) => {
+    return !!t.clip;
+  };
+
+  t.pianorollmenu_click = (uri: string, event?: Event) => {
     event = Util.keyboard_click_event (event);
     if (event)
-      {
-	event.stopPropagation();
-	event.preventDefault();
-      }
+    {
+      event.stopPropagation();
+      event.preventDefault();
+    }
     if (uri.search (/^[0-9a-z-]+@[0-9a-z-]+$/) === 0)
       return; // TODO: this.pianoroll_script (uri);
-    if (uri.startsWith ('weakid:') && this.clip) {
+    if (uri.startsWith ('weakid:') && t.clip) {
       const action = Util.weakid_lookup (Number (uri.substr (7)));
       if (action.func instanceof Function)
-	return action.func (action, this, this.clip, event);
+        return action.func (action, t, t.clip, event);
     }
-  }
-  usetool (uri)
-  {
-    this.pianotool = uri;
+  };
+
+  t.usetool = (uri: string) => {
+    t.pianotool = uri;
     // clone menu item
     const title = '**EDITOR TOOL**';
-    const menuitem = this.pianotoolmenu.find_menuitem (uri);
-    this.menu_icon.setAttribute ('ic', menuitem.getAttribute ('ic'));
-    this.menu_icon.setAttribute ('data-kbd', menuitem.getAttribute ('kbd'));
-    this.menu_icon.setAttribute ('data-tip', title + ' ' + text_content (menuitem, false).trim());
+    const menuitem = t.pianotoolmenu.find_menuitem (uri);
+    t.menu_icon.setAttribute ('ic', menuitem.getAttribute ('ic'));
+    t.menu_icon.setAttribute ('data-kbd', menuitem.getAttribute ('kbd'));
+    t.menu_icon.setAttribute ('data-tip', title + ' ' + text_content (menuitem, false).trim());
     // pick up 'data-tip' and pick cursor via hover
-    if (!this.notes_canvas_pointermove_zmovedel)
-      this.notes_canvas_pointermove_zmovedel = App.zmoves_add (this.notes_canvas_pointermove.bind (this));
+    if (!t.notes_canvas_pointermove_zmovedel)
+      t.notes_canvas_pointermove_zmovedel = App.zmoves_add (t.notes_canvas_pointermove);
     App.zmove(); // trigger move / hover
-  }
-  piano_current_tick (current_clip, current_tick)
-  {
-    if (this.clip != current_clip) return;
-    const offst = this.layout.xscroll();
-    const t = -offst + current_tick * this.layout.tickscale * this.layout.DPRDIV;
-    let u = Math.round (t * this.layout.DPR) * this.layout.DPRDIV; // screen pixel alignment
-    u = u >= 0 ? u + this.notes_canvas.offsetLeft : -9999;
-    if (u != this.last_pos)
-      {
-	const indicator_transform = "translateX(" + u + "px)";
-	this.last_pos = u;
-	if (this.indicator_bar)
-	  this.indicator_bar.style.transform = indicator_transform;
-      }
-  }
-  vscroll_to (fraction)
-  {
-    const vrange = this.vscrollbar_extend.clientHeight - this.vscrollbar.clientHeight;
-    this.vscrollbar.scrollTo ({ top: fraction * vrange, behavior: 'instant' });
-  }
-  hvscroll (event)
-  {
-    // scrollbar(s) changed
-    this.queue_repaint();
-    // adjust selection, etc
-    if (this.pointer_drag)
-      this.pointer_drag.scroll (event);
-  }
-  repaint()
-  {
-    if (!this.clip || !this.notes_canvas || !this.hscrollbar || !this.vscrollbar)
-      return;
-    paint_notes.call (this);
-    paint_timeline.call (this);
-    paint_piano.call (this);
-  }
-  wheel_event (event)
-  {
+  };
+
+  t.wheel_event = (event: WheelEvent) => {
     const delta = Mouse.wheel_delta (event, true);
     if (event.ctrlKey) {
       if (delta.deltaX)
-	this.hzoom = clamp (this.hzoom * (delta.deltaX > 0 ? 1.1 : 0.9), 0.25, 25);
+        t.hzoom = clamp (t.hzoom * (delta.deltaX > 0 ? 1.1 : 0.9), 0.25, 25);
       if (delta.deltaY)
-	this.vzoom = clamp (this.vzoom * (delta.deltaY > 0 ? 1.1 : 0.9), 0.5, 25);
-      this.request_update();
+        t.vzoom = clamp (t.vzoom * (delta.deltaY > 0 ? 1.1 : 0.9), 0.5, 25);
+      if (t.clip)
+        piano_layout.call (t);
+      t.queue_repaint();
     } else {
       if (delta.deltaX)
-	this.hscrollbar.scrollBy ({ left: delta.deltaX });
+        t.hscrollbar.scrollBy ({ left: delta.deltaX });
       if (delta.deltaY)
-	this.vscrollbar.scrollBy ({ top: delta.deltaY });
+        t.vscrollbar.scrollBy ({ top: delta.deltaY });
     }
     Util.prevent_event (event);
-  }
-}
-customElements.define ('b-piano-roll', BPianoRoll);
+  };
 
+  const pianorollmenu_actions = t.pianorollmenu_actions();
+
+  return render_piano_roll (t, pianorollmenu_actions, props);
+}
+
+// == Helper functions ==
 
 const hscrollbar_proportion = 20, vscrollbar_proportion = 11;
 
 /** Determine layout in pixels.
- * @this{BPianoRoll}
+ * @this{any}
  */
 function piano_layout()
 {
   const notes_canvas = this.notes_canvas, timeline_canvas = this.time_canvas;
-  const piano_canvas = this.piano_canvas, cstyle = getComputedStyle (this);
+  const piano_canvas = this.piano_canvas, cstyle = getComputedStyle (this.root);
   const notes_cssheight = Math.floor (this.vzoom * 84 / 12) * PianoCtrl.PIANO_KEYS;
   /* By design, each octave consists of 12 aligned rows that are used for note placement.
    * Each row is always pixel aligned. Consequently, the pixel area assigned to an octave
@@ -489,15 +548,15 @@ function piano_layout()
   notes_canvas.style.height = '100%';
 
   // vscrollbar setup
-  let px, layout_changed = false;
+  let layout_changed = false;
   if (0) // vscrollbar resizing unused, vscrollbar_extend is fixed atm
     {
-      px = (vscrollbar_height * (vscrollbar_proportion + 1)) + 'px';
+      const px = (vscrollbar_height * (vscrollbar_proportion + 1)) + 'px';
       if (this.vscrollbar_extend.style.height != px)
-	{
-	  layout_changed = true;
-	  this.vscrollbar_extend.style.height = px;
-	}
+        {
+          layout_changed = true;
+          this.vscrollbar_extend.style.height = px;
+        }
     }
   layout.yoffset = () => {
     const yscroll = this.vscrollbar.scrollTop / Math.max (1, this.vscrollbar_extend.clientHeight - this.vscrollbar.clientHeight);
@@ -507,7 +566,7 @@ function piano_layout()
   };
   layout.yscroll = () => layout.yoffset() / layout.DPR;
   // hscrollbar setup
-  px = (hscrollbar_width * (hscrollbar_proportion + 1)) + 'px';
+  const px = (hscrollbar_width * (hscrollbar_proportion + 1)) + 'px';
   if (this.hscrollbar_extend.style.width != px)
     {
       layout_changed = true;
@@ -546,10 +605,11 @@ function piano_layout()
 }
 
 /** Assign canvas font to drawing context
- * @this{BPianoRoll}
+ * @this{any}
  */
-function set_canvas_font (ctx, size) {
-  const cstyle = getComputedStyle (this);
+function set_canvas_font (ctx: any, size: string)
+{
+  const cstyle = getComputedStyle (this.root);
   const fontstring = cstyle.getPropertyValue ('--piano-roll-font');
   const parts = fontstring.split (/\s*\d+px\s*/i); // 'bold 10px sans' -> ['bold', 'sans']
   console.assert (parts && parts.length >= 1);
@@ -559,17 +619,17 @@ function set_canvas_font (ctx, size) {
   } catch (err) {
     // FireFox throws a "NS_ERROR_FAILURE" exception on first paint
     console.error ("set_canvas_font: ctx.font assignment error" /*, err */ );
-    return false;
+    return;
   }
   return font;
 }
 
 /** Paint piano key canvas
- * @this{BPianoRoll}
+ * @this{any}
  */
 function paint_piano()
 {
-  const canvas = this.piano_canvas, cstyle = getComputedStyle (this);
+  const canvas = this.piano_canvas, cstyle = getComputedStyle (this.root);
   const ctx = canvas.getContext ('2d'), csp = cstyle.getPropertyValue.bind (cstyle);
   const layout = this.layout, DPR = layout.DPR, yoffset = layout.yoffset();
   // resize canvas to match onscreen pixels, paint bg with white key row color
@@ -596,12 +656,12 @@ function paint_piano()
       const p = layout.wkeys[k];
       const x = DPR, y = oy - p[0];
       const w = layout.white_width - DPR, h = p[1];
-      ctx.fillRect (x, y - h + th, w - 2 * th, h - th);		// v-overlap by 1*th
-      const sx = x + hf, sy = y - h + hf;			// stroke coords
-      ctx.strokeStyle = white_glint;				// highlight
+      ctx.fillRect (x, y - h + th, w - 2 * th, h - th); // v-overlap by 1*th
+      const sx = x + hf, sy = y - h + hf; // stroke coords
+      ctx.strokeStyle = white_glint; // highlight
       ctx.strokeRect (sx, sy + th, w - th, h - th);
-      ctx.strokeStyle = white_border;				// border
-      ctx.strokeRect (sx - th, sy, w, h);			// v-overlap by 1*th
+      ctx.strokeStyle = white_border; // border
+      ctx.strokeRect (sx - th, sy, w, h); // v-overlap by 1*th
     }
     // draw black keys
     ctx.fillStyle = black_base;
@@ -612,11 +672,11 @@ function paint_piano()
       const w = layout.black_width, h = p[1];
       const gradient = [ [0, black_base], [.08, black_base], [.15, black_shine],   [1, black_base] ];
       ctx.fillStyle = Util.linear_gradient_from (ctx, gradient, x + th, y - h / 2, x + w - 2 * th, y - h / 2);
-      ctx.fillRect   (x + th, y - h + th, w - 2 * th, h - th);	// v-overlap by 1*th
-      const sx = x + hf, sy = y - h + hf;			// stroke coords
-      ctx.strokeStyle = black_glint;		// highlight
+      ctx.fillRect   (x + th, y - h + th, w - 2 * th, h - th); // v-overlap by 1*th
+      const sx = x + hf, sy = y - h + hf; // stroke coords
+      ctx.strokeStyle = black_glint; // highlight
       ctx.strokeRect (sx, sy + th, w - 2 * th, h - th);
-      ctx.strokeStyle = black_border;		// border
+      ctx.strokeStyle = black_border; // border
       ctx.strokeRect (sx, sy, w - th, h);
     }
     // outer border
@@ -626,12 +686,12 @@ function paint_piano()
 
   // figure font size for piano key labels
   const avg_height = layout.wkeys.reduce ((a, p) => a += p[1], 0) / layout.wkeys.length;
-  let fpx = avg_height - 2 * (th + 1);	// base font size on average white key size
+  let fpx = avg_height - 2 * (th + 1); // base font size on average white key size
   fpx = Util.clamp (fpx / layout.DPR, 7, 12) * layout.DPR;
   if (fpx >= 6) {
     ctx.fillStyle = csp ('--piano-roll-key-color');
     if (!set_canvas_font.call (this, ctx, fpx + 'px'))
-      return; // abort paint
+      return;
     // measure Midi labels, faster if batched into an array
     const midi_labels = Util.midi_label ([...Util.range (0, layout.octaves * (layout.wkeys.length + layout.bkeys.length))]);
     // draw names
@@ -642,32 +702,32 @@ function paint_piano()
       const oy = yoffset - oct * layout.oct_length;
       // skip non-roots / roots according to configuration
       for (let k = 0; k < layout.wkeys.length; k++) {
-	if ((k && layout.label_keys < 2) || layout.label_keys < 1)
-	  continue;
-	// draw white key
-	const p = layout.wkeys[k];
-	const x = 0, y = oy - p[0];
-	const w = layout.white_width;
-	const midi_key = oct * 12 + layout.white2midi[k];
-	const label = midi_labels[midi_key];
-	const twidth = ctx.measureText (label).width;
-	const tx = x + w - 2 * (th + 1) - twidth, ty = y;
-	ctx.fillText (label, tx, ty);
+        if ((k && layout.label_keys < 2) || layout.label_keys < 1)
+          continue;
+        // draw white key
+        const p = layout.wkeys[k];
+        const x = 0, y = oy - p[0];
+        const w = layout.white_width;
+        const midi_key = oct * 12 + layout.white2midi[k];
+        const label = midi_labels[midi_key];
+        const twidth = ctx.measureText (label).width;
+        const tx = x + w - 2 * (th + 1) - twidth, ty = y;
+        ctx.fillText (label, tx, ty);
       }
     }
   }
 }
 
 /** Paint piano roll notes
- * @this{BPianoRoll}
+ * @this{any}
  */
 function paint_notes()
 {
-  const canvas = this.notes_canvas, cstyle = getComputedStyle (this);
+  const canvas = this.notes_canvas, cstyle = getComputedStyle (this.root);
   const ctx = canvas.getContext ('2d'), csp = cstyle.getPropertyValue.bind (cstyle);
   const layout = this.layout, yoffset = layout.yoffset();
   const light_row = cstyle.getPropertyValue ('--piano-roll-light-row');
-  // resize canvas to match onscreen pixels, paint bg with white key row color
+  // paint bg with white key row color
   ctx.fillStyle = light_row;
   ctx.fillRect (0, 0, layout.notes_csswidth * layout.DPR, layout.cssheight * layout.DPR);
   // we draw piano keys verticaly overlapping by one th and align octave separators accordingly
@@ -680,13 +740,13 @@ function paint_notes()
     const oy = yoffset - oct * layout.oct_length;
     for (let r = 0; r < layout.row_colors.length; r++) {
       if (layout.row_colors[r] > 1) {
-	ctx.fillRect (0, oy - r * layout.row - layout.row, canvas.width, layout.row);
+        ctx.fillRect (0, oy - r * layout.row - layout.row, canvas.width, layout.row);
       }
     }
   }
 
   // line thickness and line cap
-  ctx.lineWidth = th;
+  ctx.lineWidth = th; // line thickness
   ctx.lineCap = 'butt'; // chrome 'butt' has a 0.5 pixel bug, so we use fillRect
   const lsx = layout.xposition();
 
@@ -706,14 +766,14 @@ function paint_notes()
   // draw octave separators
   const semitone12 = csp ('--piano-roll-semitone12');
   ctx.fillStyle = semitone12;
-  for (let oct = 0; oct <= layout.octaves; oct++) {	// condiiton +1 to include top border
+  for (let oct = 0; oct <= layout.octaves; oct++) { // condiiton +1 to include top border
     const oy = yoffset - oct * layout.oct_length;
     ctx.fillRect (0, oy, canvas.width, th);
   }
 
   // paint selection rectangle
   const srect = { x: layout.DPR * this.srect_.x, y: layout.DPR * this.srect_.y,
-		  w: layout.DPR * this.srect_.w, h: layout.DPR * this.srect_.h };
+                  w: layout.DPR * this.srect_.w, h: layout.DPR * this.srect_.h };
   if (srect.w > 0 && srect.h > 0)
     {
       const note_focus_color = csp ('--piano-roll-note-focus-color');
@@ -735,7 +795,7 @@ function paint_notes()
   ctx.fillStyle = note_color;
   ctx.strokeStyle = csp ('--piano-roll-note-focus-border');
   // draw notes
-  const draw_notes = (selected) => {
+  const draw_notes = (selected: boolean) => {
     for (const note of this.clip.all_notes)
       {
         if (note.selected == selected)
@@ -762,11 +822,11 @@ function paint_notes()
 }
 
 /** Paint timeline digits and indicators
- * @this{BPianoRoll}
+ * @this{any}
  */
 function paint_timeline()
 {
-  const canvas = this.time_canvas, cstyle = getComputedStyle (this);
+  const canvas = this.time_canvas, cstyle = getComputedStyle (this.root);
   const ctx = canvas.getContext ('2d'), csp = cstyle.getPropertyValue.bind (cstyle);
   const layout = this.layout, light_row = csp ('--piano-roll-light-row');
   // paint bg with white key row color
@@ -777,22 +837,23 @@ function paint_timeline()
 }
 
 /** Paint timegrid into any canvas
- * @this{BPianoRoll}
+ * @this{any}
  */
-function paint_timegrid (canvas, with_labels)
+function paint_timegrid (canvas: any, with_labels: boolean)
 {
   const signature = [ 4, 4 ]; // 15, 16
-  const cstyle = getComputedStyle (this), gy1 = 0;
+  const cstyle = getComputedStyle (this.root), gy1 = 0;
   const gy2 = canvas.height * (with_labels ? 0.5 : 0), gy3 = canvas.height * (with_labels ? 0.75 : 0);
   const ctx = canvas.getContext ('2d'), csp = cstyle.getPropertyValue.bind (cstyle);
   const layout = this.layout, lsx = layout.xposition(), th = layout.thickness;
   const grid_main = csp ('--piano-roll-grid-main'), grid_sub = csp ('--piano-roll-grid-sub');
-  const TPN64 = Util.PPQN / 16;			// Ticks per 64th note
-  const TPD = TPN64 * 64 / signature[1];	// Ticks per denominator fraction
-  const bar_ticks = signature[0] * TPD;		// Ticks per bar
+  const TPN64 = Util.PPQN / 16; // Ticks per 64th note
+  const TPD = TPN64 * 64 / signature[1]; // Ticks per denominator fraction
+  const bar_ticks = signature[0] * TPD; // Ticks per bar
   const bar_pixels = bar_ticks * layout.tickscale;
   const denominator_pixels = bar_pixels / signature[0];
   const barjumps = 8;
+  // line thickness and line cap
   ctx.lineWidth = th; // line thickness
   ctx.lineCap = 'butt'; // chrome 'butt' has a 0.5 pixel bug, so we use fillRect
 
@@ -824,10 +885,10 @@ function paint_timegrid (canvas, with_labels)
       ctx.fillRect (tx, gy, th, canvas.height);
       c += 1;
       if (c >= stepping[1])
-	c = 0;
+        c = 0;
       d += 1;
       if (d >= stepping[2])
-	d = 0;
+        d = 0;
     }
 
   if (!with_labels)
@@ -847,18 +908,18 @@ function paint_timegrid (canvas, with_labels)
       tx = tick * layout.tickscale - lsx;
       let label = (1 + bar) + '';
       if (c) // fractions
-	label += '.' + (1 + c);
+        label += '.' + (1 + c);
       const tm = ctx.measureText (label);
       const lh = tm.actualBoundingBoxAscent + tm.actualBoundingBoxDescent;
       if ((c && tm.width < denominator_pixels * 0.93) ||
-	  (!c && tm.width < bar_pixels * 0.93) ||
-	  (!c && !(bar & 0x7) && tm.width < bar_pixels * barjumps * 0.93))
-	ctx.fillText (label, tx + th, (canvas.height - lh) * 0.5);
+          (!c && tm.width < bar_pixels * 0.93) ||
+          (!c && !(bar & 0x7) && tm.width < bar_pixels * barjumps * 0.93))
+        ctx.fillText (label, tx + th, (canvas.height - lh) * 0.5);
       c += 1;
       if (c >= signature[0])
-	{
-	  bar += 1;
-	  c = 0;
-	}
+        {
+          bar += 1;
+          c = 0;
+        }
     }
 }

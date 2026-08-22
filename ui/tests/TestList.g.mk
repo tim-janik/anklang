@@ -4,35 +4,16 @@ UI_TEST_LIST := \
   clip_test.test_clip_pan \
   clip_test.test_clip_notes \
   clip_test.test_clip_range \
-  editable_test.test_editable_initial_value \
-  editable_test.test_editable_numeric_value \
-  editable_test.test_editable_activate_click \
-  editable_test.test_editable_activate_dblclick \
-  editable_test.test_editable_enter_commits \
-  editable_test.test_editable_escape_cancels \
-  editable_test.test_editable_blur_commits \
-  editable_test.test_editable_ref_activate \
-  numberinput_test.test_numberinput_clamp_on_input \
-  numberinput_test.test_numberinput_integer_rounding \
-  numberinput_test.test_numberinput_external_enforce \
-  numberinput_test.test_numberinput_no_spurious_emit \
+  editable_test.test_editable \
+  numberinput_test.test_numberinput \
   project_test.test_project_basic \
   project_test.test_project_master_volume \
   project_test.test_project_track_management \
   project_test.test_project_track_removal_notification \
-  switchinput_test.test_switchinput_toggle_on \
-  switchinput_test.test_switchinput_toggle_off \
-  switchinput_test.test_switchinput_readonly \
-  switchinput_test.test_switchinput_keyboard \
-  switchinput_test.test_switchinput_keyboard_readonly \
-  switchinput_test.test_switchinput_constrain_strings \
-  switchinput_test.test_switchinput_normalize_emit \
-  switchinput_test.test_switchinput_external_enforce \
+  switchinput_test.test_switchinput \
   track_test.test_track_volume \
   track_test.test_track_pan \
   track_test.test_track_mute \
   track_test.test_track_solo \
   track_test.test_track_midi_channel \
-  util_test.test_string_ops \
-  util_test.test_number_ops \
-  util_test.test_array_ops \
+  util_test.test_util \

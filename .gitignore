@@ -17,6 +17,8 @@
 /poxy/
 /rand/
 /inst/
+/x*
+core
 *.png
 *.jpg
 *bak

@@ -140,6 +140,7 @@ endif
 WILDCARD_SUBDIRS := .github/ ase/ devices/ doc/ electron/ images/ jsonipc/ misc/ rand/ ui/ x11test/ # external/ trkn/
 WILDCARD_SUBDIRS := $(wildcard $(WILDCARD_SUBDIRS) $(WILDCARD_SUBDIRS:%=%*/) $(WILDCARD_SUBDIRS:%=%*/*/) $(WILDCARD_SUBDIRS:%=%*/*/*/))
 WILDCARD_IGNORE  := $(wildcard *tmp* *LOG* TODO* *lock* config-defaults.mk TAGS .jj .git .cache trkn/*all.hh trkn/x*.hh *.gz)
+WILDCARD_IGNORE  += .#% #% %~   # ignore Emacs lock/auto-save/backup files (also fixes shell '#' comment hazard in recipes)
 WILDCARD_FILES   := $(filter-out $(WILDCARD_IGNORE), $(wildcard external/Makefile.mk trkn/* $(WILDCARD_SUBDIRS:%=%.[^.]*) $(WILDCARD_SUBDIRS:%=%*) .[^.]* *)) # glob
 WILDCARD_FILES   := $(filter-out $(patsubst %/./,%, $(wildcard $(WILDCARD_FILES:%=%/./))), $(WILDCARD_FILES)) # remove subdir names
 WILDCARD_FILES   := $(sort $(WILDCARD_FILES))
