@@ -105,6 +105,18 @@ export function Toggle (props: {
     }
   };
 
+  const handle_pointercancel = (event: PointerEvent) => {
+    // Reset the press state without toggling when the pointer interaction is
+    // cancelled (e.g. the pointer leaves the window), so a subsequent press is
+    // not mis-counted as a release of the aborted press.
+    if (pressed >= 0) {
+      pressed = -1;
+      label_el?.classList.remove ('b-toggle-press');
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
   const handle_dblclick = (event: MouseEvent) => {
     // prevent double-clicks from propagating, since we always
     // handled it as single click already
@@ -116,6 +128,7 @@ export function Toggle (props: {
     <div class={merged_class()} ref={el => { root_el = el; }} {...others}
       onPointerDown={handle_pointerdown}
       onPointerUp={handle_pointerup}
+      onPointerCancel={handle_pointercancel}
       onDblClick={handle_dblclick}
       data-tip="**CLICK** Toggle Value"
       aria-disabled={local.disabled || undefined}

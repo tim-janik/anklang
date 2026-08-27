@@ -255,6 +255,44 @@ async function test_toggle_label_empty (): Promise<boolean>
 }
 sub_tests.push (['label_empty', test_toggle_label_empty]);
 
+// =============================================================================
+// Pointer-cancel test
+// =============================================================================
+
+/// After pointerdown → pointercancel, the toggle must not fire and a
+/// subsequent click must still work (pressed state was reset properly).
+async function test_toggle_cancel (): Promise<boolean>
+{
+  let emit_count = 0;
+  const t = mount_toggle ({
+    value: false,
+    onValueChange: () => { emit_count++; },
+  });
+  try {
+    await Dom.ui_next_frame();
+    const root = t.root();
+    const label = t.label();
+    if (!root || !label) throw new Error ('Toggle not rendered');
+    // Press then cancel.
+    press (root);
+    if (!label.classList.contains ('b-toggle-press')) throw new Error ('pointerdown should add b-toggle-press');
+    root.dispatchEvent (new PointerEvent ('pointercancel', { bubbles: true, cancelable: true }));
+    if (label.classList.contains ('b-toggle-press')) throw new Error ('pointercancel should remove b-toggle-press');
+    if (emit_count !== 0)
+      throw new Error (`cancel emitted ${emit_count} events`);
+    // A subsequent click should toggle once.
+    click_toggle (root);
+    await Dom.ui_next_frame();
+    if (emit_count !== 1)
+      throw new Error (`after cancel, click emitted ${emit_count} events (expected 1)`);
+    if (!label.classList.contains ('b-toggle-on')) throw new Error ('after cancel, click should turn on');
+  } finally {
+    t.cleanup();
+  }
+  return true;
+}
+sub_tests.push (['cancel', test_toggle_cancel]);
+
 // == Master runner ==
 /// Single exported entry point runs all sub-tests in sequence.
 export async function test_toggle (): Promise<boolean>
