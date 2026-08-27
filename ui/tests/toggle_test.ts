@@ -48,6 +48,13 @@ function click_toggle (root: HTMLElement)
   release (root);
 }
 
+/// Emissions so far, read via a function so control-flow narrowing of
+/// `emitted.length` across the throw guards cannot collapse to a literal.
+function emitted_count (emitted: boolean[])
+{
+  return emitted.length;
+}
+
 // == Test registry ==
 const sub_tests: [string, () => Promise<any>][] = [];
 
@@ -263,10 +270,10 @@ sub_tests.push (['label_empty', test_toggle_label_empty]);
 /// subsequent click must still work (pressed state was reset properly).
 async function test_toggle_cancel (): Promise<boolean>
 {
-  let emit_count = 0;
+  const emitted: boolean[] = [];
   const t = mount_toggle ({
     value: false,
-    onValueChange: () => { emit_count++; },
+    onValueChange: v => { emitted.push (v); },
   });
   try {
     await Dom.ui_next_frame();
@@ -278,13 +285,13 @@ async function test_toggle_cancel (): Promise<boolean>
     if (!label.classList.contains ('b-toggle-press')) throw new Error ('pointerdown should add b-toggle-press');
     root.dispatchEvent (new PointerEvent ('pointercancel', { bubbles: true, cancelable: true }));
     if (label.classList.contains ('b-toggle-press')) throw new Error ('pointercancel should remove b-toggle-press');
-    if (emit_count !== 0)
-      throw new Error (`cancel emitted ${emit_count} events`);
+    if (emitted_count (emitted) !== 0)
+      throw new Error (`cancel emitted ${emitted.length} events`);
     // A subsequent click should toggle once.
     click_toggle (root);
     await Dom.ui_next_frame();
-    if (emit_count !== 1)
-      throw new Error (`after cancel, click emitted ${emit_count} events (expected 1)`);
+    if (emitted_count (emitted) !== 1)
+      throw new Error (`after cancel, click emitted ${emitted.length} events (expected 1)`);
     if (!label.classList.contains ('b-toggle-on')) throw new Error ('after cancel, click should turn on');
   } finally {
     t.cleanup();
