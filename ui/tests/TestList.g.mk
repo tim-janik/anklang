@@ -11,6 +11,7 @@ UI_TEST_LIST := \
   project_test.test_project_track_management \
   project_test.test_project_track_removal_notification \
   switchinput_test.test_switchinput \
+  toggle_test.test_toggle \
   track_test.test_track_volume \
   track_test.test_track_pan \
   track_test.test_track_mute \
