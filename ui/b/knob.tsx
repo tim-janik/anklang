@@ -313,6 +313,8 @@ export function Knob (props: {
 
   function wheel_event (event: WheelEvent)
   {
+    if (props.disabled)   // let scroll events pass through, no value changes
+      return;
     const d = Mouse.wheel_delta (event);
     if ((root_el as any)?.[SPIN_DRAG]?.captureid === undefined && // not dragging
 	((!props2.hscroll && d.x != 0) ||
@@ -333,6 +335,8 @@ export function Knob (props: {
 
   async function commit_value()
   {
+    if (props.disabled)   // ignore stale queued commits
+      return;
     console.assert (last_ >= 0 && last_ <= 1.0);
     // assign value and maintain counter to ignore self-induced notifications
     setters_inflight.v += 1;
@@ -351,6 +355,8 @@ export function Knob (props: {
 
   function pointerdown (event: PointerEvent)
   {
+    if (props.disabled)   // no dragging or double-click reset when disabled
+      return;
     // handle double click
     if (event.buttons == 1)
       {

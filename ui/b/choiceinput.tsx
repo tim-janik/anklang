@@ -25,7 +25,7 @@
  * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */
 
-import { createEffect, createMemo, createSignal, For, splitProps } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, onCleanup, splitProps } from 'solid-js';
 import * as Util from '../util.js';
 import { get_uri } from '../dom.js';
 
@@ -145,6 +145,21 @@ export function ChoiceInput (props: {
     set_value_ (local.value ?? '');
   });
 
+  // Subscribe to backend property changes so the selected choice stays fresh
+  // (undo/redo, preset loads, the reset button, other views). Mirrors the
+  // TextInput subscription pattern (textinput.tsx); `prop.value_` is not
+  // Solid-tracked, so a notify subscription is required.
+  createEffect (() => {
+    const prop = local.prop;
+    if (!prop || !prop.addnotify_)
+      return;
+    const notify_cb = () => set_value_ (prop.value_.val ?? '');
+    prop.addnotify_ (notify_cb);
+    onCleanup (() => {
+      prop.delnotify_ (notify_cb);
+    });
+  });
+
   // Sync prop choices
   createEffect (() => {
     if (local.prop) {
@@ -204,6 +219,11 @@ export function ChoiceInput (props: {
 
   function activate (uri: string)
   {
+    if (local.disabled) {
+      cmenu_el?.close();
+      set_need_cmenu (false);
+      return;
+    }
     if (cmenu_el) {
       // close popup to remove focus guards
       cmenu_el.close();
@@ -220,12 +240,16 @@ export function ChoiceInput (props: {
   {
     if (local.disabled)
       return;
-    if (!cmenu_el) { // force synchronous rendering to create cmenu ref
+    // Force re-render if the menu element is missing or detached; Solid refs
+    // are not cleared on unmount, so a stale ref must not be reused.
+    if (!cmenu_el || !cmenu_el.isConnected) {
+      cmenu_el = undefined;
       set_need_cmenu (true);
     }
     // Wait for DOM update before accessing cmenu
     setTimeout (() => {
-      if (!cmenu_el || cmenu_el.open) return;
+      if (local.disabled || !cmenu_el || !cmenu_el.isConnected || cmenu_el.open)
+        return;
       pophere_el?.focus();
       cmenu_el.popup (event, { origin: pophere_el, focus_uri: value_() });
     }, 0);
@@ -270,7 +294,7 @@ export function ChoiceInput (props: {
       {need_cmenu() && (
         <b-contextmenu class="b-choiceinput-contextmenu" ref={cmenu_el}
           on:activate={e => activate (get_uri (e.detail))}
-          on:close={e => set_need_cmenu (false)}>
+          on:close={e => { set_need_cmenu (false); cmenu_el = undefined; }}>
           <b-menutitle style={!local.title ? 'display:none' : ''}>
             {local.title}
           </b-menutitle>
