@@ -82,7 +82,7 @@ function PropHtml (prop, readonly)
         label={''}
         onValueChange={val => prop.set_normalized (!!val)} />;
     case 'C':
-      return <ChoiceInput small={true} indexed="1" disabled={readonly}
+      return <ChoiceInput small={true} indexed="1" disabled={prop.readonly || readonly}
         label={prop.label_} title={prop.title_}
         value={prop.value_.val} prop={prop}
         on:valuechange={e => prop.apply_ (e.target.value)} />;

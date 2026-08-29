@@ -42,6 +42,7 @@ b-choiceinput, .b-choiceinput {
   margin: 0;
   white-space: nowrap;
   user-select: none;
+  &[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
   &.b-choice-big {
     justify-content: left; text-align: left;
     padding: .1em 0;
@@ -131,7 +132,9 @@ export function ChoiceInput (props: {
   const [local, others] = splitProps (props, [
     'value', 'choices', 'title', 'label', 'small', 'prop', 'disabled', 'class', 'ref',
   ]);
-  const merged_class = 'b-choiceinput b-choice-big' + (local.class ? ' ' + local.class : '');
+  // Reactive class binding: covers small/big layout and caller-supplied `class`.
+  const merged_class = () => 'b-choiceinput ' + (local.small ? 'b-choice-small' : 'b-choice-big') +
+			     (local.class ? ' ' + local.class : '');
 
   const [value_, set_value_] = createSignal (local.value ?? '');
   const [choices_, set_choices_] = createSignal<any[]> ([]);
@@ -152,13 +155,6 @@ export function ChoiceInput (props: {
         set_choices_ (await p.choices());
       }) ();
     }
-  });
-
-  // CSS class for small/big
-  createEffect (() => {
-    if (!root_el) return;
-    root_el.classList.remove (local.small ? 'b-choice-big' : 'b-choice-small');
-    root_el.classList.add (!local.small ? 'b-choice-big' : 'b-choice-small');
   });
 
   // Update data-tip
@@ -222,6 +218,8 @@ export function ChoiceInput (props: {
 
   function popup_menu (event: Event)
   {
+    if (local.disabled)
+      return;
     if (!cmenu_el) { // force synchronous rendering to create cmenu ref
       set_need_cmenu (true);
     }
@@ -235,7 +233,7 @@ export function ChoiceInput (props: {
 
   function keydown (event: KeyboardEvent)
   {
-    if (cmenu_el?.open)
+    if (local.disabled || cmenu_el?.open)
       return;
     // allow selection changes with UP/DOWN while menu is closed
     if (event.keyCode == Util.KeyCode.DOWN || event.keyCode == Util.KeyCode.UP)
@@ -257,7 +255,7 @@ export function ChoiceInput (props: {
   }
 
   return (
-    <div class="b-choiceinput b-choice-big" ref={el => {
+    <div class={merged_class()} aria-disabled={local.disabled || undefined} ref={el => {
       root_el = el;
       local.ref?.(el);
     }} {...others}
@@ -280,11 +278,11 @@ export function ChoiceInput (props: {
             {(c: any) => (
               <button class="m-0 grid cursor-pointer select-none auto-rows-auto items-stretch border border-solid text-left"
                 uri={c.ident} ic={c.icon}>
-                <span class="b-choice-label {c.labelclass ?? ''}">{c.label}</span>
-                <span class="b-choice-line1 {c.line1class ?? ''}">{c.blurb}</span>
-                <span class="b-choice-line2 {c.line2class ?? ''}">{c.line2}</span>
-                <span class="b-choice-line3 {c.line3class ?? ''}">{c.notice}</span>
-                <span class="b-choice-line4 {c.line4class ?? ''}">{c.warning}</span>
+                <span class={`b-choice-label ${c.labelclass ?? ''}`}>{c.label}</span>
+                <span class={`b-choice-line1 ${c.line1class ?? ''}`}>{c.blurb}</span>
+                <span class={`b-choice-line2 ${c.line2class ?? ''}`}>{c.line2}</span>
+                <span class={`b-choice-line3 ${c.line3class ?? ''}`}>{c.notice}</span>
+                <span class={`b-choice-line4 ${c.line4class ?? ''}`}>{c.warning}</span>
               </button>
             )}
           </For>
