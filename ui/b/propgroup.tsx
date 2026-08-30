@@ -10,6 +10,9 @@
 import { For } from 'solid-js';
 import * as Util from '../util.js';
 import { Toggle } from './toggle.tsx';
+import { TextInput } from './textinput.tsx';
+import { Knob } from './knob.tsx';
+import { ChoiceInput } from './choiceinput.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -33,7 +36,7 @@ b-propgroup, .b-propgroup {
   .b-propgroup-row > * + * { margin-left: var(--b-prop-gap); }
   .b-propgroup-row:not(:last-child) { margin-bottom: var(--b-prop-gap); }
 }
-.b-propgroup-row b-textinput {
+.b-propgroup-row b-textinput, .b-propgroup-row .b-textinput {
   width: calc(var(--b-prop-gap) * 4 + 5 * var(--b-prop-width));
 }
 .b-propgroup-row {
@@ -79,16 +82,16 @@ function PropHtml (prop, readonly)
         label={''}
         onValueChange={val => prop.set_normalized (!!val)} />;
     case 'C':
-      return <b-choiceinput small="1" indexed="1" disabled={readonly}
+      return <ChoiceInput small={true} indexed="1" disabled={prop.readonly || readonly}
         label={prop.label_} title={prop.title_}
         value={prop.value_.val} prop={prop}
-        on:valuechange={e => prop.apply_ (e.target.value)}></b-choiceinput>;
+        on:valuechange={e => prop.apply_ (e.target.value)} />;
     case 'K':
-      return <b-knob disabled={prop.readonly || readonly} prop={prop}></b-knob>;
+      return <Knob disabled={prop.readonly || readonly} prop={prop} />;
     case 'T':
-      return <b-textinput disabled={prop.readonly || readonly}
+      return <TextInput disabled={prop.readonly || readonly}
         prop={prop}
-        label={prop.label_} title={prop.title_}></b-textinput>;
+        label={prop.label_} title={prop.title_} />;
     default:
       return <span>{prop.nick_}</span>;
   }
