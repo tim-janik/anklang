@@ -381,6 +381,8 @@ for attempt in range (1, attempts + 1):
     args.n = orig_nick
     run_session()
     delivered = True
+    verified = 'echo verified' if have_echo_message else 'unverified, no echo-message cap'
+    print (f'IRC: delivered ({verified}) on attempt {attempt}/{attempts}', file = sys.stderr, flush = True)
     break
   except Fatal as e:
     print (f'IRC: fatal: {e}', file = sys.stderr, flush = True)
