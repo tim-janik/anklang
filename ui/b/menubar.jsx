@@ -135,8 +135,7 @@ export function MenuBar (props)
             <b-icon ic="fa-eye"></b-icon>
           </div>
           <ContextMenu ref={viewmenu} activate={activate} isactive={isactive}>
-            <button ic="md-fullscreen" disabled={!document.fullscreenEnabled}
-                    kbd="F11" uri="fullscreen">  Toggle Fullscreen  </button>
+            <button ic="md-fullscreen" kbd="F11" uri="fullscreen">  Toggle Fullscreen  </button>
             {electron_menuitems()}
           </ContextMenu>
         </div>
@@ -191,6 +190,8 @@ async function isactive (uri)
       return Shell.project.can_undo();
     case 'redo':
       return Shell.project.can_redo();
+    case 'fullscreen':
+      return document.fullscreenEnabled;
     default:
       return true;
   }
