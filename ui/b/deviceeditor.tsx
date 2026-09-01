@@ -12,6 +12,7 @@
 import { createEffect, createSignal, For, onCleanup } from 'solid-js';
 import * as Util from "../util.js";
 import { PropGroup } from './propgroup.tsx';
+import { MenuTitle } from './menutitle.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -312,7 +313,7 @@ export function DeviceEditor (props)
         </For>
       </div>
       <b-contextmenu ref={h => deviceeditorcmenu_ref = h} id="g-deviceeditorcmenu" activate={activate} isactive={isactive}>
-        <b-menutitle> Device </b-menutitle>
+        <MenuTitle> Device </MenuTitle>
         <button ic="fa-plus_circle" uri="add-device">Add Device</button>
         <button ic="fa-times_circle" uri="delete-device">Delete Device</button>
         <button ic="md-television_guide" uri="toggle-gui">Toggle GUI</button>

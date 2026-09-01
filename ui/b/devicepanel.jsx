@@ -13,6 +13,7 @@ import { createSignal, createEffect } from 'solid-js';
 import * as Util from "../util.js";
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import { More } from './more';
+import { MenuTitle } from './menutitle.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -131,7 +132,7 @@ export function DevicePanel (props)
           }}
           id="g-devicepanelcmenu"
         >
-          <b-menutitle>Devices</b-menutitle>
+          <MenuTitle>Devices</MenuTitle>
           <b-treebrowser tree={devicetypes ()} expandall={false}></b-treebrowser>
         </b-contextmenu>
       </div>

@@ -15,6 +15,7 @@ import { clamp } from '../util.js';
 import { text_content } from '../dom.js';
 import * as Mouse from '../mouse.js';
 import { tracking_wrapper } from "../signal.js";
+import { MenuTitle } from './menutitle.tsx';
 const floor = Math.floor, round = Math.round;
 
 // == STYLE ==
@@ -126,7 +127,7 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
                      isactive={t.pianorollmenu_check}
                      id="g-pianorollmenu" showicons={true}
                      class="-pianorollmenu" mapname="Piano Roll">
-        <b-menutitle> Piano-Roll </b-menutitle>
+        <MenuTitle> Piano-Roll </MenuTitle>
         {/* key=${ac.weakid} */}
         {actions.map (ac => (
           <button uri={ac.weakid} ic={ac.ic} kbd={ac.kbd}>{ac.label}</button>
