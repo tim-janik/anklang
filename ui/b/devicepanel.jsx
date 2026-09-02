@@ -9,11 +9,13 @@
  * : Container for the devices (Ase.Track).
  */
 
-import { createSignal, createEffect } from 'solid-js';
+import { createSignal, createEffect, For } from 'solid-js';
 import * as Util from "../util.js";
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import { More } from './more';
 import { MenuTitle } from './menutitle.tsx';
+import { ContextMenu } from './contextmenu';
+import { DeviceEditor } from './deviceeditor.tsx';
 
 // == STYLE ==
 Extra_css`
@@ -117,12 +119,15 @@ export function DevicePanel (props)
       <div class="b-devicepanel-scroller">
       <span class="b-devicepanel-vtitle">Device Panel</span>
       <div class="b-devicepanel-hstack hflex">
-        {/* TODO: render devices in chain — needs Device::get_devices() impl */}
+        {/* <For each={chain()?.devices || []}>{dev => (
+               <More onMousedown={e => menuopen (e, dev)} data-tip="**CLICK** Add New Elements" />
+               <DeviceEditor device={dev} />
+             )}</For> TODO: needs Device::get_devices() impl */}
         <More
           onMousedown={e => menuopen (e)}
           data-tip="**CLICK** Add New Elements"
         />
-        <b-contextmenu
+        <ContextMenu
           ref={e => {
             cmenu_ref = e;
             if (e) {
@@ -134,7 +139,7 @@ export function DevicePanel (props)
         >
           <MenuTitle>Devices</MenuTitle>
           <b-treebrowser tree={devicetypes ()} expandall={false}></b-treebrowser>
-        </b-contextmenu>
+        </ContextMenu>
       </div>
       </div>
     </div>

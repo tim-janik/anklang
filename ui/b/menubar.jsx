@@ -16,6 +16,7 @@ import { PositionView } from './positionview';
 import { PlayControls } from './playcontrols';
 import { basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
 import { ButtonBar } from './buttonbar.tsx';
+import { ContextMenu } from './contextmenu';
 
 // == STYLE ==
 Extra_css`
@@ -99,7 +100,7 @@ export function MenuBar (props)
           <div class="b-menubar-icon">
             <b-icon ic="md-folder"></b-icon>
           </div>
-          <b-contextmenu ref={filemenu} activate={activate} isactive={isactive}>
+          <ContextMenu ref={filemenu} activate={activate} isactive={isactive}>
             <button ic="fa-file_o"       kbd="Ctrl+N"         uri="loadnew">  New Project       </button>
             <button ic="fa-file_audio_o"  kbd="Ctrl+O"         uri="load">    Open Project…       </button>
             <button ic="fa-save"          kbd="Ctrl+S"         uri="save">    Save Project        </button>
@@ -108,7 +109,7 @@ export function MenuBar (props)
             <button ic="fa-cog"            kbd="Ctrl+RawComma"  uri="prefs">   Preferences         </button>
             <b-menuseparator></b-menuseparator>
             <button ic="md-close"          kbd="Shift+Ctrl+Q"   uri="quit">    Quit                </button>
-          </b-contextmenu>
+          </ContextMenu>
         </div>
 
         {/* Edit Menu */}
@@ -119,10 +120,10 @@ export function MenuBar (props)
           <div class="b-menubar-icon">
             <b-icon ic="md-playlist_edit"></b-icon>
           </div>
-          <b-contextmenu ref={editmenu} activate={activate} isactive={isactive}>
+          <ContextMenu ref={editmenu} activate={activate} isactive={isactive}>
             <button ic="md-undo" kbd="Ctrl+Z"        uri="undo">  Undo  </button>
             <button ic="md-redo" kbd="Shift+Ctrl+Z"  uri="redo">  Redo  </button>
-          </b-contextmenu>
+          </ContextMenu>
         </div>
 
         {/* View Menu */}
@@ -133,11 +134,11 @@ export function MenuBar (props)
           <div class="b-menubar-icon">
             <b-icon ic="fa-eye"></b-icon>
           </div>
-          <b-contextmenu ref={viewmenu} activate={activate} isactive={isactive}>
+          <ContextMenu ref={viewmenu} activate={activate} isactive={isactive}>
             <button ic="md-fullscreen" disabled={!document.fullscreenEnabled}
                     kbd="F11" uri="fullscreen">  Toggle Fullscreen  </button>
             {electron_menuitems()}
-          </b-contextmenu>
+          </ContextMenu>
         </div>
       </ButtonBar>
 
@@ -157,11 +158,11 @@ export function MenuBar (props)
           <div class="b-menubar-icon">
             <b-icon ic="fa-life_ring"></b-icon>
           </div>
-          <b-contextmenu ref={helpmenu} activate={activate} isactive={isactive}>
+          <ContextMenu ref={helpmenu} activate={activate} isactive={isactive}>
             <button ic="fa-book_open"   uri="anklang-docu">  Anklang Documentation…  </button>
             <b-menuseparator></b-menuseparator>
             <button ic="oct-id_badge"    uri="about">         About…                  </button>
-          </b-contextmenu>
+          </ContextMenu>
         </div>
       </ButtonBar>
     </div>

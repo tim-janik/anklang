@@ -10,13 +10,15 @@
  * : The index of this track in the track list.
  */
 
-import { createEffect, onMount, onCleanup } from 'solid-js';
-import { html } from '../little.js';
+import { createEffect, onCleanup } from 'solid-js';
 import * as Util from '../util.js';
 import { clamp } from '../util.js';
 import { Editable } from './editable';
-import { render_contextmenu } from './contextmenu.js';
-import { get_uri } from '../dom.js';
+import { ContextMenu } from './contextmenu';
+import { MenuTitle } from './menutitle.tsx';
+import { MenuRow } from './menurow';
+import { MenuSeparator } from './menuseparator';
+
 
 // == STYLE ==
 Extra_css`
@@ -77,51 +79,7 @@ const DBOFFSET = Math.abs (MINDB) * 1.5;
 const DIV_DBRANGE = 1.0 / (MAXDB - MINDB);
 
 // == Contextmenu template ==
-const HTML_CONTEXTMENU = (t, d) => html`
-  <b-contextmenu @activate=${t.menu_click} .isactive=${t.menu_check} @close=${t.menu_close} @cancel=${t.menu_close} >
-    <b-menutitle>                                         Track             </b-menutitle>
-    <button ic="fa-plus_circle"    uri="add-track" >      Add Track             </button>
-    <button ic="fa-music"          uri="add-midi-clip">   Add MIDI Clip         </button>
-    <button ic="fa-i_cursor"       uri="rename-track" >   Rename Track          </button>
-    <button ic="fa-toggle_down"    uri="bounce-track" >   Bounce Track          </button>
-    <button ic="md-eye_off" uri="track-details" >  Show / Hide Track Details </button>
-    <hr class="b-menuseparator"></hr>
-    <b-menurow> <!-- ic="fa-clone" uri="clone-track" >    Dupl.                 -->
-      <button ic="fa-times_circle" uri="delete-track" >   Delete                </button>
-      <button ic="fa-scissors"     uri="cut-track" >      Cut                   </button>
-      <button ic="fa-files_o"      uri="copy-track" >     Copy                  </button>
-      <button ic="fa-clipboard"    uri="paste-track" >    Paste                 </button>
-    </b-menurow>
-    <hr class="b-menuseparator"></hr>
-    <b-menutitle> Playback </b-menutitle>
-    <button ic="uc-Ｍ"             uri="mute-track" >     Mute Track            </button>
-    <button ic="uc-Ｓ"             uri="solo-track" >     Solo Track            </button>
-    <hr class="b-menuseparator"></hr>
-    <b-menutitle> MIDI Channel </b-menutitle>
-    <button   uri="mc-0"  ic=${t.mcc (0)}  > Internal Channel </button>
-    <b-menurow noturn>
-      <button uri="mc-1"  ic=${t.mcc (1)}  >  1 </button>
-      <button uri="mc-2"  ic=${t.mcc (2)}  >  2 </button>
-      <button uri="mc-3"  ic=${t.mcc (3)}  >  3 </button>
-      <button uri="mc-4"  ic=${t.mcc (4)}  >  4 </button>
-    </b-menurow> <b-menurow noturn>
-      <button uri="mc-5"  ic=${t.mcc (5)}  >  5 </button>
-      <button uri="mc-6"  ic=${t.mcc (6)}  >  6 </button>
-      <button uri="mc-7"  ic=${t.mcc (7)}  >  7 </button>
-      <button uri="mc-8"  ic=${t.mcc (8)}  >  8 </button>
-    </b-menurow> <b-menurow noturn>
-      <button uri="mc-9"  ic=${t.mcc (9)}  >  9 </button>
-      <button uri="mc-10" ic=${t.mcc (10)} > 10 </button>
-      <button uri="mc-11" ic=${t.mcc (11)} > 11 </button>
-      <button uri="mc-12" ic=${t.mcc (12)} > 12 </button>
-    </b-menurow> <b-menurow noturn>
-      <button uri="mc-13" ic=${t.mcc (13)} > 13 </button>
-      <button uri="mc-14" ic=${t.mcc (14)} > 14 </button>
-      <button uri="mc-15" ic=${t.mcc (15)} > 15 </button>
-      <button uri="mc-16" ic=${t.mcc (16)} > 16 </button>
-    </b-menurow>
-  </b-contextmenu>
-`;
+// Track context menu is rendered inline in the component JSX below
 
 // == Component ==
 export function TrackView (props)
@@ -163,15 +121,8 @@ export function TrackView (props)
   function menu_open (event)
   {
     Shell.current_track = props.track;
-    // update trackview menu for popup
-    trackview_contextmenu = render_contextmenu (trackview_contextmenu, HTML_CONTEXTMENU, {
-      mcc,
-      menu_click,
-      menu_check,
-      menu_close,
-    });
     // popup menu at mouse coords
-    trackview_contextmenu.popup (event, { origin: 'none' });
+    trackview_contextmenu?.popup (event, { origin: 'none' });
     return Util.prevent_event (event);
   }
 
@@ -189,9 +140,8 @@ export function TrackView (props)
     return false;
   }
 
-  async function menu_click (event)
+  async function menu_click (uri, event)
   {
-    const uri = get_uri (event.detail);
     // close popup to remove focus guards
     menu_close();
     if (uri == 'add-track')
@@ -295,17 +245,6 @@ export function TrackView (props)
       root_ref.removeAttribute ('data-current-track');
   });
 
-  // Setup contextmenu on mount
-  onMount (() => {
-    if (!trackview_contextmenu)
-      trackview_contextmenu = render_contextmenu (trackview_contextmenu, HTML_CONTEXTMENU, {
-	mcc,
-	menu_click,
-	menu_check,
-	menu_close,
-      });
-  });
-
   // Setup telemetry on track change
   createEffect (() => {
     const track = props.track;
@@ -343,23 +282,74 @@ export function TrackView (props)
   };
 
   return (
-    <div class="b-trackview" ref={root_ref}>
-      <div class="b-trackview-control" data-tip="**CLICK** Select Track **RIGHTCLICK** Track Menu"
-	onClick={track_click0}
-	onContextMenu={menu_open}
-	ref={e => trackviewcontrol_ref = e}>
-	<Editable ref={e => trackname_ref = e} clicks={2} style="min-width: 4em; width: 7em"
-	  selectall onChange={on_editable_change}
-	  value={props.track.name} />
-	<div class="-lvm-main">
-	  <div class="-lvm-levelbg" ref={e => levelbg_ref = e}></div>
-	  <div class="-lvm-covermid0" ref={e => covermid0_ref = e}></div>
-	  <div class="-lvm-covertip0" ref={e => covertip0_ref = e}></div>
-	  <div class="-lvm-coverspace" ></div>
-	  <div class="-lvm-covermid1" ref={e => covermid1_ref = e}></div>
-	  <div class="-lvm-covertip1" ref={e => covertip1_ref = e}></div>
+    <>
+      <div class="b-trackview" ref={root_ref}>
+	<div class="b-trackview-control" data-tip="**CLICK** Select Track **RIGHTCLICK** Track Menu"
+	  onClick={track_click0}
+	  onContextMenu={menu_open}
+	  ref={e => trackviewcontrol_ref = e}>
+	  <Editable ref={e => trackname_ref = e} clicks={2} style="min-width: 4em; width: 7em"
+	    selectall onChange={on_editable_change}
+	    value={props.track.name} />
+	  <div class="-lvm-main">
+	    <div class="-lvm-levelbg" ref={e => levelbg_ref = e}></div>
+	    <div class="-lvm-covermid0" ref={e => covermid0_ref = e}></div>
+	    <div class="-lvm-covertip0" ref={e => covertip0_ref = e}></div>
+	    <div class="-lvm-coverspace" ></div>
+	    <div class="-lvm-covermid1" ref={e => covermid1_ref = e}></div>
+	    <div class="-lvm-covertip1" ref={e => covertip1_ref = e}></div>
+	  </div>
 	</div>
       </div>
-    </div>
+      <ContextMenu ref={e => trackview_contextmenu = e}
+	activate={menu_click}
+	isactive={menu_check}
+	onclose={menu_close}>
+	<MenuTitle>Track</MenuTitle>
+	<button ic="fa-plus_circle"    uri="add-track" >     Add Track             </button>
+	<button ic="fa-music"          uri="add-midi-clip">  Add MIDI Clip         </button>
+	<button ic="fa-i_cursor"       uri="rename-track" >  Rename Track          </button>
+	<button ic="fa-toggle_down"    uri="bounce-track" >  Bounce Track          </button>
+	<button ic="md-eye_off"        uri="track-details" > Show / Hide Track Details </button>
+	<MenuSeparator />
+	<MenuRow>
+	  <button ic="fa-times_circle" uri="delete-track" >  Delete                </button>
+	  <button ic="fa-scissors"     uri="cut-track" >     Cut                   </button>
+	  <button ic="fa-files_o"      uri="copy-track" >    Copy                  </button>
+	  <button ic="fa-clipboard"    uri="paste-track" >   Paste                 </button>
+	</MenuRow>
+	<MenuSeparator />
+	<MenuTitle> Playback </MenuTitle>
+	<button ic="uc-Ｍ"             uri="mute-track" >    Mute Track            </button>
+	<button ic="uc-Ｓ"             uri="solo-track" >    Solo Track            </button>
+	<MenuSeparator />
+	<MenuTitle> MIDI Channel </MenuTitle>
+	<button   uri="mc-0"  ic={mcc (0)}  > Internal Channel </button>
+	<MenuRow noturn>
+	  <button uri="mc-1"  ic={mcc (1)}  >  1 </button>
+	  <button uri="mc-2"  ic={mcc (2)}  >  2 </button>
+	  <button uri="mc-3"  ic={mcc (3)}  >  3 </button>
+	  <button uri="mc-4"  ic={mcc (4)}  >  4 </button>
+	</MenuRow>
+	<MenuRow noturn>
+	  <button uri="mc-5"  ic={mcc (5)}  >  5 </button>
+	  <button uri="mc-6"  ic={mcc (6)}  >  6 </button>
+	  <button uri="mc-7"  ic={mcc (7)}  >  7 </button>
+	  <button uri="mc-8"  ic={mcc (8)}  >  8 </button>
+	</MenuRow>
+	<MenuRow noturn>
+	  <button uri="mc-9"  ic={mcc (9)}  >  9 </button>
+	  <button uri="mc-10" ic={mcc (10)} > 10 </button>
+	  <button uri="mc-11" ic={mcc (11)} > 11 </button>
+	  <button uri="mc-12" ic={mcc (12)} > 12 </button>
+	</MenuRow>
+	<MenuRow noturn>
+	  <button uri="mc-13" ic={mcc (13)} > 13 </button>
+	  <button uri="mc-14" ic={mcc (14)} > 14 </button>
+	  <button uri="mc-15" ic={mcc (15)} > 15 </button>
+	  <button uri="mc-16" ic={mcc (16)} > 16 </button>
+	</MenuRow>
+      </ContextMenu>
+    </>
   );
 }

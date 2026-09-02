@@ -16,6 +16,7 @@ import { text_content } from '../dom.js';
 import * as Mouse from '../mouse.js';
 import { tracking_wrapper } from "../signal.js";
 import { MenuTitle } from './menutitle.tsx';
+import { ContextMenu } from './contextmenu';
 const floor = Math.floor, round = Math.round;
 
 // == STYLE ==
@@ -97,14 +98,14 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
            onClick={e => t.pianotoolmenu.popup (e)}
            onMouseDown={e => t.pianotoolmenu.popup (e)}>
         <b-icon style="width: 1.2em; height: 1.2em" ref={h => t.menu_icon = h}/>
-        <b-contextmenu ref={h => { t.pianotoolmenu = h; }}
+        <ContextMenu ref={h => { t.pianotoolmenu = h; }}
                        activate={t.usetool}
                        id="g-pianotoolmenu" class="-pianotoolmenu">
           <button ic="md-open_with"     uri="S" kbd="1" > Rectangular Selection  </button>
           <button ic="md-multiple_stop" uri="H" kbd="2" > Horizontal Selection   </button>
           <button ic="fa-pencil"        uri="P" kbd="3" > Pen                    </button>
           <button ic="fa-eraser"        uri="E" kbd="4" > Eraser                 </button>
-        </b-contextmenu>
+        </ContextMenu>
       </div>
 
       <canvas class="-time_canvas col-start-2 row-start-1" ref={h => t.time_canvas = h}></canvas>
@@ -122,9 +123,9 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
       </div>
       <span class="-indicator" ref={h => t.indicator_bar = h}></span>
 
-      <b-contextmenu ref={h => { t.pianorollmenu = h; }}
-                     activate={t.pianorollmenu_click}
-                     isactive={t.pianorollmenu_check}
+      <ContextMenu ref={h => { t.pianorollmenu = h; }}
+                     activate={t.pianorollmenu_click.bind (t)}
+                     isactive={t.pianorollmenu_check.bind (t)}
                      id="g-pianorollmenu" showicons={true}
                      class="-pianorollmenu" mapname="Piano Roll">
         <MenuTitle> Piano-Roll </MenuTitle>
@@ -132,7 +133,7 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
         {actions.map (ac => (
           <button uri={ac.weakid} ic={ac.ic} kbd={ac.kbd}>{ac.label}</button>
         ))}
-      </b-contextmenu>
+      </ContextMenu>
     </div>
   </div>
 );
