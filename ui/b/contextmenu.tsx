@@ -8,7 +8,7 @@
  * Menu actions are identified via URI attributes, they can be activated by calling a handler
  * which is assigned via the `.activate` property, or the actions can be checked for being disabled
  * by calling a handler which is assigned via the `.isactive` property.
- * The `ic` attribute on buttons embeds a `<b-icon ic=.../>` inside the buttons.
+ * The `ic` attribute on buttons embeds a `<span class="b-icon" ic=.../>` inside the buttons.
  * Using the `popup()` method, the menu can be shown via
  * [HTMLDialogElement.showModal](https://developer.mozilla.org/en-US/docs/Web/API/HTMLDialogElement/showModal).
  * Example:
@@ -460,17 +460,13 @@ export function ContextMenu (props: {
     // focus on hover
     if (!btn.onmouseenter)
       btn.onmouseenter = () => btn.focus();
-    // <b-icon ic/> - preserve existing or create one
     const ic_value = btn.getAttribute ('ic');
+    btn.querySelector ('.b-icon')?.remove();
     if (ic_value) {
-      const icon = btn.querySelector ('.b-icon') || icon_element (ic_value);
-      if (!icon.parentElement) {
-        icon.classList.add ('pointer-events-none');
-        btn.prepend (icon);
-      }
-      icon.setAttribute ('ic', ic_value);
-    } else
-      btn.querySelector ('.b-icon')?.remove();
+      const icon = icon_element (ic_value);
+      icon.classList.add ('pointer-events-none');
+      btn.prepend (icon);
+    }
     // aria-label
     const aria_label = text_content (btn, false).trim();
     btn.setAttribute ('aria-label', aria_label);
