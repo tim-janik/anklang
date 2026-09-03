@@ -23,6 +23,7 @@
  * : Flip the icon horizontally.
  * *vflip*
  * : Flip the icon vertically.
+ * *aria-label* : Provide an accessible name, otherwise the icon is hidden from assistive technology.
  */
 
 import { splitProps } from 'solid-js';
@@ -58,9 +59,12 @@ export function Icon (props: any)
   };
 
   const inner = () => inner_text (ic_val ());
+  const labelled = () => !!props['aria-label'];
 
   return (
-    <span class={all_classes ()} role={"icon" as any} aria-hidden="true" {...rest}>
+    <span class={all_classes ()}
+          role={labelled () ? 'img' : undefined}
+          aria-hidden={labelled () ? undefined : true} {...rest}>
       {inner ()}
     </span>
   );
@@ -71,7 +75,6 @@ export function icon_element (ic: string): HTMLSpanElement
 {
   const el = document.createElement ('span');
   el.className = 'b-icon ' + iconclasses (ic, '');
-  el.setAttribute ('role', 'icon');
   el.setAttribute ('aria-hidden', 'true');
   el.setAttribute ('ic', ic);
   const text = inner_text (ic);
