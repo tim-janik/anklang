@@ -17,6 +17,7 @@ import { PlayControls } from './playcontrols';
 import { basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
 import { ButtonBar } from './buttonbar.tsx';
 import { ContextMenu } from './contextmenu';
+import { Icon } from './icon';
 
 // == STYLE ==
 Extra_css`
@@ -98,7 +99,7 @@ export function MenuBar (props)
              onMouseDown={e => filemenu.popup (e)}
              id="g-filemenu">
           <div class="b-menubar-icon">
-            <b-icon ic="md-folder"></b-icon>
+            <Icon ic="md-folder"/>
           </div>
           <ContextMenu ref={filemenu} activate={activate} isactive={isactive}>
             <button ic="fa-file_o"       kbd="Ctrl+N"         uri="loadnew">  New Project       </button>
@@ -118,7 +119,7 @@ export function MenuBar (props)
              onMouseDown={e => editmenu.popup (e)}
              id="g-editmenu">
           <div class="b-menubar-icon">
-            <b-icon ic="md-playlist_edit"></b-icon>
+            <Icon ic="md-playlist_edit"/>
           </div>
           <ContextMenu ref={editmenu} activate={activate} isactive={isactive}>
             <button ic="md-undo" kbd="Ctrl+Z"        uri="undo">  Undo  </button>
@@ -132,7 +133,7 @@ export function MenuBar (props)
              onMouseDown={e => viewmenu.popup (e)}
              id="g-viewmenu">
           <div class="b-menubar-icon">
-            <b-icon ic="fa-eye"></b-icon>
+            <Icon ic="fa-eye"/>
           </div>
           <ContextMenu ref={viewmenu} activate={activate} isactive={isactive}>
             <button ic="md-fullscreen" disabled={!document.fullscreenEnabled}
@@ -156,7 +157,7 @@ export function MenuBar (props)
              onMouseDown={e => helpmenu.popup (e)}
              id="g-helpmenu">
           <div class="b-menubar-icon">
-            <b-icon ic="fa-life_ring"></b-icon>
+            <Icon ic="fa-life_ring"/>
           </div>
           <ContextMenu ref={helpmenu} activate={activate} isactive={isactive}>
             <button ic="fa-book_open"   uri="anklang-docu">  Anklang Documentation…  </button>

@@ -15,6 +15,7 @@ b-playcontrols, .b-playcontrols {
 // == Component ==
 import { createComputed } from 'solid-js';
 import { ButtonBar } from './buttonbar.tsx';
+import { Icon } from './icon';
 
 export function PlayControls (props: any)
 {
@@ -48,27 +49,27 @@ export function PlayControls (props: any)
   return (
     <ButtonBar class="b-playcontrols">
       <div class="asbutton button-down" disabled onClick={() => dispatch ('-todo-Last')}>
-        <b-icon fw lg ic="fa-fast_backward"></b-icon>
+        <Icon fw lg ic="fa-fast_backward"/>
       </div>
       <div class="asbutton button-down" disabled onClick={() => dispatch ('-todo-Backwards')}>
-        <b-icon fw lg ic="fa-backward"></b-icon>
+        <Icon fw lg ic="fa-backward"/>
       </div>
       <div class="asbutton button-down" data-hotkey="S" data-tip="**CLICK** Stop playback"
            onClick={() => dispatch ('stop_playback')}>
-        <b-icon fw lg ic="fa-stop"></b-icon>
+        <Icon fw lg ic="fa-stop"/>
       </div>
       <div class="asbutton button-down" data-hotkey="RawSpace"
            data-tip="**CLICK** Start/pause playback" onClick={toggle_play}>
-        <b-icon fw lg ic="fa-play" hi="ho"></b-icon>
+        <Icon fw lg ic="fa-play" hi="ho"/>
       </div>
       <div class="asbutton button-down" disabled onClick={() => dispatch ('-todo-Record')}>
-        <b-icon fw lg ic="fa-circle"></b-icon>
+        <Icon fw lg ic="fa-circle"/>
       </div>
       <div class="asbutton button-down" disabled onClick={() => dispatch ('-todo-Forwards')}>
-        <b-icon fw lg ic="fa-forward"></b-icon>
+        <Icon fw lg ic="fa-forward"/>
       </div>
       <div class="asbutton button-down" disabled onClick={() => dispatch ('-todo-Next')}>
-        <b-icon fw lg ic="fa-fast_forward"></b-icon>
+        <Icon fw lg ic="fa-fast_forward"/>
       </div>
     </ButtonBar>
   );

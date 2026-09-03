@@ -9,6 +9,7 @@ import { createSignal, For, Show, onMount } from 'solid-js';
 import * as Signal from "../signal.js";
 import * as Util from "../util.js";
 import { PushButton } from './basics';
+import { Icon } from './icon';
 
 // == STYLE ==
 Extra_css`
@@ -77,7 +78,7 @@ const DialogComponent = (props) => {
       </header>
       <main>
         <div class="hflex items-center justify-start">
-          <b-icon {...d.icon}></b-icon>
+          <Icon {...d.icon}/>
           <div style="flex-grow whitespace-pre-line">{d.body}</div>
           <div style="flex-grow whitespace-pre-line" innerHTML={d.vhtml}></div>
         </div>
