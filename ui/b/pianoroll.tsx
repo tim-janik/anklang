@@ -8,7 +8,7 @@
  * A context menu is available with mouse button 3, which provides extended functionality.
  */
 
-import { createEffect, onMount, onCleanup } from 'solid-js';
+import { createEffect, createSignal, onMount, onCleanup } from 'solid-js';
 import * as PianoCtrl from "./piano-ctrl.js";
 import * as Util from '../util.js';
 import { clamp } from '../util.js';
@@ -98,7 +98,8 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
            ref={h => t.menu_btn = h}
            onClick={e => t.pianotoolmenu.popup (e)}
            onMouseDown={e => t.pianotoolmenu.popup (e)}>
-        <Icon style="width: 1.2em; height: 1.2em" ref={h => t.menu_icon = h}/>
+        <Icon style="width: 1.2em; height: 1.2em"
+              ic={t.tool_icon_().ic} data-kbd={t.tool_icon_().kbd} data-tip={t.tool_icon_().tip}/>
         <ContextMenu ref={h => { t.pianotoolmenu = h; }}
                        activate={t.usetool}
                        id="g-pianotoolmenu" class="-pianotoolmenu">
@@ -158,7 +159,6 @@ export function PianoRoll (props: {
   t.root = null;
   t.cgrid = null;
   t.menu_btn = null;
-  t.menu_icon = null;
   t.pianotoolmenu = null;
   t.pianorollmenu = null;
   t.notes_canvas = null;
@@ -189,6 +189,10 @@ export function PianoRoll (props: {
   t.piano_ctrl = new PianoCtrl.PianoCtrl (t);
   t.drag_event = t.piano_ctrl.drag_event.bind (t.piano_ctrl);
   t.notes_canvas_pointermove_zmovedel = null;
+
+  // tool button display state — signal driven, updated by usetool()
+  const [tool_icon_, set_tool_icon_] = createSignal ({ ic: '', kbd: '', tip: '' });
+  t.tool_icon_ = tool_icon_;
 
   // track repaint dependencies
   // queue_repaint — microtask-batched repaint scheduling
@@ -426,12 +430,14 @@ export function PianoRoll (props: {
 
   t.usetool = (uri: string) => {
     t.pianotool = uri;
-    // clone menu item
+    // clone menu item into the reactive state driving the tool button <Icon/>
     const title = '**EDITOR TOOL**';
     const menuitem = t.pianotoolmenu.find_menuitem (uri);
-    t.menu_icon.setAttribute ('ic', menuitem.getAttribute ('ic'));
-    t.menu_icon.setAttribute ('data-kbd', menuitem.getAttribute ('kbd'));
-    t.menu_icon.setAttribute ('data-tip', title + ' ' + text_content (menuitem, false).trim());
+    set_tool_icon_ ({
+      ic: menuitem.getAttribute ('ic') || '',
+      kbd: menuitem.getAttribute ('kbd') || '',
+      tip: title + ' ' + text_content (menuitem, false).trim(),
+    });
     // pick up 'data-tip' and pick cursor via hover
     if (!t.notes_canvas_pointermove_zmovedel)
       t.notes_canvas_pointermove_zmovedel = App.zmoves_add (t.notes_canvas_pointermove);
