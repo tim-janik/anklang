@@ -116,10 +116,12 @@ export function StatusBar (props)
         <Icon ic="md-info" style="font-size:110%"
 		classList={{ 'b-active': Shell.r.panel3 == 'i' }}
 		onClick={() => App.switch_panel3 ('i')} data-kbd="i"
+		aria-label="Show Information View"
 		data-tip="**CLICK** Show Information View"/>
         <Icon ic="md-folder_open" style="font-size:110%"
 		classList={{ 'b-active': Shell.r.panel3 == 'b' }}
 		onClick={() => App.switch_panel3 ('b')} data-kbd="i"
+		aria-label="Show Browser"
 		data-tip="**CLICK** Show Browser"/>
       </span>
     </div>
