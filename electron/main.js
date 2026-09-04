@@ -407,4 +407,13 @@ async function startup_components (config)
 
 // == Run ==
 const config = parse_args (process.argv);
+// Headless mode runs without a visible window; the GPU process still probes the
+// DRI3/DRM hardware path via the X display though. When that access is denied
+// (e.g. container without /dev/dri: 'DRM_IOCTL_MODE_CREATE_DUMB failed: Permission
+// denied'), its hardware->software fallback races and can wedge, so window teardown
+// after window.close() never completes, 'window-all-closed' never fires, and the
+// process hangs. Force software rendering for headless mode to avoid the DRI
+// startup path entirely.
+if (headless_mode)
+  Eapp.commandLine.appendSwitch ('disable-gpu');
 Eapp.once ('ready', () => startup_components (config));
