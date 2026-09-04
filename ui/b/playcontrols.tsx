@@ -14,7 +14,7 @@ b-playcontrols, .b-playcontrols {
 
 // == Component ==
 import { createComputed } from 'solid-js';
-import { ButtonBar } from './buttonbar.tsx';
+import { ButtonBar } from './buttonbar';
 import { Icon } from './icon';
 
 export function PlayControls (props: any)

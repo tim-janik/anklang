@@ -15,9 +15,10 @@ import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import { PositionView } from './positionview';
 import { PlayControls } from './playcontrols';
 import { basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
-import { ButtonBar } from './buttonbar.tsx';
+import { ButtonBar } from './buttonbar';
 import { ContextMenu } from './contextmenu';
 import { Icon } from './icon';
+import { MenuSeparator } from './menuseparator';
 
 // == STYLE ==
 Extra_css`
@@ -106,9 +107,9 @@ export function MenuBar (props)
             <button ic="fa-file_audio_o"  kbd="Ctrl+O"         uri="load">    Open Project…       </button>
             <button ic="fa-save"          kbd="Ctrl+S"         uri="save">    Save Project        </button>
             <button ic="fa-save"           kbd="Shift+Ctrl+S"   uri="saveas">  Save As…            </button>
-            <b-menuseparator></b-menuseparator>
+            <MenuSeparator />
             <button ic="fa-cog"            kbd="Ctrl+RawComma"  uri="prefs">   Preferences         </button>
-            <b-menuseparator></b-menuseparator>
+            <MenuSeparator />
             <button ic="md-close"          kbd="Shift+Ctrl+Q"   uri="quit">    Quit                </button>
           </ContextMenu>
         </div>
@@ -161,7 +162,7 @@ export function MenuBar (props)
           </div>
           <ContextMenu ref={helpmenu} activate={activate} isactive={isactive}>
             <button ic="fa-book_open"   uri="anklang-docu">  Anklang Documentation…  </button>
-            <b-menuseparator></b-menuseparator>
+            <MenuSeparator />
             <button ic="oct-id_badge"    uri="about">         About…                  </button>
           </ContextMenu>
         </div>

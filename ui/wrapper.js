@@ -131,7 +131,7 @@ const aseobj_weakmap = new WeakMap();
  *    b. Registers a notification listener: `aseobj.on("notify:" + prop, refetch)`.
  *       When the C++ backend calls `emit_notify("some_prop")`, this fires.
  *    c. On refetch: compares old vs new value; if changed, calls callbacks and
- *       `reactive_notify()` to trigger LitComponent re-renders.
+ *       `reactive_notify()` to trigger SolidJS re-renders.
  *    d. Exposes a getter that tracks reactive dependencies for fine-grained reactivity.
  * 3. Returns a facade object with `__aseobj__`, `__cleanup__()`, `__add__()`, and
  *    `__promise__` (for awaiting pending async operations).
@@ -147,20 +147,17 @@ const aseobj_weakmap = new WeakMap();
  * as to value changes (volume, pan, mute state).
  *
  * ### Usage pattern
- * ```javascript
- * // In a LitComponent's updated() method:
- * updated (changed_props) {
- *   if (changed_props.has ('track')) {
- *     const weakthis = new WeakRef (this);
- *     this.wtrack = wrap_ase_object (this.track, {
- *       some_prop: []   // default value for initial render
- *     }, () => weakthis.deref()?.requestUpdate());
- *   }
- * }
- * // In render():
- * render() {
- *   return this.wtrack.some_prop.map(clip => html`<b-clipview .clip=${clip} />`);
- * }
+ * ```jsx
+ * // In a SolidJS component, re-wrap when the track prop changes:
+ * createEffect (() => {
+ *   const track = props.track;
+ *   wtrack = wrap_ase_object (track, { some_prop: [] }, () => set_parts (wtrack.some_prop));
+ *   set_parts (wtrack.some_prop);
+ * });
+ * // In JSX:
+ * <For each={parts()}>{(clip, index) =>
+ *   <ClipView clip={clip} index={index()} />
+ * }</For>
  * ```
  *
  * ### What to watch out for
