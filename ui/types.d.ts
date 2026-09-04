@@ -25,4 +25,16 @@ declare global {
   }
 }
 
+// Custom attributes for intrinsic elements, e.g. <button uri=... ic=... kbd=.../> menu items,
+// see ui/b/contextmenu.tsx: MenuRow
+declare module "solid-js" {
+  namespace JSX {
+    interface ButtonHTMLAttributes<T> {
+      uri?: string | undefined;
+      ic?: string | undefined;
+      kbd?: string | undefined;
+    }
+  }
+}
+
 export {};

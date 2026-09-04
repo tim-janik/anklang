@@ -163,7 +163,7 @@ export function ObjectEditor (props)
         <ChoiceInput
           class={"b-objecteditor--" + prop.ident_}
           value={prop.value_.val}
-          on:valuechange={e => prop.apply_ (e.target.value)}
+          onValueChange={uri => prop.apply_ (uri)}
           title={prop.title_}
           choices={prop.value_.choices}
           prop={prop}
