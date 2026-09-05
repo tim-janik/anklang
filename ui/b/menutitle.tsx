@@ -1,10 +1,13 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/** @class BMenuTitle
+import type { JSX } from 'solid-js';
+import { splitProps } from 'solid-js';
+
+/** @class MenuTitle
  * @description
- * The <b-menutitle> element can be used as menu title inside a
- * [BContextMenu](contextmenu_8js.html#BContextMenu).
+ * The MenuTitle component can be used as menu title inside a
+ * [ContextMenu](#ContextMenu).
  * ### Children:
  * : All children will be rendered as contents of this element.
  */
@@ -27,14 +30,13 @@ b-menutitle, .b-menutitle {
 }`;
 
 // == COMPONENT ==
-export function MenuTitle (props: {
-  style?: string;
-  children?: any;
-})
+export function MenuTitle (props: JSX.HTMLAttributes<HTMLDivElement>)
 {
+  const [local, rest] = splitProps (props, ['children', 'class']);
+  const class_ = () => 'b-menutitle' + (local.class ? ' ' + local.class : '');
   return (
-    <div class="b-menutitle" style={props.style}>
-      <span class="menulabel">{props.children}</span>
+    <div {...rest} class={class_()}>
+      <span class="menulabel">{local.children}</span>
     </div>
   );
 }

@@ -1123,6 +1123,15 @@ export function dialog_backdrop_autoclose (dialog, install_or_remove)
     }
 }
 
+const POPUP_COORDINATE_LIMIT = 999999;
+
+/** Check whether document-relative coordinates can position a popup. */
+export function valid_popup_coordinates (x, y)
+{
+  return x >= 0 && x <= POPUP_COORDINATE_LIMIT &&
+         y >= 0 && y <= POPUP_COORDINATE_LIMIT;
+}
+
 /** Determine position for a popup */
 export function popup_position (element, opts = { origin: undefined, x: undefined, y: undefined,
 						  xscale: 0, yscale: 0, })
@@ -1143,7 +1152,7 @@ export function popup_position (element, opts = { origin: undefined, x: undefine
   if (!opts.origin || !opts.origin.getBoundingClientRect)
     {
       // Position element at document relative (opts.x, opts.y)
-      if (opts.x >= 0 && opts.x <= 999999 && opts.y >= 0 && opts.y <= 999999)
+      if (valid_popup_coordinates (opts.x, opts.y))
 	{
 	  let vx = Math.max (0, opts.x - sx); // document coord to viewport coord
 	  let vy = Math.max (0, opts.y - sy); // document coord to viewport coord

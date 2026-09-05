@@ -8,7 +8,7 @@
  * Menu actions are identified via URI attributes, they can be activated by calling a handler
  * which is assigned via the `.activate` property, or the actions can be checked for being disabled
  * by calling a handler which is assigned via the `.isactive` property.
- * The `ic` attribute on buttons embeds a `<b-icon ic=.../>` inside the buttons.
+ * The `ic` attribute on buttons embeds a `.b-icon` span inside the buttons.
  * Using the `popup()` method, the menu can be shown via
  * [HTMLDialogElement.showModal](https://developer.mozilla.org/en-US/docs/Web/API/HTMLDialogElement/showModal).
  * Example:
@@ -60,7 +60,7 @@
 import { onMount, onCleanup } from 'solid-js';
 import * as Util from "../util.js";
 import * as Kbd from '../kbd.js';
-import { text_content, get_uri, valid_uri, has_uri } from '../dom.js';
+import { text_content, get_uri, valid_uri } from '../dom.js';
 import * as Dom from "../dom.js";
 import { icon_element } from './icon';
 
@@ -127,23 +127,6 @@ dialog.b-contextmenu::backdrop {
 }`;
 
 // == SCRIPT ==
-function menuitem_isdisabled (this: any)
-{
-  const uri = get_uri (this);
-  const menudata = provide_menudata (this);
-  if (valid_uri (uri)  && undefined !== menudata.checkeduris?.[uri])
-    return !menudata.checkeduris[uri];
-  if (Object.hasOwnProperty.call (this, 'disabled') &&
-      (this.disabled === "" || !!this.disabled))
-    return true;
-  const disabled_attr = this instanceof Element ? this.getAttribute ('disabled') : null;
-  if (disabled_attr != undefined && disabled_attr != null)
-    return true;
-  if (this.$attrs && (this.$attrs['disabled'] === "" || !!this.$attrs['disabled']))
-    return true;
-  return false;
-}
-
 function rects_no_overlap (rects: DOMRect[]): boolean
 {
   for (let i = 0; i < rects.length; i++)
@@ -155,31 +138,35 @@ function rects_no_overlap (rects: DOMRect[]): boolean
   return true;
 }
 
-function assert_geometry (dialog: HTMLDialogElement)
+const CONTEXTMENU_VIEWPORT_MARGIN = 40;
+
+function assert_geometry (dialog: HTMLDialogElement, expect_centered: boolean)
 {
   if (!__DEV__) return;
   const CENTER_THRESHOLD = 2;
   const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
   const b = dialog.getBoundingClientRect();
+  const max_h = window.innerHeight - CONTEXTMENU_VIEWPORT_MARGIN;
+  const height_capped = dialog.offsetHeight >= max_h;
   // no unnecessary scrollbars
   if (b.width < vw && dialog.scrollWidth > dialog.clientWidth)
     console.error ("ContextMenu assert_geometry: horizontal scrollbar despite fitting viewport");
-  if (b.height < vh && dialog.scrollHeight > dialog.clientHeight)
+  if (b.height < vh && dialog.scrollHeight > dialog.clientHeight && !height_capped)
     console.error ("ContextMenu assert_geometry: vertical scrollbar despite fitting viewport");
   // same scrollbar check for visible children
   for (const child of dialog.querySelectorAll (':scope > .b-contextmenu-inner > *')) {
     if (!Util.check_visibility (child)) continue;
     if (b.width < vw && (child as HTMLElement).scrollWidth > (child as HTMLElement).clientWidth)
       console.error ("ContextMenu assert_geometry: child horizontal scrollbar despite fitting viewport");
-    if (b.height < vh && (child as HTMLElement).scrollHeight > (child as HTMLElement).clientHeight)
+    if (b.height < vh && (child as HTMLElement).scrollHeight > (child as HTMLElement).clientHeight && !height_capped)
       console.error ("ContextMenu assert_geometry: child vertical scrollbar despite fitting viewport");
   }
-  // centering check: if it can be centered, it shouldn't be edge-aligned
-  if (b.width + CENTER_THRESHOLD < vw) {
+  // Only centered popups should avoid viewport edges; dropdowns and pointer menus are positioned there on purpose.
+  if (expect_centered && b.width + CENTER_THRESHOLD < vw) {
     if (b.left <= 0) console.error ("ContextMenu assert_geometry: left-aligned despite fitting");
     if (b.right >= vw) console.error ("ContextMenu assert_geometry: right-aligned despite fitting");
   }
-  if (b.height + CENTER_THRESHOLD < vh) {
+  if (expect_centered && b.height + CENTER_THRESHOLD < vh) {
     if (b.top <= 0) console.error ("ContextMenu assert_geometry: top-aligned despite fitting");
     if (b.bottom >= vh) console.error ("ContextMenu assert_geometry: bottom-aligned despite fitting");
   }
@@ -244,20 +231,11 @@ export function ContextMenu (props: {
   let page_y: number | undefined;
   let origin_el: Element | null = null;
   let data_contextmenu: Element | null = null;
-  let need_reposition = false;
   let keymap_: Util.KeymapEntry[] = [];
   let keymap_active = false;
   let observer_: MutationObserver | null = null;
+  // TODO: get rid of allowed_click legacy
   let allowed_click: Event | null = null;
-
-  const menudata: any = {
-    close: () => undefined,
-    isactive: (uri: string) => valid_uri (uri) && (!props.isactive || props.isactive (uri)),
-    menu_stamp: 0,
-    item_stamp: 0,
-    mapname: props.mapname || '',
-    showicons: props.showicons !== false,
-  };
 
   // === Methods ===
 
@@ -281,6 +259,16 @@ export function ContextMenu (props: {
     }
   };
 
+  // Context for descendant menu items; close is ready before the dialog ref is exposed.
+  const menudata: any = {
+    close,
+    isactive: (uri: string) => valid_uri (uri) && (!props.isactive || props.isactive (uri)),
+    menu_stamp: 0,
+    item_stamp: 0,
+    mapname: props.mapname || '',
+    showicons: props.showicons !== false,
+  };
+
   const popup = (event?: Event, popup_options: any = {}) => {
     Util.prevent_event (event);
     if (dialog_ref?.open || Util.frame_stamp() == menudata.menu_stamp)
@@ -301,24 +289,31 @@ export function ContextMenu (props: {
     data_contextmenu = popup_options['data-contextmenu'] || origin_el;
     data_contextmenu?.setAttribute ('data-contextmenu', 'true');
     emit_close_++;
-    // auto-focus a specific child, or the first child with uri
-    const furi = popup_options.focus_uri ? 'uri="' + popup_options.focus_uri + '"' : 'uri';
+    // Auto-focus a requested child, or the first visible focusable item.
+    const focus_uri = popup_options.focus_uri;
     (async () => {
       if (!dialog_ref) return;
       Dom.show_modal (dialog_ref);
       // showModal() sets position:fixed which breaks intrinsic sizing on <dialog>.
       // Explicitly size the dialog to its content before repositioning.
       fit_and_reposition_dialog();
-      need_reposition = true;
       dialog_ref.blur();
       (window as any).App?.zmove(); // force changes to be picked up
-      // check items (and auto-focus)
+      // Check items before restoring focus; Chrome auto-focuses showModal(), make all browsers consistent.
       await toggles;
       fit_and_reposition_dialog();
-      assert_geometry (dialog_ref!);
-      const qse = dialog_ref!.querySelector (`button[${furi}], .asbutton[${furi}]`) as HTMLElement | null;
-      if (qse && !qse.getAttribute ('disabled'))
-        qse.focus();
+      assert_geometry (dialog_ref!, !origin_el && !Util.valid_popup_coordinates (page_x, page_y));
+      if (focus_uri) {
+        const focus_item = find_menuitem (focus_uri);
+        if (focus_item instanceof HTMLElement &&
+            Util.check_visibility (focus_item) &&
+            focus_item.matches ('button, .asbutton') &&
+            !focus_item.hasAttribute ('disabled'))
+          focus_item.focus();
+        else
+          Util.move_focus ('START');
+      } else
+        Util.move_focus ('START');
     })();
     return true;
   };
@@ -327,7 +322,7 @@ export function ContextMenu (props: {
     if (!dialog_ref) return;
     const inner = dialog_ref.querySelector ('.b-contextmenu-inner') as HTMLElement | null;
     if (inner) {
-      const max_h = window.innerHeight - 40;
+      const max_h = window.innerHeight - CONTEXTMENU_VIEWPORT_MARGIN;
       dialog_ref.style.maxHeight = max_h + 'px';
       // With box-sizing:border-box (Tailwind preflight), CSS height includes
       // border+padding, so the content area is reduced. Compensate accordingly.
@@ -370,6 +365,7 @@ export function ContextMenu (props: {
     return hasuri;
   };
 
+  /// Find a menuitem via its URI.
   const find_menuitem = (uri: string) => {
     if (!dialog_ref) return null;
     const w = document.createTreeWalker (dialog_ref, NodeFilter.SHOW_ELEMENT);
@@ -381,6 +377,7 @@ export function ContextMenu (props: {
     return null;
   };
 
+  /// Activate or disable the `kbd=...` hotkeys in menu items.
   const map_kbd_hotkeys = (active = false) => {
     if (keymap_.length) {
       keymap_.length = 0;
@@ -453,24 +450,29 @@ export function ContextMenu (props: {
     observer_ = null;
   };
 
-  /** Integrate button into contextmenu handling. */
-  function integrate_button (this: HTMLElement, contextmenu: HTMLElement)
+  /** Integrate a button or summary into ContextMenu handling. */
+  function integrate_button (this: HTMLElement)
   {
     const btn = this;
-    // focus on hover
+    // Click activation is delegated by the dialog; focus menu items on hover.
     if (!btn.onmouseenter)
       btn.onmouseenter = () => btn.focus();
-    // <b-icon ic/> - preserve existing or create one
+    // ContextMenu-owned spans must be recreated when `ic` changes so their classes and text update.
+    // Do not alter application-owned Icon components, which manage their own reactive updates.
     const ic_value = btn.getAttribute ('ic');
+    const contextmenu_icon = btn.querySelector ('.b-icon[data-contextmenu-icon]');
     if (ic_value) {
-      const icon = btn.querySelector ('.b-icon') || icon_element (ic_value);
-      if (!icon.parentElement) {
+      if (contextmenu_icon?.getAttribute ('ic') != ic_value) {
+        const icon = icon_element (ic_value);
         icon.classList.add ('pointer-events-none');
-        btn.prepend (icon);
+        icon.toggleAttribute ('data-contextmenu-icon', true);
+        if (contextmenu_icon)
+          contextmenu_icon.replaceWith (icon);
+        else if (!btn.querySelector ('.b-icon'))
+          btn.prepend (icon);
       }
-      icon.setAttribute ('ic', ic_value);
     } else
-      btn.querySelector ('.b-icon')?.remove();
+      contextmenu_icon?.remove();
     // aria-label
     const aria_label = text_content (btn, false).trim();
     btn.setAttribute ('aria-label', aria_label);
@@ -503,7 +505,7 @@ export function ContextMenu (props: {
   const integrate_children = () => {
     if (!dialog_ref) return;
     for (let b of dialog_ref.querySelectorAll ('button, .asbutton, summary')) {
-      integrate_button.call (b as HTMLElement, dialog_ref);
+      integrate_button.call (b as HTMLElement);
     }
     // rebuild keymap
     map_kbd_hotkeys (keymap_active);
@@ -574,9 +576,6 @@ export function ContextMenu (props: {
     // Integrate button children (icons, kbd, etc.) after DOM is ready
     integrate_children();
     start_observer();
-    // Ensure menudata is properly set up
-    menudata.close = close;
-    menudata.isactive = (uri: string) => valid_uri (uri) && (!props.isactive || props.isactive (uri));
     // Close on backdrop clicks (regression from Lit migration)
     Util.dialog_backdrop_autoclose (dialog_ref, true);
   });
@@ -617,4 +616,3 @@ export function ContextMenu (props: {
     </dialog>
   );
 }
-
