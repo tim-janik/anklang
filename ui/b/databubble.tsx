@@ -65,6 +65,19 @@ Extra_css`
 
 /** A mechanism to display data-bubble="" tooltip popups */
 class DataBubbleImpl {
+  bubblelayerparent: Element;
+  bubble: HTMLElement | undefined;
+  bubblediv: HTMLElement | undefined;
+  current: any;
+  stack: any[];
+  lasttext: string;
+  last_event: any;
+  buttonsdown: boolean;
+  coords: any;
+  restart_bubble_timer: any;
+  debounced_check: any;
+  zmovedel: (() => void) | undefined;
+  resizeob: ResizeObserver | undefined;
   bubble_layer()
   {
     const bubble_layer_id = '#b-shell-bubble-layer';
@@ -103,6 +116,29 @@ class DataBubbleImpl {
     this.zmovedel = App.zmoves_add (recheck_event);
 
     this.resizeob = new ResizeObserver (() => !!this.current && this.debounced_check());
+  }
+  /// Dispose of this instance: unhook zmove, disconnect the observer, cancel
+  /// pending debounces and remove the bubble element from the DOM.
+  dispose ()
+  {
+    if (this.zmovedel)
+      {
+	this.zmovedel();
+	this.zmovedel = undefined;
+      }
+    if (this.resizeob)
+      {
+	this.resizeob.disconnect();
+	this.resizeob = undefined;
+      }
+    this.restart_bubble_timer.cancel();
+    this.debounced_check.cancel();
+    if (this.current)
+      delete this.current.data_bubble_active;
+    this.current = null;
+    this.bubble?.remove();
+    this.bubble = undefined;
+    this.bubblediv = undefined;
   }
   check_showtime (showtime = false) {
     // check stack hide/show needs
@@ -227,10 +263,17 @@ class DataBubbleImpl {
 const UNSET = Symbol ('UNSET');
 
 class DataBubbleIface {
+  data_bubble: DataBubbleImpl | undefined;
   constructor (bubblelayerparent)
   {
     console.assert (!!bubblelayerparent);
     this.data_bubble = new DataBubbleImpl (bubblelayerparent);
+  }
+  /// Dispose of the bubble instance (unhook zmove, observer and DOM node)
+  dispose ()
+  {
+    this.data_bubble?.dispose();
+    this.data_bubble = undefined;
   }
   /// Set the `data-bubble` attribute of `element` to `text` or force its callback
   update (element, text = UNSET) {
