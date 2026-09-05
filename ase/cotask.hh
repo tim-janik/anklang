@@ -41,7 +41,7 @@ struct CoTaskAux {
     constexpr bool await_ready() const noexcept { return false; }
     /// Resume the parent frame that is co_await-ing this CoTask<>
     std::coroutine_handle<>
-    await_suspend (std::coroutine_handle<promise_type> h)
+    await_suspend (std::coroutine_handle<promise_type> h) noexcept
     {
       auto &promise = h.promise();      // `h` is the CoTask<> handle, currently in co_return
       if (promise.continuation_)        // we have an awaiting caller
