@@ -221,11 +221,13 @@ Connection failures and unverified messages are retried 3 times; a
 message only counts as delivered once the server echoed it back.
 Messages are throttled to Libera.Chat's rate limit of 1 per 2 seconds,
 see https://libera.chat/guides/faq#flood-exemptions-for-bots
+With -G, repository, user, branch, commit subject and URL are auto-filled
+from $GITHUB_EVENT_PATH, the overall job status from $IRCBOT_JOBS.
 '''
 
 def parse_args (sysargs):
   import argparse
-  global server, port, nickname
+  global server, port, nickname, argparser
   parser = argparse.ArgumentParser (description = usage_help)
   parser.add_argument ('message', metavar = 'messages', type = str, nargs = '*',
                        help = 'Message to post on IRC')
@@ -257,6 +259,7 @@ def parse_args (sysargs):
                        help = 'Require PING/PONG after connecting')
   parser.add_argument ('--quiet', '-q', action = "store_true",
                        help = 'Avoid unnecessary output')
+  argparser = parser
   args = parser.parse_args (sysargs)
   #print ('ARGS:', repr (args), flush = True)
   return args
@@ -264,30 +267,57 @@ def parse_args (sysargs):
 args = parse_args (sys.argv[1:])
 
 if args.G:
+  # $GITHUB_EVENT_PATH holds the verbatim webhook payload of the triggering event;
+  # the field layout of each event type is documented at
+  #   https://docs.github.com/en/webhooks/webhook-events-and-payloads
+  # with machine readable schemas at
+  #   https://github.com/octokit/webhooks/tree/main/payload-schemas/api.github.com
+  # note: payloads drift from these schemas in both directions (e.g. head_commit
+  # can be null, sender.user_view_type is payload-only), read all fields defensively
   event_path = os.getenv ('GITHUB_EVENT_PATH')
   if event_path and os.path.exists (event_path):
     with open (event_path, 'r') as f:
-      github_event_data = json.load(f)
-  # print (f"github_event_data: {json.dumps(github_event_data, indent=2)}", file = sys.stderr)
+      github_event_data = json.load (f)
 
-# Pick metadata and URL from github.*
+# Derive announcement fields from the event payload; which events reach the bot
+# is decided by the calling workflow, the bot handles all payload shapes.
 if github_event_data:
-  R = github_event_data.get ('repository', {}).get ('full_name', '')
+  ev = github_event_data
+  R = (ev.get ('repository') or {}).get ('full_name', '')
   args.R = R if R else args.R
-  U = github_event_data.get ('pusher', {}).get ('name', '')
+  U = (ev.get ('pusher') or {}).get ('name', '')
   args.U = U if U else args.U
-  if github_event_data.get ('ref', None):
-    args.D = github_event_data.get ('ref')
-    args.D = re.sub (r'^refs/(heads/)?', '', args.D)
-  print ("REPOSITORY", args.R, file = sys.stderr)
-  print ("NAME", args.U, file = sys.stderr)
-  print ("DEPARTMENT", args.D, file = sys.stderr)
-  URL = github_event_data.get ('head_commit', {}).get ('url', '')
-  print ("URL", URL, file = sys.stderr)
-  if URL:
-    if args.message: args.message += [ '-' ]
-    args.message += [ URL ]
-    # print ("MESSAGE", repr (args.message), file = sys.stderr)
+  ref = ev.get ('ref') or ''
+  if ref:
+    args.D = re.sub (r'^refs/(heads|tags)/', '', ref) # branch or tag name
+  head = ev.get ('head_commit') or {} # schema allows null
+  pr = ev.get ('pull_request') or {} # pull_request payloads: no ref/pusher/head_commit
+  subject = (head.get ('message', '').splitlines() or [ '' ])[0] # commit subject line
+  if pr and not subject: # pull_request payload: announce "action: title"
+    if pr.get ('number'):
+      args.D = '#' + str (pr['number'])
+    args.U = args.U or (ev.get ('sender') or {}).get ('login', '')
+    subject = pr.get ('title', '')
+    if subject and ev.get ('action'):
+      subject = ev['action'] + ': ' + subject
+  url = head.get ('url') or pr.get ('html_url') or ''
+  if not args.message and subject: # default message: commit subject or PR title
+    args.message = [ subject ]
+  if url and args.message:
+    args.message += [ '-', url ]
+  # overall job status: IRCBOT_JOBS passes the workflow's needs.*.result values
+  # joined by spaces; anything but success|skipped is announced as FAILURE, the
+  # run conclusion itself is handled by GitHub
+  needs_results = os.getenv ('IRCBOT_JOBS', '').split()
+  failed = [ r for r in needs_results if r not in ( 'success', 'skipped' ) ]
+  if not args.S and needs_results:
+    args.S = 'FAILURE' if failed else 'SUCCESS'
+  print ('EVENT:', args.R or '-', args.U or '-', args.D or '-', url or '-', '| jobs:',
+         ' '.join (needs_results) or '-', file = sys.stderr)
+
+# Never open a remote connection without a message to deliver
+if not args.message and not args.l:
+  argparser.error ('a message is required (or -l to list channels)')
 
 if args.message and not args.quiet:
   print (format_msg (args, 1))
@@ -393,5 +423,7 @@ for attempt in range (1, attempts + 1):
     close_socket()
     if attempt < attempts:
       time.sleep (5 * 2 ** (attempt - 1)) # exponential backoff before reconnecting
+# Nonzero exit is reserved for notification failures; a failed build is
+# communicated via the [FAILURE] tag and GitHub's own run conclusion
 if not delivered:
   sys.exit (1)
