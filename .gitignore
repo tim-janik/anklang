@@ -23,5 +23,5 @@ core
 *.jpg
 *bak
 *orig
-*.tmp*
+*tmp*
 *~
