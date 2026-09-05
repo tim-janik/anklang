@@ -9,19 +9,20 @@
  * : Container for the devices (Ase.Track).
  */
 
-import { createSignal, createEffect, For } from 'solid-js';
+import { createSignal, createEffect, For, splitProps } from 'solid-js';
 import * as Util from "../util.js";
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import { More } from './more';
 import { MenuTitle } from './menutitle.tsx';
 import { ContextMenu } from './contextmenu';
 import { DeviceEditor } from './deviceeditor.tsx';
+import { TreeBrowser } from './treebrowser.jsx';
 
 // == STYLE ==
 Extra_css`
 @reference "../tailwind.css";
 --scrollbar-height: 6px; /* Should match Firefox 'scrollbar-width:thin' */
-b-devicepanel {
+b-devicepanel, .b-devicepanel {
   @apply hflex;
   padding: 0 0 3px 0;
   background: var(--b-devicepanel-bg);
@@ -68,6 +69,7 @@ b-devicepanel {
 // == Component ==
 export function DevicePanel (props)
 {
+  const [local, rest] = splitProps (props, ['class', 'track']);
   let cmenu_ref;
   const [chain, set_chain] = createSignal (null);
   const [devicetypes, set_devicetypes] = createSignal (null);
@@ -115,7 +117,7 @@ export function DevicePanel (props)
   };
 
   return (
-    <div class="b-devicepanel">
+    <div {...rest} class={'b-devicepanel' + (local.class ? ' ' + local.class : '')}>
       <div class="b-devicepanel-scroller">
       <span class="b-devicepanel-vtitle">Device Panel</span>
       <div class="b-devicepanel-hstack hflex">
@@ -134,7 +136,7 @@ export function DevicePanel (props)
           id="g-devicepanelcmenu"
         >
           <MenuTitle>Devices</MenuTitle>
-          <b-treebrowser tree={devicetypes ()} expandall={false}></b-treebrowser>
+          <TreeBrowser tree={devicetypes ()} expandall={false} />
         </ContextMenu>
       </div>
       </div>

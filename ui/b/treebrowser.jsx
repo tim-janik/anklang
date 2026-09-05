@@ -11,7 +11,7 @@
  * : Expand all entries by default (default: true).
  */
 
-import { createSignal, For, onMount } from 'solid-js';
+import { createSignal, For, onMount, splitProps } from 'solid-js';
 import * as Util from '../util.js';
 import * as Kbd from '../kbd.js';
 
@@ -78,7 +78,9 @@ function TreeNode (props)
 // == Component ==
 export function TreeBrowser (props)
 {
+  const [local, rest] = splitProps (props, ['class', 'tree', 'expandall']);
   const [expandall, setExpandall] = createSignal (props.expandall ?? true);
+  /** @type {HTMLElement | undefined} */
   let container;
 
   onMount (() => {
@@ -121,7 +123,7 @@ export function TreeBrowser (props)
   };
 
   return (
-    <b-treebrowser ref={container}>
+    <b-treebrowser {...rest} ref={container} class={'b-treebrowser' + (local.class ? ' ' + local.class : '')}>
       <For each={entries()}>
         {(entry) => <TreeNode entry={entry} expandall={expandall()} />}
       </For>

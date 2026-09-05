@@ -6,12 +6,14 @@ UI_TEST_LIST := \
   clip_test.test_clip_notes \
   clip_test.test_clip_range \
   contextmenu_test.test_contextmenu \
+  devicepanel_test.test_devicepanel \
   editable_test.test_editable \
   numberinput_test.test_numberinput \
   project_test.test_project_basic \
   project_test.test_project_master_volume \
   project_test.test_project_track_management \
   project_test.test_project_track_removal_notification \
+  shell_test.test_shell \
   switchinput_test.test_switchinput \
   textinput_test.test_textinput \
   toggle_test.test_toggle \

@@ -9,7 +9,7 @@
  * : The *Ase.Project* containing playback tracks.
  */
 
-import { createSignal, createEffect, onCleanup, For } from 'solid-js';
+import { createSignal, createEffect, onCleanup, For, splitProps } from 'solid-js';
 import { ClipList } from './cliplist';
 import { PartList } from './partlist.tsx';
 import { TrackView } from './trackview.tsx';
@@ -67,6 +67,7 @@ b-tracklist, .b-tracklist {
 // == Component ==
 export function TrackList (props)
 {
+  const [local, rest] = splitProps (props, ['class', 'project', 'onDblClick']);
   const [tracks, set_tracks] = createSignal ([]);
   let trackviews_ref;
   let cliplists_ref;
@@ -126,8 +127,13 @@ export function TrackList (props)
       props.project.create_track ();
   };
 
+  const handle_dblclick = (event) => {
+    list_dblclick (event);
+    local.onDblClick?.(event);
+  };
+
   return (
-    <div class="b-tracklist" onDblclick={list_dblclick}>
+    <div {...rest} class={'b-tracklist' + (local.class ? ' ' + local.class : '')} onDblClick={handle_dblclick}>
       <div class="grid">
         <div style="grid-area: 1/1 / 2/4;"> {/* HEADER */} </div>
         <div class="trackviews" ref={e => trackviews_ref = e}>

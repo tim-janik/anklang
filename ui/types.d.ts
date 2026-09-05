@@ -3,6 +3,25 @@
 // Allow JavaScript modules as Any
 // declare module "*";
 
+// SolidJS JSX conventions used across ui/b/ (contextmenu menu items carry
+// uri/ic/kbd attributes; legacy custom elements are being phased out).
+declare module "solid-js" {
+  namespace JSX {
+    interface IntrinsicElements {
+      /** @deprecated use TreeBrowser component (SolidJS migration) */
+      "b-treebrowser": HTMLAttributes<HTMLElement> & {
+        tree?: any;
+        expandall?: boolean;
+      };
+      button: ButtonHTMLAttributes<HTMLButtonElement> & {
+        uri?: string;
+        ic?: string;
+        kbd?: string;
+      };
+    }
+  }
+}
+
 // Allow certain globals
 declare global {
   var App: any;

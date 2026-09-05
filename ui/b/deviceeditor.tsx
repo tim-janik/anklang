@@ -285,7 +285,7 @@ export function DeviceEditor (props)
     }
   }
 
-  async function isactive (uri, component)
+  async function isactive (uri)
   {
     if (!props.device)
       return false;
