@@ -884,7 +884,7 @@ struct typescript_name<std::unordered_map<std::string, T>> {
   static std::string name() { return "{ [key: string]: " + typescript_name<T>::name() + " }"; }
 };
 #define JSONIPC_MAP_TO_TYPESCRIPT(CXXTYPE,TSTYPE)                       \
-  template<> struct ::Jsonipc::typescript_name< CXXTYPE >  { static std::string name() { return TSTYPE; } }
+  template<> struct Jsonipc::typescript_name< CXXTYPE >  { static std::string name() { return TSTYPE; } }
 
 template<typename... Args> std::string
 typescript_arg_list()

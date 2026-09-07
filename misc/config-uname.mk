@@ -5,10 +5,17 @@
 uname_S		::= $(shell uname -s 2>/dev/null || echo None)
 uname_M		::= $(shell uname -m 2>/dev/null || echo None)
 uname_R		::= $(shell uname -r 2>/dev/null || echo None)
+CCVERSION	 != $(CC) --version 2>&1
+CCKIND		 != case '$(CCVERSION)'  in *"Free Software Foundation"*) echo gcc;; *clang*) echo clang;; *) echo UNKNOWN;; esac
 CXXVERSION	 != $(CXX) --version 2>&1
 CXXKIND		 != case '$(CXXVERSION)' in *"Free Software Foundation"*) echo gcc;; *clang*) echo clang;; *) echo UNKNOWN;; esac
-HAVE_GCC	::= $(if $(findstring $(CXXKIND), gcc),1,)
-HAVE_CLANG	::= $(if $(findstring $(CXXKIND), clang),1,)
+# CC and CXX must come from one compiler family, gcc-only flags break clang.
+ifneq ($(CCKIND),$(CXXKIND))
+$(error CC/CXX mismatch, set both to gcc or both to clang: CC=$(CC) CCKIND=$(CCKIND) CXX=$(CXX) CXXKIND=$(CXXKIND))
+endif
+HAVE_GCC	::= $(if $(findstring gcc,$(CXXKIND)),1,)
+HAVE_CLANG	::= $(if $(findstring clang,$(CXXKIND)),1,)
+$(if $(and $(HAVE_GCC),$(filter 13.%,$(CXXVERSION))),$(error Compiler 'CXX=$(CXX)' is too old, g++ >= 14 is required))
 ifeq ($(HAVE_GCC)$(HAVE_CLANG),)		# do we HAVE_ *any* recognized compiler?
 $(error Compiler '$(CXX)' not recognized, version identifier: $(CXXKIND))
 endif
