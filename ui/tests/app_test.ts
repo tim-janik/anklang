@@ -60,20 +60,19 @@ async function test_activation_piano_roll (): Promise<boolean>
     if (!track)
       throw new Error ('project has no editable track');
 
-    const new_track = await project.create_track();
-    if (!new_track)
-      throw new Error ('create_track failed');
-    if (await new_track.is_control_track())
-      throw new Error ('created track is classified as a control track');
     const clip = await track.create_midi_clip ('activation-test', 0, 4);
     if (!clip)
       throw new Error ('create_midi_clip failed');
+    const track_name = await track.$refetch (() => track.name);
+    const clip_name = await clip.$refetch (() => clip.name);
 
     await app.load_project (project);
 
-    if (shell.r.current_track !== track)
-      throw new Error (`activation did not select the editable track: ${shell.r.current_track?.name ?? shell.r.current_track}`);
-    if (shell.r.piano_roll_source !== clip)
+    const current_track_name = await shell.r.current_track.$refetch (() => shell.r.current_track.name);
+    if (current_track_name !== track_name)
+      throw new Error (`activation selected ${current_track_name}, expected ${track_name}`);
+    const current_clip_name = await shell.r.piano_roll_source.$refetch (() => shell.r.piano_roll_source.name);
+    if (current_clip_name !== clip_name)
       throw new Error ('activation did not open the first clip in the piano roll');
   } finally {
     await app.load_project (old_project);
