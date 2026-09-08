@@ -117,6 +117,33 @@ export class AppClass {
     else
       Shell.r.panel3 = a[(a.indexOf (Shell.r.panel3) + 1) % a.length];
   }
+  /// Re-mount the Shell tree after window/DPR changes so mount-time pixel
+  /// sizes (level meters, clip canvases) recompute; keeps playback and UI state.
+  relayout ()
+  {
+    const shell = globalThis.Shell;
+    const project = shell?.project ?? null;
+    if (!shell || !(project instanceof Ase.Project))
+      return; // not mounted yet, or no project assigned
+    // State cleared by Shell.reset(); restore it after the re-mount
+    const current_track = shell.r.current_track;
+    const piano_roll_source = shell.r.piano_roll_source;
+    const show_preferences_dialog = shell.r.show_preferences_dialog;
+    const show_about_dialog_ = shell.r.show_about_dialog_;
+    const shell_parent = document.getElementById ('b-app');
+    if (!shell_parent)
+      throw Error (`App: DOM element 'b-app' not found`);
+    if (this.render_dispose) {
+      this.render_dispose();
+      this.render_dispose = null;
+    }
+    shell_parent.innerHTML = '';
+    this.render_dispose = render (() => ShellTemplate ({ project, current_track }), shell_parent);
+    // Restore state cleared by reset(); current_track already passed via ShellTemplate
+    shell.r.piano_roll_source = piano_roll_source;
+    shell.r.show_preferences_dialog = show_preferences_dialog;
+    shell.r.show_about_dialog_ = show_about_dialog_;
+  }
   switch_panel2 (n?: string)
   {
     if (!globalThis.Shell) return; // not mounted yet

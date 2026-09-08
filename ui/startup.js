@@ -1,6 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-import { LitComponent, html, css, docs, lit_update_all } from './little.js';
 import * as Strings from './strings.js';
 
 // Global CONFIG
@@ -151,9 +150,14 @@ async function bootup () {
   const app = await create_app();
   console.assert (app === App);
 
-  // Ensure APP rerenders when the browser window changes
+  // Relayout re-mounts the Shell tree on window/DPR changes; skipped until a
+  // project is assigned, so the boot-time dpr_rerender_all() call is a no-op.
+  const relayout_after_resize = Util.debounce (() => {
+    if (App.project)
+      App.relayout();
+  }, { restart: true, wait: 500 });
   const rerender_all = () => {
-    lit_update_all();
+    relayout_after_resize();
   };
   window.addEventListener ('resize', rerender_all);
   document.fonts.addEventListener ("loadingdone", rerender_all);
