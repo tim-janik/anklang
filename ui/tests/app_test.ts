@@ -1,7 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-import * as Dom from '../dom';
-
 // == Test registry ==
 const sub_tests: [string, () => Promise<any>][] = [];
 
@@ -30,8 +28,8 @@ async function test_activation_current_track (): Promise<boolean>
   const track = app?.current_track;
   if (!track)
     throw new Error ('App.current_track is not set after boot');
-  if (await track.is_master())
-    throw new Error ('App.current_track is the master output track');
+  if (await track.is_control_track())
+    throw new Error ('App.current_track is a control track');
   if (shell?.r?.current_track !== track)
     throw new Error ('Shell.r.current_track disagrees with App.current_track');
 
@@ -44,27 +42,43 @@ async function test_activation_piano_roll (): Promise<boolean>
 {
   const app: any = (window as any).App;
   const shell: any = (window as any).Shell;
-  const project = app?.project;
-  if (!project)
+  const old_project = app?.project;
+  if (!old_project)
     throw new Error ('App.project not set in test environment');
 
-  // Create an editable track with a MIDI clip
-  const track = await project.create_track();
-  if (!track)
-    throw new Error ('create_track failed');
-  if (await track.is_control_track())
-    throw new Error ('created track is classified as a control track');
-  const clip = await track.create_midi_clip ('activation-test', 0, 4);
-  if (!clip)
-    throw new Error ('create_midi_clip failed');
+  const project = await Ase.server.create_project ('AppActivationTest');
+  if (!project)
+    throw new Error ('create_project failed');
+  try {
+    const tracks = await project.all_tracks();
+    let track: any = null;
+    for (const candidate of tracks)
+      if (!await candidate.is_control_track()) {
+        track = candidate;
+        break;
+      }
+    if (!track)
+      throw new Error ('project has no editable track');
 
-  // Re-activate: must pick the editable track and open its clip
-  await app.load_project (project);
+    const new_track = await project.create_track();
+    if (!new_track)
+      throw new Error ('create_track failed');
+    if (await new_track.is_control_track())
+      throw new Error ('created track is classified as a control track');
+    const clip = await track.create_midi_clip ('activation-test', 0, 4);
+    if (!clip)
+      throw new Error ('create_midi_clip failed');
 
-  if (shell.r.current_track !== track)
-    throw new Error (`activation did not select the editable track: ${shell.r.current_track?.name ?? shell.r.current_track}`);
-  if (shell.r.piano_roll_source !== clip)
-    throw new Error ('activation did not open the first clip in the piano roll');
+    await app.load_project (project);
+
+    if (shell.r.current_track !== track)
+      throw new Error (`activation did not select the editable track: ${shell.r.current_track?.name ?? shell.r.current_track}`);
+    if (shell.r.piano_roll_source !== clip)
+      throw new Error ('activation did not open the first clip in the piano roll');
+  } finally {
+    await app.load_project (old_project);
+    await project.discard();
+  }
 
   return true;
 }
