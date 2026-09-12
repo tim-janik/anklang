@@ -83,6 +83,76 @@ async function test_activation_piano_roll (): Promise<boolean>
 }
 sub_tests.push (['piano_roll', test_activation_piano_roll]);
 
+async function test_overlapping_activation (): Promise<boolean>
+{
+  const app = window.App;
+  const old_project = app.project;
+  const first = await Ase.server.create_project ('EarlierActivation');
+  const second = await Ase.server.create_project ('LaterActivation');
+  try {
+    const first_tracks = await first.all_tracks();
+    const editable = [];
+    for (const track of first_tracks)
+      if (!await track.is_control_track()) editable.push (track);
+    const second_tracks = await second.all_tracks();
+    let second_track;
+    for (const track of second_tracks)
+      if (!await track.is_control_track()) { second_track = track; break; }
+    if (!editable.length || !second_track)
+      throw new Error ('activation projects have no editable tracks');
+    await editable[0].create_midi_clip ('earlier-clip', 0, 4);
+    const second_clip = await second_track.create_midi_clip ('later-clip', 0, 4);
+    for (const delayed_method of ['all_tracks', 'is_control_track', '$refetch']) {
+      let release!: () => void;
+      let entered!: () => void;
+      const gate = new Promise<void> (resolve => { release = resolve; });
+      const waiting = new Promise<void> (resolve => { entered = resolve; });
+      const delayed_track = new Proxy (editable[0], {
+        get (target, key) {
+          if (key === delayed_method)
+            return async (...args) => {
+              entered();
+              await gate;
+              return target[key] (...args);
+            };
+          return Reflect.get (target, key);
+        },
+      });
+      const delayed_project = new Proxy (first, {
+        get (target, key) {
+          if (key === 'all_tracks')
+            return async () => {
+              if (delayed_method === 'all_tracks') {
+                entered();
+                await gate;
+              }
+              return [delayed_track];
+            };
+          return Reflect.get (target, key);
+        },
+      });
+      const pending = app.assign_project (delayed_project, 'b-app');
+      try {
+        await waiting;
+        await app.assign_project (second, 'b-app');
+      } finally {
+        release();
+        await pending;
+      }
+      if (app.project !== second || app.current_track !== second_track)
+        throw new Error (`stale ${delayed_method} replaced the active project or track`);
+      if (window.Shell.r.piano_roll_source !== second_clip)
+        throw new Error (`stale ${delayed_method} replaced the active clip`);
+    }
+  } finally {
+    await app.assign_project (old_project, 'b-app');
+    await first.discard();
+    await second.discard();
+  }
+  return true;
+}
+sub_tests.push (['overlapping_activation', test_overlapping_activation]);
+
 // == Master runner ==
 /// Runs all sub-tests in sequence.
 export async function test_app (): Promise<boolean>
