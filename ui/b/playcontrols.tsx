@@ -2,12 +2,12 @@
 
 /** @class BPlayControls
  * @description
- * The <b-playcontrols> element is a container holding the play and seek controls for a Ase.song.
+ * The `PlayControls` component renders a `.b-playcontrols` container holding the play and seek controls for a Ase.song.
  */
 
 // == STYLE ==
 Extra_css`
-b-playcontrols, .b-playcontrols {
+.b-playcontrols {
   button, .asbutton	{ padding: 5px; text-align: center; }
 }
 `;

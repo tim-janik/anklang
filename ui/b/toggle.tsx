@@ -26,7 +26,7 @@ import { createEffect, createSignal, splitProps } from 'solid-js';
 
 // == STYLE ==
 Extra_css`
-b-toggle, .b-toggle {
+.b-toggle {
   display: flex; position: relative;
   margin: 0; padding: 0; text-align: center;
   user-select: none;

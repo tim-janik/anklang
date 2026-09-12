@@ -17,7 +17,7 @@ import { ContextMenu } from './contextmenu';
 
 // == STYLE ==
 Extra_css`
-b-deviceeditor, .b-deviceeditor {
+.b-deviceeditor {
   display: flex;
   flex-basis: auto;
   flex-flow: row nowrap;

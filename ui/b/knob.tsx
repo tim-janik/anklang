@@ -3,7 +3,7 @@
 
 /** @class BKnob
  * @description
- * The <b-knob> element provides a knob for scalar inputs.
+ * The `Knob` component renders a `.b-knob` element providing a knob for scalar inputs.
  * It supports the Vue
  * [v-model](https://vuejs.org/v2/guide/components-custom-events.html#Customizing-Component-v-model)
  * protocol by emitting an `input` event on value changes and accepting inputs via the `value` prop.
@@ -38,7 +38,7 @@ import * as Mouse from '../mouse.js';
 
 // == STYLE ==
 Extra_css`
-b-knob, .b-knob {
+.b-knob {
   display: flex; position: relative;
   margin: 0; padding: 0; text-align: center;
   &[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; pointer-events: none; }

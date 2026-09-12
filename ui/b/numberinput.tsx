@@ -28,7 +28,7 @@ import * as Util from '../util.js';
 
 // == STYLE ==
 Extra_css`
-b-numberinput, .b-numberinput {
+.b-numberinput {
   display: flex; justify-content: flex-end;
   flex-grow: 1;
   input[type='range'] {

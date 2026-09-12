@@ -3,12 +3,12 @@
 
 /** @class BMore
  * @description
- * The <b-more> element is an indicator for adding or dropping new UI elements.
+ * The `More` component renders a `.b-more` indicator for adding or dropping new UI elements.
  */
 
 // == STYLE ==
 Extra_css`
-b-more, .b-more { /* b-more */
+.b-more { /* b-more */
   display: flex;
   align-items: center;
   justify-content: space-evenly;

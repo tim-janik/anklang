@@ -22,7 +22,7 @@ import { TreeBrowser } from './treebrowser.jsx';
 Extra_css`
 @reference "../tailwind.css";
 --scrollbar-height: 6px; /* Should match Firefox 'scrollbar-width:thin' */
-b-devicepanel, .b-devicepanel {
+.b-devicepanel {
   @apply hflex;
   padding: 0 0 3px 0;
   background: var(--b-devicepanel-bg);
@@ -90,7 +90,7 @@ export function DevicePanel (props)
 
   const activate = async (uri) => {
     // close popup to remove focus guards
-    if (!chain () || uri.startsWith ('DevicePanel:')) // assuming b-treebrowser.devicetypes
+    if (!chain () || uri.startsWith ('DevicePanel:')) // DevicePanel: menu items are panel controls, not devices to insert
       return;
     const sibling = menu_sibling ();
     let newdev;

@@ -6,12 +6,12 @@ import { ClipView } from './clipview';
 
 /** @class BPartList
  * @description
- * The <b-partlist> element allows to arrange Clip objects for playback.
+ * The `PartList` component renders a `.b-partlist` element to arrange Clip objects for playback.
  */
 
 // == STYLE ==
 Extra_css`
-b-partlist, .b-partlist {
+.b-partlist {
   display: flex;
   position: relative;
   .b-clipview {

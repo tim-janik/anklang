@@ -8,10 +8,9 @@
 declare module "solid-js" {
   namespace JSX {
     interface IntrinsicElements {
-      /** @deprecated use TreeBrowser component (SolidJS migration) */
-      "b-treebrowser": HTMLAttributes<HTMLElement> & {
-        tree?: any;
-        expandall?: boolean;
+      /** divs styled as buttons (.asbutton) carry the disabled attribute for styling */
+      div: HTMLAttributes<HTMLDivElement> & {
+        disabled?: boolean;
       };
       button: ButtonHTMLAttributes<HTMLButtonElement> & {
         uri?: string;
