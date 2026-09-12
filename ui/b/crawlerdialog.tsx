@@ -96,7 +96,8 @@ export function CrawlerDialog (props)
   let last_cwd = props.cwd;
   let focus_after_refill = true;
   let cancelled = false;
-  let close_sent = false; // single-exit guard: invoke onClose at most once per instance
+  let close_sent = false;
+  let session = 0;
   const close = () => {
     if (close_sent) return;
     close_sent = true;
@@ -111,6 +112,8 @@ export function CrawlerDialog (props)
 
   onMount (async () => {
     const c = await Ase.server.dir_crawler (props.cwd || '~MUSIC');
+    if (cancelled) return;
+    await c.$refetch (() => [c.folder, c.entries]);
     if (cancelled) return;
     set_crawler (c);
     set_bump (v => v + 1);
@@ -127,7 +130,7 @@ export function CrawlerDialog (props)
   createEffect (() => {
     if (props.shown) {
       Kbd.add_hotkey ('Ctrl+L', ctrl_l_grab_focus, dialogRef);
-      return () => Kbd.remove_hotkey ('Ctrl+L', ctrl_l_grab_focus);
+      onCleanup (() => Kbd.remove_hotkey ('Ctrl+L', ctrl_l_grab_focus));
     }
   });
 
@@ -137,6 +140,8 @@ export function CrawlerDialog (props)
       dialogRef.close();
     }
     if (props.shown && !dialogRef?.open) {
+      close_sent = false;
+      session++;
       Dom.show_modal (dialogRef, () => { if (!cancelled) close(); });
     }
   });
@@ -200,31 +205,28 @@ export function CrawlerDialog (props)
     return e;
   });
 
-  /// update_inflight - true while a crawler update is running; c.$props.$promise
-  /// stays set after the fetch, so it would wrongly disable Select.
-  const update_inflight = () => promise_state();
+  const update_inflight = () => !crawler() || promise_state();
 
   /// assign_utf8path - assign a path in UTF-8 encoding and possibly select it
   const assign_utf8path = async (filepath: string, pickfile = false) =>
   {
-    if (promise_state()) return;
+    if (update_inflight() || close_sent) return;
     const c = crawler();
-    if (!c) return;
-    const p = (async () => {
-      const [dir, file] = await c.assign (filepath, props.existing !== false);
-      if (pathentryRef && pathentryRef.value !== file)
-        pathentryRef.value = file;
-      await c.$props?.$promise;
-      if (pickfile)
-        select_entry (null);
-      set_bump (v => v + 1);
-    })();
+    const current_session = session;
+    const p = c.assign (filepath, props.existing !== false);
     set_promise_state (p);
     try {
-      await p;
+      const [, file] = await p;
+      await c.$asyncs();
+      if (cancelled || current_session !== session || close_sent) return;
+      if (pathentryRef && pathentryRef.value !== file)
+        pathentryRef.value = file;
+      set_bump (v => v + 1);
     } finally {
       set_promise_state (null);
     }
+    if (pickfile && current_session === session)
+      select_entry (null);
   };
 
   const entrygrid_keydown = (event: KeyboardEvent) =>
@@ -298,7 +300,7 @@ export function CrawlerDialog (props)
   /// select_entry  - send 'select' event for `entry` or `pathentry.value`
   const select_entry = (entry: any) =>
   {
-    if (update_inflight())
+    if (cancelled || close_sent || !props.shown || update_inflight())
       return false;						// in async update
     // select existing entry
     if (entry?.uri) {
@@ -312,7 +314,7 @@ export function CrawlerDialog (props)
     const pvalue = ('' + pathentryRef?.value).trim();
     if (pvalue && pvalue.search ('/') < 0) {
       close_sent = true; // selection closes without onClose
-      props.onSelect?.(folder() + '/' + pvalue);
+      props.onSelect?.(folder().replace (/\/$/, '') + '/' + pvalue);
     }
     return true;
   };
