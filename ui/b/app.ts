@@ -58,6 +58,7 @@ export class AppClass {
   panel2_types = [ 'd' /*devices*/, 'p' /*pianoroll*/ ];
   panel3_types = [ 'i' /*info*/, 'b' /*browser*/ ];
   request_update: () => void;
+  private activation_generation = 0;
   private render_dispose: (() => void) | null = null;
 
   constructor ()
@@ -90,14 +91,21 @@ export class AppClass {
     // Validate new project
     if (!(project instanceof Ase.Project))
       throw Error (`App: invalid Ase.Project: ${project}`);
+    const generation = ++this.activation_generation;
     // Select the first editable track; fall back to the first track
     const tracks = await project.all_tracks();
+    if (generation !== this.activation_generation) return;
     let current_track = null;
-    for (const t of tracks)
-      if (!(await t.is_control_track()))
+    for (const t of tracks) {
+      const is_control_track = await t.is_control_track();
+      if (generation !== this.activation_generation) return;
+      if (!is_control_track)
         { current_track = t; break; }
+    }
     if (!current_track)
       current_track = tracks[0] ?? null;
+    const clips = current_track ? await current_track.$refetch (() => current_track.launcher_clips) : [];
+    if (generation !== this.activation_generation) return;
     // Stop playback on old project
     if (globalThis.Shell?.project)
       Shell.project.stop_playback();
@@ -114,7 +122,6 @@ export class AppClass {
     this.render_dispose = render (() => ShellTemplate ({ project, current_track }), shell_parent);
     console.assert (globalThis.Shell);
     // Open the piano roll for the first clip
-    const clips = current_track ? await current_track.$refetch (() => current_track.launcher_clips) : [];
     this.open_piano_roll (clips.length ? clips[0] : null);
     // Update the window title for the new project
     this.updated ({});
