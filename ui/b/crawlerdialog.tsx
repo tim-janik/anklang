@@ -96,6 +96,13 @@ export function CrawlerDialog (props)
   let last_cwd = props.cwd;
   let focus_after_refill = true;
   let cancelled = false;
+  let close_sent = false;
+  let session = 0;
+  const close = () => {
+    if (close_sent) return;
+    close_sent = true;
+    props.onClose?.();
+  };
 
   /// Ctrl_L - hotkey for focus on path entry
   const ctrl_l_grab_focus = () => {
@@ -106,6 +113,8 @@ export function CrawlerDialog (props)
   onMount (async () => {
     const c = await Ase.server.dir_crawler (props.cwd || '~MUSIC');
     if (cancelled) return;
+    await c.$refetch (() => [c.folder, c.entries]);
+    if (cancelled) return;
     set_crawler (c);
     set_bump (v => v + 1);
   });
@@ -114,14 +123,14 @@ export function CrawlerDialog (props)
     cancelled = true;
     Kbd.remove_hotkey ('Ctrl+L', ctrl_l_grab_focus);
     dialogRef?.close();
-    props.onClose?.();
+    close();
   });
 
   // Setup hotkey when dialog becomes visible
   createEffect (() => {
     if (props.shown) {
       Kbd.add_hotkey ('Ctrl+L', ctrl_l_grab_focus, dialogRef);
-      return () => Kbd.remove_hotkey ('Ctrl+L', ctrl_l_grab_focus);
+      onCleanup (() => Kbd.remove_hotkey ('Ctrl+L', ctrl_l_grab_focus));
     }
   });
 
@@ -131,7 +140,9 @@ export function CrawlerDialog (props)
       dialogRef.close();
     }
     if (props.shown && !dialogRef?.open) {
-      Dom.show_modal (dialogRef, () => { if (!cancelled) props.onClose?.(); });
+      close_sent = false;
+      session++;
+      Dom.show_modal (dialogRef, () => { if (!cancelled) close(); });
     }
   });
 
@@ -194,34 +205,28 @@ export function CrawlerDialog (props)
     return e;
   });
 
-  /// update_inflight - indicates if the crawler is asynchronously updating
-  const update_inflight = createMemo (() => {
-    bump();
-    const c = crawler();
-    return promise_state() || c?.$props?.$promise;
-  });
+  const update_inflight = () => !crawler() || promise_state();
 
   /// assign_utf8path - assign a path in UTF-8 encoding and possibly select it
   const assign_utf8path = async (filepath: string, pickfile = false) =>
   {
-    if (promise_state()) return;
+    if (update_inflight() || close_sent) return;
     const c = crawler();
-    if (!c) return;
-    const p = (async () => {
-      const [dir, file] = await c.assign (filepath, props.existing !== false);
-      if (pathentryRef && pathentryRef.value !== file)
-        pathentryRef.value = file;
-      await c.$props?.$promise;
-      if (pickfile)
-        select_entry (null);
-      set_bump (v => v + 1);
-    })();
+    const current_session = session;
+    const p = c.assign (filepath, props.existing !== false);
     set_promise_state (p);
     try {
-      await p;
+      const [, file] = await p;
+      await c.$asyncs();
+      if (cancelled || current_session !== session || close_sent) return;
+      if (pathentryRef && pathentryRef.value !== file)
+        pathentryRef.value = file;
+      set_bump (v => v + 1);
     } finally {
       set_promise_state (null);
     }
+    if (pickfile && current_session === session)
+      select_entry (null);
   };
 
   const entrygrid_keydown = (event: KeyboardEvent) =>
@@ -295,19 +300,22 @@ export function CrawlerDialog (props)
   /// select_entry  - send 'select' event for `entry` or `pathentry.value`
   const select_entry = (entry: any) =>
   {
-    if (update_inflight())
+    if (cancelled || close_sent || !props.shown || update_inflight())
       return false;						// in async update
     // select existing entry
     if (entry?.uri) {
       if (entry.uri[entry.uri.length - 1] === '/')
         return false;						// is_dir
+      close_sent = true; // selection closes without onClose
       props.onSelect?.(entry.uri);
       return true;
     }
     // select pathentry (pathentry.value==='' iff !this.existing)
     const pvalue = ('' + pathentryRef?.value).trim();
-    if (pvalue && pvalue.search ('/') < 0)
-      props.onSelect?.(folder() + '/' + pvalue);
+    if (pvalue && pvalue.search ('/') < 0) {
+      close_sent = true; // selection closes without onClose
+      props.onSelect?.(folder().replace (/\/$/, '') + '/' + pvalue);
+    }
     return true;
   };
 
@@ -315,7 +323,7 @@ export function CrawlerDialog (props)
   const close_click = (ev: Event) =>
   {
     ev.preventDefault();
-    props.onClose?.();
+    close();
   };
 
   return (
