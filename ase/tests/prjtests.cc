@@ -203,6 +203,35 @@ track_mute_solo()
 TEST_ADD (track_mute_solo);
 
 static void
+track_control_classification()
+{
+  ProjectImplP project = ProjectImpl::create ("ControlTrackTest");
+  TASSERT (project);
+
+  // Fresh projects have the default control tracks plus one audio track
+  TrackS tracks = project->all_tracks();
+  bool have_master = false, have_control = false, have_editable = false;
+  for (auto &t : tracks)
+    {
+      have_master |= t->is_master();
+      have_control |= t->is_control_track();
+      have_editable |= !t->is_control_track();
+    }
+  TASSERT (have_master);
+  TASSERT (have_control);
+  TASSERT (have_editable); // default audio track is editable
+
+  // New tracks are editable, not control tracks
+  TrackP new_track = project->create_track();
+  TASSERT (new_track);
+  TASSERT (!new_track->is_control_track());
+  TASSERT (!new_track->is_master());
+
+  project->discard();
+}
+TEST_ADD (track_control_classification);
+
+static void
 track_hidden()
 {
   ProjectImplP project = ProjectImpl::create ("TrackHiddenTest");

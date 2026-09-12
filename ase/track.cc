@@ -255,6 +255,15 @@ TrackImpl::is_master() const
   return false;
 }
 
+bool
+TrackImpl::is_control_track() const
+{
+  if (auto t = track_.get())
+    return t->isTempoTrack() || t->isMarkerTrack() || t->isChordTrack() ||
+           t->isArrangerTrack() || t->isMasterTrack();
+  return is_master();
+}
+
 double
 TrackImpl::volume() const
 {
