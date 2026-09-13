@@ -128,3 +128,15 @@ jobs:
       if: ${{ always() && !env.ACT }}  # IRCBOT_JOBS indicates 'success'
       env: { IRCBOT_JOBS: "${{ join(needs.*.result, ' ') }}" }
       run: .github/workflows/ircbot.py -q -j "#Anklang" -G
+
+  Test-IrcBot:
+    # Least important job, run last and non-gating so its breakage cannot kill the real CI
+    needs: [ ReleaseArtifacts, NobleClangTidy, CreateRelease, Ping-IRC ]
+    if: ${{ always() }}
+    continue-on-error: true
+    permissions: { contents: read }
+    runs-on: ubuntu-latest
+    steps:
+    - { uses: actions/checkout@v4, with: { fetch-depth: 0, persist-credentials: false } }
+    - name: Test IRC bot with mocked sockets
+      run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s .github/workflows -p test_ircbot.py -v
