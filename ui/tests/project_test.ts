@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
+import * as Dom from '../dom';
 
 /// Test project creation, playback state, and length
 export async function test_project_basic (): Promise<boolean>
@@ -160,5 +161,36 @@ export async function test_project_track_removal_notification (): Promise<boolea
   // Cleanup
   await project.discard();
 
+  return true;
+}
+
+export async function test_project_play_toggle (): Promise<boolean>
+{
+  const shell = window.Shell;
+  const old_project = shell.project;
+  const project = await Ase.server.create_project ('ColdPlayToggle');
+  try {
+    await project.start_playback();
+    if (!await Ase.Jsonipc.send ('get/is_playing', [project]))
+      throw new Error ('test project did not start playback');
+    if (project.$props.is_playing)
+      throw new Error ('test requires an unread playback property');
+    const button = () => document.querySelector ('.b-playcontrols [data-hotkey="RawSpace"]') as HTMLElement;
+    if (!button()) throw new Error ('Play/Pause control not found');
+    shell.project = project;
+    for (const playing of [false, true]) {
+      button().click();
+      const deadline = Date.now() + 4000;
+      while (!!await Ase.Jsonipc.send ('get/is_playing', [project]) !== playing) {
+        if (Date.now() >= deadline)
+          throw new Error (`Play/Pause did not ${playing ? 'resume' : 'pause'} playback`);
+        await Dom.ui_wait (20);
+      }
+      await project.$asyncs();
+    }
+  } finally {
+    shell.project = old_project;
+    await project.discard();
+  }
   return true;
 }
