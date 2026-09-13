@@ -168,6 +168,13 @@ class BotTests (unittest.TestCase):
       self.bot.sendline ("NICK test")
     self.assertEqual (output.getvalue(), "NICK test\n")
 
+  def test_channel_key_is_redacted_but_sent (self):
+    output = io.StringIO()
+    with contextlib.redirect_stdout (output):
+      self.bot.sendline ("JOIN #test dummy-channel-key")
+    self.assertEqual (output.getvalue(), "JOIN #test <redacted>\n")
+    self.bot.ircsock.sendall.assert_called_with (b"JOIN #test dummy-channel-key\r\n")
+
   def test_partial_writes_send_complete_utf8_command (self):
     self.bot.args.quiet = True
     self.bot.ircsock = PartialSocket()
@@ -254,10 +261,10 @@ class BotTests (unittest.TestCase):
       self.bot.ircsock = server
       original_read = self.bot.readall
 
-      def flood (milliseconds):
+      def flood (milliseconds, receive_milliseconds = None):
         clock.sleep (0.01)
         server.queue ('PING :still-here')
-        return original_read (milliseconds)
+        return original_read (milliseconds, receive_milliseconds)
 
       with mock.patch.object (self.bot, 'readall', side_effect = flood):
         start = clock.now
@@ -265,6 +272,22 @@ class BotTests (unittest.TestCase):
           self.bot.waitfor (lambda r: r.command == '001', 50)
       self.assertLess (clock.now - start, 0.1)
       self.assertTrue (all (line == 'PONG :still-here' for line in server.sent))
+
+  def test_reply_read_uses_remaining_deadline (self):
+    with self.mock_server() as (server, clock):
+      self.bot.ircsock = server
+      server.incoming.append (b'pending TLS data')
+
+      def delayed_recv (size):
+        self.assertGreater (server.timeout, 0.9)
+        clock.sleep (0.15)
+        return b':mock 001 YYBOT :welcome\r\n'
+
+      with mock.patch.object (server, 'recv', side_effect = delayed_recv):
+        reply = self.bot.waitfor (lambda r: r.command == '001', 1000)
+      self.assertEqual (reply.params[0], 'YYBOT')
+      self.assertEqual (clock.now, 100.15)
+      self.assertIsNone (server.timeout)
 
   def test_real_ban_is_fatal (self):
     self.bot.args.quiet = True
@@ -283,6 +306,22 @@ class BotTests (unittest.TestCase):
       with self.assertRaises (TimeoutError):
         self.bot.run_session()
       self.assertFalse (any (line.startswith ('PRIVMSG ') for line in server.sent))
+
+  def test_join_and_echo_use_irc_case_mapping (self):
+    with self.mock_server() as (server, clock):
+      self.bot.args.j = '#TE[ST'
+
+      def respond (line):
+        if line.startswith ('JOIN '):
+          server.queue (':yybot!u@mock JOIN :#te{st')
+        elif line.startswith ('PRIVMSG '):
+          server.queue (':yybot!u@mock PRIVMSG #te{st :' + line.split (' :', 1)[1])
+        else:
+          server.default_response (line)
+
+      server.respond = respond
+      self.bot.run_session()
+      self.assertIn ('PRIVMSG #TE[ST :hello', server.sent)
 
   def test_echo_matches_sender_target_and_entire_text (self):
     for echo in (':other!u@mock PRIVMSG #test :hello', ':YYBOT!u@mock PRIVMSG #other :hello',
@@ -322,7 +361,9 @@ class BotTests (unittest.TestCase):
       messages = [line for line in server.sent if line.startswith ('PRIVMSG ')]
       self.assertGreater (len (messages), 1)
       self.assertEqual (''.join (line.split (' :', 1)[1] for line in messages), subject)
-      self.assertTrue (all (len ((line + '\r\n').encode()) <= self.bot.max_line_bytes for line in messages))
+      self.assertTrue (all (len ((line + '\r\n').encode()) <= self.bot.max_privmsg_bytes for line in messages))
+      echoes = [f':YYBOT!user@mock {line}\r\n'.encode() for line in messages]
+      self.assertTrue (all (len (line) <= self.bot.max_line_bytes for line in echoes))
 
   def test_command_injection_is_rejected_before_socket_use (self):
     for value in ('PASS secret\r\nJOIN #bad', 'PRIVMSG #test :bad\0text', 'NICK ' + 'x' * 512):
@@ -490,6 +531,8 @@ class BotTests (unittest.TestCase):
       self.assertIn ('delivered (echo verified)', output)
       self.assertEqual (self.bot.socket.socket.call_count, 1)
       self.assertEqual (server.sent.count ('PRIVMSG #test :hello'), 1)
+      self.assertTrue (server.closed)
+      self.assertIsNone (self.bot.ircsock)
 
   def test_empty_message_fails_before_connect (self):
     with self.mock_server() as (server, clock):
@@ -529,6 +572,17 @@ class BotTests (unittest.TestCase):
       self.assertIn ('PASS dummy-secret', server.sent)
       self.assertIn ('PASS <redacted>', output.getvalue())
       self.assertNotIn ('dummy-secret', output.getvalue())
+
+  def test_channel_key_registration_never_logs_dummy_secret (self):
+    with self.mock_server() as (server, clock):
+      self.bot.args.quiet = False
+      self.bot.args.j = '#test dummy-channel-key'
+      output = io.StringIO()
+      with contextlib.redirect_stdout (output), contextlib.redirect_stderr (output):
+        self.bot.run_session()
+      self.assertIn ('JOIN #test dummy-channel-key', server.sent)
+      self.assertIn ('JOIN #test <redacted>', output.getvalue())
+      self.assertNotIn ('dummy-channel-key', output.getvalue())
 
   def test_ping_requires_its_own_pong_token (self):
     for correct in (False, True):

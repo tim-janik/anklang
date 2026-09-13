@@ -14,6 +14,7 @@ timeout = 150
 wait_timeout = 15000
 socket_timeout = 30
 max_line_bytes = 512
+max_privmsg_bytes = 400
 github_event_data = None
 # Libera.Chat throttles message sending to 1 per 2 seconds, this applies
 # to bots too, see https://libera.chat/guides/faq#flood-exemptions-for-bots
@@ -71,11 +72,23 @@ def encode_line (text):
     raise Fatal ('IRC command exceeds the byte limit')
   return data
 
+def log_line (text):
+  command, separator, params = text.partition (' ')
+  if command.upper() == 'PASS':
+    return 'PASS <redacted>'
+  if command.upper() == 'JOIN' and separator and ' ' in params:
+    return 'JOIN ' + params.split (' ', 1)[0] + ' <redacted>'
+  return text
+
+irc_casemap = str.maketrans ('ABCDEFGHIJKLMNOPQRSTUVWXYZ[]\\^', 'abcdefghijklmnopqrstuvwxyz{}|~')
+def irc_equal (left, right):
+  return left.translate (irc_casemap) == right.translate (irc_casemap)
+
 def message_lines ():
   target = (args.j or args.J or args.n).split (' ')[0]
   if not args.message:
     return target, []
-  budget = max_line_bytes - len (('PRIVMSG ' + target + ' :\r\n').encode ('utf8'))
+  budget = max_privmsg_bytes - len (('PRIVMSG ' + target + ' :\r\n').encode ('utf8'))
   if budget < 4:
     raise Fatal ('IRC message target is too long')
   lines = []
@@ -114,7 +127,7 @@ def sendline (text):
   global args
   data = encode_line (text)
   if not args.quiet:
-    print ("PASS <redacted>" if text.split (" ", 1)[0].upper() == "PASS" else text, flush = True)
+    print (log_line (text), flush = True)
   previous_timeout = ircsock.gettimeout()
   try:
     ircsock.settimeout (socket_timeout)
@@ -156,13 +169,14 @@ def canread (milliseconds):
   return ircsock in rs
 
 readall_buffer = b'' # unterminated start of next line
-def readall (milliseconds = timeout):
+def readall (milliseconds = timeout, receive_milliseconds = None):
   global readall_buffer
   if not canread (milliseconds):
     return False
   previous_timeout = ircsock.gettimeout()
   try:
-    ircsock.settimeout (max (0.001, min (socket_timeout, milliseconds * 0.001)))
+    receive_milliseconds = milliseconds if receive_milliseconds is None else receive_milliseconds
+    ircsock.settimeout (max (0.001, min (socket_timeout, receive_milliseconds * 0.001)))
     buf = ircsock.recv (128 * 1024)
   finally:
     ircsock.settimeout (previous_timeout)
@@ -190,7 +204,7 @@ def waitfor (pred, milliseconds = wait_timeout):
     remaining = endtime - time.monotonic()
     if remaining <= 0:
       raise TimeoutError ('TIMEOUT: no matching reply within ' + str (milliseconds) + 'ms')
-    readall (min (remaining * 1000, 100))
+    readall (min (remaining * 1000, 100), remaining * 1000)
 
 def throttle ():
   # Sleep long enough to respect Libera.Chat's message rate limit
@@ -237,7 +251,7 @@ def register_nick ():
   for i in range (3):
     reply = waitfor (lambda r:
       (r.command == '001' and bool (r.params)) or
-      (r.command == '433' and len (r.params) >= 2 and r.params[1] == args.n))
+      (r.command == '433' and len (r.params) >= 2 and irc_equal (r.params[1], args.n)))
     if reply.command == '001':
       args.n = reply.params[0]
       return
@@ -345,8 +359,9 @@ def run_session ():
     sendline ("JOIN " + args.j)
     target = args.j.split (' ')[0]
     reply = waitfor (lambda r:
-      (r.command == 'JOIN' and r.prefix.split ('!', 1)[0] == args.n and r.params == [target]) or
-      (r.command in ('403', '471', '473', '474', '475') and len (r.params) >= 2 and r.params[1] == target))
+      (r.command == 'JOIN' and irc_equal (r.prefix.split ('!', 1)[0], args.n) and
+       len (r.params) == 1 and irc_equal (r.params[0], target)) or
+      (r.command in ('403', '471', '473', '474', '475') and len (r.params) >= 2 and irc_equal (r.params[1], target)))
     if reply.command == '471':
       raise Exception ('JOIN rejected, channel full (471)')
     if reply.command != 'JOIN':
@@ -357,7 +372,8 @@ def run_session ():
     throttle() # Libera.Chat allows 1 message per 2 seconds
     delivery_started = True
     sendline ("PRIVMSG " + target + " :" + line)
-    waitfor (lambda r: r.command == 'PRIVMSG' and r.prefix.split ('!', 1)[0] == args.n and r.params == [target, line])
+    waitfor (lambda r: r.command == 'PRIVMSG' and irc_equal (r.prefix.split ('!', 1)[0], args.n) and len (r.params) == 2 and
+             irc_equal (r.params[0], target) and r.params[1] == line)
   if lines:
     notified = True
 
@@ -455,6 +471,7 @@ def main (sysargs):
         # All message echoes were verified; a later LIST or QUIT failure
         # must not report the notification as failed or resend it.
         print (f'IRC: delivered (echo verified) on attempt {attempt}/{attempts}', file = sys.stderr, flush = True)
+        close_socket()
         delivered = True
         break
       print (f'IRC: attempt {attempt}/{attempts} failed: {e}', file = sys.stderr, flush = True)
