@@ -58,7 +58,7 @@ def format_msg (args, how = 2):
 def sendline (text):
   global args
   if not args.quiet:
-    print (text, flush = True)
+    print ("PASS <redacted>" if text.split (" ", 1)[0].upper() == "PASS" else text, flush = True)
   msg = text + "\r\n"
   ircsock.send (msg.encode ('utf8'))
 
