@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 import sys, os, re, socket, select, time, unicodedata, json, ssl
+from collections import deque, namedtuple
 
 # https://datatracker.ietf.org/doc/html/rfc1459
 
@@ -17,8 +18,8 @@ github_event_data = None
 # to bots too, see https://libera.chat/guides/faq#flood-exemptions-for-bots
 message_rate = 2.0
 last_message = 0.0
-captured_lines = [] # lines collected while capturing=True
-capturing = False
+replies = deque()
+Message = namedtuple ("Message", "prefix command params")
 have_echo_message = False # server confirms deliveries via echo-message cap
 
 def colors (how):
@@ -79,14 +80,11 @@ def close_socket ():
 
 def reset_session_state ():
   # fresh state per attempt, so retries aren't confused by leftover data
-  global readall_buffer, expecting_commands, check_cmds, capturing
+  global readall_buffer, have_echo_message
   close_socket()
   readall_buffer = b''
-  expecting_commands = []
-  check_cmds = []
-  seen_cmds.clear()
-  captured_lines.clear()
-  capturing = False
+  replies.clear()
+  have_echo_message = False
 
 def connect (server, port):
   global ircsock
@@ -107,57 +105,47 @@ def canread (milliseconds):
 readall_buffer = b'' # unterminated start of next line
 def readall (milliseconds = timeout):
   global readall_buffer
-  gotlines = False
-  while canread (milliseconds):
-    milliseconds = 0
+  if not canread (milliseconds):
+    return False
+  previous_timeout = ircsock.gettimeout()
+  try:
+    ircsock.settimeout (max (0.001, min (socket_timeout, milliseconds * 0.001)))
     buf = ircsock.recv (128 * 1024)
-    if len (buf) == 0:
-      raise Exception ('SOCKET CLOSED: connection lost') # triggers session retry
-    gotlines = True
-    readall_buffer += buf
-    if readall_buffer.find (b'\n') >= 0:
-      lines, readall_buffer = readall_buffer.rsplit (b'\n', 1)
-      lines = lines.decode ('utf8', 'replace')
-      for l in lines.split ('\n'):
-        if l:
-          gotline (l.rstrip())
-  return gotlines
+  finally:
+    ircsock.settimeout (previous_timeout)
+  if not buf:
+    raise ConnectionError ('SOCKET CLOSED: connection lost') # triggers session retry
+  readall_buffer += buf
+  if b'\n' in readall_buffer:
+    lines, readall_buffer = readall_buffer.rsplit (b'\n', 1)
+    for line in lines.decode ('utf8', 'replace').split ('\n'):
+      if line:
+        gotline (line.removesuffix ('\r'))
+  return True
 
 class Fatal (Exception):
   pass # non-retryable session failure (e.g. server ban)
 
 def waitfor (pred, milliseconds = wait_timeout):
-  # Read incoming lines until pred (line) matches, returns the matched line
-  global capturing
-  endtime = time.time() + milliseconds * 0.001
-  capturing = True
-  captured_lines.clear()
-  try:
-    while True:
-      try:
-        readall (100)
-      except Exception:
-        # socket closed: final check of captured lines before propagating
-        for l in captured_lines:
-          if pred (l):
-            return l
-        raise
-      for l in captured_lines:
-        if pred (l):
-          return l
-      captured_lines.clear()
-      if time.time() >= endtime:
-        raise Exception ('TIMEOUT: no matching reply within ' + str (milliseconds) + 'ms')
-  finally:
-    capturing = False
+  # Read incoming replies until pred (reply) matches, returns the matched reply
+  endtime = time.monotonic() + milliseconds * 0.001
+  while True:
+    while replies:
+      reply = replies.popleft()
+      if pred (reply):
+        return reply
+    remaining = endtime - time.monotonic()
+    if remaining <= 0:
+      raise TimeoutError ('TIMEOUT: no matching reply within ' + str (milliseconds) + 'ms')
+    readall (min (remaining * 1000, 100))
 
 def throttle ():
   # Sleep long enough to respect Libera.Chat's message rate limit
   global last_message
-  elapsed = time.time() - last_message
+  elapsed = time.monotonic() - last_message
   if elapsed < message_rate:
     time.sleep (message_rate - elapsed)
-  last_message = time.time()
+  last_message = time.monotonic()
 
 def is_printable(c):
   # Catch control sequences like:
@@ -166,59 +154,48 @@ def is_printable(c):
   # c287 → U+0087 (C0 control character: "Cancel Character").
   return unicodedata.category(c)[0] != 'C'
 
-def gotline (msg):
-  global args
-  if capturing:
-    captured_lines.append (msg)
-  if not args.quiet:
-    filtered_msg = ''.join (c for c in msg if is_printable (c))
-    print (filtered_msg, flush = True)
-  cmdargs = re.split (' +', msg)
-  if cmdargs:
-    prefix = ''
-    if cmdargs[0] and cmdargs[0][0] == ':':
-      prefix = cmdargs[0]
-      cmdargs = cmdargs[1:]
-      if not cmdargs:
-        return
-    gotcmd (prefix, cmdargs[0], cmdargs[1:])
+def parse_line (line):
+  if line.startswith ('@'):
+    line = line.partition (' ')[2]
+  prefix = ''
+  if line.startswith (':'):
+    prefix, _, line = line[1:].partition (' ')
+  middle, separator, trailing = line.partition (' :')
+  words = middle.split()
+  if not words:
+    return Message (prefix, '', [])
+  params = words[1:] + ([trailing] if separator else [])
+  return Message (prefix, words[0].upper(), params)
 
-expecting_commands = []
-check_cmds = []
-seen_cmds = [] # all commands seen so far, includes cmds seen during waitfor()
-def gotcmd (prefix, cmd, args):
-  global expecting_commands, check_cmds
-  seen_cmds.append (cmd)
-  if check_cmds:
-    try: check_cmds.remove (cmd)
-    except: pass
-  if cmd in expecting_commands:
-    expecting_commands = []
-  if cmd == 'PING':
-    return sendline ('PONG ' + ' '.join (args))
+def gotline (line):
+  if not args.quiet:
+    print (''.join (c for c in line if is_printable (c)), flush = True)
+  reply = parse_line (line)
+  if reply.command == '465':
+    raise Fatal ('server ban (465), not retrying')
+  if reply.command == 'PING':
+    if reply.params:
+      sendline ('PONG ' + ' '.join (reply.params[:-1] + [':' + reply.params[-1]]))
+  elif reply.command:
+    replies.append (reply)
 
 def register_nick ():
   # Wait for registration (001), retry with a suffixed nick on 433 (in use)
-  global args
   for i in range (3):
-    reply = waitfor (lambda l: re.search (r'\b(001|433|465)\b', l))
-    if re.search (r'\b001\b', reply):
+    reply = waitfor (lambda r:
+      (r.command == '001' and bool (r.params)) or
+      (r.command == '433' and len (r.params) >= 2 and r.params[1] == args.n))
+    if reply.command == '001':
+      args.n = reply.params[0]
       return
-    if re.search (r'\b465\b', reply):
-      raise Fatal ('server ban (465), not retrying: ' + reply)
-    args.n += '_' # 433: nickname is already in use
-    sendline ("NICK " + args.n)
+    if i < 2:
+      args.n += '_' # 433: nickname is already in use
+      sendline ("NICK " + args.n)
   raise Exception ('NICK: nickname already in use, all retries failed')
 
-def expect (what = []):
-  global expecting_commands
-  expecting_commands = what if isinstance (what, (list, tuple)) else [ what ]
-  for c in seen_cmds: # handle commands seen during earlier waitfor() calls
-    if c in expecting_commands:
-      expecting_commands = []
-  while expecting_commands and readall (wait_timeout): pass
-  if expecting_commands:
-    raise (Exception ('MISSING REPLY: ' + ' | '.join (expecting_commands)))
+def expect (what):
+  commands = what if isinstance (what, (list, tuple)) else [what]
+  return waitfor (lambda r: r.command in commands)
 
 usage_help = '''
 Simple IRC bot for short messages.
@@ -277,8 +254,9 @@ def register_connection ():
   # how deliveries are verified without channel operator privileges
   sendline ("CAP LS 302") # IRCv3: CAP negotiation starts with CAP LS
   sendline ("CAP REQ :echo-message")
-  ackline = waitfor (lambda l: re.search (r' CAP .* (ACK|NAK)', l))
-  have_echo_message = not re.search (r' CAP .* NAK', ackline)
+  ackline = waitfor (lambda r: r.command == 'CAP' and len (r.params) >= 3 and
+    r.params[1] in ('ACK', 'NAK') and 'echo-message' in r.params[-1].split())
+  have_echo_message = ackline.params[1] == 'ACK' and 'echo-message' in ackline.params[-1].split()
   if not have_echo_message:
     print ('IRC: server lacks echo-message, delivery cannot be verified', file = sys.stderr, flush = True)
   ircbot_pass = os.getenv ("IRCBOT_PASS")
@@ -299,18 +277,18 @@ def run_session ():
 
   if args.ping:
     sendline ("PING :pleasegetbacktome")
-    expect ('PONG')
+    waitfor (lambda r: r.command == 'PONG' and r.params and r.params[-1] == 'pleasegetbacktome')
 
   if args.j:
     sendline ("JOIN " + args.j)
-    # wait for the join echo or a rejection numeric (403, 471, 473, 474, 475)
-    reply = waitfor (lambda l: re.search (r'\b(JOIN|403|471|473|474|475)\b', l))
-    if re.search (r'\bJOIN\b', reply):
-      pass # joined, join echo received
-    elif re.search (r'\b471\b', reply):
-      raise Exception ('JOIN rejected, channel full (471), retrying: ' + reply)
-    else:
-      raise Fatal ('JOIN rejected: ' + reply)
+    target = args.j.split (' ')[0]
+    reply = waitfor (lambda r:
+      (r.command == 'JOIN' and r.prefix.split ('!', 1)[0] == args.n and r.params == [target]) or
+      (r.command in ('403', '471', '473', '474', '475') and len (r.params) >= 2 and r.params[1] == target))
+    if reply.command == '471':
+      raise Exception ('JOIN rejected, channel full (471)')
+    if reply.command != 'JOIN':
+      raise Fatal ('JOIN rejected: ' + reply.command)
 
   msg = format_msg (args)
   for line in re.split ('\n ?', msg):
@@ -320,27 +298,13 @@ def run_session ():
       sendline ("PRIVMSG " + channel + " :" + line)
       if have_echo_message:
         # delivery is only confirmed once the server echoes the message back
-        waitfor (lambda l: re.search (r' PRIVMSG ' + re.escape (channel) + r' :' + re.escape (line[:64]), l), 15000)
+        waitfor (lambda r: r.command == 'PRIVMSG' and r.prefix.split ('!', 1)[0] == args.n and r.params == [channel, line])
       else:
         readall()
 
   if args.l:
-    global check_cmds
     sendline ("LIST")
-    check_cmds = [ '322' ]
     expect ('323')
-    if check_cmds:
-      # empty list, retry after 60seconds
-      time.sleep (30)
-      check_cmds = [ 'PING' ]
-      readall()
-      if check_cmds:
-        sendline ("PING :pleasegetbacktome")
-        expect ('PONG')
-      time.sleep (30)
-      readall()
-      sendline ("LIST")
-      expect ('323')
 
   readall (500)
   try:
