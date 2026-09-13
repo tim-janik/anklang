@@ -344,6 +344,7 @@ ProjectImpl::deactivate_edit()
     transport.stop (true, true);
   transport.freePlaybackContext();
   edit_->cancelAnyPendingUpdates();
+  transport_listener_ = nullptr; // detach from edit_ and transport
   edit_ = nullptr;
 }
 
@@ -351,8 +352,6 @@ ProjectImpl::~ProjectImpl()
 {
   unregister_ase_obj (this, edit_.get());
   deactivate_edit();
-  transport_listener_ = nullptr;
-  edit_ = nullptr;
 }
 
 
@@ -386,6 +385,7 @@ TelemetryFieldS
 ProjectImpl::telemetry () const
 {
   TelemetryFieldS v;
+  return_unless (transport_listener_, v);
   v.push_back (telemetry_field ("current_tick", &transport_listener_->pos.tick));
   v.push_back (telemetry_field ("current_bar", &transport_listener_->pos.bar));
   v.push_back (telemetry_field ("current_beat", &transport_listener_->pos.beat));

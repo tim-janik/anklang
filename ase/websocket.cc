@@ -275,42 +275,50 @@ WebSocketServerImpl::io_handler (PollFD &pfd)
   auto it = clients_.find (fd);
   if (it == clients_.end())
     return false; // client gone
-  auto &client = it->second;
-  if (client.out_buffer.size()) {
+  const WppConnectionP con = it->second.con; // owning copy, reentrant close may erase the client
+  if (it->second.out_buffer.size()) {
+    auto &client = it->second;
     ssize_t n = ::send (fd, client.out_buffer.data(), client.out_buffer.size(), 0);
     IODEBUG ("%s:%u:%s: send(%d,%d)\n", __FILE__, __LINE__, __func__, fd, n);
     if (n > 0)
       client.out_buffer.erase (0, n);
-    else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
-      client.con->fatal_error();
+    else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+      con->fatal_error();
+      it = clients_.find (fd);
+      return_unless (it != clients_.end(), false);
+    }
   }
   if ((pfd.revents & PollFD::IN) &&
-      client.con->get_state() != websocketpp::session::state::closed) {
+      con->get_state() != websocketpp::session::state::closed) {
     char buf[8192];
     ssize_t n = ::recv (fd, buf, sizeof (buf), 0);
     IODEBUG ("%s:%u:%s: recv(%d)=%d\n", __FILE__, __LINE__, __func__, fd, n);
     if (n > 0) {
       try {
-        client.con->read_all (buf, n);
+        con->read_all (buf, n);
       } catch (...) {
-        client.con->fatal_error();  // websocketpp error
+        con->fatal_error();  // websocketpp error
       }
     }
     else if (n == 0)
-      client.con->eof();
-    else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-      client.con->fatal_error();    // read EIO
-    }
+      con->eof();
+    else if (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK)
+      con->fatal_error();    // read EIO
+    it = clients_.find (fd);
+    return_unless (it != clients_.end(), false);
   }
-  if (pfd.revents & (PollFD::ERR | PollFD::HUP | PollFD::NVAL)) // 0x8 0x10 0x20
-    client.con->fatal_error();    // fd EIO
-  if (client.con->get_state() == websocketpp::session::state::closed)
-    IODEBUG ("%s:%u:%s: closed fd=%d ob=%d io_errors=0x%x\n", __FILE__, __LINE__, __func__, fd, client.out_buffer.size(), pfd.revents & (PollFD::ERR | PollFD::HUP | PollFD::NVAL));
-  if (client.out_buffer.size())
+  if (pfd.revents & (PollFD::ERR | PollFD::HUP | PollFD::NVAL)) { // 0x8 0x10 0x20
+    con->fatal_error();    // fd EIO
+    it = clients_.find (fd);
+    return_unless (it != clients_.end(), false);
+  }
+  if (con->get_state() == websocketpp::session::state::closed)
+    IODEBUG ("%s:%u:%s: closed fd=%d ob=%d io_errors=0x%x\n", __FILE__, __LINE__, __func__, fd, it->second.out_buffer.size(), pfd.revents & (PollFD::ERR | PollFD::HUP | PollFD::NVAL));
+  if (it->second.out_buffer.size())
     pfd.events |= PollFD::OUT;
   else
     pfd.events &= ~PollFD::OUT;
-  const bool closed = client.out_buffer.empty() && client.con->get_state() == websocketpp::session::state::closed;
+  const bool closed = it->second.out_buffer.empty() && con->get_state() == websocketpp::session::state::closed;
   return !closed; // keep handler if not closed
 }
 
