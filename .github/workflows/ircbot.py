@@ -13,6 +13,7 @@ ircsock = None
 timeout = 150
 wait_timeout = 15000
 socket_timeout = 30
+max_line_bytes = 512
 github_event_data = None
 # Libera.Chat throttles message sending to 1 per 2 seconds, this applies
 # to bots too, see https://libera.chat/guides/faq#flood-exemptions-for-bots
@@ -45,27 +46,77 @@ def status_color (txt, c):
   return c.YELLOW
 
 def format_msg (args, how = 2):
-  msg = ' '.join (args.message)
+  msg = '\n'.join (clean_text (line) for line in ' '.join (args.message).split ('\n'))
   c = colors (how)
   if args.S:
-    msg = '[' + status_color (args.S, c) + args.S.upper() + c.RESET + '] ' + msg
+    msg = '[' + status_color (args.S, c) + clean_text (args.S).upper() + c.RESET + '] ' + msg
   if args.D:
-    msg = c.CYAN + args.D + c.RESET + ' ' + msg
+    msg = c.CYAN + clean_text (args.D) + c.RESET + ' ' + msg
   if args.U:
-    msg = c.ORANGE + args.U + c.RESET + ' ' + msg
+    msg = c.ORANGE + clean_text (args.U) + c.RESET + ' ' + msg
   if args.R:
-    msg = '[' + c.BLUE + args.R + c.RESET + '] ' + msg
+    msg = '[' + c.BLUE + clean_text (args.R) + c.RESET + '] ' + msg
   return msg
+
+def clean_text (text):
+  return ''.join (' ' if unicodedata.category (c) == 'Cc' else c for c in text)
+
+def encode_line (text):
+  if any (c in text for c in '\r\n\0'):
+    raise Fatal ('IRC command contains a line break or NUL')
+  data = (text + '\r\n').encode ('utf8')
+  if len (data) > max_line_bytes:
+    raise Fatal ('IRC command exceeds the byte limit')
+  return data
+
+def message_lines ():
+  target = (args.j or args.J or args.n).split (' ')[0]
+  if not args.message:
+    return target, []
+  budget = max_line_bytes - len (('PRIVMSG ' + target + ' :\r\n').encode ('utf8'))
+  if budget < 4:
+    raise Fatal ('IRC message target is too long')
+  lines = []
+  for line in re.split ('\n ?', format_msg (args)):
+    chunk = ''
+    size = 0
+    for char in line:
+      width = len (char.encode ('utf8'))
+      if size + width > budget:
+        lines.append (chunk)
+        chunk, size = '', 0
+      chunk += char
+      size += width
+    if chunk:
+      lines.append (chunk)
+  return target, lines
+
+def validate_commands ():
+  for value in (args.n, args.s, args.j, args.J):
+    if clean_text (value) != value:
+      raise Fatal ('IRC connection arguments contain control characters')
+  if not args.n or any (c.isspace() for c in args.n) or args.n.startswith (':'):
+    raise Fatal ('Invalid IRC nickname')
+  target, lines = message_lines()
+  if args.message and not lines:
+    raise Fatal ('Message has no text to send')
+  commands = ['USER ' + args.n + ' localhost ' + args.s + ' :' + args.n, 'NICK ' + args.n]
+  if args.j:
+    commands.append ('JOIN ' + args.j)
+  if os.getenv ('IRCBOT_PASS'):
+    commands.append ('PASS ' + os.environ['IRCBOT_PASS'])
+  for command in commands + ['PRIVMSG ' + target + ' :' + line for line in lines]:
+    encode_line (command)
 
 def sendline (text):
   global args
+  data = encode_line (text)
   if not args.quiet:
     print ("PASS <redacted>" if text.split (" ", 1)[0].upper() == "PASS" else text, flush = True)
-  msg = text + "\r\n"
   previous_timeout = ircsock.gettimeout()
   try:
     ircsock.settimeout (socket_timeout)
-    ircsock.sendall (msg.encode ('utf8'))
+    ircsock.sendall (data)
   finally:
     ircsock.settimeout (previous_timeout)
 
@@ -271,6 +322,7 @@ def register_connection ():
 def run_session ():
   # One IRC session: connect, register, join, send (and verify) the message
   reset_session_state()
+  validate_commands()
   connect (args.s, args.p)
   readall (500)
   register_connection()
@@ -290,17 +342,15 @@ def run_session ():
     if reply.command != 'JOIN':
       raise Fatal ('JOIN rejected: ' + reply.command)
 
-  msg = format_msg (args)
-  for line in re.split ('\n ?', msg):
-    channel = (args.j or args.J or args.n).split (' ')[0] # drop JOIN key part
-    if line:
-      throttle() # Libera.Chat allows 1 message per 2 seconds
-      sendline ("PRIVMSG " + channel + " :" + line)
-      if have_echo_message:
-        # delivery is only confirmed once the server echoes the message back
-        waitfor (lambda r: r.command == 'PRIVMSG' and r.prefix.split ('!', 1)[0] == args.n and r.params == [channel, line])
-      else:
-        readall()
+  target, lines = message_lines()
+  for line in lines:
+    throttle() # Libera.Chat allows 1 message per 2 seconds
+    sendline ("PRIVMSG " + target + " :" + line)
+    if have_echo_message:
+      # delivery is only confirmed once the server echoes the message back
+      waitfor (lambda r: r.command == 'PRIVMSG' and r.prefix.split ('!', 1)[0] == args.n and r.params == [target, line])
+    else:
+      readall()
 
   if args.l:
     sendline ("LIST")
