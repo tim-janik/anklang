@@ -11,6 +11,7 @@ nickname = "YYBOT"
 ircsock = None
 timeout = 150
 wait_timeout = 15000
+socket_timeout = 30
 github_event_data = None
 # Libera.Chat throttles message sending to 1 per 2 seconds, this applies
 # to bots too, see https://libera.chat/guides/faq#flood-exemptions-for-bots
@@ -60,7 +61,12 @@ def sendline (text):
   if not args.quiet:
     print ("PASS <redacted>" if text.split (" ", 1)[0].upper() == "PASS" else text, flush = True)
   msg = text + "\r\n"
-  ircsock.send (msg.encode ('utf8'))
+  previous_timeout = ircsock.gettimeout()
+  try:
+    ircsock.settimeout (socket_timeout)
+    ircsock.sendall (msg.encode ('utf8'))
+  finally:
+    ircsock.settimeout (previous_timeout)
 
 def close_socket ():
   global ircsock
@@ -85,7 +91,7 @@ def reset_session_state ():
 def connect (server, port):
   global ircsock
   ircsock = socket.socket (socket.AF_INET, socket.SOCK_STREAM)
-  ircsock.settimeout (30) # connect and TLS handshake must not hang CI forever
+  ircsock.settimeout (socket_timeout) # connect and TLS handshake must not hang CI forever
   if args.tls:
     ctx = ssl.create_default_context()
     ircsock = ctx.wrap_socket (ircsock, server_hostname = server)
