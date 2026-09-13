@@ -178,6 +178,20 @@ class BotTests (unittest.TestCase):
       self.bot.send_notification ('#test', 'hello')
     self.assertIn ('PRIVMSG #test :hello', server.sent)
 
+  def test_registration_info_does_not_fail_join (self):
+    server = self.server()
+
+    def respond (line):
+      if line == 'CAP END':
+        server.queue (f':mock 001 {server.nick} :welcome', f':mock 422 {server.nick} :MOTD file is missing')
+      else:
+        server.default_response (line)
+
+    server.respond = respond
+    with self.connections (server):
+      self.bot.send_notification ('#test', 'hello')
+    self.assertIn ('PRIVMSG #test :hello', server.sent)
+
   def test_erroneous_nickname_fails_immediately (self):
     server = self.server()
 
@@ -278,6 +292,14 @@ class BotTests (unittest.TestCase):
         self.bot.send_notification ('#test', 'hello')
     self.assertEqual (connect.call_count, 1)
     self.assertFalse (any (line.startswith ('PRIVMSG ') for line in server.sent))
+
+  def test_server_ban_is_not_retried (self):
+    server = self.server()
+    server.respond = lambda line: server.queue (':mock 465 * :You are banned')
+    with self.connections (server) as connect:
+      with self.assertRaisesRegex (self.bot.Fatal, 'server ban: 465'):
+        self.bot.send_notification ('#test', 'hello')
+    self.assertEqual (connect.call_count, 1)
 
   def test_lost_echo_does_not_resend (self):
     server = self.server()

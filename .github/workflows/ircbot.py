@@ -12,6 +12,12 @@ max_privmsg_bytes = 400
 attempts = 3
 Message = collections.namedtuple ('Message', 'prefix command params')
 irc_casemap = str.maketrans ('ABCDEFGHIJKLMNOPQRSTUVWXYZ[]\\^', 'abcdefghijklmnopqrstuvwxyz{}|~')
+command_errors = {
+  'CAP': {'410', '421'},
+  'NICK': {'432', '433', '436', '437', '451', '462', '464', '466'},
+  'JOIN': {'403', '405', '471', '473', '474', '475', '476', '477', '489'},
+  'PRIVMSG': {'401', '402', '404', '407', '411', '412', '413', '414'},
+}
 ansi_colors = {
   'yellow': '\u001b[93m', 'orange': '\u001b[33m', 'red': '\u001b[31m', 'green': '\u001b[32m',
   'cyan': '\u001b[36m', 'blue': '\u001b[34m', 'reset': '\u001b[m',
@@ -107,8 +113,8 @@ def reply_error (reply):
   return reply.command + detail
 
 
-def is_error (reply):
-  return reply.command == 'FAIL' or (len (reply.command) == 3 and reply.command.isdigit() and reply.command[0] in '45')
+def command_failed (reply, command):
+  return reply.command in command_errors[command] or (reply.command == 'FAIL' and reply.params and reply.params[0].upper() == command)
 
 
 class IrcClient:
@@ -141,6 +147,8 @@ class IrcClient:
       message = self.messages.popleft()
       if message.command == 'PING' and message.params:
         self.send ('PONG ' + ' '.join (message.params[:-1] + [':' + message.params[-1]]))
+      elif message.command == '465':
+        raise Fatal ('server ban: ' + reply_error (message))
       elif message.command == 'ERROR':
         raise ConnectionError (reply_error (message))
       else:
@@ -165,10 +173,10 @@ def open_connection ():
 
 def register (client):
   client.send ('CAP REQ :echo-message')
-  cap = client.wait (lambda reply: is_error (reply) or
+  cap = client.wait (lambda reply: command_failed (reply, 'CAP') or
                      (reply.command == 'CAP' and len (reply.params) >= 3 and reply.params[1] in ('ACK', 'NAK') and
                       'echo-message' in reply.params[-1].split()))
-  if is_error (cap):
+  if command_failed (cap, 'CAP'):
     raise Fatal ('capability negotiation failed: ' + reply_error (cap))
   if cap.params[1] != 'ACK':
     raise Fatal ('server lacks echo-message')
@@ -177,7 +185,7 @@ def register (client):
   client.send ('USER ' + nick + ' 0 * :' + nick)
   client.send ('CAP END')
   for count in range (attempts):
-    reply = client.wait (lambda message: message.command == '001' or is_error (message))
+    reply = client.wait (lambda message: message.command == '001' or command_failed (message, 'NICK'))
     if reply.command == '001':
       return reply.params[0]
     if reply.command == '432':
@@ -196,7 +204,7 @@ def deliver (client, channel, command):
   reply = client.wait (lambda message:
                        (message.command == 'JOIN' and irc_equal (message.prefix.split ('!', 1)[0], nick) and
                         len (message.params) == 1 and irc_equal (message.params[0], channel)) or
-                       is_error (message))
+                       command_failed (message, 'JOIN'))
   if reply.command != 'JOIN':
     raise Fatal ('JOIN failed: ' + reply_error (reply))
   client.delivery_started = True
@@ -204,7 +212,7 @@ def deliver (client, channel, command):
   reply = client.wait (lambda message:
                        (message.command == 'PRIVMSG' and irc_equal (message.prefix.split ('!', 1)[0], nick) and
                         bool (message.params) and irc_equal (message.params[0], channel)) or
-                       is_error (message))
+                       command_failed (message, 'PRIVMSG'))
   if reply.command != 'PRIVMSG':
     raise Fatal ('PRIVMSG failed: ' + reply_error (reply))
 
