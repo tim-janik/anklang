@@ -5,6 +5,7 @@ import argparse, collections, json, os, re, socket, ssl, sys, time, unicodedata
 server = 'irc.example.org'
 port = 6697
 use_tls = True
+verbose = False
 nickname = 'YYBOT'
 socket_timeout = 30
 reply_timeout = 15
@@ -126,6 +127,8 @@ class IrcClient:
     self.delivery_started = False
 
   def send (self, command):
+    if verbose:
+      print ('IRC: -> ' + command, file = sys.stderr)
     self.socket.settimeout (socket_timeout)
     self.socket.sendall (encode_line (command))
 
@@ -142,7 +145,10 @@ class IrcClient:
         chunks = (self.buffer + data).split (b'\n')
         self.buffer = chunks.pop()
         for chunk in chunks:
-          message = parse_line (chunk.removesuffix (b'\r').decode ('utf8', 'replace'))
+          line = chunk.removesuffix (b'\r').decode ('utf8', 'replace')
+          if verbose and line:
+            print ('IRC: <- ' + line, file = sys.stderr)
+          message = parse_line (line)
           if message.command:
             self.messages.append (message)
       message = self.messages.popleft()
@@ -301,6 +307,8 @@ def parse_args (arguments):
                        help = 'server to connect to [irc.example.org:6697]')
   parser.add_argument ('--no-tls', dest = 'tls', action = 'store_false',
                        help = 'connect without TLS encryption')
+  parser.add_argument ('-v', '--verbose', action = 'store_true',
+                       help = 'print IRC protocol traffic')
   parser.add_argument ('-n', '--dry-run', action = 'store_true', help = 'print a color preview without connecting')
   parser.add_argument ('-G', action = 'store_true', help = 'read message fields from GITHUB_EVENT_PATH')
   parser.add_argument ('-R', default = '', metavar = 'REPOSITORY')
@@ -311,11 +319,12 @@ def parse_args (arguments):
 
 
 def main (arguments):
-  global server, port, use_tls
+  global server, port, use_tls, verbose
   args = parse_args (arguments)
   if args.server:
     server, port = args.server
   use_tls = args.tls
+  verbose = args.verbose
   try:
     if args.G:
       read_github_event (args)
