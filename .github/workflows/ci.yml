@@ -127,7 +127,7 @@ jobs:
     - name: Ping-IRC
       if: ${{ always() && !env.ACT }}  # IRCBOT_JOBS indicates 'success'
       env: { IRCBOT_JOBS: "${{ join(needs.*.result, ' ') }}" }
-      run: .github/workflows/ircbot.py -q -j "#Anklang" -G
+      run: .github/workflows/ircbot.py -G "#Anklang"
 
   Test-IrcBot:
     # Least important job, run last and non-gating so its breakage cannot kill the real CI
