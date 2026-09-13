@@ -13,7 +13,6 @@ b-playcontrols, .b-playcontrols {
 `;
 
 // == Component ==
-import { createComputed } from 'solid-js';
 import { ButtonBar } from './buttonbar';
 import { Icon } from './icon';
 
@@ -35,16 +34,12 @@ export function PlayControls (props: any)
     App.status (message);
   };
 
-  const toggle_play = () => {
+  const toggle_play = async () => {
     const project = (window as any).Shell?.project ?? App.project;
-    const playing = project.is_playing;
+    const playing = await project.$refetch (() => project.is_playing);
+    if (project !== ((window as any).Shell?.project ?? App.project)) return;
     dispatch (playing ? 'pause_playback' : 'start_playback');
   };
-
-  // Log playback state changes
-  createComputed (() => {
-    console.log ("is_playing:", App.project.is_playing);
-  });
 
   return (
     <ButtonBar class="b-playcontrols">
