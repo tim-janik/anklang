@@ -227,6 +227,21 @@ class BotTests (unittest.TestCase):
     self.assertIn ('NICK YYBOT_', server.sent)
     self.assertIn ('PRIVMSG #test :hello', server.sent)
 
+  def test_unavailable_channel_fails_immediately (self):
+    server = self.server()
+
+    def respond (line):
+      if line.startswith ('JOIN '):
+        server.queue (':mock 437 YYBOT #test :Channel temporarily unavailable')
+      else:
+        server.default_response (line)
+
+    server.respond = respond
+    with self.connections (server) as connect:
+      with self.assertRaisesRegex (self.bot.Fatal, 'JOIN failed: 437:.*temporarily unavailable'):
+        self.bot.send_notification ('#test', 'hello')
+    self.assertEqual (connect.call_count, 1)
+
   def test_modified_echo_acknowledges_delivery (self):
     server = self.server()
 
