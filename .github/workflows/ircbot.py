@@ -226,17 +226,51 @@ def deliver (client, channel, command):
     raise Fatal ('PRIVMSG failed: ' + reply_error (reply))
 
 
-def send_notification (channel, text):
+class DryRunServer:
+  def __init__ (self):
+    self.buffer = []
+    self.nick = nickname
+
+  def settimeout (self, value):
+    pass
+
+  def sendall (self, data):
+    command = data.decode ('utf8').removesuffix ('\r\n')
+    if command == 'CAP REQ :echo-message':
+      self.queue (f':{server} CAP * ACK :echo-message')
+    elif command.startswith ('NICK '):
+      self.nick = command[5:]
+    elif command == 'CAP END':
+      self.queue (f':{server} 001 {self.nick} :welcome')
+    elif command.startswith ('JOIN '):
+      self.queue (f':{self.nick}!user@{server} JOIN :' + command[5:])
+    elif command.startswith ('PRIVMSG '):
+      self.queue (f':{self.nick}!user@{server} ' + command)
+
+  def recv (self, size):
+    if self.buffer:
+      return self.buffer.pop (0)
+    raise TimeoutError ('no simulated reply')
+
+  def queue (self, *lines):
+    self.buffer.append (('\r\n'.join (lines) + '\r\n').encode ('utf8'))
+
+  def close (self):
+    pass
+
+
+def send_notification (channel, text, connection = None):
   command = privmsg_command (channel, text)
   last_error = None
   for attempt in range (1, attempts + 1):
     ircsock = None
     client = None
     try:
-      ircsock = open_connection()
+      ircsock = (connection or open_connection) ()
       client = IrcClient (ircsock)
       deliver (client, channel, command)
-      print (f'IRC: delivered on attempt {attempt}/{attempts}', file = sys.stderr)
+      suffix = ' (dry run)' if connection else ''
+      print (f'IRC: delivered{suffix} on attempt {attempt}/{attempts}', file = sys.stderr)
       return
     except Fatal:
       raise
@@ -309,7 +343,8 @@ def parse_args (arguments):
                        help = 'connect without TLS encryption')
   parser.add_argument ('-v', '--verbose', action = 'store_true',
                        help = 'print IRC protocol traffic')
-  parser.add_argument ('-n', '--dry-run', action = 'store_true', help = 'print a color preview without connecting')
+  parser.add_argument ('-n', '--dry-run', action = 'store_true',
+                       help = 'print a color preview and a simulated session without connecting')
   parser.add_argument ('-G', action = 'store_true', help = 'read message fields from GITHUB_EVENT_PATH')
   parser.add_argument ('-R', default = '', metavar = 'REPOSITORY')
   parser.add_argument ('-U', default = '', metavar = 'USER')
@@ -332,6 +367,7 @@ def main (arguments):
     if args.dry_run:
       command = privmsg_command (args.channel, message)
       print (ansi_message (command.partition (' :')[2]))
+      send_notification (args.channel, message, DryRunServer)
     else:
       send_notification (args.channel, message)
   except Fatal as error:

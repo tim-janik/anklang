@@ -198,14 +198,34 @@ class BotTests (unittest.TestCase):
 
   def test_dry_run_formats_ansi_colors_without_connecting (self):
     output = io.StringIO()
+    errors = io.StringIO()
     with mock.patch.object (self.bot, 'open_connection', side_effect = AssertionError ('unexpected connection')):
-      with contextlib.redirect_stdout (output):
+      with contextlib.redirect_stdout (output), contextlib.redirect_stderr (errors):
         status = self.bot.main (['-n', '-S', 'success', '-R', 'owner/repo', '-U', 'author', '-D', 'trunk', '#test', 'hello'])
     self.assertEqual (status, 0)
     self.assertIn ('\x1b[', output.getvalue())
     self.assertIn ('owner/repo', output.getvalue())
     self.assertIn ('SUCCESS', output.getvalue())
     self.assertNotIn ('\x03', output.getvalue())
+    self.assertIn ('IRC: delivered (dry run) on attempt 1/3', errors.getvalue())
+
+  def test_dry_run_simulates_server_replies (self):
+    output = io.StringIO()
+    errors = io.StringIO()
+    with mock.patch.object (self.bot, 'open_connection', side_effect = AssertionError ('unexpected connection')):
+      with contextlib.redirect_stdout (output), contextlib.redirect_stderr (errors):
+        status = self.bot.main (['-n', '-v', '-s', 'irc.example.test:6667', '#test', 'huhu'])
+    log = errors.getvalue()
+    self.assertEqual (status, 0)
+    self.assertEqual (output.getvalue().strip(), 'huhu')
+    self.assertIn ('IRC: -> CAP REQ :echo-message', log)
+    self.assertIn ('IRC: -> JOIN #test', log)
+    self.assertIn ('IRC: -> PRIVMSG #test :huhu', log)
+    self.assertIn ('IRC: <- :irc.example.test CAP * ACK :echo-message', log)
+    self.assertIn ('IRC: <- :irc.example.test 001 YYBOT :welcome', log)
+    self.assertIn ('IRC: <- :YYBOT!user@irc.example.test JOIN :#test', log)
+    self.assertIn ('IRC: <- :YYBOT!user@irc.example.test PRIVMSG #test :huhu', log)
+    self.assertIn ('IRC: delivered (dry run) on attempt 1/3', log)
 
   def test_remote_message_uses_irc_colors (self):
     args = self.bot.parse_args (['-S', 'failure', '-R', 'owner/repo', '#test', 'hello'])
@@ -220,10 +240,11 @@ class BotTests (unittest.TestCase):
   def test_github_event_supplies_message_fields (self):
     event = PUSH_EVENT
     output = io.StringIO()
+    errors = io.StringIO()
     environment = {'GITHUB_EVENT_PATH': 'mock-event.json', 'IRCBOT_JOBS': 'success failure'}
     with mock.patch.dict (self.bot.os.environ, environment, clear = True):
       with mock.patch ('builtins.open', mock.mock_open (read_data = json.dumps (event))):
-        with contextlib.redirect_stdout (output):
+        with contextlib.redirect_stdout (output), contextlib.redirect_stderr (errors):
           status = self.bot.main (['-n', '-G', '#test'])
     self.assertEqual (status, 0)
     self.assertIn ('FAILURE', output.getvalue())
