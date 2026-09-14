@@ -28,16 +28,6 @@ function mount_deviceeditor (get_device: () => any)
   return { root, name, cleanup };
 }
 
-async function wait_for_name (name: () => string, expected: string, timeout_ms = 5000): Promise<void>
-{
-  const deadline = Date.now () + timeout_ms;
-  while (name() !== expected) {
-    if (Date.now () >= deadline)
-      throw new Error (`device name did not become "${expected}" within ${timeout_ms}ms: "${name()}"`);
-    await Dom.ui_wait (20);
-  }
-}
-
 // == Test registry ==
 const sub_tests: [string, () => Promise<any>][] = [];
 
@@ -49,7 +39,8 @@ async function test_deviceeditor_renders_name (): Promise<boolean>
     await Dom.ui_next_frame();
     const r = root();
     if (!r) throw new Error ('DeviceEditor root not rendered');
-    await wait_for_name (name, 'AlphaDev');
+    if (name() !== 'AlphaDev')
+      throw new Error (`device name not rendered: "${name()}"`);
   } finally {
     cleanup();
   }
@@ -62,10 +53,14 @@ async function test_deviceeditor_refetch_on_prop_change (): Promise<boolean>
   const [device, set_device] = createSignal (mock_device ('FirstDev'));
   const { name, cleanup } = mount_deviceeditor (device);
   try {
-    await wait_for_name (name, 'FirstDev');
+    await Dom.ui_next_frame();
+    if (name() !== 'FirstDev')
+      throw new Error (`initial name not rendered: "${name()}"`);
 
     set_device (mock_device ('SecondDev'));
-    await wait_for_name (name, 'SecondDev');
+    await Dom.ui_next_frame();
+    if (name() !== 'SecondDev')
+      throw new Error (`name not updated after prop change: "${name()}"`);
   } finally {
     cleanup();
   }

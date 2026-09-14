@@ -1,7 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
-import * as Dom from '../dom';
 
 /// Test project creation, playback state, and length
 export async function test_project_basic (): Promise<boolean>
@@ -164,6 +163,29 @@ export async function test_project_track_removal_notification (): Promise<boolea
   return true;
 }
 
+async function click_play_toggle (button: HTMLElement, project: Ase.Project): Promise<string>
+{
+  type PlaybackCall = { method: string; promise: Promise<any> };
+  let resolve_call!: (call: PlaybackCall) => void;
+  const called = new Promise<PlaybackCall> (resolve => { resolve_call = resolve; });
+  const original_send = Ase.Jsonipc.send;
+  Ase.Jsonipc.send = function (method, params) {
+    const promise = original_send.call (this, method, params);
+    if (params[0] === project && (method === 'pause_playback' || method === 'start_playback'))
+      resolve_call ({ method, promise });
+    return promise;
+  };
+  try {
+    button.click();
+    const call = await called;
+    await call.promise;
+    await project.$asyncs();
+    return call.method;
+  } finally {
+    Ase.Jsonipc.send = original_send;
+  }
+}
+
 export async function test_project_play_toggle (): Promise<boolean>
 {
   const shell = window.Shell;
@@ -178,15 +200,12 @@ export async function test_project_play_toggle (): Promise<boolean>
     const button = () => document.querySelector ('.b-playcontrols [data-hotkey="RawSpace"]') as HTMLElement;
     if (!button()) throw new Error ('Play/Pause control not found');
     shell.project = project;
-    for (const playing of [false, true]) {
-      button().click();
-      const deadline = Date.now() + 4000;
-      while (!!await Ase.Jsonipc.send ('get/is_playing', [project]) !== playing) {
-        if (Date.now() >= deadline)
-          throw new Error (`Play/Pause did not ${playing ? 'resume' : 'pause'} playback`);
-        await Dom.ui_wait (20);
-      }
-      await project.$asyncs();
+    for (const [method, playing] of [['pause_playback', false], ['start_playback', true]] as const) {
+      const called = await click_play_toggle (button(), project);
+      if (called !== method)
+        throw new Error (`Play/Pause called ${called} instead of ${method}`);
+      if (!!await Ase.Jsonipc.send ('get/is_playing', [project]) !== playing)
+        throw new Error (`Play/Pause did not ${playing ? 'resume' : 'pause'} playback`);
     }
   } finally {
     shell.project = old_project;
