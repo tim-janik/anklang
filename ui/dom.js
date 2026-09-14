@@ -86,9 +86,11 @@ function rgbhex_from_css (color)
 }
 
 /// Show a `dialog` via showModal() and close it on backdrop clicks.
+const modal_cleanups = new WeakMap();
 export function show_modal (dialog, closefunc = null)
 {
   if (dialog.open) return;
+  modal_cleanups.get (dialog)?.();
   closefunc = closefunc || (() => dialog.close());
   let closed = false; // idempotency guard — prevent double closefunc() (onCleanup + native close event)
   // close dialog on backdrop clicks, but:
@@ -122,18 +124,22 @@ export function show_modal (dialog, closefunc = null)
       event.preventDefault();
   };
   const capture = { capture: true };
-  const close = event => {
+  const cleanup = () => {
     dialog.removeEventListener ('pointerdown', pointerdown, capture);
     dialog.removeEventListener ('pointerup', pointerup);
     dialog.removeEventListener ('mousedown', mousedown);
     dialog.removeEventListener ('keydown', escapecloses);
     dialog.removeEventListener ('close', close);
+    if (modal_cleanups.get (dialog) === cleanup)
+      modal_cleanups.delete (dialog);
   };
+  const close = () => { if (!dialog.open) cleanup(); };
   dialog.addEventListener ('pointerdown', pointerdown, capture);
   dialog.addEventListener ('pointerup', pointerup);
   dialog.addEventListener ('mousedown', mousedown);
   dialog.addEventListener ('keydown', escapecloses);
   dialog.addEventListener ('close', close);
+  modal_cleanups.set (dialog, cleanup);
   dialog.showModal();
   return dialog;
 }
