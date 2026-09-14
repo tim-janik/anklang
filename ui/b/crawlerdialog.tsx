@@ -149,7 +149,7 @@ export function CrawlerDialog (props)
   // cwd change handling
   createEffect (() => {
     const cwd_val = props.cwd;
-    if (last_cwd !== cwd_val && crawler()) {
+    if (props.shown && !close_sent && last_cwd !== cwd_val && !update_inflight()) {
       last_cwd = cwd_val;
       assign_utf8path (cwd_val);
     }
