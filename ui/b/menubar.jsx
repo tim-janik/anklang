@@ -52,7 +52,10 @@ Extra_css`
 export function MenuBar (props)
 {
   // refs for contextmenu elements
-  let filemenu, editmenu, viewmenu, helpmenu;
+  /** @type {any} */ let filemenu;
+  /** @type {any} */ let editmenu;
+  /** @type {any} */ let viewmenu;
+  /** @type {any} */ let helpmenu;
   // track whether keyboard hotkeys have been mapped (once per mount)
   let kbd_mapped = false;
   // cleanup function for project notification

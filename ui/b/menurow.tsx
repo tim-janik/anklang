@@ -17,7 +17,7 @@
 // == STYLE ==
 Extra_css`
 @reference "../tailwind.css";
-b-menurow, .b-menurow {
+.b-menurow {
   @apply m-0 flex flex-initial items-baseline justify-center text-center;
   flex-flow: row nowrap;
 }`;

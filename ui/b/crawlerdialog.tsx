@@ -32,7 +32,7 @@ import { Icon } from './icon';
 // == STYLE ==
 Extra_css`
 @reference "../tailwind.css";
-b-crawlerdialog, .b-crawlerdialog {
+.b-crawlerdialog {
   dialog {
     width: unset; /* <- leave width to INPUT.-file, see below */
     max-width: 95%;
@@ -71,7 +71,7 @@ b-crawlerdialog, .b-crawlerdialog {
     -webkit-appearance: none; -moz-appearance: none;
     &:active { border: none; }
     @include b-focus-outline;
-    b-icon, .b-icon {
+    .b-icon {
       width: 1.9rem;
       vertical-align: middle;
       @include b-font-weight-bold();

@@ -22,7 +22,7 @@ import { MenuSeparator } from './menuseparator';
 
 // == STYLE ==
 Extra_css`
-b-trackview, .b-trackview {
+.b-trackview {
   display: flex;
   align-items: stretch;
   background-color: var(--b-button-border);
@@ -67,7 +67,6 @@ b-trackview, .b-trackview {
     overflow: hidden;
   }
 }
-b-trackview[data-current-track] .b-trackview-control,
 .b-trackview[data-current-track] .b-trackview-control {
   background-color: oklch(from var(--b-button-border) calc(l * 1.25) c h);
 }`;

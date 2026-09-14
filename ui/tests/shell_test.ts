@@ -111,6 +111,8 @@ async function test_shell_treebrowser_hidden (): Promise<boolean>
     const root = container.querySelector ('.b-treebrowser');
     if (!root)
       throw new Error ('TreeBrowser root element not found');
+    if (root.tagName !== 'DIV')
+      throw new Error (`TreeBrowser root is not a plain element: ${root.tagName}`);
     if (!root.hasAttribute ('hidden'))
       throw new Error ('TreeBrowser did not forward hidden=true');
     if (root.getAttribute ('hidden') !== 'true' && root.getAttribute ('hidden') !== '')

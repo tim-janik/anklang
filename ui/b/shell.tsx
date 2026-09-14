@@ -216,6 +216,21 @@ export function ShellTemplate (props: any)
 
 // == BShell controller ==
 class BShell extends Object {
+  project: any;
+  piano_roll_: any;
+  data_bubble: DataBubbleIface | null;
+  modal_dialogs_: any;
+  switch_panel2_: any;
+  switch_panel3_: any;
+  f1_help_: any;
+  fs: FileSelector;
+  piano_current_clip_tickfn: [any, any];
+  r: ShellReactive;
+  usernotehook_: any;
+  shell_element: HTMLElement | null;
+  listening: any;
+  startx: number;
+  startwidth: number;
   constructor ()
   {
     super();

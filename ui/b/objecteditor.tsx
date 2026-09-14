@@ -25,7 +25,7 @@ import { ChoiceInput } from './choiceinput.tsx';
 
 // <STYLE/>
 Extra_css`
-b-objecteditor, .b-objecteditor {
+.b-objecteditor {
   display: grid;
   grid-gap: 0.6em 0.5em;
   .b-objecteditor-clear {

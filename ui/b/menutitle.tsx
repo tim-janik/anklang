@@ -14,7 +14,7 @@ import { splitProps } from 'solid-js';
 
 // == STYLE ==
 Extra_css`
-b-menutitle, .b-menutitle {
+.b-menutitle {
   display: inline-flex; flex: 0 0 auto; flex-flow: row nowrap;
   align-items: baseline;      /* distribute extra cross-axis space */
   margin: 0; padding: 5px 1em; text-align: left;

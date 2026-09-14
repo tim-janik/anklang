@@ -170,7 +170,7 @@ function ui_build_selector (tag, filters)
 
 /// Find the first element matching tag + filters.
 /// Dom.ui_find('button', { uri: 'about' })       — menu item
-/// Dom.ui_find('b-trackview', { text: 'Drums' }) — track by displayed name
+/// Dom.ui_find('.b-trackview', { text: 'Drums' }) — track by displayed name
 /// Dom.ui_find('button', { text: /close/i })     — button by text (regex)
 export function ui_find (tag, filters = {})
 {
