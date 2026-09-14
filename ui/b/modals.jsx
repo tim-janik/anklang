@@ -54,7 +54,7 @@ function DynamicButton (props)
 const DialogComponent = (props) => {
   const { dialog: d } = props;
   let divHandlerElement;
-  /** @type {HTMLDialogElement} */ let dialogRef; // The ref for the <dialog> element itself.
+  /** @type {HTMLDialogElement} */ let dialogRef;
 
   // This hook now attaches imperative methods to the dialog object on mount.
   onMount (() => {

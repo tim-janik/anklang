@@ -67,7 +67,6 @@ Extra_css`
     overflow: hidden;
   }
 }
-b-trackview[data-current-track] .b-trackview-control,
 .b-trackview[data-current-track] .b-trackview-control {
   background-color: oklch(from var(--b-button-border) calc(l * 1.25) c h);
 }`;

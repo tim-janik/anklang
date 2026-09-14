@@ -30,7 +30,6 @@ import { splitProps } from 'solid-js';
 
 // == STYLE ==
 Extra_css`
-.b-icon.nf,
 .b-icon {
   display: inline-flex;
   place-content: center center;
