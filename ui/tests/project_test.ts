@@ -163,11 +163,16 @@ export async function test_project_track_removal_notification (): Promise<boolea
   return true;
 }
 
-async function click_play_toggle (button: HTMLElement, project: Ase.Project): Promise<string>
+async function click_play_toggle (button: HTMLElement, project: Ase.Project, timeout_ms = 5000): Promise<string>
 {
   type PlaybackCall = { method: string; promise: Promise<any> };
   let resolve_call!: (call: PlaybackCall) => void;
-  const called = new Promise<PlaybackCall> (resolve => { resolve_call = resolve; });
+  let reject_call!: (error: Error) => void;
+  const called = new Promise<PlaybackCall> ((resolve, reject) => {
+    resolve_call = resolve;
+    reject_call = reject;
+  });
+  const timer = setTimeout (() => reject_call (new Error (`Play/Pause did not dispatch within ${timeout_ms}ms`)), timeout_ms);
   const original_send = Ase.Jsonipc.send;
   Ase.Jsonipc.send = function (method, params) {
     const promise = original_send.call (this, method, params);
@@ -182,6 +187,7 @@ async function click_play_toggle (button: HTMLElement, project: Ase.Project): Pr
     await project.$asyncs();
     return call.method;
   } finally {
+    clearTimeout (timer);
     Ase.Jsonipc.send = original_send;
   }
 }
