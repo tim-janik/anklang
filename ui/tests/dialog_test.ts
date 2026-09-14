@@ -204,11 +204,11 @@ async function test_crawlerdialog_select_suppresses_close (): Promise<boolean>
 }
 sub_tests.push (['crawlerdialog_select', test_crawlerdialog_select_suppresses_close]);
 
-async function wait_for (predicate: () => boolean)
+async function wait_for (predicate: () => boolean, message = 'dialog update timed out')
 {
   const deadline = Date.now() + 4000;
   while (!predicate()) {
-    if (Date.now() >= deadline) throw new Error ('dialog update timed out');
+    if (Date.now() >= deadline) throw new Error (message);
     await Dom.ui_next_frame();
   }
 }
@@ -248,6 +248,48 @@ async function test_dialog_reopen (): Promise<boolean>
   return true;
 }
 sub_tests.push (['reopen', test_dialog_reopen]);
+
+async function test_crawler_cwd_after_reopen (): Promise<boolean>
+{
+  const [shown, set_shown] = createSignal (true);
+  const [cwd, set_cwd] = createSignal ('/tmp');
+  let selected = '';
+  const container = document.createElement ('div');
+  document.body.appendChild (container);
+  const dispose = render (() => createComponent (CrawlerDialog, {
+    get shown () { return shown(); },
+    get cwd () { return cwd(); },
+    existing: false,
+    onSelect: uri => { selected = uri; set_shown (false); },
+    onClose: () => set_shown (false),
+  }), container);
+  try {
+    const dialog = container.querySelector ('dialog')!;
+    const direntry = container.querySelector ('input.-direntry') as HTMLInputElement;
+    const pathentry = container.querySelector ('input.-pathentry') as HTMLInputElement;
+    const buttons = container.querySelectorAll ('button.button-xl');
+    const select_button = buttons[0] as HTMLButtonElement;
+    const close_button = buttons[buttons.length - 1] as HTMLButtonElement;
+    await wait_for (() => !select_button.disabled && direntry.value === '/tmp/', 'crawler did not load /tmp/');
+    close_button.click();
+    await wait_for (() => !dialog.open, 'crawler did not close');
+    set_cwd ('/');
+    await Dom.ui_next_frame();
+    if (direntry.value !== '/tmp/')
+      throw new Error (`closed crawler changed directory to ${direntry.value}`);
+    set_shown (true);
+    await wait_for (() => dialog.open && !select_button.disabled && direntry.value === '/', 'crawler did not reopen at /');
+    pathentry.value = 'review-save.anklang';
+    select_button.click();
+    if (selected !== '/review-save.anklang')
+      throw new Error (`reopened crawler selected the wrong path: ${selected}`);
+  } finally {
+    dispose();
+    container.remove();
+  }
+  return true;
+}
+sub_tests.push (['crawler_cwd_after_reopen', test_crawler_cwd_after_reopen]);
 
 async function test_crawler_loading (): Promise<boolean>
 {
