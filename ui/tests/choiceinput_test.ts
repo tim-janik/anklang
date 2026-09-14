@@ -362,8 +362,6 @@ async function test_choiceinput_data_tip_reactive (): Promise<boolean>
 }
 sub_tests.push (['data_tip_reactive', test_choiceinput_data_tip_reactive]);
 
-/// Regression test for M9: the menu-item span classes must be interpolated,
-/// not contain literal `{...}` brace text from a leftover Lit template.
 async function test_choiceinput_menu_item_classes (): Promise<boolean>
 {
   const choices = [
