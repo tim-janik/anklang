@@ -124,7 +124,9 @@ jobs:
     steps:
     - { uses: actions/checkout@v4, with: { fetch-depth: 0 } }
     - run: git fetch -f --tags  # Fix actions/checkout#290
+    # run: python3 .github/workflows/test_ircbot.py --preview
+    - run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s .github/workflows -p test_ircbot.py -v
     - name: Ping-IRC
       if: ${{ always() && !env.ACT }}  # IRCBOT_JOBS indicates 'success'
       env: { IRCBOT_JOBS: "${{ join(needs.*.result, ' ') }}" }
-      run: .github/workflows/ircbot.py -q -j "#Anklang" -G
+      run: .github/workflows/ircbot.py -s irc.libera.chat:6697 -G "#Anklang"
