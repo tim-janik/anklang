@@ -24,27 +24,33 @@ dialog.b-about-dialog {
 export function AboutDialog (props)
 {
   const [info_pairs, set_info_pairs] = createSignal ([]);
+  /** @type {HTMLDialogElement | undefined} */
   let dialogRef;
-  let cancelled = false; // guard against showModal() after unmount (solid-dialog pattern)
+  let cancelled = false; // no showModal() after unmount
+  let close_sent = false; // close at most once
+  const close = () => {
+    if (close_sent) return;
+    close_sent = true;
+    props.onClose?.();
+  };
 
   onMount (async () => {
     const pairs = await about_pairs ();
-    if (cancelled) return; // component unmounted during async load — skip open
+    if (cancelled) return; // unmounted during load
     set_info_pairs (pairs);
     if (dialogRef)
-      Dom.show_modal (dialogRef, () => props.onClose?.());
+      Dom.show_modal (dialogRef, close);
   });
 
-  // onCleanup runs synchronously before DOM removal (SolidJS lifecycle guarantee)
-  // ensures dialogRef.close() fires native 'close' event before element is yanked
+  // Close the dialog so the native 'close' event fires before removal
   onCleanup (() => {
-    cancelled = true;   // prevent late onMount from calling showModal()
-    dialogRef?.close(); // close native dialog so 'close' event fires for listener cleanup
-    props.onClose?.();  // sync parent state (controlled-prop pattern, like solid-modal/solid-dialog)
+    cancelled = true;   // no late showModal()
+    dialogRef?.close(); // fire native 'close' event
+    close();            // sync parent state
   });
 
   const handleClose = () => {
-    props.onClose?.();
+    close();
   };
 
   return (
@@ -69,7 +75,7 @@ export function AboutDialog (props)
         </For>
       </div>
       <div class="dialog-footer">
-        <button class="button-xl" autofocus onClick={() => props.onClose?.()}>Close</button>
+        <button class="button-xl" autofocus onClick={close}>Close</button>
       </div>
     </dialog>
   );
