@@ -249,6 +249,32 @@ async function test_dialog_reopen (): Promise<boolean>
 }
 sub_tests.push (['reopen', test_dialog_reopen]);
 
+async function test_show_modal_quick_reopen (): Promise<boolean>
+{
+  const dialog = document.createElement ('dialog');
+  document.body.appendChild (dialog);
+  let close_count = 0;
+  const close = () => {
+    close_count++;
+    dialog.close();
+  };
+  try {
+    Dom.show_modal (dialog, close);
+    dialog.close();
+    Dom.show_modal (dialog, close);
+    await Dom.ui_next_frame();
+    dialog.dispatchEvent (new KeyboardEvent ('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    await Dom.ui_next_frame();
+    if (close_count !== 1 || dialog.open)
+      throw new Error (`quick reopen closed ${close_count} times, open=${dialog.open}`);
+  } finally {
+    dialog.close();
+    dialog.remove();
+  }
+  return true;
+}
+sub_tests.push (['show_modal_quick_reopen', test_show_modal_quick_reopen]);
+
 async function test_crawler_cwd_after_reopen (): Promise<boolean>
 {
   const [shown, set_shown] = createSignal (true);
