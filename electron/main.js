@@ -416,4 +416,7 @@ const config = parse_args (process.argv);
 // startup path entirely.
 if (headless_mode)
   Eapp.commandLine.appendSwitch ('disable-gpu');
+// Containers ship a small /dev/shm which Chromium exhausts, so use temp files instead
+if (fs.existsSync ('/.dockerenv'))
+  Eapp.commandLine.appendSwitch ('disable-dev-shm-usage');
 Eapp.once ('ready', () => startup_components (config));

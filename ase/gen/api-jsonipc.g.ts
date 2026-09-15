@@ -789,6 +789,8 @@ export class Track // Ase::Track
   { this.$set ("midi_channel", v); }
   is_master (): Promise<boolean>
   { return this.$rpc ("is_master", [this]); }
+  is_control_track (): Promise<boolean>
+  { return this.$rpc ("is_control_track", [this]); }
   is_muted (): Promise<boolean>
   { return this.$rpc ("is_muted", [this]); }
   set_muted (arg1: boolean): Promise<void>
