@@ -377,6 +377,7 @@ export function ContextMenu (props: {
   };
 
   /// Activate or disable the `kbd=...` hotkeys in menu items.
+  // Shortcut buttons must stay mounted while the popup is closed; their owning panel decides when shortcuts are enabled.
   const map_kbd_hotkeys = (active = false) => {
     if (keymap_.length) {
       keymap_.length = 0;

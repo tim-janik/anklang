@@ -54,6 +54,7 @@ export function SwitchInput (props: {
   'on:valuechange'?: (e: Event) => void;
 })
 {
+  // TODO: Show edits immediately, send them, then accept backend updates without emitting another edit.
   let label_ref: HTMLLabelElement | undefined;
   let checkbox_ref: HTMLInputElement | undefined;
 

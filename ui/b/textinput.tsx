@@ -74,6 +74,7 @@ export function TextInput (props: {
   [key: string]: any;
 })
 {
+  // Input contract: show edits immediately, send them, then accept the backend value, including corrections.
   let root_el: HTMLElement | undefined;
   let input_el: HTMLInputElement | undefined;
   // Last value reflected in the input field; used to emit `valuechange` only

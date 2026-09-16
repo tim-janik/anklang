@@ -138,7 +138,7 @@ interface FileSelector {
 // == SHELL TEMPLATE ==
 export function ShellTemplate (props: any)
 {
-  // Shell singleton (created once, persists across project swaps)
+  // Shell persists; App recreates its component tree on project switches and window/DPR changes.
   const t = globalThis.Shell ?? new BShell ();
   if (!globalThis.Shell)
     Object.defineProperty (globalThis, 'Shell', { value: t });

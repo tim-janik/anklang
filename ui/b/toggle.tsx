@@ -69,9 +69,7 @@ export function Toggle (props: {
   const [local, others] = splitProps (props, ['value', 'label', 'disabled', 'class', 'onValueChange']);
   const merged_class = () => local.class ? 'b-toggle ' + local.class : 'b-toggle';
 
-  // Internal state mirrors the external `value` prop and is flipped optimistically
-  // on user interaction, so two rapid clicks toggle twice instead of computing the
-  // next value from a prop that lags a full IPC round-trip (ChoiceInput precedent).
+  // Show edits immediately, send them, then accept backend updates; rapid clicks must use the displayed value.
   const [value_, set_value_] = createSignal (!!local.value);
   createEffect (() => set_value_ (!!local.value));
 

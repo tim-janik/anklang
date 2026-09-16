@@ -87,6 +87,7 @@ export class AppClass {
   }
   async assign_project (project: any, domid: string)
   {
+    // Project switches are rare; rebuild the UI instead of handling project replacement in every component.
     // Validate new project
     if (!(project instanceof Ase.Project))
       throw Error (`App: invalid Ase.Project: ${project}`);
@@ -121,6 +122,7 @@ export class AppClass {
   /// sizes (level meters, clip canvases) recompute; keeps playback and UI state.
   relayout ()
   {
+    // Window/DPR changes are rare; rebuilding is intentional and avoids resize handling in every component.
     const shell = globalThis.Shell;
     const project = shell?.project ?? null;
     if (!shell || !(project instanceof Ase.Project))
