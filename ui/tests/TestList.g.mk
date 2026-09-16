@@ -13,6 +13,7 @@ UI_TEST_LIST := \
   dialog_test.test_dialog \
   editable_test.test_editable \
   knob_test.test_knob \
+  modals_test.test_modals \
   numberinput_test.test_numberinput \
   project_test.test_project_basic \
   project_test.test_project_master_volume \
