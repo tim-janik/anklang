@@ -61,6 +61,7 @@ export function NumberInput (props: {
   [key: string]: any;
 })
 {
+  // TODO: Show edits immediately, send them, then accept backend corrections.
   let root_ref: (HTMLLabelElement & { value?: number }) | undefined;
   let slider_ref: HTMLInputElement | undefined;
   let number_ref: HTMLInputElement | undefined;

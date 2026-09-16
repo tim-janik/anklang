@@ -67,6 +67,7 @@ Extra_css`
 // == Component ==
 export function TrackList (props)
 {
+  // App rebuilds this component on project changes; only changes to this project's track list need watching.
   const [local, rest] = splitProps (props, ['class', 'project', 'onDblClick']);
   const [tracks, set_tracks] = createSignal ([]);
   let trackviews_ref;

@@ -132,6 +132,7 @@ export function ChoiceInput (props: {
   [key: string]: any;
 })
 {
+  // Input contract: show edits immediately, send them, then accept the backend value, including corrections.
   let root_el: HTMLElement | undefined;
   let pophere_el: HTMLDivElement | undefined;
   let cmenu_el: any | undefined;

@@ -203,6 +203,7 @@ async function property_groups (asyncpropertylist, add_destroy_callback)
 // == COMPONENT ==
 export function DeviceEditor (props)
 {
+  // Device fields are fixed: load them up front; rebuild only for another device or an explicit field-list notification.
   const [gprops, set_gprops] = createSignal ([]);
   const [device_info, set_device_info] = createSignal ({ name: "" });
   let destroy_callbacks = [];

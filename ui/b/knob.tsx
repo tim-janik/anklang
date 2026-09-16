@@ -242,6 +242,7 @@ export function Knob (props: {
   let root_el: HTMLDivElement | undefined;
   let sprite_el: HTMLDivElement | undefined;
   let clear_notify_cb: (() => void) | undefined;
+  // TODO: Replace write counting with a 100 ms quiet timer; keep local edits until the final backend read completes.
   const setters_inflight = { v: 0 };
   let button1date = 0;
   let last_ = 0;

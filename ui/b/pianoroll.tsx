@@ -332,6 +332,7 @@ export function PianoRoll (props: {
     set: (r: any) => { Object.assign (t.srect_, r); t.queue_repaint(); },
   });
 
+  // TODO: Clear hover/focus state and disable both menu keymaps when the piano roll is hidden.
   t.pointerenter = (event: PointerEvent) => {
     t.entered = true;
     if (t.pianotoolmenu)
