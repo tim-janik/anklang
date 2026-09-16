@@ -35,6 +35,7 @@ export function AboutDialog (props)
   };
 
   onMount (async () => {
+    // Load the contents before opening so the dialog starts at its final size.
     const pairs = await about_pairs ();
     if (cancelled) return; // unmounted during load
     set_info_pairs (pairs);

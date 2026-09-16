@@ -69,6 +69,7 @@ Extra_css`
 // <COMPONENT/>
 export function ObjectEditor (props)
 {
+  // Treat the field list as fixed for this editor; rebuild it for a new list, while values and sensitivity update in place.
   const [gprops, set_gprops] = createSignal ([]);
   let gen = 0;
   let disconnectors = [];

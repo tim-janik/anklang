@@ -759,6 +759,7 @@ const empty_list = Object.freeze ([]);
  * the property is not needed anymore.
  */
 export async function extend_property (prop, disconnector = undefined, augment = undefined) {
+  // TODO: Keep only field descriptions here; use the generated auto-updating properties instead of a second value cache.
   prop = await prop;
   if (prop.update_ && prop.fetch_) {
     // already extended

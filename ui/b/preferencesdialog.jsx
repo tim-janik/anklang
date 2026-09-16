@@ -38,7 +38,7 @@ export function PreferencesDialog (props)
     props.onClose?.();
   };
 
-  // Watch shown prop to open/close dialog
+  // TODO: Prepare and render all editor fields before opening, so the dialog does not change size while loading.
   createEffect (() => {
     const shown = props.shown;
     if (shown && !dialogRef?.open) {
