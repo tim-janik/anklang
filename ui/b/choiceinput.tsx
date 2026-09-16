@@ -146,7 +146,6 @@ export function ChoiceInput (props: {
 
   const [value_, set_value_] = createSignal (local.value ?? '');
   const [choices_, set_choices_] = createSignal<any[]> ([]);
-  const [need_cmenu, set_need_cmenu] = createSignal (false);
 
   // Sync external value
   createEffect (() => {
@@ -225,16 +224,9 @@ export function ChoiceInput (props: {
 
   function activate (uri: string)
   {
-    if (local.disabled) {
-      cmenu_el?.close();
-      set_need_cmenu (false);
+    cmenu_el.close();
+    if (local.disabled)
       return;
-    }
-    if (cmenu_el) {
-      // close popup to remove focus guards
-      cmenu_el.close();
-      set_need_cmenu (false);
-    }
     set_value_ (uri);
     props.onValueChange?.(uri);
     if (root_el) {
@@ -247,11 +239,7 @@ export function ChoiceInput (props: {
   {
     if (local.disabled)
       return;
-    // Recreate the ContextMenu if it was disposed on a previous close (Solid callback refs
-    // are not null-ed on disposal, so we clear cmenu_el in onclose instead). Setting the
-    // signal is idempotent and renders synchronously, assigning cmenu_el before we use it.
-    set_need_cmenu (true);
-    if (cmenu_el == undefined || cmenu_el.open)
+    if (cmenu_el.open)
       return;
     pophere_el?.focus();
     cmenu_el.popup (event, { origin: pophere_el, focus_uri: value_() });
@@ -293,27 +281,24 @@ export function ChoiceInput (props: {
         <span class="-current">{current_span()}</span>
         <span class="-arrow"> ⬍ </span>
       </div>
-      {need_cmenu() && (
-        <ContextMenu class="b-choiceinput-contextmenu" ref={h => cmenu_el = h}
-          onactivate={e => activate (get_uri (e.detail))}
-          onclose={e => { set_need_cmenu (false); cmenu_el = undefined; }}>
-          <MenuTitle style={!local.title ? 'display:none' : ''}>
-            {local.title}
-          </MenuTitle>
-          <For each={mchoices()}>
-            {(c: any) => (
-              <button class="m-0 grid cursor-pointer select-none auto-rows-auto items-stretch border border-solid text-left"
-                uri={c.ident} ic={c.icon}>
-                <span class={`b-choice-label ${c.labelclass ?? ''}`}>{c.label}</span>
-                <span class={`b-choice-line1 ${c.line1class ?? ''}`}>{c.blurb}</span>
-                <span class={`b-choice-line2 ${c.line2class ?? ''}`}>{c.line2}</span>
-                <span class={`b-choice-line3 ${c.line3class ?? ''}`}>{c.notice}</span>
-                <span class={`b-choice-line4 ${c.line4class ?? ''}`}>{c.warning}</span>
-              </button>
-            )}
-          </For>
-        </ContextMenu>
-      )}
+      <ContextMenu class="b-choiceinput-contextmenu" ref={h => cmenu_el = h}
+        onactivate={e => activate (get_uri (e.detail))}>
+        <MenuTitle style={!local.title ? 'display:none' : ''}>
+          {local.title}
+        </MenuTitle>
+        <For each={mchoices()}>
+          {(c: any) => (
+            <button class="m-0 grid cursor-pointer select-none auto-rows-auto items-stretch border border-solid text-left"
+              uri={c.ident} ic={c.icon}>
+              <span class={`b-choice-label ${c.labelclass ?? ''}`}>{c.label}</span>
+              <span class={`b-choice-line1 ${c.line1class ?? ''}`}>{c.blurb}</span>
+              <span class={`b-choice-line2 ${c.line2class ?? ''}`}>{c.line2}</span>
+              <span class={`b-choice-line3 ${c.line3class ?? ''}`}>{c.notice}</span>
+              <span class={`b-choice-line4 ${c.line4class ?? ''}`}>{c.warning}</span>
+            </button>
+          )}
+        </For>
+      </ContextMenu>
     </div>
   );
 }
