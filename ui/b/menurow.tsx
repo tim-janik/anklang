@@ -3,7 +3,7 @@
 
 /** @class MenuRow
  * @description
- * The MenuRow component can contain `<button/>` menu items of a [ContextMenu](#ContextMenu),
+ * The MenuRow component can contain [MenuItem](#MenuItem) entries of a [ContextMenu](#ContextMenu),
  * that are packed horizontally inside a menurow.
  *
  * ### Props:
