@@ -214,8 +214,18 @@ async function test_contextmenu_onclose_prop (): Promise<boolean>
     // Activating an item closes the menu.
     await Dom.ui_click_wait ('button', { uri: 'do-test' });
 
-    if (close_count < 1)
-      throw new Error ('onclose was not called after menu activation');
+    if (close_count !== 1)
+      throw new Error (`menu activation emitted ${close_count} close events`);
+    menu.close();
+    await Dom.ui_next_frame();
+    if (Number (close_count) !== 1)
+      throw new Error ('closing an already closed menu emitted another close');
+    menu.popup();
+    await wait_for_contextmenu_update();
+    HTMLDialogElement.prototype.close.call (menu.dialog());
+    await wait_for_contextmenu_update();
+    if (Number (close_count) !== 2)
+      throw new Error ('native close did not emit exactly one close');
   } finally {
     menu.cleanup();
   }
