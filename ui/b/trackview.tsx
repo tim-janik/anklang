@@ -15,9 +15,7 @@ import * as Util from '../util.js';
 import { clamp } from '../util.js';
 import { Editable } from './editable';
 import { ContextMenu } from './contextmenu';
-import { MenuTitle } from './menutitle.tsx';
-import { MenuRow } from './menurow';
-import { MenuSeparator } from './menuseparator';
+import { type MenuEntry } from './menuitems';
 
 
 // == STYLE ==
@@ -253,6 +251,38 @@ export function TrackView (props)
     props.track.name = event.detail.value.trim();
   };
 
+  const channel_item = (channel: number) => ({
+    uri: `mc-${channel}`,
+    label: channel ? String (channel) : 'Internal Channel',
+    get icon () { return mcc (channel); },
+  });
+  const menu_items: MenuEntry[] = [
+    { type: 'title', label: 'Track' },
+    { uri: 'add-track', label: 'Add Track', icon: 'fa-plus_circle' },
+    { uri: 'add-midi-clip', label: 'Add MIDI Clip', icon: 'fa-music' },
+    { uri: 'rename-track', label: 'Rename Track', icon: 'fa-i_cursor' },
+    { uri: 'bounce-track', label: 'Bounce Track', icon: 'fa-toggle_down' },
+    { uri: 'track-details', label: 'Show / Hide Track Details', icon: 'md-eye_off' },
+    { type: 'separator' },
+    { type: 'row', items: [
+      { uri: 'delete-track', label: 'Delete', icon: 'fa-times_circle' },
+      { uri: 'cut-track', label: 'Cut', icon: 'fa-scissors' },
+      { uri: 'copy-track', label: 'Copy', icon: 'fa-files_o' },
+      { uri: 'paste-track', label: 'Paste', icon: 'fa-clipboard' },
+    ] },
+    { type: 'separator' },
+    { type: 'title', label: 'Playback' },
+    { uri: 'mute-track', label: 'Mute Track', icon: 'uc-Ｍ' },
+    { uri: 'solo-track', label: 'Solo Track', icon: 'uc-Ｓ' },
+    { type: 'separator' },
+    { type: 'title', label: 'MIDI Channel' },
+    channel_item (0),
+    ...[0, 4, 8, 12].map (offset => ({
+      type: 'row' as const, noturn: true,
+      items: [1, 2, 3, 4].map (channel => channel_item (offset + channel)),
+    })),
+  ];
+
   return (
     <>
       <div class="b-trackview" ref={root_ref}>
@@ -274,54 +304,7 @@ export function TrackView (props)
 	</div>
       </div>
       <ContextMenu ref={e => trackview_contextmenu = e}
-	activate={menu_click}
-	isactive={menu_check}
-	onclose={menu_close}>
-	<MenuTitle>Track</MenuTitle>
-	<button ic="fa-plus_circle"    uri="add-track" >     Add Track             </button>
-	<button ic="fa-music"          uri="add-midi-clip">  Add MIDI Clip         </button>
-	<button ic="fa-i_cursor"       uri="rename-track" >  Rename Track          </button>
-	<button ic="fa-toggle_down"    uri="bounce-track" >  Bounce Track          </button>
-	<button ic="md-eye_off"        uri="track-details" > Show / Hide Track Details </button>
-	<MenuSeparator />
-	<MenuRow>
-	  <button ic="fa-times_circle" uri="delete-track" >  Delete                </button>
-	  <button ic="fa-scissors"     uri="cut-track" >     Cut                   </button>
-	  <button ic="fa-files_o"      uri="copy-track" >    Copy                  </button>
-	  <button ic="fa-clipboard"    uri="paste-track" >   Paste                 </button>
-	</MenuRow>
-	<MenuSeparator />
-	<MenuTitle> Playback </MenuTitle>
-	<button ic="uc-Ｍ"             uri="mute-track" >    Mute Track            </button>
-	<button ic="uc-Ｓ"             uri="solo-track" >    Solo Track            </button>
-	<MenuSeparator />
-	<MenuTitle> MIDI Channel </MenuTitle>
-	<button   uri="mc-0"  ic={mcc (0)}  > Internal Channel </button>
-	<MenuRow noturn>
-	  <button uri="mc-1"  ic={mcc (1)}  >  1 </button>
-	  <button uri="mc-2"  ic={mcc (2)}  >  2 </button>
-	  <button uri="mc-3"  ic={mcc (3)}  >  3 </button>
-	  <button uri="mc-4"  ic={mcc (4)}  >  4 </button>
-	</MenuRow>
-	<MenuRow noturn>
-	  <button uri="mc-5"  ic={mcc (5)}  >  5 </button>
-	  <button uri="mc-6"  ic={mcc (6)}  >  6 </button>
-	  <button uri="mc-7"  ic={mcc (7)}  >  7 </button>
-	  <button uri="mc-8"  ic={mcc (8)}  >  8 </button>
-	</MenuRow>
-	<MenuRow noturn>
-	  <button uri="mc-9"  ic={mcc (9)}  >  9 </button>
-	  <button uri="mc-10" ic={mcc (10)} > 10 </button>
-	  <button uri="mc-11" ic={mcc (11)} > 11 </button>
-	  <button uri="mc-12" ic={mcc (12)} > 12 </button>
-	</MenuRow>
-	<MenuRow noturn>
-	  <button uri="mc-13" ic={mcc (13)} > 13 </button>
-	  <button uri="mc-14" ic={mcc (14)} > 14 </button>
-	  <button uri="mc-15" ic={mcc (15)} > 15 </button>
-	  <button uri="mc-16" ic={mcc (16)} > 16 </button>
-	</MenuRow>
-      </ContextMenu>
+        activate={menu_click} isactive={menu_check} onclose={menu_close} items={menu_items} />
     </>
   );
 }
