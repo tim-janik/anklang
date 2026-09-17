@@ -200,6 +200,62 @@ async function test_knob_wheel_guard (): Promise<boolean>
 }
 sub_tests.push (['wheel_guard', test_knob_wheel_guard]);
 
+async function test_knob_quiet_refresh (): Promise<boolean>
+{
+  const prop = make_fake_prop (0.5);
+  const writes: number[] = [];
+  let backend_value = 0.5;
+  let notify: () => void;
+  let reads = 0;
+  prop.get_normalized = async () => { reads++; return backend_value; };
+  prop.set_normalized = async value => { writes.push (value); };
+  prop.on = (_event, cb) => { notify = cb; return () => {}; };
+  const knob = mount_knob (prop);
+  const pause = (ms: number) => new Promise (resolve => setTimeout (resolve, ms));
+  try {
+    await Dom.ui_next_frame();
+    const sprite = knob.sprite();
+    const turn = async () => {
+      sprite.dispatchEvent (new WheelEvent ('wheel', {
+        deltaY: -10, bubbles: true, cancelable: true,
+      }));
+      await Dom.ui_next_frame();
+      await Dom.ui_next_frame();
+    };
+    await turn();
+    const first_position = sprite.style.backgroundPosition;
+    const reads_before = reads;
+    backend_value = 0.1;
+    notify();
+    await pause (20);
+    if (sprite.style.backgroundPosition !== first_position || reads !== reads_before)
+      throw new Error ('backend notification interrupted a knob edit');
+    await turn();
+    if (writes.length !== 2 || writes[1] <= writes[0])
+      throw new Error ('knob did not continue from the local value');
+    await pause (140);
+    await Dom.ui_next_frame();
+    if (reads !== reads_before + 1 || sprite.style.backgroundPosition === first_position)
+      throw new Error ('quiet timer did not fetch and show the backend correction');
+    const settled_position = sprite.style.backgroundPosition;
+    backend_value = 0.9;
+    notify();
+    await Dom.ui_next_frame();
+    if (sprite.style.backgroundPosition === settled_position)
+      throw new Error ('idle knob stopped accepting backend updates');
+    await turn();
+    const reads_at_disposal = reads;
+    knob.cleanup();
+    await pause (140);
+    if (reads !== reads_at_disposal)
+      throw new Error ('disposed knob kept its quiet timer');
+  } finally {
+    knob.cleanup();
+  }
+  return true;
+}
+sub_tests.push (['quiet_refresh', test_knob_quiet_refresh]);
+
 // == Master runner ==
 /// Single exported entry point runs all sub-tests in sequence.
 export async function test_knob (): Promise<boolean>
