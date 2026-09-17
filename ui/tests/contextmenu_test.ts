@@ -370,6 +370,8 @@ sub_tests.push (['initial_focus', test_contextmenu_initial_focus]);
 /// Test that valid edge-positioned and height-capped menus do not emit geometry errors.
 async function test_contextmenu_geometry_diagnostics (): Promise<boolean>
 {
+  if (document.documentElement.clientWidth <= 0 || document.documentElement.clientHeight <= 0)
+    throw new Error ('ContextMenu geometry tests require a nonzero viewport');
   const capture = capture_geometry_errors();
   const cleanups: (() => void)[] = [];
 
