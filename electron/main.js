@@ -376,6 +376,8 @@ function parse_args (argv)
 	  ELECTRON_CONFIG.quitstartup = true;
 	  break;
 	case '--no-sandbox':	// fall-through
+	case '--ozone-platform':
+	case '--ozone-override-screen-size':
 	case '--inspect':	// open chrome://inspect/
 	  break;		// nodejs debugging options
 	case '--':
