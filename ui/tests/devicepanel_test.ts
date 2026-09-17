@@ -5,11 +5,12 @@ import { DevicePanel } from '../b/devicepanel';
 import * as Dom from '../dom';
 
 /// Minimal fake track that returns a device with a fixed list of device types.
-function make_fake_track (device_types: { uri: string; name: string; category: string }[])
+function make_fake_track (device_types: { uri: string; name: string; category: string }[], added: string[])
 {
   return {
     access_device: async () => ({
       list_device_types: async () => device_types,
+      append_device: async uri => { added.push (uri); return {}; },
     }),
   };
 }
@@ -17,15 +18,17 @@ function make_fake_track (device_types: { uri: string; name: string; category: s
 /// Mount a DevicePanel with a fake track and return cleanup helpers.
 function mount_panel (device_types: { uri: string; name: string; category: string }[])
 {
+  const added: string[] = [];
   const container = document.createElement ('div');
   document.body.appendChild (container);
 
   const dispose = render (() => createComponent (DevicePanel, {
-    track: make_fake_track (device_types),
+    track: make_fake_track (device_types, added),
   }), container);
 
   return {
     container,
+    added,
     dispose,
     cleanup: () => {
       dispose();
@@ -83,6 +86,13 @@ async function test_devicepanel_popup_menutypes (): Promise<boolean>
       throw new Error (`device-type menu lacks 'Synth' button: ${labels.join (', ')}`);
     if (!labels.includes ('FX'))
       throw new Error (`device-type menu lacks 'FX' button: ${labels.join (', ')}`);
+    const submenu = menu.querySelector ('details')!;
+    submenu.open = true;
+    const button = submenu.querySelector ('button')!;
+    button.click();
+    await Dom.ui_next_frame();
+    if (panel.added.join (',') !== button.getAttribute ('uri'))
+      throw new Error ('device menu did not append the selected device');
   } finally {
     panel.cleanup();
   }
