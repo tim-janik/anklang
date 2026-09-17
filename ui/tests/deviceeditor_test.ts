@@ -82,6 +82,27 @@ async function test_deviceeditor_no_device (): Promise<boolean>
 }
 sub_tests.push (['no_device', test_deviceeditor_no_device]);
 
+async function test_deviceeditor_replaces_pending_device (): Promise<boolean>
+{
+  let finish: (value: any[]) => void;
+  const properties = new Promise<any[]> (resolve => { finish = resolve; });
+  const first = { ...mock_device ('Slow device'), access_properties: () => properties };
+  const [device, set_device] = createSignal (first);
+  const { name, cleanup } = mount_deviceeditor (device);
+  try {
+    set_device (mock_device ('Current device'));
+    await Dom.ui_next_frame();
+    finish ([]);
+    await Dom.ui_next_frame();
+    if (name() !== 'Current device')
+      throw new Error ('an old device load replaced the current editor');
+  } finally {
+    cleanup();
+  }
+  return true;
+}
+sub_tests.push (['replaces_pending_device', test_deviceeditor_replaces_pending_device]);
+
 // == Master runner ==
 export async function test_deviceeditor (): Promise<boolean>
 {
