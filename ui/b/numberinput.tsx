@@ -61,7 +61,7 @@ export function NumberInput (props: {
   [key: string]: any;
 })
 {
-  // TODO: Show edits immediately, send them, then accept backend corrections.
+  // Local edits stay visible until the next backend value arrives.
   let root_ref: (HTMLLabelElement & { value?: number }) | undefined;
   let slider_ref: HTMLInputElement | undefined;
   let number_ref: HTMLInputElement | undefined;
@@ -113,50 +113,31 @@ export function NumberInput (props: {
     return `width: 100%; max-width: ${width}em; min-width: 2em`;
   }
 
-  function emit_input_value (inputvalue: number | string)   // emit 'valuechange' with constrained value
+  function show_value (value: number)
   {
-    if (!root_ref) return;
-    const constrainedvalue = constrain (inputvalue);
-    const expected = String (constrainedvalue);
-    if (number_ref && String (number_ref.value) != expected)
-      number_ref.value = expected;
-    if (slider_ref && String (slider_ref.value) != expected)
-      slider_ref.value = expected;
-    if (String (local.value) != expected) {
-      root_ref.value = constrainedvalue;         // becomes Event.target.value
-      root_ref.dispatchEvent (new Event ('valuechange', { composed: true, bubbles: true }));
-    }
+    root_ref.value = value;
+    number_ref.value = String (value);
+    slider_ref.value = String (value);
   }
 
   const handle_input = (e: Event) => {
-    emit_input_value ((e.target as HTMLInputElement).value);
+    const value = constrain ((e.target as HTMLInputElement).value);
+    const changed = value !== root_ref.value;
+    show_value (value);
+    if (changed)
+      root_ref.dispatchEvent (new Event ('valuechange', { composed: true, bubbles: true }));
   };
 
-  // Constrain externally supplied values and notify the parent of the normalized number
-  createEffect (() => {
-    const raw = local.value;
-    const constrained = constrain (raw);
-    const expected = String (constrained);
-    if (slider_ref && String (slider_ref.value) != expected)
-      slider_ref.value = expected;
-    if (number_ref && String (number_ref.value) != expected)
-      number_ref.value = expected;
-    if (String (raw) != expected)                // enforce constrain() on outside changes
-      emit_input_value (raw);
-  });
-
-  const val = local.value ?? 0;
+  createEffect (() => show_value (local.value ?? 0));
 
   return (
     <label class={merged_class + ' tabular-nums'} ref={root_ref} {...others}>
       <input ref={slider_ref} type="range"
              tabindex={CONFIG.slidertabindex} min={mn()} max={mx()}
              step={slidersteps()} disabled={local.readonly}
-             value={val}
              onInput={handle_input} />
       <input ref={number_ref} type="number" style={numberstyle()}
              min={mn()} max={mx()} step={sp()} readonly={local.readonly}
-             value={val}
              onInput={handle_input} />
     </label>
   );

@@ -105,8 +105,7 @@ async function test_numberinput_integer_rounding (): Promise<boolean>
 }
 sub_tests.push (['integer_rounding', test_numberinput_integer_rounding]);
 
-/// Test that an out-of-range value pushed by the parent is enforced back via valuechange
-async function test_numberinput_external_enforce (): Promise<boolean>
+async function test_numberinput_backend_value (): Promise<boolean>
 {
   let emitted: any = undefined;
   const [get_value, set_value] = createSignal<number> (5);
@@ -120,21 +119,20 @@ async function test_numberinput_external_enforce (): Promise<boolean>
     const num = ni.number_input();
     const sld = ni.slider();
     if (!num || !sld) throw new Error ('NumberInput fields not rendered');
-    // parent pushes an out-of-range value: component must push back valuechange=10
     set_value (999);
     await Dom.ui_next_frame();
-    if (num.value !== '10')
-      throw new Error (`display not enforced: "${num.value}"`);
+    if (num.value !== '999')
+      throw new Error (`backend value not displayed: "${num.value}"`);
     if (sld.value !== '10')
       throw new Error (`slider not enforced: "${sld.value}"`);
-    if (emitted !== 10)
-      throw new Error (`external enforce did not emit valuechange: ${emitted}`);
+    if (emitted !== undefined)
+      throw new Error (`backend value emitted an edit: ${emitted}`);
   } finally {
     ni.cleanup();
   }
   return true;
 }
-sub_tests.push (['external_enforce', test_numberinput_external_enforce]);
+sub_tests.push (['backend_value', test_numberinput_backend_value]);
 
 /// Test that a value already within range does not fire a spurious valuechange.
 async function test_numberinput_no_spurious_emit (): Promise<boolean>
@@ -161,6 +159,36 @@ async function test_numberinput_no_spurious_emit (): Promise<boolean>
   return true;
 }
 sub_tests.push (['no_spurious_emit', test_numberinput_no_spurious_emit]);
+
+async function test_numberinput_backend_correction (): Promise<boolean>
+{
+  const [value, set_value] = createSignal (5, { equals: false });
+  const edits: number[] = [];
+  const ni = mount_numberinput ({
+    get value () { return value(); },
+    min: 0, max: 10,
+    'on:valuechange': e => edits.push ((e.target as any).value),
+  });
+  try {
+    const num = ni.number_input()!;
+    const slider = ni.slider()!;
+    send_input (num, '8');
+    if (num.value !== '8' || slider.value !== '8')
+      throw new Error ('edit did not update both fields');
+    send_input (num, '5');
+    if (edits.join (',') !== '8,5')
+      throw new Error ('quick change back was not sent');
+    send_input (num, '8');
+    set_value (5);
+    await Dom.ui_next_frame();
+    if (Number (num.value) !== 5 || Number (slider.value) !== 5 || edits.length !== 3)
+      throw new Error ('backend correction was lost or emitted as an edit');
+  } finally {
+    ni.cleanup();
+  }
+  return true;
+}
+sub_tests.push (['backend_correction', test_numberinput_backend_correction]);
 
 // == Master runner ==
 /// Single exported entry point runs all sub-tests in sequence.
