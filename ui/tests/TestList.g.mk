@@ -17,6 +17,7 @@ UI_TEST_LIST := \
   knob_test.test_knob \
   modals_test.test_modals \
   numberinput_test.test_numberinput \
+  objecteditor_test.test_objecteditor \
   pianoroll_test.test_pianoroll_shortcuts \
   project_test.test_project_basic \
   project_test.test_project_master_volume \
