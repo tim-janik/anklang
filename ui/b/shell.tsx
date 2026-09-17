@@ -148,7 +148,7 @@ export function ShellTemplate (props: any)
   return (
     <div class="b-shell" ref={e => t.setup (e)}>
       {/* Menus and Transport */}
-      <MenuBar class="-row1 -col123" project={t.project}></MenuBar>
+      <MenuBar class="-row1 -col123"></MenuBar>
 
       {/* tracks and clips */}
       <TrackList class="-row2 -col2" style="overflow: hidden" project={t.project} />
