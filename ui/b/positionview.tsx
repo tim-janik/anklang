@@ -38,43 +38,19 @@ import * as Util from '../util.js';
 
 export function PositionView (props: any)
 {
-  let counter_span: HTMLSpanElement | undefined;
-  let timer_span: HTMLSpanElement | undefined;
-  let alive = true;
-  let tsub: any = null;
-  let counter_text: Text | null = null;
-  let timer_text: Text | null = null;
+  const counter_text = document.createTextNode ('');
+  const timer_text = document.createTextNode ('');
 
-  onMount (async () => {
-    const project = App.project;
-    // Create text nodes for telemetry
-    counter_text = document.createTextNode ("");
-    counter_span!.appendChild (counter_text);
-    timer_text = document.createTextNode ("");
-    timer_span!.appendChild (timer_text);
-    // Subscribe to telemetry
-    const telemetry_fields = Object.freeze (await project.telemetry());
-    if (!alive) return;
-    if (telemetry_fields) {
-      const telefields = [ 'current_bar', 'current_beat', 'current_sixteenth', 'current_minutes', 'current_seconds' ];
-      const subscribefields = telemetry_fields.filter ((field: any) => telefields.includes (field.name));
-      tsub = Util.telemetry_subscribe (recv_telemetry, subscribefields);
-    }
-  });
-
-  onCleanup (() => {
-    alive = false;
-    if (tsub) {
-      Util.telemetry_unsubscribe (tsub);
-      tsub = null;
-    }
-    counter_text = null;
-    timer_text = null;
+  onMount (() => {
+    const subscription = App.project.telemetry().then (fields => {
+      const names = ['current_bar', 'current_beat', 'current_sixteenth', 'current_minutes', 'current_seconds'];
+      return Util.telemetry_subscribe (recv_telemetry, fields.filter (field => names.includes (field.name)));
+    });
+    onCleanup (() => { subscription.then (Util.telemetry_unsubscribe); });
   });
 
   function recv_telemetry (tsub: any, arrays: any)
   {
-    if (!timer_text) return;
     const ds = "\u2007"; // FIGURE SPACE - "Tabular width", the width of digits
     const s3 = (n: number) => (n >= 100 ? "" : n >= 10 ? ds : ds + ds) + n;
     const s2 = (n: number) => (n >= 10 ? "" : ds) + n;
@@ -89,10 +65,10 @@ export function PositionView (props: any)
     const seconds = arrays[tsub.current_seconds.type][tsub.current_seconds.index];
     const barpos = s3 (1 + bar) + "." + s2 (1 + beat) + "." + (1 + sixteenth).toFixed (2);
     const timepos = z2 (minutes) + ":" + z2 (ff (seconds, 3));
-    if (counter_text!.nodeValue != barpos)
-      counter_text!.nodeValue = barpos;
-    if (timer_text!.nodeValue != timepos)
-      timer_text!.nodeValue = timepos;
+    if (counter_text.nodeValue != barpos)
+      counter_text.nodeValue = barpos;
+    if (timer_text.nodeValue != timepos)
+      timer_text.nodeValue = timepos;
   }
 
   function apply_sig (v: string)
@@ -113,10 +89,10 @@ export function PositionView (props: any)
     <div class="b-positionview">
       <Editable class="w-16 text-center" onChange={e => apply_sig ((e as CustomEvent).detail.value)} selectall
 	value={project.numerator + '/' + project.denominator} />
-      <span class="b-positionview-counter" ref={counter_span}></span>
+      <span class="b-positionview-counter">{counter_text}</span>
       <Editable class="w-16 text-center" onChange={e => { project.bpm = 0 | (e as CustomEvent).detail.value }} selectall
 	value={project.bpm} />
-      <span class="b-positionview-timer" ref={timer_span}></span>
+      <span class="b-positionview-timer">{timer_text}</span>
     </div>
   );
 }
