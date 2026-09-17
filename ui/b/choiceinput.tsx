@@ -34,6 +34,7 @@ import * as Util from '../util.js';
 import { get_uri } from '../dom.js';
 import { ContextMenu } from './contextmenu.tsx';
 import { MenuTitle } from './menutitle.tsx';
+import { MenuItem } from './menuitems';
 
 // <STYLE/>
 Extra_css`
@@ -249,14 +250,14 @@ export function ChoiceInput (props: {
         </MenuTitle>
         <For each={mchoices()}>
           {(c: any) => (
-            <button class="m-0 grid cursor-pointer select-none auto-rows-auto items-stretch border border-solid text-left"
-              uri={c.ident} ic={c.icon}>
+            <MenuItem class="m-0 grid cursor-pointer select-none auto-rows-auto items-stretch border border-solid text-left"
+              uri={c.ident} icon={c.icon} label={c.label}>
               <span class={`b-choice-label ${c.labelclass ?? ''}`}>{c.label}</span>
               <span class={`b-choice-line1 ${c.line1class ?? ''}`}>{c.blurb}</span>
               <span class={`b-choice-line2 ${c.line2class ?? ''}`}>{c.line2}</span>
               <span class={`b-choice-line3 ${c.line3class ?? ''}`}>{c.notice}</span>
               <span class={`b-choice-line4 ${c.line4class ?? ''}`}>{c.warning}</span>
-            </button>
+            </MenuItem>
           )}
         </For>
       </ContextMenu>
