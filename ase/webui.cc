@@ -126,7 +126,11 @@ webui_start_browser (const std::string &mode, LoopP loop, const std::string &url
       argv.push_back (anklang_runpath (RPath::ELECTRONDIR, "htmlgui"));
       argv.push_back ("--no-sandbox");
       if (!! (flags & WebuiFlags::HEADLESS))
-        argv.push_back ("--headless");
+        {
+          argv.push_back ("--headless");
+          argv.push_back ("--ozone-platform=headless");
+          argv.push_back ("--ozone-override-screen-size=1920,1080");
+        }
       if (console_stdout_fd >= 0 && console_stderr_fd >= 0)
         argv.push_back (string_format ("--console-logs=%d,%d", console_stdout_fd, console_stderr_fd));
       argv.push_back (url);
