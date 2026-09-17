@@ -34,4 +34,5 @@ UI_TEST_LIST := \
   track_test.test_track_mute \
   track_test.test_track_solo \
   track_test.test_track_midi_channel \
+  trackview_test.test_trackview_subscription \
   util_test.test_util \
