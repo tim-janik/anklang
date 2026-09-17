@@ -122,7 +122,7 @@ export function ObjectEditor (props)
       return (
         <NumberInput
           class={"b-objecteditor--" + prop.ident_}
-          value={prop.value_.val}
+          value={prop.value}
           on:valuechange={e => prop.apply_ ((e.target as any).value)}
           min={prop.min_}
           max={prop.max_}
@@ -133,7 +133,7 @@ export function ObjectEditor (props)
       return (
         <SwitchInput
           class={"b-objecteditor--" + prop.ident_}
-          value={prop.value_.val}
+          value={prop.value}
           on:valuechange={e => prop.apply_ ((e.target as any).value)}
           readonly={props.readonly}
         />
@@ -142,7 +142,7 @@ export function ObjectEditor (props)
       return (
         <ChoiceInput
           class={"b-objecteditor--" + prop.ident_}
-          value={prop.value_.val}
+          value={prop.value}
           onValueChange={uri => prop.apply_ (uri)}
           title={prop.title_}
           choices={prop.value_.choices}

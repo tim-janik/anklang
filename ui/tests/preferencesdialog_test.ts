@@ -20,7 +20,7 @@ export async function test_preferencesdialog (): Promise<boolean>
         ident_: 'enabled',
         group_: 'Test group',
         label_: 'Enabled',
-        value_: { val: true },
+        value: true,
       });
       const container = document.createElement ('div');
       document.body.appendChild (container);
