@@ -89,8 +89,8 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
     <div class="b-pianoroll-grid" tabindex="-1" ref={h => t.cgrid = h} data-f1="the-piano-roll.html"
          onPointerEnter={t.pointerenter}
          onPointerLeave={t.pointerleave}
-         onFocus={t.focuschange}
-         onBlur={t.focuschange}
+         onFocus={() => t.focuschange (true)}
+         onBlur={() => t.focuschange (false)}
          onKeyDown={e => t.piano_ctrl.keydown (e)}>
 
       <div class="vflex -toolbutton col-start-1 row-start-1" style="height: 1.7em; align-items: end; padding-right: 4px;"
@@ -332,26 +332,28 @@ export function PianoRoll (props: {
     set: (r: any) => { Object.assign (t.srect_, r); t.queue_repaint(); },
   });
 
-  // TODO: Clear hover/focus state and disable both menu keymaps when the piano roll is hidden.
-  t.pointerenter = (event: PointerEvent) => {
+  const update_keymaps = () => {
+    if (props.hidden)
+      t.entered = t.have_focus = false;
+    t.pianotoolmenu?.map_kbd_hotkeys (t.entered || t.have_focus);
+    t.pianorollmenu?.map_kbd_hotkeys (t.have_focus);
+  };
+
+  createEffect (update_keymaps);
+
+  t.pointerenter = () => {
     t.entered = true;
-    if (t.pianotoolmenu)
-      t.pianotoolmenu.map_kbd_hotkeys (t.entered || t.have_focus);
+    update_keymaps();
   };
 
-  t.pointerleave = (event: PointerEvent) => {
+  t.pointerleave = () => {
     t.entered = false;
-    if (t.pianotoolmenu)
-      t.pianotoolmenu.map_kbd_hotkeys (t.entered || t.have_focus);
+    update_keymaps();
   };
 
-  t.focuschange = (ev: FocusEvent) => {
-    if (ev?.type)
-      t.have_focus = ev.type == "focus";
-    if (t.pianotoolmenu)
-      t.pianotoolmenu.map_kbd_hotkeys (t.entered || t.have_focus);
-    if (t.pianorollmenu)
-      t.pianorollmenu.map_kbd_hotkeys (t.have_focus);
+  t.focuschange = (focused: boolean) => {
+    t.have_focus = focused;
+    update_keymaps();
   };
 
   t.notes_canvas_pointermove = (event: PointerEvent) => {
