@@ -15,7 +15,6 @@ import { clamp } from '../util.js';
 import { text_content } from '../dom.js';
 import * as Mouse from '../mouse.js';
 import { tracking_wrapper } from "../signal.js";
-import { MenuTitle } from './menutitle.tsx';
 import { ContextMenu } from './contextmenu';
 import { Icon } from './icon';
 const floor = Math.floor, round = Math.round;
@@ -102,12 +101,12 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
               ic={t.tool_icon_().ic} data-kbd={t.tool_icon_().kbd} data-tip={t.tool_icon_().tip}/>
         <ContextMenu ref={h => { t.pianotoolmenu = h; }}
                        activate={t.usetool}
-                       id="g-pianotoolmenu" class="-pianotoolmenu">
-          <button ic="md-open_with"     uri="S" kbd="1" > Rectangular Selection  </button>
-          <button ic="md-multiple_stop" uri="H" kbd="2" > Horizontal Selection   </button>
-          <button ic="fa-pencil"        uri="P" kbd="3" > Pen                    </button>
-          <button ic="fa-eraser"        uri="E" kbd="4" > Eraser                 </button>
-        </ContextMenu>
+                       id="g-pianotoolmenu" class="-pianotoolmenu" items={[
+          { uri: 'S', label: 'Rectangular Selection', icon: 'md-open_with', kbd: '1' },
+          { uri: 'H', label: 'Horizontal Selection', icon: 'md-multiple_stop', kbd: '2' },
+          { uri: 'P', label: 'Pen', icon: 'fa-pencil', kbd: '3' },
+          { uri: 'E', label: 'Eraser', icon: 'fa-eraser', kbd: '4' },
+        ]} />
       </div>
 
       <canvas class="-time_canvas col-start-2 row-start-1" ref={h => t.time_canvas = h}></canvas>
@@ -129,13 +128,10 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
                      activate={t.pianorollmenu_click.bind (t)}
                      isactive={t.pianorollmenu_check.bind (t)}
                      id="g-pianorollmenu" showicons={true}
-                     class="-pianorollmenu" mapname="Piano Roll">
-        <MenuTitle> Piano-Roll </MenuTitle>
-        {/* key=${ac.weakid} */}
-        {actions.map (ac => (
-          <button uri={ac.weakid} ic={ac.ic} kbd={ac.kbd}>{ac.label}</button>
-        ))}
-      </ContextMenu>
+                     class="-pianorollmenu" mapname="Piano Roll" items={[
+        { type: 'title', label: 'Piano-Roll' },
+        ...actions.map (ac => ({ uri: ac.weakid, label: ac.label, icon: ac.ic, kbd: ac.kbd })),
+      ]} />
     </div>
   </div>
 );
