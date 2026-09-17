@@ -5,13 +5,11 @@
  * SolidJS component that displays a modal dialog to edit preferences.
  *
  * ### Props:
- * *shown*
- * : Boolean controlling dialog visibility.
  * *onClose*
  * : Callback invoked when the Close button is activated.
  */
 
-import { createSignal, createEffect, onCleanup } from 'solid-js';
+import { createResource, onCleanup, Show } from 'solid-js';
 import * as Util from "../util.js";
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import * as Dom from "../dom.js";
@@ -27,71 +25,40 @@ dialog.b-preferencesdialog {
 // == Component ==
 export function PreferencesDialog (props)
 {
-  /** @type {HTMLDialogElement | undefined} */
+  // Open only after the editor has rendered every field, keeping the dialog size stable.
+  const [preferences, { refetch }] = createResource (access_preferences);
+  return <Show when={preferences()}>
+    {list => <PreferencesContent proplist={list()} onClose={props.onClose} reload={refetch} />}
+  </Show>;
+}
+
+function PreferencesContent (props)
+{
+  /** @type {HTMLDialogElement} */
   let dialogRef;
-  const [proplist, set_proplist] = createSignal ([]);
-  let cancelled = false; // guard against showModal() after unmount
-  let close_sent = false;
-  const close = () => {
-    if (close_sent) return;
-    close_sent = true;
-    props.onClose?.();
-  };
-
-  // TODO: Prepare and render all editor fields before opening, so the dialog does not change size while loading.
-  createEffect (() => {
-    const shown = props.shown;
-    if (shown && !dialogRef?.open) {
-      close_sent = false;
-      Dom.show_modal (dialogRef, close);
-      fetch_preferences ();
-    }
-    if (!shown && dialogRef?.open) {
-      dialogRef.close ();
-    }
-  });
-
-  onCleanup (() => {
-    cancelled = true;
-    dialogRef?.close ();
-    close ();
-  });
-
-  const handleClose = () => {
-    if (!dialogRef?.open) close ();
-  };
+  onCleanup (() => dialogRef.close());
 
   const close_button_click = (event) => {
-    if (event.shiftKey && event.ctrlKey && (event.altKey || event.metaKey)) {
-      Util.prevent_event (event);
-      fetch_preferences ();
-      return;
-    }
-    if (!props.shown) return;
     Util.prevent_event (event);
-    close ();
+    if (event.shiftKey && event.ctrlKey && (event.altKey || event.metaKey))
+      props.reload();
+    else
+      dialogRef.close();
   };
-
-  async function fetch_preferences ()
-  {
-    const list = await access_preferences ();
-    if (cancelled) return;
-    set_proplist (list);
-    debug ("fetch_preferences:", list);
-  }
 
   return (
     <dialog
       class="b-preferencesdialog floating-dialog [&:not([open])]:hidden"
       ref={dialogRef}
-      onClose={handleClose}
+      onClose={props.onClose}
       exclusive={true}
       bwidth="9em"
       style="z-index: 93">
       <div class="dialog-header">Anklang Preferences</div>
       <ObjectEditor
-        value={proplist ()}
+        value={props.proplist}
         augment={augment_prop}
+        onReady={() => Dom.show_modal (dialogRef)}
       />
       <div class="dialog-footer">
         <button class="button-xl" autofocus onClick={close_button_click}>Close</button>
