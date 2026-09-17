@@ -206,7 +206,6 @@ export function ContextMenu (props: {
 })
 {
   let dialog_ref: HTMLDialogElement | undefined;
-  let emit_close_ = 0;
   let page_x: number | undefined;
   let page_y: number | undefined;
   let origin_el: Element | null = null;
@@ -223,17 +222,6 @@ export function ContextMenu (props: {
   const close = () => {
     if (dialog_ref?.open) {
       native_dialog_close.call(dialog_ref);
-    }
-    toggle_force_children (true);
-    origin_el = null;
-    data_contextmenu?.removeAttribute ('data-contextmenu');
-    data_contextmenu = null;
-    (window as any).App?.zmove(); // force changes to be picked up
-    if (emit_close_) {
-      emit_close_--;
-      const ev = new CustomEvent ('close', { detail: {} });
-      props.onclose?.(ev);
-      dialog_ref?.dispatchEvent (ev);
     }
   };
 
@@ -266,7 +254,6 @@ export function ContextMenu (props: {
     }
     data_contextmenu = popup_options['data-contextmenu'] || origin_el;
     data_contextmenu?.setAttribute ('data-contextmenu', 'true');
-    emit_close_++;
     // Auto-focus a requested child, or the first visible focusable item.
     const focus_uri = popup_options.focus_uri;
     (async () => {
@@ -413,9 +400,12 @@ export function ContextMenu (props: {
       return; // handled, no-default
   };
 
-  const handle_close = () => {
-    // Called when dialog is closed natively (Escape, backdrop click)
-    close();
+  const handle_close = (event: Event) => {
+    toggle_force_children (true);
+    origin_el = null;
+    data_contextmenu?.removeAttribute ('data-contextmenu');
+    data_contextmenu = null;
+    props.onclose?.(event);
   };
 
   // === Lifecycle ===
