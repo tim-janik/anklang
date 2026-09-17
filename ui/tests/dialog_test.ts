@@ -65,22 +65,19 @@ async function test_preferencesdialog_close_once (): Promise<boolean>
   const dispose = render (() => createComponent (Show, {
     get when () { return shown(); },
     keyed: true,
-    children: () => createComponent (PreferencesDialog, {
-      shown: false,
+    children: (_shown) => createComponent (PreferencesDialog, {
       onClose: () => { close_count++; set_shown (false); },
     }),
   }), container);
 
   try {
-    await Dom.ui_wait (100);
-    await Dom.ui_next_frame();
+    await wait_for (() => !!container.querySelector<HTMLDialogElement> ('.b-preferencesdialog')?.open);
 
-    const dialog = container.querySelector ('dialog.b-preferencesdialog') as HTMLElement;
+    const dialog = container.querySelector ('dialog.b-preferencesdialog') as HTMLDialogElement;
     if (!dialog)
       throw new Error ('PreferencesDialog dialog element not found');
 
-    // Native 'close' event (Escape/backdrop/close())
-    dialog.dispatchEvent (new Event ('close'));
+    dialog.close();
     await Dom.ui_next_frame();
     await Dom.ui_next_frame();
 
@@ -108,7 +105,7 @@ async function test_crawlerdialog_close_once (): Promise<boolean>
   const dispose = render (() => createComponent (Show, {
     get when () { return shown(); },
     keyed: true,
-    children: () => createComponent (CrawlerDialog, {
+    children: (_shown) => createComponent (CrawlerDialog, {
       shown: true,
       cwd: '~MUSIC',
       onSelect: () => {},
@@ -153,7 +150,7 @@ async function test_crawlerdialog_select_suppresses_close (): Promise<boolean>
   const dispose = render (() => createComponent (Show, {
     get when () { return shown(); },
     keyed: true,
-    children: () => createComponent (CrawlerDialog, {
+    children: (_shown) => createComponent (CrawlerDialog, {
       shown: true,
       cwd: '~MUSIC',
       onSelect: () => { select_count++; set_shown (false); },
@@ -219,15 +216,19 @@ async function test_dialog_reopen (): Promise<boolean>
     const get_close_count = () => close_count;
     const container = document.createElement ('div');
     document.body.appendChild (container);
-    const dispose = render (() => createComponent (component, {
-      get shown () { return shown(); },
-      cwd: '/tmp',
-      onClose: () => { close_count++; set_shown (false); },
+    const dispose = render (() => createComponent (Show, {
+      get when () { return shown(); },
+      keyed: true,
+      children: (_shown) => createComponent (component, {
+        shown: true,
+        cwd: '/tmp',
+        onClose: () => { close_count++; set_shown (false); },
+      }),
     }), container);
     try {
-      const dialog = container.querySelector ('dialog')!;
       for (let count = 1; count <= 2; count++) {
-        await wait_for (() => dialog.open);
+        await wait_for (() => !!container.querySelector ('dialog')?.open);
+        const dialog = container.querySelector ('dialog')!;
         dialog.dispatchEvent (new KeyboardEvent ('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
         await wait_for (() => !dialog.open);
         await Dom.ui_next_frame();
