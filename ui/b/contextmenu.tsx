@@ -63,6 +63,7 @@ import * as Kbd from '../kbd.js';
 import { text_content, get_uri, valid_uri } from '../dom.js';
 import * as Dom from "../dom.js";
 import { icon_element } from './icon';
+import { MenuItems, type MenuEntry } from './menuitems';
 
 // == STYLE ==
 Extra_css`
@@ -222,6 +223,7 @@ export function ContextMenu (props: {
   onactivate?: (e: CustomEvent) => void;
   onclose?: (e: Event) => void;
   children?: any;
+  items?: MenuEntry[];
 })
 {
   let dialog_ref: HTMLDialogElement | undefined;
@@ -611,6 +613,7 @@ export function ContextMenu (props: {
       onClose={handle_close}
     >
       <div class="b-contextmenu-inner">
+        <MenuItems items={props.items ?? []} />
         {props.children}
       </div>
     </dialog>
