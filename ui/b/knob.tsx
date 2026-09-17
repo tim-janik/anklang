@@ -282,11 +282,11 @@ export function Knob (props: {
   {
     clear_notify_cb?.();
     clear_notify_cb = undefined;
+    clearTimeout (settle_timer);
+    settle_timer = 0;
     if (!newprop)
       return;
     clear_notify_cb = newprop.on ('notify', () => notify_value());
-    clearTimeout (settle_timer);
-    settle_timer = 0;
     last_ = newprop?.fetch_() ?? 0;
     text_ = '';
     reposition();
@@ -379,6 +379,7 @@ export function Knob (props: {
     queue_commit.cancel();
     relabel_cb.cancel();
     clearTimeout (settle_timer);
+    settle_timer = 0;
     clear_notify_cb?.();
     clear_notify_cb = undefined;
   });

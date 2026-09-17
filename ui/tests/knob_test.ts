@@ -243,7 +243,22 @@ async function test_knob_quiet_refresh (): Promise<boolean>
     await Dom.ui_next_frame();
     if (sprite.style.backgroundPosition === settled_position)
       throw new Error ('idle knob stopped accepting backend updates');
+    let finish_read: (value: number) => void;
+    prop.get_normalized = () => {
+      reads++;
+      return new Promise (resolve => { finish_read = resolve; });
+    };
     await turn();
+    const edited_position = sprite.style.backgroundPosition;
+    await pause (140);
+    if (sprite.style.backgroundPosition !== edited_position)
+      throw new Error ('knob changed before the final read completed');
+    await turn();
+    const newer_position = sprite.style.backgroundPosition;
+    finish_read (0.2);
+    await Dom.ui_next_frame();
+    if (sprite.style.backgroundPosition !== newer_position)
+      throw new Error ('an older read overwrote a new knob edit');
     const reads_at_disposal = reads;
     knob.cleanup();
     await pause (140);
