@@ -10,7 +10,7 @@
  * : The index of this track in the track list.
  */
 
-import { createEffect, onCleanup } from 'solid-js';
+import { createEffect, onCleanup, onMount } from 'solid-js';
 import * as Util from '../util.js';
 import { clamp } from '../util.js';
 import { Editable } from './editable';
@@ -92,9 +92,6 @@ export function TrackView (props)
 
   let dbtip0_ = MINDB;
   let dbtip1_ = MINDB;
-  let teleobj = null;
-  let telemetry = null;
-  let telemetry_gen = 0;
   let level_width_ = 0;
   let trackview_contextmenu = null;
 
@@ -242,36 +239,12 @@ export function TrackView (props)
       root_ref.removeAttribute ('data-current-track');
   });
 
-  // Setup telemetry on track change
-  createEffect (() => {
-    const track = props.track;
-    if (!track) return;
-    track.midi_channel; // access field, we need it later on.
-    Util.telemetry_unsubscribe (teleobj);
-    teleobj = null;
-    telemetry = null;
-    const gen = ++telemetry_gen;
-    (async () => {
-      telemetry = await Object.freeze (track.telemetry());
-      if (gen !== telemetry_gen) return; // stale async, track changed during await
-      if (!teleobj && telemetry)
-	teleobj = Util.telemetry_subscribe (recv_telemetry, telemetry);
-    })();
-  });
-
-  onCleanup (() => {
-    telemetry = null;
-    Util.telemetry_unsubscribe (teleobj);
-    teleobj = null;
-  });
-
-  // Setup level gradient based on MINDB..MAXDB
-  createEffect (() => {
-    if (levelbg_ref) {
-      levelbg_ref.style.setProperty ('--db-zpc', -MINDB * 100.0 / (MAXDB - MINDB) + '%');
-      // cache level width in pixels to avoid expensive recalculations in fps handler
-      level_width_ = levelbg_ref.getBoundingClientRect().width;
-    }
+  // Each mounted TrackView belongs to one track; shell rebuilds also refresh its measurements.
+  onMount (() => {
+    const subscription = props.track.telemetry().then (fields => Util.telemetry_subscribe (recv_telemetry, fields));
+    onCleanup (() => { subscription.then (Util.telemetry_unsubscribe); });
+    levelbg_ref.style.setProperty ('--db-zpc', -MINDB * 100.0 / (MAXDB - MINDB) + '%');
+    level_width_ = levelbg_ref.getBoundingClientRect().width;
   });
 
   const on_editable_change = (event) => {
