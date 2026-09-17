@@ -14,7 +14,7 @@
  * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */
 
-import { createEffect, splitProps } from 'solid-js';
+import { splitProps } from 'solid-js';
 import * as Util from '../util.js';
 
 // == STYLE ==
@@ -54,15 +54,13 @@ export function SwitchInput (props: {
   'on:valuechange'?: (e: Event) => void;
 })
 {
-  // TODO: Show edits immediately, send them, then accept backend updates without emitting another edit.
+  // Native edits stay visible until the next backend value arrives.
   let label_ref: HTMLLabelElement | undefined;
   let checkbox_ref: HTMLInputElement | undefined;
 
   const [local, others] = splitProps (props, ['value', 'readonly', 'class']);
   const merged_class = local.class ? 'b-switchinput ' + local.class : 'b-switchinput';
 
-  // Single source of truth: the constrained boolean value, used both for the
-  // checkbox binding and for normalizing externally supplied (e.g. string) values.
   const value = () => constrain (local.value);
 
   function constrain (v: any): boolean
@@ -73,16 +71,6 @@ export function SwitchInput (props: {
       return true;
     }
     return !!v;
-  }
-
-  function emit_input_value (inputvalue: any)
-  {
-    if (!label_ref) return;
-    const boolvalue = constrain (inputvalue);
-    if (local.value !== boolvalue) {
-      (label_ref as any).value = boolvalue;
-      label_ref.dispatchEvent (new Event ('valuechange', { composed: true, bubbles: true }));
-    }
   }
 
   function keydown (event: KeyboardEvent)
@@ -104,17 +92,9 @@ export function SwitchInput (props: {
   }
 
   const handle_change = (e: Event) => {
-    const checked = (e.target as HTMLInputElement).checked;
-    emit_input_value (checked);
+    (label_ref as any).value = (e.target as HTMLInputElement).checked;
+    label_ref.dispatchEvent (new Event ('valuechange', { composed: true, bubbles: true }));
   };
-
-  // Constrain externally supplied values and notify the parent of the normalized boolean
-  createEffect (() => {
-    const raw = local.value;
-    const v = value ();
-    if (raw !== v)
-      emit_input_value (v);
-  });
 
   // Note checked - https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox#checked
   return (
