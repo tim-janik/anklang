@@ -1,4 +1,5 @@
 UI_TEST_LIST := \
+  aboutdialog_test.test_aboutdialog \
   app_test.test_app \
   choiceinput_test.test_choiceinput \
   clip_test.test_clip_volume \

@@ -22,16 +22,14 @@ async function test_aboutdialog_close_once (): Promise<boolean>
   const dispose = render (() => createComponent (Show, {
     get when () { return shown(); },
     keyed: true,
-    children: () => createComponent (AboutDialog, {
+    children: _shown => createComponent (AboutDialog, {
       onClose: () => { close_count++; set_shown (false); },
     }),
   }), container);
 
   try {
-    // Wait for onMount
-    await Dom.ui_wait (100);
-    await Dom.ui_next_frame();
-    await Dom.ui_next_frame();
+    await wait_for (() => !!container.querySelector<HTMLDialogElement> ('dialog.b-about-dialog')?.open,
+                    'AboutDialog did not open after loading its contents');
 
     const button = container.querySelector ('button.button-xl') as HTMLElement;
     if (!button)
