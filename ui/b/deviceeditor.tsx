@@ -12,7 +12,6 @@
 import { createEffect, createSignal, For, onCleanup } from 'solid-js';
 import * as Util from "../util.js";
 import { PropGroup } from './propgroup.tsx';
-import { MenuTitle } from './menutitle.tsx';
 import { ContextMenu } from './contextmenu';
 
 // == STYLE ==
@@ -314,12 +313,13 @@ export function DeviceEditor (props)
           )}
         </For>
       </div>
-      <ContextMenu ref={h => deviceeditorcmenu_ref = h} id="g-deviceeditorcmenu" activate={activate} isactive={isactive}>
-        <MenuTitle> Device </MenuTitle>
-        <button ic="fa-plus_circle" uri="add-device">Add Device</button>
-        <button ic="fa-times_circle" uri="delete-device">Delete Device</button>
-        <button ic="md-television_guide" uri="toggle-gui">Toggle GUI</button>
-      </ContextMenu>
+      <ContextMenu ref={h => deviceeditorcmenu_ref = h} id="g-deviceeditorcmenu" activate={activate} isactive={isactive}
+        items={[
+          { type: 'title', label: 'Device' },
+          { uri: 'add-device', label: 'Add Device', icon: 'fa-plus_circle' },
+          { uri: 'delete-device', label: 'Delete Device', icon: 'fa-times_circle' },
+          { uri: 'toggle-gui', label: 'Toggle GUI', icon: 'md-television_guide' },
+        ]} />
     </div>
   );
 }
