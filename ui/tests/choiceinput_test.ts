@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { createSignal } from 'solid-js';
 import { createComponent, render } from 'solid-js/web';
 import { ChoiceInput } from '../b/choiceinput';
 import * as Util from '../util.js';
@@ -398,6 +399,49 @@ async function test_choiceinput_menu_item_classes (): Promise<boolean>
   return true;
 }
 sub_tests.push (['menu_item_classes', test_choiceinput_menu_item_classes]);
+
+async function test_choiceinput_backend_value (): Promise<boolean>
+{
+  const [value, set_value] = createSignal ('a', { equals: false });
+  const ci = mount_choiceinput ({
+    prop: {
+      get value () { return value(); },
+      choices: () => { throw new Error ('preloaded choices were fetched again'); },
+    },
+    choices: [{ ident: 'a', label: 'Alpha' }, { ident: 'b', label: 'Beta' }],
+  });
+  try {
+    await Dom.ui_next_frame();
+    const current = () => ci.container.querySelector ('.-current')!.textContent;
+    if (current() !== 'Alpha')
+      throw new Error ('initial backend choice was not shown');
+    set_value ('b');
+    await Dom.ui_next_frame();
+    if (current() !== 'Beta')
+      throw new Error ('backend choice update was not shown');
+  } finally {
+    ci.cleanup();
+  }
+  return true;
+}
+sub_tests.push (['backend_value', test_choiceinput_backend_value]);
+
+async function test_choiceinput_fetch_choices (): Promise<boolean>
+{
+  let finish: (choices: any[]) => void;
+  const choices = new Promise<any[]> (resolve => { finish = resolve; });
+  const ci = mount_choiceinput ({ prop: { value: 'a', choices: () => choices } });
+  try {
+    finish ([{ ident: 'a', label: 'Loaded choice' }]);
+    await Dom.ui_next_frame();
+    if (ci.container.querySelector ('.-current')!.textContent !== 'Loaded choice')
+      throw new Error ('fetched choices were not displayed');
+  } finally {
+    ci.cleanup();
+  }
+  return true;
+}
+sub_tests.push (['fetch_choices', test_choiceinput_fetch_choices]);
 
 // == Master runner ==
 /// Single exported entry point runs all sub-tests in sequence.

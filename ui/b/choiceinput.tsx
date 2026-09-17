@@ -29,7 +29,7 @@
  * : the new value is available via `event.target.value`.
  */
 
-import { createEffect, createMemo, createSignal, For, onCleanup, splitProps } from 'solid-js';
+import { createEffect, createResource, createSignal, For, splitProps } from 'solid-js';
 import * as Util from '../util.js';
 import { get_uri } from '../dom.js';
 import { ContextMenu } from './contextmenu.tsx';
@@ -145,52 +145,13 @@ export function ChoiceInput (props: {
 			     (local.class ? ' ' + local.class : '');
 
   const [value_, set_value_] = createSignal (local.value ?? '');
-  const [choices_, set_choices_] = createSignal<any[]> ([]);
+  createEffect (() => set_value_ ((local.prop ? local.prop.value : local.value) ?? ''));
 
-  // Sync external value
-  createEffect (() => {
-    set_value_ (local.value ?? '');
-  });
-
-  // Subscribe to backend property changes so the selected choice stays fresh
-  // (undo/redo, preset loads, the reset button, other views). Mirrors the
-  // TextInput subscription pattern (textinput.tsx); `prop.value_` is not
-  // Solid-tracked, so a notify subscription is required.
-  createEffect (() => {
-    const prop = local.prop;
-    if (!prop || !prop.addnotify_)
-      return;
-    const notify_cb = () => set_value_ (prop.value_.val ?? '');
-    prop.addnotify_ (notify_cb);
-    onCleanup (() => {
-      prop.delnotify_ (notify_cb);
-    });
-  });
-
-  // Sync prop choices. Recurse only when the property object identity changes; the fetch
-  // is generation-guarded so an in-flight request that resolves after a newer fetch is discarded.
-  let choices_token = 0;
-  createEffect (() => {
-    if (local.prop) {
-      const p = local.prop;
-      p.name; p.metadata;
-      const token = ++choices_token;
-      (async () => {
-        const result = await p.choices();
-        if (token == choices_token)
-          set_choices_ (result);
-      }) ();
-    }
-  });
-
-  const mchoices = createMemo (() => {
-    const result: any[] = [];
-    const choices = local.choices?.length ? local.choices : choices_();
-    for (let i = 0; i < choices.length; i++) {
-      result.push (Object.assign ({}, choices[i]));
-    }
-    return result;
-  });
+  const [fetched_choices] = createResource (
+    () => local.choices === undefined ? local.prop : null,
+    prop => prop.choices(),
+  );
+  const mchoices = () => local.choices ?? fetched_choices() ?? [];
 
   function current()
   {
