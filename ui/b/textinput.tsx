@@ -34,7 +34,8 @@
  *   pushed to the backend via `prop.apply_()`.
  */
 
-import { createEffect, splitProps } from 'solid-js';
+import { splitProps } from 'solid-js';
+import { local_input_value } from '../input';
 
 // == STYLE ==
 Extra_css`
@@ -73,7 +74,6 @@ export function TextInput (props: {
   [key: string]: any;
 })
 {
-  // Input contract: show edits immediately, send them, then accept the backend value, including corrections.
   let root_el: HTMLElement | undefined;
   let input_el: HTMLInputElement | undefined;
   // Last value reflected in the input field; used to emit `valuechange` only
@@ -94,19 +94,14 @@ export function TextInput (props: {
     input_el.value = value;
   }
 
-  // Sync initial value and parent-supplied `value` prop changes.
-  createEffect (() => {
-    if (!input_el) return;
-    const value = local.prop ? local.prop.value : (local.value ?? '');
-    sync_display (value);
-  });
+  const show_edit = local_input_value (() => (local.prop ? local.prop.value : local.value) ?? '', sync_display);
 
   const handle_input = () => {
     if (!input_el || !root_el) return;
     const value = input_el.value;
     if (value === last_value)
       return;
-    last_value = value;
+    show_edit (value);
     if (local.prop)
       local.prop.apply_ (value);
     (root_el as any).value = value;    // becomes Event.target.value
@@ -126,8 +121,8 @@ export function TextInput (props: {
     const filename = await Shell.select_file (opt);
     if (!filename)
       return;
+    show_edit (filename);
     local.prop.value = filename;
-    // rely on the notify roundtrip to refresh the field via sync_display()
   };
 
   return (
