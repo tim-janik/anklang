@@ -7,6 +7,7 @@ console.bootlog = console.log;
 const fallback_config = {
   // runtime defaults and constants
   MAXINT: 2147483647, MAXUINT: 4294967295, mainjs: false,
+  INPUT_EDIT_GRACE_MS: 150,
   dpr_movement: false, // Chrome bug, movementX *should* match screenX units
   files: [], p: '', m: '', norc: false, uiscript: '',
 };
