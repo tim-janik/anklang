@@ -5,6 +5,7 @@ import { createComponent, render } from 'solid-js/web';
 import { ChoiceInput } from '../b/choiceinput';
 import * as Util from '../util.js';
 import * as Dom from '../dom';
+import { TestTimers } from './timers';
 
 /// Choices shared across tests: uri `a`→label `A`, `b`→`B`, `c`→`C`.
 function sample_choices()
@@ -402,7 +403,7 @@ sub_tests.push (['menu_item_classes', test_choiceinput_menu_item_classes]);
 
 async function test_choiceinput_backend_value (): Promise<boolean>
 {
-  const [value, set_value] = createSignal ('a', { equals: false });
+  const [value, set_value] = createSignal ('a');
   const ci = mount_choiceinput ({
     prop: {
       get value () { return value(); },
@@ -425,6 +426,47 @@ async function test_choiceinput_backend_value (): Promise<boolean>
   return true;
 }
 sub_tests.push (['backend_value', test_choiceinput_backend_value]);
+
+async function test_choiceinput_local_grace (): Promise<boolean>
+{
+  const [value, set_value] = createSignal ('a');
+  const edits: string[] = [];
+  const ci = mount_choiceinput ({
+    get value () { return value(); },
+    choices: sample_choices(),
+    onValueChange: uri => edits.push (uri),
+  });
+  const timers = new TestTimers();
+  try {
+    const current = () => ci.container.querySelector ('.-current')!.textContent;
+    send_keydown (ci.root()!, Util.KeyCode.DOWN);
+    if (current() !== 'Bbb' || value() !== 'a')
+      throw new Error ('choice edit did not stay local');
+    timers.run();
+    if (current() !== 'Aaa')
+      throw new Error ('choice kept an edit without a notification');
+    send_keydown (ci.root()!, Util.KeyCode.DOWN);
+    set_value ('c');
+    await Dom.ui_next_frame();
+    if (current() !== 'Bbb')
+      throw new Error ('backend update interrupted a choice edit');
+    send_keydown (ci.root()!, Util.KeyCode.UP);
+    if (current() !== 'Aaa' || timers.pending !== 1)
+      throw new Error ('choice edit did not replace its timer');
+    timers.run();
+    if (current() !== 'Ccc' || edits.join (',') !== 'b,b,a')
+      throw new Error ('choice did not settle on the latest backend value');
+    send_keydown (ci.root()!, Util.KeyCode.UP);
+    ci.cleanup();
+    if (timers.pending)
+      throw new Error ('choice kept a timer after disposal');
+  } finally {
+    ci.cleanup();
+    timers.restore();
+  }
+  return true;
+}
+sub_tests.push (['local_grace', test_choiceinput_local_grace]);
 
 async function test_choiceinput_fetch_choices (): Promise<boolean>
 {
