@@ -3,6 +3,7 @@
 import { createComponent, render } from 'solid-js/web';
 import { Knob } from '../b/knob';
 import * as Dom from '../dom';
+import { TestTimers } from './timers';
 
 /// Minimal fake knob prop with normalized value 0..1.
 function make_fake_prop (value = 0.5)
@@ -199,6 +200,100 @@ async function test_knob_wheel_guard (): Promise<boolean>
   return true;
 }
 sub_tests.push (['wheel_guard', test_knob_wheel_guard]);
+
+async function test_knob_quiet_refresh (): Promise<boolean>
+{
+  const prop = make_fake_prop (0.5);
+  const writes: number[] = [];
+  let backend_value = 0.5;
+  const listeners = new Set<() => void>();
+  const notify = () => listeners.forEach (cb => cb());
+  let reads = 0;
+  prop.get_normalized = async () => { reads++; return backend_value; };
+  prop.set_normalized = async value => { writes.push (value); };
+  prop.on = (_event, cb) => { listeners.add (cb); return () => { listeners.delete (cb); }; };
+  const knob = mount_knob (prop);
+  const other = mount_knob (prop);
+  const timers = new TestTimers();
+  try {
+    await Dom.ui_next_frame();
+    const sprite = knob.sprite();
+    const initial_position = sprite.style.backgroundPosition;
+    const turn = async () => {
+      sprite.dispatchEvent (new WheelEvent ('wheel', {
+        deltaY: -10, bubbles: true, cancelable: true,
+      }));
+      await Dom.ui_next_frame();
+      await Dom.ui_next_frame();
+    };
+    await turn();
+    const first_position = sprite.style.backgroundPosition;
+    if (other.sprite().style.backgroundPosition !== initial_position)
+      throw new Error ('optimistic knob edit escaped to another view');
+    const reads_before = reads;
+    backend_value = 0.1;
+    notify();
+    await Dom.ui_next_frame();
+    if (sprite.style.backgroundPosition !== first_position)
+      throw new Error ('backend notification interrupted a knob edit');
+    if (reads !== reads_before + 2 || other.sprite().style.backgroundPosition === initial_position)
+      throw new Error ('backend notification did not update the idle knob');
+    await turn();
+    if (writes.length !== 2 || writes[1] <= writes[0])
+      throw new Error ('knob did not continue from the local value');
+    if (timers.pending !== 1)
+      throw new Error ('knob edit did not replace its timer');
+    timers.run();
+    await Dom.ui_next_frame();
+    await Dom.ui_next_frame();
+    if (reads !== reads_before + 2 || sprite.style.backgroundPosition !== other.sprite().style.backgroundPosition)
+      throw new Error ('knob did not settle on the cached backend value');
+    const settled_position = sprite.style.backgroundPosition;
+    backend_value = 0.9;
+    notify();
+    await Dom.ui_next_frame();
+    if (sprite.style.backgroundPosition === settled_position)
+      throw new Error ('idle knob stopped accepting backend updates');
+    const accepted_position = sprite.style.backgroundPosition;
+    await turn();
+    timers.run();
+    if (sprite.style.backgroundPosition !== accepted_position)
+      throw new Error ('knob kept an edit without a notification');
+    let finish_read: (value: number) => void;
+    const pending_read = new Promise<number> (resolve => { finish_read = resolve; });
+    prop.get_normalized = () => { reads++; return pending_read; };
+    await turn();
+    const edited_position = sprite.style.backgroundPosition;
+    notify();
+    await Dom.ui_next_frame();
+    if (sprite.style.backgroundPosition !== edited_position)
+      throw new Error ('knob changed before the backend read completed');
+    await turn();
+    const newer_position = sprite.style.backgroundPosition;
+    finish_read (0.2);
+    await Dom.ui_next_frame();
+    if (sprite.style.backgroundPosition !== newer_position)
+      throw new Error ('an older read overwrote a new knob edit');
+    timers.run();
+    if (sprite.style.backgroundPosition !== other.sprite().style.backgroundPosition)
+      throw new Error ('knob lost a backend read received during its grace period');
+    await turn();
+    const reads_at_disposal = reads;
+    if (!timers.pending)
+      throw new Error ('knob did not schedule its final read');
+    knob.cleanup();
+    timers.run();
+    await Dom.ui_next_frame();
+    if (timers.pending || reads !== reads_at_disposal)
+      throw new Error ('disposed knob kept its quiet timer');
+  } finally {
+    knob.cleanup();
+    other.cleanup();
+    timers.restore();
+  }
+  return true;
+}
+sub_tests.push (['quiet_refresh', test_knob_quiet_refresh]);
 
 // == Master runner ==
 /// Single exported entry point runs all sub-tests in sequence.

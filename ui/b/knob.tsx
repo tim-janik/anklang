@@ -242,11 +242,11 @@ export function Knob (props: {
   let root_el: HTMLDivElement | undefined;
   let sprite_el: HTMLDivElement | undefined;
   let clear_notify_cb: (() => void) | undefined;
-  // TODO: Replace write counting with a 100 ms quiet timer; keep local edits until the final backend read completes.
-  const setters_inflight = { v: 0 };
+  // Keep edits local during the grace period; notifications still refresh the backend value.
+  let settle_timer = 0;
   let button1date = 0;
   let last_ = 0;
-  let text_ = '';
+  let backend_value = 0;
 
   const relabel_cb = Util.debounce (relabel);
   const queue_commit = Util.debounce (commit_value);
@@ -282,34 +282,36 @@ export function Knob (props: {
   {
     clear_notify_cb?.();
     clear_notify_cb = undefined;
+    clearTimeout (settle_timer);
+    settle_timer = 0;
     if (!newprop)
       return;
-    clear_notify_cb = newprop.on ('notify', notify_value);
-    setters_inflight.v = 0;
-    last_ = newprop?.fetch_() ?? 0;
-    text_ = '';
+    clear_notify_cb = newprop.on ('notify', () => notify_value());
+    backend_value = newprop?.fetch_() ?? 0;
+    last_ = backend_value;
     reposition();
     notify_value();
   }
 
-  async function notify_value()
+  async function notify_value ()
   {
-    // interactive knob changes may cause bursts of notify_value() calls, to avoid
-    // paint jitter, notifications are ignored that are dispatched before setters return
-    if (setters_inflight.v)
-      return;
-    // perform actual update
-    let val = props.prop?.get_normalized(), text = props.prop?.get_text();
-    val = await val;
-    text = await text;
-    if (!setters_inflight.v &&
-	(last_ !== val || text_ !== text))
-      {
-	// if (Math.abs (val - this.last_) > 0.001) debug ("%cDIFF: " + (val - this.last_), "color: red", val, this.last_);
-	last_ = val;
-	text_ = text;
-	reposition();
-      }
+    backend_value = await props.prop?.get_normalized();
+    if (!settle_timer) {
+      last_ = backend_value;
+      reposition();
+    }
+  }
+
+  function show_edit ()
+  {
+    clearTimeout (settle_timer);
+    settle_timer = window.setTimeout (() => {
+      settle_timer = 0;
+      last_ = backend_value;
+      reposition();
+    }, CONFIG.INPUT_EDIT_GRACE_MS);
+    reposition();
+    queue_commit();
   }
 
   function wheel_event (event: WheelEvent)
@@ -328,30 +330,17 @@ export function Knob (props: {
       {
 	const wheel_accel = spin_drag_granularity (event);
 	last_ = Util.clamp (last_ + delta * wheel_accel, 0, +1);
-	queue_commit(); // commit this.last_
+	show_edit();
       }
     event.preventDefault();
     event.stopPropagation();
   }
 
-  async function commit_value()
+  function commit_value()
   {
-    if (props.disabled)   // ignore stale queued commits
+    if (props.disabled)
       return;
-    console.assert (last_ >= 0 && last_ <= 1.0);
-    // assign value and maintain counter to ignore self-induced notifications
-    setters_inflight.v += 1;
-    const promise = props.prop?.set_normalized (last_);
-    // reflect interactive updates in current frame
-    reposition();
-    // synchronization point for ignored notifications
-    await promise;
-    if (setters_inflight.v)   // might have been reset meanwhile
-      {
-	setters_inflight.v -= 1;
-	if (!setters_inflight.v)
-	  props.prop?.update_();  // update to catch potential outside value changes
-      }
+    props.prop?.set_normalized (last_);
   }
 
   function pointerdown (event: PointerEvent)
@@ -378,7 +367,7 @@ export function Knob (props: {
   function drag_change (distance: number)
   {
     last_ = Util.clamp (last_ + distance, 0, +1);
-    queue_commit(); // commit this.last_
+    show_edit();
   }
 
   // External prop changes trigger setup
@@ -390,8 +379,14 @@ export function Knob (props: {
   // Cleanup on unmount: release notify subscription and abort any in-flight spin drag
   onCleanup (() => {
     spin_drag_stop (sprite_el);
+    queue_commit.cancel();
+    relabel_cb.cancel();
+    clearTimeout (settle_timer);
+    settle_timer = 0;
     clear_notify_cb?.();
     clear_notify_cb = undefined;
+    sprite_el = undefined;
+    root_el = undefined;
   });
 
   // Determine bidir from prop hints (reactive getter, tracks props.prop changes)

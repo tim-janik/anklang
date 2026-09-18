@@ -4,35 +4,19 @@ import { createComponent, render } from 'solid-js/web';
 import { createSignal } from 'solid-js';
 import { TextInput } from '../b/textinput';
 import * as Dom from '../dom';
+import { TestTimers } from './timers';
+import { Signal } from '../signal';
 
-/// A minimal fake of an extended property (the object `extend_property`
-/// produces) covering just what TextInput consumes: `value_`, `apply_`,
-/// `value`, `metadata`, and the `addnotify_`/`delnotify_`/`notify_` triple.
 function make_prop (init: { value?: string; metadata?: string[] } = {})
 {
-  const metadata = init.metadata ?? [];
-  const cbs: ((...args: any[]) => any)[] = [];
-  let stored: string = init.value ?? '';
-  const prop: any = {
-    metadata,
-    value_: { val: stored },
-    apply_: (v: string) => { stored = v; },
-    addnotify_: (cb: (...a: any[]) => any) => { cbs.push (cb); },
-    delnotify_: (cb: (...a: any[]) => any) => {
-      const i = cbs.indexOf (cb);
-      if (i >= 0) cbs.splice (i, 1);
-    },
-    // Simulate the extended-property notify roundtrip: refresh `value_` from
-    // the (possibly externally changed) backend value, then fire callbacks
-    // after the update completed — exactly like util.js notify_().
-    notify_: () => { prop.value_.val = stored; for (const cb of cbs) cb(); },
+  const [value, set_value] = createSignal (init.value ?? '');
+  return {
+    metadata: init.metadata ?? [],
+    get value () { return value(); },
+    set value (v: string) { set_value (v); },
+    apply_: (v: string) => { set_value (v); },
+    notify_: () => set_value (value()),
   };
-  Object.defineProperty (prop, 'value', {
-    get: () => stored,
-    set: (v: string) => { stored = v; },
-    enumerable: true,
-  });
-  return prop;
 }
 
 /// Mount a TextInput for testing and return helpers.
@@ -93,7 +77,7 @@ async function test_textinput_initial_value (): Promise<boolean>
 }
 sub_tests.push (['initial_value', test_textinput_initial_value]);
 
-/// Test that the initial value comes from `prop.value_.val` when a prop is given.
+/// Test that the initial value comes from the backend property.
 async function test_textinput_initial_from_prop (): Promise<boolean>
 {
   const prop = make_prop ({ value: 'via-prop' });
@@ -160,9 +144,7 @@ async function test_textinput_input_emits_valuechange (): Promise<boolean>
 }
 sub_tests.push (['input_emits_valuechange', test_textinput_input_emits_valuechange]);
 
-/// Test that an external backend change (prop.notify_()) refreshes the field
-/// even though `prop.value_` is not Solid-tracked — this guards the stale-display
-/// regression where undo/redo, preset loads or the reset button left the field stale.
+/// Backend updates refresh the field.
 async function test_textinput_external_notify (): Promise<boolean>
 {
   const prop = make_prop ({ value: 'initial' });
@@ -205,7 +187,7 @@ async function test_textinput_readonly_blocks_file_dialog (): Promise<boolean>
       await Dom.ui_next_frame();
       ti.input()!.click();
       await Dom.ui_next_frame();
-      await Dom.ui_wait (5);
+      await Dom.ui_next_frame();
       if (calls !== 0) throw new Error ('readonly opened the file dialog');
       if (applied !== undefined) throw new Error ('readonly applied a value');
       if (emitted !== undefined) throw new Error ('readonly emitted valuechange');
@@ -222,7 +204,7 @@ async function test_textinput_readonly_blocks_file_dialog (): Promise<boolean>
       await Dom.ui_next_frame();
       ti2.input()!.click();
       await Dom.ui_next_frame();
-      await Dom.ui_wait (5);
+      await Dom.ui_next_frame();
       if (calls !== 0) throw new Error ('disabled opened the file dialog');
     } finally {
       ti2.cleanup();
@@ -248,9 +230,7 @@ async function test_textinput_file_picker (): Promise<boolean>
     if (!inp) throw new Error ('TextInput field not rendered');
     inp.click();
     await Dom.ui_next_frame();
-    await Dom.ui_wait (5);
-    // `textinput_click` assigns `prop.value`; the xprop notify_ then refreshes
-    // value_ and our subscription updates the field.
+    await Dom.ui_next_frame();
     if (prop.value !== '/some/file.wav')
       throw new Error (`file not assigned to prop: ${prop.value}`);
     prop.notify_();                 // emulate the notify roundtrip
@@ -322,6 +302,79 @@ async function test_textinput_value_signal_update (): Promise<boolean>
   return true;
 }
 sub_tests.push (['value_signal_update', test_textinput_value_signal_update]);
+
+async function test_textinput_backend_correction (): Promise<boolean>
+{
+  const prop = make_prop ({ value: 'old' });
+  const edits: string[] = [];
+  prop.apply_ = value => { edits.push (value); };
+  const ti = mount_textinput ({ prop });
+  const timers = new TestTimers();
+  try {
+    const input = ti.input()!;
+    send_input (input, 'new');
+    if (input.value !== 'new')
+      throw new Error ('text edit did not stay visible');
+    send_input (input, 'old');
+    if (edits.join (',') !== 'new,old')
+      throw new Error ('quick text change back was not sent');
+    send_input (input, 'new');
+    prop.notify_();
+    await Dom.ui_next_frame();
+    if (String (input.value) !== 'new')
+      throw new Error ('backend value interrupted the edit');
+    timers.run();
+    if (String (input.value) !== 'old' || edits.length !== 3)
+      throw new Error ('backend correction was lost or sent as an edit');
+  } finally {
+    ti.cleanup();
+    timers.restore();
+  }
+  return true;
+}
+sub_tests.push (['backend_correction', test_textinput_backend_correction]);
+
+async function test_textinput_local_grace (): Promise<boolean>
+{
+  const value = new (Signal.State as any) ('backend');
+  const edits: string[] = [];
+  const props = {
+    get value () { return value.get(); },
+    'on:valuechange': e => edits.push (e.target.value),
+  };
+  const first = mount_textinput (props);
+  const second = mount_textinput (props);
+  const timers = new TestTimers();
+  try {
+    send_input (first.input()!, 'edit');
+    if (value.get() !== 'backend' || second.input()!.value !== 'backend')
+      throw new Error ('optimistic text escaped the edited input');
+    value.set ('remote');
+    await Dom.ui_next_frame();
+    if (first.input()!.value !== 'edit' || second.input()!.value !== 'remote')
+      throw new Error ('backend update did not stay separate from the edit');
+    send_input (first.input()!, 'newer');
+    if (timers.pending !== 1)
+      throw new Error ('text edit did not replace its timer');
+    timers.run();
+    if (first.input()!.value !== 'remote' || edits.join (',') !== 'edit,newer')
+      throw new Error ('text input did not settle on the latest backend value');
+    send_input (first.input()!, 'ignored');
+    timers.run();
+    if (first.input()!.value !== 'remote')
+      throw new Error ('text input kept an edit without a notification');
+    send_input (first.input()!, 'dispose');
+    first.cleanup();
+    if (timers.pending)
+      throw new Error ('text input kept a timer after disposal');
+  } finally {
+    first.cleanup();
+    second.cleanup();
+    timers.restore();
+  }
+  return true;
+}
+sub_tests.push (['local_grace', test_textinput_local_grace]);
 
 // == Master runner ==
 /// Single exported entry point runs all sub-tests in sequence.

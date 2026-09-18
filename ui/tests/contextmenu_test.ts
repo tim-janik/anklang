@@ -1,16 +1,14 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { createSignal } from 'solid-js';
+import { type MenuAction, type MenuEntry } from '../b/menuitems';
 import { createComponent, render } from 'solid-js/web';
 import { ContextMenu } from '../b/contextmenu';
 import * as Dom from '../dom';
 
-/// Create a menu item button.
-function make_button (uri: string, text: string): HTMLButtonElement
+function make_button (uri: string, label: string): MenuAction
 {
-  const btn = document.createElement ('button');
-  btn.setAttribute ('uri', uri);
-  btn.textContent = text;
-  return btn;
+  return { uri, label };
 }
 
 /// Mount a ContextMenu for testing and return helpers.
@@ -19,7 +17,7 @@ function mount_menu (props: {
   onactivate?: (e: CustomEvent) => void;
   onclose?: (e: Event) => void;
   isactive?: (uri: string) => boolean | Promise<boolean>;
-  children?: any;
+  items?: MenuEntry[];
 })
 {
   const container = document.createElement ('div');
@@ -27,7 +25,7 @@ function mount_menu (props: {
 
   const dispose = render (() => createComponent (ContextMenu, {
     ...props,
-    children: props.children ?? [
+    items: props.items ?? [
       make_button ('do-test', 'Do Test'),
       make_button ('do-other', 'Do Other'),
     ],
@@ -216,8 +214,18 @@ async function test_contextmenu_onclose_prop (): Promise<boolean>
     // Activating an item closes the menu.
     await Dom.ui_click_wait ('button', { uri: 'do-test' });
 
-    if (close_count < 1)
-      throw new Error ('onclose was not called after menu activation');
+    if (close_count !== 1)
+      throw new Error (`menu activation emitted ${close_count} close events`);
+    menu.close();
+    await Dom.ui_next_frame();
+    if (Number (close_count) !== 1)
+      throw new Error ('closing an already closed menu emitted another close');
+    menu.popup();
+    await wait_for_contextmenu_update();
+    HTMLDialogElement.prototype.close.call (menu.dialog());
+    await wait_for_contextmenu_update();
+    if (Number (close_count) !== 2)
+      throw new Error ('native close did not emit exactly one close');
   } finally {
     menu.cleanup();
   }
@@ -231,10 +239,10 @@ async function test_contextmenu_keyboard_map (): Promise<boolean>
 {
   let activated_uri: string | undefined;
   const hotkey_button = make_button ('hotkey-item', 'Hotkey Item');
-  hotkey_button.setAttribute ('kbd', 'Ctrl+K');
+  hotkey_button.kbd = 'Ctrl+K';
   const menu = mount_menu ({
     activate: uri => { activated_uri = uri; },
-    children: [hotkey_button],
+    items: [hotkey_button],
   });
 
   try {
@@ -274,44 +282,32 @@ async function test_contextmenu_keyboard_map (): Promise<boolean>
 }
 sub_tests.push (['keyboard_map', test_contextmenu_keyboard_map]);
 
-/// Test that ContextMenu-created icon spans track `ic` mutations without touching supplied icons.
 async function test_contextmenu_dynamic_icons (): Promise<boolean>
 {
-  const dynamic_button = make_button ('dynamic-icon', 'Dynamic Icon');
-  dynamic_button.setAttribute ('ic', '✓');
-  const supplied_button = make_button ('supplied-icon', 'Supplied Icon');
-  supplied_button.setAttribute ('ic', '✓');
+  const [icon, set_icon] = createSignal ('✓');
   const supplied_icon = document.createElement ('span');
   supplied_icon.className = 'b-icon application-icon';
-  supplied_icon.setAttribute ('ic', 'application-icon');
   supplied_icon.textContent = 'Application Icon';
-  supplied_button.prepend (supplied_icon);
-  const menu = mount_menu ({ children: [dynamic_button, supplied_button] });
-
+  const menu = mount_menu ({ items: [
+    { uri: 'dynamic-icon', label: 'Dynamic Icon', get icon () { return icon(); } },
+    { uri: 'supplied-icon', label: 'Supplied Icon', children: supplied_icon },
+  ] });
   try {
     await wait_for_contextmenu_update();
-    const first_icon = dynamic_button.querySelector ('.b-icon[data-contextmenu-icon]');
-    if (!first_icon || first_icon.textContent !== '✓')
-      throw new Error ('ContextMenu did not create the initial icon span');
-    if (supplied_icon.getAttribute ('ic') !== 'application-icon')
-      throw new Error ('ContextMenu changed an application-owned icon');
-
-    dynamic_button.setAttribute ('ic', '✗');
+    const button = menu.container.querySelector ('button[uri=dynamic-icon]')!;
+    if (button.querySelector ('.b-icon')?.textContent !== '✓')
+      throw new Error ('menu did not render its icon');
+    set_icon ('✗');
     await wait_for_contextmenu_update();
-    const second_icon = dynamic_button.querySelector ('.b-icon[data-contextmenu-icon]');
-    if (!second_icon || second_icon === first_icon || second_icon.textContent !== '✗')
-      throw new Error ('ContextMenu icon did not update after an ic mutation');
-    if (supplied_icon.getAttribute ('ic') !== 'application-icon')
-      throw new Error ('ContextMenu changed an application-owned icon after an ic mutation');
-
-    dynamic_button.removeAttribute ('ic');
+    if (button.querySelector ('.b-icon')?.textContent !== '✗' || button.querySelectorAll ('.b-icon').length !== 1)
+      throw new Error ('menu did not update its icon');
+    set_icon ('');
     await wait_for_contextmenu_update();
-    if (dynamic_button.querySelector ('.b-icon[data-contextmenu-icon]'))
-      throw new Error ('ContextMenu-owned icon remained after removing ic');
+    if (button.querySelector ('.b-icon') || !supplied_icon.isConnected || supplied_icon.textContent !== 'Application Icon')
+      throw new Error ('menu removed the wrong icon');
   } finally {
     menu.cleanup();
   }
-
   return true;
 }
 sub_tests.push (['dynamic_icons', test_contextmenu_dynamic_icons]);
@@ -319,17 +315,17 @@ sub_tests.push (['dynamic_icons', test_contextmenu_dynamic_icons]);
 /// Test that opening a collapsed tree focuses its visible summary rather than a hidden leaf.
 async function test_contextmenu_initial_focus (): Promise<boolean>
 {
-  const details = document.createElement ('details');
-  const summary = document.createElement ('summary');
-  summary.textContent = 'Category';
-  details.append (summary, make_button ('hidden-leaf', 'Hidden Leaf'));
   const focus_uri = 'quoted"-uri';
-  const requested_item = make_button (focus_uri, 'Requested Item');
-  const disabled_item = make_button ('disabled-item', 'Disabled Item');
   const menu = mount_menu ({
-    children: [details, requested_item, disabled_item],
+    items: [
+      { type: 'submenu', label: 'Category', items: [make_button ('hidden-leaf', 'Hidden Leaf')] },
+      make_button (focus_uri, 'Requested Item'),
+      make_button ('disabled-item', 'Disabled Item'),
+    ],
     isactive: uri => uri !== 'disabled-item',
   });
+  const summary = menu.container.querySelector ('summary');
+  const requested_item = (menu.dialog() as any).find_menuitem (focus_uri);
 
   try {
     await wait_for_contextmenu_update();
@@ -400,10 +396,10 @@ async function test_contextmenu_geometry_diagnostics (): Promise<boolean>
       await Dom.ui_next_frame();
     }
 
-    const tall_children: HTMLButtonElement[] = [];
+    const tall_children: MenuEntry[] = [];
     for (let i = 0; i < 100; i++)
       tall_children.push (make_button (`tall-${i}`, `Tall Item ${i}`));
-    const tall_menu = mount_menu ({ children: tall_children });
+    const tall_menu = mount_menu ({ items: tall_children });
     cleanups.push (tall_menu.cleanup);
     await wait_for_contextmenu_update();
     tall_menu.popup();

@@ -4,6 +4,7 @@ import { createComponent, render } from 'solid-js/web';
 import { createSignal } from 'solid-js';
 import { SwitchInput } from '../b/switchinput';
 import * as Dom from '../dom';
+import { TestTimers } from './timers';
 
 /// Mount a SwitchInput for testing and return helpers.
 function mount_switchinput (props: {
@@ -33,16 +34,6 @@ function click_checkbox (cb: HTMLInputElement)
 {
   cb.click();
 }
-
-/**
- * NOTE on SwitchInput's controlled-component behavior:
- * `emit_input_value` only dispatches 'valuechange' when the constrained
- * boolean differs from the current prop value (`local.value`).  This means:
- *   - toggling `false→true` with prop `false` → emits `true`  (differs)
- *   - toggling `true→false` with prop `false` → NO emit (matches prop)
- * The parent is expected to update the prop upon receiving valuechange.
- * Tests below respect this design.
- */
 
 // == Test registry ==
 const sub_tests: [string, () => Promise<any>][] = [];
@@ -159,9 +150,6 @@ async function test_switchinput_keyboard (): Promise<boolean>
     if (!cb.checked) throw new Error ('RIGHT did not check the switch');
     if (emitted !== true)
       throw new Error (`RIGHT valuechange payload wrong: ${emitted}`);
-    // After toggle, checkbox is checked but prop is still false.
-    // LEFT would uncheck but boolvalue=false == prop=false → no emit.
-    // Instead, test DOWN from unchecked state.
   } finally {
     // dispose of this mount before starting the next
     si.cleanup();
@@ -296,9 +284,7 @@ async function test_switchinput_constrain_strings (): Promise<boolean>
       const cb = si.checkbox();
       if (!cb) throw new Error ('SwitchInput not rendered');
       if (cb.checked) throw new Error (`string "${s}" should constrain to false`);
-      // The createEffect normalizes the raw string (raw !== v) and emits valuechange=false.
-      // Accept that emitted may be undefined if the effect hasn't flushed yet, or false.
-      if (emitted !== undefined && emitted !== false)
+      if (emitted !== undefined)
         throw new Error (`string "${s}" valuechange payload wrong: ${emitted}`);
     } finally {
       si.cleanup();
@@ -317,7 +303,7 @@ async function test_switchinput_constrain_strings (): Promise<boolean>
       const cb = si.checkbox();
       if (!cb) throw new Error ('SwitchInput not rendered');
       if (!cb.checked) throw new Error (`string "${s}" should constrain to true`);
-      if (emitted !== undefined && emitted !== true)
+      if (emitted !== undefined)
         throw new Error (`string "${s}" valuechange payload wrong: ${emitted}`);
     } finally {
       si.cleanup();
@@ -327,68 +313,55 @@ async function test_switchinput_constrain_strings (): Promise<boolean>
 }
 sub_tests.push (['constrain_strings', test_switchinput_constrain_strings]);
 
-/// Test that the createEffect normalizes a raw non-boolean value and emits.
-async function test_switchinput_normalize_emit (): Promise<boolean>
+async function test_switchinput_backend_updates (): Promise<boolean>
 {
-  let emitted: any = undefined;
+  const [value, set_value] = createSignal (false);
+  const edits: boolean[] = [];
   const si = mount_switchinput ({
-    value: 'nope',
-    'on:valuechange': e => { emitted = (e.target as any).value; },
+    get value () { return value(); },
+    'on:valuechange': e => edits.push ((e.target as any).value),
   });
+  const timers = new TestTimers();
   try {
+    const cb = si.checkbox()!;
+    cb.click();
+    if (!cb.checked)
+      throw new Error ('edit did not stay visible');
+    cb.click();
+    if (edits.join (',') !== 'true,false')
+      throw new Error ('quick change back was not sent');
+    cb.click();
+    set_value (false);
     await Dom.ui_next_frame();
-    const cb = si.checkbox();
-    if (!cb) throw new Error ('SwitchInput not rendered');
-    // 'nope' starts with 'n', so constrain returns false
-    if (cb.checked) throw new Error ('"nope" should constrain to false');
-    // The createEffect should have emitted valuechange=false (raw='nope' !== v=false)
-    if (emitted !== false)
-      throw new Error (`normalize did not emit valuechange: ${emitted}`);
+    if (!cb.checked || timers.pending !== 1)
+      throw new Error ('switch edit did not keep one grace timer');
+    timers.run();
+    if (cb.checked)
+      throw new Error ('backend correction did not replace the edit');
+    set_value (true);
+    await Dom.ui_next_frame();
+    if (!cb.checked || edits.length !== 3)
+      throw new Error ('backend update was lost or emitted as an edit');
+    cb.click();
+    set_value (false);
+    set_value (true);
+    await Dom.ui_next_frame();
+    if (cb.checked)
+      throw new Error ('backend update interrupted a switch edit');
+    timers.run();
+    if (!cb.checked)
+      throw new Error ('switch did not settle on the latest backend value');
+    cb.click();
+    si.cleanup();
+    if (timers.pending)
+      throw new Error ('switch kept a timer after disposal');
   } finally {
     si.cleanup();
+    timers.restore();
   }
   return true;
 }
-sub_tests.push (['normalize_emit', test_switchinput_normalize_emit]);
-
-/// Test that an external value change via signal emits valuechange when
-/// the constrained value actually changes.
-async function test_switchinput_external_enforce (): Promise<boolean>
-{
-  let emitted: any = undefined;
-  // Use a signal that produces a string needing normalization
-  const [get_value, set_value] = createSignal<string | boolean> ('false');
-  const si = mount_switchinput ({
-    get value () { return get_value(); },
-    'on:valuechange': e => { emitted = (e.target as any).value; },
-  });
-  try {
-    await Dom.ui_next_frame();
-    const cb = si.checkbox();
-    if (!cb) throw new Error ('SwitchInput not rendered');
-    if (cb.checked) throw new Error ('initial "false" should constrain to false');
-    // The effect normalizes the raw string (raw='false' !== v=false) and emits.
-    // We don't care about the initial emission for this test.
-    emitted = undefined;
-    // Parent pushes a truthy string — the effect sees raw='true', v=true, raw !== v, so emits.
-    set_value ('true');
-    await Dom.ui_next_frame();
-    if (!cb.checked) throw new Error ('checkbox did not reflect external "true"');
-    if (emitted !== true)
-      throw new Error (`external enforce did not emit valuechange: ${emitted}`);
-    // Switch back to a falsy string
-    emitted = undefined;
-    set_value ('no');
-    await Dom.ui_next_frame();
-    if (cb.checked) throw new Error ('checkbox did not reflect external "no"');
-    if (emitted !== false)
-      throw new Error (`external enforce did not emit valuechange: ${emitted}`);
-  } finally {
-    si.cleanup();
-  }
-  return true;
-}
-sub_tests.push (['external_enforce', test_switchinput_external_enforce]);
+sub_tests.push (['backend_updates', test_switchinput_backend_updates]);
 
 // == Master runner ==
 /// Single exported entry point runs all sub-tests in sequence.

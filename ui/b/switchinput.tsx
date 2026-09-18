@@ -14,8 +14,9 @@
  * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */
 
-import { createEffect, splitProps } from 'solid-js';
+import { splitProps } from 'solid-js';
 import * as Util from '../util.js';
+import { local_input_value } from '../input';
 
 // == STYLE ==
 Extra_css`
@@ -54,16 +55,16 @@ export function SwitchInput (props: {
   'on:valuechange'?: (e: Event) => void;
 })
 {
-  // TODO: Show edits immediately, send them, then accept backend updates without emitting another edit.
   let label_ref: HTMLLabelElement | undefined;
   let checkbox_ref: HTMLInputElement | undefined;
 
   const [local, others] = splitProps (props, ['value', 'readonly', 'class']);
   const merged_class = local.class ? 'b-switchinput ' + local.class : 'b-switchinput';
 
-  // Single source of truth: the constrained boolean value, used both for the
-  // checkbox binding and for normalizing externally supplied (e.g. string) values.
-  const value = () => constrain (local.value);
+  const show_edit = local_input_value (() => constrain (local.value), value => {
+    (label_ref as any).value = value;
+    checkbox_ref.checked = value;
+  });
 
   function constrain (v: any): boolean
   {
@@ -73,16 +74,6 @@ export function SwitchInput (props: {
       return true;
     }
     return !!v;
-  }
-
-  function emit_input_value (inputvalue: any)
-  {
-    if (!label_ref) return;
-    const boolvalue = constrain (inputvalue);
-    if (local.value !== boolvalue) {
-      (label_ref as any).value = boolvalue;
-      label_ref.dispatchEvent (new Event ('valuechange', { composed: true, bubbles: true }));
-    }
   }
 
   function keydown (event: KeyboardEvent)
@@ -104,23 +95,14 @@ export function SwitchInput (props: {
   }
 
   const handle_change = (e: Event) => {
-    const checked = (e.target as HTMLInputElement).checked;
-    emit_input_value (checked);
+    show_edit ((e.target as HTMLInputElement).checked);
+    label_ref.dispatchEvent (new Event ('valuechange', { composed: true, bubbles: true }));
   };
-
-  // Constrain externally supplied values and notify the parent of the normalized boolean
-  createEffect (() => {
-    const raw = local.value;
-    const v = value ();
-    if (raw !== v)
-      emit_input_value (v);
-  });
 
   // Note checked - https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox#checked
   return (
     <label class={merged_class} ref={label_ref} onKeyDown={keydown} {...others}>
       <input ref={checkbox_ref} type="checkbox" disabled={local.readonly}
-             checked={value()}
              onChange={handle_change} />
       <span class="b-switchinput-trough"><span class="b-switchinput-knob"></span></span>
     </label>

@@ -98,7 +98,7 @@ async function test_databubble_dispose_debounce (): Promise<boolean>
     dbiface.force (pending_element);
     document.body.dispatchEvent (new PointerEvent ('pointermove', { bubbles: true }));
     dbiface.dispose();
-    await Dom.ui_wait (200);
+    await Dom.ui_next_frame();
 
     if (count_bubbles() != bubbles_before)
       throw new Error ('disposed debounce left a bubble element attached');
