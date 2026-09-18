@@ -3,6 +3,7 @@
 import { createComponent, render } from 'solid-js/web';
 import { Knob } from '../b/knob';
 import * as Dom from '../dom';
+import { TestTimers } from './timers';
 
 /// Minimal fake knob prop with normalized value 0..1.
 function make_fake_prop (value = 0.5)
@@ -211,7 +212,7 @@ async function test_knob_quiet_refresh (): Promise<boolean>
   prop.set_normalized = async value => { writes.push (value); };
   prop.on = (_event, cb) => { notify = cb; return () => {}; };
   const knob = mount_knob (prop);
-  const pause = (ms: number) => new Promise (resolve => setTimeout (resolve, ms));
+  const timers = new TestTimers();
   try {
     await Dom.ui_next_frame();
     const sprite = knob.sprite();
@@ -227,13 +228,14 @@ async function test_knob_quiet_refresh (): Promise<boolean>
     const reads_before = reads;
     backend_value = 0.1;
     notify();
-    await pause (20);
+    await Dom.ui_next_frame();
     if (sprite.style.backgroundPosition !== first_position || reads !== reads_before)
       throw new Error ('backend notification interrupted a knob edit');
     await turn();
     if (writes.length !== 2 || writes[1] <= writes[0])
       throw new Error ('knob did not continue from the local value');
-    await pause (140);
+    timers.run();
+    await Dom.ui_next_frame();
     await Dom.ui_next_frame();
     if (reads !== reads_before + 1 || sprite.style.backgroundPosition === first_position)
       throw new Error ('quiet timer did not fetch and show the backend correction');
@@ -250,7 +252,8 @@ async function test_knob_quiet_refresh (): Promise<boolean>
     };
     await turn();
     const edited_position = sprite.style.backgroundPosition;
-    await pause (140);
+    timers.run();
+    await Dom.ui_next_frame();
     if (sprite.style.backgroundPosition !== edited_position)
       throw new Error ('knob changed before the final read completed');
     await turn();
@@ -260,12 +263,16 @@ async function test_knob_quiet_refresh (): Promise<boolean>
     if (sprite.style.backgroundPosition !== newer_position)
       throw new Error ('an older read overwrote a new knob edit');
     const reads_at_disposal = reads;
+    if (!timers.pending)
+      throw new Error ('knob did not schedule its final read');
     knob.cleanup();
-    await pause (140);
-    if (reads !== reads_at_disposal)
+    timers.run();
+    await Dom.ui_next_frame();
+    if (timers.pending || reads !== reads_at_disposal)
       throw new Error ('disposed knob kept its quiet timer');
   } finally {
     knob.cleanup();
+    timers.restore();
   }
   return true;
 }

@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 import * as Dom from '../dom';
+import { TestTimers } from './timers';
 
 // == Test registry ==
 const sub_tests: [string, () => Promise<any>][] = [];
@@ -20,8 +21,7 @@ async function test_relayout_resize (): Promise<boolean>
   if (!shell_before)
     throw new Error ('Shell element not found in test environment');
 
-  // Drain the boot-time debounced relayout so it cannot fire during the test.
-  await Dom.ui_wait (600);
+  const timers = new TestTimers();
 
   // Count relayouts while letting the real re-mount run
   let relayout_count = 0;
@@ -31,10 +31,10 @@ async function test_relayout_resize (): Promise<boolean>
   try {
     // Two rapid resizes: the debounce (restart=true) must fire once at the end.
     window.dispatchEvent (new Event ('resize'));
-    await Dom.ui_wait (150);
     window.dispatchEvent (new Event ('resize'));
-    // 500ms after the second resize; the first call is well past 500ms.
-    await Dom.ui_wait (600);
+    if (timers.pending !== 1)
+      throw new Error ('resize did not leave exactly one pending relayout');
+    timers.run();
 
     if (relayout_count < 1)
       throw new Error ('resize did not schedule a relayout');
@@ -51,6 +51,7 @@ async function test_relayout_resize (): Promise<boolean>
       throw new Error ('relayout did not replace the .b-shell element');
   } finally {
     app.relayout = orig_relayout;
+    timers.restore();
   }
 
   return true;
@@ -96,6 +97,7 @@ async function test_relayout_guard_no_project (): Promise<boolean>
     throw new Error ('Shell not available in test environment');
 
   // Null Shell.project to simulate the pre-boot state without tearing down the Shell.
+  const timers = new TestTimers();
   const real_project = shell.project;
   shell.project = null;
 
@@ -105,12 +107,15 @@ async function test_relayout_guard_no_project (): Promise<boolean>
 
   try {
     window.dispatchEvent (new Event ('resize'));
-    await Dom.ui_wait (700); // 500ms debounce + slack
+    if (timers.pending !== 1)
+      throw new Error ('resize did not schedule its check');
+    timers.run();
 
     if (relayout_count != 0)
       throw new Error (`relayout fired with no project assigned: ${relayout_count}`);
   } finally {
     app.relayout = orig_relayout;
+    timers.restore();
     shell.project = real_project;
   }
 

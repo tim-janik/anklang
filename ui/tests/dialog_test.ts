@@ -114,8 +114,7 @@ async function test_crawlerdialog_close_once (): Promise<boolean>
   }), container);
 
   try {
-    await Dom.ui_wait (100);
-    await Dom.ui_next_frame();
+    await wait_for (() => !!container.querySelector ('dialog')?.open);
 
     const buttons = container.querySelectorAll ('button.button-xl');
     const close_button = buttons[buttons.length - 1] as HTMLElement; // footer: Select, Close
@@ -159,8 +158,7 @@ async function test_crawlerdialog_select_suppresses_close (): Promise<boolean>
   }), container);
 
   try {
-    await Dom.ui_wait (100);
-    await Dom.ui_next_frame();
+    await wait_for (() => !!container.querySelector ('dialog')?.open);
     await Dom.ui_next_frame();
 
     const pathentry = container.querySelector ('input.-pathentry') as HTMLInputElement;
@@ -173,12 +171,7 @@ async function test_crawlerdialog_select_suppresses_close (): Promise<boolean>
     if (!select_button)
       throw new Error ('CrawlerDialog select button not found');
 
-    // Wait for the crawler to settle
-    const deadline = Date.now() + 4000;
-    while (select_button.disabled && Date.now() < deadline)
-      await Dom.ui_wait (100);
-    if (select_button.disabled)
-      throw new Error ('CrawlerDialog select button stayed disabled');
+    await wait_for (() => !select_button.disabled, 'CrawlerDialog select button stayed disabled');
 
     select_button.click();
     await Dom.ui_next_frame();
