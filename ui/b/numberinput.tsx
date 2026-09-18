@@ -23,8 +23,9 @@
  * : Event emitted whenever the value changes, which is provided as `event.target.value`.
  */
 
-import { createEffect, splitProps } from 'solid-js';
+import { splitProps } from 'solid-js';
 import * as Util from '../util.js';
+import { local_input_value } from '../input';
 
 // == STYLE ==
 Extra_css`
@@ -61,7 +62,6 @@ export function NumberInput (props: {
   [key: string]: any;
 })
 {
-  // Local edits stay visible until the next backend value arrives.
   let root_ref: (HTMLLabelElement & { value?: number }) | undefined;
   let slider_ref: HTMLInputElement | undefined;
   let number_ref: HTMLInputElement | undefined;
@@ -123,12 +123,12 @@ export function NumberInput (props: {
   const handle_input = (e: Event) => {
     const value = constrain ((e.target as HTMLInputElement).value);
     const changed = value !== root_ref.value;
-    show_value (value);
+    show_edit (value);
     if (changed)
       root_ref.dispatchEvent (new Event ('valuechange', { composed: true, bubbles: true }));
   };
 
-  createEffect (() => show_value (local.value ?? 0));
+  const show_edit = local_input_value (() => local.value ?? 0, show_value);
 
   return (
     <label class={merged_class + ' tabular-nums'} ref={root_ref} {...others}>
