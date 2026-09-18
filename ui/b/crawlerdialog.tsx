@@ -21,7 +21,7 @@
  * : Called when the "Close" button activated.
  */
 
-import { createSignal, createEffect, createMemo, onMount, onCleanup, For } from 'solid-js';
+import { createSignal, createResource, createMemo, onMount, onCleanup, For, Show } from 'solid-js';
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import { hex, basename, dirname, displayfs, displaybasename, displaydirname } from '../strings.js';
 import * as Util from "../util.js";
@@ -83,106 +83,52 @@ Extra_css`
 // == Component ==
 export function CrawlerDialog (props)
 {
+  // Each opening owns a fresh crawler and one native dialog result.
+  return <Show when={props.shown}><CrawlerContent {...props} /></Show>;
+}
+
+function CrawlerContent (props)
+{
   let dialogRef: any;
   let direntryRef: any;
   let pathentryRef: any;
   let entrygridRef: any;
 
-  const [crawler, set_crawler] = createSignal (null);
-  const [promise_state, set_promise_state] = createSignal (null);
-  const [current, set_current] = createSignal ({} as any);
-  const [bump, set_bump] = createSignal (0);
-
-  let last_cwd = props.cwd;
-  let focus_after_refill = true;
-  let cancelled = false;
-  let close_sent = false;
-  let session = 0;
-  const close = () => {
-    if (close_sent) return;
-    close_sent = true;
-    props.onClose?.();
-  };
-
-  /// Ctrl_L - hotkey for focus on path entry
-  const ctrl_l_grab_focus = () => {
-    pathentryRef?.focus();
-    pathentryRef?.select();
-  };
-
-  onMount (async () => {
+  const [crawler] = createResource (async () => {
     const c = await Ase.server.dir_crawler (props.cwd || '~MUSIC');
-    if (cancelled) return;
     await c.$refetch (() => [c.folder, c.entries]);
-    if (cancelled) return;
-    set_crawler (c);
-    set_bump (v => v + 1);
+    return c;
   });
+  const [assigning, set_assigning] = createSignal (false);
+  let alive = true;
+  let selected: string | undefined;
 
+  const ctrl_l_grab_focus = () => {
+    pathentryRef.focus();
+    pathentryRef.select();
+  };
+
+  onMount (() => {
+    Dom.show_modal (dialogRef);
+    Kbd.add_hotkey ('Ctrl+L', ctrl_l_grab_focus, dialogRef);
+  });
   onCleanup (() => {
-    cancelled = true;
+    alive = false;
     Kbd.remove_hotkey ('Ctrl+L', ctrl_l_grab_focus);
-    dialogRef?.close();
-    close();
+    dialogRef.close();
   });
 
-  // Setup hotkey when dialog becomes visible
-  createEffect (() => {
-    if (props.shown) {
-      Kbd.add_hotkey ('Ctrl+L', ctrl_l_grab_focus, dialogRef);
-      onCleanup (() => Kbd.remove_hotkey ('Ctrl+L', ctrl_l_grab_focus));
-    }
-  });
+  const handle_close = () => {
+    if (!alive)
+      return;
+    if (selected !== undefined)
+      props.onSelect?.(selected);
+    else
+      props.onClose?.();
+  };
 
-  // Dialog visibility — use show_modal which handles Escape/backdrop
-  createEffect (() => {
-    if (!props.shown && dialogRef?.open) {
-      dialogRef.close();
-    }
-    if (props.shown && !dialogRef?.open) {
-      close_sent = false;
-      session++;
-      Dom.show_modal (dialogRef, () => { if (!cancelled) close(); });
-    }
-  });
-
-  // cwd change handling
-  createEffect (() => {
-    const cwd_val = props.cwd;
-    if (props.shown && !close_sent && last_cwd !== cwd_val && !update_inflight()) {
-      last_cwd = cwd_val;
-      assign_utf8path (cwd_val);
-    }
-  });
-
-  // focus_after_refill handling
-  createEffect (() => {
-    const entries_list = unfiltered_entries();
-    if (entries_list.length === 0) {
-      focus_after_refill = true;
-    }
-    if (focus_after_refill && entries_list.length > 0 &&
-        document.activeElement === document.body) {
-      focus_after_refill = false;
-      pathentryRef?.focus();
-    }
-  });
-
-  /// folder - current folder without protocol
-  const folder = createMemo (() => {
-    bump();
-    const c = crawler();
-    if (!c) return '/';
-    let path = c.folder?.uri || '/';
-    path = path.replace (/^file:\/+/, '/');
-    return displayfs (path);
-  });
-
-  const unfiltered_entries = createMemo (() => {
-    bump();
-    const c = crawler();
-    return c?.entries || [];
-  });
+  const folder = createMemo (() => displayfs ((crawler()?.folder?.uri || '/').replace (/^file:\/+/, '/')));
+  const unfiltered_entries = () => crawler()?.entries || [];
 
   /// filtered_entries - filter hidden entries
   const filtered_entries = createMemo (() => {
@@ -205,27 +151,27 @@ export function CrawlerDialog (props)
     return e;
   });
 
-  const update_inflight = () => !crawler() || promise_state();
+  const update_inflight = () => crawler.loading || assigning();
 
   /// assign_utf8path - assign a path in UTF-8 encoding and possibly select it
   const assign_utf8path = async (filepath: string, pickfile = false) =>
   {
-    if (update_inflight() || close_sent) return;
-    const c = crawler();
-    const current_session = session;
-    const p = c.assign (filepath, props.existing !== false);
-    set_promise_state (p);
+    if (update_inflight() || !dialogRef.open)
+      return;
+    set_assigning (true);
     try {
-      const [, file] = await p;
+      const c = crawler();
+      const [, file] = await c.assign (filepath, props.existing !== false);
       await c.$asyncs();
-      if (cancelled || current_session !== session || close_sent) return;
-      if (pathentryRef && pathentryRef.value !== file)
-        pathentryRef.value = file;
-      set_bump (v => v + 1);
+      if (!alive || !dialogRef.open)
+        return;
+      pathentryRef.value = file;
+      if (document.activeElement === document.body)
+        pathentryRef.focus();
     } finally {
-      set_promise_state (null);
+      set_assigning (false);
     }
-    if (pickfile && current_session === session)
+    if (pickfile)
       select_entry (null);
   };
 
@@ -253,82 +199,38 @@ export function CrawlerDialog (props)
     // else Kbd.keydown_move_focus_up (event);
   };
 
-  const focus_entry = (entry: any) =>
-  {
-    if (!entry.uri || !entry.label) return;
-    set_current (entry);
-    if (pathentryRef)
-      pathentryRef.value = entry.label;
-  };
-
-  const current_is_dir = () =>
-  {
-    const uri = current()?.uri;
-    return uri && uri[uri.length - 1] === '/';
-  };
-
-  /// entry_event - handle events on the file entries
-  const entry_event = (event: Event, entry: any) =>
-  {
-    if (entry.uri && entry.uri != current()?.uri)
-      focus_entry (entry);
-    switch (event.type) {
-      case 'focus':
-        // focus_entry
-        break;
-      case 'dblclick':
-        if (!promise_state() && current()?.uri) {
-          if (current_is_dir())
-            assign_utf8path (current().uri);
-          else
-            select_entry (entry);
-        }
-        break;
-      case 'click':
-        if ((event as MouseEvent).detail === 0 && // focus + ENTER causes click with detail=0
-            !promise_state() && current()?.uri) {
-          if (current_is_dir()) {
-            assign_utf8path (current().uri);
-            pathentryRef?.focus();
-          } else
-            select_entry (entry);
-        }
-        break;
+  const entry_event = (event: Event, entry: any) => {
+    if (update_inflight())
+      return;
+    pathentryRef.value = entry.label;
+    if (event.type === 'dblclick' || (event.type === 'click' && (event as MouseEvent).detail === 0)) {
+      if (entry.uri.endsWith ('/'))
+        assign_utf8path (entry.uri);
+      else
+        select_entry (entry);
     }
   };
 
-  /// select_entry  - send 'select' event for `entry` or `pathentry.value`
-  const select_entry = (entry: any) =>
-  {
-    if (cancelled || close_sent || !props.shown || update_inflight())
-      return false;						// in async update
-    // select existing entry
-    if (entry?.uri) {
-      if (entry.uri[entry.uri.length - 1] === '/')
-        return false;						// is_dir
-      close_sent = true; // selection closes without onClose
-      props.onSelect?.(entry.uri);
-      return true;
+  const select_entry = (entry: any) => {
+    if (update_inflight() || !dialogRef.open)
+      return false;
+    let uri = entry?.uri;
+    if (!uri) {
+      const filename = pathentryRef.value.trim();
+      if (!filename || filename.includes ('/'))
+        return false;
+      uri = folder().replace (/\/$/, '') + '/' + filename;
     }
-    // select pathentry (pathentry.value==='' iff !this.existing)
-    const pvalue = ('' + pathentryRef?.value).trim();
-    if (pvalue && pvalue.search ('/') < 0) {
-      close_sent = true; // selection closes without onClose
-      props.onSelect?.(folder().replace (/\/$/, '') + '/' + pvalue);
-    }
+    if (uri.endsWith ('/'))
+      return false;
+    selected = uri;
+    dialogRef.close();
     return true;
-  };
-
-  /// close_click - send 'close' event for the dialog
-  const close_click = (ev: Event) =>
-  {
-    ev.preventDefault();
-    close();
   };
 
   return (
     <div class="b-crawlerdialog">
-      <dialog ref={dialogRef}
+      <dialog ref={dialogRef} onClose={handle_close}
         class="floating-dialog [&:not([open])]:hidden">
         <div class="dialog-header">{props.title || 'File Dialog'}</div>
 
@@ -373,7 +275,7 @@ export function CrawlerDialog (props)
             disabled={update_inflight() ? true : undefined}>
             {props.button || 'Select'}
           </button>
-          <button class="button-xl" onClick={close_click} onKeyDown={Kbd.keydown_move_focus_up}>
+          <button class="button-xl" onClick={() => dialogRef.close()} onKeyDown={Kbd.keydown_move_focus_up}>
             Close
           </button>
         </div>
