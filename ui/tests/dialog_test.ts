@@ -289,23 +289,21 @@ async function test_crawler_cwd_after_reopen (): Promise<boolean>
     onClose: () => set_shown (false),
   }), container);
   try {
-    const dialog = container.querySelector ('dialog')!;
-    const direntry = container.querySelector ('input.-direntry') as HTMLInputElement;
-    const pathentry = container.querySelector ('input.-pathentry') as HTMLInputElement;
-    const buttons = container.querySelectorAll ('button.button-xl');
-    const select_button = buttons[0] as HTMLButtonElement;
-    const close_button = buttons[buttons.length - 1] as HTMLButtonElement;
-    await wait_for (() => !select_button.disabled && direntry.value === '/tmp/', 'crawler did not load /tmp/');
-    close_button.click();
-    await wait_for (() => !dialog.open, 'crawler did not close');
+    const direntry = () => container.querySelector<HTMLInputElement> ('input.-direntry')!;
+    const select_button = () => container.querySelector<HTMLButtonElement> ('button.button-xl')!;
+    await wait_for (() => !select_button().disabled && direntry().value === '/tmp/', 'crawler did not load /tmp/');
+    container.querySelectorAll<HTMLButtonElement> ('button.button-xl')[1].click();
+    await wait_for (() => !container.querySelector ('dialog'), 'crawler did not close');
     set_cwd ('/');
     await Dom.ui_next_frame();
-    if (direntry.value !== '/tmp/')
-      throw new Error (`closed crawler changed directory to ${direntry.value}`);
+    if (container.querySelector ('dialog'))
+      throw new Error ('closed crawler stayed mounted');
     set_shown (true);
-    await wait_for (() => dialog.open && !select_button.disabled && direntry.value === '/', 'crawler did not reopen at /');
-    pathentry.value = 'review-save.anklang';
-    select_button.click();
+    await wait_for (() => !!container.querySelector ('dialog')?.open && !select_button().disabled && direntry().value === '/',
+                    'crawler did not reopen at /');
+    container.querySelector<HTMLInputElement> ('input.-pathentry')!.value = 'review-save.anklang';
+    select_button().click();
+    await wait_for (() => !!selected);
     if (selected !== '/review-save.anklang')
       throw new Error (`reopened crawler selected the wrong path: ${selected}`);
   } finally {
@@ -369,8 +367,7 @@ async function test_crawler_loading (): Promise<boolean>
     await wait_for (() => container.querySelector ('dialog')!.open);
     const buttons = container.querySelectorAll ('button.button-xl');
     (buttons[buttons.length - 1] as HTMLButtonElement).click();
-    if (closes() !== 1)
-      throw new Error ('Close suppressed after reopening a selected dialog');
+    await wait_for (() => closes() === 1, 'Close suppressed after reopening a selected dialog');
   } finally {
     release_folder();
     release_entries();
