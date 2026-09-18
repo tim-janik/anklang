@@ -68,7 +68,7 @@ export async function test_preferencesdialog (): Promise<boolean>
     if (!dialog?.open || !dialog.querySelector ('.b-objecteditor-field'))
       throw new Error ('real preferences did not open with editor fields');
     const before = dialog.getBoundingClientRect();
-    await Dom.ui_wait (100);
+    await Dom.ui_next_frame();
     const after = dialog.getBoundingClientRect();
     if (before.width !== after.width || before.height !== after.height)
       throw new Error ('preferences changed size after opening');

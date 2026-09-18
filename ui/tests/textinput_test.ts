@@ -185,7 +185,7 @@ async function test_textinput_readonly_blocks_file_dialog (): Promise<boolean>
       await Dom.ui_next_frame();
       ti.input()!.click();
       await Dom.ui_next_frame();
-      await Dom.ui_wait (5);
+      await Dom.ui_next_frame();
       if (calls !== 0) throw new Error ('readonly opened the file dialog');
       if (applied !== undefined) throw new Error ('readonly applied a value');
       if (emitted !== undefined) throw new Error ('readonly emitted valuechange');
@@ -202,7 +202,7 @@ async function test_textinput_readonly_blocks_file_dialog (): Promise<boolean>
       await Dom.ui_next_frame();
       ti2.input()!.click();
       await Dom.ui_next_frame();
-      await Dom.ui_wait (5);
+      await Dom.ui_next_frame();
       if (calls !== 0) throw new Error ('disabled opened the file dialog');
     } finally {
       ti2.cleanup();
@@ -228,7 +228,7 @@ async function test_textinput_file_picker (): Promise<boolean>
     if (!inp) throw new Error ('TextInput field not rendered');
     inp.click();
     await Dom.ui_next_frame();
-    await Dom.ui_wait (5);
+    await Dom.ui_next_frame();
     if (prop.value !== '/some/file.wav')
       throw new Error (`file not assigned to prop: ${prop.value}`);
     prop.notify_();                 // emulate the notify roundtrip
