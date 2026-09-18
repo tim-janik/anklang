@@ -29,7 +29,8 @@
  * : the new value is available via `event.target.value`.
  */
 
-import { createEffect, createResource, createSignal, For, splitProps } from 'solid-js';
+import { createResource, createSignal, For, splitProps } from 'solid-js';
+import { local_input_value } from '../input';
 import * as Util from '../util.js';
 import { get_uri } from '../dom.js';
 import { ContextMenu } from './contextmenu.tsx';
@@ -133,7 +134,6 @@ export function ChoiceInput (props: {
   [key: string]: any;
 })
 {
-  // Input contract: show edits immediately, send them, then accept the backend value, including corrections.
   let root_el: HTMLElement | undefined;
   let pophere_el: HTMLDivElement | undefined;
   let cmenu_el: any | undefined;
@@ -146,7 +146,7 @@ export function ChoiceInput (props: {
 			     (local.class ? ' ' + local.class : '');
 
   const [value_, set_value_] = createSignal (local.value ?? '');
-  createEffect (() => set_value_ ((local.prop ? local.prop.value : local.value) ?? ''));
+  const show_edit = local_input_value (() => (local.prop ? local.prop.value : local.value) ?? '', set_value_);
 
   const [fetched_choices] = createResource (
     () => local.choices === undefined ? local.prop : null,
@@ -189,7 +189,7 @@ export function ChoiceInput (props: {
     cmenu_el.close();
     if (local.disabled)
       return;
-    set_value_ (uri);
+    show_edit (uri);
     props.onValueChange?.(uri);
     if (root_el) {
       (root_el as any).value = uri;
