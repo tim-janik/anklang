@@ -4,6 +4,7 @@ import { createComponent, render } from 'solid-js/web';
 import { createSignal } from 'solid-js';
 import { SwitchInput } from '../b/switchinput';
 import * as Dom from '../dom';
+import { TestTimers } from './timers';
 
 /// Mount a SwitchInput for testing and return helpers.
 function mount_switchinput (props: {
@@ -314,12 +315,13 @@ sub_tests.push (['constrain_strings', test_switchinput_constrain_strings]);
 
 async function test_switchinput_backend_updates (): Promise<boolean>
 {
-  const [value, set_value] = createSignal (false, { equals: false });
+  const [value, set_value] = createSignal (false);
   const edits: boolean[] = [];
   const si = mount_switchinput ({
     get value () { return value(); },
     'on:valuechange': e => edits.push ((e.target as any).value),
   });
+  const timers = new TestTimers();
   try {
     const cb = si.checkbox()!;
     cb.click();
@@ -331,14 +333,31 @@ async function test_switchinput_backend_updates (): Promise<boolean>
     cb.click();
     set_value (false);
     await Dom.ui_next_frame();
+    if (!cb.checked || timers.pending !== 1)
+      throw new Error ('switch edit did not keep one grace timer');
+    timers.run();
     if (cb.checked)
       throw new Error ('backend correction did not replace the edit');
     set_value (true);
     await Dom.ui_next_frame();
     if (!cb.checked || edits.length !== 3)
       throw new Error ('backend update was lost or emitted as an edit');
+    cb.click();
+    set_value (false);
+    set_value (true);
+    await Dom.ui_next_frame();
+    if (cb.checked)
+      throw new Error ('backend update interrupted a switch edit');
+    timers.run();
+    if (!cb.checked)
+      throw new Error ('switch did not settle on the latest backend value');
+    cb.click();
+    si.cleanup();
+    if (timers.pending)
+      throw new Error ('switch kept a timer after disposal');
   } finally {
     si.cleanup();
+    timers.restore();
   }
   return true;
 }

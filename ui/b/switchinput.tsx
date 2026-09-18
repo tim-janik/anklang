@@ -16,6 +16,7 @@
 
 import { splitProps } from 'solid-js';
 import * as Util from '../util.js';
+import { local_input_value } from '../input';
 
 // == STYLE ==
 Extra_css`
@@ -54,14 +55,16 @@ export function SwitchInput (props: {
   'on:valuechange'?: (e: Event) => void;
 })
 {
-  // Native edits stay visible until the next backend value arrives.
   let label_ref: HTMLLabelElement | undefined;
   let checkbox_ref: HTMLInputElement | undefined;
 
   const [local, others] = splitProps (props, ['value', 'readonly', 'class']);
   const merged_class = local.class ? 'b-switchinput ' + local.class : 'b-switchinput';
 
-  const value = () => constrain (local.value);
+  const show_edit = local_input_value (() => constrain (local.value), value => {
+    (label_ref as any).value = value;
+    checkbox_ref.checked = value;
+  });
 
   function constrain (v: any): boolean
   {
@@ -92,7 +95,7 @@ export function SwitchInput (props: {
   }
 
   const handle_change = (e: Event) => {
-    (label_ref as any).value = (e.target as HTMLInputElement).checked;
+    show_edit ((e.target as HTMLInputElement).checked);
     label_ref.dispatchEvent (new Event ('valuechange', { composed: true, bubbles: true }));
   };
 
@@ -100,7 +103,6 @@ export function SwitchInput (props: {
   return (
     <label class={merged_class} ref={label_ref} onKeyDown={keydown} {...others}>
       <input ref={checkbox_ref} type="checkbox" disabled={local.readonly}
-             checked={value()}
              onChange={handle_change} />
       <span class="b-switchinput-trough"><span class="b-switchinput-knob"></span></span>
     </label>
