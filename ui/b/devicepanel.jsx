@@ -72,7 +72,7 @@ export function DevicePanel (props)
     const chain = await track.access_device();
     return chain ? { chain, items: await list_device_types (chain) } : null;
   });
-  const ready = () => !device_data.loading && device_data();
+  const ready = () => local.track && !device_data.loading && device_data();
 
   const activate = async (uri) => {
     const chain = ready()?.chain;

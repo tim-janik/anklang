@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { createSignal } from 'solid-js';
 import { createComponent, render } from 'solid-js/web';
 import { DevicePanel } from '../b/devicepanel';
 import * as Dom from '../dom';
@@ -21,14 +22,16 @@ function mount_panel (device_types: { uri: string; name: string; category: strin
   const added: string[] = [];
   const container = document.createElement ('div');
   document.body.appendChild (container);
+  const [track, set_track] = createSignal<any> (make_fake_track (device_types, added));
 
   const dispose = render (() => createComponent (DevicePanel, {
-    track: make_fake_track (device_types, added),
+    get track () { return track(); },
   }), container);
 
   return {
     container,
     added,
+    set_track,
     dispose,
     cleanup: () => {
       dispose();
@@ -100,6 +103,23 @@ async function test_devicepanel_popup_menutypes (): Promise<boolean>
   return true;
 }
 sub_tests.push (['popup_menutypes', test_devicepanel_popup_menutypes]);
+
+async function test_devicepanel_cleared_track (): Promise<boolean>
+{
+  const panel = mount_panel ([{ uri: 'ase:synth', name: 'Synth', category: 'Instruments' }]);
+  try {
+    const menu = panel.container.querySelector ('#g-devicepanelcmenu')!;
+    await wait_for_device_buttons (menu, ['Synth']);
+    panel.set_track (null);
+    await Dom.ui_next_frame();
+    if (menu.querySelector ('button[uri="ase:synth"]'))
+      throw new Error ('device menu kept the old track after selection cleared');
+  } finally {
+    panel.cleanup();
+  }
+  return true;
+}
+sub_tests.push (['cleared_track', test_devicepanel_cleared_track]);
 
 // == Master runner ==
 /// Single exported entry point runs all sub-tests in sequence.
