@@ -120,6 +120,55 @@ async function test_contextmenu_activate_prop (): Promise<boolean>
 }
 sub_tests.push (['activate_prop', test_contextmenu_activate_prop]);
 
+async function test_contextmenu_stale_isactive (): Promise<boolean>
+{
+  const pending: ((enabled: boolean) => void)[] = [];
+  const activated: string[] = [];
+  let defer = false;
+  const menu = mount_menu ({
+    items: [make_button ('do-test', 'Do Test')],
+    isactive: () => defer ? new Promise<boolean> (resolve => pending.push (resolve)) : true,
+    activate: uri => activated.push (uri),
+  });
+  try {
+    await Dom.ui_next_frame();
+    menu.popup();
+    await wait_for_contextmenu_update();
+    const dialog = menu.dialog()!;
+    const button = dialog.querySelector<HTMLButtonElement> ('button[uri="do-test"]')!;
+    defer = true;
+    button.click();
+    const first_checks = pending.length;
+    if (first_checks !== 1)
+      throw new Error ('menu did not start the deferred availability check');
+    menu.close();
+    defer = false;
+    await Dom.ui_next_frame();
+    menu.popup();
+    await wait_for_contextmenu_update();
+    pending.shift()! (true);
+    await Dom.ui_next_frame();
+    if (activated.length || !dialog.open)
+      throw new Error ('old availability check activated after reopening');
+
+    defer = true;
+    button.click();
+    button.click();
+    if (pending.length !== 2)
+      throw new Error ('menu did not start both availability checks');
+    pending.shift()! (true);
+    await Dom.ui_next_frame();
+    pending.shift()! (true);
+    await Dom.ui_next_frame();
+    if (activated.length !== 1 || activated[0] !== 'do-test')
+      throw new Error (`pending clicks activated ${activated.length} actions`);
+  } finally {
+    menu.cleanup();
+  }
+  return true;
+}
+sub_tests.push (['stale_isactive', test_contextmenu_stale_isactive]);
+
 /// Test that the `onactivate` event listener receives event.detail.uri.
 async function test_contextmenu_onactivate_event (): Promise<boolean>
 {

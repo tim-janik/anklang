@@ -366,9 +366,11 @@ export function ContextMenu (props: {
     Util.prevent_event (event);
     if (Util.frame_stamp() == menu_stamp)
       return;
+    const click_stamp = menu_stamp, was_open = dialog_ref?.open;
     const isactive = !(target as any).check_isactive ? true : (target as any).check_isactive (false);
     if (isactive instanceof Promise) {
-      (async () => (await isactive) && activate_item (event, uri)) ();
+      (async () => (await isactive && menu_stamp === click_stamp && dialog_ref?.open === was_open) &&
+                    activate_item (event, uri)) ();
       return;
     }
     if (isactive)
