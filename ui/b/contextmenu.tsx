@@ -407,6 +407,7 @@ export function ContextMenu (props: {
     origin_el = null;
     data_contextmenu?.removeAttribute ('data-contextmenu');
     data_contextmenu = null;
+    (window as any).App?.zmove();
     props.onclose?.(event);
   };
 
