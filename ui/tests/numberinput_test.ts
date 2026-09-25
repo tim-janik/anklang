@@ -58,7 +58,6 @@ async function test_numberinput_clamp_on_input (): Promise<boolean>
     const sld = ni.slider();
     if (!num || !sld) throw new Error ('NumberInput fields not rendered');
     send_input (num, '999');
-    await Dom.ui_next_frame();
     // value is clamped to max=10 on both fields and in the event payload
     if (num.value !== '10')
       throw new Error (`number field not clamped: "${num.value}"`);
@@ -87,14 +86,12 @@ async function test_numberinput_integer_rounding (): Promise<boolean>
     if (!num) throw new Error ('number field not rendered');
     // 3.7 must round to 4 (v|0 of v+0.5)
     send_input (num, '3.7');
-    await Dom.ui_next_frame();
     if (num.value !== '4')
       throw new Error (`integer rounding wrong: "${num.value}"`);
     if (emitted !== 4)
       throw new Error (`valuechange payload wrong: ${emitted}`);
     // 12.4 clamps to max=10
     send_input (num, '12.4');
-    await Dom.ui_next_frame();
     if ((num.value as any) !== '10')
       throw new Error (`clamp after rounding wrong: "${num.value}"`);
     if (emitted !== 10)
