@@ -169,6 +169,7 @@ async function test_knob_wheel_guard (): Promise<boolean>
   const shell = stub_shell();
   const prop = make_fake_prop (0.5);
   const knob = mount_knob (prop);
+  const timers = new TestTimers();
 
   try {
     await Dom.ui_next_frame();
@@ -195,6 +196,7 @@ async function test_knob_wheel_guard (): Promise<boolean>
   } finally {
     knob.cleanup();
     shell.restore();
+    timers.restore();
   }
 
   return true;
