@@ -48,12 +48,21 @@ export function MenuItem (props: MenuAction)
   const menu = useContext (MenuContext);
   const [active, set_active] = createSignal (true);
   let button: HTMLButtonElement;
+  // Only the latest availability check may change this item's disabled state.
+  let latest_check: Promise<boolean> | undefined;
   const shortcut = () => props.kbd ? Kbd.shortcut_lookup (menu?.mapname ?? '', props.label, props.kbd) : '';
   const check_isactive = async (apply = true) => {
-    const enabled = !props.disabled && (!menu || await menu.isactive (props.uri));
+    const check = Promise.resolve (!props.disabled && (!menu || menu.isactive (props.uri)));
     if (apply)
+      latest_check = check;
+    const enabled = await check;
+    if (apply && latest_check === check)
       set_active (enabled);
     return enabled;
+  };
+  const set_menu_active = (enabled: boolean) => {
+    latest_check = undefined;
+    set_active (enabled);
   };
 
   createEffect (() => {
@@ -69,7 +78,7 @@ export function MenuItem (props: MenuAction)
   return <button ref={element => {
     button = element;
     (element as any).check_isactive = check_isactive;
-    (element as any).set_menu_active = set_active;
+    (element as any).set_menu_active = set_menu_active;
   }} uri={props.uri} ic={props.icon} kbd={props.kbd} aria-label={props.label}
     disabled={props.disabled || !active()} class={props.class}
     onMouseEnter={event => event.currentTarget.focus()}>
