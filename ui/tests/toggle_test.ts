@@ -122,7 +122,6 @@ async function test_toggle_on (): Promise<boolean>
     if (label.classList.contains ('b-toggle-on')) throw new Error ('initial state should be off');
     if (!label.classList.contains ('b-toggle-off')) throw new Error ('initial state missing b-toggle-off');
     click_toggle (root);
-    await Dom.ui_next_frame();
     if (!label.classList.contains ('b-toggle-on')) throw new Error ('click did not apply b-toggle-on');
     if (label.classList.contains ('b-toggle-off')) throw new Error ('click did not remove b-toggle-off');
     if (emitted !== true)
@@ -149,7 +148,6 @@ async function test_toggle_off (): Promise<boolean>
     if (!root || !label) throw new Error ('Toggle not rendered');
     if (!label.classList.contains ('b-toggle-on')) throw new Error ('initial state should be on');
     click_toggle (root);
-    await Dom.ui_next_frame();
     if (label.classList.contains ('b-toggle-on')) throw new Error ('click did not remove b-toggle-on');
     if (!label.classList.contains ('b-toggle-off')) throw new Error ('click did not apply b-toggle-off');
     if (emitted !== false)
@@ -333,7 +331,6 @@ async function test_toggle_cancel (): Promise<boolean>
       throw new Error (`cancel emitted ${emitted.length} events`);
     // A subsequent click should toggle once.
     click_toggle (root);
-    await Dom.ui_next_frame();
     if (emitted_count (emitted) !== 1)
       throw new Error (`after cancel, click emitted ${emitted.length} events (expected 1)`);
     if (!label.classList.contains ('b-toggle-on')) throw new Error ('after cancel, click should turn on');
