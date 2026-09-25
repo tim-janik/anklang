@@ -163,8 +163,7 @@ async function test_choiceinput_activate_emits (): Promise<boolean>
     if (!d || !d.open) throw new Error ('choice menu did not open');
 
     // Activate the `c` item.
-    await Dom.ui_click_wait ('button', { uri: 'c' });
-    await Dom.ui_next_frame();
+    await Dom.ui_click ('button', { uri: 'c' });
 
     if (changed_uri !== 'c')
       throw new Error (`onValueChange not called with 'c': ${changed_uri}`);
@@ -270,24 +269,19 @@ async function test_choiceinput_keyboard_nav (): Promise<boolean>
 
     // DOWN twice: a→b→c
     send_keydown (root_el, Util.KeyCode.DOWN);
-    await Dom.ui_next_frame();
     if (changed[0] !== 'b') throw new Error (`DOWN should select 'b': ${changed[0]}`);
     send_keydown (root_el, Util.KeyCode.DOWN);
-    await Dom.ui_next_frame();
     if (changed[1] !== 'c') throw new Error (`DOWN should select 'c': ${changed[1]}`);
 
     // UP once: c→b
     send_keydown (root_el, Util.KeyCode.UP);
-    await Dom.ui_next_frame();
     if (changed[2] !== 'b') throw new Error (`UP should select 'b': ${changed[2]}`);
 
     // DOWN at the last item must not wrap/activate.
     send_keydown (root_el, Util.KeyCode.DOWN); // b→c
-    await Dom.ui_next_frame();
     if (changed[3] !== 'c') throw new Error (`DOWN should select 'c': ${changed[3]}`);
     const before = changed.length;
     send_keydown (root_el, Util.KeyCode.DOWN); // c→(nothing)
-    await Dom.ui_next_frame();
     if (changed.length !== before)
       throw new Error (`DOWN past end should not activate (got ${changed[before]})`);
 
@@ -348,8 +342,7 @@ async function test_choiceinput_data_tip_reactive (): Promise<boolean>
     // change value via activate and check the tip updates reactively
     open_menu (root_el);
     await Dom.ui_next_frame();
-    await Dom.ui_click_wait ('button', { uri: 'c' });
-    await Dom.ui_next_frame();
+    await Dom.ui_click ('button', { uri: 'c' });
     if (!/Ccc/.test (tip_of()))
       throw new Error (`data-tip not updated after activate: "${tip_of()}"`);
   } finally {
