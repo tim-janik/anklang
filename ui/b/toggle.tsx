@@ -22,7 +22,8 @@
  * `event.target.value`.
  */
 
-import { createEffect, createSignal, splitProps } from 'solid-js';
+import { createSignal, splitProps } from 'solid-js';
+import { local_input_value } from '../input';
 
 // == STYLE ==
 Extra_css`
@@ -69,9 +70,8 @@ export function Toggle (props: {
   const [local, others] = splitProps (props, ['value', 'label', 'disabled', 'class', 'onValueChange']);
   const merged_class = () => local.class ? 'b-toggle ' + local.class : 'b-toggle';
 
-  // Show edits immediately, send them, then accept backend updates; rapid clicks must use the displayed value.
   const [value_, set_value_] = createSignal (!!local.value);
-  createEffect (() => set_value_ (!!local.value));
+  const show_edit = local_input_value (() => !!local.value, set_value_);
 
   const handle_pointerdown = (event: PointerEvent) => {
     if (local.disabled) return;
@@ -94,7 +94,7 @@ export function Toggle (props: {
       // capture is used), so the old `:hover` guard was redundant and, worse,
       // never matched under headless/scripted input — hence dropped here.
       const new_val = !value_();
-      set_value_ (new_val);
+      show_edit (new_val);
       if (root_el) {
         (root_el as any).value = new_val;
         root_el.dispatchEvent (new Event ('valuechange', { composed: true }));

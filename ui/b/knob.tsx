@@ -242,11 +242,11 @@ export function Knob (props: {
   let root_el: HTMLDivElement | undefined;
   let sprite_el: HTMLDivElement | undefined;
   let clear_notify_cb: (() => void) | undefined;
-  // Keep local edits until 100 ms of quiet and the final backend read completes.
+  // Keep edits local during the grace period; notifications still refresh the backend value.
   let settle_timer = 0;
   let button1date = 0;
   let last_ = 0;
-  let text_ = '';
+  let backend_value = 0;
 
   const relabel_cb = Util.debounce (relabel);
   const queue_commit = Util.debounce (commit_value);
@@ -287,25 +287,31 @@ export function Knob (props: {
     if (!newprop)
       return;
     clear_notify_cb = newprop.on ('notify', () => notify_value());
-    last_ = newprop?.fetch_() ?? 0;
-    text_ = '';
+    backend_value = newprop?.fetch_() ?? 0;
+    last_ = backend_value;
     reposition();
     notify_value();
   }
 
-  async function notify_value (timer = 0)
+  async function notify_value ()
   {
-    if (timer !== settle_timer)
-      return;
-    const [val, text] = await Promise.all ([props.prop?.get_normalized(), props.prop?.get_text()]);
-    if (timer !== settle_timer)
-      return;
-    settle_timer = 0;
-    if (last_ !== val || text_ !== text) {
-      last_ = val;
-      text_ = text;
+    backend_value = await props.prop?.get_normalized();
+    if (!settle_timer) {
+      last_ = backend_value;
       reposition();
     }
+  }
+
+  function show_edit ()
+  {
+    clearTimeout (settle_timer);
+    settle_timer = window.setTimeout (() => {
+      settle_timer = 0;
+      last_ = backend_value;
+      reposition();
+    }, CONFIG.INPUT_EDIT_GRACE_MS);
+    reposition();
+    queue_commit();
   }
 
   function wheel_event (event: WheelEvent)
@@ -324,7 +330,7 @@ export function Knob (props: {
       {
 	const wheel_accel = spin_drag_granularity (event);
 	last_ = Util.clamp (last_ + delta * wheel_accel, 0, +1);
-	queue_commit(); // commit this.last_
+	show_edit();
       }
     event.preventDefault();
     event.stopPropagation();
@@ -334,10 +340,7 @@ export function Knob (props: {
   {
     if (props.disabled)
       return;
-    clearTimeout (settle_timer);
-    settle_timer = window.setTimeout (() => notify_value (settle_timer), 100);
     props.prop?.set_normalized (last_);
-    reposition();
   }
 
   function pointerdown (event: PointerEvent)
@@ -364,7 +367,7 @@ export function Knob (props: {
   function drag_change (distance: number)
   {
     last_ = Util.clamp (last_ + distance, 0, +1);
-    queue_commit(); // commit this.last_
+    show_edit();
   }
 
   // External prop changes trigger setup
@@ -382,6 +385,8 @@ export function Knob (props: {
     settle_timer = 0;
     clear_notify_cb?.();
     clear_notify_cb = undefined;
+    sprite_el = undefined;
+    root_el = undefined;
   });
 
   // Determine bidir from prop hints (reactive getter, tracks props.prop changes)

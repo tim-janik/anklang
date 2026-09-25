@@ -3,6 +3,8 @@
 import { createComponent, render } from 'solid-js/web';
 import { Toggle } from '../b/toggle';
 import * as Dom from '../dom';
+import { createSignal } from 'solid-js';
+import { TestTimers } from './timers';
 
 /// Mount a Toggle for testing and return helpers.
 function mount_toggle (props: {
@@ -58,6 +60,48 @@ function emitted_count (emitted: boolean[])
 // == Test registry ==
 const sub_tests: [string, () => Promise<any>][] = [];
 
+async function test_toggle_local_grace (): Promise<boolean>
+{
+  const [value, set_value] = createSignal (false);
+  const edits: boolean[] = [];
+  const toggle = mount_toggle ({
+    get value () { return value(); },
+    onValueChange: value => edits.push (value),
+  });
+  const timers = new TestTimers();
+  const active = () => toggle.label()!.classList.contains ('b-toggle-on');
+  try {
+    click_toggle (toggle.root()!);
+    if (!active() || value())
+      throw new Error ('toggle edit did not stay local');
+    timers.run();
+    if (active())
+      throw new Error ('toggle kept an edit without a notification');
+    click_toggle (toggle.root()!);
+    set_value (true);
+    set_value (false);
+    await Dom.ui_next_frame();
+    if (!active())
+      throw new Error ('backend update interrupted a toggle edit');
+    click_toggle (toggle.root()!);
+    if (active() || timers.pending !== 1 || edits.join (',') !== 'true,true,false')
+      throw new Error ('quick toggle did not replace its edit and timer');
+    set_value (true);
+    timers.run();
+    if (!active())
+      throw new Error ('toggle did not settle on the latest backend value');
+    click_toggle (toggle.root()!);
+    toggle.cleanup();
+    if (timers.pending)
+      throw new Error ('toggle kept a timer after disposal');
+  } finally {
+    toggle.cleanup();
+    timers.restore();
+  }
+  return true;
+}
+sub_tests.push (['local_grace', test_toggle_local_grace]);
+
 // =============================================================================
 // Click / visual-flip tests
 // =============================================================================
@@ -78,7 +122,6 @@ async function test_toggle_on (): Promise<boolean>
     if (label.classList.contains ('b-toggle-on')) throw new Error ('initial state should be off');
     if (!label.classList.contains ('b-toggle-off')) throw new Error ('initial state missing b-toggle-off');
     click_toggle (root);
-    await Dom.ui_next_frame();
     if (!label.classList.contains ('b-toggle-on')) throw new Error ('click did not apply b-toggle-on');
     if (label.classList.contains ('b-toggle-off')) throw new Error ('click did not remove b-toggle-off');
     if (emitted !== true)
@@ -105,7 +148,6 @@ async function test_toggle_off (): Promise<boolean>
     if (!root || !label) throw new Error ('Toggle not rendered');
     if (!label.classList.contains ('b-toggle-on')) throw new Error ('initial state should be on');
     click_toggle (root);
-    await Dom.ui_next_frame();
     if (label.classList.contains ('b-toggle-on')) throw new Error ('click did not remove b-toggle-on');
     if (!label.classList.contains ('b-toggle-off')) throw new Error ('click did not apply b-toggle-off');
     if (emitted !== false)
@@ -289,7 +331,6 @@ async function test_toggle_cancel (): Promise<boolean>
       throw new Error (`cancel emitted ${emitted.length} events`);
     // A subsequent click should toggle once.
     click_toggle (root);
-    await Dom.ui_next_frame();
     if (emitted_count (emitted) !== 1)
       throw new Error (`after cancel, click emitted ${emitted.length} events (expected 1)`);
     if (!label.classList.contains ('b-toggle-on')) throw new Error ('after cancel, click should turn on');

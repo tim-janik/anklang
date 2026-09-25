@@ -4,6 +4,7 @@ import { createComponent, render } from 'solid-js/web';
 import { createSignal } from 'solid-js';
 import { SwitchInput } from '../b/switchinput';
 import * as Dom from '../dom';
+import { TestTimers } from './timers';
 
 /// Mount a SwitchInput for testing and return helpers.
 function mount_switchinput (props: {
@@ -55,7 +56,6 @@ async function test_switchinput_toggle_on (): Promise<boolean>
     if (!cb) throw new Error ('SwitchInput checkbox not rendered');
     if (cb.checked) throw new Error ('initial state should be unchecked');
     click_checkbox (cb);
-    await Dom.ui_next_frame();
     if (!cb.checked) throw new Error ('checkbox not checked after click');
     if (emitted !== true)
       throw new Error (`valuechange payload wrong: ${emitted}`);
@@ -80,7 +80,6 @@ async function test_switchinput_toggle_off (): Promise<boolean>
     if (!cb) throw new Error ('SwitchInput checkbox not rendered');
     if (!cb.checked) throw new Error ('initial state should be checked');
     click_checkbox (cb);
-    await Dom.ui_next_frame();
     if (cb.checked) throw new Error ('checkbox not unchecked after click');
     if (emitted !== false)
       throw new Error (`valuechange payload wrong: ${emitted}`);
@@ -145,7 +144,6 @@ async function test_switchinput_keyboard (): Promise<boolean>
     lb.dispatchEvent (new KeyboardEvent ('keydown', {
       keyCode: 39, key: 'ArrowRight', bubbles: true, cancelable: true,
     }));
-    await Dom.ui_next_frame();
     if (!cb.checked) throw new Error ('RIGHT did not check the switch');
     if (emitted !== true)
       throw new Error (`RIGHT valuechange payload wrong: ${emitted}`);
@@ -171,7 +169,6 @@ async function test_switchinput_keyboard (): Promise<boolean>
     lb.dispatchEvent (new KeyboardEvent ('keydown', {
       keyCode: 37, key: 'ArrowLeft', bubbles: true, cancelable: true,
     }));
-    await Dom.ui_next_frame();
     if (cb.checked) throw new Error ('LEFT did not uncheck the switch');
     if (emitted !== false)
       throw new Error (`LEFT valuechange payload wrong: ${emitted}`);
@@ -196,7 +193,6 @@ async function test_switchinput_keyboard (): Promise<boolean>
     lb.dispatchEvent (new KeyboardEvent ('keydown', {
       keyCode: 40, key: 'ArrowDown', bubbles: true, cancelable: true,
     }));
-    await Dom.ui_next_frame();
     if (!cb.checked) throw new Error ('DOWN did not check the switch');
     if (emitted !== true)
       throw new Error (`DOWN valuechange payload wrong: ${emitted}`);
@@ -221,7 +217,6 @@ async function test_switchinput_keyboard (): Promise<boolean>
     lb.dispatchEvent (new KeyboardEvent ('keydown', {
       keyCode: 38, key: 'ArrowUp', bubbles: true, cancelable: true,
     }));
-    await Dom.ui_next_frame();
     if (cb.checked) throw new Error ('UP did not uncheck the switch');
     if (emitted !== false)
       throw new Error (`UP valuechange payload wrong: ${emitted}`);
@@ -314,12 +309,13 @@ sub_tests.push (['constrain_strings', test_switchinput_constrain_strings]);
 
 async function test_switchinput_backend_updates (): Promise<boolean>
 {
-  const [value, set_value] = createSignal (false, { equals: false });
+  const [value, set_value] = createSignal (false);
   const edits: boolean[] = [];
   const si = mount_switchinput ({
     get value () { return value(); },
     'on:valuechange': e => edits.push ((e.target as any).value),
   });
+  const timers = new TestTimers();
   try {
     const cb = si.checkbox()!;
     cb.click();
@@ -331,14 +327,31 @@ async function test_switchinput_backend_updates (): Promise<boolean>
     cb.click();
     set_value (false);
     await Dom.ui_next_frame();
+    if (!cb.checked || timers.pending !== 1)
+      throw new Error ('switch edit did not keep one grace timer');
+    timers.run();
     if (cb.checked)
       throw new Error ('backend correction did not replace the edit');
     set_value (true);
     await Dom.ui_next_frame();
     if (!cb.checked || edits.length !== 3)
       throw new Error ('backend update was lost or emitted as an edit');
+    cb.click();
+    set_value (false);
+    set_value (true);
+    await Dom.ui_next_frame();
+    if (cb.checked)
+      throw new Error ('backend update interrupted a switch edit');
+    timers.run();
+    if (!cb.checked)
+      throw new Error ('switch did not settle on the latest backend value');
+    cb.click();
+    si.cleanup();
+    if (timers.pending)
+      throw new Error ('switch kept a timer after disposal');
   } finally {
     si.cleanup();
+    timers.restore();
   }
   return true;
 }

@@ -4,10 +4,12 @@ import { createComponent, render } from 'solid-js/web';
 import { createSignal } from 'solid-js';
 import { TextInput } from '../b/textinput';
 import * as Dom from '../dom';
+import { TestTimers } from './timers';
+import { Signal } from '../signal';
 
 function make_prop (init: { value?: string; metadata?: string[] } = {})
 {
-  const [value, set_value] = createSignal (init.value ?? '', { equals: false });
+  const [value, set_value] = createSignal (init.value ?? '');
   return {
     metadata: init.metadata ?? [],
     get value () { return value(); },
@@ -113,7 +115,6 @@ async function test_textinput_input_emits_valuechange (): Promise<boolean>
     if (!inp) throw new Error ('TextInput field not rendered');
     // typing a different value → emits + applies
     send_input (inp, 'bar');
-    await Dom.ui_next_frame();
     if (applied[0] !== 'bar')
       throw new Error (`apply_ not called with 'bar': ${applied[0]}`);
     if (emitted[0] !== 'bar')
@@ -123,14 +124,12 @@ async function test_textinput_input_emits_valuechange (): Promise<boolean>
     // typing the same value again → must NOT emit (and not apply either)
     const emit_before = emit_count, apply_before = apply_count;
     send_input (inp, 'bar');
-    await Dom.ui_next_frame();
     if (emit_count !== emit_before)
       throw new Error (`unchanged value emitted ${emit_count - emit_before} events`);
     if (apply_count !== apply_before)
       throw new Error (`unchanged value called apply_ ${apply_count - apply_before} times`);
     // typing a different value again → emits + applies
     send_input (inp, 'baz');
-    await Dom.ui_next_frame();
     if (emit_count !== emit_before + 1)
       throw new Error (`changed value did not emit`);
     if (emitted[1] !== 'baz')
@@ -307,6 +306,7 @@ async function test_textinput_backend_correction (): Promise<boolean>
   const edits: string[] = [];
   prop.apply_ = value => { edits.push (value); };
   const ti = mount_textinput ({ prop });
+  const timers = new TestTimers();
   try {
     const input = ti.input()!;
     send_input (input, 'new');
@@ -318,14 +318,60 @@ async function test_textinput_backend_correction (): Promise<boolean>
     send_input (input, 'new');
     prop.notify_();
     await Dom.ui_next_frame();
+    if (String (input.value) !== 'new')
+      throw new Error ('backend value interrupted the edit');
+    timers.run();
     if (String (input.value) !== 'old' || edits.length !== 3)
       throw new Error ('backend correction was lost or sent as an edit');
   } finally {
     ti.cleanup();
+    timers.restore();
   }
   return true;
 }
 sub_tests.push (['backend_correction', test_textinput_backend_correction]);
+
+async function test_textinput_local_grace (): Promise<boolean>
+{
+  const value = new (Signal.State as any) ('backend');
+  const edits: string[] = [];
+  const props = {
+    get value () { return value.get(); },
+    'on:valuechange': e => edits.push (e.target.value),
+  };
+  const first = mount_textinput (props);
+  const second = mount_textinput (props);
+  const timers = new TestTimers();
+  try {
+    send_input (first.input()!, 'edit');
+    if (value.get() !== 'backend' || second.input()!.value !== 'backend')
+      throw new Error ('optimistic text escaped the edited input');
+    value.set ('remote');
+    await Dom.ui_next_frame();
+    if (first.input()!.value !== 'edit' || second.input()!.value !== 'remote')
+      throw new Error ('backend update did not stay separate from the edit');
+    send_input (first.input()!, 'newer');
+    if (timers.pending !== 1)
+      throw new Error ('text edit did not replace its timer');
+    timers.run();
+    if (first.input()!.value !== 'remote' || edits.join (',') !== 'edit,newer')
+      throw new Error ('text input did not settle on the latest backend value');
+    send_input (first.input()!, 'ignored');
+    timers.run();
+    if (first.input()!.value !== 'remote')
+      throw new Error ('text input kept an edit without a notification');
+    send_input (first.input()!, 'dispose');
+    first.cleanup();
+    if (timers.pending)
+      throw new Error ('text input kept a timer after disposal');
+  } finally {
+    first.cleanup();
+    second.cleanup();
+    timers.restore();
+  }
+  return true;
+}
+sub_tests.push (['local_grace', test_textinput_local_grace]);
 
 // == Master runner ==
 /// Single exported entry point runs all sub-tests in sequence.
