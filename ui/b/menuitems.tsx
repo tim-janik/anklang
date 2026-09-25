@@ -1,3 +1,5 @@
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+
 import { createContext, createEffect, createSignal, For, onCleanup, onMount, Show, useContext, type JSX } from 'solid-js';
 import * as Kbd from '../kbd';
 import * as Util from '../util';
