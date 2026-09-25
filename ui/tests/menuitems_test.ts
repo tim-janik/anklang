@@ -50,6 +50,7 @@ export async function test_menuitems (): Promise<boolean>
     container.remove();
   }
   await test_menu_shortcuts();
+  await test_menu_availability();
   return true;
 }
 
@@ -98,6 +99,38 @@ async function test_menu_shortcuts ()
     await press_key();
     if (count() !== 1)
       throw new Error ('removed menu item retained its shortcut');
+  } finally {
+    dispose();
+    container.remove();
+  }
+}
+
+async function test_menu_availability ()
+{
+  const checks: ((enabled: boolean) => void)[] = [];
+  const container = document.createElement ('div');
+  document.body.appendChild (container);
+  const dispose = render (() => createComponent (ContextMenu, {
+    isactive: () => new Promise<boolean> (resolve => checks.push (resolve)),
+    items: [{ uri: 'active', label: 'Active' }],
+  }), container);
+  try {
+    const button = container.querySelector<HTMLButtonElement> ('button[uri=active]')! as any;
+    const first = button.check_isactive();
+    const second = button.check_isactive();
+    checks[1] (true);
+    await second;
+    checks[0] (false);
+    await first;
+    if (button.disabled)
+      throw new Error ('old availability check overrode the newer result');
+
+    const after_close = button.check_isactive();
+    button.set_menu_active (false);
+    checks[2] (true);
+    await after_close;
+    if (!button.disabled)
+      throw new Error ('availability check reenabled a closed menu item');
   } finally {
     dispose();
     container.remove();
