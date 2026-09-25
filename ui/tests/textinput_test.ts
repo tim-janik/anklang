@@ -115,7 +115,6 @@ async function test_textinput_input_emits_valuechange (): Promise<boolean>
     if (!inp) throw new Error ('TextInput field not rendered');
     // typing a different value → emits + applies
     send_input (inp, 'bar');
-    await Dom.ui_next_frame();
     if (applied[0] !== 'bar')
       throw new Error (`apply_ not called with 'bar': ${applied[0]}`);
     if (emitted[0] !== 'bar')
@@ -125,14 +124,12 @@ async function test_textinput_input_emits_valuechange (): Promise<boolean>
     // typing the same value again → must NOT emit (and not apply either)
     const emit_before = emit_count, apply_before = apply_count;
     send_input (inp, 'bar');
-    await Dom.ui_next_frame();
     if (emit_count !== emit_before)
       throw new Error (`unchanged value emitted ${emit_count - emit_before} events`);
     if (apply_count !== apply_before)
       throw new Error (`unchanged value called apply_ ${apply_count - apply_before} times`);
     // typing a different value again → emits + applies
     send_input (inp, 'baz');
-    await Dom.ui_next_frame();
     if (emit_count !== emit_before + 1)
       throw new Error (`changed value did not emit`);
     if (emitted[1] !== 'baz')
