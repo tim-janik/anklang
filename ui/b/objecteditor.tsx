@@ -71,40 +71,19 @@ export function ObjectEditor (props)
 {
   // Treat the field list as fixed for this editor; rebuild it for a new list, while values and sensitivity update in place.
   const [gprops, set_gprops] = createSignal ([]);
-  let gen = 0;
-  let disconnectors = [];
-
   createEffect (() => {
-    const val = props.value;
-    const my_gen = ++gen;
-    // cleanup old disconnectors
-    if (disconnectors.length) {
-      while (disconnectors.length)
-        disconnectors.pop().call();
-      disconnectors = [];
-    }
-    if (!val || !val.length) {
-      set_gprops ([]);
-      return;
-    }
-    (async () => {
-      const { grouplist, disconnectors: new_disconnectors } = await list_fields_ (val);
-      if (my_gen !== gen) {
-        new_disconnectors.forEach (cb => cb());
-        return;
+    let active = true;
+    const fields = list_fields_ (props.value || []);
+    onCleanup (() => {
+      active = false;
+      fields.then (({ disconnectors }) => disconnectors.forEach (cb => cb()));
+    });
+    fields.then (({ grouplist }) => {
+      if (active) {
+        set_gprops (grouplist);
+        props.onReady?.();
       }
-      disconnectors = new_disconnectors;
-      set_gprops (grouplist);
-    })();
-  });
-
-  onCleanup (() => {
-    gen++; // invalidate pending async
-    if (disconnectors.length) {
-      while (disconnectors.length)
-        disconnectors.pop().call();
-      disconnectors = [];
-    }
+    });
   });
 
   async function list_fields_ (proplist)
@@ -143,7 +122,7 @@ export function ObjectEditor (props)
       return (
         <NumberInput
           class={"b-objecteditor--" + prop.ident_}
-          value={prop.value_.val}
+          value={prop.value}
           on:valuechange={e => prop.apply_ ((e.target as any).value)}
           min={prop.min_}
           max={prop.max_}
@@ -154,7 +133,7 @@ export function ObjectEditor (props)
       return (
         <SwitchInput
           class={"b-objecteditor--" + prop.ident_}
-          value={prop.value_.val}
+          value={prop.value}
           on:valuechange={e => prop.apply_ ((e.target as any).value)}
           readonly={props.readonly}
         />
@@ -163,7 +142,7 @@ export function ObjectEditor (props)
       return (
         <ChoiceInput
           class={"b-objecteditor--" + prop.ident_}
-          value={prop.value_.val}
+          value={prop.value}
           onValueChange={uri => prop.apply_ (uri)}
           title={prop.title_}
           choices={prop.value_.choices}

@@ -29,7 +29,7 @@
  * : the new value is available via `event.target.value`.
  */
 
-import { createEffect, createMemo, createSignal, For, onCleanup, splitProps } from 'solid-js';
+import { createEffect, createResource, createSignal, For, splitProps } from 'solid-js';
 import * as Util from '../util.js';
 import { get_uri } from '../dom.js';
 import { ContextMenu } from './contextmenu.tsx';
@@ -145,53 +145,13 @@ export function ChoiceInput (props: {
 			     (local.class ? ' ' + local.class : '');
 
   const [value_, set_value_] = createSignal (local.value ?? '');
-  const [choices_, set_choices_] = createSignal<any[]> ([]);
-  const [need_cmenu, set_need_cmenu] = createSignal (false);
+  createEffect (() => set_value_ ((local.prop ? local.prop.value : local.value) ?? ''));
 
-  // Sync external value
-  createEffect (() => {
-    set_value_ (local.value ?? '');
-  });
-
-  // Subscribe to backend property changes so the selected choice stays fresh
-  // (undo/redo, preset loads, the reset button, other views). Mirrors the
-  // TextInput subscription pattern (textinput.tsx); `prop.value_` is not
-  // Solid-tracked, so a notify subscription is required.
-  createEffect (() => {
-    const prop = local.prop;
-    if (!prop || !prop.addnotify_)
-      return;
-    const notify_cb = () => set_value_ (prop.value_.val ?? '');
-    prop.addnotify_ (notify_cb);
-    onCleanup (() => {
-      prop.delnotify_ (notify_cb);
-    });
-  });
-
-  // Sync prop choices. Recurse only when the property object identity changes; the fetch
-  // is generation-guarded so an in-flight request that resolves after a newer fetch is discarded.
-  let choices_token = 0;
-  createEffect (() => {
-    if (local.prop) {
-      const p = local.prop;
-      p.name; p.metadata;
-      const token = ++choices_token;
-      (async () => {
-        const result = await p.choices();
-        if (token == choices_token)
-          set_choices_ (result);
-      }) ();
-    }
-  });
-
-  const mchoices = createMemo (() => {
-    const result: any[] = [];
-    const choices = local.choices?.length ? local.choices : choices_();
-    for (let i = 0; i < choices.length; i++) {
-      result.push (Object.assign ({}, choices[i]));
-    }
-    return result;
-  });
+  const [fetched_choices] = createResource (
+    () => local.choices === undefined ? local.prop : null,
+    prop => prop.choices(),
+  );
+  const mchoices = () => local.choices ?? fetched_choices() ?? [];
 
   function current()
   {
@@ -225,16 +185,9 @@ export function ChoiceInput (props: {
 
   function activate (uri: string)
   {
-    if (local.disabled) {
-      cmenu_el?.close();
-      set_need_cmenu (false);
+    cmenu_el.close();
+    if (local.disabled)
       return;
-    }
-    if (cmenu_el) {
-      // close popup to remove focus guards
-      cmenu_el.close();
-      set_need_cmenu (false);
-    }
     set_value_ (uri);
     props.onValueChange?.(uri);
     if (root_el) {
@@ -247,11 +200,7 @@ export function ChoiceInput (props: {
   {
     if (local.disabled)
       return;
-    // Recreate the ContextMenu if it was disposed on a previous close (Solid callback refs
-    // are not null-ed on disposal, so we clear cmenu_el in onclose instead). Setting the
-    // signal is idempotent and renders synchronously, assigning cmenu_el before we use it.
-    set_need_cmenu (true);
-    if (cmenu_el == undefined || cmenu_el.open)
+    if (cmenu_el.open)
       return;
     pophere_el?.focus();
     cmenu_el.popup (event, { origin: pophere_el, focus_uri: value_() });
@@ -293,27 +242,24 @@ export function ChoiceInput (props: {
         <span class="-current">{current_span()}</span>
         <span class="-arrow"> ⬍ </span>
       </div>
-      {need_cmenu() && (
-        <ContextMenu class="b-choiceinput-contextmenu" ref={h => cmenu_el = h}
-          onactivate={e => activate (get_uri (e.detail))}
-          onclose={e => { set_need_cmenu (false); cmenu_el = undefined; }}>
-          <MenuTitle style={!local.title ? 'display:none' : ''}>
-            {local.title}
-          </MenuTitle>
-          <For each={mchoices()}>
-            {(c: any) => (
-              <button class="m-0 grid cursor-pointer select-none auto-rows-auto items-stretch border border-solid text-left"
-                uri={c.ident} ic={c.icon}>
-                <span class={`b-choice-label ${c.labelclass ?? ''}`}>{c.label}</span>
-                <span class={`b-choice-line1 ${c.line1class ?? ''}`}>{c.blurb}</span>
-                <span class={`b-choice-line2 ${c.line2class ?? ''}`}>{c.line2}</span>
-                <span class={`b-choice-line3 ${c.line3class ?? ''}`}>{c.notice}</span>
-                <span class={`b-choice-line4 ${c.line4class ?? ''}`}>{c.warning}</span>
-              </button>
-            )}
-          </For>
-        </ContextMenu>
-      )}
+      <ContextMenu class="b-choiceinput-contextmenu" ref={h => cmenu_el = h}
+        onactivate={e => activate (get_uri (e.detail))}>
+        <MenuTitle style={!local.title ? 'display:none' : ''}>
+          {local.title}
+        </MenuTitle>
+        <For each={mchoices()}>
+          {(c: any) => (
+            <button class="m-0 grid cursor-pointer select-none auto-rows-auto items-stretch border border-solid text-left"
+              uri={c.ident} ic={c.icon}>
+              <span class={`b-choice-label ${c.labelclass ?? ''}`}>{c.label}</span>
+              <span class={`b-choice-line1 ${c.line1class ?? ''}`}>{c.blurb}</span>
+              <span class={`b-choice-line2 ${c.line2class ?? ''}`}>{c.line2}</span>
+              <span class={`b-choice-line3 ${c.line3class ?? ''}`}>{c.notice}</span>
+              <span class={`b-choice-line4 ${c.line4class ?? ''}`}>{c.warning}</span>
+            </button>
+          )}
+        </For>
+      </ContextMenu>
     </div>
   );
 }

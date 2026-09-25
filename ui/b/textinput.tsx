@@ -8,8 +8,7 @@
  * ### Props:
  * *value*
  * : Contains the text string being edited. Used only when no `prop` is supplied;
- *   when a `prop` is given the display follows `prop.value_.val` and is kept
- *   up to date through `prop.addnotify_`/`delnotify_` notifications.
+ *   when a `prop` is given the display follows its backend value.
  * *placeholder*
  * : Placeholder string shown when the field is empty.
  * *readonly*
@@ -35,7 +34,7 @@
  *   pushed to the backend via `prop.apply_()`.
  */
 
-import { createEffect, onCleanup, splitProps } from 'solid-js';
+import { createEffect, splitProps } from 'solid-js';
 
 // == STYLE ==
 Extra_css`
@@ -91,39 +90,15 @@ export function TextInput (props: {
 
   function sync_display (value: string)
   {
-    if (!input_el || input_el.value === value)
-      return;
-    input_el.value = value;
     last_value = value;
+    input_el.value = value;
   }
 
   // Sync initial value and parent-supplied `value` prop changes.
   createEffect (() => {
     if (!input_el) return;
-    const value = local.prop ? local.prop.value_.val : (local.value ?? '');
+    const value = local.prop ? local.prop.value : (local.value ?? '');
     sync_display (value);
-  });
-
-  // Subscribe to backend property changes so the displayed text stays fresh
-  // (undo/redo, preset loads, the reset button, automation, other views, and
-  // this component's own file picker). `prop.value_` is not Solid-tracked, so
-  // a notify subscription is required. This mirrors the Knob subscription
-  // pattern (knob.tsx); `addnotify_` callbacks fire after `update_()` has
-  // refreshed `value_` (util.js: notify_), so `value_` is current here.
-  createEffect (() => {
-    const prop = local.prop;
-    if (!prop || !prop.addnotify_)
-      return;
-    let cancelled = false;
-    const notify_cb = () => {
-      if (cancelled || !input_el) return;
-      sync_display (prop.value_.val);
-    };
-    prop.addnotify_ (notify_cb);
-    onCleanup (() => {
-      cancelled = true;
-      prop.delnotify_ (notify_cb);
-    });
   });
 
   const handle_input = () => {

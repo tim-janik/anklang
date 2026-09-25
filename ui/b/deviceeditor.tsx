@@ -9,7 +9,7 @@
  * : Audio signal processing device.
  */
 
-import { createEffect, createSignal, For, onCleanup } from 'solid-js';
+import { createResource, For, onCleanup, Show } from 'solid-js';
 import * as Util from "../util.js";
 import { PropGroup } from './propgroup.tsx';
 import { MenuTitle } from './menutitle.tsx';
@@ -203,56 +203,23 @@ async function property_groups (asyncpropertylist, add_destroy_callback)
 // == COMPONENT ==
 export function DeviceEditor (props)
 {
-  // Device fields are fixed: load them up front; rebuild only for another device or an explicit field-list notification.
-  const [gprops, set_gprops] = createSignal ([]);
-  const [device_info, set_device_info] = createSignal ({ name: "" });
-  let destroy_callbacks = [];
+  // A different device gets a fresh editor; each device's field list is fixed.
+  return <div class="b-deviceeditor">
+    <Show when={props.device} keyed>{device => <DeviceContent device={device} />}</Show>
+  </div>;
+}
+
+function DeviceContent (props)
+{
   let deviceeditorcmenu_ref;
-  let gen = 0;
-
-  createEffect (() => {
-    const device = props.device;
-    const my_gen = ++gen;
-    // cleanup old destroy callbacks
-    if (destroy_callbacks.length) {
-      while (destroy_callbacks.length)
-        destroy_callbacks.pop().call();
-      destroy_callbacks = [];
-    }
-    set_gprops ([]);
-    set_device_info ({ name: "" });
-
-    if (device) {
-      const async_fetch_device = async () => {
-        const device_ = device;
-        const new_destroy_callbacks = [];
-        const info_promise = device_.device_info(); // TODO: watch "notify:device_info"
-        let gprops = await device_.access_properties();
-        const info = Object.freeze (await info_promise);
-        if (my_gen !== gen || device_ !== props.device)
-          return;
-        gprops = await property_groups (gprops, cb => new_destroy_callbacks.push (cb));
-        if (my_gen !== gen || device_ !== props.device) {
-          while (new_destroy_callbacks.length)
-            new_destroy_callbacks.pop().call();
-          return;
-        }
-        destroy_callbacks = new_destroy_callbacks;
-        set_device_info (info);
-        set_gprops (gprops);
-      };
-      async_fetch_device();
-    }
-  });
-
-  onCleanup (() => {
-    gen++; // invalidate pending async
-    if (destroy_callbacks.length) {
-      while (destroy_callbacks.length)
-        destroy_callbacks.pop().call();
-      destroy_callbacks = [];
-    }
-  });
+  const destroy_callbacks = [];
+  const loading = (async () => {
+    const [info, properties] = await Promise.all ([props.device.device_info(), props.device.access_properties()]);
+    const groups = await property_groups (properties, cb => destroy_callbacks.push (cb));
+    return { info, groups };
+  })();
+  const [data] = createResource (() => loading);
+  onCleanup (() => { loading.then (() => destroy_callbacks.forEach (cb => cb())); });
 
   function group_style (group)
   {
@@ -303,12 +270,12 @@ export function DeviceEditor (props)
   }
 
   return (
-    <div class="b-deviceeditor">
+    <>
       <span class="b-deviceeditor-sw" onContextMenu={e => deviceeditorcmenu_ref?.popup (e)}>
-        {device_info().name}
+        {data()?.info.name ?? ''}
       </span>
       <div class="b-deviceeditor-areas grid">
-        <For each={gprops()}>
+        <For each={data()?.groups ?? []}>
           {(group) => (
             <PropGroup style={group_style (group)} name={group.name} props={group.props} />
           )}
@@ -320,6 +287,6 @@ export function DeviceEditor (props)
         <button ic="fa-times_circle" uri="delete-device">Delete Device</button>
         <button ic="md-television_guide" uri="toggle-gui">Toggle GUI</button>
       </ContextMenu>
-    </div>
+    </>
   );
 }

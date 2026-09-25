@@ -5,9 +5,7 @@
  * A separate layer of the B-Shell used for creating modal dialogs.
  */
 
-import { createSignal, For, Show, onMount } from 'solid-js';
-import * as Signal from "../signal.js";
-import * as Util from "../util.js";
+import { createSignal, For, Show, onMount, onCleanup } from 'solid-js';
 import { PushButton } from './basics';
 import { Icon } from './icon';
 import { ObjectEditor } from './objecteditor';
@@ -56,15 +54,17 @@ const DialogComponent = (props) => {
   let divHandlerElement;
   /** @type {HTMLDialogElement} */ let dialogRef;
 
-  // This hook now attaches imperative methods to the dialog object on mount.
-  onMount (() => {
-    // Expose imperative API on the dialog data object
-    d.openModal = () => dialogRef?.showModal();
-    d.closeModal = () => dialogRef?.close();
+  let result = -1;
 
-    if (d.div_handler && divHandlerElement) {
+  onMount (() => {
+    if (d.div_handler && divHandlerElement)
       d.div_handler (divHandlerElement, dialogRef);
-    }
+    dialogRef.showModal();
+  });
+
+  onCleanup (() => {
+    dialogRef.close();
+    d.finish (result);
   });
 
   return (
@@ -72,7 +72,7 @@ const DialogComponent = (props) => {
 	    id={`MDialog_${d.dialogid}`}
 	    classList={{ [d.class]: !!d.class }}
 	    ref={dialogRef}
-	    onClose={() => d.handleClose()}
+	    onClose={d.remove}
 	    exclusive={true} bwidth="9em" style="z-index: 93">
       <header>
         {d.header}
@@ -99,7 +99,7 @@ const DialogComponent = (props) => {
                 <DynamicButton
 		  canfocus={b.canfocus}
                   autofocus={b.autofocus}
-                  onClick={(ev) => d.click (i())}
+                  onClick={() => { result = i(); dialogRef.close(); }}
                   disabled={b.disabled}>
                   {b.label}
                 </DynamicButton>
@@ -125,40 +125,20 @@ class BModals extends Object {
   {
     let resolve;
     const promise = new Promise (r => resolve = r);
-    const [get_visible, set_visible] = Signal.createSignal (false);
-    // TODO: animate dialog show/hide
 
     const m = {
       dialogid: this.id_counter_++,
       class: dialog_setup.class,
       proplist: dialog_setup.proplist || [],
-      get visible() { return get_visible(); },
 
       // div_handler provides a minimal hook for live updates in a dialog
       div_handler: dialog_setup.div_handler,
       // TODO: improve/replace div_handler logic
 
-      // To be populated by the component onMount
-      openModal: null,
-      closeModal: null,
-
-      // This is the <dialog> element's onClose handler
-      handleClose() {
-        if (!this.visible) return; // Prevent re-entry
-        set_visible (false);
-        if (dialog_setup.destroy)
-          dialog_setup.destroy();
-        resolve (this.result);
-        const delay = (globalThis.CONFIG && globalThis.CONFIG.transitiondelay) || 200;
-        setTimeout (() => this.set_dialogs_ (dialogs => dialogs.filter (d => d !== this)), delay);
-	// TODO: auto-remove dialogs after closing
-      },
-
-      result: -1,
-      click (r)
-      {
-        this.result = r;
-        this.closeModal?.(); // Imperatively close the dialog
+      remove: () => this.set_dialogs_ (dialogs => dialogs.filter (d => d !== m)),
+      finish: result => {
+        dialog_setup.destroy?.();
+        resolve (result);
       },
       header: dialog_setup.title,
       body: dialog_setup.text,
@@ -183,8 +163,6 @@ class BModals extends Object {
       m.footerclass = '-manybuttons';
 
     this.set_dialogs_ (dialogs => [...dialogs, m]);
-    // delay openModal until after onMount
-    setTimeout (() => m.openModal?.(), 0);
     return promise;
   }
 };

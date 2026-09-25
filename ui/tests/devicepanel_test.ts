@@ -43,7 +43,7 @@ async function wait_for_device_buttons (menu: Element, expected: string[], timeo
     const labels = buttons.map (button => button.textContent?.trim() ?? '');
     if (expected.every (label => labels.includes (label)))
       return buttons;
-    await Dom.ui_wait (50);
+    await Dom.ui_next_frame();
   } while (Date.now () < deadline);
   const labels = buttons.map (button => button.textContent?.trim() ?? '');
   throw new Error (`DevicePanel device-type buttons did not render within ${timeout_ms}ms: ${labels.join (', ')}`);

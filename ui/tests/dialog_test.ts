@@ -22,16 +22,14 @@ async function test_aboutdialog_close_once (): Promise<boolean>
   const dispose = render (() => createComponent (Show, {
     get when () { return shown(); },
     keyed: true,
-    children: () => createComponent (AboutDialog, {
+    children: _shown => createComponent (AboutDialog, {
       onClose: () => { close_count++; set_shown (false); },
     }),
   }), container);
 
   try {
-    // Wait for onMount
-    await Dom.ui_wait (100);
-    await Dom.ui_next_frame();
-    await Dom.ui_next_frame();
+    await wait_for (() => !!container.querySelector<HTMLDialogElement> ('dialog.b-about-dialog')?.open,
+                    'AboutDialog did not open after loading its contents');
 
     const button = container.querySelector ('button.button-xl') as HTMLElement;
     if (!button)
@@ -67,22 +65,19 @@ async function test_preferencesdialog_close_once (): Promise<boolean>
   const dispose = render (() => createComponent (Show, {
     get when () { return shown(); },
     keyed: true,
-    children: () => createComponent (PreferencesDialog, {
-      shown: false,
+    children: (_shown) => createComponent (PreferencesDialog, {
       onClose: () => { close_count++; set_shown (false); },
     }),
   }), container);
 
   try {
-    await Dom.ui_wait (100);
-    await Dom.ui_next_frame();
+    await wait_for (() => !!container.querySelector<HTMLDialogElement> ('.b-preferencesdialog')?.open);
 
-    const dialog = container.querySelector ('dialog.b-preferencesdialog') as HTMLElement;
+    const dialog = container.querySelector ('dialog.b-preferencesdialog') as HTMLDialogElement;
     if (!dialog)
       throw new Error ('PreferencesDialog dialog element not found');
 
-    // Native 'close' event (Escape/backdrop/close())
-    dialog.dispatchEvent (new Event ('close'));
+    dialog.close();
     await Dom.ui_next_frame();
     await Dom.ui_next_frame();
 
@@ -110,7 +105,7 @@ async function test_crawlerdialog_close_once (): Promise<boolean>
   const dispose = render (() => createComponent (Show, {
     get when () { return shown(); },
     keyed: true,
-    children: () => createComponent (CrawlerDialog, {
+    children: (_shown) => createComponent (CrawlerDialog, {
       shown: true,
       cwd: '~MUSIC',
       onSelect: () => {},
@@ -119,8 +114,7 @@ async function test_crawlerdialog_close_once (): Promise<boolean>
   }), container);
 
   try {
-    await Dom.ui_wait (100);
-    await Dom.ui_next_frame();
+    await wait_for (() => !!container.querySelector ('dialog')?.open);
 
     const buttons = container.querySelectorAll ('button.button-xl');
     const close_button = buttons[buttons.length - 1] as HTMLElement; // footer: Select, Close
@@ -155,7 +149,7 @@ async function test_crawlerdialog_select_suppresses_close (): Promise<boolean>
   const dispose = render (() => createComponent (Show, {
     get when () { return shown(); },
     keyed: true,
-    children: () => createComponent (CrawlerDialog, {
+    children: (_shown) => createComponent (CrawlerDialog, {
       shown: true,
       cwd: '~MUSIC',
       onSelect: () => { select_count++; set_shown (false); },
@@ -164,8 +158,7 @@ async function test_crawlerdialog_select_suppresses_close (): Promise<boolean>
   }), container);
 
   try {
-    await Dom.ui_wait (100);
-    await Dom.ui_next_frame();
+    await wait_for (() => !!container.querySelector ('dialog')?.open);
     await Dom.ui_next_frame();
 
     const pathentry = container.querySelector ('input.-pathentry') as HTMLInputElement;
@@ -178,12 +171,7 @@ async function test_crawlerdialog_select_suppresses_close (): Promise<boolean>
     if (!select_button)
       throw new Error ('CrawlerDialog select button not found');
 
-    // Wait for the crawler to settle
-    const deadline = Date.now() + 4000;
-    while (select_button.disabled && Date.now() < deadline)
-      await Dom.ui_wait (100);
-    if (select_button.disabled)
-      throw new Error ('CrawlerDialog select button stayed disabled');
+    await wait_for (() => !select_button.disabled, 'CrawlerDialog select button stayed disabled');
 
     select_button.click();
     await Dom.ui_next_frame();
@@ -221,15 +209,19 @@ async function test_dialog_reopen (): Promise<boolean>
     const get_close_count = () => close_count;
     const container = document.createElement ('div');
     document.body.appendChild (container);
-    const dispose = render (() => createComponent (component, {
-      get shown () { return shown(); },
-      cwd: '/tmp',
-      onClose: () => { close_count++; set_shown (false); },
+    const dispose = render (() => createComponent (Show, {
+      get when () { return shown(); },
+      keyed: true,
+      children: (_shown) => createComponent (component, {
+        shown: true,
+        cwd: '/tmp',
+        onClose: () => { close_count++; set_shown (false); },
+      }),
     }), container);
     try {
-      const dialog = container.querySelector ('dialog')!;
       for (let count = 1; count <= 2; count++) {
-        await wait_for (() => dialog.open);
+        await wait_for (() => !!container.querySelector ('dialog')?.open);
+        const dialog = container.querySelector ('dialog')!;
         dialog.dispatchEvent (new KeyboardEvent ('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
         await wait_for (() => !dialog.open);
         await Dom.ui_next_frame();
@@ -290,23 +282,21 @@ async function test_crawler_cwd_after_reopen (): Promise<boolean>
     onClose: () => set_shown (false),
   }), container);
   try {
-    const dialog = container.querySelector ('dialog')!;
-    const direntry = container.querySelector ('input.-direntry') as HTMLInputElement;
-    const pathentry = container.querySelector ('input.-pathentry') as HTMLInputElement;
-    const buttons = container.querySelectorAll ('button.button-xl');
-    const select_button = buttons[0] as HTMLButtonElement;
-    const close_button = buttons[buttons.length - 1] as HTMLButtonElement;
-    await wait_for (() => !select_button.disabled && direntry.value === '/tmp/', 'crawler did not load /tmp/');
-    close_button.click();
-    await wait_for (() => !dialog.open, 'crawler did not close');
+    const direntry = () => container.querySelector<HTMLInputElement> ('input.-direntry')!;
+    const select_button = () => container.querySelector<HTMLButtonElement> ('button.button-xl')!;
+    await wait_for (() => !select_button().disabled && direntry().value === '/tmp/', 'crawler did not load /tmp/');
+    container.querySelectorAll<HTMLButtonElement> ('button.button-xl')[1].click();
+    await wait_for (() => !container.querySelector ('dialog'), 'crawler did not close');
     set_cwd ('/');
     await Dom.ui_next_frame();
-    if (direntry.value !== '/tmp/')
-      throw new Error (`closed crawler changed directory to ${direntry.value}`);
+    if (container.querySelector ('dialog'))
+      throw new Error ('closed crawler stayed mounted');
     set_shown (true);
-    await wait_for (() => dialog.open && !select_button.disabled && direntry.value === '/', 'crawler did not reopen at /');
-    pathentry.value = 'review-save.anklang';
-    select_button.click();
+    await wait_for (() => !!container.querySelector ('dialog')?.open && !select_button().disabled && direntry().value === '/',
+                    'crawler did not reopen at /');
+    container.querySelector<HTMLInputElement> ('input.-pathentry')!.value = 'review-save.anklang';
+    select_button().click();
+    await wait_for (() => !!selected);
     if (selected !== '/review-save.anklang')
       throw new Error (`reopened crawler selected the wrong path: ${selected}`);
   } finally {
@@ -370,8 +360,7 @@ async function test_crawler_loading (): Promise<boolean>
     await wait_for (() => container.querySelector ('dialog')!.open);
     const buttons = container.querySelectorAll ('button.button-xl');
     (buttons[buttons.length - 1] as HTMLButtonElement).click();
-    if (closes() !== 1)
-      throw new Error ('Close suppressed after reopening a selected dialog');
+    await wait_for (() => closes() === 1, 'Close suppressed after reopening a selected dialog');
   } finally {
     release_folder();
     release_entries();

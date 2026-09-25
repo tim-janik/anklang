@@ -9,8 +9,7 @@
  * : Callback invoked when the Close button is activated.
  */
 
-import { createSignal, onMount, onCleanup, For } from 'solid-js';
-import * as Util from "../util.js";
+import { createResource, onMount, onCleanup, For, Show } from 'solid-js';
 import * as Dom from "../dom.js";
 
 // == STYLE ==
@@ -23,42 +22,23 @@ dialog.b-about-dialog {
 // == Component ==
 export function AboutDialog (props)
 {
-  const [info_pairs, set_info_pairs] = createSignal ([]);
-  /** @type {HTMLDialogElement | undefined} */
+  // Load all content before mounting the dialog so it opens at its final size.
+  const [pairs] = createResource (about_pairs);
+  return <Show when={pairs()}>{info => <AboutContent pairs={info()} onClose={props.onClose} />}</Show>;
+}
+
+function AboutContent (props)
+{
+  /** @type {HTMLDialogElement} */
   let dialogRef;
-  let cancelled = false; // no showModal() after unmount
-  let close_sent = false; // close at most once
-  const close = () => {
-    if (close_sent) return;
-    close_sent = true;
-    props.onClose?.();
-  };
-
-  onMount (async () => {
-    // Load the contents before opening so the dialog starts at its final size.
-    const pairs = await about_pairs ();
-    if (cancelled) return; // unmounted during load
-    set_info_pairs (pairs);
-    if (dialogRef)
-      Dom.show_modal (dialogRef, close);
-  });
-
-  // Close the dialog so the native 'close' event fires before removal
-  onCleanup (() => {
-    cancelled = true;   // no late showModal()
-    dialogRef?.close(); // fire native 'close' event
-    close();            // sync parent state
-  });
-
-  const handleClose = () => {
-    close();
-  };
+  onMount (() => Dom.show_modal (dialogRef));
+  onCleanup (() => dialogRef.close());
 
   return (
     <dialog
       class="b-about-dialog floating-dialog"
       ref={dialogRef}
-      onClose={handleClose}
+      onClose={props.onClose}
       exclusive={true}
       bwidth="9em"
       style="z-index: 93">
@@ -66,7 +46,7 @@ export function AboutDialog (props)
         About ANKLANG
       </div>
       <div class="grid max-w-full">
-        <For each={info_pairs()}>
+        <For each={props.pairs}>
           {pair => (
             <>
               <span class="col-start-1 min-w-[15em] pr-2 text-right align-top font-bold">{pair[0]}</span>
@@ -76,7 +56,7 @@ export function AboutDialog (props)
         </For>
       </div>
       <div class="dialog-footer">
-        <button class="button-xl" autofocus onClick={close}>Close</button>
+        <button class="button-xl" autofocus onClick={() => dialogRef.close()}>Close</button>
       </div>
     </dialog>
   );

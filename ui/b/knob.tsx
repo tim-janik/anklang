@@ -242,8 +242,8 @@ export function Knob (props: {
   let root_el: HTMLDivElement | undefined;
   let sprite_el: HTMLDivElement | undefined;
   let clear_notify_cb: (() => void) | undefined;
-  // TODO: Replace write counting with a 100 ms quiet timer; keep local edits until the final backend read completes.
-  const setters_inflight = { v: 0 };
+  // Keep local edits until 100 ms of quiet and the final backend read completes.
+  let settle_timer = 0;
   let button1date = 0;
   let last_ = 0;
   let text_ = '';
@@ -282,34 +282,30 @@ export function Knob (props: {
   {
     clear_notify_cb?.();
     clear_notify_cb = undefined;
+    clearTimeout (settle_timer);
+    settle_timer = 0;
     if (!newprop)
       return;
-    clear_notify_cb = newprop.on ('notify', notify_value);
-    setters_inflight.v = 0;
+    clear_notify_cb = newprop.on ('notify', () => notify_value());
     last_ = newprop?.fetch_() ?? 0;
     text_ = '';
     reposition();
     notify_value();
   }
 
-  async function notify_value()
+  async function notify_value (timer = 0)
   {
-    // interactive knob changes may cause bursts of notify_value() calls, to avoid
-    // paint jitter, notifications are ignored that are dispatched before setters return
-    if (setters_inflight.v)
+    if (timer !== settle_timer)
       return;
-    // perform actual update
-    let val = props.prop?.get_normalized(), text = props.prop?.get_text();
-    val = await val;
-    text = await text;
-    if (!setters_inflight.v &&
-	(last_ !== val || text_ !== text))
-      {
-	// if (Math.abs (val - this.last_) > 0.001) debug ("%cDIFF: " + (val - this.last_), "color: red", val, this.last_);
-	last_ = val;
-	text_ = text;
-	reposition();
-      }
+    const [val, text] = await Promise.all ([props.prop?.get_normalized(), props.prop?.get_text()]);
+    if (timer !== settle_timer)
+      return;
+    settle_timer = 0;
+    if (last_ !== val || text_ !== text) {
+      last_ = val;
+      text_ = text;
+      reposition();
+    }
   }
 
   function wheel_event (event: WheelEvent)
@@ -334,24 +330,14 @@ export function Knob (props: {
     event.stopPropagation();
   }
 
-  async function commit_value()
+  function commit_value()
   {
-    if (props.disabled)   // ignore stale queued commits
+    if (props.disabled)
       return;
-    console.assert (last_ >= 0 && last_ <= 1.0);
-    // assign value and maintain counter to ignore self-induced notifications
-    setters_inflight.v += 1;
-    const promise = props.prop?.set_normalized (last_);
-    // reflect interactive updates in current frame
+    clearTimeout (settle_timer);
+    settle_timer = window.setTimeout (() => notify_value (settle_timer), 100);
+    props.prop?.set_normalized (last_);
     reposition();
-    // synchronization point for ignored notifications
-    await promise;
-    if (setters_inflight.v)   // might have been reset meanwhile
-      {
-	setters_inflight.v -= 1;
-	if (!setters_inflight.v)
-	  props.prop?.update_();  // update to catch potential outside value changes
-      }
   }
 
   function pointerdown (event: PointerEvent)
@@ -390,6 +376,10 @@ export function Knob (props: {
   // Cleanup on unmount: release notify subscription and abort any in-flight spin drag
   onCleanup (() => {
     spin_drag_stop (sprite_el);
+    queue_commit.cancel();
+    relabel_cb.cancel();
+    clearTimeout (settle_timer);
+    settle_timer = 0;
     clear_notify_cb?.();
     clear_notify_cb = undefined;
   });

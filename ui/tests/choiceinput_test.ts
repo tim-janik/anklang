@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { createSignal } from 'solid-js';
 import { createComponent, render } from 'solid-js/web';
 import { ChoiceInput } from '../b/choiceinput';
 import * as Util from '../util.js';
@@ -185,8 +186,6 @@ async function test_choiceinput_activate_emits (): Promise<boolean>
 }
 sub_tests.push (['activate_emits', test_choiceinput_activate_emits]);
 
-/// Regression test for C1: closing the menu (via activate) then reopening must
-/// work — the stale `cmenu_el` ref previously prevented the second popup.
 async function test_choiceinput_reopen_after_activate (): Promise<boolean>
 {
   const ci = mount_choiceinput ({
@@ -198,16 +197,15 @@ async function test_choiceinput_reopen_after_activate (): Promise<boolean>
     await Dom.ui_next_frame();
     const root_el = ci.root()!;
 
-    // First open + activate (closes the menu and disposes the ContextMenu).
+    const menu = ci.dialog();
     open_menu (root_el);
     await Dom.ui_next_frame();
     if (!ci.dialog()?.open) throw new Error ('first open failed');
     await Dom.ui_click_wait ('button', { uri: 'b' });
     await Dom.ui_next_frame();
-    if (ci.dialog() !== null)
-      throw new Error ('ContextMenu not disposed after activate');
+    if (ci.dialog() !== menu || menu.open)
+      throw new Error ('choice menu should remain mounted and closed after activation');
 
-    // Second open must recreate the ContextMenu and actually show the dialog.
     open_menu (root_el);
     await Dom.ui_next_frame();
     const d = ci.dialog();
@@ -220,8 +218,6 @@ async function test_choiceinput_reopen_after_activate (): Promise<boolean>
 }
 sub_tests.push (['reopen_after_activate', test_choiceinput_reopen_after_activate]);
 
-/// Regression test for C1 via the native close path (Escape / dialog.close()):
-/// the onclose handler must clear the stale ref so a subsequent open works.
 async function test_choiceinput_reopen_after_native_close (): Promise<boolean>
 {
   const ci = mount_choiceinput ({
@@ -237,10 +233,10 @@ async function test_choiceinput_reopen_after_native_close (): Promise<boolean>
     const d1 = ci.dialog();
     if (!d1 || !d1.open) throw new Error ('first open failed');
     // Simulate Escape / backdrop close: the dialog emits a native `close` event.
-    d1.close();
+    HTMLDialogElement.prototype.close.call (d1);
     await Dom.ui_next_frame();
-    if (ci.dialog() !== null)
-      throw new Error ('ContextMenu not disposed after native close');
+    if (ci.dialog() !== d1 || d1.open)
+      throw new Error ('choice menu should remain mounted and closed after native close');
 
     // Reopen — must work despite the native close path.
     open_menu (root_el);
@@ -403,6 +399,49 @@ async function test_choiceinput_menu_item_classes (): Promise<boolean>
   return true;
 }
 sub_tests.push (['menu_item_classes', test_choiceinput_menu_item_classes]);
+
+async function test_choiceinput_backend_value (): Promise<boolean>
+{
+  const [value, set_value] = createSignal ('a', { equals: false });
+  const ci = mount_choiceinput ({
+    prop: {
+      get value () { return value(); },
+      choices: () => { throw new Error ('preloaded choices were fetched again'); },
+    },
+    choices: [{ ident: 'a', label: 'Alpha' }, { ident: 'b', label: 'Beta' }],
+  });
+  try {
+    await Dom.ui_next_frame();
+    const current = () => ci.container.querySelector ('.-current')!.textContent;
+    if (current() !== 'Alpha')
+      throw new Error ('initial backend choice was not shown');
+    set_value ('b');
+    await Dom.ui_next_frame();
+    if (current() !== 'Beta')
+      throw new Error ('backend choice update was not shown');
+  } finally {
+    ci.cleanup();
+  }
+  return true;
+}
+sub_tests.push (['backend_value', test_choiceinput_backend_value]);
+
+async function test_choiceinput_fetch_choices (): Promise<boolean>
+{
+  let finish: (choices: any[]) => void;
+  const choices = new Promise<any[]> (resolve => { finish = resolve; });
+  const ci = mount_choiceinput ({ prop: { value: 'a', choices: () => choices } });
+  try {
+    finish ([{ ident: 'a', label: 'Loaded choice' }]);
+    await Dom.ui_next_frame();
+    if (ci.container.querySelector ('.-current')!.textContent !== 'Loaded choice')
+      throw new Error ('fetched choices were not displayed');
+  } finally {
+    ci.cleanup();
+  }
+  return true;
+}
+sub_tests.push (['fetch_choices', test_choiceinput_fetch_choices]);
 
 // == Master runner ==
 /// Single exported entry point runs all sub-tests in sequence.

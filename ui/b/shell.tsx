@@ -187,7 +187,7 @@ export function ShellTemplate (props: any)
       </Show>
 
       <Show when={r.show_preferences_dialog}>
-        <PreferencesDialog onClose={() => (r.show_preferences_dialog = false)} shown={true} />
+        <PreferencesDialog onClose={() => (r.show_preferences_dialog = false)} />
       </Show>
 
       <Show when={r.fs_shown}>
