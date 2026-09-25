@@ -96,7 +96,7 @@ $>/config-cache.mk: misc/config-checks.mk $(REPOCOMMITDEPS) | $>/./
 	$(QGEN)
 	$Q echo '# make $@'					> $@.tmp
 	$Q echo "ANKLANG_GETTEXT_DOMAIN ::=" \
-		'anklang-$$(version_short)'			>>$@.tmp
+		'anklang-$$(version)'			>>$@.tmp
 	$Q bun --version 2>&1 | grep -qE '^([1-9]+[0-9]*)\.[0-9]+\.[0-9]+$$' \
 	  && echo 'XNPM ::= bun'				>>$@.tmp \
 	  || { pnpm --version 2>&1 | grep -qE '^([89]|[1-9]+[0-9]+)\.[0-9]+\.[0-9]+$$' \

@@ -34,8 +34,9 @@ ls -d "$DROOT"/$PKGDIR # check dir
 
 # Meta info
 NAME="anklang"
-VERSION=$(misc/version.sh | cut -d\  -f1)
-GITCOMMIT=$(misc/version.sh | (read v h d && echo $h))
+TAG=$(git log -1 --pretty='%(describe:tags,match=v[0-9]*.[0-9]*)' HEAD 2>/dev/null || sed -n 's/ .*//p' .version)
+VERSION=$(printf '%s\n' "${TAG#v}" | sed -E 's/-([0-9]+)-g([0-9a-f]+)$/+\1.g\2/; s/-g([0-9a-f]+)$/+0.g\1/; s/-([^-]+)$/~\1/')
+GITREF=$(git log -1 --format=%H 2>/dev/null || echo "$TAG")
 DUSIZE=$(cd $DROOT && du -k -s .)
 ARCH=$(dpkg --print-architecture)
 
@@ -94,7 +95,7 @@ dch_msg() {
 DEBCHANGELOG=$PKGDOCDIR/changelog.Debian
 dch_msg "$NAME" "$VERSION" unstable medium \
 	"* ${NAME^} build: https://github.com/tim-janik/anklang/" \
-	"* git commit $GITCOMMIT" \
+	"* git revision $GITREF" \
 	> $DEBCHANGELOG
 gzip -9 $DEBCHANGELOG
 
@@ -152,7 +153,7 @@ ls -al artifacts/$NAME''_$VERSION''_$ARCH.deb
 
 # create RPM from deb
 echo "$0: alien: converting $NAME""_$VERSION""_$ARCH.deb to RPM"
-(cd artifacts/ && fakeroot alien -v --scripts -r $NAME''_$VERSION''_$ARCH.deb)
+(cd artifacts/ && fakeroot alien -k -v --scripts -r $NAME''_$VERSION''_$ARCH.deb)
 
 # show result
-ls -al artifacts/$NAME*$VERSION*.deb artifacts/$NAME*$VERSION*.rpm
+ls -al artifacts/$NAME*$VERSION*.deb artifacts/$NAME*.rpm

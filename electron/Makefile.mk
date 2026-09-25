@@ -2,7 +2,7 @@
 
 # ELECTRON_PKG_NAME determines the default name of app.getPath('appData')
 ELECTRON_PKG_NAME	:= Anklang
-ELECTRON_VERSION	:= $(version_short)
+ELECTRON_VERSION	:= $(version)
 ELECTRON_REVDATE	:= $(version_date)
 ELECTRON_DEV		:= $(__DEV__)
 ELECTRON_SOURCES	:= electron/main.js electron/sourcemapping.js electron/preload.js electron/htmlgui.svg

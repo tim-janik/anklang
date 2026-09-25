@@ -9,7 +9,8 @@ ORIG_PWD=$PWD
 
 # paths & options
 BUILDDIR="${BUILDDIR:-out}"
-VERSION=$(misc/version.sh | cut -d\  -f1)
+TAG=$(git log -1 --pretty='%(describe:tags,match=v[0-9]*.[0-9]*)' HEAD 2>/dev/null || sed -n 's/ .*//p' .version)
+VERSION=${TAG#v}
 APPINST=$BUILDDIR/appinst/		# install dir
 APPBASE=$BUILDDIR/appbase/		# dir for packaging
 APPTOOLS=$BUILDDIR/appimagetools	# AppImage build tools

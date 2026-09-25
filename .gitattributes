@@ -1,2 +1,2 @@
-/misc/version\.sh export-subst
+.version export-subst
 /.git* export-ignore
