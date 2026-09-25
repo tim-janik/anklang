@@ -1,3 +1,12 @@
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL-2.0
+
+/** Capture `window.setTimeout` callbacks so tests can advance timer driven
+ * behavior on demand instead of waiting on the wall clock. Create TestTimers
+ * before the code under test schedules its timers, fire them with `run()` and
+ * put the original functions back with `restore()`. The delay argument is
+ * ignored, and only `setTimeout`/`clearTimeout` are captured, so
+ * `requestAnimationFrame` still runs normally.
+ */
 export class TestTimers {
   private set_timeout = window.setTimeout;
   private clear_timeout = window.clearTimeout;
@@ -19,8 +28,10 @@ export class TestTimers {
     }) as typeof window.clearTimeout;
   }
 
+  /// Number of captured callbacks that have not run yet.
   get pending () { return this.callbacks.size; }
 
+  /// Run each captured callback once; callbacks they schedule stay pending.
   run ()
   {
     for (const [id, callback] of [...this.callbacks]) {
@@ -29,6 +40,7 @@ export class TestTimers {
     }
   }
 
+  /// Restore the original timer functions and drop captured callbacks.
   restore ()
   {
     window.setTimeout = this.set_timeout;
