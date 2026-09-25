@@ -214,7 +214,7 @@ export async function ui_click (tag, filters = {})
   return el;
 }
 
-/// Find + click + wait convenience.
+/// Use ui_click() for synchronous edits; this wait may outlast their timer.
 export async function ui_click_wait (tag, filters = {}, wait_ms = 50)
 {
   const el = ui_click (tag, filters);
@@ -223,7 +223,7 @@ export async function ui_click_wait (tag, filters = {}, wait_ms = 50)
   return el;
 }
 
-/// Wait for the next `requestAnimationFrame` callback to fire.
+/// Wait for the next frame; an input edit timer may expire before it arrives.
 export async function ui_next_frame ()
 {
   await new Promise (r => requestAnimationFrame (() => r ()));

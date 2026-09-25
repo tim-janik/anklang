@@ -169,6 +169,7 @@ async function test_knob_wheel_guard (): Promise<boolean>
   const shell = stub_shell();
   const prop = make_fake_prop (0.5);
   const knob = mount_knob (prop);
+  // Wheel writes wait for a frame, so hold the edit timer until the check.
   const timers = new TestTimers();
 
   try {

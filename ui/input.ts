@@ -2,7 +2,7 @@ import { createEffect, onCleanup, untrack } from 'solid-js';
 
 export function local_input_value<T> (read: () => T, show: (value: T) => void): (value: T) => void
 {
-  // Each input masks backend updates only until its own edit timer expires.
+  // Each input hides source updates during its edit timer, then shows the latest value.
   let timer = 0;
   createEffect (() => {
     const value = read();
