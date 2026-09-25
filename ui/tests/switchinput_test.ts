@@ -56,7 +56,6 @@ async function test_switchinput_toggle_on (): Promise<boolean>
     if (!cb) throw new Error ('SwitchInput checkbox not rendered');
     if (cb.checked) throw new Error ('initial state should be unchecked');
     click_checkbox (cb);
-    await Dom.ui_next_frame();
     if (!cb.checked) throw new Error ('checkbox not checked after click');
     if (emitted !== true)
       throw new Error (`valuechange payload wrong: ${emitted}`);
@@ -81,7 +80,6 @@ async function test_switchinput_toggle_off (): Promise<boolean>
     if (!cb) throw new Error ('SwitchInput checkbox not rendered');
     if (!cb.checked) throw new Error ('initial state should be checked');
     click_checkbox (cb);
-    await Dom.ui_next_frame();
     if (cb.checked) throw new Error ('checkbox not unchecked after click');
     if (emitted !== false)
       throw new Error (`valuechange payload wrong: ${emitted}`);
@@ -146,7 +144,6 @@ async function test_switchinput_keyboard (): Promise<boolean>
     lb.dispatchEvent (new KeyboardEvent ('keydown', {
       keyCode: 39, key: 'ArrowRight', bubbles: true, cancelable: true,
     }));
-    await Dom.ui_next_frame();
     if (!cb.checked) throw new Error ('RIGHT did not check the switch');
     if (emitted !== true)
       throw new Error (`RIGHT valuechange payload wrong: ${emitted}`);
@@ -172,7 +169,6 @@ async function test_switchinput_keyboard (): Promise<boolean>
     lb.dispatchEvent (new KeyboardEvent ('keydown', {
       keyCode: 37, key: 'ArrowLeft', bubbles: true, cancelable: true,
     }));
-    await Dom.ui_next_frame();
     if (cb.checked) throw new Error ('LEFT did not uncheck the switch');
     if (emitted !== false)
       throw new Error (`LEFT valuechange payload wrong: ${emitted}`);
@@ -197,7 +193,6 @@ async function test_switchinput_keyboard (): Promise<boolean>
     lb.dispatchEvent (new KeyboardEvent ('keydown', {
       keyCode: 40, key: 'ArrowDown', bubbles: true, cancelable: true,
     }));
-    await Dom.ui_next_frame();
     if (!cb.checked) throw new Error ('DOWN did not check the switch');
     if (emitted !== true)
       throw new Error (`DOWN valuechange payload wrong: ${emitted}`);
@@ -222,7 +217,6 @@ async function test_switchinput_keyboard (): Promise<boolean>
     lb.dispatchEvent (new KeyboardEvent ('keydown', {
       keyCode: 38, key: 'ArrowUp', bubbles: true, cancelable: true,
     }));
-    await Dom.ui_next_frame();
     if (cb.checked) throw new Error ('UP did not uncheck the switch');
     if (emitted !== false)
       throw new Error (`UP valuechange payload wrong: ${emitted}`);
