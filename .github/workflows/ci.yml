@@ -16,9 +16,18 @@ jobs:
   Build-And-Test:
     runs-on: ubuntu-latest
     container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
+    env: { CCACHE_DIR: /tmp/ccache, CCACHE_MAXSIZE: 2G } # CCACHE_DIR enables $(CCACHE)
     steps:
     - { uses: actions/checkout@v7, with: { fetch-depth: 0, fetch-tags: true } }
     - run: git fetch --force --tags     # Fix actions/checkout#290
+    - uses: actions/cache/restore@v6    # PRs may restore caches, e.g. from trunk
+      with:
+        path: /tmp/ccache
+        key: ccache-${{ github.ref_name }}-${{ github.sha }}
+        restore-keys: |
+          ccache-${{ github.ref_name }}-
+          ccache-
+    - run: ccache -z
     - run: |
         make -w dist
         mkdir /tmp/anklang && tar xf artifacts/anklang-*.tar.zst -C /tmp/anklang --strip-components=1
@@ -27,6 +36,10 @@ jobs:
     - uses: actions/upload-artifact@v7
       with: { name: AnklangTarball, path: artifacts/ }
     - run: make -C /tmp/anklang -w all -j`nproc`
+    - run: ccache -s
+    - uses: actions/cache/save@v6       # untrusted PRs must not write caches (cache poisoning)
+      if: github.event_name == 'push'
+      with: { path: /tmp/ccache, key: 'ccache-${{ github.ref_name }}-${{ github.sha }}' }
     - run: make -C /tmp/anklang -w strict -j`nproc`
     - run: make -C /tmp/anklang -w install
     - run: make -C /tmp/anklang -w installcheck -j`nproc`
