@@ -397,6 +397,33 @@ dist: TAGS
 CLEANDIRS += artifacts/
 .PHONY: dist
 
+# == distcheck ==
+# Build all release artifacts from a fresh tarball copy and verify build, install
+# and uninstall. Must run inside the CI image to match release builds.
+distcheck: dist
+	@$(eval distname := anklang-$(version))
+	$(QECHO) CHECK $(distname).tar.zst
+	$Q T=$$(mktemp --tmpdir -d anklang-distcheck-XXXXXXXX) \
+	&& trap "rm -rf $$T" EXIT \
+	&& mkdir -p $$T \
+	&& tar xf artifacts/$(distname).tar.zst -C $$T \
+	&& cd $$T/$(distname) \
+	&& printf "prefix=$$T/inst\nCC=clang\nCXX=clang++\nINSN=fma\n" > config-defaults.mk \
+	&& $(MAKE) all -j$$(nproc) \
+	&& $(MAKE) install \
+	&& test -e $$T/inst/bin/anklang \
+	&& $(MAKE) installcheck \
+	&& $(MAKE) uninstall \
+	&& test ! -e $$T/inst/bin/anklang \
+	&& misc/mkdeb.sh \
+	&& misc/mkAppImage.sh \
+	&& cp -p $$T/$(distname)/artifacts/* $(CURDIR)/artifacts/
+	$Q cd artifacts/ \
+	&& sha256sum $(distname).tar.zst ChangeLog *.deb *.rpm *.AppImage > $(distname).SHA256SUMS \
+	&& sha256sum -c $(distname).SHA256SUMS
+	$Q echo "Distcheck ready: artifacts/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
+.PHONY: distcheck
+
 # == TAGS ==
 # ctags --print-language `git ls-tree -r --name-only HEAD`
 TAGS: $(REPOCOMMITDEPS)
@@ -440,6 +467,7 @@ help: FORCE
 	@echo '  install         - Install binaries and data files under $$(prefix)'
 	@echo '  uninstall       - Uninstall binaries, aliases and data files'
 	@echo '  installcheck    - Run checks on the installed project files.'
+	@echo '  distcheck       - Build and verify release artifacts: tarball, .deb/.rpm, AppImage.'
 	@echo '  default         - Create config-defaults.mk with variables set via the MAKE'
 	@echo '                    command line. Inspect the file for a list of variables to'
 	@echo '                    be customized. Deleting it will undo any customizations.'
