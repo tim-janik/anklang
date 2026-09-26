@@ -23,7 +23,7 @@ jobs:
         make -w dist
         mkdir /tmp/anklang && tar xf artifacts/anklang-*.tar.zst -C /tmp/anklang --strip-components=1
         cd /tmp/anklang
-        echo -e ' prefix=/tmp/inst\n CC=clang \n CXX=clang++ \n INSN=fma ' > config-defaults.mk
+        echo -e ' prefix=/tmp/inst\n CC=clang \n CXX=clang++ \n INSN=fma \n MODE=devel ' > config-defaults.mk     # no LTO, production builds are for releases
     - uses: actions/upload-artifact@v7
       with: { name: AnklangTarball, path: artifacts/ }
     - run: make -C /tmp/anklang -w all -j`nproc`
