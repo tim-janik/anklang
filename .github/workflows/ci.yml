@@ -45,33 +45,34 @@ jobs:
     - run: git fetch -f --tags  # Fix actions/checkout#290
     - run: .github/workflows/gh-release.sh --docker --upload
 
-  NobleClangTidy:
-    if: ${{ ! contains(github.ref, 'refs/tags/') }}
-    runs-on: ubuntu-latest
-    container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
-    steps:
-    - { uses: actions/checkout@v7, with: { fetch-depth: 0 } }
-    - run: git fetch -f --tags  # Fix actions/checkout#290
-    - run: git describe --always --long
-    - name: 'Configure build presets'
-      run: |
-        echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
-    - run: |
-        make -j`nproc` all
-    - run: |
-        make -j`nproc` check
-    - name: 'Make clang-tidy'
-      run: |
-        make -j`nproc` clang-tidy
-    # Artifact upload from clang-tidy
-    - uses: actions/upload-artifact@v7
-      with: { name: clang-tidy, path: out/clang-tidy/ }
-    #- name: 'Make branch-check'
-    #  # Use non-0 exit status for a failing branch-check on PRs
-    #  run: |
-    #    test -z "${{ github.event.pull_request }}" || BRANCH_CHECK_EXIT=77
-    #    make branch-check BRANCH_CHECK_EXIT=$BRANCH_CHECK_EXIT
-    #^^^ NOte, `make branch-check` does another clang-tidy run
+  # Disabled: advisory only (`make clang-tidy` never fails), and it duplicated the full build and test run
+  #NobleClangTidy:
+  #  if: ${{ ! contains(github.ref, 'refs/tags/') }}
+  #  runs-on: ubuntu-latest
+  #  container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
+  #  steps:
+  #  - { uses: actions/checkout@v7, with: { fetch-depth: 0 } }
+  #  - run: git fetch -f --tags  # Fix actions/checkout#290
+  #  - run: git describe --always --long
+  #  - name: 'Configure build presets'
+  #    run: |
+  #      echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
+  #  - run: |
+  #      make -j`nproc` all
+  #  - run: |
+  #      make -j`nproc` check
+  #  - name: 'Make clang-tidy'
+  #    run: |
+  #      make -j`nproc` clang-tidy
+  #  # Artifact upload from clang-tidy
+  #  - uses: actions/upload-artifact@v7
+  #    with: { name: clang-tidy, path: out/clang-tidy/ }
+  #  #- name: 'Make branch-check'
+  #  #  # Use non-0 exit status for a failing branch-check on PRs
+  #  #  run: |
+  #  #    test -z "${{ github.event.pull_request }}" || BRANCH_CHECK_EXIT=77
+  #  #    make branch-check BRANCH_CHECK_EXIT=$BRANCH_CHECK_EXIT
+  #  #^^^ NOte, `make branch-check` does another clang-tidy run
 
   #ArchReplay:
   #  runs-on: ubuntu-latest
@@ -101,7 +102,7 @@ jobs:
     # Always run, announce tag and trunk pushes only
     if: ${{ always() && github.event_name == 'push' && (github.ref == 'refs/heads/trunk' || github.ref_type == 'tag') }}
     runs-on: ubuntu-latest
-    needs: [ Build-And-Test, Release, NobleClangTidy ]
+    needs: [ Build-And-Test, Release ]
     steps:
     - { uses: actions/checkout@v7, with: { fetch-depth: 0 } }
     - run: git fetch -f --tags          # Fix actions/checkout#290
