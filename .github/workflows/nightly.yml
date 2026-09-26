@@ -1,0 +1,30 @@
+name: Nightly distcheck
+
+on:
+  schedule:
+    - cron: '37 2 * * *' # Daily at 02:37 UTC
+  workflow_dispatch:
+
+permissions: { contents: read }
+
+jobs:
+  Distcheck:
+    runs-on: ubuntu-latest
+    container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
+    steps:
+    - { uses: actions/checkout@v7, with: { fetch-depth: 0, fetch-tags: true } }
+    - run: git fetch --force --tags     # Fix actions/checkout#290
+    - run: make -w distcheck
+    - uses: actions/upload-artifact@v7
+      with: { name: nightly-distcheck, path: artifacts/, retention-days: 7 }
+
+  Ping-IRC:
+    if: ${{ always() }}
+    needs: [ Distcheck ]
+    runs-on: ubuntu-latest
+    steps:
+    - { uses: actions/checkout@v7 }
+    - name: Ping-IRC
+      if: ${{ !env.ACT }}
+      env: { IRCBOT_JOBS: '${{ needs.Distcheck.result }}' }
+      run: .github/workflows/ircbot.py -s irc.libera.chat:6697 -G -D "$GITHUB_REF_NAME" "#Anklang" "Nightly distcheck - $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
