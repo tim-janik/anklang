@@ -30,7 +30,6 @@ export async function test_pianoroll_shortcuts (): Promise<boolean>
     const grid = container.querySelector<HTMLElement> ('.b-pianoroll-grid')!;
     const tool = container.querySelector ('button[uri="S"]')!;
     const action = container.querySelector<HTMLButtonElement> ('.-pianorollmenu button[kbd="Ctrl+X"]')!;
-    action.disabled = false;
     tool.addEventListener ('click', () => { tool_clicks++; });
     action.addEventListener ('click', () => { action_clicks++; });
     grid.dispatchEvent (new PointerEvent ('pointerenter'));
