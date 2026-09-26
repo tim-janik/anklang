@@ -1,0 +1,54 @@
+name: Weekly clang-tidy
+
+on:
+  schedule:
+    - cron: '17 4 * * 0' # Sunday at 04:17 UTC
+  workflow_dispatch:
+
+permissions: { contents: read }
+
+jobs:
+  ClangTidy:
+    continue-on-error: true
+    outputs:
+      build: '${{ steps.build.outcome }}'
+      tidy: '${{ steps.tidy.outcome }}'
+      findings: '${{ steps.report.outputs.findings }}'
+    runs-on: ubuntu-latest
+    container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
+    steps:
+    - { uses: actions/checkout@v7, with: { fetch-depth: 0, fetch-tags: true } }
+    - run: git fetch --force --tags     # Fix actions/checkout#290
+    - name: Configure build
+      run: printf 'CC=clang\nCXX=clang++\nCLANG_TIDY=clang-tidy\nMODE=devel\nINSN=fma\n' > config-defaults.mk
+    - name: Build
+      id: build
+      run: make -j"$(nproc)" all
+    - name: Run clang-tidy
+      id: tidy
+      run: make -j"$(nproc)" clang-tidy
+    - name: Write report
+      id: report
+      if: ${{ always() }}
+      env:
+        BUILD_RESULT: '${{ steps.build.outcome }}'
+        TIDY_RESULT: '${{ steps.tidy.outcome }}'
+      run: python3 .github/workflows/clang-tidy-report.py
+    - uses: actions/upload-artifact@v7
+      if: ${{ always() }}
+      with: { name: clang-tidy-report, path: out/clang-tidy/, retention-days: 30 }
+
+  Ping-IRC:
+    if: ${{ always() }}
+    needs: [ ClangTidy ]
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+    - { uses: actions/checkout@v7 }
+    - name: Ping-IRC
+      if: ${{ !env.ACT }}
+      env:
+        BUILD_RESULT: '${{ needs.ClangTidy.outputs.build }}'
+        TIDY_RESULT: '${{ needs.ClangTidy.outputs.tidy }}'
+        FINDINGS: '${{ needs.ClangTidy.outputs.findings }}'
+      run: .github/workflows/ircbot.py -s irc.libera.chat:6697 -G -D "$GITHUB_REF_NAME" -S ADVISORY "#Anklang" "Weekly clang-tidy, build ${BUILD_RESULT:-unavailable}, analysis ${TIDY_RESULT:-unavailable}, ${FINDINGS:-unknown} diagnostic occurrences - $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
