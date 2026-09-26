@@ -53,6 +53,7 @@ export async function test_menuitems (): Promise<boolean>
   }
   await test_menu_shortcuts();
   await test_menu_availability();
+  await test_menu_late_items();
   return true;
 }
 
@@ -116,23 +117,58 @@ async function test_menu_availability ()
     isactive: () => new Promise<boolean> (resolve => checks.push (resolve)),
     items: [{ uri: 'active', label: 'Active' }],
   }), container);
+  const reopen = async () => {
+    dialog.close();
+    await Dom.ui_next_frame();
+    dialog.popup();
+    await Dom.ui_next_frame();
+  };
+  const dialog = container.querySelector ('dialog')! as any;
+  const button = container.querySelector<HTMLButtonElement> ('button[uri=active]')!;
   try {
-    const button = container.querySelector<HTMLButtonElement> ('button[uri=active]')! as any;
-    const first = button.check_isactive();
-    const second = button.check_isactive();
+    await Dom.ui_next_frame();
+    dialog.popup();
+    if (!button.disabled)
+      throw new Error ('popup did not disable items before their check');
+    await reopen();
     checks[1] (true);
-    await second;
+    await Dom.ui_next_frame();
     checks[0] (false);
-    await first;
+    await Dom.ui_next_frame();
     if (button.disabled)
       throw new Error ('old availability check overrode the newer result');
+    await reopen();
+    dialog.close();
+    await Dom.ui_next_frame();
+    checks[2] (false);
+    await Dom.ui_next_frame();
+    if (button.disabled)
+      throw new Error ('availability check disabled a closed menu item');
+  } finally {
+    dispose();
+    container.remove();
+  }
+}
 
-    const after_close = button.check_isactive();
-    button.set_menu_active (false);
-    checks[2] (true);
-    await after_close;
-    if (!button.disabled)
-      throw new Error ('availability check reenabled a closed menu item');
+async function test_menu_late_items ()
+{
+  const [items, set_items] = createSignal<MenuEntry[]> ([{ uri: 'early', label: 'Early' }]);
+  const container = document.createElement ('div');
+  document.body.appendChild (container);
+  const dispose = render (() => createComponent (ContextMenu, {
+    get items () { return items(); },
+    isactive: () => true,
+  }), container);
+  try {
+    await Dom.ui_next_frame();
+    const dialog = container.querySelector ('dialog')! as any;
+    dialog.popup();
+    await Dom.ui_next_frame();
+    await Dom.ui_next_frame();
+    set_items ([...items(), { uri: 'late', label: 'Late' }]);
+    await Dom.ui_next_frame();
+    if (container.querySelector<HTMLButtonElement> ('button[uri=late]')!.disabled)
+      throw new Error ('item added to an open menu stayed disabled');
   } finally {
     dispose();
     container.remove();

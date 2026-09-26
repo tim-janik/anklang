@@ -1,6 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-import { createContext, createEffect, createSignal, For, onCleanup, onMount, Show, useContext, type JSX } from 'solid-js';
+import { createContext, createEffect, For, onCleanup, onMount, Show, untrack, useContext, type JSX } from 'solid-js';
 import * as Kbd from '../kbd';
 import * as Util from '../util';
 import { Icon } from './icon';
@@ -35,7 +35,8 @@ export type MenuEntry = MenuAction
 export const MenuContext = createContext<{
   mapname: string;
   showicons: boolean;
-  isactive: (uri: string) => boolean | Promise<boolean>;
+  enabled: (uri: string) => boolean;
+  check: (uri: string) => void;
   add_hotkey: (entry: Util.KeymapEntry) => () => void;
 }>();
 
@@ -53,41 +54,25 @@ Extra_css`
 export function MenuItem (props: MenuAction)
 {
   const menu = useContext (MenuContext);
-  const [active, set_active] = createSignal (true);
   let button: HTMLButtonElement;
-  // Only the latest availability check may change this item's disabled state.
-  let latest_check: Promise<boolean> | undefined;
   const shortcut = () => props.kbd ? Kbd.shortcut_lookup (menu?.mapname ?? '', props.label, props.kbd) : '';
-  const check_isactive = async (apply = true) => {
-    const check = Promise.resolve (!props.disabled && (!menu || menu.isactive (props.uri)));
-    if (apply)
-      latest_check = check;
-    const enabled = await check;
-    if (apply && latest_check === check)
-      set_active (enabled);
-    return enabled;
-  };
-  const set_menu_active = (enabled: boolean) => {
-    latest_check = undefined;
-    set_active (enabled);
-  };
 
   createEffect (() => {
     const key = shortcut();
     if (key && menu)
       onCleanup (menu.add_hotkey (new Util.KeymapEntry (key, button.click.bind (button), button)));
   });
+  createEffect (() => {
+    const uri = props.uri;
+    untrack (() => menu?.check (uri));
+  });
   onMount (() => {
     button.toggleAttribute ('turn', !!button.closest ('.b-menurow:not(.noturn)'));
     button.toggleAttribute ('noturn', !!button.closest ('.b-menurow.noturn'));
   });
 
-  return <button ref={element => {
-    button = element;
-    (element as any).check_isactive = check_isactive;
-    (element as any).set_menu_active = set_menu_active;
-  }} uri={props.uri} ic={props.icon} kbd={props.kbd} aria-label={props.label}
-    disabled={props.disabled || !active()} class={props.class}
+  return <button ref={element => button = element} uri={props.uri} ic={props.icon} kbd={props.kbd} aria-label={props.label}
+    disabled={props.disabled || (menu && !menu.enabled (props.uri))} class={props.class}
     onMouseEnter={event => event.currentTarget.focus()}>
     <Show when={props.icon && menu?.showicons !== false}>
       <Icon ic={props.icon} class="pointer-events-none" />

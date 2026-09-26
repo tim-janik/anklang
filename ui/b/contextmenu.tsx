@@ -56,7 +56,7 @@
  * : Hotkeys use the same availability check as clicks.
  */
 
-import { onMount, onCleanup } from 'solid-js';
+import { createSignal, onMount, onCleanup } from 'solid-js';
 import * as Util from "../util.js";
 import { get_uri, valid_uri } from '../dom.js';
 import * as Dom from "../dom.js";
@@ -215,6 +215,10 @@ export function ContextMenu (props: {
   const keymap_: Util.KeymapEntry[] = [];
   let resize_observer: ResizeObserver;
   let menu_stamp = 0;
+  // null while closed: items stay enabled so hotkeys can click them, clicks check isactive.
+  const [enabled, set_enabled] = createSignal<Record<string, boolean> | null> (null);
+  let check_serial = 0;
+  let checked = new Set<string>();
 
   // === Methods ===
 
@@ -230,7 +234,8 @@ export function ContextMenu (props: {
   const menu_context = {
     get mapname () { return props.mapname ?? ''; },
     get showicons () { return props.showicons !== false; },
-    isactive: (uri: string) => valid_uri (uri) && (!props.isactive || props.isactive (uri)),
+    enabled: (uri: string) => enabled()?.[uri] ?? !enabled(),
+    check: (uri: string) => check_uri (uri),
     add_hotkey: (entry: Util.KeymapEntry) => {
       keymap_.push (entry);
       return () => Util.array_remove (keymap_, entry);
@@ -244,8 +249,7 @@ export function ContextMenu (props: {
     const origin = popup_options.origin === null ? null : (popup_options.origin || (event as any)?.currentTarget);
     if (origin instanceof Element && !Util.check_visibility (origin))
       return false; // cannot popup around hidden origin
-    toggle_force_children (false); // add [disabled] attribute to children
-    const toggles = check_isactive(); // concurrently, enable active children
+    const toggles = check_isactive(); // disable all items until their checks resolve
     origin_el = origin instanceof Element ? origin : null;
     menu_stamp = Util.frame_stamp(); // allows one popup per frame
     if (event && (event as any).pageX && (event as any).pageY) {
@@ -316,20 +320,25 @@ export function ContextMenu (props: {
     dialog_ref.style.margin = "0";
   };
 
-  const check_isactive = async (finduri: string | null = null) => {
-    if (!dialog_ref) return null;
-    const w = document.createTreeWalker (dialog_ref, NodeFilter.SHOW_ELEMENT);
-    let hasuri: any = null, e: Node | null, a: Promise<any>[] = [];
-    while ( (e = w.nextNode()) ) {
-      const any_e: any = e;
-      if (any_e.check_isactive) {
-        if (get_uri (any_e) == finduri)
-          hasuri = any_e;
-        a.push (any_e.check_isactive());
-      }
-    }
-    await Promise.all (a);
-    return hasuri;
+  const isactive = async (uri: string) => valid_uri (uri) && (!props.isactive || await props.isactive (uri));
+
+  // Check each URI once per popup, including items that mount while the menu is open.
+  const check_uri = async (uri: string) => {
+    const serial = check_serial;
+    if (!enabled() || checked.has (uri))
+      return;
+    checked.add (uri);
+    const active = await isactive (uri);
+    if (serial === check_serial)
+      set_enabled (state => ({ ...state, [uri]: active }));
+  };
+
+  const check_isactive = () => {
+    check_serial++;
+    checked = new Set();
+    set_enabled ({});
+    const uris = [...dialog_ref?.querySelectorAll ('button[uri]') ?? []].map (b => b.getAttribute ('uri')!);
+    return Promise.all (uris.map (check_uri));
   };
 
   /// Find a menuitem via its URI.
@@ -351,11 +360,6 @@ export function ContextMenu (props: {
       Util.add_keymap (keymap_);
   };
 
-  const toggle_force_children = (enabled: boolean) => {
-    for (const button of dialog_ref?.querySelectorAll ('button') ?? [])
-      (button as any).set_menu_active (enabled);
-  };
-
   // === Event Handlers ===
 
   const handle_click = (event: MouseEvent) => {
@@ -369,14 +373,9 @@ export function ContextMenu (props: {
     if (Util.frame_stamp() == menu_stamp)
       return;
     const click_stamp = menu_stamp, was_open = dialog_ref?.open;
-    const isactive = !(target as any).check_isactive ? true : (target as any).check_isactive (false);
-    if (isactive instanceof Promise) {
-      (async () => (await isactive && menu_stamp === click_stamp && dialog_ref?.open === was_open) &&
-                    activate_item (event, uri)) ();
-      return;
-    }
-    if (isactive)
-      activate_item (event, uri);
+    // Ignore the result if the menu was closed, reopened or activated meanwhile.
+    (async () => (await isactive (uri) && menu_stamp === click_stamp && dialog_ref?.open === was_open) &&
+                  activate_item (event, uri)) ();
   };
 
   const activate_item = (event: Event, uri: string) => {
@@ -404,8 +403,10 @@ export function ContextMenu (props: {
       return; // handled, no-default
   };
 
+  // The native close event arrives after close() returns.
   const handle_close = (event: Event) => {
-    toggle_force_children (true);
+    check_serial++;
+    set_enabled (null);
     origin_el = null;
     data_contextmenu?.removeAttribute ('data-contextmenu');
     data_contextmenu = null;
@@ -440,7 +441,6 @@ export function ContextMenu (props: {
     (el as any).popup = popup;
     (el as any).close = close;
     (el as any).map_kbd_hotkeys = map_kbd_hotkeys;
-    (el as any).check_isactive = check_isactive;
     (el as any).find_menuitem = find_menuitem;
     props.ref?.(el);
   };
