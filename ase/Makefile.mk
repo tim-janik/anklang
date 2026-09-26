@@ -153,7 +153,7 @@ ase/generated.sources	+= $(strip	\
 )
 
 # == ase/buildversion-*.cc ==
-$>/ase/buildversion-$(version_hash).cc:						| $>/ase/
+$>/ase/buildversion-$(version).cc:						| $>/ase/
 	$(QGEN)
 	$Q echo '// make $@'							> $@.tmp
 	$Q echo '#include <ase/platform.hh>'					>>$@.tmp
@@ -161,12 +161,12 @@ $>/ase/buildversion-$(version_hash).cc:						| $>/ase/
 	$Q echo 'const int         ase_major_version = $(version_major);'	>>$@.tmp
 	$Q echo 'const int         ase_minor_version = $(version_minor);'	>>$@.tmp
 	$Q echo 'const int         ase_micro_version = $(version_micro);'	>>$@.tmp
-	$Q echo 'const char *const ase_version_long = "$(version_short)+g$(version_hash) ($(INSN))";'	>>$@.tmp
-	$Q echo 'const char *const ase_version_short = "$(version_short)";'	>>$@.tmp
-	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version_short)";' >>$@.tmp
+	$Q echo 'const char *const ase_version_long = "$(version) ($(INSN))";'	>>$@.tmp
+	$Q echo 'const char *const ase_version_short = "$(version)";'	>>$@.tmp
+	$Q echo 'const char *const ase_gettext_domain = "anklang-$(version)";' >>$@.tmp
 	$Q echo '} // Ase'							>>$@.tmp
 	$Q mv $@.tmp $@
-ase/generated.sources += $>/ase/buildversion-$(version_hash).cc
+ase/generated.sources += $>/ase/buildversion-$(version).cc
 
 # == ase/tests/TestList.g.mk ==
 ase/tests/TestList.g.INPUTS := $(wildcard ase/*.cc ase/*/*.cc devices/*.cc devices/*/*.cc)
@@ -224,6 +224,7 @@ endif
 include ase/PchList.g.mk	# ASE_PCH_FILES
 # Precompiled Headers for trkn/tracktion.hh
 $(addprefix $>/, $(ASE_PCH_FILES:.cc=.o)): $(call INCLUDE_PCH, trkn/tracktion.hh )
+$>/trkn/tracktion.hh.pch: $(EXTERNAL_CXX_STAMPS)
 # Precompiled Headers for JUCE
 $>/ase/juce-linux.o:	$(call INCLUDE_PCH, trkn/juce.hh )
 

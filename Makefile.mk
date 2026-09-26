@@ -14,30 +14,28 @@ S ::= # Variable containing 1 space
 S +=
 
 # == Version ==
-version_full    != misc/version.sh
-version_long	:= $(word 1, $(version_full))
-version_short	:= $(word 1, $(subst +, , $(version_long)))
-version_hash	:= $(word 2, $(version_full))
-version_date	:= $(wordlist 3, 999, $(version_full))
-version_bits	:= $(subst _, , $(subst -, , $(subst ., , $(version_short))))
+# git describe, else the .version file baked into source archives by export-subst.
+TAG != git log -1 --pretty='%(describe:tags,match=v[0-9]*.[0-9]*)' HEAD 2>/dev/null || sed -n 's/ .*//p' .version 2>/dev/null
+version_date != git log -1 --format=%ci 2>/dev/null || sed -n 's/^[^ ]* //p' .version 2>/dev/null
+version = $(patsubst v%,%,$(TAG))
+version_bits	:= $(subst _, , $(subst -, , $(subst ., , $(version))))
 version_major	:= $(word 1, $(version_bits))
 version_minor	:= $(word 2, $(version_bits))
 version_micro	:= $(word 3, $(version_bits))
 version_to_month = $(shell echo "$(version_date)" | sed -r -e 's/^([2-9][0-9][0-9][0-9])-([0-9][0-9])-.*/m\2 \1/' \
 		     -e 's/m01/January/ ; s/m02/February/ ; s/m03/March/ ; s/m04/April/ ; s/m05/May/ ; s/m06/June/' \
 		     -e 's/m07/July/ ; s/m08/August/ ; s/m09/September/ ; s/m10/October/ ; s/m11/November/ ; s/m12/December/')
+version:
+	@echo "$(version)  $(version_date)"
 version-info:
-	@echo version_full: $(version_full)
-	@echo version_long: $(version_long)
-	@echo version_short: $(version_short)
-	@echo version_hash: $(version_hash)
+	@echo version: $(version)
 	@echo version_date: $(version_date)
 	@echo version_major: $(version_major)
 	@echo version_minor: $(version_minor)
 	@echo version_micro: $(version_micro)
 	@echo version_to_month: "$(version_to_month)"
 ifeq ($(version_micro),)	# do we have any version?
-$(error Missing version information, run: misc/version.sh)
+$(error Missing version information, need git describe or .version)
 endif
 
 # == User Defaults ==
@@ -168,7 +166,7 @@ check: check-WILDCARD_FILES
 # WILDCARD_FILES
 
 # == enduser targets ==
-.PHONY: all codegen check check-audio install uninstall installcheck lint strict
+.PHONY: all codegen check check-audio install uninstall installcheck lint strict version version-info
 
 # == subdirs ==
 include devices/Makefile.mk
@@ -243,7 +241,7 @@ CLEANDIRS += $>/codegen/
 
 # == PACKAGE_VERSIONS ==
 define PACKAGE_VERSIONS
-  "version": "$(version_short)",
+  "version": "$(version)",
   "revdate": "$(version_date)",
   "__DEV__": $(__DEV__)
 endef
@@ -382,7 +380,7 @@ dist_exclude := $(strip			\
 	external/minizip-ng/lib		\
 )
 dist: TAGS
-	$(eval distname := anklang-$(version_short))
+	$(eval distname := anklang-$(version))
 	$(QECHO) MAKE $(distname).tar.zst
 	$Q git describe --dirty | grep -qve -dirty || echo -e "#\n# $@: WARNING: working tree is dirty\n#"
 	$Q rm -r -f artifacts/ && mkdir -p artifacts/
@@ -398,6 +396,33 @@ dist: TAGS
 	$Q echo "Archive ready: artifacts/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
 CLEANDIRS += artifacts/
 .PHONY: dist
+
+# == distcheck ==
+# Build all release artifacts from a fresh tarball copy and verify build, install
+# and uninstall. Must run inside the CI image to match release builds.
+distcheck: dist
+	@$(eval distname := anklang-$(version))
+	$(QECHO) CHECK $(distname).tar.zst
+	$Q T=$$(mktemp --tmpdir -d anklang-distcheck-XXXXXXXX) \
+	&& trap "rm -rf $$T" EXIT \
+	&& mkdir -p $$T \
+	&& tar xf artifacts/$(distname).tar.zst -C $$T \
+	&& cd $$T/$(distname) \
+	&& printf "prefix=$$T/inst\nCC=clang\nCXX=clang++\nINSN=fma\n" > config-defaults.mk \
+	&& $(MAKE) all -j$$(nproc) \
+	&& $(MAKE) install \
+	&& test -e $$T/inst/bin/anklang \
+	&& $(MAKE) installcheck \
+	&& $(MAKE) uninstall \
+	&& test ! -e $$T/inst/bin/anklang \
+	&& misc/mkdeb.sh \
+	&& misc/mkAppImage.sh \
+	&& cp -p $$T/$(distname)/artifacts/* $(CURDIR)/artifacts/
+	$Q cd artifacts/ \
+	&& sha256sum $(distname).tar.zst ChangeLog *.deb *.rpm *.AppImage > $(distname).SHA256SUMS \
+	&& sha256sum -c $(distname).SHA256SUMS
+	$Q echo "Distcheck ready: artifacts/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
+.PHONY: distcheck
 
 # == TAGS ==
 # ctags --print-language `git ls-tree -r --name-only HEAD`
@@ -442,6 +467,7 @@ help: FORCE
 	@echo '  install         - Install binaries and data files under $$(prefix)'
 	@echo '  uninstall       - Uninstall binaries, aliases and data files'
 	@echo '  installcheck    - Run checks on the installed project files.'
+	@echo '  distcheck       - Build and verify release artifacts: tarball, .deb/.rpm, AppImage.'
 	@echo '  default         - Create config-defaults.mk with variables set via the MAKE'
 	@echo '                    command line. Inspect the file for a list of variables to'
 	@echo '                    be customized. Deleting it will undo any customizations.'

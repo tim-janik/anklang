@@ -76,7 +76,7 @@ $>/doc/%.1: doc/%.1.md doc/Makefile.mk					| $>/doc/
 	$(QECHO) MD2MAN $@
 	$Q $(PANDOC) $(doc/markdown-flavour) -s -p \
 		-M date="$(version_date)" \
-		-M footer="anklang-$(version_short)" \
+		-M footer="anklang-$(version)" \
 		-t man $< -o $@.tmp
 	$Q mv $@.tmp $@
 
