@@ -210,7 +210,8 @@ export function PianoRoll (props: {
 
   // Repaint implementation
   const repaint_impl = () => {
-    if (!t.clip || !t.notes_canvas || !t.hscrollbar || !t.vscrollbar)
+    // the tracking reaction outlives unmounting, a detached root yields empty CSS colors
+    if (!t.root?.isConnected || !t.clip || !t.notes_canvas || !t.hscrollbar || !t.vscrollbar)
       return;
     paint_notes.call (t);
     paint_timeline.call (t);

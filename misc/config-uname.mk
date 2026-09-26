@@ -122,7 +122,7 @@ ifdef HAVE_CLANG
 $>/%.pch: %
 	$(QGEN)
 	$(Q) mkdir -p $(@D)
-	$(Q) $(CXX) $(CXXSTD) -fPIC $(compiledefs) $(compilecxxflags) -x c++-header -o $@ $<
+	$(Q) $(CXX) $(CXXSTD) -fPIC $(compiledefs) $(compilecxxflags) $(if $(CCACHE), -Xclang -fno-pch-timestamp) -x c++-header -o $@ $<
 # Compile with precompiled headers that are listed as target dependencies
 compiledefs += $(patsubst %, -include-pch %, $(filter %.pch, $^))
 # Function to conditionally expand to a clang precompiled header name

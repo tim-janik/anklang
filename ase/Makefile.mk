@@ -93,6 +93,7 @@ ase/gen/api-jsonipc.g.cc: $>/ase/api-jsonipc.json jsonipc/jsonbindings.ts ase/Ma
 	$Q echo '} ();'									>> $@.tmp
 	$Q cmp -s $@ $@.tmp || { git -P diff --no-index -- $@ $@.tmp ; echo "  UPDATING" $@ ; }
 	$Q mv $@.tmp $@
+$>/ase/jsonapi.o: ase/gen/api-jsonipc.g.cc	# included, must be generated before compiling
 
 # == ase/gen/api-jsonipc.g.ts ==
 ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts ase/Makefile.mk $(lib/AnklangSynthEngine)

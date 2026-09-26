@@ -20,6 +20,7 @@
 #include <malloc.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/resource.h>
 #ifdef ASE_WITH_CPPTRACE
 #include <cpptrace/from_current.hpp>
 #endif
@@ -91,6 +92,7 @@ print_usage (bool help)
   printout ("  -t <time>        Automatically play and stop after <time> has passed\n"); // -t <time>[{,|;}tailtime]
   printout ("Options set via $ASE_DEBUG:\n");
   printout ("  :no-logfile:     Disable logging to ~/.cache/anklang/ instead of stderr\n");
+  printout ("  :coredump:       Allow core dumps of Anklang and its GUI process\n");
 }
 
 /// Parse CLI option with argument, sets argv[*ith]=nullptr
@@ -395,6 +397,20 @@ init_sigpipe()
     Ase::warning ("Ase: pthread_sigmask for SIGPIPE failed: %s\n", strerror (errno));
 }
 
+static void
+disable_core_dumps()
+{
+  // abort() should be instant, but core dumps of large processes (Electron) piped into
+  // e.g. systemd-coredump can block process exit for minutes, a soft RLIMIT_CORE of 0
+  // prevents that, is inherited by child processes and can be raised again for debugging
+  struct rlimit rl = {};
+  if (getrlimit (RLIMIT_CORE, &rl) == 0 && rl.rlim_cur != 0) {
+    rl.rlim_cur = 0;
+    if (setrlimit (RLIMIT_CORE, &rl) != 0)
+      Ase::warning ("Ase: setrlimit for RLIMIT_CORE failed: %s\n", strerror (errno));
+  }
+}
+
 static std::atomic<bool> loft_needs_preallocation_mt = false;
 
 // handle watermark underrun notifications
@@ -489,6 +505,9 @@ main (int argc, char *argv[])
   init_sigpipe();
   // Enable us to reap and kill any grand child processes
   atquit_make_subreaper();
+  // Avoid slow core dumps on abort() for us and child processes, unless $ASE_DEBUG=coredump
+  if (!debug_key_enabled ("coredump"))
+    disable_core_dumps();
 
   // apply user locale
   if (!setlocale (LC_ALL, ""))
