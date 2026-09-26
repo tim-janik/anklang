@@ -9,7 +9,7 @@
  * : The Ase.Project instance to monitor for dirty state changes.
  */
 
-import { createSignal, createEffect, onMount, onCleanup } from 'solid-js';
+import { onMount, onCleanup } from 'solid-js';
 import * as Util from "../util.js";
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import { PositionView } from './positionview';
@@ -18,7 +18,6 @@ import { basename, dirname, displayfs, displaybasename, displaydirname } from '.
 import { ButtonBar } from './buttonbar';
 import { ContextMenu } from './contextmenu';
 import { Icon } from './icon';
-import { MenuSeparator } from './menuseparator';
 
 // == STYLE ==
 Extra_css`
@@ -56,34 +55,11 @@ export function MenuBar (props)
   /** @type {any} */ let editmenu;
   /** @type {any} */ let viewmenu;
   /** @type {any} */ let helpmenu;
-  // track whether keyboard hotkeys have been mapped (once per mount)
-  let kbd_mapped = false;
-  // cleanup function for project notification
-  let project_cleanup = null;
-
   onMount (() => {
-    // subscribe to project dirty notifications
-    project_cleanup = Shell.project.on ("notify:dirty", () => {
-      check_isactive();
-    });
-  });
-
-  onCleanup (() => {
-    project_cleanup?.();
-    project_cleanup = null;
-    kbd_mapped = false;
-  });
-
-  // after first render, map keyboard hotkeys and check menu state
-  createEffect (() => {
-    if (!kbd_mapped && filemenu) {
-      filemenu.map_kbd_hotkeys (true);
-      editmenu.map_kbd_hotkeys (true);
-      viewmenu.map_kbd_hotkeys (true);
-      helpmenu.map_kbd_hotkeys (true);
-      kbd_mapped = true;
-    }
+    for (const menu of [filemenu, editmenu, viewmenu, helpmenu])
+      menu.map_kbd_hotkeys (true);
     check_isactive();
+    onCleanup (props.project.on ('notify:dirty', check_isactive));
   });
 
   const check_isactive = () => {
@@ -105,16 +81,16 @@ export function MenuBar (props)
           <div class="b-menubar-icon">
             <Icon ic="md-folder"/>
           </div>
-          <ContextMenu ref={filemenu} activate={activate} isactive={isactive}>
-            <button ic="fa-file_o"       kbd="Ctrl+N"         uri="loadnew">  New Project       </button>
-            <button ic="fa-file_audio_o"  kbd="Ctrl+O"         uri="load">    Open Project…       </button>
-            <button ic="fa-save"          kbd="Ctrl+S"         uri="save">    Save Project        </button>
-            <button ic="fa-save"           kbd="Shift+Ctrl+S"   uri="saveas">  Save As…            </button>
-            <MenuSeparator />
-            <button ic="fa-cog"            kbd="Ctrl+RawComma"  uri="prefs">   Preferences         </button>
-            <MenuSeparator />
-            <button ic="md-close"          kbd="Shift+Ctrl+Q"   uri="quit">    Quit                </button>
-          </ContextMenu>
+          <ContextMenu ref={filemenu} activate={activate} isactive={isactive} items={[
+            { uri: 'loadnew', label: 'New Project', icon: 'fa-file_o', kbd: 'Ctrl+N' },
+            { uri: 'load', label: 'Open Project…', icon: 'fa-file_audio_o', kbd: 'Ctrl+O' },
+            { uri: 'save', label: 'Save Project', icon: 'fa-save', kbd: 'Ctrl+S' },
+            { uri: 'saveas', label: 'Save As…', icon: 'fa-save', kbd: 'Shift+Ctrl+S' },
+            { type: 'separator' },
+            { uri: 'prefs', label: 'Preferences', icon: 'fa-cog', kbd: 'Ctrl+RawComma' },
+            { type: 'separator' },
+            { uri: 'quit', label: 'Quit', icon: 'md-close', kbd: 'Shift+Ctrl+Q' },
+          ]} />
         </div>
 
         {/* Edit Menu */}
@@ -125,10 +101,10 @@ export function MenuBar (props)
           <div class="b-menubar-icon">
             <Icon ic="md-playlist_edit"/>
           </div>
-          <ContextMenu ref={editmenu} activate={activate} isactive={isactive}>
-            <button ic="md-undo" kbd="Ctrl+Z"        uri="undo">  Undo  </button>
-            <button ic="md-redo" kbd="Shift+Ctrl+Z"  uri="redo">  Redo  </button>
-          </ContextMenu>
+          <ContextMenu ref={editmenu} activate={activate} isactive={isactive} items={[
+            { uri: 'undo', label: 'Undo', icon: 'md-undo', kbd: 'Ctrl+Z' },
+            { uri: 'redo', label: 'Redo', icon: 'md-redo', kbd: 'Shift+Ctrl+Z' },
+          ]} />
         </div>
 
         {/* View Menu */}
@@ -139,11 +115,10 @@ export function MenuBar (props)
           <div class="b-menubar-icon">
             <Icon ic="fa-eye"/>
           </div>
-          <ContextMenu ref={viewmenu} activate={activate} isactive={isactive}>
-            <button ic="md-fullscreen" disabled={!document.fullscreenEnabled}
-                    kbd="F11" uri="fullscreen">  Toggle Fullscreen  </button>
-            {electron_menuitems()}
-          </ContextMenu>
+          <ContextMenu ref={viewmenu} activate={activate} isactive={isactive} items={[
+            { uri: 'fullscreen', label: 'Toggle Fullscreen', icon: 'md-fullscreen', kbd: 'F11', disabled: !document.fullscreenEnabled },
+            ...electron_menuitems(),
+          ]} />
         </div>
       </ButtonBar>
 
@@ -163,11 +138,11 @@ export function MenuBar (props)
           <div class="b-menubar-icon">
             <Icon ic="fa-life_ring"/>
           </div>
-          <ContextMenu ref={helpmenu} activate={activate} isactive={isactive}>
-            <button ic="fa-book_open"   uri="anklang-docu">  Anklang Documentation…  </button>
-            <MenuSeparator />
-            <button ic="oct-id_badge"    uri="about">         About…                  </button>
-          </ContextMenu>
+          <ContextMenu ref={helpmenu} activate={activate} isactive={isactive} items={[
+            { uri: 'anklang-docu', label: 'Anklang Documentation…', icon: 'fa-book_open' },
+            { type: 'separator' },
+            { uri: 'about', label: 'About…', icon: 'oct-id_badge' },
+          ]} />
         </div>
       </ButtonBar>
     </div>
@@ -177,15 +152,11 @@ export function MenuBar (props)
 // == Electron-specific menu items ==
 function electron_menuitems()
 {
-  if (!window['Electron'])
-    return null;
-  return (
-    <>
-      <button ic="cod-zoom_in"   kbd="Ctrl++"   uri="zoom-in">    Zoom In       </button>
-      <button ic="cod-zoom_out"  kbd="Ctrl+-"   uri="zoom-out">   Zoom Out      </button>
-      <button ic="cod-screen_full" kbd="Ctrl+0"  uri="zoom-reset"> Reset Zoom    </button>
-    </>
-  );
+  return window['Electron'] ? [
+    { uri: 'zoom-in', label: 'Zoom In', icon: 'cod-zoom_in', kbd: 'Ctrl++' },
+    { uri: 'zoom-out', label: 'Zoom Out', icon: 'cod-zoom_out', kbd: 'Ctrl+-' },
+    { uri: 'zoom-reset', label: 'Reset Zoom', icon: 'cod-screen_full', kbd: 'Ctrl+0' },
+  ] : [];
 };
 
 // == Menu activation handlers ==

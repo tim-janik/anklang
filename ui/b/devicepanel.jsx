@@ -9,14 +9,11 @@
  * : Container for the devices (Ase.Track).
  */
 
-import { createSignal, createEffect, For, splitProps } from 'solid-js';
+import { createResource, splitProps } from 'solid-js';
 import * as Util from "../util.js";
 import * as Ase from '../../ase/gen/api-jsonipc.g.ts';
 import { More } from './more';
-import { MenuTitle } from './menutitle.tsx';
 import { ContextMenu } from './contextmenu';
-import { DeviceEditor } from './deviceeditor.tsx';
-import { TreeBrowser } from './treebrowser.jsx';
 
 // == STYLE ==
 Extra_css`
@@ -71,47 +68,19 @@ export function DevicePanel (props)
 {
   const [local, rest] = splitProps (props, ['class', 'track']);
   let cmenu_ref;
-  const [chain, set_chain] = createSignal (null);
-  const [devicetypes, set_devicetypes] = createSignal (null);
-  const [menu_sibling, set_menu_sibling] = createSignal (null);
-
-  // Watch track changes and fetch device info
-  createEffect (async () => {
-    const track = props.track;
-    set_chain (null);
-    set_devicetypes (null);
-    if (!track) return;
-
-    const dev = await track.access_device ();
-    const types = !dev ? null : await list_device_types (dev);
-    set_devicetypes (types);
-    set_chain (dev);
+  const [device_data] = createResource (() => local.track, async track => {
+    const chain = await track.access_device();
+    return chain ? { chain, items: await list_device_types (chain) } : null;
   });
+  const ready = () => local.track && !device_data.loading && device_data();
 
   const activate = async (uri) => {
-    // close popup to remove focus guards
-    if (!chain () || uri.startsWith ('DevicePanel:')) // DevicePanel: menu items are panel controls, not devices to insert
-      return;
-    const sibling = menu_sibling ();
-    let newdev;
-    if (sibling)
-      newdev = chain ().insert_device (uri, sibling);
-    else
-      newdev = chain ().append_device (uri);
-    set_menu_sibling (null);
-    await newdev;
-    if (!newdev)
-      console.error ("Ase.insert_device failed, got null:", uri);
+    const chain = ready()?.chain;
+    if (chain && !await chain.append_device (uri))
+      console.error ('Ase.append_device failed, got null:', uri);
   };
 
-  const isactive = (uri) => {
-    if (!props.track)
-      return false;
-    return true;
-  };
-
-  const menuopen = (event, sibling) => {
-    set_menu_sibling (sibling);
+  const menuopen = (event) => {
     cmenu_ref?.popup (event, { origin: 'none' });
     Util.prevent_event (event);
   };
@@ -121,10 +90,6 @@ export function DevicePanel (props)
       <div class="b-devicepanel-scroller">
       <span class="b-devicepanel-vtitle">Device Panel</span>
       <div class="b-devicepanel-hstack hflex">
-        {/* <For each={chain()?.devices || []}>{dev => (
-               <More onMousedown={e => menuopen (e, dev)} data-tip="**CLICK** Add New Elements" />
-               <DeviceEditor device={dev} />
-             )}</For> TODO: needs Device::get_devices() impl */}
         <More
           onMousedown={e => menuopen (e)}
           data-tip="**CLICK** Add New Elements"
@@ -132,12 +97,10 @@ export function DevicePanel (props)
         <ContextMenu
           ref={e => { cmenu_ref = e; }}
           activate={activate}
-          isactive={isactive}
+          isactive={() => !!ready()}
           id="g-devicepanelcmenu"
-        >
-          <MenuTitle>Devices</MenuTitle>
-          <TreeBrowser tree={devicetypes ()} expandall={false} />
-        </ContextMenu>
+          items={[{ type: 'title', label: 'Devices' }, ...(ready()?.items ?? [])]}
+        />
       </div>
       </div>
     </div>
@@ -155,9 +118,8 @@ async function list_device_types (device)
   const cats = {};
   for (const e of deviceinfos) {
     const category = e.category || 'Other';
-    cats[category] = cats[category] || { label: category, type: 'resource-type-folder', entries: [] };
-    e.label = e.label || e.name;
-    cats[category].entries.push (e);
+    cats[category] = cats[category] || { type: 'submenu', label: category, items: [] };
+    cats[category].items.push ({ uri: e.uri, label: e.label || e.name });
   }
   const list = [];
   for (const c of Object.keys (cats).sort ())

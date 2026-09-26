@@ -3,20 +3,18 @@
 /** @class ContextMenu
  * @description
  * The ContextMenu component implements a modal popup that displays contextmenu choices,
- * based on `<button uri=... ic=... kbd=.../>` elements, see also [MenuRow](#MenuRow),
- * [MenuTitle](#MenuTitle) and [MenuSeparator](#MenuSeparator).
+ * using menu-entry lists and MenuItem children for custom content.
  * Menu actions are identified via URI attributes, they can be activated by calling a handler
  * which is assigned via the `.activate` property, or the actions can be checked for being disabled
  * by calling a handler which is assigned via the `.isactive` property.
- * The `ic` attribute on buttons embeds a `.b-icon` span inside the buttons.
+ * Menu items render their own icons and shortcut labels.
  * Using the `popup()` method, the menu can be shown via
  * [HTMLDialogElement.showModal](https://developer.mozilla.org/en-US/docs/Web/API/HTMLDialogElement/showModal).
  * Example:
  * ```tsx
  * <div onContextMenu={e => cm_ref.popup(e)}>
- *   <ContextMenu ref={cm_ref} activate={menuactivation}>
- *     <button ic="md-close" kbd="Shift+Ctrl+Q" uri="quit"> Quit </button>
- *   </ContextMenu>
+ *   <ContextMenu ref={cm_ref} activate={menuactivation}
+ *     items={[{ uri: "quit", label: "Quit", icon: "md-close", kbd: "Shift+Ctrl+Q" }]} />
  * </div>
  * ```
  * Note that keyboard presses, mouse clicks, drag selections and event bubbling can
@@ -27,7 +25,7 @@
  * ### Props:
  * *activate (uri)*
  * : Callback handler which is called with a menu item URI once a menu item is activated.
- * : Note, this handler can be called with an URI for which `.isactive` previously returned `false`, in particular via hotkeys.
+ * : Availability is checked again when an item is activated.
  * *isactive (uri)* -> Promise<bool>
  * : Async callback used to check for a particular menu item by URI to stay active or be disabled, called during popup().
  *
@@ -54,15 +52,14 @@
  * : Hide the contextmenu.
  * *map_kbd_hotkeys (active)*
  * : Activate/deactivate a global hotkey map containing the `<button kbd=.../>` hotkeys specified in menu items.
- * : For hotkeys, no prior `.isactive` check is carried out.
+ * : Hotkeys use the same availability check as clicks.
  */
 
 import { onMount, onCleanup } from 'solid-js';
 import * as Util from "../util.js";
-import * as Kbd from '../kbd.js';
-import { text_content, get_uri, valid_uri } from '../dom.js';
+import { get_uri, valid_uri } from '../dom.js';
 import * as Dom from "../dom.js";
-import { icon_element } from './icon';
+import { MenuContext, MenuItems, type MenuEntry } from './menuitems';
 
 // == STYLE ==
 Extra_css`
@@ -192,23 +189,6 @@ function assert_geometry (dialog: HTMLDialogElement, expect_centered: boolean)
     console.error ("ContextMenu assert_geometry: button rectangles overlap");
 }
 
-export function provide_menudata (element)
-{
-  // find ContextMenu dialog
-  const b_contextmenu = Util.closest (element, '.b-contextmenu');
-  if (b_contextmenu && b_contextmenu.menudata)
-    return b_contextmenu.menudata;
-  // fallback
-  return {
-    close: () => undefined,
-    isactive: uri => true,
-    menu_stamp: 0,	// deduplicating frame_stamp() for contextmenu
-    item_stamp: 0,	// deduplicating frame_stamp() for menuitem
-    mapname: '',
-    showicons: true,
-  };
-}
-
 export function ContextMenu (props: {
   ref?: (el: HTMLDialogElement) => void;
   activate?: (uri: string, event?: Event) => void;
@@ -222,19 +202,17 @@ export function ContextMenu (props: {
   onactivate?: (e: CustomEvent) => void;
   onclose?: (e: Event) => void;
   children?: any;
+  items?: MenuEntry[];
 })
 {
   let dialog_ref: HTMLDialogElement | undefined;
-  let emit_close_ = 0;
   let page_x: number | undefined;
   let page_y: number | undefined;
   let origin_el: Element | null = null;
   let data_contextmenu: Element | null = null;
-  let keymap_: Util.KeymapEntry[] = [];
-  let keymap_active = false;
-  let observer_: MutationObserver | null = null;
-  // TODO: get rid of allowed_click legacy
-  let allowed_click: Event | null = null;
+  const keymap_: Util.KeymapEntry[] = [];
+  let resize_observer: ResizeObserver;
+  let menu_stamp = 0;
 
   // === Methods ===
 
@@ -245,40 +223,29 @@ export function ContextMenu (props: {
     if (dialog_ref?.open) {
       native_dialog_close.call(dialog_ref);
     }
-    toggle_force_children (true);
-    origin_el = null;
-    data_contextmenu?.removeAttribute ('data-contextmenu');
-    data_contextmenu = null;
-    (window as any).App?.zmove(); // force changes to be picked up
-    if (emit_close_) {
-      emit_close_--;
-      const ev = new CustomEvent ('close', { detail: {} });
-      props.onclose?.(ev);
-      dialog_ref?.dispatchEvent (ev);
-    }
   };
 
-  // Context for descendant menu items; close is ready before the dialog ref is exposed.
-  const menudata: any = {
-    close,
+  const menu_context = {
+    get mapname () { return props.mapname ?? ''; },
+    get showicons () { return props.showicons !== false; },
     isactive: (uri: string) => valid_uri (uri) && (!props.isactive || props.isactive (uri)),
-    menu_stamp: 0,
-    item_stamp: 0,
-    mapname: props.mapname || '',
-    showicons: props.showicons !== false,
+    add_hotkey: (entry: Util.KeymapEntry) => {
+      keymap_.push (entry);
+      return () => Util.array_remove (keymap_, entry);
+    },
   };
 
   const popup = (event?: Event, popup_options: any = {}) => {
     Util.prevent_event (event);
-    if (dialog_ref?.open || Util.frame_stamp() == menudata.menu_stamp)
+    if (dialog_ref?.open || Util.frame_stamp() == menu_stamp)
       return false; // duplicate popup request, only popup once per frame
     const origin = popup_options.origin === null ? null : (popup_options.origin || (event as any)?.currentTarget);
     if (origin instanceof Element && !Util.check_visibility (origin))
       return false; // cannot popup around hidden origin
     toggle_force_children (false); // add [disabled] attribute to children
-    const toggles = toggle_active_children(); // concurrently, enable active children
+    const toggles = check_isactive(); // concurrently, enable active children
     origin_el = origin instanceof Element ? origin : null;
-    menudata.menu_stamp = Util.frame_stamp(); // allows one popup per frame
+    menu_stamp = Util.frame_stamp(); // allows one popup per frame
     if (event && (event as any).pageX && (event as any).pageY) {
       page_x = (event as any).pageX;
       page_y = (event as any).pageY;
@@ -287,7 +254,6 @@ export function ContextMenu (props: {
     }
     data_contextmenu = popup_options['data-contextmenu'] || origin_el;
     data_contextmenu?.setAttribute ('data-contextmenu', 'true');
-    emit_close_++;
     // Auto-focus a requested child, or the first visible focusable item.
     const focus_uri = popup_options.focus_uri;
     (async () => {
@@ -376,146 +342,21 @@ export function ContextMenu (props: {
     return null;
   };
 
-  /// Activate or disable the `kbd=...` hotkeys in menu items.
-  // Shortcut buttons must stay mounted while the popup is closed; their owning panel decides when shortcuts are enabled.
+  // Shortcut buttons stay mounted; their panel controls whether the keymap is active.
   const map_kbd_hotkeys = (active = false) => {
-    if (keymap_.length) {
-      keymap_.length = 0;
-      Util.remove_keymap (keymap_);
-    }
-    keymap_active = !!active;
-    if (!keymap_active || !dialog_ref)
-      return;
-    const w = document.createTreeWalker (dialog_ref, NodeFilter.SHOW_ELEMENT);
-    let e: Node | null;
-    while ( (e = w.nextNode()) ) {
-      const any_e: any = e;
-      const keymap_entry = any_e['_keymap_entry'];
-      if (keymap_entry instanceof Util.KeymapEntry)
-        keymap_.push (keymap_entry);
-    }
-    if (keymap_.length)
+    Util.remove_keymap (keymap_);
+    if (active)
       Util.add_keymap (keymap_);
   };
 
-  const toggle_active_children = async () => {
-    const this_isactive = props.isactive; // fetch function prop
-    const isactive = async (uri: string) => !uri || !this_isactive || await this_isactive (uri);
-    const proms: (Promise<boolean> & { element?: Element })[] = [];
-    if (!dialog_ref) return;
-    for (let b of dialog_ref.querySelectorAll ('button, .asbutton')) {
-      const any_b = b as any;
-      const uri = any_b.getAttribute ('uri');
-      if (uri === null) continue;
-      const promise = isactive (uri) as Promise<boolean> & { element?: Element };
-      promise['element'] = b;
-      proms.push (promise);
-    }
-    const toggles = await Promise.all (proms);
-    stop_observer();
-    for (let i = 0; i < proms.length; i++) {
-      const element = proms[i]['element']!, disabled = !toggles[i];
-      element.toggleAttribute ('disabled', disabled);
-    }
-    start_observer();
-  };
-
   const toggle_force_children = (enabled: boolean) => {
-    stop_observer();
-    if (!dialog_ref) { start_observer(); return; }
-    for (let b of dialog_ref.querySelectorAll ('button, .asbutton')) {
-      const any_b = b as any;
-      const uri = any_b.getAttribute ('uri');
-      if (uri === null) continue;
-      any_b.toggleAttribute ('disabled', !enabled);
-    }
-    start_observer();
-  };
-
-  const start_observer = () => {
-    if (observer_ || !dialog_ref || !document.body.contains (dialog_ref)) return;
-    observer_ = new MutationObserver (Util.debounce (() => {
-      stop_observer();
-      integrate_children();
-      if (dialog_ref?.open)
-        fit_and_reposition_dialog();
-      start_observer();
-    }));
-    observer_.observe (dialog_ref, { childList: true, subtree: true, attributes: true });
-  };
-
-  const stop_observer = () => {
-    if (!observer_) return;
-    observer_.disconnect();
-    observer_ = null;
-  };
-
-  /** Integrate a button or summary into ContextMenu handling. */
-  function integrate_button (this: HTMLElement)
-  {
-    const btn = this;
-    // Click activation is delegated by the dialog; focus menu items on hover.
-    if (!btn.onmouseenter)
-      btn.onmouseenter = () => btn.focus();
-    // ContextMenu-owned spans must be recreated when `ic` changes so their classes and text update.
-    // Do not alter application-owned Icon components, which manage their own reactive updates.
-    const ic_value = btn.getAttribute ('ic');
-    const contextmenu_icon = btn.querySelector ('.b-icon[data-contextmenu-icon]');
-    if (ic_value) {
-      if (contextmenu_icon?.getAttribute ('ic') != ic_value) {
-        const icon = icon_element (ic_value);
-        icon.classList.add ('pointer-events-none');
-        icon.toggleAttribute ('data-contextmenu-icon', true);
-        if (contextmenu_icon)
-          contextmenu_icon.replaceWith (icon);
-        else if (!btn.querySelector ('.b-icon'))
-          btn.prepend (icon);
-      }
-    } else
-      contextmenu_icon?.remove();
-    // aria-label
-    const aria_label = text_content (btn, false).trim();
-    btn.setAttribute ('aria-label', aria_label);
-    // menurow children - turn/noturn based on parent .b-menurow
-    const turn = !!Util.closest (btn, '.b-menurow:not(.noturn)');
-    btn.toggleAttribute ("turn", turn);
-    const noturn = !!Util.closest (btn, '.b-menurow.noturn');
-    btn.toggleAttribute ("noturn", noturn);
-    // <kbd/>
-    const kbds = btn.getAttribute ('kbd');
-    if (kbds) {
-      const kbd = btn.querySelector ('kbd') || document.createElement ('kbd');
-      if (!kbd.parentElement) {
-        kbd.className = "pointer-events-none";
-        btn.appendChild (kbd);
-        kbd.innerText = kbds;
-      }
-      // hotkey
-      if (!(btn as any)['_keymap_entry'])
-        (btn as any)['_keymap_entry'] = new Util.KeymapEntry ('', btn.click.bind (btn), btn);
-      const menudata = provide_menudata (btn);
-      const shortcut = Kbd.shortcut_lookup (menudata.mapname, aria_label, kbds);
-      if (shortcut != (btn as any)['_keymap_entry'].key)
-        (btn as any)['_keymap_entry'].key = shortcut;
-      kbd.innerText = Util.display_keyname (shortcut);
-    } else
-      btn.querySelector ('kbd')?.remove();
-  }
-
-  const integrate_children = () => {
-    if (!dialog_ref) return;
-    for (let b of dialog_ref.querySelectorAll ('button, .asbutton, summary')) {
-      integrate_button.call (b as HTMLElement);
-    }
-    // rebuild keymap
-    map_kbd_hotkeys (keymap_active);
+    for (const button of dialog_ref?.querySelectorAll ('button') ?? [])
+      (button as any).set_menu_active (enabled);
   };
 
   // === Event Handlers ===
 
   const handle_click = (event: MouseEvent) => {
-    if (allowed_click === event)
-      return;
     // Find the button that was clicked via event delegation
     const target = (event.target as Element).closest ('button, .asbutton, summary') as HTMLElement | null;
     if (!target) return;
@@ -523,11 +364,13 @@ export function ContextMenu (props: {
     if (!valid_uri (uri))
       return;
     Util.prevent_event (event);
-    if (Util.frame_stamp() == menudata.menu_stamp)
+    if (Util.frame_stamp() == menu_stamp)
       return;
+    const click_stamp = menu_stamp, was_open = dialog_ref?.open;
     const isactive = !(target as any).check_isactive ? true : (target as any).check_isactive (false);
     if (isactive instanceof Promise) {
-      (async () => (await isactive) && activate_item (event, uri)) ();
+      (async () => (await isactive && menu_stamp === click_stamp && dialog_ref?.open === was_open) &&
+                    activate_item (event, uri)) ();
       return;
     }
     if (isactive)
@@ -535,21 +378,16 @@ export function ContextMenu (props: {
   };
 
   const activate_item = (event: Event, uri: string) => {
-    if (allowed_click)
-      return;
-    if (Util.frame_stamp() == menudata.menu_stamp)
+    if (Util.frame_stamp() == menu_stamp)
       return;
     if (valid_uri (uri)) {
-      menudata.menu_stamp = Util.frame_stamp();
-      const proceed = true;
-      if (proceed) {
-        if (props.activate)
-          props.activate (uri, event);
-        else {
-          const ev = new CustomEvent ('activate', { detail: { uri } });
-          props.onactivate?.(ev);
-          dialog_ref?.dispatchEvent (ev);
-        }
+      menu_stamp = Util.frame_stamp();
+      if (props.activate)
+        props.activate (uri, event);
+      else {
+        const ev = new CustomEvent ('activate', { detail: { uri } });
+        props.onactivate?.(ev);
+        dialog_ref?.dispatchEvent (ev);
       }
       close();
     } else
@@ -564,18 +402,24 @@ export function ContextMenu (props: {
       return; // handled, no-default
   };
 
-  const handle_close = () => {
-    // Called when dialog is closed natively (Escape, backdrop click)
-    close();
+  const handle_close = (event: Event) => {
+    toggle_force_children (true);
+    origin_el = null;
+    data_contextmenu?.removeAttribute ('data-contextmenu');
+    data_contextmenu = null;
+    (window as any).App?.zmove();
+    props.onclose?.(event);
   };
 
   // === Lifecycle ===
 
   onMount (() => {
     if (!dialog_ref) return;
-    // Integrate button children (icons, kbd, etc.) after DOM is ready
-    integrate_children();
-    start_observer();
+    resize_observer = new ResizeObserver (() => {
+      if (dialog_ref.open)
+        fit_and_reposition_dialog();
+    });
+    resize_observer.observe (dialog_ref.querySelector ('.b-contextmenu-inner'));
     // Close on backdrop clicks (regression from Lit migration)
     Util.dialog_backdrop_autoclose (dialog_ref, true);
   });
@@ -583,7 +427,7 @@ export function ContextMenu (props: {
   onCleanup (() => {
     if (dialog_ref)
       Util.dialog_backdrop_autoclose (dialog_ref, false);
-    stop_observer();
+    resize_observer?.disconnect();
     map_kbd_hotkeys (false);
   });
 
@@ -596,13 +440,11 @@ export function ContextMenu (props: {
     (el as any).map_kbd_hotkeys = map_kbd_hotkeys;
     (el as any).check_isactive = check_isactive;
     (el as any).find_menuitem = find_menuitem;
-    // Store menudata for child lookups
-    (el as any).menudata = menudata;
     props.ref?.(el);
   };
 
   return (
-    <dialog
+    <MenuContext.Provider value={menu_context}><dialog
       ref={set_ref}
       class={"b-contextmenu" + (props.class ? " " + props.class : "")}
       id={props.id}
@@ -611,8 +453,9 @@ export function ContextMenu (props: {
       onClose={handle_close}
     >
       <div class="b-contextmenu-inner">
+        <MenuItems items={props.items ?? []} />
         {props.children}
       </div>
-    </dialog>
+    </dialog></MenuContext.Provider>
   );
 }

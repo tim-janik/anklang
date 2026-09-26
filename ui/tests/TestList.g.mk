@@ -2,12 +2,12 @@ UI_TEST_LIST := \
   aboutdialog_test.test_aboutdialog \
   app_test.test_app \
   choiceinput_test.test_choiceinput \
-  cliplist_test.test_cliplist \
   clip_test.test_clip_volume \
   clip_test.test_clip_mute \
   clip_test.test_clip_pan \
   clip_test.test_clip_notes \
   clip_test.test_clip_range \
+  cliplist_test.test_cliplist \
   contextmenu_test.test_contextmenu \
   databubble_test.test_databubble \
   deviceeditor_test.test_deviceeditor \
@@ -15,9 +15,11 @@ UI_TEST_LIST := \
   dialog_test.test_dialog \
   editable_test.test_editable \
   knob_test.test_knob \
+  menuitems_test.test_menuitems \
   modals_test.test_modals \
   numberinput_test.test_numberinput \
   objecteditor_test.test_objecteditor \
+  pianoroll_test.test_pianoroll_shortcuts \
   preferencesdialog_test.test_preferencesdialog \
   project_test.test_project_basic \
   project_test.test_project_master_volume \
@@ -34,5 +36,5 @@ UI_TEST_LIST := \
   track_test.test_track_mute \
   track_test.test_track_solo \
   track_test.test_track_midi_channel \
-  trackview_test.test_trackview_subscription \
+  trackview_test.test_trackview_menu \
   util_test.test_util \
