@@ -224,6 +224,7 @@ endif
 include ase/PchList.g.mk	# ASE_PCH_FILES
 # Precompiled Headers for trkn/tracktion.hh
 $(addprefix $>/, $(ASE_PCH_FILES:.cc=.o)): $(call INCLUDE_PCH, trkn/tracktion.hh )
+$>/trkn/tracktion.hh.pch: $(EXTERNAL_CXX_STAMPS)
 # Precompiled Headers for JUCE
 $>/ase/juce-linux.o:	$(call INCLUDE_PCH, trkn/juce.hh )
 
