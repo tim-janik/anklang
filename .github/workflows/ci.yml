@@ -16,7 +16,7 @@ jobs:
   Build-And-Test:
     runs-on: ubuntu-latest
     container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
-    env: { CCACHE_DIR: /tmp/ccache, CCACHE_MAXSIZE: 2G } # CCACHE_DIR enables $(CCACHE)
+    env: { CCACHE_DIR: /tmp/ccache, CCACHE_MAXSIZE: 2G, CCACHE_BASEDIR: /tmp/anklang, CCACHE_NOHASHDIR: 1 } # CCACHE_DIR enables $(CCACHE), BASEDIR allows cache reuse across source dirs
     steps:
     - { uses: actions/checkout@v7, with: { fetch-depth: 0, fetch-tags: true } }
     - run: git fetch --force --tags     # Fix actions/checkout#290
