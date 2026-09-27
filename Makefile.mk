@@ -105,7 +105,7 @@ CHECK_TARGETS	::=
 CLEANFILES	::=
 CLEANDIRS	::=
 MAKE_HELP	:=
-NONBUILD_RULES	:= clean help
+NONBUILD_RULES	:= clean help check-source-licenses
 
 # == Defaults ==
 INCLUDES	::= -I.
