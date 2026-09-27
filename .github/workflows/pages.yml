@@ -21,17 +21,22 @@ jobs:
     if: ${{ github.repository == 'tim-janik/anklang' }}
     runs-on: ubuntu-latest
     container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
+    env: { CCACHE_DIR: /tmp/ccache, CCACHE_MAXSIZE: 2G, CCACHE_NOHASHDIR: 1 } # CCACHE_DIR enables $(CCACHE)
     steps:
     - { uses: actions/checkout@v4, with: { fetch-depth: 0 } }
     - run: git fetch -f --tags  # Fix actions/checkout#290
     - uses: actions/configure-pages@v5
+    - uses: actions/cache/restore@v6    # reuse the trunk ccache from ci.yml
+      with: { path: /tmp/ccache, key: 'ccache-trunk-${{ github.sha }}', restore-keys: 'ccache-trunk-' }
     - name: 'Configure build presets'
       run: |
-        echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
+        echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n INSN=fma \n MODE=devel ' > config-defaults.mk
+        echo "CCACHE_BASEDIR=$PWD" >> "$GITHUB_ENV"
+    # The docs need no C++ build currently, re-enable if generated sources are needed
+    #- run: |
+    #    make -w -j`nproc` all
     - run: |
-        make -w -j`nproc` all
-    - run: |
-        make -w doxygen mkdocs-site
+        make -w -j`nproc` doxygen mkdocs-site
         # (cd out/site/ && python3 -m http.server 2222 )
     - run: |
         ls -al out/mkdocs/anklang/
