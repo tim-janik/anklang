@@ -110,6 +110,12 @@ misc/uninstall: FORCE
 .PHONY: misc/uninstall
 uninstall: misc/uninstall
 
+# == Source License Headers ==
+check-source-licenses:
+	$Q misc/check-source-licenses.sh $(WILDCARD_FILES)
+.PHONY: check-source-licenses
+all check: check-source-licenses
+
 # == Check Copyright Notices ==
 # files containing copyright declarations
 misc/copyright_files := $(strip \
