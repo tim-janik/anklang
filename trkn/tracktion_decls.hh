@@ -1,3 +1,4 @@
+// This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #pragma once
 
 // tracktion_decls.hh is included by tracktion_engine/tracktion_engine.h
