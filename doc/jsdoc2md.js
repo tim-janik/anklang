@@ -2,7 +2,6 @@
 "use strict";
 
 import * as fs from 'fs';
-import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import jsdoc from 'jsdoc-api';
 import ts from 'typescript';
@@ -16,7 +15,6 @@ function usage (full = false) {
   console.log ("  -h, --help        Display command line help");
   console.log ("  -d <DEPTH>        Set Markdown section level");
   console.log ("  -e <EXPORTNAME>   Use EXPORTNAME as API prefix");
-  console.log ("  -O <DIRECTORY>    Write one Markdown file per input instead of stdout");
   console.log ("  --markdown-only  Extract only comments starting with a Markdown heading");
 }
 
@@ -33,8 +31,6 @@ function parse_args (config, args, start = 2) {
 	config.debug = true;
       else if (args[i] == '--markdown-only')
 	config.markdown_only = true;
-      else if (args[i] == '-O' && i + 1 < args.length)
-	config.odir = args[++i];
       else if (args[i] == '-d' && i + 1 < args.length)
 	config.depth = args[++i] | 0;
       else if (args[i] == '-e' && i + 1 < args.length)
@@ -49,7 +45,6 @@ const arg_config = {
   debug: false,
   files: [],
   exports: '',
-  odir: '',
   markdown_only: false,
   // h1, h2, h3
   depth: 2,
@@ -70,22 +65,50 @@ function fix_indent (txt)
   return txt.trim() + '\n';
 }
 
-function extract_comments (source)
+function extract_comments (source, filename)
 {
-  const blocks = [];
-  const block_comments = /^[ \t]*\/\*\*.*?\*\/|(?:^[ \t]*\/\/\/[^\n]*(?:\n|$))+/gms;
-  source = source.replace (block_comments, comment => {
-    const text = fix_indent (comment);
-    if (/^#+\s+\S/.test (text))
-      {
-	blocks.push (text);
-	return comment.replace (/[^\r\n]/g, ' ');
-      }
-    if (comment.trimStart().startsWith ('///'))
-      return '/**\n' + text.replace (/\*\//g, '*​/').replace (/^/gm, ' * ') + '*/\n';
-    return comment;
-  });
-  return { source, markdown: blocks.join ('\n\n') };
+  const ranges = new Map();
+  const tree = ts.createSourceFile (filename, source, ts.ScriptTarget.Latest);
+  function visit (node)
+  {
+    if (!ts.isJsxText (node))
+      for (const range of ts.getLeadingCommentRanges (source, node.pos) || [])
+	ranges.set (range.pos, range);
+    ts.forEachChild (node, visit);
+  }
+  visit (tree);
+  const comments = [];
+  for (const range of [...ranges.values()].sort ((a, b) => a.pos - b.pos))
+    {
+      const prefix = source.slice (range.pos, range.pos + 3);
+      if (prefix != '/**' && prefix != '///')
+	continue;
+      const previous = comments.at (-1);
+      if (prefix == '///' && previous?.kind == ts.SyntaxKind.SingleLineCommentTrivia &&
+	  /^[ \t]*\r?\n[ \t]*$/.test (source.slice (previous.end, range.pos)))
+	previous.end = range.end;
+      else
+	comments.push ({ ...range });
+    }
+  const blocks = [], chunks = [];
+  let end = 0;
+  for (const range of comments)
+    {
+      const comment = source.slice (range.pos, range.end);
+      const text = fix_indent (comment);
+      let replacement = comment;
+      if (/^#+\s+\S/.test (text))
+	{
+	  blocks.push (text);
+	  replacement = comment.replace (/[^\r\n]/g, ' ');
+	}
+      else if (comment.startsWith ('///'))
+	replacement = '/**\n' + text.replace (/\*\//g, '*​/').replace (/^/gm, ' * ') + '*/';
+      chunks.push (source.slice (end, range.pos), replacement);
+      end = range.end;
+    }
+  chunks.push (source.slice (end));
+  return { source: chunks.join (''), markdown: blocks.join ('\n\n') };
 }
 
 function javascript_source (source, filename)
@@ -393,7 +416,7 @@ for (let filename of arg_config.files)
     global_classes = {};
     global_vars = {};
     global_overview = '';
-    const comments = extract_comments (fs.readFileSync (filename, 'utf8'));
+    const comments = extract_comments (fs.readFileSync (filename, 'utf8'), filename);
     let output = comments.markdown;
     if (!arg_config.markdown_only)
       {
@@ -405,12 +428,5 @@ for (let filename of arg_config.files)
 	const cfg = Object.assign ({ filename }, arg_config);
 	output = [output, generate_md (cfg, jsdocast)].filter (Boolean).join ('\n');
       }
-    if (arg_config.odir)
-      {
-	fs.mkdirSync (arg_config.odir, { recursive: true });
-	const basename = path.basename (filename, path.extname (filename));
-	fs.writeFileSync (path.join (arg_config.odir, basename + '.md'), output);
-      }
-    else
-      process.stdout.write (output);
+    process.stdout.write (output);
   }

@@ -64,9 +64,8 @@ node doc/jsdoc2md.js ui/b/buttonbar.tsx
 node doc/jsdoc2md.js --markdown-only ui/b/cliplist.tsx
 ```
 
-By default the command writes to stdout. Use `-O DIRECTORY` to write one
-`.md` file per input, `-d DEPTH` to set API heading levels, and `-e NAME` to
-prefix exported API names. Markdown headings keep their original levels.
+The command writes to stdout. Use `-d DEPTH` to set API heading levels and
+`-e NAME` to prefix exported API names. Markdown headings keep their original levels.
 
 `doc/Makefile.mk` generates reference pages under `out/doc/jsdocsmd/` and
 handbook excerpts under `out/gen/`. `make mkdocs-site` builds the documentation

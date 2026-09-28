@@ -14,7 +14,6 @@ function fixture (t)
   const dir = fs.mkdtempSync (path.join (os.tmpdir(), 'jsdoc2md-'));
   t.after (() => fs.rmSync (dir, { recursive: true, force: true }));
   return {
-    dir,
     write (name, source) {
       const filename = path.join (dir, name);
       fs.writeFileSync (filename, source);
@@ -93,16 +92,11 @@ test ('multiple inputs keep their own API entries', t => {
   assert.equal (output.split ('Second API.').length - 1, 1);
 });
 
-test ('directory output replaces stale docs with an empty file', t => {
+test ('files without documentation produce empty output', t => {
   const f = fixture (t);
-  const filename = f.write ('chapter.jsx', '/** ## Chapter\n * Text.\n */');
-  const odir = path.join (f.dir, 'docs');
-  assert.equal (f.run ('--markdown-only', '-O', odir, filename), '');
-  const output = path.join (odir, 'chapter.md');
-  assert.equal (fs.readFileSync (output, 'utf8'), '## Chapter\nText.\n');
-  fs.writeFileSync (filename, 'export const value = 1;');
-  f.run ('--markdown-only', '-O', odir, filename);
-  assert.equal (fs.readFileSync (output, 'utf8'), '');
+  const filename = f.write ('empty.js', 'export const value = 1;');
+  assert.equal (f.run (filename), '');
+  assert.equal (f.run ('--markdown-only', filename), '');
 });
 
 test ('invalid TSX fails extraction', t => {
@@ -121,4 +115,25 @@ test ('documentation before a TypeScript interface survives type erasure', t => 
 export interface Options { value: number; }
 `);
   assert.match (f.run (filename), /Configuration options\./);
+});
+
+test ('comment examples in templates and JSX text are not documentation', t => {
+  const f = fixture (t);
+  const filename = f.write ('examples.tsx', `
+/** ## Real heading
+ * Real documentation.
+ */
+/** An example string. */
+export const example = \`
+/** ## Template heading */
+/// ### Template line
+\`;
+export const element = <pre>
+/// ### JSX heading
+</pre>;
+`);
+  assert.equal (f.run ('--markdown-only', filename), '## Real heading\nReal documentation.\n');
+  const output = f.run (filename);
+  assert.match (output, /An example string\./);
+  assert.doesNotMatch (output, /Template heading|Template line|JSX heading/);
 });
