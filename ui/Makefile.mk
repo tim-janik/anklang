@@ -46,6 +46,18 @@ endef
 $(foreach T, $(UI_TEST_LIST), $(eval $(call UI_TEST_CHECK,$T)))
 CHECK_TARGETS += check-ui-tests
 
+# == check-ui-js ==
+.PHONY: check-ui-js
+check-ui-js: $>/gen/.vite.done $(lib/AnklangSynthEngine)
+	$(QECHO) TEST --ui-js
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices \
+		--ui-js='if (typeof window.auto_close !== "function") throw new Error("missing window.auto_close");'
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui-js=''
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices \
+		--ui-js='window.auto_close(false); setTimeout(() => console.log("UI-JS stayed open"), 1500); setTimeout(() => window.close(), 1700);' \
+		2>&1 | grep -F 'UI-JS stayed open'
+CHECK_TARGETS += check-ui-js
+
 # == ui/assets/AnklangIcons.css ==
 $>/gen/assets/AnklangIcons.css: ui/Makefile.mk $(EXTERNAL_BLOBS4ANKLANG_STAMPS)	| $>/gen/assets/
 	$(QGEN)

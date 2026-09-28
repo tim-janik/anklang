@@ -42,6 +42,15 @@ Anklang supports short and long options which start with two dashes ('-').
 **--disable-randomization**
 :   Enable deterministic random numbers for test modes.
 
+**--ui-js=SCRIPT**
+:   Run JavaScript after UI startup. Electron runs headless by default and closes
+    the window when the script finishes. Call `window.auto_close(false)` in the
+    script to keep the window open.
+
+**--headless[=BOOL]**
+:   Run the browser headless. This is the default for `--ui-test` and `--ui-js`.
+    Use `--headless=false` to show the window while running a script.
+
 **-v**, **--version**
 :   Print information about the program version.
 

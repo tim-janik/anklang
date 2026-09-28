@@ -250,14 +250,18 @@ async function bootup () {
       setTimeout (() => run_ui_tests(), 17);
   }
 
-  // Run arbitrary JS script if provided via --ui-js
+  // Run --ui-js and close on completion unless the script opts out
   if (Ase.server) {
     const js = await Ase.server.ui_js_fetch();
     if (js) {
+      let auto_close = true;
+      window.auto_close = enabled => { auto_close = enabled !== false; };
       console.error ("  UI-JS    Running...");
       const ui_js_wrapper = new Function (`return (async function ui_js() { ${js} }) ();`);
       const result = await ui_js_wrapper ();
       console.error ("  UI-JS    Result:", result);
+      if (auto_close)
+        window.close();
     }
   }
 }
