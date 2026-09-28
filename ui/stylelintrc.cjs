@@ -57,7 +57,7 @@ module.exports = {
     // 'selector-class-pattern': [ "^([a-z\\][a-z\\0-9]*)(-[a-z\\0-9]+)*$", { message: 'Expected class selector to be kebab-case alike' } ],
     'selector-class-pattern': null,
     'selector-pseudo-element-colon-notation': null,
-    'selector-type-no-unknown': [ true, { "ignoreTypes": [ /b-.*/ ] }],
+    'selector-type-no-unknown': true,
     'shorthand-property-no-redundant-values': null,
     'value-keyword-case': null,
   },
