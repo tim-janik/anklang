@@ -3,6 +3,8 @@
 
 #include <ase/cxxaux.hh>
 
+#include <cstring>
+
 namespace Ase {
 
 /// Double round-off error at 1.0, equals 2^-53
@@ -99,11 +101,15 @@ fast_exp2 (float ex)
 extern inline ASE_CONST float
 fast_log2 (float value)
 {
-  // log2 (i*x) = log2 (i) + log2 (x)
-  FloatIEEE754 u { value };                     // v_float = 2^(biased_exponent-127) * mantissa
-  const int i = u.mpn.biased_exponent - FloatIEEE754::BIAS; // extract exponent without bias
-  u.mpn.biased_exponent = FloatIEEE754::BIAS;   // reset to 2^0 so v_float is mantissa in [1..2]
-  float r, x = u.v_float - 1.0f;                // x=[0..1]; r = log2 (x + 1);
+  const int EXPONENT_MASK = 0x7F800000;
+  int iv;
+  memcpy (&iv, &value, sizeof (float));                  // iv = *(int *) &value
+  int fexp = (iv >> 23) - FloatIEEE754::BIAS;            // extract exponent without bias (rely on sign bit == 0)
+  iv = (iv & ~EXPONENT_MASK) | FloatIEEE754::BIAS << 23; // reset exponent to 2^0 so v_float is mantissa in [1..2]
+  float r, x;
+  memcpy (&x, &iv, sizeof (float));                      // x = *(float *) &iv
+  x -= 1;
+  // x=[0..1]; r = log2 (x + 1);
   // h=0.0113916; // offset to reduce error at origin
   // f=(1/log(2)) * log(x+1); dom=[0-h;1+h]; p=remez(f, 6, dom, 1);
   // p = p - p(0); // discard non-0 offset
@@ -114,7 +120,19 @@ fast_log2 (float value)
   r = x * (+0.45764712300320092992105460899527194244236573556309f + r);
   r = x * (-0.71816105664624015087225994551041120290062342459945f + r);
   r = x * (+1.44254540258782520489769598315182363877204824648687f + r);
-  return i + r; // log2 (i) + log2 (x)
+  return fexp + r; // log2 (i) + log2 (x)
+}
+
+/** compute fast_log2 for a block of values
+ *
+ * This is often faster than computing individual values, because fast_log2 and this
+ * function are written in a way that both, gcc and clang should auto vectorize it
+ */
+extern inline void
+fast_log2_block (float *values, int n_values)
+{
+  for (int k = 0; k < n_values; k++)
+    values[k] = fast_log2 (values[k]);
 }
 
 } // Ase
