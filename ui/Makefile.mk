@@ -48,13 +48,14 @@ CHECK_TARGETS += check-ui-tests
 
 # == check-ui-js ==
 .PHONY: check-ui-js
-check-ui-js: $>/gen/.vite.done $(lib/AnklangSynthEngine)
+check-ui-js: $>/gen/.vite.done $(lib/AnklangSynthEngine) $>/electron/htmlgui
 	$(QECHO) TEST --ui-js
 	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices \
-		--ui-js='if (typeof window.auto_close !== "function") throw new Error("missing window.auto_close");'
+		--ui-js='await new Promise (resolve => setTimeout (resolve, 10)); console.log ("UI-JS completed");' \
+		2>&1 | grep -F 'UI-JS completed'
 	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui-js=''
 	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices \
-		--ui-js='window.auto_close(false); setTimeout(() => console.log("UI-JS stayed open"), 1500); setTimeout(() => window.close(), 1700);' \
+		--ui-js='window.auto_close (false); setTimeout (() => { console.log ("UI-JS stayed open"); window.close(); }, 1500);' \
 		2>&1 | grep -F 'UI-JS stayed open'
 CHECK_TARGETS += check-ui-js
 
