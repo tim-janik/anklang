@@ -15,7 +15,6 @@ import { clamp } from '../util.js';
 import { text_content } from '../dom.js';
 import * as Mouse from '../mouse.js';
 import { tracking_wrapper } from "../signal.js";
-import { MenuTitle } from './menutitle.tsx';
 import { ContextMenu } from './contextmenu';
 import { Icon } from './icon';
 const floor = Math.floor, round = Math.round;
@@ -89,8 +88,8 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
     <div class="b-pianoroll-grid" tabindex="-1" ref={h => t.cgrid = h} data-f1="the-piano-roll.html"
          onPointerEnter={t.pointerenter}
          onPointerLeave={t.pointerleave}
-         onFocus={t.focuschange}
-         onBlur={t.focuschange}
+         onFocus={() => t.focuschange (true)}
+         onBlur={() => t.focuschange (false)}
          onKeyDown={e => t.piano_ctrl.keydown (e)}>
 
       <div class="vflex -toolbutton col-start-1 row-start-1" style="height: 1.7em; align-items: end; padding-right: 4px;"
@@ -102,12 +101,12 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
               ic={t.tool_icon_().ic} data-kbd={t.tool_icon_().kbd} data-tip={t.tool_icon_().tip}/>
         <ContextMenu ref={h => { t.pianotoolmenu = h; }}
                        activate={t.usetool}
-                       id="g-pianotoolmenu" class="-pianotoolmenu">
-          <button ic="md-open_with"     uri="S" kbd="1" > Rectangular Selection  </button>
-          <button ic="md-multiple_stop" uri="H" kbd="2" > Horizontal Selection   </button>
-          <button ic="fa-pencil"        uri="P" kbd="3" > Pen                    </button>
-          <button ic="fa-eraser"        uri="E" kbd="4" > Eraser                 </button>
-        </ContextMenu>
+                       id="g-pianotoolmenu" class="-pianotoolmenu" items={[
+          { uri: 'S', label: 'Rectangular Selection', icon: 'md-open_with', kbd: '1' },
+          { uri: 'H', label: 'Horizontal Selection', icon: 'md-multiple_stop', kbd: '2' },
+          { uri: 'P', label: 'Pen', icon: 'fa-pencil', kbd: '3' },
+          { uri: 'E', label: 'Eraser', icon: 'fa-eraser', kbd: '4' },
+        ]} />
       </div>
 
       <canvas class="-time_canvas col-start-2 row-start-1" ref={h => t.time_canvas = h}></canvas>
@@ -129,13 +128,10 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
                      activate={t.pianorollmenu_click.bind (t)}
                      isactive={t.pianorollmenu_check.bind (t)}
                      id="g-pianorollmenu" showicons={true}
-                     class="-pianorollmenu" mapname="Piano Roll">
-        <MenuTitle> Piano-Roll </MenuTitle>
-        {/* key=${ac.weakid} */}
-        {actions.map (ac => (
-          <button uri={ac.weakid} ic={ac.ic} kbd={ac.kbd}>{ac.label}</button>
-        ))}
-      </ContextMenu>
+                     class="-pianorollmenu" mapname="Piano Roll" items={[
+        { type: 'title', label: 'Piano-Roll' },
+        ...actions.map (ac => ({ uri: ac.weakid, label: ac.label, icon: ac.ic, kbd: ac.kbd })),
+      ]} />
     </div>
   </div>
 );
@@ -333,26 +329,28 @@ export function PianoRoll (props: {
     set: (r: any) => { Object.assign (t.srect_, r); t.queue_repaint(); },
   });
 
-  // TODO: Clear hover/focus state and disable both menu keymaps when the piano roll is hidden.
-  t.pointerenter = (event: PointerEvent) => {
+  const update_keymaps = () => {
+    if (props.hidden)
+      t.entered = t.have_focus = false;
+    t.pianotoolmenu?.map_kbd_hotkeys (t.entered || t.have_focus);
+    t.pianorollmenu?.map_kbd_hotkeys (t.have_focus);
+  };
+
+  createEffect (update_keymaps);
+
+  t.pointerenter = () => {
     t.entered = true;
-    if (t.pianotoolmenu)
-      t.pianotoolmenu.map_kbd_hotkeys (t.entered || t.have_focus);
+    update_keymaps();
   };
 
-  t.pointerleave = (event: PointerEvent) => {
+  t.pointerleave = () => {
     t.entered = false;
-    if (t.pianotoolmenu)
-      t.pianotoolmenu.map_kbd_hotkeys (t.entered || t.have_focus);
+    update_keymaps();
   };
 
-  t.focuschange = (ev: FocusEvent) => {
-    if (ev?.type)
-      t.have_focus = ev.type == "focus";
-    if (t.pianotoolmenu)
-      t.pianotoolmenu.map_kbd_hotkeys (t.entered || t.have_focus);
-    if (t.pianorollmenu)
-      t.pianorollmenu.map_kbd_hotkeys (t.have_focus);
+  t.focuschange = (focused: boolean) => {
+    t.have_focus = focused;
+    update_keymaps();
   };
 
   t.notes_canvas_pointermove = (event: PointerEvent) => {

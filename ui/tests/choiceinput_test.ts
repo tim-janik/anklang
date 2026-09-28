@@ -153,6 +153,8 @@ async function test_choiceinput_activate_emits (): Promise<boolean>
     onValueChange: uri => { changed_uri = uri; },
     'on:valuechange': e => { emitted_value = (e.target as any).value; valuechange_count++; },
   });
+  // Menu activation awaits sensitivity; keep the edit timer paused for the check.
+  const timers = new TestTimers();
   try {
     await Dom.ui_next_frame();
     const root_el = ci.root();
@@ -164,6 +166,7 @@ async function test_choiceinput_activate_emits (): Promise<boolean>
 
     // Activate the `c` item.
     await Dom.ui_click ('button', { uri: 'c' });
+    await Dom.ui_next_frame();
 
     if (changed_uri !== 'c')
       throw new Error (`onValueChange not called with 'c': ${changed_uri}`);
@@ -181,6 +184,7 @@ async function test_choiceinput_activate_emits (): Promise<boolean>
       throw new Error (`display not updated after activate: "${current.textContent}"`);
   } finally {
     ci.cleanup();
+    timers.restore();
   }
   return true;
 }
@@ -330,6 +334,8 @@ async function test_choiceinput_data_tip_reactive (): Promise<boolean>
     choices: sample_choices(),
     label: 'Volume',
   });
+  // Menu activation awaits sensitivity; keep the edit timer paused for the check.
+  const timers = new TestTimers();
   try {
     await Dom.ui_next_frame();
     const root_el = ci.root()!;
@@ -343,10 +349,12 @@ async function test_choiceinput_data_tip_reactive (): Promise<boolean>
     open_menu (root_el);
     await Dom.ui_next_frame();
     await Dom.ui_click ('button', { uri: 'c' });
+    await Dom.ui_next_frame();
     if (!/Ccc/.test (tip_of()))
       throw new Error (`data-tip not updated after activate: "${tip_of()}"`);
   } finally {
     ci.cleanup();
+    timers.restore();
   }
   return true;
 }
