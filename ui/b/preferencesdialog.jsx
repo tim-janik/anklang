@@ -2,6 +2,7 @@
 // @ts-check
 
 /** @class B-PreferencesDialog
+ * @description
  * SolidJS component that displays a modal dialog to edit preferences.
  *
  * ### Props:

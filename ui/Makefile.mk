@@ -122,18 +122,6 @@ $>/.uisynsmell.done: misc/synsmell.ts $(ui/synsmell.files)				| node_modules/.np
 $>/.uisynsmell.done: $(if $(filter check,$(MAKECMDGOALS)), FORCE) # force on 'make check'
 check: $>/.uisynsmell.done
 
-# == $>/gen/**/*.md - for doc/Makefile.mk ==
-# ui/xbcomments.js ui/Makefile.mk node_modules/.npm.done	| $>/gen/b/
-$>/gen/%.md: ui/%.js						| $>/gen/b/ node_modules/.npm.done
-	$(QGEN)
-	$Q node ui/xbcomments.js $< -O $(@D)
-$>/gen/%.md: ui/%.jsx						| $>/gen/b/ node_modules/.npm.done
-	$(QGEN)
-	$Q node ui/xbcomments.js $< -O $(@D)
-$>/gen/%.md: ui/%.tsx						| $>/gen/b/ node_modules/.npm.done
-	$(QGEN)
-	$Q node ui/xbcomments.js $< -O $(@D)
-
 # == ui dist build ==
 VITE_DEPS += $>/version.json $(wildcard ui/* ui/b/*)
 $>/gen/.vite.done: vite.config.ts ui/index.html ui/css-functions.js ui/tests/css-tests.css ui/Makefile.mk $(VITE_DEPS)	| $>/tests/ node_modules/.npm.done

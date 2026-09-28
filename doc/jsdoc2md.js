@@ -2,17 +2,22 @@
 "use strict";
 
 import * as fs from 'fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import jsdoc from 'jsdoc-api';
+import ts from 'typescript';
 
 function usage (full = false) {
   const prog = process.argv[1].replace (/.*\//, '');
-  console.log ("Usage:", prog, "[OPTIONS] [jsdoc-data.json...]");
+  console.log ("Usage:", prog, "[OPTIONS] FILE...");
   if (!full) return;
   //            12345678911234567892123456789312345678941234567895123456789612345678971234567898
-  console.log ("Generate API documentation in Markdown format from *.js.");
+  console.log ("Generate Markdown and API documentation from JS, JSX, TS and TSX comments.");
   console.log ("  -h, --help        Display command line help");
   console.log ("  -d <DEPTH>        Set Markdown section level");
   console.log ("  -e <EXPORTNAME>   Use EXPORTNAME as API prefix");
+  console.log ("  -O <DIRECTORY>    Write one Markdown file per input instead of stdout");
+  console.log ("  --markdown-only  Extract only comments starting with a Markdown heading");
 }
 
 // Config and arguments
@@ -26,10 +31,16 @@ function parse_args (config, args, start = 2) {
 	}
       else if (args[i] == '--debug')
 	config.debug = true;
+      else if (args[i] == '--markdown-only')
+	config.markdown_only = true;
+      else if (args[i] == '-O' && i + 1 < args.length)
+	config.odir = args[++i];
       else if (args[i] == '-d' && i + 1 < args.length)
 	config.depth = args[++i] | 0;
       else if (args[i] == '-e' && i + 1 < args.length)
 	config.exports = args[++i];
+      else if (args[i].startsWith ('-'))
+	throw new Error ('Unknown option or missing argument: ' + args[i]);
       else
 	config.files.push (args[i]);
     }
@@ -38,9 +49,74 @@ const arg_config = {
   debug: false,
   files: [],
   exports: '',
+  odir: '',
+  markdown_only: false,
   // h1, h2, h3
   depth: 2,
 };
+
+function fix_indent (txt)
+{
+  txt = txt.trim();
+  if (txt.startsWith ('///'))
+    txt = txt.replace (/^[ \t]*\/\/\/[ \t]?/gm, '');
+  else
+    {
+      txt = txt.replace (/^\/\*+[ \t]?/, '').replace (/\*+\/$/, '');
+      const lines = txt.split ('\n');
+      if (lines.slice (1).every (line => /^\s*$|^[ \t]*\*/.test (line)))
+	txt = lines.map ((line, i) => i ? line.replace (/^[ \t]*\*[ \t]?/, '') : line).join ('\n');
+    }
+  return txt.trim() + '\n';
+}
+
+function extract_comments (source)
+{
+  const blocks = [];
+  const block_comments = /^[ \t]*\/\*\*.*?\*\/|(?:^[ \t]*\/\/\/[^\n]*(?:\n|$))+/gms;
+  source = source.replace (block_comments, comment => {
+    const text = fix_indent (comment);
+    if (/^#+\s+\S/.test (text))
+      {
+	blocks.push (text);
+	return comment.replace (/[^\r\n]/g, ' ');
+      }
+    if (comment.trimStart().startsWith ('///'))
+      return '/**\n' + text.replace (/\*\//g, '*​/').replace (/^/gm, ' * ') + '*/\n';
+    return comment;
+  });
+  return { source, markdown: blocks.join ('\n\n') };
+}
+
+function javascript_source (source, filename)
+{
+  if (!/\.(jsx|ts|tsx)$/.test (filename))
+    return source;
+  const result = ts.transpileModule (source, {
+    fileName: filename,
+    compilerOptions: {
+      target: ts.ScriptTarget.ESNext,
+      module: ts.ModuleKind.ESNext,
+      jsx: ts.JsxEmit.React,
+      verbatimModuleSyntax: true,
+      removeComments: false,
+    },
+    reportDiagnostics: true,
+    transformers: { before: [context => root => ts.visitNode (root, function visit (node) {
+      // Keep documentation attached to erased type declarations.
+      if (ts.isTypeAliasDeclaration (node) || ts.isInterfaceDeclaration (node))
+	return ts.setTextRange (ts.factory.createEmptyStatement(), node);
+      return ts.visitEachChild (node, visit, context);
+    })] },
+  });
+  if (result.diagnostics?.length)
+    throw new Error (ts.formatDiagnosticsWithColorAndContext (result.diagnostics, {
+      getCanonicalFileName: name => name,
+      getCurrentDirectory: () => process.cwd(),
+      getNewLine: () => '\n',
+    }));
+  return result.outputText;
+}
 
 // build dict for sections
 function add_section (sectionname, description = '', exports = false) {
@@ -309,7 +385,7 @@ parse_args (arg_config, process.argv);
 arg_config.h1 = '#'.repeat (arg_config.depth | 0) + ' ';
 arg_config.h2 = '#' + arg_config.h1;
 arg_config.h3 = '#' + arg_config.h2;
-// Generate docs from json files
+// Generate docs from source files
 for (let filename of arg_config.files)
   {
     global_functions = {};
@@ -317,10 +393,24 @@ for (let filename of arg_config.files)
     global_classes = {};
     global_vars = {};
     global_overview = '';
-    const configure = 'doc/jsdocrc.json';
-    const jsdocast = await jsdoc.explain ({ configure, files: [ filename ] });
-    if (arg_config.debug)
-      console.error (filename + ": AST:", jsdocast);
-    const cfg = Object.assign ({ filename }, arg_config);
-    console.log (generate_md (cfg, jsdocast));
+    const comments = extract_comments (fs.readFileSync (filename, 'utf8'));
+    let output = comments.markdown;
+    if (!arg_config.markdown_only)
+      {
+	const configure = fileURLToPath (new URL ('./jsdocrc.json', import.meta.url));
+	const source = javascript_source (comments.source, filename);
+	const jsdocast = await jsdoc.explain ({ configure, source });
+	if (arg_config.debug)
+	  console.error (filename + ": AST:", jsdocast);
+	const cfg = Object.assign ({ filename }, arg_config);
+	output = [output, generate_md (cfg, jsdocast)].filter (Boolean).join ('\n');
+      }
+    if (arg_config.odir)
+      {
+	fs.mkdirSync (arg_config.odir, { recursive: true });
+	const basename = path.basename (filename, path.extname (filename));
+	fs.writeFileSync (path.join (arg_config.odir, basename + '.md'), output);
+      }
+    else
+      process.stdout.write (output);
   }

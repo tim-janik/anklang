@@ -2,6 +2,7 @@
 // @ts-check
 
 /** @class B-MenuBar
+ * @description
  * SolidJS component that displays the main menu bar with File, Edit, View, and Help menus.
  */
 

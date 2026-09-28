@@ -2,6 +2,7 @@
 // @ts-check
 
 /** @class B-Noticeboard
+ * @description
  * SolidJS component that displays notification notes for end users.
  *
  * ### API:

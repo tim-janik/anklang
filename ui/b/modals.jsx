@@ -2,6 +2,7 @@
 // @ts-check
 
 /** @class B-Modals
+ * @description
  * A separate layer of the B-Shell used for creating modal dialogs.
  */
 

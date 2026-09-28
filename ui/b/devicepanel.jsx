@@ -2,6 +2,7 @@
 // @ts-check
 
 /** @class B-DevicePanel
+ * @description
  * SolidJS component for editing of devices.
  *
  * ### Props:
