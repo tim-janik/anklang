@@ -584,10 +584,11 @@ loft_grow_preallocate (size_t preallocation_amount)
   // grow only if available memory is lower than requested
   if (maxchunk < preallocation_amount)
     {
-      config_lowmem_notified = 0;
       // blocking call
       const size_t allocated = bump_allocator.grow_spans (preallocation_amount, true);
       config_preallocate = std::max (0 + config_preallocate, bump_allocator.totalmem());
+      // Rearm after growth so workers cannot consume the next notification early.
+      config_lowmem_notified = 0;
       return allocated;
     }
   return 0;
@@ -689,11 +690,12 @@ loft_simple_tests()
 inline constexpr size_t N_ALLOCS = 20000;
 inline constexpr size_t MAX_BLOCK_SIZE = 4 * 1024;
 
-static std::atomic<bool> thread_shuffle_done = false;
+static std::atomic<size_t> thread_shuffle_pending = 0;
 
 struct ThreadData
 {
   unsigned                    thread_id;
+  size_t                      n_allocs = N_ALLOCS;
   std::thread                 thread;
   std::unique_ptr<std::mutex> to_free_mutex;
   std::vector<LoftPtr<void>>  to_free;           // [N_THREADS * N_ALLOCS]
@@ -707,7 +709,7 @@ thread_shuffle_allocs (ThreadData *td)
 {
   FastRng rng;
   uint64_t lastval = -1;
-  for (size_t i = 0; i < N_ALLOCS; i++)
+  for (size_t i = 0; i < td->n_allocs; i++)
     {
       if (Test::verbose() && i % (N_ALLOCS / 20) == 0)
         printout ("%c", '@' + td->thread_id);
@@ -747,14 +749,14 @@ thread_shuffle_allocs (ThreadData *td)
         }
       // ptr is freed here
     }
-  thread_shuffle_done = true;
+  thread_shuffle_pending--;
+  main_loop_wakeup();
 }
 
-TEST_INTEGRITY (loft_shuffle_thread_allocs);
 static void
-loft_shuffle_thread_allocs()
+run_thread_shuffle_allocs (bool varying_workloads)
 {
-  thread_shuffle_done = false;
+  thread_shuffle_pending = N_THREADS;
   // allocate test data
   tdata.resize (N_THREADS);
   for (auto &td : tdata)
@@ -768,12 +770,12 @@ loft_shuffle_thread_allocs()
   for (size_t t = 0; t < N_THREADS; t++)
     {
       tdata[t].thread_id = 1 + t;
+      if (varying_workloads && t < N_THREADS / 2)
+        tdata[t].n_allocs = 1;
       tdata[t].thread = std::thread (thread_shuffle_allocs, &tdata[t]);
     }
-  // effectively assigns a timeout for main_loop->iterate()
-  main_loop->add ([] () { return !thread_shuffle_done; }, std::chrono::milliseconds (50));
-  // recurse into main loop for concurrent preallocations
-  while (!thread_shuffle_done)  // wati until *any* thread is done
+  // Service preallocation requests until every worker has finished.
+  while (thread_shuffle_pending)
     main_loop->iterate (true);  // only allowed in unit tests
   // when done, join threads
   for (size_t t = 0; t < N_THREADS; t++)
@@ -791,6 +793,21 @@ loft_shuffle_thread_allocs()
   loft_get_stats (lstats);
   if (Test::verbose())
     printout ("Loft Stats:\n%s\n", loft_stats_string (lstats));
+}
+
+TEST_INTEGRITY (loft_shuffle_thread_allocs);
+static void
+loft_shuffle_thread_allocs()
+{
+  run_thread_shuffle_allocs (false);
+}
+
+TEST_INTEGRITY (loft_shuffle_uneven_thread_allocs);
+static void
+loft_shuffle_uneven_thread_allocs()
+{
+  // vary workloads so workers exit at different times
+  run_thread_shuffle_allocs (true);
 }
 
 TEST_INTEGRITY (loft_allocator_tests);
