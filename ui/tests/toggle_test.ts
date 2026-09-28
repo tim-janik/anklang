@@ -80,7 +80,6 @@ async function test_toggle_local_grace (): Promise<boolean>
     click_toggle (toggle.root()!);
     set_value (true);
     set_value (false);
-    await Dom.ui_next_frame();
     if (!active())
       throw new Error ('backend update interrupted a toggle edit');
     click_toggle (toggle.root()!);
