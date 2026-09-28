@@ -651,7 +651,7 @@ loft_stats_string (const LoftStats &stats)
 namespace {
 using namespace Ase;
 
-static const size_t N_THREADS = std::thread::hardware_concurrency();
+static const size_t N_THREADS = std::max (2u, std::thread::hardware_concurrency());
 
 TEST_INTEGRITY (loft_simple_tests);
 static void
