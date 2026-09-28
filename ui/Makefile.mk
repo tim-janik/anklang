@@ -128,8 +128,8 @@ $>/gen/ui/assets/favicon.svg: ui/assets/favicon.svg ui/Makefile.mk	| $>/gen/ui/a
 VITE_DEPS += $>/gen/ui/assets/favicon.svg
 
 # == ui/synsmell ==
-ui/synsmell.files: $(filter ui/%. ui/b/%, $(WILDCARD_FILES)))
-$>/.uisynsmell.done: misc/synsmell.ts $(ui/synsmell.files)				| node_modules/.npm.done
+ui/synsmell.files := $(filter ui/%.js ui/%.jsx ui/%.ts ui/%.tsx, $(WILDCARD_FILES))
+$>/.uisynsmell.done: misc/synsmell.ts $(ui/synsmell.files) ui/Makefile.mk	| node_modules/.npm.done
 	$(QECHO) CHECK 'synsmell (ui/)'
 	$Q $(RUNTS) $< --separate-body=0 $(ui/synsmell.files)
 	$Q touch $@
