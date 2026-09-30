@@ -58,6 +58,8 @@ check-ui-js: $>/gen/.vite.done $(lib/AnklangSynthEngine) $>/electron/htmlgui
 		--ui-js='window.auto_close (false); setTimeout (() => { console.log ("UI-JS stayed open"); window.close(); }, 1500);' \
 		2>&1 | grep -F 'UI-JS stayed open'
 	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui-js='return 7'; test $$? = 7
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui-js 'return 7'; test $$? = 7
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --ui-js --help | grep -F 'Usage:'
 CHECK_TARGETS += check-ui-js
 
 # == ui/assets/AnklangIcons.css ==
