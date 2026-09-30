@@ -142,6 +142,24 @@ project_track_management()
 TEST_ADD (project_track_management);
 
 static void
+track_outlives_project()
+{
+  TrackS tracks;
+  for (size_t i = 0; i < 40; i++)
+    {
+      auto project = ProjectImpl::create ("TrackLifetimeTest");
+      auto track = project->create_track();
+      TASSERT (track);
+      tracks.push_back (track);
+      project->discard();
+    }
+  for (const auto &track : tracks)
+    TASSERT (track->name().empty());
+  tracks.clear();
+}
+TEST_ADD (track_outlives_project);
+
+static void
 project_playback_state()
 {
   ProjectImplP project = ProjectImpl::create ("PlaybackTest");

@@ -20,7 +20,7 @@ class TrackImpl::TrackStateListener : public juce::ValueTree::Listener {
   juce::ValueTree track_state_;
   juce::ValueTree volume_plugin_state_;
   te::LevelMeasurer::Client meter_client_;
-  te::LevelMeasurer *measurer_ = nullptr;
+  juce::WeakReference<te::LevelMeasurer> measurer_;
   FastMemory::Block telemetry_block_;
 public:
   struct Telemetry {
