@@ -77,12 +77,13 @@ print_usage (bool help)
   printout ("  --list-ui-tests  List all TypeScript UI test function names\n");
   printout ("  --norc           Prevent loading of any rc files\n");
   printout ("  --ui-test=test   Specify TypeScript UI test(s) to run (comma-separated)\n");
-  printout ("  --ui-js=script   Run JavaScript code after UI startup\n");
+  printout ("  --ui-js=script   Run JavaScript after UI startup (headless by default)\n");
+  printout ("                   The window closes unless window.auto_close(false) is called\n");
   printout ("  --play-autostart Automatically start playback of `project.anklang`\n");
   printout ("  --rand64         Produce 64bit random numbers on stdout\n");
   printout ("  --test[=test]    Run specific test(s) (comma-separated)\n");
   printout ("  --unauth-dev=NUM Open an unauthenticated websocket port for testing\n");
-  printout ("  --headless[=bool]  Run browser in headless mode (default for --ui-test)\n");
+  printout ("  --headless[=bool]  Run browser headless (default for --ui-test and --ui-js)\n");
   printout ("  --ui <none|chromium|google-chrome|htmlgui>\n");
   printout ("                   Open GUI in web browser [htmlgui]\n");
   printout ("  --version        Print program version\n");
@@ -134,6 +135,7 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
 
   config.norc = false;
   bool sep = false; // -- separator
+  bool headless_default = false, headless_option = false;
   std::string default_ui_mode = "htmlgui";
   const uint argc = *argcp;
   for (uint i = 1; i < argc; i++)
@@ -199,17 +201,21 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
               ui_test_names.push_back (t);
           } else
             ui_test_names.push_back ("all");
-          config.headless = true;
+          headless_default = true;
         }
       else if (strcmp ("--ui-js", argv[i]) == 0 || strncmp ("--ui-js=", argv[i], 8) == 0)
         {
           const char *eq = strchr (argv[i], '=');
           ui_js_script = eq ? eq + 1 : i+1 < argc ? argv[++i] : "";
+          if (ui_js_script.empty())
+            ui_js_script = " "; // execute an empty script so the window can close
+          headless_default = true;
         }
       else if (strcmp ("--headless", argv[i]) == 0 || strncmp ("--headless=", argv[i], 10) == 0)
         {
           const char *eq = strchr (argv[i], '=');
           config.headless = eq ? string_to_bool (eq + 1) : true;
+          headless_option = true;
         }
       else if (strcmp ("--test", argv[i]) == 0 || strncmp ("--test=", argv[i], 7) == 0)
         {
@@ -304,6 +310,8 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
         config.args.push_back (argv[i]);
       argv[i] = nullptr;
     }
+  if (!headless_option)
+    config.headless = headless_default;
   if (arg_ui_mode.empty())
     arg_ui_mode = default_ui_mode;
   if (*argcp > 1)
