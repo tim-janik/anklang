@@ -45,7 +45,8 @@ Anklang supports short and long options which start with two dashes ('-').
 **--ui-js=SCRIPT**
 :   Run JavaScript after UI startup. Electron runs headless by default and closes
     the window when the script finishes. Call `window.auto_close(false)` in the
-    script to keep the window open.
+    script to keep the window open. On automatic close, a number returned by
+    the script becomes the exit status.
 
 **--headless[=BOOL]**
 :   Run the browser headless. This is the default for `--ui-test` and `--ui-js`.

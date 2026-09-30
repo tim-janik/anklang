@@ -260,8 +260,10 @@ async function bootup () {
       const ui_js_wrapper = new Function (`return (async function ui_js() { ${js} }) ();`);
       const result = await ui_js_wrapper ();
       console.error ("  UI-JS    Result:", result);
-      if (auto_close)
+      if (auto_close) {
+        Ase.server.exit_program (typeof result === 'number' ? result : 0);
         window.close();
+      }
     }
   }
 }
