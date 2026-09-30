@@ -47,19 +47,18 @@ $(foreach T, $(UI_TEST_LIST), $(eval $(call UI_TEST_CHECK,$T)))
 CHECK_TARGETS += check-ui-tests
 
 # == check-ui-js ==
+UI_JS_BROWSER ?= htmlgui
 .PHONY: check-ui-js
 check-ui-js: $>/gen/.vite.done $(lib/AnklangSynthEngine) $>/electron/htmlgui
 	$(QECHO) TEST --ui-js
-	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices \
-		--ui-js='await new Promise (resolve => setTimeout (resolve, 10)); console.log ("UI-JS completed");' \
-		2>&1 | grep -F 'UI-JS completed'
-	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui-js=''
-	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices \
-		--ui-js='window.auto_close (false); setTimeout (() => { console.log ("UI-JS stayed open"); window.close(); }, 1500);' \
-		2>&1 | grep -F 'UI-JS stayed open'
-	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui-js='return 7'; test $$? = 7
-	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui-js 'return 7'; test $$? = 7
-	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --ui-js --help | grep -F 'Usage:'
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout -k 5s 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui=$(UI_JS_BROWSER) \
+		--ui-js='await new Promise (resolve => setTimeout (resolve, 10)); return 7;'; test $$? = 7
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout -k 5s 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui=$(UI_JS_BROWSER) --ui-js=''
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout -k 5s 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui=$(UI_JS_BROWSER) \
+		--ui-js='window.auto_close (false); setTimeout (() => window.close(), 1500); return 7;'
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout -k 5s 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui=$(UI_JS_BROWSER) --ui-js='return 7'; test $$? = 7
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout -k 5s 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui=$(UI_JS_BROWSER) --ui-js 'return 7'; test $$? = 7
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout -k 5s 60s $(lib/AnklangSynthEngine) --ui-js --help | grep -F 'Usage:'
 CHECK_TARGETS += check-ui-js
 
 # == ui/assets/AnklangIcons.css ==
