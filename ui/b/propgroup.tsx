@@ -1,6 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-/** @class B-PROPGROUP
+/** @class PropGroup
  * A property group contains a group title, several rows and each row contains a number of properties.
  * @property {string} name - Group name.
  * @property {Array<any>} props - List of properties with cached information and layout rows.

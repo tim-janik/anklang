@@ -1,6 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-/** @class BPlayControls
+/** @class PlayControls
  * @description
  * The `PlayControls` component renders a `.b-playcontrols` container holding the play and seek controls for a Ase.song.
  */

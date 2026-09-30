@@ -4,7 +4,7 @@ import { createEffect, createSignal, onCleanup, For } from 'solid-js';
 import * as Util from '../util.js';
 import { ClipView } from './clipview';
 
-/** @class BPartList
+/** @class PartList
  * @description
  * The `PartList` component renders a `.b-partlist` element to arrange Clip objects for playback.
  */

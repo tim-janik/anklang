@@ -1,6 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-/** @class BClipView
+/** @class ClipView
  * @description
  * Displays a small thumbnail view of a MIDI clip with a canvas showing notes.
  */

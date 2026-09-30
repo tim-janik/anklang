@@ -1,7 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/** @class BCrawlerDialog
+/** @class CrawlerDialog
  * A modal [dialog] that allows file and directory selections.
  *
  * ## Properties:
