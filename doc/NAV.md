@@ -14,7 +14,7 @@
 * Design & Development
   * [Development Overview](ch-development.md)
   * UI Development
-    * [Web Components](ch-component.md)
+    * [UI components](ch-component.md)
     * [JS UI Components](jsdocs.md)
     * JS Component Files
       * jsdocsmd/b/*.md
