@@ -1,7 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/** @class BKnob
+/** @class Knob
  * @description
  * The `Knob` component renders a `.b-knob` element providing a knob for scalar inputs.
  * It supports the Vue
