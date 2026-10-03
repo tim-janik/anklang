@@ -22,11 +22,12 @@ lint-unused: misc/Makefile.mk		| $>/misc/cppcheck/
 # == clang-tidy ==
 CLANG_TIDY_FILES = $(filter %.c %.cc %.C %.cpp %.cxx, $(WILDCARD_FILES))
 CLANG_TIDY_LOGS  = $(patsubst %, $>/clang-tidy/%.log, $(CLANG_TIDY_FILES))
-clang-tidy clang-tidy-check: $(CLANG_TIDY_LOGS)
+clang-tidy clang-tidy-check: $(CLANG_TIDY_LOGS) misc/clang-tidy-report.py
+	$Q python3 misc/clang-tidy-report.py $>/clang-tidy
 	$(QGEN)
 	$Q OK=true \
 	&& for log in $(CLANG_TIDY_LOGS) ; do \
-		grep -Eq ': (error|warning):' $$log && OK=false ; \
+		grep -Eq ': (error|warning):|^CLANG-TIDY FAILED:' $$log && OK=false ; \
 		test 1 -ge `wc -l < $$log` || \
 		  sed "s|^$$PWD/||" < $$log | misc/colorize.sh >&2 ; \
 	   done \
@@ -37,12 +38,13 @@ $>/clang-tidy/%.log: % $(REPOCOMMITDEPS)					| $>/clang-tidy/
 	$Q set +o pipefail \
 	&& CTIDY_DEFS=( $(ASE_EXTERNAL_INCLUDES) $(CLANG_TIDY_DEFS) $($<.CTIDY_DEFS) -march=x86-64-v2 ) \
 	&& [[ $< = @(*.[hc]) ]] || CTIDY_DEFS+=( -std=gnu++23 ) \
-	&& (set -x ; $(CLANG_TIDY) --export-fixes=$>/clang-tidy/$<.yaml $< $($<.CTIDY_FLAGS) -- "$${CTIDY_DEFS[@]}" ) >$@~ 2>&1 || :
+	&& (set -x ; $(CLANG_TIDY) --export-fixes=$>/clang-tidy/$<.yaml $< $($<.CTIDY_FLAGS) -- "$${CTIDY_DEFS[@]}" ) >$@~ 2>&1 \
+	   || echo "CLANG-TIDY FAILED: exit status $$?" >>$@~
 	$Q mv $@~ $@
 CLANG_TIDY_DEFS := -I. -I$> -isystem external/ -isystem $>/external/ -DASE_COMPILATION $(ASEDEPS_CFLAGS) $(GTK2_CFLAGS)
 # File specific LINT_FLAGS, example:		ase/jsonapi.cc.LINT_FLAGS ::= --checks=-clang-analyzer-core.NullDereference
 jsonipc/testjsonipc.cc.CTIDY_DEFS ::= -D__JSONIPC_NULL_REFERENCE_THROWS__
-.PHONY: clang-tid
+.PHONY: clang-tidy clang-tidy-check
 
 # == scan-build ==
 scan-build:								| $>/misc/scan-build/
