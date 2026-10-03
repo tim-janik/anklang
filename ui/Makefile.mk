@@ -52,12 +52,12 @@ UI_JS_BROWSER ?= htmlgui
 check-ui-js: $>/gen/.vite.done $(lib/AnklangSynthEngine) $>/electron/htmlgui
 	$(QECHO) TEST --ui-js
 	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout -k 5s 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui=$(UI_JS_BROWSER) \
-		--ui-js='await new Promise (resolve => setTimeout (resolve, 10)); return 7;'; test $$? = 7
+		--ui-js 'await new Promise (resolve => setTimeout (resolve, 10)); return 7;'; test $$? = 7
 	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout -k 5s 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui=$(UI_JS_BROWSER) --ui-js=''
 	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout -k 5s 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui=$(UI_JS_BROWSER) \
 		--ui-js='window.auto_close (false); setTimeout (() => window.close(), 1500); return 7;'
-	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout -k 5s 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui=$(UI_JS_BROWSER) --ui-js='return 7'; test $$? = 7
-	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout -k 5s 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui=$(UI_JS_BROWSER) --ui-js 'return 7'; test $$? = 7
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout -k 5s 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui=$(UI_JS_BROWSER) \
+		--ui-js='return 7'; test $$? = 7
 	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout -k 5s 60s $(lib/AnklangSynthEngine) --ui-js --help | grep -F 'Usage:'
 CHECK_TARGETS += check-ui-js
 
