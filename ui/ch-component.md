@@ -25,3 +25,29 @@ Guidelines capturing past experiences:
 - Keep focusable controls in the light DOM for reliable focus styles, keyboard handling, and tab order.
 
 - Redraw canvases after `document.fonts.ready` resolves so text uses the loaded fonts.
+
+## Documentation comments
+
+`doc/jsdoc2md.js` extracts Markdown and JSDoc API descriptions from `.js`,
+`.jsx`, `.ts`, and `.tsx` files. It accepts `/** ... */` blocks and consecutive
+`///` lines. Comments starting with a Markdown heading supply handbook text.
+For a component reference section, use `@class` with `@description`:
+
+```js
+/** @class Example
+ * @description
+ * Displays a value.
+ */
+```
+
+The command writes to stdout. Use `--markdown-only` for handbook excerpts,
+`-d DEPTH` for API heading levels, and `-e NAME` to prefix exported names:
+
+```sh
+node doc/jsdoc2md.js ui/b/buttonbar.tsx
+node doc/jsdoc2md.js --markdown-only ui/b/cliplist.tsx
+```
+
+`doc/Makefile.mk` builds reference pages under `out/doc/jsdocsmd/` and handbook
+excerpts under `out/gen/`. Run `make check-jsdoc` to check extraction and
+`make mkdocs-site` to build the documentation site.

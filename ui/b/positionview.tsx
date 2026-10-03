@@ -1,6 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 /** @class PositionView
+ * @description
  * SolidJS component that displays the project
  * transport position pointer and related information.
  */

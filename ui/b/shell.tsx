@@ -2,6 +2,7 @@
 // @ts-check
 
 /** @class BShell
+ * @description
  * User interface shell for editing and display of a Ase.Project.
  * Instance access is provided via the global `Shell` constant.
  *
