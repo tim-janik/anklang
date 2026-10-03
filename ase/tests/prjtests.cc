@@ -148,14 +148,12 @@ track_outlives_project()
   for (size_t i = 0; i < 40; i++)
     {
       auto project = ProjectImpl::create ("TrackLifetimeTest");
-      auto track = project->create_track();
-      TASSERT (track);
-      tracks.push_back (track);
+      tracks.push_back (project->create_track());
+      TASSERT (tracks.back());
       project->discard();
     }
   for (const auto &track : tracks)
     TASSERT (track->name().empty());
-  tracks.clear();
 }
 TEST_ADD (track_outlives_project);
 
