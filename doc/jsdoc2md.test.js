@@ -43,6 +43,21 @@ export function View () { return <div/>; }
                 '## Chapter\nA paragraph.\n\n    indented code\n\n\n### Details\nMore text.\n\n    more code\n');
 });
 
+test ('handbook comments before a closing brace are extracted', t => {
+  const f = fixture (t);
+  const filename = f.write ('chapter.js', `
+function example () {
+  /** ## Block chapter
+   * Block text.
+   */
+  /// ### Line chapter
+  /// Line text.
+}
+`);
+  assert.equal (f.run ('--markdown-only', filename),
+                '## Block chapter\nBlock text.\n\n\n### Line chapter\nLine text.\n');
+});
+
 for (const ext of ['js', 'jsx', 'ts', 'tsx'])
   test (`Markdown and API extraction from ${ext}`, t => {
     const f = fixture (t);

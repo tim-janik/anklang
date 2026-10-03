@@ -67,29 +67,30 @@ function fix_indent (txt)
 
 function extract_comments (source, filename)
 {
-  const ranges = new Map();
+  const comments = [];
   const tree = ts.createSourceFile (filename, source, ts.ScriptTarget.Latest);
   function visit (node)
   {
-    if (!ts.isJsxText (node))
-      for (const range of ts.getLeadingCommentRanges (source, node.pos) || [])
-	ranges.set (range.pos, range);
-    ts.forEachChild (node, visit);
+    const ranges = ts.isJsxText (node) || node.kind == ts.SyntaxKind.SyntaxList
+		   ? [] : ts.getLeadingCommentRanges (source, node.pos) || [];
+    for (const range of ranges)
+      {
+	const prefix = source.slice (range.pos, range.pos + 3);
+	if (prefix != '/**' && prefix != '///')
+	  continue;
+	const previous = comments.at (-1);
+	if (previous && range.pos < previous.end)
+	  continue;
+	if (prefix == '///' && previous?.kind == ts.SyntaxKind.SingleLineCommentTrivia &&
+	    /^[ \t]*\r?\n[ \t]*$/.test (source.slice (previous.end, range.pos)))
+	  previous.end = range.end;
+	else
+	  comments.push (range);
+      }
+    for (const child of node.getChildren (tree))
+      visit (child);
   }
   visit (tree);
-  const comments = [];
-  for (const range of [...ranges.values()].sort ((a, b) => a.pos - b.pos))
-    {
-      const prefix = source.slice (range.pos, range.pos + 3);
-      if (prefix != '/**' && prefix != '///')
-	continue;
-      const previous = comments.at (-1);
-      if (prefix == '///' && previous?.kind == ts.SyntaxKind.SingleLineCommentTrivia &&
-	  /^[ \t]*\r?\n[ \t]*$/.test (source.slice (previous.end, range.pos)))
-	previous.end = range.end;
-      else
-	comments.push ({ ...range });
-    }
   const blocks = [], chunks = [];
   let end = 0;
   for (const range of comments)
