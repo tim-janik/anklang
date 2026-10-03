@@ -23,6 +23,7 @@ ASE_TEST_LIST := \
   levenshtein_tests \
   loft_allocator_tests \
   loft_shuffle_thread_allocs \
+  loft_shuffle_uneven_thread_allocs \
   loft_simple_tests \
   loop_add_timer_test \
   loop_current_multithread_test \
