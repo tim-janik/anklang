@@ -1,0 +1,67 @@
+# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+
+# Lint: xclip -sel c < .github/workflows/clang-tidy.yml # https://rhysd.github.io/actionlint/
+
+name: Daily clang-tidy
+
+on:
+  schedule:
+    - cron: '37 5 * * *' # Times in UTC
+  workflow_dispatch:
+
+permissions: { contents: read }
+
+concurrency: { group: "${{ github.workflow }}-${{ github.ref }}", cancel-in-progress: false }
+
+jobs:
+  New-Commit:
+    runs-on: ubuntu-latest
+    outputs:
+      run: '${{ steps.gate.outputs.run }}'
+    steps:
+    - { uses: actions/checkout@v7 }
+    - name: Check HEAD age
+      id: gate
+      run: |
+        run=false
+        if [[ $GITHUB_EVENT_NAME == workflow_dispatch ]] || (( $(date +%s) - $(git log -1 --format=%ct) < 25 * 60 * 60 )); then
+          run=true
+        fi
+        echo "run=$run" >> "$GITHUB_OUTPUT"
+
+  ClangTidy:
+    needs: [ New-Commit ]
+    if: ${{ needs.New-Commit.outputs.run == 'true' }}
+    runs-on: ubuntu-latest
+    container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
+    steps:
+    - { uses: actions/checkout@v7, with: { fetch-depth: 0, fetch-tags: true, persist-credentials: false } }
+    - run: git fetch --force --tags     # Fix actions/checkout#290
+    - name: Configure build
+      run: printf 'CC=clang\nCXX=clang++\nCLANG_TIDY=clang-tidy\nMODE=devel\nINSN=fma\n' > config-defaults.mk
+    - name: Build
+      run: make -j"$(nproc)" all
+    - name: Run clang-tidy
+      run: make -j"$(nproc)" clang-tidy
+    - name: Publish report summary
+      if: ${{ !cancelled() }}
+      run: cat out/clang-tidy/report.md >> "$GITHUB_STEP_SUMMARY" || echo 'No report was generated.' >> "$GITHUB_STEP_SUMMARY"
+    - uses: actions/upload-artifact@v7
+      if: ${{ !cancelled() }}
+      with: { name: clang-tidy-report, path: out/clang-tidy/, retention-days: 30 }
+
+  Ping-IRC:
+    if: ${{ !cancelled() && needs.New-Commit.outputs.run == 'true' }}
+    needs: [ New-Commit, ClangTidy ]
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+    - { uses: actions/checkout@v7, with: { fetch-depth: 0, persist-credentials: false } }
+    - run: git fetch -f --tags          # Fix actions/checkout#290
+    - name: Ping-IRC
+      continue-on-error: true
+      if: ${{ !env.ACT }}  # IRCBOT_JOBS indicates 'success'
+      env: { IRCBOT_JOBS: "${{ join(needs.*.result, ' ') }}" }
+      run: |
+        URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+        .github/workflows/ircbot.py -s irc.libera.chat:6697 -D "$GITHUB_REF_NAME" -G "#Anklang" "Daily clang-tidy $(git describe --always) - $URL"
