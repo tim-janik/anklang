@@ -26,7 +26,7 @@ clang-tidy clang-tidy-check: $(CLANG_TIDY_LOGS)
 	$(QGEN)
 	$Q OK=true \
 	&& for log in $(CLANG_TIDY_LOGS) ; do \
-		grep -Eq ': (error|warning):' $$log && OK=false ; \
+		grep -Eq ': (error|warning):|^CLANG-TIDY FAILED:' $$log && OK=false ; \
 		test 1 -ge `wc -l < $$log` || \
 		  sed "s|^$$PWD/||" < $$log | misc/colorize.sh >&2 ; \
 	   done \
@@ -37,7 +37,8 @@ $>/clang-tidy/%.log: % $(REPOCOMMITDEPS)					| $>/clang-tidy/
 	$Q set +o pipefail \
 	&& CTIDY_DEFS=( $(ASE_EXTERNAL_INCLUDES) $(CLANG_TIDY_DEFS) $($<.CTIDY_DEFS) -march=x86-64-v2 ) \
 	&& [[ $< = @(*.[hc]) ]] || CTIDY_DEFS+=( -std=gnu++23 ) \
-	&& (set -x ; $(CLANG_TIDY) --export-fixes=$>/clang-tidy/$<.yaml $< $($<.CTIDY_FLAGS) -- "$${CTIDY_DEFS[@]}" ) >$@~ 2>&1 || :
+	&& (set -x ; $(CLANG_TIDY) --export-fixes=$>/clang-tidy/$<.yaml $< $($<.CTIDY_FLAGS) -- "$${CTIDY_DEFS[@]}" ) >$@~ 2>&1 \
+	   || echo "CLANG-TIDY FAILED: exit status $$?" >>$@~
 	$Q mv $@~ $@
 CLANG_TIDY_DEFS := -I. -I$> -isystem external/ -isystem $>/external/ -DASE_COMPILATION $(ASEDEPS_CFLAGS) $(GTK2_CFLAGS)
 # File specific LINT_FLAGS, example:		ase/jsonapi.cc.LINT_FLAGS ::= --checks=-clang-analyzer-core.NullDereference
