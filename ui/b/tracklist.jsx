@@ -1,7 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/** @class B-TrackList
+/** @class TrackList
  * @description
  * SolidJS component for vertical display of Ase.Track instances.
  *

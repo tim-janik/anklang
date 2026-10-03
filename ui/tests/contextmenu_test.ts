@@ -106,7 +106,8 @@ async function test_contextmenu_activate_prop (): Promise<boolean>
     if (!Dom.ui_find ('button', { uri: 'do-test' }))
       throw new Error ('Menu item button not found');
 
-    await Dom.ui_click_wait ('button', { uri: 'do-test' });
+    Dom.ui_click ('button', { uri: 'do-test' });
+    await Dom.ui_next_frame();
 
     if (activated_uri !== 'do-test')
       throw new Error (`activate prop received wrong uri: ${activated_uri}`);
@@ -189,7 +190,8 @@ async function test_contextmenu_onactivate_event (): Promise<boolean>
     if (!Dom.ui_find ('button', { uri: 'do-other' }))
       throw new Error ('Menu item button not found');
 
-    await Dom.ui_click_wait ('button', { uri: 'do-other' });
+    Dom.ui_click ('button', { uri: 'do-other' });
+    await Dom.ui_next_frame();
 
     if (activated_uri !== 'do-other')
       throw new Error (`onactivate event.detail.uri wrong: ${activated_uri}`);
@@ -227,12 +229,14 @@ async function test_contextmenu_isactive_prop (): Promise<boolean>
       throw new Error ('Active menu item should not be disabled');
 
     // Clicking a disabled button must not trigger activation.
-    await Dom.ui_click_wait ('button', { uri: 'do-test' });
+    Dom.ui_click ('button', { uri: 'do-test' });
+    await Dom.ui_next_frame();
     if (activated_uri !== undefined)
       throw new Error ('Disabled menu item triggered activation');
 
     // Clicking an active button must trigger activation.
-    await Dom.ui_click_wait ('button', { uri: 'do-other' });
+    Dom.ui_click ('button', { uri: 'do-other' });
+    await Dom.ui_next_frame();
     if (activated_uri !== 'do-other')
       throw new Error (`Active menu item triggered wrong uri: ${activated_uri}`);
   } finally {
@@ -246,9 +250,9 @@ sub_tests.push (['isactive_prop', test_contextmenu_isactive_prop]);
 /// Test that the `onclose` prop is called when the menu closes.
 async function test_contextmenu_onclose_prop (): Promise<boolean>
 {
-  let close_count = 0;
+  let close_count = 0, activations = 0;
   const menu = mount_menu ({
-    activate: () => {},
+    activate: () => { activations++; },
     onclose: () => { close_count++; },
   });
 
@@ -261,9 +265,11 @@ async function test_contextmenu_onclose_prop (): Promise<boolean>
       throw new Error ('Menu item button not found');
 
     // Activating an item closes the menu.
-    await Dom.ui_click_wait ('button', { uri: 'do-test' });
-
-    if (close_count !== 1)
+    Dom.ui_click ('button', { uri: 'do-test' });
+    await Dom.ui_next_frame();
+    if (activations !== 1)
+      throw new Error (`menu click activated ${activations} times`);
+    if (close_count !== 1 || menu.dialog()!.open)
       throw new Error (`menu activation emitted ${close_count} close events`);
     menu.close();
     await Dom.ui_next_frame();
@@ -271,9 +277,19 @@ async function test_contextmenu_onclose_prop (): Promise<boolean>
       throw new Error ('closing an already closed menu emitted another close');
     menu.popup();
     await wait_for_contextmenu_update();
-    HTMLDialogElement.prototype.close.call (menu.dialog());
-    await wait_for_contextmenu_update();
+    let native_closed = new Promise (resolve => menu.dialog()!.addEventListener ('close', resolve, { once: true }));
+    menu.close();
     if (Number (close_count) !== 2)
+      throw new Error ('close() did not report the close at once');
+    await native_closed;
+    if (Number (close_count) !== 2)
+      throw new Error ('the native close event reported the close again');
+    menu.popup();
+    await wait_for_contextmenu_update();
+    native_closed = new Promise (resolve => menu.dialog()!.addEventListener ('close', resolve, { once: true }));
+    HTMLDialogElement.prototype.close.call (menu.dialog());
+    await native_closed;
+    if (Number (close_count) !== 3)
       throw new Error ('native close did not emit exactly one close');
   } finally {
     menu.cleanup();

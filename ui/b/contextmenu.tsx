@@ -218,6 +218,7 @@ export function ContextMenu (props: {
   // null while closed: items stay enabled so hotkeys can click them, clicks check isactive.
   const [enabled, set_enabled] = createSignal<Record<string, boolean> | null> (null);
   let check_serial = 0;
+  let showing = false;
   let checked = new Set<string>();
 
   // === Methods ===
@@ -228,6 +229,7 @@ export function ContextMenu (props: {
   const close = () => {
     if (dialog_ref?.open) {
       native_dialog_close.call(dialog_ref);
+      handle_close (new Event ('close'));
     }
   };
 
@@ -249,6 +251,9 @@ export function ContextMenu (props: {
     const origin = popup_options.origin === null ? null : (popup_options.origin || (event as any)?.currentTarget);
     if (origin instanceof Element && !Util.check_visibility (origin))
       return false; // cannot popup around hidden origin
+    if (showing)
+      handle_close (new Event ('close')); // native close event still pending
+    showing = true;
     const toggles = check_isactive(); // disable all items until their checks resolve
     origin_el = origin instanceof Element ? origin : null;
     menu_stamp = Util.frame_stamp(); // allows one popup per frame
@@ -403,8 +408,11 @@ export function ContextMenu (props: {
       return; // handled, no-default
   };
 
-  // The native close event arrives after close() returns.
+  // Report each popup's close once: close() reports at once, the native close event can arrive much later.
   const handle_close = (event: Event) => {
+    if (!showing || dialog_ref?.open)
+      return;
+    showing = false;
     check_serial++;
     set_enabled (null);
     origin_el = null;

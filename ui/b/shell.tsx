@@ -1,7 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 // @ts-check
 
-/** @class B-SHELL
+/** @class BShell
  * @description
  * User interface shell for editing and display of a Ase.Project.
  * Instance access is provided via the global `Shell` constant.
