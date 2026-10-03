@@ -206,7 +206,7 @@ parse_args (int *argcp, char **argv, MainAppImpl &config)
       else if (strcmp ("--ui-js", argv[i]) == 0 || strncmp ("--ui-js=", argv[i], 8) == 0)
         {
           const char *eq = strchr (argv[i], '=');
-          ui_js_script = eq ? eq + 1 : i+1 < argc ? argv[++i] : "";
+          ui_js_script = eq ? eq + 1 : i+1 < argc && strncmp (argv[i+1], "--", 2) != 0 ? argv[++i] : "";
           if (ui_js_script.empty())
             ui_js_script = " "; // execute an empty script so the window can close
           headless_default = true;

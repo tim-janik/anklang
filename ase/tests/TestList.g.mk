@@ -60,6 +60,7 @@ ASE_TEST_LIST := \
   track_hidden \
   track_mute_solo \
   track_name \
+  track_outlives_project \
   track_undo_redo \
   track_volume_pan \
   transport_tests \
