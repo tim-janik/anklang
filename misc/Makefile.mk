@@ -22,7 +22,8 @@ lint-unused: misc/Makefile.mk		| $>/misc/cppcheck/
 # == clang-tidy ==
 CLANG_TIDY_FILES = $(filter %.c %.cc %.C %.cpp %.cxx, $(WILDCARD_FILES))
 CLANG_TIDY_LOGS  = $(patsubst %, $>/clang-tidy/%.log, $(CLANG_TIDY_FILES))
-clang-tidy clang-tidy-check: $(CLANG_TIDY_LOGS)
+clang-tidy clang-tidy-check: $(CLANG_TIDY_LOGS) misc/clang-tidy-report.py
+	$Q python3 misc/clang-tidy-report.py $>/clang-tidy
 	$(QGEN)
 	$Q OK=true \
 	&& for log in $(CLANG_TIDY_LOGS) ; do \
