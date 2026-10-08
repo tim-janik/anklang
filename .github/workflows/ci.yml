@@ -2,6 +2,8 @@
 
 # Lint: xclip -sel c < .github/workflows/ci.yml # https://rhysd.github.io/actionlint/
 
+name: CI
+
 on:
   push:
     branches: [ 'trunk', 'wip/**' ]
@@ -57,7 +59,7 @@ jobs:
       DOCKER_IMAGE: 'ghcr.io/tim-janik/anklang-ci:ci-latest'
     steps:
     - { uses: actions/checkout@v7, with: { fetch-depth: 0, fetch-tags: true } }
-    - run: git fetch -f --tags  # Fix actions/checkout#290
+    - run: git fetch --force --tags     # Fix actions/checkout#290
     - run: .github/workflows/gh-release.sh --docker --upload
 
   # Disabled: advisory only (`make clang-tidy` never fails), and it duplicated the full build and test run
@@ -120,9 +122,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - { uses: actions/checkout@v7, with: { fetch-depth: 0 } }
-    - run: git fetch -f --tags          # Fix actions/checkout#290
-    # run: python3 .github/workflows/test_ircbot.py --preview
-    - run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s .github/workflows -p test_ircbot.py -v
+    - run: git fetch --force --tags     # Fix actions/checkout#290
+    - run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s .github/workflows -p test_ircbot.py -v # test_ircbot.py --preview
     - name: Ping-IRC
       continue-on-error: true
       if: ${{ !env.ACT }}  # IRCBOT_JOBS indicates 'success'
