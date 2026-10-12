@@ -34,7 +34,8 @@ ls -d "$DROOT"/$PKGDIR # check dir
 
 # Meta info
 NAME="anklang"
-TAG=$(git log -1 --pretty='%(describe:tags,match=v[0-9]*.[0-9]*)' HEAD 2>/dev/null || sed -n 's/ .*//p' .version)
+TAG=$(grep -xm1 '^v\?[0-9][^$]*' .version || git archive HEAD .version | tar -xOf -)
+TAG=${TAG%% *}
 VERSION=$(printf '%s\n' "${TAG#v}" | sed -E 's/-([0-9]+)-g([0-9a-f]+)$/+\1.g\2/; s/-g([0-9a-f]+)$/+0.g\1/; s/-([^-]+)$/~\1/')
 GITREF=$(git log -1 --format=%H 2>/dev/null || echo "$TAG")
 DUSIZE=$(cd $DROOT && du -k -s .)
