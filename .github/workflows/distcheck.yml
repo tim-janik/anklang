@@ -1,8 +1,8 @@
 # This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
-# Lint: xclip -sel c < .github/workflows/nightly.yml # https://rhysd.github.io/actionlint/
+# Lint: xclip -sel c < .github/workflows/distcheck.yml # https://rhysd.github.io/actionlint/
 
-name: Nightly distcheck
+name: Distcheck
 
 on:
   schedule:
@@ -40,7 +40,7 @@ jobs:
     - run: make -w distcheck
     - uses: actions/upload-artifact@v7
       if: ${{ !cancelled() }}
-      with: { name: nightly-distcheck, path: artifacts/, retention-days: 7 }
+      with: { name: distcheck, path: artifacts/, retention-days: 7 }
 
   Ping-IRC:
     # Always run, announce tag and trunk pushes only
@@ -56,4 +56,4 @@ jobs:
       env: { IRCBOT_JOBS: "${{ join(needs.*.result, ' ') }}" }
       run: |
         URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-        .github/workflows/ircbot.py -s irc.libera.chat:6697 -D "$GITHUB_REF_NAME" -G "#Anklang" "Nightly distcheck $(git describe --always) - $URL"
+        .github/workflows/ircbot.py -s irc.libera.chat:6697 -D "$GITHUB_REF_NAME" -G "#Anklang" "Distcheck $(git describe --always) - $URL"
