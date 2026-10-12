@@ -14,9 +14,10 @@ S ::= # Variable containing 1 space
 S +=
 
 # == Version ==
-# git describe, else the .version file baked into source archives by export-subst.
-TAG != git log -1 --pretty='%(describe:tags,match=v[0-9]*.[0-9]*)' HEAD 2>/dev/null || sed -n 's/ .*//p' .version 2>/dev/null
-version_date != git log -1 --format=%ci 2>/dev/null || sed -n 's/^[^ ]* //p' .version 2>/dev/null
+# Baked .version, else .version as git archive bakes it.
+version_info != grep -xm1 '^v\?[0-9][^$$]*' .version || git archive HEAD .version | tar -xOf -
+TAG := $(word 1, $(version_info))
+version_date := $(wordlist 2, 4, $(version_info))
 version = $(patsubst v%,%,$(TAG))
 version_bits	:= $(subst _, , $(subst -, , $(subst ., , $(version))))
 version_major	:= $(word 1, $(version_bits))
@@ -34,7 +35,7 @@ version-info:
 	@echo version_minor: $(version_minor)
 	@echo version_micro: $(version_micro)
 	@echo version_to_month: "$(version_to_month)"
-ifeq ($(version_micro),)	# do we have any version?
+ifeq ($(and $(version_micro),$(word 4, $(version_info))),)	# do we have any version?
 $(error Missing version information, need git describe or .version)
 endif
 
