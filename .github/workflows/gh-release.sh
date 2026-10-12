@@ -8,11 +8,11 @@ set -Eeuo pipefail && SCRIPTNAME=${0##*/} && die() { [ -z "$*" ] || echo "$SCRIP
 # prereleases, annotated tags drafts, echoed unless --upload. Projects
 # provide `make distcheck` filling ./artifacts/ incl. $PROJECT-$VERSION.SHA256SUMS.
 # Release-critical files:
-#   Makefile                version & date, dist, distcheck
 #   .version .gitattributes export-subst bakes version & date into source archives
+#   Makefile                version & date, dist, distcheck
 #   NEWS.md                 notes for annotated (draft) releases
-#   ci.yml                  Release job runs this script
 #   gh-release.sh           builds assets, creates the GitHub release
+#   ci.yml                  Release job runs this script
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || die 'not inside a git repository'
 cd "$ROOT"
@@ -31,9 +31,11 @@ while test $# -ne 0 ; do
   esac
   shift
 done
-TAG=${TAG:-$(git log -1 --pretty='%(describe:tags,match=v[0-9]*.[0-9]*)' HEAD 2>/dev/null)}
+VERSION_TAG=$(git archive HEAD .version | tar -xOf - | cut -d' ' -f1)
+TAG=${TAG:-$VERSION_TAG}
 [[ $TAG == v[0-9]*.[0-9]* && $TAG =~ ^v[0-9][a-zA-Z0-9.+_-]*$ ]] || die "invalid release tag: $TAG"
 [[ $(git rev-parse "refs/tags/$TAG^{commit}") == "$(git rev-parse HEAD)" ]] || die "$TAG does not point to HEAD"
+[[ $TAG == "$VERSION_TAG" ]] || die "$TAG differs from version tag $VERSION_TAG"
 VERSION=${TAG#v}
 
 # Project name from .git/config or checkout directory.
