@@ -65,6 +65,15 @@ RUN \
        --slave   /usr/bin/lldb-server   lldb-server     /usr/bin/lldb-server-21 \
   && apt-get autoremove -y
 
+# Install mold 3.0.0
+RUN \
+  cd /tmp/ \
+  && wget -nv https://github.com/rui314/mold/releases/download/v3.0.0/mold-3.0.0-x86_64-linux.tar.gz \
+  && echo '6c90d4a474c7c0409dfb575be03a5345878ac14fdba18de8b40fa58c60121189  mold-3.0.0-x86_64-linux.tar.gz' | sha256sum -c - \
+  && tar xf mold-3.0.0-x86_64-linux.tar.gz -C /usr/local/ --strip-components=1 \
+  && rm mold-3.0.0-x86_64-linux.tar.gz \
+  && ld.mold --version
+
 # Support 1000:1000 for normal developer setups, and for
 # Github CI support runner:runner, both with sudo enabled
 RUN : \
