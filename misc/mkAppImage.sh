@@ -9,7 +9,8 @@ ORIG_PWD=$PWD
 
 # paths & options
 BUILDDIR="${BUILDDIR:-out}"
-TAG=$(git log -1 --pretty='%(describe:tags,match=v[0-9]*.[0-9]*)' HEAD 2>/dev/null || sed -n 's/ .*//p' .version)
+TAG=$(grep -xm1 '^v\?[0-9][^$]*' .version || git archive HEAD .version | tar -xOf -)
+TAG=${TAG%% *}
 VERSION=${TAG#v}
 APPINST=$BUILDDIR/appinst/		# install dir
 APPBASE=$BUILDDIR/appbase/		# dir for packaging
