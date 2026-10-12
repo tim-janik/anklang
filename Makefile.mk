@@ -399,8 +399,7 @@ CLEANDIRS += artifacts/
 .PHONY: dist
 
 # == distcheck ==
-# Build all release artifacts from a fresh tarball copy and verify build, install
-# and uninstall. Must run inside the CI image to match release builds.
+# Build and test all release files from a fresh source tarball.
 distcheck: dist
 	@$(eval distname := anklang-$(version))
 	$(QECHO) CHECK $(distname).tar.zst
@@ -411,6 +410,7 @@ distcheck: dist
 	&& cd $$T/$(distname) \
 	&& printf "prefix=$$T/inst\nCC=clang\nCXX=clang++\nINSN=fma\n" > config-defaults.mk \
 	&& $(MAKE) all -j$$(nproc) \
+	&& $(MAKE) strict -j$$(nproc) \
 	&& $(MAKE) install \
 	&& test -e $$T/inst/bin/anklang \
 	&& $(MAKE) installcheck \
