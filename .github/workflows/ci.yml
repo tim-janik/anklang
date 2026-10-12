@@ -44,6 +44,8 @@ jobs:
     - run: make -C /tmp/anklang -w install
     - run: make -C /tmp/anklang -w installcheck -j`nproc`
     - run: make -C /tmp/anklang -w uninstall
+    - run: .github/workflows/release-test.sh
+      if: github.ref_type != 'tag'
 
   Release:
     if: github.ref_type == 'tag'        # constrained by on.push.tags
