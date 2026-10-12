@@ -197,7 +197,8 @@ test -r "$DOXYDIR/trkn/tagfile.xml" &&
 if $WITH_ASE ; then
   rm -rf $DOXYDIR/doxy && mkdir -p $DOXYDIR/doxy
   cp -a ase devices jsonipc $DOXYDIR/doxy/
-  TAG=$(git log -1 --pretty='%(describe:tags,match=v[0-9]*.[0-9]*)' HEAD 2>/dev/null || sed -n 's/ .*//p' .version)
+  TAG=$(grep -xm1 '^v\?[0-9][^$]*' .version || git archive HEAD .version | tar -xOf -)
+  TAG=${TAG%% *}
   ASE_VERSION=anklang-${TAG#v}
   ASE_NAME="${ASE_VERSION%-v*}" && ASE_NAME="${ASE_NAME^}"
   ASE_BRIEF="ASE — Anklang Sound Engine (C++)"
