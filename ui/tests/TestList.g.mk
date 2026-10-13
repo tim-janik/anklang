@@ -3,11 +3,6 @@ UI_TEST_LIST := \
   app_test.test_app \
   choiceinput_test.test_choiceinput \
   cliplist_test.test_cliplist \
-  clip_test.test_clip_volume \
-  clip_test.test_clip_mute \
-  clip_test.test_clip_pan \
-  clip_test.test_clip_notes \
-  clip_test.test_clip_range \
   contextmenu_test.test_contextmenu \
   databubble_test.test_databubble \
   deviceeditor_test.test_deviceeditor \

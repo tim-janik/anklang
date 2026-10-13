@@ -457,6 +457,12 @@ clip_notes()
   TASSERT (notes.size() == 1);
   TASSERT (notes[0].key == 60);
 
+  note.key = 62;
+  clip->all_notes ({ note });
+  notes = clip->all_notes();
+  TASSERT (notes.size() == 1);
+  TASSERT (notes[0].key == 62);
+
   project->discard();
 }
 TEST_ADD (clip_notes);
@@ -480,6 +486,9 @@ clip_range()
   int64 stop = clip->stop_tick();
   TASSERT (start >= 0);
   TASSERT (stop > start);
+
+  clip->end_tick (stop + 1000);
+  TASSERT (clip->stop_tick() == stop + 1000);
 
   clip->assign_range (start + 960, stop + 960);
   TASSERT (clip->start_tick() == start + 960);
