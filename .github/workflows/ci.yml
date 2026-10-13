@@ -62,30 +62,6 @@ jobs:
     - run: git fetch --force --tags     # Fix actions/checkout#290
     - run: .github/workflows/gh-release.sh --docker --upload
 
-  #ArchReplay:
-  #  runs-on: ubuntu-latest
-  #  container: { image: 'ghcr.io/tim-janik/anklang-ci:arch-latest' }
-  #  steps:
-  #  - { uses: actions/checkout@v7, with: { fetch-depth: 0 } }
-  #  - run: git fetch -f --tags # Fix actions/checkout#290
-  #  - run: git describe --always --long
-  #  - name: 'Configure build presets'
-  #    run: |
-  #      echo 'prefix=/' > config-defaults.mk   ;# reset any previous config-defaults.mk
-  #  - name: 'Build Anklang'
-  #    run: |
-  #      make GCC_COLORS="" -j`nproc` all
-  #  - name: 'Run Tests'
-  #    run: |
-  #      make -j`nproc` check
-  #  - name: 'Run X11 GUI Tests'
-  #    run: |
-  #      make x11test-v
-  #  # Artifact upload from x11test
-  #  - uses: actions/upload-artifact@v7
-  #    if: ${{ always() }}
-  #    with: { name: "x11test", path: "out/x11test/" }
-
   Ping-IRC:
     # Announce tag and trunk pushes unless cancelled
     if: ${{ !cancelled() && github.event_name == 'push' && (github.ref == 'refs/heads/trunk' || github.ref_type == 'tag') }}
