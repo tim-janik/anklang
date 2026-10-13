@@ -691,7 +691,7 @@ export function weakid_lookup (id) {
     const object = weakref.deref();
     if (object)
       return object;
-    weakmaps.objs.splice (id, 1);
+    delete weakmaps.objs[id];
   }
   return undefined;
 }
@@ -713,7 +713,7 @@ export function uuname (object) {
       }
       return name;
     }
-    weakmaps.objs.splice (id, 1);
+    delete weakmaps.objs[id];
   }
   return undefined;
 }
