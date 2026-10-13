@@ -213,11 +213,11 @@ export class AppClass {
     await this.assign_project (newproject, 'b-app');
     return Ase.Error.NONE;
   }
-  async save_project (projectpath: string, collect = true)
+  async save_project (projectpath: string, collect = true, project = this.project)
   {
     Shell.show_spinner();
-    let error = !this.project ? Ase.Error.INTERNAL :
-                this.project.save_project (projectpath, collect);
+    let error = !project ? Ase.Error.INTERNAL :
+                project.save_project (projectpath, collect);
     error = await error;
     // await new Promise (r => setTimeout (r, 3 * 1000)); // artificial wait to test spinner
     Shell.hide_spinner();
