@@ -27,7 +27,7 @@ jobs:
     - uses: actions/configure-pages@v5
     - name: 'Configure build presets'
       run: |
-        echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n INSN=fma \n MODE=devel ' > config-defaults.mk
+        echo -e 'prefix=/\nCC=clang\nCXX=clang++\nINSN=fma\nMODE=devel' > config-defaults.mk
     #- run: make -w -j`nproc` all	# not needed for docs, atm
     - run: |
         make -w doxygen mkdocs-site
