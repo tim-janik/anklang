@@ -18,7 +18,7 @@ RUN \
 	     sudo lsb-release gnupg alien curl wget \
              imagemagick unzip squashfs-tools libxml2-utils zstd nano joe \
              pandoc python3-pandocfilters python3 python3-pip graphviz doxygen \
-             build-essential cmake pkg-config gettext git ccache universal-ctags \
+             build-essential cmake pkg-config gettext git universal-ctags \
              cppcheck castxml python3-lxml libboost-system-dev \
              libzstd-dev librsvg2-bin libxml2-dev \
              libasound2-dev libflac-dev libopus-dev libjack-dev \
@@ -73,6 +73,16 @@ RUN \
   && tar xf mold-3.0.0-x86_64-linux.tar.gz -C /usr/local/ --strip-components=1 \
   && rm mold-3.0.0-x86_64-linux.tar.gz \
   && ld.mold --version
+
+# Install ccache 4.14.1
+RUN \
+  cd /tmp/ \
+  && wget -nv https://github.com/ccache/ccache/releases/download/v4.14.1/ccache-4.14.1-linux-x86_64-glibc.tar.gz \
+  && echo '67f8b4cd2620b0d7bc9e834b3baea76bcdca4f2f3f47fe658c343fee58f816fa  ccache-4.14.1-linux-x86_64-glibc.tar.gz' | sha256sum -c - \
+  && tar xf ccache-4.14.1-linux-x86_64-glibc.tar.gz \
+  && ./ccache-4.14.1-linux-x86_64-glibc/install.sh \
+  && rm -r ccache-4.14.1-linux-x86_64-glibc ccache-4.14.1-linux-x86_64-glibc.tar.gz \
+  && ccache --version
 
 # Support 1000:1000 for normal developer setups, and for
 # Github CI support runner:runner, both with sudo enabled
