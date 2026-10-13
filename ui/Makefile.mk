@@ -11,13 +11,13 @@ VITE_DEPS :=	# (intermediate) targets required by vite
 
 # == $>/gen/testcalls.g.ts ==
 UI_TESTS_FILES := $(wildcard ui/tests/*ts)
-$>/gen/testcalls.g.ts: ui/gen-testcalls.ts ui/Makefile.mk $(UI_TESTS_FILES)		| $>/gen/
+$>/gen/testcalls.g.ts: ui/gen-testcalls.ts ui/Makefile.mk ui/tests/TestList.g.mk $(UI_TESTS_FILES)		| $>/gen/
 	$(QGEN)
 	$Q $(RUNTS) $< --out $@ $(UI_TESTS_FILES)
 VITE_DEPS += $>/gen/testcalls.g.ts
 
 # == $>/gen/ui/assets/testcalls-list.txt ==
-$>/gen/ui/assets/testcalls-list.txt: ui/gen-testcalls.ts ui/Makefile.mk $(UI_TESTS_FILES)	| $>/gen/ui/assets/
+$>/gen/ui/assets/testcalls-list.txt: ui/gen-testcalls.ts ui/Makefile.mk ui/tests/TestList.g.mk $(UI_TESTS_FILES)	| $>/gen/ui/assets/
 	$(QGEN)
 	$Q $(RUNTS) $< --list $(UI_TESTS_FILES) > $@.tmp
 	$Q mv $@.tmp $@
@@ -33,6 +33,9 @@ ifneq (,$(shell find $(UI_TESTS_FILES) -newer ui/tests/TestList.g.mk))
 .PHONY: ui/tests/TestList.g.mk		# update generated file without forcing rebuild of INPUTS
 endif
 include ui/tests/TestList.g.mk		# UI_TEST_LIST
+ifneq (,$(filter-out $(basename $(notdir $(UI_TESTS_FILES))), $(basename $(UI_TEST_LIST))))
+.PHONY: ui/tests/TestList.g.mk		# drop tests of removed files
+endif
 
 # == check-ui-tests ==
 .PHONY: check-ui-tests
