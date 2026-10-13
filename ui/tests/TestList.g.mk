@@ -3,11 +3,6 @@ UI_TEST_LIST := \
   app_test.test_app \
   choiceinput_test.test_choiceinput \
   cliplist_test.test_cliplist \
-  clip_test.test_clip_volume \
-  clip_test.test_clip_mute \
-  clip_test.test_clip_pan \
-  clip_test.test_clip_notes \
-  clip_test.test_clip_range \
   contextmenu_test.test_contextmenu \
   databubble_test.test_databubble \
   deviceeditor_test.test_deviceeditor \
@@ -21,20 +16,11 @@ UI_TEST_LIST := \
   objecteditor_test.test_objecteditor \
   pianoroll_test.test_pianoroll_shortcuts \
   preferencesdialog_test.test_preferencesdialog \
-  project_test.test_project_basic \
-  project_test.test_project_master_volume \
-  project_test.test_project_track_management \
-  project_test.test_project_track_removal_notification \
   project_test.test_project_play_toggle \
   relayout_test.test_relayout \
   shell_test.test_shell \
   switchinput_test.test_switchinput \
   textinput_test.test_textinput \
   toggle_test.test_toggle \
-  track_test.test_track_volume \
-  track_test.test_track_pan \
-  track_test.test_track_mute \
-  track_test.test_track_solo \
-  track_test.test_track_midi_channel \
   trackview_test.test_trackview_menu \
   util_test.test_util \

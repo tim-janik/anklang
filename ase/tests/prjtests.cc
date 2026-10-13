@@ -137,6 +137,12 @@ project_track_management()
   tracks = project->all_tracks();
   TASSERT (tracks.size() == initial_count + 1);
 
+  uint64_t track_notifications = 0;
+  auto track_connection = project->on_event ("notify:all_tracks", [&track_notifications] (const Event &event) { track_notifications++; });
+  new_track->remove_self();
+  TASSERT (project->all_tracks().size() == initial_count);
+  TASSERT (track_notifications > 0);
+
   project->discard();
 }
 TEST_ADD (project_track_management);
@@ -380,6 +386,25 @@ track_name()
 TEST_ADD (track_name);
 
 static void
+track_midi_channel()
+{
+  ProjectImplP project = ProjectImpl::create ("TrackMidiChannelTest");
+  TASSERT (project);
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  uint64_t midi_notifications = 0;
+  auto midi_connection = track->on_event ("notify:midi_channel", [&midi_notifications] (const Event &event) { midi_notifications++; });
+  track->midi_channel (1);
+  TASSERT (track->midi_channel() == 1);
+  TASSERT (midi_notifications > 0);
+
+  project->discard();
+}
+TEST_ADD (track_midi_channel);
+
+static void
 clip_creation()
 {
   ProjectImplP project = ProjectImpl::create ("ClipTest");
@@ -432,6 +457,12 @@ clip_notes()
   TASSERT (notes.size() == 1);
   TASSERT (notes[0].key == 60);
 
+  note.key = 62;
+  clip->all_notes ({ note });
+  notes = clip->all_notes();
+  TASSERT (notes.size() == 1);
+  TASSERT (notes[0].key == 62);
+
   project->discard();
 }
 TEST_ADD (clip_notes);
@@ -455,6 +486,9 @@ clip_range()
   int64 stop = clip->stop_tick();
   TASSERT (start >= 0);
   TASSERT (stop > start);
+
+  clip->end_tick (stop + 1000);
+  TASSERT (clip->stop_tick() == stop + 1000);
 
   clip->assign_range (start + 960, stop + 960);
   TASSERT (clip->start_tick() == start + 960);
