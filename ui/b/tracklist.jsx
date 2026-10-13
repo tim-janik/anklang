@@ -74,38 +74,20 @@ export function TrackList (props)
   let cliplists_ref;
   let partlists_ref;
 
-  // Fetch tracks when project changes and on notifications
-  createEffect (async () => {
+  // Fetch tracks on notifications, assume one project for the component's lifetime
+  createEffect (() => {
     const project = props.project;
     if (!project) {
       set_tracks ([]);
       return;
     }
-    const list = await project.all_tracks ();
-    set_tracks (list || []);
-  });
-
-  // Listen for track list changes
-  let notify_cleanup;
-  createEffect (() => {
-    const project = props.project;
-    if (notify_cleanup) {
-      notify_cleanup ();
-      notify_cleanup = undefined;
-    }
-    if (project) {
-      notify_cleanup = project.on ("notify:all_tracks", async () => {
-        const list = await project.all_tracks ();
-        set_tracks (list || []);
-      });
-    }
-  });
-
-  onCleanup (() => {
-    if (notify_cleanup) {
-      notify_cleanup ();
-      notify_cleanup = undefined;
-    }
+    const fetch_tracks = async () => {
+      const list = await project.all_tracks ();
+      set_tracks (list || []);
+    };
+    fetch_tracks();
+    const unwatch = project.on ("notify:all_tracks", fetch_tracks);
+    onCleanup (unwatch);
   });
 
   // Setup scroll sync after DOM is ready

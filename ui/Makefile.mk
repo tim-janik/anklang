@@ -40,7 +40,7 @@ endif
 # == check-ui-tests ==
 .PHONY: check-ui-tests
 define UI_TEST_CHECK
-check-$1: $$>/gen/.vite.done $$(lib/AnklangSynthEngine)
+check-$1: $$>/gen/.vite.done $$(lib/AnklangSynthEngine) $$>/electron/htmlgui
 	$$(QECHO) TEST '$1'
 	$$Q $$(lib/AnklangSynthEngine) --norc --no-devices --ui-test '$1'
 .PHONY: check-$1

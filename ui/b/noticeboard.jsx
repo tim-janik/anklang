@@ -68,10 +68,10 @@ Extra_css`
 
 // == Module-level state ==
 const POPDOWN = Symbol.for('b_noticeboard_POPDOWN');
+const REMOVE = Symbol ('b_noticeboard_REMOVE');
 const TIMEOUT = 15 * 1000; // time for note to last
 const FADING = 233;        // fade in/out in milliseconds, see app.scss
 let container;
-const timeouts = new Map();
 
 /**
  * Create a notification note.
@@ -109,13 +109,19 @@ export function create_note (text, timeout)
   close.innerText = "\u2716";
   note.insertBefore (close, note.firstChild);
 
+  let timer, dismissed = false;
+  const remove = () => {
+    dismissed = true;
+    clearTimeout (timer);
+    note.remove();
+  };
+  note[REMOVE] = remove;
   const popdown = () => {
-    if (!note.parentNode) return;
+    if (dismissed) return;
+    dismissed = true;
+    clearTimeout (timer);
     note.classList.add ('note-board-fadeout');
-    setTimeout (() => {
-      if (note.parentNode)
-        note.parentNode.removeChild (note);
-    }, FADING + 1);
+    timer = setTimeout (remove, FADING + 1);
   };
   note[POPDOWN] = popdown;
   close.onclick = popdown;
@@ -123,15 +129,16 @@ export function create_note (text, timeout)
   // show note with delay and throttling
   const popup = () => {
     note.setAttribute ('data-timestamp', '' + Util.now());
-    container?.appendChild (note);
-    const fadeInTimer = setTimeout (() => {
+    if (!container) {
+      remove();
+      return;
+    }
+    container.appendChild (note);
+    timer = setTimeout (() => {
       note.classList.remove ('note-board-fadein');
-      if (!(timeout < 0)) {
-        const autoHideTimer = setTimeout (popdown, timeout ? timeout : TIMEOUT);
-        timeouts.set (h53, autoHideTimer);
-      }
+      if (!(timeout < 0))
+        timer = setTimeout (popdown, timeout ? timeout : TIMEOUT);
     }, FADING);
-    timeouts.set (h53 + '_fadein', fadeInTimer);
   };
   popup();
 
@@ -144,14 +151,14 @@ export function create_note (text, timeout)
 // == Component ==
 export function Noticeboard (props)
 {
-  const setContainer = (el) => { container = el; };
+  let board;
+  const setContainer = (el) => { board = container = el; };
 
   onCleanup (() => {
-    for (const [, tid] of timeouts)
-      clearTimeout (tid);
-    timeouts.clear();
-    while (container?.firstChild)
-      container.removeChild (container.firstChild);
+    for (const note of Array.from (board.children))
+      note[REMOVE]();
+    if (container === board)
+      container = undefined;
   });
 
   return (

@@ -130,7 +130,7 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
                      id="g-pianorollmenu" showicons={true}
                      class="-pianorollmenu" mapname="Piano Roll" items={[
         { type: 'title', label: 'Piano-Roll' },
-        ...actions.map (ac => ({ uri: ac.weakid, label: ac.label, icon: ac.ic, kbd: ac.kbd })),
+        ...actions.map (ac => ({ uri: ac.uri, label: ac.label, icon: ac.ic, kbd: ac.kbd })),
       ]} />
     </div>
   </div>
@@ -402,7 +402,7 @@ export function PianoRoll (props: {
         const label = action.label;
         const kbd = action.kbd;
         const ic = action.ic;
-        actions.push ({ label, weakid: 'weakid:' + Util.weakid (action), kbd, ic });
+        actions.push ({ label, uri: action.uri, kbd, ic });
       }
     }
     return actions;
@@ -419,11 +419,9 @@ export function PianoRoll (props: {
       event.stopPropagation();
       event.preventDefault();
     }
-    if (uri.search (/^[0-9a-z-]+@[0-9a-z-]+$/) === 0)
-      return; // TODO: this.pianoroll_script (uri);
-    if (uri.startsWith ('weakid:') && t.clip) {
-      const action = Util.weakid_lookup (Number (uri.substr (7)));
-      if (action.func instanceof Function)
+    if (t.clip) {
+      const action = PianoCtrl.list_actions().find (a => a.uri === uri);
+      if (action?.func instanceof Function)
         return action.func (action, t, t.clip, event);
     }
   };
