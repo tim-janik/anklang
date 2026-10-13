@@ -21,10 +21,6 @@ UI_TEST_LIST := \
   objecteditor_test.test_objecteditor \
   pianoroll_test.test_pianoroll_shortcuts \
   preferencesdialog_test.test_preferencesdialog \
-  project_test.test_project_basic \
-  project_test.test_project_master_volume \
-  project_test.test_project_track_management \
-  project_test.test_project_track_removal_notification \
   project_test.test_project_play_toggle \
   relayout_test.test_relayout \
   shell_test.test_shell \

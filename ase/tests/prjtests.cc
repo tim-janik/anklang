@@ -137,6 +137,12 @@ project_track_management()
   tracks = project->all_tracks();
   TASSERT (tracks.size() == initial_count + 1);
 
+  uint64_t track_notifications = 0;
+  auto track_connection = project->on_event ("notify:all_tracks", [&track_notifications] (const Event &event) { track_notifications++; });
+  new_track->remove_self();
+  TASSERT (project->all_tracks().size() == initial_count);
+  TASSERT (track_notifications > 0);
+
   project->discard();
 }
 TEST_ADD (project_track_management);
