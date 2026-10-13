@@ -81,6 +81,7 @@ const DIV_DBRANGE = 1.0 / (MAXDB - MINDB);
 // == Component ==
 export function TrackView (props)
 {
+  const project = Shell.project;
   let root_ref = null;
   let trackviewcontrol_ref = null;
   let trackname_ref = null;
@@ -140,7 +141,7 @@ export function TrackView (props)
     menu_close();
     if (uri == 'add-track')
       {
-	const track = await Shell.project.create_track ('Track');
+	const track = await project.create_track ('Track');
 	if (track)
 	  Shell.current_track = track;
       }
@@ -157,7 +158,7 @@ export function TrackView (props)
     if (uri == 'delete-track')
       {
 	const del_track = props.track;
-	let tracks = Shell.project.all_tracks();
+	let tracks = project.all_tracks();
 	del_track.remove_self ();
 	tracks = await tracks;
 	const index = Util.array_index_equals (tracks, del_track);
