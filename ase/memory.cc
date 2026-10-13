@@ -75,7 +75,7 @@ HugePage::allocate (size_t minimum_alignment, size_t bytelength)
       minimum_alignment = std::max (minimum_alignment, MINIMUM_HUGEPAGE);
       size_t areasize = minimum_alignment - pagesize + bytelength;
       char *memory = (char*) mmap (nullptr, areasize, protection, flags, -1, 0);
-      if (memory)
+      if (memory != MAP_FAILED)
         {
           // discard unaligned head
           const uintptr_t start = uintptr_t (memory);
