@@ -98,16 +98,9 @@ function render_canvas (canvas, clip, tickscale) {
 // == COMPONENT ==
 export function ClipView (props) {
   let canvas_ref;
-  let root_ref;
   let pending_raf = 0;
 
   const tickscale = 10.0 / Util.PPQN;
-
-  // Expose tickscale on DOM element for parent measurement
-  createEffect (() => {
-    if (root_ref)
-      root_ref.tickscale = tickscale;
-  });
 
   // Re-render canvas when clip properties change
   onCleanup (() => cancelAnimationFrame (pending_raf));
@@ -136,7 +129,7 @@ export function ClipView (props) {
   }
 
   return (
-    <div class="b-clipview hflex" ref={root_ref} onClick={click}>
+    <div class="b-clipview hflex" onClick={click}>
       <canvas class="-canvas" ref={canvas_ref}></canvas>
       <span class="-play" onClick={click_play}>▶</span>
     </div>

@@ -11,7 +11,6 @@ export async function test_cliplist (): Promise<boolean>
   const [clips, set_clips] = createSignal ([first]);
   const track = {
     get launcher_clips () { return clips(); },
-    telemetry: async () => null,
   };
   const container = document.createElement ('div');
   document.body.appendChild (container);
