@@ -386,6 +386,25 @@ track_name()
 TEST_ADD (track_name);
 
 static void
+track_midi_channel()
+{
+  ProjectImplP project = ProjectImpl::create ("TrackMidiChannelTest");
+  TASSERT (project);
+
+  TrackP track = project->create_track();
+  TASSERT (track);
+
+  uint64_t midi_notifications = 0;
+  auto midi_connection = track->on_event ("notify:midi_channel", [&midi_notifications] (const Event &event) { midi_notifications++; });
+  track->midi_channel (1);
+  TASSERT (track->midi_channel() == 1);
+  TASSERT (midi_notifications > 0);
+
+  project->discard();
+}
+TEST_ADD (track_midi_channel);
+
+static void
 clip_creation()
 {
   ProjectImplP project = ProjectImpl::create ("ClipTest");
