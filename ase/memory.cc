@@ -64,7 +64,7 @@ HugePage::allocate (size_t minimum_alignment, size_t bytelength)
           // try mlock
           const int mlret = mlock (memory, bytelength);
           if (mlret < 0)
-            printerr ("%s: mlock(%p,%u) failed: %s\n", __func__, memory, bytelength, strerror (errno));
+            debug ("memory", "%s: mlock(%p,%u) failed: %s", __func__, memory, bytelength, strerror (errno));
           return std::make_shared<LinuxHugePage> (memory, bytelength, &LinuxHugePage::munmap_start);
         }
     }
@@ -75,7 +75,7 @@ HugePage::allocate (size_t minimum_alignment, size_t bytelength)
       minimum_alignment = std::max (minimum_alignment, MINIMUM_HUGEPAGE);
       size_t areasize = minimum_alignment - pagesize + bytelength;
       char *memory = (char*) mmap (nullptr, areasize, protection, flags, -1, 0);
-      if (memory)
+      if (memory != MAP_FAILED)
         {
           // discard unaligned head
           const uintptr_t start = uintptr_t (memory);
@@ -95,7 +95,7 @@ HugePage::allocate (size_t minimum_alignment, size_t bytelength)
           // try mlock
           const int mlret = mlock (memory, bytelength);
           if (mlret < 0)
-            printerr ("%s: mlock(%p,%u) failed: %s\n", __func__, memory, bytelength, strerror (errno));
+            debug ("memory", "%s: mlock(%p,%u) failed: %s", __func__, memory, bytelength, strerror (errno));
           LinuxHugePage::ReleaseF release;
           // linux/Documentation/admin-guide/mm/transhuge.rst
           if (madvise (memory, areasize, MADV_HUGEPAGE) >= 0)
