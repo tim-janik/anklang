@@ -3,141 +3,80 @@
 import * as Dom from '../dom';
 import { TestTimers } from './timers';
 
-// == Test registry ==
-const sub_tests: [string, () => Promise<any>][] = [];
-
-/// A resize triggers one debounced Shell relayout: repeated resizes collapse
-/// into a single re-mount that detaches the old .b-shell node.
-async function test_relayout_resize (): Promise<boolean>
-{
-  const app: any = (window as any).App;
-  if (typeof app?.relayout !== 'function')
-    throw new Error ('App.relayout not available in test environment');
-  if (!app.project)
-    throw new Error ('App.project not set in test environment');
-
-  // Capture the current Shell root; a relayout re-mounts the tree, replacing it.
-  const shell_before = document.querySelector ('.b-shell');
-  if (!shell_before)
-    throw new Error ('Shell element not found in test environment');
-
-  const timers = new TestTimers();
-
-  // Count relayouts while letting the real re-mount run
-  let relayout_count = 0;
-  const orig_relayout = app.relayout.bind (app);
-  app.relayout = () => { relayout_count++; return orig_relayout(); };
-
-  try {
-    // Two rapid resizes: the debounce (restart=true) must fire once at the end.
-    window.dispatchEvent (new Event ('resize'));
-    window.dispatchEvent (new Event ('resize'));
-    if (timers.pending !== 1)
-      throw new Error ('resize did not leave exactly one pending relayout');
-    timers.run();
-
-    if (relayout_count < 1)
-      throw new Error ('resize did not schedule a relayout');
-    if (relayout_count > 1)
-      throw new Error (`multiple resizes caused multiple relayouts: ${relayout_count}`);
-
-    // The re-mount must have detached the original Shell node
-    if (document.body.contains (shell_before))
-      throw new Error ('relayout did not re-mount the Shell tree (old node still attached)');
-    const shell_after = document.querySelector ('.b-shell');
-    if (!shell_after)
-      throw new Error ('relayout left no .b-shell element behind');
-    if (shell_after === shell_before)
-      throw new Error ('relayout did not replace the .b-shell element');
-  } finally {
-    app.relayout = orig_relayout;
-    timers.restore();
-  }
-
-  return true;
-}
-sub_tests.push (['resize', test_relayout_resize]);
-
-/// Relayout re-mounts the Shell tree but must keep the selected track
-/// (Shell.reset() would reset it to the initial master track).
-async function test_relayout_preserves_state (): Promise<boolean>
-{
-  const app: any = (window as any).App;
-  const shell: any = (window as any).Shell;
-  if (typeof app?.relayout !== 'function' || !shell)
-    throw new Error ('App.relayout/Shell not available in test environment');
-
-  // Set a non-default selection that reset() would clear
-  const r = shell.r;
-  const orig_track = r.current_track;
-  r.current_track = 'relayout-test-track';
-
-  try {
-    app.relayout();
-    await Dom.ui_next_frame();
-    await Dom.ui_next_frame();
-
-    if (r.current_track !== 'relayout-test-track')
-      throw new Error (`relayout lost the selected track: ${r.current_track}`);
-  } finally {
-    r.current_track = orig_track;
-  }
-
-  return true;
-}
-sub_tests.push (['preserves_state', test_relayout_preserves_state]);
-
-/// Relayout is a no-op before a project is assigned: the boot-time
-/// dpr_rerender_all() call must not trigger it.
-async function test_relayout_guard_no_project (): Promise<boolean>
-{
-  const app: any = (window as any).App;
-  const shell: any = (window as any).Shell;
-  if (!shell)
-    throw new Error ('Shell not available in test environment');
-
-  // Null Shell.project to simulate the pre-boot state without tearing down the Shell.
-  const timers = new TestTimers();
-  const real_project = shell.project;
-  shell.project = null;
-
-  let relayout_count = 0;
-  const orig_relayout = app.relayout.bind (app);
-  app.relayout = () => { relayout_count++; return orig_relayout(); };
-
-  try {
-    window.dispatchEvent (new Event ('resize'));
-    if (timers.pending !== 1)
-      throw new Error ('resize did not schedule its check');
-    timers.run();
-
-    if (relayout_count != 0)
-      throw new Error (`relayout fired with no project assigned: ${relayout_count}`);
-  } finally {
-    app.relayout = orig_relayout;
-    timers.restore();
-    shell.project = real_project;
-  }
-
-  return true;
-}
-sub_tests.push (['guard_no_project', test_relayout_guard_no_project]);
-
-// == Master runner ==
-/// Single exported entry point runs all sub-tests in sequence.
 export async function test_relayout (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('relayout: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
+  const old_project = App.project;
+  const project = await Ase.server.create_project ('ResizeTest');
+  const height = document.body.style.height;
+  const dpr = Object.getOwnPropertyDescriptor (window, 'devicePixelRatio');
+  let timers: TestTimers;
+  let unsubscribe = () => {};
+  try {
+    await App.assign_project (project, 'b-app');
+    const track = App.current_track;
+    const clip = await track.create_midi_clip ('resize-clip', 0, 4);
+    App.open_piano_roll (clip);
+    await clip.$refetch (() => [clip.name, clip.end_tick, clip.all_notes]);
+    await Dom.ui_next_frame();
+    await Dom.ui_next_frame();
+    const root = Shell.shell_element;
+    const piano = Shell.piano_roll;
+    piano.querySelector ('button[uri="S"]').click();
+    Shell.r.show_about_dialog_ = true;
+    await Dom.ui_next_frame();
+    const tool = piano.querySelector ('[data-tip^="**EDITOR TOOL**"]').getAttribute ('data-tip');
+    const scroll = piano.querySelector ('.-hextend').parentElement;
+    scroll.scrollLeft = 150;
+    const position = scroll.scrollLeft;
+    let calls = 0;
+    const count = () => calls;
+    unsubscribe = Shell.on_resize (() => { calls++; });
+    timers = new TestTimers();
+    document.body.style.height = (document.body.clientHeight - 1) + 'px';
+    await Dom.ui_next_frame();
+    await Dom.ui_next_frame();
+    if (!timers.pending)
+      throw new Error ('body resize did not notify Shell');
+    Shell.resize();
+    Shell.resize();
+    timers.run();
+    await Dom.ui_next_frame();
+    await Dom.ui_next_frame();
+    if (count() !== 1)
+      throw new Error ('repeated resizes did not produce one notification');
+    if (!root.isConnected || Shell.shell_element !== root || Shell.piano_roll !== piano)
+      throw new Error ('resize replaced the Shell or piano roll');
+    if (App.current_track !== track || Shell.r.piano_roll_source !== clip || !Shell.r.show_about_dialog_)
+      throw new Error ('resize lost Shell state');
+    if (scroll.scrollLeft !== position || piano.querySelector ('[data-tip^="**EDITOR TOOL**"]').getAttribute ('data-tip') !== tool)
+      throw new Error ('resize reset the piano scroll position or tool');
+    const ratio = window.devicePixelRatio * 2;
+    Object.defineProperty (window, 'devicePixelRatio', { value: ratio, configurable: true });
+    Shell.resize();
+    timers.run();
+    await Dom.ui_next_frame();
+    await Dom.ui_next_frame();
+    for (const canvas of [document.querySelector ('.b-clipview canvas'), piano.querySelector ('.-notes_canvas')]) {
+      if (canvas.width !== Math.round (canvas.clientWidth * ratio))
+        throw new Error ('display scaling did not resize a canvas');
     }
+    if (!root.isConnected || Shell.shell_element !== root || count() !== 2)
+      throw new Error ('display scaling replaced the Shell or skipped its callbacks');
+    unsubscribe();
+    Shell.resize();
+    timers.run();
+    if (count() !== 2)
+      throw new Error ('removed resize callback still ran');
+  } finally {
+    unsubscribe();
+    if (dpr)
+      Object.defineProperty (window, 'devicePixelRatio', dpr);
+    else
+      delete (window as any).devicePixelRatio;
+    document.body.style.height = height;
+    timers?.restore();
+    await App.assign_project (old_project, 'b-app');
+    await project.discard();
   }
-  if (failures.length)
-    throw new Error ('relayout failures:\n  ' + failures.join ('\n  '));
   return true;
 }

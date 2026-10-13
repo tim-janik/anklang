@@ -138,7 +138,7 @@ interface FileSelector {
 // == SHELL TEMPLATE ==
 export function ShellTemplate (props: any)
 {
-  // Shell persists; App recreates its component tree on project switches and window/DPR changes.
+  // Shell persists; App recreates its component tree on project switches.
   const t = globalThis.Shell ?? new BShell ();
   if (!globalThis.Shell)
     Object.defineProperty (globalThis, 'Shell', { value: t });
@@ -231,6 +231,8 @@ class BShell extends Object {
   listening: any;
   startx: number;
   startwidth: number;
+  private resize_callbacks = new Set<() => void> ();
+  private resize_observer: ResizeObserver;
   constructor ()
   {
     super();
@@ -259,6 +261,28 @@ class BShell extends Object {
     // Registered once; intentionally persistent across project swaps since
     // Shell is a singleton and Ase.server doesn't change.
     this.usernotehook_ = Ase.server.on ("usernote", (user_note_event: any) => this.show_notice (user_note_event.text));
+    this.resize_observer = new ResizeObserver (this.resize);
+    this.resize_observer.observe (document.body);
+    document.fonts.addEventListener ('loadingdone', this.resize);
+    let media: MediaQueryList;
+    const dpr_resize = () => {
+      media?.removeListener (dpr_resize);
+      media = matchMedia (`(resolution: ${window.devicePixelRatio}dppx)`);
+      media.addListener (dpr_resize);
+      this.resize();
+    };
+    dpr_resize();
+  }
+  resize = Util.debounce (() => {
+    document.documentElement.style.setProperty ('--device-pixel-ratio', String (window.devicePixelRatio));
+    for (const callback of this.resize_callbacks)
+      callback();
+    App.zmove();
+  }, { restart: true, wait: 500 });
+  on_resize (callback: () => void)
+  {
+    this.resize_callbacks.add (callback);
+    return () => this.resize_callbacks.delete (callback);
   }
   /// Access current_track (reactive)
   get current_track () { return this.r.current_track; }

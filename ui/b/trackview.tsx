@@ -239,12 +239,14 @@ export function TrackView (props)
       root_ref.removeAttribute ('data-current-track');
   });
 
-  // Each mounted TrackView belongs to one track; shell rebuilds also refresh its measurements.
+  // Each mounted TrackView belongs to one track.
   onMount (() => {
     const subscription = props.track.telemetry().then (fields => Util.telemetry_subscribe (recv_telemetry, fields));
     onCleanup (() => { subscription.then (Util.telemetry_unsubscribe); });
     levelbg_ref.style.setProperty ('--db-zpc', -MINDB * 100.0 / (MAXDB - MINDB) + '%');
-    level_width_ = levelbg_ref.getBoundingClientRect().width;
+    const resize = () => { level_width_ = levelbg_ref.getBoundingClientRect().width; };
+    resize();
+    onCleanup (Shell.on_resize (resize));
   });
 
   const on_editable_change = (event) => {
