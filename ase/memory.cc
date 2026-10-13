@@ -64,7 +64,7 @@ HugePage::allocate (size_t minimum_alignment, size_t bytelength)
           // try mlock
           const int mlret = mlock (memory, bytelength);
           if (mlret < 0)
-            printerr ("%s: mlock(%p,%u) failed: %s\n", __func__, memory, bytelength, strerror (errno));
+            debug ("memory", "%s: mlock(%p,%u) failed: %s", __func__, memory, bytelength, strerror (errno));
           return std::make_shared<LinuxHugePage> (memory, bytelength, &LinuxHugePage::munmap_start);
         }
     }
@@ -95,7 +95,7 @@ HugePage::allocate (size_t minimum_alignment, size_t bytelength)
           // try mlock
           const int mlret = mlock (memory, bytelength);
           if (mlret < 0)
-            printerr ("%s: mlock(%p,%u) failed: %s\n", __func__, memory, bytelength, strerror (errno));
+            debug ("memory", "%s: mlock(%p,%u) failed: %s", __func__, memory, bytelength, strerror (errno));
           LinuxHugePage::ReleaseF release;
           // linux/Documentation/admin-guide/mm/transhuge.rst
           if (madvise (memory, areasize, MADV_HUGEPAGE) >= 0)
