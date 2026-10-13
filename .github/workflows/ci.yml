@@ -30,6 +30,7 @@ jobs:
           ccache-${{ github.ref_name }}-
           ccache-
     - run: ccache -z
+    - run: uname -a && lscpu && free -h
     - run: |
         make -w dist
         mkdir /tmp/anklang && tar xf artifacts/anklang-*.tar.zst -C /tmp/anklang --strip-components=1
