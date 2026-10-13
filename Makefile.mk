@@ -406,7 +406,6 @@ distcheck: dist
 	$(QECHO) CHECK $(distname).tar.zst
 	$Q T=$$(mktemp --tmpdir -d anklang-distcheck-XXXXXXXX) \
 	&& trap "rm -rf $$T" EXIT \
-	&& mkdir -p $$T \
 	&& tar xf artifacts/$(distname).tar.zst -C $$T \
 	&& cd $$T/$(distname) \
 	&& printf "prefix=$$T/inst\nCC=clang\nCXX=clang++\nINSN=fma\n" > config-defaults.mk \
