@@ -2,6 +2,8 @@
 
 # Lint: xclip -sel c < .github/workflows/ci.yml # https://rhysd.github.io/actionlint/
 
+name: CI
+
 on:
   push:
     branches: [ 'trunk', 'wip/**' ]
@@ -57,61 +59,8 @@ jobs:
       DOCKER_IMAGE: 'ghcr.io/tim-janik/anklang-ci:ci-latest'
     steps:
     - { uses: actions/checkout@v7, with: { fetch-depth: 0, fetch-tags: true } }
-    - run: git fetch -f --tags  # Fix actions/checkout#290
+    - run: git fetch --force --tags     # Fix actions/checkout#290
     - run: .github/workflows/gh-release.sh --docker --upload
-
-  # Disabled: advisory only (`make clang-tidy` never fails), and it duplicated the full build and test run
-  #NobleClangTidy:
-  #  if: ${{ ! contains(github.ref, 'refs/tags/') }}
-  #  runs-on: ubuntu-latest
-  #  container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
-  #  steps:
-  #  - { uses: actions/checkout@v7, with: { fetch-depth: 0 } }
-  #  - run: git fetch -f --tags  # Fix actions/checkout#290
-  #  - run: git describe --always --long
-  #  - name: 'Configure build presets'
-  #    run: |
-  #      echo -e ' prefix=/\n CC=clang \n CXX=clang++ \n CLANG_TIDY=clang-tidy ' > config-defaults.mk
-  #  - run: |
-  #      make -j`nproc` all
-  #  - run: |
-  #      make -j`nproc` check
-  #  - name: 'Make clang-tidy'
-  #    run: |
-  #      make -j`nproc` clang-tidy
-  #  # Artifact upload from clang-tidy
-  #  - uses: actions/upload-artifact@v7
-  #    with: { name: clang-tidy, path: out/clang-tidy/ }
-  #  #- name: 'Make branch-check'
-  #  #  # Use non-0 exit status for a failing branch-check on PRs
-  #  #  run: |
-  #  #    test -z "${{ github.event.pull_request }}" || BRANCH_CHECK_EXIT=77
-  #  #    make branch-check BRANCH_CHECK_EXIT=$BRANCH_CHECK_EXIT
-  #  #^^^ NOte, `make branch-check` does another clang-tidy run
-
-  #ArchReplay:
-  #  runs-on: ubuntu-latest
-  #  container: { image: 'ghcr.io/tim-janik/anklang-ci:arch-latest' }
-  #  steps:
-  #  - { uses: actions/checkout@v7, with: { fetch-depth: 0 } }
-  #  - run: git fetch -f --tags # Fix actions/checkout#290
-  #  - run: git describe --always --long
-  #  - name: 'Configure build presets'
-  #    run: |
-  #      echo 'prefix=/' > config-defaults.mk   ;# reset any previous config-defaults.mk
-  #  - name: 'Build Anklang'
-  #    run: |
-  #      make GCC_COLORS="" -j`nproc` all
-  #  - name: 'Run Tests'
-  #    run: |
-  #      make -j`nproc` check
-  #  - name: 'Run X11 GUI Tests'
-  #    run: |
-  #      make x11test-v
-  #  # Artifact upload from x11test
-  #  - uses: actions/upload-artifact@v7
-  #    if: ${{ always() }}
-  #    with: { name: "x11test", path: "out/x11test/" }
 
   Ping-IRC:
     # Announce tag and trunk pushes unless cancelled
@@ -120,9 +69,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - { uses: actions/checkout@v7, with: { fetch-depth: 0 } }
-    - run: git fetch -f --tags          # Fix actions/checkout#290
-    # run: python3 .github/workflows/test_ircbot.py --preview
-    - run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s .github/workflows -p test_ircbot.py -v
+    - run: git fetch --force --tags     # Fix actions/checkout#290
+    - run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s .github/workflows -p test_ircbot.py -v # test_ircbot.py --preview
     - name: Ping-IRC
       continue-on-error: true
       if: ${{ !env.ACT }}  # IRCBOT_JOBS indicates 'success'

@@ -357,7 +357,8 @@ check-bench: FORCE
 # == installcheck ==
 installcheck:
 	$(QGEN)
-	$Q $(DESTDIR)$(bindir)/anklang --version | grep -qi '^anklang'
+	$Q V="$$($(DESTDIR)$(bindir)/anklang --version | head -1)" && test "$$V" = "AnklangSynthEngine $(version)" \
+	|| { echo "$@: ERROR: unexpected version: $$V" >&2; false; }
 	$Q grep -qE 'Anklang\b' $(DESTDIR)$(mandir)/man1/anklang.1
 .PHONY: installcheck
 # conftest_buildtest.c
@@ -405,7 +406,6 @@ distcheck: dist
 	$(QECHO) CHECK $(distname).tar.zst
 	$Q T=$$(mktemp --tmpdir -d anklang-distcheck-XXXXXXXX) \
 	&& trap "rm -rf $$T" EXIT \
-	&& mkdir -p $$T \
 	&& tar xf artifacts/$(distname).tar.zst -C $$T \
 	&& cd $$T/$(distname) \
 	&& printf "prefix=$$T/inst\nCC=clang\nCXX=clang++\nINSN=fma\n" > config-defaults.mk \

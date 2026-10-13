@@ -43,13 +43,13 @@ jobs:
       with: { name: distcheck, path: artifacts/ }
 
   Ping-IRC:
-    # Always run, announce tag and trunk pushes only
+    # Announce completed distchecks unless cancelled
     if: ${{ !cancelled() && needs.New-Commit.outputs.run == 'true' }}
     needs: [ New-Commit, Distcheck ]
     runs-on: ubuntu-latest
     steps:
     - { uses: actions/checkout@v7, with: { fetch-depth: 0 } }
-    - run: git fetch -f --tags          # Fix actions/checkout#290
+    - run: git fetch --force --tags     # Fix actions/checkout#290
     - run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s .github/workflows -p test_ircbot.py -v
     - name: Ping-IRC
       continue-on-error: true
