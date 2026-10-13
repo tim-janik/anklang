@@ -23,7 +23,7 @@ jobs:
     container: { image: 'ghcr.io/tim-janik/anklang-ci:ci-latest', options: --user runner }
     steps:
     - { uses: actions/checkout@v4, with: { fetch-depth: 0 } }
-    - run: git fetch -f --tags  # Fix actions/checkout#290
+    - run: git fetch --force --tags     # Fix actions/checkout#290
     - uses: actions/configure-pages@v5
     - name: 'Configure build presets'
       run: |

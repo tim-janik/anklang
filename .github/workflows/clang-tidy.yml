@@ -57,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - { uses: actions/checkout@v7, with: { fetch-depth: 0, persist-credentials: false } }
-    - run: git fetch -f --tags          # Fix actions/checkout#290
+    - run: git fetch --force --tags     # Fix actions/checkout#290
     - name: Ping-IRC
       continue-on-error: true
       if: ${{ !env.ACT }}  # IRCBOT_JOBS indicates 'success'
