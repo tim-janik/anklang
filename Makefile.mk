@@ -357,7 +357,8 @@ check-bench: FORCE
 # == installcheck ==
 installcheck:
 	$(QGEN)
-	$Q $(DESTDIR)$(bindir)/anklang --version | grep -qi '^anklang'
+	$Q V="$$($(DESTDIR)$(bindir)/anklang --version | head -1)" && test "$$V" = "AnklangSynthEngine $(version)" \
+	|| { echo "$@: ERROR: unexpected version: $$V" >&2; false; }
 	$Q grep -qE 'Anklang\b' $(DESTDIR)$(mandir)/man1/anklang.1
 .PHONY: installcheck
 # conftest_buildtest.c
