@@ -126,14 +126,15 @@ export default [
       "@html-eslint/indent": OFF,
       "@html-eslint/no-extra-spacing-attrs": OFF,
       "@html-eslint/attrs-newline": OFF,
+      "better-tailwindcss/no-unregistered-classes": [ "error", { ignore: [ "^b-app$" ] } ],
     }
   },
 
   // CSS - tailwindcss settings
   {
     settings: {
-      tailwindcss: {
-        // whitelist: [/^b-/], // Regex for custom classes
+      "better-tailwindcss": {
+        entryPoint: "ui/tailwind.css",
       },
     },
   },

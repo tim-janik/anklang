@@ -2,6 +2,7 @@
 //This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 import 'fs';
+import process from 'node:process';
 
 const compile_commands_json = process.argv[2];
 
