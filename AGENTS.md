@@ -30,4 +30,4 @@
 - Every behavior change needs a test. Prefer C++ tests in `ase/tests/`. Use `ui/tests/` for UI behavior only.
 - Tests use the `ase/api.hh` interfaces, not Tracktion directly. Don't test what the type system already guarantees.
 - UI tests wait for the event that really happens, usually the next frame. Never wait a fixed time.
-- Support the last 3 versions of Chrome and Firefox. No vendor prefixes, fallbacks or browser-version checks for older ones.
+- Support the last 3 versions of Chrome and Firefox. Don't add vendor prefixes, fallbacks or browser-version checks for older ones.
