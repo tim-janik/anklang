@@ -56,11 +56,13 @@ const common_js_rules = {
 /** @type {import('eslint').Linter.FlatConfig[]} */
 export default [
   eslint_js.configs.recommended,
-  html.configs["flat/recommended"],
+  { ...html.configs["flat/recommended"], files: ['**/*.html'] },
   ...compat.extends ('plugin:lit/recommended'),
-  ...compat.extends ('plugin:better-tailwindcss/recommended'),
+  ...compat.extends ('plugin:better-tailwindcss/recommended').map (config => ({
+    ...config, files: ['**/*.{js,mjs,cjs,html}'],
+  })),
   {
-    ignores: [ "**/*.ts", "**/*.cts", "**/*.mts", ],
+    ignores: ['**/*.ts', '**/*.cts', '**/*.mts', '!ui/**/*.ts', '**/*.d.ts'],
   },
 
   // CJS files with node globals
@@ -71,6 +73,8 @@ export default [
 	     "ui/jsextract.js",
 	     "ui/sfc-compile.js",
 	     "ui/xbcomments.js",
+	     "misc/*.js",
+	     "misc/*.mjs",
 	     "x11test/epuppeteer.mjs",
     ],
     plugins: common_js_plugins,
@@ -88,6 +92,9 @@ export default [
   {
     files: [ "**/*.js",
 	     "**/*.mjs",
+	     "ui/**/*.jsx",
+	     "ui/**/*.ts",
+	     "ui/**/*.tsx",
     ],
     plugins: common_js_plugins,
     rules: common_js_rules,
@@ -97,6 +104,7 @@ export default [
       parser: babelParser,
       parserOptions: {
 	requireConfigFile: false,
+	babelOptions: { parserOpts: { plugins: ['jsx'] } },
       },
       globals: {
         ...imported_globals.browser,
@@ -116,6 +124,16 @@ export default [
     },
   },
 
+  ...['ts', 'tsx'].map (extension => ({
+    files: [`ui/**/*.${extension}`],
+    languageOptions: {
+      parserOptions: {
+        babelOptions: { plugins: [['@babel/plugin-syntax-typescript', { isTSX: extension === 'tsx' }]] },
+      },
+    },
+    rules: { 'no-undef': OFF },
+  })),
+
   // HTML files
   {
     files: ["**/*.html"],
@@ -126,6 +144,7 @@ export default [
       "@html-eslint/indent": OFF,
       "@html-eslint/no-extra-spacing-attrs": OFF,
       "@html-eslint/attrs-newline": OFF,
+      'better-tailwindcss/no-unregistered-classes': ['error', { ignore: ['^b-'] }],
     }
   },
 
