@@ -174,7 +174,7 @@ ui/check-css-tests: $>/tests/css-tests.sh $>/tests/css-tests.css ui/tests/css-te
 check: ui/check-css-tests
 
 # == ui/tscheck ==
-ui/tscheck: tsconfig.json
+ui/tscheck: tsconfig.json | node_modules/.npm.done
 	$(QECHO) CHECK $@
 	$Q node_modules/.bin/tsc -p $<
 check: ui/tscheck

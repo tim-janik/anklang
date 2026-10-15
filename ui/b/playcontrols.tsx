@@ -20,7 +20,7 @@ export function PlayControls (props: any)
 {
   /** @param {string} method */
   const dispatch = async (method: string) => {
-    const project = (window as any).Shell?.project ?? App.project;
+    const project = Shell.project;
     const func = (project as any)[method];
     let message: string;
     if (func !== undefined) {
@@ -35,9 +35,9 @@ export function PlayControls (props: any)
   };
 
   const toggle_play = async () => {
-    const project = (window as any).Shell?.project ?? App.project;
+    const project = Shell.project;
     const playing = await project.$refetch (() => project.is_playing);
-    if (project !== ((window as any).Shell?.project ?? App.project)) return;
+    if (project !== Shell.project) return;
     dispatch (playing ? 'pause_playback' : 'start_playback');
   };
 

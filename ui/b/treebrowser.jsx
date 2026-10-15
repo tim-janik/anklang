@@ -79,7 +79,7 @@ function TreeNode (props)
 export function TreeBrowser (props)
 {
   const [local, rest] = splitProps (props, ['class', 'tree', 'expandall']);
-  const [expandall, setExpandall] = createSignal (props.expandall ?? true);
+  const [expandall] = createSignal (props.expandall ?? true);
   /** @type {HTMLDivElement | undefined} */
   let container;
 

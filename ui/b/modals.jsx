@@ -51,19 +51,19 @@ function DynamicButton (props)
 // == DialogComponent ==
 const DialogComponent = (props) => {
   const { dialog: d } = props;
-  let divHandlerElement;
-  /** @type {HTMLDialogElement} */ let dialogRef;
+  let div_handler_element;
+  /** @type {HTMLDialogElement} */ let dialog_ref;
 
   let result = -1;
 
   onMount (() => {
-    if (d.div_handler && divHandlerElement)
-      d.div_handler (divHandlerElement, dialogRef);
-    dialogRef.showModal();
+    if (d.div_handler && div_handler_element)
+      d.div_handler (div_handler_element, dialog_ref);
+    dialog_ref.showModal();
   });
 
   onCleanup (() => {
-    dialogRef.close();
+    dialog_ref.close();
     d.finish (result);
   });
 
@@ -71,7 +71,7 @@ const DialogComponent = (props) => {
     <dialog class="b-modals"
 	    id={`MDialog_${d.dialogid}`}
 	    classList={{ [d.class]: !!d.class }}
-	    ref={dialogRef}
+	    ref={dialog_ref}
 	    onClose={d.remove}
 	    exclusive={true} bwidth="9em" style="z-index: 93">
       <header>
@@ -87,7 +87,7 @@ const DialogComponent = (props) => {
           <ObjectEditor value={d.proplist} />
         </Show>
         <Show when={d.div_handler}>
-          <div class="-div-handler" ref={divHandlerElement}></div>
+          <div class="-div-handler" ref={div_handler_element}></div>
         </Show>
         {props.children}
       </main>
@@ -99,7 +99,7 @@ const DialogComponent = (props) => {
                 <DynamicButton
 		  canfocus={b.canfocus}
                   autofocus={b.autofocus}
-                  onClick={() => { result = i(); dialogRef.close(); }}
+                  onClick={() => { result = i(); dialog_ref.close(); }}
                   disabled={b.disabled}>
                   {b.label}
                 </DynamicButton>
