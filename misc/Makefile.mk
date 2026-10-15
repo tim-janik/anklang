@@ -11,6 +11,14 @@ check-agents-md: AGENTS.md misc/check-agents-md.sh misc/test_check_agents_md.py
 .PHONY: check-agents-md
 check: check-agents-md
 
+# == check-removals ==
+check-removals: misc/check-removals.sh misc/test_check_removals.py
+	$(QCHECK)
+	$Q misc/check-removals.sh
+	$Q PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s misc -p test_check_removals.py
+.PHONY: check-removals
+check: check-removals
+
 # == lint-cppcheck ==
 CPPCHECK ?= cppcheck
 CPPCHECK_CCENABLE := warning,style,performance,portability
