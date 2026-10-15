@@ -163,9 +163,9 @@ function make_anchor (input) {
   return string;
 }
 const char1 = '_:A-Za-z\xC0-\xD6\xD8-\xF6\xF8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD';
-const charn = '0-9\xB7\u0300-\u036F\u203F-\u2040.-';
+const charn = '\u0300-\u036F' + char1 + '0-9\xB7\u203F-\u2040.-';
 const re_char1 = new RegExp ('[^' + char1 + ']', 'gu');
-const re_charn = new RegExp ('[^' + char1 + charn + ']+', 'gu');
+const re_charn = new RegExp ('[^' + charn + ']+', 'gu');
 
 /// Process description to add auto-links, etc
 function description_markdown (description) {
