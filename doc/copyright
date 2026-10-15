@@ -8,6 +8,7 @@ Files:
  .github/workflows/*.*
  .pre-commit-config.yaml
  .version
+ AGENTS.md
  LICENSE
  Makefile.mk
  NEWS.md
