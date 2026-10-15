@@ -7,7 +7,7 @@
  *
  * ### Properties:
  * *project*
- * : Implicit *Ase.Project*, using Shell.project.
+ * : The *Ase.Project* shown by the Shell, set by reset().
  */
 
 import { createSignal, createEffect, onMount, onCleanup, For, Show } from 'solid-js'; // createStore
