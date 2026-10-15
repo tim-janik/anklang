@@ -3,6 +3,14 @@ include $(wildcard $>/misc/*.d)
 ALL_TARGETS     += misc/all
 misc/all:
 
+# == check-agents-md ==
+check-agents-md: AGENTS.md misc/check-agents-md.sh misc/test_check_agents_md.py
+	$(QCHECK)
+	$Q misc/check-agents-md.sh AGENTS.md
+	$Q PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s misc -p test_check_agents_md.py
+.PHONY: check-agents-md
+check: check-agents-md
+
 # == lint-cppcheck ==
 CPPCHECK ?= cppcheck
 CPPCHECK_CCENABLE := warning,style,performance,portability
