@@ -332,6 +332,12 @@ $>/.eslint.done: ui/eslintrc.js $(eslint.files) Makefile.mk	| node_modules/.npm.
 $>/.eslint.done: $(if $(filter check eslint,$(MAKECMDGOALS)), FORCE) # force on 'make eslint'
 eslint: $>/.eslint.done FORCE
 
+check-eslint-rules: misc/test_eslintrc.mjs ui/eslintrc.js | node_modules/.npm.done
+	$(QCHECK)
+	$Q node --test $<
+.PHONY: check-eslint-rules
+check: check-eslint-rules
+
 # == stylelint ==
 stylelint: FORCE
 check: stylelint

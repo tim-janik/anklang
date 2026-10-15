@@ -16,6 +16,9 @@ import jsdoc from "eslint-plugin-jsdoc";
 import { FlatCompat } from '@eslint/eslintrc';
 const compat = new FlatCompat();
 const OFF = 'off';
+const user_agent_restriction = {
+  object: 'navigator', property: 'userAgent', message: 'Use browser features instead of the user agent.',
+};
 
 // Plugins for both CJS and ESM files
 const common_js_plugins = {
@@ -133,6 +136,33 @@ export default [
     },
     rules: { 'no-undef': OFF },
   })),
+
+  {
+    files: ['**/*.{js,jsx,mjs,cjs,ts,tsx}'],
+    ignores: ['ui/startup.js', 'ui/mouse.js'],
+    rules: { 'no-restricted-properties': ['error', user_agent_restriction] },
+  },
+
+  {
+    files: ['ui/b/*.{js,jsx,ts,tsx}'],
+    rules: {
+      'id-match': ['error',
+        // Keep upstream Solid APIs and JSX callback names.
+        '^([a-z_$][a-z0-9_$]*|[A-Z][a-zA-Z0-9_]*|create(Effect|Memo|Resource|Signal|Context)|' +
+        'on(Mount|Cleanup|Change|ValueChange)|splitProps|useContext|mergeProps)$',
+        { ignoreDestructuring: true }],
+      'no-restricted-properties': ['error', user_agent_restriction,
+        { object: 'App', property: 'project', message: 'Use Shell.project in components.' }],
+    },
+  },
+
+  {
+    files: ['ui/b/aboutdialog.jsx'],
+    rules: {
+      'no-restricted-properties': ['error',
+        { object: 'App', property: 'project', message: 'Use Shell.project in components.' }],
+    },
+  },
 
   // HTML files
   {
