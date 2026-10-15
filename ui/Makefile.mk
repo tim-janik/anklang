@@ -174,10 +174,16 @@ ui/check-css-tests: $>/tests/css-tests.sh $>/tests/css-tests.css ui/tests/css-te
 check: ui/check-css-tests
 
 # == ui/tscheck ==
-ui/tscheck: tsconfig.json
+ui/tscheck: tsconfig.json | node_modules/.npm.done
 	$(QECHO) CHECK $@
 	$Q node_modules/.bin/tsc -p $<
 check: ui/tscheck
+
+check-ui-tscheck-deps: misc/test_ui_tscheck.py ui/Makefile.mk
+	$(QCHECK)
+	$Q PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s misc -p test_ui_tscheck.py
+.PHONY: check-ui-tscheck-deps
+check: check-ui-tscheck-deps
 
 # == ui dist build ==
 LATE_EVAL += $$(eval $$>/gen/.ui.done: $${doc/mkdocs/anklang.stamp})	# doc/mkdocs/anklang.stamp is assigned later
