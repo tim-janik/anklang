@@ -152,7 +152,7 @@ export function create_note (text, timeout)
 export function Noticeboard (props)
 {
   let board;
-  const setContainer = (el) => { board = container = el; };
+  const set_container = (el) => { board = container = el; };
 
   onCleanup (() => {
     for (const note of Array.from (board.children))
@@ -162,6 +162,6 @@ export function Noticeboard (props)
   });
 
   return (
-    <div class="b-noticeboard" ref={setContainer} style={props.style}></div>
+    <div class="b-noticeboard" ref={set_container} style={props.style}></div>
   );
 }

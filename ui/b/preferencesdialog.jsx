@@ -35,21 +35,21 @@ export function PreferencesDialog (props)
 function PreferencesContent (props)
 {
   /** @type {HTMLDialogElement} */
-  let dialogRef;
-  onCleanup (() => dialogRef.close());
+  let dialog_ref;
+  onCleanup (() => dialog_ref.close());
 
   const close_button_click = (event) => {
     Util.prevent_event (event);
     if (event.shiftKey && event.ctrlKey && (event.altKey || event.metaKey))
       props.reload();
     else
-      dialogRef.close();
+      dialog_ref.close();
   };
 
   return (
     <dialog
       class="b-preferencesdialog floating-dialog [&:not([open])]:hidden"
-      ref={dialogRef}
+      ref={dialog_ref}
       onClose={props.onClose}
       exclusive={true}
       bwidth="9em"
@@ -58,7 +58,7 @@ function PreferencesContent (props)
       <ObjectEditor
         value={props.proplist}
         augment={augment_prop}
-        onReady={() => Dom.show_modal (dialogRef)}
+        onReady={() => Dom.show_modal (dialog_ref)}
       />
       <div class="dialog-footer">
         <button class="button-xl" autofocus onClick={close_button_click}>Close</button>

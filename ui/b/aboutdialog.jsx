@@ -30,14 +30,14 @@ export function AboutDialog (props)
 function AboutContent (props)
 {
   /** @type {HTMLDialogElement} */
-  let dialogRef;
-  onMount (() => Dom.show_modal (dialogRef));
-  onCleanup (() => dialogRef.close());
+  let dialog_ref;
+  onMount (() => Dom.show_modal (dialog_ref));
+  onCleanup (() => dialog_ref.close());
 
   return (
     <dialog
       class="b-about-dialog floating-dialog"
-      ref={dialogRef}
+      ref={dialog_ref}
       onClose={props.onClose}
       exclusive={true}
       bwidth="9em"
@@ -56,7 +56,7 @@ function AboutContent (props)
         </For>
       </div>
       <div class="dialog-footer">
-        <button class="button-xl" autofocus onClick={() => dialogRef.close()}>Close</button>
+        <button class="button-xl" autofocus onClick={() => dialog_ref.close()}>Close</button>
       </div>
     </dialog>
   );

@@ -89,10 +89,9 @@ export function CrawlerDialog (props)
 
 function CrawlerContent (props)
 {
-  let dialogRef: any;
-  let direntryRef: any;
-  let pathentryRef: any;
-  let entrygridRef: any;
+  let dialog_ref: any;
+  let pathentry_ref: any;
+  let entrygrid_ref: any;
 
   const [crawler] = createResource (async () => {
     const c = await Ase.server.dir_crawler (props.cwd || '~MUSIC');
@@ -104,18 +103,18 @@ function CrawlerContent (props)
   let selected: string | undefined;
 
   const ctrl_l_grab_focus = () => {
-    pathentryRef.focus();
-    pathentryRef.select();
+    pathentry_ref.focus();
+    pathentry_ref.select();
   };
 
   onMount (() => {
-    Dom.show_modal (dialogRef);
-    Kbd.add_hotkey ('Ctrl+L', ctrl_l_grab_focus, dialogRef);
+    Dom.show_modal (dialog_ref);
+    Kbd.add_hotkey ('Ctrl+L', ctrl_l_grab_focus, dialog_ref);
   });
   onCleanup (() => {
     alive = false;
     Kbd.remove_hotkey ('Ctrl+L', ctrl_l_grab_focus);
-    dialogRef.close();
+    dialog_ref.close();
   });
 
   const handle_close = () => {
@@ -156,18 +155,18 @@ function CrawlerContent (props)
   /// assign_utf8path - assign a path in UTF-8 encoding and possibly select it
   const assign_utf8path = async (filepath: string, pickfile = false) =>
   {
-    if (update_inflight() || !dialogRef.open)
+    if (update_inflight() || !dialog_ref.open)
       return;
     set_assigning (true);
     try {
       const c = crawler();
       const [, file] = await c.assign (filepath, props.existing !== false);
       await c.$asyncs();
-      if (!alive || !dialogRef.open)
+      if (!alive || !dialog_ref.open)
         return;
-      pathentryRef.value = file;
+      pathentry_ref.value = file;
       if (document.activeElement === document.body)
-        pathentryRef.focus();
+        pathentry_ref.focus();
     } finally {
       set_assigning (false);
     }
@@ -179,7 +178,7 @@ function CrawlerContent (props)
   {
     if (Kbd.match_key_event (event, 'Tab')) {
       Util.prevent_event (event);
-      pathentryRef?.focus();
+      pathentry_ref?.focus();
     } else
       Kbd.keydown_move_focus (event);
   };
@@ -189,7 +188,7 @@ function CrawlerContent (props)
     if (Kbd.match_key_event (event, 'Enter'))
       assign_utf8path ((event.target as HTMLInputElement).value, true);
     else if (Kbd.match_key_event (event, 'Shift+Tab')) {
-      const entries = Kbd.list_focusables (entrygridRef);
+      const entries = Kbd.list_focusables (entrygrid_ref);
       if (entries.length) {
         Util.prevent_event (event);
         (entries[0] as HTMLElement).focus();
@@ -202,7 +201,7 @@ function CrawlerContent (props)
   const entry_event = (event: Event, entry: any) => {
     if (update_inflight())
       return;
-    pathentryRef.value = entry.label;
+    pathentry_ref.value = entry.label;
     if (event.type === 'dblclick' || (event.type === 'click' && (event as MouseEvent).detail === 0)) {
       if (entry.uri.endsWith ('/'))
         assign_utf8path (entry.uri);
@@ -212,11 +211,11 @@ function CrawlerContent (props)
   };
 
   const select_entry = (entry: any) => {
-    if (update_inflight() || !dialogRef.open)
+    if (update_inflight() || !dialog_ref.open)
       return false;
     let uri = entry?.uri;
     if (!uri) {
-      const filename = pathentryRef.value.trim();
+      const filename = pathentry_ref.value.trim();
       if (!filename || filename.includes ('/'))
         return false;
       uri = folder().replace (/\/$/, '') + '/' + filename;
@@ -224,27 +223,26 @@ function CrawlerContent (props)
     if (uri.endsWith ('/'))
       return false;
     selected = uri;
-    dialogRef.close();
+    dialog_ref.close();
     return true;
   };
 
   return (
     <div class="b-crawlerdialog">
-      <dialog ref={dialogRef} onClose={handle_close}
+      <dialog ref={dialog_ref} onClose={handle_close}
         class="floating-dialog [&:not([open])]:hidden">
         <div class="dialog-header">{props.title || 'File Dialog'}</div>
 
         <input class="-direntry pointer-events-none mb-4 select-none outline outline-2 outline-offset-2"
-          ref={direntryRef}
           value={folder()}
           tabindex="-1" readonly
-          onFocus={() => pathentryRef?.focus()}
+          onFocus={() => pathentry_ref?.focus()}
           inert
           type="text"
           onSelect={Util.prevent_event} />
 
         <div data-subfocus="*" class="-entry-grid grid"
-          ref={entrygridRef}
+          ref={entrygrid_ref}
           onKeyDown={entrygrid_keydown}>
           <For each={filtered_entries()}>
             {(entry: any) => (
@@ -264,7 +262,7 @@ function CrawlerContent (props)
         </div>
 
         <input class="-pathentry mt-4 outline outline-2 outline-offset-2"
-          ref={pathentryRef}
+          ref={pathentry_ref}
           value=""
           type="text"
           onKeyDown={pathentry_keydown}
@@ -275,7 +273,7 @@ function CrawlerContent (props)
             disabled={update_inflight() ? true : undefined}>
             {props.button || 'Select'}
           </button>
-          <button class="button-xl" onClick={() => dialogRef.close()} onKeyDown={Kbd.keydown_move_focus_up}>
+          <button class="button-xl" onClick={() => dialog_ref.close()} onKeyDown={Kbd.keydown_move_focus_up}>
             Close
           </button>
         </div>

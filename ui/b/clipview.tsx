@@ -43,13 +43,13 @@ Extra_css`
 
 import * as Z from 'zcam-js';
 
-const sRGB_viewing_conditions = {
+const srgb_viewing_conditions = {
   Fs: Z.ZCAM_DIM,       // DIM comes closest to CIELAB L* in ZCAM and CIECAM97
   Yb: 9.1,              // Background luminance factor so Jz=50 yields #777777
   La: 80,               // La = Lw * Yb / 100; Safdar21, ZCAM, a colour appearance model
   Xw: Z.ZCAM_D65.x, Yw: Z.ZCAM_D65.y, Zw: Z.ZCAM_D65.z,
 };
-const default_gamut = new Z.Gamut (sRGB_viewing_conditions);
+const default_gamut = new Z.Gamut (srgb_viewing_conditions);
 
 function render_canvas (canvas, clip, tickscale) {
   const pixelratio = Util.resize_canvas (canvas, canvas.parentElement.clientWidth, canvas.parentElement.clientHeight, true);
@@ -69,8 +69,8 @@ function render_canvas (canvas, clip, tickscale) {
   const hz = hues[cindex % hues.length];
   const gamut = default_gamut, viewing = gamut.viewing;
   let zcam = { Jz: 55, Cz: 30, viewing, hz: parseFloat (hz), };
-  const max_Cz = gamut.maximize_Cz (zcam);
-  zcam.Cz = max_Cz * 0.7;
+  const max_cz = gamut.maximize_Cz (zcam);
+  zcam.Cz = max_cz * 0.7;
   let rgb = gamut.contains (zcam);
   if (!rgb.inside)
     rgb = gamut.contains (gamut.clamp_chroma (zcam));
