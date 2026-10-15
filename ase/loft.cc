@@ -252,8 +252,8 @@ BumpAllocator::bump_alloc (size_t size)
     }
   // no span could satisfy the request
   const size_t old_totalmem_ = totalmem_;
-  grow_spans (size, false);
-  if (config_willgrow) {
+  const size_t allocated = grow_spans (size, false);
+  if (allocated && config_willgrow) {
     std::function<void(size_t, size_t)> *willgrow = config_willgrow;
     (*willgrow) (old_totalmem_, size);
   }
