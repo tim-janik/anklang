@@ -2,6 +2,7 @@
 // @ts-check
 
 /** @class AboutDialog
+ * @description
  * SolidJS component that displays version information about Anklang.
  *
  * ### Props:

@@ -2,6 +2,7 @@
 // @ts-check
 
 /** @class StatusBar
+ * @description
  * SolidJS component that displays status messages and panel-switcher icons.
  */
 

@@ -2,6 +2,7 @@
 // @ts-check
 
 /** @class TreeBrowser
+ * @description
  * SolidJS component that renders tree structures with collapsible branches.
  *
  * ### Props:

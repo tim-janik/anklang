@@ -2,6 +2,7 @@
 // @ts-check
 
 /** @class CrawlerDialog
+ * @description
  * A modal [dialog] that allows file and directory selections.
  *
  * ## Properties:
