@@ -417,6 +417,7 @@ distcheck: dist
 	&& trap "rm -rf $$T" EXIT \
 	&& tar xf artifacts/$(distname).tar.zst -C $$T \
 	&& cd $$T/$(distname) \
+	&& ! git rev-parse --show-toplevel 2>/dev/null \
 	&& printf "prefix=$$T/inst\nCC=clang\nCXX=clang++\nINSN=fma\n" > config-defaults.mk \
 	&& $(MAKE) all -j$$(nproc) \
 	&& $(MAKE) strict -j$$(nproc) \

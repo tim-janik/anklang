@@ -32,21 +32,17 @@ jobs:
     - run: ccache -z
     - run: uname -a && lscpu && free -h
     - run: |
-        make -w dist
-        mkdir /tmp/anklang && tar xf artifacts/anklang-*.tar.zst -C /tmp/anklang --strip-components=1
-        cd /tmp/anklang
+        git rev-parse --show-toplevel
         echo -e 'prefix=/tmp/inst\nCC=clang\nCXX=clang++\nINSN=fma\nMODE=devel' > config-defaults.mk     # no LTO, production builds are for releases
-    - uses: actions/upload-artifact@v7
-      with: { name: AnklangTarball, path: artifacts/ }
-    - run: make -C /tmp/anklang -w all -j`nproc`
+    - run: make -w all -j`nproc`
     - run: ccache -s
     - uses: actions/cache/save@v6       # untrusted PRs must not write caches (cache poisoning)
       if: github.event_name == 'push'
       with: { path: /tmp/ccache, key: 'ccache-${{ github.ref_name }}-${{ github.sha }}' }
-    - run: make -C /tmp/anklang -w strict -j`nproc`
-    - run: make -C /tmp/anklang -w install
-    - run: make -C /tmp/anklang -w installcheck -j`nproc`
-    - run: make -C /tmp/anklang -w uninstall
+    - run: make -w strict -j`nproc`     # includes `make check`
+    - run: make -w install
+    - run: make -w installcheck -j`nproc`
+    - run: make -w uninstall
     - run: .github/workflows/release-test.sh
       if: github.ref_type != 'tag'
 
