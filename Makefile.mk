@@ -387,11 +387,14 @@ dist_exclude := $(strip			\
 	external/minizip-ng/test	\
 	external/minizip-ng/lib		\
 )
+# DIST_VERSION overrides the release version, e.g. a nightly tag plus -g<hash>; dist bakes it into .version.
 dist: TAGS
+	$(eval TAG := $(or $(DIST_VERSION),$(TAG)))
+	$(eval version_info := $(TAG) $(version_date))
 	$(eval distname := anklang-$(version))
 	$(QECHO) MAKE $(distname).tar.zst
 	$Q git describe --dirty | grep -qve -dirty || echo -e "#\n# $@: WARNING: working tree is dirty\n#"
-	$Q rm -r -f artifacts/ && mkdir -p artifacts/
+	$Q rm -r -f artifacts/ && mkdir -p artifacts/ && echo '$(version_info)' > artifacts/.version
 	$Q # Generate ChangeLog with ^^-prefixed records. Tab-indent commit bodies.
 	$Q # Kill trailing whitespaces. Compress multiple newlines.
 	$Q git log --abbrev=13 --date=short --first-parent HEAD	\
@@ -399,7 +402,7 @@ dist: TAGS
 	&& sed 's/^/	/; s/^	^^// ; s/[[:space:]]\+$$// '	-i artifacts/ChangeLog \
 	&& sed '/^\s*$$/{ N; /^\s*\n\s*$$/D }'			-i artifacts/ChangeLog
 	$Q # Generate and compress artifacts/anklang-*.tar.zst
-	$Q git archive --prefix=$(distname)/ --add-file artifacts/ChangeLog --add-file TAGS -o artifacts/$(distname).tar HEAD
+	$Q git archive --prefix=$(distname)/ --add-file artifacts/ChangeLog --add-file TAGS --add-file artifacts/.version -o artifacts/$(distname).tar HEAD ':!.version'
 	$Q rm -f artifacts/$(distname).tar.zst && zstd --ultra -22 --rm artifacts/$(distname).tar && ls -lh artifacts/$(distname).tar.zst
 	$Q echo "Archive ready: artifacts/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
 CLEANDIRS += artifacts/
