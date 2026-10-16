@@ -426,10 +426,12 @@ export function ContextMenu (props: {
 
   onMount (() => {
     if (!dialog_ref) return;
-    resize_observer = new ResizeObserver (() => {
+    const resize = () => {
       if (dialog_ref.open)
         fit_and_reposition_dialog();
-    });
+    };
+    onCleanup (Shell.on_resize (resize));
+    resize_observer = new ResizeObserver (resize);
     resize_observer.observe (dialog_ref.querySelector ('.b-contextmenu-inner'));
     // Close on backdrop clicks (regression from Lit migration)
     Util.dialog_backdrop_autoclose (dialog_ref, true);

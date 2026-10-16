@@ -232,19 +232,13 @@ export function PianoRoll (props: {
     if (t.vscrollbar)
       t.vscrollbar.onscroll = e => t.hvscroll (e);
 
-    // setup resize observer — actually trigger layout + repaint on resize
-    // (the previous Lit version's callback was `els => this.requestUpdate.bind (this)`,
-    //  which never *called* requestUpdate, so resizes were silently ignored)
-    const resize_observer = new ResizeObserver (() => {
+    onCleanup (Shell.on_resize (() => {
       if (t.clip)
         piano_layout.call (t);
       t.queue_repaint();
-    });
-    resize_observer.observe (t.root);
-    resize_observer.observe (document.body);
+    }));
 
     onCleanup (() => {
-      resize_observer.disconnect();
       Shell.piano_current (null, null);
       if (t.notes_canvas_pointermove_zmovedel)
       {

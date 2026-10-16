@@ -63,6 +63,36 @@ async function test_shell_tracklist_forwarding (): Promise<boolean>
 }
 sub_tests.push (['tracklist_forwarding', test_shell_tracklist_forwarding]);
 
+async function test_shell_fixed_project (): Promise<boolean>
+{
+  let reads = 0, second_reads = 0, disconnected = 0;
+  let notify: () => Promise<void>;
+  const first = {
+    ...make_fake_project(),
+    all_tracks: async () => { reads++; return []; },
+    on: (_event, callback) => { notify = callback; return () => { disconnected++; }; },
+  };
+  const [project, set_project] = createSignal (first);
+  const container = document.createElement ('div');
+  document.body.appendChild (container);
+  const dispose = render (() => createComponent (TrackList, { get project () { return project(); } }), container);
+  try {
+    await Dom.ui_next_frame();
+    set_project ({ ...first, all_tracks: async () => { second_reads++; return []; } });
+    await Dom.ui_next_frame();
+    await notify();
+    if (reads !== 2 || second_reads !== 0)
+      throw new Error ('TrackList replaced its mounted project or lost track notifications');
+  } finally {
+    dispose();
+    container.remove();
+  }
+  if (disconnected !== 1)
+    throw new Error ('TrackList did not disconnect its project on disposal');
+  return true;
+}
+sub_tests.push (['fixed_project', test_shell_fixed_project]);
+
 /// Test that DevicePanel forwards host attributes (class) to its root element.
 async function test_shell_devicepanel_forwarding (): Promise<boolean>
 {

@@ -104,18 +104,20 @@ export function ClipView (props) {
 
   // Re-render canvas when clip properties change
   onCleanup (() => cancelAnimationFrame (pending_raf));
-  createEffect (() => {
-    // Access clip properties to track reactivity
-    props.clip?.name;
-    props.clip?.end_tick;
-    props.clip?.all_notes;
-
+  const queue_render = () => {
     if (canvas_ref && props.clip) {
       cancelAnimationFrame (pending_raf);
       pending_raf = requestAnimationFrame (() => {
         render_canvas (canvas_ref, props.clip, tickscale);
       });
     }
+  };
+  onCleanup (Shell.on_resize (queue_render));
+  createEffect (() => {
+    props.clip?.name;
+    props.clip?.end_tick;
+    props.clip?.all_notes;
+    queue_render();
   });
 
   function click (event) {

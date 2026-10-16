@@ -46,6 +46,9 @@ Extra_css`
 // == Component ==
 export function MenuBar (props)
 {
+  const project = Shell.project;
+  const project_activate = activate.bind (null, project);
+  const project_isactive = isactive.bind (null, project);
   // refs for contextmenu elements
   /** @type {any} */ let filemenu;
   /** @type {any} */ let editmenu;
@@ -69,7 +72,7 @@ export function MenuBar (props)
           <div class="b-menubar-icon">
             <Icon ic="md-folder"/>
           </div>
-          <ContextMenu ref={filemenu} activate={activate} isactive={isactive} items={[
+          <ContextMenu ref={filemenu} activate={project_activate} isactive={project_isactive} items={[
             { uri: 'loadnew', label: 'New Project', icon: 'fa-file_o', kbd: 'Ctrl+N' },
             { uri: 'load', label: 'Open Project…', icon: 'fa-file_audio_o', kbd: 'Ctrl+O' },
             { uri: 'save', label: 'Save Project', icon: 'fa-save', kbd: 'Ctrl+S' },
@@ -89,7 +92,7 @@ export function MenuBar (props)
           <div class="b-menubar-icon">
             <Icon ic="md-playlist_edit"/>
           </div>
-          <ContextMenu ref={editmenu} activate={activate} isactive={isactive} items={[
+          <ContextMenu ref={editmenu} activate={project_activate} isactive={project_isactive} items={[
             { uri: 'undo', label: 'Undo', icon: 'md-undo', kbd: 'Ctrl+Z' },
             { uri: 'redo', label: 'Redo', icon: 'md-redo', kbd: 'Shift+Ctrl+Z' },
           ]} />
@@ -103,7 +106,7 @@ export function MenuBar (props)
           <div class="b-menubar-icon">
             <Icon ic="fa-eye"/>
           </div>
-          <ContextMenu ref={viewmenu} activate={activate} isactive={isactive} items={[
+          <ContextMenu ref={viewmenu} activate={project_activate} isactive={project_isactive} items={[
             { uri: 'fullscreen', label: 'Toggle Fullscreen', icon: 'md-fullscreen', kbd: 'F11', disabled: !document.fullscreenEnabled },
             ...electron_menuitems(),
           ]} />
@@ -126,7 +129,7 @@ export function MenuBar (props)
           <div class="b-menubar-icon">
             <Icon ic="fa-life_ring"/>
           </div>
-          <ContextMenu ref={helpmenu} activate={activate} isactive={isactive} items={[
+          <ContextMenu ref={helpmenu} activate={project_activate} isactive={project_isactive} items={[
             { uri: 'anklang-docu', label: 'Anklang Documentation…', icon: 'fa-book_open' },
             { type: 'separator' },
             { uri: 'about', label: 'About…', icon: 'oct-id_badge' },
@@ -148,19 +151,19 @@ function electron_menuitems()
 };
 
 // == Menu activation handlers ==
-async function isactive (uri)
+async function isactive (project, uri)
 {
   switch (uri) {
     case 'undo':
-      return Shell.project.can_undo();
+      return project.can_undo();
     case 'redo':
-      return Shell.project.can_redo();
+      return project.can_redo();
     default:
       return true;
   }
 }
 
-async function activate (uri, event)
+async function activate (project, uri, event)
 {
   const Electron = window["Electron"] || null;
   let u, v;
@@ -180,7 +183,7 @@ async function activate (uri, event)
       v = await v;
       if (v == 0)
         return window_close();
-      if (v == 2 && await save_project())
+      if (v == 2 && await save_project (project))
         return window_close();
       break;
     case 'about':
@@ -209,10 +212,10 @@ async function activate (uri, event)
         document.body.requestFullscreen();
       break;
     case 'undo':
-      await Shell.project.undo();
+      await project.undo();
       break;
     case 'redo':
-      await Shell.project.redo();
+      await project.redo();
       break;
     case 'loadnew':
       App.load_project_checked();
@@ -221,10 +224,10 @@ async function activate (uri, event)
       open_file();
       break;
     case 'save':
-      save_project();
+      save_project (project);
       break;
     case 'saveas':
-      save_project (true);
+      save_project (project, true);
       break;
   }
 }
@@ -258,7 +261,7 @@ async function open_file() {
 }
 let open_file_last_dir = "~MUSIC";
 
-async function save_project (asnew = false) {
+async function save_project (project, asnew = false) {
   const opt = {
     title:  _('Save Project'),
     button: _('Save As'),
@@ -266,7 +269,7 @@ async function save_project (asnew = false) {
     existing: false,
     filters: [ { name: 'Projects', extensions: ['anklang'] }, ],
   };
-  let filename = await Shell.project.saved_filename();
+  let filename = await project.saved_filename();
   let replace = asnew ? 0 : !!filename;
   if (asnew || !filename)
     filename = await Shell.select_file (opt);
@@ -284,9 +287,9 @@ async function save_project (asnew = false) {
       if (replace != 1)
         return false;
     }
-  let msg, err = await App.save_project (filename);
+  let msg, err = await App.save_project (filename, true, project);
   if (err === Ase.Error.NONE) {
-    filename = await Shell.project.saved_filename(); // get canonicalized form
+    filename = await project.saved_filename(); // get canonicalized form
     msg = '### Project Saved\n  \n  \n';
     msg += 'Project successfully saved to:\n\n`' + displayfs (filename) + '`\n';
   } else {
