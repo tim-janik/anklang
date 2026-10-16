@@ -142,9 +142,9 @@ $>/.copyright.check: misc/checkcrlist.py $(misc/copyright_files) $(REPOCOMMITDEP
 	   then jj --no-pager file list ; \
 	   elif git rev-parse --is-inside-work-tree >/dev/null 2>&1 ; \
 	   then git ls-tree -r --name-only HEAD ; \
-	   fi > $>/copyright.lst \
-	&& misc/checkcrlist.py -e $>/copyright.lst $(misc/copyright_files)
-	$Q rm -f $>/copyright.lst && touch $@
+	   fi > $@.lst \
+	&& misc/checkcrlist.py -e $@.lst $(misc/copyright_files)
+	$Q rm -f $@.lst && touch $@
 # LATE_TARGETS += $>/.copyright.check
 strict: $>/.copyright.check
 # explicit copyright check, metadata fetching requires Git
@@ -155,9 +155,16 @@ check-copyright: misc/checkcrlist.py $(misc/copyright_files)
 	   then jj --no-pager file list ; \
 	   elif git rev-parse --is-inside-work-tree >/dev/null 2>&1 ; \
 	   then git ls-tree -r --name-only HEAD ; \
-	   fi > $>/copyright.lst \
-	&& misc/checkcrlist.py $(if $(GITCOMMITDEPS),--git) -e -p $>/copyright.lst $(misc/copyright_files) \
-	&& rm -f $>/copyright.lst
+	   fi > $>/$@.lst \
+	&& misc/checkcrlist.py $(if $(GITCOMMITDEPS),--git) -e -p $>/$@.lst $(misc/copyright_files) \
+	&& rm -f $>/$@.lst
 .PHONY: check-copyright
 strict: check-copyright
 # misc/mkcopyright.py -c doc/copyright.ini -f <FILELIST>
+
+# == check-copyright-tests ==
+check-copyright-tests: misc/test_check_copyright.py misc/checkcrlist.py misc/Makefile.mk
+	$(QCHECK)
+	$Q PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s misc -p test_check_copyright.py
+.PHONY: check-copyright-tests
+check: check-copyright-tests
