@@ -429,8 +429,8 @@ distcheck: dist
 	&& misc/mkAppImage.sh \
 	&& cp -p $$T/$(distname)/artifacts/* $(CURDIR)/artifacts/
 	$Q cd artifacts/ \
-	&& sha256sum $(distname).tar.zst ChangeLog *.deb *.rpm *.AppImage > $(distname).SHA256SUMS \
-	&& sha256sum -c $(distname).SHA256SUMS
+	&& sha256sum $(distname).tar.zst ChangeLog *.deb *.rpm *.AppImage > SHA256SUMS \
+	&& sha256sum -c SHA256SUMS
 	$Q echo "Distcheck ready: artifacts/$(distname).tar.zst" | sed '1h; 1s/./=/g; 1p; 1x; $$p; $$x'
 .PHONY: distcheck
 
