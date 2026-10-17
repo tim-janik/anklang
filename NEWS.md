@@ -1,6 +1,65 @@
 ## Anklang NEXT
 
-* Switched to C++23, improved various build system automations.
+### Added:
+* Tracktion Engine 3 and JUCE 7 now run audio and MIDI. Projects, tracks, clips
+  and plugins live in the Tracktion `Edit`, undo and redo use its UndoManager
+* MIDI and audio clips use Tracktion clip types, the track menu can add MIDI clips
+* LiquidSFZ plugin for the new engine, by Stefan Westerfeld (@swesterfeld)
+* The freepats-vorbis sample set is installed under media/Samples
+* Option `--ui <none|chromium|google-chrome|htmlgui>` opens the UI in a small Electron
+  shell (htmlgui, the default) or in a web browser, with token based session login
+* Options `--headless`, `--ui-test`, `--list-ui-tests` and `--ui-js` run UI tests and
+  scripts without a window
+* `make check` runs C++ and headless UI tests for projects, tracks, clips, undo
+  and redo, `make strict` adds slower checks
+* Linting with a tree-sitter based code smell checker, ESLint and stylelint,
+  plus pre-push hooks, a daily clang-tidy report and a nightly distcheck
+* The main loop supports coroutines via `CoTask<T>`, `Loop::Promise` and `Loop::delay()`
+* Colored log output and log files in ~/.cache/anklang/ with stack traces via
+  cpptrace, old log files get pruned, `ASE_DEBUG` selects debug output
+* New documentation site built with mkdocs, including C++, JUCE and Tracktion
+  API docs and first tutorials: https://tim-janik.github.io/anklang/
+* RPM packages, next to deb and AppImage
+
+### Changed:
+* *All* UI components got ported to SolidJS, replacing Vue and Lit. Vite 7 builds
+  the UI, Tailwind CSS 4 and plain CSS replace SCSS, menus are declared as lists
+* The UI talks to the engine through TypeScript bindings that clang generates
+  from `ase/api.hh`, properties are proxied and update by themselves
+* The WebSocket server is now integrated into the main loop
+* The code base uses C++23, linking uses mold or lld, compiling uses
+  precompiled headers and ccache
+* External dependencies are fetched as tarballs instead of git submodules
+* Versions come from annotated git tags, `make dist DIST_VERSION=...` writes them into .version
+* Releases are built with `make distcheck` in the CI Docker image (Debian stable)
+* UI fonts are Inter, Recursive and Monaspace, icons use Nerd Fonts
+* UI got updated to Electron 42
+* Updated to PandaResampler 0.2.1 and liquidsfz 0.4.1 (@swesterfeld)
+* On exit, Anklang stops its child processes step by step as a subreaper
+
+### Fixed:
+* Fixed libsndfile support for FLAC, Ogg and Opus files (@swesterfeld)
+* Fixed use-after-free crashes in the WebSocket server and transport listener, #100
+* Fixed AddressSanitizer issues with debug keys, #75
+* Headless Electron no longer hangs at startup during GPU setup
+* Fixed a context menu close race, #109
+* The SolidJS port came with many focus, menu, dialog and piano roll fixes
+
+### Removed:
+* The old ASE audio engine, its native devices and the CLAP plugin host
+* The PDF manual, poxy docs, the Python binding generator and the
+  `--class-tree`, `--js-api` and `--embed` options
+* Vue, SCSS, signal-polyfill, fork-awesome and material-icons
+* Git submodules
+
+### Breaking:
+* This release switches engines and the switch is not complete, see ROADMAP.md
+* Projects don't save or load tracks and clips yet
+* BlepSynth, Freeverb and Saturation are not ported yet, LiquidSFZ is the only device
+* Building requires g++ >= 14 or clang
+
+Thanks to Stefan Westerfeld for his device work, and to everyone
+who gave feedback and helped to make this release happen!
 
 ## Anklang 0.3.0
 
