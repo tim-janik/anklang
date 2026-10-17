@@ -147,6 +147,18 @@ done
 git checkout -q -- NEWS.md
 git checkout -q trunk
 
+# Long git log notes are cut at a paragraph to fit GitHub's 125000 character limit.
+git checkout -qb longlog
+{ printf 'Long log\n\n'; printf 'Paragraph %s pads the git log beyond the release body limit.\n\n' {1..3000}; } |
+  git commit -q --allow-empty -F -
+git tag v0.1.0-nightly.3
+.github/workflows/gh-release.sh v0.1.0-nightly.3 > "$work/echo"
+(( $(wc -m < artifacts/.notes) <= 125000 ))
+grep -q 'Long log' artifacts/.notes
+expect_failure grep -q 'Paragraph 3000 pads' artifacts/.notes
+[[ $(grep -B1 -Fx '[...]' artifacts/.notes | head -n1) =~ ^[[:space:]]*$ ]]
+git checkout -q trunk
+
 : > "$GH_TEST_LOG"
 git tag -a v0.1.0-nightly.2 -m 'second tag'
 expect_failure env FAKE_MAKE_STATUS=3 .github/workflows/gh-release.sh --upload v0.1.0-nightly.1

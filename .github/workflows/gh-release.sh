@@ -112,7 +112,14 @@ else
     git log --pretty='%s    # %cd %an %h%n%w(0,4,4)%b' \
 	--first-parent --date=short "${PREVIOUS:+$PREVIOUS..}HEAD" |
       sed -e '/^\s*Signed-off-by:.*<.*@.*>/d' |
-      sed '/^\s*$/{ N; /^\s*\n\s*$/D }'
+      sed '/^\s*$/{ N; /^\s*\n\s*$/D }' |
+      # GitHub rejects release bodies over 125000 Unicode characters (not bytes), cut at a paragraph.
+      awk -v max=120000 '
+	{ n += length($0) + 1 }
+	n > max { next }
+	{ buf = buf $0 "\n" }
+	/^[ \t]*$/ { printf "%s", buf; buf = "" }
+	END { if (n > max) print "[...]\n"; else printf "%s", buf }'
     echo '``````````````````````````````````````````````````````````````````````````````````````'
     echo
   } > artifacts/.notes
