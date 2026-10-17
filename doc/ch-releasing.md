@@ -21,3 +21,5 @@ Producing a distribution tarball depends on Git however, for versioning, ChangeL
 `.github/workflows/gh-release.sh` builds the assets with `make distcheck DIST_VERSION=<tag>` and creates the GitHub release.
 For lightweight tags (nightlies, RCs), DIST_VERSION is `<tag>-g<hash>`, because these tags may vanish.
 The tarball, packages and `SHA256SUMS` end up in `artifacts/`.
+Lightweight tags get the git log since the last release tag as release notes.
+GitHub allows at most 125000 Unicode characters (not bytes) in release notes, so `gh-release.sh` cuts longer logs at a blank line.
