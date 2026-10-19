@@ -33,8 +33,8 @@ class RemovalsTests (unittest.TestCase):
     self.git ('add', '-A')
     self.git ('commit', '-q', '-m', message)
 
-  def run_check (self, cwd = None):
-    return subprocess.run (['bash', str (SCRIPT)], cwd = cwd or self.root, env = ENV, capture_output = True, text = True)
+  def run_check (self, cwd = None, env = None):
+    return subprocess.run (['bash', str (SCRIPT)], cwd = cwd or self.root, env = dict (ENV, **(env or {})), capture_output = True, text = True)
 
   def test_removal_needs_evidence (self):
     (self.root / 'ui/mouse.js').write_text ('')
@@ -57,6 +57,22 @@ class RemovalsTests (unittest.TestCase):
     (self.root / 'ui/mouse.js').write_text (''.join (f'call{i}();\n' for i in range (12)))
     self.commit ('ui/mouse.js: rewrite')
     self.assertEqual (self.run_check().returncode, 0)
+
+  def test_ignores_color_and_external_diff (self):
+    (self.root / 'ui/mouse.js').write_text ('')
+    self.commit ('ui/mouse.js: remove the workaround')
+    color = {'GIT_CONFIG_COUNT': '1', 'GIT_CONFIG_KEY_0': 'color.ui', 'GIT_CONFIG_VALUE_0': 'always'}
+    self.assertEqual (self.run_check (env = color).returncode, 1)
+    self.assertEqual (self.run_check (env = {'GIT_EXTERNAL_DIFF': '/bin/true'}).returncode, 1)
+
+  def test_ignores_diff_algorithm (self):
+    (self.root / 'ui/probe.js').write_text ('e();\na();\na();\ni();\ni();\nd();\ni();\nh();\nd();\nh();\nb();\n')
+    self.commit ('ui/probe.js: add probes')
+    (self.root / 'ui/probe.js').write_text ('b();\nd();\nd();\n')
+    self.commit ('ui/probe.js: drop the probes')
+    # myers splits this into a 2 line block, histogram into a 10 line block
+    myers = {'GIT_CONFIG_COUNT': '1', 'GIT_CONFIG_KEY_0': 'diff.algorithm', 'GIT_CONFIG_VALUE_0': 'myers'}
+    self.assertEqual (self.run_check (env = myers).returncode, 1)
 
   def test_ignores_tests_and_trunk (self):
     (self.root / 'ui/tests/mouse_test.ts').write_text ('')
