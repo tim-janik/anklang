@@ -41,11 +41,21 @@ class RemovalsTests (unittest.TestCase):
     self.commit ('ui/mouse.js: remove the workaround')
     result = self.run_check()
     self.assertEqual (result.returncode, 1)
-    self.assertIn ('ui/mouse.js: remove the workaround: removes 12 lines of code', result.stderr)
+    self.assertRegex (result.stderr, r'Deletion of\s+12 lines: \w+ ui/mouse\.js: remove the workaround')
 
   def test_removal_with_evidence (self):
     (self.root / 'ui/mouse.js').write_text ('')
-    self.commit ('ui/mouse.js: remove the workaround\n\nEvidence: nothing calls it.')
+    self.commit ('ui/mouse.js: remove the workaround\n\nEvidence: Chrome 121 fixed movementX scaling.')
+    self.assertEqual (self.run_check().returncode, 0)
+
+  def test_ignores_scattered_removals (self):
+    (self.root / 'ui/mouse.js').write_text ('line6;\n')
+    self.commit ('ui/mouse.js: keep one line')
+    self.assertEqual (self.run_check().returncode, 0)
+
+  def test_ignores_rewrites (self):
+    (self.root / 'ui/mouse.js').write_text (''.join (f'call{i}();\n' for i in range (12)))
+    self.commit ('ui/mouse.js: rewrite')
     self.assertEqual (self.run_check().returncode, 0)
 
   def test_ignores_tests_and_trunk (self):
