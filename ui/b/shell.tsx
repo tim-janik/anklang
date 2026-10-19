@@ -138,7 +138,7 @@ interface FileSelector {
 // == SHELL TEMPLATE ==
 export function ShellTemplate (props: any)
 {
-  // Shell persists; App recreates its component tree on project switches and window/DPR changes.
+  // Shell persists; App recreates its component tree on project switches and DPR changes.
   const t = globalThis.Shell ?? new BShell ();
   if (!globalThis.Shell)
     Object.defineProperty (globalThis, 'Shell', { value: t });
@@ -231,6 +231,7 @@ class BShell extends Object {
   listening: any;
   startx: number;
   startwidth: number;
+  resize_callbacks_ = new Set<() => void> ();
   constructor ()
   {
     super();
@@ -259,6 +260,13 @@ class BShell extends Object {
     // Registered once; intentionally persistent across project swaps since
     // Shell is a singleton and Ase.server doesn't change.
     this.usernotehook_ = Ase.server.on ("usernote", (user_note_event: any) => this.show_notice (user_note_event.text));
+    new ResizeObserver (() => this.resize_callbacks_.forEach (callback => callback())).observe (document.body);
+  }
+  /// Call `callback` on window resizes, until the returned function is called or the Shell tree is re-mounted
+  on_resize (callback: () => void)
+  {
+    this.resize_callbacks_.add (callback);
+    return () => this.resize_callbacks_.delete (callback);
   }
   /// Access current_track (reactive)
   get current_track () { return this.r.current_track; }
@@ -273,6 +281,7 @@ class BShell extends Object {
       Util.remove_hotkey ('I', this.switch_panel3_);
     if (this.f1_help_)
       Util.remove_key_filter (112);
+    this.resize_callbacks_.clear();
     this.project = project;
     this.r.current_track = current_track;
     this.r.show_preferences_dialog = false;
