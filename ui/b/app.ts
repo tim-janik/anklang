@@ -136,11 +136,11 @@ export class AppClass {
     else
       Shell.r.panel3 = a[(a.indexOf (Shell.r.panel3) + 1) % a.length];
   }
-  /// Re-mount the Shell tree after window/DPR changes so mount-time pixel
+  /// Re-mount the Shell tree after DPR changes so mount-time pixel
   /// sizes (level meters, clip canvases) recompute; keeps playback and UI state.
   relayout ()
   {
-    // Window/DPR changes are rare; rebuilding is intentional and avoids resize handling in every component.
+    // DPR changes are rare; rebuilding lets components treat the DPR as constant.
     const shell = globalThis.Shell;
     const project = shell?.project ?? null;
     if (!shell || !(project instanceof Ase.Project))

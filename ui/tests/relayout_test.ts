@@ -1,124 +1,90 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
 import * as Dom from '../dom';
-import { TestTimers } from './timers';
 
 // == Test registry ==
 const sub_tests: [string, () => Promise<any>][] = [];
 
-/// A resize triggers one debounced Shell relayout: repeated resizes collapse
-/// into a single re-mount that detaches the old .b-shell node.
+/// Act like a window resize by one pixel, wait for the frame that reports it to ResizeObserver.
+async function resize_body (): Promise<void>
+{
+  document.body.style.height = (document.body.clientHeight - 1) + 'px';
+  window.dispatchEvent (new Event ('resize'));
+  await Dom.ui_next_frame();
+  await Dom.ui_next_frame();
+}
+
+/// A window resize calls the Shell.on_resize() callbacks and keeps the mounted Shell tree.
 async function test_relayout_resize (): Promise<boolean>
 {
-  const app: any = (window as any).App;
-  if (typeof app?.relayout !== 'function')
-    throw new Error ('App.relayout not available in test environment');
-  if (!app.project)
-    throw new Error ('App.project not set in test environment');
-
-  // Capture the current Shell root; a relayout re-mounts the tree, replacing it.
-  const shell_before = document.querySelector ('.b-shell');
-  if (!shell_before)
-    throw new Error ('Shell element not found in test environment');
-
-  const timers = new TestTimers();
-
-  // Count relayouts while letting the real re-mount run
-  let relayout_count = 0;
-  const orig_relayout = app.relayout.bind (app);
-  app.relayout = () => { relayout_count++; return orig_relayout(); };
-
+  const shell_before = Shell.shell_element;
+  const height = document.body.style.height;
+  let calls = 0;
+  const unsubscribe = Shell.on_resize (() => calls++);
   try {
-    // Two rapid resizes: the debounce (restart=true) must fire once at the end.
-    window.dispatchEvent (new Event ('resize'));
-    window.dispatchEvent (new Event ('resize'));
-    if (timers.pending !== 1)
-      throw new Error ('resize did not leave exactly one pending relayout');
-    timers.run();
-
-    if (relayout_count < 1)
-      throw new Error ('resize did not schedule a relayout');
-    if (relayout_count > 1)
-      throw new Error (`multiple resizes caused multiple relayouts: ${relayout_count}`);
-
-    // The re-mount must have detached the original Shell node
-    if (document.body.contains (shell_before))
-      throw new Error ('relayout did not re-mount the Shell tree (old node still attached)');
-    const shell_after = document.querySelector ('.b-shell');
-    if (!shell_after)
-      throw new Error ('relayout left no .b-shell element behind');
-    if (shell_after === shell_before)
-      throw new Error ('relayout did not replace the .b-shell element');
+    await resize_body();
+    if (Shell.shell_element !== shell_before || !document.body.contains (shell_before))
+      throw new Error ('resize re-mounted the Shell tree');
+    if (!calls)
+      throw new Error ('resize did not call the Shell.on_resize() callbacks');
   } finally {
-    app.relayout = orig_relayout;
-    timers.restore();
+    unsubscribe();
+    document.body.style.height = height;
   }
-
   return true;
 }
 sub_tests.push (['resize', test_relayout_resize]);
 
-/// Relayout re-mounts the Shell tree but must keep the selected track
-/// (Shell.reset() would reset it to the initial master track).
-async function test_relayout_preserves_state (): Promise<boolean>
+/// A DPR change re-mounts the Shell tree right away, keeps the selected track
+/// and drops the resize callbacks of the old tree.
+async function test_relayout_dpr (): Promise<boolean>
 {
-  const app: any = (window as any).App;
-  const shell: any = (window as any).Shell;
-  if (typeof app?.relayout !== 'function' || !shell)
-    throw new Error ('App.relayout/Shell not available in test environment');
-
-  // Set a non-default selection that reset() would clear
-  const r = shell.r;
-  const orig_track = r.current_track;
-  r.current_track = 'relayout-test-track';
-
+  const Electron = (window as any).Electron;
+  const dpr_change = () => new Promise (resolve => {
+    matchMedia (`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener ('change', resolve, { once: true });
+  });
+  const shell_before = Shell.shell_element;
+  const track = Shell.r.current_track;
+  const height = document.body.style.height;
+  const zoom = await Electron.call ('zoom_level');
+  let calls = 0;
+  Shell.on_resize (() => calls++);
+  const set_zoom = async (level: number) => {
+    const changed = dpr_change();
+    await Electron.call ('zoom_level', level);
+    await changed;
+  };
   try {
-    app.relayout();
-    await Dom.ui_next_frame();
-    await Dom.ui_next_frame();
-
-    if (r.current_track !== 'relayout-test-track')
-      throw new Error (`relayout lost the selected track: ${r.current_track}`);
+    await set_zoom (zoom + 1);
+    if (Shell.shell_element === shell_before || document.body.contains (shell_before))
+      throw new Error ('DPR change did not re-mount the Shell tree right away');
+    if (Shell.r.current_track !== track)
+      throw new Error (`DPR change lost the selected track: ${Shell.r.current_track}`);
+    calls = 0; // the zoom may resize the body before the DPR change event
+    await resize_body();
+    if (calls)
+      throw new Error ('re-mount kept the resize callbacks of the old Shell tree');
   } finally {
-    r.current_track = orig_track;
+    document.body.style.height = height;
+    await set_zoom (zoom);
   }
-
   return true;
 }
-sub_tests.push (['preserves_state', test_relayout_preserves_state]);
+sub_tests.push (['dpr', test_relayout_dpr]);
 
-/// Relayout is a no-op before a project is assigned: the boot-time
-/// dpr_rerender_all() call must not trigger it.
+/// Relayout is a no-op before a project is assigned.
 async function test_relayout_guard_no_project (): Promise<boolean>
 {
-  const app: any = (window as any).App;
-  const shell: any = (window as any).Shell;
-  if (!shell)
-    throw new Error ('Shell not available in test environment');
-
-  // Null Shell.project to simulate the pre-boot state without tearing down the Shell.
-  const timers = new TestTimers();
-  const real_project = shell.project;
-  shell.project = null;
-
-  let relayout_count = 0;
-  const orig_relayout = app.relayout.bind (app);
-  app.relayout = () => { relayout_count++; return orig_relayout(); };
-
+  const shell_before = Shell.shell_element;
+  const project = Shell.project;
+  Shell.project = null;
   try {
-    window.dispatchEvent (new Event ('resize'));
-    if (timers.pending !== 1)
-      throw new Error ('resize did not schedule its check');
-    timers.run();
-
-    if (relayout_count != 0)
-      throw new Error (`relayout fired with no project assigned: ${relayout_count}`);
+    App.relayout();
+    if (Shell.shell_element !== shell_before)
+      throw new Error ('relayout re-mounted the Shell tree without a project');
   } finally {
-    app.relayout = orig_relayout;
-    timers.restore();
-    shell.project = real_project;
+    Shell.project = project;
   }
-
   return true;
 }
 sub_tests.push (['guard_no_project', test_relayout_guard_no_project]);
