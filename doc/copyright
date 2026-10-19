@@ -10,6 +10,7 @@ Files:
  .version
  AGENTS.md
  LICENSE
+ eslint.config.js
  Makefile.mk
  NEWS.md
  README.md
