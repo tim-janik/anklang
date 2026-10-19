@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ESLint } from 'eslint';
 
-const eslint = new ESLint ({ overrideConfigFile: 'ui/eslintrc.js' });
+const eslint = new ESLint();
 
 async function check (file_path, source, expected_rules = [])
 {
