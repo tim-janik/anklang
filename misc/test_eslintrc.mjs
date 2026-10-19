@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ESLint } from 'eslint';
 
-const eslint = new ESLint ({ overrideConfigFile: 'ui/eslintrc.js' });
+const eslint = new ESLint();
 
 async function check (file_path, source, expected_rules = [])
 {
@@ -37,6 +37,11 @@ test ('typed JSX keeps upstream APIs and callback props', async () => {
       return <button onClick={props.onChange}>{value()}</button>;
     }
   `);
+});
+
+test ('HTML classes come from ui/tailwind.css', async () => {
+  await check ('ui/lint_test.html', '<div class="bg-dim-500 flex b-app"></div>\n');
+  await check ('ui/lint_test.html', '<div class="no-such-class"></div>\n', ['better-tailwindcss/no-unregistered-classes']);
 });
 
 test ('user agent access stays in About and browser setup', async () => {
