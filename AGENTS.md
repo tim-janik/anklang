@@ -27,7 +27,9 @@
 
 ## Removing code
 - Odd or complex code usually handles a real problem. Before you remove or rewrite it, find out why it's there: `git log -L`, commit messages, bug trackers, release notes, other projects. Reproduce the problem where you can.
-- A commit that removes logic has an `Evidence:` paragraph: why the code was added and why it's no longer needed, with commit ids or links. `make check` fails when a commit deletes a block of 10 or more lines of code and puts nothing in its place, unless it has an `Evidence:` paragraph.
+- When a commit drops code that handles a special case, such as a workaround, guard, fallback, retry or browser check, add an `Evidence:` paragraph. It names the problem the code handled and shows that the problem is gone: a test that reproduces it, an upstream fix, a measurement, or a rule in this file. A commit id alone, or the commit body in other words, is not evidence.
+- Rewrites and ports that keep the behavior, and code added earlier in the same branch, need no `Evidence:`. Leave it out.
+- `make check` fails when a commit deletes a block of 10 or more lines of code and puts nothing in its place, unless it has an `Evidence:` paragraph. For code with no callers, name the commit that removed the last caller.
 - If you are unsure, ask. If you can't wait for the answer, start the first line with `**REVIEW**: `.
 - Never remove code just to make a check pass. Exempt it from the check instead.
 
