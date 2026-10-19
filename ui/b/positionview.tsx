@@ -38,11 +38,12 @@ import * as Util from '../util.js';
 
 export function PositionView (props: any)
 {
+  const project = Shell.project;
   const counter_text = document.createTextNode ('');
   const timer_text = document.createTextNode ('');
 
   onMount (() => {
-    const subscription = Shell.project.telemetry().then (fields => {
+    const subscription = project.telemetry().then (fields => {
       const names = ['current_bar', 'current_beat', 'current_sixteenth', 'current_minutes', 'current_seconds'];
       return Util.telemetry_subscribe (recv_telemetry, fields.filter (field => names.includes (field.name)));
     });
@@ -77,13 +78,11 @@ export function PositionView (props: any)
     if (parts.length == 2) {
       const n = Number (parts[0]), d = Number (parts[1]);
       if (n > 0 && d > 0) {
-	Shell.project.numerator = n;
-	Shell.project.denominator = d;
+	project.numerator = n;
+	project.denominator = d;
       }
     }
   }
-
-  const project = Shell.project;
 
   return (
     <div class="b-positionview">

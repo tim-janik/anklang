@@ -15,12 +15,16 @@ Extra_css`
 // == Component ==
 import { ButtonBar } from './buttonbar';
 import { Icon } from './icon';
+import { onCleanup } from 'solid-js';
 
 export function PlayControls (props: any)
 {
+  const project = Shell.project;
+  let mounted = true;
+  onCleanup (() => { mounted = false; });
   /** @param {string} method */
   const dispatch = async (method: string) => {
-    const project = Shell.project;
+    if (!mounted) return;
     const func = (project as any)[method];
     let message: string;
     if (func !== undefined) {
@@ -35,9 +39,7 @@ export function PlayControls (props: any)
   };
 
   const toggle_play = async () => {
-    const project = Shell.project;
     const playing = await project.$refetch (() => project.is_playing);
-    if (project !== Shell.project) return;
     dispatch (playing ? 'pause_playback' : 'start_playback');
   };
 

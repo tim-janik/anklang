@@ -9,7 +9,7 @@
  * : The *Ase.Project* containing playback tracks.
  */
 
-import { createSignal, createEffect, onCleanup, For, splitProps } from 'solid-js';
+import { createSignal, onMount, onCleanup, For, splitProps } from 'solid-js';
 import { ClipList } from './cliplist';
 import { PartList } from './partlist.tsx';
 import { TrackView } from './trackview.tsx';
@@ -69,29 +69,23 @@ export function TrackList (props)
 {
   // App rebuilds this component on project changes; only changes to this project's track list need watching.
   const [local, rest] = splitProps (props, ['class', 'project', 'onDblClick']);
+  const project = local.project;
   const [tracks, set_tracks] = createSignal ([]);
   let trackviews_ref;
   let cliplists_ref;
   let partlists_ref;
 
-  // Fetch tracks on notifications, assume one project for the component's lifetime
-  createEffect (() => {
-    const project = props.project;
-    if (!project) {
-      set_tracks ([]);
-      return;
-    }
-    const fetch_tracks = async () => {
-      const list = await project.all_tracks ();
-      set_tracks (list || []);
-    };
+  const fetch_tracks = async () => {
+    const list = await project.all_tracks ();
+    set_tracks (list || []);
+  };
+  if (project) {
     fetch_tracks();
-    const unwatch = project.on ("notify:all_tracks", fetch_tracks);
-    onCleanup (unwatch);
-  });
+    onCleanup (project.on ("notify:all_tracks", fetch_tracks));
+  }
 
   // Setup scroll sync after DOM is ready
-  createEffect (() => {
+  onMount (() => {
     if (!cliplists_ref || !trackviews_ref || !partlists_ref)
       return;
     const onscroll = (event) => {
@@ -106,8 +100,8 @@ export function TrackList (props)
   });
 
   const list_dblclick = (event) => {
-    if (event.target === trackviews_ref && props.project)
-      props.project.create_track ();
+    if (event.target === trackviews_ref && project)
+      project.create_track ();
   };
 
   const handle_dblclick = (event) => {

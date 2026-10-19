@@ -235,13 +235,14 @@ export function PianoRoll (props: {
     // setup resize observer — actually trigger layout + repaint on resize
     // (the previous Lit version's callback was `els => this.requestUpdate.bind (this)`,
     //  which never *called* requestUpdate, so resizes were silently ignored)
-    const resize_observer = new ResizeObserver (() => {
+    const resize = () => {
       if (t.clip)
         piano_layout.call (t);
       t.queue_repaint();
-    });
+    };
+    const resize_observer = new ResizeObserver (resize);
     resize_observer.observe (t.root);
-    resize_observer.observe (document.body);
+    onCleanup (Shell.on_resize (resize));
 
     onCleanup (() => {
       resize_observer.disconnect();

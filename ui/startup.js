@@ -151,26 +151,14 @@ async function bootup () {
   const app = await create_app();
   console.assert (app === App);
 
-  // Relayout re-mounts the Shell tree on window/DPR changes; skipped until a
-  // project is assigned, so the boot-time dpr_rerender_all() call is a no-op.
-  const relayout_after_resize = Util.debounce (() => {
-    if (App.project)
+  // Re-mount the Shell tree right away on DPR changes, so components can treat the DPR as constant
+  const watch_dpr = () => {
+    matchMedia (`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener ('change', () => {
+      watch_dpr();
       App.relayout();
-  }, { restart: true, wait: 500 });
-  const rerender_all = () => {
-    relayout_after_resize();
+    }, { once: true });
   };
-  window.addEventListener ('resize', rerender_all);
-  document.fonts.addEventListener ("loadingdone", rerender_all);
-  const dpr_rerender_all = () => {
-    if (dpr_rerender_all.media)
-      dpr_rerender_all.media.removeListener (dpr_rerender_all);
-    const mquery_string = `(resolution: ${window.devicePixelRatio}dppx)`;
-    dpr_rerender_all.media = matchMedia (mquery_string);
-    dpr_rerender_all.media.addListener (dpr_rerender_all);
-    rerender_all();
-  };
-  dpr_rerender_all();
+  watch_dpr();
 
   // mount in DOM and create component hierarchy
   await document.fonts.ready; // Fonts - wait for fonts before components are mounted and compute sizes

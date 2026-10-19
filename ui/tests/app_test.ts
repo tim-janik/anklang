@@ -1,5 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import * as Dom from '../dom';
+
 // == Test registry ==
 const sub_tests: [string, () => Promise<any>][] = [];
 
@@ -74,6 +76,32 @@ async function test_activation_piano_roll (): Promise<boolean>
     const current_clip_name = await shell.r.piano_roll_source.$refetch (() => shell.r.piano_roll_source.name);
     if (current_clip_name !== clip_name)
       throw new Error ('activation did not open the first clip in the piano roll');
+    const send = Ase.Jsonipc.send;
+    let saved_project;
+    Ase.Jsonipc.send = function (method, params) {
+      if (method === 'save_project') {
+        saved_project = params[0];
+        return Promise.resolve (Ase.Error.NONE);
+      }
+      return send.call (this, method, params);
+    };
+    try {
+      await Dom.ui_next_frame();
+      document.querySelector<HTMLButtonElement> ('#g-filemenu button[uri="saveas"]')!.click();
+      for (let frame = 0; frame < 120 && !shell.r.fs_shown; frame++)
+        await Dom.ui_next_frame();
+      if (!shell.r.fs_shown)
+        throw new Error ('Save As did not open its file selector');
+      await app.load_project (old_project);
+      shell.fs.resolve ('/tmp/anklang-ui-save-test.anklang');
+      for (let frame = 0; frame < 120 && !saved_project; frame++)
+        await Dom.ui_next_frame();
+      if (saved_project !== project)
+        throw new Error ('Save As used the project activated while its file selector was open');
+    } finally {
+      if (shell.r.fs_shown) shell.fs.resolve();
+      Ase.Jsonipc.send = send;
+    }
   } finally {
     await app.load_project (old_project);
     await project.discard();

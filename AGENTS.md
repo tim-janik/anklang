@@ -27,9 +27,8 @@
 
 ## Removing code
 - Odd or complex code usually handles a real problem. Before you remove or rewrite it, find out why it's there: `git log -L`, commit messages, bug trackers, release notes, other projects. Reproduce the problem where you can.
-- A commit that removes logic has an `Evidence:` paragraph: why the code was added and why it's no longer needed, with commit ids or links. `make check` fails for larger removals without one.
 - If you are unsure, ask. If you can't wait for the answer, start the first line with `**REVIEW**: `.
-- Never remove code just to make a check pass. Exempt it from the check instead.
+- Never remove code just to make a check pass. Exempt it from the check instead. Large deletions may be flagged by `make check` to need justification.
 
 ## Checks
 - `make` builds. `make check` runs `make lint`, `ase/tests/` and `ui/tests/`.
