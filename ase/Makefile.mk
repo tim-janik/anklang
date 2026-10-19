@@ -364,7 +364,7 @@ lint: ase/lint
 define ASE_TEST_CHECK
 check-$1: $$(lib/AnklangSynthEngine)
 	$$(QECHO) CHECK '$1'
-	$$Q $$(lib/AnklangSynthEngine) --norc --no-devices --test '$1'
+	$$Q timeout -k 5s 60s $$(lib/AnklangSynthEngine) --norc --no-devices --test '$1'
 .PHONY: check-$1
 check-ase-tests: check-$1
 endef
