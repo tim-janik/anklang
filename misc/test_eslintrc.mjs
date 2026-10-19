@@ -39,6 +39,11 @@ test ('typed JSX keeps upstream APIs and callback props', async () => {
   `);
 });
 
+test ('HTML classes come from ui/tailwind.css', async () => {
+  await check ('ui/lint_test.html', '<div class="bg-dim-500 flex b-app"></div>\n');
+  await check ('ui/lint_test.html', '<div class="no-such-class"></div>\n', ['better-tailwindcss/no-unregistered-classes']);
+});
+
 test ('user agent access stays in About and browser setup', async () => {
   for (const file_path of ['ui/b/aboutdialog.jsx', 'ui/startup.js', 'ui/mouse.js'])
     await check (file_path, 'export const agent = navigator.userAgent;');

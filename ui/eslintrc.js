@@ -53,7 +53,6 @@ const common_js_rules = {
   'no-irregular-whitespace': OFF, /* ["error", { 'skipStrings': true, 'skipComments': true, 'skipTemplates': true, 'skipRegExps':true } ], */
   'no-useless-escape': OFF,
   // 'prefer-const': [ 'warn' ],
-  // 'tailwindcss/no-custom-classname': OFF,
 };
 
 /** @type {import('eslint').Linter.FlatConfig[]} */
@@ -181,8 +180,8 @@ export default [
   // CSS - tailwindcss settings
   {
     settings: {
-      tailwindcss: {
-        // whitelist: [/^b-/], // Regex for custom classes
+      "better-tailwindcss": {
+        entryPoint: "ui/tailwind.css",
       },
     },
   },
