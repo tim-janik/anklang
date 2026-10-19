@@ -310,8 +310,8 @@ x11test x11test-v: $(x11test/files.json) $(lib/AnklangSynthEngine)
 
 # == tscheck ==
 check: tscheck
-# run tsc on all JS + TS files, except for ui/ x11test/
-tscheck.files := $(filter-out ui/% x11test/%, $(filter %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(WILDCARD_FILES)))
+# run tsc on all JS + TS files, except for ui/ x11test/ rand/
+tscheck.files := $(filter-out ui/% x11test/% rand/%, $(filter %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(WILDCARD_FILES)))
 # --skipLibCheck: electron-39.2.7 node_modules/electron/electron.d.ts:noDeprecation?:boolean conflicts with node_modules/@types/node/process.d.ts
 TSC_CHECK_FLAGS := --allowJs --skipLibCheck
 $>/.tscheck.done: $(tscheck.files)	| node_modules/.npm.done
@@ -323,7 +323,7 @@ tscheck: $>/.tscheck.done FORCE
 # == eslint ==
 check: eslint
 eslint.files := $(filter %.htm %.html %.cts %.cjs %.d.cts %.js %.jsx %.mts %.mjs %.d.mts %.ts %.tsx %.d.ts, $(WILDCARD_FILES))
-eslint.skip  := %/javascript/mathjax.js
+eslint.skip  := %/javascript/mathjax.js rand/%
 $>/.eslint.done: ui/eslintrc.js $(eslint.files) Makefile.mk	| node_modules/.npm.done
 	$(QECHO) RUN eslint
 	$Q node_modules/.bin/eslint -c $< --no-warn-ignored $${INSIDE_EMACS+-f unix} --cache --cache-location $>/.eslintcache \
