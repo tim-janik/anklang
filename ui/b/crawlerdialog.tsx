@@ -2,9 +2,10 @@
 // @ts-check
 
 /** @class CrawlerDialog
+ * @description
  * A modal [dialog] that allows file and directory selections.
  *
- * ## Properties:
+ * ### Properties:
  * *title*
  * : The dialog title.
  * *button*
@@ -14,7 +15,7 @@
  * *filters*
  * : List of file type constraints.
  *
- * ## Callbacks:
+ * ### Callbacks:
  * *onSelect (uri)*
  * : Called when a specific path is selected via clicks or focus activation.
  * *onClose*

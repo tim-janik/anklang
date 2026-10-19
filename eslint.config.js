@@ -70,11 +70,10 @@ export default [
   // CJS files with node globals
   {
     files: [ "**/*.cjs",
-	     "doc/jsdoc2md.js",
+	     "doc/jsdoc2md*.js",
 	     "electron/*.js",
 	     "ui/jsextract.js",
 	     "ui/sfc-compile.js",
-	     "ui/xbcomments.js",
 	     "misc/*.js",
 	     "misc/*.mjs",
 	     "x11test/epuppeteer.mjs",
