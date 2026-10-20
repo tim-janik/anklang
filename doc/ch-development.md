@@ -12,7 +12,7 @@ Technically, Anklang consists of a user interface front-end based on web technol
 
 ## ASE - Anklang synthesis engine
 
-The `ase/` subdirectory contains the C++ implementation of the `AnklangSynthEngine` executable
+The `ase/` subdirectory contains the C++ implementation of the `anklang` executable
 which contains the core components for audio data processing and audio plugin handling.
 It interfaces with the HTML DOM based user interface via an IPC layer with JSON messages that reflect the C++ API.
 
@@ -75,7 +75,7 @@ as a Jsonipc interface using conscise C++ code that utilizes templates to derive
 The corresponding TypeScript code to use `api.hh` via
 [async](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/async_function)
 remote method calls is generated with the `Jsonipc::g_binding_printer` class by
-`AnklangSynthEngine --jsonts`. Completed:
+`anklang --jsonts`. Completed:
 
 * [√] `shared_ptr<Class> from_json()` - lookup by id in InstanceMap or use `Scope::make_shared` for Serializable.
 * [√] `to_json (const shared_ptr<Class> &p)` - marshal Serializable or {id} from InstanceMap.
