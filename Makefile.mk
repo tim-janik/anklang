@@ -181,7 +181,7 @@ include doc/Makefile.mk
 # == run ==
 run: FORCE all
 	export ELECTRON_ENABLE_LOGGING=1 && \
-	  $>/lib/AnklangSynthEngine
+	  $(bin/anklang)
 
 # == clean rules ==
 clean: FORCE
@@ -295,7 +295,7 @@ uninstall:
 
 # == x11test ==
 x11test/files.json := $(wildcard x11test/*.json)
-x11test x11test-v: $(x11test/files.json) $(lib/AnklangSynthEngine)
+x11test x11test-v: $(x11test/files.json) $(bin/anklang)
 	$(QGEN)
 	$Q rm -f -r $>/x11test/
 	$Q mkdir -p $>/x11test/
@@ -363,7 +363,7 @@ check-bench: FORCE
 # == installcheck ==
 installcheck:
 	$(QGEN)
-	$Q V="$$($(DESTDIR)$(bindir)/anklang --version | head -1)" && test "$$V" = "AnklangSynthEngine $(version)" \
+	$Q V="$$($(DESTDIR)$(bindir)/anklang --version | head -1)" && test "$$V" = "anklang $(version)" \
 	|| { echo "$@: ERROR: unexpected version: $$V" >&2; false; }
 	$Q grep -qE 'Anklang\b' $(DESTDIR)$(mandir)/man1/anklang.1
 .PHONY: installcheck
