@@ -7,7 +7,7 @@ ase/jackdriver.sources		:= ase/driver-jack.cc
 ase/gtk2wrap.sources		:= ase/gtk2wrap.cc
 ase/not-anklang.sources		:= $(ase/gtk2wrap.sources) $(ase/jackdriver.sources)
 ase/anklang.sources		:= $(filter-out $(ase/not-anklang.sources), $(wildcard ase/*.cc)) $(wildcard ase/*.c ase/tests/*.cc)
-lib/AnklangSynthEngine		:= $>/lib/AnklangSynthEngine
+bin/anklang			:= $>/bin/anklang
 ase/generated.sources		:=
 ASE_EXTRA_INCLUDES := $(strip			\
 	-Itrkn				\
@@ -96,7 +96,7 @@ ase/gen/api-jsonipc.g.cc: $>/ase/api-jsonipc.json jsonipc/jsonbindings.ts ase/Ma
 $>/ase/jsonapi.o: ase/gen/api-jsonipc.g.cc	# included, must be generated before compiling
 
 # == ase/gen/api-jsonipc.g.ts ==
-ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts ase/Makefile.mk $(lib/AnklangSynthEngine)
+ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts ase/Makefile.mk $(bin/anklang)
 	$(QECHO) REGEN $@
 	$Q echo '// Generated from: $(notdir $<)'					>  $@.tmp
 	$Q cat jsonipc/jsonipc.ts							>> $@.tmp
@@ -108,7 +108,7 @@ ase/gen/api-jsonipc.g.ts: ase/api.hh jsonipc/jsonipc.ts ase/Makefile.mk $(lib/An
 	$Q echo 'Jsonipc.classes["Ase::SharedBase"] = SharedBase;'			>> $@.tmp
 	$Q echo										>> $@.tmp
 	$Q ASAN_OPTIONS=detect_leaks=0 ASE_JSONTS=1 \
-	$(lib/AnklangSynthEngine) --norc --no-devices --jsonts				>> $@.tmp
+	$(bin/anklang) --norc --no-devices --jsonts				>> $@.tmp
 	$Q echo '/**@type{ServerImpl}*/'						>> $@.tmp
 	$Q echo -n 'export let server: Server ='				>> $@.tmp
 	$Q echo 'Jsonipc.setup_promise_type (Server, s => server = s) as unknown as Server;'	>> $@.tmp
@@ -253,19 +253,19 @@ $>/cpptrace/lib/libcpptrace.a:		| $(EXTERNAL_CXX_STAMPS)
 ASEDEPS_LIBS += -L$>/cpptrace/lib -lcpptrace -ldwarf
 endif
 
-# == AnklangSynthEngine ==
+# == anklang ==
 # Work around legacy code in external/websocketpp/*.hpp
 ase/websocket.cc.FLAGS = -Wno-deprecated-dynamic-exception-spec -Wno-sign-promo
 # Allow tests in mathutils.cc
 ase/mathutils.cc.CTIDY_FLAGS = --checks=-clang-analyzer-security.FloatLoopCounter
-$(lib/AnklangSynthEngine): $(lib/libsndfile.so)				| $>/lib/
+$(bin/anklang): $(lib/libsndfile.so)				| $>/bin/
 $(call BUILD_PROGRAM, \
-	$(lib/AnklangSynthEngine), \
+	$(bin/anklang), \
 	$(ase/anklang.objects) $(devices/4ase.objects) $(TRKN_OBJECTS), \
 	$(lib/libase.so), \
 	$(BOOST_SYSTEM_LIBS) $(ASEDEPS_LIBS) $(ALSA_LIBS) -lzstd -ldl $(lib/libsndfile.so), \
 	../lib)
-CXX_TARGETS += $(lib/AnklangSynthEngine)
+CXX_TARGETS += $(bin/anklang)
 
 # == jackdriver.so ==
 lib/jackdriver.so	     ::= $>/lib/jackdriver.so
@@ -299,8 +299,8 @@ $(call BUILD_SHARED_LIB, \
 CXX_TARGETS += $(lib/gtk2wrap.so)
 
 # == install binaries ==
-$(call INSTALL_BIN_RULE, $(basename $(lib/AnklangSynthEngine)), $(DESTDIR)$(pkgdir)/lib, $(wildcard \
-	$(lib/AnklangSynthEngine)	\
+$(call INSTALL_BIN_RULE, $(bin/anklang), $(DESTDIR)$(pkgdir)/bin, $(bin/anklang))
+$(call INSTALL_BIN_RULE, $>/lib, $(DESTDIR)$(pkgdir)/lib, $(wildcard \
 	$(lib/jackdriver.so.MAYBE)	\
 	$(lib/libsndfile.so)		\
 	$(lib/gtk2wrap.so)		\
@@ -333,21 +333,16 @@ uninstall: media/uninstall
 .PHONY: media/uninstall
 
 # == install ==
-ase/install: $(lib/AnklangSynthEngine)
+ase/install: $(bin/anklang)
 	@$(QECHO) INSTALL '$(DESTDIR)$(bindir)/anklang'
-	$Q rm -f '$(DESTDIR)$(pkgdir)/bin/anklang'
 	$Q rm -f '$(DESTDIR)$(bindir)/anklang' && mkdir -p '$(DESTDIR)$(bindir)' \
 	&& ln -s -r '$(DESTDIR)$(pkgdir)/bin/anklang' '$(DESTDIR)$(bindir)/anklang'
-	$Q mkdir -p '$(DESTDIR)$(pkgdir)/bin' \
-	&& ln -s '../lib/AnklangSynthEngine' '$(DESTDIR)$(pkgdir)/bin/anklang'
 install: ase/install
 .PHONY: ase/install
 
 # == uninstall ==
 ase/uninstall:
 	@$(QECHO) REMOVE '$(DESTDIR)$(bindir)/anklang'
-	$Q rm -f '$(DESTDIR)$(pkgdir)/bin/anklang'
-	$Q $(RMDIR_P) '$(DESTDIR)$(pkgdir)/bin' || true
 	$Q rm -f '$(DESTDIR)$(bindir)/anklang'
 .PHONY: ase/uninstall
 uninstall: ase/uninstall
@@ -362,9 +357,9 @@ lint: ase/lint
 # == check-ase-tests ==
 .PHONY: check-ase-tests
 define ASE_TEST_CHECK
-check-$1: $$(lib/AnklangSynthEngine)
+check-$1: $$(bin/anklang)
 	$$(QECHO) CHECK '$1'
-	$$Q timeout -k 5s 60s $$(lib/AnklangSynthEngine) --norc --no-devices --test '$1'
+	$$Q timeout -k 5s 60s $$(bin/anklang) --norc --no-devices --test '$1'
 .PHONY: check-$1
 check-ase-tests: check-$1
 endef

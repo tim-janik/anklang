@@ -12,7 +12,7 @@ DEBIAN=$DROOT/DEBIAN
 PKGDIR=$(source out/config.sh && echo "$pkgdir")
 PKGDIR=opt/${PKGDIR##*/}
 PKGDOCDIR=$DROOT/$PKGDIR/doc
-ANKLANGSYNTHENGINE=$PKGDIR/lib/AnklangSynthEngine
+ANKLANGEXE=$PKGDIR/bin/anklang
 MAKE="make -w V=${V:-}"
 SHAREDIR=/usr/share
 
@@ -107,8 +107,8 @@ set -e -o pipefail
 
 # Setcap cap_sys_nice to allow renincing for low latency processing
 if [ "$1" = configure ] && command -v setcap > /dev/null ; then
-   setcap cap_sys_nice+ep @ANKLANGSYNTHENGINE@ ||
-	echo "$0: failed to enable 'setcap cap_sys_nice' on @ANKLANGSYNTHENGINE@" >&2
+   setcap cap_sys_nice+ep @ANKLANGEXE@ ||
+	echo "$0: failed to enable 'setcap cap_sys_nice' on @ANKLANGEXE@" >&2
 fi
 
 # Debian lacks triggers outside /usr/share/
@@ -124,7 +124,7 @@ fi
 
 exit 0
 __EOF
-sed "s|@ANKLANGSYNTHENGINE@|$ANKLANGSYNTHENGINE|g; s|@SHAREDIR@|$SHAREDIR|g" > $DEBIAN/postinst
+sed "s|@ANKLANGEXE@|$ANKLANGEXE|g; s|@SHAREDIR@|$SHAREDIR|g" > $DEBIAN/postinst
 chmod +x $DEBIAN/postinst
 
 # DEBIAN/postrm
@@ -137,7 +137,7 @@ which update-mime-database >/dev/null 2>&1 && {
 	update-mime-database @SHAREDIR@/mime/
 }
 __EOF
-sed "s|@ANKLANGSYNTHENGINE@|$ANKLANGSYNTHENGINE|g; s|@SHAREDIR@|$SHAREDIR|g" > $DEBIAN/postrm
+sed "s|@ANKLANGEXE@|$ANKLANGEXE|g; s|@SHAREDIR@|$SHAREDIR|g" > $DEBIAN/postrm
 chmod +x $DEBIAN/postrm
 
 # https://wiki.debian.org/ReleaseGoals/LAFileRemoval
