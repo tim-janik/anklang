@@ -76,12 +76,12 @@ To verify Anklang does indeed use Jackd, the setup can be inspected as follows:
 ```sh
 # List active Jack ports
 jack_lsp
-# The list should include 'AnklangSynthEngine'
+# The list should include 'anklang'
 
 # Start GUI to control Jackd
 qjackctl
 # Click on the "Graph" button to show connections
-# The graph should include 'AnklangSynthEngine'
+# The graph should include 'anklang'
 ```
 
 ### Next Steps
