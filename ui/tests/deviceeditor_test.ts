@@ -16,6 +16,43 @@ function mock_device (name: string)
   };
 }
 
+async function test_deviceeditor_layout (): Promise<boolean>
+{
+  for (const [count, main_span, other_row, other_col] of [
+    [1, 2, 3, 1], [6, 2, 3, 1], [7, 3, 4, 1], [12, 3, 4, 1],
+    [13, 5, 1, 2], [18, 5, 1, 2], [19, 5, 1, 2], [24, 5, 1, 2],
+    [64, 5, 1, 2], [65, 5, 3, 2], [128, 5, 1, 3], [129, 5, 3, 3],
+  ]) {
+    const properties = Array.from ({ length: count + 1 }, (_, i) => ({
+      update_: async () => {}, fetch_: () => 0,
+      group_: i < count ? 'Main' : 'Other', hints_: ':G:', nick_: String (i),
+    }));
+    const device = { ...mock_device ('Layout'), access_properties: async () => properties };
+    const container = document.createElement ('div');
+    document.body.appendChild (container);
+    const dispose = render (() => createComponent (DeviceEditor, { device }), container);
+    try {
+      await Dom.ui_next_frame();
+      const groups = [...container.querySelectorAll<HTMLElement> ('.b-propgroup')];
+      const pages = Math.ceil (count / 64);
+      const names = count <= 64 ? ['Main', 'Other'] : [
+        ...Array.from ({ length: pages }, (_, i) => `Main Page ${i + 1}`), 'Other',
+      ];
+      if (groups.map (g => g.querySelector ('.b-propgroup-title')!.textContent!.trim()).join (',') !== names.join (','))
+        throw new Error (`${count}: property groups or pages changed`);
+      if (groups[0].style.gridRow !== `1 / span ${main_span}` || groups[0].style.gridColumnStart !== '1')
+        throw new Error (`${count}: first property group moved or changed height`);
+      if (groups.at (-1)!.style.gridRowStart !== String (other_row) || groups.at (-1)!.style.gridColumnStart !== String (other_col))
+        throw new Error (`${count}: following property group moved`);
+      if (container.querySelectorAll ('.b-propgroup-row > span.text-center').length !== count + 1)
+        throw new Error (`${count}: layout lost properties`);
+    } finally {
+      dispose();
+      container.remove();
+    }
+  }
+  return true;
+}
 function mount_deviceeditor (get_device: () => any)
 {
   const container = document.createElement ('div');
@@ -31,6 +68,7 @@ function mount_deviceeditor (get_device: () => any)
 
 // == Test registry ==
 const sub_tests: [string, () => Promise<any>][] = [];
+sub_tests.push (['layout', test_deviceeditor_layout]);
 
 async function test_deviceeditor_renders_name (): Promise<boolean>
 {
