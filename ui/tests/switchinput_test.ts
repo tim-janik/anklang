@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { run_tests } from './runner.js';
 import { createComponent, render } from 'solid-js/web';
 import { createSignal } from 'solid-js';
 import { SwitchInput } from '../b/switchinput';
@@ -357,21 +358,7 @@ async function test_switchinput_backend_updates (): Promise<boolean>
 }
 sub_tests.push (['backend_updates', test_switchinput_backend_updates]);
 
-// == Master runner ==
-/// Single exported entry point runs all sub-tests in sequence.
 export async function test_switchinput (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('switchinput: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('switchinput failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('switchinput', sub_tests);
 }

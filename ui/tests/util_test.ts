@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { run_tests } from './runner.js';
 // == Test registry ==
 const sub_tests: [string, () => Promise<any>][] = [];
 
@@ -30,21 +31,7 @@ async function test_array_ops (): Promise<boolean>
 }
 sub_tests.push (['array_ops', test_array_ops]);
 
-// == Master runner ==
-/// Single exported entry point runs all sub-tests in sequence.
 export async function test_util (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('util: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('util failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('util', sub_tests);
 }

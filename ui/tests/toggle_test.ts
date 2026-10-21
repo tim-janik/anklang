@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { run_tests } from './runner.js';
 import { createComponent, render } from 'solid-js/web';
 import { Toggle } from '../b/toggle';
 import * as Dom from '../dom';
@@ -340,21 +341,7 @@ async function test_toggle_cancel (): Promise<boolean>
 }
 sub_tests.push (['cancel', test_toggle_cancel]);
 
-// == Master runner ==
-/// Single exported entry point runs all sub-tests in sequence.
 export async function test_toggle (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('toggle: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('toggle failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('toggle', sub_tests);
 }

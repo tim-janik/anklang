@@ -25,6 +25,7 @@ UI_TEST_LIST := \
   preferencesdialog_test.test_preferencesdialog \
   project_test.test_project_play_toggle \
   relayout_test.test_relayout \
+  runner_test.test_runner \
   script_test.test_script_note_units \
   shell_test.test_shell \
   switchinput_test.test_switchinput \

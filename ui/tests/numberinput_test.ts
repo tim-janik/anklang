@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { run_tests } from './runner.js';
 import { createComponent, render } from 'solid-js/web';
 import { createSignal } from 'solid-js';
 import { NumberInput } from '../b/numberinput';
@@ -209,21 +210,7 @@ async function test_numberinput_backend_correction (): Promise<boolean>
 }
 sub_tests.push (['backend_correction', test_numberinput_backend_correction]);
 
-// == Master runner ==
-/// Single exported entry point runs all sub-tests in sequence.
 export async function test_numberinput (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('numberinput: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('numberinput failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('numberinput', sub_tests);
 }
