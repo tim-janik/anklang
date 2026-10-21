@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { run_tests } from './runner.js';
 import * as Dom from '../dom';
 
 // == Test registry ==
@@ -89,21 +90,7 @@ async function test_relayout_guard_no_project (): Promise<boolean>
 }
 sub_tests.push (['guard_no_project', test_relayout_guard_no_project]);
 
-// == Master runner ==
-/// Single exported entry point runs all sub-tests in sequence.
 export async function test_relayout (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('relayout: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('relayout failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('relayout', sub_tests);
 }

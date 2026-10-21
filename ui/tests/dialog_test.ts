@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { run_tests } from './runner.js';
 import { createComponent, render } from 'solid-js/web';
 import { createSignal, Show } from 'solid-js';
 import { AboutDialog } from '../b/aboutdialog';
@@ -402,21 +403,7 @@ async function test_crawler_enter_selects (): Promise<boolean>
 }
 sub_tests.push (['crawler_enter', test_crawler_enter_selects]);
 
-// == Master runner ==
-/// Runs all sub-tests in sequence.
 export async function test_dialog (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('dialog: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('dialog failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('dialog', sub_tests);
 }

@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL-2.0
 
+import { run_tests } from './runner.js';
 import { createComponent, render } from 'solid-js/web';
 import { createSignal } from 'solid-js';
 import { TrackList } from '../b/tracklist';
@@ -133,21 +134,7 @@ async function test_shell_treebrowser_hidden (): Promise<boolean>
 }
 sub_tests.push (['treebrowser_hidden', test_shell_treebrowser_hidden]);
 
-// == Master runner ==
-/// Single exported entry point runs all sub-tests in sequence.
 export async function test_shell (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('shell: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('shell failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('shell', sub_tests);
 }

@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { run_tests } from './runner.js';
 import { createComponent, render } from 'solid-js/web';
 import { createSignal } from 'solid-js';
 import { DeviceEditor } from '../b/deviceeditor';
@@ -103,20 +104,7 @@ async function test_deviceeditor_replaces_pending_device (): Promise<boolean>
 }
 sub_tests.push (['replaces_pending_device', test_deviceeditor_replaces_pending_device]);
 
-// == Master runner ==
 export async function test_deviceeditor (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('deviceeditor: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('deviceeditor failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('deviceeditor', sub_tests);
 }
