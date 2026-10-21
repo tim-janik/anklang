@@ -8,6 +8,27 @@ import { DevicePanel } from '../b/devicepanel';
 import { TreeBrowser } from '../b/treebrowser';
 import * as Dom from '../dom';
 
+async function test_flex_utilities (): Promise<boolean>
+{
+  const element = document.createElement ('div');
+  document.body.appendChild (element);
+  try {
+    for (const [name, direction] of [['hflex', 'row'], ['vflex', 'column']]) {
+      element.className = name;
+      for (const inline of [false, true]) {
+        element.toggleAttribute ('inline', inline);
+        const style = getComputedStyle (element);
+        if (style.display !== (inline ? 'inline-flex' : 'flex') || style.flexDirection !== direction ||
+            style.flexWrap !== 'nowrap' || style.flexBasis !== 'auto' || style.alignItems !== 'stretch' || style.alignContent !== 'stretch')
+          throw new Error (`${name}/${inline}: flex utility styles changed`);
+      }
+    }
+  } finally {
+    element.remove();
+  }
+  return true;
+}
+
 /// Minimal fake project that reports no tracks.
 function make_fake_project (create_track = () => {})
 {
@@ -20,6 +41,7 @@ function make_fake_project (create_track = () => {})
 
 // == Test registry ==
 const sub_tests: [string, () => Promise<any>][] = [];
+sub_tests.push (['flex_utilities', test_flex_utilities]);
 
 /// Test that TrackList forwards host attributes (class, style) to its root element.
 async function test_shell_tracklist_forwarding (): Promise<boolean>
