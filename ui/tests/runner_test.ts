@@ -8,6 +8,7 @@ export async function test_runner (): Promise<boolean>
   const result = await run_tests ('success', [
     ['first', async () => { await Promise.resolve(); order.push ('first'); }],
     ['second', () => { order.push ('second'); }],
+    ['true', () => true],
   ]);
   if (result !== true || order.join (',') !== 'first,second')
     throw new Error ('runner did not await tests in order');
@@ -18,12 +19,16 @@ export async function test_runner (): Promise<boolean>
       ['error', async () => { throw new Error ('broken'); }],
       ['string', () => { throw 'rejected'; }],
       ['null', () => { throw null; }],
+      ['false', () => false],
+      ['async_false', async () => false],
       ['last', () => { order.push ('last'); }],
     ]);
   } catch (e) {
     message = (e as Error).message;
   }
-  if (message !== 'failure failures:\n  error: broken\n  string: rejected\n  null: null' || order.at (-1) !== 'last')
+  const expected = 'failure failures:\n  error: broken\n  string: rejected\n  null: null' +
+    '\n  false: returned false\n  async_false: returned false';
+  if (message !== expected || order.at (-1) !== 'last')
     throw new Error ('runner did not collect failures and continue');
 
   message = '';

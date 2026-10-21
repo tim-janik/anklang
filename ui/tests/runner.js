@@ -7,7 +7,8 @@ export async function run_tests (suite, tests)
   const failures = [];
   for (const [name, fn] of tests) {
     try {
-      await fn();
+      if (await fn() === false)
+        throw new Error ('returned false');
     } catch (e) {
       failures.push (`${name}: ${e?.message ?? e}`);
     }
