@@ -17,6 +17,7 @@ UI_TEST_LIST := \
   noticeboard_test.test_noticeboard \
   numberinput_test.test_numberinput \
   objecteditor_test.test_objecteditor \
+  pianocontrol_test.test_piano_grid_hover \
   pianoroll_test.test_pianoroll_shortcuts \
   preferencesdialog_test.test_preferencesdialog \
   project_test.test_project_play_toggle \

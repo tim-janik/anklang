@@ -64,14 +64,11 @@ export class PianoCtrl {
   }
   quantization ()
   {
-    const roll = this.piano_roll, stepping = roll.stepping ? roll.stepping[0] : Util.PPQN;
-    return Math.min (stepping, Util.PPQN);
+    return quantization (this.piano_roll);
   }
   quantize (tick, nearest = true)
   {
-    const quant = this.quantization();
-    const fract = tick / quant;
-    return (nearest ? Math.round : Math.trunc) (fract) * quant;
+    return quantize (this.piano_roll, tick, nearest);
   }
   tickdelta (event)
   {
@@ -300,8 +297,7 @@ export class PianoCtrl {
       const tick = layout.tick_from_x (event.offsetX);
       const midinote = layout.midinote_from_y (event.offsetY);
       // FIXME: there is no piano_roll.note_cache
-      const idx = find_note (piano_roll.note_cache.notes,
-			     n => tick >= n.tick && tick < n.tick + n.duration && n.key == midinote);
+      const idx = piano_roll.note_cache.notes.findIndex (n => tick >= n.tick && tick < n.tick + n.duration && n.key == midinote);
       piano_roll.notes_canvas.setAttribute ('data-notehover', idx >= 0);
     }
   }
@@ -390,7 +386,7 @@ function notes_canvas_drag_paint (event, MODE)
       const event_tick = this.piano_roll.layout.tick_from_x (this.x);
       const event_key = this.piano_roll.layout.midinote_from_y (this.y);
       const paint_note = (clip, allnotes) => {
-	const note_idx = find_note (allnotes, n => event_tick >= n.tick && event_tick < n.tick + n.duration && event_key == n.key);
+	const note_idx = allnotes.findIndex (n => event_tick >= n.tick && event_tick < n.tick + n.duration && event_key == n.key);
 	if (note_idx < 0) {
 	  const newnote = { channel: 0, key: event_key, velocity: 1, fine_tune: 0,
 			    tick: quantize (this.piano_roll, event_tick, false),
@@ -430,7 +426,7 @@ function notes_canvas_drag_move (event, MODE)
   const select_before_move = (clip, allnotes) => {
     /* TODO: this.note_id is updated during hover, so it can happen that it is
      * not up-to-date which can make the drag operation as a whole fail */
-    const note_idx = find_note (allnotes, n => n.id === this.note_id);
+    const note_idx = allnotes.findIndex (n => n.id === this.note_id);
     this.move_ok = (note_idx >= 0);
     if (!this.move_ok || allnotes[note_idx].selected)
       return false;
@@ -440,7 +436,7 @@ function notes_canvas_drag_move (event, MODE)
                                 note => ({ selected : (note.id == this.note_id) }));
   };
   const start_move_notes = (clip, allnotes) => {
-    const note_idx = find_note (allnotes, n => n.id === this.note_id);
+    const note_idx = allnotes.findIndex (n => n.id === this.note_id);
     if (!this.move_ok || note_idx < 0)
       return false;
 
@@ -565,7 +561,7 @@ function notes_canvas_drag_resize (event, MODE)
   Util.prevent_event (event);
   this.update_coords (event, MODE); // piano_layout_update_coords
   const resize_notes = (clip, allnotes) => {
-    const note_idx = find_note (allnotes, n => n.id === this.note_id);
+    const note_idx = allnotes.findIndex (n => n.id === this.note_id);
     if (note_idx < 0)
       return false;
 
@@ -710,7 +706,7 @@ ntool ('E', notes_canvas_drag_erase, 'var(--svg-cursor-eraser)');
 /// Detect note if hovering over its body
 function note_hover_body (coords, tick, key, notes)
 {
-  const note_idx = find_note (notes, n => key == n.key && tick >= n.tick && tick < n.tick + n.duration);
+  const note_idx = notes.findIndex (n => key == n.key && tick >= n.tick && tick < n.tick + n.duration);
   return note_idx >= 0 ? { note_id: notes[note_idx].id } : null;
 }
 
@@ -718,7 +714,7 @@ function note_hover_body (coords, tick, key, notes)
 function note_hover_tail (coords, tick, key, notes)
 {
   const head_dist = 10; // minimum pixels distance from note start
-  const note_idx = find_note (notes, n => key == n.key && tick >= n.tick + Math.max (head_dist, n.duration / 2) && tick < n.tick + n.duration);
+  const note_idx = notes.findIndex (n => key == n.key && tick >= n.tick + Math.max (head_dist, n.duration / 2) && tick < n.tick + n.duration);
   return note_idx >= 0 ? { note_id: notes[note_idx].id } : null;
 }
 
@@ -828,17 +824,6 @@ function piano_layout_update_coords (event, MODE)
       coords.end = { x: coords.x, y: coords.y, sx: coords.sx, sy: coords.sy };
       break;
   }
-}
-
-function find_note (allnotes, predicate)
-{
-  for (let i = 0; i < allnotes.length; ++i)
-    {
-      const n = allnotes[i];
-      if (predicate (n))
-	return i;
-    }
-  return -1;
 }
 
 // == queue_change_selection ==
