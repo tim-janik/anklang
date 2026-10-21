@@ -65,14 +65,11 @@ export class PianoCtrl {
   }
   quantization ()
   {
-    const roll = this.piano_roll, stepping = roll.stepping ? roll.stepping[0] : 1;
-    return Math.min (stepping, 1);
+    return quantization (this.piano_roll);
   }
   quantize (beat, nearest = true)
   {
-    const quant = this.quantization();
-    const fract = beat / quant;
-    return (nearest ? Math.round : Math.trunc) (fract) * quant;
+    return quantize (this.piano_roll, beat, nearest);
   }
   beatdelta (event)
   {
@@ -829,15 +826,9 @@ function piano_layout_update_coords (event, MODE)
   }
 }
 
-function find_note (allnotes, predicate)
+function find_note (notes, predicate)
 {
-  for (let i = 0; i < allnotes.length; ++i)
-    {
-      const n = allnotes[i];
-      if (predicate (n))
-	return i;
-    }
-  return -1;
+  return notes.findIndex (predicate);
 }
 
 // UI selection flags are kept outside Tracktion note data.
