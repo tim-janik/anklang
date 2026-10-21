@@ -50,68 +50,45 @@ export function MenuBar (props)
   const project = Shell.project;
   const project_activate = activate.bind (null, project);
   const project_isactive = isactive.bind (null, project);
-  // refs for contextmenu elements
-  /** @type {any} */ let filemenu;
-  /** @type {any} */ let editmenu;
-  /** @type {any} */ let viewmenu;
-  /** @type {any} */ let helpmenu;
+  const menus = [];
   // Hotkeys check isactive when pressed, so closed menus keep their items enabled.
-  onMount (() => {
-    for (const menu of [filemenu, editmenu, viewmenu, helpmenu])
-      menu.map_kbd_hotkeys (true);
-  });
+  onMount (() => menus.forEach (menu => menu.map_kbd_hotkeys (true)));
+
+  function MenuButton (props)
+  {
+    let menu;
+    return <div class="asbutton button-dim" data-tip={`**CLICK** ${props.label} Menu`} data-hotkey={`Alt+${props.hotkey}`}
+      onClick={e => menu.popup (e)} onMouseDown={e => menu.popup (e)} id={`g-${props.id}menu`}>
+      <div class="b-menubar-icon"><Icon ic={props.icon} /></div>
+      <ContextMenu ref={value => { menu = value; menus.push (value); }}
+        activate={project_activate} isactive={project_isactive} items={props.items} />
+    </div>;
+  }
 
   return (
     <div class={props.class ? 'hflex b-menubar m-2 ' + props.class : 'hflex b-menubar m-2'} style="justify-content: space-between">
       {/* menubar left */}
       <ButtonBar class="-menubar">
-        {/* File Menu */}
-        <div class="asbutton button-dim" data-tip="**CLICK** File Menu" data-hotkey="Alt+F"
-             onClick={e => filemenu.popup (e)}
-             onMouseDown={e => filemenu.popup (e)}
-             id="g-filemenu">
-          <div class="b-menubar-icon">
-            <Icon ic="md-folder"/>
-          </div>
-          <ContextMenu ref={filemenu} activate={project_activate} isactive={project_isactive} items={[
-            { uri: 'loadnew', label: 'New Project', icon: 'fa-file_o', kbd: 'Ctrl+N' },
-            { uri: 'load', label: 'Open Project…', icon: 'fa-file_audio_o', kbd: 'Ctrl+O' },
-            { uri: 'save', label: 'Save Project', icon: 'fa-save', kbd: 'Ctrl+S' },
-            { uri: 'saveas', label: 'Save As…', icon: 'fa-save', kbd: 'Shift+Ctrl+S' },
-            { type: 'separator' },
-            { uri: 'prefs', label: 'Preferences', icon: 'fa-cog', kbd: 'Ctrl+RawComma' },
-            { type: 'separator' },
-            { uri: 'quit', label: 'Quit', icon: 'md-close', kbd: 'Shift+Ctrl+Q' },
-          ]} />
-        </div>
+        <MenuButton id="file" label="File" icon="md-folder" hotkey="F" items={[
+          { uri: 'loadnew', label: 'New Project', icon: 'fa-file_o', kbd: 'Ctrl+N' },
+          { uri: 'load', label: 'Open Project…', icon: 'fa-file_audio_o', kbd: 'Ctrl+O' },
+          { uri: 'save', label: 'Save Project', icon: 'fa-save', kbd: 'Ctrl+S' },
+          { uri: 'saveas', label: 'Save As…', icon: 'fa-save', kbd: 'Shift+Ctrl+S' },
+          { type: 'separator' },
+          { uri: 'prefs', label: 'Preferences', icon: 'fa-cog', kbd: 'Ctrl+RawComma' },
+          { type: 'separator' },
+          { uri: 'quit', label: 'Quit', icon: 'md-close', kbd: 'Shift+Ctrl+Q' },
+        ]} />
 
-        {/* Edit Menu */}
-        <div class="asbutton button-dim" data-tip="**CLICK** Edit Menu" data-hotkey="Alt+E"
-             onClick={e => editmenu.popup (e)}
-             onMouseDown={e => editmenu.popup (e)}
-             id="g-editmenu">
-          <div class="b-menubar-icon">
-            <Icon ic="md-playlist_edit"/>
-          </div>
-          <ContextMenu ref={editmenu} activate={project_activate} isactive={project_isactive} items={[
-            { uri: 'undo', label: 'Undo', icon: 'md-undo', kbd: 'Ctrl+Z' },
-            { uri: 'redo', label: 'Redo', icon: 'md-redo', kbd: 'Shift+Ctrl+Z' },
-          ]} />
-        </div>
+        <MenuButton id="edit" label="Edit" icon="md-playlist_edit" hotkey="E" items={[
+          { uri: 'undo', label: 'Undo', icon: 'md-undo', kbd: 'Ctrl+Z' },
+          { uri: 'redo', label: 'Redo', icon: 'md-redo', kbd: 'Shift+Ctrl+Z' },
+        ]} />
 
-        {/* View Menu */}
-        <div class="asbutton button-dim" data-tip="**CLICK** View Menu" data-hotkey="Alt+V"
-             onClick={e => viewmenu.popup (e)}
-             onMouseDown={e => viewmenu.popup (e)}
-             id="g-viewmenu">
-          <div class="b-menubar-icon">
-            <Icon ic="fa-eye"/>
-          </div>
-          <ContextMenu ref={viewmenu} activate={project_activate} isactive={project_isactive} items={[
-            { uri: 'fullscreen', label: 'Toggle Fullscreen', icon: 'md-fullscreen', kbd: 'F11', disabled: !document.fullscreenEnabled },
-            ...electron_menuitems(),
-          ]} />
-        </div>
+        <MenuButton id="view" label="View" icon="fa-eye" hotkey="V" items={[
+          { uri: 'fullscreen', label: 'Toggle Fullscreen', icon: 'md-fullscreen', kbd: 'F11', disabled: !document.fullscreenEnabled },
+          ...electron_menuitems(),
+        ]} />
       </ButtonBar>
 
       {/* playcontrols */}
@@ -122,20 +99,11 @@ export function MenuBar (props)
 
       {/* menubar right */}
       <ButtonBar class="-menubar">
-        {/* Help Menu */}
-        <div class="asbutton button-dim" data-tip="**CLICK** Help Menu" data-hotkey="Alt+H"
-             onClick={e => helpmenu.popup (e)}
-             onMouseDown={e => helpmenu.popup (e)}
-             id="g-helpmenu">
-          <div class="b-menubar-icon">
-            <Icon ic="fa-life_ring"/>
-          </div>
-          <ContextMenu ref={helpmenu} activate={project_activate} isactive={project_isactive} items={[
-            { uri: 'anklang-docu', label: 'Anklang Documentation…', icon: 'fa-book_open' },
-            { type: 'separator' },
-            { uri: 'about', label: 'About…', icon: 'oct-id_badge' },
-          ]} />
-        </div>
+        <MenuButton id="help" label="Help" icon="fa-life_ring" hotkey="H" items={[
+          { uri: 'anklang-docu', label: 'Anklang Documentation…', icon: 'fa-book_open' },
+          { type: 'separator' },
+          { uri: 'about', label: 'About…', icon: 'oct-id_badge' },
+        ]} />
       </ButtonBar>
     </div>
   );
