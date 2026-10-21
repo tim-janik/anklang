@@ -10,6 +10,7 @@ UI_TEST_LIST := \
   dialog_test.test_dialog \
   editable_test.test_editable \
   knob_test.test_knob \
+  menubar_test.test_menubar \
   menuitems_test.test_menuitems \
   modals_test.test_modals \
   noticeboard_test.test_noticeboard \
