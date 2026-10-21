@@ -8,6 +8,7 @@ UI_TEST_LIST := \
   deviceeditor_test.test_deviceeditor \
   devicepanel_test.test_devicepanel \
   dialog_test.test_dialog \
+  dom_test.test_markdown \
   editable_test.test_editable \
   knob_test.test_knob \
   menubar_test.test_menubar \
