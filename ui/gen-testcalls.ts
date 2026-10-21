@@ -82,14 +82,7 @@ function get_exported_functions (file_path: string)
       continue;
     }
 
-    // Pattern 5: export let/var name = ... (could be function expressions)
-    const letvar_match = export_statement.match (/^export\s+(?:let|var)\s+([a-zA-Z0-9_$]+)\s*=/);
-    if (letvar_match) {
-      add (letvar_match[1]);
-      continue;
-    }
-
-    // Pattern 6: TypeScript-only exports - skip silently (never runtime)
+    // Pattern 5: TypeScript-only exports - skip silently (never runtime)
     if (/^export\s+(?:class|interface|type|enum)\s/.test (export_statement)) {
       continue;
     }
@@ -104,16 +97,8 @@ function get_exported_functions (file_path: string)
 // Get command line arguments
 const args = process.argv.slice (2);
 
-if (args.length === 0) {
-  console.error ("Usage: tsx gen-testcalls.ts --list|--out <output-file> <source-file> [source-file...]");
-  console.error ("  --list  List test names one per line to stdout");
-  console.error ("  --out   Generate TypeScript output file");
-  process.exit (1);
-}
-
 // Check for --list or --out flag
 let list_mode = false;
-let out_mode = false;
 let out_file: string | undefined;
 let source_files: string[];
 
@@ -125,7 +110,6 @@ if (args[0] === "--list") {
   }
   source_files = args.slice (1);
 } else if (args[0] === "--out") {
-  out_mode = true;
   if (args.length < 3) {
     console.error ("Usage: tsx gen-testcalls.ts --out <output-file> <source-file> [source-file...]");
     process.exit (1);

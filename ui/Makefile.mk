@@ -50,6 +50,13 @@ endef
 $(foreach T, $(UI_TEST_LIST), $(eval $(call UI_TEST_CHECK,$T)))
 CHECK_TARGETS += check-ui-tests
 
+# == check-ui-scripts ==
+check-ui-scripts:
+	$(QECHO) TEST $@
+	$Q node --test ui/tests/*.test.js
+.PHONY: check-ui-scripts
+CHECK_TARGETS += check-ui-scripts
+
 # == check-ui-js ==
 .PHONY: check-ui-js
 check-ui-js: $>/gen/.vite.done $(bin/anklang) $>/electron/htmlgui
