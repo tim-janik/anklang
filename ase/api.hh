@@ -311,10 +311,10 @@ class Project : public virtual Device {
 public:
   virtual void            bpm            (double bpm) = 0;
   virtual double          bpm            () const = 0;
-  virtual void            numerator      (double num) = 0;
-  virtual double          numerator      () const = 0;
-  virtual void            denominator    (double den) = 0;
-  virtual double          denominator    () const = 0;
+  virtual void            numerator      (int num) = 0;
+  virtual int             numerator      () const = 0;
+  virtual void            denominator    (int den) = 0;
+  virtual int             denominator    () const = 0;
   virtual void            discard        () = 0;       ///< Discard project and associated resources.
   virtual void            start_playback () = 0;       ///< Start playback of a project, requires active sound engine.
   virtual void            pause_playback () = 0;       ///< Pause playback at the current position.

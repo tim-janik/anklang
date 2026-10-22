@@ -77,11 +77,18 @@ export function PositionView (props: any)
     const parts = ("" + v).split ('/');
     if (parts.length == 2) {
       const n = Number (parts[0]), d = Number (parts[1]);
-      if (n > 0 && d > 0) {
+      if (Number.isInteger (n) && n > 0 && Number.isInteger (d) && d > 0) {
 	project.numerator = n;
 	project.denominator = d;
       }
     }
+  }
+
+  function apply_bpm (v: string)
+  {
+    const bpm = Number (v);
+    if (Number.isFinite (bpm) && bpm > 0)
+      project.bpm = bpm;
   }
 
   return (
@@ -89,7 +96,7 @@ export function PositionView (props: any)
       <Editable class="w-16 text-center" onChange={e => apply_sig ((e as CustomEvent).detail.value)} selectall
 	value={project.numerator + '/' + project.denominator} />
       <span class="b-positionview-counter">{counter_text}</span>
-      <Editable class="w-16 text-center" onChange={e => { project.bpm = 0 | (e as CustomEvent).detail.value }} selectall
+      <Editable class="w-16 text-center" onChange={e => apply_bpm ((e as CustomEvent).detail.value)} selectall
 	value={project.bpm} />
       <span class="b-positionview-timer">{timer_text}</span>
     </div>

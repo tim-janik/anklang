@@ -858,11 +858,11 @@ export class Project // Ase::Project
   set bpm (v: number)
   { this.$set ("bpm", v); }
   get numerator (): number
-  { return this.$get ("numerator", 0.0) as number; }
+  { return this.$get ("numerator", 0) as number; }
   set numerator (v: number)
   { this.$set ("numerator", v); }
   get denominator (): number
-  { return this.$get ("denominator", 0.0) as number; }
+  { return this.$get ("denominator", 0) as number; }
   set denominator (v: number)
   { this.$set ("denominator", v); }
   discard (): Promise<void>

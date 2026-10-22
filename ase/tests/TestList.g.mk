@@ -38,6 +38,7 @@ ASE_TEST_LIST := \
   project_creation \
   project_length \
   project_playback_state \
+  project_tempo_values \
   project_track_management \
   promise_already_resolved_test \
   promise_exception_test \

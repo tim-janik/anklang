@@ -32,8 +32,8 @@ project_creation()
   project->bpm (130.0);
   TASSERT (std::abs (project->bpm() - 130.0) < 0.001);
   uint64_t last_bpm_notifications = bpm_notifications;
-  project->bpm (123.0);
-  TASSERT (std::abs (project->bpm() - 123.0) < 0.001);
+  project->bpm (123.5);
+  TASSERT (std::abs (project->bpm() - 123.5) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
 
   // Test undo
@@ -50,7 +50,7 @@ project_creation()
   project->redo();
   TASSERT (project->can_undo());
   TASSERT (!project->can_redo());
-  TASSERT (std::abs (project->bpm() - 123.0) < 0.001);
+  TASSERT (std::abs (project->bpm() - 123.5) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
 
   project->undo();
@@ -107,6 +107,56 @@ project_creation()
   project2->discard();
 }
 TEST_ADD (project_creation);
+
+static void
+project_tempo_values()
+{
+  ProjectP project = ProjectImpl::create ("TempoTest");
+  TASSERT (project->bpm() == 120.0);
+  TASSERT (project->numerator() == 4);
+  TASSERT (project->denominator() == 4);
+
+  project->bpm (1.0);
+  TASSERT (project->bpm() == 20.0);
+  project->bpm (2000.0);
+  TASSERT (project->bpm() == 300.0);
+
+  for (bool numerator : { true, false })
+    {
+      const auto get = [&] { return numerator ? project->numerator() : project->denominator(); };
+      const auto set = [&] (int value) {
+        if (numerator)
+          project->numerator (value);
+        else
+          project->denominator (value);
+      };
+      uint notifications = 0;
+      auto connection = project->on_event (numerator ? "notify:numerator" : "notify:denominator",
+                                           [&] (const Event&) { notifications++; });
+      const int initial = get(), value = numerator ? 7 : 8;
+      project->ungroup_undo();
+      set (value);
+      TASSERT (get() == value);
+      TASSERT (notifications > 0);
+      TASSERT (project->can_undo());
+
+      notifications = 0;
+      set (value);
+      TASSERT (notifications == 0);
+      project->undo();
+      TASSERT (get() == initial);
+      TASSERT (notifications > 0);
+      TASSERT (project->can_redo());
+
+      notifications = 0;
+      project->redo();
+      TASSERT (get() == value);
+      TASSERT (notifications > 0);
+    }
+
+  project->discard();
+}
+TEST_ADD (project_tempo_values);
 
 static void
 project_length()
