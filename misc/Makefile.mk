@@ -19,6 +19,13 @@ check-removals: misc/check-removals.sh misc/test_check_removals.py
 .PHONY: check-removals
 check: check-removals
 
+# == check-synsmell ==
+check-synsmell: misc/test_synsmell.mjs misc/synsmell.ts | node_modules/.npm.done
+	$(QCHECK)
+	$Q node --test misc/test_synsmell.mjs
+.PHONY: check-synsmell
+check: check-synsmell
+
 # == lint-cppcheck ==
 CPPCHECK ?= cppcheck
 CPPCHECK_CCENABLE := warning,style,performance,portability
