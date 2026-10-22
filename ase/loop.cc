@@ -1066,17 +1066,6 @@ SigchldSource::dispatch (const LoopState &state)
     const pid_t child_pid = wait4 (pid_, &status, WNOHANG, nullptr);
     if (child_pid > 0) {
       slot_ (pid_, status);
-#if 0
-      struct rusage ru {}; // wait4 (..., &ru);
-      printf ("  Child Pid %d user time: %ld.%06ld sec\n", child_pid, ru.ru_utime.tv_sec, ru.ru_utime.tv_usec);
-      printf ("  System time: %ld.%06ld sec\n", ru.ru_stime.tv_sec, ru.ru_stime.tv_usec);
-      printf ("  Max RSS: %ld KB\n", ru.ru_maxrss);
-      printf ("  Page faults: %ld\n", ru.ru_minflt);
-      printf ("  I/O operations: %ld\n", ru.ru_inblock + ru.ru_oublock);
-      printf ("  Voluntary context switches: %ld\n", ru.ru_nvcsw);
-      printf ("  Involuntary context switches: %ld\n", ru.ru_nivcsw);
-      printf ("\n");
-#endif
       if (WIFEXITED (status) || WIFSIGNALED (status)) {
         // Child exited
         pid_ = 0;
