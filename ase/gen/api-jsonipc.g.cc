@@ -299,7 +299,6 @@ jsonipc_for_api_jsonipc_json()
     .set ("redo", &::Ase::Project::redo)
     .set ("can_redo", &::Ase::Project::can_redo)
     .set ("length", &::Ase::Project::length)
-    .set ("master_volume", &::Ase::Project::master_volume, &::Ase::Project::master_volume)
     .set ("match_serialized", &::Ase::Project::match_serialized)
     ;
 

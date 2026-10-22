@@ -56,8 +56,6 @@ public:
   void                 redo              () override;
   bool                 can_redo          () override;
   double               length           () const override;
-  double               master_volume    () const override;
-  void                 master_volume    (double db) override;
   void                 group_undo        (const String &undoname) override;
   void                 ungroup_undo      () override;
   void                 clear_undo        ();

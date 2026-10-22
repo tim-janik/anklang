@@ -22,12 +22,6 @@ project_creation()
   uint64_t name_notifications = 0;
   auto name_connection = project->on_event ("notify:name", [&name_notifications] (const Event &event) { name_notifications++; });
 
-  uint64_t volume_notifications = 0;
-  auto volume_connection = project->on_event ("notify:master_volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
-
-  const double initial_vol = project->master_volume();
-  TASSERT (initial_vol >= -100.0 && initial_vol <= 20.0);
-
   // Test BPM notify/undo/redo
   project->bpm (130.0);
   TASSERT (std::abs (project->bpm() - 130.0) < 0.001);
@@ -77,24 +71,6 @@ project_creation()
   project->redo();
   TASSERT (project->name() == "NewName");
   TASSERT (name_notifications > last_name_notifications);
-
-  // Test master_volume notify/undo/redo
-  uint64_t last_volume_notifications = volume_notifications;
-  project->master_volume (-6.0);
-  TASSERT (std::abs (project->master_volume() - (-6.0)) < 0.01);
-  TASSERT (volume_notifications > last_volume_notifications);
-
-  TASSERT (project->can_undo());
-  last_volume_notifications = volume_notifications;
-  project->undo();
-  TASSERT (std::abs (project->master_volume() - initial_vol) < 0.01);
-  TASSERT (project->can_redo());
-  TASSERT (volume_notifications > last_volume_notifications);
-
-  last_volume_notifications = volume_notifications;
-  project->redo();
-  TASSERT (std::abs (project->master_volume() - (-6.0)) < 0.01);
-  TASSERT (volume_notifications > last_volume_notifications);
 
   project->discard();
 
@@ -344,7 +320,7 @@ track_hidden()
 TEST_ADD (track_hidden);
 
 static void
-check_track_parameter_values()
+check_track_parameter_values (bool master)
 {
   struct ParameterTest {
     const char *name;
@@ -360,8 +336,8 @@ check_track_parameter_values()
   for (size_t property = 0; property < parameters.size(); property++) {
     ProjectP project = ProjectImpl::create ("TrackParameterTest");
     TASSERT (project);
-    TrackP track = project->create_track();
-    TrackP other_track = project->create_track();
+    TrackP track = master ? project->master_track() : project->create_track();
+    TrackP other_track = master ? project->create_track() : project->master_track();
     TASSERT (track);
     TASSERT (other_track);
     using Values = std::array<float,3>;
@@ -427,9 +403,16 @@ check_track_parameter_values()
 static void
 track_parameter_values()
 {
-  check_track_parameter_values();
+  check_track_parameter_values (false);
 }
 TEST_ADD (track_parameter_values);
+
+static void
+master_parameter_values()
+{
+  check_track_parameter_values (true);
+}
+TEST_ADD (master_parameter_values);
 
 static void
 track_volume_pan()

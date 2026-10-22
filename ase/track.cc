@@ -261,6 +261,8 @@ te::VolumeAndPanPlugin*
 TrackImpl::volume_plugin () const
 {
   if (auto t = track_.get()) {
+    if (t->isMasterTrack())
+      return t->edit.getMasterVolumePlugin().get();
     if (auto at = dynamic_cast<te::AudioTrack*> (t))
       return at->getVolumePlugin();
   }
