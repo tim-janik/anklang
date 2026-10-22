@@ -204,16 +204,16 @@ ClipImpl::stop_tick () const
 }
 
 bool
-ClipImpl::is_muted () const
+ClipImpl::muted () const
 {
-  if (!clip_.get()) return false;
+  return_unless (clip_.get(), false);
   return clip_->isMuted();
 }
 
 void
-ClipImpl::set_muted (bool muted)
+ClipImpl::muted (bool muted)
 {
-  if (!clip_.get()) return;
+  return_unless (clip_.get());
   auto &um = clip_->edit.getUndoManager();
   um.beginNewTransaction ("Set Clip Muted");
   clip_->setMuted (muted);

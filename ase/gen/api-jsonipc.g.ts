@@ -743,10 +743,10 @@ export class Clip // Ase::Clip
 {
   constructor ($id)
   { super ($id); if (new.target === Clip) Jsonipc.ofreeze (this); }
-  is_muted (): Promise<boolean>
-  { return this.$rpc ("is_muted", [this]); }
-  set_muted (arg1: boolean): Promise<void>
-  { return this.$rpc ("set_muted", [this, arg1]); }
+  get muted (): boolean
+  { return this.$get ("muted", false) as boolean; }
+  set muted (v: boolean)
+  { this.$set ("muted", v); }
   get volume (): number
   { return this.$get ("volume", 0.0) as number; }
   set volume (v: number)

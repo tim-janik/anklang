@@ -596,7 +596,7 @@ clip_mute_volume_pan()
   TASSERT (mclip);
 
   // Test initial state
-  TASSERT (!mclip->is_muted());
+  TASSERT (!mclip->muted());
 
   // Test mute notifications
   uint64_t muted_notifications = 0;
@@ -604,14 +604,21 @@ clip_mute_volume_pan()
 
   // Test mute with notification
   uint64_t last_muted_notifications = muted_notifications;
-  mclip->set_muted (true);
-  TASSERT (mclip->is_muted());
+  mclip->muted (true);
+  TASSERT (mclip->muted());
   TASSERT (muted_notifications > last_muted_notifications);
+
+  last_muted_notifications = muted_notifications;
+  project->undo();
+  TASSERT (!mclip->muted() && muted_notifications > last_muted_notifications);
+  last_muted_notifications = muted_notifications;
+  project->redo();
+  TASSERT (mclip->muted() && muted_notifications > last_muted_notifications);
 
   // Reset mute
   last_muted_notifications = muted_notifications;
-  mclip->set_muted (false);
-  TASSERT (!mclip->is_muted());
+  mclip->muted (false);
+  TASSERT (!mclip->muted());
   TASSERT (muted_notifications > last_muted_notifications);
 
   // Test volume notifications
@@ -687,19 +694,19 @@ clip_undo_redo()
 
   // Set muted
   uint64_t last_muted_notifications = muted_notifications;
-  mclip->set_muted (true);
-  TASSERT (mclip->is_muted());
+  mclip->muted (true);
+  TASSERT (mclip->muted());
   TASSERT (muted_notifications > last_muted_notifications);
 
   // Undo mute
   TASSERT (project->can_undo());
   project->undo();
-  TASSERT (!mclip->is_muted());
+  TASSERT (!mclip->muted());
 
   // Redo mute
   TASSERT (project->can_redo());
   project->redo();
-  TASSERT (mclip->is_muted());
+  TASSERT (mclip->muted());
 
   // Test MIDI clip volume undo/redo
   uint64_t volume_notifications = 0;

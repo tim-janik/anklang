@@ -239,8 +239,8 @@ struct ClipNote {
 /// Container for MIDI note and control events.
 class Clip : public virtual Gadget {
 public:
-  virtual bool      is_muted       () const = 0;                  ///< Check if clip is muted.
-  virtual void      set_muted      (bool muted) = 0;              ///< Set clip muted state, emits `notify:muted`.
+  virtual bool      muted          () const = 0; ///< Check if clip is muted.
+  virtual void      muted          (bool muted) = 0; ///< Set clip muted state, emits `notify:muted`.
   virtual double    volume         () const = 0;                  ///< Get clip volume in dB.
   virtual void      volume         (double db) = 0;              ///< Set clip volume in dB, emits `notify:volume`.
   virtual double    pan            () const = 0;                  ///< Get clip pan (-1.0 to 1.0).
