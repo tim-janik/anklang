@@ -247,7 +247,6 @@ jsonipc_for_api_jsonipc_json()
   ::Jsonipc::Class< ::Ase::Track > class__Ase_Track;
   class__Ase_Track
     .inherit< ::Ase::Device >()
-    .set ("midi_channel", &::Ase::Track::midi_channel, &::Ase::Track::midi_channel)
     .set ("is_master", &::Ase::Track::is_master)
     .set ("is_control_track", &::Ase::Track::is_control_track)
     .set ("muted", &::Ase::Track::muted, &::Ase::Track::muted)

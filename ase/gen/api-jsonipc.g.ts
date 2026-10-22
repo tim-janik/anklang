@@ -783,10 +783,6 @@ export class Track // Ase::Track
 {
   constructor ($id)
   { super ($id); if (new.target === Track) Jsonipc.ofreeze (this); }
-  get midi_channel (): number
-  { return this.$get ("midi_channel", 0) as number; }
-  set midi_channel (v: number)
-  { this.$set ("midi_channel", v); }
   is_master (): Promise<boolean>
   { return this.$rpc ("is_master", [this]); }
   is_control_track (): Promise<boolean>

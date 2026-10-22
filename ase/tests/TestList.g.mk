@@ -59,7 +59,6 @@ ASE_TEST_LIST := \
   test_serializable_hierarchy \
   track_control_classification \
   track_hidden \
-  track_midi_channel \
   track_mute_solo \
   track_name \
   track_outlives_project \

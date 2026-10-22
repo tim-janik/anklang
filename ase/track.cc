@@ -193,15 +193,6 @@ TrackImpl::fallback_name() const
   return DeviceImpl::fallback_name();
 }
 
-void
-TrackImpl::midi_channel (int32 midichannel)
-{
-  midichannel = CLAMP (midichannel, 0, 16);
-  return_unless (midichannel != midi_channel_);
-  midi_channel_ = midichannel;
-  emit_notify ("midi_channel");
-}
-
 bool
 TrackImpl::muted() const
 {
