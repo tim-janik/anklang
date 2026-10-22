@@ -28,10 +28,10 @@ public:
   int32          change_batch   (const ClipNoteS &notes, const String &undogroup) override;
   bool           muted          () const override;
   void           muted          (bool muted) override;
-  double         volume         () const override;
-  void           volume         (double db) override;
-  double         pan            () const override;
-  void           pan            (double pan) override;
+  float          volume         () const override;
+  void           volume         (float db) override;
+  float          pan            () const override;
+  void           pan            (float pan) override;
   void           update_telemetry ();
   void           remove_self     () override;
   TelemetryFieldS telemetry      () const override;

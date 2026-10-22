@@ -241,10 +241,10 @@ class Clip : public virtual Gadget {
 public:
   virtual bool      muted          () const = 0; ///< Check if clip is muted.
   virtual void      muted          (bool muted) = 0; ///< Set clip muted state, emits `notify:muted`.
-  virtual double    volume         () const = 0;                  ///< Get clip volume in dB.
-  virtual void      volume         (double db) = 0;              ///< Set clip volume in dB, emits `notify:volume`.
-  virtual double    pan            () const = 0;                  ///< Get clip pan (-1.0 to 1.0).
-  virtual void      pan            (double pan) = 0;             ///< Set clip pan (-1.0 to 1.0), emits `notify:pan`.
+  virtual float     volume         () const = 0; ///< Get clip volume in dB.
+  virtual void      volume         (float db) = 0; ///< Set clip volume in dB, emits `notify:volume`.
+  virtual float     pan            () const = 0; ///< Get clip pan (-1.0 to 1.0).
+  virtual void      pan            (float pan) = 0; ///< Set clip pan (-1.0 to 1.0), emits `notify:pan`.
   virtual ClipNoteS all_notes      () const = 0;
   virtual void      all_notes      (const ClipNoteS &notes) = 0;
   virtual int64     end_tick       () const = 0;

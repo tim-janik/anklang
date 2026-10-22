@@ -219,10 +219,10 @@ ClipImpl::muted (bool muted)
   clip_->setMuted (muted);
 }
 
-double
+float
 ClipImpl::volume () const
 {
-  if (!clip_.get()) return 0.0;
+  return_unless (clip_.get(), 0.0);
   auto mclip = dynamic_cast<te::MidiClip*> (clip_.get());
   if (mclip)
     return mclip->getVolumeDb();
@@ -233,26 +233,26 @@ ClipImpl::volume () const
 }
 
 void
-ClipImpl::volume (double db)
+ClipImpl::volume (float db)
 {
-  if (!clip_.get()) return;
+  return_unless (clip_.get());
   auto &um = clip_->edit.getUndoManager();
   um.beginNewTransaction ("Set Clip Volume");
   auto mclip = dynamic_cast<te::MidiClip*> (clip_.get());
   if (mclip)
-    mclip->setVolumeDb (float (db));
+    mclip->setVolumeDb (db);
   else
     {
       auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
       if (aclip)
-        aclip->setGainDB (float (db));
+        aclip->setGainDB (db);
     }
 }
 
-double
+float
 ClipImpl::pan () const
 {
-  if (!clip_.get()) return 0.0;
+  return_unless (clip_.get(), 0.0);
   auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
   if (aclip)
     return aclip->getPan();
@@ -260,14 +260,14 @@ ClipImpl::pan () const
 }
 
 void
-ClipImpl::pan (double panval)
+ClipImpl::pan (float panval)
 {
-  if (!clip_.get()) return;
+  return_unless (clip_.get());
   auto &um = clip_->edit.getUndoManager();
   um.beginNewTransaction ("Set Clip Pan");
   auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
   if (aclip)
-    aclip->setPan (float (panval));
+    aclip->setPan (panval);
 }
 
 TelemetryFieldS
