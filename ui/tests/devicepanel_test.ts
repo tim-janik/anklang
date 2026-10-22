@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { run_tests } from './runner.js';
 import { createSignal } from 'solid-js';
 import { createComponent, render } from 'solid-js/web';
 import { DevicePanel } from '../b/devicepanel';
@@ -121,21 +122,7 @@ async function test_devicepanel_cleared_track (): Promise<boolean>
 }
 sub_tests.push (['cleared_track', test_devicepanel_cleared_track]);
 
-// == Master runner ==
-/// Single exported entry point runs all sub-tests in sequence.
 export async function test_devicepanel (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('devicepanel: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('devicepanel failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('devicepanel', sub_tests);
 }

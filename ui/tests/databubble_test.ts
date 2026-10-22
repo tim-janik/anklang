@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL-2.0
 
+import { run_tests } from './runner.js';
 import DataBubbleIface from '../b/databubble';
 import * as Dom from '../dom';
 
@@ -111,21 +112,7 @@ async function test_databubble_dispose_debounce (): Promise<boolean>
 }
 sub_tests.push (['dispose_debounce', test_databubble_dispose_debounce]);
 
-// == Master runner ==
-/// Runs all sub-tests in sequence.
 export async function test_databubble (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('databubble: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('databubble failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('databubble', sub_tests);
 }

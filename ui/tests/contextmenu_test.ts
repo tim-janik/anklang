@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { run_tests } from './runner.js';
 import { createSignal } from 'solid-js';
 import { type MenuAction, type MenuEntry } from '../b/menuitems';
 import { createComponent, render } from 'solid-js/web';
@@ -484,21 +485,7 @@ async function test_contextmenu_geometry_diagnostics (): Promise<boolean>
 }
 sub_tests.push (['geometry_diagnostics', test_contextmenu_geometry_diagnostics]);
 
-// == Master runner ==
-/// Single exported entry point runs all sub-tests in sequence.
 export async function test_contextmenu (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('contextmenu: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('contextmenu failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('contextmenu', sub_tests);
 }
