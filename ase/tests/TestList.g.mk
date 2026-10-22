@@ -28,6 +28,7 @@ ASE_TEST_LIST := \
   loop_add_timer_test \
   loop_current_multithread_test \
   loop_current_test \
+  master_parameter_values \
   mathutils_tests \
   member_tmpl_tests \
   memory_cstring_tests \

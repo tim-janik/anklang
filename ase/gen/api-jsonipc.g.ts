@@ -905,10 +905,6 @@ export class Project // Ase::Project
   { return this.$rpc ("can_redo", [this]); }
   length (): Promise<number>
   { return this.$rpc ("length", [this]); }
-  get master_volume (): number
-  { return this.$get ("master_volume", 0.0) as number; }
-  set master_volume (v: number)
-  { this.$set ("master_volume", v); }
   match_serialized (arg1: string, arg2: number): Promise<string>
   { return this.$rpc ("match_serialized", [this, arg1, arg2]); }
 };

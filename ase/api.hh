@@ -335,8 +335,6 @@ public:
   virtual void            redo           () = 0;       ///< Redo the last undo modification.
   virtual bool            can_redo       () = 0;       ///< Check if any redo steps have been recorded.
   virtual double          length         () const = 0; ///< Get the end time of the last clip in seconds.
-  virtual double          master_volume  () const = 0; ///< Get master volume in dB.
-  virtual void            master_volume  (double db) = 0; ///< Set master volume in dB.
   virtual String          match_serialized (const String &regex,
                                             int group = 0) = 0; ///< Match `regex` against the serialized project state.
   static ProjectP         last_project   ();

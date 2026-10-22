@@ -90,11 +90,6 @@ public:
       project_.emit_notify ("numerator");
     if (id == tracktion_engine::IDs::denominator)
       project_.emit_notify ("denominator");
-    if (id == tracktion_engine::IDs::volume) {
-      auto mvp = project_.edit_->getMasterVolumePlugin();
-      if (mvp && vtree == mvp->state)
-        project_.emit_notify ("master_volume");
-    }
   }
   void
   valueTreeChildAdded (juce::ValueTree &parent, juce::ValueTree &child) override
@@ -821,24 +816,6 @@ ProjectImpl::length () const
 {
   return_unless (!!edit_, 0.0);
   return edit_->getLength().inSeconds();
-}
-
-double
-ProjectImpl::master_volume () const
-{
-  return_unless (!!edit_, 0.0);
-  auto volPlugin = edit_->getMasterVolumePlugin();
-  return_unless (!!volPlugin, 0.0);
-  return trkn_volume_db (*volPlugin);
-}
-
-void
-ProjectImpl::master_volume (double db)
-{
-  return_unless (!!edit_);
-  auto volPlugin = edit_->getMasterVolumePlugin();
-  return_unless (!!volPlugin);
-  trkn_volume_db (*volPlugin, db);
 }
 
 void
