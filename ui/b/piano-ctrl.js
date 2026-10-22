@@ -292,19 +292,6 @@ export class PianoCtrl {
 						       (t0 >= n.start_beat && t0 < n.start_beat + n.length_beats))));
   }
   debounced_drag_move = Util.debounce (this.drag_move.bind (this), { wait: 17, restart: true, immediate: true });
-  move_event (event) // this method is debounced
-  {
-    const piano_roll = this.piano_roll, layout = piano_roll.layout;
-    if (!layout) return; // UI layout may have changed for deferred events
-    if (event.target == piano_roll.notes_canvas) {
-      const beat = layout.beat_from_x (event.offsetX);
-      const midinote = layout.midinote_from_y (event.offsetY);
-      // FIXME: there is no piano_roll.note_cache
-      const idx = find_note (piano_roll.note_cache.notes,
-			     n => beat >= n.start_beat && beat < n.start_beat + n.length_beats && n.note_number == midinote);
-      piano_roll.notes_canvas.setAttribute ('data-notehover', idx >= 0);
-    }
-  }
 }
 
 /// Add/register piano-roll canvas tool
@@ -1050,7 +1037,7 @@ function deepcopy_notes (allnotes, predicate) {
 }
 
 // == PianoRoll menu actions ==
-function _(arg) { return arg; }
+function _ (arg) { return arg; }
 
 async function action_cut_notes (action, piano_roll, clip, event)
 {
