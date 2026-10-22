@@ -79,7 +79,6 @@ public:
   Error                writer_collect    (const String &fspath, String *hexhashp);
   TelemetryFieldS      telemetry         () const override;
   ssize_t              track_index       (const Track &child) const;
-  int64_t              bar_ticks         () const;
   static void          force_shutdown_all ();
   static ProjectImplP  create            (const String &projectname);
 };

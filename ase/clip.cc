@@ -92,15 +92,6 @@ ClipImpl::~ClipImpl()
   state_listener_ = nullptr;
 }
 
-ProjectImpl*
-ClipImpl::project () const
-{
-  if (auto c = clip_.get())
-    if (auto timpl = find_ase_obj<TrackImpl> (c->getTrack()))
-      return timpl->project();
-  return nullptr;
-}
-
 ssize_t
 ClipImpl::clip_index () const
 {
@@ -305,14 +296,6 @@ ClipImpl::remove_self ()
   GadgetImpl::remove_self();
 }
 
-/// Retrieve const vector with all notes ordered by tick.
-ClipImpl::OrderedEventsP
-ClipImpl::tick_events () const
-{
-  ClipNoteS notes = all_notes();
-  return std::make_shared<const OrderedEventsV> (notes);
-}
-
 int32
 ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
 {
@@ -368,127 +351,6 @@ ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
   emit_notify ("notes");
   emit_notify ("all_notes");
   return 0;
-}
-
-// == ClipImpl::Generator ==
-/// Create generator from clip.
-void
-ClipImpl::Generator::setup (const ClipImpl &clip)
-{
-  ProjectImpl *p = clip.project();
-  int64_t bar_ticks = p ? p->bar_ticks() : 0;
-  events_ = clip.tick_events();
-  muted_ = false;
-  start_offset_ = 0;
-  loop_start_ = 0;
-  loop_end_ = bar_ticks * 2;
-  const int LOOPS = 2;
-  last_ = loop_end_ - start_offset_ + LOOPS * (loop_end_ - loop_start_);
-  if (true) // keep looping
-    last_ = M52MAX;
-}
-
-/// Assign new play_position() (and clip_position()), preserves all other state.
-void
-ClipImpl::Generator::jumpto (int64 target_tick)
-{
-  // negative ticks indicate delay
-  if (target_tick < 0)
-    {
-      xtick_ = target_tick;
-      itick_ = xtick_;
-      return;
-    }
-  // external position
-  xtick_ = std::min (target_tick, play_length());
-  // advance internal position by externally observable ticks
-  itick_ = start_offset_;
-  return_unless (xtick_ > 0);
-  // beyond loop end
-  if (itick_ >= loop_end_)
-    {
-      itick_ = xtick_;
-      return;
-    }
-  // until loop end
-  int64 delta = xtick_;
-  const int64 frag = std::min (delta, loop_end_ - itick_);
-  delta -= frag;
-  itick_ += frag;
-  if (itick_ == loop_end_)
-    {
-      itick_ = loop_start_;
-      // within loop (loop count is discarded)
-      if (delta)
-        {
-          const int64 frac = delta % (loop_end_ - loop_start_);
-          itick_ += frac;
-        }
-    }
-}
-
-/// Advance tick and call `receiver` for generated events.
-int64
-ClipImpl::Generator::generate (int64 target_tick, const Receiver &receiver)
-{
-  if (0)
-    printerr ("generate: %d < %d (%+d) && %d > %d (%+d) (loop: %d %d) i=%d\n", xtick_, last_, xtick_ < last_,
-              target_tick, xtick_, target_tick > xtick_,
-              loop_start_, loop_end_, itick_);
-  const int64 old_xtick = xtick_;
-  return_unless (xtick_ < last_ && target_tick > xtick_, xtick_ - old_xtick);
-  int64 ticks = std::min (target_tick, last_) - xtick_;
-  // consume delay
-  if (xtick_ < 0)
-    {
-      const int64 delta = std::min (ticks, -xtick_);
-      ticks -= delta;
-      xtick_ += delta;
-      itick_ += delta;
-      if (itick_ == 0)
-        itick_ = start_offset_;
-    }
-  // here: ticks == 0 || xtick_ >= 0
-  while (ticks > 0)
-    {
-      // advance
-      const int64 delta = itick_ < loop_end_ ? std::min (ticks, loop_end_ - itick_) : ticks;
-      ticks -= delta;
-      const int64 x = xtick_;
-      xtick_ += delta;
-      const int64 a = itick_;
-      itick_ += delta;
-      const int64 b = itick_;
-      if (itick_ == loop_end_)
-        itick_ = loop_start_;
-      // generate notes within [a,b)
-      if (receiver && !muted_)
-        {
-          ClipNote index = { .tick = a };
-          const ClipNote *event = events_->lookup_after (index);
-          while (event && event->tick < b)
-            {
-              MidiEvent midievent = make_note_on (event->channel, event->key, event->velocity, event->fine_tune, event->id);
-              const int64 noteon_tick = x + event->tick - a;
-              receiver (noteon_tick, midievent);
-              midievent.type = MidiEvent::NOTE_OFF;
-              receiver (noteon_tick + event->duration, midievent);
-              event++;
-              if (event == &*events_->end())
-                break;
-            }
-        }
-    }
-  return xtick_ - old_xtick;
-}
-
-String
-stringify_clip_note (const ClipNote &n)
-{
-  return string_format ("{%d,%d,%d,%s,%d,%d,%f,%f}",
-                        n.id, n.channel, n.key,
-                        n.selected ? "true" : "false",
-                        n.tick, n.duration, n.velocity, n.fine_tune);
 }
 
 } // Ase

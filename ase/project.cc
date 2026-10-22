@@ -964,27 +964,6 @@ ProjectImpl::track_index (const Track &child) const
   return found;
 }
 
-int64_t
-ProjectImpl::bar_ticks () const
-{
-  return_unless (!!edit_, 0);
-  auto &tempoSeq = edit_->tempoSequence;
-  auto *timeSig = tempoSeq.getTimeSig (0);
-  if (!timeSig)
-    return 0;
-
-  const int beats_per_bar = timeSig->numerator;
-  const int beat_unit = timeSig->denominator;
-
-  // Calculate beat ticks: SEMIQUAVER_TICKS * (16 / beat_unit)
-  // SEMIQUAVER_TICKS = TRANSPORT_PPQN / 4 = 1209600
-  const int64 SEMIQUAVER_TICKS = 1209600;
-  const int semiquavers_per_beat = 16 / beat_unit;
-  const int64 beat_ticks = SEMIQUAVER_TICKS * semiquavers_per_beat;
-
-  return beat_ticks * beats_per_bar;
-}
-
 TrackP
 ProjectImpl::master_track ()
 {
