@@ -39,11 +39,11 @@ public:
           measurer_ = &lmp->measurer;
           measurer_->addClient (meter_client_);
         }
-        if (auto vol = at->getVolumePlugin()) {
-          volume_plugin_state_ = vol->state;
-          volume_plugin_state_.addListener (this);
-        }
       }
+    }
+    if (auto vol = asetrack_.volume_plugin()) {
+      volume_plugin_state_ = vol->state;
+      volume_plugin_state_.addListener (this);
     }
   }
   ~TrackStateListener() override
@@ -78,8 +78,10 @@ public:
         asetrack_.emit_notify ("solo");
     }
     if (tree == volume_plugin_state_) {
-      if (property == tracktion::engine::IDs::volume)
-        asetrack_.emit_notify ("volume");
+      if (property == tracktion::engine::IDs::volume) {
+        asetrack_.emit_notify ("volume_db");
+        asetrack_.emit_notify ("slider_pos");
+      }
       if (property == tracktion::engine::IDs::pan)
         asetrack_.emit_notify ("pan");
     }
@@ -255,42 +257,61 @@ TrackImpl::is_control_track() const
   return is_master();
 }
 
-double
-TrackImpl::volume() const
+te::VolumeAndPanPlugin*
+TrackImpl::volume_plugin () const
 {
-  if (auto t = track_.get())
+  if (auto t = track_.get()) {
+    if (t->isMasterTrack())
+      return t->edit.getMasterVolumePlugin().get();
     if (auto at = dynamic_cast<te::AudioTrack*> (t))
-      if (auto vol = at->getVolumePlugin())
-        return vol->getVolumeDb();
-  return 0.0;
+      return at->getVolumePlugin();
+  }
+  return nullptr;
+}
+
+float
+TrackImpl::volume_db() const
+{
+  if (auto vol = volume_plugin())
+    return trkn_volume_db (*vol);
+  return 0;
 }
 
 void
-TrackImpl::volume (double db)
+TrackImpl::volume_db (float db)
 {
-  if (auto t = track_.get())
-    if (auto at = dynamic_cast<te::AudioTrack*> (t))
-      if (auto vol = at->getVolumePlugin())
-        vol->setVolumeDb (db);
+  if (auto vol = volume_plugin())
+    trkn_volume_db (*vol, db);
 }
 
-double
+float
+TrackImpl::slider_pos() const
+{
+  if (auto vol = volume_plugin())
+    return trkn_slider_pos (*vol);
+  return 0;
+}
+
+void
+TrackImpl::slider_pos (float pos)
+{
+  if (auto vol = volume_plugin())
+    trkn_slider_pos (*vol, pos);
+}
+
+float
 TrackImpl::pan() const
 {
-  if (auto t = track_.get())
-    if (auto at = dynamic_cast<te::AudioTrack*> (t))
-      if (auto vol = at->getVolumePlugin())
-        return vol->getPan();
-  return 0.0;
+  if (auto vol = volume_plugin())
+    return trkn_pan (*vol);
+  return 0;
 }
 
 void
-TrackImpl::pan (double pan)
+TrackImpl::pan (float pan)
 {
-  if (auto t = track_.get())
-    if (auto at = dynamic_cast<te::AudioTrack*> (t))
-      if (auto vol = at->getVolumePlugin())
-        vol->setPan (pan);
+  if (auto vol = volume_plugin())
+    trkn_pan (*vol, pan);
 }
 
 ClipS

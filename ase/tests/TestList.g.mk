@@ -28,6 +28,7 @@ ASE_TEST_LIST := \
   loop_add_timer_test \
   loop_current_multithread_test \
   loop_current_test \
+  master_parameter_values \
   mathutils_tests \
   member_tmpl_tests \
   memory_cstring_tests \
@@ -62,7 +63,7 @@ ASE_TEST_LIST := \
   track_mute_solo \
   track_name \
   track_outlives_project \
-  track_undo_redo \
+  track_parameter_values \
   track_volume_pan \
   unicode_displayfs_tests \
   unicode_tests \

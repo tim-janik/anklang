@@ -269,10 +269,12 @@ public:
   virtual void            hidden              (bool hidden) = 0;     ///< Set track hidden state.
   virtual bool            solo                () const = 0;          ///< Check if track is soloed.
   virtual void            solo                (bool solo) = 0;       ///< Set track solo state.
-  virtual double          volume              () const = 0;          ///< Get track volume in dB.
-  virtual void            volume              (double db) = 0;       ///< Set track volume in dB.
-  virtual double          pan                 () const = 0;          ///< Get track pan (-1.0 to 1.0).
-  virtual void            pan                 (double pan) = 0;      ///< Set track pan (-1.0 to 1.0).
+  virtual float           volume_db           () const = 0;          ///< Get track volume in dB.
+  virtual void            volume_db           (float db) = 0;        ///< Set track volume in dB.
+  virtual float           slider_pos          () const = 0;          ///< Get track volume fader position.
+  virtual void            slider_pos          (float pos) = 0;       ///< Set track volume fader position.
+  virtual float           pan                 () const = 0;          ///< Get track pan (-1.0 to 1.0).
+  virtual void            pan                 (float pan) = 0;       ///< Set track pan (-1.0 to 1.0).
   virtual ClipS           launcher_clips      () const = 0;          ///< Retrieve the list of clips that can be directly played; changes on `notify:launcher_clips`.
   virtual void            launcher_clips      (const ClipS &) = 0;   ///< NOP setter, assignments are ignored.
   virtual ClipP           create_midi_clip    (const String &name, double start, double length) = 0; ///< Create a new MIDI clip on this track.
@@ -333,8 +335,6 @@ public:
   virtual void            redo           () = 0;       ///< Redo the last undo modification.
   virtual bool            can_redo       () = 0;       ///< Check if any redo steps have been recorded.
   virtual double          length         () const = 0; ///< Get the end time of the last clip in seconds.
-  virtual double          master_volume  () const = 0; ///< Get master volume in dB.
-  virtual void            master_volume  (double db) = 0; ///< Set master volume in dB.
   virtual String          match_serialized (const String &regex,
                                             int group = 0) = 0; ///< Match `regex` against the serialized project state.
   static ProjectP         last_project   ();

@@ -13,6 +13,7 @@ class TrackImpl : public DeviceImpl, public virtual Track {
   SelectableWeakref<tracktion::Track> track_;
   std::unique_ptr<TrackStateListener> state_listener_;
   std::string  te_type_;
+  tracktion::VolumeAndPanPlugin* volume_plugin () const;
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
   friend class TrackStateListener;
@@ -37,10 +38,12 @@ public:
   void            hidden            (bool hidden) override;
   bool            solo              () const override;
   void            solo              (bool solo) override;
-  double          volume            () const override;
-  void            volume            (double db) override;
-  double          pan               () const override;
-  void            pan               (double pan) override;
+  float           volume_db         () const override;
+  void            volume_db         (float db) override;
+  float           slider_pos        () const override;
+  void            slider_pos        (float pos) override;
+  float           pan               () const override;
+  void            pan               (float pan) override;
   void            remove_self       () override;
   ClipS           launcher_clips    () const override;
   void            launcher_clips    (const ClipS &) override;

@@ -799,10 +799,14 @@ export class Track // Ase::Track
   { return this.$get ("solo", false) as boolean; }
   set solo (v: boolean)
   { this.$set ("solo", v); }
-  get volume (): number
-  { return this.$get ("volume", 0.0) as number; }
-  set volume (v: number)
-  { this.$set ("volume", v); }
+  get volume_db (): number
+  { return this.$get ("volume_db", 0.0) as number; }
+  set volume_db (v: number)
+  { this.$set ("volume_db", v); }
+  get slider_pos (): number
+  { return this.$get ("slider_pos", 0.0) as number; }
+  set slider_pos (v: number)
+  { this.$set ("slider_pos", v); }
   get pan (): number
   { return this.$get ("pan", 0.0) as number; }
   set pan (v: number)
@@ -901,10 +905,6 @@ export class Project // Ase::Project
   { return this.$rpc ("can_redo", [this]); }
   length (): Promise<number>
   { return this.$rpc ("length", [this]); }
-  get master_volume (): number
-  { return this.$get ("master_volume", 0.0) as number; }
-  set master_volume (v: number)
-  { this.$set ("master_volume", v); }
   match_serialized (arg1: string, arg2: number): Promise<string>
   { return this.$rpc ("match_serialized", [this, arg1, arg2]); }
 };

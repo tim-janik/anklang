@@ -7,6 +7,14 @@
 
 namespace Ase {
 
+float trkn_volume_db               (const tracktion::VolumeAndPanPlugin &plugin);
+void  trkn_volume_db               (tracktion::VolumeAndPanPlugin &plugin, float db);
+float trkn_slider_pos              (const tracktion::VolumeAndPanPlugin &plugin);
+void  trkn_slider_pos              (tracktion::VolumeAndPanPlugin &plugin, float pos);
+float trkn_pan                     (const tracktion::VolumeAndPanPlugin &plugin);
+void  trkn_pan                     (tracktion::VolumeAndPanPlugin &plugin, float pan);
+void  trkn_restore_parameter_values (tracktion::Edit &edit);
+
 /// Wrapper for juce::WeakReference<tracktion::Selectable>
 class SelectableBaseref final {
   union { void *const align_; char mem_[sizeof (void*)]; };

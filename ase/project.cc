@@ -90,11 +90,6 @@ public:
       project_.emit_notify ("numerator");
     if (id == tracktion_engine::IDs::denominator)
       project_.emit_notify ("denominator");
-    if (id == tracktion_engine::IDs::volume) {
-      auto mvp = project_.edit_->getMasterVolumePlugin();
-      if (mvp && vtree == mvp->state)
-        project_.emit_notify ("master_volume");
-    }
   }
   void
   valueTreeChildAdded (juce::ValueTree &parent, juce::ValueTree &child) override
@@ -784,10 +779,11 @@ void
 ProjectImpl::undo ()
 {
   return_unless (!!edit_);
-  const bool had_undo = edit_->getUndoManager().canUndo();
-  edit_->getUndoManager().undo();
-  if (had_undo)
+  CoalesceNotifies coalesce_notifies;
+  if (edit_->getUndoManager().undo()) {
+    trkn_restore_parameter_values (*edit_);
     emit_notify ("dirty");
+  }
 }
 
 bool
@@ -801,10 +797,11 @@ void
 ProjectImpl::redo ()
 {
   return_unless (!!edit_);
-  const bool had_redo = edit_->getUndoManager().canRedo();
-  edit_->getUndoManager().redo();
-  if (had_redo)
+  CoalesceNotifies coalesce_notifies;
+  if (edit_->getUndoManager().redo()) {
+    trkn_restore_parameter_values (*edit_);
     emit_notify ("dirty");
+  }
 }
 
 bool
@@ -819,26 +816,6 @@ ProjectImpl::length () const
 {
   return_unless (!!edit_, 0.0);
   return edit_->getLength().inSeconds();
-}
-
-double
-ProjectImpl::master_volume () const
-{
-  return_unless (!!edit_, 0.0);
-  auto volPlugin = edit_->getMasterVolumePlugin();
-  return_unless (!!volPlugin, 0.0);
-  return te::volumeFaderPositionToDB (volPlugin->volume.get());
-}
-
-void
-ProjectImpl::master_volume (double db)
-{
-  return_unless (!!edit_);
-  auto volPlugin = edit_->getMasterVolumePlugin();
-  return_unless (!!volPlugin);
-  const float sliderPos = te::decibelsToVolumeFaderPosition (db);
-  volPlugin->volume = sliderPos;
-  volPlugin->volParam->updateFromAttachedValue();
 }
 
 void
