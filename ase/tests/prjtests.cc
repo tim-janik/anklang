@@ -344,48 +344,92 @@ track_hidden()
 TEST_ADD (track_hidden);
 
 static void
-track_undo_redo()
+check_track_parameter_values()
 {
-  ProjectImplP project = ProjectImpl::create ("TrackUndoRedoTest");
-  TASSERT (project);
+  struct ParameterTest {
+    const char *name;
+    float (Track::*get)() const;
+    void (Track::*set) (float);
+    float value;
+  };
+  const std::array<ParameterTest,3> parameters = {{
+    { "volume_db", &Track::volume_db, &Track::volume_db, -6.0f },
+    { "slider_pos", &Track::slider_pos, &Track::slider_pos, 0.25f },
+    { "pan", &Track::pan, &Track::pan, 0.5f },
+  }};
+  for (size_t property = 0; property < parameters.size(); property++) {
+    ProjectP project = ProjectImpl::create ("TrackParameterTest");
+    TASSERT (project);
+    TrackP track = project->create_track();
+    TrackP other_track = project->create_track();
+    TASSERT (track);
+    TASSERT (other_track);
+    using Values = std::array<float,3>;
+    auto read_values = [&parameters] (const TrackP &t) {
+      Values values;
+      for (size_t i = 0; i < parameters.size(); i++)
+        values[i] = (t.get()->*parameters[i].get)();
+      return values;
+    };
+    const Values other_values = read_values (other_track);
+    std::array<uint64_t,3> notifications = {};
+    Values notified_values = {};
+    std::array<Emittable::Connection,3> connections;
+    for (size_t i = 0; i < parameters.size(); i++)
+      connections[i] = track->on_event (String ("notify:") + parameters[i].name, [&, i] (const Event&) {
+        notifications[i]++;
+        notified_values[i] = (track.get()->*parameters[i].get)();
+      });
+    auto verify = [&] (const Values &expected, const Values &before, const auto &previous_notifications) {
+      const Values actual = read_values (track);
+      for (size_t i = 0; i < parameters.size(); i++) {
+        TASSERT (std::abs (actual[i] - expected[i]) < 0.001f);
+        if (expected[i] != before[i]) {
+          TASSERT (notifications[i] > previous_notifications[i]);
+          TASSERT (std::abs (notified_values[i] - expected[i]) < 0.001f);
+        }
+      }
+      TASSERT (read_values (other_track) == other_values);
+    };
+    const auto &parameter = parameters[property];
+    const Values initial = read_values (track);
+    auto previous_notifications = notifications;
+    project->group_undo (parameter.name);
+    (track.get()->*parameter.set) (parameter.value);
+    project->ungroup_undo();
+    const Values changed = read_values (track);
+    TASSERT (std::abs (changed[property] - parameter.value) < 0.001f);
+    TASSERT (changed[property] != initial[property]);
+    if (property < 2) {
+      TASSERT (changed[0] != initial[0]);
+      TASSERT (changed[1] != initial[1]);
+    }
+    verify (changed, initial, previous_notifications);
+    TASSERT (project->can_undo());
+    TASSERT (!project->can_redo());
 
-  TrackP track = project->create_track();
-  TASSERT (track);
+    for (int repeat = 0; repeat < 2; repeat++) {
+      previous_notifications = notifications;
+      project->undo();
+      verify (initial, changed, previous_notifications);
+      TASSERT (project->can_redo());
 
-  // Test track volume/pan notifications
-  uint64_t volume_notifications = 0;
-  auto volume_connection = track->on_event ("notify:volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
+      previous_notifications = notifications;
+      project->redo();
+      verify (changed, initial, previous_notifications);
+      TASSERT (!project->can_redo());
+    }
 
-  uint64_t pan_notifications = 0;
-  auto pan_connection = track->on_event ("notify:pan", [&pan_notifications] (const Event &event) { pan_notifications++; });
-
-  // Change volume
-  uint64_t last_volume_notifications = volume_notifications;
-  track->volume (-6.0);
-  TASSERT (std::abs (track->volume() - (-6.0)) < 0.01);
-  TASSERT (volume_notifications > last_volume_notifications);
-
-  // Change volume back
-  last_volume_notifications = volume_notifications;
-  track->volume (0.0);
-  TASSERT (std::abs (track->volume()) < 0.01);
-  TASSERT (volume_notifications > last_volume_notifications);
-
-  // Change pan
-  uint64_t last_pan_notifications = pan_notifications;
-  track->pan (0.5);
-  TASSERT (std::abs (track->pan() - 0.5) < 0.01);
-  TASSERT (pan_notifications > last_pan_notifications);
-
-  // Change pan back
-  last_pan_notifications = pan_notifications;
-  track->pan (-0.5);
-  TASSERT (std::abs (track->pan() - (-0.5)) < 0.01);
-  TASSERT (pan_notifications > last_pan_notifications);
-
-  project->discard();
+    project->discard();
+  }
 }
-TEST_ADD (track_undo_redo);
+
+static void
+track_parameter_values()
+{
+  check_track_parameter_values();
+}
+TEST_ADD (track_parameter_values);
 
 static void
 track_volume_pan()
@@ -397,26 +441,26 @@ track_volume_pan()
   TASSERT (track);
 
   // Test initial volume
-  double initial_vol = track->volume();
+  double initial_vol = track->volume_db();
   TASSERT (initial_vol >= -100.0 && initial_vol <= 20.0);
 
   // Test volume notifications
   uint64_t volume_notifications = 0;
-  auto volume_connection = track->on_event ("notify:volume", [&volume_notifications] (const Event &event) { volume_notifications++; });
+  auto volume_connection = track->on_event ("notify:volume_db", [&volume_notifications] (const Event &event) { volume_notifications++; });
 
   uint64_t pan_notifications = 0;
   auto pan_connection = track->on_event ("notify:pan", [&pan_notifications] (const Event &event) { pan_notifications++; });
 
   // Test setting volume with notification
   uint64_t last_volume_notifications = volume_notifications;
-  track->volume (-6.0);
-  TASSERT (std::abs (track->volume() - (-6.0)) < 0.01);
+  track->volume_db (-6.0);
+  TASSERT (std::abs (track->volume_db() - (-6.0)) < 0.01);
   TASSERT (volume_notifications > last_volume_notifications);
 
   // Reset volume
   last_volume_notifications = volume_notifications;
-  track->volume (0.0);
-  TASSERT (std::abs (track->volume()) < 0.01);
+  track->volume_db (0.0);
+  TASSERT (std::abs (track->volume_db()) < 0.01);
   TASSERT (volume_notifications > last_volume_notifications);
 
   // Test pan

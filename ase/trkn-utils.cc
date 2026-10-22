@@ -11,6 +11,75 @@ namespace te = tracktion::engine;
 
 namespace Ase {
 
+static void
+trkn_prepare_parameter_value (te::AutomatableParameter &parameter)
+{
+  // Flush an implicit initial value before the first undoable change.
+  parameter.setParameter (parameter.getCurrentValue(), juce::sendNotification);
+}
+
+float
+trkn_volume_db (const te::VolumeAndPanPlugin &plugin)
+{
+  return plugin.getVolumeDb();
+}
+
+void
+trkn_volume_db (te::VolumeAndPanPlugin &plugin, float db)
+{
+  if (plugin.volume.isUsingDefault())
+    trkn_prepare_parameter_value (*plugin.volParam);
+  plugin.setVolumeDb (db);
+}
+
+float
+trkn_slider_pos (const te::VolumeAndPanPlugin &plugin)
+{
+  return plugin.getSliderPos();
+}
+
+void
+trkn_slider_pos (te::VolumeAndPanPlugin &plugin, float pos)
+{
+  if (plugin.volume.isUsingDefault())
+    trkn_prepare_parameter_value (*plugin.volParam);
+  plugin.setSliderPos (pos);
+}
+
+float
+trkn_pan (const te::VolumeAndPanPlugin &plugin)
+{
+  return plugin.getPan();
+}
+
+void
+trkn_pan (te::VolumeAndPanPlugin &plugin, float pan)
+{
+  if (plugin.pan.isUsingDefault())
+    trkn_prepare_parameter_value (*plugin.panParam);
+  plugin.setPan (pan);
+}
+
+static void
+trkn_restore_parameter_value (te::AutomatableParameter &parameter)
+{
+  if (!parameter.hasAutomationPoints() && !parameter.hasActiveModifierAssignments() && parameter.getCurrentModifierValue() == 0)
+    parameter.updateFromAttachedValue();
+}
+
+void
+trkn_restore_parameter_values (te::Edit &edit)
+{
+  auto restore = [] (te::VolumeAndPanPlugin &plugin) {
+    trkn_restore_parameter_value (*plugin.volParam);
+    trkn_restore_parameter_value (*plugin.panParam);
+  };
+  restore (*edit.getMasterVolumePlugin());
+  for (auto track : te::getAudioTracks (edit))
+    if (auto plugin = track->getVolumePlugin())
+      restore (*plugin);
+}
+
 // == SelectableBaseref ==
 using JuceWeakReference_Selectable = juce::WeakReference<tracktion::Selectable>;
 

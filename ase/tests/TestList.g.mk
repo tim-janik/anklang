@@ -62,7 +62,7 @@ ASE_TEST_LIST := \
   track_mute_solo \
   track_name \
   track_outlives_project \
-  track_undo_redo \
+  track_parameter_values \
   track_volume_pan \
   unicode_displayfs_tests \
   unicode_tests \

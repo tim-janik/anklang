@@ -784,10 +784,11 @@ void
 ProjectImpl::undo ()
 {
   return_unless (!!edit_);
-  const bool had_undo = edit_->getUndoManager().canUndo();
-  edit_->getUndoManager().undo();
-  if (had_undo)
+  CoalesceNotifies coalesce_notifies;
+  if (edit_->getUndoManager().undo()) {
+    trkn_restore_parameter_values (*edit_);
     emit_notify ("dirty");
+  }
 }
 
 bool
@@ -801,10 +802,11 @@ void
 ProjectImpl::redo ()
 {
   return_unless (!!edit_);
-  const bool had_redo = edit_->getUndoManager().canRedo();
-  edit_->getUndoManager().redo();
-  if (had_redo)
+  CoalesceNotifies coalesce_notifies;
+  if (edit_->getUndoManager().redo()) {
+    trkn_restore_parameter_values (*edit_);
     emit_notify ("dirty");
+  }
 }
 
 bool
@@ -827,7 +829,7 @@ ProjectImpl::master_volume () const
   return_unless (!!edit_, 0.0);
   auto volPlugin = edit_->getMasterVolumePlugin();
   return_unless (!!volPlugin, 0.0);
-  return te::volumeFaderPositionToDB (volPlugin->volume.get());
+  return trkn_volume_db (*volPlugin);
 }
 
 void
@@ -836,9 +838,7 @@ ProjectImpl::master_volume (double db)
   return_unless (!!edit_);
   auto volPlugin = edit_->getMasterVolumePlugin();
   return_unless (!!volPlugin);
-  const float sliderPos = te::decibelsToVolumeFaderPosition (db);
-  volPlugin->volume = sliderPos;
-  volPlugin->volParam->updateFromAttachedValue();
+  trkn_volume_db (*volPlugin, db);
 }
 
 void
