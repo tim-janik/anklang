@@ -12,6 +12,7 @@
 - Sources in `devices/` that `devices/Makefile.mk` doesn't build use the removed engine. They wait to be ported. Don't copy from them.
 
 ## Project state
+- `ase/` passes Tracktion values to `ase/api.hh` unchanged: same unit, range and type. No clamps, defaults or conversions there; `ui/` decides how to show them.
 - Project data lives in the Tracktion `Edit`. Don't keep copies in `ase/` members; undo and saving miss them.
 - Change Tracktion state through its API, e.g. `track->setHidden (true)`, never with `state.setProperty (...)`.
 - Tracktion calls that take an `UndoManager*` get the edit's undo manager for project data, never `nullptr`.
