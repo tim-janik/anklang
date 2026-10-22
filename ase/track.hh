@@ -32,12 +32,12 @@ public:
   ProjectImpl*    project           () const;
   bool            is_master         () const override;
   bool            is_control_track  () const override;
-  bool            is_muted          () const override;
-  void            set_muted         (bool muted) override;
-  bool            is_hidden         () const override;
-  void            set_hidden        (bool hidden) override;
-  bool            is_solo           () const override;
-  void            set_solo          (bool solo) override;
+  bool            muted             () const override;
+  void            muted             (bool muted) override;
+  bool            hidden            () const override;
+  void            hidden            (bool hidden) override;
+  bool            solo              () const override;
+  void            solo              (bool solo) override;
   double          volume            () const override;
   void            volume            (double db) override;
   double          pan               () const override;

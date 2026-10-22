@@ -23,10 +23,10 @@ public:
   String          name              () const override;
   DeviceInfo      device_info       () override;
   String          plugin_type       () const override;
-  bool            is_enabled        () const override;
-  void            set_enabled       (bool enabled) override;
-  bool            is_frozen         () const override;
-  void            set_frozen        (bool frozen) override;
+  bool            enabled           () const override;
+  void            enabled           (bool enabled) override;
+  bool            frozen            () const override;
+  void            frozen            (bool frozen) override;
   void            remove_self       () override;
   tracktion::Plugin* plugin () const noexcept { return plugin_.get(); } ///< Access underlying tracktion::Plugin (for internal use).
   static PluginImplP from_trkn (tracktion::Plugin&);

@@ -203,7 +203,7 @@ TrackImpl::midi_channel (int32 midichannel)
 }
 
 bool
-TrackImpl::is_muted() const
+TrackImpl::muted() const
 {
   if (auto t = track_.get())
     return t->isMuted (false);
@@ -211,14 +211,14 @@ TrackImpl::is_muted() const
 }
 
 void
-TrackImpl::set_muted (bool muted)
+TrackImpl::muted (bool muted)
 {
   if (auto t = track_.get())
     t->setMute (muted);
 }
 
 bool
-TrackImpl::is_hidden() const
+TrackImpl::hidden() const
 {
   if (auto t = track_.get())
     return t->isHidden ();
@@ -226,14 +226,14 @@ TrackImpl::is_hidden() const
 }
 
 void
-TrackImpl::set_hidden (bool hidden)
+TrackImpl::hidden (bool hidden)
 {
   if (auto t = track_.get())
     t->setHidden (hidden);
 }
 
 bool
-TrackImpl::is_solo() const
+TrackImpl::solo() const
 {
   if (auto t = track_.get())
     return t->isSolo (false);
@@ -241,7 +241,7 @@ TrackImpl::is_solo() const
 }
 
 void
-TrackImpl::set_solo (bool solo)
+TrackImpl::solo (bool solo)
 {
   if (auto t = track_.get())
     t->setSolo (solo);
