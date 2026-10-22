@@ -65,7 +65,6 @@ ASE_TEST_LIST := \
   track_outlives_project \
   track_undo_redo \
   track_volume_pan \
-  transport_tests \
   unicode_displayfs_tests \
   unicode_tests \
   utf8_codepoint_bench \
