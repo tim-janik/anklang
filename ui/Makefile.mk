@@ -40,9 +40,9 @@ endif
 # == check-ui-tests ==
 .PHONY: check-ui-tests
 define UI_TEST_CHECK
-check-$1: $$>/gen/.vite.done $$(lib/AnklangSynthEngine) $$>/electron/htmlgui
+check-$1: $$>/gen/.vite.done $$(bin/anklang) $$>/electron/htmlgui
 	$$(QECHO) TEST '$1'
-	$$Q $$(lib/AnklangSynthEngine) --norc --no-devices --ui-test '$1'
+	$$Q $$(bin/anklang) --norc --no-devices --ui-test '$1'
 .PHONY: check-$1
 check-ui-tests: check-$1
 endef
@@ -51,16 +51,16 @@ CHECK_TARGETS += check-ui-tests
 
 # == check-ui-js ==
 .PHONY: check-ui-js
-check-ui-js: $>/gen/.vite.done $(lib/AnklangSynthEngine) $>/electron/htmlgui
+check-ui-js: $>/gen/.vite.done $(bin/anklang) $>/electron/htmlgui
 	$(QECHO) TEST --ui-js
-	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices \
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(bin/anklang) --norc --no-devices \
 		--ui-js='await new Promise (resolve => setTimeout (resolve, 10)); console.log ("UI-JS completed");' \
 		2>&1 | grep -F 'UI-JS completed'
-	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui-js=''
-	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices \
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(bin/anklang) --norc --no-devices --ui-js=''
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(bin/anklang) --norc --no-devices \
 		--ui-js='window.auto_close (false); setTimeout (() => { console.log ("UI-JS stayed open"); window.close(); }, 1500);' \
 		2>&1 | grep -F 'UI-JS stayed open'
-	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(lib/AnklangSynthEngine) --norc --no-devices --ui-js='return 7'; test $$? = 7
+	$Q env -u DISPLAY -u WAYLAND_DISPLAY timeout 60s $(bin/anklang) --norc --no-devices --ui-js='return 7'; test $$? = 7
 CHECK_TARGETS += check-ui-js
 
 # == ui/assets/AnklangIcons.css ==

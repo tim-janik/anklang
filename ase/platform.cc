@@ -38,7 +38,7 @@
 namespace Ase {
 
 // == Runtime Path Handling ==
-static std::string determine_anklangsynthengine_installdir (bool *using_objdir);
+static std::string determine_anklang_installdir (bool *using_objdir);
 static std::string construct_ladspa_path                   ();
 
 /// Get Anklang home dir, possibly adding `subdir`.
@@ -58,7 +58,7 @@ std::string
 anklang_runpath (RPath rpath, const String &segment)
 {
   static bool using_objdir = false;
-  static const std::string libexec_installdir = determine_anklangsynthengine_installdir (&using_objdir);
+  static const std::string libexec_installdir = determine_anklang_installdir (&using_objdir);
   static const std::string libexec_prefixdir = Path::dirname (libexec_installdir);
   const char *objdir = using_objdir ? "/" LIBTOOL_OBJDIR : "";
   switch (rpath)
@@ -771,12 +771,12 @@ find_text_file (ptrdiff_t symbol_address)
   return ""; // not found
 }
 
-// finding the *right* path is a fundamental requirement for AnklangSynthEngine
+// finding the *right* path is a fundamental requirement for Anklang
 static std::string
-determine_anklangsynthengine_installdir (bool *using_objdir)
+determine_anklang_installdir (bool *using_objdir)
 {
   // determine executable for symbol
-  const ptrdiff_t address = ptrdiff_t (&determine_anklangsynthengine_installdir);
+  const ptrdiff_t address = ptrdiff_t (&determine_anklang_installdir);
   String pathname = find_text_file (address);
   const char *path = pathname.c_str(), *e = strrchr (path, '/');
   // strip filename component to get dirname

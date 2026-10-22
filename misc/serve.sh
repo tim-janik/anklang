@@ -28,8 +28,8 @@ fi
 # It is just pointless as it still leaves vite open, so we just use --unauth-dev instead.
 
 # Anklang
-echo -e "\n+ $BUILDDIR/lib/AnklangSynthEngine --unauth-dev=$DEVPORT_ANKLANG $*" >&2
-$BUILDDIR/lib/AnklangSynthEngine --unauth-dev=$DEVPORT_ANKLANG "$@" &	# does setpgid()
+echo -e "\n+ $BUILDDIR/bin/anklang --unauth-dev=$DEVPORT_ANKLANG $*" >&2
+$BUILDDIR/bin/anklang --unauth-dev=$DEVPORT_ANKLANG "$@" &	# does setpgid()
 sleep 0.5
 
 # Vite
