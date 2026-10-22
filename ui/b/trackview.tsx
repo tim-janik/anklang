@@ -96,11 +96,6 @@ export function TrackView (props)
   let level_width_ = 0;
   let trackview_contextmenu = null;
 
-  function mcc (n) // midi_channel character
-  {
-    return n == props.track.midi_channel ? '\u221a' : ' ';
-  }
-
   function track_click0 (event)
   {
     event.stopPropagation();
@@ -130,8 +125,6 @@ export function TrackView (props)
       case 'delete-track': return Shell.current_track && !await Shell.current_track.is_master();
       case 'rename-track': return true;
     }
-    if (uri.startsWith ('mc-'))
-      return true;
     return false;
   }
 
@@ -168,11 +161,6 @@ export function TrackView (props)
       }
     if (uri == 'rename-track')
       trackname_ref?.activate();
-    if (uri.startsWith ('mc-'))
-      {
-	const ch = parseInt (uri.substr (3));
-	props.track.midi_channel = ch;
-      }
   }
 
   function recv_telemetry (teleobj, arrays)
@@ -252,11 +240,6 @@ export function TrackView (props)
     props.track.name = event.detail.value.trim();
   };
 
-  const channel_item = (channel: number) => ({
-    uri: `mc-${channel}`,
-    label: channel ? String (channel) : 'Internal Channel',
-    get icon () { return mcc (channel); }, // getter keeps the checkmark reactive
-  });
   const menu_items: MenuEntry[] = [
     { type: 'title', label: 'Track' },
     { uri: 'add-track', label: 'Add Track', icon: 'fa-plus_circle' },
@@ -275,13 +258,6 @@ export function TrackView (props)
     { type: 'title', label: 'Playback' },
     { uri: 'mute-track', label: 'Mute Track', icon: 'uc-Ｍ' },
     { uri: 'solo-track', label: 'Solo Track', icon: 'uc-Ｓ' },
-    { type: 'separator' },
-    { type: 'title', label: 'MIDI Channel' },
-    channel_item (0),
-    ...[0, 4, 8, 12].map (offset => ({
-      type: 'row' as const, noturn: true,
-      items: [1, 2, 3, 4].map (channel => channel_item (offset + channel)),
-    })),
   ];
 
   return (

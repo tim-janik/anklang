@@ -32,8 +32,8 @@ project_creation()
   project->bpm (130.0);
   TASSERT (std::abs (project->bpm() - 130.0) < 0.001);
   uint64_t last_bpm_notifications = bpm_notifications;
-  project->bpm (123.0);
-  TASSERT (std::abs (project->bpm() - 123.0) < 0.001);
+  project->bpm (123.5);
+  TASSERT (std::abs (project->bpm() - 123.5) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
 
   // Test undo
@@ -50,7 +50,7 @@ project_creation()
   project->redo();
   TASSERT (project->can_undo());
   TASSERT (!project->can_redo());
-  TASSERT (std::abs (project->bpm() - 123.0) < 0.001);
+  TASSERT (std::abs (project->bpm() - 123.5) < 0.001);
   TASSERT (bpm_notifications > last_bpm_notifications);
 
   project->undo();
@@ -107,6 +107,56 @@ project_creation()
   project2->discard();
 }
 TEST_ADD (project_creation);
+
+static void
+project_tempo_values()
+{
+  ProjectP project = ProjectImpl::create ("TempoTest");
+  TASSERT (project->bpm() == 120.0);
+  TASSERT (project->numerator() == 4);
+  TASSERT (project->denominator() == 4);
+
+  project->bpm (1.0);
+  TASSERT (project->bpm() == 20.0);
+  project->bpm (2000.0);
+  TASSERT (project->bpm() == 300.0);
+
+  for (bool numerator : { true, false })
+    {
+      const auto get = [&] { return numerator ? project->numerator() : project->denominator(); };
+      const auto set = [&] (int value) {
+        if (numerator)
+          project->numerator (value);
+        else
+          project->denominator (value);
+      };
+      uint notifications = 0;
+      auto connection = project->on_event (numerator ? "notify:numerator" : "notify:denominator",
+                                           [&] (const Event&) { notifications++; });
+      const int initial = get(), value = numerator ? 7 : 8;
+      project->ungroup_undo();
+      set (value);
+      TASSERT (get() == value);
+      TASSERT (notifications > 0);
+      TASSERT (project->can_undo());
+
+      notifications = 0;
+      set (value);
+      TASSERT (notifications == 0);
+      project->undo();
+      TASSERT (get() == initial);
+      TASSERT (notifications > 0);
+      TASSERT (project->can_redo());
+
+      notifications = 0;
+      project->redo();
+      TASSERT (get() == value);
+      TASSERT (notifications > 0);
+    }
+
+  project->discard();
+}
+TEST_ADD (project_tempo_values);
 
 static void
 project_length()
@@ -187,8 +237,8 @@ track_mute_solo()
   TASSERT (track);
 
   // Test initial mute/solo state
-  TASSERT (!track->is_muted());
-  TASSERT (!track->is_solo());
+  TASSERT (!track->muted());
+  TASSERT (!track->solo());
 
   // Test mute notifications
   uint64_t muted_notifications = 0;
@@ -199,26 +249,26 @@ track_mute_solo()
 
   // Test mute with notification
   uint64_t last_muted_notifications = muted_notifications;
-  track->set_muted (true);
-  TASSERT (track->is_muted());
+  track->muted (true);
+  TASSERT (track->muted());
   TASSERT (muted_notifications > last_muted_notifications);
 
   // Reset mute
   last_muted_notifications = muted_notifications;
-  track->set_muted (false);
-  TASSERT (!track->is_muted());
+  track->muted (false);
+  TASSERT (!track->muted());
   TASSERT (muted_notifications > last_muted_notifications);
 
   // Test solo with notification
   uint64_t last_solo_notifications = solo_notifications;
-  track->set_solo (true);
-  TASSERT (track->is_solo());
+  track->solo (true);
+  TASSERT (track->solo());
   TASSERT (solo_notifications > last_solo_notifications);
 
   // Reset solo
   last_solo_notifications = solo_notifications;
-  track->set_solo (false);
-  TASSERT (!track->is_solo());
+  track->solo (false);
+  TASSERT (!track->solo());
   TASSERT (solo_notifications > last_solo_notifications);
 
   project->discard();
@@ -264,7 +314,7 @@ track_hidden()
   TASSERT (track);
 
   // Test initial hidden state
-  TASSERT (!track->is_hidden());
+  TASSERT (!track->hidden());
 
   // Test hidden notifications
   uint64_t hidden_notifications = 0;
@@ -272,14 +322,21 @@ track_hidden()
 
   // Test hide with notification
   uint64_t last_hidden_notifications = hidden_notifications;
-  track->set_hidden (true);
-  TASSERT (track->is_hidden());
+  project->ungroup_undo();
+  track->hidden (true);
+  TASSERT (track->hidden());
   TASSERT (hidden_notifications > last_hidden_notifications);
 
-  // Reset hidden
+  TASSERT (project->can_undo());
   last_hidden_notifications = hidden_notifications;
-  track->set_hidden (false);
-  TASSERT (!track->is_hidden());
+  project->undo();
+  TASSERT (!track->hidden());
+  TASSERT (hidden_notifications > last_hidden_notifications);
+
+  TASSERT (project->can_redo());
+  last_hidden_notifications = hidden_notifications;
+  project->redo();
+  TASSERT (track->hidden());
   TASSERT (hidden_notifications > last_hidden_notifications);
 
   project->discard();
@@ -401,25 +458,6 @@ track_name()
   project->discard();
 }
 TEST_ADD (track_name);
-
-static void
-track_midi_channel()
-{
-  ProjectImplP project = ProjectImpl::create ("TrackMidiChannelTest");
-  TASSERT (project);
-
-  TrackP track = project->create_track();
-  TASSERT (track);
-
-  uint64_t midi_notifications = 0;
-  auto midi_connection = track->on_event ("notify:midi_channel", [&midi_notifications] (const Event &event) { midi_notifications++; });
-  track->midi_channel (1);
-  TASSERT (track->midi_channel() == 1);
-  TASSERT (midi_notifications > 0);
-
-  project->discard();
-}
-TEST_ADD (track_midi_channel);
 
 static void
 clip_creation()
@@ -743,62 +781,53 @@ TEST_ADD (clip_undo_redo);
 static void
 plugin_creation()
 {
-  ProjectImplP project = ProjectImpl::create ("PluginTest");
-  TASSERT (project);
-
+  ProjectP project = ProjectImpl::create ("PluginTest");
   TrackP track = project->create_track();
   TASSERT (track);
+  PluginS plugins = track->list_plugins();
+  TASSERT (!plugins.empty());
+  PluginP plugin = plugins.front();
+  TASSERT (plugin);
+  TASSERT (!plugin->name().empty());
+  TASSERT (!plugin->plugin_type().empty());
 
-  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
-  TASSERT (trackimpl);
+  for (bool check_enabled : { true, false })
+    {
+      const auto get = [&] { return check_enabled ? plugin->enabled() : plugin->frozen(); };
+      const auto set = [&] (bool value) {
+        if (check_enabled)
+          plugin->enabled (value);
+        else
+          plugin->frozen (value);
+      };
+      uint notifications = 0;
+      auto connection = plugin->on_event (check_enabled ? "notify:enabled" : "notify:frozen",
+                                          [&] (const Event&) { notifications++; });
+      const bool initial = get();
+      project->ungroup_undo();
+      set (!initial);
+      TASSERT (get() != initial);
+      TASSERT (notifications > 0);
+      TASSERT (project->can_undo());
 
-  // Check initial plugins list (tracks have default plugins like volume/pan)
-  PluginS plugins = trackimpl->list_plugins();
-  TASSERT (plugins.size() >= 0);
+      notifications = 0;
+      set (!initial);
+      TASSERT (notifications == 0);
+      project->undo();
+      TASSERT (get() == initial);
+      TASSERT (notifications > 0);
+      TASSERT (project->can_redo());
 
-  // Test with existing plugins (tracks have default plugins)
-  if (plugins.size() > 0) {
-    PluginP plugin = plugins[0];
-    TASSERT (plugin != nullptr);
+      notifications = 0;
+      project->redo();
+      TASSERT (get() != initial);
+      TASSERT (notifications > 0);
+    }
 
-    // Check plugin properties
-    TASSERT (!plugin->name().empty());
-    TASSERT (!plugin->plugin_type().empty());
-
-    // Setup notification counters
-    uint64_t enabled_notifications = 0;
-    auto enabled_connection = plugin->on_event ("notify:enabled", [&enabled_notifications] (const Event &event) { enabled_notifications++; });
-
-    uint64_t frozen_notifications = 0;
-    auto frozen_connection = plugin->on_event ("notify:frozen", [&frozen_notifications] (const Event &event) { frozen_notifications++; });
-
-    // Check enabled state (should be either true or false)
-    bool enabled = plugin->is_enabled();
-    TASSERT (enabled == true || enabled == false);
-
-    // Toggle enabled - should emit notification
-    uint64_t last_enabled_notifications = enabled_notifications;
-    plugin->set_enabled (!enabled);
-    TASSERT (plugin->is_enabled() != enabled);
-    TASSERT (enabled_notifications > last_enabled_notifications);
-
-    // Check frozen state
-    bool frozen = plugin->is_frozen();
-    TASSERT (frozen == true || frozen == false);
-
-    // Toggle frozen - should emit notification
-    uint64_t last_frozen_notifications = frozen_notifications;
-    plugin->set_frozen (!frozen);
-    TASSERT (plugin->is_frozen() != frozen);
-    TASSERT (frozen_notifications > last_frozen_notifications);
-
-    // Test plugin removal via remove_self
-    uint64_t removed_count = 0;
-    auto removed_connection = plugin->on_event ("object:removed", [&removed_count] (const Event &event) { removed_count++; });
-    plugin->remove_self();
-    TASSERT (removed_count > 0);
-  }
-
+  uint removed_count = 0;
+  auto removed_connection = plugin->on_event ("object:removed", [&] (const Event&) { removed_count++; });
+  plugin->remove_self();
+  TASSERT (removed_count > 0);
   project->discard();
 }
 TEST_ADD (plugin_creation);

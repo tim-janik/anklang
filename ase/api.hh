@@ -217,10 +217,10 @@ public:
 class Plugin : public virtual Device {
 public:
   virtual String  plugin_type   () const = 0; ///< Plugin type identifier.
-  virtual bool    is_enabled    () const = 0; ///< Check if plugin is enabled.
-  virtual void    set_enabled   (bool enabled) = 0; ///< Enable or disable the plugin.
-  virtual bool    is_frozen     () const = 0; ///< Check if plugin is frozen.
-  virtual void    set_frozen    (bool frozen) = 0; ///< Freeze or unfreeze the plugin.
+  virtual bool    enabled       () const = 0; ///< Check if plugin is enabled.
+  virtual void    enabled       (bool enabled) = 0; ///< Enable or disable the plugin.
+  virtual bool    frozen        () const = 0; ///< Check if plugin is frozen.
+  virtual void    frozen        (bool frozen) = 0; ///< Freeze or unfreeze the plugin.
 };
 
 /// Part specific note event representation.
@@ -261,16 +261,14 @@ public:
 /// Container for Clip objects and sequencing information.
 class Track : public virtual Device {
 public:
-  virtual int32           midi_channel        () const = 0;          ///< Midi channel assigned to this track, 0 uses internal per-track channel.
-  virtual void            midi_channel        (int32 midichannel) = 0;
   virtual bool            is_master           () const = 0;          ///< Flag set on the main output track.
   virtual bool            is_control_track    () const = 0;          ///< Flag set on tempo/marker/chord/arranger/master tracks.
-  virtual bool            is_muted            () const = 0;          ///< Check if track is muted.
-  virtual void            set_muted           (bool muted) = 0;      ///< Set track muted state.
-  virtual bool            is_hidden           () const = 0;          ///< Check if track is hidden from view.
-  virtual void            set_hidden          (bool hidden) = 0;     ///< Set track hidden state.
-  virtual bool            is_solo             () const = 0;          ///< Check if track is soloed.
-  virtual void            set_solo            (bool solo) = 0;       ///< Set track solo state.
+  virtual bool            muted               () const = 0;          ///< Check if track is muted.
+  virtual void            muted               (bool muted) = 0;      ///< Set track muted state.
+  virtual bool            hidden              () const = 0;          ///< Check if track is hidden from view.
+  virtual void            hidden              (bool hidden) = 0;     ///< Set track hidden state.
+  virtual bool            solo                () const = 0;          ///< Check if track is soloed.
+  virtual void            solo                (bool solo) = 0;       ///< Set track solo state.
   virtual double          volume              () const = 0;          ///< Get track volume in dB.
   virtual void            volume              (double db) = 0;       ///< Set track volume in dB.
   virtual double          pan                 () const = 0;          ///< Get track pan (-1.0 to 1.0).
@@ -311,10 +309,10 @@ class Project : public virtual Device {
 public:
   virtual void            bpm            (double bpm) = 0;
   virtual double          bpm            () const = 0;
-  virtual void            numerator      (double num) = 0;
-  virtual double          numerator      () const = 0;
-  virtual void            denominator    (double den) = 0;
-  virtual double          denominator    () const = 0;
+  virtual void            numerator      (int num) = 0;
+  virtual int             numerator      () const = 0;
+  virtual void            denominator    (int den) = 0;
+  virtual int             denominator    () const = 0;
   virtual void            discard        () = 0;       ///< Discard project and associated resources.
   virtual void            start_playback () = 0;       ///< Start playback of a project, requires active sound engine.
   virtual void            pause_playback () = 0;       ///< Pause playback at the current position.

@@ -727,14 +727,14 @@ export class Plugin // Ase::Plugin
   { super ($id); if (new.target === Plugin) Jsonipc.ofreeze (this); }
   plugin_type (): Promise<string>
   { return this.$rpc ("plugin_type", [this]); }
-  is_enabled (): Promise<boolean>
-  { return this.$rpc ("is_enabled", [this]); }
-  set_enabled (arg1: boolean): Promise<void>
-  { return this.$rpc ("set_enabled", [this, arg1]); }
-  is_frozen (): Promise<boolean>
-  { return this.$rpc ("is_frozen", [this]); }
-  set_frozen (arg1: boolean): Promise<void>
-  { return this.$rpc ("set_frozen", [this, arg1]); }
+  get enabled (): boolean
+  { return this.$get ("enabled", false) as boolean; }
+  set enabled (v: boolean)
+  { this.$set ("enabled", v); }
+  get frozen (): boolean
+  { return this.$get ("frozen", false) as boolean; }
+  set frozen (v: boolean)
+  { this.$set ("frozen", v); }
 };
 Jsonipc.classes["Ase::Plugin"] = Plugin;
 
@@ -783,26 +783,22 @@ export class Track // Ase::Track
 {
   constructor ($id)
   { super ($id); if (new.target === Track) Jsonipc.ofreeze (this); }
-  get midi_channel (): number
-  { return this.$get ("midi_channel", 0) as number; }
-  set midi_channel (v: number)
-  { this.$set ("midi_channel", v); }
   is_master (): Promise<boolean>
   { return this.$rpc ("is_master", [this]); }
   is_control_track (): Promise<boolean>
   { return this.$rpc ("is_control_track", [this]); }
-  is_muted (): Promise<boolean>
-  { return this.$rpc ("is_muted", [this]); }
-  set_muted (arg1: boolean): Promise<void>
-  { return this.$rpc ("set_muted", [this, arg1]); }
-  is_hidden (): Promise<boolean>
-  { return this.$rpc ("is_hidden", [this]); }
-  set_hidden (arg1: boolean): Promise<void>
-  { return this.$rpc ("set_hidden", [this, arg1]); }
-  is_solo (): Promise<boolean>
-  { return this.$rpc ("is_solo", [this]); }
-  set_solo (arg1: boolean): Promise<void>
-  { return this.$rpc ("set_solo", [this, arg1]); }
+  get muted (): boolean
+  { return this.$get ("muted", false) as boolean; }
+  set muted (v: boolean)
+  { this.$set ("muted", v); }
+  get hidden (): boolean
+  { return this.$get ("hidden", false) as boolean; }
+  set hidden (v: boolean)
+  { this.$set ("hidden", v); }
+  get solo (): boolean
+  { return this.$get ("solo", false) as boolean; }
+  set solo (v: boolean)
+  { this.$set ("solo", v); }
   get volume (): number
   { return this.$get ("volume", 0.0) as number; }
   set volume (v: number)
@@ -858,11 +854,11 @@ export class Project // Ase::Project
   set bpm (v: number)
   { this.$set ("bpm", v); }
   get numerator (): number
-  { return this.$get ("numerator", 0.0) as number; }
+  { return this.$get ("numerator", 0) as number; }
   set numerator (v: number)
   { this.$set ("numerator", v); }
   get denominator (): number
-  { return this.$get ("denominator", 0.0) as number; }
+  { return this.$get ("denominator", 0) as number; }
   set denominator (v: number)
   { this.$set ("denominator", v); }
   discard (): Promise<void>

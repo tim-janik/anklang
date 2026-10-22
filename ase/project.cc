@@ -308,9 +308,6 @@ test_sfz (ProjectImpl *project, te::Edit *edit, const String &filename)
 
 ProjectImpl::ProjectImpl()
 {
-  bpm (120);
-  numerator (4);
-  denominator (4);
   edit_ = std::make_unique<te::Edit> (*trkn_engine(), te::Edit::forEditing);
   if (edit_) {
     register_ase_obj (this, *edit_);
@@ -869,56 +866,37 @@ ProjectImpl::clear_undo ()
 void
 ProjectImpl::bpm (double newbpm)
 {
-  return_unless (!!edit_);
-  const double nbpm = CLAMP (newbpm, MIN_BPM, MAX_BPM);
-  auto &tempoSeq = edit_->tempoSequence;
-  auto *tempo = tempoSeq.getTempo (0);
-  if (tempo && tempo->getBpm() != nbpm)
-    tempo->setBpm (nbpm);
+  edit_->tempoSequence.getTempo (0)->setBpm (newbpm);
 }
 
 double
 ProjectImpl::bpm () const
 {
-  return_unless (!!edit_, 120.0);
-  auto *tempo = edit_->tempoSequence.getTempo (0);
-  return tempo ? tempo->getBpm() : 120.0;
+  return edit_->tempoSequence.getTempo (0)->getBpm();
 }
 
 void
-ProjectImpl::numerator (double num)
+ProjectImpl::numerator (int num)
 {
-  return_unless (!!edit_);
-  auto &tempoSeq = edit_->tempoSequence;
-  auto *timeSig = tempoSeq.getTimeSig (0);
-  if (timeSig && timeSig->numerator != num)
-    timeSig->numerator = num;
+  edit_->tempoSequence.getTimeSig (0)->numerator = num;
 }
 
-double
+int
 ProjectImpl::numerator () const
 {
-  return_unless (!!edit_, 4.0);
-  auto *timeSig = edit_->tempoSequence.getTimeSig (0);
-  return timeSig ? timeSig->numerator : 4.0;
+  return edit_->tempoSequence.getTimeSig (0)->numerator;
 }
 
 void
-ProjectImpl::denominator (double den)
+ProjectImpl::denominator (int den)
 {
-  return_unless (!!edit_);
-  auto &tempoSeq = edit_->tempoSequence;
-  auto *timeSig = tempoSeq.getTimeSig (0);
-  if (timeSig && timeSig->denominator != den)
-    timeSig->denominator = den;
+  edit_->tempoSequence.getTimeSig (0)->denominator = den;
 }
 
-double
+int
 ProjectImpl::denominator () const
 {
-  return_unless (!!edit_, 4.0);
-  auto *timeSig = edit_->tempoSequence.getTimeSig (0);
-  return timeSig ? timeSig->denominator : 4.0;
+  return edit_->tempoSequence.getTimeSig (0)->denominator;
 }
 
 void

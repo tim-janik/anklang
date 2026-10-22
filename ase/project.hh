@@ -42,10 +42,10 @@ protected:
 public:
   void                 bpm              (double bpm) override;
   double               bpm              () const override;
-  void                 numerator        (double num) override;
-  double               numerator        () const override;
-  void                 denominator      (double den) override;
-  double               denominator      () const override;
+  void                 numerator        (int num) override;
+  int                  numerator        () const override;
+  void                 denominator      (int den) override;
+  int                  denominator      () const override;
   String               name             () const override;
   void                 name             (const std::string &n) override;
   void                 discard           () override;

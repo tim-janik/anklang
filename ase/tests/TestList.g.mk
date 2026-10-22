@@ -38,6 +38,7 @@ ASE_TEST_LIST := \
   project_creation \
   project_length \
   project_playback_state \
+  project_tempo_values \
   project_track_management \
   promise_already_resolved_test \
   promise_exception_test \
@@ -58,13 +59,11 @@ ASE_TEST_LIST := \
   test_serializable_hierarchy \
   track_control_classification \
   track_hidden \
-  track_midi_channel \
   track_mute_solo \
   track_name \
   track_outlives_project \
   track_undo_redo \
   track_volume_pan \
-  transport_tests \
   unicode_displayfs_tests \
   unicode_tests \
   utf8_codepoint_bench \

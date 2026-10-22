@@ -89,7 +89,7 @@ PluginImpl::plugin_type() const
 }
 
 bool
-PluginImpl::is_enabled() const
+PluginImpl::enabled() const
 {
   if (auto pluginp = plugin_.get())
     return pluginp->isEnabled();
@@ -97,14 +97,14 @@ PluginImpl::is_enabled() const
 }
 
 void
-PluginImpl::set_enabled (bool enabled)
+PluginImpl::enabled (bool enabled)
 {
   if (auto pluginp = plugin_.get())
     pluginp->setEnabled (enabled);
 }
 
 bool
-PluginImpl::is_frozen() const
+PluginImpl::frozen() const
 {
   if (auto pluginp = plugin_.get())
     return pluginp->isFrozen();
@@ -112,7 +112,7 @@ PluginImpl::is_frozen() const
 }
 
 void
-PluginImpl::set_frozen (bool frozen)
+PluginImpl::frozen (bool frozen)
 {
   if (auto pluginp = plugin_.get())
     pluginp->setFrozen (frozen);

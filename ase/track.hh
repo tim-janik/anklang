@@ -13,7 +13,6 @@ class TrackImpl : public DeviceImpl, public virtual Track {
   SelectableWeakref<tracktion::Track> track_;
   std::unique_ptr<TrackStateListener> state_listener_;
   std::string  te_type_;
-  uint         midi_channel_ = 0;
   ASE_DEFINE_MAKE_SHARED (TrackImpl);
   friend class ProjectImpl;
   friend class TrackStateListener;
@@ -32,19 +31,17 @@ public:
   ProjectImpl*    project           () const;
   bool            is_master         () const override;
   bool            is_control_track  () const override;
-  bool            is_muted          () const override;
-  void            set_muted         (bool muted) override;
-  bool            is_hidden         () const override;
-  void            set_hidden        (bool hidden) override;
-  bool            is_solo           () const override;
-  void            set_solo          (bool solo) override;
+  bool            muted             () const override;
+  void            muted             (bool muted) override;
+  bool            hidden            () const override;
+  void            hidden            (bool hidden) override;
+  bool            solo              () const override;
+  void            solo              (bool solo) override;
   double          volume            () const override;
   void            volume            (double db) override;
   double          pan               () const override;
   void            pan               (double pan) override;
   void            remove_self       () override;
-  int32           midi_channel      () const override      { return midi_channel_; }
-  void            midi_channel      (int32 midichannel) override;
   ClipS           launcher_clips    () const override;
   void            launcher_clips    (const ClipS &) override;
   DeviceP         access_device     () override;

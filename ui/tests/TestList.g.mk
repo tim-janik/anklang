@@ -16,6 +16,7 @@ UI_TEST_LIST := \
   numberinput_test.test_numberinput \
   objecteditor_test.test_objecteditor \
   pianoroll_test.test_pianoroll_shortcuts \
+  positionview_test.test_positionview_values \
   preferencesdialog_test.test_preferencesdialog \
   project_test.test_project_play_toggle \
   relayout_test.test_relayout \

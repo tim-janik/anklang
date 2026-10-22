@@ -223,10 +223,8 @@ jsonipc_for_api_jsonipc_json()
   class__Ase_Plugin
     .inherit< ::Ase::Device >()
     .set ("plugin_type", &::Ase::Plugin::plugin_type)
-    .set ("is_enabled", &::Ase::Plugin::is_enabled)
-    .set ("set_enabled", &::Ase::Plugin::set_enabled)
-    .set ("is_frozen", &::Ase::Plugin::is_frozen)
-    .set ("set_frozen", &::Ase::Plugin::set_frozen)
+    .set ("enabled", &::Ase::Plugin::enabled, &::Ase::Plugin::enabled)
+    .set ("frozen", &::Ase::Plugin::frozen, &::Ase::Plugin::frozen)
     ;
 
   ::Jsonipc::Class< ::Ase::Clip > class__Ase_Clip;
@@ -249,15 +247,11 @@ jsonipc_for_api_jsonipc_json()
   ::Jsonipc::Class< ::Ase::Track > class__Ase_Track;
   class__Ase_Track
     .inherit< ::Ase::Device >()
-    .set ("midi_channel", &::Ase::Track::midi_channel, &::Ase::Track::midi_channel)
     .set ("is_master", &::Ase::Track::is_master)
     .set ("is_control_track", &::Ase::Track::is_control_track)
-    .set ("is_muted", &::Ase::Track::is_muted)
-    .set ("set_muted", &::Ase::Track::set_muted)
-    .set ("is_hidden", &::Ase::Track::is_hidden)
-    .set ("set_hidden", &::Ase::Track::set_hidden)
-    .set ("is_solo", &::Ase::Track::is_solo)
-    .set ("set_solo", &::Ase::Track::set_solo)
+    .set ("muted", &::Ase::Track::muted, &::Ase::Track::muted)
+    .set ("hidden", &::Ase::Track::hidden, &::Ase::Track::hidden)
+    .set ("solo", &::Ase::Track::solo, &::Ase::Track::solo)
     .set ("volume", &::Ase::Track::volume, &::Ase::Track::volume)
     .set ("pan", &::Ase::Track::pan, &::Ase::Track::pan)
     .set ("launcher_clips", &::Ase::Track::launcher_clips, &::Ase::Track::launcher_clips)
