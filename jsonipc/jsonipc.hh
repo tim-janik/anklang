@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// synsmell: allow ban-printf -- this standalone header cannot depend on ase/logging.hh
 #pragma once
 
 #include <rapidjson/document.h>
@@ -997,7 +998,7 @@ public:
   {
     const std::string full_js_name = normalize_typename (open_enum_) + "." + name;
     using underlying = typename std::underlying_type<T>::type;
-    b_ += "  " + name + ": \"" + full_js_name + "\", // " + std::to_string(static_cast<underlying>(v)) + "\n";
+    b_ += "  " + name + ": \"" + full_js_name + "\", // " + std::to_string (static_cast<underlying> (v)) + "\n";
   }
   void
   close_enum()

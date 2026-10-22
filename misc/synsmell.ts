@@ -98,9 +98,9 @@ function is_empty_list (node: Node): boolean
 
 // --- Checks ---
 
-function check_ban_printf (node: Node, fn: string, lines: string[], lang: string): void
+function check_ban_printf (node: Node, fn: string, lines: string[], lang: string, allowed_checks: Set<string>): void
 {
-  if (!checks['ban-printf'] || lang !== 'cpp') return;
+  if (!checks['ban-printf'] || lang !== 'cpp' || allowed_checks.has ('ban-printf')) return;
   if (node.type !== 'call_expression') return;
   const func = node.childForFieldName ('function');
   if (func && /\b[a-z]?printf$/.test (func.text))
@@ -320,6 +320,11 @@ async function analyze_file (filename: string): Promise<void>
     if (replacer) content = replacer (content);
   }
 
+  // Source files can waive a check with a comment like `// synsmell: allow ban-printf`.
+  const allowed_checks = new Set<string>();
+  for (const m of content.matchAll (/\/\/\s*synsmell:\s*allow\s+([a-z-]+)/g))
+    allowed_checks.add (m[1]);
+
   const lines = content.split ('\n');
   const root = parser.parse (content).rootNode;
 
@@ -338,7 +343,7 @@ async function analyze_file (filename: string): Promise<void>
   }
 
   for (const [node, in_error_zone] of walk (root, false)) {
-    check_ban_printf (node, filename, lines, lang);
+    check_ban_printf (node, filename, lines, lang, allowed_checks);
     check_separate_body (node, filename, lines, lang);
     check_whitespace_before_paren (node, filename, lines, lang, in_error_zone);
     check_ban_fixme (node, filename, lines);
@@ -359,6 +364,7 @@ function print_help (): void
   console.log ('  --strict              Treat tree-sitter parse errors as fatal (default: skip)');
   console.log ('  --macros FILE         Strip listed macros before parsing (see help)');
   console.log ('  --<check>=1/0         Toggle individual check');
+  console.log ('  Source comment `// synsmell: allow <check>` waives a check for that file.');
 }
 
 async function main (): Promise<number>

@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// synsmell: allow ban-printf -- this file implements string_format() and must not call itself
 #include "formatter.hh"
 #include <unistd.h>     // isatty
 #include <cstring>
