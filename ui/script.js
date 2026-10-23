@@ -1,5 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { list_notes } from './b/piano-ctrl.js';
+
 const API_LEVEL = 22.03;
 let _counter = 1;
 
@@ -99,9 +101,16 @@ class ScriptHost {
   _clip_list_all_notes (refhandle) {
     return refhandle_object (refhandle).list_all_notes();
   }
-  _clip_insert_note (refhandle, channel, key, tick, duration, velocity, fine_tune, selected) {
-    const note = { /*id,*/ channel, key, tick, duration, velocity, fine_tune, selected };
-    return refhandle_object (refhandle).insert_note (note);
+  async _clip_list_selected_notes (refhandle) {
+    const clip = refhandle_object (refhandle);
+    clip.all_notes;
+    await clip.$props.$promise;
+    return list_notes (clip).filter (note => note.selected);
+  }
+  async _clip_insert_note (refhandle, note_number, start_beat, length_beats, velocity, colour, mute) {
+    const note = { id: 0, note_number, start_beat, length_beats, velocity, colour, mute };
+    const [inserted] = await refhandle_object (refhandle).change_batch ([note], "Insert Note");
+    return inserted?.id ?? 0;
   }
 }
 const registry = new Map();

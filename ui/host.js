@@ -84,11 +84,10 @@ class WorkerClip {
     return host_call ('clip_list_all_notes', this._handle);
   }
   async list_selected_notes () {
-    const notes = await this.list_all_notes();
-    return notes.filter (n => n.selected);
+    return host_call ('clip_list_selected_notes', this._handle);
   }
-  async insert_note (channel, key, tick, duration, velocity = 127, fine_tune = 0, selected = false) {
-    return host_call ('clip_insert_note', this._handle, channel, key, tick, duration, velocity, fine_tune, selected);
+  async insert_note (note_number, start_beat, length_beats, velocity = 127, colour = 0, mute = false) {
+    return host_call ('clip_insert_note', this._handle, note_number, start_beat, length_beats, velocity, colour, mute);
   }
 }
 
