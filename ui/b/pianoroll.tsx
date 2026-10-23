@@ -280,15 +280,15 @@ export function PianoRoll (props: {
     Shell.piano_current (clip, clip ? t.piano_current_tick : null);
   });
 
-  // Re-runs on clip property/note changes (clip.all_notes / clip.end_tick are Solid
-  // signals via $get): re-layout (depends on clip.end_tick) and schedule a repaint.
+  // Re-runs on clip property/note changes (clip.all_notes / clip.end_beat are Solid
+  // signals via $get): re-layout (depends on clip.end_beat) and schedule a repaint.
   // Mirrors the old tracked `updated()` minus the reset block (now above).
   createEffect (() => {
     const clip = props.clip;
     if (!t.root || !clip) return;
     // read out props to force auto-updates / subscribe to note & length signals
     clip.all_notes;
-    // piano_layout reads clip.end_tick, subscribing this effect to clip resize
+    // piano_layout reads clip.end_beat, subscribing this effect to clip resize
     piano_layout.call (t);
     if (t.vscroll_must_center && t.vscrollbar?.clientHeight)
       t.vscroll_must_center = (t.vscroll_to (0.5), false);
@@ -493,7 +493,7 @@ function piano_layout (this: any)
     cssheight:		notes_cssheight + 1,
     piano_csswidth:	0,			// derived from white_width
     notes_csswidth:	0,			// display width, determined by parent
-    virt_width:		0,			// virtual width in CSS pixels, derived from end_tick
+    virt_width:		0,			// virtual width in CSS pixels, derived from end_beat
     beat_pixels:	50,			// pixels per quarter note
     tickscale:		undefined,		// pixels per tick
     octaves:		PianoCtrl.PIANO_OCTAVES,// number of octaves to display
@@ -519,8 +519,8 @@ function piano_layout (this: any)
   const black_keyspans = [  [7,7], [21,7],     [43,7], [56.5,7], [70,7]   ]; 	// for 84px octave
   const white_offsets  = [ 0,    12,     24, 36,     48,       60,     72 ]; 	// for 84px octave
   const key_length = parseFloat (cstyle.getPropertyValue ('--piano-roll-key-length'));
-  const min_end_tick = 16 * (4 * Util.PPQN);
-  const end_tick = Math.max (this.clip.end_tick || 0, min_end_tick);
+  const min_end_beat = 16 * 4;
+  const end_beat = Math.max (this.clip.end_beat || 0, min_end_beat);
   // scale layout
   layout.dpr_height = round (layout.DPR * layout.cssheight);
   layout.white_width = key_length || layout.white_width; // allow CSS override
@@ -532,7 +532,7 @@ function piano_layout (this: any)
   layout.beat_pixels = round (layout.beat_pixels * DPR * this.hzoom);
   layout.tickscale = layout.beat_pixels / Util.PPQN;
   layout.hpad = 10 * DPR;
-  layout.virt_width = Math.ceil (layout.tickscale * end_tick);
+  layout.virt_width = Math.ceil (layout.beat_pixels * end_beat);
   layout.row = Math.floor (layout.dpr_height / PianoCtrl.PIANO_KEYS);
   layout.oct_length = layout.row * 12;
   layout.white_width = round (layout.white_width * layout.DPR);

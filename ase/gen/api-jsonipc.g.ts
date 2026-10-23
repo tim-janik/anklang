@@ -523,6 +523,28 @@ export class ClipNote { // Ase::ClipNote
 };
 Jsonipc.classes["Ase::ClipNote"] = ClipNote;
 
+export class TimeRange { // Ase::TimeRange
+  start: number;
+  end: number;
+  constructor (start: number = 0.0, end: number = 0.0)
+  {
+    this.start = start;
+    this.end = end;
+  }
+};
+Jsonipc.classes["Ase::TimeRange"] = TimeRange;
+
+export class ClipPosition { // Ase::ClipPosition
+  time: TimeRange;
+  offset: number;
+  constructor (time: TimeRange = new TimeRange(), offset: number = 0.0)
+  {
+    this.time = time;
+    this.offset = offset;
+  }
+};
+Jsonipc.classes["Ase::ClipPosition"] = ClipPosition;
+
 export class ProbeFeatures { // Ase::ProbeFeatures
   probe_range: boolean;
   probe_energy: boolean;
@@ -759,16 +781,18 @@ export class Clip // Ase::Clip
   { return this.$get ("all_notes", []) as ClipNote[]; }
   set all_notes (v: ClipNote[])
   { this.$set ("all_notes", v); }
-  get end_tick (): number
-  { return this.$get ("end_tick", 0) as number; }
-  set end_tick (v: number)
-  { this.$set ("end_tick", v); }
-  start_tick (): Promise<number>
-  { return this.$rpc ("start_tick", [this]); }
-  stop_tick (): Promise<number>
-  { return this.$rpc ("stop_tick", [this]); }
-  assign_range (arg1: number, arg2: number): Promise<void>
-  { return this.$rpc ("assign_range", [this, arg1, arg2]); }
+  get position (): ClipPosition
+  { return this.$get ("position", new ClipPosition()) as ClipPosition; }
+  set position (v: ClipPosition)
+  { this.$set ("position", v); }
+  get start_beat (): number
+  { return this.$get ("start_beat", 0.0) as number; }
+  set start_beat (v: number)
+  { this.$set ("start_beat", v); }
+  get end_beat (): number
+  { return this.$get ("end_beat", 0.0) as number; }
+  set end_beat (v: number)
+  { this.$set ("end_beat", v); }
   change_batch (arg1: ClipNote[], arg2: string): Promise<number>
   { return this.$rpc ("change_batch", [this, arg1, arg2]); }
   list_all_notes (): Promise<ClipNote[]>

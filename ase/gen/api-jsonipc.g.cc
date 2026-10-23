@@ -123,6 +123,16 @@ jsonipc_for_api_jsonipc_json()
     .set ("velocity", &::Ase::ClipNote::velocity)
     .set ("fine_tune", &::Ase::ClipNote::fine_tune)
     ;
+  ::Jsonipc::Serializable< ::Ase::TimeRange > serializable__Ase_TimeRange;
+  serializable__Ase_TimeRange
+    .set ("start", &::Ase::TimeRange::start)
+    .set ("end", &::Ase::TimeRange::end)
+    ;
+  ::Jsonipc::Serializable< ::Ase::ClipPosition > serializable__Ase_ClipPosition;
+  serializable__Ase_ClipPosition
+    .set ("time", &::Ase::ClipPosition::time)
+    .set ("offset", &::Ase::ClipPosition::offset)
+    ;
   ::Jsonipc::Serializable< ::Ase::ProbeFeatures > serializable__Ase_ProbeFeatures;
   serializable__Ase_ProbeFeatures
     .set ("probe_range", &::Ase::ProbeFeatures::probe_range)
@@ -234,10 +244,9 @@ jsonipc_for_api_jsonipc_json()
     .set ("volume", &::Ase::Clip::volume, &::Ase::Clip::volume)
     .set ("pan", &::Ase::Clip::pan, &::Ase::Clip::pan)
     .set ("all_notes", &::Ase::Clip::all_notes, &::Ase::Clip::all_notes)
-    .set ("end_tick", &::Ase::Clip::end_tick, &::Ase::Clip::end_tick)
-    .set ("start_tick", &::Ase::Clip::start_tick)
-    .set ("stop_tick", &::Ase::Clip::stop_tick)
-    .set ("assign_range", &::Ase::Clip::assign_range)
+    .set ("position", &::Ase::Clip::position, &::Ase::Clip::position)
+    .set ("start_beat", &::Ase::Clip::start_beat, &::Ase::Clip::start_beat)
+    .set ("end_beat", &::Ase::Clip::end_beat, &::Ase::Clip::end_beat)
     .set ("change_batch", &::Ase::Clip::change_batch)
     .set ("list_all_notes", &::Ase::Clip::list_all_notes)
     .set ("telemetry", &::Ase::Clip::telemetry)

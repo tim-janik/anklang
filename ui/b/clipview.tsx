@@ -107,7 +107,7 @@ export function ClipView (props) {
   createEffect (() => {
     // Access clip properties to track reactivity
     props.clip?.name;
-    props.clip?.end_tick;
+    props.clip?.end_beat;
     props.clip?.all_notes;
 
     if (canvas_ref && props.clip) {

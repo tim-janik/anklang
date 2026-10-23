@@ -48,9 +48,9 @@ public:
              property == tracktion::engine::IDs::length ||
              property == tracktion::engine::IDs::offset)
       {
-        aseclip_.emit_notify ("start_tick");
-        aseclip_.emit_notify ("stop_tick");
-        aseclip_.emit_notify ("end_tick");
+        aseclip_.emit_notify ("position");
+        aseclip_.emit_notify ("start_beat");
+        aseclip_.emit_notify ("end_beat");
       }
     else if (property == tracktion::engine::IDs::mute)
       aseclip_.emit_notify ("muted");
@@ -101,31 +101,22 @@ ClipImpl::clip_index () const
   return -1;
 }
 
+ClipPosition
+ClipImpl::position () const
+{
+  return_unless (clip_.get(), {});
+  const auto p = clip_->getPosition();
+  return { { p.time.getStart().inSeconds(), p.time.getEnd().inSeconds() }, p.offset.inSeconds() };
+}
+
 void
-ClipImpl::assign_range (int64 starttick, int64 stoptick)
+ClipImpl::position (const ClipPosition &position)
 {
   assert_return (clip_.get());
-  auto &ts = clip_->edit.tempoSequence;
-  double start_beats = double (starttick) / TRANSPORT_PPQN;
-  double end_beats = double (stoptick) / TRANSPORT_PPQN;
-  double duration_beats = end_beats - start_beats;
-
-  if (duration_beats > 0)
-    {
-      auto start_time = ts.toTime (tracktion::BeatPosition::fromBeats (start_beats));
-      auto duration_time = ts.toTime (tracktion::BeatPosition::fromBeats (duration_beats));
-      // Note: duration in time might depend on tempo changes *during* the clip if we map strictly.
-      // But setLength expects TimeDuration.
-      // If we want to preserve BEAT duration, we might need setLength(BeatDuration)? No, setLength takes TimeDuration.
-      // But MidiClip is usually beat based.
-      // However, for assigning range on timeline, we convert beats to time.
-
-      clip_->setStart (start_time, false, true);
-      clip_->setLength (tracktion::TimeDuration::fromSeconds(duration_time.inSeconds()), true);
-      // Simplistic conversion. Proper way: find time of end beat - time of start beat.
-      auto end_time = ts.toTime (tracktion::BeatPosition::fromBeats (end_beats));
-      clip_->setLength (end_time - start_time, true);
-    }
+  clip_->edit.getUndoManager().beginNewTransaction ("Set Clip Position");
+  clip_->setPosition ({ { tracktion::TimePosition::fromSeconds (position.time.start),
+                         tracktion::TimePosition::fromSeconds (position.time.end) },
+                       tracktion::TimeDuration::fromSeconds (position.offset) });
 }
 
 ClipNoteS
@@ -173,34 +164,28 @@ ClipImpl::all_notes () const
   return notes;
 }
 
-int64
-ClipImpl::end_tick () const
+double
+ClipImpl::start_beat () const
 {
-  if (!clip_.get()) return 0;
-  return stop_tick();
+  return clip_.get() ? clip_->getStartBeat().inBeats() : 0;
 }
 
 void
-ClipImpl::end_tick (int64 etick)
+ClipImpl::start_beat (double)
 {
-  if (!clip_.get()) return;
-  assign_range (start_tick(), etick);
+  warning ("Clip.start_beat is read-only; assign Clip.position");
 }
 
-int64
-ClipImpl::start_tick () const
+double
+ClipImpl::end_beat () const
 {
-  if (!clip_.get()) return 0;
-  auto &ts = clip_->edit.tempoSequence;
-  return ts.toBeats (clip_->getPosition().getStart()).inBeats() * TRANSPORT_PPQN;
+  return clip_.get() ? clip_->getEndBeat().inBeats() : 0;
 }
 
-int64
-ClipImpl::stop_tick () const
+void
+ClipImpl::end_beat (double)
 {
-  if (!clip_.get()) return 0;
-  auto &ts = clip_->edit.tempoSequence;
-  return ts.toBeats (clip_->getPosition().getEnd()).inBeats() * TRANSPORT_PPQN;
+  warning ("Clip.end_beat is read-only; assign Clip.position");
 }
 
 bool

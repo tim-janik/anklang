@@ -18,12 +18,13 @@ protected:
   ssize_t  clip_index       () const;
   ClipNoteS all_notes   () const override;
   void      all_notes   (const ClipNoteS &notes) override;
-  int64     end_tick    () const override;
-  void      end_tick    (int64 etick) override;
 public:
-  int64          start_tick     () const override;
-  int64          stop_tick      () const override;
-  void           assign_range   (int64 starttick, int64 stoptick) override;
+  ClipPosition   position       () const override;
+  void           position       (const ClipPosition &position) override;
+  double         start_beat     () const override;
+  void           start_beat     (double) override;
+  double         end_beat       () const override;
+  void           end_beat       (double) override;
   ClipNoteS      list_all_notes () override;
   int32          change_batch   (const ClipNoteS &notes, const String &undogroup) override;
   bool           muted          () const override;

@@ -545,6 +545,8 @@ clip_notes()
   TASSERT (notes.size() == 1);
   TASSERT (notes[0].key == 62);
 
+  clip->remove_self();
+  TASSERT (clip->position() == ClipPosition{});
   project->discard();
 }
 TEST_ADD (clip_notes);
@@ -552,29 +554,49 @@ TEST_ADD (clip_notes);
 static void
 clip_range()
 {
-  ProjectImplP project = ProjectImpl::create ("ClipRangeTest");
-  TASSERT (project);
-
+  ProjectP project = ProjectImpl::create ("ClipRangeTest");
   TrackP track = project->create_track();
-  TASSERT (track);
-
-  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
-  TASSERT (trackimpl);
-
-  ClipP clip = trackimpl->create_midi_clip ("RangeClip", 0.0, 4.0);
-  TASSERT (clip);
-
-  int64 start = clip->start_tick();
-  int64 stop = clip->stop_tick();
-  TASSERT (start >= 0);
-  TASSERT (stop > start);
-
-  clip->end_tick (stop + 1000);
-  TASSERT (clip->stop_tick() == stop + 1000);
-
-  clip->assign_range (start + 960, stop + 960);
-  TASSERT (clip->start_tick() == start + 960);
-
+  project->bpm (120);
+  project->numerator (6);
+  for (int denominator : { 4, 8, 16 })
+    {
+      project->denominator (denominator);
+      for (ClipP clip : { track->create_midi_clip ("MidiRange", 0.5, 1.25),
+                          track->create_audio_clip ("AudioRange", 0.5, 1.25) })
+        {
+          const ClipPosition initial { { 0.5, 1.75 }, 0 };
+          const double beats_per_second = denominator / 2.0;
+          TASSERT (clip->position() == initial);
+          TASSERT (clip->start_beat() == initial.time.start * beats_per_second);
+          TASSERT (clip->end_beat() == initial.time.end * beats_per_second);
+          uint position_notifications = 0, start_notifications = 0, end_notifications = 0;
+          auto position_connection = clip->on_event ("notify:position", [&] (const Event&) { position_notifications++; });
+          auto start_connection = clip->on_event ("notify:start_beat", [&] (const Event&) { start_notifications++; });
+          auto end_connection = clip->on_event ("notify:end_beat", [&] (const Event&) { end_notifications++; });
+          auto check_position = [&] (const ClipPosition &expected)
+            {
+              TASSERT (clip->position() == expected);
+              TASSERT (clip->start_beat() == expected.time.start * beats_per_second);
+              TASSERT (clip->end_beat() == expected.time.end * beats_per_second);
+              TASSERT (position_notifications > 0 && start_notifications > 0 && end_notifications > 0);
+              position_notifications = start_notifications = end_notifications = 0;
+            };
+          const ClipPosition changed { { 0.625, 2.125 }, 0.375 };
+          clip->position (changed);
+          check_position (changed);
+          project->undo();
+          check_position (initial);
+          project->redo();
+          check_position (changed);
+          const ClipPosition offset_changed { changed.time, 0.875 };
+          clip->position (offset_changed);
+          check_position (offset_changed);
+          project->undo();
+          check_position (changed);
+          project->redo();
+          check_position (offset_changed);
+        }
+    }
   project->discard();
 }
 TEST_ADD (clip_range);
@@ -784,29 +806,29 @@ clip_undo_redo()
   TASSERT (mclip->list_all_notes().size() == 1);
 
   // Test MIDI clip range undo/redo
-  int64 initial_start = mclip->start_tick();
-  int64 initial_stop = mclip->stop_tick();
+  const ClipPosition initial_position = mclip->position();
+  ClipPosition changed_position = initial_position;
+  changed_position.time.start += 0.375;
+  changed_position.time.end += 0.375;
 
   // Assign new range
   uint64_t range_notifications = 0;
-  auto range_connection = mclip->on_event ("notify:start_tick", [&range_notifications] (const Event &event) { range_notifications++; });
+  auto range_connection = mclip->on_event ("notify:position", [&range_notifications] (const Event &event) { range_notifications++; });
 
   uint64_t last_range_notifications = range_notifications;
-  mclip->assign_range (initial_start + 960, initial_stop + 960);
-  TASSERT (mclip->start_tick() == initial_start + 960);
+  mclip->position (changed_position);
+  TASSERT (mclip->position() == changed_position);
   TASSERT (range_notifications > last_range_notifications);
 
   // Undo range
   TASSERT (project->can_undo());
   project->undo();
-  TASSERT (mclip->start_tick() == initial_start);
-  TASSERT (mclip->stop_tick() == initial_stop);
+  TASSERT (mclip->position() == initial_position);
 
   // Redo range
   TASSERT (project->can_redo());
   project->redo();
-  TASSERT (mclip->start_tick() == initial_start + 960);
-  TASSERT (mclip->stop_tick() == initial_stop + 960);
+  TASSERT (mclip->position() == changed_position);
 
   project->discard();
 }
