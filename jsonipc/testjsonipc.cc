@@ -17,6 +17,14 @@ struct Copyable {
   std::string hello = "hello";
 };
 
+struct NestedCopyable {
+  Copyable nested;
+};
+
+struct LinkedCopyable {
+  std::shared_ptr<LinkedCopyable> next;
+};
+
 struct Base {
   Base() = default;
   Base(const Base&) = default;
@@ -34,8 +42,14 @@ using KVInts = std::map<std::string,int>;
 using KVFloats = std::unordered_map<std::string,double>;
 struct Derived : Base, Base2, std::enable_shared_from_this<Derived> {
   const std::string name_;
+  NestedCopyable nested_;
+  std::shared_ptr<LinkedCopyable> linked_;
   using Pair = std::pair<int, BaseP>;
   Derived (const std::string &name) : name_ (name) {}
+  NestedCopyable nested() const { return nested_; }
+  void set_nested (const NestedCopyable &nested) { nested_ = nested; }
+  const std::shared_ptr<LinkedCopyable>& linked() const { return linked_; }
+  void set_linked (const std::shared_ptr<LinkedCopyable> &linked) { linked_ = linked; }
   void   dummy0 ()                                { printf ("dummy0: NOP\n"); }
   bool   dummy1 (bool b, KVInts kvi)              { printf ("dummy1: b=%s kvi=%zd\n", b ? "true" : "false", kvi.size()); return b; }
   Pair   dummy2 (std::string s, int i)            { printf ("dummy2: s=\"%s\" i=%d\n", s.c_str(), i); return {}; }
@@ -131,6 +145,8 @@ test_jsonipc (bool dispatcher_shell, bool printer)
     .set ("need_copyablep", &Base::need_copyablep)
     ;
   Jsonipc::Class<Base2> class_Base2;
+  Jsonipc::Serializable<NestedCopyable> class_NestedCopyable;
+  class_NestedCopyable.set ("nested", &NestedCopyable::nested);
   Jsonipc::Serializable<Copyable> class_Copyable;
   class_Copyable
     // .copy ([] (const Copyable &o) { return std::make_shared<std::decay<decltype (o)>::type> (o); })
@@ -138,10 +154,11 @@ test_jsonipc (bool dispatcher_shell, bool printer)
     .set ("f", &Copyable::f)
     .set ("hello", &Copyable::hello)
     ;
+  Jsonipc::Serializable<LinkedCopyable> class_LinkedCopyable;
+  class_LinkedCopyable.set ("next", &LinkedCopyable::next);
   Jsonipc::Class<Derived> class_Derived;
   class_Derived
     .inherit<Base>()
-    .inherit<Base2>()
     .set ("dummy0", &Derived::dummy0)
     .set ("dummy1", &Derived::dummy1)
     .set ("dummy2", &Derived::dummy2)
@@ -153,12 +170,17 @@ test_jsonipc (bool dispatcher_shell, bool printer)
     .set ("dummy8", &Derived::dummy8)
     .set ("dummy9", &Derived::dummy9)
     .set ("randomize", &Derived::randomize)
+    .set ("nested", &Derived::nested, &Derived::set_nested)
+    .set ("linked", &Derived::linked, &Derived::set_linked)
+    .inherit<Base2>()
     ;
   Derived::set_dflt (class_Derived);
 
   // Provide scope and instance ownership during dispatch_message()
   InstanceMap imap;
   Scope temporary_scope (imap); // needed by to_/from_json and dispatcher
+  const auto nested = from_json<NestedCopyable> (to_json (NestedCopyable{}, a));
+  JSONIPC_ASSERT_RETURN (nested.nested.i == 111 && nested.nested.hello == "hello");
 
   // test bindings
   auto objap = std::make_shared<Derived> ("obja");
@@ -225,7 +247,15 @@ test_jsonipc (bool dispatcher_shell, bool printer)
   JSONIPC_ASSERT_RETURN (c5 && (c5->i != c4->i || c5->f != c4->f));
 
   if (printer && Jsonipc::g_binding_printer) {
-    dprintf (1, "%s\n", Jsonipc::g_binding_printer->finish().c_str());
+    const auto bindings = Jsonipc::g_binding_printer->finish();
+    std::string missing;
+    for (const auto *expected : { "nested: Copyable = new Copyable()", "next: LinkedCopyable = null",
+                                 "this.$get (\"nested\", new NestedCopyable())", "this.$get (\"linked\", null)" })
+      if (bindings.find (expected) == std::string::npos)
+        missing += std::string (expected) + "\n";
+    if (!missing.empty())
+      throw std::runtime_error ("Missing record defaults:\n" + missing);
+    dprintf (1, "%s\n", bindings.c_str());
   }
 
   // CLI test server

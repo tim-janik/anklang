@@ -916,7 +916,7 @@ export class ResourceCrawler // Ase::ResourceCrawler
   constructor ($id)
   { super ($id); if (new.target === ResourceCrawler) Jsonipc.ofreeze (this); }
   get folder (): Resource
-  { return this.$get ("folder", {}) as Resource; }
+  { return this.$get ("folder", new Resource()) as Resource; }
   set folder (v: Resource)
   { this.$set ("folder", v); }
   get entries (): Resource[]
