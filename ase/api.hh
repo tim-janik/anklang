@@ -223,17 +223,16 @@ public:
   virtual void    frozen        (bool frozen) = 0; ///< Freeze or unfreeze the plugin.
 };
 
-/// Part specific note event representation.
+/// A Tracktion MIDI note with a session handle for edits.
 struct ClipNote {
-  int32  id = 0;            /// ID, > 0
-  int8   channel = 0;       /// MIDI Channel
-  int8   key = 0;           /// Musical note as MIDI key, 0 .. 127
-  bool   selected = 0;      /// UI selection flag
-  int64  tick = 0;          /// Position in ticks
-  int64  duration = 0;      /// Duration in number of ticks
-  float  velocity = 0;      /// Velocity, 0 .. +1
-  float  fine_tune = 0;     /// Fine Tune, -100 .. +100
-  bool   operator== (const ClipNote&) const;
+  int32  id = 0;            /// Session handle, > 0 for existing notes.
+  int    note_number = 0;   /// Musical note as MIDI key, 0 .. 127.
+  double start_beat = 0;    /// Position in Tracktion beats from the start of the clip.
+  double length_beats = 0;  /// Duration in Tracktion beats.
+  int    velocity = 0;      /// Velocity, 0 .. 127.
+  int    colour = 0;        /// Tracktion note colour index.
+  bool   mute = false;      /// Mute flag.
+  bool   operator== (const ClipNote&) const = default;
 };
 
 /// Tracktion time range in seconds.
@@ -267,9 +266,9 @@ public:
   virtual void      start_beat     (double) = 0; ///< Read-only, assignments warn.
   virtual double    end_beat       () const = 0; ///< Clip end in Tracktion beats, changes on `notify:end_beat`.
   virtual void      end_beat       (double) = 0; ///< Read-only, assignments warn.
-  /// Change note `id` according to the arguments or add a new note if `id` < 0; emits `notify:notes`.
-  virtual int32     change_batch   (const ClipNoteS &notes, const String &undogroup = "") = 0; ///< Insert, change, delete in a batch.
-  virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
+  /// Insert id <= 0, delete length_beats == 0; emits `notify:notes` and `notify:all_notes`.
+  virtual ClipNoteS change_batch   (const ClipNoteS &notes, const String &undogroup = "") = 0; ///< Input order, id 0 for missing handles.
+  virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip, changes on `notify:notes`.
   virtual TelemetryFieldS telemetry () const = 0; ///< Retrieve clip telemetry locations.
 };
 

@@ -508,44 +508,86 @@ TEST_ADD (clip_creation);
 static void
 clip_notes()
 {
-  ProjectImplP project = ProjectImpl::create ("ClipNotesTest");
-  TASSERT (project);
-
+  ProjectP project = ProjectImpl::create ("ClipNotesTest");
   TrackP track = project->create_track();
-  TASSERT (track);
+  project->denominator (8);
+  ClipP clip = track->create_midi_clip ("NotesClip", 0.0, 4.0);
+  TASSERT (clip->all_notes().empty());
 
-  TrackImplP trackimpl = std::dynamic_pointer_cast<TrackImpl> (track);
-  TASSERT (trackimpl);
+  ClipNote first;
+  first.note_number = 60;
+  first.start_beat = 0.125;
+  first.length_beats = 0.375;
+  first.velocity = 0;
+  first.colour = 127;
+  first.mute = true;
+  ClipNote second = first;
+  second.velocity = 127;
+  second.colour = 3;
+  second.mute = false;
+  ClipNoteS added = clip->change_batch ({ first, second }, "Add Notes");
+  TASSERT (added.size() == 2);
+  TASSERT (added[0].id > 0 && added[1].id > 0 && added[0].id != added[1].id);
+  first.id = added[0].id;
+  second.id = added[1].id;
+  TASSERT (added[0] == first && added[1] == second);
+  TASSERT (clip->list_all_notes() == added);
+  project->undo();
+  TASSERT (clip->all_notes().empty());
+  project->redo();
+  TASSERT (clip->all_notes() == added);
 
-  ClipP clip = trackimpl->create_midi_clip ("NotesClip", 0.0, 4.0);
-  TASSERT (clip);
+  ClipNote moved = second;
+  moved.note_number = 67;
+  moved.start_beat = 1.0 / 3;
+  moved.length_beats = 2.0 / 3;
+  moved.velocity = 64;
+  moved.colour = 12;
+  moved.mute = true;
+  TASSERT (clip->change_batch ({ moved }, "Move Note") == ClipNoteS { moved });
+  TASSERT ((clip->all_notes() == ClipNoteS { first, moved }));
+  project->undo();
+  TASSERT (clip->all_notes() == added);
+  project->redo();
+  TASSERT ((clip->all_notes() == ClipNoteS { first, moved }));
 
-  ClipNoteS notes = clip->list_all_notes();
-  TASSERT (notes.empty());
+  ClipNote removed = first;
+  removed.length_beats = 0;
+  clip->change_batch ({ removed }, "Delete Note");
+  TASSERT (clip->all_notes() == ClipNoteS { moved });
+  project->undo();
+  TASSERT ((clip->all_notes() == ClipNoteS { first, moved }));
+  project->redo();
+  TASSERT (clip->all_notes() == ClipNoteS { moved });
 
-  ClipNote note;
-  note.id = -1;
-  note.key = 60;
-  note.channel = 0;
-  note.tick = 0;
-  note.duration = 960;
-  note.velocity = 0.8f;
+  clip->all_notes ({ second });
+  const auto replaced = clip->all_notes();
+  TASSERT (replaced.size() == 1 && replaced[0].id != second.id);
+  second.id = replaced[0].id;
+  TASSERT (replaced == ClipNoteS { second });
+  project->undo();
+  TASSERT (clip->all_notes() == ClipNoteS { moved });
+  project->redo();
+  TASSERT (clip->all_notes() == replaced);
 
-  ClipNoteS batch;
-  batch.push_back (note);
-  clip->change_batch (batch, "Add Note");
-
-  notes = clip->list_all_notes();
-  TASSERT (notes.size() == 1);
-  TASSERT (notes[0].key == 60);
-
-  note.key = 62;
-  clip->all_notes ({ note });
-  notes = clip->all_notes();
-  TASSERT (notes.size() == 1);
-  TASSERT (notes[0].key == 62);
-
+  ClipNote fresh = second;
+  fresh.id = 0;
+  const auto mixed = clip->change_batch ({ first, fresh }, "Skip Deleted Handle");
+  TASSERT (mixed.size() == 2 && mixed[0].id == 0 && mixed[1].id > 0);
+  TASSERT (clip->all_notes().size() == 2);
+  const auto before_batch = clip->all_notes();
+  ClipNote modified = before_batch[0], deleted = before_batch[0];
+  modified.velocity = 42;
+  deleted.length_beats = 0;
+  const auto ordered = clip->change_batch ({ modified, fresh, deleted }, "Delete Before Modify");
+  TASSERT (ordered.size() == 3 && ordered[0].id == 0 && ordered[1].id > 0 && ordered[2].id == deleted.id);
+  TASSERT ((clip->all_notes() == ClipNoteS { before_batch[1], ordered[1] }));
+  project->undo();
+  TASSERT (clip->all_notes() == before_batch);
+  project->redo();
+  TASSERT ((clip->all_notes() == ClipNoteS { before_batch[1], ordered[1] }));
   clip->remove_self();
+  TASSERT (clip->change_batch ({ fresh }, "Edit Removed Clip").empty());
   TASSERT (clip->position() == ClipPosition{});
   project->discard();
 }
@@ -779,11 +821,10 @@ clip_undo_redo()
   ClipNoteS batch;
   ClipNote note;
   note.id = -1;
-  note.key = 60;
-  note.channel = 0;
-  note.tick = 0;
-  note.duration = 960;
-  note.velocity = 0.8f;
+  note.note_number = 60;
+  note.start_beat = 0;
+  note.length_beats = 0.375;
+  note.velocity = 102;
   batch.push_back (note);
 
   uint64_t notes_notifications = 0;

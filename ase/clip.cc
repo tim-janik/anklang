@@ -5,29 +5,19 @@
 #include "track.hh"
 #include "project.hh"
 #include "internal.hh"
+#include <map>
 
 namespace te = tracktion::engine;
 
 namespace Ase {
 
-// == ClipNote ==
-bool
-ClipNote::operator== (const ClipNote &o) const
-{
-  return (tick      == o.tick &&
-          id        == o.id &&
-          channel   == o.channel &&
-          key       == o.key &&
-          selected  == o.selected &&
-          duration  == o.duration &&
-          velocity  == o.velocity &&
-          fine_tune == o.fine_tune);
-}
-
 // == ClipStateListener ==
 class ClipImpl::ClipStateListener : public juce::ValueTree::Listener {
   ClipImpl &aseclip_;
   juce::ValueTree clip_state_;
+  // Handles refer to the Edit note trees, including notes held by undo.
+  std::map<int32, juce::ValueTree> note_states_;
+  int32 next_note_id_ = 0;
 public:
   ClipStateListener (ClipImpl &aseclip) :
     aseclip_ (aseclip), clip_state_ (aseclip_.clip_->state)
@@ -39,9 +29,38 @@ public:
     clip_state_.removeListener (this);
   }
   void
+  prune_notes ()
+  {
+    std::erase_if (note_states_, [] (const auto &entry) { return entry.second.getReferenceCount() == 1; });
+  }
+  ClipNote
+  describe_note (const te::MidiNote &note)
+  {
+    int32 id = 0;
+    for (const auto &entry : note_states_)
+      if (entry.second == note.state)
+        {
+          id = entry.first;
+          break;
+        }
+    if (!id)
+      {
+        id = ++next_note_id_;
+        note_states_.emplace (id, note.state);
+      }
+    return { id, note.getNoteNumber(), note.getStartBeat().inBeats(), note.getLengthBeats().inBeats(),
+             note.getVelocity(), note.getColour(), note.isMute() };
+  }
+  te::MidiNote*
+  find_note (te::MidiList &sequence, int32 id)
+  {
+    auto entry = note_states_.find (id);
+    return entry == note_states_.end() ? nullptr : sequence.getNoteFor (entry->second);
+  }
+  void
   valueTreePropertyChanged (juce::ValueTree &tree, const juce::Identifier &property) override
   {
-    assert_return (tree == clip_state_);
+    return_unless (tree == clip_state_);
     if (property == tracktion::engine::IDs::name)
       aseclip_.emit_notify ("name");
     else if (property == tracktion::engine::IDs::start ||
@@ -128,12 +147,15 @@ ClipImpl::list_all_notes ()
 void
 ClipImpl::all_notes (const ClipNoteS &notes)
 {
-  ClipNoteS current = all_notes();
-  // Mark all for deletion
-  for (auto &n : current) n.duration = 0;
-
-  ClipNoteS batch = current;
-  batch.insert (batch.end(), notes.begin(), notes.end());
+  ClipNoteS batch = all_notes();
+  // Mark all for deletion.
+  for (auto &note : batch)
+    note.length_beats = 0;
+  for (auto note : notes)
+    {
+      note.id = 0;
+      batch.push_back (note);
+    }
   change_batch (batch, "Set All Notes");
 }
 
@@ -141,26 +163,11 @@ ClipNoteS
 ClipImpl::all_notes () const
 {
   ClipNoteS notes;
-  if (!clip_.get()) return notes;
   auto mclip = dynamic_cast<te::MidiClip*> (clip_.get());
-  if (!mclip) return notes;
-
-  // Assuming single channel clip
-  int channel = mclip->getMidiChannel().getChannelNumber() - 1;
-
-  for (auto n : mclip->getSequence().getNotes())
-    {
-      ClipNote cn;
-      cn.id = 1;
-      cn.channel = channel;
-      cn.key = n->getNoteNumber();
-      cn.velocity = n->getVelocity() / 127.0f;
-      cn.tick = n->getStartBeat().inBeats() * TRANSPORT_PPQN;
-      cn.duration = n->getLengthBeats().inBeats() * TRANSPORT_PPQN;
-      cn.selected = false;
-      cn.fine_tune = 0;
-      notes.push_back (cn);
-    }
+  return_unless (mclip, notes);
+  state_listener_->prune_notes();
+  for (auto note : mclip->getSequence().getNotes())
+    notes.push_back (state_listener_->describe_note (*note));
   return notes;
 }
 
@@ -281,61 +288,60 @@ ClipImpl::remove_self ()
   GadgetImpl::remove_self();
 }
 
-int32
+ClipNoteS
 ClipImpl::change_batch (const ClipNoteS &batch, const String &undogroup)
 {
-  if (!clip_.get()) return -1;
+  return_unless (clip_.get(), {});
   auto mclip = dynamic_cast<te::MidiClip*> (clip_.get());
-  assert_return (mclip, -1);
-
+  assert_return (mclip, {});
+  auto &sequence = mclip->getSequence();
   auto &um = clip_->edit.getUndoManager();
+  // Group deletions, changes and insertions into one undo step.
   um.beginNewTransaction (juce::String (undogroup.empty() ? "Change Notes" : undogroup));
-
-  for (const auto &note : batch)
+  ClipNoteS changed (batch.size());
+  state_listener_->prune_notes();
+  // Delete existing notes before modifications and insertions.
+  for (size_t i = 0; i < batch.size(); i++)
     {
-      if (note.duration == 0) // Delete
-        {
-          auto &seq = mclip->getSequence();
-          for (auto n : seq.getNotes())
-            {
-              if (std::abs(n->getStartBeat().inBeats() * TRANSPORT_PPQN - note.tick) < 1 &&
-                  n->getNoteNumber() == note.key)
-                {
-                  seq.removeNote (*n, &um);
-                  break;
-                }
-            }
-        }
-      else if (note.id <= 0) // Insert
-        {
-          mclip->getSequence().addNote (note.key,
-                                        tracktion::BeatPosition::fromBeats (double (note.tick) / TRANSPORT_PPQN),
-                                        tracktion::BeatDuration::fromBeats (double (note.duration) / TRANSPORT_PPQN),
-                                        note.velocity * 127,
-                                        note.channel,
-                                        &um);
-        }
-      else // Modify
-        {
-          auto &seq = mclip->getSequence();
-          for (auto n : seq.getNotes())
-            {
-              if (std::abs(n->getStartBeat().inBeats() * TRANSPORT_PPQN - note.tick) < 1 &&
-                  n->getNoteNumber() == note.key)
-                {
-                  n->setStartAndLength (tracktion::BeatPosition::fromBeats (double (note.tick) / TRANSPORT_PPQN),
-                                        tracktion::BeatDuration::fromBeats (double (note.duration) / TRANSPORT_PPQN),
-                                        &um);
-                  n->setVelocity (note.velocity * 127, &um);
-                  n->setNoteNumber (note.key, &um);
-                  break;
-                }
-            }
-        }
+      const auto &note = batch[i];
+      if (note.id > 0 && note.length_beats == 0)
+        if (auto n = state_listener_->find_note (sequence, note.id))
+          {
+            changed[i] = note;
+            sequence.removeNote (*n, &um);
+          }
+    }
+  // Modify existing notes.
+  for (size_t i = 0; i < batch.size(); i++)
+    {
+      const auto &note = batch[i];
+      if (note.id > 0 && note.length_beats != 0)
+        if (auto n = state_listener_->find_note (sequence, note.id))
+          {
+            n->setStartAndLength (tracktion::BeatPosition::fromBeats (note.start_beat),
+                                 tracktion::BeatDuration::fromBeats (note.length_beats), &um);
+            n->setNoteNumber (note.note_number, &um);
+            n->setVelocity (note.velocity, &um);
+            n->setColour (note.colour, &um);
+            n->setMute (note.mute, &um);
+            changed[i] = state_listener_->describe_note (*n);
+          }
+    }
+  // Insert new notes.
+  for (size_t i = 0; i < batch.size(); i++)
+    {
+      const auto &note = batch[i];
+      if (note.id <= 0 && note.length_beats != 0)
+        if (auto n = sequence.addNote (note.note_number, tracktion::BeatPosition::fromBeats (note.start_beat),
+                                      tracktion::BeatDuration::fromBeats (note.length_beats), note.velocity, note.colour, &um))
+          {
+            n->setMute (note.mute, &um);
+            changed[i] = state_listener_->describe_note (*n);
+          }
     }
   emit_notify ("notes");
   emit_notify ("all_notes");
-  return 0;
+  return changed;
 }
 
 } // Ase

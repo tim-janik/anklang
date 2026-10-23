@@ -75,7 +75,8 @@
   --b-piano-roll-black-base:   	#181818;			/* base color for black piano key */
   --b-piano-roll-dark-row:     	oklch(16% 0 0);			/* background row color for notes */
   --b-piano-roll-light-row:    	oklch(20% 0 0);			/* background row color for notes */
-  --b-piano-roll-note-color:	#88cc88b0;			/* color(15,65%,25%); */
+  --b-piano-roll-note-color:	 #aaf8;
+  --b-piano-roll-note-selected-color: #88cc88b0;
   --b-piano-roll-note-focus-color:	 #aaf8;
   --b-piano-roll-note-focus-border: #f0f0f0;
   --b-piano-roll-indicator:	 #bbfc;				/* color for play position indicator */

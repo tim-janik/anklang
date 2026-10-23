@@ -502,23 +502,21 @@ Jsonipc.classes["Ase::DeviceInfo"] = DeviceInfo;
 
 export class ClipNote { // Ase::ClipNote
   id: number;
-  channel: number;
-  key: number;
-  selected: boolean;
-  tick: number;
-  duration: number;
+  note_number: number;
+  start_beat: number;
+  length_beats: number;
   velocity: number;
-  fine_tune: number;
-  constructor (id: number = 0, channel: number = 0, key: number = 0, selected: boolean = false, tick: number = 0, duration: number = 0, velocity: number = 0.0, fine_tune: number = 0.0)
+  colour: number;
+  mute: boolean;
+  constructor (id: number = 0, note_number: number = 0, start_beat: number = 0.0, length_beats: number = 0.0, velocity: number = 0, colour: number = 0, mute: boolean = false)
   {
     this.id = id;
-    this.channel = channel;
-    this.key = key;
-    this.selected = selected;
-    this.tick = tick;
-    this.duration = duration;
+    this.note_number = note_number;
+    this.start_beat = start_beat;
+    this.length_beats = length_beats;
     this.velocity = velocity;
-    this.fine_tune = fine_tune;
+    this.colour = colour;
+    this.mute = mute;
   }
 };
 Jsonipc.classes["Ase::ClipNote"] = ClipNote;
@@ -793,7 +791,7 @@ export class Clip // Ase::Clip
   { return this.$get ("end_beat", 0.0) as number; }
   set end_beat (v: number)
   { this.$set ("end_beat", v); }
-  change_batch (arg1: ClipNote[], arg2: string): Promise<number>
+  change_batch (arg1: ClipNote[], arg2: string): Promise<ClipNote[]>
   { return this.$rpc ("change_batch", [this, arg1, arg2]); }
   list_all_notes (): Promise<ClipNote[]>
   { return this.$rpc ("list_all_notes", [this]); }

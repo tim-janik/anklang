@@ -273,11 +273,10 @@ test_sfz (ProjectImpl *project, te::Edit *edit, const String &filename)
     {
       ClipNote note;
       note.id = -1;
-      note.key = key;
-      note.channel = 0;
-      note.tick = start * TRANSPORT_PPQN;
-      note.duration = duration * TRANSPORT_PPQN;
-      note.velocity = 0.8f;
+      note.note_number = key;
+      note.start_beat = start;
+      note.length_beats = duration;
+      note.velocity = 102;
       batch.push_back (note);
     };
   add_note (0, 60, 1);

@@ -115,13 +115,12 @@ jsonipc_for_api_jsonipc_json()
   ::Jsonipc::Serializable< ::Ase::ClipNote > serializable__Ase_ClipNote;
   serializable__Ase_ClipNote
     .set ("id", &::Ase::ClipNote::id)
-    .set ("channel", &::Ase::ClipNote::channel)
-    .set ("key", &::Ase::ClipNote::key)
-    .set ("selected", &::Ase::ClipNote::selected)
-    .set ("tick", &::Ase::ClipNote::tick)
-    .set ("duration", &::Ase::ClipNote::duration)
+    .set ("note_number", &::Ase::ClipNote::note_number)
+    .set ("start_beat", &::Ase::ClipNote::start_beat)
+    .set ("length_beats", &::Ase::ClipNote::length_beats)
     .set ("velocity", &::Ase::ClipNote::velocity)
-    .set ("fine_tune", &::Ase::ClipNote::fine_tune)
+    .set ("colour", &::Ase::ClipNote::colour)
+    .set ("mute", &::Ase::ClipNote::mute)
     ;
   ::Jsonipc::Serializable< ::Ase::TimeRange > serializable__Ase_TimeRange;
   serializable__Ase_TimeRange

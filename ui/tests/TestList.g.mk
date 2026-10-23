@@ -16,6 +16,10 @@ UI_TEST_LIST := \
   numberinput_test.test_numberinput \
   objecteditor_test.test_objecteditor \
   pianoroll_test.test_pianoroll_shortcuts \
+  pianoroll_test.test_pianoroll_note_units \
+  pianoroll_test.test_pianoroll_coalescing \
+  pianoroll_test.test_pianoroll_resize_hover \
+  pianoroll_test.test_pianoroll_note_colors \
   positionview_test.test_positionview_values \
   preferencesdialog_test.test_preferencesdialog \
   project_test.test_project_play_toggle \

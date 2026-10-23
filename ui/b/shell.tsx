@@ -224,7 +224,7 @@ class BShell extends Object {
   switch_panel3_: any;
   f1_help_: any;
   fs: FileSelector;
-  piano_current_clip_tickfn: [any, any];
+  piano_current_clip_beatfn: [any, any];
   r: ShellReactive;
   usernotehook_: any;
   shell_element: HTMLElement | null;
@@ -243,7 +243,7 @@ class BShell extends Object {
     this.switch_panel3_ = null;
     this.f1_help_ = null;
     this.fs = { title: 'File Selector', button: 'Select', cwd: '~MUSIC', filters: [] };
-    this.piano_current_clip_tickfn = [null,null];
+    this.piano_current_clip_beatfn = [null,null];
     const rtmpl: ShellReactive = {
       current_track: null,
       show_preferences_dialog: false,
@@ -288,7 +288,7 @@ class BShell extends Object {
     this.r.show_about_dialog_ = false;
     this.r.piano_roll_source = undefined;
     this.shell_element = null;
-    this.piano_current_clip_tickfn = [null,null];
+    this.piano_current_clip_beatfn = [null,null];
     this.piano_roll_ = null;
     this.modal_dialogs_ = null;
     this.data_bubble?.dispose();
@@ -310,13 +310,13 @@ class BShell extends Object {
     console.assert (!this.data_bubble);
     this.data_bubble = new DataBubbleIface (shell_element);
   }
-  /// Helper to refer to the current piano roll clip and tick
-  piano_current (clip: any = undefined, tickfn: any = undefined): [any, any]
+  /// Helper to refer to the current piano roll clip and beat
+  piano_current (clip: any = undefined, beatfn: any = undefined): [any, any]
   {
     // Called several times per second
     if (clip === undefined)
-      return this.piano_current_clip_tickfn;
-    this.piano_current_clip_tickfn = [clip,tickfn];
+      return this.piano_current_clip_beatfn;
+    this.piano_current_clip_beatfn = [clip,beatfn];
   }
   /// Show/hide about dialog
   show_about_dialog (onoff = true)

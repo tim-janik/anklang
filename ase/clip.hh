@@ -26,7 +26,7 @@ public:
   double         end_beat       () const override;
   void           end_beat       (double) override;
   ClipNoteS      list_all_notes () override;
-  int32          change_batch   (const ClipNoteS &notes, const String &undogroup) override;
+  ClipNoteS      change_batch   (const ClipNoteS &notes, const String &undogroup) override;
   bool           muted          () const override;
   void           muted          (bool muted) override;
   float          volume         () const override;
