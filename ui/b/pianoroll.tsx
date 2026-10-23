@@ -289,6 +289,8 @@ export function PianoRoll (props: {
     if (!t.root || !clip) return;
     // read out props to force auto-updates / subscribe to note & length signals
     PianoCtrl.list_notes (clip);
+    Shell.project.numerator;
+    Shell.project.denominator;
     // piano_layout reads clip.end_beat, subscribing this effect to clip resize
     piano_layout.call (t);
     if (t.vscroll_must_center && t.vscrollbar?.clientHeight)
@@ -520,7 +522,7 @@ function piano_layout (this: any)
   const black_keyspans = [  [7,7], [21,7],     [43,7], [56.5,7], [70,7]   ]; 	// for 84px octave
   const white_offsets  = [ 0,    12,     24, 36,     48,       60,     72 ]; 	// for 84px octave
   const key_length = parseFloat (cstyle.getPropertyValue ('--piano-roll-key-length'));
-  const min_end_beat = 16 * 4;
+  const min_end_beat = 16 * (Shell.project.numerator || 4);
   const end_beat = Math.max (this.clip.end_beat || 0, min_end_beat);
   // scale layout
   layout.dpr_height = round (layout.DPR * layout.cssheight);
@@ -857,7 +859,7 @@ function paint_timeline (this: any)
  */
 function paint_timegrid (this: any, canvas: any, with_labels: boolean)
 {
-  const signature = [ 4, 4 ];
+  const signature = [ Shell.project.numerator || 4, Shell.project.denominator || 4 ];
   const cstyle = getComputedStyle (this.root), gy1 = 0;
   const gy2 = canvas.height * (with_labels ? 0.5 : 0), gy3 = canvas.height * (with_labels ? 0.75 : 0);
   const ctx = canvas.getContext ('2d'), csp = cstyle.getPropertyValue.bind (cstyle);
@@ -885,7 +887,7 @@ function paint_timegrid (this: any, canvas: any, with_labels: boolean)
   this.stepping = stepping;
 
   // first 2^x aligned bar beat before/at xposition
-  const start_bar = floor ((lsx + layout.hpad) / (barjumps * bar_pixels));
+  const start_bar = barjumps * floor ((lsx + layout.hpad) / (barjumps * bar_pixels));
   const start = start_bar * bar_beats;
 
   // step through visible beat fractions and draw lines

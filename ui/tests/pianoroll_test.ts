@@ -239,6 +239,55 @@ export async function test_pianoroll_resize_hover (): Promise<boolean>
   return true;
 }
 
+export async function test_pianoroll_time_signature (): Promise<boolean>
+{
+  const project = Shell.project;
+  const piano_current = Shell.piano_current();
+  const [numerator, set_numerator] = createSignal (3);
+  Shell.project = { get numerator () { return numerator(); }, denominator: 8 };
+  const container = document.createElement ('div');
+  document.body.appendChild (container);
+  const labels = new Map<string, number>();
+  const fill_text = CanvasRenderingContext2D.prototype.fillText;
+  CanvasRenderingContext2D.prototype.fillText = function (text, x, y, ...args) {
+    if (container.contains (this.canvas) && this.canvas.classList.contains ('-time_canvas'))
+      labels.set (text, x);
+    fill_text.call (this, text, x, y, ...args);
+  };
+  const dispose = render (() => createComponent (PianoRoll, {
+    clip: { all_notes: [], end_beat: 8192 }, style: 'width: 1200px; height: 400px',
+  }), container);
+  try {
+    await Dom.ui_next_frame();
+    await Dom.ui_next_frame();
+    const bar_width = labels.get ('2')! - labels.get ('1')!;
+    if (!labels.has ('1.3') || labels.has ('1.4') || !(bar_width > 0))
+      throw new Error (`piano grid did not show 3/8 bars: ${[...labels]}`);
+    labels.clear();
+    set_numerator (6);
+    await Dom.ui_next_frame();
+    if (!labels.has ('1.6') || !(Math.abs (labels.get ('2')! - labels.get ('1')! - 2 * bar_width) <= 1))
+      throw new Error (`piano grid did not redraw for 6/8: ${[...labels]}`);
+    const scrollbar = container.querySelector<HTMLElement> ('.-hextend')!.parentElement!;
+    for (const bar of [800, 807]) {
+      labels.clear();
+      const scrolled = new Promise<void> (resolve => scrollbar.addEventListener ('scroll', () => resolve(), { once: true }));
+      scrollbar.scrollTo ({ left: (bar * 6 + 0.5) / 8192 * (scrollbar.scrollWidth - scrollbar.clientWidth), behavior: 'instant' });
+      await scrolled;
+      await Dom.ui_next_frame();
+      if (labels.keys().next().value !== '801' || !labels.has (String (bar + 1)) || labels.size > 64)
+        throw new Error (`wrong scrolled bar group: first=${labels.keys().next().value}, labels=${labels.size}`);
+    }
+  } finally {
+    dispose();
+    CanvasRenderingContext2D.prototype.fillText = fill_text;
+    container.remove();
+    Shell.project = project;
+    Shell.piano_current (...piano_current);
+  }
+  return true;
+}
+
 export async function test_pianoroll_note_colors (): Promise<boolean>
 {
   const piano_current = Shell.piano_current();

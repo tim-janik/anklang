@@ -19,6 +19,7 @@ UI_TEST_LIST := \
   pianoroll_test.test_pianoroll_note_units \
   pianoroll_test.test_pianoroll_coalescing \
   pianoroll_test.test_pianoroll_resize_hover \
+  pianoroll_test.test_pianoroll_time_signature \
   pianoroll_test.test_pianoroll_note_colors \
   positionview_test.test_positionview_values \
   preferencesdialog_test.test_preferencesdialog \
