@@ -276,12 +276,10 @@ ClipImpl::pan () const
 void
 ClipImpl::pan (float panval)
 {
-  return_unless (clip_.get());
-  auto &um = clip_->edit.getUndoManager();
-  um.beginNewTransaction ("Set Clip Pan");
   auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
-  if (aclip)
-    aclip->setPan (panval);
+  return_unless (aclip); // MIDI clips have no pan
+  clip_->edit.getUndoManager().beginNewTransaction ("Set Clip Pan");
+  aclip->setPan (panval);
 }
 
 TelemetryFieldS
