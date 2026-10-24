@@ -37,7 +37,6 @@ const common_js_rules = {
   "@html-eslint/require-closing-tags": OFF,
   "@html-eslint/require-img-alt": OFF,
   "linebreak-style": [ "error", "unix" ],
-  "lit/attribute-value-entities": OFF,
   "no-console": [ OFF ],
   "no-constant-binary-expression": OFF,
   "no-constant-condition": [ OFF ],
@@ -59,7 +58,6 @@ const common_js_rules = {
 export default [
   eslint_js.configs.recommended,
   { ...html.configs["flat/recommended"], files: ['**/*.html'] },
-  ...compat.extends ('plugin:lit/recommended'),
   ...compat.extends ('plugin:better-tailwindcss/recommended').map (config => ({
     ...config, files: ['**/*.{js,mjs,cjs,html}'],
   })),
@@ -72,7 +70,6 @@ export default [
     files: [ "**/*.cjs",
 	     "doc/jsdoc2md.js",
 	     "electron/*.js",
-	     "ui/jsextract.js",
 	     "ui/sfc-compile.js",
 	     "ui/xbcomments.js",
 	     "misc/*.js",

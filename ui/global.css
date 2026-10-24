@@ -10,7 +10,7 @@ html, body {
 body { width: 100vw; height: 100vh; }
 
 /* Font adjustments */
-html, :host				{ @include b-ui-font(); }
+html					{ @include b-ui-font(); }
 h1, h2, h3, h4, h5, h6, th,
 ::-webkit-validation-bubble-heading,
 .bold					{ @include b-font-weight-bold(); }
@@ -29,7 +29,7 @@ body {
 }
 
 /* Scrollbar styling */
-html, :host {
+html {
   @include firefox-scrollbars();
   @include chrome-scrollbars();
 }

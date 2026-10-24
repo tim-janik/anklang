@@ -8,7 +8,7 @@ keywords:   Anklang, Linux, ALSA, JavaScript, Scripting, IPC
 # ANKLANG Development Details
 
 Technically, Anklang consists of a user interface front-end based on web technologies
-(HTML, DOM, CSS, JavaScript, Lit, SolidJS) and a synthesis engine backend written in C++.
+(HTML, DOM, CSS, JavaScript, SolidJS) and a synthesis engine backend written in C++.
 
 ## ASE - Anklang synthesis engine
 
