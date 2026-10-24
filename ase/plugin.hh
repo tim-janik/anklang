@@ -21,6 +21,7 @@ protected:
 public:
   explicit        PluginImpl         (tracktion::Plugin &plugin);
   String          name              () const override;
+  void            name              (const std::string&) override;
   DeviceInfo      device_info       () override;
   String          plugin_type       () const override;
   bool            enabled           () const override;

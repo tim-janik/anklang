@@ -74,6 +74,12 @@ PluginImpl::name() const
   return "";
 }
 
+void
+PluginImpl::name (const std::string&)
+{
+  // Tracktion plugins have a fixed name
+}
+
 String
 PluginImpl::fallback_name() const
 {
