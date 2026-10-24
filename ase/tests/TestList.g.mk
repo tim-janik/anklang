@@ -47,6 +47,7 @@ ASE_TEST_LIST := \
   promise_multi_waiter_test \
   promise_string_test \
   promise_void_test \
+  property_loop \
   queuemux_test \
   randomhash_tests \
   regex_tests \
