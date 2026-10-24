@@ -78,7 +78,6 @@ public:
   Error                writer_add_file   (const String &fspath);
   Error                writer_collect    (const String &fspath, String *hexhashp);
   TelemetryFieldS      telemetry         () const override;
-  ssize_t              track_index       (const Track &child) const;
   static void          force_shutdown_all ();
   static ProjectImplP  create            (const String &projectname);
 };

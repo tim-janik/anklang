@@ -81,14 +81,6 @@ PluginImpl::name (const std::string&)
 }
 
 String
-PluginImpl::fallback_name() const
-{
-  if (auto pluginp = plugin_.get())
-    return pluginp->getName().toStdString();
-  return DeviceImpl::fallback_name();
-}
-
-String
 PluginImpl::plugin_type() const
 {
   return plugin_type_;

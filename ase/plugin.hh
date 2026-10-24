@@ -17,7 +17,6 @@ protected:
   SelectableWeakref<tracktion::Plugin> plugin_;
   std::string                          plugin_type_;
   virtual        ~PluginImpl        ();
-  String          fallback_name     () const override;
 public:
   explicit        PluginImpl         (tracktion::Plugin &plugin);
   String          name              () const override;

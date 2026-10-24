@@ -191,18 +191,6 @@ TrackImpl::project () const
   return project_;
 }
 
-String
-TrackImpl::fallback_name() const
-{
-  if (is_master())
-    return "Master";
-  if (auto project_ = project()) {
-    ssize_t i = project_->track_index (*this);
-    return string_format ("Track %u", i >= 0 ? i + 1 : i);
-  }
-  return DeviceImpl::fallback_name();
-}
-
 bool
 TrackImpl::muted() const
 {

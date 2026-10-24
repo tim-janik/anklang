@@ -944,25 +944,6 @@ ProjectImpl::all_tracks ()
   return tracks;
 }
 
-ssize_t
-ProjectImpl::track_index (const Track &child) const
-{
-  ssize_t index = 0;
-  ssize_t found = -1;
-  auto tf = [&] (Track &track, int depth)
-  {
-    if (&track == &child)
-      {
-        found = index;
-        return false;
-      }
-    index++;
-    return true;
-  };
-  const_cast<ProjectImpl*> (this)->foreach_track (tf);
-  return found;
-}
-
 TrackP
 ProjectImpl::master_track ()
 {

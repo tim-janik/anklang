@@ -474,6 +474,7 @@ track_name()
 
   TrackP track = project->create_track();
   TASSERT (track);
+  TASSERT (track->name() == "Track 1" && project->master_track()->name() == "Master");
 
   // Set and get track name
   track->name ("MyTrack");
@@ -481,6 +482,9 @@ track_name()
 
   track->name ("AnotherName");
   TASSERT (track->name() == "AnotherName");
+
+  track->name ("");
+  TASSERT (track->name() == "Track 1");
 
   project->discard();
 }

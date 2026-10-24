@@ -19,7 +19,6 @@ class TrackImpl : public DeviceImpl, public virtual Track {
   friend class TrackStateListener;
   virtual         ~TrackImpl        ();
 protected:
-  String          fallback_name     () const override;
   void            update_telemetry  ();
 public:
   class ClipScout;
