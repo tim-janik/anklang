@@ -20,6 +20,7 @@ check-removals: misc/check-removals.sh misc/test_check_removals.py
 check: check-removals
 
 # == check-synsmell ==
+check-synsmell: export RUNTS := $(RUNTS)
 check-synsmell: misc/test_synsmell.mjs misc/synsmell.ts | node_modules/.npm.done
 	$(QCHECK)
 	$Q node --test misc/test_synsmell.mjs
