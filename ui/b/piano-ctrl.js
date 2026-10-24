@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { createSignal } from 'solid-js';
 import * as Util from '../util.js';
 
 import { START, STOP, CANCEL, MOVE, SCROLL } from '../util.js';
@@ -32,8 +33,8 @@ import { START, STOP, CANCEL, MOVE, SCROLL } from '../util.js';
 
 export const PIANO_OCTAVES = 11;
 export const PIANO_KEYS = PIANO_OCTAVES * 12;
-const MINDURATION = Util.PPQN / 64;
-const MINTICKS = MINDURATION / 6;
+const MINDURATION = 1 / 64;
+const MINBEATS = MINDURATION / 6;
 const NONE = 0, SINGLE = 1, ADD = 2, SUB = 3, ASSIGN = 4;
 const LEFT = Util.KeyCode.LEFT, UP = Util.KeyCode.UP, RIGHT = Util.KeyCode.RIGHT, DOWN = Util.KeyCode.DOWN;
 const SHIFT = 0x1000, CTRL = 0x2000, ALT = 0x4000;
@@ -42,14 +43,14 @@ let piano_clipboard = "[]";
 
 function quantization (piano_roll)
 {
-  const stepping = piano_roll.stepping ? piano_roll.stepping[0] : Util.PPQN;
-  return Math.min (stepping, Util.PPQN);
+  const stepping = piano_roll.stepping ? piano_roll.stepping[0] : 1;
+  return Math.min (stepping, 1);
 }
 
-function quantize (piano_roll, tick, nearest = true)
+function quantize (piano_roll, beat, nearest = true)
 {
   const quant = quantization (piano_roll);
-  const fract = tick / quant;
+  const fract = beat / quant;
   return (nearest ? Math.round : Math.trunc) (fract) * quant;
 }
 
@@ -64,23 +65,23 @@ export class PianoCtrl {
   }
   quantization ()
   {
-    const roll = this.piano_roll, stepping = roll.stepping ? roll.stepping[0] : Util.PPQN;
-    return Math.min (stepping, Util.PPQN);
+    const roll = this.piano_roll, stepping = roll.stepping ? roll.stepping[0] : 1;
+    return Math.min (stepping, 1);
   }
-  quantize (tick, nearest = true)
+  quantize (beat, nearest = true)
   {
     const quant = this.quantization();
-    const fract = tick / quant;
+    const fract = beat / quant;
     return (nearest ? Math.round : Math.trunc) (fract) * quant;
   }
-  tickdelta (event)
+  beatdelta (event)
   {
     if (!event.shiftKey)
       return this.quantization();
     const roll = this.piano_roll, layout = roll.layout;
     const pixelstep = 2;
-    let dist = Math.ceil (pixelstep / (layout.tickscale * MINTICKS));
-    dist = Math.max (MINTICKS, dist * MINTICKS);
+    let dist = Math.ceil (pixelstep / (layout.beatscale * MINBEATS));
+    dist = Math.max (MINBEATS, dist * MINBEATS);
     return dist;
   }
   keydown (event)
@@ -124,52 +125,52 @@ export class PianoCtrl {
 	const quantize_notes = (clip, allnotes) =>
 	  notes_filter_modify (allnotes,
 			       note => note.selected,
-			       note => ({ tick: this.quantize (note.tick) }));
+			       note => ({ start_beat: this.quantize (note.start_beat) }));
 	await queue_modify_notes (clip, quantize_notes, "Quantize");
 	break; }
       case "Q".charCodeAt (0) + SHIFT: {
 	const quantize_duration = (note) => {
-	  let endtick = this.quantize (note.tick + note.duration);
-	  if (endtick <= note.tick)
-	    endtick += this.quantization();
-	  return { duration: endtick - note.tick };
+	  let endbeat = this.quantize (note.start_beat + note.length_beats);
+	  if (endbeat <= note.start_beat)
+	    endbeat += this.quantization();
+	  return { length_beats: endbeat - note.start_beat };
 	};
 	const quantize_notes = (clip, allnotes) =>
 	  notes_filter_modify (allnotes, note => note.selected, quantize_duration);
 	await queue_modify_notes (clip, quantize_notes, "Quantize Duration");
 	break; }
       case CTRL + RIGHT: case SHIFT + CTRL + RIGHT: { // →→
-	const tickdelta = this.tickdelta (event);
+	const beatdelta = this.beatdelta (event);
 	const notes_elongate = (clip, allnotes) =>
 	  notes_filter_modify (allnotes,
 			       note => note.selected,
-			       note => ({ duration: note.duration + tickdelta }));
+			       note => ({ length_beats: note.length_beats + beatdelta }));
 	await queue_modify_notes (clip, notes_elongate, "Lengthen");
 	break; }
       case CTRL + LEFT: case SHIFT + CTRL + LEFT: { // ←←
-	const tickdelta = this.tickdelta (event);
-	const shorten = (duration) => duration - (tickdelta < duration ? tickdelta : 0);
+	const beatdelta = this.beatdelta (event);
+	const shorten = (duration) => duration - (beatdelta < duration ? beatdelta : 0);
 	const notes_elongate = (clip, allnotes) =>
 	  notes_filter_modify (allnotes,
 			       note => note.selected,
-			       note => ({ duration: shorten (note.duration) }));
+			       note => ({ length_beats: shorten (note.length_beats) }));
 	await queue_modify_notes (clip, notes_elongate, "Shorten");
 	break; }
       case RIGHT: case SHIFT + RIGHT: { // →
-	const tickdelta = this.tickdelta (event);
+	const beatdelta = this.beatdelta (event);
 	const notes_shift = (clip, allnotes) =>
 	  notes_filter_modify (allnotes,
 			       note => note.selected,
-			       note => ({ tick: note.tick + tickdelta }));
+			       note => ({ start_beat: note.start_beat + beatdelta }));
 	await queue_modify_notes (clip, notes_shift, "Shift Right");
 	break; }
       case LEFT: case SHIFT + LEFT: { // ←
-	const tickdelta = this.tickdelta (event);
+	const beatdelta = this.beatdelta (event);
 	let bounced = false;
 	const note_mods = note => {
-	  const newtick = note.tick - tickdelta;
-	  bounced |= newtick < 0;
-	  return { tick: newtick };
+	  const newbeat = note.start_beat - beatdelta;
+	  bounced |= newbeat < 0;
+	  return { start_beat: newbeat };
 	};
 	const notes_shift = (clip, allnotes) => {
 	  const notes = notes_filter_modify (allnotes, note => note.selected, note_mods);
@@ -181,9 +182,9 @@ export class PianoCtrl {
 	const semitones = (key_ctrl_alt_shift & SHIFT) ? 12 : 1;
 	let bounced = false;
 	const note_mods = note => {
-	  const newkey = note.key + semitones;
+	  const newkey = note.note_number + semitones;
 	  bounced |= newkey >= 128;
-	  return { key: newkey };
+	  return { note_number: newkey };
 	};
 	const notes_shift = (clip, allnotes) =>
 	  notes_filter_modify (allnotes, note => note.selected, note_mods, () => !bounced);
@@ -193,9 +194,9 @@ export class PianoCtrl {
 	const semitones = (key_ctrl_alt_shift & SHIFT) ? 12 : 1;
 	let bounced = false;
 	const note_mods = note => {
-	  const newkey = note.key - semitones;
+	  const newkey = note.note_number - semitones;
 	  bounced |= newkey < 0;
-	  return { key: newkey };
+	  return { note_number: newkey };
 	};
 	const notes_shift = (clip, allnotes) =>
 	  notes_filter_modify (allnotes, note => note.selected, note_mods, () => !bounced);
@@ -204,10 +205,9 @@ export class PianoCtrl {
       case ALT + RIGHT:
       case ALT + LEFT: {
 	const goright = event.keyCode == RIGHT;
-	const sortscore = (n) => n.tick * 1000 + 128 - n.key;
 	const advance_selected = (clip, allnotes) => { // SINGLE signature
 	  const xnotes = [...allnotes];
-	  xnotes.sort ((a, b) => sortscore (a) - sortscore (b));
+	  xnotes.sort ((a, b) => a.start_beat - b.start_beat || b.note_number - a.note_number);
 	  let first = null, last = null, seenselected = 0;
 	  for (const note of xnotes) {
 	    if (note.selected) {
@@ -242,8 +242,8 @@ export class PianoCtrl {
       piano_roll.notes_canvas.setAttribute ('data-notehover', false);
     if (event.target == piano_roll.time_canvas)
       {
-	const tick = layout.tick_from_x (event.offsetX);
-	debug ("tdrag:", MODE, tick, event);
+	const beat = layout.beat_from_x (event.offsetX);
+	debug ("tdrag:", MODE, beat, event);
       }
     else if (event.target == piano_roll.piano_canvas)
       debug ("pdrag:", MODE, piano_roll.pianotool, event);
@@ -284,12 +284,12 @@ export class PianoCtrl {
     srect.w = Math.max (event.offsetX, srect.sx) - srect.x;
     srect.h = Math.max (event.offsetY, srect.sy) - srect.y;
     piano_roll.srect = srect;
-    const t0 = layout.tick_from_x (srect.x), t1 = layout.tick_from_x (srect.x + srect.w);
+    const t0 = layout.beat_from_x (srect.x), t1 = layout.beat_from_x (srect.x + srect.w);
     const k0 = layout.midinote_from_y (srect.y + srect.h), k1 = layout.midinote_from_y (srect.y);
 
-    queue_change_selection (piano_roll, ASSIGN, n => (n.key >= k0 && n.key <= k1 &&
-						      ((t0 < n.tick && t1 >= n.tick) ||
-						       (t0 >= n.tick && t0 < n.tick + n.duration))));
+    queue_change_selection (piano_roll, ASSIGN, n => (n.note_number >= k0 && n.note_number <= k1 &&
+						      ((t0 < n.start_beat && t1 >= n.start_beat) ||
+						       (t0 >= n.start_beat && t0 < n.start_beat + n.length_beats))));
   }
   debounced_drag_move = Util.debounce (this.drag_move.bind (this), { wait: 17, restart: true, immediate: true });
   move_event (event) // this method is debounced
@@ -297,11 +297,11 @@ export class PianoCtrl {
     const piano_roll = this.piano_roll, layout = piano_roll.layout;
     if (!layout) return; // UI layout may have changed for deferred events
     if (event.target == piano_roll.notes_canvas) {
-      const tick = layout.tick_from_x (event.offsetX);
+      const beat = layout.beat_from_x (event.offsetX);
       const midinote = layout.midinote_from_y (event.offsetY);
       // FIXME: there is no piano_roll.note_cache
       const idx = find_note (piano_roll.note_cache.notes,
-			     n => tick >= n.tick && tick < n.tick + n.duration && n.key == midinote);
+			     n => beat >= n.start_beat && beat < n.start_beat + n.length_beats && n.note_number == midinote);
       piano_roll.notes_canvas.setAttribute ('data-notehover', idx >= 0);
     }
   }
@@ -348,7 +348,7 @@ function notes_canvas_drag_select (event, MODE)
 	srect.h = this.piano_roll.layout.cssheight;
       }
       this.piano_roll.srect = srect; // forces repaint
-      const t0 = this.piano_roll.layout.tick_from_x (srect.x), t1 = this.piano_roll.layout.tick_from_x (srect.x + srect.w);
+      const t0 = this.piano_roll.layout.beat_from_x (srect.x), t1 = this.piano_roll.layout.beat_from_x (srect.x + srect.w);
       const k0 = this.piano_roll.layout.midinote_from_y (srect.y + srect.h);
       const k1 = this.piano_roll.layout.midinote_from_y (srect.y);
       let selectmode = ASSIGN;
@@ -357,9 +357,9 @@ function notes_canvas_drag_select (event, MODE)
       if (!event.shiftKey && event.ctrlKey)
 	selectmode = SUB;
       queue_change_selection (this.piano_roll, selectmode,
-			      n => (n.key >= k0 && n.key <= k1 &&
-				    ((t0 < n.tick && t1 >= n.tick) ||
-				     (t0 >= n.tick && t0 < n.tick + n.duration))));
+			      n => (n.note_number >= k0 && n.note_number <= k1 &&
+				    ((t0 < n.start_beat && t1 >= n.start_beat) ||
+				     (t0 >= n.start_beat && t0 < n.start_beat + n.length_beats))));
       break; }
     case STOP: {
       srect.w = 0;
@@ -387,14 +387,14 @@ function notes_canvas_drag_paint (event, MODE)
       // fall through
     case SCROLL:
     case MOVE: {
-      const event_tick = this.piano_roll.layout.tick_from_x (this.x);
+      const event_beat = this.piano_roll.layout.beat_from_x (this.x);
       const event_key = this.piano_roll.layout.midinote_from_y (this.y);
       const paint_note = (clip, allnotes) => {
-	const note_idx = find_note (allnotes, n => event_tick >= n.tick && event_tick < n.tick + n.duration && event_key == n.key);
+	const note_idx = find_note (allnotes, n => event_beat >= n.start_beat && event_beat < n.start_beat + n.length_beats && event_key == n.note_number);
 	if (note_idx < 0) {
-	  const newnote = { channel: 0, key: event_key, velocity: 1, fine_tune: 0,
-			    tick: quantize (this.piano_roll, event_tick, false),
-			    duration: this.piano_roll.last_note_length,
+	  const newnote = { note_number: event_key, velocity: 127, colour: 0, mute: false,
+			    start_beat: quantize (this.piano_roll, event_beat, false),
+			    length_beats: this.piano_roll.last_note_length,
 			    selected: true };
 	  return [ newnote ];
 	}
@@ -422,9 +422,9 @@ function notes_canvas_drag_move (event, MODE)
   const get_selection_range = (allnotes) => {
     let selected_notes = allnotes.filter (note => note.selected);
     return {
-      min_tick : Math.min (...selected_notes.map (note => note.tick)),
-      min_key  : Math.min (...selected_notes.map (note => note.key)),
-      max_key  : Math.max (...selected_notes.map (note => note.key))
+      min_beat : Math.min (...selected_notes.map (note => note.start_beat)),
+      min_key  : Math.min (...selected_notes.map (note => note.note_number)),
+      max_key  : Math.max (...selected_notes.map (note => note.note_number))
     };
   };
   const select_before_move = (clip, allnotes) => {
@@ -446,10 +446,10 @@ function notes_canvas_drag_move (event, MODE)
 
     this.original_note_ids = {};
     let srange = get_selection_range (allnotes);
-    this.move_note_relative_tick = allnotes[note_idx].tick - srange.min_tick;
+    this.move_note_relative_beat = allnotes[note_idx].start_beat - srange.min_beat;
     this.move_note_relative_key = this.event_key - srange.min_key;
-    this.move_note_grid_offset = allnotes[note_idx].tick - quantize (this.piano_roll, allnotes[note_idx].tick, false);
-    this.move_note_cursor_offset = this.event_tick - allnotes[note_idx].tick;
+    this.move_note_grid_offset = allnotes[note_idx].start_beat - quantize (this.piano_roll, allnotes[note_idx].start_beat, false);
+    this.move_note_cursor_offset = this.event_beat - allnotes[note_idx].start_beat;
 
     const newnotes = [];
     for (const note of allnotes)
@@ -473,14 +473,14 @@ function notes_canvas_drag_move (event, MODE)
     if (!this.move_ok)
       return false;
 
-    let start_tick = this.event_tick - this.move_note_cursor_offset;
-    let snap_tick = 0;
-    const snap_to = (tick) => {
+    let start_beat = this.event_beat - this.move_note_cursor_offset;
+    let snap_beat = 0;
+    const snap_to = (beat) => {
       let Q = quantization (this.piano_roll);
-      for (const t of [ tick - Q, tick, tick + Q ])
+      for (const t of [ beat - Q, beat, beat + Q ])
         {
-          if (Math.abs (t - start_tick) < Math.abs (snap_tick - start_tick))
-            snap_tick = t;
+          if (Math.abs (t - start_beat) < Math.abs (snap_beat - start_beat))
+            snap_beat = t;
         }
     };
     if (!event.shiftKey)
@@ -489,20 +489,20 @@ function notes_canvas_drag_move (event, MODE)
         const snap_to_grid = true;
         const snap_to_grid_offset = true;
         if (snap_to_grid)
-          snap_to (quantize (this.piano_roll, start_tick));
+          snap_to (quantize (this.piano_roll, start_beat));
         if (snap_to_grid_offset)
-          snap_to (quantize (this.piano_roll, start_tick - this.move_note_grid_offset) + this.move_note_grid_offset);
+          snap_to (quantize (this.piano_roll, start_beat - this.move_note_grid_offset) + this.move_note_grid_offset);
       }
     else
       {
-        snap_tick = start_tick;
+        snap_beat = start_beat;
       }
     let srange = get_selection_range (allnotes);
     let delta_key = this.event_key - srange.min_key - this.move_note_relative_key;
-    let delta_tick = snap_tick - srange.min_tick - this.move_note_relative_tick;
-    // constrain output tick/key range
-    if (srange.min_tick + delta_tick < 0)
-      delta_tick = -srange.min_tick;
+    let delta_beat = snap_beat - srange.min_beat - this.move_note_relative_beat;
+    // constrain output beat/key range
+    if (srange.min_beat + delta_beat < 0)
+      delta_beat = -srange.min_beat;
     if (srange.min_key + delta_key < 0)
       delta_key = -srange.min_key;
     if (srange.max_key + delta_key > 127)
@@ -510,7 +510,7 @@ function notes_canvas_drag_move (event, MODE)
     // move selected notes
     return notes_filter_modify (allnotes,
                                 note => note.selected,
-                                note => ({ tick : note.tick + delta_tick, key : note.key + delta_key }));
+                                note => ({ start_beat: note.start_beat + delta_beat, note_number: note.note_number + delta_key }));
   };
   const end_move_notes = (clip, allnotes) => {
     if (!this.move_ok)
@@ -523,7 +523,7 @@ function notes_canvas_drag_move (event, MODE)
         // TODO: use different mouse cursors for copy and move
         killnotes = notes_filter_modify (allnotes,
                                          note => this.original_note_ids[note.id],
-                                         note => ({ duration: 0 }));
+                                         note => ({ length_beats: 0 }));
       }
     // cleanup state
     this.original_note_ids = undefined;
@@ -532,14 +532,14 @@ function notes_canvas_drag_move (event, MODE)
   // TODO: START/SCROLL/MOVE/STOP should be in one undo group
   switch (MODE) {
     case START:
-      this.event_tick = this.piano_roll.layout.tick_from_x (this.x);
+      this.event_beat = this.piano_roll.layout.beat_from_x (this.x);
       this.event_key = this.piano_roll.layout.midinote_from_y (this.y);
       queue_modify_notes (this.piano_roll.clip, select_before_move, "Select Note Before Move");
       queue_modify_notes (this.piano_roll.clip, start_move_notes, "Start Move Notes");
       break;
     case SCROLL:
     case MOVE:
-      this.event_tick = this.piano_roll.layout.tick_from_x (this.x);
+      this.event_beat = this.piano_roll.layout.beat_from_x (this.x);
       this.event_key = this.piano_roll.layout.midinote_from_y (this.y);
       queue_modify_notes (this.piano_roll.clip, move_notes, "Move Notes");
       break;
@@ -576,11 +576,11 @@ function notes_canvas_drag_resize (event, MODE)
 
         for (const note of allnotes)
           if (note.selected)
-            this.note_duration_delta[note.id] = note.duration - allnotes[note_idx].duration;
+            this.note_duration_delta[note.id] = note.length_beats - allnotes[note_idx].length_beats;
       }
 
     // compute new duration of dragged note (may be negative)
-    let new_duration = this.event_tick - allnotes[note_idx].tick;
+    let new_duration = this.event_beat - allnotes[note_idx].start_beat;
     if (!event.shiftKey)
       new_duration = quantize (this.piano_roll, new_duration, true);
 
@@ -602,9 +602,9 @@ function notes_canvas_drag_resize (event, MODE)
 
         if (newnote.selected)
           {
-            newnote.duration = Math.max (Util.PPQN / 16, new_duration + this.note_duration_delta[note.id]);
+            newnote.length_beats = Math.max (1 / 16, new_duration + this.note_duration_delta[note.id]);
             if (note.id === this.note_id)
-              this.last_note_length = newnote.duration;
+              this.last_note_length = newnote.length_beats;
             changed = true;
           }
         if (changed)
@@ -619,7 +619,7 @@ function notes_canvas_drag_resize (event, MODE)
       break;
     case SCROLL:
     case MOVE:
-      this.event_tick = this.piano_roll.layout.tick_from_x (this.x);
+      this.event_beat = this.piano_roll.layout.beat_from_x (this.x);
       queue_modify_notes (this.piano_roll.clip, resize_notes, "Resize Notes");
       break;
     case STOP:
@@ -643,7 +643,7 @@ function notes_canvas_drag_erase (event, MODE)
   Util.prevent_event (event);
 
   /* To allow consecutive erasure, (offsetX,offsetY) from two successive events need to be conected.
-   * Tick resolution is much higher than X pixels, so use pixels horizontally.
+   * Beat resolution is much higher than X pixels, so use pixels horizontally.
    * Key resolution is lower than Y pixels, so use keys vertically.
    * Event X/Y coordinates are floats (and are fractional in Chrome HIDPI settings), to work
    * with integer line rastering, we scale X up/down around rastering.
@@ -665,11 +665,11 @@ function notes_canvas_drag_erase (event, MODE)
 	erase.y = this.y;
 	const x1 = erase.x, k1 = this.piano_roll.layout.midinote_from_y (erase.y);
 	for (const pos of Util.raster_line (x0*2, k0, x1*2, k1)) {
-	  const t = this.piano_roll.layout.tick_from_x (pos[0]/2), k = pos[1]; // pos[0] is x -> tick, pos[1] is key
+	  const t = this.piano_roll.layout.beat_from_x (pos[0]/2), k = pos[1]; // pos[0] is x -> beat, pos[1] is key
 	  if (positions.length == 0 ||
-	      positions[positions.length-1].tick != t ||
-	      positions[positions.length-1].key != k)
-	    positions.push ({ tick: t, key: k });
+	      positions[positions.length-1].start_beat != t ||
+	      positions[positions.length-1].note_number != k)
+	    positions.push ({ start_beat: t, note_number: k });
 	}
 	x0 = x1;
 	k0 = k1;
@@ -678,7 +678,7 @@ function notes_canvas_drag_erase (event, MODE)
 	if (erase.ids.has (note.id))
 	  return true;
 	for (const pos of positions)
-	  if (pos.key == note.key && pos.tick >= note.tick && pos.tick < note.tick + note.duration) {
+	  if (pos.note_number == note.note_number && pos.start_beat >= note.start_beat && pos.start_beat < note.start_beat + note.length_beats) {
 	    erase.ids.add (note.id);
 	    return true;
 	  }
@@ -693,7 +693,7 @@ function notes_canvas_drag_erase (event, MODE)
 	const deletions = [];
 	for (const note of allnotes)
 	  if (erase.ids.has (note.id))
-	    deletions.push (Object.assign ({}, note, { duration: 0 }));
+	    deletions.push (Object.assign ({}, note, { length_beats: 0 }));
 	return deletions;
       };
       queue_modify_notes (this.piano_roll.clip, erase_notes, "Erase Notes");
@@ -708,26 +708,25 @@ function notes_canvas_drag_erase (event, MODE)
 ntool ('E', notes_canvas_drag_erase, 'var(--svg-cursor-eraser)');
 
 /// Detect note if hovering over its body
-function note_hover_body (coords, tick, key, notes)
+function note_hover_body (coords, beat, key, notes)
 {
-  const note_idx = find_note (notes, n => key == n.key && tick >= n.tick && tick < n.tick + n.duration);
+  const note_idx = find_note (notes, n => key == n.note_number && beat >= n.start_beat && beat < n.start_beat + n.length_beats);
   return note_idx >= 0 ? { note_id: notes[note_idx].id } : null;
 }
 
 /// Detect note if hovering over its tail
-function note_hover_tail (coords, tick, key, notes)
+function note_hover_tail (coords, beat, key, notes)
 {
-  const head_dist = 10; // minimum pixels distance from note start
-  const note_idx = find_note (notes, n => key == n.key && tick >= n.tick + Math.max (head_dist, n.duration / 2) && tick < n.tick + n.duration);
+  const note_idx = find_note (notes, n => key == n.note_number && beat >= n.start_beat + n.length_beats / 2 && beat < n.start_beat + n.length_beats);
   return note_idx >= 0 ? { note_id: notes[note_idx].id } : null;
 }
 
 /// Detect note if hovering over its head
-function note_hover_head (coords, tick, key, notes)
+function note_hover_head (coords, beat, key, notes)
 {
-  if (note_hover_tail (coords, tick, key, notes))
+  if (note_hover_tail (coords, beat, key, notes))
     return null;
-  return note_hover_body (coords, tick, key, notes);
+  return note_hover_body (coords, beat, key, notes);
 }
 
 /// Get drag tool and cursor from hover position
@@ -738,10 +737,10 @@ export function notes_canvas_tool_from_hover (piano_roll, pointerevent)
     return { drag_start: (p) => ({ drag_event: (e,m) => debug ("DRAG no layout", m, e.offsetX, e.offsetY) }), cursor: 'default' };
   // coords for tool predicate
   const coords = target_coords (pointerevent, piano_roll.notes_canvas);
-  const event_tick = layout.tick_from_x (coords.x);
+  const event_beat = layout.beat_from_x (coords.x);
   const event_key = layout.midinote_from_y (coords.y);
   // need an early decision if event is on a resizable note, so use last cache without await
-  const notes = piano_roll.clip.all_notes || [];
+  const notes = list_notes (piano_roll.clip);
   const selected_notes = notes.filter (note => note.selected);
   // startup tool handler
   function drag_start (piano_roll)
@@ -762,7 +761,7 @@ export function notes_canvas_tool_from_hover (piano_roll, pointerevent)
         tool = Object.assign ({ drag_start }, tool);
         if (tool.predicate) // must match predicate
           {
-            let result = tool.predicate (coords, event_tick, event_key, selected_notes);
+            let result = tool.predicate (coords, event_beat, event_key, selected_notes);
             if (result)
               {
                 // prefer predicate matches on selected notes
@@ -770,7 +769,7 @@ export function notes_canvas_tool_from_hover (piano_roll, pointerevent)
               }
             else
               {
-                result = tool.predicate (coords, event_tick, event_key, notes);
+                result = tool.predicate (coords, event_beat, event_key, notes);
                 if (!result)
                   continue;
               }
@@ -841,6 +840,23 @@ function find_note (allnotes, predicate)
   return -1;
 }
 
+// UI selection flags are kept outside Tracktion note data.
+const selections = new WeakMap();
+
+function selection_signal (clip)
+{
+  if (!selections.has (clip))
+    selections.set (clip, createSignal (new Set()));
+  return selections.get (clip);
+}
+
+export function list_notes (clip)
+{
+  if (!clip) return [];
+  const selected = selection_signal (clip)[0]();
+  return (clip.all_notes || []).map (note => ({ ...note, selected: selected.has (note.id) }));
+}
+
 // == queue_change_selection ==
 // Asynchronously modify selected `clip` notes and adjust piano_roll focus.
 async function queue_change_selection (piano_roll, selectmode, predicate) {
@@ -909,7 +925,7 @@ async function queue_modify_notes (clip, modifier, undogroup = "")
         clip.all_notes;                 // force read-out and auto-updates
         last.clip = clip;
         await clip.$props.$promise;     // finish all_notes fetching
-        last.allnotes = last.clip.all_notes;
+        last.allnotes = list_notes (last.clip);
 	last.notes = null;
       }
       const allnotes = last.notes || last.allnotes;
@@ -945,32 +961,62 @@ async function queue_modify_notes (clip, modifier, undogroup = "")
       return;
     const { clip, allnotes, notes } = last;
     last.clip = null;
-    let modified = [];
-    // Separate modified notes
-    for (let i = 0, j = 0; i < notes.length; i++) {
-      if (j < allnotes.length && notes[i].id == allnotes[j].id) {
-	const anote = allnotes[j++];
-	if (note_equals (anote, notes[i]))
-	  continue;
-      }
-      modified.push (notes[i]);
+    const originals = new Map (allnotes.map (note => [note.id, note]));
+    const pending = new Map (originals);
+    const inserted = [];
+    // Deletion takes precedence over other changes to the same handle.
+    for (const note of notes)
+      if (note.id > 0) {
+        if (pending.get (note.id)?.length_beats !== 0)
+          pending.set (note.id, note);
+      } else if (note.length_beats !== 0)
+        inserted.push (note);
+    // Keep older handles first, then new notes in insertion order.
+    const ordered = [...pending.values()].sort ((a, b) => a.id - b.id).concat (inserted);
+    const positions = new Map();
+    // Collapse notes at the same beat and pitch, preserving selected drag copies.
+    for (let i = 0; i < ordered.length; i++) {
+      const note = ordered[i];
+      if (note.length_beats === 0)
+        continue;
+      const key = [ note.start_beat, note.note_number, !!note.selected ].join (':');
+      const previous = positions.get (key);
+      if (previous !== undefined)
+        ordered[previous] = { ...ordered[previous], length_beats: 0 };
+      positions.set (key, i);
     }
-    // commit modifications and selection changes
-    if (modified.length)
-      await clip.change_batch (modified, undogroup);
+    const selected = new Set();
+    const modified = [];
+    // Separate modified notes from UI selection changes.
+    for (const note of ordered) {
+      if (note.id <= 0 && note.length_beats === 0)
+        continue;
+      if (note.id > 0 && note.selected && note.length_beats !== 0)
+        selected.add (note.id);
+      const original = originals.get (note.id);
+      if (!original || !note_equals (original, note))
+        modified.push (note);
+    }
+    // Commit modifications and map selected insertions to their session handles.
+    if (modified.length) {
+      const changed = await clip.change_batch (modified.map (({ selected, ...note }) => note), undogroup);
+      for (let i = 0; i < changed.length; i++)
+        if (modified[i].selected && changed[i].id > 0 && changed[i].length_beats !== 0)
+          selected.add (changed[i].id);
+    }
+    selection_signal (clip)[1] (selected);
   }
 
   // fast comparison of notes
   function note_equals (a, b) {
     if (a           === b)		return true;
     if (a.id        !== b.id)		return false;
-    if (a.channel   !== b.channel)	return false;
-    if (a.key       !== b.key)		return false;
-    if (a.selected  !== b.selected)	return false;
-    if (a.tick      !== b.tick)		return false;
-    if (a.duration  !== b.duration)	return false;
+    if (a.note_number !== b.note_number) return false;
+    if (a.start_beat !== b.start_beat) return false;
+    if (a.length_beats !== b.length_beats) return false;
     if (a.velocity  !== b.velocity)	return false;
-    if (a.fine_tune !== b.fine_tune)	return false;
+    if (a.colour !== b.colour) return false;
+    if (a.mute !== b.mute) return false;
     return true;
   }
 }
@@ -1015,7 +1061,7 @@ async function action_cut_notes (action, piano_roll, clip, event)
     newnotes.length = 0;
     for (let note of allnotes)
       if (note.selected)
-	newnotes.push ({ id: note.id, duration: 0 });
+	newnotes.push ({ id: note.id, length_beats: 0 });
     return newnotes;
   };
   await queue_modify_notes (clip, cut_notes, action.label);
@@ -1053,7 +1099,7 @@ function delete_note_batch (clip, allnotes)
   const delnotes = [];
   for (const note of allnotes)
     if (note.selected)
-      delnotes.push ({ id: note.id, duration: 0 });
+      delnotes.push ({ id: note.id, length_beats: 0 });
   return delnotes;
 }
 async function action_delete_notes (action, piano_roll, clip, event)

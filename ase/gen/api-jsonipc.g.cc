@@ -115,13 +115,22 @@ jsonipc_for_api_jsonipc_json()
   ::Jsonipc::Serializable< ::Ase::ClipNote > serializable__Ase_ClipNote;
   serializable__Ase_ClipNote
     .set ("id", &::Ase::ClipNote::id)
-    .set ("channel", &::Ase::ClipNote::channel)
-    .set ("key", &::Ase::ClipNote::key)
-    .set ("selected", &::Ase::ClipNote::selected)
-    .set ("tick", &::Ase::ClipNote::tick)
-    .set ("duration", &::Ase::ClipNote::duration)
+    .set ("note_number", &::Ase::ClipNote::note_number)
+    .set ("start_beat", &::Ase::ClipNote::start_beat)
+    .set ("length_beats", &::Ase::ClipNote::length_beats)
     .set ("velocity", &::Ase::ClipNote::velocity)
-    .set ("fine_tune", &::Ase::ClipNote::fine_tune)
+    .set ("colour", &::Ase::ClipNote::colour)
+    .set ("mute", &::Ase::ClipNote::mute)
+    ;
+  ::Jsonipc::Serializable< ::Ase::TimeRange > serializable__Ase_TimeRange;
+  serializable__Ase_TimeRange
+    .set ("start", &::Ase::TimeRange::start)
+    .set ("end", &::Ase::TimeRange::end)
+    ;
+  ::Jsonipc::Serializable< ::Ase::ClipPosition > serializable__Ase_ClipPosition;
+  serializable__Ase_ClipPosition
+    .set ("time", &::Ase::ClipPosition::time)
+    .set ("offset", &::Ase::ClipPosition::offset)
     ;
   ::Jsonipc::Serializable< ::Ase::ProbeFeatures > serializable__Ase_ProbeFeatures;
   serializable__Ase_ProbeFeatures
@@ -230,15 +239,13 @@ jsonipc_for_api_jsonipc_json()
   ::Jsonipc::Class< ::Ase::Clip > class__Ase_Clip;
   class__Ase_Clip
     .inherit< ::Ase::Gadget >()
-    .set ("is_muted", &::Ase::Clip::is_muted)
-    .set ("set_muted", &::Ase::Clip::set_muted)
+    .set ("muted", &::Ase::Clip::muted, &::Ase::Clip::muted)
     .set ("volume", &::Ase::Clip::volume, &::Ase::Clip::volume)
     .set ("pan", &::Ase::Clip::pan, &::Ase::Clip::pan)
     .set ("all_notes", &::Ase::Clip::all_notes, &::Ase::Clip::all_notes)
-    .set ("end_tick", &::Ase::Clip::end_tick, &::Ase::Clip::end_tick)
-    .set ("start_tick", &::Ase::Clip::start_tick)
-    .set ("stop_tick", &::Ase::Clip::stop_tick)
-    .set ("assign_range", &::Ase::Clip::assign_range)
+    .set ("position", &::Ase::Clip::position, &::Ase::Clip::position)
+    .set ("start_beat", &::Ase::Clip::start_beat, &::Ase::Clip::start_beat)
+    .set ("end_beat", &::Ase::Clip::end_beat, &::Ase::Clip::end_beat)
     .set ("change_batch", &::Ase::Clip::change_batch)
     .set ("list_all_notes", &::Ase::Clip::list_all_notes)
     .set ("telemetry", &::Ase::Clip::telemetry)

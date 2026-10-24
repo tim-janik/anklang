@@ -6,8 +6,8 @@ import * as Dom from '../dom';
 
 export async function test_cliplist (): Promise<boolean>
 {
-  const first = { name: 'First', end_tick: 3840, all_notes: [] };
-  const second = { name: 'Second', end_tick: 3840, all_notes: [] };
+  const first = { name: 'First', end_beat: 4, all_notes: [] };
+  const second = { name: 'Second', end_beat: 4, all_notes: [] };
   const [clips, set_clips] = createSignal ([first]);
   const track = {
     get launcher_clips () { return clips(); },

@@ -223,38 +223,52 @@ public:
   virtual void    frozen        (bool frozen) = 0; ///< Freeze or unfreeze the plugin.
 };
 
-/// Part specific note event representation.
+/// A Tracktion MIDI note with a session handle for edits.
 struct ClipNote {
-  int32  id = 0;            /// ID, > 0
-  int8   channel = 0;       /// MIDI Channel
-  int8   key = 0;           /// Musical note as MIDI key, 0 .. 127
-  bool   selected = 0;      /// UI selection flag
-  int64  tick = 0;          /// Position in ticks
-  int64  duration = 0;      /// Duration in number of ticks
-  float  velocity = 0;      /// Velocity, 0 .. +1
-  float  fine_tune = 0;     /// Fine Tune, -100 .. +100
-  bool   operator== (const ClipNote&) const;
+  int32  id = 0;            /// Session handle, > 0 for existing notes.
+  int    note_number = 0;   /// Musical note as MIDI key, 0 .. 127.
+  double start_beat = 0;    /// Position in Tracktion beats from the start of the clip.
+  double length_beats = 0;  /// Duration in Tracktion beats.
+  int    velocity = 0;      /// Velocity, 0 .. 127.
+  int    colour = 0;        /// Tracktion note colour index.
+  bool   mute = false;      /// Mute flag.
+  bool   operator== (const ClipNote&) const = default;
+};
+
+/// Tracktion time range in seconds.
+struct TimeRange {
+  double start = 0;
+  double end = 0;
+  bool operator== (const TimeRange&) const = default;
+};
+
+/// Tracktion clip position in seconds.
+struct ClipPosition {
+  TimeRange time;
+  double offset = 0;
+  bool operator== (const ClipPosition&) const = default;
 };
 
 /// Container for MIDI note and control events.
 class Clip : public virtual Gadget {
 public:
-  virtual bool      is_muted       () const = 0;                  ///< Check if clip is muted.
-  virtual void      set_muted      (bool muted) = 0;              ///< Set clip muted state, emits `notify:muted`.
-  virtual double    volume         () const = 0;                  ///< Get clip volume in dB.
-  virtual void      volume         (double db) = 0;              ///< Set clip volume in dB, emits `notify:volume`.
-  virtual double    pan            () const = 0;                  ///< Get clip pan (-1.0 to 1.0).
-  virtual void      pan            (double pan) = 0;             ///< Set clip pan (-1.0 to 1.0), emits `notify:pan`.
+  virtual bool      muted          () const = 0; ///< Check if clip is muted.
+  virtual void      muted          (bool muted) = 0; ///< Set clip muted state, emits `notify:muted`.
+  virtual float     volume         () const = 0; ///< Get clip volume in dB.
+  virtual void      volume         (float db) = 0; ///< Set clip volume in dB, emits `notify:volume`.
+  virtual float     pan            () const = 0; ///< Get clip pan (-1.0 to 1.0).
+  virtual void      pan            (float pan) = 0; ///< Set clip pan (-1.0 to 1.0), emits `notify:pan`.
   virtual ClipNoteS all_notes      () const = 0;
   virtual void      all_notes      (const ClipNoteS &notes) = 0;
-  virtual int64     end_tick       () const = 0;
-  virtual void      end_tick       (int64 etick) = 0;
-  virtual int64     start_tick     () const = 0; ///< Get the first tick intended for playback (this is >= 0), changes on `notify:start_tick`.
-  virtual int64     stop_tick      () const = 0; ///< Get the tick to stop playback, not events should be played after this, changes on `notify:stop_tick`.
-  virtual void      assign_range   (int64 starttick, int64 stoptick) = 0; ///< Change start_tick() and stop_tick(); emits `notify:start_tick`, `notify:stop_tick`.
-  /// Change note `id` according to the arguments or add a new note if `id` < 0; emits `notify:notes`.
-  virtual int32     change_batch   (const ClipNoteS &notes, const String &undogroup = "") = 0; ///< Insert, change, delete in a batch.
-  virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip; changes on `notify:notes`.
+  virtual ClipPosition position    () const = 0;
+  virtual void      position       (const ClipPosition &position) = 0;
+  virtual double    start_beat     () const = 0; ///< Clip start in Tracktion beats, changes on `notify:start_beat`.
+  virtual void      start_beat     (double) = 0; ///< Read-only, assignments warn.
+  virtual double    end_beat       () const = 0; ///< Clip end in Tracktion beats, changes on `notify:end_beat`.
+  virtual void      end_beat       (double) = 0; ///< Read-only, assignments warn.
+  /// Insert id <= 0, delete length_beats == 0; emits `notify:notes` and `notify:all_notes`.
+  virtual ClipNoteS change_batch   (const ClipNoteS &notes, const String &undogroup = "") = 0; ///< Input order, id 0 for missing handles.
+  virtual ClipNoteS list_all_notes () = 0; ///< List all notes of this Clip, changes on `notify:notes`.
   virtual TelemetryFieldS telemetry () const = 0; ///< Retrieve clip telemetry locations.
 };
 

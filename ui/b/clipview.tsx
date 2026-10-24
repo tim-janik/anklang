@@ -51,13 +51,13 @@ const srgb_viewing_conditions = {
 };
 const default_gamut = new Z.Gamut (srgb_viewing_conditions);
 
-function render_canvas (canvas, clip, tickscale) {
+function render_canvas (canvas, clip, beatscale) {
   const pixelratio = Util.resize_canvas (canvas, canvas.parentElement.clientWidth, canvas.parentElement.clientHeight, true);
   const ctx = canvas.getContext ('2d'), cstyle = getComputedStyle (canvas), csp = cstyle.getPropertyValue.bind (cstyle);
   const width = canvas.width, height = canvas.height;
   //const width = canvas.clientWidth, height = canvas.clientHeight;
   //canvas.width = width; canvas.height = height;
-  const ts = tickscale * pixelratio;
+  const ts = beatscale * pixelratio;
   ctx.clearRect (0, 0, width, height);
   // color setup
   let cindex;
@@ -92,7 +92,7 @@ function render_canvas (canvas, clip, tickscale) {
   const noteoffset = 12;
   const notescale = height / (123.0 - 2 * noteoffset);
   for (const note of clip.all_notes)
-    ctx.fillRect (note.tick * ts, height - (note.key - noteoffset) * notescale, note.duration * ts, 1 * pixelratio);
+    ctx.fillRect (note.start_beat * ts, height - (note.note_number - noteoffset) * notescale, note.length_beats * ts, 1 * pixelratio);
 }
 
 // == COMPONENT ==
@@ -100,20 +100,20 @@ export function ClipView (props) {
   let canvas_ref;
   let pending_raf = 0;
 
-  const tickscale = 10.0 / Util.PPQN;
+  const beatscale = 10.0;
 
   // Re-render canvas when clip properties change
   onCleanup (() => cancelAnimationFrame (pending_raf));
   createEffect (() => {
     // Access clip properties to track reactivity
     props.clip?.name;
-    props.clip?.end_tick;
+    props.clip?.end_beat;
     props.clip?.all_notes;
 
     if (canvas_ref && props.clip) {
       cancelAnimationFrame (pending_raf);
       pending_raf = requestAnimationFrame (() => {
-        render_canvas (canvas_ref, props.clip, tickscale);
+        render_canvas (canvas_ref, props.clip, beatscale);
       });
     }
   });

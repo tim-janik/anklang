@@ -45,6 +45,7 @@ Extra_css`
   --piano-roll-font:                  var(--b-canvas-font);
   --piano-roll-num-color:             var(--b-piano-roll-num-color);
   --piano-roll-note-color:            var(--b-piano-roll-note-color);
+  --piano-roll-note-selected-color:   var(--b-piano-roll-note-selected-color);
   --piano-roll-note-focus-color:      var(--b-piano-roll-note-focus-color);
   --piano-roll-note-focus-border:     var(--b-piano-roll-note-focus-border);
   --piano-roll-key-length:            var(--b-piano-roll-key-length);
@@ -137,7 +138,7 @@ const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidd
 );
 
 // == SCRIPT ==
-const default_note_length = Util.PPQN / 4;
+const default_note_length = 1 / 4;
 
 /** The PianoRoll component allows note editing. */
 export function PianoRoll (props: {
@@ -277,18 +278,20 @@ export function PianoRoll (props: {
     }
 
     // indicator_bar setup
-    Shell.piano_current (clip, clip ? t.piano_current_tick : null);
+    Shell.piano_current (clip, clip ? t.piano_current_beat : null);
   });
 
-  // Re-runs on clip property/note changes (clip.all_notes / clip.end_tick are Solid
-  // signals via $get): re-layout (depends on clip.end_tick) and schedule a repaint.
+  // Re-runs on clip property/note changes (clip.all_notes / clip.end_beat are Solid
+  // signals via $get): re-layout (depends on clip.end_beat) and schedule a repaint.
   // Mirrors the old tracked `updated()` minus the reset block (now above).
   createEffect (() => {
     const clip = props.clip;
     if (!t.root || !clip) return;
     // read out props to force auto-updates / subscribe to note & length signals
-    clip.all_notes;
-    // piano_layout reads clip.end_tick, subscribing this effect to clip resize
+    PianoCtrl.list_notes (clip);
+    Shell.project.numerator;
+    Shell.project.denominator;
+    // piano_layout reads clip.end_beat, subscribing this effect to clip resize
     piano_layout.call (t);
     if (t.vscroll_must_center && t.vscrollbar?.clientHeight)
       t.vscroll_must_center = (t.vscroll_to (0.5), false);
@@ -297,10 +300,10 @@ export function PianoRoll (props: {
 
   // === Methods bound to the t object ===
 
-  t.piano_current_tick = (current_clip: any, current_tick: number) => {
+  t.piano_current_beat = (current_clip: any, current_beat: number) => {
     if (t.clip != current_clip) return;
     const offst = t.layout.xscroll();
-    const tpos = -offst + current_tick * t.layout.tickscale * t.layout.DPRDIV;
+    const tpos = -offst + current_beat * t.layout.beatscale * t.layout.DPRDIV;
     let u = Math.round (tpos * t.layout.DPR) * t.layout.DPRDIV; // screen pixel alignment
     u = u >= 0 ? u + t.notes_canvas.offsetLeft : -9999;
     if (u != t.last_pos)
@@ -493,9 +496,9 @@ function piano_layout (this: any)
     cssheight:		notes_cssheight + 1,
     piano_csswidth:	0,			// derived from white_width
     notes_csswidth:	0,			// display width, determined by parent
-    virt_width:		0,			// virtual width in CSS pixels, derived from end_tick
-    beat_pixels:	50,			// pixels per quarter note
-    tickscale:		undefined,		// pixels per tick
+    virt_width:		0,			// virtual width in CSS pixels, derived from end_beat
+    beat_pixels:	50,			// pixels per beat
+    beatscale:		undefined,		// pixels per beat
     octaves:		PianoCtrl.PIANO_OCTAVES,// number of octaves to display
     yoffset:		undefined,		// y coordinate of lowest octave
     oct_length:		undefined,		// 12 * 7 = 84px for vzoom==1 && DPR==1
@@ -513,14 +516,14 @@ function piano_layout (this: any)
     yscroll:            undefined,  // y scroll offset ratio, assigned below
     xposition:          undefined,  // x position in device pixels, assigned below
     xscroll:            undefined,  // x scroll offset ratio, assigned below
-    tick_from_x:        undefined,  // css x to tick mapping, assigned below
+    beat_from_x:        undefined,  // css x to beat mapping, assigned below
     midinote_from_y:    undefined,  // css y to midi note mapping, assigned below
   };
   const black_keyspans = [  [7,7], [21,7],     [43,7], [56.5,7], [70,7]   ]; 	// for 84px octave
   const white_offsets  = [ 0,    12,     24, 36,     48,       60,     72 ]; 	// for 84px octave
   const key_length = parseFloat (cstyle.getPropertyValue ('--piano-roll-key-length'));
-  const min_end_tick = 16 * (4 * Util.PPQN);
-  const end_tick = Math.max (this.clip.end_tick || 0, min_end_tick);
+  const min_end_beat = 16 * (Shell.project.numerator || 4);
+  const end_beat = Math.max (this.clip.end_beat || 0, min_end_beat);
   // scale layout
   layout.dpr_height = round (layout.DPR * layout.cssheight);
   layout.white_width = key_length || layout.white_width; // allow CSS override
@@ -530,9 +533,9 @@ function piano_layout (this: any)
 
   layout.notes_csswidth = hscrollbar_width;
   layout.beat_pixels = round (layout.beat_pixels * DPR * this.hzoom);
-  layout.tickscale = layout.beat_pixels / Util.PPQN;
+  layout.beatscale = layout.beat_pixels;
   layout.hpad = 10 * DPR;
-  layout.virt_width = Math.ceil (layout.tickscale * end_tick);
+  layout.virt_width = Math.ceil (layout.beatscale * end_beat);
   layout.row = Math.floor (layout.dpr_height / PianoCtrl.PIANO_KEYS);
   layout.oct_length = layout.row * 12;
   layout.white_width = round (layout.white_width * layout.DPR);
@@ -600,10 +603,10 @@ function piano_layout (this: any)
       this.auto_scrollto = undefined;
     }
   // conversions
-  layout.tick_from_x = css_x => {
+  layout.beat_from_x = css_x => {
     const xp = css_x * layout.DPR;
-    const tick = Math.round ((layout.xposition() + xp) / layout.tickscale);
-    return tick;
+    const beat = (layout.xposition() + xp) / layout.beatscale;
+    return beat;
   };
   layout.midinote_from_y = css_y => {
     const yp = css_y * layout.DPR;
@@ -802,22 +805,22 @@ function paint_notes (this: any)
   // paint notes
   if (!this.clip)
     return;
-  const tickscale = layout.tickscale;
+  const beatscale = layout.beatscale;
   const note_color = csp ('--piano-roll-note-color');
-  const note_selected_color = csp ('--piano-roll-note-focus-color');
+  const note_selected_color = csp ('--piano-roll-note-selected-color');
   const note_focus_color = csp ('--piano-roll-note-focus-color');
   ctx.lineWidth = layout.DPR; // layout.thickness;
   ctx.fillStyle = note_color;
   ctx.strokeStyle = csp ('--piano-roll-note-focus-border');
   // draw notes
   const draw_notes = (selected: boolean) => {
-    for (const note of this.clip.all_notes)
+    for (const note of PianoCtrl.list_notes (this.clip))
       {
         if (note.selected == selected)
           {
-            const oct = floor (note.key / 12), key = note.key - oct * 12;
+            const oct = floor (note.note_number / 12), key = note.note_number - oct * 12;
             const ny = yoffset - oct * layout.oct_length - key * layout.row + 1;
-            const nx = round (note.tick * tickscale), nw = Math.max (1, round (note.duration * tickscale));
+            const nx = round (note.start_beat * beatscale), nw = Math.max (1, round (note.length_beats * beatscale));
             if (note.selected)
               ctx.fillStyle = note_selected_color;
             else
@@ -856,16 +859,14 @@ function paint_timeline (this: any)
  */
 function paint_timegrid (this: any, canvas: any, with_labels: boolean)
 {
-  const signature = [ 4, 4 ]; // 15, 16
+  const signature = [ Shell.project.numerator || 4, Shell.project.denominator || 4 ];
   const cstyle = getComputedStyle (this.root), gy1 = 0;
   const gy2 = canvas.height * (with_labels ? 0.5 : 0), gy3 = canvas.height * (with_labels ? 0.75 : 0);
   const ctx = canvas.getContext ('2d'), csp = cstyle.getPropertyValue.bind (cstyle);
   const layout = this.layout, lsx = layout.xposition(), th = layout.thickness;
   const grid_main = csp ('--piano-roll-grid-main'), grid_sub = csp ('--piano-roll-grid-sub');
-  const TPN64 = Util.PPQN / 16; // Ticks per 64th note
-  const TPD = TPN64 * 64 / signature[1]; // Ticks per denominator fraction
-  const bar_ticks = signature[0] * TPD; // Ticks per bar
-  const bar_pixels = bar_ticks * layout.tickscale;
+  const bar_beats = signature[0];
+  const bar_pixels = bar_beats * layout.beatscale;
   const denominator_pixels = bar_pixels / signature[0];
   const barjumps = 8;
   // line thickness and line cap
@@ -873,28 +874,28 @@ function paint_timegrid (this: any, canvas: any, with_labels: boolean)
   ctx.lineCap = 'butt'; // chrome 'butt' has a 0.5 pixel bug, so we use fillRect
 
   // determine stepping granularity
-  let stepping; // [ ticks_per_step, steps_per_mainline, steps_per_midline ]
+  let stepping; // [ beats_per_step, steps_per_mainline, steps_per_midline ]
   const mingap = th * 17;
   if (denominator_pixels / 16 >= mingap)
-    stepping = [ TPD / 16, 16, 4 ];
+    stepping = [ 1 / 16, 16, 4 ];
   else if (denominator_pixels / 4 >= mingap)
-    stepping = [ TPD / 4, 4 * signature[0], 4 ];
+    stepping = [ 1 / 4, 4 * signature[0], 4 ];
   else if (denominator_pixels >= mingap)
-    stepping = [ TPD, signature[0], 0 ];
+    stepping = [ 1, signature[0], 0 ];
   else // just use bars
-    stepping = [ bar_ticks, 0, 0 ];
+    stepping = [ bar_beats, 0, 0 ];
   this.stepping = stepping;
 
-  // first 2^x aligned bar tick before/at xposition
-  const start_bar = floor ((lsx + layout.hpad) / (barjumps * bar_pixels));
-  const start = start_bar * bar_ticks;
+  // first 2^x aligned bar beat before/at xposition
+  const start_bar = barjumps * floor ((lsx + layout.hpad) / (barjumps * bar_pixels));
+  const start = start_bar * bar_beats;
 
-  // step through visible tick fractions and draw lines
+  // step through visible beat fractions and draw lines
   let tx = 0, c = 0, d = 0;
   const grid_sub2 = stepping[2] ? grid_main : grid_sub;
-  for (let tick = start; tx < canvas.width; tick += stepping[0])
+  for (let beat = start; tx < canvas.width; beat += stepping[0])
     {
-      tx = tick * layout.tickscale - lsx;
+      tx = beat * layout.beatscale - lsx;
       ctx.fillStyle = c ? d ? grid_sub : grid_sub2 : grid_main;
       const gy = c ? d ? gy3 : gy2 : gy1;
       ctx.fillRect (tx, gy, th, canvas.height);
@@ -918,9 +919,9 @@ function paint_timegrid (this: any, canvas: any, with_labels: boolean)
   c = 0;
   tx = 0;
   let bar = start_bar;
-  for (let tick = start; tx < canvas.width; tick += TPD)
+  for (let beat = start; tx < canvas.width; beat += 1)
     {
-      tx = tick * layout.tickscale - lsx;
+      tx = beat * layout.beatscale - lsx;
       let label = (1 + bar) + '';
       if (c) // fractions
         label += '.' + (1 + c);

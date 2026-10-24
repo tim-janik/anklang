@@ -936,8 +936,11 @@ class BindingPrinter {
   enum Kind { ANY, ENUM, VALUE, RECORD, FIELD, CLASS, METHOD };
   std::string b_;
   std::string open_enum_, open_record_, open_class_;
-  std::vector<std::tuple<std::string, std::string, std::string, std::string>> record_fields_;
-  size_t class_inherit_pos_ = 0;
+  std::set<std::string> record_types_;
+  std::vector<std::tuple<std::string, std::string, unsigned, std::string>> record_fields_;
+  // opos are output positions to insert expressions with late resolution.
+  std::vector<std::tuple<size_t, std::string, unsigned>> initializers_opos_;
+  size_t class_inherit_opos_ = 0;
   void
   close()
   {
@@ -968,7 +971,20 @@ class BindingPrinter {
     }
   };
 public:
-  std::string finish() { close(); return b_; }
+  std::string
+  finish()
+  {
+    close();
+    // Resolve defaults after all record types have been registered.
+    for (auto it = initializers_opos_.rbegin(); it != initializers_opos_.rend(); ++it)
+      {
+        const auto &[pos, type, index] = *it;
+        const std::string value = index == 6 && record_types_.count (type) ? "new " + type + "()" : js_initializers[index];
+        b_.insert (pos, value);
+      }
+    initializers_opos_.clear();
+    return b_;
+  }
   template<typename T> void
   enum_type()
   {
@@ -997,30 +1013,31 @@ public:
   {
     close();
     open_record_ = rtti_typename<typename std::decay<T>::type>();
+    record_types_.insert (short_name (open_record_));
     b_ += "export class " + short_name (open_record_) + " { // " + open_record_ + "\n";
   }
   template<typename T, typename A> void
   field_member (const std::string &name)
   {
     const std::string ts_type_name = typescript_name<A>::name();
-    const std::string default_value = js_initializers[js_initializer_index<A>()];
     const std::string as_cast = std::is_enum<A>::value ? ts_type_name : "";
-    record_fields_.emplace_back (name, ts_type_name, default_value, as_cast);
+    record_fields_.emplace_back (name, ts_type_name, js_initializer_index<A>(), as_cast);
   }
   void
   close_record()
   {
-    for (const auto &[field_name, ts_type_name, default_value, as_cast] : record_fields_)
+    for (const auto &[field_name, ts_type_name, default_index, as_cast] : record_fields_)
       b_ += "  " + field_name + ": " + ts_type_name + ";\n";
     b_ += "  constructor (";
     for (size_t i = 0; i < record_fields_.size(); i++) {
-      const auto &[field_name, ts_type_name, default_value, as_cast] = record_fields_[i];
-      b_ += (i ? ", " : "") + field_name + ": " + ts_type_name + " = " + default_value;
+      const auto &[field_name, ts_type_name, default_index, as_cast] = record_fields_[i];
+      b_ += (i ? ", " : "") + field_name + ": " + ts_type_name + " = ";
+      initializers_opos_.emplace_back (b_.size(), ts_type_name, default_index);
       if (as_cast.size())
         b_ += " as " + as_cast;
     }
     b_ += ")\n  {\n";
-    for (const auto &[field_name, ts_type_name, default_value, as_cast] : record_fields_)
+    for (const auto &[field_name, ts_type_name, default_index, as_cast] : record_fields_)
       b_ += "    this." + field_name + " = " + field_name + ";\n";
     b_ += "  }\n";
     b_ += "};\n";
@@ -1036,7 +1053,7 @@ public:
     open_class_ = rtti_typename<typename std::decay<T>::type>();
     const std::string shortname = short_name (open_class_);
     b_ += "export class " + shortname + " // " + open_class_ + "\n";
-    class_inherit_pos_ = b_.size();
+    class_inherit_opos_ = b_.size();
     b_ += "{\n";
     b_ += "  constructor ($id)\n";
     b_ += "  { super ($id); if (new.target === " + shortname + ") Jsonipc.ofreeze (this); }\n";
@@ -1045,7 +1062,11 @@ public:
   inherit_type()
   {
     const std::string base_class_ = rtti_typename<typename std::decay<B>::type>();
-    b_.insert (class_inherit_pos_, "  extends Jsonipc.classes[\"" + base_class_ + "\"]\n");
+    const std::string inheritance = "  extends Jsonipc.classes[\"" + base_class_ + "\"]\n";
+    b_.insert (class_inherit_opos_, inheritance);
+    for (auto &[pos, type, index] : initializers_opos_)
+      if (pos >= class_inherit_opos_)
+        pos += inheritance.size();
   }
   template<typename T, typename M> void
   method_member (const std::string &name)
@@ -1057,7 +1078,9 @@ public:
   {
     const std::string ts_type = typescript_name<R>::name();
     b_ += "  get " + name + " (): " + ts_type + "\n";
-    b_ += "  { return this.$get (\"" + name + "\", " + js_initializers[js_initializer_index<R>()] + ") as " + ts_type + "; }\n";
+    b_ += "  { return this.$get (\"" + name + "\", ";
+    initializers_opos_.emplace_back (b_.size(), ts_type, js_initializer_index<R>());
+    b_ += ") as " + ts_type + "; }\n";
     b_ += "  set " + name + " (v: " + ts_type + ")\n";
     b_ += "  { this.$set (\"" + name + "\", v); }\n";
   }
