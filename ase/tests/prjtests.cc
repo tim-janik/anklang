@@ -491,6 +491,13 @@ track_name()
 TEST_ADD (track_name);
 
 static void
+server_name()
+{
+  TASSERT (Server::instance().name().empty() && Server::instance().read_only_properties() == StringS { "name" });
+}
+TEST_ADD (server_name);
+
+static void
 clip_creation()
 {
   ProjectImplP project = ProjectImpl::create ("ClipTest");

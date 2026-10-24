@@ -11,6 +11,9 @@ class MonitorImpl : public GadgetImpl, public virtual Monitor {
   virtual ~MonitorImpl        ();
 public:
   explicit MonitorImpl        ();
+  String   name               () const override { return ""; } // no Tracktion object
+  void     name               (const std::string&) override {}
+  StringS  read_only_properties () const override { return { "name" }; }
   DeviceP  get_output         () override;
   int32    get_ochannel       () override;
   int64    get_mix_freq       () override;

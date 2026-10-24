@@ -12,6 +12,9 @@ public:
   static ServerImplP instancep ();
   explicit     ServerImpl           ();
   virtual     ~ServerImpl           ();
+  String       name                 () const override { return ""; } // no Tracktion object
+  void         name                 (const std::string&) override {}
+  StringS      read_only_properties () const override { return { "name" }; }
   bool         set_data             (const String &key, const Value &v) override;
   Value        get_data             (const String &key) const override;
   String       get_version          () override;

@@ -36,12 +36,6 @@ GadgetImpl::_set_parent (GadgetImpl *parent)
 }
 
 String
-GadgetImpl::fallback_name () const
-{
-  return type_nick();
-}
-
-String
 GadgetImpl::canonify_key (const String &input)
 {
   String key = string_canonify (input, string_set_a2z() + string_set_A2Z() + "_0123456789.", "_");
@@ -77,27 +71,6 @@ GadgetImpl::type_nick () const
   if (string_endswith (tname, "Impl"))
     tname = tname.substr (0, tname.size() - 4);
   return tname;
-}
-
-static CustomDataKey<String> gadget_name_key;
-
-String
-GadgetImpl::name () const
-{
-  if (!has_custom_data (&gadget_name_key))
-    return fallback_name();
-  return get_custom_data (&gadget_name_key);
-}
-
-void
-GadgetImpl::name (const std::string &n)
-{
-  String newname = string_strip (n);
-  if (newname.empty())
-    del_custom_data (&gadget_name_key);
-  else
-    set_custom_data (&gadget_name_key, newname);
-  emit_notify ("name");
 }
 
 PropertyS

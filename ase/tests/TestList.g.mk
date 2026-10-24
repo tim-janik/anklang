@@ -53,6 +53,7 @@ ASE_TEST_LIST := \
   regex_tests \
   semaphore_concurrent_test \
   semaphore_multiple_test \
+  server_name \
   signalutils_tests \
   sndfile_tests \
   sortnet_tests \
