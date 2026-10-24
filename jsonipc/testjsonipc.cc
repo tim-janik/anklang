@@ -2,7 +2,7 @@
 #include "jsonipc.hh"
 #include <iostream>
 
-#define MCHECK(MSG, ...) do { if (!strstr (MSG.c_str(), "\"error\":")) break; fprintf (stderr, "%s:%d: ERROR: %s\n", __FILE__, __LINE__, MSG.c_str()); return __VA_ARGS__; } while (0)
+#define MCHECK(MSG, ...) do { if (!strstr (MSG.c_str(), "\"error\":")) break; fprintf (stderr, "%s:%d: ERROR: %s\n", __FILE__, __LINE__, MSG.c_str()); abort(); } while (0)
 
 // == Testing ==
 enum ErrorType {
