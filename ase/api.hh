@@ -188,6 +188,8 @@ public:
   virtual PropertyS   access_properties () = 0;             ///< Retrieve handles for all properties.
   Value               get_value         (String ident);     ///< Get native property value.
   bool                set_value         (String ident, const Value &v); ///< Set native property value.
+  /// List x()/x (v) properties that this object can't change, their setters ignore the value or warn.
+  virtual StringS     read_only_properties () const;
   /// Assign session data, prefix ephemerals with '_'.
   virtual bool        set_data          (const String &key, const Value &v) = 0;
   /// Retrieve session data.
@@ -256,8 +258,8 @@ public:
   virtual void      muted          (bool muted) = 0; ///< Set clip muted state, emits `notify:muted`.
   virtual float     volume         () const = 0; ///< Get clip volume in dB.
   virtual void      volume         (float db) = 0; ///< Set clip volume in dB, emits `notify:volume`.
-  virtual float     pan            () const = 0; ///< Get clip pan (-1.0 to 1.0).
-  virtual void      pan            (float pan) = 0; ///< Set clip pan (-1.0 to 1.0), emits `notify:pan`.
+  virtual float     pan            () const = 0; ///< Get audio clip pan (-1.0 to 1.0), 0 for other clips.
+  virtual void      pan            (float pan) = 0; ///< Set audio clip pan (-1.0 to 1.0), emits `notify:pan`, does nothing for other clips.
   virtual ClipNoteS all_notes      () const = 0;
   virtual void      all_notes      (const ClipNoteS &notes) = 0;
   virtual ClipPosition position    () const = 0;

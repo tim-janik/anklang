@@ -74,6 +74,12 @@ PluginImpl::name() const
   return "";
 }
 
+void
+PluginImpl::name (const std::string&)
+{
+  // Tracktion plugins have a fixed name
+}
+
 String
 PluginImpl::fallback_name() const
 {
@@ -128,6 +134,12 @@ PluginImpl::device_info()
     info.description = pluginp->getTooltip().toStdString();
   }
   return info;
+}
+
+StringS
+PluginImpl::read_only_properties () const
+{
+  return { "name" };
 }
 
 void

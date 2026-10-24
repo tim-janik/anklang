@@ -2,7 +2,7 @@
 #include "jsonipc.hh"
 #include <iostream>
 
-#define MCHECK(MSG, ...) do { if (!strstr (MSG.c_str(), "\"error\":")) break; fprintf (stderr, "%s:%d: ERROR: %s\n", __FILE__, __LINE__, MSG.c_str()); return __VA_ARGS__; } while (0)
+#define MCHECK(MSG, ...) do { if (!strstr (MSG.c_str(), "\"error\":")) break; fprintf (stderr, "%s:%d: ERROR: %s\n", __FILE__, __LINE__, MSG.c_str()); abort(); } while (0)
 
 // == Testing ==
 enum ErrorType {
@@ -175,6 +175,12 @@ test_jsonipc (bool dispatcher_shell, bool printer)
     .inherit<Base2>()
     ;
   Derived::set_dflt (class_Derived);
+  using Names = std::vector<std::string>;
+  JSONIPC_ASSERT_RETURN (Class<Base>::list_methods() == Names { "need_copyablep" });
+  const Names derived_methods = { "defaults", "dummy0", "dummy1", "dummy2", "dummy3", "dummy4", "dummy5", "dummy6", "dummy7",
+                                  "dummy8", "dummy9", "get/linked", "get/nested", "need_copyablep", "randomize",
+                                  "set/linked", "set/nested" };
+  JSONIPC_ASSERT_RETURN (Class<Derived>::list_methods() == derived_methods);
 
   // Provide scope and instance ownership during dispatch_message()
   InstanceMap imap;
@@ -230,6 +236,7 @@ test_jsonipc (bool dispatcher_shell, bool printer)
   JsonValue jvd1 = to_json (d1, a);
   const size_t d1id = json_objectid (jvd1);
   JSONIPC_ASSERT_RETURN (d1id == 4); // used in the next few lines
+  JSONIPC_ASSERT_RETURN (InstanceMap::scope_lookup_wrapper (jvd1)->list_methods() == derived_methods);
   result = dispatcher.dispatch_message (R"( {"id":123,"method":"randomize","params":[{"$id":4}]} )");
   MCHECK (result);
   const Copyable c0;
