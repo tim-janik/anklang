@@ -55,6 +55,13 @@ test ('a waiver leaves other checks enabled', t => {
   assert.doesNotMatch (result.stdout, /invalid call/);
 });
 
+test ('waivers accept CRLF line endings without an explanation', t => {
+  const result = lint (t, { 'example.cc': '// synsmell: allow ban-printf\r\n' + samples['ban-printf'].replaceAll ('\n', '\r\n') },
+                       ['--ban-printf=1']);
+  assert.equal (result.status, 0, result.stdout);
+  assert.equal (result.stdout, '');
+});
+
 test ('waivers require a line comment and a complete check name', t => {
   for (const prefix of [
     'const char *message = "// synsmell: allow ban-printf";\n',

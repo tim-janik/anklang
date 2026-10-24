@@ -321,7 +321,7 @@ async function analyze_file (filename: string): Promise<void>
   const root = parser.parse (content).rootNode;
   const file_checks = { ...checks };
   for (const comment of root.descendantsOfType ('comment')) {
-    const match = /^\/\/[ \t]*synsmell:[ \t]*allow[ \t]+([a-z-]+)(?=[ \t]|$)/.exec (comment.text);
+    const match = /^\/\/[ \t]*synsmell:[ \t]*allow[ \t]+([a-z-]+)(?=[ \t\r]|$)/.exec (comment.text);
     if (match) file_checks[match[1]] = false;
   }
 
