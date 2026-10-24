@@ -38,8 +38,6 @@ Extra_css`
 .b-shell {
   display: grid;
   position: relative;
-  --b-resize-handle-thickness: var(--b-resize-handle-thickness);
-  --b-transition-fast-slide: var(--b-transition-fast-slide);
   width: 100%;
   height: 100%;
   justify-content: space-between;
@@ -50,17 +48,6 @@ Extra_css`
   padding: 3px;
   /* overflow: hidden scroll; */
   text-overflow: ellipsis; white-space: nowrap;
-}
-.b-shell-resizer {
-  width: var(--b-resize-handle-thickness);
-  background: var(--b-resize-handle-bgcolor);
-  border-left: var(--b-resize-handle-border);
-  border-right: var(--b-resize-handle-border);
-  cursor: col-resize;
-}
-html.b-shell-during-drag .b-app {
-  .b-shell-resizer { background: var(--b-resize-handle-hvcolor); }
-  * { cursor: col-resize !important; user-select: none !important; }
 }
 
 .b-shell {
@@ -228,9 +215,6 @@ class BShell extends Object {
   r: ShellReactive;
   usernotehook_: any;
   shell_element: HTMLElement | null;
-  listening: any;
-  startx: number;
-  startwidth: number;
   resize_callbacks_ = new Set<() => void> ();
   constructor ()
   {
@@ -354,46 +338,6 @@ class BShell extends Object {
     window.open (u, '_blank');
     Util.prevent_event (event);
     return true;
-  }
-  /// Drag and resize sidebar handle
-  sidebar_mouse (e: MouseEvent)
-  {
-    const sidebar = (this as any).shadowRoot?.querySelector('.b-shell-sidebar'); // FIXME
-    // const sidebar = this.$refs.sidebarcontainer; // FIXME
-    console.assert (sidebar);
-    const html_classes = document.documentElement.classList;
-    if (e.type == 'mousedown' && !this.listening)
-      {
-        this.listening = Util.debounce (this.sidebar_mouse.bind (this));
-        document.addEventListener ('mousemove', this.listening);
-        document.addEventListener ('mouseup', this.listening);
-        this.startx = e.clientX; //  - e.offsetX;
-        this.startwidth = sidebar.getBoundingClientRect().width;
-        html_classes.add ('b-shell-during-drag');
-      }
-    if (this.listening && e.type == 'mouseup')
-      {
-        document.removeEventListener ('mousemove', this.listening);
-        document.removeEventListener ('mouseup', this.listening);
-        this.listening = undefined;
-        html_classes.remove ('b-shell-during-drag');
-      }
-    let newwidth = this.startwidth - (e.clientX - this.startx);
-    const pwidth = sidebar.parentElement.getBoundingClientRect().width;
-    const maxwidth = pwidth * 0.6 |0, minwidth = 120;
-    if (newwidth < minwidth / 2)
-      {
-        const cs = getComputedStyle (sidebar);
-        newwidth = parseInt (cs.getPropertyValue ('--b-resize-handle-thickness'), 10);
-      }
-    else
-      newwidth = Util.clamp (newwidth, minwidth, maxwidth);
-    sidebar.style.transition = newwidth > minwidth ? "" : "width var(--b-transition-fast-slide)";
-    const flexwidth = '0 0 ' + (newwidth / pwidth) * 100 + '%';
-    if (flexwidth != sidebar.style.flex)
-      sidebar.style.flex = flexwidth;
-    // Resize via: https://www.w3.org/TR/css-flexbox-1/#flex-common
-    e.preventDefault();
   }
   /// Show file selector dialog
   async select_file (opt: Partial<FileSelector> = {})

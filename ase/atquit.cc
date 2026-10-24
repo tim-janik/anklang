@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// synsmell: allow ban-printf -- the fork/exec failure path must not allocate or take locks
 #include "atquit.hh"
 #include "utils.hh"
 #include <algorithm>

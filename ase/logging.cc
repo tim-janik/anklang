@@ -1,4 +1,5 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+// synsmell: allow ban-printf -- this file implements printout() and the stack trace output
 #include "logging.hh"
 #include "platform.hh"
 #include "path.hh"

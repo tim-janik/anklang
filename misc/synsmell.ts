@@ -100,7 +100,7 @@ function is_empty_list (node: Node): boolean
 
 function check_ban_printf (node: Node, fn: string, lines: string[], lang: string): void
 {
-  if (!checks['ban-printf'] || lang !== 'cpp') return;
+  if (lang !== 'cpp') return;
   if (node.type !== 'call_expression') return;
   const func = node.childForFieldName ('function');
   if (func && /\b[a-z]?printf$/.test (func.text))
@@ -111,8 +111,6 @@ function check_ban_printf (node: Node, fn: string, lines: string[], lang: string
 // Unified newline-before-brace check for function bodies (C++ + JS/TS)
 function check_separate_body (node: Node, fn: string, lines: string[], lang: string): void
 {
-  if (!checks['separate-body']) return;
-
   // NOTE: 'arrow_function' excluded — too noisy for now, will re-enable later
   const func_types = lang === 'cpp'
     ? ['function_definition']
@@ -160,7 +158,6 @@ function check_parenthesis_whitespace (list_node: Node, fn: string, lines: strin
 // Relaxed for: empty lists, gettext _(), #define macros, C++ casts
 function check_whitespace_before_paren (node: Node, fn: string, lines: string[], lang: string, in_error_zone: boolean): void
 {
-  if (!checks['whitespace-before-parenthesis']) return;
   // Skip nodes inside tree-sitter ERROR regions (broken macro parsing etc.)
   if (in_error_zone) return;
 
@@ -199,14 +196,14 @@ function check_whitespace_before_paren (node: Node, fn: string, lines: string[],
 
 function check_ban_fixme (node: Node, fn: string, lines: string[]): void
 {
-  if (!checks['ban-fixme'] || node.type !== 'comment') return;
+  if (node.type !== 'comment') return;
   if (/\bFI[X]ME\b/i.test (node.text))
     emit (fn, node.startPosition.row + 1, 0, 'warning', 'comment indicates unfinished code', lines);
 }
 
 function check_ban_todo (node: Node, fn: string, lines: string[]): void
 {
-  if (!checks['ban-todo'] || node.type !== 'comment') return;
+  if (node.type !== 'comment') return;
   if (/\bTO[D]O\b/i.test (node.text))
     emit (fn, node.startPosition.row + 1, 0, 'error', 'comment indicates open issues', lines);
 }
@@ -322,6 +319,11 @@ async function analyze_file (filename: string): Promise<void>
 
   const lines = content.split ('\n');
   const root = parser.parse (content).rootNode;
+  const file_checks = { ...checks };
+  for (const comment of root.descendantsOfType ('comment')) {
+    const match = /^\/\/[ \t]*synsmell:[ \t]*allow[ \t]+([a-z-]+)(?=[ \t\r]|$)/.exec (comment.text);
+    if (match) file_checks[match[1]] = false;
+  }
 
   // --strict: refuse to lint files with tree-sitter parse errors
   // tree-sitter has no preprocessor and struggles with: #define inside blocks,
@@ -338,11 +340,11 @@ async function analyze_file (filename: string): Promise<void>
   }
 
   for (const [node, in_error_zone] of walk (root, false)) {
-    check_ban_printf (node, filename, lines, lang);
-    check_separate_body (node, filename, lines, lang);
-    check_whitespace_before_paren (node, filename, lines, lang, in_error_zone);
-    check_ban_fixme (node, filename, lines);
-    check_ban_todo (node, filename, lines);
+    if (file_checks['ban-printf']) check_ban_printf (node, filename, lines, lang);
+    if (file_checks['separate-body']) check_separate_body (node, filename, lines, lang);
+    if (file_checks['whitespace-before-parenthesis']) check_whitespace_before_paren (node, filename, lines, lang, in_error_zone);
+    if (file_checks['ban-fixme']) check_ban_fixme (node, filename, lines);
+    if (file_checks['ban-todo']) check_ban_todo (node, filename, lines);
   }
 }
 
@@ -359,6 +361,7 @@ function print_help (): void
   console.log ('  --strict              Treat tree-sitter parse errors as fatal (default: skip)');
   console.log ('  --macros FILE         Strip listed macros before parsing (see help)');
   console.log ('  --<check>=1/0         Toggle individual check');
+  console.log ('  Source comment `// synsmell: allow <check>` waives a check for that file.');
 }
 
 async function main (): Promise<number>

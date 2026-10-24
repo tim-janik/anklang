@@ -137,7 +137,7 @@ function collect_focusables (element, elist, dlist, is_focusable)
   let e;
   while ( (e = w.nextNode()) )
     {
-      if (e instanceof HTMLDialogElement && e.matches('[open]:modal'))
+      if (e instanceof HTMLDialogElement && e.matches ('[open]:modal'))
 	dlist.push (e); // open modal dialog
       if (is_focusable (e))
 	elist.push (e);
