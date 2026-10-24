@@ -16,11 +16,9 @@ static const std::set<String> read_only_properties = {
 
 // Properties that fail the loop, with the reason. A listed property that passes fails the test.
 static const std::map<String,String> exempt_properties = {
-  { "AudioClip.name",      "GadgetImpl keeps clip names as custom data outside the Edit, so they have no undo." },
   { "MasterTrack.muted",   "Tracktion's MasterTrack has no mute, Track::setMute() does nothing." },
   { "MasterTrack.name",    "Tracktion's MasterTrack::getName() always returns \"Master\"." },
   { "MasterTrack.solo",    "Tracktion's MasterTrack has no solo, Track::setSolo() does nothing." },
-  { "MidiClip.name",       "GadgetImpl keeps clip names as custom data outside the Edit, so they have no undo." },
   { "MidiClip.pan",        "Tracktion's MidiClip has no pan, ClipImpl::pan() ignores the value." },
   { "Plugin.name",         "Tracktion plugins have a fixed name, GadgetImpl stores the value as custom data that nothing reads." },
   { "Project.denominator", "Clip beats change, but the clips send no notify:start_beat or notify:end_beat." },

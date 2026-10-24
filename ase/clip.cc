@@ -120,6 +120,20 @@ ClipImpl::clip_index () const
   return -1;
 }
 
+String
+ClipImpl::name () const
+{
+  return clip_.get() ? clip_->getName().toStdString() : "";
+}
+
+void
+ClipImpl::name (const std::string &n)
+{
+  return_unless (clip_.get());
+  clip_->edit.getUndoManager().beginNewTransaction ("Set Clip Name");
+  clip_->setName (juce::String (n));
+}
+
 ClipPosition
 ClipImpl::position () const
 {

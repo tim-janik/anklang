@@ -19,6 +19,8 @@ protected:
   ClipNoteS all_notes   () const override;
   void      all_notes   (const ClipNoteS &notes) override;
 public:
+  String         name           () const override;
+  void           name           (const std::string &n) override;
   ClipPosition   position       () const override;
   void           position       (const ClipPosition &position) override;
   double         start_beat     () const override;

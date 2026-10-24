@@ -499,7 +499,8 @@ clip_creation()
   TASSERT (trackimpl);
 
   ClipP clip = trackimpl->create_midi_clip ("TestClip", 0.0, 4.0);
-  TASSERT (clip);
+  TASSERT (clip && clip->name() == "TestClip");
+  TASSERT (track->create_audio_clip ("TestAudio", 4.0, 4.0)->name() == "TestAudio");
 
   project->discard();
 }
