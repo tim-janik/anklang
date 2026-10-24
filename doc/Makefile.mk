@@ -27,13 +27,29 @@ $(filter %.md, $(doc/install.files)): $>/doc/%.md: %.md doc/Makefile.mk			| $>/d
 	$Q $(CP) $< $@
 
 # == doc/jsdocs.md ==
-doc/jsdocs_js := $(wildcard ui/*.js ui/b/*.js)
-doc/jsdocs_md := $(doc/jsdocs_js:ui/%.js=$>/doc/jsdocsmd/%.md)
-$(doc/jsdocs_md): doc/jsdoc2md.js
-$>/doc/jsdocsmd/%.md: ui/%.js		| node_modules/.npm.done $>/doc/jsdocsmd/b/
-	$(QGEN)
-	$Q node doc/jsdoc2md.js -d 2 $< > $@.tmp
-	$Q grep -q '[^[:space:]]' $@.tmp && mv $@.tmp $@ || { rm -f $@.tmp && touch $@ ; }
+doc/jsdoc.deps := doc/jsdocrc.json doc/jsdoc2md.js doc/Makefile.mk
+doc/jsdocs_sources := $(filter-out %.d.ts, $(wildcard ui/*.js ui/*.jsx ui/*.ts ui/*.tsx ui/b/*.js ui/b/*.jsx ui/b/*.ts ui/b/*.tsx))
+doc/jsdocs_md := $(patsubst ui/%,$>/doc/jsdocsmd/%.md,$(basename $(doc/jsdocs_sources)))
+define doc/jsdoc_rules
+$>/doc/jsdocsmd/%.md: ui/%.$1 $(doc/jsdoc.deps) | node_modules/.npm.done
+	$$(QGEN)
+	$$Q mkdir -p $$(@D)
+	$$Q node doc/jsdoc2md.js -d 2 $$< > $$@.tmp
+	$$Q mv $$@.tmp $$@
+$>/gen/%.md: ui/%.$1 $(doc/jsdoc.deps) | node_modules/.npm.done
+	$$(QGEN)
+	$$Q mkdir -p $$(@D)
+	$$Q node doc/jsdoc2md.js --markdown-only $$< > $$@.tmp
+	$$Q mv $$@.tmp $$@
+endef
+$(foreach ext,js jsx ts tsx,$(eval $(call doc/jsdoc_rules,$(ext))))
+
+.PHONY: check-jsdoc
+check-jsdoc: $(doc/jsdoc.deps) doc/jsdoc2md.test.js | node_modules/.npm.done
+	$(QECHO) CHECK $@
+	$Q node --test doc/jsdoc2md.test.js
+CHECK_TARGETS += check-jsdoc
+
 $>/doc/jsdocs.md: $(doc/jsdocs_md) doc/Makefile.mk
 	$(QGEN)
 	$Q echo -e '\n# UI Component Reference\n'		>  $@.tmp
@@ -58,13 +74,12 @@ doc/mkdocs-chapters += $>/gen/the-piano-roll.md
 
 # == gen/scripting-docs.md ==
 doc/mkdocs-chapters := $(filter-out doc/ch-scripting.md, $(doc/mkdocs-chapters)) $>/gen/scripting-docs.md
-$>/gen/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) doc/Makefile.mk node_modules/.npm.done	| $>/doc/
+$>/gen/scripting-docs.md: ui/host.js doc/ch-scripting.md $(doc/jsdoc.deps) node_modules/.npm.done	| $>/gen/
 	$(QGEN)
 	$Q cat doc/ch-scripting.md				>  $@.tmp
 	$Q echo -e '\n## Reference for $<'			>> $@.tmp
 	$Q node doc/jsdoc2md.js -d 2 -e 'Host' $<		>> $@.tmp
 	$Q mv $@.tmp $@
-doc/jsdoc.deps ::= doc/jsdocrc.json doc/jsdoc-slashes.js doc/jsdoc2md.js
 
 # == pandoc ==
 doc/markdown-flavour	::= -f markdown+autolink_bare_uris+emoji+lists_without_preceding_blankline-smart
