@@ -110,6 +110,13 @@ public:
 };
 
 // == TrackImpl ==
+// Tracktion tracks whose getName() ignores setName()
+static bool
+trkn_fixed_name (const te::Track &track)
+{
+  return track.isMasterTrack() || track.isTempoTrack() || track.isMarkerTrack() || track.isArrangerTrack();
+}
+
 static std::string
 trkn_track_type (tracktion::Track &track)
 {
@@ -174,7 +181,8 @@ void
 TrackImpl::name (const std::string &n)
 {
   if (auto trackp = track_.get())
-    trackp->setName (juce::String (n));
+    if (!trkn_fixed_name (*trackp))
+      trackp->setName (juce::String (n));
 }
 
 ProjectImpl*
