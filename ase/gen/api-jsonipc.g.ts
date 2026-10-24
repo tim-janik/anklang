@@ -721,6 +721,8 @@ export class Gadget // Ase::Gadget
   { return this.$rpc ("get_value", [this, arg1]); }
   set_value (arg1: string, arg2: any): Promise<boolean>
   { return this.$rpc ("set_value", [this, arg1, arg2]); }
+  read_only_properties (): Promise<string[]>
+  { return this.$rpc ("read_only_properties", [this]); }
   set_data (arg1: string, arg2: any): Promise<boolean>
   { return this.$rpc ("set_data", [this, arg1, arg2]); }
   get_data (arg1: string): Promise<any>

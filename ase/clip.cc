@@ -282,6 +282,15 @@ ClipImpl::pan (float panval)
   aclip->setPan (panval);
 }
 
+StringS
+ClipImpl::read_only_properties () const
+{
+  StringS props = { "end_beat", "start_beat" };
+  if (!dynamic_cast<te::AudioClipBase*> (clip_.get()))
+    props.push_back ("pan");
+  return props;
+}
+
 TelemetryFieldS
 ClipImpl::telemetry () const
 {

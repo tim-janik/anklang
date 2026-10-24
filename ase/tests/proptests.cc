@@ -6,21 +6,8 @@
 namespace { // Anon
 using namespace Ase;
 
-// Read-only properties, the loop doesn't assign them.
-static const std::set<String> read_only_properties = {
-  "AudioClip.end_beat",
-  "AudioClip.start_beat",
-  "MidiClip.end_beat",
-  "MidiClip.start_beat",
-};
-
 // Properties that fail the loop, with the reason. A listed property that passes fails the test.
 static const std::map<String,String> exempt_properties = {
-  { "MasterTrack.muted",   "Tracktion's MasterTrack has no mute, Track::setMute() does nothing." },
-  { "MasterTrack.name",    "Tracktion's MasterTrack::getName() always returns \"Master\"." },
-  { "MasterTrack.solo",    "Tracktion's MasterTrack has no solo, Track::setSolo() does nothing." },
-  { "MidiClip.pan",        "Tracktion's MidiClip has no pan, ClipImpl::pan() ignores the value." },
-  { "Plugin.name",         "Tracktion plugins have a fixed name, PluginImpl::name() ignores the value." },
   { "Project.is_playing",  "Transport state, playback has no undo." },
   { "Track.muted",         "Tracktion's AudioTrack binds IDs::mute without the undo manager." },
   { "Track.solo",          "Tracktion's AudioTrack binds IDs::solo without the undo manager." },
@@ -30,7 +17,7 @@ using Values = std::map<String,String>;
 
 // A fresh project whose objects are read and written by name through Jsonipc, like the UI does.
 struct LoopProject {
-  struct Object { String label, self; StringS props; bool assign; };
+  struct Object { String label, self; StringS props, read_only; bool assign; };
   Jsonipc::InstanceMap imap;
   Jsonipc::IpcDispatcher dispatcher;
   ProjectImplP project = ProjectImpl::create ("PropertyLoop");
@@ -87,7 +74,7 @@ struct LoopProject {
     connections.push_back (obj->on_event ("notify", [this, label] (const Event &event) {
       notified.insert (label + "." + event.detail());
     }));
-    objects.push_back ({ label, self, props, assign });
+    objects.push_back ({ label, self, props, obj->read_only_properties(), assign });
   }
   // Call a method by name, e.g. {"id":1,"method":"get/bpm","params":[{"$id":1}]}
   String
@@ -195,24 +182,24 @@ check_property (const String &key, int dir = +1)
 static void
 property_loop()
 {
-  StringS failures, keys, checks;
+  StringS failures, checks;
   {
     LoopProject lp;
     const Values values = lp.snapshot();
     for (const auto &o : lp.objects)
-      for (const auto &p : o.props)
-        if (o.assign)
+      {
+        for (const auto &p : o.read_only)
+          if (!std::count (o.props.begin(), o.props.end(), p))
+            failures.push_back (o.label + "." + p + ": read-only, but there is no such property");
+        for (const auto &p : o.props)
           {
             const String key = o.label + "." + p;
-            keys.push_back (key);
             // read-only properties, lists and objects are only compared
-            if (!read_only_properties.count (key) && !nudge (values.at (key), +1).empty())
+            if (o.assign && !std::count (o.read_only.begin(), o.read_only.end(), p) && !nudge (values.at (key), +1).empty())
               checks.push_back (key);
           }
+      }
   }
-  for (const auto &key : read_only_properties)
-    if (!std::count (keys.begin(), keys.end(), key))
-      failures.push_back (key + ": unknown, remove it from read_only_properties");
   for (const auto &[key, reason] : exempt_properties)
     if (!std::count (checks.begin(), checks.end(), key))
       failures.push_back (key + ": not assigned, remove it from exempt_properties");

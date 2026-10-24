@@ -188,6 +188,8 @@ public:
   virtual PropertyS   access_properties () = 0;             ///< Retrieve handles for all properties.
   Value               get_value         (String ident);     ///< Get native property value.
   bool                set_value         (String ident, const Value &v); ///< Set native property value.
+  /// List x()/x (v) properties that this object can't change, their setters ignore the value or warn.
+  virtual StringS     read_only_properties () const;
   /// Assign session data, prefix ephemerals with '_'.
   virtual bool        set_data          (const String &key, const Value &v) = 0;
   /// Retrieve session data.
