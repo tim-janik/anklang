@@ -136,6 +136,12 @@ PluginImpl::device_info()
   return info;
 }
 
+StringS
+PluginImpl::read_only_properties () const
+{
+  return { "name" };
+}
+
 void
 PluginImpl::remove_self ()
 {

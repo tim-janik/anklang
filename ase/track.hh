@@ -45,6 +45,7 @@ public:
   float           pan               () const override;
   void            pan               (float pan) override;
   void            remove_self       () override;
+  StringS         read_only_properties () const override;
   ClipS           launcher_clips    () const override;
   void            launcher_clips    (const ClipS &) override;
   DeviceP         access_device     () override;

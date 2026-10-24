@@ -322,6 +322,20 @@ TrackImpl::pan (float pan)
     trkn_pan (*vol, pan);
 }
 
+StringS
+TrackImpl::read_only_properties() const
+{
+  StringS props = { "launcher_clips" };
+  auto t = track_.get();
+  if (t && trkn_fixed_name (*t))
+    props.push_back ("name");
+  if (!dynamic_cast<te::AudioTrack*> (t) && !dynamic_cast<te::FolderTrack*> (t))
+    props.insert (props.end(), { "muted", "solo" });
+  if (!volume_plugin())
+    props.insert (props.end(), { "pan", "slider_pos", "volume_db" });
+  return props;
+}
+
 ClipS
 TrackImpl::launcher_clips() const
 {

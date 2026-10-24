@@ -127,6 +127,12 @@ Gadget::_project() const
 }
 
 StringS
+Gadget::read_only_properties () const
+{
+  return {};
+}
+
+StringS
 Gadget::list_properties ()
 {
   PropertyS props = access_properties();

@@ -29,6 +29,7 @@ public:
   bool            frozen            () const override;
   void            frozen            (bool frozen) override;
   void            remove_self       () override;
+  StringS         read_only_properties () const override;
   tracktion::Plugin* plugin () const noexcept { return plugin_.get(); } ///< Access underlying tracktion::Plugin (for internal use).
   static PluginImplP from_trkn (tracktion::Plugin&);
 };
