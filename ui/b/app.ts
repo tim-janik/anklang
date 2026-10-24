@@ -64,7 +64,7 @@ export class AppClass {
   constructor ()
   {
     // super();
-    { // mimick familiar LitComponent API
+    { // Track signals read by updated().
       let update_queued = false;
       this.request_update = () => {
         if (update_queued) return;
