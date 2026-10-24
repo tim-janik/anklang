@@ -21,7 +21,7 @@
 #define JSONIPC_ISLIKELY(expr)          __builtin_expect (bool (expr), 1)
 #define JSONIPC_UNLIKELY(expr)          __builtin_expect (bool (expr), 0)
 #define JSONIPC_WARNING(fmt,...)        do { fprintf (stderr, "%s:%d: warning: ", __FILE__, __LINE__); fprintf (stderr, fmt, __VA_ARGS__); fputs ("\n", stderr); } while (0)
-#define JSONIPC_ASSERT_RETURN(expr,...) do { if (JSONIPC_ISLIKELY (expr)) break; fprintf (stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #expr); return __VA_ARGS__; } while (0)
+#define JSONIPC_ASSERT_RETURN(expr,...) do { if (JSONIPC_ISLIKELY (expr)) break; fprintf (stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #expr); abort(); } while (0)
 
 namespace Jsonipc {
 
