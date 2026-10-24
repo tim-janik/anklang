@@ -554,6 +554,7 @@ public:
     friend            class InstanceMap;
   public:
     virtual Closure*    lookup_closure (const char *method) = 0;
+    virtual std::vector<std::string> list_methods () = 0;
     virtual void        try_upcast     (const std::string &baseclass, void *sptrB) = 0;
     virtual std::string classname      () = 0;
   };
@@ -575,6 +576,7 @@ public:
   public:
     explicit  InstanceWrapper (const std::shared_ptr<T> &sptr) : sptr_ (sptr) {}
     Closure*  lookup_closure  (const char *method) override { return Class<T>::lookup_closure (method); }
+    std::vector<std::string> list_methods () override       { return Class<T>::list_methods(); }
     TypeidKey typeid_key      () override { return create_typeid_key (sptr_); }
     void      try_upcast      (const std::string &baseclass, void *sptrB) override
     { Class<T>::try_upcast (sptr_, baseclass, sptrB); }
@@ -1424,13 +1426,14 @@ private:
     size_t    (*base_depth)     ();
     bool      (*upcast_impl)    (const std::shared_ptr<T>&, const std::string&, void*) = NULL;
     Closure*  (*lookup_closure) (const char*) = NULL;
+    std::vector<std::string> (*list_methods) () = NULL;
   };
   using BaseVec   = std::vector<BaseInfo>;
   template<typename B> void
   add_base ()
   {
     BaseVec &bvec = basevec();
-    BaseInfo binfo { typename_of<B>(), Class<B>::base_depth, &upcast_impl<B>, &Class<B>::lookup_closure, };
+    BaseInfo binfo { typename_of<B>(), Class<B>::base_depth, &upcast_impl<B>, &Class<B>::lookup_closure, &Class<B>::list_methods, };
     for (const auto &it : bvec)
       if (it.basetypename == binfo.basetypename)
         throw std::runtime_error ("duplicate base registration: " + binfo.basetypename);
@@ -1473,6 +1476,20 @@ public:
           return closure;
       }
     return nullptr;
+  }
+  /// List the method names registered for `T` and its base classes, accessors as "get/name" and "set/name".
+  static std::vector<std::string>
+  list_methods ()
+  {
+    std::vector<std::string> names;
+    for (const auto &it : methodmap())
+      names.push_back (it.first);
+    for (const auto &base : basevec())
+      for (const auto &name : base.list_methods())
+        names.push_back (name);
+    std::sort (names.begin(), names.end());
+    names.erase (std::unique (names.begin(), names.end()), names.end());
+    return names;
   }
   static bool
   try_upcast (std::shared_ptr<T> &sptr, const std::string &baseclass, void *sptrB)
