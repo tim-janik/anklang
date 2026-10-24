@@ -14,18 +14,20 @@ namespace Ase {
 // == ClipStateListener ==
 class ClipImpl::ClipStateListener : public juce::ValueTree::Listener {
   ClipImpl &aseclip_;
-  juce::ValueTree clip_state_;
+  juce::ValueTree clip_state_, tempo_state_;
   // Handles refer to the Edit note trees, including notes held by undo.
   std::map<int32, juce::ValueTree> note_states_;
   int32 next_note_id_ = 0;
 public:
   ClipStateListener (ClipImpl &aseclip) :
-    aseclip_ (aseclip), clip_state_ (aseclip_.clip_->state)
+    aseclip_ (aseclip), clip_state_ (aseclip_.clip_->state), tempo_state_ (aseclip_.clip_->edit.tempoSequence.getState())
   {
     clip_state_.addListener (this);
+    tempo_state_.addListener (this);
   }
   ~ClipStateListener() override
   {
+    tempo_state_.removeListener (this);
     clip_state_.removeListener (this);
   }
   void
@@ -60,6 +62,12 @@ public:
   void
   valueTreePropertyChanged (juce::ValueTree &tree, const juce::Identifier &property) override
   {
+    if (tree == tempo_state_ || tree.isAChildOf (tempo_state_))
+      {
+        // Tempo and time signature changes can move clip beats
+        aseclip_.emit_notify ("start_beat");
+        aseclip_.emit_notify ("end_beat");
+      }
     return_unless (tree == clip_state_);
     if (property == tracktion::engine::IDs::name)
       aseclip_.emit_notify ("name");

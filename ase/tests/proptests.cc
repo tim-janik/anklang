@@ -21,7 +21,6 @@ static const std::map<String,String> exempt_properties = {
   { "MasterTrack.solo",    "Tracktion's MasterTrack has no solo, Track::setSolo() does nothing." },
   { "MidiClip.pan",        "Tracktion's MidiClip has no pan, ClipImpl::pan() ignores the value." },
   { "Plugin.name",         "Tracktion plugins have a fixed name, GadgetImpl stores the value as custom data that nothing reads." },
-  { "Project.denominator", "Clip beats change, but the clips send no notify:start_beat or notify:end_beat." },
   { "Project.is_playing",  "Transport state, playback has no undo." },
   { "Track.muted",         "Tracktion's AudioTrack binds IDs::mute without the undo manager." },
   { "Track.solo",          "Tracktion's AudioTrack binds IDs::solo without the undo manager." },
