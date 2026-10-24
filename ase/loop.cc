@@ -6,6 +6,7 @@
 #include "internal.hh"
 #include "strings.hh"
 #include <sys/poll.h>
+#include <sys/resource.h>
 #include <sys/wait.h>
 #include <errno.h>
 #include <atomic>
@@ -1063,20 +1064,20 @@ SigchldSource::dispatch (const LoopState &state)
     sigchld_counter_ = sigchld_counter;
     // Use pid_ to avoid reaping unknown children
     int status = 0;
-    const pid_t child_pid = wait4 (pid_, &status, WNOHANG, nullptr);
+    struct rusage ru {};
+    const pid_t child_pid = wait4 (pid_, &status, WNOHANG, &ru);
     if (child_pid > 0) {
       slot_ (pid_, status);
-#if 0
-      struct rusage ru {}; // wait4 (..., &ru);
-      printf ("  Child Pid %d user time: %ld.%06ld sec\n", child_pid, ru.ru_utime.tv_sec, ru.ru_utime.tv_usec);
-      printf ("  System time: %ld.%06ld sec\n", ru.ru_stime.tv_sec, ru.ru_stime.tv_usec);
-      printf ("  Max RSS: %ld KB\n", ru.ru_maxrss);
-      printf ("  Page faults: %ld\n", ru.ru_minflt);
-      printf ("  I/O operations: %ld\n", ru.ru_inblock + ru.ru_oublock);
-      printf ("  Voluntary context switches: %ld\n", ru.ru_nvcsw);
-      printf ("  Involuntary context switches: %ld\n", ru.ru_nivcsw);
-      printf ("\n");
-#endif
+      if (debug_key_enabled ("sigchld")) {
+        printerr ("  Child Pid %d user time: %ld.%06ld sec\n", child_pid, ru.ru_utime.tv_sec, ru.ru_utime.tv_usec);
+        printerr ("  System time: %ld.%06ld sec\n", ru.ru_stime.tv_sec, ru.ru_stime.tv_usec);
+        printerr ("  Max RSS: %ld KB\n", ru.ru_maxrss);
+        printerr ("  Page faults: %ld\n", ru.ru_minflt);
+        printerr ("  I/O operations: %ld\n", ru.ru_inblock + ru.ru_oublock);
+        printerr ("  Voluntary context switches: %ld\n", ru.ru_nvcsw);
+        printerr ("  Involuntary context switches: %ld\n", ru.ru_nivcsw);
+        printerr ("\n");
+      }
       if (WIFEXITED (status) || WIFSIGNALED (status)) {
         // Child exited
         pid_ = 0;
