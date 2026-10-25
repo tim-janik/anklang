@@ -777,6 +777,49 @@ clip_notes()
 TEST_ADD (clip_notes);
 
 static void
+clip_note_notifications()
+{
+  ProjectImplP project = ProjectImpl::create ("NoteNotifications");
+  ClipP clip = project->create_track()->create_midi_clip ("Notes", 0, 4);
+  std::map<String,ClipNoteS> notified;
+  auto connection = clip->on_event ("notify", [&] (const Event &event) {
+    if (event.detail() == "notes" || event.detail() == "all_notes")
+      notified[event.detail()] = clip->all_notes();
+  });
+  auto require_notifies = [&] (const ClipNoteS &notes) {
+    TASSERT (notified.count ("notes") && notified.at ("notes") == notes);
+    TASSERT (notified.count ("all_notes") && notified.at ("all_notes") == notes);
+    notified.clear();
+  };
+  for (int step = 0; step < 3; step++)
+    {
+      const ClipNoteS before = clip->all_notes();
+      project->clear_undo();
+      ClipNote note { .note_number = 60, .length_beats = 1, .velocity = 90 };
+      if (step > 0)
+        {
+          note = before.at (0);
+          if (step == 1)
+            note.velocity = 45;
+          else
+            note.length_beats = 0;
+        }
+      clip->change_batch ({ note }, "Change Note");
+      const ClipNoteS after = clip->all_notes();
+      TASSERT (before != after);
+      require_notifies (after);
+      project->undo();
+      TASSERT (clip->all_notes() == before);
+      require_notifies (before);
+      project->redo();
+      TASSERT (clip->all_notes() == after);
+      require_notifies (after);
+    }
+  project->discard();
+}
+TEST_ADD (clip_note_notifications);
+
+static void
 clip_range()
 {
   ProjectP project = ProjectImpl::create ("ClipRangeTest");

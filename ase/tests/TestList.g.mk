@@ -10,6 +10,7 @@ ASE_TEST_LIST := \
   callback_list_test \
   clip_creation \
   clip_mute_volume_pan \
+  clip_note_notifications \
   clip_notes \
   clip_range \
   clip_undo_redo \

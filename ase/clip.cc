@@ -60,8 +60,19 @@ public:
     return entry == note_states_.end() ? nullptr : sequence.getNoteFor (entry->second);
   }
   void
+  notify_notes (const juce::ValueTree &tree)
+  {
+    if (tree == clip_state_ || tree.isAChildOf (clip_state_))
+      {
+        aseclip_.emit_notify ("notes");
+        aseclip_.emit_notify ("all_notes");
+      }
+  }
+  void
   valueTreePropertyChanged (juce::ValueTree &tree, const juce::Identifier &property) override
   {
+    if (tree.hasType (te::IDs::NOTE))
+      notify_notes (tree);
     if (tree == tempo_state_ || tree.isAChildOf (tempo_state_))
       {
         // Tempo and time signature changes can move clip beats
@@ -88,8 +99,8 @@ public:
     else
         aseclip_.emit_notify ("notes"); // Simplistic change detection for notes within state
   }
-  void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override {}
-  void valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree&, int) override {}
+  void valueTreeChildAdded (juce::ValueTree &parent, juce::ValueTree&) override        { notify_notes (parent); }
+  void valueTreeChildRemoved (juce::ValueTree &parent, juce::ValueTree&, int) override { notify_notes (parent); }
   void valueTreeParentChanged (juce::ValueTree&) override {}
   void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override {}
 };
