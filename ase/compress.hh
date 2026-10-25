@@ -12,14 +12,23 @@ bool   is_wav          (const String &input);
 
 bool   is_compressed   (const String &input);
 
+bool   is_7z           (const String &input);
 bool   is_arj          (const String &input);
 bool   is_avi          (const String &input);
+bool   is_bz2          (const String &input);
+bool   is_ebml         (const String &input);
+bool   is_flac         (const String &input);
+bool   is_gif          (const String &input);
 bool   is_gz           (const String &input);
+bool   is_isobmff      (const String &input);
 bool   is_isz          (const String &input);
 bool   is_jpg          (const String &input);
 bool   is_lz4          (const String &input);
+bool   is_mp3          (const String &input);
 bool   is_ogg          (const String &input);
 bool   is_png          (const String &input);
+bool   is_rar          (const String &input);
+bool   is_webp         (const String &input);
 bool   is_xz           (const String &input);
 bool   is_zip          (const String &input);
 
