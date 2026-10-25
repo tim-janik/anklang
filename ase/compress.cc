@@ -48,11 +48,11 @@ static struct { size_t level, size; } const zstd_adaptive_level[] = {
   {  4, ~size_t (0) },  // acceptable fast compression
 }; // each level + size combination should take roughly the same time
 
-static int
-guess_zstd_level (size_t input_size)
+int
+zstd_guess_level (size_t input_size)
 {
   uint zal = 0;
-  while (zstd_adaptive_level[zal].size > input_size)
+  while (input_size > zstd_adaptive_level[zal].size)
     zal++;
   return zstd_adaptive_level[zal].level;
 }
@@ -69,7 +69,7 @@ zstd_compress (const void *src, size_t src_size, int level)
   const size_t maxosize = ZSTD_compressBound (src_size);
   String data;
   data.resize (maxosize);
-  const size_t osize = ZSTD_compress (&data[0], data.size(), src, src_size, level ? level : guess_zstd_level (src_size));
+  const size_t osize = ZSTD_compress (&data[0], data.size(), src, src_size, level ? level : zstd_guess_level (src_size));
   if (ZSTD_isError (osize))
     {
       warning ("zstd compression failed (input=%zu): %s", src_size, ZSTD_getErrorName (osize));
@@ -174,7 +174,7 @@ is_ogg (const String &input)
 bool
 is_avi (const String &input)
 {
-  return input.substr (0, 4) == "RIFF" && input.substr (8, 4) == "AVI ";
+  return input.size() >= 12 && input.substr (0, 4) == "RIFF" && input.substr (8, 4) == "AVI ";
 }
 
 bool
@@ -219,6 +219,74 @@ is_jpg (const String &input)
 }
 
 bool
+is_flac (const String &input)
+{
+  return input.substr (0, 4) == "fLaC";
+}
+
+bool
+is_mp3 (const String &input)
+{
+  return (input.substr (0, 3) == "ID3" ||
+          (input.size() >= 2 &&
+           input[0] == char (0xff) &&
+           (uint8_t (input[1]) & 0x18) != 0x08 &&
+           (uint8_t (input[1]) & 0xe6) == 0xe2)); // MPEG audio frame sync, layer III
+}
+
+bool
+is_webp (const String &input)
+{
+  return (input.size() >= 12 &&
+          input.substr (0, 4) == "RIFF" &&
+          input.substr (8, 4) == "WEBP");
+}
+
+bool
+is_7z (const String &input)
+{
+  return input.substr (0, 6) == "7z\xbc\xaf\x27\x1c";
+}
+
+bool
+is_rar (const String &input)
+{
+  return (input.size() >= 7 && input.substr (0, 6) == "Rar!\x1a\x07" &&
+          (input[6] == char (0x00) ||
+           (input.size() >= 8 && input[6] == char (0x01) && input[7] == char (0x00))));
+}
+
+bool
+is_bz2 (const String &input)
+{
+  return (input.size() >= 4 && input.substr (0, 3) == "BZh" && input[3] >= '1' && input[3] <= '9');
+}
+
+bool
+is_gif (const String &input)
+{
+  return input.substr (0, 6) == "GIF87a" || input.substr (0, 6) == "GIF89a";
+}
+
+// EBML files: WebM, Matroska (MKV, MKA)
+bool
+is_ebml (const String &input)
+{
+  return (input.size() >= 4 &&
+          input[0] == char (0x1a) &&
+          input[1] == char (0x45) &&
+          input[2] == char (0xdf) &&
+          input[3] == char (0xa3));
+}
+
+// ISO base media files: MP4, M4A, MOV, 3GP, AVIF, HEIF, HEIC
+bool
+is_isobmff (const String &input)
+{
+  return input.size() >= 12 && input.substr (4, 4) == "ftyp";
+}
+
+bool
 is_compressed (const String &input)
 {
   return (is_zstd (input) ||
@@ -231,7 +299,16 @@ is_compressed (const String &input)
           is_gz (input) ||
           is_xz (input) ||
           is_png (input) ||
-          is_jpg (input));
+          is_jpg (input) ||
+          is_flac (input) ||
+          is_mp3 (input) ||
+          is_webp (input) ||
+          is_7z (input) ||
+          is_rar (input) ||
+          is_bz2 (input) ||
+          is_gif (input) ||
+          is_ebml (input) ||
+          is_isobmff (input));
 
 }
 
@@ -480,6 +557,52 @@ blake3_tests()
   TCMP (h, ==, "af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262");
   h = string_to_hex (blake3_hash_string ("Hello Blake3"));
   TASSERT (h == "6201e8ededb2f1f2b6362119b46b404e822efbd58d7922202408025c5f527c56");
+}
+
+TEST_INTEGRITY (is_compressed_tests);
+static void
+is_compressed_tests()
+{
+  TCMP (is_flac ("fLaC"), ==, true);
+  TCMP (is_mp3 ("ID3"), ==, true);
+  TCMP (is_mp3 ("\xff\xfb\x90"), ==, true);
+  TCMP (is_mp3 ("\xff\xea\x90"), ==, false);
+  TCMP (is_mp3 ("\xff\xd8\xff"), ==, false);
+  TCMP (is_mp3 ("\xff"), ==, false);
+  TCMP (is_webp ("RIFFxxxxWEBP"), ==, true);
+  TCMP (is_webp ("RIFFxxxxWAVE"), ==, false);
+  TCMP (is_webp ("RIFF"), ==, false);
+  TCMP (is_compressed (""), ==, false);
+  TCMP (is_compressed ("RIFF"), ==, false);
+  TCMP (is_compressed ("fLaC"), ==, true);
+  TCMP (is_compressed ("ID3"), ==, true);
+  TCMP (is_compressed ("RIFFxxxxWEBP"), ==, true);
+  TCMP (is_7z ("7z\xbc\xaf\x27\x1c"), ==, true);
+  TCMP (is_7z ("7z\xbc\xaf\x27"), ==, false);
+  TCMP (is_rar (String ("Rar!\x1a\x07\x00", 7)), ==, true);
+  TCMP (is_rar (String ("Rar!\x1a\x07\x01\x00", 8)), ==, true);
+  TCMP (is_rar ("Rar!\x1a\x07x"), ==, false);
+  TCMP (is_rar ("Rar!\x1a"), ==, false);
+  TCMP (is_bz2 ("BZh9"), ==, true);
+  TCMP (is_bz2 ("BZh0"), ==, false);
+  TCMP (is_bz2 ("BZ"), ==, false);
+  TCMP (is_gif ("GIF87a"), ==, true);
+  TCMP (is_gif ("GIF89a"), ==, true);
+  TCMP (is_gif ("GIF88a"), ==, false);
+  TCMP (is_ebml ("\x1a\x45\xdf\xa3"), ==, true);
+  TCMP (is_ebml ("\x1a\x45\xdf"), ==, false);
+  TCMP (is_compressed ("7z\xbc\xaf\x27\x1c"), ==, true);
+  TCMP (is_compressed (String ("Rar!\x1a\x07\x00", 7)), ==, true);
+  TCMP (is_compressed ("BZh9"), ==, true);
+  TCMP (is_compressed ("\x1a\x45\xdf\xa3"), ==, true);
+  TCMP (is_isobmff ("xxxxftypisom"), ==, true);
+  TCMP (is_isobmff ("xxxxftypmif1"), ==, true);
+  TCMP (is_isobmff ("xxxxmoovisom"), ==, false);
+  TCMP (is_isobmff ("xxxxftyp"), ==, false);
+  TCMP (is_compressed ("xxxxftypisom"), ==, true);
+  TCMP (is_compressed ("xxxxftypheic"), ==, true);
+  TCMP (is_compressed ("GIF89a"), ==, true);
+  TCMP (is_compressed ("xxxxftypavif"), ==, true);
 }
 
 } // Anon

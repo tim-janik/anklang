@@ -21,6 +21,7 @@ ASE_TEST_LIST := \
   crawler_tests \
   delay_promise_test \
   event_list_tests \
+  is_compressed_tests \
   jsonapi_tests \
   levenshtein_tests \
   loft_allocator_tests \
@@ -63,6 +64,10 @@ ASE_TEST_LIST := \
   signalutils_tests \
   sndfile_tests \
   sortnet_tests \
+  storage_links \
+  storage_long_link_error \
+  storage_mimetype \
+  storage_roundtrip \
   string_tests \
   test_audio_sample_load \
   test_serializable_hierarchy \

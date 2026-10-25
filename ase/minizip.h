@@ -6,6 +6,7 @@
 
 // Configuration
 #define MZ_ZIP_NO_ENCRYPTION
+#define MZ_ZIP_NO_CRYPTO
 
 // Minizip API
 #include "external/minizip-ng/mz.h"
