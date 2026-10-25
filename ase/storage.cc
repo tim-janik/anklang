@@ -235,7 +235,7 @@ public:
   {
     assert_return (writer == nullptr, Error::INTERNAL);
     zipname = filename;
-    mz_zip_writer_create (&writer);
+    writer = mz_zip_writer_create();
     mz_zip_writer_set_zip_cd (writer, false);
     mz_zip_writer_set_password (writer, nullptr);
     mz_zip_writer_set_store_links (writer, false);
@@ -269,7 +269,7 @@ public:
       .uncompressed_size = ssize_t (buffer.size()),
       .external_fa = attrib,
       .filename = filename.c_str(),
-      .zip64 = buffer.size() > 4294967295, // match libmagic's ZIP-with-mimetype
+      .zip64 = MZ_ZIP64_AUTO,
     };
     int32_t mzerr = MZ_OK;
     if (MZ_HOST_SYSTEM (file_info.version_madeby) != MZ_HOST_SYSTEM_MSDOS &&
@@ -393,7 +393,7 @@ public:
     assert_return (reader == nullptr, Error::INTERNAL);
     zipname = filename;
     // setup reader and open file
-    mz_zip_reader_create (&reader);
+    reader = mz_zip_reader_create();
     // mz_zip_reader_set_pattern (reader, pattern, 1);
     mz_zip_reader_set_password (reader, nullptr);
     mz_zip_reader_set_encoding (reader, MZ_ENCODING_UTF8);
@@ -600,7 +600,7 @@ public:
   {
     assert_return (reader_ == nullptr, Error::INTERNAL);
     name_ = zipname;
-    mz_zip_reader_create (&reader_);
+    reader_ = mz_zip_reader_create();
     mz_zip_reader_set_password (reader_, nullptr);
     mz_zip_reader_set_encoding (reader_, MZ_ENCODING_UTF8);
     errno = ELIBBAD;
