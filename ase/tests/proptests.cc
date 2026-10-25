@@ -43,7 +43,7 @@ struct LoopProject {
     add ("InsertPlugin", insert_plugin);
     for (TrackP t : project->all_tracks())
       {
-        add ("", t);
+        add (t->is_control_track() && t->name() == "Chord" ? "ChordTrack" : "", t);
         for (ClipP c : t->launcher_clips())
           add ("", c);
         for (PluginP p : t->list_plugins())

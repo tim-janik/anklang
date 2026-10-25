@@ -589,9 +589,17 @@ name_undo_redo()
 {
   ProjectP project = Server::instance().create_project ("NameUndoTest");
   TrackP track = project->create_track();
+  TrackP chord;
+  for (const TrackP &control : project->all_tracks())
+    if (control->is_control_track() && control->name() == "Chord")
+      chord = control;
+  TASSERT (chord);
+  const StringS read_only = chord->read_only_properties();
+  TASSERT (!std::count (read_only.begin(), read_only.end(), "name"));
   const std::vector<std::pair<GadgetP,String>> writable = {
     { project, "" },
     { track, "Track 1" },
+    { chord, "" },
     { track->create_midi_clip ("Midi", 0, 1), "" },
     { track->create_audio_clip ("Audio", 2, 1), "" },
     { track->create_plugin ("text"), "Text Plugin" },
