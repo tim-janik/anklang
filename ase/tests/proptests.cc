@@ -150,7 +150,6 @@ struct LoopProject {
   {
     Snapshot values;
     read_object (values, "Project", ProjectP (project));
-    read (values, "Project", ref ("Project"), "all_tracks", "all_tracks");
     size_t ti = 0;
     for (const auto &track : project->all_tracks())
       {
@@ -343,7 +342,6 @@ static const std::map<String,Change> method_checks = {
 
 static const std::map<String,String> exempt_methods = {
   { "Clip.change_batch",           "Special note-editing flow, deferred to its planned rewrite in #141." },
-  { "Track.create_audio_clip",     "Audio clips have no API list, so the loop sees no change." },
   { "Gadget.remove_self/Track",    "Audio clip handles cannot be reacquired on undo." },
   { "Gadget.remove_self/AudioClip", "Audio clips have no API list, so restored clips cannot be reacquired." },
   { "Gadget.remove_self/Plugin",   "Undo reuses the plugin's invalidated API handle." },
@@ -377,7 +375,6 @@ static const std::map<String,String> exempt_methods = {
   { "Project.start_playback",      "Transport state, playback has no undo." },
   { "Project.pause_playback",      "Transport state, playback has no undo." },
   { "Project.stop_playback",       "Transport state, playback has no undo." },
-  { "Project.all_tracks",          "Query, compared after every change." },
   { "Project.master_track",        "Master track handle query." },
   { "Project.save_project",        "File I/O, covered by step 7." },
   { "Project.saved_filename",      "File name query." },
@@ -389,7 +386,6 @@ static const std::map<String,String> exempt_methods = {
   { "Project.can_undo",            "Undo history query, exercised by the loop." },
   { "Project.redo",                "Undo history control, exercised by the loop." },
   { "Project.can_redo",            "Undo history query, exercised by the loop." },
-  { "Project.length",              "Query, read-only property coverage belongs to step 6." },
   { "Project.match_serialized",    "Serialized state query." },
 };
 
